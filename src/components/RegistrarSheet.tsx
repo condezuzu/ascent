@@ -5,8 +5,9 @@ import { crearCliente } from '@/lib/supabase/client';
 import { fechaLinda, hoyISO } from '@/lib/fechas';
 import type { ResultadoRegistro } from '@/lib/tipos';
 
-// Hoja inferior de registro. Foto opcional, peso opcional (con la aclaración
-// explícita de que el peso solo lo ve el usuario).
+// Hoja inferior de registro: día, foto opcional y peso opcional. Nada más.
+// Los días de descanso NO se registran acá: se eligen una sola vez en Ajustes
+// como días fijos de la semana.
 export default function RegistrarSheet({
   racha,
   fecha,
@@ -22,12 +23,19 @@ export default function RegistrarSheet({
   const dia = fecha ?? hoyISO();
   const esHoy = dia === hoyISO();
   const [peso, setPeso] = useState('');
-  const [esDescanso, setEsDescanso] = useState(false);
   const [foto, setFoto] = useState<File | null>(null);
   const [fotoVisible, setFotoVisible] = useState(false);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [cerrando, setCerrando] = useState(false);
   const inputFoto = useRef<HTMLInputElement>(null);
+
+  // la hoja se va con su animación antes de desmontarse
+  function cerrar() {
+    if (cargando) return;
+    setCerrando(true);
+    setTimeout(alCerrar, 200);
+  }
 
   async function confirmar() {
     setError('');
@@ -40,7 +48,7 @@ export default function RegistrarSheet({
 
     const { data, error } = await supabase.rpc('registrar_dia', {
       p_fecha: dia,
-      p_es_descanso: esDescanso,
+      p_es_descanso: false,
       p_peso: pesoNum,
     });
 
@@ -79,30 +87,10 @@ export default function RegistrarSheet({
 
   return (
     <>
-      <div className="hoja-fondo" onClick={alCerrar} />
-      <div className="hoja" role="dialog" aria-modal>
-        <h2>{!esHoy ? 'Corregir día' : esDescanso ? 'Día de descanso' : `Día ${racha + 1}`}</h2>
+      <div className={`hoja-fondo ${cerrando ? 'cerrando' : ''}`} onClick={cerrar} />
+      <div className={`hoja ${cerrando ? 'cerrando' : ''}`} role="dialog" aria-modal>
+        <h2>{esHoy ? `Día ${racha + 1}` : 'Corregir día'}</h2>
         <p className="sub">{fechaLinda(dia)}</p>
-
-        <div className="campo">
-          <label>Tipo de día</label>
-          <div className="selector-vista" style={{ marginBottom: 0 }}>
-            <button
-              type="button"
-              className={!esDescanso ? 'activo' : ''}
-              onClick={() => setEsDescanso(false)}
-            >
-              Entrené
-            </button>
-            <button
-              type="button"
-              className={esDescanso ? 'activo' : ''}
-              onClick={() => setEsDescanso(true)}
-            >
-              Descanso
-            </button>
-          </div>
-        </div>
 
         <div className="campo">
           <label>Foto (opcional)</label>
@@ -144,7 +132,7 @@ export default function RegistrarSheet({
         </div>
 
         <button className="boton-solido" onClick={confirmar} disabled={cargando}>
-          {cargando ? 'Guardando…' : 'Confirmar'}
+          {cargando ? 'Guardando…' : 'Registrar día'}
         </button>
         {error && <p className="error-msg">{error}</p>}
       </div>

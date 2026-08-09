@@ -1,15 +1,19 @@
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@/lib/fechas';
+import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
 import type { Log } from '@/lib/tipos';
 
 // Tres estados: lleno (registrado), borde fino vacío (no registrado, sin
 // cruz ni rojo ni mensaje de falla), guioncito apagado (descanso — no puede
 // parecer un fallo).
+//
+// Los descansos se leen con la configuración vigente de CADA día: la semana
+// puede cruzar un cambio de rutina y el pasado no se reescribe.
 export default function TiraSemanal({
   logs,
-  diasDescanso,
+  descansos,
 }: {
   logs: Log[];
-  diasDescanso: number[];
+  descansos: ConfigDescanso[];
 }) {
   const hoy = hoyISO();
   const dias: { fecha: string; estado: 'lleno' | 'vacio' | 'descanso'; esHoy: boolean }[] = [];
@@ -19,8 +23,7 @@ export default function TiraSemanal({
     const log = logs.find((l) => l.fecha === fecha);
     let estado: 'lleno' | 'vacio' | 'descanso' = 'vacio';
     if (log && !log.es_descanso) estado = 'lleno';
-    else if ((log && log.es_descanso) || diasDescanso.includes(deISO(fecha).getDay()))
-      estado = 'descanso';
+    else if ((log && log.es_descanso) || esDiaDeDescanso(descansos, fecha)) estado = 'descanso';
     dias.push({ fecha, estado, esHoy: fecha === hoy });
   }
 

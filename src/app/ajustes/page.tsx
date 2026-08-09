@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
-import { DIAS_SEMANA, hoyISO } from '@/lib/fechas';
+import { DIAS_SEMANA, enDias, hoyISO } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
+import { borrarPerfilCache } from '@/lib/cache';
 import type { Log, Perfil } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
-import RegistrarSheet from '@/components/RegistrarSheet';
 import Avatar from '@/components/Avatar';
+import CalendarioCorregir from '@/components/CalendarioCorregir';
 import InstalarPWA from '@/components/InstalarPWA';
 import Nav from '@/components/Nav';
 
@@ -18,11 +19,10 @@ export default function Ajustes() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [sugerencia, setSugerencia] = useState('');
   const [sugerenciaOk, setSugerenciaOk] = useState(false);
-  const [fechaCorregir, setFechaCorregir] = useState('');
-  const [hojaCorregir, setHojaCorregir] = useState(false);
-  const [ultimos, setUltimos] = useState<Log[]>([]);
   const [recalculando, setRecalculando] = useState(false);
   const [avisoRecalculo, setAvisoRecalculo] = useState('');
+  const [subiendoAvatar, setSubiendoAvatar] = useState(false);
+  const [avisoAvatar, setAvisoAvatar] = useState('');
   const inputAvatar = useRef<HTMLInputElement>(null);
 
   const cargar = useCallback(async () => {
@@ -32,43 +32,59 @@ export default function Ajustes() {
     if (!user) return;
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
     setPerfil(p);
-    const { data: ls } = await supabase
-      .from('logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('fecha', { ascending: false })
-      .limit(10);
-    setUltimos(ls ?? []);
   }, [supabase]);
 
   useEffect(() => {
     cargar();
   }, [cargar]);
 
-  // Días fijos de descanso semanal. Se deciden antes del día, nunca después:
-  // cambiar los descansos no puede salvar una racha ya perdida, porque la
-  // verificación de pérdida corre antes en cada apertura.
+  // Días fijos de descanso semanal. El cambio rige DESDE HOY hacia adelante:
+  // el pasado queda con la configuración que estaba vigente entonces, así que
+  // cambiar de rutina nunca hace perder rachas ya ganadas.
   async function alternarDescanso(dia: number) {
     if (!perfil) return;
     const nuevos = perfil.dias_descanso.includes(dia)
       ? perfil.dias_descanso.filter((d) => d !== dia)
       : [...perfil.dias_descanso, dia];
     setPerfil({ ...perfil, dias_descanso: nuevos });
-    await supabase.from('profiles').update({ dias_descanso: nuevos }).eq('id', perfil.id);
+    const { error } = await supabase.rpc('fijar_descansos', {
+      p_dias: nuevos,
+      p_hoy: hoyISO(),
+    });
+    if (error) cargar(); // no se guardó: se vuelve a lo que dice la base
   }
 
   async function subirAvatar(archivo: File) {
     if (!perfil) return;
-    const ext = archivo.name.split('.').pop() || 'jpg';
+    setAvisoAvatar('');
+    if (!archivo.type.startsWith('image/')) {
+      return setAvisoAvatar('Eso no parece una imagen.');
+    }
+    if (archivo.size > 5 * 1024 * 1024) {
+      return setAvisoAvatar('La imagen pesa más de 5 MB. Probá con una más liviana.');
+    }
+    setSubiendoAvatar(true);
+    const ext = (archivo.name.split('.').pop() || 'jpg').toLowerCase();
     const ruta = `${perfil.id}/avatar.${ext}`;
     const { error } = await supabase.storage
       .from('avatares')
-      .upload(ruta, archivo, { upsert: true });
-    if (error) return;
+      .upload(ruta, archivo, { upsert: true, contentType: archivo.type });
+    if (error) {
+      setSubiendoAvatar(false);
+      return setAvisoAvatar('No se pudo subir la foto. Probá de nuevo.');
+    }
+    // ?v= para que el navegador no siga mostrando la anterior desde su caché
     const { data } = supabase.storage.from('avatares').getPublicUrl(ruta);
     const url = `${data.publicUrl}?v=${Date.now()}`;
-    await supabase.from('profiles').update({ avatar_url: url }).eq('id', perfil.id);
+    const { error: errPerfil } = await supabase
+      .from('profiles')
+      .update({ avatar_url: url })
+      .eq('id', perfil.id);
+    setSubiendoAvatar(false);
+    if (errPerfil) return setAvisoAvatar('La foto subió pero no se pudo guardar. Probá de nuevo.');
     setPerfil({ ...perfil, avatar_url: url });
+    setAvisoAvatar('Foto actualizada.');
+    setTimeout(() => setAvisoAvatar(''), 3000);
   }
 
   async function mandarSugerencia() {
@@ -92,11 +108,6 @@ export default function Ajustes() {
     }
   }
 
-  async function borrarDia(id: string) {
-    await supabase.from('logs').delete().eq('id', id);
-    cargar();
-  }
-
   // El RPC recalcula y aplica la pérdida en la misma transacción: el número
   // que mostramos acá es el final, no rebota al recargar.
   async function recalcular() {
@@ -108,13 +119,14 @@ export default function Ajustes() {
     const r = data as { racha: number; perdida: boolean };
     setAvisoRecalculo(
       r.perdida
-        ? `Tu historial da ${r.racha} días: está cortado, así que se aplicó el descuento.`
-        : `Listo: ${r.racha} días.`
+        ? `Tu historial da ${enDias(r.racha)}: está cortado, así que se aplicó el descuento.`
+        : `Listo: ${enDias(r.racha)}.`
     );
     cargar();
   }
 
   async function salir() {
+    borrarPerfilCache(); // que la próxima cuenta no vea la racha de esta
     await supabase.auth.signOut();
     router.push('/login');
   }
@@ -151,11 +163,21 @@ export default function Ajustes() {
                 className="boton-texto"
                 style={{ padding: 0, textAlign: 'left', fontSize: 12 }}
                 onClick={() => inputAvatar.current?.click()}
+                disabled={subiendoAvatar}
               >
-                Cambiar foto
+                {subiendoAvatar
+                  ? 'Subiendo…'
+                  : perfil.avatar_url
+                    ? 'Cambiar foto'
+                    : 'Poner una foto'}
               </button>
             </div>
           </div>
+          {avisoAvatar && (
+            <p className={avisoAvatar === 'Foto actualizada.' ? 'ok-msg' : 'error-msg'}>
+              {avisoAvatar}
+            </p>
+          )}
           <input
             ref={inputAvatar}
             type="file"
@@ -179,46 +201,14 @@ export default function Ajustes() {
             ))}
           </div>
           <p className="nota-privada" style={{ marginTop: 8 }}>
-            Esos días la racha no se corta aunque no registres.
+            Esos días la racha no se corta aunque no registres. El cambio vale de hoy en
+            adelante: lo que ya pasó queda como estaba.
           </p>
         </div>
 
         <div className="seccion">
           <h3>Corregir días</h3>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="date"
-              value={fechaCorregir}
-              max={hoyISO()}
-              onChange={(e) => setFechaCorregir(e.target.value)}
-            />
-            <button
-              className="boton-fantasma"
-              style={{ width: 'auto', whiteSpace: 'nowrap' }}
-              onClick={() => fechaCorregir && setHojaCorregir(true)}
-            >
-              Registrar
-            </button>
-          </div>
-          {ultimos.length > 0 && (
-            <div style={{ marginTop: 10 }}>
-              {ultimos.map((l) => (
-                <div className="fila" key={l.id}>
-                  <span className="nombre" style={{ fontSize: 13, color: 'var(--sub)' }}>
-                    {l.fecha} {l.es_descanso ? '· descanso' : ''}
-                    {l.planeta_del_dia ? ` · ${l.planeta_del_dia}` : ''}
-                  </span>
-                  <button
-                    className="boton-texto"
-                    style={{ width: 'auto', fontSize: 12 }}
-                    onClick={() => borrarDia(l.id)}
-                  >
-                    Quitar
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          <CalendarioCorregir alCambiar={cargar} />
           <button
             className="boton-texto"
             onClick={recalcular}
@@ -231,7 +221,7 @@ export default function Ajustes() {
         </div>
 
         <div className="seccion">
-          <h3>Buzón</h3>
+          <h3>Sugerencias</h3>
           <textarea
             rows={3}
             placeholder="¿Algo anda mal? ¿Se te ocurrió algo? Contá acá."
@@ -256,17 +246,6 @@ export default function Ajustes() {
         </div>
       </div>
 
-      {hojaCorregir && (
-        <RegistrarSheet
-          racha={perfil.racha_actual}
-          fecha={fechaCorregir}
-          alCerrar={() => setHojaCorregir(false)}
-          alConfirmar={() => {
-            setHojaCorregir(false);
-            cargar();
-          }}
-        />
-      )}
       <Nav />
     </>
   );

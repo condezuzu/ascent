@@ -12,7 +12,14 @@ import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 
 type Solicitud = { id: string; de: UsuarioPublico };
-type Actividad = { username: string; userId: string; fecha: string; planeta: string | null; foto: string | null };
+type Actividad = {
+  username: string;
+  userId: string;
+  avatar: string | null;
+  fecha: string;
+  planeta: string | null;
+  foto: string | null;
+};
 type RetoConNombre = Reto & { nombreRival: string; idRival: string };
 
 export default function Social() {
@@ -125,6 +132,7 @@ export default function Social() {
         (ls ?? []).map((l) => ({
           username: mapaUsuarios.get(l.user_id)?.username ?? '¿?',
           userId: l.user_id,
+          avatar: mapaUsuarios.get(l.user_id)?.avatar_url ?? null,
           fecha: l.fecha,
           planeta: l.planeta_del_dia,
           foto: fotosPorLog.get(l.id) ?? null,
@@ -349,6 +357,7 @@ export default function Social() {
             <h3>Actividad</h3>
             {actividad.map((a, i) => (
               <Link href={`/perfil/${a.userId}`} className="fila" key={i}>
+                <Avatar url={a.avatar} nombre={a.username} tam={28} />
                 {a.foto && (
                   <span
                     style={{

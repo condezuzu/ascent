@@ -21,10 +21,26 @@ create table public.profiles (
   -- ya están representados por racha_base y NO se vuelven a contar.
   -- Sin esto, corregir a mano un día anterior a la pérdida duplicaría racha.
   perdida_fecha date,
-  -- Días fijos de descanso semanal (0=domingo .. 6=sábado)
+  -- Espejo de la configuración de descansos VIGENTE, para que la interfaz
+  -- no tenga que buscarla. El historial real vive en la tabla `descansos`
+  -- y lo mantiene el RPC fijar_descansos: acá no se escribe a mano.
   dias_descanso int[] not null default '{}',
   creado timestamptz not null default now()
 );
+
+-- Configuraciones de descanso FECHADAS.
+-- Cada cambio guarda desde cuándo rige, y el cálculo de cada día usa la que
+-- estaba vigente ESE día. Con una sola columna que se pisa, cambiar de
+-- rutina en marzo recalculaba enero y hacía perder rachas ya ganadas.
+create table public.descansos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  desde date not null,
+  dias int[] not null default '{}',
+  creado timestamptz not null default now(),
+  unique (user_id, desde)
+);
+create index descansos_vigente on public.descansos (user_id, desde desc);
 
 -- Username único e insensible a mayúsculas
 create unique index profiles_username_unico on public.profiles (lower(username));
@@ -121,17 +137,27 @@ $$;
 -- Racha calculada caminando hacia atrás desde p_hasta:
 -- día con log de entrenamiento -> suma 1; día de descanso (log o día fijo) -> no corta;
 -- día vacío que no era descanso -> corta.
+-- Qué días de descanso regían en una fecha dada. Devuelve la configuración
+-- más reciente que ya estaba vigente ese día; si no había ninguna, ninguno.
+create or replace function public.descansos_vigentes(p_user uuid, p_fecha date)
+returns int[] language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select dias from descansos
+      where user_id = p_user and desde <= p_fecha
+      order by desde desc limit 1),
+    '{}'::int[]);
+$$;
+
 create or replace function public.calcular_racha(p_user uuid, p_hasta date)
 returns int language plpgsql stable security definer set search_path = public as $$
 declare
   d date := p_hasta;
   cnt int := 0;
-  descansos int[];
   tope date;
   tiene_log boolean;
   log_descanso boolean;
 begin
-  select dias_descanso, perdida_fecha into descansos, tope from profiles where id = p_user;
+  select perdida_fecha into tope from profiles where id = p_user;
   loop
     -- los días hasta la última pérdida ya viven en racha_base: no se recuentan
     if tope is not null and d <= tope then exit; end if;
@@ -139,8 +165,10 @@ begin
       from logs where user_id = p_user and fecha = d;
     if tiene_log then
       if not log_descanso then cnt := cnt + 1; end if;
-    elsif extract(dow from d)::int = any(coalesce(descansos, '{}')) then
-      null; -- día fijo de descanso sin log: no corta
+    -- El descanso se evalúa con la configuración que regía ESE día, no con
+    -- la de hoy: cambiar de rutina nunca puede alterar el pasado.
+    elsif extract(dow from d)::int = any(descansos_vigentes(p_user, d)) then
+      null; -- día de descanso sin log: no corta
     else
       exit;
     end if;
@@ -148,6 +176,26 @@ begin
     if d < p_hasta - 3650 then exit; end if; -- tope de seguridad
   end loop;
   return cnt;
+end;
+$$;
+
+-- Cambiar los días de descanso. Rige desde hoy hacia adelante: el pasado
+-- queda congelado con la configuración que estaba vigente entonces.
+create or replace function public.fijar_descansos(p_dias int[], p_hoy date default current_date)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  limpio int[] := coalesce(p_dias, '{}'::int[]);
+begin
+  if uid is null then return; end if;
+  if p_hoy > current_date + 1 or p_hoy < current_date - 1 then p_hoy := current_date; end if;
+  if exists (select 1 from unnest(limpio) x where x < 0 or x > 6) then
+    raise exception 'día de semana inválido';
+  end if;
+  insert into descansos (user_id, desde, dias) values (uid, p_hoy, limpio)
+    on conflict (user_id, desde) do update set dias = excluded.dias;
+  -- espejo para la interfaz
+  update profiles set dias_descanso = limpio where id = uid;
 end;
 $$;
 
@@ -178,7 +226,9 @@ create or replace function public.logs_after_change()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := coalesce(new.user_id, old.user_id);
+  desde date := coalesce(new.fecha, old.fecha);
   hasta date;
+  base int;
   r int;
 begin
   -- La racha se mide hasta el último día registrado, NO hasta ayer.
@@ -186,12 +236,33 @@ begin
   -- racha en 0 al instante, salteándose la regla de -10: bajar la racha es
   -- tarea exclusiva de verificar_perdida.
   select coalesce(max(fecha), current_date) into hasta from logs where user_id = uid;
-  r := (select racha_base from profiles where id = uid) + calcular_racha(uid, hasta);
+  select racha_base into base from profiles where id = uid;
+  r := base + calcular_racha(uid, hasta);
   update profiles set
     racha_actual = r,
     mejor_racha = greatest(mejor_racha, r),
     rango_actual = rango_de_racha(r)
   where id = uid;
+
+  -- El planeta de un día depende de la racha que corría ESE día. Al corregir
+  -- un día viejo a mano, los posteriores cambian de racha y su planeta queda
+  -- viejo: el álbum mostraría la secuencia corrida. Se recalculan los días
+  -- desde el que cambió en adelante.
+  -- pg_trigger_depth() corta la recursión de este mismo update, y el
+  -- "is distinct from" evita escrituras que no cambian nada.
+  if pg_trigger_depth() = 1 then
+    update logs l set planeta_del_dia = c.nuevo
+      from (
+        select id, case when r2 between 30 and 39 then planeta_de_dia(r2) else null end as nuevo
+          from (
+            select x.id, base + calcular_racha(uid, x.fecha) as r2
+              from logs x
+             where x.user_id = uid and not x.es_descanso and x.fecha >= desde
+          ) t
+      ) c
+     where l.id = c.id and l.planeta_del_dia is distinct from c.nuevo;
+  end if;
+
   if tg_op = 'DELETE' then return old; end if;
   return new;
 end;
@@ -412,6 +483,7 @@ grant select on public.usuarios_publicos to authenticated;
 -- RLS (activo en TODAS las tablas desde el principio)
 -- -------------------------------------------------------------
 alter table public.profiles enable row level security;
+alter table public.descansos enable row level security;
 alter table public.logs enable row level security;
 alter table public.photos enable row level security;
 alter table public.weights enable row level security;
@@ -432,6 +504,10 @@ $$;
 -- profiles: solo el dueño (lo público sale por la vista)
 create policy "perfil propio: leer" on public.profiles for select using (auth.uid() = id);
 create policy "perfil propio: editar" on public.profiles for update using (auth.uid() = id);
+
+-- descansos: el dueño los lee; escribirlos es tarea exclusiva del RPC,
+-- que es el que garantiza que el cambio rija desde hoy y no hacia atrás
+create policy "descansos: leer los propios" on public.descansos for select using (auth.uid() = user_id);
 
 -- logs: dueño todo; amigos aceptados leen
 create policy "logs: dueño" on public.logs for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -501,31 +577,71 @@ create policy "avatares: dueño actualiza" on storage.objects for update
 create policy "avatares: todos leen" on storage.objects for select using (bucket_id = 'avatares');
 
 -- -------------------------------------------------------------
--- PERMISOS POR COLUMNA (capa extra debajo de la RLS)
--- La RLS dice QUÉ filas se tocan; esto dice QUÉ columnas.
+-- PERMISOS (capa extra debajo de la RLS)
+-- La RLS dice QUÉ filas se tocan; esto dice QUÉ tablas, columnas y funciones.
 -- Sin esto, un usuario podría hacer UPDATE de su propia racha_actual
 -- (adulterando la tabla de posiciones), el destinatario de una amistad
 -- podría reescribir quién la pidió, o el rival de un reto cambiar las fechas.
 -- Los triggers y RPCs son security definer (dueño postgres): no los afecta.
+--
+-- Se parte de cero a propósito y se otorga solo lo necesario, en vez de
+-- confiar en los privilegios por defecto del host: así el schema funciona
+-- igual en un proyecto nuevo, en una restauración o en un Postgres pelado.
+-- `anon` no recibe NADA: sin sesión solo se ve la pantalla de entrada.
 -- -------------------------------------------------------------
-revoke update on public.profiles from authenticated, anon;
-grant update (username, avatar_url, dias_descanso) on public.profiles to authenticated;
+grant usage on schema public to authenticated, anon;
 
-revoke update on public.friendships from authenticated, anon;
-grant update (estado) on public.friendships to authenticated;
+revoke all on table
+  public.profiles, public.logs, public.photos, public.weights,
+  public.friendships, public.challenges, public.feedback, public.descansos
+  from anon, authenticated;
 
-revoke update on public.challenges from authenticated, anon;
-grant update (estado) on public.challenges to authenticated;
+-- lectura y escritura mínimas, siempre acotadas después por la RLS
+grant select                 on public.profiles     to authenticated;
+-- descansos: solo lectura. Se escriben por RPC para que el cambio no pueda
+-- fecharse hacia atrás y reescribir el pasado.
+grant select                 on public.descansos    to authenticated;
+grant select, insert, delete on public.logs         to authenticated;
+grant select, insert, delete on public.photos       to authenticated;
+grant select                 on public.weights      to authenticated;
+grant select, insert, delete on public.friendships  to authenticated;
+grant select, insert, delete on public.challenges   to authenticated;
+grant insert                 on public.feedback     to authenticated;
+grant select                 on public.usuarios_publicos to authenticated;
 
--- los logs no se editan nunca (se crean y se borran); el planeta lo pone el trigger
-revoke update on public.logs from authenticated, anon;
+-- lo único editable de cada tabla, columna por columna.
+-- dias_descanso NO está: es un espejo que mantiene fijar_descansos, y si el
+-- cliente pudiera escribirlo se desincronizaría del historial fechado.
+grant update (username, avatar_url) on public.profiles to authenticated;
+grant update (estado)      on public.friendships to authenticated;
+grant update (estado)      on public.challenges  to authenticated;
+grant update (visibilidad) on public.photos      to authenticated;
+-- logs: no se editan nunca (se crean y se borran); el planeta lo pone el trigger
+-- weights: se corrigen re-registrando el día vía RPC, no por update directo
+-- feedback: no se edita ni se borra, y nadie lo lee desde el cliente
 
--- de una foto solo se cambia la visibilidad
-revoke update on public.photos from authenticated, anon;
-grant update (visibilidad) on public.photos to authenticated;
+-- Funciones: las que tocan datos de alguien solo para usuarios con sesión.
+-- rango_de_racha y planeta_de_dia quedan abiertas: son matemática pura.
+revoke execute on function
+  public.calcular_racha(uuid, date),
+  public.descansos_vigentes(uuid, date),
+  public.son_amigos(uuid, uuid),
+  public.registrar_dia(date, boolean, numeric),
+  public.verificar_perdida(date),
+  public.recalcular_desde_cero(date),
+  public.cerrar_retos_vencidos(date),
+  public.eliminar_amigo(uuid),
+  public.fijar_descansos(int[], date)
+  from public, anon;
 
--- el peso se corrige re-registrando el día (upsert vía RPC), no por update directo
-revoke update on public.weights from authenticated, anon;
-
--- el feedback no se edita
-revoke update, delete on public.feedback from authenticated, anon;
+grant execute on function
+  public.calcular_racha(uuid, date),
+  public.descansos_vigentes(uuid, date),
+  public.son_amigos(uuid, uuid),
+  public.registrar_dia(date, boolean, numeric),
+  public.verificar_perdida(date),
+  public.recalcular_desde_cero(date),
+  public.cerrar_retos_vencidos(date),
+  public.eliminar_amigo(uuid),
+  public.fijar_descansos(int[], date)
+  to authenticated;

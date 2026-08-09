@@ -35,8 +35,16 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* El color del rango tiñe el fondo entero, no solo los acentos: en luna y en
+   galaxia la app tiene que sentirse distinta desde el primer vistazo. */
 body {
   min-height: 100dvh;
+  background:
+    radial-gradient(130% 95% at 85% 92%, color-mix(in srgb, var(--pal-principal) 20%, transparent), transparent 62%),
+    radial-gradient(110% 80% at 5% 0%, color-mix(in srgb, var(--pal-apagado) 42%, transparent), transparent 58%),
+    var(--fondo);
+  background-attachment: fixed;
+  transition: background-color 0.6s ease;
 }
 
 a {
@@ -80,25 +88,49 @@ textarea::placeholder {
   z-index: 0;
   pointer-events: none;
 }
-.fondo-espacial canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-  /* respaldo estático si WebGL no arranca: espacio profundo en CSS */
+/* Base en CSS puro con la paleta del rango: se pinta en el primer frame,
+   sin esperar a que cargue three.js. Es también el respaldo si no hay WebGL. */
+.fondo-base {
+  position: absolute;
+  inset: 0;
   background:
-    radial-gradient(ellipse 90% 60% at 80% 95%, rgba(60, 80, 140, 0.14), transparent 60%),
+    radial-gradient(ellipse 95% 65% at 80% 92%, color-mix(in srgb, var(--pal-principal) 30%, transparent), transparent 62%),
+    radial-gradient(ellipse 80% 60% at 12% 6%, color-mix(in srgb, var(--pal-apagado) 40%, transparent), transparent 60%),
     radial-gradient(1px 1px at 20% 30%, rgba(220, 230, 250, 0.8), transparent 2px),
     radial-gradient(1px 1px at 65% 15%, rgba(220, 230, 250, 0.6), transparent 2px),
     radial-gradient(1px 1px at 85% 45%, rgba(220, 230, 250, 0.7), transparent 2px),
     radial-gradient(1px 1px at 40% 70%, rgba(220, 230, 250, 0.5), transparent 2px),
     radial-gradient(1px 1px at 10% 85%, rgba(220, 230, 250, 0.6), transparent 2px),
     var(--fondo);
+  transition: background 0.6s ease;
 }
-/* velo plano oscuro entre el fondo y la interfaz, siempre */
+
+/* El render 3D entra por encima con un fundido cuando está listo: nunca un
+   salto ni una pantalla en blanco esperándolo. */
+.fondo-lienzo {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+.fondo-lienzo.listo {
+  opacity: 1;
+}
+.fondo-lienzo canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Velo plano oscuro entre el fondo y la interfaz, siempre. Oscuro pero no
+   neutro: lleva el color del rango, si no todo termina gris. */
 .velo {
   position: absolute;
   inset: 0;
-  background: var(--fondo);
+  background:
+    radial-gradient(120% 90% at 85% 88%, color-mix(in srgb, var(--pal-principal) 26%, transparent), transparent 60%),
+    radial-gradient(100% 75% at 8% 6%, color-mix(in srgb, var(--pal-apagado) 45%, transparent), transparent 62%),
+    var(--fondo);
+  transition: background 0.6s ease;
 }
 
 /* ---------- estructura ---------- */
@@ -109,7 +141,30 @@ textarea::placeholder {
   margin: 0 auto;
   padding: max(18px, env(safe-area-inset-top)) 20px calc(84px + env(safe-area-inset-bottom));
   min-height: 100dvh;
+  animation: entrar-pantalla 0.3s cubic-bezier(0.2, 0.8, 0.3, 1) both;
 }
+
+/* Cada pantalla entra, y sus bloques aparecen escalonados. Corto y sin
+   rebotes: tiene que sentirse viva, no aparatosa. */
+@keyframes entrar-pantalla {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: none; }
+}
+.pantalla > * {
+  animation: surgir 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.pantalla > *:nth-child(1) { animation-delay: 0.03s; }
+.pantalla > *:nth-child(2) { animation-delay: 0.07s; }
+.pantalla > *:nth-child(3) { animation-delay: 0.11s; }
+.pantalla > *:nth-child(4) { animation-delay: 0.15s; }
+.pantalla > *:nth-child(5) { animation-delay: 0.19s; }
+.pantalla > *:nth-child(6) { animation-delay: 0.23s; }
+.pantalla > *:nth-child(7) { animation-delay: 0.26s; }
+.pantalla > *:nth-child(n + 8) { animation-delay: 0.29s; }
 
 /* el contenido va donde el fondo está vacío: zona limpia arriba a la izquierda */
 .titulo-pantalla {
@@ -126,6 +181,7 @@ textarea::placeholder {
   border: 0.5px solid var(--linea);
   border-radius: var(--radio);
   padding: 16px;
+  transition: background-color 0.6s ease, border-color 0.6s ease;
 }
 
 /* ---------- el único botón sólido de cada pantalla ----------
@@ -264,6 +320,116 @@ textarea::placeholder {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--pal-claro) 55%, transparent);
 }
 
+/* ---------- calendario para corregir días ---------- */
+.calendario {
+  background: var(--tarjeta);
+  border: 0.5px solid var(--linea);
+  border-radius: var(--radio);
+  padding: 14px;
+}
+.cal-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+.cal-cabecera span {
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+}
+.cal-cabecera button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--sub);
+  border: 0.5px solid var(--linea);
+}
+.cal-cabecera button:disabled {
+  opacity: 0.25;
+}
+.cal-grilla {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+.cal-nombres {
+  margin-bottom: 6px;
+}
+.cal-nombres span {
+  text-align: center;
+  font-size: 10px;
+  color: var(--apagado);
+}
+.cal-dia {
+  aspect-ratio: 1;
+  border-radius: 9px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sub);
+  border: 1px solid transparent;
+  transition: transform 0.12s ease, background-color 0.2s ease;
+}
+.cal-dia:active {
+  transform: scale(0.9);
+}
+/* registrado */
+.cal-dia.hecho {
+  background: var(--pal-principal);
+  color: #08080c;
+  font-weight: 600;
+}
+/* sin registrar: borde fino, sin rojo ni cruz */
+.cal-dia.vacio {
+  border-color: color-mix(in srgb, var(--pal-principal) 35%, transparent);
+}
+/* descanso: guion, no puede parecer un fallo */
+.cal-dia.descanso {
+  color: transparent;
+  position: relative;
+}
+.cal-dia.descanso::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--apagado);
+}
+.cal-dia.futuro {
+  color: color-mix(in srgb, var(--apagado) 40%, transparent);
+}
+.cal-dia.hoy {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pal-claro) 60%, transparent);
+}
+
+/* Armazón mientras llega el primer dato: ocupa el mismo lugar que el
+   número real, así no hay salto cuando aparece. */
+.esqueleto-num {
+  color: color-mix(in srgb, var(--pal-principal) 35%, transparent);
+  animation: latir 1.4s ease-in-out infinite;
+}
+@keyframes latir {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.7; }
+}
+
+/* Una frase por pantalla, en voz baja: acompaña, no arenga. */
+.frase {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--apagado);
+  font-style: italic;
+  letter-spacing: 0.01em;
+  margin: 26px 2px 4px;
+  max-width: 30ch;
+}
+
 /* ---------- una sola línea social ---------- */
 .linea-social {
   display: flex;
@@ -300,14 +466,22 @@ textarea::placeholder {
   color: var(--apagado);
   font-size: 10px;
   padding: 4px 10px;
+  transition: color 0.25s ease;
 }
 .nav a.activo {
   color: var(--pal-claro);
+}
+.nav a:active .nav-icono {
+  transform: scale(0.88);
 }
 .nav-icono {
   width: 22px;
   height: 22px;
   display: block;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.nav a.activo .nav-icono {
+  transform: translateY(-1px) scale(1.08);
 }
 .nav-icono svg {
   width: 100%;
@@ -320,7 +494,10 @@ textarea::placeholder {
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
   z-index: 10;
-  animation: aparecer 0.2s ease;
+  animation: aparecer 0.22s ease both;
+}
+.hoja-fondo.cerrando {
+  animation: desaparecer 0.2s ease both;
 }
 .hoja {
   position: fixed;
@@ -330,20 +507,41 @@ textarea::placeholder {
   z-index: 11;
   max-width: 480px;
   margin: 0 auto;
-  background: #0a0c13;
+  background: color-mix(in srgb, var(--pal-apagado) 12%, #08090e);
   border: 0.5px solid var(--linea);
   border-bottom: none;
   border-radius: 20px 20px 0 0;
   padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
-  animation: subir 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+  animation: subir 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.hoja.cerrando {
+  animation: bajar 0.22s cubic-bezier(0.4, 0, 0.8, 0.4) both;
+}
+.hoja > * {
+  animation: surgir 0.32s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.hoja > *:nth-child(2) { animation-delay: 0.04s; }
+.hoja > *:nth-child(3) { animation-delay: 0.08s; }
+.hoja > *:nth-child(4) { animation-delay: 0.12s; }
+.hoja > *:nth-child(n + 5) { animation-delay: 0.15s; }
+.hoja.cerrando > * {
+  animation: none;
 }
 @keyframes subir {
-  from { transform: translateY(60%); opacity: 0.5; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes bajar {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
 }
 @keyframes aparecer {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+@keyframes desaparecer {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 .hoja h2 {
   font-size: 20px;

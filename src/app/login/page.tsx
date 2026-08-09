@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
+import { borrarPerfilCache } from '@/lib/cache';
 import FondoEspacial from '@/components/FondoEspacial';
 
 type Modo = 'entrar' | 'crear' | 'recuperar';
@@ -42,26 +43,38 @@ export default function Login() {
       const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
       setCargando(false);
       if (error) return setError('No pudimos entrar con esos datos.');
+      // La caché puede ser de otra cuenta (teléfono compartido, sesión que
+      // venció sin cerrar): si no se limpia, la primera pantalla muestra
+      // por un instante la racha de otra persona.
+      borrarPerfilCache();
       router.push('/');
       router.refresh();
       return;
     }
 
     if (modo === 'crear') {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password: pass,
         options: { emailRedirectTo: `${location.origin}/auth/callback` },
       });
       setCargando(false);
       if (error) return setError(error.message);
+      // Si Supabase no exige confirmar el correo, el alta ya devuelve sesión:
+      // hay que entrar derecho. Mandarlo a revisar un correo que nunca va a
+      // llegar lo deja mirando el login estando ya adentro.
+      if (data.session) {
+        router.push('/');
+        router.refresh();
+        return;
+      }
       setAviso('Listo. Revisá tu correo para confirmar la cuenta.');
       return;
     }
 
     // recuperar: el mail lleva a /nueva-clave con la sesión ya abierta
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}/auth/callback?next=/nueva-clave`,
+      redirectTo: `${location.origin}/auth/recuperar`,
     });
     setCargando(false);
     // No se distingue si el mail existe o no: decirlo filtra quién tiene cuenta.

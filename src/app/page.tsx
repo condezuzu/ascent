@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
-import { hoyISO, restarDias } from '@/lib/fechas';
-import { planetaDeDia, progresoEnRango, siguienteRango } from '@/lib/rangos';
+import { enDias, hoyISO, restarDias, deISO } from '@/lib/fechas';
+import { planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango } from '@/lib/rangos';
+import { fraseDelDia } from '@/lib/frases';
+import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
+import { guardarPerfilCache, leerPerfilCache } from '@/lib/cache';
+import { marca } from '@/lib/medir';
 import type { Log, Perfil, ResultadoRegistro } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import TiraSemanal from '@/components/TiraSemanal';
@@ -20,51 +24,25 @@ export default function Principal() {
   const [supabase] = useState(() => crearCliente());
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [logs, setLogs] = useState<Log[]>([]);
+  const [descansos, setDescansos] = useState<ConfigDescanso[]>([]);
   const [social, setSocial] = useState<LineaSocial>(null);
   const [hojaAbierta, setHojaAbierta] = useState(false);
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
   const [perdida, setPerdida] = useState(false);
   const [cargado, setCargado] = useState(false);
 
-  const cargar = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return router.push('/login');
-
-    const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    if (!p) return;
-    if (!p.username) return router.push('/onboarding');
-
-    // Pérdida de racha: el sistema no explota, se dispersa.
-    // Se verifica al abrir; si hubo, el fondo se apaga.
-    // p_hoy = fecha LOCAL del usuario (el servidor está en UTC).
-    const { data: v } = await supabase.rpc('verificar_perdida', { p_hoy: hoyISO() });
-    if (v?.perdida) {
-      setPerdida(true);
-      const { data: p2 } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-      setPerfil(p2 ?? p);
-    } else {
-      setPerfil(p);
-    }
-
-    const desde = restarDias(hoyISO(), 6);
-    const { data: ls } = await supabase
-      .from('logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('fecha', desde)
-      .order('fecha');
-    setLogs(ls ?? []);
-
-    // Una sola línea de actividad de un amigo. Una. Con tres se vuelve red social.
-    const { data: amistades } = await supabase
-      .from('friendships')
-      .select('solicitante, destinatario')
-      .eq('estado', 'aceptada');
-    const amigos = (amistades ?? [])
-      .map((a) => (a.solicitante === user.id ? a.destinatario : a.solicitante));
-    if (amigos.length > 0) {
+  // La línea social se carga aparte y después: no puede demorar el dibujo
+  // de la pantalla, que es lo único que el usuario vino a ver.
+  const cargarSocial = useCallback(
+    async (uid: string) => {
+      const { data: amistades } = await supabase
+        .from('friendships')
+        .select('solicitante, destinatario')
+        .eq('estado', 'aceptada');
+      const amigos = (amistades ?? []).map((a) =>
+        a.solicitante === uid ? a.destinatario : a.solicitante
+      );
+      if (amigos.length === 0) return;
       const { data: ultimo } = await supabase
         .from('logs')
         .select('user_id, fecha')
@@ -73,27 +51,84 @@ export default function Principal() {
         .order('fecha', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (ultimo) {
-        const { data: quien } = await supabase
-          .from('usuarios_publicos')
-          .select('username, racha_actual')
-          .eq('id', ultimo.user_id)
-          .maybeSingle();
-        if (quien) setSocial({ username: quien.username, racha: quien.racha_actual });
-      }
+      if (!ultimo) return;
+      const { data: quien } = await supabase
+        .from('usuarios_publicos')
+        .select('username, racha_actual')
+        .eq('id', ultimo.user_id)
+        .maybeSingle();
+      if (quien) setSocial({ username: quien.username, racha: quien.racha_actual });
+    },
+    [supabase]
+  );
+
+  const cargar = useCallback(async () => {
+    // getSession lee la cookie sin ir a la red; el JWT igual lo valida la
+    // base en cada consulta, así que no se pierde nada de seguridad.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const uid = session?.user?.id;
+    if (!uid) return router.push('/login');
+
+    // Perfil, logs y verificación de pérdida van EN PARALELO. Antes eran
+    // siete viajes en fila y la pantalla no dibujaba nada hasta el último.
+    const desde = restarDias(hoyISO(), 6);
+    const [{ data: p }, { data: ls }, { data: v }, { data: cfgs }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', uid).single(),
+      supabase.from('logs').select('*').eq('user_id', uid).gte('fecha', desde).order('fecha'),
+      // p_hoy = fecha LOCAL del usuario (el servidor está en UTC)
+      supabase.rpc('verificar_perdida', { p_hoy: hoyISO() }),
+      supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
+    ]);
+    if (!p) return;
+    if (!p.username) return router.push('/onboarding');
+
+    setLogs(ls ?? []);
+    setDescansos((cfgs ?? []) as ConfigDescanso[]);
+
+    // Si hubo pérdida, el perfil que trajimos quedó viejo: se relee.
+    if (v?.perdida) {
+      setPerdida(true);
+      const { data: p2 } = await supabase.from('profiles').select('*').eq('id', uid).single();
+      const fresco = p2 ?? p;
+      setPerfil(fresco);
+      guardarPerfilCache(fresco);
+    } else {
+      setPerfil(p);
+      guardarPerfilCache(p);
     }
     setCargado(true);
-  }, [supabase, router]);
+    marca('ascent:pantalla-lista');
+    cargarSocial(uid);
+  }, [supabase, router, cargarSocial]);
 
+  // Al volver a entrar, la pantalla sale con la racha y la paleta de la
+  // última visita mientras la red confirma. Nada de esperar en blanco.
   useEffect(() => {
+    const cacheado = leerPerfilCache();
+    if (cacheado) {
+      setPerfil(cacheado);
+      setCargado(true);
+    }
     cargar();
   }, [cargar]);
 
-  if (!cargado || !perfil) {
+  if (!perfil) {
+    // Primera visita sin caché: se muestra el armazón, no una pantalla vacía.
     return (
       <>
-        <FondoEspacial rango={1} vacio esquina="centro" velo={0.6} />
-        <div className="pantalla" />
+        <FondoEspacial rango={1} esquina="abajo-derecha" velo={0.55} />
+        <div className="pantalla">
+          <div className="cabecera">
+            <div className="avatar" />
+          </div>
+          <div className="racha-bloque">
+            <div className="racha-label">Racha</div>
+            <div className="racha-numero esqueleto-num">·</div>
+          </div>
+        </div>
+        <Nav />
       </>
     );
   }
@@ -105,6 +140,22 @@ export default function Principal() {
   const prox = siguienteRango(racha);
   const progreso = progresoEnRango(racha);
   const planeta = planetaDeDia(racha);
+
+  // Día de descanso fijo: el objeto se ve desde su lado nocturno y quieto.
+  // Sigue entero; no es un estado de falla.
+  const esDescanso = esDiaDeDescanso(descansos, hoy) && !registradoHoy;
+
+  // Fantasma de la mejor racha: el objeto más grande que alcanzó alguna vez.
+  // Si la racha actual ya lo superó, no se muestra. Tampoco si sería el mismo
+  // objeto que el de ahora, porque no se distinguiría del actual.
+  const rangoMejor = rangoDeRacha(perfil.mejor_racha).n;
+  const planetaMejor = planetaDeDia(perfil.mejor_racha);
+  const fantasma =
+    racha < perfil.mejor_racha && (rangoMejor !== perfil.rango_actual || planetaMejor !== planeta)
+      ? { rango: rangoMejor, planeta: planetaMejor }
+      : null;
+
+  const frase = fraseDelDia(perfil.rango_actual, `${hoy}-${perfil.id}`);
 
   // El aviso solo aparece cuando falta poco de verdad, no a la mañana.
   // Redacción hacia adelante, nunca hacia la pérdida.
@@ -125,6 +176,8 @@ export default function Principal() {
         planeta={planeta}
         apagado={perdida}
         vacio={sinNada}
+        reposo={esDescanso}
+        fantasma={fantasma}
         esquina="abajo-derecha"
       />
 
@@ -149,6 +202,7 @@ export default function Principal() {
         {perdida && (
           <p className="aviso-tiempo">Se dispersó un poco de masa. Hoy se recupera.</p>
         )}
+        {esDescanso && <p className="aviso-tiempo">Hoy descansa. La racha sigue igual.</p>}
 
         {!registradoHoy ? (
           <button className="boton-solido" onClick={() => setHojaAbierta(true)}>
@@ -160,12 +214,14 @@ export default function Principal() {
           </div>
         )}
 
-        <TiraSemanal logs={logs} diasDescanso={perfil.dias_descanso} />
+        <TiraSemanal logs={logs} descansos={descansos} />
+
+        {!sinNada && <p className="frase">{frase}</p>}
 
         {social && (
           <div className="linea-social">
             <span>
-              {social.username} sigue subiendo — {social.racha} días
+              {social.username} sigue subiendo — {enDias(social.racha)}
             </span>
           </div>
         )}

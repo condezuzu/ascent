@@ -140,6 +140,21 @@ export default function Estadisticas() {
               </div>
             </div>
           </div>
+        ) : suavizado.length === 1 ? (
+          // Con un solo dato no hay tendencia que dibujar, pero decirle
+          // "anotá tu peso" a alguien que acaba de anotarlo parece un error.
+          <div className="seccion">
+            <h3>Peso</h3>
+            <div className="tarjeta">
+              <div style={{ fontSize: 28, fontWeight: 300, fontVariantNumeric: 'tabular-nums' }}>
+                {suavizado[0].toFixed(1)}
+                <span style={{ fontSize: 15, color: 'var(--sub)' }}> kg</span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--apagado)', marginTop: 6 }}>
+                Anotá alguno más y acá aparece la tendencia. Solo la ves vos.
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="seccion">
             <h3>Peso</h3>

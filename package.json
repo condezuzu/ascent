@@ -6,7 +6,9 @@
     "dev": "next dev -p 3020",
     "build": "next build",
     "start": "next start -p 3020",
-    "test:db": "node supabase/test-schema.mjs"
+    "test:db": "node supabase/test-schema.mjs",
+    "test:conexion": "node --env-file=.env.local supabase/verificar-conexion.mjs",
+    "test:e2e": "node --env-file=.env.local supabase/test-e2e.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

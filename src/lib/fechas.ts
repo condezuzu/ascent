@@ -42,3 +42,9 @@ export function fechaLinda(iso: string): string {
   const d = deISO(iso);
   return `${d.getDate()} de ${MESES[d.getMonth()]}`;
 }
+
+// "1 día" / "2 días". La racha arranca en 1 todo el tiempo, así que el
+// singular aparece seguido y un "1 días" canta enseguida.
+export function enDias(n: number): string {
+  return n === 1 ? '1 día' : `${n} días`;
+}

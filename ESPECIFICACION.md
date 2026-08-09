@@ -44,6 +44,15 @@ Restricción de unicidad en (`user_id`, `fecha`).
 `visibilidad` va por foto, no por perfil. Permite álbum privado con algunas
 fotos visibles para amigos. A nivel perfil sería todo o nada.
 
+### descansos
+`id`, `user_id`, `desde`, `dias`
+
+Configuraciones de descanso fechadas. Cada fila rige desde su fecha hasta que
+aparece la siguiente. El cálculo de un día busca la vigente **ese** día, así el
+pasado nunca se reescribe. `profiles.dias_descanso` queda solo como espejo de la
+configuración actual, para que la interfaz no tenga que buscarla; se escribe
+únicamente desde el servidor.
+
 ### weights
 `id`, `user_id`, `fecha`, `valor`
 
@@ -337,8 +346,24 @@ Días de descanso: se eligen días fijos de la semana. Si en algún momento se p
 marcar descanso sobre la marcha, tiene que decidirse **antes** del día, nunca
 después, o se puede salvar una racha ya perdida.
 
-Buzón de sugerencias: un campo de texto libre y nada más. Sin categorías
-obligatorias ni prioridad. Confirmación visible de que llegó.
+**Los descansos NUNCA se aplican para atrás.** Cambiar qué días son de descanso
+vale solo desde el día del cambio hacia adelante. El pasado queda congelado con
+la configuración que estaba vigente en ese momento: alguien que cambia de rutina
+en marzo no puede perder lo que hizo en enero.
+
+Se implementa con **configuraciones fechadas**: cada cambio guarda desde cuándo
+rige, y el cálculo de cada día usa la que estaba vigente ese día. Nunca una sola
+columna que se pisa. La interfaz también muestra los descansos de cada día con
+la configuración de entonces, no con la actual.
+
+Corregir días: **calendario mensual visual**. Se ve el mes con el estado de cada
+día (hecho, vacío, descanso) y se toca un día para agregarlo o sacarlo. Nunca se
+escriben fechas a mano. Es distinto del mapa de calor de Estadísticas, que solo
+se mira.
+
+Sugerencias: un campo de texto libre y nada más. Sin categorías obligatorias ni
+prioridad. Confirmación visible de que llegó. Cada mensaje nuevo llega por correo
+al dueño de la app.
 
 ---
 
@@ -377,7 +402,57 @@ Corolario: tiene que existir una forma de corregir días a mano desde el princip
 
 ---
 
-## 12. Orden de construcción
+## 12. Registro automático por ubicación (etapa nativa)
+
+El usuario guarda la ubicación de su gimnasio y el día se registra solo al llegar,
+sin abrir la app. La opción de registrar a mano se mantiene siempre: el automático
+es un atajo, nunca el único camino.
+
+**Esto requiere geofencing del sistema operativo y por lo tanto solo existe en la
+versión nativa.** Una PWA no puede consultar la ubicación con la app cerrada, ni
+con la pestaña abierta en segundo plano. En nativo, la app registra una zona en el
+sistema y es el teléfono el que la despierta al entrar.
+
+Mientras el proyecto sea web, la versión posible es un atajo: si abrís la app
+estando en el gimnasio, se registra sin apretar nada.
+
+A tener en cuenta cuando se implemente:
+- El GPS dentro de un edificio tiene 20 a 50 metros de error. En un centro
+  comercial o zona densa puede disparar falsos positivos.
+- El usuario marca el punto lo más cerca posible de la puerta, o de un lugar por
+  el que pase siempre al entrar. El radio se configura lo más chico que el GPS
+  permita.
+- Radio chico significa menos falsos positivos pero más días que no se detectan.
+  Por eso el registro a mano nunca desaparece: es la red de seguridad.
+- Conviene exigir permanencia mínima en la zona, no solo el ingreso.
+- El permiso de ubicación en segundo plano es el más invasivo que existe: hay que
+  pedirlo explicando para qué, y la app tiene que funcionar entera sin él.
+- La ubicación del gimnasio es dato privado del usuario y no se comparte con
+  amigos bajo ninguna circunstancia.
+
+**La foto se resuelve con una notificación.** El registro automático no puede sacar
+la foto, así que al detectar la llegada el día queda registrado y sale un aviso
+pidiéndola ("demostrá que viniste"). La foto sigue siendo opcional: si el usuario
+la ignora, el día ya está contado igual.
+
+### Cómo se configura la ubicación
+
+Se ofrece durante el alta, como opción activable. Si el usuario la activa, la app
+le explica que tiene que marcar el punto **parado en la puerta de su gimnasio**,
+o en un lugar por el que pase siempre al entrar.
+
+Como es improbable que esté ahí en ese momento, la pantalla siempre ofrece
+**"lo configuro después"**, y queda pendiente en Ajustes con un recordatorio
+visible hasta que se complete. Nunca se pide marcar el punto desde otro lugar:
+un punto mal puesto es peor que no tenerlo.
+
+Esta es la primera razón concreta para pasar a nativo con Expo. El backend entero
+(Supabase, esquema, RLS, triggers, lógica de rachas) se lleva sin tocar; se rehace
+solo la capa visual.
+
+---
+
+## 13. Orden de construcción
 
 1. Racha propia contra base de datos, con fondos estáticos. Sin nada social.
 2. Amigos y tabla de posiciones. Es la más barata: `racha_actual` ya está en `profiles`.
@@ -394,7 +469,7 @@ rendimiento sin tener ni el login.
 
 ---
 
-## 13. Beta
+## 14. Beta
 
 Al ser PWA no hay tiendas, ni revisión, ni límite de testers: un link y listo.
 
@@ -408,4 +483,4 @@ sugerencias sirve para encontrar bugs, no para decidir qué construir.
 
 *Nota de implementación (no es parte de la spec): los retos ya tienen UI
 construida por pedido explícito del humano — si la beta arranca sin ellos, se
-ocultan, no se borran.*
+ocultan, no se borran. El §12 está documentado pero NO implementado.*

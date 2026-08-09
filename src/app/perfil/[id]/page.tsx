@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
-import { fechaLinda, hoyISO, restarDias } from '@/lib/fechas';
+import { enDias, fechaLinda, hoyISO, restarDias } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
 import type { Log, Reto, UsuarioPublico } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -231,7 +231,7 @@ export default function Perfil() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
               <Insignia rango={usuario.rango_actual} tam={16} />
               <span style={{ fontSize: 13, color: 'var(--sub)' }}>
-                racha de {usuario.racha_actual} días
+                racha de {enDias(usuario.racha_actual)}
               </span>
             </div>
           </div>
@@ -255,7 +255,8 @@ export default function Perfil() {
           </>
         ) : (
           <>
-            <TiraSemanal logs={logs} diasDescanso={[]} />
+            {/* de un amigo no se ven sus descansos: son configuración privada */}
+            <TiraSemanal logs={logs} descansos={[]} />
 
             {/* ---- reto ---- */}
             <div className="seccion" style={{ marginTop: 20 }}>

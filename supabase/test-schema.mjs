@@ -41,19 +41,14 @@ await db.exec(`
 `);
 
 // ---- schema real, sin la parte de storage (que PGlite no tiene) ----
+// NO se inyecta ningún grant: el schema tiene que traer los suyos. Si alguien
+// vuelve a depender de los privilegios por defecto del host, esto lo caza.
 let sql = readFileSync(RUTA_SCHEMA, 'utf8');
 const iniStorage = sql.indexOf('-- STORAGE: bucket privado de fotos');
-const iniPermisos = sql.indexOf('-- PERMISOS POR COLUMNA');
+const iniPermisos = sql.indexOf('-- PERMISOS (capa extra debajo de la RLS)');
 if (iniStorage === -1 || iniPermisos === -1) throw new Error('no encuentro los marcadores');
-// En su lugar van los grants por defecto que Supabase ya trae, para que los
-// revoke/grant-por-columna del schema tengan de dónde revocar.
 sql =
   sql.slice(0, sql.lastIndexOf('-- ----', iniStorage)) +
-  `
-grant usage on schema public to authenticated, anon;
-grant all on all tables in schema public to authenticated;
-grant select on all tables in schema public to anon;
-` +
   sql.slice(sql.lastIndexOf('-- ----', iniPermisos));
 
 await db.exec(sql);
@@ -209,7 +204,8 @@ console.log('\n8. Días de descanso no cortan la racha');
   const dow = (
     await db.query(`select extract(dow from current_date - 1)::int as d`)
   ).rows[0].d;
-  await db.query('update profiles set dias_descanso = array[$1::int] where id = $2', [dow, u]);
+  // la configuración se fecha bien atrás para que cubra los días de la prueba
+  await db.query('insert into descansos (user_id, desde, dias) values ($1, current_date - 60, array[$2::int])', [u, dow]);
   await rachaDe(u, 5, 2); // días -6..-2
   await db.query(`insert into logs (user_id, fecha) values ($1, current_date)`, [u]);
   // ayer no tiene log pero es descanso fijo → no corta
@@ -226,6 +222,96 @@ console.log('\n8. Días de descanso no cortan la racha');
   );
   await db.query(`insert into logs (user_id, fecha) values ($1, current_date - 4)`, [u]);
   chequear('log de descanso no suma pero no corta', (await perfil(u)).racha_actual, 4);
+}
+
+// =====================================================================
+console.log('\n8b. Cambiar los descansos NO altera ningún día anterior');
+{
+  // Alguien que entrena de lunes a viernes y descansa sábado y domingo.
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const dowHoy = (await db.query('select extract(dow from current_date)::int as d')).rows[0].d;
+  // configuración vieja: descansan los dos días de hace 3 y 4 días
+  const viejoA = (dowHoy - 3 + 7) % 7;
+  const viejoB = (dowHoy - 4 + 7) % 7;
+  await db.query('insert into descansos (user_id, desde, dias) values ($1, current_date - 30, $2)', [
+    u,
+    [viejoA, viejoB],
+  ]);
+  // entrena hoy, ayer, anteayer y hace 5 días; los de hace 3 y 4 eran descanso
+  for (const i of [5, 2, 1, 0]) {
+    await db.query('insert into logs (user_id, fecha) values ($1, current_date - $2::int)', [u, i]);
+  }
+  chequear('racha con la config vieja', (await perfil(u)).racha_actual, 4);
+
+  // ahora cambia de rutina: pasa a descansar OTROS días
+  const nuevoA = (dowHoy - 1 + 7) % 7;
+  await db.query(`select set_config('test.uid', $1, false)`, [u]);
+  await db.query('select fijar_descansos($1, current_date)', [[nuevoA]]);
+
+  chequear('la racha del pasado no se movió', (await perfil(u)).racha_actual, 4);
+  const dv = await db.query(
+    `select descansos_vigentes($1, current_date - 3) as antes,
+            descansos_vigentes($1, current_date) as ahora`,
+    [u]
+  );
+  chequear('el día viejo conserva su configuración', dv.rows[0].antes.sort(), [viejoA, viejoB].sort());
+  chequear('hoy rige la nueva', dv.rows[0].ahora, [nuevoA]);
+}
+{
+  // El caso concreto que reportó el humano: sacar todos los descansos no
+  // puede romper una racha que dependía de ellos.
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const dowAyer = (await db.query('select extract(dow from current_date - 1)::int as d')).rows[0].d;
+  await db.query('insert into descansos (user_id, desde, dias) values ($1, current_date - 60, $2)', [
+    u,
+    [dowAyer],
+  ]);
+  // entrena hoy y hace 2 días; ayer fue descanso, así que la racha vale 2
+  await db.query('insert into logs (user_id, fecha) values ($1, current_date - 2)', [u]);
+  await db.query('insert into logs (user_id, fecha) values ($1, current_date)', [u]);
+  chequear('racha apoyada en un descanso', (await perfil(u)).racha_actual, 2);
+
+  await db.query('select fijar_descansos($1, current_date)', [[]]); // sin descansos
+  chequear('sacar los descansos no rompe el pasado', (await perfil(u)).racha_actual, 2);
+}
+{
+  // El cambio rige de hoy en adelante: mañana ya no habrá descanso
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  await db.query('select fijar_descansos($1, current_date)', [[0, 1, 2, 3, 4, 5, 6]]);
+  const r = await db.query(
+    `select descansos_vigentes($1, current_date - 1) as ayer,
+            descansos_vigentes($1, current_date) as hoy`,
+    [u]
+  );
+  chequear('ayer no hereda la config nueva', r.rows[0].ayer, []);
+  chequear('hoy sí la tiene', r.rows[0].hoy.length, 7);
+}
+{
+  // Un usuario no puede escribir descansos a mano ni fecharlos hacia atrás
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  await db.exec('set role authenticated');
+  let bloqueado = null;
+  try {
+    await db.query('insert into descansos (user_id, desde, dias) values ($1, current_date - 90, $2)', [u, [1]]);
+    bloqueado = false;
+  } catch (e) {
+    bloqueado = /permission denied|policy|row-level/i.test(e.message);
+  }
+  chequear('no se pueden insertar descansos con fecha vieja', bloqueado, true);
+
+  let perfilBloqueado = null;
+  try {
+    await db.query('update profiles set dias_descanso = $1 where id = $2', [[3], u]);
+    perfilBloqueado = false;
+  } catch (e) {
+    perfilBloqueado = /permission denied/i.test(e.message);
+  }
+  chequear('tampoco se puede pisar el espejo del perfil', perfilBloqueado, true);
+  await db.exec('reset role');
 }
 
 // =====================================================================
@@ -477,6 +563,122 @@ console.log('\n19. Borrar foto: solo el dueño');
   await db.exec('reset role');
   const final = await db.query('select * from photos where user_id = $1', [a]);
   chequear('el dueño sí la borra', final.rows.length, 0);
+}
+
+// =====================================================================
+console.log('\n19b. Corregir un día viejo recalcula los planetas posteriores');
+{
+  const u = await nuevoUsuario();
+  // 39 días seguidos, pero salteando uno en el medio y agregándolo al final:
+  // así se fuerza el caso de la corrección manual.
+  const faltante = 20;
+  for (let i = 38; i >= 0; i--) {
+    if (i === faltante) continue;
+    await db.query(`insert into logs (user_id, fecha) values ($1, current_date - $2::int)`, [u, i]);
+  }
+  const antes = await db.query(
+    `select planeta_del_dia from logs where user_id = $1 and planeta_del_dia is not null order by fecha`,
+    [u]
+  );
+  chequear(
+    'con el hueco, la racha corta y no hay planetas',
+    antes.rows.map((x) => x.planeta_del_dia),
+    []
+  );
+  // ahora se corrige el día que faltaba
+  await db.query(`insert into logs (user_id, fecha) values ($1, current_date - $2::int)`, [u, faltante]);
+  chequear('la racha se completa', (await perfil(u)).racha_actual, 39);
+  const despues = await db.query(
+    `select planeta_del_dia from logs where user_id = $1 and planeta_del_dia is not null order by fecha`,
+    [u]
+  );
+  chequear(
+    'los diez planetas quedan bien, sin corrimiento',
+    despues.rows.map((x) => x.planeta_del_dia),
+    ['Ceres', 'Plutón', 'Mercurio', 'Marte', 'Venus', 'Tierra', 'Neptuno', 'Urano', 'Saturno', 'Júpiter']
+  );
+  // y borrar un día viejo tiene que limpiarlos de nuevo
+  await db.query(`delete from logs where user_id = $1 and fecha = current_date - $2::int`, [u, faltante]);
+  const tras = await db.query(
+    `select count(*)::int as n from logs where user_id = $1 and planeta_del_dia is not null`,
+    [u]
+  );
+  chequear('al volver a romperlo se limpian', tras.rows[0].n, 0);
+}
+
+// =====================================================================
+console.log('\n20. El schema trae sus propios permisos (no los del host)');
+{
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  await db.exec('set role authenticated');
+  // lo que la app necesita de verdad
+  let leer = null;
+  try {
+    await db.query('select racha_actual from profiles where id = $1', [u]);
+    await db.query('select id from logs where user_id = $1', [u]);
+    await db.query('select id from weights where user_id = $1', [u]);
+    await db.query('select id from usuarios_publicos limit 1');
+    leer = true;
+  } catch (e) {
+    leer = e.message;
+  }
+  chequear('un usuario con sesión puede leer lo suyo', leer, true);
+
+  let insertar = null;
+  try {
+    await db.query('insert into logs (user_id, fecha) values ($1, current_date)', [u]);
+    insertar = true;
+  } catch (e) {
+    insertar = e.message;
+  }
+  chequear('puede registrar un día', insertar, true);
+
+  let feedback = null;
+  try {
+    await db.query('insert into feedback (user_id, texto) values ($1, $2)', [u, 'hola']);
+    feedback = true;
+  } catch (e) {
+    feedback = e.message;
+  }
+  chequear('puede mandar feedback', feedback, true);
+
+  let leerFeedback = null;
+  try {
+    await db.query('select * from feedback');
+    leerFeedback = false; // no debería poder
+  } catch (e) {
+    leerFeedback = /permission denied/i.test(e.message);
+  }
+  chequear('no puede leer el feedback de nadie', leerFeedback, true);
+  await db.exec('reset role');
+}
+{
+  // anon no recibe nada
+  await db.exec('set role anon');
+  let bloqueado = null;
+  try {
+    await db.query('select * from profiles');
+    bloqueado = false;
+  } catch (e) {
+    bloqueado = /permission denied/i.test(e.message);
+  }
+  chequear('sin sesión no se toca ninguna tabla', bloqueado, true);
+
+  let fnBloqueada = null;
+  try {
+    await db.query('select calcular_racha($1, current_date)', [
+      '00000000-0000-0000-0000-000000000001',
+    ]);
+    fnBloqueada = false;
+  } catch (e) {
+    fnBloqueada = /permission denied/i.test(e.message);
+  }
+  chequear('sin sesión no se llama a calcular_racha', fnBloqueada, true);
+
+  const r = await db.query('select rango_de_racha(35) as g');
+  chequear('la matemática pura sí queda abierta', r.rows[0].g, 4);
+  await db.exec('reset role');
 }
 
 // =====================================================================
