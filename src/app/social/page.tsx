@@ -10,6 +10,7 @@ import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
+import PantallaDeslizable from '@/components/PantallaDeslizable';
 
 type Solicitud = { id: string; de: UsuarioPublico };
 type Actividad = {
@@ -200,7 +201,7 @@ export default function Social() {
   return (
     <>
       <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.68} />
-      <div className="pantalla">
+      <PantallaDeslizable>
         <div className="titulo-pantalla">Leaderboard</div>
 
         {solicitudes.length > 0 && (
@@ -409,7 +410,7 @@ export default function Social() {
             </div>
           ))}
         </div>
-      </div>
+      </PantallaDeslizable>
       <Nav />
     </>
   );

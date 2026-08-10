@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { VERTEX, FRAGMENT } from './shaders';
+import { VERTEX, FRAGMENT, VERTEX_PUNTOS, FRAGMENT_PUNTOS } from './shaders';
 import { RANGOS_CFG, PLANETAS_CFG, ESTRELLAS_POR_RANGO, type ConfigCuerpo } from './cuerpos';
 import { paletaDe } from '@/lib/paletas';
 import { marca, medir } from '@/lib/medir';
@@ -142,6 +142,18 @@ const LUNA_CFG: ConfigCuerpo = {
   continentes: 0, puntos: 0, mares: 0.5, manchas: 0, rayos: 0.4, lunas: 0, modo: 0,
 };
 
+// Nebulosa del rango 1. Lleva paleta propia y NO la del rango: la tabla de
+// paletas manda en la interfaz, pero un polvo gris plano se ve pobre. Acá
+// van azules, violetas y un cálido mezclándose, como una nebulosa de verdad.
+const NEBULOSA: [string, string, string, string] = ['#1b1235', '#2c3d86', '#7d5cc4', '#e0946a'];
+
+const NEBULOSA_CFG: ConfigCuerpo = {
+  paleta: NEBULOSA,
+  bandas: 0, contraste: 0, turbulencia: 1.4, tormenta: 0, tormentaPos: [0, 0],
+  anillo: false, anilloVertical: false, crateres: 0, casquetes: 0,
+  continentes: 0, puntos: 0, mares: 0, manchas: 0, rayos: 0, lunas: 0, modo: 5,
+};
+
 // Cortinas de aurora para acompañar a la galaxia
 const AURORA_CFG: ConfigCuerpo = {
   paleta: ['#1a0f38', '#4A2A8C', '#7F4FD0', '#8fe3d0'],
@@ -154,6 +166,8 @@ function crearEstrellas(cantidad: number, rango: number, planeta?: string | null
   const n = Math.min(cuantas(cantidad), ESTRELLAS_TOPE);
   const pos = new Float32Array(n * 3);
   const col = new Float32Array(n * 3);
+  const tam = new Float32Array(n);
+  const bri = new Float32Array(n);
   // Las estrellas toman el color del rango: el ambiente entero cambia,
   // no solo los acentos de la interfaz.
   const pal = paletaDe(rango, planeta);
@@ -171,23 +185,20 @@ function crearEstrellas(cantidad: number, rango: number, planeta?: string | null
         : tinte < 0.85
           ? cClaro.clone()
           : cPrincipal.clone();
-    col[i * 3] = c.r * b;
-    col[i * 3 + 1] = c.g * b;
-    col[i * 3 + 2] = c.b * b;
+    col[i * 3] = c.r;
+    col[i * 3 + 1] = c.g;
+    col[i * 3 + 2] = c.b;
+    // unas pocas estrellas bastante más grandes que el resto
+    const grande = Math.random() < 0.04;
+    tam[i] = grande ? 3.4 + Math.random() * 2.2 : 1.0 + Math.pow(Math.random(), 2.5) * 1.9;
+    bri[i] = b * (grande ? 1.3 : 1.0);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const mat = new THREE.PointsMaterial({
-    size: 2.0 * dpr(),
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.95,
-    sizeAttenuation: false,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
-  return new THREE.Points(geo, mat);
+  geo.setAttribute('tamano', new THREE.BufferAttribute(tam, 1));
+  geo.setAttribute('brillo', new THREE.BufferAttribute(bri, 1));
+  return new THREE.Points(geo, materialPuntos());
 }
 
 // Galaxia espiral en partículas (rango 7): densa en el núcleo, con brazos
@@ -196,6 +207,8 @@ function crearGalaxia(rango: number): THREE.Points {
   const n = cuantas(GALAXIA_BASE);
   const pos = new Float32Array(n * 3);
   const col = new Float32Array(n * 3);
+  const tam = new Float32Array(n);
+  const bri = new Float32Array(n);
   const pal = paletaDe(rango, null);
   const cNucleo = new THREE.Color('#fff3d0');
   const cMedio = new THREE.Color(pal.claro);
@@ -217,60 +230,100 @@ function crearGalaxia(rango: number): THREE.Points {
     else if (t < 0.4) c = cNucleo.clone().lerp(cMedio, (t - 0.12) / 0.28);
     else if (t < 0.75) c = cMedio.clone().lerp(cBrazo, (t - 0.4) / 0.35);
     else c = cBrazo.clone().lerp(cBorde, (t - 0.75) / 0.25);
-    const brillo = (0.45 + Math.pow(Math.random(), 3) * 1.5) * (1.25 - t * 0.5);
-    col[i * 3] = c.r * brillo;
-    col[i * 3 + 1] = c.g * brillo;
-    col[i * 3 + 2] = c.b * brillo;
+    col[i * 3] = c.r;
+    col[i * 3 + 1] = c.g;
+    col[i * 3 + 2] = c.b;
+    const grande = Math.random() < 0.05;
+    tam[i] = grande ? 3.0 + Math.random() * 2.0 : 1.0 + Math.pow(Math.random(), 2.2) * 1.8;
+    bri[i] = (0.35 + Math.pow(Math.random(), 3) * 1.2) * (1.25 - t * 0.5);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const mat = new THREE.PointsMaterial({
-    size: 1.9 * dpr(),
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.9,
-    sizeAttenuation: false,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
-  return new THREE.Points(geo, mat);
+  geo.setAttribute('tamano', new THREE.BufferAttribute(tam, 1));
+  geo.setAttribute('brillo', new THREE.BufferAttribute(bri, 1));
+  return new THREE.Points(geo, materialPuntos());
 }
 
-// Polvo (rango 1) o estado vacío. Brilla: son las primeras partículas que
-// el usuario ve y no pueden parecer apagadas.
-function crearPolvo(vacio: boolean, rango: number): THREE.Points {
-  const n = vacio ? 6 : cuantas(260);
-  const pos = new Float32Array(n * 3);
-  const col = new Float32Array(n * 3);
-  const pal = paletaDe(rango, null);
-  const cA = new THREE.Color(pal.claro);
-  const cB = new THREE.Color('#ffffff');
-  for (let i = 0; i < n; i++) {
-    const r = vacio ? 0.45 + Math.random() * 0.2 : Math.pow(Math.random(), 0.55) * 0.5;
-    const a = Math.random() * Math.PI * 2;
-    pos[i * 3] = Math.cos(a) * r * (1 + (Math.random() - 0.5) * 0.5);
-    pos[i * 3 + 1] = Math.sin(a) * r * 0.75;
-    pos[i * 3 + 2] = 0;
-    const b = 0.5 + Math.pow(Math.random(), 2) * 1.3;
-    const c = cA.clone().lerp(cB, Math.random() * 0.7);
-    col[i * 3] = c.r * b;
-    col[i * 3 + 1] = c.g * b;
-    col[i * 3 + 2] = c.b * b;
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const mat = new THREE.PointsMaterial({
-    size: (vacio ? 3.4 : 2.6) * dpr(),
+// Material de partículas redondas y suaves. PointsMaterial dibuja cuadrados
+// duros; con shader propio cada partícula lleva su tamaño y su brillo.
+function materialPuntos(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    vertexShader: VERTEX_PUNTOS,
+    fragmentShader: FRAGMENT_PUNTOS,
+    uniforms: { uTime: { value: 0 }, uDpr: { value: dpr() } },
     vertexColors: true,
     transparent: true,
-    opacity: 0.95,
-    sizeAttenuation: false,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
-  return new THREE.Points(geo, mat);
+}
+
+/**
+ * Polvo (rango 1) o estado vacío.
+ *
+ * No son puntos sueltos: es una nube. La densidad es despareja a propósito
+ * —hay grumos y hay vacíos— y el color mezcla azules, violetas y un cálido,
+ * porque un gris plano se ve pobre.
+ */
+function crearPolvo(vacio: boolean): THREE.Points {
+  const n = vacio ? 8 : cuantas(700);
+  const pos = new Float32Array(n * 3);
+  const col = new Float32Array(n * 3);
+  const tam = new Float32Array(n);
+  const bri = new Float32Array(n);
+
+  const paleta = NEBULOSA.map((h) => new THREE.Color(h));
+  // núcleos de condensación: alrededor de estos se junta el gas
+  const grumos = Array.from({ length: 5 }, () => ({
+    x: (Math.random() - 0.5) * 0.8,
+    y: (Math.random() - 0.5) * 0.6,
+    r: 0.10 + Math.random() * 0.20,
+  }));
+
+  for (let i = 0; i < n; i++) {
+    let x: number, y: number;
+    if (!vacio && Math.random() < 0.68) {
+      // la mayoría cae dentro de un grumo: eso arma las zonas cargadas
+      const g = grumos[Math.floor(Math.random() * grumos.length)];
+      const a = Math.random() * Math.PI * 2;
+      const d = Math.pow(Math.random(), 0.7) * g.r;
+      x = g.x + Math.cos(a) * d;
+      y = g.y + Math.sin(a) * d * 0.8;
+    } else {
+      // el resto queda suelto por el medio, dejando zonas casi vacías
+      const a = Math.random() * Math.PI * 2;
+      const d = vacio ? 0.42 + Math.random() * 0.22 : Math.pow(Math.random(), 0.5) * 0.62;
+      x = Math.cos(a) * d;
+      y = Math.sin(a) * d * 0.78;
+    }
+    pos[i * 3] = x;
+    pos[i * 3 + 1] = y;
+    pos[i * 3 + 2] = 0;
+
+    // tamaños muy variados, con unas pocas mucho más grandes que el resto
+    const grande = Math.random() < 0.06;
+    tam[i] = grande ? 4.5 + Math.random() * 4 : 1.1 + Math.pow(Math.random(), 2.2) * 2.6;
+    bri[i] = grande ? 0.85 + Math.random() * 0.5 : 0.18 + Math.pow(Math.random(), 2) * 0.75;
+
+    // color: casi todas azul-violeta, unas pocas cálidas, algunas casi blancas
+    const t = Math.random();
+    let c: THREE.Color;
+    if (t < 0.42) c = paleta[1].clone().lerp(paleta[2], Math.random());
+    else if (t < 0.74) c = paleta[2].clone().lerp(paleta[0], Math.random() * 0.6);
+    else if (t < 0.88) c = paleta[3].clone().lerp(paleta[2], Math.random() * 0.5);
+    else c = new THREE.Color('#eaf0ff').lerp(paleta[2], Math.random() * 0.35);
+    col[i * 3] = c.r;
+    col[i * 3 + 1] = c.g;
+    col[i * 3 + 2] = c.b;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('tamano', new THREE.BufferAttribute(tam, 1));
+  geo.setAttribute('brillo', new THREE.BufferAttribute(bri, 1));
+  return new THREE.Points(geo, materialPuntos());
 }
 
 /**
@@ -297,7 +350,7 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): (() => 
   marca('ascent:particulas-inicio');
   // --- campo estelar (el ambiente permanente, teñido por el rango) ---
   const estrellas = crearEstrellas(ESTRELLAS_POR_RANGO[op.rango] ?? 150, op.rango, op.planeta);
-  if (op.apagado) (estrellas.material as THREE.PointsMaterial).opacity = 0.35;
+  materiales.push(estrellas.material as THREE.ShaderMaterial);
   escena.add(estrellas);
 
   const cfg =
@@ -325,7 +378,17 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): (() => 
   }
 
   if (op.vacio || op.rango === 1) {
-    polvo = crearPolvo(!!op.vacio, op.rango);
+    // el gas primero, las partículas encima: juntos leen como una nube
+    const nmat = crearMaterialCuerpo(NEBULOSA_CFG, !!op.apagado, 0.004);
+    nmat.blending = THREE.AdditiveBlending;
+    materiales.push(nmat);
+    const nebulosa = new THREE.Mesh(QUAD, nmat);
+    nebulosa.scale.setScalar(1.5);
+    nebulosa.position.z = -0.1;
+    grupo.add(nebulosa);
+
+    polvo = crearPolvo(!!op.vacio);
+    materiales.push(polvo.material as THREE.ShaderMaterial);
     grupo.add(polvo);
     grupo.scale.setScalar(0.95);
   } else if (op.rango === 7) {
@@ -339,6 +402,7 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): (() => 
     auroraMesh = aurora;
 
     galaxia = crearGalaxia(op.rango);
+    materiales.push(galaxia.material as THREE.ShaderMaterial);
     grupo.add(galaxia);
     grupo.scale.setScalar(1.5);
   } else if (cfg) {

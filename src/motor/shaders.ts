@@ -15,6 +15,45 @@ void main() {
 }
 `;
 
+// PARTÍCULAS REDONDAS. PointsMaterial dibuja cuadrados duros: por eso el
+// polvo se veía pobre. Con shader propio cada partícula tiene su tamaño, su
+// color y un borde que se desvanece.
+export const VERTEX_PUNTOS = /* glsl */ `
+attribute float tamano;
+attribute float brillo;
+varying vec3 vColor;
+varying float vBrillo;
+uniform float uTime;
+uniform float uDpr;
+void main() {
+  vColor = color;
+  vBrillo = brillo;
+  vec3 p = position;
+  // deriva lenta: el gas nunca está del todo quieto
+  p.x += sin(uTime * 0.08 + position.y * 5.0) * 0.012;
+  p.y += cos(uTime * 0.06 + position.x * 4.0) * 0.010;
+  gl_PointSize = tamano * uDpr;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+}
+`;
+
+export const FRAGMENT_PUNTOS = /* glsl */ `
+precision highp float;
+varying vec3 vColor;
+varying float vBrillo;
+void main() {
+  // distancia al centro del punto: 0 en el medio, 1 en el borde
+  float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
+  if (d > 1.0) discard;
+  // núcleo compacto y halo que se apaga suave
+  float nucleo = 1.0 - smoothstep(0.0, 0.45, d);
+  float halo = 1.0 - smoothstep(0.15, 1.0, d);
+  float a = clamp(nucleo * 0.85 + halo * 0.5, 0.0, 1.0) * vBrillo;
+  if (a < 0.004) discard;
+  gl_FragColor = vec4(vColor, a);
+}
+`;
+
 export const FRAGMENT = /* glsl */ `
 precision highp float;
 precision highp int;
@@ -233,6 +272,33 @@ void main() {
   float aa = max(uPixel, 0.0015) * 1.5;
   vec3 col = vec3(0.0);
   float alfa = 0.0;
+
+  // ================= NEBULOSA (modo 5) =================
+  // El gas entre las partículas: sin esto se leen como puntos sueltos y no
+  // como una nube. Densidad despareja a propósito, con zonas cargadas y
+  // zonas casi vacías, y color mezclado —azules, violetas y algo cálido—
+  // en vez de un gris plano.
+  if (uModo > 4.5) {
+    vec3 w;
+    float base = turbulento(vec3(p * 1.25, uTime * 0.022), 3.0, w);
+    // segunda escala: los grumos finos dentro de las masas grandes
+    float fino = fbm(vec3(p * 4.5 + w.xy * 0.6, uTime * 0.03));
+
+    // huecos: el gas no llena parejo
+    float hueco = smoothstep(0.30, 0.62, fbm(vec3(p * 1.8 + vec2(11.0), 0.5)));
+    float densidad = smoothstep(0.34, 0.86, base) * (0.45 + 0.75 * fino) * hueco;
+
+    // el color viaja del violeta profundo al azul y toca un cálido donde
+    // el gas está más denso, como en una nebulosa de verdad
+    vec3 c = mix(uPaleta0, uPaleta1, smoothstep(0.2, 0.7, base));
+    c = mix(c, uPaleta2, smoothstep(0.5, 0.95, fino));
+    c = mix(c, uPaleta3, pow(densidad, 3.0) * 0.75);
+
+    float bordes = smoothstep(1.15, 0.35, length(p * vec2(0.85, 1.0)));
+    float inten = densidad * bordes;
+    gl_FragColor = vec4(c * inten * 1.35 * uAtenua, clamp(inten * 0.85, 0.0, 1.0) * uAtenua);
+    return;
+  }
 
   // ================= AURORA (modo 4) =================
   // Gas que corre A LO LARGO DE LOS BRAZOS, no una cortina pegada encima.

@@ -8,6 +8,7 @@ import type { Log, Peso } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Nav from '@/components/Nav';
+import PantallaDeslizable from '@/components/PantallaDeslizable';
 
 export default function Estadisticas() {
   const [supabase] = useState(() => crearCliente());
@@ -93,7 +94,7 @@ export default function Estadisticas() {
   return (
     <>
       <FondoEspacial rango={rangoActual.n} esquina="arriba-derecha" velo={0.72} />
-      <div className="pantalla">
+      <PantallaDeslizable>
         <div className="titulo-pantalla">Stats</div>
 
         <div className="stat-grilla">
@@ -188,7 +189,7 @@ export default function Estadisticas() {
             })}
           </div>
         </div>
-      </div>
+      </PantallaDeslizable>
       <Nav />
     </>
   );

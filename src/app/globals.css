@@ -30,9 +30,17 @@ html,
 body {
   background: var(--fondo);
   color: var(--tinta);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--f-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
+}
+
+/* Curvas propias. Las de fábrica (ease, linear) son las que hacen que todo
+   se sienta de plantilla: arrancan y frenan sin peso. */
+:root {
+  --curva-salida: cubic-bezier(0.16, 1, 0.3, 1);      /* entra rápido y se asienta */
+  --curva-entrada: cubic-bezier(0.55, 0, 1, 0.45);     /* se va acelerando */
+  --curva-suave: cubic-bezier(0.33, 0.1, 0.25, 1);     /* para colores y opacidad */
 }
 
 /* El color del rango tiñe el fondo entero, no solo los acentos: en luna y en
@@ -44,7 +52,7 @@ body {
     radial-gradient(110% 80% at 5% 0%, color-mix(in srgb, var(--pal-apagado) 42%, transparent), transparent 58%),
     var(--fondo);
   background-attachment: fixed;
-  transition: background-color 0.6s ease;
+  transition: background-color 0.7s var(--curva-suave);
 }
 
 a {
@@ -102,7 +110,7 @@ textarea::placeholder {
     radial-gradient(1px 1px at 40% 70%, rgba(220, 230, 250, 0.5), transparent 2px),
     radial-gradient(1px 1px at 10% 85%, rgba(220, 230, 250, 0.6), transparent 2px),
     var(--fondo);
-  transition: background 0.6s ease;
+  transition: background 0.7s var(--curva-suave);
 }
 
 /* El render 3D entra por encima con un fundido cuando está listo: nunca un
@@ -111,7 +119,7 @@ textarea::placeholder {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 0.7s ease;
+  transition: opacity 0.9s var(--curva-suave);
 }
 .fondo-lienzo.listo {
   opacity: 1;
@@ -130,10 +138,16 @@ textarea::placeholder {
     radial-gradient(120% 90% at 85% 88%, color-mix(in srgb, var(--pal-principal) 26%, transparent), transparent 60%),
     radial-gradient(100% 75% at 8% 6%, color-mix(in srgb, var(--pal-apagado) 45%, transparent), transparent 62%),
     var(--fondo);
-  transition: background 0.6s ease;
+  transition: background 0.7s var(--curva-suave);
 }
 
 /* ---------- estructura ---------- */
+/* Capa que sigue al dedo al deslizar entre pestañas */
+.deslizable {
+  will-change: transform, opacity;
+  touch-action: pan-y;
+}
+
 .pantalla {
   position: relative;
   z-index: 1;
@@ -141,7 +155,7 @@ textarea::placeholder {
   margin: 0 auto;
   padding: max(18px, env(safe-area-inset-top)) 20px calc(84px + env(safe-area-inset-bottom));
   min-height: 100dvh;
-  animation: entrar-pantalla 0.3s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  animation: entrar-pantalla 0.42s var(--curva-salida) both;
 }
 
 /* Cada pantalla entra, y sus bloques aparecen escalonados. Corto y sin
@@ -155,7 +169,7 @@ textarea::placeholder {
   to { opacity: 1; transform: none; }
 }
 .pantalla > * {
-  animation: surgir 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  animation: surgir 0.55s var(--curva-salida) both;
 }
 .pantalla > *:nth-child(1) { animation-delay: 0.03s; }
 .pantalla > *:nth-child(2) { animation-delay: 0.07s; }
@@ -168,11 +182,31 @@ textarea::placeholder {
 
 /* el contenido va donde el fondo está vacío: zona limpia arriba a la izquierda */
 .titulo-pantalla {
-  font-size: 13px;
-  letter-spacing: 0.22em;
+  font-family: var(--f-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--sub);
   margin-bottom: 18px;
+}
+
+/* Mono SOLO en etiquetas cortas y datos. En párrafos cansa y termina
+   pareciendo una herramienta de programador. */
+.seccion h3,
+.stat-celda .etiqueta,
+.stat-celda .valor,
+.dato,
+.tira-dia span,
+.cal-dia,
+.cal-nombres span,
+.cal-cabecera span,
+.escalera-rangos .dias,
+.escalera-rangos .actual-tag,
+.album-pie,
+.album-vis,
+.astro-amigo .etiqueta,
+.marca {
+  font-family: var(--f-mono), monospace;
 }
 
 /* ---------- tarjetas casi invisibles ---------- */
@@ -181,7 +215,7 @@ textarea::placeholder {
   border: 0.5px solid var(--linea);
   border-radius: var(--radio);
   padding: 16px;
-  transition: background-color 0.6s ease, border-color 0.6s ease;
+  transition: background-color 0.65s var(--curva-suave), border-color 0.65s var(--curva-suave);
 }
 
 /* ---------- el único botón sólido de cada pantalla ----------
@@ -196,7 +230,7 @@ textarea::placeholder {
   padding: 15px;
   border-radius: 12px;
   text-align: center;
-  transition: transform 0.12s ease, opacity 0.12s ease, background-color 0.5s ease;
+  transition: transform 0.18s var(--curva-salida), opacity 0.2s var(--curva-suave), background-color 0.55s var(--curva-suave);
 }
 .boton-solido:active {
   transform: scale(0.98);
@@ -240,34 +274,51 @@ textarea::placeholder {
 .racha-bloque {
   margin-bottom: 26px;
 }
+
+/* La decisión que rompe la grilla: el número se sale del margen izquierdo
+   de la pantalla y la palabra RACHA se para en vertical contra su costado,
+   leyéndose de abajo hacia arriba. Deliberadamente incómodo. */
+.racha-fila {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-left: -14px;
+}
 .racha-label {
-  font-size: 12px;
-  letter-spacing: 0.34em;
+  font-family: var(--f-mono), monospace;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 10px;
+  letter-spacing: 0.42em;
   text-transform: uppercase;
   color: var(--sub);
+  padding-bottom: 12px;
 }
 /* el número de racha es lo único grande de la pantalla */
 .racha-numero {
-  font-size: 96px;
-  font-weight: 200;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  font-family: var(--f-serif), Georgia, serif;
+  font-size: clamp(104px, 34vw, 148px);
+  font-weight: 400;
+  line-height: 0.78;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
-/* barra de progreso al siguiente rango, sin etiqueta de texto */
+/* La barra tampoco ocupa el ancho completo: arranca donde el número y
+   termina antes del borde. Que no todo cierre en la misma línea. */
 .progreso {
   height: 3px;
+  width: 62%;
   background: color-mix(in srgb, var(--pal-principal) 14%, transparent);
   border-radius: 2px;
   overflow: hidden;
-  margin: 18px 0 8px;
+  margin: 22px 0 8px;
 }
 .progreso > div {
   height: 100%;
   background: linear-gradient(90deg, var(--pal-principal), var(--pal-claro));
   border-radius: 2px;
-  transition: width 0.6s ease;
+  transition: width 0.7s var(--curva-salida);
 }
 
 .aviso-tiempo {
@@ -373,7 +424,7 @@ textarea::placeholder {
   justify-content: center;
   color: var(--sub);
   border: 1px solid transparent;
-  transition: transform 0.12s ease, background-color 0.2s ease;
+  transition: transform 0.16s var(--curva-salida), background-color 0.28s var(--curva-suave);
 }
 .cal-dia:active {
   transform: scale(0.9);
@@ -419,15 +470,28 @@ textarea::placeholder {
   50% { opacity: 0.7; }
 }
 
-/* Una frase por pantalla, en voz baja: acompaña, no arenga. */
-.frase {
-  font-size: 13px;
-  line-height: 1.5;
+/* Una cita por pantalla, en voz baja. El autor va en mono y desplazado
+   hacia adentro: no es un pie centrado y prolijo. */
+.cita {
+  margin: 30px 2px 4px;
+  max-width: 32ch;
+  border-left: 1px solid color-mix(in srgb, var(--pal-principal) 40%, transparent);
+  padding-left: 14px;
+}
+.cita blockquote {
+  font-family: var(--f-serif), Georgia, serif;
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--sub);
+}
+.cita figcaption {
+  font-family: var(--f-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
   color: var(--apagado);
-  font-style: italic;
-  letter-spacing: 0.01em;
-  margin: 26px 2px 4px;
-  max-width: 30ch;
+  margin-top: 10px;
+  margin-left: 32%;
 }
 
 /* ---------- una sola línea social ---------- */
@@ -466,7 +530,7 @@ textarea::placeholder {
   color: var(--apagado);
   font-size: 10px;
   padding: 4px 10px;
-  transition: color 0.25s ease;
+  transition: color 0.3s var(--curva-suave);
 }
 .nav a.activo {
   color: var(--pal-claro);
@@ -478,7 +542,7 @@ textarea::placeholder {
   width: 22px;
   height: 22px;
   display: block;
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+  transition: transform 0.34s var(--curva-salida);
 }
 .nav a.activo .nav-icono {
   transform: translateY(-1px) scale(1.08);
@@ -494,10 +558,10 @@ textarea::placeholder {
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
   z-index: 10;
-  animation: aparecer 0.22s ease both;
+  animation: aparecer 0.3s var(--curva-suave) both;
 }
 .hoja-fondo.cerrando {
-  animation: desaparecer 0.2s ease both;
+  animation: desaparecer 0.26s var(--curva-suave) both;
 }
 .hoja {
   position: fixed;
@@ -512,13 +576,13 @@ textarea::placeholder {
   border-bottom: none;
   border-radius: 20px 20px 0 0;
   padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
-  animation: subir 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation: subir 0.42s var(--curva-salida) both;
 }
 .hoja.cerrando {
-  animation: bajar 0.22s cubic-bezier(0.4, 0, 0.8, 0.4) both;
+  animation: bajar 0.3s var(--curva-entrada) both;
 }
 .hoja > * {
-  animation: surgir 0.32s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  animation: surgir 0.44s var(--curva-salida) both;
 }
 .hoja > *:nth-child(2) { animation-delay: 0.04s; }
 .hoja > *:nth-child(3) { animation-delay: 0.08s; }
@@ -712,9 +776,10 @@ textarea::placeholder {
   padding: 14px;
 }
 .stat-celda .valor {
-  font-size: 28px;
-  font-weight: 300;
+  font-size: 26px;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 .stat-celda .etiqueta {
   font-size: 11px;

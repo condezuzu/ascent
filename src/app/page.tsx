@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { enDias, hoyISO, restarDias, deISO } from '@/lib/fechas';
 import { planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango } from '@/lib/rangos';
-import { fraseDelDia } from '@/lib/frases';
+import { citaDelDia } from '@/lib/frases';
 import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
 import { guardarPerfilCache, leerPerfilCache } from '@/lib/cache';
 import { marca } from '@/lib/medir';
@@ -16,6 +16,7 @@ import RegistrarSheet from '@/components/RegistrarSheet';
 import SubidaRango from '@/components/SubidaRango';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
+import PantallaDeslizable from '@/components/PantallaDeslizable';
 
 type LineaSocial = { username: string; racha: number } | null;
 
@@ -119,15 +120,17 @@ export default function Principal() {
     return (
       <>
         <FondoEspacial rango={1} esquina="abajo-derecha" velo={0.55} />
-        <div className="pantalla">
+        <PantallaDeslizable>
           <div className="cabecera">
             <div className="avatar" />
           </div>
           <div className="racha-bloque">
-            <div className="racha-label">Racha</div>
-            <div className="racha-numero esqueleto-num">·</div>
+            <div className="racha-fila">
+              <span className="racha-label">Racha</span>
+              <span className="racha-numero esqueleto-num">·</span>
+            </div>
           </div>
-        </div>
+        </PantallaDeslizable>
         <Nav />
       </>
     );
@@ -155,7 +158,7 @@ export default function Principal() {
       ? { rango: rangoMejor, planeta: planetaMejor }
       : null;
 
-  const frase = fraseDelDia(perfil.rango_actual, `${hoy}-${perfil.id}`);
+  const cita = citaDelDia(perfil.rango_actual, `${hoy}-${perfil.id}`);
 
   // El aviso solo aparece cuando falta poco de verdad, no a la mañana.
   // Redacción hacia adelante, nunca hacia la pérdida.
@@ -181,15 +184,17 @@ export default function Principal() {
         esquina="abajo-derecha"
       />
 
-      <div className="pantalla">
+      <PantallaDeslizable>
         <div className="cabecera">
           <Avatar url={perfil.avatar_url} nombre={perfil.username} />
           <span className="nombre">{perfil.username}</span>
         </div>
 
         <div className="racha-bloque">
-          <div className="racha-label">Racha</div>
-          <div className="racha-numero">{racha}</div>
+          <div className="racha-fila">
+            <span className="racha-label">Racha</span>
+            <span className="racha-numero">{racha}</span>
+          </div>
           {/* barra de progreso al siguiente rango, sin etiqueta de texto */}
           {prox && (
             <div className="progreso">
@@ -216,7 +221,12 @@ export default function Principal() {
 
         <TiraSemanal logs={logs} descansos={descansos} />
 
-        {!sinNada && <p className="frase">{frase}</p>}
+        {!sinNada && (
+          <figure className="cita">
+            <blockquote>{cita.texto}</blockquote>
+            <figcaption>{cita.autor}</figcaption>
+          </figure>
+        )}
 
         {social && (
           <div className="linea-social">
@@ -236,7 +246,7 @@ export default function Principal() {
             Registrá tu primer día y algo se empieza a formar.
           </div>
         )}
-      </div>
+      </PantallaDeslizable>
 
       {hojaAbierta && (
         <RegistrarSheet

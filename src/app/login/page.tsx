@@ -9,6 +9,12 @@ import FondoEspacial from '@/components/FondoEspacial';
 
 type Modo = 'entrar' | 'crear' | 'recuperar';
 
+// Google está apagado hasta que el proveedor esté configurado en Supabase
+// (Authentication → Providers → Google, con las credenciales de Google Cloud).
+// Un botón que falla es peor que no tenerlo: el usuario cree que la app está
+// rota. Para encenderlo alcanza con poner esto en true.
+const GOOGLE_LISTO = false;
+
 export default function Login() {
   const router = useRouter();
   const supabase = crearCliente();
@@ -138,7 +144,7 @@ export default function Login() {
           </button>
         </form>
 
-        {modo === 'entrar' && (
+        {modo === 'entrar' && GOOGLE_LISTO && (
           <>
             <div className="separador">o</div>
             <button className="boton-fantasma" onClick={conGoogle}>

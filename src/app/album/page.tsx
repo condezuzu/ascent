@@ -6,6 +6,7 @@ import { fechaLinda } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
+import PantallaDeslizable from '@/components/PantallaDeslizable';
 
 type Celda = {
   id: string;
@@ -112,7 +113,7 @@ export default function Album() {
   return (
     <>
       <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.72} />
-      <div className="pantalla" onClick={() => porBorrar && setPorBorrar(null)}>
+      <PantallaDeslizable onClick={() => porBorrar && setPorBorrar(null)}>
         <div className="titulo-pantalla">Álbum</div>
 
         {error && <p className="error-msg">{error}</p>}
@@ -192,7 +193,7 @@ export default function Album() {
             </div>
           )
         )}
-      </div>
+      </PantallaDeslizable>
       <Nav />
     </>
   );

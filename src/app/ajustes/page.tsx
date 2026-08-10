@@ -12,6 +12,7 @@ import Avatar from '@/components/Avatar';
 import CalendarioCorregir from '@/components/CalendarioCorregir';
 import InstalarPWA from '@/components/InstalarPWA';
 import Nav from '@/components/Nav';
+import PantallaDeslizable from '@/components/PantallaDeslizable';
 
 export default function Ajustes() {
   const router = useRouter();
@@ -149,7 +150,7 @@ export default function Ajustes() {
         esquina="arriba-derecha"
         velo={0.74}
       />
-      <div className="pantalla">
+      <PantallaDeslizable>
         <div className="titulo-pantalla">Ajustes</div>
 
         <div className="seccion">
@@ -246,7 +247,7 @@ export default function Ajustes() {
             Cerrar sesión
           </button>
         </div>
-      </div>
+      </PantallaDeslizable>
 
       <Nav />
     </>

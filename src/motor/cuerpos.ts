@@ -22,7 +22,8 @@ export type ConfigCuerpo = {
   manchas: number; // zonas de hielo claro y oscuro: Plutón
   rayos: number; // estrías claras de cráteres jóvenes: la Luna
   lunas: number;
-  modo: 0 | 1 | 2 | 3 | 4; // 0 planeta, 1 sol, 2 agujero negro, 3 roca, 4 aurora
+  // 0 planeta, 1 sol, 2 agujero negro, 3 roca, 4 aurora, 5 nebulosa
+  modo: 0 | 1 | 2 | 3 | 4 | 5;
 };
 
 const base: Omit<ConfigCuerpo, 'paleta'> = {
