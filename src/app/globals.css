@@ -296,9 +296,9 @@ textarea::placeholder {
 }
 /* el número de racha es lo único grande de la pantalla */
 .racha-numero {
-  font-family: var(--f-serif), Georgia, serif;
+  font-family: var(--f-numero, var(--f-sans)), system-ui, sans-serif;
   font-size: clamp(104px, 34vw, 148px);
-  font-weight: 400;
+  font-weight: 500;
   line-height: 0.78;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -369,6 +369,124 @@ textarea::placeholder {
 }
 .tira-punto.hoy {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--pal-claro) 55%, transparent);
+}
+
+/* ---------- comparador de tipografías (/tipografias) ---------- */
+.comparador {
+  position: relative;
+  z-index: 1;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+  background: #06070b;
+  min-height: 100dvh;
+}
+.comp-intro {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--sub);
+  margin-bottom: 22px;
+}
+.comp-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--apagado);
+  margin-bottom: 30px;
+}
+.comp-control button {
+  border: 0.5px solid rgba(160, 170, 190, 0.3);
+  border-radius: 20px;
+  padding: 5px 13px;
+  color: var(--sub);
+  font-size: 13px;
+}
+.comp-control button.activo {
+  background: #e8ecf6;
+  color: #08080c;
+  border-color: transparent;
+}
+.comp-bloque {
+  border-top: 0.5px solid rgba(160, 170, 190, 0.18);
+  padding: 26px 0 30px;
+}
+.comp-bloque h2 {
+  font-family: var(--f-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #9aa3b8;
+  font-weight: 400;
+  margin-bottom: 16px;
+}
+/* misma composición que la pantalla real: número fuera del margen y
+   RACHA parada en vertical contra su costado */
+.comp-racha {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-left: -14px;
+}
+.comp-label {
+  font-family: var(--f-muestra), sans-serif;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 10px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--sub);
+  padding-bottom: 12px;
+}
+.comp-numero {
+  font-family: var(--f-muestra), sans-serif;
+  font-size: clamp(104px, 34vw, 148px);
+  font-weight: 500;
+  line-height: 0.78;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: #e8ecf6;
+}
+.comp-barra {
+  height: 3px;
+  width: 62%;
+  background: rgba(160, 170, 190, 0.16);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 22px 0 20px;
+}
+.comp-barra > div {
+  height: 100%;
+  width: 64%;
+  background: linear-gradient(90deg, #6e6c66, #c8cbd4);
+}
+.comp-cita {
+  font-family: var(--f-muestra), sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--sub);
+  max-width: 32ch;
+  border-left: 1px solid rgba(160, 170, 190, 0.3);
+  padding-left: 14px;
+  margin-bottom: 16px;
+}
+.comp-datos {
+  display: flex;
+  gap: 18px;
+  font-family: var(--f-muestra), sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--apagado);
+  margin-bottom: 20px;
+}
+.comp-nota {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--sub);
+  margin-bottom: 6px;
+}
+.comp-nota.contra {
+  color: var(--apagado);
 }
 
 /* ---------- calendario para corregir días ---------- */
@@ -479,9 +597,8 @@ textarea::placeholder {
   padding-left: 14px;
 }
 .cita blockquote {
-  font-family: var(--f-serif), Georgia, serif;
-  font-size: 17px;
-  line-height: 1.4;
+  font-size: 16px;
+  line-height: 1.5;
   color: var(--sub);
 }
 .cita figcaption {
