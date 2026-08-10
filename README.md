@@ -73,7 +73,7 @@ Lo que hay que crear (todo en el navegador, no hace falta CLI):
    `supabase/functions/sugerencia-mail/index.ts`.
 5. En Supabase → **Edge Functions → Secrets**, agregar:
    - `RESEND_API_KEY` — la clave del paso 2
-   - `MAIL_DESTINO` — `la casilla donde querés recibir las sugerencias`
+   - `MAIL_DESTINO` — la casilla donde querés recibir las sugerencias
    - `MAIL_REMITENTE` — `Ascent <onboarding@resend.dev>` (o el del dominio propio)
    - `WEBHOOK_SECRET` — una cadena larga inventada, la que quieras
 6. En Supabase → **Database → Webhooks** → *Create a new hook*:
