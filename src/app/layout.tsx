@@ -1,19 +1,26 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter, Outfit, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import RegistroPWA from '@/components/RegistroPWA';
 
-// PROVISORIO: la familia definitiva se está eligiendo en /tipografias.
-// Mientras tanto el número grande usa la misma sans que el resto, para que
-// nada quede roto. La fuente del sistema no se usa en ningún lado.
-const sans = Geist({
+// Inter: todo lo que se lee. Es la más común de la web justamente porque no
+// hace ruido; acá se la elige para eso, no por defecto.
+const sans = Inter({
   subsets: ['latin'],
   variable: '--f-sans',
   display: 'swap',
 });
 
-// Geist Mono: etiquetas cortas y datos, nunca párrafos. En textos largos
-// cansa y termina pareciendo una herramienta de programador.
+// Outfit: SOLO el número grande de la racha. Geométrica, ancha y monolineal.
+// Es el único lugar donde la tipografía tiene que tener carácter propio.
+const numero = Outfit({
+  subsets: ['latin'],
+  variable: '--f-numero',
+  display: 'swap',
+});
+
+// Geist Mono: SOLO datos tabulares —cifras, fechas, columnas—, donde la
+// monoespaciada sirve de verdad porque alinea. Nunca en párrafos ni títulos.
 const mono = Geist_Mono({
   subsets: ['latin'],
   variable: '--f-mono',
@@ -45,7 +52,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="es" className={`${sans.variable} ${numero.variable} ${mono.variable}`}>
       <body>
         {children}
         <RegistroPWA />

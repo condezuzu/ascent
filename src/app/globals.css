@@ -182,18 +182,16 @@ textarea::placeholder {
 
 /* el contenido va donde el fondo está vacío: zona limpia arriba a la izquierda */
 .titulo-pantalla {
-  font-family: var(--f-mono), monospace;
   font-size: 12px;
+  font-weight: 500;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--sub);
   margin-bottom: 18px;
 }
 
-/* Mono SOLO en etiquetas cortas y datos. En párrafos cansa y termina
-   pareciendo una herramienta de programador. */
-.seccion h3,
-.stat-celda .etiqueta,
+/* Mono SOLO en datos tabulares: cifras, fechas y columnas, donde alinear
+   sirve de verdad. En títulos y etiquetas no aporta nada y ensucia. */
 .stat-celda .valor,
 .dato,
 .tira-dia span,
@@ -201,11 +199,7 @@ textarea::placeholder {
 .cal-nombres span,
 .cal-cabecera span,
 .escalera-rangos .dias,
-.escalera-rangos .actual-tag,
-.album-pie,
-.album-vis,
-.astro-amigo .etiqueta,
-.marca {
+.album-pie {
   font-family: var(--f-mono), monospace;
 }
 
@@ -285,7 +279,6 @@ textarea::placeholder {
   margin-left: -14px;
 }
 .racha-label {
-  font-family: var(--f-mono), monospace;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   font-size: 10px;
@@ -296,7 +289,7 @@ textarea::placeholder {
 }
 /* el número de racha es lo único grande de la pantalla */
 .racha-numero {
-  font-family: var(--f-numero, var(--f-sans)), system-ui, sans-serif;
+  font-family: var(--f-numero), system-ui, sans-serif;
   font-size: clamp(104px, 34vw, 148px);
   font-weight: 500;
   line-height: 0.78;

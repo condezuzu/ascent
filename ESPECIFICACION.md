@@ -168,13 +168,30 @@ que lo rodea. Una interfaz que toma solo decisiones por defecto —fuente del
 sistema, todo centrado, espaciado uniforme, esquinas redondeadas estándar—
 se reconoce a la legua.
 
-**Tipografía:** es lo que más pesa. Dos familias con carácter, elegidas a
-propósito: una para los números grandes y otra para el texto. Nunca la fuente
-del sistema. PENDIENTE: elegir cuáles.
+**Tipografía:** es lo que más pesa. Nunca la fuente del sistema. Tres familias,
+cada una con un trabajo y ninguna invadiendo el del resto:
+
+- **Inter** — todo lo que se lee: textos, botones, títulos de pantalla,
+  etiquetas. Es la más común de la web justamente porque no hace ruido, y se
+  la elige por eso, no por defecto.
+- **Outfit** — SOLO el número grande de la racha. Geométrica, ancha y
+  monolineal. Es el único lugar donde la tipografía tiene que tener carácter.
+- **Geist Mono** — SOLO datos tabulares: cifras de Stats, días del calendario,
+  fechas del álbum, letras de la tira semanal, números de la lista. Donde
+  alinear en columna sirve de verdad. Nunca en párrafos ni en títulos.
+
+Se descartó Instrument Serif (probada y rechazada: el contraste de una serif no
+funcionó) y Poppins (encaja en la descripción pero está tan usada que se lee
+como decisión por defecto).
 
 **Composición:** cada pantalla lleva al menos una decisión que no es la obvia.
 Algo asimétrico, un elemento desproporcionado, un margen que rompe la grilla.
 Un detalle raro a propósito vale más que diez prolijos.
+
+En la principal esa decisión es: **el número de racha se sale del margen
+izquierdo**, la palabra RACHA se para en vertical contra su costado leyéndose
+de abajo hacia arriba, y la barra de progreso ocupa el 62% del ancho en vez de
+llegar al borde. Nada cierra en la misma línea, y es a propósito.
 
 **Textos:** ningún mensaje puede sonar a manual de producto. Se escriben como
 los diría una persona.
@@ -570,3 +587,125 @@ sugerencias sirve para encontrar bugs, no para decidir qué construir.
 *Nota de implementación (no es parte de la spec): los retos ya tienen UI
 construida por pedido explícito del humano — si la beta arranca sin ellos, se
 ocultan, no se borran. El §12 está documentado pero NO implementado.*
+
+---
+
+# ESTADO ACTUAL
+
+*Corte al 10 de agosto de 2026. Esta sección describe cómo está el proyecto
+hoy, no lo que se decidió. Actualizarla al terminar cada tanda de trabajo.*
+
+## Dónde vive
+
+- Código: `C:\Users\agusc\OneDrive\Escritorio\cloude code\ascent`
+  **PENDIENTE MUDARLO fuera de OneDrive** (ver "Problemas conocidos").
+- Repo público: https://github.com/condezuzu/ascent, rama `main`.
+- Producción: https://ascent-blush-seven.vercel.app
+- Supabase: proyecto `okeanaihymbvbdmrdqph`.
+- Dev server: puerto 3020 (`npm run dev`).
+
+## Verificación
+
+| Comando | Qué hace | Estado |
+|---|---|---|
+| `npx tsc --noEmit` | tipos | limpio |
+| `npm run test:db` | schema contra PGlite, sin red | 74/74 |
+| `npm run test:conexion` | humo contra el Supabase real, solo lectura | 39/39 |
+| `npm run test:e2e` | flujo completo con 2 cuentas reales | pide `E2E_EMAIL` |
+| `npm run build` | build de producción | limpio |
+
+**Nunca correr `npm run build` con el dev server prendido**: comparten `.next` y
+se corrompe.
+
+## Migraciones — las cuatro están aplicadas en la base real
+
+1. `migracion-01-permisos.sql` — grants explícitos por tabla y columna.
+2. `migracion-02-planeta.sql` — recalcular el planeta al corregir días.
+3. `migracion-03-descansos-fechados.sql` — descansos con historial.
+4. `migracion-04-mejor-racha.sql` — el récord sale del historial.
+
+Verificado consultando las funciones contra el proyecto: todas existen.
+En una base nueva no hace falta ninguna; `schema.sql` ya las incluye.
+
+## Hecho y funcionando
+
+- **Racha, rangos y pérdida**: ocho rangos de diez días, planeta del día en el
+  rango 4, pérdida de −10 una vez por corte, piso de misericordia, corrección
+  manual, recálculo sin rebote.
+- **Descansos fechados**: cambiar la rutina no toca el pasado.
+- **Seguridad**: RLS + grants por columna. Verificado con dos cuentas: el peso
+  nunca se ve, ni entre amigos.
+- **Auth**: alta, login, recuperación de contraseña por correo, onboarding.
+- **Social**: amigos, solicitudes, campo estelar, lista, feed, perfil de amigo,
+  retos, eliminar amigo.
+- **Fotos**: subida, visibilidad por foto, borrado, avatar.
+- **Motor**: los ocho rangos con shaders propios, subidas de rango, paleta por
+  rango que tiñe toda la app, fantasma de la mejor racha, estado de descanso.
+- **Rendimiento**: un solo renderer para toda la app, three.js en chunk aparte,
+  caché del perfil, fondo CSS inmediato. Cambiar de pantalla: ~8 ms.
+- **Correo**: Resend configurado; cada sugerencia llega por mail.
+- **Interfaz**: tipografías definidas, gesto para cambiar de pestaña, curvas
+  propias, calendario para corregir días, citas reales de deportistas.
+
+## A medias
+
+- **Gente sugerida**: decidido que la lógica se escriba pero quede **oculta
+  hasta que haya 10 usuarios reales**. Todavía NO está implementada.
+- **`/galeria` y `/tipografias`**: rutas de QA públicas en producción. No
+  exponen datos. Decidir si se esconden antes de la beta.
+- **Google como proveedor**: el botón está oculto tras la constante
+  `GOOGLE_LISTO` en `src/app/login/page.tsx`. Poner en `true` el día que se
+  configure el proveedor en Supabase.
+
+## Falta — en orden de prioridad
+
+1. **Pantalla de perfil propio** (§9). Hoy se entra al perfil de un amigo pero
+   no al propio. Tiene que incluir: cambiar foto, elegir qué fotos ven los
+   amigos desde un solo lugar, **modo "ver como lo ven los demás"**, y
+   **administrar amigos** con lista completa y opción de eliminar.
+2. **Recorte circular de la foto de perfil**: círculo, arrastrar y zoom, y
+   recortar en el teléfono antes de subir.
+3. **Ajustes nuevos**, los seis:
+   - **Eliminar la cuenta** con confirmación fuerte, borrando logs, fotos del
+     storage, pesos y amistades. *No se puede publicar con usuarios reales sin
+     esto.*
+   - **Exportar mis datos** en un archivo con todo el historial. *Misma
+     categoría que el anterior.*
+   - Cambiar el nombre de usuario, respetando la unicidad.
+   - Visibilidad por defecto de las fotos nuevas.
+   - Unidades de peso: kilos o libras.
+   - Recordatorio diario → **queda para nativo**, ver abajo.
+4. **Gente sugerida** con el criterio y el umbral ya decididos.
+
+## Anotado para la versión nativa (Expo)
+
+- **§12 registro automático por ubicación**: necesita geofencing del sistema.
+- **Recordatorio diario a una hora elegida**: una PWA no puede programar avisos
+  por su cuenta. Haría falta guardar suscripciones push, un cron y una función
+  que dispare. En Android anda; en iPhone solo si la app está instalada en la
+  pantalla de inicio (iOS 16.4+). Se decidió posponerlo.
+
+El backend entero se lleva sin tocar; se rehace solo la capa visual.
+
+## Antes de invitar gente
+
+- [ ] **SMTP propio en Auth**: el de Supabase permite ~2 correos por hora. La
+      cuenta de Resend ya existe; falta configurarla en Authentication → Emails
+      (`smtp.resend.com:465`, usuario `resend`, la misma API key) con un dominio
+      verificado.
+- [ ] Volver a prender **"Confirm email"**, que está apagado para poder testear.
+- [ ] Eliminar cuenta y exportar datos implementados.
+- [ ] Backups automáticos confirmados en Supabase.
+- [ ] Borrar las cuentas de prueba que queden.
+
+## Problemas conocidos
+
+- **El proyecto está dentro de OneDrive.** OneDrive sincroniza los miles de
+  archivos temporales de `.next` mientras Next los escribe, y eso corrompe la
+  caché una y otra vez (`Cannot find module './543.js'`, `EINVAL readlink`).
+  Se arregla borrando `.next`, pero vuelve a pasar. **Mudar el proyecto a
+  `C:\Users\agusc\ascent`**, que es donde viven los demás proyectos.
+- **No hay cuenta de prueba viva.** Las de los e2e y las de UI fueron borradas,
+  así que para verificar pantallas internas hay que crear una nueva.
+- El panel de preview corre con `document.hidden = true`: las animaciones de
+  three.js no se ven ahí y las capturas no salen. El QA visual lo hace el humano.
