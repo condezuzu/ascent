@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { crearCliente } from '@/lib/supabase/client';
+import { crearCliente, configuracionValida } from '@/lib/supabase/client';
+import { mensajeDeAuth } from '@/lib/errores';
 import { borrarPerfilCache } from '@/lib/cache';
 import FondoEspacial from '@/components/FondoEspacial';
 
@@ -42,7 +43,7 @@ export default function Login() {
     if (modo === 'entrar') {
       const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
       setCargando(false);
-      if (error) return setError('No pudimos entrar con esos datos.');
+      if (error) return setError(mensajeDeAuth(error));
       // La caché puede ser de otra cuenta (teléfono compartido, sesión que
       // venció sin cerrar): si no se limpia, la primera pantalla muestra
       // por un instante la racha de otra persona.
@@ -59,7 +60,7 @@ export default function Login() {
         options: { emailRedirectTo: `${location.origin}/auth/callback` },
       });
       setCargando(false);
-      if (error) return setError(error.message);
+      if (error) return setError(mensajeDeAuth(error));
       // Si Supabase no exige confirmar el correo, el alta ya devuelve sesión:
       // hay que entrar derecho. Mandarlo a revisar un correo que nunca va a
       // llegar lo deja mirando el login estando ya adentro.
@@ -78,10 +79,8 @@ export default function Login() {
     });
     setCargando(false);
     // No se distingue si el mail existe o no: decirlo filtra quién tiene cuenta.
-    if (error && !/rate|limit/i.test(error.message)) {
-      return setError('No pudimos enviar el correo. Probá de nuevo en un rato.');
-    }
-    if (error) return setError('Demasiados intentos. Esperá unos minutos.');
+    // Pero un fallo de configuración o de red sí se dice, porque no es lo mismo.
+    if (error) return setError(mensajeDeAuth(error));
     setAviso('Si esa dirección tiene cuenta, le llega un correo para cambiar la contraseña.');
   }
 
@@ -93,6 +92,16 @@ export default function Login() {
       <FondoEspacial rango={1} vacio esquina="centro" velo={0.55} />
       <div className="centrado">
         <div className="marca">Ascent</div>
+
+        {/* Si faltan o están cortadas las variables de entorno, no tiene
+            sentido dejar probar contraseñas: nada va a funcionar. */}
+        {!configuracionValida() && (
+          <div className="aviso-config">
+            <strong>La app no está bien configurada.</strong> Faltan o están mal las variables
+            de entorno de Supabase, así que no puede conectarse al servidor. Nada de lo que
+            escribas acá va a funcionar hasta que se arreglen.
+          </div>
+        )}
 
         {modo === 'recuperar' && (
           <p style={{ color: 'var(--sub)', fontSize: 14, marginBottom: 18, textAlign: 'center' }}>
