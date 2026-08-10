@@ -34,6 +34,10 @@ La racha va guardada como columna, no calculada al vuelo. Se actualiza con un
 trigger al registrar un día. Es duplicación deliberada: sin eso, la tabla de
 posiciones tendría que recorrer los logs de todos los amigos en cada carga.
 
+`mejor_racha` **sale del historial, no es un contador que solo sube**. Si se
+borran días registrados por error, tiene que bajar: un récord inflado que no hay
+manera de corregir es un dato falso para siempre.
+
 ### logs
 `id`, `user_id`, `fecha`, `es_descanso`, `planeta_del_dia`
 Restricción de unicidad en (`user_id`, `fecha`).
@@ -157,6 +161,34 @@ Marte va naranja de verdad, sin desaturar. Es el planeta rojo y se ve como tal.
 
 Estas reglas son el proyecto. Si algo las contradice, está mal.
 
+### Que no parezca hecho por IA
+
+El motor de planetas no tiene nada de genérico; lo que delata es la interfaz
+que lo rodea. Una interfaz que toma solo decisiones por defecto —fuente del
+sistema, todo centrado, espaciado uniforme, esquinas redondeadas estándar—
+se reconoce a la legua.
+
+**Tipografía:** es lo que más pesa. Dos familias con carácter, elegidas a
+propósito: una para los números grandes y otra para el texto. Nunca la fuente
+del sistema. PENDIENTE: elegir cuáles.
+
+**Composición:** cada pantalla lleva al menos una decisión que no es la obvia.
+Algo asimétrico, un elemento desproporcionado, un margen que rompe la grilla.
+Un detalle raro a propósito vale más que diez prolijos.
+
+**Textos:** ningún mensaje puede sonar a manual de producto. Se escriben como
+los diría una persona.
+
+### Movimiento
+
+Nada aparece ni desaparece de golpe. Las transiciones usan curvas de
+aceleración propias, nunca las lineales por defecto. Especial cuidado al abrir
+y cerrar la hoja de registro, al cambiar de pestaña y al entrar a un perfil.
+
+**Navegación por gesto:** se desliza de izquierda a derecha para cambiar de
+pestaña, en el orden de la barra. El contenido sigue el dedo mientras se
+arrastra —no salta al soltar—. La barra de abajo sigue funcionando igual.
+
 **El nombre del rango no aparece en la interfaz.** Nunca. Solo en el momento de
 subir de rango y en la pantalla de estadísticas si el usuario entra a buscarlo.
 El rango se ve, no se lee.
@@ -274,6 +306,17 @@ turbulencia, presencia y posición de tormenta, anillo (Saturno), lunas.
 Rendimiento: límite de partículas, pausar cuando la app pierde el foco, respetar
 `prefers-reduced-motion`, y versión estática de respaldo para equipos lentos.
 
+### Polvo estelar (rango 1)
+
+No son píxeles cuadrados flotando: es una nube de gas.
+
+- Partículas redondas, de bordes suaves. Nunca cuadrados duros.
+- Tamaños variados y brillo propio en cada una, con algunas destacando.
+- Nada de gris plano: nebulosa de verdad, con azules, violetas y algún tono
+  cálido mezclándose entre sí.
+- Densidad desigual, con zonas cargadas y zonas casi vacías, para que el conjunto
+  se lea como una nube y no como partículas sueltas.
+
 ---
 
 ## 9. Pantallas
@@ -297,6 +340,12 @@ mañana. Redacción hacia adelante, no hacia la pérdida: "Último tramo para el
 antes que "para no cortarla".
 
 Una sola entrada social. Con tres se convierte en red social.
+
+**Las frases son citas reales de deportistas**, sobre constancia, disciplina y no
+rendirse — no solo de gimnasio. Solo citas verificables y bien atribuidas: no se
+inventa ninguna ni se le adjudica a quien no la dijo. Ante la duda, no se usa.
+
+**Nombres de las pestañas**: Inicio, Leaderboard, Álbum, Stats, Ajustes.
 
 ### Registrar día (hoja inferior)
 
@@ -335,10 +384,34 @@ cruda solo genera ruido.
 Es el único lugar donde se muestran los ocho rangos con nombre: cuáles ya se
 pasaron y cuál viene.
 
+### Mi perfil
+
+Pantalla propia donde se centraliza todo lo que es "mío". Hoy se puede entrar al
+perfil de un amigo pero no al propio, y eso deja al usuario sin saber qué está
+mostrando.
+
+- Cambiar la foto de perfil.
+- Elegir qué fotos del álbum ven los amigos, desde acá y no solo una por una.
+- **Ver como lo ven los demás**: muestra exactamente lo que ve un amigo al
+  entrar. Sin esto nadie sabe qué está compartiendo.
+- Administrar amigos: lista completa con opción de eliminar, sin tener que
+  entrar al perfil de cada uno.
+
+**Foto de perfil:** al subirla se abre un recorte circular —se ve el círculo, se
+arrastra y se hace zoom para encuadrar—. El recorte se hace en el teléfono antes
+de subir, para no mandar archivos enormes al storage.
+
 ### Álbum
 
 Las fotos quedan asociadas al planeta del día. El historial no son filas iguales,
 son planetas distintos con su fecha y su foto.
+
+### Leaderboard
+
+Además del campo estelar y la lista: cuando el buscador está vacío se muestran
+tres personas sugeridas, para que no quede una pantalla muerta. Primero amigos de
+mis amigos, después usuarios activos. Nunca alguien que ya es amigo, ni con quien
+haya una solicitud pendiente en cualquier dirección.
 
 ### Ajustes
 
@@ -362,8 +435,21 @@ escriben fechas a mano. Es distinto del mapa de calor de Estadísticas, que solo
 se mira.
 
 Sugerencias: un campo de texto libre y nada más. Sin categorías obligatorias ni
-prioridad. Confirmación visible de que llegó. Cada mensaje nuevo llega por correo
-al dueño de la app.
+prioridad. Confirmación visible de que llegó, escrita como la diría una persona:
+"Gracias por tu opinión, la leo yo mismo". Cada mensaje nuevo llega por correo al
+dueño de la app.
+
+También en Ajustes:
+
+- Cambiar el nombre de usuario, respetando la unicidad.
+- Visibilidad por defecto de las fotos nuevas, para no elegir una por una.
+- Unidades de peso: kilos o libras.
+- Exportar mis datos en un archivo, con todo el historial.
+- **Eliminar la cuenta**, con confirmación fuerte, borrando todo: logs, fotos del
+  storage, pesos y amistades. En una app publicada con usuarios reales esto no
+  puede faltar.
+- Recordatorio diario a una hora elegida. PENDIENTE de decidir: una PWA no puede
+  programar avisos por su cuenta, hace falta que el servidor los mande.
 
 ---
 

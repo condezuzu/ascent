@@ -315,6 +315,39 @@ console.log('\n8b. Cambiar los descansos NO altera ningún día anterior');
 }
 
 // =====================================================================
+console.log('\n8c. La mejor racha sale del historial (baja si se borran días)');
+{
+  const u = await nuevoUsuario();
+  await rachaDe(u, 12);
+  chequear('12 días seguidos', (await perfil(u)).mejor_racha, 12);
+  // se borran 6 registrados por error
+  for (let i = 11; i >= 6; i--) {
+    await db.query('delete from logs where user_id = $1 and fecha = current_date - $2::int', [u, i]);
+  }
+  chequear('el récord baja al borrarlos', (await perfil(u)).mejor_racha, 6);
+  chequear('y la racha también', (await perfil(u)).racha_actual, 6);
+}
+{
+  // Pero un récord legítimo NO se pierde al cortarse la racha
+  const u = await nuevoUsuario();
+  await rachaDe(u, 15, 5); // 15 días que terminaron hace 5
+  await rachaDe(u, 2); // y 2 días ahora
+  const p = await perfil(u);
+  chequear('la racha actual es la corta', p.racha_actual, 2);
+  chequear('pero el récord conserva los 15', p.mejor_racha, 15);
+}
+{
+  // El piso de misericordia no puede quedar por encima del récord
+  const u = await nuevoUsuario();
+  await rachaDe(u, 25, 2);
+  await comoUsuario(u);
+  await db.query('select verificar_perdida(current_date)');
+  const p = await perfil(u);
+  chequear('tras perder, el récord sigue siendo el real', p.mejor_racha, 25);
+  chequear('y la racha bajó 10', p.racha_actual, 15);
+}
+
+// =====================================================================
 console.log('\n9. registrar_dia: RPC devuelve el salto de rango');
 {
   const u = await nuevoUsuario();

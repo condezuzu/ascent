@@ -201,7 +201,7 @@ export default function Social() {
     <>
       <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.68} />
       <div className="pantalla">
-        <div className="titulo-pantalla">Posiciones</div>
+        <div className="titulo-pantalla">Leaderboard</div>
 
         {solicitudes.length > 0 && (
           <div className="tarjeta" style={{ marginBottom: 16 }}>

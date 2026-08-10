@@ -94,7 +94,7 @@ export default function Estadisticas() {
     <>
       <FondoEspacial rango={rangoActual.n} esquina="arriba-derecha" velo={0.72} />
       <div className="pantalla">
-        <div className="titulo-pantalla">Datos</div>
+        <div className="titulo-pantalla">Stats</div>
 
         <div className="stat-grilla">
           <div className="stat-celda">

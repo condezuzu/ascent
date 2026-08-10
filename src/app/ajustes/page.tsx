@@ -231,7 +231,9 @@ export default function Ajustes() {
           <button className="boton-fantasma" style={{ marginTop: 8 }} onClick={mandarSugerencia}>
             Mandar
           </button>
-          {sugerenciaOk && <p className="ok-msg">Llegó. Gracias.</p>}
+          {sugerenciaOk && (
+            <p className="ok-msg">Gracias por tu opinión, la leo yo mismo.</p>
+          )}
         </div>
 
         <InstalarPWA />

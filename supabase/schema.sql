@@ -179,6 +179,41 @@ begin
 end;
 $$;
 
+-- La mejor racha SALE DEL HISTORIAL: recorre todos los días registrados y
+-- devuelve la racha más larga que hubo. No es un contador que solo sube.
+-- Si alguien registra días por error y los borra, el récord tiene que bajar:
+-- un máximo inflado que no se puede corregir es un dato falso para siempre.
+create or replace function public.mejor_racha_real(p_user uuid)
+returns int language plpgsql stable security definer set search_path = public as $$
+declare
+  r record;
+  anterior date := null;
+  corriente int := 0;
+  maximo int := 0;
+  d date;
+begin
+  for r in
+    select fecha, es_descanso from logs where user_id = p_user order by fecha
+  loop
+    if anterior is not null then
+      -- se revisan los días entre medio: cortan salvo que fueran de descanso
+      d := anterior + 1;
+      while d < r.fecha loop
+        if not (extract(dow from d)::int = any(descansos_vigentes(p_user, d))) then
+          corriente := 0;
+          exit;
+        end if;
+        d := d + 1;
+      end loop;
+    end if;
+    if not r.es_descanso then corriente := corriente + 1; end if;
+    if corriente > maximo then maximo := corriente; end if;
+    anterior := r.fecha;
+  end loop;
+  return maximo;
+end;
+$$;
+
 -- Cambiar los días de descanso. Rige desde hoy hacia adelante: el pasado
 -- queda congelado con la configuración que estaba vigente entonces.
 create or replace function public.fijar_descansos(p_dias int[], p_hoy date default current_date)
@@ -240,7 +275,8 @@ begin
   r := base + calcular_racha(uid, hasta);
   update profiles set
     racha_actual = r,
-    mejor_racha = greatest(mejor_racha, r),
+    -- el máximo sale del historial: si se borran días, baja
+    mejor_racha = greatest(mejor_racha_real(uid), r),
     rango_actual = rango_de_racha(r)
   where id = uid;
 
@@ -343,7 +379,8 @@ begin
   r := calcular_racha(uid, hasta);
   update profiles set
     racha_actual = r,
-    mejor_racha = greatest(mejor_racha, r),
+    -- el máximo sale del historial: si se borran días, baja
+    mejor_racha = greatest(mejor_racha_real(uid), r),
     rango_actual = rango_de_racha(r)
   where id = uid;
   -- Si el historial recalculado ya está cortado, la regla de -10 se aplica
@@ -624,6 +661,7 @@ grant update (visibilidad) on public.photos      to authenticated;
 -- rango_de_racha y planeta_de_dia quedan abiertas: son matemática pura.
 revoke execute on function
   public.calcular_racha(uuid, date),
+  public.mejor_racha_real(uuid),
   public.descansos_vigentes(uuid, date),
   public.son_amigos(uuid, uuid),
   public.registrar_dia(date, boolean, numeric),
@@ -636,6 +674,7 @@ revoke execute on function
 
 grant execute on function
   public.calcular_racha(uuid, date),
+  public.mejor_racha_real(uuid),
   public.descansos_vigentes(uuid, date),
   public.son_amigos(uuid, uuid),
   public.registrar_dia(date, boolean, numeric),
