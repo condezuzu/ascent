@@ -1,7 +1,7 @@
 # Ascent
 
 Racha de gimnasio a escala del universo. PWA en Next.js + Supabase + three.js.
-La especificación completa vive en `ESPECIFICACION.md` (leerla al inicio de cada sesión).
+La especificación vive en `CLAUDE.md` (índice) y `spec/` (por tema). `CLAUDE.md` es lo único que se lee siempre.
 
 ## Puesta en marcha (una sola vez)
 
