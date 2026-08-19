@@ -54,7 +54,8 @@ Rutas de QA: `/galeria` (motor) y `/tipografias` (comparador de fuentes).
 | [spec/motor-visual.md](spec/motor-visual.md) | §6 rangos · §7 reglas visuales · §8 motor de planetas | tocás el render o el diseño |
 | [spec/pantallas.md](spec/pantallas.md) | §9 pantallas · §10 onboarding · §11 estados vacíos | tocás una pantalla |
 | [spec/fuerza.md](spec/fuerza.md) | §16 módulo de fuerza (PRs, DOTS, ranking) | implementado y verificado |
-| [spec/cronometro.md](spec/cronometro.md) | §17 cronómetro de sesión · §18 descanso entre series | implementado; falta correr la migración 10 |
+| [spec/cronometro.md](spec/cronometro.md) | §17 cronómetro de sesión · §18 descanso entre series | implementado |
+| [spec/estetica.md](spec/estetica.md) | §19 vuelta estética · §20 el cronómetro en Inicio | **propuesta, sin implementar** |
 | [spec/etapa-nativa.md](spec/etapa-nativa.md) | §13 ubicación y push · §13b avisos de descanso | documentado, sin implementar |
 
 Los números de sección (§3, §7…) siguen siendo los de siempre: los comentarios
