@@ -1488,6 +1488,62 @@ console.log('\n27. Cronómetro de sesión');
 }
 
 // =====================================================================
+console.log('\n28. Simular racha: el candado es del servidor');
+{
+  const dueno = await nuevoUsuario();
+  const otro = await nuevoUsuario();
+  await db.query(`update profiles set username = 'condeeladmin' where id = $1`, [dueno]);
+
+  // desde otra cuenta NO se puede, aunque descubra el RPC y lo llame a mano:
+  // esconder el botón en el cliente no protege nada
+  await comoUsuario(otro);
+  await db.exec('set role authenticated');
+  let ajeno = null;
+  try {
+    await db.query('select simular_racha(50)');
+    ajeno = false;
+  } catch (e) {
+    ajeno = /no puede simular/i.test(e.message);
+  }
+  chequear('otra cuenta no puede simular', ajeno, true);
+  chequear('y su racha quedó intacta', (await perfil(otro)).racha_actual, 0);
+
+  await comoUsuario(dueno);
+  const r = (await db.query('select simular_racha(75) as v')).rows[0].v;
+  chequear('el dueño sí', [r.racha, r.rango], [75, 8]);
+  const p = await perfil(dueno);
+  chequear('deja el perfil coherente', [p.racha_actual, p.rango_actual], [75, 8]);
+  // va a racha_base: si no, el primer trigger de logs lo pisaría
+  chequear('y sobrevive al recálculo', p.racha_base, 75);
+
+  await db.query(`insert into logs (user_id, fecha) values ($1, current_date)`, [dueno]);
+  chequear('registrar un día suma sobre lo simulado', (await perfil(dueno)).racha_actual, 76);
+
+  let fuera = null;
+  try {
+    await db.query('select simular_racha(5000)');
+    fuera = false;
+  } catch (e) {
+    fuera = /fuera de rango/i.test(e.message);
+  }
+  chequear('no acepta cualquier número', fuera, true);
+  await db.exec('reset role');
+
+  // sin sesión tampoco
+  await db.query(`select set_config('test.uid', '', false)`);
+  await db.exec('set role authenticated');
+  let sinSesion = null;
+  try {
+    await db.query('select simular_racha(10)');
+    sinSesion = false;
+  } catch (e) {
+    sinSesion = /sin sesión/i.test(e.message);
+  }
+  chequear('sin sesión tampoco', sinSesion, true);
+  await db.exec('reset role');
+}
+
+// =====================================================================
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
