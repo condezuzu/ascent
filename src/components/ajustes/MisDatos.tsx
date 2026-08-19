@@ -37,9 +37,7 @@ export default function MisDatos({ perfil }: { perfil: Perfil }) {
       <button className="boton-fantasma" onClick={exportar} disabled={exportando}>
         {exportando ? 'Armando el archivo…' : 'Exportar mis datos'}
       </button>
-      <p className="nota-privada">
-        Un archivo con todo tu historial: días, pesos, marcas, fotos, descansos y amigos.
-      </p>
+      <p className="nota-privada">Todo tu historial, en un archivo.</p>
       {error && <p className="error-msg">{error}</p>}
     </div>
   );

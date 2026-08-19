@@ -29,9 +29,7 @@ export default function UnidadPeso({
           </button>
         ))}
       </div>
-      <p className="nota-privada">
-        Cambia solo cómo lo escribís y lo leés. Tu historial no se toca.
-      </p>
+
     </div>
   );
 }

@@ -48,8 +48,7 @@ export default function Descansos({
         ))}
       </div>
       <p className="nota-privada" style={{ marginTop: 8 }}>
-        Esos días la racha no se corta aunque no registres. El cambio vale de hoy en adelante: lo
-        que ya pasó queda como estaba.
+        Esos días podés faltar sin perder la racha.
       </p>
     </div>
   );

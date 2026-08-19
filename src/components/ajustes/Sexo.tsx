@@ -50,14 +50,11 @@ export default function Sexo({
           Hombre
         </button>
       </div>
+      {/* El aviso de §16.7c no se puede acortar hasta que desaparezca: es lo
+          que hace que activar el DOTS sea una decisión y no una sorpresa. */}
+      <p className="nota-privada">Sin esto no hay DOTS. El resto de tus marcas anda igual.</p>
       <p className="nota-privada">
-        La fórmula que compara fuerza entre personas de distinto tamaño usa dos juegos de números
-        según el sexo. Sin este dato no hay DOTS ni ranking; el resto de tus marcas funciona igual.
-      </p>
-      <p className="nota-privada">
-        Al cargarlo, tus amigos van a poder deducir aproximadamente cuánto pesás: ya ven tus
-        levantamientos, y el DOTS los relaciona con el peso corporal. Por eso solo se muestra la
-        banda y nunca el número exacto, pero la banda no lo esconde del todo.
+        Ojo: con el DOTS puesto, tus amigos pueden deducir más o menos cuánto pesás.
       </p>
       {error && <p className="error-msg">{error}</p>}
     </div>

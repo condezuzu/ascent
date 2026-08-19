@@ -9,6 +9,9 @@ export default function CorregirDias({ recargar }: { recargar: () => void }) {
   const [supabase] = useState(() => crearCliente());
   const [recalculando, setRecalculando] = useState(false);
   const [aviso, setAviso] = useState('');
+  // Un mes entero son 459 px de los 2400 que medía Ajustes, y corregir días
+  // es de las cosas que menos se tocan. Vive plegado.
+  const [abierto, setAbierto] = useState(false);
 
   // El RPC recalcula y aplica la pérdida en la misma transacción: el número
   // que mostramos acá es el final, no rebota al recargar.
@@ -29,17 +32,24 @@ export default function CorregirDias({ recargar }: { recargar: () => void }) {
 
   return (
     <div className="seccion">
-      <h3>Corregir días</h3>
-      <CalendarioCorregir alCambiar={recargar} />
-      <button
-        className="boton-texto"
-        onClick={recalcular}
-        disabled={recalculando}
-        style={{ marginTop: 4 }}
-      >
-        {recalculando ? 'Recalculando…' : 'Recalcular racha desde el historial'}
+      <button className="fila-plegable" onClick={() => setAbierto(!abierto)} aria-expanded={abierto}>
+        <h3>Corregir días</h3>
+        <span>{abierto ? '−' : '+'}</span>
       </button>
-      {aviso && <p className="ok-msg">{aviso}</p>}
+      {abierto && (
+        <>
+          <CalendarioCorregir alCambiar={recargar} />
+          <button
+            className="boton-texto"
+            onClick={recalcular}
+            disabled={recalculando}
+            style={{ marginTop: 4 }}
+          >
+            {recalculando ? 'Recalculando…' : 'Recalcular racha desde el historial'}
+          </button>
+          {aviso && <p className="ok-msg">{aviso}</p>}
+        </>
+      )}
     </div>
   );
 }

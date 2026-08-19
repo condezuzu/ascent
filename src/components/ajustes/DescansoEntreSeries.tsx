@@ -46,10 +46,7 @@ export default function DescansoEntreSeries({
           </button>
         ))}
       </div>
-      <p className="nota-privada">
-        Con cuánto arranca cada sesión. Mientras descansás lo podés cambiar ahí mismo, y ese cambio
-        vale hasta que termines de entrenar.
-      </p>
+      <p className="nota-privada">Mientras descansás lo podés cambiar ahí mismo.</p>
 
       <button
         className="boton-texto"
@@ -67,8 +64,8 @@ export default function DescansoEntreSeries({
           el bolsillo y se coma tres minutos de descanso (§18.7). */}
       <p className="nota-privada">
         {vibra
-          ? 'Al terminar vibra, y suena si prendés el sonido. Con la app abierta: si la cerrás o se bloquea la pantalla, no avisa.'
-          : 'Tu teléfono no deja que la web haga vibrar, así que el aviso es visual —la pantalla cambia de golpe— y sonoro si prendés el sonido. Solo con la app abierta.'}
+          ? 'Vibra al terminar, con la app abierta. Si la cerrás, no avisa.'
+          : 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.'}
       </p>
     </div>
   );

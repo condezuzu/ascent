@@ -20,7 +20,7 @@ export default function FotosNuevas({
 
   return (
     <div className="seccion">
-      <h3>Fotos nuevas</h3>
+      <h3>Quién ve tus fotos nuevas</h3>
       <div className="selector-vista">
         {/* !== 'amigos' y no === 'privada': si algún día aparece un tercer
             valor, el botón seguro es el que menos comparte */}
@@ -37,9 +37,7 @@ export default function FotosNuevas({
           Amigos
         </button>
       </div>
-      <p className="nota-privada">
-        Con qué arranca cada foto nueva. Después la cambiás una por una desde tu perfil.
-      </p>
+      <p className="nota-privada">Cada foto se puede cambiar después, una por una.</p>
     </div>
   );
 }
