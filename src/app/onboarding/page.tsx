@@ -38,7 +38,8 @@ export default function Onboarding() {
         return setError('Entre 3 y 20 caracteres: letras, números o guion bajo.');
       return setError(error.message);
     }
-    router.push('/');
+    // el recorrido va entre elegir el nombre y la primera pantalla
+    router.push('/bienvenida');
     router.refresh();
   }
 
