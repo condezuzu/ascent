@@ -148,7 +148,8 @@ export default function Principal() {
   }
 
   const hoy = hoyISO();
-  const registradoHoy = logs.some((l) => l.fecha === hoy);
+  const logHoy = logs.find((l) => l.fecha === hoy) ?? null;
+  const registradoHoy = !!logHoy;
   const racha = perfil.racha_actual;
   const sinNada = racha === 0 && logs.length === 0;
   const prox = siguienteRango(racha);
@@ -176,10 +177,12 @@ export default function Principal() {
   const hora = new Date().getHours();
   const avisoTiempo = !registradoHoy && racha > 0 && hora >= 19;
 
-  function alConfirmar(r: ResultadoRegistro) {
+  function alConfirmar(r: ResultadoRegistro | null) {
     setHojaAbierta(false);
-    // La animación se dispara SOLO después de que la base confirmó.
-    if (r.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+    // La animación se dispara SOLO después de que la base confirmó. Viene en
+    // null cuando el día ya estaba y solo se le sumó foto o peso: ahí no hay
+    // subida de rango que festejar.
+    if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
     cargar();
   }
 
@@ -222,15 +225,16 @@ export default function Principal() {
         )}
         {esDescanso && <p className="aviso-tiempo">Hoy descansa. La racha sigue igual.</p>}
 
-        {!registradoHoy ? (
-          <button className="boton-solido" onClick={() => setHojaAbierta(true)}>
-            Registrar día
-          </button>
-        ) : (
-          <div className="boton-fantasma" style={{ pointerEvents: 'none' }}>
-            Día registrado
-          </div>
-        )}
+        {/* Con el día ya registrado esto era un cartel muerto, y el día
+            quedaba cerrado: no había forma de agregarle la foto ni el peso
+            después. Ahora sigue abierto, que es lo único razonable cuando el
+            día lo pudo registrar el cronómetro sin preguntar nada. */}
+        <button
+          className={registradoHoy ? 'boton-fantasma' : 'boton-solido'}
+          onClick={() => setHojaAbierta(true)}
+        >
+          {registradoHoy ? 'Día registrado · sumar foto o peso' : 'Registrar día'}
+        </button>
 
         <TiraSemanal logs={logs} descansos={descansos} />
 
@@ -271,6 +275,7 @@ export default function Principal() {
       {hojaAbierta && (
         <RegistrarSheet
           racha={racha}
+          logId={logHoy?.id}
           unidadPeso={perfil.unidad_peso}
           visibilidadDefault={perfil.visibilidad_default}
           alCerrar={() => setHojaAbierta(false)}
