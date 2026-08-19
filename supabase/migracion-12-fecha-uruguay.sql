@@ -1,4 +1,8 @@
 -- =============================================================
+-- OJO: la MIGRACIÓN 13 reemplaza esto por la zona del teléfono. Ésta sigue
+-- siendo necesaria —cierra el agujero de que el cliente eligiera la fecha—
+-- pero fijar el corte en Uruguay rompía a quien viaja. Correr las dos.
+--
 -- MIGRACIÓN 12 — el día lo corta Uruguay, no UTC ni el teléfono
 --
 -- Para bases que YA tienen el schema aplicado. En una base nueva no hace

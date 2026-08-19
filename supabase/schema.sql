@@ -4,7 +4,7 @@
 -- =============================================================
 
 -- -------------------------------------------------------------
--- QUÉ DÍA ES HOY
+-- QUÉ DÍA ES HOY (en la zona de cada usuario)
 --
 -- `current_date` en Supabase es UTC, así que el día del servidor cambiaba a
 -- las 21:00 de Uruguay. Y para tapar eso la fecha la mandaba el CLIENTE, lo
@@ -12,14 +12,18 @@
 -- teléfono, registrar "mañana", volverla atrás y registrar "hoy" daba dos
 -- días de racha en un día real, repetible.
 --
--- La fecha la decide el servidor con la zona de Uruguay y el cliente no
--- participa. Quien viaje a otro huso ve el día de Uruguay: para una app de un
--- gimnasio uruguayo es lo correcto, y evita tener que dejar cambiar una zona
--- por usuario —que sería el mismo agujero con otro nombre—.
+-- La fecha la decide el SERVIDOR y el cliente no participa. Lo que sí manda
+-- el cliente es la ZONA del teléfono, y ahí está toda la diferencia: una zona
+-- se verifica contra `pg_timezone_names`, una fecha es un número inventado.
+--
+-- Así el día corta donde está el usuario, aunque viaje. Es automático: la app
+-- la lee del teléfono sola, no hay campo en Ajustes y el usuario nunca la ve.
+-- Que la zona se pueda mover no reabre el agujero, porque hay una guarda: si
+-- la zona cambió, entre dos días tienen que pasar 20 horas de reloj real.
 -- -------------------------------------------------------------
-create or replace function public.hoy_uy()
+create or replace function public.tope_calendario()
 returns date language sql stable as $$
-  select (now() at time zone 'America/Montevideo')::date;
+  select (now() at time zone 'Pacific/Kiritimati')::date;
 $$;
 
 -- -------------------------------------------------------------
@@ -64,6 +68,14 @@ create table public.profiles (
   -- que valga guardar y son quince o veinte por sesión.
   duracion_descanso int not null default 180
     check (duracion_descanso between 15 and 600),
+  -- Zona horaria del TELÉFONO, en identificador IANA. La manda la app sola en
+  -- cada sesión y el usuario nunca la ve: no hay campo en Ajustes. Sin grant
+  -- de update — se escribe solo por fijar_zona(), que la valida contra
+  -- pg_timezone_names. Una zona es verificable; una fecha, no.
+  zona text not null default 'America/Montevideo',
+  -- Cuándo cambió: sin esto no hay forma de distinguir un viaje de un cambio
+  -- de hora a mano, que es lo que separa la guarda de §12b.
+  zona_cambiada timestamptz,
   creado timestamptz not null default now()
 );
 
@@ -87,9 +99,10 @@ create unique index profiles_username_unico on public.profiles (lower(username))
 create table public.logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
-  -- hoy_uy() ES el día del usuario, así que el futuro empieza mañana y punto:
-  -- ya no hace falta el "+ 1" que compensaba el huso.
-  fecha date not null check (fecha <= hoy_uy()),
+  -- El tope es el día de la zona MÁS ADELANTADA del planeta: un CHECK corre
+  -- por fila y no tiene a quién preguntarle cuál es la zona del usuario. La
+  -- comprobación fina —el día de ESTE usuario— la hacen los RPC.
+  fecha date not null check (fecha <= tope_calendario()),
   es_descanso boolean not null default false,
   planeta_del_dia text,
   creado timestamptz not null default now(),
@@ -111,7 +124,7 @@ create table public.photos (
 create table public.weights (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
-  fecha date not null check (fecha <= hoy_uy()),
+  fecha date not null check (fecha <= tope_calendario()),
   valor numeric(5,2) not null check (valor between 20 and 400),
   unique (user_id, fecha)
 );
@@ -173,7 +186,7 @@ create table public.prs (
   reps int not null check (reps between 1 and 20),
   -- true = 1RM real; false = estimado con Epley a partir de las repeticiones
   es_real boolean not null default false,
-  fecha date not null check (fecha <= hoy_uy()),
+  fecha date not null check (fecha <= tope_calendario()),
   creado timestamptz not null default now(),
   -- Un 1RM "real" con más de una repetición es una contradicción: es el peso
   -- que se levantó UNA vez. Si tiene más reps, es un estimado.
@@ -255,6 +268,53 @@ create table public.feedback (
   plataforma text,
   pantalla_origen text
 );
+
+-- -------------------------------------------------------------
+-- EL DÍA DE CADA USUARIO
+-- -------------------------------------------------------------
+
+create or replace function public.hoy_de(p_user uuid)
+returns date language sql stable security definer set search_path = public as $$
+  select (now() at time zone coalesce(
+    (select zona from profiles where id = p_user), 'America/Montevideo'))::date;
+$$;
+
+create or replace function public.mi_hoy()
+returns date language sql stable security definer set search_path = public as $$
+  select hoy_de(auth.uid());
+$$;
+
+create or replace function public.fijar_zona(p_zona text)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  actual text;
+begin
+  if uid is null or p_zona is null then return; end if;
+  -- Texto libre no: una zona inventada haría que `at time zone` reviente en
+  -- cada consulta de fecha, o peor, que caiga en algo que no es la del
+  -- usuario. Se comprueba contra la tabla de zonas de Postgres.
+  if not exists (select 1 from pg_timezone_names where name = p_zona) then
+    raise exception 'zona horaria desconocida: %', p_zona;
+  end if;
+  select zona into actual from profiles where id = uid;
+  if actual is distinct from p_zona then
+    update profiles set zona = p_zona, zona_cambiada = now() where id = uid;
+  end if;
+end;
+$$;
+
+create or replace function public.puede_registrar_hoy(p_user uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select not exists (
+    select 1
+      from logs l, profiles p
+     where l.user_id = p_user and p.id = p_user
+       and p.zona_cambiada is not null
+       and l.creado > p.zona_cambiada - interval '20 hours'
+       and now() - l.creado < interval '20 hours'
+  );
+$$;
 
 -- -------------------------------------------------------------
 -- FUNCIONES DE RACHA
@@ -364,7 +424,7 @@ begin
   if exists (select 1 from unnest(limpio) x where x < 0 or x > 6) then
     raise exception 'día de semana inválido';
   end if;
-  insert into descansos (user_id, desde, dias) values (uid, hoy_uy(), limpio)
+  insert into descansos (user_id, desde, dias) values (uid, mi_hoy(), limpio)
     on conflict (user_id, desde) do update set dias = excluded.dias;
   update profiles set dias_descanso = limpio where id = uid;
 end;
@@ -449,6 +509,24 @@ begin
 end;
 $$;
 
+-- El CHECK de la tabla es un tope grosero —el día de la zona más adelantada
+-- del planeta— porque un CHECK corre por fila y no puede mirar el perfil. La
+-- comprobación fina va acá, que sí puede, y cubre también el insert directo
+-- del calendario de corrección: sin esto se podía escribir un día futuro en
+-- la zona propia y la racha lo contaba.
+create or replace function public.logs_no_futuros()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.fecha > hoy_de(new.user_id) then
+    raise exception 'ese día todavía no llegó';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trg_logs_no_futuros before insert or update on public.logs
+  for each row execute function public.logs_no_futuros();
+
 create trigger trg_logs_before_insert before insert on public.logs
   for each row execute function public.logs_before_insert();
 create trigger trg_logs_after_change after insert or update or delete on public.logs
@@ -469,7 +547,7 @@ declare
   viva int;
   nuevo_rango int;
   nueva_racha int;
-  hoy date := hoy_uy();
+  hoy date := mi_hoy();
 begin
   select * into perfil from profiles where id = uid;
   if perfil.id is null or perfil.racha_actual = 0 then
@@ -507,7 +585,7 @@ declare
   perdida jsonb;
   perfil profiles;
 begin
-  select coalesce(max(fecha), hoy_uy()) into hasta from logs where user_id = uid;
+  select coalesce(max(fecha), mi_hoy()) into hasta from logs where user_id = uid;
   update profiles set racha_base = 0, perdida_fecha = null where id = uid;
   r := calcular_racha(uid, hasta);
   update profiles set
@@ -582,8 +660,11 @@ declare
   rango_antes int;
   perfil profiles;
   nuevo_log logs;
-  hoy date := hoy_uy();
+  hoy date := mi_hoy();
 begin
+  if not puede_registrar_hoy(uid) then
+    raise exception 'todavía no pasaron 20 horas desde el último día';
+  end if;
   select rango_actual into rango_antes from profiles where id = uid;
   insert into logs (user_id, fecha, es_descanso) values (uid, hoy, p_es_descanso)
     returning * into nuevo_log;
@@ -618,7 +699,7 @@ declare
 begin
   for reto in
     select * from challenges
-    where estado = 'activo' and hasta < hoy_uy()
+    where estado = 'activo' and hasta < mi_hoy()
       and (retador = uid or rival = uid)
   loop
     select count(*) into dias_retador from logs
@@ -910,7 +991,7 @@ declare
   uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  insert into weights (user_id, fecha, valor) values (uid, hoy_uy(), p_valor)
+  insert into weights (user_id, fecha, valor) values (uid, mi_hoy(), p_valor)
     on conflict (user_id, fecha) do update set valor = excluded.valor;
 end;
 $$;
@@ -966,7 +1047,7 @@ declare
   l uuid;
   registro jsonb := null;
   s sesiones;
-  hoy date := hoy_uy();
+  hoy date := mi_hoy();
 begin
   if uid is null then raise exception 'sin sesión'; end if;
   perform cerrar_sesiones_vencidas(uid);
@@ -1291,7 +1372,8 @@ revoke execute on function
   public.eliminar_amigo(uuid),
   public.eliminar_cuenta(),
   public.fijar_descansos(int[], date),
-  public.hoy_uy(),
+  public.mi_hoy(),
+  public.fijar_zona(text),
   public.mi_fuerza(),
   public.ranking_fuerza(),
   public.percentil_fuerza(),
@@ -1312,6 +1394,8 @@ revoke execute on function public.cerrar_sesiones_vencidas(uuid)
 -- sin devolver nunca el peso. un_rm, dots y banda_dots quedan abiertas como
 -- rango_de_racha: son matemática pura y no tocan datos de nadie.
 revoke execute on function
+  public.hoy_de(uuid),
+  public.puede_registrar_hoy(uuid),
   public.peso_actual(uuid),
   public.mejores_marcas(uuid),
   public.total_dots(uuid),
@@ -1330,7 +1414,8 @@ grant execute on function
   public.eliminar_amigo(uuid),
   public.eliminar_cuenta(),
   public.fijar_descansos(int[], date),
-  public.hoy_uy(),
+  public.mi_hoy(),
+  public.fijar_zona(text),
   public.mi_fuerza(),
   public.ranking_fuerza(),
   public.percentil_fuerza(),

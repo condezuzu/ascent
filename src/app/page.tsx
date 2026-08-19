@@ -10,6 +10,7 @@ import { citaDelDia } from '@/lib/frases';
 import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
 import { guardarPerfilCache, leerPerfilCache } from '@/lib/cache';
 import { marca } from '@/lib/medir';
+import { sincronizarZona } from '@/lib/zona';
 import { lineaDeMarcas } from '@/lib/fuerza';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -82,6 +83,10 @@ export default function Principal() {
       supabase.from('profiles').select('*').eq('id', uid).single(),
       supabase.from('logs').select('*').eq('user_id', uid).gte('fecha', desde).order('fecha'),
       // p_hoy = fecha LOCAL del usuario (el servidor está en UTC)
+      // TODO(quitar p_hoy): el servidor lo IGNORA desde la migración 12 —la
+      // fecha la decide él con la zona del usuario—. Se sigue mandando solo
+      // para que un cliente viejo no rompa mientras Vercel despliega. Se
+      // saca en el primer deploy posterior al 20/8/2026. Ver trampas.md.
       supabase.rpc('verificar_perdida', { p_hoy: hoyISO() }),
       supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
     ]);
@@ -105,6 +110,11 @@ export default function Principal() {
     setCargado(true);
     marca('ascent:pantalla-lista');
     cargarSocial(uid);
+
+    // La zona del teléfono, para que el día corte donde está el usuario. Va
+    // después de dibujar y solo escribe si cambió: es una llamada por viaje,
+    // no una por arranque. El usuario nunca la ve ni la configura.
+    sincronizarZona(supabase);
 
     // Las marcas también van después de dibujar, y por la misma razón que la
     // línea social: son un agregado, no lo que el usuario vino a ver. Si la

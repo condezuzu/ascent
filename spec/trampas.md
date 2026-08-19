@@ -67,11 +67,27 @@ problema: la fecha pasó a mandarla **el cliente**, acotada a ±1 día, y eso
 dejó una ventana de tres días para elegir. Adelantar la hora del teléfono,
 registrar "mañana", volverla atrás y registrar "hoy" daba **dos días de racha
 en un día real**, repetible.
-→ **Regla:** el día lo decide el servidor con `hoy_uy()`
-(`now() at time zone 'America/Montevideo'`). El cliente **no participa**: los
-`p_hoy` que quedan en las firmas se ignoran, y están solo para que un cliente
-viejo no rompa mientras Vercel despliega. Una fecha que el cliente puede
-elegir es una fecha que el cliente puede inventar.
+→ **Regla:** el día lo decide el **servidor**, con la **zona** del usuario
+(`mi_hoy()`). El cliente manda la zona, nunca la fecha, y esa es toda la
+diferencia: una zona se verifica contra `pg_timezone_names`, una fecha es un
+número que el cliente inventa.
+
+**Los `p_hoy` que quedan en las firmas se ignoran en silencio, y un parámetro
+que se ignora miente.** Están solo para que un cliente viejo no rompa mientras
+Vercel despliega, porque el deploy y la migración no ocurren en el mismo
+instante.
+→ **Se borran en el primer deploy posterior al 20/8/2026**, cuando ya no pueda
+quedar ningún cliente de antes de la migración 12 dando vueltas. Son cuatro:
+`verificar_perdida`, `recalcular_desde_cero`, `cerrar_retos_vencidos` y
+`fijar_descansos`, más `p_fecha` en `registrar_dia` y `anotar_peso`. En el
+código están marcados con `TODO(quitar p_hoy)`.
+
+**Cambiar la zona tampoco regala días.** Registrás, movés la zona adelante,
+"hoy" pasa a ser mañana, registrás de nuevo.
+→ **Regla:** entre dos días tienen que pasar 20 horas de reloj real **si la
+zona cambió** desde el último día registrado. Condicionado al cambio y no a
+secas, porque entrenar un lunes a las 23:00 y el martes a las 07:00 son ocho
+horas y dos días de verdad: la guarda incondicional rechazaba el segundo.
 
 ---
 
