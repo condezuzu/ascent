@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { fechaLinda, hoyISO } from '@/lib/fechas';
+import { aKilos, limites, type Unidad } from '@/lib/peso';
 import type { ResultadoRegistro } from '@/lib/tipos';
 
 // Hoja inferior de registro: día, foto opcional y peso opcional. Nada más.
@@ -11,11 +12,15 @@ import type { ResultadoRegistro } from '@/lib/tipos';
 export default function RegistrarSheet({
   racha,
   fecha,
+  unidadPeso = 'kg',
+  visibilidadDefault = 'privada',
   alCerrar,
   alConfirmar,
 }: {
   racha: number;
   fecha?: string; // para corrección manual de días pasados
+  unidadPeso?: Unidad;
+  visibilidadDefault?: 'privada' | 'amigos';
   alCerrar: () => void;
   alConfirmar: (r: ResultadoRegistro) => void;
 }) {
@@ -24,7 +29,8 @@ export default function RegistrarSheet({
   const esHoy = dia === hoyISO();
   const [peso, setPeso] = useState('');
   const [foto, setFoto] = useState<File | null>(null);
-  const [fotoVisible, setFotoVisible] = useState(false);
+  // arranca donde el usuario dijo en Ajustes, para no elegir una por una
+  const [fotoVisible, setFotoVisible] = useState(visibilidadDefault === 'amigos');
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
   const [cerrando, setCerrando] = useState(false);
@@ -40,11 +46,17 @@ export default function RegistrarSheet({
   async function confirmar() {
     setError('');
     setCargando(true);
-    const pesoNum = peso ? Number(peso.replace(',', '.')) : null;
-    if (peso && (isNaN(pesoNum!) || pesoNum! < 20 || pesoNum! > 400)) {
+    const escrito = peso ? Number(peso.replace(',', '.')) : null;
+    const tope = limites(unidadPeso);
+    if (peso && (isNaN(escrito!) || escrito! < tope.min || escrito! > tope.max)) {
       setCargando(false);
       return setError('Ese peso no parece válido.');
     }
+    // a la base va siempre en kilos: la unidad es solo cómo lo escribe y lo
+    // lee el usuario. Redondeado a dos decimales, que es lo que acepta la
+    // columna (numeric(5,2)) y lo que sobra para un peso corporal.
+    const pesoNum =
+      escrito === null ? null : Math.round(aKilos(escrito, unidadPeso) * 100) / 100;
 
     const { data, error } = await supabase.rpc('registrar_dia', {
       p_fecha: dia,
@@ -124,7 +136,7 @@ export default function RegistrarSheet({
           <input
             type="text"
             inputMode="decimal"
-            placeholder="kg"
+            placeholder={unidadPeso}
             value={peso}
             onChange={(e) => setPeso(e.target.value)}
           />

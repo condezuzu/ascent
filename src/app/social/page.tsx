@@ -11,6 +11,7 @@ import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
+import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 
 type Solicitud = { id: string; de: UsuarioPublico };
 type Actividad = {
@@ -203,6 +204,10 @@ export default function Social() {
       <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.68} />
       <PantallaDeslizable>
         <div className="titulo-pantalla">Leaderboard</div>
+
+        <GloboPrimeraVez cual="leaderboard">
+          Acá comparás tu racha con la de tus amigos, y buscás gente para sumar.
+        </GloboPrimeraVez>
 
         {solicitudes.length > 0 && (
           <div className="tarjeta" style={{ marginBottom: 16 }}>

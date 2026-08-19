@@ -7,12 +7,16 @@ import { enDias, fechaLinda, hoyISO, restarDias } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
 import type { Log, Reto, UsuarioPublico } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
-import TiraSemanal from '@/components/TiraSemanal';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
+import ComoMeVen, {
+  DIAS_VISIBLES,
+  FOTOS_VISIBLES,
+  type FotoVisible,
+} from '@/components/ComoMeVen';
 
-type FotoPerfil = { id: string; url: string; fecha: string | null };
+type FotoPerfil = FotoVisible;
 
 // Perfil de un amigo: su objeto de rango de fondo, racha, última semana,
 // fotos que decidió compartir, y el reto entre ambos.
@@ -69,7 +73,7 @@ export default function Perfil() {
 
     if (amigos) {
       // La RLS permite leer logs y fotos visibles de amigos aceptados.
-      const desde = restarDias(hoyISO(), 6);
+      const desde = restarDias(hoyISO(), DIAS_VISIBLES - 1);
       const { data: ls } = await supabase
         .from('logs')
         .select('*')
@@ -83,7 +87,7 @@ export default function Perfil() {
         .select('id, storage_path, log_id, creado')
         .eq('user_id', params.id)
         .order('creado', { ascending: false })
-        .limit(9);
+        .limit(FOTOS_VISIBLES);
       if (fs && fs.length > 0) {
         const logIds = fs.map((f) => f.log_id).filter(Boolean) as string[];
         const { data: logsFotos } = logIds.length
@@ -224,21 +228,21 @@ export default function Perfil() {
           ← Volver
         </button>
 
-        <div className="cabecera" style={{ marginBottom: 22 }}>
-          <Avatar url={usuario.avatar_url} nombre={usuario.username} tam={52} />
-          <div>
-            <div className="nombre" style={{ fontSize: 18 }}>{usuario.username}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-              <Insignia rango={usuario.rango_actual} tam={16} />
-              <span style={{ fontSize: 13, color: 'var(--sub)' }}>
-                racha de {enDias(usuario.racha_actual)}
-              </span>
-            </div>
-          </div>
-        </div>
-
         {!esAmigo ? (
           <>
+            <div className="cabecera" style={{ marginBottom: 22 }}>
+              <Avatar url={usuario.avatar_url} nombre={usuario.username} tam={52} />
+              <div>
+                <div className="nombre" style={{ fontSize: 18 }}>{usuario.username}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                  <Insignia rango={usuario.rango_actual} tam={16} />
+                  <span style={{ fontSize: 13, color: 'var(--sub)' }}>
+                    racha de {enDias(usuario.racha_actual)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {pedidoPendiente ? (
               <div className="boton-fantasma" style={{ pointerEvents: 'none' }}>
                 Pedido de amistad enviado
@@ -255,9 +259,10 @@ export default function Perfil() {
           </>
         ) : (
           <>
-            {/* de un amigo no se ven sus descansos: son configuración privada */}
-            <TiraSemanal logs={logs} descansos={[]} />
-
+            {/* Exactamente lo que esta persona comparte: el mismo componente
+                que usa el modo "ver como lo ven los demás" del perfil propio,
+                para que la vista previa nunca prometa algo distinto. */}
+            <ComoMeVen usuario={usuario} logs={logs} fotos={fotos}>
             {/* ---- reto ---- */}
             <div className="seccion" style={{ marginTop: 20 }}>
               <h3>Reto</h3>
@@ -305,28 +310,7 @@ export default function Perfil() {
                 </div>
               )}
             </div>
-
-            {/* ---- fotos compartidas ---- */}
-            {fotos.length > 0 && (
-              <div className="seccion">
-                <h3>Fotos</h3>
-                <div className="album-grilla">
-                  {fotos.map((f) => (
-                    <div className="album-celda" key={f.id}>
-                      {f.url && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={f.url} alt="" loading="lazy" />
-                      )}
-                      {f.fecha && (
-                        <div className="album-pie">
-                          <span>{fechaLinda(f.fecha)}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            </ComoMeVen>
 
             {/* ---- dejar de ser amigos ---- */}
             <div className="seccion" style={{ marginTop: 30 }}>

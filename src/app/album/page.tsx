@@ -7,6 +7,7 @@ import { planetaDeDia } from '@/lib/rangos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
+import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 
 type Celda = {
   id: string;
@@ -115,6 +116,11 @@ export default function Album() {
       <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.72} />
       <PantallaDeslizable onClick={() => porBorrar && setPorBorrar(null)}>
         <div className="titulo-pantalla">Álbum</div>
+
+        <GloboPrimeraVez cual="album">
+          Cada foto queda pegada al día en que la sacaste. Desde tu perfil elegís cuáles ven tus
+          amigos.
+        </GloboPrimeraVez>
 
         {error && <p className="error-msg">{error}</p>}
 
