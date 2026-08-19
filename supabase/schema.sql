@@ -4,6 +4,25 @@
 -- =============================================================
 
 -- -------------------------------------------------------------
+-- QUÉ DÍA ES HOY
+--
+-- `current_date` en Supabase es UTC, así que el día del servidor cambiaba a
+-- las 21:00 de Uruguay. Y para tapar eso la fecha la mandaba el CLIENTE, lo
+-- que dejaba una ventana de tres días para elegir: adelantar la hora del
+-- teléfono, registrar "mañana", volverla atrás y registrar "hoy" daba dos
+-- días de racha en un día real, repetible.
+--
+-- La fecha la decide el servidor con la zona de Uruguay y el cliente no
+-- participa. Quien viaje a otro huso ve el día de Uruguay: para una app de un
+-- gimnasio uruguayo es lo correcto, y evita tener que dejar cambiar una zona
+-- por usuario —que sería el mismo agujero con otro nombre—.
+-- -------------------------------------------------------------
+create or replace function public.hoy_uy()
+returns date language sql stable as $$
+  select (now() at time zone 'America/Montevideo')::date;
+$$;
+
+-- -------------------------------------------------------------
 -- TABLAS
 -- -------------------------------------------------------------
 
@@ -68,9 +87,9 @@ create unique index profiles_username_unico on public.profiles (lower(username))
 create table public.logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
-  -- current_date + 1 y no current_date: el servidor está en UTC y el usuario
-  -- en UTC-3; a la noche uruguaya "hoy" local ya es "mañana" en el servidor.
-  fecha date not null check (fecha <= current_date + 1),
+  -- hoy_uy() ES el día del usuario, así que el futuro empieza mañana y punto:
+  -- ya no hace falta el "+ 1" que compensaba el huso.
+  fecha date not null check (fecha <= hoy_uy()),
   es_descanso boolean not null default false,
   planeta_del_dia text,
   creado timestamptz not null default now(),
@@ -92,7 +111,7 @@ create table public.photos (
 create table public.weights (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
-  fecha date not null check (fecha <= current_date + 1),
+  fecha date not null check (fecha <= hoy_uy()),
   valor numeric(5,2) not null check (valor between 20 and 400),
   unique (user_id, fecha)
 );
@@ -154,7 +173,7 @@ create table public.prs (
   reps int not null check (reps between 1 and 20),
   -- true = 1RM real; false = estimado con Epley a partir de las repeticiones
   es_real boolean not null default false,
-  fecha date not null check (fecha <= current_date + 1),
+  fecha date not null check (fecha <= hoy_uy()),
   creado timestamptz not null default now(),
   -- Un 1RM "real" con más de una repetición es una contradicción: es el peso
   -- que se levantó UNA vez. Si tiene más reps, es un estimado.
@@ -335,20 +354,18 @@ $$;
 
 -- Cambiar los días de descanso. Rige desde hoy hacia adelante: el pasado
 -- queda congelado con la configuración que estaba vigente entonces.
-create or replace function public.fijar_descansos(p_dias int[], p_hoy date default current_date)
+create or replace function public.fijar_descansos(p_dias int[], p_hoy date default null)
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
   limpio int[] := coalesce(p_dias, '{}'::int[]);
 begin
   if uid is null then return; end if;
-  if p_hoy > current_date + 1 or p_hoy < current_date - 1 then p_hoy := current_date; end if;
   if exists (select 1 from unnest(limpio) x where x < 0 or x > 6) then
     raise exception 'día de semana inválido';
   end if;
-  insert into descansos (user_id, desde, dias) values (uid, p_hoy, limpio)
+  insert into descansos (user_id, desde, dias) values (uid, hoy_uy(), limpio)
     on conflict (user_id, desde) do update set dias = excluded.dias;
-  -- espejo para la interfaz
   update profiles set dias_descanso = limpio where id = uid;
 end;
 $$;
@@ -444,7 +461,7 @@ create trigger trg_logs_after_change after insert or update or delete on public.
 -- p_hoy viene del cliente: el servidor corre en UTC y el usuario en UTC-3;
 -- sin esto, a la noche uruguaya el servidor evaluaría "hoy" un día adelantado
 -- y quitaría rachas con el día todavía en curso.
-create or replace function public.verificar_perdida(p_hoy date default current_date)
+create or replace function public.verificar_perdida(p_hoy date default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -452,38 +469,26 @@ declare
   viva int;
   nuevo_rango int;
   nueva_racha int;
+  hoy date := hoy_uy();
 begin
-  -- el cliente no puede correr la fecha más que la ventana de huso horario
-  if p_hoy > current_date + 1 or p_hoy < current_date - 1 then
-    p_hoy := current_date;
-  end if;
   select * into perfil from profiles where id = uid;
   if perfil.id is null or perfil.racha_actual = 0 then
     return jsonb_build_object('perdida', false);
   end if;
-  -- ¿Hoy ya registró? Entonces está viva sí o sí.
-  if exists (select 1 from logs where user_id = uid and fecha = p_hoy) then
+  if exists (select 1 from logs where user_id = uid and fecha = hoy) then
     return jsonb_build_object('perdida', false);
   end if;
-  -- La racha se evalúa hasta ayer: hoy todavía se puede registrar.
-  viva := perfil.racha_base + calcular_racha(uid, p_hoy - 1);
+  viva := perfil.racha_base + calcular_racha(uid, hoy - 1);
   if viva >= perfil.racha_actual then
     return jsonb_build_object('perdida', false);
   end if;
-  -- Se rompió: restar 10 días. Como un rango son exactamente 10 días,
-  -- restar 10 baja un rango justo, con la misma fórmula para los ocho.
-  -- Llega a 0 solo si todavía no completó ningún rango.
   nueva_racha := greatest(0, perfil.racha_actual - 10);
   nuevo_rango := rango_de_racha(nueva_racha);
-  -- racha_base guarda los días que sobreviven y perdida_fecha sella los logs
-  -- que los produjeron, para que calcular_racha no los vuelva a sumar encima.
-  -- Segundo corte sin haber vuelto: viva == racha_base == racha_actual, así
-  -- que no entra acá. Se resta una sola vez por corte, no por día ausente.
   update profiles set
     racha_actual = nueva_racha,
     racha_base = nueva_racha,
     rango_actual = nuevo_rango,
-    perdida_fecha = p_hoy - 1
+    perdida_fecha = hoy - 1
   where id = uid;
   return jsonb_build_object('perdida', true, 'rango_anterior', perfil.rango_actual,
     'rango_nuevo', nuevo_rango, 'racha', nueva_racha);
@@ -493,7 +498,7 @@ $$;
 -- Corrección manual: recalcular todo desde los logs, sin piso de misericordia,
 -- y aplicar la pérdida en la MISMA transacción. Devuelve el número final:
 -- el usuario nunca puede ver una racha que después baja sola al recargar.
-create or replace function public.recalcular_desde_cero(p_hoy date default current_date)
+create or replace function public.recalcular_desde_cero(p_hoy date default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -502,19 +507,15 @@ declare
   perdida jsonb;
   perfil profiles;
 begin
-  select coalesce(max(fecha), current_date) into hasta from logs where user_id = uid;
+  select coalesce(max(fecha), hoy_uy()) into hasta from logs where user_id = uid;
   update profiles set racha_base = 0, perdida_fecha = null where id = uid;
   r := calcular_racha(uid, hasta);
   update profiles set
     racha_actual = r,
-    -- el máximo sale del historial: si se borran días, baja
     mejor_racha = greatest(mejor_racha_real(uid), r),
     rango_actual = rango_de_racha(r)
   where id = uid;
-  -- Si el historial recalculado ya está cortado, la regla de -10 se aplica
-  -- acá y no en la próxima carga. Es idempotente: recalcular dos veces da lo
-  -- mismo, porque el -10 se resta sobre la racha real del historial.
-  perdida := verificar_perdida(p_hoy);
+  perdida := verificar_perdida();
   select * into perfil from profiles where id = uid;
   return jsonb_build_object(
     'racha', perfil.racha_actual,
@@ -574,23 +575,20 @@ $$;
 -- REGISTRAR DÍA (RPC transaccional: la animación de subida de rango
 -- se dispara SOLO después de que esto confirme)
 -- -------------------------------------------------------------
-create or replace function public.registrar_dia(p_fecha date, p_es_descanso boolean default false, p_peso numeric default null)
+create or replace function public.registrar_dia(p_fecha date default null, p_es_descanso boolean default false, p_peso numeric default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
   rango_antes int;
   perfil profiles;
   nuevo_log logs;
+  hoy date := hoy_uy();
 begin
-  -- current_date + 1 por el huso horario (servidor UTC, usuario UTC-3)
-  if p_fecha > current_date + 1 then
-    raise exception 'No se puede registrar un día futuro';
-  end if;
   select rango_actual into rango_antes from profiles where id = uid;
-  insert into logs (user_id, fecha, es_descanso) values (uid, p_fecha, p_es_descanso)
+  insert into logs (user_id, fecha, es_descanso) values (uid, hoy, p_es_descanso)
     returning * into nuevo_log;
   if p_peso is not null then
-    insert into weights (user_id, fecha, valor) values (uid, p_fecha, p_peso)
+    insert into weights (user_id, fecha, valor) values (uid, hoy, p_peso)
       on conflict (user_id, fecha) do update set valor = excluded.valor;
   end if;
   select * into perfil from profiles where id = uid;
@@ -610,7 +608,7 @@ $$;
 -- (ganador = más días entrenados dentro del rango; empate = null)
 -- Se llama al abrir la pantalla social.
 -- -------------------------------------------------------------
-create or replace function public.cerrar_retos_vencidos(p_hoy date default current_date)
+create or replace function public.cerrar_retos_vencidos(p_hoy date default null)
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -618,12 +616,9 @@ declare
   dias_retador int;
   dias_rival int;
 begin
-  if p_hoy > current_date + 1 or p_hoy < current_date - 1 then
-    p_hoy := current_date;
-  end if;
   for reto in
     select * from challenges
-    where estado = 'activo' and hasta < p_hoy
+    where estado = 'activo' and hasta < hoy_uy()
       and (retador = uid or rival = uid)
   loop
     select count(*) into dias_retador from logs
@@ -909,18 +904,13 @@ $$;
 -- solo lectura para el cliente, y así el peso no se puede escribir en la
 -- fecha de otro ni saltear el rango permitido.
 -- -------------------------------------------------------------
-create or replace function public.anotar_peso(p_fecha date, p_valor numeric)
+create or replace function public.anotar_peso(p_fecha date default null, p_valor numeric default null)
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  -- el cliente manda su fecha local; el servidor está en UTC y solo tolera la
-  -- ventana de huso horario, ni un día más
-  if p_fecha > current_date + 1 or p_fecha < current_date - 1 then
-    p_fecha := current_date;
-  end if;
-  insert into weights (user_id, fecha, valor) values (uid, p_fecha, p_valor)
+  insert into weights (user_id, fecha, valor) values (uid, hoy_uy(), p_valor)
     on conflict (user_id, fecha) do update set valor = excluded.valor;
 end;
 $$;
@@ -969,39 +959,25 @@ $$;
 -- Si el día ya estaba registrado no se duplica nada: la sesión se cuelga del
 -- log que ya existe y lo único que agrega es la duración.
 -- -------------------------------------------------------------
-create or replace function public.iniciar_sesion(p_hoy date default current_date)
+create or replace function public.iniciar_sesion(p_hoy date default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
   l uuid;
   registro jsonb := null;
   s sesiones;
+  hoy date := hoy_uy();
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  if p_hoy > current_date + 1 or p_hoy < current_date - 1 then p_hoy := current_date; end if;
-
   perform cerrar_sesiones_vencidas(uid);
-  -- Si quedaba otra corriendo, se abandona: no sabemos cuándo terminó, así
-  -- que no puede quedar con duración. Terminarla en `now()` sería inventar.
   update sesiones set estado = 'abandonada' where user_id = uid and estado = 'corriendo';
-
-  select id into l from logs where user_id = uid and fecha = p_hoy;
+  select id into l from logs where user_id = uid and fecha = hoy;
   if l is null then
-    -- se reusa registrar_dia y no un insert suelto para que la subida de
-    -- rango y el recálculo de racha pasen por el mismo camino de siempre
-    registro := registrar_dia(p_hoy, false, null);
+    registro := registrar_dia();
     l := (registro ->> 'log_id')::uuid;
   end if;
-
   insert into sesiones (user_id, log_id) values (uid, l) returning * into s;
-  return jsonb_build_object(
-    'id', s.id,
-    'inicio', s.inicio,
-    -- el ahora del SERVIDOR, para que el cliente saque el desfasaje de su
-    -- propio reloj una sola vez y el cronómetro no se vea corrido (§17.5)
-    'ahora', now(),
-    'registro', registro -- null si el día ya estaba registrado
-  );
+  return jsonb_build_object('id', s.id, 'inicio', s.inicio, 'ahora', now(), 'registro', registro);
 end;
 $$;
 
@@ -1101,57 +1077,6 @@ begin
 end;
 $$;
 
--- -------------------------------------------------------------
--- HERRAMIENTA DE REVISIÓN (solo la cuenta del dueño)
--- -------------------------------------------------------------
-
--- Herramienta de revisión: ponerse en cualquier racha para mirar los colores
--- y el objeto de fondo de cada rango sin tener que entrenar ochenta días.
---
--- El candado es SERVIDOR, no interfaz. Esconder el botón en el cliente no
--- protege nada: cualquiera puede llamar al RPC desde la consola. El nombre de
--- usuario se comprueba acá adentro, así que desde otra cuenta la llamada
--- falla aunque alguien la descubra.
---
--- No hay una tabla de administradores porque hay un solo administrador y
--- nunca hubo otro: una tabla para una fila es más superficie para el mismo
--- resultado. Si algún día hay dos, esto se cambia por esa tabla.
-create or replace function public.simular_racha(p_racha int)
-returns jsonb language plpgsql security definer set search_path = public as $$
-declare
-  uid uuid := auth.uid();
-  quien text;
-begin
-  if uid is null then raise exception 'sin sesión'; end if;
-  select username into quien from profiles where id = uid;
-  if quien is distinct from 'condeeladmin' then
-    raise exception 'esta cuenta no puede simular rachas';
-  end if;
-  if p_racha < 0 or p_racha > 999 then
-    raise exception 'racha fuera de rango';
-  end if;
-
-  -- Va a racha_base y no solo a racha_actual: racha_base es lo que sobrevive
-  -- al próximo recálculo. Si se escribiera solo racha_actual, el primer
-  -- trigger de logs lo pisaría y la simulación duraría hasta el próximo día
-  -- registrado.
-  update profiles set
-    racha_base = p_racha,
-    racha_actual = p_racha,
-    rango_actual = rango_de_racha(p_racha),
-    -- Sella los días anteriores: ya están representados por racha_base y sin
-    -- esto calcular_racha los sumaría encima (§12). Va en AYER y no en hoy a
-    -- propósito: con hoy sellado, registrar el día de hoy después de simular
-    -- no sumaba nada y la app quedaba congelada en el número simulado.
-    perdida_fecha = current_date - 1
-  where id = uid;
-
-  return jsonb_build_object('racha', p_racha, 'rango', rango_de_racha(p_racha));
-end;
-$$;
-
-revoke execute on function public.simular_racha(int) from public, anon;
-grant execute on function public.simular_racha(int) to authenticated;
 
 -- -------------------------------------------------------------
 -- BÚSQUEDA PÚBLICA: vista que expone SOLO lo mínimo.
@@ -1366,6 +1291,7 @@ revoke execute on function
   public.eliminar_amigo(uuid),
   public.eliminar_cuenta(),
   public.fijar_descansos(int[], date),
+  public.hoy_uy(),
   public.mi_fuerza(),
   public.ranking_fuerza(),
   public.percentil_fuerza(),
@@ -1404,6 +1330,7 @@ grant execute on function
   public.eliminar_amigo(uuid),
   public.eliminar_cuenta(),
   public.fijar_descansos(int[], date),
+  public.hoy_uy(),
   public.mi_fuerza(),
   public.ranking_fuerza(),
   public.percentil_fuerza(),

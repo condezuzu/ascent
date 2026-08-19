@@ -19,7 +19,6 @@ import MisDatos from '@/components/ajustes/MisDatos';
 import NombreUsuario from '@/components/ajustes/NombreUsuario';
 import Sesion from '@/components/ajustes/Sesion';
 import Sexo from '@/components/ajustes/Sexo';
-import SimularRacha from '@/components/ajustes/SimularRacha';
 import Sugerencias from '@/components/ajustes/Sugerencias';
 import UnidadPeso from '@/components/ajustes/UnidadPeso';
 
@@ -104,9 +103,6 @@ export default function Ajustes() {
 
         <MisDatos perfil={perfil} />
         <Sesion userId={perfil.id} />
-        {/* Solo la ve la cuenta del dueño; el permiso lo comprueba el servidor. */}
-        <SimularRacha perfil={perfil} recargar={cargar} />
-
         <BajaDeCuenta perfil={perfil} />
       </PantallaDeslizable>
 

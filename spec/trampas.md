@@ -61,11 +61,17 @@ Si alguien registra días por error y los borra, el récord tiene que bajar.
 → **Regla:** el máximo **sale del historial** (`mejor_racha_real`), no se
 acumula.
 
-**El servidor está en UTC y el usuario en UTC−3.** A la noche uruguaya, "hoy"
-local ya es "mañana" en el servidor: se quitaban rachas con el día todavía en
-curso y no se podía registrar el día propio.
-→ **Regla:** la fecha la manda **el cliente** (`p_hoy`), y el servidor la
-acota a ±1 día para que no se pueda hacer trampa.
+**El servidor está en UTC y el usuario en UTC−3**, así que a las 21:00 de
+Uruguay el día del servidor ya cambiaba. El primer arreglo fue peor que el
+problema: la fecha pasó a mandarla **el cliente**, acotada a ±1 día, y eso
+dejó una ventana de tres días para elegir. Adelantar la hora del teléfono,
+registrar "mañana", volverla atrás y registrar "hoy" daba **dos días de racha
+en un día real**, repetible.
+→ **Regla:** el día lo decide el servidor con `hoy_uy()`
+(`now() at time zone 'America/Montevideo'`). El cliente **no participa**: los
+`p_hoy` que quedan en las firmas se ignoran, y están solo para que un cliente
+viejo no rompa mientras Vercel despliega. Una fecha que el cliente puede
+elegir es una fecha que el cliente puede inventar.
 
 ---
 

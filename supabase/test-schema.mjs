@@ -44,6 +44,10 @@ function chequear(nombre, real, esperado) {
 const db = new PGlite();
 
 // ---- stubs de lo que pone Supabase ----
+// UTC como en Supabase: si el test corriera en la zona local, `hoy_uy()` y
+// `hoy_uy()` coincidirían y el problema que la migración 12 arregla
+// quedaría invisible justo en el lugar que tiene que cazarlo.
+await db.exec(`set timezone = 'UTC'`);
 await db.exec(`
   create schema if not exists auth;
   create table auth.users (
@@ -88,7 +92,7 @@ async function comoUsuario(id) {
 async function rachaDe(uid, dias, finHace = 0) {
   for (let i = dias - 1; i >= 0; i--) {
     await db.query(
-      `insert into logs (user_id, fecha) values ($1, current_date - $2::int)`,
+      `insert into logs (user_id, fecha) values ($1, hoy_uy() - $2::int)`,
       [uid, i + finHace]
     );
   }
@@ -102,7 +106,7 @@ async function perfil(uid) {
 }
 async function perder(uid) {
   await comoUsuario(uid);
-  const r = await db.query('select verificar_perdida(current_date) as v');
+  const r = await db.query('select verificar_perdida(hoy_uy()) as v');
   return r.rows[0].v;
 }
 
@@ -197,7 +201,7 @@ console.log('\n6. Volver después de perder suma sobre lo conservado');
   const u = await nuevoUsuario();
   await rachaDe(u, 14, 2);
   await perder(u); // → 4
-  await db.query(`insert into logs (user_id, fecha) values ($1, current_date)`, [u]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, hoy_uy())`, [u]);
   chequear('4 + 1 = 5 (no 15)', (await perfil(u)).racha_actual, 5);
 }
 
@@ -207,7 +211,7 @@ console.log('\n7. Corregir un día viejo no saltea la regla de -10');
   const u = await nuevoUsuario();
   await rachaDe(u, 14, 2);
   // corrección manual de un día suelto muy anterior, estando ya cortado
-  await db.query(`insert into logs (user_id, fecha) values ($1, current_date - 40)`, [u]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, hoy_uy() - 40)`, [u]);
   chequear('racha no se desploma a 0', (await perfil(u)).racha_actual, 14);
   const r = await perder(u);
   chequear('la pérdida sí aplica -10', [r.perdida, r.racha], [true, 4]);
@@ -219,12 +223,12 @@ console.log('\n8. Días de descanso no cortan la racha');
   const u = await nuevoUsuario();
   // descanso fijo: el día de la semana de "ayer"
   const dow = (
-    await db.query(`select extract(dow from current_date - 1)::int as d`)
+    await db.query(`select extract(dow from hoy_uy() - 1)::int as d`)
   ).rows[0].d;
   // la configuración se fecha bien atrás para que cubra los días de la prueba
-  await db.query('insert into descansos (user_id, desde, dias) values ($1, current_date - 60, array[$2::int])', [u, dow]);
+  await db.query('insert into descansos (user_id, desde, dias) values ($1, hoy_uy() - 60, array[$2::int])', [u, dow]);
   await rachaDe(u, 5, 2); // días -6..-2
-  await db.query(`insert into logs (user_id, fecha) values ($1, current_date)`, [u]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, hoy_uy())`, [u]);
   // ayer no tiene log pero es descanso fijo → no corta
   chequear('descanso fijo no corta', (await perfil(u)).racha_actual, 6);
   const r = await perder(u);
@@ -234,10 +238,10 @@ console.log('\n8. Días de descanso no cortan la racha');
   const u = await nuevoUsuario();
   await rachaDe(u, 3);
   await db.query(
-    `insert into logs (user_id, fecha, es_descanso) values ($1, current_date - 3, true)`,
+    `insert into logs (user_id, fecha, es_descanso) values ($1, hoy_uy() - 3, true)`,
     [u]
   );
-  await db.query(`insert into logs (user_id, fecha) values ($1, current_date - 4)`, [u]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, hoy_uy() - 4)`, [u]);
   chequear('log de descanso no suma pero no corta', (await perfil(u)).racha_actual, 4);
 }
 
@@ -247,29 +251,29 @@ console.log('\n8b. Cambiar los descansos NO altera ningún día anterior');
   // Alguien que entrena de lunes a viernes y descansa sábado y domingo.
   const u = await nuevoUsuario();
   await comoUsuario(u);
-  const dowHoy = (await db.query('select extract(dow from current_date)::int as d')).rows[0].d;
+  const dowHoy = (await db.query('select extract(dow from hoy_uy())::int as d')).rows[0].d;
   // configuración vieja: descansan los dos días de hace 3 y 4 días
   const viejoA = (dowHoy - 3 + 7) % 7;
   const viejoB = (dowHoy - 4 + 7) % 7;
-  await db.query('insert into descansos (user_id, desde, dias) values ($1, current_date - 30, $2)', [
+  await db.query('insert into descansos (user_id, desde, dias) values ($1, hoy_uy() - 30, $2)', [
     u,
     [viejoA, viejoB],
   ]);
   // entrena hoy, ayer, anteayer y hace 5 días; los de hace 3 y 4 eran descanso
   for (const i of [5, 2, 1, 0]) {
-    await db.query('insert into logs (user_id, fecha) values ($1, current_date - $2::int)', [u, i]);
+    await db.query('insert into logs (user_id, fecha) values ($1, hoy_uy() - $2::int)', [u, i]);
   }
   chequear('racha con la config vieja', (await perfil(u)).racha_actual, 4);
 
   // ahora cambia de rutina: pasa a descansar OTROS días
   const nuevoA = (dowHoy - 1 + 7) % 7;
   await db.query(`select set_config('test.uid', $1, false)`, [u]);
-  await db.query('select fijar_descansos($1, current_date)', [[nuevoA]]);
+  await db.query('select fijar_descansos($1, hoy_uy())', [[nuevoA]]);
 
   chequear('la racha del pasado no se movió', (await perfil(u)).racha_actual, 4);
   const dv = await db.query(
-    `select descansos_vigentes($1, current_date - 3) as antes,
-            descansos_vigentes($1, current_date) as ahora`,
+    `select descansos_vigentes($1, hoy_uy() - 3) as antes,
+            descansos_vigentes($1, hoy_uy()) as ahora`,
     [u]
   );
   chequear('el día viejo conserva su configuración', dv.rows[0].antes.sort(), [viejoA, viejoB].sort());
@@ -280,27 +284,27 @@ console.log('\n8b. Cambiar los descansos NO altera ningún día anterior');
   // puede romper una racha que dependía de ellos.
   const u = await nuevoUsuario();
   await comoUsuario(u);
-  const dowAyer = (await db.query('select extract(dow from current_date - 1)::int as d')).rows[0].d;
-  await db.query('insert into descansos (user_id, desde, dias) values ($1, current_date - 60, $2)', [
+  const dowAyer = (await db.query('select extract(dow from hoy_uy() - 1)::int as d')).rows[0].d;
+  await db.query('insert into descansos (user_id, desde, dias) values ($1, hoy_uy() - 60, $2)', [
     u,
     [dowAyer],
   ]);
   // entrena hoy y hace 2 días; ayer fue descanso, así que la racha vale 2
-  await db.query('insert into logs (user_id, fecha) values ($1, current_date - 2)', [u]);
-  await db.query('insert into logs (user_id, fecha) values ($1, current_date)', [u]);
+  await db.query('insert into logs (user_id, fecha) values ($1, hoy_uy() - 2)', [u]);
+  await db.query('insert into logs (user_id, fecha) values ($1, hoy_uy())', [u]);
   chequear('racha apoyada en un descanso', (await perfil(u)).racha_actual, 2);
 
-  await db.query('select fijar_descansos($1, current_date)', [[]]); // sin descansos
+  await db.query('select fijar_descansos($1, hoy_uy())', [[]]); // sin descansos
   chequear('sacar los descansos no rompe el pasado', (await perfil(u)).racha_actual, 2);
 }
 {
   // El cambio rige de hoy en adelante: mañana ya no habrá descanso
   const u = await nuevoUsuario();
   await comoUsuario(u);
-  await db.query('select fijar_descansos($1, current_date)', [[0, 1, 2, 3, 4, 5, 6]]);
+  await db.query('select fijar_descansos($1, hoy_uy())', [[0, 1, 2, 3, 4, 5, 6]]);
   const r = await db.query(
-    `select descansos_vigentes($1, current_date - 1) as ayer,
-            descansos_vigentes($1, current_date) as hoy`,
+    `select descansos_vigentes($1, hoy_uy() - 1) as ayer,
+            descansos_vigentes($1, hoy_uy()) as hoy`,
     [u]
   );
   chequear('ayer no hereda la config nueva', r.rows[0].ayer, []);
@@ -313,7 +317,7 @@ console.log('\n8b. Cambiar los descansos NO altera ningún día anterior');
   await db.exec('set role authenticated');
   let bloqueado = null;
   try {
-    await db.query('insert into descansos (user_id, desde, dias) values ($1, current_date - 90, $2)', [u, [1]]);
+    await db.query('insert into descansos (user_id, desde, dias) values ($1, hoy_uy() - 90, $2)', [u, [1]]);
     bloqueado = false;
   } catch (e) {
     bloqueado = /permission denied|policy|row-level/i.test(e.message);
@@ -339,7 +343,7 @@ console.log('\n8c. La mejor racha sale del historial (baja si se borran días)')
   chequear('12 días seguidos', (await perfil(u)).mejor_racha, 12);
   // se borran 6 registrados por error
   for (let i = 11; i >= 6; i--) {
-    await db.query('delete from logs where user_id = $1 and fecha = current_date - $2::int', [u, i]);
+    await db.query('delete from logs where user_id = $1 and fecha = hoy_uy() - $2::int', [u, i]);
   }
   chequear('el récord baja al borrarlos', (await perfil(u)).mejor_racha, 6);
   chequear('y la racha también', (await perfil(u)).racha_actual, 6);
@@ -358,7 +362,7 @@ console.log('\n8c. La mejor racha sale del historial (baja si se borran días)')
   const u = await nuevoUsuario();
   await rachaDe(u, 25, 2);
   await comoUsuario(u);
-  await db.query('select verificar_perdida(current_date)');
+  await db.query('select verificar_perdida(hoy_uy())');
   const p = await perfil(u);
   chequear('tras perder, el récord sigue siendo el real', p.mejor_racha, 25);
   chequear('y la racha bajó 10', p.racha_actual, 15);
@@ -371,7 +375,7 @@ console.log('\n9. registrar_dia: RPC devuelve el salto de rango');
   await comoUsuario(u);
   await rachaDe(u, 9, 1); // 9 días terminando ayer
   const r = await db.query(
-    `select registrar_dia(current_date, false, 82.5) as v`
+    `select registrar_dia(hoy_uy(), false, 82.5) as v`
   );
   const v = r.rows[0].v;
   chequear('subió de rango', [v.racha, v.rango_antes, v.rango_despues, v.subio_rango], [10, 1, 2, true]);
@@ -384,10 +388,10 @@ console.log('\n10. Un día no se puede registrar dos veces');
 {
   const u = await nuevoUsuario();
   await comoUsuario(u);
-  await db.query(`select registrar_dia(current_date, false, null)`);
+  await db.query(`select registrar_dia(hoy_uy(), false, null)`);
   let error = null;
   try {
-    await db.query(`select registrar_dia(current_date, false, null)`);
+    await db.query(`select registrar_dia(hoy_uy(), false, null)`);
   } catch (e) {
     error = e.message.includes('duplicate') || e.message.includes('unique');
   }
@@ -403,7 +407,7 @@ console.log('\n11. recalcular_desde_cero devuelve el número FINAL (sin rebote)'
   await rachaDe(u, 14, 2);
   await perder(u); // → 4
   await comoUsuario(u);
-  const r = (await db.query('select recalcular_desde_cero(current_date) as v')).rows[0].v;
+  const r = (await db.query('select recalcular_desde_cero(hoy_uy()) as v')).rows[0].v;
   chequear('devuelve el final, no el del historial', [r.racha, r.racha_historial], [4, 14]);
   chequear('avisa que aplicó pérdida', r.perdida, true);
   chequear('la base coincide con lo devuelto', (await perfil(u)).racha_actual, 4);
@@ -411,7 +415,7 @@ console.log('\n11. recalcular_desde_cero devuelve el número FINAL (sin rebote)'
   const otra = await perder(u);
   chequear('recargar no mueve el número', [otra.perdida, (await perfil(u)).racha_actual], [false, 4]);
   // y volver a recalcular da lo mismo (idempotente)
-  const r2 = (await db.query('select recalcular_desde_cero(current_date) as v')).rows[0].v;
+  const r2 = (await db.query('select recalcular_desde_cero(hoy_uy()) as v')).rows[0].v;
   chequear('recalcular es idempotente', r2.racha, 4);
 }
 {
@@ -419,7 +423,7 @@ console.log('\n11. recalcular_desde_cero devuelve el número FINAL (sin rebote)'
   const u = await nuevoUsuario();
   await rachaDe(u, 12); // termina hoy
   await comoUsuario(u);
-  const r = (await db.query('select recalcular_desde_cero(current_date) as v')).rows[0].v;
+  const r = (await db.query('select recalcular_desde_cero(hoy_uy()) as v')).rows[0].v;
   chequear('historial continuo no pierde nada', [r.racha, r.perdida], [12, false]);
 }
 
@@ -455,7 +459,7 @@ console.log('\n13. Seguridad: el peso de otro no se lee, ni con amistad');
   const a = await nuevoUsuario();
   const b = await nuevoUsuario();
   await comoUsuario(a);
-  await db.query(`select registrar_dia(current_date, false, 80)`);
+  await db.query(`select registrar_dia(hoy_uy(), false, 80)`);
   // se hacen amigos
   await db.query(
     `insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`,
@@ -476,7 +480,7 @@ console.log('\n14. Seguridad: sin amistad no se ve nada del otro');
   const a = await nuevoUsuario();
   const b = await nuevoUsuario();
   await comoUsuario(a);
-  await db.query(`select registrar_dia(current_date, false, 75)`);
+  await db.query(`select registrar_dia(hoy_uy(), false, 75)`);
   await comoUsuario(b);
   await db.exec('set role authenticated');
   const logs = await db.query('select * from logs where user_id = $1', [a]);
@@ -515,7 +519,7 @@ console.log('\n16. El planeta lo decide el trigger, no el cliente');
 {
   const u = await nuevoUsuario();
   await db.query(
-    `insert into logs (user_id, fecha, planeta_del_dia) values ($1, current_date, 'Júpiter')`,
+    `insert into logs (user_id, fecha, planeta_del_dia) values ($1, hoy_uy(), 'Júpiter')`,
     [u]
   );
   const r = await db.query('select planeta_del_dia from logs where user_id = $1', [u]);
@@ -533,7 +537,7 @@ console.log('\n17. Eliminar amigo: corta la amistad y el reto vigente');
   );
   await db.query(
     `insert into challenges (retador, rival, desde, hasta, estado)
-     values ($1, $2, current_date, current_date + 6, 'activo')`,
+     values ($1, $2, hoy_uy(), hoy_uy() + 6, 'activo')`,
     [a, b]
   );
   await comoUsuario(b); // lo elimina el OTRO lado, no el que pidió la amistad
@@ -555,7 +559,7 @@ console.log('\n17. Eliminar amigo: corta la amistad y el reto vigente');
   );
   await db.query(
     `insert into challenges (retador, rival, desde, hasta, estado)
-     values ($1, $2, current_date, current_date + 6, 'pendiente')`,
+     values ($1, $2, hoy_uy(), hoy_uy() + 6, 'pendiente')`,
     [b, a]
   );
   chequear('se pueden volver a retar', true, true);
@@ -586,7 +590,7 @@ console.log('\n19. Borrar foto: solo el dueño');
   const a = await nuevoUsuario();
   const b = await nuevoUsuario();
   await comoUsuario(a);
-  await db.query(`select registrar_dia(current_date, false, null)`);
+  await db.query(`select registrar_dia(hoy_uy(), false, null)`);
   const log = await db.query('select id from logs where user_id = $1', [a]);
   await db.query(
     `insert into photos (user_id, log_id, storage_path, visibilidad)
@@ -624,7 +628,7 @@ console.log('\n19b. Corregir un día viejo recalcula los planetas posteriores');
   const faltante = 20;
   for (let i = 38; i >= 0; i--) {
     if (i === faltante) continue;
-    await db.query(`insert into logs (user_id, fecha) values ($1, current_date - $2::int)`, [u, i]);
+    await db.query(`insert into logs (user_id, fecha) values ($1, hoy_uy() - $2::int)`, [u, i]);
   }
   const antes = await db.query(
     `select planeta_del_dia from logs where user_id = $1 and planeta_del_dia is not null order by fecha`,
@@ -636,7 +640,7 @@ console.log('\n19b. Corregir un día viejo recalcula los planetas posteriores');
     []
   );
   // ahora se corrige el día que faltaba
-  await db.query(`insert into logs (user_id, fecha) values ($1, current_date - $2::int)`, [u, faltante]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, hoy_uy() - $2::int)`, [u, faltante]);
   chequear('la racha se completa', (await perfil(u)).racha_actual, 39);
   const despues = await db.query(
     `select planeta_del_dia from logs where user_id = $1 and planeta_del_dia is not null order by fecha`,
@@ -648,7 +652,7 @@ console.log('\n19b. Corregir un día viejo recalcula los planetas posteriores');
     ['Ceres', 'Plutón', 'Mercurio', 'Marte', 'Venus', 'Tierra', 'Neptuno', 'Urano', 'Saturno', 'Júpiter']
   );
   // y borrar un día viejo tiene que limpiarlos de nuevo
-  await db.query(`delete from logs where user_id = $1 and fecha = current_date - $2::int`, [u, faltante]);
+  await db.query(`delete from logs where user_id = $1 and fecha = hoy_uy() - $2::int`, [u, faltante]);
   const tras = await db.query(
     `select count(*)::int as n from logs where user_id = $1 and planeta_del_dia is not null`,
     [u]
@@ -677,7 +681,7 @@ console.log('\n20. El schema trae sus propios permisos (no los del host)');
 
   let insertar = null;
   try {
-    await db.query('insert into logs (user_id, fecha) values ($1, current_date)', [u]);
+    await db.query('insert into logs (user_id, fecha) values ($1, hoy_uy())', [u]);
     insertar = true;
   } catch (e) {
     insertar = e.message;
@@ -717,7 +721,7 @@ console.log('\n20. El schema trae sus propios permisos (no los del host)');
 
   let fnBloqueada = null;
   try {
-    await db.query('select calcular_racha($1, current_date)', [
+    await db.query('select calcular_racha($1, hoy_uy())', [
       '00000000-0000-0000-0000-000000000001',
     ]);
     fnBloqueada = false;
@@ -791,7 +795,7 @@ console.log('\n22. Eliminar la cuenta');
   const u = await nuevoUsuario();
   const otro = await nuevoUsuario();
   await rachaDe(u, 12);
-  await db.query(`insert into weights (user_id, fecha, valor) values ($1, current_date, 80)`, [u]);
+  await db.query(`insert into weights (user_id, fecha, valor) values ($1, hoy_uy(), 80)`, [u]);
   await db.query(
     `insert into photos (user_id, storage_path) values ($1, $2)`,
     [u, `${u}/foto.jpg`]
@@ -805,10 +809,10 @@ console.log('\n22. Eliminar la cuenta');
   // es justo la fila que bloquearía el borrado si no se sacara a mano
   await db.query(
     `insert into challenges (retador, rival, desde, hasta, estado, ganador)
-       values ($1, $2, current_date - 7, current_date - 1, 'terminado', $1)`,
+       values ($1, $2, hoy_uy() - 7, hoy_uy() - 1, 'terminado', $1)`,
     [u, otro]
   );
-  await db.query(`select fijar_descansos(array[0,6]::int[], current_date)`);
+  await db.query(`select fijar_descansos(array[0,6]::int[], hoy_uy())`);
 
   await comoUsuario(u);
   await db.exec('set role authenticated');
@@ -918,7 +922,7 @@ console.log('\n24. Fuerza: marcas, total y lo que falta');
   const cargar = (ej, peso, reps, real, dias) =>
     db.query(
       `insert into prs (user_id, ejercicio, peso, reps, es_real, fecha)
-         values ($1, $2, $3, $4, $5, current_date - $6::int)`,
+         values ($1, $2, $3, $4, $5, hoy_uy() - $6::int)`,
       [u, ej, peso, reps, real, dias]
     );
 
@@ -960,8 +964,8 @@ console.log('\n24. Fuerza: marcas, total y lo que falta');
   chequear('sin peso corporal tampoco hay DOTS', (await falta()).falta, 'peso');
 
   await db.query(
-    `insert into weights (user_id, fecha, valor) values ($1, current_date - 5, 95),
-                                                       ($1, current_date, 90)`,
+    `insert into weights (user_id, fecha, valor) values ($1, hoy_uy() - 5, 95),
+                                                       ($1, hoy_uy(), 90)`,
     [u]
   );
   f = await falta();
@@ -972,11 +976,10 @@ console.log('\n24. Fuerza: marcas, total y lo que falta');
   chequear('y viene con su banda', f.banda, '250–300');
   chequear('cada marca trae su fecha', typeof f.marcas[0].fecha, 'string');
 
-  // el DOTS NO se guarda como columna: depende del peso corporal de hoy
-  await db.query(
-    `insert into weights (user_id, fecha, valor) values ($1, current_date + 1, 110)`,
-    [u]
-  );
+  // el DOTS NO se guarda como columna: depende del peso corporal de hoy.
+  // Se corrige el peso de HOY, no se inventa uno de mañana: desde la
+  // migración 12 el futuro está prohibido y eso es lo correcto.
+  await db.query(`update weights set valor = 110 where user_id = $1 and fecha = hoy_uy()`, [u]);
   chequear('al cambiar el peso corporal el DOTS cambia solo', Number((await falta()).dots) !== 261.87, true);
 
   let sexoInvalido = null;
@@ -1008,12 +1011,12 @@ console.log('\n25. Fuerza: quién ve qué');
     for (const [ej, kg] of [['sentadilla', sq], ['press_banca', bp], ['peso_muerto', dl]]) {
       await db.query(
         `insert into prs (user_id, ejercicio, peso, reps, es_real, fecha)
-           values ($1, $2, $3, 1, true, current_date)`,
+           values ($1, $2, $3, 1, true, hoy_uy())`,
         [quien, ej, kg]
       );
     }
     await db.query(`update profiles set sexo = 'm' where id = $1`, [quien]);
-    await db.query(`insert into weights (user_id, fecha, valor) values ($1, current_date, $2)`, [
+    await db.query(`insert into weights (user_id, fecha, valor) values ($1, hoy_uy(), $2)`, [
       quien,
       peso,
     ]);
@@ -1223,7 +1226,7 @@ console.log('\n26. Las reglas escritas dos veces: SQL contra cliente');
 // =====================================================================
 console.log('\n27. Cronómetro de sesión');
 {
-  const empezar = async (uid, fecha = 'current_date') => {
+  const empezar = async (uid, fecha = 'hoy_uy()') => {
     await comoUsuario(uid);
     const r = await db.query(`select iniciar_sesion(${fecha}) as v`);
     return r.rows[0].v;
@@ -1254,7 +1257,7 @@ console.log('\n27. Cronómetro de sesión');
   // ---- si el día ya estaba, no se duplica nada ----
   {
     const u = await nuevoUsuario();
-    await db.query(`insert into logs (user_id, fecha) values ($1, current_date)`, [u]);
+    await db.query(`insert into logs (user_id, fecha) values ($1, hoy_uy())`, [u]);
     const r = await empezar(u);
     chequear('el día ya registrado no se vuelve a registrar', r.registro, null);
     chequear(
@@ -1330,16 +1333,27 @@ console.log('\n27. Cronómetro de sesión');
 
   // ---- MEDIANOCHE: la sesión pertenece al día en que EMPEZÓ ----
   {
-    // empieza a las 23:00 y se cierra pasada la medianoche. El log se fijó al
+    // Empieza a las 23:00 y se cierra pasada la medianoche. El log se fija al
     // iniciar y nada lo mueve después: ni el cierre automático ni terminar.
+    //
+    // El día de ayer se arma directo porque desde la migración 12 el cliente
+    // ya no puede pedir una fecha: iniciar_sesion siempre usa hoy_uy().
     const u = await nuevoUsuario();
-    await empezar(u, 'current_date - 1');
-    await db.query(`update sesiones set inicio = now() - interval '2 hours' where user_id = $1`, [u]);
+    const ayer = (await db.query(`select (hoy_uy() - 1)::text as f`)).rows[0].f;
+    const log = (
+      await db.query(
+        `insert into logs (user_id, fecha) values ($1, hoy_uy() - 1) returning id`,
+        [u]
+      )
+    ).rows[0].id;
+    await db.query(
+      `insert into sesiones (user_id, log_id, inicio) values ($1, $2, now() - interval '2 hours')`,
+      [u, log]
+    );
+    await comoUsuario(u);
     const r = (await db.query('select terminar_sesion() as v')).rows[0].v;
     chequear('cruzar la medianoche no cambia la duración', Math.round(r.segundos / 3600), 2);
-    chequear('la sesión sigue siendo del día en que empezó', await diaDeLaSesion(u), (
-      await db.query(`select (current_date - 1)::text as f`)
-    ).rows[0].f);
+    chequear('la sesión sigue siendo del día en que empezó', await diaDeLaSesion(u), ayer);
     chequear(
       'y no aparece un día nuevo al terminar',
       (await db.query('select count(*)::int as n from logs where user_id = $1', [u])).rows[0].n,
@@ -1348,12 +1362,19 @@ console.log('\n27. Cronómetro de sesión');
 
     // lo mismo cuando se cierra sola del otro lado de la medianoche
     const v = await nuevoUsuario();
-    await empezar(v, 'current_date - 1');
-    await db.query(`update sesiones set inicio = now() - interval '5 hours' where user_id = $1`, [v]);
+    const log2 = (
+      await db.query(
+        `insert into logs (user_id, fecha) values ($1, hoy_uy() - 1) returning id`,
+        [v]
+      )
+    ).rows[0].id;
+    await db.query(
+      `insert into sesiones (user_id, log_id, inicio) values ($1, $2, now() - interval '5 hours')`,
+      [v, log2]
+    );
+    await comoUsuario(v);
     await db.query('select mi_sesion() as v');
-    chequear('la abandonada tampoco se muda de día', await diaDeLaSesion(v), (
-      await db.query(`select (current_date - 1)::text as f`)
-    ).rows[0].f);
+    chequear('la abandonada tampoco se muda de día', await diaDeLaSesion(v), ayer);
     chequear(
       'y sigue habiendo un solo día',
       (await db.query('select count(*)::int as n from logs where user_id = $1', [v])).rows[0].n,
@@ -1367,7 +1388,7 @@ console.log('\n27. Cronómetro de sesión');
     await comoUsuario(u);
     // hoy es día fijo de descanso: no ir no corta la racha, pero ir cuenta
     await db.query(
-      `select fijar_descansos(array[extract(dow from current_date)::int], current_date)`
+      `select fijar_descansos(array[extract(dow from hoy_uy())::int], hoy_uy())`
     );
     await empezar(u);
     const l = (await db.query('select es_descanso from logs where user_id = $1', [u])).rows[0];
@@ -1381,7 +1402,7 @@ console.log('\n27. Cronómetro de sesión');
     await comoUsuario(u);
     const l = (
       await db.query(
-        `insert into logs (user_id, fecha) values ($1, current_date) returning id`,
+        `insert into logs (user_id, fecha) values ($1, hoy_uy()) returning id`,
         [u]
       )
     ).rows[0].id;
@@ -1466,15 +1487,15 @@ console.log('\n27. Cronómetro de sesión');
     await db.exec('set role authenticated');
     let directo = null;
     try {
-      await db.query(`insert into weights (user_id, fecha, valor) values ($1, current_date, 80)`, [u]);
+      await db.query(`insert into weights (user_id, fecha, valor) values ($1, hoy_uy(), 80)`, [u]);
       directo = false;
     } catch (e) {
       directo = /permission denied/i.test(e.message);
     }
     chequear('el peso sigue sin poder escribirse directo', directo, true);
 
-    await db.query('select anotar_peso(current_date, 80.5)');
-    await db.query('select anotar_peso(current_date, 81)'); // corrige el del día
+    await db.query('select anotar_peso(hoy_uy(), 80.5)');
+    await db.query('select anotar_peso(hoy_uy(), 81)'); // corrige el del día
     await db.exec('reset role');
     const w = await db.query('select fecha::text as f, valor::float8 as v from weights where user_id = $1', [u]);
     chequear('anotar_peso deja una sola fila por día, con el último valor', w.rows.length, 1);
@@ -1488,60 +1509,74 @@ console.log('\n27. Cronómetro de sesión');
 }
 
 // =====================================================================
-console.log('\n28. Simular racha: el candado es del servidor');
+console.log('\n28. El día lo corta Uruguay, no UTC ni el teléfono');
+// El harness corre en UTC como Supabase (ver el stub de arriba). Si esto se
+// corriera en la zona local, hoy_uy() y current_date coincidirían y el
+// problema quedaría invisible justo donde hay que cazarlo.
 {
-  const dueno = await nuevoUsuario();
-  const otro = await nuevoUsuario();
-  await db.query(`update profiles set username = 'condeeladmin' where id = $1`, [dueno]);
+  const tz = await db.query(`select current_setting('TimeZone') as tz`);
+  chequear('el harness corre en UTC, como Supabase', tz.rows[0].tz, 'UTC');
 
-  // desde otra cuenta NO se puede, aunque descubra el RPC y lo llame a mano:
-  // esconder el botón en el cliente no protege nada
-  await comoUsuario(otro);
-  await db.exec('set role authenticated');
-  let ajeno = null;
+  // La regla en sí, sin depender de qué hora sea al correr el test: a la
+  // 01:00 UTC en Uruguay todavía es el día anterior. Ese es exactamente el
+  // rato en que el servidor contaba mañana y el usuario estaba en hoy.
+  const r = await db.query(`
+    select ('2026-03-10 01:00:00+00'::timestamptz at time zone 'America/Montevideo')::date::text as madrugada,
+           ('2026-03-10 01:00:00+00'::timestamptz)::date::text as en_utc,
+           ('2026-03-10 23:00:00+00'::timestamptz at time zone 'America/Montevideo')::date::text as noche`);
+  chequear('a la 01:00 UTC en Uruguay es el día anterior', r.rows[0].madrugada, '2026-03-09');
+  chequear('y en UTC ya es el siguiente: esa era la diferencia', r.rows[0].en_utc, '2026-03-10');
+  chequear('a las 23:00 UTC en Uruguay es el mismo día', r.rows[0].noche, '2026-03-10');
+
+  const hoy = await db.query(`select hoy_uy()::text as h,
+    (now() at time zone 'America/Montevideo')::date::text as esperado`);
+  chequear('hoy_uy() es la fecha de Uruguay', hoy.rows[0].h, hoy.rows[0].esperado);
+
+  // ---- el cliente ya no elige la fecha ----
+  // Antes se mandaba p_hoy y el servidor solo lo acotaba a ±1 día: alcanzaba
+  // con adelantar la hora del teléfono para registrar "mañana", volverla
+  // atrás y registrar "hoy". Dos días de racha en un día real.
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  await db.query(`select registrar_dia('2020-01-01'::date)`);
+  const cuando = await db.query(
+    'select fecha::text as f from logs where user_id = $1',
+    [u]
+  );
+  chequear('registrar_dia ignora la fecha que manda el cliente', cuando.rows.length, 1);
+  chequear('y usa el día de Uruguay', cuando.rows[0].f, hoy.rows[0].h);
+
+  // el segundo intento choca con la unicidad, no crea un día nuevo
+  let dosVeces = null;
   try {
-    await db.query('select simular_racha(50)');
-    ajeno = false;
+    await db.query(`select registrar_dia('2030-01-01'::date)`);
+    dosVeces = false;
   } catch (e) {
-    ajeno = /no puede simular/i.test(e.message);
+    dosVeces = e.code === '23505';
   }
-  chequear('otra cuenta no puede simular', ajeno, true);
-  chequear('y su racha quedó intacta', (await perfil(otro)).racha_actual, 0);
+  chequear('pedir otra fecha no da un día extra', dosVeces, true);
 
-  await comoUsuario(dueno);
-  const r = (await db.query('select simular_racha(75) as v')).rows[0].v;
-  chequear('el dueño sí', [r.racha, r.rango], [75, 8]);
-  const p = await perfil(dueno);
-  chequear('deja el perfil coherente', [p.racha_actual, p.rango_actual], [75, 8]);
-  // va a racha_base: si no, el primer trigger de logs lo pisaría
-  chequear('y sobrevive al recálculo', p.racha_base, 75);
+  // anotar_peso también
+  await db.query('select anotar_peso($1::date, 80)', ['2020-01-01']);
+  const wp = await db.query('select fecha::text as f from weights where user_id = $1', [u]);
+  chequear('anotar_peso tampoco le cree al cliente', wp.rows[0].f, hoy.rows[0].h);
 
-  await db.query(`insert into logs (user_id, fecha) values ($1, current_date)`, [dueno]);
-  chequear('registrar un día suma sobre lo simulado', (await perfil(dueno)).racha_actual, 76);
-
-  let fuera = null;
+  // y la base rechaza cualquier fecha futura, venga de donde venga
+  let futuro = null;
   try {
-    await db.query('select simular_racha(5000)');
-    fuera = false;
+    await db.query(`insert into logs (user_id, fecha) values ($1, hoy_uy() + 1)`, [u]);
+    futuro = false;
   } catch (e) {
-    fuera = /fuera de rango/i.test(e.message);
+    futuro = /check constraint/i.test(e.message);
   }
-  chequear('no acepta cualquier número', fuera, true);
-  await db.exec('reset role');
+  chequear('no se puede registrar un día que todavía no llegó', futuro, true);
 
-  // sin sesión tampoco
-  await db.query(`select set_config('test.uid', '', false)`);
-  await db.exec('set role authenticated');
-  let sinSesion = null;
-  try {
-    await db.query('select simular_racha(10)');
-    sinSesion = false;
-  } catch (e) {
-    sinSesion = /sin sesión/i.test(e.message);
-  }
-  chequear('sin sesión tampoco', sinSesion, true);
-  await db.exec('reset role');
+  // fijar_descansos fecha la configuración con el día de Uruguay
+  await db.query(`select fijar_descansos(array[0]::int[], '2020-01-01'::date)`);
+  const cfg = await db.query('select desde::text as d from descansos where user_id = $1', [u]);
+  chequear('los descansos se fechan con el día de Uruguay', cfg.rows[0].d, hoy.rows[0].h);
 }
+
 
 // =====================================================================
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
