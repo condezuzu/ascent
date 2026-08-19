@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { enDias, hoyISO, restarDias, deISO } from '@/lib/fechas';
@@ -9,7 +10,8 @@ import { citaDelDia } from '@/lib/frases';
 import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
 import { guardarPerfilCache, leerPerfilCache } from '@/lib/cache';
 import { marca } from '@/lib/medir';
-import type { Log, Perfil, ResultadoRegistro } from '@/lib/tipos';
+import { lineaDeMarcas } from '@/lib/fuerza';
+import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import TiraSemanal from '@/components/TiraSemanal';
 import RegistrarSheet from '@/components/RegistrarSheet';
@@ -27,6 +29,7 @@ export default function Principal() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [descansos, setDescansos] = useState<ConfigDescanso[]>([]);
   const [social, setSocial] = useState<LineaSocial>(null);
+  const [marcas, setMarcas] = useState<string | null>(null);
   const [hojaAbierta, setHojaAbierta] = useState(false);
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
   const [perdida, setPerdida] = useState(false);
@@ -102,6 +105,14 @@ export default function Principal() {
     setCargado(true);
     marca('ascent:pantalla-lista');
     cargarSocial(uid);
+
+    // Las marcas también van después de dibujar, y por la misma razón que la
+    // línea social: son un agregado, no lo que el usuario vino a ver. Si la
+    // migración todavía no corrió, el RPC no existe y la línea no aparece.
+    supabase.rpc('mi_fuerza').then(({ data }) => {
+      const f = data as MiFuerza | null;
+      if (f) setMarcas(lineaDeMarcas(f.marcas, p.unidad_peso ?? 'kg'));
+    });
   }, [supabase, router, cargarSocial]);
 
   // Al volver a entrar, la pantalla sale con la racha y la paleta de la
@@ -185,10 +196,12 @@ export default function Principal() {
       />
 
       <PantallaDeslizable>
-        <div className="cabecera">
+        {/* la cabecera es la puerta al perfil propio: hasta ahora se podía
+            entrar al de un amigo pero no al de uno mismo */}
+        <Link href="/yo" className="cabecera">
           <Avatar url={perfil.avatar_url} nombre={perfil.username} />
           <span className="nombre">{perfil.username}</span>
-        </div>
+        </Link>
 
         <div className="racha-bloque">
           <div className="racha-fila">
@@ -221,6 +234,13 @@ export default function Principal() {
 
         <TiraSemanal logs={logs} descansos={descansos} />
 
+        {/* Los tres pesos, una sola línea, y SOLO si hay marcas cargadas
+            (§16.8): al que no usa el módulo la pantalla le queda igual que
+            antes. Se alinea con la tira semanal y no con el margen, para no
+            romper la asimetría —nada cierra en la misma vertical—. El DOTS no
+            va acá: es un número que pide contexto, y ese contexto es Stats. */}
+        {marcas && <Link href="/fuerza" className="linea-marcas">{marcas}</Link>}
+
         {!sinNada && (
           <figure className="cita">
             <blockquote>{cita.texto}</blockquote>
@@ -251,6 +271,8 @@ export default function Principal() {
       {hojaAbierta && (
         <RegistrarSheet
           racha={racha}
+          unidadPeso={perfil.unidad_peso}
+          visibilidadDefault={perfil.visibilidad_default}
           alCerrar={() => setHojaAbierta(false)}
           alConfirmar={alConfirmar}
         />

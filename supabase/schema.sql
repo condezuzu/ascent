@@ -25,6 +25,26 @@ create table public.profiles (
   -- no tenga que buscarla. El historial real vive en la tabla `descansos`
   -- y lo mantiene el RPC fijar_descansos: acá no se escribe a mano.
   dias_descanso int[] not null default '{}',
+  -- Con qué visibilidad NACE cada foto nueva. La visibilidad sigue siendo por
+  -- foto: esto solo evita tener que elegir una por una.
+  visibilidad_default text not null default 'privada'
+    check (visibilidad_default in ('privada','amigos')),
+  -- Unidad en la que el usuario escribe y lee su peso. El valor SIEMPRE se
+  -- guarda en kilos: la unidad es de presentación, no de almacenamiento. Si
+  -- se guardaran libras, cambiar la preferencia reinterpretaría el historial
+  -- entero y la tendencia daría un salto que no ocurrió.
+  unidad_peso text not null default 'kg' check (unidad_peso in ('kg','lb')),
+  -- Sexo del levantador, SOLO para elegir los coeficientes del DOTS (§16.7).
+  -- Es opcional y null significa "sin DOTS", no "por defecto": calcularlo con
+  -- la fórmula equivocada da un dato falso que ordena mal el ranking y que
+  -- nadie notaría, porque el número igual parece razonable.
+  sexo text check (sexo is null or sexo in ('m','f')),
+  -- Cuánto dura el descanso entre series, en SEGUNDOS (§18.5). 180 = 3 min.
+  -- Es lo ÚNICO del temporizador de descanso que toca la base: el descanso en
+  -- curso vive en localStorage y no deja rastro, porque no hay ningún dato
+  -- que valga guardar y son quince o veinte por sesión.
+  duracion_descanso int not null default 180
+    check (duracion_descanso between 15 and 600),
   creado timestamptz not null default now()
 );
 
@@ -106,6 +126,105 @@ create table public.challenges (
 create unique index challenges_vigente_unico on public.challenges
   (least(retador, rival), greatest(retador, rival))
   where estado in ('pendiente', 'activo');
+
+-- Catálogo de ejercicios. Es grande a propósito (§16.3): el usuario anota lo
+-- que quiera. Pero al total DOTS entran SOLO los tres marcados con
+-- cuenta_dots: la fórmula está calibrada sobre esos tres y sumarle otros no
+-- la hace más completa, la invalida.
+create table public.ejercicios (
+  id text primary key,
+  nombre text not null,
+  grupo text not null,
+  cuenta_dots boolean not null default false,
+  orden int not null default 0
+);
+
+-- Las marcas. Se guarda lo que el usuario LEVANTÓ (peso y repeticiones), no
+-- el 1RM: el 1RM se deriva. Guardar el derivado perdería el dato original y
+-- cualquier cambio de fórmula reescribiría el historial.
+--
+-- El peso va SIEMPRE en kilos, igual que weights: la unidad del usuario es de
+-- presentación. Los PRs no caducan y no se pisan entre sí; cada carga es una
+-- fila y la mejor gana, por eso siempre se muestra su fecha al lado (§16.5).
+create table public.prs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  ejercicio text not null references public.ejercicios(id),
+  peso numeric(6,2) not null check (peso between 1 and 600),
+  reps int not null check (reps between 1 and 20),
+  -- true = 1RM real; false = estimado con Epley a partir de las repeticiones
+  es_real boolean not null default false,
+  fecha date not null check (fecha <= current_date + 1),
+  creado timestamptz not null default now(),
+  -- Un 1RM "real" con más de una repetición es una contradicción: es el peso
+  -- que se levantó UNA vez. Si tiene más reps, es un estimado.
+  constraint prs_real_es_una_rep check (not es_real or reps = 1)
+);
+create index prs_por_usuario on public.prs (user_id, ejercicio);
+
+insert into public.ejercicios (id, nombre, grupo, cuenta_dots, orden) values
+  ('sentadilla',        'Sentadilla',              'piernas', true,  10),
+  ('press_banca',       'Press de banca',          'pecho',   true,  20),
+  ('peso_muerto',       'Peso muerto',             'espalda', true,  30),
+  ('sentadilla_frontal','Sentadilla frontal',      'piernas', false, 110),
+  ('peso_muerto_rumano','Peso muerto rumano',      'piernas', false, 120),
+  ('prensa',            'Prensa',                  'piernas', false, 130),
+  ('hip_thrust',        'Hip thrust',              'piernas', false, 140),
+  ('zancadas',          'Zancadas',                'piernas', false, 150),
+  ('extension_cuadriceps','Extensión de cuádriceps','piernas',false, 160),
+  ('curl_femoral',      'Curl femoral',            'piernas', false, 170),
+  ('gemelos',           'Gemelos de pie',          'piernas', false, 180),
+  ('press_inclinado',   'Press inclinado',         'pecho',   false, 210),
+  ('press_mancuernas',  'Press con mancuernas',    'pecho',   false, 220),
+  ('aperturas',         'Aperturas',               'pecho',   false, 230),
+  ('fondos',            'Fondos',                  'pecho',   false, 240),
+  ('dominadas',         'Dominadas',               'espalda', false, 310),
+  ('remo_barra',        'Remo con barra',          'espalda', false, 320),
+  ('remo_mancuerna',    'Remo con mancuerna',      'espalda', false, 330),
+  ('jalon',             'Jalón al pecho',          'espalda', false, 340),
+  ('remo_polea',        'Remo en polea',           'espalda', false, 350),
+  ('press_militar',     'Press militar',           'hombros', false, 410),
+  ('press_arnold',      'Press Arnold',            'hombros', false, 420),
+  ('elevaciones_laterales','Elevaciones laterales','hombros', false, 430),
+  ('pajaros',           'Pájaros',                 'hombros', false, 440),
+  ('curl_barra',        'Curl con barra',          'brazos',  false, 510),
+  ('curl_mancuernas',   'Curl con mancuernas',     'brazos',  false, 520),
+  ('martillo',          'Curl martillo',           'brazos',  false, 530),
+  ('press_frances',     'Press francés',           'brazos',  false, 540),
+  ('triceps_polea',     'Tríceps en polea',        'brazos',  false, 550),
+  ('abdominales_polea', 'Abdominales en polea',    'core',    false, 610),
+  ('rueda_abdominal',   'Rueda abdominal',         'core',    false, 620)
+on conflict (id) do nothing;
+
+-- -------------------------------------------------------------
+-- Las sesiones
+--
+-- La duración NO es una columna: es `fin - inicio`. Guardar el derivado
+-- dejaría que quedara en desacuerdo con sus propias puntas.
+--
+-- "Sin duración" es la AUSENCIA de `fin`, no un valor especial: el check hace
+-- que una sesión abandonada no pueda tener fin, así la regla de "no inventes
+-- un número" la sostiene la base y no la memoria de quien programe después.
+--
+-- log_id con cascade: si el día se borra desde el calendario, la sesión se va
+-- con él. Una sesión de un día que no existe no mide nada.
+-- -------------------------------------------------------------
+create table public.sesiones (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  log_id uuid not null references public.logs(id) on delete cascade,
+  inicio timestamptz not null default now(),
+  fin timestamptz,
+  estado text not null default 'corriendo'
+    check (estado in ('corriendo', 'terminada', 'abandonada')),
+  constraint sesiones_fin_solo_si_termino check ((estado = 'terminada') = (fin is not null))
+);
+
+-- una sola corriendo por usuario, garantizado por la base y no por el cliente
+create unique index sesiones_una_corriendo
+  on public.sesiones (user_id) where estado = 'corriendo';
+create index sesiones_por_usuario
+  on public.sesiones (user_id, inicio desc);
 
 create table public.feedback (
   id uuid primary key default gen_random_uuid(),
@@ -266,6 +385,15 @@ declare
   base int;
   r int;
 begin
+  -- Perfil borrado (baja de cuenta): al borrar el perfil, la cascada arrastra
+  -- todos sus logs y este trigger correría una vez por fila, recorriendo el
+  -- historial completo cada vez, para terminar escribiendo sobre un perfil
+  -- que ya no existe. Si no está, no hay nada que recalcular.
+  if not exists (select 1 from profiles where id = uid) then
+    if tg_op = 'DELETE' then return old; end if;
+    return new;
+  end if;
+
   -- La racha se mide hasta el último día registrado, NO hasta ayer.
   -- Con "hasta ayer", corregir a mano un día viejo estando cortado dejaba la
   -- racha en 0 al instante, salteándose la regla de -10: bajar la racha es
@@ -415,6 +543,33 @@ begin
 end;
 $$;
 
+-- Eliminar la cuenta. Borra la fila de auth.users; el resto se va en cascada
+-- desde profiles (logs, fotos, pesos, descansos, amistades, retos, sugerencias).
+--
+-- Los ARCHIVOS del storage NO se borran acá: SQL puede sacar las filas de
+-- storage.objects pero deja los archivos colgados en el bucket. El cliente los
+-- borra por la API de storage ANTES de llamar a esto, y si eso falla no llama:
+-- es preferible una cuenta viva a archivos huérfanos que nadie puede alcanzar
+-- después, porque sin cuenta ya no hay quien tenga permiso sobre ellos.
+--
+-- No recibe parámetros a propósito: siempre borra al que la llama. Con un
+-- p_usuario habría que confiar en que la RLS lo frene, y esto es SECURITY
+-- DEFINER, así que la RLS no lo frenaría.
+create or replace function public.eliminar_cuenta()
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'sin sesión';
+  end if;
+  -- challenges.ganador apunta a profiles SIN cascade: si esta cuenta ganó un
+  -- reto ya cerrado, esa fila bloquearía el borrado. Se van primero, a mano.
+  delete from challenges where retador = uid or rival = uid or ganador = uid;
+  delete from auth.users where id = uid;
+end;
+$$;
+
 -- -------------------------------------------------------------
 -- REGISTRAR DÍA (RPC transaccional: la animación de subida de rango
 -- se dispara SOLO después de que esto confirme)
@@ -505,6 +660,448 @@ create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
 -- -------------------------------------------------------------
+-- FUERZA: 1RM, DOTS, bandas y ranking (§16)
+-- -------------------------------------------------------------
+
+-- 1RM de una marca. Real: el peso tal cual. Estimado: Epley (§16.4).
+--
+-- El caso de UNA repetición se saca a mano: Epley crudo devuelve
+-- peso × 31/30, un 3% de más, porque la fórmula está pensada para extrapolar
+-- desde varias repeticiones. Una repetición ya ES el 1RM, no hay nada que
+-- extrapolar, y sin este corte el mismo levantamiento daba distinto según
+-- cómo lo hubieran cargado.
+create or replace function public.un_rm(p_peso numeric, p_reps int, p_es_real boolean)
+returns numeric language sql immutable as $$
+  select case
+    when p_es_real or p_reps = 1 then p_peso
+    else p_peso * (1 + p_reps / 30.0)
+  end;
+$$;
+
+-- DOTS. Coeficientes tomados de la implementación de OpenPowerlifting
+-- (crates/coefficients/src/dots.rs), NO de memoria: un DOTS mal calculado
+-- ordena mal el ranking y nadie se da cuenta, porque el número igual parece
+-- razonable. Verificado contra un caso publicado: hombre de 90 kg con 650 kg
+-- de total da 420,3 (ver test-schema.mjs).
+create or replace function public.dots(p_total numeric, p_peso numeric, p_sexo text)
+returns numeric language plpgsql immutable as $$
+declare
+  pc numeric;
+  den numeric;
+begin
+  if p_total is null or p_peso is null or p_sexo is null then return null; end if;
+  if p_total <= 0 then return null; end if;
+  -- La fórmula está calibrada entre 40 y 210 kg (hombres) y entre 40 y 150
+  -- (mujeres). Fuera de ese rango el polinomio de grado 4 se dispara y
+  -- devuelve valores absurdos, así que el peso se ACOTA, no se extrapola.
+  if p_sexo = 'm' then
+    pc := least(greatest(p_peso, 40), 210);
+    den := -0.000001093 * pc^4
+         +  0.0007391293 * pc^3
+         -  0.1918759221 * pc^2
+         + 24.0900756 * pc
+         - 307.75076;
+  elsif p_sexo = 'f' then
+    pc := least(greatest(p_peso, 40), 150);
+    den := -0.0000010706 * pc^4
+         +  0.0005158568 * pc^3
+         -  0.1126655495 * pc^2
+         + 13.6175032 * pc
+         -  57.96288;
+  else
+    return null;
+  end if;
+  if den <= 0 then return null; end if;
+  return round(500 * p_total / den, 2);
+end;
+$$;
+
+-- La banda es lo ÚNICO que ve alguien que no sea el dueño (§16.7b). El DOTS
+-- exacto al lado de un total conocido permite despejar el peso corporal con
+-- una cuenta de dos líneas; la banda deja el dato en un intervalo demasiado
+-- ancho para que sirva.
+create or replace function public.banda_dots(p_dots numeric)
+returns text language sql immutable as $$
+  select case
+    when p_dots is null then null
+    when p_dots < 200 then 'menos de 200'
+    when p_dots >= 600 then '600 o más'
+    else (floor(p_dots / 50) * 50)::int || '–' || (floor(p_dots / 50) * 50 + 50)::int
+  end;
+$$;
+
+-- peso_actual devuelve el peso corporal de CUALQUIERA, que es el dato más
+-- privado de la app (§4). Existe porque el DOTS lo necesita, y las funciones
+-- que la usan devuelven el resultado sin devolver nunca el peso. No se otorga
+-- a nadie: si alguien se la otorga a `authenticated`, la regla se rompe.
+create or replace function public.peso_actual(p_user uuid)
+returns numeric language sql stable security definer set search_path = public as $$
+  select valor from weights where user_id = p_user order by fecha desc limit 1;
+$$;
+
+-- El mejor 1RM por ejercicio: el máximo entre TODAS las marcas cargadas, con
+-- la fecha de la que lo produjo. Empate: la más reciente. Se redondea acá y
+-- no al mostrar, para que el total sea exactamente la suma de los tres
+-- números que el usuario ve.
+create or replace function public.mejores_marcas(p_user uuid)
+returns table (ejercicio text, kg numeric, peso numeric, reps int, es_real boolean, fecha date)
+language sql stable security definer set search_path = public as $$
+  select distinct on (p.ejercicio)
+    p.ejercicio,
+    round(un_rm(p.peso, p.reps, p.es_real), 1),
+    p.peso, p.reps, p.es_real, p.fecha
+  from prs p
+  where p.user_id = p_user
+  order by p.ejercicio, un_rm(p.peso, p.reps, p.es_real) desc, p.fecha desc;
+$$;
+
+-- El total del DOTS: los tres, o nada. Con dos de tres no hay un total
+-- "parcial" que valga: no sería comparable con el de nadie.
+create or replace function public.total_dots(p_user uuid)
+returns numeric language sql stable security definer set search_path = public as $$
+  select case when count(*) = 3 then sum(m.kg) end
+    from mejores_marcas(p_user) m
+    join ejercicios e on e.id = m.ejercicio and e.cuenta_dots;
+$$;
+
+create or replace function public.dots_de(p_user uuid)
+returns numeric language sql stable security definer set search_path = public as $$
+  select dots(
+    total_dots(p_user),
+    peso_actual(p_user),
+    (select sexo from profiles where id = p_user)
+  );
+$$;
+
+-- Mis marcas y mi DOTS. El único lugar donde sale el número exacto, y sale
+-- solo para el dueño.
+create or replace function public.mi_fuerza()
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  marcas jsonb;
+  total numeric;
+  d numeric;
+  s text;
+  pc numeric;
+begin
+  if uid is null then return null; end if;
+  select sexo into s from profiles where id = uid;
+  pc := peso_actual(uid);
+  total := total_dots(uid);
+  d := dots(total, pc, s);
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'ejercicio', m.ejercicio,
+      'nombre', e.nombre,
+      'grupo', e.grupo,
+      'cuenta_dots', e.cuenta_dots,
+      'kg', m.kg,
+      'peso', m.peso,
+      'reps', m.reps,
+      'es_real', m.es_real,
+      'fecha', m.fecha
+    ) order by e.orden), '[]'::jsonb)
+    into marcas
+    from mejores_marcas(uid) m
+    join ejercicios e on e.id = m.ejercicio;
+  return jsonb_build_object(
+    'marcas', marcas,
+    'total', total,
+    'dots', d,
+    'banda', banda_dots(d),
+    -- POR QUÉ no hay DOTS, para que la interfaz diga qué falta en vez de
+    -- mostrar un cero o un error (§16.7)
+    'falta', case
+      when total is null then 'marcas'
+      when s is null then 'sexo'
+      when pc is null then 'peso'
+      else null
+    end
+  );
+end;
+$$;
+
+-- Ranking entre amigos. Sale el total (los levantamientos ya los ven los
+-- amigos) y la BANDA; el número exacto solo en la fila propia.
+--
+-- Ordena por DOTS exacto aunque muestre bandas: el orden filtra algo que la
+-- banda oculta, y está aceptado a propósito (§16.7b) porque entre amigos el
+-- peso corporal no es un secreto. Si alguna vez deja de valer, la salida es
+-- ordenar por banda y mostrar los empates como empates.
+create or replace function public.ranking_fuerza()
+returns table (
+  id uuid,
+  username text,
+  avatar_url text,
+  total numeric,
+  banda text,
+  dots_propio numeric,
+  marcas jsonb
+) language sql stable security definer set search_path = public as $$
+  with gente as (
+    select auth.uid() as quien
+    union
+    select case when f.solicitante = auth.uid() then f.destinatario else f.solicitante end
+      from friendships f
+     where f.estado = 'aceptada'
+       and (f.solicitante = auth.uid() or f.destinatario = auth.uid())
+  ),
+  calc as (
+    select p.id, p.username, p.avatar_url, total_dots(p.id) as total, dots_de(p.id) as d
+      from profiles p
+      join gente g on g.quien = p.id
+  )
+  select c.id, c.username, c.avatar_url, c.total, banda_dots(c.d),
+         case when c.id = auth.uid() then c.d end,
+         -- el detalle por ejercicio viaja con la fila: son levantamientos, que
+         -- los amigos ya ven, y así el 1RM lo calcula un solo lugar
+         (select coalesce(jsonb_agg(jsonb_build_object(
+                   'ejercicio', m.ejercicio, 'nombre', e.nombre,
+                   'kg', m.kg, 'fecha', m.fecha) order by e.orden), '[]'::jsonb)
+            from mejores_marcas(c.id) m
+            join ejercicios e on e.id = m.ejercicio and e.cuenta_dots)
+    from calc c
+   where c.d is not null
+   order by c.d desc;
+$$;
+
+-- Percentil global: "estás en el 15% más fuerte". Nunca posiciones ni
+-- nombres (§16.6). Entre amigos nadie miente porque se conocen; en un ranking
+-- global de desconocidos, ser el número uno es justo el premio que hace que
+-- valga inflar la marca, y no hay forma de verificar un PR desde una app.
+create or replace function public.percentil_fuerza()
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare
+  mio numeric;
+  cuantos int;
+  arriba int;
+begin
+  if auth.uid() is null then return null; end if;
+  mio := dots_de(auth.uid());
+  if mio is null then return jsonb_build_object('percentil', null, 'gente', 0); end if;
+  select count(*), count(*) filter (where t.d > mio)
+    into cuantos, arriba
+    from (select dots_de(p.id) as d from profiles p) t
+   where t.d is not null;
+  -- Con poca gente el percentil ES un podio disfrazado: entre tres, "el 33%
+  -- más fuerte" significa "sos el primero", que es exactamente lo que el
+  -- percentil venía a evitar. Hasta que haya gente, no hay percentil.
+  if cuantos < 10 then
+    return jsonb_build_object('percentil', null, 'gente', cuantos);
+  end if;
+  return jsonb_build_object(
+    'percentil', greatest(1, ceil(100.0 * arriba / cuantos))::int,
+    'gente', cuantos
+  );
+end;
+$$;
+
+-- -------------------------------------------------------------
+-- Anotar el peso corporal sin registrar un día
+--
+-- Hasta ahora el peso solo se podía cargar dentro de registrar_dia, así que
+-- quien ya había registrado hoy y nunca había anotado su peso no tenía forma
+-- de hacerlo: la pantalla de fuerza le decía "se anota al registrar un día" y
+-- en ese momento eso ya no se podía. Sin peso no hay DOTS (§16.4), así que
+-- quedaba en un callejón sin salida hasta el día siguiente.
+--
+-- Va por RPC y no por grant de insert sobre weights: la tabla sigue siendo de
+-- solo lectura para el cliente, y así el peso no se puede escribir en la
+-- fecha de otro ni saltear el rango permitido.
+-- -------------------------------------------------------------
+create or replace function public.anotar_peso(p_fecha date, p_valor numeric)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  -- el cliente manda su fecha local; el servidor está en UTC y solo tolera la
+  -- ventana de huso horario, ni un día más
+  if p_fecha > current_date + 1 or p_fecha < current_date - 1 then
+    p_fecha := current_date;
+  end if;
+  insert into weights (user_id, fecha, valor) values (uid, p_fecha, p_valor)
+    on conflict (user_id, fecha) do update set valor = excluded.valor;
+end;
+$$;
+
+-- -------------------------------------------------------------
+-- Los dos números del cronómetro, en un solo lugar
+--
+-- Están también en `src/lib/reglas.ts`, porque la pantalla necesita las
+-- mismas cuentas. La sección 26 de test:db compara las dos copias.
+-- -------------------------------------------------------------
+
+-- A las 4 horas la sesión se cierra sola y queda SIN duración (§17.3).
+create or replace function public.tope_sesion()
+returns interval language sql immutable as $$ select interval '4 hours' $$;
+
+-- Abajo de 5 minutos cuenta como día pero no como duración (§17.7): empezar
+-- y parar sin querer es una duración real que ensucia el promedio.
+create or replace function public.piso_sesion()
+returns interval language sql immutable as $$ select interval '5 minutes' $$;
+
+-- -------------------------------------------------------------
+-- El cierre automático
+--
+-- No hay tarea programada: la sesión se evalúa cuando algo la lee, igual que
+-- la pérdida de racha (§12). Así se cierra aunque el usuario no vuelva a
+-- abrir la app, y el corte lo decide el servidor contra el `inicio` guardado
+-- —nunca el reloj del teléfono, que se puede atrasar a propósito—.
+--
+-- Ojo con la medianoche: acá NO se toca el log. Una sesión que empezó a las
+-- 23:00 y se cierra a las 03:00 pertenece al día en que EMPEZÓ, porque su
+-- log_id se fijó al iniciar y nada lo mueve después.
+-- -------------------------------------------------------------
+create or replace function public.cerrar_sesiones_vencidas(p_user uuid)
+returns void language sql security definer set search_path = public as $$
+  update sesiones set estado = 'abandonada'
+   where user_id = p_user and estado = 'corriendo' and now() - inicio >= tope_sesion();
+$$;
+
+-- -------------------------------------------------------------
+-- Empezar
+--
+-- El día se registra ACÁ, al iniciar, no al terminar (§17.2): el que se
+-- olvida de parar el cronómetro perdería el día, y eso es peor que perder la
+-- duración.
+--
+-- Si el día ya estaba registrado no se duplica nada: la sesión se cuelga del
+-- log que ya existe y lo único que agrega es la duración.
+-- -------------------------------------------------------------
+create or replace function public.iniciar_sesion(p_hoy date default current_date)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  l uuid;
+  registro jsonb := null;
+  s sesiones;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if p_hoy > current_date + 1 or p_hoy < current_date - 1 then p_hoy := current_date; end if;
+
+  perform cerrar_sesiones_vencidas(uid);
+  -- Si quedaba otra corriendo, se abandona: no sabemos cuándo terminó, así
+  -- que no puede quedar con duración. Terminarla en `now()` sería inventar.
+  update sesiones set estado = 'abandonada' where user_id = uid and estado = 'corriendo';
+
+  select id into l from logs where user_id = uid and fecha = p_hoy;
+  if l is null then
+    -- se reusa registrar_dia y no un insert suelto para que la subida de
+    -- rango y el recálculo de racha pasen por el mismo camino de siempre
+    registro := registrar_dia(p_hoy, false, null);
+    l := (registro ->> 'log_id')::uuid;
+  end if;
+
+  insert into sesiones (user_id, log_id) values (uid, l) returning * into s;
+  return jsonb_build_object(
+    'id', s.id,
+    'inicio', s.inicio,
+    -- el ahora del SERVIDOR, para que el cliente saque el desfasaje de su
+    -- propio reloj una sola vez y el cronómetro no se vea corrido (§17.5)
+    'ahora', now(),
+    'registro', registro -- null si el día ya estaba registrado
+  );
+end;
+$$;
+
+-- -------------------------------------------------------------
+-- Terminar
+-- -------------------------------------------------------------
+create or replace function public.terminar_sesion()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  s sesiones;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  -- primero se cierran las vencidas: si pasaron 4 horas, esta llamada llega
+  -- tarde y la sesión ya no tiene duración
+  perform cerrar_sesiones_vencidas(uid);
+
+  update sesiones set estado = 'terminada', fin = now()
+   where user_id = uid and estado = 'corriendo'
+   returning * into s;
+
+  if s.id is null then
+    return jsonb_build_object('termino', false);
+  end if;
+  return jsonb_build_object(
+    'termino', true,
+    'segundos', extract(epoch from (s.fin - s.inicio)),
+    -- abajo del piso la sesión existe y el día cuenta, pero no suma duración
+    'cuenta', (s.fin - s.inicio) >= piso_sesion()
+  );
+end;
+$$;
+
+-- -------------------------------------------------------------
+-- La sesión que está corriendo, si hay
+-- -------------------------------------------------------------
+create or replace function public.mi_sesion()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  s sesiones;
+begin
+  if uid is null then return null; end if;
+  perform cerrar_sesiones_vencidas(uid);
+  select * into s from sesiones where user_id = uid and estado = 'corriendo';
+  if s.id is null then
+    return jsonb_build_object('corriendo', false, 'ahora', now());
+  end if;
+  return jsonb_build_object(
+    'corriendo', true,
+    'id', s.id,
+    'inicio', s.inicio,
+    'ahora', now(),
+    'tope_segundos', extract(epoch from tope_sesion())
+  );
+end;
+$$;
+
+-- -------------------------------------------------------------
+-- El resumen para Stats
+--
+-- Promedio y total salen SOLO de las sesiones con duración válida. Las
+-- abandonadas y las muy cortas se cuentan aparte y se muestran: si no, el
+-- promedio parecería calculado sobre más sesiones de las que entran.
+-- -------------------------------------------------------------
+create or replace function public.resumen_sesiones()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  validas int;
+  total numeric;
+  abandonadas int;
+  cortas int;
+begin
+  if uid is null then return null; end if;
+  perform cerrar_sesiones_vencidas(uid);
+
+  select count(*), coalesce(sum(extract(epoch from (fin - inicio))), 0)
+    into validas, total
+    from sesiones
+   where user_id = uid and estado = 'terminada' and (fin - inicio) >= piso_sesion();
+
+  select count(*) into abandonadas
+    from sesiones where user_id = uid and estado = 'abandonada';
+
+  select count(*) into cortas
+    from sesiones
+   where user_id = uid and estado = 'terminada' and (fin - inicio) < piso_sesion();
+
+  return jsonb_build_object(
+    'validas', validas,
+    'total_segundos', total,
+    'promedio_segundos', case when validas > 0 then round(total / validas) end,
+    'abandonadas', abandonadas,
+    'cortas', cortas
+  );
+end;
+$$;
+
+-- -------------------------------------------------------------
 -- BÚSQUEDA PÚBLICA: vista que expone SOLO lo mínimo.
 -- La tabla profiles completa nunca se abre.
 -- -------------------------------------------------------------
@@ -527,6 +1124,9 @@ alter table public.weights enable row level security;
 alter table public.friendships enable row level security;
 alter table public.challenges enable row level security;
 alter table public.feedback enable row level security;
+alter table public.ejercicios enable row level security;
+alter table public.prs enable row level security;
+alter table public.sesiones enable row level security;
 
 -- ¿Somos amigos aceptados? (contempla ambos sentidos)
 create or replace function public.son_amigos(a uuid, b uuid)
@@ -583,6 +1183,23 @@ create policy "retos: borrar pendiente" on public.challenges for delete
 -- (el dueño de la app lo lee desde el dashboard de Supabase)
 create policy "feedback: insertar" on public.feedback for insert with check (auth.uid() = user_id);
 
+-- ejercicios: catálogo de solo lectura, igual para todos
+create policy "ejercicios: catálogo con sesión" on public.ejercicios for select
+  using (auth.uid() is not null);
+
+-- prs: las marcas se ven igual que los logs — el dueño todo, los amigos
+-- aceptados leen. El peso CORPORAL sigue afuera, siempre (§16.6).
+create policy "marcas: dueño" on public.prs for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "marcas: amigos leen" on public.prs for select
+  using (public.son_amigos(auth.uid(), user_id));
+
+-- sesiones: SOLO el dueño, ni siquiera los amigos (§17.8). Competir por quién
+-- pasa más tiempo en el gimnasio empuja a entrenar de más, y tres horas no son
+-- mejores que una.
+create policy "sesiones: solo dueño" on public.sesiones for select
+  using (auth.uid() = user_id);
+
 -- -------------------------------------------------------------
 -- STORAGE: bucket privado de fotos
 -- Rutas: fotos/{user_id}/... y avatares/{user_id}/...
@@ -611,7 +1228,20 @@ create policy "avatares: dueño escribe" on storage.objects for insert
   with check (bucket_id = 'avatares' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "avatares: dueño actualiza" on storage.objects for update
   using (bucket_id = 'avatares' and (storage.foldername(name))[1] = auth.uid()::text);
-create policy "avatares: todos leen" on storage.objects for select using (bucket_id = 'avatares');
+-- Sin esta política, borrar un avatar fallaba EN SILENCIO: con RLS activa
+-- "no hay política" es "prohibido", y la API de storage devuelve éxito con
+-- cero archivos borrados. Al dar de baja una cuenta el avatar quedaba
+-- huérfano en un bucket público, descargable por cualquiera con la URL.
+create policy "avatares: dueño borra" on storage.objects for delete
+  using (bucket_id = 'avatares' and (storage.foldername(name))[1] = auth.uid()::text);
+-- Leer SOLO la carpeta propia, no el bucket entero. Los avatares se muestran
+-- por la URL pública, que al ser bucket público NO consulta la RLS, así que
+-- acotar esto no rompe ninguna foto: lo único que necesita listar es
+-- eliminar_cuenta, para borrar el avatar antes de dar de baja.
+-- Con `using (bucket_id = 'avatares')` a secas, cualquiera con sesión podía
+-- pedir el listado completo y quedarse con los ids de todos los usuarios.
+create policy "avatares: dueño lista lo suyo" on storage.objects for select
+  using (bucket_id = 'avatares' and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- -------------------------------------------------------------
 -- PERMISOS (capa extra debajo de la RLS)
@@ -630,7 +1260,8 @@ grant usage on schema public to authenticated, anon;
 
 revoke all on table
   public.profiles, public.logs, public.photos, public.weights,
-  public.friendships, public.challenges, public.feedback, public.descansos
+  public.friendships, public.challenges, public.feedback, public.descansos,
+  public.ejercicios, public.prs, public.sesiones
   from anon, authenticated;
 
 -- lectura y escritura mínimas, siempre acotadas después por la RLS
@@ -645,11 +1276,23 @@ grant select, insert, delete on public.friendships  to authenticated;
 grant select, insert, delete on public.challenges   to authenticated;
 grant insert                 on public.feedback     to authenticated;
 grant select                 on public.usuarios_publicos to authenticated;
+-- el catálogo de ejercicios es de solo lectura: lo edita el schema, no la app
+grant select                 on public.ejercicios   to authenticated;
+-- prs sin update: una marca mal cargada se borra y se vuelve a cargar, igual
+-- que un día de racha. Editarla en el lugar dejaría el historial sin rastro.
+grant select, insert, delete on public.prs          to authenticated;
+-- sesiones de solo lectura: empezar y terminar son RPC, para que nadie se
+-- escriba el `inicio` que quiera ni resucite una sesión abandonada
+grant select                 on public.sesiones     to authenticated;
 
 -- lo único editable de cada tabla, columna por columna.
 -- dias_descanso NO está: es un espejo que mantiene fijar_descansos, y si el
 -- cliente pudiera escribirlo se desincronizaría del historial fechado.
-grant update (username, avatar_url) on public.profiles to authenticated;
+-- visibilidad_default y unidad_peso son preferencias del dueño y no afectan a
+-- nadie más, así que se escriben directo como username y avatar_url.
+grant update (username, avatar_url, visibilidad_default, unidad_peso, sexo,
+              duracion_descanso)
+  on public.profiles to authenticated;
 grant update (estado)      on public.friendships to authenticated;
 grant update (estado)      on public.challenges  to authenticated;
 grant update (visibilidad) on public.photos      to authenticated;
@@ -669,8 +1312,33 @@ revoke execute on function
   public.recalcular_desde_cero(date),
   public.cerrar_retos_vencidos(date),
   public.eliminar_amigo(uuid),
-  public.fijar_descansos(int[], date)
+  public.eliminar_cuenta(),
+  public.fijar_descansos(int[], date),
+  public.mi_fuerza(),
+  public.ranking_fuerza(),
+  public.percentil_fuerza(),
+  public.anotar_peso(date, numeric),
+  public.iniciar_sesion(date),
+  public.terminar_sesion(),
+  public.mi_sesion(),
+  public.resumen_sesiones()
   from public, anon;
+
+-- cerrar_sesiones_vencidas toca las sesiones de cualquiera: solo la llaman
+-- por dentro las funciones de arriba.
+revoke execute on function public.cerrar_sesiones_vencidas(uuid)
+  from public, anon, authenticated;
+
+-- Los internos del DOTS calculan con el peso corporal AJENO y no se otorgan a
+-- nadie: solo los llaman las funciones de arriba, que devuelven el resultado
+-- sin devolver nunca el peso. un_rm, dots y banda_dots quedan abiertas como
+-- rango_de_racha: son matemática pura y no tocan datos de nadie.
+revoke execute on function
+  public.peso_actual(uuid),
+  public.mejores_marcas(uuid),
+  public.total_dots(uuid),
+  public.dots_de(uuid)
+  from public, anon, authenticated;
 
 grant execute on function
   public.calcular_racha(uuid, date),
@@ -682,5 +1350,14 @@ grant execute on function
   public.recalcular_desde_cero(date),
   public.cerrar_retos_vencidos(date),
   public.eliminar_amigo(uuid),
-  public.fijar_descansos(int[], date)
+  public.eliminar_cuenta(),
+  public.fijar_descansos(int[], date),
+  public.mi_fuerza(),
+  public.ranking_fuerza(),
+  public.percentil_fuerza(),
+  public.anotar_peso(date, numeric),
+  public.iniciar_sesion(date),
+  public.terminar_sesion(),
+  public.mi_sesion(),
+  public.resumen_sesiones()
   to authenticated;

@@ -18,6 +18,11 @@
   --tarjeta: color-mix(in srgb, var(--pal-principal) 6%, transparent);
   --acento: var(--pal-claro);
   --radio: 14px;
+  --alto-nav: 62px;
+  /* El único color que NO sale de la paleta del rango, y a propósito: borrar
+     la cuenta tiene que verse igual de grave en polvo que en agujero negro.
+     Sigue estando acá y no suelto en un componente. */
+  --peligro: #e8705f;
 }
 
 * {
@@ -627,10 +632,28 @@ textarea::placeholder {
   justify-content: space-around;
   max-width: 480px;
   margin: 0 auto;
-  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  /* alto fijo y conocido: la franja de la sesión se apoya justo encima y
+     necesita saber dónde termina la barra sin medirla por JS */
+  height: calc(var(--alto-nav) + env(safe-area-inset-bottom));
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
   background: rgba(5, 6, 10, 0.82);
   backdrop-filter: blur(14px);
   border-top: 0.5px solid var(--linea);
+}
+/* Seis pestañas a 375 px: cada una se lleva su parte y ninguna empuja a las
+   otras. Por eso "Leaderboard" pasó a "Ranking": 61 px de texto no entraban
+   en los 60 que quedan por ítem. */
+.nav a {
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+}
+.nav .nav-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
 }
 .nav a {
   display: flex;
@@ -1177,6 +1200,786 @@ textarea::placeholder {
   pointer-events: none;
   opacity: 0.35;
   mix-blend-mode: overlay;
+}
+
+/* ---------- perfil propio ----------
+   La decisión que rompe la grilla acá: la foto se sale del margen izquierdo
+   —igual que el número de racha en la principal— y el nombre queda colgado a
+   su derecha, apoyado en la base y sin alinear con nada más de la pantalla. */
+.yo-cabecera {
+  display: flex;
+  align-items: flex-end;
+  gap: 15px;
+  margin: 4px 0 28px;
+}
+.yo-foto {
+  position: relative;
+  flex: none;
+  margin-left: -32px;
+  border-radius: 50%;
+  display: block;
+  padding: 0;
+}
+.yo-foto .avatar {
+  width: 104px;
+  height: 104px;
+  font-size: 36px;
+}
+.yo-foto:active .avatar {
+  transform: scale(0.97);
+}
+.yo-foto .avatar {
+  transition: transform 0.28s var(--curva-salida);
+}
+/* el anillo del rango alrededor de la foto: acá también manda la paleta */
+.yo-foto::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--pal-claro) 38%, transparent);
+  pointer-events: none;
+  transition: border-color 0.65s var(--curva-suave);
+}
+.yo-lapiz {
+  position: absolute;
+  right: -2px;
+  bottom: 2px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--pal-claro);
+  color: #08080c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--fondo);
+  transition: background-color 0.55s var(--curva-suave);
+}
+.yo-lapiz svg {
+  width: 15px;
+  height: 15px;
+}
+.yo-identidad {
+  padding-bottom: 10px;
+  min-width: 0;
+}
+.yo-nombre {
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  overflow-wrap: anywhere;
+}
+.yo-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--sub);
+}
+
+/* ---- interruptor de "ver como lo ven los demás" ---- */
+.mirilla-control {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--tarjeta);
+  border: 0.5px solid var(--linea);
+  border-radius: var(--radio);
+  text-align: left;
+  transition: border-color 0.4s var(--curva-suave), background-color 0.4s var(--curva-suave);
+}
+.mirilla-control.encendida {
+  border-color: color-mix(in srgb, var(--pal-claro) 45%, transparent);
+}
+.mirilla-control .rotulo {
+  flex: 1;
+  min-width: 0;
+}
+.mirilla-control .rotulo strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+}
+.mirilla-control .rotulo span {
+  display: block;
+  font-size: 12px;
+  color: var(--apagado);
+  margin-top: 2px;
+}
+.interruptor {
+  flex: none;
+  width: 46px;
+  height: 27px;
+  border-radius: 20px;
+  border: 0.5px solid var(--linea);
+  background: rgba(150, 170, 210, 0.08);
+  position: relative;
+  transition: background-color 0.32s var(--curva-suave), border-color 0.32s var(--curva-suave);
+}
+.interruptor::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--apagado);
+  transition: transform 0.34s var(--curva-salida), background-color 0.32s var(--curva-suave);
+}
+.mirilla-control.encendida .interruptor {
+  background: color-mix(in srgb, var(--pal-claro) 26%, transparent);
+}
+.mirilla-control.encendida .interruptor::after {
+  transform: translateX(19px);
+  background: var(--pal-claro);
+}
+
+/* El marco de la vista previa: se ve que estás mirando por una ventana, no
+   que cambiaste de pantalla. */
+.mirilla {
+  margin-top: 16px;
+  padding: 14px 15px 4px;
+  border: 0.5px solid color-mix(in srgb, var(--pal-claro) 30%, transparent);
+  border-radius: var(--radio);
+  background: rgba(5, 6, 10, 0.35);
+  animation: surgir 0.5s var(--curva-salida) both;
+}
+.mirilla-etiqueta {
+  font-family: var(--f-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--apagado);
+  margin-bottom: 14px;
+}
+.mirilla .cabecera {
+  margin-bottom: 18px !important;
+}
+
+/* ---- elegir qué fotos ven los amigos, todas desde acá ---- */
+.yo-foto-celda {
+  padding: 0;
+  display: block;
+  width: 100%;
+}
+/* La diferencia se lee de un vistazo: lo que ven tus amigos está encendido,
+   lo tuyo solo está apagado. Sin leer una sola etiqueta. */
+.yo-foto-celda .album-celda img {
+  transition: opacity 0.4s var(--curva-suave), filter 0.4s var(--curva-suave);
+}
+.yo-foto-celda.privada .album-celda img {
+  opacity: 0.3;
+  filter: saturate(0.35);
+}
+.yo-foto-celda .album-vis {
+  pointer-events: none;
+}
+.yo-foto-celda.compartida .album-vis {
+  background: var(--pal-claro);
+  color: #08080c;
+  border-color: transparent;
+}
+.yo-conteo {
+  font-family: var(--f-mono), monospace;
+  font-size: 11px;
+  color: var(--apagado);
+  letter-spacing: 0.04em;
+}
+.yo-masivo {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.yo-masivo button {
+  flex: 1;
+  border: 0.5px solid var(--linea);
+  color: var(--sub);
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.yo-masivo button:disabled {
+  opacity: 0.35;
+}
+
+/* ---------- recorrido de bienvenida ----------
+   Una idea por pantalla y el objeto real moviéndose detrás. El texto se
+   apoya abajo, que es donde el fondo está vacío con el cuerpo centrado. */
+.guia {
+  position: relative;
+  z-index: 1;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: max(18px, env(safe-area-inset-top)) 24px calc(30px + env(safe-area-inset-bottom));
+}
+.guia-saltar {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  right: 20px;
+  font-size: 14px;
+  color: var(--sub);
+  padding: 8px 4px;
+}
+
+/* la cuenta de pasos: regla fina contra el borde, no puntitos centrados */
+.guia-regla {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.guia-regla span {
+  display: block;
+  width: 2px;
+  height: 22px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--tinta) 16%, transparent);
+  transition: background-color 0.5s var(--curva-suave), height 0.5s var(--curva-salida);
+}
+.guia-regla span.hecho {
+  background: var(--pal-claro);
+}
+
+.guia-texto {
+  margin-bottom: 30px;
+  animation: surgir 0.55s var(--curva-salida) both;
+}
+.guia-paso {
+  font-family: var(--f-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: var(--apagado);
+  display: block;
+  margin-bottom: 12px;
+}
+.guia-texto h1 {
+  font-size: 27px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin-bottom: 10px;
+}
+.guia-texto p {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--sub);
+  /* el texto no llega al borde: que no cierre todo en la misma línea */
+  max-width: 27ch;
+}
+
+/* ---------- globo de primera vez ---------- */
+.globo {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 13px 14px;
+  background: color-mix(in srgb, var(--pal-claro) 11%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--pal-claro) 34%, transparent);
+  border-radius: var(--radio);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--tinta);
+  animation: globo-entra 0.5s var(--curva-salida) both;
+}
+/* la puntita: sale del borde de arriba, apuntando a la pestaña de la barra */
+.globo::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 26px;
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  background: color-mix(in srgb, var(--pal-claro) 11%, transparent);
+  border-left: 0.5px solid color-mix(in srgb, var(--pal-claro) 34%, transparent);
+  border-top: 0.5px solid color-mix(in srgb, var(--pal-claro) 34%, transparent);
+}
+.globo p {
+  flex: 1;
+  min-width: 0;
+}
+.globo button {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: -2px -4px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sub);
+  border-radius: 50%;
+}
+.globo button svg {
+  width: 13px;
+  height: 13px;
+}
+.globo.cerrando {
+  animation: globo-sale 0.3s var(--curva-entrada) both;
+}
+@keyframes globo-entra {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes globo-sale {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-6px); }
+}
+
+/* ---------- eliminar la cuenta ----------
+   No es un botón sólido: el botón sólido de cada pantalla es para lo que uno
+   quiere hacer, y esto no lo es. Se lee grave sin gritar. */
+.boton-texto.peligro {
+  color: color-mix(in srgb, var(--peligro) 78%, transparent);
+}
+.tarjeta.peligro {
+  border-color: color-mix(in srgb, var(--peligro) 34%, transparent);
+  background: color-mix(in srgb, var(--peligro) 6%, transparent);
+}
+.tarjeta.peligro h3 {
+  color: var(--peligro);
+}
+.boton-peligro {
+  flex: 1;
+  padding: 13px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+  color: #08080c;
+  background: var(--peligro);
+  transition: transform 0.18s var(--curva-salida), opacity 0.2s var(--curva-suave);
+}
+.boton-peligro:active {
+  transform: scale(0.98);
+}
+.boton-peligro:disabled {
+  opacity: 0.3;
+}
+
+/* ---------- recorte circular de la foto de perfil ---------- */
+.recorte-marco {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 58vh;
+  margin: 0 auto 14px;
+  overflow: hidden;
+  border-radius: var(--radio);
+  background: #08090e;
+  /* sin esto el gesto de arrastrar dentro del marco desplaza la página */
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.recorte-marco:active {
+  cursor: grabbing;
+}
+.recorte-marco img {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-width: none;
+  pointer-events: none;
+}
+/* El círculo se dibuja apagando todo lo de afuera con una sombra enorme:
+   así el usuario ve exactamente lo que va a quedar. */
+.recorte-mascara {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px rgba(5, 6, 10, 0.74);
+  border: 1px solid rgba(232, 236, 246, 0.55);
+  pointer-events: none;
+}
+.recorte-zoom {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: var(--linea);
+  margin-bottom: 18px;
+}
+.recorte-zoom::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--pal-claro);
+  border: none;
+  cursor: pointer;
+}
+.recorte-zoom::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--pal-claro);
+  border: none;
+  cursor: pointer;
+}
+
+/* ---------- fuerza ---------- */
+
+/* La línea de los tres pesos en la principal (§16.8). NO llega al borde y no
+   arranca en el margen: se apoya donde la tira semanal, para que nada cierre
+   en la misma vertical. Pesa lo mismo que la línea social y no compite con el
+   número de racha, que es lo único grande de esa pantalla. */
+.linea-marcas {
+  display: block;
+  font-family: var(--f-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--apagado);
+  padding: 2px 0 0 2px;
+  margin-top: -8px;
+}
+
+.enlace {
+  color: var(--pal-claro);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.apagado {
+  color: var(--apagado);
+}
+
+/* una marca por fila: nombre, número y fecha. La fecha nunca se separa del
+   número (§16.5), así que va en la misma línea aunque quede chica. */
+.marca-fila,
+.marca-previa,
+.rank-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  text-align: left;
+  font-size: 14px;
+}
+.marca + .marca,
+.rank-fila + .rank-fila {
+  border-top: 0.5px solid var(--linea);
+}
+.marca-nombre {
+  flex: 1;
+}
+.marca-kg {
+  font-family: var(--f-mono), monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--pal-claro);
+}
+.marca-fecha {
+  font-family: var(--f-mono), monospace;
+  font-size: 11px;
+  color: var(--apagado);
+  white-space: nowrap;
+}
+.marca-historial {
+  padding: 0 12px 8px;
+}
+.marca-previa {
+  padding: 7px 0;
+  font-size: 13px;
+  border-top: 0.5px solid var(--linea);
+}
+.marca-previa > :first-child {
+  font-family: var(--f-mono), monospace;
+  min-width: 72px;
+}
+.marca-previa > :nth-child(2) {
+  flex: 1;
+  font-size: 12px;
+}
+.marca-previa > :nth-child(3) {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* el DOTS propio: grande porque es el número del módulo, pero más chico que
+   la racha — la racha sigue siendo el motor y esto es el estatus (§16.1) */
+.dots-tarjeta {
+  text-align: left;
+}
+.dots-numero {
+  font-family: var(--f-numero), system-ui, sans-serif;
+  font-size: 46px;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.dots-pie {
+  font-family: var(--f-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sub);
+  margin-top: 8px;
+}
+
+.marcas-tira {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+}
+.marcas-tira-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--sub);
+  padding: 5px 2px;
+}
+.marcas-tira-item > :first-child {
+  min-width: 78px;
+  color: var(--pal-claro);
+  font-variant-numeric: tabular-nums;
+}
+.marcas-tira-item > :nth-child(2) {
+  flex: 1;
+}
+.marcas-tira-item > :last-child {
+  font-size: 11px;
+}
+
+.rank-pos {
+  min-width: 16px;
+  color: var(--apagado);
+  font-size: 12px;
+}
+.rank-nombre {
+  flex: 1;
+}
+.rank-banda {
+  font-size: 12px;
+  color: var(--pal-claro);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rank-detalle {
+  padding: 0 12px 10px 50px;
+}
+.rank-detalle > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--sub);
+  padding: 4px 0;
+}
+.rank-detalle > div > :first-child {
+  flex: 1;
+}
+.rank-detalle > div > :nth-child(2) {
+  font-variant-numeric: tabular-nums;
+  color: var(--pal-claro);
+}
+.rank-detalle > div > :last-child {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ---------- cronómetro de sesión ----------
+   Ocupa el lugar del bloque de botones. El tiempo va en mono y tamaño medio:
+   no puede competir con el número de racha, que es lo único grande de la
+   pantalla. */
+.crono {
+  margin-bottom: 4px;
+}
+.crono-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.crono-label {
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--sub);
+}
+.crono-tiempo {
+  font-family: var(--f-mono), monospace;
+  font-size: 34px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--pal-claro);
+}
+
+/* ---------- descanso entre series ----------
+   Toma la pantalla entera. El teléfono está en el piso o en el banco, a dos
+   metros: el NÚMERO es lo único grande y todo lo demás va en voz baja. Si
+   algo le compite, deja de leerse de lejos y la pantalla pierde su razón. */
+.descanso {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px 28px calc(28px + env(safe-area-inset-bottom));
+  /* el fondo se ACLARA hacia la paleta del rango: es el único momento en que
+     la app se pone más clara, y por eso se reconoce de lejos sin leer nada */
+  background:
+    radial-gradient(90% 60% at 50% 42%, color-mix(in srgb, var(--pal-principal) 42%, transparent), transparent 70%),
+    color-mix(in srgb, var(--pal-apagado) 45%, #05060a);
+  animation: aparecer 0.35s var(--curva-suave) both;
+  transition: background 0.5s var(--curva-suave);
+}
+/* Al llegar a cero el fondo vuelve de golpe al del rango. ESE corte es el
+   aviso visual, y es el único que funciona igual en todos los teléfonos. */
+.descanso.listo {
+  background: var(--fondo);
+}
+.descanso-centro {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(78vw, 320px);
+  aspect-ratio: 1;
+}
+.descanso-anillo {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.descanso-anillo .pista {
+  fill: none;
+  stroke: color-mix(in srgb, var(--pal-claro) 14%, transparent);
+  stroke-width: 2;
+}
+.descanso-anillo .arco {
+  fill: none;
+  stroke: var(--pal-claro);
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.25s linear;
+}
+.descanso-anillo .arco.latiendo {
+  animation: latir 1s var(--curva-suave) infinite;
+}
+@keyframes latir {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.descanso-numero {
+  position: absolute;
+  font-family: var(--f-mono), monospace;
+  font-size: clamp(64px, 22vw, 104px);
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta);
+}
+.descanso-pie {
+  font-size: 14px;
+  color: var(--sub);
+  text-align: center;
+}
+.descanso .boton-solido,
+.descanso .boton-texto {
+  max-width: 340px;
+}
+/* los presets, en voz baja: no pueden competir con el número */
+.descanso-presets {
+  display: flex;
+  gap: 6px;
+}
+.descanso-presets button {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: var(--f-mono), monospace;
+  color: var(--apagado);
+  border: 0.5px solid color-mix(in srgb, var(--pal-claro) 20%, transparent);
+  border-radius: 9px;
+}
+.descanso-presets button.activo {
+  color: var(--tinta);
+  border-color: color-mix(in srgb, var(--pal-claro) 55%, transparent);
+}
+
+/* Con la franja puesta, el final del contenido quedaría tapado. La clase la
+   pone y la saca la propia franja: `.pantalla` está anidada dentro de
+   `.deslizable`, así que no es hermana de la franja y no hay selector que
+   las relacione. */
+body.con-franja .pantalla {
+  padding-bottom: calc(132px + env(safe-area-inset-bottom));
+}
+
+/* ---------- franja de la sesión ----------
+   Se apoya arriba de la barra y se ve en las seis pestañas mientras haya una
+   sesión corriendo. Descansar pasa veinte veces por entrenamiento: si hubiera
+   que volver a una pantalla para hacerlo, sería lo mismo que no tenerlo. */
+.franja-sesion {
+  position: fixed;
+  bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 7px 14px 7px 18px;
+  background: color-mix(in srgb, var(--pal-apagado) 30%, rgba(5, 6, 10, 0.92));
+  backdrop-filter: blur(14px);
+  border-top: 0.5px solid color-mix(in srgb, var(--pal-claro) 22%, transparent);
+  animation: surgir 0.4s var(--curva-salida) both;
+}
+.franja-tiempo {
+  font-family: var(--f-mono), monospace;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pal-claro);
+  letter-spacing: 0.02em;
+}
+/* Discreto pero siempre alcanzable: no es el botón sólido de la pantalla,
+   pero tiene el área de toque de uno. */
+.franja-sesion button {
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 999px;
+  color: #08080c;
+  background: var(--pal-claro);
+}
+.franja-sesion button:active {
+  transform: scale(0.97);
+}
+
+/* la introducción de la pantalla de sesión, en voz baja */
+.sesion-intro {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--sub);
+  max-width: 34ch;
+  margin-bottom: 22px;
 }
 
 @media (prefers-reduced-motion: reduce) {

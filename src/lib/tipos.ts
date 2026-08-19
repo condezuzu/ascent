@@ -1,3 +1,7 @@
+// null = sin cargar, y eso significa SIN DOTS (§16.7). No es un valor por
+// defecto: no hay coeficientes neutros que sirvan.
+export type Sexo = 'm' | 'f' | null;
+
 export type Perfil = {
   id: string;
   username: string | null;
@@ -8,6 +12,11 @@ export type Perfil = {
   racha_base: number;
   perdida_fecha: string | null;
   dias_descanso: number[];
+  visibilidad_default: 'privada' | 'amigos';
+  unidad_peso: 'kg' | 'lb';
+  sexo: Sexo;
+  // segundos; lo único del descanso entre series que vive en la base (§18.3)
+  duracion_descanso: number;
 };
 
 export type Log = {
@@ -56,6 +65,60 @@ export type UsuarioPublico = {
   avatar_url: string | null;
   racha_actual: number;
   rango_actual: number;
+};
+
+export type Ejercicio = {
+  id: string;
+  nombre: string;
+  grupo: string;
+  cuenta_dots: boolean;
+  orden: number;
+};
+
+// Una marca cargada, tal como la escribió el usuario. El 1RM no se guarda:
+// se deriva de peso + reps + es_real (§16.4).
+export type PR = {
+  id: string;
+  ejercicio: string;
+  peso: number;
+  reps: number;
+  es_real: boolean;
+  fecha: string;
+};
+
+// La mejor marca de un ejercicio, ya con el 1RM resuelto por la base.
+export type Marca = {
+  ejercicio: string;
+  nombre: string;
+  grupo: string;
+  cuenta_dots: boolean;
+  kg: number;
+  peso: number;
+  reps: number;
+  es_real: boolean;
+  fecha: string;
+};
+
+export type MiFuerza = {
+  marcas: Marca[];
+  total: number | null;
+  dots: number | null;
+  banda: string | null;
+  // por qué NO hay DOTS, para poder decir qué falta en vez de mostrar un cero
+  falta: 'marcas' | 'sexo' | 'peso' | null;
+};
+
+// Fila del ranking entre amigos. El DOTS exacto viene SOLO en la fila propia
+// (§16.7b): con el total a la vista, publicarlo permitiría despejar el peso
+// corporal de cualquiera.
+export type FilaFuerza = {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
+  total: number | null;
+  banda: string | null;
+  dots_propio: number | null;
+  marcas: { ejercicio: string; nombre: string; kg: number; fecha: string }[];
 };
 
 export type ResultadoRegistro = {

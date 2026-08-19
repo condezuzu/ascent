@@ -22,6 +22,8 @@ export function guardarPerfilCache(p: Perfil) {
         racha_base: p.racha_base,
         perdida_fecha: p.perdida_fecha,
         dias_descanso: p.dias_descanso,
+        // lo usa la franja para saber con cuánto arranca el descanso
+        duracion_descanso: p.duracion_descanso,
       })
     );
   } catch {
