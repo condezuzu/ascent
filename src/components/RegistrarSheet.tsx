@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { fechaLinda, hoyISO } from '@/lib/fechas';
 import { aKilos, limites, type Unidad } from '@/lib/peso';
+import { estaBloqueado, textoDeBloqueo } from '@/lib/pendiente';
 import type { ResultadoRegistro } from '@/lib/tipos';
 
 /**
@@ -49,6 +50,7 @@ export default function RegistrarSheet({
   // arranca donde el usuario dijo en Ajustes, para no elegir una por una
   const [fotoVisible, setFotoVisible] = useState(visibilidadDefault === 'amigos');
   const [error, setError] = useState('');
+  const [aviso, setAviso] = useState('');
   const [cargando, setCargando] = useState(false);
   const [cerrando, setCerrando] = useState(false);
   const inputFoto = useRef<HTMLInputElement>(null);
@@ -127,6 +129,14 @@ export default function RegistrarSheet({
       return setError('No se pudo guardar. Probá de nuevo.');
     }
 
+    // La guarda de las 20 horas por cambio de zona no es un error: el día
+    // quedó anotado y entra solo. Se dice con todas las letras, porque un
+    // rechazo mudo con la racha en juego se lee como que la app está rota.
+    if (estaBloqueado(data)) {
+      setCargando(false);
+      return setAviso(textoDeBloqueo(data.hasta));
+    }
+
     const resultado = data as ResultadoRegistro;
     // La foto se sube después de que el día quedó confirmado en la base.
     await subirFoto(resultado.log_id, resultado.subio_rango);
@@ -183,6 +193,7 @@ export default function RegistrarSheet({
         <button className="boton-solido" onClick={confirmar} disabled={cargando}>
           {cargando ? 'Guardando…' : yaEsta ? 'Guardar' : 'Registrar día'}
         </button>
+        {aviso && <p className="ok-msg">{aviso}</p>}
         {error && <p className="error-msg">{error}</p>}
       </div>
     </>

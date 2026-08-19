@@ -89,6 +89,16 @@ zona cambió** desde el último día registrado. Condicionado al cambio y no a
 secas, porque entrenar un lunes a las 23:00 y el martes a las 07:00 son ocho
 horas y dos días de verdad: la guarda incondicional rechazaba el segundo.
 
+**Una guarda que bloquea sin explicar se lee como una app rota**, y más cuando
+lo que está en juego es la racha. La guarda igual puede agarrar a un viajero
+legítimo —vuela de noche, entrena al otro día, no pasaron 20 horas— y ahí no
+hay forma de distinguirlo de la trampa.
+→ **Regla:** el día **no se rechaza, queda pendiente** (`dia_pendiente`) y se
+registra solo apenas pasa la ventana, resuelto perezosamente desde
+`verificar_perdida`. Y `registrar_dia` **devuelve un resultado estructurado en
+vez de tirar excepción**: una excepción deshace la transacción, así que no
+había forma de guardar el pendiente y avisar en la misma llamada.
+
 ---
 
 ## Fuerza

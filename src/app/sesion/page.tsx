@@ -7,6 +7,7 @@ import { hoyISO } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
 import { duracionLinda, desfasajeDelReloj, type SesionViva } from '@/lib/sesiones';
 import { borrarSesionCache, guardarSesionCache, leerSesionCache } from '@/lib/sesionCache';
+import { estaBloqueado, textoDeBloqueo } from '@/lib/pendiente';
 import type { Perfil, ResultadoRegistro } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
@@ -30,6 +31,7 @@ export default function Sesion() {
   const [sesion, setSesion] = useState<{ inicio: string; desfasaje: number } | null>(null);
   const [ultima, setUltima] = useState<number | null>(null);
   const [cambiando, setCambiando] = useState(false);
+  const [aviso, setAviso] = useState('');
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
   const [cargado, setCargado] = useState(false);
 
@@ -68,6 +70,9 @@ export default function Sesion() {
     const { data, error } = await supabase.rpc('iniciar_sesion', { p_hoy: hoyISO() });
     setCambiando(false);
     if (error) return;
+    // La sesión se cuelga de un día, así que si la guarda lo frenó no hay
+    // sesión que empezar. El día igual quedó anotado (§12b).
+    if (estaBloqueado(data)) return setAviso(textoDeBloqueo(data.hasta));
     const r = data as { inicio: string; ahora: string; registro: ResultadoRegistro | null };
     const guardada = { inicio: r.inicio, desfasaje: desfasajeDelReloj(r.ahora) };
     setSesion(guardada);
@@ -122,6 +127,7 @@ export default function Sesion() {
           />
         ) : (
           <>
+            {aviso && <p className="ok-msg" style={{ marginBottom: 18 }}>{aviso}</p>}
             {ultima !== null && (
               <p className="ok-msg" style={{ marginBottom: 18 }}>
                 Sesión guardada: {duracionLinda(ultima)}.

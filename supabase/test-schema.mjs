@@ -1632,7 +1632,7 @@ console.log('\n29. La zona sale del teléfono, y cambiarla no regala días');
   chequear('la columna zona no se escribe directo', directo, true);
   await db.exec('reset role');
 
-  // ---- la guarda: cambiar de zona no regala un día ----
+  // ---- la guarda: cambiar de zona no regala un día, pero no lo pierde ----
   {
     const v = await nuevoUsuario();
     await comoUsuario(v);
@@ -1644,15 +1644,64 @@ console.log('\n29. La zona sale del teléfono, y cambiarla no regala días');
     await db.query(`select fijar_zona('Asia/Tokyo')`);
     await db.exec('reset role');
 
-    let segundo = null;
-    try {
-      await db.query('select registrar_dia()');
-      segundo = false;
-    } catch (e) {
-      segundo = /20 horas/i.test(e.message);
-    }
-    chequear('mover la zona no da un segundo día', segundo, true);
+    const r = (await db.query('select registrar_dia() as v')).rows[0].v;
+    chequear('mover la zona no da un segundo día', r.bloqueado, true);
     chequear('y la racha no se movió', (await perfil(v)).racha_actual, 1);
+
+    // ---- pero el día NO se pierde ----
+    chequear('el día queda pendiente', !!r.pendiente, true);
+    chequear('y dice hasta cuándo, no solo que no', !!r.hasta, true);
+    const guardado = await db.query(
+      'select dia_pendiente::text as d, pendiente_desde is not null as marcado from profiles where id = $1',
+      [v]
+    );
+    chequear('guardado en el perfil', [guardado.rows[0].d, guardado.rows[0].marcado], [r.pendiente, true]);
+
+    // mientras la ventana no pase, sigue pendiente y no se registra solo
+    await db.query('select verificar_perdida()');
+    chequear(
+      'antes de la ventana no se registra solo',
+      (await db.query('select count(*)::int as n from logs where user_id = $1', [v])).rows[0].n,
+      1
+    );
+
+    // pasa la ventana: el día entra solo la próxima vez que se abre la app
+    await db.query(
+      `update logs set creado = now() - interval '21 hours' where user_id = $1`,
+      [v]
+    );
+    const vp = (await db.query('select verificar_perdida() as v')).rows[0].v;
+    chequear('pasada la ventana se registra solo', vp.pendiente_resuelto, r.pendiente);
+    chequear(
+      'y ahora son dos días',
+      (await db.query('select count(*)::int as n from logs where user_id = $1', [v])).rows[0].n,
+      2
+    );
+    const limpio = await db.query('select dia_pendiente from profiles where id = $1', [v]);
+    chequear('el pendiente queda limpio', limpio.rows[0].dia_pendiente, null);
+  }
+
+  // ---- el pendiente no duplica si el día ya entró por otro lado ----
+  {
+    const x = await nuevoUsuario();
+    await comoUsuario(x);
+    await db.query('select registrar_dia()');
+    await db.exec('set role authenticated');
+    await db.query(`select fijar_zona('Asia/Tokyo')`);
+    await db.exec('reset role');
+    const r = (await db.query('select registrar_dia() as v')).rows[0].v;
+    // el usuario lo agrega a mano desde el calendario mientras tanto
+    await db.query(`insert into logs (user_id, fecha) values ($1, $2::date)`, [x, r.pendiente]);
+    await db.query(
+      `update logs set creado = now() - interval '21 hours' where user_id = $1`,
+      [x]
+    );
+    await db.query('select verificar_perdida()');
+    chequear(
+      'no duplica el día que ya estaba',
+      (await db.query('select count(*)::int as n from logs where user_id = $1 and fecha = $2::date', [x, r.pendiente])).rows[0].n,
+      1
+    );
   }
 
   // ---- pero NO molesta al que no cambió de zona ----

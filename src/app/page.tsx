@@ -234,6 +234,12 @@ export default function Principal() {
           <p className="aviso-tiempo">Se dispersó un poco de masa. Hoy se recupera.</p>
         )}
         {esDescanso && <p className="aviso-tiempo">Hoy descansa. La racha sigue igual.</p>}
+        {/* El día que la guarda dejó esperando. Se dice acá y no solo en la
+            hoja: el usuario puede cerrar la app y volver, y lo que no puede
+            es quedarse pensando que perdió el día (§11). */}
+        {perfil.dia_pendiente && (
+          <p className="aviso-tiempo">Tu día de hoy quedó anotado y se suma solo. No lo perdiste.</p>
+        )}
 
         {/* Con el día ya registrado esto era un cartel muerto, y el día
             quedaba cerrado: no había forma de agregarle la foto ni el peso

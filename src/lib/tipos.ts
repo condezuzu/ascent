@@ -17,6 +17,8 @@ export type Perfil = {
   sexo: Sexo;
   // segundos; lo único del descanso entre series que vive en la base (§18.3)
   duracion_descanso: number;
+  // el día que la guarda de las 20 horas dejó esperando; entra solo (§12b)
+  dia_pendiente: string | null;
 };
 
 export type Log = {
