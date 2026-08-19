@@ -4,11 +4,15 @@ import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { aISO, deISO, hoyISO, restarDias } from '@/lib/fechas';
 import { RANGOS, rangoDeRacha } from '@/lib/rangos';
+import { deKilos, esUnidad, type Unidad } from '@/lib/peso';
 import type { Log, Peso } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
+import GloboPrimeraVez from '@/components/GloboPrimeraVez';
+import SeccionFuerza from '@/components/SeccionFuerza';
+import SeccionSesiones from '@/components/SeccionSesiones';
 
 export default function Estadisticas() {
   const [supabase] = useState(() => crearCliente());
@@ -16,6 +20,7 @@ export default function Estadisticas() {
   const [pesos, setPesos] = useState<Peso[]>([]);
   const [racha, setRacha] = useState(0);
   const [mejor, setMejor] = useState(0);
+  const [unidad, setUnidad] = useState<Unidad>('kg');
 
   useEffect(() => {
     (async () => {
@@ -24,15 +29,21 @@ export default function Estadisticas() {
       } = await supabase.auth.getUser();
       if (!user) return;
       const [{ data: p }, { data: ls }, { data: ws }] = await Promise.all([
-        supabase.from('profiles').select('racha_actual, mejor_racha').eq('id', user.id).single(),
+        // select('*') y no la lista de columnas: si el código llega antes que
+        // la migración, pedir una columna que todavía no existe rompe la
+        // pantalla entera en vez de solo mostrar el peso en kilos.
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('logs').select('*').eq('user_id', user.id).order('fecha'),
         supabase.from('weights').select('id, fecha, valor').eq('user_id', user.id).order('fecha'),
       ]);
       if (p) {
         setRacha(p.racha_actual);
         setMejor(p.mejor_racha);
+        if (esUnidad(p.unidad_peso)) setUnidad(p.unidad_peso);
       }
       setLogs(ls ?? []);
+      // en la base el peso siempre está en kilos; acá se pasa a la unidad
+      // que el usuario eligió, y recién entonces se suaviza y se dibuja
       setPesos((ws ?? []).map((w) => ({ ...w, valor: Number(w.valor) })));
     })();
   }, [supabase]);
@@ -69,7 +80,8 @@ export default function Estadisticas() {
   // El peso oscila un kilo por razones ajenas al entrenamiento.
   const suavizado = pesos.map((_, i) => {
     const ventana = pesos.slice(Math.max(0, i - 6), i + 1);
-    return ventana.reduce((s, w) => s + w.valor, 0) / ventana.length;
+    const media = ventana.reduce((s, w) => s + w.valor, 0) / ventana.length;
+    return deKilos(media, unidad);
   });
 
   let pathPeso = '';
@@ -96,6 +108,11 @@ export default function Estadisticas() {
       <FondoEspacial rango={rangoActual.n} esquina="arriba-derecha" velo={0.72} />
       <PantallaDeslizable>
         <div className="titulo-pantalla">Stats</div>
+
+        <GloboPrimeraVez cual="stats">
+          Acá está todo lo que no entra en la principal: constancia, historial y tu peso, que no ve
+          nadie más.
+        </GloboPrimeraVez>
 
         <div className="stat-grilla">
           <div className="stat-celda">
@@ -127,6 +144,9 @@ export default function Estadisticas() {
           </div>
         </div>
 
+        {/* Las duraciones van acá, después del año y antes del peso (§17.7) */}
+        <SeccionSesiones />
+
         {pathPeso ? (
           <div className="seccion">
             <h3>Peso — tendencia 7 días</h3>
@@ -135,9 +155,9 @@ export default function Estadisticas() {
                 <path d={pathPeso} fill="none" stroke="var(--pal-claro)" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--apagado)' }}>
-                <span>{minP.toFixed(1)} kg</span>
-                <span>{suavizado[suavizado.length - 1].toFixed(1)} kg hoy</span>
-                <span>{maxP.toFixed(1)} kg</span>
+                <span>{minP.toFixed(1)} {unidad}</span>
+                <span>{suavizado[suavizado.length - 1].toFixed(1)} {unidad} hoy</span>
+                <span>{maxP.toFixed(1)} {unidad}</span>
               </div>
             </div>
           </div>
@@ -149,7 +169,7 @@ export default function Estadisticas() {
             <div className="tarjeta">
               <div style={{ fontSize: 28, fontWeight: 300, fontVariantNumeric: 'tabular-nums' }}>
                 {suavizado[0].toFixed(1)}
-                <span style={{ fontSize: 15, color: 'var(--sub)' }}> kg</span>
+                <span style={{ fontSize: 15, color: 'var(--sub)' }}> {unidad}</span>
               </div>
               <p style={{ fontSize: 12, color: 'var(--apagado)', marginTop: 6 }}>
                 Anotá alguno más y acá aparece la tendencia. Solo la ves vos.
@@ -164,6 +184,10 @@ export default function Estadisticas() {
             </p>
           </div>
         )}
+
+        {/* La fuerza convive con la racha, no la reemplaza (§16.1): va después
+            del peso y antes de la escalera, que es el cierre de la pantalla. */}
+        <SeccionFuerza unidad={unidad} />
 
         {/* Único lugar de la app donde los ocho rangos se muestran con nombre */}
         <div className="seccion">
