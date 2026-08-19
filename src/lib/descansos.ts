@@ -1,17 +1,11 @@
 import { deISO } from './fechas';
+import { descansosVigentes } from './reglas';
 
-// Configuraciones de descanso fechadas. Cada una rige desde su fecha hasta
-// que aparece la siguiente: el pasado se lee con la que estaba vigente
-// entonces, nunca con la de hoy.
-export type ConfigDescanso = { desde: string; dias: number[] };
-
-/** Las configuraciones tienen que venir ordenadas de más nueva a más vieja. */
-export function descansosVigentes(configs: ConfigDescanso[], fecha: string): number[] {
-  for (const c of configs) {
-    if (c.desde <= fecha) return c.dias;
-  }
-  return []; // antes de la primera configuración no había descansos
-}
+// Qué configuración rige en una fecha es la misma cuenta que hace la base
+// (`descansos_vigentes`), así que vive en `reglas.ts` y el test compara las
+// dos. Acá queda lo que solo sabe el cliente: qué día de la semana es.
+export { descansosVigentes, type ConfigDescanso } from './reglas';
+import type { ConfigDescanso } from './reglas';
 
 export function esDiaDeDescanso(configs: ConfigDescanso[], fecha: string): boolean {
   return descansosVigentes(configs, fecha).includes(deISO(fecha).getDay());

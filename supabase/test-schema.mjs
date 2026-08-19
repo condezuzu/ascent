@@ -3,6 +3,23 @@
 // (auth.users, auth.uid(), storage, roles) por stubs mínimos.
 // Correr con: npm run test:db
 import { PGlite } from '@electric-sql/pglite';
+// Las reglas que están escritas dos veces, una acá y otra en el schema. Se
+// importan del código real —no una copia— para poder correr las dos contra
+// los mismos valores. `reglas.ts` no importa nada justamente para que Node
+// pueda cargarlo sin el alias `@/` ni el resolvedor de Next.
+import {
+  DESCANSO_MAXIMO,
+  DESCANSO_MINIMO,
+  DESCANSO_PREDETERMINADO,
+  PISO_SESION_SEGUNDOS,
+  PLANETAS,
+  TOPE_SESION_SEGUNDOS,
+  descansosVigentes,
+  numeroDeRango,
+  planetaDeDia,
+  unRM,
+} from '../src/lib/reglas.ts';
+import { PLANETAS_CFG } from '../src/motor/cuerpos.ts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -712,6 +729,762 @@ console.log('\n20. El schema trae sus propios permisos (no los del host)');
   const r = await db.query('select rango_de_racha(35) as g');
   chequear('la matemática pura sí queda abierta', r.rows[0].g, 4);
   await db.exec('reset role');
+}
+
+// =====================================================================
+console.log('\n21. Preferencias de perfil');
+{
+  const u = await nuevoUsuario();
+  const p = (
+    await db.query('select visibilidad_default, unidad_peso from profiles where id = $1', [u])
+  ).rows[0];
+  chequear('las fotos nuevas nacen privadas', p.visibilidad_default, 'privada');
+  chequear('el peso arranca en kilos', p.unidad_peso, 'kg');
+
+  let visInvalida = null;
+  try {
+    await db.query(`update profiles set visibilidad_default = 'publica' where id = $1`, [u]);
+    visInvalida = false;
+  } catch (e) {
+    visInvalida = /check constraint/i.test(e.message);
+  }
+  chequear('no se puede inventar una visibilidad', visInvalida, true);
+
+  let unidadInvalida = null;
+  try {
+    await db.query(`update profiles set unidad_peso = 'piedras' where id = $1`, [u]);
+    unidadInvalida = false;
+  } catch (e) {
+    unidadInvalida = /check constraint/i.test(e.message);
+  }
+  chequear('no se puede inventar una unidad de peso', unidadInvalida, true);
+
+  // el dueño las cambia solo; la racha sigue fuera de su alcance
+  await comoUsuario(u);
+  await db.exec('set role authenticated');
+  let cambia = null;
+  try {
+    await db.query(
+      `update profiles set visibilidad_default = 'amigos', unidad_peso = 'lb' where id = $1`,
+      [u]
+    );
+    cambia = true;
+  } catch (e) {
+    cambia = e.message;
+  }
+  chequear('el dueño cambia sus preferencias', cambia, true);
+
+  let racha = null;
+  try {
+    await db.query('update profiles set racha_actual = 999 where id = $1', [u]);
+    racha = false;
+  } catch (e) {
+    racha = /permission denied/i.test(e.message);
+  }
+  chequear('pero sigue sin poder tocarse la racha', racha, true);
+  await db.exec('reset role');
+}
+
+// =====================================================================
+console.log('\n22. Eliminar la cuenta');
+{
+  const u = await nuevoUsuario();
+  const otro = await nuevoUsuario();
+  await rachaDe(u, 12);
+  await db.query(`insert into weights (user_id, fecha, valor) values ($1, current_date, 80)`, [u]);
+  await db.query(
+    `insert into photos (user_id, storage_path) values ($1, $2)`,
+    [u, `${u}/foto.jpg`]
+  );
+  await db.query(`insert into feedback (user_id, texto) values ($1, 'chau')`, [u]);
+  await db.query(
+    `insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`,
+    [u, otro]
+  );
+  // un reto ya cerrado y GANADO: challenges.ganador no tiene cascade, así que
+  // es justo la fila que bloquearía el borrado si no se sacara a mano
+  await db.query(
+    `insert into challenges (retador, rival, desde, hasta, estado, ganador)
+       values ($1, $2, current_date - 7, current_date - 1, 'terminado', $1)`,
+    [u, otro]
+  );
+  await db.query(`select fijar_descansos(array[0,6]::int[], current_date)`);
+
+  await comoUsuario(u);
+  await db.exec('set role authenticated');
+  let borro = null;
+  try {
+    await db.query('select eliminar_cuenta()');
+    borro = true;
+  } catch (e) {
+    borro = e.message;
+  }
+  await db.exec('reset role');
+  chequear('la cuenta se borra sin que la trabe el reto ganado', borro, true);
+
+  const quedan = async (tabla, col = 'user_id') =>
+    (await db.query(`select count(*)::int as n from ${tabla} where ${col} = $1`, [u])).rows[0].n;
+
+  chequear('no queda el usuario', (await db.query('select count(*)::int as n from auth.users where id = $1', [u])).rows[0].n, 0);
+  chequear('no queda el perfil', await quedan('profiles', 'id'), 0);
+  chequear('no quedan logs', await quedan('logs'), 0);
+  chequear('no quedan pesos', await quedan('weights'), 0);
+  chequear('no quedan fotos', await quedan('photos'), 0);
+  chequear('no quedan descansos', await quedan('descansos'), 0);
+  chequear('no quedan sugerencias', await quedan('feedback'), 0);
+  chequear(
+    'no quedan amistades',
+    (await db.query(
+      'select count(*)::int as n from friendships where solicitante = $1 or destinatario = $1',
+      [u]
+    )).rows[0].n,
+    0
+  );
+  chequear(
+    'no quedan retos',
+    (await db.query('select count(*)::int as n from challenges where retador = $1 or rival = $1', [u]))
+      .rows[0].n,
+    0
+  );
+  // el amigo tiene que seguir existiendo: se borra una cuenta, no las dos
+  chequear(
+    'el amigo sigue en pie',
+    (await db.query('select count(*)::int as n from profiles where id = $1', [otro])).rows[0].n,
+    1
+  );
+}
+{
+  // sin sesión no se borra nada
+  await db.query(`select set_config('test.uid', '', false)`);
+  await db.exec('set role authenticated');
+  let sinSesion = null;
+  try {
+    await db.query('select eliminar_cuenta()');
+    sinSesion = false;
+  } catch (e) {
+    sinSesion = /sin sesión/i.test(e.message);
+  }
+  chequear('sin sesión no borra nada', sinSesion, true);
+  await db.exec('reset role');
+}
+
+// =====================================================================
+console.log('\n23. Fuerza: 1RM, DOTS y bandas');
+{
+  // Epley: 1RM = peso × (1 + reps/30). Un "real" de una repetición y un
+  // estimado de una repetición tienen que dar lo mismo.
+  const e = await db.query(`
+    select un_rm(100, 5, false)::float8 as est,
+           un_rm(150, 1, true)::float8  as real1,
+           un_rm(150, 1, false)::float8 as est1`);
+  chequear('Epley con 5 repeticiones', Math.round(e.rows[0].est * 10) / 10, 116.7);
+  chequear('un 1RM real es el peso tal cual', e.rows[0].real1, 150);
+  // Epley crudo da 155 acá (peso × 31/30): una repetición no se extrapola
+  chequear('real y estimado a 1 repetición coinciden', e.rows[0].est1, 150);
+
+  // DOTS contra un caso PUBLICADO, no contra nuestra propia cuenta: es la
+  // única forma de cazar un coeficiente mal tipeado. Un DOTS mal calculado
+  // ordena mal el ranking y nadie lo nota, porque el número igual parece
+  // razonable. Hombre de 90 kg con 650 kg de total = 420,3.
+  const d = await db.query(`
+    select dots(650, 90, 'm')::float8  as h,
+           dots(400, 60, 'f')::float8  as m,
+           dots(650, 90, 'f')::float8  as cruzado,
+           dots(700, 300, 'm')::float8 as gigante,
+           dots(700, 210, 'm')::float8 as tope,
+           dots(650, 90, null)::float8 as sin_sexo,
+           dots(null, 90, 'm')::float8 as sin_total`);
+  chequear('DOTS hombre 90 kg / 650 kg = 420,29', d.rows[0].h, 420.29);
+  chequear('DOTS mujer 60 kg / 400 kg = 443,42', d.rows[0].m, 443.42);
+  chequear('los dos juegos de coeficientes son distintos', d.rows[0].h !== d.rows[0].cruzado, true);
+  // fuera del rango calibrado el polinomio se dispara: se acota, no se extrapola
+  chequear('300 kg se acota al tope de 210', d.rows[0].gigante, d.rows[0].tope);
+  chequear('sin sexo no hay DOTS', d.rows[0].sin_sexo, null);
+  chequear('sin total no hay DOTS', d.rows[0].sin_total, null);
+
+  const b = await db.query(`
+    select banda_dots(423.7) as media, banda_dots(180) as baja,
+           banda_dots(700) as alta, banda_dots(null) as nada`);
+  chequear('la banda agrupa de a 50', b.rows[0].media, '400–450');
+  chequear('abajo de 200 no se abre en bandas', b.rows[0].baja, 'menos de 200');
+  chequear('arriba de 600 tampoco', b.rows[0].alta, '600 o más');
+  chequear('sin DOTS no hay banda', b.rows[0].nada, null);
+}
+
+// =====================================================================
+console.log('\n24. Fuerza: marcas, total y lo que falta');
+{
+  const u = await nuevoUsuario();
+  const cargar = (ej, peso, reps, real, dias) =>
+    db.query(
+      `insert into prs (user_id, ejercicio, peso, reps, es_real, fecha)
+         values ($1, $2, $3, $4, $5, current_date - $6::int)`,
+      [u, ej, peso, reps, real, dias]
+    );
+
+  // un 1RM "real" con más de una repetición es una contradicción
+  let contradiccion = null;
+  try {
+    await cargar('sentadilla', 200, 5, true, 0);
+    contradiccion = false;
+  } catch (err) {
+    contradiccion = /check constraint/i.test(err.message);
+  }
+  chequear('un 1RM real no puede tener 5 repeticiones', contradiccion, true);
+
+  await comoUsuario(u);
+  const falta = async () => (await db.query('select mi_fuerza() as f')).rows[0].f;
+
+  chequear('sin marcas, lo que falta son las marcas', (await falta()).falta, 'marcas');
+
+  // la marca VIEJA es mejor que la nueva: gana la mejor, no la más reciente
+  await cargar('sentadilla', 140, 1, true, 400);
+  await cargar('sentadilla', 120, 1, true, 1);
+  await cargar('press_banca', 100, 1, true, 30);
+  chequear('con dos de tres todavía no hay total', (await falta()).total, null);
+
+  await cargar('peso_muerto', 150, 3, false, 10); // Epley: 150 × 1,1 = 165
+  let f = await falta();
+  chequear('el total suma los tres mejores', Number(f.total), 140 + 100 + 165);
+  chequear('gana la mejor marca, no la más reciente', f.falta, 'sexo');
+
+  // un ejercicio fuera de los tres NO entra al total (la fórmula está
+  // calibrada sobre sentadilla, banca y peso muerto: sumarle otros la invalida)
+  await cargar('dominadas', 300, 1, true, 5);
+  f = await falta();
+  chequear('un ejercicio ajeno no infla el total', Number(f.total), 405);
+  chequear('pero sí aparece en la lista de marcas', f.marcas.length, 4);
+
+  // sexo cargado pero sin peso corporal: sigue sin haber DOTS
+  await db.query(`update profiles set sexo = 'm' where id = $1`, [u]);
+  chequear('sin peso corporal tampoco hay DOTS', (await falta()).falta, 'peso');
+
+  await db.query(
+    `insert into weights (user_id, fecha, valor) values ($1, current_date - 5, 95),
+                                                       ($1, current_date, 90)`,
+    [u]
+  );
+  f = await falta();
+  chequear('con todo cargado ya no falta nada', f.falta, null);
+  // total 405 con 90 kg de peso corporal. Usa el peso MÁS RECIENTE (90), no
+  // el más viejo (95): con 95 daría 255,26.
+  chequear('el DOTS usa el peso corporal más reciente', Number(f.dots), 261.87);
+  chequear('y viene con su banda', f.banda, '250–300');
+  chequear('cada marca trae su fecha', typeof f.marcas[0].fecha, 'string');
+
+  // el DOTS NO se guarda como columna: depende del peso corporal de hoy
+  await db.query(
+    `insert into weights (user_id, fecha, valor) values ($1, current_date + 1, 110)`,
+    [u]
+  );
+  chequear('al cambiar el peso corporal el DOTS cambia solo', Number((await falta()).dots) !== 261.87, true);
+
+  let sexoInvalido = null;
+  try {
+    await db.query(`update profiles set sexo = 'x' where id = $1`, [u]);
+    sexoInvalido = false;
+  } catch (err) {
+    sexoInvalido = /check constraint/i.test(err.message);
+  }
+  chequear('no se puede inventar un sexo', sexoInvalido, true);
+}
+
+// =====================================================================
+console.log('\n25. Fuerza: quién ve qué');
+{
+  const yo = await nuevoUsuario();
+  const amigo = await nuevoUsuario();
+  const extrano = await nuevoUsuario();
+  await db.query(
+    `insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`,
+    [yo, amigo]
+  );
+  // yo: 650 kg de total a 90 kg de peso corporal, que es el caso publicado
+  // del punto 23 — el número tiene que sobrevivir todo el camino
+  for (const [quien, sq, bp, dl, peso] of [
+    [yo, 240, 150, 260, 90],
+    [amigo, 280, 180, 300, 100],
+  ]) {
+    for (const [ej, kg] of [['sentadilla', sq], ['press_banca', bp], ['peso_muerto', dl]]) {
+      await db.query(
+        `insert into prs (user_id, ejercicio, peso, reps, es_real, fecha)
+           values ($1, $2, $3, 1, true, current_date)`,
+        [quien, ej, kg]
+      );
+    }
+    await db.query(`update profiles set sexo = 'm' where id = $1`, [quien]);
+    await db.query(`insert into weights (user_id, fecha, valor) values ($1, current_date, $2)`, [
+      quien,
+      peso,
+    ]);
+  }
+
+  await comoUsuario(yo);
+  await db.exec('set role authenticated');
+
+  const marcasVisibles = async (de) =>
+    (await db.query('select count(*)::int as n from prs where user_id = $1', [de])).rows[0].n;
+  chequear('veo mis marcas', await marcasVisibles(yo), 3);
+  chequear('veo las de mi amigo, igual que sus logs', await marcasVisibles(amigo), 3);
+  chequear('las de un extraño no', await marcasVisibles(extrano), 0);
+
+  const r = await db.query('select * from ranking_fuerza()');
+  chequear('el ranking trae a los dos', r.rows.length, 2);
+  // ordena por DOTS EXACTO aunque muestre bandas: es la consecuencia
+  // aceptada de §16.7b, no un descuido
+  chequear('ordenado por DOTS, el amigo primero', r.rows[0].id, amigo);
+  const mio = r.rows.find((x) => x.id === yo);
+  const suyo = r.rows.find((x) => x.id === amigo);
+  chequear('mi fila trae mi DOTS exacto', Number(mio.dots_propio), 420.29);
+  chequear('la del otro NO trae el número exacto', suyo.dots_propio, null);
+  chequear('del otro solo se ve la banda', typeof suyo.banda, 'string');
+  chequear('el total sí se ve: los levantamientos ya se ven', Number(suyo.total), 760);
+  chequear('y el detalle por ejercicio también', suyo.marcas.length, 3);
+
+  // el peso corporal no sale ni por la puerta de atrás
+  let pesoAjeno = null;
+  try {
+    await db.query('select peso_actual($1)', [amigo]);
+    pesoAjeno = false;
+  } catch (err) {
+    pesoAjeno = /permission denied/i.test(err.message);
+  }
+  chequear('peso_actual no se puede llamar desde el cliente', pesoAjeno, true);
+
+  for (const fn of ['mejores_marcas', 'total_dots', 'dots_de']) {
+    let cerrada = null;
+    try {
+      await db.query(`select ${fn}($1)`, [amigo]);
+      cerrada = false;
+    } catch (err) {
+      cerrada = /permission denied/i.test(err.message);
+    }
+    chequear(`${fn} tampoco`, cerrada, true);
+  }
+
+  // Percentil global: con poca gente es un podio disfrazado, así que no hay
+  const p = (await db.query('select percentil_fuerza() as p')).rows[0].p;
+  chequear('con poca gente no hay percentil', p.percentil, null);
+
+  await db.exec('reset role');
+
+  // la baja de cuenta se lleva las marcas
+  await comoUsuario(yo);
+  await db.exec('set role authenticated');
+  await db.query('select eliminar_cuenta()');
+  await db.exec('reset role');
+  chequear(
+    'al borrar la cuenta no quedan marcas',
+    (await db.query('select count(*)::int as n from prs where user_id = $1', [yo])).rows[0].n,
+    0
+  );
+}
+
+// =====================================================================
+console.log('\n26. Las reglas escritas dos veces: SQL contra cliente');
+// La base manda, pero el cliente repite las mismas cuentas para no pedir un
+// viaje de red por tecla. Acá se corren las dos contra los mismos valores: si
+// alguna se toca sola, esto falla en vez de que la app pinte una cosa y la
+// base guarde otra.
+{
+  // ---- Epley / 1RM ----
+  const casos = [];
+  for (const peso of [60, 100, 142.5, 227.5]) {
+    for (const reps of [1, 2, 3, 5, 8, 12, 20]) casos.push([peso, reps, false]);
+    casos.push([peso, 1, true]);
+  }
+  let difieren = [];
+  for (const [peso, reps, real] of casos) {
+    const r = await db.query('select un_rm($1, $2, $3)::float8 as v', [peso, reps, real]);
+    const cliente = unRM(peso, reps, real);
+    // el margen es por el ida y vuelta numeric/float, no por tolerancia: una
+    // diferencia de fórmula de verdad se ve mucho antes de la sexta decimal
+    if (Math.abs(r.rows[0].v - cliente) > 1e-6) {
+      difieren.push(`${peso}x${reps}${real ? ' real' : ''}: sql ${r.rows[0].v} vs cliente ${cliente}`);
+    }
+  }
+  chequear(`un_rm y unRM coinciden en los ${casos.length} casos`, difieren, []);
+
+  // el caso que ya nos mordió una vez, explícito
+  const unaRep = await db.query('select un_rm(150, 1, false)::float8 as v');
+  chequear(
+    'con 1 repetición ninguna de las dos aplica Epley',
+    [unaRep.rows[0].v, unRM(150, 1, false)],
+    [150, 150]
+  );
+
+  // ---- número de rango ----
+  difieren = [];
+  for (let racha = 0; racha <= 100; racha++) {
+    const r = await db.query('select rango_de_racha($1)::int as v', [racha]);
+    if (r.rows[0].v !== numeroDeRango(racha)) {
+      difieren.push(`racha ${racha}: sql ${r.rows[0].v} vs cliente ${numeroDeRango(racha)}`);
+    }
+  }
+  chequear('rango_de_racha y numeroDeRango coinciden de 0 a 100', difieren, []);
+
+  // ---- planeta del día ----
+  difieren = [];
+  for (let racha = 25; racha <= 45; racha++) {
+    const r = await db.query('select planeta_de_dia($1) as v', [racha]);
+    const sql = r.rows[0].v ?? null;
+    if (sql !== planetaDeDia(racha)) {
+      difieren.push(`racha ${racha}: sql ${sql} vs cliente ${planetaDeDia(racha)}`);
+    }
+  }
+  chequear('planeta_de_dia y planetaDeDia coinciden, nombre por nombre', difieren, []);
+
+  // Tercera copia de los nombres: las claves de PLANETAS_CFG en el motor. Si
+  // alguien renombra un planeta, el motor no encuentra su config y dibuja otra
+  // cosa sin avisar.
+  chequear(
+    'cada planeta tiene su cuerpo en el motor',
+    PLANETAS.filter((p) => !PLANETAS_CFG[p]),
+    []
+  );
+
+  // ---- descansos vigentes ----
+  const u = await nuevoUsuario();
+  const configs = [
+    { desde: '2026-01-01', dias: [0, 6] },
+    { desde: '2026-03-15', dias: [3] },
+    { desde: '2026-07-01', dias: [] },
+  ];
+  for (const c of configs) {
+    await db.query('insert into descansos (user_id, desde, dias) values ($1, $2, $3)', [
+      u,
+      c.desde,
+      c.dias,
+    ]);
+  }
+  // el cliente las recibe de más nueva a más vieja, como se las pasa la pantalla
+  const alReves = [...configs].reverse();
+  difieren = [];
+  for (const fecha of [
+    '2025-12-31', '2026-01-01', '2026-03-14', '2026-03-15',
+    '2026-06-30', '2026-07-01', '2026-12-31',
+  ]) {
+    const r = await db.query('select descansos_vigentes($1, $2) as v', [u, fecha]);
+    const sql = JSON.stringify(r.rows[0].v ?? []);
+    const cliente = JSON.stringify(descansosVigentes(alReves, fecha));
+    if (sql !== cliente) difieren.push(`${fecha}: sql ${sql} vs cliente ${cliente}`);
+  }
+  chequear('descansos_vigentes y descansosVigentes coinciden, fecha por fecha', difieren, []);
+
+  // ---- las dos constantes del cronómetro ----
+  const topes = await db.query(`
+    select extract(epoch from tope_sesion())::float8 as tope,
+           extract(epoch from piso_sesion())::float8 as piso`);
+  chequear(
+    'el tope de 4 h y el piso de 5 min son el mismo número de los dos lados',
+    [topes.rows[0].tope, topes.rows[0].piso],
+    [TOPE_SESION_SEGUNDOS, PISO_SESION_SEGUNDOS]
+  );
+
+  // ---- el descanso entre series ----
+  // El predeterminado y los límites viven en la columna y en `reglas.ts`. Si
+  // el cliente ofrece un valor que la columna rechaza, el usuario ve un error
+  // sin entender por qué.
+  const u2 = await nuevoUsuario();
+  const suDefault = await db.query(
+    'select duracion_descanso from profiles where id = $1',
+    [u2]
+  );
+  chequear(
+    'el predeterminado de la columna es el del cliente',
+    suDefault.rows[0].duracion_descanso,
+    DESCANSO_PREDETERMINADO
+  );
+
+  const acepta = async (v) => {
+    try {
+      await db.query('update profiles set duracion_descanso = $1 where id = $2', [v, u2]);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  chequear(
+    'la columna acepta justo los límites que ofrece el cliente',
+    [await acepta(DESCANSO_MINIMO), await acepta(DESCANSO_MAXIMO)],
+    [true, true]
+  );
+  chequear(
+    'y rechaza lo que queda afuera',
+    [await acepta(DESCANSO_MINIMO - 1), await acepta(DESCANSO_MAXIMO + 1)],
+    [false, false]
+  );
+  const { PRESETS_DESCANSO } = await import('../src/lib/reglas.ts');
+  const fuera = [];
+  for (const p of PRESETS_DESCANSO) if (!(await acepta(p))) fuera.push(p);
+  chequear('todos los presets entran en la columna', fuera, []);
+}
+
+// =====================================================================
+console.log('\n27. Cronómetro de sesión');
+{
+  const empezar = async (uid, fecha = 'current_date') => {
+    await comoUsuario(uid);
+    const r = await db.query(`select iniciar_sesion(${fecha}) as v`);
+    return r.rows[0].v;
+  };
+  const laSesion = async (uid) =>
+    (await db.query('select * from sesiones where user_id = $1 order by inicio desc limit 1', [uid]))
+      .rows[0];
+  const diaDeLaSesion = async (uid) =>
+    (
+      await db.query(
+        `select l.fecha::text as f from sesiones s join logs l on l.id = s.log_id
+          where s.user_id = $1 order by s.inicio desc limit 1`,
+        [uid]
+      )
+    ).rows[0]?.f;
+
+  // ---- empezar registra el día ----
+  {
+    const u = await nuevoUsuario();
+    const r = await empezar(u);
+    chequear('empezar registra el día', (await perfil(u)).racha_actual, 1);
+    chequear('y devuelve el registro para poder animar la subida', r.registro !== null, true);
+    chequear('la sesión arranca corriendo', (await laSesion(u)).estado, 'corriendo');
+    // el cronómetro se dibuja con estos dos: el inicio del servidor y su ahora
+    chequear('devuelve inicio y el ahora del servidor', [!!r.inicio, !!r.ahora], [true, true]);
+  }
+
+  // ---- si el día ya estaba, no se duplica nada ----
+  {
+    const u = await nuevoUsuario();
+    await db.query(`insert into logs (user_id, fecha) values ($1, current_date)`, [u]);
+    const r = await empezar(u);
+    chequear('el día ya registrado no se vuelve a registrar', r.registro, null);
+    chequear(
+      'y hay un solo log para hoy',
+      (await db.query('select count(*)::int as n from logs where user_id = $1', [u])).rows[0].n,
+      1
+    );
+    chequear('la racha no se movió', (await perfil(u)).racha_actual, 1);
+  }
+
+  // ---- una sola corriendo ----
+  {
+    const u = await nuevoUsuario();
+    await empezar(u);
+    await empezar(u);
+    const r = await db.query(
+      `select estado, count(*)::int as n from sesiones where user_id = $1 group by estado order by estado`,
+      [u]
+    );
+    // la anterior queda ABANDONADA, no terminada: no sabemos cuándo terminó,
+    // así que no puede quedarse con una duración inventada
+    chequear(
+      'empezar de nuevo abandona la anterior',
+      r.rows.map((x) => [x.estado, x.n]),
+      [['abandonada', 1], ['corriendo', 1]]
+    );
+  }
+
+  // ---- terminar ----
+  {
+    const u = await nuevoUsuario();
+    await empezar(u);
+    await db.query(`update sesiones set inicio = now() - interval '75 minutes' where user_id = $1`, [u]);
+    const r = (await db.query('select terminar_sesion() as v')).rows[0].v;
+    chequear('terminar devuelve la duración', [r.termino, Math.round(r.segundos / 60), r.cuenta], [true, 75, true]);
+    const s = await laSesion(u);
+    chequear('la sesión queda terminada y con fin', [s.estado, s.fin !== null], ['terminada', true]);
+
+    const otra = (await db.query('select terminar_sesion() as v')).rows[0].v;
+    chequear('terminar sin nada corriendo no hace nada', otra.termino, false);
+  }
+
+  // ---- a las 4 horas se cierra sola, SIN duración ----
+  {
+    const u = await nuevoUsuario();
+    await empezar(u);
+    await db.query(`update sesiones set inicio = now() - interval '4 hours 1 minute' where user_id = $1`, [u]);
+    const r = (await db.query('select mi_sesion() as v')).rows[0].v;
+    chequear('pasadas 4 horas ya no hay sesión corriendo', r.corriendo, false);
+    const s = await laSesion(u);
+    chequear('quedó abandonada', s.estado, 'abandonada');
+    // "sin duración" es la AUSENCIA de fin, no un número especial
+    chequear('y sin fin: no se inventa una duración', s.fin, null);
+    // el día sigue registrado: perder el día por olvidarse de parar sería peor
+    chequear('el día sigue contando', (await perfil(u)).racha_actual, 1);
+
+    let conFin = null;
+    try {
+      await db.query(`update sesiones set fin = now() where id = $1`, [s.id]);
+      conFin = false;
+    } catch (e) {
+      conFin = /sesiones_fin_solo_si_termino|check constraint/i.test(e.message);
+    }
+    chequear('la base impide ponerle un fin a una abandonada', conFin, true);
+
+    // a las 3:59 todavía está viva: el corte es a las 4 en punto
+    const v = await nuevoUsuario();
+    await empezar(v);
+    await db.query(`update sesiones set inicio = now() - interval '3 hours 59 minutes' where user_id = $1`, [v]);
+    const r2 = (await db.query('select mi_sesion() as v')).rows[0].v;
+    chequear('a las 3 h 59 sigue corriendo', r2.corriendo, true);
+  }
+
+  // ---- MEDIANOCHE: la sesión pertenece al día en que EMPEZÓ ----
+  {
+    // empieza a las 23:00 y se cierra pasada la medianoche. El log se fijó al
+    // iniciar y nada lo mueve después: ni el cierre automático ni terminar.
+    const u = await nuevoUsuario();
+    await empezar(u, 'current_date - 1');
+    await db.query(`update sesiones set inicio = now() - interval '2 hours' where user_id = $1`, [u]);
+    const r = (await db.query('select terminar_sesion() as v')).rows[0].v;
+    chequear('cruzar la medianoche no cambia la duración', Math.round(r.segundos / 3600), 2);
+    chequear('la sesión sigue siendo del día en que empezó', await diaDeLaSesion(u), (
+      await db.query(`select (current_date - 1)::text as f`)
+    ).rows[0].f);
+    chequear(
+      'y no aparece un día nuevo al terminar',
+      (await db.query('select count(*)::int as n from logs where user_id = $1', [u])).rows[0].n,
+      1
+    );
+
+    // lo mismo cuando se cierra sola del otro lado de la medianoche
+    const v = await nuevoUsuario();
+    await empezar(v, 'current_date - 1');
+    await db.query(`update sesiones set inicio = now() - interval '5 hours' where user_id = $1`, [v]);
+    await db.query('select mi_sesion() as v');
+    chequear('la abandonada tampoco se muda de día', await diaDeLaSesion(v), (
+      await db.query(`select (current_date - 1)::text as f`)
+    ).rows[0].f);
+    chequear(
+      'y sigue habiendo un solo día',
+      (await db.query('select count(*)::int as n from logs where user_id = $1', [v])).rows[0].n,
+      1
+    );
+  }
+
+  // ---- día de descanso ----
+  {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    // hoy es día fijo de descanso: no ir no corta la racha, pero ir cuenta
+    await db.query(
+      `select fijar_descansos(array[extract(dow from current_date)::int], current_date)`
+    );
+    await empezar(u);
+    const l = (await db.query('select es_descanso from logs where user_id = $1', [u])).rows[0];
+    chequear('en un día de descanso el cronómetro registra un día ENTRENADO', l.es_descanso, false);
+    chequear('y la racha sube igual', (await perfil(u)).racha_actual, 1);
+  }
+
+  // ---- resumen para Stats ----
+  {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    const l = (
+      await db.query(
+        `insert into logs (user_id, fecha) values ($1, current_date) returning id`,
+        [u]
+      )
+    ).rows[0].id;
+    const meter = (minutos, estado) =>
+      db.query(
+        `insert into sesiones (user_id, log_id, inicio, fin, estado)
+           values ($1, $2, now() - ($3 || ' minutes')::interval,
+                   case when $4 = 'terminada' then now() end, $4)`,
+        [u, l, minutos, estado]
+      );
+    await meter(60, 'terminada');
+    await meter(90, 'terminada');
+    await meter(2, 'terminada'); // corta: cuenta como día, no como duración
+    await meter(240, 'abandonada');
+    const r = (await db.query('select resumen_sesiones() as v')).rows[0].v;
+    chequear('el promedio sale solo de las válidas', Number(r.promedio_segundos), 75 * 60);
+    chequear('el total también', Number(r.total_segundos), 150 * 60);
+    chequear('las cortas y las abandonadas se cuentan aparte', [r.validas, r.cortas, r.abandonadas], [2, 1, 1]);
+  }
+
+  // ---- borrar el día se lleva la sesión ----
+  {
+    const u = await nuevoUsuario();
+    await empezar(u);
+    await db.query('delete from logs where user_id = $1', [u]);
+    chequear(
+      'sacar el día del calendario borra su sesión',
+      (await db.query('select count(*)::int as n from sesiones where user_id = $1', [u])).rows[0].n,
+      0
+    );
+  }
+
+  // ---- quién ve qué, y quién puede escribir ----
+  {
+    const u = await nuevoUsuario();
+    const amigo = await nuevoUsuario();
+    await db.query(
+      `insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`,
+      [u, amigo]
+    );
+    await empezar(u);
+
+    await comoUsuario(amigo);
+    await db.exec('set role authenticated');
+    // la duración es privada incluso entre amigos (§17.8): más tiempo no es
+    // mejor entrenamiento, y competir por eso empuja a entrenar de más
+    chequear(
+      'ni un amigo ve mis sesiones',
+      (await db.query('select count(*)::int as n from sesiones where user_id = $1', [u])).rows[0].n,
+      0
+    );
+
+    let escribe = null;
+    try {
+      await db.query(
+        `insert into sesiones (user_id, log_id, inicio) select $1, id, now() - interval '3 hours' from logs limit 1`,
+        [amigo]
+      );
+      escribe = false;
+    } catch (e) {
+      escribe = /permission denied/i.test(e.message);
+    }
+    chequear('nadie se escribe una sesión a mano', escribe, true);
+    await db.exec('reset role');
+
+    // y la baja de cuenta se las lleva
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    await db.query('select eliminar_cuenta()');
+    await db.exec('reset role');
+    chequear(
+      'al borrar la cuenta no quedan sesiones',
+      (await db.query('select count(*)::int as n from sesiones where user_id = $1', [u])).rows[0].n,
+      0
+    );
+  }
+
+  // ---- anotar el peso sin registrar un día ----
+  {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    let directo = null;
+    try {
+      await db.query(`insert into weights (user_id, fecha, valor) values ($1, current_date, 80)`, [u]);
+      directo = false;
+    } catch (e) {
+      directo = /permission denied/i.test(e.message);
+    }
+    chequear('el peso sigue sin poder escribirse directo', directo, true);
+
+    await db.query('select anotar_peso(current_date, 80.5)');
+    await db.query('select anotar_peso(current_date, 81)'); // corrige el del día
+    await db.exec('reset role');
+    const w = await db.query('select fecha::text as f, valor::float8 as v from weights where user_id = $1', [u]);
+    chequear('anotar_peso deja una sola fila por día, con el último valor', w.rows.length, 1);
+    chequear('y con el valor corregido', w.rows[0].v, 81);
+    chequear(
+      'sin haber registrado ningún día',
+      (await db.query('select count(*)::int as n from logs where user_id = $1', [u])).rows[0].n,
+      0
+    );
+  }
 }
 
 // =====================================================================

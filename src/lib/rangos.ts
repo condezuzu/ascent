@@ -1,5 +1,12 @@
+import { numeroDeRango } from './reglas';
+
 // Escalera de rangos. El nombre NUNCA aparece en la interfaz corriente:
 // solo en la subida de rango y en Estadísticas.
+//
+// El NÚMERO de rango y los planetas viven en `reglas.ts`, que es lo que
+// también está escrito en SQL. Acá quedan los nombres, que son solo del
+// cliente: la base nunca los conoce.
+export { PLANETAS, planetaDeDia } from './reglas';
 export type Rango = {
   n: number;
   nombre: string;
@@ -19,26 +26,11 @@ export const RANGOS: Rango[] = [
   { n: 8, nombre: 'Agujero negro', desde: 70 },
 ];
 
-// Rango 4: diez días exactos, un planeta por día, de menor a mayor.
-// El planeta ES la barra de progreso: si ves Saturno, estás por subir.
-export const PLANETAS = [
-  'Ceres',
-  'Plutón',
-  'Mercurio',
-  'Marte',
-  'Venus',
-  'Tierra',
-  'Neptuno',
-  'Urano',
-  'Saturno',
-  'Júpiter',
-] as const;
-
+// El rango sale del número, no de recorrer la tabla buscando el `desde`: así
+// hay UNA sola regla —la misma que corre en la base— y el nombre no puede
+// contradecir al `rango_actual` que está guardado.
 export function rangoDeRacha(racha: number): Rango {
-  for (let i = RANGOS.length - 1; i >= 0; i--) {
-    if (racha >= RANGOS[i].desde) return RANGOS[i];
-  }
-  return RANGOS[0];
+  return RANGOS[numeroDeRango(racha) - 1];
 }
 
 export function siguienteRango(racha: number): Rango | null {
@@ -52,9 +44,4 @@ export function progresoEnRango(racha: number): number {
   const prox = siguienteRango(racha);
   if (!prox) return 1;
   return Math.min(1, (racha - actual.desde) / (prox.desde - actual.desde));
-}
-
-export function planetaDeDia(racha: number): string | null {
-  if (racha >= 30 && racha <= 39) return PLANETAS[racha - 30];
-  return null;
 }

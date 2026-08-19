@@ -116,6 +116,104 @@ for (const tabla of TABLAS) {
   chequear('un anónimo no puede insertar un perfil', !!error, true);
 }
 
+// --- módulo de fuerza (migración 08) ---
+// Si la migración todavía no corrió, esto NO cuenta como falla: avisa y sigue.
+// El código de fuerza está escrito para no romper nada mientras tanto.
+console.log('\nMódulo de fuerza');
+{
+  const { error } = await db.from('prs').select('id').limit(1);
+  if (noExiste(error?.message)) {
+    console.log('  --   la migración 08 todavía no está aplicada (supabase/migracion-08-fuerza.sql)');
+  } else {
+    for (const tabla of ['ejercicios', 'prs']) {
+      const { data, error: err } = await db.from(tabla).select('id').limit(5);
+      chequear(`tabla ${tabla} existe`, !noExiste(err?.message), true);
+      chequear(`${tabla} no entrega datos`, denegado(err?.message) || (data ?? []).length === 0, true);
+    }
+
+    // La matemática pura queda abierta, igual que rango_de_racha. El valor es
+    // el caso publicado: si acá da otra cosa, los coeficientes de la base no
+    // son los que se probaron.
+    const { data: d } = await db.rpc('dots', { p_total: 650, p_peso: 90, p_sexo: 'm' });
+    chequear('dots(650, 90, hombre) = 420.29', Number(d), 420.29);
+
+    for (const fn of ['mi_fuerza', 'ranking_fuerza', 'percentil_fuerza']) {
+      const { error: err } = await db.rpc(fn);
+      chequear(`${fn} existe`, !noExiste(err?.message), true);
+      const cerrada = denegado(err?.message);
+      if (!cerrada) faltaMigracion = true;
+      chequear(`${fn} cerrada a anónimos`, cerrada, true);
+    }
+
+    // Estas calculan con el peso corporal AJENO: no tienen que estar al
+    // alcance de NADIE desde el cliente, ni siquiera con sesión.
+    for (const [fn, args] of [
+      ['peso_actual', { p_user: '00000000-0000-0000-0000-000000000001' }],
+      ['dots_de', { p_user: '00000000-0000-0000-0000-000000000001' }],
+      ['total_dots', { p_user: '00000000-0000-0000-0000-000000000001' }],
+      ['mejores_marcas', { p_user: '00000000-0000-0000-0000-000000000001' }],
+    ]) {
+      const { error: err } = await db.rpc(fn, args);
+      const inalcanzable = denegado(err?.message) || noExiste(err?.message);
+      if (!inalcanzable) faltaMigracion = true;
+      chequear(`${fn} fuera del alcance del cliente`, inalcanzable, true);
+    }
+  }
+}
+
+// --- cronómetro de sesión (migración 09) ---
+console.log('\nCronómetro de sesión');
+{
+  const { error } = await db.from('sesiones').select('id').limit(1);
+  if (noExiste(error?.message)) {
+    console.log('  --   la migración 09 todavía no está aplicada (supabase/migracion-09-cronometro.sql)');
+  } else {
+    const { data, error: err } = await db.from('sesiones').select('id').limit(5);
+    chequear('tabla sesiones existe', !noExiste(err?.message), true);
+    chequear('sesiones no entrega datos', denegado(err?.message) || (data ?? []).length === 0, true);
+
+    // las dos constantes están abiertas, como rango_de_racha: son números
+    const { data: tope } = await db.rpc('tope_sesion');
+    chequear('tope_sesion son 4 horas', tope, '04:00:00');
+
+    for (const [fn, args] of [
+      ['iniciar_sesion', { p_hoy: '2020-01-01' }],
+      ['terminar_sesion', {}],
+      ['mi_sesion', {}],
+      ['resumen_sesiones', {}],
+      ['anotar_peso', { p_fecha: '2020-01-01', p_valor: 80 }],
+    ]) {
+      const { error: e2 } = await db.rpc(fn, args);
+      chequear(`${fn} existe`, !noExiste(e2?.message), true);
+      const cerrada = denegado(e2?.message);
+      if (!cerrada) faltaMigracion = true;
+      chequear(`${fn} cerrada a anónimos`, cerrada, true);
+    }
+
+    // toca las sesiones de cualquiera: no puede estar al alcance del cliente
+    const { error: e3 } = await db.rpc('cerrar_sesiones_vencidas', {
+      p_user: '00000000-0000-0000-0000-000000000001',
+    });
+    const inalcanzable = denegado(e3?.message) || noExiste(e3?.message);
+    if (!inalcanzable) faltaMigracion = true;
+    chequear('cerrar_sesiones_vencidas fuera del alcance del cliente', inalcanzable, true);
+  }
+}
+
+// --- descanso entre series (migración 10) ---
+console.log('\nDescanso entre series');
+{
+  // La columna es lo único que agrega el descanso: si no está, la migración
+  // 10 no corrió. No cuenta como falla, igual que las otras.
+  const { error } = await db.from('profiles').select('duracion_descanso').limit(1);
+  if (noExiste(error?.message)) {
+    console.log('  --   la migración 10 todavía no está aplicada (supabase/migracion-10-descanso.sql)');
+  } else {
+    chequear('la columna duracion_descanso existe', !noExiste(error?.message), true);
+    chequear('y sigue sin entregar datos', denegado(error?.message), true);
+  }
+}
+
 // --- auth responde ---
 console.log('\nAuth');
 {
