@@ -30,8 +30,6 @@ import { dirname, join } from 'node:path';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 
-export { RETRATOS };
-
 /**
  * Fin de línea uniforme. El archivo en disco viene con CRLF —git lo convierte
  * al hacer checkout en Windows— y `git show` lo devuelve con LF. Sin esto, el
@@ -126,21 +124,12 @@ async function nueva() {
 // y no acá porque el mismo retrato lo usa `test:conexion` contra producción,
 // donde no hay forma de correr SQL suelto: si la consulta estuviera duplicada
 // en los dos lados, tendríamos justo el problema que estos tests persiguen.
-const RETRATOS = [
-  'columnas',
-  'restricciones',
-  'índices',
-  'funciones',
-  'políticas',
-  'permisos',
-  'permisos de tabla',
-  'triggers',
-  'catálogo de ejercicios',
-];
-
+// Los temas NO se listan acá a mano: salen de lo que la base devuelve. Una
+// lista fija deja pasar en silencio el tema nuevo que nadie agregó a la
+// lista, que es exactamente la clase de agujero que este test persigue.
 export async function retrato(db) {
   const filas = (await db.query('select que, f from retrato_del_schema() order by 1, 2')).rows;
-  const r = Object.fromEntries(RETRATOS.map((q) => [q, []]));
+  const r = {};
   for (const x of filas) (r[x.que] ??= []).push(x.f);
   return r;
 }
@@ -170,7 +159,8 @@ console.log(`schema original + ${lista.length} migraciones`);
 const a = await retrato(baseNueva);
 const b = await retrato(comoProduccion);
 
-for (const que of RETRATOS) {
+const temas = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort();
+for (const que of temas) {
   const soloEnA = (a[que] ?? []).filter((x) => !(b[que] ?? []).includes(x));
   const soloEnB = (b[que] ?? []).filter((x) => !(a[que] ?? []).includes(x));
   chequear(`${que}: sin diferencias`, { soloEnBaseNueva: soloEnA, soloEnProduccion: soloEnB }, {

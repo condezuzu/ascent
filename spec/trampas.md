@@ -165,6 +165,45 @@ Editor, que es justo donde se pierde un bloque sin que nadie lo note.
 duplicada en los dos lados tendríamos exactamente el problema que estos tests
 persiguen, una capa más arriba.
 
+**La primera vez que miró producción encontró un secreto.** En producción hay
+un trigger `sugerencia-nueva` sobre `feedback` que no está en el repo: lo creó
+Supabase al armar el webhook de sugerencias desde el panel, y **su definición
+lleva la service_role key en texto plano**, más el header `x-ascent-secreto`.
+El retrato devolvía `action_statement` tal cual y estaba otorgado a `anon`, así
+que cualquiera con la anon key —que viaja en el bundle del navegador, es
+pública por diseño— podía pedirlo y llevarse la llave que saltea toda la RLS.
+→ **Regla:** el retrato no devuelve **ningún** cuerpo en claro. Funciones y
+triggers van hasheados: un md5 distinto delata el cambio igual, que es todo lo
+que hace falta. Y de paso: **lo que crea el panel de Supabase no pasa por
+ninguna migración**, así que es exactamente lo que este test existe para
+encontrar. Lo que vive solo en producción a propósito se anota en
+`SOLO_EN_PRODUCCION`, con el motivo.
+
+**Un retrato de la base viva no se le da a un anónimo**, aunque hoy todo lo que
+devuelva esté publicado en GitHub. Refleja producción, no el repo —esa es la
+diferencia entera—, y las políticas de RLS legibles por máquina y siempre al
+día son un mapa de cómo funciona la seguridad.
+→ **Regla:** `retrato_del_schema()` es `security definer`, con `search_path`
+fijo, sin EXECUTE para `public` ni para `anon`, y `test:conexion` inicia sesión
+con la cuenta de prueba (`CONEXION_EMAIL` / `CONEXION_PASSWORD` en
+`.env.local`).
+
+**Un grant a `anon` se ve igual que una función cerrada** si nadie mira los
+permisos. El retrato original comparaba tablas, columnas, funciones y
+políticas, pero no **quién puede ejecutar qué** — justo el agujero que lo
+estrenó. Apenas se agregó el tema encontró una segunda diferencia real:
+`tope_calendario()` estaba otorgada a mano en la migración 13 y no en
+`schema.sql`.
+→ **Regla:** el tema `permisos de función` sale de `aclexplode`, con
+`coalesce(proacl, acldefault(...))` porque el caso peor es la función que nadie
+tocó: `proacl` viene en NULL y el permiso por omisión de Postgres es EXECUTE
+para PUBLIC.
+
+**Y la lista de temas no se escribe a mano.** `test-deriva` los tenía
+hardcodeados y el tema nuevo no se comparó: pasó en verde sin mirarlo.
+→ **Regla:** los temas salen de la unión de lo que devuelven las dos bases.
+Una lista fija deja pasar en silencio lo que nadie agregó a la lista.
+
 Dos cosas que hicieron ruido al armarlo y conviene no volver a pisar:
 
 - **Las migraciones NO son idempotentes contra un schema más nuevo.** El
@@ -178,6 +217,11 @@ Dos cosas que hicieron ruido al armarlo y conviene no volver a pisar:
   normaliza el salto de línea, se sacan los comentarios y se colapsan los
   espacios: lo que importa es que las dos bases se COMPORTEN igual, no que la
   prosa coincida.
+- **El NOT NULL cambió de lugar entre versiones de Postgres.** Desde PG 17
+  tiene fila propia en `pg_constraint` y en la versión de Supabase todavía no,
+  así que la primera corrida denunció 66 restricciones "faltantes" que estaban
+  las dos veces. Se filtra `contype <> 'n'`: el NOT NULL ya se compara arriba,
+  en `columnas`.
 
 ---
 

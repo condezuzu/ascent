@@ -26,6 +26,12 @@ returns date language sql stable as $$
   select (now() at time zone 'Pacific/Kiritimati')::date;
 $$;
 
+-- Redundante con el permiso por omisión de Postgres —EXECUTE para PUBLIC, que
+-- ya incluye a los dos— pero explícito, porque la migración 13 lo otorgó así
+-- y una base nueva tiene que quedar igual a producción. Lo encontró el retrato
+-- la primera vez que miró quién puede ejecutar qué.
+grant execute on function public.tope_calendario() to authenticated, anon;
+
 -- -------------------------------------------------------------
 -- TABLAS
 -- -------------------------------------------------------------
@@ -1254,23 +1260,25 @@ $$;
 -- EL RETRATO DE LA BASE (para comparar producción contra el repo)
 -- -------------------------------------------------------------
 
--- Las diecisiete migraciones se corrieron pegando SQL a mano en el SQL
--- Editor, así que producción es justo donde puede haber deriva que nadie ve:
--- un `create` que se pegó a medias, un bloque que se salteó, algo que se tocó
--- a mano y no quedó en ninguna migración.
+-- Las migraciones se corren pegando SQL a mano en el SQL Editor, así que
+-- producción es justo donde puede haber deriva que nadie ve: un `create` que
+-- se pegó a medias, un bloque que se salteó, algo que se tocó a mano y no
+-- quedó en ninguna migración.
 --
 -- `test-deriva` compara schema.sql contra las migraciones, pero las dos salen
 -- del repo: si producción se separó de las dos, ninguna se entera. Esto es lo
 -- que permite preguntarle a la base REAL qué forma tiene.
 --
--- POR QUÉ SE OTORGA A ANON: PostgREST no expone `pg_catalog` ni
--- `information_schema`, así que sin esto no hay forma de leer la forma de la
--- base desde afuera. Devuelve solo NOMBRES y DEFINICIONES —ni una fila de
--- datos de nadie— y todo eso ya está publicado en `supabase/schema.sql`, en
--- un repo público. O sea que no revela nada que no se pueda leer en GitHub.
+-- SOLO PARA AUTENTICADOS. El retrato refleja la base VIVA, que es justo lo
+-- que no está en GitHub, y entregar las políticas de RLS y la forma de cada
+-- función legibles por máquina y siempre al día es un mapa de cómo funciona
+-- la seguridad. `test:conexion` inicia sesión con la cuenta de prueba.
 --
--- Si el repo alguna vez pasa a privado, esto hay que revisarlo: cambiar el
--- grant a `authenticated` y hacer que `test:conexion` inicie sesión.
+-- Y nada de lo que devuelve puede llevar un secreto adentro: los cuerpos de
+-- funciones y de triggers van hasheados. Los webhooks que crea el panel de
+-- Supabase llevan la service_role key incrustada en su propia definición, y
+-- la versión anterior de esto la repartía en texto plano (ver la migración
+-- 19 y spec/trampas.md).
 create or replace function public.retrato_del_schema()
 returns table (que text, f text)
 language sql stable security definer set search_path = public as $$
@@ -1286,9 +1294,14 @@ language sql stable security definer set search_path = public as $$
    where c.table_schema = 'public' and t.table_type = 'BASE TABLE'
 
   union all
+  -- `contype <> 'n'` saca los NOT NULL: desde PG 17 tienen fila propia en
+  -- pg_constraint y en la versión de Supabase todavía no, así que las 66
+  -- filas de diferencia eran ruido de versión. El NOT NULL ya viaja arriba,
+  -- en 'columnas', que es donde de verdad se compara.
   select 'restricciones',
          conrelid::regclass || ' ' || conname || ' ' || pg_get_constraintdef(oid)
-    from pg_constraint where connamespace = 'public'::regnamespace
+    from pg_constraint
+   where connamespace = 'public'::regnamespace and contype <> 'n'
 
   union all
   select 'índices', indexdef from pg_indexes where schemaname = 'public'
@@ -1321,9 +1334,29 @@ language sql stable security definer set search_path = public as $$
    where table_schema = 'public' and grantee in ('authenticated', 'anon')
 
   union all
+  -- Quien puede EJECUTAR cada función. Sin esto el retrato no habría podido
+  -- ver el agujero que lo estrenó: una función SECURITY DEFINER otorgada a
+  -- `anon` se ve idéntica a una cerrada. `acldefault` cubre el caso peor, el
+  -- de la función que nunca se tocó: `proacl` viene en NULL y el permiso por
+  -- omisión de Postgres es EXECUTE para PUBLIC.
+  select 'permisos de función',
+         coalesce(g.rolname, 'PUBLIC') || ' ' || p.proname || '(' ||
+         pg_get_function_identity_arguments(p.oid) || ')'
+    from pg_proc p
+    cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+    left join pg_roles g on g.oid = a.grantee
+   where p.pronamespace = 'public'::regnamespace
+     and a.privilege_type = 'EXECUTE'
+     and coalesce(g.rolname, 'PUBLIC') in ('anon', 'authenticated', 'PUBLIC')
+
+  union all
+  -- HASHEADO a propósito: los webhooks que crea el panel llevan la
+  -- service_role key adentro de su propia definición. Un md5 distinto delata
+  -- el cambio igual, que es todo lo que este retrato necesita saber.
   select 'triggers',
          event_object_table || ' ' || trigger_name || ' ' || action_timing || ' ' ||
-         event_manipulation || ' ' || action_statement
+         event_manipulation || ' ' ||
+         md5(btrim(regexp_replace(action_statement, '\s+', ' ', 'g')))
     from information_schema.triggers where trigger_schema = 'public'
 
   union all
@@ -1333,7 +1366,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 revoke execute on function public.retrato_del_schema() from public;
-grant execute on function public.retrato_del_schema() to anon, authenticated;
+grant execute on function public.retrato_del_schema() to authenticated;
 
 -- -------------------------------------------------------------
 -- BÚSQUEDA PÚBLICA: vista que expone SOLO lo mínimo.

@@ -32,6 +32,7 @@ const db = createClient(url, key);
 let ok = 0;
 const fallos = [];
 let faltaMigracion = false;
+let faltaRetrato = false;
 
 function chequear(nombre, real, esperado) {
   const a = JSON.stringify(real);
@@ -214,19 +215,55 @@ console.log('\nDescanso entre series');
   }
 }
 
+// Lo que vive SOLO en producción a propósito, y por qué. Todo lo demás que
+// aparezca de más es deriva.
+//
+//   sugerencia-nueva — el webhook de sugerencias, creado desde el panel de
+//   Supabase (Database Webhooks). Su definición lleva la service_role key
+//   incrustada, así que no puede ir a un repo público. Que exista se
+//   comprueba acá; que siga igual, por el md5 del retrato... que justamente
+//   por eso no se compara. Si el correo de sugerencias deja de llegar,
+//   empezá por mirarlo en el panel.
+const SOLO_EN_PRODUCCION = [/^feedback sugerencia-nueva /];
+
 // --- producción contra el repo (migración 18) ---
 //
-// Las diecisiete migraciones se corrieron pegando SQL a mano en el SQL
-// Editor. `test:db` compara schema.sql contra las migraciones, pero las dos
-// salen del repo: si producción se separó de las DOS, ninguna se entera.
-// Esto es lo único que mira la base de verdad.
+// Las migraciones se corren pegando SQL a mano en el SQL Editor. `test:db`
+// compara schema.sql contra las migraciones, pero las dos salen del repo: si
+// producción se separó de las DOS, ninguna se entera. Esto es lo único que
+// mira la base de verdad.
+//
+// Es la única parte del archivo que necesita SESIÓN: el retrato refleja la
+// base viva y no se le entrega a un anónimo. Va en un cliente aparte para no
+// tocar los chequeos de arriba, que valen justamente por ser anónimos.
 console.log('\nProducción tiene la forma del repo');
 {
-  const { data: remoto, error } = await db.rpc('retrato_del_schema');
-  if (noExiste(error?.message)) {
+  const correo = process.env.CONEXION_EMAIL;
+  const clave = process.env.CONEXION_PASSWORD;
+  let remoto = null, error = null, sinCuenta = false;
+  if (!correo || !clave) {
+    sinCuenta = true;
+  } else {
+    const conSesion = createClient(url, key);
+    const { error: eLogin } = await conSesion.auth.signInWithPassword({
+      email: correo, password: clave,
+    });
+    if (eLogin) {
+      error = { message: `no pude entrar como ${correo}: ${eLogin.message}` };
+    } else {
+      ({ data: remoto, error } = await conSesion.rpc('retrato_del_schema'));
+    }
+    await conSesion.auth.signOut();
+  }
+
+  if (sinCuenta) {
+    console.log('  --   falta CONEXION_EMAIL / CONEXION_PASSWORD en .env.local: no se comparó');
+    faltaRetrato = true;
+  } else if (noExiste(error?.message)) {
     console.log('  --   la migración 18 todavía no está aplicada (supabase/migracion-18-retrato-del-schema.sql)');
+    faltaRetrato = true;
   } else if (error) {
-    chequear(`retrato_del_schema responde (${error.message.slice(0, 50)})`, false, true);
+    chequear(`retrato_del_schema responde (${error.message.slice(0, 70)})`, false, true);
   } else {
     // El mismo retrato, sacado de una base levantada solo con schema.sql.
     // La consulta es la MISMA de los dos lados porque vive en la base: acá
@@ -264,14 +301,27 @@ console.log('\nProducción tiene la forma del repo');
     const enProduccion = agrupar(remoto);
     const temas = [...new Set([...Object.keys(enElRepo), ...Object.keys(enProduccion)])].sort();
 
-    for (const tema of temas) {
-      const r = enElRepo[tema] ?? [];
-      const p = enProduccion[tema] ?? [];
-      const faltaEnProd = r.filter((x) => !p.includes(x));
-      const sobraEnProd = p.filter((x) => !r.includes(x));
-      chequear(`${tema}: producción coincide con el repo`, [faltaEnProd, sobraEnProd], [[], []]);
-      for (const x of faltaEnProd) console.log(`         FALTA en producción: ${x}`);
-      for (const x of sobraEnProd) console.log(`         SOBRA en producción: ${x}`);
+    // Si el retrato de producción no es el mismo código que el del repo, lo
+    // que salga de compararlos no significa nada: las diferencias serían de
+    // la consulta, no de la base. Se detecta con la línea que el retrato da
+    // de sí mismo.
+    const suyo = (xs) => (xs.funciones ?? []).find((x) => x.startsWith('retrato_del_schema('));
+    if (suyo(enElRepo) !== suyo(enProduccion)) {
+      console.log('  --   la migración 19 todavía no está aplicada (supabase/migracion-19-retrato-cerrado.sql):');
+      console.log('       el retrato de producción es de otra versión, comparar no diría nada');
+      faltaRetrato = true;
+    } else {
+      for (const tema of temas) {
+        const r = enElRepo[tema] ?? [];
+        const p = enProduccion[tema] ?? [];
+        const faltaEnProd = r.filter((x) => !p.includes(x));
+        const sobraEnProd = p
+          .filter((x) => !r.includes(x))
+          .filter((x) => !SOLO_EN_PRODUCCION.some((re) => re.test(x)));
+        chequear(`${tema}: producción coincide con el repo`, [faltaEnProd, sobraEnProd], [[], []]);
+        for (const x of faltaEnProd) console.log(`         FALTA en producción: ${x}`);
+        for (const x of sobraEnProd) console.log(`         SOBRA en producción: ${x}`);
+      }
     }
   }
 }
@@ -289,6 +339,12 @@ if (faltaMigracion) {
   console.log(
     '\nHay permisos más abiertos de lo que debería.\n' +
       'Pegá supabase/migracion-01-permisos.sql en el SQL Editor de Supabase.'
+  );
+}
+if (faltaRetrato) {
+  console.log(
+    '\nLA FORMA DE PRODUCCIÓN NO SE COMPARÓ. Verde acá no quiere decir que la\n' +
+      'base real coincida con el repo: ese chequeo no llegó a correr.'
   );
 }
 if (fallos.length) process.exit(1);

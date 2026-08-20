@@ -1,15 +1,45 @@
 # Estado actual
 
-*Corte al 18 de agosto de 2026. Describe cómo está el proyecto hoy, no lo que
+*Corte al 20 de agosto de 2026. Describe cómo está el proyecto hoy, no lo que
 se decidió. Actualizar al terminar cada tanda.*
 
-## Lo primero: hay una migración sin aplicar
+## Lo primero: hay una llave que rotar
 
-**La migración 10 (`supabase/migracion-10-descanso.sql`) está escrita y probada
-contra PGlite, pero NO corrió en Supabase.** Es una sola columna
-(`profiles.duracion_descanso`). Hasta que corra, el descanso entre series
-funciona igual pero **siempre con 3 minutos**: el preset elegido en Ajustes no
-se guarda. `npm run test:conexion` lo avisa y no lo cuenta como falla.
+**La service_role key de Supabase estuvo expuesta y hay que rotarla.** El
+webhook de sugerencias, creado desde el panel, guarda la key en texto plano
+dentro de la definición de su propio trigger; el retrato de la base la
+devolvía tal cual y estaba abierto a `anon`, que es pública por diseño. La
+ventana va desde que se aplicó la migración 18 (20/8/2026) hasta que se
+aplique la 19. No hay señales de que alguien la haya usado, pero eso no se
+puede probar y la key saltea toda la RLS.
+
+Por orden:
+
+1. **Correr `supabase/migracion-19-retrato-cerrado.sql`.** Tapa la fuga: el
+   retrato hashea los cuerpos y sale de `anon`.
+2. **Rotar la service_role key** en el panel de Supabase y **cambiar el valor
+   de `x-ascent-secreto`**. Ojo: si se rota el JWT secret, la anon key también
+   cambia, y hay que actualizar `.env.local` y las variables de Vercel, y
+   volver a desplegar (las `NEXT_PUBLIC_*` se incrustan al compilar).
+3. **Rehacer el webhook** con la key nueva desde el panel.
+
+## Lo segundo: producción tiene una cosa que el repo no
+
+El trigger `sugerencia-nueva` sobre `feedback` vive **solo en producción**: lo
+crea el panel y su definición no puede ir a un repo público. Está anotado en
+`SOLO_EN_PRODUCCION`, en `supabase/verificar-conexion.mjs`. Si el correo de
+sugerencias deja de llegar, empezá por mirarlo en el panel.
+
+## Migraciones
+
+**Las 18 primeras están aplicadas; la 19 falta correr** (ver arriba). En una
+base nueva no hace falta ninguna: `supabase/schema.sql` ya las incluye a
+todas, y `npm run test:db` lo comprueba comparando las dos bases entera.
+
+Las migraciones las aplica **el humano** en el SQL Editor: en `.env.local`
+solo hay la anon key, así que desde una sesión de Claude no se puede tocar el
+schema de la base real. El flujo es: escribir la migración → probarla con
+`npm run test:db` contra PGlite → avisar.
 
 ## Dónde vive
 
@@ -17,17 +47,6 @@ se guarda. `npm run test:conexion` lo avisa y no lo cuenta como falla.
 - Repo: https://github.com/condezuzu/ascent, rama `main`.
 - Producción: https://ascent-blush-seven.vercel.app
 - Supabase: proyecto `okeanaihymbvbdmrdqph`. Dev en el puerto 3020.
-
-## Migraciones
-
-Las **nueve primeras están aplicadas y verificadas**; la **10 falta correr**
-(ver arriba). En una base nueva no hace falta ninguna: `supabase/schema.sql`
-ya las incluye a todas.
-
-Las migraciones las aplica **el humano** en el SQL Editor: en `.env.local`
-solo hay la anon key, así que desde una sesión de Claude no se puede tocar el
-schema de la base real. El flujo es: escribir la migración → probarla con
-`npm run test:db` contra PGlite → avisar.
 
 ## Hecho y funcionando
 
@@ -64,7 +83,7 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   siempre contra el `inicio` guardado, nunca sumando ticks. Y el peso corporal
   se puede anotar desde `/fuerza` (`anotar_peso`), que antes era un callejón
   sin salida si ya habías registrado el día.
-- **Descanso entre series** (§18, código listo — falta la migración 10): botón
+- **Descanso entre series** (§18): botón
   "Descansar" adentro de la sesión, cuenta atrás a pantalla completa con el
   número como única cosa grande, presets de 60 s a 5 min que valen para lo que
   queda de la sesión, y Wake Lock para que no se apague la pantalla. **No toca
@@ -156,6 +175,12 @@ schema de la base real. El flujo es: escribir la migración → probarla con
 
 Racha de 3 cada una y amistad aceptada entre ellas; `prueba_uno` tiene fotos,
 pesos y avatar. Supabase acepta dominios inventados como `.test` para el alta.
+
+`prueba.uno` es además la cuenta con la que `test:conexion` pide el retrato de
+la base (`CONEXION_EMAIL` / `CONEXION_PASSWORD` en `.env.local`). **Su clave
+está acá, en un repo público**, así que "solo para autenticados" vale contra un
+visitante cualquiera, no contra alguien que lea el repo. Antes de invitar
+gente: cambiarle la clave y sacarla de esta tabla.
 
 ## Problemas conocidos
 
