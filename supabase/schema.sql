@@ -502,6 +502,14 @@ begin
     return new;
   end if;
 
+  -- Si el usuario borró a mano justo el día que estaba esperando, es una
+  -- decisión suya y gana: sin esto, `resolver_pendiente` lo volvía a poner
+  -- solo la próxima vez que se abría la app, deshaciendo un borrado adrede.
+  if tg_op = 'DELETE' then
+    update profiles set dia_pendiente = null, pendiente_desde = null
+     where id = uid and dia_pendiente = old.fecha;
+  end if;
+
   -- La racha se mide hasta el último día registrado, NO hasta ayer.
   -- Con "hasta ayer", corregir a mano un día viejo estando cortado dejaba la
   -- racha en 0 al instante, salteándose la regla de -10: bajar la racha es

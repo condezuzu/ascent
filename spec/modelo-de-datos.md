@@ -88,3 +88,43 @@ o después de tres meses da lo mismo: se retoma desde los días conservados. Una
 ausencia larga no castiga más que una corta — el resto es una sola vez por corte.
 
 Corolario: tiene que existir una forma de corregir días a mano desde el principio.
+
+---
+
+## 12c. El calendario escribe directo, y queda así
+
+El calendario de corrección inserta y borra en `logs` **sin pasar por
+`registrar_dia`**. O sea que **la guarda de las 20 horas (§12b) tiene un
+desvío**: quien quiera saltearla puede agregar el día a mano.
+
+**Es a propósito y no se cierra.** Es la válvula de escape del sistema: si la
+guarda falla —o agarra a alguien que no debía—, el usuario tiene por dónde
+salir sin depender de que nosotros arreglemos nada.
+
+El intercambio, dicho al derecho: cerrarlo cambiaría un riesgo de **trampa
+casual** por un riesgo de **perder un día por culpa de la app**. Y no son
+comparables. La trampa entre amigos se ve igual —se conocen, se cruzan en el
+gimnasio, es el mismo argumento del §16.6— mientras que perder progreso por
+culpa de la app es lo único que la spec marca como imperdonable (§11).
+
+Entonces la guarda es **un freno contra el doble registro accidental, no un
+candado**, y está bien que sea eso. Con el día pendiente encima (§12b) el
+resultado es que nadie pierde un día y la trampa casual no funciona sola.
+
+> **No re-proponer** "hacer que el calendario pase por un RPC". Ya se evaluó y
+> se descartó por esto. Si alguna vez cambia el contexto —usuarios que no se
+> conocen entre sí, por ejemplo— habría que volver a mirar el §16.6 primero,
+> porque es la misma decisión de fondo.
+
+### El día pendiente no vence
+
+Si alguien queda bloqueado y no vuelve a abrir la app en una semana, el día
+**sigue esperando** y entra igual, **con su fecha original** — no con la del
+día en que se resuelve. Entrar con la fecha de hoy sería inventar un día que
+no ocurrió y perder el que sí.
+
+Entrar tarde tampoco resucita una racha ya cortada: el día se suma al
+historial donde corresponde y el cálculo sigue siendo el de siempre.
+
+Y si el usuario borró ese día a mano mientras tanto, **el pendiente se
+cancela**: entre la app y el usuario, decide el usuario.

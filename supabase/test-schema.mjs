@@ -1728,6 +1728,96 @@ console.log('\n29. La zona sale del teléfono, y cambiarla no regala días');
 
 
 // =====================================================================
+console.log('\n30. El día pendiente espera, no vence, y entra con SU fecha');
+{
+  const bloquear = async (uid) => {
+    await comoUsuario(uid);
+    await db.query('select registrar_dia()');
+    await db.exec('set role authenticated');
+    await db.query(`select fijar_zona('Asia/Tokyo')`);
+    await db.exec('reset role');
+    return (await db.query('select registrar_dia() as v')).rows[0].v;
+  };
+
+  // ---- no vuelve en días y el día entra igual, con SU fecha ----
+  {
+    const u = await nuevoUsuario();
+    const r = await bloquear(u);
+    const suDia = r.pendiente;
+
+    // Pasan seis días sin abrir la app. Se envejece el `creado` de los logs
+    // Y se atrasa el propio pendiente: lo que se quiere probar es que entre
+    // con la fecha de ENTONCES, y para eso esa fecha tiene que ser distinta
+    // de la de hoy.
+    await db.query(
+      `update logs set creado = creado - interval '6 days' where user_id = $1`,
+      [u]
+    );
+    await db.query(
+      `update profiles set dia_pendiente = dia_pendiente - 6,
+                           pendiente_desde = pendiente_desde - interval '6 days'
+        where id = $1`,
+      [u]
+    );
+    const original = (
+      await db.query('select dia_pendiente::text as d from profiles where id = $1', [u])
+    ).rows[0].d;
+    chequear('el pendiente quedó seis días atrás', original !== suDia, true);
+
+    const vp = (await db.query('select verificar_perdida() as v')).rows[0].v;
+    chequear('el pendiente no vence: entra aunque pasen días', vp.pendiente_resuelto, original);
+
+    const hoy = (await db.query('select mi_hoy()::text as h')).rows[0].h;
+    const puesto = await db.query(
+      'select fecha::text as f from logs where user_id = $1 and fecha = $2::date',
+      [u, original]
+    );
+    // Lo que importa: entra con la fecha del día que entrenó, no con la de
+    // hoy. Con la de hoy la app inventaría un día que no ocurrió y perdería
+    // el que sí.
+    chequear('entra con su fecha original', puesto.rows.length, 1);
+    chequear('y esa fecha NO es la de hoy', original !== hoy, true);
+  }
+
+  // ---- entrar tarde no le salva la racha a nadie ----
+  {
+    const v = await nuevoUsuario();
+    const r = await bloquear(v);
+    // se envejece todo seis días: la racha quedó cortada de verdad
+    await db.query(`update logs set creado = creado - interval '6 days' where user_id = $1`, [v]);
+    await db.query(
+      `update logs set fecha = fecha - 6 where user_id = $1 and fecha < $2::date`,
+      [v, r.pendiente]
+    );
+    const vp = (await db.query('select verificar_perdida() as v')).rows[0].v;
+    chequear('el pendiente entra', !!vp.pendiente_resuelto, true);
+    // el día entra en el pasado y no tapa el hueco de los días que faltaron
+    const p2 = await perfil(v);
+    chequear('pero no resucita una racha cortada', p2.racha_actual <= 2, true);
+  }
+
+  // ---- si el usuario borró ese día a mano, el pendiente se cancela ----
+  {
+    const w = await nuevoUsuario();
+    const r = await bloquear(w);
+    // lo agrega a mano y después se arrepiente y lo borra
+    await db.query(`insert into logs (user_id, fecha) values ($1, $2::date)`, [w, r.pendiente]);
+    await db.query(`delete from logs where user_id = $1 and fecha = $2::date`, [w, r.pendiente]);
+    const limpio = await db.query('select dia_pendiente from profiles where id = $1', [w]);
+    chequear('borrar el día a mano cancela el pendiente', limpio.rows[0].dia_pendiente, null);
+
+    await db.query(`update logs set creado = creado - interval '21 hours' where user_id = $1`, [w]);
+    await db.query('select verificar_perdida()');
+    chequear(
+      'y no vuelve a aparecer solo',
+      (await db.query('select count(*)::int as n from logs where user_id = $1 and fecha = $2::date', [w, r.pendiente])).rows[0].n,
+      0
+    );
+  }
+}
+
+
+// =====================================================================
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

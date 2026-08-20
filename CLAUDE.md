@@ -49,7 +49,7 @@ Rutas de QA: `/galeria` (motor) y `/tipografias` (comparador de fuentes).
 | [spec/estado.md](spec/estado.md) | qué está hecho, qué falta, problemas conocidos, cuentas de prueba | **al empezar cualquier sesión** |
 | [spec/trampas.md](spec/trampas.md) | bugs que ya nos costaron una vez, y la regla que quedó | **antes de tocar motor, storage, racha o build** |
 | [spec/producto.md](spec/producto.md) | §1 qué es · §2 stack · §14 orden de construcción · §15 beta | contexto general |
-| [spec/modelo-de-datos.md](spec/modelo-de-datos.md) | §3 tablas · §12 pérdida de racha | tocás la base o la lógica de racha |
+| [spec/modelo-de-datos.md](spec/modelo-de-datos.md) | §3 tablas · §12 pérdida de racha · §12c la válvula de escape | tocás la base o la lógica de racha |
 | [spec/seguridad.md](spec/seguridad.md) | §4 RLS · §5 auth · §5b storage | tocás permisos, login o archivos |
 | [spec/motor-visual.md](spec/motor-visual.md) | §6 rangos · §7 reglas visuales · §8 motor de planetas | tocás el render o el diseño |
 | [spec/pantallas.md](spec/pantallas.md) | §9 pantallas · §10 onboarding · §11 estados vacíos | tocás una pantalla |
