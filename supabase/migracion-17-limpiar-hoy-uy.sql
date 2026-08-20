@@ -1,0 +1,23 @@
+-- =============================================================
+-- MIGRACIÓN 17 — se va hoy_uy(), que quedó huérfana
+--
+-- Va DESPUÉS de la 16. Ejecutar entera en el SQL Editor de Supabase.
+--
+-- La encontró el test de deriva (`npm run test:db`), que compara una base
+-- creada solo con schema.sql contra una creada con el schema original más las
+-- diecisiete migraciones. Era la ÚNICA diferencia entre las dos: todo lo
+-- demás —columnas, tipos, restricciones, índices, políticas, permisos,
+-- triggers y hasta las filas del catálogo de ejercicios— coincidía.
+--
+-- Qué pasó: la migración 12 creó `hoy_uy()` para que el día cortara en
+-- Uruguay. La 13 la reemplazó por `mi_hoy()` —el día de la zona de cada
+-- usuario— y por `tope_calendario()`, y se sacó de schema.sql. Pero la 13
+-- nunca la DROPEÓ, así que en producción quedó viva y sin que nadie la llame.
+--
+-- Cuál de las dos estaba bien: la base nueva. Es código muerto, y encima
+-- peligroso de dejar — el próximo que lo lea puede pensar que el día todavía
+-- corta en Uruguay y usarla.
+--
+-- La regla que queda: una migración que reemplaza una función tiene que
+-- dropear la vieja, o el schema y la base se separan en silencio.
+drop function if exists public.hoy_uy();

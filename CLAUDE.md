@@ -40,7 +40,7 @@ se rediscute; lo marcado PENDIENTE se pregunta antes de asumir.
 |---|---|
 | `npm run dev` | dev server, puerto 3020 |
 | `npx tsc --noEmit` | tipos |
-| `npm run test:db` | schema contra PGlite, sin red |
+| `npm run test:db` | schema contra PGlite + deriva entre schema.sql y las migraciones |
 | `npm run test:conexion` | humo contra el Supabase real, solo lectura |
 | `npm run test:e2e` | flujo completo con 2 cuentas (pide `E2E_EMAIL`) |
 | `npm run build` | build de producción — **dev server apagado** |

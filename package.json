@@ -6,7 +6,7 @@
     "dev": "next dev -p 3020",
     "build": "next build",
     "start": "next start -p 3020",
-    "test:db": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON supabase/test-schema.mjs",
+    "test:db": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON supabase/test-schema.mjs && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON supabase/test-deriva.mjs",
     "test:conexion": "node --env-file=.env.local supabase/verificar-conexion.mjs",
     "test:e2e": "node --env-file=.env.local supabase/test-e2e.mjs"
   },

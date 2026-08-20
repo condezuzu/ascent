@@ -144,6 +144,34 @@ iPhone se da por imposible en web hasta que alguien la vea funcionar.
 
 ---
 
+## El schema y las migraciones se separan solos
+
+**Nadie había comprobado nunca que `schema.sql` desde cero produzca la misma
+base que el schema original más las migraciones**, y son diecisiete. La
+promesa del repo —"en una base nueva no hace falta ninguna"— era una promesa
+sin prueba. Cuando se probó, había una diferencia: `hoy_uy()` seguía viva en
+producción porque la migración 13 la reemplazó y **nunca la dropeó**.
+→ **Regla:** una migración que reemplaza una función tiene que **dropear la
+vieja**. Y `npm run test:db` corre `test-deriva.mjs`, que levanta las dos
+bases en PGlite y las compara entera: columnas, tipos, restricciones, índices,
+funciones, políticas, permisos, triggers y las filas del catálogo.
+
+Dos cosas que hicieron ruido al armarlo y conviene no volver a pisar:
+
+- **Las migraciones NO son idempotentes contra un schema más nuevo.** El
+  primer intento fue aplicarlas sobre el schema de hoy y la 09 revienta con
+  "cannot remove parameter defaults", porque la 13 ya le cambió el default a
+  esa función. Hay que reproducir la historia desde el schema original, que
+  sale de git.
+- **El fin de línea y los comentarios generan falsos positivos.** El archivo
+  en disco viene con CRLF y `git show` con LF, así que el md5 del cuerpo de
+  cada función daba distinto y el test denunciaba deriva en las treinta. Se
+  normaliza el salto de línea, se sacan los comentarios y se colapsan los
+  espacios: lo que importa es que las dos bases se COMPORTEN igual, no que la
+  prosa coincida.
+
+---
+
 ## Lo escrito dos veces
 
 **Hay reglas que corren en SQL y en el cliente a la vez**, porque la pantalla
