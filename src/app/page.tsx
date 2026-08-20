@@ -20,6 +20,9 @@ import SubidaRango from '@/components/SubidaRango';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
+import ChipSesion from '@/components/ChipSesion';
+import Descanso from '@/components/Descanso';
+import { usarSesion } from '@/lib/usarSesion';
 
 type LineaSocial = { username: string; racha: number } | null;
 
@@ -32,6 +35,7 @@ export default function Principal() {
   const [social, setSocial] = useState<LineaSocial>(null);
   const [marcas, setMarcas] = useState<string | null>(null);
   const [hojaAbierta, setHojaAbierta] = useState(false);
+  const [descansoAbierto, setDescansoAbierto] = useState(false);
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
   const [perdida, setPerdida] = useState(false);
   const [cargado, setCargado] = useState(false);
@@ -125,6 +129,13 @@ export default function Principal() {
     });
   }, [supabase, router, cargarSocial]);
 
+  // El cronómetro vive acá desde §20: empezar pasa una vez por entrenamiento
+  // y no merecía una pestaña, pero sí estar a la vista.
+  const sesion = usarSesion((r) => {
+    if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+    cargar();
+  });
+
   // Al volver a entrar, la pantalla sale con la racha y la paleta de la
   // última visita mientras la red confirma. Nada de esperar en blanco.
   useEffect(() => {
@@ -209,12 +220,21 @@ export default function Principal() {
       />
 
       <PantallaDeslizable>
-        {/* la cabecera es la puerta al perfil propio: hasta ahora se podía
-            entrar al de un amigo pero no al de uno mismo */}
-        <Link href="/yo" className="cabecera">
-          <Avatar url={perfil.avatar_url} nombre={perfil.username} />
-          <span className="nombre">{perfil.username}</span>
-        </Link>
+        {/* La cabecera es la puerta al perfil propio Y la casa del
+            cronómetro (§20.2): el reloj va acá, discreto, y no en una pestaña
+            propia — un cronómetro que hay que buscar no lo usa nadie. */}
+        <div className="cabecera">
+          <Link href="/yo" className="cabecera-yo">
+            <Avatar url={perfil.avatar_url} nombre={perfil.username} />
+            <span className="nombre">{perfil.username}</span>
+          </Link>
+          <ChipSesion
+            estado={sesion.estado}
+            alEmpezar={sesion.empezar}
+            alDescansar={sesion.descansarSuelto}
+            alAbrirDescanso={() => setDescansoAbierto(true)}
+          />
+        </div>
 
         <div className="racha-bloque">
           <div className="racha-fila">
@@ -245,12 +265,39 @@ export default function Principal() {
             quedaba cerrado: no había forma de agregarle la foto ni el peso
             después. Ahora sigue abierto, que es lo único razonable cuando el
             día lo pudo registrar el cronómetro sin preguntar nada. */}
-        <button
-          className={registradoHoy ? 'boton-fantasma' : 'boton-solido'}
-          onClick={() => setHojaAbierta(true)}
-        >
-          {registradoHoy ? 'Día registrado · sumar foto o peso' : 'Registrar día'}
-        </button>
+        {/* Con la sesión andando, "Serie hecha" se lleva el botón sólido: es
+            lo que más se toca durante un entrenamiento, y el día ya está. */}
+        {sesion.estado.corriendo ? (
+          <>
+            <button className="boton-solido" onClick={sesion.serieHecha}>
+              Serie hecha
+            </button>
+            <div className="series-fila">
+              <span className="cuenta">{sesion.estado.series}</span>
+              <span style={{ flex: 1 }}>
+                {sesion.estado.series === 1 ? 'serie' : 'series'}
+              </span>
+              {/* Un toque de más es fácil. Se puede deshacer toda la sesión, y
+                  deshacer NO cancela el descanso: son cosas separadas. */}
+              {sesion.estado.series > 0 && (
+                <button onClick={sesion.deshacerSerie} aria-label="Sacar una serie">
+                  −
+                </button>
+              )}
+              <button className="boton-fantasma" onClick={sesion.terminar}>
+                Terminar
+              </button>
+            </div>
+          </>
+        ) : (
+          <button
+            className={registradoHoy ? 'boton-fantasma' : 'boton-solido'}
+            onClick={() => setHojaAbierta(true)}
+          >
+            {registradoHoy ? 'Día registrado · sumar foto o peso' : 'Registrar día'}
+          </button>
+        )}
+        {sesion.estado.aviso && <p className="ok-msg">{sesion.estado.aviso}</p>}
 
         <TiraSemanal logs={logs} descansos={descansos} />
 
@@ -296,6 +343,17 @@ export default function Principal() {
           visibilidadDefault={perfil.visibilidad_default}
           alCerrar={() => setHojaAbierta(false)}
           alConfirmar={alConfirmar}
+        />
+      )}
+
+      {(sesion.estado.descanso && descansoAbierto) && (
+        <Descanso
+          vivo={sesion.estado.descanso}
+          alReiniciar={sesion.reiniciarDescanso}
+          alCerrar={() => {
+            setDescansoAbierto(false);
+            sesion.cerrarDescanso();
+          }}
         />
       )}
 

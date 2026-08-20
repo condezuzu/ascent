@@ -39,7 +39,7 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
           Eliminar mi cuenta
         </button>
       ) : (
-        <div className="tarjeta peligro">
+        <div className="contenida peligro">
           <h3 style={{ marginBottom: 8 }}>Eliminar mi cuenta</h3>
           <p style={{ fontSize: 14, lineHeight: 1.5, marginBottom: 12 }}>
             Se borra todo: tus {perfil.racha_actual} días de racha, tus fotos, tus pesos, tus

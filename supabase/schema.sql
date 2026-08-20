@@ -254,6 +254,10 @@ create table public.sesiones (
   fin timestamptz,
   estado text not null default 'corriendo'
     check (estado in ('corriendo', 'terminada', 'abandonada')),
+  -- Cuántas series tuvo. Un toque por serie, sin ejercicio ni peso (§20.3):
+  -- cuarenta minutos con doce series y cuarenta con tres no son el mismo
+  -- entrenamiento, así que dice más que los minutos solos.
+  series int not null default 0 check (series >= 0),
   constraint sesiones_fin_solo_si_termino check ((estado = 'terminada') = (fin is not null))
 );
 
@@ -1153,6 +1157,34 @@ $$;
 -- -------------------------------------------------------------
 -- La sesión que está corriendo, si hay
 -- -------------------------------------------------------------
+create or replace function public.sumar_serie()
+returns int language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  total int;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  update sesiones set series = series + 1
+   where user_id = uid and estado = 'corriendo'
+   returning series into total;
+  return coalesce(total, 0);
+end;
+$$;
+
+create or replace function public.restar_serie()
+returns int language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  total int;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  update sesiones set series = greatest(0, series - 1)
+   where user_id = uid and estado = 'corriendo'
+   returning series into total;
+  return coalesce(total, 0);
+end;
+$$;
+
 create or replace function public.mi_sesion()
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
@@ -1170,6 +1202,7 @@ begin
     'id', s.id,
     'inicio', s.inicio,
     'ahora', now(),
+    'series', s.series,
     'tope_segundos', extract(epoch from tope_sesion())
   );
 end;
@@ -1435,6 +1468,8 @@ revoke execute on function
   public.mi_fuerza(),
   public.ranking_fuerza(),
   public.percentil_fuerza(),
+  public.sumar_serie(),
+  public.restar_serie(),
   public.anotar_peso(date, numeric),
   public.iniciar_sesion(date),
   public.terminar_sesion(),
@@ -1479,6 +1514,8 @@ grant execute on function
   public.mi_fuerza(),
   public.ranking_fuerza(),
   public.percentil_fuerza(),
+  public.sumar_serie(),
+  public.restar_serie(),
   public.anotar_peso(date, numeric),
   public.iniciar_sesion(date),
   public.terminar_sesion(),

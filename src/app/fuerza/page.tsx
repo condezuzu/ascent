@@ -101,12 +101,18 @@ export default function Fuerza() {
           <div className="marca-historial">
             <p className="nota-privada" style={{ marginTop: 0 }}>
               {previas.length === 1
-                ? 'Es la única que cargaste.'
-                : `Cargaste ${previas.length}. Vale la mejor.`}
+                ? 'Es la única que anotaste.'
+                : `Anotaste ${previas.length}. Vale la mejor.`}
             </p>
             {previas.map((h) => (
               <div key={h.id} className="marca-previa">
-                <span>{pesoLindo(h.peso, unidad)}</span>
+                {/* Primero lo que LEVANTÓ —100 kg × 8—, que es lo que la
+                    persona hizo. El máximo calculado va al lado y en chico:
+                    es un derivado, no el dato. */}
+                <span>
+                  {pesoLindo(h.peso, unidad)}
+                  {h.reps > 1 && <span className="apagado"> × {h.reps}</span>}
+                </span>
                 <span className="apagado">{origenDeMarca(h)}</span>
                 <span className="apagado">{fechaDeMarca(h.fecha)}</span>
                 <button
@@ -123,7 +129,7 @@ export default function Fuerza() {
               className="boton-texto"
               onClick={() => setHoja({ abierta: true, ejercicio: m.ejercicio })}
             >
-              Cargar otra de {m.nombre.toLowerCase()}
+              Otra de {m.nombre.toLowerCase()}
             </button>
           </div>
         )}
@@ -151,7 +157,7 @@ export default function Fuerza() {
         <div className="titulo-pantalla">Mis marcas</div>
 
         <button className="boton-solido" onClick={() => setHoja({ abierta: true })}>
-          Cargar una marca
+          Anotar una marca
         </button>
 
         {marcas.length === 0 ? (

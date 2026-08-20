@@ -17,7 +17,18 @@
   --linea: color-mix(in srgb, var(--pal-principal) 22%, transparent);
   --tarjeta: color-mix(in srgb, var(--pal-principal) 6%, transparent);
   --acento: var(--pal-claro);
-  --radio: 14px;
+  /* §19.1 — El radio es 0 o es 999. Nada en el medio: el radio intermedio
+     (8-16px) es la huella dactilar de la plantilla, y estaba cuatro veces
+     (14 en tarjetas, 12 en botones, 10 en inputs, 9 en chips).
+     Lo cuadrado se lee, lo redondo se toca. */
+  --radio: 0px;
+  --pildora: 999px;
+  /* §19.1 — UNA sola medida fuera de grilla, repetida en toda la app: la que
+     ya tenía la principal. El número de racha se sale 32px del margen y la
+     barra ocupa el 62%. Repetir UNA irregularidad la vuelve intención;
+     tener una distinta por pantalla la vuelve descuido. */
+  --sangria: 32px;
+  --ancho-dato: 62%;
   --alto-nav: 62px;
   /* El único color que NO sale de la paleta del rango, y a propósito: borrar
      la cuenta tiene que verse igual de grave en polvo que en agujero negro.
@@ -79,15 +90,16 @@ select {
   font: inherit;
   color: var(--tinta);
   background: rgba(150, 170, 210, 0.06);
-  border: 0.5px solid var(--linea);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--linea);
+  border-radius: 0;
+  padding: 12px 2px;
   outline: none;
   width: 100%;
 }
 input:focus,
 textarea:focus {
-  border-color: rgba(160, 180, 220, 0.35);
+  border-bottom-color: var(--pal-claro);
 }
 input::placeholder,
 textarea::placeholder {
@@ -208,13 +220,25 @@ textarea::placeholder {
   font-family: var(--f-mono), monospace;
 }
 
-/* ---------- tarjetas casi invisibles ---------- */
+/* ---------- §19.1: la caja se cambia por una línea y aire ----------
+   Cuando TODO está en una caja, las cajas dejan de significar algo. Ahora el
+   bloque cuelga de una línea de pelo y respira abajo: es la gramática de una
+   revista, no la de un panel de control. */
 .tarjeta {
+  border-top: 1px solid var(--linea);
+  padding: 14px 0 22px;
+  transition: border-color 0.65s var(--curva-suave);
+}
+
+/* La caja de verdad queda para lo que TIENE que sentirse contenido, y son
+   tres lugares nada más: el número de DOTS, la zona de eliminar cuenta y el
+   descanso corriendo. Por eso ahí significa algo. */
+.contenida {
   background: var(--tarjeta);
   border: 0.5px solid var(--linea);
-  border-radius: var(--radio);
+  border-top: 0.5px solid var(--linea);
+  border-radius: 2px;
   padding: 16px;
-  transition: background-color 0.65s var(--curva-suave), border-color 0.65s var(--curva-suave);
 }
 
 /* ---------- el único botón sólido de cada pantalla ----------
@@ -227,7 +251,7 @@ textarea::placeholder {
   font-weight: 600;
   font-size: 16px;
   padding: 15px;
-  border-radius: 12px;
+  border-radius: var(--radio);
   text-align: center;
   transition: transform 0.18s var(--curva-salida), opacity 0.2s var(--curva-suave), background-color 0.55s var(--curva-suave);
 }
@@ -238,15 +262,21 @@ textarea::placeholder {
   opacity: 0.35;
 }
 
+/* §19.1 — El fantasma deja de ser una caja vacía y pasa a ser texto con una
+   línea debajo. La caja vacía es justo lo que lo hacía parecer deshabilitado;
+   subrayado se lee como enlace, que es lo que es. */
 .boton-fantasma {
-  display: block;
-  width: 100%;
-  border: 0.5px solid var(--linea);
+  display: inline-block;
+  width: auto;
   color: var(--sub);
-  padding: 13px;
-  border-radius: 12px;
-  text-align: center;
+  padding: 10px 0 4px;
+  text-align: left;
   font-size: 15px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--pal-claro) 40%, transparent);
+}
+.boton-fantasma:active {
+  color: var(--tinta);
 }
 
 .boton-texto {
@@ -262,8 +292,15 @@ textarea::placeholder {
 .cabecera {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 34px;
+}
+.cabecera-yo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 .cabecera .nombre {
   font-size: 15px;
@@ -895,7 +932,7 @@ textarea::placeholder {
   font-size: 13px;
   color: var(--apagado);
   border: 0.5px solid var(--linea);
-  border-radius: 10px;
+  border-radius: var(--pildora);
 }
 .selector-vista button.activo {
   color: var(--pal-claro);
@@ -912,7 +949,7 @@ textarea::placeholder {
 .stat-celda {
   background: var(--tarjeta);
   border: 0.5px solid var(--linea);
-  border-radius: var(--radio);
+  border-radius: 2px;
   padding: 14px;
 }
 .stat-celda .valor {
@@ -1191,6 +1228,8 @@ textarea::placeholder {
 .seccion {
   margin-bottom: 26px;
 }
+/* §19.1 — La MISMA sangría que el número de racha: los títulos se salen del
+   margen izquierdo. Una irregularidad repetida es intención. */
 .seccion h3 {
   font-size: 12px;
   letter-spacing: 0.18em;
@@ -1198,6 +1237,10 @@ textarea::placeholder {
   color: var(--sub);
   font-weight: 500;
   margin-bottom: 12px;
+  margin-left: calc(var(--sangria) * -1);
+}
+.titulo-pantalla {
+  margin-left: calc(var(--sangria) * -1);
 }
 
 .grano-pantalla {
@@ -1917,12 +1960,12 @@ textarea::placeholder {
   gap: 6px;
 }
 .descanso-presets button {
-  padding: 8px 12px;
+  padding: 8px 14px;
   font-size: 12px;
   font-family: var(--f-mono), monospace;
   color: var(--apagado);
   border: 0.5px solid color-mix(in srgb, var(--pal-claro) 20%, transparent);
-  border-radius: 9px;
+  border-radius: var(--pildora);
 }
 .descanso-presets button.activo {
   color: var(--tinta);
@@ -1937,92 +1980,108 @@ body.con-franja .pantalla {
   padding-bottom: calc(132px + env(safe-area-inset-bottom));
 }
 
-/* ---------- franja de la sesión ----------
-   Se apoya arriba de la barra y se ve en las seis pestañas mientras haya una
-   sesión corriendo. Descansar pasa veinte veces por entrenamiento: si hubiera
-   que volver a una pantalla para hacerlo, sería lo mismo que no tenerlo. */
-.franja-sesion {
-  position: fixed;
-  bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom));
-  left: 0;
-  right: 0;
-  z-index: 5;
+/* ---------- §20.2: los dos relojes, en la cabecera ----------
+   Se separan por forma, dirección y peso, no por color. El chip es de
+   contorno y cuenta hacia arriba; la píldora es rellena y cuenta hacia
+   abajo. Ninguno compite con el número de racha. */
+.sesion-viva {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 7px 14px 7px 18px;
-  background: color-mix(in srgb, var(--pal-apagado) 30%, rgba(5, 6, 10, 0.92));
-  backdrop-filter: blur(14px);
-  border-top: 0.5px solid color-mix(in srgb, var(--pal-claro) 22%, transparent);
-  animation: surgir 0.4s var(--curva-salida) both;
+  gap: 8px;
 }
-.franja-tiempo {
+.chip-sesion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  font-size: 12px;
+  color: var(--sub);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  white-space: nowrap;
+}
+.chip-sesion.corriendo {
   font-family: var(--f-mono), monospace;
-  font-size: 15px;
   font-variant-numeric: tabular-nums;
   color: var(--pal-claro);
-  letter-spacing: 0.02em;
+  border-color: color-mix(in srgb, var(--pal-claro) 45%, transparent);
 }
-/* Discreto pero siempre alcanzable: no es el botón sólido de la pantalla,
-   pero tiene el área de toque de uno. */
-.franja-sesion button {
-  padding: 7px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: 999px;
-  color: #08080c;
+.chip-sesion .latido {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
   background: var(--pal-claro);
+  animation: latir 2s var(--curva-suave) infinite;
 }
-.franja-sesion button:active {
-  transform: scale(0.97);
-}
-
-/* la introducción de la pantalla de sesión, en voz baja */
-.sesion-intro {
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--sub);
-  max-width: 34ch;
-  margin-bottom: 22px;
-}
-
-/* selector de rangos: herramienta de revisión, no interfaz de producto */
-.rangos-simular {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.rangos-simular button {
-  padding: 8px 11px;
+/* rellena y redonda: se toca, y se distingue del chip sin leerla */
+.pastilla-descanso {
+  padding: 7px 14px;
   font-size: 12px;
-  color: var(--apagado);
-  border: 0.5px solid var(--linea);
-  border-radius: 9px;
+  font-weight: 500;
+  border-radius: var(--pildora);
+  background: var(--pal-claro);
+  color: #08080c;
+  font-family: var(--f-mono), monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.rangos-simular button.activo {
+.pastilla-descanso.hueca {
+  background: none;
   color: var(--pal-claro);
-  border-color: color-mix(in srgb, var(--pal-principal) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pal-claro) 45%, transparent);
+  font-family: inherit;
+}
+.pastilla-descanso.listo {
+  animation: latir 1s var(--curva-suave) infinite;
 }
 
-/* fila que despliega una sección: el título sigue siendo el título */
-.fila-plegable {
+/* el contador de series: el número manda, el "−" está pero no pesa */
+.series-fila {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  text-align: left;
-  padding: 0;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--sub);
 }
-.fila-plegable h3 {
-  margin-bottom: 0;
+.series-fila .cuenta {
+  font-family: var(--f-mono), monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  color: var(--pal-claro);
 }
-.fila-plegable span {
+.series-fila button {
   color: var(--apagado);
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1;
+  padding: 4px 10px;
+  border: 1px solid var(--linea);
+  border-radius: var(--pildora);
+}
+
+/* El único lugar de la app con texto largo, y a propósito: el que abre esto
+   lo está buscando. En el resto, si algo necesita un párrafo está mal
+   diseñado. */
+.texto-largo {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--sub);
+  max-width: 42ch;
+}
+.texto-largo p {
+  margin-bottom: 12px;
+}
+.texto-largo h4 {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-claro);
+  font-weight: 500;
+  margin: 22px 0 8px;
+}
+.texto-largo strong {
+  color: var(--tinta);
+  font-weight: 500;
 }
 
 @media (prefers-reduced-motion: reduce) {

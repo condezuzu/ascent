@@ -18,6 +18,11 @@ se rediscute; lo marcado PENDIENTE se pregunta antes de asumir.
 - Español rioplatense, en el código y en la interfaz.
 - Cuando toques un archivo, comentá **solo** las líneas que tienen una razón
   no obvia detrás. No comentar todo el código de una.
+- **Un test para algo que ya funciona hay que romperlo una vez.** Escribís el
+  test, rompés el código a propósito, confirmás que falla, y recién ahí lo
+  arreglás. Si pasa en verde con el código roto, no está probando nada — ya
+  nos pasó con el día pendiente, donde el test envejecía los logs pero no el
+  pendiente y la comprobación no tocaba nunca el caso.
 
 ## Dónde
 

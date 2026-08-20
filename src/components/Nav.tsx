@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import FranjaSesion from '@/components/FranjaSesion';
 
 const ITEMS = [
   {
@@ -18,8 +17,8 @@ const ITEMS = [
   {
     href: '/social',
     // "Ranking" y no "Leaderboard": más corto y en español, como el resto de
-    // la app. Y con seis pestañas era la única etiqueta que no entraba a
-    // 375 px —61 px de texto para 60 px de lugar—.
+    // la app. Se quedó aunque la barra volviera a cinco: era mejor nombre
+    // igual, no una concesión para que entrara.
     label: 'Ranking',
     icono: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
@@ -53,18 +52,6 @@ const ITEMS = [
     ),
   },
   {
-    href: '/sesion',
-    label: 'Sesión',
-    icono: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="13.5" r="7.5" />
-        <path d="M12 13.5V9" />
-        <path d="M9.5 2.5h5" />
-        <path d="M18.5 6.5 20 5" />
-      </svg>
-    ),
-  },
-  {
     href: '/ajustes',
     label: 'Ajustes',
     icono: (
@@ -79,18 +66,13 @@ const ITEMS = [
 export default function Nav() {
   const ruta = usePathname();
   return (
-    <>
-      {/* La franja vive con la barra porque tiene que verse en las seis
-          pestañas: descansar pasa veinte veces por entrenamiento (§17.6b). */}
-      <FranjaSesion />
-      <nav className="nav">
-        {ITEMS.map((it) => (
-          <Link key={it.href} href={it.href} className={ruta === it.href ? 'activo' : ''}>
-            <span className="nav-icono">{it.icono}</span>
-            <span className="nav-label">{it.label}</span>
-          </Link>
-        ))}
-      </nav>
-    </>
+    <nav className="nav">
+      {ITEMS.map((it) => (
+        <Link key={it.href} href={it.href} className={ruta === it.href ? 'activo' : ''}>
+          <span className="nav-icono">{it.icono}</span>
+          <span className="nav-label">{it.label}</span>
+        </Link>
+      ))}
+    </nav>
   );
 }

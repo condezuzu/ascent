@@ -1,7 +1,7 @@
 # Vuelta de tuerca estética + el cronómetro en Inicio
 
-**Estado: propuesta.** Nada de esto está implementado. Es para discutir antes
-de tocar código, porque cambia cómo se ve toda la app.
+**Estado: implementado** (20/8/2026). Falta correr la **migración 16** para el
+contador de series.
 
 Parte de la especificación de Ascent. El índice está en `CLAUDE.md`.
 
@@ -147,9 +147,10 @@ Cómo entra:
 - En la base: una columna `sesiones.series int not null default 0` y un RPC que
   incrementa. Nada más.
 
-> **PENDIENTE:** ¿el contador de series se puede corregir? Un toque de más es
-> fácil y no hay forma de deshacerlo. Lo más barato es que mantener apretado el
-> contador reste uno. Decime si lo querés o si prefiero dejarlo sin deshacer.
+**Decidido: sí, con un "−" al lado del contador**, disponible toda la sesión y
+no solo al instante. Y **deshacer una serie NO cancela el descanso**: son dos
+cosas separadas y el descanso se cancela por su lado. Si deshacer lo cancelara,
+corregir un número te costaría el temporizador que estabas usando.
 
 ### 20.4 Qué se va
 

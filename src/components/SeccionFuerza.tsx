@@ -58,12 +58,12 @@ export default function SeccionFuerza({ unidad }: { unidad: Unidad }) {
             amigos, pese lo que pese cada uno.
           </p>
           <Link href="/fuerza" className="boton-fantasma" style={{ marginTop: 12 }}>
-            Cargar mis marcas
+            Anotar mis marcas
           </Link>
         </div>
       ) : (
         <>
-          <div className="tarjeta dots-tarjeta">
+          <div className="contenida dots-tarjeta">
             {mia.dots !== null ? (
               <>
                 <div className="dots-numero">{redondear(mia.dots)}</div>

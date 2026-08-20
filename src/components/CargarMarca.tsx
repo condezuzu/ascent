@@ -51,11 +51,11 @@ export default function CargarMarca({
     setError('');
     const escrito = Number(peso.replace(',', '.'));
     if (!peso || isNaN(escrito) || escrito < tope.min || escrito > tope.max) {
-      return setError('Ese peso no parece válido.');
+      return setError('Ese peso no da.');
     }
     const r = unaVez ? 1 : Number(reps);
     if (!Number.isInteger(r) || r < 1 || r > 20) {
-      return setError('Las repeticiones van de 1 a 20.');
+      return setError('Van de 1 a 20 veces.');
     }
     if (fecha > hoyISO()) return setError('Todavía no la levantaste.');
 
@@ -92,7 +92,7 @@ export default function CargarMarca({
     <>
       <div className={`hoja-fondo ${cerrando ? 'cerrando' : ''}`} onClick={cerrar} />
       <div className={`hoja ${cerrando ? 'cerrando' : ''}`} role="dialog" aria-modal>
-        <h2>Cargar una marca</h2>
+        <h2>Anotar una marca</h2>
         <p className="sub">No hace falta que sea de hoy. Queda con su fecha.</p>
 
         <div className="campo">
@@ -120,13 +120,13 @@ export default function CargarMarca({
         </div>
 
         <div className="campo">
-          <label>Cómo lo cargás</label>
+          <label>Cuántas veces</label>
           <div className="selector-vista" style={{ marginBottom: 0 }}>
             <button className={unaVez ? 'activo' : ''} onClick={() => setUnaVez(true)}>
-              Lo levanté una vez
+              De una
             </button>
             <button className={!unaVez ? 'activo' : ''} onClick={() => setUnaVez(false)}>
-              Lo estimo
+              Varias veces
             </button>
           </div>
         </div>
@@ -144,7 +144,7 @@ export default function CargarMarca({
           </div>
           {!unaVez && (
             <div className="campo" style={{ width: 110 }}>
-              <label>Repes</label>
+              <label>Veces</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -158,12 +158,12 @@ export default function CargarMarca({
         {!unaVez && (
           <p className="nota-privada" style={{ marginTop: -6, marginBottom: 14 }}>
             {peso && Number(peso.replace(',', '.')) > 0 && Number(reps) > 0
-              ? `Da un 1RM estimado de ${redondear(
+              ? `Como máximo de una, te da ${redondear(
                   unRM(Number(peso.replace(',', '.')), Number(reps), false)
                 )} ${unidad}.`
-              : 'Se estima el 1RM desde las repeticiones.'}
-            {Number(reps) === 1 && ' Con una repetición no hay nada que estimar: es el peso.'}
-            {Number(reps) > 12 && ' Arriba de 12 repeticiones la estimación se vuelve muy floja.'}
+              : 'Con eso sacamos cuánto levantarías de una.'}
+            {Number(reps) === 1 && ' Con una vez no hay nada que sacar: es el peso.'}
+            {Number(reps) > 12 && ' De 12 para arriba la cuenta se vuelve muy floja.'}
           </p>
         )}
 
@@ -178,7 +178,7 @@ export default function CargarMarca({
         </div>
 
         <button className="boton-solido" onClick={guardar} disabled={guardando}>
-          {guardando ? 'Guardando…' : 'Guardar marca'}
+          {guardando ? 'Guardando…' : 'Anotar'}
         </button>
         {error && <p className="error-msg">{error}</p>}
       </div>

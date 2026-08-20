@@ -32,7 +32,7 @@ export default function AnotarPeso({
     const escrito = Number(valor.replace(',', '.'));
     const tope = limites(unidad);
     if (!valor || isNaN(escrito) || escrito < tope.min || escrito > tope.max) {
-      return setError('Ese peso no parece válido.');
+      return setError('Ese peso no da.');
     }
     setGuardando(true);
     // a la base va siempre en kilos: la unidad es solo cómo lo escribe y lo

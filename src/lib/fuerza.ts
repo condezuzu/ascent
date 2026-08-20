@@ -56,8 +56,12 @@ export function fechaDeMarca(iso: string): string {
   return `${d.getDate()} ${MESES[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
 }
 
-/** Cómo se cargó la marca, para que un estimado no se lea como un 1RM real. */
-export function origenDeMarca(m: { reps: number; es_real: boolean }): string {
-  if (m.es_real || m.reps === 1) return '1 repetición';
-  return `estimado desde ${m.reps} repeticiones`;
+/**
+ * Cómo se cargó la marca. "Estimado" suena a traducción y a formulario; lo
+ * que la persona hizo fue levantar un peso una cantidad de veces, y así se
+ * dice (§6 del repaso: primero lo que LEVANTASTE).
+ */
+export function origenDeMarca(m: { peso: number; reps: number; es_real: boolean }): string {
+  if (m.es_real || m.reps === 1) return 'de una';
+  return `${m.reps} veces`;
 }

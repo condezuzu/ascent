@@ -96,7 +96,7 @@ export default function RegistrarSheet({
   async function confirmar() {
     setError('');
     const kilos = pesoEnKilos();
-    if (kilos === undefined) return setError('Ese peso no parece válido.');
+    if (kilos === undefined) return setError('Ese peso no da.');
     setCargando(true);
 
     // ---- el día YA está: solo se agrega lo que falte ----
