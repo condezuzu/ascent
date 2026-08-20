@@ -30,6 +30,8 @@ import { dirname, join } from 'node:path';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 
+export { RETRATOS };
+
 /**
  * Fin de línea uniforme. El archivo en disco viene con CRLF —git lo convierte
  * al hacer checkout en Windows— y `git show` lo devuelve con LF. Sin esto, el
@@ -120,74 +122,29 @@ async function nueva() {
   return db;
 }
 
-// ---- las consultas que describen la forma de la base ----
-const RETRATOS = {
-  'columnas y tipos': `
-    select table_name || '.' || column_name || ' ' || data_type ||
-           coalesce('(' || character_maximum_length || ')', '') ||
-           coalesce('(' || numeric_precision || ',' || numeric_scale || ')', '') ||
-           case when is_nullable = 'NO' then ' not null' else '' end ||
-           coalesce(' default ' || column_default, '') as f
-      from information_schema.columns
-     where table_schema = 'public'
-     order by 1`,
-  restricciones: `
-    select conrelid::regclass || ' ' || conname || ' ' || pg_get_constraintdef(oid) as f
-      from pg_constraint
-     where connamespace = 'public'::regnamespace
-     order by 1`,
-  índices: `
-    select indexdef as f from pg_indexes where schemaname = 'public' order by 1`,
-  // El cuerpo se compara SIN comentarios y con los espacios colapsados: lo
-  // que importa es que las dos bases se comporten igual, no que la prosa
-  // coincida. schema.sql suele tener más comentarios que la migración que
-  // trajo esa función, y eso no es deriva.
-  // El cuerpo se normaliza en JS y no en SQL: se sacan los comentarios y se
-  // colapsan los espacios. Lo que importa es que las dos bases se COMPORTEN
-  // igual, no que la prosa coincida — schema.sql suele tener más comentarios
-  // que la migración que trajo esa función, y eso no es deriva.
-  funciones: {
-    sql: `select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ') -> ' ||
-                 pg_get_function_result(p.oid) || ' ' || p.prosecdef || ' ' ||
-                 p.provolatile::text as cabecera, p.prosrc
-            from pg_proc p
-           where p.pronamespace = 'public'::regnamespace
-           order by 1`,
-    fila: (r) => `${r.cabecera} ${r.prosrc.replace(/--[^\n]*/g, '').replace(/\s+/g, ' ').trim()}`,
-  },
-  políticas: `
-    select tablename || ' ' || policyname || ' ' || cmd || ' ' ||
-           coalesce(qual, '-') || ' ' || coalesce(with_check, '-') as f
-      from pg_policies where schemaname = 'public' order by 1`,
-  permisos: `
-    select grantee || ' ' || table_name || ' ' || privilege_type ||
-           coalesce(' ' || column_name, '') as f
-      from information_schema.column_privileges
-     where table_schema = 'public' and grantee in ('authenticated', 'anon')
-     union all
-    select grantee || ' ' || table_name || ' ' || privilege_type
-      from information_schema.table_privileges
-     where table_schema = 'public' and grantee in ('authenticated', 'anon')
-     order by 1`,
-  triggers: `
-    select event_object_table || ' ' || trigger_name || ' ' || action_timing || ' ' ||
-           event_manipulation || ' ' || action_statement as f
-      from information_schema.triggers
-     where trigger_schema = 'public' order by 1`,
-  'filas del catálogo de ejercicios': `
-    select id || ' ' || nombre || ' ' || grupo || ' ' || cuenta_dots || ' ' || orden as f
-      from ejercicios order by 1`,
-};
+// El retrato lo arma la BASE, con `retrato_del_schema()`. Vive en schema.sql
+// y no acá porque el mismo retrato lo usa `test:conexion` contra producción,
+// donde no hay forma de correr SQL suelto: si la consulta estuviera duplicada
+// en los dos lados, tendríamos justo el problema que estos tests persiguen.
+const RETRATOS = [
+  'columnas',
+  'restricciones',
+  'índices',
+  'funciones',
+  'políticas',
+  'permisos',
+  'permisos de tabla',
+  'triggers',
+  'catálogo de ejercicios',
+];
 
-async function retrato(db) {
-  const r = {};
-  for (const [que, def] of Object.entries(RETRATOS)) {
-    const { sql, fila } = typeof def === 'string' ? { sql: def, fila: (x) => x.f } : def;
-    const filas = await db.query(sql);
-    r[que] = filas.rows.map(fila);
-  }
+export async function retrato(db) {
+  const filas = (await db.query('select que, f from retrato_del_schema() order by 1, 2')).rows;
+  const r = Object.fromEntries(RETRATOS.map((q) => [q, []]));
+  for (const x of filas) (r[x.que] ??= []).push(x.f);
   return r;
 }
+
 
 // =====================================================================
 console.log('Deriva: la base nueva contra producción\n');
@@ -213,9 +170,9 @@ console.log(`schema original + ${lista.length} migraciones`);
 const a = await retrato(baseNueva);
 const b = await retrato(comoProduccion);
 
-for (const que of Object.keys(RETRATOS)) {
-  const soloEnA = a[que].filter((x) => !b[que].includes(x));
-  const soloEnB = b[que].filter((x) => !a[que].includes(x));
+for (const que of RETRATOS) {
+  const soloEnA = (a[que] ?? []).filter((x) => !(b[que] ?? []).includes(x));
+  const soloEnB = (b[que] ?? []).filter((x) => !(a[que] ?? []).includes(x));
   chequear(`${que}: sin diferencias`, { soloEnBaseNueva: soloEnA, soloEnProduccion: soloEnB }, {
     soloEnBaseNueva: [],
     soloEnProduccion: [],

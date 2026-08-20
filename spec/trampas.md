@@ -156,6 +156,15 @@ vieja**. Y `npm run test:db` corre `test-deriva.mjs`, que levanta las dos
 bases en PGlite y las compara entera: columnas, tipos, restricciones, índices,
 funciones, políticas, permisos, triggers y las filas del catálogo.
 
+**Y las dos salen del repo**, así que si PRODUCCIÓN se separó de las dos,
+ninguna se entera. Las migraciones se corren pegando SQL a mano en el SQL
+Editor, que es justo donde se pierde un bloque sin que nadie lo note.
+→ **Regla:** `npm run test:conexion` le pide a la base real su propio retrato
+(`retrato_del_schema()`) y lo compara contra el de una base levantada solo con
+`schema.sql`. La consulta vive **en la base** y no en los tests: si estuviera
+duplicada en los dos lados tendríamos exactamente el problema que estos tests
+persiguen, una capa más arriba.
+
 Dos cosas que hicieron ruido al armarlo y conviene no volver a pisar:
 
 - **Las migraciones NO son idempotentes contra un schema más nuevo.** El

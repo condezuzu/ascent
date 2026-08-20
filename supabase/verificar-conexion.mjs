@@ -214,6 +214,69 @@ console.log('\nDescanso entre series');
   }
 }
 
+// --- producción contra el repo (migración 18) ---
+//
+// Las diecisiete migraciones se corrieron pegando SQL a mano en el SQL
+// Editor. `test:db` compara schema.sql contra las migraciones, pero las dos
+// salen del repo: si producción se separó de las DOS, ninguna se entera.
+// Esto es lo único que mira la base de verdad.
+console.log('\nProducción tiene la forma del repo');
+{
+  const { data: remoto, error } = await db.rpc('retrato_del_schema');
+  if (noExiste(error?.message)) {
+    console.log('  --   la migración 18 todavía no está aplicada (supabase/migracion-18-retrato-del-schema.sql)');
+  } else if (error) {
+    chequear(`retrato_del_schema responde (${error.message.slice(0, 50)})`, false, true);
+  } else {
+    // El mismo retrato, sacado de una base levantada solo con schema.sql.
+    // La consulta es la MISMA de los dos lados porque vive en la base: acá
+    // solo se la llama.
+    const { PGlite } = await import('@electric-sql/pglite');
+    const local = new PGlite();
+    await local.exec(`set timezone = 'UTC'`);
+    await local.exec(`
+      create schema if not exists auth;
+      create table auth.users (id uuid primary key default gen_random_uuid(),
+        raw_user_meta_data jsonb default '{}'::jsonb);
+      create function auth.uid() returns uuid language sql stable as $fn$
+        select nullif(current_setting('test.uid', true), '')::uuid; $fn$;
+      create role authenticated; create role anon;
+    `);
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const { dirname, join } = await import('node:path');
+    const DIR = dirname(fileURLToPath(import.meta.url));
+    let sql = readFileSync(join(DIR, 'schema.sql'), 'utf8').replace(/\r\n/g, '\n');
+    // el bloque de storage no corre en PGlite y tampoco lo devuelve el retrato
+    const iniStorage = sql.indexOf('-- STORAGE: bucket privado de fotos');
+    const iniPermisos = sql.indexOf('-- PERMISOS (capa extra debajo de la RLS)');
+    sql = sql.slice(0, sql.lastIndexOf('-- ----', iniStorage)) +
+          sql.slice(sql.lastIndexOf('-- ----', iniPermisos));
+    await local.exec(sql);
+    const filas = (await local.query('select que, f from retrato_del_schema() order by 1, 2')).rows;
+
+    const agrupar = (xs) => {
+      const m = {};
+      for (const x of xs) (m[x.que] ??= []).push(x.f);
+      return m;
+    };
+    const enElRepo = agrupar(filas);
+    const enProduccion = agrupar(remoto);
+    const temas = [...new Set([...Object.keys(enElRepo), ...Object.keys(enProduccion)])].sort();
+
+    for (const tema of temas) {
+      const r = enElRepo[tema] ?? [];
+      const p = enProduccion[tema] ?? [];
+      const faltaEnProd = r.filter((x) => !p.includes(x));
+      const sobraEnProd = p.filter((x) => !r.includes(x));
+      chequear(`${tema}: producción coincide con el repo`, [faltaEnProd, sobraEnProd], [[], []]);
+      for (const x of faltaEnProd) console.log(`         FALTA en producción: ${x}`);
+      for (const x of sobraEnProd) console.log(`         SOBRA en producción: ${x}`);
+    }
+  }
+}
+
+
 // --- auth responde ---
 console.log('\nAuth');
 {
