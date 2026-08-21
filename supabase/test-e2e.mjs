@@ -12,6 +12,7 @@
 //     los dominios de ejemplo o inventados, así que tiene que ser uno real.
 //     Con la confirmación apagada NO se envía ningún correo al crear cuentas.
 import { createClient } from '@supabase/supabase-js';
+import { randomBytes } from 'node:crypto';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -62,7 +63,11 @@ const A = nuevoCliente();
 const B = nuevoCliente();
 const emailA = dir('a');
 const emailB = dir('b');
-const clave = `Ascent-${sello}-x9`;
+// Al azar, no derivada del sello: el sello es la fecha y la hora, o sea que
+// la clave de cualquier cuenta que el e2e haya dejado a medio borrar se
+// adivina leyendo el repo. Las cuentas son descartables igual, pero una clave
+// predecible en un archivo público no tiene por qué existir.
+const clave = `Ascent-${randomBytes(18).toString('base64url')}`;
 
 const altaA = await A.auth.signUp({ email: emailA, password: clave });
 if (altaA.error) {

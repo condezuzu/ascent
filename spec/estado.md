@@ -1,29 +1,9 @@
 # Estado actual
 
-*Corte al 20 de agosto de 2026. Describe cómo está el proyecto hoy, no lo que
+*Corte al 21 de agosto de 2026. Describe cómo está el proyecto hoy, no lo que
 se decidió. Actualizar al terminar cada tanda.*
 
-## Lo primero: hay una llave que rotar
-
-**La service_role key de Supabase estuvo expuesta y hay que rotarla.** El
-webhook de sugerencias, creado desde el panel, guarda la key en texto plano
-dentro de la definición de su propio trigger; el retrato de la base la
-devolvía tal cual y estaba abierto a `anon`, que es pública por diseño. La
-ventana va desde que se aplicó la migración 18 (20/8/2026) hasta que se
-aplique la 19. No hay señales de que alguien la haya usado, pero eso no se
-puede probar y la key saltea toda la RLS.
-
-Por orden:
-
-1. **Correr `supabase/migracion-19-retrato-cerrado.sql`.** Tapa la fuga: el
-   retrato hashea los cuerpos y sale de `anon`.
-2. **Rotar la service_role key** en el panel de Supabase y **cambiar el valor
-   de `x-ascent-secreto`**. Ojo: si se rota el JWT secret, la anon key también
-   cambia, y hay que actualizar `.env.local` y las variables de Vercel, y
-   volver a desplegar (las `NEXT_PUBLIC_*` se incrustan al compilar).
-3. **Rehacer el webhook** con la key nueva desde el panel.
-
-## Lo segundo: producción tiene una cosa que el repo no
+## Lo primero: producción tiene una cosa que el repo no
 
 El trigger `sugerencia-nueva` sobre `feedback` vive **solo en producción**: lo
 crea el panel y su definición no puede ir a un repo público. Está anotado en
@@ -32,9 +12,12 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Las 18 primeras están aplicadas; la 19 falta correr** (ver arriba). En una
-base nueva no hace falta ninguna: `supabase/schema.sql` ya las incluye a
-todas, y `npm run test:db` lo comprueba comparando las dos bases entera.
+**Las 19 primeras están aplicadas; la 20 falta correr.** En una base nueva no
+hace falta ninguna: `supabase/schema.sql` ya las incluye a todas, y
+`npm run test:db` lo comprueba comparando las dos bases entera. Que PRODUCCIÓN
+coincida con el repo lo comprueba `npm run test:conexion`, que le pide a la
+base real su propio retrato — y mientras la 20 no esté aplicada, avisa que no
+comparó en vez de pasar en verde.
 
 Las migraciones las aplica **el humano** en el SQL Editor: en `.env.local`
 solo hay la anon key, así que desde una sesión de Claude no se puede tocar el
@@ -164,23 +147,27 @@ schema de la base real. El flujo es: escribir la migración → probarla con
 - [ ] Volver a prender **"Confirm email"**, apagado para poder testear.
 - [ ] Backups automáticos confirmados en Supabase.
 - [ ] Borrar las cuentas de prueba.
+- [ ] **Rotar el JWT secret de Supabase.** La service_role key estuvo expuesta
+      (ver el webhook de sugerencias, más abajo). La migración 19 cerró la
+      ventana, así que no corre, pero la llave sigue siendo la misma. Al
+      rotarla cambia también la anon key: hay que actualizar `.env.local`, las
+      variables de Vercel y volver a desplegar, y rehacer el webhook con la
+      key nueva y un `x-ascent-secreto` nuevo.
 - [x] Eliminar cuenta y exportar datos implementados y verificados.
 
 ## Cuentas de prueba vivas
 
-| Correo | Clave | Usuario |
-|---|---|---|
-| `prueba.uno@ascent.test` | `ascent-prueba-2026` | `prueba_uno` |
-| `prueba.dos@ascent.test` | `ascent-prueba-2026` | `prueba_dos` |
+Dos: `prueba_uno` y `prueba_dos`, con racha de 3 cada una y amistad aceptada
+entre ellas; `prueba_uno` tiene fotos, pesos y avatar. Supabase acepta dominios
+inventados como `.test` para el alta.
 
-Racha de 3 cada una y amistad aceptada entre ellas; `prueba_uno` tiene fotos,
-pesos y avatar. Supabase acepta dominios inventados como `.test` para el alta.
+**Las claves NO están en el repo.** Viven en `.env.local`, en `PRUEBA_UNO` y
+`PRUEBA_DOS`. `prueba_uno` es además la cuenta con la que `test:conexion` pide
+el retrato de la base (`CONEXION_EMAIL` / `CONEXION_PASSWORD`, el mismo par).
 
-`prueba.uno` es además la cuenta con la que `test:conexion` pide el retrato de
-la base (`CONEXION_EMAIL` / `CONEXION_PASSWORD` en `.env.local`). **Su clave
-está acá, en un repo público**, así que "solo para autenticados" vale contra un
-visitante cualquiera, no contra alguien que lea el repo. Antes de invitar
-gente: cambiarle la clave y sacarla de esta tabla.
+Estuvieron publicadas acá hasta el 21/8/2026, en un repo público. Se rotaron
+ese día. Si alguna vez hay que volver a escribirlas en algún lado, que sea
+`.env.local` y nada más: en el repo va el nombre de la variable.
 
 ## Problemas conocidos
 

@@ -1581,6 +1581,16 @@ console.log('\n28. El día lo corta Uruguay, no UTC ni el teléfono');
 
 
 // =====================================================================
+// El par de zonas con el que se prueba la guarda del cambio de zona, acá
+// arriba porque lo usan la sección 29 y la 30. Antes cada una usaba
+// Montevideo -> Tokio, que son doce horas: caen en el mismo día del
+// calendario buena parte de la jornada, y ahí no hay ningún día que ganar.
+// El test pasaba en verde sin probar nada media vuelta al reloj y en rojo la
+// otra media. Midway (UTC-11) y Kiritimati (UTC+14) están a VEINTICINCO
+// horas: no pueden caer en el mismo día, sea la hora que sea.
+const CASA = 'Pacific/Midway';
+const ADELANTE = 'Pacific/Kiritimati';
+
 console.log('\n29. La zona sale del teléfono, y cambiarla no regala días');
 {
   const zona = (uid, z) => db.query('update profiles set zona = $2 where id = $1', [uid, z]);
@@ -1633,15 +1643,32 @@ console.log('\n29. La zona sale del teléfono, y cambiarla no regala días');
   await db.exec('reset role');
 
   // ---- la guarda: cambiar de zona no regala un día, pero no lo pierde ----
+  //
+  // El par de zonas NO es decorativo. Antes era Montevideo -> Tokio, que son
+  // doce horas: caen en el mismo día del calendario buena parte de la jornada
+  // y ahí el ataque no tiene nada que ganar, así que el test pasaba en verde
+  // sin probar nada media vuelta al reloj, y en rojo la otra media. Midway
+  // (UTC-11) y Kiritimati (UTC+14) están a VEINTICINCO horas: nunca pueden
+  // caer en el mismo día, sea la hora que sea.
+  {
+    const c = await nuevoUsuario();
+    await zona(c, CASA);
+    await comoUsuario(c);
+    const dCasa = (await db.query('select mi_hoy()::text as d')).rows[0].d;
+    await zona(c, ADELANTE);
+    const dAdelante = (await db.query('select mi_hoy()::text as d')).rows[0].d;
+    chequear('el par de zonas cae en días distintos, a cualquier hora', dAdelante > dCasa, true);
+  }
   {
     const v = await nuevoUsuario();
+    await zona(v, CASA);
     await comoUsuario(v);
     await db.query('select registrar_dia()');
     chequear('registró el día', (await perfil(v)).racha_actual, 1);
 
     // se mueve la zona hacia adelante, que es el ataque
     await db.exec('set role authenticated');
-    await db.query(`select fijar_zona('Asia/Tokyo')`);
+    await db.query(`select fijar_zona($1)`, [ADELANTE]);
     await db.exec('reset role');
 
     const r = (await db.query('select registrar_dia() as v')).rows[0].v;
@@ -1684,10 +1711,11 @@ console.log('\n29. La zona sale del teléfono, y cambiarla no regala días');
   // ---- el pendiente no duplica si el día ya entró por otro lado ----
   {
     const x = await nuevoUsuario();
+    await zona(x, CASA);
     await comoUsuario(x);
     await db.query('select registrar_dia()');
     await db.exec('set role authenticated');
-    await db.query(`select fijar_zona('Asia/Tokyo')`);
+    await db.query(`select fijar_zona($1)`, [ADELANTE]);
     await db.exec('reset role');
     const r = (await db.query('select registrar_dia() as v')).rows[0].v;
     // el usuario lo agrega a mano desde el calendario mientras tanto
@@ -1731,12 +1759,17 @@ console.log('\n29. La zona sale del teléfono, y cambiarla no regala días');
 console.log('\n30. El día pendiente espera, no vence, y entra con SU fecha');
 {
   const bloquear = async (uid) => {
+    await db.query('update profiles set zona = $2 where id = $1', [uid, CASA]);
     await comoUsuario(uid);
     await db.query('select registrar_dia()');
     await db.exec('set role authenticated');
-    await db.query(`select fijar_zona('Asia/Tokyo')`);
+    await db.query(`select fijar_zona($1)`, [ADELANTE]);
     await db.exec('reset role');
-    return (await db.query('select registrar_dia() as v')).rows[0].v;
+    const r = (await db.query('select registrar_dia() as v')).rows[0].v;
+    // Si esto no bloquea, lo de abajo no prueba nada: no hay pendiente que
+    // resolver y el test se cae más adelante por un lado que no es el suyo.
+    chequear('bloqueó y dejó un pendiente', !!r.pendiente, true);
+    return r;
   };
 
   // ---- no vuelve en días y el día entra igual, con SU fecha ----

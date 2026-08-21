@@ -307,7 +307,12 @@ console.log('\nProducción tiene la forma del repo');
     // de sí mismo.
     const suyo = (xs) => (xs.funciones ?? []).find((x) => x.startsWith('retrato_del_schema('));
     if (suyo(enElRepo) !== suyo(enProduccion)) {
-      console.log('  --   la migración 19 todavía no está aplicada (supabase/migracion-19-retrato-cerrado.sql):');
+      // El nombre sale del directorio, no escrito a mano: cada vez que el
+      // retrato cambia hay una migración nueva, y un número viejo acá manda a
+      // correr el archivo equivocado.
+      const { readdirSync } = await import('node:fs');
+      const ultima = readdirSync(DIR).filter((f) => /^migracion-\d+/.test(f)).sort().pop();
+      console.log(`  --   falta correr supabase/${ultima}:`);
       console.log('       el retrato de producción es de otra versión, comparar no diría nada');
       faltaRetrato = true;
     } else {

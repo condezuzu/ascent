@@ -172,12 +172,20 @@ lleva la service_role key en texto plano**, más el header `x-ascent-secreto`.
 El retrato devolvía `action_statement` tal cual y estaba otorgado a `anon`, así
 que cualquiera con la anon key —que viaja en el bundle del navegador, es
 pública por diseño— podía pedirlo y llevarse la llave que saltea toda la RLS.
-→ **Regla:** el retrato no devuelve **ningún** cuerpo en claro. Funciones y
-triggers van hasheados: un md5 distinto delata el cambio igual, que es todo lo
-que hace falta. Y de paso: **lo que crea el panel de Supabase no pasa por
-ninguna migración**, así que es exactamente lo que este test existe para
-encontrar. Lo que vive solo en producción a propósito se anota en
-`SOLO_EN_PRODUCCION`, con el motivo.
+→ **Regla:** el retrato devuelve **nombres en claro y todo el contenido
+hasheado** — cuerpos de funciones y de triggers, defaults de columnas,
+expresiones de restricciones, definiciones de índices, el `using` y el `with
+check` de cada política, y las filas del catálogo de ejercicios en un solo
+hash. Anotar el objeto que filtró en una lista de excepciones tapa ESE caso; el
+próximo objeto que alguien cree desde el panel con un secreto adentro vuelve a
+filtrar por el campo que quedó en claro. Un md5 distinto delata el cambio
+igual, y el nombre alcanza para saber dónde ir a mirar. Queda en claro solo lo
+que no es texto libre y sí importa leer: tipos, `not null`, `prosecdef`, la
+volatilidad, el comando de cada política y quién tiene cada permiso.
+
+Y de paso: **lo que crea el panel de Supabase no pasa por ninguna migración**,
+así que es exactamente lo que este test existe para encontrar. Lo que vive solo
+en producción a propósito se anota en `SOLO_EN_PRODUCCION`, con el motivo.
 
 **Un retrato de la base viva no se le da a un anónimo**, aunque hoy todo lo que
 devuelva esté publicado en GitHub. Refleja producción, no el repo —esa es la
@@ -222,6 +230,38 @@ Dos cosas que hicieron ruido al armarlo y conviene no volver a pisar:
   así que la primera corrida denunció 66 restricciones "faltantes" que estaban
   las dos veces. Se filtra `contype <> 'n'`: el NOT NULL ya se compara arriba,
   en `columnas`.
+
+---
+
+## Tests que mienten según la hora
+
+**Dos secciones probaban la guarda del cambio de zona con Montevideo → Tokio**,
+que son doce horas. Buena parte de la jornada las dos zonas caen en el MISMO
+día del calendario, y ahí mover la zona no da ningún día que ganar: no hay nada
+que bloquear, no queda pendiente, y lo que sigue no prueba nada. El test pasaba
+en verde media vuelta al reloj y se caía la otra media, con un error de clave
+duplicada que no tenía nada que ver.
+→ **Regla:** cuando un test depende de que dos zonas caigan en días distintos,
+el par tiene que hacerlo **a cualquier hora**. Midway (UTC−11) y Kiritimati
+(UTC+14) están a veinticinco horas: no pueden coincidir nunca. Y el helper que
+prepara el estado **comprueba que quedó preparado** (`bloqueó y dejó un
+pendiente`) en vez de dejar que la falla aparezca diez líneas más abajo,
+disfrazada de otra cosa.
+
+---
+
+## Credenciales
+
+**Las claves de las cuentas de prueba estuvieron en `spec/estado.md`**, en un
+repo público, mientras el trabajo de la semana era justamente cerrarle el
+retrato de la base a los anónimos. "Solo para autenticados" no vale contra
+alguien que lee el repo.
+→ **Regla:** en el repo va el **nombre de la variable**, nunca el valor. Las
+claves viven en `.env.local`. Y la clave que el e2e le pone a sus cuentas
+descartables sale de `randomBytes`, no del sello de fecha y hora, que se
+adivina leyendo el archivo. Las que estuvieron publicadas quedan en el
+historial de git para siempre: **rotarlas es la única salida**, borrar la línea
+no alcanza.
 
 ---
 

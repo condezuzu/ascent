@@ -1274,20 +1274,37 @@ $$;
 -- función legibles por máquina y siempre al día es un mapa de cómo funciona
 -- la seguridad. `test:conexion` inicia sesión con la cuenta de prueba.
 --
--- Y nada de lo que devuelve puede llevar un secreto adentro: los cuerpos de
--- funciones y de triggers van hasheados. Los webhooks que crea el panel de
--- Supabase llevan la service_role key incrustada en su propia definición, y
--- la versión anterior de esto la repartía en texto plano (ver la migración
--- 19 y spec/trampas.md).
+-- Y no puede llevar un secreto adentro, porque NO devuelve ningún cuerpo en
+-- claro: nombres sí, contenido hasheado. Un md5 distinto delata el cambio
+-- igual y el nombre dice dónde ir a mirar. La versión vieja devolvía la
+-- definición de cada trigger tal cual, y los webhooks que crea el panel de
+-- Supabase llevan la service_role key adentro (ver spec/trampas.md).
+-- Una sola normalización para todo el retrato. Antes vivía copiada en la rama
+-- de funciones y en la de triggers; ahora los dos lados de cada comparación
+-- pasan por acá, que es la única forma de que un md5 signifique algo.
+create or replace function public.huella(t text)
+returns text language sql immutable as $$
+  select case
+    when t is null then '-'
+    -- Sin comentarios y con los espacios colapsados: importa que las dos
+    -- bases se COMPORTEN igual, no que la prosa coincida.
+    else md5(btrim(regexp_replace(
+      regexp_replace(t, '--[^' || chr(10) || ']*', '', 'g'), '\s+', ' ', 'g')))
+  end;
+$$;
+
 create or replace function public.retrato_del_schema()
 returns table (que text, f text)
 language sql stable security definer set search_path = public as $$
+  -- El default va hasheado: es una expresión libre y puede llevar un literal
+  -- adentro. El tipo y el not null son la forma, y esos sí se leen.
   select 'columnas'::text,
          c.table_name || '.' || c.column_name || ' ' || c.data_type ||
          coalesce('(' || c.character_maximum_length || ')', '') ||
          coalesce('(' || c.numeric_precision || ',' || c.numeric_scale || ')', '') ||
          case when c.is_nullable = 'NO' then ' not null' else '' end ||
-         coalesce(' default ' || c.column_default, '')
+         case when c.column_default is null then ''
+              else ' default ' || huella(c.column_default) end
     from information_schema.columns c
     join information_schema.tables t
       on t.table_schema = c.table_schema and t.table_name = c.table_name
@@ -1299,26 +1316,28 @@ language sql stable security definer set search_path = public as $$
   -- filas de diferencia eran ruido de versión. El NOT NULL ya viaja arriba,
   -- en 'columnas', que es donde de verdad se compara.
   select 'restricciones',
-         conrelid::regclass || ' ' || conname || ' ' || pg_get_constraintdef(oid)
+         conrelid::regclass || ' ' || conname || ' ' || huella(pg_get_constraintdef(oid))
     from pg_constraint
    where connamespace = 'public'::regnamespace and contype <> 'n'
 
   union all
-  select 'índices', indexdef from pg_indexes where schemaname = 'public'
+  select 'índices', tablename || ' ' || indexname || ' ' || huella(indexdef)
+    from pg_indexes where schemaname = 'public'
 
   union all
-  -- El cuerpo va SIN comentarios y con los espacios colapsados: importa que
-  -- las bases se comporten igual, no que la prosa coincida.
   select 'funciones',
          p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ') -> ' ||
-         pg_get_function_result(p.oid) || ' ' || p.prosecdef || ' ' || p.provolatile::text ||
-         ' ' || md5(btrim(regexp_replace(regexp_replace(p.prosrc, '--[^' || chr(10) || ']*', '', 'g'), '\s+', ' ', 'g')))
+         pg_get_function_result(p.oid) || ' ' || p.prosecdef || ' ' ||
+         p.provolatile::text || ' ' || huella(p.prosrc)
     from pg_proc p where p.pronamespace = 'public'::regnamespace
 
   union all
+  -- `qual` y `with_check` son expresiones libres. El comando queda en claro
+  -- porque saber que una política es de INSERT y no de SELECT es la mitad de
+  -- entender qué protege.
   select 'políticas',
          tablename || ' ' || policyname || ' ' || cmd || ' ' ||
-         coalesce(qual, '-') || ' ' || coalesce(with_check, '-')
+         huella(qual) || ' ' || huella(with_check)
     from pg_policies where schemaname = 'public'
 
   union all
@@ -1334,7 +1353,7 @@ language sql stable security definer set search_path = public as $$
    where table_schema = 'public' and grantee in ('authenticated', 'anon')
 
   union all
-  -- Quien puede EJECUTAR cada función. Sin esto el retrato no habría podido
+  -- Quién puede EJECUTAR cada función. Sin esto el retrato no habría podido
   -- ver el agujero que lo estrenó: una función SECURITY DEFINER otorgada a
   -- `anon` se ve idéntica a una cerrada. `acldefault` cubre el caso peor, el
   -- de la función que nunca se tocó: `proacl` viene en NULL y el permiso por
@@ -1350,18 +1369,21 @@ language sql stable security definer set search_path = public as $$
      and coalesce(g.rolname, 'PUBLIC') in ('anon', 'authenticated', 'PUBLIC')
 
   union all
-  -- HASHEADO a propósito: los webhooks que crea el panel llevan la
-  -- service_role key adentro de su propia definición. Un md5 distinto delata
-  -- el cambio igual, que es todo lo que este retrato necesita saber.
+  -- Los webhooks que crea el panel de Supabase llevan la service_role key
+  -- adentro de su propia definición. Esta rama es la que la filtró.
   select 'triggers',
          event_object_table || ' ' || trigger_name || ' ' || action_timing || ' ' ||
-         event_manipulation || ' ' ||
-         md5(btrim(regexp_replace(action_statement, '\s+', ' ', 'g')))
+         event_manipulation || ' ' || huella(action_statement)
     from information_schema.triggers where trigger_schema = 'public'
 
   union all
+  -- La única rama que devuelve FILAS de una tabla, aunque sea un catálogo fijo
+  -- y público. Va entera en un solo hash: no hay motivo para que el retrato
+  -- sepa recitar datos.
   select 'catálogo de ejercicios',
-         id || ' ' || nombre || ' ' || grupo || ' ' || cuenta_dots || ' ' || orden
+         count(*) || ' ejercicios ' ||
+         huella(string_agg(id || ' ' || nombre || ' ' || grupo || ' ' ||
+                           cuenta_dots || ' ' || orden, '|' order by id))
     from ejercicios
 $$;
 
