@@ -78,8 +78,11 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   van los **últimos 7 días con su duración** —agrupados por día, porque puede
   haber más de una sesión por jornada, y las abandonadas suman cero en vez de
   inventar un número— y en Fuerza un bloque **"Dónde estoy"** con el percentil
-  y la **categoría** de la fuente —intermedio, avanzado— como número grande,
-  además del porcentaje. Va el total y también **cada ejercicio por separado**.
+  y la **categoría** de la fuente —intermedio, avanzado— además del porcentaje,
+  **por ejercicio y nunca para el total**: sumar los umbrales de los tres no da
+  el umbral del total y en las colas se rompe. El total lo resume el DOTS, que
+  existe para eso. Debajo de la primera categoría se muestra **cuánto falta**
+  para principiante, en vez de un hueco.
   Se compara contra **tablas publicadas que viven en el repo**
   (`src/lib/estandares.ts`, Strength Level 2026), no contra los usuarios de
   Ascent: sirve desde el primer usuario y se calcula en el teléfono, sin
@@ -181,10 +184,12 @@ ese día. Si alguna vez hay que volver a escribirlas en algún lado, que sea
 
 ## Problemas conocidos
 
-- El panel de preview corre con `document.hidden = true`: las animaciones de
-  three.js no se ven y las capturas no salen. **Los clicks por píxel se
-  cuelgan**: para manejar la interfaz desde el panel hay que disparar los
-  eventos por DOM (setter nativo del prototipo + `dispatchEvent('input')` para
-  los inputs de React). El QA visual lo hace el humano.
+- El panel de preview del entorno **se cuelga**: los clicks por píxel se traban
+  y `read_page` da timeout. Ya no se depende de él: el QA visual sale de
+  `npm run capturas`, que levanta la app en su propio puerto y su propia
+  carpeta de build, entra con la cuenta de prueba, recorre las pantallas en
+  móvil y escritorio y deja los PNG en `capturas/` (ignorada por git). Avisa
+  además de errores de consola y de contenido cortado por cualquiera de los dos
+  lados.
 - El `launch.json` del directorio de trabajo tiene rutas absolutas por
   proyecto: al mudar una carpeta hay que actualizarlo o el preview no arranca.

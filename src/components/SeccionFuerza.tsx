@@ -13,7 +13,6 @@ import {
   FUENTE,
   muestraFina,
   ubicar,
-  ubicarTotal,
   type SexoEstandar,
 } from '@/lib/estandares';
 
@@ -118,7 +117,6 @@ export default function SeccionFuerza({
             <DondeEstoy
               sexo={sexo}
               pesoCorporal={pesoCorporal}
-              total={mia.total}
               marcas={mia.marcas}
               unidad={unidad}
             />
@@ -195,60 +193,63 @@ export default function SeccionFuerza({
  * Quién es esa gente y de cuándo son los datos está en Ajustes, porque contra
  * quién se compara cambia el resultado entero.
  *
+ * SOLO POR EJERCICIO. El total no lleva categoría: sumar los umbrales de los
+ * tres no da el umbral del total, y en las colas se rompe (ver `estandares.ts`
+ * y spec/trampas.md). Para el total ya está el DOTS, ahí arriba. Y por
+ * ejercicio es además lo accionable: "top 25% en peso muerto" dice qué
+ * entrenar, un agregado no.
+ *
  * La CATEGORÍA va primero y más grande que el porcentaje: es el dato que
  * publica la fuente, mientras que el porcentaje lo interpolamos nosotros.
- * Y va el total además de cada ejercicio, porque "top 25% en peso muerto" es
- * más accionable que un agregado — y porque el agregado tapa justo al que
- * tiene un levantamiento fuerte y otro flojo.
  */
 function DondeEstoy({
   sexo,
   pesoCorporal,
-  total,
   marcas,
   unidad,
 }: {
   sexo: SexoEstandar;
   pesoCorporal: number;
-  total: number | null;
   marcas: MiFuerza['marcas'];
   unidad: Unidad;
 }) {
-  const delTotal = total !== null ? ubicarTotal(sexo, pesoCorporal, total) : null;
-  const porEjercicio = marcas
+  const filas = marcas
     .filter((m) => esEjercicioEstandar(m.ejercicio))
     .map((m) => ({
       ejercicio: m.ejercicio,
       nombre: m.nombre,
-      kg: m.kg,
       u: ubicar(m.ejercicio as Parameters<typeof ubicar>[0], sexo, pesoCorporal, m.kg),
     }));
 
-  if (!delTotal && porEjercicio.length === 0) return null;
+  if (filas.length === 0) return null;
 
   return (
     <div className="donde-estoy">
       <div className="donde-titulo">Dónde estoy</div>
 
-      {delTotal && (
-        <>
-          <div className="donde-categoria">{delTotal.categoria}</div>
-          <div className="donde-pie">
-            en el total · le ganás al {delTotal.supera}% de la gente de tu peso
-          </div>
-          {/* La escala crece hacia la derecha y la marca va donde cae. */}
-          <div className="donde-escala" aria-hidden>
-            <i style={{ left: `${delTotal.supera}%` }} />
-          </div>
-        </>
-      )}
-
       <div className="donde-lista">
-        {porEjercicio.map((e) => (
-          <div key={e.ejercicio} className="donde-fila">
-            <span className="nombre">{e.nombre}</span>
-            <span className="cat">{e.u.categoria}</span>
-            <span className="dato pct">{e.u.supera}%</span>
+        {filas.map((f) => (
+          <div key={f.ejercicio} className="donde-fila">
+            <div className="donde-fila-datos">
+              <span className="nombre">{f.nombre}</span>
+              <span className="cat">{f.u.categoria}</span>
+              <span className="dato pct">
+                {f.u.faltaParaPrincipiante === null ? `${f.u.supera}%` : ''}
+              </span>
+            </div>
+            {/* La escala crece hacia la derecha y la marca cae donde cae. */}
+            <div className="donde-escala" aria-hidden>
+              <i style={{ left: `${f.u.supera}%` }} />
+            </div>
+            {f.u.faltaParaPrincipiante !== null && (
+              // Sin esto, el que recién empieza ve "Arrancando" y nada más, y
+              // ahí no hay ninguna razón para volver. La distancia motiva sin
+              // inventar una categoría que la fuente no nombra.
+              <div className="donde-falta">
+                Te {f.u.faltaParaPrincipiante === 1 ? 'falta' : 'faltan'}{' '}
+                {pesoLindo(f.u.faltaParaPrincipiante, unidad)} para principiante
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -262,15 +263,14 @@ function DondeEstoy({
           orientación, no como una medición.
         </p>
       )}
-      {(delTotal?.fueraDeTabla || porEjercicio.some((e) => e.u.fueraDeTabla)) && (
+      {filas.some((f) => f.u.fueraDeTabla) && (
         <p className="nota-privada">
           Tu peso corporal queda fuera de la tabla, así que se compara contra el extremo más
           cercano. No lo estiramos más allá de lo que dicen los datos.
         </p>
       )}
       <p className="nota-privada">
-        {FUENTE.nombre} {FUENTE.edicion} · {unidad === 'kg' ? 'kilos' : 'convertido de kilos'} ·
-        gente que anota en apps, no competidores. Ver Ajustes.
+        {FUENTE.nombre} {FUENTE.edicion} · gente que anota en apps, no competidores. Ver Ajustes.
       </p>
     </div>
   );

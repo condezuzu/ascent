@@ -121,6 +121,16 @@ percentil 50 o percentil 3 según contra quién.
 que es el usuario de Ascent, y **la app dice contra quién** en Ajustes. Nunca
 mostrar un percentil sin decir de qué población salió.
 
+**Sumar percentiles no da un percentil.** El primer intento sacó la categoría
+del total sumando los umbrales de los tres ejercicios. Está mal: los tres
+levantamientos están correlacionados pero no son el mismo, así que la suma se
+distribuye **más angosta** que sus partes. En el medio el error es chico —por
+eso pasa desapercibido— y en las colas se rompe: ser élite en los tres a la vez
+es mucho más raro que el 5%, así que "élite total" regalaba una categoría que
+casi nadie tiene.
+→ **Regla:** la categoría es **por ejercicio y nada más**. Para el total está
+el DOTS, que existe justamente para resumir los tres en un número comparable.
+
 **La categoría es el dato; el porcentaje es una derivación nuestra.** La fuente
 publica cinco categorías, no una curva. Todo lo que hay entre ellas lo
 interpolamos.
@@ -304,6 +314,34 @@ cargarlo y la red se cae sin hacer ruido.
 
 ---
 
+## Lo que solo se ve mirando
+
+Estas dos vivieron varias tandas en la app, con los tests en verde, porque
+**nadie miraba la pantalla**: el panel de preview del entorno se colgaba y el
+QA visual quedaba pendiente. Las encontró la primera corrida de
+`npm run capturas`.
+
+**Una letra de más y la sección entera no existe.** `estandares.ts` filtraba
+por sexo con `'M'`/`'F'` y la base guarda `'m'`/`'f'` (el check de
+`profiles.sexo`). El bloque "Dónde estoy" no se dibujaba nunca: sin error, sin
+warning, sin hueco — la condición daba falso y no había nada. Los tests
+pasaban porque llamaban a la función con `'M'` directamente.
+→ **Regla:** cuando el cliente compara contra un valor que decide la base, el
+test tiene que traer el valor **de la base**, no repetirlo. La sección 32 le
+pide a Postgres qué letras acepta y las corre contra `esSexoEstandar`.
+
+**Un saliente más grande que el margen no es un saliente, es un recorte.** Los
+títulos salen del margen izquierdo a propósito (§19.1), con
+`margin-left: calc(var(--sangria) * -1)`. Pero `--sangria` era 32px y el margen
+lateral de `.pantalla` 20px, así que cada título quedaba 12px afuera de la
+pantalla: "STATS" se leía "TATS", en todas las pantallas de la app.
+→ **Regla:** el saliente y el margen salen de la MISMA variable. Y `capturas`
+ahora mide lo que queda en x negativo, porque **`scrollWidth` no lo ve**: lo que
+se va por la izquierda se recorta y el documento ni se entera. La comprobación
+de overflow que había solo miraba la derecha y esto le pasó por al lado.
+
+---
+
 ## Build y entorno
 
 **Las `NEXT_PUBLIC_*` se incrustan al COMPILAR.** Cambiarlas en Vercel no
@@ -319,5 +357,24 @@ que Next escribe mientras los escribe: `Cannot find module './543.js'`,
 esos errores reaparecen ahí, es otra cosa.
 
 **`npm run build` con el dev server prendido corrompe `.next`.** Comparten
-carpeta.
+carpeta. `npm run capturas` levanta su propio `next dev` y caía en lo mismo, así
+que corre con `NEXT_DIST_DIR=.next-capturas` y su propio puerto: se puede correr
+con el dev server prendido sin tocarle nada.
 → **Regla:** apagar el dev server antes de buildear. Siempre.
+
+**Un `spawn` de taskkill antes de `process.exit()` no llega a correr.** El
+script de capturas mataba el dev server con la versión asíncrona y salía en la
+línea siguiente: el proceso padre se moría antes, el server quedaba vivo
+ocupando el puerto, y la corrida siguiente le habló a ESE servidor —viejo, con
+otra carpeta— y se colgó.
+→ **Regla:** matar con `spawnSync`, y comprobar que el puerto esté libre antes
+de arrancar en vez de dejar que Next se corra solo a otro.
+
+**Una captura de página completa dibuja los elementos `fixed` en el medio.** La
+nav y el logo flotante quedaban estampados sobre el contenido —la primera
+corrida se comió el número de DOTS— porque `fullPage` estira el alto y lo
+`fixed` se queda pegado a la ventana.
+→ **Regla:** antes de la foto, los `fixed` se pasan a `static` **y se mueven al
+final del `body`**. Solo con `static` cada uno cae donde lo puso el DOM y el
+logo terminaba encima del DOTS igual; con `absolute` + `bottom: 0` es peor,
+porque se resuelve contra un ancestro del alto de la ventana.

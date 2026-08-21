@@ -43,9 +43,21 @@ se rediscute; lo marcado PENDIENTE se pregunta antes de asumir.
 | `npm run test:db` | schema contra PGlite + deriva entre schema.sql y las migraciones |
 | `npm run test:conexion` | humo contra el Supabase real, solo lectura |
 | `npm run test:e2e` | flujo completo con 2 cuentas (pide `E2E_EMAIL`) |
+| `npm run capturas` | levanta la app, recorre las pantallas y deja PNG en `capturas/` |
 | `npm run build` | build de producción — **dev server apagado** |
 
 Rutas de QA: `/galeria` (motor) y `/tipografias` (comparador de fuentes).
+
+La primera vez, en cada máquina: `npx playwright install chromium` (el binario
+del navegador no vive en el repo, solo la dependencia).
+
+**El QA visual se hace con `npm run capturas`**, no con el panel de preview del
+entorno, que se cuelga. Saca las pantallas en móvil y escritorio, avisa de
+errores de consola y de contenido cortado por cualquiera de los dos lados, y
+usa su propio puerto y su propia carpeta de build, así que se puede correr con
+el dev server prendido. **Mirá las capturas antes de dar por terminado un
+cambio visual**: las dos primeras corridas encontraron dos bugs que llevaban
+tandas sin que nadie los viera.
 
 ## La spec, por tema
 

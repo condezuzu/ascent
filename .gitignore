@@ -7,3 +7,5 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 _tmp-*
+capturas/
+.next-capturas/

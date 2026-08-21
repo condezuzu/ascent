@@ -25,8 +25,8 @@ import {
   CATEGORIAS,
   EJERCICIOS_ESTANDAR,
   muestraFina,
+  esSexoEstandar,
   ubicar,
-  ubicarTotal,
   umbrales,
 } from '../src/lib/estandares.ts';
 import { readFileSync } from 'node:fs';
@@ -1908,7 +1908,7 @@ console.log('\n32. Los estándares de fuerza: contra quién se compara');
   // umbrales que crecen.
   const rotas = [];
   for (const e of EJERCICIOS_ESTANDAR) {
-    for (const sexo of ['M', 'F']) {
+    for (const sexo of ['m', 'f']) {
       let anterior = null;
       for (let bw = 40; bw <= 140; bw += 0.5) {
         const { valores } = umbrales(e, sexo, bw);
@@ -1929,51 +1929,58 @@ console.log('\n32. Los estándares de fuerza: contra quién se compara');
   // Hombre de 80 kg: la fuente publica 132 de sentadilla como intermedio, que
   // es la mitad de la gente. Es el número del que cuelga toda la elección de
   // población, así que va explícito.
-  const medio = ubicar('sentadilla', 'M', 80, 132);
+  const medio = ubicar('sentadilla', 'm', 80, 132);
   chequear('80 kg y 132 de sentadilla es intermedio, la mitad', [medio.categoria, medio.supera], ['Intermedio', 50]);
-  const elite = ubicar('sentadilla', 'M', 80, 206);
+  const elite = ubicar('sentadilla', 'm', 80, 206);
   chequear('y 206 es élite', [elite.categoria, elite.supera], ['Élite', 95]);
-  const prin = ubicar('press_banca', 'F', 60, 19);
+  const prin = ubicar('press_banca', 'f', 60, 19);
   chequear('mujer de 60 kg, 19 de banca: principiante', [prin.categoria, prin.supera], ['Principiante', 5]);
 
   // ---- interpolar por peso corporal ----
   // 82,5 kg cae justo entre las filas de 80 y 85: 132 y 140 dan 136.
-  chequear('el peso corporal se interpola entre filas', umbrales('sentadilla', 'M', 82.5).valores[2], 136);
-  const entre = ubicar('sentadilla', 'M', 82.5, 136);
+  chequear('el peso corporal se interpola entre filas', umbrales('sentadilla', 'm', 82.5).valores[2], 136);
+  const entre = ubicar('sentadilla', 'm', 82.5, 136);
   chequear('y ahí 136 vuelve a ser la mitad', entre.supera, 50);
 
   // ---- fuera de la tabla NO se extrapola ----
-  const flaco = umbrales('sentadilla', 'M', 30);
+  const flaco = umbrales('sentadilla', 'm', 30);
   chequear(
     'debajo de la tabla se usa el borde y se avisa',
     [flaco.valores[2], flaco.fueraDeTabla],
     [78, true]
   );
-  const pesado = umbrales('sentadilla', 'M', 200);
+  const pesado = umbrales('sentadilla', 'm', 200);
   chequear('y arriba también', [pesado.valores[2], pesado.fueraDeTabla], [215, true]);
-  chequear('adentro no avisa nada', umbrales('sentadilla', 'M', 82.5).fueraDeTabla, false);
+  chequear('adentro no avisa nada', umbrales('sentadilla', 'm', 82.5).fueraDeTabla, false);
 
   // ---- los extremos ----
-  const arranca = ubicar('sentadilla', 'M', 80, 20);
+  const arranca = ubicar('sentadilla', 'm', 80, 20);
   chequear('debajo del primer umbral no hay categoría inventada', arranca.categoria, 'Arrancando');
   chequear('pero el porcentaje no baja de 1', arranca.supera >= 1, true);
-  const bestia = ubicar('sentadilla', 'M', 80, 400);
+  const bestia = ubicar('sentadilla', 'm', 80, 400);
   chequear('arriba de élite no se promete más precisión de la que hay', bestia.supera, 95);
 
   // ---- monotonía: más kilos nunca baja el porcentaje ----
   let baja = null;
   let previo = -1;
   for (let kg = 10; kg <= 320; kg += 2) {
-    const u = ubicar('peso_muerto', 'M', 82, kg);
+    const u = ubicar('peso_muerto', 'm', 82, kg);
     if (u.supera < previo) baja = `${kg} kg dio ${u.supera} después de ${previo}`;
     previo = u.supera;
   }
   chequear('levantar más nunca baja el porcentaje', baja, null);
 
-  // ---- el total ----
-  // 132 + 98 + 155 son los tres umbrales de intermedio para 80 kg.
-  const total = ubicarTotal('M', 80, 132 + 98 + 155);
-  chequear('el total suma los tres umbrales', [total.categoria, total.supera], ['Intermedio', 50]);
+  // ---- lo que falta para la primera categoría ----
+  // El umbral de principiante para un hombre de 80 kg en sentadilla es 75.
+  chequear('debajo del primero dice cuánto falta', arranca.faltaParaPrincipiante, 55);
+  chequear('y arriba del primero ya no dice nada', medio.faltaParaPrincipiante, null);
+  chequear('justo en el umbral tampoco', ubicar('sentadilla', 'm', 80, 75).faltaParaPrincipiante, null);
+  // interpolado: a 82,5 kg el umbral es 78, así que a 70 kg le faltan 8
+  chequear(
+    'la distancia usa el umbral interpolado, no el de la fila',
+    ubicar('sentadilla', 'm', 82.5, 70).faltaParaPrincipiante,
+    8
+  );
 
   // ---- las categorías son las de la fuente ----
   chequear(
@@ -1981,7 +1988,28 @@ console.log('\n32. Los estándares de fuerza: contra quién se compara');
     CATEGORIAS.map((c) => c.supera),
     [5, 20, 50, 80, 95]
   );
-  chequear('la muestra fina es la de mujeres', [muestraFina('F'), muestraFina('M')], [true, false]);
+  chequear('la muestra fina es la de mujeres', [muestraFina('f'), muestraFina('m')], [true, false]);
+
+  // ---- las letras del sexo son las MISMAS que acepta la base ----
+  // Este es el bug que la primera versión tuvo y ningún test agarró: el
+  // archivo usaba 'M'/'F' y la base guarda 'm'/'f', así que el filtro daba
+  // falso y el bloque no se dibujaba nunca. Sin error y sin nada en pantalla.
+  const u = await nuevoUsuario();
+  const aceptaLaBase = [];
+  for (const letra of ['m', 'f', 'M', 'F', 'x']) {
+    const entra = await db
+      .query('update profiles set sexo = $2 where id = $1', [u, letra])
+      .then(() => true)
+      .catch(() => false);
+    if (entra) aceptaLaBase.push(letra);
+  }
+  chequear(
+    'las letras de sexo del cliente son las que acepta la base',
+    aceptaLaBase.filter((l) => !esSexoEstandar(l)).concat(
+      aceptaLaBase.length !== ['m', 'f'].length ? ['la base acepta ' + aceptaLaBase.join(',')] : []
+    ),
+    []
+  );
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

@@ -190,11 +190,20 @@ fuente son cinco categorías —principiante, novato, intermedio, avanzado,
 porcentaje sale de interpolar entre esos cinco puntos. Por eso la interfaz
 muestra la categoría primero y más grande.
 
-**Por ejercicio además del total.** "Top 25% en peso muerto" es más accionable
-y más compartible que un agregado, y el agregado tapa justo al que tiene un
-levantamiento fuerte y otro flojo. Los umbrales del total se suman de los tres,
-lo que asume que van juntos: fiel para alguien parejo, promediado para el
-desparejo. De ahí que estén las dos cosas.
+**Por ejercicio y NUNCA para el total.** "Top 25% en peso muerto" es
+accionable y compartible; un agregado tapa justo al que tiene un levantamiento
+fuerte y otro flojo. Y para el total ya está el DOTS, que existe para eso.
+Sumar el umbral del 50% de los tres **no da** el umbral del 50% del total: los
+tres levantamientos están correlacionados pero no son el mismo, así que la
+suma se distribuye más angosta que sus partes. En el medio el error es chico y
+en las colas se rompe — ser élite en los tres a la vez es mucho más raro que
+el 5%, así que un "élite total" calculado así regala una categoría que casi
+nadie tiene.
+
+**Debajo de la primera categoría se muestra la distancia**, no un hueco. Ahí
+abajo cae casi todo el que recién empieza, y "Arrancando" a secas no da ninguna
+razón para volver. "Te faltan 8 kg para principiante" motiva y no inventa una
+categoría que la fuente no nombra.
 
 **La muestra de mujeres es mucho más chica** en todas las fuentes —un millón de
 resultados contra casi diez en press de banca—, así que la app lo dice en vez

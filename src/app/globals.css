@@ -27,7 +27,13 @@
      ya tenía la principal. El número de racha se sale 32px del margen y la
      barra ocupa el 62%. Repetir UNA irregularidad la vuelve intención;
      tener una distinta por pantalla la vuelve descuido. */
-  --sangria: 32px;
+  /* El margen lateral de la pantalla. El saliente de los títulos (§19.1) es
+     exactamente este valor, así que salen hasta el borde y NI UN PÍXEL MÁS:
+     con 32px de saliente contra 20px de margen, cada título quedaba 12px
+     afuera de la pantalla y se cortaba la primera letra —"STATS" se leía
+     "TATS"— en todas las pantallas de la app. Los dos valores tienen que
+     salir de la misma variable o se vuelven a separar. */
+  --sangria: 20px;
   --ancho-dato: 62%;
   --alto-nav: 62px;
   /* El único color que NO sale de la paleta del rango, y a propósito: borrar
@@ -170,7 +176,8 @@ textarea::placeholder {
   z-index: 1;
   max-width: 480px;
   margin: 0 auto;
-  padding: max(18px, env(safe-area-inset-top)) 20px calc(84px + env(safe-area-inset-bottom));
+  padding: max(18px, env(safe-area-inset-top)) var(--sangria)
+    calc(84px + env(safe-area-inset-bottom));
   min-height: 100dvh;
   animation: entrar-pantalla 0.42s var(--curva-salida) both;
 }
@@ -2151,41 +2158,39 @@ body.con-franja .pantalla {
   text-transform: uppercase;
   color: var(--sub);
 }
-/* La categoría manda sobre el porcentaje: es el dato que publica la fuente,
-   y "avanzado" comunica más que "percentil 83". */
-.donde-categoria {
-  font-family: var(--f-numero), system-ui, sans-serif;
-  font-size: 34px;
-  font-weight: 300;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  margin-top: 8px;
-}
 .donde-lista {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-top: 16px;
+  gap: 14px;
+  margin-top: 14px;
 }
-.donde-fila {
+.donde-fila-datos {
   display: flex;
   align-items: baseline;
   gap: 10px;
   font-size: 13px;
   color: var(--sub);
-  padding: 4px 2px;
+  margin-bottom: 6px;
 }
-.donde-fila .nombre {
+.donde-fila-datos .nombre {
   flex: 1;
 }
-.donde-fila .cat {
+/* La categoría manda sobre el porcentaje: es el dato que publica la fuente,
+   y "avanzado" comunica más que "83%". */
+.donde-fila-datos .cat {
   color: var(--pal-claro);
+  font-size: 15px;
 }
-.donde-fila .pct {
+.donde-fila-datos .pct {
   min-width: 34px;
   text-align: right;
   font-size: 12px;
   color: var(--apagado);
+}
+.donde-falta {
+  font-size: 12px;
+  color: var(--apagado);
+  margin-top: 6px;
 }
 .donde-pie {
   font-size: 12px;

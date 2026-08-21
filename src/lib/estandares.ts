@@ -23,6 +23,14 @@
  * entre esos cinco puntos. Por eso la interfaz muestra las dos cosas y la
  * categoría va primero.
  *
+ * SOLO POR EJERCICIO, nunca para el total. Sumar el umbral del 50% de los tres
+ * NO da el umbral del 50% del total: los tres levantamientos están
+ * correlacionados pero no son el mismo, así que la suma se distribuye más
+ * angosta que sus partes. En el medio el error es chico y en las colas se
+ * rompe — ser élite en los tres a la vez es mucho más raro que el 5%, así que
+ * un "élite total" así calculado regala una categoría que casi nadie tiene.
+ * Para el total ya está el DOTS, que existe justamente para eso.
+ *
  * Este archivo NO importa nada, igual que `reglas.ts`, para que `test:db`
  * pueda cargarlo con Node.
  */
@@ -44,7 +52,15 @@ export const CATEGORIAS = [
   { clave: 'elite', nombre: 'Élite', supera: 95 },
 ] as const;
 
-export type SexoEstandar = 'M' | 'F';
+/**
+ * MINÚSCULA, como lo guarda la base: el check de `profiles.sexo` acepta 'm' y
+ * 'f' y nada más. La primera versión de este archivo usaba mayúsculas y el
+ * bloque entero no se dibujaba nunca — sin error, sin nada: el filtro daba
+ * falso y la sección desaparecía. Lo agarró una captura, no un test, así que
+ * ahora hay uno (sección 32 de `test:db`) que compara estas dos letras contra
+ * las que la base realmente acepta.
+ */
+export type SexoEstandar = 'm' | 'f';
 export type EjercicioEstandar = 'sentadilla' | 'press_banca' | 'peso_muerto';
 
 /**
@@ -106,9 +122,9 @@ const MUERTO_F: readonly Fila[] = [
 ];
 
 const TABLAS: Record<EjercicioEstandar, Record<SexoEstandar, readonly Fila[]>> = {
-  sentadilla: { M: SENTADILLA_M, F: SENTADILLA_F },
-  press_banca: { M: BANCA_M, F: BANCA_F },
-  peso_muerto: { M: MUERTO_M, F: MUERTO_F },
+  sentadilla: { m: SENTADILLA_M, f: SENTADILLA_F },
+  press_banca: { m: BANCA_M, f: BANCA_F },
+  peso_muerto: { m: MUERTO_M, f: MUERTO_F },
 };
 
 export const EJERCICIOS_ESTANDAR: EjercicioEstandar[] = [
@@ -122,7 +138,7 @@ export function esEjercicioEstandar(id: string): id is EjercicioEstandar {
 }
 
 export function esSexoEstandar(s: string | null | undefined): s is SexoEstandar {
-  return s === 'M' || s === 'F';
+  return s === 'm' || s === 'f';
 }
 
 /**
@@ -167,6 +183,13 @@ export type Ubicacion = {
   categoria: string;
   clave: string;
   fueraDeTabla: boolean;
+  /**
+   * Cuántos kilos faltan para entrar en la primera categoría, o `null` si ya
+   * se entró. Ahí abajo es donde va a caer casi todo el que recién empieza, y
+   * "todavía nada" es una pantalla que no da ninguna razón para volver. La
+   * distancia sí, y no inventa una categoría que la fuente no nombra.
+   */
+  faltaParaPrincipiante: number | null;
 };
 
 /**
@@ -203,6 +226,7 @@ function ubicarEntre(valores: number[], kg: number, fueraDeTabla: boolean): Ubic
     categoria: cat < 0 ? 'Arrancando' : CATEGORIAS[cat].nombre,
     clave: cat < 0 ? 'arrancando' : CATEGORIAS[cat].clave,
     fueraDeTabla,
+    faltaParaPrincipiante: cat < 0 ? Math.round((valores[0] - kg) * 10) / 10 : null,
   };
 }
 
@@ -224,36 +248,11 @@ export function ubicar(
 }
 
 /**
- * Lo mismo para el total de los tres, que es lo que resume el DOTS.
- *
- * Los umbrales del total se suman de los tres ejercicios, y eso ASUME que los
- * tres van juntos: quien está en el 50% de cada uno da exactamente la suma de
- * los tres umbrales del 50%. Para alguien parejo es fiel; para alguien con un
- * peso muerto de élite y una banca floja queda en el medio, que es todo lo que
- * un número agregado puede decir. Por eso además se muestra cada ejercicio por
- * separado, que es donde se ve la diferencia.
- */
-export function ubicarTotal(
-  sexo: SexoEstandar,
-  pesoCorporal: number,
-  total: number
-): Ubicacion {
-  const sumados = [0, 0, 0, 0, 0];
-  let fueraDeTabla = false;
-  for (const e of EJERCICIOS_ESTANDAR) {
-    const u = umbrales(e, sexo, pesoCorporal);
-    u.valores.forEach((v, i) => (sumados[i] += v));
-    fueraDeTabla = fueraDeTabla || u.fueraDeTabla;
-  }
-  return ubicarEntre(sumados, total, fueraDeTabla);
-}
-
-/**
  * La muestra de mujeres es MUCHO más chica en todas las fuentes —en press de
  * banca, un millón de resultados contra casi diez millones—, así que el mismo
  * número no merece la misma confianza. La app lo dice en vez de presentar los
  * dos como si fueran igual de firmes.
  */
 export function muestraFina(sexo: SexoEstandar): boolean {
-  return sexo === 'F';
+  return sexo === 'f';
 }
