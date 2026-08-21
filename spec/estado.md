@@ -12,7 +12,7 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Las 19 primeras están aplicadas; la 20 falta correr.** En una base nueva no
+**Las 20 primeras están aplicadas; la 21 falta correr.** En una base nueva no
 hace falta ninguna: `supabase/schema.sql` ya las incluye a todas, y
 `npm run test:db` lo comprueba comparando las dos bases entera. Que PRODUCCIÓN
 coincida con el repo lo comprueba `npm run test:conexion`, que le pide a la
@@ -78,9 +78,12 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   van los **últimos 7 días con su duración** —agrupados por día, porque puede
   haber más de una sesión por jornada, y las abandonadas suman cero en vez de
   inventar un número— y en Fuerza un bloque **"Dónde estoy"** con el percentil
-  como número grande y su escala. El percentil no aparece hasta que haya diez
-  personas con DOTS; mientras tanto el bloque se muestra igual y dice cuántas
-  van, para que el día que aparezca no parezca un error.
+  y la **categoría** de la fuente —intermedio, avanzado— como número grande,
+  además del porcentaje. Va el total y también **cada ejercicio por separado**.
+  Se compara contra **tablas publicadas que viven en el repo**
+  (`src/lib/estandares.ts`, Strength Level 2026), no contra los usuarios de
+  Ascent: sirve desde el primer usuario y se calcula en el teléfono, sin
+  llamadas. Con sexo femenino la app avisa que la muestra es más chica.
 - **Onboarding**: recorrido de tres pantallas (`/bienvenida`) entre el nombre
   y la principal, saltable; globos de primera vez en Leaderboard, Stats y
   Álbum; se repite desde Ajustes.

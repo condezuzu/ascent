@@ -21,6 +21,14 @@ import {
 } from '../src/lib/reglas.ts';
 import { PLANETAS_CFG } from '../src/motor/cuerpos.ts';
 import { agruparPorDia, etiquetaDeDia } from '../src/lib/dias.ts';
+import {
+  CATEGORIAS,
+  EJERCICIOS_ESTANDAR,
+  muestraFina,
+  ubicar,
+  ubicarTotal,
+  umbrales,
+} from '../src/lib/estandares.ts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -1066,10 +1074,6 @@ console.log('\n25. Fuerza: quién ve qué');
     chequear(`${fn} tampoco`, cerrada, true);
   }
 
-  // Percentil global: con poca gente es un podio disfrazado, así que no hay
-  const p = (await db.query('select percentil_fuerza() as p')).rows[0].p;
-  chequear('con poca gente no hay percentil', p.percentil, null);
-
   await db.exec('reset role');
 
   // la baja de cuenta se lleva las marcas
@@ -1893,6 +1897,91 @@ console.log('\n31. Los días de sesión que se leen en Stats');
   // El 18/8/2026 es martes. `new Date('2026-08-18')` es UTC y en UTC−3 cae el
   // 17, que es lunes: si esto dice "lun 17", la fecha se leyó como UTC.
   chequear('el día de la semana no se corre por leer el ISO como UTC', etiquetaDeDia(dia(18), hoy), 'mar 18');
+}
+
+console.log('\n32. Los estándares de fuerza: contra quién se compara');
+{
+  // ---- la tabla en sí, que se tipeó a mano desde la fuente ----
+  // Un dígito cambiado da un percentil creíble y equivocado, igual que con los
+  // coeficientes del DOTS (ver spec/trampas.md). Esto no verifica el dato
+  // contra la fuente, pero sí que la tabla sea una tabla: pesos en orden y
+  // umbrales que crecen.
+  const rotas = [];
+  for (const e of EJERCICIOS_ESTANDAR) {
+    for (const sexo of ['M', 'F']) {
+      let anterior = null;
+      for (let bw = 40; bw <= 140; bw += 0.5) {
+        const { valores } = umbrales(e, sexo, bw);
+        for (let i = 1; i < 5; i++) {
+          if (!(valores[i] > valores[i - 1])) rotas.push(`${e}/${sexo}/${bw}: umbral ${i} no crece`);
+        }
+        // más peso corporal nunca puede pedir MENOS kilos para la misma categoría
+        if (anterior && valores.some((v, i) => v < anterior[i] - 1e-9)) {
+          rotas.push(`${e}/${sexo}/${bw}: los umbrales bajan al subir el peso`);
+        }
+        anterior = valores;
+      }
+    }
+  }
+  chequear('la tabla crece por categoría y por peso corporal', rotas.slice(0, 3), []);
+
+  // ---- los puntos publicados salen tal cual ----
+  // Hombre de 80 kg: la fuente publica 132 de sentadilla como intermedio, que
+  // es la mitad de la gente. Es el número del que cuelga toda la elección de
+  // población, así que va explícito.
+  const medio = ubicar('sentadilla', 'M', 80, 132);
+  chequear('80 kg y 132 de sentadilla es intermedio, la mitad', [medio.categoria, medio.supera], ['Intermedio', 50]);
+  const elite = ubicar('sentadilla', 'M', 80, 206);
+  chequear('y 206 es élite', [elite.categoria, elite.supera], ['Élite', 95]);
+  const prin = ubicar('press_banca', 'F', 60, 19);
+  chequear('mujer de 60 kg, 19 de banca: principiante', [prin.categoria, prin.supera], ['Principiante', 5]);
+
+  // ---- interpolar por peso corporal ----
+  // 82,5 kg cae justo entre las filas de 80 y 85: 132 y 140 dan 136.
+  chequear('el peso corporal se interpola entre filas', umbrales('sentadilla', 'M', 82.5).valores[2], 136);
+  const entre = ubicar('sentadilla', 'M', 82.5, 136);
+  chequear('y ahí 136 vuelve a ser la mitad', entre.supera, 50);
+
+  // ---- fuera de la tabla NO se extrapola ----
+  const flaco = umbrales('sentadilla', 'M', 30);
+  chequear(
+    'debajo de la tabla se usa el borde y se avisa',
+    [flaco.valores[2], flaco.fueraDeTabla],
+    [78, true]
+  );
+  const pesado = umbrales('sentadilla', 'M', 200);
+  chequear('y arriba también', [pesado.valores[2], pesado.fueraDeTabla], [215, true]);
+  chequear('adentro no avisa nada', umbrales('sentadilla', 'M', 82.5).fueraDeTabla, false);
+
+  // ---- los extremos ----
+  const arranca = ubicar('sentadilla', 'M', 80, 20);
+  chequear('debajo del primer umbral no hay categoría inventada', arranca.categoria, 'Arrancando');
+  chequear('pero el porcentaje no baja de 1', arranca.supera >= 1, true);
+  const bestia = ubicar('sentadilla', 'M', 80, 400);
+  chequear('arriba de élite no se promete más precisión de la que hay', bestia.supera, 95);
+
+  // ---- monotonía: más kilos nunca baja el porcentaje ----
+  let baja = null;
+  let previo = -1;
+  for (let kg = 10; kg <= 320; kg += 2) {
+    const u = ubicar('peso_muerto', 'M', 82, kg);
+    if (u.supera < previo) baja = `${kg} kg dio ${u.supera} después de ${previo}`;
+    previo = u.supera;
+  }
+  chequear('levantar más nunca baja el porcentaje', baja, null);
+
+  // ---- el total ----
+  // 132 + 98 + 155 son los tres umbrales de intermedio para 80 kg.
+  const total = ubicarTotal('M', 80, 132 + 98 + 155);
+  chequear('el total suma los tres umbrales', [total.categoria, total.supera], ['Intermedio', 50]);
+
+  // ---- las categorías son las de la fuente ----
+  chequear(
+    'las cinco categorías y sus cortes',
+    CATEGORIAS.map((c) => c.supera),
+    [5, 20, 50, 80, 95]
+  );
+  chequear('la muestra fina es la de mujeres', [muestraFina('F'), muestraFina('M')], [true, false]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

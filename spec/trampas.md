@@ -109,6 +109,32 @@ según si se cargaba como "1RM real" o como "estimado de 1 repetición".
 → **Regla:** el caso de una repetición se saca a mano y devuelve el peso tal
 cual. No hay nada que extrapolar. Ver `un_rm()` en `schema.sql`.
 
+**Contra quién se compara cambia el resultado entero.** El percentil global
+salía de los usuarios de Ascent, y eso no funcionaba hasta que hubiera diez
+—y aun después, el mismo levantamiento valía distinto cada vez que entraba
+gente—. Al pasarlo a tablas publicadas apareció la trampa de verdad: con datos
+de **competidores federados** la mediana de sentadilla está en 2,28 veces el
+peso corporal, así que alguien de 80 kg que levanta 132 kg queda casi último; y
+132 kg es exactamente la MEDIANA de la gente que anota en apps. La misma marca,
+percentil 50 o percentil 3 según contra quién.
+→ **Regla:** se compara contra gente que anota en apps (Strength Level 2026),
+que es el usuario de Ascent, y **la app dice contra quién** en Ajustes. Nunca
+mostrar un percentil sin decir de qué población salió.
+
+**La categoría es el dato; el porcentaje es una derivación nuestra.** La fuente
+publica cinco categorías, no una curva. Todo lo que hay entre ellas lo
+interpolamos.
+→ **Regla:** la categoría va primero y más grande. Y donde no hay datos no se
+inventa: debajo del primer umbral no hay categoría, arriba del último el
+porcentaje se corta en 95, y un peso corporal fuera de tabla usa el borde y lo
+avisa. Extrapolar daría un número con la misma pinta que los demás y ningún
+respaldo.
+
+**La muestra de mujeres es mucho más chica en todas las fuentes** —un millón de
+resultados contra casi diez millones en press de banca—, y presentarlos con la
+misma firmeza le da a uno una precisión que no tiene.
+→ **Regla:** con sexo femenino, la app lo dice al lado del número.
+
 **Los coeficientes del DOTS no se tipean de memoria.** Un dígito cambiado
 ordena mal el ranking y nadie lo nota, porque el número igual parece
 razonable.

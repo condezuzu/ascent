@@ -1,0 +1,23 @@
+-- =============================================================
+-- MIGRACIÓN 21 — el percentil ya no sale de los usuarios de Ascent
+--
+-- Va DESPUÉS de la 20. Ejecutar entera en el SQL Editor de Supabase.
+-- =============================================================
+
+-- `percentil_fuerza()` comparaba a cada persona contra el resto de Ascent, y
+-- eso tenía dos problemas: no funcionaba hasta que hubiera diez personas con
+-- DOTS cargado, y el número cambiaba de significado a medida que entraba
+-- gente. El mismo levantamiento valía distinto en marzo que en agosto.
+--
+-- Ahora se compara contra una tabla de estándares publicados, que vive en el
+-- repo (`src/lib/estandares.ts`) y se calcula EN EL TELÉFONO: sirve desde el
+-- primer usuario, no depende de que la app crezca, no hace ninguna llamada y
+-- anda sin internet. El peso corporal, que es lo único sensible que necesita
+-- la cuenta, ya no viaja a ningún lado — es el propio y no sale del teléfono.
+--
+-- El ranking ENTRE AMIGOS no se toca: ahí compararse con ellos es el punto.
+--
+-- Se DROPEA en vez de dejarla colgada. Una función que nadie llama es la que
+-- alguien vuelve a llamar sin saber que quedó vieja; ya nos pasó con
+-- `hoy_uy()` (ver spec/trampas.md).
+drop function if exists public.percentil_fuerza();

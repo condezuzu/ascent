@@ -138,7 +138,19 @@ console.log('\nMódulo de fuerza');
     const { data: d } = await db.rpc('dots', { p_total: 650, p_peso: 90, p_sexo: 'm' });
     chequear('dots(650, 90, hombre) = 420.29', Number(d), 420.29);
 
-    for (const fn of ['mi_fuerza', 'ranking_fuerza', 'percentil_fuerza']) {
+    {
+      // La 21 la dropeó: el percentil sale de una tabla del repo y se calcula
+      // en el teléfono. Mientras la migración no corra sigue estando, y eso no
+      // es una falla —el cliente ya no la llama—, así que se avisa nomás.
+      const { error: err } = await db.rpc('percentil_fuerza');
+      if (noExiste(err?.message)) {
+        chequear('percentil_fuerza ya no existe', true, true);
+      } else {
+        console.log('  --   falta correr supabase/migracion-21-percentil-contra-el-mundo.sql');
+      }
+    }
+
+    for (const fn of ['mi_fuerza', 'ranking_fuerza']) {
       const { error: err } = await db.rpc(fn);
       chequear(`${fn} existe`, !noExiste(err?.message), true);
       const cerrada = denegado(err?.message);

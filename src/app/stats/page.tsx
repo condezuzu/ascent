@@ -21,6 +21,7 @@ export default function Estadisticas() {
   const [racha, setRacha] = useState(0);
   const [mejor, setMejor] = useState(0);
   const [unidad, setUnidad] = useState<Unidad>('kg');
+  const [sexo, setSexo] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -39,6 +40,7 @@ export default function Estadisticas() {
       if (p) {
         setRacha(p.racha_actual);
         setMejor(p.mejor_racha);
+        setSexo(p.sexo ?? null);
         if (esUnidad(p.unidad_peso)) setUnidad(p.unidad_peso);
       }
       setLogs(ls ?? []);
@@ -184,7 +186,14 @@ export default function Estadisticas() {
 
         {/* La fuerza convive con la racha, no la reemplaza (§16.1): va después
             del peso y antes de la escalera, que es el cierre de la pantalla. */}
-        <SeccionFuerza unidad={unidad} />
+        {/* El peso corporal va en KILOS, que es como está la tabla de
+            estándares; `unidad` es solo presentación. `pesos` ya viene
+            ordenado por fecha, así que el último es el más reciente. */}
+        <SeccionFuerza
+          unidad={unidad}
+          sexo={sexo}
+          pesoCorporal={pesos.length > 0 ? pesos[pesos.length - 1].valor : null}
+        />
 
         {/* Único lugar de la app donde los ocho rangos se muestran con nombre */}
         <div className="seccion">

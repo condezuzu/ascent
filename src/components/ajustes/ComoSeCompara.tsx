@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { FUENTE } from '@/lib/estandares';
 
 /**
  * Cómo se calcula el ranking de fuerza, abajo de todo en Ajustes.
@@ -75,7 +76,45 @@ export default function ComoSeCompara() {
             la razón de que la app te avise en vez de dejarlo pasar.
           </p>
 
-          <h4>Por qué el ranking global es un porcentaje</h4>
+          <h4>Contra quién te compara</h4>
+          <p>
+            Contra <strong>gente que anota sus levantamientos en una app</strong>, de tu sexo y de
+            tu peso corporal. Los datos son los estándares {FUENTE.edicion} de{' '}
+            <strong>{FUENTE.nombre}</strong>, armados con levantamientos que la comunidad cargó
+            entre {FUENTE.desde} y {FUENTE.hasta}. Son datos declarados por los usuarios, sin
+            verificar.
+          </p>
+          <p>
+            Elegimos esa población a propósito. La otra opción eran los competidores de
+            powerlifting federado, y ahí la mediana está en 2,28 veces el peso corporal en
+            sentadilla: alguien de 80 kg que levanta 130 kg —que es la mitad justa de la gente que
+            usa apps— quedaría casi último. Comparar el gimnasio del barrio contra una competencia
+            no lo hace más exigente, lo hace falso.
+          </p>
+          <p>
+            Ninguna de las dos poblaciones es &ldquo;el mundo&rdquo;, y esta tampoco: quien anota
+            sus series en una app ya entrena más que el promedio.
+          </p>
+          <p>
+            La cuenta se hace <strong>en tu teléfono</strong>, con una tabla que viene adentro de la
+            app. No se consulta ningún servicio y funciona sin internet.
+          </p>
+
+          <h4>La categoría y el porcentaje</h4>
+          <p>
+            Lo que publica la fuente son las cinco categorías —principiante, novato, intermedio,
+            avanzado y élite—, y cada una es un punto de la distribución: intermedio es la mitad de
+            la gente, élite es el 5% de arriba. El <strong>porcentaje sale de ahí</strong>,
+            interpolando entre esos cinco puntos. Por eso la categoría es el dato firme y el número
+            es nuestra estimación.
+          </p>
+          <p>
+            <strong>Si sos mujer, tomá el número con más pinzas.</strong> En todas las fuentes la
+            muestra de mujeres es mucho más chica: en press de banca hay un millón de resultados
+            contra casi diez millones de hombres. La app te lo avisa ahí mismo.
+          </p>
+
+          <h4>Por qué el global no tiene puestos</h4>
           <p>
             Entre amigos hay posiciones, porque se conocen: nadie infla un número que van a
             comprobar el jueves en el gimnasio.
@@ -83,15 +122,15 @@ export default function ComoSeCompara() {
           <p>
             En un ranking global de desconocidos es al revés — ser el número uno es exactamente el
             premio que hace que valga la pena mentir, y no hay forma de verificar una marca desde
-            una app. Por eso el global no tiene puestos ni nombres, solo un percentil: nadie infla
+            una app. Por eso el global no tiene puestos ni nombres, solo un porcentaje: nadie infla
             una marca para pasar del 12% al 11%, porque ahí no hay nada que ganar.
           </p>
 
           <h4>Tu peso corporal</h4>
           <p>
-            No se muestra nunca. Ni en tu perfil, ni entre amigos, ni en ningún ranking. Se usa
-            para la cuenta y no sale de la base: los cálculos los hace el servidor y devuelve el
-            resultado, nunca el peso.
+            No se muestra nunca. Ni en tu perfil, ni entre amigos, ni en ningún ranking. El DOTS lo
+            calcula el servidor y devuelve el resultado, nunca el peso; el porcentaje contra la
+            tabla se calcula en tu teléfono y no sale de ahí.
           </p>
         </div>
       )}

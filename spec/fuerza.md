@@ -162,21 +162,64 @@ Reglas de esa línea:
   quien no quiere entregar eso, no carga el sexo. Un interruptor extra sería
   prometer algo que la fórmula no puede cumplir.
 
-#### Ranking global: percentil, nunca posiciones
+#### Global: contra el mundo, no contra Ascent
 
-Nada de top 10, ni puestos, ni nombres. Solo:
+**No se compara contra los usuarios de la app.** Se compara contra tablas de
+estándares publicados, por sexo, peso corporal y ejercicio, que viven en el
+repo (`src/lib/estandares.ts`).
 
-> "Estás en el 15% más fuerte de Ascent."
+El motivo es que el otro camino no funciona: un percentil calculado contra los
+usuarios de Ascent no existe hasta que haya gente, y mientras tanto cambia de
+significado cada vez que entra alguien — el mismo levantamiento vale distinto
+en marzo que en agosto. Con una tabla fija, el número sirve desde el primer
+usuario y no depende de que la app crezca.
 
-**El motivo es antifraude, no estético.** Entre amigos nadie miente porque se
-conocen y se van a ver en el gimnasio. En un ranking global de desconocidos,
-en cambio, **ser el número uno es exactamente el premio que hace que valga la
-pena inflar el número** — y no hay forma de verificar un PR desde una app. El
-percentil borra el incentivo: nadie infla para pasar del 12% al 11%, porque no
-hay nada que ganar ahí.
+**Contra quién: gente que anota sus levantamientos en una app.** La fuente es
+Strength Level (estándares 2026, levantamientos cargados entre marzo de 2015 y
+marzo de 2026). **Esta elección cambia el resultado entero y por eso está
+dicha en Ajustes.** La alternativa eran los competidores federados
+(OpenPowerlifting): ahí la mediana de sentadilla está en 2,28 veces el peso
+corporal, así que alguien de 80 kg que levanta 132 —que es exactamente la
+mitad de la gente que usa apps— quedaría casi último y abandonaría. Ninguna de
+las dos poblaciones es "el mundo", y la elegida tampoco: quien anota series en
+una app ya entrena más que el promedio.
+
+**La categoría es el dato; el porcentaje es nuestro.** Lo que publica la
+fuente son cinco categorías —principiante, novato, intermedio, avanzado,
+élite— y cada una es un punto de la distribución (5, 20, 50, 80, 95). El
+porcentaje sale de interpolar entre esos cinco puntos. Por eso la interfaz
+muestra la categoría primero y más grande.
+
+**Por ejercicio además del total.** "Top 25% en peso muerto" es más accionable
+y más compartible que un agregado, y el agregado tapa justo al que tiene un
+levantamiento fuerte y otro flojo. Los umbrales del total se suman de los tres,
+lo que asume que van juntos: fiel para alguien parejo, promediado para el
+desparejo. De ahí que estén las dos cosas.
+
+**La muestra de mujeres es mucho más chica** en todas las fuentes —un millón de
+resultados contra casi diez en press de banca—, así que la app lo dice en vez
+de presentar los dos números con la misma firmeza.
+
+**Fuera de la tabla no se extrapola**: se usa el borde y se avisa. Es la misma
+decisión que ya toma el DOTS con su rango calibrado.
+
+Se calcula **en el teléfono**: sin llamadas, sin depender de que un servicio
+siga vivo, y anda sin internet. El peso corporal que necesita la cuenta es el
+propio y no sale del dispositivo.
+
+#### Nada de podio global
+
+Ni puestos, ni nombres, ni top 10. **El motivo es antifraude, no estético.**
+Entre amigos nadie miente porque se conocen y se van a ver en el gimnasio. En
+un ranking global de desconocidos, en cambio, **ser el número uno es
+exactamente el premio que hace que valga la pena inflar el número** — y no hay
+forma de verificar un PR desde una app. Un porcentaje borra el incentivo:
+nadie infla para pasar del 12% al 11%, porque no hay nada que ganar ahí.
 
 Corolario: si alguna vez aparece la tentación de agregar un podio global,
 esta es la razón por la que no.
+
+**El ranking entre amigos no cambia**: ahí compararse con ellos es el punto.
 
 ### 16.7 Sexo: campo opcional, y sin él no hay DOTS
 
@@ -248,8 +291,10 @@ Al implementar, cuidar dos cosas:
 fórmula necesita el peso corporal, que el cliente de otra persona no puede
 leer nunca. Los helpers que sí lo tocan (`peso_actual`, `mejores_marcas`,
 `total_dots`, `dots_de`) **no se otorgan a nadie**; lo único que llama la app
-son `mi_fuerza()`, `ranking_fuerza()` y `percentil_fuerza()`, que devuelven el
-resultado sin devolver jamás el peso.
+son `mi_fuerza()` y `ranking_fuerza()`, que devuelven el resultado sin
+devolver jamás el peso. `percentil_fuerza()` **ya no existe** (migración 21):
+el porcentaje contra la tabla se calcula en el cliente, con el peso corporal
+propio, que el dueño siempre pudo leer.
 
 Único cálculo duplicado en el cliente: `unRM()` en `lib/fuerza.ts`, que
 adelanta el 1RM estimado mientras el usuario escribe. Tiene que dar

@@ -1008,33 +1008,6 @@ $$;
 -- Percentil global: "estás en el 15% más fuerte". Nunca posiciones ni
 -- nombres (§16.6). Entre amigos nadie miente porque se conocen; en un ranking
 -- global de desconocidos, ser el número uno es justo el premio que hace que
--- valga inflar la marca, y no hay forma de verificar un PR desde una app.
-create or replace function public.percentil_fuerza()
-returns jsonb language plpgsql stable security definer set search_path = public as $$
-declare
-  mio numeric;
-  cuantos int;
-  arriba int;
-begin
-  if auth.uid() is null then return null; end if;
-  mio := dots_de(auth.uid());
-  if mio is null then return jsonb_build_object('percentil', null, 'gente', 0); end if;
-  select count(*), count(*) filter (where t.d > mio)
-    into cuantos, arriba
-    from (select dots_de(p.id) as d from profiles p) t
-   where t.d is not null;
-  -- Con poca gente el percentil ES un podio disfrazado: entre tres, "el 33%
-  -- más fuerte" significa "sos el primero", que es exactamente lo que el
-  -- percentil venía a evitar. Hasta que haya gente, no hay percentil.
-  if cuantos < 10 then
-    return jsonb_build_object('percentil', null, 'gente', cuantos);
-  end if;
-  return jsonb_build_object(
-    'percentil', greatest(1, ceil(100.0 * arriba / cuantos))::int,
-    'gente', cuantos
-  );
-end;
-$$;
 
 -- -------------------------------------------------------------
 -- Anotar el peso corporal sin registrar un día
@@ -1607,7 +1580,6 @@ revoke execute on function
   public.fijar_zona(text),
   public.mi_fuerza(),
   public.ranking_fuerza(),
-  public.percentil_fuerza(),
   public.sumar_serie(),
   public.restar_serie(),
   public.anotar_peso(date, numeric),
@@ -1653,7 +1625,6 @@ grant execute on function
   public.fijar_zona(text),
   public.mi_fuerza(),
   public.ranking_fuerza(),
-  public.percentil_fuerza(),
   public.sumar_serie(),
   public.restar_serie(),
   public.anotar_peso(date, numeric),

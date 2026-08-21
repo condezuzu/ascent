@@ -7,19 +7,35 @@ import { fechaDeMarca, pesoLindo, redondear } from '@/lib/fuerza';
 import type { Unidad } from '@/lib/peso';
 import type { FilaFuerza, MiFuerza } from '@/lib/tipos';
 import Avatar from '@/components/Avatar';
-
-type Percentil = { percentil: number | null; gente: number };
+import {
+  esEjercicioEstandar,
+  esSexoEstandar,
+  FUENTE,
+  muestraFina,
+  ubicar,
+  ubicarTotal,
+  type SexoEstandar,
+} from '@/lib/estandares';
 
 /**
  * La fuerza dentro de Stats (§16.6): acá se mira y se compara, en `/fuerza` se
  * carga. Es el lugar donde ya vive todo lo analítico y donde el usuario entra
  * a buscar datos, en vez de encontrárselos.
  */
-export default function SeccionFuerza({ unidad }: { unidad: Unidad }) {
+export default function SeccionFuerza({
+  unidad,
+  sexo,
+  pesoCorporal,
+}: {
+  unidad: Unidad;
+  sexo: string | null;
+  // El peso corporal más reciente, en KILOS: la tabla está en kilos y la
+  // unidad es solo de presentación.
+  pesoCorporal: number | null;
+}) {
   const [supabase] = useState(() => crearCliente());
   const [mia, setMia] = useState<MiFuerza | null>(null);
   const [ranking, setRanking] = useState<FilaFuerza[]>([]);
-  const [percentil, setPercentil] = useState<Percentil | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [yo, setYo] = useState<string | null>(null);
 
@@ -30,14 +46,12 @@ export default function SeccionFuerza({ unidad }: { unidad: Unidad }) {
       } = await supabase.auth.getUser();
       if (!user) return;
       setYo(user.id);
-      const [{ data: f }, { data: r }, { data: p }] = await Promise.all([
+      const [{ data: f }, { data: r }] = await Promise.all([
         supabase.rpc('mi_fuerza'),
         supabase.rpc('ranking_fuerza'),
-        supabase.rpc('percentil_fuerza'),
       ]);
       setMia((f ?? null) as MiFuerza | null);
       setRanking((r ?? []) as FilaFuerza[]);
-      setPercentil((p ?? null) as Percentil | null);
     })();
   }, [supabase]);
 
@@ -100,7 +114,15 @@ export default function SeccionFuerza({ unidad }: { unidad: Unidad }) {
             )}
           </div>
 
-          {percentil && <DondeEstoy percentil={percentil} />}
+          {esSexoEstandar(sexo) && pesoCorporal !== null && (
+            <DondeEstoy
+              sexo={sexo}
+              pesoCorporal={pesoCorporal}
+              total={mia.total}
+              marcas={mia.marcas}
+              unidad={unidad}
+            />
+          )}
 
           <div className="marcas-tira">
             {mia.marcas
@@ -166,37 +188,90 @@ export default function SeccionFuerza({ unidad }: { unidad: Unidad }) {
 }
 
 /**
- * Dónde caigo entre toda la gente de Ascent (§16.8). Va afuera de la tarjeta
- * del DOTS y con una escala propia porque el número solo no dice nada: 340 es
- * mucho o poco según contra quién.
+ * Dónde caigo entre la gente de mi sexo y mi peso corporal (§16.8).
  *
- * Cuando todavía no hay percentil se muestra igual, diciendo cuánta gente hay.
- * Esconder el bloque haría que el día que aparezca parezca un error, y no
- * explicaría por qué no está.
+ * Contra una tabla que viene en el repo y no contra los usuarios de Ascent:
+ * así el número sirve desde el primer día y no depende de que la app crezca.
+ * Quién es esa gente y de cuándo son los datos está en Ajustes, porque contra
+ * quién se compara cambia el resultado entero.
+ *
+ * La CATEGORÍA va primero y más grande que el porcentaje: es el dato que
+ * publica la fuente, mientras que el porcentaje lo interpolamos nosotros.
+ * Y va el total además de cada ejercicio, porque "top 25% en peso muerto" es
+ * más accionable que un agregado — y porque el agregado tapa justo al que
+ * tiene un levantamiento fuerte y otro flojo.
  */
-function DondeEstoy({ percentil }: { percentil: Percentil }) {
-  const p = percentil.percentil;
+function DondeEstoy({
+  sexo,
+  pesoCorporal,
+  total,
+  marcas,
+  unidad,
+}: {
+  sexo: SexoEstandar;
+  pesoCorporal: number;
+  total: number | null;
+  marcas: MiFuerza['marcas'];
+  unidad: Unidad;
+}) {
+  const delTotal = total !== null ? ubicarTotal(sexo, pesoCorporal, total) : null;
+  const porEjercicio = marcas
+    .filter((m) => esEjercicioEstandar(m.ejercicio))
+    .map((m) => ({
+      ejercicio: m.ejercicio,
+      nombre: m.nombre,
+      kg: m.kg,
+      u: ubicar(m.ejercicio as Parameters<typeof ubicar>[0], sexo, pesoCorporal, m.kg),
+    }));
+
+  if (!delTotal && porEjercicio.length === 0) return null;
+
   return (
     <div className="donde-estoy">
       <div className="donde-titulo">Dónde estoy</div>
-      {p != null ? (
+
+      {delTotal && (
         <>
-          <div className="donde-numero">
-            {p}
-            <span>%</span>
+          <div className="donde-categoria">{delTotal.categoria}</div>
+          <div className="donde-pie">
+            en el total · le ganás al {delTotal.supera}% de la gente de tu peso
           </div>
-          <div className="donde-pie">más fuerte de Ascent · {percentil.gente} con DOTS</div>
-          {/* La escala crece hacia la derecha, así que la marca va en el
-              complemento: "top 5%" cae casi al final, no casi al principio. */}
+          {/* La escala crece hacia la derecha y la marca va donde cae. */}
           <div className="donde-escala" aria-hidden>
-            <i style={{ left: `${100 - p}%` }} />
+            <i style={{ left: `${delTotal.supera}%` }} />
           </div>
         </>
-      ) : (
-        <div className="donde-pie">
-          Todavía no hay gente suficiente para comparar. Van {percentil.gente}.
-        </div>
       )}
+
+      <div className="donde-lista">
+        {porEjercicio.map((e) => (
+          <div key={e.ejercicio} className="donde-fila">
+            <span className="nombre">{e.nombre}</span>
+            <span className="cat">{e.u.categoria}</span>
+            <span className="dato pct">{e.u.supera}%</span>
+          </div>
+        ))}
+      </div>
+
+      {/* El aviso no es decorativo: con una muestra diez veces más chica, el
+          mismo número no está igual de firme, y presentarlos igual sería
+          darle a uno una precisión que no tiene. */}
+      {muestraFina(sexo) && (
+        <p className="nota-privada">
+          La muestra de mujeres es mucho más chica que la de hombres: tomá el porcentaje como una
+          orientación, no como una medición.
+        </p>
+      )}
+      {(delTotal?.fueraDeTabla || porEjercicio.some((e) => e.u.fueraDeTabla)) && (
+        <p className="nota-privada">
+          Tu peso corporal queda fuera de la tabla, así que se compara contra el extremo más
+          cercano. No lo estiramos más allá de lo que dicen los datos.
+        </p>
+      )}
+      <p className="nota-privada">
+        {FUENTE.nombre} {FUENTE.edicion} · {unidad === 'kg' ? 'kilos' : 'convertido de kilos'} ·
+        gente que anota en apps, no competidores. Ver Ajustes.
+      </p>
     </div>
   );
 }
