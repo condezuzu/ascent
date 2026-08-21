@@ -20,6 +20,7 @@ import {
   unRM,
 } from '../src/lib/reglas.ts';
 import { PLANETAS_CFG } from '../src/motor/cuerpos.ts';
+import { agruparPorDia, etiquetaDeDia } from '../src/lib/dias.ts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -1851,6 +1852,49 @@ console.log('\n30. El día pendiente espera, no vence, y entra con SU fecha');
 
 
 // =====================================================================
+console.log('\n31. Los días de sesión que se leen en Stats');
+{
+  // Se arma a mano y no desde la base: lo que se prueba es la agrupación del
+  // cliente, y con datos de verdad nunca coincidirían dos sesiones el mismo
+  // día ni una abandonada al lado de una buena.
+  const s = (fecha, inicio, fin, estado = 'terminada') => ({
+    inicio, fin, estado, series: 0, logs: { fecha },
+  });
+  const dia = (n) => `2026-08-${String(n).padStart(2, '0')}`;
+  const t = (n, h, m = 0) => `${dia(n)}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`;
+
+  const filas = [
+    s(dia(20), t(20, 18), t(20, 19)),           // 1 h
+    s(dia(20), t(20, 8), t(20, 8, 30)),          // media hora, MISMO día
+    s(dia(19), t(19, 10), null, 'abandonada'),   // sin duración
+    s(dia(18), t(18, 10), t(18, 11, 15)),        // 1 h 15
+  ];
+  const r = agruparPorDia(filas);
+
+  chequear('un día por fecha, no uno por sesión', r.length, 3);
+  chequear('el más reciente primero', r.map((d) => d.fecha), [dia(20), dia(19), dia(18)]);
+  chequear('las del mismo día se suman', r[0].segundos, 5400);
+  chequear('y dice cuántas fueron', r[0].cuantas, 2);
+  // Se cerró sola a las 4 horas y no se sabe cuánto entrenó. Poner 4 h sería
+  // inventar; poner el tope, peor todavía.
+  chequear('la abandonada no inventa una duración', [r[1].segundos, r[1].cuantas], [0, 1]);
+
+  // el embebido de PostgREST puede venir como objeto o como array de uno
+  chequear(
+    'da igual cómo venga el embebido',
+    agruparPorDia([{ ...filas[3], logs: [{ fecha: dia(18) }] }])[0].segundos,
+    4500
+  );
+  chequear('una fila sin día se descarta en vez de romper', agruparPorDia([{ ...filas[0], logs: null }]), []);
+
+  // ---- las etiquetas ----
+  const hoy = new Date(2026, 7, 21);
+  chequear('hoy y ayer se dicen con palabras', [etiquetaDeDia(dia(21), hoy), etiquetaDeDia(dia(20), hoy)], ['Hoy', 'Ayer']);
+  // El 18/8/2026 es martes. `new Date('2026-08-18')` es UTC y en UTC−3 cae el
+  // 17, que es lunes: si esto dice "lun 17", la fecha se leyó como UTC.
+  chequear('el día de la semana no se corre por leer el ISO como UTC', etiquetaDeDia(dia(18), hoy), 'mar 18');
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

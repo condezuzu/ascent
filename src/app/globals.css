@@ -2092,3 +2092,95 @@ body.con-franja .pantalla {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- §7: los últimos siete días con su duración ----------
+   Lista y no gráfico: son siete filas y lo que importa es leer cada una, no
+   la forma del conjunto. La barra es la comparación entre ellas. */
+.dias-sesion {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 14px;
+}
+.dia-sesion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--sub);
+  padding: 4px 2px;
+}
+.dia-sesion > :first-child {
+  min-width: 46px;
+  color: var(--apagado);
+}
+.dia-sesion .barra {
+  flex: 1;
+  height: 3px;
+  background: rgba(160, 180, 220, 0.09);
+}
+.dia-sesion .barra i {
+  display: block;
+  height: 100%;
+  background: color-mix(in srgb, var(--pal-principal) 85%, white);
+  transition: width 0.5s var(--curva-suave);
+}
+.dia-sesion .tiempo {
+  min-width: 62px;
+  text-align: right;
+  color: var(--pal-claro);
+}
+/* el "×2" no compite con la duración: es una aclaración, no un dato */
+.dia-sesion .tiempo em {
+  font-style: normal;
+  color: var(--apagado);
+  margin-left: 4px;
+}
+
+/* ---------- §7: dónde caigo entre toda la gente ----------
+   El percentil tenía el tamaño de una nota al pie, que es donde se lee lo que
+   no importa. Acá es un bloque con su propio número. */
+.donde-estoy {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--linea);
+}
+.donde-titulo {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sub);
+}
+.donde-numero {
+  font-family: var(--f-numero), system-ui, sans-serif;
+  font-size: 38px;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  margin-top: 8px;
+}
+.donde-numero span {
+  font-size: 18px;
+  color: var(--sub);
+  margin-left: 2px;
+}
+.donde-pie {
+  font-size: 12px;
+  color: var(--apagado);
+  margin-top: 6px;
+}
+.donde-escala {
+  position: relative;
+  height: 3px;
+  background: rgba(160, 180, 220, 0.09);
+  margin-top: 14px;
+}
+.donde-escala i {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 9px;
+  background: var(--pal-claro);
+  transition: left 0.6s var(--curva-suave);
+}

@@ -110,8 +110,7 @@ export default function Estadisticas() {
         <div className="titulo-pantalla">Stats</div>
 
         <GloboPrimeraVez cual="stats">
-          Acá está todo lo que no entra en la principal: constancia, historial y tu peso, que no ve
-          nadie más.
+          Constancia, historial y tu peso. El peso no lo ve nadie más.
         </GloboPrimeraVez>
 
         <div className="stat-grilla">
@@ -171,16 +170,14 @@ export default function Estadisticas() {
                 {suavizado[0].toFixed(1)}
                 <span style={{ fontSize: 15, color: 'var(--sub)' }}> {unidad}</span>
               </div>
-              <p style={{ fontSize: 12, color: 'var(--apagado)', marginTop: 6 }}>
-                Anotá alguno más y acá aparece la tendencia. Solo la ves vos.
-              </p>
+              <p className="nota-privada">Con uno más aparece la tendencia. Solo la ves vos.</p>
             </div>
           </div>
         ) : (
           <div className="seccion">
             <h3>Peso</h3>
-            <p style={{ fontSize: 13, color: 'var(--apagado)' }}>
-              Anotá tu peso al registrar días y acá aparece la tendencia. Solo la ves vos.
+            <p className="nota-privada">
+              Anotalo al registrar el día y acá aparece la tendencia. Solo la ves vos.
             </p>
           </div>
         )}

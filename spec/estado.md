@@ -74,6 +74,13 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   cerrar la app y arranca sin red. El aviso es vibración primero y sonido
   después —apagado por defecto—, y Ajustes dice qué va a pasar de verdad en ese
   teléfono, porque en iPhone la web no vibra.
+- **Stats**: además de la constancia, el mapa del año y el peso, en Sesiones
+  van los **últimos 7 días con su duración** —agrupados por día, porque puede
+  haber más de una sesión por jornada, y las abandonadas suman cero en vez de
+  inventar un número— y en Fuerza un bloque **"Dónde estoy"** con el percentil
+  como número grande y su escala. El percentil no aparece hasta que haya diez
+  personas con DOTS; mientras tanto el bloque se muestra igual y dice cuántas
+  van, para que el día que aparezca no parezca un error.
 - **Onboarding**: recorrido de tres pantallas (`/bienvenida`) entre el nombre
   y la principal, saltable; globos de primera vez en Leaderboard, Stats y
   Álbum; se repite desde Ajustes.

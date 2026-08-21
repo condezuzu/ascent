@@ -54,8 +54,8 @@ export default function SeccionFuerza({ unidad }: { unidad: Unidad }) {
       {sinNada ? (
         <div className="tarjeta">
           <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--sub)' }}>
-            Sentadilla, press de banca y peso muerto arman un número comparable con el de tus
-            amigos, pese lo que pese cada uno.
+            Sentadilla, banca y peso muerto arman un número comparable con el de tus amigos,
+            pese lo que pese cada uno.
           </p>
           <Link href="/fuerza" className="boton-fantasma" style={{ marginTop: 12 }}>
             Anotar mis marcas
@@ -72,19 +72,12 @@ export default function SeccionFuerza({ unidad }: { unidad: Unidad }) {
                 </div>
                 {/* El exacto es SOLO del dueño (§16.7b). Decirlo acá es lo que
                     hace que la banda de los demás no parezca un error. */}
-                <p className="nota-privada">
-                  Este número lo ves solo vos. Tus amigos ven la banda: {mia.banda}.
-                </p>
-                {percentil?.percentil != null && (
-                  <p className="nota-privada">
-                    Estás en el {percentil.percentil}% más fuerte de Ascent.
-                  </p>
-                )}
+                <p className="nota-privada">Solo vos lo ves. Tus amigos ven: {mia.banda}.</p>
               </>
             ) : (
               <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--sub)' }}>
                 {mia.falta === 'marcas' &&
-                  'Faltan marcas: el número sale de las tres —sentadilla, banca y peso muerto—, y con dos no se compara con nada.'}
+                  'Faltan marcas: el número sale de las tres, y con dos no se compara con nada.'}
                 {mia.falta === 'sexo' && (
                   <>
                     Para el número falta cargar el sexo en{' '}
@@ -100,12 +93,14 @@ export default function SeccionFuerza({ unidad }: { unidad: Unidad }) {
                     <Link href="/fuerza" className="enlace">
                       Mis marcas
                     </Link>
-                    . Solo lo ves vos y nunca se muestra.
+                    . Solo lo ves vos.
                   </>
                 )}
               </p>
             )}
           </div>
+
+          {percentil && <DondeEstoy percentil={percentil} />}
 
           <div className="marcas-tira">
             {mia.marcas
@@ -165,6 +160,42 @@ export default function SeccionFuerza({ unidad }: { unidad: Unidad }) {
             Mis marcas
           </Link>
         </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Dónde caigo entre toda la gente de Ascent (§16.8). Va afuera de la tarjeta
+ * del DOTS y con una escala propia porque el número solo no dice nada: 340 es
+ * mucho o poco según contra quién.
+ *
+ * Cuando todavía no hay percentil se muestra igual, diciendo cuánta gente hay.
+ * Esconder el bloque haría que el día que aparezca parezca un error, y no
+ * explicaría por qué no está.
+ */
+function DondeEstoy({ percentil }: { percentil: Percentil }) {
+  const p = percentil.percentil;
+  return (
+    <div className="donde-estoy">
+      <div className="donde-titulo">Dónde estoy</div>
+      {p != null ? (
+        <>
+          <div className="donde-numero">
+            {p}
+            <span>%</span>
+          </div>
+          <div className="donde-pie">más fuerte de Ascent · {percentil.gente} con DOTS</div>
+          {/* La escala crece hacia la derecha, así que la marca va en el
+              complemento: "top 5%" cae casi al final, no casi al principio. */}
+          <div className="donde-escala" aria-hidden>
+            <i style={{ left: `${100 - p}%` }} />
+          </div>
+        </>
+      ) : (
+        <div className="donde-pie">
+          Todavía no hay gente suficiente para comparar. Van {percentil.gente}.
+        </div>
       )}
     </div>
   );
