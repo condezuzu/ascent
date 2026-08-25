@@ -327,8 +327,27 @@ por sexo con `'M'`/`'F'` y la base guarda `'m'`/`'f'` (el check de
 warning, sin hueco — la condición daba falso y no había nada. Los tests
 pasaban porque llamaban a la función con `'M'` directamente.
 → **Regla:** cuando el cliente compara contra un valor que decide la base, el
-test tiene que traer el valor **de la base**, no repetirlo. La sección 32 le
-pide a Postgres qué letras acepta y las corre contra `esSexoEstandar`.
+test tiene que traer el valor **de la base**, no repetirlo.
+
+**Y no era un caso, era una familia.** Hay ocho `check (... in (...))` en el
+schema —visibilidad de fotos, unidad de peso, estados de amistad, de reto y de
+sesión, tipo de feedback, sexo— más los ids del catálogo de ejercicios. Todos
+tenían su copia en el cliente y ninguno estaba comprobado contra nada.
+→ **Regla:** las listas viven en `src/lib/tipos.ts`, como **valores** y no solo
+como tipos —un tipo se borra al compilar y no se puede comparar contra la
+base—, y los tipos se derivan de ellas. La sección 33 de `test:db` le pregunta
+a Postgres qué acepta cada check y lo compara. Los módulos que no pueden
+importar nada (`dias.ts`, `estandares.ts`) **exportan su literal** para que la
+sección 33 lo pinee igual.
+
+Dos detalles del que lo escriba:
+
+- Postgres **no** guarda el `in (...)` que uno tipeó: lo normaliza a
+  `= ANY (ARRAY['a'::text, 'b'::text])`. Buscar `IN (` en `pg_get_constraintdef`
+  no encuentra nada y el test pasa en verde sin comparar nada.
+- Adentro de un template literal, `` `` `` es el carácter de **retroceso**,
+  no el borde de palabra del regex. `` new RegExp(`${col}`) `` busca un
+  byte 0x08. Van dos barras.
 
 **Un saliente más grande que el margen no es un saliente, es un recorte.** Los
 títulos salen del margen izquierdo a propósito (§19.1), con
@@ -374,7 +393,14 @@ de arrancar en vez de dejar que Next se corra solo a otro.
 nav y el logo flotante quedaban estampados sobre el contenido —la primera
 corrida se comió el número de DOTS— porque `fullPage` estira el alto y lo
 `fixed` se queda pegado a la ventana.
-→ **Regla:** antes de la foto, los `fixed` se pasan a `static` **y se mueven al
-final del `body`**. Solo con `static` cada uno cae donde lo puso el DOM y el
-logo terminaba encima del DOTS igual; con `absolute` + `bottom: 0` es peor,
-porque se resuelve contra un ancestro del alto de la ventana.
+→ **Regla:** para la foto larga se los **esconde** (`visibility: hidden`), que
+es la única maniobra que no puede mover nada: `fixed` está fuera del flujo, así
+que sacarlo no relayoutea la página. Y aparte va una foto del tamaño de la
+ventana con todo puesto.
+
+Las otras dos formas se probaron y salieron peor, así que no volver a
+intentarlas: con `position: static` cada uno cae donde lo puso el DOM y el logo
+terminaba encima del DOTS igual; con `absolute` + `bottom: 0` cae en el medio,
+porque se resuelve contra un ancestro del alto de la ventana; y moverlos al
+final del `body` **rompió el layout entero** —media pantalla en blanco—, porque
+reparentar saca al elemento de donde React lo espera.

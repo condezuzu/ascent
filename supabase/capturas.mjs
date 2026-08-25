@@ -1,14 +1,9 @@
 // Capturas de todas las pantallas, para mirar el trabajo visual desde el
 // disco. Correr con: npm run capturas
 //
-// POR QUÉ EXISTE: el panel de preview del entorno se cuelga —los clicks por
-// píxel se traban y `read_page` da timeout—, así que cinco tandas seguidas
-// quedaron sin verificación visual. Esto no depende de él: levanta la app,
-// entra con la cuenta de prueba, recorre las pantallas y deja los PNG en
-// `capturas/`.
-//
-// Va a `supabase/` porque ahí viven los otros scripts de verificación, aunque
-// no toque el schema.
+// Existe porque el panel de preview del entorno se cuelga y dejo cinco tandas
+// sin verificacion visual. Vive en `supabase/` con los otros scripts de
+// verificacion, aunque no toque el schema.
 import { chromium } from 'playwright';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync, readdirSync } from 'node:fs';
@@ -27,16 +22,14 @@ if (!correo || !clave) {
   process.exit(1);
 }
 
-// Si el puerto ya está ocupado, `next dev` se corre solo a otro y este script
-// termina hablándole a un servidor que no arrancó él —quedó uno colgado y pasó
-// exactamente eso—. Mejor cortar y decirlo.
+// Si el puerto esta ocupado, `next dev` se corre solo a otro y este script le
+// termina hablando a un servidor que no arranco el. Mejor cortar.
 const libre = await fetch(BASE, { redirect: 'manual' })
   .then(() => false)
   .catch(() => true);
 if (!libre) {
   console.log(
-    `El puerto ${PUERTO} ya está ocupado. Cerrá lo que esté ahí, o corré con
-` +
+    `El puerto ${PUERTO} ya está ocupado. Cerrá lo que esté ahí, o corré con\n` +
       `  CAPTURAS_PUERTO=3022 npm run capturas`
   );
   process.exit(1);
@@ -58,12 +51,9 @@ let cerrado = false;
 const cerrar = () => {
   if (cerrado) return;
   cerrado = true;
-  // spawnSYNC a propósito: con la versión asíncrona, el `process.exit()` de
-  // abajo se llevaba el proceso antes de que taskkill llegara a correr, y el
-  // dev server quedaba vivo ocupando el puerto hasta la próxima corrida.
-  //
-  // Y en Windows matar el proceso del shell deja al hijo vivo, así que /T, que
-  // se lleva el árbol entero.
+  // spawnSYNC: con la version asincrona el `process.exit()` se lleva el proceso
+  // antes de que taskkill corra, y el server queda vivo ocupando el puerto. /T
+  // porque en Windows matar el shell deja al hijo.
   if (process.platform === 'win32') {
     spawnSync('taskkill', ['/pid', String(dev.pid), '/f', '/t'], { stdio: 'ignore' });
   } else {
@@ -142,96 +132,149 @@ for (const tamano of TAMANOS) {
   });
   page.on('pageerror', (e) => problemas.push(`${tamano.nombre}: excepción — ${String(e).slice(0, 160)}`));
 
-  await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
+  // La app dice "algo fallo" para lo que no reconoce; aca se guarda la
+  // respuesta cruda del servidor.
+  const respuestasAuth = [];
+  page.on('response', async (r) => {
+    if (!r.url().includes('/auth/v1/')) return;
+    if (r.status() < 400) return;
+    const cuerpo = await r.text().catch(() => '');
+    respuestasAuth.push(`${r.status()} ${r.url().split('/auth/v1/')[1]} → ${cuerpo.slice(0, 300)}`);
+  });
+
+  // Aca SI `networkidle`, al reves que en las pantallas de abajo: hasta que
+  // React no hidrata, escribir llena el DOM pero no el estado y el submit sale
+  // sin correo ("missing email or phone"). Login es liviana y la red se queda
+  // quieta de verdad. Comprobar el input con `inputValue()` NO sirve: lee el
+  // DOM, que es la mitad que si se lleno.
+  await page.goto(`${BASE}/login`, { waitUntil: 'networkidle', timeout: 120000 });
   await page.locator('input[type=email]').fill(correo);
   await page.locator('input[type=password]').fill(clave);
-  await page.getByRole('button', { name: 'Entrar' }).click();
+
+  // `exact` porque sin él "Entrar" también matchea "Volver a entrar", que la
+  // pantalla muestra en algunos estados, y ahí Playwright corta por ambiguo.
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   try {
-    // Dos minutos y no treinta segundos: la primera vez que se entra, el dev
-    // server tiene que compilar la principal entera —three.js incluido— y con
-    // la carpeta de build recién creada eso pasa del medio minuto. Se cayó así
-    // una vez, con un timeout pelado que no decía nada de esto.
+    // Dos minutos: la primera entrada compila la principal entera, three.js
+    // incluido.
     await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 120000 });
   } catch {
-    // Si la app mostró un error —clave mal, rate limit de Supabase—, decirlo,
-    // que es la diferencia entre arreglarlo y adivinar.
+    // Deja todo para saber por que fallo. La clase es `.error-msg`: buscar
+    // '.error' no encuentra nada y hace parecer que la pantalla estaba limpia.
     const enPantalla = await page
-      .locator('[role=alert], .error, .aviso')
+      .locator('.error-msg')
       .first()
       .textContent()
       .catch(() => null);
+    const visible = await page.evaluate(() => document.body.innerText.slice(0, 600)).catch(() => '');
+    mkdirSync(SALIDA, { recursive: true });
+    const foto = join(SALIDA, 'login-fallido.png');
+    await page.screenshot({ path: foto }).catch(() => {});
     console.log(
-      `No se pudo entrar como ${correo}.` +
-        (enPantalla ? ` La app dice: "${enPantalla.trim()}"` : ' La pantalla no mostró ningún error.')
+      `No se pudo entrar como ${correo}. Sigue en ${page.url()}\n` +
+        (enPantalla ? `La app dice: "${enPantalla.trim()}"\n` : 'La app no mostró ningún error.\n') +
+        `Texto en pantalla:\n${visible}\n` +
+        (respuestasAuth.length
+          ? `Lo que respondió el servidor:\n${respuestasAuth.join('\n')}\n`
+          : 'El servidor de auth no devolvió ningún error: el problema no está de ese lado.\n') +
+        `Foto: ${foto}`
     );
     process.exit(1);
   }
 
   for (const p of PANTALLAS) {
-    await page.goto(BASE + p.ruta, { waitUntil: 'networkidle' });
-    // El motor de planetas anima y los datos llegan por RPC: sin esta espera
-    // se fotografía el estado de carga y no la pantalla.
-    await page.waitForTimeout(2500);
-    if (p.previo) {
-      await p.previo(page);
-      await page.waitForTimeout(600);
-    }
-    const revision = await page.evaluate(() => {
-      const raiz = document.documentElement;
-      // Contenido que se va por la DERECHA: el scroll horizontal clásico.
-      const derecha = raiz.scrollWidth - raiz.clientWidth;
-      // Y por la IZQUIERDA, que NO aparece en scrollWidth: lo que queda en x
-      // negativo simplemente se recorta y el documento no se entera. Así se
-      // vivió un tiempo con la primera letra de cada título cortada.
-      const cortados = [];
-      for (const el of document.querySelectorAll('body *')) {
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 || r.height === 0) continue;
-        if (r.left < -0.5) {
-          const t = (el.textContent ?? '').trim().slice(0, 24);
-          cortados.push(`${el.tagName.toLowerCase()}${t ? ' "' + t + '"' : ''} en x=${Math.round(r.left)}`);
+    // Una pantalla que falla se anota y se sigue.
+    try {
+      // `networkidle` NO sirve acá: el motor pide texturas y los RPC van
+      // llegando, así que la red nunca se queda quieta y /fuerza se caía con la
+      // pantalla ya dibujada. Timeout largo por la primera compilación.
+      await page.goto(BASE + p.ruta, { waitUntil: 'domcontentloaded', timeout: 120000 });
+      // El motor de planetas anima y los datos llegan por RPC: sin esta espera
+      // se fotografía el estado de carga y no la pantalla.
+      await page.waitForTimeout(3500);
+      if (p.previo) {
+        await p.previo(page);
+        await page.waitForTimeout(600);
+      }
+      const revision = await page.evaluate(() => {
+        const raiz = document.documentElement;
+        // Contenido que se va por la DERECHA: el scroll horizontal clásico.
+        const derecha = raiz.scrollWidth - raiz.clientWidth;
+        // Y por la IZQUIERDA, que NO aparece en scrollWidth: lo que queda en x
+        // negativo se recorta y el documento no se entera. Así vivió "TATS".
+        const cortados = [];
+        for (const el of document.querySelectorAll('body *')) {
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          if (r.left < -0.5) {
+            const t = (el.textContent ?? '').trim().slice(0, 24);
+            cortados.push(`${el.tagName.toLowerCase()}${t ? ' "' + t + '"' : ''} en x=${Math.round(r.left)}`);
+          }
         }
+        return { derecha, cortados: [...new Set(cortados)].slice(0, 4) };
+      });
+      if (revision.derecha > 0) {
+        problemas.push(`${tamano.nombre}/${p.nombre}: se va ${revision.derecha}px por la derecha`);
       }
-      return { derecha, cortados: [...new Set(cortados)].slice(0, 4) };
-    });
-    if (revision.derecha > 0) {
-      problemas.push(`${tamano.nombre}/${p.nombre}: se va ${revision.derecha}px por la derecha`);
-    }
-    for (const c of revision.cortados) {
-      problemas.push(`${tamano.nombre}/${p.nombre}: cortado por la izquierda — ${c}`);
-    }
+      for (const c of revision.cortados) {
+        problemas.push(`${tamano.nombre}/${p.nombre}: cortado por la izquierda — ${c}`);
+      }
 
-    // La nav es `fixed`, así que en una captura de página completa se dibuja
-    // en el medio de la imagen y tapa lo que haya debajo —la primera vez se
-    // comió el número de DOTS—. Para la foto se la pasa a `static`, que la
-    // manda al lugar que le toca en el documento: el final. Con `absolute` no
-    // alcanzaba, porque el `bottom: 0` se resolvía contra un ancestro del alto
-    // de la ventana y volvía a caer en el medio.
-    await page.addStyleTag({
-      content:
-        '.fijo-para-captura { position: static !important;' +
-        ' top: auto !important; bottom: auto !important;' +
-        ' left: auto !important; right: auto !important; }',
-    });
-    await page.evaluate(() => {
-      const fijos = [...document.querySelectorAll('body *')].filter(
-        (el) => getComputedStyle(el).position === 'fixed'
-      );
-      for (const el of fijos) {
-        el.classList.add('fijo-para-captura');
-        // Al final del body además de `static`: si no, cada uno cae donde lo
-        // puso el DOM y el logo flotante quedaba justo encima del número de
-        // DOTS. Así se apilan todos abajo y no tapan nada.
-        document.body.appendChild(el);
+      // Los `fixed` se estampan sobre el contenido en una captura de página
+      // completa. Se los ESCONDE, que es lo único que no puede mover nada:
+      // están fuera del flujo. `static` y moverlos al final del body se
+      // probaron y salieron peor (spec/trampas.md).
+      const fijos = await page.evaluate(() => {
+        const fijos = [...document.querySelectorAll('body *')].filter(
+          (el) => getComputedStyle(el).position === 'fixed'
+        );
+        for (const el of fijos) el.setAttribute('data-oculto-para-captura', '');
+        return fijos.length;
+      });
+      // `nextjs-portal` es el indicador de desarrollo de Next: un botón fijo
+      // abajo a la izquierda que en la foto larga cae en el medio y tapa lo que
+      // haya —se comía el número de DOTS—. Va aparte porque vive en un shadow
+      // DOM y el barrido de `fixed` de arriba no lo alcanza.
+      await page.addStyleTag({
+        content:
+          '[data-oculto-para-captura] { visibility: hidden !important; }' +
+          ' nextjs-portal { display: none !important; }',
+      });
+      // Un minuto y sin animaciones: en movil la imagen va al doble de escala
+      // y varios miles de pixeles de alto. Con los 30 s de fabrica se cayo.
+      await page.screenshot({
+        path: join(SALIDA, `${tamano.nombre}-${p.nombre}.png`),
+        fullPage: true,
+        animations: 'disabled',
+        timeout: 60000,
+      });
+
+      // Una foto del tamano de la ventana con todo puesto, para ver la nav
+      // donde va. Solo de la principal: es igual en todas.
+      if (p.nombre === 'inicio') {
+        await page.evaluate(() => {
+          for (const el of document.querySelectorAll('[data-oculto-para-captura]')) {
+            el.removeAttribute('data-oculto-para-captura');
+          }
+        });
+        await page.screenshot({
+          path: join(SALIDA, `${tamano.nombre}-inicio-ventana.png`),
+          animations: 'disabled',
+          timeout: 60000,
+        });
       }
-    });
-    await page.screenshot({
-      path: join(SALIDA, `${tamano.nombre}-${p.nombre}.png`),
-      fullPage: true,
-    });
-    hechas++;
-    console.log(`  ${tamano.nombre}/${p.nombre}`);
+      void fijos;
+      hechas++;
+      console.log(`  ${tamano.nombre}/${p.nombre}`);
+    } catch (e) {
+      const linea = String(e).split('\n')[0].slice(0, 120);
+      problemas.push(`${tamano.nombre}/${p.nombre}: NO se pudo capturar — ${linea}`);
+      // En blanco antes de seguir: una navegacion a medias hace que la
+      // siguiente muera con "interrupted by another navigation", en cascada.
+      await page.goto('about:blank', { timeout: 30000 }).catch(() => {});
+    }
   }
+
   await contexto.close();
 }
 

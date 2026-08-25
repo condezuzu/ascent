@@ -1,39 +1,16 @@
-/**
- * Contra quién se compara la fuerza: gente que registra sus levantamientos en
- * una app, no competidores de powerlifting.
- *
- * ESTA ELECCIÓN CAMBIA EL RESULTADO ENTERO, así que está escrita acá y dicha
- * en Ajustes. Un hombre de 80 kg que levanta 132 kg de sentadilla es la
- * MEDIANA de esta tabla; entre competidores federados la mediana está en 2,28
- * veces el peso corporal —182 kg para ese mismo tipo— y cae al fondo del
- * ranking. Ninguna de las dos poblaciones es "el mundo": una está llena de
- * gente que entrena para competir y la otra de gente del gimnasio del barrio,
- * que es exactamente quien usa Ascent.
- *
- * FUENTE: Strength Level (strengthlevel.com/strength-standards), estándares
- * 2026. Levantamientos que la comunidad cargó entre marzo de 2015 y marzo de
- * 2026: 24,9 millones en sentadilla, 48,7 en press de banca y 23,0 en peso
- * muerto. Son datos DECLARADOS por los usuarios, sin verificar.
- *
- * Las columnas son las cinco categorías que publica la fuente, y cada una es
- * un punto de la distribución: principiante supera al 5% de la gente, novato
- * al 20%, intermedio al 50%, avanzado al 80% y élite al 95%.
- *
- * LA CATEGORÍA ES EL DATO; el percentil lo derivamos nosotros interpolando
- * entre esos cinco puntos. Por eso la interfaz muestra las dos cosas y la
- * categoría va primero.
- *
- * SOLO POR EJERCICIO, nunca para el total. Sumar el umbral del 50% de los tres
- * NO da el umbral del 50% del total: los tres levantamientos están
- * correlacionados pero no son el mismo, así que la suma se distribuye más
- * angosta que sus partes. En el medio el error es chico y en las colas se
- * rompe — ser élite en los tres a la vez es mucho más raro que el 5%, así que
- * un "élite total" así calculado regala una categoría que casi nadie tiene.
- * Para el total ya está el DOTS, que existe justamente para eso.
- *
- * Este archivo NO importa nada, igual que `reglas.ts`, para que `test:db`
- * pueda cargarlo con Node.
- */
+// Contra quién se compara la fuerza: gente que anota en una app, no
+// competidores. La elección cambia el resultado entero —80 kg y 132 de
+// sentadilla es la mediana acá y casi el último entre federados— y por eso la
+// app la dice en Ajustes. Ver spec/fuerza.md §16.8.
+//
+// FUENTE: Strength Level, estándares 2026 (marzo 2015 a marzo 2026), datos
+// declarados por los usuarios y sin verificar. Las cinco categorías que
+// publica son puntos de la distribución: 5, 20, 50, 80 y 95.
+//
+// SOLO POR EJERCICIO: sumar los umbrales de los tres no da el umbral del
+// total, y en las colas se rompe (spec/trampas.md). Para el total va el DOTS.
+//
+// No importa nada, igual que `reglas.ts`, para que `test:db` pueda cargarlo.
 
 export const FUENTE = {
   nombre: 'Strength Level',
@@ -52,14 +29,8 @@ export const CATEGORIAS = [
   { clave: 'elite', nombre: 'Élite', supera: 95 },
 ] as const;
 
-/**
- * MINÚSCULA, como lo guarda la base: el check de `profiles.sexo` acepta 'm' y
- * 'f' y nada más. La primera versión de este archivo usaba mayúsculas y el
- * bloque entero no se dibujaba nunca — sin error, sin nada: el filtro daba
- * falso y la sección desaparecía. Lo agarró una captura, no un test, así que
- * ahora hay uno (sección 32 de `test:db`) que compara estas dos letras contra
- * las que la base realmente acepta.
- */
+// Minúscula, como lo guarda la base. Con mayúsculas el bloque entero no se
+// dibujaba y no había error: lo pinea la sección 32 de `test:db`.
 export type SexoEstandar = 'm' | 'f';
 export type EjercicioEstandar = 'sentadilla' | 'press_banca' | 'peso_muerto';
 
@@ -142,13 +113,9 @@ export function esSexoEstandar(s: string | null | undefined): s is SexoEstandar 
 }
 
 /**
- * Los cinco umbrales para ESE peso corporal.
- *
- * Entre dos filas se interpola; fuera de la tabla se usa la fila del borde y
- * se avisa con `fueraDeTabla`. Extrapolar sería inventar: la tabla no dice
- * nada de una mujer de 30 kg, y estirar la recta daría un número con la misma
- * pinta que los demás y ningún respaldo. Es la misma decisión que ya toma el
- * DOTS, que acota el peso corporal a su rango calibrado.
+ * Los cinco umbrales para ESE peso corporal. Entre filas se interpola; fuera
+ * de la tabla se usa el borde y se avisa. Extrapolar daría un número con la
+ * misma pinta que los demás y ningún respaldo.
  */
 export function umbrales(
   ejercicio: EjercicioEstandar,
@@ -183,23 +150,14 @@ export type Ubicacion = {
   categoria: string;
   clave: string;
   fueraDeTabla: boolean;
-  /**
-   * Cuántos kilos faltan para entrar en la primera categoría, o `null` si ya
-   * se entró. Ahí abajo es donde va a caer casi todo el que recién empieza, y
-   * "todavía nada" es una pantalla que no da ninguna razón para volver. La
-   * distancia sí, y no inventa una categoría que la fuente no nombra.
-   */
+  /** Kilos que faltan para la primera categoría, o `null` si ya se entró. */
   faltaParaPrincipiante: number | null;
 };
 
 /**
- * Dónde cae un levantamiento entre los cinco umbrales.
- *
- * Entre umbrales se interpola. Por debajo del de principiante se interpola
- * contra cero, que es la única referencia que hay: así quien recién arranca no
- * queda en el mismo lugar que alguien que levanta el doble. Por arriba del de
- * élite se corta en 99, porque la tabla no tiene con qué separar al 96 del
- * 99,9.
+ * Dónde cae un levantamiento entre los cinco umbrales. Por debajo del primero
+ * se interpola contra cero —única referencia— y por arriba del último se corta
+ * en 95: la tabla no tiene con qué separar al 96 del 99,9.
  */
 function ubicarEntre(valores: number[], kg: number, fueraDeTabla: boolean): Ubicacion {
   const cortes = CATEGORIAS.map((c) => c.supera);
@@ -215,9 +173,7 @@ function ubicarEntre(valores: number[], kg: number, fueraDeTabla: boolean): Ubic
     supera = cortes[i] + (cortes[i + 1] - cortes[i]) * t;
   }
 
-  // La categoría es la más alta cuyo umbral se alcanzó. Debajo del primero
-  // todavía no hay categoría: la fuente no le pone nombre a ese tramo, así que
-  // tampoco se lo inventamos nosotros.
+  // Debajo del primer umbral no hay categoría: la fuente no nombra ese tramo.
   let cat = -1;
   for (let i = 0; i < 5; i++) if (kg >= valores[i]) cat = i;
 
@@ -231,11 +187,8 @@ function ubicarEntre(valores: number[], kg: number, fueraDeTabla: boolean): Ubic
 }
 
 /**
- * Dónde cae un ejercicio entre la gente de su sexo y su peso corporal.
- *
- * `kg` es el 1RM estimado, el mismo número que alimenta el DOTS: si acá se
- * usara el peso crudo de la serie, dos partes de la misma pantalla estarían
- * midiendo cosas distintas.
+ * Dónde cae un ejercicio entre la gente de su sexo y su peso corporal. `kg` es
+ * el 1RM estimado, el mismo que alimenta el DOTS.
  */
 export function ubicar(
   ejercicio: EjercicioEstandar,
@@ -248,10 +201,9 @@ export function ubicar(
 }
 
 /**
- * La muestra de mujeres es MUCHO más chica en todas las fuentes —en press de
- * banca, un millón de resultados contra casi diez millones—, así que el mismo
- * número no merece la misma confianza. La app lo dice en vez de presentar los
- * dos como si fueran igual de firmes.
+ * En todas las fuentes la muestra de mujeres es mucho más chica —un millón
+ * contra casi diez en banca—, así que el número no está igual de firme y la
+ * app lo dice.
  */
 export function muestraFina(sexo: SexoEstandar): boolean {
   return sexo === 'f';

@@ -20,7 +20,7 @@ import {
   unRM,
 } from '../src/lib/reglas.ts';
 import { PLANETAS_CFG } from '../src/motor/cuerpos.ts';
-import { agruparPorDia, etiquetaDeDia } from '../src/lib/dias.ts';
+import { agruparPorDia, ESTADO_CON_DURACION, etiquetaDeDia } from '../src/lib/dias.ts';
 import {
   CATEGORIAS,
   EJERCICIOS_ESTANDAR,
@@ -29,6 +29,16 @@ import {
   ubicar,
   umbrales,
 } from '../src/lib/estandares.ts';
+import {
+  EJERCICIOS_DOTS,
+  ESTADOS_AMISTAD,
+  ESTADOS_RETO,
+  ESTADOS_SESION,
+  SEXOS,
+  TIPOS_FEEDBACK,
+  UNIDADES_PESO,
+  VISIBILIDADES,
+} from '../src/lib/tipos.ts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -2009,6 +2019,80 @@ console.log('\n32. Los estándares de fuerza: contra quién se compara');
       aceptaLaBase.length !== ['m', 'f'].length ? ['la base acepta ' + aceptaLaBase.join(',')] : []
     ),
     []
+  );
+}
+
+console.log('\n33. El vocabulario del cliente contra el que acepta la base');
+{
+  // La familia entera del bug de 'M' contra 'm': cualquier literal que el
+  // cliente compare contra un valor guardado puede estar roto en silencio.
+  // Acá NO se repiten los valores a mano —eso comprobaría que el test coincide
+  // consigo mismo—: se le pregunta a Postgres qué acepta cada `check` y se
+  // compara contra `src/lib/tipos.ts`, que es de donde sale el cliente.
+  const checks = (
+    await db.query(`
+      select conrelid::regclass::text as tabla, pg_get_constraintdef(oid) as def
+        from pg_constraint
+       where contype = 'c' and connamespace = 'public'::regnamespace
+    `)
+  ).rows;
+
+  // Postgres NO devuelve el `in (...)` que uno escribió: lo normaliza a
+  // `= ANY (ARRAY['a'::text, 'b'::text])`. Se lee de ahí, que es la forma en
+  // la que la base de verdad lo tiene guardado.
+  const laBaseAcepta = (tabla, columna) => {
+    const suyos = checks.filter(
+      // `\\b` y no `\b`: adentro de un template literal, `\b` es el carácter
+      // de retroceso, no el borde de palabra del regex. Buscaba un byte 0x08.
+      (c) => c.tabla === tabla && new RegExp(`\\b${columna}\\b`).test(c.def) && /ARRAY\[/.test(c.def)
+    );
+    if (suyos.length !== 1) return `esperaba UN check con lista para ${tabla}.${columna}, hay ${suyos.length}`;
+    const lista = suyos[0].def.match(/ARRAY\[([^\]]*)\]/);
+    if (!lista) return `no pude leer la lista de ${tabla}.${columna}`;
+    return [...lista[1].matchAll(/'([^']*)'/g)].map((m) => m[1]).sort();
+  };
+
+  const PINEADOS = [
+    ['profiles', 'sexo', SEXOS],
+    ['profiles', 'visibilidad_default', VISIBILIDADES],
+    ['profiles', 'unidad_peso', UNIDADES_PESO],
+    ['photos', 'visibilidad', VISIBILIDADES],
+    ['friendships', 'estado', ESTADOS_AMISTAD],
+    ['challenges', 'estado', ESTADOS_RETO],
+    ['sesiones', 'estado', ESTADOS_SESION],
+    ['feedback', 'tipo', TIPOS_FEEDBACK],
+  ];
+
+  for (const [tabla, columna, delCliente] of PINEADOS) {
+    chequear(
+      `${tabla}.${columna}`,
+      laBaseAcepta(tabla, columna),
+      [...delCliente].sort()
+    );
+  }
+
+  // Los tres del DOTS no son un `check` sino FILAS del catálogo, así que se
+  // preguntan igual pero a la tabla. Si a alguno le cambian el id, los
+  // estándares de fuerza dejan de encontrarlo y la sección se apaga sola.
+  const delDots = (
+    await db.query(`select id from ejercicios where cuenta_dots order by id`)
+  ).rows.map((f) => f.id);
+  chequear('los ejercicios que cuentan para el DOTS', delDots, [...EJERCICIOS_DOTS].sort());
+
+  // Los literales sueltos de los módulos que no pueden importar nada, pineados
+  // igual: son los que ningún tipo protege.
+  chequear(
+    'el estado con duración que usa Stats existe en la base',
+    ESTADOS_SESION.includes(ESTADO_CON_DURACION),
+    true
+  );
+
+  // Y los mismos tres tienen que ser los que conoce la tabla de estándares,
+  // que vive aparte porque no puede importar nada.
+  chequear(
+    'y son los mismos que conocen los estándares',
+    [...EJERCICIOS_ESTANDAR].sort(),
+    [...EJERCICIOS_DOTS].sort()
   );
 }
 

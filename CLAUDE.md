@@ -18,11 +18,45 @@ se rediscute; lo marcado PENDIENTE se pregunta antes de asumir.
 - Español rioplatense, en el código y en la interfaz.
 - Cuando toques un archivo, comentá **solo** las líneas que tienen una razón
   no obvia detrás. No comentar todo el código de una.
+- **Al terminar cada tanda, corré `npm run capturas`** y decí si cambió algo
+  respecto de la corrida anterior. Es lo que hubiera cazado "TATS" el primer
+  día.
+
+### Tests: verificar la cosa, no un proxy de la cosa
+
+- **Un test tiene que verificar por el mismo camino que recorre el usuario, no
+  por un atajo.** Las cuatro falsas señales que llevamos tienen todas la misma
+  forma —verificaban algo *parecido* a lo que importaba—:
+  - `inputValue()` lee el **DOM**, no el estado de React. El login pasaba en
+    verde con el estado vacío y el submit salía sin correo.
+  - Montevideo → Tokio son doce horas y media jornada caen en el **mismo día**:
+    la guarda que se probaba no tenía nada que bloquear.
+  - El test del día pendiente envejecía los **logs** pero no el **pendiente**,
+    así que no tocaba nunca el caso.
+  - Los estándares se probaban llamando a la función con `'M'`, que es lo que
+    el archivo tenía escrito, en vez de con lo que la **base** guarda.
 - **Un test para algo que ya funciona hay que romperlo una vez.** Escribís el
   test, rompés el código a propósito, confirmás que falla, y recién ahí lo
-  arreglás. Si pasa en verde con el código roto, no está probando nada — ya
-  nos pasó con el día pendiente, donde el test envejecía los logs pero no el
-  pendiente y la comprobación no tocaba nunca el caso.
+  arreglás. Si pasa en verde con el código roto, no está probando nada.
+- **Un literal del cliente que tiene que coincidir con un valor de la base sale
+  de `src/lib/tipos.ts`** y lo pinea la sección 33 de `test:db`, que le
+  *pregunta* a Postgres qué acepta cada `check`. Nunca repetir el valor a mano
+  en un test: eso comprueba que el archivo coincide consigo mismo.
+
+### Ahorrar tokens donde NO cuesta información
+
+Esa es la regla entera. Un informe corto que obliga a preguntar de nuevo sale
+más caro que el informe largo.
+
+**Sí recortar:** comentarios sobreescritos —solo el porqué no obvio, nunca un
+párrafo donde alcanza una línea—; repetir en el informe lo que ya está en
+`spec/` o `trampas.md`; volcar archivos al chat cuando alcanza la ruta; tablas
+de tests cuando pasan todos (el total alcanza); insistir con una herramienta
+que falla — **dos veces y preguntar**.
+
+**No recortar:** qué hiciste y por qué; los hallazgos, los bugs y las
+decisiones tomadas por cuenta propia; avisar cuando algo hace ruido o no estás
+seguro.
 
 ## Dónde
 

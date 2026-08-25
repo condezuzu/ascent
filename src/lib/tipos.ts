@@ -1,6 +1,59 @@
+// ---------------------------------------------------------------
+// EL VOCABULARIO: las palabras que la base acepta
+// ---------------------------------------------------------------
+//
+// Cada una de estas listas es la copia en el cliente de un `check (... in
+// (...))` del schema. Están acá, en un solo lugar y como VALORES —no solo como
+// tipos—, por dos razones:
+//
+//   1. Los tipos se derivan de las listas, así que no pueden separarse entre
+//      sí. Antes cada union estaba escrita a mano en su lugar.
+//   2. Una lista de valores se puede comparar contra la base en un test. Los
+//      tipos se borran al compilar y no se pueden comprobar contra nada.
+//
+// La sección 33 de `test:db` le PREGUNTA a Postgres qué acepta cada check y lo
+// compara contra esto. Es la única forma de que no vuelva a pasar lo de 'M'
+// contra 'm': el cliente filtraba por una letra que la base nunca guardó, la
+// sección entera no se dibujaba, y no había error ni test en rojo que lo
+// dijera. Ver spec/trampas.md.
+//
+// Si agregás un `check (... in (...))` nuevo al schema, agregalo también acá y
+// a la lista de la sección 33.
+
+/** `profiles.sexo` y nada más. El `null` NO está en el check: es la columna. */
+export const SEXOS = ['m', 'f'] as const;
+
+/** `profiles.visibilidad_default` y `photos.visibilidad`, el mismo par. */
+export const VISIBILIDADES = ['privada', 'amigos'] as const;
+
+/** `profiles.unidad_peso`. El peso SIEMPRE se guarda en kilos; esto es cómo se muestra. */
+export const UNIDADES_PESO = ['kg', 'lb'] as const;
+
+/** `friendships.estado`. */
+export const ESTADOS_AMISTAD = ['pendiente', 'aceptada'] as const;
+
+/** `challenges.estado`. */
+export const ESTADOS_RETO = ['pendiente', 'activo', 'terminado', 'rechazado'] as const;
+
+/** `sesiones.estado`. */
+export const ESTADOS_SESION = ['corriendo', 'terminada', 'abandonada'] as const;
+
+/** `feedback.tipo`. */
+export const TIPOS_FEEDBACK = ['bug', 'idea'] as const;
+
+/** Los tres del DOTS, que son filas de `ejercicios` con `cuenta_dots`. */
+export const EJERCICIOS_DOTS = ['sentadilla', 'press_banca', 'peso_muerto'] as const;
+
+export type Visibilidad = (typeof VISIBILIDADES)[number];
+export type UnidadPeso = (typeof UNIDADES_PESO)[number];
+export type EstadoAmistad = (typeof ESTADOS_AMISTAD)[number];
+export type EstadoReto = (typeof ESTADOS_RETO)[number];
+export type EstadoSesion = (typeof ESTADOS_SESION)[number];
+export type TipoFeedback = (typeof TIPOS_FEEDBACK)[number];
+
 // null = sin cargar, y eso significa SIN DOTS (§16.7). No es un valor por
 // defecto: no hay coeficientes neutros que sirvan.
-export type Sexo = 'm' | 'f' | null;
+export type Sexo = (typeof SEXOS)[number] | null;
 
 export type Perfil = {
   id: string;
@@ -12,8 +65,8 @@ export type Perfil = {
   racha_base: number;
   perdida_fecha: string | null;
   dias_descanso: number[];
-  visibilidad_default: 'privada' | 'amigos';
-  unidad_peso: 'kg' | 'lb';
+  visibilidad_default: Visibilidad;
+  unidad_peso: UnidadPeso;
   sexo: Sexo;
   // segundos; lo único del descanso entre series que vive en la base (§18.3)
   duracion_descanso: number;
@@ -34,7 +87,7 @@ export type Foto = {
   user_id: string;
   log_id: string | null;
   storage_path: string;
-  visibilidad: 'privada' | 'amigos';
+  visibilidad: Visibilidad;
   es_subida_de_rango: boolean;
 };
 
@@ -48,7 +101,7 @@ export type Amistad = {
   id: string;
   solicitante: string;
   destinatario: string;
-  estado: 'pendiente' | 'aceptada';
+  estado: EstadoAmistad;
 };
 
 export type Reto = {
@@ -57,7 +110,7 @@ export type Reto = {
   rival: string;
   desde: string;
   hasta: string;
-  estado: 'pendiente' | 'activo' | 'terminado' | 'rechazado';
+  estado: EstadoReto;
   ganador: string | null;
 };
 
