@@ -85,9 +85,17 @@ Lo que hay que crear (todo en el navegador, no hace falta CLI):
 Ese header es lo único que impide que cualquiera que descubra la URL nos haga
 mandar correos, así que no puede faltar.
 
-## Preparar la beta
+## Preparar la beta (congelado: va con la etapa nativa)
 
-Cinco cosas, en este orden. Las primeras dos bloquean todo lo demás.
+**Nada de esto está en el camino crítico hoy.** El plan es terminar la web,
+usarla el dueño solo una o dos semanas cazando bugs, pasarla a nativo con Expo,
+y recién ahí marketing. Sin usuarios ajenos no hace falta ninguna de las cinco
+cosas de abajo: el proyecto se queda en el plan Free, con **"Confirm email"
+apagado** —que es lo que deja correr `npm run test:e2e`— y con las cuentas de
+prueba como están.
+
+Queda escrito acá porque el día que haya gente hay que hacerlo entero, y
+averiguarlo dos veces sale caro. Las primeras dos bloquean a las demás.
 
 ### 1. SMTP propio en Auth (bloqueante)
 

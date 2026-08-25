@@ -146,27 +146,30 @@ schema de la base real. El flujo es: escribir la migración → probarla con
 
 ## Falta
 
-1. **Correr la migración 10** y probar en un teléfono de verdad lo que el
-   panel no puede: que vibre al terminar el descanso (Android), que la pantalla
-   no se apague sola mientras corre, y que el aviso llegue con la app adelante.
-2. **Gente sugerida**, con el criterio y el umbral ya decididos.
+1. **Probar en un teléfono de verdad** lo que el panel no puede: que vibre al
+   terminar el descanso (Android), que la pantalla no se apague mientras corre,
+   y que el aviso llegue con la app adelante.
+2. **Gente sugerida**: sin usuarios no tiene a quién sugerir. Espera.
+3. **Correr las migraciones 20 y 21.**
 
-## Antes de invitar gente
+## Nada de esto está en el camino crítico
 
-- [ ] **SMTP propio en Auth**: el de Supabase permite ~2 correos por hora. La
-      cuenta de Resend ya existe; falta configurarla en Authentication →
-      Emails (`smtp.resend.com:465`, usuario `resend`, la misma API key) con
-      un dominio verificado.
-- [ ] Volver a prender **"Confirm email"**, apagado para poder testear.
-- [ ] Backups automáticos confirmados en Supabase.
-- [ ] Borrar las cuentas de prueba.
-- [ ] **Rotar el JWT secret de Supabase.** La service_role key estuvo expuesta
-      (ver el webhook de sugerencias, más abajo). La migración 19 cerró la
-      ventana, así que no corre, pero la llave sigue siendo la misma. Al
-      rotarla cambia también la anon key: hay que actualizar `.env.local`, las
-      variables de Vercel y volver a desplegar, y rehacer el webhook con la
-      key nueva y un `x-ascent-secreto` nuevo.
-- [x] Eliminar cuenta y exportar datos implementados y verificados.
+**No hay beta con gente.** El plan es: terminar la web, usarla el dueño solo
+una o dos semanas cazando bugs, pasarla a nativo con Expo, y recién ahí
+marketing. Sin usuarios ajenos, todo lo que sigue **espera a la etapa nativa**
+y no bloquea nada:
+
+- SMTP propio en Auth y dominio verificado. Con un solo usuario, los 2 correos
+  por hora del SMTP de cortesía alcanzan de sobra.
+- **"Confirm email" queda APAGADO.** Es lo que deja correr `npm run test:e2e`.
+- Backups automáticos: el plan Free no tiene. Se queda en Free — no hay datos
+  de nadie más que del dueño, y el schema entero está en el repo.
+- Renombrar o borrar las cuentas de prueba. Nadie las va a encontrar.
+- Rotar las llaves. La ventana de exposición la cerró la migración 19 y no hay
+  terceros en la base. Se hace junto con el pasaje a nativo, que ya obliga a
+  tocar la configuración.
+
+El runbook completo, para cuando toque, está en el README (`Preparar la beta`).
 
 ## Cuentas de prueba vivas
 
