@@ -50,6 +50,27 @@ export type Ubicacion = {
   dejarDeVigilar(): Promise<void>;
 };
 
+/**
+ * El aviso sonoro del descanso (§13b).
+ *
+ * Lo que la web NO puede es declarar la categoría de audio del sistema... o no
+ * podía: Safari implementa la Audio Session API y ahí se puede pedir
+ * `transient`, definido como "un ping de notificación que suena por encima de
+ * la reproducción y quizá la atenúa", que es exactamente esto. En nativo se
+ * declara la categoría de verdad —ambient en iOS, foco transitorio con ducking
+ * en Android— y además suena con la app cerrada.
+ *
+ * `preparar()` va con el GESTO que abre el descanso: los navegadores no dejan
+ * crear audio sin uno, y tres minutos después ya no hay gesto.
+ */
+export type Audio = {
+  preparar(): Promise<void>;
+  avisar(): Promise<void>;
+  soltar(): Promise<void>;
+  /** Si el aviso puede sonar sin apagar lo que ya está sonando. */
+  respetaLaMusica(): boolean;
+};
+
 export type Plataforma = {
   /** Sobrevive a cerrar la app. En web, `localStorage`. */
   almacenamiento: Almacenamiento;
@@ -66,4 +87,5 @@ export type Plataforma = {
    */
   efimero: Almacenamiento;
   ubicacion: Ubicacion;
+  audio: Audio;
 };

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PRESETS_DESCANSO } from '@/lib/reglas';
+import { plataforma } from '@/plataforma';
 import {
   borrarDescanso,
   cuentaAtras,
@@ -35,20 +36,21 @@ export default function Descanso({
   const [terminado, setTerminado] = useState(() => restante(vivo.fin) === 0);
   // El aviso se dispara UNA vez. Sin esto, cada repintada volvería a vibrar.
   const yaAviso = useRef(terminado);
-  const audio = useRef<AudioContext | null>(null);
+  const sonido = useRef(false);
 
   // El sonido se prepara con el toque que abrió el descanso: los navegadores
   // no dejan crear audio sin un gesto, y a los tres minutos ya no hay gesto.
   useEffect(() => {
-    if (!leerSonido()) return;
-    try {
-      audio.current = new AudioContext();
-    } catch {
-      audio.current = null;
-    }
+    let vivo = true;
+    (async () => {
+      if (!(await leerSonido()) || !vivo) return;
+      await plataforma.audio.preparar();
+      sonido.current = true;
+    })();
     return () => {
-      audio.current?.close();
-      audio.current = null;
+      vivo = false;
+      sonido.current = false;
+      plataforma.audio.soltar();
     };
   }, []);
 
@@ -57,26 +59,7 @@ export default function Descanso({
     // con auriculares. En iPhone no vibra —WebKit no tiene Vibration API— y
     // por eso el aviso que siempre funciona es el cambio de pantalla (§18.7).
     vibrar();
-    const ctx = audio.current;
-    if (!ctx) return;
-    try {
-      ctx.resume();
-      const ahora = ctx.currentTime;
-      for (const [cuando, hz] of [[0, 880], [0.18, 1175]] as const) {
-        const osc = ctx.createOscillator();
-        const vol = ctx.createGain();
-        osc.frequency.value = hz;
-        // rampa en vez de encender y apagar: un corte seco hace "click"
-        vol.gain.setValueAtTime(0.0001, ahora + cuando);
-        vol.gain.exponentialRampToValueAtTime(0.25, ahora + cuando + 0.02);
-        vol.gain.exponentialRampToValueAtTime(0.0001, ahora + cuando + 0.14);
-        osc.connect(vol).connect(ctx.destination);
-        osc.start(ahora + cuando);
-        osc.stop(ahora + cuando + 0.16);
-      }
-    } catch {
-      /* si el navegador lo bloquea, queda el aviso visual */
-    }
+    if (sonido.current) plataforma.audio.avisar();
   }, []);
 
   // Wake Lock: sin esto la pantalla se bloquea a los treinta segundos y el

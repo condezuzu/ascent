@@ -56,10 +56,11 @@ Los puertos, en orden de implementación:
    empezar, cancelar al saltar—, así que `Descanso.tsx` pasa a llamar al puerto.
 5. **Háptica** — `disponible()`, `pulso(patron)`. `descanso.ts` ya tiene
    `vibrar()` y `puedeVibrar()`; se mudan.
-6. **Audio** — el quinto que no estaba en la lista original. No es
-   disponibilidad: la categoría de sonido (ambient en iOS, ducking en Android)
-   solo se declara desde una app nativa, y **hoy el aviso le corta la música al
-   usuario a la mitad de la serie** (§13b).
+6. **Audio** — HECHO, y resultó NO ser 100% nativo. `preparar()`, `avisar()`,
+   `soltar()`, `respetaLaMusica()`. En web: `navigator.audioSession.type =
+   'transient'` cuando existe (Safari), y el `AudioContext` suspendido salvo
+   los 400 ms que suena, que llega a todos los teléfonos. En nativo se declara
+   la categoría de verdad y además suena con la app cerrada (§13b).
 
 Y los chicos: **Wake Lock** (`expo-keep-awake`), **recorte del avatar**
 (canvas → `expo-image-manipulator`) y **exportar datos** (descarga del
@@ -153,13 +154,29 @@ Lo que la web no puede y el nativo sí:
   web el iPhone no vibra y punto. Nativo tiene acceso al motor háptico.
   Justamente donde más falta hace: en un gimnasio ruidoso, con auriculares
   puestos, un sonido se pierde y la vibración en el bolsillo no.
-- **No cortarle la música al usuario.** Esto no se arregla con más código web:
-  depende de la **categoría de audio del sistema operativo**, que solo se puede
-  declarar desde una app nativa. En iOS el aviso tiene que sonar en categoría
-  **ambient**, que se mezcla con lo que ya está sonando en vez de interrumpirlo.
-  En Android va con **audio focus transitorio con ducking**: la música baja un
-  momento y vuelve sola. En web no hay forma de pedir ninguna de las dos, así
-  que un aviso sonoro puede cortarle el tema a la mitad de la serie.
+- **No cortarle la música al usuario.** En nativo se declara la categoría de
+  audio del sistema: **ambient** en iOS, que se mezcla con lo que ya suena, y
+  **foco transitorio con ducking** en Android, donde la música baja un momento
+  y vuelve sola.
+
+  **CORREGIDO (21/8/2026):** esta sección decía que en web no había forma de
+  pedir ninguna de las dos, y era falso. Safari implementa la **Audio Session
+  API**, y ahí se puede pedir `transient`, que la especificación del W3C define
+  como "audio transitorio, como un ping de notificación; deberían sonar por
+  encima del audio de reproducción y quizá atenuarlo" — exactamente este caso.
+  Ya está implementado en `plataforma/web/audio.ts`, con detección de la API
+  porque es experimental y solo Safari la tiene.
+
+  Y hay una segunda mejora que **no depende de ninguna API** y llega a todos
+  los teléfonos: el `AudioContext` ahora vive **suspendido** salvo los 400 ms
+  que suena. Antes se creaba al abrir el descanso y quedaba despierto los tres
+  minutos enteros; un contexto despierto mantiene viva la sesión de audio del
+  sistema, así que el sospechoso más probable de "corta la música" no era el
+  bip de medio segundo sino los tres minutos de contexto abierto.
+
+  **Nada de esto está probado en un iPhone de verdad.** Va a la misma bolsa que
+  el rumor de la vibración (`trampas.md`): la afirmación original tampoco
+  estaba medida.
 
 A tener en cuenta cuando se implemente:
 

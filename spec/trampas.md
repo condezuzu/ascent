@@ -193,6 +193,17 @@ servidor, que es el único reloj confiable. Ver `cronometro.md` §17.5.
 
 ## Cosas que creemos y no probamos
 
+**"En web no se puede" también hay que verificarlo.** La spec §13b afirmaba
+que declarar la categoría de audio era imposible en web y que por eso el aviso
+del descanso cortaba la música. Las dos mitades estaban sin medir: Safari
+implementa la Audio Session API —`transient` es literalmente "un ping de
+notificación que suena por encima de la reproducción"— y el sospechoso más
+probable del corte no era el bip sino el `AudioContext` que quedaba despierto
+los tres minutos del descanso.
+→ **Regla:** un "no se puede" en la spec envejece igual que un dato. Antes de
+mandar algo a la etapa nativa porque la web no llega, comprobar que siga siendo
+cierto. Y lo nuevo tampoco está medido: sigue sin probarse en un iPhone.
+
 **El truco de vibración en iPhone: INFORMACIÓN SIN VERIFICAR.** Circula que
 `<input type="checkbox" switch>` (Safari 17.4) dispara el motor háptico si se
 lo toca por JavaScript, y que **Apple lo tapó en iOS 26.5**. Las dos mitades

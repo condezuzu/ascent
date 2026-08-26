@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
+import { plataforma } from '@/plataforma';
 import { PRESETS_DESCANSO } from '@/lib/reglas';
 import { duracionCorta, duracionValida, guardarSonido, leerSonido, puedeVibrar } from '@/lib/descanso';
 import { guardarPreferencia } from './guardar';
@@ -22,12 +23,14 @@ export default function DescansoEntreSeries({
   const [supabase] = useState(() => crearCliente());
   const [sonido, setSonido] = useState(false);
   const [vibra, setVibra] = useState(false);
+  const [respeta, setRespeta] = useState(false);
 
   // Las dos salen del navegador, así que no se pueden leer al renderizar en
   // el servidor: se leen al montar.
   useEffect(() => {
     (async () => setSonido(await leerSonido()))();
     setVibra(puedeVibrar());
+    setRespeta(plataforma.audio.respetaLaMusica());
   }, []);
 
   const actual = duracionValida(perfil.duracion_descanso);
@@ -67,6 +70,16 @@ export default function DescansoEntreSeries({
           ? 'Vibra al terminar, con la app abierta. Si la cerrás, no avisa.'
           : 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.'}
       </p>
+      {/* Misma idea que arriba: decir qué va a pasar de verdad en ESTE
+          teléfono. Si el aviso puede cortarle la música a alguien que entrena
+          con auriculares, se avisa antes de que lo prenda y no después. */}
+      {sonido && (
+        <p className="nota-privada">
+          {respeta
+            ? 'El sonido suena por encima de tu música, sin cortarla.'
+            : 'Ojo: en algunos teléfonos el sonido puede pausarte la música un instante.'}
+        </p>
+      )}
     </div>
   );
 }
