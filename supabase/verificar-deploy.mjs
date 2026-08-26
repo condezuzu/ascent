@@ -23,11 +23,19 @@ if (!correo || !clave) {
   process.exit(1);
 }
 
-/**
- * Lo que el cliente VIEJO mandaba y el nuevo ya no. Cuando haya otra migración
- * con orden invertido, se cambia esto por la marca de esa tanda.
- */
-const MARCA_VIEJA = /p_hoy|p_fecha/;
+// LA MARCA DE ESTA TANDA. Se cambia en cada migración de orden invertido.
+//
+// Hay dos formas y no siempre sirve la misma:
+//  - `rpcViejo`: algo que el cliente anterior MANDABA y el nuevo no. Sirve
+//    cuando ese RPC sale solo con abrir la app.
+//  - `textoNuevo`: algo que solo existe en el cliente nuevo, en alguna
+//    pantalla. Sirve cuando el cambio no se ve en ningún pedido, que es el
+//    caso de la 23: agrega un parámetro a `registrar_dia`, y ese RPC sale
+//    recién cuando alguien registra un día, no al entrar.
+const MARCA = {
+  rpcViejo: null,
+  textoNuevo: { ruta: '/ajustes', dice: 'Mi gimnasio' },
+};
 
 const navegador = await chromium.launch();
 const page = await navegador.newPage();
@@ -39,7 +47,7 @@ page.on('request', (r) => {
   const fn = r.url().split('/rpc/')[1].split('?')[0];
   const cuerpo = r.postData() ?? '';
   vistos.push(fn);
-  if (MARCA_VIEJA.test(cuerpo)) viejos.push(`${fn} ${cuerpo.slice(0, 120)}`);
+  if (MARCA.rpcViejo && MARCA.rpcViejo.test(cuerpo)) viejos.push(`${fn} ${cuerpo.slice(0, 120)}`);
 });
 
 try {
@@ -58,6 +66,16 @@ try {
   process.exit(1);
 }
 
+let texto = null;
+if (MARCA.textoNuevo) {
+  try {
+    await page.goto(BASE + MARCA.textoNuevo.ruta, { waitUntil: 'networkidle', timeout: 120000 });
+    texto = (await page.locator('body').innerText()).includes(MARCA.textoNuevo.dice);
+  } catch {
+    texto = false;
+  }
+}
+
 await navegador.close();
 
 console.log(`${BASE}`);
@@ -69,9 +87,15 @@ if (viejos.length) {
   console.log('\nNO corras la migración hasta que el deploy termine.');
   process.exit(1);
 }
-if (vistos.length === 0) {
-  // Silencio no es éxito: si no salió ningún RPC, no se miró nada.
+if (MARCA.textoNuevo) {
+  console.log(`"${MARCA.textoNuevo.dice}" en ${MARCA.textoNuevo.ruta}: ${texto ? 'sí' : 'NO'}`);
+  if (!texto) {
+    console.log('\nTODAVÍA VIEJO: falta lo que solo trae el cliente nuevo.');
+    process.exit(1);
+  }
+} else if (vistos.length === 0) {
+  // Silencio no es éxito: si no se miró nada, no se sabe nada.
   console.log('\nNO CONCLUYENTE: no salió ningún RPC, así que no hay nada que mirar.');
   process.exit(1);
 }
-console.log('\nDESPLEGADO: ningún RPC lleva la marca vieja. Se puede migrar.');
+console.log('\nDESPLEGADO. Se puede migrar.');

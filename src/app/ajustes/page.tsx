@@ -15,6 +15,7 @@ import ComoSeCompara from '@/components/ajustes/ComoSeCompara';
 import CorregirDias from '@/components/ajustes/CorregirDias';
 import DescansoEntreSeries from '@/components/ajustes/DescansoEntreSeries';
 import Descansos from '@/components/ajustes/Descansos';
+import Gimnasio from '@/components/ajustes/Gimnasio';
 import FotosNuevas from '@/components/ajustes/FotosNuevas';
 import MisDatos from '@/components/ajustes/MisDatos';
 import NombreUsuario from '@/components/ajustes/NombreUsuario';
@@ -94,6 +95,7 @@ export default function Ajustes() {
         <Descansos perfil={perfil} alCambiar={alCambiar} recargar={cargar} />
         <CorregirDias recargar={cargar} />
         <DescansoEntreSeries perfil={perfil} alCambiar={alCambiar} />
+        <Gimnasio perfil={perfil} alCambiar={alCambiar} />
         <NombreUsuario perfil={perfil} alCambiar={alCambiar} />
         <FotosNuevas perfil={perfil} alCambiar={alCambiar} />
         <UnidadPeso perfil={perfil} alCambiar={alCambiar} />

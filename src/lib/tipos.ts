@@ -41,6 +41,9 @@ export const ESTADOS_SESION = ['corriendo', 'terminada', 'abandonada'] as const;
 /** `feedback.tipo`. */
 export const TIPOS_FEEDBACK = ['bug', 'idea'] as const;
 
+/** `logs.origen`: de dónde salió el día. */
+export const ORIGENES_DIA = ['manual', 'ubicacion', 'salud'] as const;
+
 /** Los tres del DOTS, que son filas de `ejercicios` con `cuenta_dots`. */
 export const EJERCICIOS_DOTS = ['sentadilla', 'press_banca', 'peso_muerto'] as const;
 
@@ -50,6 +53,7 @@ export type EstadoAmistad = (typeof ESTADOS_AMISTAD)[number];
 export type EstadoReto = (typeof ESTADOS_RETO)[number];
 export type EstadoSesion = (typeof ESTADOS_SESION)[number];
 export type TipoFeedback = (typeof TIPOS_FEEDBACK)[number];
+export type OrigenDia = (typeof ORIGENES_DIA)[number];
 
 // null = sin cargar, y eso significa SIN DOTS (§16.7). No es un valor por
 // defecto: no hay coeficientes neutros que sirvan.
@@ -72,6 +76,10 @@ export type Perfil = {
   duracion_descanso: number;
   // el día que la guarda de las 20 horas dejó esperando; entra solo (§12b)
   dia_pendiente: string | null;
+  // el punto del gimnasio (§13). Privado: no sale de `profiles`.
+  gimnasio_lat: number | null;
+  gimnasio_lon: number | null;
+  gimnasio_radio: number;
 };
 
 export type Log = {
@@ -80,6 +88,7 @@ export type Log = {
   fecha: string;
   es_descanso: boolean;
   planeta_del_dia: string | null;
+  origen: OrigenDia;
 };
 
 export type Foto = {

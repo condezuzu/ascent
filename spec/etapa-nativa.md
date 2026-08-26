@@ -30,11 +30,24 @@ Los puertos, en orden de implementación:
    es asíncrona aunque en web sea sincrónica por debajo**, porque AsyncStorage
    lo es: hacerlo después habría cambiado las firmas de cinco librerías y de
    todos sus llamadores, en el peor momento.
-2. **Ubicación** — `puntoActual()`, `vigilarLlegada(punto, radio, alLlegar)`,
-   `dejarDeVigilar()`. En web `vigilarLlegada` no está y la app usa
-   `estoyEn(punto, radio)` al abrir (§13). Necesita columnas en `profiles`
-   (`gimnasio_lat`, `gimnasio_lon`, `gimnasio_radio`), que van en **la misma
-   migración** para no partirla en dos.
+2. **Ubicación** — HECHO. `disponible()`, `puntoActual()`,
+   `vigilarLlegada()`, `dejarDeVigilar()`. En web `vigilarLlegada` devuelve
+   `false` —no hay forma de que el navegador despierte a una PWA cerrada— y el
+   atajo posible es mirar al abrir la app. En nativo se registra la zona en el
+   sistema y ahí sí llega el geofencing de §13; no cambia nada alrededor.
+
+   La migración 23 trae las columnas del gimnasio **y** `logs.origen` juntas:
+   partirlo habría sido dos despliegues coordinados para una sola feature.
+
+   `registrarPorSenal(origen)` en `lib/gimnasio.ts` es el camino único por el
+   que entran ubicación y salud. La cuenta de distancia vive en `lib/geo.ts`,
+   que no importa nada para que `test:db` la pruebe: un error ahí da un número
+   creíble y equivocado, y el día simplemente no se registraría nunca.
+
+   Dos decisiones que se ven en la pantalla de Ajustes: el punto **solo se
+   marca estando en el gimnasio** —uno puesto desde casa registra días que no
+   ocurrieron— y la precisión del GPS se **suma** al radio, porque el costo no
+   es simétrico: un día de más se corrige a mano, uno de menos corta la racha.
 3. **Salud** — `disponible()`, `pedirPermiso()`, `entrenamientosDelDia(fecha)`.
    En web `disponible()` es `false` y el resto no hace nada.
 4. **Avisos** — `programar(id, cuando, texto)`, `cancelar(id)`, `permiso()`. En

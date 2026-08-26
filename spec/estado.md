@@ -12,13 +12,14 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Las 21 primeras están aplicadas; la 22 falta correr, y esta tiene orden.**
+**Las 22 primeras están aplicadas; la 23 falta correr.**
 
-La 22 borra siete parámetros que el servidor ignoraba. **Va DESPUÉS de
-desplegar la app**: mientras tanto un cliente viejo sigue andando porque los
-parámetros tienen default, pero al revés —migración primero— un cliente que
-todavía los manda no encuentra la firma y rompe. En una base nueva no
-hace falta ninguna: `supabase/schema.sql` ya las incluye a todas, y
+La 23 trae el punto del gimnasio y `logs.origen`, y **va después de desplegar
+la app**, como la 22: agrega un parámetro a `registrar_dia`, así que un cliente
+viejo llamaría una firma que ya no existe. El deploy se comprueba con
+`npm run verificar:deploy`, que mira el pedido real en vez de deducirlo.
+
+En una base nueva no hace falta ninguna: `supabase/schema.sql` ya las incluye a todas, y
 `npm run test:db` lo comprueba comparando las dos bases entera. Que PRODUCCIÓN
 coincida con el repo lo comprueba `npm run test:conexion`, que le pide a la
 base real su propio retrato — y mientras la 20 no esté aplicada, avisa que no

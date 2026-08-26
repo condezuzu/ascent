@@ -11,6 +11,7 @@ import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
 import { guardarPerfilCache, leerPerfilCache } from '@/lib/cache';
 import { marca } from '@/lib/medir';
 import { sincronizarZona } from '@/lib/zona';
+import { estoyEnElGimnasio, registrarPorSenal } from '@/lib/gimnasio';
 import { lineaDeMarcas } from '@/lib/fuerza';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -86,10 +87,6 @@ export default function Principal() {
     const [{ data: p }, { data: ls }, { data: v }, { data: cfgs }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).single(),
       supabase.from('logs').select('*').eq('user_id', uid).gte('fecha', desde).order('fecha'),
-      // TODO(quitar p_hoy): el servidor lo IGNORA desde la migración 12 —la
-      // fecha la decide él con la zona del usuario—. Se sigue mandando solo
-      // para que un cliente viejo no rompa mientras Vercel despliega. Se
-      // saca en el primer deploy posterior al 20/8/2026. Ver trampas.md.
       supabase.rpc('verificar_perdida'),
       supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
     ]);
@@ -126,6 +123,21 @@ export default function Principal() {
       const f = data as MiFuerza | null;
       if (f) setMarcas(lineaDeMarcas(f.marcas, p.unidad_peso ?? 'kg'));
     });
+
+    // El atajo de §13: abrir la app estando en el gimnasio registra el día.
+    // Va al final de todo y sin await porque pide el GPS, que tarda segundos:
+    // la pantalla no espera por esto. Y solo si el día NO está registrado, para
+    // no gastar el GPS en el 90% de las veces que se abre la app.
+    const yaHoy = (ls ?? []).some((l) => l.fecha === hoyISO());
+    if (!yaHoy && p.gimnasio_lat) {
+      estoyEnElGimnasio(p as Perfil).then(async (adentro) => {
+        if (!adentro) return;
+        const r = await registrarPorSenal(supabase, 'ubicacion');
+        // Solo se recarga si de verdad entró: si estaba bloqueado por la
+        // guarda de zona o ya estaba, no hay nada nuevo que mostrar.
+        if (r.registrado) cargar();
+      });
+    }
   }, [supabase, router, cargarSocial]);
 
   // El cronómetro vive acá desde §20: empezar pasa una vez por entrenamiento

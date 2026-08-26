@@ -34,12 +34,14 @@ import {
   ESTADOS_AMISTAD,
   ESTADOS_RETO,
   ESTADOS_SESION,
+  ORIGENES_DIA,
   SEXOS,
   TIPOS_FEEDBACK,
   UNIDADES_PESO,
   VISIBILIDADES,
 } from '../src/lib/tipos.ts';
 import { eventos } from '../src/plataforma/eventos.ts';
+import { estaAdentro, metrosEntre } from '../src/lib/geo.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -2068,6 +2070,7 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
     ['challenges', 'estado', ESTADOS_RETO],
     ['sesiones', 'estado', ESTADOS_SESION],
     ['feedback', 'tipo', TIPOS_FEEDBACK],
+    ['logs', 'origen', ORIGENES_DIA],
   ];
 
   for (const [tabla, columna, delCliente] of PINEADOS) {
@@ -2255,6 +2258,68 @@ console.log('\n37. El bus de avisos');
   const bajarD = eventos.escuchar('y', () => d++);
   eventos.emitir('y');
   chequear('el que ya estaba escuchando recibe el aviso igual', [c, d], [1, 1]);
+}
+
+console.log('\n38. Distancias y el punto del gimnasio');
+{
+  // Aca un error da un numero creible y equivocado, que es la peor clase: si
+  // la distancia diera de mas, el dia no se registraria nunca y no habria
+  // ningun error que mirar.
+  const MONTEVIDEO = { lat: -34.9011, lon: -56.1645 };
+  const BUENOS_AIRES = { lat: -34.6037, lon: -58.3816 };
+
+  // Distancia publicada entre las dos ciudades: ~205 km en linea recta.
+  const km = metrosEntre(MONTEVIDEO, BUENOS_AIRES) / 1000;
+  chequear('Montevideo a Buenos Aires da ~205 km', Math.abs(km - 205) < 5, true);
+
+  chequear('el mismo punto da cero', metrosEntre(MONTEVIDEO, MONTEVIDEO), 0);
+
+  // Un grado de latitud son ~111,3 km en cualquier meridiano.
+  const grado = metrosEntre({ lat: 0, lon: 0 }, { lat: 1, lon: 0 });
+  chequear('un grado de latitud son ~111 km', Math.abs(grado - 111195) < 500, true);
+
+  // Y a 100 m: el caso que de verdad importa, medido en la latitud de casa.
+  // 0,0009 grados de latitud son ~100 m.
+  const cien = metrosEntre(MONTEVIDEO, { lat: MONTEVIDEO.lat + 0.0009, lon: MONTEVIDEO.lon });
+  chequear('0,0009 grados son ~100 m', Math.abs(cien - 100) < 3, true);
+
+  // ---- el radio ----
+  const cerca = { lat: MONTEVIDEO.lat + 0.0005, lon: MONTEVIDEO.lon }; // ~55 m
+  const lejos = { lat: MONTEVIDEO.lat + 0.005, lon: MONTEVIDEO.lon }; // ~555 m
+  chequear('adentro del radio', estaAdentro(cerca, MONTEVIDEO, 100), true);
+  chequear('afuera del radio', estaAdentro(lejos, MONTEVIDEO, 100), false);
+
+  // La precision del GPS SUMA al radio: con 40 m de error, estar a 110 de un
+  // radio de 100 puede ser estar adentro. Se prefiere el falso positivo porque
+  // el costo no es simetrico —un dia de mas se corrige a mano, uno de menos
+  // corta la racha— y porque el registro manual nunca desaparece.
+  const justoAfuera = { lat: MONTEVIDEO.lat + 0.001, lon: MONTEVIDEO.lon }; // ~111 m
+  chequear('sin precision, 111 m queda afuera de 100', estaAdentro(justoAfuera, MONTEVIDEO, 100), false);
+  chequear('con 40 m de error, entra', estaAdentro(justoAfuera, MONTEVIDEO, 100, 40), true);
+  // Con un punto de AFUERA esto pasaba igual con `Math.max(0, ...)` y sin él
+  // —los dos dan false— así que no probaba nada. Tiene que ser un punto de
+  // adentro: ahí una precisión negativa lo sacaría, y el `max` lo impide.
+  chequear('una precision negativa no achica el radio', estaAdentro(cerca, MONTEVIDEO, 100, -1000), true);
+
+  // ---- los limites que acepta la base ----
+  const u = await nuevoUsuario();
+  const guardar = (lat, lon, radio) =>
+    db.query('update profiles set gimnasio_lat = $2, gimnasio_lon = $3, gimnasio_radio = $4 where id = $1',
+      [u, lat, lon, radio]).then(() => true).catch(() => false);
+
+  chequear('un punto valido entra', await guardar(-34.901, -56.164, 100), true);
+  chequear('media coordenada no', await guardar(-34.901, null, 100), false);
+  chequear('sin punto si entra', await guardar(null, null, 100), true);
+  chequear('un radio de 10 m no', await guardar(-34.901, -56.164, 10), false);
+  chequear('uno de 1000 m tampoco', await guardar(-34.901, -56.164, 1000), false);
+  chequear('una latitud imposible no', await guardar(-200, -56.164, 100), false);
+
+  // ---- el origen queda guardado ----
+  await comoUsuario(u);
+  await db.query(`select registrar_dia(false, null, 'ubicacion')`);
+  const o = await db.query('select origen from logs where user_id = $1', [u]);
+  chequear('el dia guarda de donde salio', o.rows[0].origen, 'ubicacion');
+  await db.exec('reset role');
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

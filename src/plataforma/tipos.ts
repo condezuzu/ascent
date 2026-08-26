@@ -30,6 +30,26 @@ export type Almacenamiento = {
   borrar(clave: string): Promise<void>;
 };
 
+export type PuntoMedido = { lat: number; lon: number; precision: number };
+
+/**
+ * Dónde está el teléfono (§13).
+ *
+ * La diferencia entre web y nativo no es de precisión sino de QUIÉN pregunta:
+ * en web la app tiene que estar abierta para mirar, en nativo se registra una
+ * zona en el sistema operativo y es el teléfono el que despierta a la app al
+ * entrar. Por eso `vigilarLlegada` devuelve `false` en web en vez de tirar:
+ * quien llama decide sin tener que preguntar antes si se puede.
+ */
+export type Ubicacion = {
+  disponible(): boolean;
+  /** `null` si el usuario no dio permiso, no hay señal o tardó demasiado. */
+  puntoActual(): Promise<PuntoMedido | null>;
+  /** `true` si quedó vigilando de verdad. En web siempre `false`. */
+  vigilarLlegada(centro: { lat: number; lon: number }, radio: number, alLlegar: () => void): Promise<boolean>;
+  dejarDeVigilar(): Promise<void>;
+};
+
 export type Plataforma = {
   /** Sobrevive a cerrar la app. En web, `localStorage`. */
   almacenamiento: Almacenamiento;
@@ -45,4 +65,5 @@ export type Plataforma = {
    * segundos de los accesorios de ayer.
    */
   efimero: Almacenamiento;
+  ubicacion: Ubicacion;
 };

@@ -325,6 +325,24 @@ no alcanza.
 
 ---
 
+## Verificar el deploy, no deducirlo
+
+**Antes de una migración con orden invertido hay que saber si producción ya
+sirve el cliente nuevo, y deducirlo falla callado.** Las dos formas obvias
+dieron respuestas que parecían buenas: el hash de los chunks cambia por el
+ENTORNO y no solo por el código, así que "distinto a mi build local" no
+significa "viejo"; y buscar `localStorage` en el bundle da lo mismo antes y
+después del puerto de almacenamiento, porque el módulo de plataforma queda
+empaquetado ahí igual.
+→ **Regla:** `npm run verificar:deploy` entra con un navegador real y mira una
+MARCA. Hay dos clases y no siempre sirve la misma: algo que el cliente viejo
+mandaba en un RPC —solo si ese RPC sale al abrir la app— o un texto que solo
+existe en el cliente nuevo. La 23 necesitó la segunda: agrega un parámetro a
+`registrar_dia`, que se llama recién cuando alguien registra un día. La sonda
+también falla si no llegó a mirar nada: silencio no es éxito.
+
+---
+
 ## Documentar no alcanza
 
 **`\b` adentro de un template literal mordió TRES veces**, la última dentro

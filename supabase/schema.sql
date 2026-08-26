@@ -86,6 +86,22 @@ create table public.profiles (
   -- ventana: un rechazo mudo cuando lo que está en juego es la racha se lee
   -- como que la app está rota (§11).
   dia_pendiente date,
+  -- El punto del gimnasio, para el registro automático (§13). Dato PRIVADO:
+  -- nunca se comparte con amigos. No hace falta nada especial —`profiles` es
+  -- solo del dueño y lo público sale por `usuarios_publicos`, que no los
+  -- incluye—, pero queda dicho para que nadie los agregue ahí.
+  gimnasio_lat numeric(9, 6),
+  gimnasio_lon numeric(9, 6),
+  -- El GPS bajo techo tiene 20 a 50 m de error: menos de 50 promete una
+  -- precisión que no existe, más de 300 agarra la cuadra entera.
+  gimnasio_radio int not null default 100
+    constraint profiles_gimnasio_radio_rango check (gimnasio_radio between 50 and 300),
+  constraint profiles_gimnasio_completo
+    check ((gimnasio_lat is null) = (gimnasio_lon is null)),
+  constraint profiles_gimnasio_rango check (
+    (gimnasio_lat is null or gimnasio_lat between -90 and 90) and
+    (gimnasio_lon is null or gimnasio_lon between -180 and 180)
+  ),
   pendiente_desde timestamptz,
   creado timestamptz not null default now()
 );
@@ -115,6 +131,11 @@ create table public.logs (
   -- comprobación fina —el día de ESTE usuario— la hacen los RPC.
   fecha date not null check (fecha <= tope_calendario()),
   es_descanso boolean not null default false,
+  -- De dónde salió el día. Ubicación y salud registran por una señal que no es
+  -- un toque, y las dos entran por `registrar_dia` con su origen: una sola
+  -- lógica de "¿ya estaba?, ¿pido la foto?, ¿aviso?" en vez de una por señal.
+  origen text not null default 'manual'
+    constraint logs_origen_valido check (origen in ('manual', 'ubicacion', 'salud')),
   planeta_del_dia text,
   creado timestamptz not null default now(),
   unique (user_id, fecha)
@@ -707,7 +728,11 @@ $$;
 -- REGISTRAR DÍA (RPC transaccional: la animación de subida de rango
 -- se dispara SOLO después de que esto confirme)
 -- -------------------------------------------------------------
-create or replace function public.registrar_dia(p_es_descanso boolean default false, p_peso numeric default null)
+create or replace function public.registrar_dia(
+  p_es_descanso boolean default false,
+  p_peso numeric default null,
+  p_origen text default 'manual'
+)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -729,7 +754,8 @@ begin
   end if;
 
   select rango_actual into rango_antes from profiles where id = uid;
-  insert into logs (user_id, fecha, es_descanso) values (uid, hoy, p_es_descanso)
+  insert into logs (user_id, fecha, es_descanso, origen)
+    values (uid, hoy, p_es_descanso, p_origen)
     returning * into nuevo_log;
   if p_peso is not null then
     insert into weights (user_id, fecha, valor) values (uid, hoy, p_peso)
@@ -1553,7 +1579,7 @@ grant select                 on public.sesiones     to authenticated;
 -- visibilidad_default y unidad_peso son preferencias del dueño y no afectan a
 -- nadie más, así que se escriben directo como username y avatar_url.
 grant update (username, avatar_url, visibilidad_default, unidad_peso, sexo,
-              duracion_descanso)
+              duracion_descanso, gimnasio_lat, gimnasio_lon, gimnasio_radio)
   on public.profiles to authenticated;
 grant update (estado)      on public.friendships to authenticated;
 grant update (estado)      on public.challenges  to authenticated;
@@ -1569,7 +1595,7 @@ revoke execute on function
   public.mejor_racha_real(uuid),
   public.descansos_vigentes(uuid, date),
   public.son_amigos(uuid, uuid),
-  public.registrar_dia(boolean, numeric),
+  public.registrar_dia(boolean, numeric, text),
   public.verificar_perdida(),
   public.recalcular_desde_cero(),
   public.cerrar_retos_vencidos(),
@@ -1614,7 +1640,7 @@ grant execute on function
   public.mejor_racha_real(uuid),
   public.descansos_vigentes(uuid, date),
   public.son_amigos(uuid, uuid),
-  public.registrar_dia(boolean, numeric),
+  public.registrar_dia(boolean, numeric, text),
   public.verificar_perdida(),
   public.recalcular_desde_cero(),
   public.cerrar_retos_vencidos(),
