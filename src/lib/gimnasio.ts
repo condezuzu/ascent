@@ -36,14 +36,29 @@ export async function registrarPorSenal(
  * Devuelve `null` cuando no se sabe: sin punto cargado, sin permiso, sin
  * señal. Nunca se confunde "no sé" con "no estás".
  */
+const CINCO_MINUTOS = 5 * 60 * 1000;
+
 export async function estoyEnElGimnasio(perfil: Perfil | null): Promise<boolean | null> {
   if (!perfil?.gimnasio_lat || !perfil.gimnasio_lon) return null;
-  const punto = await plataforma.ubicacion.puntoActual();
-  if (!punto) return null;
-  return estaAdentro(
-    punto,
-    { lat: perfil.gimnasio_lat, lon: perfil.gimnasio_lon },
-    perfil.gimnasio_radio,
-    punto.precision
-  );
+  const centro = { lat: perfil.gimnasio_lat, lon: perfil.gimnasio_lon };
+  const adentro = (p: { lat: number; lon: number; precision: number }) =>
+    estaAdentro(p, centro, perfil.gimnasio_radio, p.precision);
+
+  // Primero se acepta un arreglo de hasta cinco minutos, que suele ser
+  // instantáneo y no enciende la antena.
+  const cacheado = await plataforma.ubicacion.puntoActual(CINCO_MINUTOS);
+  if (!cacheado) return null;
+
+  // Un arreglo viejo que dice que ESTÁS en el gimnasio alcanza: estuviste ahí
+  // hace un rato, o sea que fuiste.
+  if (adentro(cacheado)) return true;
+
+  // Pero uno viejo que dice que NO estás no sirve para descartar: podés haber
+  // salido de casa hace cuatro minutos y estar llegando justo ahora. Ahí sí se
+  // paga la lectura fresca — y solo ahí.
+  const viejo = Date.now() - cacheado.medidoEn > 30000;
+  if (!viejo) return false;
+
+  const fresco = await plataforma.ubicacion.puntoActual(0);
+  return fresco ? adentro(fresco) : null;
 }

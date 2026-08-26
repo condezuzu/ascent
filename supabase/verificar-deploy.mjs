@@ -35,6 +35,19 @@ if (!correo || !clave) {
 const MARCA = {
   rpcViejo: null,
   textoNuevo: { ruta: '/ajustes', dice: 'Mi gimnasio' },
+  /**
+   * EL AUTOTEST. Un texto de la misma pantalla que tiene que estar SIEMPRE,
+   * con el cliente viejo y con el nuevo.
+   *
+   * Sin esto la sonda no sabe distinguir "no está" de "no supe mirar", y la
+   * primera versión daba TODAVÍA VIEJO de un deploy que ya había salido: leía
+   * el texto apenas la red se aquietaba, antes de que Ajustes recibiera el
+   * perfil y pintara sus secciones. Dos veredictos falsos seguidos.
+   *
+   * Se descubrió pidiéndole a mano un texto que con seguridad estaba. Ahora lo
+   * hace sola, antes de cada veredicto.
+   */
+  siempre: 'Descanso entre series',
 };
 
 const navegador = await chromium.launch();
@@ -66,12 +79,28 @@ try {
   process.exit(1);
 }
 
+const busca = async (dice) => {
+  try {
+    await page.getByText(dice, { exact: false }).first().waitFor({ timeout: 30000 });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 let texto = null;
+let supoMirar = true;
 if (MARCA.textoNuevo) {
   try {
-    await page.goto(BASE + MARCA.textoNuevo.ruta, { waitUntil: 'networkidle', timeout: 120000 });
-    texto = (await page.locator('body').innerText()).includes(MARCA.textoNuevo.dice);
+    await page.goto(BASE + MARCA.textoNuevo.ruta, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    // Primero el autotest: si no aparece lo que TIENE que estar, cualquier
+    // veredicto de abajo sería inventado.
+    supoMirar = await busca(MARCA.siempre);
+    // Se ESPERA a que aparezca, no se lee una vez: Ajustes pinta sus secciones
+    // recién cuando llega el perfil por RPC.
+    texto = supoMirar ? await busca(MARCA.textoNuevo.dice) : false;
   } catch {
+    supoMirar = false;
     texto = false;
   }
 }
@@ -88,6 +117,14 @@ if (viejos.length) {
   process.exit(1);
 }
 if (MARCA.textoNuevo) {
+  if (!supoMirar) {
+    console.log(
+      `\nNO SUPE MIRAR: no encontré "${MARCA.siempre}" en ${MARCA.textoNuevo.ruta}, y eso está\n` +
+        'con el cliente viejo y con el nuevo. El problema es de la sonda, no del deploy:\n' +
+        'la pantalla no cargó, la sesión no entró, o la marca del autotest quedó vieja.'
+    );
+    process.exit(1);
+  }
   console.log(`"${MARCA.textoNuevo.dice}" en ${MARCA.textoNuevo.ruta}: ${texto ? 'sí' : 'NO'}`);
   if (!texto) {
     console.log('\nTODAVÍA VIEJO: falta lo que solo trae el cliente nuevo.');

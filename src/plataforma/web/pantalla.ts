@@ -15,6 +15,10 @@ export const pantallaWeb: Pantalla = {
 
   async mantenerDespierta() {
     if (!this.disponible()) return false;
+    // Si ya tenemos uno vivo, no se pide otro: `mantenerDespierta` se llama de
+    // nuevo cada vez que la pantalla se vuelve a ver, y pedir sin soltar
+    // dejaría sentinelas colgados que nadie libera.
+    if (sentinela && !sentinela.released) return true;
     // Pedirlo con la pestaña oculta tira siempre: no es un error que haya que
     // mostrar, es que todavía no es el momento.
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return false;

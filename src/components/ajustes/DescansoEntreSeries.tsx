@@ -7,6 +7,7 @@ import { PRESETS_DESCANSO } from '@/lib/reglas';
 import { duracionCorta, duracionValida, guardarSonido, leerSonido, puedeVibrar } from '@/lib/descanso';
 import { guardarPreferencia } from './guardar';
 import type { Perfil } from '@/lib/tipos';
+import { T } from '@/textos';
 
 /**
  * Cuánto dura el descanso entre series (§18.5). Acá se elige el
@@ -37,7 +38,7 @@ export default function DescansoEntreSeries({
 
   return (
     <div className="seccion">
-      <h3>Descanso entre series</h3>
+      <h3>{T.ajustes.descansoEntreSeries}</h3>
       <div className="selector-vista">
         {PRESETS_DESCANSO.map((p) => (
           <button
@@ -49,7 +50,7 @@ export default function DescansoEntreSeries({
           </button>
         ))}
       </div>
-      <p className="nota-privada">Mientras descansás lo podés cambiar ahí mismo.</p>
+      <p className="nota-privada">{T.ajustes.descansoNota}</p>
 
       <button
         className="boton-texto"
@@ -60,24 +61,20 @@ export default function DescansoEntreSeries({
           guardarSonido(nuevo);
         }}
       >
-        {sonido ? 'Sonido al terminar ✓' : 'Sonido al terminar — apagado'}
+        {sonido ? T.ajustes.sonidoPrendido : T.ajustes.sonidoApagado}
       </button>
       {/* Se dice qué va a pasar de verdad en ESTE teléfono. Prometer una
           vibración que no va a llegar hace que alguien guarde el teléfono en
           el bolsillo y se coma tres minutos de descanso (§18.7). */}
       <p className="nota-privada">
-        {vibra
-          ? 'Vibra al terminar, con la app abierta. Si la cerrás, no avisa.'
-          : 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.'}
+        {vibra ? T.ajustes.vibra : T.ajustes.noVibra}
       </p>
       {/* Misma idea que arriba: decir qué va a pasar de verdad en ESTE
           teléfono. Si el aviso puede cortarle la música a alguien que entrena
           con auriculares, se avisa antes de que lo prenda y no después. */}
       {sonido && (
         <p className="nota-privada">
-          {respeta
-            ? 'El sonido suena por encima de tu música, sin cortarla.'
-            : 'Ojo: en algunos teléfonos el sonido puede pausarte la música un instante.'}
+          {respeta ? T.ajustes.sonidoRespeta : T.ajustes.sonidoCorta}
         </p>
       )}
     </div>

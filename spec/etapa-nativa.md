@@ -7,6 +7,100 @@ Lo que está acá ya está decidido y no se rediscute salvo que se indique.
 
 ---
 
+## 13w. Verlo en el teléfono: Expo Go sí, hasta que no
+
+Verificado el 21/8/2026.
+
+**Casi toda la migración se puede mirar con el QR de Expo Go**, sin compilar
+nada: alcanza con `npx expo start` y escanear. Todo lo que usa el spike está
+incluido en Expo Go — `expo-gl` (el motor), `expo-location` en primer plano,
+`async-storage`, `expo-keep-awake`, `expo-haptics`, `expo-av`.
+
+**Dos cosas obligan a un development build** (`npx expo prebuild` +
+`expo-dev-client`, que se instala una vez en el teléfono y después también se
+actualiza por QR):
+
+1. **El geofencing en segundo plano**, o sea el registro automático al llegar
+   al gimnasio — el diferencial de la app. `TaskManager` no corre en Expo Go
+   en ninguna de las dos plataformas, y sin él no hay geofencing. Hace falta
+   además `UIBackgroundModes: location` en iOS y `ACCESS_BACKGROUND_LOCATION`
+   en Android.
+2. **Salud** (§13c): ni HealthKit ni Health Connect funcionan en Expo Go.
+
+O sea: el orden natural es **hacer toda la migración visual con Expo Go**, que
+es el ciclo rápido, y armar el development build recién cuando toque la
+ubicación en segundo plano.
+
+---
+
+## 13x. El texto vertical de RACHA
+
+`writing-mode: vertical-rl` **no existe en React Native**, y es la única
+decisión de composición deliberada que tiene la app: la palabra RACHA apilada
+contra el número gigante.
+
+Hay tres caminos y ninguno es igual. Cuando toque, se prueban los tres en un
+teléfono de verdad y se elige mirando, no leyendo:
+
+1. **Rotar el contenedor** (`transform: [{ rotate: '-90deg' }]`). Es lo que
+   hace el spike. Barato, pero NO es lo mismo: el texto rota entero en vez de
+   apilarse, así que las letras quedan de costado y hay que acomodar el ancho a
+   ojo para que no empuje al número.
+2. **Una letra por línea**, cada `<Text>` en su fila. Se acerca más a lo que
+   hace `vertical-rl` de verdad, y el `letter-spacing: 0.42em` pasa a ser
+   separación entre filas. Más control, más código.
+3. **Un SVG con el texto** (`react-native-svg`). Control total de la
+   composición y escala sin pixelarse, a costa de que deja de ser texto para
+   el sistema.
+
+Mi apuesta es la 2, pero es una apuesta: la 1 ya está escrita y puede alcanzar.
+
+---
+
+## 13y. Qué de esto sigue siendo cierto
+
+Todo lo que está en este archivo llegó acá porque "en web no se puede". Eso
+**envejece igual que un dato**: la afirmación sobre el audio resultó falsa y
+había estado escrita como un hecho. Así que cada una se verifica y se firma con
+la fecha y la fuente.
+
+Reverificación completa: **21 de agosto de 2026.**
+
+| Afirmación | ¿Sigue? | Qué se comprobó |
+|---|---|---|
+| Geofencing en segundo plano | **Sí** | No hay Geofencing API en ningún navegador. La propuesta del W3C está abandonada desde hace años y una PWA no tiene acceso continuo a la ubicación: solo pedidos puntuales con la app abierta. |
+| Apple Health / Health Connect | **Sí** | HealthKit solo existe en el dispositivo y solo para apps nativas; Health Connect es un servicio del sistema Android. Ninguno expone nada al navegador, y no hay nada anunciado. |
+| Vibración en iPhone | **Sí** | WebKit nunca implementó la Vibration API y **se opone formalmente**. Sigue así en 2026. Solo Chromium la tiene. |
+| Avisar con la pantalla bloqueada | **NO del todo** | Ver abajo. |
+| Declarar la categoría de audio | **NO** | Corregido el 21/8/2026: Safari implementa la Audio Session API. Ya está usado (§13b). |
+
+### El que estaba mal: avisar con la pantalla bloqueada
+
+La spec decía que en web no llega nada con la app cerrada. Es más matizado:
+
+- **Web Push SÍ funciona en iOS**, desde 16.4, para una PWA **instalada desde
+  la pantalla de inicio**. O sea que una notificación con el teléfono bloqueado
+  es posible en web. (En la UE esto se rompió: por el DMA las PWA abren en una
+  pestaña de Safari y ahí no hay push.)
+- **Lo que NO existe es la notificación LOCAL programada.** Notification
+  Triggers nunca llegó al estándar. Para que el aviso del descanso llegue con
+  la app cerrada haría falta un **servidor que empuje** a los tres minutos, con
+  suscripción push y un scheduler.
+
+O sea: técnicamente posible, desproporcionado para un temporizador de tres
+minutos, y agrega un servidor a algo que hoy no lo necesita. **Se queda en la
+etapa nativa por costo, no por imposibilidad** — que es una razón distinta y
+hay que decirla así.
+
+### Y una que sube de categoría
+
+El rumor de los hápticos en iPhone (`trampas.md`) está **parcialmente
+confirmado**: iOS 18 agregó hápticos no estándar al `<input type="checkbox"
+switch>`. No es una API general y no sirve para un aviso de descanso, pero deja
+de ser un rumor de una sola fuente.
+
+---
+
 ## 13z. Los huecos: `src/plataforma/`
 
 Todo lo que la web no puede hacer está detrás de una interfaz, con la

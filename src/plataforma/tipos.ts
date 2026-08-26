@@ -30,7 +30,13 @@ export type Almacenamiento = {
   borrar(clave: string): Promise<void>;
 };
 
-export type PuntoMedido = { lat: number; lon: number; precision: number };
+export type PuntoMedido = {
+  lat: number;
+  lon: number;
+  precision: number;
+  /** Cuándo se midió de verdad, para distinguir un arreglo fresco de uno viejo. */
+  medidoEn: number;
+};
 
 /**
  * Dónde está el teléfono (§13).
@@ -43,8 +49,14 @@ export type PuntoMedido = { lat: number; lon: number; precision: number };
  */
 export type Ubicacion = {
   disponible(): boolean;
-  /** `null` si el usuario no dio permiso, no hay señal o tardó demasiado. */
-  puntoActual(): Promise<PuntoMedido | null>;
+  /**
+   * `null` si el usuario no dio permiso, no hay señal o tardó demasiado.
+   *
+   * `edadMaxima` en ms: cuánto se acepta reusar un arreglo anterior. Con 0
+   * siempre mide de nuevo, que enciende la antena. Ver `estoyEnElGimnasio`,
+   * que lo usa en dos pasos para no pagarla cuando no hace falta.
+   */
+  puntoActual(edadMaxima?: number): Promise<PuntoMedido | null>;
   /** `true` si quedó vigilando de verdad. En web siempre `false`. */
   vigilarLlegada(centro: { lat: number; lon: number }, radio: number, alLlegar: () => void): Promise<boolean>;
   dejarDeVigilar(): Promise<void>;

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
 import type { Perfil } from '@/lib/tipos';
+import { T } from '@/textos';
 
 /**
  * El punto del gimnasio, para que el día se registre solo (§13).
@@ -38,7 +39,7 @@ export default function Gimnasio({
 
     if (!plataforma.ubicacion.disponible()) {
       setEstado('error');
-      return setDetalle('Este teléfono no da la ubicación.');
+      return setDetalle(T.ajustes.gimnasioSinGps);
     }
 
     const punto = await plataforma.ubicacion.puntoActual();
@@ -47,7 +48,7 @@ export default function Gimnasio({
       // No se distingue "denegó" de "no hay señal" a propósito: el navegador
       // tampoco lo dice, e inventar el motivo manda a la persona a resolver el
       // problema equivocado.
-      return setDetalle('No se pudo leer la ubicación. Fijate que le hayas dado permiso a la app.');
+      return setDetalle(T.ajustes.gimnasioSinPermiso);
     }
 
     const { error } = await supabase
@@ -60,13 +61,13 @@ export default function Gimnasio({
 
     if (error) {
       setEstado('error');
-      return setDetalle('No se pudo guardar. Probá de nuevo.');
+      return setDetalle(T.general.noSePudo);
     }
     alCambiar({ gimnasio_lat: punto.lat, gimnasio_lon: punto.lon });
     setEstado('listo');
     // La precisión se muestra porque cambia lo que se puede esperar: con 200
     // metros de error el atajo va a fallar, y es mejor saberlo ahora.
-    setDetalle(`Listo, con ${Math.round(punto.precision)} m de precisión.`);
+    setDetalle(T.ajustes.gimnasioListo(Math.round(punto.precision)));
   }
 
   async function borrar() {
@@ -82,26 +83,27 @@ export default function Gimnasio({
 
   return (
     <div className="seccion">
-      <h3>Mi gimnasio</h3>
+      <h3>{T.ajustes.gimnasio}</h3>
 
       <button className="boton-fantasma" onClick={marcar} disabled={estado === 'buscando'}>
-        {estado === 'buscando' ? 'Buscando…' : puesto ? 'Volver a marcar el punto' : 'Marcar el punto'}
+        {estado === 'buscando'
+          ? T.ajustes.gimnasioBuscando
+          : puesto
+            ? T.ajustes.gimnasioRemarcar
+            : T.ajustes.gimnasioMarcar}
       </button>
 
       <p className="nota-privada">
-        Marcalo <strong>parado en la puerta de tu gimnasio</strong>. Después, abrir la app estando
-        ahí registra el día sin que aprietes nada.
+        <strong>{T.ajustes.gimnasioComo}</strong> {T.ajustes.gimnasioParaQue}
       </p>
 
       {detalle && <p className="nota-privada">{detalle}</p>}
 
       {puesto && (
         <>
-          <p className="nota-privada">
-            Ya está marcado. Nadie más lo ve: no se comparte con tus amigos.
-          </p>
+          <p className="nota-privada">{T.ajustes.gimnasioPuesto}</p>
           <button className="boton-fantasma" onClick={borrar}>
-            Borrar el punto
+            {T.ajustes.gimnasioBorrar}
           </button>
         </>
       )}

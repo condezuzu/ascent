@@ -204,14 +204,32 @@ los tres minutos del descanso.
 mandar algo a la etapa nativa porque la web no llega, comprobar que siga siendo
 cierto. Y lo nuevo tampoco está medido: sigue sin probarse en un iPhone.
 
+**Se reverificaron las cinco** el 21/8/2026, con fecha y fuente en
+`etapa-nativa.md` §13y. Tres seguían bien (geofencing, salud, vibración), una
+estaba mal (audio) y otra estaba **mal por el motivo equivocado**: avisar con
+la pantalla bloqueada SÍ se puede en web —Web Push anda en iOS desde 16.4 para
+una PWA instalada— y lo que no existe es la notificación *local* programada.
+Queda en nativo por costo, no por imposibilidad, y decirlo así importa: una
+razón equivocada no se puede volver a evaluar cuando cambian las condiciones.
+
+**La sonda de deploy también necesita su autotest.** Antes de dar un veredicto
+busca un texto que TIENE que estar con el cliente viejo y con el nuevo. Sin eso
+no distingue "no está" de "no supe mirar", y dio dos veces TODAVÍA VIEJO de un
+deploy que ya había salido: leía la pantalla apenas la red se aquietaba, antes
+de que Ajustes recibiera el perfil y pintara sus secciones.
+
 **El truco de vibración en iPhone: INFORMACIÓN SIN VERIFICAR.** Circula que
 `<input type="checkbox" switch>` (Safari 17.4) dispara el motor háptico si se
 lo toca por JavaScript, y que **Apple lo tapó en iOS 26.5**. Las dos mitades
 salen de **una sola fuente** y **nadie lo probó en un iPhone de verdad**.
 → **Regla:** tratarlo como rumor, no como dato. Sirve para no perder una tarde
-redescubriéndolo; no sirve para decidir nada. Si alguna vez el aviso de
-descanso depende de esto, se prueba en un teléfono **antes**. La vibración en
-iPhone se da por imposible en web hasta que alguien la vea funcionar.
+redescubriéndolo; no sirve para decidir nada.
+
+**Actualización del 21/8/2026:** la primera mitad quedó confirmada —iOS 18 sumó
+hápticos NO estándar al `<input type="checkbox" switch>`— y la segunda sigue sin
+verificarse. Igual no cambia nada: no es una API general y no sirve para el
+aviso de descanso. Y la Vibration API de verdad **sigue sin existir en WebKit**,
+que además se opone formalmente a implementarla.
 
 ---
 

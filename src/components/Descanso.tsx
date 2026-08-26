@@ -91,13 +91,22 @@ export default function Descanso({
       }
       repintar((n) => n + 1);
     };
-    const id = setInterval(tic, 250);
-    document.addEventListener('visibilitychange', tic);
+    // El intervalo corre SOLO con la pantalla a la vista: cuatro repintados
+    // por segundo con la app atrás no los ve nadie. `tic` también corre al
+    // volver, así que no se pierde nada — incluido el aviso, que en web solo
+    // puede sonar con la app adelante de todos modos (§13b).
+    let id: ReturnType<typeof setInterval> | undefined;
+    const arrancar = () => {
+      clearInterval(id);
+      tic();
+      if (document.visibilityState === 'visible') id = setInterval(tic, 250);
+    };
+    arrancar();
+    document.addEventListener('visibilitychange', arrancar);
     window.addEventListener('focus', tic);
-    tic();
     return () => {
       clearInterval(id);
-      document.removeEventListener('visibilitychange', tic);
+      document.removeEventListener('visibilitychange', arrancar);
       window.removeEventListener('focus', tic);
     };
   }, [vivo.fin, avisar]);

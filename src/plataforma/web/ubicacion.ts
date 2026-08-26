@@ -9,7 +9,7 @@ export const ubicacionWeb: Ubicacion = {
     return typeof navigator !== 'undefined' && 'geolocation' in navigator;
   },
 
-  async puntoActual() {
+  async puntoActual(edadMaxima = 0) {
     if (!this.disponible()) return null;
     return new Promise((resolver) => {
       navigator.geolocation.getCurrentPosition(
@@ -18,6 +18,9 @@ export const ubicacionWeb: Ubicacion = {
             lat: pos.coords.latitude,
             lon: pos.coords.longitude,
             precision: pos.coords.accuracy,
+            // Cuándo se midió DE VERDAD. Sin esto no hay forma de saber si lo
+            // que volvió es de recién o del arreglo de hace cinco minutos.
+            medidoEn: pos.timestamp,
           }),
         // Denegado, sin señal o timeout: los tres son "no sé dónde estás", y
         // la app tiene que andar entera sin esto (§13).
@@ -25,7 +28,7 @@ export const ubicacionWeb: Ubicacion = {
         // `enableHighAccuracy` porque la diferencia entre 50 y 500 metros es
         // justamente lo que decide si esto sirve. 15 s: adentro de un gimnasio
         // el primer arreglo tarda.
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: edadMaxima }
       );
     });
   },

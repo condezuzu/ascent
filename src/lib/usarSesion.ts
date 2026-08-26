@@ -91,10 +91,27 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   }, [releerCache, confirmar]);
 
   // Solo repinta: el tiempo sale siempre de restar contra el inicio (§17.5).
+  //
+  // Se PARA con la app atrás. Un repintado por segundo durante una sesión de
+  // dos horas, para un número que nadie está mirando, es la misma clase de
+  // desperdicio que el AudioContext despierto los tres minutos del descanso.
+  // Volver no pierde nada: el efecto de arriba ya reléé al hacerse visible, y
+  // el tiempo se calcula contra el inicio guardado.
   useEffect(() => {
     if (!inicio) return;
-    const id = setInterval(() => repintar((n) => n + 1), 1000);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | undefined;
+    const arrancar = () => {
+      clearInterval(id);
+      if (document.visibilityState === 'visible') {
+        id = setInterval(() => repintar((n) => n + 1), 1000);
+      }
+    };
+    arrancar();
+    document.addEventListener('visibilitychange', arrancar);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', arrancar);
+    };
   }, [inicio]);
 
   async function empezar() {

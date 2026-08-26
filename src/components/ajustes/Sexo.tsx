@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { guardarPreferencia } from './guardar';
 import type { Perfil, Sexo as SexoValor } from '@/lib/tipos';
+import { T } from '@/textos';
 
 /**
  * El sexo es un campo OPCIONAL y existe por una sola razón: DOTS usa dos
@@ -38,7 +39,7 @@ export default function Sexo({
 
   return (
     <div className="seccion">
-      <h3>Sexo — solo para el DOTS</h3>
+      <h3>{T.ajustes.sexo}</h3>
       <div className="selector-vista">
         <button className={actual === null ? 'activo' : ''} onClick={() => elegir(null)}>
           Sin cargar
@@ -52,7 +53,7 @@ export default function Sexo({
       </div>
       {/* El aviso de §16.7c no se puede acortar hasta que desaparezca: es lo
           que hace que activar el DOTS sea una decisión y no una sorpresa. */}
-      <p className="nota-privada">Sin esto no hay DOTS. El resto de tus marcas anda igual.</p>
+      <p className="nota-privada">{T.ajustes.sexoNota}</p>
       <p className="nota-privada">
         Ojo: con el DOTS puesto, tus amigos pueden deducir más o menos cuánto pesás.
       </p>

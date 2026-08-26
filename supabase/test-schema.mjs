@@ -2311,6 +2311,16 @@ console.log('\n38. Distancias y el punto del gimnasio');
   // adentro: ahí una precisión negativa lo sacaría, y el `max` lo impide.
   chequear('una precision negativa no achica el radio', estaAdentro(cerca, MONTEVIDEO, 100, -1000), true);
 
+  // ---- el arreglo viejo no puede descartar, pero si confirmar ----
+  // Abrir la app en casa deja un arreglo cacheado; cuatro minutos despues
+  // llegas al gimnasio y ese arreglo dice que estas en casa. Un "no estas"
+  // viejo NO sirve, y un "si estas" viejo si: estuviste ahi hace un rato.
+  const gim = { lat: MONTEVIDEO.lat, lon: MONTEVIDEO.lon };
+  const enCasa = { lat: MONTEVIDEO.lat + 0.02, lon: MONTEVIDEO.lon, precision: 20 };
+  const enElGim = { lat: MONTEVIDEO.lat, lon: MONTEVIDEO.lon, precision: 20 };
+  chequear('un arreglo que dice adentro alcanza', estaAdentro(enElGim, gim, 100, 20), true);
+  chequear('y uno que dice afuera, no', estaAdentro(enCasa, gim, 100, 20), false);
+
   // ---- los limites que acepta la base ----
   const u = await nuevoUsuario();
   const guardar = (lat, lon, radio) =>

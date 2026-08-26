@@ -15,6 +15,7 @@ import {
   ubicar,
   type SexoEstandar,
 } from '@/lib/estandares';
+import { T } from '@/textos';
 
 /**
  * La fuerza dentro de Stats (§16.6): acá se mira y se compara, en `/fuerza` se
@@ -62,16 +63,15 @@ export default function SeccionFuerza({
 
   return (
     <div className="seccion">
-      <h3>Fuerza</h3>
+      <h3>{T.fuerza.titulo}</h3>
 
       {sinNada ? (
         <div className="tarjeta">
           <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--sub)' }}>
-            Sentadilla, banca y peso muerto arman un número comparable con el de tus amigos,
-            pese lo que pese cada uno.
+            {T.fuerza.sinNada}
           </p>
           <Link href="/fuerza" className="boton-fantasma" style={{ marginTop: 12 }}>
-            Anotar mis marcas
+            {T.fuerza.anotarMarca}
           </Link>
         </div>
       ) : (
@@ -85,7 +85,7 @@ export default function SeccionFuerza({
                 </div>
                 {/* El exacto es SOLO del dueño (§16.7b). Decirlo acá es lo que
                     hace que la banda de los demás no parezca un error. */}
-                <p className="nota-privada">Solo vos lo ves. Tus amigos ven: {mia.banda}.</p>
+                <p className="nota-privada">{T.fuerza.soloVosLoVes(mia.banda ?? '')}</p>
               </>
             ) : (
               <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--sub)' }}>
@@ -104,7 +104,7 @@ export default function SeccionFuerza({
                   <>
                     Falta tu peso corporal, que se anota en{' '}
                     <Link href="/fuerza" className="enlace">
-                      Mis marcas
+                      {T.fuerza.misMarcas}
                     </Link>
                     . Solo lo ves vos.
                   </>
@@ -225,7 +225,7 @@ function DondeEstoy({
 
   return (
     <div className="donde-estoy">
-      <div className="donde-titulo">Dónde estoy</div>
+      <div className="donde-titulo">{T.fuerza.dondeEstoy}</div>
 
       <div className="donde-lista">
         {filas.map((f) => (
@@ -246,8 +246,9 @@ function DondeEstoy({
               // ahí no hay ninguna razón para volver. La distancia motiva sin
               // inventar una categoría que la fuente no nombra.
               <div className="donde-falta">
-                Te {f.u.faltaParaPrincipiante === 1 ? 'falta' : 'faltan'}{' '}
-                {pesoLindo(f.u.faltaParaPrincipiante, unidad)} para principiante
+                {f.u.faltaParaPrincipiante === 1
+                  ? T.fuerza.faltaParaUno(pesoLindo(f.u.faltaParaPrincipiante, unidad))
+                  : T.fuerza.faltaPara(pesoLindo(f.u.faltaParaPrincipiante, unidad))}
               </div>
             )}
           </div>
@@ -258,19 +259,20 @@ function DondeEstoy({
           mismo número no está igual de firme, y presentarlos igual sería
           darle a uno una precisión que no tiene. */}
       {muestraFina(sexo) && (
-        <p className="nota-privada">
-          La muestra de mujeres es mucho más chica que la de hombres: tomá el porcentaje como una
-          orientación, no como una medición.
-        </p>
+        <p className="nota-privada">{T.fuerza.muestraFina}</p>
       )}
       {filas.some((f) => f.u.fueraDeTabla) && (
-        <p className="nota-privada">
-          Tu peso corporal queda fuera de la tabla, así que se compara contra el extremo más
-          cercano. No lo estiramos más allá de lo que dicen los datos.
-        </p>
+        <p className="nota-privada">{T.fuerza.fueraDeTabla}</p>
       )}
+      {/* Antes decía "Strength Level 2026 · gente que anota en apps, no
+          competidores": exacto y sin significado para quien lo lee. Nombraba
+          una fuente que nadie conoce y definía la población por lo que NO es.
+          El detalle de contra quién se compara vive en Ajustes. */}
       <p className="nota-privada">
-        {FUENTE.nombre} {FUENTE.edicion} · gente que anota en apps, no competidores. Ver Ajustes.
+        {T.fuerza.contraQuien}{' '}
+        <Link href="/ajustes" className="enlace">
+          {T.fuerza.verEnAjustes}
+        </Link>
       </p>
     </div>
   );
