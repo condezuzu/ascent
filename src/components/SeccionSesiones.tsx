@@ -5,6 +5,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { duracionLinda } from '@/lib/sesiones';
 import { agruparPorDia, etiquetaDeDia, type DiaConSesiones } from '@/lib/dias';
 import type { ResumenSesiones } from '@/lib/sesiones';
+import { T } from '@/textos';
 
 /**
  * Las duraciones en Stats (§17.7). Promedio y total salen SOLO de las
@@ -42,8 +43,8 @@ export default function SeccionSesiones() {
   if (!r || (r.validas === 0 && r.abandonadas === 0 && r.cortas === 0)) return null;
 
   const fuera: string[] = [];
-  if (r.abandonadas > 0) fuera.push(`${r.abandonadas} sin duración`);
-  if (r.cortas > 0) fuera.push(`${r.cortas} de menos de 5 min`);
+  if (r.abandonadas > 0) fuera.push(T.stats.sinDuracion_(r.abandonadas));
+  if (r.cortas > 0) fuera.push(T.stats.masCortas(r.cortas));
 
   // La barra es proporcional al día más largo de los siete, no a un tope
   // fijo: lo que se compara es una semana contra sí misma.
@@ -51,20 +52,20 @@ export default function SeccionSesiones() {
 
   return (
     <div className="seccion">
-      <h3>Sesiones</h3>
+      <h3>{T.stats.sesiones}</h3>
       {r.validas > 0 ? (
         <div className="stat-grilla" style={{ marginBottom: 0 }}>
           <div className="stat-celda">
             <div className="valor">{duracionLinda(r.promedio_segundos ?? 0)}</div>
-            <div className="etiqueta">Promedio</div>
+            <div className="etiqueta">{T.stats.promedio}</div>
           </div>
           <div className="stat-celda">
             <div className="valor">{duracionLinda(r.total_segundos)}</div>
-            <div className="etiqueta">Total en {r.validas} sesiones</div>
+            <div className="etiqueta">{T.stats.totalEn(r.validas)}</div>
           </div>
         </div>
       ) : (
-        <p className="nota-privada" style={{ marginTop: 0 }}>Todavía ninguna con duración.</p>
+        <p className="nota-privada" style={{ marginTop: 0 }}>{T.stats.sinDuracion}</p>
       )}
 
       {dias.length > 0 && (
@@ -85,7 +86,7 @@ export default function SeccionSesiones() {
       )}
 
       {fuera.length > 0 && (
-        <p className="nota-privada">Fuera del promedio: {fuera.join(', ')}. Los días cuentan igual.</p>
+        <p className="nota-privada">{T.stats.fueraDelPromedio(fuera.join(', '))}</p>
       )}
     </div>
   );

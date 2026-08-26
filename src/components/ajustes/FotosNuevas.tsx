@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { guardarPreferencia } from './guardar';
 import type { Perfil } from '@/lib/tipos';
+import { T } from '@/textos';
 
 export default function FotosNuevas({
   perfil,
@@ -20,7 +21,7 @@ export default function FotosNuevas({
 
   return (
     <div className="seccion">
-      <h3>Quién ve tus fotos nuevas</h3>
+      <h3>{T.ajustes.fotosNuevas}</h3>
       <div className="selector-vista">
         {/* !== 'amigos' y no === 'privada': si algún día aparece un tercer
             valor, el botón seguro es el que menos comparte */}
@@ -28,16 +29,16 @@ export default function FotosNuevas({
           className={perfil.visibilidad_default !== 'amigos' ? 'activo' : ''}
           onClick={() => elegir('privada')}
         >
-          Solo yo
+          {T.ajustes.soloYo}
         </button>
         <button
           className={perfil.visibilidad_default === 'amigos' ? 'activo' : ''}
           onClick={() => elegir('amigos')}
         >
-          Amigos
+          {T.ajustes.amigos}
         </button>
       </div>
-      <p className="nota-privada">Cada foto se puede cambiar después, una por una.</p>
+      <p className="nota-privada">{T.ajustes.fotosNota}</p>
     </div>
   );
 }

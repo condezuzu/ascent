@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { DIAS_SEMANA, MESES, aISO, deISO, hoyISO } from '@/lib/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
+import { T } from '@/textos';
 
 type Estado = 'hecho' | 'vacio' | 'descanso' | 'futuro';
 type Celda = { fecha: string; dia: number; estado: Estado };
@@ -75,11 +76,11 @@ export default function CalendarioCorregir({ alCambiar }: { alCambiar: () => voi
 
     if (c.estado === 'hecho') {
       const { error } = await supabase.from('logs').delete().eq('user_id', uid).eq('fecha', c.fecha);
-      if (error) setError('No se pudo sacar ese día.');
+      if (error) setError(T.ajustes.noSeSaco);
       else setConLog((prev) => new Set([...prev].filter((f) => f !== c.fecha)));
     } else {
       const { error } = await supabase.from('logs').insert({ user_id: uid, fecha: c.fecha });
-      if (error) setError('No se pudo agregar ese día.');
+      if (error) setError(T.ajustes.noSeAgrego);
       else setConLog((prev) => new Set([...prev, c.fecha]));
     }
     setOcupado(null);
@@ -98,13 +99,11 @@ export default function CalendarioCorregir({ alCambiar }: { alCambiar: () => voi
   return (
     <div className="calendario">
       <div className="cal-cabecera">
-        <button onClick={() => mover(-1)} aria-label="Mes anterior">
+        <button onClick={() => mover(-1)} aria-label={T.ajustes.mesAnterior}>
           ‹
         </button>
-        <span>
-          {MESES[ancla.mes]} {ancla.anio}
-        </span>
-        <button onClick={() => mover(1)} disabled={esMesActual} aria-label="Mes siguiente">
+        <span>{T.ajustes.mesYAnio(MESES[ancla.mes], ancla.anio)}</span>
+        <button onClick={() => mover(1)} disabled={esMesActual} aria-label={T.ajustes.mesSiguiente}>
           ›
         </button>
       </div>
@@ -126,7 +125,11 @@ export default function CalendarioCorregir({ alCambiar }: { alCambiar: () => voi
             className={`cal-dia ${c.estado} ${c.fecha === hoy ? 'hoy' : ''}`}
             onClick={() => alternar(c)}
             disabled={c.estado === 'futuro' || ocupado === c.fecha}
-            aria-label={`${c.dia} — ${c.estado === 'hecho' ? 'registrado, tocá para sacarlo' : 'sin registrar, tocá para agregarlo'}`}
+            aria-label={
+              c.estado === 'hecho'
+                ? T.ajustes.diaRegistrado(c.dia)
+                : T.ajustes.diaSinRegistrar(c.dia)
+            }
           >
             {c.dia}
           </button>
@@ -134,7 +137,7 @@ export default function CalendarioCorregir({ alCambiar }: { alCambiar: () => voi
       </div>
 
       <p className="nota-privada">
-        Tocá un día para agregarlo o sacarlo. Los días de descanso salen con un guion.
+        {T.ajustes.calendarioNota}
       </p>
       {error && <p className="error-msg">{error}</p>}
     </div>

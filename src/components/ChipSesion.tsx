@@ -3,6 +3,7 @@
 import { cronoLindo, transcurrido } from '@/lib/sesiones';
 import { cuentaAtras, restante } from '@/lib/descanso';
 import type { EstadoSesion } from '@/lib/usarSesion';
+import { T } from '@/textos';
 
 /**
  * El cronómetro en la cabecera de Inicio, al lado de la racha (§20.2).
@@ -34,7 +35,7 @@ export default function ChipSesion({
     return (
       <button className="chip-sesion" onClick={alEmpezar} disabled={estado.ocupado}>
         <Reloj />
-        <span>{estado.ocupado ? '…' : 'Iniciar entrenamiento'}</span>
+        <span>{estado.ocupado ? '…' : T.inicio.iniciarEntrenamiento}</span>
       </button>
     );
   }
@@ -53,14 +54,14 @@ export default function ChipSesion({
       </span>
       {falta === null ? (
         <button className="pastilla-descanso hueca" onClick={alDescansar}>
-          Descansar
+          {T.sesion.descansar}
         </button>
       ) : (
         <button
           className={`pastilla-descanso ${falta === 0 ? 'listo' : ''}`}
           onClick={alAbrirDescanso}
         >
-          {falta === 0 ? 'Listo' : cuentaAtras(falta)}
+          {falta === 0 ? T.sesion.listo : cuentaAtras(falta)}
         </button>
       )}
     </div>

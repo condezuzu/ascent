@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { hoyISO } from '@/lib/fechas';
 import { aKilos, limites, type Unidad } from '@/lib/peso';
+import { T } from '@/textos';
 
 /**
  * Anotar el peso corporal desde donde hace falta, sin registrar un día.
@@ -32,7 +33,7 @@ export default function AnotarPeso({
     const escrito = Number(valor.replace(',', '.'));
     const tope = limites(unidad);
     if (!valor || isNaN(escrito) || escrito < tope.min || escrito > tope.max) {
-      return setError('Ese peso no da.');
+      return setError(T.peso.noDa);
     }
     setGuardando(true);
     // a la base va siempre en kilos: la unidad es solo cómo lo escribe y lo
@@ -41,7 +42,7 @@ export default function AnotarPeso({
       p_valor: Math.round(aKilos(escrito, unidad) * 100) / 100,
     });
     setGuardando(false);
-    if (err) return setError('No se pudo guardar. Probá de nuevo.');
+    if (err) return setError(T.general.noSePudo);
     setValor('');
     alGuardar();
   }
@@ -52,7 +53,7 @@ export default function AnotarPeso({
         <input
           type="text"
           inputMode="decimal"
-          placeholder={`Tu peso en ${unidad}`}
+          placeholder={T.peso.placeholder(unidad)}
           value={valor}
           onChange={(e) => setValor(e.target.value)}
         />
@@ -62,10 +63,10 @@ export default function AnotarPeso({
           onClick={guardar}
           disabled={guardando}
         >
-          {guardando ? '…' : 'Anotar'}
+          {guardando ? '…' : T.peso.anotar}
         </button>
       </div>
-      <p className="nota-privada">Solo lo ves vos. Nunca se comparte ni se muestra.</p>
+      <p className="nota-privada">{T.peso.privado}</p>
       {error && <p className="error-msg">{error}</p>}
     </>
   );

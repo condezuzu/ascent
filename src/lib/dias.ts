@@ -1,3 +1,5 @@
+import { T } from '../textos.ts';
+
 // Los días de sesión que se leen en Stats.
 //
 // No importa nada, igual que `reglas.ts`, para que `test:db` pueda cargarlo:
@@ -48,14 +50,13 @@ export function agruparPorDia(filas: FilaSesion[]): DiaConSesiones[] {
 export function etiquetaDeDia(fecha: string, hoy = new Date()): string {
   const iso = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  if (fecha === iso(hoy)) return 'Hoy';
+  if (fecha === iso(hoy)) return T.fechas.hoy;
   const ayer = new Date(hoy);
   ayer.setDate(ayer.getDate() - 1);
-  if (fecha === iso(ayer)) return 'Ayer';
+  if (fecha === iso(ayer)) return T.fechas.ayer;
   // Partido a mano: `new Date('2026-08-21')` es UTC y en UTC−3 cae el día
   // anterior.
   const [a, m, d] = fecha.split('-').map(Number);
   const f = new Date(a, m - 1, d);
-  const dias = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
-  return `${dias[f.getDay()]} ${d}`;
+  return T.fechas.diaYNumero(T.fechas.diasAbreviados[f.getDay()], d);
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { RANGOS } from '@/lib/rangos';
+import { T } from '@/textos';
 
 // Se dispara SOLO después de que la escritura en base confirmó.
 // Sin confeti, sin sonido, sin cartel de felicitaciones: el silencio es lo
@@ -48,7 +49,7 @@ export default function SubidaRango({
       <canvas ref={canvasRef} />
       {mostrarNombre && (
         <div className="subida-nombre">
-          <div className="chico">Nuevo rango</div>
+          <div className="chico">{T.sesion.nuevoRango}</div>
           <div className="grande">{nombre}</div>
         </div>
       )}

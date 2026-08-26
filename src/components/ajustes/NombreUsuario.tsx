@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { borrarPerfilCache } from '@/lib/cache';
 import type { Perfil } from '@/lib/tipos';
+import { T } from '@/textos';
 
 export default function NombreUsuario({
   perfil,
@@ -27,7 +28,7 @@ export default function NombreUsuario({
     setError('');
     if (limpio === perfil.username) return;
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(limpio)) {
-      return setError('Entre 3 y 20 caracteres, solo letras, números y guión bajo.');
+      return setError(T.ajustes.nombreFormato);
     }
     setGuardando(true);
     const { error: err } = await supabase
@@ -36,23 +37,23 @@ export default function NombreUsuario({
       .eq('id', perfil.id);
     setGuardando(false);
     if (err) {
-      if (err.code === '23505') return setError('Ese nombre ya está tomado.');
-      return setError('No se pudo guardar. Probá de nuevo.');
+      if (err.code === '23505') return setError(T.ajustes.nombreTomado);
+      return setError(T.general.noSePudo);
     }
     alCambiar({ username: limpio });
     await borrarPerfilCache(); // la caché tiene el nombre viejo
-    setAviso('Listo, ese es tu nombre ahora.');
+    setAviso(T.ajustes.nombreListo);
     setTimeout(() => setAviso(''), 3000);
   }
 
   return (
     <div className="seccion">
-      <h3>Nombre de usuario</h3>
+      <h3>{T.ajustes.nombreUsuario}</h3>
       <div style={{ display: 'flex', gap: 8 }}>
         <input
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
-          placeholder="nombre_de_usuario"
+          placeholder={T.ajustes.nombrePlaceholder}
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
@@ -64,10 +65,10 @@ export default function NombreUsuario({
           onClick={guardar}
           disabled={guardando || nombre.trim() === perfil.username}
         >
-          {guardando ? '…' : 'Guardar'}
+          {guardando ? '…' : T.general.guardar}
         </button>
       </div>
-      <p className="nota-privada">Así te encuentran tus amigos. No puede repetirse.</p>
+      <p className="nota-privada">{T.ajustes.nombreNota}</p>
       {aviso && <p className="ok-msg">{aviso}</p>}
       {error && <p className="error-msg">{error}</p>}
     </div>

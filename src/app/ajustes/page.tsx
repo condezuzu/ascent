@@ -23,6 +23,7 @@ import Sesion from '@/components/ajustes/Sesion';
 import Sexo from '@/components/ajustes/Sexo';
 import Sugerencias from '@/components/ajustes/Sugerencias';
 import UnidadPeso from '@/components/ajustes/UnidadPeso';
+import { T } from '@/textos';
 
 /**
  * Ajustes es una LISTA de secciones independientes, y cada una vive en su
@@ -75,7 +76,7 @@ export default function Ajustes() {
         velo={0.74}
       />
       <PantallaDeslizable>
-        <div className="titulo-pantalla">Ajustes</div>
+        <div className="titulo-pantalla">{T.ajustes.titulo}</div>
 
         {/* Todo lo que es "mío" vive en el perfil propio (§9): la foto, qué
             fotos ven los amigos, y la lista de amigos. Acá solo la puerta. */}
@@ -85,7 +86,7 @@ export default function Ajustes() {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 16, fontWeight: 500 }}>{perfil.username}</div>
               <div style={{ fontSize: 12, color: 'var(--apagado)', marginTop: 2 }}>
-                Tu foto, tus fotos compartidas y tus amigos
+                {T.ajustes.tuPerfil}
               </div>
             </div>
             <span style={{ color: 'var(--apagado)', fontSize: 18 }}>›</span>

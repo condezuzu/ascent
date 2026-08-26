@@ -24,6 +24,7 @@ import PantallaDeslizable from '@/components/PantallaDeslizable';
 import ChipSesion from '@/components/ChipSesion';
 import Descanso from '@/components/Descanso';
 import { usarSesion } from '@/lib/usarSesion';
+import { T } from '@/textos';
 
 type LineaSocial = { username: string; racha: number } | null;
 
@@ -174,7 +175,7 @@ export default function Principal() {
           </div>
           <div className="racha-bloque">
             <div className="racha-fila">
-              <span className="racha-label">Racha</span>
+              <span className="racha-label">{T.inicio.racha}</span>
               <span className="racha-numero esqueleto-num">·</span>
             </div>
           </div>
@@ -254,7 +255,7 @@ export default function Principal() {
 
         <div className="racha-bloque">
           <div className="racha-fila">
-            <span className="racha-label">Racha</span>
+            <span className="racha-label">{T.inicio.racha}</span>
             <span className="racha-numero">{racha}</span>
           </div>
           {/* barra de progreso al siguiente rango, sin etiqueta de texto */}
@@ -265,16 +266,16 @@ export default function Principal() {
           )}
         </div>
 
-        {avisoTiempo && <p className="aviso-tiempo">Último tramo para el {racha + 1}.</p>}
+        {avisoTiempo && <p className="aviso-tiempo">{T.inicio.ultimoTramo(racha + 1)}</p>}
         {perdida && (
-          <p className="aviso-tiempo">Se dispersó un poco de masa. Hoy se recupera.</p>
+          <p className="aviso-tiempo">{T.inicio.perdida}</p>
         )}
-        {esDescanso && <p className="aviso-tiempo">Hoy descansa. La racha sigue igual.</p>}
+        {esDescanso && <p className="aviso-tiempo">{T.inicio.hoyDescansa}</p>}
         {/* El día que la guarda dejó esperando. Se dice acá y no solo en la
             hoja: el usuario puede cerrar la app y volver, y lo que no puede
             es quedarse pensando que perdió el día (§11). */}
         {perfil.dia_pendiente && (
-          <p className="aviso-tiempo">Tu día de hoy quedó anotado y se suma solo. No lo perdiste.</p>
+          <p className="aviso-tiempo">{T.inicio.diaPendiente}</p>
         )}
 
         {/* Con el día ya registrado esto era un cartel muerto, y el día
@@ -286,7 +287,7 @@ export default function Principal() {
         {sesion.estado.corriendo ? (
           <>
             <button className="boton-solido" onClick={sesion.serieHecha}>
-              Serie hecha
+              {T.inicio.serieHecha}
             </button>
             <div className="series-fila">
               <span className="cuenta">{sesion.estado.series}</span>
@@ -296,12 +297,12 @@ export default function Principal() {
               {/* Un toque de más es fácil. Se puede deshacer toda la sesión, y
                   deshacer NO cancela el descanso: son cosas separadas. */}
               {sesion.estado.series > 0 && (
-                <button onClick={sesion.deshacerSerie} aria-label="Sacar una serie">
+                <button onClick={sesion.deshacerSerie} aria-label={T.inicio.sacarSerie}>
                   −
                 </button>
               )}
               <button className="boton-fantasma" onClick={sesion.terminar}>
-                Terminar
+                {T.sesion.terminar}
               </button>
             </div>
           </>
@@ -310,7 +311,7 @@ export default function Principal() {
             className={registradoHoy ? 'boton-fantasma' : 'boton-solido'}
             onClick={() => setHojaAbierta(true)}
           >
-            {registradoHoy ? 'Día registrado · sumar foto o peso' : 'Registrar día'}
+            {registradoHoy ? T.inicio.diaRegistradoSumar : T.inicio.registrarDia}
           </button>
         )}
         {sesion.estado.aviso && <p className="ok-msg">{sesion.estado.aviso}</p>}
@@ -334,7 +335,7 @@ export default function Principal() {
         {social && (
           <div className="linea-social">
             <span>
-              {social.username} sigue subiendo — {enDias(social.racha)}
+              {T.inicio.sigueSubiendo(social.username, enDias(social.racha))}
             </span>
           </div>
         )}
@@ -344,9 +345,9 @@ export default function Principal() {
             <div className="particulas">
               <i /><i /><i /><i />
             </div>
-            Todavía no hay nada acá.
+            {T.inicio.vacioTitulo}
             <br />
-            Registrá tu primer día y algo se empieza a formar.
+            {T.inicio.vacioPie}
           </div>
         )}
       </PantallaDeslizable>

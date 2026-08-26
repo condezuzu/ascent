@@ -12,6 +12,7 @@ import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
 import CargarMarca from '@/components/CargarMarca';
 import AnotarPeso from '@/components/AnotarPeso';
+import { T } from '@/textos';
 
 /**
  * Mis marcas: donde se cargan, se miran y se corrigen (§16).
@@ -101,8 +102,8 @@ export default function Fuerza() {
           <div className="marca-historial">
             <p className="nota-privada" style={{ marginTop: 0 }}>
               {previas.length === 1
-                ? 'Es la única que anotaste.'
-                : `Anotaste ${previas.length}. Vale la mejor.`}
+                ? T.fuerza.esLaUnica
+                : T.fuerza.cuantasAnotaste(previas.length)}
             </p>
             {previas.map((h) => (
               <div key={h.id} className="marca-previa">
@@ -121,7 +122,7 @@ export default function Fuerza() {
                   onClick={() => borrar(h.id)}
                   disabled={cargando === h.id}
                 >
-                  Borrar
+                  {T.general.borrar}
                 </button>
               </div>
             ))}
@@ -129,7 +130,7 @@ export default function Fuerza() {
               className="boton-texto"
               onClick={() => setHoja({ abierta: true, ejercicio: m.ejercicio })}
             >
-              Otra de {m.nombre.toLowerCase()}
+              {T.fuerza.otraDe(m.nombre.toLowerCase())}
             </button>
           </div>
         )}
@@ -151,54 +152,52 @@ export default function Fuerza() {
           style={{ textAlign: 'left', padding: '0 0 10px', width: 'auto' }}
           onClick={() => router.back()}
         >
-          ← Volver
+          {T.general.volver}
         </button>
 
-        <div className="titulo-pantalla">Mis marcas</div>
+        <div className="titulo-pantalla">{T.fuerza.misMarcas}</div>
 
         <button className="boton-solido" onClick={() => setHoja({ abierta: true })}>
-          Anotar una marca
+          {T.fuerza.anotarMarca}
         </button>
 
         {marcas.length === 0 ? (
           <div className="vacio-cosmico" style={{ marginTop: 30 }}>
-            Todavía no cargaste ninguna.
+            {T.fuerza.vacioTitulo}
             <br />
-            Sentadilla, banca y peso muerto son las tres que arman tu número.
+            {T.fuerza.vacioPie}
           </div>
         ) : (
           <>
             <div className="seccion" style={{ marginTop: 26 }}>
-              <h3>Las tres que cuentan</h3>
+              <h3>{T.fuerza.lasTresQueCuentan}</h3>
               {delDots.length > 0 ? (
                 <div className="tarjeta" style={{ padding: 4 }}>{delDots.map(filaMarca)}</div>
               ) : (
                 <p className="nota-privada" style={{ marginTop: 0 }}>
-                  Sentadilla, press de banca y peso muerto. Ninguna cargada todavía.
+                  {T.fuerza.ningunaCargada}
                 </p>
               )}
               {/* El DOTS necesita las TRES: con dos no hay un total parcial que
                   valga, porque no sería comparable con el de nadie. */}
               {fuerza?.falta === 'marcas' && delDots.length > 0 && (
                 <p className="nota-privada">
-                  Con {delDots.length} de 3 todavía no hay número: la fórmula compara totales, y un
-                  total incompleto no se compara con nada.
+                  {T.fuerza.faltanMarcas(delDots.length)}
                 </p>
               )}
               {fuerza?.falta === 'sexo' && (
                 <p className="nota-privada">
-                  Ya están las tres. Para el número falta cargar el sexo en{' '}
+                  {T.fuerza.yaEstanLasTres} {T.fuerza.faltaSexo}{' '}
                   <Link href="/ajustes" className="enlace">
-                    Ajustes
+                    {T.general.ajustes}
                   </Link>
-                  : la fórmula usa dos juegos de coeficientes y no se asume ninguno.
+                  {T.fuerza.faltaSexoFin}
                 </p>
               )}
               {fuerza?.falta === 'peso' && (
                 <>
                   <p className="nota-privada">
-                    Ya están las tres. Falta tu peso corporal: la fórmula compara levantamientos
-                    entre personas de distinto tamaño y sin él no hay número.
+                    {T.fuerza.yaEstanLasTres} {T.fuerza.faltaPeso}
                   </p>
                   <AnotarPeso unidad={unidad} alGuardar={cargar} />
                 </>
@@ -207,10 +206,9 @@ export default function Fuerza() {
 
             {otras.length > 0 && (
               <div className="seccion">
-                <h3>Lo demás</h3>
+                <h3>{T.fuerza.loDemas}</h3>
                 <p className="nota-privada" style={{ marginTop: 0, marginBottom: 10 }}>
-                  Anotalas todas las que quieras. Estas no entran al número: la fórmula está
-                  calibrada sobre las otras tres y sumarle ejercicios la invalida.
+                  {T.fuerza.loDemasNota}
                 </p>
                 <div className="tarjeta" style={{ padding: 4 }}>{otras.map(filaMarca)}</div>
               </div>

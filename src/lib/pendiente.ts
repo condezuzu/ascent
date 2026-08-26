@@ -1,3 +1,5 @@
+import { T } from '../textos.ts';
+
 /**
  * Lo que devuelve `registrar_dia` cuando la guarda de las 20 horas frena el
  * registro por un cambio de zona horaria (§12b).
@@ -19,14 +21,14 @@ export function estaBloqueado(r: unknown): r is Bloqueo {
 export function textoDeBloqueo(hasta: string): string {
   const cuando = new Date(hasta);
   const faltan = Math.max(0, Math.round((cuando.getTime() - Date.now()) / 60000));
-  const hora = cuando.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' });
+  const hora = cuando.toLocaleTimeString(T.general.locale, { hour: '2-digit', minute: '2-digit' });
 
   if (faltan > 60 * 20) {
     // desfasaje raro de reloj: mejor no prometer una hora que no se entiende
-    return 'Tu día quedó anotado y se suma solo en cuanto la app lo pueda confirmar.';
+    return T.bloqueo.sinHora;
   }
   if (faltan > 90) {
-    return `Cambiaste de zona horaria, así que tu día queda anotado y se suma solo a las ${hora}. No lo perdiste.`;
+    return T.bloqueo.aLaHora(hora);
   }
-  return `Cambiaste de zona horaria, así que tu día queda anotado y se suma solo en ${faltan} min. No lo perdiste.`;
+  return T.bloqueo.enMinutos(faltan);
 }

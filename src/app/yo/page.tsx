@@ -15,6 +15,7 @@ import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import RecorteCircular from '@/components/RecorteCircular';
 import ComoMeVen, { DIAS_VISIBLES, FOTOS_VISIBLES } from '@/components/ComoMeVen';
+import { T } from '@/textos';
 
 type MiFoto = {
   id: string;
@@ -141,7 +142,7 @@ export default function Yo() {
     setYoPublico((y) => (y ? { ...y, avatar_url: r.url } : y));
     // sin esto, Inicio sigue mostrando la foto vieja desde la caché local
     guardarPerfilCache(actualizado);
-    setAviso('Foto actualizada.');
+    setAviso(T.yo.fotoActualizada);
     setTimeout(() => setAviso(''), 3000);
   }
 
@@ -153,7 +154,7 @@ export default function Yo() {
     if (error) {
       // no se guardó: se vuelve a lo que dice la base
       setFotos((prev) => prev.map((x) => (x.id === f.id ? { ...x, visibilidad: f.visibilidad } : x)));
-      setError('No se pudo cambiar esa foto. Probá de nuevo.');
+      setError(T.yo.noSeCambioFoto);
     }
   }
 
@@ -168,7 +169,7 @@ export default function Yo() {
       .eq('user_id', perfil.id);
     if (error) {
       setFotos(antes);
-      setError('No se pudieron cambiar las fotos. Probá de nuevo.');
+      setError(T.yo.noSeCambiaronFotos);
     }
   }
 
@@ -176,7 +177,7 @@ export default function Yo() {
   async function quitarAmigo(id: string) {
     const { error } = await supabase.rpc('eliminar_amigo', { p_otro: id });
     setPorQuitar(null);
-    if (error) return setError('No se pudo eliminar. Probá de nuevo.');
+    if (error) return setError(T.yo.noSePudoEliminar);
     setAmigos((prev) => prev.filter((a) => a.id !== id));
   }
 
@@ -211,7 +212,7 @@ export default function Yo() {
           style={{ textAlign: 'left', padding: '0 0 10px', width: 'auto' }}
           onClick={() => router.back()}
         >
-          ← Volver
+          {T.general.volver}
         </button>
 
         <div className="yo-cabecera">
@@ -219,7 +220,7 @@ export default function Yo() {
             className="yo-foto"
             onClick={() => inputFoto.current?.click()}
             disabled={subiendo}
-            aria-label="Cambiar la foto de perfil"
+            aria-label={T.yo.cambiarFoto}
           >
             <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={104} />
             <span className="yo-lapiz" aria-hidden="true">
@@ -232,7 +233,7 @@ export default function Yo() {
             <div className="yo-nombre">{perfil.username}</div>
             <div className="yo-meta">
               <Insignia rango={perfil.rango_actual} tam={16} />
-              <span>{subiendo ? 'subiendo la foto…' : `${perfil.racha_actual} de racha`}</span>
+              <span>{subiendo ? T.yo.subiendoFoto : T.yo.deRacha(perfil.racha_actual)}</span>
             </div>
           </div>
         </div>
@@ -260,11 +261,9 @@ export default function Yo() {
           aria-pressed={comoMeVen}
         >
           <span className="rotulo">
-            <strong>Ver como lo ven los demás</strong>
+            <strong>{T.yo.comoMeVen}</strong>
             <span>
-              {comoMeVen
-                ? 'Esto es todo lo que le llega a un amigo.'
-                : 'Mirá tu perfil con los ojos de un amigo.'}
+              {comoMeVen ? T.yo.comoMeVenSi : T.yo.comoMeVenNo}
             </span>
           </span>
           <span className="interruptor" aria-hidden="true" />
@@ -272,10 +271,10 @@ export default function Yo() {
 
         {comoMeVen && (
           <div className="mirilla">
-            <div className="mirilla-etiqueta">lo que ve {amigos[0]?.username ?? 'un amigo'}</div>
+            <div className="mirilla-etiqueta">{T.yo.loQueVe(amigos[0]?.username ?? T.yo.unAmigo)}</div>
             <ComoMeVen usuario={yoPublico} logs={logs} fotos={fotosQueVen} />
             <p className="nota-privada" style={{ paddingBottom: 12 }}>
-              Tu peso y tus días de descanso no aparecen acá, y no aparecen nunca.
+              {T.yo.noApareceNunca}
             </p>
           </div>
         )}
@@ -285,9 +284,9 @@ export default function Yo() {
             {/* ---- qué fotos ven los amigos ---- */}
             <div className="seccion" style={{ marginTop: 26 }}>
               <h3>
-                Qué fotos ven tus amigos{' '}
+                {T.yo.misFotos}{' '}
                 <span className="yo-conteo">
-                  {fotos.length > 0 ? `${compartidas.length}/${fotos.length}` : ''}
+                  {fotos.length > 0 ? T.yo.deTantas(compartidas.length, fotos.length) : ''}
                 </span>
               </h3>
 
@@ -307,7 +306,7 @@ export default function Yo() {
                             <img src={f.url} alt="" loading="lazy" />
                           )}
                           <span className="album-vis">
-                            {f.visibilidad === 'privada' ? 'Solo vos' : 'Amigos'}
+                            {f.visibilidad === 'privada' ? T.album.soloVos : T.album.amigos}
                           </span>
                           {f.fecha && (
                             <div className="album-pie">
@@ -323,21 +322,20 @@ export default function Yo() {
                       onClick={() => todasA('amigos')}
                       disabled={compartidas.length === fotos.length}
                     >
-                      Compartir todas
+                      {T.yo.compartirTodas}
                     </button>
                     <button onClick={() => todasA('privada')} disabled={compartidas.length === 0}>
-                      Guardar todas
+                      {T.yo.guardarTodas}
                     </button>
                   </div>
                   <p className="nota-privada">
-                    Tocá una foto para prenderla o apagarla. Las apagadas las ves solo vos.
+                    {T.yo.tocaUnaFoto}
                   </p>
                 </>
               ) : (
                 cargado && (
                   <p className="nota-privada" style={{ marginTop: 0 }}>
-                    Todavía no sacaste ninguna. Cuando registres un día con foto, la vas a poder
-                    prender o apagar desde acá.
+                    {T.yo.sinFotos}
                   </p>
                 )
               )}
@@ -346,7 +344,7 @@ export default function Yo() {
             {/* ---- amigos ---- */}
             <div className="seccion">
               <h3>
-                Amigos <span className="yo-conteo">{amigos.length > 0 ? amigos.length : ''}</span>
+                {T.yo.amigos} <span className="yo-conteo">{amigos.length > 0 ? amigos.length : ''}</span>
               </h3>
               {amigos.length > 0 ? (
                 <div className="tarjeta">
@@ -363,14 +361,14 @@ export default function Yo() {
                             style={{ width: 'auto', padding: '6px 2px' }}
                             onClick={() => quitarAmigo(a.id)}
                           >
-                            Eliminar
+                            {T.yo.eliminar}
                           </button>
                           <button
                             className="boton-texto"
                             style={{ width: 'auto', padding: '6px 2px', color: 'var(--apagado)' }}
                             onClick={() => setPorQuitar(null)}
                           >
-                            No
+                            {T.yo.no}
                           </button>
                         </>
                       ) : (
@@ -379,7 +377,7 @@ export default function Yo() {
                           style={{ width: 'auto', padding: '6px 2px', color: 'var(--apagado)' }}
                           onClick={() => setPorQuitar(a.id)}
                         >
-                          Quitar
+                          {T.yo.quitar}
                         </button>
                       )}
                     </div>
@@ -388,7 +386,7 @@ export default function Yo() {
               ) : (
                 cargado && (
                   <p className="nota-privada" style={{ marginTop: 0 }}>
-                    Todavía no agregaste a nadie. Se buscan desde Leaderboard.
+                    {T.yo.sinAmigos}
                   </p>
                 )
               )}

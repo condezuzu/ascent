@@ -6,6 +6,7 @@ import { hoyISO } from '@/lib/fechas';
 import { aKilos, deKilos, type Unidad } from '@/lib/peso';
 import { redondear, unRM } from '@/lib/fuerza';
 import type { Ejercicio } from '@/lib/tipos';
+import { T } from '@/textos';
 
 /**
  * Hoja para cargar una marca. Se guarda lo que el usuario LEVANTÓ, no el 1RM:
@@ -51,13 +52,13 @@ export default function CargarMarca({
     setError('');
     const escrito = Number(peso.replace(',', '.'));
     if (!peso || isNaN(escrito) || escrito < tope.min || escrito > tope.max) {
-      return setError('Ese peso no da.');
+      return setError(T.peso.noDa);
     }
     const r = unaVez ? 1 : Number(reps);
     if (!Number.isInteger(r) || r < 1 || r > 20) {
-      return setError('Van de 1 a 20 veces.');
+      return setError(T.marca.vecesFuera);
     }
-    if (fecha > hoyISO()) return setError('Todavía no la levantaste.');
+    if (fecha > hoyISO()) return setError(T.marca.todaviaNo);
 
     setGuardando(true);
     const {
@@ -65,7 +66,7 @@ export default function CargarMarca({
     } = await supabase.auth.getUser();
     if (!user) {
       setGuardando(false);
-      return setError('Se cerró la sesión. Volvé a entrar.');
+      return setError(T.marca.sesionCerrada);
     }
     // a la base va siempre en kilos: la unidad es solo cómo lo escribe y lo
     // lee el usuario, igual que el peso corporal
@@ -78,7 +79,7 @@ export default function CargarMarca({
       fecha,
     });
     setGuardando(false);
-    if (err) return setError('No se pudo guardar. Probá de nuevo.');
+    if (err) return setError(T.general.noSePudo);
     alGuardar();
   }
 
@@ -92,13 +93,13 @@ export default function CargarMarca({
     <>
       <div className={`hoja-fondo ${cerrando ? 'cerrando' : ''}`} onClick={cerrar} />
       <div className={`hoja ${cerrando ? 'cerrando' : ''}`} role="dialog" aria-modal>
-        <h2>Anotar una marca</h2>
-        <p className="sub">No hace falta que sea de hoy. Queda con su fecha.</p>
+        <h2>{T.marca.titulo}</h2>
+        <p className="sub">{T.marca.sub}</p>
 
         <div className="campo">
-          <label>Ejercicio</label>
+          <label>{T.marca.ejercicio}</label>
           <select value={ejercicio} onChange={(e) => setEjercicio(e.target.value)}>
-            <optgroup label="Cuentan para el DOTS">
+            <optgroup label={T.marca.cuentanDots}>
               {delDots.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.nombre}
@@ -120,20 +121,20 @@ export default function CargarMarca({
         </div>
 
         <div className="campo">
-          <label>Cuántas veces</label>
+          <label>{T.marca.cuantasVeces}</label>
           <div className="selector-vista" style={{ marginBottom: 0 }}>
             <button className={unaVez ? 'activo' : ''} onClick={() => setUnaVez(true)}>
-              De una
+              {T.marca.deUna}
             </button>
             <button className={!unaVez ? 'activo' : ''} onClick={() => setUnaVez(false)}>
-              Varias veces
+              {T.marca.variasVeces}
             </button>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
           <div className="campo" style={{ flex: 1 }}>
-            <label>Peso</label>
+            <label>{T.marca.peso}</label>
             <input
               type="text"
               inputMode="decimal"
@@ -144,7 +145,7 @@ export default function CargarMarca({
           </div>
           {!unaVez && (
             <div className="campo" style={{ width: 110 }}>
-              <label>Veces</label>
+              <label>{T.marca.veces}</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -158,17 +159,18 @@ export default function CargarMarca({
         {!unaVez && (
           <p className="nota-privada" style={{ marginTop: -6, marginBottom: 14 }}>
             {peso && Number(peso.replace(',', '.')) > 0 && Number(reps) > 0
-              ? `Como máximo de una, te da ${redondear(
-                  unRM(Number(peso.replace(',', '.')), Number(reps), false)
-                )} ${unidad}.`
-              : 'Con eso sacamos cuánto levantarías de una.'}
-            {Number(reps) === 1 && ' Con una vez no hay nada que sacar: es el peso.'}
-            {Number(reps) > 12 && ' De 12 para arriba la cuenta se vuelve muy floja.'}
+              ? T.marca.comoMaximo(
+                  String(redondear(unRM(Number(peso.replace(',', '.')), Number(reps), false))),
+                  unidad
+                )
+              : T.marca.sacamosDeUna}
+            {Number(reps) === 1 && T.marca.unaVezNoSaca}
+            {Number(reps) > 12 && T.marca.muchasFloja}
           </p>
         )}
 
         <div className="campo">
-          <label>Cuándo</label>
+          <label>{T.marca.cuando}</label>
           <input
             type="date"
             value={fecha}
@@ -178,7 +180,7 @@ export default function CargarMarca({
         </div>
 
         <button className="boton-solido" onClick={guardar} disabled={guardando}>
-          {guardando ? 'Guardando…' : 'Anotar'}
+          {guardando ? T.sesion.guardando : T.marca.anotar}
         </button>
         {error && <p className="error-msg">{error}</p>}
       </div>

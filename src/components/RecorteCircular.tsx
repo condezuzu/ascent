@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { T } from '@/textos';
 
 const LADO_SALIDA = 512; // el avatar más grande que muestra la app es 104px
 const ZOOM_MIN = 1;
@@ -48,7 +49,7 @@ export default function RecorteCircular({
     setUrl(u);
     const im = new Image();
     im.onload = () => setImg(im);
-    im.onerror = () => setError('No se pudo abrir esa imagen.');
+    im.onerror = () => setError(T.recorte.noSeAbre);
     im.src = u;
     return () => URL.revokeObjectURL(u);
   }, [archivo]);
@@ -147,7 +148,7 @@ export default function RecorteCircular({
     const ctx = lienzo.getContext('2d');
     if (!ctx) {
       setTrabajando(false);
-      return setError('No se pudo recortar la imagen.');
+      return setError(T.recorte.noSeRecorta);
     }
 
     // De píxeles de pantalla a píxeles de la foto original.
@@ -161,7 +162,7 @@ export default function RecorteCircular({
     lienzo.toBlob(
       (blob) => {
         setTrabajando(false);
-        if (!blob) return setError('No se pudo recortar la imagen.');
+        if (!blob) return setError(T.recorte.noSeRecorta);
         alConfirmar(blob);
       },
       'image/jpeg',
@@ -172,9 +173,9 @@ export default function RecorteCircular({
   return (
     <>
       <div className="hoja-fondo" onClick={alCancelar} />
-      <div className="hoja" role="dialog" aria-label="Recortar la foto">
-        <h2>Encuadrá tu foto</h2>
-        <p className="sub">Arrastrala y agrandala hasta que quede como querés.</p>
+      <div className="hoja" role="dialog" aria-label={T.recorte.etiqueta}>
+        <h2>{T.recorte.titulo}</h2>
+        <p className="sub">{T.recorte.sub}</p>
 
         <div
           className="recorte-marco"
@@ -209,16 +210,16 @@ export default function RecorteCircular({
           step={0.01}
           value={zoom}
           onChange={(e) => setZoom(Number(e.target.value))}
-          aria-label="Acercar"
+          aria-label={T.recorte.acercar}
         />
 
         {error && <p className="error-msg">{error}</p>}
 
         <button className="boton-solido" onClick={confirmar} disabled={!img || trabajando}>
-          {trabajando ? 'Recortando…' : 'Usar esta foto'}
+          {trabajando ? T.recorte.trabajando : T.recorte.usar}
         </button>
         <button className="boton-texto" onClick={alCancelar}>
-          Cancelar
+          {T.general.cancelar}
         </button>
       </div>
     </>

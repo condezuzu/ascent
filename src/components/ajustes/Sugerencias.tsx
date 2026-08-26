@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
+import { T } from '@/textos';
 
 export default function Sugerencias({ userId }: { userId: string }) {
   const [supabase] = useState(() => crearCliente());
@@ -31,17 +32,17 @@ export default function Sugerencias({ userId }: { userId: string }) {
 
   return (
     <div className="seccion">
-      <h3>Sugerencias</h3>
+      <h3>{T.ajustes.sugerencias}</h3>
       <textarea
         rows={3}
-        placeholder="¿Algo anda mal? ¿Se te ocurrió algo? Contá acá."
+        placeholder={T.ajustes.sugerenciasPlaceholder}
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
       />
       <button className="boton-fantasma" style={{ marginTop: 8 }} onClick={mandar}>
-        Mandar
+        {T.ajustes.mandar}
       </button>
-      {enviado && <p className="ok-msg">Gracias por tu opinión, la leo yo mismo.</p>}
+      {enviado && <p className="ok-msg">{T.ajustes.sugerenciaEnviada}</p>}
     </div>
   );
 }

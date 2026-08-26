@@ -89,24 +89,23 @@ export default function SeccionFuerza({
               </>
             ) : (
               <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--sub)' }}>
-                {mia.falta === 'marcas' &&
-                  'Faltan marcas: el número sale de las tres, y con dos no se compara con nada.'}
+                {mia.falta === 'marcas' && T.fuerza.faltanMarcasCorto}
                 {mia.falta === 'sexo' && (
                   <>
-                    Para el número falta cargar el sexo en{' '}
+                    {T.fuerza.faltaSexo}{' '}
                     <Link href="/ajustes" className="enlace">
-                      Ajustes
+                      {T.general.ajustes}
                     </Link>
-                    . La fórmula usa dos juegos de coeficientes y no se asume ninguno.
+                    {T.fuerza.faltaSexoFin}
                   </>
                 )}
                 {mia.falta === 'peso' && (
                   <>
-                    Falta tu peso corporal, que se anota en{' '}
+                    {T.fuerza.faltaPesoEnMarcas}{' '}
                     <Link href="/fuerza" className="enlace">
                       {T.fuerza.misMarcas}
                     </Link>
-                    . Solo lo ves vos.
+                    {T.fuerza.faltaPesoEnMarcasFin}
                   </>
                 )}
               </p>
@@ -177,7 +176,7 @@ export default function SeccionFuerza({
           )}
 
           <Link href="/fuerza" className="boton-fantasma" style={{ marginTop: 12 }}>
-            Mis marcas
+            {T.fuerza.misMarcas}
           </Link>
         </>
       )}

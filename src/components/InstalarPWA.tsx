@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { T } from '@/textos';
 
 type EventoInstalar = Event & { prompt: () => Promise<void> };
 
@@ -28,7 +29,7 @@ export default function InstalarPWA() {
 
   return (
     <div className="seccion">
-      <h3>Instalar</h3>
+      <h3>{T.ajustes.instalar}</h3>
       {evento ? (
         <button
           className="boton-fantasma"
@@ -39,19 +40,19 @@ export default function InstalarPWA() {
               undefined;
           }}
         >
-          Instalar Ascent en este teléfono
+          {T.ajustes.instalarBoton}
         </button>
       ) : esIOS ? (
         <p style={{ fontSize: 13, color: 'var(--sub)', lineHeight: 1.6 }}>
-          En iPhone: tocá el botón de compartir en Safari y elegí{' '}
+          {T.ajustes.instalarIOS}{' '}
           <strong style={{ color: 'var(--tinta)', fontWeight: 500 }}>
-            &ldquo;Agregar a inicio&rdquo;
+            {T.ajustes.instalarIOSAccion}
           </strong>
-          . Queda como una app más.
+          {T.ajustes.instalarIOSFin}
         </p>
       ) : (
         <p style={{ fontSize: 13, color: 'var(--sub)', lineHeight: 1.6 }}>
-          Desde el menú del navegador podés agregar Ascent a la pantalla de inicio.
+          {T.ajustes.instalarNota}
         </p>
       )}
     </div>

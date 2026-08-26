@@ -6,6 +6,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { borrarPerfilCache } from '@/lib/cache';
 import { eliminarCuenta } from '@/lib/cuenta';
 import type { Perfil } from '@/lib/tipos';
+import { T } from '@/textos';
 
 // Lo último de la pantalla, y lo único que pide escribir algo a mano.
 export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
@@ -36,17 +37,16 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
     <div className="seccion">
       {!abierta ? (
         <button className="boton-texto peligro" onClick={() => setAbierta(true)}>
-          Eliminar mi cuenta
+          {T.ajustes.eliminarCuenta}
         </button>
       ) : (
         <div className="contenida peligro">
-          <h3 style={{ marginBottom: 8 }}>Eliminar mi cuenta</h3>
+          <h3 style={{ marginBottom: 8 }}>{T.ajustes.eliminarCuenta}</h3>
           <p style={{ fontSize: 14, lineHeight: 1.5, marginBottom: 12 }}>
-            Se borra todo: tus {perfil.racha_actual} días de racha, tus fotos, tus pesos, tus
-            marcas y tus amigos. No hay forma de recuperarlo, ni siquiera pidiéndomelo.
+            {T.ajustes.bajaQueSeBorra(perfil.racha_actual)}
           </p>
           <p className="nota-privada" style={{ marginTop: 0, marginBottom: 8 }}>
-            Si querés seguir, escribí <strong>{perfil.username}</strong> acá abajo.
+            {T.ajustes.bajaEscribi} <strong>{perfil.username}</strong> {T.ajustes.bajaEscribiFin}
           </p>
           <input
             value={confirmacion}
@@ -62,7 +62,7 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
               onClick={borrar}
               disabled={borrando || confirmacion.trim() !== perfil.username}
             >
-              {borrando ? 'Borrando…' : 'Eliminar para siempre'}
+              {borrando ? T.ajustes.bajaBorrando : T.ajustes.bajaConfirmar}
             </button>
             <button
               className="boton-fantasma"
@@ -74,7 +74,7 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
               }}
               disabled={borrando}
             >
-              Mejor no
+              {T.ajustes.mejorNo}
             </button>
           </div>
           {error && <p className="error-msg">{error}</p>}

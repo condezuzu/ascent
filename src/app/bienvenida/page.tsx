@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { marcarRecorridoVisto } from '@/lib/guia';
 import FondoEspacial from '@/components/FondoEspacial';
+import { T } from '@/textos';
 
 /**
  * Recorrido de bienvenida: tres pantallas cortas, saltables, entre elegir el
@@ -19,20 +20,7 @@ import FondoEspacial from '@/components/FondoEspacial';
  * Se puede volver a ver desde Ajustes.
  */
 
-const PASOS = [
-  {
-    titulo: 'Registrás el día',
-    texto: 'Cada vez que vas al gimnasio, lo marcás acá. Un día atrás del otro, eso es tu racha.',
-  },
-  {
-    titulo: 'Y algo se va formando',
-    texto: 'Eso que se mueve atrás cambia con tu racha. Hasta dónde llega, lo vas a ver vos.',
-  },
-  {
-    titulo: 'Los descansos no te cortan',
-    texto: 'Elegís tus días libres una vez, en Ajustes. Y si igual se te corta, no volvés a cero.',
-  },
-];
+const PASOS = T.guia.pasos;
 
 // Solo el principio de la escalera: alcanza para que se entienda que esto
 // evoluciona, y no delata ni cuántos escalones hay ni cómo termina.
@@ -91,7 +79,7 @@ export default function Bienvenida() {
 
       <div className="guia">
         <button className="guia-saltar" onClick={terminar}>
-          Saltar
+          {T.guia.saltar}
         </button>
 
         {/* El paso no se cuenta con puntitos centrados: es una regla fina
@@ -109,7 +97,7 @@ export default function Bienvenida() {
         </div>
 
         <button className="boton-solido" onClick={siguiente}>
-          {paso === PASOS.length - 1 ? 'Entendido' : 'Seguir'}
+          {paso === PASOS.length - 1 ? T.guia.entendido : T.guia.seguir}
         </button>
       </div>
     </>

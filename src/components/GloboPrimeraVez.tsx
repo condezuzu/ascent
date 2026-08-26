@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { faltaElGlobo, marcarGloboVisto, type Globo } from '@/lib/guia';
+import { T } from '@/textos';
 
 /**
  * Una línea explicando para qué sirve la pantalla, la primera vez que se
@@ -45,7 +46,7 @@ export default function GloboPrimeraVez({ cual, children }: { cual: Globo; child
   return (
     <div className={`globo ${cerrando ? 'cerrando' : ''}`}>
       <p>{children}</p>
-      <button onClick={cerrar} aria-label="Entendido">
+      <button onClick={cerrar} aria-label={T.general.entendido}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
           <path d="M6 6l12 12M18 6L6 18" />
         </svg>

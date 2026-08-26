@@ -1,3 +1,5 @@
+import { T } from '../textos.ts';
+
 // Contra quién se compara la fuerza: gente que anota en una app, no
 // competidores. La elección cambia el resultado entero —80 kg y 132 de
 // sentadilla es la mediana acá y casi el último entre federados— y por eso la
@@ -22,11 +24,11 @@ export const FUENTE = {
 
 /** Las cinco categorías, con el porcentaje de gente que cada una supera. */
 export const CATEGORIAS = [
-  { clave: 'principiante', nombre: 'Principiante', supera: 5 },
-  { clave: 'novato', nombre: 'Novato', supera: 20 },
-  { clave: 'intermedio', nombre: 'Intermedio', supera: 50 },
-  { clave: 'avanzado', nombre: 'Avanzado', supera: 80 },
-  { clave: 'elite', nombre: 'Élite', supera: 95 },
+  { clave: 'principiante', nombre: T.fuerza.categorias.principiante, supera: 5 },
+  { clave: 'novato', nombre: T.fuerza.categorias.novato, supera: 20 },
+  { clave: 'intermedio', nombre: T.fuerza.categorias.intermedio, supera: 50 },
+  { clave: 'avanzado', nombre: T.fuerza.categorias.avanzado, supera: 80 },
+  { clave: 'elite', nombre: T.fuerza.categorias.elite, supera: 95 },
 ] as const;
 
 // Minúscula, como lo guarda la base. Con mayúsculas el bloque entero no se
@@ -179,7 +181,7 @@ function ubicarEntre(valores: number[], kg: number, fueraDeTabla: boolean): Ubic
 
   return {
     supera: Math.min(99, Math.max(1, Math.round(supera))),
-    categoria: cat < 0 ? 'Arrancando' : CATEGORIAS[cat].nombre,
+    categoria: cat < 0 ? T.fuerza.categorias.arrancando : CATEGORIAS[cat].nombre,
     clave: cat < 0 ? 'arrancando' : CATEGORIAS[cat].clave,
     fueraDeTabla,
     faltaParaPrincipiante: cat < 0 ? Math.round((valores[0] - kg) * 10) / 10 : null,

@@ -6,6 +6,7 @@ import { fechaLinda, hoyISO } from '@/lib/fechas';
 import { aKilos, limites, type Unidad } from '@/lib/peso';
 import { estaBloqueado, textoDeBloqueo } from '@/lib/pendiente';
 import type { ResultadoRegistro } from '@/lib/tipos';
+import { T } from '@/textos';
 
 /**
  * Hoja de registro del día: foto opcional y peso opcional.
@@ -96,7 +97,7 @@ export default function RegistrarSheet({
   async function confirmar() {
     setError('');
     const kilos = pesoEnKilos();
-    if (kilos === undefined) return setError('Ese peso no da.');
+    if (kilos === undefined) return setError(T.peso.noDa);
     setCargando(true);
 
     // ---- el día YA está: solo se agrega lo que falte ----
@@ -105,7 +106,7 @@ export default function RegistrarSheet({
         const { error: errPeso } = await supabase.rpc('anotar_peso', { p_valor: kilos });
         if (errPeso) {
           setCargando(false);
-          return setError('No se pudo guardar el peso. Probá de nuevo.');
+          return setError(T.registrar.noSeGuardoElPeso);
         }
       }
       await subirFoto(logId ?? null, false);
@@ -121,8 +122,8 @@ export default function RegistrarSheet({
 
     if (errRpc) {
       setCargando(false);
-      if (errRpc.code === '23505') return setError('Este día ya está registrado.');
-      return setError('No se pudo guardar. Probá de nuevo.');
+      if (errRpc.code === '23505') return setError(T.registrar.diaYaRegistrado);
+      return setError(T.general.noSePudo);
     }
 
     // La guarda de las 20 horas por cambio de zona no es un error: el día
@@ -145,11 +146,11 @@ export default function RegistrarSheet({
     <>
       <div className={`hoja-fondo ${cerrando ? 'cerrando' : ''}`} onClick={cerrar} />
       <div className={`hoja ${cerrando ? 'cerrando' : ''}`} role="dialog" aria-modal>
-        <h2>{yaEsta ? 'Sumar al día' : esHoy ? `Día ${racha + 1}` : 'Corregir día'}</h2>
+        <h2>{yaEsta ? T.registrar.sumarAlDia : esHoy ? T.registrar.diaN(racha + 1) : T.registrar.corregirDia}</h2>
         <p className="sub">{fechaLinda(dia)}</p>
 
         <div className="campo">
-          <label>Foto</label>
+          <label>{T.registrar.foto}</label>
           <input
             ref={inputFoto}
             type="file"
@@ -162,7 +163,7 @@ export default function RegistrarSheet({
             className="boton-fantasma"
             onClick={() => inputFoto.current?.click()}
           >
-            {foto ? foto.name : 'Agregar foto'}
+            {foto ? foto.name : T.registrar.agregarFoto}
           </button>
           {foto && (
             <button
@@ -170,13 +171,13 @@ export default function RegistrarSheet({
               className="boton-texto"
               onClick={() => setFotoVisible(!fotoVisible)}
             >
-              {fotoVisible ? 'La ven tus amigos ✓' : 'Solo la ves vos — tocá para compartirla'}
+              {fotoVisible ? T.registrar.laVenAmigos : T.registrar.soloLaVesVos}
             </button>
           )}
         </div>
 
         <div className="campo">
-          <label>Peso</label>
+          <label>{T.registrar.peso}</label>
           <input
             type="text"
             inputMode="decimal"
@@ -187,7 +188,7 @@ export default function RegistrarSheet({
         </div>
 
         <button className="boton-solido" onClick={confirmar} disabled={cargando}>
-          {cargando ? 'Guardando…' : yaEsta ? 'Guardar' : 'Registrar día'}
+          {cargando ? T.sesion.guardando : yaEsta ? T.general.guardar : T.inicio.registrarDia}
         </button>
         {aviso && <p className="ok-msg">{aviso}</p>}
         {error && <p className="error-msg">{error}</p>}

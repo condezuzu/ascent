@@ -1,4 +1,5 @@
 import { TOPE_SESION_SEGUNDOS } from '@/lib/reglas';
+import { T } from '../textos.ts';
 
 export type SesionViva = {
   corriendo: boolean;
@@ -61,7 +62,7 @@ export function duracionLinda(segundos: number): string {
   const total = Math.round(segundos / 60);
   const h = Math.floor(total / 60);
   const m = total % 60;
-  if (h === 0) return `${m} min`;
-  if (m === 0) return `${h} h`;
-  return `${h} h ${m} min`;
+  if (h === 0) return T.fechas.minutos(m);
+  if (m === 0) return T.fechas.horas(h);
+  return T.fechas.horasYMinutos(h, m);
 }

@@ -12,6 +12,7 @@ import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
+import { T } from '@/textos';
 
 type Solicitud = { id: string; de: UsuarioPublico };
 type Actividad = {
@@ -132,7 +133,7 @@ export default function Social() {
       }
       setActividad(
         (ls ?? []).map((l) => ({
-          username: mapaUsuarios.get(l.user_id)?.username ?? '¿?',
+          username: mapaUsuarios.get(l.user_id)?.username ?? T.social.sinNombre,
           userId: l.user_id,
           avatar: mapaUsuarios.get(l.user_id)?.avatar_url ?? null,
           fecha: l.fecha,
@@ -203,10 +204,10 @@ export default function Social() {
     <>
       <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.68} />
       <PantallaDeslizable>
-        <div className="titulo-pantalla">Leaderboard</div>
+        <div className="titulo-pantalla">{T.social.titulo}</div>
 
         <GloboPrimeraVez cual="leaderboard">
-          Acá comparás tu racha con la de tus amigos, y buscás gente para sumar.
+          {T.social.globo}
         </GloboPrimeraVez>
 
         {solicitudes.length > 0 && (
@@ -216,14 +217,14 @@ export default function Social() {
                 <Avatar url={s.de.avatar_url} nombre={s.de.username} />
                 <span className="nombre">{s.de.username}</span>
                 <button className="boton-texto" style={{ width: 'auto' }} onClick={() => aceptar(s.id)}>
-                  Aceptar
+                  {T.social.aceptar}
                 </button>
                 <button
                   className="boton-texto"
                   style={{ width: 'auto', color: 'var(--apagado)' }}
                   onClick={() => rechazar(s.id)}
                 >
-                  No
+                  {T.social.no}
                 </button>
               </div>
             ))}
@@ -233,18 +234,18 @@ export default function Social() {
         {retosPendientesMios.map((r) => (
           <div className="tarjeta" key={r.id} style={{ marginBottom: 16 }}>
             <p style={{ fontSize: 14, marginBottom: 12 }}>
-              {r.nombreRival} te retó a 7 días: quien entrene más, gana.
+              {T.social.teReto(r.nombreRival)}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="boton-solido" style={{ flex: 1 }} onClick={() => responderReto(r.id, true)}>
-                Acepto
+                {T.social.acepto}
               </button>
               <button
                 className="boton-fantasma"
                 style={{ flex: 1, width: 'auto' }}
                 onClick={() => responderReto(r.id, false)}
               >
-                Paso
+                {T.social.paso}
               </button>
             </div>
           </div>
@@ -254,10 +255,10 @@ export default function Social() {
           <>
             <div className="selector-vista">
               <button className={vista === 'campo' ? 'activo' : ''} onClick={() => setVista('campo')}>
-                Campo
+                {T.social.campo}
               </button>
               <button className={vista === 'lista' ? 'activo' : ''} onClick={() => setVista('lista')}>
-                Lista
+                {T.social.lista}
               </button>
             </div>
 
@@ -273,7 +274,7 @@ export default function Social() {
                   const contenido = (
                     <>
                       <Insignia rango={a.rango_actual} tam={tam} />
-                      <span className="etiqueta">{a.id === miId ? 'vos' : a.username}</span>
+                      <span className="etiqueta">{a.id === miId ? T.social.vos : a.username}</span>
                     </>
                   );
                   const estilo = {
@@ -302,7 +303,7 @@ export default function Social() {
                         {i + 1}
                       </span>
                       <Insignia rango={a.rango_actual} />
-                      <span className="nombre">{a.id === miId ? `${a.username} (vos)` : a.username}</span>
+                      <span className="nombre">{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</span>
                       <span className="dato">{a.racha_actual}</span>
                     </>
                   );
@@ -325,33 +326,37 @@ export default function Social() {
               <div className="particulas">
                 <i /><i /><i /><i />
               </div>
-              Tu cielo todavía está vacío.
+              {T.social.vacioTitulo}
               <br />
-              Buscá a alguien más abajo y empieza la constelación.
+              {T.social.vacioPie}
             </div>
           )
         )}
 
         {(retosActivos.length > 0 || retosCerrados.length > 0) && (
           <div className="seccion" style={{ marginTop: 24 }}>
-            <h3>Retos</h3>
+            <h3>{T.social.retos}</h3>
             {retosActivos.map((r) => (
               <Link href={`/perfil/${r.idRival}`} className="fila" key={r.id}>
                 <span className="nombre" style={{ fontSize: 14 }}>
-                  vs {r.nombreRival}
+                  {T.social.vs(r.nombreRival)}
                 </span>
                 <span className="dato" style={{ fontSize: 13 }}>
-                  {r.hasta >= hoy ? `hasta el ${fechaLinda(r.hasta)}` : 'cerrando…'}
+                  {r.hasta >= hoy ? T.social.hastaEl(fechaLinda(r.hasta)) : T.social.cerrando}
                 </span>
               </Link>
             ))}
             {retosCerrados.map((r) => (
               <div className="fila" key={r.id}>
                 <span className="nombre" style={{ fontSize: 14, color: 'var(--sub)' }}>
-                  vs {r.nombreRival}
+                  {T.social.vs(r.nombreRival)}
                 </span>
                 <span className="dato" style={{ fontSize: 13 }}>
-                  {r.ganador === null ? 'empate' : r.ganador === miId ? 'ganaste' : `ganó ${r.nombreRival}`}
+                  {r.ganador === null
+                    ? T.social.empate
+                    : r.ganador === miId
+                      ? T.social.ganaste
+                      : T.social.gano(r.nombreRival)}
                 </span>
               </div>
             ))}
@@ -360,7 +365,7 @@ export default function Social() {
 
         {actividad.length > 0 && (
           <div className="seccion" style={{ marginTop: 24 }}>
-            <h3>Actividad</h3>
+            <h3>{T.social.actividad}</h3>
             {actividad.map((a, i) => (
               <Link href={`/perfil/${a.userId}`} className="fila" key={i}>
                 <Avatar url={a.avatar} nombre={a.username} tam={28} />
@@ -380,7 +385,7 @@ export default function Social() {
                   </span>
                 )}
                 <span className="nombre" style={{ color: 'var(--sub)', fontSize: 14 }}>
-                  {a.username} registró el {fechaLinda(a.fecha)}
+                  {T.social.registroEl(a.username, fechaLinda(a.fecha))}
                 </span>
               </Link>
             ))}
@@ -388,9 +393,9 @@ export default function Social() {
         )}
 
         <div className="seccion" style={{ marginTop: 24 }}>
-          <h3>Buscar gente</h3>
+          <h3>{T.social.buscarGente}</h3>
           <input
-            placeholder="nombre_de_usuario"
+            placeholder={T.ajustes.nombrePlaceholder}
             value={busqueda}
             onChange={(e) => buscar(e.target.value)}
             autoCapitalize="off"
@@ -402,14 +407,14 @@ export default function Social() {
                 {u.username}
               </Link>
               {pedidosMandados.has(u.id) ? (
-                <span className="dato">Pedido enviado</span>
+                <span className="dato">{T.social.pedidoEnviado}</span>
               ) : (
                 <button
                   className="boton-texto"
                   style={{ width: 'auto' }}
                   onClick={() => pedirAmistad(u.id)}
                 >
-                  Agregar
+                  {T.social.agregar}
                 </button>
               )}
             </div>

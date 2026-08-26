@@ -10,6 +10,7 @@ import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
+import { T } from '@/textos';
 import ComoMeVen, {
   DIAS_VISIBLES,
   FOTOS_VISIBLES,
@@ -206,7 +207,7 @@ export default function Perfil() {
         <div className="pantalla">
           <div className="vacio-cosmico">
             <div className="particulas"><i /><i /><i /><i /></div>
-            Este usuario no existe.
+            {T.social.noExiste}
           </div>
         </div>
         <Nav />
@@ -225,7 +226,7 @@ export default function Perfil() {
       />
       <div className="pantalla">
         <button className="boton-texto" style={{ textAlign: 'left', padding: '0 0 14px' }} onClick={() => router.back()}>
-          ← Volver
+          {T.general.volver}
         </button>
 
         {!esAmigo ? (
@@ -237,7 +238,7 @@ export default function Perfil() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                   <Insignia rango={usuario.rango_actual} tam={16} />
                   <span style={{ fontSize: 13, color: 'var(--sub)' }}>
-                    racha de {enDias(usuario.racha_actual)}
+                    {T.stats.rachaDe(enDias(usuario.racha_actual))}
                   </span>
                 </div>
               </div>
@@ -245,16 +246,16 @@ export default function Perfil() {
 
             {pedidoPendiente ? (
               <div className="boton-fantasma" style={{ pointerEvents: 'none' }}>
-                Pedido de amistad enviado
+                {T.social.pedidoDeAmistad}
               </div>
             ) : (
               <button className="boton-solido" onClick={pedirAmistad}>
-                Agregar
+                {T.social.agregar}
               </button>
             )}
             <div className="vacio-cosmico">
               <div className="particulas"><i /><i /><i /><i /></div>
-              Cuando sean amigos vas a ver su semana y sus fotos.
+              {T.social.cuandoSeanAmigos}
             </div>
           </>
         ) : (
@@ -265,28 +266,28 @@ export default function Perfil() {
             <ComoMeVen usuario={usuario} logs={logs} fotos={fotos}>
             {/* ---- reto ---- */}
             <div className="seccion" style={{ marginTop: 20 }}>
-              <h3>Reto</h3>
+              <h3>{T.social.reto}</h3>
               {!reto && (
                 <button className="boton-solido" onClick={retar}>
-                  Retar a 7 días
+                  {T.social.retarA7}
                 </button>
               )}
               {reto?.estado === 'pendiente' && reto.retador === miId && (
                 <div className="boton-fantasma" style={{ pointerEvents: 'none' }}>
-                  Reto enviado — esperando respuesta
+                  {T.social.retoEnviado}
                 </div>
               )}
               {reto?.estado === 'pendiente' && reto.rival === miId && (
                 <div className="tarjeta">
                   <p style={{ fontSize: 14, marginBottom: 12 }}>
-                    {usuario.username} te retó a 7 días: quien entrene más, gana.
+                    {T.social.teReto(usuario.username)}
                   </p>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="boton-solido" style={{ flex: 1 }} onClick={() => responderReto(true)}>
-                      Acepto
+                      {T.social.acepto}
                     </button>
                     <button className="boton-fantasma" style={{ flex: 1, width: 'auto' }} onClick={() => responderReto(false)}>
-                      Paso
+                      {T.social.paso}
                     </button>
                   </div>
                 </div>
@@ -296,7 +297,7 @@ export default function Perfil() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <div style={{ textAlign: 'center', flex: 1 }}>
                       <div style={{ fontSize: 34, fontWeight: 200 }}>{marcador.yo}</div>
-                      <div style={{ fontSize: 11, color: 'var(--sub)' }}>vos</div>
+                      <div style={{ fontSize: 11, color: 'var(--sub)' }}>{T.social.vos}</div>
                     </div>
                     <div style={{ color: 'var(--apagado)', fontSize: 13 }}>vs</div>
                     <div style={{ textAlign: 'center', flex: 1 }}>
@@ -305,7 +306,7 @@ export default function Perfil() {
                     </div>
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--apagado)', textAlign: 'center', marginTop: 8 }}>
-                    hasta el {fechaLinda(reto.hasta)}
+                    {T.social.hastaEl(fechaLinda(reto.hasta))}
                   </p>
                 </div>
               )}
@@ -317,25 +318,25 @@ export default function Perfil() {
               {confirmandoBaja ? (
                 <div className="tarjeta">
                   <p style={{ fontSize: 14, marginBottom: 12 }}>
-                    Dejan de ver la actividad y las fotos del otro
-                    {reto && reto.estado !== 'terminado' ? ', y el reto se cancela' : ''}.
+                    {T.social.dejanDeVer}
+                    {reto && reto.estado !== 'terminado' ? T.social.yElRetoSeCancela : ''}.
                   </p>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="boton-fantasma" style={{ flex: 1, width: 'auto' }} onClick={eliminarAmigo}>
-                      Eliminar
+                      {T.social.eliminar}
                     </button>
                     <button
                       className="boton-fantasma"
                       style={{ flex: 1, width: 'auto' }}
                       onClick={() => setConfirmandoBaja(false)}
                     >
-                      Cancelar
+                      {T.general.cancelar}
                     </button>
                   </div>
                 </div>
               ) : (
                 <button className="boton-texto" onClick={() => setConfirmandoBaja(true)}>
-                  Eliminar de mis amigos
+                  {T.social.eliminarDeAmigos}
                 </button>
               )}
             </div>

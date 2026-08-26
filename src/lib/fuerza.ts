@@ -1,6 +1,7 @@
 import { deKilos, type Unidad } from '@/lib/peso';
 import { deISO, MESES } from '@/lib/fechas';
 import type { Marca } from '@/lib/tipos';
+import { T } from '../textos.ts';
 
 // El 1RM es la otra cuenta que también corre en SQL (`un_rm`): vive en
 // `reglas.ts` y el test compara las dos implementaciones.
@@ -53,7 +54,7 @@ export function pesoLindo(kg: number, unidad: Unidad): string {
  */
 export function fechaDeMarca(iso: string): string {
   const d = deISO(iso);
-  return `${d.getDate()} ${MESES[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+  return T.marca.fechaLarga(d.getDate(), MESES[d.getMonth()].slice(0, 3), d.getFullYear());
 }
 
 /**
@@ -62,6 +63,6 @@ export function fechaDeMarca(iso: string): string {
  * dice (§6 del repaso: primero lo que LEVANTASTE).
  */
 export function origenDeMarca(m: { peso: number; reps: number; es_real: boolean }): string {
-  if (m.es_real || m.reps === 1) return 'de una';
-  return `${m.reps} veces`;
+  if (m.es_real || m.reps === 1) return T.marca.deUnaVez;
+  return T.marca.nVeces(m.reps);
 }

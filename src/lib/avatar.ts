@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { T } from '../textos.ts';
 
 export const TAMANO_MAXIMO = 8 * 1024 * 1024;
 
@@ -7,9 +8,9 @@ export const TAMANO_MAXIMO = 8 * 1024 * 1024;
  * castellano, o null si está bien.
  */
 export function problemaConLaImagen(archivo: File): string | null {
-  if (!archivo.type.startsWith('image/')) return 'Eso no parece una imagen.';
+  if (!archivo.type.startsWith('image/')) return T.errores.noEsImagen;
   if (archivo.size > TAMANO_MAXIMO) {
-    return 'La imagen pesa demasiado. Probá con una más liviana.';
+    return T.errores.imagenPesada;
   }
   return null;
 }
@@ -32,7 +33,7 @@ export async function subirAvatar(
   const { error } = await supabase.storage
     .from('avatares')
     .upload(ruta, recorte, { upsert: true, contentType: 'image/jpeg' });
-  if (error) return { error: 'No se pudo subir la foto. Probá de nuevo.' };
+  if (error) return { error: T.errores.noSubioFoto };
 
   // ?v= para que el navegador no siga mostrando la anterior desde su caché:
   // la ruta es siempre la misma, así que sin esto el cambio no se ve.
@@ -43,7 +44,7 @@ export async function subirAvatar(
     .from('profiles')
     .update({ avatar_url: url })
     .eq('id', userId);
-  if (errPerfil) return { error: 'La foto subió pero no se pudo guardar. Probá de nuevo.' };
+  if (errPerfil) return { error: T.errores.fotoSinGuardar };
 
   return { url };
 }

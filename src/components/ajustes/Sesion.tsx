@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { borrarPerfilCache } from '@/lib/cache';
 import { reiniciarGuia } from '@/lib/guia';
+import { T } from '@/textos';
 
 export default function Sesion({ userId }: { userId: string }) {
   const router = useRouter();
@@ -26,13 +27,13 @@ export default function Sesion({ userId }: { userId: string }) {
   return (
     <div className="seccion">
       <button className="boton-texto" onClick={verLaGuiaDeNuevo}>
-        Volver a ver la guía
+        {T.ajustes.verGuia}
       </button>
       <button className="boton-texto" onClick={() => router.push('/nueva-clave')}>
-        Cambiar contraseña
+        {T.ajustes.cambiarClave}
       </button>
       <button className="boton-texto" onClick={salir}>
-        Cerrar sesión
+        {T.ajustes.cerrarSesion}
       </button>
     </div>
   );

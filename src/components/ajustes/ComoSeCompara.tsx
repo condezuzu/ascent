@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FUENTE } from '@/lib/estandares';
+import { T } from '@/textos';
 
 /**
  * Cómo se calcula el ranking de fuerza, abajo de todo en Ajustes.
@@ -18,7 +19,7 @@ export default function ComoSeCompara() {
   return (
     <div className="seccion">
       <button className="fila-plegable" onClick={() => setAbierto(!abierto)} aria-expanded={abierto}>
-        <h3>Cómo se compara la fuerza</h3>
+        <h3>{T.ajustes.comoSeCompara}</h3>
         <span>{abierto ? '−' : '+'}</span>
       </button>
 

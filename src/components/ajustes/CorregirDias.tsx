@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { enDias, hoyISO } from '@/lib/fechas';
 import CalendarioCorregir from '@/components/CalendarioCorregir';
+import { T } from '@/textos';
 
 export default function CorregirDias({ recargar }: { recargar: () => void }) {
   const [supabase] = useState(() => crearCliente());
@@ -20,12 +21,10 @@ export default function CorregirDias({ recargar }: { recargar: () => void }) {
     setAviso('');
     const { data, error } = await supabase.rpc('recalcular_desde_cero');
     setRecalculando(false);
-    if (error) return setAviso('No se pudo recalcular. Probá de nuevo.');
+    if (error) return setAviso(T.ajustes.recalcularError);
     const r = data as { racha: number; perdida: boolean };
     setAviso(
-      r.perdida
-        ? `Tu historial da ${enDias(r.racha)}: está cortado, así que se aplicó el descuento.`
-        : `Listo: ${enDias(r.racha)}.`
+      r.perdida ? T.ajustes.recalculoCortado(enDias(r.racha)) : T.ajustes.recalculoListo(enDias(r.racha))
     );
     recargar();
   }
@@ -33,7 +32,7 @@ export default function CorregirDias({ recargar }: { recargar: () => void }) {
   return (
     <div className="seccion">
       <button className="fila-plegable" onClick={() => setAbierto(!abierto)} aria-expanded={abierto}>
-        <h3>Corregir días</h3>
+        <h3>{T.ajustes.corregirDias}</h3>
         <span>{abierto ? '−' : '+'}</span>
       </button>
       {abierto && (
@@ -45,7 +44,7 @@ export default function CorregirDias({ recargar }: { recargar: () => void }) {
             disabled={recalculando}
             style={{ marginTop: 4 }}
           >
-            {recalculando ? 'Recalculando…' : 'Recalcular racha desde el historial'}
+            {recalculando ? T.ajustes.recalculando : T.ajustes.recalcular}
           </button>
           {aviso && <p className="ok-msg">{aviso}</p>}
         </>

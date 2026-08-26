@@ -1,5 +1,6 @@
 import { DESCANSO_MAXIMO, DESCANSO_MINIMO, DESCANSO_PREDETERMINADO } from '@/lib/reglas';
 import { plataforma } from '@/plataforma';
+import { T } from '../textos.ts';
 
 const CLAVE = 'ascent:descanso';
 
@@ -68,8 +69,8 @@ export function cuentaAtras(segundos: number): string {
  * diferencia entre elegir y tener que interpretar.
  */
 export function duracionCorta(segundos: number): string {
-  if (segundos < 120) return `${segundos} s`;
-  if (segundos % 60 === 0) return `${segundos / 60} min`;
+  if (segundos < 120) return T.fechas.segundos(segundos);
+  if (segundos % 60 === 0) return T.fechas.minutos(segundos / 60);
   return cuentaAtras(segundos);
 }
 

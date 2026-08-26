@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { DIAS_SEMANA, hoyISO } from '@/lib/fechas';
 import type { Perfil } from '@/lib/tipos';
+import { T } from '@/textos';
 
 export default function Descansos({
   perfil,
@@ -30,7 +31,7 @@ export default function Descansos({
 
   return (
     <div className="seccion">
-      <h3>Días de descanso</h3>
+      <h3>{T.ajustes.diasDescanso}</h3>
       <div className="dias-selector">
         {DIAS_SEMANA.map((d, i) => (
           <button
@@ -43,7 +44,7 @@ export default function Descansos({
         ))}
       </div>
       <p className="nota-privada" style={{ marginTop: 8 }}>
-        Esos días podés faltar sin perder la racha.
+        {T.ajustes.diasDescansoNota}
       </p>
     </div>
   );

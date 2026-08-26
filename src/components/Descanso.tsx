@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PRESETS_DESCANSO } from '@/lib/reglas';
 import { plataforma } from '@/plataforma';
+import { T } from '@/textos';
 import {
   borrarDescanso,
   cuentaAtras,
@@ -152,9 +153,9 @@ export default function Descanso({
 
       {terminado ? (
         <>
-          <p className="descanso-pie">Listo. Cuando quieras, la que sigue.</p>
+          <p className="descanso-pie">{T.descanso.listoPie}</p>
           <button className="boton-solido" onClick={cerrar}>
-            Seguir
+            {T.descanso.seguir}
           </button>
         </>
       ) : (
@@ -172,7 +173,7 @@ export default function Descanso({
             ))}
           </div>
           <button className="boton-texto" onClick={cerrar}>
-            Saltar
+            {T.descanso.saltar}
           </button>
         </>
       )}

@@ -89,7 +89,7 @@ seguro.
 | `npm run verificar:deploy` | ¿producción ya sirve este commit? Mira el pedido real, no deduce |
 | `npm run build` | build de producción — **dev server apagado** |
 
-Rutas de QA: `/galeria` (motor) y `/tipografias` (comparador de fuentes).
+Ruta de QA: `/galeria` (motor). `/tipografias` era andamio de una decisión ya tomada y se borró.
 
 La primera vez, en cada máquina: `npx playwright install chromium` (el binario
 del navegador no vive en el repo, solo la dependencia).

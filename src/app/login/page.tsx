@@ -6,6 +6,7 @@ import { crearCliente, configuracionValida } from '@/lib/supabase/client';
 import { mensajeDeAuth } from '@/lib/errores';
 import { borrarPerfilCache } from '@/lib/cache';
 import FondoEspacial from '@/components/FondoEspacial';
+import { T } from '@/textos';
 
 type Modo = 'entrar' | 'crear' | 'recuperar';
 
@@ -77,7 +78,7 @@ export default function Login() {
         router.refresh();
         return;
       }
-      setAviso('Listo. Revisá tu correo para confirmar la cuenta.');
+      setAviso(T.entrar.revisaCorreo);
       return;
     }
 
@@ -89,31 +90,29 @@ export default function Login() {
     // No se distingue si el mail existe o no: decirlo filtra quién tiene cuenta.
     // Pero un fallo de configuración o de red sí se dice, porque no es lo mismo.
     if (error) return setError(mensajeDeAuth(error));
-    setAviso('Si esa dirección tiene cuenta, le llega un correo para cambiar la contraseña.');
+    setAviso(T.entrar.siTieneCuenta);
   }
 
   const titulo =
-    modo === 'entrar' ? 'Entrar' : modo === 'crear' ? 'Crear cuenta' : 'Enviar correo';
+    modo === 'entrar' ? T.entrar.entrar : modo === 'crear' ? T.entrar.crearCuenta : T.entrar.enviarCorreo;
 
   return (
     <>
       <FondoEspacial rango={1} vacio esquina="centro" velo={0.55} />
       <div className="centrado">
-        <div className="marca">Ascent</div>
+        <div className="marca">{T.entrar.marca}</div>
 
         {/* Si faltan o están cortadas las variables de entorno, no tiene
             sentido dejar probar contraseñas: nada va a funcionar. */}
         {!configuracionValida() && (
           <div className="aviso-config">
-            <strong>La app no está bien configurada.</strong> Faltan o están mal las variables
-            de entorno de Supabase, así que no puede conectarse al servidor. Nada de lo que
-            escribas acá va a funcionar hasta que se arreglen.
+            <strong>{T.entrar.malConfigurada}</strong> {T.entrar.malConfiguradaDetalle}
           </div>
         )}
 
         {modo === 'recuperar' && (
           <p style={{ color: 'var(--sub)', fontSize: 14, marginBottom: 18, textAlign: 'center' }}>
-            Te mandamos un enlace para elegir una contraseña nueva.
+            {T.entrar.paraRecuperar}
           </p>
         )}
 
@@ -121,7 +120,7 @@ export default function Login() {
           <div className="campo">
             <input
               type="email"
-              placeholder="Correo"
+              placeholder={T.entrar.correo}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -132,7 +131,7 @@ export default function Login() {
             <div className="campo">
               <input
                 type="password"
-                placeholder="Contraseña"
+                placeholder={T.entrar.contrasena}
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 required
@@ -148,9 +147,9 @@ export default function Login() {
 
         {modo === 'entrar' && GOOGLE_LISTO && (
           <>
-            <div className="separador">o</div>
+            <div className="separador">{T.entrar.o}</div>
             <button className="boton-fantasma" onClick={conGoogle}>
-              Continuar con Google
+              {T.entrar.conGoogle}
             </button>
           </>
         )}
@@ -162,10 +161,10 @@ export default function Login() {
               onClick={() => cambiarModo('crear')}
               style={{ marginTop: 14 }}
             >
-              ¿Primera vez? Crear cuenta
+              {T.entrar.primeraVez}
             </button>
             <button className="boton-texto" onClick={() => cambiarModo('recuperar')}>
-              Olvidé mi contraseña
+              {T.entrar.olvide}
             </button>
           </>
         ) : (
@@ -174,7 +173,7 @@ export default function Login() {
             onClick={() => cambiarModo('entrar')}
             style={{ marginTop: 14 }}
           >
-            Volver a entrar
+            {T.entrar.volverAEntrar}
           </button>
         )}
 

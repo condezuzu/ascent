@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { T } from '@/textos';
 
 const ITEMS = [
   {
     href: '/',
-    label: 'Inicio',
+    label: T.nav.inicio,
     icono: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 11.5 12 4l9 7.5" />
@@ -19,7 +20,7 @@ const ITEMS = [
     // "Ranking" y no "Leaderboard": más corto y en español, como el resto de
     // la app. Se quedó aunque la barra volviera a cinco: era mejor nombre
     // igual, no una concesión para que entrara.
-    label: 'Ranking',
+    label: T.nav.ranking,
     icono: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
         <circle cx="12" cy="12" r="2.4" />
@@ -30,7 +31,7 @@ const ITEMS = [
   },
   {
     href: '/album',
-    label: 'Álbum',
+    label: T.nav.album,
     icono: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
         <rect x="4" y="5" width="16" height="14" rx="2" />
@@ -41,7 +42,7 @@ const ITEMS = [
   },
   {
     href: '/stats',
-    label: 'Stats',
+    label: T.nav.stats,
     icono: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
         <path d="M5 20V13" />
@@ -53,7 +54,7 @@ const ITEMS = [
   },
   {
     href: '/ajustes',
-    label: 'Ajustes',
+    label: T.nav.ajustes,
     icono: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
         <circle cx="12" cy="12" r="3" />

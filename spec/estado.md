@@ -144,8 +144,8 @@ schema de la base real. El flujo es: escribir la migración → probarla con
 - **Recordatorio diario**: pospuesto para nativo (ver `etapa-nativa.md`).
 - **Retos**: tienen UI construida por pedido explícito. Si la beta arranca sin
   ellos, se **ocultan, no se borran**.
-- **`/galeria` y `/tipografias`**: rutas de QA públicas en producción. No
-  exponen datos. Decidir si se esconden antes de la beta.
+- **`/galeria`**: ruta de QA pública en producción. No expone datos.
+  Decidir si se esconde antes de la beta.
 - **Google como proveedor**: el botón está oculto tras la constante
   `GOOGLE_LISTO` en `src/app/login/page.tsx`. Poner en `true` el día que se
   configure el proveedor en Supabase.

@@ -1,3 +1,5 @@
+import { T } from '../textos.ts';
+
 // Todas las fechas de la app son fechas locales en formato YYYY-MM-DD.
 // Nunca usar toISOString() para "hoy": corta el día en UTC, no en el huso del usuario.
 
@@ -23,28 +25,17 @@ export function restarDias(iso: string, dias: number): string {
   return aISO(d);
 }
 
-export const DIAS_SEMANA = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
-export const DIAS_SEMANA_LARGO = [
-  'Domingo',
-  'Lunes',
-  'Martes',
-  'Miércoles',
-  'Jueves',
-  'Viernes',
-  'Sábado',
-];
-export const MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre',
-];
+export const DIAS_SEMANA = T.fechas.diasCortos;
+export const DIAS_SEMANA_LARGO = T.fechas.diasLargos;
+export const MESES = T.fechas.meses;
 
 export function fechaLinda(iso: string): string {
   const d = deISO(iso);
-  return `${d.getDate()} de ${MESES[d.getMonth()]}`;
+  return T.fechas.delMes(d.getDate(), MESES[d.getMonth()]);
 }
 
 // "1 día" / "2 días". La racha arranca en 1 todo el tiempo, así que el
 // singular aparece seguido y un "1 días" canta enseguida.
 export function enDias(n: number): string {
-  return n === 1 ? '1 día' : `${n} días`;
+  return T.fechas.enDias(n);
 }

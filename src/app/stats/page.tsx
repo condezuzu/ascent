@@ -13,6 +13,7 @@ import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import SeccionFuerza from '@/components/SeccionFuerza';
 import SeccionSesiones from '@/components/SeccionSesiones';
+import { T } from '@/textos';
 
 export default function Estadisticas() {
   const [supabase] = useState(() => crearCliente());
@@ -109,33 +110,33 @@ export default function Estadisticas() {
     <>
       <FondoEspacial rango={rangoActual.n} esquina="arriba-derecha" velo={0.72} />
       <PantallaDeslizable>
-        <div className="titulo-pantalla">Stats</div>
+        <div className="titulo-pantalla">{T.stats.titulo}</div>
 
         <GloboPrimeraVez cual="stats">
-          Constancia, historial y tu peso. El peso no lo ve nadie más.
+          {T.stats.globo}
         </GloboPrimeraVez>
 
         <div className="stat-grilla">
           <div className="stat-celda">
             <div className="valor">{racha}</div>
-            <div className="etiqueta">Racha actual</div>
+            <div className="etiqueta">{T.stats.rachaActual}</div>
           </div>
           <div className="stat-celda">
             <div className="valor">{mejor}</div>
-            <div className="etiqueta">Mejor racha</div>
+            <div className="etiqueta">{T.stats.mejorRacha}</div>
           </div>
           <div className="stat-celda">
             <div className="valor">{en30}<span style={{ fontSize: 15, color: 'var(--sub)' }}>/30</span></div>
-            <div className="etiqueta">Últimos 30 días</div>
+            <div className="etiqueta">{T.stats.ultimos30}</div>
           </div>
           <div className="stat-celda">
             <div className="valor">{esteMes}</div>
-            <div className="etiqueta">Este mes</div>
+            <div className="etiqueta">{T.stats.esteMes}</div>
           </div>
         </div>
 
         <div className="seccion">
-          <h3>El año</h3>
+          <h3>{T.stats.elAno}</h3>
           <div className="tarjeta" style={{ overflowX: 'auto' }}>
             <div className="mapa-calor" style={{ minWidth: 420 }}>
               {celdas.map((c) => (
@@ -150,14 +151,14 @@ export default function Estadisticas() {
 
         {pathPeso ? (
           <div className="seccion">
-            <h3>Peso — tendencia 7 días</h3>
+            <h3>{T.stats.pesoTendencia}</h3>
             <div className="tarjeta">
               <svg viewBox="0 0 300 80" style={{ width: '100%', display: 'block' }}>
                 <path d={pathPeso} fill="none" stroke="var(--pal-claro)" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--apagado)' }}>
                 <span>{minP.toFixed(1)} {unidad}</span>
-                <span>{suavizado[suavizado.length - 1].toFixed(1)} {unidad} hoy</span>
+                <span>{T.stats.pesoHoy(suavizado[suavizado.length - 1].toFixed(1), unidad)}</span>
                 <span>{maxP.toFixed(1)} {unidad}</span>
               </div>
             </div>
@@ -166,21 +167,19 @@ export default function Estadisticas() {
           // Con un solo dato no hay tendencia que dibujar, pero decirle
           // "anotá tu peso" a alguien que acaba de anotarlo parece un error.
           <div className="seccion">
-            <h3>Peso</h3>
+            <h3>{T.stats.peso}</h3>
             <div className="tarjeta">
               <div style={{ fontSize: 28, fontWeight: 300, fontVariantNumeric: 'tabular-nums' }}>
                 {suavizado[0].toFixed(1)}
                 <span style={{ fontSize: 15, color: 'var(--sub)' }}> {unidad}</span>
               </div>
-              <p className="nota-privada">Con uno más aparece la tendencia. Solo la ves vos.</p>
+              <p className="nota-privada">{T.stats.pesoUnoMas}</p>
             </div>
           </div>
         ) : (
           <div className="seccion">
-            <h3>Peso</h3>
-            <p className="nota-privada">
-              Anotalo al registrar el día y acá aparece la tendencia. Solo la ves vos.
-            </p>
+            <h3>{T.stats.peso}</h3>
+            <p className="nota-privada">{T.stats.pesoVacio}</p>
           </div>
         )}
 
@@ -197,7 +196,7 @@ export default function Estadisticas() {
 
         {/* Único lugar de la app donde los ocho rangos se muestran con nombre */}
         <div className="seccion">
-          <h3>La escalera</h3>
+          <h3>{T.stats.laEscalera}</h3>
           <div className="tarjeta escalera-rangos">
             {RANGOS.map((r) => {
               const pasado = rangoActual.n > r.n;
@@ -210,9 +209,9 @@ export default function Estadisticas() {
                   <Insignia rango={r.n} />
                   <span>{r.nombre}</span>
                   {esActual ? (
-                    <span className="actual-tag">acá estás</span>
+                    <span className="actual-tag">{T.stats.acaEstas}</span>
                   ) : (
-                    <span className="dias">día {r.desde === 0 ? 1 : r.desde}</span>
+                    <span className="dias">{T.stats.diaN(r.desde === 0 ? 1 : r.desde)}</span>
                   )}
                 </div>
               );

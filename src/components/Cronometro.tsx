@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { cronoLindo, faltaParaElTope, transcurrido } from '@/lib/sesiones';
+import { T } from '@/textos';
 
 /**
  * La sesión en curso. Reemplaza al bloque de botones de la principal: así
@@ -50,22 +51,22 @@ export default function Cronometro({
   return (
     <div className="crono">
       <div className="crono-fila">
-        <span className="crono-label">Sesión</span>
+        <span className="crono-label">{T.sesion.label}</span>
         <span className="crono-tiempo">{cronoLindo(segundos)}</span>
       </div>
       {avisa && (
         <p className="aviso-tiempo" style={{ marginBottom: 14 }}>
           {falta > 0
-            ? `Se cierra sola en ${Math.max(1, Math.round(falta / 60))} min y queda sin duración.`
-            : 'Ya se cerró sola: esta sesión queda sin duración.'}
+            ? T.sesion.seCierraEn(Math.max(1, Math.round(falta / 60)))
+            : T.sesion.yaSeCerro}
         </p>
       )}
       {/* Descansar NO está acá: vive en la franja, que se ve desde cualquier
           pantalla. Terminar pasa una vez por entrenamiento y esta es su casa. */}
       <button className="boton-solido" onClick={alTerminar} disabled={terminando}>
-        {terminando ? 'Guardando…' : 'Terminar sesión'}
+        {terminando ? T.sesion.guardando : T.sesion.terminarSesion}
       </button>
-      <p className="nota-privada">El día ya quedó registrado. Solo falta cuánto duró.</p>
+      <p className="nota-privada">{T.sesion.yaRegistrado}</p>
     </div>
   );
 }

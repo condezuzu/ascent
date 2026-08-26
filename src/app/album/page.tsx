@@ -8,6 +8,7 @@ import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
+import { T } from '@/textos';
 
 type Celda = {
   id: string;
@@ -100,12 +101,12 @@ export default function Album() {
     const { error: errArchivo } = await supabase.storage.from('fotos').remove([c.ruta]);
     if (errArchivo) {
       setPorBorrar(null);
-      return setError('No se pudo borrar la foto. Probá de nuevo.');
+      return setError(T.album.noSeBorro);
     }
     const { error: errFila } = await supabase.from('photos').delete().eq('id', c.id);
     if (errFila) {
       setPorBorrar(null);
-      return setError('No se pudo borrar la foto. Probá de nuevo.');
+      return setError(T.album.noSeBorro);
     }
     setCeldas((prev) => prev.filter((x) => x.id !== c.id));
     setPorBorrar(null);
@@ -115,11 +116,10 @@ export default function Album() {
     <>
       <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.72} />
       <PantallaDeslizable onClick={() => porBorrar && setPorBorrar(null)}>
-        <div className="titulo-pantalla">Álbum</div>
+        <div className="titulo-pantalla">{T.album.titulo}</div>
 
         <GloboPrimeraVez cual="album">
-          Cada foto queda pegada al día en que la sacaste. Desde tu perfil elegís cuáles ven tus
-          amigos.
+          {T.album.globo}
         </GloboPrimeraVez>
 
         {error && <p className="error-msg">{error}</p>}
@@ -135,14 +135,14 @@ export default function Album() {
 
                 {porBorrar === c.id ? (
                   <div className="album-confirmar">
-                    <span>¿Borrar?</span>
+                    <span>{T.album.borrarPregunta}</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         borrar(c);
                       }}
                     >
-                      Sí
+                      {T.album.si}
                     </button>
                     <button
                       className="no"
@@ -151,7 +151,7 @@ export default function Album() {
                         setPorBorrar(null);
                       }}
                     >
-                      No
+                      {T.album.no}
                     </button>
                   </div>
                 ) : (
@@ -163,11 +163,11 @@ export default function Album() {
                         alternarVisibilidad(c);
                       }}
                     >
-                      {c.visibilidad === 'privada' ? 'Solo vos' : 'Amigos'}
+                      {c.visibilidad === 'privada' ? T.album.soloVos : T.album.amigos}
                     </button>
                     <button
                       className="album-borrar"
-                      aria-label="Borrar foto"
+                      aria-label={T.album.borrarFoto}
                       onClick={(e) => {
                         e.stopPropagation();
                         setPorBorrar(c.id);
@@ -193,9 +193,9 @@ export default function Album() {
               <div className="particulas">
                 <i /><i /><i /><i />
               </div>
-              Ninguna foto todavía.
+              {T.album.vacioTitulo}
               <br />
-              Al registrar un día podés sumar una: queda pegada al planeta de ese día.
+              {T.album.vacioPie}
             </div>
           )
         )}

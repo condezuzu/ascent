@@ -5,6 +5,7 @@ import type { Log, UsuarioPublico } from '@/lib/tipos';
 import TiraSemanal from '@/components/TiraSemanal';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
+import { T } from '@/textos';
 
 export type FotoVisible = { id: string; url: string; fecha: string | null };
 
@@ -50,7 +51,7 @@ export default function ComoMeVen({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
             <Insignia rango={usuario.rango_actual} tam={16} />
             <span style={{ fontSize: 13, color: 'var(--sub)' }}>
-              racha de {enDias(usuario.racha_actual)}
+              {T.stats.rachaDe(enDias(usuario.racha_actual))}
             </span>
           </div>
         </div>
@@ -63,7 +64,7 @@ export default function ComoMeVen({
 
       {fotos.length > 0 && (
         <div className="seccion">
-          <h3>Fotos</h3>
+          <h3>{T.general.fotos}</h3>
           <div className="album-grilla">
             {fotos.map((f) => (
               <div className="album-celda" key={f.id}>

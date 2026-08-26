@@ -5,6 +5,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { hoyISO } from '@/lib/fechas';
 import { juntarMisDatos } from '@/lib/cuenta';
 import type { Perfil } from '@/lib/tipos';
+import { T } from '@/textos';
 
 export default function MisDatos({ perfil }: { perfil: Perfil }) {
   const [supabase] = useState(() => crearCliente());
@@ -26,18 +27,18 @@ export default function MisDatos({ perfil }: { perfil: Perfil }) {
       a.remove();
       URL.revokeObjectURL(url);
     } catch {
-      setError('No se pudo armar el archivo. Probá de nuevo.');
+      setError(T.ajustes.exportarError);
     }
     setExportando(false);
   }
 
   return (
     <div className="seccion">
-      <h3>Mis datos</h3>
+      <h3>{T.ajustes.misDatos}</h3>
       <button className="boton-fantasma" onClick={exportar} disabled={exportando}>
-        {exportando ? 'Armando el archivo…' : 'Exportar mis datos'}
+        {exportando ? T.ajustes.exportando : T.ajustes.exportar}
       </button>
-      <p className="nota-privada">Todo tu historial, en un archivo.</p>
+      <p className="nota-privada">{T.ajustes.exportarNota}</p>
       {error && <p className="error-msg">{error}</p>}
     </div>
   );

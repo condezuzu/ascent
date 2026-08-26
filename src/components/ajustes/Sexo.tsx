@@ -42,20 +42,20 @@ export default function Sexo({
       <h3>{T.ajustes.sexo}</h3>
       <div className="selector-vista">
         <button className={actual === null ? 'activo' : ''} onClick={() => elegir(null)}>
-          Sin cargar
+          {T.ajustes.sinCargar}
         </button>
         <button className={actual === 'f' ? 'activo' : ''} onClick={() => elegir('f')}>
-          Mujer
+          {T.ajustes.mujer}
         </button>
         <button className={actual === 'm' ? 'activo' : ''} onClick={() => elegir('m')}>
-          Hombre
+          {T.ajustes.hombre}
         </button>
       </div>
       {/* El aviso de §16.7c no se puede acortar hasta que desaparezca: es lo
           que hace que activar el DOTS sea una decisión y no una sorpresa. */}
       <p className="nota-privada">{T.ajustes.sexoNota}</p>
       <p className="nota-privada">
-        Ojo: con el DOTS puesto, tus amigos pueden deducir más o menos cuánto pesás.
+        {T.ajustes.sexoAviso}
       </p>
       {error && <p className="error-msg">{error}</p>}
     </div>
