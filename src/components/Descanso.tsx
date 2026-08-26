@@ -66,29 +66,16 @@ export default function Descanso({
   // aviso visual —el único que funciona en todos los teléfonos— no lo ve
   // nadie. Es una comodidad: si lo rechazan, la cuenta sigue siendo correcta.
   useEffect(() => {
-    let lock: WakeLockSentinel | null = null;
-    let vivo = true;
-    const pedir = async () => {
-      if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
-      try {
-        const l = await navigator.wakeLock.request('screen');
-        if (vivo) lock = l;
-        else l.release();
-      } catch {
-        // batería baja o modo ahorro: no es un error que haya que mostrar
-      }
-    };
-    pedir();
+    plataforma.pantalla.mantenerDespierta();
     // El sistema lo suelta solo al ocultarse la pestaña y NO vuelve por su
     // cuenta: hay que volver a pedirlo cada vez que la página se ve de nuevo.
     const alVolver = () => {
-      if (document.visibilityState === 'visible') pedir();
+      if (document.visibilityState === 'visible') plataforma.pantalla.mantenerDespierta();
     };
     document.addEventListener('visibilitychange', alVolver);
     return () => {
-      vivo = false;
       document.removeEventListener('visibilitychange', alVolver);
-      lock?.release().catch(() => {});
+      plataforma.pantalla.soltar();
     };
   }, []);
 

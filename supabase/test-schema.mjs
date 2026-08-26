@@ -2154,9 +2154,19 @@ console.log('\n35. Nada del navegador fuera de src/plataforma');
   // `localStorage` directo: al pasar a Expo ese archivo no compila y hay que
   // encontrarlo a mano. Esto lo encuentra ahora.
   //
-  // La lista crece con cada puerto que se agregue: cuando entren ubicacion,
-  // avisos, haptica y audio, sus APIs van aca.
-  const PROHIBIDAS = ['localStorage', 'sessionStorage'];
+  // La lista crece con cada puerto. `navigator.userAgent`,
+  // `navigator.serviceWorker` y `navigator.hardwareConcurrency` NO estan: son
+  // del navegador y de la PWA, que desaparecen enteros al migrar en vez de
+  // tener equivalente nativo.
+  const PROHIBIDAS = [
+    'localStorage',
+    'sessionStorage',
+    'AudioContext',
+    'audioSession',
+    'geolocation',
+    'wakeLock',
+    'vibrate',
+  ];
 
   const { readdirSync, readFileSync: leerArchivo, statSync } = await import('node:fs');
   const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -2183,7 +2193,7 @@ console.log('\n35. Nada del navegador fuera de src/plataforma');
       }
     }
   }
-  chequear('solo el puerto toca el almacenamiento del navegador', culpables.sort(), []);
+  chequear('solo el puerto toca las APIs del navegador', culpables.sort(), []);
 }
 
 console.log('\n36. Ningun `\\b` suelto adentro de un template literal');

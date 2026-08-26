@@ -89,12 +89,11 @@ export function duracionValida(valor: unknown): number {
  * notificación.
  */
 export function vibrar(): boolean {
-  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return false;
-  return navigator.vibrate([120, 90, 120]);
+  return plataforma.haptica.pulso();
 }
 
 export function puedeVibrar(): boolean {
-  return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+  return plataforma.haptica.disponible();
 }
 
 const CLAVE_SONIDO = 'ascent:descanso-sonido';

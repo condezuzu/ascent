@@ -48,23 +48,36 @@ Los puertos, en orden de implementación:
    marca estando en el gimnasio** —uno puesto desde casa registra días que no
    ocurrieron— y la precisión del GPS se **suma** al radio, porque el costo no
    es simétrico: un día de más se corrige a mano, uno de menos corta la racha.
-3. **Salud** — `disponible()`, `pedirPermiso()`, `entrenamientosDelDia(fecha)`.
-   En web `disponible()` es `false` y el resto no hace nada.
-4. **Avisos** — `programar(id, cuando, texto)`, `cancelar(id)`, `permiso()`. En
-   web solo con la app adelante; en nativo, notificación local que llega con la
-   pantalla bloqueada (§13b). El descanso ya tiene esta forma —programar al
-   empezar, cancelar al saltar—, así que `Descanso.tsx` pasa a llamar al puerto.
-5. **Háptica** — `disponible()`, `pulso(patron)`. `descanso.ts` ya tiene
-   `vibrar()` y `puedeVibrar()`; se mudan.
+3. **Salud** — HECHO (hueco vacío). `disponible()` es `false` en web: no es
+   que la API sea peor, es que no existe nada parecido. `entrenoEse()` devuelve
+   `null` para "no sé", que NO es `false`: confundirlos haría que la app diera
+   por no entrenado un día que sí lo fue.
+4. **Avisos** — HECHO. `programar(id, enSegundos, alSonar)`, `cancelar(id)`,
+   `permiso()`, `conPantallaBloqueada()`. En web es un `setTimeout` con la app
+   adelante; en nativo, notificación local que llega con la pantalla bloqueada.
+   **No se pide el permiso de notificaciones del navegador**: con la app
+   adelante no hace falta, y pedirlo sin usarlo gasta la única vez que el
+   usuario va a decir que sí.
+5. **Háptica** — HECHO. `vibrar()` y `puedeVibrar()` de `descanso.ts` ahora
+   pasan por el puerto.
 6. **Audio** — HECHO, y resultó NO ser 100% nativo. `preparar()`, `avisar()`,
    `soltar()`, `respetaLaMusica()`. En web: `navigator.audioSession.type =
    'transient'` cuando existe (Safari), y el `AudioContext` suspendido salvo
    los 400 ms que suena, que llega a todos los teléfonos. En nativo se declara
    la categoría de verdad y además suena con la app cerrada (§13b).
 
-Y los chicos: **Wake Lock** (`expo-keep-awake`), **recorte del avatar**
-(canvas → `expo-image-manipulator`) y **exportar datos** (descarga del
-navegador → share sheet).
+7. **Pantalla despierta** — HECHO. Era uno de "los chicos" pero vivía en el
+   mismo `Descanso.tsx` que audio y háptica, así que se hizo ahí para no tocar
+   el archivo tres veces. En nativo, `expo-keep-awake`.
+
+Quedan dos chicos: **recorte del avatar** (canvas → `expo-image-manipulator`) y
+**exportar datos** (descarga del navegador → share sheet).
+
+La sección 35 de `test:db` crece con cada puerto: hoy prohíbe `localStorage`,
+`sessionStorage`, `AudioContext`, `audioSession`, `geolocation`, `wakeLock` y
+`vibrate` fuera de `src/plataforma/`. NO prohíbe `userAgent`, `serviceWorker` ni
+`hardwareConcurrency`: esos son del navegador y de la PWA, que desaparecen
+enteros al migrar en vez de tener equivalente nativo.
 
 ### Una señal, un camino
 

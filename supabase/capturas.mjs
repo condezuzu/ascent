@@ -109,6 +109,18 @@ const TAMANOS = [
 
 await esperarAlServidor();
 
+// Se compilan TODAS las rutas antes de abrir el navegador, con un `fetch`
+// pelado y sin límite de tiempo. La primera vez que se pide una ruta el dev
+// server la compila, y eso pasaba adentro del `page.goto`, que sí tiene
+// timeout: si la máquina estaba ocupada, la pantalla se caía por tardar en
+// compilar y no por nada de la app. Acá tardar no rompe nada.
+//
+// Redirigen a /login sin sesión, y da igual: lo que interesa es que Next
+// compile el módulo, no lo que devuelva.
+for (const p of PANTALLAS) {
+  await fetch(BASE + p.ruta, { redirect: 'manual' }).catch(() => {});
+}
+
 rmSync(SALIDA, { recursive: true, force: true });
 mkdirSync(SALIDA, { recursive: true });
 

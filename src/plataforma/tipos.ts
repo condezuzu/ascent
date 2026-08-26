@@ -71,6 +71,48 @@ export type Audio = {
   respetaLaMusica(): boolean;
 };
 
+/**
+ * Apple Health / Health Connect (§13c). En web no existe nada parecido, así
+ * que el hueco queda vacío hasta la versión nativa.
+ *
+ * `entrenoEse` devuelve `null` para "no sé", que NO es lo mismo que `false`:
+ * confundirlos haría que la app diera por no entrenado un día que sí lo fue.
+ */
+export type Salud = {
+  disponible(): boolean;
+  pedirPermiso(): Promise<boolean>;
+  entrenoEse(fecha: string): Promise<boolean | null>;
+};
+
+/**
+ * Avisos programados (§13b). La diferencia entre web y nativo es si llegan con
+ * la app cerrada: en web es un `setTimeout` con la app adelante, en nativo una
+ * notificación local que suena con la pantalla bloqueada.
+ *
+ * Nunca son la fuente de la verdad: el descanso se calcula siempre contra el
+ * timestamp de fin guardado (§18.4) y esto es un aviso encima de eso.
+ */
+export type Avisos = {
+  conPantallaBloqueada(): boolean;
+  permiso(): Promise<boolean>;
+  programar(id: string, enSegundos: number, alSonar: () => void): Promise<void>;
+  cancelar(id: string): Promise<void>;
+};
+
+/** Que la pantalla no se apague sola mientras corre el descanso (§18). */
+export type Pantalla = {
+  disponible(): boolean;
+  /** `false` si no se pudo: es una comodidad, no un requisito. */
+  mantenerDespierta(): Promise<boolean>;
+  soltar(): Promise<void>;
+};
+
+/** Vibración. Android sí, iPhone no: WebKit nunca implementó la API (§18.7). */
+export type Haptica = {
+  disponible(): boolean;
+  pulso(): boolean;
+};
+
 export type Plataforma = {
   /** Sobrevive a cerrar la app. En web, `localStorage`. */
   almacenamiento: Almacenamiento;
@@ -88,4 +130,8 @@ export type Plataforma = {
   efimero: Almacenamiento;
   ubicacion: Ubicacion;
   audio: Audio;
+  salud: Salud;
+  avisos: Avisos;
+  haptica: Haptica;
+  pantalla: Pantalla;
 };
