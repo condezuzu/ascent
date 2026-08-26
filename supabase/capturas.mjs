@@ -271,7 +271,12 @@ for (const tamano of TAMANOS) {
       problemas.push(`${tamano.nombre}/${p.nombre}: NO se pudo capturar — ${linea}`);
       // En blanco antes de seguir: una navegacion a medias hace que la
       // siguiente muera con "interrupted by another navigation", en cascada.
-      await page.goto('about:blank', { timeout: 30000 }).catch(() => {});
+      //
+      // `commit` y no el `load` de fabrica: alcanza con que la navegacion
+      // ARRANQUE para que la anterior quede cancelada, y esperar la carga
+      // entera dejaba el about:blank todavia en vuelo cuando empezaba la
+      // pantalla siguiente — que entonces moria por lo mismo que esto evita.
+      await page.goto('about:blank', { waitUntil: 'commit', timeout: 30000 }).catch(() => {});
     }
   }
 

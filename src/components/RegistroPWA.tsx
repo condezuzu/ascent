@@ -13,6 +13,10 @@ export default function RegistroPWA() {
     const onPrompt = (e: Event) => {
       e.preventDefault();
       (window as unknown as { __eventoInstalar?: Event }).__eventoInstalar = e;
+      // Este SÍ se queda en `window` y no pasa por `plataforma/eventos`:
+      // `beforeinstallprompt` es del navegador y no existe en nativo, así que
+      // la sección "Instalar" entera desaparece al migrar. Sacarlo de window
+      // no ganaría nada; el que se movió es el aviso de sesión, que sí sigue.
       window.dispatchEvent(new CustomEvent('ascent:instalable'));
     };
     window.addEventListener('beforeinstallprompt', onPrompt);

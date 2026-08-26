@@ -1,5 +1,6 @@
 import { TOPE_SESION_SEGUNDOS, DESCANSO_PREDETERMINADO } from '@/lib/reglas';
 import { plataforma } from '@/plataforma';
+import { eventos } from '@/plataforma/eventos';
 
 const CLAVE = 'ascent:sesion';
 const CLAVE_DURACION = 'ascent:descanso-sesion';
@@ -11,13 +12,7 @@ const CLAVE_DURACION = 'ascent:descanso-sesion';
  */
 export const AVISO = 'ascent:sesion-cambio';
 
-function avisar() {
-  try {
-    window.dispatchEvent(new Event(AVISO));
-  } catch {
-    // en el servidor no hay window; la franja no se pinta ahí de todos modos
-  }
-}
+const avisar = () => eventos.emitir(AVISO);
 
 export type SesionCacheada = { inicio: string; desfasaje: number };
 

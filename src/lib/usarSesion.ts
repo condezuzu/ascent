@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
+import { eventos } from '@/plataforma/eventos';
 import { desfasajeDelReloj, type SesionViva } from '@/lib/sesiones';
 import { leerPerfilCache } from '@/lib/cache';
 import { estaBloqueado, textoDeBloqueo } from '@/lib/pendiente';
@@ -81,10 +82,10 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     releerCache();
     confirmar();
     const alVolver = () => releerCache();
-    window.addEventListener(AVISO, alVolver);
+    const dejarDeEscuchar = eventos.escuchar(AVISO, alVolver);
     document.addEventListener('visibilitychange', alVolver);
     return () => {
-      window.removeEventListener(AVISO, alVolver);
+      dejarDeEscuchar();
       document.removeEventListener('visibilitychange', alVolver);
     };
   }, [releerCache, confirmar]);

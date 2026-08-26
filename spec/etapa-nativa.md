@@ -18,6 +18,12 @@ falla y dice en qué archivo.
 
 Los puertos, en orden de implementación:
 
+0. **Avisos entre partes de la app** — HECHO, y sin implementación por
+   plataforma: el `window.dispatchEvent` que hacía aparecer la franja de sesión
+   se reemplazó por un emisor en memoria (`plataforma/eventos.ts`). No hacía
+   falta un puerto, hacía falta que la dependencia de `window` desapareciera.
+   El de `ascent:instalable` se queda en `window` a propósito: es
+   `beforeinstallprompt`, del navegador, y la sección Instalar muere al migrar.
 1. **Almacenamiento** — HECHO. Dos sabores con la misma interfaz:
    `almacenamiento` sobrevive a cerrar la app (`localStorage` / AsyncStorage) y
    `efimero` muere con ella (`sessionStorage` / un mapa en memoria). **La API
@@ -56,9 +62,6 @@ después qué días entraron solos.
 
 ### Lo que además cambia y no estaba en la lista
 
-- **`window.dispatchEvent`** en `sesionCache.ts`, para que la franja se entere
-  de que arrancó la sesión sin recargar. En nativo no hay `window`: va a
-  necesitar un bus de eventos propio. Es chico, pero es platform code suelto.
 - **three.js** corre con `expo-gl`; los shaders se llevan, cambia el armado del
   renderer. Ya está aislado en `src/motor/`.
 - **Ruteo**: Next App Router → Expo Router, los dos por archivos.

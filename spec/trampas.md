@@ -325,6 +325,33 @@ no alcanza.
 
 ---
 
+## Documentar no alcanza
+
+**`\b` adentro de un template literal mordió TRES veces**, la última dentro
+del chequeo que existe para cazar esta familia. Estaba anotado acá desde la
+primera, con la regla escrita y todo, y se volvió a escribir mal igual.
+→ **Regla:** el error tiene que ser **imposible**, no estar avisado.
+`bordeDePalabra()` en `supabase/utiles.mjs` arma el patrón concatenando —donde
+`'\\b'` es inequívoco— y la sección 36 de `test:db` recorre `src/` y
+`supabase/` y falla si aparece un `\b` suelto adentro de un backtick. Se
+recorre carácter por carácter y no con un regex, porque hay que saber si se
+está adentro de un backtick y eso un regex no lo sabe.
+
+Es la lección general: cuando algo se repite habiendo estado documentado, lo
+que falta no es más documentación.
+
+**Y el `window.dispatchEvent` no necesitaba un puerto: necesitaba desaparecer.**
+El aviso de sesión viajaba por `window`, que en Expo no existe. Un emisor en
+memoria (`src/plataforma/eventos.ts`) hace exactamente lo mismo —los oyentes
+están en el mismo proceso— así que en vez de un puerto con dos
+implementaciones, el problema se fue.
+→ **Regla:** antes de armar un puerto, mirar si la dependencia de plataforma
+era necesaria. El de `ascent:instalable` SÍ se queda en `window`, y por el
+motivo contrario: `beforeinstallprompt` es del navegador y la sección Instalar
+entera desaparece al migrar.
+
+---
+
 ## Lo escrito dos veces
 
 **Hay reglas que corren en SQL y en el cliente a la vez**, porque la pantalla

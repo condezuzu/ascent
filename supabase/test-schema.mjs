@@ -39,6 +39,8 @@ import {
   UNIDADES_PESO,
   VISIBILIDADES,
 } from '../src/lib/tipos.ts';
+import { eventos } from '../src/plataforma/eventos.ts';
+import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -2049,7 +2051,7 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
     const suyos = checks.filter(
       // `\\b` y no `\b`: adentro de un template literal, `\b` es el carácter
       // de retroceso, no el borde de palabra del regex. Buscaba un byte 0x08.
-      (c) => c.tabla === tabla && new RegExp(`\\b${columna}\\b`).test(c.def) && /ARRAY\[/.test(c.def)
+      (c) => c.tabla === tabla && bordeDePalabra(columna).test(c.def) && /ARRAY\[/.test(c.def)
     );
     if (suyos.length !== 1) return `esperaba UN check con lista para ${tabla}.${columna}, hay ${suyos.length}`;
     const lista = suyos[0].def.match(/ARRAY\[([^\]]*)\]/);
@@ -2135,10 +2137,7 @@ console.log('\n34. Ningun parametro se ignora en silencio');
   for (const f of fns) {
     const cuerpo = f.cuerpo.replace(/--[^\n]*/g, '');
     for (const arg of f.entradas ?? []) {
-      // Doble barra: dentro de un template literal `\b` es el carácter de
-      // retroceso y no el borde de palabra. Ya nos mordió dos veces, y la
-      // segunda fue en este mismo chequeo. Ver spec/trampas.md.
-      if (!new RegExp(`\\b${arg}\\b`).test(cuerpo)) {
+      if (!bordeDePalabra(arg).test(cuerpo)) {
         ignorados.push(`${f.nombre}(${f.firma}) nunca usa ${arg}`);
       }
     }
@@ -2174,17 +2173,88 @@ console.log('\n35. Nada del navegador fuera de src/plataforma');
   const culpables = [];
   for (const a of archivos) {
     // Sin comentarios: la prosa puede nombrarlas y no pasa nada.
-    const codigo = leerArchivo(a, 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/[^\n]*/g, '');
+    const codigo = sinComentarios(leerArchivo(a, 'utf8'));
     for (const api of PROHIBIDAS) {
-      // Doble barra: en un template literal `\b` es el retroceso. Tercera vez.
-      if (new RegExp(`\\b${api}\\b`).test(codigo)) {
+      if (bordeDePalabra(api).test(codigo)) {
         culpables.push(`${a.split('src')[1]} usa ${api}`);
       }
     }
   }
   chequear('solo el puerto toca el almacenamiento del navegador', culpables.sort(), []);
+}
+
+console.log('\n36. Ningun `\\b` suelto adentro de un template literal');
+{
+  // Documentarlo no alcanzo: mordio TRES veces, la ultima adentro del chequeo
+  // que existe para cazar esta familia. Asi que ahora falla solo.
+  //
+  // Adentro de un template literal `\\b` es el caracter de retroceso (0x08), no
+  // el borde de palabra del regex: el patron busca un byte de control y no
+  // matchea nunca, en silencio y sin error. La forma correcta es
+  // `bordeDePalabra()` de utiles.mjs, que lo arma concatenando.
+  const { readdirSync, readFileSync: leerArchivo, statSync } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const archivos = [];
+  const recorrer = (d) => {
+    for (const n of readdirSync(d)) {
+      if (n === 'node_modules' || n === '.next' || n.startsWith('.next-')) continue;
+      const ruta = join(d, n);
+      if (statSync(ruta).isDirectory()) recorrer(ruta);
+      else if (/\.(mjs|tsx?)$/.test(n)) archivos.push(ruta);
+    }
+  };
+  recorrer(join(RAIZ, 'src'));
+  recorrer(join(RAIZ, 'supabase'));
+
+  const culpables = [];
+  for (const a of archivos) {
+    for (const tramo of retrocesosEnTemplate(sinComentarios(leerArchivo(a, 'utf8')))) {
+      culpables.push(`${a.split(RAIZ)[1]}: ...${tramo}`);
+    }
+  }
+  chequear('ningun retroceso disfrazado de borde de palabra', culpables.sort(), []);
+}
+
+console.log('\n37. El bus de avisos');
+{
+  // Reemplaza al `window.dispatchEvent` que hacia aparecer la franja de sesion
+  // sin recargar. En Expo no hay window; un emisor en memoria hace lo mismo.
+  let a = 0;
+  let b = 0;
+  const cortarA = eventos.escuchar('x', () => a++);
+  eventos.escuchar('x', () => b++);
+  eventos.escuchar('otro', () => a++);
+
+  eventos.emitir('x');
+  chequear('el aviso llega a todos los que escuchan ese nombre', [a, b], [1, 1]);
+
+  eventos.emitir('otro');
+  chequear('y solo a ese nombre', [a, b], [2, 1]);
+
+  cortarA();
+  eventos.emitir('x');
+  chequear('desuscribirse corta', [a, b], [2, 2]);
+
+  eventos.emitir('nadie escucha esto');
+  chequear('un nombre sin oyentes no rompe', true, true);
+
+  // La garantia: el que estaba escuchando cuando se emitio recibe el aviso,
+  // aunque OTRO oyente lo desuscriba en el medio. Sin la copia, borrar un
+  // elemento que la iteracion todavia no visito hace que no se visite.
+  //
+  // Ojo: que un oyente se baje a SI MISMO no prueba esto —ese caso es seguro
+  // con copia y sin ella—, y era lo que probaba la primera version de este
+  // test: pasaba en verde con el codigo roto.
+  let c = 0;
+  let d = 0;
+  const cortarD = () => bajarD();
+  eventos.escuchar('y', () => {
+    c++;
+    cortarD();
+  });
+  const bajarD = eventos.escuchar('y', () => d++);
+  eventos.emitir('y');
+  chequear('el que ya estaba escuchando recibe el aviso igual', [c, d], [1, 1]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

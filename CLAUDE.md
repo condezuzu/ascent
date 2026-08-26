@@ -15,6 +15,10 @@ se rediscute; lo marcado PENDIENTE se pregunta antes de asumir.
 - Las migraciones SQL **las aplica el humano** en el SQL Editor de Supabase.
   Desde acá solo hay anon key. Flujo: escribir la migración → probarla con
   `test:db` contra PGlite → avisar.
+- **Migración con orden invertido** (primero desplegar, después migrar): el
+  deploy se comprueba con `npm run verificar:deploy`, que mira el cuerpo del
+  pedido real. **Deducirlo no sirve** — el hash de los chunks cambia por el
+  entorno y los marcadores obvios dan igual antes y después.
 - Español rioplatense, en el código y en la interfaz.
 - **Nada del navegador fuera de `src/plataforma/`.** Ni `localStorage`, ni
   `navigator`, ni nada que Expo no tenga: va detrás de un puerto, con la
@@ -82,6 +86,7 @@ seguro.
 | `npm run test:conexion` | humo contra el Supabase real, solo lectura |
 | `npm run test:e2e` | flujo completo con 2 cuentas (pide `E2E_EMAIL`) |
 | `npm run capturas` | levanta la app, recorre las pantallas y deja PNG en `capturas/` |
+| `npm run verificar:deploy` | ¿producción ya sirve este commit? Mira el pedido real, no deduce |
 | `npm run build` | build de producción — **dev server apagado** |
 
 Rutas de QA: `/galeria` (motor) y `/tipografias` (comparador de fuentes).
