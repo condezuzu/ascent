@@ -2146,6 +2146,47 @@ console.log('\n34. Ningun parametro se ignora en silencio');
   chequear('ninguna funcion recibe algo que despues no mira', ignorados.sort(), []);
 }
 
+console.log('\n35. Nada del navegador fuera de src/plataforma');
+{
+  // El puerto de almacenamiento no sirve de nada si alguien vuelve a llamar a
+  // `localStorage` directo: al pasar a Expo ese archivo no compila y hay que
+  // encontrarlo a mano. Esto lo encuentra ahora.
+  //
+  // La lista crece con cada puerto que se agregue: cuando entren ubicacion,
+  // avisos, haptica y audio, sus APIs van aca.
+  const PROHIBIDAS = ['localStorage', 'sessionStorage'];
+
+  const { readdirSync, readFileSync: leerArchivo, statSync } = await import('node:fs');
+  const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+  const archivos = [];
+  const recorrer = (d) => {
+    for (const n of readdirSync(d)) {
+      const ruta = join(d, n);
+      if (statSync(ruta).isDirectory()) {
+        if (n !== 'plataforma') recorrer(ruta);
+      } else if (/\.tsx?$/.test(n)) {
+        archivos.push(ruta);
+      }
+    }
+  };
+  recorrer(SRC);
+
+  const culpables = [];
+  for (const a of archivos) {
+    // Sin comentarios: la prosa puede nombrarlas y no pasa nada.
+    const codigo = leerArchivo(a, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '');
+    for (const api of PROHIBIDAS) {
+      // Doble barra: en un template literal `\b` es el retroceso. Tercera vez.
+      if (new RegExp(`\\b${api}\\b`).test(codigo)) {
+        culpables.push(`${a.split('src')[1]} usa ${api}`);
+      }
+    }
+  }
+  chequear('solo el puerto toca el almacenamiento del navegador', culpables.sort(), []);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

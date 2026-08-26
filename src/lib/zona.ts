@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { plataforma } from '@/plataforma';
 
 const CLAVE = 'ascent:zona';
 
@@ -29,16 +30,9 @@ export function zonaDelTelefono(): string | null {
 export async function sincronizarZona(supabase: SupabaseClient) {
   const zona = zonaDelTelefono();
   if (!zona) return;
-  try {
-    if (localStorage.getItem(CLAVE) === zona) return;
-  } catch {
-    // sin localStorage se manda igual; el RPC no hace nada si no cambió
-  }
+  // Sin lo guardado se manda igual: el RPC no hace nada si no cambió.
+  if ((await plataforma.almacenamiento.leer(CLAVE)) === zona) return;
   const { error } = await supabase.rpc('fijar_zona', { p_zona: zona });
   if (error) return;
-  try {
-    localStorage.setItem(CLAVE, zona);
-  } catch {
-    /* nada que hacer */
-  }
+  await plataforma.almacenamiento.guardar(CLAVE, zona);
 }

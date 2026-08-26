@@ -26,7 +26,7 @@ export default function DescansoEntreSeries({
   // Las dos salen del navegador, así que no se pueden leer al renderizar en
   // el servidor: se leen al montar.
   useEffect(() => {
-    setSonido(leerSonido());
+    (async () => setSonido(await leerSonido()))();
     setVibra(puedeVibrar());
   }, []);
 

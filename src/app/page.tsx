@@ -138,12 +138,17 @@ export default function Principal() {
   // Al volver a entrar, la pantalla sale con la racha y la paleta de la
   // última visita mientras la red confirma. Nada de esperar en blanco.
   useEffect(() => {
-    const cacheado = leerPerfilCache();
-    if (cacheado) {
-      setPerfil(cacheado);
-      setCargado(true);
-    }
-    cargar();
+    // La caché se lee y recién después se pide a la red. Es asíncrona desde
+    // que pasó por el puerto de almacenamiento, pero resuelve en el mismo
+    // tick en web: no hay parpadeo.
+    (async () => {
+      const cacheado = await leerPerfilCache();
+      if (cacheado) {
+        setPerfil(cacheado);
+        setCargado(true);
+      }
+      cargar();
+    })();
   }, [cargar]);
 
   if (!perfil) {

@@ -53,7 +53,9 @@ export default function Login() {
       // La caché puede ser de otra cuenta (teléfono compartido, sesión que
       // venció sin cerrar): si no se limpia, la primera pantalla muestra
       // por un instante la racha de otra persona.
-      borrarPerfilCache();
+      // Se ESPERA: si se navega antes de que el borrado termine, la primera
+      // pantalla alcanza a leer la caché vieja, que es justo lo que esto evita.
+      await borrarPerfilCache();
       router.push('/');
       router.refresh();
       return;

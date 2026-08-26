@@ -7,6 +7,70 @@ Lo que está acá ya está decidido y no se rediscute salvo que se indique.
 
 ---
 
+## 13z. Los huecos: `src/plataforma/`
+
+Todo lo que la web no puede hacer está detrás de una interfaz, con la
+implementación web haciendo lo que puede. Al pasar a Expo se agrega `nativo/` y
+se cambia **una línea** en `src/plataforma/index.ts`; ningún componente se
+entera. Nada del resto de la app toca `navigator` ni `localStorage`, y la
+sección 35 de `test:db` lo comprueba: si alguien vuelve a llamarlos directo,
+falla y dice en qué archivo.
+
+Los puertos, en orden de implementación:
+
+1. **Almacenamiento** — HECHO. Dos sabores con la misma interfaz:
+   `almacenamiento` sobrevive a cerrar la app (`localStorage` / AsyncStorage) y
+   `efimero` muere con ella (`sessionStorage` / un mapa en memoria). **La API
+   es asíncrona aunque en web sea sincrónica por debajo**, porque AsyncStorage
+   lo es: hacerlo después habría cambiado las firmas de cinco librerías y de
+   todos sus llamadores, en el peor momento.
+2. **Ubicación** — `puntoActual()`, `vigilarLlegada(punto, radio, alLlegar)`,
+   `dejarDeVigilar()`. En web `vigilarLlegada` no está y la app usa
+   `estoyEn(punto, radio)` al abrir (§13). Necesita columnas en `profiles`
+   (`gimnasio_lat`, `gimnasio_lon`, `gimnasio_radio`), que van en **la misma
+   migración** para no partirla en dos.
+3. **Salud** — `disponible()`, `pedirPermiso()`, `entrenamientosDelDia(fecha)`.
+   En web `disponible()` es `false` y el resto no hace nada.
+4. **Avisos** — `programar(id, cuando, texto)`, `cancelar(id)`, `permiso()`. En
+   web solo con la app adelante; en nativo, notificación local que llega con la
+   pantalla bloqueada (§13b). El descanso ya tiene esta forma —programar al
+   empezar, cancelar al saltar—, así que `Descanso.tsx` pasa a llamar al puerto.
+5. **Háptica** — `disponible()`, `pulso(patron)`. `descanso.ts` ya tiene
+   `vibrar()` y `puedeVibrar()`; se mudan.
+6. **Audio** — el quinto que no estaba en la lista original. No es
+   disponibilidad: la categoría de sonido (ambient en iOS, ducking en Android)
+   solo se declara desde una app nativa, y **hoy el aviso le corta la música al
+   usuario a la mitad de la serie** (§13b).
+
+Y los chicos: **Wake Lock** (`expo-keep-awake`), **recorte del avatar**
+(canvas → `expo-image-manipulator`) y **exportar datos** (descarga del
+navegador → share sheet).
+
+### Una señal, un camino
+
+Ubicación y salud hacen lo mismo: registrar el día por algo que no es un toque.
+Si cada una escribe su propio camino a `registrar_dia`, van a ser dos lógicas
+de "¿ya estaba registrado?, ¿pido la foto?, ¿aviso?". Las dos alimentan
+**`registrarPorSeñal(origen)`**, con el origen guardado en el log para saber
+después qué días entraron solos.
+
+### Lo que además cambia y no estaba en la lista
+
+- **`window.dispatchEvent`** en `sesionCache.ts`, para que la franja se entere
+  de que arrancó la sesión sin recargar. En nativo no hay `window`: va a
+  necesitar un bus de eventos propio. Es chico, pero es platform code suelto.
+- **three.js** corre con `expo-gl`; los shaders se llevan, cambia el armado del
+  renderer. Ya está aislado en `src/motor/`.
+- **Ruteo**: Next App Router → Expo Router, los dos por archivos.
+- **Service worker y PWA**: desaparecen.
+- **Supabase**: no cambia, salvo que el cliente necesita AsyncStorage para
+  persistir la sesión.
+- **Las paletas por rango ya son TypeScript** (`paletas.ts`), no CSS. Se
+  inyectan a variables CSS pero la fuente de verdad es un objeto: eso migra tal
+  cual. Era el riesgo grande de "el color vive en el CSS" y no está.
+
+---
+
 ## 13. Registro automático por ubicación (etapa nativa)
 
 El usuario guarda la ubicación de su gimnasio y el día se registra solo al llegar,

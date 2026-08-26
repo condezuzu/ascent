@@ -26,7 +26,7 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
       setBorrando(false);
       return setError(r.error);
     }
-    borrarPerfilCache();
+    await borrarPerfilCache();
     await supabase.auth.signOut();
     router.push('/login');
     router.refresh();

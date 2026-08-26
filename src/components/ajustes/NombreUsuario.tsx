@@ -40,7 +40,7 @@ export default function NombreUsuario({
       return setError('No se pudo guardar. Probá de nuevo.');
     }
     alCambiar({ username: limpio });
-    borrarPerfilCache(); // la caché tiene el nombre viejo
+    await borrarPerfilCache(); // la caché tiene el nombre viejo
     setAviso('Listo, ese es tu nombre ahora.');
     setTimeout(() => setAviso(''), 3000);
   }

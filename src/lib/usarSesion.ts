@@ -53,11 +53,11 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   const [aviso, setAviso] = useState('');
   const [, repintar] = useState(0);
 
-  const releerCache = useCallback(() => {
-    const c = leerSesionCache();
+  const releerCache = useCallback(async () => {
+    const c = await leerSesionCache();
     setInicio(c?.inicio ?? null);
     setDesfasaje(c?.desfasaje ?? 0);
-    setDescanso(leerDescanso());
+    setDescanso(await leerDescanso());
   }, []);
 
   // La consulta de verdad. La caché pinta al instante, esto la corrige.
@@ -125,7 +125,9 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
 
   /** Un toque: suma la serie Y arranca el descanso (§20.3). */
   async function serieHecha() {
-    const seg = leerDuracionDeSesion() ?? duracionValida(duracionPredeterminada(leerPerfilCache()));
+    const seg =
+      (await leerDuracionDeSesion()) ??
+      duracionValida(duracionPredeterminada(await leerPerfilCache()));
     setDescanso(guardarDescanso(seg));
     const { data } = await supabase.rpc('sumar_serie');
     if (typeof data === 'number') setSeries(data);
@@ -141,8 +143,10 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     if (typeof data === 'number') setSeries(data);
   }
 
-  function descansarSuelto() {
-    const seg = leerDuracionDeSesion() ?? duracionValida(duracionPredeterminada(leerPerfilCache()));
+  async function descansarSuelto() {
+    const seg =
+      (await leerDuracionDeSesion()) ??
+      duracionValida(duracionPredeterminada(await leerPerfilCache()));
     setDescanso(guardarDescanso(seg));
   }
 

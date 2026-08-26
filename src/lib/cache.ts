@@ -1,3 +1,4 @@
+import { plataforma } from '@/plataforma';
 import type { Perfil } from './tipos';
 
 // Caché del perfil en el propio teléfono. Sirve para que al volver a entrar
@@ -9,10 +10,9 @@ import type { Perfil } from './tipos';
 const CLAVE = 'ascent:perfil';
 
 export function guardarPerfilCache(p: Perfil) {
-  try {
-    localStorage.setItem(
-      CLAVE,
-      JSON.stringify({
+  return plataforma.almacenamiento.guardar(
+    CLAVE,
+    JSON.stringify({
         id: p.id,
         username: p.username,
         avatar_url: p.avatar_url,
@@ -24,18 +24,15 @@ export function guardarPerfilCache(p: Perfil) {
         dias_descanso: p.dias_descanso,
         // lo usa la franja para saber con cuánto arranca el descanso
         duracion_descanso: p.duracion_descanso,
-        dia_pendiente: p.dia_pendiente,
-      })
-    );
-  } catch {
-    // sin localStorage (modo privado, cuota llena): se sigue sin caché
-  }
+      dia_pendiente: p.dia_pendiente,
+    })
+  );
 }
 
-export function leerPerfilCache(idEsperado?: string): Perfil | null {
+export async function leerPerfilCache(idEsperado?: string): Promise<Perfil | null> {
+  const crudo = await plataforma.almacenamiento.leer(CLAVE);
+  if (!crudo) return null;
   try {
-    const crudo = localStorage.getItem(CLAVE);
-    if (!crudo) return null;
     const p = JSON.parse(crudo) as Perfil;
     // si la caché es de otra cuenta, no sirve
     if (idEsperado && p.id !== idEsperado) return null;
@@ -46,9 +43,5 @@ export function leerPerfilCache(idEsperado?: string): Perfil | null {
 }
 
 export function borrarPerfilCache() {
-  try {
-    localStorage.removeItem(CLAVE);
-  } catch {
-    // nada que hacer
-  }
+  return plataforma.almacenamiento.borrar(CLAVE);
 }

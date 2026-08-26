@@ -16,6 +16,10 @@ se rediscute; lo marcado PENDIENTE se pregunta antes de asumir.
   Desde acá solo hay anon key. Flujo: escribir la migración → probarla con
   `test:db` contra PGlite → avisar.
 - Español rioplatense, en el código y en la interfaz.
+- **Nada del navegador fuera de `src/plataforma/`.** Ni `localStorage`, ni
+  `navigator`, ni nada que Expo no tenga: va detrás de un puerto, con la
+  implementación web haciendo lo que puede. La sección 35 de `test:db` falla si
+  alguien lo llama directo. Ver `spec/etapa-nativa.md` §13z.
 - Cuando toques un archivo, comentá **solo** las líneas que tienen una razón
   no obvia detrás. No comentar todo el código de una.
 - **Al terminar cada tanda, corré `npm run capturas`** y decí si cambió algo
@@ -107,7 +111,7 @@ tandas sin que nadie los viera.
 | [spec/fuerza.md](spec/fuerza.md) | §16 módulo de fuerza (PRs, DOTS, ranking) | implementado y verificado |
 | [spec/cronometro.md](spec/cronometro.md) | §17 cronómetro de sesión · §18 descanso entre series | implementado |
 | [spec/estetica.md](spec/estetica.md) | §19 vuelta estética · §20 el cronómetro en Inicio | **propuesta, sin implementar** |
-| [spec/etapa-nativa.md](spec/etapa-nativa.md) | §13 ubicación y push · §13b avisos de descanso | documentado, sin implementar |
+| [spec/etapa-nativa.md](spec/etapa-nativa.md) | §13z los huecos de `src/plataforma/` · §13 ubicación · §13b avisos | **antes de tocar algo del navegador** |
 
 Los números de sección (§3, §7…) siguen siendo los de siempre: los comentarios
 del código que los citan siguen valiendo.

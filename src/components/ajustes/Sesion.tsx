@@ -12,13 +12,13 @@ export default function Sesion({ userId }: { userId: string }) {
 
   // Reinicia el recorrido Y los tres globos: si solo volviera el recorrido,
   // el que quiere repasar de qué va cada pestaña no lo conseguiría.
-  function verLaGuiaDeNuevo() {
-    reiniciarGuia(userId);
+  async function verLaGuiaDeNuevo() {
+    await reiniciarGuia(userId);
     router.push('/bienvenida');
   }
 
   async function salir() {
-    borrarPerfilCache(); // que la próxima cuenta no vea la racha de esta
+    await borrarPerfilCache(); // que la próxima cuenta no vea la racha de esta
     await supabase.auth.signOut();
     router.push('/login');
   }

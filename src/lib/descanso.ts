@@ -1,11 +1,12 @@
 import { DESCANSO_MAXIMO, DESCANSO_MINIMO, DESCANSO_PREDETERMINADO } from '@/lib/reglas';
+import { plataforma } from '@/plataforma';
 
 const CLAVE = 'ascent:descanso';
 
 export type DescansoVivo = { fin: number; duracion: number };
 
 /**
- * El descanso en curso vive en `localStorage`, no en la base (§18.3): no hay
+ * El descanso en curso vive en el teléfono, no en la base (§18.3): no hay
  * ningún dato que valga guardar y son quince o veinte descansos por sesión,
  * en un gimnasio con dos rayas de señal. Tiene que arrancar al instante y sin
  * red.
@@ -18,38 +19,33 @@ export type DescansoVivo = { fin: number; duracion: number };
  * de la cuenta salen del mismo reloj, así que el desfasaje se cancela solo, y
  * no hay nada que ganar haciendo trampa —descansar de más no es un premio—.
  */
-export function leerDescanso(): DescansoVivo | null {
-  if (typeof localStorage === 'undefined') return null;
+export async function leerDescanso(): Promise<DescansoVivo | null> {
+  const crudo = await plataforma.almacenamiento.leer(CLAVE);
+  if (!crudo) return null;
   try {
-    const crudo = localStorage.getItem(CLAVE);
-    if (!crudo) return null;
     const d = JSON.parse(crudo) as DescansoVivo;
     if (typeof d?.fin !== 'number' || typeof d?.duracion !== 'number') return null;
     return d;
   } catch {
-    // localStorage puede estar lleno, deshabilitado o con basura de otra
-    // versión. Nada de esto puede tumbar la pantalla principal.
+    // basura de otra versión: nada de esto puede tumbar la pantalla principal
     return null;
   }
 }
 
+/**
+ * Devuelve el descanso EN EL ACTO y guarda de fondo. Es a propósito: quien
+ * toca "serie hecha" tiene que ver la cuenta atrás ya, y lo guardado solo
+ * sirve para que sobreviva a cerrar la app. Si la escritura falla o tarda, el
+ * descanso corre igual.
+ */
 export function guardarDescanso(duracion: number): DescansoVivo {
   const d = { fin: Date.now() + duracion * 1000, duracion };
-  try {
-    localStorage.setItem(CLAVE, JSON.stringify(d));
-  } catch {
-    // Si no se puede guardar, el descanso igual corre en memoria; lo único
-    // que se pierde es que sobreviva a cerrar la app.
-  }
+  void plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(d));
   return d;
 }
 
 export function borrarDescanso() {
-  try {
-    localStorage.removeItem(CLAVE);
-  } catch {
-    /* nada que hacer */
-  }
+  return plataforma.almacenamiento.borrar(CLAVE);
 }
 
 /** Segundos que faltan. Nunca negativo: cero es cero. */
@@ -107,23 +103,14 @@ const CLAVE_SONIDO = 'ascent:descanso-sonido';
  * Si el aviso suena, además de vibrar. **Apagado por defecto**: sonar sin
  * avisar en un gimnasio es peor que no sonar (§18.7).
  *
- * Va en localStorage y no en `profiles` a propósito: es una preferencia del
+ * Va en el teléfono y no en `profiles` a propósito: es una preferencia del
  * TELÉFONO, no de la cuenta. El mismo usuario puede querer sonido en casa y
  * no en el gimnasio, y eso no viaja con la sesión.
  */
-export function leerSonido(): boolean {
-  if (typeof localStorage === 'undefined') return false;
-  try {
-    return localStorage.getItem(CLAVE_SONIDO) === '1';
-  } catch {
-    return false;
-  }
+export async function leerSonido(): Promise<boolean> {
+  return (await plataforma.almacenamiento.leer(CLAVE_SONIDO)) === '1';
 }
 
 export function guardarSonido(prendido: boolean) {
-  try {
-    localStorage.setItem(CLAVE_SONIDO, prendido ? '1' : '0');
-  } catch {
-    /* nada que hacer */
-  }
+  return plataforma.almacenamiento.guardar(CLAVE_SONIDO, prendido ? '1' : '0');
 }

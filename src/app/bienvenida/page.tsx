@@ -63,8 +63,11 @@ export default function Bienvenida() {
     return () => clearInterval(t);
   }, [paso]);
 
-  function terminar() {
-    if (uid) marcarRecorridoVisto(uid);
+  async function terminar() {
+    // Se espera la escritura ANTES de navegar. En web resuelve en el mismo
+    // tick; en nativo es asíncrona de verdad y salir sin esperarla es como no
+    // haberla hecho si la app se cierra justo ahí.
+    if (uid) await marcarRecorridoVisto(uid);
     router.replace('/');
     router.refresh();
   }

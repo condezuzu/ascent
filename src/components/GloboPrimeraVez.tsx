@@ -27,7 +27,7 @@ export default function GloboPrimeraVez({ cual, children }: { cual: Globo; child
       } = await supabase.auth.getUser();
       if (!vivo || !user) return;
       setUid(user.id);
-      if (faltaElGlobo(user.id, cual)) setVisible(true);
+      if (await faltaElGlobo(user.id, cual)) setVisible(true);
     })();
     return () => {
       vivo = false;
@@ -35,7 +35,7 @@ export default function GloboPrimeraVez({ cual, children }: { cual: Globo; child
   }, [cual]);
 
   function cerrar() {
-    if (uid) marcarGloboVisto(uid, cual);
+    if (uid) void marcarGloboVisto(uid, cual); // no bloquea el cierre
     setCerrando(true);
     setTimeout(() => setVisible(false), 300);
   }
