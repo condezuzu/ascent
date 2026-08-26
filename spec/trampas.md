@@ -72,15 +72,39 @@ en un día real**, repetible.
 diferencia: una zona se verifica contra `pg_timezone_names`, una fecha es un
 número que el cliente inventa.
 
-**Los `p_hoy` que quedan en las firmas se ignoran en silencio, y un parámetro
-que se ignora miente.** Están solo para que un cliente viejo no rompa mientras
-Vercel despliega, porque el deploy y la migración no ocurren en el mismo
-instante.
-→ **Se borran en el primer deploy posterior al 20/8/2026**, cuando ya no pueda
-quedar ningún cliente de antes de la migración 12 dando vueltas. Son cuatro:
-`verificar_perdida`, `recalcular_desde_cero`, `cerrar_retos_vencidos` y
-`fijar_descansos`, más `p_fecha` en `registrar_dia` y `anotar_peso`. En el
-código están marcados con `TODO(quitar p_hoy)`.
+**Un parámetro que se ignora MIENTE, y no era uno: eran siete.** Quedaron de
+cuando el cliente mandaba la fecha; desde la migración 12 el día lo decide el
+servidor y el parámetro no se mira. Se dejaron "por un deploy" y sobrevivieron
+nueve migraciones. El costo real: la sección 6 del e2e pasaba `p_fecha` con
+otra fecha creyendo que elegía el día, registraba hoy, chocaba con el día que
+ya estaba, y **la prueba de la subida de rango no probaba nada**. Nadie lo vio
+porque el test leía `data` sin mirar `error`.
+→ **Regla:** un parámetro que no se usa se **borra** (migración 22), no se
+ignora. Y no queda como revisión que alguien tiene que acordarse de hacer: la
+sección 34 de `test:db` le pregunta a `pg_proc` los argumentos de entrada de
+cada función y falla si alguno no aparece en el cuerpo.
+
+Tres cosas que hicieron ruido al armar ese chequeo:
+
+- **`proargnames` trae también los nombres de las columnas de salida** de las
+  funciones `returns table(...)`, y esos por definición no aparecen en el
+  cuerpo. Sin filtrar por `proargmodes`, el chequeo denunciaba media base y no
+  servía para nada. Se filtra a los modos `i` y `b`.
+- **`\b` dentro de un template literal es el carácter de retroceso**, otra vez
+  — y esta vez adentro del chequeo que existe para cazar esta familia. Van dos
+  barras, siempre.
+- **Dropear una función la devuelve con EXECUTE para PUBLIC.** `create or
+  replace` no puede cambiar la lista de parámetros, así que hay que dropear; y
+  al recrearla vuelve con el permiso por omisión de Postgres. La migración 22
+  dejaba siete funciones SECURITY DEFINER abiertas a `anon` hasta que se le
+  agregó el `revoke`. Lo agarró `test-deriva` comparando la migración contra
+  `schema.sql`.
+
+**Y leer `data` sin mirar `error` convierte cualquier fallo en un misterio.**
+El e2e decía "esperaba 40, obtuve null", que manda a buscar el problema en la
+racha en vez de en la llamada.
+→ **Regla:** el error se chequea SIEMPRE, con su propio `chequear`, antes de
+mirar el resultado.
 
 **Cambiar la zona tampoco regala días.** Registrás, movés la zona adelante,
 "hoy" pasa a ser mañana, registrás de nuevo.

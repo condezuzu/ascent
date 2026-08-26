@@ -86,12 +86,11 @@ export default function Principal() {
     const [{ data: p }, { data: ls }, { data: v }, { data: cfgs }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).single(),
       supabase.from('logs').select('*').eq('user_id', uid).gte('fecha', desde).order('fecha'),
-      // p_hoy = fecha LOCAL del usuario (el servidor está en UTC)
       // TODO(quitar p_hoy): el servidor lo IGNORA desde la migración 12 —la
       // fecha la decide él con la zona del usuario—. Se sigue mandando solo
       // para que un cliente viejo no rompa mientras Vercel despliega. Se
       // saca en el primer deploy posterior al 20/8/2026. Ver trampas.md.
-      supabase.rpc('verificar_perdida', { p_hoy: hoyISO() }),
+      supabase.rpc('verificar_perdida'),
       supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
     ]);
     if (!p) return;

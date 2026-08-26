@@ -38,7 +38,6 @@ export default function AnotarPeso({
     // a la base va siempre en kilos: la unidad es solo cómo lo escribe y lo
     // lee el usuario. Dos decimales, que es lo que acepta la columna.
     const { error: err } = await supabase.rpc('anotar_peso', {
-      p_fecha: hoyISO(),
       p_valor: Math.round(aKilos(escrito, unidad) * 100) / 100,
     });
     setGuardando(false);

@@ -127,7 +127,7 @@ console.log('\n3. La racha no se puede tocar a mano');
 // =====================================================================
 console.log('\n4. Registrar el primer día, con peso');
 {
-  const { data, error } = await A.rpc('registrar_dia', { p_fecha: HOY, p_es_descanso: false, p_peso: 82.4 });
+  const { data, error } = await A.rpc('registrar_dia', { p_es_descanso: false, p_peso: 82.4 });
   chequear('registrar_dia responde', error?.message ?? 'sin error', 'sin error');
   chequear('racha 1, rango 1, sin subida', [data?.racha, data?.rango_despues, data?.subio_rango], [1, 1, false]);
 }
@@ -136,16 +136,32 @@ console.log('\n4. Registrar el primer día, con peso');
   chequear('el peso quedó guardado', Number(data?.[0]?.valor), 82.4);
 }
 {
-  const { error } = await A.rpc('registrar_dia', { p_fecha: HOY, p_es_descanso: false, p_peso: null });
+  const { error } = await A.rpc('registrar_dia', { p_es_descanso: false, p_peso: null });
   chequear('el mismo día no se registra dos veces', error?.code ?? null, '23505');
 }
 
 // =====================================================================
+// Cuántos días se siembran para las pruebas de racha. Las cuentas de la
+// sección 12 salen de acá y no escritas a mano: al cambiar este número
+// quedaron cuatro expectativas sueltas que había que volver a derivar a ojo.
+const SEMBRADOS = 39;
+
 console.log('\n5. Escalera de rangos y planeta del día');
 {
-  for (let d = 38; d >= 1; d--) await A.from('logs').insert({ user_id: idA, fecha: iso(d) });
+  // El día de hoy ya quedó registrado en la sección 4. Se BORRA y se siembran
+  // 39 días terminando AYER, así el único que falta es el de hoy — que es el
+  // único que `registrar_dia()` puede crear, porque la fecha la decide el
+  // servidor desde la migración 12.
+  //
+  // La versión anterior sembraba hasta ayer y después pedía el día 40 pasando
+  // `p_fecha`, creyendo que elegía la fecha. El parámetro se ignoraba, chocaba
+  // con el día de hoy que ya estaba, y la prueba de la subida de rango no
+  // probaba nada desde hacía nueve migraciones. Ver spec/trampas.md.
+  await A.from('logs').delete().eq('user_id', idA).eq('fecha', HOY);
+  for (let d = SEMBRADOS; d >= 1; d--) await A.from('logs').insert({ user_id: idA, fecha: iso(d) });
   const { data } = await A.from('profiles').select('racha_actual, rango_actual').eq('id', idA).single();
-  chequear('39 días seguidos', [data.racha_actual, data.rango_actual], [39, 4]);
+  chequear(`${SEMBRADOS} días seguidos terminando ayer`,
+    [data.racha_actual, data.rango_actual], [SEMBRADOS, 4]);
 }
 {
   const { data } = await A.from('logs')
@@ -157,9 +173,15 @@ console.log('\n5. Escalera de rangos y planeta del día');
 // =====================================================================
 console.log('\n6. La ignición: subir de planeta a sol');
 {
-  const { data } = await A.rpc('registrar_dia', { p_fecha: iso(-1), p_es_descanso: false, p_peso: null });
+  const { data, error } = await A.rpc('registrar_dia', { p_es_descanso: false, p_peso: null });
+  // El error se mira SIEMPRE. Sin esta línea, un fallo del RPC deja `data` en
+  // null y el chequeo de abajo dice "esperaba 40, obtuve null", que manda a
+  // buscar el problema en la racha en vez de en la llamada — que es justo lo
+  // que pasó y tapó el bug nueve migraciones.
+  chequear('el día 40 se registra sin error', error?.message ?? 'sin error', 'sin error');
   chequear('subió de rango al confirmar',
-    [data?.racha, data?.rango_antes, data?.rango_despues, data?.subio_rango], [40, 4, 5, true]);
+    [data?.racha, data?.rango_antes, data?.rango_despues, data?.subio_rango],
+    [SEMBRADOS + 1, 4, 5, true]);
 }
 
 // =====================================================================
@@ -273,34 +295,36 @@ console.log('\n12. Pérdida de racha: resta 10');
   // puede registrar. Para cortarla de verdad hay que dejar ayer vacío.
   await A.from('logs').delete().eq('user_id', idA).eq('fecha', iso(-1));
   await A.from('logs').delete().eq('user_id', idA).eq('fecha', HOY);
-  const { data: sinCorte } = await A.rpc('verificar_perdida', { p_hoy: HOY });
+  const { data: sinCorte } = await A.rpc('verificar_perdida');
   chequear('borrar el día de hoy no rompe la racha', sinCorte?.perdida, false);
 
   await A.from('logs').delete().eq('user_id', idA).eq('fecha', iso(1));
   const { data: p0 } = await A.from('profiles').select('racha_actual').eq('id', idA).single();
-  chequear('quedan 37 días, cortados anteayer', p0.racha_actual, 37);
+  // Quedan los sembrados menos ayer, que se acaba de borrar.
+  const vivos = SEMBRADOS - 1;
+  chequear(`quedan ${vivos} días, cortados anteayer`, p0.racha_actual, vivos);
 
-  const { data } = await A.rpc('verificar_perdida', { p_hoy: HOY });
-  chequear('detecta el corte y resta 10', [data?.perdida, data?.racha], [true, 27]);
+  const { data } = await A.rpc('verificar_perdida');
+  chequear('detecta el corte y resta 10', [data?.perdida, data?.racha], [true, vivos - 10]);
   const { data: p } = await A.from('profiles').select('racha_actual, rango_actual').eq('id', idA).single();
-  chequear('bajó justo un rango', [p.racha_actual, p.rango_actual], [27, 3]);
+  chequear('bajó justo un rango', [p.racha_actual, p.rango_actual], [vivos - 10, 3]);
 }
 {
-  const { data } = await A.rpc('verificar_perdida', { p_hoy: HOY });
+  const { data } = await A.rpc('verificar_perdida');
   chequear('no castiga dos veces el mismo corte', data?.perdida, false);
 }
 {
-  const { data } = await A.rpc('registrar_dia', { p_fecha: HOY, p_es_descanso: false, p_peso: null });
-  chequear('volver suma sobre lo conservado', data?.racha, 28);
+  const { data } = await A.rpc('registrar_dia', { p_es_descanso: false, p_peso: null });
+  chequear('volver suma sobre lo conservado', data?.racha, SEMBRADOS - 1 - 10 + 1);
 }
 
 // =====================================================================
 console.log('\n13. Recalcular no rebota');
 {
-  const { data } = await A.rpc('recalcular_desde_cero', { p_hoy: HOY });
+  const { data } = await A.rpc('recalcular_desde_cero');
   const { data: p } = await A.from('profiles').select('racha_actual').eq('id', idA).single();
   chequear('lo devuelto coincide con la base', data?.racha, p.racha_actual);
-  const { data: v } = await A.rpc('verificar_perdida', { p_hoy: HOY });
+  const { data: v } = await A.rpc('verificar_perdida');
   chequear('y recargar no lo mueve', v?.perdida, false);
 }
 

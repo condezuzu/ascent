@@ -48,7 +48,7 @@ export default function Social() {
     setMiId(user.id);
 
     // cerrar retos vencidos antes de mostrarlos (fecha local, no UTC del server)
-    await supabase.rpc('cerrar_retos_vencidos', { p_hoy: hoyISO() });
+    await supabase.rpc('cerrar_retos_vencidos');
 
     const { data: rel } = await supabase.from('friendships').select('*');
     const aceptadas = (rel ?? []).filter((r) => r.estado === 'aceptada');

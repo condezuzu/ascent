@@ -12,7 +12,12 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Las 20 primeras están aplicadas; la 21 falta correr.** En una base nueva no
+**Las 21 primeras están aplicadas; la 22 falta correr, y esta tiene orden.**
+
+La 22 borra siete parámetros que el servidor ignoraba. **Va DESPUÉS de
+desplegar la app**: mientras tanto un cliente viejo sigue andando porque los
+parámetros tienen default, pero al revés —migración primero— un cliente que
+todavía los manda no encuentra la firma y rompe. En una base nueva no
 hace falta ninguna: `supabase/schema.sql` ya las incluye a todas, y
 `npm run test:db` lo comprueba comparando las dos bases entera. Que PRODUCCIÓN
 coincida con el repo lo comprueba `npm run test:conexion`, que le pide a la

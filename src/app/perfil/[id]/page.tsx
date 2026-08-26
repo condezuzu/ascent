@@ -107,7 +107,7 @@ export default function Perfil() {
       }
 
       // cerrar vencidos antes de mirar (fecha local, no UTC del server)
-      await supabase.rpc('cerrar_retos_vencidos', { p_hoy: hoyISO() });
+      await supabase.rpc('cerrar_retos_vencidos');
 
       // reto vigente entre los dos (pendiente o activo)
       const { data: retos } = await supabase

@@ -455,7 +455,7 @@ $$;
 
 -- Cambiar los días de descanso. Rige desde hoy hacia adelante: el pasado
 -- queda congelado con la configuración que estaba vigente entonces.
-create or replace function public.fijar_descansos(p_dias int[], p_hoy date default null)
+create or replace function public.fijar_descansos(p_dias int[])
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -588,7 +588,7 @@ create trigger trg_logs_after_change after insert or update or delete on public.
 -- p_hoy viene del cliente: el servidor corre en UTC y el usuario en UTC-3;
 -- sin esto, a la noche uruguaya el servidor evaluaría "hoy" un día adelantado
 -- y quitaría rachas con el día todavía en curso.
-create or replace function public.verificar_perdida(p_hoy date default null)
+create or replace function public.verificar_perdida()
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -630,7 +630,7 @@ $$;
 -- Corrección manual: recalcular todo desde los logs, sin piso de misericordia,
 -- y aplicar la pérdida en la MISMA transacción. Devuelve el número final:
 -- el usuario nunca puede ver una racha que después baja sola al recargar.
-create or replace function public.recalcular_desde_cero(p_hoy date default null)
+create or replace function public.recalcular_desde_cero()
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -707,7 +707,7 @@ $$;
 -- REGISTRAR DÍA (RPC transaccional: la animación de subida de rango
 -- se dispara SOLO después de que esto confirme)
 -- -------------------------------------------------------------
-create or replace function public.registrar_dia(p_fecha date default null, p_es_descanso boolean default false, p_peso numeric default null)
+create or replace function public.registrar_dia(p_es_descanso boolean default false, p_peso numeric default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -753,7 +753,7 @@ $$;
 -- (ganador = más días entrenados dentro del rango; empate = null)
 -- Se llama al abrir la pantalla social.
 -- -------------------------------------------------------------
-create or replace function public.cerrar_retos_vencidos(p_hoy date default null)
+create or replace function public.cerrar_retos_vencidos()
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -1022,7 +1022,7 @@ $$;
 -- solo lectura para el cliente, y así el peso no se puede escribir en la
 -- fecha de otro ni saltear el rango permitido.
 -- -------------------------------------------------------------
-create or replace function public.anotar_peso(p_fecha date default null, p_valor numeric default null)
+create or replace function public.anotar_peso(p_valor numeric)
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -1077,7 +1077,7 @@ $$;
 -- Si el día ya estaba registrado no se duplica nada: la sesión se cuelga del
 -- log que ya existe y lo único que agrega es la duración.
 -- -------------------------------------------------------------
-create or replace function public.iniciar_sesion(p_hoy date default null)
+create or replace function public.iniciar_sesion()
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -1569,21 +1569,21 @@ revoke execute on function
   public.mejor_racha_real(uuid),
   public.descansos_vigentes(uuid, date),
   public.son_amigos(uuid, uuid),
-  public.registrar_dia(date, boolean, numeric),
-  public.verificar_perdida(date),
-  public.recalcular_desde_cero(date),
-  public.cerrar_retos_vencidos(date),
+  public.registrar_dia(boolean, numeric),
+  public.verificar_perdida(),
+  public.recalcular_desde_cero(),
+  public.cerrar_retos_vencidos(),
   public.eliminar_amigo(uuid),
   public.eliminar_cuenta(),
-  public.fijar_descansos(int[], date),
+  public.fijar_descansos(int[]),
   public.mi_hoy(),
   public.fijar_zona(text),
   public.mi_fuerza(),
   public.ranking_fuerza(),
   public.sumar_serie(),
   public.restar_serie(),
-  public.anotar_peso(date, numeric),
-  public.iniciar_sesion(date),
+  public.anotar_peso(numeric),
+  public.iniciar_sesion(),
   public.terminar_sesion(),
   public.mi_sesion(),
   public.resumen_sesiones()
@@ -1614,21 +1614,21 @@ grant execute on function
   public.mejor_racha_real(uuid),
   public.descansos_vigentes(uuid, date),
   public.son_amigos(uuid, uuid),
-  public.registrar_dia(date, boolean, numeric),
-  public.verificar_perdida(date),
-  public.recalcular_desde_cero(date),
-  public.cerrar_retos_vencidos(date),
+  public.registrar_dia(boolean, numeric),
+  public.verificar_perdida(),
+  public.recalcular_desde_cero(),
+  public.cerrar_retos_vencidos(),
   public.eliminar_amigo(uuid),
   public.eliminar_cuenta(),
-  public.fijar_descansos(int[], date),
+  public.fijar_descansos(int[]),
   public.mi_hoy(),
   public.fijar_zona(text),
   public.mi_fuerza(),
   public.ranking_fuerza(),
   public.sumar_serie(),
   public.restar_serie(),
-  public.anotar_peso(date, numeric),
-  public.iniciar_sesion(date),
+  public.anotar_peso(numeric),
+  public.iniciar_sesion(),
   public.terminar_sesion(),
   public.mi_sesion(),
   public.resumen_sesiones()

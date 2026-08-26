@@ -24,12 +24,7 @@ export default function Descansos({
       ? perfil.dias_descanso.filter((d) => d !== dia)
       : [...perfil.dias_descanso, dia];
     alCambiar({ dias_descanso: nuevos });
-    const { error } = await supabase.rpc('fijar_descansos', {
-      p_dias: nuevos,
-      // p_hoy = fecha LOCAL: el servidor está en UTC y fecharía el cambio un
-      // día adelantado a la noche uruguaya
-      p_hoy: hoyISO(),
-    });
+    const { error } = await supabase.rpc('fijar_descansos', { p_dias: nuevos });
     if (error) recargar(); // no se guardó: se vuelve a lo que dice la base
   }
 

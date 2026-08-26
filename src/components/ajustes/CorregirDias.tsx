@@ -18,7 +18,7 @@ export default function CorregirDias({ recargar }: { recargar: () => void }) {
   async function recalcular() {
     setRecalculando(true);
     setAviso('');
-    const { data, error } = await supabase.rpc('recalcular_desde_cero', { p_hoy: hoyISO() });
+    const { data, error } = await supabase.rpc('recalcular_desde_cero');
     setRecalculando(false);
     if (error) return setAviso('No se pudo recalcular. Probá de nuevo.');
     const r = data as { racha: number; perdida: boolean };

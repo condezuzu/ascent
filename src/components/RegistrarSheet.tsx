@@ -102,10 +102,7 @@ export default function RegistrarSheet({
     // ---- el día YA está: solo se agrega lo que falte ----
     if (yaEsta) {
       if (kilos !== null) {
-        const { error: errPeso } = await supabase.rpc('anotar_peso', {
-          p_fecha: dia,
-          p_valor: kilos,
-        });
+        const { error: errPeso } = await supabase.rpc('anotar_peso', { p_valor: kilos });
         if (errPeso) {
           setCargando(false);
           return setError('No se pudo guardar el peso. Probá de nuevo.');
@@ -118,7 +115,6 @@ export default function RegistrarSheet({
 
     // ---- el día no existe: se registra ----
     const { data, error: errRpc } = await supabase.rpc('registrar_dia', {
-      p_fecha: dia,
       p_es_descanso: false,
       p_peso: kilos,
     });

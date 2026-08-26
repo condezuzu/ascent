@@ -89,14 +89,14 @@ console.log('\nLas funciones calculan bien');
 // "could not find the function" por la firma y parece que no existiera.
 console.log('\nSin sesión todo está cerrado');
 const RPCS = [
-  ['registrar_dia', { p_fecha: '2020-01-01', p_es_descanso: false, p_peso: null }],
-  ['verificar_perdida', { p_hoy: '2020-01-01' }],
-  ['recalcular_desde_cero', { p_hoy: '2020-01-01' }],
-  ['cerrar_retos_vencidos', { p_hoy: '2020-01-01' }],
+  ['registrar_dia', { p_es_descanso: false, p_peso: null }],
+  ['verificar_perdida', {}],
+  ['recalcular_desde_cero', {}],
+  ['cerrar_retos_vencidos', {}],
   ['eliminar_amigo', { p_otro: '00000000-0000-0000-0000-000000000001' }],
   ['calcular_racha', { p_user: '00000000-0000-0000-0000-000000000001', p_hasta: '2020-01-01' }],
   ['descansos_vigentes', { p_user: '00000000-0000-0000-0000-000000000001', p_fecha: '2020-01-01' }],
-  ['fijar_descansos', { p_dias: [1], p_hoy: '2020-01-01' }],
+  ['fijar_descansos', { p_dias: [1] }],
 ];
 for (const [fn, args] of RPCS) {
   const { error } = await db.rpc(fn, args);
@@ -190,11 +190,11 @@ console.log('\nCronómetro de sesión');
     chequear('tope_sesion son 4 horas', tope, '04:00:00');
 
     for (const [fn, args] of [
-      ['iniciar_sesion', { p_hoy: '2020-01-01' }],
+      ['iniciar_sesion', {}],
       ['terminar_sesion', {}],
       ['mi_sesion', {}],
       ['resumen_sesiones', {}],
-      ['anotar_peso', { p_fecha: '2020-01-01', p_valor: 80 }],
+      ['anotar_peso', { p_valor: 80 }],
     ]) {
       const { error: e2 } = await db.rpc(fn, args);
       chequear(`${fn} existe`, !noExiste(e2?.message), true);
