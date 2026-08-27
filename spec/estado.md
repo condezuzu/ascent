@@ -137,6 +137,15 @@ schema de la base real. El flujo es: escribir la migración → probarla con
 - **Storage**: los avatares se siguen viendo sin credenciales, y el listado
   del bucket ya no devuelve nada ajeno.
 
+- **Todo el texto en un solo archivo** (`src/textos.ts`): las ~31 pantallas y
+  componentes leen de ahí. Cambiar una frase es una línea. Quedan afuera a
+  propósito los nombres de rangos y planetas (vocabulario, no interfaz), las
+  citas con autor, y el artículo largo de "Cómo se compara la fuerza".
+- **El punto del gimnasio, a la vista**: se presenta en la bienvenida sin pedir
+  nada, se recuerda en Inicio mientras no esté marcado, y se insiste una vez,
+  justo después de registrar el día — el único momento en que es probable que
+  la persona esté parada ahí. **Nunca al empezar la sesión.**
+
 ## A medias
 
 - **Gente sugerida**: decidido que la lógica se escriba pero quede oculta
@@ -156,7 +165,12 @@ schema de la base real. El flujo es: escribir la migración → probarla con
    terminar el descanso (Android), que la pantalla no se apague mientras corre,
    y que el aviso llegue con la app adelante.
 2. **Gente sugerida**: sin usuarios no tiene a quién sugerir. Espera.
-3. **Correr las migraciones 20 y 21.**
+3. **Traducir al inglés.** El texto ya está todo en `src/textos.ts`; el trabajo
+   es agregar `en` con la misma forma, y el tipo de uno obliga al otro a estar
+   completo. Va **después** de migrar a nativo, no antes.
+
+Las migraciones 20 a 23 están corridas: `test:conexion` compara producción
+contra el repo y da sin diferencias.
 
 ## Nada de esto está en el camino crítico
 

@@ -75,6 +75,7 @@ seguro.
 | Producción | https://ascent-blush-seven.vercel.app |
 | Supabase | proyecto `okeanaihymbvbdmrdqph` |
 | Dev server | puerto 3020 |
+| Todo el texto que se lee | `src/textos.ts` — cambiar una frase es una línea, no una cacería |
 
 ## Comandos
 

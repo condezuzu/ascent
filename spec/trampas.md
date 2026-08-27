@@ -452,10 +452,24 @@ títulos salen del margen izquierdo a propósito (§19.1), con
 `margin-left: calc(var(--sangria) * -1)`. Pero `--sangria` era 32px y el margen
 lateral de `.pantalla` 20px, así que cada título quedaba 12px afuera de la
 pantalla: "STATS" se leía "TATS", en todas las pantallas de la app.
-→ **Regla:** el saliente y el margen salen de la MISMA variable. Y `capturas`
-ahora mide lo que queda en x negativo, porque **`scrollWidth` no lo ve**: lo que
-se va por la izquierda se recorta y el documento ni se entera. La comprobación
-de overflow que había solo miraba la derecha y esto le pasó por al lado.
+→ **Regla (corregida):** el saliente tiene su propia variable, `--saliente`,
+y tiene que ser **menor** que `--sangria`. Y `capturas` ahora mide lo que queda
+en x negativo, porque **`scrollWidth` no lo ve**: lo que se va por la izquierda
+se recorta y el documento ni se entera. La comprobación de overflow que había
+solo miraba la derecha y esto le pasó por al lado.
+
+**La primera regla estaba mal, y estuvo mal seis tandas.** Decir "el saliente y
+el margen salen de la MISMA variable" arregla el recorte y crea otro problema:
+con saliente igual a margen, los títulos quedan en **x = 0 exacto**, pegados al
+borde de la pantalla, sin un píxel de aire. Eso es lo que se veía en Stats, El
+año, Sesiones, Álbum y Ranking. Y la foto de perfil de `/yo` nunca se enteró
+de la regla: se quedó con `-32px` a mano y siguió cortada todo ese tiempo.
+→ **Regla:** una variable propia, `--saliente: 10px`, menor que la sangría, y
+**todos** los que se salen la usan — títulos, número de racha y foto de `/yo`.
+→ **Y lo que esto enseña de los tests:** la guarda de `capturas` mide `x < 0`,
+así que un título en `x = 0` le pasa por al lado y da verde. Un test que busca
+"se sale" no encuentra "no respira": son dos cosas distintas, y la segunda solo
+la ve un ojo.
 
 ---
 
