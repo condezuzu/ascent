@@ -1477,10 +1477,15 @@ textarea::placeholder {
 .yo-foto-celda .album-vis {
   pointer-events: none;
 }
+/* En /yo el rótulo es el interruptor: encendido va sólido, y ahí el degradado
+   del álbum no sirve — con relleno macizo el padding del scrim queda enorme. */
+.yo-foto-celda .album-vis {
+  padding: 4px 7px;
+  border-radius: 2px 0 2px 0;
+}
 .yo-foto-celda.compartida .album-vis {
   background: var(--pal-claro);
   color: #08080c;
-  border-color: transparent;
 }
 .yo-conteo {
   font-family: var(--f-mono), monospace;
@@ -2251,7 +2256,15 @@ body.con-franja .pantalla {
 }
 .dia-listo .acciones {
   display: flex;
-  gap: 18px;
+  gap: 26px;
+}
+.dia-listo .acciones > button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  padding: 0;
 }
 .dia-listo .redondo {
   width: 54px;
@@ -2268,9 +2281,15 @@ body.con-franja .pantalla {
   width: 22px;
   height: 22px;
 }
-.dia-listo .redondo:active {
+.dia-listo .acciones > button:active .redondo {
   transform: scale(0.94);
   border-color: color-mix(in srgb, var(--pal-claro) 55%, transparent);
+}
+.dia-listo .acciones .rotulo {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--apagado);
 }
 
 /* La salida del descanso que no cuesta el descanso. En voz baja: en esta

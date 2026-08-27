@@ -360,20 +360,20 @@ export default function Principal() {
              ir apretado adentro de un botón ancho. */
           <div className="dia-listo">
             <span className="rotulo">{T.inicio.diaRegistrado}</span>
+            {/* Con rótulo: una cámara se entiende sola, una balanza no. Dos
+                iconos pelados obligan a tocar uno para averiguar cuál era. */}
             <div className="acciones">
-              <button
-                className="redondo"
-                onClick={() => abrirHoja('foto')}
-                aria-label={T.sesion.sumarFoto}
-              >
-                <IconoFoto />
+              <button onClick={() => abrirHoja('foto')}>
+                <span className="redondo">
+                  <IconoFoto />
+                </span>
+                <span className="rotulo">{T.registrar.foto}</span>
               </button>
-              <button
-                className="redondo"
-                onClick={() => abrirHoja('peso')}
-                aria-label={T.sesion.sumarPeso}
-              >
-                <IconoPeso />
+              <button onClick={() => abrirHoja('peso')}>
+                <span className="redondo">
+                  <IconoPeso />
+                </span>
+                <span className="rotulo">{T.registrar.peso}</span>
               </button>
             </div>
           </div>
