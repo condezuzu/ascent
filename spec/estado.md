@@ -169,8 +169,12 @@ schema de la base real. El flujo es: escribir la migración → probarla con
    es agregar `en` con la misma forma, y el tipo de uno obliga al otro a estar
    completo. Va **después** de migrar a nativo, no antes.
 
-Las migraciones 20 a 23 están corridas: `test:conexion` compara producción
-contra el repo y da sin diferencias.
+Las migraciones 20 a 23 están corridas. **La 24 está escrita y sin correr**
+(`supabase/migracion-24-sesion-por-llegada.sql`): agrega `sesiones.origen` y
+deja que `iniciar_sesion` / `terminar_sesion` reciban la hora de llegada y la
+de salida. Hasta que corra, el cliente cae solo a la firma vieja — la sesión
+arranca y termina como siempre, sin automático. `test:conexion` compara
+producción contra el repo y avisa.
 
 ## Nada de esto está en el camino crítico
 

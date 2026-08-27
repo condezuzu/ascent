@@ -108,6 +108,18 @@ export const TOPE_SESION_SEGUNDOS = 4 * 60 * 60;
  */
 export const PISO_SESION_SEGUNDOS = 5 * 60;
 
+/**
+ * Cuánto hay que quedarse en el gimnasio antes de que la sesión arranque sola
+ * (§13). Siete minutos: uno llega, se cambia, saluda — no empieza a entrenar
+ * apenas cruza la puerta.
+ *
+ * Alargarlo no cuesta precisión, porque el inicio se cuenta desde la llegada y
+ * no desde el disparo. Lo único que cuesta es tardar más en ver el cronómetro
+ * andando. Acortarlo sí cuesta: es lo que filtra al que pasa caminando por la
+ * puerta camino a otro lado.
+ */
+export const ESPERA_LLEGADA_MS = 7 * 60 * 1000;
+
 // ---------------------------------------------------------------
 // Descanso entre series — espejo del check de profiles.duracion_descanso
 // ---------------------------------------------------------------

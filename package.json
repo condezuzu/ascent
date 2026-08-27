@@ -10,7 +10,8 @@
     "test:conexion": "node --env-file=.env.local supabase/verificar-conexion.mjs",
     "test:e2e": "node --env-file=.env.local supabase/test-e2e.mjs",
     "capturas": "node --env-file=.env.local supabase/capturas.mjs",
-    "verificar:deploy": "node --env-file=.env.local supabase/verificar-deploy.mjs"
+    "verificar:deploy": "node --env-file=.env.local supabase/verificar-deploy.mjs",
+    "test:vuelta-atras": "node --env-file=.env.local supabase/probar-vuelta-atras.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

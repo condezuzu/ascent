@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
@@ -11,7 +11,9 @@ import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
 import { guardarPerfilCache, leerPerfilCache } from '@/lib/cache';
 import { marca } from '@/lib/medir';
 import { sincronizarZona } from '@/lib/zona';
-import { estoyEnElGimnasio, marcarPunto, registrarPorSenal } from '@/lib/gimnasio';
+import { marcarPunto, mirarElGimnasio, registrarPorSenal } from '@/lib/gimnasio';
+import { decidir } from '@/lib/llegada';
+import { guardarVigilancia, leerVigilancia } from '@/lib/sesionCache';
 import { lineaDeMarcas } from '@/lib/fuerza';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -134,20 +136,6 @@ export default function Principal() {
       if (f) setMarcas(lineaDeMarcas(f.marcas, p.unidad_peso ?? 'kg'));
     });
 
-    // El atajo de §13: abrir la app estando en el gimnasio registra el día.
-    // Va al final de todo y sin await porque pide el GPS, que tarda segundos:
-    // la pantalla no espera por esto. Y solo si el día NO está registrado, para
-    // no gastar el GPS en el 90% de las veces que se abre la app.
-    const yaHoy = (ls ?? []).some((l) => l.fecha === hoyISO());
-    if (!yaHoy && p.gimnasio_lat) {
-      estoyEnElGimnasio(p as Perfil).then(async (adentro) => {
-        if (!adentro) return;
-        const r = await registrarPorSenal(supabase, 'ubicacion');
-        // Solo se recarga si de verdad entró: si estaba bloqueado por la
-        // guarda de zona o ya estaba, no hay nada nuevo que mostrar.
-        if (r.registrado) cargar();
-      });
-    }
   }, [supabase, router, cargarSocial]);
 
   // El cronómetro vive acá desde §20: empezar pasa una vez por entrenamiento
@@ -156,6 +144,97 @@ export default function Principal() {
     if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
     cargar();
   });
+
+  // Por refs y no por dependencias: `sesion`, `perfil` y `logs` cambian en
+  // cada render, y el vigilante los necesita frescos adentro. Con
+  // dependencias, el efecto se desarmaría y se rearmaría —y volvería a pedir
+  // el GPS— una vez por segundo, que es justo lo que no hay que hacer.
+  const sesionRef = useRef(sesion);
+  sesionRef.current = sesion;
+  const perfilRef = useRef(perfil);
+  perfilRef.current = perfil;
+  const logsRef = useRef(logs);
+  logsRef.current = logs;
+  const ultimaMirada = useRef(0);
+
+  /**
+   * Mirar el gimnasio y actuar: registrar el día al llegar (§13), arrancar la
+   * sesión cuando se quedó el rato suficiente, y cerrarla cuando se fue.
+   *
+   * UNA SOLA lectura de GPS para las dos cosas: preguntar dos veces sería
+   * pagar la antena dos veces por la misma respuesta.
+   *
+   * El día se registra AL INSTANTE y la sesión espera siete minutos. No es una
+   * inconsistencia: el día es un hecho —fuiste— y la sesión es una medición,
+   * que si arranca antes de que empieces a entrenar mide mal.
+   */
+  const vigilar = useCallback(async () => {
+    const perfilAhora = perfilRef.current;
+    if (!perfilAhora?.gimnasio_lat) return;
+
+    const s = sesionRef.current;
+    const vigilancia = await leerVigilancia();
+
+    // El GPS no es gratis. Si ya sabemos que está en el gimnasio, o si hay una
+    // sesión que puede tener que cerrarse, hay algo que hacer pronto y vale
+    // mirar seguido. Si está en cualquier otro lado, mirar de nuevo en dos
+    // minutos no puede decir nada nuevo: para cambiar de respuesta tendría que
+    // haber caminado hasta el gimnasio.
+    const hayAlgoQueHacer = !!vigilancia || s.estado.porUbicacion;
+    const CADA = hayAlgoQueHacer ? 0 : 5 * 60 * 1000;
+    if (Date.now() - ultimaMirada.current < CADA) return;
+    ultimaMirada.current = Date.now();
+
+    const { adentro, medidoEn } = await mirarElGimnasio(perfilAhora);
+
+    if (adentro && !logsRef.current.some((l) => l.fecha === hoyISO())) {
+      const r = await registrarPorSenal(supabase, 'ubicacion');
+      // Solo se recarga si de verdad entró: si estaba bloqueado por la guarda
+      // de zona o ya estaba, no hay nada nuevo que mostrar.
+      if (r.registrado) cargar();
+    }
+
+    const decision = decidir(adentro, medidoEn, Date.now(), vigilancia, {
+      corriendo: s.estado.corriendo,
+      porUbicacion: s.estado.porUbicacion,
+    });
+    await guardarVigilancia(decision.vigilancia);
+
+    if (decision.hacer === 'arrancar') {
+      await s.empezar({ desde: decision.desde, origen: 'ubicacion' });
+    } else if (decision.hacer === 'terminar') {
+      await s.terminar({ hasta: decision.hasta });
+    }
+  }, [supabase, cargar]);
+
+  /**
+   * Cuándo mirar. En web esto solo pasa CON LA APP ABIERTA: el navegador no
+   * despierta a nadie, y no hay forma de taparlo. Se mira al abrir, al volver
+   * a la pantalla y cada dos minutos mientras se la esté viendo — con el
+   * freno de arriba, que es el que decide si esa mirada se paga o no.
+   *
+   * Con la pestaña escondida no corre: cuatro lecturas de GPS por hora para
+   * una pantalla que nadie está mirando es la misma clase de desperdicio que
+   * el AudioContext despierto durante el descanso.
+   */
+  useEffect(() => {
+    if (!perfil?.gimnasio_lat) return;
+    let id: ReturnType<typeof setInterval> | undefined;
+
+    const arrancar = () => {
+      clearInterval(id);
+      if (document.visibilityState !== 'visible') return;
+      vigilar();
+      id = setInterval(vigilar, 2 * 60 * 1000);
+    };
+
+    arrancar();
+    document.addEventListener('visibilitychange', arrancar);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', arrancar);
+    };
+  }, [perfil?.gimnasio_lat, vigilar]);
 
   // Al volver a entrar, la pantalla sale con la racha y la paleta de la
   // última visita mientras la red confirma. Nada de esperar en blanco.
@@ -347,9 +426,13 @@ export default function Principal() {
               </button>
             </div>
             <p className="nota-privada" style={{ textAlign: 'center', marginTop: 10 }}>
-              {T.inicio.masArrancaDescanso}
+              {sesion.estado.porUbicacion ? T.inicio.sesionSola : T.inicio.masArrancaDescanso}
             </p>
-            <button className="boton-fantasma" style={{ marginTop: 12 }} onClick={sesion.terminar}>
+            <button
+              className="boton-fantasma"
+              style={{ marginTop: 12 }}
+              onClick={() => sesion.terminar()}
+            >
               {T.sesion.terminar}
             </button>
           </>

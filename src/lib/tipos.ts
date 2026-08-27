@@ -44,6 +44,15 @@ export const TIPOS_FEEDBACK = ['bug', 'idea'] as const;
 /** `logs.origen`: de dónde salió el día. */
 export const ORIGENES_DIA = ['manual', 'ubicacion', 'salud'] as const;
 
+/**
+ * `sesiones.origen`: de dónde salió la sesión. Solo se cierran solas al salir
+ * del gimnasio las que arrancaron solas al llegar.
+ *
+ * No lleva 'salud' como el día: una pulsera puede decir que entrenaste, no
+ * cuándo arrancaste ni cuándo paraste.
+ */
+export const ORIGENES_SESION = ['manual', 'ubicacion'] as const;
+
 /** Los tres del DOTS, que son filas de `ejercicios` con `cuenta_dots`. */
 export const EJERCICIOS_DOTS = ['sentadilla', 'press_banca', 'peso_muerto'] as const;
 
@@ -54,6 +63,7 @@ export type EstadoReto = (typeof ESTADOS_RETO)[number];
 export type EstadoSesion = (typeof ESTADOS_SESION)[number];
 export type TipoFeedback = (typeof TIPOS_FEEDBACK)[number];
 export type OrigenDia = (typeof ORIGENES_DIA)[number];
+export type OrigenSesion = (typeof ORIGENES_SESION)[number];
 
 // null = sin cargar, y eso significa SIN DOTS (§16.7). No es un valor por
 // defecto: no hay coeficientes neutros que sirvan.

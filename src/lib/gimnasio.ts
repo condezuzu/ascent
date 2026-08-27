@@ -77,6 +77,36 @@ export async function marcarPunto(
  */
 const CINCO_MINUTOS = 5 * 60 * 1000;
 
+/**
+ * Lo mismo que `estoyEnElGimnasio`, pero diciendo además CUÁNDO se midió el
+ * punto que contestó.
+ *
+ * Importa para la hora de llegada: un arreglo del GPS puede venir de hace
+ * cinco minutos, y esa hora está más cerca de cuándo llegó la persona que el
+ * momento en que se nos ocurrió preguntar. Sin esto, la llegada se atrasaría
+ * hasta cinco minutos cada vez.
+ */
+export async function mirarElGimnasio(
+  perfil: Perfil | null
+): Promise<{ adentro: boolean | null; medidoEn: number }> {
+  const ahora = Date.now();
+  if (!perfil?.gimnasio_lat || !perfil.gimnasio_lon) return { adentro: null, medidoEn: ahora };
+  const centro = { lat: perfil.gimnasio_lat, lon: perfil.gimnasio_lon };
+  const adentro = (p: { lat: number; lon: number; precision: number }) =>
+    estaAdentro(p, centro, perfil.gimnasio_radio, p.precision);
+
+  const cacheado = await plataforma.ubicacion.puntoActual(CINCO_MINUTOS);
+  if (!cacheado) return { adentro: null, medidoEn: ahora };
+  if (adentro(cacheado)) return { adentro: true, medidoEn: cacheado.medidoEn };
+
+  const viejo = ahora - cacheado.medidoEn > 30000;
+  if (!viejo) return { adentro: false, medidoEn: cacheado.medidoEn };
+
+  const fresco = await plataforma.ubicacion.puntoActual(0);
+  if (!fresco) return { adentro: null, medidoEn: ahora };
+  return { adentro: adentro(fresco), medidoEn: fresco.medidoEn };
+}
+
 export async function estoyEnElGimnasio(perfil: Perfil | null): Promise<boolean | null> {
   if (!perfil?.gimnasio_lat || !perfil.gimnasio_lon) return null;
   const centro = { lat: perfil.gimnasio_lat, lon: perfil.gimnasio_lon };

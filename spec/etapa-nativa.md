@@ -217,7 +217,8 @@ A tener en cuenta cuando se implemente:
   permita.
 - Radio chico significa menos falsos positivos pero más días que no se detectan.
   Por eso el registro a mano nunca desaparece: es la red de seguridad.
-- Conviene exigir permanencia mínima en la zona, no solo el ingreso.
+- Conviene exigir permanencia mínima en la zona, no solo el ingreso. **Hecho**:
+  son 7 minutos, y también arranca la sesión. Ver más abajo.
 - El permiso de ubicación en segundo plano es el más invasivo que existe: hay que
   pedirlo explicando para qué, y la app tiene que funcionar entera sin él.
 - La ubicación del gimnasio es dato privado del usuario y no se comparte con
@@ -242,6 +243,53 @@ un punto mal puesto es peor que no tenerlo.
 Esta es la primera razón concreta para pasar a nativo con Expo. El backend entero
 (Supabase, esquema, RLS, triggers, lógica de rachas) se lleva sin tocar; se rehace
 solo la capa visual.
+
+### La sesión también arranca al llegar — y lo que de eso sí anda en web
+
+Implementado el 27/8/2026 hasta donde la web llega. **La lógica entera está
+hecha y probada** (`src/lib/llegada.ts`, secciones 40 y 41 de `test:db`); lo
+único que falta en nativo es **quién mira**.
+
+Lo que hace:
+
+- Si te quedás **7 minutos** en la zona (`ESPERA_LLEGADA_MS`), la sesión
+  arranca sola. La espera es lo que filtra al que pasa caminando por la puerta,
+  y de paso te deja cambiarte antes de que empiece a contar algo.
+- El inicio se cuenta **desde la llegada, no desde el disparo**. Llegaste 10:00,
+  arranca 10:07, la sesión dice 10:00. Si dijera 10:07 la duración saldría
+  corta siempre, y un número equivocado se cree.
+- **Salir de la zona la cierra**, y la cierra con la última vez que se te vio
+  adentro, no con la hora en que nos enteramos. Solo cierra las que arrancaron
+  solas: la que empezaste vos con el botón se queda corriendo aunque salgas —
+  quizá saliste a correr afuera.
+- Parar a mano sigue andando siempre, y **no se vuelve a encender sola** en esa
+  misma visita.
+
+La base no le cree nada de esto al cliente: `iniciar_sesion` acota el inicio a
+`atraso_maximo()` —45 minutos— y `terminar_sesion` acota el fin entre el inicio
+y ahora. Sin eso, un cliente manipulado se fabrica duraciones.
+
+**QUÉ FALTA, Y ES TODO LO MISMO: en web esto solo pasa con la app abierta.** El
+navegador no despierta a nadie. En concreto, hoy:
+
+| | web (hoy) | nativo |
+|---|---|---|
+| Llegás con la app cerrada | no pasa nada hasta que la abrís | el sistema despierta a la app |
+| Llegás con la app abierta | se mira cada 2 min y anda | igual, y además en segundo plano |
+| Te vas con la app cerrada | se cierra cuando volvés a abrirla, con la hora correcta | se cierra al salir |
+| Te vas con la app abierta | se cierra en 2 min | se cierra al salir |
+
+Al migrar, lo único que cambia es de dónde sale `adentro`: hoy lo pregunta un
+`setInterval` en `src/app/page.tsx`, y en nativo lo va a avisar `TaskManager`
+con `expo-location`. **`decidir()` no se toca** — no sabe de GPS ni de React, y
+por eso su prueba tampoco se toca.
+
+Ojo con una cosa al implementarlo: el geofencing de iOS y Android avisa
+*entrada* y *salida*, no "sigue adentro". La hora de llegada sale del evento de
+entrada, que es más exacta que la de web, pero hay que guardarla igual — es
+justo lo que ya hace `Vigilancia`.
+
+---
 
 ---
 

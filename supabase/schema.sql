@@ -285,6 +285,14 @@ create table public.sesiones (
   -- cuarenta minutos con doce series y cuarenta con tres no son el mismo
   -- entrenamiento, así que dice más que los minutos solos.
   series int not null default 0 check (series >= 0),
+  -- De dónde salió la sesión. Solo se cierran solas al salir del gimnasio las
+  -- que arrancaron solas al llegar (§13): la que empezaste vos con el botón se
+  -- queda corriendo aunque salgas — quizá te fuiste a correr afuera.
+  --
+  -- No lleva 'salud' como `logs.origen`: una pulsera puede decir que
+  -- entrenaste, no cuándo arrancaste ni cuándo paraste.
+  origen text not null default 'manual',
+  constraint sesiones_origen_valido check (origen in ('manual', 'ubicacion')),
   constraint sesiones_fin_solo_si_termino check ((estado = 'terminada') = (fin is not null))
 );
 
@@ -1075,6 +1083,15 @@ returns interval language sql immutable as $$ select interval '4 hours' $$;
 create or replace function public.piso_sesion()
 returns interval language sql immutable as $$ select interval '5 minutes' $$;
 
+-- Cuánto se puede correr hacia atrás el inicio de una sesión (§13). El cliente
+-- manda la hora en que lo vio llegar; es un dato suyo, o sea que no es un
+-- dato. Acotarlo es lo único que impide que alguien se fabrique duraciones.
+--
+-- Cuarenta y cinco minutos porque el atraso legítimo son los siete de la
+-- espera más lo que la app haya estado mirando antes de disparar.
+create or replace function public.atraso_maximo()
+returns interval language sql immutable as $$ select interval '45 minutes' $$;
+
 -- -------------------------------------------------------------
 -- El cierre automático
 --
@@ -1103,7 +1120,13 @@ $$;
 -- Si el día ya estaba registrado no se duplica nada: la sesión se cuelga del
 -- log que ya existe y lo único que agrega es la duración.
 -- -------------------------------------------------------------
-create or replace function public.iniciar_sesion()
+-- `p_desde` es la hora de LLEGADA, que no es la hora de la llamada: el
+-- cronómetro arranca a los siete minutos de estar en la zona, pero la sesión
+-- tiene que decir la hora en que llegaste o la duración sale corta (§13).
+create or replace function public.iniciar_sesion(
+  p_desde timestamptz default null,
+  p_origen text default 'manual'
+)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -1111,45 +1134,66 @@ declare
   registro jsonb := null;
   s sesiones;
   hoy date := mi_hoy();
+  arranque timestamptz;
 begin
   if uid is null then raise exception 'sin sesión'; end if;
+
+  -- Ni en el futuro ni más atrás de lo permitido. `least` de `now()` primero
+  -- porque un reloj adelantado en el teléfono es mucho más común que uno
+  -- atrasado, y un inicio en el futuro daría duraciones negativas.
+  arranque := least(now(), greatest(coalesce(p_desde, now()), now() - atraso_maximo()));
+
   perform cerrar_sesiones_vencidas(uid);
   update sesiones set estado = 'abandonada' where user_id = uid and estado = 'corriendo';
   select id into l from logs where user_id = uid and fecha = hoy;
   if l is null then
-    registro := registrar_dia();
+    -- El día hereda el origen de la sesión: si el cronómetro arrancó porque
+    -- llegaste, el día también entró por eso, y el log tiene que decirlo.
+    registro := registrar_dia(false, null, p_origen);
     if (registro ->> 'bloqueado')::boolean then
       return registro;
     end if;
     l := (registro ->> 'log_id')::uuid;
   end if;
-  insert into sesiones (user_id, log_id) values (uid, l) returning * into s;
+  insert into sesiones (user_id, log_id, inicio, origen)
+    values (uid, l, arranque, p_origen)
+    returning * into s;
   return jsonb_build_object('bloqueado', false, 'id', s.id, 'inicio', s.inicio,
-    'ahora', now(), 'registro', registro);
+    'origen', s.origen, 'ahora', now(), 'registro', registro);
 end;
 $$;
 
 -- -------------------------------------------------------------
 -- Terminar
 -- -------------------------------------------------------------
-create or replace function public.terminar_sesion()
+-- `p_hasta` es la ÚLTIMA VEZ QUE SE LO VIO ADENTRO, no la hora de la llamada.
+-- El que usa el automático es justo el que no se va a acordar de parar el
+-- cronómetro; pero si la app estaba cerrada, nos enteramos de que se fue
+-- recién cuando la vuelve a abrir —capaz en la cena— y cerrar con `now()` le
+-- daría una sesión de cinco horas.
+create or replace function public.terminar_sesion(p_hasta timestamptz default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
   s sesiones;
+  cierre timestamptz;
 begin
   if uid is null then raise exception 'sin sesión'; end if;
   -- primero se cierran las vencidas: si pasaron 4 horas, esta llamada llega
   -- tarde y la sesión ya no tiene duración
   perform cerrar_sesiones_vencidas(uid);
 
-  update sesiones set estado = 'terminada', fin = now()
-   where user_id = uid and estado = 'corriendo'
-   returning * into s;
-
+  select * into s from sesiones where user_id = uid and estado = 'corriendo';
   if s.id is null then
     return jsonb_build_object('termino', false);
   end if;
+
+  -- Nunca antes del inicio —eso daría duración negativa— ni después de ahora.
+  cierre := least(now(), greatest(coalesce(p_hasta, now()), s.inicio));
+
+  update sesiones set estado = 'terminada', fin = cierre
+   where id = s.id
+   returning * into s;
   return jsonb_build_object(
     'termino', true,
     'segundos', extract(epoch from (s.fin - s.inicio)),
@@ -1206,6 +1250,8 @@ begin
     'corriendo', true,
     'id', s.id,
     'inicio', s.inicio,
+    -- el cliente lo necesita para decidir si al salir de la zona la cierra
+    'origen', s.origen,
     'ahora', now(),
     'series', s.series,
     'tope_segundos', extract(epoch from tope_sesion())
@@ -1609,8 +1655,8 @@ revoke execute on function
   public.sumar_serie(),
   public.restar_serie(),
   public.anotar_peso(numeric),
-  public.iniciar_sesion(),
-  public.terminar_sesion(),
+  public.iniciar_sesion(timestamptz, text),
+  public.terminar_sesion(timestamptz),
   public.mi_sesion(),
   public.resumen_sesiones()
   from public, anon;
@@ -1654,8 +1700,8 @@ grant execute on function
   public.sumar_serie(),
   public.restar_serie(),
   public.anotar_peso(numeric),
-  public.iniciar_sesion(),
-  public.terminar_sesion(),
+  public.iniciar_sesion(timestamptz, text),
+  public.terminar_sesion(timestamptz),
   public.mi_sesion(),
   public.resumen_sesiones()
   to authenticated;

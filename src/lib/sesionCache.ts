@@ -1,8 +1,10 @@
 import { TOPE_SESION_SEGUNDOS, DESCANSO_PREDETERMINADO } from '@/lib/reglas';
 import { plataforma } from '@/plataforma';
+import type { Vigilancia } from '@/lib/llegada';
 import { eventos } from '@/plataforma/eventos';
 
 const CLAVE = 'ascent:sesion';
+const CLAVE_LLEGADA = 'ascent:llegada';
 const CLAVE_DURACION = 'ascent:descanso-sesion';
 
 /**
@@ -80,4 +82,31 @@ export function guardarDuracionDeSesion(segundos: number) {
 /** El predeterminado del perfil, o 3 minutos si todavía no llegó. */
 export function duracionPredeterminada(perfil: { duracion_descanso?: number } | null): number {
   return perfil?.duracion_descanso ?? DESCANSO_PREDETERMINADO;
+}
+
+// ---------------------------------------------------------------
+// La visita al gimnasio en curso (§13)
+//
+// Sobrevive a cerrar la app a propósito: si llegaste, cerraste la app y la
+// volviste a abrir a los diez minutos, la llegada sigue siendo la de antes y
+// la sesión arranca con la hora correcta. Si esto viviera en estado de React
+// se perdería en cada recarga y la espera empezaría de nuevo cada vez.
+// ---------------------------------------------------------------
+
+export async function leerVigilancia(): Promise<Vigilancia | null> {
+  const crudo = await plataforma.almacenamiento.leer(CLAVE_LLEGADA);
+  if (!crudo) return null;
+  try {
+    const v = JSON.parse(crudo) as Vigilancia;
+    if (typeof v?.desde !== 'number' || typeof v?.ultimoAdentro !== 'number') return null;
+    if (!Number.isFinite(v.desde) || !Number.isFinite(v.ultimoAdentro)) return null;
+    return { desde: v.desde, ultimoAdentro: v.ultimoAdentro, arranco: v.arranco === true };
+  } catch {
+    return null;
+  }
+}
+
+export async function guardarVigilancia(v: Vigilancia | null) {
+  if (!v) return plataforma.almacenamiento.borrar(CLAVE_LLEGADA);
+  return plataforma.almacenamiento.guardar(CLAVE_LLEGADA, JSON.stringify(v));
 }

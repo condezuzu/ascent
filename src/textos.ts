@@ -60,6 +60,9 @@ export const T = {
     diaRegistradoSumar: 'Día registrado · sumar foto o peso',
     sumarSerie: 'Sumar una serie',
     masArrancaDescanso: 'Cada + suma la serie y arranca el descanso.',
+    // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
+    // error de la app. Con una línea deja de serlo.
+    sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',
     sacarSerie: 'Sacar una serie',
     sigueSubiendo: (nombre: string, dias: string) => `${nombre} sigue subiendo — ${dias}`,
     // Discreto y permanente mientras no haya punto: es el diferencial de la

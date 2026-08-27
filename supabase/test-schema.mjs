@@ -39,7 +39,10 @@ import {
   TIPOS_FEEDBACK,
   UNIDADES_PESO,
   VISIBILIDADES,
+  ORIGENES_SESION,
 } from '../src/lib/tipos.ts';
+import { decidir } from '../src/lib/llegada.ts';
+import { ESPERA_LLEGADA_MS } from '../src/lib/reglas.ts';
 import { eventos } from '../src/plataforma/eventos.ts';
 import { estaAdentro, metrosEntre } from '../src/lib/geo.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
@@ -2071,6 +2074,7 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
     ['sesiones', 'estado', ESTADOS_SESION],
     ['feedback', 'tipo', TIPOS_FEEDBACK],
     ['logs', 'origen', ORIGENES_DIA],
+    ['sesiones', 'origen', ORIGENES_SESION],
   ];
 
   for (const [tabla, columna, delCliente] of PINEADOS) {
@@ -2380,6 +2384,194 @@ console.log('\n39. Dos personas no pueden llamarse igual');
     encontrados.rows.map((f) => f.username).join(','),
     'agustin,agustin_b'
   );
+}
+
+// =====================================================================
+console.log('\n40. Llegar al gimnasio: cuando arranca la sesion y cuando se cierra');
+{
+  // `decidir` es pura, asi que esto prueba la logica DE VERDAD y no un espejo
+  // de si misma: no hay GPS, ni reloj, ni base. Es la unica parte del
+  // automatico que se puede probar sin caminar hasta un gimnasio, y por eso
+  // esta separada del resto.
+  const T0 = 1_000_000_000_000;
+  const ESPERA = ESPERA_LLEGADA_MS;
+  const libre = { corriendo: false, porUbicacion: false };
+  const corriendoSola = { corriendo: true, porUbicacion: true };
+  const corriendoAMano = { corriendo: true, porUbicacion: false };
+
+  // ---- no saber no es estar afuera ----
+  {
+    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
+    const d = decidir(null, T0 + 1000, T0 + 1000, v, corriendoSola);
+    chequear('sin senal no pasa nada', d.hacer, 'nada');
+    // Lo importante: NO borra la vigilancia ni cierra la sesion. Un GPS que se
+    // pierde en un subsuelo apagaria el cronometro de alguien que entrena.
+    chequear('sin senal la visita sigue viva', d.vigilancia?.desde, T0);
+  }
+
+  // ---- llegar y esperar ----
+  {
+    const d = decidir(true, T0, T0, null, libre);
+    chequear('la primera vez adentro solo anota la llegada', d.hacer, 'nada');
+    chequear('y la llegada es cuando se MIDIO el punto', d.vigilancia?.desde, T0);
+  }
+  {
+    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
+    const d = decidir(true, T0 + ESPERA - 1, T0 + ESPERA - 1, v, libre);
+    chequear('un segundo antes de la espera todavia no arranca', d.hacer, 'nada');
+  }
+  {
+    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
+    const d = decidir(true, T0 + ESPERA, T0 + ESPERA, v, libre);
+    chequear('cumplida la espera, arranca', d.hacer, 'arrancar');
+    // EL PUNTO DE TODO: arranca ahora pero la sesion dice que empezo cuando
+    // llego. Si dijera la hora del disparo, la duracion saldria corta siempre.
+    chequear('y arranca desde la LLEGADA, no desde el disparo', d.desde, T0);
+    chequear('la visita queda marcada como usada', d.vigilancia?.arranco, true);
+  }
+
+  // ---- no dispara dos veces ----
+  {
+    const v = { desde: T0, ultimoAdentro: T0, arranco: true };
+    const d = decidir(true, T0 + ESPERA * 3, T0 + ESPERA * 3, v, libre);
+    // Si volviera a arrancar, parar el cronometro a mano estando todavia en el
+    // gimnasio lo encenderia de nuevo a los dos minutos.
+    chequear('si ya arranco en esta visita, no vuelve a arrancar', d.hacer, 'nada');
+  }
+  {
+    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
+    const d = decidir(true, T0 + ESPERA, T0 + ESPERA, v, corriendoAMano);
+    chequear('con una sesion ya corriendo no arranca otra', d.hacer, 'nada');
+  }
+
+  // ---- el reloj de la salida ----
+  {
+    const v = { desde: T0, ultimoAdentro: T0 + 1000, arranco: false };
+    const d = decidir(true, T0 + 500, T0 + 2000, v, corriendoSola);
+    // Un arreglo de GPS viejo no puede ATRASAR la ultima vez que se lo vio.
+    chequear('un punto viejo no atrasa el ultimo visto', d.vigilancia?.ultimoAdentro, T0 + 1000);
+  }
+
+  // ---- irse ----
+  {
+    const v = { desde: T0, ultimoAdentro: T0 + 3600_000, arranco: true };
+    const d = decidir(false, T0 + 7200_000, T0 + 7200_000, v, corriendoSola);
+    chequear('salir cierra la que arranco sola', d.hacer, 'terminar');
+    // No se cierra con AHORA: si la app estuvo cerrada nos enteramos tarde, y
+    // cerrar con ahora daria una sesion de dos horas.
+    chequear('y se cierra con la ultima vez que se lo vio', d.hasta, T0 + 3600_000);
+    chequear('la visita se termina', d.vigilancia, null);
+  }
+  {
+    const v = { desde: T0, ultimoAdentro: T0 + 1000, arranco: false };
+    const d = decidir(false, T0 + 2000, T0 + 2000, v, corriendoAMano);
+    // Quiza salio a correr afuera. Apagarsela seria peor que dejarla.
+    chequear('salir NO cierra la que empezaste vos', d.hacer, 'nada');
+    chequear('pero la visita igual se termina', d.vigilancia, null);
+  }
+  {
+    const d = decidir(false, T0, T0, null, libre);
+    chequear('afuera y sin sesion no hace nada', d.hacer, 'nada');
+  }
+
+  // ---- la vuelta completa: llego, entreno, me voy ----
+  {
+    let v = null;
+    let d = decidir(true, T0, T0, v, libre);
+    v = d.vigilancia;
+    d = decidir(true, T0 + ESPERA, T0 + ESPERA, v, libre);
+    chequear('la vuelta completa arranca', d.hacer, 'arrancar');
+    v = d.vigilancia;
+    const fin = T0 + ESPERA + 3600_000;
+    d = decidir(true, fin, fin, v, corriendoSola);
+    v = d.vigilancia;
+    d = decidir(false, fin + 120_000, fin + 120_000, v, corriendoSola);
+    chequear('y cierra al salir', d.hacer, 'terminar');
+    chequear('con una hora de sesion desde la llegada', (d.hasta - T0) / 60000, 67);
+  }
+}
+
+// =====================================================================
+console.log('\n41. La base no le cree al cliente la hora de llegada');
+{
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+
+  // Por el id que devuelve el RPC, no por `order by inicio desc`: una sesion
+  // que arranca diez minutos ANTES queda mas atras en ese orden, asi que el
+  // test miraba la sesion anterior y la daba por buena. El propio test tenia
+  // el bug que venia a buscar.
+  const arrancar = async (sql) => {
+    const v = (await db.query(sql)).rows[0].v;
+    return (await db.query('select * from sesiones where id = $1', [v.id])).rows[0];
+  };
+
+  // ---- una sesion normal sigue siendo normal ----
+  let s = await arrancar('select iniciar_sesion() as v');
+  chequear('sin argumentos el origen es manual', s.origen, 'manual');
+  const recien = (await db.query('select extract(epoch from (now() - $1::timestamptz)) as d', [s.inicio])).rows[0].d;
+  chequear('y arranca ahora', Math.abs(Number(recien)) < 5, true);
+
+  // ---- la llegada corre el inicio hacia atras ----
+  s = await arrancar(`select iniciar_sesion(now() - interval '10 minutes', 'ubicacion') as v`);
+  chequear('el origen queda guardado', s.origen, 'ubicacion');
+  const atras = (await db.query('select extract(epoch from (now() - $1::timestamptz)) as d', [s.inicio])).rows[0].d;
+  chequear('y el inicio es la llegada, diez minutos atras', Math.round(Number(atras) / 60), 10);
+
+  // El dia YA estaba de la sesion anterior, asi que conserva SU origen: el dia
+  // se registro a mano y eso no se reescribe porque despues llegues al
+  // gimnasio. El origen dice de donde salio el dia, no la ultima sesion.
+  const diaViejo = (await db.query('select origen from logs where id = $1', [s.log_id])).rows[0];
+  chequear('un dia que ya estaba conserva su origen', diaViejo.origen, 'manual');
+
+  // Con el dia sin registrar, en cambio, lo crea la sesion y lo hereda: si el
+  // cronometro arranco porque llegaste, el dia tambien entro por eso.
+  {
+    const limpio = await nuevoUsuario();
+    await comoUsuario(limpio);
+    const v = (await db.query(
+      `select iniciar_sesion(now() - interval '8 minutes', 'ubicacion') as v`
+    )).rows[0].v;
+    const log = (await db.query(
+      'select origen from logs where id = ($1::jsonb ->> $2)::uuid',
+      [JSON.stringify(v.registro), 'log_id']
+    )).rows[0];
+    chequear('el dia que crea la sesion hereda el origen', log.origen, 'ubicacion');
+    await comoUsuario(u);
+  }
+
+  // ---- pero no le cree cualquier cosa ----
+  // Sin esto, un cliente manipulado se fabrica sesiones de seis horas.
+  s = await arrancar(`select iniciar_sesion(now() - interval '9 hours', 'ubicacion') as v`);
+  const acotado = (await db.query('select extract(epoch from (now() - $1::timestamptz)) as d', [s.inicio])).rows[0].d;
+  chequear('nueve horas atras se acotan a cuarenta y cinco minutos', Math.round(Number(acotado) / 60), 45);
+
+  s = await arrancar(`select iniciar_sesion(now() + interval '3 hours', 'ubicacion') as v`);
+  const futuro = (await db.query('select extract(epoch from ($1::timestamptz - now())) as d', [s.inicio])).rows[0].d;
+  // Un reloj adelantado en el telefono daria duraciones NEGATIVAS.
+  chequear('y el futuro se acota a ahora', Number(futuro) <= 0, true);
+
+  // ---- `mi_sesion` lo cuenta ----
+  const mia = (await db.query('select mi_sesion() as v')).rows[0].v;
+  chequear('mi_sesion dice de donde salio', mia.origen, 'ubicacion');
+
+  // ---- la salida cierra con la hora de la salida ----
+  await db.query(`select iniciar_sesion(now() - interval '40 minutes', 'ubicacion') as v`);
+  let fin = (await db.query(`select terminar_sesion(now() - interval '10 minutes') as v`)).rows[0].v;
+  chequear('cierra con la hora que se le pasa', Math.round(Number(fin.segundos) / 60), 30);
+  chequear('y esa duracion cuenta', fin.cuenta, true);
+
+  // ---- ni antes del inicio ni despues de ahora ----
+  await db.query(`select iniciar_sesion(now() - interval '20 minutes', 'ubicacion') as v`);
+  fin = (await db.query(`select terminar_sesion(now() - interval '5 hours') as v`)).rows[0].v;
+  // Una duracion negativa romperia el promedio de Stats sin que nadie lo note.
+  chequear('un fin anterior al inicio da cero, no negativo', Number(fin.segundos), 0);
+
+  await db.query(`select iniciar_sesion(now() - interval '20 minutes', 'ubicacion') as v`);
+  fin = (await db.query(`select terminar_sesion(now() + interval '5 hours') as v`)).rows[0].v;
+  chequear('y un fin en el futuro se acota a ahora', Math.round(Number(fin.segundos) / 60), 20);
+
+  await db.exec('reset role');
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

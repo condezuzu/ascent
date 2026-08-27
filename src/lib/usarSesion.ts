@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { crearCliente } from '@/lib/supabase/client';
 import { eventos } from '@/plataforma/eventos';
 import { desfasajeDelReloj, type SesionViva } from '@/lib/sesiones';
@@ -14,6 +15,8 @@ import {
   guardarSesionCache,
   leerDuracionDeSesion,
   leerSesionCache,
+  leerVigilancia,
+  guardarVigilancia,
 } from '@/lib/sesionCache';
 import {
   borrarDescanso,
@@ -22,7 +25,8 @@ import {
   leerDescanso,
   type DescansoVivo,
 } from '@/lib/descanso';
-import type { ResultadoRegistro } from '@/lib/tipos';
+import { marcarComoUsada } from '@/lib/llegada';
+import type { OrigenSesion, ResultadoRegistro } from '@/lib/tipos';
 
 export type EstadoSesion = {
   corriendo: boolean;
@@ -32,6 +36,12 @@ export type EstadoSesion = {
   descanso: DescansoVivo | null;
   ocupado: boolean;
   aviso: string;
+  /**
+   * Si arrancó sola al llegar al gimnasio (§13). Solo esas se cierran solas al
+   * salir: la que empezaste vos con el botón se queda corriendo aunque te
+   * vayas — quizá saliste a correr afuera, y apagártela sería peor.
+   */
+  porUbicacion: boolean;
 };
 
 /**
@@ -44,11 +54,48 @@ export type EstadoSesion = {
  * pantalla se notaría. La base sigue siendo la autoridad y se consulta al
  * empezar, al terminar y al montar.
  */
+/**
+ * Las dos llamadas que cambiaron de firma en la migración 24, con vuelta atrás
+ * si todavía no corrió.
+ *
+ * El código llega a producción por el push y la migración la corre una persona
+ * a mano: entre una cosa y la otra hay una ventana en la que el cliente nuevo
+ * le pide a la base una función que todavía no existe. Sin esto, en esa
+ * ventana no se puede ni empezar ni terminar una sesión —o sea, la app está
+ * rota— y el error sería un `PGRST202` que no le dice nada a nadie.
+ *
+ * Se prueba primero la firma nueva y no al revés a propósito: apenas la
+ * migración corre, la vuelta atrás deja de usarse sola y no hay que acordarse
+ * de sacarla.
+ */
+const NO_EXISTE = (e: { code?: string } | null) => e?.code === 'PGRST202';
+
+async function iniciar(
+  supabase: SupabaseClient,
+  opciones?: { desde?: number; origen?: OrigenSesion }
+) {
+  const r = await supabase.rpc('iniciar_sesion', {
+    p_desde: opciones?.desde ? new Date(opciones.desde).toISOString() : null,
+    p_origen: opciones?.origen ?? 'manual',
+  });
+  if (!NO_EXISTE(r.error)) return r;
+  return supabase.rpc('iniciar_sesion');
+}
+
+async function cerrar(supabase: SupabaseClient, opciones?: { hasta?: number }) {
+  const r = await supabase.rpc('terminar_sesion', {
+    p_hasta: opciones?.hasta ? new Date(opciones.hasta).toISOString() : null,
+  });
+  if (!NO_EXISTE(r.error)) return r;
+  return supabase.rpc('terminar_sesion');
+}
+
 export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void) {
   const [supabase] = useState(() => crearCliente());
   const [inicio, setInicio] = useState<string | null>(null);
   const [desfasaje, setDesfasaje] = useState(0);
   const [series, setSeries] = useState(0);
+  const [porUbicacion, setPorUbicacion] = useState(false);
   const [descanso, setDescanso] = useState<DescansoVivo | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState('');
@@ -64,17 +111,21 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   // La consulta de verdad. La caché pinta al instante, esto la corrige.
   const confirmar = useCallback(async () => {
     const { data } = await supabase.rpc('mi_sesion');
-    const s = data as (SesionViva & { series?: number }) | null;
+    const s = data as (SesionViva & { series?: number; origen?: OrigenSesion }) | null;
     if (s?.corriendo && s.inicio) {
       const g = { inicio: s.inicio, desfasaje: desfasajeDelReloj(s.ahora) };
       guardarSesionCache(g);
       setInicio(g.inicio);
       setDesfasaje(g.desfasaje);
       setSeries(s.series ?? 0);
+      // Si la migración 24 todavía no corrió, `origen` no viene: se asume
+      // manual, que es lo seguro — no cerrarla sola.
+      setPorUbicacion(s.origen === 'ubicacion');
     } else {
       borrarSesionCache();
       setInicio(null);
       setSeries(0);
+      setPorUbicacion(false);
     }
   }, [supabase]);
 
@@ -114,30 +165,52 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     };
   }, [inicio]);
 
-  async function empezar() {
+  /**
+   * `desde` es la hora de LLEGADA cuando arranca sola, que no es la hora de la
+   * llamada: el cronómetro dispara a los siete minutos pero la sesión tiene
+   * que decir cuándo llegaste, o la duración sale corta siempre (§13). El
+   * servidor la acota; acá se manda lo que se vio.
+   */
+  async function empezar(opciones?: { desde?: number; origen?: OrigenSesion }) {
     setOcupado(true);
     setAviso('');
-    const { data, error } = await supabase.rpc('iniciar_sesion');
+    const { data, error } = await iniciar(supabase, opciones);
     setOcupado(false);
     if (error) return;
     if (estaBloqueado(data)) return setAviso(textoDeBloqueo(data.hasta));
-    const r = data as { inicio: string; ahora: string; registro: ResultadoRegistro | null };
+    const r = data as {
+      inicio: string;
+      ahora: string;
+      origen?: OrigenSesion;
+      registro: ResultadoRegistro | null;
+    };
     guardarSesionCache({ inicio: r.inicio, desfasaje: desfasajeDelReloj(r.ahora) });
     setInicio(r.inicio);
     setDesfasaje(desfasajeDelReloj(r.ahora));
     setSeries(0);
+    setPorUbicacion((r.origen ?? opciones?.origen) === 'ubicacion');
     alCambiarElDia?.(r.registro);
   }
 
-  async function terminar() {
+  /**
+   * `hasta` es la última vez que se lo vio en el gimnasio, cuando la cierra la
+   * salida. Sin eso, enterarse tarde —la app estuvo cerrada— daría una sesión
+   * de cinco horas.
+   */
+  async function terminar(opciones?: { hasta?: number }) {
     setOcupado(true);
-    await supabase.rpc('terminar_sesion');
+    await cerrar(supabase, opciones);
     setOcupado(false);
     borrarSesionCache();
     borrarDescanso();
     setInicio(null);
     setSeries(0);
     setDescanso(null);
+    setPorUbicacion(false);
+    // Si la parás a mano estando todavía en el gimnasio, la visita queda
+    // marcada como usada: sin esto se volvería a encender sola a los dos
+    // minutos, que es la clase de cosa que hace que alguien apague la función.
+    guardarVigilancia(marcarComoUsada(await leerVigilancia()));
     alCambiarElDia?.(null);
   }
 
@@ -169,7 +242,16 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   }
 
   return {
-    estado: { corriendo: !!inicio, inicio, desfasaje, series, descanso, ocupado, aviso },
+    estado: {
+      corriendo: !!inicio,
+      inicio,
+      desfasaje,
+      series,
+      descanso,
+      ocupado,
+      aviso,
+      porUbicacion,
+    },
     empezar,
     terminar,
     serieHecha,
