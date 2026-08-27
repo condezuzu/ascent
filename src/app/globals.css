@@ -2499,3 +2499,60 @@ body.con-franja .pantalla {
   overflow-x: auto;
   color: var(--sub);
 }
+
+/* ---------- el armazón mientras cargan los datos ----------
+   Late muy despacio y con muy poco contraste: tiene que decir "esto viene",
+   no llamar la atención. Un esqueleto que pulsa fuerte es más molesto que la
+   pantalla negra que vino a reemplazar. */
+.esqueleto {
+  animation: aparecer-esqueleto 0.4s ease both;
+  animation-delay: 0.25s;
+}
+/* Con retraso a propósito: si los datos llegan rápido —el caso normal— el
+   esqueleto no alcanza a verse nunca, y no hay un parpadeo de más. */
+@keyframes aparecer-esqueleto {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.esq-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 4px 0 0;
+}
+.esq-foto {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  flex: none;
+  margin-left: calc(var(--saliente) * -1);
+}
+.esq-linea {
+  border-radius: 3px;
+}
+.esq-grilla {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 8px;
+}
+.esq-celda {
+  aspect-ratio: 1;
+  border-radius: 2px;
+}
+.esq-foto,
+.esq-linea,
+.esq-celda {
+  background: var(--tarjeta);
+  animation: latir-esqueleto 1.8s var(--curva-suave) infinite;
+}
+@keyframes latir-esqueleto {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .esq-foto,
+  .esq-linea,
+  .esq-celda {
+    animation: none;
+  }
+}

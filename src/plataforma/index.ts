@@ -1,6 +1,7 @@
 import type { Plataforma } from './tipos';
 import { almacenamientoWeb, efimeroWeb } from './web/almacenamiento';
 import { audioWeb } from './web/audio';
+import { cicloWeb } from './web/ciclo';
 import { avisosWeb } from './web/avisos';
 import { hapticaWeb } from './web/haptica';
 import { pantallaWeb } from './web/pantalla';
@@ -11,6 +12,7 @@ import { ubicacionWeb } from './web/ubicacion';
 // agrega `nativo/` y se cambia acá; ni un componente se entera.
 export const plataforma: Plataforma = {
   almacenamiento: almacenamientoWeb,
+  ciclo: cicloWeb,
   efimero: efimeroWeb,
   ubicacion: ubicacionWeb,
   audio: audioWeb,

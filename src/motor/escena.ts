@@ -3,6 +3,7 @@ import { VERTEX, FRAGMENT, VERTEX_PUNTOS, FRAGMENT_PUNTOS } from './shaders';
 import { RANGOS_CFG, PLANETAS_CFG, ESTRELLAS_POR_RANGO, type ConfigCuerpo } from './cuerpos';
 import { paletaDe } from '@/lib/paletas';
 import { marca, medir } from '@/lib/medir';
+import { plataforma } from '@/plataforma';
 
 export type OpcionesFondo = {
   rango: number;
@@ -513,17 +514,20 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): (() => 
 
   if (op.animar !== false) requestAnimationFrame(frame);
 
-  const onVis = () => {
-    pausado = document.hidden;
-    if (!pausado) reloj.getDelta();
-  };
-  document.addEventListener('visibilitychange', onVis);
+  // El motor no anima con la app atrás: son sesenta cuadros por segundo de
+  // GPU para algo que nadie está mirando.
+  const dejarDeMirar = plataforma.ciclo.alCambiar((visible) => {
+    pausado = !visible;
+    // Se descarta el delta acumulado: si no, al volver el primer cuadro
+    // adelanta de golpe todo el tiempo que estuvo pausado.
+    if (visible) reloj.getDelta();
+  });
   const onResize = () => medirLienzo();
   window.addEventListener('resize', onResize);
 
   return () => {
     vivo = false;
-    document.removeEventListener('visibilitychange', onVis);
+    dejarDeMirar();
     window.removeEventListener('resize', onResize);
     // se sueltan las geometrías y materiales de ESTA escena, pero el
     // renderer y el canvas siguen vivos para la próxima pantalla

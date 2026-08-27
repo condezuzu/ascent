@@ -15,6 +15,7 @@ import { sincronizarZona } from '@/lib/zona';
 import { marcarPunto, mirarElGimnasio, registrarPorSenal } from '@/lib/gimnasio';
 import { decidir } from '@/lib/llegada';
 import { anotar } from '@/lib/bitacora';
+import { plataforma } from '@/plataforma';
 import { guardarVigilancia, leerVigilancia } from '@/lib/sesionCache';
 import { lineaDeMarcas } from '@/lib/fuerza';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@/lib/tipos';
@@ -256,16 +257,16 @@ export default function Principal() {
 
     const arrancar = () => {
       clearInterval(id);
-      if (document.visibilityState !== 'visible') return;
+      if (!plataforma.ciclo.visible()) return;
       vigilar();
       id = setInterval(vigilar, 2 * 60 * 1000);
     };
 
     arrancar();
-    document.addEventListener('visibilitychange', arrancar);
+    const dejarDeMirar = plataforma.ciclo.alCambiar(arrancar);
     return () => {
       clearInterval(id);
-      document.removeEventListener('visibilitychange', arrancar);
+      dejarDeMirar();
     };
   }, [perfil?.gimnasio_lat, vigilar]);
 

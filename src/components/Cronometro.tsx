@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { cronoLindo, faltaParaElTope, transcurrido } from '@/lib/sesiones';
+import { plataforma } from '@/plataforma';
 import { T } from '@/textos';
 
 /**
@@ -33,12 +34,10 @@ export default function Cronometro({
     // Al volver del segundo plano el intervalo estuvo suspendido y puede
     // tardar hasta un segundo en despertar: se repinta al toque para que no
     // se vea un número viejo.
-    document.addEventListener('visibilitychange', tic);
-    window.addEventListener('focus', tic);
+    const dejarDeMirar = plataforma.ciclo.alCambiar(tic);
     return () => {
       clearInterval(id);
-      document.removeEventListener('visibilitychange', tic);
-      window.removeEventListener('focus', tic);
+      dejarDeMirar();
     };
   }, []);
 

@@ -125,9 +125,33 @@ export type Haptica = {
   pulso(): boolean;
 };
 
+/**
+ * ¿La app está adelante, y cuándo cambia eso?
+ *
+ * ES EL PUERTO QUE MÁS COSAS SOSTIENE, y por eso va antes que los otros: el
+ * cronómetro de sesión, el descanso entre series, el vigilante del gimnasio y
+ * el de la sesión dependen los cuatro de saber cuándo la persona volvió a
+ * mirar la pantalla. Sin este puerto, migrar toca las cuatro features
+ * centrales a la vez.
+ *
+ * En web es `document.visibilityState`; en nativo es `AppState` de React
+ * Native, que dice lo mismo con otras palabras ('active' / 'background').
+ *
+ * El aviso NO significa "cambió a visible": significa **"volvé a mirar, puede
+ * haber pasado tiempo"**. Los intervalos se suspenden mientras la app está
+ * atrás, así que al volver todo lo que se mide contra el reloj está viejo.
+ */
+export type CicloDeVida = {
+  /** ¿Se está viendo AHORA? */
+  visible(): boolean;
+  /** Avisa cada vez que cambia. Devuelve cómo dejar de escuchar. */
+  alCambiar(escuchar: (visible: boolean) => void): () => void;
+};
+
 export type Plataforma = {
   /** Sobrevive a cerrar la app. En web, `localStorage`. */
   almacenamiento: Almacenamiento;
+  ciclo: CicloDeVida;
   /**
    * MUERE al cerrar la app. En web es `sessionStorage`, que además sobrevive a
    * recargar la pestaña; en nativo no hay equivalente y va un mapa en memoria,

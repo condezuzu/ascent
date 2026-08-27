@@ -80,12 +80,11 @@ export default function Descanso({
     plataforma.pantalla.mantenerDespierta();
     // El sistema lo suelta solo al ocultarse la pestaña y NO vuelve por su
     // cuenta: hay que volver a pedirlo cada vez que la página se ve de nuevo.
-    const alVolver = () => {
-      if (document.visibilityState === 'visible') plataforma.pantalla.mantenerDespierta();
-    };
-    document.addEventListener('visibilitychange', alVolver);
+    const dejarDeMirar = plataforma.ciclo.alCambiar((visible) => {
+      if (visible) plataforma.pantalla.mantenerDespierta();
+    });
     return () => {
-      document.removeEventListener('visibilitychange', alVolver);
+      dejarDeMirar();
       plataforma.pantalla.soltar();
     };
   }, []);
@@ -110,15 +109,13 @@ export default function Descanso({
     const arrancar = () => {
       clearInterval(id);
       tic();
-      if (document.visibilityState === 'visible') id = setInterval(tic, 250);
+      if (plataforma.ciclo.visible()) id = setInterval(tic, 250);
     };
     arrancar();
-    document.addEventListener('visibilitychange', arrancar);
-    window.addEventListener('focus', tic);
+    const dejarDeMirar = plataforma.ciclo.alCambiar(arrancar);
     return () => {
       clearInterval(id);
-      document.removeEventListener('visibilitychange', arrancar);
-      window.removeEventListener('focus', tic);
+      dejarDeMirar();
     };
   }, [vivo.fin, avisar]);
 

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { enDias, fechaLinda, hoyISO, restarDias } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
+import { RETOS_LISTOS } from '@/lib/reglas';
 import type { Log, Reto, UsuarioPublico } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
@@ -265,6 +266,7 @@ export default function Perfil() {
                 para que la vista previa nunca prometa algo distinto. */}
             <ComoMeVen usuario={usuario} logs={logs} fotos={fotos}>
             {/* ---- reto ---- */}
+            {RETOS_LISTOS && (
             <div className="seccion" style={{ marginTop: 20 }}>
               <h3>{T.social.reto}</h3>
               {!reto && (
@@ -311,6 +313,7 @@ export default function Perfil() {
                 </div>
               )}
             </div>
+            )}
             </ComoMeVen>
 
             {/* ---- dejar de ser amigos ---- */}

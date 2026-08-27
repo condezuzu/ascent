@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { crearCliente } from '@/lib/supabase/client';
+import { plataforma } from '@/plataforma';
 import { eventos } from '@/plataforma/eventos';
 import { desfasajeDelReloj, type SesionViva } from '@/lib/sesiones';
 import { leerPerfilCache } from '@/lib/cache';
@@ -134,10 +135,10 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     confirmar();
     const alVolver = () => releerCache();
     const dejarDeEscuchar = eventos.escuchar(AVISO, alVolver);
-    document.addEventListener('visibilitychange', alVolver);
+    const dejarDeMirar = plataforma.ciclo.alCambiar(alVolver);
     return () => {
       dejarDeEscuchar();
-      document.removeEventListener('visibilitychange', alVolver);
+      dejarDeMirar();
     };
   }, [releerCache, confirmar]);
 
@@ -153,15 +154,15 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     let id: ReturnType<typeof setInterval> | undefined;
     const arrancar = () => {
       clearInterval(id);
-      if (document.visibilityState === 'visible') {
+      if (plataforma.ciclo.visible()) {
         id = setInterval(() => repintar((n) => n + 1), 1000);
       }
     };
     arrancar();
-    document.addEventListener('visibilitychange', arrancar);
+    const dejarDeMirar = plataforma.ciclo.alCambiar(arrancar);
     return () => {
       clearInterval(id);
-      document.removeEventListener('visibilitychange', arrancar);
+      dejarDeMirar();
     };
   }, [inicio]);
 

@@ -8,6 +8,7 @@ import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
+import Esqueleto from '@/components/Esqueleto';
 import { T } from '@/textos';
 
 type Celda = {
@@ -123,6 +124,8 @@ export default function Album() {
         </GloboPrimeraVez>
 
         {error && <p className="error-msg">{error}</p>}
+
+        {!cargado && <Esqueleto como="grilla" />}
 
         {celdas.length > 0 ? (
           <div className="album-grilla mosaico">

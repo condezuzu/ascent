@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
 import { fechaLinda, hoyISO } from '@/lib/fechas';
+import { RETOS_LISTOS } from '@/lib/reglas';
 import { planetaDeDia } from '@/lib/rangos';
 import type { Reto, UsuarioPublico } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -196,9 +197,12 @@ export default function Social() {
 
   const maxRacha = Math.max(1, ...amigos.map((a) => a.racha_actual));
   const hoy = hoyISO();
-  const retosPendientesMios = retos.filter((r) => r.estado === 'pendiente' && r.rival === miId);
-  const retosActivos = retos.filter((r) => r.estado === 'activo');
-  const retosCerrados = retos.filter((r) => r.estado === 'terminado').slice(0, 3);
+  // Con los retos escondidos las tres listas quedan vacías, y entonces no se
+  // dibuja ninguna de sus secciones. Ver RETOS_LISTOS.
+  const conRetos = RETOS_LISTOS ? retos : [];
+  const retosPendientesMios = conRetos.filter((r) => r.estado === 'pendiente' && r.rival === miId);
+  const retosActivos = conRetos.filter((r) => r.estado === 'activo');
+  const retosCerrados = conRetos.filter((r) => r.estado === 'terminado').slice(0, 3);
 
   return (
     <>

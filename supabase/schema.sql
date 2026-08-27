@@ -736,11 +736,11 @@ $$;
 -- REGISTRAR DÍA (RPC transaccional: la animación de subida de rango
 -- se dispara SOLO después de que esto confirme)
 -- -------------------------------------------------------------
-create or replace function public.registrar_dia(
-  p_es_descanso boolean default false,
-  p_peso numeric default null,
-  p_origen text default 'manual'
-)
+-- `p_es_descanso` y `p_peso` estuvieron acá y se fueron en la migración 25:
+-- ningún llamador les pasaba nunca otra cosa que `false` y `null`. Un
+-- parámetro que siempre vale lo mismo no es un parámetro, es una constante
+-- disfrazada que el que lea la firma va a creer que sirve.
+create or replace function public.registrar_dia(p_origen text default 'manual')
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -753,22 +753,13 @@ begin
   if hasta is not null then
     -- el día queda anotado; se registra solo cuando pase la ventana
     update profiles set dia_pendiente = hoy, pendiente_desde = now() where id = uid;
-    if p_peso is not null then
-      -- el peso sí se puede guardar ya: no depende del día
-      insert into weights (user_id, fecha, valor) values (uid, hoy, p_peso)
-        on conflict (user_id, fecha) do update set valor = excluded.valor;
-    end if;
     return jsonb_build_object('bloqueado', true, 'pendiente', hoy, 'hasta', hasta);
   end if;
 
   select rango_actual into rango_antes from profiles where id = uid;
-  insert into logs (user_id, fecha, es_descanso, origen)
-    values (uid, hoy, p_es_descanso, p_origen)
+  insert into logs (user_id, fecha, origen)
+    values (uid, hoy, p_origen)
     returning * into nuevo_log;
-  if p_peso is not null then
-    insert into weights (user_id, fecha, valor) values (uid, hoy, p_peso)
-      on conflict (user_id, fecha) do update set valor = excluded.valor;
-  end if;
   select * into perfil from profiles where id = uid;
   return jsonb_build_object(
     'bloqueado', false,
@@ -1149,7 +1140,7 @@ begin
   if l is null then
     -- El día hereda el origen de la sesión: si el cronómetro arrancó porque
     -- llegaste, el día también entró por eso, y el log tiene que decirlo.
-    registro := registrar_dia(false, null, p_origen);
+    registro := registrar_dia(p_origen);
     if (registro ->> 'bloqueado')::boolean then
       return registro;
     end if;
@@ -1641,7 +1632,7 @@ revoke execute on function
   public.mejor_racha_real(uuid),
   public.descansos_vigentes(uuid, date),
   public.son_amigos(uuid, uuid),
-  public.registrar_dia(boolean, numeric, text),
+  public.registrar_dia(text),
   public.verificar_perdida(),
   public.recalcular_desde_cero(),
   public.cerrar_retos_vencidos(),
@@ -1686,7 +1677,7 @@ grant execute on function
   public.mejor_racha_real(uuid),
   public.descansos_vigentes(uuid, date),
   public.son_amigos(uuid, uuid),
-  public.registrar_dia(boolean, numeric, text),
+  public.registrar_dia(text),
   public.verificar_perdida(),
   public.recalcular_desde_cero(),
   public.cerrar_retos_vencidos(),

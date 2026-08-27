@@ -411,7 +411,7 @@ console.log('\n9. registrar_dia: RPC devuelve el salto de rango');
   await comoUsuario(u);
   await rachaDe(u, 9, 1); // 9 días terminando ayer
   const r = await db.query(
-    `select registrar_dia(false, 82.5) as v`
+    `select anotar_peso(82.5), registrar_dia() as v`
   );
   const v = r.rows[0].v;
   chequear('subió de rango', [v.racha, v.rango_antes, v.rango_despues, v.subio_rango], [10, 1, 2, true]);
@@ -424,10 +424,10 @@ console.log('\n10. Un día no se puede registrar dos veces');
 {
   const u = await nuevoUsuario();
   await comoUsuario(u);
-  await db.query(`select registrar_dia(false, null)`);
+  await db.query(`select registrar_dia()`);
   let error = null;
   try {
-    await db.query(`select registrar_dia(false, null)`);
+    await db.query(`select registrar_dia()`);
   } catch (e) {
     error = e.message.includes('duplicate') || e.message.includes('unique');
   }
@@ -495,7 +495,7 @@ console.log('\n13. Seguridad: el peso de otro no se lee, ni con amistad');
   const a = await nuevoUsuario();
   const b = await nuevoUsuario();
   await comoUsuario(a);
-  await db.query(`select registrar_dia(false, 80)`);
+  await db.query(`select anotar_peso(80), registrar_dia()`);
   // se hacen amigos
   await db.query(
     `insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`,
@@ -516,7 +516,7 @@ console.log('\n14. Seguridad: sin amistad no se ve nada del otro');
   const a = await nuevoUsuario();
   const b = await nuevoUsuario();
   await comoUsuario(a);
-  await db.query(`select registrar_dia(false, 75)`);
+  await db.query(`select anotar_peso(75), registrar_dia()`);
   await comoUsuario(b);
   await db.exec('set role authenticated');
   const logs = await db.query('select * from logs where user_id = $1', [a]);
@@ -626,7 +626,7 @@ console.log('\n19. Borrar foto: solo el dueño');
   const a = await nuevoUsuario();
   const b = await nuevoUsuario();
   await comoUsuario(a);
-  await db.query(`select registrar_dia(false, null)`);
+  await db.query(`select registrar_dia()`);
   const log = await db.query('select id from logs where user_id = $1', [a]);
   await db.query(
     `insert into photos (user_id, log_id, storage_path, visibilidad)
@@ -2180,6 +2180,11 @@ console.log('\n35. Nada del navegador fuera de src/plataforma');
     'geolocation',
     'wakeLock',
     'vibrate',
+    // El puerto de ciclo de vida. Sostiene el cronómetro, el descanso, el
+    // vigilante del gimnasio, el de la sesión y el motor: es el que más cosas
+    // aguanta, y por eso el que menos puede filtrarse de a poco.
+    'visibilityState',
+    'visibilitychange',
   ];
 
   const { readdirSync, readFileSync: leerArchivo, statSync } = await import('node:fs');
@@ -2350,7 +2355,7 @@ console.log('\n38. Distancias y el punto del gimnasio');
 
   // ---- el origen queda guardado ----
   await comoUsuario(u);
-  await db.query(`select registrar_dia(false, null, 'ubicacion')`);
+  await db.query(`select registrar_dia('ubicacion')`);
   const o = await db.query('select origen from logs where user_id = $1', [u]);
   chequear('el dia guarda de donde salio', o.rows[0].origen, 'ubicacion');
   await db.exec('reset role');
@@ -2695,31 +2700,103 @@ console.log('\n43. Pesarse NO es haber ido al gimnasio');
 }
 
 // =====================================================================
-console.log('\n44. El cliente no le manda peso a registrar_dia');
+console.log('\n45. Ningun parametro de RPC es en realidad una constante');
 {
-  // La otra mitad de lo mismo, del lado del cliente: `registrar_dia` todavia
-  // ACEPTA un peso —sacarle el parametro seria otra migracion— asi que lo que
-  // se pinea es que nadie se lo mande. Si alguien vuelve a atarlos, esto falla.
+  // LA OTRA MITAD DE LA SECCION 34, y la que faltaba.
+  //
+  // La 34 pregunta si la FUNCION lee lo que recibe. `registrar_dia` si lee
+  // `p_peso` —lo guarda en `weights`— asi que para la 34 estaba todo bien.
+  // Pero ningun llamador le pasaba nunca otra cosa que `null`. Son dos
+  // mentiras distintas y solo una estaba cubierta:
+  //
+  //   la funcion ignora lo que le pasas  → creias que controlabas algo (34)
+  //   nadie le pasa nunca nada distinto  → el parametro no es un parametro,
+  //                                        es una constante disfrazada (45)
+  //
+  // La segunda pudre igual: el que lee la firma dentro de seis meses asume
+  // que sirve y escribe codigo alrededor de algo que no hace nada.
+  const fns = (
+    await db.query(`
+      select p.proname as nombre,
+             coalesce(
+               (select array_agg(n order by i)
+                  from unnest(p.proargnames) with ordinality as a(n, i)
+                 where p.proargmodes is null or p.proargmodes[i] in ('i', 'b')),
+               '{}'
+             ) as entradas
+        from pg_proc p
+       where p.pronamespace = 'public'::regnamespace and p.proargnames is not null
+    `)
+  ).rows;
+  const entradasDe = new Map(fns.map((f) => [f.nombre, f.entradas ?? []]));
+
   const { readdirSync, readFileSync: leerArchivo, statSync } = await import('node:fs');
   const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
   const archivos = [];
   const recorrer = (d) => {
     for (const n of readdirSync(d)) {
-      const ruta = join(d, n);
-      if (statSync(ruta).isDirectory()) recorrer(ruta);
-      else if (/[.]tsx?$/.test(n)) archivos.push(ruta);
+      const r = join(d, n);
+      if (statSync(r).isDirectory()) recorrer(r);
+      else if (/\.tsx?$/.test(n)) archivos.push(r);
     }
   };
   recorrer(SRC);
 
-  const culpables = [];
+  const pasados = new Map(); // "fn.param" → Set de los textos que se le pasan
+  const llamadas = new Set(); // que RPC llama el cliente
+
   for (const a of archivos) {
     const codigo = sinComentarios(leerArchivo(a, 'utf8'));
-    for (const m of codigo.matchAll(new RegExp("p_peso:\\s*([^,\\n}]+)", "g"))) {
-      if (m[1].trim() !== 'null') culpables.push(`${a.split('src')[1]} manda p_peso: ${m[1].trim()}`);
+    // Se busca el `.rpc('nombre'` y despues se lee el objeto de argumentos
+    // CONTANDO LLAVES, no con una expresion regular. Cortar en el primer
+    // parentesis partia `new Date(x).toISOString()` al medio, y entonces los
+    // argumentos que venian despues parecian no pasarse nunca: la primera
+    // version de este chequeo denuncio por eso un parametro que estaba sano.
+    for (const m of codigo.matchAll(/\.rpc\(\s*['"]([a-z_]+)['"]/g)) {
+      const fn = m[1];
+      llamadas.add(fn);
+      const resto = codigo.slice(m.index + m[0].length);
+      const abre = resto.indexOf('{');
+      const cierraLlamada = resto.indexOf(')');
+      let cuerpo = '';
+      // Hay objeto de argumentos solo si la llave aparece ANTES de que se
+      // cierre la llamada. Si no, es un `.rpc('x')` pelado.
+      if (abre !== -1 && (cierraLlamada === -1 || abre < cierraLlamada)) {
+        let nivel = 0;
+        for (let k = abre; k < resto.length; k++) {
+          if (resto[k] === '{') nivel++;
+          else if (resto[k] === '}') {
+            nivel--;
+            if (nivel === 0) {
+              cuerpo = resto.slice(abre + 1, k);
+              break;
+            }
+          }
+        }
+      }
+      for (const arg of entradasDe.get(fn) ?? []) {
+        const v = cuerpo.match(new RegExp(arg + '\\s*:\\s*([^,\\n}]+)'));
+        const clave = `${fn}.${arg}`;
+        if (!pasados.has(clave)) pasados.set(clave, new Set());
+        pasados.get(clave).add(v ? v[1].trim() : '(no se pasa)');
+      }
     }
   }
-  chequear('nadie le pasa un peso a registrar_dia', culpables.sort(), []);
+
+  const constantes = [];
+  for (const fn of llamadas) {
+    for (const arg of entradasDe.get(fn) ?? []) {
+      const vistos = pasados.get(`${fn}.${arg}`);
+      if (!vistos || vistos.size !== 1) continue;
+      const unico = [...vistos][0];
+      // Una expresion puede dar valores distintos en tiempo de ejecucion
+      // aunque se escriba una sola vez en el codigo. Solo se denuncia lo que
+      // es literalmente siempre lo mismo.
+      const esLiteral = /^(null|undefined|true|false|'[^']*'|[0-9.]+|\(no se pasa\))$/.test(unico);
+      if (esLiteral) constantes.push(`${fn}(${arg}) siempre vale ${unico}`);
+    }
+  }
+  chequear('ningun parametro de RPC es siempre el mismo valor', constantes.sort(), []);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

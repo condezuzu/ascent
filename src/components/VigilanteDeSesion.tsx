@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { anotar } from '@/lib/bitacora';
+import { plataforma } from '@/plataforma';
 
 /**
  * Anota en la bitácora todo lo que le pasa a la sesión.
@@ -57,8 +58,8 @@ export default function VigilanteDeSesion() {
 
     // ---- 3. la vuelta del segundo plano ----
     let escondidaDesde: number | null = null;
-    const alCambiarVisibilidad = async () => {
-      if (document.visibilityState === 'hidden') {
+    const alCambiarVisibilidad = async (visible: boolean) => {
+      if (!visible) {
         escondidaDesde = Date.now();
         return;
       }
@@ -75,11 +76,11 @@ export default function VigilanteDeSesion() {
         sesión: data.user ? 'viva' : error ? `error: ${error.name}` : 'NO HAY',
       });
     };
-    document.addEventListener('visibilitychange', alCambiarVisibilidad);
+    const dejarDeMirar = plataforma.ciclo.alCambiar(alCambiarVisibilidad);
 
     return () => {
       sub.subscription.unsubscribe();
-      document.removeEventListener('visibilitychange', alCambiarVisibilidad);
+      dejarDeMirar();
     };
   }, [supabase]);
 

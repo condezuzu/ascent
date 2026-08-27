@@ -14,6 +14,7 @@ import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import RecorteCircular from '@/components/RecorteCircular';
+import Esqueleto from '@/components/Esqueleto';
 import ComoMeVen, { DIAS_VISIBLES, FOTOS_VISIBLES } from '@/components/ComoMeVen';
 import { T } from '@/textos';
 
@@ -235,7 +236,9 @@ export default function Yo() {
     return (
       <>
         <FondoEspacial rango={1} vacio esquina="centro" velo={0.7} />
-        <div className="pantalla" />
+        <div className="pantalla">
+          <Esqueleto como="perfil" />
+        </div>
         <Nav />
       </>
     );

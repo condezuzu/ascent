@@ -127,7 +127,9 @@ console.log('\n3. La racha no se puede tocar a mano');
 // =====================================================================
 console.log('\n4. Registrar el primer día, con peso');
 {
-  const { data, error } = await A.rpc('registrar_dia', { p_es_descanso: false, p_peso: 82.4 });
+  // El peso va por su propio camino: `registrar_dia` ya no lo acepta.
+  await A.rpc('anotar_peso', { p_valor: 82.4 });
+  const { data, error } = await A.rpc('registrar_dia', {});
   chequear('registrar_dia responde', error?.message ?? 'sin error', 'sin error');
   chequear('racha 1, rango 1, sin subida', [data?.racha, data?.rango_despues, data?.subio_rango], [1, 1, false]);
 }
@@ -136,7 +138,7 @@ console.log('\n4. Registrar el primer día, con peso');
   chequear('el peso quedó guardado', Number(data?.[0]?.valor), 82.4);
 }
 {
-  const { error } = await A.rpc('registrar_dia', { p_es_descanso: false, p_peso: null });
+  const { error } = await A.rpc('registrar_dia', {});
   chequear('el mismo día no se registra dos veces', error?.code ?? null, '23505');
 }
 
@@ -173,7 +175,7 @@ console.log('\n5. Escalera de rangos y planeta del día');
 // =====================================================================
 console.log('\n6. La ignición: subir de planeta a sol');
 {
-  const { data, error } = await A.rpc('registrar_dia', { p_es_descanso: false, p_peso: null });
+  const { data, error } = await A.rpc('registrar_dia', {});
   // El error se mira SIEMPRE. Sin esta línea, un fallo del RPC deja `data` en
   // null y el chequeo de abajo dice "esperaba 40, obtuve null", que manda a
   // buscar el problema en la racha en vez de en la llamada — que es justo lo
@@ -314,7 +316,7 @@ console.log('\n12. Pérdida de racha: resta 10');
   chequear('no castiga dos veces el mismo corte', data?.perdida, false);
 }
 {
-  const { data } = await A.rpc('registrar_dia', { p_es_descanso: false, p_peso: null });
+  const { data } = await A.rpc('registrar_dia', {});
   chequear('volver suma sobre lo conservado', data?.racha, SEMBRADOS - 1 - 10 + 1);
 }
 

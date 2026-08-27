@@ -96,11 +96,10 @@ export default function RegistrarSheet({
     }
 
     // ---- el día no existe: se registra ----
-    // `p_peso` va SIEMPRE en null: registrar un día ya no anota el peso.
-    // Atarlos hacía que pesarse un domingo contara como día entrenado.
+    // Solo el origen. `p_es_descanso` y `p_peso` se fueron en la migración
+    // 25: eran constantes disfrazadas de parámetro.
     const { data, error: errRpc } = await supabase.rpc('registrar_dia', {
-      p_es_descanso: false,
-      p_peso: null,
+      p_origen: 'manual',
     });
 
     if (errRpc) {

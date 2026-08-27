@@ -139,3 +139,20 @@ export const DESCANSO_MAXIMO = 600;
  * Son constantes del cliente y no filas: cinco números iguales para todos.
  */
 export const PRESETS_DESCANSO = [60, 90, 120, 180, 300];
+
+// ---------------------------------------------------------------
+// Lo que está construido y todavía no se muestra
+// ---------------------------------------------------------------
+
+/**
+ * Los retos entre amigos (§9). La interfaz está entera y las tablas también,
+ * pero un reto necesita un amigo y todavía no hay segundo usuario: hoy solo
+ * puede mostrar "no hay retos".
+ *
+ * Se ESCONDE, no se borra. Y se esconde de verdad —ni se dibuja ni sale el
+ * pedido a la base—, no con `display: none`: superficie que no se usa es
+ * superficie que se rompe sin que nadie se entere.
+ *
+ * En `true` el día que haya alguien más. Mismo mecanismo que `GOOGLE_LISTO`.
+ */
+export const RETOS_LISTOS = false;

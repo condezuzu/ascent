@@ -16,8 +16,6 @@ export async function registrarPorSenal(
   origen: Exclude<OrigenDia, 'manual'>
 ) {
   const { data, error } = await supabase.rpc('registrar_dia', {
-    p_es_descanso: false,
-    p_peso: null,
     p_origen: origen,
   });
   // 23505 = el día ya estaba. No es un error: es el caso normal de abrir la
