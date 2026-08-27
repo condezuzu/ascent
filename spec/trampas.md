@@ -471,6 +471,41 @@ así que un título en `x = 0` le pasa por al lado y da verde. Un test que busca
 "se sale" no encuentra "no respira": son dos cosas distintas, y la segunda solo
 la ve un ojo.
 
+**Una herramienta de verificación que no verifica es peor que no tenerla.**
+`capturas` sacaba la foto de donde hubiera caído el navegador. `page.goto`
+resuelve igual de contento si el middleware te rebotó a `/login`, así que la
+herramienta fotografiaba la pantalla de entrada, la guardaba como
+`movil-album.png` y la contaba como capturada. Cuatro capturas de una corrida
+eran el mismo PNG del login, byte por byte, y el informe decía "sin problemas".
+Se descubrió **abriendo los archivos**, no leyendo el informe.
+→ **Regla:** después de navegar, comprobar que la página es la que se pidió.
+→ **Y la comprobación que más engaño destapa por línea escrita:** si dos
+salidas que tienen que ser distintas salen **idénticas**, algo se
+fotografió dos veces. No sabe nada del dominio y encontró dos bugs de una — el
+rebote al login, y un `previo` que no abría el desplegable y repetía la
+pantalla anterior.
+
+**El arreglo de la cascada era la causa de la cascada.** Cuando una pantalla se
+caía por timeout, la siguiente moría con "interrupted by another navigation", y
+la siguiente, y la siguiente: una pantalla lenta se llevaba cinco. La
+recuperación era mandar la página a `about:blank`… que es dejar OTRA navegación
+en vuelo. Se había afinado el `waitUntil` para que fuera más rápida, lo que
+esconde el problema en vez de sacarlo.
+→ **Regla:** para salir de un estado roto, **tirarlo y hacer uno nuevo**, no
+navegarlo a otro lado. `page.close()` + `contexto.newPage()` no deja nada en
+vuelo, y la sesión aguanta porque las cookies son del contexto, no de la
+página.
+
+**`if (existe) hacelo` es una forma de no hacer nada en silencio.** El paso que
+abre "Cómo se compara" contaba el botón y, si daba cero, seguía de largo. No
+era que el botón no estuviera: era que **todavía** no estaba, porque Ajustes
+pide el perfil antes de dibujar nada, y los 3,5 s de espera fija eran una
+apuesta.
+→ **Regla:** esperar la condición, no dormir un rato y mirar. Y si el paso
+previo no pudo hacer lo suyo, que **devuelva el problema**, no `undefined`.
+
+---
+
 ---
 
 ## Build y entorno
