@@ -36,12 +36,15 @@ export default function Insignia({ rango, tam = 24 }: { rango: number; tam?: num
           <path d="M12 3 a9 9 0 1 0 9 9 a11 11 0 0 1 -9 -9 Z" />
         </svg>
       );
-    case 4: // Planeta: disco con banda
+    case 4: // Planeta: una ESFERA iluminada de un lado, no un disco plano
       return (
         <svg style={s} viewBox="0 0 24 24" aria-hidden>
           <circle cx="12" cy="12" r="8" fill={pal.principal} />
-          <path d="M4.5 10.5 Q12 13.5 19.5 10.5" stroke={oscuro} strokeWidth="1.6" fill="none" opacity=".55" />
-          <path d="M5 14.5 Q12 17 19 14.5" stroke={oscuro} strokeWidth="1.2" fill="none" opacity=".4" />
+          {/* El terminador. Es lo único que separa un planeta de un círculo de
+              color, y era justo lo que le faltaba. */}
+          <path d="M12 4 a8 8 0 0 1 0 16 a10.5 10.5 0 0 0 0 -16 Z" fill={oscuro} opacity=".42" />
+          <path d="M4.6 9.8 Q12 12.6 19.4 9.8" stroke={trazo} strokeWidth="1.3" fill="none" opacity=".45" />
+          <path d="M5.4 14.8 Q12 17.2 18.6 14.8" stroke={oscuro} strokeWidth="1.3" fill="none" opacity=".5" />
         </svg>
       );
     case 5: // Sol: disco radiante incandescente
@@ -61,22 +64,43 @@ export default function Insignia({ rango, tam = 24 }: { rango: number; tam?: num
           <circle cx="21" cy="13.5" r="1.8" fill={pal.principal} />
         </svg>
       );
-    case 7: // Galaxia: espiral violeta
-      return (
-        <svg style={s} viewBox="0 0 24 24" fill="none" stroke={pal.principal} strokeWidth="1.8" strokeLinecap="round" aria-hidden>
-          <circle cx="12" cy="12" r="2" fill={trazo} stroke="none" />
-          <path d="M12 12 C 16 10, 20 12, 20 16" />
-          <path d="M12 12 C 8 14, 4 12, 4 8" />
-          <path d="M12 12 C 13 7, 10 4, 6 4.5" />
-          <path d="M12 12 C 11 17, 14 20, 18 19.5" />
-        </svg>
-      );
-    case 8: // Agujero negro: disco de acreción naranja fino + toque violeta
+    case 7: // Galaxia: DOS brazos gruesos y un núcleo que brilla
       return (
         <svg style={s} viewBox="0 0 24 24" aria-hidden>
-          <circle cx="12" cy="12" r="7.5" stroke={pal.claro} strokeWidth="1.4" fill="none" opacity=".8" />
-          <ellipse cx="12" cy="12" rx="11" ry="3.2" stroke={pal.principal} strokeWidth="1.6" fill="none" />
-          <circle cx="12" cy="12" r="5" fill="#020204" />
+          {/* Tenía cuatro brazos de un pelo de grosor: en 16 píxeles se comían
+              entre sí y quedaba una mancha. Dos brazos gruesos y un núcleo con
+              halo se leen a cualquier tamaño. */}
+          <ellipse
+            cx="12" cy="12" rx="10.5" ry="7"
+            fill={pal.principal} opacity=".16"
+            transform="rotate(-22 12 12)"
+          />
+          <g fill="none" stroke={pal.principal} strokeWidth="2.4" strokeLinecap="round">
+            <path d="M12.6 12 C 17.2 10.6, 20.6 13.4, 18.8 17.6" />
+            <path d="M11.4 12 C 6.8 13.4, 3.4 10.6, 5.2 6.4" />
+          </g>
+          <circle cx="12" cy="12" r="4.4" fill={trazo} opacity=".22" />
+          <circle cx="12" cy="12" r="2.5" fill={trazo} />
+        </svg>
+      );
+    case 8: // Agujero negro: disco de acreción + la luz doblada por arriba
+      return (
+        <svg style={s} viewBox="0 0 24 24" aria-hidden>
+          {/* El orden importa y es todo el dibujo: el disco pasa POR DETRÁS,
+              la esfera lo tapa, la luz del lado de atrás aparece curvada por
+              ARRIBA — que es la firma de un agujero negro y es lo que este
+              icono no tenía — y el frente del disco vuelve por delante. */}
+          <ellipse cx="12" cy="13" rx="11" ry="3.4" fill="none" stroke={pal.principal} strokeWidth="2" />
+          <circle cx="12" cy="12" r="6" fill="#020204" />
+          <path
+            d="M4.4 11.6 A 8.2 8.2 0 0 1 19.6 11.6"
+            fill="none" stroke={pal.claro} strokeWidth="2" strokeLinecap="round"
+          />
+          <circle cx="12" cy="12" r="6" fill="none" stroke={pal.claro} strokeWidth="0.9" opacity=".75" />
+          <path
+            d="M1.2 13 A 11 3.4 0 0 0 22.8 13"
+            fill="none" stroke={pal.principal} strokeWidth="2" strokeLinecap="round"
+          />
         </svg>
       );
     default:

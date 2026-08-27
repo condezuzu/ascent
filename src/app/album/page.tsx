@@ -125,61 +125,62 @@ export default function Album() {
         {error && <p className="error-msg">{error}</p>}
 
         {celdas.length > 0 ? (
-          <div className="album-grilla">
+          <div className="album-grilla mosaico">
             {celdas.map((c) => (
-              <div className="album-celda" key={c.id}>
-                {c.url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={c.url} alt="" loading="lazy" />
-                )}
+              <div className="album-pieza" key={c.id}>
+                <div className="album-celda">
+                  {c.url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.url} alt="" loading="lazy" />
+                  )}
 
-                {porBorrar === c.id ? (
-                  <div className="album-confirmar">
-                    <span>{T.album.borrarPregunta}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        borrar(c);
-                      }}
-                    >
-                      {T.album.si}
-                    </button>
-                    <button
-                      className="no"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPorBorrar(null);
-                      }}
-                    >
-                      {T.album.no}
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      className="album-vis"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        alternarVisibilidad(c);
-                      }}
-                    >
-                      {c.visibilidad === 'privada' ? T.album.soloVos : T.album.amigos}
-                    </button>
-                    <button
-                      className="album-borrar"
-                      aria-label={T.album.borrarFoto}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPorBorrar(c.id);
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                        <path d="M5 7h14M10 7V5h4v2M8 7l1 12h6l1-12" />
-                      </svg>
-                    </button>
-                  </>
-                )}
-
+                  {porBorrar === c.id ? (
+                    <div className="album-confirmar">
+                      <span>{T.album.borrarPregunta}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          borrar(c);
+                        }}
+                      >
+                        {T.album.si}
+                      </button>
+                      <button
+                        className="no"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPorBorrar(null);
+                        }}
+                      >
+                        {T.album.no}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        className="album-vis"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          alternarVisibilidad(c);
+                        }}
+                      >
+                        {c.visibilidad === 'privada' ? T.album.soloVos : T.album.amigos}
+                      </button>
+                      <button
+                        className="album-borrar"
+                        aria-label={T.album.borrarFoto}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPorBorrar(c.id);
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                          <path d="M5 7h14M10 7V5h4v2M8 7l1 12h6l1-12" />
+                        </svg>
+                      </button>
+                    </>
+                  )}
+                </div>
                 <div className="album-pie">
                   <span>{fechaLinda(c.fecha)}</span>
                   {c.planeta && <span>{c.planeta}</span>}

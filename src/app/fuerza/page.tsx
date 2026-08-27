@@ -178,11 +178,15 @@ export default function Fuerza() {
                   {T.fuerza.ningunaCargada}
                 </p>
               )}
-              {/* El DOTS necesita las TRES: con dos no hay un total parcial que
-                  valga, porque no sería comparable con el de nadie. */}
+              {/* El DOTS necesita las TRES. El porqué NO se explica acá: es un
+                  párrafo, y un párrafo en la pantalla donde se anotan marcas no lo
+                  lee nadie. Vive entero en Ajustes, con un link desde acá. */}
               {fuerza?.falta === 'marcas' && delDots.length > 0 && (
                 <p className="nota-privada">
-                  {T.fuerza.faltanMarcas(delDots.length)}
+                  {T.fuerza.faltanMarcas(delDots.length)}{' '}
+                  <Link href="/ajustes" className="enlace">
+                    {T.fuerza.verEnAjustes}
+                  </Link>
                 </p>
               )}
               {fuerza?.falta === 'sexo' && (
@@ -208,7 +212,10 @@ export default function Fuerza() {
               <div className="seccion">
                 <h3>{T.fuerza.loDemas}</h3>
                 <p className="nota-privada" style={{ marginTop: 0, marginBottom: 10 }}>
-                  {T.fuerza.loDemasNota}
+                  {T.fuerza.loDemasNota}{' '}
+                  <Link href="/ajustes" className="enlace">
+                    {T.fuerza.verEnAjustes}
+                  </Link>
                 </p>
                 <div className="tarjeta" style={{ padding: 4 }}>{otras.map(filaMarca)}</div>
               </div>

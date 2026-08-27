@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { plataforma } from '@/plataforma';
+import { marcarPunto } from '@/lib/gimnasio';
 import type { Perfil } from '@/lib/tipos';
 import { T } from '@/textos';
 
@@ -37,37 +37,22 @@ export default function Gimnasio({
     setEstado('buscando');
     setDetalle('');
 
-    if (!plataforma.ubicacion.disponible()) {
+    const r = await marcarPunto(supabase, perfil.id);
+    if (!r.ok) {
       setEstado('error');
-      return setDetalle(T.ajustes.gimnasioSinGps);
+      return setDetalle(
+        r.motivo === 'sin-gps'
+          ? T.ajustes.gimnasioSinGps
+          : r.motivo === 'sin-permiso'
+            ? T.ajustes.gimnasioSinPermiso
+            : T.general.noSePudo
+      );
     }
-
-    const punto = await plataforma.ubicacion.puntoActual();
-    if (!punto) {
-      setEstado('error');
-      // No se distingue "denegó" de "no hay señal" a propósito: el navegador
-      // tampoco lo dice, e inventar el motivo manda a la persona a resolver el
-      // problema equivocado.
-      return setDetalle(T.ajustes.gimnasioSinPermiso);
-    }
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        gimnasio_lat: Number(punto.lat.toFixed(6)),
-        gimnasio_lon: Number(punto.lon.toFixed(6)),
-      })
-      .eq('id', perfil.id);
-
-    if (error) {
-      setEstado('error');
-      return setDetalle(T.general.noSePudo);
-    }
-    alCambiar({ gimnasio_lat: punto.lat, gimnasio_lon: punto.lon });
+    alCambiar({ gimnasio_lat: r.lat, gimnasio_lon: r.lon });
     setEstado('listo');
     // La precisión se muestra porque cambia lo que se puede esperar: con 200
     // metros de error el atajo va a fallar, y es mejor saberlo ahora.
-    setDetalle(T.ajustes.gimnasioListo(Math.round(punto.precision)));
+    setDetalle(T.ajustes.gimnasioListo(Math.round(r.precision)));
   }
 
   async function borrar() {

@@ -2342,6 +2342,46 @@ console.log('\n38. Distancias y el punto del gimnasio');
   await db.exec('reset role');
 }
 
+// =====================================================================
+console.log('\n39. Dos personas no pueden llamarse igual');
+{
+  // Lo garantiza un indice unico sobre lower(username), no una consulta
+  // previa: preguntar "esta libre?" y despues escribir deja una ventana en el
+  // medio donde otro se lo lleva. El indice no tiene ventana.
+  const a = await nuevoUsuario();
+  const b = await nuevoUsuario();
+
+  async function ponerNombre(uid, nombre) {
+    await comoUsuario(uid);
+    try {
+      await db.query('update profiles set username = $1 where id = $2', [nombre, uid]);
+      await db.exec('reset role');
+      return true;
+    } catch (e) {
+      await db.exec('reset role');
+      return e.code === '23505' ? 'duplicado' : e.message;
+    }
+  }
+
+  chequear('el primero se queda con el nombre', await ponerNombre(a, 'agustin'), true);
+  chequear('el segundo no lo puede repetir', await ponerNombre(b, 'agustin'), 'duplicado');
+  // Y tampoco cambiandole las mayusculas, que es como se cuela un impostor.
+  chequear('ni con otras mayusculas', await ponerNombre(b, 'AgUsTiN'), 'duplicado');
+  chequear('uno parecido si', await ponerNombre(b, 'agustin_b'), true);
+
+  // La busqueda encuentra por PARTE del nombre: buscar "agustin" tiene que
+  // traer agustin, agustin_b y cualquier otro que lo contenga.
+  const encontrados = await db.query(
+    `select username from usuarios_publicos where username ilike $1 order by username`,
+    ['%agustin%']
+  );
+  chequear(
+    'la busqueda parcial los trae a los dos',
+    encontrados.rows.map((f) => f.username).join(','),
+    'agustin,agustin_b'
+  );
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

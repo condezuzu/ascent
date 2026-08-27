@@ -27,6 +27,45 @@ export async function registrarPorSenal(
 }
 
 /**
+ * Marcar el punto del gimnasio: se lee el GPS y se guarda dónde estás AHORA.
+ *
+ * Vive acá y no adentro de la pantalla de Ajustes porque se marca desde dos
+ * lugares — Ajustes y el momento en que recién registraste el día, que es
+ * cuando es probable que estés parado ahí — y si cada uno tuviera su copia,
+ * arreglar uno dejaría el otro roto.
+ *
+ * Devuelve la precisión en metros, o qué falló. Nunca se marca un punto que
+ * no sea el de ahora: un punto puesto desde el sillón de casa es PEOR que no
+ * tener punto, porque registra días que no ocurrieron.
+ */
+export type ResultadoMarcar =
+  | { ok: true; lat: number; lon: number; precision: number }
+  | { ok: false; motivo: 'sin-gps' | 'sin-permiso' | 'no-se-guardo' };
+
+export async function marcarPunto(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<ResultadoMarcar> {
+  if (!plataforma.ubicacion.disponible()) return { ok: false, motivo: 'sin-gps' };
+
+  const punto = await plataforma.ubicacion.puntoActual();
+  // No se distingue "denegó" de "no hay señal" a propósito: el navegador
+  // tampoco lo dice, e inventar el motivo manda a la persona a resolver el
+  // problema equivocado.
+  if (!punto) return { ok: false, motivo: 'sin-permiso' };
+
+  const lat = Number(punto.lat.toFixed(6));
+  const lon = Number(punto.lon.toFixed(6));
+  const { error } = await supabase
+    .from('profiles')
+    .update({ gimnasio_lat: lat, gimnasio_lon: lon })
+    .eq('id', userId);
+  if (error) return { ok: false, motivo: 'no-se-guardo' };
+
+  return { ok: true, lat, lon, precision: punto.precision };
+}
+
+/**
  * ¿Estoy en el gimnasio ahora?
  *
  * En web esto es todo lo que se puede: mirar cuando la app está abierta. El

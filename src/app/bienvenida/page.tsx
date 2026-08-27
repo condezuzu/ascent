@@ -70,7 +70,7 @@ export default function Bienvenida() {
   return (
     <>
       <FondoEspacial
-        rango={paso === 1 ? ASOMO[asomo] : paso === 2 ? 3 : 1}
+        rango={paso === 1 ? ASOMO[asomo] : paso === 2 ? 3 : paso === 3 ? 4 : 1}
         vacio={paso === 0}
         reposo={paso === 2}
         esquina="centro"

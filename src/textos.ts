@@ -58,9 +58,19 @@ export const T = {
     hoyDescansa: 'Hoy descansa. La racha sigue igual.',
     diaPendiente: 'Tu día de hoy quedó anotado y se suma solo. No lo perdiste.',
     diaRegistradoSumar: 'Día registrado · sumar foto o peso',
-    serieHecha: 'Serie hecha',
+    sumarSerie: 'Sumar una serie',
+    masArrancaDescanso: 'Cada + suma la serie y arranca el descanso.',
     sacarSerie: 'Sacar una serie',
     sigueSubiendo: (nombre: string, dias: string) => `${nombre} sigue subiendo — ${dias}`,
+    // Discreto y permanente mientras no haya punto: es el diferencial de la
+    // app y vivía escondido en Ajustes.
+    gimnasioRecordatorio: 'Tu gimnasio todavía no está marcado. Marcalo y el día entra solo.',
+    // Y acá sí se insiste, porque es el único momento en que es probable que
+    // la persona esté parada en el gimnasio. NUNCA al empezar la sesión:
+    // ahí casi nunca está ahí todavía.
+    gimnasioAhora: '¿Estás en el gimnasio ahora?',
+    gimnasioAhoraPie: 'Marcá el punto y no lo tenés que hacer nunca más: el día entra solo con abrir la app.',
+    gimnasioAhoraNo: 'Ahora no',
     vacioTitulo: 'Todavía no hay nada acá.',
     vacioPie: 'Registrá tu primer día y algo se empieza a formar.',
     vacio: 'Todavía no hay nada acá.\nRegistrá tu primer día y algo se empieza a formar.',
@@ -114,6 +124,14 @@ export const T = {
       {
         titulo: 'Los descansos no te cortan',
         texto: 'Elegís tus días libres una vez, en Ajustes. Y si igual se te corta, no volvés a cero.',
+      },
+      // Este paso PRESENTA el punto del gimnasio y no pide nada: acá nadie
+      // está en el gimnasio, y pedir algo que no se puede hacer en el momento
+      // se despacha con un toque y no se vuelve a pensar nunca.
+      {
+        titulo: 'Y un día deja de hacer falta',
+        texto:
+          'Si marcás dónde queda tu gimnasio, abrir la app estando ahí registra el día solo. Se marca desde Ajustes, parado en la puerta.',
       },
     ],
   },
@@ -185,10 +203,10 @@ export const T = {
     // la busca la encuentra y el que no, no la tropieza.
     porQueTres: 'Son estos tres porque son los que se comparan.',
 
-    // El DOTS necesita las TRES: con dos no hay total parcial que valga,
-    // porque no sería comparable con el de nadie.
-    faltanMarcas: (n: number) =>
-      `Con ${n} de 3 todavía no hay número: la fórmula compara totales, y un total incompleto no se compara con nada.`,
+    // El DOTS necesita las TRES. El PORQUÉ vive en Ajustes ("Cómo se compara
+    // la fuerza"), donde puede ser largo: el que abre eso lo está buscando.
+    // Acá va el hecho y un link, y nada más.
+    faltanMarcas: (n: number) => `Con ${n} de 3 todavía no hay número.`,
     yaEstanLasTres: 'Ya están las tres.',
     // Partido en dos porque en el medio va el link a Ajustes.
     faltaSexo: 'Para el número falta cargar el sexo en',
@@ -202,8 +220,7 @@ export const T = {
     faltaPesoEnMarcas: 'Falta tu peso corporal, que se anota en',
     faltaPesoEnMarcasFin: '. Solo lo ves vos.',
     loDemas: 'Lo demás',
-    loDemasNota:
-      'Anotalas todas las que quieras. Estas no entran al número: la fórmula está calibrada sobre las otras tres y sumarle ejercicios la invalida.',
+    loDemasNota: 'Anotalas todas las que quieras. Estas no entran al número.',
     ningunaCargada: 'Sentadilla, press de banca y peso muerto. Ninguna cargada todavía.',
     esLaUnica: 'Es la única que anotaste.',
     cuantasAnotaste: (n: number) => `Anotaste ${n}. Vale la mejor.`,
@@ -363,9 +380,7 @@ export const T = {
 
   // ---------------------------------------------------------------
   sesion: {
-    series: (n: number) => (n === 1 ? '1 serie' : `${n} series`),
-    sumarSerie: 'Sumar una serie',
-    quitarSerie: 'Quitar una serie',
+    seriesPalabra: (n: number) => (n === 1 ? 'serie' : 'series'),
     terminar: 'Terminar',
     label: 'Sesión',
     descansar: 'Descansar',
@@ -597,7 +612,9 @@ export const T = {
     eliminar: 'Eliminar',
     no: 'No',
     quitar: 'Quitar',
-    sinAmigos: 'Todavía no agregaste a nadie. Se buscan desde Ranking.',
+    // El link para buscar está justo arriba: repetir dónde se buscan sobraba.
+    sinAmigos: 'Todavía no agregaste a nadie.',
+    noSeSumoLaFoto: 'No se pudo sumar la foto. Probá de nuevo.',
     sumarFotos: 'Sumar fotos acá',
   },
 } as const;

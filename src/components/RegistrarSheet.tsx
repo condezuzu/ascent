@@ -31,6 +31,7 @@ export default function RegistrarSheet({
   logId,
   unidadPeso = 'kg',
   visibilidadDefault = 'privada',
+  foco,
   alCerrar,
   alConfirmar,
 }: {
@@ -39,6 +40,15 @@ export default function RegistrarSheet({
   logId?: string | null; // presente = el día ya está registrado
   unidadPeso?: Unidad;
   visibilidadDefault?: 'privada' | 'amigos';
+  /**
+   * Con qué campo se abre, cuando la hoja llegó desde uno de los dos botones
+   * redondos del día ya registrado. Solo cambia el foco: los dos campos
+   * siguen estando y siguen siendo opcionales.
+   *
+   * Para 'foto' NO se abre el selector de archivos solo: un `.click()` que no
+   * viene de un gesto lo bloquea el navegador, y prometerlo sería mentir.
+   */
+  foco?: 'foto' | 'peso';
   alCerrar: () => void;
   alConfirmar: (r: ResultadoRegistro | null) => void;
 }) {
@@ -184,6 +194,7 @@ export default function RegistrarSheet({
             placeholder={unidadPeso}
             value={peso}
             onChange={(e) => setPeso(e.target.value)}
+            autoFocus={foco === 'peso'}
           />
         </div>
 

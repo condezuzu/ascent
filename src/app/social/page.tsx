@@ -392,7 +392,7 @@ export default function Social() {
           </div>
         )}
 
-        <div className="seccion" style={{ marginTop: 24 }}>
+        <div className="seccion" id="buscar" style={{ marginTop: 24 }}>
           <h3>{T.social.buscarGente}</h3>
           <input
             placeholder={T.ajustes.nombrePlaceholder}

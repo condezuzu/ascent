@@ -67,11 +67,13 @@ export default function ComoMeVen({
           <h3>{T.general.fotos}</h3>
           <div className="album-grilla">
             {fotos.map((f) => (
-              <div className="album-celda" key={f.id}>
-                {f.url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={f.url} alt="" loading="lazy" />
-                )}
+              <div className="album-pieza" key={f.id}>
+                <div className="album-celda">
+                  {f.url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={f.url} alt="" loading="lazy" />
+                  )}
+                </div>
                 {f.fecha && (
                   <div className="album-pie">
                     <span>{fechaLinda(f.fecha)}</span>

@@ -11,7 +11,7 @@ import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
 import { guardarPerfilCache, leerPerfilCache } from '@/lib/cache';
 import { marca } from '@/lib/medir';
 import { sincronizarZona } from '@/lib/zona';
-import { estoyEnElGimnasio, registrarPorSenal } from '@/lib/gimnasio';
+import { estoyEnElGimnasio, marcarPunto, registrarPorSenal } from '@/lib/gimnasio';
 import { lineaDeMarcas } from '@/lib/fuerza';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -37,9 +37,18 @@ export default function Principal() {
   const [social, setSocial] = useState<LineaSocial>(null);
   const [marcas, setMarcas] = useState<string | null>(null);
   const [hojaAbierta, setHojaAbierta] = useState(false);
+  // Con qué campo se abre la hoja: los dos botones redondos del día ya
+  // registrado llevan al mismo lugar, pero no a lo mismo.
+  const [focoHoja, setFocoHoja] = useState<'foto' | 'peso' | undefined>(undefined);
   const [descansoAbierto, setDescansoAbierto] = useState(false);
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
   const [perdida, setPerdida] = useState(false);
+  // El unico momento en que es probable que la persona este parada en el
+  // gimnasio es JUSTO despues de registrar el dia. Ahi se pide el punto, y
+  // solo ahi. Nunca al empezar la sesion (§13): a esa hora casi nadie llego.
+  const [pedirGimnasio, setPedirGimnasio] = useState(false);
+  const [marcando, setMarcando] = useState(false);
+  const [avisoGimnasio, setAvisoGimnasio] = useState('');
   const [cargado, setCargado] = useState(false);
 
   // La línea social se carga aparte y después: no puede demorar el dibujo
@@ -215,13 +224,41 @@ export default function Principal() {
   const hora = new Date().getHours();
   const avisoTiempo = !registradoHoy && racha > 0 && hora >= 19;
 
+  function abrirHoja(foco?: 'foto' | 'peso') {
+    setFocoHoja(foco);
+    setHojaAbierta(true);
+  }
+
   function alConfirmar(r: ResultadoRegistro | null) {
     setHojaAbierta(false);
     // La animación se dispara SOLO después de que la base confirmó. Viene en
     // null cuando el día ya estaba y solo se le sumó foto o peso: ahí no hay
     // subida de rango que festejar.
     if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+    // `r` en null = el dia ya estaba y solo se le sumo foto o peso: ahi la
+    // persona puede estar en cualquier lado. Solo se pregunta cuando el dia
+    // ACABA de entrar.
+    if (r && !perfil?.gimnasio_lat) setPedirGimnasio(true);
     cargar();
+  }
+
+  async function marcarDesdeAca() {
+    if (!perfil) return;
+    setMarcando(true);
+    setAvisoGimnasio('');
+    const r = await marcarPunto(supabase, perfil.id);
+    setMarcando(false);
+    if (!r.ok) {
+      return setAvisoGimnasio(
+        r.motivo === 'sin-gps'
+          ? T.ajustes.gimnasioSinGps
+          : r.motivo === 'sin-permiso'
+            ? T.ajustes.gimnasioSinPermiso
+            : T.general.noSePudo
+      );
+    }
+    setPerfil((x) => (x ? { ...x, gimnasio_lat: r.lat, gimnasio_lon: r.lon } : x));
+    setPedirGimnasio(false);
   }
 
   return (
@@ -286,32 +323,63 @@ export default function Principal() {
             lo que más se toca durante un entrenamiento, y el día ya está. */}
         {sesion.estado.corriendo ? (
           <>
-            <button className="boton-solido" onClick={sesion.serieHecha}>
-              {T.inicio.serieHecha}
-            </button>
-            <div className="series-fila">
-              <span className="cuenta">{sesion.estado.series}</span>
-              <span style={{ flex: 1 }}>
-                {sesion.estado.series === 1 ? 'serie' : 'series'}
-              </span>
-              {/* Un toque de más es fácil. Se puede deshacer toda la sesión, y
-                  deshacer NO cancela el descanso: son cosas separadas. */}
-              {sesion.estado.series > 0 && (
-                <button onClick={sesion.deshacerSerie} aria-label={T.inicio.sacarSerie}>
-                  −
-                </button>
-              )}
-              <button className="boton-fantasma" onClick={sesion.terminar}>
-                {T.sesion.terminar}
+            {/* Antes acá había un botón que decía "Serie hecha" y nadie entendía
+                qué hacía: parecía una confirmación, no un contador. Ahora se ve
+                LO QUE CUENTA — el número de series — con un + y un − a los
+                costados, que es la forma en que un contador se lee sin que
+                nadie lo explique. El + sigue siendo el mismo gesto de siempre:
+                suma la serie y arranca el descanso (§20.3). */}
+            <div className="contador-series">
+              <button
+                className="paso"
+                onClick={sesion.deshacerSerie}
+                disabled={sesion.estado.series === 0}
+                aria-label={T.inicio.sacarSerie}
+              >
+                −
+              </button>
+              <div className="cuenta" aria-live="polite">
+                <span className="numero">{sesion.estado.series}</span>
+                <span className="palabra">{T.sesion.seriesPalabra(sesion.estado.series)}</span>
+              </div>
+              <button className="paso mas" onClick={sesion.serieHecha} aria-label={T.inicio.sumarSerie}>
+                +
               </button>
             </div>
+            <p className="nota-privada" style={{ textAlign: 'center', marginTop: 10 }}>
+              {T.inicio.masArrancaDescanso}
+            </p>
+            <button className="boton-fantasma" style={{ marginTop: 12 }} onClick={sesion.terminar}>
+              {T.sesion.terminar}
+            </button>
           </>
+        ) : registradoHoy ? (
+          /* El día ya está. Lo que queda no es "registrar" otra vez: es
+             sumarle una foto o el peso, que son dos cosas distintas y por eso
+             son dos botones. El cartel se dice UNA vez y con aire, en vez de
+             ir apretado adentro de un botón ancho. */
+          <div className="dia-listo">
+            <span className="rotulo">{T.inicio.diaRegistrado}</span>
+            <div className="acciones">
+              <button
+                className="redondo"
+                onClick={() => abrirHoja('foto')}
+                aria-label={T.sesion.sumarFoto}
+              >
+                <IconoFoto />
+              </button>
+              <button
+                className="redondo"
+                onClick={() => abrirHoja('peso')}
+                aria-label={T.sesion.sumarPeso}
+              >
+                <IconoPeso />
+              </button>
+            </div>
+          </div>
         ) : (
-          <button
-            className={registradoHoy ? 'boton-fantasma' : 'boton-solido'}
-            onClick={() => setHojaAbierta(true)}
-          >
-            {registradoHoy ? T.inicio.diaRegistradoSumar : T.inicio.registrarDia}
+          <button className="boton-solido" onClick={() => abrirHoja()}>
+            {T.inicio.registrarDia}
           </button>
         )}
         {sesion.estado.aviso && <p className="ok-msg">{sesion.estado.aviso}</p>}
@@ -323,6 +391,34 @@ export default function Principal() {
             antes. Se alinea con la tira semanal y no con el margen, para no
             romper la asimetría —nada cierra en la misma vertical—. El DOTS no
             va acá: es un número que pide contexto, y ese contexto es Stats. */}
+        {/* El punto del gimnasio es LO QUE DIFERENCIA a la app, y vivia
+            escondido en Ajustes: si nadie lo marca, nadie ve el atajo. Este
+            recordatorio se queda mientras no haya punto y se va solo el dia
+            que se marca — no hay que cerrarlo, hay que resolverlo. Va en el
+            idioma de los globos y en voz baja: no compite con nada. */}
+        {!perfil.gimnasio_lat && !pedirGimnasio && (
+          <Link href="/ajustes" className="globo globo-quieto">
+            <p>{T.inicio.gimnasioRecordatorio}</p>
+          </Link>
+        )}
+
+        {pedirGimnasio && (
+          <div className="globo globo-quieto pedido-gimnasio">
+            <p>
+              <strong>{T.inicio.gimnasioAhora}</strong> {T.inicio.gimnasioAhoraPie}
+            </p>
+            <div className="acciones">
+              <button className="boton-solido" onClick={marcarDesdeAca} disabled={marcando}>
+                {marcando ? T.ajustes.gimnasioBuscando : T.ajustes.gimnasioMarcar}
+              </button>
+              <button className="boton-texto" onClick={() => setPedirGimnasio(false)}>
+                {T.inicio.gimnasioAhoraNo}
+              </button>
+            </div>
+            {avisoGimnasio && <p className="error-msg">{avisoGimnasio}</p>}
+          </div>
+        )}
+
         {marcas && <Link href="/fuerza" className="linea-marcas">{marcas}</Link>}
 
         {!sinNada && (
@@ -358,6 +454,7 @@ export default function Principal() {
           logId={logHoy?.id}
           unidadPeso={perfil.unidad_peso}
           visibilidadDefault={perfil.visibilidad_default}
+          foco={focoHoja}
           alCerrar={() => setHojaAbierta(false)}
           alConfirmar={alConfirmar}
         />
@@ -367,10 +464,11 @@ export default function Principal() {
         <Descanso
           vivo={sesion.estado.descanso}
           alReiniciar={sesion.reiniciarDescanso}
-          alCerrar={() => {
+          alSaltar={() => {
             setDescansoAbierto(false);
             sesion.cerrarDescanso();
           }}
+          alOcultar={() => setDescansoAbierto(false)}
         />
       )}
 
@@ -384,5 +482,27 @@ export default function Principal() {
 
       <Nav />
     </>
+  );
+}
+
+/* Los dos únicos iconos de esta pantalla. Van acá y no en su propio archivo
+   porque no los usa nadie más. */
+function IconoFoto() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 8.5h3l1.4-2h7.2L17 8.5h3v10H4z" />
+      <circle cx="12" cy="13" r="3.4" />
+    </svg>
+  );
+}
+
+function IconoPeso() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 6h10l2.5 13H4.5z" />
+      <path d="M9.6 6a2.4 2.4 0 0 1 4.8 0" />
+    </svg>
   );
 }

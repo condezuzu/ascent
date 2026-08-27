@@ -27,11 +27,21 @@ import {
 export default function Descanso({
   vivo,
   alReiniciar,
-  alCerrar,
+  alSaltar,
+  alOcultar,
 }: {
   vivo: DescansoVivo;
   alReiniciar: (d: DescansoVivo) => void;
-  alCerrar: () => void;
+  /** Saltar: se corta el descanso y se pierde la cuenta. */
+  alSaltar: () => void;
+  /**
+   * Cerrar: se sale de esta pantalla y el descanso SIGUE corriendo, con la
+   * cuenta a la vista en la píldora de la cabecera.
+   *
+   * Existe porque antes la única salida era "Saltar", y el que solo quería
+   * mirar otra cosa un segundo tenía que tirar su descanso para hacerlo.
+   */
+  alOcultar: () => void;
 }) {
   const [, repintar] = useState(0);
   const [terminado, setTerminado] = useState(() => restante(vivo.fin) === 0);
@@ -112,9 +122,9 @@ export default function Descanso({
     };
   }, [vivo.fin, avisar]);
 
-  function cerrar() {
+  function saltar() {
     borrarDescanso();
-    alCerrar();
+    alSaltar();
   }
 
   // Cambiar de preset reinicia la cuenta con la duración nueva: el que pasa a
@@ -132,6 +142,15 @@ export default function Descanso({
 
   return (
     <div className={`descanso ${terminado ? 'listo' : ''}`} role="dialog" aria-modal>
+      {/* La salida que NO cuesta el descanso. Arriba a la derecha, donde se
+          espera una cruz, y en voz baja: el número sigue siendo lo único
+          grande de esta pantalla (§18.6). */}
+      <button className="descanso-cerrar" onClick={alOcultar} aria-label={T.descanso.cerrar}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+
       <div className="descanso-centro">
         {/* El anillo se VACÍA, no se llena: es una cuenta regresiva y tiene
             que verse que algo se está gastando. */}
@@ -154,7 +173,7 @@ export default function Descanso({
       {terminado ? (
         <>
           <p className="descanso-pie">{T.descanso.listoPie}</p>
-          <button className="boton-solido" onClick={cerrar}>
+          <button className="boton-solido" onClick={saltar}>
             {T.descanso.seguir}
           </button>
         </>
@@ -172,7 +191,7 @@ export default function Descanso({
               </button>
             ))}
           </div>
-          <button className="boton-texto" onClick={cerrar}>
+          <button className="boton-texto" onClick={saltar}>
             {T.descanso.saltar}
           </button>
         </>

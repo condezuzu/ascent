@@ -41,10 +41,12 @@ export default function Yo() {
   const [porQuitar, setPorQuitar] = useState<string | null>(null);
   const [aRecortar, setARecortar] = useState<File | null>(null);
   const [subiendo, setSubiendo] = useState(false);
+  const [sumandoFoto, setSumandoFoto] = useState(false);
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
   const [cargado, setCargado] = useState(false);
   const inputFoto = useRef<HTMLInputElement>(null);
+  const inputFotoNueva = useRef<HTMLInputElement>(null);
 
   const cargar = useCallback(async () => {
     const {
@@ -147,6 +149,54 @@ export default function Yo() {
   }
 
   // ---- qué fotos ven los amigos ----
+
+  /**
+   * Sumar una foto desde acá, sin pasar por registrar un día.
+   *
+   * Antes la única forma de que existiera una foto era registrar el día con
+   * ella: el que quería agregar una después no tenía por dónde. Se cuelga del
+   * día de HOY si ya está registrado — así queda con su planeta, igual que
+   * las otras — y si no, queda suelta con su fecha de subida.
+   *
+   * Nace COMPARTIDA, porque el único lugar donde existe este botón es la
+   * sección de "qué fotos ven tus amigos". Se apaga tocando la foto, como
+   * todas.
+   */
+  async function sumarFotoNueva(archivo: File) {
+    if (!perfil) return;
+    setError('');
+    setAviso('');
+    const problema = problemaConLaImagen(archivo);
+    if (problema) return setError(problema);
+
+    setSumandoFoto(true);
+    const hoy = hoyISO();
+    const { data: logHoy } = await supabase
+      .from('logs')
+      .select('id')
+      .eq('user_id', perfil.id)
+      .eq('fecha', hoy)
+      .maybeSingle();
+
+    const ext = archivo.name.split('.').pop() || 'jpg';
+    const ruta = `${perfil.id}/${hoy}-${Date.now()}.${ext}`;
+    const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, archivo);
+    if (errSubida) {
+      setSumandoFoto(false);
+      return setError(T.yo.noSeSumoLaFoto);
+    }
+    const { error: errFila } = await supabase.from('photos').insert({
+      user_id: perfil.id,
+      log_id: logHoy?.id ?? null,
+      storage_path: ruta,
+      visibilidad: 'amigos',
+      es_subida_de_rango: false,
+    });
+    setSumandoFoto(false);
+    if (errFila) return setError(T.yo.noSeSumoLaFoto);
+    await cargar();
+  }
+
   async function alternarFoto(f: MiFoto) {
     const nueva = f.visibilidad === 'privada' ? 'amigos' : 'privada';
     setFotos((prev) => prev.map((x) => (x.id === f.id ? { ...x, visibilidad: nueva } : x)));
@@ -251,6 +301,18 @@ export default function Yo() {
           }}
         />
 
+        <input
+          ref={inputFotoNueva}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const a = e.target.files?.[0];
+            e.target.value = ''; // elegir dos veces la misma foto tiene que andar
+            if (a) sumarFotoNueva(a);
+          }}
+        />
+
         {aviso && <p className="ok-msg">{aviso}</p>}
         {error && <p className="error-msg">{error}</p>}
 
@@ -290,54 +352,61 @@ export default function Yo() {
                 </span>
               </h3>
 
-              {fotos.length > 0 ? (
-                <>
-                  <div className="album-grilla">
-                    {fotos.map((f) => (
-                      <button
-                        key={f.id}
-                        className={`yo-foto-celda ${f.visibilidad === 'amigos' ? 'compartida' : 'privada'}`}
-                        onClick={() => alternarFoto(f)}
-                        aria-pressed={f.visibilidad === 'amigos'}
-                      >
-                        <div className="album-celda">
-                          {f.url && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={f.url} alt="" loading="lazy" />
-                          )}
-                          <span className="album-vis">
-                            {f.visibilidad === 'privada' ? T.album.soloVos : T.album.amigos}
-                          </span>
-                          {f.fecha && (
-                            <div className="album-pie">
-                              <span>{fechaLinda(f.fecha)}</span>
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="yo-masivo">
-                    <button
-                      onClick={() => todasA('amigos')}
-                      disabled={compartidas.length === fotos.length}
-                    >
-                      {T.yo.compartirTodas}
-                    </button>
-                    <button onClick={() => todasA('privada')} disabled={compartidas.length === 0}>
-                      {T.yo.guardarTodas}
-                    </button>
-                  </div>
-                  <p className="nota-privada">
-                    {T.yo.tocaUnaFoto}
-                  </p>
-                </>
-              ) : (
-                cargado && (
-                  <p className="nota-privada" style={{ marginTop: 0 }}>
-                    {T.yo.sinFotos}
-                  </p>
-                )
+              <div className="album-grilla">
+                {/* La puerta para sumar una foto sin registrar un día. Va
+                    PRIMERA y con la misma forma que las fotos: en una grilla,
+                    el hueco con un + se entiende sin rótulo. */}
+                <button
+                  className="celda-sumar"
+                  onClick={() => inputFotoNueva.current?.click()}
+                  disabled={sumandoFoto}
+                  aria-label={T.yo.sumarFotos}
+                >
+                  <span aria-hidden="true">{sumandoFoto ? '…' : '+'}</span>
+                </button>
+                {fotos.map((f) => (
+                  <button
+                    key={f.id}
+                    className={`yo-foto-celda ${f.visibilidad === 'amigos' ? 'compartida' : 'privada'}`}
+                    onClick={() => alternarFoto(f)}
+                    aria-pressed={f.visibilidad === 'amigos'}
+                  >
+                    <div className="album-celda">
+                      {f.url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={f.url} alt="" loading="lazy" />
+                      )}
+                      <span className="album-vis">
+                        {f.visibilidad === 'privada' ? T.album.soloVos : T.album.amigos}
+                      </span>
+                    </div>
+                    {f.fecha && (
+                      <div className="album-pie">
+                        <span>{fechaLinda(f.fecha)}</span>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {fotos.length > 0 && (
+                <div className="yo-masivo">
+                  <button
+                    onClick={() => todasA('amigos')}
+                    disabled={compartidas.length === fotos.length}
+                  >
+                    {T.yo.compartirTodas}
+                  </button>
+                  <button onClick={() => todasA('privada')} disabled={compartidas.length === 0}>
+                    {T.yo.guardarTodas}
+                  </button>
+                </div>
+              )}
+              {/* Se espera a `cargado`: sin eso, el que TIENE fotos ve por un
+                  instante que no tiene ninguna, cada vez que entra. */}
+              {(fotos.length > 0 || cargado) && (
+                <p className="nota-privada">
+                  {fotos.length > 0 ? T.yo.tocaUnaFoto : T.yo.sinFotos}
+                </p>
               )}
             </div>
 
@@ -346,49 +415,52 @@ export default function Yo() {
               <h3>
                 {T.yo.amigos} <span className="yo-conteo">{amigos.length > 0 ? amigos.length : ''}</span>
               </h3>
-              {amigos.length > 0 ? (
-                <div className="tarjeta">
-                  {amigos.map((a) => (
-                    <div className="fila" key={a.id}>
-                      <Avatar url={a.avatar_url} nombre={a.username} />
-                      <Link href={`/perfil/${a.id}`} className="nombre">
-                        {a.username}
-                      </Link>
-                      {porQuitar === a.id ? (
-                        <>
-                          <button
-                            className="boton-texto"
-                            style={{ width: 'auto', padding: '6px 2px' }}
-                            onClick={() => quitarAmigo(a.id)}
-                          >
-                            {T.yo.eliminar}
-                          </button>
-                          <button
-                            className="boton-texto"
-                            style={{ width: 'auto', padding: '6px 2px', color: 'var(--apagado)' }}
-                            onClick={() => setPorQuitar(null)}
-                          >
-                            {T.yo.no}
-                          </button>
-                        </>
-                      ) : (
+              <div className="tarjeta">
+                {/* La otra puerta: buscar gente vive en Ranking, y desde acá
+                    no había forma de llegar sin saberlo de antes. */}
+                <Link href="/social#buscar" className="fila">
+                  <span className="cuadro-sumar" aria-hidden="true">
+                    +
+                  </span>
+                  <span className="nombre">{T.social.sumarAmigo}</span>
+                </Link>
+                {amigos.map((a) => (
+                  <div className="fila" key={a.id}>
+                    <Avatar url={a.avatar_url} nombre={a.username} />
+                    <Link href={`/perfil/${a.id}`} className="nombre">
+                      {a.username}
+                    </Link>
+                    {porQuitar === a.id ? (
+                      <>
+                        <button
+                          className="boton-texto"
+                          style={{ width: 'auto', padding: '6px 2px' }}
+                          onClick={() => quitarAmigo(a.id)}
+                        >
+                          {T.yo.eliminar}
+                        </button>
                         <button
                           className="boton-texto"
                           style={{ width: 'auto', padding: '6px 2px', color: 'var(--apagado)' }}
-                          onClick={() => setPorQuitar(a.id)}
+                          onClick={() => setPorQuitar(null)}
                         >
-                          {T.yo.quitar}
+                          {T.yo.no}
                         </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                cargado && (
-                  <p className="nota-privada" style={{ marginTop: 0 }}>
-                    {T.yo.sinAmigos}
-                  </p>
-                )
+                      </>
+                    ) : (
+                      <button
+                        className="boton-texto"
+                        style={{ width: 'auto', padding: '6px 2px', color: 'var(--apagado)' }}
+                        onClick={() => setPorQuitar(a.id)}
+                      >
+                        {T.yo.quitar}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {amigos.length === 0 && cargado && (
+                <p className="nota-privada">{T.yo.sinAmigos}</p>
               )}
             </div>
           </>

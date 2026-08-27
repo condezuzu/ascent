@@ -27,13 +27,16 @@
      ya tenía la principal. El número de racha se sale 32px del margen y la
      barra ocupa el 62%. Repetir UNA irregularidad la vuelve intención;
      tener una distinta por pantalla la vuelve descuido. */
-  /* El margen lateral de la pantalla. El saliente de los títulos (§19.1) es
-     exactamente este valor, así que salen hasta el borde y NI UN PÍXEL MÁS:
-     con 32px de saliente contra 20px de margen, cada título quedaba 12px
-     afuera de la pantalla y se cortaba la primera letra —"STATS" se leía
-     "TATS"— en todas las pantallas de la app. Los dos valores tienen que
-     salir de la misma variable o se vuelven a separar. */
+  /* El margen lateral de la pantalla. */
   --sangria: 20px;
+  /* Cuánto se salen del margen los elementos que rompen la grilla (§19.1):
+     los títulos, el número de racha y la foto de /yo. TIENE que ser MENOR que
+     --sangria, o el elemento se sale de la pantalla y se corta: con 32px
+     contra 20px de margen, la foto de /yo quedaba 12px afuera y "STATS" se
+     leía "TATS". Y con el saliente igual a la sangría quedaban pegados al
+     borde, sin aire. La irregularidad es a propósito; el recorte no.
+     Todos los que se salen usan ESTA variable, o se vuelven a separar. */
+  --saliente: 10px;
   --ancho-dato: 62%;
   --alto-nav: 62px;
   /* El único color que NO sale de la paleta del rango, y a propósito: borrar
@@ -325,7 +328,7 @@ textarea::placeholder {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  margin-left: -14px;
+  margin-left: calc(var(--saliente) * -1);
 }
 .racha-label {
   writing-mode: vertical-rl;
@@ -539,11 +542,16 @@ textarea::placeholder {
 }
 
 /* ---------- calendario para corregir días ---------- */
+/* Un mes en celdas cuadradas de ancho completo son ~460px: media pantalla
+   para lo que menos se toca de Ajustes. Acotarlo a 300px de ancho deja los
+   días casi cuadrados y saca un tercio del alto sin cambiarle la forma. */
 .calendario {
   background: var(--tarjeta);
   border: 0.5px solid var(--linea);
   border-radius: var(--radio);
   padding: 14px;
+  max-width: 300px;
+  margin-inline: auto;
 }
 .cal-cabecera {
   display: flex;
@@ -571,7 +579,7 @@ textarea::placeholder {
 .cal-grilla {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
+  gap: 4px;
 }
 .cal-nombres {
   margin-bottom: 6px;
@@ -582,8 +590,8 @@ textarea::placeholder {
   color: var(--apagado);
 }
 .cal-dia {
-  aspect-ratio: 1;
-  border-radius: 9px;
+  height: 32px;
+  border-radius: 8px;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   display: flex;
@@ -639,24 +647,33 @@ textarea::placeholder {
 
 /* Una cita por pantalla, en voz baja. El autor va en mono y desplazado
    hacia adentro: no es un pie centrado y prolijo. */
+/* La cita es la única voz humana en una pantalla de números, y estaba
+   gritando: 16px en la tipografía del cuerpo la ponía a competir con todo lo
+   demás. Ahora va CHICA y en Outfit — la misma tipografía del número de racha,
+   que es la voz propia de la app. Eso la vuelve parte del instrumento en vez
+   de un cartel motivacional pegado encima: rima con lo único grande de la
+   pantalla, en el otro extremo de la escala. */
 .cita {
-  margin: 30px 2px 4px;
-  max-width: 32ch;
-  border-left: 1px solid color-mix(in srgb, var(--pal-principal) 40%, transparent);
+  margin: 34px 2px 4px;
+  max-width: 30ch;
+  border-left: 1px solid color-mix(in srgb, var(--pal-principal) 26%, transparent);
   padding-left: 14px;
 }
 .cita blockquote {
-  font-size: 16px;
-  line-height: 1.5;
-  color: var(--sub);
+  font-family: var(--f-numero), system-ui, sans-serif;
+  font-weight: 300;
+  font-size: 13.5px;
+  line-height: 1.7;
+  letter-spacing: 0.015em;
+  color: var(--apagado);
 }
 .cita figcaption {
   font-family: var(--f-mono), monospace;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--apagado);
-  margin-top: 10px;
+  color: color-mix(in srgb, var(--apagado) 70%, transparent);
+  margin-top: 12px;
   margin-left: 32%;
 }
 
@@ -1028,17 +1045,28 @@ textarea::placeholder {
 }
 
 /* ---------- álbum ---------- */
+/* ---------- el álbum ----------
+   Tenía exactamente la forma de cualquier app de fotos: cuadrados redondeados,
+   todos iguales, con una píldora borrosa y un degradado negro encima de cada
+   imagen. Eso no es un idioma, es el default.
+
+   Ahora sigue la gramática del resto de la app (§19): esquina casi recta,
+   nada de cajas, y el DATO abajo de la foto en mono, no flotando arriba. Una
+   foto con un degradado encima se lee como una miniatura de stock; una foto
+   con su fecha debajo se lee como una lámina. */
 .album-grilla {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 10px 8px;
+}
+.album-pieza {
+  min-width: 0;
 }
 .album-celda {
   aspect-ratio: 1;
-  border-radius: 10px;
+  border-radius: 2px;
   overflow: hidden;
   background: var(--tarjeta);
-  border: 0.5px solid var(--linea);
   position: relative;
 }
 .album-celda img {
@@ -1046,45 +1074,57 @@ textarea::placeholder {
   height: 100%;
   object-fit: cover;
 }
+/* El pie ya NO va encima de la imagen: cuelga de ella, como el pie de una
+   foto impresa. Es el mismo gesto que la línea de pelo de `.tarjeta`. */
 .album-pie {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 5px 7px;
-  font-size: 9px;
-  color: var(--tinta);
-  background: linear-gradient(transparent, rgba(5, 6, 10, 0.8));
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 1px 0;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--apagado);
+}
+.album-pie span:last-child:not(:first-child) {
+  color: color-mix(in srgb, var(--pal-claro) 78%, transparent);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+/* El mosaico rompe la cuadrícula perfecta: una de cada cinco va grande y
+   apaisada. Que no todo cierre en la misma vertical. */
+.album-grilla.mosaico {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 10px;
+}
+.album-grilla.mosaico > .album-pieza:nth-child(5n + 1) {
+  grid-column: span 2;
+}
+.album-grilla.mosaico > .album-pieza:nth-child(5n + 1) .album-celda {
+  aspect-ratio: 16 / 10;
 }
 .album-vis {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  bottom: 0;
+  right: 0;
   font-size: 9px;
+  letter-spacing: 0.1em;
   color: var(--tinta);
-  background: rgba(5, 6, 10, 0.65);
-  border: 0.5px solid var(--linea);
-  border-radius: 20px;
-  padding: 3px 8px;
-  backdrop-filter: blur(4px);
+  padding: 12px 8px 5px;
+  background: linear-gradient(300deg, rgba(5, 6, 10, 0.72), transparent 70%);
 }
 .album-borrar {
   position: absolute;
-  top: 5px;
-  left: 5px;
-  width: 24px;
-  height: 24px;
+  top: 0;
+  left: 0;
+  width: 34px;
+  height: 34px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 7px;
   color: var(--tinta);
-  background: rgba(5, 6, 10, 0.65);
-  border: 0.5px solid var(--linea);
-  border-radius: 50%;
-  backdrop-filter: blur(4px);
+  background: linear-gradient(135deg, rgba(5, 6, 10, 0.72), transparent 70%);
 }
 .album-borrar svg {
   width: 13px;
@@ -1094,6 +1134,7 @@ textarea::placeholder {
 .album-confirmar {
   position: absolute;
   inset: 0;
+  border-radius: 2px;
   z-index: 2;
   background: rgba(5, 6, 10, 0.86);
   backdrop-filter: blur(3px);
@@ -1235,7 +1276,7 @@ textarea::placeholder {
 .seccion {
   margin-bottom: 26px;
 }
-/* §19.1 — La MISMA sangría que el número de racha: los títulos se salen del
+/* §19.1 — El MISMO saliente que el número de racha: los títulos se salen del
    margen izquierdo. Una irregularidad repetida es intención. */
 .seccion h3 {
   font-size: 12px;
@@ -1244,10 +1285,10 @@ textarea::placeholder {
   color: var(--sub);
   font-weight: 500;
   margin-bottom: 12px;
-  margin-left: calc(var(--sangria) * -1);
+  margin-left: calc(var(--saliente) * -1);
 }
 .titulo-pantalla {
-  margin-left: calc(var(--sangria) * -1);
+  margin-left: calc(var(--saliente) * -1);
 }
 
 .grano-pantalla {
@@ -1272,7 +1313,7 @@ textarea::placeholder {
 .yo-foto {
   position: relative;
   flex: none;
-  margin-left: -32px;
+  margin-left: calc(var(--saliente) * -1);
   border-radius: 50%;
   display: block;
   padding: 0;
@@ -1447,6 +1488,47 @@ textarea::placeholder {
   color: var(--apagado);
   letter-spacing: 0.04em;
 }
+/* Las dos puertas que faltaban en /yo: sumar una foto sin registrar un día, y
+   llegar a la búsqueda de gente. Las dos con la misma forma que lo que hay al
+   lado — cuadrada en la grilla de fotos, en fila en la lista de amigos —
+   porque un hueco con un + solo se entiende si tiene la forma de lo que va a
+   aparecer ahí. */
+.celda-sumar {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--linea) 180%, transparent);
+  color: var(--apagado);
+  font-size: 26px;
+  font-weight: 200;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, border-color 0.2s ease, transform 0.16s var(--curva-salida);
+}
+.celda-sumar:active {
+  transform: scale(0.96);
+  color: var(--pal-claro);
+  border-color: color-mix(in srgb, var(--pal-claro) 50%, transparent);
+}
+.celda-sumar:disabled {
+  opacity: 0.5;
+}
+.cuadro-sumar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--linea) 180%, transparent);
+  color: var(--apagado);
+  font-size: 19px;
+  font-weight: 200;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .yo-masivo {
   display: flex;
   gap: 8px;
@@ -1584,6 +1666,52 @@ textarea::placeholder {
   width: 13px;
   height: 13px;
 }
+/* El globo QUIETO: el mismo idioma, pero sin la puntita — no está apuntando a
+   ninguna pestaña, está parado en el medio de la pantalla — y más callado,
+   porque a diferencia de los de primera vez este se queda hasta que se
+   resuelve. Un aviso que vive para siempre tiene que hablar más bajo que uno
+   que aparece una sola vez. */
+.globo-quieto {
+  display: block;
+  margin-top: 18px;
+  background: color-mix(in srgb, var(--pal-claro) 6%, transparent);
+  border-color: color-mix(in srgb, var(--pal-claro) 22%, transparent);
+  font-size: 12.5px;
+  color: var(--sub);
+}
+.globo-quieto::before {
+  display: none;
+}
+
+/* Y cuando el día recién entró, el mismo globo con las dos salidas: es el
+   único momento en que vale insistir, porque es el único en que la persona
+   probablemente esté parada en el gimnasio. */
+.pedido-gimnasio strong {
+  color: var(--tinta);
+  font-weight: 500;
+}
+.pedido-gimnasio .acciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.pedido-gimnasio .acciones .boton-solido {
+  width: auto;
+  flex: 1;
+  padding: 11px 16px;
+  font-size: 14px;
+}
+.pedido-gimnasio .acciones .boton-texto {
+  width: auto;
+  flex: none;
+  height: auto;
+  padding: 11px 4px;
+  border-radius: 0;
+  color: var(--apagado);
+  font-size: 13px;
+}
+
 .globo.cerrando {
   animation: globo-sale 0.3s var(--curva-entrada) both;
 }
@@ -2043,27 +2171,128 @@ body.con-franja .pantalla {
 }
 
 /* el contador de series: el número manda, el "−" está pero no pesa */
-.series-fila {
+/* El contador de series. Lo que se ve es EL NÚMERO, con un − y un + a los
+   costados: un contador se lee sin que nadie lo explique, y "Serie hecha" no.
+   El + es el que se toca cien veces por entrenamiento, así que está relleno
+   y del lado del pulgar; el − es corrección y va en contorno. Los dos son
+   blancos de 56px, que es lo que hace falta para acertarles con la mano
+   temblando y el teléfono en el piso. */
+.contador-series {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-top: 12px;
-  font-size: 13px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 4px;
+}
+.contador-series .cuenta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  min-width: 0;
+}
+.contador-series .numero {
+  font-family: var(--f-numero), system-ui, sans-serif;
+  font-size: 46px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--tinta);
+}
+.contador-series .palabra {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--apagado);
+  margin-top: 8px;
+}
+.contador-series .paso {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  font-size: 26px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--linea);
+  color: var(--sub);
+  transition: transform 0.16s var(--curva-salida), opacity 0.2s ease;
+}
+.contador-series .paso.mas {
+  background: var(--pal-claro);
+  border-color: transparent;
+  color: #08080c;
+}
+.contador-series .paso:active {
+  transform: scale(0.94);
+}
+.contador-series .paso:disabled {
+  opacity: 0.3;
+}
+
+/* El día ya registrado. Antes era un botón ancho que decía
+   "Día registrado · sumar foto o peso": un cartel y dos acciones apretados
+   adentro del mismo rectángulo. Ahora el cartel respira arriba y las dos
+   acciones son dos botones, porque son dos cosas distintas. */
+.dia-listo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 0 6px;
+}
+.dia-listo .rotulo {
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
   color: var(--sub);
 }
-.series-fila .cuenta {
-  font-family: var(--f-mono), monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 15px;
-  color: var(--pal-claro);
+.dia-listo .acciones {
+  display: flex;
+  gap: 18px;
 }
-.series-fila button {
-  color: var(--apagado);
-  font-size: 16px;
-  line-height: 1;
-  padding: 4px 10px;
+.dia-listo .redondo {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
   border: 1px solid var(--linea);
-  border-radius: var(--pildora);
+  color: var(--sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.16s var(--curva-salida), border-color 0.3s ease;
+}
+.dia-listo .redondo svg {
+  width: 22px;
+  height: 22px;
+}
+.dia-listo .redondo:active {
+  transform: scale(0.94);
+  border-color: color-mix(in srgb, var(--pal-claro) 55%, transparent);
+}
+
+/* La salida del descanso que no cuesta el descanso. En voz baja: en esta
+   pantalla lo único grande es el número. */
+.descanso-cerrar {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--apagado);
+  border-radius: 50%;
+}
+.descanso-cerrar svg {
+  width: 20px;
+  height: 20px;
+}
+.descanso-cerrar:active {
+  color: var(--sub);
 }
 
 /* El único lugar de la app con texto largo, y a propósito: el que abre esto
@@ -2210,4 +2439,10 @@ body.con-franja .pantalla {
   height: 9px;
   background: var(--pal-claro);
   transition: left 0.6s var(--curva-suave);
+}
+
+/* El link "sumar un amigo" de /yo cae acá: sin esto el título queda pegado al
+   borde de arriba y no se ve que la búsqueda es lo de abajo. */
+#buscar {
+  scroll-margin-top: 24px;
 }
