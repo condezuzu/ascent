@@ -2,7 +2,20 @@
 -- ¿Hay días registrados que en realidad salieron de pesarse?
 --
 -- Correr en el SQL Editor de Supabase. NO CAMBIA NADA: solo mira.
+--
+-- OJO: la primera versión usaba `auth.uid()`, y en el SQL Editor eso es NULL
+-- —ahí se corre como `postgres`, no como un usuario con sesión—, así que
+-- devolvía cero de todo pase lo que pase. "0 días entrenados" no era una
+-- respuesta: era la pregunta mal hecha. Ahora se pone el correo a mano.
 -- =============================================================
+
+-- ↓↓↓ PONER ACÁ TU CORREO ↓↓↓
+create temporary view yo as
+  select id from auth.users where email = 'agusconde20@gmail.com';
+
+-- Si esto devuelve 0 filas, el correo está mal y todo lo de abajo va a dar
+-- cero por la misma razón que antes.
+select count(*) as cuentas_encontradas from yo;
 --
 -- Hasta el 27/8/2026 el peso corporal vivía adentro de la hoja de registrar el
 -- día, así que para anotarlo había que registrar el día. Un domingo que te
@@ -32,7 +45,7 @@ select
 from logs l
 join weights w
   on w.user_id = l.user_id and w.fecha = l.fecha
-where l.user_id = auth.uid()
+where l.user_id = (select id from yo)
   and l.es_descanso = false
   and l.origen = 'manual'                       -- los de ubicación son reales
   and not exists (select 1 from sesiones s where s.log_id = l.id)
@@ -43,14 +56,14 @@ order by l.fecha desc;
 -- 2. El tamaño del problema, de un vistazo
 -- -------------------------------------------------------------
 select
-  (select count(*) from logs where user_id = auth.uid() and es_descanso = false)
+  (select count(*) from logs where user_id = (select id from yo) and es_descanso = false)
     as dias_entrenados,
-  (select count(*) from weights where user_id = auth.uid())
+  (select count(*) from weights where user_id = (select id from yo))
     as veces_que_te_pesaste,
   (select count(*)
      from logs l
      join weights w on w.user_id = l.user_id and w.fecha = l.fecha
-    where l.user_id = auth.uid()
+    where l.user_id = (select id from yo)
       and l.es_descanso = false
       and l.origen = 'manual'
       and not exists (select 1 from sesiones s where s.log_id = l.id)
@@ -68,5 +81,5 @@ select
 -- racha desde el historial", que lo hace en una transacción y no rebota.
 --
 -- delete from logs
---  where user_id = auth.uid()
+--  where user_id = (select id from yo)
 --    and fecha in ('2026-08-16', '2026-08-23');   -- ← tus fechas acá
