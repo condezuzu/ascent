@@ -108,6 +108,28 @@ if (MARCA.textoNuevo) {
 await navegador.close();
 
 console.log(`${BASE}`);
+
+// EL MIDDLEWARE NO PUEDE DESLOGUEAR POR UN HIPO DE RED (ver trampas.md).
+//
+// Esto NO depende de una marca que haya que acordarse de cambiar en cada
+// tanda: pregunta por el COMPORTAMIENTO. Con una cookie de sesión que no
+// sirve, el middleware nuevo deja pasar —no pudo confirmar, así que no
+// desloguea— y el viejo rebotaba a /login. Un 3xx acá significa que volvió
+// el bug que dejaba a alguien afuera de su propia app.
+{
+  const r = await fetch(`${BASE}/stats`, {
+    redirect: 'manual',
+    headers: { cookie: 'sb-okeanaihymbvbdmrdqph-auth-token=basura' },
+  }).catch(() => null);
+  if (!r) {
+    console.log('  --   no pude comprobar el middleware (sin red)');
+  } else if (r.status >= 300 && r.status < 400) {
+    console.log(`  ATENCIÓN: con una cookie rota rebota a ${r.headers.get('location')}`);
+    console.log('       Volvió el bug de deslogueo. Ver trampas.md.');
+  } else {
+    console.log('  ok   con una cookie de sesión rota no desloguea');
+  }
+}
 console.log(`RPC observados: ${[...new Set(vistos)].join(', ') || '(ninguno)'}`);
 
 if (viejos.length) {
