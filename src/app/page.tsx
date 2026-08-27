@@ -54,6 +54,7 @@ export default function Principal() {
   const [marcando, setMarcando] = useState(false);
   const [avisoGimnasio, setAvisoGimnasio] = useState('');
   const [cargado, setCargado] = useState(false);
+  const [noCargo, setNoCargo] = useState(false);
 
   // La línea social se carga aparte y después: no puede demorar el dibujo
   // de la pantalla, que es lo único que el usuario vino a ver.
@@ -104,7 +105,16 @@ export default function Principal() {
       supabase.rpc('verificar_perdida'),
       supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
     ]);
-    if (!p) return;
+    // Si el perfil no vino, ANTES esto era un `return` mudo: la pantalla se
+    // quedaba en el armazón para siempre, sin error y sin nada que tocar. Con
+    // una conexión mala —el subsuelo de un gimnasio— eso es quedarse afuera de
+    // la app sin forma de salir, que es la clase de bug que más caro sale
+    // cuando encima no hay recuperación de contraseña.
+    if (!p) {
+      setNoCargo(true);
+      return;
+    }
+    setNoCargo(false);
     if (!p.username) return router.push('/onboarding');
 
     setLogs(ls ?? []);
@@ -158,6 +168,7 @@ export default function Principal() {
   const logsRef = useRef(logs);
   logsRef.current = logs;
   const ultimaMirada = useRef(0);
+  const mirando = useRef(false);
 
   /**
    * Mirar el gimnasio y actuar: registrar el día al llegar (§13), arrancar la
@@ -174,6 +185,24 @@ export default function Principal() {
     const perfilAhora = perfilRef.current;
     if (!perfilAhora?.gimnasio_lat) return;
 
+    // UNA SOLA MIRADA A LA VEZ. El intervalo es de dos minutos pero leer el
+    // GPS puede tardar segundos, y volver a la pantalla dispara otra mirada
+    // al instante. Dos en paralelo pueden decidir las dos "arrancar", y la
+    // segunda `iniciar_sesion` ABANDONA la sesión que acababa de crear la
+    // primera: queda una sesión abandonada, sin duración, ensuciando Stats.
+    if (mirando.current) return;
+    mirando.current = true;
+    try {
+      await mirarYActuar(perfilAhora);
+    } finally {
+      // En `finally` y no al final del cuerpo: si algo tira, sin esto el
+      // vigilante queda trabado para siempre y el automático deja de andar
+      // hasta recargar la app.
+      mirando.current = false;
+    }
+  }, [supabase, cargar]);
+
+  const mirarYActuar = useCallback(async (perfilAhora: Perfil) => {
     const s = sesionRef.current;
     const vigilancia = await leerVigilancia();
 
@@ -231,6 +260,7 @@ export default function Principal() {
     } else {
       await guardarVigilancia(decision.vigilancia);
     }
+
 
     if (decision.hacer === 'nada' && decision.vigilancia && !decision.vigilancia.arranco) {
       const faltan = Math.max(
@@ -301,6 +331,14 @@ export default function Principal() {
               <span className="racha-numero esqueleto-num">·</span>
             </div>
           </div>
+          {noCargo && (
+            <div className="no-cargo">
+              <p>{T.inicio.noCargo}</p>
+              <button className="boton-fantasma" onClick={cargar}>
+                {T.inicio.reintentar}
+              </button>
+            </div>
+          )}
         </PantallaDeslizable>
         <Nav />
       </>

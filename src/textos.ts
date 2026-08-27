@@ -74,6 +74,8 @@ export const T = {
     gimnasioAhora: '¿Estás en el gimnasio ahora?',
     gimnasioAhoraPie: 'Marcá el punto y no lo tenés que hacer nunca más: el día entra solo con abrir la app.',
     gimnasioAhoraNo: 'Ahora no',
+    noCargo: 'No se pudieron traer tus datos. Puede ser la conexión.',
+    reintentar: 'Reintentar',
     vacioTitulo: 'Todavía no hay nada acá.',
     vacioPie: 'Registrá tu primer día y algo se empieza a formar.',
     vacio: 'Todavía no hay nada acá.\nRegistrá tu primer día y algo se empieza a formar.',

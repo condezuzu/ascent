@@ -2556,3 +2556,17 @@ body.con-franja .pantalla {
     animation: none;
   }
 }
+
+/* Cuando los datos no llegan. Antes acá no había nada: el armazón se quedaba
+   quieto para siempre, sin decir qué pasaba ni ofrecer nada que tocar. */
+.no-cargo {
+  margin-top: 34px;
+  padding: 18px 16px;
+  border-top: 1px solid var(--linea);
+}
+.no-cargo p {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--sub);
+  margin-bottom: 14px;
+}
