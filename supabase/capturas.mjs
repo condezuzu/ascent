@@ -83,17 +83,28 @@ async function esperarAlServidor() {
  * está plegado: si no, media app se fotografía cerrada y la captura no muestra
  * justamente lo que se cambió.
  */
+// `listo` es lo que tiene que estar EN PANTALLA para que la foto valga.
+//
+// Sin esto se esperaba un rato fijo y se disparaba. Las pantallas que piden
+// datos antes de dibujar nada — /yo y /album devuelven un `<div>` vacío
+// mientras cargan — salían en NEGRO, y la herramienta las contaba como
+// capturadas: `movil-yo.png` era un rectángulo negro de 780x1688.
+//
+// Cada pantalla dice qué significa "ya cargó" para ella. Es la misma
+// diferencia que en el resto del código: esperar la condición, no dormir un
+// rato y confiar.
 const PANTALLAS = [
-  { nombre: 'inicio', ruta: '/' },
-  { nombre: 'stats', ruta: '/stats' },
-  { nombre: 'fuerza', ruta: '/fuerza' },
-  { nombre: 'ranking', ruta: '/social' },
-  { nombre: 'album', ruta: '/album' },
-  { nombre: 'yo', ruta: '/yo' },
-  { nombre: 'ajustes', ruta: '/ajustes' },
+  { nombre: 'inicio', ruta: '/', listo: '.tira-semanal' },
+  { nombre: 'stats', ruta: '/stats', listo: '.escalera-rangos' },
+  { nombre: 'fuerza', ruta: '/fuerza', listo: '.titulo-pantalla' },
+  { nombre: 'ranking', ruta: '/social', listo: '#buscar' },
+  { nombre: 'album', ruta: '/album', listo: '.album-grilla, .vacio-cosmico' },
+  { nombre: 'yo', ruta: '/yo', listo: '.yo-cabecera' },
+  { nombre: 'ajustes', ruta: '/ajustes', listo: '.seccion' },
   {
     nombre: 'ajustes-como-se-compara',
     ruta: '/ajustes',
+    listo: '.seccion',
     // Devuelve el problema si no pudo hacer lo suyo. Antes hacía
     // `if (count) click()` y se iba en silencio: la captura salía igual,
     // IDÉNTICA a la de `ajustes`, y se contaba como una pantalla más.
@@ -296,9 +307,21 @@ for (const tamano of TAMANOS) {
         continue;
       }
 
-      // El motor de planetas anima y los datos llegan por RPC: sin esta espera
-      // se fotografía el estado de carga y no la pantalla.
-      await page.waitForTimeout(3500);
+      // Se espera a que la pantalla TENGA lo suyo, no a que pase un rato.
+      if (p.listo) {
+        try {
+          await page.locator(p.listo).first().waitFor({ state: 'visible', timeout: 60000 });
+        } catch {
+          problemas.push(
+            `${tamano.nombre}/${p.nombre}: se quedó cargando, nunca apareció "${p.listo}" — la foto habría salido en blanco`
+          );
+          continue;
+        }
+      }
+      // Y recién ahora el rato: el motor de planetas anima, y en /yo y /album
+      // los estados vacíos aparecen después de la cabecera, que es lo que
+      // esperó el selector. Esto es el margen, no la espera de verdad.
+      await page.waitForTimeout(2500);
       if (p.previo) {
         const falla = await p.previo(page);
         if (falla) {
