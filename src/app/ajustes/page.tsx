@@ -12,6 +12,7 @@ import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import BajaDeCuenta from '@/components/ajustes/BajaDeCuenta';
 import ComoSeCompara from '@/components/ajustes/ComoSeCompara';
+import Diagnostico from '@/components/ajustes/Diagnostico';
 import CorregirDias from '@/components/ajustes/CorregirDias';
 import DescansoEntreSeries from '@/components/ajustes/DescansoEntreSeries';
 import Descansos from '@/components/ajustes/Descansos';
@@ -110,6 +111,10 @@ export default function Ajustes() {
         {/* Abajo de todo y plegado: acá el párrafo largo SÍ vale, porque
             el que lo abre lo está buscando (§8 del repaso). */}
         <ComoSeCompara />
+        {/* Banco de trabajo del automático por ubicación, no una pantalla de
+            la app: se saca cuando el automático esté probado en un gimnasio
+            de verdad. Ver spec/etapa-nativa.md §13. */}
+        <Diagnostico perfil={perfil} />
 
         <BajaDeCuenta perfil={perfil} />
       </PantallaDeslizable>

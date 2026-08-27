@@ -8,11 +8,13 @@ import { enDias, hoyISO, restarDias, deISO } from '@/lib/fechas';
 import { planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango } from '@/lib/rangos';
 import { citaDelDia } from '@/lib/frases';
 import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
+import { ESPERA_LLEGADA_MS } from '@/lib/reglas';
 import { guardarPerfilCache, leerPerfilCache } from '@/lib/cache';
 import { marca } from '@/lib/medir';
 import { sincronizarZona } from '@/lib/zona';
 import { marcarPunto, mirarElGimnasio, registrarPorSenal } from '@/lib/gimnasio';
 import { decidir } from '@/lib/llegada';
+import { anotar } from '@/lib/bitacora';
 import { guardarVigilancia, leerVigilancia } from '@/lib/sesionCache';
 import { lineaDeMarcas } from '@/lib/fuerza';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@/lib/tipos';
@@ -185,10 +187,22 @@ export default function Principal() {
     if (Date.now() - ultimaMirada.current < CADA) return;
     ultimaMirada.current = Date.now();
 
-    const { adentro, medidoEn } = await mirarElGimnasio(perfilAhora);
+    const { adentro, medidoEn, metros, precision } = await mirarElGimnasio(perfilAhora);
+
+    // Todo esto queda anotado en el teléfono porque el único lugar donde se
+    // puede probar es caminando hasta un gimnasio, y ahí nadie abre una
+    // consola. Se mira después, desde Ajustes.
+    await anotar('miré', {
+      adentro: adentro === null ? 'no sé' : adentro,
+      metros,
+      precision,
+      radio: perfilAhora.gimnasio_radio,
+      edadDelPunto: Math.round((Date.now() - medidoEn) / 1000) + 's',
+    });
 
     if (adentro && !logsRef.current.some((l) => l.fecha === hoyISO())) {
       const r = await registrarPorSenal(supabase, 'ubicacion');
+      await anotar('registré el día', { entró: r.registrado, yaEstaba: r.yaEstaba });
       // Solo se recarga si de verdad entró: si estaba bloqueado por la guarda
       // de zona o ya estaba, no hay nada nuevo que mostrar.
       if (r.registrado) cargar();
@@ -198,12 +212,32 @@ export default function Principal() {
       corriendo: s.estado.corriendo,
       porUbicacion: s.estado.porUbicacion,
     });
-    await guardarVigilancia(decision.vigilancia);
-
     if (decision.hacer === 'arrancar') {
-      await s.empezar({ desde: decision.desde, origen: 'ubicacion' });
+      await anotar('arranco la sesión', { llegada: new Date(decision.desde).toLocaleTimeString() });
+      const salio = await s.empezar({ desde: decision.desde, origen: 'ubicacion' });
+      // La visita se da por usada SOLO si el arranque llegó. Muchos gimnasios
+      // son un subsuelo sin señal: si se marcara igual, un fallo de red de un
+      // segundo dejaría a ese día sin sesión para siempre, porque no vuelve a
+      // intentar hasta la próxima visita. Así reintenta en dos minutos.
+      await guardarVigilancia(salio ? decision.vigilancia : { ...decision.vigilancia, arranco: false });
+      if (!salio) await anotar('no pude arrancar, reintento', {});
     } else if (decision.hacer === 'terminar') {
-      await s.terminar({ hasta: decision.hasta });
+      await anotar('cierro la sesión', { salida: new Date(decision.hasta).toLocaleTimeString() });
+      const cerro = await s.terminar({ hasta: decision.hasta });
+      // Y la visita se borra SOLO si el cierre llegó: adentro tiene la hora de
+      // salida, que es lo único que sabe cuándo se fue de verdad.
+      await guardarVigilancia(cerro ? null : vigilancia);
+      if (!cerro) await anotar('no pude cerrar, reintento', {});
+    } else {
+      await guardarVigilancia(decision.vigilancia);
+    }
+
+    if (decision.hacer === 'nada' && decision.vigilancia && !decision.vigilancia.arranco) {
+      const faltan = Math.max(
+        0,
+        Math.round((ESPERA_LLEGADA_MS - (Date.now() - decision.vigilancia.desde)) / 1000)
+      );
+      await anotar('esperando', { faltanSegundos: faltan });
     }
   }, [supabase, cargar]);
 

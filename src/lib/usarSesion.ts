@@ -176,8 +176,14 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     setAviso('');
     const { data, error } = await iniciar(supabase, opciones);
     setOcupado(false);
-    if (error) return;
-    if (estaBloqueado(data)) return setAviso(textoDeBloqueo(data.hasta));
+    // Devuelve si SALIÓ, porque el que llama por ubicación necesita saberlo:
+    // un gimnasio en un subsuelo se queda sin señal, y si el arranque se diera
+    // por hecho la sesión de ese día no existiría nunca.
+    if (error) return false;
+    if (estaBloqueado(data)) {
+      setAviso(textoDeBloqueo(data.hasta));
+      return false;
+    }
     const r = data as {
       inicio: string;
       ahora: string;
@@ -190,6 +196,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     setSeries(0);
     setPorUbicacion((r.origen ?? opciones?.origen) === 'ubicacion');
     alCambiarElDia?.(r.registro);
+    return true;
   }
 
   /**
@@ -199,8 +206,11 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    */
   async function terminar(opciones?: { hasta?: number }) {
     setOcupado(true);
-    await cerrar(supabase, opciones);
+    const { error } = await cerrar(supabase, opciones);
     setOcupado(false);
+    // Lo mismo al revés: si el cierre no llegó, quien llama tiene que poder
+    // volver a intentarlo con la hora de salida correcta.
+    if (error) return false;
     borrarSesionCache();
     borrarDescanso();
     setInicio(null);
@@ -212,6 +222,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     // minutos, que es la clase de cosa que hace que alguien apague la función.
     guardarVigilancia(marcarComoUsada(await leerVigilancia()));
     alCambiarElDia?.(null);
+    return true;
   }
 
   /** Un toque: suma la serie Y arranca el descanso (§20.3). */

@@ -2465,3 +2465,37 @@ body.con-franja .pantalla {
 #buscar {
   scroll-margin-top: 24px;
 }
+
+/* ---------- el diagnóstico del automático por ubicación ----------
+   Deliberadamente feo y denso: es un banco de trabajo, no una pantalla. Si se
+   pareciera al resto de la app daría a entender que vino para quedarse. */
+.diag {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+.diag dt {
+  font-family: var(--f-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--apagado);
+  padding-top: 2px;
+}
+.diag dd {
+  color: var(--sub);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.diag-bitacora {
+  width: 100%;
+  margin-top: 12px;
+  font-family: var(--f-mono), monospace;
+  font-size: 10.5px;
+  line-height: 1.7;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--sub);
+}

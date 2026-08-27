@@ -169,12 +169,33 @@ schema de la base real. El flujo es: escribir la migración → probarla con
    es agregar `en` con la misma forma, y el tipo de uno obliga al otro a estar
    completo. Va **después** de migrar a nativo, no antes.
 
-Las migraciones 20 a 23 están corridas. **La 24 está escrita y sin correr**
-(`supabase/migracion-24-sesion-por-llegada.sql`): agrega `sesiones.origen` y
-deja que `iniciar_sesion` / `terminar_sesion` reciban la hora de llegada y la
-de salida. Hasta que corra, el cliente cae solo a la firma vieja — la sesión
-arranca y termina como siempre, sin automático. `test:conexion` compara
-producción contra el repo y avisa.
+Las migraciones 20 a 24 están corridas y verificadas contra producción
+(`test:conexion` compara producción con el repo; `test:vuelta-atras` comprobó
+la 24 de punta a punta: la sesión arrancó 60 s atrás con `origen = ubicacion`).
+
+## Usarla dos semanas seguidas: qué mirar
+
+**Nada bloquea empezar.** El e2e pasa entero contra Supabase real (57/57) con
+la migración 24 aplicada, y lo que se rompe en un uso largo —vuelta de día,
+subida de rango, pérdida de racha, cierre de sesión a las 4 h, cambio de zona
+horaria— está cubierto por tests. Lo que sigue es qué vigilar, no qué falta.
+
+1. **El automático en un gimnasio de verdad.** Es lo único que no se puede
+   probar desde acá: GPS real, radio real, tu gimnasio. Todo lo que pase queda
+   anotado en **Ajustes → Diagnóstico**, que existe justo para eso.
+2. **Si te desloguea.** No debería, pero si aparece la pantalla de entrada sin
+   que hayas cerrado sesión, eso es un bug y hay que mirarlo — durante las
+   capturas se vio a la sesión del navegador caerse una vez entre navegaciones
+   y no se llegó a saber por qué.
+3. **El radio del gimnasio.** El GPS bajo techo tiene 20 a 50 m de error. Si el
+   automático no dispara, "Mirar ahora" en el Diagnóstico dice a cuántos metros
+   te ve; con eso se ajusta el radio en vez de adivinar.
+4. **Señal en el gimnasio.** Muchos son subsuelos. Si falla la red, el día y la
+   sesión **se reintentan solos cada dos minutos** mientras estés adentro, y el
+   día siempre se puede corregir a mano desde Ajustes.
+
+Lo que NO va a andar y no es un bug: **con la app cerrada no pasa nada**. El
+navegador no despierta a nadie. Ver `etapa-nativa.md` §13.
 
 ## Nada de esto está en el camino crítico
 

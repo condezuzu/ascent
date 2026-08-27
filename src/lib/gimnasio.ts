@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { plataforma } from '@/plataforma';
-import { estaAdentro } from '@/lib/geo';
+import { estaAdentro, metrosEntre } from '@/lib/geo';
 import type { OrigenDia, Perfil } from '@/lib/tipos';
 
 /**
@@ -86,25 +86,42 @@ const CINCO_MINUTOS = 5 * 60 * 1000;
  * momento en que se nos ocurrió preguntar. Sin esto, la llegada se atrasaría
  * hasta cinco minutos cada vez.
  */
-export async function mirarElGimnasio(
-  perfil: Perfil | null
-): Promise<{ adentro: boolean | null; medidoEn: number }> {
+export type Mirada = {
+  adentro: boolean | null;
+  medidoEn: number;
+  /** A cuántos metros del punto. `null` cuando no se pudo medir. */
+  metros: number | null;
+  /** El error que declara el GPS, en metros. */
+  precision: number | null;
+};
+
+export async function mirarElGimnasio(perfil: Perfil | null): Promise<Mirada> {
   const ahora = Date.now();
-  if (!perfil?.gimnasio_lat || !perfil.gimnasio_lon) return { adentro: null, medidoEn: ahora };
+  const nada: Mirada = { adentro: null, medidoEn: ahora, metros: null, precision: null };
+  if (!perfil?.gimnasio_lat || !perfil.gimnasio_lon) return nada;
   const centro = { lat: perfil.gimnasio_lat, lon: perfil.gimnasio_lon };
   const adentro = (p: { lat: number; lon: number; precision: number }) =>
     estaAdentro(p, centro, perfil.gimnasio_radio, p.precision);
+  // Los metros y la precisión NO deciden nada: se devuelven para poder
+  // entender después por qué no disparó. "Estabas a 140 m con 60 m de error y
+  // el radio es 100" es una respuesta; "no estabas adentro" no es ninguna.
+  const con = (p: { lat: number; lon: number; precision: number; medidoEn: number }): Mirada => ({
+    adentro: adentro(p),
+    medidoEn: p.medidoEn,
+    metros: Math.round(metrosEntre(p, centro)),
+    precision: Math.round(p.precision),
+  });
 
   const cacheado = await plataforma.ubicacion.puntoActual(CINCO_MINUTOS);
-  if (!cacheado) return { adentro: null, medidoEn: ahora };
-  if (adentro(cacheado)) return { adentro: true, medidoEn: cacheado.medidoEn };
+  if (!cacheado) return nada;
+  if (adentro(cacheado)) return con(cacheado);
 
   const viejo = ahora - cacheado.medidoEn > 30000;
-  if (!viejo) return { adentro: false, medidoEn: cacheado.medidoEn };
+  if (!viejo) return con(cacheado);
 
   const fresco = await plataforma.ubicacion.puntoActual(0);
-  if (!fresco) return { adentro: null, medidoEn: ahora };
-  return { adentro: adentro(fresco), medidoEn: fresco.medidoEn };
+  if (!fresco) return nada;
+  return con(fresco);
 }
 
 export async function estoyEnElGimnasio(perfil: Perfil | null): Promise<boolean | null> {

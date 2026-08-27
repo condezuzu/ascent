@@ -233,6 +233,66 @@ que además se opone formalmente a implementarla.
 
 ---
 
+## El baile de orden entre el deploy y la migración
+
+Hasta la migración 23, cada cambio de base traía la misma pregunta: ¿primero
+la migración o primero el push? Las dos respuestas rompen algo en la ventana
+del medio. Migración primero y el código viejo sigue llamando lo que ya no
+existe; push primero y el código nuevo llama lo que todavía no existe.
+
+**La migración 24 no tuvo baile**: el cliente prueba la firma nueva y, si la
+base todavía no la tiene, cae solo a la vieja.
+
+```ts
+const NO_EXISTE = (e) => e?.code === 'PGRST202';
+
+const r = await supabase.rpc('iniciar_sesion', { p_desde, p_origen });
+if (!NO_EXISTE(r.error)) return r;
+return supabase.rpc('iniciar_sesion');
+```
+
+Se prueba **primero la nueva** a propósito: apenas la migración corre, la
+vuelta atrás deja de usarse sola y no hay que acordarse de sacarla.
+
+→ **Regla:** usar este patrón siempre que se pueda, y **comprobarlo contra la
+base de verdad** (`npm run test:vuelta-atras`), que es el único lugar donde el
+código de error es el que es. PGlite no lo puede decir: ahí la migración
+siempre está aplicada.
+
+### Cuándo NO se puede
+
+Cinco casos. Los primeros dos son de seguridad, los otros tres de corrección:
+
+1. **Si el camino viejo escribe mal, no solo escribe menos.** Acá el viejo hace
+   algo correcto y más pobre —arranca la sesión sin hora de llegada—, y eso es
+   lo que lo hace aceptable. Si el camino viejo guardara un dato equivocado,
+   caer en silencio sería peor que fallar de entrada: nadie se entera, y lo que
+   queda mal en la base queda mal para siempre.
+
+2. **Si la llamada no es idempotente y el error puede venir de ADENTRO de la
+   función.** Acá funciona porque `PGRST202` lo tira PostgREST *antes* de
+   ejecutar nada: no se escribió una fila. Si el error viniera de adentro
+   —después de haber insertado algo— el reintento duplicaría la escritura.
+   Antes de reintentar hay que poder afirmar que el primer intento no tocó
+   nada.
+
+3. **Si el error no se distingue.** El patrón necesita un código propio y
+   específico. Con un 500 genérico, o con una violación de restricción, no se
+   sabe si falló por la firma o por otra cosa, y reintentar a ciegas es
+   exactamente el caso 2.
+
+4. **Si el cambio es destructivo.** Agregar una columna o un parámetro con
+   `default` es aditivo y el camino viejo sigue funcionando. Borrar o renombrar
+   una columna, o poner un `not null` sin `default`, rompe al código viejo: ahí
+   el orden es al revés —**deploy primero, migración después**— y la ventana no
+   se puede tapar con una vuelta atrás, porque no hay a qué volver.
+
+5. **Si lo que falta es corrección y no una función.** Cuando el código nuevo
+   necesita la migración para estar bien —no para tener una capacidad de más—
+   la vuelta atrás está tapando un problema en vez de resolverlo.
+
+---
+
 ## El schema y las migraciones se separan solos
 
 **Nadie había comprobado nunca que `schema.sql` desde cero produzca la misma

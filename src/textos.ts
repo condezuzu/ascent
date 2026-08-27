@@ -343,6 +343,29 @@ export const T = {
     mejorNo: 'Mejor no',
 
     comoSeCompara: 'Cómo se compara la fuerza',
+
+    // El banco de trabajo del automático por ubicación. Se saca cuando esté
+    // probado: no es una pantalla de la app.
+    diagnostico: 'Diagnóstico',
+    diagPunto: 'Punto',
+    diagRadio: (m: number) => `marcado, radio ${m} m`,
+    diagSinPunto: 'sin marcar',
+    diagDia: 'Hoy',
+    diagSinDia: 'sin registrar',
+    diagSesion: 'Sesión',
+    diagSinSesion: 'ninguna corriendo',
+    diagDesde: (hora: string) => `desde las ${hora}`,
+    diagVisita: 'Visita',
+    diagSinVisita: 'ninguna en curso',
+    diagLlegada: (hora: string) => `llegaste ${hora}`,
+    diagVisto: (hora: string) => `visto ${hora}`,
+    diagYaArranco: 'ya arrancó',
+    diagMirarAhora: 'Mirar ahora',
+    diagMirarNota:
+      'Apretalo parado en la puerta: dice a cuántos metros te ve, que es la única forma de saber si el radio quedó bien sin esperar los siete minutos.',
+    diagVacia: 'Todavía no hay nada anotado.',
+    diagRefrescar: 'Refrescar',
+    diagBorrar: 'Borrar lo anotado',
   },
 
   // ---------------------------------------------------------------
