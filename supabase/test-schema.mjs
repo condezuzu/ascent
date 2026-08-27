@@ -42,6 +42,16 @@ import {
   ORIGENES_SESION,
 } from '../src/lib/tipos.ts';
 import { decidir } from '../src/lib/llegada.ts';
+import {
+  clasificar,
+  decidirRuta,
+  hayCookiesDeSesion,
+  llevarCookies,
+} from '../src/lib/supabase/veredicto.ts';
+// `next/server.js` y no `next/server`: node necesita el especificador exacto.
+// Se usa el NextResponse DE VERDAD porque el bug era de esa clase, no de una
+// imitación nuestra.
+import { NextResponse } from 'next/server.js';
 import { ESPERA_LLEGADA_MS } from '../src/lib/reglas.ts';
 import { eventos } from '../src/plataforma/eventos.ts';
 import { estaAdentro, metrosEntre } from '../src/lib/geo.ts';
@@ -2572,6 +2582,83 @@ console.log('\n41. La base no le cree al cliente la hora de llegada');
   chequear('y un fin en el futuro se acota a ahora', Math.round(Number(fin.segundos) / 60), 20);
 
   await db.exec('reset role');
+}
+
+// =====================================================================
+console.log('\n42. A /login solo se manda cuando se SABE que no hay sesion');
+{
+  // La decision mas peligrosa de la app. Mandar a /login a alguien que si
+  // tiene sesion lo deja AFUERA: hoy no hay recuperacion de contrasena porque
+  // el SMTP esta apagado. Por eso los dos errores no valen lo mismo y ante la
+  // duda se sigue.
+  const caso = (extra) =>
+    decidirRuta({
+      hayCookiesDeSesion: true,
+      hayUsuario: false,
+      fallo: 'no',
+      esPublica: false,
+      ...extra,
+    });
+
+  // ---- lo normal ----
+  chequear('con usuario confirmado, pasa', caso({ hayUsuario: true }), 'seguir');
+  chequear('sin cookies, a entrar', caso({ hayCookiesDeSesion: false }), 'a-login');
+  chequear('sin cookies pero en pantalla publica, pasa',
+    caso({ hayCookiesDeSesion: false, esPublica: true }), 'seguir');
+  chequear('con cookies que el servidor rechazo, a entrar',
+    caso({ fallo: 'de-auth' }), 'a-login');
+
+  // ---- EL BUG ----
+  // Esto es lo que rebotaba a /login a alguien con sesion valida: `getUser()`
+  // sale a la red en cada pedido, y su error se tiraba a la basura.
+  chequear('CON COOKIES Y LA RED CAIDA, SIGUE', caso({ fallo: 'de-red' }), 'seguir');
+
+  // ---- que cada error caiga donde tiene que caer ----
+  chequear('el fetch que no llego es de red',
+    clasificar({ name: 'AuthRetryableFetchError' }), 'de-red');
+  chequear('un 401 es de auth', clasificar({ status: 401 }), 'de-auth');
+  chequear('un 403 es de auth', clasificar({ status: 403 }), 'de-auth');
+  chequear('un 500 es de red', clasificar({ status: 500 }), 'de-red');
+  chequear('un 503 es de red', clasificar({ status: 503 }), 'de-red');
+  // Que Supabase nos frene por exceso de pedidos no significa que la persona
+  // no tenga sesion. Tratarlo como de-auth desloguearia a todos a la vez.
+  chequear('un 429 es de red', clasificar({ status: 429 }), 'de-red');
+  chequear('sin error, no hay fallo', clasificar(null), 'no');
+  // Un error que no sabemos leer NO puede costar la sesion.
+  chequear('uno raro se trata como de red', clasificar({ status: 418 }), 'de-red');
+  chequear('uno sin status tambien', clasificar({ name: 'Vaya' }), 'de-red');
+
+  // ---- reconocer las cookies de Supabase, incluso partidas ----
+  chequear('reconoce la cookie de sesion',
+    hayCookiesDeSesion(['sb-okeanaihymbvbdmrdqph-auth-token']), true);
+  // Cuando el token no entra en 4 KB, Supabase la parte en pedazos.
+  chequear('y la reconoce partida en pedazos',
+    hayCookiesDeSesion(['sb-abc-auth-token.0', 'sb-abc-auth-token.1']), true);
+  chequear('no confunde otras cookies', hayCookiesDeSesion(['ascent:sesion', 'sb-abc-otra']), false);
+  chequear('sin cookies, false', hayCookiesDeSesion([]), false);
+
+  // ---- EL SEGUNDO BUG: el rebote se comia el token nuevo ----
+  // Supabase ROTA el refresh token en cada refresco. Si el redirect no lleva
+  // los nuevos, el navegador se queda con uno ya consumido y el proximo
+  // refresco muere con `refresh_token_already_used`: sesion muerta de verdad,
+  // no un parpadeo. Es lo que convertia un hipo de red en un deslogueo.
+  {
+    const refrescada = NextResponse.next();
+    refrescada.cookies.set('sb-abc-auth-token', 'NUEVO');
+    const rebote = NextResponse.redirect('https://ascent.test/login?rebote=1');
+    chequear('el redirect nace sin cookies', rebote.cookies.getAll().length, 0);
+    llevarCookies(rebote, refrescada);
+    chequear('y se va con el token refrescado puesto',
+      rebote.cookies.get('sb-abc-auth-token')?.value, 'NUEVO');
+  }
+  {
+    // Partido en pedazos tambien: es como viaja cuando no entra en 4 KB.
+    const refrescada = NextResponse.next();
+    refrescada.cookies.set('sb-abc-auth-token.0', 'parte0');
+    refrescada.cookies.set('sb-abc-auth-token.1', 'parte1');
+    const rebote = llevarCookies(NextResponse.redirect('https://ascent.test/login'), refrescada);
+    chequear('lleva todos los pedazos', rebote.cookies.getAll().length, 2);
+  }
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

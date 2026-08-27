@@ -183,10 +183,11 @@ horaria— está cubierto por tests. Lo que sigue es qué vigilar, no qué falta
 1. **El automático en un gimnasio de verdad.** Es lo único que no se puede
    probar desde acá: GPS real, radio real, tu gimnasio. Todo lo que pase queda
    anotado en **Ajustes → Diagnóstico**, que existe justo para eso.
-2. **Si te desloguea.** No debería, pero si aparece la pantalla de entrada sin
-   que hayas cerrado sesión, eso es un bug y hay que mirarlo — durante las
-   capturas se vio a la sesión del navegador caerse una vez entre navegaciones
-   y no se llegó a saber por qué.
+2. **Si te desloguea.** Se encontró y se arregló la causa (dos bugs
+   encadenados en el middleware, ver `trampas.md`), pero es lo peor que puede
+   pasar y no está probado en la calle. La bitácora anota ahora cada refresco
+   de token, cada pérdida de sesión y cada rebote a /login: si pasa, buscá
+   `SESIÓN PERDIDA` o `REBOTE` en Ajustes → Diagnóstico.
 3. **El radio del gimnasio.** El GPS bajo techo tiene 20 a 50 m de error. Si el
    automático no dispara, "Mirar ahora" en el Diagnóstico dice a cuántos metros
    te ve; con eso se ajusta el radio en vez de adivinar.

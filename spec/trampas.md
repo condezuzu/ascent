@@ -233,6 +233,77 @@ que además se opone formalmente a implementarla.
 
 ---
 
+## La app te desloguea sola: dos bugs que parecían uno
+
+Se vieron como dos hechos sueltos y eran el mismo. Uno: cuatro capturas
+seguidas que eran la pantalla de login, idénticas byte por byte, que se
+atribuyeron a la herramienta. Otro: la sesión del navegador cayéndose una vez
+entre navegaciones. **Era la misma cadena.**
+
+En una app de rachas esto es lo peor que puede pasar: llegás al gimnasio,
+abrís, te pide entrar. Y con el SMTP apagado no hay recuperación de
+contraseña, así que quedar deslogueado es quedar afuera.
+
+**Bug 1 — el error de `getUser()` se tiraba a la basura.**
+
+```ts
+const { data: { user } } = await supabase.auth.getUser();  // ← el error, ¿dónde?
+if (!user && !esPublica) return NextResponse.redirect(login);
+```
+
+Esa llamada sale a la RED en cada pedido. Cuando fallaba por algo que no era
+"no tenés sesión" —un corte de un segundo entre Vercel y Supabase, un 500, un
+429 por exceso de pedidos— devolvía `user` en null igual, y esto no podía
+distinguirlo. Un hipo de red te mandaba a /login.
+
+**Bug 2 — el rebote se comía el token recién refrescado, y ESTE es el que
+mataba la sesión de verdad.**
+
+`setAll` dejaba los tokens nuevos en la respuesta de "seguir". Pero
+`NextResponse.redirect()` es una respuesta NUEVA, que no los llevaba. Y
+Supabase **rota** el refresh token: cada refresco invalida el anterior. O sea
+que el navegador se quedaba con un token que el servidor acababa de consumir.
+
+Medido contra la producción de verdad el 27/8/2026:
+
+| | |
+|---|---|
+| El access token dura | **60 minutos** |
+| El refresh token | **rota en cada refresco** |
+| El viejo, enseguida | todavía se acepta (ventana de reuso, ~10 s) |
+| El viejo, pasados esos segundos | **rechazado** |
+
+Ahí está por qué parecía intermitente: dentro de la ventana de reuso no pasa
+nada. Pasada —o sea, el tiempo que tardás en mirar la pantalla de login y
+volver a intentar— el token viejo ya no sirve y la sesión está muerta. Un
+rebote de un segundo se convertía en un deslogueo permanente.
+
+→ **Regla 1: a /login solo se manda cuando se SABE que no hay sesión.** Los dos
+errores no cuestan lo mismo. Dejar pasar a alguien sin sesión no expone nada
+—RLS protege todo lo de atrás y la propia pantalla lo manda a entrar— y cuesta
+un parpadeo. Mandar a /login a alguien con sesión lo deja afuera de la app.
+Con esa asimetría, ante la duda se sigue. Y un error que no sabemos leer se
+trata como de red: si aparece uno nuevo y lo tomamos por "no tenés sesión",
+deslogueamos gente por algo que ni entendimos.
+
+→ **Regla 2: que haya UNA sola salida.** El bug 2 fue un `return` que se
+olvidó de copiar las cookies. Mientras haya dos caminos para devolver una
+respuesta, alguno se va a olvidar. Ahora las cookies se copian en
+`llevarCookies()` y no hay forma de salir sin pasar por ahí.
+
+→ **Y lo que esto enseña de los síntomas raros:** "la herramienta de capturas
+falla" y "una vez se cayó la sesión" parecían dos cosas de distinto tamaño, y
+una de las dos parecía culpa de la herramienta. Cuando dos rarezas tocan el
+mismo subsistema, vale la pena tratarlas como una hasta poder demostrar que no
+lo son. Acá el que las juntó fue el humano, no yo.
+
+El tipo de `llevarCookies` es estructural —cualquier cosa con `cookies.getAll()`
+y `cookies.set()`— para que el archivo no importe nada y `test:db` lo pueda
+cargar con node pelado. La sección 42 lo prueba con el `NextResponse` de
+verdad, porque el bug era de esa clase y no de una imitación nuestra.
+
+---
+
 ## El baile de orden entre el deploy y la migración
 
 Hasta la migración 23, cada cambio de base traía la misma pregunta: ¿primero

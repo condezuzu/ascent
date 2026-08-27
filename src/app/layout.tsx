@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Outfit, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import RegistroPWA from '@/components/RegistroPWA';
+import VigilanteDeSesion from '@/components/VigilanteDeSesion';
 
 // Inter: todo lo que se lee. Es la más común de la web justamente porque no
 // hace ruido; acá se la elige para eso, no por defecto.
@@ -56,6 +57,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <RegistroPWA />
+        {/* No dibuja nada: anota en la bitácora lo que le pasa a la sesión.
+            Va acá y no en una pantalla porque el deslogueo puede pasar en
+            cualquiera. */}
+        <VigilanteDeSesion />
       </body>
     </html>
   );
