@@ -2661,6 +2661,67 @@ console.log('\n42. A /login solo se manda cuando se SABE que no hay sesion');
   }
 }
 
+// =====================================================================
+console.log('\n43. Pesarse NO es haber ido al gimnasio');
+{
+  // El peso corporal se anota a la manana, antes de entrenar o sin entrenar.
+  // Vivia adentro de la hoja de registrar el dia, asi que pesarse un domingo
+  // sin ir al gimnasio contaba como dia entrenado e inflaba la racha: un
+  // numero falso en la unica cifra que la app dice que importa.
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+
+  const dias = async () =>
+    Number((await db.query('select count(*) as n from logs where user_id = $1', [u])).rows[0].n);
+  const pesos = async () =>
+    Number((await db.query('select count(*) as n from weights where user_id = $1', [u])).rows[0].n);
+
+  chequear('arranca sin dias', await dias(), 0);
+  await db.query('select anotar_peso(80.5)');
+  chequear('anotar el peso guarda el peso', await pesos(), 1);
+  chequear('Y NO REGISTRA NINGUN DIA', await dias(), 0);
+
+  // Dos veces el mismo dia pisa el valor, no acumula filas.
+  await db.query('select anotar_peso(81)');
+  chequear('pesarse de nuevo pisa el valor', await pesos(), 1);
+  chequear('y sigue sin registrar dias', await dias(), 0);
+  const v = (await db.query('select valor from weights where user_id = $1', [u])).rows[0].valor;
+  chequear('con el ultimo valor', Number(v), 81);
+
+  // Y la racha, que es lo que se estaba inflando.
+  const racha = (await db.query('select racha_actual from profiles where id = $1', [u])).rows[0];
+  chequear('la racha sigue en cero', racha.racha_actual, 0);
+  await db.exec('reset role');
+}
+
+// =====================================================================
+console.log('\n44. El cliente no le manda peso a registrar_dia');
+{
+  // La otra mitad de lo mismo, del lado del cliente: `registrar_dia` todavia
+  // ACEPTA un peso —sacarle el parametro seria otra migracion— asi que lo que
+  // se pinea es que nadie se lo mande. Si alguien vuelve a atarlos, esto falla.
+  const { readdirSync, readFileSync: leerArchivo, statSync } = await import('node:fs');
+  const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+  const archivos = [];
+  const recorrer = (d) => {
+    for (const n of readdirSync(d)) {
+      const ruta = join(d, n);
+      if (statSync(ruta).isDirectory()) recorrer(ruta);
+      else if (/[.]tsx?$/.test(n)) archivos.push(ruta);
+    }
+  };
+  recorrer(SRC);
+
+  const culpables = [];
+  for (const a of archivos) {
+    const codigo = sinComentarios(leerArchivo(a, 'utf8'));
+    for (const m of codigo.matchAll(new RegExp("p_peso:\\s*([^,\\n}]+)", "g"))) {
+      if (m[1].trim() !== 'null') culpables.push(`${a.split('src')[1]} manda p_peso: ${m[1].trim()}`);
+    }
+  }
+  chequear('nadie le pasa un peso a registrar_dia', culpables.sort(), []);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

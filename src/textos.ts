@@ -385,7 +385,7 @@ export const T = {
     peso: 'Peso',
     pesoTendencia: 'Peso — tendencia 7 días',
     pesoUnoMas: 'Con uno más aparece la tendencia. Solo la ves vos.',
-    pesoVacio: 'Anotalo al registrar el día y acá aparece la tendencia. Solo la ves vos.',
+    pesoVacio: 'Anotá tu peso y acá aparece la tendencia. Solo la ves vos.',
     sinDuracion_: (n: number) => `${n} sin duración`,
     masCortas: (n: number) => `${n} de menos de 5 min`,
     rachaDe: (dias: string) => `racha de ${dias}`,
@@ -462,6 +462,9 @@ export const T = {
 
   // ---------------------------------------------------------------
   peso: {
+    titulo: 'Anotar peso',
+    sub: 'Solo el peso. No registra el día ni toca la racha.',
+    anotarPeso: 'Anotar peso',
     placeholder: (unidad: string) => `Tu peso en ${unidad}`,
     anotar: 'Anotar',
     noDa: 'Ese peso no da.',

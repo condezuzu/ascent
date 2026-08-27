@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { aISO, deISO, hoyISO, restarDias } from '@/lib/fechas';
 import { RANGOS, rangoDeRacha } from '@/lib/rangos';
@@ -13,6 +13,7 @@ import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import SeccionFuerza from '@/components/SeccionFuerza';
 import SeccionSesiones from '@/components/SeccionSesiones';
+import AnotarPeso from '@/components/AnotarPeso';
 import { T } from '@/textos';
 
 export default function Estadisticas() {
@@ -24,8 +25,10 @@ export default function Estadisticas() {
   const [unidad, setUnidad] = useState<Unidad>('kg');
   const [sexo, setSexo] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
+  // Con nombre y no en un efecto anónimo: anotar el peso tiene que poder
+  // volver a pedir los datos para que la tendencia se dibuje al toque.
+  const cargar = useCallback(async () => {
+    {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -48,8 +51,12 @@ export default function Estadisticas() {
       // en la base el peso siempre está en kilos; acá se pasa a la unidad
       // que el usuario eligió, y recién entonces se suaviza y se dibuja
       setPesos((ws ?? []).map((w) => ({ ...w, valor: Number(w.valor) })));
-    })();
+    }
   }, [supabase]);
+
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
 
   const hoy = hoyISO();
   const entrenados = logs.filter((l) => !l.es_descanso);
@@ -162,6 +169,10 @@ export default function Estadisticas() {
                 <span>{maxP.toFixed(1)} {unidad}</span>
               </div>
             </div>
+            {/* El peso se anota ACÁ, que es donde vive. Antes solo se podía
+                desde la hoja de registrar el día, y eso lo ataba a haber
+                entrenado: pesarse un domingo contaba como día de gimnasio. */}
+            <AnotarPeso unidad={unidad} alGuardar={cargar} />
           </div>
         ) : suavizado.length === 1 ? (
           // Con un solo dato no hay tendencia que dibujar, pero decirle
@@ -175,11 +186,13 @@ export default function Estadisticas() {
               </div>
               <p className="nota-privada">{T.stats.pesoUnoMas}</p>
             </div>
+            <AnotarPeso unidad={unidad} alGuardar={cargar} />
           </div>
         ) : (
           <div className="seccion">
             <h3>{T.stats.peso}</h3>
             <p className="nota-privada">{T.stats.pesoVacio}</p>
+            <AnotarPeso unidad={unidad} alGuardar={cargar} />
           </div>
         )}
 

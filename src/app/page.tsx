@@ -21,6 +21,7 @@ import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import TiraSemanal from '@/components/TiraSemanal';
 import RegistrarSheet from '@/components/RegistrarSheet';
+import PesoSheet from '@/components/PesoSheet';
 import SubidaRango from '@/components/SubidaRango';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
@@ -41,9 +42,7 @@ export default function Principal() {
   const [social, setSocial] = useState<LineaSocial>(null);
   const [marcas, setMarcas] = useState<string | null>(null);
   const [hojaAbierta, setHojaAbierta] = useState(false);
-  // Con qué campo se abre la hoja: los dos botones redondos del día ya
-  // registrado llevan al mismo lugar, pero no a lo mismo.
-  const [focoHoja, setFocoHoja] = useState<'foto' | 'peso' | undefined>(undefined);
+  const [pesoAbierto, setPesoAbierto] = useState(false);
   const [descansoAbierto, setDescansoAbierto] = useState(false);
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
   const [perdida, setPerdida] = useState(false);
@@ -337,11 +336,6 @@ export default function Principal() {
   const hora = new Date().getHours();
   const avisoTiempo = !registradoHoy && racha > 0 && hora >= 19;
 
-  function abrirHoja(foco?: 'foto' | 'peso') {
-    setFocoHoja(foco);
-    setHojaAbierta(true);
-  }
-
   function alConfirmar(r: ResultadoRegistro | null) {
     setHojaAbierta(false);
     // La animación se dispara SOLO después de que la base confirmó. Viene en
@@ -480,13 +474,13 @@ export default function Principal() {
             {/* Con rótulo: una cámara se entiende sola, una balanza no. Dos
                 iconos pelados obligan a tocar uno para averiguar cuál era. */}
             <div className="acciones">
-              <button onClick={() => abrirHoja('foto')}>
+              <button onClick={() => setHojaAbierta(true)}>
                 <span className="redondo">
                   <IconoFoto />
                 </span>
                 <span className="rotulo">{T.registrar.foto}</span>
               </button>
-              <button onClick={() => abrirHoja('peso')}>
+              <button onClick={() => setPesoAbierto(true)}>
                 <span className="redondo">
                   <IconoPeso />
                 </span>
@@ -495,9 +489,21 @@ export default function Principal() {
             </div>
           </div>
         ) : (
-          <button className="boton-solido" onClick={() => abrirHoja()}>
-            {T.inicio.registrarDia}
-          </button>
+          <>
+            <button className="boton-solido" onClick={() => setHojaAbierta(true)}>
+              {T.inicio.registrarDia}
+            </button>
+            {/* El peso NO pasa por registrar el día: pesarse no es haber ido
+                al gimnasio. Está acá igual porque tiene que poder anotarse
+                cualquier día, entrenes o no. */}
+            <button
+              className="boton-texto"
+              style={{ marginTop: 10 }}
+              onClick={() => setPesoAbierto(true)}
+            >
+              {T.peso.anotarPeso}
+            </button>
+          </>
         )}
         {sesion.estado.aviso && <p className="ok-msg">{sesion.estado.aviso}</p>}
 
@@ -569,11 +575,17 @@ export default function Principal() {
         <RegistrarSheet
           racha={racha}
           logId={logHoy?.id}
-          unidadPeso={perfil.unidad_peso}
           visibilidadDefault={perfil.visibilidad_default}
-          foco={focoHoja}
           alCerrar={() => setHojaAbierta(false)}
           alConfirmar={alConfirmar}
+        />
+      )}
+
+      {pesoAbierto && (
+        <PesoSheet
+          unidad={perfil.unidad_peso ?? 'kg'}
+          alCerrar={() => setPesoAbierto(false)}
+          alGuardar={cargar}
         />
       )}
 

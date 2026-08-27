@@ -3,13 +3,12 @@
 import { useRef, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { fechaLinda, hoyISO } from '@/lib/fechas';
-import { aKilos, limites, type Unidad } from '@/lib/peso';
 import { estaBloqueado, textoDeBloqueo } from '@/lib/pendiente';
 import type { ResultadoRegistro } from '@/lib/tipos';
 import { T } from '@/textos';
 
 /**
- * Hoja de registro del día: foto opcional y peso opcional.
+ * Hoja de registro del día: con foto opcional.
  *
  * Tiene DOS modos, y el segundo existe por un bug que estuvo desde el
  * principio: una vez registrado, el día quedaba cerrado y no había forma de
@@ -19,36 +18,29 @@ import { T } from '@/textos';
  *
  * - **Sin `logId`**: el día no existe todavía. Se registra con `registrar_dia`.
  * - **Con `logId`**: el día YA está. No se vuelve a registrar —la base lo
- *   rechazaría por unicidad— y solo se agrega lo que falte: la foto se cuelga
- *   de ese log y el peso va por `anotar_peso`.
+ *   rechazaría por unicidad— y solo se cuelga la foto de ese log.
  *
  * Los días de descanso NO se registran acá: se eligen una sola vez en Ajustes
  * como días fijos de la semana.
+ *
+ * EL PESO NO ESTÁ ACÁ, y estuvo hasta el 27/8/2026. Atarlo a esta hoja lo
+ * ataba a haber entrenado: el que se pesaba un domingo y no iba al gimnasio se
+ * registraba el día sin querer, y la racha —la única cifra que la app dice que
+ * importa— contaba un día que no existió. El peso se anota a la mañana, antes
+ * de entrenar o sin entrenar; ahora tiene su propia puerta (`PesoSheet`).
  */
 export default function RegistrarSheet({
   racha,
   fecha,
   logId,
-  unidadPeso = 'kg',
   visibilidadDefault = 'privada',
-  foco,
   alCerrar,
   alConfirmar,
 }: {
   racha: number;
   fecha?: string; // para corrección manual de días pasados
   logId?: string | null; // presente = el día ya está registrado
-  unidadPeso?: Unidad;
   visibilidadDefault?: 'privada' | 'amigos';
-  /**
-   * Con qué campo se abre, cuando la hoja llegó desde uno de los dos botones
-   * redondos del día ya registrado. Solo cambia el foco: los dos campos
-   * siguen estando y siguen siendo opcionales.
-   *
-   * Para 'foto' NO se abre el selector de archivos solo: un `.click()` que no
-   * viene de un gesto lo bloquea el navegador, y prometerlo sería mentir.
-   */
-  foco?: 'foto' | 'peso';
   alCerrar: () => void;
   alConfirmar: (r: ResultadoRegistro | null) => void;
 }) {
@@ -56,7 +48,6 @@ export default function RegistrarSheet({
   const dia = fecha ?? hoyISO();
   const esHoy = dia === hoyISO();
   const yaEsta = !!logId;
-  const [peso, setPeso] = useState('');
   const [foto, setFoto] = useState<File | null>(null);
   // arranca donde el usuario dijo en Ajustes, para no elegir una por una
   const [fotoVisible, setFotoVisible] = useState(visibilidadDefault === 'amigos');
@@ -93,41 +84,23 @@ export default function RegistrarSheet({
     });
   }
 
-  /** El peso escrito, pasado a kilos y validado. `undefined` = no puso nada. */
-  function pesoEnKilos(): number | null | undefined {
-    if (!peso) return null;
-    const escrito = Number(peso.replace(',', '.'));
-    const tope = limites(unidadPeso);
-    if (isNaN(escrito) || escrito < tope.min || escrito > tope.max) return undefined;
-    // a la base va siempre en kilos: la unidad es solo cómo lo escribe y lo
-    // lee el usuario. Dos decimales, que es lo que acepta la columna.
-    return Math.round(aKilos(escrito, unidadPeso) * 100) / 100;
-  }
-
   async function confirmar() {
     setError('');
-    const kilos = pesoEnKilos();
-    if (kilos === undefined) return setError(T.peso.noDa);
     setCargando(true);
 
-    // ---- el día YA está: solo se agrega lo que falte ----
+    // ---- el día YA está: solo se cuelga la foto ----
     if (yaEsta) {
-      if (kilos !== null) {
-        const { error: errPeso } = await supabase.rpc('anotar_peso', { p_valor: kilos });
-        if (errPeso) {
-          setCargando(false);
-          return setError(T.registrar.noSeGuardoElPeso);
-        }
-      }
       await subirFoto(logId ?? null, false);
       setCargando(false);
       return alConfirmar(null); // no hay nada que festejar: el día ya contaba
     }
 
     // ---- el día no existe: se registra ----
+    // `p_peso` va SIEMPRE en null: registrar un día ya no anota el peso.
+    // Atarlos hacía que pesarse un domingo contara como día entrenado.
     const { data, error: errRpc } = await supabase.rpc('registrar_dia', {
       p_es_descanso: false,
-      p_peso: kilos,
+      p_peso: null,
     });
 
     if (errRpc) {
@@ -184,18 +157,6 @@ export default function RegistrarSheet({
               {fotoVisible ? T.registrar.laVenAmigos : T.registrar.soloLaVesVos}
             </button>
           )}
-        </div>
-
-        <div className="campo">
-          <label>{T.registrar.peso}</label>
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder={unidadPeso}
-            value={peso}
-            onChange={(e) => setPeso(e.target.value)}
-            autoFocus={foco === 'peso'}
-          />
         </div>
 
         <button className="boton-solido" onClick={confirmar} disabled={cargando}>
