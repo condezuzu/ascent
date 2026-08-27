@@ -34,7 +34,7 @@ if (!correo || !clave) {
 //    recién cuando alguien registra un día, no al entrar.
 const MARCA = {
   rpcViejo: null,
-  textoNuevo: { ruta: '/ajustes', dice: 'Mi gimnasio' },
+  textoNuevo: { ruta: '/ajustes', dice: 'Diagnóstico' },
   /**
    * EL AUTOTEST. Un texto de la misma pantalla que tiene que estar SIEMPRE,
    * con el cliente viejo y con el nuevo.
