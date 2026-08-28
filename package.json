@@ -11,7 +11,9 @@
     "test:e2e": "node --env-file=.env.local supabase/test-e2e.mjs",
     "capturas": "node --env-file=.env.local supabase/capturas.mjs",
     "verificar:deploy": "node --env-file=.env.local supabase/verificar-deploy.mjs",
-    "test:vuelta-atras": "node --env-file=.env.local supabase/probar-vuelta-atras.mjs"
+    "test:vuelta-atras": "node --env-file=.env.local supabase/probar-vuelta-atras.mjs",
+    "test:primera-vez": "node --env-file=.env.local supabase/primera-vez.mjs",
+    "test:semana": "node --env-file=.env.local supabase/simular-semana.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

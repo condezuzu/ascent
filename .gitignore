@@ -9,3 +9,7 @@ next-env.d.ts
 _tmp-*
 capturas/
 .next-capturas/
+
+# builds de los recorridos de prueba
+.next-primera/
+.next-capturas/

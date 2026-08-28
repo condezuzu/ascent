@@ -73,8 +73,16 @@ export default function Login() {
       // Si Supabase no exige confirmar el correo, el alta ya devuelve sesión:
       // hay que entrar derecho. Mandarlo a revisar un correo que nunca va a
       // llegar lo deja mirando el login estando ya adentro.
+      //
+      // Y va DERECHO A ONBOARDING, no a Inicio. Pasar por Inicio hacía que una
+      // cuenta recién creada cargara la pantalla más pesada de la app —el
+      // motor, los shaders, todos los RPC— para que Inicio descubriera que no
+      // tiene nombre de usuario y la rebotara acá. Medido en el recorrido de
+      // primera vez: entre 54 y 97 segundos hasta ver la primera pantalla, con
+      // la app pareciendo colgada todo ese rato. Acá ya sabemos que la cuenta
+      // es nueva; no hace falta que lo averigüe la pantalla más cara.
       if (data.session) {
-        router.push('/');
+        router.push('/onboarding');
         router.refresh();
         return;
       }
