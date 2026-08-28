@@ -10,6 +10,7 @@ import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import Esqueleto from '@/components/Esqueleto';
+import NoCargo from '@/components/NoCargo';
 import { T } from '@/textos';
 
 type Celda = {
@@ -32,6 +33,7 @@ export default function Album() {
   const [miPlaneta, setMiPlaneta] = useState<string | null>(null);
   const [porBorrar, setPorBorrar] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [noCargo, setNoCargo] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -50,12 +52,20 @@ export default function Album() {
         setMiPlaneta(planetaDeDia(p.racha_actual));
       }
 
-      const { data: fotos } = await supabase
+      const { data: fotos, error: errFotos } = await supabase
         .from('photos')
         .select('id, storage_path, visibilidad, es_subida_de_rango, log_id, creado')
         .eq('user_id', user.id)
         .order('creado', { ascending: false });
 
+      // Que la consulta FALLE no es lo mismo que no tener fotos, y confundirlos
+      // es peor que colgarse: la pantalla decía "Ninguna foto todavía" con toda
+      // seguridad, o sea que mentía sobre los datos de la persona.
+      if (errFotos) {
+        setNoCargo(true);
+        return setCargado(true);
+      }
+      setNoCargo(false);
       if (!fotos || fotos.length === 0) return setCargado(true);
 
       const logIds = fotos.map((f) => f.log_id).filter(Boolean) as string[];
@@ -126,6 +136,7 @@ export default function Album() {
         {error && <p className="error-msg">{error}</p>}
 
         {!cargado && <Esqueleto como="grilla" />}
+        {noCargo && <NoCargo reintentar={() => window.location.reload()} />}
 
         {celdas.length > 0 ? (
           <div className="album-grilla mosaico">

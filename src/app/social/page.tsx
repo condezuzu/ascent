@@ -13,6 +13,7 @@ import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
+import NoCargo from '@/components/NoCargo';
 import { T } from '@/textos';
 
 type Solicitud = { id: string; de: UsuarioPublico };
@@ -38,6 +39,7 @@ export default function Social() {
   const [resultados, setResultados] = useState<UsuarioPublico[]>([]);
   const [pedidosMandados, setPedidosMandados] = useState<Set<string>>(new Set());
   const [cargado, setCargado] = useState(false);
+  const [noCargo, setNoCargo] = useState(false);
   const [miRango, setMiRango] = useState(1);
   const [miPlaneta, setMiPlaneta] = useState<string | null>(null);
   const busquedaRef = useRef('');
@@ -52,7 +54,15 @@ export default function Social() {
     // cerrar retos vencidos antes de mostrarlos (fecha local, no UTC del server)
     await supabase.rpc('cerrar_retos_vencidos');
 
-    const { data: rel } = await supabase.from('friendships').select('*');
+    const { data: rel, error: errAmigos } = await supabase.from('friendships').select('*');
+    // Igual que en el álbum: que la consulta falle no es lo mismo que no tener
+    // amigos. Decir "tu cielo todavía está vacío" cuando lo que pasó es que no
+    // se pudo preguntar es mentir sobre los datos de la persona.
+    if (errAmigos) {
+      setNoCargo(true);
+      return setCargado(true);
+    }
+    setNoCargo(false);
     const aceptadas = (rel ?? []).filter((r) => r.estado === 'aceptada');
     const idsAmigos = aceptadas.map((r) =>
       r.solicitante === user.id ? r.destinatario : r.solicitante
@@ -213,6 +223,8 @@ export default function Social() {
         <GloboPrimeraVez cual="leaderboard">
           {T.social.globo}
         </GloboPrimeraVez>
+
+        {noCargo && <NoCargo reintentar={cargar} />}
 
         {solicitudes.length > 0 && (
           <div className="tarjeta" style={{ marginBottom: 16 }}>
