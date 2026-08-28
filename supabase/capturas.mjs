@@ -23,8 +23,8 @@ if (!correo || !clave) {
   process.exit(1);
 }
 
-// Si el puerto esta ocupado, `next dev` se corre solo a otro y este script le
-// termina hablando a un servidor que no arranco el. Mejor cortar.
+// Si el puerto esta ocupado, Next se corre solo a otro y este script le termina
+// hablando a un servidor que no arranco el. Mejor cortar.
 const libre = await fetch(BASE, { redirect: 'manual' })
   .then(() => false)
   .catch(() => true);
@@ -36,13 +36,42 @@ if (!libre) {
   process.exit(1);
 }
 
-// Puerto propio Y carpeta propia: el 3020 puede tener el dev server del humano
-// corriendo, y dos procesos de Next sobre la misma `.next` la corrompen.
-const dev = spawn('npx', ['next', 'dev', '-p', String(PUERTO)], {
+// BUILD DE PRODUCCION, NO `next dev`.
+//
+// Con dev, Next compila cada ruta la primera vez que se la pide, y esa
+// compilacion pasa ADENTRO del `page.goto`, que tiene limite de tiempo. Varias
+// corridas seguidas perdieron pantallas por eso: `movil/ajustes` y
+// `movil/fuerza` tardaban mas de 120 segundos en compilar, y el informe decia
+// "no se pudo capturar" cuando el problema no era de la app sino del modo en
+// que se la estaba levantando. Compilando una sola vez al principio, todas las
+// pantallas responden al instante.
+//
+// Y de paso se fotografia lo que la gente ve de verdad: el build de produccion
+// tiene otro CSS, otro empaquetado y ninguno de los indicadores de desarrollo.
+//
+// Carpeta propia: el 3020 puede tener el dev server del humano corriendo, y dos
+// procesos de Next sobre la misma `.next` la corrompen.
+const entorno = { ...process.env, NEXT_DIST_DIR: '.next-capturas' };
+
+console.log('  compilando (una sola vez)…');
+const compilacion = spawnSync('npx', ['next', 'build'], {
   cwd: RAIZ,
   shell: true,
   stdio: ['ignore', 'pipe', 'pipe'],
-  env: { ...process.env, NEXT_DIST_DIR: '.next-capturas' },
+  env: entorno,
+  encoding: 'utf8',
+});
+if (compilacion.status !== 0) {
+  console.log('NO COMPILA. Las capturas no dicen nada de una app que no compila:\n');
+  console.log((compilacion.stdout ?? '') + (compilacion.stderr ?? ''));
+  process.exit(1);
+}
+
+const dev = spawn('npx', ['next', 'start', '-p', String(PUERTO)], {
+  cwd: RAIZ,
+  shell: true,
+  stdio: ['ignore', 'pipe', 'pipe'],
+  env: entorno,
 });
 let salidaDev = '';
 dev.stdout.on('data', (d) => (salidaDev += d));
@@ -138,18 +167,6 @@ const TAMANOS = [
 
 await esperarAlServidor();
 
-// Se compilan TODAS las rutas antes de abrir el navegador, con un `fetch`
-// pelado y sin límite de tiempo. La primera vez que se pide una ruta el dev
-// server la compila, y eso pasaba adentro del `page.goto`, que sí tiene
-// timeout: si la máquina estaba ocupada, la pantalla se caía por tardar en
-// compilar y no por nada de la app. Acá tardar no rompe nada.
-//
-// Redirigen a /login sin sesión, y da igual: lo que interesa es que Next
-// compile el módulo, no lo que devuelva.
-for (const p of PANTALLAS) {
-  await fetch(BASE + p.ruta, { redirect: 'manual' }).catch(() => {});
-}
-
 rmSync(SALIDA, { recursive: true, force: true });
 mkdirSync(SALIDA, { recursive: true });
 
@@ -183,7 +200,16 @@ for (const tamano of TAMANOS) {
     nueva.on('pageerror', (e) =>
       problemas.push(`${tamano.nombre}: excepción — ${String(e).slice(0, 160)}`)
     );
+    // Cualquier respuesta fallada, no solo las de auth: un 401 en un dato es
+    // tan grave como uno en el login, y antes solo se veia el mensaje generico
+    // del navegador —"Failed to load resource"— sin decir QUE recurso.
     nueva.on('response', async (r) => {
+      if (r.status() >= 400 && !r.url().includes('/auth/v1/')) {
+        problemas.push(
+          `${tamano.nombre}: ${r.status()} en ${r.url().replace(/^https?:[/][/][^/]+/, '')}`
+        );
+        return;
+      }
       if (!r.url().includes('/auth/v1/')) return;
       if (r.status() < 400) return;
       const cuerpo = await r.text().catch(() => '');
@@ -212,7 +238,7 @@ for (const tamano of TAMANOS) {
   let ultimoError = null;
   for (const intento of [1, 2]) {
     try {
-      await page.goto(`${BASE}/login`, { waitUntil: 'networkidle', timeout: 120000 });
+      await page.goto(`${BASE}/login`, { waitUntil: 'networkidle', timeout: 60000 });
       await page.locator('input[type=email]').fill(correo, { timeout: 30000 });
       await page.locator('input[type=password]').fill(clave, { timeout: 30000 });
 
@@ -282,12 +308,28 @@ for (const tamano of TAMANOS) {
   }
 
   for (const p of PANTALLAS) {
+    // PAGINA NUEVA PARA CADA PANTALLA, no una sola para todas.
+    //
+    // Con una sola, tres pantallas se caian siempre —las mismas tres, en el
+    // mismo orden— y no era ni lentitud ni compilacion ni el service worker:
+    // se probaron las tres cosas. Era estado que quedaba en la pagina despues
+    // de la captura anterior. Una pagina limpia por pantalla cuesta unos
+    // milisegundos y saca la clase entera de problema.
+    //
+    // Las cookies viven en el CONTEXTO, asi que la sesion no se pierde.
+    await page.close().catch(() => {});
+    page = await armarPagina();
+
     // Una pantalla que falla se anota y se sigue.
     try {
       // `networkidle` NO sirve acá: el motor pide texturas y los RPC van
       // llegando, así que la red nunca se queda quieta y /fuerza se caía con la
-      // pantalla ya dibujada. Timeout largo por la primera compilación.
-      await page.goto(BASE + p.ruta, { waitUntil: 'domcontentloaded', timeout: 120000 });
+      // pantalla ya dibujada.
+      //
+      // Treinta segundos y no ciento veinte: con el build ya hecho, una ruta
+      // que tarda más de eso en RESPONDER es un problema de verdad, no la
+      // compilación. El límite generoso estaba tapando eso.
+      await page.goto(BASE + p.ruta, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
       // ¿LLEGAMOS A DONDE PEDIMOS? `page.goto` resuelve igual de contento si el
       // middleware nos rebotó a /login, y entonces esto sacaba una foto de la
@@ -403,13 +445,9 @@ for (const tamano of TAMANOS) {
     } catch (e) {
       const linea = String(e).split('\n')[0].slice(0, 120);
       problemas.push(`${tamano.nombre}/${p.nombre}: NO se pudo capturar — ${linea}`);
-      // PAGINA NUEVA, no `about:blank`. Mandar la pagina rota a about:blank
-      // deja ESA navegacion en vuelo, que es exactamente lo que rompe la
-      // siguiente: la cascada se arreglaba con la misma cosa que la causaba.
-      // Una pagina nueva no deja nada en vuelo, y la sesion se mantiene
-      // porque las cookies son del contexto.
-      await page.close().catch(() => {});
-      page = await armarPagina();
+      // No hace falta recambiar acá: la vuelta siguiente arranca con una
+      // página nueva de todos modos. Antes esto era `about:blank`, que dejaba
+      // OTRA navegación en vuelo y era justo lo que rompía la siguiente.
     }
   }
 

@@ -355,6 +355,41 @@ ejecuta. Todo lo demás avisa y se reintenta a mano.
 manda sobre el del servidor. Si no, abrir la app sin señal pisa con un valor
 viejo las series que acabás de contar.
 
+### Las tres preguntas, antes de encolar cualquier cosa
+
+Para la próxima. Si alguna da que no, **no va a la cola**: avisa y se reintenta
+a mano.
+
+**1. ¿Correrla dos veces deja el mismo resultado que una?**
+   `series = series + 1` no. `series = 7` sí. Un `insert` con clave única
+   también, si el choque se trata como éxito y no como error. Esto se pregunta
+   siempre y casi siempre se acierta.
+
+**2. ¿Significa lo MISMO dentro de seis horas?**
+   La que se pasa por alto, y la única que ensucia datos en silencio. Una
+   escritura encolada se ejecuta cuando vuelve la señal, que puede ser al otro
+   día. Si su significado depende de *cuándo* llega, va a escribir sobre la
+   cosa equivocada — y nadie se va a enterar, porque técnicamente funcionó.
+
+   El olor: cualquier cosa que el servidor resuelva en el momento de recibirla.
+   `mi_hoy()`, `now()`, "la sesión que está corriendo", "el último registro".
+   `anotar_peso` y `registrar_dia` escriben sobre HOY y por eso NO se pueden
+   encolar: vaciadas mañana anotan el día equivocado, que es peor que perder la
+   escritura.
+
+   **El arreglo suele ser el mismo: clavarle el sujeto.** `fijar_series` no dice
+   "la sesión corriendo", dice `p_sesion uuid`. Ahí deja de importar cuándo se
+   ejecute. Si no se le puede clavar el sujeto, no se encola.
+
+**3. Si nunca llega a salir, ¿qué se pierde?**
+   Una serie sin contar es un número. Un día sin registrar es una racha rota.
+   Cuanto más caro sea perderla, menos alcanza con encolar y callarse: encima
+   de la cola tiene que haber algo que lo diga.
+
+---
+
+
+
 ---
 
 ## El baile de orden entre el deploy y la migración

@@ -21,6 +21,24 @@ export function configuracionValida(): boolean {
   return true;
 }
 
+/**
+ * UNO SOLO POR PESTAÑA, y esto no es una optimización.
+ *
+ * Treinta y tres componentes llaman a `crearCliente()`, casi todos con
+ * `useState(() => crearCliente())`. Sin esta caché, en una pantalla conviven
+ * cinco o seis clientes distintos: cada uno con SU temporizador de refresco y
+ * SU copia de la sesión en memoria.
+ *
+ * Supabase ROTA el token en cada refresco. Cuando uno de esos clientes
+ * refresca, los otros se quedan con el token anterior —que el servidor acaba
+ * de invalidar— y el siguiente pedido que hagan vuelve 401. Se vio en las
+ * capturas: `401 en /rest/v1/descansos`, con la sesión perfectamente viva.
+ *
+ * Con un cliente por pestaña hay un solo temporizador y una sola copia, así
+ * que no hay nada que se pueda desincronizar consigo mismo.
+ */
+let unico: ReturnType<typeof createBrowserClient> | null = null;
+
 export function crearCliente() {
   if (process.env.NODE_ENV !== 'production' && !configuracionValida()) {
     console.error(
@@ -29,5 +47,11 @@ export function crearCliente() {
         `Clave: ${CLAVE ? `${CLAVE.length} caracteres` : '(vacía)'} — la anon key tiene ~208.`
     );
   }
-  return createBrowserClient(URL_SUPA!, CLAVE!);
+  // En el servidor NO se cachea: cada pedido tiene sus propias cookies, y
+  // compartir un cliente entre pedidos mezclaría sesiones de personas
+  // distintas. Ahí `createBrowserClient` no se usa igual, pero la guarda queda
+  // dicha por si alguien mueve esto de lugar.
+  if (typeof window === 'undefined') return createBrowserClient(URL_SUPA!, CLAVE!);
+  unico ??= createBrowserClient(URL_SUPA!, CLAVE!);
+  return unico;
 }

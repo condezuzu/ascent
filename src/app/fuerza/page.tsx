@@ -12,6 +12,7 @@ import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
 import CargarMarca from '@/components/CargarMarca';
 import AnotarPeso from '@/components/AnotarPeso';
+import NoCargo from '@/components/NoCargo';
 import { T } from '@/textos';
 
 /**
@@ -32,6 +33,7 @@ export default function Fuerza() {
   const [abierto, setAbierto] = useState<string | null>(null);
   const [cargando, setCargando] = useState<string | null>(null);
   const [hoja, setHoja] = useState<{ abierta: boolean; ejercicio?: string } | null>(null);
+  const [noCargo, setNoCargo] = useState(false);
 
   const cargar = useCallback(async () => {
     const {
@@ -48,6 +50,9 @@ export default function Fuerza() {
         .eq('user_id', user.id)
         .order('fecha', { ascending: false }),
     ]);
+    // Sin perfil no se dibuja nada: hay que decirlo y dar por dónde salir, o
+    // la pantalla se queda en el armazón para siempre.
+    setNoCargo(!p);
     setPerfil(p ?? null);
     setEjercicios((ejs ?? []) as Ejercicio[]);
     setFuerza((f ?? null) as MiFuerza | null);
@@ -69,7 +74,7 @@ export default function Fuerza() {
     return (
       <>
         <FondoEspacial rango={1} vacio esquina="centro" velo={0.7} />
-        <div className="pantalla" />
+        <div className="pantalla">{noCargo && <NoCargo reintentar={cargar} />}</div>
         <Nav />
       </>
     );

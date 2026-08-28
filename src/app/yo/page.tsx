@@ -15,6 +15,7 @@ import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import RecorteCircular from '@/components/RecorteCircular';
 import Esqueleto from '@/components/Esqueleto';
+import NoCargo from '@/components/NoCargo';
 import ComoMeVen, { DIAS_VISIBLES, FOTOS_VISIBLES } from '@/components/ComoMeVen';
 import { T } from '@/textos';
 
@@ -46,6 +47,7 @@ export default function Yo() {
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
   const [cargado, setCargado] = useState(false);
+  const [noCargo, setNoCargo] = useState(false);
   const inputFoto = useRef<HTMLInputElement>(null);
   const inputFotoNueva = useRef<HTMLInputElement>(null);
 
@@ -56,6 +58,7 @@ export default function Yo() {
     if (!user) return;
 
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    setNoCargo(!p);
     if (p) setPerfil(p);
 
     // Se lee de la MISMA vista de la que lee un amigo, no de profiles: si la
@@ -237,7 +240,7 @@ export default function Yo() {
       <>
         <FondoEspacial rango={1} vacio esquina="centro" velo={0.7} />
         <div className="pantalla">
-          <Esqueleto como="perfil" />
+          {noCargo ? <NoCargo reintentar={cargar} /> : <Esqueleto como="perfil" />}
         </div>
         <Nav />
       </>
