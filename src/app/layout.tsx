@@ -4,6 +4,7 @@ import './globals.css';
 import RegistroPWA from '@/components/RegistroPWA';
 import VigilanteDeSesion from '@/components/VigilanteDeSesion';
 import AvisoDeFallo from '@/components/AvisoDeFallo';
+import MedirPantallas from '@/components/MedirPantallas';
 
 // Inter: todo lo que se lee. Es la más común de la web justamente porque no
 // hace ruido; acá se la elige para eso, no por defecto.
@@ -63,6 +64,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             cualquiera. */}
         <VigilanteDeSesion />
         <AvisoDeFallo />
+        {/* Mide en TU teléfono cuánto tarda cada pantalla y lo deja en la
+            bitácora. Desde acá no se puede medir un teléfono, y la CPU frenada
+            del navegador ya mintió dos veces. */}
+        <MedirPantallas />
       </body>
     </html>
   );
