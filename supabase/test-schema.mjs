@@ -1309,12 +1309,21 @@ console.log('\n27. Cronómetro de sesión');
       `select estado, count(*)::int as n from sesiones where user_id = $1 group by estado order by estado`,
       [u]
     );
-    // la anterior queda ABANDONADA, no terminada: no sabemos cuándo terminó,
-    // así que no puede quedarse con una duración inventada
+    // ESTO CAMBIÓ EN LA MIGRACIÓN 26, y el test cambió con intención.
+    //
+    // Antes la anterior quedaba ABANDONADA y se creaba otra: su duración se
+    // perdía sin que nadie dijera nada. El razonamiento era "no sabemos cuándo
+    // terminó, así que no puede quedarse con una duración inventada" — correcto
+    // sobre la duración, equivocado sobre qué hacer: la respuesta no era tirar
+    // la sesión, era no crear una segunda.
+    //
+    // Y podía pasar solo, sin que el usuario empezara dos veces: el estado del
+    // cliente y el de la base se separan con la caché borrada, con dos miradas
+    // del vigilante a la vez, o volviendo de segundo plano.
     chequear(
-      'empezar de nuevo abandona la anterior',
+      'empezar de nuevo NO pisa la que está corriendo',
       r.rows.map((x) => [x.estado, x.n]),
-      [['abandonada', 1], ['corriendo', 1]]
+      [['corriendo', 1]]
     );
   }
 
@@ -2516,7 +2525,21 @@ console.log('\n41. La base no le cree al cliente la hora de llegada');
   // que arranca diez minutos ANTES queda mas atras en ese orden, asi que el
   // test miraba la sesion anterior y la daba por buena. El propio test tenia
   // el bug que venia a buscar.
+  // Se cierra la anterior antes de cada arranque. Desde la migración 26
+  // `iniciar_sesion` DEVUELVE la que ya está corriendo en vez de pisarla, así
+  // que sin esto el segundo arranque no crearía nada y el test estaría
+  // mirando la sesión del caso anterior — y dando por buenos sus valores.
   const arrancar = async (sql) => {
+    // Se envejece la que esté corriendo antes de cerrarla: desde la migración
+    // 26, cerrar una sesión de segundos que creó el día DESHACE el día, y
+    // entonces el arranque siguiente crearía uno nuevo — con lo que este
+    // bloque estaría probando otra cosa de la que cree.
+    await db.query(
+      `update sesiones set inicio = now() - interval '40 minutes'
+        where user_id = $1 and estado = 'corriendo'`,
+      [u]
+    );
+    await db.query('select terminar_sesion()');
     const v = (await db.query(sql)).rows[0].v;
     return (await db.query('select * from sesiones where id = $1', [v.id])).rows[0];
   };
@@ -2567,21 +2590,26 @@ console.log('\n41. La base no le cree al cliente la hora de llegada');
   chequear('y el futuro se acota a ahora', Number(futuro) <= 0, true);
 
   // ---- `mi_sesion` lo cuenta ----
+  await db.query('select terminar_sesion()');
+  await db.query(`select iniciar_sesion(now() - interval '2 minutes', 'ubicacion') as v`);
   const mia = (await db.query('select mi_sesion() as v')).rows[0].v;
   chequear('mi_sesion dice de donde salio', mia.origen, 'ubicacion');
 
   // ---- la salida cierra con la hora de la salida ----
+  await db.query('select terminar_sesion()');
   await db.query(`select iniciar_sesion(now() - interval '40 minutes', 'ubicacion') as v`);
   let fin = (await db.query(`select terminar_sesion(now() - interval '10 minutes') as v`)).rows[0].v;
   chequear('cierra con la hora que se le pasa', Math.round(Number(fin.segundos) / 60), 30);
   chequear('y esa duracion cuenta', fin.cuenta, true);
 
   // ---- ni antes del inicio ni despues de ahora ----
+  await db.query('select terminar_sesion()');
   await db.query(`select iniciar_sesion(now() - interval '20 minutes', 'ubicacion') as v`);
   fin = (await db.query(`select terminar_sesion(now() - interval '5 hours') as v`)).rows[0].v;
   // Una duracion negativa romperia el promedio de Stats sin que nadie lo note.
   chequear('un fin anterior al inicio da cero, no negativo', Number(fin.segundos), 0);
 
+  await db.query('select terminar_sesion()');
   await db.query(`select iniciar_sesion(now() - interval '20 minutes', 'ubicacion') as v`);
   fin = (await db.query(`select terminar_sesion(now() + interval '5 hours') as v`)).rows[0].v;
   chequear('y un fin en el futuro se acota a ahora', Math.round(Number(fin.segundos) / 60), 20);
@@ -2797,6 +2825,139 @@ console.log('\n45. Ningun parametro de RPC es en realidad una constante');
     }
   }
   chequear('ningun parametro de RPC es siempre el mismo valor', constantes.sort(), []);
+}
+
+// =====================================================================
+console.log('\n46. El toque accidental se deshace, y la sesion viva no se pisa');
+{
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+
+  const dias = async () =>
+    Number((await db.query('select count(*) as n from logs where user_id = $1', [u])).rows[0].n);
+  const arrancar = async () => (await db.query('select iniciar_sesion() as v')).rows[0].v;
+  const terminar = async (hasta = 'null') =>
+    (await db.query(`select terminar_sesion(${hasta}) as v`)).rows[0].v;
+
+  // ---- el toque accidental ----
+  {
+    const s = await arrancar();
+    chequear('la sesion creo el dia', await dias(), 1);
+    chequear('y quedo anotado que lo creo ella',
+      (await db.query('select creo_el_dia from sesiones where id = $1', [s.id])).rows[0].creo_el_dia,
+      true);
+
+    // Se para a los veinte segundos: no hubo entrenamiento.
+    const fin = await terminar(`now() - interval '0 seconds'`);
+    chequear('se deshizo el dia', fin.deshizo_el_dia, true);
+    chequear('y el dia ya no esta', await dias(), 0);
+    const racha = (await db.query('select racha_actual from profiles where id = $1', [u])).rows[0];
+    chequear('la racha volvio a cero', racha.racha_actual, 0);
+  }
+
+  // ---- una sesion de verdad NO se deshace ----
+  {
+    const s = await arrancar();
+    await db.query(`update sesiones set inicio = now() - interval '40 minutes' where id = $1`, [s.id]);
+    const fin = await terminar();
+    chequear('cuarenta minutos NO se deshacen', fin.deshizo_el_dia, false);
+    chequear('y el dia queda', await dias(), 1);
+  }
+
+  // ---- si el dia YA estaba, no se toca ----
+  {
+    await db.query('delete from logs where user_id = $1', [u]);
+    // El dia se registra a mano primero: la sesion no lo creo.
+    await db.query('select registrar_dia()');
+    const s = await arrancar();
+    chequear('la sesion no creo este dia',
+      (await db.query('select creo_el_dia from sesiones where id = $1', [s.id])).rows[0].creo_el_dia,
+      false);
+    const fin = await terminar(`now()`);
+    // Aunque dure cero: el dia lo registraste vos, y eso manda.
+    chequear('un dia registrado a mano NO se deshace', fin.deshizo_el_dia, false);
+    chequear('y sigue ahi', await dias(), 1);
+  }
+
+  // ---- con otra sesion ese dia, tampoco ----
+  {
+    await db.query('delete from logs where user_id = $1', [u]);
+    const larga = await arrancar();
+    await db.query(`update sesiones set inicio = now() - interval '40 minutes' where id = $1`, [larga.id]);
+    await terminar();
+    // Segunda sesion del mismo dia, cortita.
+    const corta = await arrancar();
+    chequear('la segunda no creo el dia',
+      (await db.query('select creo_el_dia from sesiones where id = $1', [corta.id])).rows[0].creo_el_dia,
+      false);
+    const fin = await terminar(`now()`);
+    chequear('con otra sesion ese dia no se deshace', fin.deshizo_el_dia, false);
+    chequear('el dia sigue', await dias(), 1);
+  }
+
+  // ---- LA SESION VIVA NO SE PISA ----
+  {
+    await db.query('delete from logs where user_id = $1', [u]);
+    const primera = await arrancar();
+    const segunda = await arrancar();
+    // Antes esto marcaba la primera 'abandonada' y creaba otra: su duracion se
+    // perdia sin que nadie dijera nada, y podia pasar solo porque el estado
+    // del cliente y el de la base se pueden separar.
+    chequear('empezar de nuevo devuelve la que ya estaba', segunda.id, primera.id);
+    chequear('y lo dice', segunda.yaEstaba, true);
+    const cuantas = (
+      await db.query(`select count(*) as n from sesiones where user_id = $1 and estado = 'abandonada'`, [u])
+    ).rows[0].n;
+    chequear('no quedo ninguna abandonada', Number(cuantas), 0);
+  }
+
+  await db.exec('reset role');
+}
+
+// =====================================================================
+console.log('\n47. Las series se pueden reintentar sin contar de mas');
+{
+  // El `+` del gimnasio escribe a traves de una cola, y una cola solo sirve si
+  // repetir la escritura es inofensivo. `sumar_serie` era `series + 1`: si la
+  // escritura llegaba pero la respuesta se perdia, el reintento contaba dos.
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const s = (await db.query('select iniciar_sesion() as v')).rows[0].v;
+  // Cuarenta minutos atrás: si durara segundos, terminarla desharía el día
+  // —regla nueva de la 26— y la cascada se llevaría la sesión con él. Lo
+  // aprendí rompiendo este test.
+  await db.query(`update sesiones set inicio = now() - interval '40 minutes' where id = $1`, [s.id]);
+  const series = async () =>
+    (await db.query('select series from sesiones where id = $1', [s.id])).rows[0].series;
+
+  await db.query('select fijar_series($1, 3)', [s.id]);
+  chequear('fija el total', await series(), 3);
+  await db.query('select fijar_series($1, 3)', [s.id]);
+  await db.query('select fijar_series($1, 3)', [s.id]);
+  chequear('REPETIRLA NO CUENTA DE MAS', await series(), 3);
+
+  await db.query('select fijar_series($1, 2)', [s.id]);
+  chequear('y puede bajar', await series(), 2);
+
+  // El conteo llega del telefono, asi que se acota acá.
+  await db.query('select fijar_series($1, -5)', [s.id]);
+  chequear('un negativo se acota a cero', await series(), 0);
+  await db.query('select fijar_series($1, 99999)', [s.id]);
+  chequear('y un absurdo al tope', await series(), 999);
+
+  // La cola puede vaciarse cuando la sesion ya termino: por eso lleva el id.
+  await db.query('select terminar_sesion()');
+  await db.query('select fijar_series($1, 7)', [s.id]);
+  chequear('sigue funcionando con la sesion ya terminada', await series(), 7);
+
+  // Y nunca sobre la sesion de otro.
+  const otro = await nuevoUsuario();
+  await comoUsuario(otro);
+  await db.query('select fijar_series($1, 42)', [s.id]);
+  await comoUsuario(u);
+  chequear('otro usuario no puede tocarla', await series(), 7);
+
+  await db.exec('reset role');
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

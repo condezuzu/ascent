@@ -7,18 +7,22 @@
 //
 // Vive igual en `plataforma/` porque el motivo de que exista es la migración.
 
-type Oyente = () => void;
+// El aviso puede traer un dato o no traer nada. Casi todos no traen —"la
+// sesión cambió, andá a mirar"—, pero el de "no se pudo guardar" necesita
+// decir QUÉ, y sin esto había que dejar el mensaje en una variable suelta al
+// lado del bus, que es un bus peor escrito en dos lugares.
+type Oyente = (dato?: unknown) => void;
 
 const oyentes = new Map<string, Set<Oyente>>();
 
 export type Eventos = {
-  emitir(nombre: string): void;
+  emitir(nombre: string, dato?: unknown): void;
   /** Devuelve la función para dejar de escuchar. */
   escuchar(nombre: string, fn: Oyente): () => void;
 };
 
 export const eventos: Eventos = {
-  emitir(nombre) {
+  emitir(nombre, dato) {
     // La garantía es: **los que estaban escuchando cuando se emitió reciben el
     // aviso**, pase lo que pase con las suscripciones mientras corre. Por eso
     // se recorre una copia.
@@ -27,7 +31,7 @@ export const eventos: Eventos = {
     // elemento que la iteración todavía no visitó hace que no se visite, así
     // que un oyente podría dejar sin aviso a otro según el orden en que se
     // suscribieron. Con la copia, el orden no cambia nada.
-    for (const fn of [...(oyentes.get(nombre) ?? [])]) fn();
+    for (const fn of [...(oyentes.get(nombre) ?? [])]) fn(dato);
   },
 
   escuchar(nombre, fn) {

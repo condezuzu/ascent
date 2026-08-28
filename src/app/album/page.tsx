@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { fechaLinda } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
+import { avisarFallo } from '@/lib/cola';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
@@ -89,9 +90,8 @@ export default function Album() {
   async function alternarVisibilidad(c: Celda) {
     const nueva = c.visibilidad === 'privada' ? 'amigos' : 'privada';
     const { error } = await supabase.from('photos').update({ visibilidad: nueva }).eq('id', c.id);
-    if (!error) {
-      setCeldas((prev) => prev.map((x) => (x.id === c.id ? { ...x, visibilidad: nueva } : x)));
-    }
+    if (error) return avisarFallo(T.general.falloVisibilidad);
+    setCeldas((prev) => prev.map((x) => (x.id === c.id ? { ...x, visibilidad: nueva } : x)));
   }
 
   // Borrado en dos toques: el primero pide confirmación en la misma celda.

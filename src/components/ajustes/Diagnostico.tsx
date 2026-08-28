@@ -6,6 +6,7 @@ import { hoyISO } from '@/lib/fechas';
 import { mirarElGimnasio } from '@/lib/gimnasio';
 import { leerVigilancia } from '@/lib/sesionCache';
 import { anotar, borrarBitacora, comoTexto, leerBitacora } from '@/lib/bitacora';
+import { cuantasPendientes, vaciar } from '@/lib/cola';
 import { T } from '@/textos';
 import type { OrigenSesion, Perfil } from '@/lib/tipos';
 
@@ -33,6 +34,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
   const [visita, setVisita] = useState<Awaited<ReturnType<typeof leerVigilancia>>>(null);
   const [lineas, setLineas] = useState('');
   const [mirando, setMirando] = useState(false);
+  const [pendientes, setPendientes] = useState(0);
 
   const cargar = useCallback(async () => {
     const { data: log } = await supabase
@@ -47,6 +49,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
     setSesion(s);
     setVisita(await leerVigilancia());
     setLineas(comoTexto(await leerBitacora()));
+    setPendientes(await cuantasPendientes());
   }, [supabase, perfil.id]);
 
   useEffect(() => {
@@ -102,6 +105,11 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
                 : T.ajustes.diagSinSesion}
             </dd>
 
+            <dt>{T.ajustes.diagCola}</dt>
+            <dd>
+              {pendientes === 0 ? T.ajustes.diagColaVacia : T.ajustes.diagColaCon(pendientes)}
+            </dd>
+
             <dt>{T.ajustes.diagVisita}</dt>
             <dd>
               {visita
@@ -111,6 +119,18 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
                 : T.ajustes.diagSinVisita}
             </dd>
           </dl>
+
+          {pendientes > 0 && (
+            <button
+              className="boton-fantasma"
+              onClick={async () => {
+                await vaciar(supabase);
+                cargar();
+              }}
+            >
+              {T.ajustes.diagVaciarCola}
+            </button>
+          )}
 
           <button className="boton-fantasma" onClick={mirarAhora} disabled={mirando}>
             {mirando ? T.ajustes.gimnasioBuscando : T.ajustes.diagMirarAhora}

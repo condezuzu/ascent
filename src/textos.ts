@@ -44,6 +44,13 @@ export const T = {
     cancelar: 'Cancelar',
     noSePudo: 'No se pudo guardar. Probá de nuevo.',
     noSePudoGenerico: 'No se pudo. Probá de nuevo.',
+    // Los avisos de escritura fallada. Todos empiezan igual a propósito: lo
+    // que cambia es QUÉ no se guardó, y eso es lo que hay que leer.
+    falloFoto: 'No se pudo subir la foto. Seguí conectado y probá de nuevo.',
+    falloPreferencia: 'No se pudo guardar ese ajuste. Quedó como estaba.',
+    falloVisibilidad: 'No se pudo cambiar quién ve esa foto.',
+    falloDescansos: 'No se pudieron guardar tus días de descanso.',
+    falloPunto: 'No se pudo borrar el punto del gimnasio.',
   },
 
   // ---------------------------------------------------------------
@@ -63,6 +70,8 @@ export const T = {
     // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
     // error de la app. Con una línea deja de serlo.
     sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',
+    yaHabiaSesion: 'Ya tenías una corriendo. Seguimos con esa.',
+    diaDeshecho: 'Muy corta para contar como día. Se deshizo.',
     sacarSerie: 'Sacar una serie',
     sigueSubiendo: (nombre: string, dias: string) => `${nombre} sigue subiendo — ${dias}`,
     // Discreto y permanente mientras no haya punto: es el diferencial de la
@@ -357,6 +366,10 @@ export const T = {
     diagSesion: 'Sesión',
     diagSinSesion: 'ninguna corriendo',
     diagDesde: (hora: string) => `desde las ${hora}`,
+    diagCola: 'Sin mandar',
+    diagColaVacia: 'nada esperando',
+    diagColaCon: (n: number) => (n === 1 ? '1 escritura esperando' : `${n} escrituras esperando`),
+    diagVaciarCola: 'Mandar lo que quedó',
     diagVisita: 'Visita',
     diagSinVisita: 'ninguna en curso',
     diagLlegada: (hora: string) => `llegaste ${hora}`,

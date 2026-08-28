@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { DIAS_SEMANA, hoyISO } from '@/lib/fechas';
 import type { Perfil } from '@/lib/tipos';
+import { avisarFallo } from '@/lib/cola';
 import { T } from '@/textos';
 
 export default function Descansos({
@@ -26,7 +27,10 @@ export default function Descansos({
       : [...perfil.dias_descanso, dia];
     alCambiar({ dias_descanso: nuevos });
     const { error } = await supabase.rpc('fijar_descansos', { p_dias: nuevos });
-    if (error) recargar(); // no se guardó: se vuelve a lo que dice la base
+    if (error) {
+      recargar(); // no se guardó: se vuelve a lo que dice la base
+      avisarFallo(T.general.falloDescansos);
+    }
   }
 
   return (

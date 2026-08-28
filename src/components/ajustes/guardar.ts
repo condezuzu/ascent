@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Perfil } from '@/lib/tipos';
+import { avisarFallo } from '@/lib/cola';
+import { T } from '@/textos';
 
 /**
  * Guarda una preferencia del perfil pintándola YA en pantalla y volviendo
@@ -25,7 +27,10 @@ export async function guardarPreferencia<K extends keyof Perfil>(
     .update({ [campo]: valor })
     .eq('id', perfil.id);
   if (error) {
+    // Volver atrás en silencio es peor que no volver: el interruptor se mueve
+    // solo y parece que la app hace lo que quiere.
     alCambiar({ [campo]: antes } as Partial<Perfil>);
+    avisarFallo(T.general.falloPreferencia);
     return false;
   }
   return true;

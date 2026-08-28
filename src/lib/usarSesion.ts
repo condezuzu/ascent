@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
+import { T } from '@/textos';
 import { eventos } from '@/plataforma/eventos';
 import { desfasajeDelReloj, type SesionViva } from '@/lib/sesiones';
 import { leerPerfilCache } from '@/lib/cache';
@@ -27,6 +28,7 @@ import {
   type DescansoVivo,
 } from '@/lib/descanso';
 import { marcarComoUsada } from '@/lib/llegada';
+import { cuantasPendientes, encolar, vaciar } from '@/lib/cola';
 import type { OrigenSesion, ResultadoRegistro } from '@/lib/tipos';
 
 export type EstadoSesion = {
@@ -97,6 +99,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   const [desfasaje, setDesfasaje] = useState(0);
   const [series, setSeries] = useState(0);
   const [porUbicacion, setPorUbicacion] = useState(false);
+  const [idSesion, setIdSesion] = useState<string | null>(null);
   const [descanso, setDescanso] = useState<DescansoVivo | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState('');
@@ -118,14 +121,22 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       guardarSesionCache(g);
       setInicio(g.inicio);
       setDesfasaje(g.desfasaje);
-      setSeries(s.series ?? 0);
+      // El servidor manda, SALVO que haya toques esperando en la cola: ahí el
+      // número bueno es el del teléfono, porque el servidor todavía no se
+      // enteró. Sin esto, volver a abrir la app en el gimnasio sin señal
+      // borraba las series que acababas de contar.
+      if ((await cuantasPendientes()) === 0) setSeries(s.series ?? 0);
+      setIdSesion(s.id ?? null);
       // Si la migración 24 todavía no corrió, `origen` no viene: se asume
       // manual, que es lo seguro — no cerrarla sola.
       setPorUbicacion(s.origen === 'ubicacion');
+      // Al reconectar puede haber toques del `+` esperando desde el gimnasio.
+      vaciar(supabase);
     } else {
       borrarSesionCache();
       setInicio(null);
       setSeries(0);
+      setIdSesion(null);
       setPorUbicacion(false);
     }
   }, [supabase]);
@@ -186,16 +197,24 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       return false;
     }
     const r = data as {
+      id: string;
       inicio: string;
       ahora: string;
       origen?: OrigenSesion;
+      series?: number;
+      yaEstaba?: boolean;
       registro: ResultadoRegistro | null;
     };
     guardarSesionCache({ inicio: r.inicio, desfasaje: desfasajeDelReloj(r.ahora) });
     setInicio(r.inicio);
     setDesfasaje(desfasajeDelReloj(r.ahora));
-    setSeries(0);
+    setSeries(r.series ?? 0);
+    setIdSesion(r.id ?? null);
     setPorUbicacion((r.origen ?? opciones?.origen) === 'ubicacion');
+    // La base ya no abandona la que estaba corriendo, la devuelve. Se dice,
+    // porque si no parecería que arrancó una nueva y el número del cronómetro
+    // saldría de la nada.
+    if (r.yaEstaba) setAviso(T.inicio.yaHabiaSesion);
     alCambiarElDia?.(r.registro);
     return true;
   }
@@ -207,7 +226,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    */
   async function terminar(opciones?: { hasta?: number }) {
     setOcupado(true);
-    const { error } = await cerrar(supabase, opciones);
+    const { data, error } = await cerrar(supabase, opciones);
     setOcupado(false);
     // Lo mismo al revés: si el cierre no llegó, quien llama tiene que poder
     // volver a intentarlo con la hora de salida correcta.
@@ -216,8 +235,14 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     borrarDescanso();
     setInicio(null);
     setSeries(0);
+    setIdSesion(null);
     setDescanso(null);
     setPorUbicacion(false);
+    // Se dice, porque si no el día desaparece de la tira semanal sin
+    // explicación y parece que la app se comió algo.
+    if ((data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia) {
+      setAviso(T.inicio.diaDeshecho);
+    }
     // Si la parás a mano estando todavía en el gimnasio, la visita queda
     // marcada como usada: sin esto se volvería a encender sola a los dos
     // minutos, que es la clase de cosa que hace que alguien apague la función.
@@ -226,14 +251,22 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     return true;
   }
 
-  /** Un toque: suma la serie Y arranca el descanso (§20.3). */
+  /**
+   * Un toque: suma la serie Y arranca el descanso (§20.3).
+   *
+   * El número sube EN EL TELÉFONO y la escritura va a la cola. Antes se
+   * mandaba y, si fallaba, no pasaba nada: ni subía ni avisaba. En un gimnasio
+   * —un subsuelo donde la red se corta— ese es el caso normal, y es el botón
+   * que más se toca. Ahora funciona sin red y se sincroniza al salir.
+   */
   async function serieHecha() {
     const seg =
       (await leerDuracionDeSesion()) ??
       duracionValida(duracionPredeterminada(await leerPerfilCache()));
     setDescanso(guardarDescanso(seg));
-    const { data } = await supabase.rpc('sumar_serie');
-    if (typeof data === 'number') setSeries(data);
+    const nuevas = series + 1;
+    setSeries(nuevas);
+    if (idSesion) await encolar(supabase, { rpc: 'fijar_series', args: { p_sesion: idSesion, p_series: nuevas } });
   }
 
   /**
@@ -242,8 +275,9 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    * estabas usando.
    */
   async function deshacerSerie() {
-    const { data } = await supabase.rpc('restar_serie');
-    if (typeof data === 'number') setSeries(data);
+    const nuevas = Math.max(0, series - 1);
+    setSeries(nuevas);
+    if (idSesion) await encolar(supabase, { rpc: 'fijar_series', args: { p_sesion: idSesion, p_series: nuevas } });
   }
 
   async function descansarSuelto() {

@@ -292,6 +292,10 @@ create table public.sesiones (
   -- No lleva 'salud' como `logs.origen`: una pulsera puede decir que
   -- entrenaste, no cuándo arrancaste ni cuándo paraste.
   origen text not null default 'manual',
+  -- Si el día de gimnasio lo creó ESTA sesión. Sirve para deshacerlo cuando
+  -- queda claro que no hubo entrenamiento: tocar "Iniciar" sin querer
+  -- registraba el día y ese día ya no se iba nunca.
+  creo_el_dia boolean not null default false,
   constraint sesiones_origen_valido check (origen in ('manual', 'ubicacion')),
   constraint sesiones_fin_solo_si_termino check ((estado = 'terminada') = (fin is not null))
 );
@@ -1129,28 +1133,35 @@ declare
 begin
   if uid is null then raise exception 'sin sesión'; end if;
 
+  perform cerrar_sesiones_vencidas(uid);
+
+  -- ¿Ya hay una viva? Se sigue esa. Nunca se pisa.
+  select * into s from sesiones where user_id = uid and estado = 'corriendo';
+  if s.id is not null then
+    return jsonb_build_object('bloqueado', false, 'id', s.id, 'inicio', s.inicio,
+      'origen', s.origen, 'series', s.series, 'ahora', now(),
+      'yaEstaba', true, 'registro', null);
+  end if;
+
   -- Ni en el futuro ni más atrás de lo permitido. `least` de `now()` primero
   -- porque un reloj adelantado en el teléfono es mucho más común que uno
   -- atrasado, y un inicio en el futuro daría duraciones negativas.
   arranque := least(now(), greatest(coalesce(p_desde, now()), now() - atraso_maximo()));
 
-  perform cerrar_sesiones_vencidas(uid);
-  update sesiones set estado = 'abandonada' where user_id = uid and estado = 'corriendo';
   select id into l from logs where user_id = uid and fecha = hoy;
   if l is null then
-    -- El día hereda el origen de la sesión: si el cronómetro arrancó porque
-    -- llegaste, el día también entró por eso, y el log tiene que decirlo.
     registro := registrar_dia(p_origen);
     if (registro ->> 'bloqueado')::boolean then
       return registro;
     end if;
     l := (registro ->> 'log_id')::uuid;
   end if;
-  insert into sesiones (user_id, log_id, inicio, origen)
-    values (uid, l, arranque, p_origen)
+  insert into sesiones (user_id, log_id, inicio, origen, creo_el_dia)
+    values (uid, l, arranque, p_origen, registro is not null)
     returning * into s;
   return jsonb_build_object('bloqueado', false, 'id', s.id, 'inicio', s.inicio,
-    'origen', s.origen, 'ahora', now(), 'registro', registro);
+    'origen', s.origen, 'series', s.series, 'ahora', now(),
+    'yaEstaba', false, 'registro', registro);
 end;
 $$;
 
@@ -1168,6 +1179,7 @@ declare
   uid uuid := auth.uid();
   s sesiones;
   cierre timestamptz;
+  deshizo boolean := false;
 begin
   if uid is null then raise exception 'sin sesión'; end if;
   -- primero se cierran las vencidas: si pasaron 4 horas, esta llamada llega
@@ -1185,11 +1197,31 @@ begin
   update sesiones set estado = 'terminada', fin = cierre
    where id = s.id
    returning * into s;
+
+  -- EL TOQUE ACCIDENTAL. Tres condiciones y las tres tienen que darse:
+  --   1. no llegó al piso de 5 minutos → no hubo entrenamiento;
+  --   2. el día lo creó ESTA sesión    → no lo registró nadie más;
+  --   3. no hay otra sesión ese día    → no entrenaste en otro momento.
+  --
+  -- Se borra el log y no la sesión: la cascada de `sesiones.log_id` se lleva la
+  -- sesión sola, y el trigger de `logs` recalcula la racha. Las fotos NO se
+  -- pierden: su `log_id` es `on delete set null`.
+  if (s.fin - s.inicio) < piso_sesion()
+     and s.creo_el_dia
+     and not exists (
+       select 1 from sesiones o where o.log_id = s.log_id and o.id <> s.id
+     )
+  then
+    delete from logs where id = s.log_id and user_id = uid;
+    deshizo := true;
+  end if;
+
   return jsonb_build_object(
     'termino', true,
     'segundos', extract(epoch from (s.fin - s.inicio)),
     -- abajo del piso la sesión existe y el día cuenta, pero no suma duración
-    'cuenta', (s.fin - s.inicio) >= piso_sesion()
+    'cuenta', (s.fin - s.inicio) >= piso_sesion(),
+    'deshizo_el_dia', deshizo
   );
 end;
 $$;
@@ -1197,33 +1229,29 @@ $$;
 -- -------------------------------------------------------------
 -- La sesión que está corriendo, si hay
 -- -------------------------------------------------------------
-create or replace function public.sumar_serie()
+-- `sumar_serie` era `series = series + 1`. Con la red cortada —un gimnasio en
+-- un subsuelo es el caso normal, no el raro— el toque se perdía en silencio, y
+-- no se podía reintentar: si la escritura llegó pero la respuesta se perdió,
+-- el reintento contaba dos.
+--
+-- Esta manda el TOTAL, así que repetirla es inofensiva y la cola del cliente
+-- puede insistir hasta que entre. Lleva el id de la sesión porque esa cola
+-- puede vaciarse cuando la sesión ya terminó.
+create or replace function public.fijar_series(p_sesion uuid, p_series int)
 returns int language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
   total int;
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  update sesiones set series = series + 1
-   where user_id = uid and estado = 'corriendo'
+  -- Acotado acá y no en el cliente: el conteo llega del teléfono.
+  update sesiones set series = greatest(0, least(p_series, 999))
+   where id = p_sesion and user_id = uid
    returning series into total;
   return coalesce(total, 0);
 end;
 $$;
 
-create or replace function public.restar_serie()
-returns int language plpgsql security definer set search_path = public as $$
-declare
-  uid uuid := auth.uid();
-  total int;
-begin
-  if uid is null then raise exception 'sin sesión'; end if;
-  update sesiones set series = greatest(0, series - 1)
-   where user_id = uid and estado = 'corriendo'
-   returning series into total;
-  return coalesce(total, 0);
-end;
-$$;
 
 create or replace function public.mi_sesion()
 returns jsonb language plpgsql security definer set search_path = public as $$
@@ -1643,8 +1671,7 @@ revoke execute on function
   public.fijar_zona(text),
   public.mi_fuerza(),
   public.ranking_fuerza(),
-  public.sumar_serie(),
-  public.restar_serie(),
+  public.fijar_series(uuid, int),
   public.anotar_peso(numeric),
   public.iniciar_sesion(timestamptz, text),
   public.terminar_sesion(timestamptz),
@@ -1688,8 +1715,7 @@ grant execute on function
   public.fijar_zona(text),
   public.mi_fuerza(),
   public.ranking_fuerza(),
-  public.sumar_serie(),
-  public.restar_serie(),
+  public.fijar_series(uuid, int),
   public.anotar_peso(numeric),
   public.iniciar_sesion(timestamptz, text),
   public.terminar_sesion(timestamptz),

@@ -304,6 +304,59 @@ verdad, porque el bug era de esa clase y no de una imitación nuestra.
 
 ---
 
+## Fallar en silencio
+
+Cuatro síntomas distintos —el `+` que no sube, la foto que creés que subiste,
+el interruptor que vuelve solo, los días de descanso que no se guardan— eran
+el mismo bug escrito seis veces:
+
+```ts
+if (error) return;              // y nadie se entera de nada
+if (!error) { pintar(); }       // lo mismo, al revés
+if (typeof data === 'number')   // idem: si vino error, no hay número
+```
+
+Un barrido encontró **ocho** caminos así. Seis eran bugs; dos tienen que
+quedarse callados y conviene tener claro por qué:
+
+- `sincronizarZona` — el usuario no sabe que la app sincroniza su huso
+  horario, y no puede hacer nada al respecto. Se reintenta solo en el próximo
+  viaje. Avisar sería ruido sobre algo que no le pertenece.
+- El registro del service worker — instalar la PWA es una comodidad, no una
+  función.
+
+→ **Regla:** si una escritura falla, se dice. La excepción es lo que el usuario
+ni pidió ni puede resolver.
+
+### Pero decirlo es la respuesta peor
+
+Mejor todavía es que no haga falta. El `+` del cronómetro se toca cien veces
+por entrenamiento en un subsuelo sin señal: ahí un mensaje de error es una
+molestia repetida, no una solución. Ese va por una cola que insiste sola.
+
+**Lo que puede ir a una cola tiene que cumplir DOS cosas, y la segunda se
+olvida:**
+
+1. **Repetirla es inofensiva.** `sumar_serie` era `series = series + 1`: si la
+   escritura llegaba pero la respuesta se perdía, el reintento contaba dos. Se
+   cambió por `fijar_series`, que manda el TOTAL. Es la misma propiedad que
+   hace segura la vuelta atrás del PGRST202, y por la misma razón.
+
+2. **Significa lo mismo más tarde.** Esta es la que casi se me pasa.
+   `anotar_peso` y `registrar_dia` escriben sobre HOY, y *hoy* lo decide el
+   servidor cuando la llamada llega. Una de esas encolada que se vacía mañana
+   anota el día equivocado — peor que perderla. Por eso `fijar_series` lleva el
+   **id de la sesión**: para que vaciarse tarde no la mande a otro lado.
+
+→ **Regla:** encolar solo lo que es idempotente Y no depende de cuándo se
+ejecuta. Todo lo demás avisa y se reintenta a mano.
+
+→ **Y una consecuencia:** mientras haya algo en la cola, el número del teléfono
+manda sobre el del servidor. Si no, abrir la app sin señal pisa con un valor
+viejo las series que acabás de contar.
+
+---
+
 ## El baile de orden entre el deploy y la migración
 
 Hasta la migración 23, cada cambio de base traía la misma pregunta: ¿primero

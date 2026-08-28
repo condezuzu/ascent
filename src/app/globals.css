@@ -2570,3 +2570,28 @@ body.con-franja .pantalla {
   color: var(--sub);
   margin-bottom: 14px;
 }
+
+/* "No se pudo guardar", una sola vez y en un solo lugar. Arriba de la barra,
+   que es donde no tapa nada: la fila de abajo es navegación y el medio es
+   contenido. Se va solo — no hay nada que decidir, es información. */
+.aviso-fallo {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--alto-nav) + 12px + env(safe-area-inset-bottom));
+  z-index: 30;
+  padding: 12px 14px;
+  border-radius: var(--radio);
+  background: color-mix(in srgb, var(--peligro) 16%, #0a0b10);
+  border: 0.5px solid color-mix(in srgb, var(--peligro) 45%, transparent);
+  color: var(--tinta);
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 456px;
+  margin: 0 auto;
+  animation: subir-aviso 0.3s var(--curva-salida) both;
+}
+@keyframes subir-aviso {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

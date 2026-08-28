@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { fechaLinda, hoyISO } from '@/lib/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@/lib/pendiente';
+import { avisarFallo } from '@/lib/cola';
 import type { ResultadoRegistro } from '@/lib/tipos';
 import { T } from '@/textos';
 
@@ -74,7 +75,10 @@ export default function RegistrarSheet({
     const ext = foto.name.split('.').pop() || 'jpg';
     const ruta = `${user.id}/${dia}-${Date.now()}.${ext}`;
     const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, foto);
-    if (errSubida) return;
+    // No va a la cola: el archivo puede pesar megas y guardarlo para después
+    // llenaría el teléfono. Pero callarse era peor — creías que la habías
+    // subido. El día ya quedó registrado igual, que es lo que importa.
+    if (errSubida) return avisarFallo(T.general.falloFoto);
     await supabase.from('photos').insert({
       user_id: user.id,
       log_id: idDelLog,

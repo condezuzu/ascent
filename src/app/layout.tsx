@@ -3,6 +3,7 @@ import { Inter, Outfit, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import RegistroPWA from '@/components/RegistroPWA';
 import VigilanteDeSesion from '@/components/VigilanteDeSesion';
+import AvisoDeFallo from '@/components/AvisoDeFallo';
 
 // Inter: todo lo que se lee. Es la más común de la web justamente porque no
 // hace ruido; acá se la elige para eso, no por defecto.
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             Va acá y no en una pantalla porque el deslogueo puede pasar en
             cualquiera. */}
         <VigilanteDeSesion />
+        <AvisoDeFallo />
       </body>
     </html>
   );

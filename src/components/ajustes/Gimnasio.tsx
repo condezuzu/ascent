@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { marcarPunto } from '@/lib/gimnasio';
+import { avisarFallo } from '@/lib/cola';
 import type { Perfil } from '@/lib/tipos';
 import { T } from '@/textos';
 
@@ -60,7 +61,7 @@ export default function Gimnasio({
       .from('profiles')
       .update({ gimnasio_lat: null, gimnasio_lon: null })
       .eq('id', perfil.id);
-    if (error) return;
+    if (error) return avisarFallo(T.general.falloPunto);
     alCambiar({ gimnasio_lat: null, gimnasio_lon: null });
     setEstado('');
     setDetalle('');
