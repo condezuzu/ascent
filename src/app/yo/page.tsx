@@ -402,7 +402,7 @@ export default function Yo() {
                     {T.yo.compartirTodas}
                   </button>
                   <button onClick={() => todasA('privada')} disabled={compartidas.length === 0}>
-                    {T.yo.guardarTodas}
+                    {T.yo.ocultarTodas}
                   </button>
                 </div>
               )}

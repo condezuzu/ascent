@@ -681,7 +681,10 @@ export const T = {
 
     deTantas: (compartidas: number, total: number) => `${compartidas}/${total}`,
     compartirTodas: 'Compartir todas',
-    guardarTodas: 'Guardar todas',
+    // Decía "Guardar todas" y el botón hace lo contrario de guardar: pone
+    // todas en privada. "Guardar" en una app de fotos se lee como descargar
+    // al teléfono, así que además prometía algo que no pasa.
+    ocultarTodas: 'Ocultar todas',
     tocaUnaFoto: 'Tocá una foto para prenderla o apagarla. Las apagadas las ves solo vos.',
     sinFotos:
       'Todavía no sacaste ninguna. Cuando registres un día con foto, la vas a poder prender o apagar desde acá.',
