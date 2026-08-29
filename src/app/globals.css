@@ -1368,6 +1368,41 @@ textarea::placeholder {
   margin-left: calc(var(--saliente) * -1);
 }
 
+/* LA FILA PLEGABLE NO TENÍA UNA SOLA REGLA. Se usa en tres secciones
+   —Corregir días, Cómo se compara, Diagnóstico— y era un `<button>` pelado con
+   un `<h3>` y un `<span>` adentro: dos elementos de bloque, uno abajo del
+   otro. Por eso el `+` colgaba solo en la línea siguiente al título, en las
+   tres, desde siempre.
+
+   Ahora es una fila de verdad: el título a la izquierda, el signo a la
+   derecha, y todo el ancho tocable — un `+` de 11 px como única zona
+   sensible es un blanco imposible con el pulgar. */
+.fila-plegable {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  /* El padding hace el área tocable sin mover el título: el margen negativo
+     del h3 lo compensa y el texto queda alineado con los demás títulos. */
+  padding: 4px 0 8px;
+  text-align: left;
+}
+/* El h3 adentro de la fila no lleva su margen de abajo: quien separa es el
+   padding de la fila. Con los dos, el signo quedaba flotando alto. */
+.fila-plegable h3 {
+  margin-bottom: 0;
+}
+/* El signo: mono para que el + y el − ocupen exactamente lo mismo y el título
+   no se corra un pixel al abrir y cerrar. */
+.fila-plegable > span {
+  font-family: var(--f-mono), monospace;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--apagado);
+  flex: none;
+}
+
 .grano-pantalla {
   position: fixed;
   inset: 0;
@@ -3109,4 +3144,46 @@ body.con-franja .pantalla {
     transform: translate(calc(-50% + 32vw), 12vh) scale(1.6);
     opacity: 0;
   }
+}
+
+/* ---------- la acción de la pantalla, anclada abajo ----------
+   El botón principal flotaba en medio del contenido, así que su posición
+   dependía de cuánto hubiera arriba: con sesión caía en un lado, sin sesión en
+   otro, con el aviso de pérdida en un tercero. El pulgar lo buscaba cada vez.
+
+   Anclado, ya sabe dónde está antes de mirar. En un gimnasio —una mano
+   ocupada, la otra transpirada— eso pesa más que en cualquier otra app. */
+.accion-anclada {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom));
+  /* Encima de la barra (5) y muy por debajo de las hojas y del visor: una
+     acción anclada que se dibuje sobre un diálogo es peor que no tenerla. */
+  z-index: 6;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 var(--sangria) 14px;
+  /* El degradado hace que el contenido se apague al pasar por detrás en vez
+     de cortarse contra un borde. Sin él, la barra se lee como una tapa. */
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--fondo) 78%, transparent) 38%,
+    var(--fondo) 100%
+  );
+  padding-top: 26px;
+  pointer-events: none;
+}
+/* El degradado no puede comerse los toques; el botón sí los recibe. */
+.accion-anclada > * {
+  pointer-events: auto;
+}
+/* Con la acción puesta, el final del contenido quedaría tapado. */
+body.con-accion .pantalla {
+  padding-bottom: calc(120px + env(safe-area-inset-bottom));
+}
+/* Y con las dos cosas a la vez —franja de sesión y acción— se suman. */
+body.con-franja.con-accion .pantalla {
+  padding-bottom: calc(190px + env(safe-area-inset-bottom));
 }

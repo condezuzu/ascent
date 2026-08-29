@@ -43,19 +43,24 @@ export const T = {
     ajustes: 'Ajustes',
     volver: '← Volver',
     cancelar: 'Cancelar',
-    noSePudo: 'No se pudo guardar. Probá de nuevo.',
-    noSePudoGenerico: 'No se pudo. Probá de nuevo.',
-    // Los avisos de escritura fallada. Todos empiezan igual a propósito: lo
-    // que cambia es QUÉ no se guardó, y eso es lo que hay que leer.
-    falloFoto: 'No se pudo subir la foto. Seguí conectado y probá de nuevo.',
-    falloPreferencia: 'No se pudo guardar ese ajuste. Quedó como estaba.',
-    falloVisibilidad: 'No se pudo cambiar quién ve esa foto.',
-    falloDescansos: 'No se pudieron guardar tus días de descanso.',
-    falloPunto: 'No se pudo borrar el punto del gimnasio.',
+    noSePudo: 'No se guardó. Probá de nuevo.',
+    // Los avisos de escritura fallada. Antes todos empezaban con "No se pudo",
+    // que es la voz de un formulario y además la información menos útil: que
+    // algo no se pudo ya se sabe, porque el aviso está ahí.
+    //
+    // Ahora cada uno dice QUÉ ES CIERTO AHORA — "el punto sigue donde estaba",
+    // "esa foto la sigue viendo quien la veía antes" — que es lo que la persona
+    // necesita para decidir si tiene que hacer algo. Y "Probá de nuevo" quedó
+    // solo donde reintentar es de verdad el arreglo.
+    falloFoto: 'La foto no llegó a subir. Quedate conectado y probá de nuevo.',
+    falloPreferencia: 'Ese ajuste no se guardó: quedó como estaba.',
+    falloVisibilidad: 'Esa foto la sigue viendo quien la veía antes.',
+    falloDescansos: 'Tus días de descanso quedaron como estaban.',
+    falloPunto: 'El punto del gimnasio sigue donde estaba.',
     // Se dice "preparar" y no "subir" porque no llegó a subirse nada: la
     // foto se recodifica antes de salir del teléfono para sacarle los datos
     // de ubicación, y si eso falla NO se manda el original.
-    falloFotoPreparar: 'No se pudo preparar la foto. Probá con otra o sacala de nuevo.',
+    falloFotoPreparar: 'Esa foto no se pudo preparar. Probá con otra, o sacala de nuevo.',
   },
 
   // ---------------------------------------------------------------
@@ -77,7 +82,6 @@ export const T = {
     perdida: 'Se dispersó un poco de masa. Hoy se recupera.',
     hoyDescansa: 'Hoy descansa. La racha sigue igual.',
     diaPendiente: 'Tu día de hoy quedó anotado y se suma solo. No lo perdiste.',
-    diaRegistradoSumar: 'Día registrado · sumar foto o peso',
     sumarSerie: 'Sumar una serie',
     masArrancaDescanso: 'Cada + suma la serie y arranca el descanso.',
     // La nota de arriba está debajo del contador y se lee tarde: la primera
@@ -126,14 +130,14 @@ export const T = {
     // No se dice si el mail existe: eso filtra quién tiene cuenta.
     siTieneCuenta: 'Si esa dirección tiene cuenta, le llega un correo para cambiar la contraseña.',
     paraRecuperar: 'Te mandamos un enlace para elegir una contraseña nueva.',
-    malConfigurada: 'La app no está bien configurada.',
+    malConfigurada: 'Falta configurar algo de la app. Esto lo tengo que arreglar yo.',
     malConfiguradaDetalle:
       'Faltan o están mal las variables de entorno de Supabase, así que no puede conectarse al servidor. Nada de lo que escribas acá va a funcionar hasta que se arreglen.',
 
     elegiNombre: 'Elegí tu nombre',
     elegiNombreSub: 'Así te van a encontrar tus amigos.',
     empezar: 'Empezar',
-    nombreFormato: 'Entre 3 y 20 caracteres: letras, números o guion bajo.',
+    nombreFormato: 'Entre 3 y 20 letras, números o guion bajo.',
   },
 
   // ---------------------------------------------------------------
@@ -172,13 +176,13 @@ export const T = {
   // Contraseña nueva, desde el correo de recuperación o desde Ajustes.
   clave: {
     titulo: 'Contraseña nueva',
-    sub: 'Elegí una de al menos 6 caracteres.',
+    sub: 'Al menos 6 caracteres.',
     nueva: 'Contraseña nueva',
     repetir: 'Repetila',
-    corta: 'Mínimo 6 caracteres.',
+    corta: 'Esa es muy corta: mínimo 6.',
     noCoinciden: 'Las dos no coinciden.',
     esLaMisma: 'Esa ya es tu contraseña actual.',
-    noSePudo: 'No se pudo cambiar. Pedí el correo de nuevo.',
+    noSePudo: 'No se cambió. Pedí el correo otra vez.',
     cambiada: 'Contraseña cambiada.',
     enlaceVencido: 'El enlace ya venció o se abrió en otro navegador.',
     enlaceVencidoPie: 'Pedí uno nuevo desde la pantalla de entrada.',
@@ -203,7 +207,6 @@ export const T = {
     misMarcas: 'Mis marcas',
     anotarMarca: 'Anotar una marca',
     lasTresQueCuentan: 'Las tres que cuentan',
-    entreAmigos: 'Entre amigos',
     dondeEstoy: 'Dónde estoy',
 
     // §16.8. "Strength Level 2026, gente que anota en apps, no competidores"
@@ -231,9 +234,6 @@ export const T = {
     fueraDeTabla:
       'Tu peso corporal queda fuera de la tabla, así que se compara contra el extremo más cercano.',
 
-    // Una línea y un link: la explicación larga vive en Ajustes, donde el que
-    // la busca la encuentra y el que no, no la tropieza.
-    porQueTres: 'Son estos tres porque son los que se comparan.',
 
     // El DOTS necesita las TRES. El PORQUÉ vive en Ajustes ("Cómo se compara
     // la fuerza"), donde puede ser largo: el que abre eso lo está buscando.
@@ -331,7 +331,7 @@ export const T = {
     sugerencias: 'Sugerencias',
     sugerenciasPlaceholder: '¿Algo anda mal? ¿Se te ocurrió algo? Contá acá.',
     mandar: 'Mandar',
-    sugerenciaEnviada: 'Gracias por tu opinión, la leo yo mismo.',
+    sugerenciaEnviada: 'Gracias. Lo leo yo.',
 
     instalar: 'Instalar',
     instalarBoton: 'Instalar Ascent en este teléfono',
@@ -351,18 +351,18 @@ export const T = {
     eliminarCuenta: 'Eliminar mi cuenta',
 
     exportando: 'Armando el archivo…',
-    exportarError: 'No se pudo armar el archivo. Probá de nuevo.',
+    exportarError: 'El archivo no se armó. Probá de nuevo.',
 
     mesAnterior: 'Mes anterior',
     mesSiguiente: 'Mes siguiente',
     mesYAnio: (mes: string, anio: number) => `${mes} ${anio}`,
     diaRegistrado: (dia: number) => `${dia} — registrado, tocá para sacarlo`,
     diaSinRegistrar: (dia: number) => `${dia} — sin registrar, tocá para agregarlo`,
-    noSeSaco: 'No se pudo sacar ese día.',
-    noSeAgrego: 'No se pudo agregar ese día.',
+    noSeSaco: 'Ese día sigue puesto.',
+    noSeAgrego: 'Ese día no se agregó.',
     recalcular: 'Recalcular racha desde el historial',
     recalculando: 'Recalculando…',
-    recalcularError: 'No se pudo recalcular. Probá de nuevo.',
+    recalcularError: 'La cuenta no salió. Probá de nuevo.',
     // `dias` llega ya escrito ("3 días"), no como número: la palabra cambia con
     // el idioma y con el 1.
     recalculoCortado: (dias: string) =>
@@ -370,7 +370,7 @@ export const T = {
     recalculoListo: (dias: string) => `Listo: ${dias}.`,
 
     nombrePlaceholder: 'nombre_de_usuario',
-    nombreFormato: 'Entre 3 y 20 caracteres, solo letras, números y guión bajo.',
+    nombreFormato: 'Entre 3 y 20 letras, números o guion bajo.',
     nombreTomado: 'Ese nombre ya está tomado.',
 
     tuPerfil: 'Tu foto, tus fotos compartidas y tus amigos',
@@ -451,12 +451,10 @@ export const T = {
     cerrar: 'Cerrar',
     listoPie: 'Listo. Cuando quieras, la que sigue.',
     seguir: 'Seguir',
-    terminado: '¡Dale!',
   },
 
   // ---------------------------------------------------------------
   sesion: {
-    seriesPalabra: (n: number) => (n === 1 ? 'serie' : 'series'),
     terminar: 'Terminar',
     label: 'Sesión',
     descansar: 'Descansar',
@@ -468,8 +466,6 @@ export const T = {
     seCierraEn: (min: number) => `Se cierra sola en ${min} min y queda sin duración.`,
     yaSeCerro: 'Ya se cerró sola: esta sesión queda sin duración.',
     nuevoRango: 'Nuevo rango',
-    sumarFoto: 'Sumar foto',
-    sumarPeso: 'Sumar peso',
 
     // EL RESUMEN DEL FINAL. Terminar un entrenamiento era el momento más
     // vacío de la app: la hoja se cerraba y no pasaba nada. Es el instante de
@@ -495,7 +491,6 @@ export const T = {
     resumenSeries: (n: number) => (n === 1 ? 'serie' : 'series'),
     // Cuando la cerró la salida del gimnasio, no un botón.
     resumenSolo: 'Se cerró cuando saliste.',
-    resumenCerrar: 'Cerrar',
   },
 
   // ---------------------------------------------------------------
@@ -558,7 +553,6 @@ export const T = {
     laVenAmigos: 'La ven tus amigos ✓',
     soloLaVesVos: 'Solo la ves vos — tocá para compartirla',
     peso: 'Peso',
-    noSeGuardoElPeso: 'No se pudo guardar el peso. Probá de nuevo.',
     diaYaRegistrado: 'Este día ya está registrado.',
   },
 
@@ -600,8 +594,8 @@ export const T = {
     acercar: 'Acercar',
     trabajando: 'Recortando…',
     usar: 'Usar esta foto',
-    noSeAbre: 'No se pudo abrir esa imagen.',
-    noSeRecorta: 'No se pudo recortar la imagen.',
+    noSeAbre: 'Esa imagen no se abre.',
+    noSeRecorta: 'El recorte no salió.',
   },
 
   // ---------------------------------------------------------------
@@ -617,7 +611,7 @@ export const T = {
     soloVos: 'Solo vos',
     amigos: 'Amigos',
     borrarFoto: 'Borrar foto',
-    noSeBorro: 'No se pudo borrar la foto. Probá de nuevo.',
+    noSeBorro: 'Esa foto sigue ahí. Probá de nuevo.',
     vacio: 'Todavía no hay fotos.',
     // El visor. La grilla ahora solo muestra: todo lo que se hace con una
     // foto se hace con la foto en grande.
@@ -686,10 +680,10 @@ export const T = {
     claveCorta: 'La contraseña tiene que tener al menos 6 caracteres.',
     noEsImagen: 'Eso no parece una imagen.',
     imagenPesada: 'La imagen pesa demasiado. Probá con una más liviana.',
-    noSubioFoto: 'No se pudo subir la foto. Probá de nuevo.',
-    fotoSinGuardar: 'La foto subió pero no se pudo guardar. Probá de nuevo.',
+    noSubioFoto: 'La foto no subió. Probá de nuevo.',
+    fotoSinGuardar: 'La foto subió pero no quedó guardada. Probá de nuevo.',
     noSeBorraronFotos: 'No se pudieron borrar tus fotos. Probá de nuevo.',
-    noSeElimino: 'No se pudo eliminar la cuenta. Probá de nuevo.',
+    noSeElimino: 'La cuenta sigue acá: no se eliminó. Probá de nuevo.',
     algoFallo: 'Algo falló al entrar. Probá de nuevo en un momento.',
   },
 
@@ -700,9 +694,9 @@ export const T = {
     subiendoFoto: 'subiendo la foto…',
     deRacha: (n: number) => `${n} de racha`,
     fotoActualizada: 'Foto actualizada.',
-    noSeCambioFoto: 'No se pudo cambiar esa foto. Probá de nuevo.',
+    noSeCambioFoto: 'Esa foto quedó como estaba. Probá de nuevo.',
     noSeCambiaronFotos: 'No se pudieron cambiar las fotos. Probá de nuevo.',
-    noSePudoEliminar: 'No se pudo eliminar. Probá de nuevo.',
+    noSePudoEliminar: 'No se eliminó. Probá de nuevo.',
 
     comoMeVen: 'Ver como lo ven los demás',
     comoMeVenSi: 'Esto es todo lo que le llega a un amigo.',
@@ -727,7 +721,7 @@ export const T = {
     quitar: 'Quitar',
     // El link para buscar está justo arriba: repetir dónde se buscan sobraba.
     sinAmigos: 'Todavía no agregaste a nadie.',
-    noSeSumoLaFoto: 'No se pudo sumar la foto. Probá de nuevo.',
+    noSeSumoLaFoto: 'La foto no se sumó al día. Probá de nuevo.',
     sumarFotos: 'Sumar fotos acá',
   },
 } as const;

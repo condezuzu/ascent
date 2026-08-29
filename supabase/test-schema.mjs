@@ -3096,6 +3096,44 @@ console.log('\n49. El pulso del dia: la curva');
 }
 
 
+// =====================================================================
+console.log('\n50. El diccionario no junta frases muertas');
+{
+  // `textos.ts` tiene casi cuatrocientas claves y hasta ahora no habia forma de
+  // saber cuales seguian vivas. Un diccionario asi se llena de frases muertas:
+  // cambias una pantalla, la clave vieja queda, y a los meses hay tres
+  // versiones de lo mismo y nadie sabe cual se ve. La primera corrida encontro
+  // diez.
+  //
+  // Y pesa mas de lo que parece: cuando se traduzca al ingles, cada clave
+  // muerta es una frase que alguien va a traducir para nada.
+  const { readdirSync: leerDir, readFileSync: leerArch, statSync: estado } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const DIC = join(RAIZ, 'src', 'textos.ts');
+
+  const archivos = [];
+  const recorrer = (d) => {
+    for (const n of leerDir(d)) {
+      const r = join(d, n);
+      if (estado(r).isDirectory()) recorrer(r);
+      else if (/\.tsx?$/.test(n) && r !== DIC) archivos.push(r);
+    }
+  };
+  recorrer(join(RAIZ, 'src'));
+
+  const codigo = archivos.map((a) => leerArch(a, 'utf8')).join('\n');
+  const dic = leerArch(DIC, 'utf8');
+  // Cuatro espacios o mas de sangria son las claves hoja; las de dos son las
+  // secciones, y esas siempre se usan.
+  const claves = [...new Set([...dic.matchAll(/^ {4,}([a-zA-Z][a-zA-Z0-9]*):/gm)].map((m) => m[1]))];
+  // Se busca `.laClave` y que no siga un nombre mas largo. Buscar la palabra
+  // suelta no sirve: `titulo` aparece en comentarios de media app.
+  const muertas = claves.filter((k) => !new RegExp(`\.${k}(?![a-zA-Z0-9])`).test(codigo));
+
+  chequear(`las ${claves.length} claves se usan todas`, muertas, []);
+}
+
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

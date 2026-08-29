@@ -28,6 +28,7 @@ import ResumenSesion from '@/components/ResumenSesion';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import Bloque from '@/components/Bloque';
 import DiaSumado from '@/components/DiaSumado';
+import AccionPrincipal from '@/components/AccionPrincipal';
 import NumeroQueCuenta from '@/components/NumeroQueCuenta';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
@@ -412,19 +413,20 @@ export default function Principal() {
             <p className="nota-privada" style={{ textAlign: 'center', marginTop: 10 }}>
               {sesion.estado.porUbicacion ? T.inicio.sesionSola : T.inicio.masArrancaDescanso}
             </p>
-            <button
-              className="boton-solido"
-              style={{ marginTop: 12 }}
-              onClick={async () => {
-                const cierre = await sesion.terminar();
-                // Nada de resumen si la base deshizo el día: no hubo
-                // entrenamiento que resumir, y festejar un toque sin querer es
-                // peor que no decir nada.
-                if (cierre && !cierre.deshizoElDia) setCierre(cierre);
-              }}
-            >
-              {T.sesion.terminar}
-            </button>
+            <AccionPrincipal>
+              <button
+                className="boton-solido"
+                onClick={async () => {
+                  const cierre = await sesion.terminar();
+                  // Nada de resumen si la base deshizo el día: no hubo
+                  // entrenamiento que resumir, y festejar un toque sin querer
+                  // es peor que no decir nada.
+                  if (cierre && !cierre.deshizoElDia) setCierre(cierre);
+                }}
+              >
+                {T.sesion.terminar}
+              </button>
+            </AccionPrincipal>
           </>
         ) : registradoHoy ? (
           /* El día ya está. Lo que queda no es "registrar" otra vez: es
@@ -454,9 +456,11 @@ export default function Principal() {
           </div>
         ) : (
           <>
-            <button className="boton-solido" onClick={() => setHojaAbierta(true)}>
-              {T.inicio.registrarDia}
-            </button>
+            <AccionPrincipal>
+              <button className="boton-solido" onClick={() => setHojaAbierta(true)}>
+                {T.inicio.registrarDia}
+              </button>
+            </AccionPrincipal>
             {/* El peso NO pasa por registrar el día: pesarse no es haber ido
                 al gimnasio. Está acá igual porque tiene que poder anotarse
                 cualquier día, entrenes o no. */}
