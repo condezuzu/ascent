@@ -136,7 +136,11 @@ const PANTALLAS = [
     // única que este script no fotografiaba.
     nombre: 'ajustes-corregir-dias',
     ruta: '/ajustes',
-    listo: '.calendario',
+    // `.seccion` y NO `.calendario`. El `listo` se espera ANTES de correr el
+    // `previo`, así que poner acá algo que recién existe DESPUÉS del clic son
+    // sesenta segundos esperando lo imposible y la captura salteada. Lo hice y
+    // perdí un rato largo buscándole la culpa a la app.
+    listo: '.seccion',
     previo: async (page) => {
       const b = page.locator('button.fila-plegable', { hasText: /corregir/i }).first();
       try {
