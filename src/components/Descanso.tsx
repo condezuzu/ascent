@@ -138,7 +138,7 @@ export default function Descanso({
   const circunferencia = 2 * Math.PI * R;
 
   return (
-    <div className={`descanso ${terminado ? 'listo' : ''}`} role="dialog" aria-modal>
+    <div className={`pantalla-descanso ${terminado ? 'listo' : ''}`} role="dialog" aria-modal>
       {/* La salida que NO cuesta el descanso. Arriba a la derecha, donde se
           espera una cruz, y en voz baja: el número sigue siendo lo único
           grande de esta pantalla (§18.6). */}

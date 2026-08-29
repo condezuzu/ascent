@@ -795,3 +795,27 @@ esa carpeta no estaba ignorada, un `git add -A` se llevó el build entero adentr
 del commit.
 → **Regla:** script nuevo que compile ⇒ su `NEXT_DIST_DIR` va al `.gitignore` en
 el mismo commit.
+
+**Una clase CSS de una sola palabra es de todos.** `.descanso` era la PANTALLA
+completa del temporizador —`position: fixed`, `inset: 0`, `z-index: 40`, su
+degradado— y al mismo tiempo se usaba como estado en `.cal-dia.descanso` y
+`.tira-punto.descanso`. El día que le puse `class="descanso"` a un cuadradito de
+12 px de una leyenda, ese cuadradito se llevó puesto el overlay entero y salió
+como una mancha gigante en el medio de la pantalla. Medido: 56×52 px donde
+tenía que haber 12×12.
+
+Y estaba latente desde antes: un día de descanso en el calendario venía
+heredando de esa regla el fondo, el z-index y el padding. No se veía porque son
+días raros y `.cal-dia.descanso` le ganaba en las dos propiedades que sí
+declaraba.
+→ **Regla:** lo que es una pantalla lleva nombre de pantalla
+(`.pantalla-descanso`). Lo que es un estado va SIEMPRE prefijado por su
+elemento (`.cal-hecho`, no `.hecho`). Una palabra suelta como clase es una
+colisión esperando el momento.
+
+**El `listo` de una captura se espera ANTES del `previo`.** Le puse
+`.calendario` a un paso cuyo `previo` es justamente el clic que crea el
+calendario: sesenta segundos esperando algo imposible y la captura salteada, en
+silencio. Me hizo buscarle la culpa a la app un buen rato.
+→ **Regla:** `listo` tiene que existir apenas carga la ruta. Lo que aparece
+después del clic se comprueba en el `previo`, no ahí.

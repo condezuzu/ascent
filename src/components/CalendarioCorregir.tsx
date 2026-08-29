@@ -134,10 +134,15 @@ export default function CalendarioCorregir({ alCambiar }: { alCambiar: () => voi
       {/* Las tres formas, dichas. Hasta ahora había que tocar un día para
           descubrir qué significaba cada una — y tocar es justo lo que cambia
           el dato, o sea que la única forma de averiguarlo era romper algo. */}
+      {/* Las clases van prefijadas —`cal-hecho`, no `hecho`— porque una clase
+          de una palabra es de todos: `descanso` a secas ERA la pantalla
+          completa del temporizador, y este cuadradito de 12 px se llevaba
+          puesto un overlay `fixed` con su degradado. Ver `.pantalla-descanso`
+          en globals. */}
       <div className="cal-leyenda">
-        <span><i className="hecho" />{T.ajustes.leyendaHecho}</span>
-        <span><i className="vacio" />{T.ajustes.leyendaVacio}</span>
-        <span><i className="descanso" />{T.ajustes.leyendaDescanso}</span>
+        <span><i className="cal-hecho" />{T.ajustes.leyendaHecho}</span>
+        <span><i className="cal-vacio" />{T.ajustes.leyendaVacio}</span>
+        <span><i className="cal-descanso" />{T.ajustes.leyendaDescanso}</span>
       </div>
 
       <p className="nota-privada">{T.ajustes.calendarioNota}</p>

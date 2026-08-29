@@ -723,12 +723,12 @@ textarea::placeholder {
   border-radius: 50%;
   flex: none;
 }
-.cal-leyenda i.hecho { background: var(--pal-principal); }
-.cal-leyenda i.vacio { border: 1px solid color-mix(in srgb, var(--pal-principal) 35%, transparent); }
-.cal-leyenda i.descanso {
+.cal-leyenda i.cal-hecho { background: var(--pal-principal); }
+.cal-leyenda i.cal-vacio { border: 1px solid color-mix(in srgb, var(--pal-principal) 35%, transparent); }
+.cal-leyenda i.cal-descanso {
   position: relative;
 }
-.cal-leyenda i.descanso::after {
+.cal-leyenda i.cal-descanso::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -2096,10 +2096,22 @@ textarea::placeholder {
 }
 
 /* ---------- descanso entre series ----------
+   OJO CON EL NOMBRE. Esta clase se llamaba `.descanso` a secas, y una clase de
+   una palabra es de todos: el cuadradito de 12 px de la referencia del
+   calendario llevaba `class="descanso"` y se llevaba puesto ESTE overlay
+   entero —`position: fixed`, `inset: 0`, el degradado— y salía como una mancha
+   gigante en el medio de la leyenda. Lo mismo estaba latente en
+   `.cal-dia.descanso` y en `.tira-punto.descanso`, que son ESTADOS de otra
+   cosa y heredaban de acá el fondo, el z-index y el padding sin que se notara
+   porque esos días son raros.
+
+   Regla: lo que es una PANTALLA lleva nombre de pantalla. Lo que es un estado
+   va siempre pegado a la clase de su elemento.
+
    Toma la pantalla entera. El teléfono está en el piso o en el banco, a dos
    metros: el NÚMERO es lo único grande y todo lo demás va en voz baja. Si
    algo le compite, deja de leerse de lejos y la pantalla pierde su razón. */
-.descanso {
+.pantalla-descanso {
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -2119,7 +2131,7 @@ textarea::placeholder {
 }
 /* Al llegar a cero el fondo vuelve de golpe al del rango. ESE corte es el
    aviso visual, y es el único que funciona igual en todos los teléfonos. */
-.descanso.listo {
+.pantalla-descanso.listo {
   background: var(--fondo);
 }
 .descanso-centro {
@@ -2167,8 +2179,8 @@ textarea::placeholder {
   color: var(--sub);
   text-align: center;
 }
-.descanso .boton-solido,
-.descanso .boton-texto {
+.pantalla-descanso .boton-solido,
+.pantalla-descanso .boton-texto {
   max-width: 340px;
 }
 /* los presets, en voz baja: no pueden competir con el número */
