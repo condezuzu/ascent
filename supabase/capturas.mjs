@@ -13,8 +13,13 @@ import { dirname, join } from 'node:path';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SALIDA = join(RAIZ, 'capturas');
-const PUERTO = Number(process.env.CAPTURAS_PUERTO ?? 3021);
-const BASE = `http://localhost:${PUERTO}`;
+// El puerto se BUSCA, no se fija. Antes era 3021 fijo y, si estaba ocupado, el
+// script se negaba a arrancar — cosa razonable, salvo que el que lo ocupaba era
+// casi siempre el `next start` de una corrida ANTERIOR de este mismo script que
+// no llegó a limpiarse. Tres corridas seguidas murieron así, y las dos primeras
+// veces me llevó un rato entender que las capturas que estaba mirando eran las
+// viejas.
+const PRIMER_PUERTO = Number(process.env.CAPTURAS_PUERTO ?? 3021);
 
 const correo = process.env.CONEXION_EMAIL;
 const clave = process.env.CONEXION_PASSWORD;
@@ -23,18 +28,28 @@ if (!correo || !clave) {
   process.exit(1);
 }
 
-// Si el puerto esta ocupado, Next se corre solo a otro y este script le termina
-// hablando a un servidor que no arranco el. Mejor cortar.
-const libre = await fetch(BASE, { redirect: 'manual' })
-  .then(() => false)
-  .catch(() => true);
-if (!libre) {
-  console.log(
-    `El puerto ${PUERTO} ya está ocupado. Cerrá lo que esté ahí, o corré con\n` +
-      `  CAPTURAS_PUERTO=3022 npm run capturas`
-  );
+// Se prueban unos cuantos hasta encontrar uno libre. Lo que NO se puede hacer
+// es dejar que Next elija solo: se corre a otro puerto en silencio y este
+// script termina hablándole a un servidor que no arrancó él —o peor, al de la
+// corrida anterior, con el código VIEJO— y las capturas salen bien y mienten.
+async function buscarPuerto() {
+  for (let p = PRIMER_PUERTO; p < PRIMER_PUERTO + 8; p++) {
+    const ocupado = await fetch(`http://localhost:${p}`, { redirect: 'manual' })
+      .then(() => true)
+      .catch(() => false);
+    if (!ocupado) return p;
+  }
+  return null;
+}
+const PUERTO = await buscarPuerto();
+if (PUERTO === null) {
+  console.log(`No hay ningun puerto libre entre ${PRIMER_PUERTO} y ${PRIMER_PUERTO + 7}.`);
   process.exit(1);
 }
+if (PUERTO !== PRIMER_PUERTO) {
+  console.log(`  (el ${PRIMER_PUERTO} estaba ocupado; uso el ${PUERTO})`);
+}
+const BASE = `http://localhost:${PUERTO}`;
 
 // BUILD DE PRODUCCION, NO `next dev`.
 //

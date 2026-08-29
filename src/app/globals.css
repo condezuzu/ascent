@@ -3179,6 +3179,12 @@ body.con-franja .pantalla {
 .accion-anclada > * {
   pointer-events: auto;
 }
+/* Lo secundario, debajo y en voz baja: §19.1 le da forma de texto subrayado
+   justamente para que no compita con el sólido de arriba. */
+.accion-anclada > * + * {
+  display: block;
+  margin: 10px auto 0;
+}
 /* Con la acción puesta, el final del contenido quedaría tapado. */
 body.con-accion .pantalla {
   padding-bottom: calc(120px + env(safe-area-inset-bottom));

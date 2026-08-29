@@ -14,14 +14,25 @@ import { useEffect } from 'react';
  * Hevy y Strong, y en un gimnasio —una mano ocupada, la otra transpirada—
  * importa más que en cualquier otra app.
  *
- * SOLO UNA A LA VEZ, y por eso este componente no acepta una lista: si hubiera
- * dos, ninguna sería la principal. Lo secundario se queda en el flujo del
- * contenido, como texto subrayado (§19.1).
+ * UNA SOLA PRINCIPAL, y por eso `children` es una y no una lista: si hubiera
+ * dos, ninguna sería la principal.
+ *
+ * Lo secundario puede venir con ella, en `secundaria`, y va debajo como texto
+ * subrayado (§19.1). Al principio lo dejé suelto en el flujo del contenido y
+ * quedó mal: sacar el botón principal del flujo dejó a "Anotar peso" flotando
+ * arriba de la tira semanal, en un lugar que no significaba nada. Las dos
+ * acciones de una pantalla se leen juntas o no se leen.
  *
  * CUANDO NO HAY ACCIÓN, NO HAY BARRA. No se deja un hueco reservado: una
  * franja vacía esperando un botón se lee como algo que se rompió.
  */
-export default function AccionPrincipal({ children }: { children: React.ReactNode }) {
+export default function AccionPrincipal({
+  children,
+  secundaria,
+}: {
+  children: React.ReactNode;
+  secundaria?: React.ReactNode;
+}) {
   // El padding de abajo del contenido lo pone una clase en el body, igual que
   // hace la franja de la sesión: `.pantalla` está anidada dentro de
   // `.deslizable`, así que no es hermana de esta barra y no hay ningún
@@ -31,5 +42,10 @@ export default function AccionPrincipal({ children }: { children: React.ReactNod
     return () => document.body.classList.remove('con-accion');
   }, []);
 
-  return <div className="accion-anclada">{children}</div>;
+  return (
+    <div className="accion-anclada">
+      {children}
+      {secundaria}
+    </div>
+  );
 }

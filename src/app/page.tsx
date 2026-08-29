@@ -456,21 +456,22 @@ export default function Principal() {
           </div>
         ) : (
           <>
-            <AccionPrincipal>
+            <AccionPrincipal
+              secundaria={
+                /* El peso NO pasa por registrar el día: pesarse no es haber
+                   ido al gimnasio. Va acá igual porque tiene que poder
+                   anotarse cualquier día, entrenes o no — y va PEGADO al
+                   principal porque suelto en el flujo quedaba flotando arriba
+                   de la tira semanal, sin significar nada. */
+                <button className="boton-texto" onClick={() => setPesoAbierto(true)}>
+                  {T.peso.anotarPeso}
+                </button>
+              }
+            >
               <button className="boton-solido" onClick={() => setHojaAbierta(true)}>
                 {T.inicio.registrarDia}
               </button>
             </AccionPrincipal>
-            {/* El peso NO pasa por registrar el día: pesarse no es haber ido
-                al gimnasio. Está acá igual porque tiene que poder anotarse
-                cualquier día, entrenes o no. */}
-            <button
-              className="boton-texto"
-              style={{ marginTop: 10 }}
-              onClick={() => setPesoAbierto(true)}
-            >
-              {T.peso.anotarPeso}
-            </button>
           </>
         )}
         {sesion.estado.aviso && <p className="ok-msg">{sesion.estado.aviso}</p>}
