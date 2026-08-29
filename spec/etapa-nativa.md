@@ -374,3 +374,36 @@ volvería a escribir en la app nativa. Se hace **una vez**, del otro lado.
 **Lo que sí queda hecho ahora:** el `check` de la columna admite dos valores,
 así que agregar el tercero es una migración de una línea cuando llegue el
 momento. No hay nada que deshacer.
+
+## 13d. PRIORIDAD — el descanso desde la pantalla bloqueada
+
+Pedido el 2026-08-29 después de dos días de gimnasio: **"no se ve el descanso
+fuera de la app" es lo que más molesta.** Va como prioridad de esta etapa, por
+encima del geofencing: el descanso pasa doce veces por sesión y la llegada una.
+
+**Lo que en web es imposible y no hay que seguir intentando.** Con la pantalla
+bloqueada, los temporizadores de una pestaña escondida se estrangulan a uno por
+minuto y después se congelan; las Notification Triggers (`showTrigger`) nunca se
+implementaron en ningún navegador; y Web Push necesita un servidor empujando a
+la hora exacta, que para un temporizador de tres minutos es una pieza de
+infraestructura entera con latencia que nadie garantiza.
+
+**Lo que sí se puede en nativo, y es lo que hay que construir:**
+
+- **Notificación local programada** (`expo-notifications`) al empezar el
+  descanso, cancelada al saltarlo. Suena con la pantalla bloqueada y sin
+  servidor. Es el piso.
+- **iOS: Live Activity.** La cuenta regresiva viva en la pantalla de bloqueo y
+  en la Dynamic Island, actualizándose sola. Es exactamente lo que se pidió:
+  *ver* el descanso sin desbloquear.
+- **Android: notificación de servicio en primer plano**, con la cuenta y un
+  botón "Saltar" que funciona desde la pantalla bloqueada. Ahí se puede además
+  **controlar**, no solo mirar.
+
+**La regla del §18.4 no cambia:** el timestamp de fin manda y el transcurrido se
+calcula contra el reloj. La Live Activity y la notificación son una VISTA de
+eso, nunca la fuente. Si se apoyaran en su propio contador, cerrar la app o
+dormir el teléfono daría dos números distintos para la misma cosa.
+
+Y sigue valiendo §13: la app tiene que funcionar entera sin el permiso de
+notificaciones. Quien no lo dé se queda con el aviso visual de hoy.
