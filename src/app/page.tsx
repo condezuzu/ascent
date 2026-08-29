@@ -307,7 +307,18 @@ export default function Principal() {
 
     const arrancar = () => {
       clearInterval(id);
-      if (!plataforma.ciclo.visible()) return;
+      const mirando = plataforma.ciclo.visible();
+      // SE ANOTA CUÁNDO EL VIGILANTE ARRANCA Y CUÁNDO SE DETIENE.
+      //
+      // Sin esto, un "no arrancó el cronómetro" tiene dos causas que se ven
+      // exactamente iguales en la bitácora —la app estaba guardada en el
+      // bolsillo, o estaba abierta y la lógica falló— y son arreglos opuestos:
+      // en la primera, bajar los siete minutos no cambia absolutamente nada.
+      //
+      // Es la línea que faltaba para poder contestar la pregunta en vez de
+      // adivinarla.
+      anotar(mirando ? 'vigilante: mirando' : 'vigilante: detenido (app escondida)', {});
+      if (!mirando) return;
       vigilar();
       id = setInterval(vigilar, 2 * 60 * 1000);
     };
