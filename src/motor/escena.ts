@@ -9,6 +9,7 @@ import {
 import { RANGOS_CFG, PLANETAS_CFG, ESTRELLAS_POR_RANGO, type ConfigCuerpo } from './cuerpos';
 import { paletaDe } from '@/lib/paletas';
 import { marca, medir } from '@/lib/medir';
+import { ALTURA, alturaDelPulso, siguePulsando } from '@/lib/pulso';
 import { plataforma } from '@/plataforma';
 
 export type OpcionesFondo = {
@@ -369,7 +370,21 @@ function crearPolvo(vacio: boolean): THREE.Points {
  * para soltarla. El renderer y el canvas son compartidos: no se destruyen,
  * se reusan en la próxima pantalla.
  */
-export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): (() => void) | null {
+/**
+ * Lo que devuelve montar el fondo: cómo soltarlo, y cómo hacerlo reaccionar.
+ *
+ * `pulso()` es el impacto de registrar el día (§ el momento 2): la luz del
+ * cuerpo sube y vuelve. Va acá adentro y no en CSS porque lo que tiene que
+ * brillar es el objeto RENDERIZADO, no una capa encima: un destello dibujado
+ * arriba se ve pegado, y todo el punto del gesto es que el día se sumó AL
+ * cuerpo.
+ */
+export type Montaje = {
+  soltar: () => void;
+  pulso: () => void;
+};
+
+export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje | null {
   const rr = obtenerRenderer();
   if (!rr) return null;
   const { renderer: rend, lienzo: canvas } = rr;
@@ -579,7 +594,63 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): (() => 
   const onResize = () => medirLienzo();
   window.addEventListener('resize', onResize);
 
-  return () => {
+  /**
+   * EL IMPACTO. Sube `uAtenua` y lo deja volver.
+   *
+   * La FORMA de la curva vive en `lib/pulso.ts` y está probada con números:
+   * acá quedó solo la parte que necesita el motor —sobre qué materiales
+   * aplicarla y cómo volver al reposo exacto—, porque la parte que se puede
+   * equivocar sin que se note es la aritmética, y esa ya no está acá.
+   *
+   * Se toca `uAtenua`, que ya existía para el fantasma de la mejor racha. Un
+   * uniform nuevo habría sido otro parámetro más en un shader que ya tiene
+   * veinte, para hacer exactamente lo mismo.
+   */
+  let pulsando = 0;
+
+  /** El brillo de reposo de cada material, para poder volver EXACTO. */
+  function baseDe(m: THREE.ShaderMaterial): number {
+    if (m.userData.atenuaBase === undefined) {
+      m.userData.atenuaBase = m.uniforms.uAtenua?.value ?? 1;
+    }
+    return m.userData.atenuaBase as number;
+  }
+
+  function pulso() {
+    // Deja rastro SIEMPRE, incluso cuando no se anima: si no, "el pulso no se
+    // ve" tiene dos causas —no llegó el aviso, o llegó y el motor está en modo
+    // sin animación— y desde afuera se ven exactamente iguales. Me pasó.
+    marca('ascent:pulso');
+    if (op.animar === false) return;
+    const yaEstaba = pulsando;
+    // Si ya hay uno corriendo se reinicia en vez de sumarse: dos toques
+    // seguidos no pueden dejar el objeto el doble de brillante.
+    pulsando = performance.now();
+    if (yaEstaba) return;
+
+    const paso = (ahora: number) => {
+      if (!vivo) return;
+      const t = ahora - pulsando;
+      const f = alturaDelPulso(t);
+      for (const m of materiales) {
+        if (!m.uniforms.uAtenua) continue;
+        m.uniforms.uAtenua.value = baseDe(m) * (1 + ALTURA * f);
+      }
+      if (siguePulsando(t)) {
+        requestAnimationFrame(paso);
+      } else {
+        // Se vuelve al valor EXACTO de reposo y no a `base * 1`: si no, cada
+        // pulso deja su pizca de error de coma flotante.
+        for (const m of materiales) {
+          if (m.uniforms.uAtenua) m.uniforms.uAtenua.value = baseDe(m);
+        }
+        pulsando = 0;
+      }
+    };
+    requestAnimationFrame(paso);
+  }
+
+  const soltar = () => {
     vivo = false;
     dejarDeMirar();
     window.removeEventListener('resize', onResize);
@@ -591,4 +662,6 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): (() => 
       if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x.dispose());
     });
   };
+
+  return { soltar, pulso };
 }

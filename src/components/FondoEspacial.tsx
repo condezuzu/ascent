@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { OpcionesFondo } from '@/motor/escena';
+import type { Montaje, OpcionesFondo } from '@/motor/escena';
+import { eventos } from '@/plataforma/eventos';
+import { PULSO } from '@/lib/pulso';
 import { aplicarTema } from '@/lib/paletas';
 import { marca, medir, instalarLector } from '@/lib/medir';
 import { veloDeRango, msDeTransicion } from '@/lib/atmosfera';
@@ -27,6 +29,9 @@ export default function FondoEspacial(
   op: OpcionesFondo & { velo?: number; atmosfera?: boolean }
 ) {
   const ref = useRef<HTMLDivElement>(null);
+  // El impacto de registrar el día llega por el bus de eventos: quien lo
+  // dispara es la pantalla, y la pantalla no tiene por qué conocer el motor.
+  const pulsoRef = useRef<(() => void) | null>(null);
   const [listo, setListo] = useState(false);
   // `null` = todavía no se sabe de dónde viene; se pinta el velo de destino.
   const [veloVivo, setVeloVivo] = useState<number | null>(null);
@@ -39,6 +44,8 @@ export default function FondoEspacial(
   useEffect(() => {
     aplicarTema(op.rango, op.planeta);
   }, [op.rango, op.planeta]);
+
+  useEffect(() => eventos.escuchar(PULSO, () => pulsoRef.current?.()), []);
 
   // ---- el velo que se abre y se cierra ----
   useEffect(() => {
@@ -97,7 +104,7 @@ export default function FondoEspacial(
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const animar = op.animar !== false && !reduceMotion;
 
-    let soltar: (() => void) | null = null;
+    let montaje: Montaje | null = null;
     let cancelado = false;
 
     marca('ascent:motor-import-inicio');
@@ -107,7 +114,8 @@ export default function FondoEspacial(
       medir('ascent:motor-import', 'ascent:motor-import-inicio', 'ascent:motor-import-fin');
       if (cancelado) return;
       marca('ascent:motor-montar-inicio');
-      soltar = montarFondo(cont, { ...op, animar });
+      montaje = montarFondo(cont, { ...op, animar });
+      pulsoRef.current = montaje?.pulso ?? null;
       marca('ascent:motor-montar-fin');
       medir('ascent:motor-montar', 'ascent:motor-montar-inicio', 'ascent:motor-montar-fin');
       medir('ascent:motor-total', 'ascent:motor-import-inicio', 'ascent:motor-montar-fin');
@@ -116,7 +124,8 @@ export default function FondoEspacial(
 
     return () => {
       cancelado = true;
-      soltar?.();
+      montaje?.soltar();
+      pulsoRef.current = null;
       setListo(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

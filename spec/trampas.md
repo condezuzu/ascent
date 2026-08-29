@@ -819,3 +819,34 @@ calendario: sesenta segundos esperando algo imposible y la captura salteada, en
 silencio. Me hizo buscarle la culpa a la app un buen rato.
 → **Regla:** `listo` tiene que existir apenas carga la ruta. Lo que aparece
 después del clic se comprueba en el `previo`, no ahí.
+
+**El timestamp de `requestAnimationFrame` puede ser ANTERIOR al
+`performance.now()` de un instante antes.** Es el tiempo del COMIENZO del
+cuadro, no el del momento en que corre el callback. Medido acá: el primer
+cuadro llegaba con t = -3 ms.
+
+Costó tres tandas de capturas. El pulso del día calculaba su altura como
+`t / subida`, así que con t negativo salía **negativa**: el objeto se
+oscurecía un 2% en vez de brillar. Y como la condición de seguir era
+`altura > 0`, el bucle se cortaba en el primer cuadro y lo dejaba apagado para
+siempre. El pulso existía, llegaba al motor —probado con una marca de
+performance— y hacía exactamente lo contrario de lo que decía hacer.
+→ **Regla:** acotar el tiempo con `Math.max(0, …)` en el callback, y decidir si
+la animación sigue **por el tiempo, nunca por el valor**: el valor vale 0 en el
+primer cuadro Y en el último, así que como condición confunde el arranque con
+el final. Y la curva va a una función pura, aparte del bucle, donde se puede
+probar con números.
+
+**El peso de un PNG no mide brillo.** Comparé capturas por `length` dos veces
+para saber si algo se había iluminado, y las dos veces me dio al revés: una
+imagen más brillante puede comprimir mejor o peor según el ruido. Y el
+`drawImage` de un canvas de WebGL devuelve negro sin `preserveDrawingBuffer`.
+→ **Regla:** para medir brillo, la captura de Playwright vuelve al navegador
+como `data:` URL, se dibuja en un canvas 2D y se promedian los píxeles. Y
+siempre contra una **referencia de deriva**: dos tomas seguidas SIN el efecto,
+para saber cuánto se mueve la escena sola.
+
+**Una animación de medio segundo no se puede fotografiar disparándola y
+sacando la foto.** `page.screenshot()` tarda más que el efecto.
+→ **Regla:** mantenerla encendida —volver a dispararla cada 120 ms— durante la
+captura, y soltarla para la foto de control.

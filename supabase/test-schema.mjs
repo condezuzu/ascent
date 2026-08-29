@@ -65,6 +65,13 @@ import {
   siguiente,
   sumar,
 } from '../src/lib/bloques.ts';
+import {
+  alturaDelPulso,
+  siguePulsando,
+  SUBIDA_MS,
+  VUELTA_MS,
+  DURACION_MS,
+} from '../src/lib/pulso.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -3047,6 +3054,45 @@ console.log('\n48. El bloque: qué estás haciendo y cuántas te propusiste');
       { ejercicio: 'press_banca', series: 2 },
     ]);
   }
+}
+
+
+// =====================================================================
+console.log('\n49. El pulso del dia: la curva');
+{
+  // EL BUG QUE ESTO GUARDA. El timestamp de requestAnimationFrame es el del
+  // COMIENZO del cuadro y puede ser anterior al performance.now() de un
+  // instante antes: medido, llegaba con t = -3 ms. La primera version daba
+  // altura NEGATIVA —el objeto se oscurecia en vez de brillar— y como la
+  // condicion de seguir era "altura > 0", cortaba en el primer cuadro y lo
+  // dejaba apagado para siempre.
+  chequear('un tiempo NEGATIVO da cero, no un valor negativo', alturaDelPulso(-3), 0);
+  chequear('y en cero tambien es cero', alturaDelPulso(0), 0);
+  chequear('pero el pulso NO se da por terminado en el primer cuadro', siguePulsando(-3), true);
+
+  // La forma.
+  chequear('a mitad de la subida va por la mitad', alturaDelPulso(SUBIDA_MS / 2), 0.5);
+  chequear('en el pico vale uno', alturaDelPulso(SUBIDA_MS), 1);
+  chequear('a mitad de la vuelta va por la mitad', alturaDelPulso(SUBIDA_MS + VUELTA_MS / 2), 0.5);
+
+  // El final: cero exacto y sin residuos.
+  chequear('al final vale cero exacto', alturaDelPulso(DURACION_MS), 0);
+  chequear('y mucho despues tambien', alturaDelPulso(DURACION_MS * 10), 0);
+  chequear('y ahi si se da por terminado', siguePulsando(DURACION_MS), false);
+
+  // Nunca se pasa de rango, para cualquier t.
+  {
+    let fuera = 0;
+    for (let t = -100; t <= DURACION_MS + 100; t += 7) {
+      const f = alturaDelPulso(t);
+      if (!(f >= 0 && f <= 1)) fuera++;
+    }
+    chequear('la altura NUNCA sale de 0..1', fuera, 0);
+  }
+
+  // Basura de entrada no puede apagar el objeto.
+  chequear('NaN da cero', alturaDelPulso(NaN), 0);
+  chequear('infinito da cero', alturaDelPulso(Infinity), 0);
 }
 
 

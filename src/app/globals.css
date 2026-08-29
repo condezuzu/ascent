@@ -3070,3 +3070,43 @@ body.con-franja .pantalla {
   display: block;
   margin: 14px auto 0;
 }
+
+/* ---------- el día se vuelve materia ----------
+   Un punto de luz sube desde abajo hacia el cuerpo celeste de la esquina y se
+   absorbe. Un punto, no confeti: la tesis de la app es que cada día es un poco
+   de masa que se acumula, y el confeti diría "ganaste" en vez de "esto se
+   sumó". El impacto —la luz del objeto subiendo— lo hace el motor, porque lo
+   que tiene que brillar es el cuerpo renderizado y no una capa encima. */
+.dia-chispa {
+  position: fixed;
+  /* Sale de abajo al centro, que es de donde viene la hoja que se acaba de
+     cerrar, y va a la esquina donde vive el cuerpo en Inicio. */
+  left: 50%;
+  bottom: 22%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pal-claro);
+  box-shadow: 0 0 12px 3px color-mix(in srgb, var(--pal-claro) 55%, transparent);
+  z-index: 30;
+  pointer-events: none;
+  /* ACELERA: está siendo atraído, no flotando. Un ease-out se leería como algo
+     que se posa; esto tiene que leerse como algo que cae hacia el cuerpo. */
+  animation: dia-viaja cubic-bezier(0.55, 0, 0.85, 0.4) forwards;
+}
+@keyframes dia-viaja {
+  0% {
+    transform: translate(-50%, 0) scale(0.4);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    /* El destino es la esquina de abajo a la derecha, donde `FondoEspacial`
+       pone el grupo con `esquina="abajo-derecha"`. En vw/vh para que siga al
+       cuerpo en cualquier ancho de pantalla. */
+    transform: translate(calc(-50% + 32vw), 12vh) scale(1.6);
+    opacity: 0;
+  }
+}

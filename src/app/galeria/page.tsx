@@ -10,6 +10,8 @@ import SubidaRango from '@/components/SubidaRango';
 import Insignia from '@/components/Insignia';
 import { PLANETAS, RANGOS } from '@/lib/rangos';
 import { veloDeRango } from '@/lib/atmosfera';
+import { eventos } from '@/plataforma/eventos';
+import { PULSO } from '@/lib/pulso';
 
 export default function Galeria() {
   const [rango, setRango] = useState(4);
@@ -116,6 +118,16 @@ export default function Galeria() {
               onClick={() => setConVelo((v) => !v)}
             >
               Velo del rango {conVelo ? '✓' : ''}
+            </button>
+            {/* El impacto de registrar el día. Dura medio segundo y en la app
+                pasa una vez por día: mirarlo acá es la única forma de
+                calibrarlo sin registrar días de mentira. */}
+            <button
+              className="boton-fantasma"
+              style={{ width: 'auto', padding: '8px 12px', fontSize: 13 }}
+              onClick={() => eventos.emitir(PULSO)}
+            >
+              Pulso del día
             </button>
           </div>
         </div>

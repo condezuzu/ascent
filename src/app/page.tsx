@@ -27,6 +27,7 @@ import SubidaRango from '@/components/SubidaRango';
 import ResumenSesion from '@/components/ResumenSesion';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import Bloque from '@/components/Bloque';
+import DiaSumado from '@/components/DiaSumado';
 import NumeroQueCuenta from '@/components/NumeroQueCuenta';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
@@ -61,6 +62,8 @@ export default function Principal() {
   // El día entró solo Y esta persona todavía no lo vio. Es lo que convierte
   // "Día registrado" —idéntico a haberlo apretado— en un descubrimiento.
   const [llegadaNueva, setLlegadaNueva] = useState(false);
+  // El día que se acaba de sumar, para la animación. Ver `DiaSumado`.
+  const [sumando, setSumando] = useState(false);
   const [perdida, setPerdida] = useState(false);
   // El unico momento en que es probable que la persona este parada en el
   // gimnasio es JUSTO despues de registrar el dia. Ahi se pide el punto, y
@@ -286,6 +289,10 @@ export default function Principal() {
 
   function alConfirmar(r: ResultadoRegistro | null) {
     setHojaAbierta(false);
+    // Solo cuando el día ACABA de entrar. Si `r` viene en null es que ya
+    // estaba y solo se le sumó una foto o el peso: ahí no se sumó ninguna
+    // masa, y animar igual sería festejar algo que no pasó.
+    if (r) setSumando(true);
     // La animación se dispara SOLO después de que la base confirmó. Viene en
     // null cuando el día ya estaba y solo se le sumó foto o peso: ahí no hay
     // subida de rango que festejar.
@@ -578,6 +585,8 @@ export default function Principal() {
           alCerrar={() => setCierre(null)}
         />
       )}
+
+      {sumando && <DiaSumado alTerminar={() => setSumando(false)} />}
 
       <Nav />
     </>
