@@ -13,6 +13,7 @@ import { hoyISO } from '@/lib/fechas';
 import { eventos } from '@/plataforma/eventos';
 import { plataforma } from '@/plataforma';
 import ResumenSesion from './ResumenSesion';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Perfil } from '@/lib/tipos';
 
 /** Aviso de que el día de hoy cambió, para que la pantalla que lo muestre se refresque. */
@@ -39,10 +40,50 @@ export const DIA_CAMBIO = 'ascent:dia-cambio';
  * NO DIBUJA NADA salvo el resumen del final: cuando la sesión la cierra la
  * salida del gimnasio, ese resumen tiene que aparecer estés donde estés, y
  * quien sabe que se cerró es este.
+ *
+ * VIENE EN DOS PARTES, y no por gusto. Este de afuera solo averigua si hay
+ * alguien con un punto marcado; el de adentro es el que usa `usarSesion`, y
+ * solo se monta cuando ya se sabe que sí.
+ *
+ * Al mudarlo desde Inicio quedó montado en TODAS las pantallas, incluida la de
+ * entrada — y ahí `usarSesion` preguntaba `mi_sesion` sin sesión y se comía un
+ * 401 en cada carga. Lo encontró el informe de `capturas`, que mira las
+ * respuestas fallidas justamente para esto. Un hook no se puede llamar bajo
+ * condición, así que la condición tiene que ser el montaje.
  */
 export default function VigilanteDeGimnasio() {
   const [supabase] = useState(() => crearCliente());
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+
+  // Solo lo que hace falta para mirar: el punto y el radio. No se trae el
+  // perfil entero porque esto vive en todas las pantallas y no tiene por qué
+  // pagar una consulta grande en cada una.
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      const user = await miUsuario(supabase);
+      // Sin sesión no se pregunta nada. En la pantalla de entrada eso es lo
+      // normal, no un error.
+      if (!vivo || !user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, gimnasio_lat, gimnasio_lon, gimnasio_radio')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (vivo && data) setPerfil(data as Perfil);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [supabase]);
+
+  // Sin punto marcado no hay nada que vigilar, y montar el hook de sesión
+  // costaría un `mi_sesion` por navegación para nada.
+  if (!perfil?.gimnasio_lat) return null;
+  return <Mirando supabase={supabase} perfil={perfil} />;
+}
+
+function Mirando({ supabase, perfil }: { supabase: SupabaseClient; perfil: Perfil }) {
   const [cierre, setCierre] = useState<CierreDeSesion | null>(null);
 
   const sesion = usarSesion();
@@ -57,26 +98,6 @@ export default function VigilanteDeGimnasio() {
   // el gimnasio: `registrar_dia` es idempotente, pero pedirlo cada dos minutos
   // durante una hora es un viaje de red por nada.
   const diaRegistrado = useRef<string | null>(null);
-
-  // Solo lo que hace falta para mirar: el punto y el radio. No se trae el
-  // perfil entero porque este componente vive en TODAS las pantallas y no
-  // tiene por qué pagar una consulta grande en cada una.
-  useEffect(() => {
-    let vivo = true;
-    (async () => {
-      const user = await miUsuario(supabase);
-      if (!vivo || !user) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, gimnasio_lat, gimnasio_lon, gimnasio_radio')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (vivo && data) setPerfil(data as Perfil);
-    })();
-    return () => {
-      vivo = false;
-    };
-  }, [supabase]);
 
   const mirarYActuar = useCallback(
     async (perfilAhora: Perfil) => {
@@ -185,7 +206,6 @@ export default function VigilanteDeGimnasio() {
    * el que decide si esa mirada se paga o no.
    */
   useEffect(() => {
-    if (!perfil?.gimnasio_lat) return;
     let id: ReturnType<typeof setInterval> | undefined;
 
     const arrancar = () => {
@@ -208,7 +228,7 @@ export default function VigilanteDeGimnasio() {
       clearInterval(id);
       dejarDeMirar();
     };
-  }, [perfil?.gimnasio_lat, vigilar]);
+  }, [vigilar]);
 
   if (!cierre) return null;
   return (
