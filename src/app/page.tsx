@@ -9,15 +9,13 @@ import { planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango } from '@/l
 import { citaDelDia } from '@/lib/frases';
 import { hayPresagio } from '@/lib/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
-import { ESPERA_LLEGADA_MS } from '@/lib/reglas';
 import { guardarPerfilCache, leerPerfilCache } from '@/lib/cache';
 import { marca } from '@/lib/medir';
 import { sincronizarZona } from '@/lib/zona';
-import { marcarPunto, mirarElGimnasio, registrarPorSenal } from '@/lib/gimnasio';
-import { decidir } from '@/lib/llegada';
-import { anotar } from '@/lib/bitacora';
+import { marcarPunto } from '@/lib/gimnasio';
 import { plataforma } from '@/plataforma';
-import { guardarVigilancia, leerVigilancia } from '@/lib/sesionCache';
+import { eventos } from '@/plataforma/eventos';
+import { DIA_CAMBIO } from '@/components/VigilanteDeGimnasio';
 import { lineaDeMarcas } from '@/lib/fuerza';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@/lib/tipos';
 import type { CierreDeSesion } from '@/lib/usarSesion';
@@ -197,139 +195,13 @@ export default function Principal() {
    * inconsistencia: el día es un hecho —fuiste— y la sesión es una medición,
    * que si arranca antes de que empieces a entrenar mide mal.
    */
-  const vigilar = useCallback(async () => {
-    const perfilAhora = perfilRef.current;
-    if (!perfilAhora?.gimnasio_lat) return;
+  // EL VIGILANTE DEL GIMNASIO SE MUDÓ A `VigilanteDeGimnasio`, que vive en el
+  // armazón. Acá adentro solo miraba estando en esta pestaña: abrir la app en
+  // Stats o en el Álbum dejaba el automático apagado, y llegar al gimnasio no
+  // es un asunto de una pantalla. Esta pantalla ahora solo ESCUCHA que el día
+  // cambió, que es lo único que le importa.
+  useEffect(() => eventos.escuchar(DIA_CAMBIO, () => cargar()), [cargar]);
 
-    // UNA SOLA MIRADA A LA VEZ. El intervalo es de dos minutos pero leer el
-    // GPS puede tardar segundos, y volver a la pantalla dispara otra mirada
-    // al instante. Dos en paralelo pueden decidir las dos "arrancar", y la
-    // segunda `iniciar_sesion` ABANDONA la sesión que acababa de crear la
-    // primera: queda una sesión abandonada, sin duración, ensuciando Stats.
-    if (mirando.current) return;
-    mirando.current = true;
-    try {
-      await mirarYActuar(perfilAhora);
-    } finally {
-      // En `finally` y no al final del cuerpo: si algo tira, sin esto el
-      // vigilante queda trabado para siempre y el automático deja de andar
-      // hasta recargar la app.
-      mirando.current = false;
-    }
-  }, [supabase, cargar]);
-
-  const mirarYActuar = useCallback(async (perfilAhora: Perfil) => {
-    const s = sesionRef.current;
-    const vigilancia = await leerVigilancia();
-
-    // El GPS no es gratis. Si ya sabemos que está en el gimnasio, o si hay una
-    // sesión que puede tener que cerrarse, hay algo que hacer pronto y vale
-    // mirar seguido. Si está en cualquier otro lado, mirar de nuevo en dos
-    // minutos no puede decir nada nuevo: para cambiar de respuesta tendría que
-    // haber caminado hasta el gimnasio.
-    const hayAlgoQueHacer = !!vigilancia || s.estado.porUbicacion;
-    const CADA = hayAlgoQueHacer ? 0 : 5 * 60 * 1000;
-    if (Date.now() - ultimaMirada.current < CADA) return;
-    ultimaMirada.current = Date.now();
-
-    const { adentro, medidoEn, metros, precision } = await mirarElGimnasio(perfilAhora);
-
-    // Todo esto queda anotado en el teléfono porque el único lugar donde se
-    // puede probar es caminando hasta un gimnasio, y ahí nadie abre una
-    // consola. Se mira después, desde Ajustes.
-    await anotar('miré', {
-      adentro: adentro === null ? 'no sé' : adentro,
-      metros,
-      precision,
-      radio: perfilAhora.gimnasio_radio,
-      edadDelPunto: Math.round((Date.now() - medidoEn) / 1000) + 's',
-    });
-
-    if (adentro && !logsRef.current.some((l) => l.fecha === hoyISO())) {
-      const r = await registrarPorSenal(supabase, 'ubicacion');
-      await anotar('registré el día', { entró: r.registrado, yaEstaba: r.yaEstaba });
-      // Solo se recarga si de verdad entró: si estaba bloqueado por la guarda
-      // de zona o ya estaba, no hay nada nuevo que mostrar.
-      if (r.registrado) cargar();
-    }
-
-    const decision = decidir(adentro, medidoEn, Date.now(), vigilancia, {
-      corriendo: s.estado.corriendo,
-      porUbicacion: s.estado.porUbicacion,
-    });
-    if (decision.hacer === 'arrancar') {
-      await anotar('arranco la sesión', { llegada: new Date(decision.desde).toLocaleTimeString() });
-      const salio = await s.empezar({ desde: decision.desde, origen: 'ubicacion' });
-      // La visita se da por usada SOLO si el arranque llegó. Muchos gimnasios
-      // son un subsuelo sin señal: si se marcara igual, un fallo de red de un
-      // segundo dejaría a ese día sin sesión para siempre, porque no vuelve a
-      // intentar hasta la próxima visita. Así reintenta en dos minutos.
-      await guardarVigilancia(salio ? decision.vigilancia : { ...decision.vigilancia, arranco: false });
-      if (!salio) await anotar('no pude arrancar, reintento', {});
-    } else if (decision.hacer === 'terminar') {
-      await anotar('cierro la sesión', { salida: new Date(decision.hasta).toLocaleTimeString() });
-      const cerro = await s.terminar({ hasta: decision.hasta });
-      // El resumen también va cuando la cierra la salida del gimnasio: es el
-      // MISMO momento —terminaste de entrenar—, y es justo el caso en que la
-      // persona no tocó nada y merece enterarse de lo que quedó guardado.
-      if (cerro && !cerro.deshizoElDia) setCierre(cerro);
-      // Y la visita se borra SOLO si el cierre llegó: adentro tiene la hora de
-      // salida, que es lo único que sabe cuándo se fue de verdad.
-      await guardarVigilancia(cerro ? null : vigilancia);
-      if (!cerro) await anotar('no pude cerrar, reintento', {});
-    } else {
-      await guardarVigilancia(decision.vigilancia);
-    }
-
-
-    if (decision.hacer === 'nada' && decision.vigilancia && !decision.vigilancia.arranco) {
-      const faltan = Math.max(
-        0,
-        Math.round((ESPERA_LLEGADA_MS - (Date.now() - decision.vigilancia.desde)) / 1000)
-      );
-      await anotar('esperando', { faltanSegundos: faltan });
-    }
-  }, [supabase, cargar]);
-
-  /**
-   * Cuándo mirar. En web esto solo pasa CON LA APP ABIERTA: el navegador no
-   * despierta a nadie, y no hay forma de taparlo. Se mira al abrir, al volver
-   * a la pantalla y cada dos minutos mientras se la esté viendo — con el
-   * freno de arriba, que es el que decide si esa mirada se paga o no.
-   *
-   * Con la pestaña escondida no corre: cuatro lecturas de GPS por hora para
-   * una pantalla que nadie está mirando es la misma clase de desperdicio que
-   * el AudioContext despierto durante el descanso.
-   */
-  useEffect(() => {
-    if (!perfil?.gimnasio_lat) return;
-    let id: ReturnType<typeof setInterval> | undefined;
-
-    const arrancar = () => {
-      clearInterval(id);
-      const mirando = plataforma.ciclo.visible();
-      // SE ANOTA CUÁNDO EL VIGILANTE ARRANCA Y CUÁNDO SE DETIENE.
-      //
-      // Sin esto, un "no arrancó el cronómetro" tiene dos causas que se ven
-      // exactamente iguales en la bitácora —la app estaba guardada en el
-      // bolsillo, o estaba abierta y la lógica falló— y son arreglos opuestos:
-      // en la primera, bajar los siete minutos no cambia absolutamente nada.
-      //
-      // Es la línea que faltaba para poder contestar la pregunta en vez de
-      // adivinarla.
-      anotar(mirando ? 'vigilante: mirando' : 'vigilante: detenido (app escondida)', {});
-      if (!mirando) return;
-      vigilar();
-      id = setInterval(vigilar, 2 * 60 * 1000);
-    };
-
-    arrancar();
-    const dejarDeMirar = plataforma.ciclo.alCambiar(arrancar);
-    return () => {
-      clearInterval(id);
-      dejarDeMirar();
-    };
-  }, [perfil?.gimnasio_lat, vigilar]);
 
   // Al volver a entrar, la pantalla sale con la racha y la paleta de la
   // última visita mientras la red confirma. Nada de esperar en blanco.

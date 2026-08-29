@@ -16,7 +16,27 @@ export const AVISO = 'ascent:sesion-cambio';
 
 const avisar = () => eventos.emitir(AVISO);
 
-export type SesionCacheada = { inicio: string; desfasaje: number };
+/**
+ * Lo que se guarda de la sesión en curso.
+ *
+ * `porUbicacion`, `series` e `id` son OPCIONALES a propósito: una caché
+ * escrita por una versión anterior sigue siendo válida, solo que sin esos
+ * campos. Si fueran obligatorios, actualizar la app le borraría la sesión en
+ * curso a quien estuviera entrenando justo en ese momento.
+ *
+ * POR QUÉ ESTÁN. Ahora hay DOS cosas mirando la sesión a la vez —la pantalla y
+ * el vigilante del gimnasio, que vive en el armazón— y se sincronizan por esta
+ * caché más un aviso. Con solo `inicio` y `desfasaje`, la segunda se enteraba
+ * de que había sesión pero no de si había arrancado sola ni de cuántas series
+ * llevaba, así que decidía con datos viejos.
+ */
+export type SesionCacheada = {
+  inicio: string;
+  desfasaje: number;
+  porUbicacion?: boolean;
+  series?: number;
+  id?: string | null;
+};
 
 /**
  * Caché de la sesión en curso, en el propio teléfono.
@@ -53,6 +73,23 @@ export async function leerSesionCache(): Promise<SesionCacheada | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Cambiar UNA cosa de la sesión cacheada sin tocar el resto.
+ *
+ * Existe por el contador de series: subirlo tenía que actualizar la caché para
+ * que la otra instancia del hook lo vea, y reescribir el objeto entero desde
+ * ahí obligaba a acordarse del `inicio` y del `desfasaje` — o sea, a poder
+ * borrarlos por olvido en el archivo equivocado.
+ *
+ * Si no hay sesión guardada no hace nada: no se inventa una a partir de un
+ * cambio parcial.
+ */
+export async function actualizarSesionCache(parcial: Partial<SesionCacheada>) {
+  const actual = await leerSesionCache();
+  if (!actual) return;
+  await guardarSesionCache({ ...actual, ...parcial });
 }
 
 export async function borrarSesionCache() {

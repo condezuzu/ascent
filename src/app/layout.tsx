@@ -3,6 +3,7 @@ import { Inter, Outfit, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import RegistroPWA from '@/components/RegistroPWA';
 import VigilanteDeSesion from '@/components/VigilanteDeSesion';
+import VigilanteDeGimnasio from '@/components/VigilanteDeGimnasio';
 import AvisoDeFallo from '@/components/AvisoDeFallo';
 import MedirPantallas from '@/components/MedirPantallas';
 
@@ -63,6 +64,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             Va acá y no en una pantalla porque el deslogueo puede pasar en
             cualquiera. */}
         <VigilanteDeSesion />
+        {/* Mira si llegaste al gimnasio. Va acá y no en Inicio porque llegar
+            al gimnasio no es un asunto de una pantalla: adentro de Inicio solo
+            miraba estando en esa pestaña. */}
+        <VigilanteDeGimnasio />
         <AvisoDeFallo />
         {/* Mide en TU teléfono cuánto tarda cada pantalla y lo deja en la
             bitácora. Desde acá no se puede medir un teléfono, y la CPU frenada

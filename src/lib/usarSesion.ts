@@ -15,6 +15,7 @@ import {
   duracionPredeterminada,
   guardarDuracionDeSesion,
   guardarSesionCache,
+  actualizarSesionCache,
   leerDuracionDeSesion,
   leerSesionCache,
   leerVigilancia,
@@ -128,6 +129,16 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const c = await leerSesionCache();
     setInicio(c?.inicio ?? null);
     setDesfasaje(c?.desfasaje ?? 0);
+    // También lo que hace falta para DECIDIR, no solo para pintar: si la
+    // sesión arrancó sola hay que poder cerrarla al salir, y eso lo mira el
+    // vigilante, que es otra instancia de este mismo hook.
+    if (c) {
+      setPorUbicacion(c.porUbicacion ?? false);
+      setIdSesion(c.id ?? null);
+      // Las series NO se pisan si hay toques esperando en la cola: ahí el
+      // número bueno es el que está en pantalla, no el que se guardó.
+      if (c.series !== undefined && (await cuantasPendientes()) === 0) setSeries(c.series);
+    }
     setDescanso(await leerDescanso());
   }, []);
 
@@ -136,7 +147,13 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const { data } = await supabase.rpc('mi_sesion');
     const s = data as (SesionViva & { series?: number; origen?: OrigenSesion }) | null;
     if (s?.corriendo && s.inicio) {
-      const g = { inicio: s.inicio, desfasaje: desfasajeDelReloj(s.ahora) };
+      const g = {
+        inicio: s.inicio,
+        desfasaje: desfasajeDelReloj(s.ahora),
+        porUbicacion: s.origen === 'ubicacion',
+        series: s.series ?? 0,
+        id: s.id ?? null,
+      };
       guardarSesionCache(g);
       setInicio(g.inicio);
       setDesfasaje(g.desfasaje);
@@ -224,12 +241,21 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       yaEstaba?: boolean;
       registro: ResultadoRegistro | null;
     };
-    guardarSesionCache({ inicio: r.inicio, desfasaje: desfasajeDelReloj(r.ahora) });
+    const porUbi = (r.origen ?? opciones?.origen) === 'ubicacion';
+    // La caché lleva TODO lo que hace falta para decidir, no solo para pintar:
+    // la otra instancia del hook —la del vigilante— se entera por acá.
+    guardarSesionCache({
+      inicio: r.inicio,
+      desfasaje: desfasajeDelReloj(r.ahora),
+      porUbicacion: porUbi,
+      series: r.series ?? 0,
+      id: r.id ?? null,
+    });
     setInicio(r.inicio);
     setDesfasaje(desfasajeDelReloj(r.ahora));
     setSeries(r.series ?? 0);
     setIdSesion(r.id ?? null);
-    setPorUbicacion((r.origen ?? opciones?.origen) === 'ubicacion');
+    setPorUbicacion(porUbi);
     // La base ya no abandona la que estaba corriendo, la devuelve. Se dice,
     // porque si no parecería que arrancó una nueva y el número del cronómetro
     // saldría de la nada.
@@ -305,6 +331,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     setDescanso(guardarDescanso(seg));
     const nuevas = series + 1;
     setSeries(nuevas);
+    await actualizarSesionCache({ series: nuevas });
     if (idSesion) await encolar(supabase, { rpc: 'fijar_series', args: { p_sesion: idSesion, p_series: nuevas } });
   }
 
@@ -316,6 +343,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   async function deshacerSerie() {
     const nuevas = Math.max(0, series - 1);
     setSeries(nuevas);
+    await actualizarSesionCache({ series: nuevas });
     if (idSesion) await encolar(supabase, { rpc: 'fijar_series', args: { p_sesion: idSesion, p_series: nuevas } });
   }
 
