@@ -7,6 +7,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { enDias, hoyISO, restarDias, deISO } from '@/lib/fechas';
 import { planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango } from '@/lib/rangos';
 import { citaDelDia } from '@/lib/frases';
+import { hayPresagio } from '@/lib/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
 import { ESPERA_LLEGADA_MS } from '@/lib/reglas';
 import { guardarPerfilCache, leerPerfilCache } from '@/lib/cache';
@@ -19,11 +20,15 @@ import { plataforma } from '@/plataforma';
 import { guardarVigilancia, leerVigilancia } from '@/lib/sesionCache';
 import { lineaDeMarcas } from '@/lib/fuerza';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@/lib/tipos';
+import type { CierreDeSesion } from '@/lib/usarSesion';
 import FondoEspacial from '@/components/FondoEspacial';
 import TiraSemanal from '@/components/TiraSemanal';
 import RegistrarSheet from '@/components/RegistrarSheet';
 import PesoSheet from '@/components/PesoSheet';
 import SubidaRango from '@/components/SubidaRango';
+import ResumenSesion from '@/components/ResumenSesion';
+import GloboPrimeraVez from '@/components/GloboPrimeraVez';
+import NumeroQueCuenta from '@/components/NumeroQueCuenta';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
@@ -33,6 +38,12 @@ import { usarSesion } from '@/lib/usarSesion';
 import { T } from '@/textos';
 
 type LineaSocial = { username: string; racha: number } | null;
+
+// El último día que entró SOLO y que esta persona ya vio. Guarda la fecha, no
+// un booleano: si guardara "ya lo vi" habría que acordarse de borrarlo cada
+// medianoche, y el día que fallara ese borrado el mensaje no volvería a
+// aparecer nunca más.
+const CLAVE_LLEGADA_VISTA = 'ascent:llegada-vista';
 
 export default function Principal() {
   const router = useRouter();
@@ -46,6 +57,11 @@ export default function Principal() {
   const [pesoAbierto, setPesoAbierto] = useState(false);
   const [descansoAbierto, setDescansoAbierto] = useState(false);
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
+  // Lo que dejó la sesión al cerrarse, para el resumen del final.
+  const [cierre, setCierre] = useState<CierreDeSesion | null>(null);
+  // El día entró solo Y esta persona todavía no lo vio. Es lo que convierte
+  // "Día registrado" —idéntico a haberlo apretado— en un descubrimiento.
+  const [llegadaNueva, setLlegadaNueva] = useState(false);
   const [perdida, setPerdida] = useState(false);
   // El unico momento en que es probable que la persona este parada en el
   // gimnasio es JUSTO despues de registrar el dia. Ahi se pide el punto, y
@@ -253,6 +269,10 @@ export default function Principal() {
     } else if (decision.hacer === 'terminar') {
       await anotar('cierro la sesión', { salida: new Date(decision.hasta).toLocaleTimeString() });
       const cerro = await s.terminar({ hasta: decision.hasta });
+      // El resumen también va cuando la cierra la salida del gimnasio: es el
+      // MISMO momento —terminaste de entrenar—, y es justo el caso en que la
+      // persona no tocó nada y merece enterarse de lo que quedó guardado.
+      if (cerro && !cerro.deshizoElDia) setCierre(cerro);
       // Y la visita se borra SOLO si el cierre llegó: adentro tiene la hora de
       // salida, que es lo único que sabe cuándo se fue de verdad.
       await guardarVigilancia(cerro ? null : vigilancia);
@@ -368,6 +388,11 @@ export default function Principal() {
       ? { rango: rangoMejor, planeta: planetaMejor }
       : null;
 
+  // Los últimos días antes de subir: algo sin forma, detrás. No dice qué
+  // viene ni cuántos días faltan; solo que hay algo. Le gana al fantasma
+  // cuando los dos darían (ver escena.ts).
+  const presagio = hayPresagio(racha);
+
   const cita = citaDelDia(perfil.rango_actual, `${hoy}-${perfil.id}`);
 
   // El aviso solo aparece cuando falta poco de verdad, no a la mañana.
@@ -416,7 +441,12 @@ export default function Principal() {
         vacio={sinNada}
         reposo={esDescanso}
         fantasma={fantasma}
+        presagio={presagio}
         esquina="abajo-derecha"
+        // Inicio es la ÚNICA pantalla con atmósfera: es la que muestra tu
+        // rango, y el velo que se abre solo tiene sentido donde está el
+        // objeto. En Stats o en el Álbum sería un efecto suelto.
+        atmosfera
       />
 
       <PantallaDeslizable>
@@ -439,7 +469,10 @@ export default function Principal() {
         <div className="racha-bloque">
           <div className="racha-fila">
             <span className="racha-label">{T.inicio.racha}</span>
-            <span className="racha-numero">{racha}</span>
+            {/* Cuenta de 46 a 47 en vez de reemplazarse. Ver
+                `NumeroQueCuenta`: la primera pintada NO se anima, porque
+                contar desde cero al abrir la app contaría algo falso. */}
+            <NumeroQueCuenta valor={racha} className="racha-numero" />
           </div>
           {/* barra de progreso al siguiente rango, sin etiqueta de texto */}
           {prox && (
@@ -475,6 +508,7 @@ export default function Principal() {
                 costados, que es la forma en que un contador se lee sin que
                 nadie lo explique. El + sigue siendo el mismo gesto de siempre:
                 suma la serie y arranca el descanso (§20.3). */}
+            <GloboPrimeraVez cual="series">{T.inicio.globoSeries}</GloboPrimeraVez>
             <div className="contador-series">
               <button
                 className="paso"
@@ -496,9 +530,15 @@ export default function Principal() {
               {sesion.estado.porUbicacion ? T.inicio.sesionSola : T.inicio.masArrancaDescanso}
             </p>
             <button
-              className="boton-fantasma"
+              className="boton-solido"
               style={{ marginTop: 12 }}
-              onClick={() => sesion.terminar()}
+              onClick={async () => {
+                const cierre = await sesion.terminar();
+                // Nada de resumen si la base deshizo el día: no hubo
+                // entrenamiento que resumir, y festejar un toque sin querer es
+                // peor que no decir nada.
+                if (cierre && !cierre.deshizoElDia) setCierre(cierre);
+              }}
             >
               {T.sesion.terminar}
             </button>
@@ -509,7 +549,9 @@ export default function Principal() {
              son dos botones. El cartel se dice UNA vez y con aire, en vez de
              ir apretado adentro de un botón ancho. */
           <div className="dia-listo">
-            <span className="rotulo">{T.inicio.diaRegistrado}</span>
+            <span className={`rotulo${llegadaNueva ? ' solo' : ''}`}>
+              {llegadaNueva ? T.inicio.diaSolo : T.inicio.diaRegistrado}
+            </span>
             {/* Con rótulo: una cámara se entiende sola, una balanza no. Dos
                 iconos pelados obligan a tocar uno para averiguar cuál era. */}
             <div className="acciones">
@@ -640,11 +682,24 @@ export default function Principal() {
         />
       )}
 
+      {/* La subida de rango va ANTES que el resumen en el orden de la
+          pantalla, pero el usuario ve primero el resumen porque la subida
+          solo aparece al registrar el día, y terminar la sesión no registra
+          nada. Nunca coinciden. */}
       {subida && (
         <SubidaRango
           rangoAntes={subida.antes}
           rangoDespues={subida.despues}
           alCerrar={() => setSubida(null)}
+        />
+      )}
+
+      {cierre && (
+        <ResumenSesion
+          minutos={cierre.minutos}
+          series={cierre.series}
+          porUbicacion={cierre.porUbicacion}
+          alCerrar={() => setCierre(null)}
         />
       )}
 

@@ -35,3 +35,33 @@ export function metrosEntre(a: Punto, b: Punto): number {
 export function estaAdentro(punto: Punto, centro: Punto, radio: number, precision = 0): boolean {
   return metrosEntre(punto, centro) <= radio + Math.max(0, precision);
 }
+
+/**
+ * Peor precisión que se acepta, en metros.
+ *
+ * POR QUÉ EXISTE ESTE TECHO Y NO UN RADIO MÁS CHICO. Como `estaAdentro` SUMA
+ * la precisión al radio, una medición mala no achica el círculo: lo agranda.
+ * Con una posición sacada de la antena de celular —precisión 500— estar a 600
+ * metros del gimnasio daba "adentro". El radio no tenía nada que ver: el
+ * agujero era la medición, no el círculo.
+ *
+ * Bajar el radio habría sido el arreglo equivocado. No corrige este caso —con
+ * precisión 500 sigue dando adentro— y sí agrega falsos negativos cuando el
+ * GPS anda bien y el punto quedó marcado en la puerta de un lugar grande.
+ * Además el que filtra al que pasa caminando por la vereda no es el radio,
+ * son los siete minutos de espera de `llegada.ts`.
+ *
+ * 75 m está elegido por arriba de lo que da un GPS con vista al cielo (5-30)
+ * y de lo que da adentro de un local (30-60), y por debajo de lo que devuelve
+ * una posición por wifi o por antena (150 para arriba).
+ *
+ * Una medición peor que esto NO significa "no estás": significa NO SÉ, que
+ * es `null` y no dispara nada. Por eso el techo no puede costar un solo día:
+ * lo único que hace es callar a la fuente que estaba inventando.
+ */
+export const PRECISION_MAXIMA = 75;
+
+/** Si la medición es lo bastante buena como para que su respuesta valga. */
+export function medicionSirve(precision: number): boolean {
+  return Number.isFinite(precision) && precision <= PRECISION_MAXIMA;
+}

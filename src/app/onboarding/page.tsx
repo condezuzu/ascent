@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import FondoEspacial from '@/components/FondoEspacial';
 import { T } from '@/textos';
 
@@ -23,9 +24,7 @@ export default function Onboarding() {
       return setError(T.entrar.nombreFormato);
     }
     setCargando(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await miUsuario(supabase);
     if (!user) return router.push('/login');
 
     const { error } = await supabase

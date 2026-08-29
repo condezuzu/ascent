@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda, hoyISO } from '@/lib/fechas';
 import { RETOS_LISTOS } from '@/lib/reglas';
 import { planetaDeDia } from '@/lib/rangos';
@@ -45,9 +46,7 @@ export default function Social() {
   const busquedaRef = useRef('');
 
   const cargar = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await miUsuario(supabase);
     if (!user) return;
     setMiId(user.id);
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda, hoyISO, restarDias } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
 import { guardarPerfilCache } from '@/lib/cache';
@@ -52,9 +53,7 @@ export default function Yo() {
   const inputFotoNueva = useRef<HTMLInputElement>(null);
 
   const cargar = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await miUsuario(supabase);
     if (!user) return;
 
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();

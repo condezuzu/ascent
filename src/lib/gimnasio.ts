@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { plataforma } from '@/plataforma';
-import { estaAdentro, metrosEntre } from '@/lib/geo';
+import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '@/lib/geo';
 import type { OrigenDia, Perfil } from '@/lib/tipos';
 
 /**
@@ -38,7 +38,8 @@ export async function registrarPorSenal(
  */
 export type ResultadoMarcar =
   | { ok: true; lat: number; lon: number; precision: number }
-  | { ok: false; motivo: 'sin-gps' | 'sin-permiso' | 'no-se-guardo' };
+  | { ok: false; motivo: 'sin-gps' | 'sin-permiso' | 'no-se-guardo' }
+  | { ok: false; motivo: 'impreciso'; precision: number };
 
 export async function marcarPunto(
   supabase: SupabaseClient,
@@ -51,6 +52,16 @@ export async function marcarPunto(
   // tampoco lo dice, e inventar el motivo manda a la persona a resolver el
   // problema equivocado.
   if (!punto) return { ok: false, motivo: 'sin-permiso' };
+
+  // Un punto marcado con 400 m de error no es el gimnasio: es el barrio. Y a
+  // diferencia de una lectura mala cualquiera —que se descarta y ya— esta
+  // queda GUARDADA y envenena todas las que vengan después, porque el centro
+  // del círculo pasa a estar en cualquier lado. Se rechaza y se dice por qué:
+  // volver a intentar unos segundos después, o salir al aire libre, suele
+  // alcanzar.
+  if (!medicionSirve(punto.precision)) {
+    return { ok: false, motivo: 'impreciso', precision: Math.round(punto.precision) };
+  }
 
   const lat = Number(punto.lat.toFixed(6));
   const lon = Number(punto.lon.toFixed(6));
@@ -112,13 +123,23 @@ export async function mirarElGimnasio(perfil: Perfil | null): Promise<Mirada> {
 
   const cacheado = await plataforma.ubicacion.puntoActual(CINCO_MINUTOS);
   if (!cacheado) return nada;
+
+  // Una lectura peor que el techo no contesta ni que sí ni que no: se tira y
+  // se paga una fresca, que es lo único que puede mejorarla. Si la fresca
+  // tampoco sirve, la respuesta honesta es NO SÉ (§13) y no dispara nada.
+  if (!medicionSirve(cacheado.precision)) {
+    const otra = await plataforma.ubicacion.puntoActual(0);
+    if (!otra || !medicionSirve(otra.precision)) return nada;
+    return con(otra);
+  }
+
   if (adentro(cacheado)) return con(cacheado);
 
   const viejo = ahora - cacheado.medidoEn > 30000;
   if (!viejo) return con(cacheado);
 
   const fresco = await plataforma.ubicacion.puntoActual(0);
-  if (!fresco) return nada;
+  if (!fresco || !medicionSirve(fresco.precision)) return nada;
   return con(fresco);
 }
 
@@ -132,6 +153,10 @@ export async function estoyEnElGimnasio(perfil: Perfil | null): Promise<boolean 
   // instantáneo y no enciende la antena.
   const cacheado = await plataforma.ubicacion.puntoActual(CINCO_MINUTOS);
   if (!cacheado) return null;
+  if (!medicionSirve(cacheado.precision)) {
+    const otra = await plataforma.ubicacion.puntoActual(0);
+    return otra && medicionSirve(otra.precision) ? adentro(otra) : null;
+  }
 
   // Un arreglo viejo que dice que ESTÁS en el gimnasio alcanza: estuviste ahí
   // hace un rato, o sea que fuiste.
@@ -144,5 +169,9 @@ export async function estoyEnElGimnasio(perfil: Perfil | null): Promise<boolean 
   if (!viejo) return false;
 
   const fresco = await plataforma.ubicacion.puntoActual(0);
-  return fresco ? adentro(fresco) : null;
+  return fresco && medicionSirve(fresco.precision) ? adentro(fresco) : null;
 }
+
+// Se reexporta para que las pantallas puedan decir el número sin importar de
+// `geo` —que es un archivo de cuentas— ni repetirlo a mano en un texto.
+export { PRECISION_MAXIMA };

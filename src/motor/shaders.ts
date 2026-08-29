@@ -15,6 +15,46 @@ void main() {
 }
 `;
 
+// EL PRESAGIO. Lo que se ve los últimos días antes de subir de rango: que hay
+// algo más adelante, sin decir qué.
+//
+// LA REGLA QUE MANDA ACÁ ES QUE NO PUEDE TENER FORMA. Dibujar el objeto del
+// rango siguiente sería nombrarlo con la imagen en vez de con la palabra, y
+// §7 prohíbe las dos. Por eso no hay disco, no hay anillo y sobre todo no hay
+// borde: la caída llega a cero antes del filo del quad, así que nunca se ve
+// dónde termina la cosa. Es una presencia, no un objeto.
+//
+// El color TAMPOCO puede ser el del rango que viene —el Sol es amarillo y eso
+// contaría el final—: lo pinta quien lo monta con la paleta del rango ACTUAL.
+export const FRAGMENT_PRESAGIO = /* glsl */ `
+precision highp float;
+varying vec2 vP;
+uniform float uTime;
+uniform vec3 uColor;
+uniform float uFuerza;
+
+// ruido baratísimo, solo para romper el bandeo
+float ruidoP(vec2 p) {
+  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+void main() {
+  float d = length(vP);
+  // exponente alto sobre un smoothstep que muere adentro del quad: da una
+  // caída sin contorno. Bajarlo hace aparecer un disco, que es justo lo que
+  // no puede pasar.
+  float campo = pow(1.0 - smoothstep(0.0, 1.0, clamp(d, 0.0, 1.0)), 2.6);
+  // respiración de doce segundos: vivo, pero nunca llamando la atención.
+  float respira = 0.82 + 0.18 * sin(uTime * 0.52);
+  float a = campo * respira * uFuerza;
+  // sin dither, un degradado tan tenue sale en anillos concéntricos y el
+  // anillo ES una forma.
+  a += (ruidoP(gl_FragCoord.xy) - 0.5) * 0.004;
+  if (a <= 0.0) discard;
+  gl_FragColor = vec4(uColor, a);
+}
+`;
+
 // PARTÍCULAS REDONDAS. PointsMaterial dibuja cuadrados duros: por eso el
 // polvo se veía pobre. Con shader propio cada partícula tiene su tamaño, su
 // color y un borde que se desvanece.

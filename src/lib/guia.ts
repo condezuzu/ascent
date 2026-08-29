@@ -8,7 +8,10 @@ import { plataforma } from '@/plataforma';
 
 const CLAVE = 'ascent:guia';
 
-export type Globo = 'leaderboard' | 'stats' | 'album';
+// Cada globo se muestra UNA vez y no vuelve. Agregar uno acá no rompe nada:
+// el que ya usó la app lo va a ver la próxima vez que pase por esa pantalla,
+// que es justo lo que se quiere para una parte nueva.
+export type Globo = 'leaderboard' | 'stats' | 'album' | 'series';
 
 type Guia = { uid: string; recorrido: boolean; globos: Globo[] };
 

@@ -46,7 +46,9 @@ export default function Gimnasio({
           ? T.ajustes.gimnasioSinGps
           : r.motivo === 'sin-permiso'
             ? T.ajustes.gimnasioSinPermiso
-            : T.general.noSePudo
+            : r.motivo === 'impreciso'
+              ? T.ajustes.gimnasioImpreciso(r.precision)
+              : T.general.noSePudo
       );
     }
     alCambiar({ gimnasio_lat: r.lat, gimnasio_lon: r.lon });

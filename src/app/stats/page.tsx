@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { aISO, deISO, hoyISO, restarDias } from '@/lib/fechas';
 import { RANGOS, rangoDeRacha } from '@/lib/rangos';
 import { deKilos, esUnidad, type Unidad } from '@/lib/peso';
@@ -29,9 +30,7 @@ export default function Estadisticas() {
   // volver a pedir los datos para que la tendencia se dibuje al toque.
   const cargar = useCallback(async () => {
     {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await miUsuario(supabase);
       if (!user) return;
       const [{ data: p }, { data: ls }, { data: ws }] = await Promise.all([
         // select('*') y no la lista de columnas: si el código llega antes que

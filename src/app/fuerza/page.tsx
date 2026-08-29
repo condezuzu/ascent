@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { planetaDeDia } from '@/lib/rangos';
 import { esUnidad, type Unidad } from '@/lib/peso';
 import { fechaDeMarca, origenDeMarca, pesoLindo } from '@/lib/fuerza';
@@ -36,9 +37,7 @@ export default function Fuerza() {
   const [noCargo, setNoCargo] = useState(false);
 
   const cargar = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await miUsuario(supabase);
     if (!user) return router.push('/login');
     const [{ data: p }, { data: ejs }, { data: f }, { data: prs }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),

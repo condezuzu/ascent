@@ -93,6 +93,25 @@ async function cerrar(supabase: SupabaseClient, opciones?: { hasta?: number }) {
   return supabase.rpc('terminar_sesion');
 }
 
+/**
+ * Lo que dejó una sesión al cerrarse.
+ *
+ * `terminar` devolvía `true`/`false` y con eso alcanzaba para saber si hubo
+ * que reintentar. No alcanza para el resumen del final: cuando la sesión se
+ * cierra, todo su estado se pone en cero en el mismo tick, así que si el dato
+ * no sale de acá ya no está en ningún lado.
+ *
+ * `deshizoElDia` en true significa que no hubo entrenamiento —un toque sin
+ * querer, deshecho por la base—: ahí NO va ningún resumen, porque no hay nada
+ * que resumir y festejar un error es peor que no decir nada.
+ */
+export type CierreDeSesion = {
+  minutos: number;
+  series: number;
+  porUbicacion: boolean;
+  deshizoElDia: boolean;
+};
+
 export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void) {
   const [supabase] = useState(() => crearCliente());
   const [inicio, setInicio] = useState<string | null>(null);
@@ -224,13 +243,19 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    * salida. Sin eso, enterarse tarde —la app estuvo cerrada— daría una sesión
    * de cinco horas.
    */
-  async function terminar(opciones?: { hasta?: number }) {
+  async function terminar(opciones?: { hasta?: number }): Promise<CierreDeSesion | null> {
     setOcupado(true);
+    // Se anota lo que había ANTES de cerrar: abajo se pone todo en cero y el
+    // resumen se quedaría sin datos que mostrar.
+    const arranco = inicio;
+    const seriesHechas = series;
+    const eraPorUbicacion = porUbicacion;
+    const desfase = desfasaje;
     const { data, error } = await cerrar(supabase, opciones);
     setOcupado(false);
     // Lo mismo al revés: si el cierre no llegó, quien llama tiene que poder
     // volver a intentarlo con la hora de salida correcta.
-    if (error) return false;
+    if (error) return null;
     borrarSesionCache();
     borrarDescanso();
     setInicio(null);
@@ -248,7 +273,21 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     // minutos, que es la clase de cosa que hace que alguien apague la función.
     guardarVigilancia(marcarComoUsada(await leerVigilancia()));
     alCambiarElDia?.(null);
-    return true;
+
+    const deshizoElDia = !!(data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia;
+    // `inicio` es del SERVIDOR y `hasta` es del teléfono: restarlos crudos
+    // metería el desfasaje de reloj adentro de la duración. Por eso se lleva
+    // el fin a hora de servidor antes de restar, igual que hace `transcurrido`
+    // para el cronómetro que se ve en pantalla.
+    const finServidor = (opciones?.hasta ?? Date.now()) - desfase;
+    return {
+      minutos: arranco
+        ? Math.max(0, Math.round((finServidor - Date.parse(arranco)) / 60000))
+        : 0,
+      series: seriesHechas,
+      porUbicacion: eraPorUbicacion,
+      deshizoElDia,
+    };
   }
 
   /**

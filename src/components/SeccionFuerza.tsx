@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaDeMarca, pesoLindo, redondear } from '@/lib/fuerza';
 import type { Unidad } from '@/lib/peso';
 import type { FilaFuerza, MiFuerza } from '@/lib/tipos';
@@ -41,9 +42,7 @@ export default function SeccionFuerza({
 
   useEffect(() => {
     (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await miUsuario(supabase);
       if (!user) return;
       setYo(user.id);
       const [{ data: f }, { data: r }] = await Promise.all([

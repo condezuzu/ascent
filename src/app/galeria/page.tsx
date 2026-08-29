@@ -9,20 +9,32 @@ import FondoEspacial from '@/components/FondoEspacial';
 import SubidaRango from '@/components/SubidaRango';
 import Insignia from '@/components/Insignia';
 import { PLANETAS, RANGOS } from '@/lib/rangos';
+import { veloDeRango } from '@/lib/atmosfera';
 
 export default function Galeria() {
   const [rango, setRango] = useState(4);
   const [planeta, setPlaneta] = useState<string>('Júpiter');
   const [subida, setSubida] = useState<{ a: number; b: number } | null>(null);
+  // El presagio y el velo por rango se miran acá, que es para lo que existe
+  // esta pantalla: son las dos cosas del motor que en la app aparecen solas
+  // —tres días antes de subir, y a lo largo de meses— y de otro modo no habría
+  // forma de verlas sin esperar semanas.
+  const [presagio, setPresagio] = useState(false);
+  const [conVelo, setConVelo] = useState(false);
 
   return (
     <>
       <FondoEspacial
-        key={`${rango}-${planeta}`}
+        key={`${rango}-${planeta}-${presagio}-${conVelo}`}
         rango={rango}
         planeta={planeta}
+        presagio={presagio}
         esquina="abajo-derecha"
-        velo={0.35}
+        // Se pasa el número a mano en vez de `atmosfera`: la atmósfera además
+        // RECUERDA el último rango visto para animar la transición, y mirar
+        // ocho rangos seguidos en la galería dejaría esa memoria apuntando a
+        // cualquier lado. Acá solo interesa cuánto velo le toca a cada uno.
+        velo={conVelo ? veloDeRango(rango) : 0.35}
       />
       <div className="pantalla">
         <div className="titulo-pantalla">Galería del motor</div>
@@ -75,6 +87,38 @@ export default function Galeria() {
             </div>
           </div>
         )}
+
+        <div className="seccion">
+          <h3>Atmósfera</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <button
+              className="boton-fantasma"
+              style={{
+                width: 'auto',
+                padding: '8px 12px',
+                fontSize: 13,
+                borderColor: presagio ? 'rgba(160,180,220,.5)' : undefined,
+                color: presagio ? 'var(--tinta)' : undefined,
+              }}
+              onClick={() => setPresagio((v) => !v)}
+            >
+              Presagio {presagio ? '✓' : ''}
+            </button>
+            <button
+              className="boton-fantasma"
+              style={{
+                width: 'auto',
+                padding: '8px 12px',
+                fontSize: 13,
+                borderColor: conVelo ? 'rgba(160,180,220,.5)' : undefined,
+                color: conVelo ? 'var(--tinta)' : undefined,
+              }}
+              onClick={() => setConVelo((v) => !v)}
+            >
+              Velo del rango {conVelo ? '✓' : ''}
+            </button>
+          </div>
+        </div>
 
         <div className="seccion">
           <h3>Subidas de rango</h3>

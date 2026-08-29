@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { enDias, fechaLinda, hoyISO, restarDias } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
 import { RETOS_LISTOS } from '@/lib/reglas';
@@ -44,9 +45,7 @@ export default function Perfil() {
       setCargado(true);
       return;
     }
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await miUsuario(supabase);
     if (!user) return;
     if (params.id === user.id) return router.replace('/');
     setMiId(user.id);

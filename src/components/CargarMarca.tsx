@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { hoyISO } from '@/lib/fechas';
 import { aKilos, deKilos, type Unidad } from '@/lib/peso';
 import { redondear, unRM } from '@/lib/fuerza';
@@ -61,9 +62,7 @@ export default function CargarMarca({
     if (fecha > hoyISO()) return setError(T.marca.todaviaNo);
 
     setGuardando(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await miUsuario(supabase);
     if (!user) {
       setGuardando(false);
       return setError(T.marca.sesionCerrada);

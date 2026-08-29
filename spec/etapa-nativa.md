@@ -347,3 +347,30 @@ A tener en cuenta cuando se implemente:
 - Sigue valiendo lo de §13: la app tiene que funcionar entera sin el permiso.
   Quien no acepte notificaciones se queda con el aviso visual, igual que en la
   web de hoy.
+
+## 13c. Fotos visibles para todos — POSPUESTO hasta después de migrar
+
+Decidido el 2026-08-28. Hoy `photos.visibilidad` tiene dos estados
+(`privada`, `amigos`) y se queda así. El tercero —**todos**— se pidió y se
+pospuso a propósito.
+
+**Por qué se pospone, si la UI es un control de tres botones.** Porque la UI
+no es el trabajo. "Todos" implica decidir, antes de escribir una línea:
+
+- **Quién ve un perfil ajeno y qué ve.** Hoy `/perfil/[id]` se mira siendo
+  amigo. Con fotos públicas hay una pantalla que ve un desconocido, y esa
+  pantalla necesita su propio criterio de qué muestra —¿la racha?, ¿el peso
+  no, seguro?— y su propia política de RLS.
+- **Si a alguien se lo puede encontrar sin ser amigo.** La búsqueda de hoy
+  existe para agregar amigos. Buscar para mirar es otra cosa, y abre poder
+  encontrar a una persona concreta a partir de su nombre de usuario.
+- **Si hay reportar y bloquear.** Publicar fotos de cuerpos sin ninguna de las
+  dos no es una función incompleta: es una función que no se debería lanzar.
+  Son dos tablas, dos pantallas y un lugar donde caen los reportes.
+
+Nada de eso es UI: es esquema, RLS y decisiones de producto. Y todo se
+volvería a escribir en la app nativa. Se hace **una vez**, del otro lado.
+
+**Lo que sí queda hecho ahora:** el `check` de la columna admite dos valores,
+así que agregar el tercero es una migración de una línea cuando llegue el
+momento. No hay nada que deshacer.

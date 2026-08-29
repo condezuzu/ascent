@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
 import { avisarFallo } from '@/lib/cola';
@@ -37,9 +38,7 @@ export default function Album() {
 
   useEffect(() => {
     (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await miUsuario(supabase);
       if (!user) return;
 
       const { data: p } = await supabase

@@ -1,5 +1,11 @@
 import * as THREE from 'three';
-import { VERTEX, FRAGMENT, VERTEX_PUNTOS, FRAGMENT_PUNTOS } from './shaders';
+import {
+  VERTEX,
+  FRAGMENT,
+  VERTEX_PUNTOS,
+  FRAGMENT_PUNTOS,
+  FRAGMENT_PRESAGIO,
+} from './shaders';
 import { RANGOS_CFG, PLANETAS_CFG, ESTRELLAS_POR_RANGO, type ConfigCuerpo } from './cuerpos';
 import { paletaDe } from '@/lib/paletas';
 import { marca, medir } from '@/lib/medir';
@@ -14,6 +20,9 @@ export type OpcionesFondo = {
   // fantasma de la mejor racha: el objeto más grande que se alcanzó alguna vez,
   // apenas insinuado detrás del actual
   fantasma?: { rango: number; planeta?: string | null } | null;
+  // presagio: los últimos días antes de subir, algo SIN FORMA detrás del
+  // objeto. Ver `lib/atmosfera.ts` y FRAGMENT_PRESAGIO.
+  presagio?: boolean;
   // posición del cuerpo: se recorta por una esquina, nunca centrado
   esquina?: 'abajo-derecha' | 'arriba-derecha' | 'centro';
   animar?: boolean; // false => un solo frame estático (reduced motion / equipos lentos)
@@ -261,6 +270,34 @@ function materialPuntos(): THREE.ShaderMaterial {
 }
 
 /**
+ * El material del presagio.
+ *
+ * Lo pinta la paleta del rango ACTUAL, nunca la del siguiente: el color del
+ * Sol es amarillo y usarlo antes de llegar contaría el final. Lo único que
+ * tiene derecho a decir es "hay algo".
+ */
+function materialPresagio(rango: number, planeta?: string | null): THREE.ShaderMaterial {
+  const pal = paletaDe(rango, planeta);
+  return new THREE.ShaderMaterial({
+    vertexShader: VERTEX,
+    fragmentShader: FRAGMENT_PRESAGIO,
+    uniforms: {
+      uTime: { value: 0 },
+      uColor: { value: colorU(pal.claro) },
+      // Calibrado mirando capturas, no a ojo sobre el código. Con 0.2 no se
+      // veía NADA —y un presagio que no se percibe no es sutil, es un presagio
+      // que no existe—; con 0.75 se convertía en un halo y el halo es una
+      // forma. 0.5 se nota sin poder decir qué es, que es exactamente el
+      // encargo.
+      uFuerza: { value: 0.5 },
+    },
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+}
+
+/**
  * Polvo (rango 1) o estado vacío.
  *
  * No son puntos sueltos: es una nube. La densidad es despareja a propósito
@@ -362,8 +399,25 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): (() => 
   const grupo = new THREE.Group();
   escena.add(grupo);
 
-  // --- fantasma de la mejor racha: más grande, detrás, casi invisible ---
-  if (op.fantasma) {
+  // --- el presagio: los últimos días antes de subir ---
+  //
+  // VA ANTES DEL FANTASMA Y LO REEMPLAZA. Los dos ocupan el mismo lugar —más
+  // grande, detrás, tenue— y pueden coincidir de verdad: alguien que tuvo 50
+  // de racha, la perdió y va por 28 tiene fantasma (su mejor) y presagio (le
+  // faltan 2). Dos manchas detrás del objeto no se leen como dos cosas, se
+  // leen como una mancha sucia. Gana el presagio porque habla del día de hoy;
+  // el fantasma habla de un récord que no se va a mover en estos dos días.
+  if (op.presagio) {
+    const pmat = materialPresagio(op.rango, op.planeta);
+    materiales.push(pmat);
+    const presagio = new THREE.Mesh(QUAD, pmat);
+    // Más chico que el 2.6 del primer intento: con el campo tan abierto, el
+    // centro caía fuera de la pantalla —el cuerpo vive en una esquina— y lo
+    // único que llegaba a verse era la cola del degradado.
+    presagio.scale.setScalar(2.0);
+    presagio.position.z = -0.3;
+    grupo.add(presagio);
+  } else if (op.fantasma) {
     const fcfg =
       op.fantasma.rango === 4 && op.fantasma.planeta && PLANETAS_CFG[op.fantasma.planeta]
         ? PLANETAS_CFG[op.fantasma.planeta]

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda, hoyISO } from '@/lib/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@/lib/pendiente';
 import { avisarFallo } from '@/lib/cola';
@@ -68,9 +69,7 @@ export default function RegistrarSheet({
   /** Sube la foto y la cuelga del día. Vale para los dos modos. */
   async function subirFoto(idDelLog: string | null, subioRango: boolean) {
     if (!foto) return;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await miUsuario(supabase);
     if (!user) return;
     const ext = foto.name.split('.').pop() || 'jpg';
     const ruta = `${user.id}/${dia}-${Date.now()}.${ext}`;

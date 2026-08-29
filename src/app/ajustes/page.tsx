@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { planetaDeDia } from '@/lib/rangos';
 import type { Perfil } from '@/lib/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -37,9 +38,7 @@ export default function Ajustes() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
 
   const cargar = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await miUsuario(supabase);
     if (!user) return;
     // select('*') y no la lista de columnas: si el código llega antes que la
     // migración, pedir una columna que todavía no existe rompe la pantalla

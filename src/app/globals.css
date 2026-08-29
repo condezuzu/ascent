@@ -1,8 +1,12 @@
 /* ASCENT — la app entera vive dentro del espacio desde el día uno.
-   Cada rango tiene su propia paleta y cambia TODA la app: acentos, bordes,
-   botón, barra de progreso, íconos activos (spec §7 — la mecánica central).
-   Las --pal-* las reasigna aplicarTema() según rango_actual; acá van los
-   valores del rango 1 (Polvo) como arranque. Ningún acento va suelto. */
+   Cada rango tiene su propia paleta (spec §7 — la mecánica central). Las
+   --pal-* las reasigna aplicarTema() según rango_actual; acá van los valores
+   del rango 1 (Polvo) como arranque. Ningún acento va suelto.
+
+   CORRECCIÓN (2026-08-28): la paleta ya NO tiñe "toda la app". Teñir todo a
+   la vez hacía que el cambio de rango no se percibiera —sin nada quieto de
+   referencia, el ojo lo normaliza—, así que la estructura pasó a un neutro
+   fijo. El detalle, en el bloque de --linea más abajo. */
 
 :root {
   --fondo: #05060a;
@@ -13,9 +17,23 @@
   --pal-apagado: #4a4945;
   --pal-principal: #6e6c66;
   --pal-claro: #9c9a92;
-  /* derivados: TODO acento sale de la paleta del rango */
-  --linea: color-mix(in srgb, var(--pal-principal) 22%, transparent);
-  --tarjeta: color-mix(in srgb, var(--pal-principal) 6%, transparent);
+  /* EL COLOR DEL RANGO SIGNIFICA; NO DECORA.
+
+     Antes estas tres salían de la paleta, y por eso CADA borde y CADA tarjeta
+     de la app llevaban el color del rango. Suena a que la mecánica se nota
+     más, y pasa lo contrario: cuando todo se tiñe a la vez no queda nada
+     quieto contra qué medir el cambio, el ojo lo normaliza en dos segundos y
+     subir de rango deja de verse. Era la causa de "el cambio de color no se
+     nota", y no se arreglaba subiendo la saturación.
+
+     Ahora la estructura —bordes, tarjetas, separadores— es un neutro FIJO que
+     no se mueve nunca, y el color del rango es dueño de tres cosas y nada
+     más: el cuerpo celeste del fondo, el número de racha y el punto de hoy en
+     la tira. Contra un fondo que no cambia, esas tres se ven cambiar solas.
+
+     Es lo que hacen Strava y Apple Fitness: todo en gris salvo una cosa. */
+  --linea: color-mix(in srgb, var(--sub) 20%, transparent);
+  --tarjeta: color-mix(in srgb, var(--sub) 6%, transparent);
   --acento: var(--pal-claro);
   /* §19.1 — El radio es 0 o es 999. Nada en el medio: el radio intermedio
      (8-16px) es la huella dactilar de la plantilla, y estaba cuatro veces
@@ -156,7 +174,12 @@ textarea::placeholder {
   display: block;
 }
 /* Velo plano oscuro entre el fondo y la interfaz, siempre. Oscuro pero no
-   neutro: lleva el color del rango, si no todo termina gris. */
+   neutro: lleva el color del rango, si no todo termina gris.
+
+   SU OPACIDAD LA DECIDE EL RANGO y viaja despacio entre visitas: la duración
+   se la pone FondoEspacial por estilo, porque subir dura 2,6 s y perder la
+   racha dura 7 (ver `lib/atmosfera.ts`). La curva es de salida en los dos
+   casos: llega y se asienta, nunca frena de golpe. */
 .velo {
   position: absolute;
   inset: 0;
@@ -164,7 +187,31 @@ textarea::placeholder {
     radial-gradient(120% 90% at 85% 88%, color-mix(in srgb, var(--pal-principal) 26%, transparent), transparent 60%),
     radial-gradient(100% 75% at 8% 6%, color-mix(in srgb, var(--pal-apagado) 45%, transparent), transparent 62%),
     var(--fondo);
-  transition: background 0.7s var(--curva-suave);
+  transition:
+    background 0.7s var(--curva-suave),
+    opacity 0ms var(--curva-salida);
+}
+
+/* LO QUE SOSTIENE LA LEGIBILIDAD CUANDO EL VELO SE ABRE.
+
+   Constante en todos los rangos: esta capa no se mueve nunca. Arriba vive la
+   cabecera y el número de racha; abajo, la barra de navegación. Las dos
+   franjas quedan protegidas siempre, y lo que se abre con el rango es la
+   FRANJA DEL MEDIO, que es justo donde vive el cuerpo celeste.
+
+   Por eso no hace falta ponerle un fondito a cada bloque de texto —que se
+   habría leído como tarjetas, y esta app no tiene tarjetas—: la protección es
+   una sola capa y ningún componente se entera de que existe. */
+.velo-bordes {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--fondo) 80%, transparent) 0%,
+    transparent 26%,
+    transparent 64%,
+    color-mix(in srgb, var(--fondo) 88%, transparent) 100%
+  );
 }
 
 /* ---------- estructura ---------- */
@@ -339,8 +386,12 @@ textarea::placeholder {
   color: var(--sub);
   padding-bottom: 12px;
 }
-/* el número de racha es lo único grande de la pantalla */
+/* El número de racha es lo único grande de la pantalla, y es una de las TRES
+   cosas que tienen derecho al color del rango (ver :root). Antes era del
+   color del texto común: la mecánica central de la app no se veía en el
+   elemento más grande de su pantalla principal. */
 .racha-numero {
+  color: var(--pal-claro);
   font-family: var(--f-numero), system-ui, sans-serif;
   font-size: clamp(104px, 34vw, 148px);
   font-weight: 500;
@@ -2594,4 +2645,87 @@ body.con-franja .pantalla {
 @keyframes subir-aviso {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- el resumen del final ----------
+   Terminar de entrenar era el momento más vacío de la app: la hoja se cerraba
+   y no pasaba nada. Es pantalla propia, no un cartelito, por lo mismo que
+   Strava le da una pantalla al final de una salida.
+
+   Dos números y una línea. La jerarquía es extrema a propósito —los números
+   grandes, todo lo demás minúsculo— que es lo que hace que se lea de un
+   vistazo estando transpirado y con el teléfono en una mano. */
+.resumen-sesion {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--fondo);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  animation: resumen-entra 0.5s var(--curva-salida) forwards;
+}
+@keyframes resumen-entra {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.resumen-sesion .cuerpo {
+  text-align: center;
+}
+.resumen-sesion .titulo {
+  font-size: 12px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--sub);
+  margin-bottom: 34px;
+}
+.resumen-sesion .cifras {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 40px;
+}
+.resumen-sesion .cifra {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.resumen-sesion .unidad {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--apagado);
+}
+.resumen-sesion .pie {
+  margin-top: 30px;
+  font-size: 12px;
+  color: var(--apagado);
+}
+
+/* Los números que cuentan. `tabular-nums` NO es cosmética acá: sin ella cada
+   dígito tiene su propio ancho y el número se sacude mientras viaja, que se
+   ve peor que no animarlo. */
+.numero-cuenta {
+  font-family: var(--f-numero), system-ui, sans-serif;
+  font-size: clamp(58px, 19vw, 80px);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--pal-claro);
+}
+
+/* El día que entró solo. Se dice UNA vez, el día que pasa: por eso tiene su
+   propia entrada y no es el mismo rótulo gris de siempre. Lleva el color del
+   rango porque es de las poquísimas cosas que tienen derecho a llevarlo. */
+.dia-listo .rotulo.solo {
+  color: var(--pal-claro);
+  letter-spacing: 0.16em;
+  animation: llegada-entra 0.9s var(--curva-salida) forwards;
+}
+@keyframes llegada-entra {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }

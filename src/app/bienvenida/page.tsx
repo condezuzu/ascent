@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { marcarRecorridoVisto } from '@/lib/guia';
 import FondoEspacial from '@/components/FondoEspacial';
 import { T } from '@/textos';
@@ -35,9 +36,7 @@ export default function Bienvenida() {
 
   useEffect(() => {
     (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await miUsuario(supabase);
       if (!user) return router.replace('/login');
       setUid(user.id);
     })();

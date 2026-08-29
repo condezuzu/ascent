@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { faltaElGlobo, marcarGloboVisto, type Globo } from '@/lib/guia';
 import { T } from '@/textos';
 
@@ -23,9 +24,7 @@ export default function GloboPrimeraVez({ cual, children }: { cual: Globo; child
     let vivo = true;
     (async () => {
       const supabase = crearCliente();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await miUsuario(supabase);
       if (!vivo || !user) return;
       setUid(user.id);
       if (await faltaElGlobo(user.id, cual)) setVisible(true);

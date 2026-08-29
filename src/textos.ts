@@ -58,6 +58,14 @@ export const T = {
     racha: 'Racha',
     registrarDia: 'Registrar día',
     diaRegistrado: 'Día registrado',
+    // EL MOMENTO DE LLEGAR SIN APRETAR NADA. Desde que el día entra por
+    // ubicación, el mejor momento de la app pasa en el bolsillo: abrís y ya
+    // está. Hasta ahora se veía EXACTAMENTE igual que si lo hubieras apretado
+    // vos, que es tirar a la basura lo único que ninguna otra app hace.
+    //
+    // Se dice una sola vez, el día que pasa, y después vuelve al cartel de
+    // siempre. Un mensaje que aparece todos los días deja de ser noticia.
+    diaSolo: 'Estabas ahí. El día entró solo.',
     iniciarEntrenamiento: 'Iniciar entrenamiento',
     // Redacción hacia adelante, nunca hacia la pérdida.
     ultimoTramo: (n: number) => `Último tramo para el ${n}.`,
@@ -67,6 +75,10 @@ export const T = {
     diaRegistradoSumar: 'Día registrado · sumar foto o peso',
     sumarSerie: 'Sumar una serie',
     masArrancaDescanso: 'Cada + suma la serie y arranca el descanso.',
+    // La nota de arriba está debajo del contador y se lee tarde: la primera
+    // vez, el + aparece sin ninguna explicación y parece un botón de confirmar.
+    // Esto se dice una sola vez, arriba, donde se está mirando.
+    globoSeries: 'Tocá el + cuando terminás una serie: la cuenta sube y arranca el descanso solo. El − es para corregir.',
     // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
     // error de la app. Con una línea deja de serlo.
     sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',
@@ -261,8 +273,11 @@ export const T = {
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cerrás, no avisa.',
     noVibra: 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.',
-    sonidoRespeta: 'El sonido suena por encima de tu música, sin cortarla.',
-    sonidoCorta: 'Ojo: en algunos teléfonos el sonido puede pausarte la música un instante.',
+    // Las dos frases decían lo contrario de lo que ahora hace la app: el
+    // aviso CORTA la música a propósito, porque con auriculares no se escucha
+    // de ninguna otra forma.
+    sonidoRespeta: 'Corta tu música el instante que dura el aviso y la deja volver sola.',
+    sonidoCorta: 'En este teléfono el sonido puede taparse si tenés música fuerte.',
 
     gimnasio: 'Mi gimnasio',
     gimnasioMarcar: 'Marcar el punto',
@@ -276,6 +291,11 @@ export const T = {
     gimnasioSinGps: 'Este teléfono no da la ubicación.',
     gimnasioSinPermiso:
       'No se pudo leer la ubicación. Fijate que le hayas dado permiso a la app.',
+    // No dice "error": dice qué pasó y qué hacer. Marcar el punto con esta
+    // precisión guardaría el barrio en vez del gimnasio, y eso no se nota
+    // hasta semanas después, cuando los días entran solos desde tu casa.
+    gimnasioImpreciso: (metros: number) =>
+      `Te ubica con ${metros} m de error, demasiado para marcar el punto acá. Salí a la vereda y probá de nuevo en unos segundos.`,
 
     nombreUsuario: 'Nombre de usuario',
     nombreNota: 'Así te encuentran tus amigos. No puede repetirse.',
@@ -435,6 +455,20 @@ export const T = {
     nuevoRango: 'Nuevo rango',
     sumarFoto: 'Sumar foto',
     sumarPeso: 'Sumar peso',
+
+    // EL RESUMEN DEL FINAL. Terminar un entrenamiento era el momento más
+    // vacío de la app: la hoja se cerraba y no pasaba nada. Es el instante de
+    // más satisfacción ganada del día y no decía una palabra.
+    //
+    // Se dicen DOS números y nada más. Ni felicitaciones ni consejos: el
+    // mérito ya es de quien entrenó, y una app que aplaude de más se vuelve
+    // ruido a la tercera vez.
+    resumenTitulo: 'Listo por hoy.',
+    resumenMinutos: 'minutos',
+    resumenSeries: (n: number) => (n === 1 ? 'serie' : 'series'),
+    // Cuando la cerró la salida del gimnasio, no un botón.
+    resumenSolo: 'Se cerró cuando saliste.',
+    resumenCerrar: 'Cerrar',
   },
 
   // ---------------------------------------------------------------
