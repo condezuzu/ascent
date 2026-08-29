@@ -1,11 +1,13 @@
 import { TOPE_SESION_SEGUNDOS, DESCANSO_PREDETERMINADO } from '@/lib/reglas';
 import { plataforma } from '@/plataforma';
+import type { EstadoBloques } from '@/lib/bloques';
 import type { Vigilancia } from '@/lib/llegada';
 import { eventos } from '@/plataforma/eventos';
 
 const CLAVE = 'ascent:sesion';
 const CLAVE_LLEGADA = 'ascent:llegada';
 const CLAVE_DURACION = 'ascent:descanso-sesion';
+const CLAVE_META = 'ascent:meta-bloque';
 
 /**
  * El evento `storage` del navegador solo llega a las OTRAS pestañas, nunca a
@@ -36,6 +38,13 @@ export type SesionCacheada = {
   porUbicacion?: boolean;
   series?: number;
   id?: string | null;
+  /**
+   * El bloque en curso y los ya cerrados. Vive en el teléfono y no en la base
+   * porque la META es intención, no un hecho: "voy a hacer tres" no es algo
+   * que haya pasado, y la base solo guarda lo que pasó. Lo que sí sube es la
+   * lista de bloques cerrados, por `fijar_bloques`.
+   */
+  bloques?: EstadoBloques;
 };
 
 /**
@@ -107,6 +116,24 @@ export async function borrarSesionCache() {
  * morirse al cerrar la app: mañana se arranca con el predeterminado, no con
  * los 90 segundos de los accesorios de ayer.
  */
+/**
+ * La última meta que usaste, para que la próxima sesión arranque ahí.
+ *
+ * Va en `almacenamiento` y NO en `efimero` —al revés que la duración del
+ * descanso— porque tiene que sobrevivir a cerrar la app: si entrenás siempre
+ * de a cuatro, volver a elegirlo cada día es el impuesto que hace que se deje
+ * de usar. Es la misma razón por la que el ejercicio arranca en
+ * `ultimo_ejercicio()`.
+ */
+export async function leerMetaPreferida(): Promise<number | null> {
+  const v = Number(await plataforma.almacenamiento.leer(CLAVE_META));
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+export function guardarMetaPreferida(meta: number) {
+  return plataforma.almacenamiento.guardar(CLAVE_META, String(meta));
+}
+
 export async function leerDuracionDeSesion(): Promise<number | null> {
   const v = Number(await plataforma.efimero.leer(CLAVE_DURACION));
   return Number.isFinite(v) && v > 0 ? v : null;

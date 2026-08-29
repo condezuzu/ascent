@@ -83,7 +83,8 @@ export const T = {
     // La nota de arriba está debajo del contador y se lee tarde: la primera
     // vez, el + aparece sin ninguna explicación y parece un botón de confirmar.
     // Esto se dice una sola vez, arriba, donde se está mirando.
-    globoSeries: 'Tocá el + cuando terminás una serie: la cuenta sube y arranca el descanso solo. El − es para corregir.',
+    globoSeries:
+      'Elegí en qué estás y cuántas vas a hacer. Cada + suma una serie y arranca el descanso solo. Llegar a la meta no cierra nada: seguís si querés.',
     // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
     // error de la app. Con una línea deja de serlo.
     sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',
@@ -477,6 +478,18 @@ export const T = {
     // Se dicen DOS números y nada más. Ni felicitaciones ni consejos: el
     // mérito ya es de quien entrenó, y una app que aplaude de más se vuelve
     // ruido a la tercera vez.
+    // EL BLOQUE. "Voy a hacer tres de esto" y la app cuenta hacia ahí.
+    queEstasHaciendo: 'En qué estás',
+    // No dice "ninguno" ni "sin elegir": elegir ejercicio es opcional de
+    // verdad, y las dos palabras suenan a que falta algo.
+    sinEjercicio: 'Cualquier cosa',
+    cuantasVasAHacer: 'Cuántas vas a hacer',
+    deMeta: (hechas: number, meta: number) => `${hechas} de ${meta}`,
+    totalHoy: (n: number) => `${n} en total`,
+    // Aparece recién con la meta cumplida. No dice "terminar" porque no
+    // termina nada: abre el siguiente.
+    siguienteBloque: 'Siguiente',
+
     resumenTitulo: 'Listo por hoy.',
     resumenMinutos: 'minutos',
     resumenSeries: (n: number) => (n === 1 ? 'serie' : 'series'),

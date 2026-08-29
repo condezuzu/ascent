@@ -26,6 +26,7 @@ import PesoSheet from '@/components/PesoSheet';
 import SubidaRango from '@/components/SubidaRango';
 import ResumenSesion from '@/components/ResumenSesion';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
+import Bloque from '@/components/Bloque';
 import NumeroQueCuenta from '@/components/NumeroQueCuenta';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
@@ -385,30 +386,22 @@ export default function Principal() {
             lo que más se toca durante un entrenamiento, y el día ya está. */}
         {sesion.estado.corriendo ? (
           <>
-            {/* Antes acá había un botón que decía "Serie hecha" y nadie entendía
-                qué hacía: parecía una confirmación, no un contador. Ahora se ve
-                LO QUE CUENTA — el número de series — con un + y un − a los
-                costados, que es la forma en que un contador se lee sin que
-                nadie lo explique. El + sigue siendo el mismo gesto de siempre:
-                suma la serie y arranca el descanso (§20.3). */}
+            {/* El bloque: qué estás haciendo, cuántas te propusiste, cuántas
+                van. Antes era un número suelto con un + y un −, que dice
+                cuántas series llevás en toda la sesión y nada más — o sea que
+                cuántas van de CADA ejercicio había que llevarlo de memoria.
+                El + sigue siendo el mismo gesto de siempre: suma la serie y
+                arranca el descanso (§20.3). Ver `lib/bloques.ts`. */}
             <GloboPrimeraVez cual="series">{T.inicio.globoSeries}</GloboPrimeraVez>
-            <div className="contador-series">
-              <button
-                className="paso"
-                onClick={sesion.deshacerSerie}
-                disabled={sesion.estado.series === 0}
-                aria-label={T.inicio.sacarSerie}
-              >
-                −
-              </button>
-              <div className="cuenta" aria-live="polite">
-                <span className="numero">{sesion.estado.series}</span>
-                <span className="palabra">{T.sesion.seriesPalabra(sesion.estado.series)}</span>
-              </div>
-              <button className="paso mas" onClick={sesion.serieHecha} aria-label={T.inicio.sumarSerie}>
-                +
-              </button>
-            </div>
+            <Bloque
+              estado={sesion.estado.bloques}
+              total={sesion.estado.series}
+              alSumar={sesion.serieHecha}
+              alRestar={sesion.deshacerSerie}
+              alSiguiente={sesion.bloqueSiguiente}
+              alElegirEjercicio={sesion.elegirEjercicio}
+              alElegirMeta={sesion.elegirMeta}
+            />
             <p className="nota-privada" style={{ textAlign: 'center', marginTop: 10 }}>
               {sesion.estado.porUbicacion ? T.inicio.sesionSola : T.inicio.masArrancaDescanso}
             </p>

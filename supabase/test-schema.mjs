@@ -54,7 +54,17 @@ import {
 import { NextResponse } from 'next/server.js';
 import { ESPERA_LLEGADA_MS } from '../src/lib/reglas.ts';
 import { eventos } from '../src/plataforma/eventos.ts';
-import { estaAdentro, metrosEntre } from '../src/lib/geo.ts';
+import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '../src/lib/geo.ts';
+import {
+  bloquesVacios,
+  cambiarEjercicio,
+  cambiarMeta,
+  metaCumplida,
+  paraGuardar,
+  restar,
+  siguiente,
+  sumar,
+} from '../src/lib/bloques.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -2959,6 +2969,86 @@ console.log('\n47. Las series se pueden reintentar sin contar de mas');
 
   await db.exec('reset role');
 }
+
+// =====================================================================
+console.log('\n48. El bloque: qué estás haciendo y cuántas te propusiste');
+{
+  // LA REGLA QUE MÁS IMPORTA: llegar a la meta no cierra nada. Que la app
+  // decida por vos que terminaste es justo lo que no se quiere.
+  {
+    let b = bloquesVacios('sentadilla', 3);
+    b = sumar(sumar(sumar(b)));
+    chequear('con la meta cumplida el bloque SIGUE abierto', [b.hechas, b.cerrados.length], [3, 0]);
+    chequear('y la meta se marca como cumplida', metaCumplida(b), true);
+    b = sumar(b);
+    chequear('se puede pasar de la meta', b.hechas, 4);
+    chequear('pasarse tampoco cierra nada', b.cerrados.length, 0);
+  }
+
+  // Sin elegir ejercicio nunca: tiene que funcionar igual.
+  {
+    let b = bloquesVacios(null, 3);
+    b = sumar(sumar(b));
+    chequear('cuenta sin ejercicio', b.hechas, 2);
+    chequear('pero NO se guarda como bloque', paraGuardar(b), []);
+    b = siguiente(b);
+    chequear('y al pasar al siguiente tampoco', paraGuardar(b), []);
+  }
+
+  // Cerrar y seguir.
+  {
+    let b = bloquesVacios('press_banca', 3);
+    b = siguiente(sumar(sumar(sumar(b))));
+    chequear('siguiente cierra el bloque', b.cerrados, [{ ejercicio: 'press_banca', series: 3 }]);
+    chequear('y arranca en cero', b.hechas, 0);
+    chequear('conservando ejercicio y meta', [b.ejercicio, b.meta], ['press_banca', 3]);
+    const antes = b.cerrados.length;
+    b = siguiente(b);
+    chequear('siguiente sin nada hecho no cierra un bloque vacio', b.cerrados.length, antes);
+  }
+
+  // Cambiar de ejercicio cierra el anterior, sin pedir confirmacion.
+  {
+    let b = bloquesVacios('sentadilla', 3);
+    b = cambiarEjercicio(sumar(sumar(b)), 'peso_muerto');
+    chequear('cambiar de ejercicio cierra el anterior', b.cerrados, [
+      { ejercicio: 'sentadilla', series: 2 },
+    ]);
+    chequear('y el actual arranca limpio', [b.ejercicio, b.hechas], ['peso_muerto', 0]);
+    const igual = cambiarEjercicio(sumar(b), 'peso_muerto');
+    chequear('elegir el MISMO ejercicio no corta el bloque', igual.cerrados.length, 1);
+  }
+
+  // La meta es un objetivo, no una validacion.
+  {
+    let b = bloquesVacios('curl_barra', 5);
+    b = sumar(sumar(sumar(b)));
+    b = cambiarMeta(b, 2);
+    chequear('la meta se puede bajar por debajo de lo ya hecho', [b.meta, b.hechas], [2, 3]);
+    chequear('una meta absurda cae en la de omision', cambiarMeta(b, 99).meta, 3);
+  }
+
+  // Restar corrige de menos y nunca toca lo cerrado.
+  {
+    let b = bloquesVacios('dominadas', 3);
+    b = siguiente(sumar(sumar(b)));
+    b = restar(restar(sumar(b)));
+    chequear('restar no baja de cero', b.hechas, 0);
+    chequear('y no toca los bloques cerrados', b.cerrados, [{ ejercicio: 'dominadas', series: 2 }]);
+  }
+
+  // Lo que se manda a la base.
+  {
+    let b = bloquesVacios('sentadilla', 3);
+    b = cambiarEjercicio(sumar(sumar(sumar(b))), 'press_banca');
+    b = sumar(sumar(b));
+    chequear('se manda lo cerrado MAS el actual', paraGuardar(b), [
+      { ejercicio: 'sentadilla', series: 3 },
+      { ejercicio: 'press_banca', series: 2 },
+    ]);
+  }
+}
+
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {

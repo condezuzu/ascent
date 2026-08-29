@@ -2995,3 +2995,78 @@ body.con-franja .pantalla {
   text-transform: uppercase;
   color: var(--apagado);
 }
+
+/* ---------- el bloque: qué estás haciendo y cuántas van ----------
+   El ejercicio y la meta van en la MISMA fila porque son la misma decisión.
+   Los puntos reemplazan la cuenta mental: no hay que leer un número y
+   compararlo con otro, se ve cuántas faltan. */
+.bloque {
+  margin-top: 4px;
+}
+.bloque-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+/* El <select> nativo, sin caja: §19.1 saca el rectángulo redondeado de
+   fábrica y deja el texto con su línea de pelo debajo, que se lee como algo
+   que se toca sin parecer un campo de formulario. */
+.bloque-ejercicio {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-bottom: 1px solid var(--linea);
+  border-radius: 0;
+  background: none;
+  padding: 6px 0;
+  font-size: 15px;
+  color: var(--tinta);
+  appearance: none;
+  text-overflow: ellipsis;
+}
+.bloque-metas {
+  display: flex;
+  gap: 5px;
+  flex: none;
+}
+/* Píldoras chicas: acá hay cuatro en fila y el ancho de la de `.pastilla`
+   normal no entra en un teléfono. */
+.bloque-metas .pastilla {
+  padding: 7px 10px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.bloque-puntos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  min-height: 14px;
+}
+.bloque-puntos .punto {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--pal-principal) 45%, transparent);
+  transition: background-color 0.25s var(--curva-salida), transform 0.25s var(--curva-salida);
+}
+.bloque-puntos .punto.lleno {
+  background: var(--pal-principal);
+  border-color: var(--pal-principal);
+}
+/* Los que te pasaste de la meta: más chicos, pero SE DIBUJAN. Esconderlos
+   sería decirle a alguien que lo que hizo de más no cuenta. */
+.bloque-puntos .punto.extra {
+  width: 9px;
+  height: 9px;
+}
+.bloque .contador-series .numero {
+  font-size: 38px;
+}
+.bloque-siguiente {
+  display: block;
+  margin: 14px auto 0;
+}

@@ -10,6 +10,16 @@ import { desfasajeDelReloj, type SesionViva } from '@/lib/sesiones';
 import { leerPerfilCache } from '@/lib/cache';
 import { estaBloqueado, textoDeBloqueo } from '@/lib/pendiente';
 import {
+  bloquesVacios,
+  cambiarEjercicio,
+  cambiarMeta,
+  paraGuardar,
+  restar,
+  siguiente,
+  sumar,
+  type EstadoBloques,
+} from '@/lib/bloques';
+import {
   AVISO,
   borrarSesionCache,
   duracionPredeterminada,
@@ -17,6 +27,8 @@ import {
   guardarSesionCache,
   actualizarSesionCache,
   leerDuracionDeSesion,
+  leerMetaPreferida,
+  guardarMetaPreferida,
   leerSesionCache,
   leerVigilancia,
   guardarVigilancia,
@@ -119,6 +131,10 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   const [desfasaje, setDesfasaje] = useState(0);
   const [series, setSeries] = useState(0);
   const [porUbicacion, setPorUbicacion] = useState(false);
+  // El bloque en curso: en qué estás, cuántas te propusiste, cuántas van.
+  // Ver `lib/bloques.ts` — el total de la sesión sigue siendo `series` y esto
+  // es una anotación encima, no un reemplazo.
+  const [bloques, setBloques] = useState<EstadoBloques>(() => bloquesVacios());
   const [idSesion, setIdSesion] = useState<string | null>(null);
   const [descanso, setDescanso] = useState<DescansoVivo | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -135,6 +151,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     if (c) {
       setPorUbicacion(c.porUbicacion ?? false);
       setIdSesion(c.id ?? null);
+      if (c.bloques) setBloques(c.bloques);
       // Las series NO se pisan si hay toques esperando en la cola: ahí el
       // número bueno es el que está en pantalla, no el que se guardó.
       if (c.series !== undefined && (await cuantasPendientes()) === 0) setSeries(c.series);
@@ -259,6 +276,22 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     // La base ya no abandona la que estaba corriendo, la devuelve. Se dice,
     // porque si no parecería que arrancó una nueva y el número del cronómetro
     // saldría de la nada.
+    // ARRANCA SOLO: el último ejercicio que anotaste y la última meta que
+    // usaste (regla 2 de la migración 27). Si entrenás siempre parecido,
+    // cambiarlo es la excepción y no la regla.
+    //
+    // Va DESPUÉS de guardar la sesión y sin bloquear: que el chip arranque
+    // vacío es un detalle; que el cronómetro tarde en aparecer, no.
+    (async () => {
+      const [{ data: ultimo }, meta] = await Promise.all([
+        supabase.rpc('ultimo_ejercicio'),
+        leerMetaPreferida(),
+      ]);
+      const b = bloquesVacios(typeof ultimo === 'string' ? ultimo : null, meta ?? undefined);
+      setBloques(b);
+      await actualizarSesionCache({ bloques: b });
+    })();
+
     if (r.yaEstaba) setAviso(T.inicio.yaHabiaSesion);
     alCambiarElDia?.(r.registro);
     return true;
@@ -289,6 +322,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     setIdSesion(null);
     setDescanso(null);
     setPorUbicacion(false);
+    setBloques(bloquesVacios());
     // Se dice, porque si no el día desaparece de la tira semanal sin
     // explicación y parece que la app se comió algo.
     if ((data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia) {
@@ -329,10 +363,16 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       (await leerDuracionDeSesion()) ??
       duracionValida(duracionPredeterminada(await leerPerfilCache()));
     setDescanso(guardarDescanso(seg));
+    // DOS CUENTAS QUE NO SE DERIVAN UNA DE LA OTRA. `series` es el total de la
+    // sesión y la única verdad del conteo; `hechas` es cuántas van en ESTE
+    // bloque. Derivar el total de los bloques haría que ignorar el chip
+    // rompiera la racha, que es justo lo que no puede pasar.
     const nuevas = series + 1;
+    const b = sumar(bloques);
     setSeries(nuevas);
-    await actualizarSesionCache({ series: nuevas });
-    if (idSesion) await encolar(supabase, { rpc: 'fijar_series', args: { p_sesion: idSesion, p_series: nuevas } });
+    setBloques(b);
+    await actualizarSesionCache({ series: nuevas, bloques: b });
+    await subir(nuevas, b);
   }
 
   /**
@@ -342,9 +382,56 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    */
   async function deshacerSerie() {
     const nuevas = Math.max(0, series - 1);
+    const b = restar(bloques);
     setSeries(nuevas);
-    await actualizarSesionCache({ series: nuevas });
-    if (idSesion) await encolar(supabase, { rpc: 'fijar_series', args: { p_sesion: idSesion, p_series: nuevas } });
+    setBloques(b);
+    await actualizarSesionCache({ series: nuevas, bloques: b });
+    await subir(nuevas, b);
+  }
+
+  /**
+   * Las dos escrituras del contador, siempre juntas.
+   *
+   * Van a la COLA y no directo: el `+` es el botón que más se toca y se toca
+   * justo donde no hay señal. Las dos son idempotentes y las dos llevan el id
+   * de la sesión, que es lo que las hace encolables (ver `lib/cola.ts`).
+   */
+  async function subir(totalSeries: number, b: EstadoBloques) {
+    if (!idSesion) return;
+    await encolar(supabase, {
+      rpc: 'fijar_series',
+      args: { p_sesion: idSesion, p_series: totalSeries },
+    });
+    await encolar(supabase, {
+      rpc: 'fijar_bloques',
+      args: { p_sesion: idSesion, p_bloques: paraGuardar(b) },
+    });
+  }
+
+  /** Cerrar el bloque y arrancar otro con el mismo ejercicio y la misma meta. */
+  async function bloqueSiguiente() {
+    const b = siguiente(bloques);
+    if (b === bloques) return; // no había nada hecho: no se cierra un bloque vacío
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b });
+    await subir(series, b);
+  }
+
+  /** Cambiar de ejercicio cierra el bloque anterior (ver `lib/bloques.ts`). */
+  async function elegirEjercicio(id: string | null) {
+    const b = cambiarEjercicio(bloques, id);
+    if (b === bloques) return;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b });
+    await subir(series, b);
+  }
+
+  /** La meta no se sube a ningún lado: es intención, no un hecho. */
+  async function elegirMeta(meta: number) {
+    const b = cambiarMeta(bloques, meta);
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b });
+    await guardarMetaPreferida(b.meta);
   }
 
   async function descansarSuelto() {
@@ -364,11 +451,15 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       ocupado,
       aviso,
       porUbicacion,
+      bloques,
     },
     empezar,
     terminar,
     serieHecha,
     deshacerSerie,
+    bloqueSiguiente,
+    elegirEjercicio,
+    elegirMeta,
     descansarSuelto,
     cerrarDescanso: () => {
       borrarDescanso();

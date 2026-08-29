@@ -44,7 +44,17 @@ export function avisarFallo(que: string) {
  * cerrada y no cualquier RPC: que algo se pueda reintentar es una propiedad
  * que hay que demostrar una por una, no una que se asuma.
  */
-type Encolable = { rpc: 'fijar_series'; args: { p_sesion: string; p_series: number } };
+type Encolable =
+  | { rpc: 'fijar_series'; args: { p_sesion: string; p_series: number } }
+  // `fijar_bloques` entra por las MISMAS dos razones, demostradas una por una:
+  //
+  // - *Idempotente*: manda la lista entera, no "agregá un bloque". Repetirla
+  //   deja exactamente el mismo estado, que es lo que hace segura la cola
+  //   cuando la respuesta se pierde pero la escritura llegó.
+  // - *No cambia de significado más tarde*: lleva el id de la sesión, así que
+  //   vaciarse mañana la sigue mandando a la sesión de ayer, que es la que
+  //   corresponde. Sin el id iría a parar a la de mañana.
+  | { rpc: 'fijar_bloques'; args: { p_sesion: string; p_bloques: unknown } };
 
 type Pendiente = Encolable & { id: string };
 
