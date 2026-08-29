@@ -34,6 +34,7 @@ export const T = {
   // ---------------------------------------------------------------
   general: {
     entendido: 'Entendido',
+    cerrar: 'Cerrar',
     fotos: 'Fotos',
     // El huso para escribir horas. Cambia junto con el idioma.
     locale: 'es-UY',
@@ -51,6 +52,10 @@ export const T = {
     falloVisibilidad: 'No se pudo cambiar quién ve esa foto.',
     falloDescansos: 'No se pudieron guardar tus días de descanso.',
     falloPunto: 'No se pudo borrar el punto del gimnasio.',
+    // Se dice "preparar" y no "subir" porque no llegó a subirse nada: la
+    // foto se recodifica antes de salir del teléfono para sacarle los datos
+    // de ubicación, y si eso falla NO se manda el original.
+    falloFotoPreparar: 'No se pudo preparar la foto. Probá con otra o sacala de nuevo.',
   },
 
   // ---------------------------------------------------------------
@@ -264,6 +269,11 @@ export const T = {
     diasDescanso: 'Días de descanso',
     diasDescansoNota: 'Esos días podés faltar sin perder la racha.',
 
+    // La referencia del calendario. Tres palabras, no tres frases: es una
+    // leyenda, no una explicación.
+    leyendaHecho: 'Fuiste',
+    leyendaVacio: 'No fuiste',
+    leyendaDescanso: 'Descanso',
     calendarioNota: 'Tocá un día para agregarlo o sacarlo. Los días de descanso salen con un guion.',
     corregirDias: 'Corregir días',
 
@@ -419,12 +429,16 @@ export const T = {
     fueraDelPromedio: (que: string) => `Fuera del promedio: ${que}. Los días cuentan igual.`,
     peso: 'Peso',
     pesoTendencia: 'Peso — tendencia 7 días',
+    // Los bordes del dibujo NO son datos: la versión anterior mostraba
+    // `min - 0.5` y `max + 0.5` como si fueran dos pesos reales. Lo único que
+    // se puede afirmar además del de hoy es cuánto cambió.
+    pesoCambio: (dias: number, delta: string, unidad: string) =>
+      `${dias} ${dias === 1 ? 'anotación' : 'anotaciones'} · ${delta} ${unidad}`,
     pesoUnoMas: 'Con uno más aparece la tendencia. Solo la ves vos.',
     pesoVacio: 'Anotá tu peso y acá aparece la tendencia. Solo la ves vos.',
     sinDuracion_: (n: number) => `${n} sin duración`,
     masCortas: (n: number) => `${n} de menos de 5 min`,
     rachaDe: (dias: string) => `racha de ${dias}`,
-    pesoHoy: (valor: string, unidad: string) => `${valor} ${unidad} hoy`,
     diaN: (n: number) => `día ${n}`,
     laEscalera: 'La escalera',
     acaEstas: 'acá estás',
@@ -581,7 +595,7 @@ export const T = {
   album: {
     titulo: 'Álbum',
     globo:
-      'Cada foto queda pegada al día en que la sacaste. Desde tu perfil elegís cuáles ven tus amigos.',
+      'Cada foto queda pegada al día en que la sacaste. Tocala para verla en grande y elegir quién la ve.',
     vacioTitulo: 'Ninguna foto todavía.',
     vacioPie: 'Al registrar un día podés sumar una: queda pegada al planeta de ese día.',
     borrarPregunta: '¿Borrar?',
@@ -592,6 +606,11 @@ export const T = {
     borrarFoto: 'Borrar foto',
     noSeBorro: 'No se pudo borrar la foto. Probá de nuevo.',
     vacio: 'Todavía no hay fotos.',
+    // El visor. La grilla ahora solo muestra: todo lo que se hace con una
+    // foto se hace con la foto en grande.
+    anterior: 'Foto anterior',
+    siguiente: 'Foto siguiente',
+    deSubida: 'Subiste de rango',
   },
 
   // ---------------------------------------------------------------

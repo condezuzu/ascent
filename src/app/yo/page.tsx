@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
+import { prepararFoto } from '@/lib/foto';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda, hoyISO, restarDias } from '@/lib/fechas';
 import { planetaDeDia } from '@/lib/rangos';
@@ -181,9 +182,18 @@ export default function Yo() {
       .eq('fecha', hoy)
       .maybeSingle();
 
-    const ext = archivo.name.split('.').pop() || 'jpg';
-    const ruta = `${perfil.id}/${hoy}-${Date.now()}.${ext}`;
-    const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, archivo);
+    // Igual que en la hoja de registrar: se recodifica para que el archivo
+    // que queda en el storage no lleve el EXIF —y con él, las coordenadas de
+    // dónde se sacó la foto. Ver `lib/foto.ts`.
+    const lista = await prepararFoto(archivo);
+    if (!lista.ok) {
+      setSumandoFoto(false);
+      return setError(T.general.falloFotoPreparar);
+    }
+    const ruta = `${perfil.id}/${hoy}-${Date.now()}.jpg`;
+    const { error: errSubida } = await supabase.storage
+      .from('fotos')
+      .upload(ruta, lista.blob, { contentType: lista.tipo });
     if (errSubida) {
       setSumandoFoto(false);
       return setError(T.yo.noSeSumoLaFoto);

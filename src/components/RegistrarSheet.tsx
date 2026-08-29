@@ -6,6 +6,7 @@ import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda, hoyISO } from '@/lib/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@/lib/pendiente';
 import { avisarFallo } from '@/lib/cola';
+import { prepararFoto } from '@/lib/foto';
 import type { ResultadoRegistro } from '@/lib/tipos';
 import { T } from '@/textos';
 
@@ -71,9 +72,18 @@ export default function RegistrarSheet({
     if (!foto) return;
     const user = await miUsuario(supabase);
     if (!user) return;
-    const ext = foto.name.split('.').pop() || 'jpg';
-    const ruta = `${user.id}/${dia}-${Date.now()}.${ext}`;
-    const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, foto);
+    // Se recodifica ANTES de subir. No es por el peso: el archivo de la
+    // cámara trae el EXIF, y el EXIF trae las coordenadas GPS de dónde se
+    // sacó. Compartir la foto con un amigo compartía la ubicación del
+    // gimnasio. Ver `lib/foto.ts`.
+    const lista = await prepararFoto(foto);
+    // Si no se pudo preparar NO se sube el original: el original es
+    // justamente el que tiene las coordenadas.
+    if (!lista.ok) return avisarFallo(T.general.falloFotoPreparar);
+    const ruta = `${user.id}/${dia}-${Date.now()}.jpg`;
+    const { error: errSubida } = await supabase.storage
+      .from('fotos')
+      .upload(ruta, lista.blob, { contentType: lista.tipo });
     // No va a la cola: el archivo puede pesar megas y guardarlo para después
     // llenaría el teléfono. Pero callarse era peor — creías que la habías
     // subido. El día ya quedó registrado igual, que es lo que importa.

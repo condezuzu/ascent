@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 import { DIAS_SEMANA, MESES, aISO, deISO, hoyISO } from '@/lib/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
 import { T } from '@/textos';
@@ -29,10 +30,7 @@ export default function CalendarioCorregir({ alCambiar }: { alCambiar: () => voi
   const diasEnMes = new Date(ancla.anio, ancla.mes + 1, 0).getDate();
 
   const cargar = useCallback(async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const uid = session?.user?.id;
+    const uid = (await miUsuario(supabase))?.id;
     if (!uid) return;
     const desde = aISO(new Date(ancla.anio, ancla.mes, 1));
     const hasta = aISO(new Date(ancla.anio, ancla.mes, diasEnMes));
@@ -68,10 +66,7 @@ export default function CalendarioCorregir({ alCambiar }: { alCambiar: () => voi
     if (c.estado === 'futuro' || ocupado) return;
     setError('');
     setOcupado(c.fecha);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const uid = session?.user?.id;
+    const uid = (await miUsuario(supabase))?.id;
     if (!uid) return setOcupado(null);
 
     if (c.estado === 'hecho') {
@@ -136,9 +131,16 @@ export default function CalendarioCorregir({ alCambiar }: { alCambiar: () => voi
         ))}
       </div>
 
-      <p className="nota-privada">
-        {T.ajustes.calendarioNota}
-      </p>
+      {/* Las tres formas, dichas. Hasta ahora había que tocar un día para
+          descubrir qué significaba cada una — y tocar es justo lo que cambia
+          el dato, o sea que la única forma de averiguarlo era romper algo. */}
+      <div className="cal-leyenda">
+        <span><i className="hecho" />{T.ajustes.leyendaHecho}</span>
+        <span><i className="vacio" />{T.ajustes.leyendaVacio}</span>
+        <span><i className="descanso" />{T.ajustes.leyendaDescanso}</span>
+      </div>
+
+      <p className="nota-privada">{T.ajustes.calendarioNota}</p>
       {error && <p className="error-msg">{error}</p>}
     </div>
   );

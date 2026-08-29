@@ -131,6 +131,24 @@ const PANTALLAS = [
   { nombre: 'yo', ruta: '/yo', listo: '.yo-cabecera' },
   { nombre: 'ajustes', ruta: '/ajustes', listo: '.seccion' },
   {
+    // El calendario vive plegado, así que NUNCA salía en ninguna captura: la
+    // pantalla que el humano señaló como la peor de las tres era justamente la
+    // única que este script no fotografiaba.
+    nombre: 'ajustes-corregir-dias',
+    ruta: '/ajustes',
+    listo: '.calendario',
+    previo: async (page) => {
+      const b = page.locator('button.fila-plegable', { hasText: /corregir/i }).first();
+      try {
+        await b.waitFor({ state: 'visible', timeout: 20000 });
+      } catch {
+        return 'no apareció el plegable de "Corregir días"';
+      }
+      await b.click();
+      return null;
+    },
+  },
+  {
     nombre: 'ajustes-como-se-compara',
     ruta: '/ajustes',
     listo: '.seccion',

@@ -14,6 +14,7 @@ import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import SeccionFuerza from '@/components/SeccionFuerza';
 import SeccionSesiones from '@/components/SeccionSesiones';
+import GraficoPeso from '@/components/GraficoPeso';
 import AnotarPeso from '@/components/AnotarPeso';
 import { T } from '@/textos';
 
@@ -85,30 +86,9 @@ export default function Estadisticas() {
     celdas.push({ fecha: f, clase });
   }
 
-  // Peso: tendencia suavizada (media móvil de 7 días), nunca el dato crudo.
-  // El peso oscila un kilo por razones ajenas al entrenamiento.
-  const suavizado = pesos.map((_, i) => {
-    const ventana = pesos.slice(Math.max(0, i - 6), i + 1);
-    const media = ventana.reduce((s, w) => s + w.valor, 0) / ventana.length;
-    return deKilos(media, unidad);
-  });
-
-  let pathPeso = '';
-  let minP = 0;
-  let maxP = 0;
-  if (suavizado.length >= 2) {
-    minP = Math.min(...suavizado) - 0.5;
-    maxP = Math.max(...suavizado) + 0.5;
-    const W = 300;
-    const H = 80;
-    pathPeso = suavizado
-      .map((v, i) => {
-        const x = (i / (suavizado.length - 1)) * W;
-        const y = H - ((v - minP) / (maxP - minP)) * H;
-        return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
-      })
-      .join(' ');
-  }
+  // El suavizado y el dibujo se mudaron a `GraficoPeso`: eran veinte líneas
+  // de cuentas de SVG en el medio de una pantalla que ya arma un mapa de
+  // calor, una escalera y tres secciones más.
 
   const rangoActual = rangoDeRacha(racha);
 
@@ -155,36 +135,30 @@ export default function Estadisticas() {
         {/* Las duraciones van acá, después del año y antes del peso (§17.7) */}
         <SeccionSesiones />
 
-        {pathPeso ? (
+        {pesos.length >= 2 ? (
           <div className="seccion">
             <h3>{T.stats.pesoTendencia}</h3>
-            <div className="tarjeta">
-              <svg viewBox="0 0 300 80" style={{ width: '100%', display: 'block' }}>
-                <path d={pathPeso} fill="none" stroke="var(--pal-claro)" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--apagado)' }}>
-                <span>{minP.toFixed(1)} {unidad}</span>
-                <span>{T.stats.pesoHoy(suavizado[suavizado.length - 1].toFixed(1), unidad)}</span>
-                <span>{maxP.toFixed(1)} {unidad}</span>
-              </div>
-            </div>
+            <GraficoPeso pesos={pesos} unidad={unidad} />
             {/* El peso se anota ACÁ, que es donde vive. Antes solo se podía
                 desde la hoja de registrar el día, y eso lo ataba a haber
                 entrenado: pesarse un domingo contaba como día de gimnasio. */}
             <AnotarPeso unidad={unidad} alGuardar={cargar} />
           </div>
-        ) : suavizado.length === 1 ? (
+        ) : pesos.length === 1 ? (
           // Con un solo dato no hay tendencia que dibujar, pero decirle
           // "anotá tu peso" a alguien que acaba de anotarlo parece un error.
           <div className="seccion">
             <h3>{T.stats.peso}</h3>
-            <div className="tarjeta">
-              <div style={{ fontSize: 28, fontWeight: 300, fontVariantNumeric: 'tabular-nums' }}>
-                {suavizado[0].toFixed(1)}
-                <span style={{ fontSize: 15, color: 'var(--sub)' }}> {unidad}</span>
-              </div>
-              <p className="nota-privada">{T.stats.pesoUnoMas}</p>
+            {/* Un solo dato no es una tendencia, pero decirle "anotá tu peso"
+                a alguien que acaba de anotarlo parece un error de la app. Se
+                muestra el número con la misma tipografía que el gráfico. */}
+            <div className="peso-solo">
+              <span className="hoy">
+                {deKilos(pesos[0].valor, unidad).toFixed(1)}
+                <em>{unidad}</em>
+              </span>
             </div>
+            <p className="nota-privada">{T.stats.pesoUnoMas}</p>
             <AnotarPeso unidad={unidad} alGuardar={cargar} />
           </div>
         ) : (

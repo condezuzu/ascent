@@ -35,9 +35,10 @@
     "**/*.ts",
     "**/*.tsx",
     ".next-capturas/types/**/*.ts",
+    ".next-primera/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-primera/types/**/*.ts"
+    ".next-exif/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

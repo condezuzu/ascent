@@ -296,6 +296,13 @@ create table public.sesiones (
   -- queda claro que no hubo entrenamiento: tocar "Iniciar" sin querer
   -- registraba el día y ese día ya no se iba nunca.
   creo_el_dia boolean not null default false,
+  -- EN QUÉ ESTABAS. Lista ordenada de {ejercicio, series}: una anotación
+  -- encima del contador, no un reemplazo. `series` sigue siendo el total y la
+  -- única verdad del conteo, así que con `bloques` en [] la app funciona
+  -- exactamente igual que antes — que es lo que hace que se pueda ignorar sin
+  -- perder nada. No hay pesos ni repeticiones: eso sería otra app.
+  bloques jsonb not null default '[]'::jsonb,
+  constraint sesiones_bloques_es_lista check (jsonb_typeof(bloques) = 'array'),
   constraint sesiones_origen_valido check (origen in ('manual', 'ubicacion')),
   constraint sesiones_fin_solo_si_termino check ((estado = 'terminada') = (fin is not null))
 );
@@ -1253,6 +1260,63 @@ end;
 $$;
 
 
+-- Los bloques se guardan ENTEROS, igual que `fijar_series` y por lo mismo:
+-- repetir la llamada tiene que ser inofensiva para poder encolarla cuando la
+-- red del subsuelo se corta (ver `lib/cola.ts`).
+create or replace function public.fijar_bloques(p_sesion uuid, p_bloques jsonb)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  limpio jsonb;
+  total int;
+  guardado jsonb;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if jsonb_typeof(p_bloques) <> 'array' then raise exception 'bloques tiene que ser una lista'; end if;
+
+  select series into total from sesiones where id = p_sesion and user_id = uid;
+  if total is null then return null; end if;
+
+  -- Se filtra acá y no en el cliente: la lista llega del teléfono.
+  select coalesce(jsonb_agg(jsonb_build_object('ejercicio', e, 'series', s) order by i), '[]'::jsonb)
+    into limpio
+  from (
+    select
+      b.valor->>'ejercicio' as e,
+      greatest(0, least((b.valor->>'series')::int, 999)) as s,
+      b.orden as i
+    from jsonb_array_elements(p_bloques) with ordinality as b(valor, orden)
+    where b.valor->>'ejercicio' in (select id from ejercicios)
+      and (b.valor->>'series') ~ '^[0-9]+$'
+      and b.orden <= 40
+  ) filtrados;
+
+  update sesiones set bloques = limpio
+   where id = p_sesion and user_id = uid
+   returning bloques into guardado;
+
+  return jsonb_build_object('bloques', coalesce(guardado, '[]'::jsonb), 'total_series', total);
+end;
+$$;
+
+-- En qué terminaste la última vez, para que la app abra ahí. Si entrenás
+-- siempre parecido, cambiar de ejercicio es la excepción; elegirlo cada día
+-- sería el impuesto que hace que se deje de usar.
+--
+-- No es "la última sesión" sino "la última que anotó algo": si ayer no
+-- anotaste nada, la respuesta útil es la de anteayer, no null.
+create or replace function public.ultimo_ejercicio()
+returns text language sql stable security definer set search_path = public as $$
+  select s.bloques -> -1 ->> 'ejercicio'
+    from sesiones s
+   where s.user_id = auth.uid()
+     and jsonb_array_length(s.bloques) > 0
+     and s.inicio > now() - interval '35 days'
+   order by s.inicio desc
+   limit 1;
+$$;
+
+
 create or replace function public.mi_sesion()
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
@@ -1672,6 +1736,8 @@ revoke execute on function
   public.mi_fuerza(),
   public.ranking_fuerza(),
   public.fijar_series(uuid, int),
+  public.fijar_bloques(uuid, jsonb),
+  public.ultimo_ejercicio(),
   public.anotar_peso(numeric),
   public.iniciar_sesion(timestamptz, text),
   public.terminar_sesion(timestamptz),
@@ -1716,6 +1782,8 @@ grant execute on function
   public.mi_fuerza(),
   public.ranking_fuerza(),
   public.fijar_series(uuid, int),
+  public.fijar_bloques(uuid, jsonb),
+  public.ultimo_ejercicio(),
   public.anotar_peso(numeric),
   public.iniciar_sesion(timestamptz, text),
   public.terminar_sesion(timestamptz),

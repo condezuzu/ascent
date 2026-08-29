@@ -10,6 +10,12 @@ _tmp-*
 capturas/
 .next-capturas/
 
-# builds de los recorridos de prueba
+# Builds de los recorridos de prueba. Cada script se compila en su PROPIA
+# carpeta para poder correr con el servidor de desarrollo levantado sin que se
+# pisen el `.next`. Cada vez que se agrega un script hay que agregar la suya
+# acá, o el build entero termina adentro de un commit.
 .next-primera/
 .next-capturas/
+.next-exif/
+# scripts de una sola vez, para mirar una pantalla y tirar
+*.tmp.mjs

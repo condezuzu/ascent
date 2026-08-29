@@ -592,37 +592,45 @@ textarea::placeholder {
   color: var(--apagado);
 }
 
-/* ---------- calendario para corregir días ---------- */
-/* Un mes en celdas cuadradas de ancho completo son ~460px: media pantalla
-   para lo que menos se toca de Ajustes. Acotarlo a 300px de ancho deja los
-   días casi cuadrados y saca un tercio del alto sin cambiarle la forma. */
+/* ---------- calendario para corregir días ----------
+
+   ESTABA APRETADO Y ERA POR DOS DECISIONES, no por gusto. Una: vivía adentro
+   de una caja de 300 px de ancho máximo, o sea que en un teléfono de 390 se
+   achicaba a propósito para "ahorrar alto" — en la pantalla donde el usuario
+   viene justo a tocar un día concreto y no equivocarse de día. Dos: la caja
+   misma. §19.2 deja la caja SOLO para lo que tiene que sentirse contenido, y
+   un calendario no es eso: es una grilla, y una grilla se lee mejor sin
+   paredes.
+
+   Ahora cuelga de una línea de pelo y ocupa el ancho entero, y los días son
+   CÍRCULOS del mismo tamaño y la misma gramática que los puntos de la tira
+   semanal de Inicio. Es el mismo objeto —un día— en dos escalas, y antes eran
+   dos dibujos distintos de la misma cosa. */
 .calendario {
-  background: var(--tarjeta);
-  border: 0.5px solid var(--linea);
-  border-radius: var(--radio);
-  padding: 14px;
-  max-width: 300px;
-  margin-inline: auto;
+  border-top: 1px solid var(--linea);
+  padding: 20px 0 6px;
 }
 .cal-cabecera {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  font-size: 14px;
+  margin-bottom: 22px;
 }
 .cal-cabecera span {
-  text-transform: capitalize;
-  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: var(--sub);
 }
+/* §19.1: redondo porque se toca. Y 44 px, que es el mínimo con el que un
+   pulgar acierta — los 34 de antes se erraban. */
 .cal-cabecera button {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--pildora);
   font-size: 20px;
   line-height: 1;
   color: var(--sub);
-  border: 0.5px solid var(--linea);
 }
 .cal-cabecera button:disabled {
   opacity: 0.25;
@@ -630,19 +638,24 @@ textarea::placeholder {
 .cal-grilla {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 10px 2px;
+  justify-items: center;
 }
 .cal-nombres {
-  margin-bottom: 6px;
+  margin-bottom: 14px;
 }
 .cal-nombres span {
   text-align: center;
   font-size: 10px;
+  letter-spacing: 0.1em;
   color: var(--apagado);
 }
+/* El día: un círculo, igual que `.tira-punto`. El radio intermedio de 8px que
+   tenía era exactamente la huella de plantilla que §19.1 vino a sacar. */
 .cal-dia {
-  height: 32px;
-  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   display: flex;
@@ -653,7 +666,7 @@ textarea::placeholder {
   transition: transform 0.16s var(--curva-salida), background-color 0.28s var(--curva-suave);
 }
 .cal-dia:active {
-  transform: scale(0.9);
+  transform: scale(0.88);
 }
 /* registrado */
 .cal-dia.hecho {
@@ -683,6 +696,47 @@ textarea::placeholder {
 }
 .cal-dia.hoy {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--pal-claro) 60%, transparent);
+}
+
+/* LA REFERENCIA. Tres formas —relleno, borde, guioncito— que hasta ahora no
+   estaban explicadas en ningún lado: había que tocar un día para descubrir
+   qué significaba cada una, y tocar es justo lo que cambia el dato. */
+.cal-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  margin-top: 22px;
+}
+.cal-leyenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--apagado);
+}
+.cal-leyenda i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+.cal-leyenda i.hecho { background: var(--pal-principal); }
+.cal-leyenda i.vacio { border: 1px solid color-mix(in srgb, var(--pal-principal) 35%, transparent); }
+.cal-leyenda i.descanso {
+  position: relative;
+}
+.cal-leyenda i.descanso::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 9px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--apagado);
 }
 
 /* Armazón mientras llega el primer dato: ocupa el mismo lugar que el
@@ -1115,10 +1169,18 @@ textarea::placeholder {
 }
 .album-celda {
   aspect-ratio: 1;
-  border-radius: 2px;
+  /* §19.1: el radio es 0 o es 999. Los 2 px de antes eran justo el radio
+     intermedio de plantilla que la regla vino a sacar. */
+  border-radius: 0;
   overflow: hidden;
   background: var(--tarjeta);
   position: relative;
+  /* En el álbum la celda ES el botón que abre la foto; en /yo es un div
+     adentro de otro botón. Estas tres líneas hacen que sirva para las dos
+     cosas sin necesitar una clase aparte. */
+  display: block;
+  width: 100%;
+  padding: 0;
 }
 .album-celda img {
   width: 100%;
@@ -1144,15 +1206,25 @@ textarea::placeholder {
 }
 /* El mosaico rompe la cuadrícula perfecta: una de cada cinco va grande y
    apaisada. Que no todo cierre en la misma vertical. */
-.album-grilla.mosaico {
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px 10px;
-}
-.album-grilla.mosaico > .album-pieza:nth-child(5n + 1) {
-  grid-column: span 2;
-}
-.album-grilla.mosaico > .album-pieza:nth-child(5n + 1) .album-celda {
-  aspect-ratio: 16 / 10;
+/* EL MOSAICO SE FUE. Cada quinta foto ocupaba el ancho entero, y como
+   `nth-child(5n + 1)` agarra también a la PRIMERA, el que tenía una sola foto
+   veía el álbum entero convertido en un rectángulo gigante. Un patrón que
+   necesita cinco fotos para leerse no puede decidir cómo se ve la pantalla el
+   día que tenés una.
+
+   El punto de "la ven mis amigos". Un rótulo con letras encima de una
+   miniatura de un tercio de pantalla no se lee: tapa la foto y no se entiende.
+   Un punto sí, y lleva el color del rango porque es de las poquísimas cosas
+   que tienen derecho a llevarlo. */
+.album-punto {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pal-claro);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fondo) 70%, transparent);
 }
 .album-vis {
   position: absolute;
@@ -1163,52 +1235,6 @@ textarea::placeholder {
   color: var(--tinta);
   padding: 12px 8px 5px;
   background: linear-gradient(300deg, rgba(5, 6, 10, 0.72), transparent 70%);
-}
-.album-borrar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 7px;
-  color: var(--tinta);
-  background: linear-gradient(135deg, rgba(5, 6, 10, 0.72), transparent 70%);
-}
-.album-borrar svg {
-  width: 13px;
-  height: 13px;
-}
-/* confirmación en la misma celda: sin diálogo del navegador */
-.album-confirmar {
-  position: absolute;
-  inset: 0;
-  border-radius: 2px;
-  z-index: 2;
-  background: rgba(5, 6, 10, 0.86);
-  backdrop-filter: blur(3px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--tinta);
-}
-.album-confirmar button {
-  font-size: 12px;
-  padding: 4px 14px;
-  border-radius: 20px;
-  background: var(--pal-claro);
-  color: #08080c;
-  font-weight: 600;
-}
-.album-confirmar button.no {
-  background: none;
-  color: var(--sub);
-  font-weight: 400;
 }
 
 /* ---------- estados vacíos: el espacio antes de que se forme nada ---------- */
@@ -2728,4 +2754,232 @@ body.con-franja .pantalla {
 @keyframes llegada-entra {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
+}
+
+/* ---------- el visor de una foto ----------
+   Antes tocar una foto no hacía nada: las dos acciones —quién la ve, borrarla—
+   vivían como botones de 34 px ENCIMA de la miniatura, tapándola, en el tamaño
+   más chico en que esa foto va a estar nunca. Ahora la grilla solo muestra y
+   todo lo que se hace se hace acá, con la foto en grande.
+
+   Las formas son las de §19.1: la visibilidad es una PÍLDORA porque se elige
+   entre dos estados; borrar es texto subrayado porque es secundario. Ninguna
+   caja: nada acá necesita sentirse contenido. */
+.visor {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: visor-entra 0.22s var(--curva-salida) forwards;
+}
+@keyframes visor-entra {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* Casi opaco y no del todo: se sigue intuyendo el fondo del rango detrás, que
+   es lo único que ata esta pantalla al resto de la app. */
+.visor-fondo {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--fondo) 94%, transparent);
+}
+.visor-marco {
+  position: relative;
+  z-index: 1;
+  /* Deja lugar arriba para la cruz y abajo para la fecha y las acciones, sin
+     que la foto se meta debajo de ninguna de las dos. */
+  max-width: calc(100% - 40px);
+  /* El max() es el piso: en una pantalla baja —un teléfono chico en
+     horizontal— restarle 210 px daba un alto negativo y la foto desaparecía.
+     Con el piso queda chica pero se ve, que es lo mínimo que tiene que hacer
+     una pantalla que se llama visor. */
+  max-height: max(140px, calc(100% - 210px));
+  display: flex;
+}
+.visor-marco img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 0;
+}
+.visor-cerrar {
+  position: absolute;
+  z-index: 2;
+  top: max(14px, env(safe-area-inset-top));
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sub);
+}
+.visor-cerrar svg {
+  width: 18px;
+  height: 18px;
+}
+/* Las flechas son áreas de 44 px pegadas al borde: el pulgar llega sin
+   cruzar la pantalla y no tapan la foto. */
+.visor-paso {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sub);
+}
+.visor-paso.izq { left: 2px; }
+.visor-paso.der { right: 2px; }
+.visor-paso svg {
+  width: 20px;
+  height: 20px;
+}
+.visor-pie {
+  position: absolute;
+  z-index: 2;
+  left: var(--sangria);
+  right: var(--sangria);
+  bottom: max(26px, calc(env(safe-area-inset-bottom) + 18px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.visor-cuando {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-family: var(--f-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.visor-cuando .fecha {
+  color: var(--sub);
+}
+/* El planeta es el dato que ninguna otra app tiene, pero sin la fecha no se
+   ubica en el tiempo: por eso acompaña y no encabeza. */
+.visor-cuando .planeta {
+  color: var(--pal-claro);
+  text-transform: uppercase;
+}
+.visor-acciones {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+/* §19.1: píldora = se elige entre opciones. Apagada es "solo vos"; prendida
+   lleva el color del rango, que acá SÍ significa —es el único estado en que
+   la foto sale de tu teléfono. */
+.pastilla {
+  border-radius: var(--pildora);
+  border: 0.5px solid var(--linea);
+  padding: 9px 18px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--apagado);
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+.pastilla.prendida {
+  color: var(--pal-claro);
+  border-color: color-mix(in srgb, var(--pal-principal) 55%, transparent);
+}
+.visor-confirmar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--sub);
+}
+
+/* ---------- la tendencia del peso ----------
+   Era una línea suelta adentro de una tarjeta, con tres números abajo: mínimo,
+   hoy, máximo. Los dos de los costados NO eran datos — eran los bordes del
+   dibujo, `min - 0.5` y `max + 0.5` — así que la pantalla mostraba con un
+   decimal dos pesos que esta persona nunca pesó.
+
+   Ahora: la línea con cuerpo, un punto en el dato de hoy, y abajo lo único
+   que se puede afirmar. Sin ejes, sin grilla, sin marco — el acabado de los
+   gráficos de Hevy. */
+.grafico-peso {
+  position: relative;
+  border-top: 1px solid var(--linea);
+  padding: 26px 0 6px;
+}
+.grafico-peso-lienzo {
+  position: relative;
+  height: 84px;
+}
+.grafico-peso svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+/* El punto va en HTML y no adentro del SVG: el viewBox se estira sin
+   conservar la proporción, así que un <circle> saldría ovalado. */
+.grafico-peso-punto {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--pal-claro);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fondo) 65%, transparent);
+  pointer-events: none;
+}
+.grafico-peso-pie,
+.peso-solo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 16px;
+}
+.grafico-peso-pie .hoy,
+.peso-solo .hoy {
+  font-family: var(--f-numero), system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 300;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta);
+}
+.grafico-peso-pie .hoy em,
+.peso-solo .hoy em {
+  font-style: normal;
+  font-size: 13px;
+  color: var(--sub);
+  margin-left: 5px;
+}
+.grafico-peso-pie .cambio {
+  font-family: var(--f-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--apagado);
+}
+.peso-solo {
+  border-top: 1px solid var(--linea);
+  padding-top: 20px;
+}
+
+/* El mes en el álbum. §19.1 regla 3: el título se sale del margen, como el
+   número de racha y como los títulos de sección — repetir UNA irregularidad
+   la vuelve intención. */
+.album-mes + .album-mes {
+  margin-top: 30px;
+}
+.album-mes h3 {
+  margin: 0 0 12px calc(var(--saliente) * -1);
+  font-family: var(--f-mono), monospace;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--apagado);
 }

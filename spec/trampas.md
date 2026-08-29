@@ -770,3 +770,28 @@ terminaba encima del DOTS igual; con `absolute` + `bottom: 0` cae en el medio,
 porque se resuelve contra un ancestro del alto de la ventana; y moverlos al
 final del `body` **rompió el layout entero** —media pantalla en blanco—, porque
 reparentar saca al elemento de donde React lo espera.
+
+**Un `create function` deja EXECUTE a `public`, y `security definer` lo vuelve
+grave.** La migración 27 creaba dos funciones nuevas y solo hacía `grant execute
+… to authenticated`. Eso NO le saca el permiso a nadie: Postgres se lo da a
+`public` por omisión, así que las dos quedaban llamables por `anon` — y las dos
+son `security definer`, o sea que corren con los permisos del dueño. Las dos
+chequeaban `auth.uid()` y no habrían devuelto nada, pero el que se apoya en eso
+es el próximo que agregue una función y se olvide del chequeo.
+→ **Regla:** toda función nueva lleva `revoke … from public, anon` ANTES del
+`grant`. Lo encontró `test-deriva` comparando la migración contra `schema.sql`,
+que es exactamente para lo que está.
+
+**Dos scripts de Playwright contra la misma cuenta al mismo tiempo se pisan.**
+Corrí `capturas` y un script suelto en paralelo, los dos entrando con el mismo
+usuario. El segundo se colgó 180 s en el login. Las sesiones de Supabase rotan
+el refresh token, y dos clientes rotándolo a la vez se invalidan entre ellos.
+→ **Regla:** los recorridos de prueba van de a uno. Si hace falta paralelo, cada
+uno con su propio usuario descartable, como hace `simular-semana`.
+
+**Cada script que compila necesita SU carpeta en `.gitignore`.** `probar-exif`
+buildeaba en `.next-exif` para poder correr con el dev server prendido, y como
+esa carpeta no estaba ignorada, un `git add -A` se llevó el build entero adentro
+del commit.
+→ **Regla:** script nuevo que compile ⇒ su `NEXT_DIST_DIR` va al `.gitignore` en
+el mismo commit.

@@ -13,7 +13,8 @@
     "verificar:deploy": "node --env-file=.env.local supabase/verificar-deploy.mjs",
     "test:vuelta-atras": "node --env-file=.env.local supabase/probar-vuelta-atras.mjs",
     "test:primera-vez": "node --env-file=.env.local supabase/primera-vez.mjs",
-    "test:semana": "node --env-file=.env.local supabase/simular-semana.mjs"
+    "test:semana": "node --env-file=.env.local supabase/simular-semana.mjs",
+    "test:exif": "node --env-file=.env.local supabase/probar-exif.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
