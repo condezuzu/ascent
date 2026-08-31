@@ -200,6 +200,34 @@ export default function Principal() {
    * inconsistencia: el día es un hecho —fuiste— y la sesión es una medición,
    * que si arranca antes de que empieces a entrenar mide mal.
    */
+  // ---- el día que entró solo, la primera vez que se lo ve ----
+  //
+  // SE PERDIÓ AL MUDAR EL VIGILANTE y estuvo muerto una tanda entera: el
+  // recorte se llevó este efecto de paso, así que `llegadaNueva` nunca se
+  // ponía en true y el mensaje no aparecía nunca. No lo agarró ningún test
+  // porque no hay ninguno que mire esta pantalla con un día por ubicación.
+  //
+  // Llegar al gimnasio y que el día se registre en el bolsillo es lo único
+  // que la app hace y ninguna otra. Se dice una sola vez por día y se anota
+  // enseguida: un mensaje que aparece cada vez que abrís la app deja de ser
+  // una noticia y pasa a ser decorado.
+  useEffect(() => {
+    (async () => {
+      const dia = hoyISO();
+      const log = logs.find((l) => l.fecha === dia);
+      if (!log || log.origen !== 'ubicacion') return;
+      const visto = await plataforma.almacenamiento.leer(CLAVE_LLEGADA_VISTA);
+      if (visto === dia) return;
+      setLlegadaNueva(true);
+      // Y ACÁ TAMBIÉN VA LA ANIMACIÓN. Antes solo salía por la hoja de
+      // "Registrar día", o sea por el camino que en un día de gimnasio de
+      // verdad nunca se usa: el día entra por ubicación y el momento que
+      // construimos no se disparaba justo los días que importan.
+      setSumando(true);
+      await plataforma.almacenamiento.guardar(CLAVE_LLEGADA_VISTA, dia);
+    })();
+  }, [logs]);
+
   // EL VIGILANTE DEL GIMNASIO SE MUDÓ A `VigilanteDeGimnasio`, que vive en el
   // armazón. Acá adentro solo miraba estando en esta pestaña: abrir la app en
   // Stats o en el Álbum dejaba el automático apagado, y llegar al gimnasio no

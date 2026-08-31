@@ -850,3 +850,23 @@ para saber cuánto se mueve la escena sola.
 sacando la foto.** `page.screenshot()` tarda más que el efecto.
 → **Regla:** mantenerla encendida —volver a dispararla cada 120 ms— durante la
 captura, y soltarla para la foto de control.
+
+**Recortar un bloque de código por índices se lleva lo que había en el medio.**
+Al mudar el vigilante del gimnasio fuera de Inicio corté desde `const vigilar`
+hasta el final del efecto del intervalo, y en ese rango vivía también el efecto
+que detecta "el día entró solo". Quedó una tanda entera con `llegadaNueva`
+declarado, usado en el render y **nunca puesto en true**: el mensaje no aparecía
+nunca y nadie se enteró.
+
+Ni el compilador ni los tests lo agarran — la variable existe, se usa, y el
+booleano en false es un estado legítimo.
+→ **Regla:** después de recortar por índices, buscar cada `useState` que quedó y
+comprobar que algo todavía lo escribe. `grep -n "setX(" archivo` y ver que haya
+más de la declaración.
+
+**Una animación puede quedar colgada del camino que nadie usa.** La animación de
+registrar el día se disparaba solo desde la hoja de "Registrar día". En un día
+de gimnasio de verdad el día entra por ubicación, así que el momento que se
+construyó no ocurría justo los días que importan.
+→ **Regla:** cuando algo se dispara "al pasar X", listar TODOS los caminos por
+los que X puede pasar. Acá eran dos y estaba enganchado al menos frecuente.
