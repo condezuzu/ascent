@@ -19,3 +19,4 @@ capturas/
 .next-exif/
 # scripts de una sola vez, para mirar una pantalla y tirar
 *.tmp.mjs
+.next-arranque/

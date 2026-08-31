@@ -14,7 +14,9 @@
     "test:vuelta-atras": "node --env-file=.env.local supabase/probar-vuelta-atras.mjs",
     "test:primera-vez": "node --env-file=.env.local supabase/primera-vez.mjs",
     "test:semana": "node --env-file=.env.local supabase/simular-semana.mjs",
-    "test:exif": "node --env-file=.env.local supabase/probar-exif.mjs"
+    "test:exif": "node --env-file=.env.local supabase/probar-exif.mjs",
+    "medir:arranque": "node --env-file=.env.local supabase/medir-arranque.mjs",
+    "medir:sin-motor": "node --env-file=.env.local supabase/medir-sin-motor.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
