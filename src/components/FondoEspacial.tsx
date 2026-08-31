@@ -8,6 +8,7 @@ import { aplicarTema } from '@/lib/paletas';
 import { marca, medir, instalarLector } from '@/lib/medir';
 import { veloDeRango, msDeTransicion } from '@nucleo/atmosfera';
 import { plataforma } from '@/plataforma';
+import { hayQueCargarElMotor } from '@/lib/fondo';
 
 // El fondo vive detrás de todo, con un velo plano oscuro entre el render y
 // la interfaz. Cuanto más detallado el fondo, más velo.
@@ -107,19 +108,74 @@ export default function FondoEspacial(
     let montaje: Montaje | null = null;
     let cancelado = false;
 
-    marca('ascent:motor-import-inicio');
-    // el motor se carga aparte para no meter three.js en el bundle inicial
-    import('@/motor/escena').then(({ montarFondo }) => {
-      marca('ascent:motor-import-fin');
-      medir('ascent:motor-import', 'ascent:motor-import-inicio', 'ascent:motor-import-fin');
+    // ---- EL MOTOR SE CARGA TARDE, Y A VECES NO SE CARGA ----
+    //
+    // MEDIDO: three.js cuesta TRES SEGUNDOS de arranque. La racha aparece a
+    // los 3619 ms con motor y a los 635 sin él, con 74 kB de diferencia de
+    // descarga — o sea que el costo no es bajarlo, es evaluarlo.
+    //
+    // Y las marcas de acá abajo lo tapaban: `motor-import` daba 0 ms,
+    // partículas 1 ms, shaders 9 ms. Esas miden MONTAR la escena; el trabajo
+    // caro es evaluar el módulo, y eso pasaba antes, donde no había marca.
+    // Nos mandó a mirar al lado equivocado dos veces.
+    //
+    // Ahora se espera a que el hilo principal esté libre —o sea, a que la app
+    // ya se pueda usar— y recién ahí se importa. El fondo de CSS cubre el
+    // hueco, que es exactamente para lo que estaba.
+    const importar = async () => {
       if (cancelado) return;
-      marca('ascent:motor-montar-inicio');
-      montaje = montarFondo(cont, { ...op, animar });
-      pulsoRef.current = montaje?.pulso ?? null;
-      marca('ascent:motor-montar-fin');
-      medir('ascent:motor-montar', 'ascent:motor-montar-inicio', 'ascent:motor-montar-fin');
-      medir('ascent:motor-total', 'ascent:motor-import-inicio', 'ascent:motor-montar-fin');
-      if (!cancelado) setListo(true);
+      if (!(await hayQueCargarElMotor())) return;
+      if (cancelado) return;
+      marca('ascent:motor-import-inicio');
+      const { montarFondo } = await import('@/motor/escena');
+      return montarFondo;
+    };
+
+    // ESPERAR A QUE EL HILO ESTÉ LIBRE NO ALCANZA, y lo aprendí midiendo: con
+    // solo `requestIdleCallback` el número no se movió ni un poco (3505 ms
+    // contra 3619 de antes).
+    //
+    // La razón es que el hilo SÍ se queda libre tempranísimo: entre el primer
+    // pintado (~270 ms) y la vuelta de Supabase (~800 ms) no hay nada que
+    // hacer más que esperar la red. El callback disparaba ahí y evaluaba
+    // three.js JUSTO en el momento en que llegaban los datos — o sea, en el
+    // peor momento posible.
+    //
+    // Por eso hay además un PISO de tiempo: no se toca el motor antes de los
+    // dos segundos, pase lo que pase. Es un número y no una señal fina porque
+    // no existe una señal fina: el navegador no avisa "la app ya se puede
+    // usar". Dos segundos es holgado contra los ~700 ms que tarda la app en
+    // ser usable sin el motor, y el fondo de CSS cubre el hueco entero.
+    const PISO_MS = 2000;
+    const cuandoHayaLugar = (fn: () => void) => {
+      const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => void };
+      const intentar = () => {
+        if (cancelado) return;
+        // Si todavía es temprano, se vuelve a agendar en vez de correr: el
+        // hilo puede estar libre y la app no estar lista igual.
+        if (performance.now() < PISO_MS) {
+          setTimeout(intentar, Math.max(120, PISO_MS - performance.now()));
+          return;
+        }
+        fn();
+      };
+      if (typeof w.requestIdleCallback === 'function') w.requestIdleCallback(intentar, { timeout: 2500 });
+      else setTimeout(intentar, PISO_MS);
+    };
+
+    cuandoHayaLugar(() => {
+      importar().then((montarFondo) => {
+        if (!montarFondo || cancelado) return;
+        marca('ascent:motor-import-fin');
+        medir('ascent:motor-import', 'ascent:motor-import-inicio', 'ascent:motor-import-fin');
+        marca('ascent:motor-montar-inicio');
+        montaje = montarFondo(cont, { ...op, animar });
+        pulsoRef.current = montaje?.pulso ?? null;
+        marca('ascent:motor-montar-fin');
+        medir('ascent:motor-montar', 'ascent:motor-montar-inicio', 'ascent:motor-montar-fin');
+        medir('ascent:motor-total', 'ascent:motor-import-inicio', 'ascent:motor-montar-fin');
+        if (!cancelado) setListo(true);
+      });
     });
 
     return () => {

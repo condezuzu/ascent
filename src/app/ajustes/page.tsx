@@ -18,6 +18,7 @@ import CorregirDias from '@/components/ajustes/CorregirDias';
 import DescansoEntreSeries from '@/components/ajustes/DescansoEntreSeries';
 import Descansos from '@/components/ajustes/Descansos';
 import Gimnasio from '@/components/ajustes/Gimnasio';
+import Fondo from '@/components/ajustes/Fondo';
 import FotosNuevas from '@/components/ajustes/FotosNuevas';
 import MisDatos from '@/components/ajustes/MisDatos';
 import NombreUsuario from '@/components/ajustes/NombreUsuario';
@@ -97,6 +98,10 @@ export default function Ajustes() {
         <CorregirDias recargar={cargar} />
         <DescansoEntreSeries perfil={perfil} alCambiar={alCambiar} />
         <Gimnasio perfil={perfil} alCambiar={alCambiar} />
+
+        {/* Va después del gimnasio y antes del nombre: es una preferencia de
+            ESTE aparato, como el descanso, y no un dato de la cuenta. */}
+        <Fondo />
         <NombreUsuario perfil={perfil} alCambiar={alCambiar} />
         <FotosNuevas perfil={perfil} alCambiar={alCambiar} />
         <UnidadPeso perfil={perfil} alCambiar={alCambiar} />

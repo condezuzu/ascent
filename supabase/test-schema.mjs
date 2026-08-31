@@ -66,6 +66,7 @@ import {
   siguiente,
   sumar,
 } from '../nucleo/bloques.ts';
+import { cargarElMotor, esPreferenciaFondo } from '../nucleo/fondo.ts';
 import {
   alturaDelPulso,
   siguePulsando,
@@ -3208,6 +3209,28 @@ console.log('\n51. El nucleo no se puede ensuciar');
   // Y que no este vacio: un nucleo sin archivos pasaria las dos de arriba.
   const cuantos = leerDir(NUCLEO).filter((n) => /\.ts$/.test(n)).length;
   chequear('y tiene archivos de verdad', cuantos >= 15, true);
+}
+
+// =====================================================================
+console.log('\n52. El fondo se puede apagar, y el automatico no manda');
+{
+  // El motor cuesta TRES SEGUNDOS de arranque, medidos. La deteccion
+  // automatica lo apaga en equipos flojos, pero es un valor por omision y no
+  // un veredicto: quien quiera el fondo igual tiene que poder tenerlo.
+  chequear('en auto, equipo bueno: se carga', cargarElMotor('auto', false), true);
+  chequear('en auto, equipo flojo: NO se carga', cargarElMotor('auto', true), false);
+  // No saber NO es lo mismo que flojo: negarle el fondo a alguien por no poder
+  // medirlo seria castigar la falta de dato.
+  chequear('en auto, sin saber: se carga', cargarElMotor('auto', null), true);
+
+  // La eleccion de la persona gana SIEMPRE, en los dos sentidos.
+  chequear('"siempre" gana en un equipo flojo', cargarElMotor('siempre', true), true);
+  chequear('"nunca" gana en un equipo bueno', cargarElMotor('nunca', false), false);
+  chequear('"nunca" gana aunque no se sepa', cargarElMotor('nunca', null), false);
+
+  // Lo que llega del almacenamiento es texto de afuera: se valida.
+  chequear('una preferencia valida se reconoce', esPreferenciaFondo('siempre'), true);
+  chequear('basura no', [esPreferenciaFondo('si'), esPreferenciaFondo(null), esPreferenciaFondo(3)], [false, false, false]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

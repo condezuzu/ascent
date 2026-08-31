@@ -317,6 +317,19 @@ export const T = {
     gimnasioImpreciso: (metros: number) =>
       `Te ubica con ${metros} m de error, demasiado para marcar el punto acá. Salí a la vereda y probá de nuevo en unos segundos.`,
 
+    // EL FONDO. El motor cuesta tres segundos de arranque, medidos: se puede
+    // apagar. No dice "gráficos" ni "calidad": dice qué es y qué cuesta.
+    fondo: 'El fondo del espacio',
+    fondoAuto: 'Automático',
+    fondoSiempre: 'Siempre',
+    fondoNunca: 'Nunca',
+    // El automático DICE qué decidió: "automático" a secas es pedir que
+    // confíes a ciegas en algo que te cambia la app.
+    fondoAutoBueno: 'Tu equipo lo aguanta bien, así que está prendido. La app tarda unos segundos más en abrir.',
+    fondoAutoFlojo: 'Tu equipo va justo, así que queda apagado y la app abre al toque. Podés prenderlo igual.',
+    fondoAutoNoSe: 'Este navegador no dice cuánto puede tu equipo, así que queda prendido. Si la app tarda en abrir, apagalo.',
+    fondoNota: 'El fondo tarda unos segundos en cargar. Apagado, la app abre al instante y el degradado queda igual.',
+
     nombreUsuario: 'Nombre de usuario',
     nombreNota: 'Así te encuentran tus amigos. No puede repetirse.',
     nombreListo: 'Listo, ese es tu nombre ahora.',
