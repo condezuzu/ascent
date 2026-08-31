@@ -4,11 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 import { eventos } from '@/plataforma/eventos';
-import { desfasajeDelReloj, type SesionViva } from '@/lib/sesiones';
+import { desfasajeDelReloj, type SesionViva } from '@nucleo/sesiones';
 import { leerPerfilCache } from '@/lib/cache';
-import { estaBloqueado, textoDeBloqueo } from '@/lib/pendiente';
+import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import {
   bloquesVacios,
   cambiarEjercicio,
@@ -19,7 +19,7 @@ import {
   siguiente,
   sumar,
   type EstadoBloques,
-} from '@/lib/bloques';
+} from '@nucleo/bloques';
 import {
   AVISO,
   borrarSesionCache,
@@ -41,9 +41,9 @@ import {
   leerDescanso,
   type DescansoVivo,
 } from '@/lib/descanso';
-import { marcarComoUsada } from '@/lib/llegada';
+import { marcarComoUsada } from '@nucleo/llegada';
 import { cuantasPendientes, encolar, vaciar } from '@/lib/cola';
-import type { OrigenSesion, ResultadoRegistro } from '@/lib/tipos';
+import type { OrigenSesion, ResultadoRegistro } from '@nucleo/tipos';
 
 export type EstadoSesion = {
   corriendo: boolean;

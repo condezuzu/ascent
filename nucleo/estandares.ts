@@ -1,4 +1,4 @@
-import { T } from '../textos.ts';
+import { T } from './textos.ts';
 
 // Contra quién se compara la fuerza: gente que anota en una app, no
 // competidores. La elección cambia el resultado entero —80 kg y 132 de

@@ -1,7 +1,7 @@
-import { TOPE_SESION_SEGUNDOS, DESCANSO_PREDETERMINADO } from '@/lib/reglas';
+import { TOPE_SESION_SEGUNDOS, DESCANSO_PREDETERMINADO } from '@nucleo/reglas';
 import { plataforma } from '@/plataforma';
-import type { EstadoBloques } from '@/lib/bloques';
-import type { Vigilancia } from '@/lib/llegada';
+import type { EstadoBloques } from '@nucleo/bloques';
+import type { Vigilancia } from '@nucleo/llegada';
 import { eventos } from '@/plataforma/eventos';
 
 const CLAVE = 'ascent:sesion';

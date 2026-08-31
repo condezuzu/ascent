@@ -5,16 +5,16 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { planetaDeDia } from '@/lib/rangos';
-import { esUnidad, type Unidad } from '@/lib/peso';
-import { fechaDeMarca, origenDeMarca, pesoLindo } from '@/lib/fuerza';
-import type { Ejercicio, MiFuerza, PR, Perfil } from '@/lib/tipos';
+import { planetaDeDia } from '@nucleo/rangos';
+import { esUnidad, type Unidad } from '@nucleo/peso';
+import { fechaDeMarca, origenDeMarca, pesoLindo } from '@nucleo/fuerza';
+import type { Ejercicio, MiFuerza, PR, Perfil } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
 import CargarMarca from '@/components/CargarMarca';
 import AnotarPeso from '@/components/AnotarPeso';
 import NoCargo from '@/components/NoCargo';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 /**
  * Mis marcas: donde se cargan, se miran y se corrigen (§16).

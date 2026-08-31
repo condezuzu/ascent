@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { MESES, fechaLinda } from '@/lib/fechas';
-import { planetaDeDia } from '@/lib/rangos';
+import { MESES, fechaLinda } from '@nucleo/fechas';
+import { planetaDeDia } from '@nucleo/rangos';
 import { avisarFallo } from '@/lib/cola';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
@@ -13,7 +13,7 @@ import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import VisorFoto from '@/components/VisorFoto';
 import Esqueleto from '@/components/Esqueleto';
 import NoCargo from '@/components/NoCargo';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 type Celda = {
   id: string;

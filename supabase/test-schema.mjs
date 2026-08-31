@@ -18,9 +18,9 @@ import {
   numeroDeRango,
   planetaDeDia,
   unRM,
-} from '../src/lib/reglas.ts';
+} from '../nucleo/reglas.ts';
 import { PLANETAS_CFG } from '../src/motor/cuerpos.ts';
-import { agruparPorDia, ESTADO_CON_DURACION, etiquetaDeDia } from '../src/lib/dias.ts';
+import { agruparPorDia, ESTADO_CON_DURACION, etiquetaDeDia } from '../nucleo/dias.ts';
 import {
   CATEGORIAS,
   EJERCICIOS_ESTANDAR,
@@ -28,7 +28,7 @@ import {
   esSexoEstandar,
   ubicar,
   umbrales,
-} from '../src/lib/estandares.ts';
+} from '../nucleo/estandares.ts';
 import {
   EJERCICIOS_DOTS,
   ESTADOS_AMISTAD,
@@ -40,21 +40,21 @@ import {
   UNIDADES_PESO,
   VISIBILIDADES,
   ORIGENES_SESION,
-} from '../src/lib/tipos.ts';
-import { decidir } from '../src/lib/llegada.ts';
+} from '../nucleo/tipos.ts';
+import { decidir } from '../nucleo/llegada.ts';
 import {
   clasificar,
   decidirRuta,
   hayCookiesDeSesion,
   llevarCookies,
-} from '../src/lib/supabase/veredicto.ts';
+} from '../nucleo/veredicto.ts';
 // `next/server.js` y no `next/server`: node necesita el especificador exacto.
 // Se usa el NextResponse DE VERDAD porque el bug era de esa clase, no de una
 // imitación nuestra.
 import { NextResponse } from 'next/server.js';
-import { ESPERA_LLEGADA_MS } from '../src/lib/reglas.ts';
+import { ESPERA_LLEGADA_MS } from '../nucleo/reglas.ts';
 import { eventos } from '../src/plataforma/eventos.ts';
-import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '../src/lib/geo.ts';
+import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '../nucleo/geo.ts';
 import {
   bloquesVacios,
   cambiarEjercicio,
@@ -65,7 +65,7 @@ import {
   sembrar,
   siguiente,
   sumar,
-} from '../src/lib/bloques.ts';
+} from '../nucleo/bloques.ts';
 import {
   alturaDelPulso,
   siguePulsando,
@@ -1267,7 +1267,7 @@ console.log('\n26. Las reglas escritas dos veces: SQL contra cliente');
     [await acepta(DESCANSO_MINIMO - 1), await acepta(DESCANSO_MAXIMO + 1)],
     [false, false]
   );
-  const { PRESETS_DESCANSO } = await import('../src/lib/reglas.ts');
+  const { PRESETS_DESCANSO } = await import('../nucleo/reglas.ts');
   const fuera = [];
   for (const p of PRESETS_DESCANSO) if (!(await acepta(p))) fuera.push(p);
   chequear('todos los presets entran en la columna', fuera, []);
@@ -2077,7 +2077,7 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
   // cliente compare contra un valor guardado puede estar roto en silencio.
   // Acá NO se repiten los valores a mano —eso comprobaría que el test coincide
   // consigo mismo—: se le pregunta a Postgres qué acepta cada `check` y se
-  // compara contra `src/lib/tipos.ts`, que es de donde sale el cliente.
+  // compara contra `nucleo/tipos.ts`, que es de donde sale el cliente.
   const checks = (
     await db.query(`
       select conrelid::regclass::text as tabla, pg_get_constraintdef(oid) as def
@@ -2263,6 +2263,7 @@ console.log('\n36. Ningun `\\b` suelto adentro de un template literal');
     }
   };
   recorrer(join(RAIZ, 'src'));
+  recorrer(join(RAIZ, 'nucleo'));
   recorrer(join(RAIZ, 'supabase'));
 
   const culpables = [];
@@ -3133,7 +3134,7 @@ console.log('\n50. El diccionario no junta frases muertas');
   // muerta es una frase que alguien va a traducir para nada.
   const { readdirSync: leerDir, readFileSync: leerArch, statSync: estado } = await import('node:fs');
   const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
-  const DIC = join(RAIZ, 'src', 'textos.ts');
+  const DIC = join(RAIZ, 'nucleo', 'textos.ts');
 
   const archivos = [];
   const recorrer = (d) => {
@@ -3143,7 +3144,11 @@ console.log('\n50. El diccionario no junta frases muertas');
       else if (/\.tsx?$/.test(n) && r !== DIC) archivos.push(r);
     }
   };
+  // LAS DOS CARPETAS. Trece claves —las de fechas y las de marcas— solo las
+  // usa el núcleo, que desde la mudanza ya no vive adentro de `src`. Mirando
+  // una sola, este test las daba por muertas: se usan todos los días.
   recorrer(join(RAIZ, 'src'));
+  recorrer(join(RAIZ, 'nucleo'));
 
   const codigo = archivos.map((a) => leerArch(a, 'utf8')).join('\n');
   const dic = leerArch(DIC, 'utf8');
@@ -3157,6 +3162,53 @@ console.log('\n50. El diccionario no junta frases muertas');
   chequear(`las ${claves.length} claves se usan todas`, muertas, []);
 }
 
+
+// =====================================================================
+console.log('\n51. El nucleo no se puede ensuciar');
+{
+  // ES LA APUESTA ENTERA DE LA MIGRACION. `nucleo/` se comparte tal cual entre
+  // la web y la app nativa: las reglas de la racha, los bloques, la llegada al
+  // gimnasio, las cuentas de fuerza y los textos. Si algo de ahi adentro toca
+  // el navegador o importa de `src/`, en React Native no compila — y se
+  // descubre en la tanda 4, cuando ya hay medio port encima.
+  //
+  // Dos reglas, y las dos se comprueban leyendo los archivos:
+  //   1. No importa NADA de afuera de `nucleo/`.
+  //   2. No nombra ninguna API del navegador.
+  const { readdirSync: leerDir, readFileSync: leerArch } = await import('node:fs');
+  const NUCLEO = join(dirname(fileURLToPath(import.meta.url)), '..', 'nucleo');
+
+  // `document` y `window` no estan porque ya los cubre la regla de importar:
+  // lo que se busca son los nombres que se pueden usar SIN importar nada.
+  const DEL_NAVEGADOR = [
+    'document', 'window', 'navigator', 'localStorage', 'sessionStorage',
+    'performance.', 'requestAnimationFrame', 'AudioContext', 'fetch(',
+    'HTMLElement', 'addEventListener',
+  ];
+
+  const afuera = [];
+  const sucios = [];
+  for (const n of leerDir(NUCLEO)) {
+    if (!/\.tsx?$/.test(n)) continue;
+    const codigo = sinComentarios(leerArch(join(NUCLEO, n), 'utf8'));
+    for (const m of codigo.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+      const destino = m[1];
+      // Solo se permiten rutas relativas al propio nucleo. Ni alias, ni
+      // paquetes: un paquete de npm que ande en web puede no andar en RN.
+      if (!destino.startsWith('./')) afuera.push(`${n} importa ${destino}`);
+    }
+    for (const api of DEL_NAVEGADOR) {
+      if (codigo.includes(api)) sucios.push(`${n} usa ${api}`);
+    }
+  }
+
+  chequear('no importa nada de afuera de nucleo/', afuera, []);
+  chequear('no toca ninguna API del navegador', sucios, []);
+
+  // Y que no este vacio: un nucleo sin archivos pasaria las dos de arriba.
+  const cuantos = leerDir(NUCLEO).filter((n) => /\.ts$/.test(n)).length;
+  chequear('y tiene archivos de verdad', cuantos >= 15, true);
+}
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {

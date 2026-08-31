@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { enDias, hoyISO } from '@/lib/fechas';
+import { enDias, hoyISO } from '@nucleo/fechas';
 import CalendarioCorregir from '@/components/CalendarioCorregir';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 export default function CorregirDias({ recargar }: { recargar: () => void }) {
   const [supabase] = useState(() => crearCliente());

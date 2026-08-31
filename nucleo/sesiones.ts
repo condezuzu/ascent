@@ -1,5 +1,5 @@
-import { TOPE_SESION_SEGUNDOS } from '@/lib/reglas';
-import { T } from '../textos.ts';
+import { TOPE_SESION_SEGUNDOS } from './reglas';
+import { T } from './textos.ts';
 
 export type SesionViva = {
   corriendo: boolean;

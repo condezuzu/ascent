@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { METAS, metaCumplida, type EstadoBloques } from '@/lib/bloques';
-import type { Ejercicio } from '@/lib/tipos';
-import { T } from '@/textos';
+import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
+import type { Ejercicio } from '@nucleo/tipos';
+import { T } from '@nucleo/textos';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN.

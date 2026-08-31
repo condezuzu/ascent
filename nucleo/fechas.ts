@@ -1,4 +1,4 @@
-import { T } from '../textos.ts';
+import { T } from './textos.ts';
 
 // Todas las fechas de la app son fechas locales en formato YYYY-MM-DD.
 // Nunca usar toISOString() para "hoy": corta el día en UTC, no en el huso del usuario.

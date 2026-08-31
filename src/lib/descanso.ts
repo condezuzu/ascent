@@ -1,6 +1,6 @@
-import { DESCANSO_MAXIMO, DESCANSO_MINIMO, DESCANSO_PREDETERMINADO } from '@/lib/reglas';
+import { DESCANSO_MAXIMO, DESCANSO_MINIMO, DESCANSO_PREDETERMINADO } from '@nucleo/reglas';
 import { plataforma } from '@/plataforma';
-import { T } from '../textos.ts';
+import { T } from '@nucleo/textos';
 
 const CLAVE = 'ascent:descanso';
 

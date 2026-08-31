@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { fechaDeMarca, pesoLindo, redondear } from '@/lib/fuerza';
-import type { Unidad } from '@/lib/peso';
-import type { FilaFuerza, MiFuerza } from '@/lib/tipos';
+import { fechaDeMarca, pesoLindo, redondear } from '@nucleo/fuerza';
+import type { Unidad } from '@nucleo/peso';
+import type { FilaFuerza, MiFuerza } from '@nucleo/tipos';
 import Avatar from '@/components/Avatar';
 import {
   esEjercicioEstandar,
@@ -15,8 +15,8 @@ import {
   muestraFina,
   ubicar,
   type SexoEstandar,
-} from '@/lib/estandares';
-import { T } from '@/textos';
+} from '@nucleo/estandares';
+import { T } from '@nucleo/textos';
 
 /**
  * La fuerza dentro de Stats (§16.6): acá se mira y se compara, en `/fuerza` se

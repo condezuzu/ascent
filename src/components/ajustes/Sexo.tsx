@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { guardarPreferencia } from './guardar';
-import type { Perfil, Sexo as SexoValor } from '@/lib/tipos';
-import { T } from '@/textos';
+import type { Perfil, Sexo as SexoValor } from '@nucleo/tipos';
+import { T } from '@nucleo/textos';
 
 /**
  * El sexo es un campo OPCIONAL y existe por una sola razón: DOTS usa dos

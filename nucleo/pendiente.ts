@@ -1,4 +1,4 @@
-import { T } from '../textos.ts';
+import { T } from './textos.ts';
 
 /**
  * Lo que devuelve `registrar_dia` cuando la guarda de las 20 horas frena el

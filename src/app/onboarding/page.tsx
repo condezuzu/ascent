@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import FondoEspacial from '@/components/FondoEspacial';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 // El username se elige acá, después del primer login.
 // Único e insensible a mayúsculas (lo garantiza un índice en la base).

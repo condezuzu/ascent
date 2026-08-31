@@ -1,5 +1,5 @@
 import { plataforma } from '@/plataforma';
-import type { Perfil } from './tipos';
+import type { Perfil } from '@nucleo/tipos';
 
 // Caché del perfil en el propio teléfono. Sirve para que al volver a entrar
 // la pantalla salga con la racha y la paleta correctas al instante, en vez

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { planetaDeDia } from '@/lib/rangos';
-import type { Perfil } from '@/lib/tipos';
+import { planetaDeDia } from '@nucleo/rangos';
+import type { Perfil } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Avatar from '@/components/Avatar';
 import InstalarPWA from '@/components/InstalarPWA';
@@ -25,7 +25,7 @@ import Sesion from '@/components/ajustes/Sesion';
 import Sexo from '@/components/ajustes/Sexo';
 import Sugerencias from '@/components/ajustes/Sugerencias';
 import UnidadPeso from '@/components/ajustes/UnidadPeso';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 /**
  * Ajustes es una LISTA de secciones independientes, y cada una vive en su

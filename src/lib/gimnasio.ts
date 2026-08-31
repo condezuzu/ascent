@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { plataforma } from '@/plataforma';
-import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '@/lib/geo';
-import type { OrigenDia, Perfil } from '@/lib/tipos';
+import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '@nucleo/geo';
+import type { OrigenDia, Perfil } from '@nucleo/tipos';
 
 /**
  * Registrar el día por una señal que no es un toque (§13).

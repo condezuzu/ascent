@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { T } from '../textos.ts';
+import { T } from '@nucleo/textos';
 
 export const TAMANO_MAXIMO = 8 * 1024 * 1024;
 

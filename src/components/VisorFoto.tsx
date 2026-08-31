@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fechaLinda } from '@/lib/fechas';
-import { T } from '@/textos';
+import { fechaLinda } from '@nucleo/fechas';
+import { T } from '@nucleo/textos';
 
 export type FotoDelVisor = {
   id: string;

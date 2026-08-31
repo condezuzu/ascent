@@ -1,9 +1,9 @@
 'use client';
 
-import { cronoLindo, transcurrido } from '@/lib/sesiones';
+import { cronoLindo, transcurrido } from '@nucleo/sesiones';
 import { cuentaAtras, restante } from '@/lib/descanso';
 import type { EstadoSesion } from '@/lib/usarSesion';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 /**
  * El cronómetro en la cabecera de Inicio, al lado de la racha (§20.2).

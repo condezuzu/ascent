@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import FondoEspacial from '@/components/FondoEspacial';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 // Se llega acá desde el correo de recuperación (con la sesión ya abierta por
 // el callback) o desde Ajustes para cambiar la contraseña estando adentro.

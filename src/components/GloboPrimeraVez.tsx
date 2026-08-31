@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { faltaElGlobo, marcarGloboVisto, type Globo } from '@/lib/guia';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 /**
  * Una línea explicando para qué sirve la pantalla, la primera vez que se

@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { hoyISO } from '@/lib/fechas';
+import { hoyISO } from '@nucleo/fechas';
 import { juntarMisDatos } from '@/lib/cuenta';
-import type { Perfil } from '@/lib/tipos';
-import { T } from '@/textos';
+import type { Perfil } from '@nucleo/tipos';
+import { T } from '@nucleo/textos';
 
 export default function MisDatos({ perfil }: { perfil: Perfil }) {
   const [supabase] = useState(() => crearCliente());

@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { aISO, deISO, hoyISO, restarDias } from '@/lib/fechas';
-import { RANGOS, rangoDeRacha } from '@/lib/rangos';
-import { deKilos, esUnidad, type Unidad } from '@/lib/peso';
-import type { Log, Peso } from '@/lib/tipos';
+import { aISO, deISO, hoyISO, restarDias } from '@nucleo/fechas';
+import { RANGOS, rangoDeRacha } from '@nucleo/rangos';
+import { deKilos, esUnidad, type Unidad } from '@nucleo/peso';
+import type { Log, Peso } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Nav from '@/components/Nav';
@@ -16,7 +16,7 @@ import SeccionFuerza from '@/components/SeccionFuerza';
 import SeccionSesiones from '@/components/SeccionSesiones';
 import GraficoPeso from '@/components/GraficoPeso';
 import AnotarPeso from '@/components/AnotarPeso';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 export default function Estadisticas() {
   const [supabase] = useState(() => crearCliente());

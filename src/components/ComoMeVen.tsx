@@ -1,11 +1,11 @@
 'use client';
 
-import { fechaLinda, enDias } from '@/lib/fechas';
-import type { Log, UsuarioPublico } from '@/lib/tipos';
+import { fechaLinda, enDias } from '@nucleo/fechas';
+import type { Log, UsuarioPublico } from '@nucleo/tipos';
 import TiraSemanal from '@/components/TiraSemanal';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 export type FotoVisible = { id: string; url: string; fecha: string | null };
 

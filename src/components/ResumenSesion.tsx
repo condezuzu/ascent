@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { plataforma } from '@/plataforma';
 import NumeroQueCuenta from './NumeroQueCuenta';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 /**
  * Lo que se ve al terminar de entrenar.

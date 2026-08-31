@@ -4,15 +4,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { enDias, fechaLinda, hoyISO, restarDias } from '@/lib/fechas';
-import { planetaDeDia } from '@/lib/rangos';
-import { RETOS_LISTOS } from '@/lib/reglas';
-import type { Log, Reto, UsuarioPublico } from '@/lib/tipos';
+import { enDias, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
+import { planetaDeDia } from '@nucleo/rangos';
+import { RETOS_LISTOS } from '@nucleo/reglas';
+import type { Log, Reto, UsuarioPublico } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 import ComoMeVen, {
   DIAS_VISIBLES,
   FOTOS_VISIBLES,

@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { cronoLindo, faltaParaElTope, transcurrido } from '@/lib/sesiones';
+import { cronoLindo, faltaParaElTope, transcurrido } from '@nucleo/sesiones';
 import { plataforma } from '@/plataforma';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 /**
  * La sesión en curso. Reemplaza al bloque de botones de la principal: así

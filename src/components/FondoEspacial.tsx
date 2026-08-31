@@ -6,7 +6,7 @@ import { eventos } from '@/plataforma/eventos';
 import { PULSO } from '@/lib/pulso';
 import { aplicarTema } from '@/lib/paletas';
 import { marca, medir, instalarLector } from '@/lib/medir';
-import { veloDeRango, msDeTransicion } from '@/lib/atmosfera';
+import { veloDeRango, msDeTransicion } from '@nucleo/atmosfera';
 import { plataforma } from '@/plataforma';
 
 // El fondo vive detrás de todo, con un velo plano oscuro entre el render y

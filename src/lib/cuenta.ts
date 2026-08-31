@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { T } from '../textos.ts';
+import { T } from '@nucleo/textos';
 
 /**
  * Junta TODO el historial del usuario en un objeto para bajar como archivo.

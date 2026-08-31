@@ -19,10 +19,12 @@
 //
 // NO importa nada, como `reglas.ts`, para que `test:db` pueda cargarlo.
 //
-// Desde `src/lib` se importa CON extensión (`from '../textos.ts'`) y no con
-// el alias `@/`: `test:db` carga esos archivos con node pelado, que no conoce
-// el alias ni resuelve especificadores sin extensión. Desde los componentes,
-// que solo los arma el bundler, va `@/textos` como todo lo demás.
+// VIVE EN `nucleo/` desde la mudanza del 2026-08-29: es el paquete compartido
+// entre la web y la app nativa, y los textos los necesitan las dos. Adentro de
+// `nucleo/` los archivos se importan entre sí con rutas relativas y CON
+// extensión, porque `test:db` los carga con node pelado —que no conoce alias
+// ni resuelve especificadores sin extensión—. Desde afuera va `@nucleo/textos`,
+// que lo resuelve el bundler.
 //
 // LO QUE NO VIVE ACÁ, a propósito: los nombres de los rangos (`rangos.ts`) y
 // de los planetas (`reglas.ts`) — son el vocabulario de la app, no texto de

@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
-import { PRESETS_DESCANSO } from '@/lib/reglas';
+import { PRESETS_DESCANSO } from '@nucleo/reglas';
 import { duracionCorta, duracionValida, guardarSonido, leerSonido, puedeVibrar } from '@/lib/descanso';
 import { guardarPreferencia } from './guardar';
-import type { Perfil } from '@/lib/tipos';
-import { T } from '@/textos';
+import type { Perfil } from '@nucleo/tipos';
+import { T } from '@nucleo/textos';
 
 /**
  * Cuánto dura el descanso entre series (§18.5). Acá se elige el
