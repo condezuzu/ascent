@@ -122,23 +122,32 @@ export default function Bloque({
         ))}
       </div>
 
-      <div className="contador-series">
-        <button
-          className="paso"
-          onClick={alRestar}
-          disabled={estado.hechas === 0}
-          aria-label={T.inicio.sacarSerie}
-        >
-          −
-        </button>
-        <div className="cuenta" aria-live="polite">
-          <span className="numero">{T.sesion.deMeta(estado.hechas, estado.meta)}</span>
-          <span className="palabra">{T.sesion.totalHoy(total)}</span>
-        </div>
-        <button className="paso mas" onClick={alSumar} aria-label={T.inicio.sumarSerie}>
-          +
-        </button>
+      <div className="bloque-cuenta" aria-live="polite">
+        <span className="numero">{T.sesion.deMeta(estado.hechas, estado.meta)}</span>
+        <span className="palabra">{T.sesion.totalHoy(total)}</span>
       </div>
+
+      {/* EL + OCUPA MEDIA PANTALLA. Era un botón de 44 px que había que
+          apuntar, con el teléfono en una mano, transpirado y sin aire — o sea
+          en las peores condiciones posibles para apuntar. Es el botón que más
+          se toca de toda la app y era el más chico de la pantalla.
+
+          Es un botón enorme y no una capa invisible encima: una capa taparía
+          la barra de abajo y el resto de los controles, y el día que algo
+          quede debajo nadie va a entender por qué no responde. */}
+      <button className="bloque-mas" onClick={alSumar} aria-label={T.inicio.sumarSerie}>
+        <span>+</span>
+      </button>
+
+      {/* Quitar una es secundario y va chico: corregir pasa una vez cada
+          tantas, sumar pasa doce veces por sesión. */}
+      <button
+        className="boton-texto bloque-menos"
+        onClick={alRestar}
+        disabled={estado.hechas === 0}
+      >
+        {T.inicio.sacarSerie}
+      </button>
 
       {/* Aparece recién con la meta cumplida: antes no tendría qué cerrar, y un
           botón que no hace nada enseña a ignorar ese lugar de la pantalla. */}

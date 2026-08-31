@@ -3098,8 +3098,69 @@ body.con-franja .pantalla {
   width: 9px;
   height: 9px;
 }
-.bloque .contador-series .numero {
-  font-size: 38px;
+/* La cuenta pasa a una línea sola: el protagonista de esta pantalla ahora es
+   el +, no el número. */
+.bloque-cuenta {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.bloque-cuenta .numero {
+  font-family: var(--f-numero), system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta);
+}
+.bloque-cuenta .palabra {
+  font-family: var(--f-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--apagado);
+}
+
+/* EL + OCUPA MEDIA PANTALLA.
+
+   Era un botón de 44 px que había que apuntar con una mano, transpirado y sin
+   aire — las peores condiciones posibles para apuntar. Es el botón que más se
+   toca de toda la app y era el más chico de la pantalla.
+
+   `min-height` en vh y no en px: lo que importa es que ocupe una porción
+   grande de la pantalla, no una medida fija que en un teléfono chico sea la
+   pantalla entera y en uno grande no se note. El `max-height` es para que en
+   una tablet no quede un rectángulo absurdo. */
+.bloque-mas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 28vh;
+  max-height: 260px;
+  border: 1px solid color-mix(in srgb, var(--pal-principal) 30%, transparent);
+  background: color-mix(in srgb, var(--pal-principal) 7%, transparent);
+  color: var(--pal-claro);
+  transition: background-color 0.14s var(--curva-salida), transform 0.14s var(--curva-salida);
+}
+.bloque-mas span {
+  font-family: var(--f-numero), system-ui, sans-serif;
+  font-size: 64px;
+  font-weight: 200;
+  line-height: 1;
+}
+/* La respuesta al toque tiene que ser inmediata y visible: es lo único que
+   confirma que contó, porque la escritura se va a la cola y puede tardar. */
+.bloque-mas:active {
+  background: color-mix(in srgb, var(--pal-principal) 18%, transparent);
+  transform: scale(0.985);
+}
+.bloque-menos {
+  display: block;
+  margin: 12px auto 0;
+}
+.bloque-menos:disabled {
+  opacity: 0.3;
 }
 .bloque-siguiente {
   display: block;

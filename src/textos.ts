@@ -456,6 +456,9 @@ export const T = {
   descanso: {
     saltar: 'Saltar',
     cerrar: 'Cerrar',
+    // El + sin salir del descanso. Dice lo que pasó, no lo que hace el
+    // botón: "hice la serie" es lo que la persona acaba de vivir.
+    serieHecha: '+ Serie hecha',
     listoPie: 'Listo. Cuando quieras, la que sigue.',
     seguir: 'Seguir',
   },

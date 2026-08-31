@@ -29,6 +29,7 @@ export default function Descanso({
   alReiniciar,
   alSaltar,
   alOcultar,
+  alSumar,
 }: {
   vivo: DescansoVivo;
   alReiniciar: (d: DescansoVivo) => void;
@@ -42,6 +43,18 @@ export default function Descanso({
    * mirar otra cosa un segundo tenía que tirar su descanso para hacerlo.
    */
   alOcultar: () => void;
+  /**
+   * Sumar la serie SIN salir de acá.
+   *
+   * Es el bucle real de una sesión: descansás, suena, hacés la serie, y ya
+   * estás mirando esta pantalla. Hasta ahora había que cerrarla, buscar el
+   * botón en Inicio y volver — tres pasos para el gesto que se repite doce
+   * veces por sesión.
+   *
+   * Suma y vuelve a arrancar el descanso, que es exactamente lo que hace el
+   * `+` de Inicio: es el MISMO gesto, no uno parecido.
+   */
+  alSumar: () => void;
 }) {
   const [, repintar] = useState(0);
   const [terminado, setTerminado] = useState(() => restante(vivo.fin) === 0);
@@ -170,7 +183,14 @@ export default function Descanso({
       {terminado ? (
         <>
           <p className="descanso-pie">{T.descanso.listoPie}</p>
-          <button className="boton-solido" onClick={saltar}>
+          {/* El + se lleva el botón sólido: cuando el descanso terminó, lo que
+              viene es hacer la serie, y lo que hay que poder tocar después es
+              esto. "Seguir" queda como salida en voz baja — cerrar ya está
+              además en la cruz de arriba. */}
+          <button className="boton-solido" onClick={alSumar}>
+            {T.descanso.serieHecha}
+          </button>
+          <button className="boton-texto" onClick={saltar}>
             {T.descanso.seguir}
           </button>
         </>
@@ -188,6 +208,13 @@ export default function Descanso({
               </button>
             ))}
           </div>
+          {/* También MIENTRAS corre: si fuiste más rápido que el
+              temporizador, tocar acá suma y lo reinicia. Que la app te haga
+              esperar a que su reloj termine sería el reloj mandando sobre el
+              entrenamiento. */}
+          <button className="boton-texto" onClick={alSumar}>
+            {T.descanso.serieHecha}
+          </button>
           <button className="boton-texto" onClick={saltar}>
             {T.descanso.saltar}
           </button>

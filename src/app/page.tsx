@@ -595,6 +595,7 @@ export default function Principal() {
             sesion.cerrarDescanso();
           }}
           alOcultar={() => setDescansoAbierto(false)}
+          alSumar={sesion.serieHecha}
         />
       )}
 

@@ -407,3 +407,44 @@ dormir el teléfono daría dos números distintos para la misma cosa.
 
 Y sigue valiendo §13: la app tiene que funcionar entera sin el permiso de
 notificaciones. Quien no lo dé se queda con el aviso visual de hoy.
+
+
+## 13e. Los movimientos del contador — pendiente, después de migrar
+
+Pedido el 2026-08-29, pospuesto a propósito: es una tabla nueva más una
+pantalla, o sea justo lo que encarece la migración.
+
+**El problema.** El selector del contador de series usa el catálogo de
+`ejercicios`, que tiene nombres específicos de gimnasio —"Peso muerto rumano",
+"Curl martillo"— y poca gente sabe qué músculo está entrenando. Y faltan las
+variantes con mancuernas.
+
+**La solución, y lo único que NO se puede romper: son DOS LISTAS SEPARADAS.**
+
+- **`ejercicios` se queda intacta.** Es la que alimenta las marcas de fuerza y
+  el percentil de Strength Level, que está calibrado sobre los tres exactos con
+  barra. Agregarle variantes rompería la comparación.
+- **`movimientos`, tabla nueva, SOLO para el contador de series:** por zona y
+  patrón en vez de por nombre — "pecho plano", "pecho inclinado", "espalda
+  vertical", "espalda horizontal", "pierna empuje", "pierna femoral", "hombro",
+  "bíceps", "tríceps", "core" — cada uno con su variante barra / mancuernas /
+  máquina donde tenga sentido.
+- `sesiones.bloques` pasa a referenciar `movimientos` y no `ejercicios`.
+
+Los bloques ya guardados quedan apuntando a ids de `ejercicios`: la migración
+tiene que mapearlos o dejarlos como están y que el nombre se resuelva contra las
+dos tablas. Decidir cuando se haga; son pocas semanas de datos.
+
+## 13f. PRIORIDAD DE LA TANDA 3 — el botón de volumen suma una serie
+
+Con el teléfono en el bolsillo y sin mirar la pantalla. En web es imposible
+—el navegador no ve las teclas físicas— y es de lo mejor que se gana al pasar a
+nativo.
+
+Va junto con la notificación local del descanso porque son el mismo momento: el
+bucle real de una sesión es *hacer la serie → sumarla → descansar*, y hoy las
+tres partes obligan a sacar el teléfono, desbloquearlo y apuntarle a un botón.
+
+Mientras tanto, en web se hizo lo que sí se podía: el `+` ocupa media pantalla y
+también está adentro de la pantalla del descanso, así que el bucle no obliga a
+salir y volver.
