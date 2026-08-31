@@ -123,6 +123,31 @@ export function paraGuardar(e: EstadoBloques): Bloque[] {
   return todos.filter((b) => b.ejercicio !== null && b.series > 0);
 }
 
+/**
+ * SEMBRAR EL BLOQUE al arrancar la sesión: el último ejercicio que anotaste y
+ * la última meta que usaste.
+ *
+ * DEVUELVE EL ESTADO INTACTO SI YA HAY ALGO CONTADO, y esa es toda la razón de
+ * que esta función exista en vez de un `setBloques(bloquesVacios(...))`.
+ *
+ * El bug: la semilla se pide a la base DESPUÉS de arrancar la sesión y sin
+ * bloquear —que el chip tarde un segundo no puede demorar el cronómetro—, así
+ * que en un gimnasio con mala señal la respuesta llegaba cuando ya habías
+ * tocado el + dos veces. Y al llegar pisaba el bloque con uno vacío: la cuenta
+ * del bloque volvía a cero mientras el total seguía subiendo, y los dos
+ * números de la pantalla se contradecían.
+ *
+ * Sembrar es una conveniencia. Nunca puede pisar algo que ya hiciste.
+ */
+export function sembrar(
+  actual: EstadoBloques,
+  ejercicio: string | null,
+  meta?: number
+): EstadoBloques {
+  if (actual.hechas > 0 || actual.cerrados.length > 0) return actual;
+  return bloquesVacios(ejercicio, meta ?? actual.meta);
+}
+
 /** Si ya se llegó a lo que se había propuesto. */
 export function metaCumplida(e: EstadoBloques): boolean {
   return e.hechas >= e.meta;

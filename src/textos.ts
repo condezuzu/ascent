@@ -275,7 +275,14 @@ export const T = {
     leyendaHecho: 'Fuiste',
     leyendaVacio: 'No fuiste',
     leyendaDescanso: 'Descanso',
-    calendarioNota: 'Tocá un día para agregarlo o sacarlo. Los días de descanso salen con un guion.',
+    // Tres estados, y hay que decirlos: un toque más de lo que la gente
+    // espera de un calendario no se descubre solo.
+    calendarioNota:
+      'Tocá un día para pasarlo por: fuiste → descanso → sin nada. Los días de descanso no suman a la racha, pero tampoco la cortan.',
+    // La corrección NO recalcula sola: la racha la recalcula la base y hacerlo
+    // en cada toque serían diez recálculos para arreglar una semana.
+    calendarioRecalcular:
+      'Cuando termines de corregir, apretá "Recalcular racha desde el historial": ahí se rehace la cuenta con los días como quedaron.',
     corregirDias: 'Corregir días',
 
     descansoEntreSeries: 'Descanso entre series',

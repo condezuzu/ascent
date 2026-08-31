@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
@@ -14,6 +14,7 @@ import {
   cambiarEjercicio,
   cambiarMeta,
   paraGuardar,
+  sembrar,
   restar,
   siguiente,
   sumar,
@@ -135,6 +136,11 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   // Ver `lib/bloques.ts` — el total de la sesión sigue siendo `series` y esto
   // es una anotación encima, no un reemplazo.
   const [bloques, setBloques] = useState<EstadoBloques>(() => bloquesVacios());
+  // El valor de AHORA, para las funciones async que corren después de que el
+  // render que las creó ya pasó. Sin esto, la semilla del bloque decidía sobre
+  // el estado viejo y podía pisar toques que llegaron mientras esperaba.
+  const bloquesRef = useRef(bloques);
+  bloquesRef.current = bloques;
   const [idSesion, setIdSesion] = useState<string | null>(null);
   const [descanso, setDescanso] = useState<DescansoVivo | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -287,9 +293,20 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
         supabase.rpc('ultimo_ejercicio'),
         leerMetaPreferida(),
       ]);
-      const b = bloquesVacios(typeof ultimo === 'string' ? ultimo : null, meta ?? undefined);
-      setBloques(b);
-      await actualizarSesionCache({ bloques: b });
+      // `sembrar` y NO `bloquesVacios`: en un gimnasio con mala señal esta
+      // respuesta llega cuando ya tocaste el + dos veces, y pisar el bloque
+      // con uno vacío ponía la cuenta del bloque en cero mientras el total
+      // seguía subiendo. Los dos números de la pantalla se contradecían.
+      const sembrado = sembrar(
+        bloquesRef.current,
+        typeof ultimo === 'string' ? ultimo : null,
+        meta ?? undefined
+      );
+      // Si ya había algo contado, `sembrar` devuelve lo mismo que entró y acá
+      // no hay nada que escribir.
+      if (sembrado === bloquesRef.current) return;
+      setBloques(sembrado);
+      await actualizarSesionCache({ bloques: sembrado });
     })();
 
     if (r.yaEstaba) setAviso(T.inicio.yaHabiaSesion);

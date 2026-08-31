@@ -62,6 +62,7 @@ import {
   metaCumplida,
   paraGuardar,
   restar,
+  sembrar,
   siguiente,
   sumar,
 } from '../src/lib/bloques.ts';
@@ -3042,6 +3043,29 @@ console.log('\n48. El bloque: qué estás haciendo y cuántas te propusiste');
     b = restar(restar(sumar(b)));
     chequear('restar no baja de cero', b.hechas, 0);
     chequear('y no toca los bloques cerrados', b.cerrados, [{ ejercicio: 'dominadas', series: 2 }]);
+  }
+
+  // LA SEMILLA NO PUEDE PISAR LO QUE YA CONTASTE. Era el bug del tercer día:
+  // la semilla se pide a la base sin bloquear, y en un gimnasio con mala senal
+  // llegaba cuando ya habias tocado el + dos veces.
+  {
+    let b = bloquesVacios(null, 3);
+    b = sumar(sumar(b));
+    const despues = sembrar(b, 'sentadilla', 4);
+    chequear('con series ya contadas la semilla NO toca nada', despues, b);
+    chequear('y devuelve el MISMO objeto, para poder no escribir', despues === b, true);
+  }
+  {
+    // Tampoco si el bloque actual esta en cero pero ya hay bloques cerrados.
+    let b = siguiente(sumar(sumar(bloquesVacios('dominadas', 3))));
+    chequear('con bloques cerrados tampoco siembra', sembrar(b, 'sentadilla', 5), b);
+  }
+  {
+    // Y si esta limpio, siembra.
+    const b = sembrar(bloquesVacios(null, 3), 'press_banca', 4);
+    chequear('en un bloque limpio si siembra', [b.ejercicio, b.meta, b.hechas], ['press_banca', 4, 0]);
+    const sinMeta = sembrar(bloquesVacios(null, 5), 'press_banca');
+    chequear('sin meta nueva conserva la que habia', sinMeta.meta, 5);
   }
 
   // Lo que se manda a la base.
