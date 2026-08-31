@@ -870,3 +870,16 @@ de gimnasio de verdad el día entra por ubicación, así que el momento que se
 construyó no ocurría justo los días que importan.
 → **Regla:** cuando algo se dispara "al pasar X", listar TODOS los caminos por
 los que X puede pasar. Acá eran dos y estaba enganchado al menos frecuente.
+
+**Un componente que devuelve `null` mientras carga empuja todo lo de abajo
+cuando aparece.** `Fondo` esperaba a leer la preferencia del almacenamiento
+antes de dibujarse — parecía prolijo, evitaba mostrar una opción y corregirla.
+El costo real: la sección aparecía tarde y desplazaba el resto de Ajustes. En
+una pantalla llena de plegables eso significa apuntar a uno y tocar otro.
+
+Lo agarró `capturas`, que no pudo hacer clic en "Cómo se compara" —el elemento
+estaba visible pero se le movía debajo del cursor, y Playwright espera a que
+esté quieto—. Ningún test de lógica lo habría visto.
+→ **Regla:** un bloque que va a estar ahí se dibuja desde el primer cuadro, con
+su estado vacío adentro. Reservar el lugar es parte de renderizar. `null`
+mientras carga solo vale para lo que puede no existir nunca.

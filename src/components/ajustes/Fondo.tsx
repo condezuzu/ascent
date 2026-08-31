@@ -35,13 +35,19 @@ export default function Fondo() {
     await guardarPreferenciaFondo(p);
   }
 
-  // Hasta saber qué está guardado no se dibuja: mostrar "auto" y corregirlo un
-  // instante después haría parpadear la opción elegida.
-  if (pref === null) return null;
-
   return (
     <div className="seccion">
       <h3>{T.ajustes.fondo}</h3>
+      {/* SE DIBUJA SIEMPRE, aunque todavía no sepamos qué está elegido.
+          Devolver `null` mientras se lee la preferencia parecía prolijo y
+          estaba mal: la sección aparecía tarde y EMPUJABA todo lo de abajo.
+          En una pantalla llena de plegables eso significa que apuntás a uno y
+          tocás otro — y lo agarró `capturas`, que no pudo hacer clic en "Cómo
+          se compara" porque se le movía debajo del dedo.
+
+          Mientras no se sabe, ninguno queda marcado: mostrar "auto" y
+          corregirlo un instante después sería decir algo falso, aunque sea por
+          un cuadro. */}
       <div className="selector-vista">
         <button className={pref === 'auto' ? 'activo' : ''} onClick={() => elegir('auto')}>
           {T.ajustes.fondoAuto}
@@ -54,13 +60,15 @@ export default function Fondo() {
         </button>
       </div>
       <p className="nota-privada">
-        {pref === 'auto'
+        {pref === null
+          ? T.ajustes.fondoNota
+          : pref === 'auto'
           ? flojo === null
             ? T.ajustes.fondoAutoNoSe
             : flojo
               ? T.ajustes.fondoAutoFlojo
               : T.ajustes.fondoAutoBueno
-          : T.ajustes.fondoNota}
+            : T.ajustes.fondoNota}
       </p>
     </div>
   );
