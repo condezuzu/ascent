@@ -1,4 +1,4 @@
-import { T } from '../textos.ts';
+import { T } from './textos.ts';
 
 // Los días de sesión que se leen en Stats.
 //

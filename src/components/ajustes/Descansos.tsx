@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { DIAS_SEMANA, hoyISO } from '@/lib/fechas';
-import type { Perfil } from '@/lib/tipos';
+import { DIAS_SEMANA, hoyISO } from '@nucleo/fechas';
+import type { Perfil } from '@nucleo/tipos';
 import { avisarFallo } from '@/lib/cola';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 export default function Descansos({
   perfil,

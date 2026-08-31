@@ -5,7 +5,7 @@ import {
   decidirRuta,
   hayCookiesDeSesion,
   llevarCookies,
-} from '@/lib/supabase/veredicto';
+} from '@nucleo/veredicto';
 
 const RUTAS_PUBLICAS = ['/login', '/auth', '/galeria'];
 

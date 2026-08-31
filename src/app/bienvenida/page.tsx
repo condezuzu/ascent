@@ -6,7 +6,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { marcarRecorridoVisto } from '@/lib/guia';
 import FondoEspacial from '@/components/FondoEspacial';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 /**
  * Recorrido de bienvenida: tres pantallas cortas, saltables, entre elegir el

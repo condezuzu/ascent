@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { hoyISO } from '@/lib/fechas';
-import { aKilos, limites, type Unidad } from '@/lib/peso';
-import { T } from '@/textos';
+import { hoyISO } from '@nucleo/fechas';
+import { aKilos, limites, type Unidad } from '@nucleo/peso';
+import { T } from '@nucleo/textos';
 
 /**
  * Anotar el peso corporal desde donde hace falta, sin registrar un día.

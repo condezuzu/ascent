@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { hoyISO } from '@/lib/fechas';
-import { aKilos, deKilos, type Unidad } from '@/lib/peso';
-import { redondear, unRM } from '@/lib/fuerza';
-import type { Ejercicio } from '@/lib/tipos';
-import { T } from '@/textos';
+import { hoyISO } from '@nucleo/fechas';
+import { aKilos, deKilos, type Unidad } from '@nucleo/peso';
+import { redondear, unRM } from '@nucleo/fuerza';
+import type { Ejercicio } from '@nucleo/tipos';
+import { T } from '@nucleo/textos';
 
 /**
  * Hoja para cargar una marca. Se guarda lo que el usuario LEVANTÓ, no el 1RM:

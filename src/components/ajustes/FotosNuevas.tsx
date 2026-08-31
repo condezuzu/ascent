@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { guardarPreferencia } from './guardar';
-import type { Perfil } from '@/lib/tipos';
-import { T } from '@/textos';
+import type { Perfil } from '@nucleo/tipos';
+import { T } from '@nucleo/textos';
 
 export default function FotosNuevas({
   perfil,

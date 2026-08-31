@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { hoyISO } from '@/lib/fechas';
+import { hoyISO } from '@nucleo/fechas';
 import { mirarElGimnasio } from '@/lib/gimnasio';
 import { leerVigilancia } from '@/lib/sesionCache';
 import { anotar, borrarBitacora, comoTexto, leerBitacora } from '@/lib/bitacora';
 import { cuantasPendientes, vaciar } from '@/lib/cola';
-import { T } from '@/textos';
-import type { OrigenSesion, Perfil } from '@/lib/tipos';
+import { T } from '@nucleo/textos';
+import type { OrigenSesion, Perfil } from '@nucleo/tipos';
 
 /**
  * Qué está viendo la app, y qué fue haciendo.

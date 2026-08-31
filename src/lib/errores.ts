@@ -1,5 +1,5 @@
 import type { AuthError } from '@supabase/supabase-js';
-import { T } from '../textos.ts';
+import { T } from '@nucleo/textos';
 
 /**
  * Traduce un error de auth a algo que el usuario pueda accionar.

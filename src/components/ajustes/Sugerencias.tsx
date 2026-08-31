@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 export default function Sugerencias({ userId }: { userId: string }) {
   const [supabase] = useState(() => crearCliente());

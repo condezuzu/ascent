@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
-    // Los archivos de `src/lib` importan `../textos.ts` CON extensión: `test:db`
+    // Los archivos de `nucleo/` se importan entre sí CON extensión: `test:db`
     // los carga con node pelado, y ESM sin extensión no resuelve.
     "allowImportingTsExtensions": true,
     "esModuleInterop": true,
@@ -28,6 +28,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@nucleo/*": [
+        "./nucleo/*"
       ]
     }
   },
@@ -35,10 +38,11 @@
     "**/*.ts",
     "**/*.tsx",
     ".next-capturas/types/**/*.ts",
+    ".next-exif/types/**/*.ts",
     ".next-primera/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-exif/types/**/*.ts"
+    ".next-arranque/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

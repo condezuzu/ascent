@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { duracionLinda } from '@/lib/sesiones';
-import { agruparPorDia, etiquetaDeDia, type DiaConSesiones } from '@/lib/dias';
-import type { ResumenSesiones } from '@/lib/sesiones';
-import { T } from '@/textos';
+import { duracionLinda } from '@nucleo/sesiones';
+import { agruparPorDia, etiquetaDeDia, type DiaConSesiones } from '@nucleo/dias';
+import type { ResumenSesiones } from '@nucleo/sesiones';
+import { T } from '@nucleo/textos';
 
 /**
  * Las duraciones en Stats (§17.7). Promedio y total salen SOLO de las

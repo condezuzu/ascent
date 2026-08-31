@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { prepararFoto } from '@/lib/foto';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { fechaLinda, hoyISO, restarDias } from '@/lib/fechas';
-import { planetaDeDia } from '@/lib/rangos';
+import { fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
+import { planetaDeDia } from '@nucleo/rangos';
 import { guardarPerfilCache } from '@/lib/cache';
 import { problemaConLaImagen, subirAvatar } from '@/lib/avatar';
-import type { Log, Perfil, UsuarioPublico } from '@/lib/tipos';
+import type { Log, Perfil, UsuarioPublico } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
@@ -19,7 +19,7 @@ import RecorteCircular from '@/components/RecorteCircular';
 import Esqueleto from '@/components/Esqueleto';
 import NoCargo from '@/components/NoCargo';
 import ComoMeVen, { DIAS_VISIBLES, FOTOS_VISIBLES } from '@/components/ComoMeVen';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 type MiFoto = {
   id: string;

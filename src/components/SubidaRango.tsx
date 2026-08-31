@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { RANGOS } from '@/lib/rangos';
-import { T } from '@/textos';
+import { RANGOS } from '@nucleo/rangos';
+import { T } from '@nucleo/textos';
 
 // Se dispara SOLO después de que la escritura en base confirmó.
 // Sin confeti, sin sonido, sin cartel de felicitaciones: el silencio es lo

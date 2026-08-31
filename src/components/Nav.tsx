@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 const ITEMS = [
   {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 const LADO_SALIDA = 512; // el avatar más grande que muestra la app es 104px
 const ZOOM_MIN = 1;

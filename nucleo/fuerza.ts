@@ -1,11 +1,11 @@
-import { deKilos, type Unidad } from '@/lib/peso';
-import { deISO, MESES } from '@/lib/fechas';
-import type { Marca } from '@/lib/tipos';
-import { T } from '../textos.ts';
+import { deKilos, type Unidad } from './peso';
+import { deISO, MESES } from './fechas';
+import type { Marca } from './tipos';
+import { T } from './textos.ts';
 
 // El 1RM es la otra cuenta que también corre en SQL (`un_rm`): vive en
 // `reglas.ts` y el test compara las dos implementaciones.
-export { unRM } from '@/lib/reglas';
+export { unRM } from './reglas';
 
 /**
  * Los tres que entran al DOTS, en el orden en que se dicen. La marca de cuáles

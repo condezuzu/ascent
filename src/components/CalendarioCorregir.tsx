@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { DIAS_SEMANA, MESES, aISO, deISO, hoyISO } from '@/lib/fechas';
-import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
-import { T } from '@/textos';
+import { DIAS_SEMANA, MESES, aISO, deISO, hoyISO } from '@nucleo/fechas';
+import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
+import { T } from '@nucleo/textos';
 
 type Estado = 'hecho' | 'vacio' | 'descanso' | 'futuro';
 type Celda = { fecha: string; dia: number; estado: Estado };

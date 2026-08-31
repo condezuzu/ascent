@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { borrarPerfilCache } from '@/lib/cache';
 import { eliminarCuenta } from '@/lib/cuenta';
-import type { Perfil } from '@/lib/tipos';
-import { T } from '@/textos';
+import type { Perfil } from '@nucleo/tipos';
+import { T } from '@nucleo/textos';
 
 // Lo último de la pantalla, y lo único que pide escribir algo a mano.
 export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {

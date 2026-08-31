@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { fechaLinda, hoyISO } from '@/lib/fechas';
-import { RETOS_LISTOS } from '@/lib/reglas';
-import { planetaDeDia } from '@/lib/rangos';
-import type { Reto, UsuarioPublico } from '@/lib/tipos';
+import { fechaLinda, hoyISO } from '@nucleo/fechas';
+import { RETOS_LISTOS } from '@nucleo/reglas';
+import { planetaDeDia } from '@nucleo/rangos';
+import type { Reto, UsuarioPublico } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
@@ -15,7 +15,7 @@ import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import NoCargo from '@/components/NoCargo';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 type Solicitud = { id: string; de: UsuarioPublico };
 type Actividad = {

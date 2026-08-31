@@ -1,6 +1,6 @@
-import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@/lib/fechas';
-import { esDiaDeDescanso, type ConfigDescanso } from '@/lib/descansos';
-import type { Log } from '@/lib/tipos';
+import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
+import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
+import type { Log } from '@nucleo/tipos';
 
 // La semana, alineada al calendario y arrancando en lunes.
 //

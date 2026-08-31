@@ -4,17 +4,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { mirarElGimnasio, registrarPorSenal } from '@/lib/gimnasio';
-import { decidir } from '@/lib/llegada';
+import { decidir } from '@nucleo/llegada';
 import { guardarVigilancia, leerVigilancia } from '@/lib/sesionCache';
 import { usarSesion, type CierreDeSesion } from '@/lib/usarSesion';
-import { ESPERA_LLEGADA_MS } from '@/lib/reglas';
+import { ESPERA_LLEGADA_MS } from '@nucleo/reglas';
 import { anotar } from '@/lib/bitacora';
-import { hoyISO } from '@/lib/fechas';
+import { hoyISO } from '@nucleo/fechas';
 import { eventos } from '@/plataforma/eventos';
 import { plataforma } from '@/plataforma';
 import ResumenSesion from './ResumenSesion';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Perfil } from '@/lib/tipos';
+import type { Perfil } from '@nucleo/tipos';
 
 /** Aviso de que el día de hoy cambió, para que la pantalla que lo muestre se refresque. */
 export const DIA_CAMBIO = 'ascent:dia-cambio';

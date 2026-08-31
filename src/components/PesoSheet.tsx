@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import AnotarPeso from '@/components/AnotarPeso';
-import { T } from '@/textos';
-import type { Unidad } from '@/lib/peso';
+import { T } from '@nucleo/textos';
+import type { Unidad } from '@nucleo/peso';
 
 /**
  * Anotar el peso, y NADA MÁS.

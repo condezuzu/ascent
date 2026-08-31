@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 type EventoInstalar = Event & { prompt: () => Promise<void> };
 

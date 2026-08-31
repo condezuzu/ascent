@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { FUENTE } from '@/lib/estandares';
-import { T } from '@/textos';
+import { FUENTE } from '@nucleo/estandares';
+import { T } from '@nucleo/textos';
 
 /**
  * Cómo se calcula el ranking de fuerza, abajo de todo en Ajustes.

@@ -1,6 +1,6 @@
 'use client';
 
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 
 /**
  * "No se pudieron traer tus datos" y un botón para reintentar.

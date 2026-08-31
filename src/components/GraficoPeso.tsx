@@ -1,7 +1,7 @@
 'use client';
 
-import { deKilos, type Unidad } from '@/lib/peso';
-import { T } from '@/textos';
+import { deKilos, type Unidad } from '@nucleo/peso';
+import { T } from '@nucleo/textos';
 
 export type PesoAnotado = { fecha: string; valor: number };
 

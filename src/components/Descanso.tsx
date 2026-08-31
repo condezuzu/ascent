@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PRESETS_DESCANSO } from '@/lib/reglas';
+import { PRESETS_DESCANSO } from '@nucleo/reglas';
 import { plataforma } from '@/plataforma';
-import { T } from '@/textos';
+import { T } from '@nucleo/textos';
 import {
   borrarDescanso,
   cuentaAtras,
