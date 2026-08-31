@@ -448,3 +448,30 @@ tres partes obligan a sacar el teléfono, desbloquearlo y apuntarle a un botón.
 Mientras tanto, en web se hizo lo que sí se podía: el `+` ocupa media pantalla y
 también está adentro de la pantalla del descanso, así que el bucle no obliga a
 salir y volver.
+
+## 13g. La tarea de 2,5 segundos — anotada, no perseguida
+
+Al medir el arranque apareció una tarea larga de ~2,5 s que **sobrevive a
+cortar three.js**: no es el motor. Intenté atribuirla con el perfilador de V8 y
+**falló**: devolvió `(program)` en el 98% del tiempo, que es el balde de "no
+estoy adentro de ninguna función JS" — parseo, compilación, recolección de
+basura y trabajo interno del navegador.
+
+El error fue de método: perfilé una ventana fija de nueve segundos de la cual
+casi toda es inactividad, y eso cae en el mismo balde. La medición no distingue
+esperar de trabajar, que era justo lo que hacía falta.
+
+**Lo único que sí quedó firme:** ningún archivo de la app aparece con un costo
+relevante — el más caro son 43 ms del runtime de webpack. No hay una función
+nuestra comiéndose ese tiempo.
+
+**Decisión (2026-08-29): no se persigue.** La hipótesis que queda es parseo y
+compilación del bundle, y si es eso, en nativo desaparece sola: Hermes carga
+bytecode precompilado, así que no hay parseo en el arranque. Perseguirla en web
+sería arreglar algo que la migración borra.
+
+Con el motor diferido, además, ya no bloquea nada: ocurre después de que la app
+se puede usar.
+
+Si al llegar a la tanda 2 el arranque nativo sigue teniendo un pozo parecido,
+ahí sí hay que buscarla — y ahí el sospechoso ya no sería el parseo.
