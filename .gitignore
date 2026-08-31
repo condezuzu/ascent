@@ -20,3 +20,9 @@ capturas/
 # scripts de una sola vez, para mirar una pantalla y tirar
 *.tmp.mjs
 .next-arranque/
+
+# La app nativa
+movil/node_modules/
+movil/.expo/
+movil/.env
+movil/.claude/
