@@ -148,6 +148,50 @@ export function sembrar(
   return bloquesVacios(ejercicio, meta ?? actual.meta);
 }
 
+/**
+ * CORREGIR HACIA ATRÁS: la lista de lo hecho, y cómo tocarla.
+ *
+ * El `−` solo arregla el bloque en curso. Si te equivocaste hace veinte
+ * minutos —contaste una serie de más en sentadilla y ya pasaste a otra cosa—
+ * no había ninguna forma de volver. Y el número queda mal para siempre.
+ *
+ * Las dos funciones devuelven TAMBIÉN cuánto cambió el total, porque
+ * `sesiones.series` se lleva aparte a propósito y quien llame tiene que poder
+ * ajustarlo sin recalcularlo desde los bloques. Si el total se dedujera de los
+ * bloques, ignorar el chip te rompería la racha — que es la regla 3 de arriba.
+ */
+export type Correccion = { estado: EstadoBloques; cambioEnTotal: number };
+
+/** Sacar un bloque entero de la lista. */
+export function quitarBloque(e: EstadoBloques, indice: number): Correccion {
+  const b = e.cerrados[indice];
+  if (!b) return { estado: e, cambioEnTotal: 0 };
+  return {
+    estado: { ...e, cerrados: e.cerrados.filter((_, i) => i !== indice) },
+    cambioEnTotal: -b.series,
+  };
+}
+
+/**
+ * Subir o bajar de a una las series de un bloque ya cerrado.
+ *
+ * Llegar a cero NO borra el bloque: sacarlo es otra decisión y tiene su propio
+ * botón. Que la app lo haga desaparecer sola en el último toque es la clase de
+ * cosa que hace dudar de si se tocó bien.
+ */
+export function corregirBloque(e: EstadoBloques, indice: number, delta: number): Correccion {
+  const b = e.cerrados[indice];
+  if (!b) return { estado: e, cambioEnTotal: 0 };
+  const nuevas = Math.max(0, Math.min(999, b.series + delta));
+  return {
+    estado: {
+      ...e,
+      cerrados: e.cerrados.map((x, i) => (i === indice ? { ...x, series: nuevas } : x)),
+    },
+    cambioEnTotal: nuevas - b.series,
+  };
+}
+
 /** Si ya se llegó a lo que se había propuesto. */
 export function metaCumplida(e: EstadoBloques): boolean {
   return e.hechas >= e.meta;

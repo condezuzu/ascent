@@ -62,6 +62,8 @@ import {
   metaCumplida,
   paraGuardar,
   restar,
+  corregirBloque,
+  quitarBloque,
   sembrar,
   siguiente,
   sumar,
@@ -3231,6 +3233,78 @@ console.log('\n52. El fondo se puede apagar, y el automatico no manda');
   // Lo que llega del almacenamiento es texto de afuera: se valida.
   chequear('una preferencia valida se reconoce', esPreferenciaFondo('siempre'), true);
   chequear('basura no', [esPreferenciaFondo('si'), esPreferenciaFondo(null), esPreferenciaFondo(3)], [false, false, false]);
+}
+
+// =====================================================================
+console.log('\n53. Corregir un bloque ya cerrado');
+{
+  // El - de la pantalla solo arregla el bloque EN CURSO. Sin esto, contar una
+  // serie de mas hace veinte minutos quedaba mal para siempre.
+  const base = () => {
+    let b = bloquesVacios('sentadilla', 3);
+    b = cambiarEjercicio(sumar(sumar(sumar(b))), 'press_banca'); // cierra [sentadilla,3]
+    b = siguiente(sumar(sumar(b)));                              // cierra [press_banca,2]
+    return b;
+  };
+
+  {
+    const b = base();
+    chequear('arranco con dos bloques cerrados', b.cerrados, [
+      { ejercicio: 'sentadilla', series: 3 },
+      { ejercicio: 'press_banca', series: 2 },
+    ]);
+  }
+
+  // Bajar de a una, y DECIR cuanto cambio el total: el total se lleva aparte a
+  // proposito, asi que quien llama tiene que poder ajustarlo sin recalcularlo
+  // desde los bloques.
+  {
+    const r = corregirBloque(base(), 0, -1);
+    chequear('bajar una deja el bloque en 2', r.estado.cerrados[0].series, 2);
+    chequear('y avisa que el total baja 1', r.cambioEnTotal, -1);
+  }
+  {
+    const r = corregirBloque(base(), 1, 2);
+    chequear('subir dos deja el bloque en 4', r.estado.cerrados[1].series, 4);
+    chequear('y avisa que el total sube 2', r.cambioEnTotal, 2);
+  }
+
+  // Llegar a cero NO borra el bloque: sacarlo es otra decision y tiene su
+  // propio boton. Que desaparezca solo en el ultimo toque hace dudar de si se
+  // toco bien.
+  {
+    let r = corregirBloque(base(), 1, -2);
+    chequear('llegar a cero deja el bloque en la lista', r.estado.cerrados.length, 2);
+    chequear('con cero series', r.estado.cerrados[1].series, 0);
+    // Y no baja de cero.
+    r = corregirBloque(r.estado, 1, -5);
+    chequear('no baja de cero', r.estado.cerrados[1].series, 0);
+    chequear('y ahi no cambia el total', r.cambioEnTotal, 0);
+  }
+
+  // Quitar el bloque entero.
+  {
+    const r = quitarBloque(base(), 0);
+    chequear('quitar saca el bloque', r.estado.cerrados, [{ ejercicio: 'press_banca', series: 2 }]);
+    chequear('y descuenta sus series del total', r.cambioEnTotal, -3);
+  }
+
+  // Un indice que no existe no puede romper nada ni mover el total.
+  {
+    const b = base();
+    const r = quitarBloque(b, 99);
+    chequear('un indice inexistente no toca nada', [r.estado === b, r.cambioEnTotal], [true, 0]);
+    const c = corregirBloque(b, -1, 5);
+    chequear('ni al corregir', [c.estado === b, c.cambioEnTotal], [true, 0]);
+  }
+
+  // Corregir NO toca el bloque en curso: ese se maneja afuera.
+  {
+    let b = base();
+    b = sumar(sumar(b)); // dos en el bloque actual
+    const r = corregirBloque(b, 0, -1);
+    chequear('el bloque en curso queda intacto', r.estado.hechas, 2);
+  }
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

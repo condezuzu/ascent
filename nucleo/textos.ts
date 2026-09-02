@@ -511,6 +511,15 @@ export const T = {
     // termina nada: abre el siguiente.
     siguienteBloque: 'Siguiente',
 
+    // LA LISTA DE LO HECHO. El − solo arregla el bloque en curso; si te
+    // equivocaste hace veinte minutos no había forma de volver.
+    verLista: 'Ver lista',
+    listaTitulo: 'Lo que llevás hoy',
+    listaVacia: 'Todavía no contaste ninguna serie.',
+    listaAhora: 'en curso',
+    listaQuitar: 'Quitar este bloque',
+    listaQuitarPregunta: '¿Quitar?',
+
     resumenTitulo: 'Listo por hoy.',
     resumenMinutos: 'minutos',
     resumenSeries: (n: number) => (n === 1 ? 'serie' : 'series'),

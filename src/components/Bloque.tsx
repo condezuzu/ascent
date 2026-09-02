@@ -5,6 +5,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
+import ListaDeBloques from './ListaDeBloques';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN.
@@ -33,6 +34,7 @@ export default function Bloque({
   alSiguiente,
   alElegirEjercicio,
   alElegirMeta,
+  alTocarBloque,
 }: {
   estado: EstadoBloques;
   total: number;
@@ -41,8 +43,10 @@ export default function Bloque({
   alSiguiente: () => void;
   alElegirEjercicio: (id: string | null) => void;
   alElegirMeta: (meta: number) => void;
+  alTocarBloque: (indice: number, delta: number | 'quitar') => void;
 }) {
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
+  const [lista, setLista] = useState(false);
 
   // El catálogo se pide una vez y no bloquea nada: sin él el selector queda
   // con la opción vacía y el contador anda igual, que es la regla de que esto
@@ -155,6 +159,24 @@ export default function Bloque({
         <button className="boton-texto bloque-siguiente" onClick={alSiguiente}>
           {T.sesion.siguienteBloque}
         </button>
+      )}
+
+      {/* Corregir hacia atrás vive DETRÁS de un botón, no a la vista: sumar
+          pasa doce veces por sesión y corregir una vez cada tantas. Lo que se
+          usa siempre manda en la pantalla. */}
+      {(estado.cerrados.length > 0 || estado.hechas > 0) && (
+        <button className="boton-texto bloque-lista" onClick={() => setLista(true)}>
+          {T.sesion.verLista}
+        </button>
+      )}
+
+      {lista && (
+        <ListaDeBloques
+          estado={estado}
+          ejercicios={ejercicios}
+          alTocar={alTocarBloque}
+          alCerrar={() => setLista(false)}
+        />
       )}
     </div>
   );

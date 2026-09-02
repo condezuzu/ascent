@@ -13,7 +13,9 @@ import {
   bloquesVacios,
   cambiarEjercicio,
   cambiarMeta,
+  corregirBloque,
   paraGuardar,
+  quitarBloque,
   sembrar,
   restar,
   siguiente,
@@ -443,6 +445,26 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     await subir(series, b);
   }
 
+  /**
+   * Corregir un bloque ya cerrado, desde la lista de lo hecho.
+   *
+   * Mueve las DOS cuentas: la del bloque y el total de la sesión. El total no
+   * se recalcula desde los bloques —eso rompería a quien nunca elige
+   * ejercicio— así que la corrección dice explícitamente cuánto cambió.
+   */
+  async function tocarBloque(indice: number, delta: number | 'quitar') {
+    const r =
+      delta === 'quitar'
+        ? quitarBloque(bloques, indice)
+        : corregirBloque(bloques, indice, delta);
+    if (r.cambioEnTotal === 0 && r.estado === bloques) return;
+    const nuevoTotal = Math.max(0, series + r.cambioEnTotal);
+    setBloques(r.estado);
+    setSeries(nuevoTotal);
+    await actualizarSesionCache({ series: nuevoTotal, bloques: r.estado });
+    await subir(nuevoTotal, r.estado);
+  }
+
   /** La meta no se sube a ningún lado: es intención, no un hecho. */
   async function elegirMeta(meta: number) {
     const b = cambiarMeta(bloques, meta);
@@ -475,6 +497,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     serieHecha,
     deshacerSerie,
     bloqueSiguiente,
+    tocarBloque,
     elegirEjercicio,
     elegirMeta,
     descansarSuelto,

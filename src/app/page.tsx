@@ -437,6 +437,7 @@ export default function Principal() {
               alSiguiente={sesion.bloqueSiguiente}
               alElegirEjercicio={sesion.elegirEjercicio}
               alElegirMeta={sesion.elegirMeta}
+              alTocarBloque={sesion.tocarBloque}
             />
             <p className="nota-privada" style={{ textAlign: 'center', marginTop: 10 }}>
               {sesion.estado.porUbicacion ? T.inicio.sesionSola : T.inicio.masArrancaDescanso}

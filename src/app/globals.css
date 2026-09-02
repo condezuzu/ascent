@@ -3136,8 +3136,13 @@ body.con-franja .pantalla {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 28vh;
-  max-height: 260px;
+  /* SE PASÓ Y HUBO QUE ACHICARLO. Con 28vh ocupaba media pantalla y tapaba
+     todo lo demás: el ejercicio, los puntos, la cuenta. El objetivo era que se
+     pudiera tocar SIN MIRAR, no que fuera lo único en pantalla.
+     Con 15vh siguen siendo ~120 px de alto por el ancho entero — casi tres
+     veces el botón de 44 px del que veníamos— y el resto del bloque se ve. */
+  min-height: 15vh;
+  max-height: 140px;
   border: 1px solid color-mix(in srgb, var(--pal-principal) 30%, transparent);
   background: color-mix(in srgb, var(--pal-principal) 7%, transparent);
   color: var(--pal-claro);
@@ -3145,7 +3150,7 @@ body.con-franja .pantalla {
 }
 .bloque-mas span {
   font-family: var(--f-numero), system-ui, sans-serif;
-  font-size: 64px;
+  font-size: 40px;
   font-weight: 200;
   line-height: 1;
 }
@@ -3253,4 +3258,76 @@ body.con-accion .pantalla {
 /* Y con las dos cosas a la vez —franja de sesión y acción— se suman. */
 body.con-franja.con-accion .pantalla {
   padding-bottom: calc(190px + env(safe-area-inset-bottom));
+}
+
+/* ---------- la lista de lo hecho ----------
+   Corregir hacia atrás. El − de afuera solo arregla el bloque en curso; si te
+   equivocaste hace veinte minutos, sin esto el número quedaba mal para
+   siempre — y un contador que no se puede corregir deja de creerse. */
+.bloque-lista {
+  display: block;
+  margin: 10px auto 0;
+}
+.lista-bloques {
+  display: flex;
+  flex-direction: column;
+}
+.fila-bloque {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--linea);
+}
+.fila-bloque .que {
+  font-size: 14px;
+  color: var(--tinta);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fila-bloque .controles,
+.fila-bloque .confirmar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+.fila-bloque .confirmar {
+  font-size: 12px;
+  color: var(--sub);
+}
+.fila-bloque .cuantas {
+  font-family: var(--f-numero), system-ui, sans-serif;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+  min-width: 22px;
+  text-align: center;
+}
+/* El bloque en curso se ve pero no se toca desde acá: ya tiene su + y su −
+   afuera, más grandes. Dos formas de hacer lo mismo en dos lugares es cómo se
+   aprende a desconfiar de las dos. */
+.fila-bloque.ahora .cuantas {
+  color: var(--pal-claro);
+}
+.fila-bloque.ahora .rotulo {
+  font-family: var(--f-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--apagado);
+}
+.fila-bloque .quitar {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--apagado);
+}
+.fila-bloque .quitar svg {
+  width: 15px;
+  height: 15px;
 }
