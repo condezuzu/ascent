@@ -3307,6 +3307,69 @@ console.log('\n53. Corregir un bloque ya cerrado');
   }
 }
 
+// =====================================================================
+console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
+{
+  // POR QUE ESTO ES UN TEST Y NO UNA GUIA DE ESTILO. Sin algo que falle, en
+  // seis meses hay tres estilos mezclados: cada texto nuevo se escribe con el
+  // gusto de ese dia. Las reglas viven en spec/idioma.md y esto las aplica.
+  //
+  // Solo mira `nucleo/textos.ts`, que es donde vive TODO el texto que ve el
+  // usuario. Los comentarios del codigo siguen en rioplatense: los lee quien
+  // programa, no quien entrena.
+  const { readFileSync: leer } = await import('node:fs');
+  const RUTA = join(dirname(fileURLToPath(import.meta.url)), '..', 'nucleo', 'textos.ts');
+  const crudo = leer(RUTA, 'utf8');
+
+  // Solo el contenido de las cadenas: un comentario que EXPLICA por que se saco
+  // "vos" no puede hacer fallar al test que saco "vos".
+  const cadenas = [];
+  for (const linea of crudo.split('\n')) {
+    if (/^\s*\/\//.test(linea)) continue;
+    for (const m of linea.matchAll(/'((?:[^'\\]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)) {
+      cadenas.push([linea.trim().slice(0, 46), m[1] ?? m[2] ?? '']);
+    }
+  }
+
+  // Regla 1: nada de voseo. Lista curada y no una regex de terminaciones,
+  // porque "-as" tambien termina "mas", "quizas", "atras" y "estas" —que es
+  // legitimo en tu—. Una regex que da falsos positivos se termina apagando.
+  const VOSEO = [
+    'vos', 'tenés', 'podés', 'querés', 'sabés', 'hacés', 'ponés', 'venís',
+    'salís', 'elegís', 'seguís', 'entrenás', 'registrás', 'anotás', 'comparás',
+    'buscás', 'sumás', 'mirás', 'tocás', 'apretás', 'llevás', 'dejás',
+    'cambiás', 'terminás', 'empezás', 'usás', 'marcás', 'perdés', 'ganás',
+    'subís', 'bajás', 'abrís', 'cerrás', 'escribís', 'decís', 'faltás',
+    'tocá', 'mirá', 'poné', 'andá', 'fijate', 'decime', 'pasame', 'avisame',
+    'acordate', 'sacate', 'elegí', 'anotá', 'registrá', 'empezá', 'usá',
+    'hacé', 'marcá', 'apretá', 'probá', 'contá', 'volvé', 'seguí', 'entrá',
+    'agregá', 'guardá', 'mandá', 'sacá', 'sumá', 'quitá', 'corregí',
+    'marcalo', 'apretalo', 'tocala', 'tocalo', 'ponete', 'quedate', 'mirate',
+  ];
+
+  // Regla 3: modismos rioplatenses. Se entienden en tres paises.
+  // "de una" NO está en la lista, y se sacó a propósito: pega en "levantar de
+  // una vez", que es español correcto y aparece tres veces en el diccionario de
+  // fuerza. Una regla que salta sobre texto bien escrito se termina apagando, y
+  // ahí deja de proteger de nada. Más vale una lista incompleta que una que se
+  // ignora.
+  const MODISMOS = ['acá', 'al toque', 'che', 'laburo', 'pileta', 'ojo:', 'ojo,'];
+
+  const fallas = [];
+  for (const [donde, s] of cadenas) {
+    const bajo = s.toLowerCase();
+    for (const v of VOSEO) {
+      if (new RegExp(`(^|[^a-záéíóúñ])${v}([^a-záéíóúñ]|$)`, 'i').test(bajo)) {
+        fallas.push(`${donde} -> voseo "${v}"`);
+      }
+    }
+    for (const m of MODISMOS) if (bajo.includes(m)) fallas.push(`${donde} -> modismo "${m}"`);
+  }
+
+  chequear(`las ${cadenas.length} cadenas estan en espanol neutro`, fallas.slice(0, 12), []);
+  if (fallas.length > 12) console.log(`       (y ${fallas.length - 12} mas)`);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
