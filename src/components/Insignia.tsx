@@ -30,10 +30,25 @@ export default function Insignia({ rango, tam = 24 }: { rango: number; tam?: num
           <circle cx="15" cy="14" r="1" fill={oscuro} opacity=".45" />
         </svg>
       );
-    case 3: // Luna: creciente marcado, gris mineral
+    case 3: // Luna: esfera con la cara oscura visible y crateres
       return (
-        <svg style={s} viewBox="0 0 24 24" fill={trazo} aria-hidden>
-          <path d="M12 3 a9 9 0 1 0 9 9 a11 11 0 0 1 -9 -9 Z" />
+        <svg style={s} viewBox="0 0 24 24" aria-hidden>
+          {/* La version anterior era un disco con un mordisco chico: a 16 px
+              parecia una galletita, no una luna. Tres cosas la arreglan.
+              1) La CARA OSCURA: un disco tenue detras. Sin el hay un creciente
+              flotando; con el hay una esfera de la que se ve un pedazo
+              iluminado, que es lo que se ve en el cielo.
+              2) El creciente MAS FINO, o sea la mordida mas honda. El de antes
+              se comia poco y la silueta no llegaba a leerse.
+              3) Los CRATERES, que son lo unico que distingue una luna de
+              cualquier creciente. Van dos y no cuatro: a 18 px se pisan.
+              Los cortes del arco estan calculados —interseccion de r=9 con la
+              mordida r=8 centrada en (16.2, 9.4)— y no estimados: con un
+              numero a ojo el creciente se cierra o se abre de golpe. */}
+          <circle cx="12" cy="12" r="9" fill={pal.apagado} opacity=".2" />
+          <path d="M 11.37 3.03 A 9 9 0 1 0 19.75 16.57 A 8 8 0 0 1 11.37 3.03 Z" fill={trazo} />
+          <circle cx="6.5" cy="11.4" r="1.55" fill={oscuro} opacity=".28" />
+          <circle cx="8.8" cy="16.3" r="1.15" fill={oscuro} opacity=".24" />
         </svg>
       );
     case 4: // Planeta: una ESFERA iluminada de un lado, no un disco plano
