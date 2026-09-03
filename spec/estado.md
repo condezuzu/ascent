@@ -60,7 +60,7 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   kilos**; la unidad es solo de presentación. Cada sección vive en su propio
   archivo (`components/ajustes/`): la pantalla crece cada vez que aparece una
   preferencia nueva, y así tocar una no obliga a leer todas.
-- **Fuerza** (§16): marcas con Epley o 1RM real, catálogo de 31 ejercicios,
+- **Fuerza** (§16): marcas con Epley o 1RM real, catálogo de 100 ejercicios,
   DOTS con los coeficientes de OpenPowerlifting, ranking entre amigos
   y percentil global. `/fuerza` se escribe, Stats se lee, y en la principal va
   una línea mono con los tres pesos. El DOTS se calcula **en la base**: la

@@ -66,6 +66,14 @@ export default function Bloque({
   const cumplida = metaCumplida(estado);
   // Tantos puntos como la meta, más los que te pasaste.
   const puntos = Math.max(estado.meta, estado.hechas);
+  // EL GRUPO AL LADO DEL NOMBRE, aunque arriba ya este el titulo del grupo.
+  // Dos razones, y ninguna es la de siempre —"por las dudas"—:
+  // 1. Un <select> cerrado muestra SOLO el texto de la opcion elegida, sin su
+  //    titulo. Sin esto, en la pantalla se lee "Press Arnold" a secas.
+  // 2. Con cien opciones, la rueda del telefono se come el titulo del grupo a
+  //    los pocos renglones. La lista larga es justo donde el encabezado deja
+  //    de servir, que es lo contrario de lo que uno supone.
+  const conGrupo = (e: Ejercicio) => `${e.nombre} · ${e.grupo}`;
   const delDots = ejercicios.filter((e) => e.cuenta_dots);
   const resto = ejercicios.filter((e) => !e.cuenta_dots);
   const grupos = [...new Set(resto.map((e) => e.grupo))];
@@ -86,7 +94,7 @@ export default function Bloque({
           <optgroup label={T.marca.cuentanDots}>
             {delDots.map((e) => (
               <option key={e.id} value={e.id}>
-                {e.nombre}
+                {conGrupo(e)}
               </option>
             ))}
           </optgroup>
@@ -96,7 +104,7 @@ export default function Bloque({
                 .filter((e) => e.grupo === g)
                 .map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.nombre}
+                    {conGrupo(e)}
                   </option>
                 ))}
             </optgroup>

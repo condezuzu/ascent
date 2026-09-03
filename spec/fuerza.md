@@ -54,8 +54,9 @@ Al total DOTS entran **solo tres**: sentadilla, press de banca y peso muerto.
 hace "más completa", la invalida: el número deja de ser comparable con el DOTS
 de cualquier otra persona, que es lo único que lo hace valer.
 
-El **catálogo de ejercicios registrables sí es grande**, al estilo Strong o
-Hevy: el usuario anota lo que quiera y ve su progreso. Pero esos otros
+El **catálogo de ejercicios registrables sí es grande** —100 desde la
+migración 29, al estilo Strong o Hevy—: el usuario anota lo que quiera y ve su
+progreso. Pero esos otros
 ejercicios **no computan para el DOTS** ni para el ranking. La interfaz tiene
 que dejar clarísima esa diferencia, o alguien va a cargar veinte PRs
 esperando que le suba el número.

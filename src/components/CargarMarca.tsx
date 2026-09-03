@@ -84,6 +84,11 @@ export default function CargarMarca({
 
   // los tres del DOTS primero y aparte: son los únicos que cuentan para el
   // número, y mezclarlos con los otros treinta hace que nadie los distinga
+  // El mismo formato que el contador de series: nombre y grupo. El motivo es
+  // el mismo —un <select> cerrado no muestra el titulo del grupo, y con cien
+  // opciones la rueda se lo come— y que las dos listas se lean igual importa:
+  // son la misma pregunta hecha en dos pantallas.
+  const conGrupo = (e: Ejercicio) => `${e.nombre} · ${e.grupo}`;
   const delDots = ejercicios.filter((e) => e.cuenta_dots);
   const resto = ejercicios.filter((e) => !e.cuenta_dots);
   const grupos = [...new Set(resto.map((e) => e.grupo))];
@@ -101,7 +106,7 @@ export default function CargarMarca({
             <optgroup label={T.marca.cuentanDots}>
               {delDots.map((e) => (
                 <option key={e.id} value={e.id}>
-                  {e.nombre}
+                  {conGrupo(e)}
                 </option>
               ))}
             </optgroup>
@@ -111,7 +116,7 @@ export default function CargarMarca({
                   .filter((e) => e.grupo === g)
                   .map((e) => (
                     <option key={e.id} value={e.id}>
-                      {e.nombre}
+                      {conGrupo(e)}
                     </option>
                   ))}
               </optgroup>

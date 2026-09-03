@@ -409,31 +409,54 @@ Y sigue valiendo §13: la app tiene que funcionar entera sin el permiso de
 notificaciones. Quien no lo dé se queda con el aviso visual de hoy.
 
 
-## 13e. Los movimientos del contador — pendiente, después de migrar
+## 13e. Los movimientos del contador — RESUELTO el 2026-09-03, de otra manera
 
-Pedido el 2026-08-29, pospuesto a propósito: es una tabla nueva más una
-pantalla, o sea justo lo que encarece la migración.
+Pedido el 2026-08-29, pospuesto, y finalmente **resuelto sin la tabla nueva**:
+el catálogo de `ejercicios` pasó de 31 a **100** (migración 29) y el selector
+muestra el grupo muscular al lado del nombre — "Press Arnold · hombros".
 
-**El problema.** El selector del contador de series usa el catálogo de
-`ejercicios`, que tiene nombres específicos de gimnasio —"Peso muerto rumano",
-"Curl martillo"— y poca gente sabe qué músculo está entrenando. Y faltan las
-variantes con mancuernas.
+**El problema, que era real.** El selector del contador tenía 31 opciones con
+nombres específicos de gimnasio, faltaban las variantes con mancuernas y con
+máquina, y quien no sabe qué músculo trabaja cada una no encontraba lo suyo.
+Un selector que no tiene lo que hacés te enseña a no usarlo.
 
-**La solución, y lo único que NO se puede romper: son DOS LISTAS SEPARADAS.**
+### Lo que se iba a hacer, y por qué no se hizo
 
-- **`ejercicios` se queda intacta.** Es la que alimenta las marcas de fuerza y
-  el percentil de Strength Level, que está calibrado sobre los tres exactos con
-  barra. Agregarle variantes rompería la comparación.
-- **`movimientos`, tabla nueva, SOLO para el contador de series:** por zona y
-  patrón en vez de por nombre — "pecho plano", "pecho inclinado", "espalda
-  vertical", "espalda horizontal", "pierna empuje", "pierna femoral", "hombro",
-  "bíceps", "tríceps", "core" — cada uno con su variante barra / mancuernas /
-  máquina donde tenga sentido.
-- `sesiones.bloques` pasa a referenciar `movimientos` y no `ejercicios`.
+El plan era una tabla nueva, `movimientos`, ordenada por zona y patrón —"pecho
+plano", "espalda vertical", "pierna empuje"—, separada de `ejercicios` para
+no tocar las marcas de fuerza ni el percentil de Strength Level, que está
+calibrado sobre los tres levantamientos con barra.
 
-Los bloques ya guardados quedan apuntando a ids de `ejercicios`: la migración
-tiene que mapearlos o dejarlos como están y que el nombre se resuelva contra las
-dos tablas. Decidir cuando se haga; son pocas semanas de datos.
+**Lo que no cerraba: la separación no la daba la tabla.** La da `cuenta_dots`,
+que ya existía y ya marcaba tres filas. Con dos tablas, `sesiones.bloques`
+tenía que pasar a referenciar la nueva, los bloques ya guardados quedaban
+apuntando a ids de la vieja, y hacía falta una pantalla más para mantenerla.
+Todo eso para conseguir una separación que el catálogo único ya tenía.
+
+Y la clasificación por patrón —"pierna empuje"— es más precisa pero menos
+buscable: quien entra al selector busca el nombre del ejercicio que está
+haciendo, no su categoría biomecánica.
+
+### Lo que se hizo
+
+- **`ejercicios` crece a 100**, con `orden` agrupando por músculo: una centena
+  por grupo (piernas 100, pecho 200, espalda 300, hombros 400, brazos 500,
+  core 600). El selector ordena por `orden` y los grupos salen juntos solos.
+- **`cuenta_dots` sigue en tres.** No cambió nada de la fórmula, del percentil
+  ni del ranking. Hay un test que lo fija junto al tamaño del catálogo: las
+  dos mitades de la decisión tiran para lados opuestos y las dos tienen que
+  seguir siendo ciertas.
+- **El grupo se muestra al lado del nombre** en el contador y en la carga de
+  marcas. No es redundante con el título del grupo: un `<select>` cerrado
+  muestra solo el texto de la opción elegida, y con cien opciones la rueda del
+  teléfono se come el encabezado a los pocos renglones.
+- **Sin cardio.** El contador cuenta series; veinte minutos de caminadora no
+  son cuatro series de nada.
+
+**Lo que sigue pendiente:** las marcas de fuerza ahora ofrecen las 100, no las
+31. Nada se rompe —`cuenta_dots` sigue mandando— pero se puede cargar un PR de
+"Plancha", que es un ejercicio de tiempo y no de peso. Si molesta, la salida
+es una columna que marque cuáles admiten peso, no volver a partir la tabla.
 
 ## 13f. PRIORIDAD DE LA TANDA 3 — el botón de volumen suma una serie
 

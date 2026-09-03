@@ -2129,6 +2129,39 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
   ).rows.map((f) => f.id);
   chequear('los ejercicios que cuentan para el DOTS', delDots, [...EJERCICIOS_DOTS].sort());
 
+  // EL CATALOGO GRANDE (migracion 29). Se prueban las dos mitades de la
+  // decision, que tiran para lados opuestos: que haya MUCHOS para contar
+  // series, y que sigan siendo TRES los que mueven el DOTS. Sin la segunda, la
+  // primera se lleva puesta la formula sin que nadie lo note: el numero
+  // seguiria saliendo, mas alto y sin significado.
+  const cat = (await db.query(`select grupo, count(*)::int n from ejercicios group by 1`)).rows;
+  const cuantos = (await db.query(`select count(*)::int n from ejercicios`)).rows[0].n;
+  chequear('el catalogo tiene 100 ejercicios', cuantos, 100);
+  chequear('y solo 3 mueven el DOTS', delDots.length, 3);
+  chequear(
+    'los grupos son los seis de siempre',
+    cat.map((f) => f.grupo).sort(),
+    ['brazos', 'core', 'espalda', 'hombros', 'pecho', 'piernas'].sort()
+  );
+  // El `orden` es lo que AGRUPA en el selector: la lista se ordena por el, sin
+  // ordenar por grupo. Si dos grupos se entreveran en la numeracion, la lista
+  // sale mezclada y no lo nota nadie hasta verla en el gimnasio.
+  //
+  // Se miran solo los que NO cuentan para el DOTS: los tres del DOTS viven en
+  // el 10, 20 y 30 —y en tres grupos distintos— porque en el selector van
+  // aparte, arriba de todo. Meterlos aca haria fallar al test por la unica
+  // excepcion que esta bien.
+  const arranques = (
+    await db.query(`
+      with x as (
+        select grupo, lag(grupo) over (order by orden) ant
+          from ejercicios where not cuenta_dots
+      )
+      select distinct grupo from x where ant is not null and ant <> grupo
+    `)
+  ).rows.length;
+  chequear('cada grupo ocupa un tramo seguido de `orden`', arranques, 5);
+
   // Los literales sueltos de los módulos que no pueden importar nada, pineados
   // igual: son los que ningún tipo protege.
   chequear(
