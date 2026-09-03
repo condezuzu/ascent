@@ -61,7 +61,7 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   archivo (`components/ajustes/`): la pantalla crece cada vez que aparece una
   preferencia nueva, y así tocar una no obliga a leer todas.
 - **Fuerza** (§16): marcas con Epley o 1RM real, catálogo de 31 ejercicios,
-  DOTS con los coeficientes de OpenPowerlifting, bandas, ranking entre amigos
+  DOTS con los coeficientes de OpenPowerlifting, ranking entre amigos
   y percentil global. `/fuerza` se escribe, Stats se lee, y en la principal va
   una línea mono con los tres pesos. El DOTS se calcula **en la base**: la
   fórmula necesita el peso corporal, que ningún cliente ajeno puede leer.
@@ -119,9 +119,9 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   `anotar_peso` guardando sin registrar un día.
 - **Fuerza contra la base real**, con las dos cuentas y sesión de verdad: se
   carga una marca, el 1RM real de 5 repes lo frena la restricción, el DOTS usa
-  el peso corporal más reciente, un amigo ve las marcas pero **no** el peso ni
-  el DOTS exacto —solo la banda—, y sin peso corporal cargado la persona queda
-  fuera del ranking. Los helpers que tocan el peso ajeno siguen sin alcance
+  el peso corporal más reciente, un amigo ve las marcas y **el DOTS exacto**
+  (migración 28) pero **nunca el peso**, y sin peso corporal cargado la persona
+  queda fuera del ranking. Los helpers que tocan el peso ajeno siguen sin alcance
   desde el cliente.
 - Confirmado de paso que **el peso corporal no se puede escribir directo**:
   `weights` solo tiene `select`. Se carga por `registrar_dia` o, desde la

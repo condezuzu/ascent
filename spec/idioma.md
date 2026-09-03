@@ -83,11 +83,24 @@ cuatro verbos para cosas parecidas y ninguno significaba algo estable.
 
 ## Cómo se hace cumplir
 
-`test:db` sección 54 busca en `nucleo/textos.ts`:
+`test:db` sección 54 mira **dos lugares**:
+
+- `nucleo/textos.ts`, que es donde debería vivir todo el texto de la app.
+- El **texto JSX de los componentes** (`src/**/*.tsx`), o sea la prosa escrita
+  a mano. Se agregó después de que la primera versión —que solo miraba el
+  diccionario— dejara pasar la explicación entera de "Cómo se compara la
+  fuerza" en Ajustes, que son treinta líneas de prosa en voseo. Un test que
+  cubre el archivo prolijo y no el que se escribe a mano protege del caso
+  fácil.
+
+En los dos busca:
 
 1. El pronombre `vos` como palabra suelta.
 2. Una lista de conjugaciones e imperativos de voseo.
 3. La lista de modismos de la regla 3.
+
+Los **comentarios del código** se sacan antes de mirar: siguen en rioplatense
+a propósito, los lee quien programa, no quien entrena.
 
 Falla nombrando la clave exacta y lo que encontró. Si aparece un caso nuevo que
 la lista no cubre, se agrega a la lista **en el mismo commit** que lo corrige:

@@ -128,7 +128,7 @@ export const T = {
     primeraVez: '¿Primera vez? Crear cuenta',
     olvide: 'Olvidé mi contraseña',
     volverAEntrar: 'Volver a entrar',
-    revisaCorreo: 'Listo. Revisá tu correo para confirmar la cuenta.',
+    revisaCorreo: 'Listo. Revisa tu correo para confirmar la cuenta.',
     // No se dice si el mail existe: eso filtra quién tiene cuenta.
     siTieneCuenta: 'Si esa dirección tiene cuenta, le llega un correo para cambiar la contraseña.',
     paraRecuperar: 'Te mandamos un enlace para elegir una contraseña nueva.',
@@ -184,10 +184,10 @@ export const T = {
     corta: 'Esa es muy corta: mínimo 6.',
     noCoinciden: 'Las dos no coinciden.',
     esLaMisma: 'Esa ya es tu contraseña actual.',
-    noSePudo: 'No se cambió. Pedí el correo otra vez.',
+    noSePudo: 'No se cambió. Pide el correo otra vez.',
     cambiada: 'Contraseña cambiada.',
     enlaceVencido: 'El enlace ya venció o se abrió en otro navegador.',
-    enlaceVencidoPie: 'Pedí uno nuevo desde la pantalla de entrada.',
+    enlaceVencidoPie: 'Pide uno nuevo desde la pantalla de entrada.',
     irAEntrar: 'Ir a entrar',
   },
 
@@ -227,12 +227,13 @@ export const T = {
       arrancando: 'Arrancando',
     },
 
-    soloVosLoVes: (banda: string) => `Solo tú lo ves. Tus amigos ven: ${banda}.`,
+    // Cambió con la migración 28: antes los amigos veían una banda.
+    loVenTusAmigos: 'Tus amigos ven este número. Con él y tu total pueden calcular más o menos cuánto pesas.',
     faltaPara: (peso: string) => `Te faltan ${peso} para principiante`,
     faltaParaUno: (peso: string) => `Te falta ${peso} para principiante`,
 
     muestraFina:
-      'La muestra de mujeres es mucho más chica que la de hombres: tomá el porcentaje como una orientación, no como una medición.',
+      'La muestra de mujeres es mucho más chica que la de hombres: el porcentaje sirve como orientación, no como medición.',
     fueraDeTabla:
       'Tu peso corporal queda fuera de la tabla, así que se compara contra el extremo más cercano.',
 
@@ -288,7 +289,7 @@ export const T = {
     corregirDias: 'Corregir días',
 
     descansoEntreSeries: 'Descanso entre series',
-    descansoNota: 'Mientras descansás lo puedes cambiar ahí mismo.',
+    descansoNota: 'Mientras descansas lo puedes cambiar ahí mismo.',
     sonidoPrendido: 'Sonido al terminar ✓',
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cierras, no avisa.',
@@ -348,7 +349,12 @@ export const T = {
     mujer: 'Mujer',
     hombre: 'Hombre',
     sexoNota: 'Sin esto no hay DOTS. El resto de tus marcas anda igual.',
-    sexoAviso: 'Ten en cuenta: con el DOTS puesto, tus amigos pueden deducir más o menos cuánto pesás.',
+    // El aviso va donde se ACTIVA el DOTS, que es el único momento en que
+    // todavía se puede decidir no hacerlo. Dice la consecuencia completa:
+    // el DOTS es una función del peso corporal y del total, así que con los
+    // dos a la vista el peso se despeja. No es un riesgo, es aritmética.
+    sexoAviso:
+      'Ten en cuenta: con el DOTS activado, tus amigos ven tu número exacto. Como el DOTS sale de tu peso corporal y de tu total, con los dos a la vista pueden calcular cuánto pesas. Tu peso nunca se comparte, pero sí se puede deducir.',
 
     sugerencias: 'Sugerencias',
     sugerenciasPlaceholder: '¿Algo anda mal? ¿Se te ocurrió algo? Cuenta aquí.',
@@ -708,9 +714,9 @@ export const T = {
       'La app no está bien configurada y no puede hablar con el servidor. No es tu contraseña.',
     sinConexion: 'No hay conexión con el servidor. Fíjate si tienes internet y prueba de nuevo.',
     sinConfirmar: 'Falta confirmar la cuenta desde el correo que te llegó.',
-    demasiadosIntentos: 'Demasiados intentos seguidos. Esperá unos minutos.',
+    demasiadosIntentos: 'Demasiados intentos seguidos. Espera unos minutos.',
     noCoinciden: 'Ese correo y esa contraseña no coinciden.',
-    yaHayCuenta: 'Ya hay una cuenta con ese correo. Prueba entrar, o pedí una contraseña nueva.',
+    yaHayCuenta: 'Ya hay una cuenta con ese correo. Prueba entrar, o pide una contraseña nueva.',
     claveCorta: 'La contraseña tiene que tener al menos 6 caracteres.',
     noEsImagen: 'Eso no parece una imagen.',
     imagenPesada: 'La imagen pesa demasiado. Prueba con una más liviana.',

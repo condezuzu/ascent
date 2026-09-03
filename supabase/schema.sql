@@ -892,20 +892,6 @@ begin
 end;
 $$;
 
--- La banda es lo ÚNICO que ve alguien que no sea el dueño (§16.7b). El DOTS
--- exacto al lado de un total conocido permite despejar el peso corporal con
--- una cuenta de dos líneas; la banda deja el dato en un intervalo demasiado
--- ancho para que sirva.
-create or replace function public.banda_dots(p_dots numeric)
-returns text language sql immutable as $$
-  select case
-    when p_dots is null then null
-    when p_dots < 200 then 'menos de 200'
-    when p_dots >= 600 then '600 o más'
-    else (floor(p_dots / 50) * 50)::int || '–' || (floor(p_dots / 50) * 50 + 50)::int
-  end;
-$$;
-
 -- peso_actual devuelve el peso corporal de CUALQUIERA, que es el dato más
 -- privado de la app (§4). Existe porque el DOTS lo necesita, y las funciones
 -- que la usan devuelven el resultado sin devolver nunca el peso. No se otorga
@@ -984,7 +970,6 @@ begin
     'marcas', marcas,
     'total', total,
     'dots', d,
-    'banda', banda_dots(d),
     -- POR QUÉ no hay DOTS, para que la interfaz diga qué falta en vez de
     -- mostrar un cero o un error (§16.7)
     'falta', case
@@ -997,21 +982,25 @@ begin
 end;
 $$;
 
--- Ranking entre amigos. Sale el total (los levantamientos ya los ven los
--- amigos) y la BANDA; el número exacto solo en la fila propia.
+-- Ranking entre amigos. Sale el total y el DOTS EXACTO de todos.
 --
--- Ordena por DOTS exacto aunque muestre bandas: el orden filtra algo que la
--- banda oculta, y está aceptado a propósito (§16.7b) porque entre amigos el
--- peso corporal no es un secreto. Si alguna vez deja de valer, la salida es
--- ordenar por banda y mostrar los empates como empates.
+-- Antes iba una banda y el número exacto solo en la fila propia, porque DOTS
+-- es una función del peso corporal y del total: con los dos a la vista, el
+-- peso se despeja con una cuenta de dos líneas. El razonamiento sigue siendo
+-- correcto; lo que cambió es la premisa. El humano decidió (2026-08-31) que su
+-- peso no le parece un dato tan personal y que prefiere ver el número exacto.
+--
+-- La consecuencia está ACEPTADA y se avisa al activar el DOTS, que es cuando
+-- todavía se puede decidir no hacerlo. Lo que no cambia: `weights` no se
+-- comparte nunca y `peso_actual` no se le otorga a nadie. Se acepta que el
+-- peso se pueda DEDUCIR, no que se publique. Ver spec/fuerza.md §16.7b.
 create or replace function public.ranking_fuerza()
 returns table (
   id uuid,
   username text,
   avatar_url text,
   total numeric,
-  banda text,
-  dots_propio numeric,
+  dots numeric,
   marcas jsonb
 ) language sql stable security definer set search_path = public as $$
   with gente as (
@@ -1027,8 +1016,7 @@ returns table (
       from profiles p
       join gente g on g.quien = p.id
   )
-  select c.id, c.username, c.avatar_url, c.total, banda_dots(c.d),
-         case when c.id = auth.uid() then c.d end,
+  select c.id, c.username, c.avatar_url, c.total, c.d,
          -- el detalle por ejercicio viaja con la fila: son levantamientos, que
          -- los amigos ya ven, y así el 1RM lo calcula un solo lugar
          (select coalesce(jsonb_agg(jsonb_build_object(
@@ -1752,7 +1740,7 @@ revoke execute on function public.cerrar_sesiones_vencidas(uuid)
 
 -- Los internos del DOTS calculan con el peso corporal AJENO y no se otorgan a
 -- nadie: solo los llaman las funciones de arriba, que devuelven el resultado
--- sin devolver nunca el peso. un_rm, dots y banda_dots quedan abiertas como
+-- sin devolver nunca el peso. un_rm y dots quedan abiertas como
 -- rango_de_racha: son matemática pura y no tocan datos de nadie.
 revoke execute on function
   public.hoy_de(uuid),

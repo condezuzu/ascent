@@ -82,9 +82,10 @@ export default function SeccionFuerza({
                 <div className="dots-pie">
                   DOTS · {mia.total !== null && pesoLindo(mia.total, unidad)} de total
                 </div>
-                {/* El exacto es SOLO del dueño (§16.7b). Decirlo acá es lo que
-                    hace que la banda de los demás no parezca un error. */}
-                <p className="nota-privada">{T.fuerza.soloVosLoVes(mia.banda ?? '')}</p>
+                {/* Desde la migración 28 el número exacto lo ven los amigos.
+                    Se dice acá y no solo al activarlo: quien ya lo tenía
+                    activado con la regla vieja tiene que enterarse. */}
+                <p className="nota-privada">{T.fuerza.loVenTusAmigos}</p>
               </>
             ) : (
               <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--sub)' }}>
@@ -149,11 +150,12 @@ export default function SeccionFuerza({
                         <span className="dato rank-pos">{i + 1}</span>
                         <Avatar url={f.avatar_url} nombre={f.username} tam={30} />
                         <span className="rank-nombre">
-                          {f.id === yo ? 'Vos' : f.username}
+                          {f.id === yo ? T.social.vos : f.username}
                         </span>
                         <span className="rank-banda dato">
-                          {/* al dueño se le muestra su número; del resto, la banda */}
-                          {f.dots_propio != null ? redondear(f.dots_propio) : f.banda}
+                          {/* El mismo número para todos: ya no hay una versión
+                              para el dueño y otra para el resto (§16.7b). */}
+                          {redondear(f.dots)}
                         </span>
                       </button>
                       {desplegado && (

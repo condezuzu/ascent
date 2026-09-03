@@ -93,56 +93,89 @@ analítico, y donde el usuario entra a buscar datos en vez de encontrárselos.
 
 - **Ranking entre amigos**: ordenado por **DOTS total**. Al entrar, detalle
   por ejercicio.
-- **Perfil público**: va la **banda** de DOTS, no el número (§16.7b).
+- **Perfil público**: va el **DOTS exacto**, igual que entre amigos (§16.7b).
 
 #### Visibilidad
 
 | Dato | Quién lo ve |
 |---|---|
 | Los pesos levantados | los amigos, igual que los logs |
-| El DOTS **exacto** | **solo el dueño** |
-| El DOTS de otro | como **banda**, nunca el número |
+| El DOTS **exacto** | el dueño y sus amigos |
+| El DOTS de otro | el número exacto (antes: una banda) |
 | **El peso corporal** | **solo el dueño, nunca se muestra** |
 
-### 16.7b El DOTS exacto es privado
+### 16.7b El DOTS exacto se comparte entre amigos
 
-**El número exacto de DOTS solo lo ve el dueño.** En el perfil público y entre
-amigos va una **banda**, nunca la cifra.
+**Decisión revertida el 2026-08-31.** Antes decía lo contrario: el número
+exacto solo lo veía el dueño y hacia afuera iba una banda. Queda escrito acá
+—y no borrado— porque el razonamiento viejo no era malo, y el que lo vuelva a
+plantear dentro de un año merece encontrarse con por qué se cambió y no con
+una spec que finge que nunca dijo otra cosa.
 
-El motivo: **DOTS es una función del peso corporal y del total**. Los pesos
-levantados los ven los amigos, así que el total es conocido; publicar el DOTS
-exacto al lado permite despejar el peso corporal con una cuenta de dos
-líneas. No sería una filtración por accidente sino por definición de la
-fórmula, y rompería la regla más dura que tiene la app: el peso corporal no se
-comparte nunca (§3, §4).
+#### Lo que decía antes, y por qué
 
-La banda no se puede despejar: agrupa un rango de pesos corporales posibles y
-deja el dato en un intervalo demasiado ancho para que sirva.
+**DOTS es una función del peso corporal y del total.** Los pesos levantados
+los ven los amigos, así que el total es conocido; publicar el DOTS exacto al
+lado permite despejar el peso corporal con una cuenta de dos líneas. No es una
+filtración por accidente sino por definición de la fórmula. Por eso hacia
+afuera iba una banda, que agrupa un rango de pesos posibles y deja el dato en
+un intervalo demasiado ancho para que sirva.
 
-Es la misma solución que el ranking global, y por la misma razón de fondo:
-**un número exacto invita a hacer cuentas que no queremos que se puedan
-hacer.** Global y amigos usan la misma pieza; no hay dos criterios.
+**Ese razonamiento sigue siendo correcto.** No se revierte porque estuviera
+mal: se revierte porque cambió la premisa.
 
-> **Consecuencia aceptada**: el ranking entre amigos se ordena por DOTS exacto
-> aunque muestre bandas, así que el orden filtra algo que las bandas ocultan.
-> Se acepta porque entre amigos el peso corporal no es un secreto —se conocen,
-> se ven en el gimnasio— y es el mismo razonamiento por el que el ranking de
-> amigos sí lleva posiciones y el global no. Si alguna vez deja de valer, la
-> salida es ordenar por banda y mostrar los empates como empates.
+#### Lo que cambió
 
-La banda no cierra el agujero del todo, y eso se avisa: ver §16.7c.
+El humano decidió que **su peso corporal no le parece un dato tan personal**
+como para pagar por esconderlo el precio de un ranking borroso. Entre amigos
+que se ven en el gimnasio, la banda escondía poco y arruinaba la comparación,
+que es para lo que existe la sección.
+
+Así que: **el DOTS exacto lo ven todos los amigos, y la fila propia no tiene
+un número distinto del resto.** Una sola columna, el mismo dato para todos.
+
+#### La consecuencia, aceptada explícitamente
+
+**Con el DOTS exacto y el total a la vista, un amigo puede despejar el peso
+corporal.** No es un efecto lateral que se descubrió después: es la
+consecuencia directa de la fórmula, está aceptada, y se avisa al activar el
+DOTS (§16.7c), que es el único momento en que todavía se puede decidir no
+hacerlo.
+
+**Lo que NO cambia:** `weights` sigue sin compartirse nunca y `peso_actual`
+sigue sin otorgarse a nadie (§3, §4). Lo que se acepta es que el peso se pueda
+**deducir**, no que se **publique**. La distinción no es un tecnicismo: sin
+DOTS activado —o sea, sin sexo cargado— no hay número y no hay nada que
+deducir, y esa puerta sigue en manos del usuario.
+
+**Lo que esto deja resuelto:** el ranking se ordenaba por DOTS exacto mientras
+mostraba bandas, así que el orden ya filtraba lo que la banda escondía. Esa
+incoherencia desaparece sola: ahora se ordena y se muestra por el mismo dato.
+
+#### Si alguna vez hay que volver atrás
+
+La salida no es reponer la banda tal cual estaba. Sería: hacer que compartir
+el DOTS exacto sea **una opción del usuario** y no una decisión del producto,
+con la banda como valor por defecto. Volver a la regla vieja para todos
+después de haber mostrado el número exacto no devuelve nada — lo que ya se
+vio, ya se vio.
 
 ### 16.7c Se avisa antes, no se tapa
 
-La banda achica la filtración pero no la elimina. El problema es más amplio
-que el orden del ranking: **los amigos ya ven los levantamientos exactos**, y
-DOTS es una función del total y del peso corporal. Con el total conocido,
-cualquier señal de DOTS —la banda, el percentil, el puesto en la lista— acota
-el peso corporal a un intervalo. Más ancho que un número, pero un intervalo.
+Con el DOTS exacto compartido (§16.7b), el peso corporal no queda acotado a
+un intervalo: **queda despejado**. Los amigos ven los levantamientos exactos,
+DOTS es una función del total y del peso, y con los dos números la cuenta sale
+sola.
+
+Esto valía también con la banda —cualquier señal de DOTS, banda, percentil o
+puesto, acotaba el peso a un intervalo—, y por eso el aviso existía desde
+antes. Lo que cambió es que ahora el aviso tiene que decir la versión fuerte:
+no "aproximadamente", sino que el número se puede calcular.
 
 Entonces no se presenta como si estuviera resuelto. **Cuando el usuario carga
-el sexo y con eso activa el DOTS, la app se lo dice en una línea**, ahí mismo,
-antes de guardar: sus amigos van a poder deducir aproximadamente cuánto pesa.
+el sexo y con eso activa el DOTS, la app se lo dice ahí mismo**, antes de
+guardar: sus amigos van a ver el número exacto y con él pueden calcular cuánto
+pesa.
 
 Es consentimiento informado, no una fuga silenciosa. Quien lo lee y activa
 igual sabe qué está entregando; quien no quiere, no carga el sexo y sigue

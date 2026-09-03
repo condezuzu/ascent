@@ -27,14 +27,14 @@ export default function ComoSeCompara() {
         <div className="texto-largo">
           <p>
             El problema de comparar fuerza es que 100 kg no significan lo mismo en alguien de 60
-            que en alguien de 100. Si comparáramos el peso levantado a secas, el ranking lo ganaría
+            que en alguien de 100. Si se comparara el peso levantado a secas, el ranking lo ganaría
             siempre el más pesado y no diría nada.
           </p>
           <p>
             Se usa <strong>DOTS</strong>, que es el estándar del powerlifting fuera de la IPF.
-            Toma lo que levantás y tu peso corporal, y devuelve un número comparable entre
+            Toma lo que levantas y tu peso corporal, y devuelve un número comparable entre
             personas de distinto tamaño. Los coeficientes son los de OpenPowerlifting, no
-            inventados acá.
+            inventados aquí.
           </p>
 
           <h4>Qué entra</h4>
@@ -45,15 +45,15 @@ export default function ComoSeCompara() {
             persona, que es lo único que lo hace valer.
           </p>
           <p>
-            Podés anotar todos los ejercicios que quieras y ver tu progreso, pero solo esos tres
+            Puedes anotar todos los ejercicios que quieras y ver tu progreso, pero solo esos tres
             mueven el número.
           </p>
           <p>
-            Si anotaste un peso levantado varias veces, se calcula cuánto levantarías de una. Con
-            una sola vez no hay nada que calcular: es el peso.
+            Si anotaste un peso levantado varias veces, se calcula cuánto levantarías de una vez.
+            Con una sola repetición no hay nada que calcular: es el peso.
           </p>
 
-          <h4>Por qué te pide el sexo</h4>
+          <h4>Por qué se pide el sexo</h4>
           <p>
             La fórmula tiene dos juegos de coeficientes. Sin ese dato no hay número: no se asume
             ninguno ni se usa uno &ldquo;por defecto&rdquo;, porque un DOTS calculado con la
@@ -61,20 +61,23 @@ export default function ComoSeCompara() {
             notaría — el número igual parece razonable.
           </p>
 
-          <h4>Por qué tus amigos ven una banda y no el número</h4>
+          <h4>Qué ven tus amigos, y qué se puede deducir</h4>
           <p>
-            Tus amigos ven lo que levantás, igual que ven tus días. Y el DOTS es una función de lo
-            que levantás y de tu peso corporal. O sea que si publicáramos el número exacto al lado
-            del total, cualquiera podría <em>despejar</em> tu peso corporal con una cuenta de dos
+            Tus amigos ven tu DOTS <strong>exacto</strong>, el mismo número que ves tú. Antes se
+            mostraba un intervalo, y el motivo era este: tus amigos también ven lo que levantas, y
+            el DOTS es una función de lo que levantas y de tu peso corporal. Con las dos cosas a la
+            vista, cualquiera puede <em>despejar</em> tu peso corporal con una cuenta de dos
             líneas.
           </p>
           <p>
-            Por eso hacia afuera va una banda —400 a 450, por ejemplo—, que deja el dato en un
-            intervalo demasiado ancho para que sirva. El número exacto lo ves solo vos.
+            Eso sigue siendo cierto. Lo que cambió es la decisión: entre amigos que se ven en el
+            gimnasio, un intervalo ancho escondía poco y arruinaba la comparación, que es para lo
+            que sirve el ranking. Así que el número va exacto y la consecuencia se acepta.
           </p>
           <p>
-            La banda no lo esconde del todo, y eso también te lo decimos cuando cargás el sexo. Es
-            la razón de que la app te avise en vez de dejarlo pasar.
+            Por eso la app avisa al activar el DOTS, que es el momento en que todavía se puede
+            decidir no hacerlo: sin sexo cargado no hay número, y sin número no hay nada que
+            deducir.
           </p>
 
           <h4>Contra quién te compara</h4>
@@ -86,7 +89,7 @@ export default function ComoSeCompara() {
             verificar.
           </p>
           <p>
-            Elegimos esa población a propósito. La otra opción eran los competidores de
+            Esa población está elegida a propósito. La otra opción eran los competidores de
             powerlifting federado, y ahí la mediana está en 2,28 veces el peso corporal en
             sentadilla: alguien de 80 kg que levanta 130 kg —que es la mitad justa de la gente que
             usa apps— quedaría casi último. Comparar el gimnasio del barrio contra una competencia
@@ -97,7 +100,7 @@ export default function ComoSeCompara() {
             sus series en una app ya entrena más que el promedio.
           </p>
           <p>
-            La cuenta se hace <strong>en tu teléfono</strong>, con una tabla que viene adentro de la
+            La cuenta se hace <strong>en tu teléfono</strong>, con una tabla que viene dentro de la
             app. No se consulta ningún servicio y funciona sin internet.
           </p>
 
@@ -107,12 +110,12 @@ export default function ComoSeCompara() {
             avanzado y élite—, y cada una es un punto de la distribución: intermedio es la mitad de
             la gente, élite es el 5% de arriba. El <strong>porcentaje sale de ahí</strong>,
             interpolando entre esos cinco puntos. Por eso la categoría es el dato firme y el número
-            es nuestra estimación.
+            es una estimación.
           </p>
           <p>
-            <strong>Si sos mujer, tomá el número con más pinzas.</strong> En todas las fuentes la
+            <strong>En mujeres, el número pide más cautela.</strong> En todas las fuentes la
             muestra de mujeres es mucho más chica: en press de banca hay un millón de resultados
-            contra casi diez millones de hombres. La app te lo avisa ahí mismo.
+            contra casi diez millones de hombres. La app lo avisa ahí mismo.
           </p>
 
           <h4>Por qué el global no tiene puestos</h4>
@@ -132,6 +135,11 @@ export default function ComoSeCompara() {
             No se muestra nunca. Ni en tu perfil, ni entre amigos, ni en ningún ranking. El DOTS lo
             calcula el servidor y devuelve el resultado, nunca el peso; el porcentaje contra la
             tabla se calcula en tu teléfono y no sale de ahí.
+          </p>
+          <p>
+            Lo que sí puede pasar, como dice más arriba, es que alguien lo <em>deduzca</em> a
+            partir de tu DOTS y de tus marcas. Una cosa es no publicar un dato y otra es que sea
+            imposible de inferir: aquí se cumple la primera, no la segunda.
           </p>
         </div>
       )}

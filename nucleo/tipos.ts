@@ -177,21 +177,23 @@ export type MiFuerza = {
   marcas: Marca[];
   total: number | null;
   dots: number | null;
-  banda: string | null;
   // por qué NO hay DOTS, para poder decir qué falta en vez de mostrar un cero
   falta: 'marcas' | 'sexo' | 'peso' | null;
 };
 
-// Fila del ranking entre amigos. El DOTS exacto viene SOLO en la fila propia
-// (§16.7b): con el total a la vista, publicarlo permitiría despejar el peso
-// corporal de cualquiera.
+// Fila del ranking entre amigos. Desde la migración 28 el DOTS exacto viene en
+// TODAS las filas: antes iba una banda hacia afuera porque con el total a la
+// vista el número deja despejar el peso corporal. Eso sigue siendo cierto y
+// ahora está aceptado a propósito (§16.7b), y se avisa al activar el DOTS.
 export type FilaFuerza = {
   id: string;
   username: string | null;
   avatar_url: string | null;
   total: number | null;
-  banda: string | null;
-  dots_propio: number | null;
+  // Sin `| null`: `ranking_fuerza` filtra `where d is not null`, o sea que una
+  // fila sin DOTS no existe. Tiparlo opcional obligaría a un fallback en la
+  // interfaz para un caso que la consulta ya descartó.
+  dots: number;
   marcas: { ejercicio: string; nombre: string; kg: number; fecha: string }[];
 };
 

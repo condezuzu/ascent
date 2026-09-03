@@ -930,7 +930,7 @@ console.log('\n22. Eliminar la cuenta');
 }
 
 // =====================================================================
-console.log('\n23. Fuerza: 1RM, DOTS y bandas');
+console.log('\n23. Fuerza: 1RM y DOTS');
 {
   // Epley: 1RM = peso × (1 + reps/30). Un "real" de una repetición y un
   // estimado de una repetición tienen que dar lo mismo.
@@ -963,13 +963,9 @@ console.log('\n23. Fuerza: 1RM, DOTS y bandas');
   chequear('sin sexo no hay DOTS', d.rows[0].sin_sexo, null);
   chequear('sin total no hay DOTS', d.rows[0].sin_total, null);
 
-  const b = await db.query(`
-    select banda_dots(423.7) as media, banda_dots(180) as baja,
-           banda_dots(700) as alta, banda_dots(null) as nada`);
-  chequear('la banda agrupa de a 50', b.rows[0].media, '400–450');
-  chequear('abajo de 200 no se abre en bandas', b.rows[0].baja, 'menos de 200');
-  chequear('arriba de 600 tampoco', b.rows[0].alta, '600 o más');
-  chequear('sin DOTS no hay banda', b.rows[0].nada, null);
+  // Las bandas se fueron en la migración 28: el DOTS exacto lo ven los amigos.
+  // `banda_dots` se borró en vez de quedarse sin llamadores — el próximo que
+  // la encontrara iba a creer que la regla sigue vigente y la iba a usar.
 }
 
 // =====================================================================
@@ -1030,7 +1026,6 @@ console.log('\n24. Fuerza: marcas, total y lo que falta');
   // total 405 con 90 kg de peso corporal. Usa el peso MÁS RECIENTE (90), no
   // el más viejo (95): con 95 daría 255,26.
   chequear('el DOTS usa el peso corporal más reciente', Number(f.dots), 261.87);
-  chequear('y viene con su banda', f.banda, '250–300');
   chequear('cada marca trae su fecha', typeof f.marcas[0].fecha, 'string');
 
   // el DOTS NO se guarda como columna: depende del peso corporal de hoy.
@@ -1090,14 +1085,15 @@ console.log('\n25. Fuerza: quién ve qué');
 
   const r = await db.query('select * from ranking_fuerza()');
   chequear('el ranking trae a los dos', r.rows.length, 2);
-  // ordena por DOTS EXACTO aunque muestre bandas: es la consecuencia
-  // aceptada de §16.7b, no un descuido
   chequear('ordenado por DOTS, el amigo primero', r.rows[0].id, amigo);
   const mio = r.rows.find((x) => x.id === yo);
   const suyo = r.rows.find((x) => x.id === amigo);
-  chequear('mi fila trae mi DOTS exacto', Number(mio.dots_propio), 420.29);
-  chequear('la del otro NO trae el número exacto', suyo.dots_propio, null);
-  chequear('del otro solo se ve la banda', typeof suyo.banda, 'string');
+  chequear('mi fila trae mi DOTS', Number(mio.dots), 420.29);
+  // MIGRACIÓN 28: el DOTS exacto lo ven todos, no solo el dueño. La
+  // consecuencia —que con el total a la vista se despeje el peso corporal—
+  // está aceptada a propósito y se avisa al activar el DOTS (§16.7b).
+  chequear('y la del otro TAMBIÉN, que es el cambio', suyo.dots !== null, true);
+  chequear('con su número exacto', Number(suyo.dots) > 0, true);
   chequear('el total sí se ve: los levantamientos ya se ven', Number(suyo.total), 760);
   chequear('y el detalle por ejercicio también', suyo.marcas.length, 3);
 
@@ -3314,22 +3310,17 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
   // seis meses hay tres estilos mezclados: cada texto nuevo se escribe con el
   // gusto de ese dia. Las reglas viven en spec/idioma.md y esto las aplica.
   //
-  // Solo mira `nucleo/textos.ts`, que es donde vive TODO el texto que ve el
-  // usuario. Los comentarios del codigo siguen en rioplatense: los lee quien
-  // programa, no quien entrena.
-  const { readFileSync: leer } = await import('node:fs');
-  const RUTA = join(dirname(fileURLToPath(import.meta.url)), '..', 'nucleo', 'textos.ts');
-  const crudo = leer(RUTA, 'utf8');
-
-  // Solo el contenido de las cadenas: un comentario que EXPLICA por que se saco
-  // "vos" no puede hacer fallar al test que saco "vos".
-  const cadenas = [];
-  for (const linea of crudo.split('\n')) {
-    if (/^\s*\/\//.test(linea)) continue;
-    for (const m of linea.matchAll(/'((?:[^'\\]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)) {
-      cadenas.push([linea.trim().slice(0, 46), m[1] ?? m[2] ?? '']);
-    }
-  }
+  // MIRA DOS LUGARES, y la segunda mitad se agrego despues de que la primera
+  // dejara pasar dos cosas reales: "toma el porcentaje" en textos.ts —la lista
+  // de formas estaba incompleta— y toda la explicacion de Ajustes, que es
+  // prosa escrita a mano en JSX y no pasa por el diccionario. Un test que
+  // cubre el archivo prolijo y no el que se escribe a mano protege del caso
+  // facil.
+  //
+  // Los COMENTARIOS del codigo siguen en rioplatense a proposito: los lee
+  // quien programa, no quien entrena. Por eso se sacan antes de mirar.
+  const { readFileSync: leer, readdirSync: listar } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 
   // Regla 1: nada de voseo. Lista curada y no una regex de terminaciones,
   // porque "-as" tambien termina "mas", "quizas", "atras" y "estas" —que es
@@ -3340,10 +3331,12 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
     'buscás', 'sumás', 'mirás', 'tocás', 'apretás', 'llevás', 'dejás',
     'cambiás', 'terminás', 'empezás', 'usás', 'marcás', 'perdés', 'ganás',
     'subís', 'bajás', 'abrís', 'cerrás', 'escribís', 'decís', 'faltás',
+    'levantás', 'cargás', 'descansás', 'necesitás', 'pesás', 'sos',
     'tocá', 'mirá', 'poné', 'andá', 'fijate', 'decime', 'pasame', 'avisame',
     'acordate', 'sacate', 'elegí', 'anotá', 'registrá', 'empezá', 'usá',
     'hacé', 'marcá', 'apretá', 'probá', 'contá', 'volvé', 'seguí', 'entrá',
     'agregá', 'guardá', 'mandá', 'sacá', 'sumá', 'quitá', 'corregí',
+    'tomá', 'llevá', 'esperá', 'revisá', 'pedí', 'comprobá', 'compará',
     'marcalo', 'apretalo', 'tocala', 'tocalo', 'ponete', 'quedate', 'mirate',
   ];
 
@@ -3356,17 +3349,72 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
   const MODISMOS = ['acá', 'al toque', 'che', 'laburo', 'pileta', 'ojo:', 'ojo,'];
 
   const fallas = [];
-  for (const [donde, s] of cadenas) {
+  const revisar = (donde, s) => {
     const bajo = s.toLowerCase();
     for (const v of VOSEO) {
       if (new RegExp(`(^|[^a-záéíóúñ])${v}([^a-záéíóúñ]|$)`, 'i').test(bajo)) {
         fallas.push(`${donde} -> voseo "${v}"`);
       }
     }
-    for (const m of MODISMOS) if (bajo.includes(m)) fallas.push(`${donde} -> modismo "${m}"`);
+    for (const m of MODISMOS) {
+      // Con frontera de palabra, igual que el voseo: buscado por substring,
+      // "ojo," pegaba adentro de "[flojo, setFlojo]".
+      const esc = m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`(^|[^a-záéíóúñ])${esc}`, 'i').test(bajo)) {
+        fallas.push(`${donde} -> modismo "${m}"`);
+      }
+    }
+  };
+
+  // Saca /* */ y //, que es donde vive el rioplatense permitido. Se hace por
+  // archivo entero y no linea por linea porque los bloques de arriba de cada
+  // componente ocupan quince lineas. El `[^:]` de adelante evita comerse el
+  // "//" de una URL.
+  const sinComentarios = (src) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+  let miradas = 0;
+
+  // a) El diccionario: TODO texto de la app deberia vivir aca.
+  {
+    const crudo = sinComentarios(leer(join(RAIZ, 'nucleo', 'textos.ts'), 'utf8'));
+    for (const linea of crudo.split('\n')) {
+      for (const m of linea.matchAll(/'((?:[^'\\]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)) {
+        miradas++;
+        revisar(`textos.ts: ${linea.trim().slice(0, 40)}`, m[1] ?? m[2] ?? '');
+      }
+    }
   }
 
-  chequear(`las ${cadenas.length} cadenas estan en espanol neutro`, fallas.slice(0, 12), []);
+  // b) La prosa escrita a mano en los componentes. Se mira el TEXTO JSX —lo
+  // que hay entre > y <— y no las cadenas: las cadenas de un .tsx son casi
+  // todas clases CSS y claves, y meterlas solo agrega ruido.
+  const tsx = [];
+  const recorrer = (dir) => {
+    for (const e of listar(dir, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+      const r = join(dir, e.name);
+      if (e.isDirectory()) recorrer(r);
+      else if (e.name.endsWith('.tsx')) tsx.push(r);
+    }
+  };
+  recorrer(join(RAIZ, 'src'));
+
+  for (const ruta of tsx) {
+    const limpio = sinComentarios(leer(ruta, 'utf8'));
+    const corto = ruta.split(/[\\/]/).pop();
+    for (const m of limpio.matchAll(/>([^<>{}]+)</g)) {
+      const texto = m[1].replace(/\s+/g, ' ').trim();
+      if (!texto || !/[a-záéíóúñ]{3}/i.test(texto)) continue;
+      // `>...<` tambien pega en un generico de TypeScript: `useState<X>(null);
+      // const [flojo, setFlojo] = useSta<`. La prosa no lleva estos signos.
+      if (/[;={}()]/.test(texto)) continue;
+      miradas++;
+      revisar(`${corto}: ${texto.slice(0, 40)}`, texto);
+    }
+  }
+
+  chequear(`los ${miradas} textos estan en espanol neutro`, fallas.slice(0, 12), []);
   if (fallas.length > 12) console.log(`       (y ${fallas.length - 12} mas)`);
 }
 
