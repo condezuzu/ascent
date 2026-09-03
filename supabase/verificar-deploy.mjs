@@ -34,7 +34,15 @@ if (!correo || !clave) {
 //    recién cuando alguien registra un día, no al entrar.
 const MARCA = {
   rpcViejo: null,
-  textoNuevo: { ruta: '/ajustes', dice: 'Diagnóstico' },
+  // Tanda del DOTS exacto (migración 28, orden invertido). La marca vieja era
+  // 'Diagnóstico' en /ajustes, y para esta tanda ya no sirve: ese texto está
+  // en el cliente viejo Y en el nuevo, así que daba DESPLEGADO siempre. Una
+  // marca que no cambia con el deploy no es una marca, es un adorno.
+  //
+  // La de ahora es el aviso nuevo al activar el DOTS, que solo existe desde
+  // el commit del DOTS exacto. Se cambia otra vez en la próxima migración de
+  // orden invertido.
+  textoNuevo: { ruta: '/ajustes', dice: 'tus amigos ven tu número exacto' },
   /**
    * EL AUTOTEST. Un texto de la misma pantalla que tiene que estar SIEMPRE,
    * con el cliente viejo y con el nuevo.
