@@ -31,7 +31,6 @@ type RetoConNombre = Reto & { nombreRival: string; idRival: string };
 export default function Social() {
   const [supabase] = useState(() => crearCliente());
   const [miId, setMiId] = useState('');
-  const [vista, setVista] = useState<'campo' | 'lista'>('campo');
   const [amigos, setAmigos] = useState<UsuarioPublico[]>([]);
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [retos, setRetos] = useState<RetoConNombre[]>([]);
@@ -268,49 +267,40 @@ export default function Social() {
 
         {amigos.length > 1 ? (
           <>
-            <div className="selector-vista">
-              <button className={vista === 'campo' ? 'activo' : ''} onClick={() => setVista('campo')}>
-                {T.social.campo}
-              </button>
-              <button className={vista === 'lista' ? 'activo' : ''} onClick={() => setVista('lista')}>
-                {T.social.lista}
-              </button>
-            </div>
-
-            {vista === 'campo' ? (
-              // Cada amigo es su objeto de rango flotando: tamaño y brillo
-              // comunican la racha. Se entiende quién gana sin leer.
-              <div className="campo-estelar">
+            {/* UNA sola vista. Antes eran dos —campo y lista— con un
+                selector, y el campo venia primero: se entraba a una pantalla
+                bonita y habia que tocar "Lista" para ver quien va ganando,
+                que es a lo que se entra. Ahora la lista manda y el campo pasa
+                a ser el fondo. Los astros siguen ahi, con su tamano y su
+                brillo diciendo la racha de un vistazo, pero detras. */}
+            <div className="ranking">
+              <div className="campo-estelar de-fondo" aria-hidden>
                 {amigos.map((a, i) => {
                   const t = a.racha_actual / maxRacha;
                   const tam = 18 + Math.round(t * 40);
                   const x = 18 + ((i * 137) % 64);
                   const y = 16 + ((i * 89) % 66);
-                  const contenido = (
-                    <>
+                  return (
+                    // Sin nombre y sin enlace: de fondo, la etiqueta se
+                    // pisaria con la fila que dice lo mismo, y un enlace
+                    // debajo de la lista es una trampa para el dedo.
+                    <div
+                      key={a.id}
+                      className="astro-amigo"
+                      style={{
+                        left: `${x}%`,
+                        top: `${y}%`,
+                        opacity: 0.45 + t * 0.55,
+                        animationDelay: `${(i * 1.3) % 5}s`,
+                      }}
+                    >
                       <Insignia rango={a.rango_actual} tam={tam} />
-                      <span className="etiqueta">{a.id === miId ? T.social.vos : a.username}</span>
-                    </>
-                  );
-                  const estilo = {
-                    left: `${x}%`,
-                    top: `${y}%`,
-                    opacity: 0.45 + t * 0.55,
-                    animationDelay: `${(i * 1.3) % 5}s`,
-                  } as const;
-                  return a.id === miId ? (
-                    <div key={a.id} className="astro-amigo" style={estilo}>
-                      {contenido}
                     </div>
-                  ) : (
-                    <Link key={a.id} href={`/perfil/${a.id}`} className="astro-amigo" style={estilo}>
-                      {contenido}
-                    </Link>
                   );
                 })}
               </div>
-            ) : (
-              <div className="tarjeta">
+
+              <div className="tarjeta ranking-lista">
                 {amigos.map((a, i) => {
                   const fila = (
                     <>
@@ -333,7 +323,7 @@ export default function Social() {
                   );
                 })}
               </div>
-            )}
+            </div>
           </>
         ) : (
           cargado && (

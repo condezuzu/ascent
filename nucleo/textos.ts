@@ -673,8 +673,6 @@ export const T = {
     teReto: (nombre: string) => `${nombre} te retó a 7 días: quien entrene más, gana.`,
     acepto: 'Acepto',
     paso: 'Paso',
-    campo: 'Campo',
-    lista: 'Lista',
     vos: 'tú',
     yoEnLista: (nombre: string) => `${nombre} (tú)`,
     vacioTitulo: 'Tu cielo todavía está vacío.',
