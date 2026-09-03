@@ -41,8 +41,15 @@ export const metadata: Metadata = {
     title: 'Ascent',
   },
   icons: {
-    icon: '/icons/icono.svg',
-    apple: '/icons/icono-192.png',
+    // El SVG viejo se va: el ícono ahora es el mismo dibujo en las dos apps.
+    // El PNG chico primero para la pestaña, el grande para el resto.
+    icon: [
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icono-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    // iOS pide 180 exactos para "Agregar a la pantalla de inicio", y NO acepta
+    // transparencia: por eso todos los íconos son RGB y no RGBA.
+    apple: '/icons/icono-180.png',
   },
 };
 
