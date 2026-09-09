@@ -34,6 +34,14 @@
 
 export const T = {
   // ---------------------------------------------------------------
+  // Las zonas del selector de ejercicios. Van en minúscula porque son
+  // etiquetas de navegación, no títulos.
+  ejercicios: {
+    superior: 'Tren superior',
+    inferior: 'Tren inferior',
+    core: 'Core',
+  },
+
   general: {
     entendido: 'Entendido',
     cerrar: 'Cerrar',

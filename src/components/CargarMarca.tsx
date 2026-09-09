@@ -8,6 +8,7 @@ import { aKilos, deKilos, type Unidad } from '@nucleo/peso';
 import { redondear, unRM } from '@nucleo/fuerza';
 import type { Ejercicio } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
+import SelectorEjercicio from './SelectorEjercicio';
 
 /**
  * Hoja para cargar una marca. Se guarda lo que el usuario LEVANTÓ, no el 1RM:
@@ -82,16 +83,10 @@ export default function CargarMarca({
     alGuardar();
   }
 
-  // los tres del DOTS primero y aparte: son los únicos que cuentan para el
-  // número, y mezclarlos con los otros treinta hace que nadie los distinga
-  // El mismo formato que el contador de series: nombre y grupo. El motivo es
-  // el mismo —un <select> cerrado no muestra el titulo del grupo, y con cien
-  // opciones la rueda se lo come— y que las dos listas se lean igual importa:
-  // son la misma pregunta hecha en dos pantallas.
-  const conGrupo = (e: Ejercicio) => `${e.nombre} · ${e.grupo}`;
-  const delDots = ejercicios.filter((e) => e.cuenta_dots);
-  const resto = ejercicios.filter((e) => !e.cuenta_dots);
-  const grupos = [...new Set(resto.map((e) => e.grupo))];
+  // El nombre con su grupo al lado, igual que en el contador: es la misma
+  // pregunta hecha en dos pantallas y no puede verse distinta en cada una.
+  const elegido = ejercicios.find((e) => e.id === ejercicio) ?? null;
+  const [abriendo, setAbriendo] = useState(false);
 
   return (
     <>
@@ -102,26 +97,12 @@ export default function CargarMarca({
 
         <div className="campo">
           <label>{T.marca.ejercicio}</label>
-          <select value={ejercicio} onChange={(e) => setEjercicio(e.target.value)}>
-            <optgroup label={T.marca.cuentanDots}>
-              {delDots.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {conGrupo(e)}
-                </option>
-              ))}
-            </optgroup>
-            {grupos.map((g) => (
-              <optgroup key={g} label={g}>
-                {resto
-                  .filter((e) => e.grupo === g)
-                  .map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {conGrupo(e)}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
+          {/* La misma hoja que el contador de series: es la misma
+              pregunta y no puede tener dos respuestas distintas según la
+              pantalla. */}
+          <button className="bloque-ejercicio" onClick={() => setAbriendo(true)}>
+            {elegido ? `${elegido.nombre} · ${elegido.grupo}` : ''}
+          </button>
         </div>
 
         <div className="campo">
@@ -188,6 +169,15 @@ export default function CargarMarca({
         </button>
         {error && <p className="error-msg">{error}</p>}
       </div>
+
+      {abriendo && (
+        <SelectorEjercicio
+          ejercicios={ejercicios}
+          valor={ejercicio}
+          alElegir={(id) => id && setEjercicio(id)}
+          alCerrar={() => setAbriendo(false)}
+        />
+      )}
     </>
   );
 }

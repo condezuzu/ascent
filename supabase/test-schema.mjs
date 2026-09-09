@@ -70,6 +70,7 @@ import {
   sumar,
 } from '../nucleo/bloques.ts';
 import { cargarElMotor, esPreferenciaFondo } from '../nucleo/fondo.ts';
+import { ORDEN_ZONAS, gruposDeZona, gruposSinZona } from '../nucleo/ejercicios.ts';
 import {
   alturaDelPulso,
   siguePulsando,
@@ -3498,6 +3499,34 @@ console.log('\n55. Me equivoque de ejercicio: las series se mudan');
   chequear('mudar al mismo ejercicio no hace nada', mudarEjercicio(e, 'press_banca'), e);
   const sinNada = bloquesVacios('press_banca', 3);
   chequear('sin series contadas, mudar es igual a cambiar', mudarEjercicio(sinNada, 'x').hechas, cambiarEjercicio(sinNada, 'x').hechas);
+}
+
+console.log('\n56. El arbol del selector llega a los 100');
+{
+  // EL AGUJERO QUE ESTO TAPA: un grupo muscular nuevo en la base, sin zona en
+  // `nucleo/ejercicios.ts`. No falla nada —el catalogo sigue completo y el
+  // selector sigue abriendo— pero a esos ejercicios NO SE LLEGA, y eso no se
+  // ve mirando ninguna de las dos mitades por separado.
+  const grupos = (await db.query('select distinct grupo from ejercicios')).rows.map((f) => f.grupo);
+  chequear('todos los grupos tienen zona', gruposSinZona(grupos), []);
+
+  // Y al reves: que ninguna zona ofrezca una puerta a una pieza vacia.
+  const alcanzables = new Set();
+  for (const z of ORDEN_ZONAS) for (const g of gruposDeZona(z, grupos)) alcanzables.add(g);
+  chequear('y todas las zonas llevan a algun grupo', [...alcanzables].sort(), [...grupos].sort());
+
+  // La cuenta de verdad: a cuantos ejercicios se puede tocar bajando el arbol.
+  // Los tres del DOTS van sueltos arriba de todo, asi que entran igual.
+  const porGrupo = (
+    await db.query('select grupo, count(*)::int n from ejercicios where not cuenta_dots group by 1')
+  ).rows;
+  let llegan = 3;
+  for (const z of ORDEN_ZONAS) {
+    for (const g of gruposDeZona(z, grupos)) {
+      llegan += porGrupo.find((f) => f.grupo === g)?.n ?? 0;
+    }
+  }
+  chequear('se llega a los 100 ejercicios', llegan, 100);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

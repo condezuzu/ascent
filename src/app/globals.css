@@ -261,8 +261,23 @@ textarea::placeholder {
   from { opacity: 0; transform: translateY(9px); }
   to { opacity: 1; transform: none; }
 }
+/* `backwards` Y NO `both`, y no es un detalle de animación: con `both` el
+   elemento SE QUEDA con el último fotograma aplicado, y ese fotograma dice
+   `transform: none` — que en computado no es "sin transform" sino la matriz
+   identidad. Cualquier transform, aunque sea la identidad, convierte al
+   elemento en el BLOQUE CONTENEDOR de sus hijos `position: fixed`.
+
+   O sea que cada sección de una pantalla era, para siempre, el marco de
+   referencia de las hojas que tuviera adentro: la hoja del selector de
+   ejercicios abría anclada al bloque de series en vez de a la pantalla —
+   terminaba a media altura y quedaba por debajo del botón anclado, que vive
+   en otro contexto. Es la tercera vez que un transform silencioso reordena
+   capas (ver `.deslizable` y `will-change`).
+
+   Con `backwards` el fotograma inicial se aplica ANTES de arrancar y no queda
+   nada después: al terminar, el elemento vuelve a no tener transform. */
 .pantalla > * {
-  animation: surgir 0.55s var(--curva-salida) both;
+  animation: surgir 0.55s var(--curva-salida) backwards;
 }
 .pantalla > *:nth-child(1) { animation-delay: 0.03s; }
 .pantalla > *:nth-child(2) { animation-delay: 0.07s; }
@@ -3327,6 +3342,66 @@ body.con-accion .pantalla {
 /* Y con las dos cosas a la vez —franja de sesión y acción— se suman. */
 body.con-franja.con-accion .pantalla {
   padding-bottom: calc(190px + env(safe-area-inset-bottom));
+}
+
+/* ---------- el selector de ejercicios ----------
+   Cien nombres no entran en una rueda: son dos toques, zona y músculo. Las
+   filas son grandes porque se tocan con el pulgar, de pie y sin mirar mucho;
+   la lista tiene tope de alto y scrollea, que es lo único que puede scrollear
+   en toda la app y acá está bien: es una lista de verdad. */
+.selector-ejercicio {
+  max-height: 78dvh;
+  display: flex;
+  flex-direction: column;
+}
+.selector-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.selector-cabecera h2.capitalizado {
+  text-transform: capitalize;
+}
+.selector-volver {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--pal-claro);
+  padding: 4px 8px;
+}
+.selector-lista {
+  overflow-y: auto;
+  /* Sin esto el rebote de iOS arrastra la hoja entera. */
+  overscroll-behavior: contain;
+}
+.selector-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 15px 4px;
+  text-align: left;
+  font-size: 15px;
+  color: var(--tinta);
+  border-bottom: 0.5px solid var(--linea);
+}
+.selector-rotulo {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--apagado);
+  margin: 6px 0 2px;
+}
+.selector-fila.zona {
+  text-transform: capitalize;
+}
+.selector-fila.elegido {
+  color: var(--pal-claro);
+}
+.selector-fila.elegido::after {
+  content: '·';
+  color: var(--pal-principal);
 }
 
 /* ---------- me equivoqué de ejercicio ----------

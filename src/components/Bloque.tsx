@@ -5,7 +5,8 @@ import { crearCliente } from '@/lib/supabase/client';
 import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
-import ListaDeBloques from './ListaDeBloques';
+import ListaDeBloques from '@/components/ListaDeBloques';
+import SelectorEjercicio from '@/components/SelectorEjercicio';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN.
@@ -54,6 +55,7 @@ export default function Bloque({
   // esto no es `undefined` hay una pregunta abierta y el selector ya muestra
   // el nuevo: se responde qué pasa con las series, no si el cambio se hace.
   const [aDonde, setADonde] = useState<string | null | undefined>(undefined);
+  const [abriendo, setAbriendo] = useState(false);
 
   // El catálogo se pide una vez y no bloquea nada: sin él el selector queda
   // con la opción vacía y el contador anda igual, que es la regla de que esto
@@ -80,7 +82,8 @@ export default function Bloque({
   // 2. Con cien opciones, la rueda del telefono se come el titulo del grupo a
   //    los pocos renglones. La lista larga es justo donde el encabezado deja
   //    de servir, que es lo contrario de lo que uno supone.
-  const conGrupo = (e: Ejercicio) => `${e.nombre} · ${e.grupo}`;
+  const conGrupo = (e: Ejercicio | null) => (e ? `${e.nombre} · ${e.grupo}` : '');
+  const actual = ejercicios.find((e) => e.id === estado.ejercicio) ?? null;
   const nombreDe = (id: string | null) =>
     id ? (ejercicios.find((e) => e.id === id)?.nombre ?? id) : T.sesion.sinEjercicio;
   const delDots = ejercicios.filter((e) => e.cuenta_dots);
@@ -90,41 +93,14 @@ export default function Bloque({
   return (
     <div className="bloque">
       <div className="bloque-fila">
-        {/* Un <select> nativo y no una hoja propia: el selector del sistema es
-            grande, conocido y se resuelve de un toque. En un gimnasio eso vale
-            más que cualquier control hecho a mano. */}
-        <select
-          className="bloque-ejercicio"
-          value={estado.ejercicio ?? ''}
-          onChange={(e) => {
-            const id = e.target.value || null;
-            // Sin nada contado no hay nada que preguntar: las dos respuestas
-            // hacen lo mismo, y un toque de más en el gimnasio se paga caro.
-            if (estado.hechas > 0) setADonde(id);
-            else alElegirEjercicio(id);
-          }}
-          aria-label={T.sesion.queEstasHaciendo}
-        >
-          <option value="">{T.sesion.sinEjercicio}</option>
-          <optgroup label={T.marca.cuentanDots}>
-            {delDots.map((e) => (
-              <option key={e.id} value={e.id}>
-                {conGrupo(e)}
-              </option>
-            ))}
-          </optgroup>
-          {grupos.map((g) => (
-            <optgroup key={g} label={g}>
-              {resto
-                .filter((e) => e.grupo === g)
-                .map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {conGrupo(e)}
-                  </option>
-                ))}
-            </optgroup>
-          ))}
-        </select>
+        {/* UNA HOJA PROPIA Y NO EL <select> NATIVO. Con 31 ejercicios el
+            selector del sistema ganaba: grande, conocido, de un toque. Con
+            100 pierde — la rueda se vuelve un rollo que hay que leer entero y
+            el encabezado del grupo se va de pantalla a los pocos renglones.
+            Ver `SelectorEjercicio`. */}
+        <button className="bloque-ejercicio" onClick={() => setAbriendo(true)}>
+          {estado.ejercicio ? conGrupo(actual) : T.sesion.sinEjercicio}
+        </button>
 
         <div className="bloque-metas" role="group" aria-label={T.sesion.cuantasVasAHacer}>
           {METAS.map((m) => (
@@ -217,6 +193,21 @@ export default function Bloque({
         <button className="boton-texto bloque-lista" onClick={() => setLista(true)}>
           {T.sesion.verLista}
         </button>
+      )}
+
+      {abriendo && (
+        <SelectorEjercicio
+          ejercicios={ejercicios}
+          valor={estado.ejercicio}
+          permiteNinguno
+          alElegir={(id) => {
+            // La misma regla de antes: con series sin cerrar, se pregunta de
+            // cuál eran en vez de decidir por el usuario.
+            if (estado.hechas > 0 && id !== estado.ejercicio) setADonde(id);
+            else alElegirEjercicio(id);
+          }}
+          alCerrar={() => setAbriendo(false)}
+        />
       )}
 
       {lista && (
