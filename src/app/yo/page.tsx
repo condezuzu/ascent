@@ -18,7 +18,7 @@ import Nav from '@/components/Nav';
 import RecorteCircular from '@/components/RecorteCircular';
 import Esqueleto from '@/components/Esqueleto';
 import NoCargo from '@/components/NoCargo';
-import ComoMeVen, { DIAS_VISIBLES, FOTOS_VISIBLES } from '@/components/ComoMeVen';
+import { DIAS_VISIBLES } from '@/components/ComoMeVen';
 import { T } from '@nucleo/textos';
 
 type MiFoto = {
@@ -41,7 +41,6 @@ export default function Yo() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [fotos, setFotos] = useState<MiFoto[]>([]);
   const [amigos, setAmigos] = useState<UsuarioPublico[]>([]);
-  const [comoMeVen, setComoMeVen] = useState(false);
   const [porQuitar, setPorQuitar] = useState<string | null>(null);
   const [aRecortar, setARecortar] = useState<File | null>(null);
   const [subiendo, setSubiendo] = useState(false);
@@ -257,11 +256,6 @@ export default function Yo() {
   }
 
   const compartidas = fotos.filter((f) => f.visibilidad === 'amigos');
-  const fotosQueVen = compartidas.slice(0, FOTOS_VISIBLES).map((f) => ({
-    id: f.id,
-    url: f.url,
-    fecha: f.fecha,
-  }));
 
   return (
     <>
@@ -331,41 +325,19 @@ export default function Yo() {
         {aviso && <p className="ok-msg">{aviso}</p>}
         {error && <p className="error-msg">{error}</p>}
 
-        {/* ---- ver como lo ven los demás ---- */}
-        <button
-          className={`mirilla-control ${comoMeVen ? 'encendida' : ''}`}
-          onClick={() => setComoMeVen((v) => !v)}
-          aria-pressed={comoMeVen}
-        >
-          <span className="rotulo">
-            <strong>{T.yo.comoMeVen}</strong>
-            <span>
-              {comoMeVen ? T.yo.comoMeVenSi : T.yo.comoMeVenNo}
-            </span>
-          </span>
-          <span className="interruptor" aria-hidden="true" />
-        </button>
+        {/* LAS FOTOS, DIRECTO. Antes esta sección se llamaba "Qué fotos ven tus
+            amigos" y llevaba una cuenta —3/7—, y arriba había una mirilla para
+            ver el perfil "con los ojos de un amigo". Las dos cosas explicaban
+            la app en vez de ser la app: una pantalla entera para simular otra
+            pantalla, y un título que convertía las fotos propias en un
+            problema de privacidad antes de dejarte verlas.
 
-        {comoMeVen && (
-          <div className="mirilla">
-            <div className="mirilla-etiqueta">{T.yo.loQueVe(amigos[0]?.username ?? T.yo.unAmigo)}</div>
-            <ComoMeVen usuario={yoPublico} logs={logs} fotos={fotosQueVen} />
-            <p className="nota-privada" style={{ paddingBottom: 12 }}>
-              {T.yo.noApareceNunca}
-            </p>
-          </div>
-        )}
-
-        {!comoMeVen && (
-          <>
-            {/* ---- qué fotos ven los amigos ---- */}
+            Lo que hacía falta de verdad —qué ve un amigo— ya está dicho donde
+            corresponde: cada foto muestra si está compartida, y el valor por
+            omisión se elige en Ajustes. */}
+        <>
             <div className="seccion" style={{ marginTop: 26 }}>
-              <h3>
-                {T.yo.misFotos}{' '}
-                <span className="yo-conteo">
-                  {fotos.length > 0 ? T.yo.deTantas(compartidas.length, fotos.length) : ''}
-                </span>
-              </h3>
+              <h3>{T.yo.misFotos}</h3>
 
               <div className="album-grilla">
                 {/* La puerta para sumar una foto sin registrar un día. Va
@@ -431,14 +403,9 @@ export default function Yo() {
                 {T.yo.amigos} <span className="yo-conteo">{amigos.length > 0 ? amigos.length : ''}</span>
               </h3>
               <div className="tarjeta">
-                {/* La otra puerta: buscar gente vive en Ranking, y desde acá
-                    no había forma de llegar sin saberlo de antes. */}
-                <Link href="/social#buscar" className="fila">
-                  <span className="cuadro-sumar" aria-hidden="true">
-                    +
-                  </span>
-                  <span className="nombre">{T.social.sumarAmigo}</span>
-                </Link>
+                {/* "Sumar amigos" NO va acá. Estaba como segunda puerta a
+                    Ranking, y dos puertas a lo mismo en pantallas distintas no
+                    dan dos caminos: dan la duda de si llevan al mismo lado. */}
                 {amigos.map((a) => (
                   <div className="fila" key={a.id}>
                     <Avatar url={a.avatar_url} nombre={a.username} />
@@ -478,8 +445,7 @@ export default function Yo() {
                 <p className="nota-privada">{T.yo.sinAmigos}</p>
               )}
             </div>
-          </>
-        )}
+        </>
       </div>
 
       {aRecortar && (

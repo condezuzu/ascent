@@ -3406,13 +3406,37 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
 
   let miradas = 0;
 
-  // a) El diccionario: TODO texto de la app deberia vivir aca.
-  {
-    const crudo = sinComentarios(leer(join(RAIZ, 'nucleo', 'textos.ts'), 'utf8'));
+  // Todos los .ts y .tsx de `src` y `nucleo`, que es donde puede haber texto.
+  const fuentes = [];
+  const recorrer = (dir) => {
+    for (const e of listar(dir, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+      const r = join(dir, e.name);
+      if (e.isDirectory()) recorrer(r);
+      else if (/\.tsx?$/.test(e.name)) fuentes.push(r);
+    }
+  };
+  recorrer(join(RAIZ, 'src'));
+  recorrer(join(RAIZ, 'nucleo'));
+
+  // a) LAS CADENAS, en todos lados y no solo en el diccionario.
+  //
+  // Empezo mirando `textos.ts` nada mas, que es donde DEBERIA vivir todo el
+  // texto. La diferencia entre donde deberia vivir y donde vive es
+  // exactamente lo que se le escapaba: una cadena suelta en el componente de
+  // Sexo ("Proba de nuevo") y las citas enteras, traducidas en rioplatense.
+  // Un test que cubre el archivo prolijo y no el resto protege del caso facil.
+  for (const ruta of fuentes) {
+    const crudo = sinComentarios(leer(ruta, 'utf8'));
+    const corto = ruta.split(/[\\/]/).pop();
     for (const linea of crudo.split('\n')) {
       for (const m of linea.matchAll(/'((?:[^'\\]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)) {
+        const s = m[1] ?? m[2] ?? '';
+        // Solo lo que parece prosa: una cadena sin tres letras seguidas es un
+        // id, una clase de CSS o una unidad, y ahi no hay idioma que cuidar.
+        if (!/[a-zaeiouñ]{3}/i.test(s)) continue;
         miradas++;
-        revisar(`textos.ts: ${linea.trim().slice(0, 40)}`, m[1] ?? m[2] ?? '');
+        revisar(`${corto}: ${linea.trim().slice(0, 40)}`, s);
       }
     }
   }
@@ -3420,18 +3444,7 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
   // b) La prosa escrita a mano en los componentes. Se mira el TEXTO JSX —lo
   // que hay entre > y <— y no las cadenas: las cadenas de un .tsx son casi
   // todas clases CSS y claves, y meterlas solo agrega ruido.
-  const tsx = [];
-  const recorrer = (dir) => {
-    for (const e of listar(dir, { withFileTypes: true })) {
-      if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
-      const r = join(dir, e.name);
-      if (e.isDirectory()) recorrer(r);
-      else if (e.name.endsWith('.tsx')) tsx.push(r);
-    }
-  };
-  recorrer(join(RAIZ, 'src'));
-
-  for (const ruta of tsx) {
+  for (const ruta of fuentes.filter((r) => r.endsWith('.tsx'))) {
     const limpio = sinComentarios(leer(ruta, 'utf8'));
     const corto = ruta.split(/[\\/]/).pop();
     for (const m of limpio.matchAll(/>([^<>{}]+)</g)) {

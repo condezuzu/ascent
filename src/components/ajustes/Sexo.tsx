@@ -29,7 +29,7 @@ export default function Sexo({
   async function elegir(valor: SexoValor) {
     setError('');
     const ok = await guardarPreferencia(supabase, perfil, 'sexo', valor, alCambiar);
-    if (!ok) setError('No se pudo guardar. Probá de nuevo.');
+    if (!ok) setError('No se pudo guardar. Prueba de nuevo.');
   }
 
   // ?? null y no === null a secas: si el código llega antes que la migración

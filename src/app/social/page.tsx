@@ -307,7 +307,12 @@ export default function Social() {
                       <span className="dato" style={{ width: 20 }}>
                         {i + 1}
                       </span>
-                      <Insignia rango={a.rango_actual} />
+                      {/* GRANDE, y es el punto de la pantalla. A 24 px el
+                          objeto de rango era un adorno al lado del nombre;
+                          acá es lo que se viene a ver —quién es qué— y el
+                          nombre es la etiqueta. Es la misma escalera que en
+                          Inicio, vista en fila. */}
+                      <Insignia rango={a.rango_actual} tam={38} />
                       <span className="nombre">{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</span>
                       <span className="dato">{a.racha_actual}</span>
                     </>

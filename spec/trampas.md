@@ -813,6 +813,16 @@ declaraba.
 elemento (`.cal-hecho`, no `.hecho`). Una palabra suelta como clase es una
 colisión esperando el momento.
 
+**Y pasó otra vez, con `.marca`.** Era el nombre de la app arriba de las
+pantallas de entrada —centrado, en mayúsculas, medio em de espaciado, 44 px de
+aire abajo— y al mismo tiempo cada fila de "Mis marcas" de fuerza. Resultado:
+la lista de pesos levantados se veía como cuatro logotipos apilados, con un
+agujero de 44 px entre uno y otro. Nadie lo escribió mal: las dos veces la
+palabra era la correcta para lo suyo.
+→ **Regla, ahora con dos casos:** antes de usar una palabra sola como clase,
+buscarla en `globals.css`. Si ya está, el nombre nuevo lleva su contexto
+(`.marca-app` contra `.marca`).
+
 **El `listo` de una captura se espera ANTES del `previo`.** Le puse
 `.calendario` a un paso cuyo `previo` es justamente el clic que crea el
 calendario: sesenta segundos esperando algo imposible y la captura salteada, en

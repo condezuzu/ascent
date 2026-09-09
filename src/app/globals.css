@@ -1096,6 +1096,12 @@ textarea::placeholder {
   position: relative;
   z-index: 2;
 }
+/* Con el objeto grande, la fila necesita aire: apretados, los ocho rangos se
+   tocan entre sí y la lista vuelve a parecer una tabla. */
+.ranking-lista .fila {
+  padding: 16px 2px;
+  gap: 14px;
+}
 .astro-amigo .etiqueta {
   font-size: 10px;
   color: var(--sub);
@@ -1335,7 +1341,14 @@ textarea::placeholder {
   position: relative;
   z-index: 1;
 }
-.marca {
+/* EL NOMBRE DE LA APP arriba de las pantallas de entrada. Se llamaba
+   `.marca` a secas y chocaba con las marcas de FUERZA, que usan `.marca` para
+   cada fila de la lista: cada peso levantado salía centrado, en mayúsculas,
+   con medio em de espaciado entre letras y 44 px de aire abajo. O sea que
+   "Mis marcas" se veía como cuatro logotipos apilados.
+   Es la segunda vez que pasa lo mismo —antes con `.descanso`— y siempre por
+   lo mismo: una palabra que significa dos cosas en la misma app. */
+.marca-app {
   font-size: 13px;
   letter-spacing: 0.5em;
   text-transform: uppercase;

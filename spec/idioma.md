@@ -77,15 +77,22 @@ cuatro verbos para cosas parecidas y ninguno significaba algo estable.
 - **Los nombres de los rangos y los planetas.** Polvo, Asteroide, Luna, Marte…
   Son vocabulario propio, no texto de interfaz, y viven en `rangos.ts` y
   `reglas.ts`.
-- **Las citas.** Son de sus autores; traducirlas o neutralizarlas sería
-  reescribir a otro. Viven en `frases.ts`.
+- **El sentido y el autor de las citas.** Lo que dijo y quién lo dijo no se
+  toca. **La traducción sí**: está hecha por nosotros y es texto de la app como
+  cualquier otro, así que sigue estas reglas. Estaban en rioplatense —"empezá",
+  "usá", "tenés"— y eran lo último que quedaba en voseo en toda la app; el
+  argumento de que "son de sus autores" protegía una decisión nuestra, no la
+  de ellos. Viven en `frases.ts`.
 - **DOTS, PR, 1RM.** Términos del ambiente, iguales en todos lados.
 
 ## Cómo se hace cumplir
 
 `test:db` sección 54 mira **dos lugares**:
 
-- `nucleo/textos.ts`, que es donde debería vivir todo el texto de la app.
+- **Todas las cadenas** de `src/**` y `nucleo/**`. Antes miraba solo
+  `nucleo/textos.ts`, que es donde el texto *debería* vivir — y la diferencia
+  entre dónde debería y dónde vive es justo lo que se escapaba: una cadena
+  suelta en el componente de Sexo y las citas enteras.
 - El **texto JSX de los componentes** (`src/**/*.tsx`), o sea la prosa escrita
   a mano. Se agregó después de que la primera versión —que solo miraba el
   diccionario— dejara pasar la explicación entera de "Cómo se compara la

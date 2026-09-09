@@ -108,7 +108,7 @@ export default function Login() {
     <>
       <FondoEspacial rango={1} vacio esquina="centro" velo={0.55} />
       <div className="centrado">
-        <div className="marca">{T.entrar.marca}</div>
+        <div className="marca-app">{T.entrar.marca}</div>
 
         {/* Si faltan o están cortadas las variables de entorno, no tiene
             sentido dejar probar contraseñas: nada va a funcionar. */}

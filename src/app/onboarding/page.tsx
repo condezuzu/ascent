@@ -47,7 +47,7 @@ export default function Onboarding() {
     <>
       <FondoEspacial rango={1} vacio esquina="centro" velo={0.55} />
       <div className="centrado">
-        <div className="marca">{T.entrar.marca}</div>
+        <div className="marca-app">{T.entrar.marca}</div>
         <h1 style={{ fontSize: 22, fontWeight: 400, marginBottom: 6 }}>{T.entrar.elegiNombre}</h1>
         <p style={{ color: 'var(--sub)', fontSize: 14, marginBottom: 22 }}>
           {T.entrar.elegiNombreSub}

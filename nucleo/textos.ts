@@ -711,7 +711,6 @@ export const T = {
     eliminar: 'Eliminar',
     eliminarDeAmigos: 'Eliminar de mis amigos',
     sinNombre: '¿?',
-    sumarAmigo: 'Sumar un amigo',
   },
 
   // ---------------------------------------------------------------
@@ -747,14 +746,7 @@ export const T = {
     noSeCambiaronFotos: 'No se pudieron cambiar las fotos. Prueba de nuevo.',
     noSePudoEliminar: 'No se eliminó. Prueba de nuevo.',
 
-    comoMeVen: 'Ver como lo ven los demás',
-    comoMeVenSi: 'Esto es todo lo que le llega a un amigo.',
-    comoMeVenNo: 'Mira tu perfil con los ojos de un amigo.',
-    loQueVe: (nombre: string) => `lo que ve ${nombre}`,
-    unAmigo: 'un amigo',
-    noApareceNunca: 'Tu peso y tus días de descanso no aparecen aquí, y no aparecen nunca.',
 
-    deTantas: (compartidas: number, total: number) => `${compartidas}/${total}`,
     compartirTodas: 'Compartir todas',
     // Decía "Guardar todas" y el botón hace lo contrario de guardar: pone
     // todas en privada. "Guardar" en una app de fotos se lee como descargar

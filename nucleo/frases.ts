@@ -2,17 +2,28 @@
 //
 // REGLA: solo citas reales y bien atribuidas. Nada inventado, nada puesto en
 // boca de quien no lo dijo. Ante la menor duda sobre la autoría, no entra.
-// Por eso son dieciocho y no cuarenta: se prefirió el recorte a rellenar.
-// Están traducidas del inglés; el sentido se respetó, no son literales.
+// Por eso son veinte y no cuarenta: se prefirió el recorte a rellenar.
+//
+// ESTÁN TRADUCIDAS del inglés, y esa traducción es NUESTRA: por eso sigue las
+// reglas de `spec/idioma.md` como cualquier otro texto de la app. Hasta hoy
+// estaban en rioplatense —"empezá", "usá", "tenés"— y eran lo último que
+// quedaba en voseo en toda la app. Lo intocable de una cita es el sentido y el
+// autor, no en qué español la escribimos nosotros.
+//
+// SE CAMBIARON LAS QUE NO SE ENTENDÍAN. Dos se fueron por eso y no por el
+// idioma: el chiste de Yogi Berra sobre el noventa por ciento mental no
+// sobrevive a la traducción y se lee como un error de cuentas, y la de Nadia
+// Comăneci daba tres vueltas para decir algo simple. Una cita que hay que
+// leer dos veces en un gimnasio no es una cita, es un obstáculo.
 
 export type Cita = { texto: string; autor: string };
 
 const CITAS: Record<number, Cita[]> = {
   // Polvo: recién empieza, todavía no hay nada
   1: [
-    { texto: 'Empezá donde estás. Usá lo que tenés. Hacé lo que puedas.', autor: 'Arthur Ashe' },
+    { texto: 'Empieza donde estás. Usa lo que tienes. Haz lo que puedas.', autor: 'Arthur Ashe' },
     {
-      texto: 'Si querés correr, corré un kilómetro. Si querés cambiar tu vida, corré un maratón.',
+      texto: 'Si quieres correr, corre un kilómetro. Si quieres cambiar tu vida, corre un maratón.',
       autor: 'Emil Zátopek',
     },
     {
@@ -24,12 +35,16 @@ const CITAS: Record<number, Cita[]> = {
   2: [
     {
       texto:
-        'Odiaba cada minuto del entrenamiento. Pero me decía: no aflojes. Sufrí ahora y viví el resto de tu vida como campeón.',
+        'Odiaba cada minuto del entrenamiento. Pero me decía: no aflojes. Sufre ahora y vive el resto de tu vida como campeón.',
       autor: 'Muhammad Ali',
     },
     {
-      texto: 'Dar menos que tu mejor esfuerzo es desperdiciar el don.',
+      texto: 'Dar menos que tu mejor esfuerzo es sacrificar el don.',
       autor: 'Steve Prefontaine',
+    },
+    {
+      texto: 'Todos quieren ser grandes, pero nadie quiere levantar pesado.',
+      autor: 'Ronnie Coleman',
     },
   ],
   // Luna: la repetición empieza a dejar marca
@@ -39,7 +54,8 @@ const CITAS: Record<number, Cita[]> = {
         'No le temo al que practicó diez mil patadas una vez. Le temo al que practicó una patada diez mil veces.',
       autor: 'Bruce Lee',
     },
-    { texto: 'Primero dominá los fundamentos.', autor: 'Larry Bird' },
+    { texto: 'Primero domina los fundamentos.', autor: 'Larry Bird' },
+    { texto: 'El hierro nunca miente.', autor: 'Henry Rollins' },
   ],
   // Planeta: hay masa, y también fracasos acumulados
   4: [
@@ -53,6 +69,10 @@ const CITAS: Record<number, Cita[]> = {
         'Fallé más de nueve mil tiros. Perdí casi trescientos partidos. Veintiséis veces confiaron en mí para el tiro decisivo y erré. Fracasé una y otra vez. Por eso tengo éxito.',
       autor: 'Michael Jordan',
     },
+    {
+      texto: 'Hoy hago lo que otros no quieren, para mañana lograr lo que otros no pueden.',
+      autor: 'Jerry Rice',
+    },
   ],
   // Sol: se encendió, el esfuerzo ya es otra cosa
   5: [
@@ -61,6 +81,10 @@ const CITAS: Record<number, Cita[]> = {
       autor: 'Muhammad Ali',
     },
     { texto: 'Entrené cuatro años para correr nueve segundos.', autor: 'Usain Bolt' },
+    {
+      texto: 'Las últimas tres o cuatro repeticiones son las que hacen crecer el músculo.',
+      autor: 'Arnold Schwarzenegger',
+    },
   ],
   // Sistema: la rutina ya es un mecanismo que se sostiene solo
   6: [
@@ -70,21 +94,24 @@ const CITAS: Record<number, Cita[]> = {
       autor: 'Pelé',
     },
     {
-      texto: 'Esto es noventa por ciento mental. La otra mitad es física.',
-      autor: 'Yogi Berra',
+      texto: 'Hay que estimular el músculo, no destruirlo.',
+      autor: 'Lee Haney',
+    },
+    {
+      texto: 'El único lugar donde el éxito viene antes que el trabajo es en el diccionario.',
+      autor: 'Vince Lombardi',
     },
   ],
   // Galaxia: a esta altura lo que define es cómo se vuelve de una caída
   7: [
     {
       texto:
-        'Creo que a un campeón no lo definen sus victorias, sino cómo se recupera cuando cae.',
+        'A un campeón no lo definen sus victorias, sino cómo se recupera cuando cae.',
       autor: 'Serena Williams',
     },
     {
-      texto:
-        'No huyo de un desafío por miedo. Corro hacia él, porque la única forma de escapar del miedo es pisarlo.',
-      autor: 'Nadia Comăneci',
+      texto: 'La disciplina pesa gramos; el arrepentimiento pesa toneladas.',
+      autor: 'Jim Rohn',
     },
   ],
   // Agujero negro: el final de la escalera
@@ -92,10 +119,10 @@ const CITAS: Record<number, Cita[]> = {
     { texto: 'Ningún ser humano tiene límites.', autor: 'Eliud Kipchoge' },
     { texto: 'Los campeones siguen jugando hasta que les sale bien.', autor: 'Billie Jean King' },
     {
-      texto: 'No importa si te derriban. Importa si te levantás.',
+      texto: 'No importa si te derriban. Importa si te levantas.',
       autor: 'Vince Lombardi',
     },
-    { texto: 'Errás el cien por ciento de los tiros que no hacés.', autor: 'Wayne Gretzky' },
+    { texto: 'Fallas el cien por ciento de los tiros que no haces.', autor: 'Wayne Gretzky' },
   ],
 };
 
