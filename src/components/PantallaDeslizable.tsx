@@ -50,6 +50,10 @@ export default function PantallaDeslizable({
       arrastrando = true;
       decidido = false;
       el!.style.transition = 'none';
+      // `will-change` SOLO durante el gesto: puesto siempre, este div es el
+      // bloque contenedor de sus hijos `position: fixed` y la acción anclada
+      // deja de estar anclada a la pantalla. Ver el comentario en globals.
+      el!.style.willChange = 'transform, opacity';
     }
 
     function alMover(e: TouchEvent) {
@@ -101,6 +105,16 @@ export default function PantallaDeslizable({
       } else {
         el!.style.transform = 'translate3d(0,0,0)';
         el!.style.opacity = '1';
+        // Y al terminar el viaje de vuelta se limpia TODO: un `transform`
+        // puesto —aunque sea la identidad— también crea bloque contenedor, así
+        // que dejar `translate3d(0,0,0)` sería cambiar un problema por el
+        // mismo problema con otro nombre.
+        const limpiar = () => {
+          el!.style.transform = '';
+          el!.style.willChange = '';
+          el!.removeEventListener('transitionend', limpiar);
+        };
+        el!.addEventListener('transitionend', limpiar);
       }
     }
 
@@ -121,8 +135,11 @@ export default function PantallaDeslizable({
     const el = ref.current;
     if (!el) return;
     el.style.transition = 'none';
-    el.style.transform = 'translate3d(0,0,0)';
-    el.style.opacity = '1';
+    // Vacío y no `translate3d(0,0,0)`: la identidad también crea bloque
+    // contenedor para los `position: fixed` de adentro.
+    el.style.transform = '';
+    el.style.opacity = '';
+    el.style.willChange = '';
     setSaliendo(null);
   }, [ruta]);
 

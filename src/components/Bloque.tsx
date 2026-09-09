@@ -33,6 +33,7 @@ export default function Bloque({
   alRestar,
   alSiguiente,
   alElegirEjercicio,
+  alMudarSeries,
   alElegirMeta,
   alTocarBloque,
 }: {
@@ -42,11 +43,17 @@ export default function Bloque({
   alRestar: () => void;
   alSiguiente: () => void;
   alElegirEjercicio: (id: string | null) => void;
+  /** El mismo cambio, pero llevándose las series ya contadas. */
+  alMudarSeries: (id: string | null) => void;
   alElegirMeta: (meta: number) => void;
   alTocarBloque: (indice: number, delta: number | 'quitar') => void;
 }) {
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [lista, setLista] = useState(false);
+  // El ejercicio que se eligió mientras había series sin cerrar. Mientras
+  // esto no es `undefined` hay una pregunta abierta y el selector ya muestra
+  // el nuevo: se responde qué pasa con las series, no si el cambio se hace.
+  const [aDonde, setADonde] = useState<string | null | undefined>(undefined);
 
   // El catálogo se pide una vez y no bloquea nada: sin él el selector queda
   // con la opción vacía y el contador anda igual, que es la regla de que esto
@@ -74,6 +81,8 @@ export default function Bloque({
   //    los pocos renglones. La lista larga es justo donde el encabezado deja
   //    de servir, que es lo contrario de lo que uno supone.
   const conGrupo = (e: Ejercicio) => `${e.nombre} · ${e.grupo}`;
+  const nombreDe = (id: string | null) =>
+    id ? (ejercicios.find((e) => e.id === id)?.nombre ?? id) : T.sesion.sinEjercicio;
   const delDots = ejercicios.filter((e) => e.cuenta_dots);
   const resto = ejercicios.filter((e) => !e.cuenta_dots);
   const grupos = [...new Set(resto.map((e) => e.grupo))];
@@ -87,7 +96,13 @@ export default function Bloque({
         <select
           className="bloque-ejercicio"
           value={estado.ejercicio ?? ''}
-          onChange={(e) => alElegirEjercicio(e.target.value || null)}
+          onChange={(e) => {
+            const id = e.target.value || null;
+            // Sin nada contado no hay nada que preguntar: las dos respuestas
+            // hacen lo mismo, y un toque de más en el gimnasio se paga caro.
+            if (estado.hechas > 0) setADonde(id);
+            else alElegirEjercicio(id);
+          }}
           aria-label={T.sesion.queEstasHaciendo}
         >
           <option value="">{T.sesion.sinEjercicio}</option>
@@ -124,6 +139,32 @@ export default function Bloque({
           ))}
         </div>
       </div>
+
+        {aDonde !== undefined && (
+          <div className="mudanza" role="group" aria-label={T.sesion.deCual(estado.hechas)}>
+            <p>{T.sesion.deCual(estado.hechas)}</p>
+            <div className="mudanza-opciones">
+              {/* El de antes primero: es lo que la app hacía sola hasta hoy,
+                  y el orden dice cuál es la respuesta normal. */}
+              <button
+                onClick={() => {
+                  alElegirEjercicio(aDonde);
+                  setADonde(undefined);
+                }}
+              >
+                {T.sesion.eranDe(nombreDe(estado.ejercicio))}
+              </button>
+              <button
+                onClick={() => {
+                  alMudarSeries(aDonde);
+                  setADonde(undefined);
+                }}
+              >
+                {T.sesion.eranDe(nombreDe(aDonde))}
+              </button>
+            </div>
+          </div>
+        )}
 
       <div className="bloque-puntos" aria-hidden>
         {Array.from({ length: puntos }).map((_, i) => (

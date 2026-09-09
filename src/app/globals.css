@@ -195,9 +195,19 @@ textarea::placeholder {
 /* LO QUE SOSTIENE LA LEGIBILIDAD CUANDO EL VELO SE ABRE.
 
    Constante en todos los rangos: esta capa no se mueve nunca. Arriba vive la
-   cabecera y el número de racha; abajo, la barra de navegación. Las dos
-   franjas quedan protegidas siempre, y lo que se abre con el rango es la
-   FRANJA DEL MEDIO, que es justo donde vive el cuerpo celeste.
+   cabecera y el número de racha; abajo, la barra de navegación.
+
+   LA FRANJA DE ABAJO ARRANCABA EN EL 64%, Y AHÍ ESTÁ EL CUERPO. El comentario
+   viejo decía que lo que se abre es "la franja del medio, que es justo donde
+   vive el cuerpo celeste" — y era falso: el cuerpo se dibuja en la esquina de
+   abajo a la derecha, con el centro cerca del 86% de la altura. O sea que la
+   capa puesta para cuidar la barra de navegación le tapaba la cara a la luna,
+   con medio fondo encima, y la mecánica central de la app no se veía.
+
+   Ahora la franja de abajo empieza donde EMPIEZA la barra, y no cuarenta
+   puntos antes. Medido en un teléfono de 844 px: la barra ocupa los últimos
+   62 px, o sea del 92,6% para abajo; el degradado arranca en 86% para que no
+   se vea el borde del degradado, y no antes.
 
    Por eso no hace falta ponerle un fondito a cada bloque de texto —que se
    habría leído como tarjetas, y esta app no tiene tarjetas—: la protección es
@@ -209,15 +219,24 @@ textarea::placeholder {
     to bottom,
     color-mix(in srgb, var(--fondo) 80%, transparent) 0%,
     transparent 26%,
-    transparent 64%,
+    transparent 86%,
     color-mix(in srgb, var(--fondo) 88%, transparent) 100%
   );
 }
 
 /* ---------- estructura ---------- */
 /* Capa que sigue al dedo al deslizar entre pestañas */
+/* SIN `will-change` FIJO, y no es una micro-optimización: `will-change:
+   transform` convierte a este div en el BLOQUE CONTENEDOR de todos sus hijos
+   `position: fixed`. La acción anclada de Inicio —"Terminar", "Registrar
+   día"— vive adentro, así que dejaba de estar anclada a la pantalla y pasaba
+   a estarlo al final del CONTENIDO: con la sesión abierta el contenido mide
+   1088 px y el botón caía en y=936, fuera de una ventana de 844.
+
+   Se ve solo cuando el contenido no entra en la pantalla, que es exactamente
+   el caso que se reportó ("Terminar está muy abajo"). Ahora `will-change` lo
+   pone y lo saca el gesto, en `PantallaDeslizable`. */
 .deslizable {
-  will-change: transform, opacity;
   touch-action: pan-y;
 }
 
@@ -3173,13 +3192,13 @@ body.con-franja .pantalla {
   align-items: center;
   justify-content: center;
   width: 100%;
-  /* SE PASÓ Y HUBO QUE ACHICARLO. Con 28vh ocupaba media pantalla y tapaba
-     todo lo demás: el ejercicio, los puntos, la cuenta. El objetivo era que se
-     pudiera tocar SIN MIRAR, no que fuera lo único en pantalla.
-     Con 15vh siguen siendo ~120 px de alto por el ancho entero — casi tres
-     veces el botón de 44 px del que veníamos— y el resto del bloque se ve. */
-  min-height: 15vh;
-  max-height: 140px;
+  /* SE PASÓ DOS VECES. Primero 28vh —media pantalla—, después 15vh, y seguía
+     tapando. Ahora 11vh: en un teléfono de 844 px son 93 px de alto por el
+     ancho entero, más del doble del botón de 44 px del que veníamos, y sigue
+     siendo un blanco que se acierta sin mirar. Lo que se gana son los 35 px
+     que hacían que Inicio no entrara en una pantalla. */
+  min-height: 11vh;
+  max-height: 100px;
   border: 1px solid color-mix(in srgb, var(--pal-principal) 30%, transparent);
   background: color-mix(in srgb, var(--pal-principal) 7%, transparent);
   color: var(--pal-claro);
@@ -3295,6 +3314,41 @@ body.con-accion .pantalla {
 /* Y con las dos cosas a la vez —franja de sesión y acción— se suman. */
 body.con-franja.con-accion .pantalla {
   padding-bottom: calc(190px + env(safe-area-inset-bottom));
+}
+
+/* ---------- me equivoqué de ejercicio ----------
+   Va DENTRO del bloque y no en un diálogo: es una pregunta sobre lo que está
+   en pantalla, y un diálogo obligaría a taparlo justo cuando hay que mirarlo.
+   Dos botones del mismo tamaño porque las dos respuestas son igual de
+   probables — el que se equivoca de ejercicio no sabe de antemano cuál era. */
+.mudanza {
+  border: 0.5px solid color-mix(in srgb, var(--pal-principal) 32%, transparent);
+  border-radius: 2px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.mudanza p {
+  font-size: 13px;
+  color: var(--sub);
+  margin-bottom: 10px;
+}
+.mudanza-opciones {
+  display: flex;
+  gap: 8px;
+}
+.mudanza-opciones button {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 13px;
+  color: var(--pal-claro);
+  border: 0.5px solid var(--linea);
+  border-radius: var(--pildora);
+  /* Se cortan con puntos suspensivos: "Extensión de tríceps con mancuerna" no
+     entra en media pantalla y partirlo en tres renglones movería el otro
+     botón de lugar. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- la lista de lo hecho ----------

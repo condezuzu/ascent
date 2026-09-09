@@ -63,6 +63,7 @@ import {
   paraGuardar,
   restar,
   corregirBloque,
+  mudarEjercicio,
   quitarBloque,
   sembrar,
   siguiente,
@@ -3399,12 +3400,9 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
     }
   };
 
-  // Saca /* */ y //, que es donde vive el rioplatense permitido. Se hace por
-  // archivo entero y no linea por linea porque los bloques de arriba de cada
-  // componente ocupan quince lineas. El `[^:]` de adelante evita comerse el
-  // "//" de una URL.
-  const sinComentarios = (src) =>
-    src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  // Los comentarios se sacan con `sinComentarios`, el helper compartido que
+  // ya se importa arriba: esta seccion tenia su propia copia, que es como
+  // empiezan las dos versiones que se van separando.
 
   let miradas = 0;
 
@@ -3449,6 +3447,44 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
 
   chequear(`los ${miradas} textos estan en espanol neutro`, fallas.slice(0, 12), []);
   if (fallas.length > 12) console.log(`       (y ${fallas.length - 12} mas)`);
+}
+
+console.log('\n55. Me equivoque de ejercicio: las series se mudan');
+{
+  // DOS COSAS DISTINTAS QUE SE PARECEN. "Cambie de ejercicio" cierra el bloque
+  // y abre otro; "me equivoque de ejercicio" tiene que llevarse las series ya
+  // contadas, porque nunca fueron del ejercicio que decia el selector.
+  //
+  // La app no puede adivinar cual de las dos fue —el error puede estar en el
+  // dedo o en la memoria— asi que pregunta. Lo que se prueba aca es que las
+  // dos ramas existan y hagan cosas distintas de verdad: si `mudarEjercicio`
+  // cerrara el bloque como la otra, la pregunta seria decorativa.
+  let e = bloquesVacios('press_banca', 3);
+  e = sumar(e);
+  e = sumar(e);
+  e = sumar(e);
+  chequear('van tres en press de banca', [e.ejercicio, e.hechas, e.cerrados.length], ['press_banca', 3, 0]);
+
+  const cambiado = cambiarEjercicio(e, 'sentadilla');
+  chequear('cambiar cierra el bloque viejo', cambiado.cerrados, [{ ejercicio: 'press_banca', series: 3 }]);
+  chequear('y arranca el nuevo en cero', [cambiado.ejercicio, cambiado.hechas], ['sentadilla', 0]);
+
+  const mudado = mudarEjercicio(e, 'sentadilla');
+  chequear('mudar NO cierra nada', mudado.cerrados, []);
+  chequear('y las tres se van con el ejercicio nuevo', [mudado.ejercicio, mudado.hechas], ['sentadilla', 3]);
+
+  // El total de la sesion no lo tocan ninguna de las dos: las series hechas
+  // son las mismas, lo unico que cambia es de que fueron.
+  chequear('lo guardado despues de mudar', paraGuardar(mudado), [{ ejercicio: 'sentadilla', series: 3 }]);
+  chequear(
+    'lo guardado despues de cambiar',
+    paraGuardar(cambiado),
+    [{ ejercicio: 'press_banca', series: 3 }]
+  );
+
+  chequear('mudar al mismo ejercicio no hace nada', mudarEjercicio(e, 'press_banca'), e);
+  const sinNada = bloquesVacios('press_banca', 3);
+  chequear('sin series contadas, mudar es igual a cambiar', mudarEjercicio(sinNada, 'x').hechas, cambiarEjercicio(sinNada, 'x').hechas);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

@@ -85,7 +85,6 @@ export const T = {
     hoyDescansa: 'Hoy descansa. La racha sigue igual.',
     diaPendiente: 'Tu día de hoy quedó anotado y se suma solo. No lo perdiste.',
     sumarSerie: 'Sumar una serie',
-    masArrancaDescanso: 'Cada + suma la serie y arranca el descanso.',
     // La nota de arriba está debajo del contador y se lee tarde: la primera
     // vez, el + aparece sin ninguna explicación y parece un botón de confirmar.
     // Esto se dice una sola vez, arriba, donde se está mirando.
@@ -475,7 +474,11 @@ export const T = {
 
   // ---------------------------------------------------------------
   descanso: {
-    saltar: 'Saltar',
+    // Antes decía "Saltar" y saltaba de verdad: el que abría esta pantalla
+    // para cambiar la duración y quería volver perdía el descanso. La salida
+    // normal de una pantalla es cerrarla, no cancelar lo que estaba haciendo.
+    // Limpiar un descanso YA TERMINADO sigue estando, en "Seguir".
+    saltar: 'OK',
     cerrar: 'Cerrar',
     // El + sin salir del descanso. Dice lo que pasó, no lo que hace el
     // botón: "hice la serie" es lo que la persona acaba de vivir.
@@ -511,6 +514,14 @@ export const T = {
     // verdad, y las dos palabras suenan a que falta algo.
     sinEjercicio: 'Cualquier cosa',
     cuantasVasAHacer: 'Cuántas vas a hacer',
+
+    // CAMBIÉ DE EJERCICIO / ME EQUIVOQUÉ DE EJERCICIO. Son dos cosas
+    // distintas y la app no puede adivinar cuál fue: si ya hay series
+    // contadas, pregunta. Sin nada contado no pregunta nada — las dos
+    // respuestas harían lo mismo.
+    deCual: (n: number) =>
+      `Llevas ${n} ${n === 1 ? 'serie' : 'series'} sin cerrar. ¿De cuál eran?`,
+    eranDe: (nombre: string) => `Eran de ${nombre}`,
     deMeta: (hechas: number, meta: number) => `${hechas} de ${meta}`,
     totalHoy: (n: number) => `${n} en total`,
     // Aparece recién con la meta cumplida. No dice "terminar" porque no

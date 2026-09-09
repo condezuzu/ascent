@@ -286,6 +286,8 @@ export default function Principal() {
   const registradoHoy = !!logHoy;
   const racha = perfil.racha_actual;
   const sinNada = racha === 0 && logs.length === 0;
+  // Mientras se entrena, Inicio se despeja: ver el bloque de abajo.
+  const entrenando = sesion.estado.corriendo;
   const prox = siguienteRango(racha);
   const progreso = progresoEnRango(racha);
   const planeta = planetaDeDia(racha);
@@ -436,12 +438,20 @@ export default function Principal() {
               alRestar={sesion.deshacerSerie}
               alSiguiente={sesion.bloqueSiguiente}
               alElegirEjercicio={sesion.elegirEjercicio}
+              alMudarSeries={sesion.mudarSeries}
               alElegirMeta={sesion.elegirMeta}
               alTocarBloque={sesion.tocarBloque}
             />
-            <p className="nota-privada" style={{ textAlign: 'center', marginTop: 10 }}>
-              {sesion.estado.porUbicacion ? T.inicio.sesionSola : T.inicio.masArrancaDescanso}
-            </p>
+            {/* "Cada + suma la serie y arranca el descanso" lo dice el globo
+                de la primera vez, tres renglones más arriba. Repetirlo abajo
+                era decir dos veces lo mismo y ocupar la altura que hace que
+                Inicio no entre. Lo que SÍ se dice siempre es que el día entró
+                solo, porque eso no lo sabe nadie si no se dice. */}
+            {sesion.estado.porUbicacion && (
+              <p className="nota-privada" style={{ textAlign: 'center', marginTop: 10 }}>
+                {T.inicio.sesionSola}
+              </p>
+            )}
             <AccionPrincipal>
               <button
                 className="boton-solido"
@@ -517,7 +527,7 @@ export default function Principal() {
             recordatorio se queda mientras no haya punto y se va solo el dia
             que se marca — no hay que cerrarlo, hay que resolverlo. Va en el
             idioma de los globos y en voz baja: no compite con nada. */}
-        {!perfil.gimnasio_lat && !pedirGimnasio && (
+        {!perfil.gimnasio_lat && !pedirGimnasio && !entrenando && (
           <Link href="/ajustes" className="globo globo-quieto">
             <p>{T.inicio.gimnasioRecordatorio}</p>
           </Link>
@@ -540,16 +550,25 @@ export default function Principal() {
           </div>
         )}
 
-        {marcas && <Link href="/fuerza" className="linea-marcas">{marcas}</Link>}
+        {/* DE ACÁ PARA ABAJO, NADA MIENTRAS SE ENTRENA (§20).
+            Medido: con la sesión abierta el contenido daba 1088 px en una
+            pantalla de 844, y el humano tenía que scrollear entre serie y
+            serie para ver cuántas llevaba. Nada de esto es de la sesión: la
+            cita motiva antes o después, la línea social es una distracción en
+            el medio, y las marcas y el recordatorio del gimnasio son de otro
+            momento. No se borran, vuelven solas al terminar. */}
+        {marcas && !entrenando && (
+          <Link href="/fuerza" className="linea-marcas">{marcas}</Link>
+        )}
 
-        {!sinNada && (
+        {!sinNada && !entrenando && (
           <figure className="cita">
             <blockquote>{cita.texto}</blockquote>
             <figcaption>{cita.autor}</figcaption>
           </figure>
         )}
 
-        {social && (
+        {social && !entrenando && (
           <div className="linea-social">
             <span>
               {T.inicio.sigueSubiendo(social.username, enDias(social.racha))}

@@ -45,6 +45,25 @@ export function guardarDescanso(duracion: number): DescansoVivo {
   return d;
 }
 
+/**
+ * CAMBIAR LA DURACIÓN SIN REINICIAR LA CUENTA.
+ *
+ * Estabas en 3 minutos, llevas 1:10 descansando y pasás a 2: lo que queda es
+ * 0:50, no 2:00. La versión anterior reiniciaba, o sea que cambiar de idea
+ * costaba el tiempo ya descansado y la app te hacía esperar de nuevo por
+ * haberla corregido.
+ *
+ * Si ya descansaste MÁS que la duración nueva, el descanso está terminado:
+ * `fin` queda en el pasado y `restante` devuelve cero, que es exactamente lo
+ * que hay que mostrar.
+ */
+export function cambiarDuracion(vivo: DescansoVivo, duracion: number): DescansoVivo {
+  const inicio = vivo.fin - vivo.duracion * 1000;
+  const d = { fin: inicio + duracion * 1000, duracion };
+  void plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(d));
+  return d;
+}
+
 export function borrarDescanso() {
   return plataforma.almacenamiento.borrar(CLAVE);
 }

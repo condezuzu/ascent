@@ -17,9 +17,18 @@ export function bordeDePalabra(palabra) {
   return new RegExp('\\b' + palabra + '\\b');
 }
 
-/** El código sin comentarios, para no analizar prosa. */
+/**
+ * El código sin comentarios, para no analizar prosa.
+ *
+ * El `[^:]` de adelante NO es adorno: sin él, `https://` es un comentario y
+ * media línea desaparece. Se devuelve el carácter que se miró, porque comerlo
+ * pegaría dos palabras que estaban separadas. Y el bloque se reemplaza por un
+ * espacio y no por nada, por lo mismo.
+ */
 export function sinComentarios(codigo) {
-  return codigo.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  return codigo
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 }
 
 /**

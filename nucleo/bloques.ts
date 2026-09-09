@@ -101,6 +101,25 @@ export function cambiarEjercicio(e: EstadoBloques, id: string | null): EstadoBlo
 }
 
 /**
+ * Cambiar de ejercicio LLEVÁNDOSE las series que ya iban.
+ *
+ * Es el otro caso, y es el que faltaba: sumaste tres series y RECIÉN AHÍ te
+ * diste cuenta de que el selector decía el ejercicio de antes. Con
+ * `cambiarEjercicio` esas tres quedan para siempre en el ejercicio
+ * equivocado, y el detector de estancamiento las lee como progreso de algo
+ * que no hiciste.
+ *
+ * No se elige solo cuál de los dos usar: no hay forma de saber desde acá si
+ * el que se equivocó fue el dedo o la memoria. Lo pregunta la interfaz, y
+ * solo cuando hay algo contado — si el bloque está en cero las dos ramas
+ * hacen lo mismo y preguntar sería un toque de más.
+ */
+export function mudarEjercicio(e: EstadoBloques, id: string | null): EstadoBloques {
+  if (id === e.ejercicio) return e;
+  return { ...e, ejercicio: id };
+}
+
+/**
  * La meta se puede subir o bajar EN CUALQUIER MOMENTO, incluso a mitad del
  * bloque y por debajo de lo que ya hiciste. Es un objetivo, no una validación:
  * negarse a bajarla a 2 cuando llevás 3 sería la app discutiendo con alguien

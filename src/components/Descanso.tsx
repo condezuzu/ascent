@@ -7,6 +7,7 @@ import { T } from '@nucleo/textos';
 import {
   borrarDescanso,
   cuentaAtras,
+  cambiarDuracion,
   duracionCorta,
   guardarDescanso,
   leerSonido,
@@ -137,12 +138,19 @@ export default function Descanso({
     alSaltar();
   }
 
-  // Cambiar de preset reinicia la cuenta con la duración nueva: el que pasa a
-  // accesorios toca 90s y ya está descansando 90s, sin un paso extra.
+  // Cambiar de preset NO reinicia: se cambia a cuánto querías descansar, no
+  // cuánto te falta. Si estabas en 3 minutos, llevas 1:10 y pasás a 2, quedan
+  // 0:50. Reiniciar hacía que corregirse costara el descanso ya hecho.
+  //
+  // `terminado` se recalcula porque la duración nueva puede dejar la cuenta ya
+  // vencida —bajar a 2 con 2:30 encima— y ahí lo que corresponde es mostrar
+  // que terminó, no una cuenta en cero que sigue esperando.
   function usarPreset(segundos: number) {
-    yaAviso.current = false;
-    setTerminado(false);
-    alReiniciar(guardarDescanso(segundos));
+    const nuevo = cambiarDuracion(vivo, segundos);
+    const listo = restante(nuevo.fin) === 0;
+    yaAviso.current = listo;
+    setTerminado(listo);
+    alReiniciar(nuevo);
   }
 
   const falta = restante(vivo.fin);
@@ -215,7 +223,10 @@ export default function Descanso({
           <button className="boton-texto" onClick={alSumar}>
             {T.descanso.serieHecha}
           </button>
-          <button className="boton-texto" onClick={saltar}>
+          {/* "OK" y no "Saltar": esta pantalla se abre para mirar la cuenta o
+              cambiar la duración, y la salida normal es cerrarla. Saltear el
+              descanso desde acá era perderlo por querer volver. */}
+          <button className="boton-texto" onClick={alOcultar}>
             {T.descanso.saltar}
           </button>
         </>

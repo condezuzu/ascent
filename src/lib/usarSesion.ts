@@ -12,6 +12,7 @@ import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import {
   bloquesVacios,
   cambiarEjercicio,
+  mudarEjercicio,
   cambiarMeta,
   corregirBloque,
   paraGuardar,
@@ -436,9 +437,22 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     await subir(series, b);
   }
 
-  /** Cambiar de ejercicio cierra el bloque anterior (ver `lib/bloques.ts`). */
+  /** Cambiar de ejercicio cierra el bloque anterior (ver `nucleo/bloques.ts`). */
   async function elegirEjercicio(id: string | null) {
     const b = cambiarEjercicio(bloques, id);
+    if (b === bloques) return;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b });
+    await subir(series, b);
+  }
+
+  /**
+   * Lo mismo, pero las series que ya iban se van con el ejercicio nuevo: es
+   * "me equivoqué de ejercicio", no "cambié de ejercicio". Quién de los dos
+   * fue lo pregunta la interfaz; acá solo se aplica.
+   */
+  async function mudarSeries(id: string | null) {
+    const b = mudarEjercicio(bloques, id);
     if (b === bloques) return;
     setBloques(b);
     await actualizarSesionCache({ bloques: b });
@@ -499,6 +513,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     bloqueSiguiente,
     tocarBloque,
     elegirEjercicio,
+    mudarSeries,
     elegirMeta,
     descansarSuelto,
     cerrarDescanso: () => {
