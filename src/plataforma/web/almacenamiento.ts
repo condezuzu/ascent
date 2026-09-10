@@ -1,4 +1,4 @@
-import type { Almacenamiento } from '../tipos';
+import type { Almacenamiento } from '@nucleo/plataforma';
 
 // `localStorage` envuelto en promesas. Es sincrónico de verdad, así que las
 // promesas resuelven en el mismo tick; la asincronía es del contrato, para que

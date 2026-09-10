@@ -1,4 +1,4 @@
-import type { CicloDeVida } from '../tipos';
+import type { CicloDeVida } from '@nucleo/plataforma';
 
 /**
  * En web, "la app está adelante" es `document.visibilityState`.

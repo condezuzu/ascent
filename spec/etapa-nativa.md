@@ -101,12 +101,73 @@ de ser un rumor de una sola fuente.
 
 ---
 
-## 13z. Los huecos: `src/plataforma/`
+## 13z. Los huecos: los nueve puertos
 
 Todo lo que la web no puede hacer está detrás de una interfaz, con la
-implementación web haciendo lo que puede. Al pasar a Expo se agrega `nativo/` y
-se cambia **una línea** en `src/plataforma/index.ts`; ningún componente se
-entera. Nada del resto de la app toca `navigator` ni `localStorage`, y la
+implementación web haciendo lo que puede.
+
+**LOS NUEVE TIENEN SU LADO NATIVO desde el 2026-09-10 (tanda 1).**
+
+### Dónde vive cada cosa, y por qué cambió el plan
+
+El plan decía: "se agrega `nativo/` adentro de `src/plataforma/` y se cambia
+una línea en su `index.ts`". Eso era correcto **cuando había una sola app**.
+Con `movil/` como proyecto aparte, dejar la implementación nativa del lado de
+Next obligaría al proyecto de Expo a importar del árbol de la web — justo la
+dependencia que la migración vino a cortar. Así que:
+
+- **El contrato** se mudó a `nucleo/plataforma.ts`. Son tipos puros, sin una
+  sola API nombrada, así que pasa la sección 51 sin excepciones. Es lo mismo
+  que ya eran las reglas y los textos: un archivo que las dos apps leen y
+  ninguna posee.
+- **La web** sigue en `src/plataforma/web/` + su `index.ts`.
+- **La nativa** vive en `movil/src/plataforma/`, con su propio `index.ts`.
+
+La sección 60 de `test:db` compara los tres: saca las llaves del contrato y
+exige que los dos `index.ts` las implementen todas. **Hace falta porque son dos
+proyectos con dos `tsc` distintos**: agregar un puerto y olvidarse del lado
+nativo compila perfecto del lado de la web y explota en el teléfono. Y de paso
+comprueba que `movil/` no importe nada de `src/`.
+
+### Qué cambia de verdad, puerto por puerto
+
+| Puerto | En web | En nativo |
+|---|---|---|
+| `avisos` | `setTimeout` con la app adelante | notificación local **con la pantalla bloqueada** |
+| `haptica` | en iPhone no existe (WebKit nunca implementó la API) | golpe corto, impacto medio |
+| `ubicacion` | "abrí la app en el gimnasio" | el **sistema despierta a la app** al llegar (geofencing) |
+| `audio` | rogarle a la Audio Session API de Safari | categoría declarada, suena con el switch de silencio |
+| `almacenamiento` | `localStorage` | AsyncStorage — el único que ya era asíncrono en web, para que hoy no cambiara ninguna firma |
+| `ciclo` | `visibilitychange` + `focus` | `AppState` |
+| `pantalla` | Wake Lock API | `expo-keep-awake` |
+| `efimero` | `sessionStorage` | un `Map` en memoria |
+| `salud` | no existe nada parecido | existe, pero **necesita build de desarrollo**: sigue vacío |
+
+**El bip es el mismo sonido, y eso costó un archivo.** En web se sintetiza con
+el AudioContext —880 Hz y 1175 Hz con rampa—; en nativo `expo-audio` reproduce
+archivos, así que ese mismo sonido se generó una vez y quedó en
+`movil/assets/bip.wav`. Que sean el mismo sonido no es purismo: es la
+diferencia entre migrar la app y hacer una parecida.
+
+### Lo que Expo Go todavía no puede
+
+- **Geofencing**: las tareas en segundo plano necesitan una build de
+  desarrollo. `vigilarLlegada` devuelve `false` ahí, que es exactamente el
+  camino que la app ya recorre en web — no hay nada roto mientras tanto.
+- **Salud**: HealthKit necesita un entitlement que Expo Go no tiene.
+
+Las dos son la misma tarea pendiente: la primera build de desarrollo.
+
+### Cómo se probó
+
+`movil/src/PruebaDePuertos.tsx` lista los nueve en pantalla con lo que cada uno
+contesta, y tiene dos botones —el bip y la vibración— porque **que compilen no
+prueba nada**: `expo-haptics` compila perfecto en la computadora y no vibra
+hasta que alguien lo toca con el teléfono en la mano. Del lado de acá se
+verificó que Metro empaqueta los 6,5 MB sin un solo error de resolución.
+
+Al pasar a Expo se agrega `nativo/` y se cambia **una línea**; ningún
+componente se entera. Nada del resto de la app toca `navigator` ni `localStorage`, y la
 sección 35 de `test:db` lo comprueba: si alguien vuelve a llamarlos directo,
 falla y dice en qué archivo.
 

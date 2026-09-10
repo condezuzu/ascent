@@ -1,4 +1,4 @@
-import type { Haptica } from '../tipos';
+import type { Haptica } from '@nucleo/plataforma';
 
 // `navigator.vibrate` existe en Android y NO en iPhone: WebKit nunca
 // implementó la Vibration API. Por eso el aviso que siempre funciona es el

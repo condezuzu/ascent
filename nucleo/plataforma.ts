@@ -1,10 +1,20 @@
-// Los huecos que la web llena como puede y la versión nativa llena de verdad.
+// EL CONTRATO DE LOS PUERTOS. Los huecos que la web llena como puede y la app
+// nativa llena de verdad.
+//
+// VIVE EN `nucleo/` Y NO EN `src/`, y la diferencia importa desde que hay dos
+// apps: `movil/` necesita el mismo contrato, y tenerlo del lado de Next
+// obligaría al proyecto de Expo a importar del árbol de la web — justo la
+// dependencia que la migración vino a cortar. Acá es lo que ya son las reglas
+// y los textos: un archivo que las dos leen y ninguna posee.
+//
+// Son TIPOS y nada más: sin implementación, sin imports, sin una sola API del
+// navegador nombrada. Por eso puede vivir en el núcleo.
 //
 // Nada del resto de la app toca `navigator`, `localStorage` ni ninguna API del
-// navegador: le pide las cosas a `plataforma`. Al pasar a Expo se agrega
-// `nativo/` y se cambia una línea en `index.ts`; ningún componente se entera.
+// navegador: le pide las cosas a `plataforma`. La sección 35 de `test:db` lo
+// comprueba.
 //
-// Ver spec/etapa-nativa.md.
+// Ver spec/etapa-nativa.md §13z.
 
 /**
  * Guardar cosas chicas en el propio teléfono.

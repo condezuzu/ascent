@@ -1,4 +1,4 @@
-import type { Ubicacion } from '../tipos';
+import type { Ubicacion } from '@nucleo/plataforma';
 
 // `navigator.geolocation` es lo único que el navegador da. Alcanza para el
 // atajo de §13 —abrís la app en el gimnasio y el día se registra— y no para

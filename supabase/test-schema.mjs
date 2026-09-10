@@ -3902,6 +3902,70 @@ console.log('\n59. El peso: media movil POR FECHA');
   chequear('mas dias que datos no recorta', ultimosDias(diarios, 90).length, 10);
 }
 
+console.log('\n60. Los dos lados de plataforma/');
+{
+  // POR QUE ESTE TEST NO IMPORTA NADA. La implementacion nativa depende de
+  // `expo-location`, `expo-audio` y compania, que no se pueden cargar con node
+  // pelado: son modulos nativos. Asi que se leen los archivos, que es
+  // exactamente lo que hace la seccion 51 con el nucleo.
+  //
+  // QUE AGUJERO TAPA. El contrato vive en `nucleo/plataforma.ts` y TypeScript
+  // ya obliga a que cada `Plataforma` tenga sus nueve llaves... en el proyecto
+  // donde se compila. Son DOS proyectos con dos `tsc` distintos, y el de la
+  // web no mira `movil/`: agregar un puerto al contrato y olvidarse del lado
+  // nativo compila perfecto de este lado y explota en el telefono.
+  const { readFileSync: leerArch } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+  const contrato = leerArch(join(RAIZ, 'nucleo', 'plataforma.ts'), 'utf8');
+  // Las llaves del tipo `Plataforma`, que es lo ultimo del archivo.
+  const bloque = contrato.slice(contrato.indexOf('export type Plataforma = {'));
+  const puertos = [...sinComentarios(bloque).matchAll(/^  (\w+):/gm)].map((m) => m[1]).sort();
+  chequear('el contrato tiene nueve puertos', puertos.length, 9);
+
+  const llaves = (ruta) => {
+    const codigo = sinComentarios(leerArch(ruta, 'utf8'));
+    const desde = codigo.indexOf(': Plataforma = {');
+    return [...codigo.slice(desde).matchAll(/^  (\w+):/gm)].map((m) => m[1]).sort();
+  };
+
+  chequear(
+    'la web implementa los nueve',
+    llaves(join(RAIZ, 'src', 'plataforma', 'index.ts')),
+    puertos
+  );
+  chequear(
+    'y la nativa tambien',
+    llaves(join(RAIZ, 'movil', 'src', 'plataforma', 'index.ts')),
+    puertos
+  );
+
+  // Y QUE LA NATIVA NO IMPORTE DEL ARBOL DE LA WEB. Es la misma apuesta que la
+  // seccion 51 pero del otro lado: si `movil/` empieza a tirar de `src/`, se
+  // lleva puesto Next, el DOM y medio ecosistema del navegador — y se descubre
+  // cuando el bundler falla, no ahora.
+  const { readdirSync: leerDir } = await import('node:fs');
+  const NATIVO = join(RAIZ, 'movil', 'src', 'plataforma');
+  const colados = [];
+  for (const n of leerDir(NATIVO)) {
+    if (!/\.tsx?$/.test(n)) continue;
+    const codigo = sinComentarios(leerArch(join(NATIVO, n), 'utf8'));
+    for (const m of codigo.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+      const destino = m[1];
+      const propio =
+        destino.startsWith('./') ||
+        destino.startsWith('../../assets') ||
+        destino.startsWith('@nucleo/') ||
+        !destino.startsWith('.');
+      if (!propio) colados.push(`${n} importa ${destino}`);
+      if (destino.includes('src/plataforma/web') || destino.startsWith('@/')) {
+        colados.push(`${n} importa del arbol de la web: ${destino}`);
+      }
+    }
+  }
+  chequear('la nativa no importa del arbol de la web', colados, []);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

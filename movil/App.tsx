@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from './src/supabase';
+import PruebaDePuertos from './src/PruebaDePuertos';
 import { rangoDeRacha } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 
@@ -23,6 +24,11 @@ import { T } from '@nucleo/textos';
  * Si las cuatro se ven, el andamiaje de la migración está bien puesto y las
  * tandas que siguen son pantallas. Si alguna falla, es mejor descubrirlo con
  * cincuenta líneas encima que con la app entera portada.
+ *
+ * TANDA 1 — abajo, los nueve puertos de `plataforma/`. Misma idea y por el
+ * mismo motivo: que compilen no prueba nada. `expo-haptics` compila perfecto
+ * en la computadora y no vibra hasta que alguien lo toca con el teléfono en
+ * la mano. Ver `src/PruebaDePuertos.tsx`.
  */
 
 type Estado =
@@ -64,9 +70,13 @@ export default function App() {
       {estado.tipo === 'cargando' && <ActivityIndicator color="#8a93a8" />}
 
       {estado.tipo === 'sin-sesion' && (
-        <Text style={estilos.nota}>
-          No hay sesión en este teléfono todavía. El login llega en la tanda 2.
-        </Text>
+        <>
+          <Text style={estilos.nota}>
+            No hay sesión en este teléfono todavía. El login llega en la tanda 2.
+          </Text>
+          {/* Los puertos no dependen de la sesión: se prueban igual. */}
+          <PruebaDePuertos />
+        </>
       )}
 
       {estado.tipo === 'error' && <Text style={estilos.error}>{estado.que}</Text>}
@@ -77,6 +87,7 @@ export default function App() {
           <Text style={estilos.etiqueta}>{T.inicio.racha}</Text>
           <Text style={estilos.racha}>{estado.racha}</Text>
           <Text style={estilos.rango}>{estado.rango}</Text>
+          <PruebaDePuertos />
         </>
       )}
     </View>

@@ -1,4 +1,4 @@
-import type { Avisos } from '../tipos';
+import type { Avisos } from '@nucleo/plataforma';
 
 // En web el aviso solo existe con la app ADELANTE: el navegador no despierta
 // una PWA cerrada, y con la pantalla bloqueada no corre nada. Así que

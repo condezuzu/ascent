@@ -8,7 +8,12 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "uy.ascent.app"
+      "bundleIdentifier": "uy.ascent.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
     },
     "android": {
       "package": "uy.ascent.app",
@@ -29,6 +34,24 @@
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#05060a"
-    }
+    },
+    "plugins": [
+      "expo-audio",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Ascent usa tu ubicación para registrar el día solo cuando llegas al gimnasio.",
+          "locationAlwaysAndWhenInUsePermission": "Con el permiso siempre, el día se registra y el cronómetro arranca al llegar al gimnasio aunque no abras la app.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#05060a"
+        }
+      ]
+    ]
   }
 }

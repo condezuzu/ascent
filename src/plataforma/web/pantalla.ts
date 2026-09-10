@@ -1,4 +1,4 @@
-import type { Pantalla } from '../tipos';
+import type { Pantalla } from '@nucleo/plataforma';
 
 // Wake Lock: sin esto la pantalla se bloquea a los treinta segundos y el aviso
 // visual —el único que funciona en todos los teléfonos— no lo ve nadie. En

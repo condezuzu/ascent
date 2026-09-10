@@ -1,4 +1,4 @@
-import type { Plataforma } from './tipos';
+import type { Plataforma } from '@nucleo/plataforma';
 import { almacenamientoWeb, efimeroWeb } from './web/almacenamiento';
 import { audioWeb } from './web/audio';
 import { cicloWeb } from './web/ciclo';
@@ -32,4 +32,4 @@ export type {
   PuntoMedido,
   Salud,
   Ubicacion,
-} from './tipos';
+} from '@nucleo/plataforma';

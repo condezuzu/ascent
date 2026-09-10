@@ -1,4 +1,4 @@
-import type { Audio } from '../tipos';
+import type { Audio } from '@nucleo/plataforma';
 
 // El navegador no expone la categoría de audio del sistema... salvo por la
 // Audio Session API, que Safari implementa (experimental) y nadie más.

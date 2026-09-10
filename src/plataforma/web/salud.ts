@@ -1,4 +1,4 @@
-import type { Salud } from '../tipos';
+import type { Salud } from '@nucleo/plataforma';
 
 // El navegador no tiene acceso a Apple Health ni a Health Connect, y no hay
 // nada parecido: no es que la API sea peor, es que no existe. Este hueco queda
