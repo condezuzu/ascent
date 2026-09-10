@@ -1,123 +1,64 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from './src/supabase';
-import PruebaDePuertos from './src/PruebaDePuertos';
 import Login from './src/Login';
-import { rangoDeRacha } from '@nucleo/rangos';
-import { T } from '@nucleo/textos';
+import Inicio from './src/Inicio';
 
 /**
- * TANDA 0 — que la app abra en el teléfono y diga algo verdadero.
+ * LA APP NATIVA — qué pantalla va según si hay sesión.
  *
- * No hay diseño acá a propósito. Lo que esta pantalla tiene que demostrar son
- * cuatro cosas, y ninguna es visual:
+ * TANDA 0 demostró que Expo corre en el teléfono, que habla con la MISMA
+ * Supabase y que el núcleo compartido funciona sin tocar una coma. Eso ya no
+ * hace falta demostrarlo con una pantalla propia: ahora lo demuestra Inicio,
+ * que es la pantalla de verdad.
  *
- *  1. Expo corre en el teléfono de verdad.
- *  2. Habla con la MISMA Supabase que la web, con la misma cuenta y los mismos
- *     datos — no una base de prueba, no datos inventados.
- *  3. El núcleo compartido se importa y FUNCIONA sin tocar una coma: la racha
- *     que se ve abajo la nombra `rangoDeRacha` y el rótulo sale de `T`, los dos
- *     de `nucleo/`, los mismos archivos que usa la web.
- *  4. La sesión sobrevive a cerrar y volver a abrir, porque vive en
- *     AsyncStorage.
+ * TANDA 1 puso los nueve puertos de `plataforma/`. Su banco de pruebas vive en
+ * `src/PruebaDePuertos.tsx` y NO se monta acá: no es una pantalla de la app,
+ * se abre cuando haya que probar los puertos con el teléfono en la mano.
  *
- * Si las cuatro se ven, el andamiaje de la migración está bien puesto y las
- * tandas que siguen son pantallas. Si alguna falla, es mejor descubrirlo con
- * cincuenta líneas encima que con la app entera portada.
+ * TANDA 2 es esto: entrar, ver la racha, registrar el día.
  *
- * TANDA 1 — abajo, los nueve puertos de `plataforma/`. Misma idea y por el
- * mismo motivo: que compilen no prueba nada. `expo-haptics` compila perfecto
- * en la computadora y no vibra hasta que alguien lo toca con el teléfono en
- * la mano. Ver `src/PruebaDePuertos.tsx`.
+ * NO HAY ROUTER TODAVÍA, y es a propósito: con dos pantallas, un router es
+ * una dependencia y una capa de indirección para responder una pregunta que
+ * `if` contesta. Entra cuando entre la barra de navegación, que es la tanda
+ * donde hay cinco pantallas y la pregunta se vuelve de verdad.
  */
 
-type Estado =
-  | { tipo: 'cargando' }
-  | { tipo: 'sin-sesion' }
-  | { tipo: 'listo'; usuario: string; racha: number; rango: string }
-  | { tipo: 'error'; que: string };
+type Sesion = 'mirando' | 'con' | 'sin';
 
 export default function App() {
-  const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
+  const [sesion, setSesion] = useState<Sesion>('mirando');
 
-  // `cargar` con nombre y no un efecto anónimo: entrar tiene que poder volver
-  // a pedir los datos sin recargar la app.
-  const cargar = useCallback(async () => {
-    setEstado({ tipo: 'cargando' });
-    try {
-      const { data } = await supabase.auth.getSession();
-      const uid = data.session?.user?.id;
-      if (!uid) return setEstado({ tipo: 'sin-sesion' });
-
-      const { data: perfil, error } = await supabase
-        .from('profiles')
-        .select('username, racha_actual')
-        .eq('id', uid)
-        .maybeSingle();
-      if (error) return setEstado({ tipo: 'error', que: error.message });
-      if (!perfil) return setEstado({ tipo: 'error', que: 'sin perfil' });
-
-      setEstado({
-        tipo: 'listo',
-        usuario: perfil.username,
-        racha: perfil.racha_actual,
-        // La prueba de que el núcleo anda: esto es el MISMO archivo que la web.
-        rango: rangoDeRacha(perfil.racha_actual).nombre,
-      });
-    } catch (e) {
-      setEstado({ tipo: 'error', que: String((e as Error)?.message ?? e) });
-    }
+  const mirar = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    setSesion(data.session ? 'con' : 'sin');
   }, []);
 
   useEffect(() => {
-    cargar();
-  }, [cargar]);
-
-  // El login es una PANTALLA, no un estado de esta: se devuelve antes y sin el
-  // envoltorio centrado de abajo, que le comería el alto y le pelearía el
-  // manejo del teclado.
-  if (estado.tipo === 'sin-sesion') {
-    return (
-      <>
-        <StatusBar style="light" />
-        <Login alEntrar={cargar} />
-      </>
-    );
-  }
+    mirar();
+    // También cuando cambia sola: el token se renueva, o la sesión vence
+    // estando la app abierta. Sin esto, una sesión muerta deja la pantalla
+    // mostrando datos viejos hasta que alguien la recargue.
+    const { data } = supabase.auth.onAuthStateChange(() => mirar());
+    return () => data.subscription.unsubscribe();
+  }, [mirar]);
 
   return (
-    <View style={estilos.pantalla}>
+    <View style={estilos.todo}>
       <StatusBar style="light" />
-      {estado.tipo === 'cargando' && <ActivityIndicator color="#8a93a8" />}
-
-      {estado.tipo === 'error' && <Text style={estilos.error}>{estado.que}</Text>}
-
-      {estado.tipo === 'listo' && (
-        <>
-          <Text style={estilos.usuario}>{estado.usuario}</Text>
-          <Text style={estilos.etiqueta}>{T.inicio.racha}</Text>
-          <Text style={estilos.racha}>{estado.racha}</Text>
-          <Text style={estilos.rango}>{estado.rango}</Text>
-          <PruebaDePuertos />
-        </>
+      {sesion === 'mirando' && (
+        <View style={estilos.centrado}>
+          <ActivityIndicator color="#8a93a8" />
+        </View>
       )}
+      {sesion === 'sin' && <Login alEntrar={mirar} />}
+      {sesion === 'con' && <Inicio alSalir={mirar} />}
     </View>
   );
 }
 
 const estilos = StyleSheet.create({
-  pantalla: {
-    flex: 1,
-    backgroundColor: '#05060a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  usuario: { color: '#e8ecf6', fontSize: 17, fontWeight: '600', marginBottom: 28 },
-  etiqueta: { color: '#8a93a8', fontSize: 10, letterSpacing: 4, textTransform: 'uppercase' },
-  racha: { color: '#9c9a92', fontSize: 96, fontWeight: '300', lineHeight: 104 },
-  rango: { color: '#8a93a8', fontSize: 13, letterSpacing: 2, textTransform: 'uppercase' },
-  nota: { color: '#8a93a8', fontSize: 14, textAlign: 'center', lineHeight: 22 },
-  error: { color: '#ff6a6a', fontSize: 13, textAlign: 'center' },
+  todo: { flex: 1, backgroundColor: '#05060a' },
+  centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

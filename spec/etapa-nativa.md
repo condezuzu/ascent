@@ -275,6 +275,31 @@ deep link con el `scheme: ascent` que ya está en `app.json`. Mientras tanto se
 crea la cuenta en la web y se entra en la app, que alcanza para probar todo lo
 demás.
 
+### Inicio nativo: la racha, la semana y el botón
+
+La segunda mitad de la tanda 2. Es el bucle entero de la app —abrir, ver el
+número, tocar una vez— y de nuevo lo que importa es lo que NO tiene: ni una
+regla de racha, ni el cálculo de qué día es descanso, ni el mensaje del bloqueo
+de las 20 horas. Todo sale de `nucleo/`.
+
+Probado contra la base de verdad: **la racha pasó de 1 a 2 y el botón cambió a
+"Día registrado"**. Escribe con el mismo RPC y la misma guarda que la web.
+
+**Lo que todavía no está, y cuándo entra:**
+
+- **El objeto de rango.** Es `src/motor/` con three.js y hay que portarlo a
+  `expo-gl`: es una tanda entera. Mientras tanto Inicio NOMBRA el rango en
+  texto, que es justo lo que la app nunca hace en web (§7) — acá es andamio de
+  migración, no diseño, y se va cuando entre el motor.
+- **La foto y el peso** al registrar, que son otra pantalla.
+- **El cronómetro de sesión**, que es lo que más depende de los puertos: tanda 3.
+- **Onboarding.** Una cuenta sin nombre de usuario no dibuja Inicio a medias:
+  dice qué falta. La pantalla para elegirlo llega con el deep link.
+
+**No hay router todavía, y es a propósito:** con dos pantallas, un router es
+una dependencia y una capa de indirección para contestar lo que contesta un
+`if`. Entra cuando entre la barra de navegación.
+
 ### Cómo se verifica la app nativa sin el teléfono
 
 `movil/` ahora corre también en el navegador (`npx expo start --web`), y **eso
