@@ -823,6 +823,19 @@ palabra era la correcta para lo suyo.
 buscarla en `globals.css`. Si ya está, el nombre nuevo lleva su contexto
 (`.marca-app` contra `.marca`).
 
+**Los andamios se quedan.** Un comentario que dice "esto es provisorio, se saca
+cuando llegue X" no saca nada: dentro de dos meses sigue ahí y ya nadie se
+acuerda de que era provisorio. El caso que lo estrenó: Inicio nativo NOMBRA el
+rango en texto —algo que la app en web no hace nunca, porque descubrir en qué
+te convertiste es la recompensa del juego— porque el motor todavía no está
+portado.
+→ **Regla:** un andamio va en el registro de la sección 62 de `test:db`, con
+tres cosas: **dónde** está (una marca que se puede buscar en el archivo), **qué
+lo mata** (una condición ejecutable, no una intención) y **cuándo se vence
+igual**. El test falla por cualquiera de las tres, incluido el caso de borrar
+el código y dejar la entrada. Renovar la fecha es una decisión legítima; lo que
+no puede es pasar sola.
+
 **El `listo` de una captura se espera ANTES del `previo`.** Le puse
 `.calendario` a un paso cuyo `previo` es justamente el clic que crea el
 calendario: sesenta segundos esperando algo imposible y la captura salteada, en

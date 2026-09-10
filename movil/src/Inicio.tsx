@@ -169,9 +169,17 @@ export default function Inicio({
 
       <Text style={estilos.etiqueta}>{T.inicio.racha}</Text>
       <Text style={estilos.racha}>{perfil.racha_actual}</Text>
-      {/* Andamio de migración: en web el rango NO se nombra nunca (§7), lo
-          dice el objeto. Hasta que el motor esté portado, esto es lo único que
-          puede decir en qué te convertiste. */}
+      {/* ANDAMIO andamio-rango-en-texto
+          En web el rango NO se nombra NUNCA (§7): lo dice el objeto, y
+          descubrir en qué te convertiste es la recompensa del juego. Acá se
+          nombra porque el motor todavía no está portado y sin esto la pantalla
+          no diría nada de eso.
+
+          NO ES UNA DECISIÓN DE DISEÑO, ES UN ANDAMIO, y los andamios se
+          quedan. Por eso está registrado en la sección 62 de `test:db`, que
+          falla sola el día que el motor llegue a nativo o el 2026-12-10, lo
+          que pase primero. Borrar estas tres líneas sin borrar la entrada del
+          registro también falla. */}
       <Text style={estilos.rango}>{rangoDeRacha(perfil.racha_actual).nombre}</Text>
 
       <View style={estilos.tira}>

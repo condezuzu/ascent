@@ -4006,6 +4006,67 @@ console.log('\n61. El nombre de usuario: una regla, dos lugares');
   chequear('la base rechaza el de dos letras', rechazo, '23514');
 }
 
+console.log('\n62. Los andamios tienen fecha de vencimiento');
+{
+  // LOS ANDAMIOS SE QUEDAN. Un comentario que dice "esto es temporal" no saca
+  // nada: dentro de dos meses sigue ahí y ya nadie se acuerda de que era
+  // provisorio. Lo unico que los saca es algo que falle mientras existan.
+  //
+  // Cada entrada dice tres cosas: DONDE esta, QUE lo mata, y CUANDO se vence
+  // igual. Falla por cualquiera de las tres:
+  //
+  //   1. La condicion se cumplio  -> el andamio ya no tiene excusa.
+  //   2. Se paso la fecha         -> hay que decidir, aunque sea renovarla.
+  //   3. La marca no esta         -> alguien borro el codigo y dejo la entrada,
+  //                                  o al reves. El registro tiene que decir
+  //                                  la verdad sobre lo que hay.
+  //
+  // Renovar una fecha es una decision legitima. Lo que no se puede es que
+  // pase sola.
+  const { readFileSync: leerArch, existsSync: hay } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const leer = (r) => (hay(join(RAIZ, r)) ? leerArch(join(RAIZ, r), 'utf8') : '');
+
+  const ANDAMIOS = [
+    {
+      id: 'andamio-rango-en-texto',
+      donde: 'movil/src/Inicio.tsx',
+      que: 'Inicio nativo NOMBRA el rango, y en web no se nombra nunca (§7)',
+      // El motor no se puede portar sin `expo-gl`: es la firma mas chica y mas
+      // dificil de falsear de "el motor llego a nativo".
+      muereCuando: () => leer('movil/package.json').includes('expo-gl'),
+      porQue: 'el motor esta en nativo: el objeto ya dice el rango y el texto sobra',
+      vence: '2026-12-10',
+    },
+  ];
+
+  const problemas = [];
+  const hoyDeVerdad = new Date().toISOString().slice(0, 10);
+
+  for (const a of ANDAMIOS) {
+    const codigo = leer(a.donde);
+    if (!codigo.includes(a.id)) {
+      problemas.push(
+        `${a.id}: no esta en ${a.donde}. Si ya se saco, sacar tambien esta entrada`
+      );
+      continue;
+    }
+    if (a.muereCuando()) {
+      problemas.push(`${a.id}: SE MURIO — ${a.porQue}. Sacar el andamio de ${a.donde}`);
+    }
+    if (hoyDeVerdad > a.vence) {
+      problemas.push(
+        `${a.id}: vencio el ${a.vence}. Sacarlo, o renovar la fecha a proposito`
+      );
+    }
+  }
+
+  chequear('ningun andamio vencido ni sin excusa', problemas, []);
+  // Y que el registro no quede vacio por accidente: una lista vacia pasa el
+  // test de arriba sin decir nada.
+  chequear('el registro tiene entradas', ANDAMIOS.length > 0, true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
