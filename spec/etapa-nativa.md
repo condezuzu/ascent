@@ -256,6 +256,62 @@ después qué días entraron solos.
 
 ---
 
+## 13z-bis. Tanda 2 — entrar, y cómo se mira todo esto sin teléfono
+
+**El login nativo (2026-09-10).** Misma base, misma cuenta, mismos datos. Lo
+que importa de esa pantalla es lo que NO tiene: ni un mensaje de error propio,
+ni un texto suelto, ni una regla nueva. Los mensajes de auth se mudaron a
+`nucleo/errores.ts` —los usan las dos apps— y los textos salen de `T.entrar`,
+como en la web. Si esa pantalla hubiera necesitado inventar algo, sería la
+señal de que el núcleo quedó corto.
+
+`mensajeDeAuth` dejó de importar el tipo `AuthError` de supabase-js: la firma
+estructural —lo que lee son `message` y `status`— alcanza, y así el archivo no
+importa nada de afuera y puede vivir en el núcleo.
+
+**Lo que falta y es de otra tanda:** crear cuenta manda a confirmar el correo,
+y ese enlace abre el navegador. Para que vuelva a la app hay que enganchar el
+deep link con el `scheme: ascent` que ya está en `app.json`. Mientras tanto se
+crea la cuenta en la web y se entra en la app, que alcanza para probar todo lo
+demás.
+
+### Cómo se verifica la app nativa sin el teléfono
+
+`movil/` ahora corre también en el navegador (`npx expo start --web`), y **eso
+es una herramienta de verificación, no un producto**: la versión web de Ascent
+es la app de Next y va a seguir siéndolo. React Native Web sirve para una cosa
+concreta y valiosa: hasta ahora, todo lo que se escribía del lado nativo era
+código que nadie podía mirar hasta tener el teléfono en la mano. Con esto se
+puede sacar una foto de la pantalla al tamaño de un teléfono, leer el texto que
+salió y ver si hubo errores en consola.
+
+**Lo que NO prueba, y hay que decirlo cada vez:** los módulos nativos. Que el
+login se vea bien en el navegador no dice nada sobre si vibra, si suena con el
+switch de silencio o si el sistema despierta a la app al llegar al gimnasio.
+Para eso está `PruebaDePuertos.tsx` y hace falta el teléfono.
+
+Lo que sí se probó de punta a punta, y no es poco: el login nativo le pegó a la
+Supabase de verdad con datos equivocados y mostró **"Ese correo y esa
+contraseña no coinciden."**, que es el texto de `nucleo/errores.ts`. O sea que
+el camino entero —cliente nativo, red, error de auth, traducción compartida,
+pantalla— funciona.
+
+### Lo que hace falta para la build de desarrollo (tanda 3)
+
+- **Cuenta de Expo** (gratis), para que EAS construya en la nube.
+- **Apple Developer Program (99 USD/año)** para instalar en el iPhone. No hay
+  vuelta: una build para un dispositivo físico necesita un perfil de
+  aprovisionamiento, y eso pide cuenta paga. La alternativa —Xcode con una
+  Apple ID gratis y certificados de 7 días— necesita una Mac, y acá hay
+  Windows.
+- **Android no necesita nada** más que la cuenta de Expo.
+
+Con la build de desarrollo se destraban las dos cosas que Expo Go no puede: el
+geofencing de verdad y HealthKit. Y de paso deja de importar qué versión de
+Expo Go esté instalada, porque la build lleva el SDK adentro.
+
+---
+
 ## 13. Registro automático por ubicación (etapa nativa)
 
 El usuario guarda la ubicación de su gimnasio y el día se registra solo al llegar,

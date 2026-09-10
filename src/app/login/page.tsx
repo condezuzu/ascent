@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente, configuracionValida } from '@/lib/supabase/client';
-import { mensajeDeAuth } from '@/lib/errores';
+import { mensajeDeAuth } from '@nucleo/errores';
 import { borrarPerfilCache } from '@/lib/cache';
 import FondoEspacial from '@/components/FondoEspacial';
 import { T } from '@nucleo/textos';

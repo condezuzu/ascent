@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from './src/supabase';
 import PruebaDePuertos from './src/PruebaDePuertos';
+import Login from './src/Login';
 import { rangoDeRacha } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 
@@ -40,8 +41,11 @@ type Estado =
 export default function App() {
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
 
-  useEffect(() => {
-    (async () => {
+  // `cargar` con nombre y no un efecto anónimo: entrar tiene que poder volver
+  // a pedir los datos sin recargar la app.
+  const cargar = useCallback(async () => {
+    setEstado({ tipo: 'cargando' });
+    try {
       const { data } = await supabase.auth.getSession();
       const uid = data.session?.user?.id;
       if (!uid) return setEstado({ tipo: 'sin-sesion' });
@@ -61,23 +65,31 @@ export default function App() {
         // La prueba de que el núcleo anda: esto es el MISMO archivo que la web.
         rango: rangoDeRacha(perfil.racha_actual).nombre,
       });
-    })().catch((e) => setEstado({ tipo: 'error', que: String(e?.message ?? e) }));
+    } catch (e) {
+      setEstado({ tipo: 'error', que: String((e as Error)?.message ?? e) });
+    }
   }, []);
+
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  // El login es una PANTALLA, no un estado de esta: se devuelve antes y sin el
+  // envoltorio centrado de abajo, que le comería el alto y le pelearía el
+  // manejo del teclado.
+  if (estado.tipo === 'sin-sesion') {
+    return (
+      <>
+        <StatusBar style="light" />
+        <Login alEntrar={cargar} />
+      </>
+    );
+  }
 
   return (
     <View style={estilos.pantalla}>
       <StatusBar style="light" />
       {estado.tipo === 'cargando' && <ActivityIndicator color="#8a93a8" />}
-
-      {estado.tipo === 'sin-sesion' && (
-        <>
-          <Text style={estilos.nota}>
-            No hay sesión en este teléfono todavía. El login llega en la tanda 2.
-          </Text>
-          {/* Los puertos no dependen de la sesión: se prueban igual. */}
-          <PruebaDePuertos />
-        </>
-      )}
 
       {estado.tipo === 'error' && <Text style={estilos.error}>{estado.que}</Text>}
 

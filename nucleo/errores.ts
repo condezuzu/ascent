@@ -1,14 +1,18 @@
-import type { AuthError } from '@supabase/supabase-js';
-import { T } from '@nucleo/textos';
+import { T } from './textos.ts';
 
 /**
  * Traduce un error de auth a algo que el usuario pueda accionar.
+ *
+ * VIVE EN EL NÚCLEO porque las dos apps entran con la misma base y tienen que
+ * decir lo mismo cuando algo falla. Y no importa el tipo `AuthError` de
+ * supabase-js a propósito: la firma estructural —lo que se lee es `message` y
+ * `status`— alcanza, y así este archivo no importa nada de afuera.
  *
  * Lo importante: NO todos los fallos son "contraseña equivocada". Si la app
  * está mal configurada o no hay red, decirle a la persona que se equivocó de
  * datos la manda a probar contraseñas para siempre.
  */
-export function mensajeDeAuth(error: AuthError | { message?: string; status?: number } | null): string {
+export function mensajeDeAuth(error: { message?: string; status?: number } | null): string {
   if (!error) return '';
   const m = (error.message ?? '').toLowerCase();
 
