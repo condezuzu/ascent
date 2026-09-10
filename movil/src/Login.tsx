@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { supabase } from './supabase';
+import { VUELTA } from './enlace';
 import { mensajeDeAuth } from '@nucleo/errores';
 import { T } from '@nucleo/textos';
 
@@ -27,11 +28,10 @@ import { T } from '@nucleo/textos';
  * mismo formulario con otro botón. En un teléfono, tres pantallas para dos
  * campos es un menú.
  *
- * LO QUE FALTA Y ES DE OTRA TANDA: crear cuenta manda a confirmar el correo, y
- * el enlace de confirmación abre el navegador. Para que vuelva a la app hay
- * que enganchar el deep link con el `scheme: ascent` que ya está en
- * `app.json`. Mientras tanto se puede crear la cuenta en la web y entrar acá,
- * que es exactamente lo que hace falta para probar esto.
+ * EL CORREO VUELVE A LA APP: el alta y la recuperación mandan el enlace a
+ * `ascent://confirmar`, y `enlace.ts` lo agarra. Lo único que falta para que
+ * ande es una línea en el panel de Supabase —la lista blanca de redirects—,
+ * que es del humano.
  *
  * NO HAY GOOGLE. En web está apagado hasta configurar el proveedor; acá
  * además necesita el flujo de OAuth nativo, que es otra cosa. Un botón que
@@ -67,7 +67,14 @@ export default function Login({ alEntrar }: { alEntrar: () => void }) {
     }
 
     if (modo === 'crear') {
-      const { data, error } = await supabase.auth.signUp({ email, password: pass });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: pass,
+        // Que el correo de confirmación vuelva A LA APP y no al navegador.
+        // Requiere que `ascent://confirmar` esté en la lista blanca de
+        // Supabase; ver `enlace.ts`.
+        options: { emailRedirectTo: VUELTA },
+      });
       setCargando(false);
       if (error) return setError(mensajeDeAuth(error));
       // Si Supabase no exige confirmar el correo, el alta ya devuelve sesión y
@@ -77,7 +84,9 @@ export default function Login({ alEntrar }: { alEntrar: () => void }) {
       return setAviso(T.entrar.revisaCorreo);
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: VUELTA,
+    });
     setCargando(false);
     // No se distingue si el mail existe: decirlo filtra quién tiene cuenta.
     // Un fallo de red o de configuración sí se dice, porque no es lo mismo.

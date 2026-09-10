@@ -269,11 +269,29 @@ señal de que el núcleo quedó corto.
 estructural —lo que lee son `message` y `status`— alcanza, y así el archivo no
 importa nada de afuera y puede vivir en el núcleo.
 
-**Lo que falta y es de otra tanda:** crear cuenta manda a confirmar el correo,
-y ese enlace abre el navegador. Para que vuelva a la app hay que enganchar el
-deep link con el `scheme: ascent` que ya está en `app.json`. Mientras tanto se
-crea la cuenta en la web y se entra en la app, que alcanza para probar todo lo
-demás.
+**El correo vuelve a la app (2026-09-10).** El alta y la recuperación mandan
+el enlace a `ascent://confirmar`; el sistema abre la app con esa URL y de ahí
+salen los dos tokens de la sesión. Es el mismo par que ya vive en AsyncStorage
+cuando entrás con contraseña — lo único distinto es de dónde salieron.
+
+Se escucha de las DOS formas y hacen falta las dos: la app puede estar cerrada
+cuando se toca el enlace —ahí llega como URL inicial— o abierta atrás, y ahí
+llega como evento. Con una sola, la mitad de las confirmaciones no entran y no
+hay forma de saber cuál mitad.
+
+El parseo vive en `nucleo/enlace.ts` y no en `movil/`, para poder probarlo:
+**los tokens vienen en el fragmento (`#`) o en la query (`?`)** según el flujo,
+y el fragmento `URL` no lo parsea solo. Equivocarse ahí no hace ruido — la app
+simplemente no entra, sin excepción que mirar, y el que confirmó la cuenta se
+queda en el login sin entender por qué. Hay diez tests con las URLs raras,
+incluida la de Expo Go (`exp://192.168.1.228:8081/--/confirmar#...`) y la de un
+enlace vencido, que no tiene tokens y no puede abrir nada.
+
+**LO QUE FALTA Y NO ES CÓDIGO:** `ascent://confirmar` tiene que estar en la
+lista blanca de Supabase (Authentication → URL Configuration → Redirect URLs).
+Sin eso, Supabase ignora el `redirect_to` y manda al sitio por omisión. Es una
+línea en el panel y la pone el humano: la clave de servicio no está —ni tiene
+que estar— en este repo.
 
 ### Inicio nativo: la racha, la semana y el botón
 

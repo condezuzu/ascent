@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Linking from 'expo-linking';
 import { supabase } from './src/supabase';
 import Login from './src/Login';
 import Inicio from './src/Inicio';
 import Onboarding from './src/Onboarding';
+import { sesionDesdeEnlace } from './src/enlace';
 
 /**
  * LA APP NATIVA — qué pantalla va según si hay sesión.
@@ -41,6 +43,24 @@ export default function App() {
   // dependencias de su carga, y una función nueva en cada render la haría
   // recargar en bucle.
   const sinNombre = useCallback(() => setSesion('sin-nombre'), []);
+
+  // EL ENLACE DEL CORREO. Se mira de las dos formas y hacen falta las dos: la
+  // app puede estar CERRADA cuando se toca el enlace —ahí llega como URL
+  // inicial— o abierta atrás, y ahí llega como evento. Con una sola, la mitad
+  // de las confirmaciones no entran y no hay forma de saber cuál mitad.
+  useEffect(() => {
+    let vivo = true;
+    Linking.getInitialURL().then(async (url) => {
+      if (vivo && (await sesionDesdeEnlace(url))) mirar();
+    });
+    const sub = Linking.addEventListener('url', async ({ url }) => {
+      if (await sesionDesdeEnlace(url)) mirar();
+    });
+    return () => {
+      vivo = false;
+      sub.remove();
+    };
+  }, [mirar]);
 
   useEffect(() => {
     mirar();

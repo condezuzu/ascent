@@ -74,6 +74,7 @@ import { ORDEN_ZONAS, gruposDeZona, gruposSinZona } from '../nucleo/ejercicios.t
 import { detectar, idDeSenal, umbralValido, unRm } from '../nucleo/estancamiento.ts';
 import { suavizarPorFecha, ultimosDias } from '../nucleo/peso.ts';
 import { PATRON_USUARIO, nombreValido } from '../nucleo/usuario.ts';
+import { tokensDeUrl } from '../nucleo/enlace.ts';
 import {
   alturaDelPulso,
   siguePulsando,
@@ -4065,6 +4066,54 @@ console.log('\n62. Los andamios tienen fecha de vencimiento');
   // Y que el registro no quede vacio por accidente: una lista vacia pasa el
   // test de arriba sin decir nada.
   chequear('el registro tiene entradas', ANDAMIOS.length > 0, true);
+}
+
+console.log('\n63. El enlace del correo que vuelve a la app');
+{
+  // EL ERROR QUE ESTO EVITA NO HACE RUIDO. Si el parseo falla, la app
+  // simplemente NO entra: el que confirmo la cuenta se queda mirando el login
+  // sin entender por que, y del lado del codigo no hay ninguna excepcion que
+  // mirar. Por eso se prueba con las URLs raras y no con un telefono.
+  const ok = { access_token: 'aaa', refresh_token: 'bbb' };
+
+  // El caso real: Supabase manda los tokens en el FRAGMENTO.
+  chequear(
+    'los saca del fragmento',
+    tokensDeUrl('ascent://confirmar#access_token=aaa&refresh_token=bbb&type=signup'),
+    ok
+  );
+  // Y en algunos flujos, en la query.
+  chequear(
+    'y de la query',
+    tokensDeUrl('ascent://confirmar?access_token=aaa&refresh_token=bbb'),
+    ok
+  );
+  // El esquema con host, que es como lo arma `Linking.createURL` en un
+  // development build.
+  chequear(
+    'con host tambien',
+    tokensDeUrl('ascent://ascent/confirmar#access_token=aaa&refresh_token=bbb'),
+    ok
+  );
+  // En Expo Go el esquema es `exp://` con la IP adentro.
+  chequear(
+    'y en Expo Go, con exp:// y puerto',
+    tokensDeUrl('exp://192.168.1.228:8081/--/confirmar#access_token=aaa&refresh_token=bbb'),
+    ok
+  );
+
+  // Lo que NO tiene que entrar.
+  chequear('sin tokens, nada', tokensDeUrl('ascent://confirmar'), null);
+  chequear('con uno solo, nada', tokensDeUrl('ascent://c#access_token=aaa'), null);
+  chequear('vacio', tokensDeUrl(''), null);
+  chequear('null', tokensDeUrl(null), null);
+  chequear('basura que no es URL', tokensDeUrl('no soy una url'), null);
+  // Un error de auth vuelve por el mismo camino: no hay tokens y no se entra.
+  chequear(
+    'un enlace vencido no abre sesion',
+    tokensDeUrl('ascent://confirmar#error=access_denied&error_code=otp_expired'),
+    null
+  );
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
