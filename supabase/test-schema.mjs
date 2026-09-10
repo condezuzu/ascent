@@ -3528,6 +3528,19 @@ console.log('\n56. El arbol del selector llega a los 100');
     }
   }
   chequear('se llega a los 100 ejercicios', llegan, 100);
+
+  // QUE ADMITEN PESO (migracion 31). Una marca es peso por repeticiones, asi
+  // que la pantalla de marcas filtra por esta columna. Se fija la lista de
+  // excepciones y no solo la cantidad: el dia que alguien marque medio
+  // catalogo como "sin peso", el numero cambiaria y la lista dice cual.
+  const sinPeso = (
+    await db.query('select id from ejercicios where not admite_peso order by id')
+  ).rows.map((f) => f.id);
+  chequear('los que no admiten peso son los isometricos', sinPeso, ['dead_bug', 'plancha', 'plancha_lateral']);
+  const dotsConPeso = (
+    await db.query('select count(*)::int n from ejercicios where cuenta_dots and admite_peso')
+  ).rows[0].n;
+  chequear('y los tres del DOTS admiten peso, obviamente', dotsConPeso, 3);
 }
 
 console.log('\n57. El detector de estancamiento');

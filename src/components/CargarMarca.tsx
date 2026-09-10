@@ -170,9 +170,13 @@ export default function CargarMarca({
         {error && <p className="error-msg">{error}</p>}
       </div>
 
+      {/* Solo los que admiten peso: una marca es peso por repeticiones, y
+          "Plancha, 40 kg × 1" no significa nada (migración 31). El contador de
+          series los ofrece TODOS: ahí se cuentan series, que es algo que una
+          plancha sí tiene. */}
       {abriendo && (
         <SelectorEjercicio
-          ejercicios={ejercicios}
+          ejercicios={ejercicios.filter((e) => e.admite_peso !== false)}
           valor={ejercicio}
           alElegir={(id) => id && setEjercicio(id)}
           alCerrar={() => setAbriendo(false)}

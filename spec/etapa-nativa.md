@@ -453,10 +453,17 @@ haciendo, no su categoría biomecánica.
 - **Sin cardio.** El contador cuenta series; veinte minutos de caminadora no
   son cuatro series de nada.
 
-**Lo que sigue pendiente:** las marcas de fuerza ahora ofrecen las 100, no las
-31. Nada se rompe —`cuenta_dots` sigue mandando— pero se puede cargar un PR de
-"Plancha", que es un ejercicio de tiempo y no de peso. Si molesta, la salida
-es una columna que marque cuáles admiten peso, no volver a partir la tabla.
+**Y lo que quedaba pendiente, resuelto el 2026-09-09 (migración 31):** las
+marcas ofrecían los 100, así que se podía cargar un PR de "Plancha", que es un
+ejercicio de tiempo y no de peso. Se agregó `ejercicios.admite_peso`, y la
+pantalla de marcas filtra por ahí. **No se partió la tabla**, que era la otra
+salida: el catálogo sigue siendo uno y cada pantalla filtra lo suyo.
+
+La lista de excepciones es corta a propósito —`plancha`, `plancha_lateral`,
+`dead_bug`— y por omisión todo admite peso: flexiones con chaleco, crunch con
+un disco, elevación de piernas con una mancuerna. Marcar todo eso como "sin
+peso" sería decidir por el usuario cómo entrena. Quedan afuera solo los
+isométricos, donde lo que se mide es tiempo.
 
 ## 13f. PRIORIDAD DE LA TANDA 3 — el botón de volumen suma una serie
 

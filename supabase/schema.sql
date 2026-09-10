@@ -210,6 +210,10 @@ create table public.ejercicios (
   nombre text not null,
   grupo text not null,
   cuenta_dots boolean not null default false,
+  -- Si una marca en kilos significa algo (migración 31). Por omisión sí: casi
+  -- todo admite peso aunque no se use así —flexiones con chaleco, crunch con
+  -- un disco—. Quedan afuera los isométricos, donde lo que se mide es tiempo.
+  admite_peso boolean not null default true,
   orden int not null default 0
 );
 
@@ -341,6 +345,14 @@ insert into public.ejercicios (id, nombre, grupo, cuenta_dots, orden) values
   ('dead_bug',              'Dead bug',                    'core',    false, 623),
   ('press_pallof',          'Press Pallof',                'core',    false, 624)
 on conflict (id) do nothing;
+
+-- Los isométricos: lo que se mide es tiempo, y un número en kilos no tiene
+-- con qué compararse. Va como `update` y no en el `insert` para que la lista
+-- de excepciones se lea de un vistazo, en vez de esconderse en una columna
+-- más de cien filas.
+update public.ejercicios
+   set admite_peso = false
+ where id in ('plancha', 'plancha_lateral', 'dead_bug');
 
 -- -------------------------------------------------------------
 -- Las sesiones
@@ -1581,7 +1593,7 @@ language sql stable security definer set search_path = public as $$
   select 'catálogo de ejercicios',
          count(*) || ' ejercicios ' ||
          huella(string_agg(id || ' ' || nombre || ' ' || grupo || ' ' ||
-                           cuenta_dots || ' ' || orden, '|' order by id))
+                           cuenta_dots || ' ' || admite_peso || ' ' || orden, '|' order by id))
     from ejercicios
 $$;
 

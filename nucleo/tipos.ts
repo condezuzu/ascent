@@ -152,6 +152,11 @@ export type Ejercicio = {
   nombre: string;
   grupo: string;
   cuenta_dots: boolean;
+  // Si una marca en kilos significa algo (migración 31). Opcional en el tipo
+  // porque el catálogo se pide con `select *` y el código puede llegar antes
+  // que la migración: sin la columna, `undefined` es "sí", que es el valor
+  // por omisión de la base.
+  admite_peso?: boolean;
   orden: number;
 };
 
