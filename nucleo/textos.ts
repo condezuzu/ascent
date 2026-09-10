@@ -34,6 +34,24 @@
 
 export const T = {
   // ---------------------------------------------------------------
+  // EL DETECTOR DE ESTANCAMIENTO. Describe, no juzga y no receta: cada
+  // frase es un hecho con fecha, y lo único que se ofrece es lo único que la
+  // app puede hacer —guardar una marca—. La racha NO se nombra acá nunca.
+  estancamiento: {
+    marcaQuieta: (ejercicio: string, semanas: number) =>
+      `Tu mejor ${ejercicio.toLowerCase()} sigue siendo el de hace ${semanas} semanas.`,
+    ejercicioDejado: (ejercicio: string, semanas: number) =>
+      `Hace ${semanas} semanas que no anotas ${ejercicio.toLowerCase()}.`,
+    anotarUna: '¿Anotas una nueva?',
+    // Las dos filas sin verbo. No hay frase a propósito: la conclusión la
+    // saca quien mira, y por eso se la cree.
+    ultimas4: 'Últimas 4 semanas',
+    anteriores4: 'Las 4 anteriores',
+    dias: (n: number) => `${n} días`,
+    minutos: (n: number) => `${n} min`,
+    descartar: 'No mostrar esto',
+  },
+
   // Las zonas del selector de ejercicios. Van en minúscula porque son
   // etiquetas de navegación, no títulos.
   ejercicios: {
@@ -420,6 +438,12 @@ export const T = {
     mejorNo: 'Mejor no',
 
     comoSeCompara: 'Cómo se compara la fuerza',
+    estancamiento: 'Avisos de estancamiento',
+    estancamientoSi: 'Sí',
+    estancamientoNo: 'No',
+    semanas: (n: number) => `${n} semanas`,
+    estancamientoNota: (n: number) =>
+      `Una sola señal por vez, en Stats, cuando algo lleva ${n} semanas sin moverse. Nunca el día que entrenas.`,
 
     // El banco de trabajo del automático por ubicación. Se saca cuando esté
     // probado: no es una pantalla de la app.

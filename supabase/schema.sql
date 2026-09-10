@@ -63,6 +63,16 @@ create table public.profiles (
   -- se guardaran libras, cambiar la preferencia reinterpretaría el historial
   -- entero y la tendencia daría un salto que no ocurrió.
   unidad_peso text not null default 'kg' check (unidad_peso in ('kg','lb')),
+  -- El detector de estancamiento (migración 30). Van en la CUENTA y no en el
+  -- aparato: cada cuánto querés que te avisen es una pregunta sobre tu
+  -- entrenamiento, y la respuesta es la misma en el teléfono y en la
+  -- computadora. Por omisión seis semanas: ocho llega cuando ya lo sabías y
+  -- tres le da la lata a quien está en mantenimiento.
+  umbral_estancamiento int not null default 6
+    check (umbral_estancamiento in (3, 6, 8)),
+  -- Un aviso que no se puede apagar deja de ser un aviso: es una condición de
+  -- uso.
+  avisos_estancamiento boolean not null default true,
   -- Sexo del levantador, SOLO para elegir los coeficientes del DOTS (§16.7).
   -- Es opcional y null significa "sin DOTS", no "por defecto": calcularlo con
   -- la fórmula equivocada da un dato falso que ordena mal el ranking y que
@@ -1768,7 +1778,8 @@ grant select                 on public.sesiones     to authenticated;
 -- visibilidad_default y unidad_peso son preferencias del dueño y no afectan a
 -- nadie más, así que se escriben directo como username y avatar_url.
 grant update (username, avatar_url, visibilidad_default, unidad_peso, sexo,
-              duracion_descanso, gimnasio_lat, gimnasio_lon, gimnasio_radio)
+              duracion_descanso, gimnasio_lat, gimnasio_lon, gimnasio_radio,
+              umbral_estancamiento, avisos_estancamiento)
   on public.profiles to authenticated;
 grant update (estado)      on public.friendships to authenticated;
 grant update (estado)      on public.challenges  to authenticated;

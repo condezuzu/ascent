@@ -10,6 +10,7 @@ import type { Log, Peso } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Nav from '@/components/Nav';
+import Estancamiento from '@/components/Estancamiento';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import SeccionFuerza from '@/components/SeccionFuerza';
@@ -101,6 +102,12 @@ export default function Estadisticas() {
         <GloboPrimeraVez cual="stats">
           {T.stats.globo}
         </GloboPrimeraVez>
+
+        {/* EL AVISO DE ESTANCAMIENTO, si hay uno. Arriba de los números y
+            no al final: escondido abajo sería un aviso que se muestra donde
+            no molesta, o sea uno que no quiere ser leído. Se puede descartar
+            y no vuelve por seis semanas. */}
+        <Estancamiento registradoHoy={entrenados.some((l) => l.fecha === hoy)} />
 
         <div className="stat-grilla">
           <div className="stat-celda">

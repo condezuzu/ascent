@@ -71,6 +71,7 @@ import {
 } from '../nucleo/bloques.ts';
 import { cargarElMotor, esPreferenciaFondo } from '../nucleo/fondo.ts';
 import { ORDEN_ZONAS, gruposDeZona, gruposSinZona } from '../nucleo/ejercicios.ts';
+import { detectar, idDeSenal, umbralValido, unRm } from '../nucleo/estancamiento.ts';
 import {
   alturaDelPulso,
   siguePulsando,
@@ -3527,6 +3528,175 @@ console.log('\n56. El arbol del selector llega a los 100');
     }
   }
   chequear('se llega a los 100 ejercicios', llegan, 100);
+}
+
+console.log('\n57. El detector de estancamiento');
+{
+  // Fechas fijas: un detector que se prueba con `hoy` de verdad falla solo el
+  // dia que cambia el mes.
+  const HOY = '2026-09-09';
+  const marca = (ejercicio, fecha, peso, reps = 1, es_real = true) =>
+    ({ ejercicio, fecha, peso, reps, es_real });
+
+  chequear('el 1RM de una sola repeticion es el peso', unRm(marca('x', HOY, 100)), 100);
+  chequear(
+    'y con varias lo estima Epley',
+    Math.round(unRm({ peso: 100, reps: 6, es_real: false })),
+    120
+  );
+
+  // ---- la marca que no se mueve ----
+  //
+  // El mejor es viejo Y despues siguio anotando: eso es estancarse. Sin lo
+  // segundo seria "lo dejo de medir", que es otra cosa y otro mensaje.
+  const quieta = detectar({
+    marcas: [
+      marca('press_banca', '2026-05-01', 100),
+      marca('press_banca', '2026-07-20', 97.5),
+      marca('press_banca', '2026-08-30', 97.5),
+    ],
+    sesiones: [],
+    hoy: HOY,
+    umbral: 6,
+  });
+  chequear('marca quieta: la detecta', quieta?.tipo, 'marca_quieta');
+  chequear('y dice de cuando es el mejor', quieta?.semanas, 18);
+
+  // Con umbral de 3 semanas tambien; con uno de 8, tambien (19 > 8). Lo que
+  // cambia el umbral es el caso de al lado:
+  const reciente = [
+    marca('sentadilla', '2026-08-12', 140), // cuatro semanas justas
+    marca('sentadilla', '2026-08-27', 138),
+    marca('sentadilla', '2026-09-03', 138),
+  ];
+  chequear(
+    'con umbral 3 semanas, tres semanas alcanzan',
+    detectar({ marcas: reciente, sesiones: [], hoy: HOY, umbral: 3 })?.tipo,
+    'marca_quieta'
+  );
+  chequear(
+    'con umbral 6, todavia no',
+    detectar({ marcas: reciente, sesiones: [], hoy: HOY, umbral: 6 }),
+    null
+  );
+
+  // ---- lo que NO es estancamiento ----
+  chequear(
+    'con menos de tres marcas no dice nada',
+    detectar({
+      marcas: [marca('curl_barra', '2026-04-01', 40), marca('curl_barra', '2026-04-08', 40)],
+      sesiones: [],
+      hoy: HOY,
+      umbral: 6,
+    }),
+    null
+  );
+  chequear(
+    'si el mejor es el ULTIMO, no hay estancamiento',
+    detectar({
+      marcas: [
+        marca('peso_muerto', '2026-05-01', 150),
+        marca('peso_muerto', '2026-06-01', 160),
+        marca('peso_muerto', '2026-06-20', 170),
+      ],
+      sesiones: [],
+      hoy: HOY,
+      umbral: 6,
+    })?.tipo,
+    'ejercicio_dejado'
+  );
+
+  // ---- el ejercicio dejado ----
+  const dejado = detectar({
+    marcas: [
+      marca('dominadas', '2026-03-01', 10),
+      marca('dominadas', '2026-03-10', 12),
+      marca('dominadas', '2026-03-20', 14),
+    ],
+    sesiones: [],
+    hoy: HOY,
+    umbral: 6,
+  });
+  chequear('ejercicio dejado: lo detecta', dejado?.tipo, 'ejercicio_dejado');
+
+  // ---- la sesion que se achica ----
+  const dia = (n) => `2026-0${n < 10 ? '8' : '8'}-${String(n).padStart(2, '0')}`;
+  const sesiones = [];
+  // Las 4 anteriores: ocho sesiones de 60 minutos.
+  for (let d = 16; d <= 23; d++) sesiones.push({ fecha: `2026-07-${d}`, minutos: 60 });
+  // Las ultimas 4: ocho de 25.
+  for (let d = 20; d <= 27; d++) sesiones.push({ fecha: `2026-08-${d}`, minutos: 25 });
+  const corta = detectar({ marcas: [], sesiones, hoy: HOY, umbral: 6 });
+  chequear('la sesion que se achica: la detecta', corta?.tipo, 'sesion_mas_corta');
+  chequear('con las dos medianas', [corta?.ahora.minutos, corta?.antes.minutos], [25, 60]);
+
+  // Y NO la detecta con pocas sesiones: dos datos no son una mediana.
+  chequear(
+    'con menos de cuatro sesiones por ventana, nada',
+    detectar({
+      marcas: [],
+      sesiones: [
+        { fecha: '2026-07-20', minutos: 60 },
+        { fecha: '2026-08-25', minutos: 20 },
+      ],
+      hoy: HOY,
+      umbral: 6,
+    }),
+    null
+  );
+
+  // ---- una sola señal por vez, y la sesion primero ----
+  const dos = detectar({
+    marcas: [
+      marca('press_banca', '2026-05-01', 100),
+      marca('press_banca', '2026-07-20', 97.5),
+      marca('press_banca', '2026-08-30', 97.5),
+    ],
+    sesiones,
+    hoy: HOY,
+    umbral: 6,
+  });
+  chequear('con dos cosas a la vez, se muestra UNA', dos?.tipo, 'sesion_mas_corta');
+
+  // ---- descartar calla esa señal, y solo esa ----
+  const id = idDeSenal(dos);
+  const calladas = { [id]: '2026-09-01' };
+  chequear(
+    'descartada, no vuelve',
+    detectar({ marcas: [], sesiones, hoy: HOY, umbral: 6, silenciadas: calladas }),
+    null
+  );
+  chequear(
+    'pero vuelve pasadas las seis semanas',
+    detectar({
+      marcas: [],
+      sesiones,
+      hoy: HOY,
+      umbral: 6,
+      silenciadas: { [id]: '2026-07-01' },
+    })?.tipo,
+    'sesion_mas_corta'
+  );
+  chequear(
+    'y callar una NO calla la otra',
+    detectar({
+      marcas: [
+        marca('press_banca', '2026-05-01', 100),
+        marca('press_banca', '2026-07-20', 97.5),
+        marca('press_banca', '2026-08-30', 97.5),
+      ],
+      sesiones,
+      hoy: HOY,
+      umbral: 6,
+      silenciadas: calladas,
+    })?.tipo,
+    'marca_quieta'
+  );
+
+  // ---- el umbral que llega de la base ----
+  chequear('un umbral raro cae en el de siempre', umbralValido(5), 6);
+  chequear('y uno valido se respeta', umbralValido(3), 3);
+  chequear('sin dato tambien', umbralValido(undefined), 6);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

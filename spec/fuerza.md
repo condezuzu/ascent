@@ -315,6 +315,90 @@ Al implementar, cuidar dos cosas:
   es un número que pide contexto —banda, ranking, comparación— y ese contexto
   vive en Stats.
 
+### 16.10 El detector de estancamiento — implementado (migración 30)
+
+Aprobado el 2026-08-30 en la conversación, **implementado el 2026-09-09**.
+Entre una cosa y la otra estuvo aprobado y sin escribir en ningún archivo, que
+es cómo se pierde una decisión: el humano tuvo que reclamarlo.
+
+#### Qué se detecta, y con qué
+
+| Señal | Regla | Por qué |
+|---|---|---|
+| **Marca quieta** | el mejor 1RM de un ejercicio no mejora en N semanas **y** en esa ventana cargaste alguna marca | la segunda condición separa estancarse de haberlo dejado |
+| **Ejercicio dejado** | tenía ≥3 marcas y hace N semanas que no aparece | no es estancamiento, es olvido, y el mensaje es otro |
+| **La sesión que se achica** | mediana de duración de las últimas 4 semanas contra las 4 anteriores, con ≥4 sesiones en cada ventana y una caída de ≥25% | es el dato más confiable: los minutos se registran DURANTE la sesión, no se recuerdan después |
+
+**N lo elige el usuario**: 3, 6 u 8 semanas, en Ajustes. Por omisión 6. Y hay
+un interruptor para no ver ninguno: un aviso que no se puede apagar deja de
+ser un aviso y pasa a ser una condición de uso.
+
+Las dos preferencias viven en `profiles` y no en el aparato, al revés que el
+fondo del espacio: cada cuánto querés que te avisen es una pregunta sobre tu
+entrenamiento, no sobre este teléfono.
+
+#### La cuarta señal de la propuesta no tiene código, y no es un olvido
+
+Era "racha alta con sesiones cortas". Como **la racha no se nombra nunca en un
+aviso de estancamiento**, esa señal sin nombrarla es exactamente la tercera,
+con la misma comparación de dos filas. Un tipo aparte sería el mismo aviso con
+otro nombre interno.
+
+#### Lo que NO se puede detectar, y no se finge
+
+- **Volumen.** No hay series×reps×peso por sesión: hay un contador de series y
+  los PRs. "Tu volumen de pecho bajó 20%" sería inventado.
+- **Desbalance por grupo muscular.** `ejercicios.grupo` existe, pero la app
+  sabe **qué anotaste**, no qué entrenaste. Avisarle "no entrenas espalda" a
+  alguien que entrena espalda y no la anota es exactamente el aviso que hace
+  que se apaguen los avisos para siempre.
+
+#### Cuándo aparece
+
+- **Nunca en Inicio.** Inicio es la racha, y punto. Vive en Stats: el que abre
+  Stats **pidió** que lo evalúen.
+- **Nunca durante una sesión y nunca el día que registrás.** El momento de
+  hacer no es el momento de auditar.
+- **Una sola señal por vez**, jamás una lista de tus fracasos. Prioridad: la
+  sesión que se achica —es de ahora, y con sesiones de veinte minutos ningún
+  ejercicio va a subir—, después la marca quieta, después el ejercicio dejado.
+- **Recién con historia suficiente**: ≥3 marcas en ese ejercicio. Con dos no
+  hay tendencia, hay dos puntos.
+- **Se puede descartar**, y descartarla calla *esa* señal seis semanas. Nada
+  de "recordármelo después".
+
+#### Cómo se dice
+
+**Describe, no juzga y no receta.** No es un entrenador, y decir "prueba subir
+2,5 kg" lo convierte en uno malo.
+
+> Mal: *"Llevas 3 meses sin mejorar en press de banca."* → es un veredicto.
+>
+> Bien: **"Tu mejor press de banca sigue siendo el de hace 11 semanas."**
+> ¿Anotas una nueva?
+
+Es un hecho con fecha, y lo único que ofrece es **lo único que la app puede
+hacer** —guardar una marca—, no un consejo de entrenamiento.
+
+Para la sesión que se achica, el truco es **no escribir la frase**:
+
+> Últimas 4 semanas · **22 días** · **28 min**
+> Las 4 anteriores · 19 días · **51 min**
+
+Dos filas, sin verbo. Nadie se siente reprochado por sus propios números
+puestos uno al lado del otro; la conclusión la saca quien mira, y por eso se
+la cree.
+
+Y la regla que no se rompe: **la racha nunca se nombra acá.** Es lo único que
+funciona sin fricción en toda la app; contaminarla con crítica arruina el
+motor entero.
+
+#### Dónde vive el código
+
+`nucleo/estancamiento.ts` son funciones puras sobre fechas y devuelve
+**hechos**, no frases: las palabras están en `textos.ts`. Un módulo que
+devuelve frases armadas termina, tarde o temprano, devolviendo consejos.
+
 ### 16.9 Modelo de datos — implementado (migración 08)
 
 - `profiles.sexo`, opcional y nullable (§16.7). Null significa "sin DOTS", no

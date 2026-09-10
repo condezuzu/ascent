@@ -3344,6 +3344,49 @@ body.con-franja.con-accion .pantalla {
   padding-bottom: calc(190px + env(safe-area-inset-bottom));
 }
 
+/* ---------- el aviso de estancamiento ----------
+   Sin caja, sin color de alarma y sin icono: es un hecho, no una alerta. Lo
+   único que lo separa del resto es una línea a la izquierda, que es lo mismo
+   que hace la cita. Un aviso que grita se apaga; uno que se lee, se piensa. */
+.estancamiento {
+  border-left: 2px solid color-mix(in srgb, var(--pal-principal) 45%, transparent);
+  padding-left: 14px;
+}
+.estancamiento p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--sub);
+}
+.estancamiento .boton-texto {
+  width: auto;
+  padding: 8px 0 0;
+  font-size: 12px;
+  color: var(--apagado);
+}
+/* Las dos filas sin verbo. Los números en cifra tabular para que las dos
+   columnas caigan en la misma vertical: si no se alinean, no se comparan. */
+.estancamiento-filas > div {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 0;
+}
+.estancamiento-filas .cuando {
+  flex: 1;
+  font-size: 13px;
+  color: var(--apagado);
+}
+.estancamiento-filas .dato {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  color: var(--sub);
+  min-width: 62px;
+  text-align: right;
+}
+.estancamiento-filas .dato.fuerte {
+  color: var(--pal-claro);
+}
+
 /* ---------- el selector de ejercicios ----------
    Cien nombres no entran en una rueda: son dos toques, zona y músculo. Las
    filas son grandes porque se tocan con el pulgar, de pie y sin mirar mucho;

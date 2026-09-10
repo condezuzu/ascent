@@ -13,6 +13,7 @@ import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import BajaDeCuenta from '@/components/ajustes/BajaDeCuenta';
 import ComoSeCompara from '@/components/ajustes/ComoSeCompara';
+import Estancamiento from '@/components/ajustes/Estancamiento';
 import Diagnostico from '@/components/ajustes/Diagnostico';
 import CorregirDias from '@/components/ajustes/CorregirDias';
 import DescansoEntreSeries from '@/components/ajustes/DescansoEntreSeries';
@@ -106,6 +107,9 @@ export default function Ajustes() {
         <FotosNuevas perfil={perfil} alCambiar={alCambiar} />
         <UnidadPeso perfil={perfil} alCambiar={alCambiar} />
         <Sexo perfil={perfil} alCambiar={alCambiar} />
+        {/* Va después del sexo porque los dos son del módulo de fuerza:
+            uno lo enciende y el otro decide cuánto habla. */}
+        <Estancamiento perfil={perfil} alCambiar={alCambiar} />
         <Sugerencias userId={perfil.id} />
 
         <InstalarPWA />

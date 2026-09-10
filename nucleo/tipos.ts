@@ -90,6 +90,12 @@ export type Perfil = {
   gimnasio_lat: number | null;
   gimnasio_lon: number | null;
   gimnasio_radio: number;
+  // El detector de estancamiento (migración 30). Opcionales en el tipo porque
+  // la pantalla pide `select *` y el código puede llegar antes que la
+  // migración: sin las columnas, `undefined` significa "el valor por omisión
+  // de la base", que es lo que la base va a usar igual.
+  umbral_estancamiento?: number;
+  avisos_estancamiento?: boolean;
 };
 
 export type Log = {
