@@ -521,6 +521,75 @@ returns int[] language sql stable security definer set search_path = public as $
     '{}'::int[]);
 $$;
 
+-- -------------------------------------------------------------
+-- LAS VIDAS (migración 32)
+-- -------------------------------------------------------------
+-- Tres por mes, se aplican solas y no se acumulan. El porqué de cada
+-- una de esas tres cosas está en `supabase/migracion-32-vidas.sql` y en
+-- `spec/producto.md`.
+create table if not exists public.vidas_usadas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  -- El día que quedó cubierto. Único por usuario: cubrir dos veces el mismo
+  -- día sería gastar dos vidas por una sola falta.
+  fecha date not null,
+  creado timestamptz not null default now(),
+  unique (user_id, fecha)
+);
+create index if not exists vidas_por_usuario on public.vidas_usadas (user_id, fecha);
+
+alter table public.vidas_usadas enable row level security;
+
+-- Solo el dueño las ve. Y NADIE las escribe desde el cliente: las pone
+-- `verificar_perdida`, que es SECURITY DEFINER. Una vida que el teléfono
+-- pudiera insertar sería una racha que el teléfono puede inventar.
+drop policy if exists "vidas: solo dueño" on public.vidas_usadas;
+create policy "vidas: solo dueño" on public.vidas_usadas for select
+  using (user_id = auth.uid());
+
+grant select on public.vidas_usadas to authenticated;
+
+create or replace function public.vidas_por_mes()
+returns int language sql immutable as $$ select 3; $$;
+
+/**
+ * Las que quedan en el mes de `p_dia`. Se cuenta contra las filas, así que
+ * "recargar" no es un proceso que corra en ningún lado: es que cambió el mes.
+ */
+create or replace function public.vidas_disponibles(p_user uuid, p_dia date)
+returns int language sql stable security definer set search_path = public as $$
+  select greatest(0, vidas_por_mes() - (
+    select count(*)::int from vidas_usadas
+     where user_id = p_user
+       and date_trunc('month', fecha) = date_trunc('month', p_dia)
+  ));
+$$;
+
+/** Lo que necesita la interfaz: cuántas quedan y cuáles se usaron este mes. */
+create or replace function public.mis_vidas()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'total', vidas_por_mes(),
+    'quedan', vidas_disponibles(auth.uid(), mi_hoy()),
+    -- Las de ESTE mes, para dibujar los puntos, y la última de todas para el
+    -- aviso del día siguiente —que puede ser del mes pasado si faltaste un 31.
+    'del_mes', coalesce((
+      select jsonb_agg(fecha order by fecha)
+        from vidas_usadas
+       where user_id = auth.uid()
+         and date_trunc('month', fecha) = date_trunc('month', mi_hoy())
+    ), '[]'::jsonb),
+    'ultima', (
+      select max(fecha) from vidas_usadas where user_id = auth.uid()
+    )
+  );
+$$;
+
+revoke execute on function public.mis_vidas() from public, anon;
+grant execute on function public.mis_vidas() to authenticated;
+revoke execute on function public.vidas_disponibles(uuid, date) from public, anon;
+revoke execute on function public.vidas_por_mes() from public, anon;
+
 create or replace function public.calcular_racha(p_user uuid, p_hasta date)
 returns int language plpgsql stable security definer set search_path = public as $$
 declare
@@ -542,6 +611,9 @@ begin
     -- la de hoy: cambiar de rutina nunca puede alterar el pasado.
     elsif extract(dow from d)::int = any(descansos_vigentes(p_user, d)) then
       null; -- día de descanso sin log: no corta
+    -- Un día cubierto por una vida: tampoco corta, y tampoco suma.
+    elsif exists (select 1 from vidas_usadas where user_id = p_user and fecha = d) then
+      null;
     else
       exit;
     end if;
@@ -570,9 +642,12 @@ begin
   loop
     if anterior is not null then
       -- se revisan los días entre medio: cortan salvo que fueran de descanso
+      -- o que una vida los haya cubierto
       d := anterior + 1;
       while d < r.fecha loop
-        if not (extract(dow from d)::int = any(descansos_vigentes(p_user, d))) then
+        if not (extract(dow from d)::int = any(descansos_vigentes(p_user, d)))
+           and not exists (select 1 from vidas_usadas where user_id = p_user and fecha = d)
+        then
           corriente := 0;
           exit;
         end if;
@@ -732,6 +807,8 @@ declare
   nueva_racha int;
   hoy date := mi_hoy();
   resuelto date;
+  d date;
+  cubiertos date[] := '{}';
 begin
   -- primero el pendiente: si se registrara después, el día contaría recién
   -- mañana y la racha se podría cortar por un día que la persona sí entrenó
@@ -748,6 +825,43 @@ begin
   if viva >= perfil.racha_actual then
     return jsonb_build_object('perdida', false, 'pendiente_resuelto', resuelto);
   end if;
+
+  -- HAY PÉRDIDA. Se intenta cubrir hacia atrás desde ayer, día por día, y se
+  -- corta en el primero que no se pueda: sin vidas en ese mes, o porque ya
+  -- llegamos a un día que no era una falta.
+  d := hoy - 1;
+  loop
+    exit when perfil.perdida_fecha is not null and d <= perfil.perdida_fecha;
+    -- ¿este día es una falta?
+    exit when exists (select 1 from logs where user_id = uid and fecha = d);
+    exit when extract(dow from d)::int = any(descansos_vigentes(uid, d));
+    exit when exists (select 1 from vidas_usadas where user_id = uid and fecha = d);
+    -- ¿queda una vida de ESE mes?
+    exit when vidas_disponibles(uid, d) <= 0;
+    insert into vidas_usadas (user_id, fecha) values (uid, d)
+      on conflict (user_id, fecha) do nothing;
+    cubiertos := cubiertos || d;
+    d := d - 1;
+    -- tope de seguridad: nunca se pueden gastar más que dos meses de cuota
+    exit when array_length(cubiertos, 1) >= vidas_por_mes() * 2;
+  end loop;
+
+  if array_length(cubiertos, 1) > 0 then
+    viva := perfil.racha_base + calcular_racha(uid, hoy - 1);
+    if viva >= perfil.racha_actual then
+      return jsonb_build_object(
+        'perdida', false,
+        'pendiente_resuelto', resuelto,
+        'vidas_usadas', to_jsonb(cubiertos),
+        'vidas_quedan', vidas_disponibles(uid, hoy)
+      );
+    end if;
+  end if;
+
+  -- No alcanzó: la racha se corta igual, y las vidas gastadas NO se devuelven
+  -- —el día que cubrieron sigue cubierto—. Devolverlas sería premiar la
+  -- falta larga: el que faltó seis días terminaría el mes con más vidas que
+  -- el que faltó dos.
   nueva_racha := greatest(0, perfil.racha_actual - 10);
   nuevo_rango := rango_de_racha(nueva_racha);
   update profiles set
@@ -757,7 +871,9 @@ begin
     perdida_fecha = hoy - 1
   where id = uid;
   return jsonb_build_object('perdida', true, 'rango_anterior', perfil.rango_actual,
-    'rango_nuevo', nuevo_rango, 'racha', nueva_racha, 'pendiente_resuelto', resuelto);
+    'rango_nuevo', nuevo_rango, 'racha', nueva_racha, 'pendiente_resuelto', resuelto,
+    'vidas_usadas', to_jsonb(cubiertos),
+    'vidas_quedan', vidas_disponibles(uid, hoy));
 end;
 $$;
 

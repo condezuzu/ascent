@@ -28,6 +28,7 @@ import ResumenSesion from '@/components/ResumenSesion';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import Bloque from '@/components/Bloque';
 import DiaSumado from '@/components/DiaSumado';
+import VidaUsada from '@/components/VidaUsada';
 import AccionPrincipal from '@/components/AccionPrincipal';
 import NumeroQueCuenta from '@/components/NumeroQueCuenta';
 import Avatar from '@/components/Avatar';
@@ -66,6 +67,17 @@ export default function Principal() {
   // El día que se acaba de sumar, para la animación. Ver `DiaSumado`.
   const [sumando, setSumando] = useState(false);
   const [perdida, setPerdida] = useState(false);
+  // Los días que `verificar_perdida` acaba de cubrir con una vida, si cubrió
+  // alguno. Viene de la MISMA llamada que decide la pérdida, así que no hay
+  // que guardar en ningún lado si ya se mostró: en la próxima llamada no hay
+  // nada nuevo que cubrir y el aviso no vuelve.
+  // Los días de este mes que una vida cubrió, para la tira semanal.
+  const [cubiertos, setCubiertos] = useState<string[]>([]);
+  const [vidaUsada, setVidaUsada] = useState<{
+    dias: string[];
+    quedan: number;
+    total: number;
+  } | null>(null);
   // El unico momento en que es probable que la persona este parada en el
   // gimnasio es JUSTO despues de registrar el dia. Ahi se pide el punto, y
   // solo ahi. Nunca al empezar la sesion (§13): a esa hora casi nadie llego.
@@ -139,6 +151,16 @@ export default function Principal() {
     setLogs(ls ?? []);
     setDescansos((cfgs ?? []) as ConfigDescanso[]);
 
+    if (Array.isArray(v?.vidas_usadas) && v.vidas_usadas.length > 0) {
+      setVidaUsada({
+        dias: v.vidas_usadas as string[],
+        quedan: Number(v.vidas_quedan ?? 0),
+        // El total lo dice la base y no una constante del cliente: si algún
+        // día cambia, cambia en un solo lado.
+        total: Number(v.vidas_usadas.length) + Number(v.vidas_quedan ?? 0),
+      });
+    }
+
     // Si hubo pérdida, el perfil que trajimos quedó viejo: se relee.
     if (v?.perdida) {
       setPerdida(true);
@@ -162,6 +184,14 @@ export default function Principal() {
     // Las marcas también van después de dibujar, y por la misma razón que la
     // línea social: son un agregado, no lo que el usuario vino a ver. Si la
     // migración todavía no corrió, el RPC no existe y la línea no aparece.
+    // Los días cubiertos, para que la tira no dibuje un agujero donde hubo
+    // una vida. Va DESPUÉS de dibujar, como la línea de marcas: es un
+    // agregado, no lo que el usuario vino a ver, y no puede costarle un
+    // viaje más al arranque.
+    supabase.rpc('mis_vidas').then(({ data, error }) => {
+      if (!error && Array.isArray(data?.del_mes)) setCubiertos(data.del_mes as string[]);
+    });
+
     supabase.rpc('mi_fuerza').then(({ data }) => {
       const f = data as MiFuerza | null;
       if (f) setMarcas(lineaDeMarcas(f.marcas, p.unidad_peso ?? 'kg'));
@@ -404,6 +434,12 @@ export default function Principal() {
           )}
         </div>
 
+        {/* El aviso de la vida va ARRIBA de todo lo demás: es lo que cambió
+            desde la última vez que abriste. */}
+        {vidaUsada && !entrenando && (
+          <VidaUsada dias={vidaUsada.dias} quedan={vidaUsada.quedan} total={vidaUsada.total} />
+        )}
+
         {avisoTiempo && <p className="aviso-tiempo">{T.inicio.ultimoTramo(racha + 1)}</p>}
         {perdida && (
           <p className="aviso-tiempo">{T.inicio.perdida}</p>
@@ -515,7 +551,7 @@ export default function Principal() {
         )}
         {sesion.estado.aviso && <p className="ok-msg">{sesion.estado.aviso}</p>}
 
-        <TiraSemanal logs={logs} descansos={descansos} />
+        <TiraSemanal logs={logs} descansos={descansos} cubiertos={cubiertos} />
 
         {/* Los tres pesos, una sola línea, y SOLO si hay marcas cargadas
             (§16.8): al que no usa el módulo la pantalla le queda igual que

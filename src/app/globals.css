@@ -497,6 +497,20 @@ textarea::placeholder {
   background: var(--apagado);
   border-radius: 1px;
 }
+/* cubierto por una vida: el aro del día no registrado, con un punto adentro.
+   NO se dibuja como entrenado —la racha diría la verdad y el calendario
+   mentiría— ni como vacío, porque no es un día perdido. Es un tercer estado y
+   se ve como lo que es: un día que no fue pero que no cortó nada. */
+.tira-punto.cubierto {
+  border: 1px solid color-mix(in srgb, var(--pal-principal) 40%, transparent);
+}
+.tira-punto.cubierto::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--pal-claro) 45%, transparent);
+}
 .tira-punto.hoy {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--pal-claro) 55%, transparent);
 }
@@ -3355,6 +3369,96 @@ body.con-accion .pantalla {
 /* Y con las dos cosas a la vez —franja de sesión y acción— se suman. */
 body.con-franja.con-accion .pantalla {
   padding-bottom: calc(190px + env(safe-area-inset-bottom));
+}
+
+/* ---------- leer un día en el gráfico de peso ----------
+   La línea vertical y el punto salen del mismo dedo. El lienzo captura el
+   puntero para que arrastrar fuera del gráfico siga leyendo: si se cortara en
+   el borde, el último día —que es el que más se mira— sería el más difícil
+   de agarrar. */
+.grafico-peso-lienzo {
+  touch-action: pan-y;
+}
+.grafico-peso-punto.tocado {
+  background: var(--pal-claro);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pal-claro) 22%, transparent);
+}
+.grafico-peso-pie.leyendo .cuando {
+  flex: 1;
+  font-size: 12px;
+  color: var(--apagado);
+}
+/* Las ventanas: texto chico en fila, sin caja. §19.1 — nada acá necesita
+   sentirse contenido. */
+.grafico-peso-rangos {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+}
+.grafico-peso-rangos button {
+  width: auto;
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--apagado);
+}
+.grafico-peso-rangos button.activo {
+  color: var(--pal-claro);
+  border-bottom: 1px solid color-mix(in srgb, var(--pal-claro) 45%, transparent);
+}
+
+/* ---------- las vidas ----------
+   Tres puntos y nada más. Los que quedan van llenos; los gastados, un aro
+   vacío. La misma forma que la tira semanal usa para los días, que es lo que
+   hace que se entienda sin rótulo: acá también un punto lleno es algo que
+   está y uno vacío es algo que no. */
+.vidas {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.vidas i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--pal-claro) 40%, transparent);
+  background: transparent;
+  /* La transición es la animación del aviso: el punto que se gasta pasa de
+     lleno a vacío a la vista, en vez de aparecer ya apagado. */
+  transition: background-color 0.55s var(--curva-suave), border-color 0.55s var(--curva-suave);
+}
+.vidas i.viva,
+.vidas i.apagandose {
+  background: var(--pal-claro);
+  border-color: var(--pal-claro);
+}
+
+/* La línea de Stats: rótulo, puntos y la explicación en voz baja. */
+.vidas-linea {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin-bottom: 18px;
+}
+.vidas-linea .et {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--apagado);
+}
+.vidas-linea .nota-privada {
+  flex: 1 1 100%;
+  margin-top: 0;
+}
+
+/* El aviso del día siguiente. Es un globo como los demás —no un cartel de
+   alarma— porque lo que dice es un hecho, no un problema. */
+.vida-usada .quedan {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--apagado);
+  white-space: nowrap;
 }
 
 /* ---------- el aviso de estancamiento ----------

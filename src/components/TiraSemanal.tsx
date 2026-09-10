@@ -18,9 +18,12 @@ import type { Log } from '@nucleo/tipos';
 export default function TiraSemanal({
   logs,
   descansos,
+  cubiertos = [],
 }: {
   logs: Log[];
   descansos: ConfigDescanso[];
+  /** Días que una vida cubrió: ni entrenados ni perdidos. */
+  cubiertos?: string[];
 }) {
   const hoy = hoyISO();
   // getDay() da 0 el domingo; acá la semana arranca el lunes, que es como se
@@ -30,17 +33,21 @@ export default function TiraSemanal({
 
   const dias: {
     fecha: string;
-    estado: 'lleno' | 'vacio' | 'descanso' | 'futuro';
+    estado: 'lleno' | 'vacio' | 'descanso' | 'futuro' | 'cubierto';
     esHoy: boolean;
   }[] = [];
 
   for (let i = 0; i < 7; i++) {
     const fecha = restarDias(lunes, -i);
     const log = logs.find((l) => l.fecha === fecha);
-    let estado: 'lleno' | 'vacio' | 'descanso' | 'futuro' = 'vacio';
+    let estado: 'lleno' | 'vacio' | 'descanso' | 'futuro' | 'cubierto' = 'vacio';
     if (fecha > hoy) estado = 'futuro';
     else if (log && !log.es_descanso) estado = 'lleno';
     else if ((log && log.es_descanso) || esDiaDeDescanso(descansos, fecha)) estado = 'descanso';
+    // Un día cubierto por una vida NO se dibuja como entrenado: la racha
+    // seguiría diciendo la verdad pero el calendario mentiría, y el
+    // calendario es el historial.
+    else if (cubiertos.includes(fecha)) estado = 'cubierto';
     dias.push({ fecha, estado, esHoy: fecha === hoy });
   }
 

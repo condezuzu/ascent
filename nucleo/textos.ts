@@ -34,6 +34,20 @@
 
 export const T = {
   // ---------------------------------------------------------------
+  // LAS VIDAS. Dicen el hecho y nada más: no felicitan —"¡tu racha está a
+  // salvo!"— ni retan. La app no opina sobre el día que alguien no fue al
+  // gimnasio; cuenta lo que hizo con eso.
+  vidas: {
+    faltasteUno: (dia: string) => `Faltaste el ${dia}. Se usó una vida.`,
+    faltasteVarios: (n: number) => `Faltaste ${n} días. Se usaron ${n} vidas.`,
+    quedan: (n: number) =>
+      n === 0 ? 'No te quedan este mes.' : n === 1 ? 'Te queda 1 este mes.' : `Te quedan ${n} este mes.`,
+    // En Stats, al lado de los puntos. En minúscula y chico: es un dato de
+    // contexto, no un título.
+    titulo: 'Vidas',
+    nota: 'Tres por mes. Si faltas un día, se usa una sola y la racha sigue. No se acumulan.',
+  },
+
   // EL DETECTOR DE ESTANCAMIENTO. Describe, no juzga y no receta: cada
   // frase es un hecho con fecha, y lo único que se ofrece es lo único que la
   // app puede hacer —guardar una marca—. La racha NO se nombra acá nunca.
@@ -489,6 +503,10 @@ export const T = {
     fueraDelPromedio: (que: string) => `Fuera del promedio: ${que}. Los días cuentan igual.`,
     peso: 'Peso',
     pesoTendencia: 'Peso — tendencia 7 días',
+    // Las ventanas del gráfico. Cortas: son botones chicos en fila.
+    pesoMes: '1 mes',
+    pesoTresMeses: '3 meses',
+    pesoTodo: 'Todo',
     // Los bordes del dibujo NO son datos: la versión anterior mostraba
     // `min - 0.5` y `max + 0.5` como si fueran dos pesos reales. Lo único que
     // se puede afirmar además del de hoy es cuánto cambió.

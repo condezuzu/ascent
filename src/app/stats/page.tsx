@@ -11,6 +11,7 @@ import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Nav from '@/components/Nav';
 import Estancamiento from '@/components/Estancamiento';
+import Vidas from '@/components/Vidas';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import SeccionFuerza from '@/components/SeccionFuerza';
@@ -22,6 +23,7 @@ import { T } from '@nucleo/textos';
 export default function Estadisticas() {
   const [supabase] = useState(() => crearCliente());
   const [logs, setLogs] = useState<Log[]>([]);
+  const [vidas, setVidas] = useState<{ quedan: number; total: number } | null>(null);
   const [pesos, setPesos] = useState<Peso[]>([]);
   const [racha, setRacha] = useState(0);
   const [mejor, setMejor] = useState(0);
@@ -49,6 +51,12 @@ export default function Estadisticas() {
         if (esUnidad(p.unidad_peso)) setUnidad(p.unidad_peso);
       }
       setLogs(ls ?? []);
+      // Las vidas que quedan, para poder decidir ANTES de gastarlas. Si la
+      // migración todavía no corrió el RPC no existe y no se muestra nada:
+      // `catch` en vez de romper la pantalla por un dato de contexto.
+      supabase.rpc('mis_vidas').then(({ data, error }) => {
+        if (!error && data) setVidas({ quedan: Number(data.quedan), total: Number(data.total) });
+      });
       // en la base el peso siempre está en kilos; acá se pasa a la unidad
       // que el usuario eligió, y recién entonces se suaviza y se dibuja
       setPesos((ws ?? []).map((w) => ({ ...w, valor: Number(w.valor) })));
@@ -108,6 +116,19 @@ export default function Estadisticas() {
             no molesta, o sea uno que no quiere ser leído. Se puede descartar
             y no vuelve por seis semanas. */}
         <Estancamiento registradoHoy={entrenados.some((l) => l.fecha === hoy)} />
+
+        {/* LAS VIDAS, en voz baja y debajo de los números. Un contador
+            grande las convertiría en un recurso que se administra —"me quedan
+            dos, puedo faltar dos"—, que es lo contrario de para qué están.
+            Pero tienen que verse ANTES de gastarlas: enterarse recién cuando
+            ya se usó una no sirve para decidir. */}
+        {vidas && (
+          <div className="vidas-linea">
+            <span className="et">{T.vidas.titulo}</span>
+            <Vidas quedan={vidas.quedan} total={vidas.total} />
+            <span className="nota-privada">{T.vidas.nota}</span>
+          </div>
+        )}
 
         <div className="stat-grilla">
           <div className="stat-celda">

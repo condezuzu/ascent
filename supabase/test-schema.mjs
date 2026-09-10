@@ -72,6 +72,7 @@ import {
 import { cargarElMotor, esPreferenciaFondo } from '../nucleo/fondo.ts';
 import { ORDEN_ZONAS, gruposDeZona, gruposSinZona } from '../nucleo/ejercicios.ts';
 import { detectar, idDeSenal, umbralValido, unRm } from '../nucleo/estancamiento.ts';
+import { suavizarPorFecha, ultimosDias } from '../nucleo/peso.ts';
 import {
   alturaDelPulso,
   siguePulsando,
@@ -164,11 +165,32 @@ async function perfil(uid) {
   );
   return r.rows[0];
 }
+/**
+ * LAS VIDAS, PRENDIDAS O APAGADAS, para el resto de los tests.
+ *
+ * Sin esto, cada test de pérdida pasaría a hablar de dos cosas: la regla del
+ * -10 y si había una vida a mano. Los de acá abajo son de la regla, así que
+ * corren con la cuota en cero; las vidas tienen su propia sección, que las
+ * prende, prueba lo suyo y las vuelve a apagar.
+ *
+ * Se cambia la CUOTA y no se tocan las filas: es el único punto donde la
+ * regla vive, y así el resto de la maquinaria —cubrir, contar, no devolver—
+ * es exactamente la de producción.
+ */
+async function cuotaDeVidas(n) {
+  await db.query(
+    `create or replace function public.vidas_por_mes()
+     returns int language sql immutable as $fn$ select ${n} $fn$`
+  );
+}
+
 async function perder(uid) {
   await comoUsuario(uid);
   const r = await db.query('select verificar_perdida() as v');
   return r.rows[0].v;
 }
+
+await cuotaDeVidas(0);
 
 // =====================================================================
 console.log('1. Umbrales de rango (cada 10 días, tope en 8)');
@@ -3710,6 +3732,174 @@ console.log('\n57. El detector de estancamiento');
   chequear('un umbral raro cae en el de siempre', umbralValido(5), 6);
   chequear('y uno valido se respeta', umbralValido(3), 3);
   chequear('sin dato tambien', umbralValido(undefined), 6);
+}
+
+console.log('\n58. Las vidas');
+{
+  await cuotaDeVidas(3);
+
+  // ---- una falta suelta ya no corta ----
+  {
+    const u = await nuevoUsuario();
+    await rachaDe(u, 14, 2); // termina anteayer: ayer quedo vacio
+    const r = await perder(u);
+    chequear('un dia suelto no corta la racha', r.perdida, false);
+    chequear('y se gasto una vida', (r.vidas_usadas ?? []).length, 1);
+    chequear('quedan dos', r.vidas_quedan, 2);
+    chequear('la racha queda igual, no sube', (await perfil(u)).racha_actual, 14);
+  }
+
+  // ---- el dia cubierto NO cuenta como entrenado ----
+  {
+    const u = await nuevoUsuario();
+    await rachaDe(u, 5, 2);
+    await perder(u);
+    // 5 dias entrenados + 1 cubierto: la racha sigue siendo 5.
+    chequear('cubrir no infla la racha', (await perfil(u)).racha_actual, 5);
+    await db.query('insert into logs (user_id, fecha) values ($1, mi_hoy())', [u]);
+    const p2 = await db.query('select racha_actual from profiles where id = $1', [u]);
+    chequear('y al entrenar hoy suma uno', p2.rows[0].racha_actual, 6);
+  }
+
+  // ---- cuatro faltas contra tres vidas ----
+  {
+    const u = await nuevoUsuario();
+    await rachaDe(u, 20, 5); // faltaron los ultimos cuatro dias
+    const r = await perder(u);
+    chequear('cuatro faltas cortan igual', r.perdida, true);
+    chequear('y se gastaron las tres', (r.vidas_usadas ?? []).length, 3);
+    chequear('no quedan vidas', r.vidas_quedan, 0);
+    chequear('la racha bajo 10', (await perfil(u)).racha_actual, 10);
+  }
+
+  // ---- una vida gastada NO se devuelve ----
+  {
+    const u = await nuevoUsuario();
+    await rachaDe(u, 20, 5);
+    await perder(u);
+    const antes = (
+      await db.query('select count(*)::int n from vidas_usadas where user_id = $1', [u])
+    ).rows[0].n;
+    await perder(u); // segunda llamada, ya perdida
+    const despues = (
+      await db.query('select count(*)::int n from vidas_usadas where user_id = $1', [u])
+    ).rows[0].n;
+    chequear('las vidas gastadas quedan gastadas', [antes, despues], [3, 3]);
+  }
+
+  // ---- el mes de una vida es el del DIA que cubre ----
+  //
+  // Es la respuesta a "si falto el 30 y el 31 y el 1 se recargan, esos dias
+  // siguen cubiertos?": si, porque lo que se guarda es el dia cubierto. Aca se
+  // prueba la otra mitad: esas dos vidas salen de la cuota del mes VIEJO.
+  {
+    const u = await nuevoUsuario();
+    const mes = await db.query(`select date_trunc('month', mi_hoy())::date m`);
+    const primero = mes.rows[0].m;
+    // Tres cubiertos el mes pasado no gastan nada de este mes.
+    for (const d of [1, 2, 3]) {
+      await db.query(
+        `insert into vidas_usadas (user_id, fecha) values ($1, $2::date - $3::int)`,
+        [u, primero, d]
+      );
+    }
+    const quedan = (
+      await db.query('select vidas_disponibles($1, mi_hoy()) as v', [u])
+    ).rows[0].v;
+    chequear('las del mes pasado no gastan las de este', quedan, 3);
+    const delOtro = (
+      await db.query(`select vidas_disponibles($1, $2::date - 1) as v`, [u, primero])
+    ).rows[0].v;
+    chequear('y el mes viejo quedo sin ninguna', delOtro, 0);
+    // Y el dia cubierto del mes pasado sigue cubierto: no lo devuelve nadie.
+    const sigue = (
+      await db.query(
+        `select count(*)::int n from vidas_usadas where user_id = $1 and fecha < $2`,
+        [u, primero]
+      )
+    ).rows[0].n;
+    chequear('los dias viejos siguen cubiertos', sigue, 3);
+  }
+
+  // ---- un dia de descanso no gasta vida ----
+  {
+    const u = await nuevoUsuario();
+    const dow = (await db.query('select extract(dow from mi_hoy() - 1)::int as d')).rows[0].d;
+    await db.query(
+      'insert into descansos (user_id, desde, dias) values ($1, mi_hoy() - 60, array[$2::int])',
+      [u, dow]
+    );
+    await rachaDe(u, 10, 2);
+    const r = await perder(u);
+    chequear('ayer era descanso: no se gasta vida', (r.vidas_usadas ?? []).length, 0);
+    chequear('y no hay perdida', r.perdida, false);
+  }
+
+  // ---- con la racha en cero no hay nada que salvar ----
+  {
+    const u = await nuevoUsuario();
+    const r = await perder(u);
+    chequear('sin racha no se gasta ninguna', r.vidas_usadas, undefined);
+  }
+
+  // ---- la mejor racha historica tambien sabe de vidas ----
+  {
+    const u = await nuevoUsuario();
+    // Seis dias que terminan hace siete, UN dia cubierto en el medio, y seis
+    // mas hasta hoy. El hueco tiene que ser de un solo dia: con dos, el
+    // segundo corta y el test estaria probando otra cosa.
+    await rachaDe(u, 6, 7); // hoy-12 .. hoy-7
+    await db.query(
+      `insert into vidas_usadas (user_id, fecha) values ($1, mi_hoy() - 6)`,
+      [u]
+    );
+    await rachaDe(u, 6, 0); // hoy-5 .. hoy
+    const m = (await db.query('select mejor_racha_real($1) as m', [u])).rows[0].m;
+    chequear('el hueco cubierto no parte el record', m, 12);
+  }
+
+  await cuotaDeVidas(0);
+}
+
+console.log('\n59. El peso: media movil POR FECHA');
+{
+  // EL BUG QUE ESTO FIJA. La version anterior promediaba los ultimos SIETE
+  // REGISTROS. Para quien se pesa todos los dias eso son siete dias; para
+  // quien se pesa tres veces por semana son dos semanas y media, y el rotulo
+  // decia "tendencia 7 dias". Un numero que dice ser una cosa y es otra.
+  //
+  // Se prueba con alguien que se pesa cada cinco dias: por registros, el
+  // promedio se comeria un mes entero.
+  const cada5 = [
+    { fecha: '2026-06-01', valor: 80 },
+    { fecha: '2026-06-06', valor: 82 },
+    { fecha: '2026-06-11', valor: 84 },
+    { fecha: '2026-06-16', valor: 86 },
+  ];
+  const s = suavizarPorFecha(cada5, 7);
+  // Cada punto solo puede promediarse con lo que cae dentro de sus 7 dias:
+  // el del 06 con el del 01 (cinco dias antes), el del 11 con el del 06.
+  chequear('el primero es el mismo', s[0].suave, 80);
+  chequear('el segundo promedia dos', s[1].suave, 81);
+  chequear('el tercero NO arrastra el primero', s[2].suave, 83);
+  chequear('y el crudo viaja al lado', s.map((x) => x.valor), [80, 82, 84, 86]);
+
+  // Con datos diarios el promedio de siete dias sí toma siete.
+  const diarios = [];
+  for (let d = 1; d <= 10; d++) {
+    diarios.push({ fecha: `2026-07-${String(d).padStart(2, '0')}`, valor: 100 + d });
+  }
+  const sd = suavizarPorFecha(diarios, 7);
+  // El dia 10 promedia del 4 al 10: 104..110 -> 107.
+  chequear('con datos diarios toma siete', sd[9].suave, 107);
+
+  // Un dia repetido no rompe nada y el hueco tampoco.
+  chequear('sin datos no explota', suavizarPorFecha([], 7), []);
+
+  // ---- la ventana ----
+  chequear('todo devuelve todo', ultimosDias(diarios, null).length, 10);
+  chequear('los ultimos 3 dias', ultimosDias(diarios, 3).map((x) => x.fecha.slice(-2)), ['08', '09', '10']);
+  chequear('mas dias que datos no recorta', ultimosDias(diarios, 90).length, 10);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
