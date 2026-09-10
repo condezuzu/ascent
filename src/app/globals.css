@@ -1236,10 +1236,23 @@ textarea::placeholder {
    nada de cajas, y el DATO abajo de la foto en mono, no flotando arriba. Una
    foto con un degradado encima se lee como una miniatura de stock; una foto
    con su fecha debajo se lee como una lámina. */
+/* DOS COLUMNAS EN EL TELÉFONO Y NO TRES. Con tres, cada foto mide 120 px:
+   una miniatura de galería, no una foto. Y con pocas fotos —que es como
+   empieza todo el mundo— la grilla ocupaba la quinta parte de arriba de la
+   pantalla y el resto era un agujero negro. A dos columnas la misma foto mide
+   180, se ve lo que hay adentro, y tres fotos ya llenan media pantalla.
+
+   De 560 px para arriba vuelven las tres: ahí el ancho alcanza y con cuatro
+   meses de fotos una grilla de dos queda interminable. */
 .album-grilla {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px 8px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 10px;
+}
+@media (min-width: 560px) {
+  .album-grilla {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 .album-pieza {
   min-width: 0;

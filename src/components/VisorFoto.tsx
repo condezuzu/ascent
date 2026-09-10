@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 
@@ -52,6 +52,8 @@ export default function VisorFoto({
   alCerrar: () => void;
 }) {
   const [confirmando, setConfirmando] = useState(false);
+  // El marco es lo que se arrastra al pasar de foto.
+  const marcoRef = useRef<HTMLDivElement>(null);
 
   // Cambiar de foto cancela la confirmación: si no, pasás a la siguiente con
   // el "¿Borrar?" ya abierto y el próximo toque borra la que no era.
@@ -71,6 +73,81 @@ export default function VisorFoto({
     return () => window.removeEventListener('keydown', alTeclear);
   }, [alCerrar, alMover, hayAnterior, haySiguiente]);
 
+  // DESLIZAR PARA PASAR DE FOTO.
+  //
+  // Las flechas ya estaban y no alcanzan: son dos blancos de 40 px en los
+  // bordes de una pantalla que se mira con el pulgar. Nadie las busca, porque
+  // en una foto a pantalla completa el gesto que uno ya tiene aprendido es
+  // arrastrar. Sin esto había que cerrar el visor y elegir otra, que es
+  // exactamente lo que se reportó.
+  //
+  // El mismo criterio que `PantallaDeslizable`: la foto SIGUE AL DEDO y al
+  // soltar completa o vuelve. Un gesto que no muestra nada hasta soltar se
+  // siente como un botón escondido.
+  useEffect(() => {
+    const el = marcoRef.current;
+    if (!el) return;
+    let x0 = 0;
+    let y0 = 0;
+    let arrastrando = false;
+    let decidido = false;
+
+    const ancho = () => el.clientWidth || window.innerWidth;
+
+    function empezar(e: TouchEvent) {
+      if (e.touches.length !== 1) return;
+      x0 = e.touches[0].clientX;
+      y0 = e.touches[0].clientY;
+      arrastrando = true;
+      decidido = false;
+      el!.style.transition = 'none';
+    }
+
+    function mover(e: TouchEvent) {
+      if (!arrastrando) return;
+      const dx = e.touches[0].clientX - x0;
+      const dy = e.touches[0].clientY - y0;
+      if (!decidido) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        // Vertical no es nuestro: cerrar el visor tirando hacia abajo es otro
+        // gesto y no está; robarle el evento sería impedirlo para siempre.
+        if (Math.abs(dy) > Math.abs(dx)) {
+          arrastrando = false;
+          return;
+        }
+        decidido = true;
+      }
+      // En los extremos el arrastre ofrece resistencia: se nota que de ese
+      // lado no hay nada, sin un cartel que lo diga.
+      const sinDestino = (dx > 0 && !hayAnterior) || (dx < 0 && !haySiguiente);
+      el!.style.transform = `translate3d(${sinDestino ? dx * 0.25 : dx}px, 0, 0)`;
+    }
+
+    function soltar(e: TouchEvent) {
+      if (!arrastrando) return;
+      arrastrando = false;
+      if (!decidido) return;
+      const dx = (e.changedTouches[0]?.clientX ?? x0) - x0;
+      el!.style.transition = 'transform 0.24s var(--curva-salida)';
+      el!.style.transform = '';
+      if (Math.abs(dx) > ancho() * 0.2) {
+        if (dx > 0 && hayAnterior) alMover(-1);
+        if (dx < 0 && haySiguiente) alMover(1);
+      }
+    }
+
+    el.addEventListener('touchstart', empezar, { passive: true });
+    el.addEventListener('touchmove', mover, { passive: true });
+    el.addEventListener('touchend', soltar, { passive: true });
+    el.addEventListener('touchcancel', soltar, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', empezar);
+      el.removeEventListener('touchmove', mover);
+      el.removeEventListener('touchend', soltar);
+      el.removeEventListener('touchcancel', soltar);
+    };
+  }, [alMover, hayAnterior, haySiguiente]);
+
   return (
     <div className="visor" role="dialog" aria-modal="true">
       {/* El fondo cierra. La foto y la barra de abajo no: tocar la foto para
@@ -83,7 +160,7 @@ export default function VisorFoto({
         </svg>
       </button>
 
-      <div className="visor-marco">
+      <div className="visor-marco" ref={marcoRef}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={foto.url} alt="" />
       </div>
