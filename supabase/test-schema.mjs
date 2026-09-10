@@ -73,6 +73,7 @@ import { cargarElMotor, esPreferenciaFondo } from '../nucleo/fondo.ts';
 import { ORDEN_ZONAS, gruposDeZona, gruposSinZona } from '../nucleo/ejercicios.ts';
 import { detectar, idDeSenal, umbralValido, unRm } from '../nucleo/estancamiento.ts';
 import { suavizarPorFecha, ultimosDias } from '../nucleo/peso.ts';
+import { PATRON_USUARIO, nombreValido } from '../nucleo/usuario.ts';
 import {
   alturaDelPulso,
   siguePulsando,
@@ -3964,6 +3965,45 @@ console.log('\n60. Los dos lados de plataforma/');
     }
   }
   chequear('la nativa no importa del arbol de la web', colados, []);
+}
+
+console.log('\n61. El nombre de usuario: una regla, dos lugares');
+{
+  // ESTABA ESCRITA TRES VECES: onboarding, Ajustes y el `check` de la base. Y
+  // la app nativa iba a ser la cuarta. Ahora hay dos —el nucleo y la base— y
+  // eso es lo minimo posible: la base no puede confiar en el cliente.
+  //
+  // Lo que este test cuida es que las dos DIGAN LO MISMO. Si alguien afloja la
+  // del cliente, la pantalla deja pasar un nombre que la base rechaza y el
+  // usuario ve un error tecnico; si afloja la de la base, no lo nota nadie.
+  const fila = (
+    await db.query(`
+      select pg_get_constraintdef(oid) def
+        from pg_constraint
+       where conrelid = 'profiles'::regclass and pg_get_constraintdef(oid) like '%username%'
+    `)
+  ).rows[0];
+  chequear('la base tiene el mismo patron', fila.def.includes(PATRON_USUARIO), true);
+
+  // Y que la funcion haga lo que dice.
+  chequear('tres letras alcanzan', nombreValido('ana'), true);
+  chequear('dos no', nombreValido('an'), false);
+  chequear('veinte alcanzan', nombreValido('a'.repeat(20)), true);
+  chequear('veintiuno no', nombreValido('a'.repeat(21)), false);
+  chequear('guion bajo si', nombreValido('agus_conde'), true);
+  chequear('espacios no', nombreValido('agus conde'), false);
+  chequear('acentos no', nombreValido('agustin_ñ'), false);
+  chequear('vacio no', nombreValido(''), false);
+
+  // Y que la base rechace lo mismo, de verdad y no de palabra.
+  const u = await nuevoUsuario();
+  let rechazo = null;
+  try {
+    await db.query('update profiles set username = $1 where id = $2', ['ab', u]);
+  } catch (e) {
+    rechazo = e.code;
+  }
+  chequear('la base rechaza el de dos letras', rechazo, '23514');
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

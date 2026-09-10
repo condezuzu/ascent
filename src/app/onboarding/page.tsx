@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import FondoEspacial from '@/components/FondoEspacial';
+import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
 
 // El username se elige acá, después del primer login.
@@ -20,7 +21,7 @@ export default function Onboarding() {
     e.preventDefault();
     setError('');
     const limpio = nombre.trim();
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(limpio)) {
+    if (!nombreValido(limpio)) {
       return setError(T.entrar.nombreFormato);
     }
     setCargando(true);

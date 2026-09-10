@@ -43,7 +43,14 @@ type Estado =
       vidas: { quedan: number; total: number } | null;
     };
 
-export default function Inicio({ alSalir }: { alSalir: () => void }) {
+export default function Inicio({
+  alSalir,
+  alFaltarNombre,
+}: {
+  alSalir: () => void;
+  /** Cuenta nueva sin nombre: la pantalla de elegirlo es de App. */
+  alFaltarNombre: () => void;
+}) {
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
   const [registrando, setRegistrando] = useState(false);
   const [aviso, setAviso] = useState('');
@@ -71,6 +78,16 @@ export default function Inicio({ alSalir }: { alSalir: () => void }) {
       if (error) return setEstado({ tipo: 'error', que: mensajeDeAuth(error) });
       if (!perfil) return setEstado({ tipo: 'error', que: T.general.noSePudo });
 
+      // CUENTA RECIÉN CREADA, SIN NOMBRE: no se dibuja Inicio a medias, se
+      // manda a elegirlo. Es lo mismo que hace la web rebotando a /onboarding.
+      //
+      // Se avisa ACÁ y no al dibujar. Estaba en el render y React lo cantó:
+      // "Cannot update a component while rendering a different component".
+      // Cambiarle el estado al padre mientras el hijo se dibuja es pedirle a
+      // React que rehaga un árbol que todavía no terminó; que hoy funcione no
+      // lo hace correcto, y en modo concurrente deja de funcionar.
+      if (!perfil.username) return alFaltarNombre();
+
       setEstado({
         tipo: 'listo',
         perfil: perfil as Perfil,
@@ -82,7 +99,7 @@ export default function Inicio({ alSalir }: { alSalir: () => void }) {
     } catch (e) {
       setEstado({ tipo: 'error', que: String((e as Error)?.message ?? e) });
     }
-  }, [alSalir]);
+  }, [alSalir, alFaltarNombre]);
 
   useEffect(() => {
     cargar();
@@ -126,19 +143,6 @@ export default function Inicio({ alSalir }: { alSalir: () => void }) {
   }
 
   const { perfil, logs, descansos, cubiertos, vidas } = estado;
-
-  // CUENTA RECIÉN CREADA, SIN NOMBRE. En web eso rebota a /onboarding; acá esa
-  // pantalla todavía no existe, y lo que NO se puede hacer es dibujar Inicio
-  // con un nombre vacío como si estuviera todo bien. Se dice qué falta y dónde
-  // se arregla, que es más honesto que una pantalla a medias.
-  if (!perfil.username) {
-    return (
-      <View style={estilos.centrado}>
-        <Text style={estilos.error}>{T.entrar.elegiNombre}</Text>
-        <Text style={estilos.enlace}>{T.entrar.elegiNombreSub}</Text>
-      </View>
-    );
-  }
 
   const hoy = hoyISO();
   const registradoHoy = logs.some((l) => l.fecha === hoy && !l.es_descanso);

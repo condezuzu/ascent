@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { borrarPerfilCache } from '@/lib/cache';
 import type { Perfil } from '@nucleo/tipos';
+import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
 
 export default function NombreUsuario({
@@ -27,7 +28,7 @@ export default function NombreUsuario({
     setAviso('');
     setError('');
     if (limpio === perfil.username) return;
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(limpio)) {
+    if (!nombreValido(limpio)) {
       return setError(T.ajustes.nombreFormato);
     }
     setGuardando(true);

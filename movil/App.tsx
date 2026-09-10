@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { supabase } from './src/supabase';
 import Login from './src/Login';
 import Inicio from './src/Inicio';
+import Onboarding from './src/Onboarding';
 
 /**
  * LA APP NATIVA — qué pantalla va según si hay sesión.
@@ -17,7 +18,8 @@ import Inicio from './src/Inicio';
  * `src/PruebaDePuertos.tsx` y NO se monta acá: no es una pantalla de la app,
  * se abre cuando haya que probar los puertos con el teléfono en la mano.
  *
- * TANDA 2 es esto: entrar, ver la racha, registrar el día.
+ * TANDA 2 es esto: entrar, elegir el nombre si la cuenta es nueva, ver la
+ * racha, registrar el día.
  *
  * NO HAY ROUTER TODAVÍA, y es a propósito: con dos pantallas, un router es
  * una dependencia y una capa de indirección para responder una pregunta que
@@ -25,7 +27,7 @@ import Inicio from './src/Inicio';
  * donde hay cinco pantallas y la pregunta se vuelve de verdad.
  */
 
-type Sesion = 'mirando' | 'con' | 'sin';
+type Sesion = 'mirando' | 'con' | 'sin' | 'sin-nombre';
 
 export default function App() {
   const [sesion, setSesion] = useState<Sesion>('mirando');
@@ -34,6 +36,11 @@ export default function App() {
     const { data } = await supabase.auth.getSession();
     setSesion(data.session ? 'con' : 'sin');
   }, []);
+
+  // Con `useCallback` y no una flecha suelta: `Inicio` la tiene en las
+  // dependencias de su carga, y una función nueva en cada render la haría
+  // recargar en bucle.
+  const sinNombre = useCallback(() => setSesion('sin-nombre'), []);
 
   useEffect(() => {
     mirar();
@@ -53,7 +60,8 @@ export default function App() {
         </View>
       )}
       {sesion === 'sin' && <Login alEntrar={mirar} />}
-      {sesion === 'con' && <Inicio alSalir={mirar} />}
+      {sesion === 'sin-nombre' && <Onboarding alElegir={mirar} />}
+      {sesion === 'con' && <Inicio alSalir={mirar} alFaltarNombre={sinNombre} />}
     </View>
   );
 }

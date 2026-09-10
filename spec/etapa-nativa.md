@@ -293,8 +293,19 @@ Probado contra la base de verdad: **la racha pasó de 1 a 2 y el botón cambió 
   migración, no diseño, y se va cuando entre el motor.
 - **La foto y el peso** al registrar, que son otra pantalla.
 - **El cronómetro de sesión**, que es lo que más depende de los puertos: tanda 3.
-- **Onboarding.** Una cuenta sin nombre de usuario no dibuja Inicio a medias:
-  dice qué falta. La pantalla para elegirlo llega con el deep link.
+- **Onboarding: HECHO.** Una cuenta sin nombre de usuario no dibuja Inicio a
+  medias: manda a elegirlo, igual que la web rebotando a `/onboarding`. Y la
+  regla del nombre —tres a veinte, letras, números y guion bajo— dejó de estar
+  escrita tres veces: vive en `nucleo/usuario.ts` y la comparten las dos
+  pantallas de la web y la nativa. Quedan dos copias, esa y el `check` de la
+  base, que es el mínimo posible: la base no puede confiar en el cliente. Hay
+  un test que compara las dos.
+
+  El aviso de "falta el nombre" sale de la CARGA y no del dibujo. Estaba en el
+  render y React lo cantó —"Cannot update a component while rendering a
+  different component"—: cambiarle el estado al padre mientras el hijo se
+  dibuja es pedirle que rehaga un árbol que no terminó. Que hoy funcione no lo
+  hace correcto.
 
 **No hay router todavía, y es a propósito:** con dos pantallas, un router es
 una dependencia y una capa de indirección para contestar lo que contesta un
