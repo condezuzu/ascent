@@ -8,6 +8,7 @@ import { rangoDeRacha } from '@nucleo/rangos';
 import { mensajeDeAuth } from '@nucleo/errores';
 import type { Log, Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
+import Ajustes from './Ajustes';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -53,6 +54,10 @@ export default function Inicio({
 }) {
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
   const [registrando, setRegistrando] = useState(false);
+  // Ajustes es la segunda pantalla y por ahora es un booleano. Cuando entre la
+  // barra de navegación con las cinco, esto pasa a ser el router; hasta
+  // entonces, un router sería una capa para contestar lo que contesta un `if`.
+  const [enAjustes, setEnAjustes] = useState(false);
   const [aviso, setAviso] = useState('');
 
   const cargar = useCallback(async () => {
@@ -105,6 +110,11 @@ export default function Inicio({
     cargar();
   }, [cargar]);
 
+  /** Ajustes pinta el cambio acá: el perfil vive en esta pantalla. */
+  function cambiarPerfil(parcial: Partial<Perfil>) {
+    setEstado((e) => (e.tipo === 'listo' ? { ...e, perfil: { ...e.perfil, ...parcial } } : e));
+  }
+
   async function registrar() {
     setRegistrando(true);
     setAviso('');
@@ -144,6 +154,23 @@ export default function Inicio({
 
   const { perfil, logs, descansos, cubiertos, vidas } = estado;
 
+  if (enAjustes) {
+    return (
+      <Ajustes
+        perfil={perfil}
+        alCambiar={cambiarPerfil}
+        // Al volver se RECARGA: cambiar los días de descanso cambia qué días
+        // cortan la racha, y la tira semanal de atrás quedaría dibujando lo
+        // de antes.
+        alVolver={() => {
+          setEnAjustes(false);
+          cargar();
+        }}
+        alSalir={alSalir}
+      />
+    );
+  }
+
   const hoy = hoyISO();
   const registradoHoy = logs.some((l) => l.fecha === hoy && !l.es_descanso);
 
@@ -165,7 +192,12 @@ export default function Inicio({
 
   return (
     <ScrollView contentContainerStyle={estilos.pantalla}>
-      <Text style={estilos.usuario}>{perfil.username}</Text>
+      <View style={estilos.cabecera}>
+        <Text style={estilos.usuario}>{perfil.username}</Text>
+        <Pressable onPress={() => setEnAjustes(true)}>
+          <Text style={estilos.enlace}>{T.general.ajustes}</Text>
+        </Pressable>
+      </View>
 
       <Text style={estilos.etiqueta}>{T.inicio.racha}</Text>
       <Text style={estilos.racha}>{perfil.racha_actual}</Text>
@@ -233,15 +265,6 @@ export default function Inicio({
         </Pressable>
       )}
 
-      <Pressable
-        style={estilos.salir}
-        onPress={async () => {
-          await supabase.auth.signOut();
-          alSalir();
-        }}
-      >
-        <Text style={estilos.enlace}>{T.ajustes.cerrarSesion}</Text>
-      </Pressable>
     </ScrollView>
   );
 }
@@ -249,7 +272,13 @@ export default function Inicio({
 const estilos = StyleSheet.create({
   pantalla: { flexGrow: 1, backgroundColor: '#05060a', padding: 24, paddingTop: 64 },
   centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },
-  usuario: { color: '#e8ecf6', fontSize: 16, fontWeight: '600', marginBottom: 30 },
+  cabecera: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+  },
+  usuario: { color: '#e8ecf6', fontSize: 16, fontWeight: '600' },
   etiqueta: { color: '#8a93a8', fontSize: 10, letterSpacing: 4, textTransform: 'uppercase' },
   racha: { color: '#c4c2ba', fontSize: 92, fontWeight: '300', lineHeight: 100 },
   rango: { color: '#8a93a8', fontSize: 12, letterSpacing: 3, textTransform: 'uppercase' },
@@ -289,5 +318,4 @@ const estilos = StyleSheet.create({
   aviso: { color: '#8a93a8', fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19 },
   error: { color: '#e8705f', fontSize: 13, textAlign: 'center' },
   enlace: { color: '#8a93a8', fontSize: 13 },
-  salir: { marginTop: 40, alignItems: 'center' },
 });
