@@ -17,6 +17,7 @@ import { plataforma } from '@/plataforma';
 import { eventos } from '@/plataforma/eventos';
 import { DIA_CAMBIO } from '@/components/VigilanteDeGimnasio';
 import { lineaDeMarcas } from '@nucleo/fuerza';
+import { vidasSinVer, hastaDondeVisto, rachaSiSeDevuelve } from '@nucleo/vidas';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import type { CierreDeSesion } from '@/lib/usarSesion';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -28,7 +29,7 @@ import ResumenSesion from '@/components/ResumenSesion';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import Bloque from '@/components/Bloque';
 import DiaSumado from '@/components/DiaSumado';
-import VidaUsada from '@/components/VidaUsada';
+import VidaSalvada from '@/components/VidaSalvada';
 import AccionPrincipal from '@/components/AccionPrincipal';
 import NumeroQueCuenta from '@/components/NumeroQueCuenta';
 import Avatar from '@/components/Avatar';
@@ -46,6 +47,16 @@ type LineaSocial = { username: string; racha: number } | null;
 // medianoche, y el día que fallara ese borrado el mensaje no volvería a
 // aparecer nunca más.
 const CLAVE_LLEGADA_VISTA = 'ascent:llegada-vista';
+
+// Hasta qué día cubierto se anunció ya en ESTE aparato. Una fecha y no un
+// booleano, por lo mismo que la de arriba: un booleano habría que acordarse de
+// limpiarlo, y el día que ese borrado fallara el aviso no volvería nunca.
+//
+// SE ESCRIBE AL CERRAR LA VENTANA, no al abrirla. Si se escribiera al abrirla,
+// cerrar la app antes de leerla sería perderse el aviso para siempre — que es
+// EXACTAMENTE el bug que esto arregla. Escribiendo al cerrar, lo peor que
+// puede pasar es que vuelva a aparecer una vez.
+const CLAVE_VIDA_VISTA = 'ascent:vida-vista';
 
 export default function Principal() {
   const router = useRouter();
@@ -67,13 +78,22 @@ export default function Principal() {
   // El día que se acaba de sumar, para la animación. Ver `DiaSumado`.
   const [sumando, setSumando] = useState(false);
   const [perdida, setPerdida] = useState(false);
-  // Los días que `verificar_perdida` acaba de cubrir con una vida, si cubrió
-  // alguno. Viene de la MISMA llamada que decide la pérdida, así que no hay
-  // que guardar en ningún lado si ya se mostró: en la próxima llamada no hay
-  // nada nuevo que cubrir y el aviso no vuelve.
   // Los días de este mes que una vida cubrió, para la tira semanal.
   const [cubiertos, setCubiertos] = useState<string[]>([]);
-  const [vidaUsada, setVidaUsada] = useState<{
+  // Los días cubiertos que esta persona TODAVÍA NO VIO.
+  //
+  // ANTES SALÍAN DE `verificar_perdida`, que reporta lo que cubrió SOLO en la
+  // llamada que lo cubrió, y el comentario que había acá decía que eso era una
+  // ventaja: "no hace falta guardar si ya se mostró, porque el hecho no se
+  // repite". Estaba mal, y el bug es que a veces no avisaba nada. El hecho no
+  // se repite, pero el REPORTE es de una sola llamada: si esa llamada pasaba
+  // con una sesión corriendo, o la pantalla se volvía a montar, o cualquier
+  // otra llamada llegaba primero, el aviso se perdía para siempre y el día
+  // quedaba cubierto sin que nadie se enterara.
+  //
+  // Ahora sale del ESTADO: `mis_vidas` dice qué días están cubiertos y el
+  // aparato se acuerda de hasta dónde anunció. Se puede preguntar mil veces.
+  const [vidaSalvada, setVidaSalvada] = useState<{
     dias: string[];
     quedan: number;
     total: number;
@@ -151,16 +171,6 @@ export default function Principal() {
     setLogs(ls ?? []);
     setDescansos((cfgs ?? []) as ConfigDescanso[]);
 
-    if (Array.isArray(v?.vidas_usadas) && v.vidas_usadas.length > 0) {
-      setVidaUsada({
-        dias: v.vidas_usadas as string[],
-        quedan: Number(v.vidas_quedan ?? 0),
-        // El total lo dice la base y no una constante del cliente: si algún
-        // día cambia, cambia en un solo lado.
-        total: Number(v.vidas_usadas.length) + Number(v.vidas_quedan ?? 0),
-      });
-    }
-
     // Si hubo pérdida, el perfil que trajimos quedó viejo: se relee.
     if (v?.perdida) {
       setPerdida(true);
@@ -188,8 +198,22 @@ export default function Principal() {
     // una vida. Va DESPUÉS de dibujar, como la línea de marcas: es un
     // agregado, no lo que el usuario vino a ver, y no puede costarle un
     // viaje más al arranque.
-    supabase.rpc('mis_vidas').then(({ data, error }) => {
-      if (!error && Array.isArray(data?.del_mes)) setCubiertos(data.del_mes as string[]);
+    supabase.rpc('mis_vidas').then(async ({ data, error }) => {
+      if (error || !data) return;
+      if (Array.isArray(data.del_mes)) setCubiertos(data.del_mes as string[]);
+
+      // Y el aviso, de la misma respuesta. `ultimas` son los últimos días
+      // cubiertos y vigentes; la marca dice hasta dónde se anunció en ESTE
+      // aparato. Lo que quede en el medio es lo que esta persona no vio.
+      const ultimas = Array.isArray(data.ultimas) ? (data.ultimas as string[]) : [];
+      const sinVer = vidasSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
+      if (sinVer.length > 0) {
+        setVidaSalvada({
+          dias: sinVer,
+          quedan: Number(data.quedan ?? 0),
+          total: Number(data.total ?? 0),
+        });
+      }
     });
 
     supabase.rpc('mi_fuerza').then(({ data }) => {
@@ -348,6 +372,29 @@ export default function Principal() {
   const hora = new Date().getHours();
   const avisoTiempo = !registradoHoy && racha > 0 && hora >= 19;
 
+  // ---- la ventana de la vida ----
+  //
+  // Cerrar es lo que ANOTA: hasta que no se cierra, el aviso vuelve. Se marca
+  // el máximo de TODO lo que trajo la base y no solo lo que se mostró, para
+  // que un día cubierto más viejo que la marca no vuelva a anunciarse.
+  async function cerrarVidaSalvada() {
+    const dias = vidaSalvada?.dias ?? [];
+    setVidaSalvada(null);
+    const hasta = hastaDondeVisto(dias, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
+    if (hasta) await plataforma.almacenamiento.guardar(CLAVE_VIDA_VISTA, hasta);
+  }
+
+  // "Guardarla para después": la vida vuelve al mes y la racha se corta. La
+  // base hace las dos cosas en una sola llamada —devolver y volver a evaluar
+  // la pérdida— para que no exista un instante con la vida devuelta y la racha
+  // todavía entera.
+  async function guardarVidas() {
+    if (!vidaSalvada) return;
+    const { data } = await supabase.rpc('devolver_vidas', { p_fechas: vidaSalvada.dias });
+    if (data?.perdida?.perdida) setPerdida(true);
+    await cargar();
+  }
+
   function alConfirmar(r: ResultadoRegistro | null) {
     setHojaAbierta(false);
     // Solo cuando el día ACABA de entrar. Si `r` viene en null es que ya
@@ -433,12 +480,6 @@ export default function Principal() {
             </div>
           )}
         </div>
-
-        {/* El aviso de la vida va ARRIBA de todo lo demás: es lo que cambió
-            desde la última vez que abriste. */}
-        {vidaUsada && !entrenando && (
-          <VidaUsada dias={vidaUsada.dias} quedan={vidaUsada.quedan} total={vidaUsada.total} />
-        )}
 
         {avisoTiempo && <p className="aviso-tiempo">{T.inicio.ultimoTramo(racha + 1)}</p>}
         {perdida && (
@@ -673,6 +714,26 @@ export default function Principal() {
           series={cierre.series}
           porUbicacion={cierre.porUbicacion}
           alCerrar={() => setCierre(null)}
+        />
+      )}
+
+      {/* LA VENTANA DE LA VIDA. Va afuera de la pantalla deslizable porque
+          toma la pantalla entera, como la subida de rango.
+
+          NO SALE CON UNA SESIÓN ANDANDO, y ahora eso es gratis: la marca se
+          escribe recién al cerrarla, así que lo único que pasa es que aparece
+          cuando la sesión termina. Antes esta misma condición era una de las
+          tres formas de perderse el aviso para siempre. */}
+      {vidaSalvada && !entrenando && perfil && (
+        <VidaSalvada
+          dias={vidaSalvada.dias}
+          quedan={vidaSalvada.quedan}
+          total={vidaSalvada.total}
+          rango={perfil.rango_actual}
+          planeta={planeta}
+          rachaSiGuarda={rachaSiSeDevuelve(racha)}
+          alGuardar={guardarVidas}
+          alCerrar={cerrarVidaSalvada}
         />
       )}
 

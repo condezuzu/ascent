@@ -82,6 +82,17 @@ import {
   VUELTA_MS,
   DURACION_MS,
 } from '../src/lib/pulso.ts';
+import {
+  desarmeEn,
+  brilloEn,
+  sigueSalvando,
+  dispersionDesde,
+  posicionesEn,
+  DESARME_MS,
+  SUELTO_MS,
+  DURACION_MS as SALVADA_MS,
+} from '../src/lib/salvada.ts';
+import { vidasSinVer, hastaDondeVisto, rachaSiSeDevuelve } from '../nucleo/vidas.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -3860,6 +3871,86 @@ console.log('\n58. Las vidas');
     chequear('el hueco cubierto no parte el record', m, 12);
   }
 
+  // ---- devolver una vida: "guardarla para despues" ----
+  //
+  // EL PROBLEMA QUE RESUELVE: cuando abris la app el dia ya paso, asi que
+  // preguntar antes deja la racha en limbo hasta que contestes. La vida se
+  // aplica sola y el aviso ofrece devolverla; elegis igual, sin limbo.
+  {
+    const u = await nuevoUsuario();
+    await rachaDe(u, 14, 2); // termina anteayer: ayer quedo vacio
+    const r = await perder(u);
+    chequear('primero la cubre sola', r.perdida, false);
+    const dia = r.vidas_usadas[0];
+    chequear('la racha sobrevivio', (await perfil(u)).racha_actual, 14);
+
+    await comoUsuario(u);
+    const d = (await db.query('select devolver_vidas($1::date[]) as v', [[dia]])).rows[0].v;
+    chequear('devolvio una', d.devueltas, 1);
+    chequear('y al devolverla, la racha se corta', d.perdida.perdida, true);
+    chequear('con el -10 de siempre', (await perfil(u)).racha_actual, 4);
+    // Y ES EL NUMERO QUE LA VENTANA PROMETIO. El precio se dice antes de
+    // cobrarlo, o sea que la cuenta esta escrita dos veces: en SQL adentro de
+    // `verificar_perdida` y en TypeScript en `nucleo/vidas.ts`. Dos copias de
+    // una regla se separan solas; esto las ata.
+    chequear(
+      'y es exactamente lo que la ventana prometio',
+      rachaSiSeDevuelve(14),
+      (await perfil(u)).racha_actual
+    );
+
+    // La vida vuelve al pozo: eso es "guardarla".
+    const vidas = (await db.query('select mis_vidas() as v')).rows[0].v;
+    chequear('y la vida volvio', vidas.quedan, 3);
+
+    // Y el dia devuelto NO se puede volver a cubrir: sin esto, la proxima
+    // llamada gastaria otra vida en el mismo dia y el boton no haria nada.
+    const otra = await perder(u);
+    chequear('no se vuelve a cubrir', otra.vidas_usadas, undefined);
+    chequear('ni se gasta otra vida', (await db.query('select mis_vidas() as v')).rows[0].v.quedan, 3);
+  }
+
+  // ---- lo que `mis_vidas` le da al aviso ----
+  //
+  // EL BUG QUE ESTO ARREGLA: el aviso salia de `verificar_perdida`, que
+  // reporta los dias cubiertos SOLO en la llamada que los cubrio. Si esa
+  // llamada pasaba con una sesion corriendo, o la pantalla se volvia a montar,
+  // o cualquier otra llamada llegaba primero, no te enterabas nunca. Ahora
+  // sale del ESTADO: se puede preguntar mil veces y contesta lo mismo.
+  {
+    const u = await nuevoUsuario();
+    await rachaDe(u, 14, 3); // faltaron dos dias
+    await perder(u);
+    await comoUsuario(u);
+    const v1 = (await db.query('select mis_vidas() as v')).rows[0].v;
+    chequear('dice las dos que uso', v1.ultimas.length, 2);
+    // Y otra vez, sin que pase nada en el medio.
+    const v2 = (await db.query('select mis_vidas() as v')).rows[0].v;
+    chequear('y lo sigue diciendo', v2.ultimas, v1.ultimas);
+    chequear('con la ultima primero', v2.ultima, v1.ultimas[0]);
+
+    // Devolverlas las saca del aviso y del pozo.
+    await db.query('select devolver_vidas($1::date[])', [v1.ultimas]);
+    const v3 = (await db.query('select mis_vidas() as v')).rows[0].v;
+    chequear('devueltas, ya no se anuncian', v3.ultimas, []);
+    chequear('y no cuentan como gastadas', v3.quedan, 3);
+  }
+
+  // ---- una vida vieja no se devuelve ----
+  //
+  // Sin el limite de siete dias esto seria una maquina de reescribir historia:
+  // devolver una vida de hace tres meses recalcularia una racha de entonces.
+  {
+    const u = await nuevoUsuario();
+    await db.query(
+      `insert into vidas_usadas (user_id, fecha) values ($1, mi_hoy() - 30)`,
+      [u]
+    );
+    await comoUsuario(u);
+    const d = (await db.query('select devolver_vidas($1::date[]) as v', [['2026-01-01']])).rows[0].v;
+    chequear('una fecha vieja no devuelve nada', d.devueltas, 0);
+  }
+
   await cuotaDeVidas(0);
 }
 
@@ -4114,6 +4205,196 @@ console.log('\n63. El enlace del correo que vuelve a la app');
     tokensDeUrl('ascent://confirmar#error=access_denied&error_code=otp_expired'),
     null
   );
+}
+
+console.log('\n64. El aviso de la vida sale del ESTADO, no del evento');
+{
+  // EL BUG QUE ESTO ARREGLA, y es el unico de esta tanda que reporto el
+  // humano: falto un dia, la vida lo cubrio, y la app NO LE AVISO NADA.
+  //
+  // La causa no estaba en el aviso sino en de donde salia. Salia de
+  // `verificar_perdida`, que reporta los dias que cubrio SOLO en la llamada
+  // que los cubrio. El comentario del componente decia que eso era una
+  // ventaja: "no hace falta guardar si ya se mostro, porque el hecho no se
+  // repite". El hecho no se repite, pero el REPORTE es de una sola llamada, y
+  // hay por lo menos tres formas de perderselo: que esa llamada caiga con una
+  // sesion corriendo (habia un `!entrenando` en el render), que la pantalla se
+  // vuelva a montar, o que otra llamada llegue primero.
+  //
+  // LA PROPIEDAD QUE SE PRUEBA ACA es la que faltaba: preguntar no consume.
+  // Con la misma entrada, la respuesta es siempre la misma.
+  const dias = ['2026-09-08', '2026-09-07'];
+
+  // Sin marca —cuenta nueva, primer aviso— se anuncia todo, y ordenado del
+  // mas viejo al mas nuevo: la base las manda al reves porque pide las
+  // ultimas cinco.
+  chequear('sin marca, se anuncia todo', vidasSinVer(dias, null), ['2026-09-07', '2026-09-08']);
+
+  // Y mil veces seguidas da lo mismo. Esto es literalmente lo que el aviso
+  // viejo no podia hacer.
+  chequear('preguntar no consume', vidasSinVer(dias, null), vidasSinVer(dias, null));
+
+  // Con marca: solo lo posterior.
+  chequear('con marca vieja, lo nuevo', vidasSinVer(dias, '2026-09-07'), ['2026-09-08']);
+  chequear('con marca al dia, nada', vidasSinVer(dias, '2026-09-08'), []);
+  chequear('con marca mas nueva, nada', vidasSinVer(dias, '2026-10-01'), []);
+  chequear('sin dias cubiertos, nada', vidasSinVer([], '2026-09-08'), []);
+
+  // La marca que queda despues de mostrar: el maximo de TODO lo que vino y no
+  // solo de lo que se anuncio. Si la base manda un dia mas viejo que la marca,
+  // ya se anuncio alguna vez y no puede hacerla retroceder.
+  chequear('la marca es el maximo', hastaDondeVisto(dias, null), '2026-09-08');
+  chequear('y no retrocede', hastaDondeVisto(['2026-08-01'], '2026-09-08'), '2026-09-08');
+  chequear('sin nada, queda como estaba', hastaDondeVisto([], '2026-09-08'), '2026-09-08');
+  chequear('sin nada y sin marca, nada', hastaDondeVisto([], null), null);
+
+  // EL CICLO COMPLETO, que es el test de regresion de verdad: se anuncia, se
+  // marca al cerrar, y no vuelve.
+  {
+    const marca1 = hastaDondeVisto(dias, null);
+    chequear('anunciado y marcado, no vuelve', vidasSinVer(dias, marca1), []);
+    // Y una falta nueva al dia siguiente si aparece.
+    const despues = ['2026-09-10', ...dias];
+    chequear('pero una falta nueva si', vidasSinVer(despues, marca1), ['2026-09-10']);
+  }
+
+  // El precio de guardarla, que la ventana dice ANTES de cobrarlo.
+  chequear('el precio son diez dias', rachaSiSeDevuelve(14), 4);
+  chequear('y nunca baja de cero', rachaSiSeDevuelve(3), 0);
+}
+
+console.log('\n65. El gesto de "te salvaste": la curva');
+{
+  // MISMO CUIDADO QUE CON EL PULSO, y por el mismo error ya cometido: el
+  // timestamp de requestAnimationFrame llega con el tiempo del COMIENZO del
+  // cuadro, que puede ser ANTERIOR al performance.now() de un instante antes
+  // —medido: -3 ms—. Si la curva no acota eso, el primer cuadro dibuja el
+  // objeto desarmado al reves y con brillo negativo.
+  chequear('un tiempo negativo es reposo', desarmeEn(-3), 0);
+  chequear('y no apaga nada', brilloEn(-3), 1);
+  chequear('pero NO se da por terminado en el primer cuadro', sigueSalvando(-3), true);
+
+  chequear('empieza entero', desarmeEn(0), 0);
+  chequear('a mitad del desarme ya se solto algo', desarmeEn(DESARME_MS / 2) > 0.5, true);
+  chequear('al final del desarme esta suelto', Math.round(desarmeEn(DESARME_MS - 1) * 10) / 10, 1);
+  chequear('y se queda suelto un rato', desarmeEn(DESARME_MS + SUELTO_MS - 1), 1);
+  chequear('al terminar vuelve a estar entero', desarmeEn(SALVADA_MS), 0);
+  chequear('y despues tambien', desarmeEn(SALVADA_MS + 500), 0);
+  chequear('ahi si se da por terminado', sigueSalvando(SALVADA_MS), false);
+
+  // El brillo: baja mientras esta suelto —es la racha yendose— y pasa de 1 en
+  // el fulgor de cerrarse. Las dos cosas tienen que pasar, o el gesto no
+  // cuenta nada.
+  chequear('suelto, la luz baja', brilloEn(DESARME_MS + 100) < 0.5, true);
+  let pico = 0;
+  let minimo = 9;
+  let saltoMaximo = 0;
+  let anterior = brilloEn(0);
+  let negativo = false;
+  for (let t = 0; t <= SALVADA_MS + 20; t++) {
+    const b = brilloEn(t);
+    if (b > pico) pico = b;
+    if (b < minimo) minimo = b;
+    if (b < 0) negativo = true;
+    saltoMaximo = Math.max(saltoMaximo, Math.abs(b - anterior));
+    anterior = b;
+  }
+  chequear('al cerrarse da un fulgor', pico > 1.2, true);
+  chequear('y nunca se apaga del todo', minimo > 0.2, true);
+  chequear('el brillo nunca es negativo', negativo, false);
+  // SIN ESCALONES. Un salto grande entre dos milisegundos seguidos es un
+  // parpadeo en pantalla, y es justo lo que pasa cuando dos tramos de una
+  // curva por partes no se tocan en el borde. Se mide en vez de mirarse.
+  chequear('no hay saltos entre tramos', saltoMaximo < 0.02, true);
+  chequear('y termina exactamente en reposo', brilloEn(SALVADA_MS), 1);
+
+  // ---- que el objeto se DESHAGA, y no que se infle ----
+  //
+  // ESTO NO SE PUEDE MIRAR, Y POR ESO SE CUENTA. El navegador sin cabeza corre
+  // requestAnimationFrame a UN cuadro por segundo —medido acá mismo: 3 cuadros
+  // en 3641 ms— asi que dos capturas separadas por un segundo devuelven la
+  // misma imagen y no prueban nada. La primera version de esto mandaba cada
+  // particula en una direccion al azar, se veia como la misma nube un poco mas
+  // grande, y las capturas decian que estaba bien.
+  //
+  // Lo que hace que se lea como "se esta rompiendo" es que el CENTRO SE VACIE.
+  // Eso es un numero: el radio de la particula mas cercana al centro.
+  {
+    // Una esfera de 300 puntos, que es la forma de la luna y del planeta.
+    const base = new Float32Array(300 * 3);
+    for (let i = 0; i < 300; i++) {
+      const u = (i / 300) * 2 - 1;
+      const th = i * 2.39996; // angulo aureo: reparte parejo y sin azar
+      const s = Math.sqrt(1 - u * u);
+      base[i * 3] = Math.cos(th) * s * 0.4;
+      base[i * 3 + 1] = u * 0.4;
+      base[i * 3 + 2] = Math.sin(th) * s * 0.4;
+    }
+    // Azar fijo, para que el test no dependa de la suerte del dia.
+    let semilla = 1;
+    const azar = () => {
+      semilla = (semilla * 16807) % 2147483647;
+      return semilla / 2147483647;
+    };
+    const fuera = dispersionDesde(base, azar);
+    const donde = new Float32Array(base.length);
+    const radios = (a) => {
+      const r = [];
+      for (let i = 0; i < a.length; i += 3) r.push(Math.hypot(a[i], a[i + 1], a[i + 2]));
+      return r;
+    };
+
+    // En reposo, EXACTAMENTE la forma original. No "casi": el objeto tiene que
+    // quedar como estaba, sin la pizca de error de multiplicar por cero.
+    posicionesEn(base, fuera, 0, donde);
+    chequear('en reposo es la forma original', [...donde], [...base]);
+    posicionesEn(base, fuera, SALVADA_MS, donde);
+    chequear('y al terminar tambien', [...donde], [...base]);
+
+    // Suelto del todo: todas se van hacia afuera y se separan entre ellas.
+    const antes = radios(base);
+    posicionesEn(base, fuera, DESARME_MS + 10, donde);
+    const despues = radios(donde);
+    const minAntes = Math.min(...antes);
+    const minDespues = Math.min(...despues);
+    chequear('ninguna se queda donde estaba', minDespues > minAntes * 1.15, true);
+    const medio = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+    chequear('y la nube crece', medio(despues) > medio(antes) * 1.8, true);
+    // Y NO ES UN GLOBO: si todas se fueran lo mismo seria la misma cascara mas
+    // grande, que se lee como el mismo objeto y no como uno que se rompe. La
+    // cascara tiene que quedar DESPAREJA.
+    const max = Math.max(...despues);
+    chequear('con unas mas lejos que otras', max > minDespues * 1.8, true);
+
+    // Cada particula sale POR SU PROPIO RADIO: la direccion se conserva.
+    let torcidas = 0;
+    for (let i = 0; i < base.length; i += 3) {
+      const ra = Math.hypot(base[i], base[i + 1], base[i + 2]);
+      const rd = Math.hypot(donde[i], donde[i + 1], donde[i + 2]);
+      const cos =
+        (base[i] * donde[i] + base[i + 1] * donde[i + 1] + base[i + 2] * donde[i + 2]) / (ra * rd);
+      if (cos < 0.9) torcidas++;
+    }
+    chequear('ninguna se va para el otro lado', torcidas, 0);
+
+    // Y EN LAS FORMAS QUE SI TIENEN CENTRO —el polvo del rango 1, el nucleo
+    // del sistema— el centro se vacia de verdad. Es el caso donde mas se nota
+    // que se rompe, y el que la version de direcciones al azar no lograba.
+    const nube = new Float32Array(300 * 3);
+    for (let i = 0; i < 300; i++) {
+      const r = Math.sqrt((i + 0.5) / 300) * 0.8;
+      const th = i * 2.39996;
+      nube[i * 3] = Math.cos(th) * r;
+      nube[i * 3 + 1] = Math.sin(th) * r;
+      nube[i * 3 + 2] = 0;
+    }
+    semilla = 1;
+    const fuera2 = dispersionDesde(nube, azar);
+    const donde2 = new Float32Array(nube.length);
+    posicionesEn(nube, fuera2, DESARME_MS + 10, donde2);
+    chequear('la mas cercana al centro, antes', Math.min(...radios(nube)) < 0.04, true);
+    chequear('y el centro queda vacio', Math.min(...radios(donde2)) > 0.2, true);
+  }
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

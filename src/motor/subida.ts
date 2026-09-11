@@ -7,9 +7,13 @@ import { RANGOS_CFG, PLANETAS_CFG } from './cuerpos';
 // El salto 4 -> 5 (Júpiter se enciende y se vuelve Sol) es la ignición:
 // la animación más espectacular de las siete.
 
-const N = 900;
+// Las tres cosas que se exportan las usa tambien `salvada.ts`, el gesto de
+// "te salvaste": ese objeto se deshace y vuelve a armarse, o sea que necesita
+// exactamente la misma forma y el mismo color que esta subida. Copiarlas seria
+// tener dos lunas que se pueden ir separando sin que nadie se de cuenta.
+export const N = 900;
 
-function formaDeRango(rango: number): Float32Array {
+export function formaDeRango(rango: number): Float32Array {
   const pos = new Float32Array(N * 3);
   if (rango <= 1) {
     // polvo: nube suelta
@@ -76,8 +80,13 @@ function formaDeRango(rango: number): Float32Array {
   return pos;
 }
 
-function colorDeRango(rango: number): THREE.Color {
-  const cfg = rango === 4 ? PLANETAS_CFG['Ceres'] : RANGOS_CFG[rango];
+export function colorDeRango(rango: number, planeta?: string): THREE.Color {
+  // En rango 4 el cuerpo es EL planeta que le toco a esta persona, no un
+  // planeta cualquiera: si no se sabe cual, Ceres es el primero de la lista.
+  const cfg =
+    rango === 4
+      ? PLANETAS_CFG[planeta && PLANETAS_CFG[planeta] ? planeta : 'Ceres']
+      : RANGOS_CFG[rango];
   return new THREE.Color(cfg ? cfg.paleta[2] : rango >= 7 ? '#9a86ff' : '#aebfe0');
 }
 

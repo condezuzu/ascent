@@ -906,3 +906,18 @@ esté quieto—. Ningún test de lógica lo habría visto.
 → **Regla:** un bloque que va a estar ahí se dibuja desde el primer cuadro, con
 su estado vacío adentro. Reservar el lugar es parte de renderizar. `null`
 mientras carga solo vale para lo que puede no existir nunca.
+
+**El navegador sin cabeza corre `requestAnimationFrame` a un cuadro por
+segundo.** Medido en la sonda de la ventana de vidas: **3 cuadros en 3641 ms**.
+O sea que ninguna captura de pantalla puede ver una animación: dos fotos
+separadas por un segundo devuelven la misma imagen, y esa imagen es un cuadro
+cualquiera. La primera versión del gesto mandaba cada partícula en una dirección
+al azar —se veía como la misma nube un poco más grande, no como algo que se
+rompe— y las capturas no lo dijeron. Lo dijo mirar los números.
+
+Es la misma trampa que ya había dejado pasar el bug del pulso ("tres tandas de
+capturas no encontraron eso").
+→ **Regla:** de una animación, `capturas` prueba que MONTÓ y que no tira
+errores, nada más. Lo que se mueve se saca a una función pura del tiempo y se
+prueba con números: la curva, y también la geometría. Si la cuenta no se puede
+probar con números, no está probada.

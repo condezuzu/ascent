@@ -534,6 +534,10 @@ create table if not exists public.vidas_usadas (
   -- día sería gastar dos vidas por una sola falta.
   fecha date not null,
   creado timestamptz not null default now(),
+  -- Devolver una vida (migración 33): "guardarla para después". La fila NO se
+  -- borra, se marca — un día devuelto no se puede volver a cubrir, o la
+  -- devolución sería un botón que no hace nada.
+  devuelta boolean not null default false,
   unique (user_id, fecha)
 );
 create index if not exists vidas_por_usuario on public.vidas_usadas (user_id, fecha);
@@ -561,6 +565,7 @@ returns int language sql stable security definer set search_path = public as $$
   select greatest(0, vidas_por_mes() - (
     select count(*)::int from vidas_usadas
      where user_id = p_user
+       and not devuelta
        and date_trunc('month', fecha) = date_trunc('month', p_dia)
   ));
 $$;
@@ -571,22 +576,75 @@ returns jsonb language sql stable security definer set search_path = public as $
   select jsonb_build_object(
     'total', vidas_por_mes(),
     'quedan', vidas_disponibles(auth.uid(), mi_hoy()),
-    -- Las de ESTE mes, para dibujar los puntos, y la última de todas para el
-    -- aviso del día siguiente —que puede ser del mes pasado si faltaste un 31.
+    -- Las de ESTE mes, para dibujar los puntos.
     'del_mes', coalesce((
       select jsonb_agg(fecha order by fecha)
         from vidas_usadas
        where user_id = auth.uid()
+         and not devuelta
          and date_trunc('month', fecha) = date_trunc('month', mi_hoy())
     ), '[]'::jsonb),
+    -- Y las últimas cinco de todas, para el aviso. Cinco y no una: una
+    -- ausencia de tres días son tres vidas y el aviso tiene que decir tres,
+    -- no la última. Cinco es más que el máximo que se puede gastar de una.
+    'ultimas', coalesce((
+      select jsonb_agg(fecha order by fecha desc)
+        from (
+          select fecha from vidas_usadas
+           where user_id = auth.uid() and not devuelta
+           order by fecha desc limit 5
+        ) x
+    ), '[]'::jsonb),
     'ultima', (
-      select max(fecha) from vidas_usadas where user_id = auth.uid()
+      select max(fecha) from vidas_usadas where user_id = auth.uid() and not devuelta
     )
   );
 $$;
 
 revoke execute on function public.mis_vidas() from public, anon;
 grant execute on function public.mis_vidas() to authenticated;
+
+/**
+ * Devolver las vidas de una ausencia: se guardan para después y la racha se
+ * corta como si nunca se hubieran usado.
+ *
+ * ES IRREVERSIBLE Y TIENE QUE SERLO: deshacerlo sería devolver una racha que
+ * ya se dio por perdida, y ahí la racha deja de significar algo.
+ *
+ * SOLO DÍAS RECIENTES. Sin el límite, esto sería una máquina de reescribir
+ * historia: alguien podría devolver una vida de hace tres meses y recalcular
+ * una racha de entonces. Siete días es más que suficiente para el caso real,
+ * que es "me enteré hoy y prefiero guardarla".
+ */
+create or replace function public.devolver_vidas(p_fechas date[])
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  cuantas int;
+begin
+  if uid is null then return null; end if;
+
+  update vidas_usadas
+     set devuelta = true
+   where user_id = uid
+     and fecha = any(p_fechas)
+     and not devuelta
+     and fecha >= mi_hoy() - 7;
+  get diagnostics cuantas = row_count;
+
+  if cuantas = 0 then
+    return jsonb_build_object('devueltas', 0);
+  end if;
+
+  -- Y ahora se aplica la pérdida. `verificar_perdida` ve el día descubierto y
+  -- hace lo suyo; NO puede volver a cubrirlo porque su bucle sale en cuanto
+  -- encuentra una fila para ese día, devuelta o no.
+  return jsonb_build_object('devueltas', cuantas, 'perdida', verificar_perdida());
+end;
+$$;
+
+revoke execute on function public.devolver_vidas(date[]) from public, anon;
+grant execute on function public.devolver_vidas(date[]) to authenticated;
 revoke execute on function public.vidas_disponibles(uuid, date) from public, anon;
 revoke execute on function public.vidas_por_mes() from public, anon;
 
@@ -611,8 +669,13 @@ begin
     -- la de hoy: cambiar de rutina nunca puede alterar el pasado.
     elsif extract(dow from d)::int = any(descansos_vigentes(p_user, d)) then
       null; -- día de descanso sin log: no corta
-    -- Un día cubierto por una vida: tampoco corta, y tampoco suma.
-    elsif exists (select 1 from vidas_usadas where user_id = p_user and fecha = d) then
+    -- Un día cubierto por una vida: tampoco corta, y tampoco suma. `not
+    -- devuelta` porque devolver la vida es justamente decir "que este día
+    -- corte".
+    elsif exists (
+      select 1 from vidas_usadas
+       where user_id = p_user and fecha = d and not devuelta
+    ) then
       null;
     else
       exit;
@@ -642,11 +705,14 @@ begin
   loop
     if anterior is not null then
       -- se revisan los días entre medio: cortan salvo que fueran de descanso
-      -- o que una vida los haya cubierto
+      -- o que una vida NO devuelta los haya cubierto
       d := anterior + 1;
       while d < r.fecha loop
         if not (extract(dow from d)::int = any(descansos_vigentes(p_user, d)))
-           and not exists (select 1 from vidas_usadas where user_id = p_user and fecha = d)
+           and not exists (
+             select 1 from vidas_usadas
+              where user_id = p_user and fecha = d and not devuelta
+           )
         then
           corriente := 0;
           exit;

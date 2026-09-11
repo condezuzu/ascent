@@ -46,6 +46,26 @@ export const T = {
     // contexto, no un título.
     titulo: 'Vidas',
     nota: 'Tres por mes. Si faltas un día, se usa una sola y la racha sigue. No se acumulan.',
+
+    // ---- la ventana del día siguiente ----
+    //
+    // NO FELICITA, Y CUESTA NO HACERLO: es el momento más parecido a un premio
+    // que tiene la app. Pero el usuario no hizo nada para merecerlo —faltó—, y
+    // una felicitación ahí enseña que faltar está bien. Dice lo que pasó.
+    salvada: {
+      titulo: 'La racha sigue',
+      // El precio de guardarla, dicho con el número y no con el reglamento.
+      // "Se corta la racha" no significa nada hasta que se ve en cuánto queda.
+      precio: (n: number, racha: number) =>
+        `${n === 1 ? 'La vida vuelve' : `Las ${n} vidas vuelven`} al mes y la racha se corta hoy: quedas en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
+      guardar: (n: number) => (n === 1 ? 'Guardarla para después' : 'Guardarlas para después'),
+      confirmar: 'Cortar la racha',
+      volver: 'Mejor no',
+      // Después de devolverla. Tampoco reta: la persona eligió esto sabiendo
+      // el precio, y repetirle que perdió sería cobrarle dos veces.
+      guardada: (n: number) =>
+        n === 1 ? 'La vida quedó para después.' : `Las ${n} vidas quedaron para después.`,
+    },
   },
 
   // EL DETECTOR DE ESTANCAMIENTO. Describe, no juzga y no receta: cada

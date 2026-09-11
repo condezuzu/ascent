@@ -42,7 +42,26 @@ const MARCA = {
   // La de ahora es el aviso nuevo al activar el DOTS, que solo existe desde
   // el commit del DOTS exacto. Se cambia otra vez en la próxima migración de
   // orden invertido.
-  textoNuevo: { ruta: '/ajustes', dice: 'tus amigos ven tu número exacto' },
+  // Tanda de las vidas. La marca anterior era el aviso del DOTS, que ya
+  // estaba vivo desde antes: sirvió para su tanda y no para esta. Ahora es la
+  // línea de las vidas en Stats, que solo existe desde el commit de las vidas.
+  //
+  // ES EL SEGUNDO OLVIDO DEL MISMO TIPO: la marca hay que cambiarla EN EL
+  // MISMO COMMIT que la tanda, o el "DESPLEGADO" contesta sobre otra cosa.
+  //
+  // TANDA DE LA VENTANA DE VIDAS (migración 33): NO HAY MARCA, y decirlo es
+  // mejor que dejar la anterior. Todo lo nuevo de esta tanda vive adentro de
+  // una ventana que solo aparece si una vida te cubrió un día, y la cuenta de
+  // prueba no tiene ninguna: desde afuera, el cliente nuevo y el viejo se ven
+  // iguales. Dejar la marca de la tanda pasada habría dado DESPLEGADO
+  // contestando sobre otro commit, que es el error que ya cometí dos veces.
+  //
+  // No hace falta igual: la 33 es ADITIVA —una columna con valor por omisión y
+  // funciones que solo SUMAN una clave— así que corre antes o después del
+  // deploy sin romper nada. Esta sonda es para las de orden invertido.
+  textoNuevo: null,
+  porQueNoHayMarca:
+    'lo nuevo solo se ve adentro de la ventana de vidas, que la cuenta de prueba no puede abrir',
   /**
    * EL AUTOTEST. Un texto de la misma pantalla que tiene que estar SIEMPRE,
    * con el cliente viejo y con el nuevo.
@@ -55,7 +74,7 @@ const MARCA = {
    * Se descubrió pidiéndole a mano un texto que con seguridad estaba. Ahora lo
    * hace sola, antes de cada veredicto.
    */
-  siempre: 'Descanso entre series',
+  siempre: 'Racha actual',
 };
 
 const navegador = await chromium.launch();
@@ -160,6 +179,17 @@ if (MARCA.textoNuevo) {
     console.log('\nTODAVÍA VIEJO: falta lo que solo trae el cliente nuevo.');
     process.exit(1);
   }
+} else if (MARCA.rpcViejo === null) {
+  // SIN MARCA NO HAY VEREDICTO. Antes, con las dos marcas en null y cualquier
+  // RPC a la vista, esto imprimía "DESPLEGADO" — o sea que la forma más fácil
+  // de sacarle un sí era no darle nada que mirar. Es la misma familia de error
+  // que dejar puesta la marca de la tanda anterior.
+  console.log(
+    `\nNO CONCLUYENTE: esta tanda no dejó marca${MARCA.porQueNoHayMarca ? ` (${MARCA.porQueNoHayMarca})` : ''}.\n` +
+      'Esta sonda no puede decir nada del deploy. Si la migración es aditiva, no importa;\n' +
+      'si es de orden invertido, hay que ponerle una marca antes de migrar.'
+  );
+  process.exit(1);
 } else if (vistos.length === 0) {
   // Silencio no es éxito: si no se miró nada, no se sabe nada.
   console.log('\nNO CONCLUYENTE: no salió ningún RPC, así que no hay nada que mirar.');

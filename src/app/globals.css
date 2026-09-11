@@ -3451,14 +3451,79 @@ body.con-franja.con-accion .pantalla {
   margin-top: 0;
 }
 
-/* El aviso del día siguiente. Es un globo como los demás —no un cartel de
-   alarma— porque lo que dice es un hecho, no un problema. */
-.vida-usada .quedan {
+/* ---------- LA VENTANA DE "TE SALVÓ UNA VIDA" ----------
+
+   ERA UN GLOBITO Y NO ALCANZABA. Como un aviso más en la lista de Inicio
+   competía con la cita, la línea social y las marcas, y se perdía entre ellas.
+   Es el único momento en que la app te salva de algo: tiene que ocupar la
+   pantalla, contestarse y irse.
+
+   EL OBJETO DEL RANGO ES EL CENTRO y lo dibuja el lienzo de acá adentro, no el
+   fondo: el fondo tiene UN renderer que se muda de pantalla en pantalla, y en
+   un equipo flojo directamente no existe (ver `nucleo/fondo.ts`). El texto va
+   arriba y los botones abajo, con el objeto respirando en el medio. */
+.salvada {
+  position: fixed;
+  inset: 0;
+  /* Debajo de la subida de rango (50): si los dos cayeran el mismo día, la
+     subida es la que manda. */
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: max(14vh, 90px) 26px calc(30px + env(safe-area-inset-bottom));
+  /* Más cerrado que el fondo normal, y con un respiro de la paleta del rango
+     en el medio: la luz de la pantalla sale de donde está el objeto. */
+  background:
+    radial-gradient(80% 45% at 50% 50%, color-mix(in srgb, var(--pal-principal) 20%, transparent), transparent 72%),
+    color-mix(in srgb, var(--fondo) 94%, #000);
+  backdrop-filter: blur(14px);
+  animation: aparecer 0.4s var(--curva-suave) backwards;
+}
+.salvada-lienzo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.salvada-texto,
+.salvada-botones {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+.salvada-titulo {
+  font-size: 26px;
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  margin: 0 0 12px;
+}
+.salvada-detalle {
+  color: var(--sub);
+  margin: 0;
+  line-height: 1.5;
+}
+.salvada-quedan {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  margin-top: 14px;
   color: var(--apagado);
+  font-size: 13px;
   white-space: nowrap;
+}
+.salvada-botones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* El precio arriba del botón que lo cobra, y no al costado: se lee en el
+   camino a tocarlo. */
+.salvada-precio {
+  color: var(--sub);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 14px;
 }
 
 /* ---------- el aviso de estancamiento ----------
