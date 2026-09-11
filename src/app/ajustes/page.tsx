@@ -25,6 +25,7 @@ import MisDatos from '@/components/ajustes/MisDatos';
 import NombreUsuario from '@/components/ajustes/NombreUsuario';
 import Sesion from '@/components/ajustes/Sesion';
 import Sexo from '@/components/ajustes/Sexo';
+import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import Sugerencias from '@/components/ajustes/Sugerencias';
 import UnidadPeso from '@/components/ajustes/UnidadPeso';
 import { T } from '@nucleo/textos';
@@ -79,6 +80,8 @@ export default function Ajustes() {
       />
       <PantallaDeslizable>
         <div className="titulo-pantalla">{T.ajustes.titulo}</div>
+
+        <GloboPrimeraVez cual="ajustes">{T.ajustes.globo}</GloboPrimeraVez>
 
         {/* Todo lo que es "mío" vive en el perfil propio (§9): la foto, qué
             fotos ven los amigos, y la lista de amigos. Acá solo la puerta. */}

@@ -11,7 +11,7 @@ const CLAVE = 'ascent:guia';
 // Cada globo se muestra UNA vez y no vuelve. Agregar uno acá no rompe nada:
 // el que ya usó la app lo va a ver la próxima vez que pase por esa pantalla,
 // que es justo lo que se quiere para una parte nueva.
-export type Globo = 'leaderboard' | 'stats' | 'album' | 'series';
+export type Globo = 'leaderboard' | 'stats' | 'album' | 'series' | 'perfil' | 'ajustes';
 
 type Guia = { uid: string; recorrido: boolean; globos: Globo[] };
 
@@ -48,7 +48,7 @@ export async function marcarGloboVisto(uid: string, cual: Globo) {
   await escribir({ ...g, globos: [...g.globos, cual] });
 }
 
-/** Desde Ajustes: vuelve a mostrar el recorrido y los tres globos. */
+/** Desde Ajustes: vuelve a mostrar el recorrido y todos los globos. */
 export async function reiniciarGuia(uid: string) {
   await escribir({ uid, recorrido: false, globos: [] });
 }

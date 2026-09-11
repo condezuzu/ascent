@@ -17,6 +17,7 @@ import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import RecorteCircular from '@/components/RecorteCircular';
 import Esqueleto from '@/components/Esqueleto';
+import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import NoCargo from '@/components/NoCargo';
 import { DIAS_VISIBLES } from '@/components/ComoMeVen';
 import { T } from '@nucleo/textos';
@@ -273,6 +274,8 @@ export default function Yo() {
         >
           {T.general.volver}
         </button>
+
+        <GloboPrimeraVez cual="perfil">{T.yo.globo}</GloboPrimeraVez>
 
         <div className="yo-cabecera">
           <button

@@ -1286,12 +1286,30 @@ textarea::placeholder {
    Con tres, la foto mide 110 px y entran seis filas. */
 .album-grilla {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* `minmax(0, 1fr)` Y NO `1fr`. Acá estaba "el perfil tiene cosas
+     superpuestas", y es un bug de CSS que no se ve leyendo el archivo:
+
+     `1fr` es en realidad `minmax(auto, 1fr)`, o sea que una columna NUNCA se
+     achica más que el contenido mínimo de lo que tiene adentro. El pie de la
+     foto dice "10 de agosto" y eso no se parte, así que esa columna crecía:
+     medido, las tres columnas daban 129 / 102 / 102 en vez de 111 / 111 / 111.
+
+     Y lo peor no es que queden desparejas. La celda tiene `aspect-ratio: 1`,
+     así que su ALTO depende del ancho de la columna, y el ancho de la columna
+     dependía del contenido: el navegador resuelve esa vuelta y queda
+     inconsistente consigo mismo. Medido: la grilla declaraba la segunda fila
+     de 147 px y su propia caja terminaba 18 px antes —justo el alto del pie—,
+     así que la última fecha se dibujaba ENCIMA de los botones de compartir.
+
+     Con `minmax(0, 1fr)` las columnas son exactamente iguales y no dependen
+     de lo que tienen adentro. Se rompe la vuelta y desaparecen las dos cosas.
+     Ver `spec/trampas.md`. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px 8px;
 }
 @media (min-width: 560px) {
   .album-grilla {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 .album-pieza {

@@ -38,6 +38,15 @@ const VELO_TECHO = 0.38; // rango 8
 
 /** Cuánto velo le toca a un rango. Entre VELO_PISO y VELO_TECHO, lineal. */
 export function veloDeRango(rango: number): number {
+  // UN RANGO ROTO DABA `NaN`, y lo encontró el test que se escribió al hacer
+  // el inventario de animaciones. `Math.round(NaN)` es `NaN`, y `min`/`max` lo
+  // dejan pasar: el velo terminaba con `opacity: NaN`, que el navegador tira a
+  // la basura sin decir nada. La pantalla quedaba con el velo del CSS, que no
+  // es el del rango, y no había forma de enterarse.
+  //
+  // Puede llegar roto de verdad: el rango sale del perfil, y un perfil que no
+  // cargó es `undefined`.
+  if (!Number.isFinite(rango)) return VELO_PISO;
   const n = Math.min(8, Math.max(1, Math.round(rango)));
   const t = (n - 1) / 7;
   return Number((VELO_PISO + (VELO_TECHO - VELO_PISO) * t).toFixed(3));

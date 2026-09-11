@@ -230,7 +230,7 @@ export const T = {
       },
       {
         titulo: 'Los descansos no te cortan',
-        texto: 'Eliges tus días libres una vez, en Ajustes. Y si igual se te corta, no volvés a cero.',
+        texto: 'Eliges tus días libres una vez, en Ajustes. Y si igual se te corta, no vuelves a cero.',
       },
       // Este paso PRESENTA el punto del gimnasio y no pide nada: acá nadie
       // está en el gimnasio, y pedir algo que no se puede hacer en el momento
@@ -239,6 +239,20 @@ export const T = {
         titulo: 'Y un día deja de hacer falta',
         texto:
           'Si marcas dónde queda tu gimnasio, abrir la app estando ahí registra el día solo. Se marca desde Ajustes, parado en la puerta.',
+      },
+      // LOS DOS PASOS QUE SE AGREGARON DESPUÉS, y por qué. El recorrido se
+      // escribió cuando la app era la racha y nada más. Después crecieron dos
+      // cosas grandes —contar series y los impulsos— y el que entraba nuevo
+      // se encontraba con ellas sin que nadie se las hubiera nombrado.
+      {
+        titulo: 'Mientras entrenas, cuentas series',
+        texto:
+          'Eliges en qué estás y cuántas vas a hacer. Un botón grande suma cada serie y arranca el descanso solo. Es opcional: el día cuenta igual sin tocar nada.',
+      },
+      {
+        titulo: 'Y si faltas un día, hay impulsos',
+        texto:
+          'Tienes dos, y el tercero se gana a los 20 días de racha. Si faltas, se usa uno solo y la racha sigue. Cada uno vuelve 30 días después.',
       },
     ],
   },
@@ -338,6 +352,9 @@ export const T = {
   // ---------------------------------------------------------------
   ajustes: {
     titulo: 'Ajustes',
+    // Tres cosas que cambian cómo funciona la app y que nadie encuentra si
+    // no se las nombra una vez.
+    globo: 'Aquí eliges tus días de descanso, marcas dónde queda tu gimnasio para que el día se registre solo, y decides cuánto se mueve el fondo.',
 
     diasDescanso: 'Días de descanso',
     diasDescansoNota: 'Esos días puedes faltar sin perder la racha.',
@@ -837,6 +854,10 @@ export const T = {
 
   // ---------------------------------------------------------------
   yo: {
+    // El globo de la primera vez. Lo que no se entiende solo de esta
+    // pantalla es que las fotos son PRIVADAS salvo que las compartas: sin
+    // decirlo, subir una foto se siente como publicar.
+    globo: 'Tus fotos son privadas. Tocas una para compartirla con tus amigos, y la tocas de nuevo para volver a esconderla.',
     misFotos: 'Qué fotos ven tus amigos',
     cambiarFoto: 'Cambiar la foto de perfil',
     subiendoFoto: 'subiendo la foto…',

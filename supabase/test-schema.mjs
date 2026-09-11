@@ -94,6 +94,14 @@ import {
 } from '../src/lib/salvada.ts';
 import { impulsosSinVer, hastaDondeVisto, rachaSiSeDevuelve } from '../nucleo/impulsos.ts';
 import { cacheTrasConfirmar } from '../nucleo/sesiones.ts';
+import {
+  veloDeRango,
+  msDeTransicion,
+  faltanParaSubir,
+  hayPresagio,
+  MS_ABRIR,
+  MS_CERRAR,
+} from '../nucleo/atmosfera.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -3417,6 +3425,11 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
     'agregá', 'guardá', 'mandá', 'sacá', 'sumá', 'quitá', 'corregí',
     'tomá', 'llevá', 'esperá', 'revisá', 'pedí', 'comprobá', 'compará',
     'marcalo', 'apretalo', 'tocala', 'tocalo', 'ponete', 'quedate', 'mirate',
+    // Se agregaron despues de que la lista dejara pasar dos: "no volvés a
+    // cero" vivia en el recorrido de bienvenida desde el principio, y
+    // "contás series" lo escribi yo mismo agregando un paso nuevo. Las dos
+    // son terminaciones que la lista no tenia.
+    'volvés', 'contás', 'llegás', 'salís', 'entrenás', 'descansás', 'anotás',
   ];
 
   // Regla 3: modismos rioplatenses. Se entienden en tres paises.
@@ -4479,6 +4492,53 @@ console.log('\n66. El contador de series no se resetea solo');
     const q = cacheTrasConfirmar(null, servidor, false);
     chequear('sin cache previa, se guarda igual', q.cache, servidor);
   }
+}
+console.log('\n67. La atmosfera: el velo que se abre con el rango');
+{
+  // POR QUE APARECE RECIEN AHORA. Haciendo el inventario de animaciones salio
+  // esto: `atmosfera.ts` ya era puro y ya vivia en el nucleo —o sea que
+  // probarlo no costaba nada— y no tenia un solo test. Es la animacion mas
+  // LARGA de la app: el velo tarda hasta siete segundos, y si sale mal la
+  // pantalla queda demasiado oscura o demasiado clara sin que nada falle.
+  //
+  // Es exactamente el caso que las capturas no pueden ver: no hay error, no
+  // hay excepcion, solo un numero mal.
+
+  // El velo se ABRE con el rango: mas rango, menos velo.
+  const velos = [1, 2, 3, 4, 5, 6, 7, 8].map(veloDeRango);
+  chequear('el rango 1 es el mas cerrado', velos[0], 0.58);
+  chequear('y el 8 el mas abierto', velos[7], 0.38);
+  let baja = true;
+  for (let i = 1; i < velos.length; i++) if (velos[i] >= velos[i - 1]) baja = false;
+  chequear('y no hay ningun escalon al reves', baja, true);
+
+  // Fuera de rango NO explota ni devuelve cualquier cosa: se acota. Un rango 0
+  // —o un 99 de una version futura— tiene que dar un velo dibujable.
+  chequear('un rango 0 se acota al 1', veloDeRango(0), velos[0]);
+  chequear('un rango 99 se acota al 8', veloDeRango(99), velos[7]);
+  chequear('y un rango roto tambien', veloDeRango(NaN), velos[0]);
+
+  // NUNCA transparente y nunca opaco: con velo 0 el texto se pierde contra el
+  // fondo, y con 1 no se ve el objeto, que es toda la pantalla.
+  chequear('siempre queda algo de velo', velos.every((v) => v > 0.2 && v < 0.9), true);
+
+  // Subir y bajar NO tardan lo mismo, y es a proposito: bajar rapido se lee
+  // como un error de la app en vez de como una perdida.
+  chequear('subir abre rapido', msDeTransicion(3, 4), MS_ABRIR);
+  chequear('perder cierra lento', msDeTransicion(4, 3), MS_CERRAR);
+  chequear('quedarse igual no es subir', msDeTransicion(4, 4), MS_CERRAR);
+  chequear('y cerrar tarda mas que abrir', MS_CERRAR > MS_ABRIR, true);
+
+  // El presagio: los ultimos dias antes de subir.
+  chequear('faltan 10 desde cero', faltanParaSubir(0), 10);
+  chequear('faltan 3 en el dia 7', faltanParaSubir(7), 3);
+  chequear('en el 9 falta uno', faltanParaSubir(9), 1);
+  chequear('despues del ultimo rango no falta nada', faltanParaSubir(80), null);
+  chequear('no hay presagio a mitad de rango', hayPresagio(5), false);
+  chequear('si en los ultimos tres dias', [7, 8, 9].map(hayPresagio), [true, true, true]);
+  // Y NO en el dia exacto en que subis: ahi ya no es un presagio, es el rango.
+  chequear('y no el dia que subis', hayPresagio(10), false);
+  chequear('ni en el ultimo rango', hayPresagio(85), false);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {

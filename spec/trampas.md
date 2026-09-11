@@ -921,3 +921,22 @@ capturas no encontraron eso").
 errores, nada más. Lo que se mueve se saca a una función pura del tiempo y se
 prueba con números: la curva, y también la geometría. Si la cuenta no se puede
 probar con números, no está probada.
+
+**`1fr` no es "una parte igual": es `minmax(auto, 1fr)`.** Una columna con `1fr`
+nunca se achica más que el contenido mínimo de lo que tiene adentro. En la
+grilla de fotos, el pie decía "10 de agosto" y eso no se parte, así que esa
+columna crecía: medido, **129 / 102 / 102** en vez de 111 / 111 / 111.
+
+Y eso solo era la mitad. La celda tiene `aspect-ratio: 1`, o sea que su ALTO
+sale del ancho de su columna, y el ancho de la columna salía del contenido: el
+navegador resuelve esa vuelta y queda inconsistente consigo mismo. Medido: la
+grilla declaraba la segunda fila de **147 px** y su propia caja terminaba
+**18 px antes** —justo el alto del pie—, así que la última fecha se dibujaba
+ENCIMA de los botones de abajo. Eso era "el perfil tiene cosas superpuestas".
+
+Y no se veía con la cuenta de prueba vacía: hacen falta CUATRO fotos, porque
+recién ahí hay una segunda fila.
+→ **Regla:** en una grilla, `repeat(n, minmax(0, 1fr))` salvo que haya una
+razón explícita para lo contrario. Y si adentro hay `aspect-ratio`, no es
+opcional: el alto depende del ancho, y el ancho no puede depender del
+contenido.
