@@ -34,18 +34,28 @@
 
 export const T = {
   // ---------------------------------------------------------------
-  // LAS VIDAS. Dicen el hecho y nada más: no felicitan —"¡tu racha está a
-  // salvo!"— ni retan. La app no opina sobre el día que alguien no fue al
-  // gimnasio; cuenta lo que hizo con eso.
-  vidas: {
-    faltasteUno: (dia: string) => `Faltaste el ${dia}. Se usó una vida.`,
-    faltasteVarios: (n: number) => `Faltaste ${n} días. Se usaron ${n} vidas.`,
+  // LOS IMPULSOS. Se llamaban "vidas" y no cerraba: una vida es de un
+  // videojuego y suena a que la app te perdona. Un impulso es lo que te
+  // sostiene el día que no empujaste.
+  //
+  // Dicen el hecho y nada más: no felicitan —"¡tu racha está a salvo!"— ni
+  // retan. La app no opina sobre el día que alguien no fue al gimnasio;
+  // cuenta lo que hizo con eso.
+  impulso: {
+    faltasteUno: (dia: string) => `Faltaste el ${dia}. Se usó un impulso.`,
+    faltasteVarios: (n: number) => `Faltaste ${n} días. Se usaron ${n} impulsos.`,
+    // Sin "este mes": ya no son del mes. Cada uno vuelve treinta días después
+    // de usarlo, así que lo único que hay que saber es cuántos hay ahora.
     quedan: (n: number) =>
-      n === 0 ? 'No te quedan este mes.' : n === 1 ? 'Te queda 1 este mes.' : `Te quedan ${n} este mes.`,
+      n === 0 ? 'No te queda ninguno.' : n === 1 ? 'Te queda 1.' : `Te quedan ${n}.`,
+    vuelve: (dia: string) => `El siguiente vuelve el ${dia}.`,
+    // Cuánta racha falta para ganar el tercero. Se dice solo cuando falta.
+    seGanaEn: (dias: number) =>
+      dias === 1 ? 'El tercero se gana mañana.' : `El tercero se gana en ${dias} días.`,
     // En Stats, al lado de los puntos. En minúscula y chico: es un dato de
     // contexto, no un título.
-    titulo: 'Vidas',
-    nota: 'Tres por mes. Si faltas un día, se usa una sola y la racha sigue. No se acumulan.',
+    titulo: 'Impulsos',
+    nota: 'Dos para empezar, y el tercero a los 20 días de racha. Si faltas un día se usa uno solo y la racha sigue. Cada uno vuelve 30 días después de usarlo.',
 
     // ---- la ventana del día siguiente ----
     //
@@ -54,17 +64,17 @@ export const T = {
     // una felicitación ahí enseña que faltar está bien. Dice lo que pasó.
     salvada: {
       titulo: 'La racha sigue',
-      // El precio de guardarla, dicho con el número y no con el reglamento.
+      // El precio de guardarlo, dicho con el número y no con el reglamento.
       // "Se corta la racha" no significa nada hasta que se ve en cuánto queda.
       precio: (n: number, racha: number) =>
-        `${n === 1 ? 'La vida vuelve' : `Las ${n} vidas vuelven`} al mes y la racha se corta hoy: quedas en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
-      guardar: (n: number) => (n === 1 ? 'Guardarla para después' : 'Guardarlas para después'),
+        `${n === 1 ? 'El impulso vuelve' : `Los ${n} impulsos vuelven`} y la racha se corta hoy: quedas en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
+      guardar: (n: number) => (n === 1 ? 'Guardarlo para después' : 'Guardarlos para después'),
       confirmar: 'Cortar la racha',
       volver: 'Mejor no',
-      // Después de devolverla. Tampoco reta: la persona eligió esto sabiendo
+      // Después de devolverlo. Tampoco reta: la persona eligió esto sabiendo
       // el precio, y repetirle que perdió sería cobrarle dos veces.
       guardada: (n: number) =>
-        n === 1 ? 'La vida quedó para después.' : `Las ${n} vidas quedaron para después.`,
+        n === 1 ? 'El impulso quedó para después.' : `Los ${n} impulsos quedaron para después.`,
     },
   },
 
@@ -149,7 +159,7 @@ export const T = {
     // vez, el + aparece sin ninguna explicación y parece un botón de confirmar.
     // Esto se dice una sola vez, arriba, donde se está mirando.
     globoSeries:
-      'Elige en qué estás y cuántas vas a hacer. Cada + suma una serie y arranca el descanso solo. Llegar a la meta no cierra nada: sigues si quieres.',
+      'Elige en qué estás y cuántas vas a hacer. Cada + suma una serie y arranca el descanso solo. Al llegar a la meta el botón pasa a cerrar el ejercicio, y abajo queda "Sumar otra" por si sigues.',
     // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
     // error de la app. Con una línea deja de serlo.
     sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',
@@ -564,6 +574,15 @@ export const T = {
     descansar: 'Descansar',
     listo: 'Listo',
     terminarSesion: 'Terminar sesión',
+    // PREGUNTA ANTES DE TERMINAR. "Terminar" es el botón sólido y ancho de
+    // abajo, o sea el más fácil de tocar sin querer con el teléfono en la
+    // mano, y lo que hace no se puede deshacer: cierra la sesión y fija la
+    // duración. El precio de preguntar es un toque; el de no preguntar es el
+    // entrenamiento.
+    terminarPregunta: '¿Terminar la sesión?',
+    terminarLlevas: (series: number, tiempo: string) =>
+      series === 1 ? `1 serie, ${tiempo}.` : `${series} series, ${tiempo}.`,
+    seguir: 'Seguir entrenando',
     guardando: 'Guardando…',
     yaRegistrado: 'El día ya quedó registrado. Solo falta cuánto duró.',
     // Se avisa ANTES de que se cierre sola: enterarse en Stats es tarde.
@@ -596,7 +615,14 @@ export const T = {
     totalHoy: (n: number) => `${n} en total`,
     // Aparece recién con la meta cumplida. No dice "terminar" porque no
     // termina nada: abre el siguiente.
-    siguienteBloque: 'Siguiente',
+    // CON LA META CUMPLIDA, el + se convierte en esto y lleva a la lista.
+    // Antes acá decía "Siguiente", que no dice de qué es siguiente y encima
+    // vivía en un botón de texto que no se veía.
+    terminarSerie: 'Terminar serie',
+    // Y sumar otra sigue estando, en el lugar secundario: pasarse de la
+    // meta es normal y la app no puede dejar de permitirlo solo porque el
+    // botón grande cambió de trabajo.
+    sumarOtra: 'Sumar otra',
 
     // LA LISTA DE LO HECHO. El − solo arregla el bloque en curso; si te
     // equivocaste hace veinte minutos no había forma de volver.
@@ -749,6 +775,10 @@ export const T = {
     // El título decía "Leaderboard" mientras la barra de abajo decía
     // "Ranking": la misma pantalla con dos nombres. Manda el de la barra.
     globo: 'Tu racha y la de tus amigos, ordenadas. Desde aquí también puedes buscar a alguien y agregarlo.',
+    // Solo para quien lee la pantalla en voz alta: el punto de la barra no
+    // tiene texto, y sin esto sería un elemento mudo.
+    tePidieron: (n: number) =>
+      n === 1 ? 'Tienes 1 cosa sin responder' : `Tienes ${n} cosas sin responder`,
     aceptar: 'Aceptar',
     no: 'No',
     teReto: (nombre: string) => `${nombre} te retó a 7 días: quien entrene más, gana.`,

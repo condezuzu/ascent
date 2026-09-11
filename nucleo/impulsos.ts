@@ -1,5 +1,5 @@
 /**
- * QUÉ HAY QUE CONTARLE AL USUARIO SOBRE SUS VIDAS.
+ * QUÉ HAY QUE CONTARLE AL USUARIO SOBRE SUS IMPULSOS.
  *
  * EL BUG QUE ESTO ARREGLA, y vale escribirlo porque el error de razonamiento
  * fue mío: el aviso salía de `verificar_perdida`, que reporta los días que
@@ -30,7 +30,7 @@
  * `vista` es la última fecha ya anunciada en ESTE aparato. Sin marca —cuenta
  * nueva, o el primer aviso— se anuncia todo lo que haya.
  */
-export function vidasSinVer(ultimas: string[], vista: string | null): string[] {
+export function impulsosSinVer(ultimas: string[], vista: string | null): string[] {
   return ultimas.filter((f) => !vista || f > vista).sort();
 }
 
@@ -48,7 +48,7 @@ export function hastaDondeVisto(ultimas: string[], vista: string | null): string
 }
 
 /**
- * EL PRECIO DE GUARDARLA: en cuánto queda la racha si se devuelve la vida.
+ * EL PRECIO DE GUARDARLO: en cuánto queda la racha si se devuelve el impulso.
  *
  * ES LA MISMA CUENTA QUE HACE LA BASE —`greatest(0, racha_actual - 10)` en
  * `verificar_perdida`— y está repetida acá a propósito: la ventana tiene que

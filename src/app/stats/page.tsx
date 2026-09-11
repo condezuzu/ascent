@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { aISO, deISO, hoyISO, restarDias } from '@nucleo/fechas';
+import { aISO, deISO, hoyISO, restarDias, fechaLinda } from '@nucleo/fechas';
 import { RANGOS, rangoDeRacha } from '@nucleo/rangos';
 import { deKilos, esUnidad, type Unidad } from '@nucleo/peso';
 import type { Log, Peso } from '@nucleo/tipos';
@@ -11,7 +11,7 @@ import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Nav from '@/components/Nav';
 import Estancamiento from '@/components/Estancamiento';
-import Vidas from '@/components/Vidas';
+import Impulsos from '@/components/Impulsos';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import SeccionFuerza from '@/components/SeccionFuerza';
@@ -23,7 +23,12 @@ import { T } from '@nucleo/textos';
 export default function Estadisticas() {
   const [supabase] = useState(() => crearCliente());
   const [logs, setLogs] = useState<Log[]>([]);
-  const [vidas, setVidas] = useState<{ quedan: number; total: number } | null>(null);
+  const [impulsos, setImpulsos] = useState<{
+    quedan: number;
+    total: number;
+    vuelve: string | null;
+    falta: number | null;
+  } | null>(null);
   const [pesos, setPesos] = useState<Peso[]>([]);
   const [racha, setRacha] = useState(0);
   const [mejor, setMejor] = useState(0);
@@ -51,11 +56,17 @@ export default function Estadisticas() {
         if (esUnidad(p.unidad_peso)) setUnidad(p.unidad_peso);
       }
       setLogs(ls ?? []);
-      // Las vidas que quedan, para poder decidir ANTES de gastarlas. Si la
+      // Los impulsos que quedan, para poder decidir ANTES de gastarlos. Si la
       // migración todavía no corrió el RPC no existe y no se muestra nada:
       // `catch` en vez de romper la pantalla por un dato de contexto.
-      supabase.rpc('mis_vidas').then(({ data, error }) => {
-        if (!error && data) setVidas({ quedan: Number(data.quedan), total: Number(data.total) });
+      supabase.rpc('mis_impulsos').then(({ data, error }) => {
+        if (!error && data)
+          setImpulsos({
+            quedan: Number(data.quedan),
+            total: Number(data.total),
+            vuelve: (data.vuelve as string | null) ?? null,
+            falta: data.falta_para_ganar === null ? null : Number(data.falta_para_ganar),
+          });
       });
       // en la base el peso siempre está en kilos; acá se pasa a la unidad
       // que el usuario eligió, y recién entonces se suaviza y se dibuja
@@ -117,16 +128,25 @@ export default function Estadisticas() {
             y no vuelve por seis semanas. */}
         <Estancamiento registradoHoy={entrenados.some((l) => l.fecha === hoy)} />
 
-        {/* LAS VIDAS, en voz baja y debajo de los números. Un contador
-            grande las convertiría en un recurso que se administra —"me quedan
+        {/* LOS IMPULSOS, en voz baja y debajo de los números. Un contador
+            grande los convertiría en un recurso que se administra —"me quedan
             dos, puedo faltar dos"—, que es lo contrario de para qué están.
-            Pero tienen que verse ANTES de gastarlas: enterarse recién cuando
-            ya se usó una no sirve para decidir. */}
-        {vidas && (
-          <div className="vidas-linea">
-            <span className="et">{T.vidas.titulo}</span>
-            <Vidas quedan={vidas.quedan} total={vidas.total} />
-            <span className="nota-privada">{T.vidas.nota}</span>
+            Pero tienen que verse ANTES de gastarlos: enterarse recién cuando
+            ya se usó uno no sirve para decidir.
+
+            CUÁNDO VUELVE EL QUE FALTA es la otra mitad del dato: "te queda 1"
+            sin decir cuándo vuelve el otro deja pensando que se perdió. */}
+        {impulsos && (
+          <div className="impulsos-linea">
+            <span className="et">{T.impulso.titulo}</span>
+            <Impulsos quedan={impulsos.quedan} total={impulsos.total} />
+            <span className="nota-privada">
+              {T.impulso.nota}
+              {impulsos.vuelve ? ' ' + T.impulso.vuelve(fechaLinda(impulsos.vuelve)) : ''}
+              {impulsos.falta !== null && impulsos.falta > 0
+                ? ' ' + T.impulso.seGanaEn(impulsos.falta)
+                : ''}
+            </span>
           </div>
         )}
 

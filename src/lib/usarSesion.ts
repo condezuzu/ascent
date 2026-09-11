@@ -6,7 +6,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
 import { T } from '@nucleo/textos';
 import { eventos } from '@/plataforma/eventos';
-import { desfasajeDelReloj, type SesionViva } from '@nucleo/sesiones';
+import { desfasajeDelReloj, cacheTrasConfirmar, type SesionViva } from '@nucleo/sesiones';
 import { leerPerfilCache } from '@/lib/cache';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import {
@@ -169,29 +169,43 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   }, []);
 
   // La consulta de verdad. La caché pinta al instante, esto la corrige.
+  //
+  // CORREGIR NO ES PISAR. Acá vivían los dos bugs del contador (ver
+  // `cacheTrasConfirmar`): un error de red se trataba como "no hay sesión" y
+  // borraba todo, y la escritura reemplazaba la caché entera, así que se
+  // llevaba puestos los bloques —que el servidor no manda en esta forma— cada
+  // vez que la pantalla se montaba.
   const confirmar = useCallback(async () => {
-    const { data } = await supabase.rpc('mi_sesion');
+    const { data, error } = await supabase.rpc('mi_sesion');
     const s = data as (SesionViva & { series?: number; origen?: OrigenSesion }) | null;
-    if (s?.corriendo && s.inicio) {
-      const g = {
-        inicio: s.inicio,
-        desfasaje: desfasajeDelReloj(s.ahora),
-        porUbicacion: s.origen === 'ubicacion',
-        series: s.series ?? 0,
-        id: s.id ?? null,
-      };
+    const viva = s?.corriendo && s.inicio
+      ? {
+          inicio: s.inicio,
+          desfasaje: desfasajeDelReloj(s.ahora),
+          porUbicacion: s.origen === 'ubicacion',
+          series: s.series ?? 0,
+          id: s.id ?? null,
+        }
+      : null;
+    const que = cacheTrasConfirmar(await leerSesionCache(), viva, !!error);
+    // No se supo: se deja en pantalla lo que ya había. Es el caso del gimnasio
+    // sin señal, y es más frecuente que cualquiera de los otros dos.
+    if (que.accion === 'mantener') return;
+    if (que.accion === 'guardar' && viva) {
+      const g = que.cache as typeof viva & { bloques?: EstadoBloques };
       guardarSesionCache(g);
+      if (g.bloques) setBloques(g.bloques);
       setInicio(g.inicio);
       setDesfasaje(g.desfasaje);
       // El servidor manda, SALVO que haya toques esperando en la cola: ahí el
       // número bueno es el del teléfono, porque el servidor todavía no se
       // enteró. Sin esto, volver a abrir la app en el gimnasio sin señal
       // borraba las series que acababas de contar.
-      if ((await cuantasPendientes()) === 0) setSeries(s.series ?? 0);
-      setIdSesion(s.id ?? null);
+      if ((await cuantasPendientes()) === 0) setSeries(g.series ?? 0);
+      setIdSesion(g.id ?? null);
       // Si la migración 24 todavía no corrió, `origen` no viene: se asume
       // manual, que es lo seguro — no cerrarla sola.
-      setPorUbicacion(s.origen === 'ubicacion');
+      setPorUbicacion(!!g.porUbicacion);
       // Al reconectar puede haber toques del `+` esperando desde el gimnasio.
       vaciar(supabase);
     } else {

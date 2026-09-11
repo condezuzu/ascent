@@ -2,7 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { T } from '@nucleo/textos';
+import { crearCliente } from '@/lib/supabase/client';
+import { plataforma } from '@/plataforma';
+import { eventos } from '@/plataforma/eventos';
+import { contarPendientes, AVISO_SOCIAL } from '@/lib/avisos';
 
 const ITEMS = [
   {
@@ -66,11 +71,45 @@ const ITEMS = [
 
 export default function Nav() {
   const ruta = usePathname();
+  // Lo que te está esperando en Ranking: solicitudes de amistad y retos. Ver
+  // `lib/avisos.ts` — un amigo mandó una solicitud y no había forma de saberlo
+  // sin entrar a buscarla.
+  const [pendientes, setPendientes] = useState(0);
+
+  useEffect(() => {
+    const supabase = crearCliente();
+    let vivo = true;
+    const mirar = async () => {
+      const n = await contarPendientes(supabase);
+      if (vivo) setPendientes(n);
+    };
+    mirar();
+    // Al volver a la app: es cuando más probable es que haya algo nuevo, y es
+    // gratis porque la cuenta tiene memoria de un minuto.
+    const dejarDeMirar = plataforma.ciclo.alCambiar((visible) => {
+      if (visible) mirar();
+    });
+    const dejarDeEscuchar = eventos.escuchar(AVISO_SOCIAL, mirar);
+    return () => {
+      vivo = false;
+      dejarDeMirar();
+      dejarDeEscuchar();
+    };
+  }, []);
+
   return (
     <nav className="nav">
       {ITEMS.map((it) => (
         <Link key={it.href} href={it.href} className={ruta === it.href ? 'activo' : ''}>
-          <span className="nav-icono">{it.icono}</span>
+          <span className="nav-icono">
+            {it.icono}
+            {/* UN PUNTO, SIN NÚMERO. Lo que hay que saber es "hay algo", no
+                cuántos: un contador convierte a los amigos en una bandeja de
+                entrada. El número va en la pantalla, que es donde se resuelve. */}
+            {it.href === '/social' && pendientes > 0 && (
+              <span className="nav-punto" aria-label={T.social.tePidieron(pendientes)} />
+            )}
+          </span>
           <span className="nav-label">{it.label}</span>
         </Link>
       ))}

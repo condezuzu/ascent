@@ -164,9 +164,35 @@ export default function Bloque({
           Es un botón enorme y no una capa invisible encima: una capa taparía
           la barra de abajo y el resto de los controles, y el día que algo
           quede debajo nadie va a entender por qué no responde. */}
-      <button className="bloque-mas" onClick={alSumar} aria-label={T.inicio.sumarSerie}>
-        <span>+</span>
-      </button>
+      {/* CON LA META CUMPLIDA CAMBIA DE TRABAJO. Cerrar el bloque estaba en un
+          botón de texto que no se veía, y el botón grande seguía ofreciendo
+          sumar cuando ya no era lo que venía. Ahora el lugar más fácil de
+          tocar es el paso que sigue, y lleva derecho a la lista.
+
+          SUMAR NO SE PIERDE: pasa al lugar secundario. Pasarse de la meta es
+          normal —los puntos extra se dibujan a propósito— y el botón no puede
+          dejar de permitirlo solo porque cambió de nombre. */}
+      {cumplida ? (
+        <button
+          className="bloque-mas cerrar"
+          onClick={() => {
+            alSiguiente();
+            setLista(true);
+          }}
+        >
+          <span>{T.sesion.terminarSerie}</span>
+        </button>
+      ) : (
+        <button className="bloque-mas" onClick={alSumar} aria-label={T.inicio.sumarSerie}>
+          <span>+</span>
+        </button>
+      )}
+
+      {cumplida && (
+        <button className="boton-texto bloque-otra" onClick={alSumar}>
+          {T.sesion.sumarOtra}
+        </button>
+      )}
 
       {/* Quitar una es secundario y va chico: corregir pasa una vez cada
           tantas, sumar pasa doce veces por sesión. */}
@@ -177,14 +203,6 @@ export default function Bloque({
       >
         {T.inicio.sacarSerie}
       </button>
-
-      {/* Aparece recién con la meta cumplida: antes no tendría qué cerrar, y un
-          botón que no hace nada enseña a ignorar ese lugar de la pantalla. */}
-      {cumplida && (
-        <button className="boton-texto bloque-siguiente" onClick={alSiguiente}>
-          {T.sesion.siguienteBloque}
-        </button>
-      )}
 
       {/* Corregir hacia atrás vive DETRÁS de un botón, no a la vista: sumar
           pasa doce veces por sesión y corregir una vez cada tantas. Lo que se

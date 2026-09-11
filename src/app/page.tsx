@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { enDias, hoyISO, restarDias, deISO } from '@nucleo/fechas';
+import { transcurrido, duracionLinda } from '@nucleo/sesiones';
 import { planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango } from '@nucleo/rangos';
 import { citaDelDia } from '@nucleo/frases';
 import { hayPresagio } from '@nucleo/atmosfera';
@@ -17,7 +18,7 @@ import { plataforma } from '@/plataforma';
 import { eventos } from '@/plataforma/eventos';
 import { DIA_CAMBIO } from '@/components/VigilanteDeGimnasio';
 import { lineaDeMarcas } from '@nucleo/fuerza';
-import { vidasSinVer, hastaDondeVisto, rachaSiSeDevuelve } from '@nucleo/vidas';
+import { impulsosSinVer, hastaDondeVisto, rachaSiSeDevuelve } from '@nucleo/impulsos';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import type { CierreDeSesion } from '@/lib/usarSesion';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -29,7 +30,7 @@ import ResumenSesion from '@/components/ResumenSesion';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import Bloque from '@/components/Bloque';
 import DiaSumado from '@/components/DiaSumado';
-import VidaSalvada from '@/components/VidaSalvada';
+import RachaSalvada from '@/components/RachaSalvada';
 import AccionPrincipal from '@/components/AccionPrincipal';
 import NumeroQueCuenta from '@/components/NumeroQueCuenta';
 import Avatar from '@/components/Avatar';
@@ -56,7 +57,7 @@ const CLAVE_LLEGADA_VISTA = 'ascent:llegada-vista';
 // cerrar la app antes de leerla sería perderse el aviso para siempre — que es
 // EXACTAMENTE el bug que esto arregla. Escribiendo al cerrar, lo peor que
 // puede pasar es que vuelva a aparecer una vez.
-const CLAVE_VIDA_VISTA = 'ascent:vida-vista';
+const CLAVE_IMPULSO_VISTO = 'ascent:impulso-visto';
 
 export default function Principal() {
   const router = useRouter();
@@ -69,6 +70,8 @@ export default function Principal() {
   const [hojaAbierta, setHojaAbierta] = useState(false);
   const [pesoAbierto, setPesoAbierto] = useState(false);
   const [descansoAbierto, setDescansoAbierto] = useState(false);
+  // El toque que pregunta si de verdad se termina la sesión.
+  const [terminando, setTerminando] = useState(false);
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
   // Lo que dejó la sesión al cerrarse, para el resumen del final.
   const [cierre, setCierre] = useState<CierreDeSesion | null>(null);
@@ -93,7 +96,7 @@ export default function Principal() {
   //
   // Ahora sale del ESTADO: `mis_vidas` dice qué días están cubiertos y el
   // aparato se acuerda de hasta dónde anunció. Se puede preguntar mil veces.
-  const [vidaSalvada, setVidaSalvada] = useState<{
+  const [impulsoUsado, setImpulsoUsado] = useState<{
     dias: string[];
     quedan: number;
     total: number;
@@ -198,17 +201,17 @@ export default function Principal() {
     // una vida. Va DESPUÉS de dibujar, como la línea de marcas: es un
     // agregado, no lo que el usuario vino a ver, y no puede costarle un
     // viaje más al arranque.
-    supabase.rpc('mis_vidas').then(async ({ data, error }) => {
+    supabase.rpc('mis_impulsos').then(async ({ data, error }) => {
       if (error || !data) return;
-      if (Array.isArray(data.del_mes)) setCubiertos(data.del_mes as string[]);
+      if (Array.isArray(data.vigentes)) setCubiertos(data.vigentes as string[]);
 
       // Y el aviso, de la misma respuesta. `ultimas` son los últimos días
       // cubiertos y vigentes; la marca dice hasta dónde se anunció en ESTE
       // aparato. Lo que quede en el medio es lo que esta persona no vio.
       const ultimas = Array.isArray(data.ultimas) ? (data.ultimas as string[]) : [];
-      const sinVer = vidasSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
+      const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_IMPULSO_VISTO));
       if (sinVer.length > 0) {
-        setVidaSalvada({
+        setImpulsoUsado({
           dias: sinVer,
           quedan: Number(data.quedan ?? 0),
           total: Number(data.total ?? 0),
@@ -377,20 +380,20 @@ export default function Principal() {
   // Cerrar es lo que ANOTA: hasta que no se cierra, el aviso vuelve. Se marca
   // el máximo de TODO lo que trajo la base y no solo lo que se mostró, para
   // que un día cubierto más viejo que la marca no vuelva a anunciarse.
-  async function cerrarVidaSalvada() {
-    const dias = vidaSalvada?.dias ?? [];
-    setVidaSalvada(null);
-    const hasta = hastaDondeVisto(dias, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
-    if (hasta) await plataforma.almacenamiento.guardar(CLAVE_VIDA_VISTA, hasta);
+  async function cerrarImpulsoUsado() {
+    const dias = impulsoUsado?.dias ?? [];
+    setImpulsoUsado(null);
+    const hasta = hastaDondeVisto(dias, await plataforma.almacenamiento.leer(CLAVE_IMPULSO_VISTO));
+    if (hasta) await plataforma.almacenamiento.guardar(CLAVE_IMPULSO_VISTO, hasta);
   }
 
   // "Guardarla para después": la vida vuelve al mes y la racha se corta. La
   // base hace las dos cosas en una sola llamada —devolver y volver a evaluar
   // la pérdida— para que no exista un instante con la vida devuelta y la racha
   // todavía entera.
-  async function guardarVidas() {
-    if (!vidaSalvada) return;
-    const { data } = await supabase.rpc('devolver_vidas', { p_fechas: vidaSalvada.dias });
+  async function guardarImpulsos() {
+    if (!impulsoUsado) return;
+    const { data } = await supabase.rpc('devolver_impulsos', { p_fechas: impulsoUsado.dias });
     if (data?.perdida?.perdida) setPerdida(true);
     await cargar();
   }
@@ -529,19 +532,51 @@ export default function Principal() {
                 {T.inicio.sesionSola}
               </p>
             )}
+            {/* PREGUNTA ANTES DE TERMINAR. Es el botón sólido y ancho de
+                abajo —el más fácil de tocar sin querer con el teléfono en la
+                mano— y lo que hace no se deshace: cierra la sesión y fija la
+                duración. Se pregunta en el mismo lugar, sin ventana, que es
+                lo que ya hace la lista de bloques para quitar uno.
+
+                "Seguir" se queda con el botón sólido: el que llegó acá sin
+                querer toca donde ya estaba tocando y no pasa nada. */}
             <AccionPrincipal>
-              <button
-                className="boton-solido"
-                onClick={async () => {
-                  const cierre = await sesion.terminar();
-                  // Nada de resumen si la base deshizo el día: no hubo
-                  // entrenamiento que resumir, y festejar un toque sin querer
-                  // es peor que no decir nada.
-                  if (cierre && !cierre.deshizoElDia) setCierre(cierre);
-                }}
-              >
-                {T.sesion.terminar}
-              </button>
+              {terminando ? (
+                <>
+                  <span className="pregunta-terminar">
+                    {T.sesion.terminarPregunta}{' '}
+                    <b>
+                      {T.sesion.terminarLlevas(
+                        sesion.estado.series,
+                        duracionLinda(
+                          transcurrido(sesion.estado.inicio!, sesion.estado.desfasaje)
+                        )
+                      )}
+                    </b>
+                  </span>
+                  <button className="boton-solido" onClick={() => setTerminando(false)}>
+                    {T.sesion.seguir}
+                  </button>
+                  <button
+                    className="boton-texto"
+                    disabled={sesion.estado.ocupado}
+                    onClick={async () => {
+                      const cierre = await sesion.terminar();
+                      setTerminando(false);
+                      // Nada de resumen si la base deshizo el día: no hubo
+                      // entrenamiento que resumir, y festejar un toque sin
+                      // querer es peor que no decir nada.
+                      if (cierre && !cierre.deshizoElDia) setCierre(cierre);
+                    }}
+                  >
+                    {T.sesion.terminar}
+                  </button>
+                </>
+              ) : (
+                <button className="boton-solido" onClick={() => setTerminando(true)}>
+                  {T.sesion.terminar}
+                </button>
+              )}
             </AccionPrincipal>
           </>
         ) : registradoHoy ? (
@@ -724,16 +759,16 @@ export default function Principal() {
           escribe recién al cerrarla, así que lo único que pasa es que aparece
           cuando la sesión termina. Antes esta misma condición era una de las
           tres formas de perderse el aviso para siempre. */}
-      {vidaSalvada && !entrenando && perfil && (
-        <VidaSalvada
-          dias={vidaSalvada.dias}
-          quedan={vidaSalvada.quedan}
-          total={vidaSalvada.total}
+      {impulsoUsado && !entrenando && perfil && (
+        <RachaSalvada
+          dias={impulsoUsado.dias}
+          quedan={impulsoUsado.quedan}
+          total={impulsoUsado.total}
           rango={perfil.rango_actual}
           planeta={planeta}
           rachaSiGuarda={rachaSiSeDevuelve(racha)}
-          alGuardar={guardarVidas}
-          alCerrar={cerrarVidaSalvada}
+          alGuardar={guardarImpulsos}
+          alCerrar={cerrarImpulsoUsado}
         />
       )}
 

@@ -16,6 +16,7 @@ import PantallaDeslizable from '@/components/PantallaDeslizable';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import NoCargo from '@/components/NoCargo';
 import { T } from '@nucleo/textos';
+import { olvidarPendientes } from '@/lib/avisos';
 
 type Solicitud = { id: string; de: UsuarioPublico };
 type Actividad = {
@@ -185,13 +186,17 @@ export default function Social() {
     setPedidosMandados(new Set([...pedidosMandados, destino]));
   }
 
+  // Resolver algo apaga el punto de la barra: si siguiera prendido después de
+  // contestar, la próxima vez nadie le va a creer.
   async function aceptar(id: string) {
     await supabase.from('friendships').update({ estado: 'aceptada' }).eq('id', id);
+    olvidarPendientes();
     cargar();
   }
 
   async function rechazar(id: string) {
     await supabase.from('friendships').delete().eq('id', id);
+    olvidarPendientes();
     cargar();
   }
 
@@ -200,6 +205,7 @@ export default function Social() {
       .from('challenges')
       .update({ estado: acepta ? 'activo' : 'rechazado' })
       .eq('id', id);
+    olvidarPendientes();
     cargar();
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Vidas from '@/components/Vidas';
+import Impulsos from '@/components/Impulsos';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@/plataforma';
@@ -29,7 +29,7 @@ import { plataforma } from '@/plataforma';
  * LO QUE NO HACE: no felicita. El usuario no hizo nada para merecer esto
  * —faltó—, y festejarlo enseña que faltar está bien.
  */
-export default function VidaSalvada({
+export default function RachaSalvada({
   dias,
   quedan,
   total,
@@ -45,7 +45,7 @@ export default function VidaSalvada({
   total: number;
   rango: number;
   planeta: string | null;
-  /** En cuánto queda la racha si devuelve las vidas. Es `racha - 10`, la
+  /** En cuánto queda la racha si devuelve los impulsos. Es `racha - 10`, la
    *  misma cuenta que hace la base: el precio se dice ANTES de cobrarlo. */
   rachaSiGuarda: number;
   alGuardar: () => Promise<void>;
@@ -103,20 +103,20 @@ export default function VidaSalvada({
                 partida en dos renglones; y además la noticia acá no es que se
                 perdió —eso lo acaba de decidir— sino que la vida quedó. */}
             <h2 id="salvada-titulo" className="salvada-titulo">
-              {T.vidas.salvada.guardada(dias.length)}
+              {T.impulso.salvada.guardada(dias.length)}
             </h2>
             <p className="salvada-detalle">{T.inicio.perdida}</p>
           </>
         ) : (
           <>
             <h2 id="salvada-titulo" className="salvada-titulo">
-              {T.vidas.salvada.titulo}
+              {T.impulso.salvada.titulo}
             </h2>
             <p className="salvada-detalle">
-              {uno ? T.vidas.faltasteUno(fechaLinda(dias[0])) : T.vidas.faltasteVarios(dias.length)}
+              {uno ? T.impulso.faltasteUno(fechaLinda(dias[0])) : T.impulso.faltasteVarios(dias.length)}
             </p>
             <p className="salvada-quedan">
-              {T.vidas.quedan(quedan)} <Vidas quedan={quedan} total={total} />
+              {T.impulso.quedan(quedan)} <Impulsos quedan={quedan} total={total} />
             </p>
           </>
         )}
@@ -132,7 +132,7 @@ export default function VidaSalvada({
                 días— y tiene que verse como lo que es: una salida que está, no
                 una pregunta que hay que contestar. */}
             <button className="boton-texto" onClick={() => setPaso('confirmar')}>
-              {T.vidas.salvada.guardar(dias.length)}
+              {T.impulso.salvada.guardar(dias.length)}
             </button>
           </>
         )}
@@ -142,16 +142,16 @@ export default function VidaSalvada({
             {/* El precio, con el número. Se dice acá y no antes: en el paso
                 anterior habría sido una amenaza al costado de un botón que
                 nadie iba a tocar. */}
-            <p className="salvada-precio">{T.vidas.salvada.precio(dias.length, rachaSiGuarda)}</p>
+            <p className="salvada-precio">{T.impulso.salvada.precio(dias.length, rachaSiGuarda)}</p>
             <button className="boton-solido" onClick={() => setPaso('aviso')} disabled={paso === 'guardando'}>
-              {T.vidas.salvada.volver}
+              {T.impulso.salvada.volver}
             </button>
             <button
               className="boton-texto peligro"
               onClick={guardar}
               disabled={paso === 'guardando'}
             >
-              {paso === 'guardando' ? T.sesion.guardando : T.vidas.salvada.confirmar}
+              {paso === 'guardando' ? T.sesion.guardando : T.impulso.salvada.confirmar}
             </button>
           </>
         )}

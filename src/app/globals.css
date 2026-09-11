@@ -892,10 +892,31 @@ textarea::placeholder {
 .nav a:active .nav-icono {
   transform: scale(0.88);
 }
+/* EL PUNTO DE "HAY ALGO ESPERÁNDOTE", sobre el icono de Ranking. Sin número:
+   lo que hace falta saber es que hay algo, no cuántos. Un contador convierte a
+   los amigos en una bandeja de entrada. */
+.nav-punto {
+  position: absolute;
+  top: -1px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--pal-claro);
+  /* Un anillo del color del fondo lo despega del icono: sin esto, sobre un
+     trazo claro se lee como parte del dibujo. */
+  box-shadow: 0 0 0 2px var(--fondo);
+}
+
 .nav-icono {
   width: 22px;
   height: 22px;
   display: block;
+  /* Para que el punto de "hay algo" se ancle acá. Siempre, no solo cuando la
+     pestaña está activa: la de activa tiene `transform`, que ya crea el
+     bloque contenedor, y apoyarse en eso sería que el punto se mueva de lugar
+     según qué pestaña estés mirando. */
+  position: relative;
   transition: transform 0.34s var(--curva-salida);
 }
 .nav a.activo .nav-icono {
@@ -1258,14 +1279,19 @@ textarea::placeholder {
 
    De 560 px para arriba vuelven las tres: ahí el ancho alcanza y con cuatro
    meses de fotos una grilla de dos queda interminable. */
+/* TRES COLUMNAS Y NO DOS. Con dos, cada foto medía 170 px de lado en un
+   teléfono de 390: una foto y media por pantalla, y el álbum se volvía un
+   scroll infinito para ver lo de anteayer. El álbum es para MIRAR LA SERIE
+   —cuántas veces fuiste, cómo venís— y eso se ve cuando entran varias juntas.
+   Con tres, la foto mide 110 px y entran seis filas. */
 .album-grilla {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 8px;
 }
 @media (min-width: 560px) {
   .album-grilla {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 .album-pieza {
@@ -1541,10 +1567,14 @@ textarea::placeholder {
   display: block;
   padding: 0;
 }
+/* MÁS CHICA. Eran 104 px en una pantalla de 390: más de una cuarta parte del
+   ancho para una foto que no hace nada —no se toca casi nunca, y lo que
+   importa de este bloque es el nombre y la racha—. A 76 sigue siendo lo
+   primero que se ve y deja de empujar todo lo demás para abajo. */
 .yo-foto .avatar {
-  width: 104px;
-  height: 104px;
-  font-size: 36px;
+  width: 76px;
+  height: 76px;
+  font-size: 27px;
 }
 .yo-foto:active .avatar {
   transform: scale(0.97);
@@ -1565,9 +1595,9 @@ textarea::placeholder {
 .yo-lapiz {
   position: absolute;
   right: -2px;
-  bottom: 2px;
-  width: 30px;
-  height: 30px;
+  bottom: 0;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: var(--pal-claro);
   color: #08080c;
@@ -3278,9 +3308,21 @@ body.con-franja .pantalla {
 .bloque-menos:disabled {
   opacity: 0.3;
 }
-.bloque-siguiente {
+.bloque-otra {
   display: block;
-  margin: 14px auto 0;
+  margin: 12px auto 0;
+}
+/* El mismo botón grande, con una palabra en vez de un signo. Se marca más que
+   el `+` porque ya no es "seguí contando": es el paso que cierra. */
+.bloque-mas.cerrar {
+  border-color: color-mix(in srgb, var(--pal-principal) 55%, transparent);
+  background: color-mix(in srgb, var(--pal-principal) 14%, transparent);
+}
+.bloque-mas.cerrar span {
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
 }
 
 /* ---------- el día se vuelve materia ----------
@@ -3356,6 +3398,21 @@ body.con-franja .pantalla {
 .accion-anclada > * {
   pointer-events: auto;
 }
+/* La pregunta de terminar la sesión, ARRIBA de los dos botones y no adentro
+   de uno: lo que se pregunta tiene que leerse antes de tocar nada, y el que
+   llegó acá sin querer necesita ver de qué lo están salvando. */
+.pregunta-terminar {
+  display: block;
+  text-align: center;
+  font-size: 13px;
+  color: var(--sub);
+  margin-bottom: 12px;
+  pointer-events: none;
+}
+.pregunta-terminar b {
+  font-weight: 400;
+  color: var(--apagado);
+}
 /* Lo secundario, debajo y en voz baja: §19.1 le da forma de texto subrayado
    justamente para que no compita con el sólido de arriba. */
 .accion-anclada > * + * {
@@ -3411,12 +3468,12 @@ body.con-franja.con-accion .pantalla {
    vacío. La misma forma que la tira semanal usa para los días, que es lo que
    hace que se entienda sin rótulo: acá también un punto lleno es algo que
    está y uno vacío es algo que no. */
-.vidas {
+.impulsos {
   display: inline-flex;
   align-items: center;
   gap: 5px;
 }
-.vidas i {
+.impulsos i {
   width: 7px;
   height: 7px;
   border-radius: 999px;
@@ -3426,27 +3483,27 @@ body.con-franja.con-accion .pantalla {
      lleno a vacío a la vista, en vez de aparecer ya apagado. */
   transition: background-color 0.55s var(--curva-suave), border-color 0.55s var(--curva-suave);
 }
-.vidas i.viva,
-.vidas i.apagandose {
+.impulsos i.viva,
+.impulsos i.apagandose {
   background: var(--pal-claro);
   border-color: var(--pal-claro);
 }
 
 /* La línea de Stats: rótulo, puntos y la explicación en voz baja. */
-.vidas-linea {
+.impulsos-linea {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px 10px;
   margin-bottom: 18px;
 }
-.vidas-linea .et {
+.impulsos-linea .et {
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--apagado);
 }
-.vidas-linea .nota-privada {
+.impulsos-linea .nota-privada {
   flex: 1 1 100%;
   margin-top: 0;
 }

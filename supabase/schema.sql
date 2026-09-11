@@ -553,40 +553,71 @@ create policy "vidas: solo dueño" on public.vidas_usadas for select
 
 grant select on public.vidas_usadas to authenticated;
 
-create or replace function public.vidas_por_mes()
+create or replace function public.impulsos_tope()
 returns int language sql immutable as $$ select 3; $$;
 
 /**
- * Las que quedan en el mes de `p_dia`. Se cuenta contra las filas, así que
- * "recargar" no es un proceso que corra en ningún lado: es que cambió el mes.
+ * Cuántos tenés GANADOS: dos al empezar y el tercero a los 20 días de racha.
+ * Ver la migración 34 — se ganan, no se recargan.
  */
-create or replace function public.vidas_disponibles(p_user uuid, p_dia date)
+create or replace function public.impulsos_ganados(p_user uuid)
 returns int language sql stable security definer set search_path = public as $$
-  select greatest(0, vidas_por_mes() - (
+  select least(
+    impulsos_tope(),
+    2 + case when coalesce((select racha_actual from profiles where id = p_user), 0) >= 20
+             then 1 else 0 end
+  );
+$$;
+
+/**
+ * Los que están disponibles hoy: los ganados menos los que todavía están en
+ * los treinta días que tardan en volver.
+ */
+create or replace function public.impulsos_disponibles(p_user uuid, p_dia date)
+returns int language sql stable security definer set search_path = public as $$
+  select greatest(0, impulsos_ganados(p_user) - (
     select count(*)::int from vidas_usadas
      where user_id = p_user
        and not devuelta
-       and date_trunc('month', fecha) = date_trunc('month', p_dia)
+       and fecha > p_dia - 30
   ));
 $$;
 
+/** Envoltorio del nombre viejo, para los clientes que todavía lo llaman. */
+create or replace function public.vidas_por_mes()
+returns int language sql immutable as $$ select impulsos_tope(); $$;
+
+/** Envoltorio del nombre viejo. La regla vive en `impulsos_disponibles`. */
+create or replace function public.vidas_disponibles(p_user uuid, p_dia date)
+returns int language sql stable security definer set search_path = public as $$
+  select impulsos_disponibles(p_user, p_dia);
+$$;
+
 /** Lo que necesita la interfaz: cuántas quedan y cuáles se usaron este mes. */
-create or replace function public.mis_vidas()
+create or replace function public.mis_impulsos()
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
-    'total', vidas_por_mes(),
-    'quedan', vidas_disponibles(auth.uid(), mi_hoy()),
-    -- Las de ESTE mes, para dibujar los puntos.
-    'del_mes', coalesce((
+    'total', impulsos_ganados(auth.uid()),
+    'tope', impulsos_tope(),
+    'quedan', impulsos_disponibles(auth.uid(), mi_hoy()),
+    -- Cuánta racha falta para ganar el que viene. `null` si ya están todos.
+    'falta_para_ganar', case
+      when impulsos_ganados(auth.uid()) >= impulsos_tope() then null
+      else greatest(0, 20 - coalesce((select racha_actual from profiles where id = auth.uid()), 0))
+    end,
+    'vigentes', coalesce((
       select jsonb_agg(fecha order by fecha)
         from vidas_usadas
        where user_id = auth.uid()
          and not devuelta
-         and date_trunc('month', fecha) = date_trunc('month', mi_hoy())
+         and fecha > mi_hoy() - 30
     ), '[]'::jsonb),
-    -- Y las últimas cinco de todas, para el aviso. Cinco y no una: una
-    -- ausencia de tres días son tres vidas y el aviso tiene que decir tres,
-    -- no la última. Cinco es más que el máximo que se puede gastar de una.
+    'vuelve', (
+      select min(fecha) + 30 from vidas_usadas
+       where user_id = auth.uid() and not devuelta and fecha > mi_hoy() - 30
+    ),
+    -- Las últimas cinco, para el aviso. Ver la migración 33: el aviso sale del
+    -- ESTADO y no del reporte de una llamada.
     'ultimas', coalesce((
       select jsonb_agg(fecha order by fecha desc)
         from (
@@ -599,6 +630,15 @@ returns jsonb language sql stable security definer set search_path = public as $
       select max(fecha) from vidas_usadas where user_id = auth.uid() and not devuelta
     )
   );
+$$;
+
+revoke execute on function public.mis_impulsos() from public, anon;
+grant execute on function public.mis_impulsos() to authenticated;
+
+/** Envoltorio del nombre viejo: lo mismo más `del_mes`. */
+create or replace function public.mis_vidas()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select mis_impulsos() || jsonb_build_object('del_mes', mis_impulsos()->'vigentes');
 $$;
 
 revoke execute on function public.mis_vidas() from public, anon;
@@ -616,7 +656,7 @@ grant execute on function public.mis_vidas() to authenticated;
  * una racha de entonces. Siete días es más que suficiente para el caso real,
  * que es "me enteré hoy y prefiero guardarla".
  */
-create or replace function public.devolver_vidas(p_fechas date[])
+create or replace function public.devolver_impulsos(p_fechas date[])
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -636,11 +676,17 @@ begin
     return jsonb_build_object('devueltas', 0);
   end if;
 
-  -- Y ahora se aplica la pérdida. `verificar_perdida` ve el día descubierto y
-  -- hace lo suyo; NO puede volver a cubrirlo porque su bucle sale en cuanto
-  -- encuentra una fila para ese día, devuelta o no.
   return jsonb_build_object('devueltas', cuantas, 'perdida', verificar_perdida());
 end;
+$$;
+
+revoke execute on function public.devolver_impulsos(date[]) from public, anon;
+grant execute on function public.devolver_impulsos(date[]) to authenticated;
+
+/** Envoltorio del nombre viejo. */
+create or replace function public.devolver_vidas(p_fechas date[])
+returns jsonb language sql security definer set search_path = public as $$
+  select devolver_impulsos(p_fechas);
 $$;
 
 revoke execute on function public.devolver_vidas(date[]) from public, anon;
@@ -876,8 +922,6 @@ declare
   d date;
   cubiertos date[] := '{}';
 begin
-  -- primero el pendiente: si se registrara después, el día contaría recién
-  -- mañana y la racha se podría cortar por un día que la persona sí entrenó
   resuelto := resolver_pendiente(uid);
 
   select * into perfil from profiles where id = uid;
@@ -892,24 +936,19 @@ begin
     return jsonb_build_object('perdida', false, 'pendiente_resuelto', resuelto);
   end if;
 
-  -- HAY PÉRDIDA. Se intenta cubrir hacia atrás desde ayer, día por día, y se
-  -- corta en el primero que no se pueda: sin vidas en ese mes, o porque ya
-  -- llegamos a un día que no era una falta.
   d := hoy - 1;
   loop
     exit when perfil.perdida_fecha is not null and d <= perfil.perdida_fecha;
-    -- ¿este día es una falta?
     exit when exists (select 1 from logs where user_id = uid and fecha = d);
     exit when extract(dow from d)::int = any(descansos_vigentes(uid, d));
     exit when exists (select 1 from vidas_usadas where user_id = uid and fecha = d);
-    -- ¿queda una vida de ESE mes?
-    exit when vidas_disponibles(uid, d) <= 0;
+    -- ¿queda un impulso disponible para ESE día?
+    exit when impulsos_disponibles(uid, d) <= 0;
     insert into vidas_usadas (user_id, fecha) values (uid, d)
       on conflict (user_id, fecha) do nothing;
     cubiertos := cubiertos || d;
     d := d - 1;
-    -- tope de seguridad: nunca se pueden gastar más que dos meses de cuota
-    exit when array_length(cubiertos, 1) >= vidas_por_mes() * 2;
+    exit when array_length(cubiertos, 1) >= impulsos_tope();
   end loop;
 
   if array_length(cubiertos, 1) > 0 then
@@ -919,15 +958,15 @@ begin
         'perdida', false,
         'pendiente_resuelto', resuelto,
         'vidas_usadas', to_jsonb(cubiertos),
-        'vidas_quedan', vidas_disponibles(uid, hoy)
+        'vidas_quedan', impulsos_disponibles(uid, hoy)
       );
     end if;
   end if;
 
-  -- No alcanzó: la racha se corta igual, y las vidas gastadas NO se devuelven
-  -- —el día que cubrieron sigue cubierto—. Devolverlas sería premiar la
-  -- falta larga: el que faltó seis días terminaría el mes con más vidas que
-  -- el que faltó dos.
+  -- No alcanzó: la racha se corta igual, y los impulsos gastados NO se
+  -- devuelven —el día que cubrieron sigue cubierto—. Devolverlos sería premiar
+  -- la falta larga: el que faltó seis días terminaría con más que el que faltó
+  -- dos.
   nueva_racha := greatest(0, perfil.racha_actual - 10);
   nuevo_rango := rango_de_racha(nueva_racha);
   update profiles set
@@ -939,7 +978,7 @@ begin
   return jsonb_build_object('perdida', true, 'rango_anterior', perfil.rango_actual,
     'rango_nuevo', nuevo_rango, 'racha', nueva_racha, 'pendiente_resuelto', resuelto,
     'vidas_usadas', to_jsonb(cubiertos),
-    'vidas_quedan', vidas_disponibles(uid, hoy));
+    'vidas_quedan', impulsos_disponibles(uid, hoy));
 end;
 $$;
 

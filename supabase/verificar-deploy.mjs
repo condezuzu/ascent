@@ -59,9 +59,12 @@ const MARCA = {
   // No hace falta igual: la 33 es ADITIVA —una columna con valor por omisión y
   // funciones que solo SUMAN una clave— así que corre antes o después del
   // deploy sin romper nada. Esta sonda es para las de orden invertido.
-  textoNuevo: null,
-  porQueNoHayMarca:
-    'lo nuevo solo se ve adentro de la ventana de vidas, que la cuenta de prueba no puede abrir',
+  //
+  // TANDA DE IMPULSOS (migración 34): vuelve a haber marca. La mecánica dejó
+  // de llamarse "vidas" y el rótulo de Stats ahora dice "Impulsos", que es
+  // texto que solo existe desde este commit y se ve sin ninguna condición.
+  textoNuevo: { ruta: '/stats', dice: 'Impulsos' },
+  porQueNoHayMarca: null,
   /**
    * EL AUTOTEST. Un texto de la misma pantalla que tiene que estar SIEMPRE,
    * con el cliente viejo y con el nuevo.

@@ -92,7 +92,8 @@ import {
   SUELTO_MS,
   DURACION_MS as SALVADA_MS,
 } from '../src/lib/salvada.ts';
-import { vidasSinVer, hastaDondeVisto, rachaSiSeDevuelve } from '../nucleo/vidas.ts';
+import { impulsosSinVer, hastaDondeVisto, rachaSiSeDevuelve } from '../nucleo/impulsos.ts';
+import { cacheTrasConfirmar } from '../nucleo/sesiones.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -190,10 +191,17 @@ async function perfil(uid) {
  * regla vive, y así el resto de la maquinaria —cubrir, contar, no devolver—
  * es exactamente la de producción.
  */
+// Cuantos impulsos tiene TODO el mundo, para las pruebas.
+//
+// Se redefine `impulsos_ganados` y no el tope: la regla de verdad es "dos, y
+// el tercero a los 20 dias de racha", y casi ningun test de perdida quiere
+// pensar en eso. Con esto se fija el numero y se prueba una cosa por vez; la
+// regla que los gana tiene su propia seccion, que es donde debe probarse.
 async function cuotaDeVidas(n) {
   await db.query(
-    `create or replace function public.vidas_por_mes()
-     returns int language sql immutable as $fn$ select ${n} $fn$`
+    `create or replace function public.impulsos_ganados(p_user uuid)
+     returns int language sql stable security definer set search_path = public
+     as $fn$ select case when p_user is null then 0 else ${n} end $fn$`
   );
 }
 
@@ -3800,38 +3808,58 @@ console.log('\n58. Las vidas');
     chequear('las vidas gastadas quedan gastadas', [antes, despues], [3, 3]);
   }
 
-  // ---- el mes de una vida es el del DIA que cubre ----
+  // ---- vuelven a los 30 dias, y no el 1 del mes ----
   //
-  // Es la respuesta a "si falto el 30 y el 31 y el 1 se recargan, esos dias
-  // siguen cubiertos?": si, porque lo que se guarda es el dia cubierto. Aca se
-  // prueba la otra mitad: esas dos vidas salen de la cuota del mes VIEJO.
+  // LA REGLA VIEJA ERA POR MES y el humano le encontro el agujero solo: si
+  // faltabas el 30 y el 31, el 1 tenias los tres de nuevo. El mes es una
+  // frontera arbitraria y premiaba faltar justo antes de cruzarla. Ahora cada
+  // impulso vuelve 30 dias despues del dia que cubrio: no hay ninguna fecha en
+  // que convenga faltar.
   {
+    await cuotaDeVidas(3);
     const u = await nuevoUsuario();
-    const mes = await db.query(`select date_trunc('month', mi_hoy())::date m`);
-    const primero = mes.rows[0].m;
-    // Tres cubiertos el mes pasado no gastan nada de este mes.
-    for (const d of [1, 2, 3]) {
+    const gastadoHace = async (dias) => {
       await db.query(
-        `insert into vidas_usadas (user_id, fecha) values ($1, $2::date - $3::int)`,
-        [u, primero, d]
+        `insert into vidas_usadas (user_id, fecha) values ($1, mi_hoy() - $2::int)`,
+        [u, dias]
       );
-    }
-    const quedan = (
-      await db.query('select vidas_disponibles($1, mi_hoy()) as v', [u])
+      return (await db.query('select impulsos_disponibles($1, mi_hoy()) as v', [u])).rows[0].v;
+    };
+    chequear('uno de hace 31 dias ya volvio', await gastadoHace(31), 3);
+    chequear('uno de hace 29 todavia no', await gastadoHace(29), 2);
+    chequear('y uno de ayer tampoco', await gastadoHace(1), 1);
+    // El de hace 29 vuelve pasado manana. Se mira el dia, no el mes.
+    const en2 = (
+      await db.query('select impulsos_disponibles($1, mi_hoy() + 2) as v', [u])
     ).rows[0].v;
-    chequear('las del mes pasado no gastan las de este', quedan, 3);
-    const delOtro = (
-      await db.query(`select vidas_disponibles($1, $2::date - 1) as v`, [u, primero])
-    ).rows[0].v;
-    chequear('y el mes viejo quedo sin ninguna', delOtro, 0);
-    // Y el dia cubierto del mes pasado sigue cubierto: no lo devuelve nadie.
-    const sigue = (
-      await db.query(
-        `select count(*)::int n from vidas_usadas where user_id = $1 and fecha < $2`,
-        [u, primero]
-      )
-    ).rows[0].n;
-    chequear('los dias viejos siguen cubiertos', sigue, 3);
+    chequear('pasado manana vuelve el de 29', en2, 2);
+  }
+
+  // ---- se ganan: dos, y el tercero a los 20 dias ----
+  //
+  // El que empieza no puede arrancar en cero —el primer tropiezo lo sacaria de
+  // la app— y tampoco con todos, o no son nada que se gane.
+  {
+    await db.query(
+      `create or replace function public.impulsos_ganados(p_user uuid)
+       returns int language sql stable security definer set search_path = public as $fn$
+         select least(impulsos_tope(),
+           2 + case when coalesce((select racha_actual from profiles where id = p_user), 0) >= 20
+                    then 1 else 0 end)
+       $fn$`
+    );
+    const u = await nuevoUsuario();
+    const conRacha = async (r) => {
+      await db.query('update profiles set racha_actual = $2 where id = $1', [u, r]);
+      return (await db.query('select impulsos_ganados($1) as v', [u])).rows[0].v;
+    };
+    chequear('el que empieza tiene dos', await conRacha(0), 2);
+    chequear('a los 19 sigue con dos', await conRacha(19), 2);
+    chequear('a los 20 gana el tercero', await conRacha(20), 3);
+    chequear('y no hay un cuarto', await conRacha(300), 3);
+    // Perder la racha se lleva el tercero: era de la racha.
+    chequear('perder la racha lo devuelve a dos', await conRacha(9), 2);
+    await cuotaDeVidas(3);
   }
 
   // ---- un dia de descanso no gasta vida ----
@@ -4228,17 +4256,17 @@ console.log('\n64. El aviso de la vida sale del ESTADO, no del evento');
   // Sin marca —cuenta nueva, primer aviso— se anuncia todo, y ordenado del
   // mas viejo al mas nuevo: la base las manda al reves porque pide las
   // ultimas cinco.
-  chequear('sin marca, se anuncia todo', vidasSinVer(dias, null), ['2026-09-07', '2026-09-08']);
+  chequear('sin marca, se anuncia todo', impulsosSinVer(dias, null), ['2026-09-07', '2026-09-08']);
 
   // Y mil veces seguidas da lo mismo. Esto es literalmente lo que el aviso
   // viejo no podia hacer.
-  chequear('preguntar no consume', vidasSinVer(dias, null), vidasSinVer(dias, null));
+  chequear('preguntar no consume', impulsosSinVer(dias, null), impulsosSinVer(dias, null));
 
   // Con marca: solo lo posterior.
-  chequear('con marca vieja, lo nuevo', vidasSinVer(dias, '2026-09-07'), ['2026-09-08']);
-  chequear('con marca al dia, nada', vidasSinVer(dias, '2026-09-08'), []);
-  chequear('con marca mas nueva, nada', vidasSinVer(dias, '2026-10-01'), []);
-  chequear('sin dias cubiertos, nada', vidasSinVer([], '2026-09-08'), []);
+  chequear('con marca vieja, lo nuevo', impulsosSinVer(dias, '2026-09-07'), ['2026-09-08']);
+  chequear('con marca al dia, nada', impulsosSinVer(dias, '2026-09-08'), []);
+  chequear('con marca mas nueva, nada', impulsosSinVer(dias, '2026-10-01'), []);
+  chequear('sin dias cubiertos, nada', impulsosSinVer([], '2026-09-08'), []);
 
   // La marca que queda despues de mostrar: el maximo de TODO lo que vino y no
   // solo de lo que se anuncio. Si la base manda un dia mas viejo que la marca,
@@ -4252,10 +4280,10 @@ console.log('\n64. El aviso de la vida sale del ESTADO, no del evento');
   // marca al cerrar, y no vuelve.
   {
     const marca1 = hastaDondeVisto(dias, null);
-    chequear('anunciado y marcado, no vuelve', vidasSinVer(dias, marca1), []);
+    chequear('anunciado y marcado, no vuelve', impulsosSinVer(dias, marca1), []);
     // Y una falta nueva al dia siguiente si aparece.
     const despues = ['2026-09-10', ...dias];
-    chequear('pero una falta nueva si', vidasSinVer(despues, marca1), ['2026-09-10']);
+    chequear('pero una falta nueva si', impulsosSinVer(despues, marca1), ['2026-09-10']);
   }
 
   // El precio de guardarla, que la ventana dice ANTES de cobrarlo.
@@ -4397,6 +4425,61 @@ console.log('\n65. El gesto de "te salvaste": la curva');
   }
 }
 
+console.log('\n66. El contador de series no se resetea solo');
+{
+  // LOS DOS BUGS QUE ESTO ARREGLA, reportados juntos porque se veian iguales.
+  //
+  // "SI MANDO LA APP AL FONDO, SE RESETEAN". `mi_sesion` volvia y se
+  // REESCRIBIA la cache entera con lo que dice el servidor. `bloques` no esta
+  // en esa lista —es del telefono, la meta es intencion y no un hecho— asi que
+  // cada confirmacion lo borraba de la cache sin tocar la pantalla. No se veia
+  // nada hasta el proximo montaje, que leia la cache y encontraba el bloque en
+  // cero. Y pasaba DOS veces por carga: la pantalla y el vigilante del
+  // gimnasio son dos instancias del mismo hook.
+  //
+  // "A VECES SE RESETEAN SOLAS". El error del RPC se tiraba a la basura, y sin
+  // el, un fallo de red es identico a "no hay sesion": `data` en null. En un
+  // subsuelo con mala senal eso borraba la sesion entera.
+  const previo = { inicio: 'a', desfasaje: 0, id: 's1', series: 7, bloques: { hechas: 3 } };
+  const servidor = { inicio: 'a', desfasaje: 0, id: 's1', series: 7, porUbicacion: false };
+
+  // 1. Confirmacion normal: se guarda lo del servidor Y se conservan los
+  //    bloques, que el servidor no manda.
+  {
+    const q = cacheTrasConfirmar(previo, servidor, false);
+    chequear('confirmar guarda', q.accion, 'guardar');
+    chequear('y los bloques sobreviven', q.cache.bloques, { hechas: 3 });
+    chequear('con lo que dice el servidor', q.cache.series, 7);
+  }
+
+  // 2. La pregunta que no se pudo hacer no es una respuesta.
+  {
+    const q = cacheTrasConfirmar(previo, null, true);
+    chequear('con error no se toca nada', q.accion, 'mantener');
+    // Y tampoco si el error viene con sesion: el error manda.
+    chequear('ni aunque venga algo', cacheTrasConfirmar(previo, servidor, true).accion, 'mantener');
+  }
+
+  // 3. El servidor dice que NO hay sesion: ahi si se borra. Es la unica forma
+  //    de que se borre, y tiene que seguir existiendo — si no, una sesion
+  //    cerrada en otro aparato quedaria viva para siempre en este.
+  chequear('sin sesion, se borra', cacheTrasConfirmar(previo, null, false).accion, 'borrar');
+
+  // 4. OTRA sesion: los bloques NO se arrastran. Serian las series de ayer
+  //    contadas en el entrenamiento de hoy.
+  {
+    const otra = { ...servidor, id: 's2' };
+    const q = cacheTrasConfirmar(previo, otra, false);
+    chequear('otra sesion no hereda bloques', q.cache.bloques, undefined);
+  }
+
+  // 5. Sin cache previa —la sesion arranco en otro aparato— se guarda lo que
+  //    vino y listo.
+  {
+    const q = cacheTrasConfirmar(null, servidor, false);
+    chequear('sin cache previa, se guarda igual', q.cache, servidor);
+  }
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
