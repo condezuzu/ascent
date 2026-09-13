@@ -97,6 +97,70 @@ export const T = {
   },
 
   // ---------------------------------------------------------------
+  // EL CALENDARIO. Vivía en Ajustes como "Corregir días"; ahora hay uno solo,
+  // en Stats, y TOCAR UN DÍA LO ABRE en vez de cambiarlo. Antes la única forma
+  // de averiguar qué había pasado un día era tocarlo, y tocarlo cambiaba el
+  // dato: mirar rompía cosas.
+  calendario: {
+    titulo: 'Tus días',
+    nota: 'Toca un día para ver qué hiciste, o para corregirlo.',
+    mesAnterior: 'Mes anterior',
+    mesSiguiente: 'Mes siguiente',
+    mesYAnio: (mes: string, anio: number) => `${mes} ${anio}`,
+    verDia: (dia: number) => `Ver el día ${dia}`,
+    // La referencia. Tres palabras, no tres frases: es una leyenda, no una
+    // explicación.
+    leyendaHecho: 'Fuiste',
+    leyendaVacio: 'No fuiste',
+    leyendaDescanso: 'Descanso',
+    noSeSaco: 'Ese día sigue puesto.',
+    noSeAgrego: 'Ese día no se agregó.',
+    // La corrección NO recalcula sola: la racha la recalcula la base y hacerlo
+    // en cada toque serían diez recálculos para arreglar una semana.
+    recalcularNota:
+      'Si corriges días, al terminar aprieta "Recalcular racha desde el historial": ahí se rehace la cuenta con los días como quedaron.',
+    recalcular: 'Recalcular racha desde el historial',
+    recalculando: 'Recalculando…',
+    recalcularError: 'La cuenta no salió. Prueba de nuevo.',
+    // `dias` llega ya escrito ("3 días"), no como número: la palabra cambia con
+    // el idioma y con el 1.
+    recalculoCortado: (dias: string) =>
+      `Tu historial da ${dias}: está cortado, así que se aplicó el descuento.`,
+    recalculoListo: (dias: string) => `Listo: ${dias}.`,
+  },
+
+  // ---------------------------------------------------------------
+  // EL RESUMEN DE UN DÍA. Sin gráficos ni comparaciones con otros días: un día
+  // no tiene tendencia, y "15% menos que el martes" convierte mirar un
+  // entrenamiento en rendir cuentas.
+  resumen: {
+    fuiste: 'Fuiste',
+    descanso: 'Descanso',
+    sinRegistrar: 'Sin registrar',
+    series: (n: number) => (n === 1 ? '1 serie' : `${n} series`),
+    // Series que se contaron sin decir en qué. Existen y suman; solo no se
+    // sabe de qué fueron.
+    sinEjercicio: 'Sin ejercicio',
+    ejercicioSinNombre: 'Un ejercicio que ya no está',
+    enCurso: 'La sesión sigue abierta: esto se completa al terminarla.',
+    // Cada forma de entrar dice lo que pasó, sin disculparse por lo que falta.
+    porUbicacion: 'Entró solo, al llegar al gimnasio.',
+    porSalud: 'Entró por la app de salud del teléfono.',
+    sinSesion: 'Sin cronómetro: solo se marcó el día.',
+    corregir: 'Corregir',
+    marcarFui: 'Fui',
+    marcarDescanso: 'Descansé',
+    marcarNada: 'Sin registrar',
+    // Las sesiones cuelgan del día: sacarle el "fui" a un día con sesión la
+    // borra entera. El calendario viejo lo hacía en silencio.
+    borraSesion: 'Eso borra también la sesión de ese día.',
+    siCambiar: 'Cambiarlo igual',
+    // Futuro: el calendario no deja abrirlo, pero si llega, no se ofrece
+    // corregir algo que todavía no pasó.
+    futuro: 'Todavía no pasó.',
+  },
+
+  // ---------------------------------------------------------------
   // EL AVISO DE LAS 20:30. Ver `nucleo/avisoDiario.ts` para las reglas: dice
   // un hecho, nombra la racha si hay, y nunca menciona los impulsos.
   avisoDiario: {
@@ -383,20 +447,6 @@ export const T = {
     diasDescanso: 'Días de descanso',
     diasDescansoNota: 'Esos días puedes faltar sin perder la racha.',
 
-    // La referencia del calendario. Tres palabras, no tres frases: es una
-    // leyenda, no una explicación.
-    leyendaHecho: 'Fuiste',
-    leyendaVacio: 'No fuiste',
-    leyendaDescanso: 'Descanso',
-    // Tres estados, y hay que decirlos: un toque más de lo que la gente
-    // espera de un calendario no se descubre solo.
-    calendarioNota:
-      'Toca un día para pasarlo por: fuiste → descanso → sin nada. Los días de descanso no suman a la racha, pero tampoco la cortan.',
-    // La corrección NO recalcula sola: la racha la recalcula la base y hacerlo
-    // en cada toque serían diez recálculos para arreglar una semana.
-    calendarioRecalcular:
-      'Cuando termines de corregir, aprieta "Recalcular racha desde el historial": ahí se rehace la cuenta con los días como quedaron.',
-    corregirDias: 'Corregir días',
 
     descansoEntreSeries: 'Descanso entre series',
     descansoNota: 'Mientras descansas lo puedes cambiar ahí mismo.',
@@ -491,21 +541,6 @@ export const T = {
     exportando: 'Armando el archivo…',
     exportarError: 'El archivo no se armó. Prueba de nuevo.',
 
-    mesAnterior: 'Mes anterior',
-    mesSiguiente: 'Mes siguiente',
-    mesYAnio: (mes: string, anio: number) => `${mes} ${anio}`,
-    diaRegistrado: (dia: number) => `${dia} — registrado, toca para sacarlo`,
-    diaSinRegistrar: (dia: number) => `${dia} — sin registrar, toca para agregarlo`,
-    noSeSaco: 'Ese día sigue puesto.',
-    noSeAgrego: 'Ese día no se agregó.',
-    recalcular: 'Recalcular racha desde el historial',
-    recalculando: 'Recalculando…',
-    recalcularError: 'La cuenta no salió. Prueba de nuevo.',
-    // `dias` llega ya escrito ("3 días"), no como número: la palabra cambia con
-    // el idioma y con el 1.
-    recalculoCortado: (dias: string) =>
-      `Tu historial da ${dias}: está cortado, así que se aplicó el descuento.`,
-    recalculoListo: (dias: string) => `Listo: ${dias}.`,
 
     nombrePlaceholder: 'nombre_de_usuario',
     nombreFormato: 'Entre 3 y 20 letras, números o guion bajo.',
@@ -560,6 +595,11 @@ export const T = {
 
   // ---------------------------------------------------------------
   stats: {
+    // LAS DOS PESTAÑAS. "General" es lo que Stats ya era, intacto: quién sos
+    // en la app. "Entrenamiento" es qué venís haciendo, y ahí va a crecer lo
+    // del peso por serie.
+    pestanaGeneral: 'General',
+    pestanaEntrenamiento: 'Entrenamiento',
     titulo: 'Stats',
     globo: 'Constancia, historial y tu peso. El peso no lo ve nadie más.',
     rachaActual: 'Racha actual',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import EnElBody from '@/components/EnElBody';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { hoyISO } from '@nucleo/fechas';
@@ -89,7 +90,7 @@ export default function CargarMarca({
   const [abriendo, setAbriendo] = useState(false);
 
   return (
-    <>
+    <EnElBody>
       <div className={`hoja-fondo ${cerrando ? 'cerrando' : ''}`} onClick={cerrar} />
       <div className={`hoja ${cerrando ? 'cerrando' : ''}`} role="dialog" aria-modal>
         <h2>{T.marca.titulo}</h2>
@@ -182,6 +183,6 @@ export default function CargarMarca({
           alCerrar={() => setAbriendo(false)}
         />
       )}
-    </>
+    </EnElBody>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import EnElBody from '@/components/EnElBody';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda, hoyISO } from '@nucleo/fechas';
@@ -138,7 +139,7 @@ export default function RegistrarSheet({
   }
 
   return (
-    <>
+    <EnElBody>
       <div className={`hoja-fondo ${cerrando ? 'cerrando' : ''}`} onClick={cerrar} />
       <div className={`hoja ${cerrando ? 'cerrando' : ''}`} role="dialog" aria-modal>
         <h2>{yaEsta ? T.registrar.sumarAlDia : esHoy ? T.registrar.diaN(racha + 1) : T.registrar.corregirDia}</h2>
@@ -177,6 +178,6 @@ export default function RegistrarSheet({
         {aviso && <p className="ok-msg">{aviso}</p>}
         {error && <p className="error-msg">{error}</p>}
       </div>
-    </>
+    </EnElBody>
   );
 }

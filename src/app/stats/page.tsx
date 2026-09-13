@@ -18,6 +18,7 @@ import SeccionFuerza from '@/components/SeccionFuerza';
 import SeccionSesiones from '@/components/SeccionSesiones';
 import GraficoPeso from '@/components/GraficoPeso';
 import AnotarPeso from '@/components/AnotarPeso';
+import CalendarioDias from '@/components/CalendarioDias';
 import { T } from '@nucleo/textos';
 
 export default function Estadisticas() {
@@ -34,6 +35,14 @@ export default function Estadisticas() {
   const [mejor, setMejor] = useState(0);
   const [unidad, setUnidad] = useState<Unidad>('kg');
   const [sexo, setSexo] = useState<string | null>(null);
+  // LAS PESTAÑAS. "General" es lo que Stats ya era, intacto: quién sos en la
+  // app. "Entrenamiento" es qué venís haciendo. Mezcladas en una sola lista,
+  // la racha —que es el corazón— quedaría enterrada entre números.
+  //
+  // Arranca siempre en General y no se recuerda: leer la preferencia tarda, y
+  // una pantalla que aparece en una pestaña y salta a la otra es peor que un
+  // toque de más.
+  const [pestana, setPestana] = useState<'general' | 'entrenamiento'>('general');
 
   // Con nombre y no en un efecto anónimo: anotar el peso tiene que poder
   // volver a pedir los datos para que la tendencia se dibuje al toque.
@@ -121,6 +130,36 @@ export default function Estadisticas() {
         <GloboPrimeraVez cual="stats">
           {T.stats.globo}
         </GloboPrimeraVez>
+
+        <div className="selector-vista pestanas-stats" role="tablist">
+          <button
+            role="tab"
+            aria-selected={pestana === 'general'}
+            className={pestana === 'general' ? 'activo' : ''}
+            onClick={() => setPestana('general')}
+          >
+            {T.stats.pestanaGeneral}
+          </button>
+          <button
+            role="tab"
+            aria-selected={pestana === 'entrenamiento'}
+            className={pestana === 'entrenamiento' ? 'activo' : ''}
+            onClick={() => setPestana('entrenamiento')}
+          >
+            {T.stats.pestanaEntrenamiento}
+          </button>
+        </div>
+
+        {pestana === 'entrenamiento' && (
+          <>
+            {/* El calendario, con el resumen de cada día adentro. Acá va a
+                crecer lo del peso por serie: máximos, volumen, estancamiento. */}
+            <CalendarioDias alCambiar={cargar} />
+          </>
+        )}
+
+        {pestana === 'general' && (
+          <>
 
         {/* EL AVISO DE ESTANCAMIENTO, si hay uno. Arriba de los números y
             no al final: escondido abajo sería un aviso que se muestra donde
@@ -252,6 +291,8 @@ export default function Estadisticas() {
             })}
           </div>
         </div>
+          </>
+        )}
       </PantallaDeslizable>
       <Nav />
     </>

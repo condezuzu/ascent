@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import EnElBody from '@/components/EnElBody';
 import { T } from '@nucleo/textos';
 
 const LADO_SALIDA = 512; // el avatar más grande que muestra la app es 104px
@@ -171,7 +172,7 @@ export default function RecorteCircular({
   }
 
   return (
-    <>
+    <EnElBody>
       <div className="hoja-fondo" onClick={alCancelar} />
       <div className="hoja" role="dialog" aria-label={T.recorte.etiqueta}>
         <h2>{T.recorte.titulo}</h2>
@@ -222,6 +223,6 @@ export default function RecorteCircular({
           {T.general.cancelar}
         </button>
       </div>
-    </>
+    </EnElBody>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import EnElBody from '@/components/EnElBody';
 import AnotarPeso from '@/components/AnotarPeso';
 import { T } from '@nucleo/textos';
 import type { Unidad } from '@nucleo/peso';
@@ -33,7 +34,7 @@ export default function PesoSheet({
   }
 
   return (
-    <>
+    <EnElBody>
       <div className={`hoja-fondo ${cerrando ? 'cerrando' : ''}`} onClick={cerrar} />
       <div className={`hoja ${cerrando ? 'cerrando' : ''}`} role="dialog" aria-modal>
         <h2>{T.peso.titulo}</h2>
@@ -49,6 +50,6 @@ export default function PesoSheet({
           {T.general.cancelar}
         </button>
       </div>
-    </>
+    </EnElBody>
   );
 }

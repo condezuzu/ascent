@@ -147,7 +147,7 @@ export default function Album() {
     const [anio, mes] = clave.split('-');
     meses.push({
       clave,
-      titulo: T.ajustes.mesYAnio(MESES[Number(mes) - 1], Number(anio)),
+      titulo: T.calendario.mesYAnio(MESES[Number(mes) - 1], Number(anio)),
       // El índice en la lista COMPLETA: es lo que abre el visor, y el visor
       // pasa de una foto a la siguiente sin saber de meses.
       desde: i,

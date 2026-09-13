@@ -3810,3 +3810,73 @@ body.con-franja.con-accion .pantalla {
   width: 15px;
   height: 15px;
 }
+
+/* ---------- las pestañas de Stats ----------
+   El mismo selector que usa Ajustes: dos botones iguales y uno encendido. No
+   hay una "barra de pestañas" nueva porque la app ya tiene una forma de elegir
+   entre dos cosas, y una segunda forma sería otra cosa que aprender. */
+.pestanas-stats {
+  margin: 4px 0 22px;
+}
+
+/* ---------- un día, abierto ---------- */
+.hoja-dia {
+  /* Un día con foto y cinco ejercicios no entra en un teléfono chico: la hoja
+     scrollea adentro en vez de salirse por arriba. */
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.dia-estado {
+  font-size: 15px;
+  margin: -6px 0 16px;
+}
+.dia-estado span {
+  color: var(--sub);
+}
+.dia-estado.sin-registrar,
+.dia-estado.futuro {
+  color: var(--apagado);
+}
+.dia-ejercicios {
+  margin-bottom: 14px;
+}
+.dia-ejercicios .cuantas {
+  color: var(--sub);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+/* Las series sin ejercicio existen y suman; van en voz baja porque no se sabe
+   de qué fueron, no porque falte algo. */
+.dia-ejercicios .fila.sin .nombre {
+  color: var(--apagado);
+}
+.dia-foto {
+  display: block;
+  width: 100%;
+  max-height: 44vh;
+  object-fit: cover;
+  margin: 4px 0 18px;
+}
+.dia-corregir {
+  margin-top: 8px;
+}
+.dia-corregir h3 {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--apagado);
+  font-weight: 400;
+  margin: 0 0 10px;
+}
+.dia-confirmar {
+  font-size: 13px;
+  color: var(--sub);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: -6px 0 8px;
+}
+.dia-confirmar .boton-texto {
+  width: auto;
+}

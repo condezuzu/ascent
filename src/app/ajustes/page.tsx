@@ -15,7 +15,6 @@ import BajaDeCuenta from '@/components/ajustes/BajaDeCuenta';
 import ComoSeCompara from '@/components/ajustes/ComoSeCompara';
 import Estancamiento from '@/components/ajustes/Estancamiento';
 import Diagnostico from '@/components/ajustes/Diagnostico';
-import CorregirDias from '@/components/ajustes/CorregirDias';
 import DescansoEntreSeries from '@/components/ajustes/DescansoEntreSeries';
 import Descansos from '@/components/ajustes/Descansos';
 import Gimnasio from '@/components/ajustes/Gimnasio';
@@ -100,7 +99,8 @@ export default function Ajustes() {
         </Link>
 
         <Descansos perfil={perfil} alCambiar={alCambiar} recargar={cargar} />
-        <CorregirDias recargar={cargar} />
+        {/* "Corregir días" se mudó a Stats: hay un solo calendario, y ahí
+            tocar un día lo abre en vez de cambiarlo. */}
         <DescansoEntreSeries perfil={perfil} alCambiar={alCambiar} />
         <Gimnasio perfil={perfil} alCambiar={alCambiar} />
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import EnElBody from '@/components/EnElBody';
 import type { EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
@@ -46,7 +47,7 @@ export default function ListaDeBloques({
   const nada = estado.cerrados.length === 0 && estado.hechas === 0;
 
   return (
-    <>
+    <EnElBody>
       <div className={`hoja-fondo ${cerrando ? 'cerrando' : ''}`} onClick={cerrar} />
       <div className={`hoja ${cerrando ? 'cerrando' : ''}`} role="dialog" aria-modal>
         <h2>{T.sesion.listaTitulo}</h2>
@@ -124,6 +125,6 @@ export default function ListaDeBloques({
           {T.sesion.listo}
         </button>
       </div>
-    </>
+    </EnElBody>
   );
 }

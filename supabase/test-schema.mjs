@@ -4946,6 +4946,161 @@ console.log('\n72. Lo que dice el aviso de las 20:30');
   chequear('no nombra los impulsos', /impulso/.test(todo), false);
   chequear('ni asusta', /pierd|perder|cuidado|!/.test(todo), false);
 }
+console.log('\n73. El resumen de un dia');
+{
+  // Los casos que en la pantalla son raros y en la vida no.
+  const { resumenDelDia } = await import('../nucleo/resumenDia.ts');
+  const catalogo = new Map([
+    ['press_banca', 'Press de banca'],
+    ['sentadilla', 'Sentadilla'],
+  ]);
+  const base = { catalogo, esFuturo: false, esDescansoConfigurado: false, ejercicioSinNombre: '?' };
+  const ses = (inicio, fin, estado, series, bloques = []) => ({ inicio, fin, estado, series, bloques });
+
+  // ---- el estado ----
+  chequear('sin nada, sin registrar', resumenDelDia({ ...base, log: null, sesiones: [] }).estado, 'sin-registrar');
+  chequear('con dia, entrenado', resumenDelDia({ ...base, log: { es_descanso: false }, sesiones: [] }).estado, 'entrenado');
+  chequear('descanso marcado', resumenDelDia({ ...base, log: { es_descanso: true }, sesiones: [] }).estado, 'descanso');
+  chequear('descanso de la rutina', resumenDelDia({ ...base, log: null, sesiones: [], esDescansoConfigurado: true }).estado, 'descanso');
+  // Entrenar un dia de descanso es entrenar: el dia manda sobre la rutina.
+  chequear('entrenar en dia de descanso es entrenado', resumenDelDia({ ...base, log: { es_descanso: false }, sesiones: [], esDescansoConfigurado: true }).estado, 'entrenado');
+  chequear('manana es futuro', resumenDelDia({ ...base, log: null, sesiones: [], esFuturo: true }).estado, 'futuro');
+
+  // ---- un dia normal ----
+  {
+    const r = resumenDelDia({
+      ...base,
+      log: { es_descanso: false, origen: 'manual' },
+      sesiones: [
+        ses('2026-09-10T18:00:00Z', '2026-09-10T18:52:30Z', 'terminada', 8, [
+          { ejercicio: 'press_banca', series: 4 },
+          { ejercicio: 'sentadilla', series: 4 },
+        ]),
+      ],
+    });
+    chequear('la duracion sale de inicio y fin', r.duracionSegundos, 3150);
+    chequear('las series, del total', r.series, 8);
+    chequear('los ejercicios, con nombre', r.ejercicios.map((e) => `${e.nombre} ${e.series}`), ['Press de banca 4', 'Sentadilla 4']);
+    chequear('y nada sin anotar', r.sinEjercicio, 0);
+  }
+
+  // ---- dos sesiones el mismo dia ----
+  {
+    const r = resumenDelDia({
+      ...base,
+      log: { es_descanso: false },
+      // Llegan desordenadas a proposito: la de la tarde primero.
+      sesiones: [
+        ses('2026-09-10T20:00:00Z', '2026-09-10T20:30:00Z', 'terminada', 3, [{ ejercicio: 'press_banca', series: 3 }]),
+        ses('2026-09-10T08:00:00Z', '2026-09-10T08:20:00Z', 'terminada', 4, [
+          { ejercicio: 'sentadilla', series: 2 },
+          { ejercicio: 'press_banca', series: 2 },
+        ]),
+      ],
+    });
+    chequear('las duraciones se suman', r.duracionSegundos, 50 * 60);
+    chequear('y las series', r.series, 7);
+    // En el orden en que se HICIERON: la sesion de la manana empezo con
+    // sentadilla. Y volver a banca a la tarde suma a la fila de banca.
+    chequear('en orden de lo que se hizo primero', r.ejercicios.map((e) => e.id), ['sentadilla', 'press_banca']);
+    chequear('volver a un ejercicio suma a su fila', r.ejercicios.find((e) => e.id === 'press_banca').series, 5);
+  }
+
+  // ---- la sesion que se cerro sola ----
+  //
+  // Una sesion abandonada no tiene duracion real: se cerro por el tope de
+  // cuatro horas. Mostrar "4 h" seria inventar un entrenamiento.
+  {
+    const r = resumenDelDia({
+      ...base,
+      log: { es_descanso: false },
+      sesiones: [ses('2026-09-10T18:00:00Z', null, 'abandonada', 6)],
+    });
+    chequear('abandonada: sin duracion', r.duracionSegundos, null);
+    chequear('pero las series si cuentan', r.series, 6);
+    chequear('y todas sin ejercicio', r.sinEjercicio, 6);
+  }
+
+  // ---- el dia que entro solo, sin sesion ----
+  {
+    const r = resumenDelDia({ ...base, log: { es_descanso: false, origen: 'ubicacion' }, sesiones: [] });
+    chequear('por ubicacion, sin sesion', [r.estado, r.origen, r.series, r.duracionSegundos], ['entrenado', 'ubicacion', 0, null]);
+  }
+
+  // ---- hoy, con la sesion corriendo ----
+  {
+    const r = resumenDelDia({
+      ...base,
+      log: { es_descanso: false },
+      sesiones: [ses('2026-09-10T18:00:00Z', null, 'corriendo', 2)],
+    });
+    chequear('la de hoy esta en curso', r.enCurso, true);
+  }
+
+  // ---- lo que viene raro de la base ----
+  {
+    const r = resumenDelDia({
+      ...base,
+      log: { es_descanso: false },
+      sesiones: [
+        ses('2026-09-10T18:00:00Z', '2026-09-10T19:00:00Z', 'terminada', 5, [
+          { ejercicio: 'curl_de_1998', series: 2 }, // ya no esta en el catalogo
+          { ejercicio: 'sentadilla', series: 'tres' }, // basura
+          null,
+          'no soy un bloque',
+          { ejercicio: 'sentadilla', series: -4 },
+        ]),
+      ],
+    });
+    chequear('un ejercicio que ya no existe se muestra igual', r.ejercicios.map((e) => e.nombre), ['?']);
+    chequear('la basura no suma', r.ejercicios.length, 1);
+    chequear('y lo que falta queda sin ejercicio', r.sinEjercicio, 3);
+    chequear('bloques que no son lista no rompen', resumenDelDia({ ...base, log: { es_descanso: false }, sesiones: [ses('2026-09-10T18:00:00Z', null, 'abandonada', 1, { no: 'lista' })] }).ejercicios, []);
+  }
+
+  // Los bloques suman MAS que el total —se corrigio el total a mano—: el
+  // total manda, y no hay series negativas sin anotar.
+  {
+    const r = resumenDelDia({
+      ...base,
+      log: { es_descanso: false },
+      sesiones: [ses('2026-09-10T18:00:00Z', null, 'abandonada', 2, [{ ejercicio: 'sentadilla', series: 5 }])],
+    });
+    chequear('sin ejercicio nunca es negativo', r.sinEjercicio, 0);
+  }
+}
+console.log('\n74. Toda hoja se monta en el body');
+{
+  // LA TERCERA VEZ. Una hoja abierta desde adentro de una pantalla queda
+  // atrapada en el contexto de apilado de `.pantalla` —que tiene z-index— y se
+  // dibuja DEBAJO de la barra de navegacion, con el boton de cerrar tapado.
+  // Paso con el selector de ejercicios y se arreglo solo ahi; volvio a pasar
+  // con la hoja del dia y con la lista de bloques. Arreglarlo hoja por hoja es
+  // garantizar la cuarta, asi que se prueba el patron: si un archivo dibuja
+  // una hoja, usa `EnElBody`.
+  const { readdirSync: leerDir, readFileSync: leerArch, statSync: estado } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+  const hojas = [];
+  const sueltas = [];
+  const recorrer = (d) => {
+    for (const n of leerDir(d)) {
+      const r = join(d, n);
+      if (estado(r).isDirectory()) recorrer(r);
+      else if (n.endsWith('.tsx') && n !== 'EnElBody.tsx') {
+        const codigo = sinComentarios(leerArch(r, 'utf8'));
+        if (codigo.includes('hoja-fondo')) {
+          hojas.push(n);
+          if (!codigo.includes('<EnElBody>')) sueltas.push(n);
+        }
+      }
+    }
+  };
+  recorrer(RAIZ);
+  chequear(`las ${hojas.length} hojas se montan en el body`, sueltas, []);
+  // Y que encontro hojas: si el patron cambiara de nombre, esto pasaria sin
+  // mirar nada.
+  chequear('y encontro las hojas', hojas.length >= 6, true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

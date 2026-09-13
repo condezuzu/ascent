@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import EnElBody from '@/components/EnElBody';
 import type { Ejercicio } from '@nucleo/tipos';
 import { ORDEN_ZONAS, gruposDeZona, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
 import { T } from '@nucleo/textos';
@@ -81,17 +81,9 @@ export default function SelectorEjercicio({
 
   const lista = grupo ? ejercicios.filter((e) => e.grupo === grupo && !e.cuenta_dots) : [];
 
-  // AL FINAL DEL BODY, y no donde está el botón. Una hoja abierta desde el
-  // medio de una pantalla queda atrapada en el contexto de apilado de esa
-  // pantalla —`.pantalla` tiene z-index— y termina POR DEBAJO de la barra de
-  // navegación, que vive afuera. Las otras hojas de la app no tenían el
-  // problema por casualidad: se montan sueltas al final de la página.
-  const [montado, setMontado] = useState(false);
-  useEffect(() => setMontado(true), []);
-  if (!montado) return null;
-
-  return createPortal(
-    <>
+  // Al final del body: ver `EnElBody`, que nació de este mismo bug.
+  return (
+    <EnElBody>
       <div className={`hoja-fondo ${cerrando ? 'cerrando' : ''}`} onClick={cerrar} />
       <div className={`hoja selector-ejercicio ${cerrando ? 'cerrando' : ''}`} role="dialog" aria-modal>
         <div className="selector-cabecera">
@@ -168,7 +160,6 @@ export default function SelectorEjercicio({
           {T.general.cancelar}
         </button>
       </div>
-    </>,
-    document.body
+    </EnElBody>
   );
 }
