@@ -46,3 +46,44 @@ self.addEventListener('fetch', (e) => {
       .catch(() => caches.match(e.request))
   );
 });
+
+// ---- el aviso de las 20:30 ----
+//
+// Lo manda `/api/avisos/diario` con Web Push. Llega con la app cerrada, que es
+// la única razón de que exista: con la app abierta ya se ve que el día no está.
+self.addEventListener('push', (e) => {
+  let datos = {};
+  try {
+    datos = e.data ? e.data.json() : {};
+  } catch (_) {
+    // un push sin JSON igual se muestra: mejor un aviso genérico que ninguno
+  }
+  e.waitUntil(
+    self.registration.showNotification(datos.titulo || 'Ascent', {
+      body: datos.cuerpo || '',
+      icon: '/icons/icono-192.png',
+      // `tag` hace que un aviso nuevo REEMPLACE al anterior en vez de apilarse.
+      // Si por algún motivo llegaran dos, en la pantalla hay uno.
+      tag: 'aviso-diario',
+      data: { url: datos.url || '/' },
+    })
+  );
+});
+
+// Tocar el aviso lleva a Inicio, que es donde se registra el día. Si la app
+// ya estaba abierta en algún lado se usa esa ventana en vez de abrir otra.
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
+      for (const v of ventanas) {
+        if ('focus' in v) {
+          if ('navigate' in v) v.navigate(url);
+          return v.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});

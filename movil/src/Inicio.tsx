@@ -41,7 +41,7 @@ type Estado =
       logs: Log[];
       descansos: ConfigDescanso[];
       cubiertos: string[];
-      vidas: { quedan: number; total: number } | null;
+      impulsos: { quedan: number; total: number } | null;
     };
 
 export default function Inicio({
@@ -67,17 +67,17 @@ export default function Inicio({
       if (!uid) return alSalir();
 
       // La pérdida se verifica ANTES de leer el perfil: es la llamada que
-      // aplica las vidas, y si se leyera el perfil primero se mostraría por un
+      // aplica los impulsos, y si se leyera el perfil primero se mostraría por un
       // instante una racha que la base está por corregir.
       await supabase.rpc('verificar_perdida');
 
       const desde = restarDias(hoyISO(), 6);
-      const [{ data: perfil, error }, { data: logs }, { data: descansos }, { data: vidas }] =
+      const [{ data: perfil, error }, { data: logs }, { data: descansos }, { data: impulsos }] =
         await Promise.all([
           supabase.from('profiles').select('*').eq('id', uid).single(),
           supabase.from('logs').select('*').eq('user_id', uid).gte('fecha', desde).order('fecha'),
           supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
-          supabase.rpc('mis_vidas'),
+          supabase.rpc('mis_impulsos'),
         ]);
 
       if (error) return setEstado({ tipo: 'error', que: mensajeDeAuth(error) });
@@ -98,8 +98,8 @@ export default function Inicio({
         perfil: perfil as Perfil,
         logs: (logs ?? []) as Log[],
         descansos: (descansos ?? []) as ConfigDescanso[],
-        cubiertos: Array.isArray(vidas?.del_mes) ? (vidas.del_mes as string[]) : [],
-        vidas: vidas ? { quedan: Number(vidas.quedan), total: Number(vidas.total) } : null,
+        cubiertos: Array.isArray(impulsos?.vigentes) ? (impulsos.vigentes as string[]) : [],
+        impulsos: impulsos ? { quedan: Number(impulsos.quedan), total: Number(impulsos.total) } : null,
       });
     } catch (e) {
       setEstado({ tipo: 'error', que: String((e as Error)?.message ?? e) });
@@ -152,7 +152,7 @@ export default function Inicio({
     );
   }
 
-  const { perfil, logs, descansos, cubiertos, vidas } = estado;
+  const { perfil, logs, descansos, cubiertos, impulsos } = estado;
 
   if (enAjustes) {
     return (
@@ -238,11 +238,11 @@ export default function Inicio({
         ))}
       </View>
 
-      {vidas && (
-        <View style={estilos.vidas}>
-          <Text style={estilos.vidasEt}>{T.vidas.titulo}</Text>
-          {Array.from({ length: vidas.total }, (_, i) => (
-            <View key={i} style={[estilos.vida, i < vidas.quedan && estilos.vidaViva]} />
+      {impulsos && (
+        <View style={estilos.impulsos}>
+          <Text style={estilos.impulsosEt}>{T.impulso.titulo}</Text>
+          {Array.from({ length: impulsos.total }, (_, i) => (
+            <View key={i} style={[estilos.impulso, i < impulsos.quedan && estilos.impulsoVivo]} />
           ))}
         </View>
       )}
@@ -294,16 +294,16 @@ const estilos = StyleSheet.create({
   cubierto: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#6b7488' },
   letra: { color: '#4a5163', fontSize: 11 },
 
-  vidas: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 26 },
-  vidasEt: {
+  impulsos: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 26 },
+  impulsosEt: {
     color: '#4a5163',
     fontSize: 10,
     letterSpacing: 2,
     textTransform: 'uppercase',
     marginRight: 4,
   },
-  vida: { width: 7, height: 7, borderRadius: 4, borderWidth: 1, borderColor: '#3a4152' },
-  vidaViva: { backgroundColor: '#c4c2ba', borderColor: '#c4c2ba' },
+  impulso: { width: 7, height: 7, borderRadius: 4, borderWidth: 1, borderColor: '#3a4152' },
+  impulsoVivo: { backgroundColor: '#c4c2ba', borderColor: '#c4c2ba' },
 
   solido: {
     backgroundColor: '#c4c2ba',

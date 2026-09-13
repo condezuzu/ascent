@@ -7,7 +7,10 @@ import {
   llevarCookies,
 } from '@nucleo/veredicto';
 
-const RUTAS_PUBLICAS = ['/login', '/auth', '/galeria'];
+// `/api/avisos` es pública PARA ESTE MIDDLEWARE, no para el mundo: la llama el
+// cron de Vercel, que no tiene sesión, y sin esto la rebotaba a /login. La
+// ruta se autentica sola con `CRON_SECRET` y sin él no hace nada.
+const RUTAS_PUBLICAS = ['/login', '/auth', '/galeria', '/api/avisos'];
 
 /**
  * Refresca el token en cada pedido y decide si la pantalla se puede ver.

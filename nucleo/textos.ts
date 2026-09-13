@@ -96,6 +96,30 @@ export const T = {
     descartar: 'No mostrar esto',
   },
 
+  // ---------------------------------------------------------------
+  // EL AVISO DE LAS 20:30. Ver `nucleo/avisoDiario.ts` para las reglas: dice
+  // un hecho, nombra la racha si hay, y nunca menciona los impulsos.
+  avisoDiario: {
+    titulo: 'Ascent',
+    conRacha: (racha: number) => `Tu racha va en ${racha}. Hoy todavía no está registrado.`,
+    sinRacha: 'Hoy todavía no está registrado.',
+
+    // En Ajustes.
+    rotulo: 'Aviso de las 20:30',
+    nota: 'Si a esa hora no registraste el día, te llega un aviso. Uno solo, y nunca los días de descanso.',
+    prender: 'Avisarme',
+    apagar: 'No avisarme',
+    prendido: 'Prendido en este teléfono.',
+    // Cada estado dice qué hacer, no solo qué pasa: un "no disponible" sin
+    // salida es un callejón.
+    hayQueInstalar:
+      'En iPhone el aviso solo llega con la app en la pantalla de inicio: Compartir → Agregar a inicio, y después se prende desde ahí.',
+    bloqueado:
+      'El permiso de notificaciones está bloqueado para esta app. Se vuelve a habilitar desde los ajustes del teléfono.',
+    noDisponible: 'Este navegador no puede recibir avisos con la app cerrada.',
+    noSePudo: 'No se pudo prender el aviso. Prueba de nuevo en un rato.',
+  },
+
   // Las zonas del selector de ejercicios. Van en minúscula porque son
   // etiquetas de navegación, no títulos.
   ejercicios: {

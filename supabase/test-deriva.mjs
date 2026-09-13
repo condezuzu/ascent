@@ -116,6 +116,7 @@ async function nueva() {
     $fn$;
     create role authenticated;
     create role anon;
+    create role service_role;
   `);
   return db;
 }

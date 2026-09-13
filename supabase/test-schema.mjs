@@ -103,6 +103,7 @@ import {
   MS_CERRAR,
 } from '../nucleo/atmosfera.ts';
 import * as SUB from '../src/lib/subida.ts';
+import { avisoDiario } from '../nucleo/avisoDiario.ts';
 import { hayQueContar, valorContado, SALTO_MAXIMO } from '../src/lib/contar.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
@@ -144,6 +145,7 @@ await db.exec(`
   $fn$;
   create role authenticated;
   create role anon;
+  create role service_role;
 `);
 
 // ---- schema real, sin la parte de storage (que PGlite no tiene) ----
@@ -2300,6 +2302,10 @@ console.log('\n35. Nada del navegador fuera de src/plataforma');
     // aguanta, y por eso el que menos puede filtrarse de a poco.
     'visibilityState',
     'visibilitychange',
+    // El puerto de avisos remotos (el de las 20:30). En nativo es el token de
+    // Expo: si Ajustes llamara a `pushManager` directo, no compilaria.
+    'pushManager',
+    'requestPermission',
   ];
 
   const { readdirSync, readFileSync: leerArchivo, statSync } = await import('node:fs');
@@ -4744,6 +4750,201 @@ console.log('\n69. El numero que cuenta');
 
   // Llega rapido y se asienta: a mitad de tiempo ya recorrio mas de la mitad.
   chequear('a mitad de tiempo ya paso la mitad', valorContado(0, 12, 0.5) > 6, true);
+}
+console.log('\n70. El aviso de las 20:30: a quien, y una sola vez');
+{
+  // LO QUE NO SE PUEDE EQUIVOCAR. Un aviso que llega el dia que SI fuiste es
+  // peor que no tener aviso: ensena a ignorarlo. Y uno repetido es spam. Las
+  // dos cosas las decide `tomar_avisos_del_dia`, que es SQL, asi que se prueba
+  // aca y no mandando notificaciones.
+  const suscribir = async (u, n) => {
+    await comoUsuario(u);
+    await db.query('select guardar_suscripcion_push($1, $2, $3)', [
+      `https://push.ejemplo/${n}`,
+      'p256dh-' + n,
+      'auth-' + n,
+    ]);
+  };
+  const tomar = async () =>
+    (await db.query('select endpoint, racha from tomar_avisos_del_dia()')).rows.map((r) => r.endpoint).sort();
+
+  // Se vacia lo que hubiera de otras secciones.
+  await db.query('delete from suscripciones_push');
+
+  const noFue = await nuevoUsuario();
+  await rachaDe(noFue, 5, 1); // fue hasta ayer
+  await suscribir(noFue, 'nofue');
+
+  const fue = await nuevoUsuario();
+  await rachaDe(fue, 5, 0); // fue hoy
+  await suscribir(fue, 'fue');
+
+  const descansa = await nuevoUsuario();
+  await comoUsuario(descansa);
+  const dow = (await db.query('select extract(dow from mi_hoy())::int as d')).rows[0].d;
+  await db.query('insert into descansos (user_id, desde, dias) values ($1, mi_hoy() - 10, $2)', [descansa, [dow]]);
+  await suscribir(descansa, 'descansa');
+
+  // Estuvo en el gimnasio y la guarda todavia no confirmo el dia: fue, solo
+  // que no se sabe. Avisarle "no fuiste" seria mentirle.
+  const pendiente = await nuevoUsuario();
+  await comoUsuario(pendiente);
+  await db.query('update profiles set dia_pendiente = mi_hoy() where id = $1', [pendiente]);
+  await suscribir(pendiente, 'pendiente');
+
+  // Sin suscripcion no hay nada que mandar, aunque no haya ido.
+  const sinAviso = await nuevoUsuario();
+  await rachaDe(sinAviso, 3, 2);
+
+  chequear('solo le avisa al que no fue', await tomar(), ['https://push.ejemplo/nofue']);
+  // EL REINTENTO. El cron puede correr dos veces; la segunda no encuentra a
+  // nadie porque la primera ya anoto el dia.
+  chequear('y una sola vez por dia', await tomar(), []);
+
+  // ---- prender el aviso ----
+  {
+    await suscribir(noFue, 'nofue'); // otra vez el mismo aparato
+    const filas = (await db.query("select count(*)::int n from suscripciones_push where endpoint = 'https://push.ejemplo/nofue'")).rows[0].n;
+    chequear('prenderlo dos veces no duplica', filas, 1);
+    // Y volver a prenderlo no resetea el "ya le avise hoy".
+    chequear('ni le vuelve a avisar hoy', await tomar(), []);
+
+    // Un telefono prestado: el aparato pasa a la cuenta que lo prendio ahora.
+    await suscribir(sinAviso, 'nofue');
+    const duenio = (await db.query("select user_id from suscripciones_push where endpoint = 'https://push.ejemplo/nofue'")).rows[0].user_id;
+    chequear('el aparato es de quien lo tiene en la mano', duenio, sinAviso);
+  }
+
+  // ---- apagarlo ----
+  {
+    await comoUsuario(fue);
+    await db.query('select borrar_suscripcion_push($1)', ['https://push.ejemplo/descansa']);
+    const sigue = (await db.query("select count(*)::int n from suscripciones_push where endpoint = 'https://push.ejemplo/descansa'")).rows[0].n;
+    chequear('no se puede apagar el aviso de otro', sigue, 1);
+    await db.query('select borrar_suscripcion_push($1)', ['https://push.ejemplo/fue']);
+    const quedo = (await db.query("select count(*)::int n from suscripciones_push where endpoint = 'https://push.ejemplo/fue'")).rows[0].n;
+    chequear('el propio si', quedo, 0);
+  }
+
+  // ---- lo que no entra ----
+  {
+    let rechazo = false;
+    try {
+      await comoUsuario(fue);
+      await db.query("select guardar_suscripcion_push('http://inseguro/x', 'a', 'b')");
+    } catch {
+      rechazo = true;
+    }
+    chequear('una direccion sin https no entra', rechazo, true);
+  }
+
+  // ---- y los permisos: la lista de a quien avisar es SOLO del servidor ----
+  //
+  // Devuelve direcciones de push de otra gente. Si un usuario la pudiera
+  // llamar, cualquiera podria mandarle notificaciones a todos.
+  {
+    let bloqueado = false;
+    await db.exec('set role authenticated');
+    try {
+      await db.query('select * from tomar_avisos_del_dia()');
+    } catch (e) {
+      bloqueado = /permission denied/i.test(String(e.message));
+    }
+    await db.exec('reset role');
+    chequear('un usuario no puede pedir la lista', bloqueado, true);
+
+    let olvidar = false;
+    await db.exec('set role authenticated');
+    try {
+      await db.query("select olvidar_suscripcion_push('https://push.ejemplo/descansa')");
+    } catch (e) {
+      olvidar = /permission denied/i.test(String(e.message));
+    }
+    await db.exec('reset role');
+    chequear('ni borrar suscripciones ajenas por la puerta del servidor', olvidar, true);
+
+    let servidor = true;
+    await db.exec('set role service_role');
+    try {
+      await db.query('select * from tomar_avisos_del_dia()');
+    } catch {
+      servidor = false;
+    }
+    await db.exec('reset role');
+    chequear('el servidor si', servidor, true);
+  }
+}
+console.log('\n71. Lo que el codigo nombra, existe');
+{
+  // EL BUG QUE ESTO HABRIA AGARRADO. Al renombrar las vidas a impulsos cambie
+  // `T.vidas` por `T.impulso` en la web, corri el tsc de la web, dio verde, y
+  // commitee. La app nativa seguia leyendo `T.vidas.titulo`: son dos proyectos
+  // con dos tsc distintos, y el de la web no mira `movil/`. Estuvo roto una
+  // tanda entera sin que nada lo dijera.
+  //
+  // Esto no compila nada: lee los archivos de LOS DOS lados y comprueba dos
+  // cosas que son las que se rompen al renombrar.
+  //   - Cada `T.seccion.clave` que se usa existe en los textos.
+  //   - Cada `rpc('funcion')` que se llama existe en el schema.
+  const { readdirSync: leerDir, readFileSync: leerArch, statSync: estado } = await import('node:fs');
+  const { T } = await import('../nucleo/textos.ts');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const esquema = leerArch(join(RAIZ, 'supabase', 'schema.sql'), 'utf8');
+
+  const archivos = [];
+  const recorrer = (d) => {
+    for (const n of leerDir(d)) {
+      if (n === 'node_modules' || n.startsWith('.')) continue;
+      const r = join(d, n);
+      if (estado(r).isDirectory()) recorrer(r);
+      else if (/\.tsx?$/.test(n)) archivos.push(r);
+    }
+  };
+  recorrer(join(RAIZ, 'src'));
+  recorrer(join(RAIZ, 'movil', 'src'));
+  recorrer(join(RAIZ, 'nucleo'));
+
+  const textosQueNoEstan = new Set();
+  const funcionesQueNoEstan = new Set();
+  let textos = 0;
+  let llamadas = 0;
+  for (const a of archivos) {
+    const codigo = sinComentarios(leerArch(a, 'utf8'));
+    const donde = a.slice(RAIZ.length + 1).replace(/\\/g, '/');
+    for (const m of codigo.matchAll(/(?<![A-Za-z0-9_$.])T\.([a-zA-Z]+)\.([a-zA-Z]+)(?![A-Za-z0-9_])/g)) {
+      textos++;
+      if (T[m[1]] === undefined || T[m[1]][m[2]] === undefined) {
+        textosQueNoEstan.add(`${donde}: T.${m[1]}.${m[2]}`);
+      }
+    }
+    for (const m of codigo.matchAll(/\.rpc\(\s*'([a-z_0-9]+)'/g)) {
+      llamadas++;
+      if (!new RegExp(`function public\\.${m[1]}\\(`).test(esquema)) {
+        funcionesQueNoEstan.add(`${donde}: ${m[1]}`);
+      }
+    }
+  }
+  chequear(`los ${textos} textos que se usan existen`, [...textosQueNoEstan].sort(), []);
+  chequear(`las ${llamadas} llamadas a la base van a funciones que existen`, [...funcionesQueNoEstan].sort(), []);
+  // Y que de verdad miro la app nativa: si el recorrido no la encontrara, el
+  // test pasaria sin haber mirado lo que vino a mirar.
+  chequear('y miro la app nativa', archivos.some((a) => a.includes('movil')), true);
+}
+console.log('\n72. Lo que dice el aviso de las 20:30');
+{
+  // Es la unica vez que la app le habla a alguien que no la abrio. Dice un
+  // hecho, nombra la racha si hay, y NUNCA menciona los impulsos: "tranquilo,
+  // tenes dos" convierte el aviso en un permiso para no ir.
+  const con = avisoDiario(25);
+  chequear('con racha, la nombra', con.cuerpo.includes('25'), true);
+  chequear('y lleva a Inicio', con.url, '/');
+  const sin = avisoDiario(0);
+  chequear('sin racha no dice "va en 0"', sin.cuerpo.includes('0'), false);
+  chequear('una racha rota es sin racha', avisoDiario(null).cuerpo, sin.cuerpo);
+  chequear('una racha con coma no sale con coma', avisoDiario(12.7).cuerpo.includes('12.7'), false);
+  const todo = [con.titulo, con.cuerpo, sin.cuerpo].join(' ').toLowerCase();
+  chequear('no nombra los impulsos', /impulso/.test(todo), false);
+  chequear('ni asusta', /pierd|perder|cuidado|!/.test(todo), false);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
