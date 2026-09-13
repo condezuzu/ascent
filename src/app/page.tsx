@@ -739,6 +739,7 @@ export default function Principal() {
         <SubidaRango
           rangoAntes={subida.antes}
           rangoDespues={subida.despues}
+          planeta={planeta}
           alCerrar={() => setSubida(null)}
         />
       )}

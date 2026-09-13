@@ -940,3 +940,27 @@ recién ahí hay una segunda fila.
 razón explícita para lo contrario. Y si adentro hay `aspect-ratio`, no es
 opcional: el alto depende del ancho, y el ancho no puede depender del
 contenido.
+
+**Una animación de CSS no rompe el movimiento: rompe el layout de sus hijos.**
+Los `@keyframes` no se testean —interpola el navegador, no hay cuenta nuestra
+que pueda estar mal— pero ya mordieron dos veces, y las dos por lo mismo:
+**dónde se aplican**. Un elemento con `transform` (aunque sea la matriz
+identidad) o con `will-change: transform` pasa a ser el **bloque contenedor**
+de todo `position: fixed` que tenga adentro. Lo fijo deja de estar fijo a la
+pantalla y queda fijo a ese elemento.
+
+- `will-change: transform` permanente en `.deslizable`: "Terminar" quedaba en
+  y=936, fuera de la pantalla, porque la barra anclada se medía contra la
+  pantalla deslizable y no contra la ventana.
+- `animation-fill-mode: both` en `.pantalla > *`: al terminar la animación el
+  último fotograma (`transform: none` resuelto como identidad) quedaba puesto
+  para siempre, y las hojas y el visor —que son `fixed`— se dibujaban mal y los
+  clics de `capturas` no llegaban.
+
+Rompieron cosas distintas y no se parecían: una era una posición y la otra un
+clic. La causa era la misma.
+→ **Regla:** una animación que toca `transform` va con `backwards` (no `both`
+ni `forwards`), y `will-change` solo durante el gesto, nunca fijo. Y antes de
+animar un contenedor, preguntar si adentro puede haber algo `fixed` —hojas,
+barras ancladas, el visor, la ventana del impulso—. Si puede, se anima el hijo
+y no el contenedor. Una animación de solo `opacity` no tiene este problema.

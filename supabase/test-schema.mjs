@@ -102,6 +102,8 @@ import {
   MS_ABRIR,
   MS_CERRAR,
 } from '../nucleo/atmosfera.ts';
+import * as SUB from '../src/lib/subida.ts';
+import { hayQueContar, valorContado, SALTO_MAXIMO } from '../src/lib/contar.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -4539,6 +4541,209 @@ console.log('\n67. La atmosfera: el velo que se abre con el rango');
   // Y NO en el dia exacto en que subis: ahi ya no es un presagio, es el rango.
   chequear('y no el dia que subis', hayPresagio(10), false);
   chequear('ni en el ultimo rango', hayPresagio(85), false);
+}
+console.log('\n68. La subida de rango: formas, fases y que entre en la pantalla');
+{
+  // LA ANIMACION QUE PAGA LOS OCHENTA DIAS, y hasta esta tanda no tenia un solo
+  // test: toda la cuenta vivia adentro del bucle del motor. Sacarla encontro
+  // tres cosas que las capturas no podian ver —el navegador sin cabeza anima a
+  // un cuadro por segundo— y que ninguna excepcion delataba.
+  let semilla = 7;
+  const azar = () => {
+    semilla = (semilla * 16807) % 2147483647;
+    return semilla / 2147483647;
+  };
+
+  // ---- 1. las ocho formas existen y son numeros ----
+  for (let r = 1; r <= 8; r++) {
+    const f = SUB.formaDeRango(r, azar);
+    chequear(`rango ${r}: ${SUB.N} particulas`, f.length, SUB.N * 3);
+    chequear(`rango ${r}: ninguna es NaN`, [...f].every(Number.isFinite), true);
+  }
+
+  // ---- 2. QUE ENTRE EN UN TELEFONO ----
+  //
+  // EL BUG. La camara muestra x entre +-aspecto, y en un telefono vertical el
+  // aspecto es 0,46. Medido antes de arreglarlo: el sol dejaba afuera el 24%
+  // de sus particulas, el sistema el 26%, la galaxia el 19% y el agujero negro
+  // el 10%. Las subidas mas raras eran justo las que se veian cortadas.
+  const telefonos = [
+    ['vertical 390x844', 390 / 844],
+    ['vertical chico 320x568', 320 / 568],
+    ['horizontal 844x390', 844 / 390],
+    ['escritorio 1440x900', 1440 / 900],
+  ];
+  for (const [nombre, asp] of telefonos) {
+    const fuera = [];
+    for (let r = 1; r <= 8; r++) {
+      const f = SUB.formaDeRango(r, azar);
+      const k = SUB.escalaParaEntrar(SUB.extension(f), asp);
+      let peor = 0;
+      for (let i = 0; i < f.length; i += 3) {
+        peor = Math.max(peor, Math.abs(f[i] * k) / asp, Math.abs(f[i + 1] * k));
+      }
+      if (peor > SUB.MARGEN + 1e-6) fuera.push(`rango ${r} llega a ${peor.toFixed(3)}`);
+    }
+    chequear(`${nombre}: las ocho formas entran`, fuera, []);
+  }
+  // Y NUNCA AGRANDA: el asteroide es chico a proposito, y en una pantalla ancha
+  // tiene que seguir siendolo.
+  {
+    const ast = SUB.extension(SUB.formaDeRango(2, azar));
+    chequear('en pantalla ancha no agranda nada', SUB.escalaParaEntrar(ast, 1440 / 900), 1);
+    chequear('con un aspecto roto no hace nada raro', SUB.escalaParaEntrar(ast, NaN), 1);
+    chequear('ni con cero', SUB.escalaParaEntrar(ast, 0), 1);
+  }
+
+  // ---- 3. las fases ----
+  {
+    const f0 = SUB.fasesEn(0);
+    chequear('al principio nada se movio', [f0.disp, f0.junta, f0.caos], [0, 0, 0]);
+    const f4 = SUB.fasesEn(SUB.FIN_DISPERSION);
+    chequear('al 40% esta dispersado del todo', f4.disp, 1);
+    chequear('y todavia no empezo a juntarse', f4.junta, 0);
+    const f1 = SUB.fasesEn(1);
+    chequear('al final esta junto del todo', f1.junta, 1);
+    // EL SEGUNDO HALLAZGO. El remolino se apagaba con sin(pi), que da
+    // 1,2e-16 y no cero: la forma nunca terminaba de quedar quieta del todo.
+    chequear('y el remolino vale cero EXACTO', f1.caos, 0);
+    chequear('desde el 75% ya no hay remolino', SUB.fasesEn(SUB.FIN_CAOS).caos, 0);
+    chequear('un progreso roto es el principio', SUB.fasesEn(NaN), f0);
+  }
+
+  // ---- 4. los bordes quedan exactos ----
+  //
+  // Al principio tiene que ser la forma vieja y al final la nueva, sin UNA
+  // particula corrida: el objeto que queda es el que se ve todos los dias.
+  {
+    const desde = SUB.formaDeRango(4, azar);
+    const hasta = SUB.formaDeRango(5, azar);
+    const disp = SUB.azarDeDispersion(azar);
+    const dest = new Float32Array(desde.length);
+    SUB.posicionesSubida(desde, hasta, disp, 0, 0, true, dest);
+    chequear('el primer cuadro es la forma vieja', [...dest], [...desde]);
+    SUB.posicionesSubida(desde, hasta, disp, 1, 5.2, true, dest);
+    chequear('el ultimo es la nueva, exacta', [...dest], [...hasta]);
+
+    // Y en el medio no hay saltos: entre dos cuadros seguidos (60 por segundo)
+    // ninguna particula puede teletransportarse.
+    const antes = new Float32Array(desde.length);
+    SUB.posicionesSubida(desde, hasta, disp, 0, 0, true, antes);
+    let salto = 0;
+    const dur = SUB.DURACION_IGNICION_S;
+    for (let c = 1; c <= dur * 60; c++) {
+      const s = c / 60;
+      SUB.posicionesSubida(desde, hasta, disp, SUB.progresoEn(s, dur), s, true, dest);
+      for (let i = 0; i < dest.length; i++) salto = Math.max(salto, Math.abs(dest[i] - antes[i]));
+      antes.set(dest);
+    }
+    chequear('ninguna particula salta entre dos cuadros', salto < 0.08, true);
+  }
+
+  // ---- 5. EL TERCER HALLAZGO: el remolino leia el cuadro anterior ----
+  //
+  // Desplazaba x segun la y de la particula, pero el bucle calculaba x ANTES
+  // que y, asi que la y era la del cuadro pasado. Esto lo fija: con la misma
+  // entrada, el resultado no depende de lo que habia antes en el destino.
+  {
+    const desde = SUB.formaDeRango(3, azar);
+    const hasta = SUB.formaDeRango(4, azar);
+    const disp = SUB.azarDeDispersion(azar);
+    const limpio = new Float32Array(desde.length);
+    const sucio = new Float32Array(desde.length).fill(99);
+    SUB.posicionesSubida(desde, hasta, disp, 0.3, 1.2, false, limpio);
+    SUB.posicionesSubida(desde, hasta, disp, 0.3, 1.2, false, sucio);
+    chequear('el cuadro no depende del anterior', [...sucio], [...limpio]);
+  }
+
+  // ---- 6. el tiempo ----
+  chequear('un tiempo negativo es el principio', SUB.progresoEn(-0.003, 4), 0);
+  chequear('un tiempo roto tambien', SUB.progresoEn(NaN, 4), 0);
+  chequear('pasado el final queda en 1', SUB.progresoEn(9, 4), 1);
+  chequear('la ignicion dura mas', SUB.duracionDeSubida(4, 5) > SUB.duracionDeSubida(3, 4), true);
+  chequear(
+    'y solo 4 a 5 es ignicion',
+    [SUB.esIgnicion(4, 5), SUB.esIgnicion(5, 6), SUB.esIgnicion(3, 5)],
+    [true, false, false]
+  );
+
+  // ---- 7. el flash ----
+  {
+    let alguno = false;
+    let max = 0;
+    let negativo = false;
+    for (let i = 0; i <= 1000; i++) {
+      const q = i / 1000;
+      if (SUB.flashEn(q, false) !== 0) alguno = true;
+      const f = SUB.flashEn(q, true);
+      max = Math.max(max, f);
+      if (f < 0) negativo = true;
+    }
+    chequear('sin ignicion no hay flash nunca', alguno, false);
+    chequear('con ignicion pega', max > 0.8, true);
+    chequear('y nunca pasa de 1', max <= 1, true);
+    chequear('ni es negativo', negativo, false);
+    // Si el ultimo cuadro tuviera flash, la subida del Sol terminaria con la
+    // pantalla blanca congelada.
+    chequear('el ultimo cuadro no tiene flash', SUB.flashEn(1, true), 0);
+    chequear('el pico cae al juntarse', SUB.flashEn(SUB.PICO_FLASH, true) > SUB.flashEn(0.7, true), true);
+  }
+
+  // ---- 8. la luz y la escala ----
+  {
+    let fueraDeRango = false;
+    for (let i = 0; i <= 100; i++) {
+      const o = SUB.opacidadEn(i / 100);
+      if (o < 0.55 || o > 1) fueraDeRango = true;
+    }
+    chequear('la luz nunca se apaga ni se pasa', fueraDeRango, false);
+    chequear('la escala arranca en la del objeto viejo', SUB.escalaEn(0, 0.5, 0.8), 0.5);
+    chequear('y termina en la del nuevo', SUB.escalaEn(1, 0.5, 0.8), 0.8);
+  }
+}
+console.log('\n69. El numero que cuenta');
+{
+  // Es poco codigo, pero es la racha: el numero mas mirado de la app. Vivia
+  // adentro de un efecto de React, donde no se podia probar.
+
+  // ---- cuando se cuenta ----
+  chequear('la primera pintada no cuenta', hayQueContar(47, 47, false), false);
+  chequear('46 a 47 si', hayQueContar(46, 47, false), true);
+  chequear('perder tambien cuenta, para abajo', hayQueContar(47, 37, false), true);
+  chequear('un salto grande no se cuenta', hayQueContar(3, 47, false), false);
+  chequear('el borde, 12, todavia si', hayQueContar(0, SALTO_MAXIMO, false), true);
+  chequear('con reducir movimiento no', hayQueContar(46, 47, true), false);
+  // Un NaN contando serian 700 ms de un numero roto en pantalla.
+  chequear('un numero roto no cuenta', hayQueContar(NaN, 47, false), false);
+
+  // ---- que numero se ve ----
+  chequear('al arrancar es el viejo', valorContado(46, 47, 0), 46);
+  chequear('al final es el nuevo exacto', valorContado(46, 47, 1), 47);
+  chequear('pasado el final tambien', valorContado(46, 47, 1.7), 47);
+  // El primer cuadro puede llegar con tiempo negativo: la trampa del pulso.
+  chequear('un tiempo negativo es el viejo', valorContado(0, 12, -0.004), 0);
+  chequear('y no es -0', Object.is(valorContado(0, 12, -0.004), -0), false);
+  chequear('un tiempo roto tambien es el viejo', valorContado(46, 47, NaN), 46);
+
+  // Nunca se sale del tramo, nunca retrocede, siempre entero. En las dos
+  // direcciones, porque perder la racha tambien cuenta.
+  for (const [a, b] of [[46, 47], [35, 47], [47, 37], [0, 12], [5, 0]]) {
+    let fuera = false;
+    let retrocede = false;
+    let noEntero = false;
+    let prev = a;
+    for (let i = -5; i <= 1005; i++) {
+      const v = valorContado(a, b, i / 1000);
+      if (v < Math.min(a, b) || v > Math.max(a, b)) fuera = true;
+      if (!Number.isInteger(v)) noEntero = true;
+      if (b > a ? v < prev : v > prev) retrocede = true;
+      prev = v;
+    }
+    chequear(`${a} a ${b}: no se sale, no retrocede, siempre entero`, [fuera, retrocede, noEntero], [false, false, false]);
+  }
+
+  // Llega rapido y se asienta: a mitad de tiempo ya recorrio mas de la mitad.
+  chequear('a mitad de tiempo ya paso la mitad', valorContado(0, 12, 0.5) > 6, true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {

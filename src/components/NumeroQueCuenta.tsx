@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { hayQueContar, valorContado } from '@/lib/contar';
 
 /**
  * Un número que VIAJA hasta su valor nuevo en vez de reemplazarse.
@@ -32,19 +33,22 @@ export default function NumeroQueCuenta({
   className?: string;
 }) {
   const [mostrado, setMostrado] = useState(valor);
-  const anterior = useRef(valor);
+  // Lo que está EN PANTALLA, que no siempre es el valor anterior: si el número
+  // cambia de nuevo a mitad de una cuenta —47 y enseguida 48—, la cuenta nueva
+  // tiene que salir de donde quedó la vieja. Antes salía del 47 aunque en
+  // pantalla todavía dijera 46, y el número daba un salto.
+  const enPantalla = useRef(valor);
+  enPantalla.current = mostrado;
 
   useEffect(() => {
-    const desde = anterior.current;
-    anterior.current = valor;
-    if (desde === valor) return;
+    const desde = enPantalla.current;
 
     const quieto =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // Un salto grande no se cuenta: de 3 a 47 serían cuarenta y cuatro
-    // números ilegibles pasando. Eso es carga de datos, no un cambio.
-    if (quieto || Math.abs(valor - desde) > 12) {
+    // Cuándo se cuenta y qué número va en cada instante vive en `lib/contar.ts`,
+    // probado con números. Acá queda solo el reloj.
+    if (!hayQueContar(desde, valor, quieto)) {
       setMostrado(valor);
       return;
     }
@@ -53,10 +57,8 @@ export default function NumeroQueCuenta({
     const t0 = performance.now();
     const paso = (ahora: number) => {
       if (!vivo) return;
-      const t = Math.min(1, (ahora - t0) / ms);
-      // misma curva que --curva-salida: llega rápido y se asienta
-      const suave = 1 - Math.pow(1 - t, 3);
-      setMostrado(Math.round(desde + (valor - desde) * suave));
+      const t = (ahora - t0) / ms;
+      setMostrado(valorContado(desde, valor, t));
       if (t < 1) requestAnimationFrame(paso);
     };
     requestAnimationFrame(paso);

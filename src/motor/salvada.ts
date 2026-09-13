@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { formaDeRango, colorDeRango } from './subida';
+import { colorDeRango } from './subida';
+import { formaDeRango, extension, escalaParaEntrar } from '@/lib/subida';
 import { brilloEn, sigueSalvando, dispersionDesde, posicionesEn } from '@/lib/salvada';
 import { marca } from '@/lib/medir';
 
@@ -49,6 +50,7 @@ export function animarSalvada(
   // lo que hace que se lea como una sola cosa y no como una nube nueva. La
   // cuenta vive en `lib/salvada.ts`, probada con números.
   const afuera = dispersionDesde(base);
+  const ext = extension(base);
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(actual, 3));
@@ -75,6 +77,9 @@ export function animarSalvada(
     camara.left = -asp;
     camara.right = asp;
     camara.updateProjectionMatrix();
+    // La misma cuenta que la subida: sin esto el sol salvado se salía por
+    // los costados de un teléfono vertical, igual que el de la subida.
+    puntos.scale.setScalar(escalaParaEntrar(ext, asp));
   }
   medir();
   const alRedimensionar = () => medir();
