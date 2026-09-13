@@ -4,6 +4,8 @@ import { useState } from 'react';
 import EnElBody from '@/components/EnElBody';
 import type { EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
+import type { Unidad } from '@nucleo/peso';
+import CampoPeso from '@/components/CampoPeso';
 import { T } from '@nucleo/textos';
 
 /**
@@ -25,11 +27,17 @@ import { T } from '@nucleo/textos';
 export default function ListaDeBloques({
   estado,
   ejercicios,
+  unidad,
+  anotarPeso,
+  alCorregirPeso,
   alTocar,
   alCerrar,
 }: {
   estado: EstadoBloques;
   ejercicios: Ejercicio[];
+  unidad: Unidad;
+  anotarPeso: boolean;
+  alCorregirPeso: (indice: number, serie: number, kg: number | null) => void;
   alTocar: (indice: number, delta: number | 'quitar') => void;
   alCerrar: () => void;
 }) {
@@ -45,6 +53,10 @@ export default function ListaDeBloques({
     id ? (ejercicios.find((e) => e.id === id)?.nombre ?? id) : T.sesion.sinEjercicio;
 
   const nada = estado.cerrados.length === 0 && estado.hechas === 0;
+  // Sin ejercicio no hay peso que corregir; y un ejercicio que no admite peso
+  // (una plancha) tampoco muestra casilleros vacíos.
+  const admitePeso = (id: string | null) =>
+    id !== null && ejercicios.find((e) => e.id === id)?.admite_peso !== false;
 
   return (
     <EnElBody>
@@ -105,6 +117,23 @@ export default function ListaDeBloques({
                     </button>
                   </span>
                 )}
+                {/* LOS PESOS DE CADA SERIE, corregibles de a uno: la serie que
+                    salió con otro peso se arregla sin tocar cuántas fueron. Solo
+                    si se anota peso y el ejercicio lo admite. */}
+                {anotarPeso && b.series > 0 && admitePeso(b.ejercicio) && (
+                  <span className="pesos-serie">
+                    {Array.from({ length: b.series }, (_, s) => (
+                      <CampoPeso
+                        key={s}
+                        compacto
+                        kg={b.pesos?.[s]}
+                        unidad={unidad}
+                        etiqueta={T.sesion.pesoDeSerie(s + 1)}
+                        alCambiar={(kg) => alCorregirPeso(i, s, kg)}
+                      />
+                    ))}
+                  </span>
+                )}
               </div>
             ))}
 
@@ -116,6 +145,22 @@ export default function ListaDeBloques({
                   <span className="cuantas">{estado.hechas}</span>
                   <span className="rotulo">{T.sesion.listaAhora}</span>
                 </span>
+                {/* Los pesos del bloque en curso SÍ se corrigen desde acá: el
+                    + y el − de afuera cuentan series, no arreglan pesos. */}
+                {anotarPeso && admitePeso(estado.ejercicio) && (
+                  <span className="pesos-serie">
+                    {Array.from({ length: estado.hechas }, (_, s) => (
+                      <CampoPeso
+                        key={s}
+                        compacto
+                        kg={estado.pesos?.[s]}
+                        unidad={unidad}
+                        etiqueta={T.sesion.pesoDeSerie(s + 1)}
+                        alCambiar={(kg) => alCorregirPeso(-1, s, kg)}
+                      />
+                    ))}
+                  </span>
+                )}
               </div>
             )}
           </div>

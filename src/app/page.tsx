@@ -521,6 +521,9 @@ export default function Principal() {
               alMudarSeries={sesion.mudarSeries}
               alElegirMeta={sesion.elegirMeta}
               alTocarBloque={sesion.tocarBloque}
+              unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
+              alElegirPeso={sesion.elegirPeso}
+              alCorregirPeso={sesion.corregirPesoDeSerie}
             />
             {/* "Cada + suma la serie y arranca el descanso" lo dice el globo
                 de la primera vez, tres renglones más arriba. Repetirlo abajo

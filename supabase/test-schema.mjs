@@ -5101,6 +5101,250 @@ console.log('\n74. Toda hoja se monta en el body');
   // mirar nada.
   chequear('y encontro las hojas', hojas.length >= 6, true);
 }
+console.log('\n75. El peso por serie, y la app sin el');
+{
+  const B = await import('../nucleo/bloques.ts');
+
+  // ---- 1. LA INVARIANTE, antes que nada ----
+  //
+  // "El peso es OPCIONAL. La app tiene que funcionar entera sin el, igual que
+  // hoy." No es una preferencia de diseno: es la condicion del humano. Una
+  // sesion entera sin anotar un solo peso tiene que dar EXACTAMENTE el mismo
+  // estado y lo mismo para guardar que antes de que existiera el peso: ni una
+  // llave nueva, ni un `pesos: []`, ni un `peso: null`.
+  {
+    let e = B.bloquesVacios('sentadilla', 3);
+    e = B.sumar(e);
+    e = B.sumar(e);
+    e = B.restar(e);
+    e = B.sumar(e);
+    e = B.sumar(e);
+    e = B.siguiente(e);
+    e = B.cambiarEjercicio(e, 'press_banca');
+    e = B.sumar(e);
+    e = B.mudarEjercicio(e, 'peso_muerto');
+    e = B.sumar(e);
+    e = B.cambiarPeso(e, null); // borrar un peso que nunca estuvo
+    ({ estado: e } = B.corregirBloque(e, 0, 1));
+    const json = JSON.stringify(e);
+    // Se buscan LLAVES y no la palabra: `peso_muerto` es un ejercicio.
+    chequear('sin anotar pesos, el estado no tiene ni una llave de peso', /"pesos?":/.test(json), false);
+    chequear('y es el de siempre', e, {
+      cerrados: [{ ejercicio: 'sentadilla', series: 4 }],
+      ejercicio: 'peso_muerto',
+      meta: 3,
+      hechas: 2,
+    });
+    chequear('lo que se guarda, tambien', B.paraGuardar(e), [
+      { ejercicio: 'sentadilla', series: 4 },
+      { ejercicio: 'peso_muerto', series: 2 },
+    ]);
+  }
+
+  // ---- 2. el peso es del bloque ----
+  {
+    let e = B.bloquesVacios('press_banca', 4);
+    e = B.cambiarPeso(e, 60);
+    e = B.sumar(e);
+    e = B.sumar(e);
+    e = B.cambiarPeso(e, '62,5'); // con coma, como se escribe en un telefono en espanol
+    e = B.sumar(e);
+    e = B.sumar(e);
+    chequear('cada serie se anota con el peso que habia', e.pesos, [60, 60, 62.5, 62.5]);
+    chequear('y el peso vigente queda', e.peso, 62.5);
+    chequear('se guarda con los pesos', B.paraGuardar(e), [
+      { ejercicio: 'press_banca', series: 4, pesos: [60, 60, 62.5, 62.5] },
+    ]);
+
+    // Cerrar el bloque: el siguiente es del mismo ejercicio y el peso se queda.
+    const s = B.siguiente(e);
+    chequear('cerrar se lleva los pesos al bloque cerrado', s.cerrados[0].pesos, [60, 60, 62.5, 62.5]);
+    chequear('y el bloque nuevo arranca sin series pero con el peso', [s.hechas, s.peso, s.pesos], [0, 62.5, undefined]);
+
+    // Cambiar de ejercicio: el peso NO pasa. 100 de sentadilla no es un peso
+    // de press de banca.
+    const c = B.cambiarEjercicio(e, 'sentadilla');
+    chequear('otro ejercicio no hereda el peso', c.peso, undefined);
+    // Mudar las series al ejercicio correcto: ahi si, lo que levantaste fue eso.
+    const m = B.mudarEjercicio(e, 'press_inclinado');
+    chequear('mudar se lleva los pesos', [m.peso, m.pesos], [62.5, [60, 60, 62.5, 62.5]]);
+  }
+
+  // ---- 3. series con y sin peso en el mismo bloque ----
+  {
+    let e = B.bloquesVacios('remo', 3);
+    e = B.sumar(e); // sin peso
+    e = B.cambiarPeso(e, 40);
+    e = B.sumar(e);
+    chequear('una serie sin peso queda en null', e.pesos, [null, 40]);
+    e = B.cambiarPeso(e, '');
+    e = B.sumar(e);
+    chequear('borrar el peso sigue sin peso', e.pesos, [null, 40, null]);
+    e = B.restar(e);
+    chequear('restar se lleva la ultima', e.pesos, [null, 40]);
+    e = B.restar(e);
+    // Queda una serie sin peso: la lista entera se va, no queda un [null].
+    chequear('si no queda ningun peso, se va la llave', 'pesos' in e, false);
+  }
+
+  // ---- 4. corregir desde la lista ----
+  {
+    let e = B.bloquesVacios('sentadilla', 3);
+    e = B.cambiarPeso(e, 100);
+    e = B.sumar(B.sumar(B.sumar(e)));
+    e = B.siguiente(e);
+    e = B.corregirPeso(e, 0, 2, 95); // la tercera fue con menos
+    chequear('se corrige una sola serie', e.cerrados[0].pesos, [100, 100, 95]);
+    ({ estado: e } = B.corregirBloque(e, 0, 1));
+    chequear('una serie agregada a mano repite el ultimo peso', e.cerrados[0].pesos, [100, 100, 95, 95]);
+    ({ estado: e } = B.corregirBloque(e, 0, -2));
+    chequear('sacar series se lleva sus pesos', e.cerrados[0].pesos, [100, 100]);
+    e = B.corregirPeso(e, 0, 0, null);
+    e = B.corregirPeso(e, 0, 1, null);
+    chequear('borrar todos los pesos saca la llave', 'pesos' in e.cerrados[0], false);
+    chequear('una serie que no existe no se toca', B.corregirPeso(e, 0, 9, 50), e);
+    chequear('ni un bloque que no existe', B.corregirPeso(e, 7, 0, 50), e);
+    // El bloque en curso, con indice -1.
+    let a = B.cambiarPeso(B.bloquesVacios('dominadas', 3), 10);
+    a = B.sumar(B.sumar(a));
+    chequear('tambien el bloque en curso', B.corregirPeso(a, -1, 1, 12.5).pesos, [10, 12.5]);
+  }
+
+  // ---- 5. lo que no es un peso ----
+  chequear('cero no es un peso', B.pesoValido(0), null);
+  chequear('negativo tampoco', B.pesoValido(-5), null);
+  chequear('texto tampoco', B.pesoValido('mucho'), null);
+  chequear('con coma si', B.pesoValido('61,25'), 61.25);
+  chequear('las libras pasadas a kilos se redondean a centesimas', B.pesoValido(135 * 0.45359237), 61.23);
+  chequear('y hay un tope', B.pesoValido(5000), B.PESO_MAXIMO);
+  // Una cache vieja o rota no puede meter basura en lo que se guarda.
+  chequear(
+    'lo que se guarda limpia la basura',
+    B.paraGuardar({ cerrados: [{ ejercicio: 'remo', series: 2, pesos: ['x', -1, 50] }], ejercicio: null, meta: 3, hechas: 0 }),
+    [{ ejercicio: 'remo', series: 2 }]
+  );
+}
+console.log('\n76. La base guarda los pesos, y no le cree al telefono');
+{
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const s = (await db.query('select iniciar_sesion() as v')).rows[0].v;
+  const id = s.id ?? (await db.query('select id from sesiones where user_id = $1 order by inicio desc limit 1', [u])).rows[0].id;
+  await db.query('select fijar_series($1, 8)', [id]);
+  // jsonb ordena las llaves a su manera (por largo): se comparan ordenadas, o
+  // el test fallaria por el orden de las llaves y no por lo que guardan.
+  const ordenar = (x) =>
+    Array.isArray(x)
+      ? x.map(ordenar)
+      : x && typeof x === 'object'
+        ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, ordenar(x[k])]))
+        : x;
+  const fijar = async (bloques) =>
+    ordenar((await db.query('select fijar_bloques($1, $2::jsonb) as v', [id, JSON.stringify(bloques)])).rows[0].v.bloques);
+
+  // ---- LA INVARIANTE, del lado de la base ----
+  chequear(
+    'sin pesos, se guarda lo mismo que siempre',
+    await fijar([{ ejercicio: 'sentadilla', series: 4 }]),
+    ordenar([{ ejercicio: 'sentadilla', series: 4 }])
+  );
+
+  // ---- con pesos ----
+  chequear(
+    'con pesos, los guarda',
+    await fijar([{ ejercicio: 'press_banca', series: 4, pesos: [60, 60, 62.5, 62.5] }]),
+    ordenar([{ ejercicio: 'press_banca', series: 4, pesos: [60, 60, 62.5, 62.5] }])
+  );
+
+  // ---- lo que manda un telefono roto, o alguien con la consola abierta ----
+  chequear(
+    'mas pesos que series: se cortan',
+    (await fijar([{ ejercicio: 'sentadilla', series: 2, pesos: [100, 100, 100, 100] }]))[0].pesos,
+    [100, 100]
+  );
+  chequear(
+    'la basura queda en null',
+    (await fijar([{ ejercicio: 'sentadilla', series: 4, pesos: [100, 'mucho', -5, 5000] }]))[0].pesos,
+    [100, null, null, null]
+  );
+  chequear(
+    'y si no queda ningun peso, no hay llave',
+    await fijar([{ ejercicio: 'sentadilla', series: 2, pesos: [null, 0] }]),
+    ordenar([{ ejercicio: 'sentadilla', series: 2 }])
+  );
+  chequear(
+    'pesos que no son lista no rompen nada',
+    await fijar([{ ejercicio: 'sentadilla', series: 2, pesos: { no: 'lista' } }]),
+    ordenar([{ ejercicio: 'sentadilla', series: 2 }])
+  );
+  chequear(
+    'centesimas, igual que el telefono',
+    (await fijar([{ ejercicio: 'sentadilla', series: 1, pesos: [61.23456] }]))[0].pesos,
+    [61.23]
+  );
+
+  // ---- los pesos NO tocan el total ni la racha ----
+  const ses = (await db.query('select series from sesiones where id = $1', [id])).rows[0];
+  chequear('el total de la sesion no se entero', ses.series, 8);
+
+  // ---- con que peso arranca el bloque ----
+  {
+    await fijar([
+      { ejercicio: 'press_banca', series: 3, pesos: [60, 62.5, null] }, // la ultima sin anotar
+      { ejercicio: 'sentadilla', series: 2, pesos: [100, 105] },
+    ]);
+    const ultimo = async (e) => (await db.query('select ultimo_peso($1) as v', [e])).rows[0].v;
+    // La ultima serie CON peso, no la ultima serie.
+    chequear('el ultimo peso anotado, no la ultima serie', Number(await ultimo('press_banca')), 62.5);
+    chequear('por ejercicio', Number(await ultimo('sentadilla')), 105);
+    chequear('un ejercicio sin pesos no propone nada', await ultimo('peso_muerto'), null);
+    // Y es de ESTA persona.
+    const otro = await nuevoUsuario();
+    await comoUsuario(otro);
+    chequear('los pesos de otro no se proponen', await ultimo('sentadilla'), null);
+  }
+}
+console.log('\n77. Los pesos en el resumen del dia');
+{
+  const { resumenDelDia } = await import('../nucleo/resumenDia.ts');
+  const { pesoCorto, pasoDePeso } = await import('../nucleo/peso.ts');
+  const base = {
+    catalogo: new Map([['press_banca', 'Press de banca'], ['sentadilla', 'Sentadilla']]),
+    esFuturo: false,
+    esDescansoConfigurado: false,
+    ejercicioSinNombre: '?',
+    log: { es_descanso: false },
+  };
+  const ses = (inicio, bloques) => ({ inicio, fin: null, estado: 'abandonada', series: 20, bloques });
+
+  const r = resumenDelDia({
+    ...base,
+    sesiones: [
+      ses('2026-09-10T20:00:00Z', [{ ejercicio: 'press_banca', series: 2, pesos: [65, 65] }]),
+      ses('2026-09-10T08:00:00Z', [
+        { ejercicio: 'press_banca', series: 3, pesos: [60, null, 62.5] },
+        { ejercicio: 'sentadilla', series: 2 },
+      ]),
+    ],
+  });
+  const banca = r.ejercicios.find((e) => e.id === 'press_banca');
+  chequear('los pesos van en el orden en que se hicieron, de las dos sesiones', banca.pesos, [60, null, 62.5, 65, 65]);
+  // El ejercicio sin pesos se resume igual que antes: sin la llave.
+  chequear('un ejercicio sin pesos no tiene la llave', 'pesos' in r.ejercicios.find((e) => e.id === 'sentadilla'), false);
+
+  // Lo que viene raro: mas pesos que series, basura.
+  const raro = resumenDelDia({
+    ...base,
+    sesiones: [ses('2026-09-10T08:00:00Z', [{ ejercicio: 'sentadilla', series: 2, pesos: [100, 'x', 110, 120] }])],
+  });
+  chequear('uno por serie, sin basura', raro.ejercicios[0].pesos, [100, null]);
+
+  // ---- como se muestra ----
+  chequear('kilos sin ceros de mas', [pesoCorto(60, 'kg'), pesoCorto(62.5, 'kg'), pesoCorto(61.25, 'kg')], ['60', '62.5', '61.25']);
+  // En libras nadie carga 137,21: al medio, que es como son los discos.
+  chequear('libras al medio', pesoCorto(61.23, 'lb'), '135');
+  chequear('el disco chico de cada lado', [pasoDePeso('kg'), pasoDePeso('lb')], [2.5, 5]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

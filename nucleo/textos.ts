@@ -141,6 +141,7 @@ export const T = {
     // Series que se contaron sin decir en qué. Existen y suman; solo no se
     // sabe de qué fueron.
     sinEjercicio: 'Sin ejercicio',
+    pesosDeSeries: (lista: string, unidad: string) => `${lista} ${unidad}`,
     ejercicioSinNombre: 'Un ejercicio que ya no está',
     enCurso: 'La sesión sigue abierta: esto se completa al terminarla.',
     // Cada forma de entrar dice lo que pasó, sin disculparse por lo que falta.
@@ -247,7 +248,7 @@ export const T = {
     // vez, el + aparece sin ninguna explicación y parece un botón de confirmar.
     // Esto se dice una sola vez, arriba, donde se está mirando.
     globoSeries:
-      'Elige en qué estás y cuántas vas a hacer. Cada + suma una serie y arranca el descanso solo. Al llegar a la meta el botón pasa a cerrar el ejercicio, y abajo queda "Sumar otra" por si sigues.',
+      'Elige en qué estás y cuántas vas a hacer. Cada + suma una serie y arranca el descanso solo. Al llegar a la meta el botón pasa a cerrar el ejercicio, y abajo queda "Sumar otra" por si sigues. El peso es opcional: vale para las series que vienen.',
     // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
     // error de la app. Con una línea deja de serlo.
     sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',
@@ -440,6 +441,12 @@ export const T = {
   // ---------------------------------------------------------------
   ajustes: {
     titulo: 'Ajustes',
+    // El peso por serie se puede apagar entero: el que no quiere anotar nada no
+    // tiene por qué ver un campo vacío en cada bloque.
+    pesoPorSerie: 'Peso de cada serie',
+    pesoPorSerieSi: 'Anotarlo',
+    pesoPorSerieNo: 'No anotarlo',
+    pesoPorSerieNota: 'Si lo apagas, el campo de peso no aparece al entrenar. Lo que ya anotaste se queda.',
     // Tres cosas que cambian cómo funciona la app y que nadie encuentra si
     // no se las nombra una vez.
     globo: 'Aquí eliges tus días de descanso, marcas dónde queda tu gimnasio para que el día se registre solo, y decides cuánto se mueve el fondo.',
@@ -696,6 +703,14 @@ export const T = {
     totalHoy: (n: number) => `${n} en total`,
     // Aparece recién con la meta cumplida. No dice "terminar" porque no
     // termina nada: abre el siguiente.
+    // EL PESO DEL BLOQUE. Sin rótulo largo: el campo al lado del ejercicio con
+    // la unidad adentro ya dice qué es. Lo que no se ve solo —que vale para
+    // las series QUE VIENEN— lo dice el globo de la primera vez.
+    pesoDelBloque: 'Peso de las próximas series',
+    pesoSubir: 'Más peso',
+    pesoBajar: 'Menos peso',
+    pesoDeSerie: (n: number) => `Peso de la serie ${n}`,
+    sinPeso: '—',
     // CON LA META CUMPLIDA, el + se convierte en esto y lleva a la lista.
     // Antes acá decía "Siguiente", que no dice de qué es siguiente y encima
     // vivía en un botón de texto que no se veía.

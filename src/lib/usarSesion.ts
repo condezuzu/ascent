@@ -12,6 +12,8 @@ import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import {
   bloquesVacios,
   cambiarEjercicio,
+  cambiarPeso,
+  corregirPeso,
   mudarEjercicio,
   cambiarMeta,
   corregirBloque,
@@ -324,6 +326,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       if (sembrado === bloquesRef.current) return;
       setBloques(sembrado);
       await actualizarSesionCache({ bloques: sembrado });
+      if (sembrado.ejercicio) proponerPeso(sembrado.ejercicio);
     })();
 
     if (r.yaEstaba) setAviso(T.inicio.yaHabiaSesion);
@@ -458,6 +461,47 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     setBloques(b);
     await actualizarSesionCache({ bloques: b });
     await subir(series, b);
+    if (id) proponerPeso(id);
+  }
+
+  /**
+   * EL PESO CON QUE ARRANCA EL BLOQUE: el último que anotaste para ese
+   * ejercicio. Escribir 60 cada vez que hacés press de banca con 60 es el
+   * impuesto que hace que se deje de anotar.
+   *
+   * Sin bloquear y SIN PISAR NADA, por la misma razón que `sembrar`: la
+   * respuesta puede llegar tarde, cuando ya cambiaste de ejercicio o ya
+   * escribiste un peso a mano. Si pasó cualquiera de las dos, se descarta.
+   */
+  function proponerPeso(id: string) {
+    supabase.rpc('ultimo_peso', { p_ejercicio: id }).then(({ data, error }) => {
+      if (error || data === null || data === undefined) return;
+      const actual = bloquesRef.current;
+      if (actual.ejercicio !== id || actual.peso !== undefined) return;
+      const conPeso = cambiarPeso(actual, Number(data));
+      if (conPeso.peso === undefined) return;
+      setBloques(conPeso);
+      actualizarSesionCache({ bloques: conPeso });
+    });
+  }
+
+  /**
+   * El peso vigente. No sube nada a la base: el peso viaja con cada serie, y
+   * cambiarlo sin haber sumado ninguna no es un hecho todavía.
+   */
+  async function elegirPeso(kg: number | null) {
+    const b = cambiarPeso(bloques, kg);
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b });
+  }
+
+  /** El peso de una serie ya hecha, desde la lista. `indice` -1 es el bloque en curso. */
+  async function corregirPesoDeSerie(indice: number, serie: number, kg: number | null) {
+    const b = corregirPeso(bloques, indice, serie, kg);
+    if (b === bloques) return;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b });
+    await subir(series, b);
   }
 
   /**
@@ -529,6 +573,8 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     elegirEjercicio,
     mudarSeries,
     elegirMeta,
+    elegirPeso,
+    corregirPesoDeSerie,
     descansarSuelto,
     cerrarDescanso: () => {
       borrarDescanso();

@@ -27,14 +27,32 @@
  *    existiera. Los bloques son una anotación encima. Si algún día divergen, el
  *    total gana — y las rachas, las duraciones y el resumen ni se enteran.
  *
- * LO QUE ESTO NO ES: no es Hevy. No hay pesos, ni repeticiones, ni una lista
- * planificada de antemano. Es intención para los próximos cinco minutos.
+ * LO QUE ESTO NO ES: no es Hevy. No hay repeticiones ni una lista planificada
+ * de antemano. Es intención para los próximos cinco minutos.
+ *
+ * 4. **EL PESO ES DEL BLOQUE, NO DE LA SERIE.** Hay un peso vigente —el que
+ *    está escrito al lado del ejercicio— y cada `+` registra la serie con ese
+ *    peso. Cuatro series iguales son un número escrito una vez y cuatro toques.
+ *    Si nunca se escribe un peso, el estado y lo que se guarda son EXACTAMENTE
+ *    los de antes: ni una llave nueva. Esa es la condición del humano ("la app
+ *    tiene que funcionar entera sin él, igual que hoy") y tiene su test.
+ *
+ *    Por qué no se pide en el `+`: es el botón más tocado de la app y se toca
+ *    transpirado, con una mano. Si abre un teclado, contar una serie pasa a ser
+ *    un trámite, y eso es lo que hace que la gente deje de contar.
+ *
+ *    Los pesos van SIEMPRE en kilos. La unidad es presentación, igual que el
+ *    peso corporal.
  *
  * NO IMPORTA NADA, igual que `reglas.ts` y `llegada.ts`: así `test:db` lo carga
  * con node pelado y prueba las cuentas de verdad.
  */
 
-export type Bloque = { ejercicio: string | null; series: number };
+/**
+ * `pesos[i]` es el peso de la serie i, en kilos; `null` si esa serie se hizo sin
+ * anotar peso. La llave NO EXISTE si ninguna serie tiene peso.
+ */
+export type Bloque = { ejercicio: string | null; series: number; pesos?: (number | null)[] };
 
 export type EstadoBloques = {
   /** Los que ya se cerraron, en orden. */
@@ -45,7 +63,48 @@ export type EstadoBloques = {
   meta: number;
   /** Cuántas van EN ESTE BLOQUE. El total de la sesión se lleva aparte. */
   hechas: number;
+  /** El peso vigente, en kilos: con este se anota la PRÓXIMA serie. Sin llave = sin peso. */
+  peso?: number;
+  /** El peso de cada serie de ESTE bloque. Misma regla: sin llave si no hay ninguno. */
+  pesos?: (number | null)[];
 };
+
+/** El peso más alto que se acepta, en kilos. Lo mismo acota la base. */
+export const PESO_MAXIMO = 999;
+
+/**
+ * Un peso que se puede guardar, o `null`.
+ *
+ * Centésimas y no medios: 61,25 existe (discos de 1,25) y un peso escrito en
+ * libras pasado a kilos nunca da redondo. Cero o negativo no es un peso: es no
+ * haber anotado.
+ */
+export function pesoValido(kg: unknown): number | null {
+  const n = typeof kg === 'number' ? kg : typeof kg === 'string' ? Number(kg.replace(',', '.')) : NaN;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(Math.min(PESO_MAXIMO, n) * 100) / 100;
+}
+
+/** Los pesos de `n` series: lo que haya, completado con `null`. */
+function pesosDe(lista: (number | null)[] | undefined, n: number): (number | null)[] {
+  const base = lista ?? [];
+  return Array.from({ length: Math.max(0, n) }, (_, i) => pesoValido(base[i]));
+}
+
+/**
+ * Pone la lista SOLO si dice algo. Una lista de puros `null` es lo mismo que no
+ * haber anotado nada, y guardarla rompería la regla 4: el estado de alguien que
+ * no anota pesos tiene que ser idéntico al de antes.
+ */
+function conPesos<T extends object>(obj: T, pesos: (number | null)[]): T & { pesos?: (number | null)[] } {
+  const { pesos: _viejo, ...resto } = obj as T & { pesos?: unknown };
+  return pesos.some((x) => x !== null) ? { ...(resto as T), pesos } : (resto as T);
+}
+
+function sinPeso<T extends { peso?: number }>(obj: T): Omit<T, 'peso'> {
+  const { peso: _p, ...resto } = obj;
+  return resto;
+}
 
 // Dos, tres, cuatro o cinco. Más que eso ya no se elige de una fila de
 // píldoras, y menos de dos no es un bloque.
@@ -64,14 +123,30 @@ export function metaValida(meta: number): number {
   return METAS.includes(n as (typeof METAS)[number]) ? n : META_POR_OMISION;
 }
 
-/** Una serie más en el bloque actual. NO cierra el bloque al llegar a la meta. */
+/**
+ * Una serie más en el bloque actual, con el peso vigente. NO cierra el bloque
+ * al llegar a la meta.
+ */
 export function sumar(e: EstadoBloques): EstadoBloques {
-  return { ...e, hechas: e.hechas + 1 };
+  const pesos = [...pesosDe(e.pesos, e.hechas), pesoValido(e.peso)];
+  return conPesos({ ...e, hechas: e.hechas + 1 }, pesos);
 }
 
 /** Corregir de menos. Nunca baja de cero ni toca los bloques ya cerrados. */
 export function restar(e: EstadoBloques): EstadoBloques {
-  return { ...e, hechas: Math.max(0, e.hechas - 1) };
+  const hechas = Math.max(0, e.hechas - 1);
+  return conPesos({ ...e, hechas }, pesosDe(e.pesos, hechas));
+}
+
+/**
+ * Cambiar el peso vigente. Vale para las series QUE VIENEN: las que ya hiciste
+ * se hicieron con el peso que tenían, y se corrigen desde la lista.
+ *
+ * `null` —o cualquier cosa que no sea un peso— lo borra.
+ */
+export function cambiarPeso(e: EstadoBloques, kg: unknown): EstadoBloques {
+  const v = pesoValido(kg);
+  return v === null ? (sinPeso(e) as EstadoBloques) : { ...e, peso: v };
 }
 
 /**
@@ -83,11 +158,13 @@ export function restar(e: EstadoBloques): EstadoBloques {
  */
 export function siguiente(e: EstadoBloques): EstadoBloques {
   if (e.hechas === 0) return e;
-  return {
-    ...e,
-    cerrados: [...e.cerrados, { ejercicio: e.ejercicio, series: e.hechas }].slice(-TOPE_BLOQUES),
-    hechas: 0,
-  };
+  const cerrado = conPesos({ ejercicio: e.ejercicio, series: e.hechas }, pesosDe(e.pesos, e.hechas));
+  // El peso vigente SE QUEDA: el bloque que sigue es del mismo ejercicio, y lo
+  // más probable después de tres series con 60 son otras tres con 60.
+  return conPesos(
+    { ...e, cerrados: [...e.cerrados, cerrado].slice(-TOPE_BLOQUES), hechas: 0 },
+    []
+  );
 }
 
 /**
@@ -97,7 +174,9 @@ export function siguiente(e: EstadoBloques): EstadoBloques {
  */
 export function cambiarEjercicio(e: EstadoBloques, id: string | null): EstadoBloques {
   if (id === e.ejercicio) return e;
-  return { ...siguiente(e), ejercicio: id };
+  // El peso NO pasa al ejercicio nuevo: los 100 de sentadilla no son un peso
+  // de press de banca, y arrastrarlos anotaría series con un número falso.
+  return { ...(sinPeso(siguiente(e)) as EstadoBloques), ejercicio: id };
 }
 
 /**
@@ -116,6 +195,8 @@ export function cambiarEjercicio(e: EstadoBloques, id: string | null): EstadoBlo
  */
 export function mudarEjercicio(e: EstadoBloques, id: string | null): EstadoBloques {
   if (id === e.ejercicio) return e;
+  // Acá el peso SÍ se queda, y los de las series también: lo que estaba mal
+  // era el nombre del ejercicio, no lo que levantaste.
   return { ...e, ejercicio: id };
 }
 
@@ -138,8 +219,11 @@ export function cambiarMeta(e: EstadoBloques, meta: number): EstadoBloques {
  * sería mandar ruido a propósito y hacer más difícil leer qué se envió.
  */
 export function paraGuardar(e: EstadoBloques): Bloque[] {
-  const todos = e.hechas > 0 ? [...e.cerrados, { ejercicio: e.ejercicio, series: e.hechas }] : e.cerrados;
-  return todos.filter((b) => b.ejercicio !== null && b.series > 0);
+  const actual = conPesos({ ejercicio: e.ejercicio, series: e.hechas }, pesosDe(e.pesos, e.hechas));
+  const todos = e.hechas > 0 ? [...e.cerrados, actual] : e.cerrados;
+  return todos
+    .filter((b) => b.ejercicio !== null && b.series > 0)
+    .map((b) => conPesos({ ejercicio: b.ejercicio, series: b.series }, pesosDe(b.pesos, b.series)));
 }
 
 /**
@@ -182,6 +266,30 @@ export function sembrar(
 export type Correccion = { estado: EstadoBloques; cambioEnTotal: number };
 
 /** Sacar un bloque entero de la lista. */
+/**
+ * Corregir el peso de UNA serie ya hecha, en un bloque cerrado o en el actual
+ * (`indice` = -1). La serie que salió con otro peso se arregla sin tocar
+ * cuántas fueron.
+ */
+export function corregirPeso(
+  e: EstadoBloques,
+  indice: number,
+  serie: number,
+  kg: unknown
+): EstadoBloques {
+  if (indice === -1) {
+    if (serie < 0 || serie >= e.hechas) return e;
+    const pesos = pesosDe(e.pesos, e.hechas);
+    pesos[serie] = pesoValido(kg);
+    return conPesos(e, pesos);
+  }
+  const b = e.cerrados[indice];
+  if (!b || serie < 0 || serie >= b.series) return e;
+  const pesos = pesosDe(b.pesos, b.series);
+  pesos[serie] = pesoValido(kg);
+  return { ...e, cerrados: e.cerrados.map((x, i) => (i === indice ? conPesos(x, pesos) : x)) };
+}
+
 export function quitarBloque(e: EstadoBloques, indice: number): Correccion {
   const b = e.cerrados[indice];
   if (!b) return { estado: e, cambioEnTotal: 0 };
@@ -202,10 +310,16 @@ export function corregirBloque(e: EstadoBloques, indice: number, delta: number):
   const b = e.cerrados[indice];
   if (!b) return { estado: e, cambioEnTotal: 0 };
   const nuevas = Math.max(0, Math.min(999, b.series + delta));
+  // Una serie que se agrega a mano repite el último peso del bloque: es lo más
+  // probable, y si no, se corrige con un toque. Una que se saca, se lleva el
+  // último.
+  const previos = pesosDe(b.pesos, b.series);
+  const ultimo = [...previos].reverse().find((x) => x !== null) ?? null;
+  const pesos = Array.from({ length: nuevas }, (_, i) => (i < previos.length ? previos[i] : ultimo));
   return {
     estado: {
       ...e,
-      cerrados: e.cerrados.map((x, i) => (i === indice ? { ...x, series: nuevas } : x)),
+      cerrados: e.cerrados.map((x, i) => (i === indice ? conPesos({ ...x, series: nuevas }, pesos) : x)),
     },
     cambioEnTotal: nuevas - b.series,
   };

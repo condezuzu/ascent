@@ -7,6 +7,7 @@ import { miUsuario } from '@/lib/supabase/quienSoy';
 import { DIAS_SEMANA_LARGO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { duracionLinda } from '@nucleo/sesiones';
+import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { resumenDelDia, type ResumenDelDia, type SesionDelDia } from '@nucleo/resumenDia';
 import { T } from '@nucleo/textos';
 
@@ -43,6 +44,7 @@ export default function HojaDelDia({
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
+  const [unidad, setUnidad] = useState<Unidad>('kg');
 
   const esFuturo = fecha > hoyISO();
 
@@ -51,10 +53,11 @@ export default function HojaDelDia({
     (async () => {
       const uid = (await miUsuario(supabase))?.id;
       if (!uid) return;
-      const [{ data: log }, { data: catalogo }, { data: cfgs }] = await Promise.all([
+      const [{ data: log }, { data: catalogo }, { data: cfgs }, { data: perfil }] = await Promise.all([
         supabase.from('logs').select('id, es_descanso, origen').eq('user_id', uid).eq('fecha', fecha).maybeSingle(),
         supabase.from('ejercicios').select('id, nombre'),
         supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
+        supabase.from('profiles').select('unidad_peso').eq('id', uid).maybeSingle(),
       ]);
       const [{ data: sesiones }, { data: fotos }] = log
         ? await Promise.all([
@@ -64,6 +67,7 @@ export default function HojaDelDia({
         : [{ data: [] }, { data: [] }];
 
       if (!vivo) return;
+      if (perfil?.unidad_peso === 'lb') setUnidad('lb');
       setCuantasSesiones((sesiones ?? []).length);
       setResumen(
         resumenDelDia({
@@ -175,7 +179,20 @@ export default function HojaDelDia({
               <div className="dia-ejercicios">
                 {resumen.ejercicios.map((e) => (
                   <div className="fila" key={e.id}>
-                    <span className="nombre">{e.nombre}</span>
+                    <span className="nombre">
+                      {e.nombre}
+                      {/* LOS PESOS, uno por serie, en el orden en que se
+                          hicieron: "60, 60, 62.5, 62.5 kg". Las series sin
+                          peso van con una raya y no se esconden: se hicieron. */}
+                      {e.pesos && (
+                        <span className="dia-pesos">
+                          {T.resumen.pesosDeSeries(
+                            e.pesos.map((p) => (p === null ? T.sesion.sinPeso : pesoCorto(p, unidad))).join(', '),
+                            unidad
+                          )}
+                        </span>
+                      )}
+                    </span>
                     <span className="cuantas">{T.resumen.series(e.series)}</span>
                   </div>
                 ))}

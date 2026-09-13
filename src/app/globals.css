@@ -3880,3 +3880,84 @@ body.con-franja.con-accion .pantalla {
 .dia-confirmar .boton-texto {
   width: auto;
 }
+
+/* ---------- el peso del bloque ----------
+   Sin caja, igual que el ejercicio de arriba: un número con su línea de pelo
+   debajo. Un rectángulo de formulario acá diría "completame", y vacío tiene que
+   estar bien. */
+.bloque-peso {
+  display: flex;
+  justify-content: flex-start;
+  margin: -8px 0 16px;
+}
+.campo-peso {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.peso-caja {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  border-bottom: 1px solid var(--linea);
+  padding: 2px 0;
+}
+.peso-caja input {
+  width: 4.2ch;
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: var(--f-numero), system-ui, sans-serif;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta);
+  text-align: right;
+  outline: none;
+}
+.peso-caja input::placeholder {
+  color: var(--apagado);
+}
+.peso-unidad {
+  font-size: 12px;
+  color: var(--apagado);
+}
+/* Los pasos del disco chico. Grandes de tocar aunque se vean chicos: se tocan
+   con la misma mano transpirada que el `+`. */
+.peso-paso {
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--sub);
+}
+.peso-paso:disabled {
+  opacity: 0.25;
+}
+
+/* En la lista: una fila de casilleros chicos, uno por serie. */
+.fila-bloque {
+  flex-wrap: wrap;
+}
+.pesos-serie {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 2px;
+}
+.campo-peso.compacto .peso-caja input {
+  width: 3.6ch;
+  font-size: 14px;
+}
+.campo-peso.compacto .peso-unidad {
+  font-size: 10px;
+}
+/* Los pesos de un ejercicio en el resumen del día: debajo del nombre y en voz
+   baja, porque el dato principal de la fila sigue siendo qué hiciste. */
+.dia-pesos {
+  display: block;
+  font-size: 12px;
+  color: var(--apagado);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}

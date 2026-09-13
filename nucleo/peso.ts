@@ -20,6 +20,24 @@ export function limites(unidad: Unidad): { min: number; max: number } {
   return { min: deKilos(20, unidad), max: deKilos(400, unidad) };
 }
 
+/**
+ * El peso de UNA SERIE para mostrar, en la unidad de la persona y sin ceros de
+ * más: 60, 62.5, 61.25.
+ *
+ * Libras al medio y kilos a la centésima, porque así son los discos: en libras
+ * nadie carga 137,21, y en kilos 61,25 existe.
+ */
+export function pesoCorto(kg: number, unidad: Unidad): string {
+  const v = deKilos(kg, unidad);
+  const r = unidad === 'lb' ? Math.round(v * 2) / 2 : Math.round(v * 100) / 100;
+  return String(r);
+}
+
+/** Lo que suma o resta un toque en el campo de peso: el disco chico de cada lado. */
+export function pasoDePeso(unidad: Unidad): number {
+  return unidad === 'lb' ? 5 : 2.5;
+}
+
 export function esUnidad(v: unknown): v is Unidad {
   return v === 'kg' || v === 'lb';
 }

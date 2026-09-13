@@ -63,7 +63,13 @@ const MARCA = {
   // TANDA DE IMPULSOS (migración 34): vuelve a haber marca. La mecánica dejó
   // de llamarse "vidas" y el rótulo de Stats ahora dice "Impulsos", que es
   // texto que solo existe desde este commit y se ve sin ninguna condición.
-  textoNuevo: { ruta: '/stats', dice: 'Impulsos' },
+  //
+  // TANDAS DE AVISOS, RESUMEN Y PESO POR SERIE (35 y 36): la pestaña
+  // "Entrenamiento" de Stats, que solo existe desde el resumen por día y se ve
+  // sin ninguna condición. "Impulsos" ya estaba desplegado y dejó de servir.
+  // Las dos migraciones son aditivas: esta marca es para saber qué probar, no
+  // para decidir cuándo correrlas.
+  textoNuevo: { ruta: '/stats', dice: 'Entrenamiento' },
   porQueNoHayMarca: null,
   /**
    * EL AUTOTEST. Un texto de la misma pantalla que tiene que estar SIEMPRE,

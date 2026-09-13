@@ -7,6 +7,9 @@ import type { Ejercicio } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import ListaDeBloques from '@/components/ListaDeBloques';
 import SelectorEjercicio from '@/components/SelectorEjercicio';
+import CampoPeso from '@/components/CampoPeso';
+import { leerAnotarPeso } from '@/lib/anotarPeso';
+import type { Unidad } from '@nucleo/peso';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN.
@@ -37,6 +40,9 @@ export default function Bloque({
   alMudarSeries,
   alElegirMeta,
   alTocarBloque,
+  unidad,
+  alElegirPeso,
+  alCorregirPeso,
 }: {
   estado: EstadoBloques;
   total: number;
@@ -48,6 +54,11 @@ export default function Bloque({
   alMudarSeries: (id: string | null) => void;
   alElegirMeta: (meta: number) => void;
   alTocarBloque: (indice: number, delta: number | 'quitar') => void;
+  unidad: Unidad;
+  /** El peso vigente del bloque, en kilos. */
+  alElegirPeso: (kg: number | null) => void;
+  /** El peso de una serie ya hecha. `indice` -1 es el bloque en curso. */
+  alCorregirPeso: (indice: number, serie: number, kg: number | null) => void;
 }) {
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [lista, setLista] = useState(false);
@@ -56,6 +67,13 @@ export default function Bloque({
   // el nuevo: se responde qué pasa con las series, no si el cambio se hace.
   const [aDonde, setADonde] = useState<string | null | undefined>(undefined);
   const [abriendo, setAbriendo] = useState(false);
+  // Prendido por omisión y desde el primer cuadro: el que lo apagó en Ajustes
+  // lo ve un instante al entrar, y eso es mejor que un campo que aparece
+  // tarde y empuja el `+` para abajo justo cuando alguien va a tocarlo.
+  const [anotarPeso, setAnotarPeso] = useState(true);
+  useEffect(() => {
+    leerAnotarPeso().then(setAnotarPeso);
+  }, []);
 
   // El catálogo se pide una vez y no bloquea nada: sin él el selector queda
   // con la opción vacía y el contador anda igual, que es la regla de que esto
@@ -115,6 +133,16 @@ export default function Bloque({
           ))}
         </div>
       </div>
+
+      {/* EL PESO, AL LADO DE LO QUE SE ESTÁ HACIENDO. Solo con un ejercicio
+          elegido —un peso de "cualquier cosa" no dice nada— y solo si el
+          ejercicio admite peso: una marca en kilos de plancha no significa
+          nada (migración 31). */}
+      {anotarPeso && estado.ejercicio && actual?.admite_peso !== false && (
+        <div className="bloque-peso">
+          <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} />
+        </div>
+      )}
 
         {aDonde !== undefined && (
           <div className="mudanza" role="group" aria-label={T.sesion.deCual(estado.hechas)}>
@@ -232,6 +260,9 @@ export default function Bloque({
         <ListaDeBloques
           estado={estado}
           ejercicios={ejercicios}
+          unidad={unidad}
+          anotarPeso={anotarPeso}
+          alCorregirPeso={alCorregirPeso}
           alTocar={alTocarBloque}
           alCerrar={() => setLista(false)}
         />
