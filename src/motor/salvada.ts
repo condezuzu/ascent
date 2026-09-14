@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { alCambiarDeTamano } from './alCambiarDeTamano';
 import { colorDeRango } from './subida';
 import { formaDeRango, extension, escalaParaEntrar } from '@/lib/subida';
 import { brilloEn, sigueSalvando, dispersionDesde, posicionesEn } from '@/lib/salvada';
@@ -82,8 +83,7 @@ export function animarSalvada(
     puntos.scale.setScalar(escalaParaEntrar(ext, asp));
   }
   medir();
-  const alRedimensionar = () => medir();
-  window.addEventListener('resize', alRedimensionar);
+  const dejarDeMedir = alCambiarDeTamano(canvas, medir);
 
   let vivo = true;
   let termino = false;
@@ -127,7 +127,7 @@ export function animarSalvada(
   return {
     destruir() {
       vivo = false;
-      window.removeEventListener('resize', alRedimensionar);
+      dejarDeMedir();
       geo.dispose();
       mat.dispose();
       renderer.dispose();

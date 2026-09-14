@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { alCambiarDeTamano } from './alCambiarDeTamano';
 import { RANGOS_CFG, PLANETAS_CFG } from './cuerpos';
 import {
   N,
@@ -113,7 +114,7 @@ export function animarSubida(
     escalaHasta = escalaParaEntrar(extHasta, asp);
   }
   medir();
-  window.addEventListener('resize', medir);
+  const dejarDeMedir = alCambiarDeTamano(canvas, medir);
 
   const DUR = duracionDeSubida(rangoAntes, rangoDespues);
   let vivo = true;
@@ -153,7 +154,7 @@ export function animarSubida(
     },
     destruir() {
       vivo = false;
-      window.removeEventListener('resize', medir);
+      dejarDeMedir();
       geo.dispose();
       mat.dispose();
       // El flash también: antes quedaban su geometría y su material colgados

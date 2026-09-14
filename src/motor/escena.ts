@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { alCambiarDeTamano } from './alCambiarDeTamano';
 import {
   VERTEX,
   FRAGMENT,
@@ -591,8 +592,8 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
     // adelanta de golpe todo el tiempo que estuvo pausado.
     if (visible) reloj.getDelta();
   });
-  const onResize = () => medirLienzo();
-  window.addEventListener('resize', onResize);
+  // La caja del contenedor, no solo la ventana: ver `alCambiarDeTamano`.
+  const dejarDeMedir = alCambiarDeTamano(contenedor, () => medirLienzo());
 
   /**
    * EL IMPACTO. Sube `uAtenua` y lo deja volver.
@@ -653,7 +654,7 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
   const soltar = () => {
     vivo = false;
     dejarDeMirar();
-    window.removeEventListener('resize', onResize);
+    dejarDeMedir();
     // se sueltan las geometrías y materiales de ESTA escena, pero el
     // renderer y el canvas siguen vivos para la próxima pantalla
     escena.traverse((o) => {
