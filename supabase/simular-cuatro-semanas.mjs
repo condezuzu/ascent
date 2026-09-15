@@ -320,8 +320,10 @@ try {
     await conRed('sin-respuesta', () => supabase.from('prs').insert(hoyMarca));
     await supabase.from('prs').insert(hoyMarca);
     const { data: deHoy } = await supabase.from('prs').select('id').eq('user_id', uid).eq('fecha', HOY);
-    nota(`marcas de hoy tras un reintento: ${deHoy?.length} (más de una = duplicada)`);
-    if (deHoy?.length > 1) hallazgos.push('una marca reintentada con la respuesta perdida queda duplicada');
+    // Por la API cruda se duplica, y es esperable: la app mira antes de
+    // insertar (`guardarSugerencia`, 15/9). Queda anotado para saber que la
+    // base no lo impide.
+    nota(`marcas de hoy tras un reintento por la API cruda: ${deHoy?.length}`);
 
     const f = (await supabase.rpc('mi_fuerza')).data;
     nota(`mi_fuerza: dots=${f?.dots} marcas=${f?.marcas?.length}`);

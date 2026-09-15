@@ -4,7 +4,7 @@ import { anotar } from '@compartido/bitacora';
 // El tipo del cliente lo pone cada app: la web y la nativa traen cada una su
 // copia de supabase-js, y para TypeScript son dos clases distintas.
 import type { Cliente } from '@cliente';
-import { quedanTrasPasada } from '@nucleo/cola';
+import { quedanTrasPasada, siguienteReintento } from '@nucleo/cola';
 
 /**
  * Escrituras que insisten hasta entrar, y un aviso cuando algo no se pudo.
@@ -134,6 +134,26 @@ export async function encolar(supabase: Cliente, tarea: Encolable) {
 let pasada: Promise<void> | null = null;
 let otraVez = false;
 
+// EL REINTENTO SOLO (15/9, ver `siguienteReintento`): uno programado a la vez.
+// Se cancela apenas la cola queda vacía, y la espera vuelve a empezar corta.
+let reintento: ReturnType<typeof setTimeout> | null = null;
+let espera: number | null = null;
+
+function programarReintento(supabase: Cliente) {
+  if (reintento) return;
+  espera = siguienteReintento(espera);
+  reintento = setTimeout(() => {
+    reintento = null;
+    void vaciar(supabase);
+  }, espera);
+}
+
+function olvidarReintento() {
+  if (reintento) clearTimeout(reintento);
+  reintento = null;
+  espera = null;
+}
+
 /**
  * Manda lo pendiente, en orden, y se queda con lo que no entró.
  *
@@ -151,8 +171,13 @@ export async function vaciar(supabase: Cliente): Promise<void> {
     do {
       otraVez = false;
       const cortada = await unaPasada(supabase);
-      // Sin red no se reintenta en seguida: lo agregado espera a la próxima.
-      if (cortada) break;
+      // Sin red no se reintenta en seguida: se programa un reintento solo, que
+      // es lo que sube las series cuando la señal vuelve sin que se toque nada.
+      if (cortada) {
+        programarReintento(supabase);
+        break;
+      }
+      olvidarReintento();
     } while (otraVez);
   })().finally(() => {
     pasada = null;

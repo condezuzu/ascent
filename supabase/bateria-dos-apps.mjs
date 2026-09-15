@@ -96,6 +96,7 @@ async function correr(app) {
     }
     await page.screenshot({ path: join(SALIDA, `${app}-${String(n() - 1).padStart(2, '0')}-${nombre.replace(/\W+/g, '-')}.png`) }).catch(() => {});
   }
+  const nota = (t) => console.log(`  [${app}] --   ${t}`);
   const texto = (t, exact = true) => page.getByText(t, { exact }).last();
   const tocar = async (t, exact = true) => {
     const l = app === 'web' ? page.getByRole('button', { name: t, exact }).last() : texto(t, exact);
@@ -179,21 +180,49 @@ async function correr(app) {
     await page.waitForTimeout(1500);
   });
 
-  // TODAS sin red: es el subsuelo de verdad, y el único caso en que la base
-  // llega a Terminar sin ninguna serie. Con una sola que haya subido, el bug
-  // no se ve.
-  await paso('cuatro series sin red', async () => {
+  // La base, leída con la misma cuenta mientras la app corre.
+  const espia = nuevoCliente();
+  const seriesEnLaBase = async () => {
+    if (!(await espia.auth.getSession()).data.session) {
+      await espia.auth.signInWithPassword({ email: correo, password: clave });
+    }
+    const { data } = await espia.from('sesiones').select('series').eq('estado', 'corriendo');
+    return data?.[0]?.series ?? null;
+  };
+
+  // SIN RED Y SIN TOCAR NADA DESPUÉS (15/9): la señal vuelve con el teléfono
+  // en el banco. Las series tienen que subir solas; antes esperaban al
+  // próximo toque, y una sesión sin actividad subida se cierra sin duración.
+  await paso('dos series sin red; vuelve la red y suben SOLAS', async () => {
     const mas = page.getByLabel('Sumar una serie').first();
     await page.waitForTimeout(2500);
     await ctx.setOffline(true);
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 2; i++) {
       await mas.click();
       await page.waitForTimeout(900);
     }
     await page.waitForTimeout(1500);
+    await ctx.setOffline(false);
+    const t0 = Date.now();
+    let n = null;
+    while (Date.now() - t0 < 120000) {
+      n = await seriesEnLaBase();
+      if (n === 2) break;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    if (n !== 2) throw new Error(`a los 2 minutos la base tiene ${n} series, esperaba 2`);
+    nota(`subieron solas en ${Math.round((Date.now() - t0) / 1000)} s`);
   });
 
-  await paso('vuelve la red y se termina al instante', async () => {
+  // Y el cierre con lo último todavía en la cola: Terminar tiene que subirlo
+  // antes de cerrar.
+  await paso('dos más sin red; vuelve la red y se termina al instante', async () => {
+    const mas = page.getByLabel('Sumar una serie').first();
+    await ctx.setOffline(true);
+    for (let i = 0; i < 2; i++) {
+      await mas.click();
+      await page.waitForTimeout(900);
+    }
     await ctx.setOffline(false);
     await tocar('Terminar');
     await tocar('Terminar'); // la confirmación
@@ -229,9 +258,6 @@ async function correr(app) {
     }
     await page.waitForTimeout(3000);
   });
-  function nota(t) {
-    console.log(`  [${app}] --   ${t}`);
-  }
 
   // ---- 8. Stats ----
   let stats = '';

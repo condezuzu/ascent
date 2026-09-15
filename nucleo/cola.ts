@@ -32,3 +32,27 @@ export function quedanTrasPasada<T>(ahora: T[], sacados: T[]): T[] {
     return false;
   });
 }
+
+/**
+ * CUÁNTO ESPERAR PARA VOLVER A INTENTAR, cuando la pasada cortó por la red.
+ *
+ * EL BUG (15/9). Sin señal, lo encolado esperaba al próximo toque o a que la
+ * app volviera al frente. Si la red volvía y no se tocaba nada —se deja el
+ * teléfono en el banco—, las series se quedaban en el teléfono, y una sesión
+ * sin actividad subida la cierra la base a las dos horas SIN DURACIÓN.
+ *
+ * Ahora la cola se reintenta sola mientras le quede algo. Rápido al principio,
+ * porque en el gimnasio la señal va y viene en segundos; y cada vez más
+ * espaciado, porque en un subsuelo sin señal preguntar cada cinco segundos
+ * durante una hora es gastar batería para nada.
+ *
+ * SIN LIBRERÍA DE CONECTIVIDAD, a propósito: saber que "hay red" no garantiza
+ * que la base conteste, y reintentar es la única prueba que vale en los dos.
+ */
+export const REINTENTO_PRIMERO_MS = 5_000;
+export const REINTENTO_TOPE_MS = 60_000;
+
+export function siguienteReintento(anterior: number | null): number {
+  if (anterior === null || !Number.isFinite(anterior) || anterior < REINTENTO_PRIMERO_MS) return REINTENTO_PRIMERO_MS;
+  return Math.min(REINTENTO_TOPE_MS, anterior * 2);
+}

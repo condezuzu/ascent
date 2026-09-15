@@ -242,3 +242,35 @@ ese día. Si alguna vez hay que volver a escribirlas en algún lado, que sea
   lados.
 - El `launch.json` del directorio de trabajo tiene rutas absolutas por
   proyecto: al mudar una carpeta hay que actualizarlo o el preview no arranca.
+
+### De la caza del 15/9/2026: anotados, sin tocar (decisión del humano)
+
+Salieron de `npm run test:real` y de leer el código. Ninguno pierde datos ni
+deja afuera; los que sí, se arreglaron ese día.
+
+**Medios**
+- **Corregir un día desde el calendario son dos escrituras** (borrar y volver a
+  poner, `HojaDelDia.tsx`). Si la red se corta entre las dos, el día queda
+  vacío; se avisa en pantalla y se puede reintentar. Arreglo de fondo: una sola
+  función en la base.
+- **La nativa nunca llama a `fijar_zona`.** La web la actualiza al abrir. Con
+  el teléfono en otro huso que el perfil, la nativa y la base discrepan sobre
+  qué día es hoy. Solo importa viajando.
+
+**Bajos**
+- **Una foto que se vuelve privada** se sigue viendo hasta una hora en una
+  pantalla que ya estaba abierta (los enlaces firmados duran 3600 s). El
+  servidor la niega al instante para cualquier pedido nuevo.
+- **Si la foto sube pero su fila no**, el archivo queda en el bucket sin usar.
+  Al borrar la cuenta se borra igual (se lista la carpeta, no las filas).
+- **Si se pierde la respuesta de `iniciar_sesion`**, el reintento trae
+  `registro: null`: se pierde el festejo de subida de rango de ese día.
+- **Sin mirar el error:** borrar una marca (`fuerza/page.tsx`), aceptar o
+  rechazar un amigo y responder un reto (`social/page.tsx`,
+  `perfil/[id]/page.tsx`). La pantalla recarga y muestra lo que quedó, pero
+  no dice que falló.
+- **Una marca cargada a mano en la web** (`CargarMarca`) se puede duplicar si
+  la respuesta se pierde y se vuelve a tocar. La marca sugerida ya no.
+- Queda un archivo de 1×1 en el bucket `fotos`, de una corrida vieja de
+  `simular-semana`; borrarlo necesita service_role.
+

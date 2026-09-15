@@ -33,6 +33,8 @@ async function cuenta(letra) {
 
 const A = await cuenta('a');
 const B = await cuenta('b');
+// C no es amiga de nadie: pregunta por la amistad de A y B.
+const C = await cuenta('c');
 const JPG = Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64');
 
 try {
@@ -102,7 +104,6 @@ try {
     ['impulsos_ganados', { p_user: A.id }],
     ['impulsos_disponibles', { p_user: A.id, p_dia: hoy }],
     ['vidas_disponibles', { p_user: A.id, p_dia: hoy }],
-    ['son_amigos', { a: A.id, b: B.id }],
     ['peso_actual', { p_user: A.id }],
     ['mejores_marcas', { p_user: A.id }],
     ['dots_de', { p_user: A.id }],
@@ -131,6 +132,10 @@ try {
   chequear('B no puede aceptar su propio pedido', autoAcepta.data?.length ?? 0, 0);
   const acepta = await A.s.from('friendships').update({ estado: 'aceptada' }).eq('id', pedido.id).select('id');
   chequear('A acepta', acepta.data?.length, 1);
+  // `son_amigos` sigue abierta porque la usan las políticas; lo que no puede
+  // es contarle a una tercera si otras dos son amigas (migración 41).
+  chequear('B sabe que es amiga de A', (await B.s.rpc('son_amigos', { a: A.id, b: B.id })).data, true);
+  chequear('C no puede averiguar que A y B son amigas', (await C.s.rpc('son_amigos', { a: A.id, b: B.id })).data ?? false, false);
   const antesFirma = await B.s.storage.from('fotos').createSignedUrl(rutaAmigos, 60);
   console.log('  --   siendo amiga, enlace firmado de la foto de amigos:', antesFirma.error ? 'no' : 'sí');
   chequear('siendo amiga ve días, la foto de amigos y marcas; nunca peso, sesiones, descansos ni la foto privada', await loQueVe(B), {
@@ -156,7 +161,7 @@ try {
   console.log('REVENTÓ:', e);
 } finally {
   console.log('\nLimpieza');
-  for (const X of [A, B]) {
+  for (const X of [A, B, C]) {
     const { data: objs } = await X.s.storage.from('fotos').list(X.id);
     if (objs?.length) await X.s.storage.from('fotos').remove(objs.map((o) => `${X.id}/${o.name}`));
     const { error } = await X.s.rpc('eliminar_cuenta');

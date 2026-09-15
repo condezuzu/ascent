@@ -146,25 +146,28 @@ const PANTALLAS = [
   { nombre: 'yo', ruta: '/yo', listo: '.yo-cabecera' },
   { nombre: 'ajustes', ruta: '/ajustes', listo: '.seccion' },
   {
-    // El calendario vive plegado, así que NUNCA salía en ninguna captura: la
-    // pantalla que el humano señaló como la peor de las tres era justamente la
-    // única que este script no fotografiaba.
-    nombre: 'ajustes-corregir-dias',
-    ruta: '/ajustes',
-    // `.seccion` y NO `.calendario`. El `listo` se espera ANTES de correr el
-    // `previo`, así que poner acá algo que recién existe DESPUÉS del clic son
-    // sesenta segundos esperando lo imposible y la captura salteada. Lo hice y
-    // perdí un rato largo buscándole la culpa a la app.
-    listo: '.seccion',
+    // EL CALENDARIO. Vive en Stats → Entrenamiento desde que "Corregir días"
+    // se fue de Ajustes; el script seguía buscándolo allá y avisaba de un
+    // plegable que ya no existe (15/9). La pantalla que el humano señaló como
+    // la peor de las tres no puede ser la única sin foto.
+    nombre: 'stats-calendario',
+    ruta: '/stats',
+    listo: '.escalera-rangos',
     previo: async (page) => {
-      const b = page.locator('button.fila-plegable', { hasText: /corregir/i }).first();
+      const pestana = page.getByRole('tab', { name: 'Entrenamiento' });
       try {
-        await b.waitFor({ state: 'visible', timeout: 20000 });
+        await pestana.waitFor({ state: 'visible', timeout: 20000 });
       } catch {
-        return 'no apareció el plegable de "Corregir días"';
+        return 'no apareció la pestaña "Entrenamiento" de Stats';
       }
-      await b.click();
-      return null;
+      // La pestaña puede tocarse antes de que la página responda: se insiste
+      // hasta que el calendario esté.
+      for (let i = 0; i < 20; i++) {
+        if (await page.locator('.calendario').first().isVisible().catch(() => false)) return null;
+        await pestana.click().catch(() => {});
+        await page.waitForTimeout(1000);
+      }
+      return 'la pestaña Entrenamiento no mostró el calendario';
     },
   },
   {

@@ -1,4 +1,4 @@
-import { numeroDeRango } from './reglas';
+import { numeroDeRango } from './reglas.ts';
 
 // Escalera de rangos. El nombre NUNCA aparece en la interfaz corriente:
 // solo en la subida de rango y en Estadísticas.
@@ -6,7 +6,7 @@ import { numeroDeRango } from './reglas';
 // El NÚMERO de rango y los planetas viven en `reglas.ts`, que es lo que
 // también está escrito en SQL. Acá quedan los nombres, que son solo del
 // cliente: la base nunca los conoce.
-export { PLANETAS, planetaDeDia } from './reglas';
+export { PLANETAS, planetaDeDia } from './reglas.ts';
 export type Rango = {
   n: number;
   nombre: string;
@@ -43,5 +43,8 @@ export function progresoEnRango(racha: number): number {
   const actual = rangoDeRacha(racha);
   const prox = siguienteRango(racha);
   if (!prox) return 1;
-  return Math.min(1, (racha - actual.desde) / (prox.desde - actual.desde));
+  // Acotado por los dos lados: una racha negativa o vacía daba una barra de
+  // ancho negativo o NaN.
+  const p = (racha - actual.desde) / (prox.desde - actual.desde);
+  return Number.isFinite(p) ? Math.min(1, Math.max(0, p)) : 0;
 }

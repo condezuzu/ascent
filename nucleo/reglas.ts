@@ -26,6 +26,9 @@
  * número que tiene guardado la base.
  */
 export function numeroDeRango(racha: number): number {
+  // Sin número (un perfil a medio cargar), rango 1: un NaN acá dejaba a
+  // `rangoDeRacha` sin rango y a Inicio sin pantalla. En la base no pasa.
+  if (!Number.isFinite(racha)) return 1;
   return Math.min(8, Math.floor(Math.max(0, racha) / 10) + 1);
 }
 
@@ -66,10 +69,15 @@ export type ConfigDescanso = { desde: string; dias: number[] };
 
 /** Las configuraciones tienen que venir ordenadas de más nueva a más vieja. */
 export function descansosVigentes(configs: ConfigDescanso[], fecha: string): number[] {
+  // LA MÁS NUEVA QUE YA REGÍA, sin importar en qué orden lleguen (15/9). Antes
+  // se quedaba con la PRIMERA de la lista que cumpliera, y eso solo es la más
+  // nueva si la lista viene de más nueva a más vieja: una consulta sin ese
+  // `order` mostraba los descansos de la configuración más vieja.
+  let vigente: ConfigDescanso | null = null;
   for (const c of configs) {
-    if (c.desde <= fecha) return c.dias;
+    if (c.desde <= fecha && (!vigente || c.desde > vigente.desde)) vigente = c;
   }
-  return []; // antes de la primera configuración no había descansos
+  return vigente ? vigente.dias : []; // antes de la primera no había descansos
 }
 
 // ---------------------------------------------------------------

@@ -29,6 +29,10 @@ se rediscute; lo marcado PENDIENTE se pregunta antes de asumir.
 - **Al terminar cada tanda, corré `npm run capturas`** y decí si cambió algo
   respecto de la corrida anterior. Es lo que hubiera cazado "TATS" el primer
   día.
+- **Y después `npm run test:real`** (con los dos dev servers prendidos): cuatro
+  semanas contra la base real, privacidad entre cuentas, y la web y la nativa
+  con el mismo guion desde una cuenta nueva. Su primera corrida encontró seis
+  bugs que `test:db` no podía ver. Decí qué dio.
 
 ### Tests: verificar la cosa, no un proxy de la cosa
 
@@ -87,6 +91,7 @@ seguro.
 | `npm run test:conexion` | humo contra el Supabase real, solo lectura |
 | `npm run test:e2e` | flujo completo con 2 cuentas (pide `E2E_EMAIL`) |
 | `npm run capturas` | levanta la app, recorre las pantallas y deja PNG en `capturas/` |
+| `npm run test:real` | contra Supabase real, con cuentas descartables: cuatro semanas, privacidad, y web + nativa con el mismo guion (necesita :3020 y :8090 prendidos; `-- api` sin navegador) |
 | `npm run verificar:deploy` | ¿producción ya sirve este commit? Mira el pedido real, no deduce |
 | `npm run build` | build de producción — **dev server apagado** |
 

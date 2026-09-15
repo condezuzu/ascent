@@ -6707,6 +6707,87 @@ console.log('\n102. Nadie pregunta por los datos de otro (migracion 41)');
   chequear('la racha la sigue calculando el trigger', (await db.query('select racha_actual from profiles where id = $1', [x])).rows[0].racha_actual, 1);
 }
 
+console.log('\n103. Rangos y descansos: lo que se ve en Inicio y en el calendario');
+{
+  // Deciden la barra de progreso, el nombre del rango, el planeta del dia y si
+  // hoy se ve como descanso. Un error aca se ve todos los dias.
+  const G = await import('../nucleo/rangos.ts');
+  const D = await import('../nucleo/descansos.ts');
+
+  // ---- rangos ----
+  chequear('los bordes de cada rango', [0, 9, 10, 19, 20, 69, 70, 71, 500].map((r) => G.rangoDeRacha(r).n), [1, 1, 2, 2, 3, 7, 8, 8, 8]);
+  chequear('cada rango arranca diez dias despues del anterior', G.RANGOS.map((r) => r.desde), [0, 10, 20, 30, 40, 50, 60, 70]);
+  chequear('el nombre sale del mismo numero que la base', G.rangoDeRacha(34).nombre, 'Planeta');
+  const distintos = [];
+  for (let r = 0; r <= 100; r++) {
+    const sql = (await db.query('select rango_de_racha($1) as n, planeta_de_dia($1) as p', [r])).rows[0];
+    if (G.rangoDeRacha(r).n !== sql.n) distintos.push(`rango ${r}`);
+    if (G.planetaDeDia(r) !== sql.p) distintos.push(`planeta ${r}: ${G.planetaDeDia(r)} vs ${sql.p}`);
+  }
+  chequear('rango y planeta coinciden con la base de 0 a 100', distintos, []);
+  chequear('el planeta es solo del 30 al 39', [G.planetaDeDia(29), G.planetaDeDia(30), G.planetaDeDia(39), G.planetaDeDia(40)], [null, 'Ceres', 'Júpiter', null]);
+  chequear('el siguiente del 69 es el agujero negro', G.siguienteRango(69)?.nombre, 'Agujero negro');
+  chequear('y del agujero negro no hay siguiente', G.siguienteRango(70), null);
+  chequear('la barra: vacia al entrar, llena al final', [G.progresoEnRango(10), G.progresoEnRango(15), G.progresoEnRango(19)], [0, 0.5, 0.9]);
+  chequear('en el ultimo rango la barra queda llena', [G.progresoEnRango(70), G.progresoEnRango(999)], [1, 1]);
+  // Lo que un dato roto no puede hacer: una barra negativa o una pantalla sin rango.
+  chequear('una racha negativa no da una barra negativa', G.progresoEnRango(-5), 0);
+  chequear('una racha vacia no deja a Inicio sin rango', [G.rangoDeRacha(NaN)?.n, G.siguienteRango(NaN)?.n, G.progresoEnRango(NaN)], [1, 2, 0]);
+
+  // ---- descansos ----
+  const cfg = [
+    { desde: '2026-01-01', dias: [0] }, // domingos
+    { desde: '2026-06-01', dias: [3] }, // miercoles desde junio
+  ];
+  chequear('sin configuraciones no hay descanso', D.esDiaDeDescanso([], '2026-09-06'), false);
+  chequear('antes de la primera configuracion tampoco', D.esDiaDeDescanso(cfg, '2025-12-28'), false);
+  chequear('rige la de su fecha: un domingo de marzo', D.esDiaDeDescanso(cfg, '2026-03-15'), true);
+  chequear('y un domingo de julio ya no', D.esDiaDeDescanso(cfg, '2026-07-05'), false);
+  chequear('un miercoles de julio si', D.esDiaDeDescanso(cfg, '2026-07-01'), true);
+  // EL ORDEN: la base las devuelve ordenadas, pero una consulta nueva sin
+  // `order` las mandaba al reves y rigia la mas vieja.
+  chequear('da lo mismo en que orden lleguen', [D.esDiaDeDescanso([...cfg].reverse(), '2026-07-01'), D.esDiaDeDescanso(cfg, '2026-07-01')], [true, true]);
+  chequear('el mismo dia que cambia, rige la nueva', [D.esDiaDeDescanso(cfg, '2026-06-03'), D.descansosVigentes(cfg, '2026-06-01')], [true, [3]]);
+
+  // EL DIA DE LA SEMANA NO DEPENDE DEL HUSO DEL TELEFONO. `deISO` arma la fecha
+  // local; con `new Date('2026-09-06')` en Montevideo el domingo seria sabado.
+  const TZ = process.env.TZ;
+  const huecos = [];
+  for (const zona of ['UTC', 'America/Montevideo', 'Asia/Tokyo', 'Pacific/Honolulu']) {
+    process.env.TZ = zona;
+    for (let i = 0; i < 14; i++) {
+      const fecha = `2026-09-${String(i + 1).padStart(2, '0')}`;
+      const dow = (await db.query('select extract(dow from $1::date)::int as d', [fecha])).rows[0].d;
+      const todos = [{ desde: '2026-01-01', dias: [dow] }];
+      if (!D.esDiaDeDescanso(todos, fecha)) huecos.push(`${zona} ${fecha}`);
+    }
+  }
+  process.env.TZ = TZ;
+  chequear('el dia de la semana es el de la base en cualquier huso', huecos, []);
+}
+
+console.log('\n104. Al volver la senal, la cola sube sola');
+{
+  // EL BUG: sin senal, las series esperaban al proximo toque o a que la app
+  // volviera al frente. Con el telefono en el banco no subian, y una sesion sin
+  // actividad subida la cierra la base sin duracion. Probado contra la base
+  // real en `bateria-dos-apps` (con el codigo viejo: 0 series a los 2 minutos).
+  const C = await import('../nucleo/cola.ts');
+  const esperas = [];
+  let e = null;
+  for (let i = 0; i < 8; i++) esperas.push((e = C.siguienteReintento(e)));
+  chequear('el reintento empieza corto y se espacia hasta un tope', esperas, [5000, 10000, 20000, 40000, 60000, 60000, 60000, 60000]);
+  chequear('un valor roto vuelve al principio', [C.siguienteReintento(NaN), C.siguienteReintento(-1)], [5000, 5000]);
+
+  const { readFileSync: leer } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const cola = sinComentarios(leer(join(RAIZ, 'compartido', 'cola.ts'), 'utf8'));
+  const cuerpo = cola.slice(cola.indexOf('export async function vaciar('), cola.indexOf('async function unaPasada('));
+  chequear('si la pasada corta por la red, se programa un reintento', /if \(cortada\) \{\s*programarReintento\(supabase\)/.test(cuerpo), true);
+  chequear('y cuando la cola se vacia, se olvida', cuerpo.includes('olvidarReintento()'), true);
+  chequear('un solo reintento programado a la vez', /if \(reintento\) return;/.test(cola), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
