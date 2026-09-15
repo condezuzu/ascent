@@ -1,11 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { crearCliente } from '@/lib/supabase/client';
-import { plataforma } from '@/plataforma';
+// El tipo del cliente lo pone cada app: la web y la nativa traen cada una su
+// copia de supabase-js, y para TypeScript son dos clases distintas.
+import type { Cliente } from '@cliente';
+import { crearCliente } from '@cliente';
+import { plataforma } from '@plataforma';
 import { T } from '@nucleo/textos';
-import { eventos } from '@/plataforma/eventos';
+import { eventos } from '@compartido/eventos';
 import {
   desfasajeDelReloj,
   cacheTrasConfirmar,
@@ -15,8 +17,8 @@ import {
   type SesionViva,
 } from '@nucleo/sesiones';
 import { disponible } from '@nucleo/esquema';
-import { versionDelEsquema } from '@/lib/esquema';
-import { leerPerfilCache } from '@/lib/cache';
+import { versionDelEsquema } from '@compartido/esquema';
+import { leerPerfilCache } from '@compartido/cache';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import {
   bloquesVacios,
@@ -49,17 +51,17 @@ import {
   leerSesionCache,
   leerVigilancia,
   guardarVigilancia,
-} from '@/lib/sesionCache';
+} from '@compartido/sesionCache';
 import {
   borrarDescanso,
   duracionValida,
   guardarDescanso,
   leerDescanso,
   type DescansoVivo,
-} from '@/lib/descanso';
+} from '@compartido/descanso';
 import { marcarComoUsada } from '@nucleo/llegada';
-import { cuantasPendientes, encolar, estaPendiente, vaciar } from '@/lib/cola';
-import { leerCargasElegidas, recordarCarga } from '@/lib/cargas';
+import { cuantasPendientes, encolar, estaPendiente, vaciar } from '@compartido/cola';
+import { leerCargasElegidas, recordarCarga } from '@compartido/cargas';
 import { cargaValida, type Carga } from '@nucleo/carga';
 import type { OrigenSesion, ResultadoRegistro } from '@nucleo/tipos';
 
@@ -106,7 +108,7 @@ export type EstadoSesion = {
 const NO_EXISTE = (e: { code?: string } | null) => e?.code === 'PGRST202';
 
 async function iniciar(
-  supabase: SupabaseClient,
+  supabase: Cliente,
   opciones?: { desde?: number; origen?: OrigenSesion }
 ) {
   const r = await supabase.rpc('iniciar_sesion', {
@@ -117,7 +119,7 @@ async function iniciar(
   return supabase.rpc('iniciar_sesion');
 }
 
-async function cerrar(supabase: SupabaseClient, opciones?: { hasta?: number }) {
+async function cerrar(supabase: Cliente, opciones?: { hasta?: number }) {
   const r = await supabase.rpc('terminar_sesion', {
     p_hasta: opciones?.hasta ? new Date(opciones.hasta).toISOString() : null,
   });

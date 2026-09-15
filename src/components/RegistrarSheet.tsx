@@ -6,7 +6,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
-import { avisarFallo } from '@/lib/cola';
+import { avisarFallo } from '@compartido/cola';
 import { prepararFoto } from '@/lib/foto';
 import type { ResultadoRegistro } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';

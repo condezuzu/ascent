@@ -11,7 +11,7 @@ import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { resumenDelDia, type ResumenDelDia, type SesionDelDia } from '@nucleo/resumenDia';
 import { claveDeEtiqueta, gruposDePesos, type Carga } from '@nucleo/carga';
 import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
-import { usarVersionDelEsquema } from '@/lib/esquema';
+import { usarVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
 

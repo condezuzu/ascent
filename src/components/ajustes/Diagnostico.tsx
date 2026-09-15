@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { hoyISO } from '@nucleo/fechas';
 import { mirarElGimnasio } from '@/lib/gimnasio';
-import { leerVigilancia } from '@/lib/sesionCache';
-import { anotar, borrarBitacora, comoTexto, leerBitacora } from '@/lib/bitacora';
-import { cuantasPendientes, vaciar } from '@/lib/cola';
+import { leerVigilancia } from '@compartido/sesionCache';
+import { anotar, borrarBitacora, comoTexto, leerBitacora } from '@compartido/bitacora';
+import { cuantasPendientes, vaciar } from '@compartido/cola';
 import { T } from '@nucleo/textos';
 import type { OrigenSesion, Perfil } from '@nucleo/tipos';
 

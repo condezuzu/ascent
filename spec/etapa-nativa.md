@@ -352,6 +352,45 @@ peso corporal, la fuerza y las sesiones.
 
 Para mirarla: `movil/dev-web.cmd` (Expo web en el puerto 8090).
 
+### Tanda 3 · N1 — la sesión, una sola para las dos apps (2026-09-15)
+
+**No se copió la sesión: se mudó.** `usarSesion` y todo lo que usa —la caché de
+la sesión, la cola sin señal, el descanso, la versión del esquema, las cargas
+elegidas, la bitácora y el bus de avisos— pasaron de `src/lib/` a
+`compartido/`, en la raíz. Son 830 líneas con tres bugs de gimnasio encima
+(la cola que se trababa, el cierre con datos viejos, el contador que se
+reseteaba); dos copias habrían sido dos lugares donde arreglarlos.
+
+**Por qué no va en `nucleo/`:** usa React y la plataforma. El núcleo no importa
+nada, y así se prueba con node pelado.
+
+**Cómo sabe de qué app es:** no lo sabe. Pide `plataforma` a `@plataforma` y el
+cliente de Supabase a `@cliente`, y cada app dice qué archivo es cada alias:
+
+| Alias | Web | Nativa |
+|---|---|---|
+| `@plataforma` | `src/plataforma/index.ts` | `movil/src/plataforma/index.ts` |
+| `@cliente` | `src/lib/supabase/client.ts` | `movil/src/cliente/index.ts` |
+| `@compartido/*` | `compartido/*` | `../compartido/*` |
+
+**Dos trampas que costaron un rato, para no repetirlas:**
+
+- **Expo lee los `paths` del `tsconfig` también para Metro.** Poner
+  `"react": ["./node_modules/@types/react"]` para arreglar los tipos le dijo a
+  Metro que React era una carpeta sin código, y la app entera dejó de
+  compilar con "Unable to resolve react". Los `paths` de `movil/` son rutas
+  de verdad, no trucos de tipos.
+- **Dos React.** `compartido/` está al lado del `node_modules` de la web.
+  `metro.config.js` resuelve los paquetes que pide `compartido/` como si los
+  pidiera la app nativa; si no, cargaría el React de la web y los hooks
+  revientan. Por lo mismo, el tipo del cliente es `Cliente` de `@cliente` y no
+  `SupabaseClient` del paquete: cada app trae su supabase-js.
+
+**Probado contra la base real** con la cuenta de prueba en Expo web: iniciar,
+el reloj avanzando, cambiar de pestaña y volver con la sesión intacta, la
+pregunta antes de terminar, y el cierre con su resumen. La sección 92 de
+`test:db` falla si `compartido/` importa del árbol de una de las dos apps.
+
 ### Cómo se verifica la app nativa sin el teléfono
 
 `movil/` ahora corre también en el navegador (`npx expo start --web`), y **eso

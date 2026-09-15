@@ -1,4 +1,4 @@
-import { plataforma } from '@/plataforma';
+import { plataforma } from '@plataforma';
 import { cargaValida, type Carga } from '@nucleo/carga';
 
 /**

@@ -31,6 +31,19 @@
       ],
       "@nucleo/*": [
         "./nucleo/*"
+      ],
+      // LO COMPARTIDO CON LA APP NATIVA: la sesión, la cola, el descanso. Usa
+      // React y la plataforma, así que no es núcleo; y lo usan las dos apps,
+      // así que no es de ninguna. Cada app le dice qué es `@plataforma` y
+      // `@cliente` (acá, la web; en `movil/`, la nativa).
+      "@compartido/*": [
+        "./compartido/*"
+      ],
+      "@plataforma": [
+        "./src/plataforma/index.ts"
+      ],
+      "@cliente": [
+        "./src/lib/supabase/client.ts"
       ]
     }
   },

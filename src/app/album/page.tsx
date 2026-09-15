@@ -5,7 +5,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { MESES, fechaLinda } from '@nucleo/fechas';
 import { planetaDeDia } from '@nucleo/rangos';
-import { avisarFallo } from '@/lib/cola';
+import { avisarFallo } from '@compartido/cola';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';

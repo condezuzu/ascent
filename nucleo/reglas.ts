@@ -163,6 +163,6 @@ export const PRESETS_DESCANSO = [60, 90, 120, 180, 300];
  * pedido a la base—, no con `display: none`: superficie que no se usa es
  * superficie que se rompe sin que nadie se entere.
  *
- * En `true` el día que haya alguien más. Mismo mecanismo que `GOOGLE_LISTO`.
+ * En `true` el día que haya alguien más.
  */
 export const RETOS_LISTOS = false;

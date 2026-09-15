@@ -5,7 +5,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
 import type { EstadoAvisoRemoto } from '@nucleo/plataforma';
 import { T } from '@nucleo/textos';
-import { usarVersionDelEsquema } from '@/lib/esquema';
+import { usarVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 
 /**

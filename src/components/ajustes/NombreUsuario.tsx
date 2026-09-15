@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { borrarPerfilCache } from '@/lib/cache';
+import { borrarPerfilCache } from '@compartido/cache';
 import type { Perfil } from '@nucleo/tipos';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';

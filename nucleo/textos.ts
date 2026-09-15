@@ -290,8 +290,6 @@ export const T = {
     enviarCorreo: 'Enviar correo',
     correo: 'Correo',
     contrasena: 'Contraseña',
-    o: 'o',
-    conGoogle: 'Continuar con Google',
     primeraVez: '¿Primera vez? Crear cuenta',
     olvide: 'Olvidé mi contraseña',
     volverAEntrar: 'Volver a entrar',

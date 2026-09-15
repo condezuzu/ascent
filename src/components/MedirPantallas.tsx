@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { anotar } from '@/lib/bitacora';
+import { anotar } from '@compartido/bitacora';
 
 /**
  * Cuánto tarda en aparecer cada pantalla, medido EN EL TELÉFONO.

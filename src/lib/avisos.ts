@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { eventos } from '@/plataforma/eventos';
+import { eventos } from '@compartido/eventos';
 
 /**
  * LO QUE TE ESTÁ ESPERANDO Y NO TE ENTERASTE.

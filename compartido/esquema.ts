@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { crearCliente } from '@/lib/supabase/client';
-import { plataforma } from '@/plataforma';
+// El tipo del cliente lo pone cada app: la web y la nativa traen cada una su
+// copia de supabase-js, y para TypeScript son dos clases distintas.
+import type { Cliente } from '@cliente';
+import { crearCliente } from '@cliente';
+import { plataforma } from '@plataforma';
 
 /**
  * LA VERSIÓN DE LA BASE, preguntada una vez por carga de la app.
@@ -25,7 +27,7 @@ const NO_EXISTE = (e: { code?: string } | null) => e?.code === 'PGRST202';
 let memo: number | null = null;
 let enCurso: Promise<number | null> | null = null;
 
-async function preguntar(supabase: SupabaseClient): Promise<number | null> {
+async function preguntar(supabase: Cliente): Promise<number | null> {
   const { data, error } = await supabase.rpc('version_del_esquema');
   if (!error && typeof data === 'number') return data;
   if (!NO_EXISTE(error)) return null; // la red, no la base: no se sabe
@@ -35,7 +37,7 @@ async function preguntar(supabase: SupabaseClient): Promise<number | null> {
   return NO_EXISTE(puente.error) ? 0 : null;
 }
 
-export async function versionDelEsquema(supabase: SupabaseClient): Promise<number | null> {
+export async function versionDelEsquema(supabase: Cliente): Promise<number | null> {
   if (memo !== null) return memo;
   if (!enCurso) {
     enCurso = (async () => {

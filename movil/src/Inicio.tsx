@@ -8,6 +8,8 @@ import { rangoDeRacha } from '@nucleo/rangos';
 import { mensajeDeAuth } from '@nucleo/errores';
 import type { Log, Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
+import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
+import { usarSesion, type CierreDeSesion } from '@compartido/usarSesion';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -27,8 +29,12 @@ import { T } from '@nucleo/textos';
  *   andamio de migración, no diseño, y se va cuando entre el motor.
  * - **La foto y el peso** al registrar: son la hoja de registrar, que necesita
  *   cámara y otra pantalla.
- * - **El cronómetro de sesión**, que es lo que más depende de los puertos y va
- *   con la tanda 3.
+ *
+ * LA SESIÓN (tanda 3, N1) NO ESTÁ ESCRITA ACÁ: es `usarSesion`, el MISMO hook
+ * que usa la web, desde `compartido/`. Iniciar, el cronómetro, terminar, el
+ * cierre por inactividad y el aviso de "se cerró sola" son una sola lógica
+ * para las dos apps. Esta pantalla solo la dibuja. Contar series (el bloque)
+ * y el descanso entran en N2 y N3.
  */
 
 type Estado =
@@ -53,6 +59,10 @@ export default function Inicio({
 }) {
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
   const [registrando, setRegistrando] = useState(false);
+  // Terminar pregunta antes, en el mismo lugar: es el botón más fácil de tocar
+  // sin querer, y lo que hace no se deshace.
+  const [terminando, setTerminando] = useState(false);
+  const [cierre, setCierre] = useState<CierreDeSesion | null>(null);
   const [aviso, setAviso] = useState('');
 
   const cargar = useCallback(async () => {
@@ -104,6 +114,12 @@ export default function Inicio({
   useEffect(() => {
     cargar();
   }, [cargar]);
+
+  // Iniciar una sesión registra el día: cuando la base avisa, se recarga la
+  // racha y la semana. Va antes de cualquier `return`: es un hook.
+  const sesion = usarSesion(() => {
+    cargar();
+  });
 
   async function registrar() {
     setRegistrando(true);
@@ -167,6 +183,25 @@ export default function Inicio({
     <ScrollView contentContainerStyle={estilos.pantalla}>
       <View style={estilos.cabecera}>
         <Text style={estilos.usuario}>{perfil.username}</Text>
+        {/* El chip de la sesión, arriba a la derecha como en la web: sin
+            sesión la inicia; con sesión, es el reloj. */}
+        {sesion.estado.corriendo && sesion.estado.inicio ? (
+          <View style={estilos.chip}>
+            <View style={estilos.latido} />
+            <Text style={estilos.chipTexto}>
+              {cronoLindo(transcurrido(sesion.estado.inicio, sesion.estado.desfasaje))}
+            </Text>
+          </View>
+        ) : (
+          <Pressable
+            style={[estilos.chip, sesion.estado.ocupado && estilos.apagado]}
+            onPress={() => sesion.empezar()}
+            disabled={sesion.estado.ocupado}
+            accessibilityRole="button"
+          >
+            <Text style={estilos.chipTexto}>{sesion.estado.ocupado ? '…' : T.inicio.iniciarEntrenamiento}</Text>
+          </Pressable>
+        )}
       </View>
 
       <Text style={estilos.etiqueta}>{T.inicio.racha}</Text>
@@ -218,8 +253,72 @@ export default function Inicio({
       )}
 
       {aviso !== '' && <Text style={estilos.aviso}>{aviso}</Text>}
+      {sesion.estado.aviso !== '' && <Text style={estilos.aviso}>{sesion.estado.aviso}</Text>}
 
-      {registradoHoy ? (
+      {sesion.estado.corriendo && sesion.estado.inicio ? (
+        <View style={estilos.sesion}>
+          <Text style={estilos.etiqueta}>{T.sesion.label}</Text>
+          <Text style={estilos.crono}>
+            {cronoLindo(transcurrido(sesion.estado.inicio, sesion.estado.desfasaje))}
+          </Text>
+          {sesion.estado.porUbicacion && <Text style={estilos.nota}>{T.inicio.sesionSola}</Text>}
+
+          {terminando ? (
+            <>
+              <Text style={estilos.pregunta}>
+                {T.sesion.terminarPregunta}{' '}
+                <Text style={estilos.preguntaFuerte}>
+                  {T.sesion.terminarLlevas(
+                    sesion.estado.series,
+                    duracionLinda(transcurrido(sesion.estado.inicio, sesion.estado.desfasaje))
+                  )}
+                </Text>
+              </Text>
+              {/* "Seguir" se queda con el botón sólido: el que llegó acá sin
+                  querer toca donde ya estaba tocando y no pasa nada. */}
+              <Pressable style={estilos.solido} onPress={() => setTerminando(false)}>
+                <Text style={estilos.textoSolido}>{T.sesion.seguir}</Text>
+              </Pressable>
+              <Pressable
+                style={estilos.secundario}
+                disabled={sesion.estado.ocupado}
+                onPress={async () => {
+                  const c = await sesion.terminar();
+                  setTerminando(false);
+                  // Sin resumen si la base deshizo el día: no hubo
+                  // entrenamiento, y festejar un toque sin querer es peor.
+                  if (c && !c.deshizoElDia) setCierre(c);
+                  cargar();
+                }}
+              >
+                <Text style={estilos.enlace}>{sesion.estado.ocupado ? T.sesion.guardando : T.sesion.terminar}</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable style={estilos.solido} onPress={() => setTerminando(true)}>
+              <Text style={estilos.textoSolido}>{T.sesion.terminar}</Text>
+            </Pressable>
+          )}
+        </View>
+      ) : cierre ? (
+        // EL RESUMEN DEL FINAL: dos números y nada más. Se cierra tocando.
+        <Pressable style={estilos.resumen} onPress={() => setCierre(null)}>
+          <Text style={estilos.resumenTitulo}>{T.sesion.resumenTitulo}</Text>
+          <View style={estilos.cifras}>
+            <View style={estilos.cifra}>
+              <Text style={estilos.cifraNumero}>{cierre.minutos}</Text>
+              <Text style={estilos.etiqueta}>{T.sesion.resumenMinutos}</Text>
+            </View>
+            {cierre.series > 0 && (
+              <View style={estilos.cifra}>
+                <Text style={estilos.cifraNumero}>{cierre.series}</Text>
+                <Text style={estilos.etiqueta}>{T.sesion.resumenSeries(cierre.series)}</Text>
+              </View>
+            )}
+          </View>
+          {cierre.porUbicacion && <Text style={estilos.nota}>{T.sesion.resumenSolo}</Text>}
+        </Pressable>
+      ) : registradoHoy ? (
         <Text style={estilos.hecho}>{T.inicio.diaRegistrado}</Text>
       ) : (
         <Pressable
@@ -288,4 +387,37 @@ const estilos = StyleSheet.create({
   aviso: { color: '#8a93a8', fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19 },
   error: { color: '#e8705f', fontSize: 13, textAlign: 'center' },
   enlace: { color: '#8a93a8', fontSize: 13 },
+
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderWidth: 1,
+    borderColor: '#2a3040',
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    minHeight: 36,
+  },
+  chipTexto: { color: '#c4c2ba', fontSize: 13, fontVariant: ['tabular-nums'] },
+  latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7e8ca8' },
+
+  sesion: { marginTop: 34 },
+  crono: { color: '#e8ecf6', fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 4 },
+  nota: { color: '#4a5163', fontSize: 12, lineHeight: 17, marginTop: 8 },
+  pregunta: { color: '#8a93a8', fontSize: 14, lineHeight: 20, marginTop: 24 },
+  preguntaFuerte: { color: '#e8ecf6', fontWeight: '600' },
+  secundario: { paddingVertical: 14, alignItems: 'center' },
+
+  resumen: {
+    marginTop: 34,
+    paddingVertical: 22,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: '#1d2230',
+  },
+  resumenTitulo: { color: '#e8ecf6', fontSize: 18, fontWeight: '500' },
+  cifras: { flexDirection: 'row', gap: 36, marginTop: 14 },
+  cifra: { alignItems: 'flex-start' },
+  cifraNumero: { color: '#c4c2ba', fontSize: 40, fontWeight: '300', fontVariant: ['tabular-nums'] },
 });

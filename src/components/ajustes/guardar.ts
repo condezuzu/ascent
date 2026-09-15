@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Perfil } from '@nucleo/tipos';
-import { avisarFallo } from '@/lib/cola';
+import { avisarFallo } from '@compartido/cola';
 import { T } from '@nucleo/textos';
 
 /**

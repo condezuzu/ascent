@@ -7,7 +7,7 @@ import { T } from '@nucleo/textos';
 import Recorrido from '@/components/Recorrido';
 import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
-import { eventos } from '@/plataforma/eventos';
+import { eventos } from '@compartido/eventos';
 import { contarPendientes, AVISO_SOCIAL } from '@/lib/avisos';
 
 const ITEMS = [

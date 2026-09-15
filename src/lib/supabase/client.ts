@@ -55,3 +55,6 @@ export function crearCliente() {
   unico ??= createBrowserClient(URL_SUPA!, CLAVE!);
   return unico;
 }
+
+/** El cliente de ESTA app, para lo compartido (`compartido/`). */
+export type Cliente = ReturnType<typeof crearCliente>;

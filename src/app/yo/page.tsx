@@ -8,7 +8,7 @@ import { prepararFoto } from '@/lib/foto';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
 import { planetaDeDia } from '@nucleo/rangos';
-import { guardarPerfilCache } from '@/lib/cache';
+import { guardarPerfilCache } from '@compartido/cache';
 import { problemaConLaImagen, subirAvatar } from '@/lib/avatar';
 import type { Log, Perfil, UsuarioPublico } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';

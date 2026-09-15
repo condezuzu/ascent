@@ -11,9 +11,9 @@
  * falla si una pantalla llama a una función de la base creada en la migración
  * 35 o después sin pasar por acá.
  *
- * ANTES ESTO SE HACÍA A MANO: el botón de Google tiene un `GOOGLE_LISTO = false`
- * que alguien tiene que acordarse de cambiar. Funciona para algo que se prende
- * una vez; no para cada migración.
+ * ANTES ESTO SE HACÍA A MANO: una constante en `false` que alguien tenía que
+ * acordarse de cambiar. Funciona para algo que se prende una vez; no para cada
+ * migración.
  */
 
 export const REQUIERE = {

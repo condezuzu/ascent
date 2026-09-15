@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { marcarPunto } from '@/lib/gimnasio';
-import { avisarFallo } from '@/lib/cola';
+import { avisarFallo } from '@compartido/cola';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 

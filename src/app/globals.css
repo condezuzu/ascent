@@ -1471,22 +1471,6 @@ textarea::placeholder {
   margin-top: 10px;
   text-align: center;
 }
-.separador {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--apagado);
-  font-size: 12px;
-  margin: 18px 0;
-}
-.separador::before,
-.separador::after {
-  content: '';
-  flex: 1;
-  height: 0.5px;
-  background: var(--linea);
-}
-
 /* ---------- ajustes ---------- */
 .dias-selector {
   display: flex;

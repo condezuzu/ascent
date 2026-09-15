@@ -1,8 +1,8 @@
 'use client';
 
 import { cronoLindo, transcurrido } from '@nucleo/sesiones';
-import { cuentaAtras, restante } from '@/lib/descanso';
-import type { EstadoSesion } from '@/lib/usarSesion';
+import { cuentaAtras, restante } from '@compartido/descanso';
+import type { EstadoSesion } from '@compartido/usarSesion';
 import { T } from '@nucleo/textos';
 
 /**

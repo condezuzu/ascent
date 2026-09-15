@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { anotar } from '@/lib/bitacora';
+import { anotar } from '@compartido/bitacora';
 import { plataforma } from '@/plataforma';
 
 /**

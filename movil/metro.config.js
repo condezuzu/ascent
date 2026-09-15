@@ -28,6 +28,34 @@ config.resolver.nodeModulesPaths = [
 
 config.resolver.extraNodeModules = {
   '@nucleo': path.resolve(raiz, 'nucleo'),
+  // Lo compartido con la web (la sesión, la cola, el descanso). Pide
+  // `@plataforma` y `@cliente` sin saber de qué app es: acá son los nativos.
+  '@compartido': path.resolve(raiz, 'compartido'),
+  '@plataforma': path.resolve(__dirname, 'src', 'plataforma'),
+  '@cliente': path.resolve(__dirname, 'src', 'cliente'),
+};
+
+// UN SOLO REACT. `compartido/` vive en la raíz del repo, y ahí al lado está el
+// `node_modules` de la WEB, con su propio React. Metro busca un paquete
+// primero en las carpetas de arriba del archivo que lo pide, así que
+// `import { useState } from 'react'` desde `compartido/` cargaba el React de la
+// web: dos Reacts, y los hooks revientan con "Invalid hook call".
+//
+// Los paquetes que piden `compartido/` y `nucleo/` se resuelven como si los
+// pidiera la app nativa. Los imports relativos y los alias no se tocan.
+const compartidos = [path.resolve(raiz, 'compartido'), path.resolve(raiz, 'nucleo')];
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  const desdeAfuera = compartidos.some((d) => context.originModulePath.startsWith(d));
+  const esPaquete = !moduleName.startsWith('.') && !moduleName.startsWith('@nucleo') &&
+    !moduleName.startsWith('@compartido') && moduleName !== '@plataforma' && moduleName !== '@cliente';
+  if (desdeAfuera && esPaquete) {
+    return context.resolveRequest(
+      { ...context, originModulePath: path.resolve(__dirname, 'index.ts') },
+      moduleName,
+      platform
+    );
+  }
+  return context.resolveRequest(context, moduleName, platform);
 };
 
 module.exports = config;

@@ -1,7 +1,9 @@
-import { plataforma } from '@/plataforma';
-import { eventos } from '@/plataforma/eventos';
-import { anotar } from '@/lib/bitacora';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { plataforma } from '@plataforma';
+import { eventos } from '@compartido/eventos';
+import { anotar } from '@compartido/bitacora';
+// El tipo del cliente lo pone cada app: la web y la nativa traen cada una su
+// copia de supabase-js, y para TypeScript son dos clases distintas.
+import type { Cliente } from '@cliente';
 import { quedanTrasPasada } from '@nucleo/cola';
 
 /**
@@ -119,7 +121,7 @@ async function guardar(l: Pendiente[]) {
  * llegado (confirmar la sesión antes de preguntarle a la base) llama a
  * `vaciar` y lo espera.
  */
-export async function encolar(supabase: SupabaseClient, tarea: Encolable) {
+export async function encolar(supabase: Cliente, tarea: Encolable) {
   const id = `${tarea.rpc}:${'p_sesion' in tarea.args ? tarea.args.p_sesion : tarea.args.p_ejercicio}`;
   await enTurno(async () => {
     const lista = (await leer()).filter((p) => p.id !== id);
@@ -140,7 +142,7 @@ let otraVez = false;
  * para lo que se haya encolado en el medio. Así `await vaciar()` quiere decir
  * de verdad "ya se intentó mandar todo lo que había".
  */
-export async function vaciar(supabase: SupabaseClient): Promise<void> {
+export async function vaciar(supabase: Cliente): Promise<void> {
   if (pasada) {
     otraVez = true;
     return pasada;
@@ -159,7 +161,7 @@ export async function vaciar(supabase: SupabaseClient): Promise<void> {
 }
 
 /** Devuelve `true` si cortó por un error (la red, casi siempre). */
-async function unaPasada(supabase: SupabaseClient): Promise<boolean> {
+async function unaPasada(supabase: Cliente): Promise<boolean> {
     const lista = await enTurno(leer);
     if (lista.length === 0) return false;
     // Lo que esta pasada mandó o descartó: es lo único que se saca al final.

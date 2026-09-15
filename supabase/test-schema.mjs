@@ -54,7 +54,7 @@ import {
 // imitación nuestra.
 import { NextResponse } from 'next/server.js';
 import { ESPERA_LLEGADA_MS } from '../nucleo/reglas.ts';
-import { eventos } from '../src/plataforma/eventos.ts';
+import { eventos } from '../compartido/eventos.ts';
 import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '../nucleo/geo.ts';
 import {
   bloquesVacios,
@@ -2330,6 +2330,8 @@ console.log('\n35. Nada del navegador fuera de src/plataforma');
     }
   };
   recorrer(SRC);
+  // Lo compartido con la app nativa también es código de la app.
+  recorrer(join(SRC, '..', 'compartido'));
 
   const culpables = [];
   for (const a of archivos) {
@@ -2365,6 +2367,7 @@ console.log('\n36. Ningun `\\b` suelto adentro de un template literal');
     }
   };
   recorrer(join(RAIZ, 'src'));
+  recorrer(join(RAIZ, 'compartido'));
   recorrer(join(RAIZ, 'nucleo'));
   recorrer(join(RAIZ, 'supabase'));
 
@@ -2890,6 +2893,8 @@ console.log('\n45. Ningun parametro de RPC es en realidad una constante');
     }
   };
   recorrer(SRC);
+  // Lo compartido con la app nativa también es código de la app.
+  recorrer(join(SRC, '..', 'compartido'));
 
   const pasados = new Map(); // "fn.param" → Set de los textos que se le pasan
   const llamadas = new Set(); // que RPC llama el cliente
@@ -3250,6 +3255,7 @@ console.log('\n50. El diccionario no junta frases muertas');
   // usa el núcleo, que desde la mudanza ya no vive adentro de `src`. Mirando
   // una sola, este test las daba por muertas: se usan todos los días.
   recorrer(join(RAIZ, 'src'));
+  recorrer(join(RAIZ, 'compartido'));
   recorrer(join(RAIZ, 'nucleo'));
 
   const codigo = archivos.map((a) => leerArch(a, 'utf8')).join('\n');
@@ -3491,6 +3497,7 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
     }
   };
   recorrer(join(RAIZ, 'src'));
+  recorrer(join(RAIZ, 'compartido'));
   recorrer(join(RAIZ, 'nucleo'));
 
   // a) LAS CADENAS, en todos lados y no solo en el diccionario.
@@ -4909,6 +4916,7 @@ console.log('\n71. Lo que el codigo nombra, existe');
     }
   };
   recorrer(join(RAIZ, 'src'));
+  recorrer(join(RAIZ, 'compartido'));
   recorrer(join(RAIZ, 'movil', 'src'));
   recorrer(join(RAIZ, 'nucleo'));
 
@@ -5580,11 +5588,12 @@ console.log('\n81. Lo que depende de una migracion pregunta si esta');
     }
   };
   recorrer(join(RAIZ, 'src'));
+  recorrer(join(RAIZ, 'compartido'));
 
   // Los que no aplican: la ruta del cron (la llama el servidor, no una
   // pantalla), el propio detector de version, y la cola, que tiene la LISTA de
   // lo que se puede encolar: la pregunta va donde se encola (`usarSesion`).
-  const exentos = [/src[\\/]app[\\/]api[\\/]/, /src[\\/]lib[\\/]esquema\.ts$/, /src[\\/]lib[\\/]cola\.ts$/];
+  const exentos = [/src[\\/]app[\\/]api[\\/]/, /compartido[\\/]esquema\.ts$/, /compartido[\\/]cola\.ts$/];
   const sinPreguntar = [];
   let revisadas = 0;
   for (const a of archivos) {
@@ -6202,6 +6211,40 @@ console.log('\n91. Series por musculo: una escala para todas las filas');
   chequear('el tope es uno solo para todas', [r.topeSeries, r.topeKilos], [30, 0]);
   chequear('la fila dejada lo dice', r.filas.find((f) => f.grupo === 'pecho').dejado?.ultima, '2026-07-01');
   chequear('las que no, no', r.filas.find((f) => f.grupo === 'piernas').dejado, null);
+}
+console.log('\n92. Lo compartido no es de ninguna de las dos apps');
+{
+  // `compartido/` (la sesion, la cola, el descanso) lo usan la web y la app
+  // nativa. Si un archivo de ahi importa del arbol de la web (`@/...`), la
+  // nativa no compila; si importa algo de React Native, la web no compila.
+  // Y cada app pone SU plataforma y SU cliente con los alias `@plataforma` y
+  // `@cliente`: pedirlos por otro camino es atarse a una de las dos.
+  const { readdirSync: leerDir, readFileSync: leerArch } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const DIR = join(RAIZ, 'compartido');
+  const permitido = (d) =>
+    d.startsWith('@nucleo/') || d.startsWith('@compartido/') || d === '@plataforma' || d === '@cliente' ||
+    d === 'react' || d.startsWith('./');
+  const colados = [];
+  for (const n of leerDir(DIR).filter((x) => /\.tsx?$/.test(x))) {
+    const codigo = sinComentarios(leerArch(join(DIR, n), 'utf8'));
+    for (const m of codigo.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+      if (!permitido(m[1])) colados.push(`${n} importa ${m[1]}`);
+    }
+  }
+  chequear('compartido/ solo importa del nucleo, de si mismo, de React y de los dos alias', colados, []);
+
+  // La app nativa usa la MISMA sesion, no una copia.
+  const inicio = leerArch(join(RAIZ, 'movil', 'src', 'Inicio.tsx'), 'utf8');
+  chequear('Inicio nativo usa la sesion compartida', inicio.includes("from '@compartido/usarSesion'"), true);
+  chequear("y no llama a iniciar_sesion por su cuenta", /rpc\(\s*'(iniciar|terminar)_sesion'/.test(inicio), false);
+  // Los dos lados ponen los alias.
+  const tsWeb = leerArch(join(RAIZ, 'tsconfig.json'), 'utf8');
+  const tsNativo = leerArch(join(RAIZ, 'movil', 'tsconfig.json'), 'utf8');
+  const metro = leerArch(join(RAIZ, 'movil', 'metro.config.js'), 'utf8');
+  chequear('la web define @plataforma y @cliente', ['"@plataforma"', '"@cliente"', '"@compartido/*"'].every((a) => tsWeb.includes(a)), true);
+  chequear('la nativa tambien', ['"@plataforma"', '"@cliente"', '"@compartido/*"'].every((a) => tsNativo.includes(a)), true);
+  chequear('y Metro los encuentra', ["'@plataforma'", "'@cliente'", "'@compartido'"].every((a) => metro.includes(a)), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {

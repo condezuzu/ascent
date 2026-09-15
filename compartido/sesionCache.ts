@@ -1,9 +1,9 @@
 import { DESCANSO_PREDETERMINADO } from '@nucleo/reglas';
 import { cierreSolo } from '@nucleo/sesiones';
-import { plataforma } from '@/plataforma';
+import { plataforma } from '@plataforma';
 import type { EstadoBloques } from '@nucleo/bloques';
 import type { Vigilancia } from '@nucleo/llegada';
-import { eventos } from '@/plataforma/eventos';
+import { eventos } from '@compartido/eventos';
 
 const CLAVE = 'ascent:sesion';
 const CLAVE_LLEGADA = 'ascent:llegada';

@@ -1,4 +1,4 @@
-import { plataforma } from '@/plataforma';
+import { plataforma } from '@plataforma';
 import type { Perfil } from '@nucleo/tipos';
 
 // Caché del perfil en el propio teléfono. Sirve para que al volver a entrar

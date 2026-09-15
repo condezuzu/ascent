@@ -14,7 +14,7 @@ import {
   restante,
   vibrar,
   type DescansoVivo,
-} from '@/lib/descanso';
+} from '@compartido/descanso';
 
 /**
  * El descanso entre series (§18). Toma la pantalla entera: el teléfono está

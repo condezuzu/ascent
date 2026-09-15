@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { eventos } from '@/plataforma/eventos';
-import { FALLO } from '@/lib/cola';
-import { anotar } from '@/lib/bitacora';
+import { eventos } from '@compartido/eventos';
+import { FALLO } from '@compartido/cola';
+import { anotar } from '@compartido/bitacora';
 
 /**
  * "No se pudo guardar", una sola vez y en un solo lugar.

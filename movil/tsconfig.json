@@ -5,6 +5,15 @@
     "paths": {
       "@nucleo/*": [
         "../nucleo/*"
+      ],
+      "@compartido/*": [
+        "../compartido/*"
+      ],
+      "@plataforma": [
+        "./src/plataforma/index.ts"
+      ],
+      "@cliente": [
+        "./src/cliente/index.ts"
       ]
     },
     "allowImportingTsExtensions": true,
@@ -13,6 +22,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "../nucleo/**/*.ts"
+    "../nucleo/**/*.ts",
+    "../compartido/**/*.ts"
   ]
 }

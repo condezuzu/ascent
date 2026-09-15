@@ -9,7 +9,7 @@ import ListaDeBloques from '@/components/ListaDeBloques';
 import SelectorEjercicio from '@/components/SelectorEjercicio';
 import CampoPeso from '@/components/CampoPeso';
 import { leerAnotarPeso } from '@/lib/anotarPeso';
-import { usarVersionDelEsquema } from '@/lib/esquema';
+import { usarVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { eventos } from '@/plataforma/eventos';
+import { eventos } from '@compartido/eventos';
 import { PULSO } from '@/lib/pulso';
 import { plataforma } from '@/plataforma';
 

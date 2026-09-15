@@ -41,3 +41,9 @@ export const plataformaNativa: Plataforma = {
   haptica: hapticaNativa,
   pantalla: pantallaNativa,
 };
+
+/**
+ * Con el mismo nombre que la web: lo compartido importa `plataforma` de
+ * `@plataforma`, y cada app decide qué archivo es ese.
+ */
+export const plataforma = plataformaNativa;

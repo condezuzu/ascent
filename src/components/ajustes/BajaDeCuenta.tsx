@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
-import { borrarPerfilCache } from '@/lib/cache';
+import { borrarPerfilCache } from '@compartido/cache';
 import { eliminarCuenta } from '@/lib/cuenta';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';

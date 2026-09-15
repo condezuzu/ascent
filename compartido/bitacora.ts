@@ -1,4 +1,4 @@
-import { plataforma } from '@/plataforma';
+import { plataforma } from '@plataforma';
 
 /**
  * Lo que la app fue haciendo, guardado en el teléfono para mirarlo DESPUÉS.

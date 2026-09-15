@@ -4,17 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente, configuracionValida } from '@/lib/supabase/client';
 import { mensajeDeAuth } from '@nucleo/errores';
-import { borrarPerfilCache } from '@/lib/cache';
+import { borrarPerfilCache } from '@compartido/cache';
 import FondoEspacial from '@/components/FondoEspacial';
 import { T } from '@nucleo/textos';
 
 type Modo = 'entrar' | 'crear' | 'recuperar';
-
-// Google está apagado hasta que el proveedor esté configurado en Supabase
-// (Authentication → Providers → Google, con las credenciales de Google Cloud).
-// Un botón que falla es peor que no tenerlo: el usuario cree que la app está
-// rota. Para encenderlo alcanza con poner esto en true.
-const GOOGLE_LISTO = false;
 
 export default function Login() {
   const router = useRouter();
@@ -30,15 +24,6 @@ export default function Login() {
     setModo(m);
     setError('');
     setAviso('');
-  }
-
-  async function conGoogle() {
-    setError('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${location.origin}/auth/callback` },
-    });
-    if (error) setError(error.message);
   }
 
   async function enviar(e: React.FormEvent) {
@@ -152,15 +137,6 @@ export default function Login() {
             {cargando ? '…' : titulo}
           </button>
         </form>
-
-        {modo === 'entrar' && GOOGLE_LISTO && (
-          <>
-            <div className="separador">{T.entrar.o}</div>
-            <button className="boton-fantasma" onClick={conGoogle}>
-              {T.entrar.conGoogle}
-            </button>
-          </>
-        )}
 
         {modo === 'entrar' ? (
           <>

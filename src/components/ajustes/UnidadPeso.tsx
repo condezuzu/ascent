@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { guardarAnotarPeso, leerAnotarPeso } from '@/lib/anotarPeso';
-import { usarVersionDelEsquema } from '@/lib/esquema';
+import { usarVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 import { crearCliente } from '@/lib/supabase/client';
 import { guardarPreferencia } from './guardar';

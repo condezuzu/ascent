@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
-import { borrarPerfilCache } from '@/lib/cache';
+import { borrarPerfilCache } from '@compartido/cache';
 import { reiniciarGuia } from '@/lib/guia';
 import { T } from '@nucleo/textos';
 

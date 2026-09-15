@@ -10,7 +10,7 @@ import SubidaRango from '@/components/SubidaRango';
 import Insignia from '@/components/Insignia';
 import { PLANETAS, RANGOS } from '@nucleo/rangos';
 import { veloDeRango } from '@nucleo/atmosfera';
-import { eventos } from '@/plataforma/eventos';
+import { eventos } from '@compartido/eventos';
 import { PULSO } from '@/lib/pulso';
 
 export default function Galeria() {
