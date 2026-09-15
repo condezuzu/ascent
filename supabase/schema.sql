@@ -396,6 +396,12 @@ create table public.sesiones (
   -- exactamente igual que antes — que es lo que hace que se pueda ignorar sin
   -- perder nada. No hay pesos ni repeticiones: eso sería otra app.
   bloques jsonb not null default '[]'::jsonb,
+  -- La última vez que pasó algo: una serie, un cambio de ejercicio o de peso,
+  -- o el FIN de un descanso corriendo (migración 37). La sesión se cierra sola
+  -- media hora después, fechada acá y no en "ahora".
+  ultima_actividad timestamptz not null default now(),
+  -- Si la cerró el automático y no la persona: el teléfono lo avisa una vez.
+  cerro_sola boolean not null default false,
   constraint sesiones_bloques_es_lista check (jsonb_typeof(bloques) = 'array'),
   constraint sesiones_origen_valido check (origen in ('manual', 'ubicacion')),
   constraint sesiones_fin_solo_si_termino check ((estado = 'terminada') = (fin is not null))
@@ -1380,8 +1386,11 @@ $$;
 -- -------------------------------------------------------------
 
 -- A las 4 horas la sesión se cierra sola y queda SIN duración (§17.3).
+create or replace function public.ventana_inactividad()
+returns interval language sql immutable as $$ select interval '30 minutes' $$;
+
 create or replace function public.tope_sesion()
-returns interval language sql immutable as $$ select interval '4 hours' $$;
+returns interval language sql immutable as $$ select interval '2 hours' $$;
 
 -- Abajo de 5 minutos cuenta como día pero no como duración (§17.7): empezar
 -- y parar sin querer es una duración real que ensucia el promedio.
@@ -1411,9 +1420,45 @@ returns interval language sql immutable as $$ select interval '45 minutes' $$;
 -- -------------------------------------------------------------
 create or replace function public.cerrar_sesiones_vencidas(p_user uuid)
 returns void language sql security definer set search_path = public as $$
-  update sesiones set estado = 'abandonada'
-   where user_id = p_user and estado = 'corriendo' and now() - inicio >= tope_sesion();
+  update sesiones
+     set estado = 'terminada', fin = greatest(inicio, ultima_actividad), cerro_sola = true
+   where user_id = p_user and estado = 'corriendo'
+     and ultima_actividad > inicio
+     and now() >= ultima_actividad + ventana_inactividad();
+
+  update sesiones
+     set estado = 'abandonada', cerro_sola = true
+   where user_id = p_user and estado = 'corriendo'
+     and ultima_actividad <= inicio
+     and now() - inicio >= tope_sesion();
 $$;
+
+create or replace function public.marcar_actividad(p_sesion uuid, p_hasta timestamptz)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  s sesiones;
+  t timestamptz;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  select * into s from sesiones where id = p_sesion and user_id = uid;
+  if s.id is null then return; end if;
+
+  t := least(greatest(coalesce(p_hasta, now()), s.inicio), now() + interval '15 minutes');
+
+  if s.estado = 'corriendo' then
+    update sesiones set ultima_actividad = greatest(ultima_actividad, t) where id = s.id;
+  elsif s.estado = 'terminada' and s.cerro_sola and t > s.fin and t <= s.fin + ventana_inactividad() then
+    update sesiones
+       set ultima_actividad = greatest(ultima_actividad, t),
+           fin = least(t, now())
+     where id = s.id;
+  end if;
+end;
+$$;
+
+revoke execute on function public.marcar_actividad(uuid, timestamptz) from public, anon;
+grant execute on function public.marcar_actividad(uuid, timestamptz) to authenticated;
 
 -- -------------------------------------------------------------
 -- Empezar
@@ -1453,9 +1498,6 @@ begin
       'yaEstaba', true, 'registro', null);
   end if;
 
-  -- Ni en el futuro ni más atrás de lo permitido. `least` de `now()` primero
-  -- porque un reloj adelantado en el teléfono es mucho más común que uno
-  -- atrasado, y un inicio en el futuro daría duraciones negativas.
   arranque := least(now(), greatest(coalesce(p_desde, now()), now() - atraso_maximo()));
 
   select id into l from logs where user_id = uid and fecha = hoy;
@@ -1466,8 +1508,11 @@ begin
     end if;
     l := (registro ->> 'log_id')::uuid;
   end if;
-  insert into sesiones (user_id, log_id, inicio, origen, creo_el_dia)
-    values (uid, l, arranque, p_origen, registro is not null)
+  -- `ultima_actividad` en el inicio: todavía no pasó nada. Es lo que hace que
+  -- una sesión en la que nunca se toca el contador caiga en la regla de las
+  -- dos horas y no en la de la media hora.
+  insert into sesiones (user_id, log_id, inicio, origen, creo_el_dia, ultima_actividad)
+    values (uid, l, arranque, p_origen, registro is not null, arranque)
     returning * into s;
   return jsonb_build_object('bloqueado', false, 'id', s.id, 'inicio', s.inicio,
     'origen', s.origen, 'series', s.series, 'ahora', now(),
@@ -1492,31 +1537,36 @@ declare
   deshizo boolean := false;
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  -- primero se cierran las vencidas: si pasaron 4 horas, esta llamada llega
-  -- tarde y la sesión ya no tiene duración
-  perform cerrar_sesiones_vencidas(uid);
 
   select * into s from sesiones where user_id = uid and estado = 'corriendo';
   if s.id is null then
     return jsonb_build_object('termino', false);
   end if;
 
-  -- Nunca antes del inicio —eso daría duración negativa— ni después de ahora.
-  cierre := least(now(), greatest(coalesce(p_hasta, now()), s.inicio));
+  -- Sin actividad y pasado el tope: la cierra el automático, sin duración.
+  if s.ultima_actividad <= s.inicio and now() - s.inicio >= tope_sesion() then
+    perform cerrar_sesiones_vencidas(uid);
+    return jsonb_build_object('termino', false);
+  end if;
+
+  if s.ultima_actividad > s.inicio and now() >= s.ultima_actividad + ventana_inactividad() then
+    cierre := s.ultima_actividad;
+  else
+    -- Nunca antes del inicio —eso daría duración negativa— ni después de ahora.
+    cierre := least(now(), greatest(coalesce(p_hasta, now()), s.inicio));
+  end if;
 
   update sesiones set estado = 'terminada', fin = cierre
    where id = s.id
    returning * into s;
 
-  -- EL TOQUE ACCIDENTAL. Tres condiciones y las tres tienen que darse:
+  -- EL TOQUE ACCIDENTAL. Cuatro condiciones y las cuatro tienen que darse:
   --   1. no llegó al piso de 5 minutos → no hubo entrenamiento;
-  --   2. el día lo creó ESTA sesión    → no lo registró nadie más;
-  --   3. no hay otra sesión ese día    → no entrenaste en otro momento.
-  --
-  -- Se borra el log y no la sesión: la cascada de `sesiones.log_id` se lleva la
-  -- sesión sola, y el trigger de `logs` recalcula la racha. Las fotos NO se
-  -- pierden: su `log_id` es `on delete set null`.
+  --   2. no se contó ninguna serie       → tampoco lo dice el contador;
+  --   3. el día lo creó ESTA sesión      → no lo registró nadie más;
+  --   4. no hay otra sesión ese día      → no entrenaste en otro momento.
   if (s.fin - s.inicio) < piso_sesion()
+     and s.series = 0
      and s.creo_el_dia
      and not exists (
        select 1 from sesiones o where o.log_id = s.log_id and o.id <> s.id
@@ -1529,7 +1579,6 @@ begin
   return jsonb_build_object(
     'termino', true,
     'segundos', extract(epoch from (s.fin - s.inicio)),
-    -- abajo del piso la sesión existe y el día cuenta, pero no suma duración
     'cuenta', (s.fin - s.inicio) >= piso_sesion(),
     'deshizo_el_dia', deshizo
   );
@@ -1694,22 +1743,37 @@ returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
   s sesiones;
+  sola sesiones;
 begin
   if uid is null then return null; end if;
   perform cerrar_sesiones_vencidas(uid);
   select * into s from sesiones where user_id = uid and estado = 'corriendo';
   if s.id is null then
-    return jsonb_build_object('corriendo', false, 'ahora', now());
+    select * into sola from sesiones
+     where user_id = uid and cerro_sola and inicio > now() - interval '12 hours'
+     order by inicio desc limit 1;
+    return jsonb_build_object(
+      'corriendo', false,
+      'ahora', now(),
+      'cerrada_sola', case when sola.id is null then null else jsonb_build_object(
+        'id', sola.id,
+        'inicio', sola.inicio,
+        'fin', sola.fin,
+        'estado', sola.estado,
+        'series', sola.series
+      ) end
+    );
   end if;
   return jsonb_build_object(
     'corriendo', true,
     'id', s.id,
     'inicio', s.inicio,
-    -- el cliente lo necesita para decidir si al salir de la zona la cierra
     'origen', s.origen,
     'ahora', now(),
     'series', s.series,
-    'tope_segundos', extract(epoch from tope_sesion())
+    'ultima_actividad', s.ultima_actividad,
+    'tope_segundos', extract(epoch from tope_sesion()),
+    'ventana_segundos', extract(epoch from ventana_inactividad())
   );
 end;
 $$;
@@ -2279,3 +2343,10 @@ revoke execute on function public.tomar_avisos_del_dia() from public, anon, auth
 grant execute on function public.tomar_avisos_del_dia() to service_role;
 revoke execute on function public.olvidar_suscripcion_push(text) from public, anon, authenticated;
 grant execute on function public.olvidar_suscripcion_push(text) to service_role;
+
+-- LA VERSIÓN DEL ESQUEMA (migración 37). Cada migración la reescribe con su número.
+create or replace function public.version_del_esquema()
+returns int language sql immutable as $$ select 37; $$;
+
+revoke execute on function public.version_del_esquema() from public;
+grant execute on function public.version_del_esquema() to anon, authenticated;

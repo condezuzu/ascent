@@ -14,6 +14,7 @@ import {
   PISO_SESION_SEGUNDOS,
   PLANETAS,
   TOPE_SESION_SEGUNDOS,
+  VENTANA_INACTIVIDAD_SEGUNDOS,
   descansosVigentes,
   numeroDeRango,
   planetaDeDia,
@@ -1284,11 +1285,12 @@ console.log('\n26. Las reglas escritas dos veces: SQL contra cliente');
   // ---- las dos constantes del cronómetro ----
   const topes = await db.query(`
     select extract(epoch from tope_sesion())::float8 as tope,
+           extract(epoch from ventana_inactividad())::float8 as ventana,
            extract(epoch from piso_sesion())::float8 as piso`);
   chequear(
-    'el tope de 4 h y el piso de 5 min son el mismo número de los dos lados',
-    [topes.rows[0].tope, topes.rows[0].piso],
-    [TOPE_SESION_SEGUNDOS, PISO_SESION_SEGUNDOS]
+    'el tope sin actividad, la ventana y el piso son el mismo número de los dos lados',
+    [topes.rows[0].tope, topes.rows[0].ventana, topes.rows[0].piso],
+    [TOPE_SESION_SEGUNDOS, VENTANA_INACTIVIDAD_SEGUNDOS, PISO_SESION_SEGUNDOS]
   );
 
   // ---- el descanso entre series ----
@@ -1416,13 +1418,19 @@ console.log('\n27. Cronómetro de sesión');
     chequear('terminar sin nada corriendo no hace nada', otra.termino, false);
   }
 
-  // ---- a las 4 horas se cierra sola, SIN duración ----
+  // ---- SIN NINGUNA ACTIVIDAD, a las 2 horas se cierra sola y SIN duración ----
+  //
+  // Era a las 4. Con la migración 37 esta regla queda solo para la sesión en la
+  // que nunca se tocó nada: ahí no hay última actividad que usar.
   {
     const u = await nuevoUsuario();
     await empezar(u);
-    await db.query(`update sesiones set inicio = now() - interval '4 hours 1 minute' where user_id = $1`, [u]);
+    await db.query(
+      `update sesiones set inicio = now() - interval '2 hours 1 minute', ultima_actividad = now() - interval '2 hours 1 minute' where user_id = $1`,
+      [u]
+    );
     const r = (await db.query('select mi_sesion() as v')).rows[0].v;
-    chequear('pasadas 4 horas ya no hay sesión corriendo', r.corriendo, false);
+    chequear('pasadas 2 horas sin actividad ya no hay sesión corriendo', r.corriendo, false);
     const s = await laSesion(u);
     chequear('quedó abandonada', s.estado, 'abandonada');
     // "sin duración" es la AUSENCIA de fin, no un número especial
@@ -5344,6 +5352,263 @@ console.log('\n77. Los pesos en el resumen del dia');
   // En libras nadie carga 137,21: al medio, que es como son los discos.
   chequear('libras al medio', pesoCorto(61.23, 'lb'), '135');
   chequear('el disco chico de cada lado', [pasoDePeso('kg'), pasoDePeso('lb')], [2.5, 5]);
+}
+console.log('\n78. La sesion se cierra sola cuando se deja de entrenar');
+{
+  // "Me olvide de terminar y quedo en tres horas." Media hora sin actividad y
+  // se cierra, fechada en la ULTIMA actividad: la duracion no incluye el
+  // tiempo muerto. Los tiempos se mueven a mano en la base; ningun test espera
+  // media hora.
+  const arrancar = async (hace) => {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await db.query('select iniciar_sesion()');
+    await db.query(
+      `update sesiones set inicio = now() - $2::interval, ultima_actividad = now() - $2::interval where user_id = $1`,
+      [u, hace]
+    );
+    const id = (await db.query('select id from sesiones where user_id = $1', [u])).rows[0].id;
+    return { u, id };
+  };
+  const marcar = (id, cuando) => db.query(`select marcar_actividad($1, now() + $2::interval)`, [id, cuando]);
+  const sesion = async (id) =>
+    (await db.query(
+      `select estado, cerro_sola,
+              round(extract(epoch from (now() - fin)) / 60)::int as fin_hace,
+              round(extract(epoch from (fin - inicio)) / 60)::int as duro
+         from sesiones where id = $1`,
+      [id]
+    )).rows[0];
+  const miSesion = async () => (await db.query('select mi_sesion() as v')).rows[0].v;
+
+  // ---- media hora quieta: se cierra en la ultima actividad ----
+  {
+    const { u, id } = await arrancar('90 minutes');
+    await marcar(id, '-40 minutes');
+    const r = await miSesion();
+    chequear('pasada la media hora ya no corre', r.corriendo, false);
+    const s = await sesion(id);
+    chequear('terminada, fechada en la ultima actividad', [s.estado, s.cerro_sola, s.fin_hace, s.duro], ['terminada', true, 40, 50]);
+    chequear('y lo avisa una vez', [r.cerrada_sola?.id === id, r.cerrada_sola?.estado], [true, 'terminada']);
+    chequear('el dia no se toca', (await perfil(u)).racha_actual, 1);
+  }
+
+  // ---- adentro de la media hora, sigue ----
+  {
+    const { id } = await arrancar('60 minutes');
+    await marcar(id, '-20 minutes');
+    chequear('con actividad hace 20 minutos sigue corriendo', (await miSesion()).corriendo, true);
+  }
+
+  // ---- EL DESCANSO CORRIENDO CUENTA ----
+  //
+  // El telefono marca hasta cuando dura el descanso. Ultima serie hace 35
+  // minutos, pero un descanso que termina en dos: esta entrenando.
+  {
+    const { id } = await arrancar('60 minutes');
+    await marcar(id, '-35 minutes');
+    await marcar(id, '2 minutes');
+    chequear('un descanso corriendo la mantiene viva', (await miSesion()).corriendo, true);
+    // Y el telefono no puede fabricar actividad a futuro: se acota a 15 minutos.
+    await marcar(id, '5 hours');
+    const t = (await db.query(`select round(extract(epoch from (ultima_actividad - now())) / 60)::int m from sesiones where id = $1`, [id])).rows[0].m;
+    chequear('la actividad a futuro se acota', t, 15);
+  }
+
+  // ---- TOCAR TERMINAR TARDE no suma el tiempo muerto ----
+  {
+    const { id } = await arrancar('90 minutes');
+    await marcar(id, '-50 minutes');
+    // Sin que nadie haya leido la sesion: el cierre lo decide terminar.
+    const r = (await db.query('select terminar_sesion() as v')).rows[0].v;
+    chequear('terminar tarde cierra en la ultima actividad', Math.round(r.segundos / 60), 40);
+  }
+
+  // ---- el toque accidental ya no se lleva un dia con series ----
+  {
+    const { u, id } = await arrancar('4 minutes');
+    await db.query('select fijar_series($1, 3)', [id]);
+    await marcar(id, '-1 minutes');
+    const r = (await db.query('select terminar_sesion() as v')).rows[0].v;
+    chequear('tres series en cuatro minutos no borran el dia', [r.deshizo_el_dia, (await perfil(u)).racha_actual], [false, 1]);
+  }
+
+  // ---- el cierre automatico nunca borra el dia ----
+  {
+    const { u, id } = await arrancar('40 minutes');
+    await marcar(id, '-38 minutes'); // dos minutos de actividad
+    await miSesion();
+    chequear('una sesion corta cerrada sola deja el dia', [(await sesion(id)).estado, (await perfil(u)).racha_actual], ['terminada', 1]);
+  }
+
+  // ---- SIN NINGUNA ACTIVIDAD: la media hora no aplica ----
+  //
+  // La persona usa el cronometro y no el contador. Cerrarla en el inicio le
+  // daria duracion cero, y si arranco sola al llegar al gimnasio le borraria
+  // el dia. Esas siguen hasta el tope.
+  {
+    const { id } = await arrancar('50 minutes');
+    chequear('sin actividad, a los 50 minutos sigue corriendo', (await miSesion()).corriendo, true);
+  }
+
+  // ---- LA COLA SIN SENAL LLEGA TARDE ----
+  {
+    const { id } = await arrancar('100 minutes');
+    await marcar(id, '-70 minutes');
+    await miSesion(); // se cierra con lo que sabe: fin hace 70
+    chequear('se cerro con datos viejos', (await sesion(id)).fin_hace, 70);
+    // Suben toques que pasaron adentro de la media hora siguiente: el cierre
+    // estaba mal y se corre.
+    await marcar(id, '-55 minutes');
+    chequear('un toque tardio adentro de la ventana corre el fin', (await sesion(id)).fin_hace, 55);
+    // Uno que paso mucho despues es otra cosa: la persona volvio. No se mete
+    // ese rato en la duracion.
+    await marcar(id, '-2 minutes');
+    chequear('uno de cuando volvio no estira la sesion', (await sesion(id)).fin_hace, 55);
+  }
+}
+
+console.log('\n79. La base dice que version es');
+{
+  // EL BUG: la interfaz del peso se mostro antes de la migracion 36, y la
+  // funcion vieja tiraba los pesos sin dar error. La interfaz ahora pregunta la
+  // version; esto garantiza que la respuesta sea verdad: la ultima migracion
+  // tiene que reescribir `version_del_esquema` con SU numero.
+  const { readdirSync: leerDir, readFileSync: leerArch } = await import('node:fs');
+  const DIR = dirname(fileURLToPath(import.meta.url));
+  const numeros = leerDir(DIR)
+    .map((n) => /^migracion-(\d+)/.exec(n))
+    .filter(Boolean)
+    .map((m) => Number(m[1]));
+  const ultima = Math.max(...numeros);
+  const v = (await db.query('select version_del_esquema() as v')).rows[0].v;
+  chequear('la version es la de la ultima migracion', v, ultima);
+  const archivo = leerDir(DIR).find((n) => n.startsWith(`migracion-${ultima}`));
+  const texto = leerArch(join(DIR, archivo), 'utf8');
+  chequear(
+    'y la ultima migracion la escribe',
+    new RegExp(`function public\\.version_del_esquema\\(\\)[\\s\\S]*?select ${ultima};`).test(texto),
+    true
+  );
+}
+console.log('\n80. El telefono aplica la misma regla de cierre que la base');
+{
+  // Sin senal, el telefono decide solo si la sesion ya se cerro. Si su regla
+  // y la de la base se separan, la pantalla muestra corriendo algo que la base
+  // cerro, o al reves. Se corren los dos contra los mismos casos.
+  const { cierreSolo, masReciente } = await import('../nucleo/sesiones.ts');
+  const casos = [
+    // [inicio hace (min), ultima actividad hace (min) o null, se espera]
+    [90, 40, 'terminada'],
+    [60, 20, null],
+    [60, 31, 'terminada'],
+    [60, 29, null],
+    [50, null, null], // sin actividad: todavia no
+    [121, null, 'abandonada'],
+    [121, 121, 'abandonada'], // actividad igual al inicio es "sin actividad"
+    [130, 5, null], // sesion larga pero activa: sigue
+  ];
+  const difieren = [];
+  for (const [inicioHace, ultimaHace, espera] of casos) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await db.query('select iniciar_sesion()');
+    await db.query(
+      `update sesiones set inicio = now() - $2::interval, ultima_actividad = now() - $3::interval where user_id = $1`,
+      [u, `${inicioHace} minutes`, `${ultimaHace ?? inicioHace} minutes`]
+    );
+    const fila = (await db.query('select inicio, ultima_actividad, now() as ahora from sesiones where user_id = $1', [u])).rows[0];
+    const cliente = cierreSolo(
+      { inicio: fila.inicio.toISOString(), ultimaActividad: ultimaHace === null ? null : fila.ultima_actividad.toISOString() },
+      fila.ahora.getTime()
+    );
+    await db.query('select mi_sesion()');
+    const base = (await db.query('select estado from sesiones where user_id = $1', [u])).rows[0].estado;
+    const baseCerro = base === 'corriendo' ? null : base;
+    if ((cliente?.estado ?? null) !== espera || baseCerro !== espera) {
+      difieren.push(`${inicioHace}/${ultimaHace}: cliente ${cliente?.estado ?? null}, base ${baseCerro}, esperado ${espera}`);
+    }
+  }
+  chequear(`los ${casos.length} casos dan lo mismo en el telefono y en la base`, difieren, []);
+
+  // La fecha del cierre, tambien igual: la ultima actividad.
+  {
+    const inicio = new Date(Date.now() - 90 * 60000).toISOString();
+    const ultima = new Date(Date.now() - 40 * 60000).toISOString();
+    chequear('el telefono lo fecha en la ultima actividad', cierreSolo({ inicio, ultimaActividad: ultima }, Date.now()).fin, ultima);
+  }
+
+  // La actividad nunca retrocede: un toque que sube tarde no la hace mas vieja.
+  chequear('la mas reciente gana', masReciente('2026-09-14T10:00:00Z', '2026-09-14T09:00:00Z'), '2026-09-14T10:00:00Z');
+  chequear('sin una, la otra', masReciente(null, '2026-09-14T09:00:00Z'), '2026-09-14T09:00:00Z');
+  chequear('basura no gana', masReciente('2026-09-14T09:00:00Z', 'x'), '2026-09-14T09:00:00Z');
+}
+
+console.log('\n81. Lo que depende de una migracion pregunta si esta');
+{
+  // EL BUG: el campo de peso se mostro sin la migracion 36 y los pesos se
+  // tiraban sin error. La regla nueva: una pantalla que llama a una funcion de
+  // la base creada en la migracion 35 o despues tiene que preguntar
+  // `disponible(...)` antes. Se lee de donde nacio cada funcion —las
+  // migraciones— y de donde se llama.
+  //
+  // LO QUE ESTE TEST NO VE, y hay que decirlo: una dependencia que no es una
+  // funcion nueva. El bug del peso fue exactamente eso —una llave nueva en una
+  // funcion vieja— y ahi solo protege `REQUIERE` en `nucleo/esquema.ts`.
+  const { readdirSync: leerDir, readFileSync: leerArch, statSync: estado } = await import('node:fs');
+  const { disponible, REQUIERE } = await import('../nucleo/esquema.ts');
+  const SUPA = dirname(fileURLToPath(import.meta.url));
+  const RAIZ = join(SUPA, '..');
+
+  // Donde nace cada funcion.
+  const nacio = new Map();
+  for (const n of leerDir(SUPA).filter((x) => /^migracion-\d+/.test(x)).sort()) {
+    const num = Number(/^migracion-(\d+)/.exec(n)[1]);
+    for (const m of leerArch(join(SUPA, n), 'utf8').matchAll(/function public\.([a-z_0-9]+)\(/g)) {
+      if (!nacio.has(m[1])) nacio.set(m[1], num);
+    }
+  }
+
+  const archivos = [];
+  const recorrer = (d) => {
+    for (const n of leerDir(d)) {
+      if (n === 'node_modules') continue;
+      const r = join(d, n);
+      if (estado(r).isDirectory()) recorrer(r);
+      else if (/\.tsx?$/.test(n)) archivos.push(r);
+    }
+  };
+  recorrer(join(RAIZ, 'src'));
+
+  // Los que no aplican: la ruta del cron (la llama el servidor, no una
+  // pantalla), el propio detector de version, y la cola, que tiene la LISTA de
+  // lo que se puede encolar: la pregunta va donde se encola (`usarSesion`).
+  const exentos = [/src[\\/]app[\\/]api[\\/]/, /src[\\/]lib[\\/]esquema\.ts$/, /src[\\/]lib[\\/]cola\.ts$/];
+  const sinPreguntar = [];
+  let revisadas = 0;
+  for (const a of archivos) {
+    if (exentos.some((x) => x.test(a))) continue;
+    const lineas = sinComentarios(leerArch(a, 'utf8')).split('\n');
+    lineas.forEach((l, i) => {
+      for (const m of l.matchAll(/rpc(?:\(\s*|:\s*)'([a-z_0-9]+)'/g)) {
+        const num = nacio.get(m[1]);
+        if (num === undefined || num < 35) continue;
+        revisadas++;
+        // La pregunta tiene que estar CERCA de la llamada: veinte lineas antes.
+        const antes = lineas.slice(Math.max(0, i - 20), i + 1).join('\n');
+        if (!antes.includes('disponible(')) {
+          sinPreguntar.push(`${a.slice(RAIZ.length + 1)}:${i + 1} llama a ${m[1]} (migracion ${num})`);
+        }
+      }
+    });
+  }
+  chequear(`las ${revisadas} llamadas a funciones nuevas preguntan si estan`, sinPreguntar, []);
+  chequear('y encontro llamadas para revisar', revisadas >= 3, true);
+
+  // La regla de `disponible`: sin saber, no.
+  chequear('sin saber la version, no se muestra', disponible('pesoPorSerie', null), false);
+  chequear('con la version justa, si', disponible('pesoPorSerie', REQUIERE.pesoPorSerie), true);
+  chequear('con una anterior, no', disponible('pesoPorSerie', REQUIERE.pesoPorSerie - 1), false);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {

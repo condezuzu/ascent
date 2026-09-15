@@ -69,8 +69,13 @@ const MARCA = {
   // sin ninguna condición. "Impulsos" ya estaba desplegado y dejó de servir.
   // Las dos migraciones son aditivas: esta marca es para saber qué probar, no
   // para decidir cuándo correrlas.
-  textoNuevo: { ruta: '/stats', dice: 'Entrenamiento' },
-  porQueNoHayMarca: null,
+  //
+  // TANDA DEL CIERRE POR INACTIVIDAD (37): sin marca otra vez. Lo nuevo que se
+  // ve es el aviso de "se cerró sola", que solo aparece cuando pasa. La 37 es
+  // aditiva y se puede correr en cualquier orden.
+  textoNuevo: null,
+  porQueNoHayMarca:
+    'lo nuevo solo se ve cuando una sesión se cierra sola; la 37 es aditiva',
   /**
    * EL AUTOTEST. Un texto de la misma pantalla que tiene que estar SIEMPRE,
    * con el cliente viejo y con el nuevo.

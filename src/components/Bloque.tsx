@@ -9,6 +9,8 @@ import ListaDeBloques from '@/components/ListaDeBloques';
 import SelectorEjercicio from '@/components/SelectorEjercicio';
 import CampoPeso from '@/components/CampoPeso';
 import { leerAnotarPeso } from '@/lib/anotarPeso';
+import { usarVersionDelEsquema } from '@/lib/esquema';
+import { disponible } from '@nucleo/esquema';
 import type { Unidad } from '@nucleo/peso';
 
 /**
@@ -70,9 +72,14 @@ export default function Bloque({
   // Prendido por omisión y desde el primer cuadro: el que lo apagó en Ajustes
   // lo ve un instante al entrar, y eso es mejor que un campo que aparece
   // tarde y empuja el `+` para abajo justo cuando alguien va a tocarlo.
-  const [anotarPeso, setAnotarPeso] = useState(true);
+  const [prefierePeso, setPrefierePeso] = useState(true);
+  // SIN LA MIGRACIÓN 36 NO HAY CAMPO. La función vieja de guardar bloques
+  // tiraba los pesos sin dar error: se veían, se escribían y no se guardaba
+  // nada. Ver `nucleo/esquema.ts`.
+  const version = usarVersionDelEsquema();
+  const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
   useEffect(() => {
-    leerAnotarPeso().then(setAnotarPeso);
+    leerAnotarPeso().then(setPrefierePeso);
   }, []);
 
   // El catálogo se pide una vez y no bloquea nada: sin él el selector queda

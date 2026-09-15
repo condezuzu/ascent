@@ -100,7 +100,17 @@ export function unRM(peso: number, reps: number, esReal: boolean): number {
  * hace el servidor contra el `inicio` guardado, porque el reloj del teléfono
  * se puede atrasar a propósito.
  */
-export const TOPE_SESION_SEGUNDOS = 4 * 60 * 60;
+export const TOPE_SESION_SEGUNDOS = 2 * 60 * 60;
+
+/**
+ * Media hora sin actividad y la sesión se cierra sola, fechada en la última
+ * actividad (migración 37). El tope de arriba queda solo para las sesiones en
+ * las que nunca se tocó nada: ahí no hay última actividad que usar.
+ *
+ * Media hora y no menos: como el cierre se fecha en la última actividad, la
+ * ventana no cambia la duración guardada, solo cuánto se tarda en enterarse.
+ */
+export const VENTANA_INACTIVIDAD_SEGUNDOS = 30 * 60;
 
 /**
  * Abajo de 5 minutos la sesión cuenta como día pero no como duración (§17.7):

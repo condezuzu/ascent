@@ -1,4 +1,5 @@
-import { TOPE_SESION_SEGUNDOS, DESCANSO_PREDETERMINADO } from '@nucleo/reglas';
+import { DESCANSO_PREDETERMINADO } from '@nucleo/reglas';
+import { cierreSolo } from '@nucleo/sesiones';
 import { plataforma } from '@/plataforma';
 import type { EstadoBloques } from '@nucleo/bloques';
 import type { Vigilancia } from '@nucleo/llegada';
@@ -45,6 +46,12 @@ export type SesionCacheada = {
    * lista de bloques cerrados, por `fijar_bloques`.
    */
   bloques?: EstadoBloques;
+  /**
+   * La última actividad, en hora de SERVIDOR (migración 37): la sesión se
+   * cierra sola media hora después. Opcional, como el resto: una caché de
+   * una versión anterior cae en la regla de las dos horas.
+   */
+  ultimaActividad?: string | null;
 };
 
 /**
@@ -73,8 +80,10 @@ export async function leerSesionCache(): Promise<SesionCacheada | null> {
   try {
     const s = JSON.parse(crudo) as SesionCacheada;
     if (typeof s?.inicio !== 'string' || typeof s?.desfasaje !== 'number') return null;
-    const corridos = (Date.now() - s.desfasaje - Date.parse(s.inicio)) / 1000;
-    if (!Number.isFinite(corridos) || corridos >= TOPE_SESION_SEGUNDOS) {
+    // La MISMA regla que la base: media hora sin actividad, o dos horas si nunca
+    // se tocó nada. Sin esto el teléfono mostraría corriendo, sin señal, una
+    // sesión que la base ya cerró.
+    if (!Number.isFinite(Date.parse(s.inicio)) || cierreSolo(s, Date.now() - s.desfasaje)) {
       await borrarSesionCache();
       return null;
     }

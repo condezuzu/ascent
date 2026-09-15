@@ -5,6 +5,8 @@ import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
 import type { EstadoAvisoRemoto } from '@nucleo/plataforma';
 import { T } from '@nucleo/textos';
+import { usarVersionDelEsquema } from '@/lib/esquema';
+import { disponible } from '@nucleo/esquema';
 
 /**
  * EL AVISO DE LAS 20:30: prenderlo y apagarlo en ESTE teléfono.
@@ -18,21 +20,27 @@ import { T } from '@nucleo/textos';
  * única vez que la persona va a decir que sí en un momento en que no sabe para
  * qué es.
  *
- * SE DIBUJA DESDE EL PRIMER CUADRO. Mientras se averigua el estado, la sección
- * ya ocupa su lugar con el rótulo y la nota: si apareciera tarde, empujaría
- * todo lo de abajo (ver `spec/trampas.md`).
+ * APARECE CUANDO SE SABE QUE LA BASE LO SOPORTA, y eso va contra otra regla de
+ * `spec/trampas.md` —dibujar desde el primer cuadro para no empujar lo de
+ * abajo—. Ganó esta: un botón que prende algo que la base no puede guardar
+ * miente, y un bloque que aparece medio segundo tarde solo molesta. Sin señal
+ * se usa la última versión que se supo, así que no desaparece en el gimnasio.
  */
 export default function AvisoDiario() {
   const [supabase] = useState(() => crearCliente());
   const [estado, setEstado] = useState<EstadoAvisoRemoto | null>(null);
   const [trabajando, setTrabajando] = useState(false);
   const [error, setError] = useState('');
+  const version = usarVersionDelEsquema();
 
   useEffect(() => {
     plataforma.avisos.remotos.estado().then(setEstado).catch(() => setEstado('no-disponible'));
   }, []);
 
   async function prender() {
+    // También acá y no solo al dibujar: un toque que llegue antes de saber la
+    // versión no puede guardar en una tabla que quizás no existe.
+    if (!disponible('avisoDiario', version)) return;
     const clave = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     setError('');
     if (!clave) {
@@ -72,6 +80,7 @@ export default function AvisoDiario() {
   }
 
   async function apagar() {
+    if (!disponible('avisoDiario', version)) return;
     setTrabajando(true);
     setError('');
     try {
@@ -82,6 +91,10 @@ export default function AvisoDiario() {
       setTrabajando(false);
     }
   }
+
+  // Sin la migración 35 no hay dónde guardar la suscripción: el botón
+  // prendería algo que el servidor nunca va a ver.
+  if (!disponible('avisoDiario', version)) return null;
 
   return (
     <div className="seccion">

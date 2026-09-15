@@ -1,4 +1,4 @@
-import { TOPE_SESION_SEGUNDOS } from './reglas.ts';
+import { TOPE_SESION_SEGUNDOS, VENTANA_INACTIVIDAD_SEGUNDOS } from './reglas.ts';
 import { T } from './textos.ts';
 
 export type SesionViva = {
@@ -129,4 +129,46 @@ export function cacheTrasConfirmar(
       ? { ...delServidor, bloques: previo.bloques }
       : delServidor,
   };
+}
+
+/**
+ * SI LA SESIÓN YA SE CERRÓ SOLA, y cómo. La misma regla que
+ * `cerrar_sesiones_vencidas` en la base (migración 37), repetida acá para que
+ * el teléfono no muestre como corriendo una sesión que la base ya dio por
+ * terminada —sobre todo sin señal—. La sección 80 de test:db corre las dos
+ * contra los mismos casos.
+ *
+ *  - Con actividad: media hora sin actividad → terminada, fechada en la última.
+ *  - Sin ninguna actividad (nunca se tocó el contador): a las dos horas →
+ *    abandonada, sin duración. Ahí no hay última actividad que usar.
+ *
+ * `ultimaActividad` en `null` o igual al inicio es "sin actividad". Los
+ * tiempos son de SERVIDOR: quien llama resta el desfasaje del reloj.
+ */
+export function cierreSolo(
+  s: { inicio: string; ultimaActividad?: string | null },
+  ahoraServidorMs: number
+): null | { estado: 'terminada' | 'abandonada'; fin: string | null } {
+  const inicio = Date.parse(s.inicio);
+  const ultima = s.ultimaActividad ? Date.parse(s.ultimaActividad) : NaN;
+  if (!Number.isFinite(inicio) || !Number.isFinite(ahoraServidorMs)) return null;
+  if (Number.isFinite(ultima) && ultima > inicio) {
+    return ahoraServidorMs >= ultima + VENTANA_INACTIVIDAD_SEGUNDOS * 1000
+      ? { estado: 'terminada', fin: new Date(ultima).toISOString() }
+      : null;
+  }
+  return ahoraServidorMs - inicio >= TOPE_SESION_SEGUNDOS * 1000 ? { estado: 'abandonada', fin: null } : null;
+}
+
+/**
+ * La actividad nueva, como la guarda la base: nunca retrocede. Un toque que la
+ * cola sube tarde no puede hacer que la sesión parezca más quieta de lo que
+ * estuvo.
+ */
+export function masReciente(a: string | null | undefined, b: string | null | undefined): string | null {
+  const ta = a ? Date.parse(a) : NaN;
+  const tb = b ? Date.parse(b) : NaN;
+  if (!Number.isFinite(ta)) return Number.isFinite(tb) ? (b as string) : null;
+  if (!Number.isFinite(tb)) return a as string;
+  return tb > ta ? (b as string) : (a as string);
 }

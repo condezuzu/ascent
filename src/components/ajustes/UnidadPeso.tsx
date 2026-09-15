@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { guardarAnotarPeso, leerAnotarPeso } from '@/lib/anotarPeso';
+import { usarVersionDelEsquema } from '@/lib/esquema';
+import { disponible } from '@nucleo/esquema';
 import { crearCliente } from '@/lib/supabase/client';
 import { guardarPreferencia } from './guardar';
 import type { Unidad } from '@nucleo/peso';
@@ -19,6 +21,7 @@ export default function UnidadPeso({
   // Del aparato, no de la cuenta: se lee del almacenamiento y arranca
   // prendido, que es el valor por omisión.
   const [anotar, setAnotar] = useState(true);
+  const version = usarVersionDelEsquema();
   useEffect(() => {
     leerAnotarPeso().then(setAnotar);
   }, []);
@@ -41,6 +44,8 @@ export default function UnidadPeso({
       {/* EL PESO DE CADA SERIE, apagable entero. Va con la unidad porque es
           la misma pregunta —cómo anotás el peso— y una sección aparte sería
           otra cosa más para leer en Ajustes. */}
+      {disponible('pesoPorSerie', version) && (
+      <>
       <h3 style={{ marginTop: 22 }}>{T.ajustes.pesoPorSerie}</h3>
       <div className="selector-vista">
         {[true, false].map((si) => (
@@ -57,6 +62,8 @@ export default function UnidadPeso({
         ))}
       </div>
       <p className="nota-privada">{T.ajustes.pesoPorSerieNota}</p>
+      </>
+      )}
     </div>
   );
 }

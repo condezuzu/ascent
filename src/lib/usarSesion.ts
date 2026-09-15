@@ -6,7 +6,16 @@ import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
 import { T } from '@nucleo/textos';
 import { eventos } from '@/plataforma/eventos';
-import { desfasajeDelReloj, cacheTrasConfirmar, type SesionViva } from '@nucleo/sesiones';
+import {
+  desfasajeDelReloj,
+  cacheTrasConfirmar,
+  cierreSolo,
+  duracionLinda,
+  masReciente,
+  type SesionViva,
+} from '@nucleo/sesiones';
+import { disponible } from '@nucleo/esquema';
+import { versionDelEsquema } from '@/lib/esquema';
 import { leerPerfilCache } from '@/lib/cache';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import {
@@ -151,6 +160,21 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState('');
   const [, repintar] = useState(0);
+  // La última actividad, en hora de servidor. Con esto el teléfono sabe, sin
+  // preguntarle a nadie, si la sesión ya se cerró sola (ver `cierreSolo`).
+  const [ultimaActividad, setUltimaActividad] = useState<string | null>(null);
+  // La sesión que ESTE aparato tenía abierta. Hace falta porque cuando se
+  // cierra sola la caché se borra, y el aviso "se cerró sola" tiene que saber
+  // que era la nuestra y no una de otro aparato.
+  const idVisto = useRef<string | null>(null);
+  const confirmando = useRef(false);
+  // Lo de AHORA para el intervalo, que se creó con los valores de otro render.
+  const inicioRef = useRef(inicio);
+  inicioRef.current = inicio;
+  const ultimaRef = useRef(ultimaActividad);
+  ultimaRef.current = ultimaActividad;
+  const desfasajeRef = useRef(desfasaje);
+  desfasajeRef.current = desfasaje;
 
   const releerCache = useCallback(async () => {
     const c = await leerSesionCache();
@@ -162,6 +186,8 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     if (c) {
       setPorUbicacion(c.porUbicacion ?? false);
       setIdSesion(c.id ?? null);
+      if (c.id) idVisto.current = c.id;
+      setUltimaActividad(c.ultimaActividad ?? null);
       if (c.bloques) setBloques(c.bloques);
       // Las series NO se pisan si hay toques esperando en la cola: ahí el
       // número bueno es el que está en pantalla, no el que se guardó.
@@ -178,8 +204,25 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   // llevaba puestos los bloques —que el servidor no manda en esta forma— cada
   // vez que la pantalla se montaba.
   const confirmar = useCallback(async () => {
+    if (confirmando.current) return;
+    confirmando.current = true;
+    try {
+    // PRIMERO SE SUBE LO PENDIENTE, DESPUÉS SE PREGUNTA. La base decide si la
+    // sesión se cerró sola mirando la última actividad que TIENE; si se le
+    // pregunta antes de subir los toques que esperaban en la cola —el
+    // subsuelo sin señal—, la cierra con datos viejos en medio de un
+    // entrenamiento.
+    await vaciar(supabase);
     const { data, error } = await supabase.rpc('mi_sesion');
-    const s = data as (SesionViva & { series?: number; origen?: OrigenSesion }) | null;
+    const s = data as
+      | (SesionViva & {
+          series?: number;
+          origen?: OrigenSesion;
+          ultima_actividad?: string;
+          cerrada_sola?: { id: string; inicio: string; fin: string | null; estado: string } | null;
+        })
+      | null;
+    const previo = await leerSesionCache();
     const viva = s?.corriendo && s.inicio
       ? {
           inicio: s.inicio,
@@ -187,9 +230,31 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
           porUbicacion: s.origen === 'ubicacion',
           series: s.series ?? 0,
           id: s.id ?? null,
+          // La más reciente entre la de la base y la del teléfono: la marca
+          // puede estar todavía en camino.
+          ultimaActividad: masReciente(
+            previo?.id === s.id ? previo?.ultimaActividad : null,
+            s.ultima_actividad ?? null
+          ),
         }
       : null;
-    const que = cacheTrasConfirmar(await leerSesionCache(), viva, !!error);
+    // SE CERRÓ SOLA, Y ERA LA NUESTRA: se dice una vez. Sin esto la sesión
+    // desaparece de la pantalla sin explicación y parece que la app se la comió.
+    if (!error && !viva && s?.cerrada_sola && s.cerrada_sola.id === idVisto.current) {
+      const clave = 'ascent:cerrada-sola-vista';
+      if ((await plataforma.almacenamiento.leer(clave)) !== s.cerrada_sola.id) {
+        await plataforma.almacenamiento.guardar(clave, s.cerrada_sola.id);
+        const c = s.cerrada_sola;
+        if (c.estado === 'terminada' && c.fin) {
+          const hora = new Date(c.fin).toLocaleTimeString(T.general.locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+          const segundos = (Date.parse(c.fin) - Date.parse(c.inicio)) / 1000;
+          setAviso(T.sesion.seCerroSola(hora, duracionLinda(Math.max(0, segundos))));
+        } else {
+          setAviso(T.sesion.seCerroSinDuracion);
+        }
+      }
+    }
+    const que = cacheTrasConfirmar(previo, viva, !!error);
     // No se supo: se deja en pantalla lo que ya había. Es el caso del gimnasio
     // sin señal, y es más frecuente que cualquiera de los otros dos.
     if (que.accion === 'mantener') return;
@@ -208,14 +273,18 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       // Si la migración 24 todavía no corrió, `origen` no viene: se asume
       // manual, que es lo seguro — no cerrarla sola.
       setPorUbicacion(!!g.porUbicacion);
-      // Al reconectar puede haber toques del `+` esperando desde el gimnasio.
-      vaciar(supabase);
+      setUltimaActividad(g.ultimaActividad ?? null);
+      if (g.id) idVisto.current = g.id;
     } else {
       borrarSesionCache();
       setInicio(null);
       setSeries(0);
       setIdSesion(null);
       setPorUbicacion(false);
+      setUltimaActividad(null);
+    }
+    } finally {
+      confirmando.current = false;
     }
   }, [supabase]);
 
@@ -224,7 +293,14 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     confirmar();
     const alVolver = () => releerCache();
     const dejarDeEscuchar = eventos.escuchar(AVISO, alVolver);
-    const dejarDeMirar = plataforma.ciclo.alCambiar(alVolver);
+    // Al volver al frente, además, se le pregunta a la base si había una sesión:
+    // es el momento en que más probable es que se haya cerrado sola —el
+    // teléfono estuvo en el bolsillo— y hay que avisar por qué desapareció.
+    // Con el AVISO no: ese salta en cada serie, y serían viajes de red por toque.
+    const dejarDeMirar = plataforma.ciclo.alCambiar((visible) => {
+      releerCache();
+      if (visible && idVisto.current) confirmar();
+    });
     return () => {
       dejarDeEscuchar();
       dejarDeMirar();
@@ -244,7 +320,15 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const arrancar = () => {
       clearInterval(id);
       if (plataforma.ciclo.visible()) {
-        id = setInterval(() => repintar((n) => n + 1), 1000);
+        id = setInterval(() => {
+          repintar((n) => n + 1);
+          // Con la app ADELANTE también se cierra sola: si la dejaste abierta
+          // en el banco y te fuiste, a la media hora la pantalla no puede
+          // seguir contando. `confirmar` no se pisa consigo mismo.
+          if (inicioRef.current && cierreSolo({ inicio: inicioRef.current, ultimaActividad: ultimaRef.current }, Date.now() - desfasajeRef.current)) {
+            confirmar();
+          }
+        }, 1000);
       }
     };
     arrancar();
@@ -253,6 +337,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       clearInterval(id);
       dejarDeMirar();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inicio]);
 
   /**
@@ -395,11 +480,38 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    * —un subsuelo donde la red se corta— ese es el caso normal, y es el botón
    * que más se toca. Ahora funciona sin red y se sincroniza al salir.
    */
+  /**
+   * UNA ACTIVIDAD: ahora, o hasta cuándo dura un descanso (migración 37).
+   *
+   * Se guarda en el teléfono al instante y viaja a la base por la cola, con la
+   * hora en que PASÓ y no la hora en que suba: desde el subsuelo sin señal, la
+   * marca llega media hora tarde y tiene que seguir diciendo la hora del toque.
+   * La hora va en hora de servidor —se le resta el desfasaje— porque la base
+   * la compara contra el inicio, que es suyo.
+   *
+   * Si la base todavía no tiene la migración, se guarda solo en el teléfono:
+   * mandar una función que no existe trabaría la cola (ver `lib/cola.ts`).
+   */
+  async function marcar(hastaTelefonoMs: number = Date.now()) {
+    if (!idSesion) return;
+    const iso = new Date(hastaTelefonoMs - desfasaje).toISOString();
+    const c = await leerSesionCache();
+    const nueva = masReciente(c?.ultimaActividad, iso);
+    setUltimaActividad(nueva);
+    if (c) await guardarSesionCache({ ...c, ultimaActividad: nueva });
+    if (!disponible('cierrePorInactividad', await versionDelEsquema(supabase))) return;
+    await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: iso } });
+  }
+
   async function serieHecha() {
     const seg =
       (await leerDuracionDeSesion()) ??
       duracionValida(duracionPredeterminada(await leerPerfilCache()));
-    setDescanso(guardarDescanso(seg));
+    const d = guardarDescanso(seg);
+    setDescanso(d);
+    // El descanso que arranca ES actividad hasta que termina: la persona está
+    // entrenando mientras el temporizador anda.
+    const marca = marcar(d.fin);
     // DOS CUENTAS QUE NO SE DERIVAN UNA DE LA OTRA. `series` es el total de la
     // sesión y la única verdad del conteo; `hechas` es cuántas van en ESTE
     // bloque. Derivar el total de los bloques haría que ignorar el chip
@@ -408,6 +520,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const b = sumar(bloques);
     setSeries(nuevas);
     setBloques(b);
+    await marca;
     await actualizarSesionCache({ series: nuevas, bloques: b });
     await subir(nuevas, b);
   }
@@ -418,6 +531,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    * estabas usando.
    */
   async function deshacerSerie() {
+    await marcar();
     const nuevas = Math.max(0, series - 1);
     const b = restar(bloques);
     setSeries(nuevas);
@@ -447,6 +561,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
 
   /** Cerrar el bloque y arrancar otro con el mismo ejercicio y la misma meta. */
   async function bloqueSiguiente() {
+    await marcar();
     const b = siguiente(bloques);
     if (b === bloques) return; // no había nada hecho: no se cierra un bloque vacío
     setBloques(b);
@@ -456,6 +571,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
 
   /** Cambiar de ejercicio cierra el bloque anterior (ver `nucleo/bloques.ts`). */
   async function elegirEjercicio(id: string | null) {
+    await marcar();
     const b = cambiarEjercicio(bloques, id);
     if (b === bloques) return;
     setBloques(b);
@@ -473,7 +589,8 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    * respuesta puede llegar tarde, cuando ya cambiaste de ejercicio o ya
    * escribiste un peso a mano. Si pasó cualquiera de las dos, se descarta.
    */
-  function proponerPeso(id: string) {
+  async function proponerPeso(id: string) {
+    if (!disponible('pesoPorSerie', await versionDelEsquema(supabase))) return;
     supabase.rpc('ultimo_peso', { p_ejercicio: id }).then(({ data, error }) => {
       if (error || data === null || data === undefined) return;
       const actual = bloquesRef.current;
@@ -490,6 +607,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    * cambiarlo sin haber sumado ninguna no es un hecho todavía.
    */
   async function elegirPeso(kg: number | null) {
+    await marcar();
     const b = cambiarPeso(bloques, kg);
     setBloques(b);
     await actualizarSesionCache({ bloques: b });
@@ -497,6 +615,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
 
   /** El peso de una serie ya hecha, desde la lista. `indice` -1 es el bloque en curso. */
   async function corregirPesoDeSerie(indice: number, serie: number, kg: number | null) {
+    await marcar();
     const b = corregirPeso(bloques, indice, serie, kg);
     if (b === bloques) return;
     setBloques(b);
@@ -510,6 +629,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    * fue lo pregunta la interfaz; acá solo se aplica.
    */
   async function mudarSeries(id: string | null) {
+    await marcar();
     const b = mudarEjercicio(bloques, id);
     if (b === bloques) return;
     setBloques(b);
@@ -525,6 +645,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    * ejercicio— así que la corrección dice explícitamente cuánto cambió.
    */
   async function tocarBloque(indice: number, delta: number | 'quitar') {
+    await marcar();
     const r =
       delta === 'quitar'
         ? quitarBloque(bloques, indice)
@@ -549,7 +670,9 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const seg =
       (await leerDuracionDeSesion()) ??
       duracionValida(duracionPredeterminada(await leerPerfilCache()));
-    setDescanso(guardarDescanso(seg));
+    const d = guardarDescanso(seg);
+    setDescanso(d);
+    await marcar(d.fin);
   }
 
   return {
@@ -563,6 +686,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       aviso,
       porUbicacion,
       bloques,
+      ultimaActividad,
     },
     empezar,
     terminar,
@@ -583,6 +707,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     reiniciarDescanso: (d: DescansoVivo) => {
       setDescanso(d);
       guardarDuracionDeSesion(d.duracion);
+      void marcar(d.fin);
     },
   };
 }

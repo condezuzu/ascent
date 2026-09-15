@@ -676,6 +676,13 @@ export const T = {
     // Se avisa ANTES de que se cierre sola: enterarse en Stats es tarde.
     seCierraEn: (min: number) => `Se cierra sola en ${min} min y queda sin duración.`,
     yaSeCerro: 'Ya se cerró sola: esta sesión queda sin duración.',
+    // LA SESIÓN QUE SE CERRÓ SOLA (migración 37). Dice qué pasó, cuánto quedó,
+    // y qué hacer si seguías: iniciar otra suma al mismo día, y el rato
+    // muerto del medio no cuenta en ninguna de las dos.
+    seCerroSola: (hora: string, duracion: string) =>
+      `La sesión se cerró sola a las ${hora}, media hora después de la última actividad. Duró ${duracion}. Si sigues entrenando, inicia otra: se suma al mismo día.`,
+    seCerroSinDuracion:
+      'La sesión se cerró sola: pasaron dos horas sin tocar nada, así que queda sin duración. El día sigue registrado.',
     nuevoRango: 'Nuevo rango',
 
     // EL RESUMEN DEL FINAL. Terminar un entrenamiento era el momento más

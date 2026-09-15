@@ -54,7 +54,16 @@ type Encolable =
   // - *No cambia de significado más tarde*: lleva el id de la sesión, así que
   //   vaciarse mañana la sigue mandando a la sesión de ayer, que es la que
   //   corresponde. Sin el id iría a parar a la de mañana.
-  | { rpc: 'fijar_bloques'; args: { p_sesion: string; p_bloques: unknown } };
+  | { rpc: 'fijar_bloques'; args: { p_sesion: string; p_bloques: unknown } }
+  // `marcar_actividad` (migración 37), por las mismas dos razones:
+  //
+  // - *Idempotente*: la base se queda con la MÁS RECIENTE de las marcas, así
+  //   que repetirla —o subirla dos veces— deja todo igual.
+  // - *No cambia de significado más tarde*: lleva el id de la sesión Y la hora
+  //   en que pasó. Justo para eso existe la hora: una marca que sube media
+  //   hora tarde desde el subsuelo tiene que decir cuándo fue el toque, no
+  //   cuándo volvió la señal.
+  | { rpc: 'marcar_actividad'; args: { p_sesion: string; p_hasta: string } };
 
 type Pendiente = Encolable & { id: string };
 
@@ -115,6 +124,15 @@ export async function vaciar(supabase: SupabaseClient) {
         continue;
       }
       const { error } = await supabase.rpc(p.rpc, p.args);
+      // UNA FUNCIÓN QUE NO EXISTE NO VA A EXISTIR REINTENTANDO. Antes cualquier
+      // error dejaba el pendiente al frente y cortaba la cola, así que una
+      // escritura a una función de una migración que todavía no corrió
+      // trababa para siempre todas las series que venían atrás. Esa se
+      // descarta —se anota— y la cola sigue.
+      if (error?.code === 'PGRST202') {
+        await anotar('descartado: la funcion no existe', { rpc: p.rpc });
+        continue;
+      }
       if (error) {
         quedan.push(p);
         corto = true;
