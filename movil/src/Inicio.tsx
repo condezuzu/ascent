@@ -10,6 +10,7 @@ import type { Log, Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
 import { usarSesion, type CierreDeSesion } from '@compartido/usarSesion';
+import Bloque from './Bloque';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -33,8 +34,8 @@ import { usarSesion, type CierreDeSesion } from '@compartido/usarSesion';
  * LA SESIÓN (tanda 3, N1) NO ESTÁ ESCRITA ACÁ: es `usarSesion`, el MISMO hook
  * que usa la web, desde `compartido/`. Iniciar, el cronómetro, terminar, el
  * cierre por inactividad y el aviso de "se cerró sola" son una sola lógica
- * para las dos apps. Esta pantalla solo la dibuja. Contar series (el bloque)
- * y el descanso entran en N2 y N3.
+ * para las dos apps. Esta pantalla solo la dibuja. El bloque —contar series,
+ * el peso— es N2 y vive en `Bloque.tsx`; el descanso entra en N3.
  */
 
 type Estado =
@@ -257,10 +258,25 @@ export default function Inicio({
 
       {sesion.estado.corriendo && sesion.estado.inicio ? (
         <View style={estilos.sesion}>
-          <Text style={estilos.etiqueta}>{T.sesion.label}</Text>
-          <Text style={estilos.crono}>
-            {cronoLindo(transcurrido(sesion.estado.inicio, sesion.estado.desfasaje))}
-          </Text>
+          {/* El reloj ya está arriba, en el chip: acá manda el bloque, que es
+              lo que se toca doce veces por sesión. */}
+          <Bloque
+            estado={sesion.estado.bloques}
+            total={sesion.estado.series}
+            unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
+            cargaConsultada={sesion.estado.cargaConsultada}
+            alSumar={sesion.serieHecha}
+            alRestar={sesion.deshacerSerie}
+            alSiguiente={sesion.bloqueSiguiente}
+            alElegirEjercicio={sesion.elegirEjercicio}
+            alMudarSeries={sesion.mudarSeries}
+            alElegirMeta={sesion.elegirMeta}
+            alTocarBloque={sesion.tocarBloque}
+            alElegirPeso={sesion.elegirPeso}
+            alCorregirPeso={sesion.corregirPesoDeSerie}
+            alElegirCarga={sesion.elegirCarga}
+            alCorregirCarga={sesion.corregirCargaDeBloque}
+          />
           {sesion.estado.porUbicacion && <Text style={estilos.nota}>{T.inicio.sesionSola}</Text>}
 
           {terminando ? (
@@ -402,7 +418,7 @@ const estilos = StyleSheet.create({
   chipTexto: { color: '#c4c2ba', fontSize: 13, fontVariant: ['tabular-nums'] },
   latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7e8ca8' },
 
-  sesion: { marginTop: 34 },
+  sesion: { marginTop: 16 },
   crono: { color: '#e8ecf6', fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 4 },
   nota: { color: '#4a5163', fontSize: 12, lineHeight: 17, marginTop: 8 },
   pregunta: { color: '#8a93a8', fontSize: 14, lineHeight: 20, marginTop: 24 },

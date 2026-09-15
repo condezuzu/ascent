@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { faltaElGlobo, marcarGloboVisto, type Globo } from '@/lib/guia';
+import { faltaElGlobo, marcarGloboVisto, type Globo } from '@compartido/guia';
 import { T } from '@nucleo/textos';
 
 /**

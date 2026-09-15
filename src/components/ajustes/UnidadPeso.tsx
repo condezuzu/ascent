@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { guardarAnotarPeso, leerAnotarPeso } from '@/lib/anotarPeso';
+import { guardarAnotarPeso, leerAnotarPeso } from '@compartido/anotarPeso';
 import { usarVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 import { crearCliente } from '@/lib/supabase/client';

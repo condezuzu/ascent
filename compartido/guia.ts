@@ -1,4 +1,4 @@
-import { plataforma } from '@/plataforma';
+import { plataforma } from '@plataforma';
 import { pasoValido } from '@nucleo/recorrido';
 
 // Qué parte de la guía ya vio el usuario. Vive en el teléfono y no en la base:
@@ -35,10 +35,17 @@ async function leer(uid: string): Promise<Guia> {
 
 const escribir = (g: Guia) => plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(g));
 
-/** En qué paso del recorrido va; `null` si ya se vio o se saltó. */
+/**
+ * En qué paso del recorrido va; `null` si no está andando.
+ *
+ * NO ARRANCA SOLO. Solo lo enciende elegir el nombre (una cuenta nueva) o
+ * "Ver la guía de nuevo" en Ajustes, que ponen `paso` en 0. Sin esto le
+ * aparecía a cualquiera que abriera la app en un aparato nuevo: la memoria de
+ * "ya lo vi" es de cada aparato, y un aparato nuevo no la tiene.
+ */
 export async function leerPasoDelRecorrido(uid: string): Promise<number | null> {
   const g = await leer(uid);
-  return g.recorrido ? null : pasoValido(g.paso);
+  return g.recorrido || g.paso === undefined ? null : pasoValido(g.paso);
 }
 
 export async function guardarPasoDelRecorrido(uid: string, paso: number) {

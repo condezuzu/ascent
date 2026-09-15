@@ -1,4 +1,4 @@
-import { plataforma } from '@/plataforma';
+import { plataforma } from '@plataforma';
 
 /**
  * Si se muestra el campo de peso al entrenar. Es de ESTE aparato, como el

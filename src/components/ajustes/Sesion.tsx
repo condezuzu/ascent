@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { borrarPerfilCache } from '@compartido/cache';
-import { reiniciarGuia } from '@/lib/guia';
+import { reiniciarGuia } from '@compartido/guia';
 import { T } from '@nucleo/textos';
 
 export default function Sesion({ userId }: { userId: string }) {

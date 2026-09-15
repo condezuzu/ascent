@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { leerPasoDelRecorrido, marcarRecorridoVisto, guardarPasoDelRecorrido } from '@/lib/guia';
+import { leerPasoDelRecorrido, marcarRecorridoVisto, guardarPasoDelRecorrido } from '@compartido/guia';
 import { PASOS_DEL_RECORRIDO } from '@nucleo/recorrido';
 import { T } from '@nucleo/textos';
 

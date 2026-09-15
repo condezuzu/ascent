@@ -40,6 +40,7 @@ import {
 } from '@nucleo/bloques';
 import {
   AVISO,
+  esMio,
   borrarSesionCache,
   duracionPredeterminada,
   guardarDuracionDeSesion,
@@ -148,6 +149,9 @@ export type CierreDeSesion = {
 
 export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void) {
   const [supabase] = useState(() => crearCliente());
+  // Quién es ESTA instancia, para no releer sus propias escrituras (ver
+  // `esMio` en `sesionCache.ts`).
+  const [yo] = useState(() => Symbol('sesion'));
   const [inicio, setInicio] = useState<string | null>(null);
   const [desfasaje, setDesfasaje] = useState(0);
   const [series, setSeries] = useState(0);
@@ -271,7 +275,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     if (que.accion === 'mantener') return;
     if (que.accion === 'guardar' && viva) {
       const g = que.cache as typeof viva & { bloques?: EstadoBloques };
-      guardarSesionCache(g);
+      guardarSesionCache(g, yo);
       if (g.bloques) setBloques(g.bloques);
       setInicio(g.inicio);
       setDesfasaje(g.desfasaje);
@@ -287,7 +291,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       setUltimaActividad(g.ultimaActividad ?? null);
       if (g.id) idVisto.current = g.id;
     } else {
-      borrarSesionCache();
+      borrarSesionCache(yo);
       setInicio(null);
       setSeries(0);
       setIdSesion(null);
@@ -303,7 +307,9 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     releerCache();
     confirmar();
     const alVolver = () => releerCache();
-    const dejarDeEscuchar = eventos.escuchar(AVISO, alVolver);
+    const dejarDeEscuchar = eventos.escuchar(AVISO, (dato) => {
+      if (!esMio(dato, yo)) alVolver();
+    });
     // Al volver al frente, además, se le pregunta a la base si había una sesión:
     // es el momento en que más probable es que se haya cerrado sola —el
     // teléfono estuvo en el bolsillo— y hay que avisar por qué desapareció.
@@ -388,7 +394,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       porUbicacion: porUbi,
       series: r.series ?? 0,
       id: r.id ?? null,
-    });
+    }, yo);
     setInicio(r.inicio);
     setDesfasaje(desfasajeDelReloj(r.ahora));
     setSeries(r.series ?? 0);
@@ -421,7 +427,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       // no hay nada que escribir.
       if (sembrado === bloquesRef.current) return;
       setBloques(sembrado);
-      await actualizarSesionCache({ bloques: sembrado });
+      await actualizarSesionCache({ bloques: sembrado }, yo);
       if (sembrado.ejercicio) proponerArranque(sembrado.ejercicio);
     })();
 
@@ -448,7 +454,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     // Lo mismo al revés: si el cierre no llegó, quien llama tiene que poder
     // volver a intentarlo con la hora de salida correcta.
     if (error) return null;
-    borrarSesionCache();
+    borrarSesionCache(yo);
     borrarDescanso();
     setInicio(null);
     setSeries(0);
@@ -509,7 +515,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const c = await leerSesionCache();
     const nueva = masReciente(c?.ultimaActividad, iso);
     setUltimaActividad(nueva);
-    if (c) await guardarSesionCache({ ...c, ultimaActividad: nueva });
+    if (c) await guardarSesionCache({ ...c, ultimaActividad: nueva }, yo);
     if (!disponible('cierrePorInactividad', await versionDelEsquema(supabase))) return;
     await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: iso } });
   }
@@ -532,7 +538,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     setSeries(nuevas);
     setBloques(b);
     await marca;
-    await actualizarSesionCache({ series: nuevas, bloques: b });
+    await actualizarSesionCache({ series: nuevas, bloques: b }, yo);
     await subir(nuevas, b);
   }
 
@@ -547,7 +553,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const b = restar(bloques);
     setSeries(nuevas);
     setBloques(b);
-    await actualizarSesionCache({ series: nuevas, bloques: b });
+    await actualizarSesionCache({ series: nuevas, bloques: b }, yo);
     await subir(nuevas, b);
   }
 
@@ -576,7 +582,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const b = siguiente(bloques);
     if (b === bloques) return; // no había nada hecho: no se cierra un bloque vacío
     setBloques(b);
-    await actualizarSesionCache({ bloques: b });
+    await actualizarSesionCache({ bloques: b }, yo);
     await subir(series, b);
   }
 
@@ -586,7 +592,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const b = cambiarEjercicio(bloques, id);
     if (b === bloques) return;
     setBloques(b);
-    await actualizarSesionCache({ bloques: b });
+    await actualizarSesionCache({ bloques: b }, yo);
     await subir(series, b);
     if (id) proponerArranque(id);
   }
@@ -611,7 +617,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       const conPeso = cambiarPeso(actual, Number(data));
       if (conPeso.peso === undefined) return;
       setBloques(conPeso);
-      actualizarSesionCache({ bloques: conPeso });
+      actualizarSesionCache({ bloques: conPeso }, yo);
     });
   }
 
@@ -646,7 +652,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
           const b = { ...actual, carga: delServidor };
           bloquesRef.current = b;
           setBloques(b);
-          await actualizarSesionCache({ bloques: b });
+          await actualizarSesionCache({ bloques: b }, yo);
         }
         await recordarCarga(id, delServidor);
       }
@@ -664,7 +670,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
         const conPeso = cambiarPeso(actual, Number(r.peso));
         if (conPeso.peso !== undefined) {
           setBloques(conPeso);
-          await actualizarSesionCache({ bloques: conPeso });
+          await actualizarSesionCache({ bloques: conPeso }, yo);
         }
       }
     }
@@ -679,7 +685,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const b = cambiarCarga(actual, c);
     bloquesRef.current = b;
     setBloques(b);
-    void actualizarSesionCache({ bloques: b });
+    void actualizarSesionCache({ bloques: b }, yo);
   }
 
   /**
@@ -692,7 +698,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const b = cambiarCarga(bloques, c);
     if (b === bloques || !b.ejercicio) return;
     setBloques(b);
-    await actualizarSesionCache({ bloques: b });
+    await actualizarSesionCache({ bloques: b }, yo);
     await recordar(b.ejercicio, c);
     // Si ya hay series, lo guardado cambia de significado: se sube.
     if (b.hechas > 0) await subir(series, b);
@@ -704,7 +710,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const b = corregirCarga(bloques, indice, c);
     if (b === bloques) return;
     setBloques(b);
-    await actualizarSesionCache({ bloques: b });
+    await actualizarSesionCache({ bloques: b }, yo);
     const ejercicio = indice === -1 ? b.ejercicio : b.cerrados[indice]?.ejercicio;
     if (ejercicio) await recordar(ejercicio, c);
     await subir(series, b);
@@ -724,7 +730,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     await marcar();
     const b = cambiarPeso(bloques, kg);
     setBloques(b);
-    await actualizarSesionCache({ bloques: b });
+    await actualizarSesionCache({ bloques: b }, yo);
   }
 
   /** El peso de una serie ya hecha, desde la lista. `indice` -1 es el bloque en curso. */
@@ -733,7 +739,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const b = corregirPeso(bloques, indice, serie, kg);
     if (b === bloques) return;
     setBloques(b);
-    await actualizarSesionCache({ bloques: b });
+    await actualizarSesionCache({ bloques: b }, yo);
     await subir(series, b);
   }
 
@@ -747,7 +753,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const b = mudarEjercicio(bloques, id, cargaQueSeVeia);
     if (b === bloques) return;
     setBloques(b);
-    await actualizarSesionCache({ bloques: b });
+    await actualizarSesionCache({ bloques: b }, yo);
     await subir(series, b);
   }
 
@@ -768,7 +774,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const nuevoTotal = Math.max(0, series + r.cambioEnTotal);
     setBloques(r.estado);
     setSeries(nuevoTotal);
-    await actualizarSesionCache({ series: nuevoTotal, bloques: r.estado });
+    await actualizarSesionCache({ series: nuevoTotal, bloques: r.estado }, yo);
     await subir(nuevoTotal, r.estado);
   }
 
@@ -776,7 +782,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   async function elegirMeta(meta: number) {
     const b = cambiarMeta(bloques, meta);
     setBloques(b);
-    await actualizarSesionCache({ bloques: b });
+    await actualizarSesionCache({ bloques: b }, yo);
     await guardarMetaPreferida(b.meta);
   }
 

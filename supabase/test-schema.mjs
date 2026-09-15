@@ -6246,6 +6246,41 @@ console.log('\n92. Lo compartido no es de ninguna de las dos apps');
   chequear('la nativa tambien', ['"@plataforma"', '"@cliente"', '"@compartido/*"'].every((a) => tsNativo.includes(a)), true);
   chequear('y Metro los encuentra', ["'@plataforma'", "'@cliente'", "'@compartido'"].every((a) => metro.includes(a)), true);
 }
+console.log('\n93. Dos toques seguidos no le devuelven al total el numero de antes');
+{
+  // EL BUG (15/9, visto en la app nativa, estaba tambien en la web): cada
+  // escritura de la cache avisaba "la sesion cambio", y la MISMA instancia del
+  // hook releia la cache. La relectura es asincrona: con dos toques seguidos
+  // una lectura vieja terminaba despues de una nueva y el total volvia atras
+  // ("2 de 3 · 1 en total"). La regla: la instancia firma sus escrituras y no
+  // relee las suyas. No se puede cargar el hook con node, asi que se lee.
+  const { readFileSync: leer } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const hook = sinComentarios(leer(join(RAIZ, 'compartido', 'usarSesion.ts'), 'utf8'));
+  const cuerpo = hook.slice(hook.indexOf('export function usarSesion('));
+  const sinFirma = [];
+  for (const m of cuerpo.matchAll(/(guardar|actualizar|borrar)SesionCache\(/g)) {
+    // hasta el parentesis que cierra la llamada
+    let prof = 1;
+    let k = m.index + m[0].length;
+    while (prof > 0 && k < cuerpo.length) {
+      if (cuerpo[k] === '(') prof++;
+      else if (cuerpo[k] === ')') prof--;
+      k++;
+    }
+    const args = cuerpo.slice(m.index + m[0].length, k - 1);
+    if (!/(^|,)\s*yo\s*$/.test(args)) sinFirma.push(`${m[1]}SesionCache(${args.slice(0, 40)})`);
+  }
+  chequear('toda escritura de la cache desde el hook va firmada', sinFirma, []);
+  chequear('y el hook no relee las suyas', /escuchar\(AVISO,[^]*?esMio\(dato, yo\)/.test(cuerpo), true);
+
+  // EL RECORRIDO NO ARRANCA SOLO en un aparato nuevo: lo enciende elegir el
+  // nombre o "Ver la guia de nuevo".
+  const guia = sinComentarios(leer(join(RAIZ, 'compartido', 'guia.ts'), 'utf8'));
+  chequear('sin paso guardado no hay recorrido', /g\.paso === undefined\s*\?\s*null/.test(guia), true);
+  const onboarding = leer(join(RAIZ, 'src', 'app', 'onboarding', 'page.tsx'), 'utf8');
+  chequear('elegir el nombre lo enciende', onboarding.includes('reiniciarGuia(user.id)'), true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

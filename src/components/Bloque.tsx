@@ -8,7 +8,7 @@ import { T } from '@nucleo/textos';
 import ListaDeBloques from '@/components/ListaDeBloques';
 import SelectorEjercicio from '@/components/SelectorEjercicio';
 import CampoPeso from '@/components/CampoPeso';
-import { leerAnotarPeso } from '@/lib/anotarPeso';
+import { leerAnotarPeso } from '@compartido/anotarPeso';
 import { usarVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 import { pesoCorto, type Unidad } from '@nucleo/peso';

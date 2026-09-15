@@ -391,6 +391,35 @@ el reloj avanzando, cambiar de pestaña y volver con la sesión intacta, la
 pregunta antes de terminar, y el cierre con su resumen. La sección 92 de
 `test:db` falla si `compartido/` importa del árbol de una de las dos apps.
 
+### Tanda 3 · N2 — el bloque (2026-09-15)
+
+Selector de los cien ejercicios (mismo árbol que la web), meta, el `+` de
+media pantalla, "Terminar serie" con la meta cumplida, la pregunta de "¿de
+cuál eran?", la lista para corregir, y el peso con su etiqueta y la pregunta
+de la primera vez. **Otra vez, el dibujo es nativo y las reglas no:** los
+componentes de `movil/src/` (`Bloque`, `SelectorEjercicio`, `ListaDeBloques`,
+`CampoPeso`, `EtiquetaDeCarga`, `Hoja`) llaman a las mismas funciones de
+`usarSesion` que la web. Las hojas son `Modal`, no pantallas apiladas: siguen
+sin necesitar router.
+
+**El bug que destapó, y que estaba también en la web:** dos toques seguidos
+del `+` dejaban "2 de 3 · 1 en total". Cada escritura de la caché de la sesión
+avisaba "cambió", y la misma instancia del hook la releía; con dos toques, una
+relectura vieja terminaba después de una nueva y le devolvía al total el
+número de antes. Estaba escondido porque la cola esperaba a la red y eso
+frenaba todo; al sacar ese lag apareció. Ahora cada instancia firma sus
+escrituras (`esMio`) y no relee las suyas. Sección 93 de `test:db`.
+
+**Y otro de la tanda anterior:** el recorrido nuevo le aparecía a cualquiera
+en un aparato nuevo, porque la memoria de "ya lo vi" es de cada aparato. Ahora
+solo lo encienden elegir el nombre y "Ver la guía de nuevo".
+
+Probado contra la base real en Expo web: elegir ejercicio navegando, peso con
+"por mancuerna" y "60 kg en total", dos toques seguidos (total correcto), el
+paso de 2,5 kg al instante, la lista, la pregunta de zancadas, "¿de cuál
+eran?", y cerrar con el resumen. En la web, tres pares de toques seguidos con
+el total correcto.
+
 ### Cómo se verifica la app nativa sin el teléfono
 
 `movil/` ahora corre también en el navegador (`npx expo start --web`), y **eso

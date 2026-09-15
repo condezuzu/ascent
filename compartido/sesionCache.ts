@@ -17,7 +17,19 @@ const CLAVE_META = 'ascent:meta-bloque';
  */
 export const AVISO = 'ascent:sesion-cambio';
 
-const avisar = () => eventos.emitir(AVISO);
+/**
+ * El aviso lleva QUIÉN escribió. La instancia del hook que guardó no tiene
+ * que volver a leer lo que acaba de escribir: esa relectura es asíncrona, y con
+ * dos toques seguidos del `+` una lectura vieja terminaba DESPUÉS de una nueva
+ * y le devolvía al total el número de antes ("2 de 3 · 1 en total"). Las otras
+ * instancias —el vigilante del gimnasio— sí releen: para eso existe el aviso.
+ */
+const avisar = (dueno?: symbol) => eventos.emitir(AVISO, dueno ? { dueno } : undefined);
+
+/** Si el aviso lo dio esta misma instancia. */
+export function esMio(dato: unknown, yo: symbol): boolean {
+  return !!dato && typeof dato === 'object' && (dato as { dueno?: unknown }).dueno === yo;
+}
 
 /**
  * Lo que se guarda de la sesión en curso.
@@ -64,9 +76,9 @@ export type SesionCacheada = {
  * Se guarda el `inicio` del servidor y el desfasaje del reloj del teléfono,
  * que es todo lo que hace falta para contar (§17.5).
  */
-export async function guardarSesionCache(s: SesionCacheada) {
+export async function guardarSesionCache(s: SesionCacheada, dueno?: symbol) {
   await plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(s));
-  avisar();
+  avisar(dueno);
 }
 
 /**
@@ -104,16 +116,16 @@ export async function leerSesionCache(): Promise<SesionCacheada | null> {
  * Si no hay sesión guardada no hace nada: no se inventa una a partir de un
  * cambio parcial.
  */
-export async function actualizarSesionCache(parcial: Partial<SesionCacheada>) {
+export async function actualizarSesionCache(parcial: Partial<SesionCacheada>, dueno?: symbol) {
   const actual = await leerSesionCache();
   if (!actual) return;
-  await guardarSesionCache({ ...actual, ...parcial });
+  await guardarSesionCache({ ...actual, ...parcial }, dueno);
 }
 
-export async function borrarSesionCache() {
+export async function borrarSesionCache(dueno?: symbol) {
   await plataforma.almacenamiento.borrar(CLAVE);
   await plataforma.efimero.borrar(CLAVE_DURACION);
-  avisar();
+  avisar(dueno);
 }
 
 /**

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
+import { reiniciarGuia } from '@compartido/guia';
 import FondoEspacial from '@/components/FondoEspacial';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
@@ -40,6 +41,8 @@ export default function Onboarding() {
       return setError(error.message);
     }
     // El recorrido empieza en Ajustes, con el punto del gimnasio a la vista.
+    // Se ENCIENDE acá, a propósito: no sale solo en un aparato nuevo.
+    await reiniciarGuia(user.id);
     router.push('/ajustes');
     router.refresh();
   }

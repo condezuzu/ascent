@@ -32,7 +32,7 @@ Si no está claro si algo es 2 o 3, es 3.
 
 | # | Qué |
 |---|-----|
-| H1 | (esta semana) Variables de Web Push en Vercel (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`) y redeploy. Sin esto el aviso de las 20:30 no sale. |
+| H1 | **Lo hace el humano esta semana y avisa.** Variables de Web Push en Vercel (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`) y redeploy. Sin esto el aviso de las 20:30 no sale. |
 | H2 | Probar el recorrido nuevo (Ajustes → "Ver la guía de nuevo") y el volumen nuevo. |
 
 ---
@@ -46,13 +46,13 @@ series, descansar, terminar — con y sin señal.
 | # | Qué | Tandas |
 |---|-----|--------|
 | ~~N1~~ | ~~Sesión nativa: iniciar, cronómetro, terminar, cierre por inactividad~~ | **Hecho el 15/9**, con la MISMA lógica que la web (`compartido/`) |
-| N2 | El bloque: selector de 100 ejercicios, meta, `+`/`−`, lista para corregir, peso con su etiqueta y la pregunta | 1 |
+| ~~N2~~ | ~~El bloque: selector de 100 ejercicios, meta, `+`/`−`, lista para corregir, peso con su etiqueta y la pregunta~~ | **Hecho el 15/9** |
 | N3 | Descanso con notificación local (suena con la pantalla bloqueada) y la cola sin señal | 1 |
 | N4 | Build de desarrollo con EAS e instalarla en el iPhone | 1 |
-| H3 | **Humano:** cuenta de Expo (gratis) y Apple Developer Program (99 USD/año) | Apple: en trámite desde el 15/9 |
+| H3 | **Humano:** cuenta de Expo (gratis) y Apple Developer Program (99 USD/año) | **Lo hace el humano esta semana y avisa.** No se recuerda desde acá. |
 | H4 | **Humano:** `ascent://confirmar` en Supabase → Authentication → Redirect URLs | — |
 
-**Quedan tres tandas** (N2, N3, N4). Orden confirmado por el humano el 15/9.
+**Quedan dos tandas** (N3, N4). Orden confirmado por el humano el 15/9.
 
 Lo que estaba en el orden anterior —calendario con el resumen del día, peso,
 fuerza, foto al registrar— **no hace falta para entrenar**: se sigue mirando en
