@@ -11,17 +11,18 @@ import { umbralValido } from '@nucleo/estancamiento';
 import {
   fechasPorRevisar,
   filasPorMusculo,
-  maximosPorEjercicio,
+  maximosDelCatalogo,
   semanaParaLeer,
   sesionesConFecha,
   type Catalogo,
+  type EjercicioDelCatalogo,
+  type MarcaParaMaximo,
   type SesionConBloques,
 } from '@nucleo/volumen';
 import HojaDelDia from '@/components/HojaDelDia';
 import { T } from '@nucleo/textos';
 
 const SEMANAS = 8;
-const MAXIMOS_A_LA_VISTA = 6;
 const AVISO_VISTO = 'ascent:aviso-revisar-cargas-visto';
 
 /**
@@ -51,13 +52,16 @@ export default function SeccionVolumen({
 }) {
   const [supabase] = useState(() => crearCliente());
   const [sesiones, setSesiones] = useState<SesionConBloques[] | null>(null);
-  const [catalogo, setCatalogo] = useState<Catalogo>(new Map());
+  const [ejercicios, setEjercicios] = useState<EjercicioDelCatalogo[]>([]);
+  const [marcas, setMarcas] = useState<MarcaParaMaximo[]>([]);
   const [unidad, setUnidad] = useState<Unidad>('kg');
   const [umbral, setUmbral] = useState(6);
   // Series por omisión: es la unidad que se entiende sin explicar.
   const [enSeries, setEnSeries] = useState(true);
   const [elegida, setElegida] = useState<number | null>(null);
-  const [todosLosMaximos, setTodosLosMaximos] = useState(false);
+  // Los grupos de máximos que se abrieron o cerraron a mano; el resto sigue
+  // su omisión (abierto si tiene algo).
+  const [plegados, setPlegados] = useState<Record<string, boolean>>({});
   const [avisoVisto, setAvisoVisto] = useState(true);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [propia, setPropia] = useState(0);
@@ -71,16 +75,19 @@ export default function SeccionVolumen({
     (async () => {
       const uid = (await miUsuario(supabase))?.id;
       if (!uid) return;
-      const [{ data: ses }, { data: cat }, { data: perfil }] = await Promise.all([
+      const [{ data: ses }, { data: cat }, { data: perfil }, { data: prs }] = await Promise.all([
         // El día sale del registro (`logs.fecha`), no de `inicio`: es el día
         // en hora del usuario, el mismo que usa el calendario.
         supabase.from('sesiones').select('id, bloques, logs(fecha)').eq('user_id', uid),
-        supabase.from('ejercicios').select('id, nombre, grupo'),
+        supabase.from('ejercicios').select('*'),
         supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
+        // Solo las mías: la RLS también deja leer las de los amigos.
+        supabase.from('prs').select('ejercicio, peso, fecha').eq('user_id', uid),
       ]);
       if (!vivo) return;
       setSesiones(sesionesConFecha(ses));
-      setCatalogo(new Map((cat ?? []).map((e) => [e.id as string, { nombre: e.nombre as string, grupo: e.grupo as string }])));
+      setEjercicios((cat ?? []) as EjercicioDelCatalogo[]);
+      setMarcas((prs ?? []) as MarcaParaMaximo[]);
       if (perfil?.unidad_peso === 'lb') setUnidad('lb');
       setUmbral(umbralValido(perfil?.umbral_estancamiento));
     })();
@@ -90,6 +97,10 @@ export default function SeccionVolumen({
   }, [supabase, recarga, propia]);
 
   const hoy = hoyISO();
+  const catalogo: Catalogo = useMemo(
+    () => new Map(ejercicios.map((e) => [e.id, { nombre: e.nombre, grupo: e.grupo }])),
+    [ejercicios]
+  );
 
   const porRevisar = useMemo(() => fechasPorRevisar(sesiones ?? []), [sesiones]);
 
@@ -112,7 +123,7 @@ export default function SeccionVolumen({
     elegida
   );
 
-  const maximos = maximosPorEjercicio(sesiones, catalogo);
+  const maximos = maximosDelCatalogo(sesiones, marcas, ejercicios);
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString('es-UY');
 
   async function entendido() {
@@ -200,27 +211,52 @@ export default function SeccionVolumen({
         )}
       </div>
 
+      {/* EL MÁXIMO DE TODO EL CATÁLOGO, en el orden del selector. Lo que nunca
+          se hizo lleva un guion: ver el hueco es lo que le da sentido al aviso
+          de estancamiento. Cada grupo se pliega; abierto si tiene algo. */}
       {maximos.length > 0 && (
         <div className="seccion">
           <h3>{T.volumen.maximos}</h3>
-          <div className="dia-ejercicios volumen-maximos">
-            {(todosLosMaximos ? maximos : maximos.slice(0, MAXIMOS_A_LA_VISTA)).map((m) => (
-              <div className="fila" key={m.ejercicio}>
-                <span className="nombre">
-                  {m.nombre}
-                  <span className="dia-pesos">{fechaLinda(m.fecha)}</span>
-                </span>
-                <span className="cuantas">
-                  {T.resumen.pesosDeSeries(pesoCorto(m.peso, unidad), unidad, claveDeEtiqueta(m.carga, m.ejercicio))}
-                </span>
+          <p className="nota-privada">{T.volumen.maximosNota}</p>
+          {maximos.map((g) => {
+            const clave = g.grupo ?? 'dots';
+            const abiertoGrupo = plegados[clave] ?? g.conPeso > 0;
+            return (
+              <div className="maximos-grupo" key={clave}>
+                <button
+                  className="maximos-cabeza"
+                  aria-expanded={abiertoGrupo}
+                  onClick={() => setPlegados((p) => ({ ...p, [clave]: !abiertoGrupo }))}
+                >
+                  <span>{g.grupo ? g.grupo.charAt(0).toUpperCase() + g.grupo.slice(1) : T.marca.cuentanDots}</span>
+                  <span className="apagado">
+                    {T.volumen.conPesoDe(g.conPeso, g.filas.length)} {abiertoGrupo ? '▾' : '›'}
+                  </span>
+                </button>
+                {abiertoGrupo && (
+                  <div className="dia-ejercicios volumen-maximos">
+                    {g.filas.map((f) => (
+                      <div className={`fila ${f.maximo ? '' : 'sin-maximo'}`} key={f.ejercicio}>
+                        <span className="nombre">
+                          {f.nombre}
+                          {f.maximo && <span className="dia-pesos">{fechaLinda(f.maximo.fecha)}</span>}
+                        </span>
+                        <span className="cuantas">
+                          {f.maximo
+                            ? T.resumen.pesosDeSeries(
+                                pesoCorto(f.maximo.peso, unidad),
+                                unidad,
+                                claveDeEtiqueta(f.maximo.carga, f.ejercicio)
+                              )
+                            : T.volumen.nada}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-          {maximos.length > MAXIMOS_A_LA_VISTA && (
-            <button className="boton-texto" onClick={() => setTodosLosMaximos((x) => !x)}>
-              {todosLosMaximos ? T.volumen.verMenos : T.volumen.verTodos(maximos.length)}
-            </button>
-          )}
+            );
+          })}
         </div>
       )}
 

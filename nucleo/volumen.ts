@@ -318,3 +318,84 @@ export function filasPorMusculo(
     topeKilos: Math.max(0, ...todas.map((s) => s.kilos)),
   };
 }
+
+export type EjercicioDelCatalogo = {
+  id: string;
+  nombre: string;
+  grupo: string;
+  orden?: number;
+  admite_peso?: boolean;
+  cuenta_dots?: boolean;
+};
+
+export type MarcaParaMaximo = { ejercicio: string; peso: number; fecha: string };
+
+export type MaximoDeLista = {
+  peso: number;
+  carga: Carga;
+  kilos: number;
+  fecha: string;
+};
+
+export type FilaDeMaximo = { ejercicio: string; nombre: string; maximo: MaximoDeLista | null };
+
+export type GrupoDeMaximos = {
+  /** `null` son los tres del DOTS, sueltos y arriba como en el selector. */
+  grupo: string | null;
+  filas: FilaDeMaximo[];
+  /** Cuántos del grupo tienen un máximo. */
+  conPeso: number;
+};
+
+/**
+ * EL PESO MÁXIMO DE TODO EL CATÁLOGO, en el orden del selector.
+ *
+ * EL PEDIDO (15/9): "solo muestra lo de hoy". No era un error de la cuenta
+ * sino del diseño: la lista salía SOLO de los pesos anotados en series, que se
+ * guardan desde la migración 36, y no miraba las marcas. Ahora es la misma
+ * lista con la que se elige al entrenar —los tres del DOTS arriba y después
+ * cada músculo—, con el máximo de cada uno o nada.
+ *
+ * DOS FUENTES, UNA CUENTA: lo más pesado que se MOVIÓ, en una serie (con su
+ * modo: 30 por mancuerna son 60) o en una marca (el peso levantado, no el 1RM
+ * estimado, que es una cuenta y no algo que pasó). Si empatan, gana la fecha
+ * más vieja: repetirlo no lo hace más nuevo.
+ *
+ * Quedan afuera los que no admiten peso (plancha): su fila estaría siempre
+ * vacía, y ahí el guion no significaría "todavía no".
+ */
+export function maximosDelCatalogo(
+  sesiones: SesionConBloques[],
+  marcas: MarcaParaMaximo[],
+  catalogo: EjercicioDelCatalogo[]
+): GrupoDeMaximos[] {
+  const mapa: Catalogo = new Map(catalogo.map((e) => [e.id, { nombre: e.nombre, grupo: e.grupo }]));
+  const mejor = new Map<string, MaximoDeLista>();
+  const proponer = (ejercicio: string, m: MaximoDeLista) => {
+    const actual = mejor.get(ejercicio);
+    if (!actual || m.kilos > actual.kilos || (m.kilos === actual.kilos && m.fecha < actual.fecha)) {
+      mejor.set(ejercicio, m);
+    }
+  };
+  for (const m of maximosPorEjercicio(sesiones, mapa)) {
+    proponer(m.ejercicio, { peso: m.peso, carga: m.carga, kilos: m.kilos, fecha: m.fecha });
+  }
+  for (const m of marcas) {
+    const peso = Number(m.peso);
+    if (!Number.isFinite(peso) || peso <= 0 || typeof m.fecha !== 'string') continue;
+    proponer(m.ejercicio, { peso, carga: 'total', kilos: peso, fecha: m.fecha });
+  }
+
+  const orden = (a: EjercicioDelCatalogo, b: EjercicioDelCatalogo) =>
+    (a.orden ?? 0) - (b.orden ?? 0) || a.nombre.localeCompare(b.nombre);
+  const armar = (grupo: string | null, suyos: EjercicioDelCatalogo[]): GrupoDeMaximos[] => {
+    if (suyos.length === 0) return [];
+    const filas = [...suyos].sort(orden).map((e) => ({ ejercicio: e.id, nombre: e.nombre, maximo: mejor.get(e.id) ?? null }));
+    return [{ grupo, filas, conPeso: filas.filter((f) => f.maximo).length }];
+  };
+  const conPeso = catalogo.filter((e) => e.admite_peso !== false);
+  return [
+    ...armar(null, conPeso.filter((e) => e.cuenta_dots)),
+    ...ORDEN_GRUPOS.flatMap((g) => armar(g, conPeso.filter((e) => e.grupo === g && !e.cuenta_dots))),
+  ];
+}

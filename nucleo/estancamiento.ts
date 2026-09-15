@@ -1,11 +1,12 @@
 import { restarDias } from './fechas.ts';
+import { disponible } from './esquema.ts';
 
 /**
  * EL DETECTOR DE ESTANCAMIENTO.
  *
  * Aprobado entero el 2026-08-30, implementado el 2026-09-09 con dos cambios
  * pedidos entonces: el umbral se elige en Ajustes (3, 6 u 8 semanas) y los
- * avisos se pueden apagar del todo.
+ * avisos se pueden apagar del todo. El 2026-09-15 se sumó 2 (migración 40).
  *
  * ─────────────────────────────────────────────────────────────────────
  * LO QUE SE PUEDE DETECTAR, HONESTAMENTE
@@ -52,9 +53,39 @@ import { restarDias } from './fechas.ts';
  * NO IMPORTA NADA salvo fechas: se prueba con node pelado.
  */
 
-export type Umbral = 3 | 6 | 8;
-export const UMBRALES: Umbral[] = [3, 6, 8];
+export type Umbral = 2 | 3 | 6 | 8;
+export const UMBRALES: Umbral[] = [2, 3, 6, 8];
 export const UMBRAL_POR_OMISION: Umbral = 6;
+
+/** Los que se pueden elegir con esta base: el 2 la rechaza antes de la 40. */
+export function umbralesDisponibles(version: number | null): Umbral[] {
+  return UMBRALES.filter((u) => u !== 2 || disponible('umbralDeDosSemanas', version));
+}
+
+/**
+ * CUANTO MÁS CORTA LA VENTANA, MÁS PRUEBA POR SEMANA.
+ *
+ * Con seis semanas, "el mejor es viejo y anotaste otra después" alcanza: seis
+ * semanas sin subir ya dicen algo. Con dos, una sola marca que no lo superó es
+ * un mal día. Por eso a las 2 semanas hacen falta DOS marcas después del mejor
+ * —dos intentos, no uno—, y de 3 en adelante sigue alcanzando una.
+ *
+ * NO SE PIDE MÁS QUE ESO: las marcas se cargan de a ratos, y un mínimo alto a
+ * dos semanas haría que el aviso no salte nunca, que es el problema al revés.
+ */
+export function intentosMinimos(umbral: Umbral): number {
+  return umbral === 2 ? 2 : 1;
+}
+
+/**
+ * "LO DEJASTE" NUNCA ANTES DE TRES SEMANAS. Dos semanas sin una marca de un
+ * ejercicio es rotar la rutina, no dejarlo. El umbral corto es para enterarse
+ * antes de que algo no sube, no para que cada ejercicio de la semana pasada
+ * aparezca como abandonado.
+ */
+export function semanasParaDejado(umbral: Umbral): number {
+  return Math.max(umbral, 3);
+}
 
 export function umbralValido(v: unknown): Umbral {
   const n = Number(v);
@@ -189,8 +220,8 @@ export function detectar(entrada: {
     const ultima = ordenadas[ordenadas.length - 1].fecha;
     const semanasSinAnotar = semanasEntre(ultima, hoy);
 
-    // Dejado: hace N semanas que no aparece.
-    if (semanasSinAnotar >= umbral) {
+    // Dejado: hace N semanas que no aparece (nunca menos de tres).
+    if (semanasSinAnotar >= semanasParaDejado(umbral)) {
       dejados.push({ tipo: 'ejercicio_dejado', ejercicio, semanas: semanasSinAnotar });
       continue;
     }
@@ -200,8 +231,8 @@ export function detectar(entrada: {
     let mejor = ordenadas[0];
     for (const m of ordenadas) if (unRm(m) > unRm(mejor)) mejor = m;
     const semanasDelMejor = semanasEntre(mejor.fecha, hoy);
-    const anotoDespues = ordenadas.some((m) => m.fecha > mejor.fecha);
-    if (semanasDelMejor >= umbral && anotoDespues) {
+    const intentosDespues = ordenadas.filter((m) => m.fecha > mejor.fecha).length;
+    if (semanasDelMejor >= umbral && intentosDespues >= intentosMinimos(umbral)) {
       quietas.push({ tipo: 'marca_quieta', ejercicio, semanas: semanasDelMejor });
     }
   }

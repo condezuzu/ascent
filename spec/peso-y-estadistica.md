@@ -215,6 +215,30 @@ pena construirlo y se pueda probar contra datos de verdad:
 en Ajustes el umbral está en 8 semanas, se corre dos semanas: 23 de noviembre.
 Pedirlo en esa fecha; antes, la pantalla se vería vacía o diría cosas falsas.
 
+### La regla con el umbral de Ajustes (propuesta del 2026-09-15)
+
+El 15/9 se sumó el umbral de 2 semanas (migración 40). Las "4 sesiones" fijas no
+escalan: en una ventana de 2 semanas, quien hace un ejercicio una vez por
+semana tiene 2 sesiones y el aviso no saltaría nunca. La regla pasa a ser:
+
+> Estancado si el máximo no sube en `N` semanas **y** hubo al menos
+> **`min(N, 4)` sesiones DESPUÉS del máximo** con ese ejercicio: una por
+> semana, hasta cuatro.
+
+| Umbral | Sesiones después del máximo | Historia necesaria | Fecha más temprana |
+|---|---|---|---|
+| 2 | 2 | 4 semanas | 12 de octubre |
+| 3 | 3 | 5 semanas | 19 de octubre |
+| 6 | 4 | 8 semanas | 9 de noviembre |
+| 8 | 4 | 10 semanas | 23 de noviembre |
+
+"Después del máximo" y no "en la ventana": la sesión que puso el máximo no es
+evidencia de estancamiento, son las que vinieron y no lo superaron.
+
+**Lo que ya rige hoy** (el detector de marcas, `nucleo/estancamiento.ts`): a 2
+semanas pide dos marcas después de la mejor en vez de una, y "lo dejaste" nunca
+salta antes de 3 semanas.
+
 ---
 
 ## 4 · Orden de trabajo propuesto

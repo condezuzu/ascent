@@ -67,9 +67,10 @@ create table public.profiles (
   -- aparato: cada cuánto querés que te avisen es una pregunta sobre tu
   -- entrenamiento, y la respuesta es la misma en el teléfono y en la
   -- computadora. Por omisión seis semanas: ocho llega cuando ya lo sabías y
-  -- tres le da la lata a quien está en mantenimiento.
+  -- tres le da la lata a quien está en mantenimiento. Dos (migración 40), para
+  -- quien lo pidió: con más evidencia por semana (`nucleo/estancamiento.ts`).
   umbral_estancamiento int not null default 6
-    check (umbral_estancamiento in (3, 6, 8)),
+    check (umbral_estancamiento in (2, 3, 6, 8)),
   -- Un aviso que no se puede apagar deja de ser un aviso: es una condición de
   -- uso.
   avisos_estancamiento boolean not null default true,
@@ -2535,7 +2536,7 @@ grant execute on function public.olvidar_suscripcion_push(text) to service_role;
 
 -- LA VERSIÓN DEL ESQUEMA (migración 37). Cada migración la reescribe con su número.
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 39; $$;
+returns int language sql immutable as $$ select 40; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

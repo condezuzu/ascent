@@ -6449,6 +6449,79 @@ console.log('\n97. La app nativa usa las mismas vidas, la misma foto y el mismo 
   // El sonido del descanso se puede prender en la nativa (pedido para N4).
   chequear('Ajustes nativo tiene el interruptor del sonido', archivo('movil', 'src', 'Ajustes.tsx').includes('guardarSonido('), true);
 }
+console.log('\n98. El peso maximo de todo el catalogo');
+{
+  const V = await import('../nucleo/volumen.ts');
+  const cat = [
+    { id: 'sentadilla', nombre: 'Sentadilla', grupo: 'piernas', cuenta_dots: true, orden: 1 },
+    { id: 'press_banca', nombre: 'Press banca', grupo: 'pecho', cuenta_dots: true, orden: 2 },
+    { id: 'aperturas', nombre: 'Aperturas', grupo: 'pecho', orden: 5 },
+    { id: 'press_inclinado', nombre: 'Press inclinado', grupo: 'pecho', orden: 4 },
+    { id: 'plancha', nombre: 'Plancha', grupo: 'core', admite_peso: false, orden: 9 },
+    { id: 'zancadas', nombre: 'Zancadas', grupo: 'piernas', orden: 7 },
+  ];
+  const sesiones = [
+    { fecha: '2026-09-14', bloques: [{ ejercicio: 'zancadas', series: 2, pesos: [30, 30], carga: 'par' }] },
+    { fecha: '2026-09-15', bloques: [{ ejercicio: 'press_banca', series: 1, pesos: [80] }] },
+  ];
+  // Una marca de antes de que se guardaran los pesos: tambien cuenta.
+  const marcas = [
+    { ejercicio: 'sentadilla', peso: 120, fecha: '2026-08-01' },
+    { ejercicio: 'press_banca', peso: 75, fecha: '2026-08-01' },
+    { ejercicio: 'zancadas', peso: 60, fecha: '2026-07-01' },
+  ];
+  const g = V.maximosDelCatalogo(sesiones, marcas, cat);
+  chequear('los del DOTS arriba, despues cada musculo en el orden del selector', g.map((x) => x.grupo), [null, 'pecho', 'piernas']);
+  chequear('los del DOTS van solo arriba', g[0].filas.map((f) => f.ejercicio), ['sentadilla', 'press_banca']);
+  chequear('dentro del grupo, el orden del catalogo', g[1].filas.map((f) => f.ejercicio), ['press_inclinado', 'aperturas']);
+  chequear('lo que nunca se hizo queda sin maximo (el guion)', g[1].filas.map((f) => f.maximo), [null, null]);
+  chequear('y la cuenta del grupo lo dice', [g[1].conPeso, g[1].filas.length], [0, 2]);
+  chequear('una marca sola alcanza para tener maximo', g[0].filas[0].maximo?.peso, 120);
+  chequear('la serie de hoy le gana a la marca vieja', g[0].filas[1].maximo?.peso, 80);
+  chequear('el isometrico no aparece', g.flatMap((x) => x.filas).some((f) => f.ejercicio === 'plancha'), false);
+  // 30 por mancuerna son 60: empata con la marca de 60, y gana la fecha vieja.
+  const z = g[2].filas.find((f) => f.ejercicio === 'zancadas').maximo;
+  chequear('se compara lo que se movio, y el empate lo gana la primera vez', [z.kilos, z.fecha], [60, '2026-07-01']);
+}
+
+console.log('\n99. El aviso de estancamiento a las 2 semanas');
+{
+  const E = await import('../nucleo/estancamiento.ts');
+  const HOY = '2026-09-15';
+  const m = (fecha, peso) => ({ ejercicio: 'press_banca', fecha, peso, reps: 1, es_real: true });
+  chequear('el 2 esta entre los umbrales', E.umbralValido(2), 2);
+  chequear('antes de la 40 no se ofrece', E.umbralesDisponibles(39), [3, 6, 8]);
+  chequear('con la 40 si', E.umbralesDisponibles(40), [2, 3, 6, 8]);
+  chequear('sin saber la version, tampoco', E.umbralesDisponibles(null), [3, 6, 8]);
+
+  // El mejor, hace dos semanas y media, y UNA marca despues: a 2 semanas es un
+  // mal dia, no un estancamiento.
+  const una = [m('2026-08-01', 90), m('2026-08-30', 100), m('2026-09-08', 97.5)];
+  chequear('a 2 semanas, un intento no alcanza', E.detectar({ marcas: una, sesiones: [], hoy: HOY, umbral: 2 }), null);
+  chequear('a 3, con el mismo caso, uno si (como siempre)', E.detectar({ marcas: [m('2026-08-01', 90), m('2026-08-20', 100), m('2026-09-08', 97.5)], sesiones: [], hoy: HOY, umbral: 3 })?.tipo, 'marca_quieta');
+  const dos = [...una, m('2026-09-12', 97.5)];
+  chequear('a 2 semanas, dos intentos si', E.detectar({ marcas: dos, sesiones: [], hoy: HOY, umbral: 2 })?.tipo, 'marca_quieta');
+
+  // Dos semanas sin una marca no es haberlo dejado.
+  const pausa = [m('2026-08-01', 90), m('2026-08-10', 95), m('2026-08-30', 100)];
+  chequear('"lo dejaste" nunca antes de tres semanas', E.detectar({ marcas: pausa, sesiones: [], hoy: HOY, umbral: 2 }), null);
+  chequear('a las tres, si', E.detectar({ marcas: pausa, sesiones: [], hoy: '2026-09-20', umbral: 2 })?.tipo, 'ejercicio_dejado');
+
+  // La base acepta justo lo que ofrece la app.
+  const u = await nuevoUsuario();
+  const acepta = async (v) => {
+    try {
+      await db.query('update profiles set umbral_estancamiento = $1 where id = $2', [v, u]);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const aceptados = [];
+  for (const v of [1, 2, 3, 4, 5, 6, 7, 8, 9]) if (await acepta(v)) aceptados.push(v);
+  chequear('la columna acepta los mismos umbrales que Ajustes', aceptados, E.UMBRALES);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

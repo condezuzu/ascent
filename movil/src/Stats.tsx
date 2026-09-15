@@ -7,17 +7,17 @@ import { claveDeEtiqueta } from '@nucleo/carga';
 import { umbralValido } from '@nucleo/estancamiento';
 import {
   filasPorMusculo,
-  maximosPorEjercicio,
+  maximosDelCatalogo,
   semanaParaLeer,
   sesionesConFecha,
-  type Catalogo,
+  type EjercicioDelCatalogo,
+  type MarcaParaMaximo,
   type SesionConBloques,
 } from '@nucleo/volumen';
 import type { Log } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 
 const SEMANAS = 8;
-const MAXIMOS_A_LA_VISTA = 6;
 
 type Datos = {
   racha: number;
@@ -26,7 +26,8 @@ type Datos = {
   umbral: number;
   logs: Log[];
   sesiones: SesionConBloques[];
-  catalogo: Catalogo;
+  ejercicios: EjercicioDelCatalogo[];
+  marcas: MarcaParaMaximo[];
 };
 
 /**
@@ -48,18 +49,21 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const [pestana, setPestana] = useState<'general' | 'entrenamiento'>('general');
   const [enSeries, setEnSeries] = useState(true);
   const [tocada, setTocada] = useState<number | null>(null);
-  const [todos, setTodos] = useState(false);
+  // Los grupos de máximos tocados a mano; el resto, abierto si tiene algo.
+  const [plegados, setPlegados] = useState<Record<string, boolean>>({});
 
   const cargar = useCallback(async () => {
     setError('');
     const { data: sesion } = await supabase.auth.getSession();
     const uid = sesion.session?.user?.id;
     if (!uid) return alSalir();
-    const [{ data: perfil }, { data: logs }, { data: ses }, { data: cat }] = await Promise.all([
+    const [{ data: perfil }, { data: logs }, { data: ses }, { data: cat }, { data: prs }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).single(),
       supabase.from('logs').select('*').eq('user_id', uid).order('fecha'),
       supabase.from('sesiones').select('id, bloques, logs(fecha)').eq('user_id', uid),
-      supabase.from('ejercicios').select('id, nombre, grupo'),
+      supabase.from('ejercicios').select('*'),
+      // Solo las mías: la RLS también deja leer las de los amigos.
+      supabase.from('prs').select('ejercicio, peso, fecha').eq('user_id', uid),
     ]);
     if (!perfil) return setError(T.general.noSePudo);
     setDatos({
@@ -69,7 +73,8 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       umbral: umbralValido(perfil.umbral_estancamiento),
       logs: (logs ?? []) as Log[],
       sesiones: sesionesConFecha(ses),
-      catalogo: new Map((cat ?? []).map((e) => [e.id as string, { nombre: e.nombre as string, grupo: e.grupo as string }])),
+      ejercicios: (cat ?? []) as EjercicioDelCatalogo[],
+      marcas: (prs ?? []) as MarcaParaMaximo[],
     });
   }, [alSalir]);
 
@@ -95,7 +100,8 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     );
   }
 
-  const { racha, mejor, unidad, umbral, logs, sesiones, catalogo } = datos;
+  const { racha, mejor, unidad, umbral, logs, sesiones, ejercicios, marcas } = datos;
+  const catalogo = new Map(ejercicios.map((e) => [e.id, { nombre: e.nombre, grupo: e.grupo }]));
   const hoy = hoyISO();
   const entrenados = logs.filter((l) => !l.es_descanso);
   // Las mismas dos cuentas que la web: los últimos 30 días contando hoy, y el
@@ -113,7 +119,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     filas[0]?.semanas.map((s, i) => ({ ...s, series: filas.reduce((t, f) => t + f.semanas[i].series, 0) })) ?? [],
     tocada
   );
-  const maximos = maximosPorEjercicio(sesiones, catalogo);
+  const maximos = maximosDelCatalogo(sesiones, marcas, ejercicios);
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString(T.general.locale);
   const mayuscula = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
 
@@ -211,27 +217,48 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             </>
           )}
 
+          {/* Todo el catálogo, en el orden del selector; lo nunca hecho con guion. */}
           {maximos.length > 0 && (
             <>
               <Text style={estilos.seccion}>{T.volumen.maximos}</Text>
-              {(todos ? maximos : maximos.slice(0, MAXIMOS_A_LA_VISTA)).map((m) => (
-                <View key={m.ejercicio} style={estilos.fila}>
-                  <View style={estilos.filaNombre}>
-                    <Text style={estilos.nombre}>{m.nombre}</Text>
-                    <Text style={estilos.fecha}>{fechaLinda(m.fecha)}</Text>
+              <Text style={estilos.nota}>{T.volumen.maximosNota}</Text>
+              {maximos.map((g) => {
+                const clave = g.grupo ?? 'dots';
+                const abierto = plegados[clave] ?? g.conPeso > 0;
+                return (
+                  <View key={clave}>
+                    <Pressable
+                      style={estilos.cabeza}
+                      onPress={() => setPlegados((p) => ({ ...p, [clave]: !abierto }))}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: abierto }}
+                    >
+                      <Text style={estilos.cabezaTexto}>{g.grupo ? mayuscula(g.grupo) : T.marca.cuentanDots}</Text>
+                      <Text style={estilos.cabezaCuenta}>
+                        {T.volumen.conPesoDe(g.conPeso, g.filas.length)} {abierto ? '▾' : '›'}
+                      </Text>
+                    </Pressable>
+                    {abierto &&
+                      g.filas.map((f) => (
+                        <View key={f.ejercicio} style={[estilos.fila, estilos.filaDeGrupo]}>
+                          <View style={estilos.filaNombre}>
+                            <Text style={[estilos.nombre, !f.maximo && estilos.sinMaximo]}>{f.nombre}</Text>
+                            {f.maximo && <Text style={estilos.fecha}>{fechaLinda(f.maximo.fecha)}</Text>}
+                          </View>
+                          <Text style={[estilos.peso, !f.maximo && estilos.sinMaximo]}>
+                            {f.maximo
+                              ? T.resumen.pesosDeSeries(
+                                  pesoCorto(f.maximo.peso, unidad),
+                                  unidad,
+                                  claveDeEtiqueta(f.maximo.carga, f.ejercicio)
+                                )
+                              : T.volumen.nada}
+                          </Text>
+                        </View>
+                      ))}
                   </View>
-                  <Text style={estilos.peso}>
-                    {T.resumen.pesosDeSeries(pesoCorto(m.peso, unidad), unidad, claveDeEtiqueta(m.carga, m.ejercicio))}
-                  </Text>
-                </View>
-              ))}
-              {maximos.length > MAXIMOS_A_LA_VISTA && (
-                <Pressable onPress={() => setTodos((x) => !x)} style={estilos.verTodos}>
-                  <Text style={estilos.enlace}>
-                    {todos ? T.volumen.verMenos : T.volumen.verTodos(maximos.length)}
-                  </Text>
-                </Pressable>
-              )}
+                );
+              })}
             </>
           )}
         </>
@@ -304,7 +331,18 @@ const estilos = StyleSheet.create({
   nombre: { color: '#e8ecf6', fontSize: 15 },
   fecha: { color: '#4a5163', fontSize: 12, marginTop: 2 },
   peso: { color: '#8a93a8', fontSize: 13 },
-  verTodos: { paddingVertical: 12, alignItems: 'center' },
+  filaDeGrupo: { paddingLeft: 12 },
+  sinMaximo: { color: '#4a5163' },
+  cabeza: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#2a3040',
+  },
+  cabezaTexto: { color: '#e8ecf6', fontSize: 14 },
+  cabezaCuenta: { color: '#4a5163', fontSize: 12 },
 
   error: { color: '#e8705f', fontSize: 13, textAlign: 'center' },
   enlace: { color: '#8a93a8', fontSize: 13 },

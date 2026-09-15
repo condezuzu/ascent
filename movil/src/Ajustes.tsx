@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
-import { UMBRALES, umbralValido, type Umbral } from '@nucleo/estancamiento';
+import { umbralesDisponibles, umbralValido, type Umbral } from '@nucleo/estancamiento';
+import { usarVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { PRESETS_DESCANSO } from '@nucleo/reglas';
@@ -76,6 +77,8 @@ export default function Ajustes({
   }
 
   const umbral = umbralValido(perfil.umbral_estancamiento);
+  // El 2 aparece cuando la base lo acepta (migración 40).
+  const version = usarVersionDelEsquema();
   const avisos = perfil.avisos_estancamiento !== false;
 
   return (
@@ -178,11 +181,11 @@ export default function Ajustes({
       {avisos && (
         <>
           <View style={[estilos.fila, { marginTop: 10 }]}>
-            {UMBRALES.map((u: Umbral) => (
+            {umbralesDisponibles(version).map((u: Umbral) => (
               <Pressable
                 key={u}
                 onPress={() => guardar({ umbral_estancamiento: u }, T.general.falloPreferencia)}
-                style={[estilos.ancha, u === umbral && estilos.prendida]}
+                style={[estilos.ancha, estilos.umbral, u === umbral && estilos.prendida]}
               >
                 <Text style={[estilos.textoPastilla, u === umbral && estilos.textoPrendido]}>
                   {T.ajustes.semanas(u)}
@@ -244,6 +247,8 @@ const estilos = StyleSheet.create({
     borderColor: '#2a3040',
     alignItems: 'center',
   },
+  // Cuatro en una fila: con el ancho mínimo de las otras, el cuarto bajaba solo.
+  umbral: { minWidth: 0 },
   prendida: { borderColor: '#7e8ca8' },
   textoPastilla: { color: '#8a93a8', fontSize: 13 },
   textoPrendido: { color: '#c4c2ba' },

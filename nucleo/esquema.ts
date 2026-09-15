@@ -27,6 +27,8 @@ export const REQUIERE = {
   cargaDelPeso: 38,
   /** Revisar los pesos anotados antes de que existieran los modos. */
   revisarCargas: 39,
+  /** El aviso de estancamiento a las 2 semanas: la base rechazaba el 2. */
+  umbralDeDosSemanas: 40,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

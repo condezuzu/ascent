@@ -640,9 +640,10 @@ export const T = {
     // Sin nada: se dice qué lo llena, sin pedirlo.
     vacio: 'Aparece cuando eliges el ejercicio al entrenar.',
 
+    // Todo el catálogo, como el selector; lo que nunca se hizo lleva un guion.
     maximos: 'Peso máximo por ejercicio',
-    verTodos: (n: number) => `Ver los ${n}`,
-    verMenos: 'Ver menos',
+    maximosNota: 'Lo más pesado que moviste, en una serie o en una marca.',
+    conPesoDe: (n: number, total: number) => `${n} de ${total}`,
 
     // En el resumen de un día.
     porMusculo: 'Por músculo',

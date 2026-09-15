@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { guardarPreferencia } from './guardar';
-import { UMBRALES, umbralValido, type Umbral } from '@nucleo/estancamiento';
+import { umbralesDisponibles, umbralValido, type Umbral } from '@nucleo/estancamiento';
+import { usarVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 
@@ -32,6 +33,8 @@ export default function Estancamiento({
   const [supabase] = useState(() => crearCliente());
   const prendido = perfil.avisos_estancamiento !== false;
   const umbral = umbralValido(perfil.umbral_estancamiento);
+  // El 2 aparece cuando la base lo acepta (migración 40).
+  const version = usarVersionDelEsquema();
 
   const guardarUmbral = (u: Umbral) =>
     guardarPreferencia(supabase, perfil, 'umbral_estancamiento', u, alCambiar);
@@ -59,7 +62,7 @@ export default function Estancamiento({
       {prendido && (
         <>
           <div className="selector-vista" style={{ marginTop: 10 }}>
-            {UMBRALES.map((u: Umbral) => (
+            {umbralesDisponibles(version).map((u: Umbral) => (
               <button
                 key={u}
                 className={u === umbral ? 'activo' : ''}
