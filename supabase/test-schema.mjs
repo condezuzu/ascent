@@ -6349,6 +6349,83 @@ console.log('\n95. El aviso del descanso se programa donde se guarda el descanso
   chequear('el aviso nativo usa un identificador fijo', /identifier:\s*delSistema\(id\)/.test(avisos), true);
   chequear('y cancela por ese mismo', /cancelScheduledNotificationAsync\(delSistema\(id\)\)/.test(avisos), true);
 }
+console.log('\n96. Hiciste 102 en banca: ¿lo guardo como marca?');
+{
+  const M = await import('../nucleo/marcaSugerida.ts');
+  const catalogo = new Map([
+    ['press_banca', { carga: 'total', cuenta_dots: true }],
+    ['sentadilla', { carga: 'total', cuenta_dots: true }],
+    ['peso_muerto', { carga: 'total', cuenta_dots: true }],
+    ['press_mancuernas', { carga: 'par', cuenta_dots: false }],
+    ['prensa', { carga: 'total', cuenta_dots: false }],
+    ['remo_barra', { carga: 'total', cuenta_dots: false }],
+  ]);
+  const marcas = [
+    { ejercicio: 'press_banca', peso: 100, reps: 1, es_real: true },
+    { ejercicio: 'sentadilla', peso: 120, reps: 5, es_real: false }, // 1RM 140
+    { ejercicio: 'prensa', peso: 200, reps: 1, es_real: true },
+  ];
+  const propone = (bloques) => M.marcasParaProponer({ bloques, marcas, catalogo });
+
+  chequear(
+    'mas que la marca: se propone con la de antes',
+    propone([{ ejercicio: 'press_banca', series: 3, pesos: [95, 102, 100], carga: 'total' }]),
+    [{ ejercicio: 'press_banca', peso: 102, antes: 100 }]
+  );
+  chequear('igual a la marca: no', propone([{ ejercicio: 'press_banca', series: 1, pesos: [100], carga: 'total' }]), []);
+  // Contra el 1RM, no contra el peso escrito: 130x5 de antes son 140 de 1RM.
+  chequear('contra el 1RM de la marca', propone([{ ejercicio: 'sentadilla', series: 1, pesos: [135], carga: 'total' }]), []);
+  chequear('por mancuerna: no se propone', propone([{ ejercicio: 'press_mancuernas', series: 1, pesos: [60], carga: 'par' }]), []);
+  chequear(
+    'un ejercicio del DOTS sin marca: si',
+    propone([{ ejercicio: 'peso_muerto', series: 1, pesos: [150], carga: 'total' }]),
+    [{ ejercicio: 'peso_muerto', peso: 150, antes: null }]
+  );
+  chequear('uno cualquiera sin marca: no (seria una encuesta)', propone([{ ejercicio: 'remo_barra', series: 1, pesos: [80], carga: 'total' }]), []);
+  chequear(
+    'uno con marca aunque no sea del DOTS: si',
+    propone([{ ejercicio: 'prensa', series: 1, pesos: [210], carga: 'total' }]).map((s) => s.ejercicio),
+    ['prensa']
+  );
+  chequear('sin modo en el bloque, el del catalogo', propone([{ ejercicio: 'press_mancuernas', series: 1, pesos: [60] }]), []);
+  chequear(
+    'los del DOTS primero, y tres como mucho',
+    propone([
+      { ejercicio: 'prensa', series: 1, pesos: [300], carga: 'total' },
+      { ejercicio: 'press_banca', series: 1, pesos: [105], carga: 'total' },
+      { ejercicio: 'peso_muerto', series: 1, pesos: [150], carga: 'total' },
+      { ejercicio: 'sentadilla', series: 1, pesos: [150], carga: 'total' },
+    ]).map((s) => s.ejercicio),
+    ['peso_muerto', 'sentadilla', 'press_banca']
+  );
+  chequear('sin bloques, nada', propone([]), []);
+
+  // La fila que se guarda entra en la tabla de verdad (peso 1-600, reps 1-20,
+  // 1RM real solo con una repeticion).
+  const u = await nuevoUsuario();
+  const s = { ejercicio: 'press_banca', peso: 102.5, antes: 100 };
+  for (const reps of [1, 5]) {
+    const f = M.filaDeMarca(s, reps, '2026-09-15');
+    await db.query('insert into prs (user_id, ejercicio, peso, reps, es_real, fecha) values ($1, $2, $3, $4, $5, $6)', [
+      u, f.ejercicio, f.peso, f.reps, f.es_real, f.fecha,
+    ]);
+  }
+  chequear(
+    'las dos filas entran, una real y una estimada',
+    (await db.query('select reps, es_real from prs where user_id = $1 order by reps', [u])).rows,
+    [{ reps: 1, es_real: true }, { reps: 5, es_real: false }]
+  );
+  chequear('las repeticiones ofrecidas caben en la tabla', M.REPETICIONES_PARA_MARCA.every((r) => r >= 1 && r <= 20), true);
+
+  // Y lo compartido pide SOLO las marcas propias: la tabla deja leer las de los
+  // amigos. Lo mismo el detector de estancamiento, que las mezclaba.
+  const { readFileSync: leer } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const compartido = leer(join(RAIZ, 'compartido', 'marcaSugerida.ts'), 'utf8');
+  chequear("la busqueda filtra por user_id", /from\('prs'\)\.select\([^)]*\)\.eq\('user_id'/.test(compartido), true);
+  const estancamiento = leer(join(RAIZ, 'src', 'components', 'Estancamiento.tsx'), 'utf8');
+  chequear("el estancamiento tambien", /from\('prs'\)\.select\([^)]*\)\.eq\('user_id'/.test(estancamiento), true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

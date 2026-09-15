@@ -12,6 +12,7 @@ import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
 import { usarSesion, type CierreDeSesion } from '@compartido/usarSesion';
 import Bloque from './Bloque';
 import Descanso from './Descanso';
+import SugerenciasDeMarca from './SugerenciasDeMarca';
 import { cuentaAtras, restante } from '@compartido/descanso';
 
 /**
@@ -365,6 +366,8 @@ export default function Inicio({
             )}
           </View>
           {cierre.porUbicacion && <Text style={estilos.nota}>{T.sesion.resumenSolo}</Text>}
+          {/* Afuera del toque que cierra: elegir repeticiones no cierra nada. */}
+          <SugerenciasDeMarca bloques={cierre.bloques} unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'} />
         </Pressable>
       ) : registradoHoy ? (
         <Text style={estilos.hecho}>{T.inicio.diaRegistrado}</Text>

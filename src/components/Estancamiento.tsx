@@ -72,7 +72,11 @@ export default function Estancamiento({ registradoHoy }: { registradoHoy: boolea
       const [{ data: perfil }, { data: prs }, { data: ses }, { data: cat }, apagadas] =
         await Promise.all([
           supabase.from('profiles').select('*').eq('id', uid).single(),
-          supabase.from('prs').select('ejercicio, peso, reps, es_real, fecha'),
+          // SOLO LAS PROPIAS. La tabla de marcas deja leer las de los amigos
+          // (el ranking las usa), y sin este filtro el detector decía "tu
+          // mejor sentadilla sigue siendo la de hace ocho semanas" mirando la
+          // marca de otra persona.
+          supabase.from('prs').select('ejercicio, peso, reps, es_real, fecha').eq('user_id', uid),
           supabase
             .from('sesiones')
             .select('inicio, fin')

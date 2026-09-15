@@ -23,11 +23,11 @@ Si no está claro si algo es 2 o 3, es 3.
 |---|-----|-------|
 | W1 | Probar en el iPhone el arreglo del lag del `+`/`−` del peso | Arreglado el 15/9 (la cola esperaba a la red). Falta la prueba en el gimnasio. |
 | W2 | Estancamiento por ejercicio con pesos | Espera datos: no antes del **9/11/2026**. Ver `peso-y-estadistica.md`. |
-| W3 | "Hiciste 102 en banca, ¿lo guardo como marca?" | **Entra** (decidido el 15/9): es lo que hace que las marcas se carguen solas. |
+| ~~W3~~ | ~~"Hiciste 102 en banca, ¿lo guardo como marca?"~~ | **Hecho el 15/9**, en la web y en la nativa. |
 | ~~W4~~ | ~~Login con Google~~ | **No entra.** Código borrado el 15/9. |
 | W5 | Sacar la sección Diagnóstico de Ajustes | Se queda hasta que el registro automático esté probado **en el gimnasio con la app nativa**. |
 | W6 | Poner al día `spec/estado.md` | Tiene corte al 21 de agosto. |
-| W7 | Revisar si hay sesiones con el total de series de menos (bug de los dos toques, 15/9) | **Humano:** correr `supabase/revisar-series-mal-contadas.sql` en el SQL Editor. Solo mira; la corrección va comentada. |
+| ~~W7~~ | ~~Revisar sesiones con el total de series de menos~~ | **Hecho por el humano el 15/9**: una sola (07/09, 19 → 20), corregida. |
 
 ### Lo que hace el humano (no es código)
 

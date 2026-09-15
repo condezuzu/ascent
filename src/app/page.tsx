@@ -755,6 +755,8 @@ export default function Principal() {
           minutos={cierre.minutos}
           series={cierre.series}
           porUbicacion={cierre.porUbicacion}
+          bloques={cierre.bloques}
+          unidad={perfil?.unidad_peso === 'lb' ? 'lb' : 'kg'}
           alCerrar={() => setCierre(null)}
         />
       )}

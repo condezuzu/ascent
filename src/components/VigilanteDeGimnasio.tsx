@@ -236,6 +236,7 @@ function Mirando({ supabase, perfil }: { supabase: SupabaseClient; perfil: Perfi
       minutos={cierre.minutos}
       series={cierre.series}
       porUbicacion={cierre.porUbicacion}
+      bloques={cierre.bloques}
       alCerrar={() => setCierre(null)}
     />
   );

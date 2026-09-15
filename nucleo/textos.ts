@@ -32,6 +32,9 @@
 // "Cómo se compara la fuerza", que es texto con formato y ya vive entero en
 // su propia pantalla.
 
+/** "Press de banca" → "press de banca", para meterlo en medio de una frase. */
+const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+
 export const T = {
   // ---------------------------------------------------------------
   // LAS VIDAS. Se llamaron "impulsos" un tiempo, por elegancia, y el humano lo
@@ -855,6 +858,19 @@ export const T = {
 
   // ---------------------------------------------------------------
   // La hoja que anota una marca de fuerza.
+  // "¿LO GUARDO COMO MARCA?", al terminar (`nucleo/marcaSugerida.ts`). Con el
+  // dato ya escrito: la única pregunta es a cuántas repeticiones.
+  marcaSugerida: {
+    masQueTuMarca: (peso: string, unidad: string, nombre: string) =>
+      `Hiciste ${peso} ${unidad} en ${minuscula(nombre)}: más que tu marca. ¿La guardo?`,
+    primera: (peso: string, unidad: string, nombre: string) =>
+      `Hiciste ${peso} ${unidad} en ${minuscula(nombre)}. ¿La guardo como marca?`,
+    cuantas: 'A cuántas repeticiones:',
+    no: 'No',
+    guardada: 'Guardada como marca.',
+    fallo: 'No se guardó. La puedes cargar desde Fuerza.',
+  },
+
   marca: {
     titulo: 'Anotar una marca',
     sub: 'No hace falta que sea de hoy. Queda con su fecha.',

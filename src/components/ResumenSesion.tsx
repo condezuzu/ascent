@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { leerPerfilCache } from '@compartido/cache';
 import { plataforma } from '@/plataforma';
 import NumeroQueCuenta from './NumeroQueCuenta';
 import { T } from '@nucleo/textos';
+import { pesoCorto, type Unidad } from '@nucleo/peso';
+import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
+import { usarSugerenciasDeMarca } from '@compartido/marcaSugerida';
 
 /**
  * Lo que se ve al terminar de entrenar.
@@ -28,13 +32,26 @@ export default function ResumenSesion({
   minutos,
   series,
   porUbicacion,
+  bloques,
+  unidad: unidadPedida,
   alCerrar,
 }: {
   minutos: number;
   series: number;
   porUbicacion: boolean;
+  /** Los bloques de la sesión, para preguntar "¿lo guardo como marca?". */
+  bloques: unknown;
+  /** Si no se pasa, sale del perfil guardado en el teléfono. */
+  unidad?: Unidad;
   alCerrar: () => void;
 }) {
+  const sugerencias = usarSugerenciasDeMarca(bloques);
+  const [unidadGuardada, setUnidadGuardada] = useState<Unidad>('kg');
+  useEffect(() => {
+    if (unidadPedida) return;
+    leerPerfilCache().then((p) => setUnidadGuardada(p?.unidad_peso === 'lb' ? 'lb' : 'kg'));
+  }, [unidadPedida]);
+  const unidad = unidadPedida ?? unidadGuardada;
   // Un golpe corto al aparecer. Llega ACÁ y no en el toque de "Terminar":
   // el toque confirma que pediste algo, esto confirma que ya está hecho.
   useEffect(() => {
@@ -63,6 +80,44 @@ export default function ResumenSesion({
         </div>
 
         {porUbicacion && <p className="pie">{T.sesion.resumenSolo}</p>}
+
+        {/* ¿LO GUARDO COMO MARCA? Con el dato ya escrito: la única pregunta es
+            a cuántas repeticiones. Tocar acá NO cierra el resumen, que se
+            cierra tocando en cualquier otro lado. */}
+        {sugerencias.lista.length > 0 && (
+          <div className="marcas-sugeridas" onClick={(e) => e.stopPropagation()}>
+            {sugerencias.lista.map((s) => (
+              <div key={s.ejercicio} className="marca-sugerida">
+                <p>
+                  {(s.antes === null ? T.marcaSugerida.primera : T.marcaSugerida.masQueTuMarca)(
+                    pesoCorto(s.peso, unidad),
+                    unidad,
+                    s.nombre
+                  )}
+                </p>
+                {s.estado === 'guardada' ? (
+                  <p className="hecho">{T.marcaSugerida.guardada}</p>
+                ) : s.estado === 'fallo' ? (
+                  <p className="hecho">{T.marcaSugerida.fallo}</p>
+                ) : (
+                  <>
+                    <span className="cuantas">{T.marcaSugerida.cuantas}</span>
+                    <div className="reps">
+                      {REPETICIONES_PARA_MARCA.map((r) => (
+                        <button key={r} disabled={s.estado === 'guardando'} onClick={() => sugerencias.guardar(s, r)}>
+                          {r}
+                        </button>
+                      ))}
+                      <button className="no" onClick={() => sugerencias.descartar(s)}>
+                        {T.marcaSugerida.no}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

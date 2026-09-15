@@ -145,6 +145,12 @@ export type CierreDeSesion = {
   series: number;
   porUbicacion: boolean;
   deshizoElDia: boolean;
+  /**
+   * Los bloques de la sesión que terminó, como se guardaron. El resumen los
+   * usa para preguntar "¿lo guardo como marca?" (`nucleo/marcaSugerida.ts`):
+   * al cerrar se ponen en cero, y si no salen de acá ya no están.
+   */
+  bloques: ReturnType<typeof paraGuardar>;
 };
 
 export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void) {
@@ -449,6 +455,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const seriesHechas = series;
     const eraPorUbicacion = porUbicacion;
     const desfase = desfasaje;
+    const bloquesHechos = paraGuardar(bloques);
     const { data, error } = await cerrar(supabase, opciones);
     setOcupado(false);
     // Lo mismo al revés: si el cierre no llegó, quien llama tiene que poder
@@ -486,6 +493,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       series: seriesHechas,
       porUbicacion: eraPorUbicacion,
       deshizoElDia,
+      bloques: bloquesHechos,
     };
   }
 
