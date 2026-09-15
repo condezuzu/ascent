@@ -630,6 +630,11 @@ export const T = {
     enSeries: 'Series',
     enKilos: 'Kilos',
     semanaDel: (fecha: string) => `Semana del ${fecha}`,
+    // La semana de hoy no terminó: dicho, para que no se lea como una caída.
+    estaSemana: 'Esta semana, hasta hoy',
+    // Debajo de la última barra.
+    esta: 'esta',
+    conTotal: (cuando: string, total: string) => `${cuando} · ${total}`,
     kilosYSeries: (kilos: string, unidad: string, series: number) =>
       `${series === 1 ? '1 serie' : `${series} series`} · ${kilos} ${unidad}`,
     soloSeries: (series: number) => (series === 1 ? '1 serie' : `${series} series`),

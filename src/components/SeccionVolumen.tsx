@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { plataforma } from '@/plataforma';
-import { fechaLinda, hoyISO } from '@nucleo/fechas';
+import { fechaCorta, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { claveDeEtiqueta } from '@nucleo/carga';
 import { umbralValido } from '@nucleo/estancamiento';
@@ -111,17 +111,21 @@ export default function SeccionVolumen({
 
   if (!sesiones) return null;
 
-  const { filas, topeSeries, topeKilos } = filasPorMusculo(sesiones, catalogo, { hoy, semanas: SEMANAS, umbral });
+  const { filas, totales, hayAnotado, topeSeries, topeKilos } = filasPorMusculo(sesiones, catalogo, {
+    hoy,
+    semanas: SEMANAS,
+    umbral,
+  });
   const hayKilos = topeKilos > 0;
   // Sin kilos anotados, series: una fila de kilos en cero no dice nada.
   const series = enSeries || !hayKilos;
   const valor = (s: { series: number; kilos: number }) => (series ? s.series : s.kilos);
   const tope = series ? topeSeries : topeKilos;
   // La semana que se lee: la tocada, o la última con algo en cualquier fila.
-  const indice = semanaParaLeer(
-    filas[0]?.semanas.map((s, i) => ({ ...s, series: filas.reduce((t, f) => t + f.semanas[i].series, 0) })) ?? [],
-    elegida
-  );
+  const indice = semanaParaLeer(totales, elegida);
+  // La última barra es la semana de hoy, que todavía no terminó.
+  const enCurso = totales.length - 1;
+  const leidaTotal = totales[indice];
 
   const maximos = maximosDelCatalogo(sesiones, marcas, ejercicios);
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString('es-UY');
@@ -157,7 +161,7 @@ export default function SeccionVolumen({
           filas comparten escala. Tocar una barra lee esa semana en todas. */}
       <div className="seccion volumen">
         <h3>{T.volumen.titulo}</h3>
-        {filas.length === 0 ? (
+        {!hayAnotado ? (
           <p className="nota-privada">{T.volumen.vacio}</p>
         ) : (
           <>
@@ -171,12 +175,17 @@ export default function SeccionVolumen({
                 </button>
               </div>
             )}
-            <p className="volumen-cuando">{T.volumen.semanaDel(fechaLinda(filas[0].semanas[indice].desde))}</p>
+            <p className="volumen-cuando">
+              {T.volumen.conTotal(
+                indice === enCurso ? T.volumen.estaSemana : T.volumen.semanaDel(fechaLinda(leidaTotal.desde)),
+                series ? T.volumen.soloSeries(leidaTotal.series) : `${kilosLindos(leidaTotal.kilos)} ${unidad}`
+              )}
+            </p>
             <div className="volumen-filas">
               {filas.map((f) => {
                 const leida = f.semanas[indice];
                 return (
-                  <div className="volumen-fila" key={f.grupo}>
+                  <div className={`volumen-fila ${f.vacia ? 'vacia' : ''}`} key={f.grupo}>
                     <div className="volumen-rotulo">
                       <span className="capitalizado">{f.grupo}</span>
                       {f.dejado && <span className="volumen-dejado">{T.volumen.nadaDesde(fechaLinda(f.dejado.ultima))}</span>}
@@ -185,7 +194,7 @@ export default function SeccionVolumen({
                       {f.semanas.map((s, i) => (
                         <button
                           key={s.desde}
-                          className={`volumen-barra ${i === indice ? 'leida' : ''}`}
+                          className={`volumen-barra ${i === indice ? 'leida' : ''} ${i === enCurso && valor(s) > 0 ? 'en-curso' : ''}`}
                           onClick={() => setElegida(i)}
                           aria-label={`${f.grupo}, ${T.volumen.semanaDel(fechaLinda(s.desde))}: ${
                             series ? T.volumen.soloSeries(s.series) : `${kilosLindos(s.kilos)} ${unidad}`
@@ -205,6 +214,16 @@ export default function SeccionVolumen({
                   </div>
                 );
               })}
+              {/* EL EJE: la primera semana y la de hoy. Las del medio se leen
+                  tocando; ocho fechas en ese ancho no se leerían. */}
+              <div className="volumen-fila volumen-eje" aria-hidden>
+                <span />
+                <div className="volumen-eje-fechas">
+                  <span>{fechaCorta(totales[0].desde)}</span>
+                  <span>{T.volumen.esta}</span>
+                </div>
+                <span />
+              </div>
             </div>
             <p className="nota-privada">{series ? T.volumen.notaSeries : T.volumen.notaKilos}</p>
           </>

@@ -282,12 +282,22 @@ export function fechasPorRevisar(sesiones: SesionConBloques[]): Set<string> {
 export type FilaDeMusculo = {
   grupo: string;
   semanas: Semana[];
+  /** Ninguna serie en todas las semanas: la fila se dibuja vacía, no se esconde. */
+  vacia: boolean;
   /** Si hace `umbral` semanas o más que no aparece: la fila lo dice en voz baja. */
   dejado: GrupoDejado | null;
 };
 
 /**
  * LA PANTALLA ENTERA EN FILAS: un músculo por fila, con sus semanas.
+ *
+ * LOS SEIS MÚSCULOS, SIEMPRE (pedido del 15/9). Antes solo salían los que
+ * tenían algo anotado, y con una sola fila no hay contra qué comparar, que es
+ * para lo único que sirve la pantalla. La fila vacía ES el dato.
+ *
+ * `totales` es la suma de las filas por semana: el número de la semana leída
+ * y la semana que se lee por omisión. `hayAnotado` distingue "no hiciste
+ * nada de esto" de "nunca elegiste un ejercicio", que se dice de otra forma.
  *
  * NO DICE "VOLUMEN". Quien va al gimnasio sabe qué es una serie y no qué es
  * volumen, así que cada fila son barras chicas —una por semana— de cuántas
@@ -304,16 +314,33 @@ export function filasPorMusculo(
   sesiones: SesionConBloques[],
   catalogo: Catalogo,
   { hoy, semanas, umbral }: { hoy: string; semanas: number; umbral: number }
-): { filas: FilaDeMusculo[]; topeSeries: number; topeKilos: number } {
+): {
+  filas: FilaDeMusculo[];
+  totales: Semana[];
+  hayAnotado: boolean;
+  topeSeries: number;
+  topeKilos: number;
+} {
   const dejados = new Map(gruposDejados(sesiones, catalogo, { hoy, semanas: umbral }).map((d) => [d.grupo, d]));
-  const filas = gruposAnotados(sesiones, catalogo).map((grupo) => ({
-    grupo,
-    semanas: volumenPorSemana(sesiones, catalogo, { hoy, semanas, grupo }),
-    dejado: dejados.get(grupo) ?? null,
+  const filas = ORDEN_GRUPOS.map((grupo) => {
+    const suyas = volumenPorSemana(sesiones, catalogo, { hoy, semanas, grupo });
+    return {
+      grupo,
+      semanas: suyas,
+      vacia: suyas.every((s) => s.series === 0),
+      dejado: dejados.get(grupo) ?? null,
+    };
+  });
+  const totales = (filas[0]?.semanas ?? []).map((s, i) => ({
+    desde: s.desde,
+    kilos: Math.round(filas.reduce((t, f) => t + f.semanas[i].kilos, 0) * 100) / 100,
+    series: filas.reduce((t, f) => t + f.semanas[i].series, 0),
   }));
   const todas = filas.flatMap((f) => f.semanas);
   return {
     filas,
+    totales,
+    hayAnotado: gruposAnotados(sesiones, catalogo).length > 0,
     topeSeries: Math.max(0, ...todas.map((s) => s.series)),
     topeKilos: Math.max(0, ...todas.map((s) => s.kilos)),
   };

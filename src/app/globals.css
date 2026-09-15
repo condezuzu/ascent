@@ -3899,6 +3899,32 @@ body.con-franja.con-accion .pantalla {
 .volumen-barra.leida .relleno {
   background: var(--pal-principal);
 }
+/* LA SEMANA DE HOY NO TERMINÓ: contorno punteado, para que un lunes su barra
+   baja no se lea como una caída. */
+.volumen-barra.en-curso .relleno {
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--pal-principal) 70%, transparent);
+  border-bottom: 0;
+}
+.volumen-barra.en-curso.leida .relleno {
+  background: color-mix(in srgb, var(--pal-principal) 30%, transparent);
+  border-color: var(--pal-principal);
+}
+/* Un músculo sin nada en ocho semanas: se ve, en voz baja. */
+.volumen-fila.vacia .volumen-rotulo,
+.volumen-fila.vacia .volumen-valor {
+  color: var(--apagado);
+}
+.volumen-eje {
+  margin-top: -6px;
+}
+.volumen-eje-fechas {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--apagado);
+  font-variant-numeric: tabular-nums;
+}
 .volumen-valor {
   font-size: 14px;
   color: var(--tinta);

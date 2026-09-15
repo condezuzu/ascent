@@ -29,6 +29,12 @@ export const DIAS_SEMANA = T.fechas.diasCortos;
 export const DIAS_SEMANA_LARGO = T.fechas.diasLargos;
 export const MESES = T.fechas.meses;
 
+/** "14/9": para rotular un eje, donde "14 de setiembre" no entra. */
+export function fechaCorta(iso: string): string {
+  const d = deISO(iso);
+  return `${d.getDate()}/${d.getMonth() + 1}`;
+}
+
 export function fechaLinda(iso: string): string {
   const d = deISO(iso);
   return T.fechas.delMes(d.getDate(), MESES[d.getMonth()]);

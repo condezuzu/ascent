@@ -6208,7 +6208,17 @@ console.log('\n91. Series por musculo: una escala para todas las filas');
     { fecha: '2026-07-01', bloques: [{ ejercicio: 'press_banca', series: 4, pesos: [60, 60, 60, 60], carga: 'total' }] },
   ];
   const r = V.filasPorMusculo(ses, cat, { hoy: '2026-09-15', semanas: 2, umbral: 6 });
-  chequear('una fila por musculo anotado, en el orden de la interfaz', r.filas.map((f) => f.grupo), ['pecho', 'piernas', 'core']);
+  // Los seis siempre (pedido del 15/9): con una sola fila no hay contra que comparar.
+  chequear('los seis musculos, aunque esten vacios, en el orden de la interfaz', r.filas.map((f) => f.grupo), V.ORDEN_GRUPOS);
+  chequear('y los seis son los de siempre', V.ORDEN_GRUPOS, ['pecho', 'espalda', 'hombros', 'brazos', 'piernas', 'core']);
+  chequear('las vacias lo saben', r.filas.filter((f) => f.vacia).map((f) => f.grupo), ['pecho', 'espalda', 'hombros', 'brazos']);
+  chequear('el total de la semana suma las filas', r.totales.map((s) => s.series), [0, 33]);
+  chequear('se lee la ultima semana con algo, con el total', V.semanaParaLeer(r.totales, null), 1);
+  chequear('con algo anotado alguna vez, hay pantalla', r.hayAnotado, true);
+  const nada = V.filasPorMusculo([], cat, { hoy: '2026-09-15', semanas: 2, umbral: 6 });
+  chequear('sin nada anotado nunca, el vacio se dice aparte', [nada.hayAnotado, nada.filas.length], [false, 6]);
+  const { fechaCorta } = await import('../nucleo/fechas.ts');
+  chequear('el eje rotula corto', fechaCorta('2026-07-21'), '21/7');
   // Con una escala por fila, 3 de core y 30 de pierna serian barras iguales.
   chequear('el tope es uno solo para todas', [r.topeSeries, r.topeKilos], [30, 0]);
   chequear('la fila dejada lo dice', r.filas.find((f) => f.grupo === 'pecho').dejado?.ultima, '2026-07-01');

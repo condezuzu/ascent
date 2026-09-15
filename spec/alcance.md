@@ -72,4 +72,6 @@ la web mientras tanto. Si va antes, suma unas tres tandas a la llegada.
 
 ## Después (lo que aparezca, anotado y sin tocar)
 
-*(vacío)*
+- **Series por músculo → los ejercicios de esa semana** (15/9/2026). Tocar una
+  fila de la pantalla de series y ver qué ejercicios de ese músculo se hicieron
+  en la semana leída, con sus series. Es una pantalla nueva, no un ajuste.

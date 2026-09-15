@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
-import { aISO, deISO, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
+import { aISO, deISO, fechaCorta, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
 import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { claveDeEtiqueta } from '@nucleo/carga';
 import { umbralValido } from '@nucleo/estancamiento';
@@ -110,15 +110,19 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const d = deISO(hoy);
   const esteMes = entrenados.filter((l) => l.fecha >= aISO(new Date(d.getFullYear(), d.getMonth(), 1))).length;
 
-  const { filas, topeSeries, topeKilos } = filasPorMusculo(sesiones, catalogo, { hoy, semanas: SEMANAS, umbral });
+  const { filas, totales, hayAnotado, topeSeries, topeKilos } = filasPorMusculo(sesiones, catalogo, {
+    hoy,
+    semanas: SEMANAS,
+    umbral,
+  });
   const hayKilos = topeKilos > 0;
   const series = enSeries || !hayKilos;
   const valor = (s: { series: number; kilos: number }) => (series ? s.series : s.kilos);
   const tope = series ? topeSeries : topeKilos;
-  const indice = semanaParaLeer(
-    filas[0]?.semanas.map((s, i) => ({ ...s, series: filas.reduce((t, f) => t + f.semanas[i].series, 0) })) ?? [],
-    tocada
-  );
+  const indice = semanaParaLeer(totales, tocada);
+  // La última barra es la semana de hoy, que todavía no terminó.
+  const enCurso = totales.length - 1;
+  const leidaTotal = totales[indice];
   const maximos = maximosDelCatalogo(sesiones, marcas, ejercicios);
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString(T.general.locale);
   const mayuscula = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
@@ -164,7 +168,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           {/* Una fila por músculo, una barra por semana, en series: la misma
               pantalla que la web, con las mismas funciones del núcleo. */}
           <Text style={estilos.seccion}>{T.volumen.titulo}</Text>
-          {filas.length === 0 ? (
+          {!hayAnotado ? (
             <Text style={estilos.nota}>{T.volumen.vacio}</Text>
           ) : (
             <>
@@ -183,13 +187,18 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                   ))}
                 </View>
               )}
-              <Text style={estilos.cuando}>{T.volumen.semanaDel(fechaLinda(filas[0].semanas[indice].desde))}</Text>
+              <Text style={estilos.cuando}>
+                {T.volumen.conTotal(
+                  indice === enCurso ? T.volumen.estaSemana : T.volumen.semanaDel(fechaLinda(leidaTotal.desde)),
+                  series ? T.volumen.soloSeries(leidaTotal.series) : `${kilosLindos(leidaTotal.kilos)} ${unidad}`
+                )}
+              </Text>
               {filas.map((f) => {
                 const leida = f.semanas[indice];
                 return (
                   <View key={f.grupo} style={estilos.filaMusculo}>
                     <View style={estilos.rotulo}>
-                      <Text style={estilos.nombre}>{mayuscula(f.grupo)}</Text>
+                      <Text style={[estilos.nombre, f.vacia && estilos.sinMaximo]}>{mayuscula(f.grupo)}</Text>
                       {f.dejado && (
                         <Text style={estilos.dejado}>{T.volumen.nadaDesde(fechaLinda(f.dejado.ultima))}</Text>
                       )}
@@ -201,18 +210,29 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                             style={[
                               estilos.relleno,
                               i === indice && estilos.rellenoLeido,
+                              // Sin nada no hay contorno: sería un punteado suelto sobre la base.
+                              i === enCurso && valor(s) > 0 && (i === indice ? estilos.enCursoLeido : estilos.enCurso),
                               { height: `${tope > 0 ? (valor(s) / tope) * 100 : 0}%` },
                             ]}
                           />
                         </Pressable>
                       ))}
                     </View>
-                    <Text style={estilos.valorFila}>
+                    <Text style={[estilos.valorFila, f.vacia && estilos.sinMaximo]}>
                       {leida.series === 0 ? T.volumen.nada : series ? String(leida.series) : `${kilosLindos(leida.kilos)} ${unidad}`}
                     </Text>
                   </View>
                 );
               })}
+              {/* El eje: la primera semana y la de hoy. */}
+              <View style={estilos.eje} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                <View style={estilos.rotulo} />
+                <View style={estilos.ejeFechas}>
+                  <Text style={estilos.ejeTexto}>{fechaCorta(totales[0].desde)}</Text>
+                  <Text style={estilos.ejeTexto}>{T.volumen.esta}</Text>
+                </View>
+                <View style={estilos.ejeHueco} />
+              </View>
               <Text style={estilos.nota}>{series ? T.volumen.notaSeries : T.volumen.notaKilos}</Text>
             </>
           )}
@@ -316,6 +336,13 @@ const estilos = StyleSheet.create({
   barra: { flex: 1, height: '100%', justifyContent: 'flex-end', paddingHorizontal: 1 },
   relleno: { width: '100%', borderTopLeftRadius: 4, borderTopRightRadius: 4, backgroundColor: '#3d4556' },
   rellenoLeido: { backgroundColor: '#7e8ca8' },
+  // La semana de hoy no terminó: contorno punteado, para que no parezca una caída.
+  enCurso: { backgroundColor: 'transparent', borderWidth: 1, borderStyle: 'dashed', borderColor: '#5a647a' },
+  enCursoLeido: { backgroundColor: 'rgba(126,140,168,0.3)', borderWidth: 1, borderStyle: 'dashed', borderColor: '#7e8ca8' },
+  eje: { flexDirection: 'row', gap: 10, marginTop: -4, marginBottom: 10 },
+  ejeFechas: { flex: 1, flexDirection: 'row', justifyContent: 'space-between' },
+  ejeTexto: { color: '#4a5163', fontSize: 11 },
+  ejeHueco: { width: 58 },
   valorFila: { width: 58, color: '#e8ecf6', fontSize: 14, textAlign: 'right' },
 
   fila: {
