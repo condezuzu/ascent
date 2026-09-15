@@ -420,6 +420,29 @@ paso de 2,5 kg al instante, la lista, la pregunta de zancadas, "¿de cuál
 eran?", y cerrar con el resumen. En la web, tres pares de toques seguidos con
 el total correcto.
 
+### Tanda 3 · N3 — el descanso (2026-09-15)
+
+La pantalla del descanso (el número grande, presets que cambian la duración
+sin reiniciar, "+ Serie hecha" desde ahí, OK que cierra sin cortar) y la
+píldora arriba, al lado del reloj. La barra se vacía en lugar del anillo de la
+web: el anillo pide `react-native-svg`, una dependencia para un solo dibujo.
+
+**El aviso con la pantalla bloqueada (§13d) se programa donde se guarda el
+descanso**, en `compartido/descanso.ts`: empezar, cambiar la duración y borrar
+lo reprograman o lo cancelan. Ningún botón puede dejar un aviso viejo sonando.
+Solo si `avisos.conPantallaBloqueada()` —en web no, y la pantalla del descanso
+ya avisa con la app adelante—. La notificación usa un identificador fijo
+(`ascent-descanso`): con el mapa en memoria de antes, cerrar la app con un
+descanso andando dejaba ese aviso imposible de cancelar.
+
+**Sin señal, probado:** con la red cortada, tres series se cuentan en el
+teléfono y la cola guarda UNA escritura con el total bueno; al volver, sale
+ese valor y la cola queda vacía.
+
+**Lo que no se puede probar sin el teléfono:** que la notificación suene con
+la pantalla bloqueada. `expo-notifications` no funciona en el navegador. Es la
+primera prueba de N4.
+
 ### Cómo se verifica la app nativa sin el teléfono
 
 `movil/` ahora corre también en el navegador (`npx expo start --web`), y **eso

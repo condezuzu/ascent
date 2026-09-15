@@ -42,7 +42,34 @@ export async function leerDescanso(): Promise<DescansoVivo | null> {
 export function guardarDescanso(duracion: number): DescansoVivo {
   const d = { fin: Date.now() + duracion * 1000, duracion };
   void plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(d));
+  void avisarAlTerminar(d);
   return d;
+}
+
+const AVISO = 'descanso';
+
+/**
+ * EL AVISO CON LA PANTALLA BLOQUEADA (§13d, la prioridad de la etapa nativa).
+ *
+ * Se programa ACÁ, donde se guarda el descanso, y no en cada botón: empezar
+ * (el `+`), descansar suelto, cambiar la duración y saltar pasan todos por
+ * estas tres funciones, así que ninguno puede dejar un aviso viejo sonando ni
+ * uno nuevo sin programar.
+ *
+ * Solo donde el aviso llega con la pantalla bloqueada —la app nativa—. En web
+ * eso no existe, y la pantalla del descanso ya vibra y suena con la app
+ * adelante: programar también ahí sería avisar dos veces.
+ *
+ * Sigue sin ser la fuente de la verdad (§18.4): la cuenta sale de `fin`. Si el
+ * sistema no entrega la notificación, el número al volver sigue bien.
+ */
+async function avisarAlTerminar(d: DescansoVivo | null) {
+  if (!plataforma.avisos.conPantallaBloqueada()) return;
+  const faltan = d ? restante(d.fin) : 0;
+  if (faltan <= 0) return plataforma.avisos.cancelar(AVISO);
+  // Con la app adelante el aviso lo da la pantalla del descanso: el callback
+  // no hace nada más.
+  await plataforma.avisos.programar(AVISO, faltan, () => {});
 }
 
 /**
@@ -61,10 +88,13 @@ export function cambiarDuracion(vivo: DescansoVivo, duracion: number): DescansoV
   const inicio = vivo.fin - vivo.duracion * 1000;
   const d = { fin: inicio + duracion * 1000, duracion };
   void plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(d));
+  // Bajar a 2 con 2:30 encima deja el descanso terminado: ahí se cancela.
+  void avisarAlTerminar(d);
   return d;
 }
 
 export function borrarDescanso() {
+  void avisarAlTerminar(null);
   return plataforma.almacenamiento.borrar(CLAVE);
 }
 

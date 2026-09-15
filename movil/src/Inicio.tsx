@@ -11,6 +11,8 @@ import { T } from '@nucleo/textos';
 import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
 import { usarSesion, type CierreDeSesion } from '@compartido/usarSesion';
 import Bloque from './Bloque';
+import Descanso from './Descanso';
+import { cuentaAtras, restante } from '@compartido/descanso';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -35,7 +37,8 @@ import Bloque from './Bloque';
  * que usa la web, desde `compartido/`. Iniciar, el cronómetro, terminar, el
  * cierre por inactividad y el aviso de "se cerró sola" son una sola lógica
  * para las dos apps. Esta pantalla solo la dibuja. El bloque —contar series,
- * el peso— es N2 y vive en `Bloque.tsx`; el descanso entra en N3.
+ * el peso— es N2 y vive en `Bloque.tsx`; el descanso es N3 y vive en
+ * `Descanso.tsx`, con el aviso del sistema programado en `compartido/descanso.ts`.
  */
 
 type Estado =
@@ -64,6 +67,9 @@ export default function Inicio({
   // sin querer, y lo que hace no se deshace.
   const [terminando, setTerminando] = useState(false);
   const [cierre, setCierre] = useState<CierreDeSesion | null>(null);
+  // La pantalla del descanso se abre desde la píldora, igual que en la web: el
+  // + arranca el descanso pero no tapa el bloque.
+  const [descansoAbierto, setDescansoAbierto] = useState(false);
   const [aviso, setAviso] = useState('');
 
   const cargar = useCallback(async () => {
@@ -187,11 +193,37 @@ export default function Inicio({
         {/* El chip de la sesión, arriba a la derecha como en la web: sin
             sesión la inicia; con sesión, es el reloj. */}
         {sesion.estado.corriendo && sesion.estado.inicio ? (
-          <View style={estilos.chip}>
-            <View style={estilos.latido} />
-            <Text style={estilos.chipTexto}>
-              {cronoLindo(transcurrido(sesion.estado.inicio, sesion.estado.desfasaje))}
-            </Text>
+          <View style={estilos.sesionViva}>
+            <View style={estilos.chip}>
+              <View style={estilos.latido} />
+              <Text style={estilos.chipTexto}>
+                {cronoLindo(transcurrido(sesion.estado.inicio, sesion.estado.desfasaje))}
+              </Text>
+            </View>
+            {/* LA PÍLDORA DEL DESCANSO: sin descanso lo arranca; con uno
+                andando muestra lo que falta y abre la pantalla grande. */}
+            {sesion.estado.descanso ? (
+              <Pressable
+                style={[estilos.chip, restante(sesion.estado.descanso.fin) === 0 && estilos.chipListo]}
+                onPress={() => setDescansoAbierto(true)}
+                accessibilityRole="button"
+              >
+                <Text style={[estilos.chipTexto, restante(sesion.estado.descanso.fin) === 0 && estilos.chipTextoListo]}>
+                  {restante(sesion.estado.descanso.fin) === 0 ? T.sesion.listo : cuentaAtras(restante(sesion.estado.descanso.fin))}
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={estilos.chip}
+                onPress={() => {
+                  void sesion.descansarSuelto();
+                  setDescansoAbierto(true);
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={estilos.chipTexto}>{T.sesion.descansar}</Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           <Pressable
@@ -350,6 +382,19 @@ export default function Inicio({
         </Pressable>
       )}
 
+      {sesion.estado.descanso && (
+        <Descanso
+          visible={descansoAbierto}
+          vivo={sesion.estado.descanso}
+          alReiniciar={sesion.reiniciarDescanso}
+          alSaltar={() => {
+            setDescansoAbierto(false);
+            sesion.cerrarDescanso();
+          }}
+          alOcultar={() => setDescansoAbierto(false)}
+          alSumar={sesion.serieHecha}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -417,6 +462,9 @@ const estilos = StyleSheet.create({
   },
   chipTexto: { color: '#c4c2ba', fontSize: 13, fontVariant: ['tabular-nums'] },
   latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7e8ca8' },
+  sesionViva: { flexDirection: 'row', gap: 8 },
+  chipListo: { backgroundColor: '#c4c2ba', borderColor: '#c4c2ba' },
+  chipTextoListo: { color: '#05060a' },
 
   sesion: { marginTop: 16 },
   crono: { color: '#e8ecf6', fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 4 },

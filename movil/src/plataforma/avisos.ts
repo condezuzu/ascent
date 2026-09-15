@@ -36,10 +36,12 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Lo programado por id, para poder cancelarlo. `expo-notifications` devuelve
-// su propio identificador y hay que quedárselo: el `id` que usa la app es el
-// nuestro —"descanso"— y no el del sistema.
-const programados = new Map<string, string>();
+// EL IDENTIFICADOR ES FIJO Y SE LO DAMOS NOSOTROS ("ascent-descanso"), no el
+// que inventa el sistema. Antes se guardaba el del sistema en un mapa en
+// memoria, y si la app se cerraba con un descanso andando —lo normal: el
+// teléfono va al bolsillo— al volver ya no había cómo cancelar ese aviso.
+// Saltar el descanso dejaba sonando uno viejo.
+const delSistema = (id: string) => `ascent-${id}`;
 
 // Además del identificador del sistema, se guarda el callback: cuando la
 // notificación llega con la app adelante, lo que hay que hacer es lo mismo que
@@ -92,7 +94,8 @@ export const avisosNativos: Avisos = {
     if (!(await this.permiso())) return;
     try {
       alSonar.set(id, cuandoSuene);
-      const delSistema = await Notifications.scheduleNotificationAsync({
+      await Notifications.scheduleNotificationAsync({
+        identifier: delSistema(id),
         content: {
           // El texto vive acá y no en `nucleo/textos.ts` a propósito: es lo
           // único de la app que se lee FUERA de la app, en la pantalla
@@ -107,7 +110,6 @@ export const avisosNativos: Avisos = {
           repeats: false,
         },
       });
-      programados.set(id, delSistema);
     } catch {
       /* si no se pudo programar, la cuenta de la pantalla sigue igual */
     }
@@ -115,11 +117,8 @@ export const avisosNativos: Avisos = {
 
   async cancelar(id) {
     alSonar.delete(id);
-    const delSistema = programados.get(id);
-    if (!delSistema) return;
-    programados.delete(id);
     try {
-      await Notifications.cancelScheduledNotificationAsync(delSistema);
+      await Notifications.cancelScheduledNotificationAsync(delSistema(id));
     } catch {
       /* ya había sonado o ya no existía */
     }

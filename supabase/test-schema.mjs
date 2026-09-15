@@ -6281,6 +6281,74 @@ console.log('\n93. Dos toques seguidos no le devuelven al total el numero de ant
   const onboarding = leer(join(RAIZ, 'src', 'app', 'onboarding', 'page.tsx'), 'utf8');
   chequear('elegir el nombre lo enciende', onboarding.includes('reiniciarGuia(user.id)'), true);
 }
+console.log('\n94. La consulta que encuentra sesiones con el total contado de menos');
+{
+  // `supabase/revisar-series-mal-contadas.sql` la corre el humano a mano. Se
+  // prueba aca, con el archivo tal cual, para no mandarle una consulta que no
+  // encuentra nada por estar mal escrita.
+  const { readFileSync: leer } = await import('node:fs');
+  const sql = leer(join(dirname(fileURLToPath(import.meta.url)), 'revisar-series-mal-contadas.sql'), 'utf8').replace(/\r\n/g, '\n');
+  const i = sql.indexOf('select\n  l.fecha');
+  const consulta = sql.slice(i, sql.indexOf(';', i)).replaceAll('(select id from yo)', '$1');
+  const j = sql.indexOf('-- update sesiones s');
+  const correccion = sql
+    .slice(j, sql.indexOf(';', j) + 1)
+    .split('\n')
+    .map((l) => l.replace(/^-- ?/, ''))
+    .join('\n')
+    .replaceAll('(select id from yo)', '$1');
+
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const s = (await db.query('select iniciar_sesion() as v')).rows[0].v;
+  const id = s.id ?? (await db.query('select id from sesiones where user_id = $1 order by inicio desc limit 1', [u])).rows[0].id;
+  // El bug: los bloques suman 5 y el total quedo en 4.
+  await db.query('update sesiones set series = 4, bloques = $2::jsonb where id = $1', [
+    id,
+    JSON.stringify([{ ejercicio: 'sentadilla', series: 3 }, { ejercicio: 'press_banca', series: 2 }]),
+  ]);
+  // Otra persona con una sesion sana (series sin ejercicio de mas): no aparece.
+  const otro = await nuevoUsuario();
+  await comoUsuario(otro);
+  const s2 = (await db.query('select iniciar_sesion() as v')).rows[0].v;
+  const id2 = s2.id ?? (await db.query('select id from sesiones where user_id = $1 order by inicio desc limit 1', [otro])).rows[0].id;
+  await db.query('update sesiones set series = 7, bloques = $2::jsonb where id = $1', [id2, JSON.stringify([{ ejercicio: 'sentadilla', series: 3 }])]);
+
+  const filas = (await db.query(consulta, [u])).rows;
+  chequear('encuentra la sesion con el total de menos', filas.map((f) => [f.total_guardado, Number(f.series_en_bloques), Number(f.faltan)]), [[4, 5, 1]]);
+  chequear('una sesion con series sin ejercicio no aparece', (await db.query(consulta, [otro])).rows.length, 0);
+  await db.query(correccion, [u]);
+  chequear('la correccion pone el total en lo que suman los bloques', (await db.query('select series from sesiones where id = $1', [id])).rows[0].series, 5);
+  chequear('y despues ya no aparece', (await db.query(consulta, [u])).rows.length, 0);
+  await db.query(correccion, [otro]);
+  chequear('a la sesion sana no la toca', (await db.query('select series from sesiones where id = $1', [id2])).rows[0].series, 7);
+}
+console.log('\n95. El aviso del descanso se programa donde se guarda el descanso');
+{
+  // §13d: el descanso tiene que avisar con el telefono en el bolsillo. El
+  // aviso se programa en las TRES funciones que tocan el descanso guardado
+  // (empezar, cambiar la duracion, borrar), asi ningun boton puede dejar un
+  // aviso viejo sonando o uno nuevo sin programar. No se puede cargar con
+  // node (usa la plataforma), asi que se lee.
+  const { readFileSync: leer } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const codigo = sinComentarios(leer(join(RAIZ, 'compartido', 'descanso.ts'), 'utf8'));
+  const cuerpoDe = (nombre) => {
+    const i = codigo.indexOf(`export function ${nombre}(`);
+    return i < 0 ? '' : codigo.slice(i, codigo.indexOf('\n}', i));
+  };
+  chequear(
+    'empezar, cambiar y borrar el descanso tocan el aviso',
+    ['guardarDescanso', 'cambiarDuracion', 'borrarDescanso'].map((f) => cuerpoDe(f).includes('avisarAlTerminar(')),
+    [true, true, true]
+  );
+  chequear('solo donde el aviso llega con la pantalla bloqueada', /conPantallaBloqueada\(\)\)\s*return/.test(codigo), true);
+  // Con un identificador propio: cerrar la app con el descanso andando y
+  // saltarlo al volver tiene que poder cancelar el aviso.
+  const avisos = sinComentarios(leer(join(RAIZ, 'movil', 'src', 'plataforma', 'avisos.ts'), 'utf8'));
+  chequear('el aviso nativo usa un identificador fijo', /identifier:\s*delSistema\(id\)/.test(avisos), true);
+  chequear('y cancela por ese mismo', /cancelScheduledNotificationAsync\(delSistema\(id\)\)/.test(avisos), true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

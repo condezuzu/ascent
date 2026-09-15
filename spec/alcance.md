@@ -27,6 +27,7 @@ Si no está claro si algo es 2 o 3, es 3.
 | ~~W4~~ | ~~Login con Google~~ | **No entra.** Código borrado el 15/9. |
 | W5 | Sacar la sección Diagnóstico de Ajustes | Se queda hasta que el registro automático esté probado **en el gimnasio con la app nativa**. |
 | W6 | Poner al día `spec/estado.md` | Tiene corte al 21 de agosto. |
+| W7 | Revisar si hay sesiones con el total de series de menos (bug de los dos toques, 15/9) | **Humano:** correr `supabase/revisar-series-mal-contadas.sql` en el SQL Editor. Solo mira; la corrección va comentada. |
 
 ### Lo que hace el humano (no es código)
 
@@ -47,12 +48,12 @@ series, descansar, terminar — con y sin señal.
 |---|-----|--------|
 | ~~N1~~ | ~~Sesión nativa: iniciar, cronómetro, terminar, cierre por inactividad~~ | **Hecho el 15/9**, con la MISMA lógica que la web (`compartido/`) |
 | ~~N2~~ | ~~El bloque: selector de 100 ejercicios, meta, `+`/`−`, lista para corregir, peso con su etiqueta y la pregunta~~ | **Hecho el 15/9** |
-| N3 | Descanso con notificación local (suena con la pantalla bloqueada) y la cola sin señal | 1 |
+| ~~N3~~ | ~~Descanso con notificación local (suena con la pantalla bloqueada) y la cola sin señal~~ | **Hecho el 15/9**. El aviso con la pantalla bloqueada se prueba recién en el teléfono (N4). |
 | N4 | Build de desarrollo con EAS e instalarla en el iPhone | 1 |
 | H3 | **Humano:** cuenta de Expo (gratis) y Apple Developer Program (99 USD/año) | **Lo hace el humano esta semana y avisa.** No se recuerda desde acá. |
 | H4 | **Humano:** `ascent://confirmar` en Supabase → Authentication → Redirect URLs | — |
 
-**Quedan dos tandas** (N3, N4). Orden confirmado por el humano el 15/9.
+**Queda una tanda: N4**, que espera la cuenta de Apple. Orden confirmado por el humano el 15/9.
 
 Lo que estaba en el orden anterior —calendario con el resumen del día, peso,
 fuerza, foto al registrar— **no hace falta para entrenar**: se sigue mirando en
