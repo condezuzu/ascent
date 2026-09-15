@@ -3851,62 +3851,76 @@ body.con-franja.con-accion .pantalla {
   color: var(--apagado);
 }
 /* ---------- el volumen (Stats → Entrenamiento) ---------- */
-.volumen-filtros {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.volumen-unidad {
   margin-bottom: 14px;
 }
-.volumen-filtros .pastilla {
-  padding: 6px 12px;
+.volumen-cuando {
   font-size: 12px;
+  color: var(--sub);
+  text-align: right;
+  margin: 0 0 8px;
 }
-/* Barras de alto proporcional, todas en su lugar: una semana vacía es un
-   hueco a la vista, no una barra que desaparece y corre a las otras. */
+/* UNA FILA POR MÚSCULO: el nombre, ocho barras chicas y el número de la
+   semana que se lee. Barras finas con la punta redondeada apoyada en la base,
+   y 2 px de aire entre una y otra. */
+.volumen-filas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.volumen-fila {
+  display: grid;
+  grid-template-columns: 5.6rem 1fr 3.6rem;
+  align-items: end;
+  gap: 10px;
+}
+.volumen-rotulo {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  color: var(--tinta);
+  line-height: 1.2;
+  padding-bottom: 2px;
+}
+.volumen-rotulo .capitalizado {
+  text-transform: capitalize;
+}
+.volumen-dejado {
+  font-size: 11px;
+  color: var(--apagado);
+}
 .volumen-barras {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  gap: 6px;
-  height: 120px;
+  gap: 2px;
+  height: 34px;
   align-items: end;
+  border-bottom: 1px solid var(--linea);
 }
 .volumen-barra {
   height: 100%;
   display: flex;
   align-items: flex-end;
-  border-bottom: 1px solid var(--linea);
+  /* El toque es más grande que la barra: se apunta a la columna entera. */
+  padding: 0 1px;
 }
 .volumen-barra .relleno {
   display: block;
   width: 100%;
-  min-height: 0;
-  border-radius: 2px 2px 0 0;
-  background: color-mix(in srgb, var(--pal-principal) 45%, transparent);
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--pal-principal) 42%, transparent);
   transition: height 0.4s var(--curva-suave);
 }
 .volumen-barra.leida .relleno {
   background: var(--pal-principal);
 }
-.volumen-lectura {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  margin: 10px 0 12px;
-  font-size: 13px;
-  color: var(--tinta);
-  font-variant-numeric: tabular-nums;
-}
-.volumen-lectura .cuando {
-  color: var(--sub);
-}
-.volumen-unidad {
-  margin-bottom: 8px;
-}
-.volumen-dejado {
+.volumen-valor {
   font-size: 14px;
-  color: var(--sub);
-  margin: 0 0 6px;
+  color: var(--tinta);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-bottom: 2px;
 }
 .aviso-revisar p {
   font-size: 14px;
@@ -4170,4 +4184,84 @@ body.con-franja.con-accion .pantalla {
 .volumen-filtros .capitalizado,
 .dia-volumen .capitalizado {
   text-transform: capitalize;
+}
+
+/* Por músculo, en el resumen de un día: nombre, barra y números. */
+.fila-musculo {
+  display: grid;
+  grid-template-columns: 5.2rem 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+.fila-musculo .capitalizado {
+  text-transform: capitalize;
+}
+.dia-barra {
+  height: 6px;
+}
+.dia-barra i {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--pal-principal);
+}
+.fila-musculo .cuantas {
+  color: var(--sub);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- el recorrido de la primera vez ----------
+   Una tarjeta chica arriba de la barra: una línea y dos botones. No tapa la
+   pantalla de la que habla, que es la mitad de la explicación. */
+.recorrido {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 14px 16px 12px;
+  background: color-mix(in srgb, var(--fondo) 88%, var(--pal-principal));
+  border: 0.5px solid color-mix(in srgb, var(--pal-claro) 40%, transparent);
+  border-radius: var(--radio);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  animation: globo-entra 0.5s var(--curva-salida) both;
+}
+.recorrido p {
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--tinta);
+  margin: 4px 0 12px;
+}
+.recorrido-paso {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--apagado);
+  font-variant-numeric: tabular-nums;
+}
+.recorrido-botones {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.recorrido-botones .boton-texto {
+  width: auto;
+}
+.recorrido-botones .boton-solido {
+  width: auto;
+  padding-inline: 22px;
+  margin: 0;
+}
+/* La sección de la que habla el paso, encendida mientras se lee. */
+.seccion.resaltada {
+  outline: 1px solid var(--pal-claro);
+  outline-offset: 10px;
+  border-radius: var(--radio);
+  box-shadow: 0 0 36px 10px color-mix(in srgb, var(--pal-principal) 30%, transparent);
+  transition: box-shadow 0.6s var(--curva-suave);
 }

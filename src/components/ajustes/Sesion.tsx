@@ -15,7 +15,7 @@ export default function Sesion({ userId }: { userId: string }) {
   // el que quiere repasar de qué va cada pestaña no lo conseguiría.
   async function verLaGuiaDeNuevo() {
     await reiniciarGuia(userId);
-    router.push('/bienvenida');
+    router.push('/ajustes');
   }
 
   async function salir() {

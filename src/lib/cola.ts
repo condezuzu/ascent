@@ -2,6 +2,7 @@ import { plataforma } from '@/plataforma';
 import { eventos } from '@/plataforma/eventos';
 import { anotar } from '@/lib/bitacora';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { quedanTrasPasada } from '@nucleo/cola';
 
 /**
  * Escrituras que insisten hasta entrar, y un aviso cuando algo no se pudo.
@@ -85,6 +86,18 @@ async function leer(): Promise<Pendiente[]> {
   }
 }
 
+/**
+ * Leer-cambiar-guardar la cola, DE A UNO. Encolar ya no espera a la red, así
+ * que un toque puede encolar mientras la pasada de `vaciar` está guardando lo
+ * que quedó: sin turno, uno de los dos pisa al otro y se pierde una escritura.
+ */
+let turno: Promise<unknown> = Promise.resolve();
+function enTurno<R>(fn: () => Promise<R>): Promise<R> {
+  const r = turno.then(fn, fn);
+  turno = r.catch(() => undefined);
+  return r;
+}
+
 async function guardar(l: Pendiente[]) {
   try {
     await plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(l.slice(-TOPE)));
@@ -94,42 +107,65 @@ async function guardar(l: Pendiente[]) {
 }
 
 /**
- * Mete algo en la cola y trata de vaciarla ya.
+ * Mete algo en la cola y trata de vaciarla, SIN ESPERAR A LA RED.
  *
  * `id` se usa para pisar lo anterior de la MISMA sesión: no tiene sentido
  * guardar cuarenta pendientes que dicen "las series son 1", "son 2", "son 3".
  * Solo importa el último, y así diez toques sin red se vacían en una llamada.
+ *
+ * Vuelve apenas quedó guardado en el teléfono. Antes esperaba a que la cola
+ * terminara de mandar, y cada toque del gimnasio —el `+` de 2,5 kg incluido—
+ * tardaba lo que tardara la red en mover el número. Quien necesite que ya haya
+ * llegado (confirmar la sesión antes de preguntarle a la base) llama a
+ * `vaciar` y lo espera.
  */
 export async function encolar(supabase: SupabaseClient, tarea: Encolable) {
   const id = `${tarea.rpc}:${'p_sesion' in tarea.args ? tarea.args.p_sesion : tarea.args.p_ejercicio}`;
-  const lista = (await leer()).filter((p) => p.id !== id);
-  lista.push({ ...tarea, id });
-  await guardar(lista);
-  await vaciar(supabase);
+  await enTurno(async () => {
+    const lista = (await leer()).filter((p) => p.id !== id);
+    lista.push({ ...tarea, id });
+    await guardar(lista);
+  });
+  void vaciar(supabase);
 }
 
-let vaciando = false;
+let pasada: Promise<void> | null = null;
+let otraVez = false;
 
-/** Manda lo pendiente, en orden, y se queda con lo que no entró. */
-export async function vaciar(supabase: SupabaseClient) {
-  // Una sola pasada a la vez: dos en paralelo mandarían lo mismo dos veces y,
-  // peor, la segunda podría borrar de la cola algo que la primera no mandó.
-  if (vaciando) return;
-  vaciando = true;
-  try {
-    const lista = await leer();
-    if (lista.length === 0) return;
-    const quedan: Pendiente[] = [];
+/**
+ * Manda lo pendiente, en orden, y se queda con lo que no entró.
+ *
+ * Una sola pasada a la vez: dos en paralelo mandarían lo mismo dos veces. Si
+ * se pide mientras hay una andando, se espera ESA y se hace otra al terminar,
+ * para lo que se haya encolado en el medio. Así `await vaciar()` quiere decir
+ * de verdad "ya se intentó mandar todo lo que había".
+ */
+export async function vaciar(supabase: SupabaseClient): Promise<void> {
+  if (pasada) {
+    otraVez = true;
+    return pasada;
+  }
+  pasada = (async () => {
+    do {
+      otraVez = false;
+      const cortada = await unaPasada(supabase);
+      // Sin red no se reintenta en seguida: lo agregado espera a la próxima.
+      if (cortada) break;
+    } while (otraVez);
+  })().finally(() => {
+    pasada = null;
+  });
+  return pasada;
+}
+
+/** Devuelve `true` si cortó por un error (la red, casi siempre). */
+async function unaPasada(supabase: SupabaseClient): Promise<boolean> {
+    const lista = await enTurno(leer);
+    if (lista.length === 0) return false;
+    // Lo que esta pasada mandó o descartó: es lo único que se saca al final.
+    const sacados: Pendiente[] = [];
     let corto = false;
     for (const p of lista) {
-      // Al primero que falla se corta y el resto queda para la próxima: si es
-      // la red, los que siguen van a fallar igual y son viajes al vacío. Pero
-      // NO se descartan — se guardan, que es la diferencia entre una cola y
-      // tirar el trabajo a la basura.
-      if (corto) {
-        quedan.push(p);
-        continue;
-      }
       const { error } = await supabase.rpc(p.rpc, p.args);
       // UNA FUNCIÓN QUE NO EXISTE NO VA A EXISTIR REINTENTANDO. Antes cualquier
       // error dejaba el pendiente al frente y cortaba la cola, así que una
@@ -138,19 +174,29 @@ export async function vaciar(supabase: SupabaseClient) {
       // descarta —se anota— y la cola sigue.
       if (error?.code === 'PGRST202') {
         await anotar('descartado: la funcion no existe', { rpc: p.rpc });
+        sacados.push(p);
         continue;
       }
+      // Al primero que falla se corta y el resto queda para la próxima: si es
+      // la red, los que siguen van a fallar igual y son viajes al vacío. Pero
+      // NO se descartan — se quedan, que es la diferencia entre una cola y
+      // tirar el trabajo a la basura.
       if (error) {
-        quedan.push(p);
         corto = true;
+        break;
       }
+      sacados.push(p);
     }
-    await guardar(quedan);
-    if (quedan.length > 0) await anotar('quedan pendientes', { cuantas: quedan.length });
+    // NO `guardar(quedan)`: mientras se mandaba se pudo encolar algo, y eso
+    // pisaba lo nuevo. Se saca de la cola de AHORA solo lo que salió.
+    const resto = await enTurno(async () => {
+      const r = quedanTrasPasada(await leer(), sacados);
+      await guardar(r);
+      return r;
+    });
+    if (resto.length > 0) await anotar('quedan pendientes', { cuantas: resto.length });
     else await anotar('cola vaciada', { cuantas: lista.length });
-  } finally {
-    vaciando = false;
-  }
+    return corto;
 }
 
 /** Cuántas escrituras están esperando. Para el Diagnóstico. */

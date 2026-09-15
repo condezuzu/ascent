@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { T } from '@nucleo/textos';
+import Recorrido from '@/components/Recorrido';
 import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
 import { eventos } from '@/plataforma/eventos';
@@ -98,6 +99,8 @@ export default function Nav() {
   }, []);
 
   return (
+    <>
+    <Recorrido />
     <nav className="nav">
       {ITEMS.map((it) => (
         <Link key={it.href} href={it.href} className={ruta === it.href ? 'activo' : ''}>
@@ -114,5 +117,6 @@ export default function Nav() {
         </Link>
       ))}
     </nav>
+    </>
   );
 }

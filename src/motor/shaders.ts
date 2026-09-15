@@ -196,57 +196,88 @@ vec3 paleta(float t) {
 }
 
 // =====================================================================
-// CRÁTERES. Un radio constante ES un círculo: por eso quedaban geométricos.
-// Acá el radio depende del ángulo (borde comido, en dos escalas), la
-// profundidad varía muchísimo de uno a otro — muchos apenas se insinúan —,
-// cada uno tiene su propia agudeza de borde, y un campo de erosión borra
-// zonas enteras. Las capas van desfasadas para que se pisen entre sí.
-// x = hundimiento del piso, y = realce del borde con su luz (-1..1)
+// CRÁTERES — segunda pasada (2026-09-15, "siguen quedando pobres").
+//
+// TRES COSAS LOS HACÍAN VERSE COMO MANCHAS, y ninguna era el ruido:
+//
+// 1. ESTABAN ESTIRADOS AL DOBLE. Se calculaban sobre (lon × 0.55, lat × 1.1):
+//    un círculo ahí es un óvalo dos veces más ancho que alto sobre la esfera,
+//    y más ancho todavía lejos del ecuador. Ahora las celdas van por FILAS DE
+//    LATITUD, cada fila con tantas celdas como le entran a su circunferencia,
+//    y la distancia se mide en la superficie: un cráter es redondo en
+//    cualquier latitud, y sin costura aunque el cuerpo gire para siempre.
+//
+// 2. NO TENÍAN LUZ PROPIA. El piso se oscurecía parejo, así que un cráter era
+//    un círculo más oscuro. Lo que hace que el ojo lea un pozo es que la pared
+//    que da a la luz esté clara y la de enfrente en sombra. Ahora cada cráter
+//    es una altura —un tazón con labio— y lo que se devuelve es la PENDIENTE
+//    contra la luz: la sombra y el brillo salen de la forma, no pintados.
+//
+// 3. EL BORDE SE PINTABA SUMANDO GRIS, y el gris lava el color del cuerpo.
+//    Ahora la luz multiplica: el Ceres terroso sigue terroso.
+//
+// x = hundimiento (oclusión suave del piso), y = sombreado por pendiente
 // =====================================================================
-vec2 crateres(vec2 uv, float escala, float sem, vec2 luz2) {
-  vec2 g = uv * escala + vec2(sem * 3.7, sem * 1.9); // capas desalineadas
-  vec2 celda = floor(g);
-  vec2 f = fract(g);
+vec2 crateres(float lon, float lat, float escala, float sem, vec2 luz2) {
   float piso = 0.0;
-  float borde = 0.0;
+  float luz = 0.0;
+  float gy = lat * escala + sem * 0.37;
+  float fila = floor(gy);
   for (int y = -1; y <= 1; y++) {
+    float fy = fila + float(y);
+    // cuántas celdas le entran a esta fila: su circunferencia en celdas
+    float latFila = (fy + 0.5 - sem * 0.37) / escala;
+    float nx = max(3.0, floor(6.2831853 * escala * max(cos(latFila), 0.05)));
+    float gx = lon / 6.2831853 * nx + sem * 1.3;
+    float colX = floor(gx);
+    float anchoCelda = 6.2831853 / nx; // en radianes de longitud
     for (int x = -1; x <= 1; x++) {
-      vec2 o = vec2(float(x), float(y));
-      vec2 c = celda + o;
-      float hSel = hash2f(c + 31.0, sem);
-      if (hSel < 0.30) continue; // no toda celda tiene cráter
-      float hProf = hash2f(c + 53.0, sem);
-      float hAgu = hash2f(c + 71.0, sem);
-      vec2 centro = o + vec2(hash2f(c, sem), hash2f(c + 17.0, sem)) * 0.8 + 0.1;
-      vec2 rel = f - centro;
+      float cx = colX + float(x);
+      vec2 id = vec2(mod(cx, nx), fy);
+      float hSel = hash2f(id + 31.0, sem);
+      if (hSel < 0.34) continue; // no toda celda tiene cráter
+      float hProf = hash2f(id + 53.0, sem);
+      float hAgu = hash2f(id + 71.0, sem);
+      // centro del cráter, en la superficie
+      float cLon = (cx + 0.15 + 0.7 * hash2f(id, sem) - sem * 1.3) * anchoCelda;
+      float cLat = (fy + 0.15 + 0.7 * hash2f(id + 17.0, sem) - sem * 0.37) / escala;
+      // desplazamiento en la superficie: la longitud se achica con la latitud
+      vec2 rel = vec2((lon - cLon) * cos(lat), lat - cLat) * escala;
       float dist = length(rel) + 1e-5;
-      if (dist > 1.05) continue;
-
-      // radio irregular: el contorno se come en dos frecuencias
+      if (dist > 0.75) continue;
       vec2 dir = rel / dist;
-      float rug1 = ruido(vec3(dir * 2.3, hSel * 40.0));
-      float rug2 = ruido(vec3(dir * 6.5, hSel * 13.0));
-      float r = (0.14 + hSel * 0.44) * (0.70 + 0.40 * rug1 + 0.16 * rug2);
+
+      // contorno apenas comido: redondo, pero no de compás
+      float rug = ruido(vec3(dir * 2.3, hSel * 40.0));
+      float r = (0.14 + hSel * 0.32) * (0.86 + 0.24 * rug);
       float t = dist / r;
-      if (t > 1.25) continue;
+      if (t > 1.6) continue;
 
-      // profundidad muy dispar: la mayoría quedan apenas marcados
-      float prof = pow(hProf, 2.4) * 1.5 + 0.06;
-      // piso irregular, no un plato liso
-      float fondo = (1.0 - smoothstep(0.30, 0.95, t));
-      fondo *= 0.75 + 0.5 * ruido(vec3(rel * 9.0, hSel * 5.0));
-      piso += fondo * prof;
+      // la mayoría quedan apenas marcados; unos pocos, hondos
+      float prof = pow(hProf, 2.2) * 1.2 + 0.08;
+      // labio blando: uno filoso dibuja un anillo, y un anillo parece de compás
+      float agu = 3.0 + hAgu * 3.5;
 
-      // borde: cada uno con su agudeza, y algunos casi sin labio
-      float agu = 3.0 + hAgu * 8.0;
-      float aro = exp(-pow((t - 0.88 - hAgu * 0.06) * agu, 2.0));
-      float lado = dot(dir, luz2);
-      borde += aro * lado * prof * (0.5 + hAgu);
+      // ALTURA: tazón hasta el borde, y el labio levantado alrededor.
+      //   tazón  h = prof · (t² − 1)        dh/dt = 2·prof·t
+      //   labio  h = labio · e^(−((t−1)·agu)²)
+      float adentro = 1.0 - smoothstep(0.92, 1.02, t);
+      float dTazon = 2.0 * prof * t * adentro;
+      float labio = prof * (0.18 + 0.30 * hAgu);
+      float e = exp(-pow((t - 1.0) * agu, 2.0));
+      float dLabio = -2.0 * agu * agu * (t - 1.0) * labio * e;
+      float dhdt = dTazon + dLabio;
+
+      // LUZ POR PENDIENTE: la normal se inclina contra la pendiente, así que
+      // la pared que mira a la luz es la del lado opuesto a ella.
+      luz += -dot(dir, luz2) * dhdt;
+      // piso: oclusión suave, no un plato negro
+      piso += prof * (1.0 - smoothstep(0.2, 0.95, t)) * (0.8 + 0.4 * ruido(vec3(rel * 7.0, hSel * 5.0)));
     }
   }
   // erosión: hay regiones enteras casi lisas y otras muy castigadas
-  float ero = 0.35 + 0.9 * fbm(vec3(uv * 1.7, sem * 11.0));
-  return vec2(clamp(piso * ero, 0.0, 1.0), clamp(borde * ero, -1.2, 1.2));
+  float ero = 0.35 + 0.9 * fbm(vec3(lon * 0.9, lat * 1.7, sem * 11.0));
+  return vec2(clamp(piso * ero, 0.0, 1.0), clamp(luz * ero * 0.5, -1.5, 1.5));
 }
 
 // Ruido "ridged": crestas afiladas en vez de ondas suaves. Es lo que hace
@@ -506,15 +537,18 @@ void main() {
 
     // ---- CRÁTERES ----
     if (uCrateres > 0.0) {
-      vec2 uvc = vec2(lon * 0.55, lat * 1.1);
-      vec2 c1 = crateres(uvc, 2.6, 1.0, L2);
-      vec2 c2 = crateres(uvc, 5.5, 2.0, L2);
-      vec2 c3 = crateres(uvc, 11.0, 3.0, L2);
-      vec2 c4 = crateres(uvc, 22.0, 4.0, L2);
-      float piso = min(1.0, c1.x + c2.x * 0.8 + c3.x * 0.55 + c4.x * 0.35);
-      float aro = c1.y + c2.y * 0.8 + c3.y * 0.5 + c4.y * 0.3;
-      superficie *= (1.0 - 0.40 * piso * uCrateres);
-      superficie += vec3(0.26) * aro * uCrateres;
+      // Cuatro tamaños, de pocos grandes a muchos chicos, y los chicos se
+      // pisan con los grandes como en una superficie vieja de verdad.
+      vec2 c1 = crateres(lon, lat, 2.2, 1.0, L2);
+      vec2 c2 = crateres(lon, lat, 4.6, 2.0, L2);
+      vec2 c3 = crateres(lon, lat, 9.5, 3.0, L2);
+      vec2 c4 = crateres(lon, lat, 19.0, 4.0, L2);
+      float piso = min(1.0, c1.x + c2.x * 0.7 + c3.x * 0.5 + c4.x * 0.3);
+      float luzC = c1.y + c2.y * 0.85 + c3.y * 0.55 + c4.y * 0.25;
+      superficie *= (1.0 - 0.22 * piso * uCrateres);
+      // La luz MULTIPLICA: la pared iluminada aclara el color del cuerpo y la
+      // otra lo oscurece, en vez de pintar gris encima.
+      superficie *= clamp(1.0 + 0.62 * luzC * uCrateres, 0.28, 1.75);
     }
 
     // ---- MANCHAS DE HIELO (Plutón) ----

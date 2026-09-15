@@ -70,7 +70,7 @@ export default function Gimnasio({
   }
 
   return (
-    <div className="seccion">
+    <div className="seccion" id="gimnasio">
       <h3>{T.ajustes.gimnasio}</h3>
 
       <button className="boton-fantasma" onClick={marcar} disabled={estado === 'buscando'}>

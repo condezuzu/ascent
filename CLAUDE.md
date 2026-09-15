@@ -107,6 +107,7 @@ tandas sin que nadie los viera.
 
 | Archivo | Qué hay | Cuándo leerlo |
 |---|---|---|
+| [spec/alcance.md](spec/alcance.md) | el alcance CONGELADO: qué falta para terminar la web y para la tanda 3, y la regla para lo que aparezca | **antes de sumar cualquier cosa** |
 | [spec/estado.md](spec/estado.md) | qué está hecho, qué falta, problemas conocidos, cuentas de prueba | **al empezar cualquier sesión** |
 | [spec/trampas.md](spec/trampas.md) | bugs que ya nos costaron una vez, y la regla que quedó | **antes de tocar motor, storage, racha o build** |
 | [spec/producto.md](spec/producto.md) | §1 qué es · §2 stack · §14 orden de construcción · §15 beta | contexto general |

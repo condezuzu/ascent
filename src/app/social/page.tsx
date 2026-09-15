@@ -13,7 +13,6 @@ import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
-import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import NoCargo from '@/components/NoCargo';
 import { T } from '@nucleo/textos';
 import { olvidarPendientes } from '@/lib/avisos';
@@ -224,9 +223,6 @@ export default function Social() {
       <PantallaDeslizable>
         <div className="titulo-pantalla">{T.social.titulo}</div>
 
-        <GloboPrimeraVez cual="leaderboard">
-          {T.social.globo}
-        </GloboPrimeraVez>
 
         {noCargo && <NoCargo reintentar={cargar} />}
 

@@ -6,12 +6,10 @@ import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { claveDeEtiqueta } from '@nucleo/carga';
 import { umbralValido } from '@nucleo/estancamiento';
 import {
-  gruposAnotados,
-  gruposDejados,
+  filasPorMusculo,
   maximosPorEjercicio,
   semanaParaLeer,
   sesionesConFecha,
-  volumenPorSemana,
   type Catalogo,
   type SesionConBloques,
 } from '@nucleo/volumen';
@@ -48,8 +46,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState('');
   const [pestana, setPestana] = useState<'general' | 'entrenamiento'>('general');
-  const [grupo, setGrupo] = useState<string | null>(null);
-  const [enSeries, setEnSeries] = useState(false);
+  const [enSeries, setEnSeries] = useState(true);
   const [tocada, setTocada] = useState<number | null>(null);
   const [todos, setTodos] = useState(false);
 
@@ -107,16 +104,16 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const d = deISO(hoy);
   const esteMes = entrenados.filter((l) => l.fecha >= aISO(new Date(d.getFullYear(), d.getMonth(), 1))).length;
 
-  const semanas = volumenPorSemana(sesiones, catalogo, { hoy, semanas: SEMANAS, grupo });
-  const hayKilos = semanas.some((s) => s.kilos > 0);
+  const { filas, topeSeries, topeKilos } = filasPorMusculo(sesiones, catalogo, { hoy, semanas: SEMANAS, umbral });
+  const hayKilos = topeKilos > 0;
   const series = enSeries || !hayKilos;
-  const valor = (s: (typeof semanas)[number]) => (series ? s.series : s.kilos);
-  const tope = Math.max(...semanas.map(valor), 0);
-  const grupos = gruposAnotados(sesiones, catalogo);
-  const indice = semanaParaLeer(semanas, tocada);
-  const leida = semanas[indice];
+  const valor = (s: { series: number; kilos: number }) => (series ? s.series : s.kilos);
+  const tope = series ? topeSeries : topeKilos;
+  const indice = semanaParaLeer(
+    filas[0]?.semanas.map((s, i) => ({ ...s, series: filas.reduce((t, f) => t + f.semanas[i].series, 0) })) ?? [],
+    tocada
+  );
   const maximos = maximosPorEjercicio(sesiones, catalogo);
-  const dejados = gruposDejados(sesiones, catalogo, { hoy, semanas: umbral });
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString(T.general.locale);
   const mayuscula = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
 
@@ -158,54 +155,16 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
 
       {pestana === 'entrenamiento' && (
         <>
-          <Text style={estilos.seccion}>{T.volumen.semanas}</Text>
-          {grupos.length === 0 ? (
+          {/* Una fila por músculo, una barra por semana, en series: la misma
+              pantalla que la web, con las mismas funciones del núcleo. */}
+          <Text style={estilos.seccion}>{T.volumen.titulo}</Text>
+          {filas.length === 0 ? (
             <Text style={estilos.nota}>{T.volumen.vacio}</Text>
           ) : (
             <>
-              <View style={estilos.filtros}>
-                {[null, ...grupos].map((g) => (
-                  <Pressable
-                    key={g ?? 'todo'}
-                    style={[estilos.pastilla, grupo === g && estilos.pastillaPrendida]}
-                    onPress={() => setGrupo(g)}
-                  >
-                    <Text style={[estilos.pastillaTexto, grupo === g && estilos.opcionTextoActivo]}>
-                      {g === null ? T.volumen.todo : mayuscula(g)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              {/* Barras de alto proporcional, las vacías en su lugar. */}
-              <View style={estilos.barras}>
-                {semanas.map((s, i) => (
-                  <Pressable key={s.desde} style={estilos.barra} onPress={() => setTocada(i)}>
-                    <View
-                      style={[
-                        estilos.relleno,
-                        i === indice && estilos.rellenoLeido,
-                        { height: `${tope > 0 ? (valor(s) / tope) * 100 : 0}%` },
-                      ]}
-                    />
-                  </Pressable>
-                ))}
-              </View>
-
-              <View style={estilos.lectura}>
-                <Text style={estilos.cuando}>{T.volumen.semanaDel(fechaLinda(leida.desde))}</Text>
-                <Text style={estilos.cuanto}>
-                  {leida.series === 0
-                    ? T.volumen.semanaVacia
-                    : series
-                      ? T.volumen.soloSeries(leida.series)
-                      : T.volumen.kilosYSeries(kilosLindos(leida.kilos), unidad, leida.series)}
-                </Text>
-              </View>
-
               {hayKilos && (
                 <View style={estilos.selector}>
-                  {([false, true] as const).map((s) => (
+                  {([true, false] as const).map((s) => (
                     <Pressable
                       key={String(s)}
                       style={[estilos.opcion, series === s && estilos.opcionActiva]}
@@ -218,18 +177,37 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                   ))}
                 </View>
               )}
-              <Text style={estilos.nota}>{T.volumen.nota}</Text>
-            </>
-          )}
-
-          {dejados.length > 0 && (
-            <>
-              <Text style={estilos.seccion}>{T.volumen.dejados}</Text>
-              {dejados.map((x) => (
-                <Text key={x.grupo} style={estilos.dejado}>
-                  {T.volumen.dejado(x.grupo, x.semanas, fechaLinda(x.ultima))}
-                </Text>
-              ))}
+              <Text style={estilos.cuando}>{T.volumen.semanaDel(fechaLinda(filas[0].semanas[indice].desde))}</Text>
+              {filas.map((f) => {
+                const leida = f.semanas[indice];
+                return (
+                  <View key={f.grupo} style={estilos.filaMusculo}>
+                    <View style={estilos.rotulo}>
+                      <Text style={estilos.nombre}>{mayuscula(f.grupo)}</Text>
+                      {f.dejado && (
+                        <Text style={estilos.dejado}>{T.volumen.nadaDesde(fechaLinda(f.dejado.ultima))}</Text>
+                      )}
+                    </View>
+                    <View style={estilos.barras}>
+                      {f.semanas.map((s, i) => (
+                        <Pressable key={s.desde} style={estilos.barra} onPress={() => setTocada(i)}>
+                          <View
+                            style={[
+                              estilos.relleno,
+                              i === indice && estilos.rellenoLeido,
+                              { height: `${tope > 0 ? (valor(s) / tope) * 100 : 0}%` },
+                            ]}
+                          />
+                        </Pressable>
+                      ))}
+                    </View>
+                    <Text style={estilos.valorFila}>
+                      {leida.series === 0 ? T.volumen.nada : series ? String(leida.series) : `${kilosLindos(leida.kilos)} ${unidad}`}
+                    </Text>
+                  </View>
+                );
+              })}
+              <Text style={estilos.nota}>{series ? T.volumen.notaSeries : T.volumen.notaKilos}</Text>
             </>
           )}
 
@@ -295,27 +273,23 @@ const estilos = StyleSheet.create({
   },
   nota: { color: '#4a5163', fontSize: 12, lineHeight: 17, marginBottom: 6 },
 
-  filtros: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
-  pastilla: { borderWidth: 1, borderColor: '#1d2230', borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
-  pastillaPrendida: { borderColor: '#8a93a8' },
-  pastillaTexto: { color: '#4a5163', fontSize: 12 },
-
-  barras: { flexDirection: 'row', gap: 6, height: 120, alignItems: 'flex-end' },
-  barra: {
+  cuando: { color: '#8a93a8', fontSize: 12, textAlign: 'right', marginBottom: 8 },
+  filaMusculo: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginBottom: 10 },
+  rotulo: { width: 90 },
+  dejado: { color: '#4a5163', fontSize: 11, marginTop: 1 },
+  barras: {
     flex: 1,
-    height: '100%',
-    justifyContent: 'flex-end',
+    flexDirection: 'row',
+    gap: 2,
+    height: 34,
+    alignItems: 'flex-end',
     borderBottomWidth: 1,
     borderBottomColor: '#1d2230',
   },
-  relleno: { width: '100%', borderTopLeftRadius: 2, borderTopRightRadius: 2, backgroundColor: '#3d4556' },
+  barra: { flex: 1, height: '100%', justifyContent: 'flex-end', paddingHorizontal: 1 },
+  relleno: { width: '100%', borderTopLeftRadius: 4, borderTopRightRadius: 4, backgroundColor: '#3d4556' },
   rellenoLeido: { backgroundColor: '#7e8ca8' },
-
-  lectura: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 6, marginVertical: 12 },
-  cuando: { color: '#8a93a8', fontSize: 13 },
-  cuanto: { color: '#e8ecf6', fontSize: 13 },
-
-  dejado: { color: '#8a93a8', fontSize: 14, lineHeight: 20, marginBottom: 6 },
+  valorFila: { width: 58, color: '#e8ecf6', fontSize: 14, textAlign: 'right' },
 
   fila: {
     flexDirection: 'row',

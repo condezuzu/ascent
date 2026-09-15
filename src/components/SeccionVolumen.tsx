@@ -10,12 +10,10 @@ import { claveDeEtiqueta } from '@nucleo/carga';
 import { umbralValido } from '@nucleo/estancamiento';
 import {
   fechasPorRevisar,
-  gruposAnotados,
-  gruposDejados,
+  filasPorMusculo,
   maximosPorEjercicio,
   semanaParaLeer,
   sesionesConFecha,
-  volumenPorSemana,
   type Catalogo,
   type SesionConBloques,
 } from '@nucleo/volumen';
@@ -56,8 +54,8 @@ export default function SeccionVolumen({
   const [catalogo, setCatalogo] = useState<Catalogo>(new Map());
   const [unidad, setUnidad] = useState<Unidad>('kg');
   const [umbral, setUmbral] = useState(6);
-  const [grupo, setGrupo] = useState<string | null>(null);
-  const [enSeries, setEnSeries] = useState(false);
+  // Series por omisión: es la unidad que se entiende sin explicar.
+  const [enSeries, setEnSeries] = useState(true);
   const [elegida, setElegida] = useState<number | null>(null);
   const [todosLosMaximos, setTodosLosMaximos] = useState(false);
   const [avisoVisto, setAvisoVisto] = useState(true);
@@ -102,21 +100,19 @@ export default function SeccionVolumen({
 
   if (!sesiones) return null;
 
-  const semanas = volumenPorSemana(sesiones, catalogo, { hoy, semanas: SEMANAS, grupo });
-  const hayKilos = semanas.some((s) => s.kilos > 0);
-  // Sin kilos en la ventana, series: un gráfico de kilos en cero no dice nada.
+  const { filas, topeSeries, topeKilos } = filasPorMusculo(sesiones, catalogo, { hoy, semanas: SEMANAS, umbral });
+  const hayKilos = topeKilos > 0;
+  // Sin kilos anotados, series: una fila de kilos en cero no dice nada.
   const series = enSeries || !hayKilos;
-  const valor = (s: (typeof semanas)[number]) => (series ? s.series : s.kilos);
-  const tope = Math.max(...semanas.map(valor), 0);
-  // Los grupos que existen en lo anotado, en el orden de la interfaz.
-  const gruposConAlgo = gruposAnotados(sesiones, catalogo);
-  const hayAlgo = gruposConAlgo.length > 0;
-  // La semana que se lee abajo: la tocada, o la última con algo.
-  const indice = semanaParaLeer(semanas, elegida);
-  const leida = semanas[indice];
+  const valor = (s: { series: number; kilos: number }) => (series ? s.series : s.kilos);
+  const tope = series ? topeSeries : topeKilos;
+  // La semana que se lee: la tocada, o la última con algo en cualquier fila.
+  const indice = semanaParaLeer(
+    filas[0]?.semanas.map((s, i) => ({ ...s, series: filas.reduce((t, f) => t + f.semanas[i].series, 0) })) ?? [],
+    elegida
+  );
 
   const maximos = maximosPorEjercicio(sesiones, catalogo);
-  const dejados = gruposDejados(sesiones, catalogo, { hoy, semanas: umbral });
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString('es-UY');
 
   async function entendido() {
@@ -144,77 +140,65 @@ export default function SeccionVolumen({
         </div>
       )}
 
+      {/* CUÁNTO ENTRENASTE CADA MÚSCULO, SEMANA A SEMANA. Sin la palabra
+          "volumen": una fila por músculo, una barra por semana, y la unidad es
+          la serie, que es lo que cualquiera cuenta en el gimnasio. Todas las
+          filas comparten escala. Tocar una barra lee esa semana en todas. */}
       <div className="seccion volumen">
-        <h3>{T.volumen.semanas}</h3>
-        {!hayAlgo ? (
+        <h3>{T.volumen.titulo}</h3>
+        {filas.length === 0 ? (
           <p className="nota-privada">{T.volumen.vacio}</p>
         ) : (
           <>
-            <div className="volumen-filtros" role="group">
-              <button className={`pastilla ${grupo === null ? 'prendida' : ''}`} onClick={() => setGrupo(null)}>
-                {T.volumen.todo}
-              </button>
-              {gruposConAlgo.map((g) => (
-                <button
-                  key={g}
-                  className={`pastilla capitalizado ${grupo === g ? 'prendida' : ''}`}
-                  onClick={() => setGrupo(g)}
-                >
-                  {g}
-                </button>
-              ))}
-            </div>
-
-            <div className="volumen-barras" aria-hidden>
-              {semanas.map((s, i) => (
-                <button
-                  key={s.desde}
-                  className={`volumen-barra ${i === indice ? 'leida' : ''}`}
-                  onClick={() => setElegida(i)}
-                >
-                  <span className="relleno" style={{ height: tope > 0 ? `${(valor(s) / tope) * 100}%` : 0 }} />
-                </button>
-              ))}
-            </div>
-
-            <p className="volumen-lectura">
-              <span className="cuando">{T.volumen.semanaDel(fechaLinda(leida.desde))}</span>
-              <span>
-                {leida.series === 0
-                  ? T.volumen.semanaVacia
-                  : series
-                    ? T.volumen.soloSeries(leida.series)
-                    : T.volumen.kilosYSeries(kilosLindos(leida.kilos), unidad, leida.series)}
-              </span>
-            </p>
-
             {hayKilos && (
               <div className="selector-vista volumen-unidad">
-                <button className={!series ? 'activo' : ''} onClick={() => setEnSeries(false)}>
-                  {T.volumen.enKilos}
-                </button>
                 <button className={series ? 'activo' : ''} onClick={() => setEnSeries(true)}>
                   {T.volumen.enSeries}
                 </button>
+                <button className={!series ? 'activo' : ''} onClick={() => setEnSeries(false)}>
+                  {T.volumen.enKilos}
+                </button>
               </div>
             )}
-            <p className="nota-privada">{T.volumen.nota}</p>
+            <p className="volumen-cuando">{T.volumen.semanaDel(fechaLinda(filas[0].semanas[indice].desde))}</p>
+            <div className="volumen-filas">
+              {filas.map((f) => {
+                const leida = f.semanas[indice];
+                return (
+                  <div className="volumen-fila" key={f.grupo}>
+                    <div className="volumen-rotulo">
+                      <span className="capitalizado">{f.grupo}</span>
+                      {f.dejado && <span className="volumen-dejado">{T.volumen.nadaDesde(fechaLinda(f.dejado.ultima))}</span>}
+                    </div>
+                    <div className="volumen-barras">
+                      {f.semanas.map((s, i) => (
+                        <button
+                          key={s.desde}
+                          className={`volumen-barra ${i === indice ? 'leida' : ''}`}
+                          onClick={() => setElegida(i)}
+                          aria-label={`${f.grupo}, ${T.volumen.semanaDel(fechaLinda(s.desde))}: ${
+                            series ? T.volumen.soloSeries(s.series) : `${kilosLindos(s.kilos)} ${unidad}`
+                          }`}
+                        >
+                          <span className="relleno" style={{ height: tope > 0 ? `${(valor(s) / tope) * 100}%` : 0 }} />
+                        </button>
+                      ))}
+                    </div>
+                    <span className="volumen-valor">
+                      {leida.series === 0
+                        ? T.volumen.nada
+                        : series
+                          ? leida.series
+                          : `${kilosLindos(leida.kilos)} ${unidad}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="nota-privada">{series ? T.volumen.notaSeries : T.volumen.notaKilos}</p>
           </>
         )}
       </div>
-
-      {/* DÓNDE NO ESTÁS ENTRENANDO, con la misma cantidad de semanas que el
-          estancamiento: una sola preferencia para "cuánto es mucho tiempo". */}
-      {dejados.length > 0 && (
-        <div className="seccion">
-          <h3>{T.volumen.dejados}</h3>
-          {dejados.map((d) => (
-            <p key={d.grupo} className="volumen-dejado">
-              {T.volumen.dejado(d.grupo, d.semanas, fechaLinda(d.ultima))}
-            </p>
-          ))}
-        </div>
-      )}
 
       {maximos.length > 0 && (
         <div className="seccion">

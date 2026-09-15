@@ -24,7 +24,6 @@ import MisDatos from '@/components/ajustes/MisDatos';
 import NombreUsuario from '@/components/ajustes/NombreUsuario';
 import Sesion from '@/components/ajustes/Sesion';
 import Sexo from '@/components/ajustes/Sexo';
-import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import Sugerencias from '@/components/ajustes/Sugerencias';
 import UnidadPeso from '@/components/ajustes/UnidadPeso';
 import AvisoDiario from '@/components/ajustes/AvisoDiario';
@@ -81,7 +80,6 @@ export default function Ajustes() {
       <PantallaDeslizable>
         <div className="titulo-pantalla">{T.ajustes.titulo}</div>
 
-        <GloboPrimeraVez cual="ajustes">{T.ajustes.globo}</GloboPrimeraVez>
 
         {/* Todo lo que es "mío" vive en el perfil propio (§9): la foto, qué
             fotos ven los amigos, y la lista de amigos. Acá solo la puerta. */}
@@ -98,14 +96,17 @@ export default function Ajustes() {
           </div>
         </Link>
 
+        {/* EL GIMNASIO PRIMERO. Registrar el día solo al llegar es lo que hace
+            distinta a la app, y estaba cuarto, entre el descanso y el fondo. */}
+        <Gimnasio perfil={perfil} alCambiar={alCambiar} />
+
         <Descansos perfil={perfil} alCambiar={alCambiar} recargar={cargar} />
         {/* "Corregir días" se mudó a Stats: hay un solo calendario, y ahí
             tocar un día lo abre en vez de cambiarlo. */}
         <DescansoEntreSeries perfil={perfil} alCambiar={alCambiar} />
-        <Gimnasio perfil={perfil} alCambiar={alCambiar} />
 
-        {/* Va después del gimnasio y antes del nombre: es una preferencia de
-            ESTE aparato, como el descanso, y no un dato de la cuenta. */}
+        {/* Antes del nombre: es una preferencia de ESTE aparato, como el
+            descanso, y no un dato de la cuenta. */}
         <Fondo />
         {/* Al lado del fondo: las dos son de ESTE aparato y no de la cuenta. */}
         <AvisoDiario />

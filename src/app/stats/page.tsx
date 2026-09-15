@@ -13,7 +13,6 @@ import Nav from '@/components/Nav';
 import Estancamiento from '@/components/Estancamiento';
 import Impulsos from '@/components/Impulsos';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
-import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import SeccionFuerza from '@/components/SeccionFuerza';
 import SeccionSesiones from '@/components/SeccionSesiones';
 import GraficoPeso from '@/components/GraficoPeso';
@@ -132,9 +131,6 @@ export default function Estadisticas() {
       <PantallaDeslizable>
         <div className="titulo-pantalla">{T.stats.titulo}</div>
 
-        <GloboPrimeraVez cual="stats">
-          {T.stats.globo}
-        </GloboPrimeraVez>
 
         <div className="selector-vista pestanas-stats" role="tablist">
           <button

@@ -34,28 +34,32 @@
 
 export const T = {
   // ---------------------------------------------------------------
-  // LOS IMPULSOS. Se llamaban "vidas" y no cerraba: una vida es de un
-  // videojuego y suena a que la app te perdona. Un impulso es lo que te
-  // sostiene el día que no empujaste.
+  // LAS VIDAS. Se llamaron "impulsos" un tiempo, por elegancia, y el humano lo
+  // probó en el gimnasio: no se entendía, ni él lo entendía. "Vidas" es más
+  // obvio aunque sea menos elegante, y lo obvio gana. La llave sigue siendo
+  // `impulso` —y las funciones de la base, `mis_impulsos`— para no tocar la
+  // base por un nombre: lo que se ve dice "vidas".
   //
   // Dicen el hecho y nada más: no felicitan —"¡tu racha está a salvo!"— ni
   // retan. La app no opina sobre el día que alguien no fue al gimnasio;
   // cuenta lo que hizo con eso.
   impulso: {
-    faltasteUno: (dia: string) => `Faltaste el ${dia}. Se usó un impulso.`,
-    faltasteVarios: (n: number) => `Faltaste ${n} días. Se usaron ${n} impulsos.`,
+    faltasteUno: (dia: string) => `Faltaste el ${dia}. Se usó una vida.`,
+    faltasteVarios: (n: number) => `Faltaste ${n} días. Se usaron ${n} vidas.`,
     // Sin "este mes": ya no son del mes. Cada uno vuelve treinta días después
     // de usarlo, así que lo único que hay que saber es cuántos hay ahora.
     quedan: (n: number) =>
-      n === 0 ? 'No te queda ninguno.' : n === 1 ? 'Te queda 1.' : `Te quedan ${n}.`,
-    vuelve: (dia: string) => `El siguiente vuelve el ${dia}.`,
+      n === 0 ? 'No te queda ninguna.' : n === 1 ? 'Te queda 1.' : `Te quedan ${n}.`,
+    vuelve: (dia: string) => `La siguiente vuelve el ${dia}.`,
     // Cuánta racha falta para ganar el tercero. Se dice solo cuando falta.
     seGanaEn: (dias: number) =>
-      dias === 1 ? 'El tercero se gana mañana.' : `El tercero se gana en ${dias} días.`,
+      dias === 1 ? 'La tercera se gana mañana.' : `La tercera se gana en ${dias} días.`,
     // En Stats, al lado de los puntos. En minúscula y chico: es un dato de
     // contexto, no un título.
-    titulo: 'Impulsos',
-    nota: 'Dos para empezar, y el tercero a los 20 días de racha. Si faltas un día se usa uno solo y la racha sigue. Cada uno vuelve 30 días después de usarlo.',
+    titulo: 'Vidas',
+    // Cuántas hay y cuándo se gana la tercera ya lo dicen los puntos y la
+    // línea de al lado: la nota solo dice para qué sirven.
+    nota: 'Si faltas un día se usa una y la racha sigue. Cada una vuelve a los 30 días.',
 
     // ---- la ventana del día siguiente ----
     //
@@ -67,14 +71,14 @@ export const T = {
       // El precio de guardarlo, dicho con el número y no con el reglamento.
       // "Se corta la racha" no significa nada hasta que se ve en cuánto queda.
       precio: (n: number, racha: number) =>
-        `${n === 1 ? 'El impulso vuelve' : `Los ${n} impulsos vuelven`} y la racha se corta hoy: quedas en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
-      guardar: (n: number) => (n === 1 ? 'Guardarlo para después' : 'Guardarlos para después'),
+        `${n === 1 ? 'La vida vuelve' : `Las ${n} vidas vuelven`} y la racha se corta hoy: quedas en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
+      guardar: (n: number) => (n === 1 ? 'Guardarla para después' : 'Guardarlas para después'),
       confirmar: 'Cortar la racha',
       volver: 'Mejor no',
       // Después de devolverlo. Tampoco reta: la persona eligió esto sabiendo
       // el precio, y repetirle que perdió sería cobrarle dos veces.
       guardada: (n: number) =>
-        n === 1 ? 'El impulso quedó para después.' : `Los ${n} impulsos quedaron para después.`,
+        n === 1 ? 'La vida quedó para después.' : `Las ${n} vidas quedaron para después.`,
     },
   },
 
@@ -118,7 +122,7 @@ export const T = {
     // La corrección NO recalcula sola: la racha la recalcula la base y hacerlo
     // en cada toque serían diez recálculos para arreglar una semana.
     recalcularNota:
-      'Si corriges días, al terminar aprieta "Recalcular racha desde el historial": ahí se rehace la cuenta con los días como quedaron.',
+      'Corregiste días: recalcula la racha para que cuente como quedaron.',
     recalcular: 'Recalcular racha desde el historial',
     recalculando: 'Recalculando…',
     recalcularError: 'La cuenta no salió. Prueba de nuevo.',
@@ -168,7 +172,7 @@ export const T = {
 
   // ---------------------------------------------------------------
   // EL AVISO DE LAS 20:30. Ver `nucleo/avisoDiario.ts` para las reglas: dice
-  // un hecho, nombra la racha si hay, y nunca menciona los impulsos.
+  // un hecho, nombra la racha si hay, y nunca menciona las vidas.
   avisoDiario: {
     titulo: 'Ascent',
     conRacha: (racha: number) => `Tu racha va en ${racha}. Hoy todavía no está registrado.`,
@@ -176,16 +180,16 @@ export const T = {
 
     // En Ajustes.
     rotulo: 'Aviso de las 20:30',
-    nota: 'Si a esa hora no registraste el día, te llega un aviso. Uno solo, y nunca los días de descanso.',
+    nota: 'Si a esa hora no registraste el día, te avisa. Nunca en días de descanso.',
     prender: 'Avisarme',
     apagar: 'No avisarme',
     prendido: 'Prendido en este teléfono.',
     // Cada estado dice qué hacer, no solo qué pasa: un "no disponible" sin
     // salida es un callejón.
     hayQueInstalar:
-      'En iPhone el aviso solo llega con la app en la pantalla de inicio: Compartir → Agregar a inicio, y después se prende desde ahí.',
+      'En iPhone, primero agrega la app a la pantalla de inicio: Compartir → Agregar a inicio.',
     bloqueado:
-      'El permiso de notificaciones está bloqueado para esta app. Se vuelve a habilitar desde los ajustes del teléfono.',
+      'Las notificaciones están bloqueadas. Se habilitan en los ajustes del teléfono.',
     noDisponible: 'Este navegador no puede recibir avisos con la app cerrada.',
     noSePudo: 'No se pudo prender el aviso. Prueba de nuevo en un rato.',
   },
@@ -253,7 +257,7 @@ export const T = {
     // vez, el + aparece sin ninguna explicación y parece un botón de confirmar.
     // Esto se dice una sola vez, arriba, donde se está mirando.
     globoSeries:
-      'Elige en qué estás y cuántas vas a hacer. Cada + suma una serie y arranca el descanso solo. Al llegar a la meta el botón pasa a cerrar el ejercicio, y abajo queda "Sumar otra" por si sigues. El peso es opcional: vale para las series que vienen.',
+      'Elige el ejercicio y cuántas series. Cada + suma una y arranca el descanso.',
     // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
     // error de la app. Con una línea deja de serlo.
     sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',
@@ -297,7 +301,7 @@ export const T = {
     paraRecuperar: 'Te mandamos un enlace para elegir una contraseña nueva.',
     malConfigurada: 'Falta configurar algo de la app. Esto lo tengo que arreglar yo.',
     malConfiguradaDetalle:
-      'Faltan o están mal las variables de entorno de Supabase, así que no puede conectarse al servidor. Nada de lo que escribas aquí va a funcionar hasta que se arreglen.',
+      'La app no puede conectarse al servidor. Hasta que se arregle, nada de aquí funciona.',
 
     elegiNombre: 'Elige tu nombre',
     elegiNombreSub: 'Así te van a encontrar tus amigos.',
@@ -306,49 +310,20 @@ export const T = {
   },
 
   // ---------------------------------------------------------------
-  // El recorrido de bienvenida. REGLA DURA: la explicación es genérica — no
-  // se nombra ningún rango, ni cuántos hay, ni dónde termina la escalera.
-  // Descubrir en qué te vas a convertir es la recompensa del juego.
-  guia: {
+  // EL RECORRIDO DE LA PRIMERA VEZ (`nucleo/recorrido.ts`). Una línea por
+  // pantalla, mirando la pantalla de la que habla. El gimnasio primero: es lo
+  // que hace distinta a la app. REGLA DURA de siempre: ningún rango nombrado.
+  recorrido: {
+    titulo: 'Recorrido por la app',
+    gimnasio: 'Lo primero: marca tu gimnasio. Al llegar, el día se registra solo.',
+    inicio: 'Tu racha. En el gimnasio tocas Iniciar y cuentas tus series.',
+    stats: 'Tus números: constancia, series por músculo y tus mejores pesos.',
+    album: 'Una foto por día, si quieres. Solo la ves tú, salvo que la compartas.',
+    ranking: 'Tu racha y la de tus amigos. Desde aquí los buscas y agregas.',
+    siguiente: 'Siguiente',
+    listo: 'Listo',
     saltar: 'Saltar',
-    seguir: 'Seguir',
-    entendido: 'Entendido',
-    pasos: [
-      {
-        titulo: 'Registras el día',
-        texto: 'Cada vez que vas al gimnasio, lo marcas aquí. Un día atrás del otro, eso es tu racha.',
-      },
-      {
-        titulo: 'Y algo se va formando',
-        texto: 'Eso que se mueve atrás cambia con tu racha. Hasta dónde llega, lo vas a ver tú.',
-      },
-      {
-        titulo: 'Los descansos no te cortan',
-        texto: 'Eliges tus días libres una vez, en Ajustes. Y si igual se te corta, no vuelves a cero.',
-      },
-      // Este paso PRESENTA el punto del gimnasio y no pide nada: acá nadie
-      // está en el gimnasio, y pedir algo que no se puede hacer en el momento
-      // se despacha con un toque y no se vuelve a pensar nunca.
-      {
-        titulo: 'Y un día deja de hacer falta',
-        texto:
-          'Si marcas dónde queda tu gimnasio, abrir la app estando ahí registra el día solo. Se marca desde Ajustes, parado en la puerta.',
-      },
-      // LOS DOS PASOS QUE SE AGREGARON DESPUÉS, y por qué. El recorrido se
-      // escribió cuando la app era la racha y nada más. Después crecieron dos
-      // cosas grandes —contar series y los impulsos— y el que entraba nuevo
-      // se encontraba con ellas sin que nadie se las hubiera nombrado.
-      {
-        titulo: 'Mientras entrenas, cuentas series',
-        texto:
-          'Eliges en qué estás y cuántas vas a hacer. Un botón grande suma cada serie y arranca el descanso solo. Es opcional: el día cuenta igual sin tocar nada.',
-      },
-      {
-        titulo: 'Y si faltas un día, hay impulsos',
-        texto:
-          'Tienes dos, y el tercero se gana a los 20 días de racha. Si faltas, se usa uno solo y la racha sigue. Cada uno vuelve 30 días después.',
-      },
-    ],
+    ir: 'Ir',
   },
 
   // ---------------------------------------------------------------
@@ -375,9 +350,9 @@ export const T = {
   bloqueo: {
     sinHora: 'Tu día quedó anotado y se suma solo en cuanto la app lo pueda confirmar.',
     aLaHora: (hora: string) =>
-      `Cambiaste de zona horaria, así que tu día queda anotado y se suma solo a las ${hora}. No lo perdiste.`,
+      `Cambiaste de zona horaria: tu día se suma solo a las ${hora}. No lo perdiste.`,
     enMinutos: (min: number) =>
-      `Cambiaste de zona horaria, así que tu día queda anotado y se suma solo en ${min} min. No lo perdiste.`,
+      `Cambiaste de zona horaria: tu día se suma solo en ${min} min. No lo perdiste.`,
   },
 
   // ---------------------------------------------------------------
@@ -405,14 +380,14 @@ export const T = {
     },
 
     // Cambió con la migración 28: antes los amigos veían una banda.
-    loVenTusAmigos: 'Tus amigos ven este número. Con él y tu total pueden calcular más o menos cuánto pesas.',
+    loVenTusAmigos: 'Tus amigos ven este número. Con él pueden estimar cuánto pesas.',
     faltaPara: (peso: string) => `Te faltan ${peso} para principiante`,
     faltaParaUno: (peso: string) => `Te falta ${peso} para principiante`,
 
     muestraFina:
-      'La muestra de mujeres es mucho más chica que la de hombres: el porcentaje sirve como orientación, no como medición.',
+      'Hay pocos datos de mujeres: tómalo como orientación, no como medición.',
     fueraDeTabla:
-      'Tu peso corporal queda fuera de la tabla, así que se compara contra el extremo más cercano.',
+      'Tu peso queda fuera de la tabla: se compara con el extremo más cercano.',
 
 
     // El DOTS necesita las TRES. El PORQUÉ vive en Ajustes ("Cómo se compara
@@ -424,7 +399,7 @@ export const T = {
     faltaSexo: 'Para el número falta cargar el sexo en',
     faltaSexoFin: ': la fórmula usa dos juegos de coeficientes y no se asume ninguno.',
     faltaPeso:
-      'Falta tu peso corporal: la fórmula compara levantamientos entre personas de distinto tamaño y sin él no hay número.',
+      'Falta tu peso corporal: sin él no se comparan personas de distinto tamaño.',
 
     // En Stats no hay cuántas van cargadas a mano, así que ahí va la corta.
     faltanMarcasCorto: 'Faltan marcas: el número sale de las tres, y con dos no se compara con nada.',
@@ -440,7 +415,7 @@ export const T = {
     vacioTitulo: 'Todavía no cargaste ninguna.',
     vacioPie: 'Sentadilla, banca y peso muerto son las tres que arman tu número.',
     sinNada:
-      'Sentadilla, banca y peso muerto arman un número comparable con el de tus amigos, pese lo que pese cada uno.',
+      'Sentadilla, banca y peso muerto arman un número comparable con tus amigos.',
   },
 
   // ---------------------------------------------------------------
@@ -454,7 +429,6 @@ export const T = {
     pesoPorSerieNota: 'Si lo apagas, el campo de peso no aparece al entrenar. Lo que ya anotaste se queda.',
     // Tres cosas que cambian cómo funciona la app y que nadie encuentra si
     // no se las nombra una vez.
-    globo: 'Aquí eliges tus días de descanso, marcas dónde queda tu gimnasio para que el día se registre solo, y decides cuánto se mueve el fondo.',
 
     diasDescanso: 'Días de descanso',
     diasDescansoNota: 'Esos días puedes faltar sin perder la racha.',
@@ -488,7 +462,7 @@ export const T = {
     // precisión guardaría el barrio en vez del gimnasio, y eso no se nota
     // hasta semanas después, cuando los días entran solos desde tu casa.
     gimnasioImpreciso: (metros: number) =>
-      `Te ubica con ${metros} m de error, demasiado para marcar el punto aquí. Salí a la vereda y prueba de nuevo en unos segundos.`,
+      `Te ubica con ${metros} m de error. Sal a la vereda y prueba de nuevo.`,
 
     // EL FONDO. El motor cuesta tres segundos de arranque, medidos: se puede
     // apagar. No dice "gráficos" ni "calidad": dice qué es y qué cuesta.
@@ -498,10 +472,10 @@ export const T = {
     fondoNunca: 'Nunca',
     // El automático DICE qué decidió: "automático" a secas es pedir que
     // confíes a ciegas en algo que te cambia la app.
-    fondoAutoBueno: 'Tu equipo lo aguanta bien, así que está prendido. La app tarda unos segundos más en abrir.',
-    fondoAutoFlojo: 'Tu equipo va justo, así que queda apagado y la app abre al instante. Puedes prenderlo igual.',
-    fondoAutoNoSe: 'Este navegador no dice cuánto puede tu equipo, así que queda prendido. Si la app tarda en abrir, apagalo.',
-    fondoNota: 'El fondo tarda unos segundos en cargar. Apagado, la app abre al instante y el degradado queda igual.',
+    fondoAutoBueno: 'Tu equipo lo aguanta: está prendido. La app tarda unos segundos más en abrir.',
+    fondoAutoFlojo: 'Tu equipo va justo: está apagado y la app abre al instante.',
+    fondoAutoNoSe: 'No se sabe cuánto aguanta tu equipo: está prendido. Si tarda en abrir, apágalo.',
+    fondoNota: 'Apagado, la app abre al instante y el degradado queda igual.',
 
     nombreUsuario: 'Nombre de usuario',
     nombreNota: 'Así te encuentran tus amigos. No puede repetirse.',
@@ -526,7 +500,7 @@ export const T = {
     // el DOTS es una función del peso corporal y del total, así que con los
     // dos a la vista el peso se despeja. No es un riesgo, es aritmética.
     sexoAviso:
-      'Ten en cuenta: con el DOTS activado, tus amigos ven tu número exacto. Como el DOTS sale de tu peso corporal y de tu total, con los dos a la vista pueden calcular cuánto pesas. Tu peso nunca se comparte, pero sí se puede deducir.',
+      'Con el DOTS activado, tus amigos ven tu número exacto y pueden deducir cuánto pesas.',
 
     sugerencias: 'Sugerencias',
     sugerenciasPlaceholder: '¿Algo anda mal? ¿Se te ocurrió algo? Cuenta aquí.',
@@ -561,7 +535,7 @@ export const T = {
     tuPerfil: 'Tu foto, tus fotos compartidas y tus amigos',
 
     bajaQueSeBorra: (dias: number) =>
-      `Se borra todo: tus ${dias} días de racha, tus fotos, tus pesos, tus marcas y tus amigos. No hay forma de recuperarlo, ni siquiera pidiéndomelo.`,
+      `Se borra todo: ${dias} días de racha, fotos, pesos, marcas y amigos. No se recupera.`,
     // Partido en dos porque en el medio va el nombre en negrita.
     bajaEscribi: 'Si quieres seguir, escribí',
     bajaEscribiFin: 'aquí abajo.',
@@ -575,7 +549,7 @@ export const T = {
     estancamientoNo: 'No',
     semanas: (n: number) => `${n} semanas`,
     estancamientoNota: (n: number) =>
-      `Una sola señal por vez, en Stats, cuando algo lleva ${n} semanas sin moverse. Nunca el día que entrenas.`,
+      `Una señal por vez, en Stats, cuando algo lleva ${n} semanas sin moverse.`,
 
     // El banco de trabajo del automático por ubicación. Se saca cuando esté
     // probado: no es una pantalla de la app.
@@ -599,7 +573,7 @@ export const T = {
     diagYaArranco: 'ya arrancó',
     diagMirarAhora: 'Mirar ahora',
     diagMirarNota:
-      'Apriétalo parado en la puerta: dice a cuántos metros te ve, que es la única forma de saber si el radio quedó bien sin esperar los siete minutos.',
+      'Apriétalo en la puerta: dice a cuántos metros te ve.',
     diagVacia: 'Todavía no hay nada anotado.',
     diagRefrescar: 'Refrescar',
     diagBorrar: 'Borrar lo anotado',
@@ -613,7 +587,6 @@ export const T = {
     pestanaGeneral: 'General',
     pestanaEntrenamiento: 'Entrenamiento',
     titulo: 'Stats',
-    globo: 'Constancia, historial y tu peso. El peso no lo ve nadie más.',
     rachaActual: 'Racha actual',
     mejorRacha: 'Mejor racha',
     ultimos30: 'Últimos 30 días',
@@ -650,35 +623,33 @@ export const T = {
   // `nucleo/volumen.ts`. Describe, no juzga y no receta: ni "bien", ni "bajó",
   // ni "deberías".
   volumen: {
-    semanas: 'Volumen por semana',
-    // Lo que el número es y lo que no es, dicho una vez debajo del gráfico.
-    nota: 'Peso por series, sin repeticiones. Sirve para comparar tus semanas entre sí.',
-    todo: 'Todo',
-    enKilos: 'Kilos',
+    // NO DICE "VOLUMEN": quien va al gimnasio sabe qué es una serie y no qué
+    // es volumen. La pantalla lo muestra con barras y no lo explica.
+    titulo: 'Series por músculo',
     enSeries: 'Series',
+    enKilos: 'Kilos',
     semanaDel: (fecha: string) => `Semana del ${fecha}`,
     kilosYSeries: (kilos: string, unidad: string, series: number) =>
-      `${kilos} ${unidad} · ${series === 1 ? '1 serie' : `${series} series`}`,
+      `${series === 1 ? '1 serie' : `${series} series`} · ${kilos} ${unidad}`,
     soloSeries: (series: number) => (series === 1 ? '1 serie' : `${series} series`),
-    semanaVacia: 'Nada anotado esa semana.',
+    nada: '—',
+    nadaDesde: (fecha: string) => `nada desde el ${fecha}`,
+    notaSeries: 'Cada barra es una semana. Toca una para ver cuántas hiciste.',
+    notaKilos: 'Los kilos de todas las series de la semana, sumados.',
     // Sin nada: se dice qué lo llena, sin pedirlo.
-    vacio: 'Aparece cuando eliges en qué estás al entrenar.',
+    vacio: 'Aparece cuando eliges el ejercicio al entrenar.',
 
     maximos: 'Peso máximo por ejercicio',
     verTodos: (n: number) => `Ver los ${n}`,
     verMenos: 'Ver menos',
 
-    dejados: 'Dónde no estás entrenando',
-    dejado: (grupo: string, semanas: number, fecha: string) =>
-      `${grupo.charAt(0).toUpperCase()}${grupo.slice(1)}: nada anotado desde el ${fecha} (${semanas} semanas).`,
-
     // En el resumen de un día.
-    porMusculo: 'Volumen por músculo',
+    porMusculo: 'Por músculo',
 
     // LOS PESOS DE ANTES DE LOS MODOS (migración 39). Una vez, con lo que hay
     // que hacer; después quedan marcados en el calendario.
     revisarAviso: (n: number) =>
-      `${n === 1 ? 'Un día tiene' : `${n} días tienen`} pesos anotados antes de que existieran los modos. Si anotaste mancuernas sumando las dos, quedaron el doble: revísalos.`,
+      `${n === 1 ? 'Un día tiene' : `${n} días tienen`} pesos de antes de la etiqueta. Si sumaste las dos mancuernas, revísalos.`,
     revisarEntendido: 'Entendido',
     revisarTitulo: 'Por revisar',
     revisarNota: 'Se anotó antes de que existiera la etiqueta. ¿Qué significaba el número?',
@@ -726,9 +697,9 @@ export const T = {
     // y qué hacer si seguías: iniciar otra suma al mismo día, y el rato
     // muerto del medio no cuenta en ninguna de las dos.
     seCerroSola: (hora: string, duracion: string) =>
-      `La sesión se cerró sola a las ${hora}, media hora después de la última actividad. Duró ${duracion}. Si sigues entrenando, inicia otra: se suma al mismo día.`,
+      `La sesión se cerró sola a las ${hora} y duró ${duracion}. Si sigues, inicia otra.`,
     seCerroSinDuracion:
-      'La sesión se cerró sola: pasaron dos horas sin tocar nada, así que queda sin duración. El día sigue registrado.',
+      'Se cerró sola tras dos horas sin tocar nada: queda sin duración. El día cuenta.',
     nuevoRango: 'Nuevo rango',
 
     // EL RESUMEN DEL FINAL. Terminar un entrenamiento era el momento más
@@ -929,8 +900,6 @@ export const T = {
   // ---------------------------------------------------------------
   album: {
     titulo: 'Álbum',
-    globo:
-      'Cada foto queda pegada al día en que la sacaste. Tócala para verla en grande y elegir quién la ve.',
     vacioTitulo: 'Ninguna foto todavía.',
     vacioPie: 'Al registrar un día puedes sumar una: queda pegada al planeta de ese día.',
     borrarPregunta: '¿Borrar?',
@@ -955,7 +924,6 @@ export const T = {
     buscarGente: 'Buscar gente',
     // El título decía "Leaderboard" mientras la barra de abajo decía
     // "Ranking": la misma pantalla con dos nombres. Manda el de la barra.
-    globo: 'Tu racha y la de tus amigos, ordenadas. Desde aquí también puedes buscar a alguien y agregarlo.',
     // Solo para quien lee la pantalla en voz alta: el punto de la barra no
     // tiene texto, y sin esto sería un elemento mudo.
     tePidieron: (n: number) =>
@@ -1021,7 +989,7 @@ export const T = {
     // El globo de la primera vez. Lo que no se entiende solo de esta
     // pantalla es que las fotos son PRIVADAS salvo que las compartas: sin
     // decirlo, subir una foto se siente como publicar.
-    globo: 'Tus fotos son privadas. Tocas una para compartirla con tus amigos, y la tocas de nuevo para volver a esconderla.',
+    globo: 'Tus fotos son privadas. Toca una para compartirla con tus amigos.',
     misFotos: 'Qué fotos ven tus amigos',
     cambiarFoto: 'Cambiar la foto de perfil',
     subiendoFoto: 'subiendo la foto…',
@@ -1039,7 +1007,7 @@ export const T = {
     ocultarTodas: 'Ocultar todas',
     tocaUnaFoto: 'Toca una foto para prenderla o apagarla. Las apagadas las ves solo tú.',
     sinFotos:
-      'Todavía no sacaste ninguna. Cuando registres un día con foto, la vas a poder prender o apagar desde aquí.',
+      'Todavía no hay fotos. Las que sumes al registrar un día aparecen aquí.',
 
     amigos: 'Amigos',
     eliminar: 'Eliminar',

@@ -238,16 +238,20 @@ export default function HojaDelDia({
               </div>
             )}
 
-            {/* EL VOLUMEN POR MÚSCULO, solo si hay kilos: sin pesos, las
-                series ya están dichas arriba, ejercicio por ejercicio, y una
-                tabla de ceros sería el mismo dato peor dicho. Sin gráficos ni
-                comparaciones con otros días: un día no tiene tendencia. */}
-            {resumen.volumen.some((v) => v.kilos > 0) && (
+            {/* POR MÚSCULO: una barra por músculo, del largo de sus series. Se
+                ve de un vistazo en qué se fue el día, sin leer números. Solo si
+                hay más de un músculo o hay kilos: con uno solo y sin pesos, las
+                series ya están dichas arriba. Sin comparar con otros días: un
+                día no tiene tendencia. */}
+            {(resumen.volumen.length > 1 || resumen.volumen.some((v) => v.kilos > 0)) && (
               <div className="dia-ejercicios dia-volumen">
                 <h3>{T.volumen.porMusculo}</h3>
                 {resumen.volumen.map((v) => (
-                  <div className="fila" key={v.grupo}>
+                  <div className="fila-musculo" key={v.grupo}>
                     <span className="nombre capitalizado">{v.grupo}</span>
+                    <span className="dia-barra" aria-hidden>
+                      <i style={{ width: `${(v.series / Math.max(...resumen.volumen.map((x) => x.series))) * 100}%` }} />
+                    </span>
                     <span className="cuantas">
                       {v.kilos > 0
                         ? T.volumen.kilosYSeries(

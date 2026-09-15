@@ -278,3 +278,43 @@ export function fechasPorRevisar(sesiones: SesionConBloques[]): Set<string> {
   for (const s of sesiones) if (leerBloques(s.bloques).some((b) => b.supuesta)) fechas.add(s.fecha);
   return fechas;
 }
+
+export type FilaDeMusculo = {
+  grupo: string;
+  semanas: Semana[];
+  /** Si hace `umbral` semanas o más que no aparece: la fila lo dice en voz baja. */
+  dejado: GrupoDejado | null;
+};
+
+/**
+ * LA PANTALLA ENTERA EN FILAS: un músculo por fila, con sus semanas.
+ *
+ * NO DICE "VOLUMEN". Quien va al gimnasio sabe qué es una serie y no qué es
+ * volumen, así que cada fila son barras chicas —una por semana— de cuántas
+ * series hiciste de ese músculo. Los kilos son la misma fila en otra unidad.
+ *
+ * "DÓNDE NO ESTÁS ENTRENANDO" DEJÓ DE SER UNA SECCIÓN: una fila con las barras
+ * de la derecha vacías ya lo muestra, y el texto queda como una nota chica al
+ * lado del nombre.
+ *
+ * TODAS LAS FILAS COMPARTEN LA ESCALA (`tope`): con una escala por fila, tres
+ * series de core y treinta de pierna dibujarían barras del mismo alto.
+ */
+export function filasPorMusculo(
+  sesiones: SesionConBloques[],
+  catalogo: Catalogo,
+  { hoy, semanas, umbral }: { hoy: string; semanas: number; umbral: number }
+): { filas: FilaDeMusculo[]; topeSeries: number; topeKilos: number } {
+  const dejados = new Map(gruposDejados(sesiones, catalogo, { hoy, semanas: umbral }).map((d) => [d.grupo, d]));
+  const filas = gruposAnotados(sesiones, catalogo).map((grupo) => ({
+    grupo,
+    semanas: volumenPorSemana(sesiones, catalogo, { hoy, semanas, grupo }),
+    dejado: dejados.get(grupo) ?? null,
+  }));
+  const todas = filas.flatMap((f) => f.semanas);
+  return {
+    filas,
+    topeSeries: Math.max(0, ...todas.map((s) => s.series)),
+    topeKilos: Math.max(0, ...todas.map((s) => s.kilos)),
+  };
+}

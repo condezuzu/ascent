@@ -12,7 +12,8 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "audio"
-        ]
+        ],
+        "UIApplicationSupportsShakeToEdit": false
       }
     },
     "android": {

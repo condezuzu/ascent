@@ -9,7 +9,6 @@ import { avisarFallo } from '@/lib/cola';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
-import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import VisorFoto from '@/components/VisorFoto';
 import Esqueleto from '@/components/Esqueleto';
 import NoCargo from '@/components/NoCargo';
@@ -161,7 +160,6 @@ export default function Album() {
       <PantallaDeslizable>
         <div className="titulo-pantalla">{T.album.titulo}</div>
 
-        <GloboPrimeraVez cual="album">{T.album.globo}</GloboPrimeraVez>
 
         {error && <p className="error-msg">{error}</p>}
 

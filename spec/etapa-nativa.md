@@ -659,6 +659,24 @@ un disco, elevación de piernas con una mancuerna. Marcar todo eso como "sin
 peso" sería decidir por el usuario cómo entrena. Quedan afuera solo los
 isométricos, donde lo que se mide es tiempo.
 
+## 13e-bis. PRIORIDAD DE LA TANDA 3 — el "deshacer" al guardar el teléfono
+
+Pedido el 2026-09-15: **cada vez que el iPhone va al bolsillo aparece el
+diálogo de "Deshacer" de iOS**, y en el gimnasio el teléfono entra y sale del
+bolsillo todo el tiempo.
+
+**En web no se puede desactivar, confirmado.** Es "Agitar para deshacer" del
+sistema: el sacudón al guardarlo lo dispara si en la página se escribió en un
+campo (el peso). No hay ninguna API web que lo apague, y Safari no deja a la
+página ver ese gesto. Lo único que lo evita en web lo hace la persona en su
+teléfono: Ajustes → Accesibilidad → Tocar → Agitar para deshacer → apagado.
+Apaga el gesto en TODAS las apps.
+
+**En nativo es una línea, y ya está puesta:** `UIApplicationSupportsShakeToEdit:
+false` en `movil/app.json` (`ios.infoPlist`). Solo para esta app. Ojo: Expo Go
+no lee el `infoPlist` de la app, así que se ve recién con la build de
+desarrollo de la tanda 3.
+
 ## 13f. PRIORIDAD DE LA TANDA 3 — el botón de volumen suma una serie
 
 Con el teléfono en el bolsillo y sin mirar la pantalla. En web es imposible

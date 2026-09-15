@@ -144,16 +144,17 @@ await paso('crear cuenta', async () => {
 await paso('elegir nombre de usuario', async () => {
   await page.locator('input').first().fill(USUARIO);
   await page.getByRole('button', { name: 'Empezar' }).click();
-  await page.waitForURL((u) => u.pathname === '/bienvenida', { timeout: 60000 });
+  // El recorrido empieza en Ajustes, con el gimnasio a la vista.
+  await page.waitForURL((u) => u.pathname === '/ajustes', { timeout: 60000 });
 });
 
-// ---- 3. la guía ----
-await paso('recorrer la guía', async () => {
-  for (let i = 0; i < 4; i++) {
-    const seguir = page.getByRole('button', { name: /Seguir|Entendido/ });
-    if (!(await seguir.count())) break;
-    await seguir.first().click();
-    await page.waitForTimeout(400);
+// ---- 3. el recorrido: una pantalla por paso ----
+await paso('recorrer la app', async () => {
+  for (let i = 0; i < 6; i++) {
+    const boton = page.locator('.recorrido').getByRole('button', { name: /Siguiente|Listo/ });
+    if (!(await boton.count())) break;
+    await boton.first().click();
+    await page.waitForTimeout(1200);
   }
   await page.waitForURL((u) => u.pathname === '/', { timeout: 60000 });
 });

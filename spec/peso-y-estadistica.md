@@ -198,6 +198,23 @@ arriba ("dónde no estás entrenando"), que dice otra cosa y con otro tono.
 
 Y sigue valiendo lo de hoy: describe, no juzga y no receta. Un hecho con fecha.
 
+### Cuándo se puede empezar (anotado el 2026-09-15)
+
+Dejado para el final a propósito. Lo que necesita, exacto, para que valga la
+pena construirlo y se pueda probar contra datos de verdad:
+
+- **8 semanas de pesos anotados**, no 6. Seis es la regla; las dos de más son
+  para que haya un antes y un después: con seis semanas justas, cualquier
+  ejercicio "arranca" estancado porque todavía no tuvo tiempo de subir.
+- **Al menos 4 sesiones con peso en UN mismo ejercicio** dentro de las últimas
+  6 semanas. Es la segunda mitad de la regla; sin eso no hay nada que declarar.
+- **Con pesos que se guardan de verdad**, o sea desde la migración 36
+  (14/9/2026). Lo de antes se perdió.
+
+**Fecha más temprana: 9 de noviembre de 2026**, y solo si se entrenó parejo. Si
+en Ajustes el umbral está en 8 semanas, se corre dos semanas: 23 de noviembre.
+Pedirlo en esa fecha; antes, la pantalla se vería vacía o diría cosas falsas.
+
 ---
 
 ## 4 · Orden de trabajo propuesto

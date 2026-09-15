@@ -39,8 +39,8 @@ export default function Onboarding() {
         return setError(T.entrar.nombreFormato);
       return setError(error.message);
     }
-    // el recorrido va entre elegir el nombre y la primera pantalla
-    router.push('/bienvenida');
+    // El recorrido empieza en Ajustes, con el punto del gimnasio a la vista.
+    router.push('/ajustes');
     router.refresh();
   }
 

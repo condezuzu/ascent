@@ -6126,6 +6126,83 @@ console.log('\n87. Lo que leen igual la web y la app nativa');
   chequear('Stats nativo usa el volumen del nucleo', stats.includes("from '@nucleo/volumen'"), true);
   chequear('y no suma kilos por su cuenta', /kilosMovidos|factorDeCarga|\.pesos[^A-Za-z]/.test(stats), false);
 }
+console.log('\n88. La cola no pierde lo que se encola mientras manda');
+{
+  const { quedanTrasPasada } = await import('../nucleo/cola.ts');
+  const a = { id: 'fijar_series:s1', args: { p_series: 3 } };
+  const b = { id: 'fijar_bloques:s1', args: { p_bloques: [] } };
+  const a4 = { id: 'fijar_series:s1', args: { p_series: 4 } };
+  const c = { id: 'marcar_actividad:s1', args: { p_hasta: 'x' } };
+  chequear('lo mandado sale', quedanTrasPasada([a, b], [a, b]), []);
+  chequear('lo que no entro se queda', quedanTrasPasada([a, b], [a]), [b]);
+  // EL BUG: se encolo `c` mientras se mandaban `a` y `b`.
+  chequear('lo encolado en el medio se queda', quedanTrasPasada([a, b, c], [a, b]), [c]);
+  // "Las series son 4" reemplazo a "son 3" mientras se mandaba "son 3".
+  chequear('lo que reemplazo a uno mandado se queda', quedanTrasPasada([b, a4], [a, b]), [a4]);
+  chequear('se compara por contenido, no por objeto', quedanTrasPasada([JSON.parse(JSON.stringify(a))], [a]), []);
+}
+console.log('\n89. Ninguna explicacion pasa de dos renglones');
+{
+  // LA REGLA DEL HUMANO: "si necesita mas de dos lineas, esta mal disenado, no
+  // mal explicado". Dos renglones en un telefono son unos 95 caracteres. Un
+  // texto mas largo no se arregla aca subiendo el numero: se redisena lo que
+  // obliga a explicarlo.
+  const { readFileSync: leer } = await import('node:fs');
+  const lineas = leer(join(dirname(fileURLToPath(import.meta.url)), '..', 'nucleo', 'textos.ts'), 'utf8').split(/\r?\n/);
+  const largos = [];
+  lineas.forEach((l, i) => {
+    if (/^\s*\/\//.test(l)) return;
+    for (const m of l.matchAll(/'([^']*)'|`([^`]*)`/g)) {
+      const s = m[1] ?? m[2];
+      if (s.length > 95) largos.push(`textos.ts:${i + 1} (${s.length}) ${s.slice(0, 50)}`);
+    }
+  });
+  chequear('ningun texto de mas de dos renglones', largos, []);
+
+  // VIDAS, no impulsos: lo que se ve dice "vidas".
+  const { T } = await import('../nucleo/textos.ts');
+  const visibles = JSON.stringify(T.impulso, (k, v) => (typeof v === 'function' ? v(2, 3) : v));
+  chequear('las vidas se llaman vidas', /[Ii]mpuls/.test(visibles), false);
+}
+
+console.log('\n90. El recorrido de la primera vez');
+{
+  const { PASOS_DEL_RECORRIDO, pasoValido } = await import('../nucleo/recorrido.ts');
+  const { existsSync: existe, readFileSync: leer } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  // Cada paso lleva a una pantalla que existe: un paso a una ruta borrada deja
+  // a la persona nueva en un 404 en su primer minuto.
+  const faltan = PASOS_DEL_RECORRIDO.filter(
+    (p) => !existe(join(RAIZ, 'src', 'app', ...p.ruta.split('/').filter(Boolean), 'page.tsx'))
+  ).map((p) => p.ruta);
+  chequear('cada paso lleva a una pantalla que existe', faltan, []);
+  // Lo primero, el gimnasio: es lo que hace distinta a la app.
+  chequear('el primer paso es el gimnasio', [PASOS_DEL_RECORRIDO[0].ruta, PASOS_DEL_RECORRIDO[0].ancla], ['/ajustes', 'gimnasio']);
+  const gimnasio = leer(join(RAIZ, 'src', 'components', 'ajustes', 'Gimnasio.tsx'), 'utf8');
+  chequear('y la seccion a la que apunta existe', gimnasio.includes('id="gimnasio"'), true);
+  chequear('una linea por pantalla', PASOS_DEL_RECORRIDO.filter((p) => p.texto.length > 80).map((p) => p.ruta), []);
+  chequear('un paso guardado que ya no existe vuelve al principio', [pasoValido(99), pasoValido('x'), pasoValido(2)], [0, 0, 2]);
+}
+
+console.log('\n91. Series por musculo: una escala para todas las filas');
+{
+  const V = await import('../nucleo/volumen.ts');
+  const cat = new Map([
+    ['sentadilla', { nombre: 'Sentadilla', grupo: 'piernas' }],
+    ['plancha', { nombre: 'Plancha', grupo: 'core' }],
+    ['press_banca', { nombre: 'Press', grupo: 'pecho' }],
+  ]);
+  const ses = [
+    { fecha: '2026-09-14', bloques: [{ ejercicio: 'sentadilla', series: 30, pesos: [], carga: 'total' }, { ejercicio: 'plancha', series: 3 }] },
+    { fecha: '2026-07-01', bloques: [{ ejercicio: 'press_banca', series: 4, pesos: [60, 60, 60, 60], carga: 'total' }] },
+  ];
+  const r = V.filasPorMusculo(ses, cat, { hoy: '2026-09-15', semanas: 2, umbral: 6 });
+  chequear('una fila por musculo anotado, en el orden de la interfaz', r.filas.map((f) => f.grupo), ['pecho', 'piernas', 'core']);
+  // Con una escala por fila, 3 de core y 30 de pierna serian barras iguales.
+  chequear('el tope es uno solo para todas', [r.topeSeries, r.topeKilos], [30, 0]);
+  chequear('la fila dejada lo dice', r.filas.find((f) => f.grupo === 'pecho').dejado?.ultima, '2026-07-01');
+  chequear('las que no, no', r.filas.find((f) => f.grupo === 'piernas').dejado, null);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
