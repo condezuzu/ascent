@@ -158,6 +158,10 @@ export type Ejercicio = {
   // por omisión de la base.
   admite_peso?: boolean;
   orden: number;
+  // Qué significa el número del peso por omisión, y si se pregunta la primera
+  // vez (migración 38). Opcionales por la misma razón que `admite_peso`.
+  carga?: string;
+  carga_ambigua?: boolean;
 };
 
 // Una marca cargada, tal como la escribió el usuario. El 1RM no se guarda:

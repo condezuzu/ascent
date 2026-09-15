@@ -214,7 +214,16 @@ create table public.ejercicios (
   -- todo admite peso aunque no se use así —flexiones con chaleco, crunch con
   -- un disco—. Quedan afuera los isométricos, donde lo que se mide es tiempo.
   admite_peso boolean not null default true,
-  orden int not null default 0
+  orden int not null default 0,
+  -- QUÉ SIGNIFICA EL NÚMERO DEL PESO (migración 38): 'total' (barra o
+  -- máquina), 'par' (el peso de UNA de dos mancuernas o poleas, × 2), 'una'
+  -- (una sola mancuerna) o 'lastre' (lo que va encima del peso corporal, que
+  -- no se suma). Decide solo los bloques que VIENEN: cada bloque guarda el
+  -- suyo, así que reclasificar no reescribe la historia.
+  carga text not null default 'total',
+  -- El nombre no dice con qué se hace ("Zancadas"): se pregunta una vez.
+  carga_ambigua boolean not null default false,
+  constraint ejercicios_carga_valida check (carga in ('total', 'par', 'una', 'lastre'))
 );
 
 -- Las marcas. Se guarda lo que el usuario LEVANTÓ (peso y repeticiones), no
@@ -354,6 +363,46 @@ update public.ejercicios
    set admite_peso = false
  where id in ('plancha', 'plancha_lateral', 'dead_bug');
 
+-- QUÉ SIGNIFICA EL NÚMERO (migración 38).
+-- Los que no son `total`. La lista va entera acá y no repartida en el insert
+-- del catálogo, para que se lea de un vistazo qué se decidió.
+update public.ejercicios set carga = 'par' where id in (
+  -- dos mancuernas
+  'press_mancuernas', 'press_inclinado_mancuernas', 'aperturas',
+  'press_militar_mancuernas', 'press_arnold', 'elevaciones_laterales',
+  'elevaciones_frontales', 'pajaros', 'encogimientos',
+  'curl_mancuernas', 'martillo', 'curl_inclinado', 'curl_muneca',
+  'zancadas', 'zancadas_caminando', 'zancada_inversa', 'sentadilla_bulgara',
+  'subida_cajon', 'peso_muerto_una_pierna',
+  -- dos poleas: el número de cada lado
+  'cruce_polea_alta', 'cruce_polea_baja'
+);
+
+update public.ejercicios set carga = 'una' where id in (
+  -- una mancuerna con las dos manos
+  'sentadilla_goblet', 'pullover', 'triceps_mancuerna',
+  -- una mancuerna, un brazo por vez
+  'remo_mancuerna', 'curl_concentrado', 'patada_triceps'
+);
+
+update public.ejercicios set carga = 'lastre' where id in (
+  'dominadas', 'dominadas_supinas', 'dominadas_lastradas', 'remo_invertido',
+  'fondos', 'fondos_banco', 'flexiones', 'hiperextensiones',
+  'crunch', 'elevacion_piernas', 'elevacion_rodillas', 'bicicleta_abdominal',
+  'rueda_abdominal'
+);
+
+-- Los que se preguntan. Además de los nueve que se propusieron —el nombre no
+-- dice el equipo—, los que en el gimnasio se hacen seguido de las dos formas.
+update public.ejercicios set carga_ambigua = true where id in (
+  'zancadas', 'zancadas_caminando', 'zancada_inversa', 'sentadilla_bulgara',
+  'martillo', 'curl_inclinado', 'press_arnold', 'remo_menton', 'curl_muneca',
+  'peso_muerto_rumano', 'peso_muerto_rigidas', 'peso_muerto_una_pierna',
+  'subida_cajon', 'puente_gluteo', 'gemelos',
+  'aperturas', 'pajaros', 'elevaciones_frontales', 'encogimientos',
+  'rotacion_externa', 'press_frances', 'curl_predicador', 'patada_triceps'
+);
+
 -- -------------------------------------------------------------
 -- Las sesiones
 --
@@ -394,7 +443,8 @@ create table public.sesiones (
   -- encima del contador, no un reemplazo. `series` sigue siendo el total y la
   -- única verdad del conteo, así que con `bloques` en [] la app funciona
   -- exactamente igual que antes — que es lo que hace que se pueda ignorar sin
-  -- perder nada. No hay pesos ni repeticiones: eso sería otra app.
+  -- perder nada. Desde la 36 un bloque puede llevar `pesos` (en kilos) y,
+  -- con ellos, desde la 38 `carga`: qué significa el número ese día.
   bloques jsonb not null default '[]'::jsonb,
   -- La última vez que pasó algo: una serie, un cambio de ejercicio o de peso,
   -- o el FIN de un descanso corriendo (migración 37). La sesión se cierra sola
@@ -1659,23 +1709,25 @@ begin
   select series into total from sesiones where id = p_sesion and user_id = uid;
   if total is null then return null; end if;
 
-  -- Se filtra acá y no en el cliente: la lista llega del teléfono. La llave
-  -- `pesos` solo aparece si quedó algún peso de verdad después de limpiar.
   select coalesce(jsonb_agg(
            case when p is null
                 then jsonb_build_object('ejercicio', e, 'series', s)
-                else jsonb_build_object('ejercicio', e, 'series', s, 'pesos', p)
+                else jsonb_build_object('ejercicio', e, 'series', s, 'pesos', p, 'carga', c)
            end order by i), '[]'::jsonb)
     into limpio
   from (
     select
       f.e, f.s, f.i,
-      pesos_limpios(f.pesos, f.s) as p
+      pesos_limpios(f.pesos, f.s) as p,
+      case when f.carga in ('total', 'par', 'una', 'lastre') then f.carga
+           else (select carga from ejercicios where id = f.e)
+      end as c
     from (
       select
         b.valor->>'ejercicio' as e,
         greatest(0, least((b.valor->>'series')::int, 999)) as s,
         b.valor->'pesos' as pesos,
+        b.valor->>'carga' as carga,
         b.orden as i
       from jsonb_array_elements(p_bloques) with ordinality as b(valor, orden)
       where b.valor->>'ejercicio' in (select id from ejercicios)
@@ -1736,6 +1788,97 @@ $$;
 
 revoke execute on function public.ultimo_peso(text) from public, anon;
 grant execute on function public.ultimo_peso(text) to authenticated;
+
+-- -------------------------------------------------------------
+-- CON QUÉ LO HACÉS, recordado (migración 38)
+-- -------------------------------------------------------------
+-- El último modo que ELEGISTE para cada ejercicio: al contestar la pregunta o
+-- al cambiarlo en un bloque. Es de la cuenta y no del teléfono, porque la app
+-- nativa viene y un teléfono nuevo no puede volver a preguntarte todo.
+--
+-- Es una preferencia y no historia: la historia es el modo que quedó en cada
+-- bloque (`fijar_bloques`). Cambiar esto no toca ningún bloque ya guardado.
+create table if not exists public.cargas_elegidas (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  ejercicio text not null references public.ejercicios(id),
+  carga text not null,
+  elegida timestamptz not null default now(),
+  primary key (user_id, ejercicio),
+  constraint cargas_elegidas_valida check (carga in ('total', 'par', 'una', 'lastre'))
+);
+
+alter table public.cargas_elegidas enable row level security;
+
+drop policy if exists "cargas: solo dueño" on public.cargas_elegidas;
+create policy "cargas: solo dueño" on public.cargas_elegidas for select
+  using (user_id = auth.uid());
+
+grant select on public.cargas_elegidas to authenticated;
+
+-- Idempotente: elegir lo mismo dos veces deja lo mismo. Por eso entra a la
+-- cola del teléfono (`lib/cola.ts`).
+create or replace function public.elegir_carga(p_ejercicio text, p_carga text)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre') then return; end if;
+  if not exists (select 1 from ejercicios where id = p_ejercicio) then return; end if;
+  insert into cargas_elegidas (user_id, ejercicio, carga)
+       values (uid, p_ejercicio, p_carga)
+  on conflict (user_id, ejercicio) do update set carga = excluded.carga, elegida = now();
+end;
+$$;
+
+revoke execute on function public.elegir_carga(text, text) from public, anon;
+grant execute on function public.elegir_carga(text, text) to authenticated;
+
+-- -------------------------------------------------------------
+-- CÓMO ARRANCA EL BLOQUE (migración 38): el modo y el último peso EN ESE MODO
+-- -------------------------------------------------------------
+-- Reemplaza a `ultimo_peso` para el cliente nuevo (la vieja queda para el
+-- cliente viejo). El peso propuesto tiene que ser del MISMO modo: si la última
+-- vez hiciste zancadas con barra y 60, hoy con mancuernas proponer "60 por
+-- mancuerna" es proponer el doble.
+--
+-- `elegida` dice si el modo lo dijo la persona o es el del catálogo: con eso el
+-- teléfono sabe si tiene que preguntar.
+create or replace function public.como_arranca(p_ejercicio text)
+returns jsonb language sql stable security definer set search_path = public as $$
+  with modo as (
+    select e.carga_ambigua as ambigua,
+           c.carga as elegida,
+           coalesce(c.carga, e.carga) as carga
+      from ejercicios e
+      left join cargas_elegidas c on c.ejercicio = e.id and c.user_id = auth.uid()
+     where e.id = p_ejercicio
+  )
+  select jsonb_build_object(
+           'carga', m.carga,
+           'elegida', m.elegida is not null,
+           'ambigua', m.ambigua,
+           'peso', (
+             select x.v::numeric
+               from sesiones s,
+                    jsonb_array_elements(s.bloques) with ordinality as b(bloque, ob),
+                    jsonb_array_elements_text(
+                      case when jsonb_typeof(b.bloque->'pesos') = 'array' then b.bloque->'pesos' else '[]'::jsonb end
+                    ) with ordinality as x(v, ox)
+              where s.user_id = auth.uid()
+                and b.bloque->>'ejercicio' = p_ejercicio
+                and coalesce(b.bloque->>'carga', 'total') = m.carga
+                and x.v is not null
+                and s.inicio > now() - interval '90 days'
+              order by s.inicio desc, b.ob desc, x.ox desc
+              limit 1
+           )
+         )
+    from modo m;
+$$;
+
+revoke execute on function public.como_arranca(text) from public, anon;
+grant execute on function public.como_arranca(text) to authenticated;
 
 
 create or replace function public.mi_sesion()
@@ -1947,7 +2090,8 @@ language sql stable security definer set search_path = public as $$
   select 'catálogo de ejercicios',
          count(*) || ' ejercicios ' ||
          huella(string_agg(id || ' ' || nombre || ' ' || grupo || ' ' ||
-                           cuenta_dots || ' ' || admite_peso || ' ' || orden, '|' order by id))
+                           cuenta_dots || ' ' || admite_peso || ' ' || orden || ' ' ||
+                           carga || ' ' || carga_ambigua, '|' order by id))
     from ejercicios
 $$;
 
@@ -2346,7 +2490,7 @@ grant execute on function public.olvidar_suscripcion_push(text) to service_role;
 
 -- LA VERSIÓN DEL ESQUEMA (migración 37). Cada migración la reescribe con su número.
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 37; $$;
+returns int language sql immutable as $$ select 38; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

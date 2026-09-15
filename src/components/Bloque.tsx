@@ -11,7 +11,16 @@ import CampoPeso from '@/components/CampoPeso';
 import { leerAnotarPeso } from '@/lib/anotarPeso';
 import { usarVersionDelEsquema } from '@/lib/esquema';
 import { disponible } from '@nucleo/esquema';
-import type { Unidad } from '@nucleo/peso';
+import { pesoCorto, type Unidad } from '@nucleo/peso';
+import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
+import {
+  OPCIONES_DE_LA_PREGUNTA,
+  cargaVigente,
+  hayQuePreguntar,
+  kilosMovidos,
+  muestraTotal,
+  type Carga,
+} from '@nucleo/carga';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN.
@@ -45,6 +54,9 @@ export default function Bloque({
   unidad,
   alElegirPeso,
   alCorregirPeso,
+  cargaConsultada,
+  alElegirCarga,
+  alCorregirCarga,
 }: {
   estado: EstadoBloques;
   total: number;
@@ -53,7 +65,7 @@ export default function Bloque({
   alSiguiente: () => void;
   alElegirEjercicio: (id: string | null) => void;
   /** El mismo cambio, pero llevándose las series ya contadas. */
-  alMudarSeries: (id: string | null) => void;
+  alMudarSeries: (id: string | null, cargaQueSeVeia?: Carga) => void;
   alElegirMeta: (meta: number) => void;
   alTocarBloque: (indice: number, delta: number | 'quitar') => void;
   unidad: Unidad;
@@ -61,6 +73,12 @@ export default function Bloque({
   alElegirPeso: (kg: number | null) => void;
   /** El peso de una serie ya hecha. `indice` -1 es el bloque en curso. */
   alCorregirPeso: (indice: number, serie: number, kg: number | null) => void;
+  /** El ejercicio del que ya se sabe con qué se hace. Ver `usarSesion`. */
+  cargaConsultada: string | null;
+  /** Qué significa el número en el bloque en curso. */
+  alElegirCarga: (c: Carga) => void;
+  /** Lo mismo en un bloque de la lista. `indice` -1 es el bloque en curso. */
+  alCorregirCarga: (indice: number, c: Carga) => void;
 }) {
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [lista, setLista] = useState(false);
@@ -78,6 +96,10 @@ export default function Bloque({
   // nada. Ver `nucleo/esquema.ts`.
   const version = usarVersionDelEsquema();
   const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
+  // QUÉ SIGNIFICA EL NÚMERO (migración 38). Sin ella, el campo es el de antes:
+  // una etiqueta que la base no puede guardar mentiría igual que el campo de
+  // peso sin la 36.
+  const conCarga = anotarPeso && disponible('cargaDelPeso', version);
   useEffect(() => {
     leerAnotarPeso().then(setPrefierePeso);
   }, []);
@@ -113,6 +135,16 @@ export default function Bloque({
     id ? (ejercicios.find((e) => e.id === id)?.nombre ?? id) : T.sesion.sinEjercicio;
   const delDots = ejercicios.filter((e) => e.cuenta_dots);
   const resto = ejercicios.filter((e) => !e.cuenta_dots);
+  const cargaVista = cargaVigente(estado.carga, actual?.carga);
+  const admitePeso = !!estado.ejercicio && actual?.admite_peso !== false;
+  const preguntar =
+    conCarga &&
+    admitePeso &&
+    hayQuePreguntar({
+      ambigua: actual?.carga_ambigua,
+      cargaDelBloque: estado.carga,
+      yaSeConsulto: cargaConsultada === estado.ejercicio,
+    });
   const grupos = [...new Set(resto.map((e) => e.grupo))];
 
   return (
@@ -145,9 +177,38 @@ export default function Bloque({
           elegido —un peso de "cualquier cosa" no dice nada— y solo si el
           ejercicio admite peso: una marca en kilos de plancha no significa
           nada (migración 31). */}
-      {anotarPeso && estado.ejercicio && actual?.admite_peso !== false && (
+      {anotarPeso && admitePeso && (
         <div className="bloque-peso">
           <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} />
+          {conCarga && !preguntar && (
+            <EtiquetaDeCarga carga={cargaVista} ejercicio={estado.ejercicio} alElegir={alElegirCarga} />
+          )}
+          {/* LA LÍNEA DEL TOTAL, solo cuando lo escrito no es el total. Además
+              de informar, delata al que escribió la suma: "120 kg en total" en
+              un curl se ve raro enseguida. */}
+          {conCarga && !preguntar && estado.peso && muestraTotal(cargaVista) && (
+            <p className="carga-total">
+              {T.sesion.enTotal(pesoCorto(kilosMovidos(estado.peso, cargaVista), unidad), unidad)}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* CON QUÉ LO HACÉS, la primera vez. Solo para los ejercicios cuyo nombre
+          no lo dice, y en el mismo lugar que la etiqueta: contestar ES elegir
+          la etiqueta. No bloquea nada — el + anda con el modo por omisión
+          mientras tanto. */}
+      {preguntar && actual && (
+        <div className="mudanza carga-pregunta" role="group" aria-label={T.sesion.conQueLoHaces(actual.nombre)}>
+          <p>{T.sesion.conQueLoHaces(actual.nombre)}</p>
+          <div className="mudanza-opciones">
+            {OPCIONES_DE_LA_PREGUNTA.map((c) => (
+              <button key={c} onClick={() => alElegirCarga(c)}>
+                {T.sesion.respuestaCarga[c as 'par' | 'total' | 'una']}
+              </button>
+            ))}
+          </div>
+          <p className="nota-privada carga-nota">{T.sesion.conQueNota}</p>
         </div>
       )}
 
@@ -167,7 +228,9 @@ export default function Bloque({
               </button>
               <button
                 onClick={() => {
-                  alMudarSeries(aDonde);
+                  // El modo que se veía viaja con las series: los números se
+                  // escribieron leyendo esa etiqueta.
+                  alMudarSeries(aDonde, conCarga ? cargaVista : undefined);
                   setADonde(undefined);
                 }}
               >
@@ -269,7 +332,9 @@ export default function Bloque({
           ejercicios={ejercicios}
           unidad={unidad}
           anotarPeso={anotarPeso}
+          conCarga={conCarga}
           alCorregirPeso={alCorregirPeso}
+          alCorregirCarga={alCorregirCarga}
           alTocar={alTocarBloque}
           alCerrar={() => setLista(false)}
         />

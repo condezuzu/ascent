@@ -44,15 +44,22 @@
  *    Los pesos van SIEMPRE en kilos. La unidad es presentación, igual que el
  *    peso corporal.
  *
- * NO IMPORTA NADA, igual que `reglas.ts` y `llegada.ts`: así `test:db` lo carga
- * con node pelado y prueba las cuentas de verdad.
+ * 5. **CADA BLOQUE DICE QUÉ SIGNIFICA SU NÚMERO** (`carga`, migración 38): en
+ *    total, por mancuerna, una mancuerna o lastre. Ver `carga.ts`. Viaja SOLO
+ *    con los pesos: un bloque sin pesos no tiene números que interpretar, y la
+ *    regla 4 sigue valiendo.
+ *
+ * Solo importa tipos, igual que `reglas.ts` y `llegada.ts`: así `test:db` lo
+ * carga con node pelado y prueba las cuentas de verdad.
  */
+
+import { cargaValida, type Carga } from './carga.ts';
 
 /**
  * `pesos[i]` es el peso de la serie i, en kilos; `null` si esa serie se hizo sin
  * anotar peso. La llave NO EXISTE si ninguna serie tiene peso.
  */
-export type Bloque = { ejercicio: string | null; series: number; pesos?: (number | null)[] };
+export type Bloque = { ejercicio: string | null; series: number; pesos?: (number | null)[]; carga?: Carga };
 
 export type EstadoBloques = {
   /** Los que ya se cerraron, en orden. */
@@ -67,6 +74,12 @@ export type EstadoBloques = {
   peso?: number;
   /** El peso de cada serie de ESTE bloque. Misma regla: sin llave si no hay ninguno. */
   pesos?: (number | null)[];
+  /**
+   * Qué significa el número en ESTE bloque, si se sabe: lo eligió la persona o
+   * lo recordaba. Sin llave = el del catálogo, que lo resuelve quien lo muestra
+   * y, al guardar, la base.
+   */
+  carga?: Carga;
 };
 
 /** El peso más alto que se acepta, en kilos. Lo mismo acota la base. */
@@ -103,6 +116,22 @@ function conPesos<T extends object>(obj: T, pesos: (number | null)[]): T & { pes
 
 function sinPeso<T extends { peso?: number }>(obj: T): Omit<T, 'peso'> {
   const { peso: _p, ...resto } = obj;
+  return resto;
+}
+
+/**
+ * Un bloque CERRADO lleva `carga` solo si lleva pesos: sin números no hay
+ * nada que interpretar, y guardarla sería una llave nueva para quien no anota
+ * pesos (regla 4).
+ */
+function cerrado(ejercicio: string | null, series: number, pesos: (number | null)[], carga: unknown): Bloque {
+  const b = conPesos({ ejercicio, series } as Bloque, pesos);
+  const c = cargaValida(carga);
+  return b.pesos && c ? { ...b, carga: c } : b;
+}
+
+function sinCarga<T extends { carga?: Carga }>(obj: T): Omit<T, 'carga'> {
+  const { carga: _c, ...resto } = obj;
   return resto;
 }
 
@@ -158,11 +187,12 @@ export function cambiarPeso(e: EstadoBloques, kg: unknown): EstadoBloques {
  */
 export function siguiente(e: EstadoBloques): EstadoBloques {
   if (e.hechas === 0) return e;
-  const cerrado = conPesos({ ejercicio: e.ejercicio, series: e.hechas }, pesosDe(e.pesos, e.hechas));
-  // El peso vigente SE QUEDA: el bloque que sigue es del mismo ejercicio, y lo
-  // más probable después de tres series con 60 son otras tres con 60.
+  const b = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga);
+  // El peso vigente SE QUEDA, y el modo también: el bloque que sigue es del
+  // mismo ejercicio, y lo más probable después de tres series con 60 son otras
+  // tres con 60, con lo mismo en la mano.
   return conPesos(
-    { ...e, cerrados: [...e.cerrados, cerrado].slice(-TOPE_BLOQUES), hechas: 0 },
+    { ...e, cerrados: [...e.cerrados, b].slice(-TOPE_BLOQUES), hechas: 0 },
     []
   );
 }
@@ -175,8 +205,9 @@ export function siguiente(e: EstadoBloques): EstadoBloques {
 export function cambiarEjercicio(e: EstadoBloques, id: string | null): EstadoBloques {
   if (id === e.ejercicio) return e;
   // El peso NO pasa al ejercicio nuevo: los 100 de sentadilla no son un peso
-  // de press de banca, y arrastrarlos anotaría series con un número falso.
-  return { ...(sinPeso(siguiente(e)) as EstadoBloques), ejercicio: id };
+  // de press de banca, y arrastrarlos anotaría series con un número falso. El
+  // modo tampoco: las zancadas con mancuernas no dicen nada del press.
+  return { ...(sinCarga(sinPeso(siguiente(e))) as EstadoBloques), ejercicio: id };
 }
 
 /**
@@ -193,11 +224,40 @@ export function cambiarEjercicio(e: EstadoBloques, id: string | null): EstadoBlo
  * solo cuando hay algo contado — si el bloque está en cero las dos ramas
  * hacen lo mismo y preguntar sería un toque de más.
  */
-export function mudarEjercicio(e: EstadoBloques, id: string | null): EstadoBloques {
+export function mudarEjercicio(e: EstadoBloques, id: string | null, cargaQueSeVeia?: Carga): EstadoBloques {
   if (id === e.ejercicio) return e;
   // Acá el peso SÍ se queda, y los de las series también: lo que estaba mal
   // era el nombre del ejercicio, no lo que levantaste.
-  return { ...e, ejercicio: id };
+  //
+  // Y EL MODO QUE SE VEÍA SE QUEDA FIJO. Los números se escribieron leyendo
+  // "por mancuerna"; si el ejercicio nuevo es de barra, dejar que tome el modo
+  // de su catálogo convertiría los 30 por mancuerna en 30 en total sin que
+  // nadie lo toque.
+  const c = cargaValida(e.carga) ?? cargaValida(cargaQueSeVeia);
+  return c ? { ...e, ejercicio: id, carga: c } : { ...e, ejercicio: id };
+}
+
+/**
+ * Cambiar qué significa el número del bloque en curso. Vale para TODO el
+ * bloque, también las series ya hechas: el modo no es algo que cambie entre
+ * una serie y la otra, es lo que quiere decir cada número que se escribió.
+ */
+export function cambiarCarga(e: EstadoBloques, c: unknown): EstadoBloques {
+  const v = cargaValida(c);
+  if (v === null || v === e.carga) return e;
+  return { ...e, carga: v };
+}
+
+/**
+ * Lo mismo en un bloque ya cerrado ("esas zancadas fueron con barra"). Solo si
+ * tiene pesos: sin números no hay nada que corregir.
+ */
+export function corregirCarga(e: EstadoBloques, indice: number, c: unknown): EstadoBloques {
+  if (indice === -1) return cambiarCarga(e, c);
+  const b = e.cerrados[indice];
+  const v = cargaValida(c);
+  if (!b || !b.pesos || v === null || v === b.carga) return e;
+  return { ...e, cerrados: e.cerrados.map((x, i) => (i === indice ? { ...x, carga: v } : x)) };
 }
 
 /**
@@ -219,11 +279,11 @@ export function cambiarMeta(e: EstadoBloques, meta: number): EstadoBloques {
  * sería mandar ruido a propósito y hacer más difícil leer qué se envió.
  */
 export function paraGuardar(e: EstadoBloques): Bloque[] {
-  const actual = conPesos({ ejercicio: e.ejercicio, series: e.hechas }, pesosDe(e.pesos, e.hechas));
+  const actual = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga);
   const todos = e.hechas > 0 ? [...e.cerrados, actual] : e.cerrados;
   return todos
     .filter((b) => b.ejercicio !== null && b.series > 0)
-    .map((b) => conPesos({ ejercicio: b.ejercicio, series: b.series }, pesosDe(b.pesos, b.series)));
+    .map((b) => cerrado(b.ejercicio, b.series, pesosDe(b.pesos, b.series), b.carga));
 }
 
 /**
@@ -287,7 +347,10 @@ export function corregirPeso(
   if (!b || serie < 0 || serie >= b.series) return e;
   const pesos = pesosDe(b.pesos, b.series);
   pesos[serie] = pesoValido(kg);
-  return { ...e, cerrados: e.cerrados.map((x, i) => (i === indice ? conPesos(x, pesos) : x)) };
+  return {
+    ...e,
+    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, x.series, pesos, x.carga) : x)),
+  };
 }
 
 export function quitarBloque(e: EstadoBloques, indice: number): Correccion {
@@ -319,7 +382,7 @@ export function corregirBloque(e: EstadoBloques, indice: number, delta: number):
   return {
     estado: {
       ...e,
-      cerrados: e.cerrados.map((x, i) => (i === indice ? conPesos({ ...x, series: nuevas }, pesos) : x)),
+      cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, nuevas, pesos, x.carga) : x)),
     },
     cambioEnTotal: nuevas - b.series,
   };

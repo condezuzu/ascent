@@ -141,7 +141,12 @@ export const T = {
     // Series que se contaron sin decir en qué. Existen y suman; solo no se
     // sabe de qué fueron.
     sinEjercicio: 'Sin ejercicio',
-    pesosDeSeries: (lista: string, unidad: string) => `${lista} ${unidad}`,
+    // "60, 60 kg" · "30, 30 kg por mancuerna". El modo sale del bloque, no del
+    // catálogo: es lo que quedó escrito ese día.
+    pesosDeSeries: (lista: string, unidad: string, carga: 'total' | 'par' | 'parPolea' | 'una' | 'lastre' = 'total') =>
+      `${lista} ${unidad}${
+        { total: '', par: ' por mancuerna', parPolea: ' de cada lado', una: ', una mancuerna', lastre: ' de lastre' }[carga]
+      }`,
     ejercicioSinNombre: 'Un ejercicio que ya no está',
     enCurso: 'La sesión sigue abierta: esto se completa al terminarla.',
     // Cada forma de entrar dice lo que pasó, sin disculparse por lo que falta.
@@ -718,6 +723,38 @@ export const T = {
     pesoBajar: 'Menos peso',
     pesoDeSerie: (n: number) => `Peso de la serie ${n}`,
     sinPeso: '—',
+    // QUÉ SIGNIFICA EL NÚMERO (migración 38). Va pegado al campo, después de la
+    // unidad: "30 kg · por mancuerna". Nunca pide discos ni hace sumar: se
+    // escribe lo que está impreso en lo que agarraste.
+    carga: {
+      total: 'en total',
+      par: 'por mancuerna',
+      parPolea: 'de cada lado',
+      una: 'una mancuerna',
+      lastre: 'de lastre',
+    },
+    // Al tocar la etiqueta. Dicen QUÉ número escribir, no el nombre del modo.
+    cargaOpcion: {
+      total: 'Barra o máquina: el total',
+      par: 'Dos mancuernas: el peso de una',
+      parPolea: 'Dos poleas: el de cada lado',
+      una: 'Una mancuerna: su peso',
+      lastre: 'Lastre: sin contar tu peso',
+    },
+    cargaCambiar: 'Qué significa este número',
+    // Debajo del campo, solo cuando lo escrito no es el total. Además de
+    // informar, delata al que escribió la suma: "120 kg en total" en un curl
+    // se ve raro enseguida.
+    enTotal: (n: string, unidad: string) => `${n} ${unidad} en total`,
+    // LA PREGUNTA DE LA PRIMERA VEZ, para los ejercicios cuyo nombre no dice
+    // con qué se hacen. Una vez, y se recuerda.
+    conQueLoHaces: (nombre: string) => `¿Con qué haces ${nombre.charAt(0).toLowerCase()}${nombre.slice(1)}?`,
+    conQueNota: 'Se pregunta una vez. Si un día cambia, toca la etiqueta del peso.',
+    respuestaCarga: {
+      par: 'Dos mancuernas',
+      total: 'Barra o máquina',
+      una: 'Una mancuerna',
+    },
     // CON LA META CUMPLIDA, el + se convierte en esto y lleva a la lista.
     // Antes acá decía "Siguiente", que no dice de qué es siguiente y encima
     // vivía en un botón de texto que no se veía.

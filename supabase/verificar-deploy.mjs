@@ -73,9 +73,12 @@ const MARCA = {
   // TANDA DEL CIERRE POR INACTIVIDAD (37): sin marca otra vez. Lo nuevo que se
   // ve es el aviso de "se cerró sola", que solo aparece cuando pasa. La 37 es
   // aditiva y se puede correr en cualquier orden.
+  //
+  // TANDA DEL MODO DEL PESO (38): sin marca. La etiqueta aparece solo durante
+  // una sesión, con un ejercicio elegido y la 38 corrida. La 38 es aditiva.
   textoNuevo: null,
   porQueNoHayMarca:
-    'lo nuevo solo se ve cuando una sesión se cierra sola; la 37 es aditiva',
+    'la etiqueta del peso solo se ve entrenando y con la 38 corrida; la 38 es aditiva',
   /**
    * EL AUTOTEST. Un texto de la misma pantalla que tiene que estar SIEMPRE,
    * con el cliente viejo y con el nuevo.

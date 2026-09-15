@@ -3887,8 +3887,82 @@ body.con-franja.con-accion .pantalla {
    estar bien. */
 .bloque-peso {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-start;
+  column-gap: 10px;
   margin: -8px 0 16px;
+}
+
+/* ---------- qué significa el número (migración 38) ----------
+   Una etiqueta en voz baja pegada al número, no un selector: casi siempre el
+   modo por omisión es el que va. Al tocarla, las cuatro opciones ocupan el
+   renglón de abajo y empujan, en vez de flotar encima del `+`. */
+.carga {
+  display: contents;
+}
+.carga-etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  font-size: 13px;
+  color: var(--sub);
+}
+.carga-flecha {
+  font-size: 10px;
+  color: var(--apagado);
+}
+.carga-opciones {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 6px;
+}
+.carga-opciones button {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--pal-claro);
+  border: 0.5px solid var(--linea);
+  border-radius: var(--pildora);
+}
+.carga-opciones button.prendida {
+  border-color: var(--pal-principal);
+  color: var(--tinta);
+}
+.carga-total {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--apagado);
+  font-variant-numeric: tabular-nums;
+  margin-top: -2px;
+}
+/* La línea del total va pegada al número aunque las opciones estén abiertas. */
+.carga-total {
+  order: 1;
+}
+.carga-opciones {
+  order: 2;
+}
+/* Las respuestas NO se cortan con puntos suspensivos como las de "¿de cuál
+   eran?": "Dos mancu…" y "Una mancu…" son justo lo que hay que distinguir. Si
+   no entran las tres en un renglón, bajan. */
+.carga-pregunta .mudanza-opciones {
+  flex-wrap: wrap;
+}
+.carga-pregunta .mudanza-opciones button {
+  flex: 1 1 auto;
+  overflow: visible;
+}
+.carga-pregunta .carga-nota {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+/* En la lista, la etiqueta va al final de los casilleros de peso y más chica. */
+.pesos-serie .carga-etiqueta {
+  min-height: 28px;
+  font-size: 12px;
 }
 .campo-peso {
   display: inline-flex;

@@ -5261,7 +5261,8 @@ console.log('\n76. La base guarda los pesos, y no le cree al telefono');
   chequear(
     'con pesos, los guarda',
     await fijar([{ ejercicio: 'press_banca', series: 4, pesos: [60, 60, 62.5, 62.5] }]),
-    ordenar([{ ejercicio: 'press_banca', series: 4, pesos: [60, 60, 62.5, 62.5] }])
+    // Desde la 38 los pesos van con su modo (seccion 82).
+    ordenar([{ ejercicio: 'press_banca', series: 4, pesos: [60, 60, 62.5, 62.5], carga: 'total' }])
   );
 
   // ---- lo que manda un telefono roto, o alguien con la consola abierta ----
@@ -5609,6 +5610,252 @@ console.log('\n81. Lo que depende de una migracion pregunta si esta');
   chequear('sin saber la version, no se muestra', disponible('pesoPorSerie', null), false);
   chequear('con la version justa, si', disponible('pesoPorSerie', REQUIERE.pesoPorSerie), true);
   chequear('con una anterior, no', disponible('pesoPorSerie', REQUIERE.pesoPorSerie - 1), false);
+}
+console.log('\n82. Que significa el numero del peso: la base');
+{
+  const ordenar = (x) =>
+    Array.isArray(x)
+      ? x.map(ordenar)
+      : x && typeof x === 'object'
+        ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, ordenar(x[k])]))
+        : x;
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const s = (await db.query('select iniciar_sesion() as v')).rows[0].v;
+  const id = s.id ?? (await db.query('select id from sesiones where user_id = $1 order by inicio desc limit 1', [u])).rows[0].id;
+  await db.query('select fijar_series($1, 20)', [id]);
+  const fijar = async (bloques) =>
+    ordenar((await db.query('select fijar_bloques($1, $2::jsonb) as v', [id, JSON.stringify(bloques)])).rows[0].v.bloques);
+  const catalogo = async (e) => (await db.query('select carga, carga_ambigua from ejercicios where id = $1', [e])).rows[0];
+
+  // ---- el catalogo ----
+  chequear('la barra es total', (await catalogo('sentadilla')).carga, 'total');
+  chequear('las mancuernas son par', (await catalogo('press_mancuernas')).carga, 'par');
+  chequear('la goblet es una', (await catalogo('sentadilla_goblet')).carga, 'una');
+  chequear('las dominadas con lastre son lastre', (await catalogo('dominadas_lastradas')).carga, 'lastre');
+  chequear('las zancadas son par y se preguntan', await catalogo('zancadas'), { carga: 'par', carga_ambigua: true });
+  chequear('el remo al menton es barra y se pregunta', await catalogo('remo_menton'), { carga: 'total', carga_ambigua: true });
+  let rechazo = null;
+  try {
+    await db.query("update ejercicios set carga = 'discos' where id = 'sentadilla'");
+    rechazo = false;
+  } catch (e) {
+    rechazo = /ejercicios_carga_valida/.test(e.message);
+  }
+  chequear('un modo que no existe no entra al catalogo', rechazo, true);
+
+  // ---- LA REGLA 4, del lado de la base: sin pesos, ni una llave nueva ----
+  chequear('sin pesos no hay carga', await fijar([{ ejercicio: 'zancadas', series: 3 }]), [{ ejercicio: 'zancadas', series: 3 }]);
+
+  // ---- con pesos, el bloque guarda su modo ----
+  chequear(
+    'el modo que manda el telefono se guarda',
+    (await fijar([{ ejercicio: 'zancadas', series: 2, pesos: [60, 60], carga: 'total' }]))[0].carga,
+    'total'
+  );
+  chequear(
+    'sin modo, el del catalogo',
+    (await fijar([{ ejercicio: 'zancadas', series: 2, pesos: [20, 20] }]))[0].carga,
+    'par'
+  );
+  chequear(
+    'basura, el del catalogo',
+    (await fijar([{ ejercicio: 'sentadilla_goblet', series: 1, pesos: [30], carga: 'discos' }]))[0].carga,
+    'una'
+  );
+  chequear(
+    'pesos que se limpian a nada no dejan modo',
+    await fijar([{ ejercicio: 'zancadas', series: 2, pesos: [null, 0], carga: 'par' }]),
+    [{ ejercicio: 'zancadas', series: 2 }]
+  );
+
+  // ---- EL PUNTO 6: reclasificar el catalogo NO reescribe la historia ----
+  {
+    await fijar([{ ejercicio: 'sentadilla_goblet', series: 2, pesos: [30, 30] }]);
+    await db.query("update ejercicios set carga = 'par' where id = 'sentadilla_goblet'");
+    const guardado = (await db.query('select bloques from sesiones where id = $1', [id])).rows[0].bloques;
+    chequear('la goblet de ayer sigue siendo una aunque el catalogo cambie', guardado[0].carga, 'una');
+    const { resumenDelDia } = await import('../nucleo/resumenDia.ts');
+    const r = resumenDelDia({
+      log: { es_descanso: false },
+      sesiones: [{ inicio: '2026-09-10T10:00:00Z', fin: null, estado: 'abandonada', series: 2, bloques: guardado }],
+      catalogo: new Map([['sentadilla_goblet', 'Sentadilla goblet']]),
+      esFuturo: false,
+      esDescansoConfigurado: false,
+      ejercicioSinNombre: '?',
+    });
+    chequear('y el resumen la lee del bloque, no del catalogo', r.ejercicios[0].cargas, ['una', 'una']);
+    await db.query("update ejercicios set carga = 'una' where id = 'sentadilla_goblet'");
+  }
+
+  // ---- con que lo haces, recordado, y con cuanto arranca ----
+  {
+    const arranca = async (e) => (await db.query('select como_arranca($1) as v', [e])).rows[0].v;
+    const antes = await arranca('curl_martillo_no_existe');
+    chequear('un ejercicio que no existe no devuelve nada', antes, null);
+
+    await fijar([
+      { ejercicio: 'zancadas', series: 2, pesos: [60, 60], carga: 'total' },
+      { ejercicio: 'zancadas', series: 2, pesos: [20, 22], carga: 'par' },
+    ]);
+    const sinElegir = await arranca('zancadas');
+    chequear('sin elegir: el del catalogo, y hay que preguntar', [sinElegir.carga, sinElegir.elegida, sinElegir.ambigua], ['par', false, true]);
+    chequear('el peso propuesto es el ultimo EN ESE MODO', Number(sinElegir.peso), 22);
+
+    await db.query("select elegir_carga('zancadas', 'total')");
+    const conBarra = await arranca('zancadas');
+    chequear('elegida: se recuerda', [conBarra.carga, conBarra.elegida], ['total', true]);
+    chequear('y el peso es el de la barra, no el de las mancuernas', Number(conBarra.peso), 60);
+
+    await db.query("select elegir_carga('zancadas', 'total')");
+    chequear(
+      'elegir lo mismo dos veces deja una fila',
+      (await db.query('select count(*)::int n from cargas_elegidas where user_id = $1', [u])).rows[0].n,
+      1
+    );
+    await db.query("select elegir_carga('zancadas', 'discos')");
+    await db.query("select elegir_carga('no_existe', 'par')");
+    chequear('basura no cambia nada', (await arranca('zancadas')).carga, 'total');
+
+    // ES DE ESTA PERSONA
+    const otro = await nuevoUsuario();
+    await comoUsuario(otro);
+    const delOtro = await arranca('zancadas');
+    chequear('otro no hereda la eleccion ni los pesos', [delOtro.carga, delOtro.elegida, delOtro.peso], ['par', false, null]);
+    await db.exec('set role authenticated');
+    chequear('y no la puede leer', (await db.query('select count(*)::int n from cargas_elegidas')).rows[0].n, 0);
+    await db.exec('reset role');
+    await comoUsuario(u);
+  }
+  {
+    await db.exec('set role anon');
+    let bloqueada = null;
+    try {
+      await db.query("select elegir_carga('zancadas', 'par')");
+      bloqueada = false;
+    } catch (e) {
+      bloqueada = /permission denied/i.test(e.message);
+    }
+    await db.exec('reset role');
+    chequear('sin sesion no se elige nada', bloqueada, true);
+  }
+
+  // ---- LOS BLOQUES DE ANTES DE LA 38 ----
+  //
+  // Se corre el `update` de la migracion tal cual, sobre un bloque escrito
+  // como lo dejaba la 36: con pesos y sin modo.
+  {
+    const mig = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'migracion-38-carga-del-peso.sql'), 'utf8');
+    const i = mig.indexOf('update public.sesiones s');
+    const relleno = mig.slice(i, mig.indexOf(';', mig.indexOf('   );', i)) + 1);
+    const viejos = [
+      { ejercicio: 'curl_mancuernas', series: 2, pesos: [12, 12] },
+      { ejercicio: 'sentadilla', series: 1 },
+      { ejercicio: 'zancadas', series: 1, pesos: [20], carga: 'total' },
+    ];
+    await db.query('update sesiones set bloques = $2::jsonb where id = $1', [id, JSON.stringify(viejos)]);
+    await db.query(relleno);
+    const b = (await db.query('select bloques from sesiones where id = $1', [id])).rows[0].bloques;
+    chequear('al de pesos sin modo se le pone el del catalogo', b[0].carga, 'par');
+    chequear('al que no tiene pesos no se le pone nada', 'carga' in b[1], false);
+    chequear('al que ya tenia modo no se lo toca', b[2].carga, 'total');
+    await db.query(relleno);
+    chequear('correrlo dos veces no cambia nada', (await db.query('select bloques from sesiones where id = $1', [id])).rows[0].bloques, b);
+  }
+
+  // ---- borrar la cuenta se lleva lo elegido ----
+  {
+    await db.query("select elegir_carga('zancadas', 'una')");
+    await db.exec('set role authenticated');
+    await db.query('select eliminar_cuenta()');
+    await db.exec('reset role');
+    chequear('no quedan cargas elegidas', (await db.query('select count(*)::int n from cargas_elegidas where user_id = $1', [u])).rows[0].n, 0);
+  }
+}
+
+console.log('\n83. Que significa el numero del peso: el telefono');
+{
+  const C = await import('../nucleo/carga.ts');
+  const B = await import('../nucleo/bloques.ts');
+
+  chequear('par multiplica por dos', C.kilosMovidos(30, 'par'), 60);
+  chequear('una, total y lastre no', ['una', 'total', 'lastre'].map((c) => C.kilosMovidos(30, c)), [30, 30, 30]);
+  chequear('la linea del total, solo en par', C.CARGAS.filter(C.muestraTotal), ['par']);
+  chequear('el elegido gana al catalogo', C.cargaVigente('total', 'par'), 'total');
+  chequear('sin elegir, el catalogo', C.cargaVigente(undefined, 'una'), 'una');
+  chequear('sin catalogo (base sin la 38), total', C.cargaVigente(undefined, undefined), 'total');
+  chequear('las poleas dicen de cada lado', [C.claveDeEtiqueta('par', 'cruce_polea_alta'), C.claveDeEtiqueta('par', 'zancadas')], ['parPolea', 'par']);
+
+  // LA PREGUNTA
+  const q = (ambigua, cargaDelBloque, yaSeConsulto) => C.hayQuePreguntar({ ambigua, cargaDelBloque, yaSeConsulto });
+  chequear('se pregunta el ambiguo sin modo, ya consultado', q(true, undefined, true), true);
+  chequear('no antes de que conteste la base', q(true, undefined, false), false);
+  chequear('no si ya se sabe', q(true, 'par', true), false);
+  chequear('no si el nombre lo dice', q(false, undefined, true), false);
+
+  // EL BLOQUE
+  let e = B.cambiarPeso(B.bloquesVacios('zancadas'), 20);
+  e = B.cambiarCarga(e, 'par');
+  e = B.sumar(B.sumar(e));
+  chequear('el modo va con los pesos al guardar', B.paraGuardar(e), [{ ejercicio: 'zancadas', series: 2, pesos: [20, 20], carga: 'par' }]);
+  const s = B.siguiente(e);
+  chequear('cerrar se lleva el modo, y el siguiente lo mantiene', [s.cerrados[0].carga, s.carga], ['par', 'par']);
+  chequear('cambiar de ejercicio no arrastra el modo', 'carga' in B.cambiarEjercicio(e, 'press_banca'), false);
+  chequear('basura no cambia el modo', B.cambiarCarga(e, 'discos'), e);
+
+  // Sin pesos: ni una llave en lo que se guarda.
+  {
+    let sinPesos = B.cambiarCarga(B.bloquesVacios('zancadas'), 'total');
+    sinPesos = B.siguiente(B.sumar(sinPesos));
+    chequear('sin pesos, el bloque cerrado no lleva modo', 'carga' in sinPesos.cerrados[0], false);
+    chequear('ni lo que se guarda', JSON.stringify(B.paraGuardar(sinPesos)).includes('carga'), false);
+  }
+
+  // Me equivoque de ejercicio: el modo que se veia queda fijo.
+  {
+    const conPesos = B.sumar(B.cambiarPeso(B.bloquesVacios('zancadas'), 30));
+    chequear('mudar fija el modo que se veia', B.mudarEjercicio(conPesos, 'sentadilla', 'par').carga, 'par');
+    chequear('y si ya habia uno elegido, ese', B.mudarEjercicio(B.cambiarCarga(conPesos, 'una'), 'sentadilla', 'par').carga, 'una');
+  }
+
+  // Corregir el modo de un bloque cerrado.
+  {
+    const cerrado = B.siguiente(B.sumar(B.cambiarPeso(B.bloquesVacios('zancadas'), 20)));
+    const corregido = B.corregirCarga(cerrado, 0, 'total');
+    chequear('se corrige el modo de un bloque cerrado', corregido.cerrados[0].carga, 'total');
+    chequear('y sobrevive a corregir un peso', B.corregirPeso(corregido, 0, 0, 25).cerrados[0], { ejercicio: 'zancadas', series: 1, pesos: [25], carga: 'total' });
+    chequear('borrar todos los pesos se lleva el modo', 'carga' in B.corregirPeso(corregido, 0, 0, null).cerrados[0], false);
+    const sinPesos = B.siguiente(B.sumar(B.bloquesVacios('zancadas')));
+    chequear('un bloque sin pesos no tiene modo que corregir', B.corregirCarga(sinPesos, 0, 'total'), sinPesos);
+  }
+
+  // EL RESUMEN, agrupado por modo
+  chequear(
+    'dos formas el mismo dia, dos grupos',
+    C.gruposDePesos([60, 60, 20, null], ['total', 'total', 'par', 'par']),
+    [{ carga: 'total', pesos: [60, 60] }, { carga: 'par', pesos: [20, null] }]
+  );
+  chequear('sin modos (antes de la 38), total', C.gruposDePesos([50], undefined), [{ carga: 'total', pesos: [50] }]);
+}
+
+console.log('\n84. El catalogo y el telefono dicen lo mismo del modo');
+{
+  const C = await import('../nucleo/carga.ts');
+  const filas = (await db.query('select id, carga, carga_ambigua, admite_peso from ejercicios')).rows;
+  const por = new Map(filas.map((f) => [f.id, f]));
+  // Las poleas dobles tienen que existir y ser par: si no, la etiqueta
+  // "de cada lado" apunta a un ejercicio que no la usa.
+  chequear('las poleas dobles existen y son par', C.PAR_EN_POLEA.map((id) => por.get(id)?.carga), C.PAR_EN_POLEA.map(() => 'par'));
+  // La pregunta ofrece tres respuestas. Un ambiguo cuyo modo por omision no
+  // esta entre ellas mostraria una etiqueta que no se puede contestar.
+  chequear(
+    'el modo de cada ambiguo se puede contestar en la pregunta',
+    filas.filter((f) => f.carga_ambigua && !C.OPCIONES_DE_LA_PREGUNTA.includes(f.carga)).map((f) => f.id),
+    []
+  );
+  chequear('no se pregunta por un ejercicio sin peso', filas.filter((f) => f.carga_ambigua && !f.admite_peso).map((f) => f.id), []);
+  chequear('los cuatro modos estan en uso', [...new Set(filas.map((f) => f.carga))].sort(), ['lastre', 'par', 'total', 'una']);
+  chequear('los del telefono son los de la base', [...C.CARGAS].sort(), ['lastre', 'par', 'total', 'una']);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {

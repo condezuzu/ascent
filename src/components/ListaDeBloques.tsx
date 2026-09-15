@@ -7,6 +7,8 @@ import type { Ejercicio } from '@nucleo/tipos';
 import type { Unidad } from '@nucleo/peso';
 import CampoPeso from '@/components/CampoPeso';
 import { T } from '@nucleo/textos';
+import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
+import { cargaVigente, type Carga } from '@nucleo/carga';
 
 /**
  * LO QUE LLEVÁS HECHO EN ESTA SESIÓN, Y CÓMO CORREGIRLO.
@@ -29,7 +31,9 @@ export default function ListaDeBloques({
   ejercicios,
   unidad,
   anotarPeso,
+  conCarga,
   alCorregirPeso,
+  alCorregirCarga,
   alTocar,
   alCerrar,
 }: {
@@ -37,7 +41,10 @@ export default function ListaDeBloques({
   ejercicios: Ejercicio[];
   unidad: Unidad;
   anotarPeso: boolean;
+  /** Si la base ya guarda qué significa el número (migración 38). */
+  conCarga: boolean;
   alCorregirPeso: (indice: number, serie: number, kg: number | null) => void;
+  alCorregirCarga: (indice: number, c: Carga) => void;
   alTocar: (indice: number, delta: number | 'quitar') => void;
   alCerrar: () => void;
 }) {
@@ -57,6 +64,7 @@ export default function ListaDeBloques({
   // (una plancha) tampoco muestra casilleros vacíos.
   const admitePeso = (id: string | null) =>
     id !== null && ejercicios.find((e) => e.id === id)?.admite_peso !== false;
+  const delCatalogo = (id: string | null) => ejercicios.find((e) => e.id === id)?.carga;
 
   return (
     <EnElBody>
@@ -132,6 +140,15 @@ export default function ListaDeBloques({
                         alCambiar={(kg) => alCorregirPeso(i, s, kg)}
                       />
                     ))}
+                    {/* El modo de ESTE bloque, que es el que quedó escrito.
+                        Solo con pesos: sin números no hay nada que significar. */}
+                    {conCarga && b.pesos && (
+                      <EtiquetaDeCarga
+                        carga={cargaVigente(b.carga, delCatalogo(b.ejercicio))}
+                        ejercicio={b.ejercicio}
+                        alElegir={(c) => alCorregirCarga(i, c)}
+                      />
+                    )}
                   </span>
                 )}
               </div>
@@ -159,6 +176,13 @@ export default function ListaDeBloques({
                         alCambiar={(kg) => alCorregirPeso(-1, s, kg)}
                       />
                     ))}
+                    {conCarga && estado.pesos && (
+                      <EtiquetaDeCarga
+                        carga={cargaVigente(estado.carga, delCatalogo(estado.ejercicio))}
+                        ejercicio={estado.ejercicio}
+                        alElegir={(c) => alCorregirCarga(-1, c)}
+                      />
+                    )}
                   </span>
                 )}
               </div>

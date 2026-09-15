@@ -13,6 +13,8 @@
  * por ubicación sin ninguna sesión.
  */
 
+import { cargaValida, type Carga } from './carga.ts';
+
 export type EstadoDelDia = 'entrenado' | 'descanso' | 'sin-registrar' | 'futuro';
 
 export type LogDelDia = {
@@ -33,7 +35,18 @@ export type SesionDelDia = {
  * anotar. La llave no existe si ninguna serie de ese ejercicio tiene peso: un día
  * sin pesos se resume exactamente igual que antes de que existieran.
  */
-export type EjercicioDelDia = { id: string; nombre: string; series: number; pesos?: (number | null)[] };
+export type EjercicioDelDia = {
+  id: string;
+  nombre: string;
+  series: number;
+  pesos?: (number | null)[];
+  /**
+   * Qué significa cada peso, uno por serie, con la misma forma que `pesos`
+   * (migración 38). Sale del BLOQUE y no del catálogo: es lo que quedó escrito
+   * el día que se hizo. Solo existe si existe `pesos`.
+   */
+  cargas?: Carga[];
+};
 
 export type ResumenDelDia = {
   estado: EstadoDelDia;
@@ -56,7 +69,7 @@ export type ResumenDelDia = {
 };
 
 /** Los bloques vienen de la base como JSON: se leen sin confiar en la forma. */
-function bloquesDe(crudo: unknown): { ejercicio: string; series: number; pesos: (number | null)[] }[] {
+function bloquesDe(crudo: unknown): { ejercicio: string; series: number; pesos: (number | null)[]; carga: Carga }[] {
   if (!Array.isArray(crudo)) return [];
   return crudo.flatMap((b) => {
     if (!b || typeof b !== 'object') return [];
@@ -71,7 +84,10 @@ function bloquesDe(crudo: unknown): { ejercicio: string; series: number; pesos: 
       const v = Number(lista[i]);
       return lista[i] !== null && Number.isFinite(v) && v > 0 ? v : null;
     });
-    return [{ ejercicio: e, series: n, pesos }];
+    // Un bloque con pesos sin modo es de antes de la 38, cuando todavía no se
+    // le había puesto: el número se leía como un total.
+    const carga = cargaValida((b as { carga?: unknown }).carga) ?? 'total';
+    return [{ ejercicio: e, series: n, pesos, carga }];
   });
 }
 
@@ -108,7 +124,7 @@ export function resumenDelDia({
   let conFin = 0;
   let series = 0;
   let enCurso = false;
-  const porEjercicio = new Map<string, { series: number; pesos: (number | null)[] }>();
+  const porEjercicio = new Map<string, { series: number; pesos: (number | null)[]; cargas: Carga[] }>();
 
   for (const s of ordenadas) {
     series += Math.max(0, Math.floor(Number(s.series) || 0));
@@ -124,17 +140,21 @@ export function resumenDelDia({
       // Un Map conserva el orden de la PRIMERA vez que aparece la clave, que
       // es justo lo que se quiere: press de banca, sentadilla, y si volviste
       // a banca al final, suma a la fila de banca y no crea otra.
-      const previo = porEjercicio.get(b.ejercicio) ?? { series: 0, pesos: [] };
+      const previo = porEjercicio.get(b.ejercicio) ?? { series: 0, pesos: [], cargas: [] };
       porEjercicio.set(b.ejercicio, {
         series: previo.series + b.series,
         pesos: [...previo.pesos, ...b.pesos],
+        cargas: [...previo.cargas, ...b.pesos.map(() => b.carga)],
       });
     }
   }
 
   const ejercicios = [...porEjercicio].map(([id, x]) => {
     const e: EjercicioDelDia = { id, nombre: catalogo.get(id) ?? ejercicioSinNombre, series: x.series };
-    if (x.pesos.some((p) => p !== null)) e.pesos = x.pesos;
+    if (x.pesos.some((p) => p !== null)) {
+      e.pesos = x.pesos;
+      e.cargas = x.cargas;
+    }
     return e;
   });
   const anotadas = ejercicios.reduce((t, e) => t + e.series, 0);

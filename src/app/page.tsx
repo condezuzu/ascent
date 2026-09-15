@@ -524,6 +524,9 @@ export default function Principal() {
               unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
               alElegirPeso={sesion.elegirPeso}
               alCorregirPeso={sesion.corregirPesoDeSerie}
+              cargaConsultada={sesion.estado.cargaConsultada}
+              alElegirCarga={sesion.elegirCarga}
+              alCorregirCarga={sesion.corregirCargaDeBloque}
             />
             {/* "Cada + suma la serie y arranca el descanso" lo dice el globo
                 de la primera vez, tres renglones más arriba. Repetirlo abajo

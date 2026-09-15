@@ -20,7 +20,9 @@ import { leerPerfilCache } from '@/lib/cache';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import {
   bloquesVacios,
+  cambiarCarga,
   cambiarEjercicio,
+  corregirCarga,
   cambiarPeso,
   corregirPeso,
   mudarEjercicio,
@@ -56,7 +58,9 @@ import {
   type DescansoVivo,
 } from '@/lib/descanso';
 import { marcarComoUsada } from '@nucleo/llegada';
-import { cuantasPendientes, encolar, vaciar } from '@/lib/cola';
+import { cuantasPendientes, encolar, estaPendiente, vaciar } from '@/lib/cola';
+import { leerCargasElegidas, recordarCarga } from '@/lib/cargas';
+import { cargaValida, type Carga } from '@nucleo/carga';
 import type { OrigenSesion, ResultadoRegistro } from '@nucleo/tipos';
 
 export type EstadoSesion = {
@@ -155,6 +159,11 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
   // el estado viejo y podía pisar toques que llegaron mientras esperaba.
   const bloquesRef = useRef(bloques);
   bloquesRef.current = bloques;
+  // El ejercicio del que ya se sabe con qué se hace —la base contestó, o no
+  // hay señal y se decidió con lo que había—. Hasta entonces la pregunta de la
+  // primera vez no se muestra: a quien la contestó en otro teléfono se le
+  // aparecería un segundo, hasta que llega la respuesta.
+  const [cargaConsultada, setCargaConsultada] = useState<string | null>(null);
   const [idSesion, setIdSesion] = useState<string | null>(null);
   const [descanso, setDescanso] = useState<DescansoVivo | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -411,7 +420,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       if (sembrado === bloquesRef.current) return;
       setBloques(sembrado);
       await actualizarSesionCache({ bloques: sembrado });
-      if (sembrado.ejercicio) proponerPeso(sembrado.ejercicio);
+      if (sembrado.ejercicio) proponerArranque(sembrado.ejercicio);
     })();
 
     if (r.yaEstaba) setAviso(T.inicio.yaHabiaSesion);
@@ -577,7 +586,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     setBloques(b);
     await actualizarSesionCache({ bloques: b });
     await subir(series, b);
-    if (id) proponerPeso(id);
+    if (id) proponerArranque(id);
   }
 
   /**
@@ -589,8 +598,10 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    * respuesta puede llegar tarde, cuando ya cambiaste de ejercicio o ya
    * escribiste un peso a mano. Si pasó cualquiera de las dos, se descarta.
    */
-  async function proponerPeso(id: string) {
-    if (!disponible('pesoPorSerie', await versionDelEsquema(supabase))) return;
+  async function proponerArranque(id: string) {
+    const version = await versionDelEsquema(supabase);
+    if (disponible('cargaDelPeso', version)) return proponerCargaYPeso(id);
+    if (!disponible('pesoPorSerie', version)) return;
     supabase.rpc('ultimo_peso', { p_ejercicio: id }).then(({ data, error }) => {
       if (error || data === null || data === undefined) return;
       const actual = bloquesRef.current;
@@ -600,6 +611,107 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       setBloques(conPeso);
       actualizarSesionCache({ bloques: conPeso });
     });
+  }
+
+  /**
+   * CON QUÉ LO HACÉS Y CON CUÁNTO (migración 38).
+   *
+   * Primero lo que sabe el teléfono —anda sin señal—, después la base, que es
+   * de la cuenta. El peso que se propone es el último EN ESE MODO: si la última
+   * vez fueron zancadas con barra y 60, hoy con mancuernas "60 por mancuerna"
+   * sería proponer el doble.
+   *
+   * Nada de esto pisa lo que la persona ya hizo en el bloque: la respuesta
+   * puede llegar tarde, con otro ejercicio elegido o el modo ya cambiado.
+   */
+  async function proponerCargaYPeso(id: string) {
+    const local = (await leerCargasElegidas())[id];
+    if (local) aplicarCargaSabida(id, local);
+
+    // `disponible(...)` se preguntó en `proponerArranque`, que es el único que
+    // llama acá; se repite para que la regla se vea al lado de la llamada.
+    if (!disponible('cargaDelPeso', await versionDelEsquema(supabase))) return;
+    const { data, error } = await supabase.rpc('como_arranca', { p_ejercicio: id });
+    const r = (error ? null : data) as { carga?: unknown; elegida?: unknown; peso?: unknown } | null;
+    if (r) {
+      const delServidor = cargaValida(r.carga);
+      // LA BASE GANA, salvo que la elección de este teléfono todavía no haya
+      // subido: esa es más nueva. Si no, cambiarlo en otro teléfono no llegaría
+      // nunca a este.
+      if (r.elegida === true && delServidor && delServidor !== local && !(await estaPendiente('elegir_carga', id))) {
+        const actual = bloquesRef.current;
+        if (actual.ejercicio === id && (!actual.carga || actual.carga === local)) {
+          const b = { ...actual, carga: delServidor };
+          bloquesRef.current = b;
+          setBloques(b);
+          await actualizarSesionCache({ bloques: b });
+        }
+        await recordarCarga(id, delServidor);
+      }
+      const actual = bloquesRef.current;
+      // El peso vino calculado para el modo de la base. Si el teléfono sabe
+      // otro —se eligió sin señal y todavía no subió—, ese peso es de otra cosa.
+      const mismoModo = !actual.carga || actual.carga === delServidor;
+      if (
+        mismoModo &&
+        actual.ejercicio === id &&
+        actual.peso === undefined &&
+        r.peso !== null &&
+        r.peso !== undefined
+      ) {
+        const conPeso = cambiarPeso(actual, Number(r.peso));
+        if (conPeso.peso !== undefined) {
+          setBloques(conPeso);
+          await actualizarSesionCache({ bloques: conPeso });
+        }
+      }
+    }
+    // Con respuesta o sin señal: ya se decidió con lo que había.
+    if (bloquesRef.current.ejercicio === id) setCargaConsultada(id);
+  }
+
+  /** Un modo que ya se sabía (no elegido ahora): no se sube ni se recuerda de nuevo. */
+  function aplicarCargaSabida(id: string, c: Carga) {
+    const actual = bloquesRef.current;
+    if (actual.ejercicio !== id || actual.carga) return;
+    const b = cambiarCarga(actual, c);
+    bloquesRef.current = b;
+    setBloques(b);
+    void actualizarSesionCache({ bloques: b });
+  }
+
+  /**
+   * Elegir qué significa el número: contestando la pregunta o tocando la
+   * etiqueta. Vale para el bloque ENTERO y queda recordado para ese ejercicio:
+   * la próxima vez arranca así.
+   */
+  async function elegirCarga(c: Carga) {
+    await marcar();
+    const b = cambiarCarga(bloques, c);
+    if (b === bloques || !b.ejercicio) return;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b });
+    await recordar(b.ejercicio, c);
+    // Si ya hay series, lo guardado cambia de significado: se sube.
+    if (b.hechas > 0) await subir(series, b);
+  }
+
+  /** Lo mismo en un bloque ya cerrado, desde la lista. */
+  async function corregirCargaDeBloque(indice: number, c: Carga) {
+    await marcar();
+    const b = corregirCarga(bloques, indice, c);
+    if (b === bloques) return;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b });
+    const ejercicio = indice === -1 ? b.ejercicio : b.cerrados[indice]?.ejercicio;
+    if (ejercicio) await recordar(ejercicio, c);
+    await subir(series, b);
+  }
+
+  async function recordar(ejercicio: string, c: Carga) {
+    await recordarCarga(ejercicio, c);
+    if (!disponible('cargaDelPeso', await versionDelEsquema(supabase))) return;
+    await encolar(supabase, { rpc: 'elegir_carga', args: { p_ejercicio: ejercicio, p_carga: c } });
   }
 
   /**
@@ -628,9 +740,9 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    * "me equivoqué de ejercicio", no "cambié de ejercicio". Quién de los dos
    * fue lo pregunta la interfaz; acá solo se aplica.
    */
-  async function mudarSeries(id: string | null) {
+  async function mudarSeries(id: string | null, cargaQueSeVeia?: Carga) {
     await marcar();
-    const b = mudarEjercicio(bloques, id);
+    const b = mudarEjercicio(bloques, id, cargaQueSeVeia);
     if (b === bloques) return;
     setBloques(b);
     await actualizarSesionCache({ bloques: b });
@@ -687,6 +799,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
       porUbicacion,
       bloques,
       ultimaActividad,
+      cargaConsultada,
     },
     empezar,
     terminar,
@@ -699,6 +812,8 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     elegirMeta,
     elegirPeso,
     corregirPesoDeSerie,
+    elegirCarga,
+    corregirCargaDeBloque,
     descansarSuelto,
     cerrarDescanso: () => {
       borrarDescanso();

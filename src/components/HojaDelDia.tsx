@@ -9,6 +9,7 @@ import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { duracionLinda } from '@nucleo/sesiones';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { resumenDelDia, type ResumenDelDia, type SesionDelDia } from '@nucleo/resumenDia';
+import { claveDeEtiqueta, gruposDePesos } from '@nucleo/carga';
 import { T } from '@nucleo/textos';
 
 type Destino = 'fui' | 'descanso' | 'nada';
@@ -184,12 +185,20 @@ export default function HojaDelDia({
                       {/* LOS PESOS, uno por serie, en el orden en que se
                           hicieron: "60, 60, 62.5, 62.5 kg". Las series sin
                           peso van con una raya y no se esconden: se hicieron. */}
+                      {/* Agrupados por modo: si el mismo ejercicio se hizo de
+                          dos formas, "60" y "30 por mancuerna" no pueden ir en
+                          la misma lista como si fueran lo mismo. */}
                       {e.pesos && (
                         <span className="dia-pesos">
-                          {T.resumen.pesosDeSeries(
-                            e.pesos.map((p) => (p === null ? T.sesion.sinPeso : pesoCorto(p, unidad))).join(', '),
-                            unidad
-                          )}
+                          {gruposDePesos(e.pesos, e.cargas)
+                            .map((g) =>
+                              T.resumen.pesosDeSeries(
+                                g.pesos.map((p) => (p === null ? T.sesion.sinPeso : pesoCorto(p, unidad))).join(', '),
+                                unidad,
+                                claveDeEtiqueta(g.carga, e.id)
+                              )
+                            )
+                            .join(' · ')}
                         </span>
                       )}
                     </span>

@@ -23,6 +23,8 @@ export const REQUIERE = {
   pesoPorSerie: 36,
   /** El cierre por inactividad: marcar actividad desde el teléfono. */
   cierrePorInactividad: 37,
+  /** Qué significa el número del peso: el modo en cada bloque y la pregunta de la primera vez. */
+  cargaDelPeso: 38,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

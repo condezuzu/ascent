@@ -63,7 +63,14 @@ type Encolable =
   //   en que pasó. Justo para eso existe la hora: una marca que sube media
   //   hora tarde desde el subsuelo tiene que decir cuándo fue el toque, no
   //   cuándo volvió la señal.
-  | { rpc: 'marcar_actividad'; args: { p_sesion: string; p_hasta: string } };
+  | { rpc: 'marcar_actividad'; args: { p_sesion: string; p_hasta: string } }
+  // `elegir_carga` (migración 38): con qué se hace un ejercicio.
+  //
+  // - *Idempotente*: guarda EL modo, no "cambialo". Repetirla deja lo mismo.
+  // - *No cambia de significado más tarde*: lleva el ejercicio. No lleva
+  //   sesión porque no es de una sesión: es de la cuenta, y por eso se pisa
+  //   por ejercicio y no por sesión.
+  | { rpc: 'elegir_carga'; args: { p_ejercicio: string; p_carga: string } };
 
 type Pendiente = Encolable & { id: string };
 
@@ -94,7 +101,7 @@ async function guardar(l: Pendiente[]) {
  * Solo importa el último, y así diez toques sin red se vacían en una llamada.
  */
 export async function encolar(supabase: SupabaseClient, tarea: Encolable) {
-  const id = `${tarea.rpc}:${tarea.args.p_sesion}`;
+  const id = `${tarea.rpc}:${'p_sesion' in tarea.args ? tarea.args.p_sesion : tarea.args.p_ejercicio}`;
   const lista = (await leer()).filter((p) => p.id !== id);
   lista.push({ ...tarea, id });
   await guardar(lista);
@@ -149,4 +156,13 @@ export async function vaciar(supabase: SupabaseClient) {
 /** Cuántas escrituras están esperando. Para el Diagnóstico. */
 export async function cuantasPendientes(): Promise<number> {
   return (await leer()).length;
+}
+
+/**
+ * Si hay una escritura de ESTO esperando a subir. Sirve para no pisar con la
+ * respuesta de la base algo que este teléfono eligió después y todavía no
+ * llegó.
+ */
+export async function estaPendiente(rpc: Encolable['rpc'], clave: string): Promise<boolean> {
+  return (await leer()).some((p) => p.id === `${rpc}:${clave}`);
 }
