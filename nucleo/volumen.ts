@@ -234,3 +234,47 @@ export function gruposDejados(
     }))
     .sort((a, b) => ordenDeGrupo(a.grupo) - ordenDeGrupo(b.grupo));
 }
+
+/**
+ * LAS FILAS DE `sesiones` como las devuelve Supabase con `logs(fecha)`
+ * embebido, pasadas a `SesionConBloques`. El embebido puede venir como objeto
+ * o como lista según cómo lo infiera el cliente; una sesión sin día no se usa.
+ *
+ * Vive acá y no en cada app para que la web y la nativa lean lo mismo.
+ */
+export function sesionesConFecha(filas: unknown): SesionConBloques[] {
+  if (!Array.isArray(filas)) return [];
+  return filas.flatMap((s) => {
+    if (!s || typeof s !== 'object') return [];
+    const x = s as { id?: unknown; bloques?: unknown; logs?: unknown };
+    const log = Array.isArray(x.logs) ? x.logs[0] : x.logs;
+    const fecha = log && typeof log === 'object' ? (log as { fecha?: unknown }).fecha : undefined;
+    if (typeof fecha !== 'string') return [];
+    return [{ id: typeof x.id === 'string' ? x.id : undefined, fecha, bloques: x.bloques }];
+  });
+}
+
+/** Los grupos que aparecen en lo anotado, en el orden de la interfaz: los filtros. */
+export function gruposAnotados(sesiones: SesionConBloques[], catalogo: Catalogo): string[] {
+  const vistos = new Set<string>();
+  for (const s of sesiones) {
+    for (const b of leerBloques(s.bloques)) {
+      const g = catalogo.get(b.ejercicio)?.grupo;
+      if (g) vistos.add(g);
+    }
+  }
+  return ORDEN_GRUPOS.filter((g) => vistos.has(g));
+}
+
+/** La semana que se lee debajo de las barras: la tocada, o la última con algo. */
+export function semanaParaLeer(semanas: Semana[], tocada: number | null): number {
+  if (tocada !== null && tocada >= 0 && tocada < semanas.length) return tocada;
+  return semanas.reduce((ult, s, i) => (s.series > 0 ? i : ult), semanas.length - 1);
+}
+
+/** Los días con bloques por revisar (migración 39). */
+export function fechasPorRevisar(sesiones: SesionConBloques[]): Set<string> {
+  const fechas = new Set<string>();
+  for (const s of sesiones) if (leerBloques(s.bloques).some((b) => b.supuesta)) fechas.add(s.fecha);
+  return fechas;
+}

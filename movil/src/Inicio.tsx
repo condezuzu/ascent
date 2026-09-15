@@ -8,7 +8,6 @@ import { rangoDeRacha } from '@nucleo/rangos';
 import { mensajeDeAuth } from '@nucleo/errores';
 import type { Log, Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
-import Ajustes from './Ajustes';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -54,10 +53,6 @@ export default function Inicio({
 }) {
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
   const [registrando, setRegistrando] = useState(false);
-  // Ajustes es la segunda pantalla y por ahora es un booleano. Cuando entre la
-  // barra de navegación con las cinco, esto pasa a ser el router; hasta
-  // entonces, un router sería una capa para contestar lo que contesta un `if`.
-  const [enAjustes, setEnAjustes] = useState(false);
   const [aviso, setAviso] = useState('');
 
   const cargar = useCallback(async () => {
@@ -110,11 +105,6 @@ export default function Inicio({
     cargar();
   }, [cargar]);
 
-  /** Ajustes pinta el cambio acá: el perfil vive en esta pantalla. */
-  function cambiarPerfil(parcial: Partial<Perfil>) {
-    setEstado((e) => (e.tipo === 'listo' ? { ...e, perfil: { ...e.perfil, ...parcial } } : e));
-  }
-
   async function registrar() {
     setRegistrando(true);
     setAviso('');
@@ -154,23 +144,6 @@ export default function Inicio({
 
   const { perfil, logs, descansos, cubiertos, impulsos } = estado;
 
-  if (enAjustes) {
-    return (
-      <Ajustes
-        perfil={perfil}
-        alCambiar={cambiarPerfil}
-        // Al volver se RECARGA: cambiar los días de descanso cambia qué días
-        // cortan la racha, y la tira semanal de atrás quedaría dibujando lo
-        // de antes.
-        alVolver={() => {
-          setEnAjustes(false);
-          cargar();
-        }}
-        alSalir={alSalir}
-      />
-    );
-  }
-
   const hoy = hoyISO();
   const registradoHoy = logs.some((l) => l.fecha === hoy && !l.es_descanso);
 
@@ -194,9 +167,6 @@ export default function Inicio({
     <ScrollView contentContainerStyle={estilos.pantalla}>
       <View style={estilos.cabecera}>
         <Text style={estilos.usuario}>{perfil.username}</Text>
-        <Pressable onPress={() => setEnAjustes(true)}>
-          <Text style={estilos.enlace}>{T.general.ajustes}</Text>
-        </Pressable>
       </View>
 
       <Text style={estilos.etiqueta}>{T.inicio.racha}</Text>

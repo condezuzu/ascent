@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { supabase } from './src/supabase';
 import Login from './src/Login';
-import Inicio from './src/Inicio';
+import Pestanas from './src/Pestanas';
 import Onboarding from './src/Onboarding';
 import { sesionDesdeEnlace } from './src/enlace';
 
@@ -20,13 +20,9 @@ import { sesionDesdeEnlace } from './src/enlace';
  * `src/PruebaDePuertos.tsx` y NO se monta acá: no es una pantalla de la app,
  * se abre cuando haya que probar los puertos con el teléfono en la mano.
  *
- * TANDA 2 es esto: entrar, elegir el nombre si la cuenta es nueva, ver la
- * racha, registrar el día.
- *
- * NO HAY ROUTER TODAVÍA, y es a propósito: con dos pantallas, un router es
- * una dependencia y una capa de indirección para responder una pregunta que
- * `if` contesta. Entra cuando entre la barra de navegación, que es la tanda
- * donde hay cinco pantallas y la pregunta se vuelve de verdad.
+ * TANDA 2 es esto: entrar, elegir el nombre si la cuenta es nueva, y adentro
+ * la barra de abajo con Inicio, Stats y Ajustes (`Pestanas`). Por qué todavía
+ * no hay router está dicho ahí.
  */
 
 type Sesion = 'mirando' | 'con' | 'sin' | 'sin-nombre';
@@ -81,7 +77,7 @@ export default function App() {
       )}
       {sesion === 'sin' && <Login alEntrar={mirar} />}
       {sesion === 'sin-nombre' && <Onboarding alElegir={mirar} />}
-      {sesion === 'con' && <Inicio alSalir={mirar} alFaltarNombre={sinNombre} />}
+      {sesion === 'con' && <Pestanas alSalir={mirar} alFaltarNombre={sinNombre} />}
     </View>
   );
 }

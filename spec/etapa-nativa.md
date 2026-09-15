@@ -329,6 +329,29 @@ Probado contra la base de verdad: **la racha pasó de 1 a 2 y el botón cambió 
 una dependencia y una capa de indirección para contestar lo que contesta un
 `if`. Entra cuando entre la barra de navegación.
 
+### La barra de abajo y Stats (2026-09-15)
+
+**Tres pestañas y no cinco:** Inicio, Stats y Ajustes. Ranking y Álbum entran
+con sus pantallas; una pestaña que abre "próximamente" es un botón que miente
+en el lugar más tocado de la app. Ajustes dejó de ser un enlace desde Inicio.
+
+**Todavía sin router.** Con tres pestañas planas un `useState` contesta lo
+mismo. La pregunta se vuelve de verdad con la primera pantalla que se APILA
+—el día abierto, el perfil de un amigo— y ahí entra Expo Router entero.
+
+**Stats nativo no hace cuentas.** Volumen por semana, dónde no estás entrenando
+y el máximo de cada ejercicio salen de `nucleo/volumen.ts`, incluido cómo se
+leen las filas de la base (`sesionesConFecha`). Probado contra la base real
+con la cuenta de prueba: **los mismos números que la web** (183 kg · 3 series,
+62.5 kg). La sección 87 de `test:db` falla si Stats nativo empieza a sumar
+kilos por su cuenta.
+
+Falta en Stats nativo, y entra con su pantalla: el calendario con el resumen
+del día (y ahí revisar los pesos de antes de los modos), el mapa del año, el
+peso corporal, la fuerza y las sesiones.
+
+Para mirarla: `movil/dev-web.cmd` (Expo web en el puerto 8090).
+
 ### Cómo se verifica la app nativa sin el teléfono
 
 `movil/` ahora corre también en el navegador (`npx expo start --web`), y **eso

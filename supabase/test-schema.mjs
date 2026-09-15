@@ -6086,6 +6086,46 @@ console.log('\n86. El volumen');
     chequear('el orden de grupos cubre todas las zonas', [...V.ORDEN_GRUPOS].sort(), Object.values(ZONAS).flat().sort());
   }
 }
+console.log('\n87. Lo que leen igual la web y la app nativa');
+{
+  const V = await import('../nucleo/volumen.ts');
+  // Las filas como las devuelve Supabase con `logs(fecha)` embebido: objeto o lista.
+  chequear(
+    'las filas de la base pasan a sesiones con dia',
+    V.sesionesConFecha([
+      { id: 'a', bloques: [], logs: { fecha: '2026-09-14' } },
+      { id: 'b', bloques: [], logs: [{ fecha: '2026-09-13' }] },
+      { id: 'c', bloques: [], logs: null },
+      'basura',
+    ]),
+    [
+      { id: 'a', fecha: '2026-09-14', bloques: [] },
+      { id: 'b', fecha: '2026-09-13', bloques: [] },
+    ]
+  );
+  chequear('sin lista, nada', V.sesionesConFecha(null), []);
+  const semanas = [
+    { desde: '2026-08-31', kilos: 0, series: 2 },
+    { desde: '2026-09-07', kilos: 0, series: 0 },
+    { desde: '2026-09-14', kilos: 0, series: 0 },
+  ];
+  chequear('se lee la ultima semana con algo', V.semanaParaLeer(semanas, null), 0);
+  chequear('o la tocada', V.semanaParaLeer(semanas, 2), 2);
+  chequear('una tocada que no existe no rompe', V.semanaParaLeer(semanas, 9), 0);
+  const cat = new Map([['sentadilla', { nombre: 'Sentadilla', grupo: 'piernas' }], ['press_banca', { nombre: 'Press', grupo: 'pecho' }]]);
+  const ses = [
+    { fecha: '2026-09-01', bloques: [{ ejercicio: 'sentadilla', series: 1 }] },
+    { fecha: '2026-09-02', bloques: [{ ejercicio: 'press_banca', series: 1, pesos: [60], carga: 'total', carga_supuesta: true }] },
+  ];
+  chequear('los filtros en el orden de la interfaz', V.gruposAnotados(ses, cat), ['pecho', 'piernas']);
+  chequear('los dias por revisar', [...V.fechasPorRevisar(ses)], ['2026-09-02']);
+
+  // La app nativa no hace sus propias cuentas de volumen: importa las del nucleo.
+  const { readFileSync: leer } = await import('node:fs');
+  const stats = leer(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'Stats.tsx'), 'utf8');
+  chequear('Stats nativo usa el volumen del nucleo', stats.includes("from '@nucleo/volumen'"), true);
+  chequear('y no suma kilos por su cuenta', /kilosMovidos|factorDeCarga|\.pesos[^A-Za-z]/.test(stats), false);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

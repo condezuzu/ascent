@@ -29,12 +29,10 @@ import { T } from '@nucleo/textos';
 export default function Ajustes({
   perfil,
   alCambiar,
-  alVolver,
   alSalir,
 }: {
   perfil: Perfil;
   alCambiar: (parcial: Partial<Perfil>) => void;
-  alVolver: () => void;
   alSalir: () => void;
 }) {
   const [fallo, setFallo] = useState('');
@@ -73,9 +71,6 @@ export default function Ajustes({
 
   return (
     <ScrollView contentContainerStyle={estilos.pantalla}>
-      <Pressable onPress={alVolver} style={estilos.volver}>
-        <Text style={estilos.enlace}>{T.general.volver}</Text>
-      </Pressable>
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>
 
@@ -170,7 +165,6 @@ export default function Ajustes({
 
 const estilos = StyleSheet.create({
   pantalla: { flexGrow: 1, backgroundColor: '#05060a', padding: 24, paddingTop: 60 },
-  volver: { marginBottom: 18 },
   titulo: {
     color: '#8a93a8',
     fontSize: 11,

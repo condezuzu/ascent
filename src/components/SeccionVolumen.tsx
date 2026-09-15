@@ -9,11 +9,13 @@ import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { claveDeEtiqueta } from '@nucleo/carga';
 import { umbralValido } from '@nucleo/estancamiento';
 import {
+  fechasPorRevisar,
+  gruposAnotados,
   gruposDejados,
-  leerBloques,
   maximosPorEjercicio,
+  semanaParaLeer,
+  sesionesConFecha,
   volumenPorSemana,
-  ORDEN_GRUPOS,
   type Catalogo,
   type SesionConBloques,
 } from '@nucleo/volumen';
@@ -79,12 +81,7 @@ export default function SeccionVolumen({
         supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
       ]);
       if (!vivo) return;
-      const lista = (ses ?? []).flatMap((s) => {
-        const log = s.logs as { fecha?: string } | { fecha?: string }[] | null;
-        const fecha = Array.isArray(log) ? log[0]?.fecha : log?.fecha;
-        return fecha ? [{ id: s.id as string, fecha, bloques: s.bloques }] : [];
-      });
-      setSesiones(lista);
+      setSesiones(sesionesConFecha(ses));
       setCatalogo(new Map((cat ?? []).map((e) => [e.id as string, { nombre: e.nombre as string, grupo: e.grupo as string }])));
       if (perfil?.unidad_peso === 'lb') setUnidad('lb');
       setUmbral(umbralValido(perfil?.umbral_estancamiento));
@@ -96,11 +93,7 @@ export default function SeccionVolumen({
 
   const hoy = hoyISO();
 
-  const porRevisar = useMemo(() => {
-    const fechas = new Set<string>();
-    for (const s of sesiones ?? []) if (leerBloques(s.bloques).some((b) => b.supuesta)) fechas.add(s.fecha);
-    return fechas;
-  }, [sesiones]);
+  const porRevisar = useMemo(() => fechasPorRevisar(sesiones ?? []), [sesiones]);
 
   useEffect(() => {
     alSaberPorRevisar(porRevisar);
@@ -116,13 +109,10 @@ export default function SeccionVolumen({
   const valor = (s: (typeof semanas)[number]) => (series ? s.series : s.kilos);
   const tope = Math.max(...semanas.map(valor), 0);
   // Los grupos que existen en lo anotado, en el orden de la interfaz.
-  const gruposConAlgo = ORDEN_GRUPOS.filter((g) =>
-    sesiones.some((s) => leerBloques(s.bloques).some((b) => catalogo.get(b.ejercicio)?.grupo === g))
-  );
+  const gruposConAlgo = gruposAnotados(sesiones, catalogo);
   const hayAlgo = gruposConAlgo.length > 0;
   // La semana que se lee abajo: la tocada, o la última con algo.
-  const indice =
-    elegida ?? semanas.reduce((ult, s, i) => (s.series > 0 ? i : ult), semanas.length - 1);
+  const indice = semanaParaLeer(semanas, elegida);
   const leida = semanas[indice];
 
   const maximos = maximosPorEjercicio(sesiones, catalogo);
