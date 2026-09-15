@@ -2172,13 +2172,18 @@ alter table public.prs enable row level security;
 alter table public.sesiones enable row level security;
 
 -- ¿Somos amigos aceptados? (contempla ambos sentidos)
+-- Solo contesta sobre una amistad de QUIEN PREGUNTA (migración 41): con los
+-- ids públicos, cualquiera podía averiguar si otras dos personas eran amigas.
+-- Las políticas la llaman siempre con `auth.uid()` en una punta.
 create or replace function public.son_amigos(a uuid, b uuid)
 returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from friendships
-    where estado = 'aceptada'
-      and ((solicitante = a and destinatario = b) or (solicitante = b and destinatario = a))
-  );
+  select auth.uid() is not null
+    and auth.uid() in (a, b)
+    and exists (
+      select 1 from friendships
+      where estado = 'aceptada'
+        and ((solicitante = a and destinatario = b) or (solicitante = b and destinatario = a))
+    );
 $$;
 
 -- profiles: solo el dueño (lo público sale por la vista)
@@ -2347,9 +2352,6 @@ grant update (visibilidad) on public.photos      to authenticated;
 -- Funciones: las que tocan datos de alguien solo para usuarios con sesión.
 -- rango_de_racha y planeta_de_dia quedan abiertas: son matemática pura.
 revoke execute on function
-  public.calcular_racha(uuid, date),
-  public.mejor_racha_real(uuid),
-  public.descansos_vigentes(uuid, date),
   public.son_amigos(uuid, uuid),
   public.registrar_dia(text),
   public.verificar_perdida(),
@@ -2381,7 +2383,16 @@ revoke execute on function public.cerrar_sesiones_vencidas(uuid)
 -- nadie: solo los llaman las funciones de arriba, que devuelven el resultado
 -- sin devolver nunca el peso. un_rm y dots quedan abiertas como
 -- rango_de_racha: son matemática pura y no tocan datos de nadie.
+-- Y las que reciben el id de OTRO y leen por encima de la RLS (migración 41):
+-- con los ids públicos, el calendario, los descansos y las vidas de cualquiera
+-- se reconstruían llamándolas día por día. Solo las usan otras funciones.
 revoke execute on function
+  public.calcular_racha(uuid, date),
+  public.mejor_racha_real(uuid),
+  public.descansos_vigentes(uuid, date),
+  public.impulsos_ganados(uuid),
+  public.impulsos_disponibles(uuid, date),
+  public.vidas_disponibles(uuid, date),
   public.hoy_de(uuid),
   public.puede_registrar_hoy(uuid),
   public.bloqueo_hasta(uuid),
@@ -2393,9 +2404,6 @@ revoke execute on function
   from public, anon, authenticated;
 
 grant execute on function
-  public.calcular_racha(uuid, date),
-  public.mejor_racha_real(uuid),
-  public.descansos_vigentes(uuid, date),
   public.son_amigos(uuid, uuid),
   public.registrar_dia(text),
   public.verificar_perdida(),
@@ -2536,7 +2544,7 @@ grant execute on function public.olvidar_suscripcion_push(text) to service_role;
 
 -- LA VERSIÓN DEL ESQUEMA (migración 37). Cada migración la reescribe con su número.
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 40; $$;
+returns int language sql immutable as $$ select 41; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

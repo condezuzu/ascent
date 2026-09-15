@@ -391,11 +391,13 @@ export default function Principal() {
   // base hace las dos cosas en una sola llamada —devolver y volver a evaluar
   // la pérdida— para que no exista un instante con la vida devuelta y la racha
   // todavía entera.
-  async function guardarImpulsos() {
-    if (!impulsoUsado) return;
-    const { data } = await supabase.rpc('devolver_impulsos', { p_fechas: impulsoUsado.dias });
+  async function guardarImpulsos(): Promise<boolean> {
+    if (!impulsoUsado) return false;
+    const { data, error } = await supabase.rpc('devolver_impulsos', { p_fechas: impulsoUsado.dias });
+    if (error || !data) return false;
     if (data?.perdida?.perdida) setPerdida(true);
     await cargar();
+    return true;
   }
 
   function alConfirmar(r: ResultadoRegistro | null) {

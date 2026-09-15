@@ -30,10 +30,12 @@ export default function RachaSalvada({
   quedan: number;
   total: number;
   rachaSiGuarda: number;
-  alGuardar: () => Promise<void>;
+  /** `false` si la base no lo guardó: la ventana no puede decir que sí. */
+  alGuardar: () => Promise<boolean>;
   alCerrar: () => void;
 }) {
   const [paso, setPaso] = useState<'aviso' | 'confirmar' | 'guardando' | 'guardada'>('aviso');
+  const [fallo, setFallo] = useState(false);
 
   useEffect(() => {
     plataforma.haptica.pulso();
@@ -41,8 +43,13 @@ export default function RachaSalvada({
 
   async function guardar() {
     setPaso('guardando');
-    await alGuardar();
-    setPaso('guardada');
+    setFallo(false);
+    // SOLO SI LA BASE LO GUARDÓ (bug del 15/9). Antes decía "quedó para después"
+    // aunque la llamada hubiera fallado; al cerrar se marcaba vista, y la vida no
+    // volvía nunca: pasados siete días ya no se puede devolver.
+    const ok = await alGuardar();
+    setFallo(!ok);
+    setPaso(ok ? 'guardada' : 'confirmar');
   }
 
   const uno = dias.length === 1;
@@ -86,6 +93,7 @@ export default function RachaSalvada({
           {(paso === 'confirmar' || paso === 'guardando') && (
             <>
               <Text style={estilos.precio}>{T.impulso.salvada.precio(dias.length, rachaSiGuarda)}</Text>
+              {fallo && <Text style={[estilos.precio, estilos.peligro]}>{T.impulso.salvada.noSeGuardo}</Text>}
               <Pressable style={estilos.solido} onPress={() => setPaso('aviso')} disabled={paso === 'guardando'}>
                 <Text style={estilos.solidoTexto}>{T.impulso.salvada.volver}</Text>
               </Pressable>

@@ -54,6 +54,18 @@ export type Vigilancia = {
   arranco: boolean;
 };
 
+/**
+ * UNA VISITA VIEJA NO ES ESTA VISITA (bug del 15/9).
+ *
+ * La visita solo se borra cuando la app VE que te fuiste. Con la app cerrada al
+ * salir —lo normal—, quedaba guardada, y al día siguiente se leía como la misma:
+ * si ya había disparado, la sesión no arrancaba nunca más; si no, arrancaba al
+ * instante con la hora de llegada de ayer. Tres horas sin verte adentro es más
+ * que el tope de una sesión (dos horas) más la media hora sin actividad: pasado
+ * eso, la visita guardada ya no dice nada de esta.
+ */
+export const VISITA_VENCIDA_MS = 3 * 60 * 60 * 1000;
+
 export type Decision =
   | { hacer: 'nada'; vigilancia: Vigilancia | null }
   | { hacer: 'arrancar'; desde: number; vigilancia: Vigilancia }
@@ -85,6 +97,10 @@ export function decidir(
   sesion: EstadoParaDecidir
 ): Decision {
   if (adentro === null) return { hacer: 'nada', vigilancia };
+
+  // Una visita de hace horas es otra visita. Se compara contra lo MEDIDO, que
+  // es del mismo reloj que `ultimoAdentro`.
+  if (vigilancia && medidoEn - vigilancia.ultimoAdentro > VISITA_VENCIDA_MS) vigilancia = null;
 
   if (adentro) {
     const v: Vigilancia = vigilancia

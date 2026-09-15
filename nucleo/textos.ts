@@ -82,6 +82,8 @@ export const T = {
       // el precio, y repetirle que perdió sería cobrarle dos veces.
       guardada: (n: number) =>
         n === 1 ? 'La vida quedó para después.' : `Las ${n} vidas quedaron para después.`,
+      // Sin señal no se devolvió nada: se dice lo que sigue siendo cierto.
+      noSeGuardo: 'Sin señal no se guardó: la racha sigue como estaba. Prueba de nuevo.',
     },
   },
 
@@ -281,7 +283,7 @@ export const T = {
     reintentar: 'Reintentar',
     vacioTitulo: 'Todavía no hay nada aquí.',
     vacioPie: 'Registra tu primer día y algo se empieza a formar.',
-    vacio: 'Todavía no hay nada aquí.\nRegistrá tu primer día y algo se empieza a formar.',
+    vacio: 'Todavía no hay nada aquí.\nRegistra tu primer día y algo se empieza a formar.',
   },
 
   // ---------------------------------------------------------------
@@ -333,7 +335,7 @@ export const T = {
     titulo: 'Contraseña nueva',
     sub: 'Al menos 6 caracteres.',
     nueva: 'Contraseña nueva',
-    repetir: 'Repetila',
+    repetir: 'Repítela',
     corta: 'Esa es muy corta: mínimo 6.',
     noCoinciden: 'Las dos no coinciden.',
     esLaMisma: 'Esa ya es tu contraseña actual.',
@@ -682,6 +684,9 @@ export const T = {
   // ---------------------------------------------------------------
   sesion: {
     terminar: 'Terminar',
+    // Sin señal, en vez de un botón que no hace nada.
+    noEmpezo: 'Sin señal no arrancó. Prueba de nuevo cuando vuelva.',
+    noTermino: 'Sin señal no se cerró: la sesión sigue. Prueba de nuevo.',
     label: 'Sesión',
     descansar: 'Descansar',
     listo: 'Listo',

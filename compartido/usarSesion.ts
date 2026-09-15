@@ -377,7 +377,14 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     // Devuelve si SALIÓ, porque el que llama por ubicación necesita saberlo:
     // un gimnasio en un subsuelo se queda sin señal, y si el arranque se diera
     // por hecho la sesión de ese día no existiría nunca.
-    if (error) return false;
+    //
+    // Y SE DICE, si lo tocó una persona (15/9). Antes el botón volvía a su
+    // lugar sin nada: parecía que la app no respondía. Al que arranca solo por
+    // ubicación no se le dice: el vigilante reintenta sin que nadie mire.
+    if (error) {
+      if (opciones?.origen !== 'ubicacion') setAviso(T.sesion.noEmpezo);
+      return false;
+    }
     if (estaBloqueado(data)) {
       setAviso(textoDeBloqueo(data.hasta));
       return false;
@@ -449,6 +456,7 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
    */
   async function terminar(opciones?: { hasta?: number }): Promise<CierreDeSesion | null> {
     setOcupado(true);
+    setAviso('');
     // Se anota lo que había ANTES de cerrar: abajo se pone todo en cero y el
     // resumen se quedaría sin datos que mostrar.
     const arranco = inicio;
@@ -456,11 +464,33 @@ export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => voi
     const eraPorUbicacion = porUbicacion;
     const desfase = desfasaje;
     const bloquesHechos = paraGuardar(bloques);
-    const { data, error } = await cerrar(supabase, opciones);
+    // PRIMERO LO PENDIENTE (bug del 15/9). La base decide el cierre con lo que
+    // TIENE: si las series y la actividad de la sesión siguen en la cola —se
+    // entrenó sin señal y la red volvió justo al tocar Terminar—, ve una sesión
+    // sin series y sin actividad. Corta, la toma por un toque sin querer y
+    // BORRA EL DÍA; de más de dos horas, la da por abandonada y pierde la
+    // duración. `confirmar` ya subía la cola antes de preguntar; esto no.
+    //
+    // Si después de intentarlo algo de ESTA sesión sigue esperando, no se
+    // cierra: es lo mismo que no tener señal, y cerrar ahí es el bug.
+    await vaciar(supabase);
+    const idQueTermina = idSesion;
+    const esperando =
+      !!idQueTermina &&
+      ((await estaPendiente('fijar_series', idQueTermina)) ||
+        (await estaPendiente('fijar_bloques', idQueTermina)) ||
+        (await estaPendiente('marcar_actividad', idQueTermina)));
+    const { data, error } = esperando
+      ? { data: null, error: { message: 'quedan escrituras de la sesión en la cola' } }
+      : await cerrar(supabase, opciones);
     setOcupado(false);
     // Lo mismo al revés: si el cierre no llegó, quien llama tiene que poder
     // volver a intentarlo con la hora de salida correcta.
-    if (error) return null;
+    if (error) {
+      // A mano se dice; el cierre por ubicación reintenta solo.
+      if (opciones?.hasta === undefined) setAviso(T.sesion.noTermino);
+      return null;
+    }
     borrarSesionCache(yo);
     borrarDescanso();
     setInicio(null);

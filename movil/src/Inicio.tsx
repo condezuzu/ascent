@@ -164,7 +164,11 @@ export default function Inicio({
   const { perfil, logs, descansos, cubiertos, impulsos } = estado;
 
   const hoy = hoyISO();
-  const registradoHoy = logs.some((l) => l.fecha === hoy && !l.es_descanso);
+  // Igual que la web: un día marcado como descanso a mano TAMBIÉN está (bug del
+  // 15/9). Contarlo como vacío ofrecía "Registrar día", la base lo rechazaba
+  // por repetido y la hoja lo tomaba como hecho: la racha no subía y nadie
+  // decía nada.
+  const registradoHoy = logs.some((l) => l.fecha === hoy);
 
   // La semana arranca el LUNES y se alinea al calendario, igual que en web:
   // "los últimos siete días" es más exacto y se ve mal, porque las letras
@@ -402,8 +406,10 @@ export default function Inicio({
           rachaSiGuarda={rachaSiSeDevuelve(perfil.racha_actual)}
           alGuardar={async () => {
             // Devolver y volver a evaluar la pérdida van juntos en la base.
-            await supabase.rpc('devolver_impulsos', { p_fechas: vidaUsada.dias });
+            const { data, error } = await supabase.rpc('devolver_impulsos', { p_fechas: vidaUsada.dias });
+            if (error || !data) return false;
             await cargar();
+            return true;
           }}
           alCerrar={async () => {
             // Cerrar es lo que ANOTA: hasta que no se cierra, el aviso vuelve.

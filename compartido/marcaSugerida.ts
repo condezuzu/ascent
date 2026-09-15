@@ -48,7 +48,22 @@ export async function buscarSugerencias(
 export async function guardarSugerencia(supabase: Cliente, s: Sugerencia, reps: number): Promise<boolean> {
   const { data: usuario } = await supabase.auth.getUser();
   if (!usuario.user) return false;
-  const { error } = await supabase.from('prs').insert({ user_id: usuario.user.id, ...filaDeMarca(s, reps, hoyISO()) });
+  const fila = filaDeMarca(s, reps, hoyISO());
+  // REINTENTAR NO DUPLICA (15/9). Sin señal la escritura puede llegar y la
+  // respuesta perderse: la app dice "no se guardó", se vuelve a tocar, y la
+  // marca quedaba dos veces. Si ya está la misma, esa es la respuesta.
+  const { data: ya, error: eMirar } = await supabase
+    .from('prs')
+    .select('id')
+    .eq('user_id', usuario.user.id)
+    .eq('ejercicio', fila.ejercicio)
+    .eq('peso', fila.peso)
+    .eq('reps', fila.reps)
+    .eq('fecha', fila.fecha)
+    .limit(1);
+  if (eMirar) return false;
+  if (ya && ya.length > 0) return true;
+  const { error } = await supabase.from('prs').insert({ user_id: usuario.user.id, ...fila });
   return !error;
 }
 

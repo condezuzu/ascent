@@ -50,8 +50,13 @@ export default function RegistrarDia({
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
+  // EL DÍA ENTRÓ PERO LA FOTO NO (bug del 15/9). Antes la hoja se cerraba igual:
+  // el error quedaba escondido y la foto, descartada. Ahora queda abierta, con
+  // la foto, en modo "sumar al día", y reintentar la cuelga del día que entró.
+  const [registradoAca, setRegistradoAca] = useState<ResultadoRegistro | null>(null);
   const dia = hoyISO();
-  const yaEsta = !!logId;
+  const idDelDia = logId ?? registradoAca?.log_id ?? null;
+  const yaEsta = !!idDelDia;
 
   async function elegir(desde: 'camara' | 'galeria') {
     setError('');
@@ -90,11 +95,13 @@ export default function RegistrarDia({
     setAviso('');
     setCargando(true);
     if (yaEsta) {
-      const ok = await subir(logId, false);
+      const ok = await subir(idDelDia, !!registradoAca?.subio_rango);
       setCargando(false);
       if (ok) {
         setFoto(null);
-        alConfirmar(null);
+        const r = registradoAca;
+        setRegistradoAca(null);
+        alConfirmar(r);
       }
       return;
     }
@@ -111,14 +118,28 @@ export default function RegistrarDia({
     }
     const resultado = data as ResultadoRegistro;
     // El día ya entró: si la foto falla se dice, pero el día no se pierde.
-    await subir(resultado.log_id, resultado.subio_rango);
+    const ok = await subir(resultado.log_id, resultado.subio_rango);
     setCargando(false);
+    if (!ok) return setRegistradoAca(resultado);
     setFoto(null);
     alConfirmar(resultado);
   }
 
   return (
-    <Hoja visible={visible} alCerrar={() => !cargando && alCerrar()}>
+    <Hoja
+      visible={visible}
+      alCerrar={() => {
+        if (cargando) return;
+        // Si el día entró acá, cerrar sin la foto igual lo confirma: la racha subió.
+        if (registradoAca) {
+          const r = registradoAca;
+          setRegistradoAca(null);
+          setFoto(null);
+          return alConfirmar(r);
+        }
+        alCerrar();
+      }}
+    >
       <Text style={estilos.titulo}>{yaEsta ? T.registrar.sumarAlDia : T.registrar.diaN(racha + 1)}</Text>
       <Text style={estilos.sub}>{fechaLinda(dia)}</Text>
 

@@ -3454,6 +3454,8 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
     // "contás series" lo escribi yo mismo agregando un paso nuevo. Las dos
     // son terminaciones que la lista no tenia.
     'volvés', 'contás', 'llegás', 'salís', 'entrenás', 'descansás', 'anotás',
+    // "Repetila" vivía en la pantalla de contraseña nueva (15/9).
+    'repetila', 'repetilo', 'escribila', 'elegila', 'sacala', 'probala',
   ];
 
   // Regla 3: modismos rioplatenses. Se entienden en tres paises.
@@ -3466,7 +3468,10 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
 
   const fallas = [];
   const revisar = (donde, s) => {
-    const bajo = s.toLowerCase();
+    // Un `\n` escrito en la cadena es una barra y una ENE para esta cuenta: la
+    // "n" pegada a "Registrá" le sacaba la frontera de palabra y el voseo
+    // pasaba (15/9). Se cambian las secuencias de escape por un espacio.
+    const bajo = s.replace(/\\[nrt]/g, ' ').toLowerCase();
     for (const v of VOSEO) {
       if (new RegExp(`(^|[^a-záéíóúñ])${v}([^a-záéíóúñ]|$)`, 'i').test(bajo)) {
         fallas.push(`${donde} -> voseo "${v}"`);
@@ -3501,6 +3506,8 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
   recorrer(join(RAIZ, 'src'));
   recorrer(join(RAIZ, 'compartido'));
   recorrer(join(RAIZ, 'nucleo'));
+  // Y la nativa, que no se miraba (15/9).
+  recorrer(join(RAIZ, 'movil', 'src'));
 
   // a) LAS CADENAS, en todos lados y no solo en el diccionario.
   //
@@ -6602,6 +6609,102 @@ console.log('\n100. El campo de peso con coma decimal');
     leerArch(join(RAIZ, 'src', 'components', 'CampoPeso.tsx'), 'utf8').includes('pasoDelCampo('),
     leerArch(join(RAIZ, 'movil', 'src', 'CampoPeso.tsx'), 'utf8').includes('pasoDelCampo('),
   ], [true, true]);
+}
+
+console.log('\n101. La caza del 15/9: lo que perdia datos o dejaba afuera');
+{
+  const { readFileSync: leer } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const archivo = (...r) => sinComentarios(leer(join(RAIZ, ...r), 'utf8'));
+
+  // ---- 1. Terminar sube la cola ANTES de cerrar ----
+  // Sin senal, las series quedan en la cola. Si la red vuelve y se toca
+  // Terminar, la base ve una sesion sin series: corta, borra el dia; de mas de
+  // dos horas, la da por abandonada. La base ya se prueba en su seccion; esto
+  // prueba que el cliente no le pregunte antes de subir.
+  const ses = archivo('compartido', 'usarSesion.ts');
+  const cuerpo = ses.slice(ses.indexOf('async function terminar('), ses.indexOf('async function marcar('));
+  const iVaciar = cuerpo.indexOf('vaciar(supabase)');
+  const iCerrar = cuerpo.indexOf('cerrar(supabase');
+  chequear('terminar vacia la cola', iVaciar > -1, true);
+  chequear('y la vacia ANTES de cerrar', iVaciar > -1 && iCerrar > iVaciar, true);
+  chequear('si quedan series de esa sesion esperando, no cierra', /estaPendiente\('fijar_series'/.test(cuerpo), true);
+  chequear('empezar sin senal lo dice', /setAviso\(T\.sesion\.noEmpezo\)/.test(ses), true);
+  chequear('terminar sin senal lo dice', /setAviso\(T\.sesion\.noTermino\)/.test(cuerpo), true);
+
+  // ---- 2. "Guardar la vida" solo dice que se guardo si se guardo ----
+  for (const [app, ventana, pantalla] of [
+    ['web', ['src', 'components', 'RachaSalvada.tsx'], ['src', 'app', 'page.tsx']],
+    ['nativa', ['movil', 'src', 'RachaSalvada.tsx'], ['movil', 'src', 'Inicio.tsx']],
+  ]) {
+    const v = archivo(...ventana);
+    chequear(`${app}: la ventana espera un si o un no`, v.includes('Promise<boolean>'), true);
+    chequear(`${app}: y solo pasa a "guardada" con un si`, /setPaso\(ok \? 'guardada' : 'confirmar'\)/.test(v), true);
+    const p = archivo(...pantalla);
+    const i = p.indexOf("rpc('devolver_impulsos'");
+    chequear(`${app}: devolver mira el error`, /if \(error \|\| !data\) return false/.test(p.slice(i, i + 300)), true);
+  }
+
+  // ---- 3. La foto que no sube no se tira en la nativa ----
+  const reg = archivo('movil', 'src', 'RegistrarDia.tsx');
+  chequear('nativa: si la foto falla, la hoja queda abierta con la foto', /if \(!ok\) return setRegistradoAca\(resultado\)/.test(reg), true);
+  chequear('y el reintento la cuelga del dia que ya entro', reg.includes('logId ?? registradoAca?.log_id'), true);
+
+  // ---- 4. Una visita de ayer no es la de hoy ----
+  const { decidir, VISITA_VENCIDA_MS } = await import('../nucleo/llegada.ts');
+  const { ESPERA_LLEGADA_MS: ESPERA } = await import('../nucleo/reglas.ts');
+  const libre = { corriendo: false, porUbicacion: false };
+  const AYER = 1_000_000_000_000;
+  const HOY = AYER + 20 * 3600 * 1000;
+  // Ayer arranco sola y la app no lo vio salir: la visita quedo con `arranco`.
+  const vieja = { desde: AYER, ultimoAdentro: AYER + 3600 * 1000, arranco: true };
+  const llega = decidir(true, HOY, HOY, vieja, libre);
+  chequear('llegar hoy con la visita de ayer guardada es una llegada nueva', [llega.hacer, llega.vigilancia?.desde, llega.vigilancia?.arranco], ['nada', HOY, false]);
+  const arranca = decidir(true, HOY + ESPERA, HOY + ESPERA, llega.vigilancia, libre);
+  chequear('y a la espera arranca, desde la llegada de HOY', [arranca.hacer, arranca.desde], ['arrancar', HOY]);
+  // La que no llego a disparar tampoco puede arrancar al instante con la hora de ayer.
+  const sinDisparar = decidir(true, HOY, HOY, { ...vieja, arranco: false }, libre);
+  chequear('una visita vieja sin disparar no arranca al instante', sinDisparar.hacer, 'nada');
+  // Dentro del mismo entrenamiento sigue siendo la misma visita.
+  const misma = decidir(true, AYER + 90 * 60 * 1000, AYER + 90 * 60 * 1000, { desde: AYER, ultimoAdentro: AYER, arranco: true }, libre);
+  chequear('noventa minutos sin mirar sigue siendo la misma visita', [misma.hacer, misma.vigilancia?.desde], ['nada', AYER]);
+  chequear('el vencimiento es mas largo que una sesion entera', VISITA_VENCIDA_MS > (2 * 3600 + 30 * 60) * 1000, true);
+}
+
+console.log('\n102. Nadie pregunta por los datos de otro (migracion 41)');
+{
+  // LA FUGA: funciones SECURITY DEFINER que reciben el id de otro y estaban
+  // abiertas a cualquiera con sesion. Con los ids publicos, el calendario de
+  // cualquiera se reconstruia con calcular_racha dia por dia. Probado contra
+  // la base real en supabase/probar-privacidad.mjs; esto lo fija aca.
+  const ajenas = [
+    'calcular_racha(uuid, date)', 'mejor_racha_real(uuid)', 'descansos_vigentes(uuid, date)',
+    'impulsos_ganados(uuid)', 'impulsos_disponibles(uuid, date)', 'vidas_disponibles(uuid, date)',
+    'peso_actual(uuid)', 'mejores_marcas(uuid)', 'dots_de(uuid)', 'hoy_de(uuid)', 'bloqueo_hasta(uuid)',
+  ];
+  const abiertas = [];
+  for (const f of ajenas) {
+    const r = await db.query(`select has_function_privilege('authenticated', 'public.${f}', 'execute') as si`);
+    if (r.rows[0].si) abiertas.push(f);
+  }
+  chequear('ninguna funcion con el id de otro se puede llamar con sesion', abiertas, []);
+  // Las que usa la RLS se quedan: cerrarlas romperia las lecturas de amigos.
+  const rls = await db.query(`select has_function_privilege('authenticated', 'public.son_amigos(uuid, uuid)', 'execute') as si`);
+  chequear('son_amigos sigue abierta, porque la usan las politicas', rls.rows[0].si, true);
+
+  // Pero solo contesta sobre una amistad de quien pregunta.
+  const x = await nuevoUsuario();
+  const y = await nuevoUsuario();
+  const z = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [x, y]);
+  await comoUsuario(x);
+  chequear('x pregunta por su amistad con y: si', (await db.query('select son_amigos($1, $2) as s', [x, y])).rows[0].s, true);
+  await comoUsuario(z);
+  chequear('z pregunta por la amistad de x con y: no contesta', (await db.query('select son_amigos($1, $2) as s', [x, y])).rows[0].s, false);
+  // Y las funciones de adentro siguen andando: la racha la calcula el trigger.
+  await comoUsuario(x);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 1)`, [x]);
+  chequear('la racha la sigue calculando el trigger', (await db.query('select racha_actual from profiles where id = $1', [x])).rows[0].racha_actual, 1);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

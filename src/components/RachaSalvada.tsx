@@ -48,11 +48,13 @@ export default function RachaSalvada({
   /** En cuánto queda la racha si devuelve los impulsos. Es `racha - 10`, la
    *  misma cuenta que hace la base: el precio se dice ANTES de cobrarlo. */
   rachaSiGuarda: number;
-  alGuardar: () => Promise<void>;
+  /** `false` si la base no lo guardó: la ventana no puede decir que sí. */
+  alGuardar: () => Promise<boolean>;
   alCerrar: () => void;
 }) {
   const lienzo = useRef<HTMLCanvasElement>(null);
   const [paso, setPaso] = useState<'aviso' | 'confirmar' | 'guardando' | 'guardada'>('aviso');
+  const [fallo, setFallo] = useState(false);
   // EL OBJETO QUEDA CONGELADO EN EL QUE TENÍAS CUANDO TE SALVÓ. Al devolver la
   // vida el rango puede bajar, y el `rango` que llega por props cambia con él:
   // sin esto, la ventana volvería a animar —ahora con el objeto chico— justo
@@ -84,8 +86,13 @@ export default function RachaSalvada({
 
   async function guardar() {
     setPaso('guardando');
-    await alGuardar();
-    setPaso('guardada');
+    setFallo(false);
+    // SOLO SI LA BASE LO GUARDÓ (bug del 15/9). Antes decía "quedó para después"
+    // aunque la llamada hubiera fallado; al cerrar se marcaba vista, y la vida no
+    // volvía nunca: pasados siete días ya no se puede devolver.
+    const ok = await alGuardar();
+    setFallo(!ok);
+    setPaso(ok ? 'guardada' : 'confirmar');
   }
 
   const uno = dias.length === 1;
@@ -143,6 +150,7 @@ export default function RachaSalvada({
                 anterior habría sido una amenaza al costado de un botón que
                 nadie iba a tocar. */}
             <p className="salvada-precio">{T.impulso.salvada.precio(dias.length, rachaSiGuarda)}</p>
+            {fallo && <p className="salvada-precio error-msg">{T.impulso.salvada.noSeGuardo}</p>}
             <button className="boton-solido" onClick={() => setPaso('aviso')} disabled={paso === 'guardando'}>
               {T.impulso.salvada.volver}
             </button>

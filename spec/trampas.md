@@ -787,7 +787,7 @@ Corrí `capturas` y un script suelto en paralelo, los dos entrando con el mismo
 usuario. El segundo se colgó 180 s en el login. Las sesiones de Supabase rotan
 el refresh token, y dos clientes rotándolo a la vez se invalidan entre ellos.
 → **Regla:** los recorridos de prueba van de a uno. Si hace falta paralelo, cada
-uno con su propio usuario descartable, como hace `simular-semana`.
+uno con su propio usuario descartable, como hace `simular-cuatro-semanas`.
 
 **Cada script que compila necesita SU carpeta en `.gitignore`.** `probar-exif`
 buildeaba en `.next-exif` para poder correr con el dev server prendido, y como
@@ -964,3 +964,35 @@ ni `forwards`), y `will-change` solo durante el gesto, nunca fijo. Y antes de
 animar un contenedor, preguntar si adentro puede haber algo `fixed` —hojas,
 barras ancladas, el visor, la ventana del impulso—. Si puede, se anima el hijo
 y no el contenedor. Una animación de solo `opacity` no tiene este problema.
+
+## La caza del 15/9/2026
+
+**Cerrar antes de subir lo pendiente.** `confirmar` subía la cola antes de
+preguntarle a la base; `terminar` no. Con toda la sesión sin señal —el
+subsuelo— y la red volviendo justo al tocar Terminar, la base veía cero
+series: la tomaba por un toque sin querer y **borraba el día**, con la sesión
+en cascada. Reproducido con la web contra la base real (`test:dos-apps`).
+→ **Regla:** toda llamada que decide algo con el estado de la base (cerrar,
+preguntar si sigue viva) va DESPUÉS de `vaciar`, y si algo de esa sesión sigue
+en la cola, no decide.
+
+**Una respuesta que dice "listo" sin mirar el error.** "Guardar la vida para
+después" mostraba "quedó para después" aunque la llamada hubiera fallado; al
+cerrar se marcaba vista y, pasados siete días, ya no se podía devolver. La
+foto de la nativa: el día entraba, la foto fallaba y la hoja se cerraba igual.
+→ **Regla:** una pantalla pasa a "hecho" solo con la respuesta de la base en
+la mano. Si falla, se queda donde estaba, con el dato y el aviso.
+
+**Lo guardado en el teléfono no vence solo.** La visita al gimnasio se borraba
+recién al ver que te ibas; con la app cerrada al salir, al día siguiente era la
+misma visita y el automático no arrancaba nunca más.
+→ **Regla:** todo estado del teléfono que describe "algo que está pasando"
+lleva un vencimiento, medido con el mismo reloj con que se guardó.
+
+**Una función SECURITY DEFINER con el id de otro.** Las tablas estaban
+cerradas; `calcular_racha(id, fecha)`, `descansos_vigentes`, `impulsos_*` y
+`son_amigos` no. Con los ids públicos, el calendario de cualquiera se
+reconstruía día por día (`probar-privacidad.mjs`, migración 41).
+→ **Regla:** una función que recibe `p_user` y lee por encima de la RLS nace
+con `revoke ... from public, anon, authenticated`. Si la usa una política, no
+se puede cerrar: se acota a que `auth.uid()` sea una de las puntas.
