@@ -22,7 +22,16 @@ type Celda = { fecha: string; dia: number; estado: Estado };
  * Los descansos se muestran con la configuración que regía CADA día, no con
  * la de hoy: si no, un mes viejo se vería con la rutina actual, que es mentira.
  */
-export default function CalendarioDias({ alCambiar }: { alCambiar: () => void }) {
+export default function CalendarioDias({
+  alCambiar,
+  porRevisar = new Set(),
+  alRevisar,
+}: {
+  alCambiar: () => void;
+  /** Días con pesos anotados antes de los modos (migración 39): llevan una marca. */
+  porRevisar?: Set<string>;
+  alRevisar?: () => void;
+}) {
   const [supabase] = useState(() => crearCliente());
   const [configs, setConfigs] = useState<ConfigDescanso[]>([]);
   const hoy = hoyISO();
@@ -127,7 +136,7 @@ export default function CalendarioDias({ alCambiar }: { alCambiar: () => void })
           {celdas.map((c) => (
             <button
               key={c.fecha}
-              className={`cal-dia ${c.estado} ${c.fecha === hoy ? 'hoy' : ''}`}
+              className={`cal-dia ${c.estado} ${c.fecha === hoy ? 'hoy' : ''} ${porRevisar.has(c.fecha) ? 'cal-revisar' : ''}`}
               onClick={() => setAbierto(c.fecha)}
               disabled={c.estado === 'futuro'}
               aria-label={T.calendario.verDia(c.dia)}
@@ -143,6 +152,9 @@ export default function CalendarioDias({ alCambiar }: { alCambiar: () => void })
           <span><i className="cal-hecho" />{T.calendario.leyendaHecho}</span>
           <span><i className="cal-vacio" />{T.calendario.leyendaVacio}</span>
           <span><i className="cal-descanso" />{T.calendario.leyendaDescanso}</span>
+          {porRevisar.size > 0 && (
+            <span><i className="cal-marca-revisar" />{T.volumen.leyendaRevisar}</span>
+          )}
         </div>
 
         <p className="nota-privada">{T.calendario.nota}</p>
@@ -165,6 +177,7 @@ export default function CalendarioDias({ alCambiar }: { alCambiar: () => void })
             cargar();
             alCambiar();
           }}
+          alRevisar={alRevisar}
           alCerrar={() => setAbierto(null)}
         />
       )}

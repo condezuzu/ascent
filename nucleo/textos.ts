@@ -646,6 +646,47 @@ export const T = {
   },
 
   // ---------------------------------------------------------------
+  // EL VOLUMEN, en la pestaña Entrenamiento y en el resumen de cada día. Ver
+  // `nucleo/volumen.ts`. Describe, no juzga y no receta: ni "bien", ni "bajó",
+  // ni "deberías".
+  volumen: {
+    semanas: 'Volumen por semana',
+    // Lo que el número es y lo que no es, dicho una vez debajo del gráfico.
+    nota: 'Peso por series, sin repeticiones. Sirve para comparar tus semanas entre sí.',
+    todo: 'Todo',
+    enKilos: 'Kilos',
+    enSeries: 'Series',
+    semanaDel: (fecha: string) => `Semana del ${fecha}`,
+    kilosYSeries: (kilos: string, unidad: string, series: number) =>
+      `${kilos} ${unidad} · ${series === 1 ? '1 serie' : `${series} series`}`,
+    soloSeries: (series: number) => (series === 1 ? '1 serie' : `${series} series`),
+    semanaVacia: 'Nada anotado esa semana.',
+    // Sin nada: se dice qué lo llena, sin pedirlo.
+    vacio: 'Aparece cuando eliges en qué estás al entrenar.',
+
+    maximos: 'Peso máximo por ejercicio',
+    verTodos: (n: number) => `Ver los ${n}`,
+    verMenos: 'Ver menos',
+
+    dejados: 'Dónde no estás entrenando',
+    dejado: (grupo: string, semanas: number, fecha: string) =>
+      `${grupo.charAt(0).toUpperCase()}${grupo.slice(1)}: nada anotado desde el ${fecha} (${semanas} semanas).`,
+
+    // En el resumen de un día.
+    porMusculo: 'Volumen por músculo',
+
+    // LOS PESOS DE ANTES DE LOS MODOS (migración 39). Una vez, con lo que hay
+    // que hacer; después quedan marcados en el calendario.
+    revisarAviso: (n: number) =>
+      `${n === 1 ? 'Un día tiene' : `${n} días tienen`} pesos anotados antes de que existieran los modos. Si anotaste mancuernas sumando las dos, quedaron el doble: revísalos.`,
+    revisarEntendido: 'Entendido',
+    revisarTitulo: 'Por revisar',
+    revisarNota: 'Se anotó antes de que existiera la etiqueta. ¿Qué significaba el número?',
+    estaBien: 'Está bien así',
+    leyendaRevisar: 'por revisar',
+  },
+
+  // ---------------------------------------------------------------
   descanso: {
     // Antes decía "Saltar" y saltaba de verdad: el que abría esta pantalla
     // para cambiar la duración y quería volver perdía el descanso. La salida

@@ -5857,6 +5857,235 @@ console.log('\n84. El catalogo y el telefono dicen lo mismo del modo');
   chequear('los cuatro modos estan en uso', [...new Set(filas.map((f) => f.carga))].sort(), ['lastre', 'par', 'total', 'una']);
   chequear('los del telefono son los de la base', [...C.CARGAS].sort(), ['lastre', 'par', 'total', 'una']);
 }
+console.log('\n85. Los pesos de antes de los modos: marcados y revisables');
+{
+  const mig = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'migracion-39-revisar-cargas-viejas.sql'), 'utf8').replace(/\r\n/g, '\n');
+  const i = mig.indexOf('update public.sesiones s');
+  const marcar = mig.slice(i, mig.indexOf('   );', i) + 5);
+
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const s = (await db.query('select iniciar_sesion() as v')).rows[0].v;
+  const id = s.id ?? (await db.query('select id from sesiones where user_id = $1 order by inicio desc limit 1', [u])).rows[0].id;
+  const bloques = async (sid = id) => (await db.query('select bloques from sesiones where id = $1', [sid])).rows[0].bloques;
+  const poner = async (b, inicio, sid = id) =>
+    db.query('update sesiones set bloques = $2::jsonb, inicio = $3::timestamptz where id = $1', [sid, JSON.stringify(b), inicio]);
+
+  const viejos = [
+    { ejercicio: 'curl_mancuernas', series: 2, pesos: [24, 24], carga: 'par' }, // el riesgo del doble
+    { ejercicio: 'sentadilla', series: 3, pesos: [100, 100, 100], carga: 'total' }, // barra: no hay duda
+    { ejercicio: 'peso_muerto_rumano', series: 1, pesos: [40], carga: 'total' }, // ambiguo
+    { ejercicio: 'press_mancuernas', series: 2 }, // sin pesos: nada que revisar
+  ];
+  await poner(viejos, '2026-09-14T18:00:00-03');
+  await db.query(marcar);
+  let b = await bloques();
+  chequear(
+    'se marcan el par y el ambiguo, no la barra ni el que no tiene pesos',
+    b.map((x) => x.carga_supuesta === true),
+    [true, false, true, false]
+  );
+  chequear('no cambia ningun peso ni ningun modo', b.map((x) => [x.pesos ?? null, x.carga ?? null]), viejos.map((x) => [x.pesos ?? null, x.carga ?? null]));
+  await db.query(marcar);
+  chequear('correrlo dos veces no cambia nada', await bloques(), b);
+
+  // EL CORTE: despues del 15 de septiembre en Uruguay no se marca.
+  {
+    await poner([{ ejercicio: 'curl_mancuernas', series: 1, pesos: [24], carga: 'par' }], '2026-09-16T08:00:00-03');
+    await db.query(marcar);
+    chequear('una sesion del 16 no se marca', (await bloques())[0].carga_supuesta, undefined);
+    await poner([{ ejercicio: 'curl_mancuernas', series: 1, pesos: [24], carga: 'par' }], '2026-09-15T23:30:00-03');
+    await db.query(marcar);
+    // Del 15 a la noche SI, salvo que "ahora" sea antes: el corte nunca pasa de now().
+    const seMarca = Date.parse('2026-09-15T23:30:00-03:00') < Math.min(Date.now(), Date.parse('2026-09-16T00:00:00-03:00'));
+    chequear('una del 15 a la noche, si ya paso', (await bloques())[0].carga_supuesta === true, seMarca);
+    await poner(viejos, '2026-09-14T18:00:00-03');
+    await db.query(marcar);
+    b = await bloques();
+  }
+
+  const revisar = async (orden, carga) =>
+    (await db.query('select revisar_carga($1, $2, $3) as v', [id, orden, carga])).rows[0].v;
+
+  // ANOTE LA SUMA: se pasa a total, el numero no se toca.
+  let r = await revisar(1, 'total');
+  chequear('revisar cambia el modo y saca la marca', [r[0].carga, 'carga_supuesta' in r[0], r[0].pesos], ['total', false, [24, 24]]);
+  // ESTABA BIEN: el mismo modo que tenia.
+  r = await revisar(3, 'total');
+  chequear('elegir el mismo modo saca la marca', [r[2].carga, 'carga_supuesta' in r[2]], ['total', false]);
+  // No es una puerta para reescribir cualquier bloque.
+  r = await revisar(2, 'par');
+  chequear('un bloque sin marca no se toca', r[1].carga, 'total');
+  chequear('basura no hace nada', await revisar(1, 'discos'), null);
+  r = await revisar(99, 'par');
+  chequear('un orden que no existe no rompe nada', r, null);
+
+  // ES DE ESTA PERSONA
+  {
+    await poner(viejos, '2026-09-14T18:00:00-03');
+    await db.query(marcar);
+    const otro = await nuevoUsuario();
+    await comoUsuario(otro);
+    chequear('otro no revisa mis bloques', await revisar(1, 'total'), null);
+    await comoUsuario(u);
+    chequear('y siguen marcados', (await bloques())[0].carga_supuesta, true);
+  }
+  {
+    await db.exec('set role anon');
+    let bloqueada = null;
+    try {
+      await db.query('select revisar_carga($1, 1, $2)', [id, 'total']);
+      bloqueada = false;
+    } catch (e) {
+      bloqueada = /permission denied/i.test(e.message);
+    }
+    await db.exec('reset role');
+    chequear('sin sesion no se revisa nada', bloqueada, true);
+  }
+
+  // EL TELEFONO LEE LA MARCA, y el resumen del dia la ofrece por bloque.
+  {
+    const { resumenDelDia } = await import('../nucleo/resumenDia.ts');
+    const res = resumenDelDia({
+      log: { es_descanso: false },
+      sesiones: [{ id, inicio: '2026-09-14T18:00:00Z', fin: null, estado: 'abandonada', series: 8, bloques: await bloques() }],
+      catalogo: new Map([['curl_mancuernas', 'Curl con mancuernas'], ['sentadilla', 'Sentadilla'], ['peso_muerto_rumano', 'Peso muerto rumano']]),
+      esFuturo: false,
+      esDescansoConfigurado: false,
+      ejercicioSinNombre: '?',
+    });
+    chequear('el resumen ofrece revisar los dos marcados, con su orden', res.porRevisar.map((x) => [x.ejercicio, x.orden]), [['curl_mancuernas', 1], ['peso_muerto_rumano', 3]]);
+    const sinId = resumenDelDia({
+      log: { es_descanso: false },
+      sesiones: [{ inicio: '2026-09-14T18:00:00Z', fin: null, estado: 'abandonada', series: 8, bloques: await bloques() }],
+      catalogo: new Map(),
+      esFuturo: false,
+      esDescansoConfigurado: false,
+      ejercicioSinNombre: '?',
+    });
+    chequear('sin id de sesion no se ofrece revisar', sinId.porRevisar, []);
+  }
+}
+
+console.log('\n86. El volumen');
+{
+  const V = await import('../nucleo/volumen.ts');
+  const catalogo = new Map([
+    ['sentadilla', { nombre: 'Sentadilla', grupo: 'piernas' }],
+    ['zancadas', { nombre: 'Zancadas', grupo: 'piernas' }],
+    ['press_banca', { nombre: 'Press de banca', grupo: 'pecho' }],
+    ['press_mancuernas', { nombre: 'Press con mancuernas', grupo: 'pecho' }],
+    ['dominadas_lastradas', { nombre: 'Dominadas con lastre', grupo: 'espalda' }],
+    ['sentadilla_goblet', { nombre: 'Sentadilla goblet', grupo: 'piernas' }],
+  ]);
+
+  // LOS KILOS SON LOS QUE SE MOVIERON, con el modo del bloque.
+  chequear('par: 30 por mancuerna son 60 por serie', V.kilosDelBloque({ pesos: [30, 30], carga: 'par' }), 120);
+  chequear('una: la goblet de 30 son 30', V.kilosDelBloque({ pesos: [30, null], carga: 'una' }), 30);
+  chequear('lastre: sin peso corporal', V.kilosDelBloque({ pesos: [20, 20, 20], carga: 'lastre' }), 60);
+  chequear('las series sin peso no suman kilos', V.kilosDelBloque({ pesos: [null, null], carga: 'total' }), 0);
+
+  // POR MUSCULO, en el orden de la interfaz, y las series cuentan sin peso.
+  {
+    const bloques = V.leerBloques([
+      { ejercicio: 'sentadilla', series: 3, pesos: [100, 100, 100], carga: 'total' },
+      { ejercicio: 'press_mancuernas', series: 2, pesos: [30, 30], carga: 'par' },
+      { ejercicio: 'zancadas', series: 2 },
+      { ejercicio: 'ya_no_existe', series: 5, pesos: [50, 50, 50, 50, 50] },
+    ]);
+    chequear(
+      'volumen por musculo de un dia',
+      V.volumenPorGrupo(bloques, catalogo),
+      [
+        { grupo: 'pecho', kilos: 120, series: 2 },
+        { grupo: 'piernas', kilos: 300, series: 5 },
+      ]
+    );
+  }
+
+  // RECLASIFICAR EL CATALOGO NO CAMBIA EL VOLUMEN: el modo es del bloque.
+  {
+    const sesion = [{ fecha: '2026-09-10', bloques: [{ ejercicio: 'sentadilla_goblet', series: 2, pesos: [30, 30], carga: 'una' }] }];
+    const antes = V.volumenPorSemana(sesion, catalogo, { hoy: '2026-09-15', semanas: 2 });
+    chequear('la goblet de la semana pasada son 60', antes.map((s) => s.kilos), [60, 0]);
+    // El catalogo no se lee para los kilos: el mismo bloque da lo mismo.
+    chequear('el volumen no lee el modo del catalogo', V.volumenPorSemana(sesion, new Map([['sentadilla_goblet', { nombre: 'x', grupo: 'piernas' }]]), { hoy: '2026-09-15', semanas: 2 }), antes);
+  }
+
+  // LAS SEMANAS: de lunes a domingo, la vieja primero, las vacias en su lugar.
+  {
+    chequear('el lunes de un martes', V.lunesDe('2026-09-15'), '2026-09-14');
+    chequear('el lunes de un domingo es el de antes', V.lunesDe('2026-09-20'), '2026-09-14');
+    chequear('el lunes de un lunes', V.lunesDe('2026-09-14'), '2026-09-14');
+    const sesiones = [
+      { fecha: '2026-09-14', bloques: [{ ejercicio: 'press_banca', series: 3, pesos: [60, 60, 60], carga: 'total' }] },
+      { fecha: '2026-09-13', bloques: [{ ejercicio: 'sentadilla', series: 2, pesos: [100, 100], carga: 'total' }] },
+      { fecha: '2026-08-31', bloques: [{ ejercicio: 'sentadilla', series: 4 }] },
+      { fecha: '2026-06-01', bloques: [{ ejercicio: 'sentadilla', series: 9, pesos: [1, 1, 1, 1, 1, 1, 1, 1, 1] }] }, // fuera
+    ];
+    const semanas = V.volumenPorSemana(sesiones, catalogo, { hoy: '2026-09-15', semanas: 3 });
+    chequear('tres semanas con la vacia en su lugar', semanas, [
+      { desde: '2026-08-31', kilos: 0, series: 4 },
+      { desde: '2026-09-07', kilos: 200, series: 2 },
+      { desde: '2026-09-14', kilos: 180, series: 3 },
+    ]);
+    chequear(
+      'filtrado por musculo',
+      V.volumenPorSemana(sesiones, catalogo, { hoy: '2026-09-15', semanas: 3, grupo: 'pecho' }).map((s) => s.series),
+      [0, 0, 3]
+    );
+  }
+
+  // EL MAXIMO se compara por kilos movidos, y la fecha es la PRIMERA vez.
+  {
+    const sesiones = [
+      { fecha: '2026-09-01', bloques: [{ ejercicio: 'zancadas', series: 1, pesos: [60], carga: 'total' }] },
+      { fecha: '2026-09-05', bloques: [{ ejercicio: 'zancadas', series: 2, pesos: [30, 32], carga: 'par' }] },
+      { fecha: '2026-09-08', bloques: [{ ejercicio: 'zancadas', series: 1, pesos: [32], carga: 'par' }] },
+      { fecha: '2026-09-12', bloques: [{ ejercicio: 'zancadas', series: 3 }] },
+      { fecha: '2026-09-10', bloques: [{ ejercicio: 'dominadas_lastradas', series: 2, pesos: [20, 25], carga: 'lastre' }] },
+    ];
+    const m = V.maximosPorEjercicio(sesiones, catalogo);
+    chequear('64 por dos mancuernas le gana a 60 con barra, aunque 32 < 60', [m[0].peso, m[0].carga, m[0].kilos], [32, 'par', 64]);
+    chequear('la fecha es la primera vez que se llego', m[0].fecha, '2026-09-05');
+    chequear('ordenado por lo ultimo que hiciste', m.map((x) => x.ejercicio), ['zancadas', 'dominadas_lastradas']);
+    chequear('el lastre se ve como se escribio', [m[1].peso, m[1].kilos], [25, 25]);
+  }
+
+  // DONDE NO ESTAS ENTRENANDO
+  {
+    const sesiones = [
+      { fecha: '2026-07-20', bloques: [{ ejercicio: 'sentadilla', series: 3 }] },
+      { fecha: '2026-09-10', bloques: [{ ejercicio: 'press_banca', series: 3 }] },
+    ];
+    chequear(
+      'piernas: nada desde julio',
+      V.gruposDejados(sesiones, catalogo, { hoy: '2026-09-15', semanas: 6 }),
+      [{ grupo: 'piernas', ultima: '2026-07-20', semanas: 8 }]
+    );
+    chequear(
+      'si en esas semanas no se anoto nada, no se dice nada',
+      V.gruposDejados([sesiones[0]], catalogo, { hoy: '2026-09-15', semanas: 6 }),
+      []
+    );
+    chequear(
+      'con 8 semanas de umbral todavia se dice',
+      V.gruposDejados(sesiones, catalogo, { hoy: '2026-09-15', semanas: 8 }).length,
+      1
+    );
+    chequear(
+      'con umbral mas largo que la ausencia, nada',
+      V.gruposDejados(sesiones, catalogo, { hoy: '2026-09-15', semanas: 9 }),
+      []
+    );
+  }
+
+  // Los grupos del volumen son los del selector.
+  {
+    const { ZONAS } = await import('../nucleo/ejercicios.ts');
+    chequear('el orden de grupos cubre todas las zonas', [...V.ORDEN_GRUPOS].sort(), Object.values(ZONAS).flat().sort());
+  }
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

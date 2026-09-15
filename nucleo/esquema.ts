@@ -25,6 +25,8 @@ export const REQUIERE = {
   cierrePorInactividad: 37,
   /** Qué significa el número del peso: el modo en cada bloque y la pregunta de la primera vez. */
   cargaDelPeso: 38,
+  /** Revisar los pesos anotados antes de que existieran los modos. */
+  revisarCargas: 39,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

@@ -444,7 +444,9 @@ create table public.sesiones (
   -- única verdad del conteo, así que con `bloques` en [] la app funciona
   -- exactamente igual que antes — que es lo que hace que se pueda ignorar sin
   -- perder nada. Desde la 36 un bloque puede llevar `pesos` (en kilos) y,
-  -- con ellos, desde la 38 `carga`: qué significa el número ese día.
+  -- con ellos, desde la 38 `carga`: qué significa el número ese día. La 39
+  -- marcó con `carga_supuesta` los que se anotaron antes de la etiqueta y
+  -- pueden estar mal; `revisar_carga` saca la marca.
   bloques jsonb not null default '[]'::jsonb,
   -- La última vez que pasó algo: una serie, un cambio de ejercicio o de peso,
   -- o el FIN de un descanso corriendo (migración 37). La sesión se cierra sola
@@ -1880,6 +1882,49 @@ $$;
 revoke execute on function public.como_arranca(text) from public, anon;
 grant execute on function public.como_arranca(text) to authenticated;
 
+-- -------------------------------------------------------------
+-- REVISAR LOS PESOS DE ANTES DE LOS MODOS (migración 39)
+-- -------------------------------------------------------------
+-- Desde el resumen del día: se elige qué significaba el número y la marca se
+-- va. Elegir el mismo modo que tenía es "estaba bien", y también la saca.
+--
+-- Arreglar "anoté la suma" NO toca el número: se cambia el modo a `total`.
+-- 40 en total son exactamente lo que se levantó, y el número queda como se
+-- escribió ese día.
+--
+-- `p_orden` es la posición del bloque en la lista, desde 1. Solo toca bloques
+-- marcados: no es una puerta para reescribir la historia de cualquier bloque.
+create or replace function public.revisar_carga(p_sesion uuid, p_orden int, p_carga text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  guardado jsonb;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre') then return null; end if;
+
+  update sesiones s
+     set bloques = (
+       select jsonb_agg(
+                case when b.orden = p_orden and (b.valor ? 'carga_supuesta')
+                     then (b.valor - 'carga_supuesta') || jsonb_build_object('carga', p_carga)
+                     else b.valor
+                end order by b.orden)
+         from jsonb_array_elements(s.bloques) with ordinality as b(valor, orden)
+     )
+   where s.id = p_sesion and s.user_id = uid
+     and jsonb_typeof(s.bloques) = 'array'
+     and jsonb_array_length(s.bloques) >= p_orden
+     and p_orden >= 1
+   returning bloques into guardado;
+
+  return guardado;
+end;
+$$;
+
+revoke execute on function public.revisar_carga(uuid, int, text) from public, anon;
+grant execute on function public.revisar_carga(uuid, int, text) to authenticated;
+
 
 create or replace function public.mi_sesion()
 returns jsonb language plpgsql security definer set search_path = public as $$
@@ -2490,7 +2535,7 @@ grant execute on function public.olvidar_suscripcion_push(text) to service_role;
 
 -- LA VERSIÓN DEL ESQUEMA (migración 37). Cada migración la reescribe con su número.
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 38; $$;
+returns int language sql immutable as $$ select 39; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

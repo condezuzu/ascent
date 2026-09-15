@@ -19,6 +19,7 @@ import SeccionSesiones from '@/components/SeccionSesiones';
 import GraficoPeso from '@/components/GraficoPeso';
 import AnotarPeso from '@/components/AnotarPeso';
 import CalendarioDias from '@/components/CalendarioDias';
+import SeccionVolumen from '@/components/SeccionVolumen';
 import { T } from '@nucleo/textos';
 
 export default function Estadisticas() {
@@ -43,6 +44,10 @@ export default function Estadisticas() {
   // una pantalla que aparece en una pestaña y salta a la otra es peor que un
   // toque de más.
   const [pestana, setPestana] = useState<'general' | 'entrenamiento'>('general');
+  // Lo que comparten el volumen y el calendario: qué días hay por revisar, y
+  // un contador que avisa que algo se tocó para volver a pedir.
+  const [porRevisar, setPorRevisar] = useState<Set<string>>(new Set());
+  const [recarga, setRecarga] = useState(0);
 
   // Con nombre y no en un efecto anónimo: anotar el peso tiene que poder
   // volver a pedir los datos para que la tendencia se dibuje al toque.
@@ -152,9 +157,21 @@ export default function Estadisticas() {
 
         {pestana === 'entrenamiento' && (
           <>
-            {/* El calendario, con el resumen de cada día adentro. Acá va a
-                crecer lo del peso por serie: máximos, volumen, estancamiento. */}
-            <CalendarioDias alCambiar={cargar} />
+            {/* El volumen arriba y el calendario abajo: primero qué venís
+                haciendo, después cada día. */}
+            <SeccionVolumen
+              recarga={recarga}
+              alSaberPorRevisar={setPorRevisar}
+              alRevisar={() => setRecarga((n) => n + 1)}
+            />
+            <CalendarioDias
+              alCambiar={() => {
+                cargar();
+                setRecarga((n) => n + 1);
+              }}
+              porRevisar={porRevisar}
+              alRevisar={() => setRecarga((n) => n + 1)}
+            />
           </>
         )}
 

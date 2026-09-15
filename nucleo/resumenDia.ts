@@ -13,7 +13,8 @@
  * por ubicación sin ninguna sesión.
  */
 
-import { cargaValida, type Carga } from './carga.ts';
+import type { Carga } from './carga.ts';
+import { leerBloques, volumenPorGrupo, type VolumenDeGrupo } from './volumen.ts';
 
 export type EstadoDelDia = 'entrenado' | 'descanso' | 'sin-registrar' | 'futuro';
 
@@ -23,6 +24,8 @@ export type LogDelDia = {
 };
 
 export type SesionDelDia = {
+  /** Para revisar un bloque (migración 39). Sin id no se ofrece revisar. */
+  id?: string;
   inicio: string;
   fin: string | null;
   estado: string;
@@ -66,30 +69,28 @@ export type ResumenDelDia = {
   ejercicios: EjercicioDelDia[];
   /** Series contadas que no quedaron anotadas en ningún ejercicio. */
   sinEjercicio: number;
+  /**
+   * EL VOLUMEN POR MÚSCULO del día (`volumen.ts`). Vacío si no se pasó de qué
+   * grupo es cada ejercicio. Se muestra solo si algún grupo tiene kilos: sin
+   * pesos, las series ya están dichas arriba, ejercicio por ejercicio.
+   */
+  volumen: VolumenDeGrupo[];
+  /**
+   * LOS BLOQUES POR REVISAR (migración 39): pesos anotados antes de que
+   * existieran los modos, que pueden haber quedado el doble. Uno por bloque y
+   * no por ejercicio, porque se corrigen de a uno.
+   */
+  porRevisar: BloquePorRevisar[];
 };
 
-/** Los bloques vienen de la base como JSON: se leen sin confiar en la forma. */
-function bloquesDe(crudo: unknown): { ejercicio: string; series: number; pesos: (number | null)[]; carga: Carga }[] {
-  if (!Array.isArray(crudo)) return [];
-  return crudo.flatMap((b) => {
-    if (!b || typeof b !== 'object') return [];
-    const e = (b as { ejercicio?: unknown }).ejercicio;
-    const s = Number((b as { series?: unknown }).series);
-    if (typeof e !== 'string' || !Number.isFinite(s) || s <= 0) return [];
-    const n = Math.floor(s);
-    const crudos = (b as { pesos?: unknown }).pesos;
-    const lista = Array.isArray(crudos) ? crudos : [];
-    // Uno por serie: lo que venga de más se ignora y lo que falte es null.
-    const pesos = Array.from({ length: n }, (_, i) => {
-      const v = Number(lista[i]);
-      return lista[i] !== null && Number.isFinite(v) && v > 0 ? v : null;
-    });
-    // Un bloque con pesos sin modo es de antes de la 38, cuando todavía no se
-    // le había puesto: el número se leía como un total.
-    const carga = cargaValida((b as { carga?: unknown }).carga) ?? 'total';
-    return [{ ejercicio: e, series: n, pesos, carga }];
-  });
-}
+export type BloquePorRevisar = {
+  sesion: string;
+  orden: number;
+  ejercicio: string;
+  nombre: string;
+  pesos: (number | null)[];
+  carga: Carga;
+};
 
 export function resumenDelDia({
   log,
@@ -98,6 +99,7 @@ export function resumenDelDia({
   esFuturo,
   esDescansoConfigurado,
   ejercicioSinNombre,
+  grupos,
 }: {
   log: LogDelDia | null;
   sesiones: SesionDelDia[];
@@ -107,6 +109,8 @@ export function resumenDelDia({
   esDescansoConfigurado: boolean;
   /** El nombre de un ejercicio que ya no está en el catálogo. */
   ejercicioSinNombre: string;
+  /** id → grupo muscular, para el volumen por músculo. */
+  grupos?: Map<string, string>;
 }): ResumenDelDia {
   let estado: EstadoDelDia;
   if (esFuturo) estado = 'futuro';
@@ -125,6 +129,8 @@ export function resumenDelDia({
   let series = 0;
   let enCurso = false;
   const porEjercicio = new Map<string, { series: number; pesos: (number | null)[]; cargas: Carga[] }>();
+  const todos: ReturnType<typeof leerBloques> = [];
+  const porRevisar: BloquePorRevisar[] = [];
 
   for (const s of ordenadas) {
     series += Math.max(0, Math.floor(Number(s.series) || 0));
@@ -136,7 +142,18 @@ export function resumenDelDia({
         conFin++;
       }
     }
-    for (const b of bloquesDe(s.bloques)) {
+    for (const b of leerBloques(s.bloques)) {
+      todos.push(b);
+      if (b.supuesta && s.id) {
+        porRevisar.push({
+          sesion: s.id,
+          orden: b.orden,
+          ejercicio: b.ejercicio,
+          nombre: catalogo.get(b.ejercicio) ?? ejercicioSinNombre,
+          pesos: b.pesos,
+          carga: b.carga,
+        });
+      }
       // Un Map conserva el orden de la PRIMERA vez que aparece la clave, que
       // es justo lo que se quiere: press de banca, sentadilla, y si volviste
       // a banca al final, suma a la fila de banca y no crea otra.
@@ -169,5 +186,12 @@ export function resumenDelDia({
     // Nunca negativo: si los bloques suman más que el total —el total se
     // corrigió a mano después—, el total manda y no hay "series sin anotar".
     sinEjercicio: Math.max(0, series - anotadas),
+    volumen: grupos
+      ? volumenPorGrupo(
+          todos,
+          new Map([...grupos].map(([id, grupo]) => [id, { nombre: catalogo.get(id) ?? id, grupo }]))
+        )
+      : [],
+    porRevisar,
   };
 }

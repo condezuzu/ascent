@@ -7,9 +7,12 @@ import { miUsuario } from '@/lib/supabase/quienSoy';
 import { DIAS_SEMANA_LARGO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { duracionLinda } from '@nucleo/sesiones';
-import { pesoCorto, type Unidad } from '@nucleo/peso';
+import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { resumenDelDia, type ResumenDelDia, type SesionDelDia } from '@nucleo/resumenDia';
-import { claveDeEtiqueta, gruposDePesos } from '@nucleo/carga';
+import { claveDeEtiqueta, gruposDePesos, type Carga } from '@nucleo/carga';
+import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
+import { usarVersionDelEsquema } from '@/lib/esquema';
+import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
 
 type Destino = 'fui' | 'descanso' | 'nada';
@@ -30,10 +33,13 @@ type Destino = 'fui' | 'descanso' | 'nada';
 export default function HojaDelDia({
   fecha,
   alCambiar,
+  alRevisar,
   alCerrar,
 }: {
   fecha: string;
   alCambiar: () => void;
+  /** Se revisó el modo de un bloque viejo (migración 39). No es corregir el día. */
+  alRevisar?: () => void;
   alCerrar: () => void;
 }) {
   const [supabase] = useState(() => crearCliente());
@@ -46,6 +52,7 @@ export default function HojaDelDia({
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
   const [unidad, setUnidad] = useState<Unidad>('kg');
+  const versionEsquema = usarVersionDelEsquema();
 
   const esFuturo = fecha > hoyISO();
 
@@ -56,13 +63,13 @@ export default function HojaDelDia({
       if (!uid) return;
       const [{ data: log }, { data: catalogo }, { data: cfgs }, { data: perfil }] = await Promise.all([
         supabase.from('logs').select('id, es_descanso, origen').eq('user_id', uid).eq('fecha', fecha).maybeSingle(),
-        supabase.from('ejercicios').select('id, nombre'),
+        supabase.from('ejercicios').select('id, nombre, grupo'),
         supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
         supabase.from('profiles').select('unidad_peso').eq('id', uid).maybeSingle(),
       ]);
       const [{ data: sesiones }, { data: fotos }] = log
         ? await Promise.all([
-            supabase.from('sesiones').select('inicio, fin, estado, series, bloques').eq('log_id', log.id),
+            supabase.from('sesiones').select('id, inicio, fin, estado, series, bloques').eq('log_id', log.id),
             supabase.from('photos').select('storage_path').eq('log_id', log.id).limit(1),
           ])
         : [{ data: [] }, { data: [] }];
@@ -78,6 +85,7 @@ export default function HojaDelDia({
           esFuturo,
           esDescansoConfigurado: esDiaDeDescanso((cfgs ?? []) as ConfigDescanso[], fecha),
           ejercicioSinNombre: T.resumen.ejercicioSinNombre,
+          grupos: new Map((catalogo ?? []).map((e) => [e.id as string, e.grupo as string])),
         })
       );
 
@@ -97,6 +105,19 @@ export default function HojaDelDia({
   function cerrar() {
     setCerrando(true);
     setTimeout(alCerrar, 200);
+  }
+
+  /**
+   * Qué significaba el número de un bloque anotado antes de los modos. Elegir
+   * el que ya tenía es "estaba bien": también saca la marca.
+   */
+  async function revisar(sesion: string, orden: number, carga: Carga) {
+    if (!disponible('revisarCargas', versionEsquema)) return;
+    setError('');
+    const { error: e } = await supabase.rpc('revisar_carga', { p_sesion: sesion, p_orden: orden, p_carga: carga });
+    if (e) return setError(T.calendario.noSeAgrego);
+    setVersion((v) => v + 1);
+    alRevisar?.();
   }
 
   const actual: Destino | null =
@@ -214,6 +235,59 @@ export default function HojaDelDia({
                     <span className="cuantas">{T.resumen.series(resumen.sinEjercicio)}</span>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* EL VOLUMEN POR MÚSCULO, solo si hay kilos: sin pesos, las
+                series ya están dichas arriba, ejercicio por ejercicio, y una
+                tabla de ceros sería el mismo dato peor dicho. Sin gráficos ni
+                comparaciones con otros días: un día no tiene tendencia. */}
+            {resumen.volumen.some((v) => v.kilos > 0) && (
+              <div className="dia-ejercicios dia-volumen">
+                <h3>{T.volumen.porMusculo}</h3>
+                {resumen.volumen.map((v) => (
+                  <div className="fila" key={v.grupo}>
+                    <span className="nombre capitalizado">{v.grupo}</span>
+                    <span className="cuantas">
+                      {v.kilos > 0
+                        ? T.volumen.kilosYSeries(
+                            Math.round(deKilos(v.kilos, unidad)).toLocaleString('es-UY'),
+                            unidad,
+                            v.series
+                          )
+                        : T.volumen.soloSeries(v.series)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* LOS PESOS DE ANTES DE LOS MODOS (migración 39). Uno por bloque:
+                se elige qué significaba el número, o "está bien así". */}
+            {resumen.porRevisar.length > 0 && disponible('revisarCargas', versionEsquema) && (
+              <div className="dia-revisar">
+                <h3>{T.volumen.revisarTitulo}</h3>
+                <p className="nota-privada">{T.volumen.revisarNota}</p>
+                {resumen.porRevisar.map((b) => (
+                  <div className="fila-revisar" key={`${b.sesion}:${b.orden}`}>
+                    <span className="nombre">
+                      {b.nombre}
+                      <span className="dia-pesos">
+                        {b.pesos.map((p) => (p === null ? T.sesion.sinPeso : pesoCorto(p, unidad))).join(', ')} {unidad}
+                      </span>
+                    </span>
+                    <span className="acciones">
+                      <EtiquetaDeCarga
+                        carga={b.carga}
+                        ejercicio={b.ejercicio}
+                        alElegir={(c) => revisar(b.sesion, b.orden, c)}
+                      />
+                      <button className="boton-texto" onClick={() => revisar(b.sesion, b.orden, b.carga)}>
+                        {T.volumen.estaBien}
+                      </button>
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
 
