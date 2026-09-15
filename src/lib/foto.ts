@@ -1,3 +1,4 @@
+import { CALIDAD_FOTO, medidasParaSubir } from '@nucleo/foto';
 /**
  * PREPARAR UNA FOTO ANTES DE SUBIRLA.
  *
@@ -32,11 +33,9 @@
  * arrastra la misma deuda.
  */
 
-// El lado largo al que se achica. Una foto de progreso mirada en un teléfono
-// no necesita los 4000 px del sensor, y subir doce megas por un subsuelo con
-// mala señal es la forma más segura de que la foto no llegue nunca.
-const LADO_MAXIMO = 1600;
-const CALIDAD = 0.86;
+// Los números viven en el núcleo: la app nativa prepara la foto con otra
+// herramienta y tiene que dar el mismo tamaño.
+const CALIDAD = CALIDAD_FOTO;
 
 export type FotoLista =
   | { ok: true; blob: Blob; tipo: 'image/jpeg' }
@@ -75,9 +74,7 @@ export async function prepararFoto(archivo: File): Promise<FotoLista> {
     const { width: w0, height: h0 } = fuente;
     if (!w0 || !h0) return { ok: false };
 
-    const escala = Math.min(1, LADO_MAXIMO / Math.max(w0, h0));
-    const w = Math.round(w0 * escala);
-    const h = Math.round(h0 * escala);
+    const { ancho: w, alto: h } = medidasParaSubir(w0, h0);
 
     const lienzo = document.createElement('canvas');
     lienzo.width = w;

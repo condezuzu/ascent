@@ -443,6 +443,27 @@ ese valor y la cola queda vacía.
 la pantalla bloqueada. `expo-notifications` no funciona en el navegador. Es la
 primera prueba de N4.
 
+### Mientras llega la cuenta de Apple (2026-09-15)
+
+Adelantado lo que no bloquea entrenar:
+
+- **El sonido del descanso** se prende en Ajustes nativo, con la duración por
+  omisión al lado. Es del aparato, como en la web.
+- **La ventana de las vidas** ("La racha sigue"). Mismas reglas y MISMA marca
+  de "ya vista" (`CLAVE_VIDA_VISTA`, en el núcleo): si cada app tuviera la
+  suya, el mismo teléfono anunciaría dos veces la misma vida. Sin el gesto del
+  cuerpo celeste, que es el motor.
+- **Registrar el día con foto.** `expo-image-picker` (cámara y galería, dos
+  botones) y `expo-image-manipulator`, que vuelve a codificar la foto: sin
+  EXIF —sin las coordenadas— y al mismo tamaño que la web (`nucleo/foto.ts`).
+  La subida y la fila de `photos` son una sola función para las dos apps
+  (`compartido/foto.ts`). Los textos de permiso de cámara y fotos están en
+  `app.json`; se ven recién en la build.
+
+Probado contra la base real en Expo web: la ventana con su precio ("quedas
+en 0 días") y "Entendido"; el interruptor del sonido; y una foto de
+2400×3000 que llegó al storage en 18 KB, privada y colgada del día.
+
 ### Cómo se verifica la app nativa sin el teléfono
 
 `movil/` ahora corre también en el navegador (`npx expo start --web`), y **eso

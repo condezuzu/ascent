@@ -52,6 +52,13 @@
           "icon": "./assets/android-icon-monochrome.png",
           "color": "#05060a"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ascent usa tus fotos para sumar la del día a tu registro.",
+          "cameraPermission": "Ascent usa la cámara para sacar la foto del día."
+        }
       ]
     ]
   }

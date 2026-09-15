@@ -65,3 +65,10 @@ export const CASTIGO_DE_PERDIDA = 10;
 export function rachaSiSeDevuelve(racha: number): number {
   return Math.max(0, racha - CASTIGO_DE_PERDIDA);
 }
+
+/**
+ * Hasta qué día se anunció la ventana de las vidas EN ESTE APARATO. La leen la
+ * web y la app nativa: con dos nombres, cada una volvería a anunciar lo que la
+ * otra ya mostró en el mismo teléfono.
+ */
+export const CLAVE_VIDA_VISTA = 'ascent:impulso-visto';

@@ -233,7 +233,7 @@ export const T = {
     // Se dice "preparar" y no "subir" porque no llegó a subirse nada: la
     // foto se recodifica antes de salir del teléfono para sacarle los datos
     // de ubicación, y si eso falla NO se manda el original.
-    falloFotoPreparar: 'Esa foto no se pudo preparar. Prueba con otra, o sacala de nuevo.',
+    falloFotoPreparar: 'Esa foto no se pudo preparar. Prueba con otra, o sácala de nuevo.',
   },
 
   // ---------------------------------------------------------------
@@ -850,6 +850,10 @@ export const T = {
     corregirDia: 'Corregir día',
     foto: 'Foto',
     agregarFoto: 'Agregar foto',
+    // En la app nativa son dos puertas: la cámara y la galería.
+    sacarFoto: 'Sacar foto',
+    elegirFoto: 'Elegir de la galería',
+    quitarFoto: 'Quitar la foto',
     laVenAmigos: 'La ven tus amigos ✓',
     soloLaVesVos: 'Solo la ves tú — toca para compartirla',
     peso: 'Peso',
@@ -857,7 +861,6 @@ export const T = {
   },
 
   // ---------------------------------------------------------------
-  // La hoja que anota una marca de fuerza.
   // "¿LO GUARDO COMO MARCA?", al terminar (`nucleo/marcaSugerida.ts`). Con el
   // dato ya escrito: la única pregunta es a cuántas repeticiones.
   marcaSugerida: {
@@ -871,6 +874,7 @@ export const T = {
     fallo: 'No se guardó. La puedes cargar desde Fuerza.',
   },
 
+  // La hoja que anota una marca de fuerza.
   marca: {
     titulo: 'Anotar una marca',
     sub: 'No hace falta que sea de hoy. Queda con su fecha.',

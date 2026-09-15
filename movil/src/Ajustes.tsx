@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
 import { UMBRALES, umbralValido, type Umbral } from '@nucleo/estancamiento';
 import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
+import { PRESETS_DESCANSO } from '@nucleo/reglas';
+import { plataforma } from '@plataforma';
+import { duracionCorta, duracionValida, guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -36,6 +39,12 @@ export default function Ajustes({
   alSalir: () => void;
 }) {
   const [fallo, setFallo] = useState('');
+  // El sonido del descanso es de ESTE teléfono, igual que en la web: se guarda
+  // en el aparato y no en la cuenta.
+  const [sonido, setSonido] = useState(false);
+  useEffect(() => {
+    leerSonido().then(setSonido);
+  }, []);
 
   /** Pinta el cambio, guarda, y vuelve atrás si la base dice que no. */
   async function guardar(parcial: Partial<Perfil>, aviso: string) {
@@ -114,6 +123,43 @@ export default function Ajustes({
           </Pressable>
         ))}
       </View>
+
+      {/* EL DESCANSO ENTRE SERIES: la duración de siempre (de la cuenta) y el
+          sonido (de este teléfono). Pedido para N4: el sonido arrancaba
+          apagado y no había dónde prenderlo. */}
+      <Text style={estilos.seccion}>{T.ajustes.descansoEntreSeries}</Text>
+      <View style={estilos.fila}>
+        {PRESETS_DESCANSO.map((d) => (
+          <Pressable
+            key={d}
+            onPress={() => guardar({ duracion_descanso: d }, T.general.falloPreferencia)}
+            style={[estilos.ancha, duracionValida(perfil.duracion_descanso) === d && estilos.prendida]}
+          >
+            <Text style={[estilos.textoPastilla, duracionValida(perfil.duracion_descanso) === d && estilos.textoPrendido]}>
+              {duracionCorta(d)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={estilos.nota}>{T.ajustes.descansoNota}</Text>
+      <Pressable
+        onPress={() => {
+          const nuevo = !sonido;
+          setSonido(nuevo);
+          void guardarSonido(nuevo);
+        }}
+        style={{ paddingVertical: 10 }}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: sonido }}
+      >
+        <Text style={estilos.enlace}>{sonido ? T.ajustes.sonidoPrendido : T.ajustes.sonidoApagado}</Text>
+      </Pressable>
+      <Text style={estilos.nota}>{puedeVibrar() ? T.ajustes.vibra : T.ajustes.noVibra}</Text>
+      {sonido && (
+        <Text style={estilos.nota}>
+          {plataforma.audio.respetaLaMusica() ? T.ajustes.sonidoRespeta : T.ajustes.sonidoCorta}
+        </Text>
+      )}
 
       <Text style={estilos.seccion}>{T.ajustes.estancamiento}</Text>
       <View style={estilos.fila}>

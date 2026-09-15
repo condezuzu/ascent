@@ -49,9 +49,10 @@ series, descansar, terminar — con y sin señal.
 | ~~N1~~ | ~~Sesión nativa: iniciar, cronómetro, terminar, cierre por inactividad~~ | **Hecho el 15/9**, con la MISMA lógica que la web (`compartido/`) |
 | ~~N2~~ | ~~El bloque: selector de 100 ejercicios, meta, `+`/`−`, lista para corregir, peso con su etiqueta y la pregunta~~ | **Hecho el 15/9** |
 | ~~N3~~ | ~~Descanso con notificación local (suena con la pantalla bloqueada) y la cola sin señal~~ | **Hecho el 15/9**. El aviso con la pantalla bloqueada se prueba recién en el teléfono (N4). |
-| N4 | Build de desarrollo con EAS e instalarla en el iPhone | 1 |
+| N4 | Build de desarrollo con EAS e instalarla en el iPhone, y probar ahí lo que el navegador no puede (aviso con pantalla bloqueada, vibración, pantalla despierta, "deshacer") | 1 |
+| ~~N4b~~ | ~~Interruptor del sonido del descanso en Ajustes nativo~~ | **Hecho el 15/9**, adelantado (junto con la duración del descanso). |
 | H3 | **Humano:** cuenta de Expo (gratis) y Apple Developer Program (99 USD/año) | **Lo hace el humano esta semana y avisa.** No se recuerda desde acá. |
-| H4 | **Humano:** `ascent://confirmar` en Supabase → Authentication → Redirect URLs | — |
+| H4 | **Humano:** `ascent://confirmar` en Supabase → Authentication → URL Configuration → Redirect URLs | Solo para crear cuenta o recuperar la contraseña desde la app. Entrar con contraseña no lo necesita. |
 
 **Queda una tanda: N4**, que espera la cuenta de Apple. Orden confirmado por el humano el 15/9.
 
@@ -64,7 +65,8 @@ la web mientras tanto. Si va antes, suma unas tres tandas a la llegada.
 - Botón de volumen suma una serie (§13f).
 - Live Activity del descanso en la pantalla bloqueada (§13d).
 - Registro automático al llegar al gimnasio con geofencing (§13).
-- Calendario, peso, fuerza y foto en nativo.
+- Calendario, peso y fuerza en nativo.
+- ~~Ventana de las vidas y registrar el día con foto en nativo~~: **hechas el 15/9**, adelantadas mientras llega la cuenta de Apple.
 
 ---
 

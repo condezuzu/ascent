@@ -18,7 +18,7 @@ import { plataforma } from '@/plataforma';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO } from '@/components/VigilanteDeGimnasio';
 import { lineaDeMarcas } from '@nucleo/fuerza';
-import { impulsosSinVer, hastaDondeVisto, rachaSiSeDevuelve } from '@nucleo/impulsos';
+import { impulsosSinVer, hastaDondeVisto, rachaSiSeDevuelve, CLAVE_VIDA_VISTA } from '@nucleo/impulsos';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import type { CierreDeSesion } from '@compartido/usarSesion';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -57,7 +57,7 @@ const CLAVE_LLEGADA_VISTA = 'ascent:llegada-vista';
 // cerrar la app antes de leerla sería perderse el aviso para siempre — que es
 // EXACTAMENTE el bug que esto arregla. Escribiendo al cerrar, lo peor que
 // puede pasar es que vuelva a aparecer una vez.
-const CLAVE_IMPULSO_VISTO = 'ascent:impulso-visto';
+const CLAVE_IMPULSO_VISTO = CLAVE_VIDA_VISTA;
 
 export default function Principal() {
   const router = useRouter();

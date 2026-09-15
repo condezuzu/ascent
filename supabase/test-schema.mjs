@@ -3257,6 +3257,8 @@ console.log('\n50. El diccionario no junta frases muertas');
   recorrer(join(RAIZ, 'src'));
   recorrer(join(RAIZ, 'compartido'));
   recorrer(join(RAIZ, 'nucleo'));
+  // Y la app nativa: hay textos que solo usa ella (las dos puertas de la foto).
+  recorrer(join(RAIZ, 'movil', 'src'));
 
   const codigo = archivos.map((a) => leerArch(a, 'utf8')).join('\n');
   const dic = leerArch(DIC, 'utf8');
@@ -6425,6 +6427,27 @@ console.log('\n96. Hiciste 102 en banca: ¿lo guardo como marca?');
   chequear("la busqueda filtra por user_id", /from\('prs'\)\.select\([^)]*\)\.eq\('user_id'/.test(compartido), true);
   const estancamiento = leer(join(RAIZ, 'src', 'components', 'Estancamiento.tsx'), 'utf8');
   chequear("el estancamiento tambien", /from\('prs'\)\.select\([^)]*\)\.eq\('user_id'/.test(estancamiento), true);
+}
+console.log('\n97. La app nativa usa las mismas vidas, la misma foto y el mismo sonido');
+{
+  const F = await import('../nucleo/foto.ts');
+  chequear('una foto grande se achica al lado maximo', F.medidasParaSubir(2400, 3000), { ancho: 1280, alto: 1600 });
+  chequear('una chica no se agranda', F.medidasParaSubir(800, 600), { ancho: 800, alto: 600 });
+  chequear('la ruta queda en la carpeta del usuario', F.rutaDeFoto('u1', '2026-09-15', 5), 'u1/2026-09-15-5.jpg');
+
+  const { readFileSync: leer } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const archivo = (...r) => leer(join(RAIZ, ...r), 'utf8');
+  // La misma marca de "ya vista" en las dos apps: con dos nombres, el mismo
+  // telefono anunciaria dos veces la misma vida.
+  chequear('la web usa la clave del nucleo', archivo('src', 'app', 'page.tsx').includes('CLAVE_VIDA_VISTA'), true);
+  chequear('la nativa tambien', archivo('movil', 'src', 'Inicio.tsx').includes('CLAVE_VIDA_VISTA'), true);
+  // La foto: la subida es una sola, y ninguna app sube el archivo sin preparar.
+  chequear('la web sube por lo compartido', archivo('src', 'components', 'RegistrarSheet.tsx').includes('subirFotoDelDia('), true);
+  chequear('la nativa tambien', archivo('movil', 'src', 'RegistrarDia.tsx').includes('subirFotoDelDia('), true);
+  chequear('y la nativa prepara antes de subir', /prepararFoto\([^]*?subirFotoDelDia\(/.test(archivo('movil', 'src', 'RegistrarDia.tsx')), true);
+  // El sonido del descanso se puede prender en la nativa (pedido para N4).
+  chequear('Ajustes nativo tiene el interruptor del sonido', archivo('movil', 'src', 'Ajustes.tsx').includes('guardarSonido('), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {

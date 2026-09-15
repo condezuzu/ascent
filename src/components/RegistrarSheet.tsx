@@ -3,11 +3,11 @@
 import { useRef, useState } from 'react';
 import EnElBody from '@/components/EnElBody';
 import { crearCliente } from '@/lib/supabase/client';
-import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import { avisarFallo } from '@compartido/cola';
 import { prepararFoto } from '@/lib/foto';
+import { subirFotoDelDia } from '@compartido/foto';
 import type { ResultadoRegistro } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 
@@ -71,8 +71,6 @@ export default function RegistrarSheet({
   /** Sube la foto y la cuelga del día. Vale para los dos modos. */
   async function subirFoto(idDelLog: string | null, subioRango: boolean) {
     if (!foto) return;
-    const user = await miUsuario(supabase);
-    if (!user) return;
     // Se recodifica ANTES de subir. No es por el peso: el archivo de la
     // cámara trae el EXIF, y el EXIF trae las coordenadas GPS de dónde se
     // sacó. Compartir la foto con un amigo compartía la ubicación del
@@ -81,21 +79,19 @@ export default function RegistrarSheet({
     // Si no se pudo preparar NO se sube el original: el original es
     // justamente el que tiene las coordenadas.
     if (!lista.ok) return avisarFallo(T.general.falloFotoPreparar);
-    const ruta = `${user.id}/${dia}-${Date.now()}.jpg`;
-    const { error: errSubida } = await supabase.storage
-      .from('fotos')
-      .upload(ruta, lista.blob, { contentType: lista.tipo });
+    // La subida y la fila son las mismas que en la app nativa
+    // (`compartido/foto.ts`).
+    const r = await subirFotoDelDia(supabase, {
+      datos: lista.blob,
+      dia,
+      logId: idDelLog,
+      visible: fotoVisible,
+      subioRango,
+    });
     // No va a la cola: el archivo puede pesar megas y guardarlo para después
     // llenaría el teléfono. Pero callarse era peor — creías que la habías
     // subido. El día ya quedó registrado igual, que es lo que importa.
-    if (errSubida) return avisarFallo(T.general.falloFoto);
-    await supabase.from('photos').insert({
-      user_id: user.id,
-      log_id: idDelLog,
-      storage_path: ruta,
-      visibilidad: fotoVisible ? 'amigos' : 'privada',
-      es_subida_de_rango: subioRango,
-    });
+    if (r === 'no-subio') avisarFallo(T.general.falloFoto);
   }
 
   async function confirmar() {

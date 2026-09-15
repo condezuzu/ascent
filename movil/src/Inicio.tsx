@@ -12,6 +12,10 @@ import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
 import { usarSesion, type CierreDeSesion } from '@compartido/usarSesion';
 import Bloque from './Bloque';
 import Descanso from './Descanso';
+import RachaSalvada from './RachaSalvada';
+import RegistrarDia from './RegistrarDia';
+import { plataforma } from '@plataforma';
+import { CLAVE_VIDA_VISTA, hastaDondeVisto, impulsosSinVer, rachaSiSeDevuelve } from '@nucleo/impulsos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import { cuentaAtras, restante } from '@compartido/descanso';
 
@@ -63,7 +67,8 @@ export default function Inicio({
   alFaltarNombre: () => void;
 }) {
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
-  const [registrando, setRegistrando] = useState(false);
+  // La hoja de registrar el día (con foto): la misma que la web.
+  const [registrarAbierto, setRegistrarAbierto] = useState(false);
   // Terminar pregunta antes, en el mismo lugar: es el botón más fácil de tocar
   // sin querer, y lo que hace no se deshace.
   const [terminando, setTerminando] = useState(false);
@@ -71,6 +76,9 @@ export default function Inicio({
   // La pantalla del descanso se abre desde la píldora, igual que en la web: el
   // + arranca el descanso pero no tapa el bloque.
   const [descansoAbierto, setDescansoAbierto] = useState(false);
+  // LA VENTANA DE LAS VIDAS: los días cubiertos que este aparato todavía no
+  // anunció. Misma regla y misma marca que la web (`nucleo/impulsos.ts`).
+  const [vidaUsada, setVidaUsada] = useState<{ dias: string[]; quedan: number; total: number } | null>(null);
   const [aviso, setAviso] = useState('');
 
   const cargar = useCallback(async () => {
@@ -114,6 +122,11 @@ export default function Inicio({
         cubiertos: Array.isArray(impulsos?.vigentes) ? (impulsos.vigentes as string[]) : [],
         impulsos: impulsos ? { quedan: Number(impulsos.quedan), total: Number(impulsos.total) } : null,
       });
+      const ultimas = Array.isArray(impulsos?.ultimas) ? (impulsos.ultimas as string[]) : [];
+      const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
+      if (sinVer.length > 0) {
+        setVidaUsada({ dias: sinVer, quedan: Number(impulsos?.quedan ?? 0), total: Number(impulsos?.total ?? 0) });
+      }
     } catch (e) {
       setEstado({ tipo: 'error', que: String((e as Error)?.message ?? e) });
     }
@@ -128,24 +141,6 @@ export default function Inicio({
   const sesion = usarSesion(() => {
     cargar();
   });
-
-  async function registrar() {
-    setRegistrando(true);
-    setAviso('');
-    const { data, error } = await supabase.rpc('registrar_dia', { p_origen: 'manual' });
-    setRegistrando(false);
-    if (error) {
-      // 23505 = el día ya estaba. No es un error: es el caso de tocar dos
-      // veces, y no tiene que ensuciar nada.
-      if (error.code === '23505') return cargar();
-      return setAviso(T.general.noSePudo);
-    }
-    // La guarda de las 20 horas por cambio de zona no es un error: el día
-    // quedó anotado y entra solo. Se dice con todas las letras, porque un
-    // rechazo mudo con la racha en juego se lee como que la app está rota.
-    if (estaBloqueado(data)) return setAviso(textoDeBloqueo(data.hasta));
-    await cargar();
-  }
 
   if (estado.tipo === 'cargando') {
     return (
@@ -370,19 +365,54 @@ export default function Inicio({
           <SugerenciasDeMarca bloques={cierre.bloques} unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'} />
         </Pressable>
       ) : registradoHoy ? (
-        <Text style={estilos.hecho}>{T.inicio.diaRegistrado}</Text>
+        // El día ya está —casi siempre lo registró la sesión—: lo que queda
+        // es sumarle la foto, que antes en nativo no había cómo.
+        <View style={estilos.diaListo}>
+          <Text style={estilos.hecho}>{T.inicio.diaRegistrado}</Text>
+          <Pressable style={estilos.secundario} onPress={() => setRegistrarAbierto(true)}>
+            <Text style={estilos.enlace}>{T.registrar.agregarFoto}</Text>
+          </Pressable>
+        </View>
       ) : (
-        <Pressable
-          style={[estilos.solido, registrando && estilos.apagado]}
-          onPress={registrar}
-          disabled={registrando}
-        >
-          {registrando ? (
-            <ActivityIndicator color="#05060a" />
-          ) : (
-            <Text style={estilos.textoSolido}>{T.inicio.registrarDia}</Text>
-          )}
+        <Pressable style={estilos.solido} onPress={() => setRegistrarAbierto(true)}>
+          <Text style={estilos.textoSolido}>{T.inicio.registrarDia}</Text>
         </Pressable>
+      )}
+
+      <RegistrarDia
+        visible={registrarAbierto}
+        racha={perfil.racha_actual}
+        logId={logs.find((l) => l.fecha === hoy && !l.es_descanso)?.id ?? null}
+        visibilidadDefault={perfil.visibilidad_default}
+        alCerrar={() => setRegistrarAbierto(false)}
+        alConfirmar={() => {
+          setRegistrarAbierto(false);
+          cargar();
+        }}
+      />
+
+      {/* No sale con una sesión andando, igual que en la web: aparece al
+          terminarla. Contestar la ventana en medio de una serie no es el
+          momento. */}
+      {vidaUsada && !sesion.estado.corriendo && (
+        <RachaSalvada
+          dias={vidaUsada.dias}
+          quedan={vidaUsada.quedan}
+          total={vidaUsada.total}
+          rachaSiGuarda={rachaSiSeDevuelve(perfil.racha_actual)}
+          alGuardar={async () => {
+            // Devolver y volver a evaluar la pérdida van juntos en la base.
+            await supabase.rpc('devolver_impulsos', { p_fechas: vidaUsada.dias });
+            await cargar();
+          }}
+          alCerrar={async () => {
+            // Cerrar es lo que ANOTA: hasta que no se cierra, el aviso vuelve.
+            const dias = vidaUsada.dias;
+            setVidaUsada(null);
+            const hasta = hastaDondeVisto(dias, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
+            if (hasta) await plataforma.almacenamiento.guardar(CLAVE_VIDA_VISTA, hasta);
+          }}
+        />
       )}
 
       {sesion.estado.descanso && (
@@ -447,6 +477,7 @@ const estilos = StyleSheet.create({
   },
   apagado: { opacity: 0.6 },
   textoSolido: { color: '#05060a', fontSize: 15, fontWeight: '600' },
+  diaListo: { marginTop: 34, alignItems: 'center' },
   hecho: { color: '#8a93a8', fontSize: 14, marginTop: 34, textAlign: 'center' },
   aviso: { color: '#8a93a8', fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19 },
   error: { color: '#e8705f', fontSize: 13, textAlign: 'center' },
