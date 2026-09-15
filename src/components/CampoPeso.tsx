@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { aKilos, pasoDePeso, pesoCorto, type Unidad } from '@nucleo/peso';
-import { pesoValido } from '@nucleo/bloques';
+import type { Unidad } from '@nucleo/peso';
+import { confirmarCampo, limpiarTecleo, pasoDelCampo, textoDelCampo } from '@nucleo/campoPeso';
 import { T } from '@nucleo/textos';
 
 /**
@@ -35,7 +35,7 @@ export default function CampoPeso({
   compacto?: boolean;
   etiqueta?: string;
 }) {
-  const mostrar = (v: number | null | undefined) => (v ? pesoCorto(v, unidad) : '');
+  const mostrar = (v: number | null | undefined) => textoDelCampo(v, unidad);
   const [texto, setTexto] = useState(mostrar(kg));
 
   // Si el peso cambia desde afuera —llegó el último que usaste, o se tocó un
@@ -46,24 +46,18 @@ export default function CampoPeso({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kg, unidad]);
 
+  // Las cuentas están en `nucleo/campoPeso.ts`, probadas: el texto tiene coma
+  // y no se vuelve a leer con `Number`.
   function confirmar() {
-    const escrito = texto.trim();
-    if (escrito === '') {
-      if (kg) alCambiar(null);
-      return;
-    }
-    const v = pesoValido(escrito);
-    const enKilos = v === null ? null : pesoValido(aKilos(v, unidad));
-    if (enKilos === (kg ?? null)) return setTexto(mostrar(kg));
-    alCambiar(enKilos);
-    setTexto(mostrar(enKilos));
+    const r = confirmarCampo(texto, kg, unidad);
+    if (!r.cambia) return setTexto(mostrar(kg));
+    alCambiar(r.kg);
+    setTexto(mostrar(r.kg));
   }
 
   function paso(signo: 1 | -1) {
-    if (!kg) return;
-    const actual = Number(pesoCorto(kg, unidad));
-    const nuevo = Math.max(0, actual + signo * pasoDePeso(unidad));
-    alCambiar(nuevo === 0 ? null : pesoValido(aKilos(nuevo, unidad)));
+    const nuevo = pasoDelCampo(kg, unidad, signo);
+    if (nuevo !== undefined) alCambiar(nuevo);
   }
 
   return (
@@ -81,7 +75,7 @@ export default function CampoPeso({
           value={texto}
           placeholder={compacto ? T.sesion.sinPeso : ''}
           aria-label={etiqueta ?? T.sesion.pesoDelBloque}
-          onChange={(e) => setTexto(e.target.value.replace(/[^0-9.,]/g, '').slice(0, 6))}
+          onChange={(e) => setTexto(limpiarTecleo(e.target.value))}
           onBlur={confirmar}
           onKeyDown={(e) => {
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur();

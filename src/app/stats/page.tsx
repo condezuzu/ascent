@@ -5,7 +5,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { aISO, deISO, hoyISO, restarDias, fechaLinda } from '@nucleo/fechas';
 import { RANGOS, rangoDeRacha } from '@nucleo/rangos';
-import { deKilos, esUnidad, type Unidad } from '@nucleo/peso';
+import { conComa, deKilos, esUnidad, type Unidad } from '@nucleo/peso';
 import type { Log, Peso } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
@@ -254,7 +254,7 @@ export default function Estadisticas() {
                 muestra el número con la misma tipografía que el gráfico. */}
             <div className="peso-solo">
               <span className="hoy">
-                {deKilos(pesos[0].valor, unidad).toFixed(1)}
+                {conComa(deKilos(pesos[0].valor, unidad).toFixed(1))}
                 <em>{unidad}</em>
               </span>
             </div>

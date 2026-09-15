@@ -21,16 +21,30 @@ export function limites(unidad: Unidad): { min: number; max: number } {
 }
 
 /**
- * El peso de UNA SERIE para mostrar, en la unidad de la persona y sin ceros de
- * más: 60, 62.5, 61.25.
+ * EL PESO DE UNA SERIE COMO NÚMERO, en la unidad de la persona y redondeado
+ * como son los discos: libras al medio (en libras nadie carga 137,21) y kilos
+ * a la centésima (61,25 existe).
  *
- * Libras al medio y kilos a la centésima, porque así son los discos: en libras
- * nadie carga 137,21, y en kilos 61,25 existe.
+ * Es el que se usa PARA HACER CUENTAS —el + y el − del campo—. Para mostrar,
+ * `pesoCorto`: con coma, un texto así no se puede volver a pasar por `Number`.
  */
-export function pesoCorto(kg: number, unidad: Unidad): string {
+export function pesoRedondeado(kg: number, unidad: Unidad): number {
   const v = deKilos(kg, unidad);
-  const r = unidad === 'lb' ? Math.round(v * 2) / 2 : Math.round(v * 100) / 100;
-  return String(r);
+  return unidad === 'lb' ? Math.round(v * 2) / 2 : Math.round(v * 100) / 100;
+}
+
+/**
+ * UN NÚMERO CON COMA DECIMAL, como se escribe en Uruguay: 62,5 y no 62.5. Sin
+ * separador de miles a propósito: un peso no llega a mil, y "1.000" se leería
+ * como uno.
+ */
+export function conComa(n: number | string): string {
+  return String(n).replace('.', ',');
+}
+
+/** El peso de UNA SERIE para mostrar, sin ceros de más: 60, 62,5, 61,25. */
+export function pesoCorto(kg: number, unidad: Unidad): string {
+  return conComa(pesoRedondeado(kg, unidad));
 }
 
 /** Lo que suma o resta un toque en el campo de peso: el disco chico de cada lado. */

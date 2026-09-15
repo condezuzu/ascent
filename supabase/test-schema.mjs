@@ -5359,7 +5359,7 @@ console.log('\n77. Los pesos en el resumen del dia');
   chequear('uno por serie, sin basura', raro.ejercicios[0].pesos, [100, null]);
 
   // ---- como se muestra ----
-  chequear('kilos sin ceros de mas', [pesoCorto(60, 'kg'), pesoCorto(62.5, 'kg'), pesoCorto(61.25, 'kg')], ['60', '62.5', '61.25']);
+  chequear('kilos sin ceros de mas, con coma', [pesoCorto(60, 'kg'), pesoCorto(62.5, 'kg'), pesoCorto(61.25, 'kg')], ['60', '62,5', '61,25']);
   // En libras nadie carga 137,21: al medio, que es como son los discos.
   chequear('libras al medio', pesoCorto(61.23, 'lb'), '135');
   chequear('el disco chico de cada lado', [pasoDePeso('kg'), pasoDePeso('lb')], [2.5, 5]);
@@ -6530,6 +6530,78 @@ console.log('\n99. El aviso de estancamiento a las 2 semanas');
   const aceptados = [];
   for (const v of [1, 2, 3, 4, 5, 6, 7, 8, 9]) if (await acepta(v)) aceptados.push(v);
   chequear('la columna acepta los mismos umbrales que Ajustes', aceptados, E.UMBRALES);
+}
+
+console.log('\n100. El campo de peso con coma decimal');
+{
+  // EL RIESGO: el campo leia de vuelta con Number() el texto que mostraba. Con
+  // coma, Number('62,5') es NaN y el + y el - dejarian de andar en el gimnasio.
+  const P = await import('../nucleo/peso.ts');
+  const C = await import('../nucleo/campoPeso.ts');
+  const F = await import('../nucleo/fuerza.ts');
+
+  chequear('asi era el problema: el texto con coma no es un Number', Number.isNaN(Number(P.pesoCorto(62.5, 'kg'))), true);
+  chequear('el numero para cuentas sigue siendo numero', [P.pesoRedondeado(62.5, 'kg'), P.pesoRedondeado(61.23, 'lb')], [62.5, 135]);
+  chequear('la coma solo cambia el separador', [P.conComa(1.5), P.conComa('97.3'), P.conComa(140)], ['1,5', '97,3', '140']);
+  chequear('las marcas y el DOTS tambien con coma', [F.redondear(97.26), F.redondear(140)], ['97,3', '140']);
+
+  // ---- lo que se escribe ----
+  chequear('con coma y con punto es el mismo peso', [C.confirmarCampo('62,5', null, 'kg'), C.confirmarCampo('62.5', null, 'kg')], [{ cambia: true, kg: 62.5 }, { cambia: true, kg: 62.5 }]);
+  chequear('las centesimas con coma', C.confirmarCampo('61,25', null, 'kg').kg, 61.25);
+  chequear('en libras se guarda en kilos', C.confirmarCampo('135', null, 'lb').kg, 61.23);
+  chequear('borrarlo es quedar sin peso', C.confirmarCampo('  ', 60, 'kg'), { cambia: true, kg: null });
+  chequear('vacio sobre vacio no escribe nada', C.confirmarCampo('', null, 'kg'), { cambia: false, kg: null });
+  chequear('basura no es un peso', C.confirmarCampo('abc', null, 'kg'), { cambia: false, kg: null });
+  chequear('al teclear quedan solo numeros, punto y coma', C.limpiarTecleo('62,5 kg!'), '62,5');
+
+  // ---- salir del campo sin tocarlo no cambia NADA, para todos los pesos ----
+  // Cada cuarto de kilo de 1 a 400, las centesimas que existen, y cada media
+  // libra: lo que el campo muestra, confirmado tal cual, es el mismo peso.
+  const movidos = [];
+  const probar = (kg, unidad) => {
+    const texto = C.textoDelCampo(kg, unidad);
+    const r = C.confirmarCampo(texto, kg, unidad);
+    if (r.cambia) movidos.push(`${kg} ${unidad} -> "${texto}" -> ${r.kg}`);
+  };
+  for (let x = 100; x <= 40000; x += 25) probar(x / 100, 'kg');
+  for (const kg of [61.25, 63.75, 101.25, 1.25, 0.5]) probar(kg, 'kg');
+  for (let lb = 2; lb <= 880; lb += 0.5) probar(P.aKilos(lb, 'lb') > 0 ? Math.round(P.aKilos(lb, 'lb') * 100) / 100 : 1, 'lb');
+  chequear('confirmar lo que se ve nunca cambia el peso (kg y lb)', movidos.slice(0, 5), []);
+
+  // ---- el + y el - ----
+  chequear('un toque suma el disco chico', [C.pasoDelCampo(62.5, 'kg', 1), C.pasoDelCampo(62.5, 'kg', -1)], [65, 60]);
+  chequear('en libras, de a cinco', C.pasoDelCampo(61.23, 'lb', 1), 63.5);
+  chequear('sin peso no hace nada', C.pasoDelCampo(null, 'kg', 1), undefined);
+  chequear('bajar del disco chico es quedar sin peso', C.pasoDelCampo(2.5, 'kg', -1), null);
+  const rotos = [];
+  for (let x = 25; x <= 40000; x += 25) {
+    for (const u of ['kg', 'lb']) {
+      for (const s of [1, -1]) {
+        const r = C.pasoDelCampo(x / 100, u, s);
+        if (r !== null && !(Number.isFinite(r) && r > 0)) rotos.push(`${x / 100} ${u} ${s}`);
+      }
+    }
+  }
+  chequear('el + y el - dan siempre un peso de verdad, con decimales o sin', rotos.slice(0, 5), []);
+
+  // Y nadie vuelve a leer con Number() un peso que se muestra.
+  const { readdirSync: leerDir, readFileSync: leerArch, statSync: estado } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const hallados = [];
+  const recorrer = (d) => {
+    for (const n of leerDir(d)) {
+      if (n === 'node_modules' || n.startsWith('.')) continue;
+      const r = join(d, n);
+      if (estado(r).isDirectory()) recorrer(r);
+      else if (/\.tsx?$/.test(n) && /Number\((pesoCorto|redondear|conComa|pesoLindo)\(/.test(leerArch(r, 'utf8'))) hallados.push(n);
+    }
+  };
+  for (const d of ['src', 'compartido', 'nucleo', join('movil', 'src')]) recorrer(join(RAIZ, d));
+  chequear('ningun archivo pasa un texto con coma por Number()', hallados, []);
+  chequear('las dos apps usan el campo del nucleo', [
+    leerArch(join(RAIZ, 'src', 'components', 'CampoPeso.tsx'), 'utf8').includes('pasoDelCampo('),
+    leerArch(join(RAIZ, 'movil', 'src', 'CampoPeso.tsx'), 'utf8').includes('pasoDelCampo('),
+  ], [true, true]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

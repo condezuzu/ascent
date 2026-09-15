@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { deKilos, suavizarPorFecha, ultimosDias, type Unidad } from '@nucleo/peso';
+import { conComa, deKilos, suavizarPorFecha, ultimosDias, type Unidad } from '@nucleo/peso';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 
@@ -186,14 +186,14 @@ export default function GraficoPeso({
         <div className="grafico-peso-pie leyendo">
           <span className="cuando">{fechaLinda(elegido.fecha)}</span>
           <span className="hoy">
-            {elegido.valor.toFixed(1)}
+            {conComa(elegido.valor.toFixed(1))}
             <em>{unidad}</em>
           </span>
         </div>
       ) : (
         <div className="grafico-peso-pie">
           <span className="hoy">
-            {hoy.toFixed(1)}
+            {conComa(hoy.toFixed(1))}
             <em>{unidad}</em>
           </span>
           {/* Lo único que se puede afirmar además del peso de hoy: cuánto se
@@ -202,7 +202,7 @@ export default function GraficoPeso({
           <span className="cambio">
             {T.stats.pesoCambio(
               dias,
-              `${cambio >= 0 ? '+' : '−'}${Math.abs(cambio).toFixed(1)}`,
+              `${cambio >= 0 ? '+' : '−'}${conComa(Math.abs(cambio).toFixed(1))}`,
               unidad
             )}
           </span>

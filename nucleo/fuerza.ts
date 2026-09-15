@@ -1,11 +1,11 @@
-import { deKilos, type Unidad } from './peso';
-import { deISO, MESES } from './fechas';
-import type { Marca } from './tipos';
+import { conComa, deKilos, type Unidad } from './peso.ts';
+import { deISO, MESES } from './fechas.ts';
+import type { Marca } from './tipos.ts';
 import { T } from './textos.ts';
 
 // El 1RM es la otra cuenta que también corre en SQL (`un_rm`): vive en
 // `reglas.ts` y el test compara las dos implementaciones.
-export { unRM } from './reglas';
+export { unRM } from './reglas.ts';
 
 /**
  * Los tres que entran al DOTS, en el orden en que se dicen. La marca de cuáles
@@ -37,10 +37,10 @@ export function lineaDeMarcas(marcas: Marca[], unidad: Unidad): string | null {
   return `${tres.join(' · ')} ${unidad}`;
 }
 
-/** Sin decimal cuando no hace falta: "140", no "140.0". */
+/** Sin decimal cuando no hace falta: "140", no "140,0". Con coma: es para leer. */
 export function redondear(valor: number): string {
   const r = Math.round(valor * 10) / 10;
-  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+  return conComa(Number.isInteger(r) ? String(r) : r.toFixed(1));
 }
 
 export function pesoLindo(kg: number, unidad: Unidad): string {
