@@ -91,11 +91,12 @@ seguro.
 | `npm run test:conexion` | humo contra el Supabase real, solo lectura |
 | `npm run test:e2e` | flujo completo con 2 cuentas (pide `E2E_EMAIL`) |
 | `npm run capturas` | levanta la app, recorre las pantallas y deja PNG en `capturas/` |
+| `npm run capturas:bienvenida` | fotos de la animación de entrada en segundos fijos (con motor y sin motor) |
 | `npm run test:real` | contra Supabase real, con cuentas descartables: cuatro semanas, privacidad, y web + nativa con el mismo guion (necesita :3020 y :8090 prendidos; `-- api` sin navegador) |
 | `npm run verificar:deploy` | ¿producción ya sirve este commit? Mira el pedido real, no deduce |
 | `npm run build` | build de producción — **dev server apagado** |
 
-Ruta de QA: `/galeria` (motor). `/tipografias` era andamio de una decisión ya tomada y se borró.
+Rutas de QA: `/galeria` (motor) y `/galeria/bienvenida` (la pantalla de entrada: se repite, se congela en cualquier segundo, se mira sin motor y compara textos). `/tipografias` era andamio de una decisión ya tomada y se borró.
 
 La primera vez, en cada máquina: `npx playwright install chromium` (el binario
 del navegador no vive en el repo, solo la dependencia).

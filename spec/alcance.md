@@ -28,6 +28,7 @@ Si no está claro si algo es 2 o 3, es 3.
 | W5 | Sacar la sección Diagnóstico de Ajustes | Se queda hasta que el registro automático esté probado **en el gimnasio con la app nativa**. |
 | W6 | Poner al día `spec/estado.md` | Tiene corte al 21 de agosto. |
 | ~~W7~~ | ~~Revisar sesiones con el total de series de menos~~ | **Hecho por el humano el 15/9**: una sola (07/09, 19 → 20), corregida. |
+| W8 | La pantalla de entrada (cuatro pantallas + la animación de los ocho objetos) | **Pedida por el humano el 15/9**, con el alcance ya congelado: entra por decisión suya, no por la regla. Banco de pruebas en `/galeria/bienvenida`; los tiempos y las curvas, en `src/lib/bienvenida.ts`. |
 
 ### Lo que hace el humano (no es código)
 

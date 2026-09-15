@@ -6788,6 +6788,87 @@ console.log('\n104. Al volver la senal, la cola sube sola');
   chequear('un solo reintento programado a la vez', /if \(reintento\) return;/.test(cola), true);
 }
 
+console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
+{
+  // Las capturas no ven animaciones (el navegador sin cabeza corre a un cuadro
+  // por segundo), asi que lo unico que se puede verificar es la aritmetica.
+  // Misma idea que `lib/subida.ts`.
+  const B = await import('../src/lib/bienvenida.ts');
+
+  // ---- los tramos aceleran, y ninguno se vuelve un parpadeo ----
+  const tramos = B.duracionesDeTramos();
+  chequear('siete tramos para ocho objetos', tramos.length, 7);
+  chequear('cada uno mas corto que el anterior', tramos.every((d, i) => i === 0 || d < tramos[i - 1]), true);
+  chequear('ninguno baja del minimo', tramos.every((d) => d >= B.TRAMO_MINIMO_S), true);
+  chequear('el ultimo es menos de la mitad del primero', tramos.at(-1) < tramos[0] / 2, true);
+  // Lo que dura todo: si un dia se cambia, que se vea en el test y no en la cara.
+  chequear('dura entre ocho y doce segundos', B.DURACION_S > 8 && B.DURACION_S < 12, true);
+
+  // ---- las curvas ----
+  for (const [nombre, f] of [['curva', B.curva], ['entrada', B.entrada], ['salida', B.salida]]) {
+    chequear(`${nombre}: empieza en 0 y termina en 1`, [f(0), f(1)], [0, 1]);
+    chequear(`${nombre}: nunca se sale de 0..1`, [f(-3), f(4), f(NaN)].every((v) => v >= 0 && v <= 1), true);
+    const pasos = [];
+    for (let i = 0; i <= 20; i++) pasos.push(f(i / 20));
+    chequear(`${nombre}: no retrocede nunca`, pasos.every((v, i) => i === 0 || v >= pasos[i - 1]), true);
+  }
+  // La del morfeo arranca y termina QUIETA: es lo que hace que no se vea el corte.
+  chequear('la curva no se mueve en el primer 1%', B.curva(0.01) < 0.001, true);
+  chequear('ni en el ultimo', B.curva(0.99) > 0.999, true);
+  // La del trago acelera: empieza mas lenta que una recta.
+  chequear('el trago arranca despacio y termina rapido', B.salida(0.5) < 0.5, true);
+
+  // ---- el recorrido completo ----
+  chequear('antes de empezar se ve el polvo, en cero', [B.cuadroEn(0).desde, B.cuadroEn(0).racha], [1, 0]);
+  chequear('un tiempo roto es el principio', B.cuadroEn(NaN).racha, 0);
+  const { morfeo, quieto, total } = B.hitos();
+  chequear('al final del morfeo esta el agujero negro con 70 dias', [B.cuadroEn(morfeo - 0.01).hasta, B.cuadroEn(morfeo + 0.01).racha], [8, 70]);
+  chequear('el agujero negro se queda quieto antes de tragar', B.cuadroEn(quieto - 0.01).trago, 0);
+  chequear('y despues se traga la pantalla', [B.cuadroEn(quieto + 0.01).trago > 0, B.cuadroEn(total).trago], [true, 1]);
+  chequear('recien ahi termina', [B.cuadroEn(total - 0.1).fin, B.cuadroEn(total).fin], [false, true]);
+
+  // El numero NUNCA retrocede y pasa por los ocho objetos, cuadro a cuadro.
+  const vistos = new Set();
+  let ultima = -1;
+  let roto = null;
+  for (let ms = 0; ms <= total * 1000; ms += 16) {
+    const c = B.cuadroEn(ms / 1000);
+    if (c.racha < ultima) roto = roto ?? `la racha bajo en ${ms} ms`;
+    if (c.mezcla < 0 || c.mezcla > 1) roto = roto ?? `mezcla fuera de rango en ${ms} ms`;
+    ultima = c.racha;
+    vistos.add(c.desde);
+    vistos.add(c.hasta);
+  }
+  chequear('la racha nunca baja y la mezcla nunca se sale', roto, null);
+  chequear('se ven los ocho objetos', [...vistos].sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8]);
+  chequear('y termina en 70 dias', ultima, 70);
+
+  // Cada objeto tiene que estar EN PANTALLA lo suficiente para verse: se mide
+  // cuantos cuadros de 16 ms lo tienen como destino con la mezcla ya avanzada.
+  const cortos = [];
+  for (const r of [2, 3, 4, 5, 6, 7, 8]) {
+    let ms = 0;
+    for (let x = 0; x <= total * 1000; x += 16) {
+      const c = B.cuadroEn(x / 1000);
+      if (c.hasta === r && c.mezcla > 0.5) ms += 16;
+    }
+    if (ms < 200) cortos.push(`${r}: ${ms} ms`);
+  }
+  chequear('ningun objeto aparece menos de 200 ms', cortos, []);
+
+  // ---- con "reducir movimiento" ----
+  const q0 = B.cuadroQuietoEn(0);
+  chequear('sin movimiento se ve el ultimo objeto ya formado', [q0.desde, q0.hasta, q0.racha, q0.trago], [8, 8, 70, 0]);
+  chequear('y en un segundo y medio ya esta en negro', [B.cuadroQuietoEn(B.DURACION_QUIETA_S).trago, B.cuadroQuietoEn(B.DURACION_QUIETA_S).fin], [1, true]);
+  chequear('la version quieta dura mucho menos que la otra', B.DURACION_QUIETA_S < B.DURACION_S / 4, true);
+
+  // ---- los pasos ----
+  chequear('cuatro pantallas, la del objeto al final', [B.PASOS_DE_LA_ENTRADA.length, B.PASOS_DE_LA_ENTRADA.at(-1)], [4, 'racha']);
+  chequear('un paso guardado que ya no existe vuelve al principio', [B.pasoValido(9), B.pasoValido('x'), B.pasoValido(2)], [0, 0, 2]);
+  // El motor se pide en la PRIMERA, no en la cuarta: tarda ~3 s en cargar.
+  chequear('el motor se pide antes de que haga falta', B.PASO_QUE_PIDE_EL_MOTOR < B.PASOS_DE_LA_ENTRADA.length - 1, true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
