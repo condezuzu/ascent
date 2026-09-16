@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente, configuracionValida } from '@/lib/supabase/client';
 import { mensajeDeAuth } from '@nucleo/errores';
 import { borrarPerfilCache } from '@compartido/cache';
 import FondoEspacial from '@/components/FondoEspacial';
+import Bienvenida from '@/components/bienvenida/Bienvenida';
+import { anotarEntradaVista, vioLaEntrada } from '@/lib/entradaVista';
 import { T } from '@nucleo/textos';
 
 type Modo = 'entrar' | 'crear' | 'recuperar';
@@ -19,6 +21,15 @@ export default function Login() {
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
   const [cargando, setCargando] = useState(false);
+  // LA ENTRADA VA ACÁ Y NO EN SU PROPIA RUTA: termina en negro, que es el
+  // fondo de esta pantalla, y así no hay navegación en el medio — la animación
+  // se convierte en el formulario sin corte. `null` mientras se averigua: con
+  // `false` por omisión, el que ya la vio vería un parpadeo de la entrada.
+  const [entrada, setEntrada] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    vioLaEntrada().then((vista) => setEntrada(!vista));
+  }, []);
 
   function cambiarModo(m: Modo) {
     setModo(m);
@@ -88,6 +99,24 @@ export default function Login() {
 
   const titulo =
     modo === 'entrar' ? T.entrar.entrar : modo === 'crear' ? T.entrar.crearCuenta : T.entrar.enviarCorreo;
+
+  // Mientras no se sabe, no se pinta nada: es un instante, y cualquier cosa
+  // que se muestre acá aparece para desaparecer.
+  if (entrada === null) return null;
+
+  if (entrada) {
+    return (
+      <Bienvenida
+        alSalir={(destino) => {
+          // Se anota al SALIR y no al empezar: si cierra la app a la mitad, la
+          // próxima vez la ve entera, que es lo que corresponde.
+          void anotarEntradaVista();
+          setModo(destino === 'crear' ? 'crear' : 'entrar');
+          setEntrada(false);
+        }}
+      />
+    );
+  }
 
   return (
     <>

@@ -10,6 +10,7 @@ import { mkdirSync, rmSync, readdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { pasarLaEntrada } from './utiles.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SALIDA = join(RAIZ, 'capturas');
@@ -279,6 +280,9 @@ for (const tamano of TAMANOS) {
   for (const intento of [1, 2]) {
     try {
       await page.goto(`${BASE}/login`, { waitUntil: 'networkidle', timeout: 60000 });
+      // La pantalla de entrada va ANTES del formulario y un navegador de
+      // prueba la ve siempre (es de este aparato, y este arranca limpio).
+      await pasarLaEntrada(page);
       await page.locator('input[type=email]').fill(correo, { timeout: 30000 });
       await page.locator('input[type=password]').fill(clave, { timeout: 30000 });
 

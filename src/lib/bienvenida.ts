@@ -228,16 +228,43 @@ export function rachaMostrada(n: number): number {
 /** Cada cuánto se le permite cambiar al número, como mucho. */
 export const MS_ENTRE_REDIBUJOS = 50;
 
+export type NivelDeEquipo = 'bajo' | 'medio' | 'alto';
+
 /**
- * CUÁNTAS PARTÍCULAS SEGÚN EL EQUIPO. El motor ya hace esto con el fondo
- * (`motor/escena.ts`), con los mismos factores: en un teléfono viejo, novecientas
- * partículas moviéndose todos los cuadros cuestan más que todo lo demás junto,
- * y la entrada es lo primero que se ve — si ahí va a los tirones, no hay
- * segunda impresión.
+ * CUÁNTAS PARTÍCULAS SEGÚN EL EQUIPO — y por qué casi no cambia (16/9).
+ *
+ * La primera versión copiaba los factores del fondo (0,3 / 0,6 / 1) y la
+ * diferencia era ENORME: con un tercio de las partículas el objeto se ve
+ * ralo, y quien tiene un teléfono viejo veía otra app. Al medirlo, resultó
+ * que el recorte estaba en el lugar equivocado: mover las 900 cuesta
+ * 0,006 ms por cuadro, o sea nada. Las partículas no eran el problema.
+ *
+ * Lo que de verdad cuesta en un teléfono flojo es el RELLENO: cada partícula
+ * es un sprite que se suma sobre lo que ya está dibujado, y eso se paga por
+ * píxel de pantalla, no por partícula. Por eso ahora lo que baja es la
+ * densidad de píxeles (`pixelesPara`), que es donde está el costo real:
+ * dibujar a 1× en vez de 2× es una cuarta parte de los píxeles.
+ *
+ * Así, el objeto se ve casi igual en los tres —es lo mismo con un poco menos
+ * de grano— y el trabajo de la GPU baja de verdad.
  */
-export function particulasPara(nivel: 'bajo' | 'medio' | 'alto', base: number): number {
-  const f = nivel === 'bajo' ? 0.3 : nivel === 'medio' ? 0.6 : 1;
+export function particulasPara(nivel: NivelDeEquipo, base: number): number {
+  const f = nivel === 'bajo' ? 0.65 : nivel === 'medio' ? 0.85 : 1;
   return Math.max(120, Math.round((Number.isFinite(base) ? base : 0) * f));
+}
+
+/**
+ * A CUÁNTOS PÍXELES POR PUNTO se dibuja. Es la perilla que importa: en una
+ * pantalla de 390×844, 2× son 1,3 millones de píxeles por cuadro y 1× son
+ * 330 mil. Con mezcla aditiva —cada sprite se suma sobre lo de abajo— esa
+ * cuenta se paga entera, varias veces por píxel.
+ *
+ * Nunca más de 2: arriba de eso no se ve mejor y se paga igual.
+ */
+export function pixelesPara(nivel: NivelDeEquipo, delAparato: number): number {
+  const tope = nivel === 'bajo' ? 1 : nivel === 'medio' ? 1.5 : 2;
+  const real = Number.isFinite(delAparato) && delAparato > 0 ? delAparato : 1;
+  return Math.min(real, tope);
 }
 
 /**

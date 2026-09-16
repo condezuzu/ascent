@@ -287,6 +287,35 @@ export const T = {
   },
 
   // ---------------------------------------------------------------
+  // LA PANTALLA DE ENTRADA: lo primero que ve alguien que abre la app, y una
+  // sola vez en su vida. Cuatro pantallas; la cuarta no tiene texto porque la
+  // animación dice lo que hay que decir y cualquier frase encima le compite.
+  //
+  // REGLA DURA: no se promete ningún resultado físico ni ningún cambio de
+  // vida. Eso lo dice cualquier app de gimnasio y no es lo que hace esta.
+  // Todo lo que se afirma acá, la app lo cumple: anota los días, las series y
+  // los pesos, y los pone al lado de los de otros.
+  //
+  // Y NINGÚN RANGO SE NOMBRA (§7): se ven los objetos, no sus nombres.
+  bienvenida: {
+    saludoTitulo: 'Empiezas desde el polvo',
+    saludoBajada: 'Cada día que entrenas te acerca a algo más grande.',
+    registroTitulo: 'Se anota todo',
+    registroBajada: 'Los días, las series y los pesos. Lo que hiciste queda, no se recuerda.',
+    genteTitulo: 'Alguien más está entrenando ahora mismo',
+    genteBajada: 'Mide tu racha contra la de tus amigos, o contra la de todo el universo.',
+    // Sobre el cielo que vuelve después del trago. No repite el polvo: eso ya
+    // lo dijo la primera pantalla, y decirlo dos veces lo gasta.
+    cierre: 'Tu viaje empieza ahora mismo',
+    crear: 'Crear cuenta',
+    entrar: 'Ya tengo cuenta',
+    siguiente: 'Siguiente',
+    saltar: 'Saltar',
+    // La racha que sube en la cuarta pantalla.
+    racha: 'Racha',
+  },
+
+  // ---------------------------------------------------------------
   // Entrar, crear cuenta y elegir nombre.
   entrar: {
     marca: 'Ascent',

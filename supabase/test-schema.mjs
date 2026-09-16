@@ -6896,8 +6896,17 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   chequear('el motor se pide antes de que haga falta', B.PASO_QUE_PIDE_EL_MOTOR < B.PASOS_DE_LA_ENTRADA.length - 1, true);
 
   // ---- cuantas particulas segun el equipo ----
-  chequear('en un equipo flojo se dibujan muchas menos', [B.particulasPara('bajo', 900), B.particulasPara('medio', 900), B.particulasPara('alto', 900)], [270, 540, 900]);
+  // EL RECORTE VA DONDE ESTA EL COSTO (16/9). Con un tercio de las particulas
+  // el objeto se ve ralo y quien tiene un telefono viejo ve otra app; y ademas
+  // no era ahi: mover las 900 cuesta 0,006 ms por cuadro. Lo que cuesta es el
+  // relleno, que se paga por pixel. Asi que las particulas casi no bajan...
+  chequear('el objeto se ve casi igual en los tres equipos', [B.particulasPara('bajo', 900), B.particulasPara('medio', 900), B.particulasPara('alto', 900)], [585, 765, 900]);
   chequear('nunca baja de un piso: menos que eso no es un objeto', B.particulasPara('bajo', 100), 120);
+  // ...y lo que baja de verdad es a cuantos pixeles se dibuja: 1x contra 2x es
+  // una cuarta parte de los pixeles por cuadro.
+  chequear('y en un equipo flojo se dibuja a menos pixeles', [B.pixelesPara('bajo', 3), B.pixelesPara('medio', 3), B.pixelesPara('alto', 3)], [1, 1.5, 2]);
+  chequear('nunca mas que la pantalla de verdad', B.pixelesPara('alto', 1), 1);
+  chequear('un dato roto no deja la pantalla en cero', B.pixelesPara('alto', NaN), 1);
 }
 
 console.log('\n106. Cada objeto se reconoce por su forma');
@@ -7056,6 +7065,43 @@ console.log('\n107. El cielo de la entrada');
 
   chequear('cuantas: por area, con piso y techo', [E.cuantasPara(390, 844), E.cuantasPara(4000, 3000), E.cuantasPara(100, 100)], [103, 260, 70]);
   chequear('sin pantalla, ninguna', E.cuantasPara(0, 0), 0);
+}
+
+console.log('\n108. La entrada se ve UNA vez, y donde termina empieza el formulario');
+{
+  const { readFileSync: leer } = await import('node:fs');
+  const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const archivo = (...r) => sinComentarios(leer(join(RAIZ, ...r), 'utf8'));
+
+  // VA ADENTRO DEL LOGIN y no en su propia ruta: la animacion termina en negro,
+  // que es el fondo de esa pantalla. Con una navegacion en el medio habria un
+  // corte justo en el unico lugar donde no puede haberlo.
+  const login = archivo('src', 'app', 'login', 'page.tsx');
+  chequear('el login monta la entrada', login.includes('<Bienvenida'), true);
+  chequear('y pregunta si ya la vio antes de pintar', login.includes('vioLaEntrada('), true);
+  chequear('mientras no se sabe, no pinta nada', /if \(entrada === null\) return null;/.test(login), true);
+  chequear('y la anota al SALIR, no al empezar', /alSalir=\{\([^)]*\) => \{\s*[^}]*anotarEntradaVista\(\)/.test(login), true);
+  // Elegir "Crear cuenta" tiene que dejar el formulario en ese modo: mandarlo a
+  // "Entrar" despues de tocar crear es hacerle tocar dos veces lo mismo.
+  chequear('lo que eligio decide el modo del formulario', login.includes("destino === 'crear' ? 'crear' : 'entrar'"), true);
+
+  // ANTE LA DUDA NO SE MUESTRA: repetirle once segundos a quien solo quiere
+  // entrar es peor que no mostrarsela a alguien nuevo.
+  const vista = archivo('src', 'lib', 'entradaVista.ts');
+  chequear('si el almacenamiento falla, se da por vista', /catch \{\s*return true;/.test(vista), true);
+
+  // El banco monta la pantalla DE VERDAD: una copia se iria separando.
+  const banco = archivo('src', 'app', 'galeria', 'bienvenida', 'page.tsx');
+  chequear('el banco monta la pantalla de verdad', banco.includes("from '@/components/bienvenida/Bienvenida'"), true);
+
+  // Los textos viven en el diccionario, como todo el resto de la app.
+  const T = (await import('../nucleo/textos.ts')).T;
+  chequear('los textos de la entrada estan en textos.ts', [T.bienvenida.saludoTitulo, T.bienvenida.cierre], ['Empiezas desde el polvo', 'Tu viaje empieza ahora mismo']);
+  const comp = archivo('src', 'components', 'bienvenida', 'Bienvenida.tsx');
+  chequear('y la pantalla no tiene texto suelto', /T\.bienvenida\.saludoTitulo/.test(comp) && !/Empiezas desde/.test(comp), true);
+
+  // El motor se pide en la PRIMERA pantalla, no en la cuarta: tarda ~3 s.
+  chequear('la cuarta no espera al motor: tiene version sin el', archivo('src', 'components', 'bienvenida', 'Cuarta.tsx').includes('setConMotor(false)'), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

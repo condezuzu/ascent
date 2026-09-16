@@ -4843,3 +4843,44 @@ body.con-franja.con-accion .pantalla {
   pointer-events: none;
 }
 
+/* El final de la entrada: centrado sobre el cielo que acaba de aparecer. No es
+   el pie movido —es otra pantalla— y por eso entra con su propio tiempo,
+   después de que las estrellas están. */
+.bienv-fin {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 28px;
+  text-align: center;
+  animation: bienv-sube 0.7s var(--curva-salida) 0.35s both;
+}
+.bienv-fin .bienv-cierre {
+  margin-bottom: 8px;
+  font-size: 16px;
+  color: var(--tinta);
+}
+/* Saltar, chico y en gris: es una salida, no una opción. */
+.bienv-saltar {
+  font-size: 13px;
+  opacity: 0.6;
+}
+/* Tocar en cualquier lado de la cuarta salta al final. Sin dibujo propio: lo
+   único que hace es recibir el toque. */
+.bienv-tocar {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.bienv-vuelta {
+  z-index: 1;
+}
+

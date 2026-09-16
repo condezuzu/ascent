@@ -72,6 +72,11 @@ export function animarEntrada(
     reloj?: () => number | null;
     /** Cuántas partículas dibujar. Por omisión, todas. */
     particulas?: number;
+    /**
+     * A cuántos píxeles por punto se dibuja. Es lo que de verdad cuesta en un
+     * equipo flojo: ver `pixelesPara` en `lib/bienvenida.ts`.
+     */
+    pixeles?: number;
   } = {}
 ): Entrada | null {
   let renderer: THREE.WebGLRenderer;
@@ -115,7 +120,9 @@ export function animarEntrada(
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(actual, 3));
   const mat = new THREE.PointsMaterial({
-    size: 2.2 * Math.min(window.devicePixelRatio || 1, 2),
+    // El tamaño se mide en píxeles físicos, así que sigue a la densidad: si no,
+    // dibujar a 1× daría partículas de la mitad del tamaño.
+    size: 2.2 * (op.pixeles ?? Math.min(window.devicePixelRatio || 1, 2)),
     color: colores[0].clone(),
     transparent: true,
     opacity: 0,
@@ -148,7 +155,7 @@ export function animarEntrada(
     const w = canvas.clientWidth || 400;
     const h = canvas.clientHeight || 700;
     renderer.setSize(w, h, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(op.pixeles ?? Math.min(window.devicePixelRatio, 2));
     const aspecto = w / h;
     camara.left = -aspecto;
     camara.right = aspecto;

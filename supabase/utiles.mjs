@@ -57,3 +57,31 @@ export function retrocesosEnTemplate(codigo) {
   }
   return encontrados;
 }
+
+/**
+ * PASAR LA PANTALLA DE ENTRADA, si está.
+ *
+ * Desde el 16/9 la web muestra la bienvenida ANTES del formulario, una vez por
+ * aparato. Un navegador de prueba arranca siempre limpio, así que la ve
+ * siempre: sin esto, cualquier sonda que entre por `/login` se queda mirando
+ * "Empiezas desde el polvo" y reporta que no se pudo entrar. Que es, en el
+ * fondo, la prueba de que la pantalla anda.
+ *
+ * Hace lo mismo que haría una persona apurada: siguiente, siguiente, tocar la
+ * animación para saltarla, y "Ya tengo cuenta".
+ */
+export async function pasarLaEntrada(page) {
+  const entrada = page.locator('.bienv');
+  if (!(await entrada.count())) return false;
+  for (let i = 0; i < 3; i++) {
+    const siguiente = page.getByRole('button', { name: 'Siguiente' });
+    if (!(await siguiente.count())) break;
+    await siguiente.click();
+    await page.waitForTimeout(600);
+  }
+  // En la cuarta se salta tocando: el botón de saltar no existe ahí.
+  await page.locator('.bienv-tocar').click({ timeout: 30000 }).catch(() => {});
+  await page.getByRole('button', { name: 'Ya tengo cuenta' }).click({ timeout: 30000 }).catch(() => {});
+  await entrada.waitFor({ state: 'detached', timeout: 30000 }).catch(() => {});
+  return true;
+}

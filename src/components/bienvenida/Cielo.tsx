@@ -16,7 +16,23 @@ import { brilloEn, cielo, cuantasPara, type Estrella } from '@/lib/estrellas';
  *
  * Con "reducir movimiento" el cielo se dibuja UNA vez y no vuelve a tocarse.
  */
-export default function Cielo({ paso, quieto = false }: { paso: number; quieto?: boolean }) {
+export default function Cielo({
+  paso,
+  quieto = false,
+  densidad = 1,
+  surge = false,
+}: {
+  paso: number;
+  quieto?: boolean;
+  /** Multiplica cuántas estrellas hay. El cielo del final va más poblado. */
+  densidad?: number;
+  /**
+   * Que APAREZCAN, una detrás de otra, en vez de estar puestas. Es para el
+   * final: después de que el agujero negro se traga todo, el espacio tiene
+   * que volver a existir, no estar ahí de golpe.
+   */
+  surge?: boolean;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   const objetivo = useRef(paso);
   objetivo.current = paso;
@@ -37,7 +53,7 @@ export default function Cielo({ paso, quieto = false }: { paso: number; quieto?:
       alto = canvas.clientHeight;
       canvas.width = Math.round(ancho * dpr);
       canvas.height = Math.round(alto * dpr);
-      estrellas = cielo(cuantasPara(ancho, alto));
+      estrellas = cielo(Math.round(cuantasPara(ancho, alto) * densidad));
     };
     medir();
     window.addEventListener('resize', medir);
@@ -55,11 +71,17 @@ export default function Cielo({ paso, quieto = false }: { paso: number; quieto?:
       corrimiento += (objetivo.current - corrimiento) * 0.045;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, ancho, alto);
-      for (const e of estrellas) {
+      for (let i = 0; i < estrellas.length; i++) {
+        const e = estrellas[i];
         const x = e.x * ancho - corrimiento * e.capa * 26;
         const y = e.y * alto;
         if (x < -4 || x > ancho + 4) continue;
-        ctx.globalAlpha = quieto ? e.brillo : brilloEn(e, t);
+        // Al surgir, cada una tiene su propio momento: todas juntas es un
+        // interruptor, escalonadas es un cielo que aparece.
+        const cuando = surge ? ((i * 37) % 100) / 100 : 0;
+        const nacida = surge ? Math.min(1, Math.max(0, (t - cuando * 0.75) / 0.5)) : 1;
+        if (nacida <= 0) continue;
+        ctx.globalAlpha = (quieto ? e.brillo : brilloEn(e, t)) * nacida;
         ctx.fillStyle = '#cfd8f0';
         ctx.beginPath();
         ctx.arc(x, y, e.r, 0, Math.PI * 2);
@@ -76,7 +98,7 @@ export default function Cielo({ paso, quieto = false }: { paso: number; quieto?:
       window.removeEventListener('resize', medir);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quieto]);
+  }, [quieto, densidad, surge]);
 
   return <canvas ref={ref} className="bienv-cielo" aria-hidden />;
 }

@@ -50,6 +50,15 @@ for (const modo of ['motor', 'sin-motor']) {
     await page.screenshot({ path: `${SALIDA}/${modo}-${String(s).replace('.', '_')}s.png` });
   }
 }
+// EL FINAL DE VERDAD: se deja correr sin congelar, hasta que aparecen los
+// botones. Es lo que no se puede ver con la barra.
+await page.getByRole('button', { name: 'Correr' }).click();
+await page.getByRole('button', { name: 'Solo la animación' }).click();
+for (const s of [11.6, 12.4]) {
+  await page.waitForTimeout(s === 11.6 ? 11600 : 800);
+  await page.screenshot({ path: `${SALIDA}/final-${String(s).replace('.', '_')}s.png` });
+}
+
 // Las tres primeras pantallas, con sus fondos, y las variantes del título 3.
 await page.getByRole('button', { name: 'Correr' }).click();
 await page.getByRole('button', { name: 'Sin motor' }).click(); // volver al motor

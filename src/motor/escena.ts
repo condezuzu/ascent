@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { alCambiarDeTamano } from './alCambiarDeTamano';
+import { nivelEquipo } from '@/lib/equipo';
 import {
   VERTEX,
   FRAGMENT,
@@ -46,20 +47,14 @@ function dpr(): number {
 // NIVEL DEL EQUIPO
 // En un teléfono viejo no tiene sentido tirar 4200 partículas. Se mide una
 // sola vez por sesión y de ahí sale un multiplicador para todo lo pesado.
+//
+// LA MEDICIÓN SE MUDÓ A `lib/equipo.ts` (16/9): la pantalla de entrada la
+// necesita ANTES de cargar three.js, y no puede pedírsela a este archivo sin
+// arrastrar la biblioteca entera. Acá queda el reexport para no tocar a los
+// que ya la piden por acá — escrita dos veces se iban a separar.
 // -------------------------------------------------------------------
 type Nivel = 'bajo' | 'medio' | 'alto';
-let nivelCache: Nivel | null = null;
-
-export function nivelEquipo(): Nivel {
-  if (nivelCache) return nivelCache;
-  const nucleos = navigator.hardwareConcurrency ?? 4;
-  const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 4;
-  const pantallaChica = Math.min(window.innerWidth, window.innerHeight) < 400;
-  if (nucleos <= 4 || mem <= 2) nivelCache = 'bajo';
-  else if (nucleos <= 8 || mem <= 4 || pantallaChica) nivelCache = 'medio';
-  else nivelCache = 'alto';
-  return nivelCache;
-}
+export { nivelEquipo };
 
 const FACTOR: Record<Nivel, number> = { bajo: 0.3, medio: 0.6, alto: 1 };
 
