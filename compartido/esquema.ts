@@ -56,7 +56,7 @@ export async function versionDelEsquema(supabase: Cliente): Promise<number | nul
 }
 
 /** La versión para una pantalla. `null` mientras se averigua. */
-export function usarVersionDelEsquema(): number | null {
+export function useVersionDelEsquema(): number | null {
   const [version, setVersion] = useState<number | null>(memo);
   useEffect(() => {
     let vivo = true;

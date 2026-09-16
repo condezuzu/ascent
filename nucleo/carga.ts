@@ -8,7 +8,7 @@
  *
  *   total   la barra con los discos, o el número de la máquina.   × 1
  *   par     dos mancuernas o dos poleas: el peso de UNA.          × 2
- *   una     una sola mancuerna, con las dos manos o un brazo.     × 1
+ *   una     un lado por vez: un brazo, una pierna, una mancuerna.  × 1
  *   lastre  lo que va encima del peso corporal.                    × 1
  *
  * EL LASTRE NO SUMA EL PESO CORPORAL (decisión del humano): el peso corporal

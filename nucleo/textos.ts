@@ -154,7 +154,7 @@ export const T = {
     // catálogo: es lo que quedó escrito ese día.
     pesosDeSeries: (lista: string, unidad: string, carga: 'total' | 'par' | 'parPolea' | 'una' | 'lastre' = 'total') =>
       `${lista} ${unidad}${
-        { total: '', par: ' por mancuerna', parPolea: ' de cada lado', una: ', una mancuerna', lastre: ' de lastre' }[carga]
+        { total: '', par: ' por mancuerna', parPolea: ' de cada lado', una: ', un lado por vez', lastre: ' de lastre' }[carga]
       }`,
     ejercicioSinNombre: 'Un ejercicio que ya no está',
     enCurso: 'La sesión sigue abierta: esto se completa al terminarla.',
@@ -783,7 +783,10 @@ export const T = {
       total: 'en total',
       par: 'por mancuerna',
       parPolea: 'de cada lado',
-      una: 'una mancuerna',
+      // NO DICE "una mancuerna". El modo sirve para cualquier ejercicio a un
+      // lado por vez —una extensión de cuádriceps unilateral es una máquina, y
+      // ninguna mancuerna—, y el nombre viejo la dejaba afuera.
+      una: 'un lado por vez',
       lastre: 'de lastre',
     },
     // Al tocar la etiqueta. Dicen QUÉ número escribir, no el nombre del modo.
@@ -791,7 +794,7 @@ export const T = {
       total: 'Barra o máquina: el total',
       par: 'Dos mancuernas: el peso de una',
       parPolea: 'Dos poleas: el de cada lado',
-      una: 'Una mancuerna: su peso',
+      una: 'Un lado por vez: ese peso',
       lastre: 'Lastre: sin contar tu peso',
     },
     cargaCambiar: 'Qué significa este número',
@@ -806,7 +809,7 @@ export const T = {
     respuestaCarga: {
       par: 'Dos mancuernas',
       total: 'Barra o máquina',
-      una: 'Una mancuerna',
+      una: 'Un lado por vez',
     },
     // CON LA META CUMPLIDA, el + se convierte en esto y lleva a la lista.
     // Antes acá decía "Siguiente", que no dice de qué es siguiente y encima
@@ -904,13 +907,19 @@ export const T = {
   // "¿LO GUARDO COMO MARCA?", al terminar (`nucleo/marcaSugerida.ts`). Con el
   // dato ya escrito: la única pregunta es a cuántas repeticiones.
   marcaSugerida: {
-    masQueTuMarca: (peso: string, unidad: string, nombre: string) =>
-      `Hiciste ${peso} ${unidad} en ${minuscula(nombre)}: más que tu marca. ¿La guardo?`,
+    // NO DICE "más que tu marca", y ese cambio es del 16/9/2026. Antes lo
+    // afirmaba porque comparaba el peso crudo contra el 1RM de la marca, o sea
+    // mal. Ahora se pregunta cuando PUEDE serlo y quien contesta las
+    // repeticiones es quien lo define: el texto no puede prometer más que eso.
+    puedeSerMarca: (peso: string, unidad: string, nombre: string) =>
+      `Hiciste ${peso} ${unidad} en ${minuscula(nombre)}. Puede ser marca nueva.`,
     primera: (peso: string, unidad: string, nombre: string) =>
       `Hiciste ${peso} ${unidad} en ${minuscula(nombre)}. ¿La guardo como marca?`,
     cuantas: 'A cuántas repeticiones:',
     no: 'No',
     guardada: 'Guardada como marca.',
+    // Cuando el número que eligió la persona SÍ superó la marca anterior.
+    guardadaEsNueva: 'Guardada. Es tu marca nueva.',
     fallo: 'No se guardó. La puedes cargar desde Fuerza.',
   },
 

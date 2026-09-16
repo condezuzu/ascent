@@ -25,6 +25,15 @@ import reactHooks from 'eslint-plugin-react-hooks';
  * la única que atrapa un bug que ya nos pasó, y es de las poquísimas de eslint
  * que no opina sobre estilo: lo que marca está roto de verdad.
  *
+ * LOS HOOKS PROPIOS SE LLAMAN `use...` Y NO `usar...`, y por eso esta regla
+ * los ve. Estaban en español como todo el resto —`usarSesion`,
+ * `usarSugerenciasDeMarca`, `usarVersionDelEsquema`— y la regla exige el
+ * prefijo `use`: tiene el patrón `/^use[A-Z]/` adentro y no es configurable.
+ * Eran 29 falsos positivos, y la alternativa era apagar la regla justo en
+ * `useSesion`, que es el hook más grande del repo. Se renombraron los tres.
+ * La convención en español se queda para todo lo demás: es solo el prefijo
+ * que React necesita para reconocerlos.
+ *
  * `exhaustive-deps` queda en aviso y no en error a propósito: es útil, pero
  * tiene falsos positivos y en este repo ya hay `eslint-disable` puestos para
  * ella. Que avise, que no frene la tanda.
@@ -54,36 +63,5 @@ export default [
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
     },
-  },
-  {
-    /**
-     * LOS TRES HOOKS PROPIOS, que se llaman en español.
-     *
-     * `rules-of-hooks` exige que un hook propio empiece con `use` —tiene el
-     * patrón `/^use[A-Z]/` metido adentro, no es configurable—. Acá se llaman
-     * `usarSesion`, `usarSugerencias` y `usarVersionDelEsquema`, como todo el
-     * resto del código, así que la regla no los reconoce como hooks y grita 29
-     * veces que "se llama un hook en una función que no es un componente".
-     *
-     * Son 29 falsos positivos, no 29 bugs.
-     *
-     * QUÉ SE PIERDE APAGÁNDOLA ACÁ, dicho claro: adentro de estos tres
-     * archivos nadie verifica que los hooks se llamen siempre en el mismo
-     * orden. No se pierde nada que hoy se tenga —nunca hubo lint— pero tampoco
-     * se gana ahí, y `usarSesion` es el hook más grande del repo.
-     *
-     * QUÉ SE SIGUE CUBRIENDO, que es donde nos mordió: TODOS los componentes.
-     * Los dos crashes fueron en `SeccionVolumen` y en `Stats`, y la regla los
-     * agarra a los dos —lo verifiqué contra los archivos rotos antes de
-     * confiar en esto—.
-     *
-     * CÓMO SE ARREGLA DE VERDAD: renombrar los tres a `useSesion`,
-     * `useSugerencias` y `useVersionDelEsquema`. No es solo para el lint —React
-     * usa ese prefijo para sus propios avisos y para el compilador— pero es un
-     * renombre que toca las dos apps y rompe la convención de nombres en
-     * español. Es decisión del humano, no mía.
-     */
-    files: ['compartido/usarSesion.ts', 'compartido/marcaSugerida.ts', 'compartido/esquema.ts'],
-    rules: { 'react-hooks/rules-of-hooks': 'off' },
   },
 ];

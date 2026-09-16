@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
 import { umbralesDisponibles, umbralValido, type Umbral } from '@nucleo/estancamiento';
-import { usarVersionDelEsquema } from '@compartido/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { PRESETS_DESCANSO } from '@nucleo/reglas';
@@ -78,7 +78,7 @@ export default function Ajustes({
 
   const umbral = umbralValido(perfil.umbral_estancamiento);
   // El 2 aparece cuando la base lo acepta (migración 40).
-  const version = usarVersionDelEsquema();
+  const version = useVersionDelEsquema();
   const avisos = perfil.avisos_estancamiento !== false;
 
   return (

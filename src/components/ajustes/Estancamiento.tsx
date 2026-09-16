@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { guardarPreferencia } from './guardar';
 import { umbralesDisponibles, umbralValido, type Umbral } from '@nucleo/estancamiento';
-import { usarVersionDelEsquema } from '@compartido/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 
@@ -34,7 +34,7 @@ export default function Estancamiento({
   const prendido = perfil.avisos_estancamiento !== false;
   const umbral = umbralValido(perfil.umbral_estancamiento);
   // El 2 aparece cuando la base lo acepta (migración 40).
-  const version = usarVersionDelEsquema();
+  const version = useVersionDelEsquema();
 
   const guardarUmbral = (u: Umbral) =>
     guardarPreferencia(supabase, perfil, 'umbral_estancamiento', u, alCambiar);

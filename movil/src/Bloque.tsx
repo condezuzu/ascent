@@ -8,7 +8,7 @@ import { OPCIONES_DE_LA_PREGUNTA, cargaVigente, hayQuePreguntar, kilosMovidos, m
 import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
 import { leerAnotarPeso } from '@compartido/anotarPeso';
-import { usarVersionDelEsquema } from '@compartido/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
 import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
 import CampoPeso from './CampoPeso';
@@ -21,7 +21,7 @@ import { C } from './colores';
  * LAS REGLAS NO ESTÁN ACÁ. Qué pasa al sumar, al cerrar el bloque, al cambiar
  * de ejercicio con series contadas, el peso vigente, el modo del peso y la
  * pregunta de la primera vez: todo eso es `nucleo/bloques.ts`, `nucleo/carga.ts`
- * y `usarSesion` (compartido), lo mismo que usa `src/components/Bloque.tsx`.
+ * y `useSesion` (compartido), lo mismo que usa `src/components/Bloque.tsx`.
  * Esto es el dibujo, con las mismas decisiones de la web:
  *
  * - El `+` es enorme: es el botón más tocado, con una mano y transpirado.
@@ -68,7 +68,7 @@ export default function Bloque({
   const [lista, setLista] = useState(false);
   const [aDonde, setADonde] = useState<string | null | undefined>(undefined);
   const [prefierePeso, setPrefierePeso] = useState(true);
-  const version = usarVersionDelEsquema();
+  const version = useVersionDelEsquema();
   const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
   const conCarga = anotarPeso && disponible('cargaDelPeso', version);
 

@@ -13,10 +13,25 @@
  *   por mancuerna o la mancuerna sola, y el DOTS suma totales: proponer "30 kg
  *   en press con mancuernas" como marca sería guardar un número que después
  *   nadie sabe leer.
- * - **Solo si supera la marca vigente de verdad.** Se compara contra el 1RM de
- *   la mejor marca: una serie más pesada que ese 1RM es mejor sin importar las
- *   repeticiones. Una más liviana con muchas repeticiones PODRÍA serlo, pero
- *   las repeticiones no se anotan, y proponer "a lo mejor" es preguntar de más.
+ * - **Solo si PUEDE superar la marca vigente**, y acá hay un arreglo del
+ *   16/9/2026 que vale contar. Antes se comparaba el peso crudo de la serie
+ *   contra el 1RM de la mejor marca: "100 kg no supera tu marca de 110".
+ *
+ *   Eso está mal y siempre hacia el mismo lado. Un 3×8 con 100 kg es un 1RM
+ *   estimado de 133: bastante MÁS que esa marca de 110. Comparar un peso de
+ *   trabajo contra un 1RM es comparar dos cosas distintas, y el resultado era
+ *   que **cuanto mejor entrenabas por repeticiones, menos te ofrecía la app**.
+ *   Justo al revés de lo que tiene que hacer.
+ *
+ *   Ahora se compara 1RM contra 1RM. Como las repeticiones no se anotan, para
+ *   PREGUNTAR se usa el techo —las diez, que es el máximo que ofrece la hoja—:
+ *   si ni con diez repeticiones esa serie llegaría a la marca, no hay nada que
+ *   preguntar. El número de verdad lo pone la persona al confirmar, y ahí se
+ *   sabe si quedó como marca nueva o no.
+ *
+ *   PREGUNTA MÁS QUE ANTES, a propósito. El costo de preguntar de más es un
+ *   toque en "No"; el de preguntar de menos es una marca que nunca se carga y
+ *   un DOTS que miente para abajo.
  * - **Sin marca previa, solo los tres del DOTS.** Son los que arman el número de
  *   fuerza; preguntar por cada uno de los cien ejercicios la primera vez que se
  *   anota un peso sería una encuesta al final de cada sesión.
@@ -82,7 +97,11 @@ export function marcasParaProponer({
   for (const [ejercicio, peso] of pesado) {
     const dots = !!catalogo.get(ejercicio)?.cuenta_dots;
     const antes = mejorPorEjercicio.get(ejercicio) ?? null;
-    if (antes === null ? !dots : peso <= antes + 1e-9) continue;
+    // Sin marca previa se sigue preguntando solo por los tres del DOTS: si no,
+    // la primera vez que anotas un peso en cada uno de los cien ejercicios
+    // termina siendo una encuesta. Con marca previa, alcanza con que PUEDA
+    // superarla.
+    if (antes === null ? !dots : !podriaSuperar(peso, antes)) continue;
     sugerencias.push({ ejercicio, peso, antes, dots });
   }
   return sugerencias
@@ -93,6 +112,39 @@ export function marcasParaProponer({
 
 /** Las repeticiones que se ofrecen. Hasta diez: la tabla acepta hasta veinte, pero una "marca" de más de diez ya no es fuerza. */
 export const REPETICIONES_PARA_MARCA = [1, 2, 3, 4, 5, 6, 8, 10] as const;
+
+/** El techo de lo que se puede elegir, que es lo que hace de cota al preguntar. */
+export const REPS_TOPE = REPETICIONES_PARA_MARCA[REPETICIONES_PARA_MARCA.length - 1];
+
+/**
+ * El 1RM de una serie de la sesión. Una sola repetición ES el 1RM; de ahí para
+ * arriba se estima igual que en la base (`un_rm`), para que los dos lados
+ * digan lo mismo.
+ */
+export function unRmDeSerie(peso: number, reps: number): number {
+  return unRM(peso, reps, reps === 1);
+}
+
+/**
+ * ¿Esta serie, a estas repeticiones, es mejor que la marca que había?
+ *
+ * Sin marca previa, cualquier cosa lo es. El `1e-9` es para que empatar no
+ * cuente como superar: guardar un duplicado de la misma marca no agrega nada.
+ */
+export function superaLaMarca(peso: number, reps: number, antes: number | null): boolean {
+  if (antes === null) return true;
+  return unRmDeSerie(peso, reps) > antes + 1e-9;
+}
+
+/**
+ * ¿Vale la pena preguntar? Con el techo de repeticiones: si ni así llega, no.
+ *
+ * Es deliberadamente generoso. Preguntar de más cuesta un toque; preguntar de
+ * menos cuesta una marca que no se carga nunca.
+ */
+export function podriaSuperar(peso: number, antes: number | null): boolean {
+  return superaLaMarca(peso, REPS_TOPE, antes);
+}
 
 /** Lo que va a la tabla de marcas. Una repetición es un 1RM real. */
 export function filaDeMarca(s: Sugerencia, reps: number, fecha: string) {

@@ -11,7 +11,7 @@ import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { resumenDelDia, type ResumenDelDia, type SesionDelDia } from '@nucleo/resumenDia';
 import { claveDeEtiqueta, gruposDePesos, type Carga } from '@nucleo/carga';
 import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
-import { usarVersionDelEsquema } from '@compartido/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
 
@@ -52,7 +52,7 @@ export default function HojaDelDia({
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
   const [unidad, setUnidad] = useState<Unidad>('kg');
-  const versionEsquema = usarVersionDelEsquema();
+  const versionEsquema = useVersionDelEsquema();
 
   const esFuturo = fecha > hoyISO();
 

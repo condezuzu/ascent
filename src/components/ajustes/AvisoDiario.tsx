@@ -5,7 +5,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
 import type { EstadoAvisoRemoto } from '@nucleo/plataforma';
 import { T } from '@nucleo/textos';
-import { usarVersionDelEsquema } from '@compartido/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 
 /**
@@ -31,7 +31,7 @@ export default function AvisoDiario() {
   const [estado, setEstado] = useState<EstadoAvisoRemoto | null>(null);
   const [trabajando, setTrabajando] = useState(false);
   const [error, setError] = useState('');
-  const version = usarVersionDelEsquema();
+  const version = useVersionDelEsquema();
 
   useEffect(() => {
     plataforma.avisos.remotos.estado().then(setEstado).catch(() => setEstado('no-disponible'));

@@ -7,7 +7,7 @@ import { mirarElGimnasio, registrarPorSenal } from '@/lib/gimnasio';
 import { decidir } from '@nucleo/llegada';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
 import { perfilVivo } from '@compartido/perfilVivo';
-import { usarSesion, type CierreDeSesion } from '@compartido/usarSesion';
+import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
 import { ESPERA_LLEGADA_MS } from '@nucleo/reglas';
 import { anotar } from '@compartido/bitacora';
 import { hoyISO } from '@nucleo/fechas';
@@ -54,11 +54,11 @@ export const SUBIO_RANGO = 'ascent:subio-rango';
  * quien sabe que se cerró es este.
  *
  * VIENE EN DOS PARTES, y no por gusto. Este de afuera solo averigua si hay
- * alguien con un punto marcado; el de adentro es el que usa `usarSesion`, y
+ * alguien con un punto marcado; el de adentro es el que usa `useSesion`, y
  * solo se monta cuando ya se sabe que sí.
  *
  * Al mudarlo desde Inicio quedó montado en TODAS las pantallas, incluida la de
- * entrada — y ahí `usarSesion` preguntaba `mi_sesion` sin sesión y se comía un
+ * entrada — y ahí `useSesion` preguntaba `mi_sesion` sin sesión y se comía un
  * 401 en cada carga. Lo encontró el informe de `capturas`, que mira las
  * respuestas fallidas justamente para esto. Un hook no se puede llamar bajo
  * condición, así que la condición tiene que ser el montaje.
@@ -100,7 +100,7 @@ export default function VigilanteDeGimnasio() {
 function Mirando({ supabase, perfil }: { supabase: SupabaseClient; perfil: Perfil }) {
   const [cierre, setCierre] = useState<CierreDeSesion | null>(null);
 
-  const sesion = usarSesion();
+  const sesion = useSesion();
   const sesionRef = useRef(sesion);
   sesionRef.current = sesion;
   const perfilRef = useRef(perfil);

@@ -2,7 +2,7 @@
 
 import { cronoLindo, transcurrido } from '@nucleo/sesiones';
 import { cuentaAtras, restante } from '@compartido/descanso';
-import type { EstadoSesion } from '@compartido/usarSesion';
+import type { EstadoSesion } from '@compartido/useSesion';
 import { T } from '@nucleo/textos';
 
 /**

@@ -5604,7 +5604,7 @@ console.log('\n81. Lo que depende de una migracion pregunta si esta');
 
   // Los que no aplican: la ruta del cron (la llama el servidor, no una
   // pantalla), el propio detector de version, y la cola, que tiene la LISTA de
-  // lo que se puede encolar: la pregunta va donde se encola (`usarSesion`).
+  // lo que se puede encolar: la pregunta va donde se encola (`useSesion`).
   const exentos = [/src[\\/]app[\\/]api[\\/]/, /compartido[\\/]esquema\.ts$/, /compartido[\\/]cola\.ts$/];
   const sinPreguntar = [];
   let revisadas = 0;
@@ -6277,7 +6277,7 @@ console.log('\n92. Lo compartido no es de ninguna de las dos apps');
 
   // La app nativa usa la MISMA sesion, no una copia.
   const inicio = leerArch(join(RAIZ, 'movil', 'src', 'Inicio.tsx'), 'utf8');
-  chequear('Inicio nativo usa la sesion compartida', inicio.includes("from '@compartido/usarSesion'"), true);
+  chequear('Inicio nativo usa la sesion compartida', inicio.includes("from '@compartido/useSesion'"), true);
   chequear("y no llama a iniciar_sesion por su cuenta", /rpc\(\s*'(iniciar|terminar)_sesion'/.test(inicio), false);
   // Los dos lados ponen los alias.
   const tsWeb = leerArch(join(RAIZ, 'tsconfig.json'), 'utf8');
@@ -6297,8 +6297,8 @@ console.log('\n93. Dos toques seguidos no le devuelven al total el numero de ant
   // relee las suyas. No se puede cargar el hook con node, asi que se lee.
   const { readFileSync: leer } = await import('node:fs');
   const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
-  const hook = sinComentarios(leer(join(RAIZ, 'compartido', 'usarSesion.ts'), 'utf8'));
-  const cuerpo = hook.slice(hook.indexOf('export function usarSesion('));
+  const hook = sinComentarios(leer(join(RAIZ, 'compartido', 'useSesion.ts'), 'utf8'));
+  const cuerpo = hook.slice(hook.indexOf('export function useSesion('));
   const sinFirma = [];
   for (const m of cuerpo.matchAll(/(guardar|actualizar|borrar)SesionCache\(/g)) {
     // hasta el parentesis que cierra la llamada
@@ -6413,9 +6413,58 @@ console.log('\n96. Hiciste 102 en banca: ¿lo guardo como marca?');
     propone([{ ejercicio: 'press_banca', series: 3, pesos: [95, 102, 100], carga: 'total' }]),
     [{ ejercicio: 'press_banca', peso: 102, antes: 100 }]
   );
-  chequear('igual a la marca: no', propone([{ ejercicio: 'press_banca', series: 1, pesos: [100], carga: 'total' }]), []);
-  // Contra el 1RM, no contra el peso escrito: 130x5 de antes son 140 de 1RM.
-  chequear('contra el 1RM de la marca', propone([{ ejercicio: 'sentadilla', series: 1, pesos: [135], carga: 'total' }]), []);
+  // ESTOS DOS CAMBIARON DE RESPUESTA EL 16/9/2026, y el cambio es el arreglo.
+  //
+  // Antes se comparaba el PESO CRUDO de la serie contra el 1RM de la marca, o
+  // sea dos cosas distintas, y siempre para el mismo lado: cuanto mejor
+  // entrenabas por repeticiones, menos te ofrecia la app. Un 3x8 con 100 kg es
+  // un 1RM de 133 y la app te decia que no llegabas a tu marca de 110.
+  //
+  // Ahora se compara 1RM contra 1RM, y como las repeticiones no se anotan, para
+  // preguntar se usa el techo de lo que se puede elegir (diez).
+  chequear(
+    'mismo peso que la marca: AHORA se pregunta, porque con repeticiones la supera',
+    propone([{ ejercicio: 'press_banca', series: 1, pesos: [100], carga: 'total' }]),
+    [{ ejercicio: 'press_banca', peso: 100, antes: 100 }]
+  );
+  chequear(
+    'mas liviano que el 1RM de la marca: se pregunta igual (135 a diez reps son 180)',
+    propone([{ ejercicio: 'sentadilla', series: 1, pesos: [135], carga: 'total' }]),
+    [{ ejercicio: 'sentadilla', peso: 135, antes: 140 }]
+  );
+  // PERO NO SE PREGUNTA SIEMPRE: si ni con el techo de repeticiones llega, no
+  // hay nada que preguntar. La marca de sentadilla es 140 de 1RM; 100 kg a diez
+  // repeticiones son 133, que no alcanza.
+  chequear(
+    'si ni con diez repeticiones llega, no se pregunta',
+    propone([{ ejercicio: 'sentadilla', series: 1, pesos: [100], carga: 'total' }]),
+    []
+  );
+
+  // EL CASO QUE LO DESTAPO, tal cual: sentadilla 3x8 con 100 kg, marca de 110.
+  {
+    const marcasDe110 = [{ ejercicio: 'sentadilla', peso: 110, reps: 1, es_real: true }];
+    const conMarca110 = (bloques) => M.marcasParaProponer({ bloques, marcas: marcasDe110, catalogo });
+    chequear(
+      '3x8 con 100 kg y marca de 110: se pregunta',
+      conMarca110([{ ejercicio: 'sentadilla', series: 3, pesos: [100, 100, 100], carga: 'total' }]).map((x) => x.ejercicio),
+      ['sentadilla']
+    );
+    // Y EL NUMERO DECIDE AL CONFIRMAR: con una repeticion no supera 110, con
+    // ocho si. Es lo que separa "preguntar" de "afirmar".
+    chequear('a una repeticion son 100: no supera los 110', M.superaLaMarca(100, 1, 110), false);
+    chequear('a tres son 110 clavados: empatar no es superar', M.superaLaMarca(100, 3, 110), false);
+    chequear('a cinco son 117: si', M.superaLaMarca(100, 5, 110), true);
+    chequear('a ocho son 127: claramente si', M.superaLaMarca(100, 8, 110), true);
+  }
+
+  // LAS FUNCIONES SUELTAS, que son las que usa la pantalla al confirmar.
+  chequear('sin marca previa, cualquier cosa es marca', M.superaLaMarca(50, 1, null), true);
+  chequear('una repeticion ES el 1RM', M.unRmDeSerie(100, 1), 100);
+  chequear('y de ahi para arriba se estima como la base', M.unRmDeSerie(100, 6), 120);
+  chequear('el techo de repeticiones es el ultimo que se ofrece', M.REPS_TOPE, 10);
+  chequear('podriaSuperar usa ese techo', M.podriaSuperar(100, 133), true);
+  chequear('y dice que no cuando de verdad no llega', M.podriaSuperar(100, 134), false);
   chequear('por mancuerna: no se propone', propone([{ ejercicio: 'press_mancuernas', series: 1, pesos: [60], carga: 'par' }]), []);
   chequear(
     'un ejercicio del DOTS sin marca: si',
@@ -6644,7 +6693,7 @@ console.log('\n101. La caza del 15/9: lo que perdia datos o dejaba afuera');
   // Terminar, la base ve una sesion sin series: corta, borra el dia; de mas de
   // dos horas, la da por abandonada. La base ya se prueba en su seccion; esto
   // prueba que el cliente no le pregunte antes de subir.
-  const ses = archivo('compartido', 'usarSesion.ts');
+  const ses = archivo('compartido', 'useSesion.ts');
   const cuerpo = ses.slice(ses.indexOf('async function terminar('), ses.indexOf('async function marcar('));
   const iVaciar = cuerpo.indexOf('vaciar(supabase)');
   const iCerrar = cuerpo.indexOf('cerrar(supabase');

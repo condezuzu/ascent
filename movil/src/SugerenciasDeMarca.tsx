@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
 import { T } from '@nucleo/textos';
-import { usarSugerenciasDeMarca } from '@compartido/marcaSugerida';
+import { useSugerenciasDeMarca } from '@compartido/marcaSugerida';
 import { C } from './colores';
 
 /**
@@ -10,17 +10,21 @@ import { C } from './colores';
  * `nucleo/marcaSugerida.ts` y lo busca y guarda `compartido/`: igual que la web.
  */
 export default function SugerenciasDeMarca({ bloques, unidad }: { bloques: unknown; unidad: Unidad }) {
-  const { lista, guardar, descartar } = usarSugerenciasDeMarca(bloques);
+  const { lista, guardar, descartar } = useSugerenciasDeMarca(bloques);
   if (lista.length === 0) return null;
   return (
     <View style={estilos.todo} onStartShouldSetResponder={() => true}>
       {lista.map((s) => (
         <View key={s.ejercicio} style={estilos.una}>
           <Text style={estilos.texto}>
-            {(s.antes === null ? T.marcaSugerida.primera : T.marcaSugerida.masQueTuMarca)(pesoCorto(s.peso, unidad), unidad, s.nombre)}
+            {(s.antes === null ? T.marcaSugerida.primera : T.marcaSugerida.puedeSerMarca)(pesoCorto(s.peso, unidad), unidad, s.nombre)}
           </Text>
           {s.estado === 'guardada' || s.estado === 'fallo' ? (
-            <Text style={estilos.hecho}>{s.estado === 'guardada' ? T.marcaSugerida.guardada : T.marcaSugerida.fallo}</Text>
+            <Text style={estilos.hecho}>{s.estado !== 'guardada'
+                ? T.marcaSugerida.fallo
+                : s.esNueva
+                  ? T.marcaSugerida.guardadaEsNueva
+                  : T.marcaSugerida.guardada}</Text>
           ) : (
             <>
               <Text style={estilos.cuantas}>{T.marcaSugerida.cuantas}</Text>

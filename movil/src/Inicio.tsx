@@ -9,7 +9,7 @@ import { mensajeDeAuth } from '@nucleo/errores';
 import type { Log, Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
-import { usarSesion, type CierreDeSesion } from '@compartido/usarSesion';
+import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
 import Bloque from './Bloque';
 import Descanso from './Descanso';
 import RachaSalvada from './RachaSalvada';
@@ -38,7 +38,7 @@ import { cuentaAtras, restante } from '@compartido/descanso';
  * - **La foto y el peso** al registrar: son la hoja de registrar, que necesita
  *   cámara y otra pantalla.
  *
- * LA SESIÓN (tanda 3, N1) NO ESTÁ ESCRITA ACÁ: es `usarSesion`, el MISMO hook
+ * LA SESIÓN (tanda 3, N1) NO ESTÁ ESCRITA ACÁ: es `useSesion`, el MISMO hook
  * que usa la web, desde `compartido/`. Iniciar, el cronómetro, terminar, el
  * cierre por inactividad y el aviso de "se cerró sola" son una sola lógica
  * para las dos apps. Esta pantalla solo la dibuja. El bloque —contar series,
@@ -138,7 +138,7 @@ export default function Inicio({
 
   // Iniciar una sesión registra el día: cuando la base avisa, se recarga la
   // racha y la semana. Va antes de cualquier `return`: es un hook.
-  const sesion = usarSesion(() => {
+  const sesion = useSesion(() => {
     cargar();
   });
 

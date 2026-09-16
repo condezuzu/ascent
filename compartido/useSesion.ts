@@ -153,7 +153,7 @@ export type CierreDeSesion = {
   bloques: ReturnType<typeof paraGuardar>;
 };
 
-export function usarSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void) {
+export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void) {
   const [supabase] = useState(() => crearCliente());
   // Quién es ESTA instancia, para no releer sus propias escrituras (ver
   // `esMio` en `sesionCache.ts`).

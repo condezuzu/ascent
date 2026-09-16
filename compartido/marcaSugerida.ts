@@ -3,6 +3,7 @@ import { crearCliente, type Cliente } from '@cliente';
 import { hoyISO } from '@nucleo/fechas';
 import {
   filaDeMarca,
+  superaLaMarca,
   marcasParaProponer,
   type EjercicioParaMarca,
   type MarcaGuardada,
@@ -73,9 +74,13 @@ export type EstadoDeSugerencia = 'preguntando' | 'guardando' | 'guardada' | 'fal
  * Lo que dibuja cada resumen (web y nativo): las sugerencias y qué pasó con
  * cada una. "No" la saca de la lista y no vuelve: se pregunta una vez.
  */
-export function usarSugerenciasDeMarca(bloques: unknown) {
+export function useSugerenciasDeMarca(bloques: unknown) {
   const [supabase] = useState(() => crearCliente());
-  const [lista, setLista] = useState<(Sugerencia & { nombre: string; estado: EstadoDeSugerencia })[]>([]);
+  // `esNueva` se calcula al confirmar, con las repeticiones que eligió la
+  // persona: es EL número que decide, y hasta ese momento no se sabe.
+  const [lista, setLista] = useState<
+    (Sugerencia & { nombre: string; estado: EstadoDeSugerencia; esNueva?: boolean })[]
+  >([]);
 
   useEffect(() => {
     let vivo = true;
@@ -87,14 +92,20 @@ export function usarSugerenciasDeMarca(bloques: unknown) {
     };
   }, [supabase, bloques]);
 
-  const poner = (ejercicio: string, estado: EstadoDeSugerencia) =>
-    setLista((l) => l.map((x) => (x.ejercicio === ejercicio ? { ...x, estado } : x)));
+  const poner = (ejercicio: string, estado: EstadoDeSugerencia, esNueva?: boolean) =>
+    setLista((l) => l.map((x) => (x.ejercicio === ejercicio ? { ...x, estado, esNueva } : x)));
 
   return {
     lista,
     async guardar(s: Sugerencia, reps: number) {
       poner(s.ejercicio, 'guardando');
-      poner(s.ejercicio, (await guardarSugerencia(supabase, s, reps)) ? 'guardada' : 'fallo');
+      // Se guarda IGUAL aunque no supere: la base se queda con la mejor
+      // (`mejores_marcas` ordena por 1RM), así que una marca peor no ensucia
+      // el DOTS, y es un dato cierto de lo que la persona levantó. Lo único
+      // que cambia es lo que se le dice después.
+      const nueva = superaLaMarca(s.peso, reps, s.antes);
+      const ok = await guardarSugerencia(supabase, s, reps);
+      poner(s.ejercicio, ok ? 'guardada' : 'fallo', ok && nueva);
     },
     descartar(s: Sugerencia) {
       setLista((l) => l.filter((x) => x.ejercicio !== s.ejercicio));

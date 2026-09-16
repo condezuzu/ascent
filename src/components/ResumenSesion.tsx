@@ -7,7 +7,7 @@ import NumeroQueCuenta from './NumeroQueCuenta';
 import { T } from '@nucleo/textos';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
-import { usarSugerenciasDeMarca } from '@compartido/marcaSugerida';
+import { useSugerenciasDeMarca } from '@compartido/marcaSugerida';
 
 /**
  * Lo que se ve al terminar de entrenar.
@@ -45,7 +45,7 @@ export default function ResumenSesion({
   unidad?: Unidad;
   alCerrar: () => void;
 }) {
-  const sugerencias = usarSugerenciasDeMarca(bloques);
+  const sugerencias = useSugerenciasDeMarca(bloques);
   const [unidadGuardada, setUnidadGuardada] = useState<Unidad>('kg');
   useEffect(() => {
     if (unidadPedida) return;
@@ -89,14 +89,16 @@ export default function ResumenSesion({
             {sugerencias.lista.map((s) => (
               <div key={s.ejercicio} className="marca-sugerida">
                 <p>
-                  {(s.antes === null ? T.marcaSugerida.primera : T.marcaSugerida.masQueTuMarca)(
+                  {(s.antes === null ? T.marcaSugerida.primera : T.marcaSugerida.puedeSerMarca)(
                     pesoCorto(s.peso, unidad),
                     unidad,
                     s.nombre
                   )}
                 </p>
                 {s.estado === 'guardada' ? (
-                  <p className="hecho">{T.marcaSugerida.guardada}</p>
+                  <p className="hecho">
+                    {s.esNueva ? T.marcaSugerida.guardadaEsNueva : T.marcaSugerida.guardada}
+                  </p>
                 ) : s.estado === 'fallo' ? (
                   <p className="hecho">{T.marcaSugerida.fallo}</p>
                 ) : (

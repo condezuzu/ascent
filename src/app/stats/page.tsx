@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { aISO, deISO, hoyISO, restarDias, fechaLinda } from '@nucleo/fechas';
-import { RANGOS, rangoDeRacha } from '@nucleo/rangos';
+import { RANGOS, planetaDeDia, rangoDeRacha } from '@nucleo/rangos';
 import { conComa, deKilos, esUnidad, type Unidad } from '@nucleo/peso';
 import type { Log, Peso } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -35,6 +35,18 @@ export default function Estadisticas() {
   const [mejor, setMejor] = useState(0);
   const [unidad, setUnidad] = useState<Unidad>('kg');
   const [sexo, setSexo] = useState<string | null>(null);
+  // EL RANGO Y EL PLANETA DEL PERFIL, para el fondo.
+  //
+  // EL BUG: esta pantalla calculaba el rango con `rangoDeRacha(racha)` y NO
+  // pasaba el planeta. Sin planeta, `paletaDe(4, undefined)` cae en la paleta
+  // generica del rango 4 en vez de la de Marte: estando en Marte, que es
+  // naranja, Stats se veia azul. Es la unica pantalla que se lo olvidaba.
+  //
+  // Y sale del PERFIL y no de la racha: `rango_actual` es la autoridad —tiene
+  // en cuenta la racha base y las perdidas— y es lo que usan Inicio, el Album
+  // y el Ranking. Calcularlo aparte era una segunda verdad.
+  const [miRango, setMiRango] = useState(1);
+  const [miPlaneta, setMiPlaneta] = useState<string | null>(null);
   // LAS PESTAÑAS. "General" es lo que Stats ya era, intacto: quién sos en la
   // app. "Entrenamiento" es qué venís haciendo. Mezcladas en una sola lista,
   // la racha —que es el corazón— quedaría enterrada entre números.
@@ -65,6 +77,8 @@ export default function Estadisticas() {
       if (p) {
         setRacha(p.racha_actual);
         setMejor(p.mejor_racha);
+        setMiRango(p.rango_actual);
+        setMiPlaneta(planetaDeDia(p.racha_actual));
         setSexo(p.sexo ?? null);
         if (esUnidad(p.unidad_peso)) setUnidad(p.unidad_peso);
       }
@@ -127,7 +141,7 @@ export default function Estadisticas() {
 
   return (
     <>
-      <FondoEspacial rango={rangoActual.n} esquina="arriba-derecha" velo={0.72} />
+      <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.72} />
       <PantallaDeslizable>
         <div className="titulo-pantalla">{T.stats.titulo}</div>
 

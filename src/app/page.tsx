@@ -22,7 +22,7 @@ import { DIA_CAMBIO, SUBIO_RANGO } from '@/components/VigilanteDeGimnasio';
 import { lineaDeMarcas } from '@nucleo/fuerza';
 import { impulsosSinVer, hastaDondeVisto, rachaSiSeDevuelve, CLAVE_VIDA_VISTA } from '@nucleo/impulsos';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@nucleo/tipos';
-import type { CierreDeSesion } from '@compartido/usarSesion';
+import type { CierreDeSesion } from '@compartido/useSesion';
 import FondoEspacial from '@/components/FondoEspacial';
 import TiraSemanal from '@/components/TiraSemanal';
 import RegistrarSheet from '@/components/RegistrarSheet';
@@ -40,7 +40,7 @@ import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import ChipSesion from '@/components/ChipSesion';
 import Descanso from '@/components/Descanso';
-import { usarSesion } from '@compartido/usarSesion';
+import { useSesion } from '@compartido/useSesion';
 import { T } from '@nucleo/textos';
 
 type LineaSocial = { username: string; racha: number } | null;
@@ -287,7 +287,7 @@ export default function Principal() {
 
   // El cronómetro vive acá desde §20: empezar pasa una vez por entrenamiento
   // y no merecía una pestaña, pero sí estar a la vista.
-  const sesion = usarSesion((r) => {
+  const sesion = useSesion((r) => {
     if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
     cargar(false);
   });

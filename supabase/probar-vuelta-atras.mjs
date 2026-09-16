@@ -2,7 +2,7 @@
 //
 // Entre el push y la migración —que la corre una persona a mano— hay una
 // ventana en la que el código nuevo le pide a la base una función que todavía
-// no existe. Si la vuelta atrás de `usarSesion` no funciona, en esa ventana no
+// no existe. Si la vuelta atrás de `useSesion` no funciona, en esa ventana no
 // se puede ni empezar ni terminar una sesión: la app está rota y el error es un
 // `PGRST202` que no le dice nada a nadie.
 //

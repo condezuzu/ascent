@@ -9,7 +9,7 @@ import ListaDeBloques from '@/components/ListaDeBloques';
 import SelectorEjercicio from '@/components/SelectorEjercicio';
 import CampoPeso from '@/components/CampoPeso';
 import { leerAnotarPeso } from '@compartido/anotarPeso';
-import { usarVersionDelEsquema } from '@compartido/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
@@ -73,7 +73,7 @@ export default function Bloque({
   alElegirPeso: (kg: number | null) => void;
   /** El peso de una serie ya hecha. `indice` -1 es el bloque en curso. */
   alCorregirPeso: (indice: number, serie: number, kg: number | null) => void;
-  /** El ejercicio del que ya se sabe con qué se hace. Ver `usarSesion`. */
+  /** El ejercicio del que ya se sabe con qué se hace. Ver `useSesion`. */
   cargaConsultada: string | null;
   /** Qué significa el número en el bloque en curso. */
   alElegirCarga: (c: Carga) => void;
@@ -94,7 +94,7 @@ export default function Bloque({
   // SIN LA MIGRACIÓN 36 NO HAY CAMPO. La función vieja de guardar bloques
   // tiraba los pesos sin dar error: se veían, se escribían y no se guardaba
   // nada. Ver `nucleo/esquema.ts`.
-  const version = usarVersionDelEsquema();
+  const version = useVersionDelEsquema();
   const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
   // QUÉ SIGNIFICA EL NÚMERO (migración 38). Sin ella, el campo es el de antes:
   // una etiqueta que la base no puede guardar mentiría igual que el campo de
