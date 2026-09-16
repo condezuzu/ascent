@@ -14,10 +14,21 @@ import { eventos } from '@compartido/eventos';
 import { plataforma } from '@/plataforma';
 import ResumenSesion from './ResumenSesion';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Perfil } from '@nucleo/tipos';
+import type { Perfil, ResultadoRegistro } from '@nucleo/tipos';
 
 /** Aviso de que el día de hoy cambió, para que la pantalla que lo muestre se refresque. */
 export const DIA_CAMBIO = 'ascent:dia-cambio';
+
+/**
+ * EL DÍA ENTRÓ SOLO Y ADEMÁS SUBISTE DE RANGO (bug del 15/9).
+ *
+ * La subida se animaba en los dos caminos que empiezan con un toque —registrar
+ * a mano y empezar la sesión— y en el tercero no: el día que entra al llegar
+ * al gimnasio, que es el camino NORMAL de quien tiene el punto marcado. Se
+ * subía de rango y no se enteraba nadie. El dato venía en la respuesta de
+ * `registrar_dia` y se tiraba.
+ */
+export const SUBIO_RANGO = 'ascent:subio-rango';
 
 /**
  * EL QUE MIRA SI LLEGASTE AL GIMNASIO (§13).
@@ -133,7 +144,11 @@ function Mirando({ supabase, perfil }: { supabase: SupabaseClient; perfil: Perfi
         // Se marca también cuando YA estaba: la respuesta a "¿hace falta
         // registrarlo?" es no en los dos casos.
         if (r.registrado || r.yaEstaba) diaRegistrado.current = hoyISO();
-        if (r.registrado) eventos.emitir(DIA_CAMBIO);
+        if (r.registrado) {
+          eventos.emitir(DIA_CAMBIO);
+          const reg = r.data as ResultadoRegistro | undefined;
+          if (reg?.subio_rango) eventos.emitir(SUBIO_RANGO, reg);
+        }
       }
 
       const decision = decidir(adentro, medidoEn, Date.now(), vigilancia, {

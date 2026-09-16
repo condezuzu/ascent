@@ -713,6 +713,11 @@ export const T = {
     seCerroSinDuracion:
       'Se cerró sola tras dos horas sin tocar nada: queda sin duración. El día cuenta.',
     nuevoRango: 'Nuevo rango',
+    // QUÉ GANASTE, dicho (15/9). Antes aparecía el nombre y nada más: se subía
+    // de rango y no se enteraba nadie.
+    rangoDia: (dias: number) => `Día ${dias}`,
+    rangoDesde: (antes: string) => `Dejaste atrás ${antes.toLowerCase()}.`,
+    rangoSeguir: 'Toca para seguir',
 
     // EL RESUMEN DEL FINAL. Terminar un entrenamiento era el momento más
     // vacío de la app: la hoja se cerraba y no pasaba nada. Es el instante de

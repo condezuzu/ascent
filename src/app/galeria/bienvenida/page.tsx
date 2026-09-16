@@ -25,73 +25,71 @@ import {
   type CuadroDeLaEntrada,
 } from '@/lib/bienvenida';
 import { paletaDe } from '@/lib/paletas';
+import Cielo from './Cielo';
+import Registro from './Registro';
+import Objetos from './Objetos';
 
 type Juego = {
   nombre: string;
   idea: string;
   pantallas: { titulo: string; bajada: string }[];
+  cierre: string;
   crear: string;
   entrar: string;
 };
 
-// Tres juegos de texto. Ninguno promete resultados físicos ni cambios de vida:
-// todos dicen algo que la app hace. Cambia el ÁNGULO, no el contenido.
-const JUEGOS: Juego[] = [
+/**
+ * LOS TEXTOS. El humano eligió el juego C (15/9) y descartó A y B: "es el
+ * único que no podría estar en cualquier app de gimnasio". Lo que queda para
+ * elegir es el título de la tercera, que era el flojo, y la línea del final.
+ *
+ * LA REGLA: nada de prometer resultados físicos ni cambios de vida. Todo lo
+ * que se dice acá lo hace la app.
+ *
+ * Son borradores y por eso viven en esta pantalla y no en `nucleo/textos.ts`:
+ * se mudan cuando se elige.
+ */
+const BASE: { titulo: string; bajada: string }[] = [
   {
-    nombre: 'A · Lo que hace',
-    idea: 'Describe la app sin adornos. El más seguro: nada que defender.',
-    pantallas: [
-      { titulo: 'Ascent', bajada: 'Una racha que solo sube si vas.' },
-      {
-        titulo: 'Anota lo que hiciste',
-        bajada: 'El día, las series y el peso de cada una, entre serie y serie.',
-      },
-      {
-        titulo: 'No estás solo entrenando',
-        bajada: 'Tu racha al lado de la de tus amigos y la de gente de todo el mundo.',
-      },
-      { titulo: '', bajada: '' },
-    ],
-    crear: 'Crear cuenta',
-    entrar: 'Ya tengo cuenta',
+    // "Empiezas desde el polvo" y no "siendo polvo": es un punto de partida,
+    // no una descripción de quién sos.
+    titulo: 'Empiezas desde el polvo',
+    bajada: 'Cada día que entrenas, algo se junta. Y lo que se junta cambia de forma.',
   },
   {
-    nombre: 'B · Aparecer',
-    idea: 'La promesa es la constancia, que es lo único que la app puede medir.',
-    pantallas: [
-      { titulo: 'Aparecer también cuenta', bajada: 'Ascent mide una sola cosa: los días que fuiste.' },
-      {
-        titulo: 'Tu entrenamiento, anotado',
-        bajada: 'Las series se cuentan solas mientras descansas. El peso queda escrito.',
-      },
-      {
-        titulo: 'Con quien quieras',
-        bajada: 'Compite con tus amigos, o con gente que no conoces y entrena hoy.',
-      },
-      { titulo: '', bajada: '' },
-    ],
-    crear: 'Crear cuenta',
-    entrar: 'Ya tengo cuenta',
+    titulo: 'Se anota todo',
+    bajada: 'Los días, las series y los pesos. Lo que hiciste queda, no se recuerda.',
   },
   {
-    nombre: 'C · El objeto',
-    idea: 'Habla desde la mecánica: la racha es una cosa que se ve crecer.',
-    pantallas: [
-      { titulo: 'Empiezas siendo polvo', bajada: 'Cada día que entrenas, algo se junta.' },
-      {
-        titulo: 'Se anota todo',
-        bajada: 'Los días, las series y los pesos. Lo que hiciste queda, no se recuerda.',
-      },
-      {
-        titulo: 'Y se ve desde afuera',
-        bajada: 'Tus amigos ven tu racha, tú la de ellos, y el mundo entero está en la lista.',
-      },
-      { titulo: '', bajada: '' },
-    ],
-    crear: 'Crear cuenta',
-    entrar: 'Ya tengo cuenta',
+    titulo: '',
+    bajada: 'Tus amigos ven tu racha, tú la de ellos, y el universo entero está en la lista.',
   },
+  { titulo: '', bajada: '' },
 ];
+
+/** Las opciones para el título de la tercera: el que no convencía. */
+const TITULOS_3 = [
+  'Que se vea',
+  'Mostrá lo que llevas',
+  'Alguien más está entrenando ahora',
+  'Tu racha no es solo tuya',
+];
+
+/** Y para la línea sobre el negro, antes de los botones. */
+const CIERRES = [
+  'Inicia sesión y empieza tu viaje',
+  'Tu viaje empieza en el polvo',
+  'Todo esto empieza con un día',
+];
+
+const JUEGOS: Juego[] = TITULOS_3.map((titulo, i) => ({
+  nombre: `Título 3 · ${titulo.split(' ').slice(0, 2).join(' ')}`,
+  idea: `Tercera pantalla: "${titulo}". Cierre: "${CIERRES[i % CIERRES.length]}".`,
+  pantallas: BASE.map((p, n) => (n === 2 ? { ...p, titulo } : p)),
+  cierre: CIERRES[i % CIERRES.length],
+  crear: 'Crear cuenta',
+  entrar: 'Ya tengo cuenta',
+}));
 
 export default function BancoDeBienvenida() {
   const [juego, setJuego] = useState(0);
@@ -210,6 +208,13 @@ function Entrada({
   const ultima = paso === PASOS_DE_LA_ENTRADA.length - 1;
   return (
     <div className={`bienv ${terminada ? 'bienv-negro' : ''}`}>
+      {/* EL FONDO. Las tres primeras no pueden ser texto sobre negro (15/9):
+          el cielo está desde el primer cuadro y no espera al motor. La
+          segunda suma la lista de ejercicios que termina en estrellas, y la
+          tercera, los objetos de otras rachas flotando lejos. */}
+      {!ultima && <Cielo paso={paso} quieto={quieta} />}
+      {paso === 1 && <Registro key={`reg-${paso}`} quieto={quieta} />}
+      {paso === 2 && <Objetos quieto={quieta} />}
       {ultima && (
         <Cuarta
           velocidad={velocidad}
@@ -233,6 +238,9 @@ function Entrada({
       <div className={`bienv-pie ${terminada ? 'bienv-pie-fin' : ''}`}>
         {terminada ? (
           <>
+            {/* Sobre el negro, antes de los botones: la línea que dice para
+                qué es el formulario que viene. */}
+            <p className="bienv-cierre">{textos.cierre}</p>
             <button className="bienv-solido">{textos.crear}</button>
             <button className="bienv-texto-boton">{textos.entrar}</button>
           </>
@@ -358,14 +366,33 @@ function Cuarta({
         />
       )}
 
-      <div className="bienv-racha" style={{ opacity: 1 - cuadro.trago }}>
+      {/* LA RACHA, TRAGADA: no se desvanece, se va PARA ADENTRO. Se encoge
+          hacia el centro del agujero, se estira un poco en el camino y se
+          apaga recién al final. Lo que se traga es el dato que venía subiendo
+          toda la animación. */}
+      <div
+        className="bienv-racha"
+        style={{
+          opacity: Math.max(0, 1 - cuadro.tragoRacha * 1.15),
+          transform: `translate3d(0, ${cuadro.tragoRacha * 26}vh, 0) scale(${1 - cuadro.tragoRacha * 0.88})`,
+          filter: cuadro.tragoRacha > 0 ? `blur(${cuadro.tragoRacha * 3}px)` : undefined,
+        }}
+      >
         <span className="bienv-numero">{cuadro.racha}</span>
         <span className="bienv-rotulo">Racha</span>
       </div>
 
-      {/* El velo que traga: termina en negro puro, que es el fondo de la
-          pantalla de sesión. La animación no corta en ningún lado. */}
-      <div className="bienv-trago" style={{ opacity: cuadro.trago }} />
+      {/* Y DESPUÉS, LA CÁMARA. El negro no aparece encima: CRECE desde el
+          centro, que es donde está el agujero, hasta pasar por encima de quien
+          mira. Termina en negro puro, que es el fondo del formulario: la
+          animación no corta en ningún lado. */}
+      <div
+        className="bienv-trago"
+        style={{
+          background: `radial-gradient(circle at 50% 50%, #000 ${cuadro.trago * 115}%, rgba(0,0,0,0) ${cuadro.trago * 115 + 14}%)`,
+          opacity: cuadro.trago > 0 ? 1 : 0,
+        }}
+      />
     </div>
   );
 }

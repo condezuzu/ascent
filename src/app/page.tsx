@@ -16,7 +16,7 @@ import { sincronizarZona } from '@/lib/zona';
 import { marcarPunto } from '@/lib/gimnasio';
 import { plataforma } from '@/plataforma';
 import { eventos } from '@compartido/eventos';
-import { DIA_CAMBIO } from '@/components/VigilanteDeGimnasio';
+import { DIA_CAMBIO, SUBIO_RANGO } from '@/components/VigilanteDeGimnasio';
 import { lineaDeMarcas } from '@nucleo/fuerza';
 import { impulsosSinVer, hastaDondeVisto, rachaSiSeDevuelve, CLAVE_VIDA_VISTA } from '@nucleo/impulsos';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@nucleo/tipos';
@@ -291,6 +291,17 @@ export default function Principal() {
   // es un asunto de una pantalla. Esta pantalla ahora solo ESCUCHA que el día
   // cambió, que es lo único que le importa.
   useEffect(() => eventos.escuchar(DIA_CAMBIO, () => cargar()), [cargar]);
+
+  // La subida de rango del día que entró SOLO. Los otros dos caminos la
+  // disparan donde el toque termina; este no tenía dónde, porque no hay toque.
+  useEffect(
+    () =>
+      eventos.escuchar(SUBIO_RANGO, (dato) => {
+        const r = dato as ResultadoRegistro;
+        if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+      }),
+    []
+  );
 
 
   // Al volver a entrar, la pantalla sale con la racha y la paleta de la
@@ -748,6 +759,7 @@ export default function Principal() {
           rangoAntes={subida.antes}
           rangoDespues={subida.despues}
           planeta={planeta}
+          racha={racha}
           alCerrar={() => setSubida(null)}
         />
       )}

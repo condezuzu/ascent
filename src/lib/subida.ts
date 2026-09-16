@@ -57,66 +57,202 @@ export function duracionDeSubida(antes: number, despues: number): number {
  */
 export function formaDeRango(rango: number, azar: () => number = Math.random): Float32Array {
   const pos = new Float32Array(N * 3);
+  const poner = (i: number, x: number, y: number, z: number) => {
+    pos[i * 3] = x;
+    pos[i * 3 + 1] = y;
+    pos[i * 3 + 2] = z;
+  };
+  // Un punto cualquiera de la superficie de una esfera, repartido parejo.
+  const enLaEsfera = () => {
+    const u = azar() * 2 - 1;
+    const th = azar() * Math.PI * 2;
+    const s = Math.sqrt(1 - u * u);
+    return { x: Math.cos(th) * s, y: u, z: Math.sin(th) * s };
+  };
+
   if (rango <= 1) {
-    // polvo: nube suelta
+    // POLVO: nube suelta, sin centro. Todavía no es nada.
     for (let i = 0; i < N; i++) {
       const r = Math.pow(azar(), 0.5) * 0.8;
       const a = azar() * Math.PI * 2;
       const b = (azar() - 0.5) * Math.PI;
-      pos[i * 3] = Math.cos(a) * Math.cos(b) * r;
-      pos[i * 3 + 1] = Math.sin(b) * r * 0.7;
-      pos[i * 3 + 2] = Math.sin(a) * Math.cos(b) * r * 0.3;
+      poner(i, Math.cos(a) * Math.cos(b) * r, Math.sin(b) * r * 0.7, Math.sin(a) * Math.cos(b) * r * 0.3);
     }
-  } else if (rango === 7) {
-    // galaxia espiral
+  } else if (rango === 2) {
+    // ASTEROIDE: una papa, no una pelota. El radio se deforma con tres lóbulos
+    // lentos —que es lo que hace la silueta irregular— y encima el grano.
+    // Antes era una esfera con ruido fino y se leía como una bola rugosa.
     for (let i = 0; i < N; i++) {
-      const brazo = i % 3;
-      const t = azar();
-      const r = 0.05 + t * 0.72;
-      const ang = brazo * ((Math.PI * 2) / 3) + t * 4.2 + (azar() - 0.5) * 0.4;
-      pos[i * 3] = Math.cos(ang) * r;
-      pos[i * 3 + 1] = Math.sin(ang) * r * 0.45;
-      pos[i * 3 + 2] = (azar() - 0.5) * 0.04;
+      const e = enLaEsfera();
+      const th = Math.atan2(e.z, e.x);
+      const lobulos =
+        1 + 0.22 * Math.sin(th * 2 + 0.7) + 0.14 * Math.sin(th * 3 - 1.2) + 0.1 * Math.sin(e.y * 5);
+      const r = 0.3 * lobulos * (0.92 + azar() * 0.16);
+      poner(i, e.x * r * 1.15, e.y * r * 0.8, e.z * r * 0.5);
     }
-  } else if (rango >= 8) {
-    // agujero negro: anillo denso con centro vacío
+  } else if (rango === 3) {
+    // LUNA: una esfera CON CRÁTERES, que es lo único que la hace una luna y no
+    // una bola gris. Cada cráter deja un hueco en la superficie y amontona las
+    // partículas en su borde: el ojo lee el anillo, no el agujero.
+    const crateres = [
+      { x: -0.35, y: 0.3, r: 0.3 },
+      { x: 0.32, y: 0.12, r: 0.24 },
+      { x: -0.1, y: -0.38, r: 0.2 },
+      { x: 0.12, y: 0.45, r: 0.15 },
+      { x: 0.45, y: -0.35, r: 0.17 },
+    ];
+    const R = 0.42;
     for (let i = 0; i < N; i++) {
-      const t = azar();
-      const r = 0.3 + Math.pow(t, 2) * 0.35;
-      const ang = azar() * Math.PI * 2;
-      pos[i * 3] = Math.cos(ang) * r;
-      pos[i * 3 + 1] = Math.sin(ang) * r * 0.32;
-      pos[i * 3 + 2] = 0;
+      let e = enLaEsfera();
+      // La cara que se ve es la de adelante: los cráteres se calculan en el
+      // plano de la pantalla.
+      for (const c of crateres) {
+        const d = Math.hypot(e.x - c.x, e.y - c.y);
+        if (e.z > -0.2 && d < c.r) {
+          // adentro del cráter no hay superficie: la partícula se va al borde
+          const a = Math.atan2(e.y - c.y, e.x - c.x);
+          const rr = c.r * (0.93 + azar() * 0.12);
+          const x = c.x + Math.cos(a) * rr;
+          const y = c.y + Math.sin(a) * rr;
+          const z = Math.sqrt(Math.max(0.02, 1 - x * x - y * y));
+          e = { x, y, z };
+          break;
+        }
+      }
+      const rugoso = 0.985 + azar() * 0.03;
+      poner(i, e.x * R * rugoso, e.y * R * rugoso, e.z * R * rugoso * 0.5);
+    }
+  } else if (rango === 4) {
+    // SATURNO: la esfera con el ANILLO. Es el objeto más reconocible de todos
+    // —se identifica en una silueta de un centímetro— y por eso el rango 4 es
+    // este planeta y no uno cualquiera (pedido del 15/9). El anillo va
+    // inclinado: de canto sería una raya.
+    const R = 0.34;
+    const inclina = 0.38; // radianes
+    const cos = Math.cos(inclina);
+    const sen = Math.sin(inclina);
+    const EN_EL_ANILLO = Math.round(N * 0.42);
+    for (let i = 0; i < N; i++) {
+      if (i < EN_EL_ANILLO) {
+        // El anillo tiene un hueco adentro (la división de Cassini) porque un
+        // disco lleno se ve como un plato y no como un anillo.
+        const t = azar();
+        const r = R * (1.55 + t * 0.85) * (t > 0.45 && t < 0.55 ? 1.02 : 1);
+        const a = azar() * Math.PI * 2;
+        const x = Math.cos(a) * r;
+        const z = Math.sin(a) * r;
+        const grosor = (azar() - 0.5) * 0.02;
+        poner(i, x, z * sen + grosor * cos, z * cos * 0.5);
+      } else {
+        const e = enLaEsfera();
+        const rugoso = 0.99 + azar() * 0.02;
+        poner(i, e.x * R * rugoso, e.y * R * rugoso, e.z * R * rugoso * 0.5);
+      }
+    }
+  } else if (rango === 5) {
+    // SOL: el disco con RAYOS. Sin los rayos es una esfera amarilla, que es
+    // exactamente lo que pasaba: el salto del planeta al sol no se notaba.
+    const R = 0.42;
+    const RAYOS = 12;
+    const EN_LOS_RAYOS = Math.round(N * 0.3);
+    for (let i = 0; i < N; i++) {
+      if (i < EN_LOS_RAYOS) {
+        const rayo = i % RAYOS;
+        const a = (rayo / RAYOS) * Math.PI * 2 + (azar() - 0.5) * 0.09;
+        const t = azar();
+        // Se afinan hacia afuera: un rayo de grosor parejo parece un palo.
+        const r = R * (1.05 + t * 1.05);
+        const ancho = (1 - t) * 0.05;
+        poner(i, Math.cos(a) * r + (azar() - 0.5) * ancho, Math.sin(a) * r * 0.9 + (azar() - 0.5) * ancho, 0);
+      } else {
+        const e = enLaEsfera();
+        const r = R * (0.88 + azar() * 0.14);
+        poner(i, e.x * r, e.y * r, e.z * r * 0.4);
+      }
     }
   } else if (rango === 6) {
-    // sistema: núcleo + anillos orbitales
+    // SISTEMA: un sol chico y TRES planetas en sus órbitas. Antes eran cinco
+    // anillos de puntos sueltos y no se veía nada: la órbita vacía no se lee,
+    // lo que se lee es el planeta que la recorre.
+    const ORBITAS = [0.4, 0.62, 0.84];
+    const EN_EL_CENTRO = Math.round(N * 0.3);
+    const PLANETA = Math.round(N * 0.09); // partículas por planeta
     for (let i = 0; i < N; i++) {
-      const orbita = i % 5;
-      if (orbita === 0) {
-        const r = Math.pow(azar(), 0.5) * 0.18;
-        const a = azar() * Math.PI * 2;
-        pos[i * 3] = Math.cos(a) * r;
-        pos[i * 3 + 1] = Math.sin(a) * r;
-        pos[i * 3 + 2] = 0;
+      if (i < EN_EL_CENTRO) {
+        const e = enLaEsfera();
+        const r = 0.16 * (0.85 + azar() * 0.2);
+        poner(i, e.x * r, e.y * r, e.z * r * 0.4);
+        continue;
+      }
+      const k = (i - EN_EL_CENTRO) % 3;
+      const radio = ORBITAS[k];
+      const resto = i - EN_EL_CENTRO;
+      if (resto < PLANETA * 3) {
+        // los planetas: un grumo denso sobre cada órbita
+        const anguloPlaneta = [0.6, 2.7, 4.5][k];
+        const e = enLaEsfera();
+        const rr = (0.07 - k * 0.012) * (0.8 + azar() * 0.4);
+        poner(
+          i,
+          Math.cos(anguloPlaneta) * radio + e.x * rr,
+          Math.sin(anguloPlaneta) * radio * 0.42 + e.y * rr,
+          e.z * rr
+        );
       } else {
-        const r = 0.22 + orbita * 0.13;
+        // la órbita: una línea fina de polvo, para que se vea el camino
         const a = azar() * Math.PI * 2;
-        pos[i * 3] = Math.cos(a) * r;
-        pos[i * 3 + 1] = Math.sin(a) * r * 0.35;
-        pos[i * 3 + 2] = 0;
+        const j = (azar() - 0.5) * 0.012;
+        poner(i, Math.cos(a) * (radio + j), Math.sin(a) * (radio + j) * 0.42, 0);
+      }
+    }
+  } else if (rango === 7) {
+    // GALAXIA: bulbo denso, DOS brazos anchos y un halo. Lo que la hacía sosa
+    // no era la espiral sino la falta de contraste: brazos de una partícula de
+    // ancho y un centro igual de tenue que el resto. Ahora el bulbo se lleva
+    // un tercio de las partículas y los brazos tienen grosor —se abren y se
+    // deshilachan— en vez de ser una línea.
+    const EN_EL_NUCLEO = Math.round(N * 0.32);
+    const EN_EL_HALO = Math.round(N * 0.1);
+    for (let i = 0; i < N; i++) {
+      if (i < EN_EL_NUCLEO) {
+        // Bulbo: muy denso en el centro y cayendo rápido hacia afuera.
+        const r = Math.pow(azar(), 2.4) * 0.26;
+        const a = azar() * Math.PI * 2;
+        poner(i, Math.cos(a) * r, Math.sin(a) * r * 0.72, (azar() - 0.5) * 0.02);
+      } else if (i < EN_EL_NUCLEO + EN_EL_HALO) {
+        const r = 0.3 + Math.pow(azar(), 0.6) * 0.5;
+        const a = azar() * Math.PI * 2;
+        poner(i, Math.cos(a) * r, Math.sin(a) * r * 0.48, 0);
+      } else {
+        const brazo = i % 2;
+        const t = Math.pow(azar(), 0.7);
+        const r = 0.16 + t * 0.64;
+        // El brazo se ensancha con el radio: cerca del centro es una banda
+        // fina y en la punta se desarma.
+        const ancho = 0.05 + t * 0.16;
+        const ang = brazo * Math.PI + t * 2.6 + (azar() - 0.5) * ancho;
+        const jx = (azar() - 0.5) * 0.03;
+        poner(i, Math.cos(ang) * r + jx, Math.sin(ang) * r * 0.45 + jx * 0.5, (azar() - 0.5) * 0.02);
       }
     }
   } else {
-    // esfera (asteroide chico, luna, planeta, sol grande)
-    const R = rango === 5 ? 0.62 : rango === 2 ? 0.3 : rango === 3 ? 0.4 : 0.5;
+    // AGUJERO NEGRO: el disco de acreción visto casi de canto, con el centro
+    // VACÍO y un anillo de luz fino pegado al borde del horizonte. El hueco
+    // negro del medio es el objeto: sin él es una dona.
+    const EN_EL_ANILLO = Math.round(N * 0.22);
     for (let i = 0; i < N; i++) {
-      const u = azar() * 2 - 1;
-      const th = azar() * Math.PI * 2;
-      const s = Math.sqrt(1 - u * u);
-      const rugoso = rango === 2 ? 0.85 + azar() * 0.3 : 0.97 + azar() * 0.06;
-      pos[i * 3] = Math.cos(th) * s * R * rugoso;
-      pos[i * 3 + 1] = u * R * rugoso;
-      pos[i * 3 + 2] = Math.sin(th) * s * R * rugoso * 0.5;
+      if (i < EN_EL_ANILLO) {
+        // el anillo de fotones: fino, redondo, pegado al horizonte
+        const a = azar() * Math.PI * 2;
+        const r = 0.3 * (0.99 + azar() * 0.02);
+        poner(i, Math.cos(a) * r, Math.sin(a) * r, 0);
+      } else {
+        // el disco: más ancho que alto, con el brillo hacia adentro
+        const t = Math.pow(azar(), 1.6);
+        const r = 0.34 + t * 0.42;
+        const a = azar() * Math.PI * 2;
+        poner(i, Math.cos(a) * r, Math.sin(a) * r * 0.3 + (azar() - 0.5) * 0.01, 0);
+      }
     }
   }
   return pos;

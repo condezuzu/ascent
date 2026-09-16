@@ -28,21 +28,34 @@ export const DIAS_POR_RANGO = 10;
  * EL PRIMER TRAMO Y CUÁNTO SE ACORTA CADA UNO.
  *
  * 1,9 s es lo que tarda en leerse un cambio de forma sin que parezca un corte
- * (la subida de rango usa 4 s, pero ahí el objeto se desarma entero). 0,78
+ * (la subida de rango usa 4 s, pero ahí el objeto se desarma entero). 0,76
  * lleva el último a medio segundo, que es el límite: más corto que eso el ojo
  * ya no sigue la forma y lo ve como un parpadeo.
  */
 export const TRAMO_INICIAL_S = 1.9;
-export const FACTOR_DE_ACELERACION = 0.78;
+export const FACTOR_DE_ACELERACION = 0.76;
 /** Ningún tramo baja de acá, por más que se sigan multiplicando. */
 export const TRAMO_MINIMO_S = 0.5;
 
 /** Lo que se ve el polvo antes de que empiece a moverse. */
-export const ANTES_S = 0.9;
-/** El agujero negro, quieto, antes de tragarse la pantalla. */
-export const DESPUES_S = 0.7;
-/** Lo que tarda en tragarse todo y quedar en negro. */
-export const TRAGO_S = 1.25;
+export const ANTES_S = 0.7;
+
+/**
+ * EL FINAL, EN TRES TIEMPOS (pedido del 15/9). Antes era un fundido a negro y
+ * se perdía lo único que hace que el agujero negro sea un agujero negro: que
+ * se traga las cosas.
+ *
+ *  1. QUIETO — un segundo entero sin que pase nada. Es lo que hace que lo que
+ *     viene se lea como una consecuencia y no como otra animación más.
+ *  2. LA RACHA — el número se estira hacia el centro y desaparece adentro. Se
+ *     traga el dato, que es el que venía subiendo toda la animación.
+ *  3. LA CÁMARA — el horizonte crece hasta comerse la pantalla. No es un
+ *     fundido: es que el agujero llega hasta donde está mirando la persona, y
+ *     por eso el negro del final es el mismo negro del formulario.
+ */
+export const QUIETO_S = 1.0;
+export const TRAGO_RACHA_S = 0.85;
+export const TRAGO_CAMARA_S = 1.15;
 
 /** Cuánto dura cada tramo, del primero al último. Siete: son ocho objetos. */
 export function duracionesDeTramos(): number[] {
@@ -56,10 +69,11 @@ export function duracionesDeTramos(): number[] {
 }
 
 /** Cuándo termina cada parte, en segundos desde el arranque. */
-export function hitos(): { morfeo: number; quieto: number; total: number } {
+export function hitos(): { morfeo: number; quieto: number; racha: number; total: number } {
   const morfeo = ANTES_S + duracionesDeTramos().reduce((t, d) => t + d, 0);
-  const quieto = morfeo + DESPUES_S;
-  return { morfeo, quieto, total: quieto + TRAGO_S };
+  const quieto = morfeo + QUIETO_S;
+  const racha = quieto + TRAGO_RACHA_S;
+  return { morfeo, quieto, racha, total: racha + TRAGO_CAMARA_S };
 }
 
 export const DURACION_S = hitos().total;
@@ -98,7 +112,12 @@ export type CuadroDeLaEntrada = {
   mezcla: number;
   /** El número de la racha, entero, como se muestra. */
   racha: number;
-  /** Cuánto se lo tragó el agujero negro: 1 es la pantalla negra. */
+  /**
+   * Cuánto se tragó el NÚMERO: 0 quieto, 1 ya adentro. La pantalla lo usa para
+   * estirarlo hacia el centro; no toca al objeto.
+   */
+  tragoRacha: number;
+  /** Cuánto se tragó la CÁMARA: 1 es la pantalla negra. */
   trago: number;
   /** Ya terminó: es el momento de mostrar los botones. */
   fin: boolean;
@@ -115,12 +134,12 @@ export type CuadroDeLaEntrada = {
 export function cuadroEn(t: number): CuadroDeLaEntrada {
   const seg = Number.isFinite(t) ? Math.max(0, t) : 0;
   const tramos = duracionesDeTramos();
-  const { morfeo, quieto, total } = hitos();
+  const { morfeo, quieto, racha, total } = hitos();
 
   // El número sube parejo DENTRO de cada tramo, no a lo largo de todo: así
   // acelera junto con las formas, que es de donde sale la sensación.
   if (seg < ANTES_S) {
-    return { desde: 1, hasta: 1, mezcla: 0, racha: 0, trago: 0, fin: false };
+    return { desde: 1, hasta: 1, mezcla: 0, racha: 0, tragoRacha: 0, trago: 0, fin: false };
   }
 
   if (seg < morfeo) {
@@ -136,6 +155,7 @@ export function cuadroEn(t: number): CuadroDeLaEntrada {
           // El número NO usa la curva: los días pasan parejos, y que el
           // objeto se demore en arrancar es cosa del objeto.
           racha: Math.round(base + p * DIAS_POR_RANGO),
+          tragoRacha: 0,
           trago: 0,
           fin: false,
         };
@@ -147,14 +167,16 @@ export function cuadroEn(t: number): CuadroDeLaEntrada {
   const ultimo = RANGOS_DE_LA_ENTRADA[RANGOS_DE_LA_ENTRADA.length - 1];
   const tope = (RANGOS_DE_LA_ENTRADA.length - 1) * DIAS_POR_RANGO;
   if (seg < quieto) {
-    return { desde: ultimo, hasta: ultimo, mezcla: 1, racha: tope, trago: 0, fin: false };
+    return { desde: ultimo, hasta: ultimo, mezcla: 1, racha: tope, tragoRacha: 0, trago: 0, fin: false };
   }
   return {
     desde: ultimo,
     hasta: ultimo,
     mezcla: 1,
     racha: tope,
-    trago: salida((seg - quieto) / TRAGO_S),
+    // Primero el número, y recién cuando ya no está, la cámara.
+    tragoRacha: salida((seg - quieto) / TRAGO_RACHA_S),
+    trago: seg < racha ? 0 : salida((seg - racha) / TRAGO_CAMARA_S),
     fin: seg >= total,
   };
 }
@@ -177,6 +199,7 @@ export function cuadroQuietoEn(t: number): CuadroDeLaEntrada {
     hasta: ultimo,
     mezcla: 1,
     racha: tope,
+    tragoRacha: 0,
     trago: seg <= arranque ? 0 : entrada((seg - arranque) / (DURACION_QUIETA_S - arranque)),
     fin: seg >= DURACION_QUIETA_S,
   };

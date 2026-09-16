@@ -6798,11 +6798,13 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   // ---- los tramos aceleran, y ninguno se vuelve un parpadeo ----
   const tramos = B.duracionesDeTramos();
   chequear('siete tramos para ocho objetos', tramos.length, 7);
-  chequear('cada uno mas corto que el anterior', tramos.every((d, i) => i === 0 || d < tramos[i - 1]), true);
+  chequear('ninguno es mas largo que el anterior', tramos.every((d, i) => i === 0 || d <= tramos[i - 1]), true);
+  chequear('y el final ya toca el minimo', tramos.at(-1), B.TRAMO_MINIMO_S);
   chequear('ninguno baja del minimo', tramos.every((d) => d >= B.TRAMO_MINIMO_S), true);
   chequear('el ultimo es menos de la mitad del primero', tramos.at(-1) < tramos[0] / 2, true);
   // Lo que dura todo: si un dia se cambia, que se vea en el test y no en la cara.
   chequear('dura entre ocho y doce segundos', B.DURACION_S > 8 && B.DURACION_S < 12, true);
+  chequear('y el final se lleva tres', Math.round((B.QUIETO_S + B.TRAGO_RACHA_S + B.TRAGO_CAMARA_S) * 10) / 10, 3);
 
   // ---- las curvas ----
   for (const [nombre, f] of [['curva', B.curva], ['entrada', B.entrada], ['salida', B.salida]]) {
@@ -6823,9 +6825,14 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   chequear('un tiempo roto es el principio', B.cuadroEn(NaN).racha, 0);
   const { morfeo, quieto, total } = B.hitos();
   chequear('al final del morfeo esta el agujero negro con 70 dias', [B.cuadroEn(morfeo - 0.01).hasta, B.cuadroEn(morfeo + 0.01).racha], [8, 70]);
-  chequear('el agujero negro se queda quieto antes de tragar', B.cuadroEn(quieto - 0.01).trago, 0);
-  chequear('y despues se traga la pantalla', [B.cuadroEn(quieto + 0.01).trago > 0, B.cuadroEn(total).trago], [true, 1]);
+  // EL FINAL, EN TRES TIEMPOS: quieto, se traga la racha, se traga la camara.
+  const finRacha = B.hitos().racha;
+  chequear('el agujero negro se queda quieto un segundo', [B.cuadroEn(quieto - 0.01).trago, B.cuadroEn(quieto - 0.01).tragoRacha], [0, 0]);
+  chequear('primero se traga la racha, y la pantalla no se mueve', [B.cuadroEn(quieto + 0.4).tragoRacha > 0, B.cuadroEn(quieto + 0.4).trago], [true, 0]);
+  chequear('el numero desaparece del todo antes de que empiece lo otro', B.cuadroEn(finRacha).tragoRacha > 0.999, true);
+  chequear('y recien ahi se traga la camara', [B.cuadroEn(finRacha + 0.01).trago > 0, B.cuadroEn(total).trago], [true, 1]);
   chequear('recien ahi termina', [B.cuadroEn(total - 0.1).fin, B.cuadroEn(total).fin], [false, true]);
+  chequear('durante el quieto no cambia nada', JSON.stringify(B.cuadroEn(morfeo + 0.1)), JSON.stringify(B.cuadroEn(morfeo + 0.9)));
 
   // El numero NUNCA retrocede y pasa por los ocho objetos, cuadro a cuadro.
   const vistos = new Set();
@@ -6835,6 +6842,7 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
     const c = B.cuadroEn(ms / 1000);
     if (c.racha < ultima) roto = roto ?? `la racha bajo en ${ms} ms`;
     if (c.mezcla < 0 || c.mezcla > 1) roto = roto ?? `mezcla fuera de rango en ${ms} ms`;
+    if (c.trago > 0 && c.tragoRacha < 1) roto = roto ?? `la camara se trago antes que el numero en ${ms} ms`;
     ultima = c.racha;
     vistos.add(c.desde);
     vistos.add(c.hasta);
@@ -6867,6 +6875,153 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   chequear('un paso guardado que ya no existe vuelve al principio', [B.pasoValido(9), B.pasoValido('x'), B.pasoValido(2)], [0, 0, 2]);
   // El motor se pide en la PRIMERA, no en la cuarta: tarda ~3 s en cargar.
   chequear('el motor se pide antes de que haga falta', B.PASO_QUE_PIDE_EL_MOTOR < B.PASOS_DE_LA_ENTRADA.length - 1, true);
+}
+
+console.log('\n106. Cada objeto se reconoce por su forma');
+{
+  // EL PROBLEMA (15/9, mirando la pantalla de entrada): "las formas no se
+  // reconocen y no se siente lo que ganas en cada salto". Una esfera con ruido
+  // y una esfera lisa son la misma silueta. Esto no prueba que se vean lindas
+  // —eso lo mira una persona— sino que cada forma TIENE lo que la hace
+  // reconocible: el anillo de Saturno, los rayos del sol, el hueco del
+  // agujero negro. Si alguien la simplifica, falla acá.
+  let sem = 7;
+  const azar = () => {
+    sem = (sem * 16807) % 2147483647;
+    return sem / 2147483647;
+  };
+  const puntos = (r) => {
+    const f = SUB.formaDeRango(r, azar);
+    const p = [];
+    for (let i = 0; i < f.length; i += 3) p.push({ x: f[i], y: f[i + 1], z: f[i + 2] });
+    return p;
+  };
+  const radio = (p) => Math.hypot(p.x, p.y);
+
+  // ---- 2. asteroide: una papa, no una pelota ----
+  {
+    const p = puntos(2);
+    // El radio del contorno (las de adelante) tiene que VARIAR: una esfera da
+    // casi el mismo radio en todas las direcciones.
+    const frente = p.filter((q) => Math.abs(q.z) < 0.05).map(radio);
+    const medio = frente.reduce((a, b) => a + b, 0) / frente.length;
+    const desvio = Math.sqrt(frente.reduce((a, b) => a + (b - medio) ** 2, 0) / frente.length) / medio;
+    chequear('asteroide: el contorno es irregular', desvio > 0.08, true);
+  }
+
+  // ---- 3. luna: crateres de verdad ----
+  {
+    const p = puntos(3);
+    // En el crater grande de (-0.35, 0.3) no puede haber superficie adentro, y
+    // tiene que haber borde: el ojo lee el anillo.
+    const cx = -0.35 * 0.42;
+    const cy = 0.3 * 0.42;
+    // El borde del crater cae a c.r * R del centro: 0,3 * 0,42 = 0,126.
+    const cerca = p.filter((q) => q.z > 0 && Math.hypot(q.x - cx, q.y - cy) < 0.17);
+    const adentro = cerca.filter((q) => Math.hypot(q.x - cx, q.y - cy) < 0.08).length;
+    chequear('luna: el crater esta hueco y tiene borde', [adentro, cerca.length > 8], [0, true]);
+  }
+
+  // ---- 4. Saturno: el anillo ----
+  {
+    const p = puntos(4);
+    const cuerpo = p.filter((q) => radio(q) < 0.36);
+    // El anillo esta INCLINADO: medido con el radio plano, sus partículas de
+    // arriba y abajo caen cerca del centro. Se mide en el plano del anillo,
+    // deshaciendo la inclinacion (sin 0,38 = 0,371).
+    const enSuPlano = (q) => Math.hypot(q.x, q.y / 0.371);
+    // Y ademas lejos del cuerpo (R = 0,34): una particula del polo de la
+    // esfera tambien da lejos al deshacer la inclinacion.
+    const anillo = p.filter((q) => enSuPlano(q) > 0.5 && radio(q) > 0.4);
+    chequear('Saturno: hay cuerpo y hay anillo', [cuerpo.length > 300, anillo.length > 120], [true, true]);
+    // El anillo es PLANO: si fuera una esfera hueca no se leeria como anillo.
+    const grueso = anillo.filter((q) => Math.abs(q.y) > 0.32).length;
+    chequear('y el anillo es plano, no una cascara', grueso, 0);
+    chequear('y esta inclinado, no de canto', anillo.some((q) => Math.abs(q.y) > 0.12), true);
+  }
+
+  // ---- 5. sol: los rayos ----
+  {
+    const p = puntos(5);
+    const lejos = p.filter((q) => radio(q) > 0.55);
+    const direcciones = new Set(lejos.map((q) => Math.round((Math.atan2(q.y, q.x) / (Math.PI * 2)) * 12)));
+    chequear('sol: sale luz en muchas direcciones', direcciones.size >= 10, true);
+    chequear('y el disco sigue estando', p.filter((q) => radio(q) < 0.4).length > 400, true);
+  }
+
+  // ---- 6. sistema: tres planetas en sus orbitas ----
+  {
+    const p = puntos(6);
+    const centro = p.filter((q) => radio(q) < 0.2).length;
+    chequear('sistema: hay un sol en el medio', centro > 200, true);
+    // Los planetas son grumos: en el angulo de cada uno hay mucha mas densidad
+    // que en el resto de su orbita.
+    const grumos = [
+      { a: 0.6, r: 0.4 },
+      { a: 2.7, r: 0.62 },
+      { a: 4.5, r: 0.84 },
+    ].map(({ a, r }) => {
+      const cx = Math.cos(a) * r;
+      const cy = Math.sin(a) * r * 0.42;
+      return p.filter((q) => Math.hypot(q.x - cx, q.y - cy) < 0.09).length;
+    });
+    chequear('y tres planetas, uno por orbita', grumos.every((n) => n > 20), true);
+  }
+
+  // ---- 7. galaxia: nucleo y brazos ----
+  {
+    const p = puntos(7);
+    const nucleo = p.filter((q) => radio(q) < 0.2).length;
+    const afuera = p.filter((q) => radio(q) > 0.45).length;
+    chequear('galaxia: el nucleo concentra la luz', nucleo > afuera, true);
+    chequear('y los brazos llegan lejos', afuera > 60, true);
+  }
+
+  // ---- 8. agujero negro: el hueco ----
+  {
+    const p = puntos(8);
+    // El disco se ve casi de canto: el hueco se mide sobre su eje largo, no
+    // con el radio plano —ahi las partículas de los extremos caen cerca del
+    // centro y parecen taparlo—.
+    const enElEje = p.filter((q) => Math.abs(q.y) < 0.03);
+    chequear('agujero negro: el centro esta vacio', enElEje.filter((q) => Math.abs(q.x) < 0.25).length, 0);
+    chequear('con su anillo de luz', p.filter((q) => radio(q) > 0.28 && radio(q) < 0.32).length > 100, true);
+  }
+
+  // Y ninguna se sale de la pantalla del telefono: la prueba de siempre, que
+  // es la que cazo que el sol y la galaxia salieran cortados.
+  const grandes = [];
+  for (const r of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    const f = SUB.formaDeRango(r, azar);
+    const k = SUB.escalaParaEntrar(SUB.extension(f), 390 / 844);
+    const e = SUB.extension(f);
+    if (Math.max(e.x * k / (390 / 844), e.y * k) > SUB.MARGEN + 1e-6) grandes.push(r);
+  }
+  chequear('todas entran en un telefono vertical', grandes, []);
+}
+
+console.log('\n107. El cielo de la entrada');
+{
+  // Las tres primeras pantallas corren mientras three.js se descarga: este
+  // campo tiene que salir en el primer cuadro y sin motor.
+  const E = await import('../src/lib/estrellas.ts');
+  const a = E.cielo(120, 3);
+  const b = E.cielo(120, 3);
+  chequear('el mismo cielo con la misma semilla', JSON.stringify(a), JSON.stringify(b));
+  chequear('y otro con otra semilla', JSON.stringify(E.cielo(120, 4)) !== JSON.stringify(a), true);
+  chequear('todas caen adentro de la pantalla', a.every((e) => e.x >= 0 && e.x <= 1 && e.y >= 0 && e.y <= 1), true);
+  chequear('con tres capas de profundidad', [...new Set(a.map((e) => Math.round(e.capa * 3)))].sort(), [1, 2, 3]);
+  chequear('un numero roto no rompe nada', [E.cielo(NaN).length, E.cielo(-5).length], [0, 0]);
+
+  const uno = a[0];
+  const brillos = [];
+  for (let s = 0; s < 12; s += 0.25) brillos.push(E.brilloEn(uno, s));
+  chequear('el titileo nunca apaga una estrella', brillos.every((v) => v > 0.05 && v <= 1), true);
+  chequear('y es suave: no salta de un cuadro al otro', brillos.every((v, i) => i === 0 || Math.abs(v - brillos[i - 1]) < 0.06), true);
+  chequear('un tiempo roto no la apaga', E.brilloEn(uno, NaN) > 0, true);
+
+  chequear('cuantas: por area, con piso y techo', [E.cuantasPara(390, 844), E.cuantasPara(4000, 3000), E.cuantasPara(100, 100)], [103, 260, 70]);
+  chequear('sin pantalla, ninguna', E.cuantasPara(0, 0), 0);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
