@@ -680,6 +680,16 @@ export const T = {
     maximos: 'Peso máximo por ejercicio',
     maximosNota: 'Lo más pesado que moviste, en una serie o en una marca.',
     conPesoDe: (n: number, total: number) => `${n} de ${total}`,
+    // LOS QUE NUNCA HICISTE, detrás de un toque.
+    //
+    // Antes un grupo abierto mostraba TODAS sus filas: con un ejercicio de
+    // pecho anotado de doce, eran doce filas y once guiones. Por seis grupos,
+    // la pantalla entera, y hay que bajar muchísimo para pasar de largo.
+    //
+    // Los vacíos siguen estando —ver el hueco es lo que le da sentido al aviso
+    // de estancamiento— pero dejan de ser lo primero que aparece.
+    verLosOtros: (n: number) => `Ver los otros ${n}`,
+    ocultarLosOtros: 'Ocultar los que no hiciste',
 
     // En el resumen de un día.
     porMusculo: 'Por músculo',

@@ -64,6 +64,8 @@ export default function SeccionVolumen({
   const [plegados, setPlegados] = useState<Record<string, boolean>>({});
   const [avisoVisto, setAvisoVisto] = useState(true);
   const [abierto, setAbierto] = useState<string | null>(null);
+  // Qué grupos están mostrando también los ejercicios que nunca se hicieron.
+  const [conVacios, setConVacios] = useState<Record<string, boolean>>({});
   const [propia, setPropia] = useState(0);
 
   useEffect(() => {
@@ -256,6 +258,21 @@ export default function SeccionVolumen({
           {maximos.map((g) => {
             const clave = g.grupo ?? 'dots';
             const abiertoGrupo = plegados[clave] ?? g.conPeso > 0;
+            // SOLO LOS QUE TIENEN ALGO; el resto, detrás de un toque.
+            //
+            // Un grupo abierto mostraba TODAS sus filas: con un ejercicio de
+            // pecho anotado de doce, once guiones. Por seis grupos era toda la
+            // pantalla, y para pasar de largo había que bajar muchísimo.
+            //
+            // El hueco sigue a un toque de distancia, que es lo que le da
+            // sentido al aviso de estancamiento. Solo deja de ser lo primero.
+            //
+            // Si NO hay ninguno registrado se muestran igual: un grupo abierto
+            // y vacío del todo no dice nada, y "ver los otros 12" sobre la nada
+            // es una puerta a un cuarto vacío.
+            const conPeso = g.filas.filter((f) => f.maximo);
+            const faltan = g.filas.length - conPeso.length;
+            const muestraVacios = conVacios[clave] ?? conPeso.length === 0;
             return (
               <div className="maximos-grupo" key={clave}>
                 <button
@@ -270,7 +287,7 @@ export default function SeccionVolumen({
                 </button>
                 {abiertoGrupo && (
                   <div className="dia-ejercicios volumen-maximos">
-                    {g.filas.map((f) => (
+                    {(muestraVacios ? g.filas : conPeso).map((f) => (
                       <div className={`fila ${f.maximo ? '' : 'sin-maximo'}`} key={f.ejercicio}>
                         <span className="nombre">
                           {f.nombre}
@@ -287,6 +304,14 @@ export default function SeccionVolumen({
                         </span>
                       </div>
                     ))}
+                    {faltan > 0 && conPeso.length > 0 && (
+                      <button
+                        className="boton-texto maximos-otros"
+                        onClick={() => setConVacios((p) => ({ ...p, [clave]: !muestraVacios }))}
+                      >
+                        {muestraVacios ? T.volumen.ocultarLosOtros : T.volumen.verLosOtros(faltan)}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

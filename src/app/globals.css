@@ -4229,6 +4229,16 @@ body.con-franja.con-accion .pantalla {
 .volumen-maximos {
   margin-bottom: 6px;
 }
+/* "Ver los otros 11". Va sangrado como las filas y en voz baja: es una salida,
+   no una acción. Lo que nunca hiciste importa —por eso sigue estando— pero no
+   compite con lo que sí. */
+.maximos-otros {
+  width: auto;
+  padding: 8px 2px 8px 12px;
+  font-size: 12px;
+  color: var(--apagado);
+  text-align: left;
+}
 .volumen-maximos .fila {
   padding: 10px 2px 10px 12px;
 }
