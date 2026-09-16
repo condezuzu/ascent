@@ -82,6 +82,37 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     cargar();
   }, [cargar]);
 
+  // LOS TRES `useMemo` VAN ARRIBA DE LOS DOS `return` DE ABAJO, y el orden no
+  // es cosmetico: es la diferencia entre que Stats ande y que se caiga.
+  //
+  // Mientras los datos no llegaron, el componente salia por `if (!datos)` y
+  // estos hooks no se llamaban; cuando llegaban, si. Dos cantidades distintas
+  // de hooks en dos renders es "Rendered more hooks than during the previous
+  // render", y la pestana Entrenamiento se caia entera.
+  //
+  // Lo rompio la tanda que metio estas cuentas en `useMemo` para que no se
+  // recalcularan en cada toque: como llamadas comunes estaban bien donde
+  // estaban, como hooks no. Paso igual en la web (`SeccionVolumen`), y aca lo
+  // encontro `test:real`, que es lo unico que abre la pantalla de verdad.
+  const hoy = hoyISO();
+  const catalogo = useMemo(
+    () => new Map((datos?.ejercicios ?? []).map((e) => [e.id, { nombre: e.nombre, grupo: e.grupo }])),
+    [datos?.ejercicios]
+  );
+  const volumen = useMemo(
+    () =>
+      filasPorMusculo(datos?.sesiones ?? [], catalogo, {
+        hoy,
+        semanas: SEMANAS,
+        umbral: datos?.umbral ?? 6,
+      }),
+    [datos?.sesiones, catalogo, hoy, datos?.umbral]
+  );
+  const maximos = useMemo(
+    () => maximosDelCatalogo(datos?.sesiones ?? [], datos?.marcas ?? [], datos?.ejercicios ?? []),
+    [datos?.sesiones, datos?.marcas, datos?.ejercicios]
+  );
+
   if (error) {
     return (
       <View style={estilos.centrado}>
@@ -100,9 +131,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     );
   }
 
-  const { racha, mejor, unidad, umbral, logs, sesiones, ejercicios, marcas } = datos;
-  const catalogo = useMemo(() => new Map(ejercicios.map((e) => [e.id, { nombre: e.nombre, grupo: e.grupo }])), [ejercicios]);
-  const hoy = hoyISO();
+  const { racha, mejor, unidad, logs, sesiones } = datos;
   const entrenados = logs.filter((l) => !l.es_descanso);
   // Las mismas dos cuentas que la web: los últimos 30 días contando hoy, y el
   // mes calendario.
@@ -110,12 +139,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const d = deISO(hoy);
   const esteMes = entrenados.filter((l) => l.fecha >= aISO(new Date(d.getFullYear(), d.getMonth(), 1))).length;
 
-  // En un `useMemo` por lo mismo que en la web: recorre todas las sesiones y se
-  // volvía a calcular en cada toque.
-  const { filas, totales, hayAnotado, topeSeries, topeKilos } = useMemo(
-    () => filasPorMusculo(sesiones, catalogo, { hoy, semanas: SEMANAS, umbral }),
-    [sesiones, catalogo, hoy, umbral]
-  );
+  const { filas, totales, hayAnotado, topeSeries, topeKilos } = volumen;
   const hayKilos = topeKilos > 0;
   const series = enSeries || !hayKilos;
   const valor = (s: { series: number; kilos: number }) => (series ? s.series : s.kilos);
@@ -124,7 +148,6 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   // La última barra es la semana de hoy, que todavía no terminó.
   const enCurso = totales.length - 1;
   const leidaTotal = totales[indice];
-  const maximos = useMemo(() => maximosDelCatalogo(sesiones, marcas, ejercicios), [sesiones, marcas, ejercicios]);
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString(T.general.locale);
   const mayuscula = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
 

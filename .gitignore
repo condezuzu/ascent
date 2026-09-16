@@ -28,4 +28,5 @@ movil/.env
 movil/.claude/
 # carpetas de build de las mediciones (cada script usa la suya)
 .next-pantallas/
+.next-quietud/
 .next-medir/

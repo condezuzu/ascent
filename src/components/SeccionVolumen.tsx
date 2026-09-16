@@ -109,16 +109,30 @@ export default function SeccionVolumen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [porRevisar]);
 
-  if (!sesiones) return null;
-
   // EN UN `useMemo` Y NO EN EL CUERPO (16/9): esto recorre todas las sesiones, y
   // tocar una barra o cambiar de series a kilos vuelve a renderizar. Con dos
   // años de entrenamientos eran decenas de milisegundos por toque en un
   // teléfono, para volver a calcular exactamente lo mismo.
+  //
+  // Y VA ARRIBA DEL `return null`, no abajo. Abajo, la primera vez —con las
+  // sesiones todavía sin llegar— el componente salía antes y estos dos hooks no
+  // se llamaban; cuando las sesiones llegaban, sí. Dos cantidades distintas de
+  // hooks en dos renders es el error de React #310, y la pestaña Entrenamiento
+  // se caía entera. Lo rompió la tanda que los metió en `useMemo`: como
+  // llamadas comunes estaban bien ahí, como hooks no.
+  //
+  // Lo encontró `capturas`, que mira las excepciones de la página; ningún test
+  // de los nuestros monta una pantalla, que es el agujero que ya estaba anotado.
   const { filas, totales, hayAnotado, topeSeries, topeKilos } = useMemo(
-    () => filasPorMusculo(sesiones, catalogo, { hoy, semanas: SEMANAS, umbral }),
+    () => filasPorMusculo(sesiones ?? [], catalogo, { hoy, semanas: SEMANAS, umbral }),
     [sesiones, catalogo, hoy, umbral]
   );
+  const maximos = useMemo(
+    () => maximosDelCatalogo(sesiones ?? [], marcas, ejercicios),
+    [sesiones, marcas, ejercicios]
+  );
+
+  if (!sesiones) return null;
   const hayKilos = topeKilos > 0;
   // Sin kilos anotados, series: una fila de kilos en cero no dice nada.
   const series = enSeries || !hayKilos;
@@ -130,7 +144,6 @@ export default function SeccionVolumen({
   const enCurso = totales.length - 1;
   const leidaTotal = totales[indice];
 
-  const maximos = useMemo(() => maximosDelCatalogo(sesiones, marcas, ejercicios), [sesiones, marcas, ejercicios]);
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString('es-UY');
 
   async function entendido() {

@@ -12,6 +12,7 @@ import { RANGOS_CFG, PLANETAS_CFG, ESTRELLAS_POR_RANGO, type ConfigCuerpo } from
 import { paletaDe } from '@/lib/paletas';
 import { marca, medir } from '@/lib/medir';
 import { ALTURA, alturaDelPulso, siguePulsando } from '@/lib/pulso';
+import { debeDibujar } from '@/lib/quietud';
 import { plataforma } from '@/plataforma';
 
 export type OpcionesFondo = {
@@ -524,6 +525,14 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
 
   let vivo = true;
   let pausado = false;
+  // Cuándo fue la última señal de que hay alguien del otro lado, y cuándo se
+  // dibujó el último cuadro DE VERDAD. Con esos dos números `debeDibujar`
+  // decide el escalón; ver `lib/quietud.ts`.
+  let ultimoToque = performance.now();
+  let ultimoCuadro = 0;
+  const despertar = () => {
+    ultimoToque = performance.now();
+  };
   const reloj = new THREE.Clock();
   let tiempo = Math.random() * 100;
 
@@ -557,16 +566,31 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
 
   function frame() {
     if (!vivo) return;
-    if (!pausado) {
-      tiempo += reloj.getDelta();
-      for (const m of materiales) m.uniforms.uTime.value = tiempo;
-      ubicarOrbitantes();
-      if (galaxia) galaxia.rotation.z = tiempo * 0.022;
-      if (auroraMesh) auroraMesh.rotation.z = tiempo * 0.022;
-      if (polvo) polvo.rotation.z = tiempo * 0.03;
-      rend.render(escena, camara);
-    }
+    // El pedido del próximo cuadro va PRIMERO. Estando abajo, cualquier
+    // salida temprana de las de abajo cortaba el bucle para siempre y el
+    // fondo no volvía ni tocando la pantalla.
     if (op.animar !== false) requestAnimationFrame(frame);
+    if (pausado) return;
+
+    // EL BUCLE SIGUE VIVO EN EL ESCALÓN 'QUIETO', sin dibujar. Cancelar el
+    // rAF y rearmarlo al despertar ahorraría una llamada a función por
+    // cuadro —nada, al lado de un dibujo de WebGL— y a cambio abriría la
+    // puerta a que un despertar se pierda y el fondo quede muerto. No vale.
+    const ahora = performance.now();
+    if (!debeDibujar(ahora - ultimoToque, ahora - ultimoCuadro)) return;
+    ultimoCuadro = ahora;
+
+    // `getDelta` se llama SOLO cuando se dibuja, así que trae el tiempo real
+    // desde el cuadro anterior. Por eso bajar de escalón no enlentece el
+    // movimiento: se dibuja menos seguido, pero cada dibujo avanza lo que
+    // corresponde.
+    tiempo += reloj.getDelta();
+    for (const m of materiales) m.uniforms.uTime.value = tiempo;
+    ubicarOrbitantes();
+    if (galaxia) galaxia.rotation.z = tiempo * 0.022;
+    if (auroraMesh) auroraMesh.rotation.z = tiempo * 0.022;
+    if (polvo) polvo.rotation.z = tiempo * 0.03;
+    rend.render(escena, camara);
   }
 
   // Primer frame ya mismo: acá es donde se compilan los shaders la primera
@@ -585,10 +609,29 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
     pausado = !visible;
     // Se descarta el delta acumulado: si no, al volver el primer cuadro
     // adelanta de golpe todo el tiempo que estuvo pausado.
-    if (visible) reloj.getDelta();
+    if (visible) {
+      reloj.getDelta();
+      // Volver a la app es la señal más clara que hay de que alguien está
+      // mirando: se arranca de nuevo en el escalón de arriba.
+      despertar();
+    }
   });
+
+  // LO QUE DESPIERTA AL MOTOR. Son escuchas pasivas que solo anotan la hora:
+  // no leen el evento ni tocan el DOM, así que no estorban al scroll.
+  //
+  // `pointermove` entra a propósito aunque parezca ruido: en una computadora
+  // mover el mouse es alguien que está ahí, y el costo es escribir un
+  // número. En un teléfono no se dispara si nadie toca.
+  const SENALES = ['pointerdown', 'pointermove', 'touchstart', 'wheel', 'keydown', 'scroll'] as const;
+  for (const s of SENALES) window.addEventListener(s, despertar, { passive: true });
   // La caja del contenedor, no solo la ventana: ver `alCambiarDeTamano`.
-  const dejarDeMedir = alCambiarDeTamano(contenedor, () => medirLienzo());
+  // Y al cambiar de tamaño también se despierta: `medirLienzo` reconfigura el
+  // lienzo pero no lo pinta, y quieto quedaría estirado hasta el próximo toque.
+  const dejarDeMedir = alCambiarDeTamano(contenedor, () => {
+    medirLienzo();
+    despertar();
+  });
 
   /**
    * EL IMPACTO. Sube `uAtenua` y lo deja volver.
@@ -618,6 +661,11 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
     // sin animación— y desde afuera se ven exactamente iguales. Me pasó.
     marca('ascent:pulso');
     if (op.animar === false) return;
+    // EL PULSO TIENE QUE DESPERTAR AL MOTOR. Esta función mueve uniforms pero
+    // NO dibuja: el dibujo lo hace el bucle. Con el bucle en 'quieto' —una
+    // subida de rango que llega con el teléfono apoyado— el brillo cambiaba y
+    // no se veía nada.
+    despertar();
     const yaEstaba = pulsando;
     // Si ya hay uno corriendo se reinicia en vez de sumarse: dos toques
     // seguidos no pueden dejar el objeto el doble de brillante.
@@ -650,6 +698,7 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
     vivo = false;
     dejarDeMirar();
     dejarDeMedir();
+    for (const s of SENALES) window.removeEventListener(s, despertar);
     // se sueltan las geometrías y materiales de ESTA escena, pero el
     // renderer y el canvas siguen vivos para la próxima pantalla
     escena.traverse((o) => {

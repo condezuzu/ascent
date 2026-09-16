@@ -1,5 +1,6 @@
 import { plataforma } from '@plataforma';
 import type { Perfil } from '@nucleo/tipos';
+import { olvidarPerfilVivo } from '@compartido/perfilVivo';
 
 // Caché del perfil en el propio teléfono. Sirve para que al volver a entrar
 // la pantalla salga con la racha y la paleta correctas al instante, en vez
@@ -43,5 +44,9 @@ export async function leerPerfilCache(idEsperado?: string): Promise<Perfil | nul
 }
 
 export function borrarPerfilCache() {
+  // Y también lo que esté viajando. Cruzarse de cuenta no puede pasar —el
+  // `uid` se compara— pero volver a entrar con la MISMA cuenta sí: ahí la
+  // promesa vieja calzaría. Soltarla es una línea y ahorra pensarlo.
+  olvidarPerfilVivo();
   return plataforma.almacenamiento.borrar(CLAVE);
 }

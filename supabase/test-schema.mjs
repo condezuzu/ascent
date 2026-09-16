@@ -55,6 +55,9 @@ import {
 import { NextResponse } from 'next/server.js';
 import { ESPERA_LLEGADA_MS } from '../nucleo/reglas.ts';
 import { eventos } from '../compartido/eventos.ts';
+import { perfilVivo, perfilFresco, olvidarPerfilVivo } from '../compartido/perfilVivo.ts';
+import * as Q from '../src/lib/quietud.ts';
+import { pedirInicio } from '../compartido/inicio.ts';
 import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '../nucleo/geo.ts';
 import {
   bloquesVacios,
@@ -5615,7 +5618,26 @@ console.log('\n81. Lo que depende de una migracion pregunta si esta');
         revisadas++;
         // La pregunta tiene que estar CERCA de la llamada: veinte lineas antes.
         const antes = lineas.slice(Math.max(0, i - 20), i + 1).join('\n');
-        if (!antes.includes('disponible(')) {
+        // DOS FORMAS VALIDAS DE PREGUNTAR, y la segunda es mas fuerte:
+        //
+        //   `disponible(...)`  se le pregunta a `version_del_esquema()`, que ya
+        //                      se pidio una vez por carga de la app.
+        //   `PGRST202`         se le pregunta A LA BASE, llamando: si la funcion
+        //                      no existe, PostgREST contesta con ese codigo y el
+        //                      cliente se va al camino viejo.
+        //
+        // La segunda existe por `pantalla_inicio` (migracion 43), que se llama
+        // JUSTO al abrir: gatearla con `disponible(...)` obligaria a esperar la
+        // version antes de pedir nada —una ida y vuelta de mas para ahorrar
+        // tres—. Preguntandole a la base no cuesta ninguna, y ademas no puede
+        // quedar desactualizada como una constante escrita a mano.
+        //
+        // Lo que este test NO puede ver es si el camino viejo existe de verdad.
+        // La seccion 114 verifica que `pedirInicio` distinga "la funcion no
+        // esta" de "fallo la red", que es la decision de la que cuelga ese
+        // camino. Que la PANTALLA lo use bien no lo mira ningun test: sigue
+        // siendo el agujero anotado de que nada monta una pantalla.
+        if (!antes.includes('disponible(') && !antes.includes('PGRST202')) {
           sinPreguntar.push(`${a.slice(RAIZ.length + 1)}:${i + 1} llama a ${m[1]} (migracion ${num})`);
         }
       }
@@ -7158,6 +7180,545 @@ console.log('\n109. Una sola pasada da lo mismo que seis');
   // ninguna fila. Es la regla de siempre y es facil de romper en una refactorizacion.
   const soloFantasma = [{ id: 'x', fecha: '2026-09-15', bloques: [{ ejercicio: 'no_existe', series: 9 }] }];
   chequear('un ejercicio que ya no existe no suma en ninguna fila', V.filasPorMusculo(soloFantasma, cat, op).totales.at(-1).series, 0);
+}
+
+console.log('\n110. El perfil pedido dos veces al mismo tiempo se pide una sola');
+{
+  // Un Supabase de mentira que cuenta consultas y las deja colgadas hasta que
+  // el test decide contestarlas. Sin eso no se puede mirar lo unico que
+  // importa acá: que pasa MIENTRAS el pedido viaja.
+  function falso() {
+    const pendientes = [];
+    const api = {
+      cuantas: 0,
+      from: () => api,
+      select: () => api,
+      eq: () => api,
+      maybeSingle() {
+        api.cuantas++;
+        return new Promise((res, rej) => pendientes.push({ res, rej }));
+      },
+      contestar: (data) => pendientes.shift().res({ data }),
+      romper: (e) => pendientes.shift().rej(e),
+      colgadas: () => pendientes.length,
+    };
+    return api;
+  }
+
+  // DOS AL MISMO TIEMPO: una sola consulta, y los dos reciben lo mismo.
+  olvidarPerfilVivo();
+  let sb = falso();
+  let a = perfilVivo(sb, 'u1');
+  let b = perfilVivo(sb, 'u1');
+  chequear('dos pedidos a la vez son una sola consulta', sb.cuantas, 1);
+  sb.contestar({ id: 'u1', racha_actual: 7 });
+  chequear('el que pidio primero recibe el perfil', (await a).racha_actual, 7);
+  chequear('y el segundo recibe el mismo', (await b).racha_actual, 7);
+
+  // NO ES CACHE: cuando termino, el proximo vuelve a preguntar. Esto es lo que
+  // hace que no haya nada que invalidar al escribir.
+  perfilVivo(sb, 'u1');
+  chequear('despues de contestar, el proximo pregunta de nuevo', sb.cuantas, 2);
+  sb.contestar({ id: 'u1', racha_actual: 8 });
+
+  // OTRA CUENTA NO COMPARTE. Servir el perfil en vuelo de otro uid seria
+  // mostrarle a alguien la racha ajena.
+  olvidarPerfilVivo();
+  sb = falso();
+  perfilVivo(sb, 'u1');
+  perfilVivo(sb, 'u2');
+  chequear('otro uid no adopta el pedido en vuelo', sb.cuantas, 2);
+  sb.contestar({ id: 'u1' });
+  sb.contestar({ id: 'u2' });
+
+  // FRESCO NO ADOPTA NADA. Es el caso que importa de verdad: recargar despues
+  // de registrar un dia no puede quedarse con un pedido que salio ANTES de
+  // esa escritura, porque trae la racha vieja.
+  olvidarPerfilVivo();
+  sb = falso();
+  const viejo = perfilVivo(sb, 'u1'); // salio antes de escribir
+  const nuevoP = perfilFresco(sb, 'u1'); // recarga despues de escribir
+  chequear('un pedido fresco no adopta el que estaba en vuelo', sb.cuantas, 2);
+  sb.contestar({ id: 'u1', racha_actual: 7 }); // la respuesta vieja
+  sb.contestar({ id: 'u1', racha_actual: 8 }); // la de despues de escribir
+  chequear('el viejo sigue recibiendo lo viejo', (await viejo).racha_actual, 7);
+  chequear('y el fresco recibe la racha ya escrita', (await nuevoP).racha_actual, 8);
+
+  // Y despues de un fresco, compartir vuelve a funcionar: no queda trabado.
+  const c1 = perfilVivo(sb, 'u1');
+  perfilVivo(sb, 'u1');
+  chequear('tras un fresco se vuelve a compartir', sb.cuantas, 3);
+  sb.contestar({ id: 'u1', racha_actual: 8 });
+  await c1;
+
+  // UN ERROR NO SE RECUERDA. Contestar null esta bien —quien llama ya dibuja
+  // su pantalla de reintento—, pero cachear el error dejaria el reintento sin
+  // efecto, que es la clase de bug que deja a alguien afuera de la app.
+  olvidarPerfilVivo();
+  sb = falso();
+  const roto = perfilVivo(sb, 'u1');
+  sb.romper(new Error('sin red'));
+  chequear('un error se contesta con null', await roto, null);
+  perfilVivo(sb, 'u1');
+  chequear('y el reintento vuelve a salir a la red', sb.cuantas, 2);
+  sb.contestar({ id: 'u1', racha_actual: 9 });
+
+  // Sin fila (cuenta a medio crear) tambien es null, no undefined: quien llama
+  // compara con `!p` y undefined lo pasaria igual, pero el tipo miente.
+  olvidarPerfilVivo();
+  sb = falso();
+  const vacio = perfilVivo(sb, 'u1');
+  sb.contestar(null);
+  chequear('sin fila devuelve null', await vacio, null);
+  chequear('no quedan consultas colgadas', sb.colgadas(), 0);
+}
+
+console.log('\n111. El motor no dibuja cuando no hay nadie');
+{
+  const L = Q.ESPERA_LENTO_MS;
+  const QU = Q.ESPERA_QUIETO_MS;
+  const paso = (ms) => Q.pasoDeQuietud(ms);
+
+  chequear('recien tocado esta vivo', paso(0), 'vivo');
+  chequear('un segundo despues sigue vivo', paso(1000), 'vivo');
+  chequear('justo antes del corte sigue vivo', paso(L - 1), 'vivo');
+  chequear('en el corte baja a lento', paso(L), 'lento');
+  chequear('medio minuto despues sigue lento', paso(30_000), 'lento');
+  chequear('justo antes del minuto sigue lento', paso(QU - 1), 'lento');
+  chequear('al minuto se queda quieto', paso(QU), 'quieto');
+  chequear('y mas tarde tambien', paso(600_000), 'quieto');
+
+  // HACIA DONDE SE FALLA. Un negativo sale de restar dos relojes que no son el
+  // mismo reloj, y un NaN de una resta con undefined. Las dos cosas tienen que
+  // terminar DIBUJANDO: un cuadro de mas no se nota, un fondo congelado por una
+  // resta mal hecha parece una app rota y no se arregla solo.
+  chequear('un negativo dibuja, no congela', paso(-5000), 'vivo');
+  chequear('un NaN dibuja, no congela', paso(NaN), 'vivo');
+  // Infinity sale VIVO y esta bien: no significa "paso mucho tiempo", significa
+  // que alguien dividio por cero. Es un sintoma, y ante un sintoma se dibuja.
+  chequear('un infinito dibuja, porque es un sintoma y no un dato', paso(Infinity), 'vivo');
+  chequear('y el negativo tampoco frena el cuadro', Q.debeDibujar(-5000, 0), true);
+  chequear('ni el NaN del otro lado', Q.debeDibujar(NaN, NaN), true);
+
+  // EL ESCALON DE ARRIBA dibuja siempre, aunque el cuadro anterior haya sido
+  // hace un instante: a sesenta por segundo no se saltea ninguno.
+  chequear('vivo dibuja aunque acabe de dibujar', Q.debeDibujar(0, 0), true);
+  chequear('vivo dibuja siempre', Q.debeDibujar(L - 1, 1), true);
+
+  // EL DEL MEDIO deja pasar el tiempo de doce por segundo.
+  const paso12 = Q.MS_ENTRE_CUADROS_LENTOS;
+  chequear('lento no dibuja si el cuadro fue recien', Q.debeDibujar(L, 10), false);
+  chequear('lento no dibuja mucho antes', Q.debeDibujar(L, paso12 - 10), false);
+  // Dentro del margen SI dibuja: es lo que hace que salgan doce y no diez.
+  chequear('lento dibuja dentro del margen', Q.debeDibujar(L, paso12 - 0.1), true);
+  chequear('lento dibuja al cumplirse el paso', Q.debeDibujar(L, paso12), true);
+  chequear('lento dibuja si se paso', Q.debeDibujar(L, 200), true);
+
+  // QUIETO no dibuja por mas tiempo que haya pasado: es lo que lo distingue
+  // del escalon del medio, que solo espacia.
+  chequear('quieto no dibuja ni despues de un rato', Q.debeDibujar(QU, 5000), false);
+  chequear('quieto no dibuja nunca', Q.debeDibujar(QU + 1_000_000, 1_000_000), false);
+
+  // LA CUENTA QUE JUSTIFICA EL ESCALON DEL MEDIO: a doce cuadros por segundo,
+  // cuanto gira el fondo entre cuadro y cuadro. Si esto creciera hasta ser
+  // visible, el escalon habria que bajarlo.
+  const gradosPorCuadro = (0.022 * (paso12 / 1000) * 180) / Math.PI;
+  chequear('a doce por segundo el giro por cuadro es invisible', gradosPorCuadro < 0.15, true);
+
+  // Y que de verdad sea un ahorro: en el escalon del medio se dibuja menos de
+  // un cuadro de cada cuatro.
+  let dibujados = 0;
+  let ultimo = -paso12;
+  for (let i = 0; i < 60; i++) {
+    const ahora = (i * 1000) / 60;
+    if (Q.debeDibujar(L, ahora - ultimo)) {
+      dibujados++;
+      ultimo = ahora;
+    }
+  }
+  chequear('en un segundo lento se dibujan doce cuadros, no sesenta', dibujados, 12);
+  chequear('o sea menos de un cuarto del trabajo', dibujados / 60 < 0.25, true);
+}
+
+console.log('\n112. Ningun hook despues de un return temprano');
+{
+  // EL BUG QUE ESTO EXISTE PARA QUE NO VUELVA, y que aparecio DOS veces.
+  //
+  // La tanda que metio `filasPorMusculo` y `maximosDelCatalogo` en `useMemo`
+  // los dejo DONDE YA ESTABAN las llamadas: despues de un `if (!datos) return`.
+  // Como llamadas comunes ahi estaban perfectas; como hooks, no. El primer
+  // render —sin los datos— salia antes y llamaba menos hooks que el segundo, y
+  // React eso no lo perdona: "Rendered more hooks than during the previous
+  // render". La pestana Entrenamiento de Stats se caia entera, en las DOS apps.
+  //
+  // POR QUE NO LO AGARRO NADIE. La regla `react-hooks/rules-of-hooks` existe y
+  // es exactamente para esto, pero en este repo no hay eslint configurado ni
+  // guion de lint: el `eslint-disable-next-line` que hay en un archivo es de
+  // una configuracion que ya no esta. A la web la encontro `capturas`, mirando
+  // excepciones de pagina; a la nativa la encontro `test:real`, que es lo unico
+  // que abre esa pantalla de verdad.
+  //
+  // LA PRIMERA VERSION DE ESTE TEST SOLO VEIA LA MITAD. Buscaba returns a dos
+  // espacios de sangria, asi que agarraba el de la web —`if (!x) return null;`
+  // en una linea— y se le escapaba el de la nativa, que es el MISMO salir
+  // temprano escrito con llaves:
+  //
+  //     if (!datos) {
+  //       return (<Cargando />);
+  //     }
+  //
+  // Por eso ahora se cuentan llaves: se sabe en que nivel esta cada linea, y un
+  // `return` cuenta si esta en el cuerpo de la funcion o adentro de un `if` de
+  // ese cuerpo. Sigue siendo texto y no un analisis de verdad —no reemplaza a
+  // eslint— pero ya no depende de como se escribio el return.
+  const { readdirSync, readFileSync: leerArchivo, statSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const RAIZ_REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+  const tsx = (dir, salida = []) => {
+    for (const n of readdirSync(dir)) {
+      if (n === 'node_modules' || n.startsWith('.next')) continue;
+      const ruta = join(dir, n);
+      if (statSync(ruta).isDirectory()) tsx(ruta, salida);
+      else if (n.endsWith('.tsx')) salida.push(ruta);
+    }
+    return salida;
+  };
+
+  const ARRANCA = /^(export default |export )?(function \w+|const \w+\s*=\s*(\(|function))/;
+  const HOOK = /^\s{2}(const .*=\s*|let .*=\s*)?use[A-Z]\w*\(/;
+  const RETORNO_PLANO = /^\s{2}(if \(.*\)\s*)?return\b/;
+  const RETORNO_EN_LLAVES = /^\s{4}return\b/;
+  const ABRIO_UN_IF = /^\s{2}(\}\s*else|if \(|else\b)/;
+
+  const malosDe = (texto) => {
+    const lineas = texto.split(/\r?\n/);
+    const malos = [];
+    let prof = 0;
+    const pila = [];
+    let enComponente = false;
+    let salioTemprano = false;
+
+    for (let i = 0; i < lineas.length; i++) {
+      const l = lineas[i];
+      // Se sacan comentarios y cadenas: una llave adentro de un texto no abre
+      // ningun bloque, y contarla desalinea todo lo que sigue.
+      const limpia = l.replace(/\/\/.*$/, '').replace(/'[^']*'/g, "''").replace(/"[^"]*"/g, '""');
+      const abre = (limpia.match(/\{/g) ?? []).length;
+      const cierra = (limpia.match(/\}/g) ?? []).length;
+
+      if (prof === 0 && ARRANCA.test(l)) {
+        enComponente = true;
+        salioTemprano = false;
+      }
+      if (enComponente && prof === 1) {
+        if (HOOK.test(l) && salioTemprano) malos.push(i + 1);
+        if (RETORNO_PLANO.test(l)) salioTemprano = true;
+      }
+      if (enComponente && prof === 2 && RETORNO_EN_LLAVES.test(l) && ABRIO_UN_IF.test(pila[1] ?? '')) {
+        salioTemprano = true;
+      }
+
+      for (let k = 0; k < abre; k++) pila[prof + k] = l;
+      prof += abre - cierra;
+      if (prof < 0) prof = 0;
+      if (prof === 0) enComponente = false;
+    }
+    return malos;
+  };
+
+  const malos = [];
+  for (const base of ['src', 'movil/src']) {
+    for (const archivo of tsx(join(RAIZ_REPO, base))) {
+      for (const linea of malosDe(leerArchivo(archivo, 'utf8'))) {
+        malos.push(`${archivo.slice(RAIZ_REPO.length + 1)}:${linea}`);
+      }
+    }
+  }
+  chequear('ningun componente llama un hook despues de salir', malos, []);
+
+  // Y QUE LA HEURISTICA SIRVA DE ALGO. Se le dan las DOS formas del bug —la de
+  // la web y la de la nativa— y tiene que ver las dos. Sin esto, "ninguno"
+  // podria significar "las expresiones no matchean nunca", que es exactamente
+  // lo que le pasaba a la primera version con la forma de la nativa.
+  const formaWeb = [
+    'export default function Roto() {',
+    '  const [a, setA] = useState(null);',
+    '  if (!a) return null;',
+    '  const b = useMemo(() => 1, []);',
+    '  return <div>{b}</div>;',
+    '}',
+  ].join('\n');
+  const formaNativa = [
+    'export default function Roto() {',
+    '  const [a, setA] = useState(null);',
+    '  if (!a) {',
+    '    return (',
+    '      <View />',
+    '    );',
+    '  }',
+    '  const b = useMemo(() => 1, []);',
+    '  return <View>{b}</View>;',
+    '}',
+  ].join('\n');
+  chequear('ve la forma de la web (return en una linea)', malosDe(formaWeb).length, 1);
+  chequear('ve la forma de la nativa (return entre llaves)', malosDe(formaNativa).length, 1);
+
+  // Y QUE NO SE PASE DE LISTA: un hook ANTES del return esta perfecto, y un
+  // `return` adentro de un callback no es salir del componente.
+  const bien = [
+    'export default function Sano() {',
+    '  const [a, setA] = useState(null);',
+    '  const b = useMemo(() => 1, []);',
+    '  useEffect(() => {',
+    '    if (!a) return;',
+    '    setA(1);',
+    '  }, [a]);',
+    '  if (!a) return null;',
+    '  return <div>{b}</div>;',
+    '}',
+  ].join('\n');
+  chequear('no marca un componente sano', malosDe(bien), []);
+}
+
+console.log('\n113. pantalla_inicio() dice EXACTAMENTE lo que las consultas sueltas');
+{
+  // EL TEST QUE JUSTIFICA LA MIGRACION 43. Juntar cuatro tandas de pedidos en
+  // una funcion solo vale si la funcion contesta lo MISMO que contestaban los
+  // pedidos por separado. Si contesta distinto, no es una optimizacion: es una
+  // reescritura silenciosa de lo que ve la persona.
+  //
+  // Asi que el oraculo son las consultas viejas, escritas de nuevo tal como
+  // las hace el cliente hoy, y se comparan campo por campo.
+  await cuotaDeVidas(2);
+  const yo = await nuevoUsuario();
+  const amigo = await nuevoUsuario();
+  const ajeno = await nuevoUsuario();
+  await comoUsuario(yo);
+
+  // Datos de verdad: una racha con un agujero, descansos de dos epocas, una
+  // marca de fuerza, y un amigo que entreno.
+  await rachaDe(yo, 5, 1);
+  await db.query(`insert into descansos (user_id, desde, dias) values ($1, mi_hoy() - 40, '{0}')`, [yo]);
+  await db.query(`insert into descansos (user_id, desde, dias) values ($1, mi_hoy() - 5, '{0,6}')`, [yo]);
+  await db.query(`insert into weights (user_id, fecha, valor) values ($1, mi_hoy() - 3, 80)`, [yo]);
+  await db.query(
+    `insert into prs (user_id, ejercicio, peso, reps, es_real, fecha)
+     values ($1, 'press_banca', 90, 1, true, mi_hoy() - 10)`,
+    [yo]
+  );
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 2)`, [amigo]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy())`, [ajeno]);
+  await db.query(
+    `insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`,
+    [yo, amigo]
+  );
+
+  const una = async (q, args = []) => (await db.query(q, args)).rows[0];
+
+  // EL ORACULO PRIMERO, en el mismo orden que la web: la perdida antes que el
+  // perfil. Si se leyera al reves, el perfil quedaria viejo y la comparacion
+  // fallaria por el motivo equivocado.
+  const oPerdida = (await una('select verificar_perdida() as v')).v;
+  const oPerfil = (await una('select to_jsonb(p) as v from profiles p where p.id = $1', [yo])).v;
+  const oLogs = (await una(
+    `select coalesce(jsonb_agg(to_jsonb(l) order by l.fecha), '[]'::jsonb) as v
+       from logs l where l.user_id = $1 and l.fecha >= mi_hoy() - 6`,
+    [yo]
+  )).v;
+  const oDescansos = (await una(
+    `select coalesce(jsonb_agg(jsonb_build_object('desde', d.desde, 'dias', d.dias) order by d.desde desc), '[]'::jsonb) as v
+       from descansos d where d.user_id = $1`,
+    [yo]
+  )).v;
+  const oImpulsos = (await una('select mis_impulsos() as v')).v;
+  const oFuerza = (await una('select mi_fuerza() as v')).v;
+  const oSocial = (await una(
+    `select jsonb_build_object('username', u.username, 'racha', u.racha_actual) as v
+       from logs l join usuarios_publicos u on u.id = l.user_id
+      where l.es_descanso = false
+        and l.user_id in (
+          select case when f.solicitante = $1 then f.destinatario else f.solicitante end
+            from friendships f
+           where f.estado = 'aceptada' and (f.solicitante = $1 or f.destinatario = $1)
+        )
+      order by l.fecha desc limit 1`,
+    [yo]
+  )).v;
+
+  // Y AHORA LA FUNCION JUNTA. Corre despues, con los mismos datos: como
+  // `verificar_perdida` es idempotente —el dia cubierto ya esta cubierto— la
+  // segunda llamada tiene que dar lo mismo.
+  const r = (await una('select pantalla_inicio() as v')).v;
+
+  chequear('el perfil es el mismo', r.perfil, oPerfil);
+  chequear('los logs son los mismos', r.logs, oLogs);
+  chequear('los descansos son los mismos, y en el mismo orden', r.descansos, oDescansos);
+  chequear('los impulsos son los mismos', r.impulsos, oImpulsos);
+  chequear('la fuerza es la misma', r.fuerza, oFuerza);
+  chequear('la linea social es la misma', r.social, oSocial);
+  chequear('la perdida es la misma', r.perdida, oPerdida);
+  // `hoy` viaja como texto adentro del JSON; la consulta suelta lo devuelve
+  // como Date porque pglite parsea el tipo `date`. Se compara como texto, que
+  // es la forma en que llega al cliente de verdad.
+  chequear('y trae el hoy de la persona', r.hoy, (await una("select mi_hoy()::text as v")).v);
+
+  // NINGUNA CLAVE DE MAS NI DE MENOS: si alguien agrega un pedazo a la funcion
+  // y no lo agrega al oraculo, esto lo canta.
+  chequear(
+    'las claves son exactamente las esperadas',
+    Object.keys(r).sort(),
+    ['descansos', 'fuerza', 'hoy', 'impulsos', 'logs', 'perdida', 'perfil', 'social']
+  );
+
+  // LA LINEA SOCIAL NO PUEDE VER A UN DESCONOCIDO. `ajeno` entreno HOY —mas
+  // reciente que el amigo— y no es amigo de nadie: si apareciera, SECURITY
+  // DEFINER estaria salteandose la RLS, que es exactamente lo que arreglo la
+  // migracion 41.
+  chequear('la linea social es la del amigo, no la del mas reciente', r.social.username, (
+    await una('select username from profiles where id = $1', [amigo])
+  ).username);
+
+  // SIN AMIGOS, la linea social es null y el resto llega igual.
+  await db.query('delete from friendships where solicitante = $1 or destinatario = $1', [yo]);
+  const sinAmigos = (await una('select pantalla_inicio() as v')).v;
+  chequear('sin amigos la linea social viene vacia', sinAmigos.social, null);
+  chequear('y el perfil sigue llegando', sinAmigos.perfil.id, yo);
+
+  // SIN SESION no se contesta nada: la pantalla de entrada monta cosas que
+  // preguntan, y un 401 por carga ensucia el informe de capturas.
+  await db.query(`select set_config('test.uid', '', false)`);
+  chequear('sin sesion devuelve null', (await una('select pantalla_inicio() as v')).v, null);
+  await comoUsuario(yo);
+
+  // UN PEDAZO ROTO NO SE LLEVA LA PANTALLA. Se rompe `mi_fuerza` a proposito y
+  // se mira que el resto llegue igual y que la fuerza venga en null. Esta es
+  // LA razon de los bloques de excepcion, y sin este test seria una promesa.
+  const fuerzaReal = (await db.query(
+    `select pg_get_functiondef(oid) as d from pg_proc
+      where proname = 'mi_fuerza' and pronamespace = 'public'::regnamespace`
+  )).rows[0].d;
+  await db.exec(`create or replace function public.mi_fuerza()
+     returns jsonb language plpgsql stable security definer set search_path = public
+     as $fn$ begin raise exception 'rota a proposito'; end $fn$`);
+  const conRoto = (await una('select pantalla_inicio() as v')).v;
+  chequear('con un pedazo roto, ese pedazo viene null', conRoto.fuerza, null);
+  chequear('y el perfil llega igual', conRoto.perfil.id, yo);
+  chequear('y los logs tambien', conRoto.logs.length, oLogs.length);
+  chequear('y la linea social tambien', 'social' in conRoto, true);
+  await db.exec(fuerzaReal);
+  chequear('la fuerza vuelve al arreglarla', (await una('select pantalla_inicio() as v')).v.fuerza, oFuerza);
+
+  // Y LO QUE MAS IMPORTA DE LOS BLOQUES: que con un pedazo roto la funcion
+  // igual TERMINE y que la escritura de `verificar_perdida` —que corre primera—
+  // quede firme. Sin los `exception`, el error de abajo abortaria la funcion
+  // entera y el rollback se llevaria la perdida ya registrada: la racha se
+  // habria perdido en la pantalla y no en la base, o al reves, segun cuando
+  // volviera a abrir. Eso es lo que no puede pasar.
+  const otro = await nuevoUsuario();
+  await comoUsuario(otro);
+  // Seis dias de hueco y solo dos impulsos: no alcanzan a cubrirlo y la racha
+  // se corta. Con TRES dias de hueco los dos impulsos lo tapan y no hay
+  // perdida que registrar — asi fallo la primera version de este test, y la
+  // equivocada era mi cuenta, no la base.
+  await rachaDe(otro, 12, 6);
+  await db.query('update profiles set racha_actual = 12 where id = $1', [otro]);
+  await db.exec(`create or replace function public.mi_fuerza()
+     returns jsonb language plpgsql stable security definer set search_path = public
+     as $fn$ begin raise exception 'rota a proposito'; end $fn$`);
+  const antesDeTodo = (await una('select racha_actual from profiles where id = $1', [otro])).racha_actual;
+  const conError = (await una('select pantalla_inicio() as v')).v;
+  const despues = (await una('select racha_actual from profiles where id = $1', [otro])).racha_actual;
+  await db.exec(fuerzaReal);
+  chequear('la funcion termina igual, no revienta', conError !== null && 'perfil' in conError, true);
+  chequear('la perdida quedo registrada pese al error de despues', despues < antesDeTodo, true);
+
+  await cuotaDeVidas(0);
+}
+
+console.log('\n114. Sin la migracion 43, Inicio vuelve solo al camino viejo');
+{
+  // LA DECISION DE LA QUE CUELGA TODO EL PASO B. `pedirInicio` tiene que
+  // separar tres cosas que desde afuera se parecen:
+  //
+  //   la funcion NO EXISTE  -> la migracion 43 no corrio. Camino viejo, entero.
+  //   fallo la RED          -> repetir el camino viejo seria hacer cuatro
+  //                            pedidos mas que tambien van a fallar. Quien
+  //                            llama se queda con lo que tenga en pantalla.
+  //   llego                 -> se usa.
+  //
+  // Confundir las dos primeras es lo que convierte "no hay senal" en "la app
+  // no anda": el cliente se pondria a reintentar por el camino largo cada vez
+  // que se corta la senal en el subsuelo.
+  const falso = (respuesta) => ({ rpc: async () => respuesta });
+
+  const sinFuncion = await pedirInicio(falso({ data: null, error: { code: 'PGRST202' } }));
+  chequear('PGRST202 es "la migracion no corrio"', sinFuncion.tipo, 'sin-funcion');
+
+  const sinRed = await pedirInicio(falso({ data: null, error: { message: 'Failed to fetch' } }));
+  chequear('un error de red NO es "la migracion no corrio"', sinRed.tipo, 'falla');
+
+  const otroError = await pedirInicio(falso({ data: null, error: { code: '42501' } }));
+  chequear('un error de permisos tampoco', otroError.tipo, 'falla');
+
+  const sinSesion = await pedirInicio(falso({ data: null, error: null }));
+  chequear('null sin error tambien es falla', sinSesion.tipo, 'falla');
+
+  const lleno = await pedirInicio(
+    falso({
+      data: {
+        hoy: '2026-09-16',
+        perfil: { id: 'u1', username: 'ana', racha_actual: 7 },
+        logs: [{ fecha: '2026-09-15' }],
+        descansos: [{ desde: '2026-09-01', dias: [0] }],
+        impulsos: { quedan: 1, total: 2, vigentes: ['2026-09-14'], ultimas: ['2026-09-14'] },
+        fuerza: { marcas: [] },
+        perdida: { perdida: false },
+        social: { username: 'beto', racha: 3 },
+      },
+      error: null,
+    })
+  );
+  chequear('cuando llega, llega', lleno.tipo, 'listo');
+  chequear('y trae el perfil', lleno.datos.perfil.username, 'ana');
+  chequear('y la linea social', lleno.datos.social.racha, 3);
+  chequear('y los impulsos', lleno.datos.impulsos.quedan, 1);
+
+  // UN PEDAZO EN NULL NO ROMPE NADA. Es lo que devuelve la funcion cuando esa
+  // seccion fallo del lado de la base: el resto tiene que llegar igual, y las
+  // listas tienen que quedar vacias y no `undefined`, porque quien las recibe
+  // las recorre sin mirar.
+  const roto = await pedirInicio(
+    falso({
+      data: {
+        hoy: '2026-09-16',
+        perfil: { id: 'u1', username: 'ana' },
+        logs: null,
+        descansos: null,
+        impulsos: null,
+        fuerza: null,
+        perdida: null,
+        social: null,
+      },
+      error: null,
+    })
+  );
+  chequear('con pedazos en null igual es "listo"', roto.tipo, 'listo');
+  chequear('y el perfil llega', roto.datos.perfil.username, 'ana');
+  chequear('los logs quedan en lista vacia, no undefined', roto.datos.logs, []);
+  chequear('y los descansos tambien', roto.datos.descansos, []);
+  chequear('lo que no vino queda en null', [roto.datos.fuerza, roto.datos.social], [null, null]);
+
+  // Y QUE EL CAMINO VIEJO SIGA ESCRITO. Si alguien borra `cargarEncadenado`
+  // creyendo que ya no hace falta, entre que se publica la app y se corre la
+  // migracion la pantalla queda muerta.
+  const { readFileSync: leerArch } = await import('node:fs');
+  const { join: unir, dirname: dir } = await import('node:path');
+  const { fileURLToPath: aRuta } = await import('node:url');
+  const inicioTsx = leerArch(unir(dir(aRuta(import.meta.url)), '..', 'src', 'app', 'page.tsx'), 'utf8');
+  chequear('el camino viejo sigue escrito', inicioTsx.includes('cargarEncadenado'), true);
+  chequear('y se usa cuando falta la funcion', /sin-funcion'[\s\S]{0,200}cargarEncadenado/.test(inicioTsx), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

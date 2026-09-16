@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { eventos } from '@compartido/eventos';
+import { miUsuario } from '@/lib/supabase/quienSoy';
 
 /**
  * LO QUE TE ESTÁ ESPERANDO Y NO TE ENTERASTE.
@@ -39,9 +40,11 @@ export function olvidarPendientes() {
 export async function contarPendientes(supabase: SupabaseClient): Promise<number> {
   if (memo && Date.now() - memo.cuando < VALE_MS) return memo.cuantos;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // `miUsuario` y no `getUser()`: esto lo llama la barra, o sea que corre en
+  // cada navegacion, y `getUser()` sale a `/auth/v1/user` por la red cada vez.
+  // Lo unico que se necesita es el `id` para dos consultas que RLS ya protege
+  // del otro lado. Era el segundo viaje a auth en el arranque de Inicio.
+  const user = await miUsuario(supabase);
   // Sin sesión no hay nada que contar, y tampoco se memoriza: el próximo
   // intento tiene que volver a preguntar.
   if (!user) return 0;

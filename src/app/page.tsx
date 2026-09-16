@@ -11,6 +11,8 @@ import { citaDelDia } from '@nucleo/frases';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { guardarPerfilCache, leerPerfilCache } from '@compartido/cache';
+import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
+import { pedirInicio, type DatosDeInicio } from '@compartido/inicio';
 import { marca } from '@/lib/medir';
 import { sincronizarZona } from '@/lib/zona';
 import { marcarPunto } from '@/lib/gimnasio';
@@ -109,6 +111,10 @@ export default function Principal() {
   const [avisoGimnasio, setAvisoGimnasio] = useState('');
   const [cargado, setCargado] = useState(false);
   const [noCargo, setNoCargo] = useState(false);
+  // Si alguna vez hubo un perfil en pantalla —de la caché o de la red—. Con
+  // uno a la vista, una falla NO se contesta con el cartel de error: se deja
+  // lo que se está viendo, que es viejo pero es de esta persona.
+  const huboCache = useRef(false);
 
   // La línea social se carga aparte y después: no puede demorar el dibujo
   // de la pantalla, que es lo único que el usuario vino a ver.
@@ -141,7 +147,61 @@ export default function Principal() {
     [supabase]
   );
 
-  const cargar = useCallback(async () => {
+  // `deArranque` decide si el perfil se puede COMPARTIR con el vigilante del
+  // armazon, que lo pide al mismo tiempo. Solo la carga del arranque puede:
+  // las demas vienen despues de escribir y necesitan leer de nuevo, porque un
+  // pedido que salio antes de la escritura trae la racha vieja.
+  // LOS IMPULSOS, que llegan por los dos caminos y se leen igual: los días
+  // cubiertos para que la tira no dibuje un agujero donde hubo una vida, y el
+  // aviso de los que esta persona todavía no vio.
+  const leerImpulsos = useCallback(async (data: DatosDeInicio['impulsos']) => {
+    if (!data) return;
+    if (Array.isArray(data.vigentes)) setCubiertos(data.vigentes as string[]);
+
+    // `ultimas` son los últimos días cubiertos y vigentes; la marca dice hasta
+    // dónde se anunció en ESTE aparato. Lo que quede en el medio es lo que
+    // esta persona no vio.
+    const ultimas = Array.isArray(data.ultimas) ? (data.ultimas as string[]) : [];
+    const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_IMPULSO_VISTO));
+    if (sinVer.length > 0) {
+      setImpulsoUsado({
+        dias: sinVer,
+        quedan: Number(data.quedan ?? 0),
+        total: Number(data.total ?? 0),
+      });
+    }
+  }, []);
+
+  // EL CAMINO VIEJO, entero y sin tocar: cuatro tandas de pedidos encadenadas.
+  // Se usa cuando la migración 43 todavía no corrió en la base. No es código
+  // muerto ni es temporal de mentira: una base vieja y un cliente nuevo es
+  // exactamente lo que pasa entre que se publica la app y se corre la
+  // migración, y esa ventana no puede ser una pantalla rota.
+  const cargarEncadenado = useCallback(
+    async (uid: string, deArranque: boolean) => {
+      const desde = restarDias(hoyISO(), 6);
+      const [p, { data: ls }, { data: v }, { data: cfgs }] = await Promise.all([
+        deArranque ? perfilVivo(supabase, uid) : perfilFresco(supabase, uid),
+        supabase.from('logs').select('*').eq('user_id', uid).gte('fecha', desde).order('fecha'),
+        supabase.rpc('verificar_perdida'),
+        supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
+      ]);
+      if (!p) return null;
+      // Si hubo pérdida, el perfil que trajimos quedó viejo: se relee. Esta es
+      // la ida y vuelta de más que el camino nuevo no necesita, porque adentro
+      // de la función la pérdida corre ANTES de leer el perfil.
+      const fresco = v?.perdida ? (await perfilFresco(supabase, uid)) ?? p : p;
+      return {
+        perfil: fresco,
+        logs: (ls ?? []) as Log[],
+        descansos: (cfgs ?? []) as ConfigDescanso[],
+        perdida: (v ?? null) as DatosDeInicio['perdida'],
+      };
+    },
+    [supabase]
+  );
+
+  const cargar = useCallback(async (deArranque: boolean) => {
     // getSession lee la cookie sin ir a la red; el JWT igual lo valida la
     // base en cada consulta, así que no se pierde nada de seguridad.
     const {
@@ -150,87 +210,86 @@ export default function Principal() {
     const uid = session?.user?.id;
     if (!uid) return router.push('/login');
 
-    // Perfil, logs y verificación de pérdida van EN PARALELO. Antes eran
-    // siete viajes en fila y la pantalla no dibujaba nada hasta el último.
-    const desde = restarDias(hoyISO(), 6);
-    const [{ data: p }, { data: ls }, { data: v }, { data: cfgs }] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', uid).single(),
-      supabase.from('logs').select('*').eq('user_id', uid).gte('fecha', desde).order('fecha'),
-      supabase.rpc('verificar_perdida'),
-      supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
-    ]);
-    // Si el perfil no vino, ANTES esto era un `return` mudo: la pantalla se
-    // quedaba en el armazón para siempre, sin error y sin nada que tocar. Con
-    // una conexión mala —el subsuelo de un gimnasio— eso es quedarse afuera de
-    // la app sin forma de salir, que es la clase de bug que más caro sale
-    // cuando encima no hay recuperación de contraseña.
+    // UN SOLO PEDIDO, y si la migración no corrió, el camino viejo.
+    const r = await pedirInicio(supabase);
+
+    let p: Perfil | null = null;
+    let perdida: DatosDeInicio['perdida'] = null;
+    let despues: (() => void) | null = null;
+
+    if (r.tipo === 'listo') {
+      p = r.datos.perfil;
+      perdida = r.datos.perdida;
+      if (p) {
+        setLogs(r.datos.logs);
+        setDescansos(r.datos.descansos);
+        // Estos tres venían en las tandas 2, 3 y 4. Ahora ya están en la mano:
+        // se aplican DESPUÉS de dibujar igual, para no alargar el render que
+        // pone la racha en pantalla, pero sin costar un viaje más.
+        const d = r.datos;
+        const unidad = p.unidad_peso ?? 'kg';
+        despues = () => {
+          leerImpulsos(d.impulsos);
+          if (d.fuerza) setMarcas(lineaDeMarcas(d.fuerza.marcas, unidad));
+          setSocial(d.social);
+        };
+      }
+    } else if (r.tipo === 'sin-funcion') {
+      const viejo = await cargarEncadenado(uid, deArranque);
+      if (viejo) {
+        p = viejo.perfil;
+        perdida = viejo.perdida;
+        setLogs(viejo.logs);
+        setDescansos(viejo.descansos);
+        despues = () => {
+          cargarSocial(uid);
+          supabase.rpc('mis_impulsos').then(({ data, error }) => {
+            if (!error) leerImpulsos(data as DatosDeInicio['impulsos']);
+          });
+          supabase.rpc('mi_fuerza').then(({ data }) => {
+            const f = data as MiFuerza | null;
+            if (f) setMarcas(lineaDeMarcas(f.marcas, p?.unidad_peso ?? 'kg'));
+          });
+        };
+      }
+    }
+
+    // NO VINO EL PERFIL. Antes esto era un `return` mudo y la pantalla se
+    // quedaba en el armazón para siempre, sin error y sin nada que tocar: en
+    // el subsuelo de un gimnasio, quedarse afuera de la app sin forma de
+    // salir. Por eso existe la pantalla de reintento.
+    //
+    // PERO SI YA HAY PERFIL EN PANTALLA —el de la caché, que se dibuja antes
+    // de salir a la red— tapar todo con un cartel de error es peor: la persona
+    // tenía su racha y su paleta a la vista y se las cambiamos por "no se
+    // pudo". Mejor la pantalla de ayer. La de reintento queda para cuando de
+    // verdad no hay NADA que mostrar, que es el caso que la hizo necesaria.
     if (!p) {
-      setNoCargo(true);
+      setNoCargo(!huboCache.current);
       return;
     }
     setNoCargo(false);
     if (!p.username) return router.push('/onboarding');
 
-    setLogs(ls ?? []);
-    setDescansos((cfgs ?? []) as ConfigDescanso[]);
-
-    // Si hubo pérdida, el perfil que trajimos quedó viejo: se relee.
-    if (v?.perdida) {
-      setPerdida(true);
-      const { data: p2 } = await supabase.from('profiles').select('*').eq('id', uid).single();
-      const fresco = p2 ?? p;
-      setPerfil(fresco);
-      guardarPerfilCache(fresco);
-    } else {
-      setPerfil(p);
-      guardarPerfilCache(p);
-    }
+    if (perdida?.perdida) setPerdida(true);
+    setPerfil(p);
+    guardarPerfilCache(p);
+    huboCache.current = true;
     setCargado(true);
     marca('ascent:pantalla-lista');
-    cargarSocial(uid);
+    despues?.();
 
     // La zona del teléfono, para que el día corte donde está el usuario. Va
     // después de dibujar y solo escribe si cambió: es una llamada por viaje,
     // no una por arranque. El usuario nunca la ve ni la configura.
     sincronizarZona(supabase);
-
-    // Las marcas también van después de dibujar, y por la misma razón que la
-    // línea social: son un agregado, no lo que el usuario vino a ver. Si la
-    // migración todavía no corrió, el RPC no existe y la línea no aparece.
-    // Los días cubiertos, para que la tira no dibuje un agujero donde hubo
-    // una vida. Va DESPUÉS de dibujar, como la línea de marcas: es un
-    // agregado, no lo que el usuario vino a ver, y no puede costarle un
-    // viaje más al arranque.
-    supabase.rpc('mis_impulsos').then(async ({ data, error }) => {
-      if (error || !data) return;
-      if (Array.isArray(data.vigentes)) setCubiertos(data.vigentes as string[]);
-
-      // Y el aviso, de la misma respuesta. `ultimas` son los últimos días
-      // cubiertos y vigentes; la marca dice hasta dónde se anunció en ESTE
-      // aparato. Lo que quede en el medio es lo que esta persona no vio.
-      const ultimas = Array.isArray(data.ultimas) ? (data.ultimas as string[]) : [];
-      const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_IMPULSO_VISTO));
-      if (sinVer.length > 0) {
-        setImpulsoUsado({
-          dias: sinVer,
-          quedan: Number(data.quedan ?? 0),
-          total: Number(data.total ?? 0),
-        });
-      }
-    });
-
-    supabase.rpc('mi_fuerza').then(({ data }) => {
-      const f = data as MiFuerza | null;
-      if (f) setMarcas(lineaDeMarcas(f.marcas, p.unidad_peso ?? 'kg'));
-    });
-
-  }, [supabase, router, cargarSocial]);
+  }, [supabase, router, cargarSocial, cargarEncadenado, leerImpulsos]);
 
   // El cronómetro vive acá desde §20: empezar pasa una vez por entrenamiento
   // y no merecía una pestaña, pero sí estar a la vista.
   const sesion = usarSesion((r) => {
     if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
-    cargar();
+    cargar(false);
   });
 
   // Por refs y no por dependencias: `sesion`, `perfil` y `logs` cambian en
@@ -290,7 +349,7 @@ export default function Principal() {
   // Stats o en el Álbum dejaba el automático apagado, y llegar al gimnasio no
   // es un asunto de una pantalla. Esta pantalla ahora solo ESCUCHA que el día
   // cambió, que es lo único que le importa.
-  useEffect(() => eventos.escuchar(DIA_CAMBIO, () => cargar()), [cargar]);
+  useEffect(() => eventos.escuchar(DIA_CAMBIO, () => cargar(false)), [cargar]);
 
   // La subida de rango del día que entró SOLO. Los otros dos caminos la
   // disparan donde el toque termina; este no tenía dónde, porque no hay toque.
@@ -315,8 +374,9 @@ export default function Principal() {
       if (cacheado) {
         setPerfil(cacheado);
         setCargado(true);
+        huboCache.current = true;
       }
-      cargar();
+      cargar(true);
     })();
   }, [cargar]);
 
@@ -338,7 +398,7 @@ export default function Principal() {
           {noCargo && (
             <div className="no-cargo">
               <p>{T.inicio.noCargo}</p>
-              <button className="boton-fantasma" onClick={cargar}>
+              <button className="boton-fantasma" onClick={() => cargar(false)}>
                 {T.inicio.reintentar}
               </button>
             </div>
@@ -407,7 +467,7 @@ export default function Principal() {
     const { data, error } = await supabase.rpc('devolver_impulsos', { p_fechas: impulsoUsado.dias });
     if (error || !data) return false;
     if (data?.perdida?.perdida) setPerdida(true);
-    await cargar();
+    await cargar(false);
     return true;
   }
 
@@ -425,7 +485,7 @@ export default function Principal() {
     // persona puede estar en cualquier lado. Solo se pregunta cuando el dia
     // ACABA de entrar.
     if (r && !perfil?.gimnasio_lat) setPedirGimnasio(true);
-    cargar();
+    cargar(false);
   }
 
   async function marcarDesdeAca() {
@@ -733,7 +793,7 @@ export default function Principal() {
         <PesoSheet
           unidad={perfil.unidad_peso ?? 'kg'}
           alCerrar={() => setPesoAbierto(false)}
-          alGuardar={cargar}
+          alGuardar={() => cargar(false)}
         />
       )}
 

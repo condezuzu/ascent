@@ -6,6 +6,7 @@ import { miUsuario } from '@/lib/supabase/quienSoy';
 import { mirarElGimnasio, registrarPorSenal } from '@/lib/gimnasio';
 import { decidir } from '@nucleo/llegada';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
+import { perfilVivo } from '@compartido/perfilVivo';
 import { usarSesion, type CierreDeSesion } from '@compartido/usarSesion';
 import { ESPERA_LLEGADA_MS } from '@nucleo/reglas';
 import { anotar } from '@compartido/bitacora';
@@ -66,9 +67,15 @@ export default function VigilanteDeGimnasio() {
   const [supabase] = useState(() => crearCliente());
   const [perfil, setPerfil] = useState<Perfil | null>(null);
 
-  // Solo lo que hace falta para mirar: el punto y el radio. No se trae el
-  // perfil entero porque esto vive en todas las pantallas y no tiene por qué
-  // pagar una consulta grande en cada una.
+  // El punto y el radio, que es lo unico que este mira. Se piden por
+  // `perfilVivo` y no con una consulta propia: esto vive en el armazon, o sea
+  // que monta en TODAS las pantallas, y casi todas piden el perfil al mismo
+  // tiempo. Eran dos idas y vueltas por la misma fila.
+  //
+  // Antes se pedian solo tres columnas para no pagar una consulta grande en
+  // cada pantalla. Compartida, la consulta es UNA sola y trae la fila entera:
+  // una fila de `profiles` no tiene fotos ni nada pesado, asi que el pedido
+  // que se ahorra vale mucho mas que las columnas de mas.
   useEffect(() => {
     let vivo = true;
     (async () => {
@@ -76,12 +83,8 @@ export default function VigilanteDeGimnasio() {
       // Sin sesión no se pregunta nada. En la pantalla de entrada eso es lo
       // normal, no un error.
       if (!vivo || !user) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, gimnasio_lat, gimnasio_lon, gimnasio_radio')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (vivo && data) setPerfil(data as Perfil);
+      const data = await perfilVivo(supabase, user.id);
+      if (vivo && data) setPerfil(data);
     })();
     return () => {
       vivo = false;

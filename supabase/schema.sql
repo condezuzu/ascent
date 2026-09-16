@@ -2127,6 +2127,134 @@ with (security_invoker = off) as
 grant select on public.usuarios_publicos to authenticated;
 
 -- -------------------------------------------------------------
+-- INICIO EN UNA SOLA CONSULTA (migración 43)
+-- -------------------------------------------------------------
+-- Abrir Inicio eran cuatro tandas de pedidos encadenadas. Las tres últimas
+-- —impulsos, fuerza y la línea social— se contestan acá de una sola vez.
+--
+-- Va DESPUÉS de `usuarios_publicos` porque la usa para la línea social.
+--
+-- CADA PEDAZO EN SU PROPIO `exception`: un error en uno devuelve `null` en esa
+-- clave y el resto llega igual. Sin eso, un error en la última sección haría
+-- rollback de la escritura de `verificar_perdida`, que corre primero.
+create or replace function public.pantalla_inicio()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  hoy date;
+  r jsonb := '{}'::jsonb;
+  pedazo jsonb;
+begin
+  -- Sin sesión no se contesta nada. No es un error: la pantalla de entrada
+  -- monta cosas que preguntan, y un 401 por carga ensucia el informe.
+  if uid is null then
+    return null;
+  end if;
+
+  begin
+    hoy := mi_hoy();
+  exception when others then
+    hoy := current_date;
+  end;
+  r := r || jsonb_build_object('hoy', hoy);
+
+  -- LA PÉRDIDA VA PRIMERO, y ese orden es la mitad del valor de esta función.
+  -- Hoy la web pide `verificar_perdida` EN PARALELO con el perfil: si hubo
+  -- pérdida, el perfil que llegó ya está viejo y hay que leerlo de nuevo — una
+  -- ida y vuelta más, justo el día que perdiste la racha. Acá el perfil se lee
+  -- después, así que siempre viene fresco y esa relectura desaparece por
+  -- construcción, no por acordarse.
+  begin
+    pedazo := verificar_perdida();
+  exception when others then
+    pedazo := null;
+  end;
+  r := r || jsonb_build_object('perdida', pedazo);
+
+  begin
+    pedazo := (select to_jsonb(p) from profiles p where p.id = uid);
+  exception when others then
+    pedazo := null;
+  end;
+  r := r || jsonb_build_object('perfil', pedazo);
+
+  -- Los últimos siete días, que es lo que dibuja la tira. El orden lo pone la
+  -- base para que el cliente no tenga que ordenar nada.
+  begin
+    pedazo := coalesce((
+      select jsonb_agg(to_jsonb(l) order by l.fecha)
+        from logs l
+       where l.user_id = uid and l.fecha >= hoy - 6
+    ), '[]'::jsonb);
+  exception when others then
+    pedazo := null;
+  end;
+  r := r || jsonb_build_object('logs', pedazo);
+
+  -- Las configuraciones de descanso, de la más nueva a la más vieja: el
+  -- cliente elige la vigente para cada fecha con `descansosVigentes`.
+  begin
+    pedazo := coalesce((
+      select jsonb_agg(jsonb_build_object('desde', d.desde, 'dias', d.dias) order by d.desde desc)
+        from descansos d
+       where d.user_id = uid
+    ), '[]'::jsonb);
+  exception when others then
+    pedazo := null;
+  end;
+  r := r || jsonb_build_object('descansos', pedazo);
+
+  begin
+    pedazo := mis_impulsos();
+  exception when others then
+    pedazo := null;
+  end;
+  r := r || jsonb_build_object('impulsos', pedazo);
+
+  begin
+    pedazo := mi_fuerza();
+  exception when others then
+    pedazo := null;
+  end;
+  r := r || jsonb_build_object('fuerza', pedazo);
+
+  -- LA LÍNEA SOCIAL: "alguien más entrenó hoy". Del lado del cliente son TRES
+  -- pedidos encadenados —los amigos, después el último día de esos amigos,
+  -- después quién es— porque el cliente no puede hacer un join. Acá es una
+  -- consulta.
+  --
+  -- CUIDADO CON SECURITY DEFINER (migración 41): adentro de esta función RLS
+  -- no filtra nada, así que la pertenencia se pide explícita. `usuarios_
+  -- publicos` ya es pública —username, avatar, racha y rango— y es lo único
+  -- que sale de acá: no se devuelve el perfil del amigo ni sus días.
+  begin
+    pedazo := (
+      select jsonb_build_object('username', u.username, 'racha', u.racha_actual)
+        from logs l
+        join usuarios_publicos u on u.id = l.user_id
+       where l.es_descanso = false
+         and l.user_id in (
+           select case when f.solicitante = uid then f.destinatario else f.solicitante end
+             from friendships f
+            where f.estado = 'aceptada'
+              and (f.solicitante = uid or f.destinatario = uid)
+         )
+       order by l.fecha desc
+       limit 1
+    );
+  exception when others then
+    pedazo := null;
+  end;
+  r := r || jsonb_build_object('social', pedazo);
+
+  return r;
+end;
+$$;
+
+revoke execute on function public.pantalla_inicio() from public, anon;
+grant execute on function public.pantalla_inicio() to authenticated;
+
+-- -------------------------------------------------------------
 -- RLS (activo en TODAS las tablas desde el principio)
 -- -------------------------------------------------------------
 alter table public.profiles enable row level security;
@@ -2513,7 +2641,7 @@ grant execute on function public.olvidar_suscripcion_push(text) to service_role;
 
 -- LA VERSIÓN DEL ESQUEMA (migración 37). Cada migración la reescribe con su número.
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 42; $$;
+returns int language sql immutable as $$ select 43; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;
