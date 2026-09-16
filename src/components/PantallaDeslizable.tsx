@@ -30,6 +30,24 @@ export default function PantallaDeslizable({
 
   const indice = PESTANAS.indexOf(ruta as (typeof PESTANAS)[number]);
 
+  // LA ENTRADA ESCALONADA, UNA SOLA VEZ POR APERTURA.
+  //
+  // Cada ruta es su propio componente: cambiar de pestaña desmonta y remonta, y
+  // la entrada se repetía entera cada vez. Con `ya-entro` puesto en el `body`
+  // —que sobrevive a la navegación del cliente y se pierde al recargar— la
+  // segunda pantalla en adelante aparece sin animarse.
+  //
+  // SE ESPERA A QUE LA PRIMERA TERMINE. Poniendo la clase al montar se cortaría
+  // la animación que está corriendo en ese mismo instante, que es el parpadeo
+  // que esto viene a sacar. 0,29 s del último escalón + 0,55 s de la animación,
+  // más un respiro.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (document.body.classList.contains('ya-entro')) return;
+    const t = setTimeout(() => document.body.classList.add('ya-entro'), 900);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     const el = ref.current;
     if (el === null || indice < 0) return;

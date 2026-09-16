@@ -172,6 +172,14 @@ export const RANGOS_CFG: Record<number, ConfigCuerpo | null> = {
 
 // Densidad del campo estelar de fondo por rango (la galaxia es el ambiente
 // permanente: lo que cambia es la densidad, no el escenario)
+// EL RANGO 1 SUBE DE 120 A 400. Tenía la décima parte de las estrellas que el
+// agujero negro, y encima grises —el campo se tiñe con la paleta del rango—,
+// así que quien recién empieza veía un cielo casi vacío y sin color.
+//
+// 400 no es un número inventado: es exactamente lo que ya tiene el rango 4, que
+// está medido y anda. Y las partículas NO son el costo del motor: 0,006 ms por
+// cuadro. Lo que se paga por píxel es el ÁREA pintada, así que se sube la
+// cantidad y el brillo, nunca el tamaño.
 export const ESTRELLAS_POR_RANGO: Record<number, number> = {
-  1: 120, 2: 190, 3: 280, 4: 400, 5: 540, 6: 700, 7: 900, 8: 1150,
+  1: 400, 2: 440, 3: 500, 4: 560, 5: 640, 6: 760, 7: 900, 8: 1150,
 };

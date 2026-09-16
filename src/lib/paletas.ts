@@ -12,7 +12,24 @@ export type Paleta = {
 
 // Tabla de la spec, tal cual.
 export const PALETAS_RANGO: Record<number, Paleta> = {
-  1: { apagado: '#4A4945', principal: '#6E6C66', claro: '#9C9A92' }, // Polvo
+  // POLVO. Frío y humilde, pero NO gris.
+  //
+  // Era gris puro —#4A4945 / #6E6C66 / #9C9A92, saturación cero— y esta paleta
+  // no tiñe solo el fondo: es la mecánica central del proyecto y pinta acentos,
+  // bordes, botones, la barra de progreso y hasta las estrellas. O sea que el
+  // rango 1, que es lo primero que ve TODO el mundo, mostraba la app entera en
+  // blanco y negro. Lo dijo alguien que la vio por primera vez: "se ve
+  // aburrida"; el diagnóstico no era que faltaran animaciones, era que no había
+  // un solo color.
+  //
+  // El tinte sale de la nebulosa que ya está detrás (`NEBULOSA` en
+  // `motor/cuerpos.ts`: violeta, azul, lila). El polvo espacial de verdad no es
+  // gris y el fondo ya lo sabía; la interfaz no.
+  //
+  // MISMA LUMINOSIDAD QUE ANTES, a propósito: 74 / 110 / 158, clavado. Sigue
+  // siendo el más apagado de los ocho —menos saturado incluso que la Luna— así
+  // que la idea de ganarse el color queda intacta. Lo que se saca es el cero.
+  1: { apagado: '#4A4759', principal: '#6E6A82', claro: '#9E9BB0' }, // Polvo
   2: { apagado: '#7A3A15', principal: '#B4581F', claro: '#E08A3C' }, // Asteroide: óxido mate
   3: { apagado: '#5B7BA8', principal: '#7E8CA8', claro: '#C4C2BA' }, // Luna: celeste alrededor
   4: { apagado: '#2E4A78', principal: '#4A7FD0', claro: '#DBE7F5' }, // Planeta (respaldo; manda el planeta del día)

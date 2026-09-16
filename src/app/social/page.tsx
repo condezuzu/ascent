@@ -279,7 +279,12 @@ export default function Social() {
               <div className="campo-estelar de-fondo" aria-hidden>
                 {amigos.map((a, i) => {
                   const t = a.racha_actual / maxRacha;
-                  const tam = 18 + Math.round(t * 40);
+                  // EL PISO SUBE DE 18 A 30 px. A 18 y con la opacidad del
+                  // fondo, un amigo de racha baja quedaba en un objeto de 18 px
+                  // al 28% efectivo: eso no es un astro, es una mancha. El
+                  // techo baja un poco para que la diferencia siga diciendo
+                  // algo sin que el más grande tape la lista.
+                  const tam = 30 + Math.round(t * 30);
                   const x = 18 + ((i * 137) % 64);
                   const y = 16 + ((i * 89) % 66);
                   return (
@@ -292,7 +297,7 @@ export default function Social() {
                       style={{
                         left: `${x}%`,
                         top: `${y}%`,
-                        opacity: 0.45 + t * 0.55,
+                        opacity: 0.68 + t * 0.32,
                         animationDelay: `${(i * 1.3) % 5}s`,
                       }}
                     >
@@ -404,14 +409,25 @@ export default function Social() {
           </div>
         )}
 
-        <div className="seccion" id="buscar" style={{ marginTop: 24 }}>
+        <div className="seccion buscar-gente" id="buscar">
           <h3>{T.social.buscarGente}</h3>
-          <input
-            placeholder={T.ajustes.nombrePlaceholder}
-            value={busqueda}
-            onChange={(e) => buscar(e.target.value)}
-            autoCapitalize="off"
-          />
+          {/* CON FORMA DE PASTILLA Y CON LUPA. Era el único rectángulo de una
+              pantalla de objetos redondos y botones pastilla: un campo de
+              formulario en una app espacial. Y sin nada que dijera "acá se
+              busca". El margen de arriba se fue del JSX al CSS, donde vive el
+              resto. */}
+          <div className="campo-busqueda">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+              <circle cx="11" cy="11" r="7" />
+              <path d="M16.5 16.5L21 21" strokeLinecap="round" />
+            </svg>
+            <input
+              placeholder={T.ajustes.nombrePlaceholder}
+              value={busqueda}
+              onChange={(e) => buscar(e.target.value)}
+              autoCapitalize="off"
+            />
+          </div>
           {resultados.map((u) => (
             <div className="fila" key={u.id}>
               <Avatar url={u.avatar_url} nombre={u.username} />

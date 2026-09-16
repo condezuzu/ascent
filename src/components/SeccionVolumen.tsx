@@ -11,6 +11,7 @@ import { umbralValido } from '@nucleo/estancamiento';
 import {
   fechasPorRevisar,
   filasPorMusculo,
+  intensidadDeCelda,
   maximosDelCatalogo,
   semanaParaLeer,
   sesionesConFecha,
@@ -218,7 +219,13 @@ export default function SeccionVolumen({
                             series ? T.volumen.soloSeries(s.series) : `${kilosLindos(s.kilos)} ${unidad}`
                           }`}
                         >
-                          <span className="relleno" style={{ height: tope > 0 ? `${(valor(s) / tope) * 100}%` : 0 }} />
+                          {/* El relleno ocupa la celda entera y lo que dice el
+                              número es cuánto se pinta, no cuánto mide. Ver
+                              `intensidadDeCelda`. */}
+                          <span
+                            className="relleno"
+                            style={{ '--i': intensidadDeCelda(valor(s), tope) } as React.CSSProperties}
+                          />
                         </button>
                       ))}
                     </div>

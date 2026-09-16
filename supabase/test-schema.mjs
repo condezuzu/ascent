@@ -7770,6 +7770,48 @@ console.log('\n114. Sin la migracion 43, Inicio vuelve solo al camino viejo');
   chequear('y se usa cuando falta la funcion', /sin-funcion'[\s\S]{0,200}cargarEncadenado/.test(inicioTsx), true);
 }
 
+console.log('\n115. El mapa de calor: cero es cero, y poco se ve');
+{
+  const V = await import('../nucleo/volumen.ts');
+  const I = (v, tope) => V.intensidadDeCelda(v, tope);
+
+  // CERO ES CERO, EXACTO. Si "nada" se pintara con el tono mas claro de la
+  // escala, una semana sin entrenar se veria igual que una floja, y esa es
+  // justo la diferencia que la seccion viene a mostrar.
+  chequear('sin nada no se pinta', I(0, 100), 0);
+  chequear('con el tope en cero tampoco', I(5, 0), 0);
+  chequear('un negativo no pinta', I(-3, 100), 0);
+  chequear('un NaN no pinta', I(NaN, 100), 0);
+  chequear('un tope NaN no pinta', I(5, NaN), 0);
+
+  // PERO APENAS HAY ALGO, SE VE. Una serie sobre un tope de doscientas, con
+  // escala lineal, se pintaria al 0,5%: cero en la practica. El piso es lo que
+  // separa "poco" de "nada", que era el defecto de las barras.
+  chequear('una serie sobre doscientas igual se ve', I(1, 200) >= V.PISO_DE_CELDA, true);
+  chequear('y el piso es visible, no simbolico', V.PISO_DE_CELDA >= 0.15, true);
+
+  // EL TOPE SE PINTA ENTERO, y nada se pasa de uno.
+  chequear('el maximo se pinta entero', I(100, 100), 1);
+  chequear('pasarse del tope no rompe', I(300, 100), 1);
+
+  // EL ORDEN NO SE INVIERTE NUNCA. La curva levanta la parte baja para que las
+  // filas flojas se lean, pero si A tiene mas que B, A se pinta mas que B.
+  // Esto es lo que separa "legible" de "mentiroso".
+  let ordenado = true;
+  let previo = -1;
+  for (let v = 0; v <= 200; v++) {
+    const i = I(v, 200);
+    if (i < previo) ordenado = false;
+    previo = i;
+  }
+  chequear('mas volumen nunca se pinta menos', ordenado, true);
+
+  // Y QUE DE VERDAD LEVANTE LA PARTE BAJA: con escala lineal un decimo del tope
+  // se pintaria al 10% y seria invisible. Ese era el problema de las barras.
+  chequear('un decimo del tope se ve bastante mas que un decimo', I(20, 200) > 0.3, true);
+  chequear('la mitad del tope pasa la mitad de la escala', I(100, 200) > 0.5, true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

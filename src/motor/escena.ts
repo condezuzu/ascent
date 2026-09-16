@@ -185,7 +185,15 @@ function crearEstrellas(cantidad: number, rango: number, planeta?: string | null
     pos[i * 3] = (Math.random() - 0.5) * 4;
     pos[i * 3 + 1] = (Math.random() - 0.5) * 4;
     pos[i * 3 + 2] = -1 - Math.random() * 2;
-    const b = 0.3 + Math.pow(Math.random(), 2) * 0.9;
+    // MÁS BRILLO, SIN MÁS TAMAÑO. "Las veo pero están muy apagadas": era
+    // `0.3 + azar² · 0.9`, y elevar al cuadrado amontona casi todas contra el
+    // piso de 0,3. Ahora el piso sube y la curva se afloja, así que la mayoría
+    // queda en la mitad de arriba del rango en vez de en el sótano.
+    //
+    // El brillo es GRATIS y el tamaño no: lo que cuesta en un teléfono flojo es
+    // el área que hay que pintar, no el valor del color que se pinta. Por eso
+    // se toca esto y no `tam`.
+    const b = 0.45 + Math.pow(Math.random(), 1.6) * 0.95;
     const tinte = Math.random();
     const c =
       tinte < 0.55

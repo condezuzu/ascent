@@ -57,6 +57,24 @@
   --saliente: 10px;
   --ancho-dato: 62%;
   --alto-nav: 62px;
+  /* Alto de la acción anclada ("Terminar", "Registrar día"), medido con
+     `npm run medir:scroll`. Existe por lo mismo que `--alto-nav`: el hueco que
+     `.pantalla` reserva abajo tiene que saber cuánto tapa lo anclado, y
+     medirlo por JS en cada render sería pagar un layout por pantalla.
+
+     ESTABA MAL Y SE NOTABA POCO: el hueco reservado era de 120 px cuando lo
+     anclado mide 152 (esta acción, 90, apoyada sobre la barra, 62). Los últimos
+     32 px del contenido quedaban escondidos detrás del botón. Se veía solo con
+     la sesión abierta Y contenido suficiente, que es el caso de un
+     entrenamiento de verdad y no el de una prueba recién arrancada.
+
+     Si la acción cambia de alto, este número cambia con ella: el probador lo
+     reporta como "hueco reservado X · hueco necesario Y". */
+  --alto-accion: 90px;
+  /* La franja de la sesión, que se apoya sobre la barra cuando hay descanso
+     corriendo. Este NO está medido todavía; se deja escrito aparte para que
+     el día que se mida no haya que tocar las cuentas de abajo. */
+  --alto-franja: 70px;
   /* El único color que NO sale de la paleta del rango, y a propósito: borrar
      la cuenta tiene que verse igual de grave en polvo que en agujero negro.
      Sigue estando acá y no suelto en un componente. */
@@ -249,6 +267,27 @@ textarea::placeholder {
     calc(84px + env(safe-area-inset-bottom));
   min-height: 100dvh;
   animation: entrar-pantalla 0.42s var(--curva-salida) both;
+}
+
+/* LA ENTRADA ES UNA SOLA VEZ POR APERTURA, no una por pestaña.
+
+   Cada ruta es su propio componente, así que cambiar de pestaña desmonta y
+   vuelve a montar: la entrada escalonada se repetía ENTERA en cada navegación
+   —0,42 s de la pantalla más 0,55 s de cada bloque, hasta 0,84 s— y se sentía
+   como si todo se cerrara y se volviera a abrir. Deslizando era peor: el
+   contenido ya está a la vista mientras arrastrás el dedo, así que animarlo al
+   soltar es exactamente lo que produce el salto.
+
+   `ya-entro` lo pone la primera pantalla cuando termina de entrar, y vive en el
+   `body`, que sobrevive a la navegación del lado del cliente y se pierde al
+   recargar. O sea: una vez por vez que se abre la app, que es cuando la entrada
+   dice algo.
+
+   Se apaga la animación entera y no se acorta: media animación en una
+   navegación es el mismo parpadeo, más corto. */
+body.ya-entro .pantalla,
+body.ya-entro .pantalla > * {
+  animation: none;
 }
 
 /* Cada pantalla entra, y sus bloques aparecen escalonados. Corto y sin
@@ -1146,7 +1185,10 @@ textarea::placeholder {
   border: none;
   border-radius: 0;
   pointer-events: none;
-  opacity: 0.62;
+  /* Sube de 0,62 a 0,78. Con el objeto más chico a 18 px y este velo encima,
+     un amigo de racha baja quedaba al 28% efectivo y no se leía como nada. El
+     texto sigue ganando: para eso está el degradado de `.ranking::before`. */
+  opacity: 0.78;
   z-index: 0;
 }
 /* EL VELO, que es lo que decide si esto es un fondo o un ruido. Va mas cerrado
@@ -1168,6 +1210,40 @@ textarea::placeholder {
 .ranking-lista {
   position: relative;
   z-index: 2;
+}
+/* BUSCAR GENTE. El margen de arriba estaba escrito inline en el JSX; vive acá,
+   como el resto. */
+.buscar-gente {
+  margin-top: 24px;
+}
+/* La pastilla que envuelve a la lupa y al campo. El `input` de adentro pierde
+   su borde y su fondo: los pone el envoltorio, que es quien tiene la forma. */
+.campo-busqueda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: var(--pildora);
+  background: rgba(150, 170, 210, 0.07);
+  border: 0.5px solid var(--linea);
+  transition: border-color 0.2s var(--curva-suave);
+}
+.campo-busqueda:focus-within {
+  border-color: color-mix(in srgb, var(--pal-principal) 60%, transparent);
+}
+.campo-busqueda svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--apagado);
+}
+.campo-busqueda input {
+  background: none;
+  border: 0;
+  padding: 12px 0;
+}
+.campo-busqueda input:focus {
+  border: 0;
 }
 /* Con el objeto grande, la fila necesita aire: apretados, los ocho rangos se
    tocan entre sí y la lista vuelve a parecer una tabla. */
@@ -3444,13 +3520,18 @@ body.con-franja .pantalla {
   display: block;
   margin: 10px auto 0;
 }
-/* Con la acción puesta, el final del contenido quedaría tapado. */
+/* Con la acción puesta, el final del contenido quedaría tapado.
+   La cuenta sale de las variables y no de un número escrito a mano: así el
+   hueco no se puede desincronizar de lo que de verdad hay anclado, que es
+   exactamente el bug que tenía (reservaba 120 y hacían falta 152). */
 body.con-accion .pantalla {
-  padding-bottom: calc(120px + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--alto-nav) + var(--alto-accion) + env(safe-area-inset-bottom));
 }
 /* Y con las dos cosas a la vez —franja de sesión y acción— se suman. */
 body.con-franja.con-accion .pantalla {
-  padding-bottom: calc(190px + env(safe-area-inset-bottom));
+  padding-bottom: calc(
+    var(--alto-nav) + var(--alto-accion) + var(--alto-franja) + env(safe-area-inset-bottom)
+  );
 }
 
 /* ---------- leer un día en el gráfico de peso ----------
@@ -3897,41 +3978,49 @@ body.con-franja.con-accion .pantalla {
   font-size: 11px;
   color: var(--apagado);
 }
+/* MAPA DE CALOR, no barras. El porqué está en `intensidadDeCelda`: a 34 px de
+   alto y con escala compartida, el músculo que menos entrenás era una astilla
+   de 2 px indistinguible de cero, y el radio de 4 px se comía la barra entera.
+   Acá la celda siempre ocupa lo mismo y lo que cambia es cuánto se pinta. */
 .volumen-barras {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  gap: 2px;
-  height: 34px;
-  align-items: end;
-  border-bottom: 1px solid var(--linea);
+  gap: 3px;
+  height: 26px;
 }
 .volumen-barra {
   height: 100%;
-  display: flex;
-  align-items: flex-end;
-  /* El toque es más grande que la barra: se apunta a la columna entera. */
-  padding: 0 1px;
+  display: block;
+  padding: 0;
 }
 .volumen-barra .relleno {
   display: block;
   width: 100%;
-  border-radius: 4px 4px 0 0;
-  background: color-mix(in srgb, var(--pal-principal) 42%, transparent);
-  transition: height 0.4s var(--curva-suave);
+  height: 100%;
+  border-radius: 3px;
+  /* `--i` la pone el componente, de 0 a 1. En cero queda el hueco de abajo y
+     nada encima: "no entrené" tiene que verse distinto de "entrené poco". */
+  background: color-mix(in srgb, var(--pal-principal) calc(var(--i, 0) * 100%), transparent);
+  box-shadow: inset 0 0 0 0.5px var(--linea);
+  transition: background 0.35s var(--curva-suave);
 }
+/* La semana que se está leyendo: un anillo, no otro color. Cambiarle el color
+   la haría parecer más o menos volumen del que tiene. */
 .volumen-barra.leida .relleno {
-  background: var(--pal-principal);
+  box-shadow: inset 0 0 0 1px var(--pal-claro);
 }
-/* LA SEMANA DE HOY NO TERMINÓ: contorno punteado, para que un lunes su barra
-   baja no se lea como una caída. */
+/* LA SEMANA DE HOY NO TERMINÓ: contorno punteado, para que un lunes su celda
+   apagada no se lea como una caída. */
 .volumen-barra.en-curso .relleno {
-  background: transparent;
-  border: 1px dashed color-mix(in srgb, var(--pal-principal) 70%, transparent);
-  border-bottom: 0;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pal-principal) 70%, transparent);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 3px,
+    color-mix(in srgb, var(--pal-principal) 22%, transparent) 3px 6px
+  );
 }
 .volumen-barra.en-curso.leida .relleno {
-  background: color-mix(in srgb, var(--pal-principal) 30%, transparent);
-  border-color: var(--pal-principal);
+  box-shadow: inset 0 0 0 1px var(--pal-claro);
 }
 /* Un músculo sin nada en ocho semanas: se ve, en voz baja. */
 .volumen-fila.vacia .volumen-rotulo,

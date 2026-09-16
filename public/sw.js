@@ -1,10 +1,29 @@
 // Service worker mínimo: cachea el cascarón y los estáticos.
 // Las páginas van network-first (los datos de racha tienen que estar frescos).
 const CACHE = 'ascent-v1';
-const ESTATICOS = ['/manifest.webmanifest', '/icons/icono.svg'];
+// `/icons/icono.svg` ESTUVO ACÁ Y NO EXISTE. Verificado en produccion el
+// 16/9/2026: devuelve 404.
+//
+// Eso no era un archivo de mas en una lista: `addAll` es todo o nada. Si UNA
+// de las URLs no responde 2xx, la promesa se rechaza, el `waitUntil` falla, y
+// el evento `install` falla con el. Un service worker que no instala no se
+// activa nunca. O sea que esto, que parece una linea de adorno, apagaba:
+//
+//   - el cascaron sin conexion (no se cacheo nunca nada),
+//   - y el registro de los avisos push, que espera a
+//     `navigator.serviceWorker.ready` y con el install fallado no llega.
+//
+// Ahora se pide un archivo que existe, y ademas se cachea de a uno con su
+// propio catch: el dia que falte otro, se pierde ESE archivo y no el service
+// worker entero. Un fallo tiene que costar lo que vale, no todo.
+const ESTATICOS = ['/manifest.webmanifest', '/icons/icono-192.png'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ESTATICOS)));
+  e.waitUntil(
+    caches.open(CACHE).then((c) =>
+      Promise.all(ESTATICOS.map((u) => c.add(u).catch(() => {})))
+    )
+  );
   self.skipWaiting();
 });
 

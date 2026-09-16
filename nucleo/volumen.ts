@@ -471,3 +471,41 @@ export function maximosDelCatalogo(
     ...ORDEN_GRUPOS.flatMap((g) => armar(g, conPeso.filter((e) => e.grupo === g && !e.cuenta_dots))),
   ];
 }
+
+/**
+ * CUÁNTO SE PINTA UNA CELDA DEL MAPA DE CALOR, de 0 a 1.
+ *
+ * POR QUÉ UN MAPA DE CALOR Y NO BARRAS. Eran seis músculos por ocho semanas
+ * —cuarenta y ocho barras— en una tira de 34 px de alto, todas compartiendo
+ * escala. Compartir escala es correcto (es lo único que hace comparables a
+ * pecho y piernas) pero a esa altura significa que el músculo que menos
+ * entrenás es una astilla de 2 px, indistinguible de cero. Encima el
+ * `border-radius` de 4 px se comía la barra entera y la dejaba en una pastilla
+ * aplastada.
+ *
+ * El color escala mucho mejor que la altura en 34 px: lo poco se ve TENUE en
+ * vez de invisible. Y la pregunta que esa sección viene a contestar es dónde
+ * NO estás entrenando, que en una grilla de color se lee de un vistazo.
+ *
+ * CERO ES CERO, exactamente. Si "nada" se pintara con el color más claro de la
+ * escala, una semana sin entrenar se vería igual que una floja, que es
+ * justamente la diferencia que hay que poder ver.
+ *
+ * Y TODO LO DEMÁS ARRANCA EN UN PISO VISIBLE. Sin piso, una serie sobre un tope
+ * de doscientas se pintaría al 0,5%: cero en la práctica. El piso es lo que
+ * hace que "poco" y "nada" no se confundan.
+ *
+ * LA CURVA VA POR DEBAJO DE UNO a propósito (0,6). Los volúmenes por músculo
+ * son muy desparejos —piernas multiplica por diez a core— y con una escala
+ * lineal cuatro de las seis filas quedarían casi apagadas. Levantar la parte
+ * baja es lo que hace legible la grilla sin mentir sobre el orden: si A tiene
+ * más que B, A se pinta más que B, siempre.
+ */
+export const PISO_DE_CELDA = 0.2;
+
+export function intensidadDeCelda(valor: number, tope: number): number {
+  if (!Number.isFinite(valor) || !Number.isFinite(tope)) return 0;
+  if (valor <= 0 || tope <= 0) return 0;
+  const proporcion = Math.min(1, valor / tope);
+  return Math.round((PISO_DE_CELDA + (1 - PISO_DE_CELDA) * Math.pow(proporcion, 0.6)) * 1000) / 1000;
+}
