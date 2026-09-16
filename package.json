@@ -6,6 +6,8 @@
     "dev": "next dev -p 3020",
     "build": "next build",
     "start": "next start -p 3020",
+    "lint": "eslint .",
+    "cierre": "npm run lint && npm run test:db && npm run capturas && npm run test:real",
     "test:db": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON supabase/test-schema.mjs && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON supabase/test-deriva.mjs",
     "test:conexion": "node --env-file=.env.local supabase/verificar-conexion.mjs",
     "test:e2e": "node --env-file=.env.local supabase/test-e2e.mjs",
@@ -40,6 +42,9 @@
     "@types/react-dom": "^19.1.0",
     "@types/three": "^0.176.0",
     "@types/web-push": "^3.6.4",
+    "@typescript-eslint/parser": "^8.70.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "playwright": "^1.62.1",
     "typescript": "^5.8.3"
   }

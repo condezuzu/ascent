@@ -193,7 +193,7 @@ export default function Album() {
                       aria-label={fechaLinda(c.fecha)}
                     >
                       {c.url && (
-                        // eslint-disable-next-line @next/next/no-img-element
+                        // <img> y no next/image: son URLs firmadas de Supabase que vencen en una hora, y el optimizador las cachearia vencidas.
                         <img src={c.url} alt="" loading="lazy" />
                       )}
                       {/* Un punto y nada más. Quién ve cada foto tiene que

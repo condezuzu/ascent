@@ -306,7 +306,7 @@ export default function HojaDelDia({
             )}
 
             {foto && (
-              // eslint-disable-next-line @next/next/no-img-element
+              // <img> y no next/image: son URLs firmadas de Supabase que vencen en una hora, y el optimizador las cachearia vencidas.
               <img className="dia-foto" src={foto} alt="" />
             )}
 

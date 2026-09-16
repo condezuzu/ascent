@@ -392,7 +392,7 @@ export default function Social() {
                       border: '0.5px solid var(--linea)',
                     }}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {/* <img> y no next/image: son URLs firmadas de Supabase que vencen en una hora, y el optimizador las cachearia vencidas. */}
                     <img src={a.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </span>
                 )}

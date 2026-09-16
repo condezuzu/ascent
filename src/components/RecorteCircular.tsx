@@ -187,7 +187,7 @@ export default function RecorteCircular({
           onPointerCancel={alSoltar}
         >
           {url && img && (
-            // eslint-disable-next-line @next/next/no-img-element
+            // <img> y no next/image: son URLs firmadas de Supabase que vencen en una hora, y el optimizador las cachearia vencidas.
             <img
               src={url}
               alt=""

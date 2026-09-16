@@ -70,7 +70,7 @@ export default function ComoMeVen({
               <div className="album-pieza" key={f.id}>
                 <div className="album-celda">
                   {f.url && (
-                    // eslint-disable-next-line @next/next/no-img-element
+                    // <img> y no next/image: son URLs firmadas de Supabase que vencen en una hora, y el optimizador las cachearia vencidas.
                     <img src={f.url} alt="" loading="lazy" />
                   )}
                 </div>

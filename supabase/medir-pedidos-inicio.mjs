@@ -100,12 +100,11 @@ const enParalelo = async () => {
   ]);
 };
 
-// ---- 4. dos pedidos: lo esencial y lo social ----
-// No se puede probar la función que no existe todavía, así que se mide el
-// COSTO DE LA FORMA: dos idas y vueltas en paralelo, una de ellas con un
-// trabajo parecido al que haría la función junta.
+// ---- 4. la funcion de verdad (migracion 43) ----
+// Ya no hay que estimar: se llama a `pantalla_inicio`, que hace TODO el
+// trabajo de las cuatro tandas de arriba en una sola ida y vuelta.
 const dosPedidos = async () => {
-  await Promise.all([supabase.rpc('verificar_perdida'), supabase.rpc('mi_fuerza')]);
+  await supabase.rpc('pantalla_inicio');
 };
 
 const hoyMs = await cronometrar(hoyDia, 5);
@@ -116,12 +115,12 @@ console.log(`\nDesde acá, con esta red:`);
 console.log(`  una ida y vuelta sola          ${String(unaVuelta).padStart(5)} ms`);
 console.log(`  la secuencia de HOY (4 tandas) ${String(hoyMs).padStart(5)} ms`);
 console.log(`  todo en paralelo (1 tanda)     ${String(paraleloMs).padStart(5)} ms`);
-console.log(`  dos pedidos juntos             ${String(dosMs).padStart(5)} ms`);
+console.log(`  pantalla_inicio (la de verdad) ${String(dosMs).padStart(5)} ms`);
 
 // Lo que importa no son los milisegundos de acá sino las IDAS Y VUELTAS: eso
 // es lo que se multiplica en una red lenta.
 console.log(`\nEn una red móvil, estimado por idas y vueltas en fila:`);
-console.log(`  latencia    hoy (4 en fila)   en paralelo (1)   juntado (1)`);
+console.log(`  latencia    hoy (4 en fila)   en paralelo (1)   pantalla_inicio`);
 for (const rtt of [40, 120, 250, 400]) {
   const base = hoyMs - unaVuelta * 4;
   console.log(
