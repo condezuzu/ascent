@@ -272,12 +272,18 @@ export const T = {
     sigueSubiendo: (nombre: string, dias: string) => `${nombre} sigue subiendo — ${dias}`,
     // Discreto y permanente mientras no haya punto: es el diferencial de la
     // app y vivía escondido en Ajustes.
-    gimnasioRecordatorio: 'Tu gimnasio todavía no está marcado. Márcalo y el día entra solo.',
+    gimnasioRecordatorio: 'Marca tu gimnasio: el día entra al abrir la app estando ahí.',
     // Y acá sí se insiste, porque es el único momento en que es probable que
     // la persona esté parada en el gimnasio. NUNCA al empezar la sesión:
     // ahí casi nunca está ahí todavía.
     gimnasioAhora: '¿Estás en el gimnasio ahora?',
-    gimnasioAhoraPie: 'Marca el punto y no lo tienes que hacer nunca más: el día entra solo con abrir la app.',
+    gimnasioAhoraPie: 'Márcalo una vez y listo: el día entra con abrir la app en el gimnasio.',
+    // POR QUÉ SE ACLARA EL "POR AHORA". El texto decía que el día entra solo
+    // "con abrir la app", y eso hace que marcar el punto parezca inútil: si hay
+    // que abrir la app igual, se registra a mano y listo. La web no puede hacer
+    // más —el navegador no despierta a nadie— pero la app del teléfono sí, y no
+    // decirlo hace parecer diseño lo que es un techo temporal.
+    gimnasioPorAhora: 'Por ahora hay que abrir la app. En la del teléfono va a entrar solo.',
     gimnasioAhoraNo: 'Ahora no',
     noCargo: 'No se pudieron traer tus datos. Puede ser la conexión.',
     reintentar: 'Reintentar',
@@ -485,6 +491,7 @@ export const T = {
     gimnasioBorrar: 'Borrar el punto',
     gimnasioComo: 'Márcalo parado en la puerta de tu gimnasio.',
     gimnasioParaQue: 'Después, abrir la app estando ahí registra el día sin que aprietes nada.',
+    gimnasioTecho: 'Por ahora hay que abrir la app. En la del teléfono va a entrar solo.',
     gimnasioListo: (metros: number) => `Listo, con ${metros} m de precisión.`,
     gimnasioPuesto: 'Ya está marcado. Nadie más lo ve: no se comparte con tus amigos.',
     gimnasioSinGps: 'Este teléfono no da la ubicación.',

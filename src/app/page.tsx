@@ -729,6 +729,10 @@ export default function Principal() {
             <p>
               <strong>{T.inicio.gimnasioAhora}</strong> {T.inicio.gimnasioAhoraPie}
             </p>
+            {/* El techo de la web, dicho. Sin esto, marcar el punto parece
+                que no sirve: si hay que abrir la app igual, se registra a
+                mano y listo. */}
+            <p className="nota-privada">{T.inicio.gimnasioPorAhora}</p>
             <div className="acciones">
               <button className="boton-solido" onClick={marcarDesdeAca} disabled={marcando}>
                 {marcando ? T.ajustes.gimnasioBuscando : T.ajustes.gimnasioMarcar}

@@ -84,6 +84,7 @@ export default function Gimnasio({
       <p className="nota-privada">
         <strong>{T.ajustes.gimnasioComo}</strong> {T.ajustes.gimnasioParaQue}
       </p>
+      <p className="nota-privada">{T.ajustes.gimnasioTecho}</p>
 
       {detalle && <p className="nota-privada">{detalle}</p>}
 

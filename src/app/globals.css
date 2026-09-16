@@ -2010,7 +2010,23 @@ body.ya-entro .pantalla > * {
   flex: 1;
   min-width: 0;
 }
-.globo button {
+/* LA CRUZ DE CERRAR, y SOLO ella: `> button`, hijo directo.
+
+   EL BUG. Esto era `.globo button`, o sea TODO botón adentro de un globo. El
+   globo del gimnasio tiene dos botones de verdad —"Marcar el punto" y "Ahora
+   no"— metidos en un `.acciones`, y se comían esta regla: 24 px de alto y
+   `border-radius: 50%`. "Marcar el punto" quedaba en una elipse ancha y
+   achatada de 24 px con el texto sin lugar, o sea ilegible.
+
+   Las reglas de `.pedido-gimnasio .acciones` pisaban el ancho y el relleno,
+   pero no el ALTO ni el RADIO — y para "Ahora no" alguien ya había agregado
+   `height: auto; border-radius: 0` a mano. O sea que el problema ya se había
+   visto una vez, se había tapado en un botón, y en el otro quedó.
+
+   Acotar el selector lo arregla en los dos y evita que vuelva a pasar con el
+   próximo botón que alguien ponga adentro de un globo. La cruz es hija directa
+   del globo; los botones de acción, no. */
+.globo > button {
   flex: none;
   width: 24px;
   height: 24px;
@@ -2021,7 +2037,7 @@ body.ya-entro .pantalla > * {
   color: var(--sub);
   border-radius: 50%;
 }
-.globo button svg {
+.globo > button svg {
   width: 13px;
   height: 13px;
 }

@@ -153,7 +153,12 @@ const LUNA_CFG: ConfigCuerpo = {
 // Nebulosa del rango 1. Lleva paleta propia y NO la del rango: la tabla de
 // paletas manda en la interfaz, pero un polvo gris plano se ve pobre. Acá
 // van azules, violetas y un cálido mezclándose, como una nebulosa de verdad.
-const NEBULOSA: [string, string, string, string] = ['#1b1235', '#2c3d86', '#7d5cc4', '#e0946a'];
+// LA NEBULOSA, MÁS SATURADA. Los mismos cuatro colores, con el tinte subido:
+// el plano de fondo aportaba luminosidad pero casi nada de color, así que el
+// polvo se leía como un manchón gris en vez de como gas. El polvo espacial de
+// verdad no es gris —tiene violetas, azules y un cálido— y esta paleta ya lo
+// decía; lo que faltaba era que se notara.
+const NEBULOSA: [string, string, string, string] = ['#241540', '#2f45a8', '#8f5fe0', '#f0a06a'];
 
 const NEBULOSA_CFG: ConfigCuerpo = {
   paleta: NEBULOSA,
@@ -353,10 +358,17 @@ function crearPolvo(vacio: boolean): THREE.Points {
     // color: casi todas azul-violeta, unas pocas cálidas, algunas casi blancas
     const t = Math.random();
     let c: THREE.Color;
+    // MENOS BLANCO. Eran el 12% en `#eaf0ff` mezclado apenas un 35% hacia el
+    // violeta, y con mezcla aditiva esos blancos se apilaban en un velo
+    // blancuzco: la nube leía como bruma gris en vez de gas con color. Ahora
+    // son el 4% y van mucho más hacia el violeta de la paleta.
+    //
+    // El lugar que dejan se lo lleva el cálido (`paleta[3]`, el naranja), que
+    // es lo que hace que una nebulosa se vea como una nebulosa y no como humo.
     if (t < 0.42) c = paleta[1].clone().lerp(paleta[2], Math.random());
-    else if (t < 0.74) c = paleta[2].clone().lerp(paleta[0], Math.random() * 0.6);
-    else if (t < 0.88) c = paleta[3].clone().lerp(paleta[2], Math.random() * 0.5);
-    else c = new THREE.Color('#eaf0ff').lerp(paleta[2], Math.random() * 0.35);
+    else if (t < 0.72) c = paleta[2].clone().lerp(paleta[0], Math.random() * 0.6);
+    else if (t < 0.96) c = paleta[3].clone().lerp(paleta[2], Math.random() * 0.5);
+    else c = new THREE.Color('#eaf0ff').lerp(paleta[2], 0.45 + Math.random() * 0.3);
     col[i * 3] = c.r;
     col[i * 3 + 1] = c.g;
     col[i * 3 + 2] = c.b;
@@ -481,7 +493,22 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
     grupo.add(galaxia);
     grupo.scale.setScalar(1.5);
   } else if (cfg) {
-    const escala = op.rango >= 5 ? 1.45 : 1.25;
+    // LOS CUERPOS CONVIVEN CON EL CIELO, NO LO REEMPLAZAN.
+    //
+    // Eran 1,45 de rango 5 para arriba y 1,25 abajo: a ese tamaño el planeta y
+    // el sol ocupaban la mitad inferior de la pantalla y se cortaban contra los
+    // dos bordes. El efecto secundario es el que se reportó —"en Marte veo
+    // menos estrellas que en polvo"—: las estrellas están, hay más que en polvo
+    // (560 contra 400), pero el cuerpo las tapa. En polvo no hay ningún objeto
+    // grande, así que la pantalla entera es cielo.
+    //
+    // Y hay un segundo efecto peor: un cuerpo enorme cortado por el borde de
+    // abajo cae justo donde viven los botones anclados.
+    //
+    // Se achican los dos escalones manteniendo la diferencia entre ellos: un
+    // rango alto sigue teniendo un cuerpo más grande, pero le deja cielo
+    // alrededor. El presupuesto de relleno también baja, que no estorba.
+    const escala = op.rango >= 5 ? 1.0 : 0.88;
     const pixel = 2 / (escala * Math.min(canvas.clientWidth || 400, canvas.clientHeight || 700));
     const mat = crearMaterialCuerpo(cfg, !!op.apagado, pixel, !!op.reposo);
     materiales.push(mat);
