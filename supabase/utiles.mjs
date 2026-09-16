@@ -70,7 +70,17 @@ export function retrocesosEnTemplate(codigo) {
  * Hace lo mismo que haría una persona apurada: siguiente, siguiente, tocar la
  * animación para saltarla, y "Ya tengo cuenta".
  */
-export async function pasarLaEntrada(page) {
+export async function pasarLaEntrada(page, espera = 20000) {
+  // SE ESPERA A QUE LA PANTALLA SE DECIDA. Si la entrada está o no se sabe
+  // leyendo el almacenamiento, que es asíncrono: preguntar en el primer
+  // instante siempre decía "no está" y la sonda se quedaba mirándola.
+  await page
+    .waitForFunction(
+      () => !!document.querySelector('.bienv') || !!document.querySelector('input[type=email]'),
+      null,
+      { timeout: espera }
+    )
+    .catch(() => {});
   const entrada = page.locator('.bienv');
   if (!(await entrada.count())) return false;
   for (let i = 0; i < 3; i++) {

@@ -719,7 +719,6 @@ export const T = {
     label: 'Sesión',
     descansar: 'Descansar',
     listo: 'Listo',
-    terminarSesion: 'Terminar sesión',
     // PREGUNTA ANTES DE TERMINAR. "Terminar" es el botón sólido y ancho de
     // abajo, o sea el más fácil de tocar sin querer con el teléfono en la
     // mano, y lo que hace no se puede deshacer: cierra la sesión y fija la
@@ -730,10 +729,6 @@ export const T = {
       series === 1 ? `1 serie, ${tiempo}.` : `${series} series, ${tiempo}.`,
     seguir: 'Seguir entrenando',
     guardando: 'Guardando…',
-    yaRegistrado: 'El día ya quedó registrado. Solo falta cuánto duró.',
-    // Se avisa ANTES de que se cierre sola: enterarse en Stats es tarde.
-    seCierraEn: (min: number) => `Se cierra sola en ${min} min y queda sin duración.`,
-    yaSeCerro: 'Ya se cerró sola: esta sesión queda sin duración.',
     // LA SESIÓN QUE SE CERRÓ SOLA (migración 37). Dice qué pasó, cuánto quedó,
     // y qué hacer si seguías: iniciar otra suma al mismo día, y el rato
     // muerto del medio no cuenta en ninguna de las dos.

@@ -3958,7 +3958,7 @@ console.log('\n58. Las vidas');
     chequear('la racha sobrevivio', (await perfil(u)).racha_actual, 14);
 
     await comoUsuario(u);
-    const d = (await db.query('select devolver_vidas($1::date[]) as v', [[dia]])).rows[0].v;
+    const d = (await db.query('select devolver_impulsos($1::date[]) as v', [[dia]])).rows[0].v;
     chequear('devolvio una', d.devueltas, 1);
     chequear('y al devolverla, la racha se corta', d.perdida.perdida, true);
     chequear('con el -10 de siempre', (await perfil(u)).racha_actual, 4);
@@ -3973,14 +3973,14 @@ console.log('\n58. Las vidas');
     );
 
     // La vida vuelve al pozo: eso es "guardarla".
-    const vidas = (await db.query('select mis_vidas() as v')).rows[0].v;
+    const vidas = (await db.query('select mis_impulsos() as v')).rows[0].v;
     chequear('y la vida volvio', vidas.quedan, 3);
 
     // Y el dia devuelto NO se puede volver a cubrir: sin esto, la proxima
     // llamada gastaria otra vida en el mismo dia y el boton no haria nada.
     const otra = await perder(u);
     chequear('no se vuelve a cubrir', otra.vidas_usadas, undefined);
-    chequear('ni se gasta otra vida', (await db.query('select mis_vidas() as v')).rows[0].v.quedan, 3);
+    chequear('ni se gasta otra vida', (await db.query('select mis_impulsos() as v')).rows[0].v.quedan, 3);
   }
 
   // ---- lo que `mis_vidas` le da al aviso ----
@@ -3995,16 +3995,16 @@ console.log('\n58. Las vidas');
     await rachaDe(u, 14, 3); // faltaron dos dias
     await perder(u);
     await comoUsuario(u);
-    const v1 = (await db.query('select mis_vidas() as v')).rows[0].v;
+    const v1 = (await db.query('select mis_impulsos() as v')).rows[0].v;
     chequear('dice las dos que uso', v1.ultimas.length, 2);
     // Y otra vez, sin que pase nada en el medio.
-    const v2 = (await db.query('select mis_vidas() as v')).rows[0].v;
+    const v2 = (await db.query('select mis_impulsos() as v')).rows[0].v;
     chequear('y lo sigue diciendo', v2.ultimas, v1.ultimas);
     chequear('con la ultima primero', v2.ultima, v1.ultimas[0]);
 
     // Devolverlas las saca del aviso y del pozo.
-    await db.query('select devolver_vidas($1::date[])', [v1.ultimas]);
-    const v3 = (await db.query('select mis_vidas() as v')).rows[0].v;
+    await db.query('select devolver_impulsos($1::date[])', [v1.ultimas]);
+    const v3 = (await db.query('select mis_impulsos() as v')).rows[0].v;
     chequear('devueltas, ya no se anuncian', v3.ultimas, []);
     chequear('y no cuentan como gastadas', v3.quedan, 3);
   }
@@ -4020,7 +4020,7 @@ console.log('\n58. Las vidas');
       [u]
     );
     await comoUsuario(u);
-    const d = (await db.query('select devolver_vidas($1::date[]) as v', [['2026-01-01']])).rows[0].v;
+    const d = (await db.query('select devolver_impulsos($1::date[]) as v', [['2026-01-01']])).rows[0].v;
     chequear('una fecha vieja no devuelve nada', d.devueltas, 0);
   }
 
@@ -6679,7 +6679,7 @@ console.log('\n102. Nadie pregunta por los datos de otro (migracion 41)');
   // la base real en supabase/probar-privacidad.mjs; esto lo fija aca.
   const ajenas = [
     'calcular_racha(uuid, date)', 'mejor_racha_real(uuid)', 'descansos_vigentes(uuid, date)',
-    'impulsos_ganados(uuid)', 'impulsos_disponibles(uuid, date)', 'vidas_disponibles(uuid, date)',
+    'impulsos_ganados(uuid)', 'impulsos_disponibles(uuid, date)',
     'peso_actual(uuid)', 'mejores_marcas(uuid)', 'dots_de(uuid)', 'hoy_de(uuid)', 'bloqueo_hasta(uuid)',
   ];
   const abiertas = [];
@@ -7102,6 +7102,62 @@ console.log('\n108. La entrada se ve UNA vez, y donde termina empieza el formula
 
   // El motor se pide en la PRIMERA pantalla, no en la cuarta: tarda ~3 s.
   chequear('la cuarta no espera al motor: tiene version sin el', archivo('src', 'components', 'bienvenida', 'Cuarta.tsx').includes('setConMotor(false)'), true);
+}
+
+console.log('\n109. Una sola pasada da lo mismo que seis');
+{
+  // El 16/9 `filasPorMusculo` paso de llamar a `volumenPorSemana` una vez por
+  // musculo —seis vueltas por todas las sesiones, releyendo los bloques cada
+  // vez— a una sola pasada. Es tres veces mas rapido, y esto fija que da
+  // EXACTAMENTE lo mismo: la forma vieja queda escrita aca como oraculo.
+  const V = await import('../nucleo/volumen.ts');
+  const cat = new Map([
+    ['press_banca', { nombre: 'Press', grupo: 'pecho' }],
+    ['sentadilla', { nombre: 'Sentadilla', grupo: 'piernas' }],
+    ['remo', { nombre: 'Remo', grupo: 'espalda' }],
+    ['plancha', { nombre: 'Plancha', grupo: 'core' }],
+  ]);
+  const ejercicios = ['press_banca', 'sentadilla', 'remo', 'plancha', 'no_existe'];
+  const ses = [];
+  let sem = 5;
+  const azar = () => ((sem = (sem * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 120; i++) {
+    const d = new Date('2026-09-16T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() - i);
+    ses.push({
+      id: 's' + i,
+      fecha: d.toISOString().slice(0, 10),
+      bloques: Array.from({ length: 1 + Math.floor(azar() * 3) }, () => ({
+        ejercicio: ejercicios[Math.floor(azar() * ejercicios.length)],
+        series: 1 + Math.floor(azar() * 5),
+        pesos: [60, 62.5, null],
+        carga: azar() > 0.5 ? 'par' : 'total',
+      })),
+    });
+  }
+  const op = { hoy: '2026-09-16', semanas: 8, umbral: 6 };
+
+  // EL ORACULO: la forma vieja, escrita de nuevo.
+  const dejados = new Map(V.gruposDejados(ses, cat, { hoy: op.hoy, semanas: op.umbral }).map((d) => [d.grupo, d]));
+  const viejo = V.ORDEN_GRUPOS.map((grupo) => {
+    const semanas = V.volumenPorSemana(ses, cat, { hoy: op.hoy, semanas: op.semanas, grupo });
+    return { grupo, semanas, vacia: semanas.every((s) => s.series === 0), dejado: dejados.get(grupo) ?? null };
+  });
+  const nuevo = V.filasPorMusculo(ses, cat, op);
+  chequear('las filas, semana por semana, dan igual', JSON.stringify(nuevo.filas), JSON.stringify(viejo));
+
+  const totalesViejos = (viejo[0]?.semanas ?? []).map((s, i) => ({
+    desde: s.desde,
+    kilos: Math.round(viejo.reduce((t, f) => t + f.semanas[i].kilos, 0) * 100) / 100,
+    series: viejo.reduce((t, f) => t + f.semanas[i].series, 0),
+  }));
+  chequear('y los totales tambien', JSON.stringify(nuevo.totales), JSON.stringify(totalesViejos));
+  chequear('los topes salen de las mismas filas', [nuevo.topeSeries > 0, nuevo.topeKilos > 0], [true, true]);
+  chequear('hayAnotado sigue mirando el catalogo, no las sesiones', V.filasPorMusculo([], cat, op).hayAnotado, false);
+  // Un ejercicio que ya no esta en el catalogo no tiene grupo: no cuenta en
+  // ninguna fila. Es la regla de siempre y es facil de romper en una refactorizacion.
+  const soloFantasma = [{ id: 'x', fecha: '2026-09-15', bloques: [{ ejercicio: 'no_existe', series: 9 }] }];
+  chequear('un ejercicio que ya no existe no suma en ninguna fila', V.filasPorMusculo(soloFantasma, cat, op).totales.at(-1).series, 0);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

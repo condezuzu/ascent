@@ -1,0 +1,19 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/auth/callback/route": "app/auth/callback/route.js",
+  "/auth/recuperar/route": "app/auth/recuperar/route.js",
+  "/api/avisos/diario/route": "app/api/avisos/diario/route.js",
+  "/ajustes/page": "app/ajustes/page.js",
+  "/album/page": "app/album/page.js",
+  "/nueva-clave/page": "app/nueva-clave/page.js",
+  "/fuerza/page": "app/fuerza/page.js",
+  "/onboarding/page": "app/onboarding/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/galeria/bienvenida/page": "app/galeria/bienvenida/page.js",
+  "/galeria/page": "app/galeria/page.js",
+  "/stats/page": "app/stats/page.js",
+  "/perfil/[id]/page": "app/perfil/[id]/page.js",
+  "/social/page": "app/social/page.js",
+  "/yo/page": "app/yo/page.js"
+}

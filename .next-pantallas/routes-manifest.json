@@ -1,0 +1,155 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ],
+      "regex": "^/sw\\.js(?:/)?$"
+    }
+  ],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/perfil/[id]",
+      "regex": "^/perfil/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/perfil/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/ajustes",
+      "regex": "^/ajustes(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ajustes(?:/)?$"
+    },
+    {
+      "page": "/album",
+      "regex": "^/album(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/album(?:/)?$"
+    },
+    {
+      "page": "/auth/callback",
+      "regex": "^/auth/callback(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/callback(?:/)?$"
+    },
+    {
+      "page": "/auth/recuperar",
+      "regex": "^/auth/recuperar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/recuperar(?:/)?$"
+    },
+    {
+      "page": "/fuerza",
+      "regex": "^/fuerza(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/fuerza(?:/)?$"
+    },
+    {
+      "page": "/galeria",
+      "regex": "^/galeria(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/galeria(?:/)?$"
+    },
+    {
+      "page": "/galeria/bienvenida",
+      "regex": "^/galeria/bienvenida(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/galeria/bienvenida(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/nueva-clave",
+      "regex": "^/nueva\\-clave(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/nueva\\-clave(?:/)?$"
+    },
+    {
+      "page": "/onboarding",
+      "regex": "^/onboarding(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/onboarding(?:/)?$"
+    },
+    {
+      "page": "/social",
+      "regex": "^/social(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/social(?:/)?$"
+    },
+    {
+      "page": "/stats",
+      "regex": "^/stats(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/stats(?:/)?$"
+    },
+    {
+      "page": "/yo",
+      "regex": "^/yo(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/yo(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

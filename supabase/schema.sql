@@ -642,16 +642,6 @@ returns int language sql stable security definer set search_path = public as $$
   ));
 $$;
 
-/** Envoltorio del nombre viejo, para los clientes que todavía lo llaman. */
-create or replace function public.vidas_por_mes()
-returns int language sql immutable as $$ select impulsos_tope(); $$;
-
-/** Envoltorio del nombre viejo. La regla vive en `impulsos_disponibles`. */
-create or replace function public.vidas_disponibles(p_user uuid, p_dia date)
-returns int language sql stable security definer set search_path = public as $$
-  select impulsos_disponibles(p_user, p_dia);
-$$;
-
 /** Lo que necesita la interfaz: cuántas quedan y cuáles se usaron este mes. */
 create or replace function public.mis_impulsos()
 returns jsonb language sql stable security definer set search_path = public as $$
@@ -694,15 +684,6 @@ $$;
 revoke execute on function public.mis_impulsos() from public, anon;
 grant execute on function public.mis_impulsos() to authenticated;
 
-/** Envoltorio del nombre viejo: lo mismo más `del_mes`. */
-create or replace function public.mis_vidas()
-returns jsonb language sql stable security definer set search_path = public as $$
-  select mis_impulsos() || jsonb_build_object('del_mes', mis_impulsos()->'vigentes');
-$$;
-
-revoke execute on function public.mis_vidas() from public, anon;
-grant execute on function public.mis_vidas() to authenticated;
-
 /**
  * Devolver las vidas de una ausencia: se guardan para después y la racha se
  * corta como si nunca se hubieran usado.
@@ -741,17 +722,6 @@ $$;
 
 revoke execute on function public.devolver_impulsos(date[]) from public, anon;
 grant execute on function public.devolver_impulsos(date[]) to authenticated;
-
-/** Envoltorio del nombre viejo. */
-create or replace function public.devolver_vidas(p_fechas date[])
-returns jsonb language sql security definer set search_path = public as $$
-  select devolver_impulsos(p_fechas);
-$$;
-
-revoke execute on function public.devolver_vidas(date[]) from public, anon;
-grant execute on function public.devolver_vidas(date[]) to authenticated;
-revoke execute on function public.vidas_disponibles(uuid, date) from public, anon;
-revoke execute on function public.vidas_por_mes() from public, anon;
 
 create or replace function public.calcular_racha(p_user uuid, p_hasta date)
 returns int language plpgsql stable security definer set search_path = public as $$
@@ -2392,7 +2362,6 @@ revoke execute on function
   public.descansos_vigentes(uuid, date),
   public.impulsos_ganados(uuid),
   public.impulsos_disponibles(uuid, date),
-  public.vidas_disponibles(uuid, date),
   public.hoy_de(uuid),
   public.puede_registrar_hoy(uuid),
   public.bloqueo_hasta(uuid),
@@ -2544,7 +2513,7 @@ grant execute on function public.olvidar_suscripcion_push(text) to service_role;
 
 -- LA VERSIÓN DEL ESQUEMA (migración 37). Cada migración la reescribe con su número.
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 41; $$;
+returns int language sql immutable as $$ select 42; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

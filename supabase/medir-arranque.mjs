@@ -18,6 +18,7 @@ import { chromium } from 'playwright';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { pasarLaEntrada } from './utiles.mjs';
 import { createServer } from 'node:net';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -91,6 +92,9 @@ const nav = await chromium.launch();
 const ctxLogin = await nav.newContext();
 const pLogin = await ctxLogin.newPage();
 await pLogin.goto(BASE + '/login', { waitUntil: 'domcontentloaded' });
+// La pantalla de entrada va antes del formulario y un navegador de
+// prueba la ve siempre: arranca limpio.
+await pasarLaEntrada(pLogin);
 await pLogin.locator('input[type=email]').fill(process.env.CONEXION_EMAIL);
 await pLogin.locator('input[type=password]').fill(process.env.CONEXION_PASSWORD);
 await pLogin.getByRole('button', { name: 'Entrar', exact: true }).click();

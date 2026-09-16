@@ -14,6 +14,7 @@ import { chromium } from 'playwright';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { pasarLaEntrada } from './utiles.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUERTO = Number(process.env.LAG_PUERTO ?? 3026);
@@ -65,6 +66,9 @@ async function recorrer({ freno, sinMotor }) {
   }
 
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
+  // La pantalla de entrada va antes del formulario y un navegador de
+  // prueba la ve siempre: arranca limpio.
+  await pasarLaEntrada(page);
   await page.locator('input[type=email]').fill(process.env.CONEXION_EMAIL);
   await page.locator('input[type=password]').fill(process.env.CONEXION_PASSWORD);
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();

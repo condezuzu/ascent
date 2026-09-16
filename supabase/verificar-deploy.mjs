@@ -13,6 +13,7 @@
 //
 // Lo que se mira es una MARCA: algo que el cliente viejo manda y el nuevo no.
 import { chromium } from 'playwright';
+import { pasarLaEntrada } from './utiles.mjs';
 
 const BASE = process.env.DEPLOY_URL ?? 'https://ascent-blush-seven.vercel.app';
 const correo = process.env.CONEXION_EMAIL;
@@ -111,6 +112,9 @@ try {
   // `networkidle` acá sí: hasta que React no hidrata, escribir llena el DOM y
   // no el estado, y el submit sale vacío. Ver spec/trampas.md.
   await page.goto(`${BASE}/login`, { waitUntil: 'networkidle', timeout: 120000 });
+  // La pantalla de entrada va antes del formulario y un navegador de
+  // prueba la ve siempre: arranca limpio.
+  await pasarLaEntrada(page);
   await page.locator('input[type=email]').fill(correo);
   await page.locator('input[type=password]').fill(clave);
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();

@@ -321,28 +321,73 @@ export function filasPorMusculo(
   topeSeries: number;
   topeKilos: number;
 } {
-  const dejados = new Map(gruposDejados(sesiones, catalogo, { hoy, semanas: umbral }).map((d) => [d.grupo, d]));
+  // UNA SOLA PASADA POR LAS SESIONES (16/9). Antes esto llamaba a
+  // `volumenPorSemana` una vez por músculo: seis vueltas completas por todas
+  // las sesiones, y cada vuelta volvía a leer y validar los bloques de cada
+  // una. Con dos años de entrenamientos eran 14 ms por render en una
+  // computadora —unos 70 en un teléfono— y se pagaba en CADA render: tocar una
+  // barra, cambiar de series a kilos, abrir un grupo.
+  //
+  // Ahora los bloques se leen UNA vez y se van sumando en la casilla que les
+  // toca. El resultado es el mismo; hay un test que compara las dos formas.
+  const lunes = Array.from({ length: semanas }, (_, i) => restarDias(lunesDe(hoy), 7 * (semanas - 1 - i)));
+  const indice = new Map(lunes.map((d, i) => [d, i]));
+  const vacias = (): Semana[] => lunes.map((desde) => ({ desde, kilos: 0, series: 0 }));
+
+  const porGrupo = new Map<string, Semana[]>(ORDEN_GRUPOS.map((g) => [g, vacias()]));
+  const totales = vacias();
+  // Para "dónde no estás entrenando": la última fecha de cada grupo y si en la
+  // ventana se anotó algo. Sale de la misma pasada.
+  const ultima = new Map<string, string>();
+  const desdeUmbral = restarDias(hoy, umbral * 7);
+  let anotoEnLaVentana = false;
+  let hayAnotado = false;
+
+  for (const s of sesiones) {
+    const semana = indice.get(lunesDe(s.fecha));
+    const bloques = leerBloques(s.bloques);
+    for (const b of bloques) {
+      const grupo = catalogo.get(b.ejercicio)?.grupo;
+      if (!grupo) continue;
+      hayAnotado = true;
+      if (s.fecha > desdeUmbral) anotoEnLaVentana = true;
+      const u = ultima.get(grupo);
+      if (!u || s.fecha > u) ultima.set(grupo, s.fecha);
+      if (semana === undefined) continue;
+      const fila = porGrupo.get(grupo);
+      if (!fila) continue;
+      const kilos = kilosDelBloque(b);
+      fila[semana].series += b.series;
+      fila[semana].kilos = Math.round((fila[semana].kilos + kilos) * 100) / 100;
+      totales[semana].series += b.series;
+      totales[semana].kilos = Math.round((totales[semana].kilos + kilos) * 100) / 100;
+    }
+  }
+
   const filas = ORDEN_GRUPOS.map((grupo) => {
-    const suyas = volumenPorSemana(sesiones, catalogo, { hoy, semanas, grupo });
-    return {
-      grupo,
-      semanas: suyas,
-      vacia: suyas.every((s) => s.series === 0),
-      dejado: dejados.get(grupo) ?? null,
-    };
+    const suyas = porGrupo.get(grupo) as Semana[];
+    const u = ultima.get(grupo);
+    // Dejado: apareció antes y hace `umbral` semanas o más que no aparece. Y
+    // solo si en esas semanas SÍ se anotó algo: a quien dejó de usar el
+    // selector no se le avisa que dejó pierna.
+    const dejado =
+      anotoEnLaVentana && u && u <= desdeUmbral
+        ? {
+            grupo,
+            ultima: u,
+            semanas: Math.floor(Math.round((deISO(hoy).getTime() - deISO(u).getTime()) / 86400000) / 7),
+          }
+        : null;
+    return { grupo, semanas: suyas, vacia: suyas.every((x) => x.series === 0), dejado };
   });
-  const totales = (filas[0]?.semanas ?? []).map((s, i) => ({
-    desde: s.desde,
-    kilos: Math.round(filas.reduce((t, f) => t + f.semanas[i].kilos, 0) * 100) / 100,
-    series: filas.reduce((t, f) => t + f.semanas[i].series, 0),
-  }));
+
   const todas = filas.flatMap((f) => f.semanas);
   return {
     filas,
     totales,
-    hayAnotado: gruposAnotados(sesiones, catalogo).length > 0,
-    topeSeries: Math.max(0, ...todas.map((s) => s.series)),
-    topeKilos: Math.max(0, ...todas.map((s) => s.kilos)),
+    hayAnotado,
+    topeSeries: Math.max(0, ...todas.map((x) => x.series)),
+    topeKilos: Math.max(0, ...todas.map((x) => x.kilos)),
   };
 }
 

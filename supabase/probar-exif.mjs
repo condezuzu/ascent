@@ -18,6 +18,7 @@ import { createClient } from '@supabase/supabase-js';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { pasarLaEntrada } from './utiles.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
@@ -128,6 +129,9 @@ chequear('y tiene el puntero al IFD de GPS', conExif.includes(PUNTERO_GPS), true
 
 // ---- subirla por la interfaz de verdad ----
 await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded' });
+// La pantalla de entrada va antes del formulario y un navegador de
+// prueba la ve siempre: arranca limpio.
+await pasarLaEntrada(page);
 await page.locator('input[type=email]').fill(process.env.CONEXION_EMAIL);
 await page.locator('input[type=password]').fill(process.env.CONEXION_PASSWORD);
 await page.getByRole('button', { name: 'Entrar', exact: true }).click();

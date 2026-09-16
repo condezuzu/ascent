@@ -111,11 +111,14 @@ export default function SeccionVolumen({
 
   if (!sesiones) return null;
 
-  const { filas, totales, hayAnotado, topeSeries, topeKilos } = filasPorMusculo(sesiones, catalogo, {
-    hoy,
-    semanas: SEMANAS,
-    umbral,
-  });
+  // EN UN `useMemo` Y NO EN EL CUERPO (16/9): esto recorre todas las sesiones, y
+  // tocar una barra o cambiar de series a kilos vuelve a renderizar. Con dos
+  // años de entrenamientos eran decenas de milisegundos por toque en un
+  // teléfono, para volver a calcular exactamente lo mismo.
+  const { filas, totales, hayAnotado, topeSeries, topeKilos } = useMemo(
+    () => filasPorMusculo(sesiones, catalogo, { hoy, semanas: SEMANAS, umbral }),
+    [sesiones, catalogo, hoy, umbral]
+  );
   const hayKilos = topeKilos > 0;
   // Sin kilos anotados, series: una fila de kilos en cero no dice nada.
   const series = enSeries || !hayKilos;
@@ -127,7 +130,7 @@ export default function SeccionVolumen({
   const enCurso = totales.length - 1;
   const leidaTotal = totales[indice];
 
-  const maximos = maximosDelCatalogo(sesiones, marcas, ejercicios);
+  const maximos = useMemo(() => maximosDelCatalogo(sesiones, marcas, ejercicios), [sesiones, marcas, ejercicios]);
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString('es-UY');
 
   async function entendido() {

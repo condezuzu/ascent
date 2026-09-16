@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { aISO, deISO, fechaCorta, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
@@ -101,7 +101,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   }
 
   const { racha, mejor, unidad, umbral, logs, sesiones, ejercicios, marcas } = datos;
-  const catalogo = new Map(ejercicios.map((e) => [e.id, { nombre: e.nombre, grupo: e.grupo }]));
+  const catalogo = useMemo(() => new Map(ejercicios.map((e) => [e.id, { nombre: e.nombre, grupo: e.grupo }])), [ejercicios]);
   const hoy = hoyISO();
   const entrenados = logs.filter((l) => !l.es_descanso);
   // Las mismas dos cuentas que la web: los últimos 30 días contando hoy, y el
@@ -110,11 +110,12 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const d = deISO(hoy);
   const esteMes = entrenados.filter((l) => l.fecha >= aISO(new Date(d.getFullYear(), d.getMonth(), 1))).length;
 
-  const { filas, totales, hayAnotado, topeSeries, topeKilos } = filasPorMusculo(sesiones, catalogo, {
-    hoy,
-    semanas: SEMANAS,
-    umbral,
-  });
+  // En un `useMemo` por lo mismo que en la web: recorre todas las sesiones y se
+  // volvía a calcular en cada toque.
+  const { filas, totales, hayAnotado, topeSeries, topeKilos } = useMemo(
+    () => filasPorMusculo(sesiones, catalogo, { hoy, semanas: SEMANAS, umbral }),
+    [sesiones, catalogo, hoy, umbral]
+  );
   const hayKilos = topeKilos > 0;
   const series = enSeries || !hayKilos;
   const valor = (s: { series: number; kilos: number }) => (series ? s.series : s.kilos);
@@ -123,7 +124,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   // La última barra es la semana de hoy, que todavía no terminó.
   const enCurso = totales.length - 1;
   const leidaTotal = totales[indice];
-  const maximos = maximosDelCatalogo(sesiones, marcas, ejercicios);
+  const maximos = useMemo(() => maximosDelCatalogo(sesiones, marcas, ejercicios), [sesiones, marcas, ejercicios]);
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString(T.general.locale);
   const mayuscula = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
 

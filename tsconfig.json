@@ -53,10 +53,11 @@
     ".next-arranque/types/**/*.ts",
     ".next-capturas/types/**/*.ts",
     ".next-exif/types/**/*.ts",
+    ".next-medir/types/**/*.ts",
     ".next-primera/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-medir/types/**/*.ts"
+    ".next-pantallas/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
