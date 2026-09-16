@@ -50,12 +50,13 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-arranque/types/**/*.ts",
     ".next-capturas/types/**/*.ts",
     ".next-exif/types/**/*.ts",
     ".next-primera/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-arranque/types/**/*.ts"
+    ".next-medir/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

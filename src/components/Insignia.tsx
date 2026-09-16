@@ -147,29 +147,37 @@ export default function Insignia({ rango, tam = 24 }: { rango: number; tam?: num
           </g>
         </svg>
       );
-    case 7: // Galaxia: DOS brazos gruesos y un núcleo que brilla
+    case 7: // Galaxia: bulbo encendido y dos brazos que se abren y se afinan
       return (
         <svg style={s} viewBox="0 0 24 24" aria-hidden>
-          {/* Tenía cuatro brazos de un pelo de grosor: en 16 píxeles se comían
-              entre sí y quedaba una mancha. Dos brazos gruesos y un núcleo con
-              halo se leen a cualquier tamaño. Los dos filamentos claros de
-              adentro son lo único nuevo: dan la sensación de que los brazos
-              giran, que a 64 px se nota y a 16 no molesta. */}
+          {/* Sigue a la forma de la animación (15/9), que es lo que se ve al
+              subir de rango y en la entrada: BULBO grande y brillante, dos
+              brazos ANCHOS que arrancan pegados al centro y se deshilachan, y
+              un halo elíptico. La versión anterior tenía el núcleo del mismo
+              peso que los brazos, y sin ese contraste una espiral chica se lee
+              como un garabato.
+
+              Los brazos van con `stroke-width` decreciente en dos tramos: uno
+              grueso cerca del bulbo y uno fino en la punta. Un brazo de grosor
+              parejo parece un alambre. */}
           <ellipse
-            cx="12" cy="12" rx="10.5" ry="7"
-            fill={pal.principal} opacity=".2"
-            transform="rotate(-22 12 12)"
+            cx="12" cy="12" rx="10.8" ry="6.2"
+            fill={pal.principal} opacity=".16"
+            transform="rotate(-24 12 12)"
           />
-          <g fill="none" stroke={pal.principal} strokeWidth="2.6" strokeLinecap="round">
-            <path d="M12.6 12 C 17.2 10.6, 20.6 13.4, 18.8 17.6" />
-            <path d="M11.4 12 C 6.8 13.4, 3.4 10.6, 5.2 6.4" />
+          <g fill="none" stroke={pal.principal} strokeLinecap="round">
+            <path d="M13.6 11 C 17 9.8, 19.4 12, 18.6 15.4" strokeWidth="2.8" />
+            <path d="M10.4 13 C 7 14.2, 4.6 12, 5.4 8.6" strokeWidth="2.8" />
           </g>
-          <g fill="none" stroke={trazo} strokeWidth="1" strokeLinecap="round" opacity=".55">
-            <path d="M13.4 11.6 C 16.4 10.9, 18.6 12.4, 18.4 15" />
-            <path d="M10.6 12.4 C 7.6 13.1, 5.4 11.6, 5.6 9" />
+          <g fill="none" stroke={pal.principal} strokeLinecap="round" opacity=".7">
+            <path d="M18.6 15.4 C 18.3 17.6, 16.8 18.8, 15 19" strokeWidth="1.3" />
+            <path d="M5.4 8.6 C 5.7 6.4, 7.2 5.2, 9 5" strokeWidth="1.3" />
           </g>
-          <circle cx="12" cy="12" r="5" fill={trazo} opacity=".2" />
-          <circle cx="12" cy="12" r="2.8" fill={trazo} />
+          {/* El bulbo: tres discos, del halo al corazón. Es lo que hace que a
+              16 px se lea una galaxia y no dos rayas cruzadas. */}
+          <circle cx="12" cy="12" r="5.4" fill={trazo} opacity=".16" />
+          <circle cx="12" cy="12" r="3.4" fill={trazo} opacity=".45" />
+          <circle cx="12" cy="12" r="2" fill={trazo} />
         </svg>
       );
     case 8: // Agujero negro: disco de acreción + la luz doblada por arriba

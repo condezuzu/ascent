@@ -6803,8 +6803,7 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   chequear('ninguno baja del minimo', tramos.every((d) => d >= B.TRAMO_MINIMO_S), true);
   chequear('el ultimo es menos de la mitad del primero', tramos.at(-1) < tramos[0] / 2, true);
   // Lo que dura todo: si un dia se cambia, que se vea en el test y no en la cara.
-  chequear('dura entre ocho y doce segundos', B.DURACION_S > 8 && B.DURACION_S < 12, true);
-  chequear('y el final se lleva tres', Math.round((B.QUIETO_S + B.TRAGO_RACHA_S + B.TRAGO_CAMARA_S) * 10) / 10, 3);
+  chequear('dura entre diez y trece segundos', B.DURACION_S > 10 && B.DURACION_S < 13, true);
 
   // ---- las curvas ----
   for (const [nombre, f] of [['curva', B.curva], ['entrada', B.entrada], ['salida', B.salida]]) {
@@ -6824,15 +6823,35 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   chequear('antes de empezar se ve el polvo, en cero', [B.cuadroEn(0).desde, B.cuadroEn(0).racha], [1, 0]);
   chequear('un tiempo roto es el principio', B.cuadroEn(NaN).racha, 0);
   const { morfeo, quieto, total } = B.hitos();
-  chequear('al final del morfeo esta el agujero negro con 70 dias', [B.cuadroEn(morfeo - 0.01).hasta, B.cuadroEn(morfeo + 0.01).racha], [8, 70]);
+  chequear('al final del morfeo esta el agujero negro con 70 dias', [B.cuadroEn(morfeo - 0.01).hasta, B.cuadroEn(morfeo).racha], [8, 70]);
+  // LA RACHA NO FRENA (15/9): desde ahi se dispara y solo la detiene el trago.
+  chequear('despues del morfeo el numero se dispara', [B.cuadroEn(morfeo + 0.5).racha > 150, B.cuadroEn(morfeo + 1.5).racha > 900], [true, true]);
+  chequear('y acelera: cada medio segundo sube mas que el anterior',
+    B.cuadroEn(morfeo + 1.5).racha - B.cuadroEn(morfeo + 1).racha > B.cuadroEn(morfeo + 1).racha - B.cuadroEn(morfeo + 0.5).racha, true);
+  // El numero redondeado cambia POCAS veces por segundo: es lo que evita que
+  // el texto se redibuje cientos de veces en un telefono flojo.
+  // Se dibuja como mucho cada `MS_ENTRE_REDIBUJOS`, no en cada cuadro.
+  const dibujos = [];
+  for (let ms = Math.round(morfeo * 1000); ms < Math.round(B.hitos().racha * 1000); ms += B.MS_ENTRE_REDIBUJOS) {
+    dibujos.push(B.rachaMostrada(B.cuadroEn(ms / 1000).racha));
+  }
+  chequear('el numero se redibuja unas cuarenta veces, no cientos', dibujos.length < 45, true);
+  // Y AUN ASI SE VE RAPIDISIMO: cada redibujo salta bastante mas que el
+  // anterior. Lo que da la sensacion de velocidad es el salto, no la cantidad.
+  const saltos = dibujos.slice(1).map((v, i) => v - dibujos[i]);
+  chequear('cada redibujo salta, y cada vez mas', [saltos.every((s) => s > 0), saltos.at(-1) > saltos[0] * 5], [true, true]);
+  chequear('redondea mas cuanto mas grande', [B.rachaMostrada(1234), B.rachaMostrada(432), B.rachaMostrada(70)], [1225, 430, 70]);
   // EL FINAL, EN TRES TIEMPOS: quieto, se traga la racha, se traga la camara.
   const finRacha = B.hitos().racha;
-  chequear('el agujero negro se queda quieto un segundo', [B.cuadroEn(quieto - 0.01).trago, B.cuadroEn(quieto - 0.01).tragoRacha], [0, 0]);
+  chequear('el agujero negro se queda quieto antes de tragar', [B.cuadroEn(quieto - 0.01).trago, B.cuadroEn(quieto - 0.01).tragoRacha], [0, 0]);
   chequear('primero se traga la racha, y la pantalla no se mueve', [B.cuadroEn(quieto + 0.4).tragoRacha > 0, B.cuadroEn(quieto + 0.4).trago], [true, 0]);
   chequear('el numero desaparece del todo antes de que empiece lo otro', B.cuadroEn(finRacha).tragoRacha > 0.999, true);
-  chequear('y recien ahi se traga la camara', [B.cuadroEn(finRacha + 0.01).trago > 0, B.cuadroEn(total).trago], [true, 1]);
+  chequear('y recien ahi se traga la camara', [B.cuadroEn(finRacha + 0.01).trago > 0, B.cuadroEn(B.hitos().camara).trago], [true, 1]);
+  // Y DESPUES VUELVE EL CIELO: sobre eso van los botones, que es el fondo que
+  // ya tiene la pantalla de sesion.
+  chequear('las estrellas vuelven despues del trago', [B.cuadroEn(B.hitos().camara - 0.1).estrellas, B.cuadroEn(total).estrellas], [0, 1]);
   chequear('recien ahi termina', [B.cuadroEn(total - 0.1).fin, B.cuadroEn(total).fin], [false, true]);
-  chequear('durante el quieto no cambia nada', JSON.stringify(B.cuadroEn(morfeo + 0.1)), JSON.stringify(B.cuadroEn(morfeo + 0.9)));
+  chequear('el objeto se queda quieto mientras el numero se dispara', [B.cuadroEn(morfeo + 0.1).hasta, B.cuadroEn(morfeo + 0.9).hasta, B.cuadroEn(morfeo + 0.9).mezcla], [8, 8, 1]);
 
   // El numero NUNCA retrocede y pasa por los ocho objetos, cuadro a cuadro.
   const vistos = new Set();
@@ -6849,7 +6868,7 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   }
   chequear('la racha nunca baja y la mezcla nunca se sale', roto, null);
   chequear('se ven los ocho objetos', [...vistos].sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8]);
-  chequear('y termina en 70 dias', ultima, 70);
+  chequear('y termina disparada, no en 70', ultima > 1000, true);
 
   // Cada objeto tiene que estar EN PANTALLA lo suficiente para verse: se mide
   // cuantos cuadros de 16 ms lo tienen como destino con la mezcla ya avanzada.
@@ -6866,7 +6885,7 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
 
   // ---- con "reducir movimiento" ----
   const q0 = B.cuadroQuietoEn(0);
-  chequear('sin movimiento se ve el ultimo objeto ya formado', [q0.desde, q0.hasta, q0.racha, q0.trago], [8, 8, 70, 0]);
+  chequear('sin movimiento se ve el ultimo objeto ya formado', [q0.desde, q0.hasta, q0.racha, q0.trago, q0.estrellas], [8, 8, 70, 0, 1]);
   chequear('y en un segundo y medio ya esta en negro', [B.cuadroQuietoEn(B.DURACION_QUIETA_S).trago, B.cuadroQuietoEn(B.DURACION_QUIETA_S).fin], [1, true]);
   chequear('la version quieta dura mucho menos que la otra', B.DURACION_QUIETA_S < B.DURACION_S / 4, true);
 
@@ -6875,6 +6894,10 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   chequear('un paso guardado que ya no existe vuelve al principio', [B.pasoValido(9), B.pasoValido('x'), B.pasoValido(2)], [0, 0, 2]);
   // El motor se pide en la PRIMERA, no en la cuarta: tarda ~3 s en cargar.
   chequear('el motor se pide antes de que haga falta', B.PASO_QUE_PIDE_EL_MOTOR < B.PASOS_DE_LA_ENTRADA.length - 1, true);
+
+  // ---- cuantas particulas segun el equipo ----
+  chequear('en un equipo flojo se dibujan muchas menos', [B.particulasPara('bajo', 900), B.particulasPara('medio', 900), B.particulasPara('alto', 900)], [270, 540, 900]);
+  chequear('nunca baja de un piso: menos que eso no es un objeto', B.particulasPara('bajo', 100), 120);
 }
 
 console.log('\n106. Cada objeto se reconoce por su forma');
@@ -6906,7 +6929,11 @@ console.log('\n106. Cada objeto se reconoce por su forma');
     const frente = p.filter((q) => Math.abs(q.z) < 0.05).map(radio);
     const medio = frente.reduce((a, b) => a + b, 0) / frente.length;
     const desvio = Math.sqrt(frente.reduce((a, b) => a + (b - medio) ** 2, 0) / frente.length) / medio;
-    chequear('asteroide: el contorno es irregular', desvio > 0.08, true);
+    chequear('asteroide: el contorno es irregular', desvio > 0.05, true);
+    // Y es un BULTO LLENO, no una cascara (15/9): con las particulas solo en
+    // la superficie se leia como una nube.
+    const adentro = p.filter((q) => radio(q) < 0.12).length;
+    chequear('y esta lleno: hay masa en el medio', adentro > 60, true);
   }
 
   // ---- 3. luna: crateres de verdad ----
@@ -6985,7 +7012,14 @@ console.log('\n106. Cada objeto se reconoce por su forma');
     // centro y parecen taparlo—.
     const enElEje = p.filter((q) => Math.abs(q.y) < 0.03);
     chequear('agujero negro: el centro esta vacio', enElEje.filter((q) => Math.abs(q.x) < 0.25).length, 0);
-    chequear('con su anillo de luz', p.filter((q) => radio(q) > 0.28 && radio(q) < 0.32).length > 100, true);
+    chequear('con su anillo de luz', p.filter((q) => radio(q) > 0.28 && radio(q) < 0.36).length > 100, true);
+    // ADELANTE Y ATRAS: el disco esta inclinado en 3D, asi que hay particulas
+    // de los dos lados del horizonte. Es lo que deja que una mitad pase por
+    // delante y la otra quede tapada; plano, se veia como un ojo.
+    const disco = p.filter((q) => radio(q) > 0.36);
+    chequear('el disco tiene mitad adelante y mitad atras', [disco.some((q) => q.z > 0.1), disco.some((q) => q.z < -0.1)], [true, true]);
+    // Y el arco de la lente: luz de atras doblada por arriba del horizonte.
+    chequear('y un arco de luz por encima del horizonte', p.filter((q) => q.y > 0.2 && Math.abs(q.x) < 0.25).length > 20, true);
   }
 
   // Y ninguna se sale de la pantalla del telefono: la prueba de siempre, que

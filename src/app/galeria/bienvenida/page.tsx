@@ -24,6 +24,8 @@ import {
   RANGOS_DE_LA_ENTRADA,
   type CuadroDeLaEntrada,
 } from '@/lib/bienvenida';
+import { MS_ENTRE_REDIBUJOS, particulasPara, rachaMostrada } from '@/lib/bienvenida';
+import { N } from '@/lib/subida';
 import { paletaDe } from '@/lib/paletas';
 import Cielo from './Cielo';
 import Registro from './Registro';
@@ -54,39 +56,38 @@ const BASE: { titulo: string; bajada: string }[] = [
     // "Empiezas desde el polvo" y no "siendo polvo": es un punto de partida,
     // no una descripción de quién sos.
     titulo: 'Empiezas desde el polvo',
-    bajada: 'Cada día que entrenas, algo se junta. Y lo que se junta cambia de forma.',
+    // La bajada anterior ("algo se junta y cambia de forma") era abstracta: al
+    // entrar no se sabe de qué habla. Esta describe lo que se ve en la cuarta.
+    bajada: 'Cada día que entrenas te acerca a algo más grande.',
   },
   {
     titulo: 'Se anota todo',
     bajada: 'Los días, las series y los pesos. Lo que hiciste queda, no se recuerda.',
   },
-  {
-    titulo: '',
-    bajada: 'Tus amigos ven tu racha, tú la de ellos, y el universo entero está en la lista.',
-  },
+  { titulo: 'Alguien más está entrenando ahora', bajada: '' },
   { titulo: '', bajada: '' },
 ];
 
-/** Las opciones para el título de la tercera: el que no convencía. */
-const TITULOS_3 = [
-  'Que se vea',
-  'Mostrá lo que llevas',
-  'Alguien más está entrenando ahora',
-  'Tu racha no es solo tuya',
+/**
+ * LAS BAJADAS DE LA TERCERA. El título ya está elegido; esto es lo que falta.
+ * "El universo entero está en la lista" no convencía: hablaba de una lista, y
+ * lo que tiene que decir es medirte y mostrar lo tuyo.
+ */
+const BAJADAS_3 = [
+  'Tu racha al lado de la de ellos. Y la tuya, al lado de la de cualquiera.',
+  'Mide tu racha contra la de tus amigos, o contra la de todo el universo.',
+  'Lo que llevas hecho se ve: tus amigos, y cualquiera que esté entrenando hoy.',
+  'Tus amigos ven lo que llevas. Tú ves lo de ellos. Y el resto del universo también está.',
 ];
 
-/** Y para la línea sobre el negro, antes de los botones. */
-const CIERRES = [
-  'Inicia sesión y empieza tu viaje',
-  'Tu viaje empieza en el polvo',
-  'Todo esto empieza con un día',
-];
+/** Ya elegido (15/9): la línea sobre el negro, antes de los botones. */
+const CIERRE = 'Tu viaje empieza en el polvo';
 
-const JUEGOS: Juego[] = TITULOS_3.map((titulo, i) => ({
-  nombre: `Título 3 · ${titulo.split(' ').slice(0, 2).join(' ')}`,
-  idea: `Tercera pantalla: "${titulo}". Cierre: "${CIERRES[i % CIERRES.length]}".`,
-  pantallas: BASE.map((p, n) => (n === 2 ? { ...p, titulo } : p)),
-  cierre: CIERRES[i % CIERRES.length],
+const JUEGOS: Juego[] = BAJADAS_3.map((bajada, i) => ({
+  nombre: `Bajada 3 · ${i + 1}`,
+  idea: `Tercera pantalla: "${bajada}"`,
+  pantallas: BASE.map((p, n) => (n === 2 ? { ...p, bajada } : p)),
+  cierre: CIERRE,
   crear: 'Crear cuenta',
   entrar: 'Ya tengo cuenta',
 }));
@@ -102,6 +103,11 @@ export default function BancoDeBienvenida() {
   // Congelada en un segundo: para mirar un cuadro quieto y para que una
   // captura salga siempre igual.
   const [congelada, setCongelada] = useState<number | null>(null);
+  // Cuántas partículas: para ver la entrada como la ve un equipo flojo.
+  const [nivel, setNivel] = useState<'bajo' | 'medio' | 'alto'>('alto');
+  // Los controles tapaban "Siguiente" y "Saltar" (15/9): ahora se pliegan, y
+  // la pantalla se dibuja completa arriba.
+  const [abiertos, setAbiertos] = useState(true);
   const textos = JUEGOS[juego];
 
   const reiniciar = useCallback((a = 0) => {
@@ -111,10 +117,11 @@ export default function BancoDeBienvenida() {
   }, []);
 
   return (
-    <div className="banco">
+    <div className={`banco ${abiertos ? 'banco-con-controles' : ''}`}>
       <Entrada
         congelada={congelada}
-        key={`${corrida}-${velocidad}-${sinMotor}-${quieta}-${juego}`}
+        particulas={particulasPara(nivel, N)}
+        key={`${corrida}-${velocidad}-${sinMotor}-${quieta}-${juego}-${nivel}`}
         textos={textos}
         paso={paso}
         alPaso={setPaso}
@@ -125,7 +132,11 @@ export default function BancoDeBienvenida() {
         alTerminar={() => setTerminada(true)}
       />
 
-      <div className="banco-controles">
+      <button className="banco-plegar" onClick={() => setAbiertos((v) => !v)}>
+        {abiertos ? 'Ocultar controles' : 'Controles'}
+      </button>
+
+      <div className={`banco-controles ${abiertos ? '' : 'plegado'}`}>
         <div className="banco-fila">
           <b>Pantalla</b>
           {PASOS_DE_LA_ENTRADA.map((p, i) => (
@@ -171,6 +182,15 @@ export default function BancoDeBienvenida() {
         </div>
 
         <div className="banco-fila">
+          <b>Equipo</b>
+          {(['alto', 'medio', 'bajo'] as const).map((x) => (
+            <button key={x} className={x === nivel ? 'activo' : ''} onClick={() => setNivel(x)}>
+              {x} · {particulasPara(x, N)}
+            </button>
+          ))}
+        </div>
+
+        <div className="banco-fila">
           <b>Textos</b>
           {JUEGOS.map((j, i) => (
             <button key={j.nombre} className={i === juego ? 'activo' : ''} onClick={() => setJuego(i)}>
@@ -187,6 +207,7 @@ export default function BancoDeBienvenida() {
 function Entrada({
   textos,
   congelada,
+  particulas,
   paso,
   alPaso,
   velocidad,
@@ -197,6 +218,7 @@ function Entrada({
 }: {
   textos: Juego;
   congelada: number | null;
+  particulas: number;
   paso: number;
   alPaso: (n: number) => void;
   velocidad: number;
@@ -221,6 +243,7 @@ function Entrada({
           sinMotor={sinMotor}
           quieta={quieta}
           congelada={congelada}
+          particulas={particulas}
           alTerminar={alTerminar}
         />
       )}
@@ -281,6 +304,7 @@ function Cuarta({
   sinMotor,
   quieta,
   congelada,
+  particulas,
   alTerminar,
 }: {
   velocidad: number;
@@ -288,6 +312,7 @@ function Cuarta({
   quieta: boolean;
   /** Un segundo fijo de la línea de tiempo, o `null` para que corra. */
   congelada: number | null;
+  particulas: number;
   alTerminar: () => void;
 }) {
   const lienzo = useRef<HTMLCanvasElement>(null);
@@ -308,11 +333,18 @@ function Cuarta({
     let pedido = 0;
     const t0 = performance.now();
     const dur = quieta ? DURACION_QUIETA_S : DURACION_S;
+    // NO SE REDIBUJA EN CADA CUADRO. Disparado, el número cambia cientos de
+    // veces por segundo y cada cambio es texto que el navegador mide y pinta.
+    // Con el límite se ve exactamente igual de rápido —lo que da la sensación
+    // es cuánto SALTA— y el trabajo baja a una quinta parte.
+    let ultimo = -Infinity;
     const paso = (ahora: number) => {
       if (!vivo) return;
       const t = ((ahora - t0) / 1000) * velocidad;
-      const c = dame(t);
-      setCuadro(c);
+      if (ahora - ultimo >= MS_ENTRE_REDIBUJOS || t >= dur) {
+        ultimo = ahora;
+        setCuadro(dame(t));
+      }
       if (t >= dur) return alTerminar();
       pedido = requestAnimationFrame(paso);
     };
@@ -329,9 +361,22 @@ function Cuarta({
     if (!canvas) return;
     let control: { destruir: () => void } | null = null;
     let cancelado = false;
+    // Banco: se anota cuánto tardó en llegar el motor, para medirlo en vez de
+    // suponerlo. Es lo único que esta pantalla guarda en `window`.
+    const pedido = performance.now();
     import('@/motor/bienvenida').then(({ animarEntrada }) => {
       if (cancelado) return;
-      control = animarEntrada(canvas, { velocidad, quieta, reloj: () => congeladaRef.current });
+      (window as unknown as { __entrada?: Record<string, number> }).__entrada = {
+        pedido,
+        listo: performance.now(),
+        tardo: performance.now() - pedido,
+      };
+      control = animarEntrada(canvas, {
+        velocidad,
+        quieta,
+        particulas,
+        reloj: () => congeladaRef.current,
+      });
       // Sin WebGL devuelve null: se pasa a la versión de CSS en el acto, sin
       // pantalla en blanco de por medio.
       if (!control) setConMotor(false);
@@ -340,7 +385,7 @@ function Cuarta({
       cancelado = true;
       control?.destruir();
     };
-  }, [sinMotor, velocidad, quieta]);
+  }, [sinMotor, velocidad, quieta, particulas]);
 
   const i = Math.max(0, RANGOS_DE_LA_ENTRADA.indexOf(cuadro.desde as 1));
   const j = Math.max(0, RANGOS_DE_LA_ENTRADA.indexOf(cuadro.hasta as 1));
@@ -378,9 +423,18 @@ function Cuarta({
           filter: cuadro.tragoRacha > 0 ? `blur(${cuadro.tragoRacha * 3}px)` : undefined,
         }}
       >
-        <span className="bienv-numero">{cuadro.racha}</span>
+        <span className="bienv-numero">{rachaMostrada(cuadro.racha).toLocaleString('es-UY')}</span>
         <span className="bienv-rotulo">Racha</span>
       </div>
+
+      {/* Y CUANDO YA NO QUEDA NADA, VUELVE EL CIELO. El formulario no aparece
+          sobre un negro muerto: aparece sobre el mismo cielo del principio,
+          que además es el fondo que tiene la app por dentro. */}
+      {cuadro.estrellas > 0 && (
+        <div className="bienv-vuelta" style={{ opacity: cuadro.estrellas }}>
+          <Cielo paso={0} quieto={quieta} />
+        </div>
+      )}
 
       {/* Y DESPUÉS, LA CÁMARA. El negro no aparece encima: CRECE desde el
           centro, que es donde está el agujero, hasta pasar por encima de quien

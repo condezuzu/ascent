@@ -4685,15 +4685,99 @@ body.con-franja.con-accion .pantalla {
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.45;
+  /* La banda del medio es donde va el texto: ahí los objetos se apagan. Un
+     planeta atrás de una palabra la vuelve ilegible, y el texto es lo que hay
+     que leer. */
+  mask-image: linear-gradient(to bottom, #000 0 34%, rgba(0, 0, 0, 0.25) 46%, rgba(0, 0, 0, 0.25) 66%, #000 78%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 34%, rgba(0, 0, 0, 0.25) 46%, rgba(0, 0, 0, 0.25) 66%, #000 78%);
 }
-.bienv-objetos span {
+.bienv-objetos .obj {
   position: absolute;
   border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, var(--claro), var(--principal) 52%, var(--apagado) 78%, transparent 80%);
+}
+.bienv-objetos .obj.flota {
   animation: bienv-flota 16s ease-in-out infinite alternate;
 }
-.bienv-objetos span.flota {
-  animation-name: bienv-flota;
+
+/* Cada uno con su forma: ocho bolas iguales dirían que no se gana nada. */
+.obj-polvo {
+  background: radial-gradient(circle, var(--claro), transparent 62%) !important;
+  filter: blur(3px);
+  opacity: 0.8;
+}
+/* La roca: sin redondez pareja. Los cuatro radios distintos son la silueta. */
+.obj-roca {
+  border-radius: 58% 42% 47% 53% / 50% 56% 44% 50% !important;
+  background: radial-gradient(circle at 34% 30%, var(--claro), var(--principal) 58%, var(--apagado) 92%) !important;
+}
+/* La luna: los cráteres son manchas más oscuras sobre la superficie. */
+.obj-luna {
+  background:
+    radial-gradient(circle at 62% 36%, rgba(0, 0, 0, 0.5) 0 14%, transparent 15%),
+    radial-gradient(circle at 38% 58%, rgba(0, 0, 0, 0.45) 0 11%, transparent 12%),
+    radial-gradient(circle at 54% 72%, rgba(0, 0, 0, 0.4) 0 8%, transparent 9%),
+    radial-gradient(circle at 36% 30%, var(--claro), var(--principal) 56%, var(--apagado) 88%) !important;
+}
+/* Saturno: el cuerpo, y el anillo cruzándolo. El anillo es un óvalo con borde
+   y sin relleno, girado: de frente sería un plato. */
+.obj-saturno::after {
+  content: '';
+  position: absolute;
+  left: -38%;
+  top: 30%;
+  width: 176%;
+  height: 40%;
+  border: 1.5px solid var(--claro);
+  border-radius: 50%;
+  transform: rotate(-18deg);
+  opacity: 0.85;
+}
+.obj-saturno {
+  overflow: visible;
+}
+/* El sol: la corona sale del cuerpo, no es un borde. */
+.obj-sol {
+  box-shadow: 0 0 26px 6px color-mix(in srgb, var(--claro) 55%, transparent);
+}
+/* El sistema: un cuerpo chico con dos órbitas alrededor. */
+.obj-sistema {
+  background: radial-gradient(circle, var(--claro) 0 18%, transparent 19%) !important;
+}
+.obj-sistema::after,
+.obj-sistema::before {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  border: 1px solid color-mix(in srgb, var(--claro) 60%, transparent);
+  border-radius: 50%;
+  transform: rotate(-20deg) scaleY(0.42);
+}
+.obj-sistema::before {
+  inset: -14%;
+  transform: rotate(-20deg) scaleY(0.36);
+}
+/* La galaxia: una elipse borrosa con el centro encendido. */
+.obj-galaxia {
+  background: radial-gradient(ellipse 62% 26% at 50% 50%, var(--claro) 0 6%, var(--principal) 26%, transparent 70%) !important;
+  filter: blur(1.5px);
+  transform: rotate(-24deg);
+}
+.obj-galaxia.flota {
+  animation-name: bienv-flota-inclinado;
+}
+/* El agujero negro: negro adentro, aro de luz afuera. */
+.obj-agujero {
+  background: radial-gradient(circle, #000 0 42%, var(--principal) 46%, var(--claro) 52%, transparent 62%) !important;
+}
+@keyframes bienv-flota-inclinado {
+  from {
+    transform: rotate(-24deg) translate3d(0, 0, 0);
+  }
+  to {
+    transform: rotate(-24deg) translate3d(6px, -14px, 0);
+  }
 }
 @keyframes bienv-flota {
   from {
@@ -4705,9 +4789,57 @@ body.con-franja.con-accion .pantalla {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bienv-objetos span,
+  .bienv-objetos .obj,
   .bienv-cielo {
     animation: none;
   }
+}
+
+/* EL BANCO. La pantalla y los controles NO se superponen: son dos filas de una
+   columna, así que el pie de la entrada —"Siguiente" y "Saltar"— siempre queda
+   a la vista. Antes los controles iban fijos encima y tapaban justo lo que hay
+   que mirar (15/9); acotarlo con una altura a mano se volvía a romper cada vez
+   que se agregaba un control.
+
+   `100dvh` y no `100vh`: en el teléfono, la barra del navegador se come la
+   diferencia y el pie queda abajo del borde. */
+.banco {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+.banco .bienv {
+  position: relative;
+  inset: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.banco .banco-controles {
+  position: relative;
+  flex: none;
+  overflow-y: auto;
+  max-height: 46dvh;
+}
+.banco-plegar {
+  position: fixed;
+  right: 10px;
+  top: 10px;
+  z-index: 11;
+  background: rgba(5, 6, 10, 0.9);
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  color: var(--sub);
+  font-size: 12px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.banco-controles.plegado {
+  display: none;
+}
+.bienv-vuelta {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 

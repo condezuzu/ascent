@@ -79,16 +79,17 @@ export function formaDeRango(rango: number, azar: () => number = Math.random): F
       poner(i, Math.cos(a) * Math.cos(b) * r, Math.sin(b) * r * 0.7, Math.sin(a) * Math.cos(b) * r * 0.3);
     }
   } else if (rango === 2) {
-    // ASTEROIDE: una papa, no una pelota. El radio se deforma con tres lóbulos
-    // lentos —que es lo que hace la silueta irregular— y encima el grano.
-    // Antes era una esfera con ruido fino y se leía como una bola rugosa.
+    // ASTEROIDE: un BULTO DE MASA, no una cáscara (15/9). La versión anterior
+    // repartía las partículas en la superficie y con la estela de fuego se leía
+    // como una nube. Es lo primero que se forma: tiene que ser una piedra, un
+    // círculo irregular y lleno, y nada más.
     for (let i = 0; i < N; i++) {
-      const e = enLaEsfera();
-      const th = Math.atan2(e.z, e.x);
-      const lobulos =
-        1 + 0.22 * Math.sin(th * 2 + 0.7) + 0.14 * Math.sin(th * 3 - 1.2) + 0.1 * Math.sin(e.y * 5);
-      const r = 0.3 * lobulos * (0.92 + azar() * 0.16);
-      poner(i, e.x * r * 1.15, e.y * r * 0.8, e.z * r * 0.5);
+      const a = azar() * Math.PI * 2;
+      // `sqrt` reparte parejo en el área; sin él se amontonan todas en el centro.
+      const base = Math.sqrt(azar());
+      const lobulos = 1 + 0.17 * Math.sin(a * 2 + 0.7) + 0.11 * Math.sin(a * 3 - 1.2);
+      const r = 0.3 * lobulos * base;
+      poner(i, Math.cos(a) * r * 1.12, Math.sin(a) * r * 0.92, (azar() - 0.5) * 0.06);
     }
   } else if (rango === 3) {
     // LUNA: una esfera CON CRÁTERES, que es lo único que la hace una luna y no
@@ -236,22 +237,49 @@ export function formaDeRango(rango: number, azar: () => number = Math.random): F
       }
     }
   } else {
-    // AGUJERO NEGRO: el disco de acreción visto casi de canto, con el centro
-    // VACÍO y un anillo de luz fino pegado al borde del horizonte. El hueco
-    // negro del medio es el objeto: sin él es una dona.
-    const EN_EL_ANILLO = Math.round(N * 0.22);
+    // AGUJERO NEGRO. Es el último y el que se espera: tiene que ser el mejor
+    // de los ocho.
+    //
+    // LO QUE ESTABA MAL (15/9): "parece un ojo, el anillo se ve transparente,
+    // no hay un adelante y un atrás". El disco era PLANO (z = 0), así que no
+    // había nada que pasara por delante ni por detrás del horizonte: todo se
+    // veía a la vez, sumado, y quedaba un iris.
+    //
+    // AHORA EL DISCO ES 3D e inclinado: la mitad de adelante tiene z > 0 y la
+    // de atrás z < 0. El motor pone un disco negro opaco en el medio —el
+    // horizonte— y con eso la mitad de atrás queda TAPADA y la de adelante
+    // cruza por encima. Eso es lo que lo vuelve un objeto y no un dibujo.
+    const INCLINA = 0.34;
+    const cos = Math.cos(INCLINA);
+    const sen = Math.sin(INCLINA);
+    const HORIZONTE = 0.3;
+    const EN_EL_ANILLO = Math.round(N * 0.16);
+    const EN_LA_LENTE = Math.round(N * 0.14);
     for (let i = 0; i < N; i++) {
       if (i < EN_EL_ANILLO) {
-        // el anillo de fotones: fino, redondo, pegado al horizonte
+        // El anillo de fotones: fino, redondo y SIEMPRE por delante (z > 0),
+        // porque es luz curvada alrededor del horizonte, no materia.
         const a = azar() * Math.PI * 2;
-        const r = 0.3 * (0.99 + azar() * 0.02);
-        poner(i, Math.cos(a) * r, Math.sin(a) * r, 0);
+        const r = HORIZONTE * (1.02 + azar() * 0.03);
+        poner(i, Math.cos(a) * r, Math.sin(a) * r, 0.02);
+      } else if (i < EN_EL_ANILLO + EN_LA_LENTE) {
+        // EL ARCO DE LA LENTE: la parte del disco de atrás que la gravedad
+        // dobla y hace aparecer ARRIBA del horizonte. Es el detalle que hace
+        // que se lea como un agujero negro y no como un planeta con anillo.
+        const t = azar();
+        const a = Math.PI * (0.06 + t * 0.88);
+        const r = HORIZONTE * (1.12 + azar() * 0.5);
+        const arriba = azar() < 0.5 ? 1 : -1;
+        poner(i, Math.cos(a) * r, arriba * (Math.sin(a) * r * 0.42 + HORIZONTE * 0.55), 0.03);
       } else {
-        // el disco: más ancho que alto, con el brillo hacia adentro
-        const t = Math.pow(azar(), 1.6);
-        const r = 0.34 + t * 0.42;
+        // El disco, en su plano inclinado: adentro brilla y se va abriendo.
+        const t = Math.pow(azar(), 1.7);
+        const r = HORIZONTE * 1.15 + t * 0.5;
         const a = azar() * Math.PI * 2;
-        poner(i, Math.cos(a) * r, Math.sin(a) * r * 0.3 + (azar() - 0.5) * 0.01, 0);
+        const x = Math.cos(a) * r;
+        const z = Math.sin(a) * r;
+        const grosor = (azar() - 0.5) * 0.015;
+        poner(i, x, z * sen + grosor * cos, z * cos);
       }
     }
   }

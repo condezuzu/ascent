@@ -34,17 +34,17 @@ const DESTELLO = 0.35;
  */
 const GIRO: Record<number, number> = {
   1: 0.02,
-  2: 0.5, // el asteroide es el que más gira: es una piedra suelta
+  2: 0.16, // la piedra da tumbos, pero sin estela: era una nube (15/9)
   3: 0.05,
   4: 0.06,
   5: 0.04,
   6: 0.05,
   7: 0.03, // la galaxia, lentísima: es la más grande
-  8: 0.12,
+  // EL AGUJERO NEGRO NO GIRA. Girándolo, el disco inclinado se convertía en un
+  // iris dando vueltas. Quieto e inclinado, lo que se lee es el volumen: una
+  // mitad del disco pasa por delante del horizonte y la otra por detrás.
+  8: 0,
 };
-
-/** Partículas de la estela: van detrás del asteroide, quemándose. */
-const ESTELA = 90;
 
 export type Entrada = {
   /** Un número de 0 a 1: para el número de la racha y el velo negro. */
@@ -70,6 +70,8 @@ export function animarEntrada(
      * segundo 3 sale donde caiga (ver `spec/trampas.md`).
      */
     reloj?: () => number | null;
+    /** Cuántas partículas dibujar. Por omisión, todas. */
+    particulas?: number;
   } = {}
 ): Entrada | null {
   let renderer: THREE.WebGLRenderer;
@@ -87,7 +89,25 @@ export function animarEntrada(
 
   // Las ocho formas, una sola vez: crearlas en medio de la animación sería un
   // tirón de 900 partículas justo cuando hay que cambiar de objeto.
-  const formas = RANGOS_DE_LA_ENTRADA.map((r) => formaDeRango(r));
+  //
+  // CUÁNTAS depende del equipo (`particulasPara`): en un teléfono viejo, mover
+  // novecientas en cada cuadro cuesta más que todo lo demás junto. Se toma una
+  // de cada `salto` de la forma completa —no las primeras— para que la forma
+  // recortada siga siendo la misma forma y no media.
+  const cuantas = op.particulas && op.particulas > 0 ? Math.min(N, Math.round(op.particulas)) : N;
+  const salto = Math.max(1, Math.floor(N / cuantas));
+  const recortar = (f: Float32Array) => {
+    if (salto === 1) return f;
+    const chica = new Float32Array(cuantas * 3);
+    for (let k = 0; k < cuantas; k++) {
+      const o = ((k * salto) % N) * 3;
+      chica[k * 3] = f[o];
+      chica[k * 3 + 1] = f[o + 1];
+      chica[k * 3 + 2] = f[o + 2];
+    }
+    return chica;
+  };
+  const formas = RANGOS_DE_LA_ENTRADA.map((r) => recortar(formaDeRango(r)));
   const escalas = formas.map((f) => ({ ext: extension(f), escala: 1 }));
   const colores = RANGOS_DE_LA_ENTRADA.map((r) => colorDeRango(r));
 
@@ -101,30 +121,28 @@ export function animarEntrada(
     opacity: 0,
     sizeAttenuation: false,
     blending: THREE.AdditiveBlending,
+    // Las partículas SE TAPAN con el horizonte —por eso se prueba la
+    // profundidad— pero no se tapan entre ellas, que las apagaría unas a otras.
+    depthTest: true,
     depthWrite: false,
   });
   const nube = new THREE.Points(geo, mat);
   escena.add(nube);
 
-  // LA ESTELA DEL ASTEROIDE. Una piedra que entra a la atmósfera deja fuego
-  // atrás: sin eso el paso del polvo al asteroide es "la nube se juntó" y no
-  // "algo cayó". Vive en su propia nube de puntos porque tiene otro color y
-  // otra opacidad, y se apaga sola cuando el asteroide deja de ser el objeto.
-  const posEstela = new Float32Array(ESTELA * 3);
-  const semillaEstela = new Float32Array(ESTELA);
-  for (let i = 0; i < ESTELA; i++) semillaEstela[i] = Math.random();
-  const geoEstela = new THREE.BufferGeometry();
-  geoEstela.setAttribute('position', new THREE.BufferAttribute(posEstela, 3));
-  const matEstela = new THREE.PointsMaterial({
-    size: 2.6 * Math.min(window.devicePixelRatio || 1, 2),
-    color: new THREE.Color('#ff7a1a'),
-    transparent: true,
-    opacity: 0,
-    sizeAttenuation: false,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
-  escena.add(new THREE.Points(geoEstela, matEstela));
+  // EL HORIZONTE DEL AGUJERO NEGRO: un disco NEGRO y OPACO en el medio. No es
+  // decoración: es lo que tapa la mitad de atrás del disco de acreción. Sin él
+  // las partículas de atrás se suman a las de adelante —el material es
+  // aditivo— y el objeto se ve transparente, como un ojo.
+  //
+  // Se dibuja ANTES que las partículas y escribe profundidad: el orden lo
+  // decide la GPU, no nosotros.
+  const horizonte = new THREE.Mesh(
+    new THREE.CircleGeometry(0.3, 64),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0 })
+  );
+  horizonte.position.z = 0;
+  horizonte.renderOrder = -1;
+  escena.add(horizonte);
 
   function medir() {
     const w = canvas.clientWidth || 400;
@@ -174,7 +192,7 @@ export function animarEntrada(
     // último que se ve es el borde saliéndose de la pantalla.
     const cierre = 1 + c.trago * 5;
 
-    for (let k = 0; k < N * 3; k++) {
+    for (let k = 0; k < cuantas * 3; k++) {
       actual[k] = (desde[k] + (hasta[k] - desde[k]) * m) * escala * cierre;
     }
     geo.attributes.position.needsUpdate = true;
@@ -194,25 +212,13 @@ export function animarEntrada(
     anterior = ahora;
     nube.rotation.z = vueltas;
 
-    // La estela: solo mientras el asteroide es el objeto, y más fuerte cuando
-    // termina de formarse. Sale del centro hacia atrás, abriéndose.
-    const esAsteroide = (c.hasta === 2 ? m : 0) + (c.desde === 2 ? 1 - m : 0);
-    matEstela.opacity = esAsteroide * 0.75 * (1 - c.trago);
-    if (matEstela.opacity > 0.01) {
-      const largo = 0.75 * escala;
-      for (let k = 0; k < ESTELA; k++) {
-        const s = semillaEstela[k];
-        // Cada partícula corre por la cola a su ritmo y vuelve a empezar: es
-        // fuego saliendo, no una línea pintada.
-        const avance = (t * (0.5 + s) * 0.9) % 1;
-        const d = 0.12 * escala + avance * largo;
-        const abre = avance * 0.13 * escala;
-        posEstela[k * 3] = -Math.cos(vueltas * 0.2) * d + (s - 0.5) * abre;
-        posEstela[k * 3 + 1] = -0.35 * d + (s - 0.5) * abre * 0.6;
-        posEstela[k * 3 + 2] = 0;
-      }
-      geoEstela.attributes.position.needsUpdate = true;
-    }
+    // El horizonte aparece con el agujero negro y se va con el trago. Su
+    // tamaño acompaña al objeto, o dejaría de tapar lo que tiene que tapar.
+    const esAgujero = (c.hasta === 8 ? m : 0) + (c.desde === 8 ? 1 - m : 0);
+    const matHorizonte = horizonte.material as THREE.MeshBasicMaterial;
+    matHorizonte.opacity = esAgujero * (1 - c.trago);
+    horizonte.visible = matHorizonte.opacity > 0.01;
+    horizonte.scale.setScalar(escala * cierre);
 
     renderer.render(escena, camara);
     if (c.fin && (fijo === null || fijo === undefined)) {
@@ -234,8 +240,8 @@ export function animarEntrada(
       soltarTamano();
       geo.dispose();
       mat.dispose();
-      geoEstela.dispose();
-      matEstela.dispose();
+      horizonte.geometry.dispose();
+      (horizonte.material as THREE.Material).dispose();
       renderer.dispose();
     },
   };

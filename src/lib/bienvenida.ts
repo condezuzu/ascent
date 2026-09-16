@@ -38,7 +38,7 @@ export const FACTOR_DE_ACELERACION = 0.76;
 export const TRAMO_MINIMO_S = 0.5;
 
 /** Lo que se ve el polvo antes de que empiece a moverse. */
-export const ANTES_S = 0.7;
+export const ANTES_S = 0.6;
 
 /**
  * EL FINAL, EN TRES TIEMPOS (pedido del 15/9). Antes era un fundido a negro y
@@ -53,9 +53,23 @@ export const ANTES_S = 0.7;
  *     fundido: es que el agujero llega hasta donde está mirando la persona, y
  *     por eso el negro del final es el mismo negro del formulario.
  */
-export const QUIETO_S = 1.0;
+export const QUIETO_S = 0.85;
 export const TRAGO_RACHA_S = 0.85;
 export const TRAGO_CAMARA_S = 1.15;
+/** Y después el cielo vuelve: sobre eso van los botones. */
+export const ESTRELLAS_S = 0.95;
+
+/**
+ * LA RACHA NO FRENA EN 70 (pedido del 15/9). Frenar decía "acá se termina", y
+ * 70 además es un número raro de mirar. Desde que aparece el agujero negro el
+ * número se dispara —cada vez más rápido, sin techo— y lo que lo detiene es
+ * que se lo tragan, no un tope.
+ *
+ * Crece EXPONENCIAL y no lineal: una recta rápida se lee como un contador
+ * roto; esto se lee como algo que se escapa de las manos. En los 1,85 s que
+ * dura, 70 se convierte en unos dos mil.
+ */
+export const DISPARO_POR_SEGUNDO = 1.82;
 
 /** Cuánto dura cada tramo, del primero al último. Siete: son ocho objetos. */
 export function duracionesDeTramos(): number[] {
@@ -69,11 +83,18 @@ export function duracionesDeTramos(): number[] {
 }
 
 /** Cuándo termina cada parte, en segundos desde el arranque. */
-export function hitos(): { morfeo: number; quieto: number; racha: number; total: number } {
+export function hitos(): {
+  morfeo: number;
+  quieto: number;
+  racha: number;
+  camara: number;
+  total: number;
+} {
   const morfeo = ANTES_S + duracionesDeTramos().reduce((t, d) => t + d, 0);
   const quieto = morfeo + QUIETO_S;
   const racha = quieto + TRAGO_RACHA_S;
-  return { morfeo, quieto, racha, total: racha + TRAGO_CAMARA_S };
+  const camara = racha + TRAGO_CAMARA_S;
+  return { morfeo, quieto, racha, camara, total: camara + ESTRELLAS_S };
 }
 
 export const DURACION_S = hitos().total;
@@ -119,6 +140,8 @@ export type CuadroDeLaEntrada = {
   tragoRacha: number;
   /** Cuánto se tragó la CÁMARA: 1 es la pantalla negra. */
   trago: number;
+  /** Cuánto volvió el cielo después del trago: sobre eso van los botones. */
+  estrellas: number;
   /** Ya terminó: es el momento de mostrar los botones. */
   fin: boolean;
 };
@@ -134,12 +157,12 @@ export type CuadroDeLaEntrada = {
 export function cuadroEn(t: number): CuadroDeLaEntrada {
   const seg = Number.isFinite(t) ? Math.max(0, t) : 0;
   const tramos = duracionesDeTramos();
-  const { morfeo, quieto, racha, total } = hitos();
+  const { morfeo, quieto, racha, camara, total } = hitos();
 
   // El número sube parejo DENTRO de cada tramo, no a lo largo de todo: así
   // acelera junto con las formas, que es de donde sale la sensación.
   if (seg < ANTES_S) {
-    return { desde: 1, hasta: 1, mezcla: 0, racha: 0, tragoRacha: 0, trago: 0, fin: false };
+    return { desde: 1, hasta: 1, mezcla: 0, racha: 0, tragoRacha: 0, trago: 0, estrellas: 0, fin: false };
   }
 
   if (seg < morfeo) {
@@ -157,6 +180,7 @@ export function cuadroEn(t: number): CuadroDeLaEntrada {
           racha: Math.round(base + p * DIAS_POR_RANGO),
           tragoRacha: 0,
           trago: 0,
+          estrellas: 0,
           fin: false,
         };
       }
@@ -165,20 +189,55 @@ export function cuadroEn(t: number): CuadroDeLaEntrada {
   }
 
   const ultimo = RANGOS_DE_LA_ENTRADA[RANGOS_DE_LA_ENTRADA.length - 1];
-  const tope = (RANGOS_DE_LA_ENTRADA.length - 1) * DIAS_POR_RANGO;
-  if (seg < quieto) {
-    return { desde: ultimo, hasta: ultimo, mezcla: 1, racha: tope, tragoRacha: 0, trago: 0, fin: false };
-  }
+  const desdeElUltimo = (RANGOS_DE_LA_ENTRADA.length - 1) * DIAS_POR_RANGO;
+  // Desde que está el agujero negro, el número se dispara y no para hasta que
+  // se lo tragan.
+  const disparada = Math.round(desdeElUltimo * Math.exp(DISPARO_POR_SEGUNDO * (seg - morfeo)));
   return {
     desde: ultimo,
     hasta: ultimo,
     mezcla: 1,
-    racha: tope,
-    // Primero el número, y recién cuando ya no está, la cámara.
-    tragoRacha: salida((seg - quieto) / TRAGO_RACHA_S),
+    racha: disparada,
+    // Primero el número —que sigue subiendo mientras se va—, y recién cuando
+    // ya no está, la cámara.
+    tragoRacha: seg < quieto ? 0 : salida((seg - quieto) / TRAGO_RACHA_S),
     trago: seg < racha ? 0 : salida((seg - racha) / TRAGO_CAMARA_S),
+    // El cielo vuelve cuando ya no queda nada: es el fondo de la pantalla de
+    // sesión, así que el formulario aparece sobre algo que ya estaba.
+    estrellas: seg < camara ? 0 : entrada((seg - camara) / ESTRELLAS_S),
     fin: seg >= total,
   };
+}
+
+/**
+ * EL NÚMERO COMO SE MUESTRA, redondeado según cuán rápido va.
+ *
+ * POR QUÉ. Disparado, el número cambia cientos de veces por segundo: cada
+ * cambio es texto nuevo que el navegador tiene que medir y dibujar, y en un
+ * teléfono flojo eso solo ya come cuadros. Redondeando, el texto cambia unas
+ * pocas veces por segundo y SE VE IGUAL DE RÁPIDO: lo que da la sensación de
+ * velocidad es cuánto salta el número, no cuántas veces se redibuja.
+ */
+export function rachaMostrada(n: number): number {
+  const x = Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+  if (x < 100) return x;
+  if (x < 1000) return Math.round(x / 5) * 5;
+  return Math.round(x / 25) * 25;
+}
+
+/** Cada cuánto se le permite cambiar al número, como mucho. */
+export const MS_ENTRE_REDIBUJOS = 50;
+
+/**
+ * CUÁNTAS PARTÍCULAS SEGÚN EL EQUIPO. El motor ya hace esto con el fondo
+ * (`motor/escena.ts`), con los mismos factores: en un teléfono viejo, novecientas
+ * partículas moviéndose todos los cuadros cuestan más que todo lo demás junto,
+ * y la entrada es lo primero que se ve — si ahí va a los tirones, no hay
+ * segunda impresión.
+ */
+export function particulasPara(nivel: 'bajo' | 'medio' | 'alto', base: number): number {
+  const f = nivel === 'bajo' ? 0.3 : nivel === 'medio' ? 0.6 : 1;
+  return Math.max(120, Math.round((Number.isFinite(base) ? base : 0) * f));
 }
 
 /**
@@ -201,6 +260,8 @@ export function cuadroQuietoEn(t: number): CuadroDeLaEntrada {
     racha: tope,
     tragoRacha: 0,
     trago: seg <= arranque ? 0 : entrada((seg - arranque) / (DURACION_QUIETA_S - arranque)),
+    // Sin movimiento el cielo no viaja: está puesto desde el principio.
+    estrellas: 1,
     fin: seg >= DURACION_QUIETA_S,
   };
 }
