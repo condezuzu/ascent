@@ -24,6 +24,7 @@
     "medir:sin-motor": "node --env-file=.env.local supabase/medir-sin-motor.mjs",
     "medir:pantallas": "node --env-file=.env.local supabase/medir-pantallas.mjs",
     "medir:quietud": "node --env-file=.env.local supabase/medir-quietud.mjs",
+    "medir:scroll": "node --env-file=.env.local supabase/medir-scroll.mjs",
     "medir:pedidos": "node --env-file=.env.local supabase/medir-pedidos-inicio.mjs"
   },
   "dependencies": {

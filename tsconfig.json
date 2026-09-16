@@ -56,9 +56,10 @@
     ".next-medir/types/**/*.ts",
     ".next-pantallas/types/**/*.ts",
     ".next-primera/types/**/*.ts",
+    ".next-quietud/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-quietud/types/**/*.ts"
+    ".next-scroll/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
