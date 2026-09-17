@@ -8,29 +8,26 @@ out/
 next-env.d.ts
 _tmp-*
 capturas/
-.next-capturas/
 
 # Builds de los recorridos de prueba. Cada script se compila en su PROPIA
 # carpeta para poder correr con el servidor de desarrollo levantado sin que se
-# pisen el `.next`. Cada vez que se agrega un script hay que agregar la suya
-# acá, o el build entero termina adentro de un commit.
-.next-primera/
-.next-capturas/
-.next-exif/
+# pisen el `.next`.
+#
+# UN COMODIN Y NO UNA LISTA. Acá había trece carpetas escritas a mano y un
+# comentario que decía "cada vez que se agrega un script hay que agregar la
+# suya acá". El 17/9 se agregó `medir-animacion.mjs`, nadie agregó la suya, y
+# el build entero —150 MB, con dos archivos de más de 70— se fue a un commit.
+# GitHub lo rechazó al pushear, que fue la única suerte del asunto.
+#
+# Una regla que depende de que alguien se acuerde no es una regla. `eslint`
+# ya usaba `.next-*/**` para lo mismo; esto lo empareja.
+.next-*/
 # scripts de una sola vez, para mirar una pantalla y tirar
 *.tmp.mjs
-.next-arranque/
 
 # La app nativa
 movil/node_modules/
 movil/.expo/
 movil/.env
 movil/.claude/
-# carpetas de build de las mediciones (cada script usa la suya)
-.next-pantallas/
-.next-quietud/
-.next-medir/
-.next-scroll/
-.next-rangos/
-.next-noche/
-.next-planetas/
+

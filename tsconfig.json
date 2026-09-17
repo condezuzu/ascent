@@ -56,13 +56,14 @@
     ".next-medir/types/**/*.ts",
     ".next-noche/types/**/*.ts",
     ".next-pantallas/types/**/*.ts",
+    ".next-planetas/types/**/*.ts",
     ".next-primera/types/**/*.ts",
     ".next-quietud/types/**/*.ts",
     ".next-rangos/types/**/*.ts",
     ".next-scroll/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-planetas/types/**/*.ts"
+    ".next-animacion/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
