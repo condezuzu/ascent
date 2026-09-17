@@ -7,7 +7,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { enDias, hoyISO, restarDias, deISO } from '@nucleo/fechas';
 import { transcurrido, duracionLinda } from '@nucleo/sesiones';
 import { planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango } from '@nucleo/rangos';
-import { citaDelDia } from '@nucleo/frases';
+import { fraseDelDia } from '@nucleo/frases';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { guardarPerfilCache, leerPerfilCache } from '@compartido/cache';
@@ -439,7 +439,7 @@ export default function Principal() {
   // cuando los dos darían (ver escena.ts).
   const presagio = hayPresagio(racha);
 
-  const cita = citaDelDia(perfil.rango_actual, `${hoy}-${perfil.id}`);
+  const frase = fraseDelDia(`${hoy}-${perfil.id}`);
 
   // El aviso solo aparece cuando falta poco de verdad, no a la mañana.
   // Redacción hacia adelante, nunca hacia la pérdida.
@@ -757,10 +757,7 @@ export default function Principal() {
         )}
 
         {!sinNada && !entrenando && (
-          <figure className="cita">
-            <blockquote>{cita.texto}</blockquote>
-            <figcaption>{cita.autor}</figcaption>
-          </figure>
+          <p className="cita">{frase}</p>
         )}
 
         {social && !entrenando && (

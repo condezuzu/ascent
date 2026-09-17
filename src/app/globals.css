@@ -837,36 +837,28 @@ body.ya-entro .pantalla > * {
   50% { opacity: 0.7; }
 }
 
-/* Una cita por pantalla, en voz baja. El autor va en mono y desplazado
-   hacia adentro: no es un pie centrado y prolijo. */
-/* La cita es la única voz humana en una pantalla de números, y estaba
+/* Una frase por pantalla, en voz baja. */
+/* YA NO HAY PIE DE AUTOR: las citas atribuidas se fueron el 17/9 y las frases
+   son nuestras, así que el `figcaption` en mono y desplazado se borró con
+   ellas. El margen de abajo de `.cita` lo compensa: lo que separaba la frase
+   de lo que sigue eran los 12px del pie, no el bloque. */
+/* La frase es la única voz humana en una pantalla de números, y estaba
    gritando: 16px en la tipografía del cuerpo la ponía a competir con todo lo
    demás. Ahora va CHICA y en Outfit — la misma tipografía del número de racha,
    que es la voz propia de la app. Eso la vuelve parte del instrumento en vez
    de un cartel motivacional pegado encima: rima con lo único grande de la
    pantalla, en el otro extremo de la escala. */
 .cita {
-  margin: 34px 2px 4px;
+  margin: 34px 2px 25px;
   max-width: 30ch;
   border-left: 1px solid color-mix(in srgb, var(--pal-principal) 26%, transparent);
   padding-left: 14px;
-}
-.cita blockquote {
   font-family: var(--f-numero), system-ui, sans-serif;
   font-weight: 300;
   font-size: 13.5px;
   line-height: 1.7;
   letter-spacing: 0.015em;
   color: var(--apagado);
-}
-.cita figcaption {
-  font-family: var(--f-mono), monospace;
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--apagado) 70%, transparent);
-  margin-top: 12px;
-  margin-left: 32%;
 }
 
 /* ---------- una sola línea social ---------- */

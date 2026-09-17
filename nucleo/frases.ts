@@ -1,136 +1,86 @@
-// Una cita por pantalla, distinta según el rango.
+// Una frase por pantalla, en Inicio.
 //
-// REGLA: solo citas reales y bien atribuidas. Nada inventado, nada puesto en
-// boca de quien no lo dijo. Ante la menor duda sobre la autoría, no entra.
-// Por eso son veinte y no cuarenta: se prefirió el recorte a rellenar.
+// SON NUESTRAS, Y NO LLEVAN AUTOR. Hasta el 2026-09-17 eran veinte citas
+// reales atribuidas —Ali, Jordan, Bruce Lee, Schwarzenegger—. Se fueron
+// enteras, y el motivo no es la atribución: las citas de deportistas famosos
+// son el cliché de cualquier app de gimnasio, y Ascent va de cuerpos celestes
+// y rangos cósmicos. Una frase de Ronnie Coleman abajo de un planeta es la
+// costura entre dos productos distintos.
 //
-// ESTÁN TRADUCIDAS del inglés, y esa traducción es NUESTRA: por eso sigue las
-// reglas de `spec/idioma.md` como cualquier otro texto de la app. Hasta hoy
-// estaban en rioplatense —"empezá", "usá", "tenés"— y eran lo último que
-// quedaba en voseo en toda la app. Lo intocable de una cita es el sentido y el
-// autor, no en qué español la escribimos nosotros.
+// EL REGISTRO: afirman, no arengan. Ninguna tiene imperativo, ninguna te dice
+// qué hacer, ninguna lleva signo de exclamación. Es el mismo tono que el resto
+// de la app —"Se dispersó un poco de masa. Hoy se recupera."—: dicen el hecho
+// y se callan. Y la metáfora sale de la física que la app ya usa (polvo, masa,
+// gravedad, luz), no de un gimnasio.
 //
-// SE CAMBIARON LAS QUE NO SE ENTENDÍAN. Dos se fueron por eso y no por el
-// idioma: el chiste de Yogi Berra sobre el noventa por ciento mental no
-// sobrevive a la traducción y se lee como un error de cuentas, y la de Nadia
-// Comăneci daba tres vueltas para decir algo simple. Una cita que hay que
-// leer dos veces en un gimnasio no es una cita, es un obstáculo.
+// UNA SOLA BOLSA PARA LOS OCHO RANGOS, y no un balde por rango como antes.
+// Con doce frases y ocho rangos, repartirlas da una o dos por balde: el que
+// recién empieza vería siempre la misma. Y el rango ya está escrito en la
+// pantalla, la frase no necesita repetirlo.
+//
+// SON DOCE Y NO VEINTICUATRO a propósito: doce escritas con criterio valen más
+// que veinticuatro donde la mitad rellena. Rotando una por día, ninguna vuelve
+// antes de doce días.
+//
+// LOS EJES, que es lo que las mantiene distintas. La primera versión tenía
+// cinco frases que decían todas "la acumulación lenta funciona", y rotando
+// doce eso se lee dos veces por semana: la app parecía tener una sola idea.
+// Cada una de estas para en un eje propio —empezar, acumular, repetir, el
+// ritmo, volver, la lentitud, perder, descansar, la inercia, el camino propio,
+// el esfuerzo que no se ve—. Antes de agregar una, mirar que traiga un eje que
+// no esté; si solo trae otra manera de decir "de a poco", no entra.
+//
+// EL TOPE ES 45 CARACTERES, y lo hace cumplir `test:db` (sección 120). No es
+// estética: la frase vive en una tira angosta al pie de Inicio y una más larga
+// se parte en tres renglones y deja de ser una frase.
 
-export type Cita = { texto: string; autor: string };
+export type Frase = string;
 
-const CITAS: Record<number, Cita[]> = {
-  // Polvo: recién empieza, todavía no hay nada
-  1: [
-    { texto: 'Empieza donde estás. Usa lo que tienes. Haz lo que puedas.', autor: 'Arthur Ashe' },
-    {
-      texto: 'Si quieres correr, corre un kilómetro. Si quieres cambiar tu vida, corre un maratón.',
-      autor: 'Emil Zátopek',
-    },
-    {
-      texto: 'Nunca dejes que el miedo a errar te impida entrar al juego.',
-      autor: 'Babe Ruth',
-    },
-  ],
-  // Asteroide: ya hay algo sólido, pero recién arranca
-  2: [
-    {
-      texto:
-        'Odiaba cada minuto del entrenamiento. Pero me decía: no aflojes. Sufre ahora y vive el resto de tu vida como campeón.',
-      autor: 'Muhammad Ali',
-    },
-    {
-      texto: 'Dar menos que tu mejor esfuerzo es sacrificar el don.',
-      autor: 'Steve Prefontaine',
-    },
-    {
-      texto: 'Todos quieren ser grandes, pero nadie quiere levantar pesado.',
-      autor: 'Ronnie Coleman',
-    },
-  ],
-  // Luna: la repetición empieza a dejar marca
-  3: [
-    {
-      texto:
-        'No le temo al que practicó diez mil patadas una vez. Le temo al que practicó una patada diez mil veces.',
-      autor: 'Bruce Lee',
-    },
-    { texto: 'Primero domina los fundamentos.', autor: 'Larry Bird' },
-    { texto: 'El hierro nunca miente.', autor: 'Henry Rollins' },
-  ],
-  // Planeta: hay masa, y también fracasos acumulados
-  4: [
-    {
-      texto:
-        'Todos tenemos sueños. Pero para convertirlos en realidad hace falta muchísima determinación, dedicación, disciplina y esfuerzo.',
-      autor: 'Jesse Owens',
-    },
-    {
-      texto:
-        'Fallé más de nueve mil tiros. Perdí casi trescientos partidos. Veintiséis veces confiaron en mí para el tiro decisivo y erré. Fracasé una y otra vez. Por eso tengo éxito.',
-      autor: 'Michael Jordan',
-    },
-    {
-      texto: 'Hoy hago lo que otros no quieren, para mañana lograr lo que otros no pueden.',
-      autor: 'Jerry Rice',
-    },
-  ],
-  // Sol: se encendió, el esfuerzo ya es otra cosa
-  5: [
-    {
-      texto: 'No cuento las abdominales. Empiezo a contar recién cuando duele.',
-      autor: 'Muhammad Ali',
-    },
-    { texto: 'Entrené cuatro años para correr nueve segundos.', autor: 'Usain Bolt' },
-    {
-      texto: 'Las últimas tres o cuatro repeticiones son las que hacen crecer el músculo.',
-      autor: 'Arnold Schwarzenegger',
-    },
-  ],
-  // Sistema: la rutina ya es un mecanismo que se sostiene solo
-  6: [
-    {
-      texto:
-        'El éxito no es casualidad. Es trabajo duro, perseverancia, estudio, sacrificio y sobre todo amor por lo que estás haciendo.',
-      autor: 'Pelé',
-    },
-    {
-      texto: 'Hay que estimular el músculo, no destruirlo.',
-      autor: 'Lee Haney',
-    },
-    {
-      texto: 'El único lugar donde el éxito viene antes que el trabajo es en el diccionario.',
-      autor: 'Vince Lombardi',
-    },
-  ],
-  // Galaxia: a esta altura lo que define es cómo se vuelve de una caída
-  7: [
-    {
-      texto:
-        'A un campeón no lo definen sus victorias, sino cómo se recupera cuando cae.',
-      autor: 'Serena Williams',
-    },
-    {
-      texto: 'La disciplina pesa gramos; el arrepentimiento pesa toneladas.',
-      autor: 'Jim Rohn',
-    },
-  ],
-  // Agujero negro: el final de la escalera
-  8: [
-    { texto: 'Ningún ser humano tiene límites.', autor: 'Eliud Kipchoge' },
-    { texto: 'Los campeones siguen jugando hasta que les sale bien.', autor: 'Billie Jean King' },
-    {
-      texto: 'No importa si te derriban. Importa si te levantas.',
-      autor: 'Vince Lombardi',
-    },
-    { texto: 'Fallas el cien por ciento de los tiros que no haces.', autor: 'Wayne Gretzky' },
-  ],
-};
+const FRASES: readonly Frase[] = [
+  // empezar: el punto de partida ya cuenta como algo
+  'El polvo también es materia.',
+  // acumular: el resultado es invisible hasta que deja de serlo
+  'La masa no se nota hasta que pesa.',
+  // acumular: lo que se siente como peso es tiempo
+  'La gravedad es solo tiempo acumulado.',
+  // repetir: la repetición no suma, construye
+  'Lo que se repite se vuelve estructura.',
+  // el ritmo: se avanza parejo, no a los tirones
+  'Se avanza por vueltas, no por saltos.',
+  // volver: lo que define no es no haberse caído
+  'Volver cuenta más que no haber faltado.',
+  // la lentitud: despacio sigue siendo llegar
+  'Lo lento también llega.',
+  // perder: el único eje que mira hacia abajo, y el más honesto de todos
+  'Lo que no se sostiene se dispersa.',
+  // descansar: la pausa está en el diseño, no es una falla. Es la única que
+  // le puede hablar a alguien un día que no entrena.
+  'La mitad de todo cuerpo está a oscuras.',
+  // la inercia: el eje no es cuánto llevás, es cuánto cuesta — y eso baja
+  'Cuesta más frenar que seguir.',
+  // el camino propio: la única donde existe otra gente. Hay una pantalla de
+  // Ranking y existe el DOTS: la app te compara a propósito, y en ningún otro
+  // lado dice que la comparación sirve para ubicarse y no para medirse.
+  'Nadie más recorre tu trayectoria.',
+  // el esfuerzo invisible: adentro pasa lo que cuesta, afuera se ve el resultado
+  'Nadie ve la fusión, solo la luz.',
+];
 
-// Cambia de día en día, no en cada carga: que no baile mientras la mirás,
-// pero que no sea siempre la misma.
-export function citaDelDia(rango: number, semilla: string): Cita {
-  const lista = CITAS[rango] ?? CITAS[1];
+/**
+ * La frase de hoy.
+ *
+ * Cambia de día en día y no en cada carga: que no baile mientras la mirás,
+ * pero que no sea siempre la misma. La semilla lleva la fecha y el usuario, así
+ * que dos personas no ven la misma frase el mismo día.
+ *
+ * YA NO RECIBE EL RANGO. Con una sola bolsa no hace falta, y pasarlo igual
+ * dejaría un parámetro que no se usa esperando a que alguien lo crea vivo.
+ */
+export function fraseDelDia(semilla: string): Frase {
   let h = 0;
   for (let i = 0; i < semilla.length; i++) h = (h * 31 + semilla.charCodeAt(i)) | 0;
-  return lista[Math.abs(h) % lista.length];
+  return FRASES[Math.abs(h) % FRASES.length];
 }
+
+/** Para los tests: la lista entera. */
+export const TODAS_LAS_FRASES = FRASES;

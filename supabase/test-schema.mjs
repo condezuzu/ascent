@@ -8021,6 +8021,62 @@ console.log('\n119. Toda sonda que levanta un servidor lo limpia antes y despues
   chequear('y el ultimo que usa una sonda tambien', dentro119(3081), true);
 }
 
+console.log('\n120. Las frases de Inicio: propias, cortas y sin arengar');
+{
+  const F = await import('../nucleo/frases.ts');
+  const lista = F.TODAS_LAS_FRASES;
+
+  chequear('son doce', lista.length, 12);
+  chequear('y ninguna repetida', new Set(lista).size, 12);
+
+  // EL TOPE DE 45. No es estetica: la frase vive en una tira angosta al pie de
+  // Inicio, con `max-width: 30ch` y borde izquierdo. Una mas larga se parte en
+  // tres renglones y deja de leerse como una frase.
+  //
+  // Se cuenta con el spread y no con `.length`: en JavaScript `.length` cuenta
+  // unidades UTF-16, y una frase llena de tildes no las tiene mal contadas pero
+  // un emoji o una letra compuesta si. El spread cuenta caracteres.
+  const largas = lista.filter((f) => [...f].length >= 45);
+  chequear('todas por debajo de 45 caracteres', largas, []);
+
+  // NINGUNA LLEVA AUTOR. Es la razon por la que se rehicieron: las citas de
+  // deportistas famosos son el cliche de cualquier app de gimnasio. Si alguien
+  // agrega una atribuida, esto la caza.
+  const codigoFrases = (await import('node:fs')).readFileSync(
+    (await import('node:path')).join(
+      (await import('node:path')).dirname(
+        (await import('node:url')).fileURLToPath(import.meta.url)
+      ),
+      '..', 'nucleo', 'frases.ts'
+    ), 'utf8'
+  );
+  const soloCodigo120 = sinComentarios(codigoFrases);
+  chequear('no quedo ninguna clave `autor`', /\bautor\s*:/.test(soloCodigo120), false);
+  const atribuidas = lista.filter((f) => /\s[—–-]\s*[A-ZÁÉÍÓÚÑ]/.test(f));
+  chequear('ninguna trae un nombre pegado con guion', atribuidas, []);
+
+  // EL REGISTRO: afirman, no arengan. Sin imperativos y sin gritos. Esto es lo
+  // que separa estas frases de la motivacion de gimnasio, y es justo lo que se
+  // va a erosionar primero cuando alguien agregue una con apuro.
+  const gritan = lista.filter((f) => /[!¡]/.test(f));
+  chequear('ninguna con signo de exclamacion', gritan, []);
+  const IMPERATIVO = /\b(no aflojes|aguanta|vamos|dale|empieza|entrena|levanta|supera|lucha|conquista|cree)\b/i;
+  chequear('ninguna te da una orden', lista.filter((f) => IMPERATIVO.test(f)), []);
+
+  // EL SORTEO. La misma semilla tiene que dar siempre lo mismo —si no, la frase
+  // baila mientras la persona la esta leyendo— y semillas distintas tienen que
+  // repartirse sobre las doce y no caer siempre en la misma.
+  chequear('la misma semilla da la misma frase', F.fraseDelDia('2026-09-17-abc'), F.fraseDelDia('2026-09-17-abc'));
+  chequear('y siempre sale una de la lista', lista.includes(F.fraseDelDia('x')), true);
+  const salieron = new Set();
+  for (let d = 1; d <= 400; d++) salieron.add(F.fraseDelDia(`2026-01-${d}-usuario`));
+  chequear('en 400 dias salen las doce', salieron.size, 12);
+
+  // YA NO RECIBE EL RANGO: una sola bolsa para los ocho. Si vuelve a repartirse
+  // por rango, el que recien empieza ve una o dos frases y siempre las mismas.
+  chequear('fraseDelDia toma un solo argumento', F.fraseDelDia.length, 1);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

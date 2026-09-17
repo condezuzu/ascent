@@ -77,12 +77,20 @@ cuatro verbos para cosas parecidas y ninguno significaba algo estable.
 - **Los nombres de los rangos y los planetas.** Polvo, Asteroide, Luna, Marte…
   Son vocabulario propio, no texto de interfaz, y viven en `rangos.ts` y
   `reglas.ts`.
-- **El sentido y el autor de las citas.** Lo que dijo y quién lo dijo no se
-  toca. **La traducción sí**: está hecha por nosotros y es texto de la app como
-  cualquier otro, así que sigue estas reglas. Estaban en rioplatense —"empezá",
-  "usá", "tenés"— y eran lo último que quedaba en voseo en toda la app; el
-  argumento de que "son de sus autores" protegía una decisión nuestra, no la
-  de ellos. Viven en `frases.ts`.
+- **~~El sentido y el autor de las citas.~~** **Ya no hay citas.** El
+  2026-09-17 las veinte citas atribuidas —Ali, Jordan, Bruce Lee,
+  Schwarzenegger— se fueron enteras y las reemplazaron doce frases propias sin
+  autor, en `frases.ts`. El motivo no fue el idioma: las citas de deportistas
+  famosos son el cliché de cualquier app de gimnasio, y Ascent va de cuerpos
+  celestes y rangos cósmicos. Como son nuestras, siguen estas reglas sin
+  excepción y sin el rodeo de "la traducción sí, el original no".
+
+  Tienen además **reglas propias**, que hace cumplir la sección 120 de
+  `test:db`: menos de 45 caracteres, sin autor, sin imperativo y sin signo de
+  exclamación. Y una que ningún test puede verificar: **cada una para en un eje
+  distinto**. La primera versión tenía cinco que decían todas "la acumulación
+  lenta funciona", y rotando doce eso se lee dos veces por semana — la app
+  parecía tener una sola idea. Antes de agregar una, mirar qué eje trae.
 - **DOTS, PR, 1RM.** Términos del ambiente, iguales en todos lados.
 
 ## Cómo se hace cumplir
