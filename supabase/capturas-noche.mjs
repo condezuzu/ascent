@@ -1,21 +1,20 @@
-// LOS OCHO RANGOS, UNO POR UNO, EN UNA FOTO CADA UNO.
+// CUÁNTO AIRE HAY ENTRE "DÍA NORMAL" Y "DESCANSO".
 //
-// POR QUÉ EXISTE. La paleta por rango es la mecánica central del proyecto y
-// hasta ahora no había forma de MIRARLA: `capturas` fotografía la app con una
-// sola cuenta, o sea con un solo rango. Todo lo demás —"el polvo se ve gris",
-// "en Marte veo menos estrellas que en polvo", "hay un círculo achatado"— se
-// contestaba leyendo código y adivinando, que es justamente lo que no hay que
-// hacer con algo visual.
+// El humano mandó una captura de su Inicio en día de descanso y dijo que ese
+// planeta le gustaba mucho más. Resultó que no era otro planeta ni un estilo
+// sin texturas: es Marte con la superficie multiplicada por 0,055 —la cara
+// nocturna— y un filo de luz en el canto.
 //
-// La galería (`/galeria`) ya dibuja cualquier rango a pedido y no necesita
-// datos: solo sesión, porque el middleware protege todo. Esto entra una vez y
-// la recorre.
+// La decisión fue llevar ese tratamiento a todos los días, pero con la
+// superficie más arriba. Y ahí aparece el riesgo: la cara nocturna HOY ES UNA
+// SEÑAL, dice "hoy descansás". Si un día normal se le parece demasiado, la
+// señal se quema.
 //
-// CADA FOTO ES EL FONDO DE ESE RANGO, con su objeto, sus estrellas y su paleta
-// aplicada a la interfaz. Comparar dos fotos contesta en dos segundos lo que
-// discutir sobre el código no contesta nunca.
+// Esto saca la misma pantalla con 0,055 (descanso) y con 0,20 / 0,30 / 0,40
+// para poder mirar los cuatro al lado y decidir con los ojos. El número final
+// no se elige por argumento.
 //
-//   node --env-file=.env.local supabase/capturas-rangos.mjs
+//   node --env-file=.env.local supabase/capturas-noche.mjs [rango]
 import { chromium } from 'playwright';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -25,8 +24,15 @@ import { createServer } from 'node:net';
 import { pasarLaEntrada } from './utiles.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SALIDA = join(RAIZ, 'capturas', 'rangos');
+const SALIDA = join(RAIZ, 'capturas', 'noche');
 mkdirSync(SALIDA, { recursive: true });
+
+// Los rangos a los que el tratamiento les aplica de verdad: los que tienen
+// CUERPO. El sol emite, el agujero negro es un disco, y el polvo y la galaxia
+// son partículas: ninguno tiene una superficie que apagar ni un filo que
+// encender. Se sacan igual para dejar por escrito que no cambian.
+const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Sistema', 'Galaxia', 'Agujero negro'];
+const CON_CUERPO = [2, 3, 4, 6];
 
 const librePara = (p) =>
   new Promise((r) => {
@@ -44,11 +50,11 @@ const librePara = (p) =>
     // con chunks que ya no existian. La pagina quedaba en blanco.
     s.listen(p, '0.0.0.0');
   });
-let PUERTO = 3061;
+let PUERTO = 3071;
 while (!(await librePara(PUERTO))) PUERTO++;
 const BASE = `http://localhost:${PUERTO}`;
 
-const entorno = { ...process.env, NEXT_DIST_DIR: '.next-rangos' };
+const entorno = { ...process.env, NEXT_DIST_DIR: '.next-noche' };
 console.log('compilando…');
 const build = spawnSync('npx', ['next', 'build'], { cwd: RAIZ, shell: true, env: entorno, encoding: 'utf8' });
 if (build.status !== 0) {
@@ -66,8 +72,6 @@ for (let i = 0; i < 90; i++) {
   await new Promise((r) => setTimeout(r, 1000));
 }
 
-const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Sistema', 'Galaxia', 'Agujero negro'];
-
 const nav = await chromium.launch();
 const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 const page = await ctx.newPage();
@@ -81,24 +85,33 @@ await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 180000
 await page.goto(BASE + '/galeria', { waitUntil: 'domcontentloaded' });
 await page.getByRole('heading', { name: 'Rango', exact: true }).waitFor({ timeout: 60000 });
 
-// LOS DOS ESTILOS, en dos carpetas con las mismas ocho fotos. El pivot a
-// minimalista se decide MIRANDO, no discutiendo: la única diferencia entre una
-// carpeta y la otra es cómo se dibuja el cuerpo.
-const ESTILOS = process.argv[2] ? [process.argv[2]] : ['realista', 'plano'];
+const NIVELES = [
+  { etiqueta: '0-de-dia-viejo', boton: 'de día (viejo)' },
+  { etiqueta: '055-descanso', boton: '0.055 (descanso)' },
+  { etiqueta: '10', boton: '0.1' },
+  { etiqueta: '15', boton: '0.15' },
+  { etiqueta: '20', boton: '0.2' },
+  { etiqueta: '30', boton: '0.3' },
+  { etiqueta: '40', boton: '0.4' },
+];
 
-console.log('\nestilo      rango                  foto');
-for (const estilo of ESTILOS) {
-  await page.getByRole('button', { name: estilo, exact: true }).first().click();
-  await page.waitForTimeout(800);
-  for (let n = 1; n <= 8; n++) {
-    await page.getByRole('button', { name: NOMBRES[n - 1], exact: false }).first().click();
-    // El motor remonta con `key`, así que hay que esperar a que dibuje.
+const rangos = process.argv[2] ? [Number(process.argv[2])] : CON_CUERPO;
+console.log('\nrango            nivel              foto');
+for (const n of rangos) {
+  await page.getByRole('button', { name: NOMBRES[n - 1], exact: false }).first().click();
+  await page.waitForTimeout(700);
+  for (const niv of NIVELES) {
+    const b = page.getByRole('button', { name: niv.boton, exact: true }).first();
+    if (!(await b.count())) {
+      console.log(`  (no encontré el botón "${niv.boton}": se saltea)`);
+      continue;
+    }
+    await b.click();
+    // El motor remonta con `key`: hay que esperar a que dibuje de nuevo.
     await page.waitForTimeout(2500);
-    const carpeta = join(SALIDA, estilo);
-    mkdirSync(carpeta, { recursive: true });
-    const archivo = join(carpeta, `${String(n)}-${NOMBRES[n - 1].toLowerCase().replace(/ /g, '-')}.png`);
+    const archivo = join(SALIDA, `r${n}-${NOMBRES[n - 1].toLowerCase().replace(/ /g, '-')}-${niv.etiqueta}.png`);
     await page.screenshot({ path: archivo });
-    console.log(`  ${estilo.padEnd(10)} ${String(n)} ${NOMBRES[n - 1].padEnd(16)} ${archivo.slice(RAIZ.length + 1)}`);
+    console.log(`  ${NOMBRES[n - 1].padEnd(15)} ${niv.etiqueta.padEnd(18)} ${archivo.slice(RAIZ.length + 1)}`);
   }
 }
 

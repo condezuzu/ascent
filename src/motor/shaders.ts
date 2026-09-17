@@ -121,6 +121,10 @@ uniform float uMares;       // mares oscuros grandes (la Luna)
 uniform float uManchas;     // zonas de hielo claro y oscuro (Plutón)
 uniform float uRayos;       // rayos claros de cráteres jóvenes (la Luna)
 uniform float uReposo;      // día de descanso: cara nocturna y giro frenado
+// CUANTO SE VE LA SUPERFICIE en la cara nocturna. 0 = de dia, con la
+// iluminacion de siempre. Ver lib/noche.ts: el numero es lo unico que
+// separa un dia normal de uno de descanso.
+uniform float uNoche;
 uniform float uAtenua;      // 1 normal; menos = fantasma de la mejor racha
 uniform float uSemilla;
 uniform float uApagado;     // 1 = fondo apagado (pérdida de racha)
@@ -617,11 +621,22 @@ void main() {
       // DÍA DE DESCANSO: se lo ve desde su lado nocturno. La cara queda en
       // sombra y solo queda un filo de luz en el canto. El cuerpo sigue
       // entero: no se apaga ni se atenúa, se lo mira de noche.
-      if (uReposo > 0.5) {
+      //
+      // OJO CON LOS BACKTICKS ACA ADENTRO: esto es un template literal de JS, y
+      // un backtick suelto en un comentario GLSL corta la cadena. Me paso dos
+      // veces seguidas escribiendo este mismo bloque.
+      //
+      // LA CARA NOCTURNA, ahora tambien de dia. El nivel lo pone uNoche:
+      // 0,055 en descanso, bastante mas arriba en un dia normal. En cero, esta
+      // rama no corre y queda la iluminacion de siempre.
+      //
+      // El filo NO se escala con el nivel: es lo que describe la forma cuando la
+      // superficie no se ve, y bajarlo junto con ella dejaria un disco plano.
+      if (uNoche > 0.0) {
         float rim = pow(1.0 - n.z, 4.0);
         vec2 dirB = normalize(n.xy + vec2(1e-5));
         float ladoLuz = max(dot(dirB, L2), 0.0);
-        vec3 nocturno = superficie * 0.055;
+        vec3 nocturno = superficie * uNoche;
         nocturno += paleta(0.92) * rim * pow(ladoLuz, 1.4) * 1.9;
         lit = nocturno;
       }
@@ -771,5 +786,120 @@ void main() {
   col *= uAtenua;
   alfa *= uAtenua;
   gl_FragColor = vec4(col, clamp(alfa, 0.0, 1.0));
+}
+`;
+
+// ===================================================================
+// EL ESTILO PLANO — forma y luz, sin textura que imite una foto.
+//
+// POR QUÉ EXISTE. El estilo realista tiene un techo bajo: 775 líneas de shader
+// y 68 usos de ruido fractal para fabricar cráteres, bandas y tormentas que
+// igual no engañan a nadie. Un realismo a medias no se ve bien nunca, y
+// envejece mal. Lo que sí envejece bien es una forma limpia con buena luz.
+//
+// El disparador fue una observación del humano: de los diez planetas del rango
+// 4, el que más le gustó fue Venus — el ÚNICO sin rasgos, una esfera cálida con
+// atmósfera. El objeto con menos detalle falso era el que mejor pegaba con el
+// resto de la app.
+//
+// QUÉ HACE, y es todo lo que hace:
+//   1. Una esfera, resuelta en el fragmento (no hay geometría: es un plano).
+//   2. UNA luz, con su terminador suave. La luz da la forma; sin ella esto es
+//      un círculo de color.
+//   3. Un borde encendido del lado oscuro, que es lo que separa el objeto del
+//      fondo negro sin dibujarle un contorno.
+//   4. Un degradado de dos colores de la paleta, para que no sea plano plano.
+//
+// LO QUE NO HACE, a propósito: ruido, cráteres, bandas, continentes, manchas.
+// Nada de eso.
+//
+// EL COSTO. El realista evalúa ruido fractal por píxel, que son varias octavas
+// de hash e interpolación cada una. Esto son dos productos escalares y un par
+// de `smoothstep`. No hace falta medirlo para saber cuál es más barato, pero
+// igual se mide.
+export const FRAGMENT_PLANO = /* glsl */ `
+precision mediump float;
+varying vec2 vP;
+
+uniform vec3 uPaleta0;   // el lado en sombra
+uniform vec3 uPaleta1;   // el cuerpo
+uniform vec3 uPaleta2;   // lo iluminado
+uniform vec3 uPaleta3;   // el reflejo más claro
+uniform float uAtenua;
+uniform float uApagado;
+uniform float uModo;     // 1 = emisor (sol): se ilumina solo
+uniform float uAnillo;
+uniform float uAnilloVert;
+uniform float uPixel;
+
+void main() {
+  float r = length(vP);
+  // EL BORDE SE SUAVIZA CON EL TAMAÑO DEL PÍXEL, no con un número fijo: en una
+  // pantalla de más densidad un borde de 0.01 se ve duro, y en una de menos se
+  // ve sucio. Es la misma razón por la que \`uPixel\` ya existía.
+  float borde = max(uPixel * 1.5, 0.004);
+
+  // EL ANILLO, que es la única "cosa" que se dibuja además de la esfera. Es
+  // geometría, no textura: sobrevive al estilo plano y es lo que distingue a
+  // Saturno de cualquier otra bola de color.
+  float anillo = 0.0;
+  if (uAnillo > 0.5) {
+    // Se aplasta el eje para verlo de canto, y mucho más si es el de Urano.
+    vec2 q = vP;
+    float aplaste = uAnilloVert > 0.5 ? 0.14 : 0.30;
+    q.y /= aplaste;
+    float ra = length(q);
+    anillo = smoothstep(1.62, 1.58, ra) * smoothstep(1.16, 1.20, ra);
+    // El tramo que pasa por delante del cuerpo no se dibuja desde atrás.
+    if (r < 0.98 && vP.y > 0.0) anillo *= 0.10;
+  }
+
+  if (r > 1.0 + borde && anillo <= 0.001) discard;
+
+  // LA ESFERA. La normal sale del propio plano: en el borde apunta hacia
+  // afuera, en el centro hacia la cámara.
+  float z = sqrt(max(0.0, 1.0 - r * r));
+  vec3 n = normalize(vec3(vP, z));
+
+  // UNA sola luz, arriba a la izquierda y un poco hacia la cámara.
+  vec3 luz = normalize(vec3(-0.55, 0.62, 0.56));
+  float d = dot(n, luz);
+
+  // EL TERMINADOR. \`smoothstep\` y no un corte: el borde entre luz y sombra es
+  // lo que hace que esto se lea como un volumen y no como dos medias lunas.
+  float ilum = smoothstep(-0.28, 0.72, d);
+
+  vec3 color = mix(uPaleta0, uPaleta1, smoothstep(0.0, 0.45, ilum));
+  color = mix(color, uPaleta2, smoothstep(0.42, 0.92, ilum));
+  // Un brillo suave donde la luz pega más de frente. No es un especular duro:
+  // estos cuerpos no son bolas de billar.
+  color = mix(color, uPaleta3, smoothstep(0.88, 1.0, ilum) * 0.55);
+
+  // EL BORDE ENCENDIDO DEL LADO OSCURO. Es lo que despega al objeto del fondo
+  // negro sin ponerle un contorno, y es la mitad de por qué esto se ve bien.
+  float rim = smoothstep(0.72, 1.0, r) * (1.0 - smoothstep(0.35, 0.95, ilum));
+  color += uPaleta2 * rim * 0.42;
+
+  // EL SOL SE ILUMINA SOLO: no tiene lado en sombra porque la luz es él.
+  if (uModo > 0.5 && uModo < 1.5) {
+    float caida = smoothstep(1.0, 0.15, r);
+    color = mix(uPaleta1, uPaleta3, caida * caida);
+    ilum = 1.0;
+  }
+
+  float alfa = 1.0 - smoothstep(1.0 - borde, 1.0 + borde, r);
+  if (anillo > 0.001) {
+    color = mix(color, uPaleta2 * 0.92, anillo * (1.0 - alfa * 0.85));
+    alfa = max(alfa, anillo * 0.85);
+  }
+
+  // Apagado: el día que se perdió la racha. Se desatura, no se oscurece: un
+  // objeto oscuro parece apagado por la noche; uno gris parece perdido.
+  if (uApagado > 0.5) {
+    float gris = dot(color, vec3(0.299, 0.587, 0.114));
+    color = mix(color, vec3(gris), 0.72);
+  }
+
+  gl_FragColor = vec4(color * uAtenua, alfa);
 }
 `;

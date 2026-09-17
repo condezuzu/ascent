@@ -70,28 +70,89 @@ export function retrocesosEnTemplate(codigo) {
  * Hace lo mismo que haría una persona apurada: siguiente, siguiente, tocar la
  * animación para saltarla, y "Ya tengo cuenta".
  */
+/**
+ * Pasa la pantalla de entrada y DEJA EL LOGIN A LA VISTA, o falla diciendo qué
+ * vio.
+ *
+ * POR QUÉ SE REESCRIBIÓ. La versión anterior hacía lo suyo con un
+ * `.catch(() => {})` en cada paso y devolvía `true` sin comprobar nada. Cuando
+ * un toque no entraba —la entrada tarda en hidratar, y el motor del cuarto
+ * paso más— la sonda seguía como si hubiera pasado, y treinta segundos después
+ * moría en `locator('input[type=email]').fill()` con un mensaje que no dice
+ * nada del problema real.
+ *
+ * Me costó varias corridas perdidas en un solo día, cada una con su build de
+ * cinco minutos. Tragarse los errores no los hace desaparecer: los muda a un
+ * lugar donde cuestan más caro.
+ *
+ * AHORA: intenta, COMPRUEBA que el campo de correo esté, y si no reintenta la
+ * secuencia entera. Si después de tres vueltas no está, tira con la URL y lo
+ * que se ve en pantalla, que es lo que hace falta para entender por qué.
+ */
 export async function pasarLaEntrada(page, espera = 20000) {
-  // SE ESPERA A QUE LA PANTALLA SE DECIDA. Si la entrada está o no se sabe
-  // leyendo el almacenamiento, que es asíncrono: preguntar en el primer
-  // instante siempre decía "no está" y la sonda se quedaba mirándola.
-  await page
-    .waitForFunction(
-      () => !!document.querySelector('.bienv') || !!document.querySelector('input[type=email]'),
-      null,
-      { timeout: espera }
-    )
-    .catch(() => {});
-  const entrada = page.locator('.bienv');
-  if (!(await entrada.count())) return false;
-  for (let i = 0; i < 3; i++) {
-    const siguiente = page.getByRole('button', { name: 'Siguiente' });
-    if (!(await siguiente.count())) break;
-    await siguiente.click();
-    await page.waitForTimeout(600);
+  const hayLogin = () => page.locator('input[type=email]').count().then((n) => n > 0);
+
+  // LOS ERRORES DE LA PÁGINA, para el mensaje de la falla. Una pantalla en
+  // blanco tiene dos causas que desde afuera se ven idénticas: todavía está
+  // cargando, o el JS reventó. Sin esto hay que adivinar cuál de las dos, y
+  // adivinar sale caro: cada corrida de estas lleva un build de cinco minutos.
+  const errores = [];
+  page.on('pageerror', (e) => errores.push(String(e).slice(0, 200)));
+  page.on('console', (m) => {
+    if (m.type() === 'error') errores.push(m.text().slice(0, 200));
+  });
+  // Y CON LA URL. "Failed to load resource: 400" sin decir de QUÉ recurso es un
+  // mensaje que obliga a otra corrida entera para averiguar lo que ya se sabía
+  // a medias. El que falla se nombra.
+  page.on('response', (r) => {
+    if (r.status() >= 400) errores.push(`${r.status()} ${r.url().slice(0, 150)}`);
+  });
+
+  for (let intento = 1; intento <= 3; intento++) {
+    // SE ESPERA A QUE LA PANTALLA SE DECIDA. Si la entrada está o no se sabe
+    // leyendo el almacenamiento, que es asíncrono: preguntar en el primer
+    // instante siempre decía "no está" y la sonda se quedaba mirándola.
+    await page
+      .waitForFunction(
+        () => !!document.querySelector('.bienv') || !!document.querySelector('input[type=email]'),
+        null,
+        { timeout: espera }
+      )
+      .catch(() => {});
+
+    if (await hayLogin()) return intento > 1;
+
+    const entrada = page.locator('.bienv');
+    if (await entrada.count()) {
+      for (let i = 0; i < 3; i++) {
+        const siguiente = page.getByRole('button', { name: 'Siguiente' });
+        if (!(await siguiente.count())) break;
+        await siguiente.click({ timeout: 10000 }).catch(() => {});
+        await page.waitForTimeout(700);
+      }
+      // En la cuarta se salta tocando: el botón de saltar no existe ahí.
+      await page.locator('.bienv-tocar').click({ timeout: 20000 }).catch(() => {});
+      await page.getByRole('button', { name: 'Ya tengo cuenta' }).click({ timeout: 20000 }).catch(() => {});
+      await entrada.waitFor({ state: 'detached', timeout: 20000 }).catch(() => {});
+    }
+
+    // LA COMPROBACIÓN, que es lo que faltaba: no alcanza con haber tocado.
+    await page.locator('input[type=email]').waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+    if (await hayLogin()) return true;
+
+    // Recargar es lo único que arregla una hidratación que no llegó.
+    if (intento < 3) await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
   }
-  // En la cuarta se salta tocando: el botón de saltar no existe ahí.
-  await page.locator('.bienv-tocar').click({ timeout: 30000 }).catch(() => {});
-  await page.getByRole('button', { name: 'Ya tengo cuenta' }).click({ timeout: 30000 }).catch(() => {});
-  await entrada.waitFor({ state: 'detached', timeout: 30000 }).catch(() => {});
-  return true;
+
+  const texto = await page
+    .locator('body')
+    .innerText()
+    .then((t) => t.replace(/\s+/g, ' ').trim().slice(0, 220))
+    .catch(() => '(no se pudo leer)');
+  throw new Error(
+    `no pude llegar al login despues de 3 intentos.\n` +
+      `  url: ${page.url()}\n` +
+      `  se ve: ${texto || '(la pagina esta EN BLANCO)'}\n` +
+      `  errores: ${errores.length ? '\n    - ' + [...new Set(errores)].slice(0, 5).join('\n    - ') : '(ninguno)'}`
+  );
 }

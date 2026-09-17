@@ -10,6 +10,7 @@ import SubidaRango from '@/components/SubidaRango';
 import Insignia from '@/components/Insignia';
 import { PLANETAS, RANGOS } from '@nucleo/rangos';
 import { veloDeRango } from '@nucleo/atmosfera';
+import { NIVELES_A_PROBAR, NOCHE_DESCANSO } from '@/lib/noche';
 import { eventos } from '@compartido/eventos';
 import { PULSO } from '@/lib/pulso';
 
@@ -23,14 +24,25 @@ export default function Galeria() {
   // forma de verlas sin esperar semanas.
   const [presagio, setPresagio] = useState(false);
   const [conVelo, setConVelo] = useState(false);
+  // EL PIVOT A ESTUDIO: realista contra plano, en la misma pantalla y con un
+  // toque, que es la unica forma de comparar dos estilos sin que la memoria
+  // haga trampa. No reemplaza nada todavia.
+  const [estilo, setEstilo] = useState<'realista' | 'plano'>('realista');
+  // CUANTO SE VE LA SUPERFICIE. `undefined` = lo que decide la app sola.
+  // Los numeros estan para poder mirar 0,055 (descanso) al lado de 0,20 /
+  // 0,30 / 0,40 y ver cuanto aire queda entre un dia normal y uno de
+  // descanso: si a 0,20 ya se parecen, la senal del descanso se pierde.
+  const [noche, setNoche] = useState<number | undefined>(undefined);
 
   return (
     <>
       <FondoEspacial
-        key={`${rango}-${planeta}-${presagio}-${conVelo}`}
+        key={`${rango}-${planeta}-${presagio}-${conVelo}-${estilo}-${noche}`}
         rango={rango}
         planeta={planeta}
         presagio={presagio}
+        estilo={estilo}
+        noche={noche}
         esquina="abajo-derecha"
         // Se pasa el número a mano en vez de `atmosfera`: la atmósfera además
         // RECUERDA el último rango visto para animar la transición, y mirar
@@ -40,6 +52,54 @@ export default function Galeria() {
       />
       <div className="pantalla">
         <div className="titulo-pantalla">Galería del motor</div>
+
+        <div className="seccion">
+          <h3>Superficie (cara nocturna)</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {[undefined, 0, ...NIVELES_A_PROBAR].map((v, i) => (
+              <button
+                key={i}
+                className="boton-fantasma"
+                style={{
+                  width: 'auto',
+                  padding: '8px 12px',
+                  borderColor: noche === v ? 'rgba(160,180,220,.5)' : undefined,
+                  color: noche === v ? 'var(--tinta)' : undefined,
+                }}
+                onClick={() => setNoche(v)}
+              >
+                {v === undefined
+                  ? 'auto'
+                  : v === 0
+                    ? 'de día (viejo)'
+                    : v === NOCHE_DESCANSO
+                      ? `${v} (descanso)`
+                      : String(v)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="seccion">
+          <h3>Estilo</h3>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {(['realista', 'plano'] as const).map((e) => (
+              <button
+                key={e}
+                className="boton-fantasma"
+                style={{
+                  width: 'auto',
+                  padding: '8px 14px',
+                  borderColor: estilo === e ? 'rgba(160,180,220,.5)' : undefined,
+                  color: estilo === e ? 'var(--tinta)' : undefined,
+                }}
+                onClick={() => setEstilo(e)}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="seccion">
           <h3>Rango</h3>

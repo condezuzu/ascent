@@ -7859,6 +7859,58 @@ console.log('\n116. Una promesa colgada tiene que rendirse');
   chequear('y dice algo distinto cuando se cuelga', aviso.includes('seColgo'), true);
 }
 
+console.log('\n117. El dia normal y el de descanso no pueden verse iguales');
+{
+  const N = await import('../src/lib/noche.ts');
+
+  // LA CONDICION DEL HUMANO, escrita como test y no como intencion.
+  //
+  // La decision fue que el planeta sea AMBIENTE y no un semaforo: la señal del
+  // descanso la llevan el texto ("Hoy descansa") y la tira semanal. Pero con
+  // una condicion: que mirando el fondo se note ALGO distinto sin tener que
+  // leer.
+  //
+  // Sin esto, cualquiera baja `NOCHE_DIA` un poco mas para que se parezca mas a
+  // la captura que gusto, y el dia que quede en 0,06 nadie se entera de que la
+  // diferencia desaparecio. Un numero que se puede bajar de a poco sin que
+  // nada avise termina en cero.
+  chequear(
+    'el dia normal se distingue del de descanso',
+    N.seDistinguen(N.NOCHE_DIA, N.NOCHE_DESCANSO),
+    true
+  );
+  chequear('y el de descanso es el mas apagado de los dos', N.NOCHE_DESCANSO < N.NOCHE_DIA, true);
+
+  // EL CRITERIO ES UNA RAZON, NO UNA RESTA, y eso no es un detalle: el ojo lee
+  // brillo de forma logaritmica. De 0,055 a 0,10 hay casi el doble y se nota;
+  // de 0,30 a 0,35 la resta es parecida y no se ve nada.
+  chequear('0,055 contra 0,10: se distinguen', N.seDistinguen(0.055, 0.1), true);
+  chequear('0,30 contra 0,35: NO se distinguen', N.seDistinguen(0.3, 0.35), false);
+  chequear('la misma resta arriba y abajo da distinto', N.seDistinguen(0.055, 0.1) !== N.seDistinguen(0.3, 0.345), true);
+  chequear('da igual el orden de los dos', N.seDistinguen(0.4, 0.055), N.seDistinguen(0.055, 0.4));
+
+  // HACIA DONDE SE FALLA: si el numero no tiene sentido, la respuesta es que NO
+  // se distinguen. Decir que si sobre datos rotos es prometer una señal que no
+  // esta.
+  chequear('con cero no se distingue nada', N.seDistinguen(0, 0.3), false);
+  chequear('un negativo tampoco', N.seDistinguen(-1, 0.3), false);
+  chequear('un NaN tampoco', N.seDistinguen(NaN, 0.3), false);
+
+  // EL NIVEL QUE LE TOCA A CADA DIA.
+  chequear('un dia normal va al nivel del dia', N.nivelDeNoche(false), N.NOCHE_DIA);
+  chequear('uno de descanso va al apagado', N.nivelDeNoche(true), N.NOCHE_DESCANSO);
+  chequear('la galeria puede forzarlo', N.nivelDeNoche(true, 0.4), 0.4);
+  chequear('y forzar cero es valido: es "de dia, como antes"', N.nivelDeNoche(false, 0), 0);
+  chequear('un valor sin sentido no fuerza nada', N.nivelDeNoche(true, NaN), N.NOCHE_DESCANSO);
+  chequear('un negativo tampoco fuerza', N.nivelDeNoche(false, -2), N.NOCHE_DIA);
+
+  // Y QUE LOS NIVELES DE LA GALERIA INCLUYAN EL TRAMO QUE IMPORTA. El barrido
+  // arranco en 0,20 y las fotos mostraron que a 0,20 la textura ya se lee: lo
+  // interesante esta entre 0,055 y 0,20.
+  chequear('la galeria ofrece el tramo de abajo', N.NIVELES_A_PROBAR.some((v) => v > 0.055 && v < 0.2), true);
+  chequear('y arranca por el del descanso', N.NIVELES_A_PROBAR[0], N.NOCHE_DESCANSO);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

@@ -33,7 +33,16 @@ const librePara = (p) =>
     const s = createServer();
     s.once('error', () => r(false));
     s.once('listening', () => s.close(() => r(true)));
-    s.listen(p, '127.0.0.1');
+    // SE ESCUCHA EN 0.0.0.0, NO EN 127.0.0.1, y esa diferencia costo cinco
+    // corridas. `next start` se ata a 0.0.0.0; en Windows, atarse a
+    // 127.0.0.1 cuando otro proceso ya tiene 0.0.0.0 PUEDE funcionar, asi
+    // que este chequeo decia "libre" sobre un puerto ocupado.
+    //
+    // Lo que pasaba despues: `next start` no podia atarse y moria en
+    // silencio (stdio ignorado), y la sonda terminaba hablando con un
+    // servidor HUERFANO de una corrida anterior, que servia un build viejo
+    // con chunks que ya no existian. La pagina quedaba en blanco.
+    s.listen(p, '0.0.0.0');
   });
 let PUERTO = 3031;
 while (!(await librePara(PUERTO))) PUERTO++;

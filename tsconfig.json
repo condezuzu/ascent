@@ -57,10 +57,11 @@
     ".next-pantallas/types/**/*.ts",
     ".next-primera/types/**/*.ts",
     ".next-quietud/types/**/*.ts",
+    ".next-rangos/types/**/*.ts",
     ".next-scroll/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-rangos/types/**/*.ts"
+    ".next-noche/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

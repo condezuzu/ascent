@@ -7,6 +7,7 @@ import {
   VERTEX_PUNTOS,
   FRAGMENT_PUNTOS,
   FRAGMENT_PRESAGIO,
+  FRAGMENT_PLANO,
 } from './shaders';
 import { RANGOS_CFG, PLANETAS_CFG, ESTRELLAS_POR_RANGO, type ConfigCuerpo } from './cuerpos';
 import { paletaDe } from '@/lib/paletas';
@@ -14,6 +15,10 @@ import { marca, medir } from '@/lib/medir';
 import { ALTURA, alturaDelPulso, siguePulsando } from '@/lib/pulso';
 import { debeDibujar } from '@/lib/quietud';
 import { plataforma } from '@/plataforma';
+import { nivelDeNoche } from '@/lib/noche';
+
+/** Como se dibujan los cuerpos. Ver `FRAGMENT_PLANO` en `shaders.ts`. */
+export type Estilo = 'realista' | 'plano';
 
 export type OpcionesFondo = {
   rango: number;
@@ -30,6 +35,9 @@ export type OpcionesFondo = {
   // posición del cuerpo: se recorta por una esquina, nunca centrado
   esquina?: 'abajo-derecha' | 'arriba-derecha' | 'centro';
   animar?: boolean; // false => un solo frame estático (reduced motion / equipos lentos)
+  estilo?: Estilo;
+  /** Fuerza el nivel de la cara nocturna. Solo la galeria lo usa. */
+  noche?: number;
 };
 
 // El quad SIEMPRE mide 2x2 para que vP vaya de -1 a 1 y el shader dibuje el
@@ -105,11 +113,17 @@ export function crearMaterialCuerpo(
   apagado: boolean,
   pixel: number,
   reposo = false,
-  atenua = 1
+  atenua = 1,
+  // EL ESTILO PLANO comparte TODOS los uniforms con el realista y solo cambia
+  // el fragmento. Asi se pueden mirar uno al lado del otro sin duplicar el
+  // armado de la escena, y el camino de siempre no se toca: si nunca se pide
+  // 'plano', esto es exactamente el codigo de antes.
+  estilo: Estilo = 'realista',
+  noche = 0
 ) {
   return new THREE.ShaderMaterial({
     vertexShader: VERTEX,
-    fragmentShader: FRAGMENT,
+    fragmentShader: estilo === 'plano' ? FRAGMENT_PLANO : FRAGMENT,
     transparent: true,
     depthWrite: false,
     uniforms: {
@@ -134,6 +148,7 @@ export function crearMaterialCuerpo(
       uManchas: { value: cfg.manchas },
       uRayos: { value: cfg.rayos },
       uReposo: { value: reposo ? 1 : 0 },
+      uNoche: { value: noche },
       uAtenua: { value: atenua },
       uSemilla: { value: 0.37 },
       uApagado: { value: apagado ? 1 : 0 },
@@ -510,14 +525,15 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
     // alrededor. El presupuesto de relleno también baja, que no estorba.
     const escala = op.rango >= 5 ? 1.0 : 0.88;
     const pixel = 2 / (escala * Math.min(canvas.clientWidth || 400, canvas.clientHeight || 700));
-    const mat = crearMaterialCuerpo(cfg, !!op.apagado, pixel, !!op.reposo);
+    const noche = nivelDeNoche(!!op.reposo, op.noche);
+    const mat = crearMaterialCuerpo(cfg, !!op.apagado, pixel, !!op.reposo, 1, op.estilo, noche);
     materiales.push(mat);
     const cuerpo = new THREE.Mesh(QUAD, mat);
     cuerpo.scale.setScalar(escala);
     grupo.add(cuerpo);
 
     for (let i = 0; i < cfg.lunas; i++) {
-      const lmat = crearMaterialCuerpo(LUNA_CFG, !!op.apagado, 0.02, !!op.reposo);
+      const lmat = crearMaterialCuerpo(LUNA_CFG, !!op.apagado, 0.02, !!op.reposo, 1, op.estilo, noche);
       materiales.push(lmat);
       const luna = new THREE.Mesh(QUAD, lmat);
       luna.scale.setScalar(escala * (0.16 + i * 0.05));
