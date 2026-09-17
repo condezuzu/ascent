@@ -8184,6 +8184,39 @@ console.log('\n121. "Tuyos": los ejercicios que cada persona repite');
   chequear('un bloque sin ejercicio no entra', filas2.some((f) => f.ejercicio === null), false);
   chequear('uno que ya no esta en el catalogo tampoco', filas2.some((f) => f.ejercicio === 'no_existe'), false);
 
+  // --- LA CUENTA NUEVA: QUE NO HAYA NI HUECO NI TITULO SOLO ---
+  //
+  // Es el estado que mas gente ve --el primer dia de cualquiera-- y el que
+  // menos se prueba, porque el que programa siempre tiene datos. Un rotulo
+  // "TUYOS" arriba de nada es peor que no tener atajo: promete una lista que
+  // no existe.
+  //
+  // La primera mitad ya la cubre `tuyos([], cat)` mas arriba: sin historial la
+  // lista es vacia. Lo que falta es que la PANTALLA no dibuje el rotulo igual,
+  // y eso no lo dice la funcion: lo dice el JSX. Se lee el archivo porque nada
+  // en este repo monta una pantalla; es una heuristica de texto y se sabe, pero
+  // atrapa el caso que importa --que alguien saque el guardia-- y cuesta nada.
+  {
+    const { readFileSync: leerV } = await import('node:fs');
+    const { join: unirV, dirname: dirV } = await import('node:path');
+    const { fileURLToPath: aRutaV } = await import('node:url');
+    const RAIZ_V = unirV(dirV(aRutaV(import.meta.url)), '..');
+
+    const pantallas = [
+      ['web', unirV(RAIZ_V, 'src', 'components', 'SelectorEjercicio.tsx')],
+      ['nativa', unirV(RAIZ_V, 'movil', 'src', 'SelectorEjercicio.tsx')],
+    ];
+    for (const [cual, ruta] of pantallas) {
+      const codigo = sinComentarios(leerV(ruta, 'utf8'));
+      const rotulo = codigo.indexOf('T.sesion.tuyos');
+      chequear(`${cual}: dibuja el rotulo de Tuyos`, rotulo > 0, true);
+      // El guardia tiene que estar ANTES del rotulo y cerca: si esta despues,
+      // o no esta, el rotulo se dibuja con la lista vacia.
+      const antes = codigo.slice(Math.max(0, rotulo - 300), rotulo);
+      chequear(`${cual}: y solo si hay alguno`, /mios\.length\s*>\s*0/.test(antes), true);
+    }
+  }
+
   // SIN SESION INICIADA no devuelve nada, como el resto de las funciones.
   await db.query(`select set_config('test.uid', '', false)`);
   chequear('sin sesion devuelve null', (await db.query('select mis_ejercicios_usados() as v')).rows[0].v, null);

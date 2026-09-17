@@ -155,7 +155,18 @@ for (const m of lista) {
     fallos.push(m.nombre);
   }
 }
-console.log(`schema original + ${lista.length} migraciones`);
+// SE DICEN LOS DOS NUMEROS, y no solo el conteo. "41 migraciones" se lee como
+// "hasta la 41" y obliga a ir a contar archivos para descartar que falten dos.
+// Son cosas distintas: el conteo es cuantos archivos se replayaron, la version
+// es hasta donde llega el esquema. Hoy 41 y 44, porque no existe la 11 --el
+// simulador de rachas, nunca aplicado, que borro la 12-- y porque la 06 y la
+// 07 solo tocan storage, que PGlite no tiene: esas las cubre `test:conexion`.
+const saltadas = readdirSync(DIR).filter((f) => /^migracion-0[67]/.test(f)).length;
+const ultima = Math.max(...lista.map((m) => Number(m.nombre.match(/^migracion-(\d+)/)[1])));
+console.log(
+  `schema original + ${lista.length} migraciones replayadas, hasta la ${ultima}` +
+    (saltadas ? ` (${saltadas} de storage no corren aca: las mira test:conexion)` : '')
+);
 
 const a = await retrato(baseNueva);
 const b = await retrato(comoProduccion);
