@@ -7812,6 +7812,53 @@ console.log('\n115. El mapa de calor: cero es cero, y poco se ve');
   chequear('la mitad del tope pasa la mitad de la escala', I(100, 200) > 0.5, true);
 }
 
+console.log('\n116. Una promesa colgada tiene que rendirse');
+{
+  const L = await import('../nucleo/limite.ts');
+  // El reloj entra por parametro: sin eso, probar un limite de quince segundos
+  // tardaria quince segundos.
+  const yaMismo = () => Promise.resolve();
+  const nunca = () => new Promise(() => {});
+
+  // LO QUE PASA CUANDO TODO ANDA.
+  const bien = await L.conLimite(Promise.resolve('dato'), 50);
+  chequear('si la promesa contesta, se devuelve su valor', bien, { listo: true, valor: 'dato' });
+
+  // Y LO QUE PASA CON LA QUE NUNCA VUELVE. Este es el caso de verdad: el
+  // `serviceWorker.ready` que no resolvia porque el service worker no instalaba.
+  // No fallaba, no tiraba error: no volvia. Un try/catch no lo agarra.
+  const colgada = await L.conLimite(nunca(), 0, yaMismo);
+  chequear('si no contesta, se da por vencida', colgada, { listo: false });
+
+  // UN RECHAZO SIGUE SIENDO UN RECHAZO. El limite es para el silencio, no para
+  // tapar errores: quien llama tiene que poder distinguirlos.
+  let rechazo = null;
+  await L.conLimite(Promise.reject(new Error('rota')), 50).catch((e) => (rechazo = e.message));
+  chequear('un error sigue llegando como error', rechazo, 'rota');
+
+  // GANA LA RESPUESTA DE VERDAD cuando ya esta lista, aunque el reloj tambien
+  // venza en el mismo instante. Es lo que corresponde: el limite existe para el
+  // silencio, no para descartar una respuesta que llego.
+  const carrera = await L.conLimite(Promise.resolve('a tiempo'), 0, yaMismo);
+  chequear('una respuesta ya lista le gana al reloj', carrera, { listo: true, valor: 'a tiempo' });
+
+  // EL LIMITE ES UN NUMERO CON SENTIDO: quince segundos es mucho para una
+  // suscripcion y poco para que alguien crea que la app se colgo.
+  chequear('el limite esta en un rango razonable', L.LIMITE_SUSCRIPCION_MS >= 5000 && L.LIMITE_SUSCRIPCION_MS <= 30000, true);
+
+  // Y QUE LA PANTALLA LO USE. Si alguien saca el reloj, el control vuelve a
+  // poder quedarse girando en silencio y nadie se entera hasta dentro de meses.
+  const { readFileSync: leer } = await import('node:fs');
+  const { join: unir, dirname: dir } = await import('node:path');
+  const { fileURLToPath: aRuta } = await import('node:url');
+  const aviso = leer(
+    unir(dir(aRuta(import.meta.url)), '..', 'src', 'components', 'ajustes', 'AvisoDiario.tsx'),
+    'utf8'
+  );
+  chequear('el aviso diario activa con limite', /conLimite\(\s*plataforma\.avisos\.remotos\.activar/.test(aviso), true);
+  chequear('y dice algo distinto cuando se cuelga', aviso.includes('seColgo'), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

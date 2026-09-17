@@ -274,3 +274,26 @@ deja afuera; los que sí, se arreglaron ese día.
 - Queda un archivo de 1×1 en el bucket `fotos`, de una corrida vieja de
   `simular-semana`; borrarlo necesita service_role.
 
+
+## El cron del aviso diario y las zonas horarias (17/9/2026)
+
+`vercel.json` dispara `/api/avisos/diario` a las **23:30 UTC**, una vez por día
+y a una hora fija.
+
+**Para Uruguay no hay problema, y me equivoqué al decir que sí.** Avisé de que
+el horario "se iba a correr con el cambio de horario de verano" y eso es falso
+por partida doble: UTC no se mueve, y **Uruguay no tiene horario de verano
+desde 2015** (es UTC−3 todo el año). 23:30 UTC son las 20:30 en Montevideo
+siempre. No hay ninguna fecha que anotar, y anotar una inventada habría sido
+peor que no anotar nada.
+
+**Lo que SÍ es cierto, y es otra cosa:** el cron dispara en UN instante de UTC
+para todo el mundo, pero la app soporta zona horaria por persona
+(`profiles.zona`, `hoy_de`). Para alguien fuera de UTC−3 el aviso llega a
+cualquier hora local, y si su país tiene horario de verano, esa hora se corre
+dos veces al año sin que nadie toque nada.
+
+Hoy no muerde porque todas las cuentas están en Uruguay. Muerde el día que haya
+una que no. El arreglo, cuando llegue: disparar el cron cada hora y que la base
+elija a quién le toca según su zona, en vez de mandarle a todos a la misma hora
+de UTC.

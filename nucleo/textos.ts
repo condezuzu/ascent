@@ -197,6 +197,11 @@ export const T = {
       'Las notificaciones están bloqueadas. Se habilitan en los ajustes del teléfono.',
     noDisponible: 'Este navegador no puede recibir avisos con la app cerrada.',
     noSePudo: 'No se pudo prender el aviso. Prueba de nuevo en un rato.',
+    // CUANDO EL NAVEGADOR NO CONTESTA. No es lo mismo que "no se pudo": el
+    // pedido quedó colgado sin fallar. Eso estuvo pasando meses —el service
+    // worker no instalaba, así que la promesa no resolvía nunca— y el control
+    // se quedaba girando sin decir nada. Un silencio no es un estado.
+    seColgo: 'El navegador no respondió. Cierra la app, vuelve a abrirla y prueba otra vez.',
   },
 
   // Las zonas del selector de ejercicios. Van en minúscula porque son

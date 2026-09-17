@@ -7,6 +7,7 @@ import type { EstadoAvisoRemoto } from '@nucleo/plataforma';
 import { T } from '@nucleo/textos';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
+import { conLimite, LIMITE_SUSCRIPCION_MS } from '@nucleo/limite';
 
 /**
  * EL AVISO DE LAS 20:30: prenderlo y apagarlo en ESTE teléfono.
@@ -37,10 +38,30 @@ export default function AvisoDiario() {
     plataforma.avisos.remotos.estado().then(setEstado).catch(() => setEstado('no-disponible'));
   }, []);
 
+  /**
+   * La parte que depende del navegador, aparte: pedir permiso y suscribirse.
+   *
+   * CON RELOJ: `activar()` espera adentro al service worker, y eso puede no
+   * volver NUNCA sin fallar — no entra al `catch` ni dispara el `finally`. El
+   * porqué está en `nucleo/limite.ts`.
+   *
+   * Vive en su propia función para que `prender()` quede corta: con esto
+   * adentro, la pregunta de `disponible(...)` quedaba a más de veinte líneas
+   * de la escritura que protege, y el test de la sección 81 lo canta. Esa
+   * distancia no es un capricho: una guarda que no se ve al lado de lo que
+   * guarda es una guarda que alguien va a mover sin darse cuenta.
+   */
+  async function suscribir(clave: string) {
+    const r = await conLimite(plataforma.avisos.remotos.activar(clave), LIMITE_SUSCRIPCION_MS);
+    if (!r.listo) {
+      setError(T.avisoDiario.seColgo);
+      setEstado(await plataforma.avisos.remotos.estado().catch(() => 'no-disponible' as const));
+      return null;
+    }
+    return r.valor;
+  }
+
   async function prender() {
-    // También acá y no solo al dibujar: un toque que llegue antes de saber la
-    // versión no puede guardar en una tabla que quizás no existe.
-    if (!disponible('avisoDiario', version)) return;
     const clave = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     setError('');
     if (!clave) {
@@ -51,7 +72,10 @@ export default function AvisoDiario() {
     }
     setTrabajando(true);
     try {
-      const sub = await plataforma.avisos.remotos.activar(clave);
+      // También acá y no solo al dibujar: un toque que llegue antes de saber la
+      // versión no puede guardar en una tabla que quizás no existe.
+      if (!disponible('avisoDiario', version)) return;
+      const sub = await suscribir(clave);
       if (!sub) {
         // `null` casi siempre es un permiso negado: el estado nuevo lo dice
         // mejor que un mensaje de error.
