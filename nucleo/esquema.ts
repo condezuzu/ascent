@@ -29,6 +29,8 @@ export const REQUIERE = {
   revisarCargas: 39,
   /** El aviso de estancamiento a las 2 semanas: la base rechazaba el 2. */
   umbralDeDosSemanas: 40,
+  /** El atajo "Tuyos" del selector: los ejercicios que cada persona repite. */
+  tusEjercicios: 44,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

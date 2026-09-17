@@ -8077,6 +8077,119 @@ console.log('\n120. Las frases de Inicio: propias, cortas y sin arengar');
   chequear('fraseDelDia toma un solo argumento', F.fraseDelDia.length, 1);
 }
 
+console.log('\n121. "Tuyos": los ejercicios que cada persona repite');
+{
+  const { tuyos, TOPE_TUYOS } = await import('../nucleo/tuyos.ts');
+
+  // EL CATALOGO DE JUGUETE. `cuenta_dots` es lo unico que mira `tuyos`, mas el
+  // nombre para el ultimo desempate.
+  const cat = [
+    { id: 'sentadilla', nombre: 'Sentadilla', grupo: 'piernas', cuenta_dots: true },
+    { id: 'press_banca', nombre: 'Press de banca', grupo: 'pecho', cuenta_dots: true },
+    { id: 'remo', nombre: 'Remo', grupo: 'espalda', cuenta_dots: false },
+    { id: 'curl', nombre: 'Curl', grupo: 'brazos', cuenta_dots: false },
+    { id: 'zancada', nombre: 'Zancada', grupo: 'piernas', cuenta_dots: false },
+  ];
+  const u = (ejercicio, veces, ultima) => ({ ejercicio, veces, ultima });
+  const ids = (lista) => lista.map((e) => e.id);
+
+  chequear('sin historial no hay atajo', tuyos([], cat), []);
+  chequear('de mas usado a menos',
+    ids(tuyos([u('curl', 2, '2026-09-01'), u('remo', 9, '2026-09-01')], cat)),
+    ['remo', 'curl']);
+
+  // LOS DEL DOTS NO ENTRAN aunque sean los mas repetidos: ya tienen su bloque
+  // fijo arriba de todo. Si entraran, sentadilla saldria dos veces en la misma
+  // pantalla y habria que decidir cual de las dos es la buena.
+  chequear('los tres del DOTS quedan afuera',
+    ids(tuyos([u('sentadilla', 50, '2026-09-10'), u('remo', 1, '2026-09-01')], cat)),
+    ['remo']);
+
+  // EMPATE: gana el mas reciente. Con dos usados tres veces cada uno, el del
+  // martes es mas probable que el de marzo.
+  chequear('empatados, gana el mas reciente',
+    ids(tuyos([u('curl', 3, '2026-03-02'), u('remo', 3, '2026-09-02')], cat)),
+    ['remo', 'curl']);
+  // Y empatados en TODO, manda el nombre: sin este tercer desempate el orden
+  // depende de como vinieron las filas y el atajo baila entre una carga y otra.
+  chequear('empatados en todo, orden estable por nombre',
+    ids(tuyos([u('zancada', 3, '2026-09-02'), u('curl', 3, '2026-09-02')], cat)),
+    ['curl', 'zancada']);
+
+  chequear('un ejercicio que ya no esta en el catalogo no se dibuja',
+    ids(tuyos([u('fantasma', 99, '2026-09-02'), u('remo', 1, '2026-09-01')], cat)),
+    ['remo']);
+  chequear('cero veces no es usarlo', tuyos([u('remo', 0, '2026-09-01')], cat), []);
+
+  // EL TOPE. Con mas, el atajo se vuelve otra lista para leer, que es justo lo
+  // que viene a evitar.
+  const muchos = [];
+  for (let n = 0; n < 20; n++) muchos.push({ id: 'e' + n, nombre: 'E' + n, grupo: 'pecho', cuenta_dots: false });
+  chequear('no muestra mas que el tope',
+    tuyos(muchos.map((e, n) => u(e.id, 20 - n, '2026-09-01')), muchos).length,
+    TOPE_TUYOS);
+  chequear('y el tope es seis', TOPE_TUYOS, 6);
+
+  // --- LA FUNCION DE LA BASE (migracion 44) ---
+  //
+  // EL ORACULO: la misma cuenta escrita a mano sobre `sesiones.bloques`. Si la
+  // funcion dice otra cosa que recorrer los bloques, esta mal una de las dos.
+  const yo121 = await nuevoUsuario();
+  const otro121 = await nuevoUsuario();
+  await comoUsuario(yo121);
+
+  const sesion = async (uid, bloques, cuando) => {
+    const log = (await db.query(
+      `insert into logs (user_id, fecha) values ($1, mi_hoy() - ($2)::int) returning id`, [uid, cuando]
+    )).rows[0].id;
+    await db.query(
+      `insert into sesiones (user_id, log_id, inicio, fin, estado, series, bloques)
+       values ($1, $2, now() - ($3 || ' days')::interval, now(), 'terminada', 1, $4::jsonb)`,
+      [uid, log, String(cuando), JSON.stringify(bloques)]
+    );
+  };
+
+  chequear('sin sesiones, lista vacia',
+    (await db.query('select mis_ejercicios_usados() as v')).rows[0].v, []);
+
+  // Tres sesiones: remo en las tres, curl en una sola, y una con VEINTE series
+  // de zancada en un solo bloque — que sigue valiendo uno.
+  // LOS IDS SON DEL CATALOGO DE VERDAD, a proposito: la funcion descarta el
+  // bloque cuyo ejercicio ya no existe, asi que con ids inventados este test
+  // miraria una lista vacia y diria que la funcion esta rota. Paso.
+  await sesion(yo121, [{ ejercicio: 'prensa', series: 3 }, { ejercicio: 'zancadas', series: 2 }], 5);
+  await sesion(yo121, [{ ejercicio: 'prensa', series: 4 }], 3);
+  await sesion(yo121, [{ ejercicio: 'prensa', series: 1 }, { ejercicio: 'hip_thrust', series: 20 }], 1);
+  // Y lo de otra persona, que no puede aparecer nunca.
+  await sesion(otro121, [{ ejercicio: 'zancadas', series: 9 }], 2);
+
+  const filas = (await db.query('select mis_ejercicios_usados() as v')).rows[0].v;
+  chequear('cuenta bloques y ordena por frecuencia',
+    filas.map((f) => [f.ejercicio, f.veces]),
+    [['prensa', 3], ['hip_thrust', 1], ['zancadas', 1]]);
+
+  // SE CUENTAN BLOQUES Y NO SERIES: zancada tiene veinte series en un solo dia
+  // y remo doce repartidas en tres. Lo que hace que algo sea "tuyo" es que
+  // vuelva, no que un dia te hayas ensañado.
+  chequear('veinte series de un dia no ganan a tres dias',
+    filas.find((f) => f.ejercicio === 'prensa').veces > filas.find((f) => f.ejercicio === 'hip_thrust').veces,
+    true);
+  chequear('lo de otra persona no aparece', filas.some((f) => f.ejercicio === 'zancadas' && f.veces > 1), false);
+
+  // LA BASURA DE LOS BLOQUES VIEJOS. Un bloque sin ejercicio es el contador a
+  // secas —valido, pero no dice que se hizo— y uno que nombra algo que ya no
+  // esta en el catalogo no se puede dibujar.
+  await sesion(yo121, [{ series: 5 }, { ejercicio: 'no_existe', series: 5 }], 7);
+  const filas2 = (await db.query('select mis_ejercicios_usados() as v')).rows[0].v;
+  chequear('un bloque sin ejercicio no entra', filas2.some((f) => f.ejercicio === null), false);
+  chequear('uno que ya no esta en el catalogo tampoco', filas2.some((f) => f.ejercicio === 'no_existe'), false);
+
+  // SIN SESION INICIADA no devuelve nada, como el resto de las funciones.
+  await db.query(`select set_config('test.uid', '', false)`);
+  chequear('sin sesion devuelve null', (await db.query('select mis_ejercicios_usados() as v')).rows[0].v, null);
+  await comoUsuario(yo121);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

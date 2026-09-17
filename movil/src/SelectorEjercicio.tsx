@@ -2,25 +2,37 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import { ORDEN_ZONAS, gruposDeZona, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
+import { tuyos, type Usado } from '@nucleo/tuyos';
+import { disponible } from '@nucleo/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
+import { ejerciciosUsados, usadosEnCache } from '@compartido/usados';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
+import { supabase } from './supabase';
 import { C } from './colores';
 
 /**
  * ELEGIR ENTRE CIEN EJERCICIOS, NAVEGANDO. El mismo árbol que la web
  * (`nucleo/ejercicios.ts`): los tres del DOTS arriba, después zona y músculo,
  * y ahí la lista corta. Una zona con un solo músculo no pregunta dos veces.
+ *
+ * Y ARRIBA DE TODO, "TUYOS": los que esta persona repite de verdad. El orden
+ * lo decide `nucleo/tuyos.ts`, el mismo que usa la web, así que las dos apps
+ * muestran lo mismo. El árbol de abajo no se reordena nunca.
  */
 export default function SelectorEjercicio({
   visible,
   ejercicios,
   valor,
+  userId,
   alElegir,
   alCerrar,
 }: {
   visible: boolean;
   ejercicios: Ejercicio[];
   valor: string | null;
+  /** Para el atajo "Tuyos". Sin esto el selector funciona igual, sin atajo. */
+  userId?: string;
   alElegir: (id: string | null) => void;
   alCerrar: () => void;
 }) {
@@ -39,6 +51,29 @@ export default function SelectorEjercicio({
 
   const grupos = [...new Set(ejercicios.map((e) => e.grupo))];
   const delDots = ejercicios.filter((e) => e.cuenta_dots);
+
+  // Se pide al ABRIR y no al montar: la hoja vive montada e invisible toda la
+  // sesión, así que montarla no es señal de que alguien vaya a elegir nada.
+  const [usados, setUsados] = useState<Usado[]>(() => (userId ? usadosEnCache(userId) ?? [] : []));
+  // La versión se pregunta antes de llamar: ver el comentario de la web.
+  const version = useVersionDelEsquema();
+  const hayAtajo = disponible('tusEjercicios', version);
+  useEffect(() => {
+    if (!visible || !userId || !hayAtajo) return;
+    const yaEsta = usadosEnCache(userId);
+    if (yaEsta) {
+      setUsados(yaEsta);
+      return;
+    }
+    let vivo = true;
+    ejerciciosUsados(supabase, userId).then((filas) => {
+      if (vivo) setUsados(filas);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [visible, userId, hayAtajo]);
+  const mios = tuyos(usados, ejercicios);
 
   function elegir(id: string | null) {
     alElegir(id);
@@ -82,6 +117,19 @@ export default function SelectorEjercicio({
       {!zona && (
         <>
           <Fila texto={T.sesion.sinEjercicio} onPress={() => elegir(null)} />
+          {mios.length > 0 && (
+            <>
+              <Text style={estilos.rotulo}>{T.sesion.tuyos}</Text>
+              {mios.map((e) => (
+                <Fila
+                  key={`tuyo-${e.id}`}
+                  texto={e.nombre}
+                  elegido={e.id === valor}
+                  onPress={() => elegir(e.id)}
+                />
+              ))}
+            </>
+          )}
           <Text style={estilos.rotulo}>{T.marca.cuentanDots}</Text>
           {delDots.map((e) => (
             <Fila key={e.id} texto={e.nombre} elegido={e.id === valor} onPress={() => elegir(e.id)} />

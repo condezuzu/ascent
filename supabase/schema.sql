@@ -2255,6 +2255,49 @@ revoke execute on function public.pantalla_inicio() from public, anon;
 grant execute on function public.pantalla_inicio() to authenticated;
 
 -- -------------------------------------------------------------
+-- LOS EJERCICIOS QUE CADA PERSONA USA DE VERDAD (migración 44)
+-- -------------------------------------------------------------
+-- Sale de `sesiones.bloques`, que es la lista {ejercicio, series, pesos, carga}
+-- de cada sesión: no hay tabla de series por ejercicio. Alcanza, porque lo que
+-- se busca es cuáles repite y no cuántos kilos movió.
+--
+-- SE CUENTAN BLOQUES, NO SERIES: dos sesiones distintas con el mismo ejercicio
+-- pesan más que una sola sesión con veinte series de ese ejercicio. Lo que hace
+-- que algo sea "tuyo" es que vuelva.
+--
+-- ENTRAN LAS ABANDONADAS Y LAS CORTAS: una sesión que no llegó al piso de
+-- duración igual dice qué ejercicio elegiste, que es lo único que se pregunta.
+create or replace function public.mis_ejercicios_usados()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  filas jsonb;
+begin
+  if uid is null then return null; end if;
+
+  select coalesce(jsonb_agg(f order by f.veces desc, f.ultima desc), '[]'::jsonb)
+    into filas
+    from (
+      select
+        b->>'ejercicio'      as ejercicio,
+        count(*)::int        as veces,
+        max(s.inicio)        as ultima
+      from sesiones s
+      cross join lateral jsonb_array_elements(s.bloques) b
+      where s.user_id = uid
+        and b->>'ejercicio' is not null
+        and exists (select 1 from ejercicios e where e.id = b->>'ejercicio')
+      group by 1
+    ) f;
+
+  return filas;
+end;
+$$;
+
+revoke all on function public.mis_ejercicios_usados() from public;
+grant execute on function public.mis_ejercicios_usados() to authenticated;
+
+-- -------------------------------------------------------------
 -- RLS (activo en TODAS las tablas desde el principio)
 -- -------------------------------------------------------------
 alter table public.profiles enable row level security;
@@ -2641,7 +2684,7 @@ grant execute on function public.olvidar_suscripcion_push(text) to service_role;
 
 -- LA VERSIÓN DEL ESQUEMA (migración 37). Cada migración la reescribe con su número.
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 43; $$;
+returns int language sql immutable as $$ select 44; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

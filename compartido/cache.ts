@@ -1,6 +1,7 @@
 import { plataforma } from '@plataforma';
 import type { Perfil } from '@nucleo/tipos';
 import { olvidarPerfilVivo } from '@compartido/perfilVivo';
+import { olvidarUsados } from '@compartido/usados';
 
 // Caché del perfil en el propio teléfono. Sirve para que al volver a entrar
 // la pantalla salga con la racha y la paleta correctas al instante, en vez
@@ -48,5 +49,7 @@ export function borrarPerfilCache() {
   // `uid` se compara— pero volver a entrar con la MISMA cuenta sí: ahí la
   // promesa vieja calzaría. Soltarla es una línea y ahorra pensarlo.
   olvidarPerfilVivo();
+  // Y los ejercicios usados, que son de esa persona y de nadie mas.
+  olvidarUsados();
   return plataforma.almacenamiento.borrar(CLAVE);
 }

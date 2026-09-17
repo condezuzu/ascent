@@ -57,6 +57,7 @@ export default function Bloque({
   cargaConsultada,
   alElegirCarga,
   alCorregirCarga,
+  userId,
 }: {
   estado: EstadoBloques;
   total: number;
@@ -77,6 +78,8 @@ export default function Bloque({
   cargaConsultada: string | null;
   /** Qué significa el número en el bloque en curso. */
   alElegirCarga: (c: Carga) => void;
+  /** Solo para el atajo "Tuyos" del selector. Sin esto, el selector va igual. */
+  userId?: string;
   /** Lo mismo en un bloque de la lista. `indice` -1 es el bloque en curso. */
   alCorregirCarga: (indice: number, c: Carga) => void;
 }) {
@@ -315,6 +318,7 @@ export default function Bloque({
         <SelectorEjercicio
           ejercicios={ejercicios}
           valor={estado.ejercicio}
+          userId={userId}
           permiteNinguno
           alElegir={(id) => {
             // La misma regla de antes: con series sin cerrar, se pregunta de

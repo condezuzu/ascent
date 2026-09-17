@@ -293,6 +293,7 @@ export default function Inicio({
           {/* El reloj ya está arriba, en el chip: acá manda el bloque, que es
               lo que se toca doce veces por sesión. */}
           <Bloque
+            userId={perfil.id}
             estado={sesion.estado.bloques}
             total={sesion.estado.series}
             unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}

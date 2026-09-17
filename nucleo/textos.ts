@@ -845,6 +845,11 @@ export const T = {
     // LA LISTA DE LO HECHO. El − solo arregla el bloque en curso; si te
     // equivocaste hace veinte minutos no había forma de volver.
     verLista: 'Ver lista',
+    // EL ATAJO A LOS QUE REPITES. Rótulo de una palabra y sin explicación: si
+    // hay que aclarar qué hace una lista de tus propios ejercicios, el atajo
+    // no sirve. "Tuyos" y no "Frecuentes" porque no es una estadística — es
+    // dónde están los tuyos.
+    tuyos: 'Tuyos',
     listaTitulo: 'Lo que llevas hoy',
     listaVacia: 'Todavía no contaste ninguna serie.',
     listaAhora: 'en curso',

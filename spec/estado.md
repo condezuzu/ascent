@@ -12,12 +12,20 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Las 22 primeras están aplicadas; la 23 falta correr.**
+**Aplicadas hasta la 43. Falta correr la 44.**
 
-La 23 trae el punto del gimnasio y `logs.origen`, y **va después de desplegar
-la app**, como la 22: agrega un parámetro a `registrar_dia`, así que un cliente
-viejo llamaría una firma que ya no existe. El deploy se comprueba con
-`npm run verificar:deploy`, que mira el pedido real en vez de deducirlo.
+> Este párrafo decía "las 22 primeras están aplicadas; la 23 falta correr"
+> hasta el 17/9/2026, con veinte migraciones ya corridas encima. Se actualiza
+> ahora y queda la advertencia: **este número hay que moverlo en el mismo
+> commit que agrega la migración**, porque es el único lugar donde está escrito
+> qué tiene la base de verdad, y una nota vieja acá es peor que no tener nota.
+
+**La 44** agrega `mis_ejercicios_usados()`, que es de donde sale la sección
+"Tuyos" del selector de ejercicios. No cambia ningún dato, no borra nada y no
+toca ninguna función existente: es una función de lectura nueva. Hasta que se
+corra, el selector funciona exactamente como antes — "Tuyos" no aparece,
+porque el cliente ve el `PGRST202` de PostgREST y se queda con el árbol de
+siempre.
 
 En una base nueva no hace falta ninguna: `supabase/schema.sql` ya las incluye a todas, y
 `npm run test:db` lo comprueba comparando las dos bases entera. Que PRODUCCIÓN

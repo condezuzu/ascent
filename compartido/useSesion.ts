@@ -17,6 +17,7 @@ import {
   type SesionViva,
 } from '@nucleo/sesiones';
 import { disponible } from '@nucleo/esquema';
+import { olvidarUsados } from '@compartido/usados';
 import { versionDelEsquema } from '@compartido/esquema';
 import { leerPerfilCache } from '@compartido/cache';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
@@ -121,6 +122,10 @@ async function iniciar(
 }
 
 async function cerrar(supabase: Cliente, opciones?: { hasta?: number }) {
+  // La sesion que se cierra suma sus bloques a la cuenta de "Tuyos": lo que
+  // este en memoria ya quedo viejo. Se suelta aca y no en la pantalla porque
+  // las dos apps cierran por este camino.
+  olvidarUsados();
   const r = await supabase.rpc('terminar_sesion', {
     p_hasta: opciones?.hasta ? new Date(opciones.hasta).toISOString() : null,
   });
