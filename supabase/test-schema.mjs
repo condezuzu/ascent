@@ -8223,6 +8223,65 @@ console.log('\n121. "Tuyos": los ejercicios que cada persona repite');
   await comoUsuario(yo121);
 }
 
+console.log('\n122. La app nativa se puede construir: los archivos que nombra existen');
+{
+  // POR QUE. `app.json` apunto durante tres dias a `assets/icono.png`, que no
+  // existia: lo habiamos configurado antes de que el archivo estuviera. Eso no
+  // falla al escribirlo ni al correr la app en el navegador --Metro sirve el web
+  // sin tocar el icono--. Falla al construir, que es cinco minutos despues y en
+  // una maquina remota. Un archivo que falta se caza leyendo el disco.
+  const { existsSync: hay122, readFileSync: leer122 } = await import('node:fs');
+  const { join: unir122, dirname: dir122 } = await import('node:path');
+  const { fileURLToPath: aRuta122 } = await import('node:url');
+  const MOVIL = unir122(dir122(aRuta122(import.meta.url)), '..', 'movil');
+
+  const app = JSON.parse(leer122(unir122(MOVIL, 'app.json'), 'utf8')).expo;
+
+  // TODA ruta `./assets/...` del archivo, se llame como se llame la clave: asi
+  // una clave nueva queda cubierta sin que nadie agregue una linea aca.
+  const rutas = [...new Set(
+    JSON.stringify(app).match(/\.\/assets\/[A-Za-z0-9._-]+/g) ?? []
+  )];
+  const faltan = rutas.filter((r) => !hay122(unir122(MOVIL, r.slice(2))));
+  chequear('todos los assets que nombra app.json estan', faltan, []);
+  chequear('y nombra unos cuantos', rutas.length >= 4, true);
+
+  // EL ICONO DE iOS NO PUEDE TENER ALFA. Apple lo rechaza, y no avisa al
+  // construir ni al instalar: el rechazo llega al subir. Se mira la cabecera
+  // IHDR, que dice el tipo de color sin decodificar un pixel.
+  const png = leer122(unir122(MOVIL, app.icon.slice(2)));
+  chequear('el icono es un PNG', [0x89, 0x50, 0x4e, 0x47].every((v, n) => png[n] === v), true);
+  chequear('mide 1024x1024', [png.readUInt32BE(16), png.readUInt32BE(20)], [1024, 1024]);
+  // 0 gris - 2 RGB - 3 paleta - 4 gris+alfa - 6 RGBA
+  chequear('sin canal alfa (Apple lo rechaza)', [4, 6].includes(png[25]), false);
+  chequear('y sin trozo tRNS, que agrega transparencia igual',
+    png.includes(Buffer.from('tRNS')), false);
+
+  // EL PERFIL DE BUILD. Lo unico que se exige es lo que hace que el IPA se
+  // instale en un telefono: distribucion interna. Y que las variables vayan por
+  // secret --con `$`-- y no pegadas: hoy la anon key es publica y no filtraria
+  // nada, pero el camino tiene que estar hecho para la que no lo sea.
+  const eas = JSON.parse(leer122(unir122(MOVIL, 'eas.json'), 'utf8'));
+  const perfil = eas.build?.telefono;
+  chequear('hay un perfil para el telefono', !!perfil, true);
+  chequear('y es de distribucion interna', perfil?.distribution, 'internal');
+  chequear('no arma para el simulador', perfil?.ios?.simulator, false);
+  const valores = Object.values(perfil?.env ?? {});
+  chequear('las variables van por secret y no pegadas',
+    valores.filter((v) => !String(v).startsWith('$')), []);
+  chequear('y estan las dos de Supabase', valores.length, 2);
+
+  // NO SE SUBE NADA A APP STORE desde aca: esa preparacion va despues de las
+  // tandas 4, 5 y 6 (ver spec/etapa-nativa.md). Si alguien llena `submit`, que
+  // sea una decision y no un descuido.
+  chequear('submit sigue vacio', Object.keys(eas.submit ?? {}), []);
+
+  // EL EQUIPO DE APPLE, que es lo que firma. Sin esto EAS pregunta en cada
+  // build y hay que acordarse del numero.
+  chequear('el team id esta en app.json', app.ios?.appleTeamId, 'XF9N8X9KJG');
+  chequear('y el bundle no cambio', app.ios?.bundleIdentifier, 'uy.ascent.app');
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

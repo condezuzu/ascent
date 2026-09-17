@@ -9,6 +9,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "uy.ascent.app",
+      "appleTeamId": "XF9N8X9KJG",
       "infoPlist": {
         "UIBackgroundModes": [
           "audio"
