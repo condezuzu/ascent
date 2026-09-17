@@ -51,7 +51,12 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
   // marca. Nada de gris lunar: tiene que distinguirse de la Luna a simple vista.
   Ceres: {
     ...base,
-    paleta: ['#2a241e', '#463b30', '#6b5b4a', '#8f7c66'],
+    // EL FILO LO DOMINA LA ROCA CARBONACEA, no las sales. Ceres es el cuerpo
+    // MAS OSCURO de todos: refleja un 9% de la luz que le llega, menos que la
+    // Luna. Las sales de Occator son brillantisimas pero son manchas chicas —
+    // eso ya lo dibuja `puntos`— y no son lo que se ve en el canto.
+    // Asi que su filo es gris FRIO y APAGADO: el mas tenue de los diez.
+    paleta: ['#1e2228', '#333a44', '#5c6a76', '#8e9aa4'],
     crateres: 0.85,
     puntos: 0.9,
     turbulencia: 0.9,
@@ -60,14 +65,23 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
   // regiones oscuras rojizas, con bordes difusos (la foto de New Horizons).
   'Plutón': {
     ...base,
-    paleta: ['#5a4436', '#7d6450', '#a08a6e', '#c9b49a'],
+    // EL FILO LO DOMINAN LAS TOLINAS, los compuestos organicos de su niebla,
+    // que son lo que le da a Pluton el color rosado-butterscotch inconfundible
+    // de las fotos de la New Horizons. Y es un cuerpo CLARO —refleja entre 50 y
+    // 65%, por el hielo— asi que su filo es rosa y brillante, no apagado.
+    paleta: ['#34211e', '#6b3f33', '#b08878', '#f0c4b4'],
     manchas: 1,
     turbulencia: 1.2,
   },
   // Gris y martillado, el más cratereado de todos
   Mercurio: {
     ...base,
-    paleta: ['#2e2b28', '#4f4a45', '#837b72', '#b3aaa0'],
+    // EL FILO LO DOMINA EL REGOLITO OSCURECIDO POR CARBONO. Mercurio es mas
+    // oscuro que la Luna (14% contra 12... y contra el 9% de Ceres), y su rasgo
+    // optico propio no es un color sino la falta de el: neutro y apagado.
+    // Se separa de Ceres por TEMPERATURA y por brillo, no por tono: Ceres frio
+    // y mas tenue, este neutro-calido y un poco mas claro.
+    paleta: ['#26252a', '#453f3a', '#7d746a', '#b9b2ac'],
     crateres: 1.0,
     turbulencia: 0.8,
   },
@@ -82,7 +96,10 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
   // Tapado de nubes: nunca se le ve la superficie
   Venus: {
     ...base,
-    paleta: ['#8a7040', '#b89a5e', '#dcc48c', '#f5ecd2'],
+    // NO CAQUI. El caqui la hacia leer como gas sucio; Venus es una capa de
+    // nubes espesas y palidas, asi que va hacia el marfil calido. Ademas la
+    // separa de Saturno, que se queda con el amarillo.
+    paleta: ['#5e4a3a', '#a08064', '#e2c8ac', '#fff4e8'],
     bandas: 5,
     contraste: 0.3,
     turbulencia: 2.2,
@@ -121,7 +138,9 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
   // y los satélites sueltos ensuciaban la composición.
   Saturno: {
     ...base,
-    paleta: ['#6e6248', '#94845e', '#c4b088', '#ecdfc0'],
+    // MAS AMARILLO. En cara nocturna lo que se ve es el filo, que sale de
+    // los dos colores claros: son ESOS los que tienen que llevar el color.
+    paleta: ['#6b5c34', '#9c8842', '#d8bf6a', '#f6ecc4'],
     bandas: 10,
     contraste: 0.5,
     turbulencia: 0.9,
@@ -130,7 +149,10 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
   // Bandas marcadas y la mancha girando; tampoco lleva lunas sueltas
   'Júpiter': {
     ...base,
-    paleta: ['#5a4432', '#8a6a4a', '#c0a078', '#ecd8b8'],
+    // MAS NARANJA, pero un naranja AMBAR y no el rojo de Marte: los dos van
+    // para el mismo lado y tienen que poder distinguirse de un vistazo.
+    // Marte es rojo y mas saturado; este es mas claro y mas amarillo.
+    paleta: ['#5a3520', '#96622f', '#d8975a', '#f5d3a8'],
     bandas: 13,
     contraste: 0.62,
     turbulencia: 1.6,

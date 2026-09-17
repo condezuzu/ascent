@@ -4,7 +4,7 @@
     "slug": "ascent",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icono.png",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
@@ -32,7 +32,7 @@
     "scheme": "ascent",
     "backgroundColor": "#05060a",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icono.png",
       "resizeMode": "contain",
       "backgroundColor": "#05060a"
     },

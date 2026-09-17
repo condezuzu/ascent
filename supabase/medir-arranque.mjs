@@ -18,7 +18,7 @@ import { chromium } from 'playwright';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { pasarLaEntrada } from './utiles.mjs';
+import { cerrarPuerto, limpiarPuertosDeSondas, pasarLaEntrada } from './utiles.mjs';
 import { createServer } from 'node:net';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -41,6 +41,10 @@ const librePara = (p) =>
     s.listen(p, '0.0.0.0');
   });
 
+// SE LIMPIA ANTES DE LEVANTAR NADA, siempre. Si la corrida anterior se cayo
+// a la mitad, su servidor quedo vivo sirviendo un build viejo, y esta sonda
+// terminaria hablandole a el sin enterarse. Ver `limpiarPuertosDeSondas`.
+limpiarPuertosDeSondas();
 let PUERTO = Number(process.env.ARRANQUE_PUERTO ?? 3028);
 while (!(await librePara(PUERTO))) PUERTO++;
 const BASE = `http://localhost:${PUERTO}`;
@@ -61,6 +65,9 @@ const cerrar = () => {
   if (process.platform === 'win32') {
     spawnSync('taskkill', ['/pid', String(servidor.pid), '/f', '/t'], { stdio: 'ignore' });
   } else servidor.kill('SIGTERM');
+  // Y POR PUERTO. El pid es el del shell que lanza npx; el servidor es un
+  // nieto y le sobrevive, asi que taskkill /t no encuentra a quien matar.
+  cerrarPuerto(PUERTO);
 };
 process.on('exit', cerrar);
 for (let i = 0; i < 90; i++) {

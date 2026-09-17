@@ -17,7 +17,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createServer } from 'node:net';
-import { pasarLaEntrada } from './utiles.mjs';
+import { cerrarPuerto, limpiarPuertosDeSondas, pasarLaEntrada } from './utiles.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -37,6 +37,10 @@ const librePara = (p) =>
     // con chunks que ya no existian. La pagina quedaba en blanco.
     s.listen(p, '0.0.0.0');
   });
+// SE LIMPIA ANTES DE LEVANTAR NADA, siempre. Si la corrida anterior se cayo
+// a la mitad, su servidor quedo vivo sirviendo un build viejo, y esta sonda
+// terminaria hablandole a el sin enterarse. Ver `limpiarPuertosDeSondas`.
+limpiarPuertosDeSondas();
 let PUERTO = 3051;
 while (!(await librePara(PUERTO))) PUERTO++;
 const BASE = `http://localhost:${PUERTO}`;
@@ -50,8 +54,11 @@ if (build.status !== 0) {
 }
 const servidor = spawn('npx', ['next', 'start', '-p', String(PUERTO)], { cwd: RAIZ, shell: true, env: entorno, stdio: 'ignore' });
 const cerrar = () => {
+  // POR PID **Y** POR PUERTO. El pid es el del shell que lanza npx; el servidor
+  // es un nieto y sobrevive. Matar por puerto no depende del arbol de procesos.
   if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(servidor.pid), '/f', '/t'], { stdio: 'ignore' });
   else servidor.kill('SIGTERM');
+  cerrarPuerto(PUERTO);
 };
 process.on('exit', cerrar);
 for (let i = 0; i < 90; i++) {

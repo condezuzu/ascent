@@ -54,6 +54,7 @@
     ".next-capturas/types/**/*.ts",
     ".next-exif/types/**/*.ts",
     ".next-medir/types/**/*.ts",
+    ".next-noche/types/**/*.ts",
     ".next-pantallas/types/**/*.ts",
     ".next-primera/types/**/*.ts",
     ".next-quietud/types/**/*.ts",
@@ -61,7 +62,7 @@
     ".next-scroll/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-noche/types/**/*.ts"
+    ".next-planetas/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

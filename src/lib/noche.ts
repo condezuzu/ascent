@@ -28,20 +28,22 @@
 export const NOCHE_DESCANSO = 0.055;
 
 /**
- * Un día cualquiera. Provisorio hasta que el humano elija mirando la galería.
+ * Un día cualquiera: EL MISMO QUE EL DE DESCANSO.
  *
- * EL BARRIDO ARRANCÓ MIRANDO PARA EL LADO EQUIVOCADO. Se sacaron 0,20 / 0,30 /
- * 0,40 pensando que el riesgo era que un día normal se pareciera al de
- * descanso. Las fotos mostraron lo contrario: a 0,20 las bandas de Júpiter ya
- * se leen claras, o sea que a 0,20 ya te fuiste del look que se buscaba. El
- * tramo interesante está ABAJO, entre 0,055 y 0,20.
+ * ASÍ LO DECIDIÓ EL HUMANO, viendo los diez planetas del rango 4 en cara
+ * nocturna: "me gusta tanto que lo quiero siempre, todos los días". Y el
+ * argumento que lo cierra: en un día de descanso uno ni abre la app, así que
+ * perder ahí una señal cuesta poco.
  *
- * LA CONDICIÓN QUE NO SE PUEDE ROMPER, y por eso hay un test: a este número el
- * día normal y el de descanso NO pueden verse idénticos. La señal del descanso
- * la llevan el texto y la tira semanal —el planeta es ambiente, no un
- * semáforo— pero tiene que haber una diferencia perceptible sin leer.
+ * ESTO CONTRADICE LA CONDICIÓN QUE ÉL MISMO HABÍA PUESTO un día antes —que el
+ * día normal y el de descanso no se vieran idénticos— y por eso el test que la
+ * guardaba se reemplazó en vez de borrarse: ver la sección 117.
+ *
+ * LA SEÑAL DEL DESCANSO NO SE PERDIÓ, estaba repetida: la tira semanal dibuja
+ * ese día distinto y el texto dice "Hoy descansa. La racha sigue igual.". El
+ * planeta era la tercera copia, y la única que se pagaba oscureciendo algo.
  */
-export const NOCHE_DIA = 0.15;
+export const NOCHE_DIA = NOCHE_DESCANSO;
 
 /** Los valores que la galería pone uno al lado del otro. */
 export const NIVELES_A_PROBAR = [NOCHE_DESCANSO, 0.1, 0.15, 0.2, 0.3, 0.4] as const;

@@ -192,11 +192,28 @@ float turbulento(vec3 p, float fuerza, out vec3 warp) {
   return fbm(p + fuerza * warp);
 }
 
+// LA RAMPA DE COLORES, Y POR QUE SE SUAVIZA EL PARAMETRO.
+//
+// Antes era una interpolacion lineal en cada tramo. El VALOR salia continuo,
+// pero la
+// PENDIENTE saltaba en t = 1/3 y en t = 2/3, y el ojo humano exagera los
+// cambios de pendiente —son las bandas de Mach—: un degradado perfectamente
+// continuo se lee como DOS COLORES CON UN BORDE EN EL MEDIO.
+//
+// Ese es el defecto que hacia que los planetas parecieran un render viejo. No
+// era el detalle ni la textura: era la costura entre colores.
+//
+// La curva s*s*(3-2s) lleva la pendiente a cero en cada parada, asi que los
+// tramos se pegan sin costura. Es la misma que ya usa la funcion de ruido.
+//
+// LO USA TODO: bandas, anillo, crateres, el cuerpo, el filo. Un arreglo de tres
+// multiplicaciones que toca cada pixel de cada cuerpo.
 vec3 paleta(float t) {
   t = clamp(t, 0.0, 1.0);
-  if (t < 0.3333) return mix(uPaleta0, uPaleta1, t * 3.0);
-  if (t < 0.6666) return mix(uPaleta1, uPaleta2, (t - 0.3333) * 3.0);
-  return mix(uPaleta2, uPaleta3, (t - 0.6666) * 3.0);
+  if (t < 0.3333) { float s = t * 3.0; return mix(uPaleta0, uPaleta1, s * s * (3.0 - 2.0 * s)); }
+  if (t < 0.6666) { float s = (t - 0.3333) * 3.0; return mix(uPaleta1, uPaleta2, s * s * (3.0 - 2.0 * s)); }
+  float s = (t - 0.6666) * 3.0;
+  return mix(uPaleta2, uPaleta3, s * s * (3.0 - 2.0 * s));
 }
 
 // =====================================================================

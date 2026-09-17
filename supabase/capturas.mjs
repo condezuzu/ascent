@@ -10,7 +10,7 @@ import { mkdirSync, rmSync, readdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { pasarLaEntrada } from './utiles.mjs';
+import { cerrarPuerto, limpiarPuertosDeSondas, pasarLaEntrada } from './utiles.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SALIDA = join(RAIZ, 'capturas');
@@ -42,6 +42,11 @@ async function buscarPuerto() {
   }
   return null;
 }
+// SE LIMPIA PRIMERO. Este archivo ya documentaba el problema mas arriba —tres
+// corridas muertas, y dos veces mirando capturas viejas sin darse cuenta— pero
+// lo resolvia esquivando el puerto ocupado en vez de matar al que lo ocupa.
+// Esquivarlo deja el huerfano vivo para la proxima.
+limpiarPuertosDeSondas();
 const PUERTO = await buscarPuerto();
 if (PUERTO === null) {
   console.log(`No hay ningun puerto libre entre ${PRIMER_PUERTO} y ${PRIMER_PUERTO + 7}.`);
@@ -105,6 +110,9 @@ const cerrar = () => {
   } else {
     dev.kill('SIGTERM');
   }
+  // Y POR PUERTO. El pid es el del shell que lanza npx; el servidor es un
+  // nieto y le sobrevive, asi que taskkill /t no encuentra a quien matar.
+  cerrarPuerto(PUERTO);
 };
 process.on('exit', cerrar);
 process.on('SIGINT', () => { cerrar(); process.exit(1); });

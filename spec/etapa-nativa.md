@@ -829,3 +829,28 @@ se puede usar.
 
 Si al llegar a la tanda 2 el arranque nativo sigue teniendo un pozo parecido,
 ahí sí hay que buscarla — y ahí el sospechoso ya no sería el parseo.
+
+## Preparación de App Store — DESPUÉS de las tandas 4, 5 y 6
+
+Decidido el 17/9/2026. Queda escrito para no olvidarlo, y escrito acá para que
+no se empiece antes de tiempo: es trabajo que se hace una sola vez y que se
+rehace entero si el producto todavía se está moviendo.
+
+Lo que incluye:
+
+- **`eas.json`** con los perfiles de build (development, preview, production).
+- **Metadatos de la ficha**: nombre, subtítulo, descripción, palabras clave,
+  capturas por tamaño de pantalla.
+- **Política de privacidad** publicada en una URL estable. Apple la exige y
+  tiene que decir la verdad sobre lo que se guarda: fotos, peso, ubicación del
+  gimnasio.
+- **Textos de permisos** (`infoPlist`). Ya están escritos en `app.json` pero hay
+  que revisarlos contra lo que la app hace de verdad al momento de mandarla.
+- **Justificación de la ubicación en segundo plano.** Es el punto más delicado
+  de la revisión: Apple rechaza apps que piden ubicación siempre sin una razón
+  visible para el usuario. Acá la razón es el registro automático al llegar al
+  gimnasio, y hay que poder mostrarlo funcionando.
+- **Cuenta demo para el revisor**, con datos cargados: racha, sesiones, fotos y
+  un gimnasio marcado. Un revisor que entra a una cuenta vacía no ve la app.
+
+**No se empieza hasta que 4, 5 y 6 estén hechas.**

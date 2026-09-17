@@ -7859,56 +7859,166 @@ console.log('\n116. Una promesa colgada tiene que rendirse');
   chequear('y dice algo distinto cuando se cuelga', aviso.includes('seColgo'), true);
 }
 
-console.log('\n117. El dia normal y el de descanso no pueden verse iguales');
+console.log('\n117. La señal del descanso vive en la tira y en el texto');
 {
   const N = await import('../src/lib/noche.ts');
 
-  // LA CONDICION DEL HUMANO, escrita como test y no como intencion.
+  // ESTA SECCION DECIA LO CONTRARIO AYER, y el cambio es la parte que importa.
   //
-  // La decision fue que el planeta sea AMBIENTE y no un semaforo: la señal del
-  // descanso la llevan el texto ("Hoy descansa") y la tira semanal. Pero con
-  // una condicion: que mirando el fondo se note ALGO distinto sin tener que
-  // leer.
+  // Ayer el humano puso como condicion que el dia normal y el de descanso NO se
+  // vieran identicos, y esto lo guardaba. Hoy, despues de ver los diez planetas
+  // en cara nocturna, decidio lo opuesto: el look apagado para todos los dias,
+  // siempre. El argumento: en un dia de descanso uno ni abre la app.
   //
-  // Sin esto, cualquiera baja `NOCHE_DIA` un poco mas para que se parezca mas a
-  // la captura que gusto, y el dia que quede en 0,06 nadie se entera de que la
-  // diferencia desaparecio. Un numero que se puede bajar de a poco sin que
-  // nada avise termina en cero.
-  chequear(
-    'el dia normal se distingue del de descanso',
-    N.seDistinguen(N.NOCHE_DIA, N.NOCHE_DESCANSO),
-    true
-  );
-  chequear('y el de descanso es el mas apagado de los dos', N.NOCHE_DESCANSO < N.NOCHE_DIA, true);
+  // Se REEMPLAZA en vez de borrarse. Un test que se borra se lleva con el la
+  // razon por la que existia, y el que venga despues no sabe si la condicion se
+  // penso y se descarto o si nunca se penso.
+  chequear('el dia normal y el de descanso usan el mismo nivel', N.NOCHE_DIA, N.NOCHE_DESCANSO);
+  chequear('y ese nivel es la cara nocturna de verdad', N.NOCHE_DIA <= 0.08, true);
 
-  // EL CRITERIO ES UNA RAZON, NO UNA RESTA, y eso no es un detalle: el ojo lee
-  // brillo de forma logaritmica. De 0,055 a 0,10 hay casi el doble y se nota;
-  // de 0,30 a 0,35 la resta es parecida y no se ve nada.
+  // LO QUE AHORA HAY QUE CUIDAR. Al planeta ya no se le pide que avise: la señal
+  // quedo en dos lugares, y los dos tienen que seguir estando. Si alguien saca
+  // el marcador de la tira pensando que el fondo lo dice, no lo dice mas.
+  const { readFileSync: leerT } = await import('node:fs');
+  const { join: unirT, dirname: dirT } = await import('node:path');
+  const { fileURLToPath: aRutaT } = await import('node:url');
+  const RAIZ_T = unirT(dirT(aRutaT(import.meta.url)), '..');
+
+  const textos = leerT(unirT(RAIZ_T, 'nucleo', 'textos.ts'), 'utf8');
+  chequear('el texto sigue diciendo que hoy se descansa', /descansa/i.test(textos), true);
+
+  const tira = leerT(unirT(RAIZ_T, 'src', 'components', 'TiraSemanal.tsx'), 'utf8');
+  chequear('y la tira dibuja el descanso distinto', /descanso/i.test(tira), true);
+
+  // EL CRITERIO DE CUANDO DOS NIVELES SE DISTINGUEN se queda, aunque ya no se
+  // use para separar dia y descanso: sirve para cualquier decision de brillo, y
+  // deja escrito por que una resta no alcanza. El ojo lee brillo de forma
+  // logaritmica, asi que lo que importa es la RAZON.
   chequear('0,055 contra 0,10: se distinguen', N.seDistinguen(0.055, 0.1), true);
   chequear('0,30 contra 0,35: NO se distinguen', N.seDistinguen(0.3, 0.35), false);
-  chequear('la misma resta arriba y abajo da distinto', N.seDistinguen(0.055, 0.1) !== N.seDistinguen(0.3, 0.345), true);
-  chequear('da igual el orden de los dos', N.seDistinguen(0.4, 0.055), N.seDistinguen(0.055, 0.4));
-
-  // HACIA DONDE SE FALLA: si el numero no tiene sentido, la respuesta es que NO
-  // se distinguen. Decir que si sobre datos rotos es prometer una señal que no
-  // esta.
+  chequear('da igual el orden', N.seDistinguen(0.4, 0.055), N.seDistinguen(0.055, 0.4));
   chequear('con cero no se distingue nada', N.seDistinguen(0, 0.3), false);
-  chequear('un negativo tampoco', N.seDistinguen(-1, 0.3), false);
   chequear('un NaN tampoco', N.seDistinguen(NaN, 0.3), false);
 
-  // EL NIVEL QUE LE TOCA A CADA DIA.
-  chequear('un dia normal va al nivel del dia', N.nivelDeNoche(false), N.NOCHE_DIA);
-  chequear('uno de descanso va al apagado', N.nivelDeNoche(true), N.NOCHE_DESCANSO);
-  chequear('la galeria puede forzarlo', N.nivelDeNoche(true, 0.4), 0.4);
-  chequear('y forzar cero es valido: es "de dia, como antes"', N.nivelDeNoche(false, 0), 0);
+  // EL NIVEL QUE LE TOCA A CADA DIA, que ahora es el mismo.
+  chequear('un dia normal', N.nivelDeNoche(false), N.NOCHE_DESCANSO);
+  chequear('uno de descanso', N.nivelDeNoche(true), N.NOCHE_DESCANSO);
+  chequear('la galeria puede forzar otro', N.nivelDeNoche(true, 0.4), 0.4);
+  chequear('forzar cero es "de dia, como antes"', N.nivelDeNoche(false, 0), 0);
   chequear('un valor sin sentido no fuerza nada', N.nivelDeNoche(true, NaN), N.NOCHE_DESCANSO);
-  chequear('un negativo tampoco fuerza', N.nivelDeNoche(false, -2), N.NOCHE_DIA);
+}
 
-  // Y QUE LOS NIVELES DE LA GALERIA INCLUYAN EL TRAMO QUE IMPORTA. El barrido
-  // arranco en 0,20 y las fotos mostraron que a 0,20 la textura ya se lee: lo
-  // interesante esta entre 0,055 y 0,20.
-  chequear('la galeria ofrece el tramo de abajo', N.NIVELES_A_PROBAR.some((v) => v > 0.055 && v < 0.2), true);
-  chequear('y arranca por el del descanso', N.NIVELES_A_PROBAR[0], N.NOCHE_DESCANSO);
+console.log('\n118. Ningun backtick suelto adentro de un shader');
+{
+  // ME PASO TRES VECES EN UN DIA, la tercera con un comentario mio dos lineas
+  // mas arriba advirtiendolo.
+  //
+  // Los shaders viven en template literals de JavaScript, delimitados por
+  // backticks. Un backtick adentro de un comentario GLSL —escrito por costumbre,
+  // para citar el nombre de una variable— CIERRA la cadena ahi mismo. Lo que
+  // sigue deja de ser texto y pasa a ser codigo, y el archivo no compila.
+  //
+  // El error de TypeScript no ayuda: dice "se esperaba una coma" en una linea
+  // que no tiene nada raro, a veces cien lineas mas abajo del backtick.
+  //
+  // COMO SE DELIMITA. Abre la linea con el marcador de shader; cierra la que es
+  // solo un backtick, con o sin punto y coma. Los backticks ESCAPADOS son
+  // validos adentro, asi que se sacan antes de contar. Y un backtick en un
+  // comentario de JavaScript, afuera del literal, no molesta a nadie.
+  const { readFileSync: leerSh } = await import('node:fs');
+  const { join: unirSh, dirname: dirSh } = await import('node:path');
+  const { fileURLToPath: aRutaSh } = await import('node:url');
+  const RAIZ_SH = unirSh(dirSh(aRutaSh(import.meta.url)), '..');
+
+  const revisarShaders = (fuente) => {
+    const sueltos = [];
+    let dentro = false;
+    fuente.split(/\r?\n/).forEach((l, i) => {
+      const limpia = l.split('\\`').join('');
+      const cuantos = (limpia.match(/`/g) ?? []).length;
+      if (!dentro) {
+        if (/\/\* glsl \*\/\s*`/.test(limpia)) dentro = true;
+        return;
+      }
+      if (cuantos === 0) return;
+      if (cuantos === 1 && /^`;?$/.test(limpia.trim())) {
+        dentro = false;
+        return;
+      }
+      sueltos.push(`${i + 1}: ${l.trim().slice(0, 60)}`);
+    });
+    return { sueltos, dentro };
+  };
+
+  const rSh = revisarShaders(leerSh(unirSh(RAIZ_SH, 'src', 'motor', 'shaders.ts'), 'utf8'));
+  chequear('no hay backticks sueltos adentro de los shaders', rSh.sueltos, []);
+  chequear('y todos los shaders quedaron cerrados', rSh.dentro, false);
+
+  // Que el detector sirva de algo: se le da la forma del error y tiene que
+  // verla. Sin esto, "ninguno" podria significar que el recorrido nunca entra.
+  const roto = [
+    'export const X = /* glsl */ `',
+    'void main() {',
+    '  // el nivel lo pone `uNoche`, que es justo lo que rompe',
+    '}',
+    '`;',
+  ].join('\n');
+  chequear('reconoce un backtick en un comentario GLSL', revisarShaders(roto).sueltos.length, 1);
+
+  // Y que NO se queje de lo valido: un escapado adentro, y uno en un comentario
+  // de JavaScript afuera del literal.
+  const sano = [
+    '// afuera se puede hablar de `paleta` sin romper nada',
+    'export const X = /* glsl */ `',
+    'void main() {',
+    '  // adentro, escapado, tambien vale',
+    '}',
+    '`;',
+  ].join('\n');
+  chequear('no se queja de lo que es valido', revisarShaders(sano).sueltos, []);
+}
+
+console.log('\n119. Toda sonda que levanta un servidor lo limpia antes y despues');
+{
+  // POR QUE ES UN TEST Y NO UNA COSTUMBRE. La limpieza de puertos se agrego a
+  // nueve sondas de una pasada, con un script. Una se escapo --`capturas.mjs`,
+  // que usa otro patron para elegir puerto, y que es justo la que mas se corre.
+  // Lo que se aplica a mano a nueve archivos se desincroniza; el archivo diez
+  // que alguien agregue el mes que viene no va a tener nada.
+  //
+  // LO QUE COSTO NO TENERLO: un servidor huerfano de una corrida caida siguio
+  // sirviendo un build viejo, y la sonda siguiente le hablo a el sin enterarse.
+  // Chunks que ya no existian, pagina en blanco, error apuntando a cualquier
+  // lado. No rompe: MIENTE, que sale mas caro.
+  const { readdirSync: leerDir119, readFileSync: leer119 } = await import('node:fs');
+  const { join: unir119, dirname: dir119 } = await import('node:path');
+  const { fileURLToPath: aRuta119 } = await import('node:url');
+  const { PUERTOS_DE_SONDAS } = await import('./utiles.mjs');
+
+  const AQUI_119 = dir119(aRuta119(import.meta.url));
+  const LEVANTA = /next start|next dev|npm run dev/;
+
+  const sinLimpiar = [];
+  const sinCerrar = [];
+  for (const f of leerDir119(AQUI_119).filter((x) => x.endsWith('.mjs'))) {
+    const codigo = leer119(unir119(AQUI_119, f), 'utf8');
+    // `pruebas-reales` NO entra: no levanta nada, le pide al humano que tenga
+    // prendidos sus dos dev servers. Matarle el puerto seria romperle la corrida.
+    if (!LEVANTA.test(codigo) || /No los levanta/.test(codigo)) continue;
+    if (!codigo.includes('limpiarPuertosDeSondas()')) sinLimpiar.push(f);
+    if (!codigo.includes('cerrarPuerto(')) sinCerrar.push(f);
+  }
+  chequear('todas limpian al arrancar', sinLimpiar, []);
+  chequear('y matan su puerto al terminar', sinCerrar, []);
+
+  // EL RANGO NO PUEDE COMERSE LOS SERVIDORES DEL HUMANO. La web va en 3020 y la
+  // nativa en 8090, y `test:real` los necesita prendidos: una limpieza que
+  // apague eso seria tapar una fuga rompiendo otra cosa.
+  const dentro119 = (x) => x >= PUERTOS_DE_SONDAS.desde && x <= PUERTOS_DE_SONDAS.hasta;
+  chequear('el dev de la web queda afuera', dentro119(3020), false);
+  chequear('el de la nativa tambien', dentro119(8090), false);
+  chequear('pero el primero de las sondas entra', dentro119(3021), true);
+  chequear('y el ultimo que usa una sonda tambien', dentro119(3081), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

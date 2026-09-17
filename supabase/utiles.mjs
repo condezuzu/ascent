@@ -1,3 +1,5 @@
+import { execSync } from 'node:child_process';
+
 // Herramientas chicas compartidas por los tests.
 
 /**
@@ -155,4 +157,99 @@ export async function pasarLaEntrada(page, espera = 20000) {
       `  se ve: ${texto || '(la pagina esta EN BLANCO)'}\n` +
       `  errores: ${errores.length ? '\n    - ' + [...new Set(errores)].slice(0, 5).join('\n    - ') : '(ninguno)'}`
   );
+}
+
+/**
+ * Mata lo que esté escuchando en un puerto. Por PUERTO, no por PID.
+ *
+ * POR QUÉ. Las sondas levantan su servidor con `spawn('npx', [...], { shell:
+ * true })` y lo matan con `taskkill /pid <pid> /t`. En Windows ese `pid` es el
+ * del `cmd.exe` que corre npx, no el del servidor: el servidor es un NIETO, y
+ * cuando el shell ya termino, `/t` no encuentra a quien matar.
+ *
+ * Resultado: cada corrida dejaba un servidor vivo. Se acumularon en 3061, 3071
+ * y 3081 a lo largo del dia, y uno de ellos secuestro una corrida entera —la
+ * sonda le hablo a el en vez de al suyo y recibio un build viejo, con chunks
+ * que ya no existian y la pagina en blanco.
+ *
+ * Matar por puerto no depende del arbol de procesos: se pregunta quien tiene el
+ * puerto y se lo mata. Es lo unico que no se puede equivocar de victima.
+ */
+export function cerrarPuerto(puerto) {
+  if (process.platform !== 'win32') {
+    try {
+      execSync(`fuser -k ${puerto}/tcp`, { stdio: 'ignore' });
+    } catch {}
+    return;
+  }
+  try {
+    const salida = execSync(`netstat -ano -p tcp`, { encoding: 'utf8' });
+    const pids = new Set();
+    for (const linea of salida.split('\n')) {
+      if (!linea.includes('LISTENING')) continue;
+      const m = /:(\d+)\s+\S+\s+LISTENING\s+(\d+)/.exec(linea);
+      if (m && Number(m[1]) === Number(puerto)) pids.add(m[2]);
+    }
+    for (const pid of pids) {
+      try {
+        execSync(`taskkill /pid ${pid} /f /t`, { stdio: 'ignore' });
+      } catch {}
+    }
+  } catch {}
+}
+
+/**
+ * Los puertos que usan las sondas. NO incluye 3020 ni 8090: esos son los
+ * servidores de desarrollo que levanta el humano y que `test:real` necesita
+ * prendidos. Matarlos seria arreglar una fuga rompiendo otra cosa.
+ *
+ * Cada sonda arranca en su base y sube si esta ocupado, asi que se limpia un
+ * RANGO y no una lista: una corrida que encontro 3061 ocupado quedo en 3062, y
+ * ese tambien hay que barrerlo.
+ */
+export const PUERTOS_DE_SONDAS = { desde: 3021, hasta: 3099 };
+
+/**
+ * DEJA LOS PUERTOS DE LAS SONDAS LIMPIOS. Se llama AL ARRANCAR, siempre, antes
+ * de elegir puerto y levantar nada.
+ *
+ * POR QUE AL ARRANCAR Y NO SOLO AL TERMINAR. Limpiar al final no alcanza: si la
+ * corrida se cae a la mitad —y se cayeron varias— nunca llega a esa linea, y el
+ * servidor queda vivo. Al arrancar se ejecuta SIEMPRE, pase lo que pase en la
+ * corrida anterior.
+ *
+ * LO QUE COSTO NO HACERLO: dos corridas perdidas y, peor, una sonda hablandole
+ * al servidor equivocado. Ese huerfano servia un build viejo con chunks que ya
+ * no existian, asi que la pagina salia en blanco y el error apuntaba a
+ * cualquier lado. Fue la señal falsa mas cara del proyecto: no rompe, miente.
+ *
+ * El costo de volver a levantar un servidor son segundos. El de un huerfano ya
+ * lo pagamos.
+ */
+export function limpiarPuertosDeSondas() {
+  // UNA sola pasada de netstat, no una por puerto. Recorrer 79 puertos con una
+  // llamada cada uno tardaba medio minuto, y esto corre al arranque de CADA
+  // sonda: una limpieza que molesta es una limpieza que alguien saca.
+  if (process.platform !== 'win32') {
+    for (let p = PUERTOS_DE_SONDAS.desde; p <= PUERTOS_DE_SONDAS.hasta; p++) cerrarPuerto(p);
+    return;
+  }
+  const pids = new Set();
+  try {
+    const salida = execSync('netstat -ano -p tcp', { encoding: 'utf8' });
+    for (const linea of salida.split('\n')) {
+      if (!linea.includes('LISTENING')) continue;
+      const m = /:(\d+)\s+\S+\s+LISTENING\s+(\d+)/.exec(linea);
+      if (!m) continue;
+      const puerto = Number(m[1]);
+      if (puerto < PUERTOS_DE_SONDAS.desde || puerto > PUERTOS_DE_SONDAS.hasta) continue;
+      pids.add(m[2]);
+    }
+  } catch {}
+  for (const pid of pids) {
+    try {
+      execSync(`taskkill /pid ${pid} /f /t`, { stdio: 'ignore' });
+    } catch {}
+  }
+  if (pids.size) console.log(`  (limpié ${pids.size} servidor(es) huérfano(s) de corridas anteriores)`);
 }
