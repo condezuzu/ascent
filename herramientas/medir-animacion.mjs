@@ -93,7 +93,7 @@ const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, device
 // motor ya habría leído el reloj y sorteado las estrellas con el azar de
 // verdad, y la huella cambiaría en cada corrida.
 await ctx.addInitScript(() => {
-  // mulberry32: un PRNG chico y conocido. La semilla es fija a propósito: lo
+  // mulberry32: un PRNG chico y conocido. La semilla es fija a proposito: lo
   // que se quiere es la MISMA nebulosa todas las veces, no una linda.
   let s = 0x9e3779b9;
   Math.random = () => {
@@ -103,59 +103,54 @@ await ctx.addInitScript(() => {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 
-  // El reloj virtual. Arranca en 0 y solo se mueve desde `window.__avanzar`.
+  // EL BUCLE DE CUADROS SIGUE SIENDO EL DE VERDAD. Lo virtual es SOLO el reloj.
+  //
+  // POR QUE, y me costo dos corridas entenderlo. La primera version reemplazaba
+  // `requestAnimationFrame` por una cola propia. El motor dibujaba --278 cuadros
+  // contados, la cola siempre llena-- y las ocho fotos salian IDENTICAS al byte.
+  // La razon es que un canvas de WebGL sin `preserveDrawingBuffer` se presenta
+  // cuando el compositor del navegador produce un cuadro, y el compositor se
+  // mueve con el rAF de verdad. Al reemplazarlo, el motor seguia dibujando en un
+  // buffer que ya nadie llevaba a la pantalla.
+  //
+  // O sea: la sonda mostraba un motor congelado que en realidad andaba. Es la
+  // misma clase de señal falsa que un servidor huerfano, y la mas cara: no
+  // rompe, miente.
+  //
+  // Ahora el navegador dibuja sus cuadros normalmente y lo unico que se falsea
+  // es que cada uno avanza EXACTAMENTE 16 ms. El determinismo sale de que el
+  // delta sea siempre el mismo, no de congelar el tiempo.
+  const rafReal = window.requestAnimationFrame.bind(window);
+  const MS_POR_CUADRO = 16;
   let ahora = 0;
+  window.__cuadros = 0;
   performance.now = () => ahora;
   Date.now = () => 1800000000000 + ahora;
+  // Los callbacks de la app reciben el reloj virtual, no el real.
+  window.requestAnimationFrame = (fn) => rafReal(() => fn(ahora));
+  // La bomba: un rAF de verdad que avanza el reloj una vez por cuadro. Va
+  // aparte de los callbacks de la app para que el reloj avance UNA sola vez
+  // aunque haya tres animaciones pidiendo cuadro.
+  rafReal(function bomba() {
+    ahora += MS_POR_CUADRO;
+    window.__cuadros++;
+    rafReal(bomba);
+  });
+  window.__esperar = (n) =>
+    new Promise((listo) => {
+      const ver = () => (window.__cuadros >= n ? listo(window.__cuadros) : rafReal(ver));
+      ver();
+    });
 
-  // rAF a mano. Se guardan los pedidos y se vacían de a tandas: así un cuadro
-  // que pide el siguiente no se dispara solo, que es lo que haría imposible
-  // parar el tiempo en un instante exacto.
-  let cola = [];
-  let id = 1;
-  // CUANTOS CUADROS CORRIERON DE VERDAD. Sin esto, dos fotos iguales tienen
-  // dos causas que desde afuera se ven idénticas: el bucle se cortó, o el
-  // bucle corre y lo que dibuja no cambia. Son problemas distintos.
-  window.__cuadros = 0;
-  window.requestAnimationFrame = (fn) => {
-    cola.push({ id, fn });
-    return id++;
-  };
-  window.cancelAnimationFrame = (x) => {
-    cola = cola.filter((c) => c.id !== x);
-  };
+  window.requestIdleCallback = (fn) => setTimeout(() => fn({ didTimeout: false, timeRemaining: () => 50 }), 0);
+  window.cancelIdleCallback = () => {};
+
   window.__estado = () => ({
-    enCola: cola.length,
     lienzos: document.querySelectorAll('canvas').length,
     reduce: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     oculto: document.hidden,
+    motorMontado: performance.getEntriesByName('ascent:motor-montar-fin').length > 0,
   });
-  // Avanza a `t` en pasos de 16 ms, vaciando la cola en cada paso: es lo que
-  // haría el navegador a 60 Hz, pero sin depender de cuánto tardó la máquina.
-  // ES ASINCRONO, Y ESA ES LA PARTE QUE COSTO. La primera version era un
-  // `while` sincronico, y mientras corre un `while` NO se resuelve ninguna
-  // promesa ni corre ningun timer: el motor se re-monta de forma asincrona
-  // --`await import('@/motor/escena')`-- cuando llegan los datos, y ese
-  // re-montaje no podia completarse nunca adentro del bucle. El contador lo
-  // mostro: 103 cuadros y despues cero, para siempre.
-  //
-  // El `setTimeout(0)` de cada paso le devuelve el control al navegador. Sin
-  // eso, la sonda mide una app a la que ella misma le corto la respiracion, y
-  // el resultado --cuadros identicos-- se lee como "el motor se congelo".
-  window.__avanzar = async (t) => {
-    while (ahora < t) {
-      ahora = Math.min(t, ahora + 16);
-      const tanda = cola;
-      cola = [];
-      for (const c of tanda) {
-        try {
-          window.__cuadros++;
-          c.fn(ahora);
-        } catch {}
-      }
-      await new Promise((r) => setTimeout(r, 0));
-    }
-  };
 });
 
 const page = await ctx.newPage();
@@ -169,25 +164,34 @@ await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 180000
 // texto de la pantalla. Sin esto se fotografía el fondo de CSS solo.
 await page.locator('canvas').first().waitFor({ state: 'attached', timeout: 60000 });
 
+// SE ESPERA A QUE EL MOTOR MONTE. `FondoEspacial` no lo toca antes de
+// `PISO_MS = 2000` medidos con `performance.now()` --que aca es el reloj
+// virtual, o sea 125 cuadros--. Si se muestrea antes, lo que se fotografia es
+// otra animacion: la primera version de esta sonda media la entrada de CSS y
+// yo lei esos cuadros como si fueran el fondo.
+for (let i = 0; i < 200 && !(await page.evaluate(() => window.__estado().motorMontado)); i++) {
+  await page.evaluate(() => window.__esperar(window.__cuadros + 10));
+}
+const est = await page.evaluate(() => window.__estado());
+console.log(est.motorMontado ? 'motor montado, empieza el muestreo' : 'EL MOTOR NUNCA SE MONTO');
+if (!est.motorMontado) process.exit(1);
+const CERO = await page.evaluate(() => window.__cuadros);
+
 const cuadros = [];
 for (const t of INSTANTES) {
-  await page.evaluate((ms) => window.__avanzar(ms), t);
-  // LA PANTALLA ENTERA, y no un recorte de arriba. El primer intento cortaba
-  // en y=500 y daba cuatro cuadros identicos seguidos: el cuerpo se dibuja
-  // ABAJO A LA DERECHA --`grupo.position.set(asp * 0.8, -0.72, 0)`-- asi que
-  // el recorte se estaba perdiendo justo lo que se mueve. Lo que cambiaba en
-  // los primeros cuadros era la animacion de entrada de CSS, no el motor.
-  //
-  // Una sonda que mira al lado equivocado es peor que no tenerla: da verde.
+  // Los instantes son milisegundos de animacion; a 16 ms por cuadro eso es
+  // una cantidad exacta de cuadros, siempre la misma.
+  // SE LO MANTIENE DESPIERTO. El motor baja a 12 fps a los 3 s sin que nadie
+  // toque la pantalla (`lib/quietud.ts`), y eso es deseado: no es lo que esta
+  // sonda quiere medir. Sin este toque los ultimos cuadros salian identicos
+  // entre si y parecian un motor roto, cuando era el ahorro funcionando.
+  await page.evaluate(() => window.dispatchEvent(new Event('pointermove')));
+  await page.evaluate((n) => window.__esperar(n), CERO + t / 16);
   const png = await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: 844 } });
   writeFileSync(join(SALIDA, `${ETIQUETA}-${String(t).padStart(4, '0')}.png`), png);
   cuadros.push({ t, png });
-  const e = await page.evaluate(() => ({ n: window.__cuadros, ...window.__estado() }));
-  console.log(
-    `  t=${String(t).padStart(4)} ms  ${String(png.length).padStart(7)} bytes  ` +
-      `${String(e.n).padStart(4)} cuadros  enCola=${e.enCola}  lienzos=${e.lienzos}  ` +
-      `reduce=${e.reduce}  oculto=${e.oculto}`
-  );
+  const n = await page.evaluate(() => window.__cuadros);
+  console.log(`  t=${String(t).padStart(4)} ms  ${String(png.length).padStart(7)} bytes  cuadro ${n}`);
 }
 
 await nav.close();
