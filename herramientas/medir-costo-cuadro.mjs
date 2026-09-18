@@ -8,7 +8,8 @@
 // CÓMO MIDE. Contar cuadros por segundo no sirve en una GPU buena: da 60
 // siempre, porque el tope es la pantalla. Acá se mide el COSTO de cada
 // cuadro: desde que el motor empieza a dibujar hasta que la GPU terminó
-// (`gl.finish()` después del callback de `requestAnimationFrame`). Y en una
+// (leer un píxel después del callback de `requestAnimationFrame`: obliga a
+// esperar el dibujo; `gl.finish()` en Chrome no espera). Y en una
 // pantalla grande (1920x1080 a 2x), para que la GPU trabaje de verdad.
 // `requestAnimationFrame` NO se reemplaza —eso desconecta WebGL, ver
 // spec/trampas.md—: solo se envuelve cada callback.
@@ -66,6 +67,7 @@ const nav = await chromium.launch({
 const ctx = await nav.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 2 });
 await ctx.addInitScript(() => {
   const contextos = [];
+  const pixel = new Uint8Array(4);
   const getCtx = HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext = function (...a) {
     const c = getCtx.apply(this, a);
@@ -74,13 +76,17 @@ await ctx.addInitScript(() => {
   };
   window.__costos = [];
   window.__medir = false;
+  window.__dibujos = 0;
+  for (const C of [WebGL2RenderingContext, WebGLRenderingContext]) for (const f of ['drawArrays', 'drawElements']) { const o = C.prototype[f]; C.prototype[f] = function (...a) { if (window.__medir) window.__dibujos++; return o.apply(this, a); }; }
   const raf = window.requestAnimationFrame.bind(window);
   window.requestAnimationFrame = (fn) =>
     raf((t) => {
       const t0 = performance.now();
       fn(t);
       if (!window.__medir) return;
-      for (const c of contextos) if (!c.isContextLost()) c.finish();
+      // `finish()` en Chrome vuelve sin esperar a la GPU (medido: 0,1-0,2 ms en
+      // 4K para todos los cuerpos). Leer un píxel sí obliga a esperar el dibujo.
+      for (const c of contextos) if (!c.isContextLost()) c.readPixels(0, 0, 1, 1, c.RGBA, c.UNSIGNED_BYTE, pixel);
       window.__costos.push(performance.now() - t0);
     });
 });
@@ -113,19 +119,20 @@ for (const c of CUERPOS) {
   await page.waitForTimeout(1500);
   await page.evaluate(() => {
     window.__costos = [];
+    window.__dibujos = 0;
     window.__medir = true;
   });
   await page.waitForTimeout(4000);
-  const costos = await page.evaluate(() => {
+  const { costos, dibujos, lienzos } = await page.evaluate(() => {
     window.__medir = false;
-    return window.__costos;
+    return { costos: window.__costos, dibujos: window.__dibujos, lienzos: [...document.querySelectorAll('canvas')].map((c) => `${c.width}x${c.height}`).join(',') };
   });
   clearInterval(tocar);
   const orden = [...costos].sort((a, b) => a - b);
   const mediana = orden[Math.floor(orden.length / 2)] ?? NaN;
   const p90 = orden[Math.floor(orden.length * 0.9)] ?? NaN;
   res[c.nombre] = { mediana: +mediana.toFixed(2), p90: +p90.toFixed(2), cuadros: costos.length };
-  console.log(`  ${c.nombre.padEnd(22)} mediana ${mediana.toFixed(2).padStart(6)} ms  p90 ${p90.toFixed(2).padStart(6)} ms  (${costos.length} cuadros)`);
+  console.log(`  ${c.nombre.padEnd(22)} mediana ${mediana.toFixed(2).padStart(6)} ms  p90 ${p90.toFixed(2).padStart(6)} ms  (${costos.length} cuadros, ${(dibujos / Math.max(1, costos.length)).toFixed(1)} dibujos/cuadro, canvas ${lienzos})`);
 }
 writeFileSync(join(SALIDA, `${ETIQUETA}.json`), JSON.stringify({ gpu: nombreGpu, res }, null, 2));
 

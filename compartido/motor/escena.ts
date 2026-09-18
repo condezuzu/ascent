@@ -100,6 +100,8 @@ export function crearMaterialCuerpo(
   return new THREE.ShaderMaterial({
     vertexShader: VERTEX,
     fragmentShader: estilo === 'plano' ? FRAGMENT_PLANO : FRAGMENT,
+    // Un programa por modo: ver `MODO` en shaders.ts.
+    defines: { MODO: cfg.modo },
     transparent: true,
     depthWrite: false,
     uniforms: {
@@ -115,7 +117,8 @@ export function crearMaterialCuerpo(
       uTormentaPos: { value: new THREE.Vector2(...cfg.tormentaPos) },
       uAnillo: { value: cfg.anillo ? 1 : 0 },
       uAnilloVert: { value: cfg.anilloVertical ? 1 : 0 },
-      uModo: { value: cfg.modo },
+      uModo: { value: cfg.modo }, // solo lo lee FRAGMENT_PLANO
+      uCero: { value: 0 },
       uCrateres: { value: cfg.crateres },
       uCasquetes: { value: cfg.casquetes },
       uContinentes: { value: cfg.continentes },
@@ -400,6 +403,12 @@ export type Montaje = {
    * cada pantalla monta y suelta su escena—.
    */
   pausar: (si: boolean) => void;
+  /**
+   * Se cumple cuando el primer cuadro ya se dibujó: los shaders compilaron.
+   * Hasta ahí el canvas está vacío, y la pantalla sigue mostrando el fondo de
+   * CSS. La web espera esto para el fundido de entrada.
+   */
+  listo: Promise<void>;
 };
 
 /**
@@ -675,16 +684,29 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     l.presentar();
   }
 
-  // Primer frame ya mismo: acá es donde se compilan los shaders la primera
-  // vez. De la segunda pantalla en adelante el programa ya está en caché
-  // del renderer compartido y esto cuesta casi nada.
+  // EL PRIMER CUADRO ESPERA A QUE LOS SHADERS ESTÉN COMPILADOS, sin bloquear.
+  //
+  // Antes se dibujaba ya mismo, y la primera vez eso compila: el hilo queda
+  // tomado hasta que el compilador termina. En Chrome de Windows (Direct3D)
+  // eran 134-140 s con la página congelada (18/9), y la caché del navegador
+  // se invalida con cada versión: le pasaba a cada persona en cada deploy.
+  // `compileAsync` pregunta si terminó sin esperar (KHR_parallel_shader_compile)
+  // y mientras tanto se ve el fondo de CSS, que es para lo que está.
+  //
+  // Sin esa extensión —expo-gl no la tiene— resuelve a los 10 ms y el primer
+  // cuadro compila como antes. En el iPhone eso se midió bien.
+  //
+  // De la segunda pantalla en adelante el programa ya está en caché del
+  // renderer compartido y esto resuelve casi en el acto.
   marca('ascent:shader-inicio');
-  rend.render(escena, camara);
-  l.presentar();
-  marca('ascent:shader-fin');
-  medir('ascent:shader-compilacion', 'ascent:shader-inicio', 'ascent:shader-fin');
-
-  if (op.animar !== false) l.cuadro(frame);
+  const listo = rend.compileAsync(escena, camara).then(() => {
+    if (!vivo) return;
+    rend.render(escena, camara);
+    l.presentar();
+    marca('ascent:shader-fin');
+    medir('ascent:shader-compilacion', 'ascent:shader-inicio', 'ascent:shader-fin');
+    if (op.animar !== false) l.cuadro(frame);
+  });
 
   // El motor no anima con la app atrás: son sesenta cuadros por segundo de
   // GPU para algo que nadie está mirando.
@@ -796,5 +818,5 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     }
   };
 
-  return { soltar, pulso, pausar };
+  return { soltar, pulso, pausar, listo };
 }

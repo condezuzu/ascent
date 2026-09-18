@@ -7,7 +7,7 @@
       "a108dcab4a30ab50e10c9639299fef07",
       "d3aa5e619a7014da0259b54351d940af",
       "fa000198119f2784357f9875f87de70c",
-      "1476db38d90953ae4942ebb5df7457be",
+      "d71128bfcc3821675f90a2183bef1c2c",
       "d0c00126b6094fd55cd9869e17ef9938",
       "0efdd526bb645af3b537f9ec989edc7b"
     ]
@@ -21,19 +21,19 @@
       "6406457711c7e85a4154800400a02361",
       "2ba34bd58c26d2039355647e3f7dddcd",
       "2b51d2b64a78f6bfc8bfd444c7817ee3",
-      "49d7b62d90595de92dc91cbc269ca3e4",
-      "ba389fd0f995e4d0adde01d462836f96"
+      "e0bed5bf3f99f730e4ffb83f8bf5ba75",
+      "928d974a53d3dac61c250ad68ec9f158"
     ]
   },
   {
     "cuerpo": "rango 4 · Tierra",
     "hashes": [
-      "1aaad4122767a6d2f84d6f9b30f85f64",
+      "2c38bb18de166c7090366bb4dd145b10",
       "ba59cc01e498632831d21d684803ac41",
       "5f471c7adaaae4830b44daae3f4a47d4",
       "93aa44f9ca8068b61b7a98c297341173",
       "1f58abe6a35b8d70f35ceb68607a864c",
-      "46fb475f76af508e872bb35a9b886186",
+      "f90aa5073b104dfeda401d67f47bb7db",
       "ca76291875e9ed5a85bdddf777424b89",
       "6a7c91de77de2cdf1c0a5f877e7bf29b"
     ]
@@ -54,12 +54,12 @@
   {
     "cuerpo": "rango 1 · Polvo",
     "hashes": [
-      "aa7d319cb2906130b9d4d663f53c4b53",
+      "419373727c74798ff1a612f6803a55b6",
       "d4a6af99391f5aa920f0ab5dbf8130b8",
-      "b8e8f2f07f6507a658e339ccd56e36e8",
-      "63ad7638dd3affc2bca7400c05de5862",
-      "1afcad530f390f5bfc30076f0d1e7399",
-      "cd51d84fa57e3f81811d7c5f951063a4",
+      "8a6d64a252fe08e19d01fd45c2fdef84",
+      "726c0bf6bcd0e975fb9c91e0c4822fe8",
+      "3231f0ded9415ca2bc5dd630628eba77",
+      "2596e32291b33ea057d9b5a01e1f3dec",
       "81c2a0cafc61bb3a8df28283e29ca454",
       "e8d4ae81654063e895c3198cf4d956e2"
     ]
@@ -68,13 +68,13 @@
     "cuerpo": "rango 2 · Asteroide",
     "hashes": [
       "a88914a68fa8afc8e2e33ea5ca94ffd0",
-      "b4c7142622cbde12f7691bed442714f0",
-      "3498b2b762c570a00ec36cf8b68ec81b",
+      "686c01a94acd1feecdef9c1111837b7a",
+      "48ab8a64a8759c61e87d181e0c264334",
       "d8544e39879d8bde18283dd85c78d052",
       "864fe00e7c0223960590d274ce40ec70",
       "149d06fad61b47d818197825c81183d8",
-      "4800e2988f3cc9625f822a578639a0f6",
-      "bcce4e08da59eb4c3334d2e49681cd24"
+      "5935852b93e0cfc6aedff6e548fecee3",
+      "b0497950890a0ab5ccb3f15c1b94a5cf"
     ]
   },
   {
@@ -82,7 +82,7 @@
     "hashes": [
       "56e9fd98bb08b5a5bfa7151d2fad4520",
       "eaffdd1d796ab86c40429a96f8b98f7a",
-      "0173f50bc7ffceb1b931341807037c06",
+      "e0f3d83fca58f9240ceb0f8c1d9cab74",
       "8b4048a1394297eaeb312cfbe873d43b",
       "74b8fb90f22afa72810fcd0a74bec703",
       "30b20ae60d5f27f67e6280b594d38d5e",
@@ -119,25 +119,25 @@
   {
     "cuerpo": "rango 7 · Galaxia",
     "hashes": [
-      "76fd160a62948991c7951aa809cd6957",
-      "7ab3a00e742a8bb08deb8c9c88b7058a",
+      "9fd70e008f401b9f7f83fcd9d5ab1c46",
+      "76edcaf4cf03bf1e1bdf74b5d49e7d08",
       "4b6a7e3733a4654306151f6f12387c5e",
-      "a08fa1c78ff3a60a6a739cced40a8c8b",
+      "3f70952bae0e4fec4ad76b5f34570b93",
       "e0685def0749bb08e3d46a0df1901322",
-      "6a6b644ba3260c8ceca2934a81a5ee14",
-      "87613d00a46494036e65ad68c74411ed",
+      "98386af95e0b5efd3fa34edf2b5ee38c",
+      "fef24d7d878a34337f190d1bc5954807",
       "e2d10ba01cdc390591cc491d63097959"
     ]
   },
   {
     "cuerpo": "rango 8 · Agujero negro",
     "hashes": [
-      "351051f0168a9e10bfa5457943d90b99",
-      "ab6c46fecd8728e85d144a5238daef58",
-      "e8a91379416402dfdc311d35d86308c3",
-      "95b2efc56b9d8071ce382a661fb678f7",
-      "a116b3ade7ee8eae4abe05fbd665f38b",
-      "24cc3ff2918cbb15c0a821baa6a7ae24",
+      "d08549abbba7f8d9db7fdcc87cd0e6b1",
+      "620d718d1048eb8b7e04642dce900ef8",
+      "badf14a93499bc282998d6e2a0b4ba83",
+      "e47a3b6fb5da4b95f6435fc663f48f62",
+      "de8f9ad2ec5280d82f129e289a8e5b02",
+      "2e9c262ea46eeb4cceed392c6bf4751d",
       "40e30799a3d3fc26f88533b6bc04b3ca",
       "ee64feaa4454e948bdcd03023f2b8a61"
     ]

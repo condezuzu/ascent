@@ -8351,6 +8351,43 @@ console.log('\n123. Ninguna sonda corre sin limite de tiempo');
   chequear('y cada next build tiene su timeout', compilaSinLimite, []);
 }
 
+console.log('\n124. El shader de cuerpos compila rápido en Direct3D y sin trabar la página');
+{
+  // LO QUE COSTÓ (18/9). Con el modo como uniform y los bucles de ruido con
+  // límite fijo, Chrome en Windows (Direct3D) tardaba 134-140 s en compilar
+  // el shader de cuerpos, con el hilo tomado: el login no aceptaba texto
+  // hasta los 127 s. La caché del navegador se invalida con cada deploy, así
+  // que le pasaba a cada persona en cada versión. Nada de esto lo ve un test
+  // común ni una captura: solo una sonda con GPU (`medir-bienvenida.mjs`).
+  // Estas son las tres cosas que lo arreglaron; si alguna vuelve, vuelve eso.
+  const { readFileSync: leer124 } = await import('node:fs');
+  const { join: unir124, dirname: dir124 } = await import('node:path');
+  const { fileURLToPath: aRuta124 } = await import('node:url');
+  const MOTOR = unir124(dir124(aRuta124(import.meta.url)), '..', 'compartido', 'motor');
+  const shaders = leer124(unir124(MOTOR, 'shaders.ts'), 'utf8');
+  const escena = sinComentarios(leer124(unir124(MOTOR, 'escena.ts'), 'utf8'));
+  const inicio = shaders.indexOf('export const FRAGMENT = ');
+  const fragmento = shaders.slice(inicio, shaders.indexOf('export const FRAGMENT_PLANO'));
+  chequear('encuentra el shader de cuerpos', inicio > 0 && fragmento.length > 10000, true);
+
+  // 1. El modo es constante por material, no un uniform.
+  chequear('el modo no es un uniform', /uniform\s+float\s+uModo\s*;/.test(fragmento), false);
+  chequear('sale de MODO', fragmento.includes('const float uModo = float(MODO);'), true);
+  chequear('y el material lo pasa como define', /defines:\s*\{\s*MODO:\s*cfg\.modo\s*\}/.test(escena), true);
+
+  // 2. Ningún bucle con límite fijo: Direct3D los desenrolla.
+  const bucles = [...fragmento.matchAll(/for\s*\(int\s+\w+\s*=[^;]+;([^;]+);/g)].map((m) => m[1].trim());
+  chequear('hay bucles que mirar', bucles.length >= 5, true);
+  chequear('todos con límite que el compilador no conoce', bucles.filter((c) => !c.includes('uCero')), []);
+  chequear('y uCero existe', /uCero:\s*\{\s*value:\s*0\s*\}/.test(escena), true);
+
+  // 3. El primer cuadro espera a compileAsync: nada de dibujar antes.
+  const montar = escena.slice(escena.indexOf("marca('ascent:shader-inicio')"));
+  chequear('compila sin bloquear', montar.includes('rend.compileAsync(escena, camara)'), true);
+  const antesDeCompilar = montar.slice(0, montar.indexOf('compileAsync'));
+  chequear('y no dibuja antes', antesDeCompilar.includes('rend.render('), false);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

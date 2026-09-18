@@ -241,26 +241,46 @@ ese día. Si alguna vez hay que volver a escribirlas en algún lado, que sea
 
 ## Problemas conocidos
 
-### ABIERTO (18/9): la página se bloquea de 7 a 20 s después de montar el motor
+### RESUELTO (18/9): la página se congelaba al montar el motor — eran dos causas
 
-Medido con `herramientas/sonda-como-se-compara.mjs`, 16 visitas a Ajustes en
-el navegador sin cabeza de las pruebas:
+Lo que se veía: con el motor montado, un toque tardaba 7-20 s (medido con
+`herramientas/sonda-como-se-compara.mjs`), y las marcas del motor no veían ese
+tiempo. **Esto explica las capturas intermitentes que veníamos arrastrando**:
+no eran de la captura, eran la página trabada. Medido en "Cómo se compara"
+(4 de 4 visitas con el motor montado). `stats-calendario` falló con el mismo
+síntoma pero NO se midió aparte: lo confirma o lo desmiente la primera corrida
+de `npm run capturas` con el arreglo.
 
-- Cuando el motor **no** montó durante la visita (12 de 16): el click tarda
-  35–56 ms.
-- Cuando el motor **sí** montó (4 de 16): el click tarda **7,2 a 19,9 s**, y
-  hasta una lectura de `performance.now()` vuelve con 14–26 s de retraso. El
-  hilo principal está bloqueado.
-- Pero las marcas del propio motor miden 4 ms de import y ~10 ms de shaders:
-  **el bloqueo no está dentro de lo que el motor mide.**
+**Causa 1 — WebGL por software.** El navegador de las sondas no tiene GPU:
+dibuja con SwiftShader, en la CPU. Perfil de CPU
+(`herramientas/perfilar-bloqueo.mjs`): 4,5 s de tarea larga al montar y
+después ~1 s POR CUADRO, todo en código nativo del navegador (el JS suma
+milisegundos). Con la GPU de la misma máquina: ninguna tarea larga. Le pasa
+también a gente real: máquinas virtuales, escritorio remoto, placas en la lista
+negra de Chrome. **Arreglo:** sin GPU de verdad el motor no se prende y queda
+el fondo de CSS (`src/motor/escena.ts`: el caveat del navegador, el nombre del
+renderizador siempre, y la medición de los primeros cuadros, que es la que
+decide). Los cuatro casos —GPU real, software, Chrome que informa mal, GPU
+lenta— se prueban con `herramientas/probar-filtro-gpu.mjs`.
 
-Era la causa de la captura intermitente de "Cómo se compara" (ahora
-`capturas.mjs` espera a que la página atienda antes de tocar). **Lo que no se
-sabe:** qué bloquea exactamente, y si pasa en un teléfono con GPU de verdad o
-solo con el WebGL por software de este navegador de pruebas. Si pasa en un
-teléfono, son 10 segundos de app que no responde a los toques, y va primero.
-La próxima medición: grabar un perfil de rendimiento (`page.tracing`) de una
-visita en la que monte el motor.
+**Causa 2 — el shader de cuerpos en Direct3D, y esta era la grave.** Con GPU
+el login tardaba 149 s en entrar. Medido paso por paso: compilar el programa
+del shader de cuerpos (33 KB, los seis modos en uno, elegidos con un uniform)
+tomaba el hilo **134-140 s** en Chrome de Windows, también en el Chrome
+instalado. Es la PRIMERA visita de cada persona en cada versión: la caché de
+shaders del navegador se invalida con cada deploy. En el iPhone no pasa (Metal).
+**Arreglo:** un programa por modo (`#define MODO`), bucles con límite que el
+compilador no conoce (`+ uCero`), y el primer cuadro espera a `compileAsync`.
+Primera visita en Chrome, antes → después (`herramientas/medir-bienvenida.mjs`):
+el login acepta texto a los 127 503 ms → **38 ms**; hilo bloqueado en todo el
+recorrido 133 480 ms → **0**. El planeta, el modo más caro, compila en 4,4 s
+sin una sola tarea larga. La bienvenida en sí nunca trabó: su motor usa los
+materiales de three.js, no este shader. §124 impide volver atrás.
+
+Lo que queda para el teléfono: el costo por cuadro con los bucles sin
+desenrollar se midió igual en esta GPU (`herramientas/medir-costo-cuadro.mjs`,
+todo dentro del ruido de ±23 %), pero en una GPU chica podría no ser igual. Ver
+el checklist de `spec/etapa-nativa.md`.
 
 - El panel de preview del entorno **se cuelga**: los clicks por píxel se traban
   y `read_page` da timeout. Ya no se depende de él: el QA visual sale de

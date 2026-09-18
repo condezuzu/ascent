@@ -174,7 +174,11 @@ export default function FondoEspacial(
         marca('ascent:motor-montar-fin');
         medir('ascent:motor-montar', 'ascent:motor-montar-inicio', 'ascent:motor-montar-fin');
         medir('ascent:motor-total', 'ascent:motor-import-inicio', 'ascent:motor-montar-fin');
-        if (!cancelado) setListo(true);
+        // El fundido espera al primer cuadro: hasta que los shaders compilan
+        // el canvas está vacío, y lo que se ve es el fondo de CSS.
+        montaje?.listo.then(() => {
+          if (!cancelado) setListo(true);
+        });
       });
     });
 

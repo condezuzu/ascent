@@ -865,6 +865,17 @@ A `:8090` el `GLView` corre sobre el WebGL **del navegador**, no sobre el de
 4. **La densidad real y el notch.** El canvas va a sangre detrás de todo.
 5. **La cámara y la fototeca del Álbum**, cuando se porte (tandas 5/6): el
    `expo-image-picker` de `:8090` es un `<input type=file>`.
+6. **El costo por cuadro con los bucles sin desenrollar** (18/9). Para que
+   Chrome en Windows no tardara minutos en compilar, los bucles de ruido del
+   shader tienen un límite que el compilador no conoce (`5 + uCero`). En la
+   RTX de la máquina de desarrollo el costo por cuadro no cambió (todo dentro
+   del ruido, `herramientas/medir-costo-cuadro.mjs`), pero una GPU de teléfono
+   puede reaccionar distinto a un bucle que no se desenrolla. **Mirar:** fps de
+   Inicio con un planeta (rango 4), antes y después de esta versión.
+7. **Cuánto tarda en compilar cada modo en Metal.** `expo-gl` no tiene
+   `KHR_parallel_shader_compile`, así que ahí el primer cuadro sí compila
+   bloqueando (como antes). Con un programa por modo debería ser menos, no más,
+   pero no está medido.
 
 ### Lo que se sabe distinto de la web, a la vista
 
@@ -893,8 +904,9 @@ A `:8090` el `GLView` corre sobre el WebGL **del navegador**, no sobre el de
 - **Textos del Álbum contra la regla 4 de `spec/idioma.md`:** dicen "Borrar
   foto" y "¿Borrar?", y para una foto el verbo es "quitar". La sección 54 no
   mira verbos. Arreglarlo una vez arregla las dos apps.
-- **El bloqueo de 7 a 20 s de la página después de montar el motor:** ver
-  `spec/estado.md`, "Problemas conocidos".
+- ~~**El bloqueo de 7 a 20 s de la página después de montar el motor**~~
+  RESUELTO el 18/9: eran el WebGL por software de las sondas y el shader de
+  cuerpos en Direct3D (134-140 s en Chrome de Windows). Ver `spec/estado.md`.
 
 ---
 

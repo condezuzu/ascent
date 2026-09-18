@@ -112,7 +112,17 @@ uniform float uTormenta;    // 0 = sin tormenta
 uniform vec2 uTormentaPos;  // posición (lon, lat) de la tormenta
 uniform float uAnillo;      // 0 = sin anillo (Saturno)
 uniform float uAnilloVert;  // anillo casi vertical (Urano)
-uniform float uModo;        // 0 planeta / 1 sol / 2 agujero negro / 3 roca
+// EL MODO ES CONSTANTE, NO UN UNIFORM (18/9): 0 planeta / 1 sol / 2 agujero
+// negro / 3 roca / 4 aurora / 5 nebulosa. Llega como "#define MODO" desde el
+// material, así cada modo es su propio programa y el compilador tira las
+// ramas de los demás. Con un uniform, Chrome en Windows (Direct3D) compilaba
+// las seis juntas: 134-140 s de página congelada. Ver spec/trampas.md.
+const float uModo = float(MODO);
+// Vale 0 siempre. Está para que los límites de los bucles no sean constantes:
+// Direct3D desenrolla los bucles de límite fijo, y con el ruido adentro eso
+// eran 28 de los 32 s que le quedaban al planeta. Misma cuenta, sin
+// desenrollar.
+uniform int uCero;
 uniform float uCrateres;    // cráteres de verdad, con borde y sombra
 uniform float uCasquetes;   // casquetes polares
 uniform float uContinentes; // tierra firme sobre océano
@@ -175,7 +185,7 @@ float ruido(vec3 p) {
 float fbm(vec3 p) {
   float v = 0.0;
   float amp = 0.5;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 5 + uCero; i++) {
     v += amp * ruido(p);
     p = p * 2.03 + vec3(17.1, 9.2, 4.3);
     amp *= 0.5;
@@ -244,7 +254,7 @@ vec2 crateres(float lon, float lat, float escala, float sem, vec2 luz2) {
   float luz = 0.0;
   float gy = lat * escala + sem * 0.37;
   float fila = floor(gy);
-  for (int y = -1; y <= 1; y++) {
+  for (int y = -1; y <= 1 + uCero; y++) {
     float fy = fila + float(y);
     // cuántas celdas le entran a esta fila: su circunferencia en celdas
     float latFila = (fy + 0.5 - sem * 0.37) / escala;
@@ -252,7 +262,7 @@ vec2 crateres(float lon, float lat, float escala, float sem, vec2 luz2) {
     float gx = lon / 6.2831853 * nx + sem * 1.3;
     float colX = floor(gx);
     float anchoCelda = 6.2831853 / nx; // en radianes de longitud
-    for (int x = -1; x <= 1; x++) {
+    for (int x = -1; x <= 1 + uCero; x++) {
       float cx = colX + float(x);
       vec2 id = vec2(mod(cx, nx), fy);
       float hSel = hash2f(id + 31.0, sem);
@@ -306,7 +316,7 @@ vec2 crateres(float lon, float lat, float escala, float sem, vec2 luz2) {
 float ridged(vec3 p) {
   float v = 0.0;
   float amp = 0.5;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 5 + uCero; i++) {
     float n = 1.0 - abs(ruido(p) * 2.0 - 1.0);
     v += amp * n * n;
     p = p * 2.11 + vec3(3.7, 8.3, 1.9);
@@ -324,7 +334,7 @@ float ridged(vec3 p) {
 // superficie. Si crecen mucho se comen la pantalla y tapan al sol.
 float protuberancias(vec2 p, float d) {
   float total = 0.0;
-  for (int i = 0; i < 9; i++) {
+  for (int i = 0; i < 9 + uCero; i++) {
     float fi = float(i);
     float sa = hash1(fi, 3.0);
     float sb = hash1(fi + 20.0, 5.0);

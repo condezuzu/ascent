@@ -83,6 +83,46 @@ verdad hubo que reconstruirla de los hashes impresos en otra corrida.
 → **Regla:** lo que una comparación necesita para mañana vive en
 `herramientas/huellas/`, commiteado. `capturas/` es descartable por diseño.
 
+### Lo que se aprendió el 18/9 con GPU
+
+**El navegador de las sondas no tiene GPU, y eso cambia qué se mide.** Sin
+flags, Chromium dibuja WebGL con SwiftShader, en la CPU: ~1 s por cuadro del
+motor, la página trabada, y cualquier click esperando. Todas las capturas
+intermitentes con el motor montado eran esto. Para medir el motor se lanza con
+`--enable-gpu --ignore-gpu-blocklist --use-angle=d3d11` y se imprime el
+renderizador (`WEBGL_debug_renderer_info`) antes de medir nada.
+→ **Regla:** una sonda que mira el motor dice qué WebGL tuvo. Si no lo dice,
+no se sabe qué midió.
+
+**Con GPU aparece otro problema que sin GPU no se ve.** Chrome en Windows
+traduce los shaders a Direct3D, y ese compilador desenrolla bucles y compila
+todas las ramas de un `if` sobre un uniform. El shader de cuerpos tardaba
+134-140 s, con el hilo tomado, adentro de `getProgramInfoLog`. Sin GPU
+(SwiftShader) compilaba en milisegundos: por eso nunca lo vimos.
+→ **Regla:** en un shader, lo que elige un camino entero va por `#define`, no
+por uniform; y un bucle con ruido adentro no lleva límite constante. §124.
+
+**La caché de shaders miente en las mediciones.** Dentro de un mismo navegador
+el programa compilado queda guardado: el login pagaba los 134 s y la pantalla
+siguiente compilaba en 15 ms. Una sonda que entra por el login y mide otra
+pantalla mide la caché, no el motor.
+→ **Regla:** para medir compilación, perfil nuevo y medir la PRIMERA pantalla
+que monta el motor.
+
+**`gl.finish()` en Chrome no espera a la GPU.** Midió 0,1-0,2 ms por cuadro
+en 4K para todos los cuerpos. Leer un píxel (`readPixels` 1x1) sí espera.
+
+**`failIfMajorPerformanceCaveat` se equivoca para los dos lados.** El
+Chromium de las sondas dio contexto con SwiftShader aunque se lo pidió. Por eso
+el motor mira además el nombre del renderizador y mide sus primeros cuadros
+(`herramientas/probar-filtro-gpu.mjs`).
+
+**Un filtro que imprime al final esconde que la sonda terminó.** `| tail` y
+`| grep` sin `--line-buffered` no muestran nada hasta el final: una sonda que
+juntó sus datos en dos minutos y quedó colgada parecía seguir midiendo dos
+horas. Y ninguna sonda tenía límite de tiempo. Ahora todas llaman a
+`limiteDeSonda` (§123).
+
 ---
 
 ## Supabase Storage
