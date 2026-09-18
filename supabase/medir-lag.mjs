@@ -14,7 +14,10 @@ import { chromium } from 'playwright';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { pasarLaEntrada } from './utiles.mjs';
+import { pasarLaEntrada, limiteDeSonda, LIMITE_DE_COMPILACION_MS } from './utiles.mjs';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUERTO = Number(process.env.LAG_PUERTO ?? 3026);
@@ -23,7 +26,7 @@ const BASE = `http://localhost:${PUERTO}`;
 const FRENO = Number(process.env.LAG_FRENO ?? 6);
 
 const entorno = { ...process.env, NEXT_DIST_DIR: '.next-primera' };
-const compilacion = spawnSync('npx', ['next', 'build'], {
+const compilacion = spawnSync('npx', ['next', 'build'], { timeout: LIMITE_DE_COMPILACION_MS,
   cwd: RAIZ, shell: true, stdio: ['ignore', 'pipe', 'pipe'], env: entorno, encoding: 'utf8',
 });
 if (compilacion.status !== 0) {

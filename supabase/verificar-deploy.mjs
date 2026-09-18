@@ -13,7 +13,10 @@
 //
 // Lo que se mira es una MARCA: algo que el cliente viejo manda y el nuevo no.
 import { chromium } from 'playwright';
-import { pasarLaEntrada } from './utiles.mjs';
+import { pasarLaEntrada, limiteDeSonda } from './utiles.mjs';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const BASE = process.env.DEPLOY_URL ?? 'https://ascent-blush-seven.vercel.app';
 const correo = process.env.CONEXION_EMAIL;

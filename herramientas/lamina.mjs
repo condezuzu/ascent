@@ -14,6 +14,10 @@
 import { chromium } from 'playwright';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
+import { limiteDeSonda } from '../supabase/utiles.mjs';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const [carpeta, prefijo, salida] = process.argv.slice(2);
 if (!carpeta || !salida) {

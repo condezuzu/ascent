@@ -45,8 +45,11 @@ import { dirname, join } from 'node:path';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { createHash } from 'node:crypto';
-import { cerrarPuerto, limpiarPuertosDeSondas } from '../supabase/utiles.mjs';
+import { cerrarPuerto, limpiarPuertosDeSondas, limiteDeSonda, LIMITE_DE_COMPILACION_MS } from '../supabase/utiles.mjs';
 import { RANGOS } from '../nucleo/rangos.ts';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ETIQUETA = process.argv[2] ?? 'antes';
@@ -96,7 +99,7 @@ const BASE = `http://localhost:${PUERTO}`;
 
 const entorno = { ...process.env, NEXT_DIST_DIR: '.next-animacion' };
 console.log('compilando…');
-const build = spawnSync('npx', ['next', 'build'], { cwd: RAIZ, shell: true, env: entorno, encoding: 'utf8' });
+const build = spawnSync('npx', ['next', 'build'], { timeout: LIMITE_DE_COMPILACION_MS, cwd: RAIZ, shell: true, env: entorno, encoding: 'utf8' });
 if (build.status !== 0) {
   console.log('NO COMPILA:\n' + (build.stdout ?? '').slice(-2500));
   process.exit(1);

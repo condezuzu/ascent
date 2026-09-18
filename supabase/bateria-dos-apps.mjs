@@ -21,7 +21,10 @@ import { createClient } from '@supabase/supabase-js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { pasarLaEntrada } from './utiles.mjs';
+import { pasarLaEntrada, limiteDeSonda } from './utiles.mjs';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SALIDA = join(RAIZ, 'capturas', 'bateria');

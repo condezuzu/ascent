@@ -23,7 +23,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { cerrarPuerto, limpiarPuertosDeSondas, pasarLaEntrada } from './utiles.mjs';
+import { cerrarPuerto, limpiarPuertosDeSondas, pasarLaEntrada, limiteDeSonda, LIMITE_DE_COMPILACION_MS } from './utiles.mjs';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SALIDA = join(RAIZ, 'capturas', 'planetas');
@@ -56,7 +59,7 @@ const BASE = `http://localhost:${PUERTO}`;
 
 const entorno = { ...process.env, NEXT_DIST_DIR: '.next-planetas' };
 console.log('compilando…');
-const build = spawnSync('npx', ['next', 'build'], { cwd: RAIZ, shell: true, env: entorno, encoding: 'utf8' });
+const build = spawnSync('npx', ['next', 'build'], { timeout: LIMITE_DE_COMPILACION_MS, cwd: RAIZ, shell: true, env: entorno, encoding: 'utf8' });
 if (build.status !== 0) {
   console.log('NO COMPILA:\n' + (build.stdout ?? '').slice(-2500));
   process.exit(1);

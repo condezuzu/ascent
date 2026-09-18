@@ -253,3 +253,36 @@ export function limpiarPuertosDeSondas() {
   }
   if (pids.size) console.log(`  (limpié ${pids.size} servidor(es) huérfano(s) de corridas anteriores)`);
 }
+
+/**
+ * NINGUNA SONDA CORRE SIN LIMITE. Se llama al arrancar, con los minutos que
+ * razonablemente le tomaria la corrida mas lenta, y con lo que hay que cerrar
+ * si se corta (su servidor, su puerto).
+ *
+ * LO QUE COSTO NO TENERLO (18/9): `perfilar-bloqueo` junto sus datos en dos
+ * minutos y despues se quedo DOS HORAS sin terminar ni decir nada. El servidor
+ * hijo mantenia vivo el proceso, y el cierre estaba colgado de `exit`, que
+ * nunca llegaba. Es la misma familia que las promesas sin limite: algo que
+ * espera para siempre no falla, desaparece.
+ *
+ * El temporizador va con `unref`: no mantiene vivo el proceso cuando la corrida
+ * termino bien, pero si dispara cuando lo que lo mantiene vivo es otra cosa.
+ *
+ * LO QUE NO CUBRE: un `spawnSync` bloquea el hilo y ningun temporizador corre
+ * mientras tanto. Por eso cada `next build` lleva su propio `timeout`
+ * (LIMITE_DE_COMPILACION_MS). El test 123 exige las dos cosas.
+ */
+export function limiteDeSonda(minutos, alCortar) {
+  const t = setTimeout(() => {
+    console.log(`\nLIMITE: la sonda paso ${minutos} min sin terminar. La corto.`);
+    try {
+      alCortar?.();
+    } catch {}
+    process.exit(124);
+  }, minutos * 60_000);
+  t.unref();
+  return t;
+}
+
+/** El `timeout` de cada `next build` de una sonda: compila en 2-4 min. */
+export const LIMITE_DE_COMPILACION_MS = 10 * 60_000;

@@ -10,7 +10,10 @@ import { mkdirSync, rmSync, readdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { cerrarPuerto, limpiarPuertosDeSondas, pasarLaEntrada } from './utiles.mjs';
+import { cerrarPuerto, limpiarPuertosDeSondas, pasarLaEntrada, limiteDeSonda, LIMITE_DE_COMPILACION_MS } from './utiles.mjs';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(40);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SALIDA = join(RAIZ, 'capturas');
@@ -75,7 +78,7 @@ const BASE = `http://localhost:${PUERTO}`;
 const entorno = { ...process.env, NEXT_DIST_DIR: '.next-capturas' };
 
 console.log('  compilando (una sola vez)…');
-const compilacion = spawnSync('npx', ['next', 'build'], {
+const compilacion = spawnSync('npx', ['next', 'build'], { timeout: LIMITE_DE_COMPILACION_MS,
   cwd: RAIZ,
   shell: true,
   stdio: ['ignore', 'pipe', 'pipe'],

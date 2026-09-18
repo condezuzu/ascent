@@ -25,6 +25,10 @@ import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { limiteDeSonda } from './utiles.mjs';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITIO = (process.argv[2] ?? 'https://ascent-blush-seven.vercel.app').replace(/\/$/, '');

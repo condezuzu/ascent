@@ -18,9 +18,12 @@ import { createClient } from '@supabase/supabase-js';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { pasarLaEntrada } from './utiles.mjs';
+import { pasarLaEntrada, limiteDeSonda, LIMITE_DE_COMPILACION_MS } from './utiles.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUERTO = Number(process.env.EXIF_PUERTO ?? 3027);
@@ -77,7 +80,7 @@ const chequear = (que, obtuve, esperaba) => {
 
 const entorno = { ...process.env, NEXT_DIST_DIR: '.next-exif' };
 console.log('  compilando…');
-const compilacion = spawnSync('npx', ['next', 'build'], {
+const compilacion = spawnSync('npx', ['next', 'build'], { timeout: LIMITE_DE_COMPILACION_MS,
   cwd: RAIZ, shell: true, stdio: ['ignore', 'pipe', 'pipe'], env: entorno, encoding: 'utf8',
 });
 if (compilacion.status !== 0) {

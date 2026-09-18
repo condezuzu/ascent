@@ -17,8 +17,11 @@ import { chromium } from 'playwright';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { cerrarPuerto, limpiarPuertosDeSondas, pasarLaEntrada } from './utiles.mjs';
+import { cerrarPuerto, limpiarPuertosDeSondas, pasarLaEntrada, limiteDeSonda, LIMITE_DE_COMPILACION_MS } from './utiles.mjs';
 import { createServer } from 'node:net';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const librePara = (p) =>
@@ -47,7 +50,7 @@ const BASE = `http://localhost:${PUERTO}`;
 
 const entorno = { ...process.env, NEXT_DIST_DIR: '.next-arranque' };
 console.log('  compilando…');
-const c = spawnSync('npx', ['next', 'build'], {
+const c = spawnSync('npx', ['next', 'build'], { timeout: LIMITE_DE_COMPILACION_MS,
   cwd: RAIZ, shell: true, stdio: ['ignore', 'pipe', 'pipe'], env: entorno, encoding: 'utf8',
 });
 if (c.status !== 0) { console.log('NO COMPILA:\n' + (c.stdout ?? '')); process.exit(1); }

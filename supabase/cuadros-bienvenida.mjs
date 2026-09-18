@@ -3,6 +3,10 @@
 // y sin eso las capturas salen donde caiga.
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
+import { limiteDeSonda } from './utiles.mjs';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 const SALIDA = 'capturas/bienvenida';
 mkdirSync(SALIDA, { recursive: true });
 // Los segundos en que cada objeto está formado: el final de cada tramo.

@@ -15,6 +15,10 @@ import { chromium } from 'playwright';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { limiteDeSonda, LIMITE_DE_COMPILACION_MS } from './utiles.mjs';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUERTO = 3026;
@@ -22,7 +26,7 @@ const BASE = `http://localhost:${PUERTO}`;
 const entorno = { ...process.env, NEXT_DIST_DIR: '.next-medir' };
 
 console.log('compilando (producción)…');
-const build = spawnSync('npx', ['next', 'build'], { cwd: RAIZ, shell: true, env: entorno, encoding: 'utf8' });
+const build = spawnSync('npx', ['next', 'build'], { timeout: LIMITE_DE_COMPILACION_MS, cwd: RAIZ, shell: true, env: entorno, encoding: 'utf8' });
 if (build.status !== 0) {
   console.log('no compila:\n' + (build.stdout ?? '').slice(-2000));
   process.exit(1);

@@ -27,6 +27,10 @@ import { chromium } from 'playwright';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { limiteDeSonda } from '../supabase/utiles.mjs';
+
+// Ninguna sonda corre sin limite (ver utiles.mjs).
+limiteDeSonda(20);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ORIGEN = process.argv[2] ?? join(RAIZ, 'movil', 'assets', 'icono.png');

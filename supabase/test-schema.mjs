@@ -8311,6 +8311,46 @@ console.log('\n122. La app nativa se puede construir: los archivos que nombra ex
   chequear('y el bundle no cambio', app.ios?.bundleIdentifier, 'uy.ascent.app');
 }
 
+console.log('\n123. Ninguna sonda corre sin limite de tiempo');
+{
+  // LO QUE COSTO NO TENERLO (18/9). `perfilar-bloqueo` junto sus datos en dos
+  // minutos y se quedo DOS HORAS sin terminar ni decir nada: el servidor hijo
+  // mantenia vivo el proceso. Ninguna de las 23 sondas tenia limite. Es la
+  // misma familia que las promesas sin limite: lo que espera para siempre no
+  // falla, desaparece.
+  //
+  // Dos cosas, porque una sola no alcanza: `limiteDeSonda` es un temporizador,
+  // y un `spawnSync` bloquea el hilo --mientras compila, ningun temporizador
+  // corre--. Por eso cada `next build` lleva ademas su propio `timeout`.
+  const { readdirSync: leerDir123, readFileSync: leer123 } = await import('node:fs');
+  const { join: unir123, dirname: dir123 } = await import('node:path');
+  const { fileURLToPath: aRuta123 } = await import('node:url');
+  const AQUI_123 = dir123(aRuta123(import.meta.url));
+  const archivos123 = [AQUI_123, unir123(AQUI_123, '..', 'herramientas')].flatMap((d) =>
+    leerDir123(d)
+      .filter((x) => x.endsWith('.mjs'))
+      .map((x) => unir123(d, x))
+  );
+  const sinLimite = [];
+  const compilaSinLimite = [];
+  let sondas123 = 0;
+  for (const ruta of archivos123) {
+    const f = ruta.split(/[\\/]/).slice(-2).join('/');
+    // Este archivo nombra los patrones en un string: no es una sonda.
+    if (f.endsWith('test-schema.mjs')) continue;
+    const codigo = sinComentarios(leer123(ruta, 'utf8'));
+    const compila = codigo.includes("'next', 'build'");
+    if (!codigo.includes('chromium.launch') && !compila) continue;
+    sondas123++;
+    if (!/^limiteDeSonda\(/m.test(codigo)) sinLimite.push(f);
+    for (const m of codigo.matchAll(/spawnSync\('npx', \['next', 'build'\], \{[^}]*\}/g))
+      if (!m[0].includes('timeout:')) compilaSinLimite.push(f);
+  }
+  chequear('encuentra las sondas', sondas123 >= 20, true);
+  chequear('todas llaman a limiteDeSonda al arrancar', sinLimite, []);
+  chequear('y cada next build tiene su timeout', compilaSinLimite, []);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
