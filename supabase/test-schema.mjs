@@ -67,6 +67,9 @@ import {
   paraGuardar,
   restar,
   corregirBloque,
+  corregirEjercicio,
+  corregirPeso,
+  cambiarPeso,
   mudarEjercicio,
   quitarBloque,
   sembrar,
@@ -3625,6 +3628,24 @@ console.log('\n55. Me equivoque de ejercicio: las series se mudan');
   chequear('mudar al mismo ejercicio no hace nada', mudarEjercicio(e, 'press_banca'), e);
   const sinNada = bloquesVacios('press_banca', 3);
   chequear('sin series contadas, mudar es igual a cambiar', mudarEjercicio(sinNada, 'x').hechas, cambiarEjercicio(sinNada, 'x').hechas);
+
+  // Y CON EL BLOQUE YA CERRADO (18/9). La pregunta de arriba sale solo en el
+  // bloque en curso; el error se descubre casi siempre despues, en la lista.
+  // Paso en el gimnasio: press de banca anotado, era inclinado, y no habia forma.
+  let c = cambiarPeso(bloquesVacios('press_banca', 3), 60);
+  c = sumar(sumar(c));
+  c = corregirPeso(c, -1, 1, 62.5);
+  c = cambiarEjercicio(c, 'sentadilla'); // se cierra el de banca
+  chequear('queda cerrado en banca, con sus pesos', c.cerrados, [{ ejercicio: 'press_banca', series: 2, pesos: [60, 62.5] }]);
+  const arreglado = corregirEjercicio(c, 0, 'press_inclinado');
+  chequear('se corrige el ejercicio y se quedan series y pesos', arreglado.cerrados,
+    [{ ejercicio: 'press_inclinado', series: 2, pesos: [60, 62.5] }]);
+  chequear('el bloque en curso no se toca', [arreglado.ejercicio, arreglado.hechas], [c.ejercicio, c.hechas]);
+  chequear('el modo que se veia queda fijo', corregirEjercicio(c, 0, 'press_inclinado', 'par').cerrados[0].carga, 'par');
+  chequear('al mismo ejercicio no hace nada', corregirEjercicio(c, 0, 'press_banca'), c);
+  chequear('a "sin ejercicio" no: seria borrar la anotacion', corregirEjercicio(c, 0, null), c);
+  chequear('un indice que no existe no toca nada', corregirEjercicio(c, 9, 'remo'), c);
+  chequear('-1 es el en curso, y ahi es mudar', corregirEjercicio(e, -1, 'sentadilla'), mudarEjercicio(e, 'sentadilla'));
 }
 
 console.log('\n56. El arbol del selector llega a los 100');
@@ -6564,6 +6585,29 @@ console.log('\n96. Hiciste 102 en banca: ¿lo guardo como marca?');
   // La consulta se mudó a `compartido/` el 18/9, al portar Stats a la nativa.
   const estancamiento = leer(join(RAIZ, 'compartido', 'estancamiento.ts'), 'utf8');
   chequear("el estancamiento tambien", /from\('prs'\)\.select\([^)]*\)\.eq\('user_id'/.test(estancamiento), true);
+
+  // EN EL MOMENTO DE LA SERIE (18/9, a pedido: el aviso llegaba recien al
+  // terminar). `marcaDeSerie` no tiene reglas propias: es la misma cuenta con
+  // un bloque de una serie. Que den lo mismo es lo que se prueba.
+  const deSerie = (ejercicio, peso, carga) => M.marcaDeSerie({ ejercicio, peso, carga, marcas, catalogo });
+  chequear('una serie que supera: se pregunta en el momento', deSerie('press_banca', 102, 'total'),
+    { ejercicio: 'press_banca', peso: 102, antes: 100 });
+  chequear('y es lo mismo que al terminar',
+    deSerie('press_banca', 102, 'total'),
+    propone([{ ejercicio: 'press_banca', series: 1, pesos: [102], carga: 'total' }])[0]);
+  chequear('por mancuerna no se pregunta, igual que al terminar', deSerie('press_mancuernas', 40, 'par'), null);
+  chequear('sin peso no hay nada que preguntar', deSerie('press_banca', null, 'total'), null);
+  chequear('sin ejercicio tampoco', deSerie(null, 120, 'total'), null);
+  chequear('sin marca previa y fuera del DOTS, no', deSerie('remo_barra', 90, 'total'), null);
+  chequear('sin marca previa y del DOTS, si', deSerie('peso_muerto', 150, 'total')?.antes, null);
+
+  // Y LAS DOS PANTALLAS LA DIBUJAN, debajo del bloque. Es la mitad que el
+  // nucleo no ve: si alguien saca el componente, la pregunta vuelve a llegar
+  // solo al final y ningun otro test se entera.
+  for (const [cual, ruta] of [['web', ['src', 'app', 'page.tsx']], ['nativa', ['movil', 'src', 'Inicio.tsx']]]) {
+    const codigo = sinComentarios(leer(join(RAIZ, ...ruta), 'utf8'));
+    chequear(`${cual}: pregunta en el momento, debajo del bloque`, codigo.includes('<MarcaEnElMomento'), true);
+  }
 }
 console.log('\n97. La app nativa usa las mismas vidas, la misma foto y el mismo sonido');
 {

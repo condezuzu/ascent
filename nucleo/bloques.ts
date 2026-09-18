@@ -353,6 +353,39 @@ export function corregirPeso(
   };
 }
 
+/**
+ * "ME EQUIVOQUÉ DE EJERCICIO" EN UN BLOQUE YA CERRADO (18/9).
+ *
+ * `mudarEjercicio` lo resolvía solo para el bloque en curso: la pregunta "¿de
+ * cuál eran?" sale al elegir otro ejercicio con series contadas. Pero el error
+ * se descubre casi siempre DESPUÉS —al mirar la lista de lo hecho, o al pasar
+ * al siguiente—, y ahí el bloque ya está cerrado. Pasó en el gimnasio: press de
+ * banca anotado, era press inclinado, y no había forma de arreglarlo.
+ *
+ * Las series, sus pesos y el modo se quedan: lo que estaba mal era el nombre,
+ * no lo que se levantó. El modo que se veía queda FIJO, por la misma razón que
+ * en `mudarEjercicio`: los números se escribieron leyendo esa etiqueta.
+ *
+ * No se puede pasar a "sin ejercicio": un bloque cerrado sin ejercicio no se
+ * guarda, y eso sería borrar la anotación por la puerta de atrás. Sacarlo es
+ * otra decisión y tiene su botón. `indice` -1 es el bloque en curso.
+ */
+export function corregirEjercicio(
+  e: EstadoBloques,
+  indice: number,
+  id: string,
+  cargaQueSeVeia?: Carga
+): EstadoBloques {
+  if (indice === -1) return mudarEjercicio(e, id, cargaQueSeVeia);
+  const b = e.cerrados[indice];
+  if (!b || !id || id === b.ejercicio) return e;
+  const carga = cargaValida(b.carga) ?? cargaValida(cargaQueSeVeia);
+  return {
+    ...e,
+    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(id, x.series, pesosDe(x.pesos, x.series), carga) : x)),
+  };
+}
+
 export function quitarBloque(e: EstadoBloques, indice: number): Correccion {
   const b = e.cerrados[indice];
   if (!b) return { estado: e, cambioEnTotal: 0 };

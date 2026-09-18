@@ -150,3 +150,33 @@ export function podriaSuperar(peso: number, antes: number | null): boolean {
 export function filaDeMarca(s: Sugerencia, reps: number, fecha: string) {
   return { ejercicio: s.ejercicio, peso: Math.round(s.peso * 100) / 100, reps, es_real: reps === 1, fecha };
 }
+
+/**
+ * LA MISMA PREGUNTA, PERO EN EL MOMENTO: al confirmar la serie que puede ser
+ * marca, no al terminar la sesión (18/9, a pedido: "tiene que aparecer al
+ * confirmar la serie que hizo la marca"). Al terminar, con el teléfono ya
+ * guardado, la pregunta llegaba tarde y lejos de la serie.
+ *
+ * NO HAY REGLAS NUEVAS: es `marcasParaProponer` con un bloque de una sola
+ * serie. Lo que vale al terminar —solo pesos en total, que PUEDA superar la
+ * marca, sin marca previa solo los del DOTS— vale igual acá, y escrito una vez.
+ */
+export function marcaDeSerie({
+  ejercicio,
+  peso,
+  carga,
+  marcas,
+  catalogo,
+}: {
+  ejercicio: string | null;
+  /** El peso de la serie que se acaba de confirmar, en kilos. */
+  peso: number | null | undefined;
+  /** El modo del bloque, si lo trae; si no, el del catálogo. */
+  carga?: string;
+  marcas: MarcaGuardada[];
+  catalogo: Map<string, EjercicioParaMarca>;
+}): Sugerencia | null {
+  if (!ejercicio || peso === null || peso === undefined) return null;
+  const bloque = { ejercicio, series: 1, pesos: [peso], ...(carga ? { carga } : {}) };
+  return marcasParaProponer({ bloques: [bloque], marcas, catalogo })[0] ?? null;
+}

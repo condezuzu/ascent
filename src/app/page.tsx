@@ -31,6 +31,7 @@ import SubidaRango from '@/components/SubidaRango';
 import ResumenSesion from '@/components/ResumenSesion';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import Bloque from '@/components/Bloque';
+import MarcaEnElMomento from '@/components/MarcaEnElMomento';
 import DiaSumado from '@/components/DiaSumado';
 import RachaSalvada from '@/components/RachaSalvada';
 import AccionPrincipal from '@/components/AccionPrincipal';
@@ -600,6 +601,13 @@ export default function Principal() {
               cargaConsultada={sesion.estado.cargaConsultada}
               alElegirCarga={sesion.elegirCarga}
               alCorregirCarga={sesion.corregirCargaDeBloque}
+              alCorregirEjercicio={sesion.corregirEjercicioDeBloque}
+            />
+            {/* "¿Lo guardo como marca?", en el momento de la serie. */}
+            <MarcaEnElMomento
+              bloques={sesion.estado.bloques}
+              inicio={sesion.estado.inicio}
+              unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
             />
             {/* "Cada + suma la serie y arranca el descanso" lo dice el globo
                 de la primera vez, tres renglones más arriba. Repetirlo abajo

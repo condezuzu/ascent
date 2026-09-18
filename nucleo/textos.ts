@@ -855,6 +855,9 @@ export const T = {
     listaVacia: 'Todavía no contaste ninguna serie.',
     listaAhora: 'en curso',
     listaQuitar: 'Quitar este bloque',
+    // El nombre del ejercicio de un bloque cerrado se toca para corregirlo:
+    // "anoté press de banca y era inclinado". Las series y los pesos se quedan.
+    listaCambiarEjercicio: (nombre: string) => `${nombre}: cambiar el ejercicio`,
     listaQuitarPregunta: '¿Quitar?',
 
     resumenTitulo: 'Listo por hoy.',

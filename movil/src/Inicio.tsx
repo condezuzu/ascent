@@ -18,6 +18,8 @@ import RegistrarDia from './RegistrarDia';
 import { plataforma } from '@plataforma';
 import { CLAVE_VIDA_VISTA, hastaDondeVisto, impulsosSinVer, rachaSiSeDevuelve } from '@nucleo/impulsos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
+import MarcaEnElMomento from './MarcaEnElMomento';
+import { paletaDe } from '@nucleo/paletas';
 import { cuentaAtras, restante } from '@compartido/descanso';
 import FondoEspacial from './FondoEspacial';
 
@@ -332,6 +334,14 @@ export default function Inicio({
             alCorregirPeso={sesion.corregirPesoDeSerie}
             alElegirCarga={sesion.elegirCarga}
             alCorregirCarga={sesion.corregirCargaDeBloque}
+            alCorregirEjercicio={sesion.corregirEjercicioDeBloque}
+          />
+          {/* "¿Lo guardo como marca?", en el momento de la serie. */}
+          <MarcaEnElMomento
+            bloques={sesion.estado.bloques}
+            inicio={sesion.estado.inicio}
+            unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
+            principal={paletaDe(perfil.rango_actual ?? 1, null).principal}
           />
           {sesion.estado.porUbicacion && <Text style={estilos.nota}>{T.inicio.sesionSola}</Text>}
 

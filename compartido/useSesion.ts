@@ -25,6 +25,7 @@ import {
   cambiarCarga,
   cambiarEjercicio,
   corregirCarga,
+  corregirEjercicio,
   cambiarPeso,
   corregirPeso,
   mudarEjercicio,
@@ -754,6 +755,20 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     await subir(series, b);
   }
 
+  /**
+   * "Me equivoqué de ejercicio" en un bloque ya cerrado, desde la lista: las
+   * series y sus pesos se quedan, cambia de qué fueron (ver
+   * `corregirEjercicio` en `nucleo/bloques.ts`). `indice` -1 es el en curso.
+   */
+  async function corregirEjercicioDeBloque(indice: number, id: string, cargaQueSeVeia?: Carga) {
+    await marcar();
+    const b = corregirEjercicio(bloques, indice, id, cargaQueSeVeia);
+    if (b === bloques) return;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
+    await subir(series, b);
+  }
+
   async function recordar(ejercicio: string, c: Carga) {
     await recordarCarga(ejercicio, c);
     if (!disponible('cargaDelPeso', await versionDelEsquema(supabase))) return;
@@ -860,6 +875,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     corregirPesoDeSerie,
     elegirCarga,
     corregirCargaDeBloque,
+    corregirEjercicioDeBloque,
     descansarSuelto,
     cerrarDescanso: () => {
       borrarDescanso();

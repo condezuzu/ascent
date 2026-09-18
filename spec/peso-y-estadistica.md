@@ -109,6 +109,14 @@ apurado entre series lo ensucia sin que nadie se entere. Lo que sí:
 
 Una pregunta, al final, con el dato ya escrito. No un formulario.
 
+> **CAMBIÓ EL 18/9, a pedido, después de usarlo en el gimnasio:** la pregunta
+> sale **al confirmar la serie que puede ser marca**, debajo del bloque, y no al
+> terminar. Al final llegaba tarde y lejos de la serie. Las reglas de qué se
+> pregunta son las mismas (`marcaDeSerie` es `marcasParaProponer` con un bloque
+> de una serie) y sigue sin ser automática: se pregunta, no se guarda sola. El
+> resumen del final quedó como red: solo pregunta por lo que no se preguntó
+> durante la sesión.
+
 ### 1.5 La decisión que es tuya: repeticiones
 
 Con peso por serie, el volumen es `peso × series`. Con repeticiones sería

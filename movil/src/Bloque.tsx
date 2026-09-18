@@ -46,6 +46,7 @@ export default function Bloque({
   alCorregirPeso,
   alElegirCarga,
   alCorregirCarga,
+  alCorregirEjercicio,
 }: {
   estado: EstadoBloques;
   total: number;
@@ -62,6 +63,7 @@ export default function Bloque({
   alCorregirPeso: (indice: number, serie: number, kg: number | null) => void;
   alElegirCarga: (c: Carga) => void;
   alCorregirCarga: (indice: number, c: Carga) => void;
+  alCorregirEjercicio: (indice: number, id: string, cargaQueSeVeia?: Carga) => void;
 }) {
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [eligiendo, setEligiendo] = useState(false);
@@ -245,6 +247,7 @@ export default function Bloque({
         conCarga={conCarga}
         alCorregirPeso={alCorregirPeso}
         alCorregirCarga={alCorregirCarga}
+        alCorregirEjercicio={alCorregirEjercicio}
         alTocar={alTocarBloque}
         alCerrar={() => setLista(false)}
       />

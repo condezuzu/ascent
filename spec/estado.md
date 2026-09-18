@@ -12,7 +12,8 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Aplicadas hasta la 43. Falta correr la 44.**
+**Aplicadas hasta la 44.** Lo dice la base misma: `version_del_esquema()`
+contestó 44 el 18/9 (esta línea decía "falta correr la 44").
 
 > Este párrafo decía "las 22 primeras están aplicadas; la 23 falta correr"
 > hasta el 17/9/2026, con veinte migraciones ya corridas encima. Se actualiza

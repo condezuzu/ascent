@@ -3853,6 +3853,15 @@ body.con-franja.con-accion .pantalla {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* El nombre de un bloque cerrado se toca para corregir el ejercicio. Una línea
+   punteada debajo dice "esto se toca" sin parecer un enlace a otra pantalla. */
+.fila-bloque .que-tocable {
+  width: auto;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline dotted color-mix(in srgb, var(--sub) 70%, transparent);
+  text-underline-offset: 4px;
+}
 .fila-bloque .controles,
 .fila-bloque .confirmar {
   display: flex;
@@ -4435,6 +4444,14 @@ body.con-franja.con-accion .pantalla {
 }
 
 /* ¿Lo guardo como marca? — dentro del resumen del final. */
+/* La misma pregunta, debajo del bloque y en el momento de la serie: sin el
+   aire que tiene en el resumen, que es una pantalla propia. */
+.marcas-sugeridas.en-el-momento {
+  margin-top: 14px;
+  max-width: none;
+  padding: 12px 14px;
+  border-left: 2px solid color-mix(in srgb, var(--pal-principal) 45%, transparent);
+}
 .marcas-sugeridas {
   margin-top: 34px;
   display: flex;

@@ -8,12 +8,18 @@ import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import CampoPeso from './CampoPeso';
 import EtiquetaDeCarga from './EtiquetaDeCarga';
+import SelectorEjercicio from './SelectorEjercicio';
 import { C } from './colores';
 
 /**
  * LO QUE LLEVÁS HOY, Y CÓMO CORREGIRLO. La misma hoja que la web: cada bloque
  * cerrado con su − y su +, quitarlo pregunta, y los pesos de cada serie se
  * corrigen de a uno. El bloque en curso se ve pero sus series se tocan afuera.
+ *
+ * Y el ejercicio de un bloque cerrado se corrige tocando su nombre (18/9): las
+ * series y sus pesos se quedan, cambia de qué fueron. El selector va ADENTRO
+ * de esta hoja: en iOS un modal solo se presenta encima de otro si está dentro
+ * de su contenido.
  */
 export default function ListaDeBloques({
   visible,
@@ -24,6 +30,7 @@ export default function ListaDeBloques({
   conCarga,
   alCorregirPeso,
   alCorregirCarga,
+  alCorregirEjercicio,
   alTocar,
   alCerrar,
 }: {
@@ -35,10 +42,13 @@ export default function ListaDeBloques({
   conCarga: boolean;
   alCorregirPeso: (indice: number, serie: number, kg: number | null) => void;
   alCorregirCarga: (indice: number, c: Carga) => void;
+  alCorregirEjercicio: (indice: number, id: string, cargaQueSeVeia?: Carga) => void;
   alTocar: (indice: number, delta: number | 'quitar') => void;
   alCerrar: () => void;
 }) {
   const [porQuitar, setPorQuitar] = useState<number | null>(null);
+  // El bloque cuyo ejercicio se está corrigiendo: abre el selector.
+  const [cambiando, setCambiando] = useState<number | null>(null);
   const del = (id: string | null) => ejercicios.find((e) => e.id === id);
   const nombre = (id: string | null) => (id ? (del(id)?.nombre ?? id) : T.sesion.sinEjercicio);
   const admitePeso = (id: string | null) => id !== null && del(id)?.admite_peso !== false;
@@ -79,7 +89,15 @@ export default function ListaDeBloques({
           {estado.cerrados.map((b, i) => (
             <View key={i} style={estilos.fila}>
               <View style={estilos.filaArriba}>
-                <Text style={estilos.nombre}>{nombre(b.ejercicio)}</Text>
+                <Pressable
+                  style={{ flexShrink: 1 }}
+                  onPress={() => setCambiando(i)}
+                  accessibilityRole="button"
+                  accessibilityLabel={T.sesion.listaCambiarEjercicio(nombre(b.ejercicio))}
+                  hitSlop={8}
+                >
+                  <Text style={[estilos.nombre, estilos.tocable]}>{nombre(b.ejercicio)}</Text>
+                </Pressable>
                 {porQuitar === i ? (
                   <View style={estilos.controles}>
                     <Text style={estilos.pregunta}>{T.sesion.listaQuitarPregunta}</Text>
@@ -133,11 +151,28 @@ export default function ListaDeBloques({
       <Pressable style={estilos.listo} onPress={alCerrar}>
         <Text style={estilos.listoTexto}>{T.sesion.listo}</Text>
       </Pressable>
+      {cambiando !== null && estado.cerrados[cambiando] && (
+        <SelectorEjercicio
+          visible
+          ejercicios={ejercicios}
+          valor={estado.cerrados[cambiando].ejercicio}
+          alElegir={(id) => {
+            const b = estado.cerrados[cambiando];
+            // El modo que se veía viaja con las series: los números se
+            // escribieron leyendo esa etiqueta.
+            const vista = conCarga && b.pesos ? cargaVigente(b.carga, del(b.ejercicio)?.carga) : undefined;
+            if (id) alCorregirEjercicio(cambiando, id, vista);
+          }}
+          alCerrar={() => setCambiando(null)}
+        />
+      )}
     </Hoja>
   );
 }
 
 const estilos = StyleSheet.create({
+  // Una línea punteada debajo: "esto se toca" sin parecer un enlace.
+  tocable: { textDecorationLine: 'underline', textDecorationStyle: 'dotted', textDecorationColor: C.sub },
   titulo: { color: C.tinta, fontSize: 20, fontWeight: '500', marginBottom: 12 },
   vacio: { color: C.sub, fontSize: 14, marginVertical: 12 },
   fila: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.linea },

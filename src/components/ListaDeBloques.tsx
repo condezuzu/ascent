@@ -6,6 +6,7 @@ import type { EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import type { Unidad } from '@nucleo/peso';
 import CampoPeso from '@/components/CampoPeso';
+import SelectorEjercicio from '@/components/SelectorEjercicio';
 import { T } from '@nucleo/textos';
 import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
 import { cargaVigente, type Carga } from '@nucleo/carga';
@@ -22,6 +23,10 @@ import { cargaVigente, type Carga } from '@nucleo/carga';
  * tantas sesiones, y sumar pasa doce veces por sesión. Lo que se usa siempre
  * manda en la pantalla; lo que se usa a veces vive detrás de un botón.
  *
+ * Y EL EJERCICIO DE UN BLOQUE CERRADO SE CORRIGE TOCANDO SU NOMBRE (18/9): "me
+ * equivoqué de ejercicio" se descubre casi siempre después, con el bloque ya
+ * cerrado. Las series y sus pesos se quedan; cambia de qué fueron.
+ *
  * EL BLOQUE EN CURSO SE VE PERO NO SE TOCA DESDE ACÁ: ese ya tiene su `+` y su
  * `−` afuera, más grandes y sin abrir nada. Dos formas de hacer lo mismo en
  * dos lugares distintos es cómo se aprende a desconfiar de las dos.
@@ -34,6 +39,7 @@ export default function ListaDeBloques({
   conCarga,
   alCorregirPeso,
   alCorregirCarga,
+  alCorregirEjercicio,
   alTocar,
   alCerrar,
 }: {
@@ -45,11 +51,14 @@ export default function ListaDeBloques({
   conCarga: boolean;
   alCorregirPeso: (indice: number, serie: number, kg: number | null) => void;
   alCorregirCarga: (indice: number, c: Carga) => void;
+  alCorregirEjercicio: (indice: number, id: string, cargaQueSeVeia?: Carga) => void;
   alTocar: (indice: number, delta: number | 'quitar') => void;
   alCerrar: () => void;
 }) {
   const [cerrando, setCerrando] = useState(false);
   const [porQuitar, setPorQuitar] = useState<number | null>(null);
+  // El bloque cuyo ejercicio se está corrigiendo: abre el selector.
+  const [cambiando, setCambiando] = useState<number | null>(null);
 
   function cerrar() {
     setCerrando(true);
@@ -78,7 +87,13 @@ export default function ListaDeBloques({
           <div className="lista-bloques">
             {estado.cerrados.map((b, i) => (
               <div className="fila-bloque" key={i}>
-                <span className="que">{nombre(b.ejercicio)}</span>
+                <button
+                  className="que que-tocable"
+                  onClick={() => setCambiando(i)}
+                  aria-label={T.sesion.listaCambiarEjercicio(nombre(b.ejercicio))}
+                >
+                  {nombre(b.ejercicio)}
+                </button>
 
                 {porQuitar === i ? (
                   <span className="confirmar">
@@ -188,6 +203,21 @@ export default function ListaDeBloques({
               </div>
             )}
           </div>
+        )}
+
+        {cambiando !== null && estado.cerrados[cambiando] && (
+          <SelectorEjercicio
+            ejercicios={ejercicios}
+            valor={estado.cerrados[cambiando].ejercicio}
+            alElegir={(id) => {
+              const b = estado.cerrados[cambiando];
+              // El modo que se veía viaja con las series: los números se
+              // escribieron leyendo esa etiqueta.
+              const vista = conCarga && b.pesos ? cargaVigente(b.carga, delCatalogo(b.ejercicio)) : undefined;
+              if (id) alCorregirEjercicio(cambiando, id, vista);
+            }}
+            alCerrar={() => setCambiando(null)}
+          />
         )}
 
         <button className="boton-solido" onClick={cerrar} style={{ marginTop: 18 }}>
