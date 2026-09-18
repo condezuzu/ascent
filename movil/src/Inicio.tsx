@@ -465,7 +465,9 @@ export default function Inicio({
 }
 
 const estilos = StyleSheet.create({
-  raiz: { flex: 1, backgroundColor: '#05060a' },
+  // Transparente: el fondo lo dibuja `FondoRaiz`, detrás de todas las
+  // pestañas. Un color acá lo taparía.
+  raiz: { flex: 1 },
   // Transparente: detrás está el fondo, que ya pinta el color de base.
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64 },
   centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },

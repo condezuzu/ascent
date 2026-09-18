@@ -19,6 +19,10 @@
 // `--escala` es la densidad del aparato simulado (2 por omisión). Con 3, que es
 // la de un iPhone, se comprueba además que el buffer del motor quedó topado en
 // 2x como en la web.
+//
+// `--vueltas` además va a Stats y vuelve a Inicio dos veces, y cuenta cuántos
+// shaders se compilan en cada vuelta. Inicio es la pantalla que más se abre:
+// recompilar cada vez es el mismo problema que el arranque de 3 s de la web.
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -29,6 +33,7 @@ const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SALIDA = join(RAIZ, 'capturas');
 mkdirSync(SALIDA, { recursive: true });
 const BASE = 'http://localhost:8090';
+const VUELTAS = process.argv.includes('--vueltas');
 const ESCALA = Number((process.argv.find((a) => a.startsWith('--escala=')) ?? '--escala=2').split('=')[1]);
 
 const vivo = await fetch(BASE).then(() => true).catch(() => false);
@@ -42,6 +47,22 @@ const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, device
 // Para poder LEER el canvas sin pasar por la pantalla: ver `spec/trampas.md`,
 // "Probar el motor". No cambia lo que se dibuja.
 await ctx.addInitScript(() => {
+  // CUÁNTO SE COMPILA: cada shader y cada programa que arma three pasa por
+  // estas dos. Es lo que cuesta de verdad al montar una escena.
+  window.__compilados = { shaders: 0, programas: 0 };
+  for (const P of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) {
+    if (!P) continue;
+    const cs = P.prototype.compileShader;
+    P.prototype.compileShader = function (...a) {
+      window.__compilados.shaders++;
+      return cs.apply(this, a);
+    };
+    const lp = P.prototype.linkProgram;
+    P.prototype.linkProgram = function (...a) {
+      window.__compilados.programas++;
+      return lp.apply(this, a);
+    };
+  }
   const getCtx = HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext = function (tipo, opciones, ...resto) {
     if (/webgl/.test(String(tipo))) opciones = { ...(opciones ?? {}), preserveDrawingBuffer: true };
@@ -113,5 +134,33 @@ const delMotor = avisos.filter((x) => /motor|three|webgl|gl/i.test(x));
 console.log(delMotor.length ? '\navisos del motor:\n  - ' + delMotor.join('\n  - ') : '\nsin avisos del motor en consola');
 console.log('fotos: capturas/nativa-inicio.png y capturas/nativa-canvas.png');
 
+let recompila = false;
+if (VUELTAS) {
+  const compilados = () => page.evaluate(() => ({ ...window.__compilados }));
+  const antes = await compilados();
+  console.log(`
+al entrar: ${antes.shaders} shaders, ${antes.programas} programas`);
+  for (let v = 1; v <= 2; v++) {
+    await page.getByText('Stats', { exact: true }).last().click();
+    await page.waitForTimeout(2500);
+    const desde = await compilados();
+    await page.getByText('Inicio', { exact: true }).last().click();
+    // Lo que tarde el motor en volver: la espera de interacciones + el montaje.
+    await page.waitForTimeout(5000);
+    const hasta = await compilados();
+    const s = hasta.shaders - desde.shaders;
+    const pr = hasta.programas - desde.programas;
+    if (s > 0 || pr > 0) recompila = true;
+    const x = await leer();
+    await page.waitForTimeout(1500);
+    const y = await leer();
+    console.log(
+      `vuelta ${v} a Inicio: ${s} shaders y ${pr} programas compilados; ` +
+        (x && y && x.datos !== y.datos ? 'dibuja y se mueve' : 'EL MOTOR NO SE MUEVE AL VOLVER')
+    );
+    if (!x || !y || x.datos === y.datos) recompila = true;
+  }
+}
+
 await nav.close();
-process.exit(a.datos === b.datos || densidadDelBuffer > 2.01 ? 1 : 0);
+process.exit(a.datos === b.datos || densidadDelBuffer > 2.01 || recompila ? 1 : 0);

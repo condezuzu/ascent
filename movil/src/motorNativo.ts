@@ -11,7 +11,7 @@ import { DESPERTAR_MOTOR } from './despertarMotor';
  * El motor es el MISMO que el de la web (`compartido/motor/escena.ts`). Lo que
  * cambia es solo cómo se le arma el `Lienzo`, y es todo lo que hay acá.
  *
- * Se importa TARDE, desde `FondoEspacial`, con `import()`: three.js es pesado
+ * Se importa TARDE, desde `FondoRaiz`, con `import()`: three.js es pesado
  * de evaluar y en la web costaba tres segundos de arranque medidos. Acá el
  * paquete viaja entero adentro de la app, pero evaluarlo recién cuando se
  * monta el fondo sigue siendo la diferencia entre ver la racha enseguida o no.
@@ -19,7 +19,7 @@ import { DESPERTAR_MOTOR } from './despertarMotor';
  * LO QUE ESTO NO SABE TODAVÍA, porque solo se sabe con un iPhone en la mano:
  *
  *   - Si alcanza el fps. El buffer está topado en 2x como en la web (ver
- *     `factorDeTope` en `FondoEspacial.tsx`), pero cuánto aguanta la GPU de
+ *     `factorDeTope` en `FondoRaiz.tsx`), pero cuánto aguanta la GPU de
  *     un iPhone con un cuerpo raytraceado a pantalla completa no se sabe
  *     desde acá.
  *   - Si three.js 0.176 anda sobre el WebGL 2 de `expo-gl`. Mirado en el
@@ -37,11 +37,13 @@ export type Caja = {
   alCambiar: (fn: () => void) => () => void;
 };
 
-export function montarEnGL(
-  gl: ExpoWebGLRenderingContext,
-  caja: Caja,
-  op: OpcionesFondo
-): Montaje | null {
+/**
+ * EL RENDERER, UNO SOLO POR CONTEXTO. Se crea una vez, cuando nace el
+ * `GLView` de la raíz, y dura toda la sesión: three guarda los programas
+ * compilados por renderer, y un renderer que no muere es lo que hace que
+ * volver a Inicio no recompile nada. Ver `pedidoDeFondo.ts`.
+ */
+export function crearRenderer(gl: ExpoWebGLRenderingContext): THREE.WebGLRenderer | null {
   try {
     // three.js pide un canvas para medir y colgarle escuchas. `expo-gl` no
     // tiene uno: tiene un contexto. Esto es lo mínimo que three lee de un
@@ -69,7 +71,24 @@ export function montarEnGL(
       powerPreference: 'high-performance',
     });
     renderer.setClearColor(0x000000, 0);
+    return renderer;
+  } catch (e) {
+    // Sin motor queda el fondo plano, que es exactamente lo que había antes.
+    // Se avisa en la consola y no en la pantalla: no hay nada que la persona
+    // pueda hacer con el mensaje.
+    console.warn('No se pudo montar el motor:', e);
+    return null;
+  }
+}
 
+/** Una escena sobre el renderer de siempre. */
+export function montarEscenaEnGL(
+  renderer: THREE.WebGLRenderer,
+  gl: ExpoWebGLRenderingContext,
+  caja: Caja,
+  op: OpcionesFondo
+): Montaje | null {
+  try {
     const lienzo: Lienzo = {
       renderer,
       tamano: caja.tamano,
@@ -97,12 +116,8 @@ export function montarEnGL(
       alDespertar: (fn) => eventos.escuchar(DESPERTAR_MOTOR, () => fn()),
       alCambiarDeTamano: caja.alCambiar,
     };
-
     return montarEscena(lienzo, op);
   } catch (e) {
-    // Sin motor queda el fondo plano, que es exactamente lo que había antes.
-    // Se avisa en la consola y no en la pantalla: no hay nada que la persona
-    // pueda hacer con el mensaje.
     console.warn('No se pudo montar el motor:', e);
     return null;
   }

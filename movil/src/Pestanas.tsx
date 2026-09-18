@@ -7,6 +7,7 @@ import Inicio from './Inicio';
 import Stats from './Stats';
 import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
+import FondoRaiz from './FondoRaiz';
 
 type Pestana = 'inicio' | 'stats' | 'ajustes';
 
@@ -59,6 +60,11 @@ export default function Pestanas({
     // nadie. Ver `despertarMotor.ts`.
     <View style={estilos.todo} onTouchStart={despertarMotor}>
       <View style={estilos.pantalla}>
+        {/* EL MOTOR VIVE ACÁ y no adentro de Inicio: un solo contexto de GL
+            para toda la sesión. Inicio lo pide; las otras pestañas no, y
+            mientras tanto la escena queda guardada en pausa. Ocupa el área de
+            las pantallas, no la de la barra. Ver `FondoRaiz.tsx`. */}
+        <FondoRaiz />
         {pestana === 'inicio' && <Inicio alSalir={alSalir} alFaltarNombre={alFaltarNombre} />}
         {pestana === 'stats' && <Stats alSalir={alSalir} />}
         {pestana === 'ajustes' &&

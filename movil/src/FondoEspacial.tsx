@@ -1,206 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Animated,
-  Dimensions,
-  InteractionManager,
-  PixelRatio,
-  StyleSheet,
-  View,
-  type LayoutChangeEvent,
-} from 'react-native';
-import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
-import { LinearGradient } from 'expo-linear-gradient';
-import type { Montaje, OpcionesFondo } from '@compartido/motor/escena';
-import { eventos } from '@compartido/eventos';
-import { PULSO } from '@nucleo/pulso';
-import { veloDeRango } from '@nucleo/atmosfera';
-import { FONDO_BASE, FONDO_RANGO_8 } from '@nucleo/paletas';
-import { cargarElMotor, esPreferenciaFondo } from '@nucleo/fondo';
-import { plataforma } from '@plataforma';
+import { useEffect } from 'react';
+import { pedirFondo, soltarFondo, type Pedido } from './pedidoDeFondo';
 
 /**
- * EL FONDO DE LA APP NATIVA: el motor de cuerpos celestes detrás de todo.
+ * EL FONDO, VISTO DESDE UNA PANTALLA: no dibuja nada, lo pide.
  *
- * Es el MISMO motor que el de la web; esto es el marco. Tres capas, igual que
- * allá: una base de color que se ve al instante, el `GLView` que entra con un
- * fundido cuando el motor está listo, y un velo oscuro arriba que sostiene la
- * legibilidad.
- *
- * LOS BORDES, IGUALES A LA WEB: el degradado vertical que oscurece arriba y
- * abajo (`.velo-bordes`) es lineal, y `expo-linear-gradient` lo reproduce con
- * los mismos cuatro cortes y las mismas opacidades.
- *
- * LO QUE FALTA RESPECTO DE LA WEB, a la vista:
- *
- *   - Los degradados RADIALES de la base y el velo: dos elipses teñidas por la
- *     paleta en cada uno. `expo-linear-gradient` hace solo lineales, y una
- *     elipse no se iguala con eso; aproximarla con una diagonal sería cambiar
- *     cómo se ve. Acá la base y el velo siguen planos. La herramienta que los
- *     haría es el `RadialGradient` de `react-native-svg`, que viene en Expo
- *     Go pero es sumar una dependencia: decisión pendiente.
- *   - La animación del velo entre visitas (la "atmósfera" que se abre al subir
- *     de rango). Se pinta el velo del rango, quieto.
- *
- * LO QUE RESPETA IGUAL: la preferencia "Fondo: automático / siempre / nunca"
- * (misma clave, misma decisión de `nucleo/fondo.ts`), el movimiento reducido
- * del sistema, y el pulso de registrar el día.
+ * La misma firma que el `FondoEspacial` de la web, para que Inicio lo use
+ * igual. Pero acá el motor vive en la raíz (`FondoRaiz`), con un contexto de
+ * GL que dura toda la sesión: si viviera adentro de Inicio, cada vuelta a la
+ * pestaña recompilaría todos los shaders. Ver `pedidoDeFondo.ts`.
  */
-
-// La misma clave que la web (`src/lib/fondo.ts`): es la misma preferencia.
-const CLAVE_FONDO = 'ascent:fondo';
-
-// EL TOPE DE 2X, igual que la web (`dpr()` en `src/motor/escena.ts`).
-//
-// Un cuerpo raytraceado a pantalla completa en 3x es lo que calienta un
-// teléfono, y la web lo topa a propósito. Acá no se puede pedir menos
-// resolución: el buffer de `expo-gl` mide lo que mide la vista, en píxeles
-// físicos. Así que se achica la VISTA —a 2/3 en un iPhone de 3x— y se la
-// estira con una transformación hasta llenar la pantalla. El motor ve el
-// tamaño de verdad y una densidad de 2, y el buffer tiene justo eso.
-//
-// En pantallas de 2x o menos el factor es 1: no cambia nada.
-const DENSIDAD_TOPE = 2;
-function factorDeTope() {
-  return Math.min(1, DENSIDAD_TOPE / PixelRatio.get());
-}
-
-/** `#05060a` + 0,8 → `rgba(5,6,10,0.8)`. */
-function conAlfa(hex: string, alfa: number) {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alfa})`;
-}
-
-// De qué depende que haya que armar la escena de nuevo. Igual que las
-// dependencias del efecto de la web: si cambia cualquiera, el objeto es otro.
-function claveDeEscena(op: OpcionesFondo, animar: boolean) {
-  return [
+export default function FondoEspacial(op: Pedido) {
+  // De qué depende que haya que pedir otra cosa. Las mismas dependencias que
+  // el efecto de la web: si cambia cualquiera, el objeto es otro.
+  const clave = JSON.stringify([
     op.rango,
-    op.planeta ?? '',
-    op.apagado ? 1 : 0,
-    op.vacio ? 1 : 0,
-    op.reposo ? 1 : 0,
-    op.presagio ? 1 : 0,
-    op.fantasma?.rango ?? '',
-    op.fantasma?.planeta ?? '',
-    op.esquina ?? '',
-    animar ? 1 : 0,
-  ].join('|');
-}
-
-export default function FondoEspacial(op: OpcionesFondo & { atmosfera?: boolean }) {
-  // `null` = todavía no se sabe si hay que cargar el motor. Mientras tanto se
-  // ve la base, que es lo mismo que se ve si la respuesta es "no".
-  const [cargar, setCargar] = useState<boolean | null>(null);
-  const [animar, setAnimar] = useState(op.animar !== false);
-  const opacidad = useRef(new Animated.Value(0)).current;
-
-  const caja = useRef(Dimensions.get('window'));
-  // El `GLView` se crea recién con la medida de verdad: su buffer se fija al
-  // crearse, y crearlo con el tamaño de la ventana para después achicarlo
-  // dejaría un buffer que no coincide con la vista.
-  const [medida, setMedida] = useState<{ w: number; h: number } | null>(null);
-  const oyentesDeTamano = useRef(new Set<() => void>());
-  const montaje = useRef<Montaje | null>(null);
+    op.planeta ?? null,
+    !!op.apagado,
+    !!op.vacio,
+    !!op.reposo,
+    !!op.presagio,
+    op.fantasma?.rango ?? null,
+    op.fantasma?.planeta ?? null,
+    op.esquina ?? null,
+    op.animar !== false,
+    !!op.atmosfera,
+  ]);
 
   useEffect(() => {
-    let vivo = true;
-    (async () => {
-      const [pref, reducir] = await Promise.all([
-        plataforma.almacenamiento.leer(CLAVE_FONDO),
-        AccessibilityInfo.isReduceMotionEnabled().catch(() => false),
-      ]);
-      if (!vivo) return;
-      setAnimar(op.animar !== false && !reducir);
-      // `null` en "equipo flojo": en el teléfono no hay de dónde leerlo. La
-      // regla de `nucleo/fondo.ts` es que no saber NO es flojo.
-      setCargar(cargarElMotor(esPreferenciaFondo(pref) ? pref : 'auto', null));
-    })();
-    return () => {
-      vivo = false;
-    };
+    pedirFondo(op);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [clave]);
 
-  // El impacto de registrar el día llega por el bus, igual que en la web.
-  useEffect(() => eventos.escuchar(PULSO, () => montaje.current?.pulso()), []);
+  // Al salir, la pantalla deja de pedir y la raíz guarda la escena en pausa.
+  useEffect(() => () => soltarFondo(), []);
 
-  const clave = claveDeEscena(op, animar);
-
-  // Cada escena se suelta cuando deja de ser la actual. El `GLView` se vuelve
-  // a crear con la `key` —su contexto de GL muere con él—, pero lo que armó el
-  // motor adentro (geometrías, materiales, escuchas) hay que soltarlo a mano.
-  useEffect(() => {
-    return () => {
-      montaje.current?.soltar();
-      montaje.current = null;
-      opacidad.setValue(0);
-    };
-  }, [clave, opacidad]);
-
-  const alCrearContexto = async (gl: ExpoWebGLRenderingContext) => {
-    // EL MOTOR ESPERA A QUE LA PANTALLA ESTÉ QUIETA: es el equivalente del
-    // `requestIdleCallback` de la web. Primero se ve la racha; el fondo
-    // después.
-    await new Promise<void>((r) => InteractionManager.runAfterInteractions(() => r()));
-    const { montarEnGL } = await import('./motorNativo');
-    const m = montarEnGL(
-      gl,
-      {
-        tamano: () => ({ w: caja.current.width, h: caja.current.height }),
-        alCambiar: (fn) => {
-          oyentesDeTamano.current.add(fn);
-          return () => oyentesDeTamano.current.delete(fn);
-        },
-      },
-      { ...op, animar }
-    );
-    if (!m) return;
-    montaje.current = m;
-    Animated.timing(opacidad, { toValue: 1, duration: 900, useNativeDriver: true }).start();
-  };
-
-  const alMedir = (e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout;
-    caja.current = { ...caja.current, width, height };
-    setMedida({ w: width, h: height });
-    for (const fn of oyentesDeTamano.current) fn();
-  };
-
-  // La vista del GL, achicada por el tope y estirada de vuelta desde el
-  // centro: ocupa exactamente lo mismo que la pantalla.
-  const f = factorDeTope();
-  const vistaGL = medida && {
-    position: 'absolute' as const,
-    width: medida.w * f,
-    height: medida.h * f,
-    left: (medida.w - medida.w * f) / 2,
-    top: (medida.h - medida.h * f) / 2,
-    transform: [{ scale: 1 / f }],
-  };
-
-  const fondo = op.rango === 8 ? FONDO_RANGO_8 : FONDO_BASE;
-  // Prioridad igual que en la web, menos el velo animado entre visitas.
-  const velo = op.atmosfera ? veloDeRango(op.rango) : op.rango >= 5 ? 0.62 : 0.5;
-
-  return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: fondo }]} pointerEvents="none" onLayout={alMedir}>
-      {cargar && vistaGL && (
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad }]}>
-          <GLView key={clave} style={vistaGL} onContextCreate={alCrearContexto} />
-        </Animated.View>
-      )}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: velo }]} />
-      {/* LOS BORDES, lo que sostiene la legibilidad cuando el velo se abre: el
-          mismo `.velo-bordes` de la web —fondo al 80 % arriba, nada del 26 % al
-          86 %, fondo al 88 % abajo—. Los extremos transparentes son el fondo
-          con alfa 0 y no `transparent`: CSS mezcla premultiplicado y acá no,
-          y hacia negro transparente el degradado ensuciaría el color. */}
-      <LinearGradient
-        style={StyleSheet.absoluteFill}
-        colors={[conAlfa(fondo, 0.8), conAlfa(fondo, 0), conAlfa(fondo, 0), conAlfa(fondo, 0.88)]}
-        locations={[0, 0.26, 0.86, 1]}
-      />
-    </View>
-  );
+  return null;
 }

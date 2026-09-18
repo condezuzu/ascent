@@ -21,7 +21,7 @@
 // rojo de verdad nadie le va a creer. Para eso sirve correrla como `control`
 // sin haber tocado el código.
 //
-// CINCO TRAMPAS, TODAS PISADAS AL ARMAR ESTO. Están explicadas en
+// SEIS TRAMPAS, TODAS PISADAS AL ARMAR ESTO. Están explicadas en
 // `spec/trampas.md`, "Probar el motor". En corto:
 //
 //   - No reemplazar `requestAnimationFrame`: desconecta WebGL de la pantalla.
@@ -52,6 +52,19 @@ const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ETIQUETA = process.argv[2] ?? 'antes';
 const SALIDA = join(RAIZ, 'capturas', 'animacion');
 mkdirSync(SALIDA, { recursive: true });
+
+// LA HUELLA "ANTES" NO VIVE EN `capturas/`. Vivía ahí y `npm run capturas`,
+// que al arrancar borra lo viejo para no mostrar fotos de ayer, se la llevó:
+// la comparación siguiente dijo "no hay huella antes" y la de verdad había
+// que reconstruirla de los hashes impresos en otra corrida. Ahora vive en
+// `herramientas/huellas/`, commiteada, que es donde se revisa lo que cambia.
+//
+// VALE PARA ESTA MÁQUINA. Los hashes salen del WebGL de este Chromium sobre
+// esta GPU: en otra computadora pueden dar distinto sin que el motor haya
+// cambiado. En una máquina nueva se regenera con `antes` y se valida
+// corriendo `control` sin tocar nada, como la primera vez.
+const HUELLAS = join(RAIZ, 'herramientas', 'huellas');
+mkdirSync(HUELLAS, { recursive: true });
 
 // Milisegundos de animación desde el montaje. Todos por debajo de los 3 s en
 // que el motor baja a 12 fps sin que nadie toque; igual se lo despierta antes
@@ -248,7 +261,10 @@ for (const c of CUERPOS) {
 }
 
 await nav.close();
-writeFileSync(join(SALIDA, `huella-${ETIQUETA}.json`), JSON.stringify(huella, null, 2));
+writeFileSync(
+  join(ETIQUETA === 'antes' ? HUELLAS : SALIDA, `huella-${ETIQUETA}.json`),
+  JSON.stringify(huella, null, 2)
+);
 if (errores.length) console.log('\nerrores de la pagina:\n  - ' + [...new Set(errores)].slice(0, 5).join('\n  - '));
 
 // --- 1. ¿SE MUEVE? ---
@@ -257,7 +273,7 @@ console.log(repetidos ? `\n${repetidos} cuerpo(s) con cuadros repetidos: una par
 // --- 2. ¿SE MUEVE IGUAL QUE ANTES? ---
 let cambiaron = 0;
 if (ETIQUETA !== 'antes') {
-  const ruta = join(SALIDA, 'huella-antes.json');
+  const ruta = join(HUELLAS, 'huella-antes.json');
   if (!existsSync(ruta)) {
     console.log('no hay huella "antes": corre primero con "antes".');
     process.exit(1);

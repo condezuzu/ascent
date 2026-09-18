@@ -390,6 +390,16 @@ function crearPolvo(vacio: boolean): THREE.Points {
 export type Montaje = {
   soltar: () => void;
   pulso: () => void;
+  /**
+   * Detiene el dibujo sin soltar nada, y lo reanuda.
+   *
+   * Lo usa la app nativa, donde el contexto de GL vive en la raíz y la escena
+   * de Inicio se GUARDA al cambiar de pestaña: soltarla borraría los
+   * programas de la GPU y al volver habría que compilarlos de nuevo (medido:
+   * 6 shaders y 3 programas por cada vuelta a Inicio). La web no lo usa —ahí
+   * cada pantalla monta y suelta su escena—.
+   */
+  pausar: (si: boolean) => void;
 };
 
 /**
@@ -593,6 +603,10 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
 
   let vivo = true;
   let pausado = false;
+  // Aparte de `pausado`, que lo maneja la visibilidad de la app: este lo
+  // maneja quien montó la escena (`pausar`). Con uno solo, volver a la app
+  // reanudaría una escena que la pantalla había guardado a propósito.
+  let pausadoPorFuera = false;
   // Cuándo fue la última señal de que hay alguien del otro lado, y cuándo se
   // dibujó el último cuadro DE VERDAD. Con esos dos números `debeDibujar`
   // decide el escalón; ver `nucleo/quietud.ts`.
@@ -637,7 +651,7 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     // salida temprana de las de abajo cortaba el bucle para siempre y el
     // fondo no volvía ni tocando la pantalla.
     if (op.animar !== false) l.cuadro(frame);
-    if (pausado) return;
+    if (pausado || pausadoPorFuera) return;
 
     // EL BUCLE SIGUE VIVO EN EL ESCALÓN 'QUIETO', sin dibujar. Cancelar el
     // rAF y rearmarlo al despertar ahorraría una llamada a función por
@@ -770,5 +784,17 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     });
   };
 
-  return { soltar, pulso };
+  const pausar = (si: boolean) => {
+    if (pausadoPorFuera === si) return;
+    pausadoPorFuera = si;
+    if (!si) {
+      // Igual que al volver a la app: se descarta el tiempo que estuvo
+      // guardada —si no, el primer cuadro adelanta todo de golpe— y se
+      // arranca en el escalón de arriba, porque alguien acaba de llegar.
+      reloj.getDelta();
+      despertar();
+    }
+  };
+
+  return { soltar, pulso, pausar };
 }

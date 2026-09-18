@@ -76,6 +76,13 @@ nadie le cree.
 → **Regla:** antes de usar una comparación antes/después, correrla como
 control. Tiene que dar idéntica.
 
+**La huella "antes" no puede vivir en `capturas/`.** `npm run capturas` borra
+lo viejo al arrancar —para no mostrar fotos de ayer como de hoy— y se llevó la
+huella del motor. La comparación siguiente dijo "no hay huella antes", y la de
+verdad hubo que reconstruirla de los hashes impresos en otra corrida.
+→ **Regla:** lo que una comparación necesita para mañana vive en
+`herramientas/huellas/`, commiteado. `capturas/` es descartable por diseño.
+
 ---
 
 ## Supabase Storage
