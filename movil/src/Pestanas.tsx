@@ -5,20 +5,21 @@ import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import Inicio from './Inicio';
 import Stats from './Stats';
+import Ranking from './Ranking';
 import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
 import FondoRaiz from './FondoRaiz';
 
-type Pestana = 'inicio' | 'stats' | 'ajustes';
+type Pestana = 'inicio' | 'ranking' | 'stats' | 'ajustes';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
  *
- * TRES Y NO CINCO. Ranking y Álbum todavía no están portados, y una pestaña
- * que abre "próximamente" es un botón que miente en el lugar más tocado de la
- * app. Entran cuando entren sus pantallas, en el mismo orden que la web.
+ * LAS QUE YA EXISTEN, NI UNA MÁS. Una pestaña que abre "próximamente" es un
+ * botón que miente en el lugar más tocado de la app. Cada pantalla entra
+ * cuando entra, en el mismo orden que la web (Ranking desde el 18/9).
  *
- * TODAVÍA SIN ROUTER, y ahora es una decisión más fina que antes: con tres
+ * TODAVÍA SIN ROUTER, y ahora es una decisión más fina que antes: con
  * pestañas planas, sin pantallas apiladas ni enlaces que abran una pantalla
  * del medio, un router contesta lo mismo que este `useState`. La pregunta se
  * vuelve de verdad con la primera pantalla que se apila (el perfil de un
@@ -66,6 +67,7 @@ export default function Pestanas({
             las pantallas, no la de la barra. Ver `FondoRaiz.tsx`. */}
         <FondoRaiz />
         {pestana === 'inicio' && <Inicio alSalir={alSalir} alFaltarNombre={alFaltarNombre} />}
+        {pestana === 'ranking' && <Ranking alSalir={alSalir} />}
         {pestana === 'stats' && <Stats alSalir={alSalir} />}
         {pestana === 'ajustes' &&
           (perfil ? (
@@ -82,7 +84,8 @@ export default function Pestanas({
       </View>
 
       <View style={estilos.barra} accessibilityRole="tablist">
-        {(['inicio', 'stats', 'ajustes'] as Pestana[]).map((p) => (
+        {/* El orden de la web: Inicio, Ranking, Álbum, Stats, Ajustes. */}
+        {(['inicio', 'ranking', 'stats', 'ajustes'] as Pestana[]).map((p) => (
           <Pressable
             key={p}
             style={estilos.boton}

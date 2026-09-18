@@ -15,7 +15,11 @@ import type { OpcionesFondo } from '@compartido/motor/escena';
  *
  * `null` = ninguna pantalla pide fondo: la raíz guarda la escena en pausa.
  */
-export type Pedido = OpcionesFondo & { atmosfera?: boolean };
+export type Pedido = OpcionesFondo & {
+  atmosfera?: boolean;
+  /** Cuánto tapa el velo. Sin esto lo decide el rango, como en la web. */
+  velo?: number;
+};
 
 let actual: Pedido | null = null;
 const oyentes = new Set<(p: Pedido | null) => void>();

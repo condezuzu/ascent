@@ -34,6 +34,9 @@ const SALIDA = join(RAIZ, 'capturas');
 mkdirSync(SALIDA, { recursive: true });
 const BASE = 'http://localhost:8090';
 const VUELTAS = process.argv.includes('--vueltas');
+// `--pantalla=Ranking` toca esa pestaña después de Inicio, espera y saca su
+// foto en `capturas/nativa-<pantalla>.png`, con los errores de consola.
+const PANTALLA = (process.argv.find((a) => a.startsWith('--pantalla=')) ?? '').split('=')[1] ?? '';
 const ESCALA = Number((process.argv.find((a) => a.startsWith('--escala=')) ?? '--escala=2').split('=')[1]);
 
 const vivo = await fetch(BASE).then(() => true).catch(() => false);
@@ -101,8 +104,20 @@ if (!hayCanvas) {
 const entendido = page.getByText('Entendido', { exact: true }).last();
 if (await entendido.isVisible().catch(() => false)) await entendido.click();
 
+// SE ESPERA AL MOTOR, NO UN RATO FIJO. El canvas aparece antes que la escena:
+// desde que el motor vive en la raíz (18/9) entre el `GLView` y el primer
+// cuadro hay un `import`, el renderer y el montaje. Con una espera fija, a
+// veces las dos lecturas caían antes de que hubiera escena, daban el mismo
+// canvas vacío, y la sonda decía "no se mueve" de un motor que todavía no
+// había arrancado. `ascent:shader-fin` la pone el núcleo al terminar de montar.
+let montado = false;
+for (let i = 0; i < 40 && !montado; i++) {
+  montado = await page.evaluate(() => performance.getEntriesByName('ascent:shader-fin').length > 0);
+  if (!montado) await page.waitForTimeout(500);
+}
+if (!montado) console.log('EL MOTOR NO TERMINO DE MONTAR en 20 s');
 // El fundido de entrada dura 900 ms: se espera a que termine para la foto.
-await page.waitForTimeout(2500);
+await page.waitForTimeout(1200);
 await page.screenshot({ path: join(SALIDA, 'nativa-inicio.png') });
 
 const leer = () =>
@@ -128,7 +143,10 @@ console.log(
     ? `buffer a ${densidadDelBuffer.toFixed(2)}x: dentro del tope de 2x`
     : `BUFFER A ${densidadDelBuffer.toFixed(2)}x: PASA EL TOPE DE 2X`
 );
-console.log(`lectura 1: ${hash(a.datos)}   lectura 2 (1,5 s despues): ${hash(b.datos)}`);
+console.log(
+  `lectura 1: ${hash(a.datos)} (${Math.round(a.datos.length / 1024)} kB)   ` +
+    `lectura 2 (1,5 s despues): ${hash(b.datos)} (${Math.round(b.datos.length / 1024)} kB)`
+);
 console.log(a.datos === b.datos ? 'EL CANVAS NO CAMBIO: no se mueve' : 'el motor dibuja y se mueve');
 const delMotor = avisos.filter((x) => /motor|three|webgl|gl/i.test(x));
 console.log(delMotor.length ? '\navisos del motor:\n  - ' + delMotor.join('\n  - ') : '\nsin avisos del motor en consola');
@@ -162,5 +180,24 @@ al entrar: ${antes.shaders} shaders, ${antes.programas} programas`);
   }
 }
 
+let pantallaMal = false;
+if (PANTALLA) {
+  const antes = avisos.length;
+  await page.getByText(PANTALLA, { exact: true }).last().click();
+  await page.waitForTimeout(6000);
+  const archivo = `nativa-${PANTALLA.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '')}.png`;
+  await page.screenshot({ path: join(SALIDA, archivo), fullPage: true });
+  const nuevos = avisos.slice(antes).filter((x) => !/GPU stall/.test(x));
+  const texto = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 400));
+  console.log('');
+  console.log(`${PANTALLA}: foto en capturas/${archivo}`);
+  console.log(`  se lee: ${texto}`);
+  if (nuevos.length) {
+    console.log('  AVISOS:');
+    for (const x of nuevos) console.log(`    - ${x}`);
+  } else console.log('  sin avisos en consola');
+  pantallaMal = nuevos.some((x) => /^(error|excepcion)/.test(x));
+}
+
 await nav.close();
-process.exit(a.datos === b.datos || densidadDelBuffer > 2.01 || recompila ? 1 : 0);
+process.exit(a.datos === b.datos || densidadDelBuffer > 2.01 || recompila || pantallaMal ? 1 : 0);

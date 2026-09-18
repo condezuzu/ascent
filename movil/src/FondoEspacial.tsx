@@ -24,6 +24,7 @@ export default function FondoEspacial(op: Pedido) {
     op.esquina ?? null,
     op.animar !== false,
     !!op.atmosfera,
+    op.velo ?? null,
   ]);
 
   useEffect(() => {

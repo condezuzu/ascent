@@ -3452,6 +3452,10 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
     'agregá', 'guardá', 'mandá', 'sacá', 'sumá', 'quitá', 'corregí',
     'tomá', 'llevá', 'esperá', 'revisá', 'pedí', 'comprobá', 'compará',
     'marcalo', 'apretalo', 'tocala', 'tocalo', 'ponete', 'quedate', 'mirate',
+    // "Buscá a alguien más abajo" estuvo en el ranking vacío hasta el 18/9: la
+    // lista tenía `buscás` pero no el imperativo. Se encontró portando Ranking
+    // a la app nativa, leyendo el texto, no por el test.
+    'buscá',
     // Se agregaron despues de que la lista dejara pasar dos: "no volvés a
     // cero" vivia en el recorrido de bienvenida desde el principio, y
     // "contás series" lo escribi yo mismo agregando un paso nuevo. Las dos

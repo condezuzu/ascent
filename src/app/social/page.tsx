@@ -6,8 +6,18 @@ import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { RETOS_LISTOS } from '@nucleo/reglas';
-import { planetaDeDia } from '@nucleo/rangos';
-import type { Reto, UsuarioPublico } from '@nucleo/tipos';
+import type { UsuarioPublico } from '@nucleo/tipos';
+import {
+  aceptarAmistad,
+  buscarGente,
+  cargarRanking,
+  pedirAmistad as mandarPedido,
+  rechazarAmistad,
+  responderReto as contestarReto,
+  type Actividad,
+  type RetoConNombre,
+  type Solicitud,
+} from '@compartido/ranking';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
@@ -17,16 +27,6 @@ import NoCargo from '@/components/NoCargo';
 import { T } from '@nucleo/textos';
 import { olvidarPendientes } from '@/lib/avisos';
 
-type Solicitud = { id: string; de: UsuarioPublico };
-type Actividad = {
-  username: string;
-  userId: string;
-  avatar: string | null;
-  fecha: string;
-  planeta: string | null;
-  foto: string | null;
-};
-type RetoConNombre = Reto & { nombreRival: string; idRival: string };
 
 export default function Social() {
   const [supabase] = useState(() => crearCliente());
@@ -44,113 +44,31 @@ export default function Social() {
   const [miPlaneta, setMiPlaneta] = useState<string | null>(null);
   const busquedaRef = useRef('');
 
+  // LAS CONSULTAS VIVEN EN `compartido/ranking.ts` desde el 18/9: las usa
+  // también la app nativa, y escritas dos veces se iban a separar.
   const cargar = useCallback(async () => {
     const user = await miUsuario(supabase);
     if (!user) return;
     setMiId(user.id);
 
-    // cerrar retos vencidos antes de mostrarlos (fecha local, no UTC del server)
-    await supabase.rpc('cerrar_retos_vencidos');
-
-    const { data: rel, error: errAmigos } = await supabase.from('friendships').select('*');
-    // Igual que en el álbum: que la consulta falle no es lo mismo que no tener
-    // amigos. Decir "tu cielo todavía está vacío" cuando lo que pasó es que no
-    // se pudo preguntar es mentir sobre los datos de la persona.
-    if (errAmigos) {
+    const d = await cargarRanking(supabase, user.id);
+    // Que la consulta falle no es lo mismo que no tener amigos. Decir "tu
+    // cielo todavía está vacío" cuando lo que pasó es que no se pudo
+    // preguntar es mentir sobre los datos de la persona.
+    if (!d) {
       setNoCargo(true);
       return setCargado(true);
     }
     setNoCargo(false);
-    const aceptadas = (rel ?? []).filter((r) => r.estado === 'aceptada');
-    const idsAmigos = aceptadas.map((r) =>
-      r.solicitante === user.id ? r.destinatario : r.solicitante
-    );
-    const pendientes = (rel ?? []).filter(
-      (r) => r.estado === 'pendiente' && r.destinatario === user.id
-    );
-    const mandadas = (rel ?? []).filter(
-      (r) => r.estado === 'pendiente' && r.solicitante === user.id
-    );
-    setPedidosMandados(new Set(mandadas.map((r) => r.destinatario)));
-
-    // yo también aparezco en el campo estelar
-    const idsInteres = [...new Set([...idsAmigos, user.id, ...pendientes.map((p) => p.solicitante)])];
-    const { data: publicos } = await supabase
-      .from('usuarios_publicos')
-      .select('*')
-      .in('id', idsInteres);
-    const mapaUsuarios = new Map(((publicos ?? []) as UsuarioPublico[]).map((p) => [p.id, p]));
-    const yo = mapaUsuarios.get(user.id);
-    setMiRango(yo?.rango_actual ?? 1);
-    setMiPlaneta(yo ? planetaDeDia(yo.racha_actual) : null);
-    setAmigos(
-      ((publicos ?? []) as UsuarioPublico[])
-        .filter((p) => p.id === user.id || idsAmigos.includes(p.id))
-        .sort((a, b) => b.racha_actual - a.racha_actual)
-    );
-
-    setSolicitudes(
-      pendientes
-        .map((p) => ({ id: p.id, de: mapaUsuarios.get(p.solicitante) as UsuarioPublico }))
-        .filter((s) => s.de)
-    );
-
-    // retos que me involucran (pendientes de responder, activos, y últimos cerrados)
-    const { data: rs } = await supabase
-      .from('challenges')
-      .select('*')
-      .or(`retador.eq.${user.id},rival.eq.${user.id}`)
-      .neq('estado', 'rechazado')
-      .order('creado', { ascending: false })
-      .limit(6);
-    setRetos(
-      ((rs ?? []) as Reto[]).map((r) => {
-        const otro = r.retador === user.id ? r.rival : r.retador;
-        return {
-          ...r,
-          idRival: otro,
-          nombreRival: mapaUsuarios.get(otro)?.username ?? '¿?',
-        };
-      })
-    );
-
-    // Feed derivado: logs de amigos aceptados, con su foto visible si la hay.
-    if (idsAmigos.length > 0) {
-      const { data: ls } = await supabase
-        .from('logs')
-        .select('id, user_id, fecha, planeta_del_dia')
-        .in('user_id', idsAmigos)
-        .eq('es_descanso', false)
-        .order('fecha', { ascending: false })
-        .limit(12);
-      const logIds = (ls ?? []).map((l) => l.id);
-      let fotosPorLog = new Map<string, string>();
-      if (logIds.length > 0) {
-        // la RLS solo devuelve las fotos con visibilidad 'amigos'
-        const { data: fs } = await supabase
-          .from('photos')
-          .select('log_id, storage_path')
-          .in('log_id', logIds);
-        if (fs && fs.length > 0) {
-          const { data: firmadas } = await supabase.storage
-            .from('fotos')
-            .createSignedUrls(fs.map((f) => f.storage_path), 3600);
-          fotosPorLog = new Map(
-            fs.map((f, i) => [f.log_id as string, firmadas?.[i]?.signedUrl ?? ''])
-          );
-        }
-      }
-      setActividad(
-        (ls ?? []).map((l) => ({
-          username: mapaUsuarios.get(l.user_id)?.username ?? T.social.sinNombre,
-          userId: l.user_id,
-          avatar: mapaUsuarios.get(l.user_id)?.avatar_url ?? null,
-          fecha: l.fecha,
-          planeta: l.planeta_del_dia,
-          foto: fotosPorLog.get(l.id) ?? null,
-        }))
-      );
-    }
+    setPedidosMandados(d.pedidosMandados);
+    setMiRango(d.miRango);
+    setMiPlaneta(d.miPlaneta);
+    setAmigos(d.amigos);
+    setSolicitudes(d.solicitudes);
+    setRetos(d.retos);
+    // SIEMPRE, aunque venga vacía. Antes solo se actualizaba con amigos, así
+    // que quien se quedaba sin ninguno seguía viendo la actividad de antes.
+    setActividad(d.actividad);
     setCargado(true);
   }, [supabase]);
 
@@ -161,49 +79,31 @@ export default function Social() {
   async function buscar(texto: string) {
     setBusqueda(texto);
     busquedaRef.current = texto;
-    const limpio = texto.trim();
-    if (limpio.length < 2) return setResultados([]);
-    const { data } = await supabase
-      .from('usuarios_publicos')
-      .select('*')
-      .ilike('username', `%${limpio}%`)
-      .neq('id', miId)
-      .limit(8);
-    // respuesta vieja llegando tarde: se descarta
+    if (texto.trim().length < 2) return setResultados([]);
+    const encontrados = await buscarGente(supabase, texto, miId, new Set(amigos.map((a) => a.id)));
     if (busquedaRef.current !== texto) return;
-    const idsActuales = new Set(amigos.map((a) => a.id));
-    setResultados(((data ?? []) as UsuarioPublico[]).filter((u) => !idsActuales.has(u.id)));
+    setResultados(encontrados);
   }
 
   async function pedirAmistad(destino: string) {
-    const { error } = await supabase
-      .from('friendships')
-      .insert({ solicitante: miId, destinatario: destino });
-    // si ya existía una relación en el otro sentido, el índice único lo frena:
-    // recargar para mostrar el estado real
-    if (error) return cargar();
+    if (!(await mandarPedido(supabase, miId, destino))) return cargar();
     setPedidosMandados(new Set([...pedidosMandados, destino]));
   }
 
-  // Resolver algo apaga el punto de la barra: si siguiera prendido después de
-  // contestar, la próxima vez nadie le va a creer.
   async function aceptar(id: string) {
-    await supabase.from('friendships').update({ estado: 'aceptada' }).eq('id', id);
+    await aceptarAmistad(supabase, id);
     olvidarPendientes();
     cargar();
   }
 
   async function rechazar(id: string) {
-    await supabase.from('friendships').delete().eq('id', id);
+    await rechazarAmistad(supabase, id);
     olvidarPendientes();
     cargar();
   }
 
   async function responderReto(id: string, acepta: boolean) {
-    await supabase
-      .from('challenges')
-      .update({ estado: acepta ? 'activo' : 'rechazado' })
-      .eq('id', id);
+    await contestarReto(supabase, id, acepta);
     olvidarPendientes();
     cargar();
   }

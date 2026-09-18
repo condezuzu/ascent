@@ -50,6 +50,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-animacion/types/**/*.ts",
     ".next-arranque/types/**/*.ts",
     ".next-capturas/types/**/*.ts",
     ".next-exif/types/**/*.ts",
@@ -63,7 +64,7 @@
     ".next-scroll/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-animacion/types/**/*.ts"
+    ".next-sonda-compara/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -254,8 +254,9 @@ export default function FondoRaiz() {
   // Hasta el primer pedido no se crea nada: ni el contexto ni three.
   if (!op) return null;
   const fondo = op.rango === 8 ? FONDO_RANGO_8 : FONDO_BASE;
-  // Prioridad igual que en la web, menos el velo animado entre visitas.
-  const velo = op.atmosfera ? veloDeRango(op.rango) : op.rango >= 5 ? 0.62 : 0.5;
+  // Prioridad igual que en la web —lo que pidió la pantalla, después lo que
+  // dice el rango, después el valor fijo—, menos el velo animado entre visitas.
+  const velo = op.velo ?? (op.atmosfera ? veloDeRango(op.rango) : op.rango >= 5 ? 0.62 : 0.5);
 
   return (
     <View

@@ -1030,7 +1030,7 @@ export const T = {
     vos: 'tú',
     yoEnLista: (nombre: string) => `${nombre} (tú)`,
     vacioTitulo: 'Tu cielo todavía está vacío.',
-    vacioPie: 'Buscá a alguien más abajo y empieza la constelación.',
+    vacioPie: 'Busca a alguien más abajo y empieza la constelación.',
     retos: 'Retos',
     vs: (nombre: string) => `vs ${nombre}`,
     hastaEl: (fecha: string) => `hasta el ${fecha}`,
