@@ -188,7 +188,7 @@ if (PANTALLA) {
   const archivo = `nativa-${PANTALLA.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '')}.png`;
   await page.screenshot({ path: join(SALIDA, archivo), fullPage: true });
   const nuevos = avisos.slice(antes).filter((x) => !/GPU stall/.test(x));
-  const texto = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 400));
+  const texto = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 1500));
   console.log('');
   console.log(`${PANTALLA}: foto en capturas/${archivo}`);
   console.log(`  se lee: ${texto}`);

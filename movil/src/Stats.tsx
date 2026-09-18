@@ -16,6 +16,9 @@ import {
 } from '@nucleo/volumen';
 import type { Log } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
+import { planetaDeDia } from '@nucleo/rangos';
+import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './StatsGeneral';
+import FondoEspacial from './FondoEspacial';
 
 const SEMANAS = 8;
 
@@ -28,6 +31,12 @@ type Datos = {
   sesiones: SesionConBloques[];
   ejercicios: EjercicioDelCatalogo[];
   marcas: MarcaParaMaximo[];
+  rango: number;
+  planeta: string | null;
+  // `pesajes` y no `pesos`: acá `pesos` ya son los kilos de cada serie, y
+  // el peso corporal con el mismo nombre se confunde —se confundió un test—.
+  pesajes: PesoAnotado[];
+  vidas: Vidas | null;
 };
 
 /**
@@ -57,13 +66,15 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     const { data: sesion } = await supabase.auth.getSession();
     const uid = sesion.session?.user?.id;
     if (!uid) return alSalir();
-    const [{ data: perfil }, { data: logs }, { data: ses }, { data: cat }, { data: prs }] = await Promise.all([
+    const [{ data: perfil }, { data: logs }, { data: ses }, { data: cat }, { data: prs }, { data: ws }, vid] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).single(),
       supabase.from('logs').select('*').eq('user_id', uid).order('fecha'),
       supabase.from('sesiones').select('id, bloques, logs(fecha)').eq('user_id', uid),
       supabase.from('ejercicios').select('*'),
       // Solo las mías: la RLS también deja leer las de los amigos.
       supabase.from('prs').select('ejercicio, peso, fecha').eq('user_id', uid),
+      supabase.from('weights').select('fecha, valor').eq('user_id', uid).order('fecha'),
+      supabase.rpc('mis_impulsos'),
     ]);
     if (!perfil) return setError(T.general.noSePudo);
     setDatos({
@@ -75,6 +86,19 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       sesiones: sesionesConFecha(ses),
       ejercicios: (cat ?? []) as EjercicioDelCatalogo[],
       marcas: (prs ?? []) as MarcaParaMaximo[],
+      rango: perfil.rango_actual ?? 1,
+      planeta: planetaDeDia(perfil.racha_actual ?? 0),
+      pesajes: (ws ?? []).map((w) => ({ fecha: w.fecha as string, valor: Number(w.valor) })),
+      // Igual que la web: si las vidas no llegan, la línea no se muestra.
+      vidas:
+        !vid.error && vid.data
+          ? {
+              quedan: Number(vid.data.quedan),
+              total: Number(vid.data.total),
+              vuelve: (vid.data.vuelve as string | null) ?? null,
+              falta: vid.data.falta_para_ganar === null ? null : Number(vid.data.falta_para_ganar),
+            }
+          : null,
     });
   }, [alSalir]);
 
@@ -152,6 +176,9 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const mayuscula = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
 
   return (
+    <View style={estilos.raiz}>
+      {/* El fondo de Stats en la web: tu cuerpo arriba a la derecha, velo 0,72. */}
+      <FondoEspacial rango={datos.rango} planeta={datos.planeta} esquina="arriba-derecha" velo={0.72} />
     <ScrollView contentContainerStyle={estilos.pantalla}>
       <Text style={estilos.titulo}>{T.stats.titulo}</Text>
 
@@ -171,6 +198,8 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
         ))}
       </View>
 
+      {pestana === 'general' && datos.vidas && <LineaDeVidas vidas={datos.vidas} />}
+
       {pestana === 'general' && (
         <View style={estilos.grilla}>
           {[
@@ -185,6 +214,20 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             </View>
           ))}
         </View>
+      )}
+
+      {/* El resto de General, en el orden de la web: el año, las sesiones,
+          el peso y la escalera. Ver `StatsGeneral.tsx`. */}
+      {pestana === 'general' && (
+        <StatsGeneral
+          logs={logs}
+          racha={racha}
+          rango={datos.rango}
+          planeta={datos.planeta}
+          unidad={unidad}
+          pesos={datos.pesajes}
+          alCambiar={cargar}
+        />
       )}
 
       {pestana === 'entrenamiento' && (
@@ -308,11 +351,14 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
         </>
       )}
     </ScrollView>
+    </View>
   );
 }
 
 const estilos = StyleSheet.create({
-  pantalla: { flexGrow: 1, backgroundColor: '#05060a', padding: 24, paddingTop: 64, paddingBottom: 40 },
+  // Transparente: el fondo lo dibuja `FondoRaiz`.
+  raiz: { flex: 1 },
+  pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
   centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },
   titulo: { color: '#8a93a8', fontSize: 11, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 20 },
 
