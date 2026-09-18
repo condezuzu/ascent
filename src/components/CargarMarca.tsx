@@ -24,14 +24,11 @@ export default function CargarMarca({
   ejercicios,
   unidad,
   inicial,
-  userId,
   alCerrar,
   alGuardar,
 }: {
   ejercicios: Ejercicio[];
   unidad: Unidad;
-  /** Solo para el atajo "Tuyos" del selector. */
-  userId?: string;
   inicial?: string;
   alCerrar: () => void;
   alGuardar: () => void;
@@ -182,7 +179,6 @@ export default function CargarMarca({
         <SelectorEjercicio
           ejercicios={ejercicios.filter((e) => e.admite_peso !== false)}
           valor={ejercicio}
-          userId={userId}
           alElegir={(id) => id && setEjercicio(id)}
           alCerrar={() => setAbriendo(false)}
         />

@@ -8137,58 +8137,14 @@ console.log('\n120. Las frases de Inicio: propias, cortas y sin arengar');
   chequear('fraseDelDia toma un solo argumento', F.fraseDelDia.length, 1);
 }
 
-console.log('\n121. "Tuyos": los ejercicios que cada persona repite');
+console.log('\n121. La funcion de la migracion 44 (el atajo "Tuyos" se retiro de la app)');
 {
-  const { tuyos, TOPE_TUYOS } = await import('../nucleo/tuyos.ts');
-
-  // EL CATALOGO DE JUGUETE. `cuenta_dots` es lo unico que mira `tuyos`, mas el
-  // nombre para el ultimo desempate.
-  const cat = [
-    { id: 'sentadilla', nombre: 'Sentadilla', grupo: 'piernas', cuenta_dots: true },
-    { id: 'press_banca', nombre: 'Press de banca', grupo: 'pecho', cuenta_dots: true },
-    { id: 'remo', nombre: 'Remo', grupo: 'espalda', cuenta_dots: false },
-    { id: 'curl', nombre: 'Curl', grupo: 'brazos', cuenta_dots: false },
-    { id: 'zancada', nombre: 'Zancada', grupo: 'piernas', cuenta_dots: false },
-  ];
-  const u = (ejercicio, veces, ultima) => ({ ejercicio, veces, ultima });
-  const ids = (lista) => lista.map((e) => e.id);
-
-  chequear('sin historial no hay atajo', tuyos([], cat), []);
-  chequear('de mas usado a menos',
-    ids(tuyos([u('curl', 2, '2026-09-01'), u('remo', 9, '2026-09-01')], cat)),
-    ['remo', 'curl']);
-
-  // LOS DEL DOTS NO ENTRAN aunque sean los mas repetidos: ya tienen su bloque
-  // fijo arriba de todo. Si entraran, sentadilla saldria dos veces en la misma
-  // pantalla y habria que decidir cual de las dos es la buena.
-  chequear('los tres del DOTS quedan afuera',
-    ids(tuyos([u('sentadilla', 50, '2026-09-10'), u('remo', 1, '2026-09-01')], cat)),
-    ['remo']);
-
-  // EMPATE: gana el mas reciente. Con dos usados tres veces cada uno, el del
-  // martes es mas probable que el de marzo.
-  chequear('empatados, gana el mas reciente',
-    ids(tuyos([u('curl', 3, '2026-03-02'), u('remo', 3, '2026-09-02')], cat)),
-    ['remo', 'curl']);
-  // Y empatados en TODO, manda el nombre: sin este tercer desempate el orden
-  // depende de como vinieron las filas y el atajo baila entre una carga y otra.
-  chequear('empatados en todo, orden estable por nombre',
-    ids(tuyos([u('zancada', 3, '2026-09-02'), u('curl', 3, '2026-09-02')], cat)),
-    ['curl', 'zancada']);
-
-  chequear('un ejercicio que ya no esta en el catalogo no se dibuja',
-    ids(tuyos([u('fantasma', 99, '2026-09-02'), u('remo', 1, '2026-09-01')], cat)),
-    ['remo']);
-  chequear('cero veces no es usarlo', tuyos([u('remo', 0, '2026-09-01')], cat), []);
-
-  // EL TOPE. Con mas, el atajo se vuelve otra lista para leer, que es justo lo
-  // que viene a evitar.
-  const muchos = [];
-  for (let n = 0; n < 20; n++) muchos.push({ id: 'e' + n, nombre: 'E' + n, grupo: 'pecho', cuenta_dots: false });
-  chequear('no muestra mas que el tope',
-    tuyos(muchos.map((e, n) => u(e.id, 20 - n, '2026-09-01')), muchos).length,
-    TOPE_TUYOS);
-  chequear('y el tope es seis', TOPE_TUYOS, 6);
+  // "TUYOS" SE SACO DE LOS DOS SELECTORES EL 18/9, a pedido: usandolo en el
+  // gimnasio, la lista "no se entendia". El selector volvio a como estaba
+  // antes del 17/9 (zona, musculo, lista). Lo que queda es la FUNCION de la
+  // base: la migracion 44 la corre el humano y puede estar aplicada, asi que
+  // se sigue probando contra su oraculo hasta que se decida sacarla o volver
+  // a usarla.
 
   // --- LA FUNCION DE LA BASE (migracion 44) ---
   //
@@ -8243,39 +8199,6 @@ console.log('\n121. "Tuyos": los ejercicios que cada persona repite');
   const filas2 = (await db.query('select mis_ejercicios_usados() as v')).rows[0].v;
   chequear('un bloque sin ejercicio no entra', filas2.some((f) => f.ejercicio === null), false);
   chequear('uno que ya no esta en el catalogo tampoco', filas2.some((f) => f.ejercicio === 'no_existe'), false);
-
-  // --- LA CUENTA NUEVA: QUE NO HAYA NI HUECO NI TITULO SOLO ---
-  //
-  // Es el estado que mas gente ve --el primer dia de cualquiera-- y el que
-  // menos se prueba, porque el que programa siempre tiene datos. Un rotulo
-  // "TUYOS" arriba de nada es peor que no tener atajo: promete una lista que
-  // no existe.
-  //
-  // La primera mitad ya la cubre `tuyos([], cat)` mas arriba: sin historial la
-  // lista es vacia. Lo que falta es que la PANTALLA no dibuje el rotulo igual,
-  // y eso no lo dice la funcion: lo dice el JSX. Se lee el archivo porque nada
-  // en este repo monta una pantalla; es una heuristica de texto y se sabe, pero
-  // atrapa el caso que importa --que alguien saque el guardia-- y cuesta nada.
-  {
-    const { readFileSync: leerV } = await import('node:fs');
-    const { join: unirV, dirname: dirV } = await import('node:path');
-    const { fileURLToPath: aRutaV } = await import('node:url');
-    const RAIZ_V = unirV(dirV(aRutaV(import.meta.url)), '..');
-
-    const pantallas = [
-      ['web', unirV(RAIZ_V, 'src', 'components', 'SelectorEjercicio.tsx')],
-      ['nativa', unirV(RAIZ_V, 'movil', 'src', 'SelectorEjercicio.tsx')],
-    ];
-    for (const [cual, ruta] of pantallas) {
-      const codigo = sinComentarios(leerV(ruta, 'utf8'));
-      const rotulo = codigo.indexOf('T.sesion.tuyos');
-      chequear(`${cual}: dibuja el rotulo de Tuyos`, rotulo > 0, true);
-      // El guardia tiene que estar ANTES del rotulo y cerca: si esta despues,
-      // o no esta, el rotulo se dibuja con la lista vacia.
-      const antes = codigo.slice(Math.max(0, rotulo - 300), rotulo);
-      chequear(`${cual}: y solo si hay alguno`, /mios\.length\s*>\s*0/.test(antes), true);
-    }
-  }
 
   // SIN SESION INICIADA no devuelve nada, como el resto de las funciones.
   await db.query(`select set_config('test.uid', '', false)`);

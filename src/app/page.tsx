@@ -585,7 +585,6 @@ export default function Principal() {
                 arranca el descanso (§20.3). Ver `lib/bloques.ts`. */}
             <GloboPrimeraVez cual="series">{T.inicio.globoSeries}</GloboPrimeraVez>
             <Bloque
-              userId={perfil.id}
               estado={sesion.estado.bloques}
               total={sesion.estado.series}
               alSumar={sesion.serieHecha}

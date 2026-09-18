@@ -2,13 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import EnElBody from '@/components/EnElBody';
-import { crearCliente } from '@/lib/supabase/client';
 import type { Ejercicio } from '@nucleo/tipos';
 import { ORDEN_ZONAS, gruposDeZona, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
-import { tuyos, type Usado } from '@nucleo/tuyos';
-import { disponible } from '@nucleo/esquema';
-import { useVersionDelEsquema } from '@compartido/esquema';
-import { ejerciciosUsados, usadosEnCache } from '@compartido/usados';
 import { T } from '@nucleo/textos';
 
 /**
@@ -30,27 +25,16 @@ import { T } from '@nucleo/textos';
  * UNA ZONA CON UN SOLO MÚSCULO NO PREGUNTA DOS VECES: tren inferior y core
  * llevan directo a la lista. Un paso intermedio con una sola opción es un
  * toque que no decide nada.
- *
- * "TUYOS", ARRIBA DE TODO. Los que esta persona repite de verdad, sacados de
- * sus sesiones (migración 44). El árbol de abajo NO se reordena: esto agrega un
- * atajo, no acomoda el menú. Un menú que se acomoda solo obliga a leerlo entero
- * cada vez, porque ya no se sabe dónde estaba lo de ayer.
- *
- * Sin `userId`, sin migración 44 corrida o sin historial, la sección no
- * aparece y el selector queda exactamente como era. Ver `compartido/usados.ts`.
  */
 export default function SelectorEjercicio({
   ejercicios,
   valor,
-  userId,
   permiteNinguno = false,
   alElegir,
   alCerrar,
 }: {
   ejercicios: Ejercicio[];
   valor: string | null;
-  /** Para el atajo "Tuyos". Sin esto el selector funciona igual, sin atajo. */
-  userId?: string;
   /** El contador de series admite "cualquier cosa"; las marcas no. */
   permiteNinguno?: boolean;
   alElegir: (id: string | null) => void;
@@ -70,31 +54,6 @@ export default function SelectorEjercicio({
 
   const grupos = [...new Set(ejercicios.map((e) => e.grupo))];
   const delDots = ejercicios.filter((e) => e.cuenta_dots);
-
-  // ARRANCA CON LO QUE YA ESTÁ EN MEMORIA, si está: de la segunda apertura en
-  // adelante la hoja sale entera. La primera vez llega un instante después y
-  // "Tuyos" aparece arriba — que empuje una vez por carga de la app es el
-  // precio de no pedirlo diez veces en un entrenamiento.
-  const [usados, setUsados] = useState<Usado[]>(() => (userId ? usadosEnCache(userId) ?? [] : []));
-  // SE PREGUNTA LA VERSIÓN ANTES DE LLAMAR, al revés que `pantalla_inicio`.
-  // Ahí se llama a ciegas porque es el primer pedido de la app y esperar la
-  // versión costaría una ida y vuelta para ahorrar tres. Acá no: la versión ya
-  // está pedida hace rato cuando alguien abre el selector, y llamar a ciegas
-  // deja un 404 por apertura mientras la 44 no esté corrida. Un 404 esperado
-  // en la consola es el que después tapa al que importa.
-  const version = useVersionDelEsquema();
-  const hayAtajo = disponible('tusEjercicios', version);
-  useEffect(() => {
-    if (!userId || !hayAtajo || usadosEnCache(userId)) return;
-    let vivo = true;
-    ejerciciosUsados(crearCliente(), userId).then((filas) => {
-      if (vivo) setUsados(filas);
-    });
-    return () => {
-      vivo = false;
-    };
-  }, [userId, hayAtajo]);
-  const mios = tuyos(usados, ejercicios);
 
   function cerrar() {
     setCerrando(true);
@@ -147,22 +106,6 @@ export default function SelectorEjercicio({
               <button className="selector-fila" onClick={() => elegir(null)}>
                 {T.sesion.sinEjercicio}
               </button>
-            )}
-            {/* LOS TUYOS, arriba de todo. No se dibuja el rótulo solo: una
-                sección vacía con título es peor que ninguna sección. */}
-            {mios.length > 0 && (
-              <>
-                <div className="selector-rotulo">{T.sesion.tuyos}</div>
-                {mios.map((e) => (
-                  <button
-                    key={`tuyo-${e.id}`}
-                    className={`selector-fila ${e.id === valor ? 'elegido' : ''}`}
-                    onClick={() => elegir(e.id)}
-                  >
-                    {e.nombre}
-                  </button>
-                ))}
-              </>
             )}
             {/* Los tres del DOTS, sueltos y arriba, con UN rótulo para los
                 tres: repetir "cuentan para el DOTS" en cada fila era decir

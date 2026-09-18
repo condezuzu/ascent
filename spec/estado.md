@@ -20,12 +20,12 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 > commit que agrega la migración**, porque es el único lugar donde está escrito
 > qué tiene la base de verdad, y una nota vieja acá es peor que no tener nota.
 
-**La 44** agrega `mis_ejercicios_usados()`, que es de donde sale la sección
-"Tuyos" del selector de ejercicios. No cambia ningún dato, no borra nada y no
-toca ninguna función existente: es una función de lectura nueva. Hasta que se
-corra, el selector funciona exactamente como antes — "Tuyos" no aparece,
-porque el cliente ve el `PGRST202` de PostgREST y se queda con el árbol de
-siempre.
+**La 44** agrega `mis_ejercicios_usados()`, una función de lectura nueva. Era
+de donde salía la sección "Tuyos" del selector de ejercicios, **que se retiró
+de las dos apps el 18/9** a pedido (usándola en el gimnasio, la lista "no se
+entendía"; el selector volvió a como estaba antes del 17/9). Ninguna app la
+llama. Correrla o no da lo mismo hoy: no cambia ningún dato ni toca nada
+existente, y §121 la sigue probando por si se vuelve a usar.
 
 En una base nueva no hace falta ninguna: `supabase/schema.sql` ya las incluye a todas, y
 `npm run test:db` lo comprueba comparando las dos bases entera. Que PRODUCCIÓN

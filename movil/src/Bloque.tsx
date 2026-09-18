@@ -46,13 +46,10 @@ export default function Bloque({
   alCorregirPeso,
   alElegirCarga,
   alCorregirCarga,
-  userId,
 }: {
   estado: EstadoBloques;
   total: number;
   unidad: Unidad;
-  /** Solo para el atajo "Tuyos" del selector. Sin esto, el selector va igual. */
-  userId?: string;
   cargaConsultada: string | null;
   alSumar: () => void;
   alRestar: () => void;
@@ -233,7 +230,6 @@ export default function Bloque({
         visible={eligiendo}
         ejercicios={ejercicios}
         valor={estado.ejercicio}
-        userId={userId}
         alElegir={(id) => {
           if (estado.hechas > 0 && id !== estado.ejercicio) setADonde(id);
           else alElegirEjercicio(id);

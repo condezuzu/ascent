@@ -232,7 +232,6 @@ export default function Fuerza() {
         <CargarMarca
           ejercicios={ejercicios}
           unidad={unidad}
-          userId={perfil.id}
           inicial={hoja.ejercicio}
           alCerrar={() => setHoja(null)}
           alGuardar={() => {
