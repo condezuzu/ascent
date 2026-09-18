@@ -237,8 +237,13 @@ export default function Estadisticas() {
 
         <div className="seccion">
           <h3>{T.stats.elAno}</h3>
-          <div className="tarjeta" style={{ overflowX: 'auto' }}>
-            <div className="mapa-calor" style={{ minWidth: 420 }}>
+          {/* LAS 26 SEMANAS ENTRAN EN EL ANCHO, sin scroll de costado. Tenía
+              `minWidth: 420` con `overflowX: auto`, y en un teléfono de 390 el
+              scroll arrancaba a la izquierda —las semanas VIEJAS— y escondía las
+              recientes: la cuenta de prueba tenía 12 días y se veían 3 (18/9).
+              Un dato escondido no es un detalle visual. Igual que la nativa. */}
+          <div className="tarjeta">
+            <div className="mapa-calor">
               {celdas.map((c) => (
                 <i key={c.fecha} className={c.clase} title={c.fecha} />
               ))}

@@ -184,13 +184,24 @@ try {
   if (ok)
     ok = await paso('elegir press inclinado', async () => {
       // Zona y músculo, como una persona.
-      if (!(await page.getByText('Press inclinado', { exact: true }).count())) {
-        if (!(await page.getByText(/^Pecho/).count())) await page.getByText(/Superior/i).last().click();
-        await page.waitForTimeout(800);
-        await page.getByText(/^Pecho/).last().click();
-        await page.waitForTimeout(800);
+      // En la web cada fila es un botón con el nombre y la cuenta ("Pecho 12"):
+      // se busca por rol. En la nativa, por texto.
+      if (NATIVA) {
+        if (!(await page.getByText('Press inclinado', { exact: true }).count())) {
+          if (!(await page.getByText(/^Pecho/).count())) await page.getByText(/Superior/i).last().click();
+          await page.waitForTimeout(800);
+          await page.getByText(/^Pecho/).last().click();
+          await page.waitForTimeout(800);
+        }
+        await page.getByText('Press inclinado', { exact: true }).last().click({ timeout: 15000 });
+      } else {
+        if (!(await page.getByRole('button', { name: 'Press inclinado', exact: true }).count())) {
+          if (!(await page.getByRole('button', { name: /pecho/i }).count()))
+            await page.getByRole('button', { name: /superior/i }).first().click();
+          await page.getByRole('button', { name: /pecho/i }).first().click();
+        }
+        await page.getByRole('button', { name: 'Press inclinado', exact: true }).first().click({ timeout: 15000 });
       }
-      await page.getByText('Press inclinado', { exact: true }).last().click({ timeout: 15000 });
     });
   if (ok)
     await paso('la lista dice press inclinado, con su serie y su peso', async () => {

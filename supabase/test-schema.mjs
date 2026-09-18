@@ -8435,6 +8435,26 @@ console.log('\n125. Lo que se dibuja con SVG se escribe una vez: las dos apps lo
   }
 }
 
+console.log('\n126. "El año" no esconde semanas');
+{
+  // LO QUE PASO (18/9). La grilla de la web tenia `minWidth: 420` adentro de
+  // una tarjeta con `overflowX: auto`. En un telefono de 390 no entraba, el
+  // scroll arrancaba a la izquierda —las semanas VIEJAS— y las recientes
+  // quedaban tapadas: la cuenta de prueba tenia 12 dias y la web mostraba 3,
+  // la nativa 12. Las dos hacian la misma cuenta; la web escondia el dato.
+  // Las 26 semanas tienen que entrar en el ancho, como en la nativa.
+  const { readFileSync: leer126 } = await import('node:fs');
+  const { join: unir126, dirname: dir126 } = await import('node:path');
+  const { fileURLToPath: aRuta126 } = await import('node:url');
+  const R126 = unir126(dir126(aRuta126(import.meta.url)), '..');
+  const stats = sinComentarios(leer126(unir126(R126, 'src', 'app', 'stats', 'page.tsx'), 'utf8'));
+  const i = stats.indexOf('className="mapa-calor"');
+  chequear('encuentra el mapa del año', i > 0, true);
+  const alrededor = stats.slice(Math.max(0, i - 200), i + 120);
+  chequear('sin scroll de costado', /overflowX/.test(alrededor), false);
+  chequear('sin ancho minimo que lo saque de la pantalla', /minWidth/.test(alrededor), false);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

@@ -4292,7 +4292,9 @@ body.con-franja.con-accion .pantalla {
   margin-top: 2px;
 }
 .campo-peso.compacto .peso-caja input {
-  width: 3.6ch;
+  /* 3.6ch cortaba "112,5" en "112,!" (foto del 18/9): se lee mal justo en el
+     gimnasio. Entran enteros los pesos de verdad: 112,5 · 102,25 · 1000. */
+  width: 6.2ch;
   font-size: 14px;
 }
 .campo-peso.compacto .peso-unidad {
