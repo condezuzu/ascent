@@ -43,10 +43,10 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
         <div className="contenida peligro">
           <h3 style={{ marginBottom: 8 }}>{T.ajustes.eliminarCuenta}</h3>
           <p style={{ fontSize: 14, lineHeight: 1.5, marginBottom: 12 }}>
-            {T.ajustes.bajaQueSeBorra(perfil.racha_actual)}
+            {T.ajustes.bajaQueSeElimina(perfil.racha_actual)}
           </p>
           <p className="nota-privada" style={{ marginTop: 0, marginBottom: 8 }}>
-            {T.ajustes.bajaEscribi} <strong>{perfil.username}</strong> {T.ajustes.bajaEscribiFin}
+            {T.ajustes.bajaEscribe} <strong>{perfil.username}</strong> {T.ajustes.bajaEscribiFin}
           </p>
           <input
             value={confirmacion}
@@ -62,7 +62,7 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
               onClick={borrar}
               disabled={borrando || confirmacion.trim() !== perfil.username}
             >
-              {borrando ? T.ajustes.bajaBorrando : T.ajustes.bajaConfirmar}
+              {borrando ? T.ajustes.bajaEliminando : T.ajustes.bajaConfirmar}
             </button>
             <button
               className="boton-fantasma"

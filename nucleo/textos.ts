@@ -578,12 +578,14 @@ export const T = {
 
     tuPerfil: 'Tu foto, tus fotos compartidas y tus amigos',
 
-    bajaQueSeBorra: (dias: number) =>
-      `Se borra todo: ${dias} días de racha, fotos, pesos, marcas y amigos. No se recupera.`,
+    // ELIMINAR, como el botón: la cuenta tenía dos verbos, "se borra" acá y
+    // "Eliminar para siempre" abajo (regla 4: un verbo por acción).
+    bajaQueSeElimina: (dias: number) =>
+      `Se elimina todo: ${dias} días de racha, fotos, pesos, marcas y amigos. No se recupera.`,
     // Partido en dos porque en el medio va el nombre en negrita.
-    bajaEscribi: 'Si quieres seguir, escribí',
+    bajaEscribe: 'Si quieres seguir, escribe',
     bajaEscribiFin: 'aquí abajo.',
-    bajaBorrando: 'Borrando…',
+    bajaEliminando: 'Eliminando…',
     bajaConfirmar: 'Eliminar para siempre',
     mejorNo: 'Mejor no',
 
@@ -996,13 +998,15 @@ export const T = {
     titulo: 'Álbum',
     vacioTitulo: 'Ninguna foto todavía.',
     vacioPie: 'Al registrar un día puedes sumar una: queda pegada al planeta de ese día.',
-    borrarPregunta: '¿Borrar?',
+    // Para una foto el verbo es QUITAR, nunca borrar ni sacar (regla 4 de
+    // spec/idioma.md). Decía "Borrar" hasta el 18/9; §54 lo mira ahora.
+    quitarPregunta: '¿Quitar?',
     si: 'Sí',
     no: 'No',
     soloVos: 'Solo tú',
     amigos: 'Amigos',
-    borrarFoto: 'Borrar foto',
-    noSeBorro: 'Esa foto sigue ahí. Prueba de nuevo.',
+    quitarFoto: 'Quitar foto',
+    noSeQuito: 'Esa foto sigue ahí. Prueba de nuevo.',
     vacio: 'Todavía no hay fotos.',
     // El visor. La grilla ahora solo muestra: todo lo que se hace con una
     // foto se hace con la foto en grande.
@@ -1073,7 +1077,7 @@ export const T = {
     imagenPesada: 'La imagen pesa demasiado. Prueba con una más liviana.',
     noSubioFoto: 'La foto no subió. Prueba de nuevo.',
     fotoSinGuardar: 'La foto subió pero no quedó guardada. Prueba de nuevo.',
-    noSeBorraronFotos: 'No se pudieron borrar tus fotos. Prueba de nuevo.',
+    noSeQuitaronFotos: 'No se pudieron quitar tus fotos. Prueba de nuevo.',
     noSeElimino: 'La cuenta sigue aquí: no se eliminó. Prueba de nuevo.',
     algoFallo: 'Algo falló al entrar. Prueba de nuevo en un momento.',
   },

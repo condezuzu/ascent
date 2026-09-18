@@ -76,7 +76,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
   async function quitar() {
     if (!foto) return;
     setError('');
-    if (!(await quitarFoto(supabase, foto.id, foto.ruta))) return setError(T.album.noSeBorro);
+    if (!(await quitarFoto(supabase, foto.id, foto.ruta))) return setError(T.album.noSeQuito);
     setDatos((d) => {
       if (!d) return d;
       const quedan = d.celdas.filter((x) => x.id !== foto.id);
@@ -176,7 +176,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                 </Pressable>
                 {confirmando ? (
                   <View style={estilos.confirmar}>
-                    <Text style={estilos.texto}>{T.album.borrarPregunta}</Text>
+                    <Text style={estilos.texto}>{T.album.quitarPregunta}</Text>
                     <Pressable onPress={quitar} hitSlop={8}>
                       <Text style={estilos.accion}>{T.album.si}</Text>
                     </Pressable>
@@ -186,7 +186,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                   </View>
                 ) : (
                   <Pressable onPress={() => setConfirmando(true)} hitSlop={8}>
-                    <Text style={estilos.accion}>{T.album.borrarFoto}</Text>
+                    <Text style={estilos.accion}>{T.album.quitarFoto}</Text>
                   </Pressable>
                 )}
               </View>

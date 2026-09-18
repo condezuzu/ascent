@@ -59,7 +59,7 @@ export default function Album() {
   // huérfano en el storage que ya nadie sabe que está.
   async function borrar(c: Celda) {
     setError('');
-    if (!(await quitarFoto(supabase, c.id, c.ruta))) return setError(T.album.noSeBorro);
+    if (!(await quitarFoto(supabase, c.id, c.ruta))) return setError(T.album.noSeQuito);
 
     setCeldas((prev) => {
       const quedan = prev.filter((x) => x.id !== c.id);

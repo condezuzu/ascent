@@ -891,19 +891,20 @@ A `:8090` el `GLView` corre sobre el WebGL **del navegador**, no sobre el de
 
 ### Ronda del 18/9: lo que quedó pendiente
 
-- **`react-native-svg`: una sola decisión que destraba cuatro cosas.** Los
-  degradados radiales del fondo, las insignias del Ranking, las de la escalera
-  de Stats y el gráfico del peso. Viene en Expo Go, pero es sumar una
-  dependencia. Sin ella, ninguna de las cuatro se reemplazó por algo inventado.
+- ~~**`react-native-svg`**~~ HECHO el 18/9: las elipses de luz del fondo, las
+  insignias (filas y campo estelar del Ranking, escalera de Stats) y el gráfico
+  del peso. Lo que se dibuja vive UNA vez en `compartido/` y `nucleo/` y cada
+  app lo traduce a su SVG (§125).
 - **Stats sin portar:** la sección de fuerza, el aviso de estancamiento y el
   calendario para corregir días (~640 líneas de la web entre las tres).
 - **Ranking:** tocar a alguien no abre su perfil (la pantalla no existe en
   nativo). Los retos tampoco se ven en la web (`RETOS_LISTOS = false`).
 - **Álbum:** deslizar la foto con el dedo (se pasa con flechas). "Quitar
   foto" no se probó: habría borrado una foto real de la cuenta de prueba.
-- **Textos del Álbum contra la regla 4 de `spec/idioma.md`:** dicen "Borrar
-  foto" y "¿Borrar?", y para una foto el verbo es "quitar". La sección 54 no
-  mira verbos. Arreglarlo una vez arregla las dos apps.
+- ~~**Textos del Álbum contra la regla 4**~~ HECHO el 18/9: "Quitar foto" y
+  "¿Quitar?" en las dos apps, y §54 mira ahora que ningún texto de fotos use
+  "borrar". De paso: "escribí" (voseo) en la baja de la cuenta, y la baja pasó
+  a decir "eliminar" en todos lados, como su botón.
 - ~~**El bloqueo de 7 a 20 s de la página después de montar el motor**~~
   RESUELTO el 18/9: eran el WebGL por software de las sondas y el shader de
   cuerpos en Direct3D (134-140 s en Chrome de Windows). Ver `spec/estado.md`.

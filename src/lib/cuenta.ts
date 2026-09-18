@@ -138,20 +138,20 @@ export async function eliminarCuenta(
     const { data: archivos, error: errListar } = await supabase.storage
       .from(bucket)
       .list(userId, { limit: 1000 });
-    if (errListar) return { error: T.errores.noSeBorraronFotos };
+    if (errListar) return { error: T.errores.noSeQuitaronFotos };
     if (!archivos || archivos.length === 0) continue;
 
     const { data: borrados, error: errBorrar } = await supabase.storage
       .from(bucket)
       .remove(archivos.map((a) => `${userId}/${a.name}`));
-    if (errBorrar) return { error: T.errores.noSeBorraronFotos };
+    if (errBorrar) return { error: T.errores.noSeQuitaronFotos };
 
     // No alcanza con que no haya error. Si a un bucket le falta la política
     // de delete, la RLS lo frena EN SILENCIO: la respuesta viene sin error y
     // con cero archivos borrados. Así fue como una baja de cuenta dejó el
     // avatar huérfano en un bucket público. Se cuenta lo que volvió.
     if ((borrados?.length ?? 0) !== archivos.length) {
-      return { error: T.errores.noSeBorraronFotos };
+      return { error: T.errores.noSeQuitaronFotos };
     }
   }
 

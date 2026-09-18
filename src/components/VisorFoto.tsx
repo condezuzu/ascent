@@ -200,7 +200,7 @@ export default function VisorFoto({
 
           {confirmando ? (
             <span className="visor-confirmar">
-              <span>{T.album.borrarPregunta}</span>
+              <span>{T.album.quitarPregunta}</span>
               <button className="boton-texto" onClick={alBorrar}>
                 {T.album.si}
               </button>
@@ -210,7 +210,7 @@ export default function VisorFoto({
             </span>
           ) : (
             <button className="boton-texto" onClick={() => setConfirmando(true)}>
-              {T.album.borrarFoto}
+              {T.album.quitarFoto}
             </button>
           )}
         </div>

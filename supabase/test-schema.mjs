@@ -3463,7 +3463,22 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
     'volvés', 'contás', 'llegás', 'salís', 'entrenás', 'descansás', 'anotás',
     // "Repetila" vivía en la pantalla de contraseña nueva (15/9).
     'repetila', 'repetilo', 'escribila', 'elegila', 'sacala', 'probala',
+    // "Si quieres seguir, escribí" vivía en la baja de la cuenta hasta el
+    // 18/9, con el tú y el vos en la misma frase. Se encontró revisando los
+    // verbos de la regla 4, no por este test.
+    'escribí',
   ];
+
+  // Regla 4: para una FOTO el verbo es quitar, nunca borrar. Decía "Borrar
+  // foto" y "¿Borrar?" en las dos apps hasta el 18/9, y esta sección no miraba
+  // verbos. Se mira toda forma de "borrar" en un texto que habla de fotos.
+  //
+  // "Sacar" NO se mira, aunque la regla también lo prohíbe: "sacar una foto"
+  // es tomarla, y una regla que salta sobre texto bien escrito se termina
+  // apagando. El "¿Quitar?" suelto del visor no dice "foto": por eso además se
+  // mira entera la sección `album` del diccionario (abajo).
+  const BORRAR = /(^|[^a-záéíóúñ])b[oó]rr[a-záéíóúñ]*/;
+  const FOTO = /(^|[^a-záéíóúñ])fotos?([^a-záéíóúñ]|$)/;
 
   // Regla 3: modismos rioplatenses. Se entienden en tres paises.
   // "de una" NO está en la lista, y se sacó a propósito: pega en "levantar de
@@ -3483,6 +3498,9 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
       if (new RegExp(`(^|[^a-záéíóúñ])${v}([^a-záéíóúñ]|$)`, 'i').test(bajo)) {
         fallas.push(`${donde} -> voseo "${v}"`);
       }
+    }
+    if (FOTO.test(bajo) && BORRAR.test(bajo)) {
+      fallas.push(`${donde} -> regla 4: para una foto el verbo es "quitar"`);
     }
     for (const m of MODISMOS) {
       // Con frontera de palabra, igual que el voseo: buscado por substring,
@@ -3552,6 +3570,18 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
       if (/[;={}()]/.test(texto)) continue;
       miradas++;
       revisar(`${corto}: ${texto.slice(0, 40)}`, texto);
+    }
+  }
+
+  // c) LA SECCIÓN `album` ENTERA: todo lo que dice es sobre fotos, aunque la
+  // cadena no nombre la palabra ("¿Quitar?").
+  {
+    const textos = sinComentarios(leer(join(RAIZ, 'nucleo', 'textos.ts'), 'utf8'));
+    const desde = textos.indexOf('\n  album: {');
+    const album = textos.slice(desde, textos.indexOf('\n  },', desde));
+    chequear('encuentra la sección album', desde > 0 && album.includes('quitarFoto'), true);
+    for (const m of album.matchAll(/'((?:[^'\\]|\\.)*)'/g)) {
+      if (BORRAR.test(m[1].toLowerCase())) fallas.push(`album: "${m[1]}" -> regla 4: el verbo es "quitar"`);
     }
   }
 
