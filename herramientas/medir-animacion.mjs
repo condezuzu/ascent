@@ -121,8 +121,29 @@ for (let i = 0; i < 90; i++) {
   await new Promise((r) => setTimeout(r, 1000));
 }
 
-const nav = await chromium.launch();
+// CON LA GPU DE LA MÁQUINA (18/9). Desde que el motor no se prende sin GPU de
+// verdad, el WebGL por software de Chromium (SwiftShader) deja la galería sin
+// motor y la huella no mediría nada. La base se regeneró con GPU ese día: una
+// huella tomada con SwiftShader no se compara con una de GPU, porque las dos
+// redondean distinto.
+const nav = await chromium.launch({
+  args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=d3d11', '--enable-unsafe-swiftshader=false'],
+});
 const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+{
+  const p = await ctx.newPage();
+  const nombre = await p.evaluate(() => {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    const e = gl?.getExtension('WEBGL_debug_renderer_info');
+    return gl ? String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) : 'sin webgl2';
+  });
+  await p.close();
+  console.log(`WebGL: ${nombre}`);
+  if (/swiftshader|llvmpipe|software|sin webgl2/i.test(nombre)) {
+    console.log('SIN GPU: el motor no se prende por software, así que no hay huella que sacar.');
+    process.exit(1);
+  }
+}
 
 // TODO LO QUE HACE REPETIBLE LA CORRIDA va antes de que exista la página.
 await ctx.addInitScript(() => {
@@ -157,12 +178,25 @@ await ctx.addInitScript(() => {
   // EL CERO ES EL MONTAJE. `escena.ts` marca 'ascent:motor-montar-inicio' justo
   // antes de armar la escena: ahí se resetean el reloj y la semilla, y los
   // cuadros se cuentan desde ahí.
+  //
+  // LA SEMILLA Y EL RELOJ SE RESETEAN EN MARCAS DISTINTAS (18/9). Desde que el
+  // primer cuadro espera a que compilen los shaders (`compileAsync`), entre
+  // armar la escena y dibujarla pasan cuadros, y cuántos depende de la GPU. La
+  // semilla va al armar —ahí se sortean las partículas— y el reloj al primer
+  // cuadro dibujado ('ascent:shader-fin'). Antes de ese cambio las dos marcas
+  // caían en el mismo instante del reloj virtual, así que una base tomada
+  // entonces se compara igual.
   window.__montajes = 0;
   window.__desdeMontaje = 0;
   const marcaReal = performance.mark.bind(performance);
   performance.mark = (nombre, ...resto) => {
+    // El reloj TAMBIÉN al armar: el núcleo anota ahí la hora del último toque,
+    // y tiene que ser la misma que la del primer cuadro, como antes.
     if (nombre === 'ascent:motor-montar-inicio') {
       s = SEMILLA;
+      ahora = 100000;
+    }
+    if (nombre === 'ascent:shader-fin') {
       ahora = 100000;
       window.__desdeMontaje = 0;
       window.__montajes++;
