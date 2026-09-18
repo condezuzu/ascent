@@ -20,7 +20,7 @@ import {
   planetaDeDia,
   unRM,
 } from '../nucleo/reglas.ts';
-import { PLANETAS_CFG } from '../src/motor/cuerpos.ts';
+import { PLANETAS_CFG } from '../compartido/motor/cuerpos.ts';
 import { agruparPorDia, ESTADO_CON_DURACION, etiquetaDeDia } from '../nucleo/dias.ts';
 import {
   CATEGORIAS,
@@ -56,7 +56,7 @@ import { NextResponse } from 'next/server.js';
 import { ESPERA_LLEGADA_MS } from '../nucleo/reglas.ts';
 import { eventos } from '../compartido/eventos.ts';
 import { perfilVivo, perfilFresco, olvidarPerfilVivo } from '../compartido/perfilVivo.ts';
-import * as Q from '../src/lib/quietud.ts';
+import * as Q from '../nucleo/quietud.ts';
 import { pedirInicio } from '../compartido/inicio.ts';
 import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '../nucleo/geo.ts';
 import {
@@ -85,7 +85,7 @@ import {
   SUBIDA_MS,
   VUELTA_MS,
   DURACION_MS,
-} from '../src/lib/pulso.ts';
+} from '../nucleo/pulso.ts';
 import {
   desarmeEn,
   brilloEn,
@@ -7870,7 +7870,7 @@ console.log('\n116. Una promesa colgada tiene que rendirse');
 
 console.log('\n117. La señal del descanso vive en la tira y en el texto');
 {
-  const N = await import('../src/lib/noche.ts');
+  const N = await import('../nucleo/noche.ts');
 
   // ESTA SECCION DECIA LO CONTRARIO AYER, y el cambio es la parte que importa.
   //
@@ -7959,7 +7959,7 @@ console.log('\n118. Ningun backtick suelto adentro de un shader');
     return { sueltos, dentro };
   };
 
-  const rSh = revisarShaders(leerSh(unirSh(RAIZ_SH, 'src', 'motor', 'shaders.ts'), 'utf8'));
+  const rSh = revisarShaders(leerSh(unirSh(RAIZ_SH, 'compartido', 'motor', 'shaders.ts'), 'utf8'));
   chequear('no hay backticks sueltos adentro de los shaders', rSh.sueltos, []);
   chequear('y todos los shaders quedaron cerrados', rSh.dentro, false);
 

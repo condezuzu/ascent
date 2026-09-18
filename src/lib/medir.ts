@@ -1,21 +1,10 @@
-// Marcas de rendimiento. performance.mark cuesta microsegundos, así que
-// quedan siempre puestas: permiten volver a medir cuando haga falta sin
-// tener que instrumentar de nuevo.
+// El lector de las marcas de rendimiento, para la consola del navegador:
+// window.__ascentPerf()
 //
-// Para leerlas desde la consola del navegador: window.__ascentPerf()
-
-export function marca(nombre: string) {
-  if (typeof performance !== 'undefined') performance.mark(nombre);
-}
-
-export function medir(nombre: string, desde: string, hasta: string) {
-  if (typeof performance === 'undefined') return;
-  try {
-    performance.measure(nombre, desde, hasta);
-  } catch {
-    // si falta alguna marca, no vale la pena romper nada por una métrica
-  }
-}
+// `marca` y `medir` viven en `compartido/medir.ts` desde el 18/9, porque el motor
+// las usa y se comparte con la app nativa. Esto es de la web —toca `window`—
+// y se reexporta el resto para que nadie tenga que enterarse de la mudanza.
+export { marca, medir } from '@compartido/medir';
 
 export function instalarLector() {
   if (typeof window === 'undefined') return;

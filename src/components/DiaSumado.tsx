@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { eventos } from '@compartido/eventos';
-import { PULSO } from '@/lib/pulso';
+import { PULSO } from '@nucleo/pulso';
 import { plataforma } from '@/plataforma';
 
 /**

@@ -10,9 +10,9 @@ import SubidaRango from '@/components/SubidaRango';
 import Insignia from '@/components/Insignia';
 import { PLANETAS, RANGOS } from '@nucleo/rangos';
 import { veloDeRango } from '@nucleo/atmosfera';
-import { NIVELES_A_PROBAR, NOCHE_DESCANSO } from '@/lib/noche';
+import { NIVELES_A_PROBAR, NOCHE_DESCANSO } from '@nucleo/noche';
 import { eventos } from '@compartido/eventos';
-import { PULSO } from '@/lib/pulso';
+import { PULSO } from '@nucleo/pulso';
 
 export default function Galeria() {
   const [rango, setRango] = useState(4);

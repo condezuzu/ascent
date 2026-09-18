@@ -122,7 +122,7 @@ uniform float uManchas;     // zonas de hielo claro y oscuro (Plutón)
 uniform float uRayos;       // rayos claros de cráteres jóvenes (la Luna)
 uniform float uReposo;      // día de descanso: cara nocturna y giro frenado
 // CUANTO SE VE LA SUPERFICIE en la cara nocturna. 0 = de dia, con la
-// iluminacion de siempre. Ver lib/noche.ts: el numero es lo unico que
+// iluminacion de siempre. Ver nucleo/noche.ts: el numero es lo unico que
 // separa un dia normal de uno de descanso.
 uniform float uNoche;
 uniform float uAtenua;      // 1 normal; menos = fantasma de la mejor racha

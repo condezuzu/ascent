@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Montaje, OpcionesFondo } from '@/motor/escena';
 import { eventos } from '@compartido/eventos';
-import { PULSO } from '@/lib/pulso';
+import { PULSO } from '@nucleo/pulso';
 import { aplicarTema } from '@/lib/paletas';
 import { marca, medir, instalarLector } from '@/lib/medir';
 import { veloDeRango, msDeTransicion } from '@nucleo/atmosfera';

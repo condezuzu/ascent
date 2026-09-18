@@ -1,6 +1,6 @@
 // ¿DE VERDAD DEJA DE DIBUJAR CUANDO NO HAY NADIE?
 //
-// `lib/quietud.ts` tiene la decisión de cada cuadro y está probada con
+// `nucleo/quietud.ts` tiene la decisión de cada cuadro y está probada con
 // números. Pero que la aritmética sea correcta no prueba que el motor la esté
 // usando: el bucle podría no llamarla, o algo podría estar despertándolo solo.
 // Esto lo mira en un navegador de verdad.

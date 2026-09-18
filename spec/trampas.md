@@ -20,7 +20,7 @@ Se le cambió el tamaño a la geometría para achicar el cuerpo y el disco dejó
 de entrar: se veía el cuadrado recortando al planeta. `vP` tiene que ir de −1
 a 1 para que el shader dibuje el disco completo.
 → **Regla:** la geometría nunca cambia; el tamaño en pantalla lo da
-`mesh.scale`. Ver `src/motor/shaders.ts`.
+`mesh.scale`. Ver `compartido/motor/shaders.ts`.
 
 ---
 

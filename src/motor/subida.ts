@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { alCambiarDeTamano } from './alCambiarDeTamano';
-import { RANGOS_CFG, PLANETAS_CFG } from './cuerpos';
+import { RANGOS_CFG, PLANETAS_CFG } from '@compartido/motor/cuerpos';
 import {
   N,
   formaDeRango,
