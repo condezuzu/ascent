@@ -8,14 +8,8 @@ import { fechaDeMarca, pesoLindo, redondear } from '@nucleo/fuerza';
 import type { Unidad } from '@nucleo/peso';
 import type { FilaFuerza, MiFuerza } from '@nucleo/tipos';
 import Avatar from '@/components/Avatar';
-import {
-  esEjercicioEstandar,
-  esSexoEstandar,
-  FUENTE,
-  muestraFina,
-  ubicar,
-  type SexoEstandar,
-} from '@nucleo/estandares';
+import { esSexoEstandar, muestraFina, type SexoEstandar } from '@nucleo/estandares';
+import { cargarFuerza, filasDondeEstoy } from '@compartido/fuerza';
 import { T } from '@nucleo/textos';
 
 /**
@@ -45,12 +39,11 @@ export default function SeccionFuerza({
       const user = await miUsuario(supabase);
       if (!user) return;
       setYo(user.id);
-      const [{ data: f }, { data: r }] = await Promise.all([
-        supabase.rpc('mi_fuerza'),
-        supabase.rpc('ranking_fuerza'),
-      ]);
-      setMia((f ?? null) as MiFuerza | null);
-      setRanking((r ?? []) as FilaFuerza[]);
+      // Lo que se pide vive en `compartido/fuerza.ts`, que usa también la
+      // app nativa.
+      const datos = await cargarFuerza(supabase);
+      setMia(datos?.mia ?? null);
+      setRanking(datos?.ranking ?? []);
     })();
   }, [supabase]);
 
@@ -80,7 +73,7 @@ export default function SeccionFuerza({
               <>
                 <div className="dots-numero">{redondear(mia.dots)}</div>
                 <div className="dots-pie">
-                  DOTS · {mia.total !== null && pesoLindo(mia.total, unidad)} de total
+                  {T.fuerza.dotsPie(mia.total !== null ? pesoLindo(mia.total, unidad) : '')}
                 </div>
                 {/* Desde la migración 28 el número exacto lo ven los amigos.
                     Se dice acá y no solo al activarlo: quien ya lo tenía
@@ -136,7 +129,7 @@ export default function SeccionFuerza({
 
           {ranking.length > 1 && (
             <>
-              <h3 style={{ marginTop: 22 }}>Entre amigos</h3>
+              <h3 style={{ marginTop: 22 }}>{T.fuerza.entreAmigos}</h3>
               <div className="tarjeta" style={{ padding: 4 }}>
                 {ranking.map((f, i) => {
                   const desplegado = abierto === f.id;
@@ -213,13 +206,7 @@ function DondeEstoy({
   marcas: MiFuerza['marcas'];
   unidad: Unidad;
 }) {
-  const filas = marcas
-    .filter((m) => esEjercicioEstandar(m.ejercicio))
-    .map((m) => ({
-      ejercicio: m.ejercicio,
-      nombre: m.nombre,
-      u: ubicar(m.ejercicio as Parameters<typeof ubicar>[0], sexo, pesoCorporal, m.kg),
-    }));
+  const filas = filasDondeEstoy(sexo, pesoCorporal, marcas);
 
   if (filas.length === 0) return null;
 

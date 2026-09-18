@@ -10,8 +10,8 @@ import Album from './Album';
 import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
 import FondoRaiz from './FondoRaiz';
-
-type Pestana = 'inicio' | 'ranking' | 'album' | 'stats' | 'ajustes';
+import { eventos } from '@compartido/eventos';
+import { IR_A_PESTANA, type Pestana } from './irAPestana';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -54,6 +54,9 @@ export default function Pestanas({
   useEffect(() => {
     if (pestana === 'ajustes') cargarPerfil();
   }, [pestana, cargarPerfil]);
+
+  // "Ir a Ajustes" desde el texto de otra pantalla: ver `irAPestana.ts`.
+  useEffect(() => eventos.escuchar(IR_A_PESTANA, (p) => setPestana(p as Pestana)), []);
 
   return (
     // CADA TOQUE DESPIERTA AL MOTOR. En la web lo escucha el `window`; acá no

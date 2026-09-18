@@ -12,6 +12,7 @@ import type { Log } from '@nucleo/tipos';
 import { C } from './colores';
 import GraficoPeso from './GraficoPeso';
 import Insignia from './Insignia';
+import SeccionFuerza from './SeccionFuerza';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -22,9 +23,9 @@ import Insignia from './Insignia';
  * el 18/9 (`GraficoPeso` e `Insignia`, con la cuenta y los dibujos
  * compartidos).
  *
- * LO QUE FALTA, marcado:
- *   - La sección de fuerza y el aviso de estancamiento: no se portaron en
- *     esta tanda. Ver el informe del 18/9.
+ * LA FUERZA, también desde el 18/9, entre el peso y la escalera como en la
+ * web (`SeccionFuerza`). El aviso de estancamiento va arriba de todo y lo pone
+ * `Stats`.
  */
 
 export type Vidas = { quedan: number; total: number; vuelve: string | null; falta: number | null };
@@ -55,6 +56,7 @@ export default function StatsGeneral({
   planeta,
   unidad,
   pesos,
+  sexo,
   alCambiar,
 }: {
   logs: Log[];
@@ -62,6 +64,7 @@ export default function StatsGeneral({
   rango: number;
   planeta: string | null;
   unidad: Unidad;
+  sexo: string | null;
   pesos: PesoAnotado[];
   alCambiar: () => void;
 }) {
@@ -120,6 +123,16 @@ export default function StatsGeneral({
       {pesos.length === 1 && <Text style={estilos.nota}>{T.stats.pesoUnoMas}</Text>}
       {pesos.length === 0 && <Text style={estilos.nota}>{T.stats.pesoVacio}</Text>}
       <AnotarPeso unidad={unidad} alGuardar={alCambiar} />
+
+      {/* La fuerza convive con la racha, no la reemplaza (§16.1): va después
+          del peso y antes de la escalera, que es el cierre de la pantalla. El
+          peso corporal va en KILOS, que es como está la tabla de estándares. */}
+      <SeccionFuerza
+        unidad={unidad}
+        sexo={sexo}
+        pesoCorporal={pesos.length > 0 ? pesos[pesos.length - 1].valor : null}
+        claro={pal.claro}
+      />
 
       <Text style={estilos.seccion}>{T.stats.laEscalera}</Text>
       <View style={estilos.tarjeta}>

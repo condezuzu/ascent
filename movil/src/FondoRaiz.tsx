@@ -21,6 +21,7 @@ import { ELIPSES_BASE, ELIPSES_VELO } from '@compartido/fondoDegradados';
 import ElipsesDeLuz from './ElipsesDeLuz';
 import { cargarElMotor, esPreferenciaFondo } from '@nucleo/fondo';
 import { plataforma } from '@plataforma';
+import { conAlfa } from './colores';
 import { escucharFondo, type Pedido } from './pedidoDeFondo';
 
 /**
@@ -76,12 +77,6 @@ const CLAVE_FONDO = 'ascent:fondo';
 const DENSIDAD_TOPE = 2;
 function factorDeTope() {
   return Math.min(1, DENSIDAD_TOPE / PixelRatio.get());
-}
-
-/** `#05060a` + 0,8 → `rgba(5,6,10,0.8)`. */
-function conAlfa(hex: string, alfa: number) {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alfa})`;
 }
 
 // De qué depende que haya que armar la escena de nuevo. Igual que las

@@ -6561,7 +6561,8 @@ console.log('\n96. Hiciste 102 en banca: ¿lo guardo como marca?');
   const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
   const compartido = leer(join(RAIZ, 'compartido', 'marcaSugerida.ts'), 'utf8');
   chequear("la busqueda filtra por user_id", /from\('prs'\)\.select\([^)]*\)\.eq\('user_id'/.test(compartido), true);
-  const estancamiento = leer(join(RAIZ, 'src', 'components', 'Estancamiento.tsx'), 'utf8');
+  // La consulta se mudó a `compartido/` el 18/9, al portar Stats a la nativa.
+  const estancamiento = leer(join(RAIZ, 'compartido', 'estancamiento.ts'), 'utf8');
   chequear("el estancamiento tambien", /from\('prs'\)\.select\([^)]*\)\.eq\('user_id'/.test(estancamiento), true);
 }
 console.log('\n97. La app nativa usa las mismas vidas, la misma foto y el mismo sonido');

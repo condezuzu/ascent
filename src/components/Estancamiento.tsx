@@ -3,16 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
-import { plataforma } from '@/plataforma';
-import { hoyISO } from '@nucleo/fechas';
-import {
-  detectar,
-  idDeSenal,
-  umbralValido,
-  type MarcaCruda,
-  type Senal,
-  type SesionCruda,
-} from '@nucleo/estancamiento';
+import { cargarEstancamiento, descartarSenal } from '@compartido/estancamiento';
+import type { Senal } from '@nucleo/estancamiento';
 import type { Ejercicio } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 
@@ -37,22 +29,8 @@ import { T } from '@nucleo/textos';
  * toda la app; contaminarla con crítica arruina el motor entero.
  */
 
-// El descarte se guarda en ESTE aparato y no en la cuenta, a diferencia del
-// umbral. Es la diferencia entre una preferencia —cada cuánto querés que te
-// avisen— y un "ya lo vi": lo segundo no vale una tabla nueva, y lo peor que
-// puede pasar es que la señal aparezca una vez más en la computadora.
-const CLAVE = 'ascent:estancamiento-visto';
-
-async function leerSilenciadas(): Promise<Record<string, string>> {
-  const crudo = await plataforma.almacenamiento.leer(CLAVE);
-  if (!crudo) return {};
-  try {
-    const v = JSON.parse(crudo);
-    return v && typeof v === 'object' ? (v as Record<string, string>) : {};
-  } catch {
-    return {};
-  }
-}
+// Qué se le pregunta a la base y dónde se anota lo ya visto: en
+// `compartido/estancamiento.ts`, que usa también la app nativa.
 
 export default function Estancamiento({ registradoHoy }: { registradoHoy: boolean }) {
   const [senal, setSenal] = useState<Senal | null>(null);
@@ -68,56 +46,11 @@ export default function Estancamiento({ registradoHoy }: { registradoHoy: boolea
       } = await supabase.auth.getSession();
       const uid = session?.user?.id;
       if (!uid) return;
-
-      const [{ data: perfil }, { data: prs }, { data: ses }, { data: cat }, apagadas] =
-        await Promise.all([
-          supabase.from('profiles').select('*').eq('id', uid).single(),
-          // SOLO LAS PROPIAS. La tabla de marcas deja leer las de los amigos
-          // (el ranking las usa), y sin este filtro el detector decía "tu
-          // mejor sentadilla sigue siendo la de hace ocho semanas" mirando la
-          // marca de otra persona.
-          supabase.from('prs').select('ejercicio, peso, reps, es_real, fecha').eq('user_id', uid),
-          supabase
-            .from('sesiones')
-            .select('inicio, fin')
-            .eq('estado', 'terminada')
-            .not('fin', 'is', null),
-          supabase.from('ejercicios').select('*'),
-          leerSilenciadas(),
-        ]);
-      if (!vivo || !perfil) return;
-
-      // El interruptor. Si la migración todavía no corrió, la columna no
-      // existe y el valor es `undefined`: se trata como prendido, que es el
-      // valor por omisión de la base.
-      if (perfil.avisos_estancamiento === false) return;
-
-      const sesiones: SesionCruda[] = (ses ?? [])
-        .filter((s) => s.fin)
-        .map((s) => ({
-          fecha: String(s.inicio).slice(0, 10),
-          minutos: Math.round(
-            (new Date(s.fin as string).getTime() - new Date(s.inicio).getTime()) / 60000
-          ),
-        }));
-
-      setEjercicios((cat ?? []) as Ejercicio[]);
-      setSilenciadas(apagadas);
-      setSenal(
-        detectar({
-          marcas: (prs ?? []).map((m) => ({
-            ejercicio: m.ejercicio,
-            peso: Number(m.peso),
-            reps: m.reps,
-            es_real: m.es_real,
-            fecha: m.fecha,
-          })) as MarcaCruda[],
-          sesiones,
-          hoy: hoyISO(),
-          umbral: umbralValido(perfil.umbral_estancamiento),
-          silenciadas: apagadas,
-        })
-      );
+      const datos = await cargarEstancamiento(supabase, uid);
+      if (!vivo || !datos) return;
+      setEjercicios(datos.ejercicios);
+      setSilenciadas(datos.silenciadas);
+      setSenal(datos.senal);
     })();
     return () => {
       vivo = false;
@@ -131,10 +64,8 @@ export default function Estancamiento({ registradoHoy }: { registradoHoy: boolea
 
   async function descartar() {
     if (!senal) return;
-    const nuevas = { ...silenciadas, [idDeSenal(senal)]: hoyISO() };
-    setSilenciadas(nuevas);
     setSenal(null);
-    await plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(nuevas));
+    setSilenciadas(await descartarSenal(silenciadas, senal));
   }
 
   const nombre = (id: string) => ejercicios.find((e) => e.id === id)?.nombre ?? id;

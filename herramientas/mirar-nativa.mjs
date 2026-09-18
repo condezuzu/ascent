@@ -45,6 +45,10 @@ const PANTALLA = (process.argv.find((a) => a.startsWith('--pantalla=')) ?? '').s
 // pantallas nativas desplazan un ScrollView propio, no la página: sin esto la
 // foto corta en lo primero que entra.
 const BAJAR = Number((process.argv.find((a) => a.startsWith('--bajar=')) ?? '--bajar=0').split('=')[1]);
+// `--tocar=Entrenamiento|etiqueta:Ver el día 16` toca eso, en orden, después de
+// abrir la pantalla: un texto exacto, o con `etiqueta:` la etiqueta de
+// accesibilidad (lo que en React Native es `accessibilityLabel`).
+const TOCAR = ((process.argv.find((a) => a.startsWith('--tocar=')) ?? '').slice('--tocar='.length) || '').split('|').filter(Boolean);
 const ESCALA = Number((process.argv.find((a) => a.startsWith('--escala=')) ?? '--escala=2').split('=')[1]);
 
 const vivo = await fetch(BASE).then(() => true).catch(() => false);
@@ -193,6 +197,11 @@ if (PANTALLA) {
   const antes = avisos.length;
   await page.getByText(PANTALLA, { exact: true }).last().click();
   await page.waitForTimeout(6000);
+  for (const t of TOCAR) {
+    const blanco = t.startsWith('etiqueta:') ? page.getByLabel(t.slice(9), { exact: true }) : page.getByText(t, { exact: true });
+    await blanco.last().click({ timeout: 15000 });
+    await page.waitForTimeout(2500);
+  }
   if (BAJAR) {
     // El que más scroll tiene es el de la pantalla que está a la vista.
     await page.evaluate((px) => {
@@ -202,7 +211,7 @@ if (PANTALLA) {
     }, BAJAR);
     await page.waitForTimeout(800);
   }
-  const archivo = `nativa-${PANTALLA.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '')}${BAJAR ? '-' + BAJAR : ''}.png`;
+  const archivo = `nativa-${PANTALLA.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '')}${TOCAR.length ? '-' + TOCAR.length + 'toques' : ''}${BAJAR ? '-' + BAJAR : ''}.png`;
   await page.screenshot({ path: join(SALIDA, archivo), fullPage: true });
   const nuevos = avisos.slice(antes).filter((x) => !/GPU stall/.test(x));
   const texto = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 1500));

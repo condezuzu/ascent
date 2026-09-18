@@ -21,3 +21,13 @@ export const C = {
   claro: '#c4c2ba',
   error: '#e8705f',
 };
+
+/**
+ * Un color de la paleta con transparencia. Los colores vienen en hex y React
+ * Native no tiene `color-mix`: esto es el `color-mix(in srgb, X N%,
+ * transparent)` de la web. Estaba copiado en cuatro archivos (18/9).
+ */
+export function conAlfa(hex: string, alfa: number) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alfa})`;
+}

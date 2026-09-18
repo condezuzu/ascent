@@ -3,13 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { DIAS_SEMANA, MESES, aISO, deISO, enDias, hoyISO } from '@nucleo/fechas';
-import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
+import { DIAS_SEMANA, MESES, deISO, hoyISO } from '@nucleo/fechas';
+import { cargarMes, celdasDelMes, moverMes, recalcularRacha, type DatosDelMes } from '@compartido/calendario';
 import HojaDelDia from '@/components/HojaDelDia';
 import { T } from '@nucleo/textos';
 
-type Estado = 'hecho' | 'vacio' | 'descanso' | 'futuro';
-type Celda = { fecha: string; dia: number; estado: Estado };
 
 /**
  * EL CALENDARIO: uno solo, y se toca para MIRAR.
@@ -19,8 +17,8 @@ type Celda = { fecha: string; dia: number; estado: Estado };
  * tocar un día abre su resumen; corregirlo es un paso aparte adentro de ese
  * resumen (ver `HojaDelDia`). Mirar un día ya no puede romperlo.
  *
- * Los descansos se muestran con la configuración que regía CADA día, no con
- * la de hoy: si no, un mes viejo se vería con la rutina actual, que es mentira.
+ * Qué se pide, cómo se arma cada celda y el recálculo viven en
+ * `compartido/calendario.ts`, que usa también la app nativa.
  */
 export default function CalendarioDias({
   alCambiar,
@@ -33,13 +31,10 @@ export default function CalendarioDias({
   alRevisar?: () => void;
 }) {
   const [supabase] = useState(() => crearCliente());
-  const [configs, setConfigs] = useState<ConfigDescanso[]>([]);
   const hoy = hoyISO();
   const base = deISO(hoy);
   const [ancla, setAncla] = useState({ anio: base.getFullYear(), mes: base.getMonth() });
-  const [conLog, setConLog] = useState<Set<string>>(new Set());
-  // Los días marcados a mano como descanso: filas de `logs` con `es_descanso`.
-  const [descansoAMano, setDescansoAMano] = useState<Set<string>>(new Set());
+  const [mesCargado, setMesCargado] = useState<DatosDelMes>({ conLog: new Set(), descansoAMano: new Set(), configs: [] });
   const [abierto, setAbierto] = useState<string | null>(null);
   const [recalculando, setRecalculando] = useState(false);
   const [aviso, setAviso] = useState('');
@@ -48,63 +43,33 @@ export default function CalendarioDias({
   const [corrigio, setCorrigio] = useState(false);
 
   const primerDia = new Date(ancla.anio, ancla.mes, 1);
-  const diasEnMes = new Date(ancla.anio, ancla.mes + 1, 0).getDate();
 
   const cargar = useCallback(async () => {
     const uid = (await miUsuario(supabase))?.id;
     if (!uid) return;
-    const desde = aISO(new Date(ancla.anio, ancla.mes, 1));
-    const hasta = aISO(new Date(ancla.anio, ancla.mes, diasEnMes));
-    const [{ data }, { data: cfgs }] = await Promise.all([
-      supabase
-        .from('logs')
-        .select('fecha, es_descanso')
-        .eq('user_id', uid)
-        .gte('fecha', desde)
-        .lte('fecha', hasta),
-      supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
-    ]);
-    setConLog(new Set((data ?? []).filter((l) => !l.es_descanso).map((l) => l.fecha)));
-    setDescansoAMano(new Set((data ?? []).filter((l) => l.es_descanso).map((l) => l.fecha)));
-    setConfigs((cfgs ?? []) as ConfigDescanso[]);
-  }, [supabase, ancla, diasEnMes]);
+    setMesCargado(await cargarMes(supabase, uid, ancla.anio, ancla.mes));
+  }, [supabase, ancla]);
 
   useEffect(() => {
     cargar();
   }, [cargar]);
 
-  const celdas: Celda[] = [];
-  for (let d = 1; d <= diasEnMes; d++) {
-    const fecha = aISO(new Date(ancla.anio, ancla.mes, d));
-    let estado: Estado;
-    if (fecha > hoy) estado = 'futuro';
-    else if (conLog.has(fecha)) estado = 'hecho';
-    else if (descansoAMano.has(fecha) || esDiaDeDescanso(configs, fecha)) estado = 'descanso';
-    else estado = 'vacio';
-    celdas.push({ fecha, dia: d, estado });
-  }
+  const celdas = celdasDelMes(ancla.anio, ancla.mes, hoy, mesCargado);
 
-  // El RPC recalcula y aplica la pérdida en la misma transacción: el número
-  // que se muestra es el final, no rebota al recargar.
   async function recalcular() {
     setRecalculando(true);
     setAviso('');
-    const { data, error } = await supabase.rpc('recalcular_desde_cero');
+    const r = await recalcularRacha(supabase);
     setRecalculando(false);
-    if (error) return setAviso(T.calendario.recalcularError);
-    const r = data as { racha: number; perdida: boolean };
-    setAviso(
-      r.perdida ? T.calendario.recalculoCortado(enDias(r.racha)) : T.calendario.recalculoListo(enDias(r.racha))
-    );
+    setAviso(r.texto);
+    if (!r.ok) return;
     setCorrigio(false);
     alCambiar();
   }
 
   function mover(delta: number) {
-    const d = new Date(ancla.anio, ancla.mes + delta, 1);
-    // no tiene sentido navegar a meses que todavía no pasaron
-    if (aISO(d) > hoy) return;
-    setAncla({ anio: d.getFullYear(), mes: d.getMonth() });
+    const siguiente = moverMes(ancla.anio, ancla.mes, delta, hoy);
+    if (siguiente) setAncla(siguiente);
   }
 
   const esMesActual = ancla.anio === base.getFullYear() && ancla.mes === base.getMonth();

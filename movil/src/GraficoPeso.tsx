@@ -4,7 +4,7 @@ import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { conComa, puntoMasCercano, trazarPeso, type Unidad } from '@nucleo/peso';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conAlfa } from './colores';
 
 /**
  * LA TENDENCIA DEL PESO, en la app nativa: la misma que la web
@@ -177,11 +177,6 @@ function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro:
       <View style={[estilos.punto, { left: x, top: y, backgroundColor: color }]} />
     </>
   );
-}
-
-function conAlfa(hex: string, alfa: number) {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alfa})`;
 }
 
 const estilos = StyleSheet.create({

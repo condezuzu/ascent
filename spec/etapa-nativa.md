@@ -895,8 +895,15 @@ A `:8090` el `GLView` corre sobre el WebGL **del navegador**, no sobre el de
   insignias (filas y campo estelar del Ranking, escalera de Stats) y el gráfico
   del peso. Lo que se dibuja vive UNA vez en `compartido/` y `nucleo/` y cada
   app lo traduce a su SVG (§125).
-- **Stats sin portar:** la sección de fuerza, el aviso de estancamiento y el
-  calendario para corregir días (~640 líneas de la web entre las tres).
+- ~~**Stats sin portar**~~ HECHO el 18/9: la fuerza, el aviso de estancamiento
+  y el calendario con la hoja de cada día (resumen, corregir, revisar cargas).
+  Lo que se pide y lo que hace corregir se mudó a `compartido/` (`dia.ts`,
+  `calendario.ts`, `fuerza.ts`, `estancamiento.ts`) y la web usa lo mismo.
+  **Queda afuera:** la pantalla de marcas (`/fuerza` en la web). Los botones
+  que llevan ahí ("Mis marcas", "Anotar una marca", el "anotar una" del
+  estancamiento) no se muestran en nativo hasta que exista. Y el aviso de
+  "pesos para revisar" arriba del volumen: los días igual llevan su marca en
+  el calendario. "Ajustes" desde un texto sí lleva: `irAPestana`.
 - **Ranking:** tocar a alguien no abre su perfil (la pantalla no existe en
   nativo). Los retos tampoco se ven en la web (`RETOS_LISTOS = false`).
 - **Álbum:** deslizar la foto con el dedo (se pasa con flechas). "Quitar

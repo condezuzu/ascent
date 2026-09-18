@@ -6,6 +6,7 @@ import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { claveDeEtiqueta } from '@nucleo/carga';
 import { umbralValido } from '@nucleo/estancamiento';
 import {
+  fechasPorRevisar,
   filasPorMusculo,
   maximosDelCatalogo,
   semanaParaLeer,
@@ -19,6 +20,9 @@ import { T } from '@nucleo/textos';
 import { planetaDeDia } from '@nucleo/rangos';
 import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './StatsGeneral';
 import FondoEspacial from './FondoEspacial';
+import Estancamiento from './Estancamiento';
+import CalendarioDias from './CalendarioDias';
+import { paletaDe } from '@nucleo/paletas';
 
 const SEMANAS = 8;
 
@@ -37,6 +41,7 @@ type Datos = {
   // el peso corporal con el mismo nombre se confunde —se confundió un test—.
   pesajes: PesoAnotado[];
   vidas: Vidas | null;
+  sexo: string | null;
 };
 
 /**
@@ -47,13 +52,14 @@ type Datos = {
  * la web: esta pantalla pide las filas y dibuja. Si un número difiriera entre
  * el teléfono y la computadora, sería por el dibujo, nunca por la cuenta.
  *
- * GENERAL ESTÁ ENTERA desde el 18/9 (ver `StatsGeneral.tsx`), menos el
- * gráfico del peso y las insignias de la escalera, que son SVG.
+ * LAS DOS PESTAÑAS ESTÁN ENTERAS desde el 18/9: General (`StatsGeneral`, con
+ * la fuerza y el aviso de estancamiento) y Entrenamiento, con el calendario y
+ * el resumen de cada día (`CalendarioDias`, `HojaDelDia`). Lo que se pide para
+ * cada sección vive en `compartido/`, igual que en la web.
  *
- * LO QUE TODAVÍA NO ESTÁ: el calendario con el resumen de cada día (y ahí,
- * revisar los pesos de antes de los modos), la sección de fuerza y el aviso
- * de estancamiento. Mientras tanto se miran en la web; nada de acá los
- * reemplaza a medias.
+ * LO QUE NO ESTÁ: el aviso de "hay pesos de antes de los modos para revisar"
+ * arriba del volumen. Los días igual llevan su marca en el calendario, y la
+ * revisión se hace adentro de cada día, como en la web.
  */
 export default function Stats({ alSalir }: { alSalir: () => void }) {
   const [datos, setDatos] = useState<Datos | null>(null);
@@ -102,6 +108,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
               falta: vid.data.falta_para_ganar === null ? null : Number(vid.data.falta_para_ganar),
             }
           : null,
+      sexo: (perfil.sexo as string | null) ?? null,
     });
   }, [alSalir]);
 
@@ -135,6 +142,9 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       }),
     [datos?.sesiones, catalogo, hoy, datos?.umbral]
   );
+  // Los días con pesos anotados antes de los modos (migración 39): la marca
+  // del calendario. Arriba de los `return`, como los otros: ver arriba.
+  const porRevisar = useMemo(() => fechasPorRevisar(datos?.sesiones ?? []), [datos?.sesiones]);
   const maximos = useMemo(
     () => maximosDelCatalogo(datos?.sesiones ?? [], datos?.marcas ?? [], datos?.ejercicios ?? []),
     [datos?.sesiones, datos?.marcas, datos?.ejercicios]
@@ -177,6 +187,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const leidaTotal = totales[indice];
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString(T.general.locale);
   const mayuscula = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
+  const pal = paletaDe(datos.rango, datos.planeta);
 
   return (
     <View style={estilos.raiz}>
@@ -200,6 +211,12 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           </Pressable>
         ))}
       </View>
+
+      {/* EL AVISO DE ESTANCAMIENTO, si hay uno, arriba de los números: escondido
+          abajo sería un aviso que no quiere ser leído. */}
+      {pestana === 'general' && (
+        <Estancamiento registradoHoy={entrenados.some((l) => l.fecha === hoy)} paleta={pal} />
+      )}
 
       {pestana === 'general' && datos.vidas && <LineaDeVidas vidas={datos.vidas} />}
 
@@ -229,6 +246,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           planeta={datos.planeta}
           unidad={unidad}
           pesos={datos.pesajes}
+          sexo={datos.sexo}
           alCambiar={cargar}
         />
       )}
@@ -351,6 +369,11 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
               })}
             </>
           )}
+
+          {/* El calendario, abajo del volumen: primero qué venís haciendo,
+              después cada día. */}
+          <Text style={estilos.seccion}>{T.calendario.titulo}</Text>
+          <CalendarioDias paleta={pal} alCambiar={cargar} porRevisar={porRevisar} alRevisar={cargar} />
         </>
       )}
     </ScrollView>

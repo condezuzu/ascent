@@ -5,17 +5,15 @@ import EnElBody from '@/components/EnElBody';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { DIAS_SEMANA_LARGO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
-import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { duracionLinda } from '@nucleo/sesiones';
 import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
-import { resumenDelDia, type ResumenDelDia, type SesionDelDia } from '@nucleo/resumenDia';
+import type { ResumenDelDia } from '@nucleo/resumenDia';
+import { cargarDia, corregirDia, destinoActual, queHacer, revisarCarga, type Destino } from '@compartido/dia';
 import { claveDeEtiqueta, gruposDePesos, type Carga } from '@nucleo/carga';
 import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
-
-type Destino = 'fui' | 'descanso' | 'nada';
 
 /**
  * UN DÍA, ABIERTO: qué hiciste, y corregirlo si está mal.
@@ -29,6 +27,9 @@ type Destino = 'fui' | 'descanso' | 'nada';
  * sacar un día que tuvo sesión la borra entera —duración, series, en qué
  * estuviste—. El calendario viejo lo hacía igual y en silencio; con el resumen
  * a la vista ese borrado pasa a ser algo que se ve, así que se pregunta antes.
+ *
+ * Qué se pide y qué se hace al corregir viven en `compartido/dia.ts`, que usa
+ * también la app nativa: acá solo se dibuja.
  */
 export default function HojaDelDia({
   fecha,
@@ -61,41 +62,12 @@ export default function HojaDelDia({
     (async () => {
       const uid = (await miUsuario(supabase))?.id;
       if (!uid) return;
-      const [{ data: log }, { data: catalogo }, { data: cfgs }, { data: perfil }] = await Promise.all([
-        supabase.from('logs').select('id, es_descanso, origen').eq('user_id', uid).eq('fecha', fecha).maybeSingle(),
-        supabase.from('ejercicios').select('id, nombre, grupo'),
-        supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
-        supabase.from('profiles').select('unidad_peso').eq('id', uid).maybeSingle(),
-      ]);
-      const [{ data: sesiones }, { data: fotos }] = log
-        ? await Promise.all([
-            supabase.from('sesiones').select('id, inicio, fin, estado, series, bloques').eq('log_id', log.id),
-            supabase.from('photos').select('storage_path').eq('log_id', log.id).limit(1),
-          ])
-        : [{ data: [] }, { data: [] }];
-
+      const d = await cargarDia(supabase, uid, fecha, esFuturo);
       if (!vivo) return;
-      if (perfil?.unidad_peso === 'lb') setUnidad('lb');
-      setCuantasSesiones((sesiones ?? []).length);
-      setResumen(
-        resumenDelDia({
-          log,
-          sesiones: (sesiones ?? []) as SesionDelDia[],
-          catalogo: new Map((catalogo ?? []).map((e) => [e.id as string, e.nombre as string])),
-          esFuturo,
-          esDescansoConfigurado: esDiaDeDescanso((cfgs ?? []) as ConfigDescanso[], fecha),
-          ejercicioSinNombre: T.resumen.ejercicioSinNombre,
-          grupos: new Map((catalogo ?? []).map((e) => [e.id as string, e.grupo as string])),
-        })
-      );
-
-      const ruta = fotos?.[0]?.storage_path;
-      if (ruta) {
-        const { data: firmada } = await supabase.storage.from('fotos').createSignedUrl(ruta, 3600);
-        if (vivo) setFoto(firmada?.signedUrl ?? null);
-      } else {
-        setFoto(null);
-      }
+      setUnidad(d.unidad);
+      setCuantasSesiones(d.cuantasSesiones);
+      setResumen(d.resumen);
+      setFoto(d.foto);
     })();
     return () => {
       vivo = false;
@@ -112,32 +84,22 @@ export default function HojaDelDia({
    * el que ya tenía es "estaba bien": también saca la marca.
    */
   async function revisar(sesion: string, orden: number, carga: Carga) {
-    if (!disponible('revisarCargas', versionEsquema)) return;
     setError('');
-    const { error: e } = await supabase.rpc('revisar_carga', { p_sesion: sesion, p_orden: orden, p_carga: carga });
-    if (e) return setError(T.calendario.noSeAgrego);
+    const e = await revisarCarga(supabase, versionEsquema, sesion, orden, carga);
+    if (e) return setError(e);
     setVersion((v) => v + 1);
     alRevisar?.();
   }
 
-  const actual: Destino | null =
-    resumen?.estado === 'entrenado'
-      ? 'fui'
-      : resumen?.estado === 'descanso'
-        ? 'descanso'
-        : resumen?.estado === 'sin-registrar'
-          ? 'nada'
-          : null;
+  const actual = destinoActual(resumen);
 
   async function corregir(destino: Destino, confirmado = false) {
     if (!resumen || ocupado) return;
-    // Tocar lo que ya está NO hace nada. Sin esto, tocar "Fui" en un día que ya
-    // era "fui" lo borraba y lo volvía a poner — y borrar el día borra en
-    // cascada su sesión. Un toque de confirmar lo que ya sabías se llevaba
-    // puesto el entrenamiento.
-    if (destino === actual) return;
-    // Sacarle el "fui" a un día con sesión la borra: se pregunta una vez.
-    if (destino !== 'fui' && cuantasSesiones > 0 && !confirmado) {
+    // Lo que ya está no hace nada, y sacarle el "fui" a un día con sesión se
+    // pregunta antes: ver `queHacer`.
+    const paso = queHacer(destino, actual, cuantasSesiones, confirmado);
+    if (paso === 'nada') return;
+    if (paso === 'confirmar') {
       setPorConfirmar(destino);
       return;
     }
@@ -149,19 +111,11 @@ export default function HojaDelDia({
       setOcupado(false);
       return;
     }
-
-    // Siempre se borra y se vuelve a poner, nunca `update`: la fila puede
-    // tener origen y planeta del día que ya no corresponden a lo nuevo.
-    const { error: eBorrar } = await supabase.from('logs').delete().eq('user_id', uid).eq('fecha', fecha);
-    if (eBorrar) {
+    const r = await corregirDia(supabase, uid, fecha, destino);
+    if (r.error) setError(r.error);
+    if (!r.cambio) {
       setOcupado(false);
-      return setError(T.calendario.noSeSaco);
-    }
-    if (destino !== 'nada') {
-      const { error: eAgregar } = await supabase
-        .from('logs')
-        .insert({ user_id: uid, fecha, es_descanso: destino === 'descanso' });
-      if (eAgregar) setError(T.calendario.noSeAgrego);
+      return;
     }
     setOcupado(false);
     setVersion((v) => v + 1);

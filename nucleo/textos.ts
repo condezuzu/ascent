@@ -405,6 +405,10 @@ export const T = {
     anotarMarca: 'Anotar una marca',
     lasTresQueCuentan: 'Las tres que cuentan',
     dondeEstoy: 'Dónde estoy',
+    // Estaban escritos a mano en el JSX de la web; se mudaron acá al portar
+    // la sección a la app nativa, para que no queden escritos dos veces.
+    entreAmigos: 'Entre amigos',
+    dotsPie: (total: string) => `DOTS · ${total} de total`,
 
     // §16.8. "Strength Level 2026, gente que anota en apps, no competidores"
     // era exacto y no significaba nada para quien lo lee: nombra una fuente
