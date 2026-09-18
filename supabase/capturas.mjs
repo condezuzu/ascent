@@ -213,9 +213,9 @@ const PANTALLAS = [
       // más y la captura se perdía.
       //
       // Dos cuadros de animación solo se completan con el hilo libre. Qué
-      // bloquea exactamente —no está dentro de lo que el motor mide— y si
-      // pasa fuera del WebGL por software de este navegador, sigue abierto:
-      // ver spec/estado.md.
+      // bloqueaba se resolvió el mismo día: el WebGL por software y el shader
+      // de cuerpos en Direct3D (ver spec/estado.md). Con el arreglo el hilo ya
+      // no se toma; la espera queda porque no cuesta nada y cubre al próximo.
       await page
         .evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
         .catch(() => {});
@@ -237,9 +237,60 @@ await esperarAlServidor();
 rmSync(SALIDA, { recursive: true, force: true });
 mkdirSync(SALIDA, { recursive: true });
 
-const navegador = await chromium.launch();
+// CON LA GPU DE LA MÁQUINA (18/9). Sin GPU Chromium dibuja WebGL por
+// software, y desde ese día el motor no se prende ahí: las fotos salían con el
+// fondo de CSS, que no es lo que ve nadie con un teléfono. Las capturas sirven
+// para mostrar lo que ve un usuario; sin el motor dejan de servir.
+const navegador = await chromium.launch({
+  args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=d3d11', '--enable-unsafe-swiftshader=false'],
+});
 const problemas = [];
 let hechas = 0;
+{
+  const p = await navegador.newPage();
+  const nombre = await p.evaluate(() => {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    const e = gl?.getExtension('WEBGL_debug_renderer_info');
+    return gl ? String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) : 'sin webgl2';
+  });
+  await p.close();
+  console.log(`WebGL: ${nombre}`);
+  if (/swiftshader|llvmpipe|software|sin webgl2/i.test(nombre)) {
+    problemas.push(`SIN GPU (${nombre}): el motor no se prende y ninguna foto muestra el fondo real`);
+  }
+}
+
+// EL MOTOR TIENE QUE ESTAR DIBUJADO ANTES DE LA FOTO, y se espera a eso, no a
+// un rato. Desde el 18/9 compila sin bloquear la página (`compileAsync`): el
+// planeta tarda ~4,4 s en Chrome de Windows, y mientras tanto la pantalla YA
+// responde y ya está lista para la foto. Sin esta espera no se caía nada por
+// timeout: salía, callada, una foto sin el fondo. `.fondo-lienzo.listo` es el
+// fundido de entrada, que arranca con el primer cuadro dibujado.
+//
+// El tope cubre el piso de 2 s antes de cargar el motor, el import y la
+// compilación más cara con margen. Un modo compila una sola vez por navegador,
+// así que solo la primera pantalla que lo usa lo paga.
+const LIMITE_MOTOR_MS = 30000;
+async function esperarMotor(page) {
+  if (!(await page.locator('.fondo-lienzo').count())) return {};
+  const t = Date.now();
+  try {
+    await page.locator('.fondo-lienzo.listo').first().waitFor({ state: 'attached', timeout: LIMITE_MOTOR_MS });
+    return { ms: Date.now() - t };
+  } catch {
+    const marcas = await page
+      .evaluate(() =>
+        performance
+          .getEntriesByType('mark')
+          .map((e) => e.name.replace('ascent:', ''))
+          .filter((n) => /^motor-(sin-gpu|lento|gpu-en-duda)$/.test(n))
+      )
+      .catch(() => []);
+    return {
+      falla: `el motor no se dibujó en ${LIMITE_MOTOR_MS / 1000} s${marcas.length ? ` (${marcas.join(', ')})` : ''}: la foto sale sin el fondo real`,
+    };
+  }
+}
 
 for (const tamano of TAMANOS) {
   const contexto = await navegador.newContext({
@@ -430,9 +481,11 @@ for (const tamano of TAMANOS) {
           continue;
         }
       }
-      // Y recién ahora el rato: el motor de planetas anima, y en /yo y /album
-      // los estados vacíos aparecen después de la cabecera, que es lo que
-      // esperó el selector. Esto es el margen, no la espera de verdad.
+      const motor = await esperarMotor(page);
+      if (motor.falla) problemas.push(`${tamano.nombre}/${p.nombre}: ${motor.falla}`);
+      // Y recién ahora el rato: en /yo y /album los estados vacíos aparecen
+      // después de la cabecera, que es lo que esperó el selector, y el fundido
+      // del motor dura 0,9 s. Esto es el margen, no la espera de verdad.
       await page.waitForTimeout(2500);
       if (p.previo) {
         const falla = await p.previo(page);
@@ -466,6 +519,18 @@ for (const tamano of TAMANOS) {
         problemas.push(`${tamano.nombre}/${p.nombre}: cortado por la izquierda — ${c}`);
       }
 
+      // LA VENTANA, EN TODAS LAS PANTALLAS Y PRIMERO: es lo que ve un usuario,
+      // con el fondo del motor y la nav donde van. La foto larga de abajo
+      // esconde todo lo `fixed`, y el fondo es `fixed`: hasta el 18/9 solo
+      // Inicio tenía ventana, así que ninguna otra captura mostró nunca el
+      // motor. Va antes de la larga porque la larga agranda la ventana, y el
+      // motor se redibuja al nuevo tamaño.
+      await page.screenshot({
+        path: join(SALIDA, `${tamano.nombre}-${p.nombre}-ventana.png`),
+        animations: 'disabled',
+        timeout: 60000,
+      });
+
       // Los `fixed` se estampan sobre el contenido en una captura de página
       // completa. Se los ESCONDE, que es lo único que no puede mover nada:
       // están fuera del flujo. `static` y moverlos al final del body se
@@ -495,23 +560,9 @@ for (const tamano of TAMANOS) {
         timeout: 60000,
       });
 
-      // Una foto del tamano de la ventana con todo puesto, para ver la nav
-      // donde va. Solo de la principal: es igual en todas.
-      if (p.nombre === 'inicio') {
-        await page.evaluate(() => {
-          for (const el of document.querySelectorAll('[data-oculto-para-captura]')) {
-            el.removeAttribute('data-oculto-para-captura');
-          }
-        });
-        await page.screenshot({
-          path: join(SALIDA, `${tamano.nombre}-inicio-ventana.png`),
-          animations: 'disabled',
-          timeout: 60000,
-        });
-      }
       void fijos;
       hechas++;
-      console.log(`  ${tamano.nombre}/${p.nombre}`);
+      console.log(`  ${tamano.nombre}/${p.nombre}${motor.ms !== undefined ? `  (motor dibujado en ${motor.ms} ms)` : ''}`);
     } catch (e) {
       const linea = String(e).split('\n')[0].slice(0, 120);
       problemas.push(`${tamano.nombre}/${p.nombre}: NO se pudo capturar — ${linea}`);
