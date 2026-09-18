@@ -14,6 +14,7 @@ import {
   pedirAmistad as mandarPedido,
   rechazarAmistad,
   responderReto as contestarReto,
+  astroDeAmigo,
   type Actividad,
   type RetoConNombre,
   type Solicitud,
@@ -178,15 +179,9 @@ export default function Social() {
             <div className="ranking">
               <div className="campo-estelar de-fondo" aria-hidden>
                 {amigos.map((a, i) => {
-                  const t = a.racha_actual / maxRacha;
-                  // EL PISO SUBE DE 18 A 30 px. A 18 y con la opacidad del
-                  // fondo, un amigo de racha baja quedaba en un objeto de 18 px
-                  // al 28% efectivo: eso no es un astro, es una mancha. El
-                  // techo baja un poco para que la diferencia siga diciendo
-                  // algo sin que el más grande tape la lista.
-                  const tam = 30 + Math.round(t * 30);
-                  const x = 18 + ((i * 137) % 64);
-                  const y = 16 + ((i * 89) % 66);
+                  // Tamaño, lugar y brillo: `astroDeAmigo`, el mismo que usa
+                  // la app nativa.
+                  const astro = astroDeAmigo(i, a.racha_actual, maxRacha);
                   return (
                     // Sin nombre y sin enlace: de fondo, la etiqueta se
                     // pisaria con la fila que dice lo mismo, y un enlace
@@ -195,13 +190,13 @@ export default function Social() {
                       key={a.id}
                       className="astro-amigo"
                       style={{
-                        left: `${x}%`,
-                        top: `${y}%`,
-                        opacity: 0.68 + t * 0.32,
-                        animationDelay: `${(i * 1.3) % 5}s`,
+                        left: `${astro.x}%`,
+                        top: `${astro.y}%`,
+                        opacity: astro.opacidad,
+                        animationDelay: `${astro.retraso}s`,
                       }}
                     >
-                      <Insignia rango={a.rango_actual} tam={tam} />
+                      <Insignia rango={a.rango_actual} tam={astro.tam} />
                     </div>
                   );
                 })}

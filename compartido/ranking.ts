@@ -163,3 +163,28 @@ export async function responderReto(supabase: Cliente, id: string, acepta: boole
     .eq('id', id);
   return !error;
 }
+
+/**
+ * DÓNDE VA CADA AMIGO EN EL CAMPO ESTELAR de detrás de la lista, y de qué
+ * tamaño y brillo. El tamaño y el brillo dicen la racha de un vistazo.
+ *
+ * EL PISO SUBE DE 18 A 30 px. A 18 y con la opacidad del fondo, un amigo de
+ * racha baja quedaba en un objeto de 18 px al 28% efectivo: eso no es un
+ * astro, es una mancha. El techo baja un poco para que la diferencia siga
+ * diciendo algo sin que el más grande tape la lista.
+ *
+ * Las posiciones salen del índice con dos primos, y no al azar: el campo tiene
+ * que ser el mismo cada vez que se abre, y el mismo en las dos apps.
+ */
+export function astroDeAmigo(i: number, racha: number, maxRacha: number) {
+  const t = racha / Math.max(1, maxRacha);
+  return {
+    tam: 30 + Math.round(t * 30),
+    /** En % del ancho y del alto del campo; es el CENTRO del astro. */
+    x: 18 + ((i * 137) % 64),
+    y: 16 + ((i * 89) % 66),
+    opacidad: 0.68 + t * 0.32,
+    /** Cuándo arranca su vaivén, en segundos: que no floten todos juntos. */
+    retraso: (i * 1.3) % 5,
+  };
+}

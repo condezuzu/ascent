@@ -107,3 +107,63 @@ export function ultimosDias<T extends { fecha: string }>(
   const desde = fin - (dias - 1) * 24 * 3600 * 1000;
   return serie.filter((p) => new Date(p.fecha + 'T00:00:00').getTime() >= desde);
 }
+
+/**
+ * EL GRÁFICO DEL PESO, como cuenta: la serie, dónde va cada punto y los dos
+ * trazos (la línea y el área de abajo). Lo dibujan las dos apps —la web con
+ * `<svg>`, la nativa con `react-native-svg`— y la cuenta es la misma: vivía
+ * adentro de `GraficoPeso.tsx` hasta que la app nativa la necesitó (18/9).
+ *
+ * Se suaviza con TODO el historial y recién después se recorta la ventana: al
+ * revés, el primer punto de "último mes" se promediaría solo consigo mismo y
+ * la línea arrancaría con un escalón que no existe.
+ *
+ * El alto se reparte con un margen arriba y abajo para que la línea no toque
+ * los bordes. ESOS números son de dibujo y por eso no se devuelven: mostrarlos
+ * como mínimo y máximo fue el error de la primera versión.
+ *
+ * `null` si en la ventana no hay dos puntos: con uno no hay tendencia.
+ */
+export function trazarPeso(
+  pesos: { fecha: string; valor: number }[],
+  unidad: Unidad,
+  dias: number | null,
+  ancho: number,
+  alto: number,
+  ventana = 7
+) {
+  const todo = suavizarPorFecha(
+    pesos.map((p) => ({ fecha: p.fecha, valor: deKilos(p.valor, unidad) })),
+    ventana
+  );
+  const serie = ultimosDias(todo, dias);
+  if (serie.length < 2) return null;
+
+  const piso = Math.min(...serie.map((p) => p.suave));
+  const techo = Math.max(...serie.map((p) => p.suave));
+  const luz = Math.max(0.4, (techo - piso) * 0.25); // aire, y algo si es plano
+  const min = piso - luz;
+  const max = techo + luz;
+
+  const puntos = serie.map((p, i) => ({
+    x: (i / (serie.length - 1)) * ancho,
+    y: alto - ((p.suave - min) / (max - min)) * alto,
+  }));
+  const linea = puntos.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  // El relleno cierra por abajo del área visible para que el degradado se
+  // apague solo.
+  const area = `${linea} L${ancho},${alto} L0,${alto} Z`;
+  const hoy = serie[serie.length - 1].suave;
+  return { serie, puntos, linea, area, hoy, cambio: hoy - serie[0].suave, dias: serie.length };
+}
+
+/**
+ * El punto de la serie MÁS CERCANO en x a una posición del dedo (0 a 1 del
+ * ancho), no el que está justo abajo: el dedo tapa 40 px y los puntos pueden
+ * estar a 3 px uno de otro. Sin esto hay que apuntar, y apuntar en un gráfico
+ * de 84 px de alto no se puede.
+ */
+export function puntoMasCercano(fraccion: number, cuantos: number): number {
+  const t = Math.min(1, Math.max(0, fraccion));
+  return Math.round(t * (cuantos - 1));
+}

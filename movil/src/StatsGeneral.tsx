@@ -10,18 +10,19 @@ import { duracionLinda, type ResumenSesiones } from '@nucleo/sesiones';
 import { agruparPorDia, etiquetaDeDia, type DiaConSesiones } from '@nucleo/dias';
 import type { Log } from '@nucleo/tipos';
 import { C } from './colores';
+import GraficoPeso from './GraficoPeso';
+import Insignia from './Insignia';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
  * secciones y en el mismo orden que la web (`src/app/stats/page.tsx`), con
  * las cuentas del núcleo.
  *
+ * EL GRÁFICO DEL PESO Y LAS INSIGNIAS DE LA ESCALERA, iguales a la web desde
+ * el 18/9 (`GraficoPeso` e `Insignia`, con la cuenta y los dibujos
+ * compartidos).
+ *
  * LO QUE FALTA, marcado:
- *   - EL GRÁFICO DEL PESO. En la web es una línea en SVG; sin
- *     `react-native-svg` no hay con qué dibujarlo. Se muestra el último peso
- *     anotado, que es el dato. Misma decisión pendiente que las insignias.
- *   - LAS INSIGNIAS de la escalera, por lo mismo. Las filas sí están: nombre y
- *     "día N" (es el único lugar donde la app nombra los rangos).
  *   - La sección de fuerza y el aviso de estancamiento: no se portaron en
  *     esta tanda. Ver el informe del 18/9.
  */
@@ -105,14 +106,14 @@ export default function StatsGeneral({
 
       <Sesiones />
 
-      {/* "Peso" y no "Peso — tendencia": en la web ese título encabeza el
-          gráfico, y acá el gráfico todavía no está. Un título que promete
-          una tendencia arriba de un solo número parece un error. */}
-      <Text style={estilos.seccion}>{T.stats.peso}</Text>
-      {pesos.length > 0 && (
-        // El gráfico de la web es SVG: acá va el último peso, que es el dato.
+      {/* Los tres casos de la web: con dos pesos o más, la tendencia; con uno,
+          el número solo —decirle "anota tu peso" a quien acaba de anotarlo
+          parece un error—; sin ninguno, la invitación. */}
+      <Text style={estilos.seccion}>{pesos.length >= 2 ? T.stats.pesoTendencia : T.stats.peso}</Text>
+      {pesos.length >= 2 && <GraficoPeso pesos={pesos} unidad={unidad} claro={pal.claro} />}
+      {pesos.length === 1 && (
         <Text style={estilos.pesoSolo}>
-          {conComa(deKilos(pesos[pesos.length - 1].valor, unidad).toFixed(1))}
+          {conComa(deKilos(pesos[0].valor, unidad).toFixed(1))}
           <Text style={estilos.unidad}> {unidad}</Text>
         </Text>
       )}
@@ -127,7 +128,7 @@ export default function StatsGeneral({
           const esActual = rangoActual.n === r.n;
           return (
             <View key={r.n} style={[estilos.filaRango, !esActual && !pasado && { opacity: 0.45 }]}>
-              {/* Acá va la Insignia del rango: ver arriba. */}
+              <Insignia rango={r.n} />
               <Text style={[estilos.nombreRango, pasado && { color: C.sub }]}>{r.nombre}</Text>
               {esActual ? (
                 <Text style={[estilos.actual, { color: pal.claro }]}>{T.stats.acaEstas}</Text>
@@ -291,8 +292,8 @@ const estilos = StyleSheet.create({
   },
   textoBoton: { color: C.tinta, fontSize: 14 },
   error: { color: C.error, fontSize: 13, marginTop: 6 },
-  filaRango: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 9 },
-  nombreRango: { color: C.tinta, fontSize: 15 },
+  filaRango: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
+  nombreRango: { flex: 1, color: C.tinta, fontSize: 15 },
   actual: { fontSize: 12, letterSpacing: 1 },
   dias: { color: C.sub, fontSize: 12 },
 });

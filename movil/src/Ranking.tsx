@@ -13,6 +13,9 @@ import {
   type DatosDeRanking,
 } from '@compartido/ranking';
 import Avatar from './Avatar';
+import CampoEstelar from './CampoEstelar';
+import { FONDO_BASE, FONDO_RANGO_8 } from '@nucleo/paletas';
+import Insignia from './Insignia';
 import FondoEspacial from './FondoEspacial';
 import { C } from './colores';
 
@@ -22,15 +25,12 @@ import { C } from './colores';
  * Las consultas son las MISMAS que las de la web: viven en
  * `compartido/ranking.ts` y las dos apps las llaman. Acá solo se dibuja.
  *
+ * LAS INSIGNIAS Y EL CAMPO ESTELAR, iguales a la web desde el 18/9: los dibujos
+ * viven en `compartido/insignias.ts` y el lugar de cada astro en
+ * `astroDeAmigo`, y las dos apps los toman de ahí.
+ *
  * LO QUE NO ESTÁ, marcado:
  *
- *   - LA INSIGNIA DE CADA RANGO en la fila. En la web es un SVG de 51 formas
- *     —polígonos, una medialuna, capas superpuestas— y en la app nativa no
- *     hay con qué dibujarla sin `react-native-svg`. No se la reemplaza por un
- *     círculo de color: eso sería otra insignia, no esta. Es la misma decisión
- *     pendiente que los degradados radiales del fondo.
- *   - El campo estelar detrás de la lista, que está hecho con las mismas
- *     insignias.
  *   - Tocar a alguien para ver su perfil: la pantalla de perfil no está
  *     portada todavía.
  *   - Los retos: en la web tampoco se muestran (`RETOS_LISTOS = false`).
@@ -131,16 +131,20 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
         )}
 
         {amigos.length > 1 ? (
-          <View style={estilos.tarjeta}>
-            {amigos.map((a, i) => (
-              <View style={estilos.fila} key={a.id}>
-                <Text style={[estilos.dato, { width: 20 }]}>{i + 1}</Text>
-                {/* Acá va la Insignia de su rango. Ver arriba: sin SVG no hay
-                    con qué dibujarla, y un reemplazo inventado sería otra. */}
-                <Text style={estilos.nombre}>{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</Text>
-                <Text style={estilos.dato}>{a.racha_actual}</Text>
-              </View>
-            ))}
+          // Sin caja oscura, como en la web: detrás está el campo estelar, y lo
+          // que sostiene la lectura es su velo, no una tarjeta encima.
+          <View style={estilos.ranking}>
+            <CampoEstelar amigos={amigos} fondo={datos?.miRango === 8 ? FONDO_RANGO_8 : FONDO_BASE} />
+            <View style={estilos.lista}>
+              {amigos.map((a, i) => (
+                <View style={estilos.fila} key={a.id}>
+                  <Text style={[estilos.dato, { width: 20 }]}>{i + 1}</Text>
+                  <Insignia rango={a.rango_actual} tam={38} />
+                  <Text style={estilos.nombre}>{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</Text>
+                  <Text style={estilos.dato}>{a.racha_actual}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         ) : (
           cargado &&
@@ -211,6 +215,8 @@ const estilos = StyleSheet.create({
     paddingVertical: 4,
     marginBottom: 16,
   },
+  ranking: { position: 'relative', marginBottom: 16 },
+  lista: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingVertical: 4 },
   fila: {
     flexDirection: 'row',
     alignItems: 'center',

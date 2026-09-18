@@ -9,6 +9,13 @@ import { marca, medir, instalarLector } from '@/lib/medir';
 import { veloDeRango, msDeTransicion } from '@nucleo/atmosfera';
 import { plataforma } from '@/plataforma';
 import { hayQueCargarElMotor } from '@/lib/fondo';
+import { cssDeElipses, cssDeEstrellas, ELIPSES_BASE, ELIPSES_VELO } from '@compartido/fondoDegradados';
+
+// Las elipses de luz, las mismas que dibuja la app nativa: ver
+// `compartido/fondoDegradados.ts`. Se arman una vez; la paleta entra por las
+// variables de CSS, así que no dependen del rango.
+const FONDO_BASE = `${cssDeElipses(ELIPSES_BASE)}, ${cssDeEstrellas()}, var(--fondo)`;
+const FONDO_VELO = `${cssDeElipses(ELIPSES_VELO)}, var(--fondo)`;
 
 // El fondo vive detrás de todo, con un velo plano oscuro entre el render y
 // la interfaz. Cuanto más detallado el fondo, más velo.
@@ -209,11 +216,11 @@ export default function FondoEspacial(
   return (
     <div className="fondo-espacial" aria-hidden>
       {/* Base en CSS puro: se ve al instante, sin esperar a WebGL */}
-      <div className="fondo-base" />
+      <div className="fondo-base" style={{ background: FONDO_BASE }} />
       <div ref={ref} className={`fondo-lienzo ${listo ? 'listo' : ''}`} />
       <div
         className="velo"
-        style={{ opacity: velo, transitionDuration: `${msVelo}ms` }}
+        style={{ background: FONDO_VELO, opacity: velo, transitionDuration: `${msVelo}ms` }}
       />
       {/* Constante en todos los rangos: es lo que sostiene la legibilidad
           cuando el velo de arriba se abre. Ver `.velo-bordes` en globals. */}

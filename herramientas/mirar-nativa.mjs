@@ -41,6 +41,10 @@ const VUELTAS = process.argv.includes('--vueltas');
 // `--pantalla=Ranking` toca esa pestaña después de Inicio, espera y saca su
 // foto en `capturas/nativa-<pantalla>.png`, con los errores de consola.
 const PANTALLA = (process.argv.find((a) => a.startsWith('--pantalla=')) ?? '').split('=')[1] ?? '';
+// `--bajar=N` baja N px el scroll de la pantalla antes de la foto. Las
+// pantallas nativas desplazan un ScrollView propio, no la página: sin esto la
+// foto corta en lo primero que entra.
+const BAJAR = Number((process.argv.find((a) => a.startsWith('--bajar=')) ?? '--bajar=0').split('=')[1]);
 const ESCALA = Number((process.argv.find((a) => a.startsWith('--escala=')) ?? '--escala=2').split('=')[1]);
 
 const vivo = await fetch(BASE).then(() => true).catch(() => false);
@@ -189,7 +193,16 @@ if (PANTALLA) {
   const antes = avisos.length;
   await page.getByText(PANTALLA, { exact: true }).last().click();
   await page.waitForTimeout(6000);
-  const archivo = `nativa-${PANTALLA.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '')}.png`;
+  if (BAJAR) {
+    // El que más scroll tiene es el de la pantalla que está a la vista.
+    await page.evaluate((px) => {
+      const conScroll = [...document.querySelectorAll('div')].filter((d) => d.scrollHeight > d.clientHeight + 20 && getComputedStyle(d).overflowY !== 'visible' && d.offsetParent !== null);
+      conScroll.sort((a, b) => b.scrollHeight - a.scrollHeight);
+      if (conScroll[0]) conScroll[0].scrollTop = px;
+    }, BAJAR);
+    await page.waitForTimeout(800);
+  }
+  const archivo = `nativa-${PANTALLA.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '')}${BAJAR ? '-' + BAJAR : ''}.png`;
   await page.screenshot({ path: join(SALIDA, archivo), fullPage: true });
   const nuevos = avisos.slice(antes).filter((x) => !/GPU stall/.test(x));
   const texto = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 1500));

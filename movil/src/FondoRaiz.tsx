@@ -16,7 +16,9 @@ import type { Montaje, OpcionesFondo } from '@compartido/motor/escena';
 import { eventos } from '@compartido/eventos';
 import { PULSO } from '@nucleo/pulso';
 import { veloDeRango } from '@nucleo/atmosfera';
-import { FONDO_BASE, FONDO_RANGO_8 } from '@nucleo/paletas';
+import { FONDO_BASE, FONDO_RANGO_8, paletaDe } from '@nucleo/paletas';
+import { ELIPSES_BASE, ELIPSES_VELO } from '@compartido/fondoDegradados';
+import ElipsesDeLuz from './ElipsesDeLuz';
 import { cargarElMotor, esPreferenciaFondo } from '@nucleo/fondo';
 import { plataforma } from '@plataforma';
 import { escucharFondo, type Pedido } from './pedidoDeFondo';
@@ -44,14 +46,12 @@ import { escucharFondo, type Pedido } from './pedidoDeFondo';
  * abajo (`.velo-bordes`) es lineal, y `expo-linear-gradient` lo reproduce con
  * los mismos cuatro cortes y las mismas opacidades.
  *
+ * LAS ELIPSES DE LUZ DE LA BASE Y EL VELO, también iguales (18/9): los números
+ * viven en `compartido/fondoDegradados.ts`, de donde los toma la web para su
+ * CSS, y acá los dibuja `ElipsesDeLuz` con `react-native-svg`.
+ *
  * LO QUE FALTA RESPECTO DE LA WEB, a la vista:
  *
- *   - Los degradados RADIALES de la base y el velo: dos elipses teñidas por la
- *     paleta en cada uno. `expo-linear-gradient` hace solo lineales, y una
- *     elipse no se iguala con eso; aproximarla con una diagonal sería cambiar
- *     cómo se ve. Acá la base y el velo siguen planos. La herramienta que los
- *     haría es el `RadialGradient` de `react-native-svg`, que viene en Expo
- *     Go pero es sumar una dependencia: decisión pendiente.
  *   - La animación del velo entre visitas (la "atmósfera" que se abre al subir
  *     de rango). Se pinta el velo del rango, quieto.
  *
@@ -254,6 +254,7 @@ export default function FondoRaiz() {
   // Hasta el primer pedido no se crea nada: ni el contexto ni three.
   if (!op) return null;
   const fondo = op.rango === 8 ? FONDO_RANGO_8 : FONDO_BASE;
+  const paleta = paletaDe(op.rango, op.planeta);
   // Prioridad igual que en la web —lo que pidió la pantalla, después lo que
   // dice el rango, después el valor fijo—, menos el velo animado entre visitas.
   const velo = op.velo ?? (op.atmosfera ? veloDeRango(op.rango) : op.rango >= 5 ? 0.62 : 0.5);
@@ -264,12 +265,17 @@ export default function FondoRaiz() {
       pointerEvents="none"
       onLayout={alMedir}
     >
+      {medida && (
+        <ElipsesDeLuz elipses={ELIPSES_BASE} paleta={paleta} ancho={medida.w} alto={medida.h} estrellas id="base" />
+      )}
       {cargar && vistaGL && (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad }]}>
           <GLView style={vistaGL} onContextCreate={alCrearContexto} />
         </Animated.View>
       )}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: velo }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: velo }]}>
+        {medida && <ElipsesDeLuz elipses={ELIPSES_VELO} paleta={paleta} ancho={medida.w} alto={medida.h} id="velo" />}
+      </View>
       {/* LOS BORDES, lo que sostiene la legibilidad cuando el velo se abre: el
           mismo `.velo-bordes` de la web —fondo al 80 % arriba, nada del 26 % al
           86 %, fondo al 88 % abajo—. Los extremos transparentes son el fondo

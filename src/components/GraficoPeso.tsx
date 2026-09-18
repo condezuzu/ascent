@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { conComa, deKilos, suavizarPorFecha, ultimosDias, type Unidad } from '@nucleo/peso';
+import { conComa, puntoMasCercano, trazarPeso, type Unidad } from '@nucleo/peso';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 
@@ -55,53 +55,20 @@ export default function GraficoPeso({
   const [tocado, setTocado] = useState<number | null>(null);
   const lienzoRef = useRef<HTMLDivElement>(null);
 
-  // Se suaviza con TODO el historial y recién después se recorta la ventana:
-  // al revés, el primer punto de "último mes" se promediaría solo consigo
-  // mismo y la línea arrancaría con un escalón que no existe.
-  const todo = suavizarPorFecha(
-    pesos.map((p) => ({ fecha: p.fecha, valor: deKilos(p.valor, unidad) })),
-    VENTANA
-  );
-  const serie = ultimosDias(todo, rango);
-  if (serie.length < 2) return null;
-
-  // El alto del dibujo se reparte con un margen arriba y abajo para que la
-  // línea no toque los bordes. ESTOS números son de dibujo y por eso no se
-  // muestran en ningún lado — que era exactamente el error de la primera
-  // versión.
-  const piso = Math.min(...serie.map((p) => p.suave));
-  const techo = Math.max(...serie.map((p) => p.suave));
-  const luz = Math.max(0.4, (techo - piso) * 0.25); // aire, y algo si es plano
-  const min = piso - luz;
-  const max = techo + luz;
-
-  const punto = (v: number, i: number) => ({
-    x: (i / (serie.length - 1)) * ANCHO,
-    y: ALTO - ((v - min) / (max - min)) * ALTO,
-  });
-  const puntos = serie.map((p, i) => punto(p.suave, i));
-  const linea = puntos
-    .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
-    .join(' ');
-  // El relleno le da cuerpo a la línea sin agregar ni una marca más. Cierra
-  // por abajo del área visible para que el degradado se apague solo.
-  const area = `${linea} L${ANCHO},${ALTO} L0,${ALTO} Z`;
+  // La cuenta —suavizado, ventana, márgenes y trazos— vive en
+  // `nucleo/peso.ts` y la comparte con la app nativa. Ahí están los porqués.
+  const trazo = trazarPeso(pesos, unidad, rango, ANCHO, ALTO, VENTANA);
+  if (!trazo) return null;
+  const { serie, puntos, linea, area, hoy, cambio, dias } = trazo;
   const ultimo = puntos[puntos.length - 1];
-
-  const hoy = serie[serie.length - 1].suave;
-  const cambio = hoy - serie[0].suave;
-  const dias = serie.length;
 
   // ---- leer un día con el dedo ----
   //
-  // Se busca el punto MÁS CERCANO en x, no el de abajo del dedo: el dedo tapa
-  // 40 px y los puntos pueden estar a 3 px uno de otro. Sin esto hay que
-  // apuntar, y apuntar en un gráfico de 84 px de alto no se puede.
+  // El más cercano en x, no el de abajo del dedo: ver `puntoMasCercano`.
   function alMover(clientX: number) {
     const caja = lienzoRef.current?.getBoundingClientRect();
     if (!caja || caja.width === 0) return;
-    const t = Math.min(1, Math.max(0, (clientX - caja.left) / caja.width));
-    setTocado(Math.round(t * (serie.length - 1)));
+    setTocado(puntoMasCercano((clientX - caja.left) / caja.width, serie.length));
   }
 
   const elegido = tocado === null ? null : serie[tocado];

@@ -8388,6 +8388,55 @@ console.log('\n124. El shader de cuerpos compila rápido en Direct3D y sin traba
   chequear('y no dibuja antes', antesDeCompilar.includes('rend.render('), false);
 }
 
+console.log('\n125. Lo que se dibuja con SVG se escribe una vez: las dos apps lo toman de compartido/');
+{
+  // POR QUÉ (18/9). Con `react-native-svg` la app nativa pudo dibujar las
+  // insignias, las elipses de luz del fondo y el gráfico del peso. Copiarlos
+  // era tenerlos dos veces —ocho insignias afinadas número por número, cuatro
+  // elipses, la cuenta del gráfico— y el primer retoque dejaba a las dos apps
+  // distintas sin que nadie lo note. Viven en `compartido/` y `nucleo/`, y
+  // esto comprueba que ninguna de las dos apps vuelva a tener su copia.
+  const { readFileSync: leer125 } = await import('node:fs');
+  const { join: unir125, dirname: dir125 } = await import('node:path');
+  const { fileURLToPath: aRuta125 } = await import('node:url');
+  const R125 = unir125(dir125(aRuta125(import.meta.url)), '..');
+  const de = (...p) => sinComentarios(leer125(unir125(R125, ...p), 'utf8'));
+
+  // Las insignias: los componentes solo traducen; ninguno trae una forma.
+  for (const [cual, ruta] of [
+    ['web', ['src', 'components', 'Insignia.tsx']],
+    ['nativa', ['movil', 'src', 'Insignia.tsx']],
+  ]) {
+    const c = de(...ruta);
+    chequear(`insignia ${cual}: dibuja desde compartido/insignias`, c.includes('@compartido/insignias'), true);
+    // Una forma propia sería un trazo (d="M...") o un centro escrito a mano.
+    chequear(`insignia ${cual}: sin formas propias`, /d=\{?["']M|cx=\{?["']?\d/.test(c), false);
+  }
+  // Se lee como texto: importarlo desde acá no resuelve el alias `@nucleo/`.
+  const insignias125 = leer125(unir125(R125, 'compartido', 'insignias.ts'), 'utf8');
+  const rangos125 = [...insignias125.matchAll(/^ {2}(\d): \[/gm)].map((m) => Number(m[1]));
+  chequear('hay una insignia por rango', rangos125, [1, 2, 3, 4, 5, 6, 7, 8]);
+
+  // Las elipses del fondo: fuera del CSS, y las dos apps de la misma fuente.
+  const css = leer125(unir125(R125, 'src', 'app', 'globals.css'), 'utf8');
+  const bloque = (sel) => css.slice(css.indexOf(sel), css.indexOf('}', css.indexOf(sel)));
+  chequear('la base ya no escribe sus elipses en CSS', bloque('.fondo-base {').includes('radial-gradient'), false);
+  chequear('el velo tampoco', bloque('.velo {').includes('radial-gradient'), false);
+  chequear('la web las toma de compartido', de('src', 'components', 'FondoEspacial.tsx').includes('ELIPSES_BASE'), true);
+  const raiz = de('movil', 'src', 'FondoRaiz.tsx');
+  chequear('la nativa también', raiz.includes('ELIPSES_BASE') && raiz.includes('ELIPSES_VELO'), true);
+
+  // El gráfico del peso: una sola cuenta.
+  for (const [cual, ruta] of [
+    ['web', ['src', 'components', 'GraficoPeso.tsx']],
+    ['nativa', ['movil', 'src', 'GraficoPeso.tsx']],
+  ]) {
+    const c = de(...ruta);
+    chequear(`gráfico ${cual}: usa trazarPeso`, c.includes('trazarPeso('), true);
+    chequear(`gráfico ${cual}: no suaviza por su cuenta`, c.includes('suavizarPorFecha('), false);
+  }
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

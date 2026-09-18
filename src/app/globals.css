@@ -163,15 +163,8 @@ textarea::placeholder {
 .fondo-base {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 95% 65% at 80% 92%, color-mix(in srgb, var(--pal-principal) 30%, transparent), transparent 62%),
-    radial-gradient(ellipse 80% 60% at 12% 6%, color-mix(in srgb, var(--pal-apagado) 40%, transparent), transparent 60%),
-    radial-gradient(1px 1px at 20% 30%, rgba(220, 230, 250, 0.8), transparent 2px),
-    radial-gradient(1px 1px at 65% 15%, rgba(220, 230, 250, 0.6), transparent 2px),
-    radial-gradient(1px 1px at 85% 45%, rgba(220, 230, 250, 0.7), transparent 2px),
-    radial-gradient(1px 1px at 40% 70%, rgba(220, 230, 250, 0.5), transparent 2px),
-    radial-gradient(1px 1px at 10% 85%, rgba(220, 230, 250, 0.6), transparent 2px),
-    var(--fondo);
+  /* El `background` lo pone FondoEspacial con las elipses de
+     `compartido/fondoDegradados.ts`, que comparte con la app nativa. */
   transition: background 0.7s var(--curva-suave);
 }
 
@@ -201,10 +194,7 @@ textarea::placeholder {
 .velo {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(120% 90% at 85% 88%, color-mix(in srgb, var(--pal-principal) 26%, transparent), transparent 60%),
-    radial-gradient(100% 75% at 8% 6%, color-mix(in srgb, var(--pal-apagado) 45%, transparent), transparent 62%),
-    var(--fondo);
+  /* El `background` lo pone FondoEspacial: ver `.fondo-base`. */
   transition:
     background 0.7s var(--curva-suave),
     opacity 0ms var(--curva-salida);
