@@ -24,6 +24,60 @@ a 1 para que el shader dibuje el disco completo.
 
 ---
 
+## Probar el motor (WebGL en un navegador sin cabeza)
+
+Aprendido el 17 y 18/9/2026 armando `herramientas/medir-animacion.mjs`, que
+tenía que responder una sola pregunta —¿el motor sigue animando igual?— y
+contestó mal cinco veces seguidas, siempre con aspecto de respuesta buena.
+Aplica a **cualquier** prueba futura que toque un canvas.
+
+**Reemplazar `requestAnimationFrame` desconecta WebGL de la pantalla.**
+Para controlar el tiempo se cambió el rAF por una cola propia. El motor dibujó
+278 cuadros —contados— y las ocho fotos salieron idénticas al byte. Un canvas
+sin `preserveDrawingBuffer` se presenta cuando el compositor produce un
+cuadro, y el compositor se mueve con el rAF de verdad: el motor dibujaba en un
+buffer que nadie llevaba a la pantalla.
+→ **Regla:** el bucle de cuadros no se toca. Si hace falta tiempo
+determinista, se virtualiza el **reloj** (`performance.now` avanza un delta
+fijo por cuadro real), nunca el bucle.
+
+**La captura de pantalla se queda vieja con WebGL.** Con el bucle arreglado,
+`page.screenshot()` dejó de reflejar los cuadros nuevos a los ~1,6 s, aunque
+el canvas cambiaba en 17 de 17 muestras. Con la foto como huella, cualquier
+cambio en la animación después del segundo 1,6 daba verde.
+→ **Regla:** para saber qué dibujó WebGL, se lee el canvas directo
+(`toDataURL()`, con `preserveDrawingBuffer: true` forzado **solo en la
+sonda**). La foto de la página es para que la mire una persona, no para
+comparar.
+
+**Virtualizar un reloj obliga a virtualizar todos.** Se cambió
+`performance.now` y no `requestIdleCallback`. `FondoEspacial` tiene un piso
+de 2 s medido con `performance.now` y reintenta con `setTimeout`: el reintento
+corría en tiempo real y volvía a mirar un reloj congelado en 0. El motor
+**nunca montó**, y los cuadros que se estaban midiendo eran de la entrada de
+CSS.
+→ **Regla:** si una sonda falsea el tiempo, lista primero todo lo que lo lee
+—`performance.now`, `Date.now`, rAF, `requestIdleCallback`, `setTimeout`— y
+decide para cada uno. Y antes de medir, confirma que lo medido existe: la
+marca `ascent:motor-montar-fin` dice si el motor montó.
+
+**En Inicio el motor monta tres veces.** Con la caché, con los datos frescos
+y una vez más. Cuál queda último lo decide la red, y con eso dos corridas sin
+tocar código daban distinto en los ocho cuadros.
+→ **Regla:** el motor se prueba en `/galeria`, que monta una vez con
+opciones fijas y sin cuenta. El cero del tiempo es el **montaje** (la marca
+`ascent:motor-montar-inicio`), no la carga de la página, y ahí se resetean
+reloj y semilla.
+
+**Una huella que no se probó dos veces no es una huella.** Todo lo de arriba
+salió a la luz corriendo la misma sonda dos veces sin tocar el código: si la
+comparación da rojo sin cambios, da rojo siempre, y el día del rojo de verdad
+nadie le cree.
+→ **Regla:** antes de usar una comparación antes/después, correrla como
+control. Tiene que dar idéntica.
+
+---
+
 ## Supabase Storage
 
 **`remove()` devuelve éxito con cero archivos borrados si falta la política de
