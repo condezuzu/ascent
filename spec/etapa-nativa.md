@@ -907,7 +907,10 @@ A `:8090` el `GLView` corre sobre el WebGL **del navegador**, no sobre el de
 - **Ranking:** tocar a alguien no abre su perfil (la pantalla no existe en
   nativo). Los retos tampoco se ven en la web (`RETOS_LISTOS = false`).
 - **Álbum:** deslizar la foto con el dedo (se pasa con flechas). "Quitar
-  foto" no se probó: habría borrado una foto real de la cuenta de prueba.
+  foto" SÍ se probó el 18/9, en las dos apps, con una foto creada para eso
+  (`herramientas/probar-quitar-foto.mjs`): se fue la fila, se fue el archivo
+  del bucket —se lista la carpeta, porque `remove()` no avisa si no borró— y
+  las otras fotos de la cuenta quedaron intactas.
 - ~~**Textos del Álbum contra la regla 4**~~ HECHO el 18/9: "Quitar foto" y
   "¿Quitar?" en las dos apps, y §54 mira ahora que ningún texto de fotos use
   "borrar". De paso: "escribí" (voseo) en la baja de la cuenta, y la baja pasó
