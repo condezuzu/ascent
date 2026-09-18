@@ -4200,9 +4200,18 @@ console.log('\n62. Los andamios tienen fecha de vencimiento');
       id: 'andamio-rango-en-texto',
       donde: 'movil/src/Inicio.tsx',
       que: 'Inicio nativo NOMBRA el rango, y en web no se nombra nunca (§7)',
-      // El motor no se puede portar sin `expo-gl`: es la firma mas chica y mas
-      // dificil de falsear de "el motor llego a nativo".
-      muereCuando: () => leer('movil/package.json').includes('expo-gl'),
+      // QUE INICIO NATIVO MONTE EL FONDO, y no que `expo-gl` este instalado.
+      //
+      // La condicion era `package.json incluye 'expo-gl'`, pensada como la
+      // firma mas dificil de falsear de "el motor llego a nativo". Se falseo
+      // igual el 18/9: para portar el motor hay que instalar `expo-gl` PRIMERO,
+      // y el test declaro muerto el andamio cuando en el telefono todavia no se
+      // dibujaba ningun cuerpo. Sacarlo ahi habria dejado Inicio sin decir el
+      // rango en ningun lado.
+      //
+      // Una dependencia instalada dice que alguien EMPEZO. Lo que mata al
+      // andamio es que el objeto este en pantalla, y eso lo dice el JSX.
+      muereCuando: () => leer('movil/src/Inicio.tsx').includes('<FondoEspacial'),
       porQue: 'el motor esta en nativo: el objeto ya dice el rango y el texto sobra',
       vence: '2026-12-10',
     },
