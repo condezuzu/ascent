@@ -6,6 +6,7 @@ import { T } from '@nucleo/textos';
 import Inicio from './Inicio';
 import Stats from './Stats';
 import Ajustes from './Ajustes';
+import { despertarMotor } from './despertarMotor';
 
 type Pestana = 'inicio' | 'stats' | 'ajustes';
 
@@ -52,7 +53,11 @@ export default function Pestanas({
   }, [pestana, cargarPerfil]);
 
   return (
-    <View style={estilos.todo}>
+    // CADA TOQUE DESPIERTA AL MOTOR. En la web lo escucha el `window`; acá no
+    // hay `window`, y los toques los ve la vista que los recibe. `onTouchStart`
+    // en la raíz los ve todos —sube desde cualquier hijo— sin quitárselos a
+    // nadie. Ver `despertarMotor.ts`.
+    <View style={estilos.todo} onTouchStart={despertarMotor}>
       <View style={estilos.pantalla}>
         {pestana === 'inicio' && <Inicio alSalir={alSalir} alFaltarNombre={alFaltarNombre} />}
         {pestana === 'stats' && <Stats alSalir={alSalir} />}

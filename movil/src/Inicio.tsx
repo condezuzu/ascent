@@ -4,7 +4,8 @@ import { supabase } from './supabase';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
-import { rangoDeRacha } from '@nucleo/rangos';
+import { planetaDeDia, rangoDeRacha } from '@nucleo/rangos';
+import { hayPresagio } from '@nucleo/atmosfera';
 import { mensajeDeAuth } from '@nucleo/errores';
 import type { Log, Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
@@ -18,6 +19,7 @@ import { plataforma } from '@plataforma';
 import { CLAVE_VIDA_VISTA, hastaDondeVisto, impulsosSinVer, rachaSiSeDevuelve } from '@nucleo/impulsos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import { cuentaAtras, restante } from '@compartido/descanso';
+import FondoEspacial from './FondoEspacial';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -30,11 +32,12 @@ import { cuentaAtras, restante } from '@compartido/descanso';
  * las 20 horas. Todo sale de `nucleo/`, los mismos archivos que usa la web. Lo
  * único propio es cómo se dibuja.
  *
+ * EL OBJETO DE RANGO (tanda 4) es el MISMO motor que la web, desde
+ * `compartido/motor/`, montado en `FondoEspacial` sobre `expo-gl`. Con él se
+ * fue el andamio que nombraba el rango en texto: en web el rango no se nombra
+ * nunca (§7), lo dice el objeto, y ahora acá también.
+ *
  * LO QUE FALTA, Y ES DE OTRA TANDA:
- * - **El objeto de rango.** Es `src/motor/` con three.js y hay que portarlo a
- *   `expo-gl`; es una tanda entera y no un rato. Mientras tanto se nombra el
- *   rango en texto, que es lo que la app NUNCA hace en web (§7) — acá es
- *   andamio de migración, no diseño, y se va cuando entre el motor.
  * - **La foto y el peso** al registrar: son la hoja de registrar, que necesita
  *   cámara y otra pantalla.
  *
@@ -56,6 +59,8 @@ type Estado =
       descansos: ConfigDescanso[];
       cubiertos: string[];
       impulsos: { quedan: number; total: number } | null;
+      /** Si hoy se perdió la racha: el fondo se apaga, igual que en la web. */
+      perdida: boolean;
     };
 
 export default function Inicio({
@@ -90,7 +95,7 @@ export default function Inicio({
       // La pérdida se verifica ANTES de leer el perfil: es la llamada que
       // aplica los impulsos, y si se leyera el perfil primero se mostraría por un
       // instante una racha que la base está por corregir.
-      await supabase.rpc('verificar_perdida');
+      const { data: verificacion } = await supabase.rpc('verificar_perdida');
 
       const desde = restarDias(hoyISO(), 6);
       const [{ data: perfil, error }, { data: logs }, { data: descansos }, { data: impulsos }] =
@@ -121,6 +126,7 @@ export default function Inicio({
         descansos: (descansos ?? []) as ConfigDescanso[],
         cubiertos: Array.isArray(impulsos?.vigentes) ? (impulsos.vigentes as string[]) : [],
         impulsos: impulsos ? { quedan: Number(impulsos.quedan), total: Number(impulsos.total) } : null,
+        perdida: !!(verificacion as { perdida?: boolean } | null)?.perdida,
       });
       const ultimas = Array.isArray(impulsos?.ultimas) ? (impulsos.ultimas as string[]) : [];
       const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
@@ -161,7 +167,7 @@ export default function Inicio({
     );
   }
 
-  const { perfil, logs, descansos, cubiertos, impulsos } = estado;
+  const { perfil, logs, descansos, cubiertos, impulsos, perdida } = estado;
 
   const hoy = hoyISO();
   // Igual que la web: un día marcado como descanso a mano TAMBIÉN está (bug del
@@ -169,6 +175,23 @@ export default function Inicio({
   // por repetido y la hoja lo tomaba como hecho: la racha no subía y nadie
   // decía nada.
   const registradoHoy = logs.some((l) => l.fecha === hoy);
+
+  // LO QUE SE LE PASA AL MOTOR, con las mismas reglas que Inicio de la web
+  // (`src/app/page.tsx`): el planeta del día, el lado nocturno los días de
+  // descanso, el fantasma de la mejor racha y el presagio de los últimos días.
+  const racha = perfil.racha_actual;
+  const planeta = planetaDeDia(racha);
+  const esDescanso = esDiaDeDescanso(descansos, hoy) && !registradoHoy;
+  const rangoMejor = rangoDeRacha(perfil.mejor_racha).n;
+  const planetaMejor = planetaDeDia(perfil.mejor_racha);
+  const fantasma =
+    racha < perfil.mejor_racha && (rangoMejor !== perfil.rango_actual || planetaMejor !== planeta)
+      ? { rango: rangoMejor, planeta: planetaMejor }
+      : null;
+  // "Sin nada" es la cuenta recién abierta: el espacio antes de que se forme
+  // algo. Acá solo se tienen los logs de la semana, y alcanza: con racha 0 y
+  // ninguno en siete días, lo que se ve es lo mismo.
+  const sinNada = racha === 0 && logs.length === 0;
 
   // La semana arranca el LUNES y se alinea al calendario, igual que en web:
   // "los últimos siete días" es más exacto y se ve mal, porque las letras
@@ -187,6 +210,19 @@ export default function Inicio({
   });
 
   return (
+    <View style={estilos.raiz}>
+      <FondoEspacial
+        rango={perfil.rango_actual}
+        planeta={planeta}
+        apagado={perdida}
+        vacio={sinNada}
+        reposo={esDescanso}
+        fantasma={fantasma}
+        presagio={hayPresagio(racha)}
+        esquina="abajo-derecha"
+        // Como en la web: Inicio es la única pantalla con atmósfera.
+        atmosfera
+      />
     <ScrollView contentContainerStyle={estilos.pantalla}>
       <View style={estilos.cabecera}>
         <Text style={estilos.usuario}>{perfil.username}</Text>
@@ -239,18 +275,6 @@ export default function Inicio({
 
       <Text style={estilos.etiqueta}>{T.inicio.racha}</Text>
       <Text style={estilos.racha}>{perfil.racha_actual}</Text>
-      {/* ANDAMIO andamio-rango-en-texto
-          En web el rango NO se nombra NUNCA (§7): lo dice el objeto, y
-          descubrir en qué te convertiste es la recompensa del juego. Acá se
-          nombra porque el motor todavía no está portado y sin esto la pantalla
-          no diría nada de eso.
-
-          NO ES UNA DECISIÓN DE DISEÑO, ES UN ANDAMIO, y los andamios se
-          quedan. Por eso está registrado en la sección 62 de `test:db`, que
-          falla sola el día que el motor llegue a nativo o el 2026-12-10, lo
-          que pase primero. Borrar estas tres líneas sin borrar la entrada del
-          registro también falla. */}
-      <Text style={estilos.rango}>{rangoDeRacha(perfil.racha_actual).nombre}</Text>
 
       <View style={estilos.tira}>
         {semana.map((d) => (
@@ -436,11 +460,14 @@ export default function Inicio({
         />
       )}
     </ScrollView>
+    </View>
   );
 }
 
 const estilos = StyleSheet.create({
-  pantalla: { flexGrow: 1, backgroundColor: '#05060a', padding: 24, paddingTop: 64 },
+  raiz: { flex: 1, backgroundColor: '#05060a' },
+  // Transparente: detrás está el fondo, que ya pinta el color de base.
+  pantalla: { flexGrow: 1, padding: 24, paddingTop: 64 },
   centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },
   cabecera: {
     flexDirection: 'row',
@@ -451,7 +478,6 @@ const estilos = StyleSheet.create({
   usuario: { color: '#e8ecf6', fontSize: 16, fontWeight: '600' },
   etiqueta: { color: '#8a93a8', fontSize: 10, letterSpacing: 4, textTransform: 'uppercase' },
   racha: { color: '#c4c2ba', fontSize: 92, fontWeight: '300', lineHeight: 100 },
-  rango: { color: '#8a93a8', fontSize: 12, letterSpacing: 3, textTransform: 'uppercase' },
 
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 34 },
   tiraDia: { alignItems: 'center', gap: 7 },

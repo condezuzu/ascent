@@ -830,6 +830,54 @@ se puede usar.
 Si al llegar a la tanda 2 el arranque nativo sigue teniendo un pozo parecido,
 ahí sí hay que buscarla — y ahí el sospechoso ya no sería el parseo.
 
+## Tanda 4 · el motor en nativo (2026-09-18)
+
+El motor de cuerpos celestes es **el mismo** en las dos apps. Vive en
+`compartido/motor/`; la web le arma el lienzo con un `<canvas>`
+(`src/motor/escena.ts`) y la nativa con `expo-gl` (`movil/src/motorNativo.ts`).
+Separarlo se verificó con `herramientas/medir-animacion.mjs`: los 8 rangos y 4
+planetas, 8 cuadros cada uno, idénticos al byte antes y después del corte.
+
+En la nativa se ve con `node --env-file=.env.local herramientas/mirar-nativa.mjs`
+(con `:8090` prendido): entra, espera el canvas, saca la foto y confirma que se
+mueve. Con eso se fue el andamio que nombraba el rango en texto.
+
+### ⚠ LO QUE SOLO SE SABE CON EL IPHONE EN LA MANO
+
+A `:8090` el `GLView` corre sobre el WebGL **del navegador**, no sobre el de
+`expo-gl` nativo. Todo esto queda sin probar hasta la primera build:
+
+1. **Que three.js 0.176 arranque sobre `expo-gl`.** three ya no soporta
+   WebGL 1. Mirado en el código C++ de `expo-gl`: faltan `texStorage2D`,
+   `vertexAttribIPointer`, `blitFramebuffer` y el multisample, y esta escena
+   no usa ninguno (sin texturas, sin atributos enteros, sin render targets,
+   sin antialias). Sobre el papel alcanza; si falla, se ve en la consola como
+   `No se pudo montar el motor:` y queda el fondo plano — la app no se cae.
+2. **El fps y la temperatura.** El framebuffer de `expo-gl` es de resolución
+   completa (3x en un iPhone) y la web lo topa en 2x. Acá no se puede topar
+   sin achicar el `GLView`, porque la densidad tiene que coincidir con el
+   buffer. Un cuerpo raytraceado a pantalla completa es lo que calienta un
+   teléfono. **Mirar:** si el teléfono se calienta en Inicio, o si el scroll
+   tironea con el fondo detrás.
+3. **Qué pasa al mandar la app al fondo y volver.** El motor se pausa con
+   `plataforma.ciclo` (igual que en web), pero lo que iOS le hace al contexto
+   de GL en el medio no se puede simular.
+4. **La densidad real y el notch.** El canvas va a sangre detrás de todo.
+5. **La cámara y la fototeca del Álbum**, cuando se porte (tandas 5/6): el
+   `expo-image-picker` de `:8090` es un `<input type=file>`.
+
+### Lo que se sabe distinto de la web, a la vista
+
+- **La base y el velo son planos.** En la web llevan degradados radiales
+  teñidos por la paleta; React Native no tiene degradados sin sumar una
+  dependencia. Va con foto al lado de la web antes de decidir si se iguala.
+- **El velo no se anima entre visitas** (la atmósfera que se abre al subir).
+- **Cada vez que se vuelve a Inicio se recompilan los shaders.** Las pestañas
+  montan solo la activa, y cada `GLView` trae su propio contexto: el caché de
+  programas de la web (un renderer para toda la app) acá no existe.
+
+---
+
 ## Preparación de App Store — DESPUÉS de las tandas 4, 5 y 6
 
 Decidido el 17/9/2026. Queda escrito para no olvidarlo, y escrito acá para que

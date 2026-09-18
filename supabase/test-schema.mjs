@@ -4195,25 +4195,23 @@ console.log('\n62. Los andamios tienen fecha de vencimiento');
   const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
   const leer = (r) => (hay(join(RAIZ, r)) ? leerArch(join(RAIZ, r), 'utf8') : '');
 
-  const ANDAMIOS = [
+  // LOS ACTIVOS. Vacia no es un error: significa que no queda ninguno.
+  const ANDAMIOS = [];
+
+  // LOS RETIRADOS. Cuando un andamio muere se saca el codigo y la entrada pasa
+  // aca, con la fecha y el motivo: el registro sigue diciendo la verdad sobre
+  // lo que HUBO, y ademas se verifica algo nuevo —que la marca ya no este—.
+  // Sin esta lista, vaciar la de arriba seria indistinguible de silenciarla.
+  const RETIRADOS = [
     {
       id: 'andamio-rango-en-texto',
       donde: 'movil/src/Inicio.tsx',
-      que: 'Inicio nativo NOMBRA el rango, y en web no se nombra nunca (§7)',
-      // QUE INICIO NATIVO MONTE EL FONDO, y no que `expo-gl` este instalado.
-      //
-      // La condicion era `package.json incluye 'expo-gl'`, pensada como la
-      // firma mas dificil de falsear de "el motor llego a nativo". Se falseo
-      // igual el 18/9: para portar el motor hay que instalar `expo-gl` PRIMERO,
-      // y el test declaro muerto el andamio cuando en el telefono todavia no se
-      // dibujaba ningun cuerpo. Sacarlo ahi habria dejado Inicio sin decir el
-      // rango en ningun lado.
-      //
-      // Una dependencia instalada dice que alguien EMPEZO. Lo que mata al
-      // andamio es que el objeto este en pantalla, y eso lo dice el JSX.
-      muereCuando: () => leer('movil/src/Inicio.tsx').includes('<FondoEspacial'),
-      porQue: 'el motor esta en nativo: el objeto ya dice el rango y el texto sobra',
-      vence: '2026-12-10',
+      cuando: '2026-09-18',
+      porQue:
+        'entro el motor a Inicio nativo (tanda 4): el objeto dice el rango y el texto sobraba',
+      // Su condicion de muerte era `package.json incluye expo-gl`, y se cumplio
+      // ANTES de tiempo: para portar el motor hay que instalar expo-gl primero.
+      // Se corrigio a "Inicio monta <FondoEspacial" y recien ahi se retiro.
     },
   ];
 
@@ -4238,10 +4236,17 @@ console.log('\n62. Los andamios tienen fecha de vencimiento');
     }
   }
 
+  for (const r of RETIRADOS) {
+    if (leer(r.donde).includes(r.id)) {
+      problemas.push(`${r.id}: figura como retirado el ${r.cuando} pero la marca sigue en ${r.donde}`);
+    }
+  }
+
   chequear('ningun andamio vencido ni sin excusa', problemas, []);
   // Y que el registro no quede vacio por accidente: una lista vacia pasa el
-  // test de arriba sin decir nada.
-  chequear('el registro tiene entradas', ANDAMIOS.length > 0, true);
+  // test de arriba sin decir nada. Los retirados cuentan: vaciar ANDAMIOS
+  // sin anotar a donde fue cada uno sigue fallando.
+  chequear('el registro tiene entradas', ANDAMIOS.length + RETIRADOS.length > 0, true);
 }
 
 console.log('\n63. El enlace del correo que vuelve a la app');
