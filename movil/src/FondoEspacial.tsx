@@ -10,6 +10,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { Montaje, OpcionesFondo } from '@compartido/motor/escena';
 import { eventos } from '@compartido/eventos';
 import { PULSO } from '@nucleo/pulso';
@@ -26,12 +27,18 @@ import { plataforma } from '@plataforma';
  * fundido cuando el motor está listo, y un velo oscuro arriba que sostiene la
  * legibilidad.
  *
+ * LOS BORDES, IGUALES A LA WEB: el degradado vertical que oscurece arriba y
+ * abajo (`.velo-bordes`) es lineal, y `expo-linear-gradient` lo reproduce con
+ * los mismos cuatro cortes y las mismas opacidades.
+ *
  * LO QUE FALTA RESPECTO DE LA WEB, a la vista:
  *
- *   - Los degradados. En la web la base y el velo llevan degradados radiales
- *     teñidos por la paleta; React Native no tiene degradados sin sumar una
- *     dependencia, y acá son planos. Es una diferencia que se VE, y va con
- *     foto al lado de la web antes de decidir si se iguala.
+ *   - Los degradados RADIALES de la base y el velo: dos elipses teñidas por la
+ *     paleta en cada uno. `expo-linear-gradient` hace solo lineales, y una
+ *     elipse no se iguala con eso; aproximarla con una diagonal sería cambiar
+ *     cómo se ve. Acá la base y el velo siguen planos. La herramienta que los
+ *     haría es el `RadialGradient` de `react-native-svg`, que viene en Expo
+ *     Go pero es sumar una dependencia: decisión pendiente.
  *   - La animación del velo entre visitas (la "atmósfera" que se abre al subir
  *     de rango). Se pinta el velo del rango, quieto.
  *
@@ -56,6 +63,12 @@ const CLAVE_FONDO = 'ascent:fondo';
 const DENSIDAD_TOPE = 2;
 function factorDeTope() {
   return Math.min(1, DENSIDAD_TOPE / PixelRatio.get());
+}
+
+/** `#05060a` + 0,8 → `rgba(5,6,10,0.8)`. */
+function conAlfa(hex: string, alfa: number) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alfa})`;
 }
 
 // De qué depende que haya que armar la escena de nuevo. Igual que las
@@ -178,6 +191,16 @@ export default function FondoEspacial(op: OpcionesFondo & { atmosfera?: boolean 
         </Animated.View>
       )}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: velo }]} />
+      {/* LOS BORDES, lo que sostiene la legibilidad cuando el velo se abre: el
+          mismo `.velo-bordes` de la web —fondo al 80 % arriba, nada del 26 % al
+          86 %, fondo al 88 % abajo—. Los extremos transparentes son el fondo
+          con alfa 0 y no `transparent`: CSS mezcla premultiplicado y acá no,
+          y hacia negro transparente el degradado ensuciaría el color. */}
+      <LinearGradient
+        style={StyleSheet.absoluteFill}
+        colors={[conAlfa(fondo, 0.8), conAlfa(fondo, 0), conAlfa(fondo, 0), conAlfa(fondo, 0.88)]}
+        locations={[0, 0.26, 0.86, 1]}
+      />
     </View>
   );
 }
