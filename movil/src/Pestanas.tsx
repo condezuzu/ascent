@@ -6,18 +6,19 @@ import { T } from '@nucleo/textos';
 import Inicio from './Inicio';
 import Stats from './Stats';
 import Ranking from './Ranking';
+import Album from './Album';
 import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
 import FondoRaiz from './FondoRaiz';
 
-type Pestana = 'inicio' | 'ranking' | 'stats' | 'ajustes';
+type Pestana = 'inicio' | 'ranking' | 'album' | 'stats' | 'ajustes';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
  *
  * LAS QUE YA EXISTEN, NI UNA MÁS. Una pestaña que abre "próximamente" es un
  * botón que miente en el lugar más tocado de la app. Cada pantalla entra
- * cuando entra, en el mismo orden que la web (Ranking desde el 18/9).
+ * cuando entra, en el mismo orden que la web (Ranking y Álbum desde el 18/9).
  *
  * TODAVÍA SIN ROUTER, y ahora es una decisión más fina que antes: con
  * pestañas planas, sin pantallas apiladas ni enlaces que abran una pantalla
@@ -68,6 +69,7 @@ export default function Pestanas({
         <FondoRaiz />
         {pestana === 'inicio' && <Inicio alSalir={alSalir} alFaltarNombre={alFaltarNombre} />}
         {pestana === 'ranking' && <Ranking alSalir={alSalir} />}
+        {pestana === 'album' && <Album alSalir={alSalir} />}
         {pestana === 'stats' && <Stats alSalir={alSalir} />}
         {pestana === 'ajustes' &&
           (perfil ? (
@@ -85,7 +87,7 @@ export default function Pestanas({
 
       <View style={estilos.barra} accessibilityRole="tablist">
         {/* El orden de la web: Inicio, Ranking, Álbum, Stats, Ajustes. */}
-        {(['inicio', 'ranking', 'stats', 'ajustes'] as Pestana[]).map((p) => (
+        {(['inicio', 'ranking', 'album', 'stats', 'ajustes'] as Pestana[]).map((p) => (
           <Pressable
             key={p}
             style={estilos.boton}

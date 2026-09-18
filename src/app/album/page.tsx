@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { MESES, fechaLinda } from '@nucleo/fechas';
-import { planetaDeDia } from '@nucleo/rangos';
+import { fechaLinda } from '@nucleo/fechas';
+import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type Celda } from '@compartido/album';
 import { avisarFallo } from '@compartido/cola';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
@@ -14,18 +14,6 @@ import Esqueleto from '@/components/Esqueleto';
 import NoCargo from '@/components/NoCargo';
 import { T } from '@nucleo/textos';
 
-type Celda = {
-  id: string;
-  url: string;
-  ruta: string;
-  fecha: string;
-  planeta: string | null;
-  visibilidad: 'privada' | 'amigos';
-  esSubida: boolean;
-};
-
-// El historial no son filas iguales: cada foto queda asociada al planeta
-// del día en que se sacó.
 export default function Album() {
   const [supabase] = useState(() => crearCliente());
   const [celdas, setCeldas] = useState<Celda[]>([]);
@@ -39,71 +27,28 @@ export default function Album() {
   const [error, setError] = useState('');
   const [noCargo, setNoCargo] = useState(false);
 
+  // LAS CONSULTAS VIVEN EN `compartido/album.ts` desde el 18/9: las usa
+  // también la app nativa.
   useEffect(() => {
     (async () => {
       const user = await miUsuario(supabase);
       if (!user) return;
-
-      const { data: p } = await supabase
-        .from('profiles')
-        .select('rango_actual, racha_actual')
-        .eq('id', user.id)
-        .single();
-      if (p) {
-        setMiRango(p.rango_actual);
-        setMiPlaneta(planetaDeDia(p.racha_actual));
-      }
-
-      const { data: fotos, error: errFotos } = await supabase
-        .from('photos')
-        .select('id, storage_path, visibilidad, es_subida_de_rango, log_id, creado')
-        .eq('user_id', user.id)
-        .order('creado', { ascending: false });
-
-      // Que la consulta FALLE no es lo mismo que no tener fotos, y confundirlos
-      // es peor que colgarse: la pantalla decía "Ninguna foto todavía" con toda
-      // seguridad, o sea que mentía sobre los datos de la persona.
-      if (errFotos) {
+      const d = await cargarAlbum(supabase, user.id);
+      if (!d) {
         setNoCargo(true);
         return setCargado(true);
       }
       setNoCargo(false);
-      if (!fotos || fotos.length === 0) return setCargado(true);
-
-      const logIds = fotos.map((f) => f.log_id).filter(Boolean) as string[];
-      const { data: logsDatos } = logIds.length
-        ? await supabase.from('logs').select('id, fecha, planeta_del_dia').in('id', logIds)
-        : { data: [] };
-      const mapa = new Map((logsDatos ?? []).map((l) => [l.id, l]));
-
-      const { data: firmadas } = await supabase.storage
-        .from('fotos')
-        .createSignedUrls(fotos.map((f) => f.storage_path), 3600);
-
-      setCeldas(
-        fotos.map((f, i) => {
-          const log = f.log_id ? mapa.get(f.log_id) : null;
-          return {
-            id: f.id,
-            url: firmadas?.[i]?.signedUrl ?? '',
-            ruta: f.storage_path,
-            fecha: log?.fecha ?? f.creado.slice(0, 10),
-            planeta: log?.planeta_del_dia ?? null,
-            visibilidad: f.visibilidad as 'privada' | 'amigos',
-            esSubida: f.es_subida_de_rango,
-          };
-        })
-      );
+      setMiRango(d.miRango);
+      setMiPlaneta(d.miPlaneta);
+      setCeldas(d.celdas);
       setCargado(true);
     })();
   }, [supabase]);
 
-  // La visibilidad va por foto, no por perfil: se cambia foto por foto, desde
-  // el visor.
   async function alternarVisibilidad(c: Celda) {
     const nueva = c.visibilidad === 'privada' ? 'amigos' : 'privada';
-    const { error } = await supabase.from('photos').update({ visibilidad: nueva }).eq('id', c.id);
-    if (error) return avisarFallo(T.general.falloVisibilidad);
+    if (!(await cambiarVisibilidad(supabase, c.id, nueva))) return avisarFallo(T.general.falloVisibilidad);
     setCeldas((prev) => prev.map((x) => (x.id === c.id ? { ...x, visibilidad: nueva } : x)));
   }
 
@@ -114,10 +59,7 @@ export default function Album() {
   // huérfano en el storage que ya nadie sabe que está.
   async function borrar(c: Celda) {
     setError('');
-    const { error: errArchivo } = await supabase.storage.from('fotos').remove([c.ruta]);
-    if (errArchivo) return setError(T.album.noSeBorro);
-    const { error: errFila } = await supabase.from('photos').delete().eq('id', c.id);
-    if (errFila) return setError(T.album.noSeBorro);
+    if (!(await quitarFoto(supabase, c.id, c.ruta))) return setError(T.album.noSeBorro);
 
     setCeldas((prev) => {
       const quedan = prev.filter((x) => x.id !== c.id);
@@ -138,21 +80,7 @@ export default function Album() {
   //
   // Las fotos ya vienen de la más nueva a la más vieja, así que alcanza con
   // cortar cada vez que cambia el mes.
-  const meses: { clave: string; titulo: string; desde: number; fotos: Celda[] }[] = [];
-  celdas.forEach((c, i) => {
-    const clave = c.fecha.slice(0, 7);
-    const ultimo = meses[meses.length - 1];
-    if (ultimo?.clave === clave) return ultimo.fotos.push(c);
-    const [anio, mes] = clave.split('-');
-    meses.push({
-      clave,
-      titulo: T.calendario.mesYAnio(MESES[Number(mes) - 1], Number(anio)),
-      // El índice en la lista COMPLETA: es lo que abre el visor, y el visor
-      // pasa de una foto a la siguiente sin saber de meses.
-      desde: i,
-      fotos: [c],
-    });
-  });
+  const meses = porMes(celdas);
 
   return (
     <>
