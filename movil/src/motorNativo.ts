@@ -18,10 +18,10 @@ import { DESPERTAR_MOTOR } from './despertarMotor';
  *
  * LO QUE ESTO NO SABE TODAVÍA, porque solo se sabe con un iPhone en la mano:
  *
- *   - Si alcanza el fps. El framebuffer de `expo-gl` es de resolución
- *     completa (3x en un iPhone), y la web lo topa en 2x para no cocinar la
- *     GPU. Acá no hay un tope fácil: la densidad tiene que coincidir con el
- *     buffer o la escena sale en una esquina.
+ *   - Si alcanza el fps. El buffer está topado en 2x como en la web (ver
+ *     `factorDeTope` en `FondoEspacial.tsx`), pero cuánto aguanta la GPU de
+ *     un iPhone con un cuerpo raytraceado a pantalla completa no se sabe
+ *     desde acá.
  *   - Si three.js 0.176 anda sobre el WebGL 2 de `expo-gl`. Mirado en el
  *     código de `expo-gl`: le faltan `texStorage2D`, `vertexAttribIPointer`,
  *     `blitFramebuffer` y el multisample, y esta escena no usa ninguno (sin
@@ -76,7 +76,8 @@ export function montarEnGL(
       // LA DENSIDAD ES LA DEL BUFFER, NO UNA ELEGIDA. El buffer de `expo-gl`
       // ya tiene su tamaño en píxeles físicos; si la densidad no coincide,
       // three dibuja en un viewport más chico y la escena queda en una
-      // esquina. Por eso no se topa en 2 como en la web — ver arriba.
+      // esquina. El tope de 2x se hace achicando la vista, no acá: con la
+      // vista a 2/3 en un 3x, esta cuenta da 2.
       densidad: () => {
         const { w } = caja.tamano();
         return w > 0 ? gl.drawingBufferWidth / w : PixelRatio.get();

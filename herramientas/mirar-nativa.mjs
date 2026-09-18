@@ -14,7 +14,11 @@
 //
 // Necesita la nativa prendida en :8090 (movil/dev-web.cmd), como `test:real`.
 //
-//   node --env-file=.env.local herramientas/mirar-nativa.mjs
+//   node --env-file=.env.local herramientas/mirar-nativa.mjs [--escala=3]
+//
+// `--escala` es la densidad del aparato simulado (2 por omisión). Con 3, que es
+// la de un iPhone, se comprueba además que el buffer del motor quedó topado en
+// 2x como en la web.
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -25,6 +29,7 @@ const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SALIDA = join(RAIZ, 'capturas');
 mkdirSync(SALIDA, { recursive: true });
 const BASE = 'http://localhost:8090';
+const ESCALA = Number((process.argv.find((a) => a.startsWith('--escala=')) ?? '--escala=2').split('=')[1]);
 
 const vivo = await fetch(BASE).then(() => true).catch(() => false);
 if (!vivo) {
@@ -33,7 +38,7 @@ if (!vivo) {
 }
 
 const nav = await chromium.launch();
-const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: ESCALA });
 // Para poder LEER el canvas sin pasar por la pantalla: ver `spec/trampas.md`,
 // "Probar el motor". No cambia lo que se dibuja.
 await ctx.addInitScript(() => {
@@ -93,7 +98,15 @@ const b = await leer();
 
 // Un canvas "dibujado" pero vacío pesa muy poco: es todo transparente. Un
 // PNG con estrellas y un cuerpo pesa decenas de kB.
-console.log(`canvas ${a.w}x${a.h}, ${Math.round(a.datos.length / 1024)} kB`);
+// EL TOPE: el buffer no puede pasar de 2 píxeles físicos por punto. Se mide
+// contra el ancho de la pantalla, no contra el del canvas, que está achicado.
+const densidadDelBuffer = a.w / 390;
+console.log(`canvas ${a.w}x${a.h}, ${Math.round(a.datos.length / 1024)} kB, aparato a ${ESCALA}x`);
+console.log(
+  densidadDelBuffer <= 2.01
+    ? `buffer a ${densidadDelBuffer.toFixed(2)}x: dentro del tope de 2x`
+    : `BUFFER A ${densidadDelBuffer.toFixed(2)}x: PASA EL TOPE DE 2X`
+);
 console.log(`lectura 1: ${hash(a.datos)}   lectura 2 (1,5 s despues): ${hash(b.datos)}`);
 console.log(a.datos === b.datos ? 'EL CANVAS NO CAMBIO: no se mueve' : 'el motor dibuja y se mueve');
 const delMotor = avisos.filter((x) => /motor|three|webgl|gl/i.test(x));
@@ -101,4 +114,4 @@ console.log(delMotor.length ? '\navisos del motor:\n  - ' + delMotor.join('\n  -
 console.log('fotos: capturas/nativa-inicio.png y capturas/nativa-canvas.png');
 
 await nav.close();
-process.exit(a.datos === b.datos ? 1 : 0);
+process.exit(a.datos === b.datos || densidadDelBuffer > 2.01 ? 1 : 0);

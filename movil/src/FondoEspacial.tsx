@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   InteractionManager,
+  PixelRatio,
   StyleSheet,
   View,
   type LayoutChangeEvent,
@@ -42,6 +43,21 @@ import { plataforma } from '@plataforma';
 // La misma clave que la web (`src/lib/fondo.ts`): es la misma preferencia.
 const CLAVE_FONDO = 'ascent:fondo';
 
+// EL TOPE DE 2X, igual que la web (`dpr()` en `src/motor/escena.ts`).
+//
+// Un cuerpo raytraceado a pantalla completa en 3x es lo que calienta un
+// teléfono, y la web lo topa a propósito. Acá no se puede pedir menos
+// resolución: el buffer de `expo-gl` mide lo que mide la vista, en píxeles
+// físicos. Así que se achica la VISTA —a 2/3 en un iPhone de 3x— y se la
+// estira con una transformación hasta llenar la pantalla. El motor ve el
+// tamaño de verdad y una densidad de 2, y el buffer tiene justo eso.
+//
+// En pantallas de 2x o menos el factor es 1: no cambia nada.
+const DENSIDAD_TOPE = 2;
+function factorDeTope() {
+  return Math.min(1, DENSIDAD_TOPE / PixelRatio.get());
+}
+
 // De qué depende que haya que armar la escena de nuevo. Igual que las
 // dependencias del efecto de la web: si cambia cualquiera, el objeto es otro.
 function claveDeEscena(op: OpcionesFondo, animar: boolean) {
@@ -67,6 +83,10 @@ export default function FondoEspacial(op: OpcionesFondo & { atmosfera?: boolean 
   const opacidad = useRef(new Animated.Value(0)).current;
 
   const caja = useRef(Dimensions.get('window'));
+  // El `GLView` se crea recién con la medida de verdad: su buffer se fija al
+  // crearse, y crearlo con el tamaño de la ventana para después achicarlo
+  // dejaría un buffer que no coincide con la vista.
+  const [medida, setMedida] = useState<{ w: number; h: number } | null>(null);
   const oyentesDeTamano = useRef(new Set<() => void>());
   const montaje = useRef<Montaje | null>(null);
 
@@ -130,7 +150,20 @@ export default function FondoEspacial(op: OpcionesFondo & { atmosfera?: boolean 
   const alMedir = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     caja.current = { ...caja.current, width, height };
+    setMedida({ w: width, h: height });
     for (const fn of oyentesDeTamano.current) fn();
+  };
+
+  // La vista del GL, achicada por el tope y estirada de vuelta desde el
+  // centro: ocupa exactamente lo mismo que la pantalla.
+  const f = factorDeTope();
+  const vistaGL = medida && {
+    position: 'absolute' as const,
+    width: medida.w * f,
+    height: medida.h * f,
+    left: (medida.w - medida.w * f) / 2,
+    top: (medida.h - medida.h * f) / 2,
+    transform: [{ scale: 1 / f }],
   };
 
   const fondo = op.rango === 8 ? FONDO_RANGO_8 : FONDO_BASE;
@@ -139,9 +172,9 @@ export default function FondoEspacial(op: OpcionesFondo & { atmosfera?: boolean 
 
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: fondo }]} pointerEvents="none" onLayout={alMedir}>
-      {cargar && (
+      {cargar && vistaGL && (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad }]}>
-          <GLView key={clave} style={StyleSheet.absoluteFill} onContextCreate={alCrearContexto} />
+          <GLView key={clave} style={vistaGL} onContextCreate={alCrearContexto} />
         </Animated.View>
       )}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: velo }]} />
