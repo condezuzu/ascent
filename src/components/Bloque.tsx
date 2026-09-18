@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
@@ -45,6 +45,7 @@ export default function Bloque({
   estado,
   total,
   alSumar,
+  debajoDelMas,
   alRestar,
   alSiguiente,
   alElegirEjercicio,
@@ -62,6 +63,12 @@ export default function Bloque({
   estado: EstadoBloques;
   total: number;
   alSumar: () => void;
+  /**
+   * Lo que va pegado al `+`: la pregunta "¿lo guardo como marca?" de la serie
+   * que se acaba de confirmar. Debajo de la lista quedaba tapada por
+   * "Terminar" y había que bajar para contestarla (visto el 18/9).
+   */
+  debajoDelMas?: ReactNode;
   alRestar: () => void;
   alSiguiente: () => void;
   alElegirEjercicio: (id: string | null) => void;
@@ -287,6 +294,8 @@ export default function Bloque({
           <span>+</span>
         </button>
       )}
+
+      {debajoDelMas}
 
       {cumplida && (
         <button className="boton-texto bloque-otra" onClick={alSumar}>

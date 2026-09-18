@@ -602,12 +602,14 @@ export default function Principal() {
               alElegirCarga={sesion.elegirCarga}
               alCorregirCarga={sesion.corregirCargaDeBloque}
               alCorregirEjercicio={sesion.corregirEjercicioDeBloque}
-            />
-            {/* "¿Lo guardo como marca?", en el momento de la serie. */}
-            <MarcaEnElMomento
-              bloques={sesion.estado.bloques}
-              inicio={sesion.estado.inicio}
-              unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
+              debajoDelMas={
+                // "¿Lo guardo como marca?", en el momento de la serie.
+                <MarcaEnElMomento
+                  bloques={sesion.estado.bloques}
+                  inicio={sesion.estado.inicio}
+                  unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
+                />
+              }
             />
             {/* "Cada + suma la serie y arranca el descanso" lo dice el globo
                 de la primera vez, tres renglones más arriba. Repetirlo abajo

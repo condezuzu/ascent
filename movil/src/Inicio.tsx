@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
@@ -74,6 +74,24 @@ export default function Inicio({
   alFaltarNombre: () => void;
 }) {
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
+  // EL SCROLL, para traer a la vista la pregunta de marca de la serie recién
+  // confirmada (ver `MarcaEnElMomento`). Se mide en coordenadas de PANTALLA y
+  // no con `measureLayout`, que no se porta igual en la vista web de la nativa y
+  // en el teléfono: así lo que se prueba en :8090 es lo que pasa en el iPhone.
+  const scroll = useRef<ScrollView>(null);
+  const desplazado = useRef(0);
+  const { height: altoVentana } = useWindowDimensions();
+  const traerALaVista = useCallback(
+    (v: View) => {
+      v.measureInWindow((_x, y, _w, alto) => {
+        // Lo que tapa abajo: la barra de pestañas y un margen para respirar.
+        const borde = altoVentana - 90;
+        const sobra = y + alto - borde;
+        if (sobra > 0) scroll.current?.scrollTo({ y: desplazado.current + sobra, animated: true });
+      });
+    },
+    [altoVentana]
+  );
   // La hoja de registrar el día (con foto): la misma que la web.
   const [registrarAbierto, setRegistrarAbierto] = useState(false);
   // Terminar pregunta antes, en el mismo lugar: es el botón más fácil de tocar
@@ -225,7 +243,12 @@ export default function Inicio({
         // Como en la web: Inicio es la única pantalla con atmósfera.
         atmosfera
       />
-    <ScrollView contentContainerStyle={estilos.pantalla}>
+    <ScrollView
+      ref={scroll}
+      contentContainerStyle={estilos.pantalla}
+      scrollEventThrottle={32}
+      onScroll={(e) => (desplazado.current = e.nativeEvent.contentOffset.y)}
+    >
       <View style={estilos.cabecera}>
         <Text style={estilos.usuario}>{perfil.username}</Text>
         {/* El chip de la sesión, arriba a la derecha como en la web: sin
@@ -335,13 +358,16 @@ export default function Inicio({
             alElegirCarga={sesion.elegirCarga}
             alCorregirCarga={sesion.corregirCargaDeBloque}
             alCorregirEjercicio={sesion.corregirEjercicioDeBloque}
-          />
-          {/* "¿Lo guardo como marca?", en el momento de la serie. */}
-          <MarcaEnElMomento
-            bloques={sesion.estado.bloques}
-            inicio={sesion.estado.inicio}
-            unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
-            principal={paletaDe(perfil.rango_actual ?? 1, null).principal}
+            debajoDelMas={
+              // "¿Lo guardo como marca?", en el momento de la serie.
+              <MarcaEnElMomento
+                bloques={sesion.estado.bloques}
+                inicio={sesion.estado.inicio}
+                unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
+                principal={paletaDe(perfil.rango_actual ?? 1, null).principal}
+                alAparecer={traerALaVista}
+              />
+            }
           />
           {sesion.estado.porUbicacion && <Text style={estilos.nota}>{T.inicio.sesionSola}</Text>}
 

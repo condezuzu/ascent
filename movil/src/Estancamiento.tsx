@@ -93,7 +93,9 @@ export default function Estancamiento({
 }
 
 const estilos = StyleSheet.create({
-  aviso: { borderLeftWidth: 2, paddingLeft: 14, marginTop: 24 },
+  // El aire de abajo es el de una `.seccion` de la web: sin él, "No mostrar
+  // esto" quedaba pegado a VIDAS (visto el 18/9, con un aviso fabricado).
+  aviso: { borderLeftWidth: 2, paddingLeft: 14, marginTop: 24, marginBottom: 26 },
   texto: { color: C.sub, fontSize: 14, lineHeight: 22 },
   // Cifras tabulares para que las dos columnas caigan en la misma vertical:
   // si no se alinean, no se comparan.

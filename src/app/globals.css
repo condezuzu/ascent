@@ -3861,6 +3861,9 @@ body.con-franja.con-accion .pantalla {
   text-align: left;
   text-decoration: underline dotted color-mix(in srgb, var(--sub) 70%, transparent);
   text-underline-offset: 4px;
+  /* Aire abajo: `.que` recorta lo que sale de su caja, y la línea, a 4 px del
+     texto, quedaba afuera (no se veía; foto del 18/9). */
+  padding-bottom: 6px;
 }
 .fila-bloque .controles,
 .fila-bloque .confirmar {

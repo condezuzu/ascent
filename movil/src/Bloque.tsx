@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
@@ -36,6 +36,7 @@ export default function Bloque({
   unidad,
   cargaConsultada,
   alSumar,
+  debajoDelMas,
   alRestar,
   alSiguiente,
   alElegirEjercicio,
@@ -53,6 +54,8 @@ export default function Bloque({
   unidad: Unidad;
   cargaConsultada: string | null;
   alSumar: () => void;
+  /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
+  debajoDelMas?: ReactNode;
   alRestar: () => void;
   alSiguiente: () => void;
   alElegirEjercicio: (id: string | null) => void;
@@ -213,6 +216,8 @@ export default function Bloque({
           <Text style={estilos.masTexto}>+</Text>
         </Pressable>
       )}
+
+      {debajoDelMas}
 
       {cumplida && (
         <Pressable style={estilos.texto} onPress={alSumar}>

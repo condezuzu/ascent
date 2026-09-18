@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
 import { T } from '@nucleo/textos';
@@ -26,9 +27,17 @@ export default function MarcaEnElMomento({
   unidad: Unidad;
 }) {
   const { actual: s, guardar, descartar } = useMarcaEnElMomento(bloques, inicio);
+  const caja = useRef<HTMLDivElement>(null);
+  // AL APARECER, A LA VISTA. Está pegada al `+`, pero debajo va la barra fija de
+  // "Terminar" y los botones de repeticiones caían detrás (foto del 18/9). Al
+  // centro y no al borde: así el `+` que se acaba de tocar sigue a la vista.
+  const clave = s ? `${s.ejercicio}:${s.peso}` : null;
+  useEffect(() => {
+    if (clave) caja.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [clave]);
   if (!s) return null;
   return (
-    <div className="marcas-sugeridas en-el-momento" role="status">
+    <div ref={caja} className="marcas-sugeridas en-el-momento" role="status">
       <div className="marca-sugerida">
         <p>
           {(s.antes === null ? T.marcaSugerida.primera : T.marcaSugerida.puedeSerMarca)(pesoCorto(s.peso, unidad), unidad, s.nombre)}
