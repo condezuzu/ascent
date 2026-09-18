@@ -88,13 +88,9 @@ const page = await ctx.newPage();
 const cdp = await ctx.newCDPSession(page);
 
 await page.goto(BASE + '/login', { waitUntil: 'networkidle', timeout: 60000 });
-await pasarLaEntrada(page);
-await page.locator('input[type=email]').fill(process.env.CONEXION_EMAIL);
-await page.locator('input[type=password]').fill(process.env.CONEXION_PASSWORD);
-await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 120000 });
 
-// QUÉ WEBGL HAY. `WEBGL_debug_renderer_info` dice el renderizador de verdad.
+// QUÉ WEBGL HAY, antes de entrar: si el login falla, igual queda dicho.
+// `WEBGL_debug_renderer_info` dice el renderizador de verdad.
 const webgl = await page.evaluate(() => {
   const gl = document.createElement('canvas').getContext('webgl2');
   if (!gl) return 'sin webgl2';
@@ -102,6 +98,25 @@ const webgl = await page.evaluate(() => {
   return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
 });
 console.log(`\nWebGL de este navegador: ${webgl}${CON_GPU ? '  (lanzado con --gpu)' : ''}`);
+
+// Si no se puede entrar, se deja la foto y el texto: morir con "timeout" y nada
+// más (18/9, primera corrida con --gpu) no dice qué vio la página.
+const tEntrada = Date.now();
+try {
+  await pasarLaEntrada(page);
+  await page.locator('input[type=email]').fill(process.env.CONEXION_EMAIL);
+  await page.locator('input[type=password]').fill(process.env.CONEXION_PASSWORD);
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 120000 });
+  console.log(`entró a los ${Date.now() - tEntrada} ms`);
+} catch (e) {
+  const foto = join(SALIDA, `login-fallido${CON_GPU ? '-gpu' : ''}.png`);
+  await page.screenshot({ path: foto, timeout: 15000 }).catch(() => {});
+  const texto = await page.evaluate(() => document.body.innerText).catch(() => '(no respondió)');
+  console.log(`NO ENTRÓ tras ${Date.now() - tEntrada} ms: ${e.message.split('\n')[0]}`);
+  console.log(`url: ${page.url()}\ntexto: ${texto.slice(0, 600).replace(/\n+/g, ' / ')}\nfoto: ${foto}`);
+  process.exit(1);
+}
 
 /** Tiempo propio por función, a partir de las muestras del perfil. */
 function resumir(perfil) {
