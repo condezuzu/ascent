@@ -52,6 +52,12 @@ function dpr(): number {
   return Math.min(window.devicePixelRatio || 1, 2);
 }
 
+// LA DENSIDAD DEL LIENZO QUE SE ESTÁ ARMANDO. Los materiales de partículas la
+// necesitan al crearse, y se crean adentro de `montarEscena`, que es neutral:
+// no puede preguntarle al `window`. Se fija al empezar a montar con lo que
+// dice el lienzo, y es la misma cuenta que `dpr()` en la web.
+let densidadActual = 1;
+
 // -------------------------------------------------------------------
 // NIVEL DEL EQUIPO
 // En un teléfono viejo no tiene sentido tirar 4200 partículas. Se mide una
@@ -287,7 +293,7 @@ function materialPuntos(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     vertexShader: VERTEX_PUNTOS,
     fragmentShader: FRAGMENT_PUNTOS,
-    uniforms: { uTime: { value: 0 }, uDpr: { value: dpr() } },
+    uniforms: { uTime: { value: 0 }, uDpr: { value: densidadActual } },
     vertexColors: true,
     transparent: true,
     blending: THREE.AdditiveBlending,
@@ -416,11 +422,91 @@ export type Montaje = {
   pulso: () => void;
 };
 
+/**
+ * DÓNDE DIBUJA EL MOTOR: lo único de la escena que depende de la plataforma.
+ *
+ * El motor se comparte entre la web y la app nativa, y lo que cambia entre
+ * las dos es muy poco y está todo acá: de dónde sale el tamaño, cómo se pide
+ * el próximo cuadro, cómo se entera de que alguien tocó la pantalla. La web
+ * lo resuelve con el DOM (`lienzoWeb`, abajo); la nativa, con `expo-gl`.
+ *
+ * Todo lo demás —shaders, cuerpos, partículas, quietud, pulso— es igual en
+ * las dos, y ESA es la razón de compartirlo: un segundo motor arrancaría
+ * idéntico y en tres meses serían dos productos.
+ */
+export type Lienzo = {
+  renderer: THREE.WebGLRenderer;
+  /** Tamaño en puntos (no en píxeles físicos) de donde se dibuja. */
+  tamano: () => { w: number; h: number };
+  /** Píxeles físicos por punto, con el tope ya aplicado. */
+  densidad: () => number;
+  /** Pide el próximo cuadro. `fn` recibe la hora del cuadro, en el reloj de `performance.now`. */
+  cuadro: (fn: (t: number) => void) => void;
+  /**
+   * Después de cada `render`. En la web no hace nada: el navegador presenta
+   * solo. `expo-gl` no, y sin esto el cuadro se dibuja y no se ve.
+   */
+  presentar: () => void;
+  /** Avisa cuando hay una señal de que alguien está mirando. Devuelve cómo dejar de escuchar. */
+  alDespertar: (fn: () => void) => () => void;
+  /** Avisa cuando cambia el tamaño. Devuelve cómo dejar de escuchar. */
+  alCambiarDeTamano: (fn: () => void) => () => void;
+};
+
+/**
+ * Arma la escena del rango dentro de `contenedor`: el adaptador de la web.
+ *
+ * La firma no cambió al separar el núcleo, a propósito: `FondoEspacial` y el
+ * resto de la web siguen llamando esto igual que antes.
+ */
 export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje | null {
   const rr = obtenerRenderer();
   if (!rr) return null;
-  const { renderer: rend, lienzo: canvas } = rr;
-  contenedor.appendChild(canvas);
+  contenedor.appendChild(rr.lienzo);
+  return montarEscena(lienzoWeb(contenedor, rr.renderer), op);
+}
+
+function lienzoWeb(contenedor: HTMLElement, renderer: THREE.WebGLRenderer): Lienzo {
+  // LO QUE DESPIERTA AL MOTOR. Son escuchas pasivas que solo anotan la hora:
+  // no leen el evento ni tocan el DOM, así que no estorban al scroll.
+  //
+  // `pointermove` entra a propósito aunque parezca ruido: en una computadora
+  // mover el mouse es alguien que está ahí, y el costo es escribir un
+  // número. En un teléfono no se dispara si nadie toca.
+  const SENALES = ['pointerdown', 'pointermove', 'touchstart', 'wheel', 'keydown', 'scroll'] as const;
+  return {
+    renderer,
+    tamano: () => ({
+      w: contenedor.clientWidth || window.innerWidth,
+      h: contenedor.clientHeight || window.innerHeight,
+    }),
+    densidad: dpr,
+    cuadro: (fn) => {
+      requestAnimationFrame(fn);
+    },
+    presentar: () => {},
+    alDespertar: (fn) => {
+      for (const s of SENALES) window.addEventListener(s, fn, { passive: true });
+      return () => {
+        for (const s of SENALES) window.removeEventListener(s, fn);
+      };
+    },
+    // La caja del contenedor, no solo la ventana: ver `alCambiarDeTamano`.
+    alCambiarDeTamano: (fn) => alCambiarDeTamano(contenedor, fn),
+  };
+}
+
+/**
+ * EL NÚCLEO: arma la escena del rango sobre un lienzo cualquiera y devuelve
+ * cómo soltarla. El renderer es compartido: no se destruye, se reusa en la
+ * próxima pantalla.
+ *
+ * NO TOCA NI `window` NI `document`: todo lo que depende de la plataforma se
+ * le pide a `l`. Así es como la app nativa usa este mismo archivo.
+ */
+export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
+  const rend = l.renderer;
+  densidadActual = l.densidad();
 
   const escena = new THREE.Scene();
   const camara = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
@@ -524,7 +610,8 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
     // rango alto sigue teniendo un cuerpo más grande, pero le deja cielo
     // alrededor. El presupuesto de relleno también baja, que no estorba.
     const escala = op.rango >= 5 ? 1.0 : 0.88;
-    const pixel = 2 / (escala * Math.min(canvas.clientWidth || 400, canvas.clientHeight || 700));
+    const caja = l.tamano();
+    const pixel = 2 / (escala * Math.min(caja.w || 400, caja.h || 700));
     const noche = nivelDeNoche(!!op.reposo, op.noche);
     const mat = crearMaterialCuerpo(cfg, !!op.apagado, pixel, !!op.reposo, 1, op.estilo, noche);
     materiales.push(mat);
@@ -598,10 +685,9 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
   }
 
   function medirLienzo() {
-    const w = contenedor.clientWidth || window.innerWidth;
-    const h = contenedor.clientHeight || window.innerHeight;
+    const { w, h } = l.tamano();
     rend.setSize(w, h, false);
-    rend.setPixelRatio(dpr());
+    rend.setPixelRatio(l.densidad());
     const asp = w / h;
     camara.left = -asp;
     camara.right = asp;
@@ -620,7 +706,7 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
     // El pedido del próximo cuadro va PRIMERO. Estando abajo, cualquier
     // salida temprana de las de abajo cortaba el bucle para siempre y el
     // fondo no volvía ni tocando la pantalla.
-    if (op.animar !== false) requestAnimationFrame(frame);
+    if (op.animar !== false) l.cuadro(frame);
     if (pausado) return;
 
     // EL BUCLE SIGUE VIVO EN EL ESCALÓN 'QUIETO', sin dibujar. Cancelar el
@@ -642,6 +728,7 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
     if (auroraMesh) auroraMesh.rotation.z = tiempo * 0.022;
     if (polvo) polvo.rotation.z = tiempo * 0.03;
     rend.render(escena, camara);
+    l.presentar();
   }
 
   // Primer frame ya mismo: acá es donde se compilan los shaders la primera
@@ -649,10 +736,11 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
   // del renderer compartido y esto cuesta casi nada.
   marca('ascent:shader-inicio');
   rend.render(escena, camara);
+  l.presentar();
   marca('ascent:shader-fin');
   medir('ascent:shader-compilacion', 'ascent:shader-inicio', 'ascent:shader-fin');
 
-  if (op.animar !== false) requestAnimationFrame(frame);
+  if (op.animar !== false) l.cuadro(frame);
 
   // El motor no anima con la app atrás: son sesenta cuadros por segundo de
   // GPU para algo que nadie está mirando.
@@ -668,18 +756,11 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
     }
   });
 
-  // LO QUE DESPIERTA AL MOTOR. Son escuchas pasivas que solo anotan la hora:
-  // no leen el evento ni tocan el DOM, así que no estorban al scroll.
-  //
-  // `pointermove` entra a propósito aunque parezca ruido: en una computadora
-  // mover el mouse es alguien que está ahí, y el costo es escribir un
-  // número. En un teléfono no se dispara si nadie toca.
-  const SENALES = ['pointerdown', 'pointermove', 'touchstart', 'wheel', 'keydown', 'scroll'] as const;
-  for (const s of SENALES) window.addEventListener(s, despertar, { passive: true });
-  // La caja del contenedor, no solo la ventana: ver `alCambiarDeTamano`.
-  // Y al cambiar de tamaño también se despierta: `medirLienzo` reconfigura el
+  // LO QUE DESPIERTA AL MOTOR: cuáles son las señales lo decide el lienzo.
+  const dejarDeEscuchar = l.alDespertar(despertar);
+  // Al cambiar de tamaño también se despierta: `medirLienzo` reconfigura el
   // lienzo pero no lo pinta, y quieto quedaría estirado hasta el próximo toque.
-  const dejarDeMedir = alCambiarDeTamano(contenedor, () => {
+  const dejarDeMedir = l.alCambiarDeTamano(() => {
     medirLienzo();
     despertar();
   });
@@ -732,7 +813,7 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
         m.uniforms.uAtenua.value = baseDe(m) * (1 + ALTURA * f);
       }
       if (siguePulsando(t)) {
-        requestAnimationFrame(paso);
+        l.cuadro(paso);
       } else {
         // Se vuelve al valor EXACTO de reposo y no a `base * 1`: si no, cada
         // pulso deja su pizca de error de coma flotante.
@@ -742,14 +823,14 @@ export function montarFondo(contenedor: HTMLElement, op: OpcionesFondo): Montaje
         pulsando = 0;
       }
     };
-    requestAnimationFrame(paso);
+    l.cuadro(paso);
   }
 
   const soltar = () => {
     vivo = false;
     dejarDeMirar();
     dejarDeMedir();
-    for (const s of SENALES) window.removeEventListener(s, despertar);
+    dejarDeEscuchar();
     // se sueltan las geometrías y materiales de ESTA escena, pero el
     // renderer y el canvas siguen vivos para la próxima pantalla
     escena.traverse((o) => {
