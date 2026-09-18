@@ -47,10 +47,13 @@ type Datos = {
  * la web: esta pantalla pide las filas y dibuja. Si un número difiriera entre
  * el teléfono y la computadora, sería por el dibujo, nunca por la cuenta.
  *
- * LO QUE TODAVÍA NO ESTÁ, y entra con su propia pantalla: el calendario con el
- * resumen de cada día (y ahí, revisar los pesos de antes de los modos), el
- * mapa del año, el peso corporal, la fuerza y las sesiones. Mientras tanto
- * esos se miran en la web; nada de acá los reemplaza a medias.
+ * GENERAL ESTÁ ENTERA desde el 18/9 (ver `StatsGeneral.tsx`), menos el
+ * gráfico del peso y las insignias de la escalera, que son SVG.
+ *
+ * LO QUE TODAVÍA NO ESTÁ: el calendario con el resumen de cada día (y ahí,
+ * revisar los pesos de antes de los modos), la sección de fuerza y el aviso
+ * de estancamiento. Mientras tanto se miran en la web; nada de acá los
+ * reemplaza a medias.
  */
 export default function Stats({ alSalir }: { alSalir: () => void }) {
   const [datos, setDatos] = useState<Datos | null>(null);

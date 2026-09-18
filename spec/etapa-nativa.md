@@ -878,6 +878,26 @@ A `:8090` el `GLView` corre sobre el WebGL **del navegador**, no sobre el de
 
 ---
 
+### Ronda del 18/9: lo que quedó pendiente
+
+- **`react-native-svg`: una sola decisión que destraba cuatro cosas.** Los
+  degradados radiales del fondo, las insignias del Ranking, las de la escalera
+  de Stats y el gráfico del peso. Viene en Expo Go, pero es sumar una
+  dependencia. Sin ella, ninguna de las cuatro se reemplazó por algo inventado.
+- **Stats sin portar:** la sección de fuerza, el aviso de estancamiento y el
+  calendario para corregir días (~640 líneas de la web entre las tres).
+- **Ranking:** tocar a alguien no abre su perfil (la pantalla no existe en
+  nativo). Los retos tampoco se ven en la web (`RETOS_LISTOS = false`).
+- **Álbum:** deslizar la foto con el dedo (se pasa con flechas). "Quitar
+  foto" no se probó: habría borrado una foto real de la cuenta de prueba.
+- **Textos del Álbum contra la regla 4 de `spec/idioma.md`:** dicen "Borrar
+  foto" y "¿Borrar?", y para una foto el verbo es "quitar". La sección 54 no
+  mira verbos. Arreglarlo una vez arregla las dos apps.
+- **El bloqueo de 7 a 20 s de la página después de montar el motor:** ver
+  `spec/estado.md`, "Problemas conocidos".
+
+---
+
 ## Preparación de App Store — DESPUÉS de las tandas 4, 5 y 6
 
 Decidido el 17/9/2026. Queda escrito para no olvidarlo, y escrito acá para que
