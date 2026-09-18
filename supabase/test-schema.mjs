@@ -8018,8 +8018,19 @@ console.log('\n119. Toda sonda que levanta un servidor lo limpia antes y despues
 
   const sinLimpiar = [];
   const sinCerrar = [];
-  for (const f of leerDir119(AQUI_119).filter((x) => x.endsWith('.mjs'))) {
-    const codigo = leer119(unir119(AQUI_119, f), 'utf8');
+  // LAS DOS CARPETAS. Las sondas nuevas viven en `herramientas/` desde el 17/9
+  // (`supabase/` es para lo de la base), y esta sección miraba solo la de
+  // antes: una sonda nueva que levantara servidor sin limpiar pasaba callada.
+  const CARPETAS_119 = [AQUI_119, unir119(AQUI_119, '..', 'herramientas')];
+  const archivos119 = CARPETAS_119.flatMap((d) =>
+    leerDir119(d)
+      .filter((x) => x.endsWith('.mjs'))
+      .map((x) => unir119(d, x))
+  );
+  chequear('mira sondas de las dos carpetas', archivos119.some((r) => /herramientas/.test(r)), true);
+  for (const ruta of archivos119) {
+    const f = ruta.split(/[\\/]/).slice(-2).join('/');
+    const codigo = leer119(ruta, 'utf8');
     // `pruebas-reales` NO entra: no levanta nada, le pide al humano que tenga
     // prendidos sus dos dev servers. Matarle el puerto seria romperle la corrida.
     if (!LEVANTA.test(codigo) || /No los levanta/.test(codigo)) continue;

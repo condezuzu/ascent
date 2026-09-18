@@ -241,6 +241,27 @@ ese día. Si alguna vez hay que volver a escribirlas en algún lado, que sea
 
 ## Problemas conocidos
 
+### ABIERTO (18/9): la página se bloquea de 7 a 20 s después de montar el motor
+
+Medido con `herramientas/sonda-como-se-compara.mjs`, 16 visitas a Ajustes en
+el navegador sin cabeza de las pruebas:
+
+- Cuando el motor **no** montó durante la visita (12 de 16): el click tarda
+  35–56 ms.
+- Cuando el motor **sí** montó (4 de 16): el click tarda **7,2 a 19,9 s**, y
+  hasta una lectura de `performance.now()` vuelve con 14–26 s de retraso. El
+  hilo principal está bloqueado.
+- Pero las marcas del propio motor miden 4 ms de import y ~10 ms de shaders:
+  **el bloqueo no está dentro de lo que el motor mide.**
+
+Era la causa de la captura intermitente de "Cómo se compara" (ahora
+`capturas.mjs` espera a que la página atienda antes de tocar). **Lo que no se
+sabe:** qué bloquea exactamente, y si pasa en un teléfono con GPU de verdad o
+solo con el WebGL por software de este navegador de pruebas. Si pasa en un
+teléfono, son 10 segundos de app que no responde a los toques, y va primero.
+La próxima medición: grabar un perfil de rendimiento (`page.tracing`) de una
+visita en la que monte el motor.
+
 - El panel de preview del entorno **se cuelga**: los clicks por píxel se traban
   y `read_page` da timeout. Ya no se depende de él: el QA visual sale de
   `npm run capturas`, que levanta la app en su propio puerto y su propia

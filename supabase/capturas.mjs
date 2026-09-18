@@ -201,7 +201,22 @@ const PANTALLAS = [
         const cuantos = await page.locator('button.fila-plegable').count();
         return `no apareció el botón de "Cómo se compara" (había ${cuantos} desplegables en ${page.url()})`;
       }
-      await b.click();
+      // SE ESPERA A QUE LA PÁGINA ATIENDA, antes de tocar. Medido el 18/9 con
+      // `herramientas/sonda-como-se-compara.mjs`: cuando el motor monta en
+      // esta visita, el hilo principal queda bloqueado entre 7 y 20 s —4 de 4
+      // veces— y cuando no monta el click tarda 40 ms —12 de 12—. El botón
+      // está visible, quieto y sin nada encima; lo que no hay es quien
+      // atienda el evento. Con el click de 30 s, a veces el bloqueo duraba
+      // más y la captura se perdía.
+      //
+      // Dos cuadros de animación solo se completan con el hilo libre. Qué
+      // bloquea exactamente —no está dentro de lo que el motor mide— y si
+      // pasa fuera del WebGL por software de este navegador, sigue abierto:
+      // ver spec/estado.md.
+      await page
+        .evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+        .catch(() => {});
+      await b.click({ timeout: 60000 });
       return null;
     },
   },
@@ -497,6 +512,12 @@ for (const tamano of TAMANOS) {
     } catch (e) {
       const linea = String(e).split('\n')[0].slice(0, 120);
       problemas.push(`${tamano.nombre}/${p.nombre}: NO se pudo capturar — ${linea}`);
+      // Y EL ERROR ENTERO, aparte. La primera línea de un timeout de
+      // Playwright dice "Timeout exceeded" y nada más; el registro de llamadas
+      // de abajo es el que dice en qué paso se quedó ("intercepts pointer
+      // events", "not stable", "performing click action"). Cortarlo costó
+      // tres fallas sin diagnóstico el 17 y 18/9.
+      console.log(`\n  ${tamano.nombre}/${p.nombre} — error completo:\n${String(e).split('\n').slice(0, 25).join('\n')}\n`);
       // No hace falta recambiar acá: la vuelta siguiente arranca con una
       // página nueva de todos modos. Antes esto era `about:blank`, que dejaba
       // OTRA navegación en vuelo y era justo lo que rompía la siguiente.
