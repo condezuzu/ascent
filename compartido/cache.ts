@@ -48,5 +48,52 @@ export function borrarPerfilCache() {
   // `uid` se compara— pero volver a entrar con la MISMA cuenta sí: ahí la
   // promesa vieja calzaría. Soltarla es una línea y ahorra pensarlo.
   olvidarPerfilVivo();
+  // Lo de Inicio también: es de esta cuenta.
+  void plataforma.almacenamiento.borrar(CLAVE_INICIO);
   return plataforma.almacenamiento.borrar(CLAVE);
+}
+
+// ---------------------------------------------------------------
+// LO QUE INICIO DIBUJA, ENTERO (19/9).
+//
+// Con solo el perfil en caché, Inicio no sabía si el gimnasio estaba marcado
+// ni los días de la semana: mostrarla sola hacía aparecer "Marca tu gimnasio"
+// un instante, y por eso Inicio pasó a esperar la red (~250 ms más en cada
+// apertura). Con esto la caché alcanza para dibujar Inicio COMPLETO al
+// instante, y la red lo corrige en el lugar si algo cambió.
+//
+// Del gimnasio se guarda SI ESTÁ MARCADO, nunca dónde: las coordenadas no
+// salen de la base.
+// ---------------------------------------------------------------
+const CLAVE_INICIO = 'ascent:inicio';
+
+export type InicioCacheado = {
+  uid: string;
+  logs: import('@nucleo/tipos').Log[];
+  descansos: import('@nucleo/descansos').ConfigDescanso[];
+  impulsos: import('@compartido/inicio').DatosDeInicio['impulsos'];
+  /** La línea de marcas ya armada ("SQ 140 · BP 100 · …"), o null. */
+  marcas: string | null;
+  tieneGimnasio: boolean;
+};
+
+export function guardarInicioCache(d: InicioCacheado) {
+  return plataforma.almacenamiento.guardar(CLAVE_INICIO, JSON.stringify(d));
+}
+
+export async function leerInicioCache(uid: string): Promise<InicioCacheado | null> {
+  const crudo = await plataforma.almacenamiento.leer(CLAVE_INICIO);
+  if (!crudo) return null;
+  try {
+    const d = JSON.parse(crudo) as InicioCacheado;
+    // de otra cuenta, o de una versión que no la tenía entera: no sirve
+    if (d?.uid !== uid || !Array.isArray(d.logs) || !Array.isArray(d.descansos) || typeof d.tieneGimnasio !== 'boolean') return null;
+    return d;
+  } catch {
+    return null;
+  }
+}
+
+export function borrarInicioCache() {
+  return plataforma.almacenamiento.borrar(CLAVE_INICIO);
 }

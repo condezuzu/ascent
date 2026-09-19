@@ -8,9 +8,8 @@ import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type Celda } from 
 import { avisarFallo } from '@compartido/cola';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
-import PantallaDeslizable from '@/components/PantallaDeslizable';
+import PantallaDeslizable, { useEsperar } from '@/components/PantallaDeslizable';
 import VisorFoto from '@/components/VisorFoto';
-import Esqueleto from '@/components/Esqueleto';
 import NoCargo from '@/components/NoCargo';
 import { T } from '@nucleo/textos';
 
@@ -95,7 +94,6 @@ export default function Album() {
 
         {error && <p className="error-msg">{error}</p>}
 
-        {!cargado && <Esqueleto como="grilla" />}
         {noCargo && <NoCargo reintentar={() => window.location.reload()} />}
 
         {/* `noCargo` corta las dos ramas de abajo. Sin esto, una consulta que
@@ -112,33 +110,7 @@ export default function Album() {
              álbum entero era un rectángulo gigante. Un patrón que necesita
              cinco fotos para leerse no puede ser el que decide cómo se ve el
              álbum el día que tenés una. */
-          <>
-            {meses.map((m) => (
-              <div className="album-mes" key={m.clave}>
-                <h3>{m.titulo}</h3>
-                <div className="album-grilla">
-                  {m.fotos.map((c, j) => (
-                    <button
-                      className="album-celda"
-                      key={c.id}
-                      onClick={() => setAbierta(m.desde + j)}
-                      aria-label={fechaLinda(c.fecha)}
-                    >
-                      {c.url && (
-                        // <img> y no next/image: son URLs firmadas de Supabase que vencen en una hora, y el optimizador las cachearia vencidas.
-                        <img src={c.url} alt="" loading="lazy" />
-                      )}
-                      {/* Un punto y nada más. Quién ve cada foto tiene que
-                          poder verse de un vistazo, pero un rótulo con letras
-                          encima de una miniatura de un tercio de pantalla no
-                          se lee: tapa la foto y no se entiende. */}
-                      {c.visibilidad === 'amigos' && <span className="album-punto" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </>
+          <Grilla meses={meses} alAbrir={setAbierta} />
         ) : (
           cargado && (
             <div className="vacio-cosmico">
@@ -165,6 +137,71 @@ export default function Album() {
       )}
 
       <Nav />
+    </>
+  );
+}
+
+/**
+ * LA GRILLA, EN ORDEN (19/9).
+ *
+ * Las fotos aparecían en cualquier orden, una por una, a medida que llegaba
+ * cada una. Ahora una celda se muestra cuando ELLA Y TODAS LAS DE ANTES ya
+ * cargaron: aparecen de a una pero en orden, la primera, la segunda, la
+ * tercera. Y la pantalla no aparece sin la primera fila (hasta seis), así que
+ * lo primero que se ve ya son fotos y no cuadrados vacíos. Si una no carga
+ * (la miniatura falló), se prueba con la foto entera y, si tampoco, cuenta
+ * como lista: una foto rota no puede frenar a las demás.
+ */
+function Grilla({ meses, alAbrir }: { meses: ReturnType<typeof porMes>; alAbrir: (i: number) => void }) {
+  const total = meses.reduce((n, m) => n + m.fotos.length, 0);
+  const [cargadas, setCargadas] = useState<Set<number>>(() => new Set());
+  const [enteras, setEnteras] = useState<Set<number>>(() => new Set());
+  let hasta = 0;
+  while (cargadas.has(hasta)) hasta++;
+  useEsperar(hasta >= Math.min(6, total));
+  const lista = (i: number) => setCargadas((prev) => (prev.has(i) ? prev : new Set(prev).add(i)));
+
+  return (
+    <>
+      {meses.map((m) => (
+        <div className="album-mes" key={m.clave}>
+          <h3>{m.titulo}</h3>
+          <div className="album-grilla en-orden">
+            {m.fotos.map((c, j) => {
+              const i = m.desde + j;
+              const src = enteras.has(i) ? c.url : c.miniatura || c.url;
+              return (
+                <button
+                  className={`album-celda${i < hasta ? ' cargada' : ''}`}
+                  key={c.id}
+                  onClick={() => alAbrir(i)}
+                  aria-label={fechaLinda(c.fecha)}
+                  style={{ '--i': i } as React.CSSProperties}
+                >
+                  {src && (
+                    // <img> y no next/image: son URLs firmadas de Supabase que vencen en una hora, y el optimizador las cachearia vencidas.
+                    <img
+                      src={src}
+                      alt=""
+                      loading={i < 12 ? 'eager' : 'lazy'}
+                      onLoad={() => lista(i)}
+                      onError={() => {
+                        if (!enteras.has(i) && c.url && src !== c.url) setEnteras((prev) => new Set(prev).add(i));
+                        else lista(i);
+                      }}
+                    />
+                  )}
+                  {/* Un punto y nada más. Quién ve cada foto tiene que
+                      poder verse de un vistazo, pero un rótulo con letras
+                      encima de una miniatura de un tercio de pantalla no
+                      se lee: tapa la foto y no se entiende. */}
+                  {c.visibilidad === 'amigos' && <span className="album-punto" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </>
   );
 }

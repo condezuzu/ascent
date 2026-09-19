@@ -1,6 +1,23 @@
 // Service worker mínimo: cachea el cascarón y los estáticos.
 // Las páginas van network-first (los datos de racha tienen que estar frescos).
-const CACHE = 'ascent-v1';
+// v2 (19/9): con 'ascent-v1' la limpieza de abajo nunca borraba nada —solo
+// borra las cachés con OTRO nombre—, y cada deploy sumaba sus archivos nuevos
+// (otro hash, otro nombre) a la misma caché, para siempre. Cambiar el nombre
+// hace que esta versión, al activarse, se lleve la vieja entera.
+const CACHE = 'ascent-v2';
+// Y DE ACÁ EN MÁS CON TOPE: los estáticos de más que esto se van, los más
+// viejos primero. Una app entera pesa unos 60 archivos; 150 alcanza para la
+// versión de hoy y la anterior, y no crece con cada deploy.
+const TOPE_ESTATICOS = 150;
+
+async function guardarConTope(pedido, respuesta) {
+  const c = await caches.open(CACHE);
+  await c.put(pedido, respuesta);
+  const claves = await c.keys();
+  const estaticos = claves.filter((k) => new URL(k.url).pathname.startsWith('/_next/static'));
+  // `keys()` devuelve en orden de inserción: los primeros son los más viejos.
+  for (const k of estaticos.slice(0, Math.max(0, estaticos.length - TOPE_ESTATICOS))) await c.delete(k);
+}
 // `/icons/icono.svg` ESTUVO ACÁ Y NO EXISTE. Verificado en produccion el
 // 16/9/2026: devuelve 404.
 //
@@ -46,7 +63,7 @@ self.addEventListener('fetch', (e) => {
           hit ||
           fetch(e.request).then((res) => {
             const copia = res.clone();
-            caches.open(CACHE).then((c) => c.put(e.request, copia));
+            guardarConTope(e.request, copia).catch(() => {});
             return res;
           })
       )

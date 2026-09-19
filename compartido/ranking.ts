@@ -41,10 +41,16 @@ export type DatosDeRanking = {
 };
 
 export async function cargarRanking(supabase: Cliente, uid: string): Promise<DatosDeRanking | null> {
-  // cerrar retos vencidos antes de mostrarlos (fecha local, no UTC del server)
-  await supabase.rpc('cerrar_retos_vencidos');
-
-  const { data: rel, error: errAmigos } = await supabase.from('friendships').select('*');
+  // EN TANDAS Y NO EN FILA (19/9). Eran siete viajes a la base uno detrás del
+  // otro, y Ranking tardaba en aparecer. Ahora van juntos los que no dependen
+  // entre sí: cuatro viajes seguidos en vez de siete.
+  //
+  // Tanda 1: cerrar los retos vencidos (fecha local, no UTC del server) y las
+  // amistades. Los retos se piden recién en la tanda 2, después de cerrarlos.
+  const [, { data: rel, error: errAmigos }] = await Promise.all([
+    supabase.rpc('cerrar_retos_vencidos'),
+    supabase.from('friendships').select('*'),
+  ]);
   if (errAmigos) return null;
 
   const aceptadas = (rel ?? []).filter((r) => r.estado === 'aceptada');
@@ -54,7 +60,28 @@ export async function cargarRanking(supabase: Cliente, uid: string): Promise<Dat
 
   // yo también aparezco en el campo estelar
   const idsInteres = [...new Set([...idsAmigos, uid, ...pendientes.map((p) => p.solicitante)])];
-  const { data: publicos } = await supabase.from('usuarios_publicos').select('*').in('id', idsInteres);
+
+  // Tanda 2: quiénes son, los retos y la actividad de los amigos.
+  const [{ data: publicos }, { data: rs }, ls] = await Promise.all([
+    supabase.from('usuarios_publicos').select('*').in('id', idsInteres),
+    supabase
+      .from('challenges')
+      .select('*')
+      .or(`retador.eq.${uid},rival.eq.${uid}`)
+      .neq('estado', 'rechazado')
+      .order('creado', { ascending: false })
+      .limit(6),
+    idsAmigos.length > 0
+      ? supabase
+          .from('logs')
+          .select('id, user_id, fecha, planeta_del_dia')
+          .in('user_id', idsAmigos)
+          .eq('es_descanso', false)
+          .order('fecha', { ascending: false })
+          .limit(12)
+          .then((r) => r.data ?? [])
+      : Promise.resolve([] as { id: string; user_id: string; fecha: string; planeta_del_dia: string | null }[]),
+  ]);
   const mapaUsuarios = new Map(((publicos ?? []) as UsuarioPublico[]).map((p) => [p.id, p]));
   const yo = mapaUsuarios.get(uid);
 
@@ -66,45 +93,30 @@ export async function cargarRanking(supabase: Cliente, uid: string): Promise<Dat
     .map((p) => ({ id: p.id as string, de: mapaUsuarios.get(p.solicitante) as UsuarioPublico }))
     .filter((s) => s.de);
 
-  const { data: rs } = await supabase
-    .from('challenges')
-    .select('*')
-    .or(`retador.eq.${uid},rival.eq.${uid}`)
-    .neq('estado', 'rechazado')
-    .order('creado', { ascending: false })
-    .limit(6);
   const retos = ((rs ?? []) as Reto[]).map((r) => {
     const otro = r.retador === uid ? r.rival : r.retador;
     return { ...r, idRival: otro, nombreRival: mapaUsuarios.get(otro)?.username ?? '¿?' };
   });
 
+  // Tanda 3: las fotos de esa actividad, y sus URL.
   let actividad: Actividad[] = [];
-  if (idsAmigos.length > 0) {
-    const { data: ls } = await supabase
-      .from('logs')
-      .select('id, user_id, fecha, planeta_del_dia')
-      .in('user_id', idsAmigos)
-      .eq('es_descanso', false)
-      .order('fecha', { ascending: false })
-      .limit(12);
-    const logIds = (ls ?? []).map((l) => l.id);
+  if (ls.length > 0) {
+    const logIds = ls.map((l) => l.id as string);
     let fotosPorLog = new Map<string, string>();
-    if (logIds.length > 0) {
-      const { data: fs } = await supabase.from('photos').select('log_id, storage_path').in('log_id', logIds);
-      if (fs && fs.length > 0) {
-        const { data: firmadas } = await supabase.storage
-          .from('fotos')
-          .createSignedUrls(
-            fs.map((f) => f.storage_path as string),
-            3600
-          );
-        fotosPorLog = new Map(fs.map((f, i) => [f.log_id as string, firmadas?.[i]?.signedUrl ?? '']));
-      }
+    const { data: fs } = await supabase.from('photos').select('log_id, storage_path').in('log_id', logIds);
+    if (fs && fs.length > 0) {
+      const { data: firmadas } = await supabase.storage
+        .from('fotos')
+        .createSignedUrls(
+          fs.map((f) => f.storage_path as string),
+          3600
+        );
+      fotosPorLog = new Map(fs.map((f, i) => [f.log_id as string, firmadas?.[i]?.signedUrl ?? '']));
     }
-    actividad = (ls ?? []).map((l) => ({
-      username: mapaUsuarios.get(l.user_id)?.username ?? T.social.sinNombre,
+    actividad = ls.map((l) => ({
+      username: mapaUsuarios.get(l.user_id as string)?.username ?? T.social.sinNombre,
       userId: l.user_id as string,
-      avatar: mapaUsuarios.get(l.user_id)?.avatar_url ?? null,
+      avatar: mapaUsuarios.get(l.user_id as string)?.avatar_url ?? null,
       fecha: l.fecha as string,
       planeta: l.planeta_del_dia as string | null,
       foto: fotosPorLog.get(l.id as string) ?? null,

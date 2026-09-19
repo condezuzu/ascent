@@ -223,12 +223,15 @@ export default function Social() {
                       <span className="dato">{a.racha_actual}</span>
                     </>
                   );
+                  // ESCALONADAS (19/9): la primera, la segunda, la tercera, en vez
+                  // de caer la lista entera de golpe. El retraso sale de `--i`.
+                  const escalon = { '--i': i } as React.CSSProperties;
                   return a.id === miId ? (
-                    <div className="fila" key={a.id}>
+                    <div className="fila" key={a.id} style={escalon}>
                       {fila}
                     </div>
                   ) : (
-                    <Link href={`/perfil/${a.id}`} className="fila" key={a.id}>
+                    <Link href={`/perfil/${a.id}`} className="fila" key={a.id} style={escalon}>
                       {fila}
                     </Link>
                   );

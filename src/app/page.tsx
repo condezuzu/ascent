@@ -10,7 +10,7 @@ import { planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango } from '@nu
 import { fraseDelDia } from '@nucleo/frases';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
-import { guardarPerfilCache, leerPerfilCache } from '@compartido/cache';
+import { guardarInicioCache, guardarPerfilCache, leerInicioCache, leerPerfilCache } from '@compartido/cache';
 import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
 import { pedirInicio, type DatosDeInicio } from '@compartido/inicio';
 import { marca } from '@/lib/medir';
@@ -120,6 +120,12 @@ export default function Principal() {
   // a nadie mirando el fondo.
   const [frescos, setFrescos] = useState(false);
   const [cacheVieja, setCacheVieja] = useState(false);
+  // LA CACHÉ ENTERA (ver `guardarInicioCache`): con todo lo que Inicio dibuja
+  // guardado, se muestra al instante sin esperar la red, y sin mentir.
+  const [cacheCompleta, setCacheCompleta] = useState(false);
+  // Si el gimnasio estaba marcado, según la caché. Vale solo hasta que llega
+  // la red: el perfil de la caché no trae dónde queda, a propósito.
+  const [gimnasioEnCache, setGimnasioEnCache] = useState(false);
   const [noCargo, setNoCargo] = useState(false);
   // Si alguna vez hubo un perfil en pantalla —de la caché o de la red—. Con
   // uno a la vista, una falla NO se contesta con el cartel de error: se deja
@@ -207,9 +213,19 @@ export default function Principal() {
         // pone la racha en pantalla, pero sin costar un viaje más.
         const d = r.datos;
         const unidad = p.unidad_peso ?? 'kg';
+        const lineaMarcas = d.fuerza ? lineaDeMarcas(d.fuerza.marcas, unidad) : null;
         despues = () => {
           leerImpulsos(d.impulsos);
-          if (d.fuerza) setMarcas(lineaDeMarcas(d.fuerza.marcas, unidad));
+          if (lineaMarcas) setMarcas(lineaMarcas);
+          // Para la próxima apertura: Inicio entero, al instante.
+          guardarInicioCache({
+            uid: p!.id,
+            logs: d.logs,
+            descansos: d.descansos,
+            impulsos: d.impulsos,
+            marcas: lineaMarcas,
+            tieneGimnasio: p!.gimnasio_lat != null,
+          });
         };
       }
     } else if (r.tipo === 'sin-funcion') {
@@ -349,15 +365,24 @@ export default function Principal() {
     // tick en web: no hay parpadeo.
     (async () => {
       const cacheado = await leerPerfilCache();
+      const inicioGuardado = cacheado ? await leerInicioCache(cacheado.id) : null;
       if (cacheado) {
         setPerfil(cacheado);
         setCargado(true);
         huboCache.current = true;
         setTimeout(() => setCacheVieja(true), ESPERA_CON_CACHE_MS);
       }
+      if (cacheado && inicioGuardado) {
+        setLogs(inicioGuardado.logs);
+        setDescansos(inicioGuardado.descansos);
+        if (inicioGuardado.marcas) setMarcas(inicioGuardado.marcas);
+        leerImpulsos(inicioGuardado.impulsos);
+        setGimnasioEnCache(inicioGuardado.tieneGimnasio);
+        setCacheCompleta(true);
+      }
       cargar(true);
     })();
-  }, [cargar]);
+  }, [cargar, leerImpulsos]);
 
   if (!perfil) {
     // Primera visita sin caché: se muestra el armazón, no una pantalla vacía.
@@ -510,7 +535,7 @@ export default function Principal() {
 
       {/* `en-sesion`: con el entrenamiento andando, Inicio es una columna
           del alto de la pantalla y el + toma lo que sobra (ver globals). */}
-      <PantallaDeslizable clase={sesion.estado.corriendo ? 'en-sesion' : undefined} listo={frescos || cacheVieja}>
+      <PantallaDeslizable clase={sesion.estado.corriendo ? 'en-sesion' : undefined} listo={frescos || cacheCompleta || cacheVieja}>
         {/* La cabecera es la puerta al perfil propio Y la casa del
             cronómetro (§20.2): el reloj va acá, discreto, y no en una pestaña
             propia — un cronómetro que hay que buscar no lo usa nadie. */}
@@ -727,7 +752,7 @@ export default function Principal() {
             recordatorio se queda mientras no haya punto y se va solo el dia
             que se marca — no hay que cerrarlo, hay que resolverlo. Va en el
             idioma de los globos y en voz baja: no compite con nada. */}
-        {!perfil.gimnasio_lat && !pedirGimnasio && !entrenando && (
+        {!perfil.gimnasio_lat && !(gimnasioEnCache && !frescos) && !pedirGimnasio && !entrenando && (
           <Link href="/ajustes" className="globo globo-quieto">
             <p>{T.inicio.gimnasioRecordatorio}</p>
           </Link>

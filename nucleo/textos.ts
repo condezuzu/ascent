@@ -1085,28 +1085,17 @@ export const T = {
 
   // ---------------------------------------------------------------
   yo: {
-    // El globo de la primera vez. Lo que no se entiende solo de esta
-    // pantalla es que las fotos son PRIVADAS salvo que las compartas: sin
-    // decirlo, subir una foto se siente como publicar.
-    globo: 'Tus fotos son privadas. Toca una para compartirla con tus amigos.',
-    misFotos: 'Qué fotos ven tus amigos',
+    // El globo de la primera vez. Desde el 19/9 el perfil muestra las fotos
+    // como las ve un amigo y no se administran acá: lo que no se entiende solo
+    // es eso, y dónde se elige.
+    globo: 'Aquí ves tus fotos como las ven tus amigos. Cuáles compartes se elige en el Álbum.',
     cambiarFoto: 'Cambiar la foto de perfil',
     subiendoFoto: 'subiendo la foto…',
     deRacha: (n: number) => `${n} de racha`,
     fotoActualizada: 'Foto actualizada.',
-    noSeCambioFoto: 'Esa foto quedó como estaba. Prueba de nuevo.',
-    noSeCambiaronFotos: 'No se pudieron cambiar las fotos. Prueba de nuevo.',
     noSePudoEliminar: 'No se eliminó. Prueba de nuevo.',
-
-
-    compartirTodas: 'Compartir todas',
-    // Decía "Guardar todas" y el botón hace lo contrario de guardar: pone
-    // todas en privada. "Guardar" en una app de fotos se lee como descargar
-    // al teléfono, así que además prometía algo que no pasa.
-    ocultarTodas: 'Ocultar todas',
-    tocaUnaFoto: 'Toca una foto para prenderla o apagarla. Las apagadas las ves solo tú.',
-    sinFotos:
-      'Todavía no hay fotos. Las que sumes al registrar un día aparecen aquí.',
+    fotosPie: 'Son las que ven tus amigos. Cuáles compartes se elige en el Álbum.',
+    sinFotos: 'Tus amigos todavía no ven ninguna foto tuya. Cuáles compartes se elige en el Álbum.',
 
     amigos: 'Amigos',
     eliminar: 'Eliminar',
@@ -1115,7 +1104,9 @@ export const T = {
     // El link para buscar está justo arriba: repetir dónde se buscan sobraba.
     sinAmigos: 'Todavía no agregaste a nadie.',
     noSeSumoLaFoto: 'La foto no se sumó al día. Prueba de nuevo.',
-    sumarFotos: 'Sumar fotos aquí',
+    // Nace compartida: es la única puerta para sumar una foto sin registrar
+    // el día, y vive en la pantalla de lo que ven tus amigos.
+    sumarFotos: 'Sumar una foto',
   },
 
   // ---------------------------------------------------------------

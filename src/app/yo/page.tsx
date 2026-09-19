@@ -6,28 +6,22 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { prepararFoto } from '@/lib/foto';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
+import { hoyISO } from '@nucleo/fechas';
 import { planetaDeDia } from '@nucleo/rangos';
 import { guardarPerfilCache } from '@compartido/cache';
 import { problemaConLaImagen, subirAvatar } from '@/lib/avatar';
-import type { Log, Perfil, UsuarioPublico } from '@nucleo/tipos';
+import type { Perfil, UsuarioPublico } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import RecorteCircular from '@/components/RecorteCircular';
-import Esqueleto from '@/components/Esqueleto';
 import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import NoCargo from '@/components/NoCargo';
-import { DIAS_VISIBLES } from '@/components/ComoMeVen';
+import { FOTOS_VISIBLES, FotosQueVen, type FotoVisible } from '@/components/ComoMeVen';
+import PantallaDeslizable from '@/components/PantallaDeslizable';
+import { miniaturas } from '@compartido/album';
 import { T } from '@nucleo/textos';
-
-type MiFoto = {
-  id: string;
-  url: string;
-  fecha: string | null;
-  visibilidad: 'privada' | 'amigos';
-};
 
 /**
  * Mi perfil (§9): el único lugar donde se junta todo lo que es mío. Cambiar
@@ -38,9 +32,7 @@ export default function Yo() {
   const router = useRouter();
   const [supabase] = useState(() => crearCliente());
   const [perfil, setPerfil] = useState<Perfil | null>(null);
-  const [yoPublico, setYoPublico] = useState<UsuarioPublico | null>(null);
-  const [logs, setLogs] = useState<Log[]>([]);
-  const [fotos, setFotos] = useState<MiFoto[]>([]);
+  const [fotos, setFotos] = useState<FotoVisible[]>([]);
   const [amigos, setAmigos] = useState<UsuarioPublico[]>([]);
   const [porQuitar, setPorQuitar] = useState<string | null>(null);
   const [aRecortar, setARecortar] = useState<File | null>(null);
@@ -57,68 +49,49 @@ export default function Yo() {
     const user = await miUsuario(supabase);
     if (!user) return;
 
-    const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    // TODO A LA VEZ (19/9). Eran ocho consultas en fila y la pantalla se
+    // dibujaba con la primera: el planeta, las fotos y los amigos iban
+    // apareciendo de a uno. Ahora van juntas en dos tandas y la pantalla
+    // aparece entera (ver `PantallaDeslizable`).
+    const [{ data: p }, { data: fs }, { data: rel }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      // LAS FOTOS QUE VEN TUS AMIGOS, y nada más: las mismas nueve que ve un
+      // amigo en tu perfil (misma cuenta que `perfil/[id]`). Todas las fotos
+      // y cuáles se comparten se manejan en el Álbum.
+      supabase
+        .from('photos')
+        .select('id, storage_path, log_id, creado')
+        .eq('user_id', user.id)
+        .eq('visibilidad', 'amigos')
+        .order('creado', { ascending: false })
+        .limit(FOTOS_VISIBLES),
+      supabase.from('friendships').select('*').eq('estado', 'aceptada'),
+    ]);
     setNoCargo(!p);
-    if (p) setPerfil(p);
+    if (!p) return setCargado(true);
 
-    // Se lee de la MISMA vista de la que lee un amigo, no de profiles: si la
-    // vista alguna vez expusiera algo de más, acá se vería igual que allá.
-    const { data: pub } = await supabase
-      .from('usuarios_publicos')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (pub) setYoPublico(pub as UsuarioPublico);
-
-    const { data: ls } = await supabase
-      .from('logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('fecha', restarDias(hoyISO(), DIAS_VISIBLES - 1))
-      .order('fecha');
-    setLogs(ls ?? []);
-
-    const { data: fs } = await supabase
-      .from('photos')
-      .select('id, storage_path, visibilidad, log_id, creado')
-      .eq('user_id', user.id)
-      .order('creado', { ascending: false });
-
-    if (fs && fs.length > 0) {
-      const logIds = fs.map((f) => f.log_id).filter(Boolean) as string[];
-      const { data: logsFotos } = logIds.length
-        ? await supabase.from('logs').select('id, fecha').in('id', logIds)
-        : { data: [] };
-      const mapa = new Map((logsFotos ?? []).map((l) => [l.id, l.fecha]));
-      const { data: firmadas } = await supabase.storage
-        .from('fotos')
-        .createSignedUrls(fs.map((f) => f.storage_path), 3600);
-      setFotos(
-        fs.map((f, i) => ({
-          id: f.id,
-          url: firmadas?.[i]?.signedUrl ?? '',
-          fecha: f.log_id ? (mapa.get(f.log_id) ?? null) : (f.creado?.slice(0, 10) ?? null),
-          visibilidad: f.visibilidad as 'privada' | 'amigos',
-        }))
-      );
-    } else {
-      setFotos([]);
-    }
-
-    const { data: rel } = await supabase.from('friendships').select('*').eq('estado', 'aceptada');
-    const ids = (rel ?? []).map((r) =>
-      r.solicitante === user.id ? r.destinatario : r.solicitante
+    const lista = fs ?? [];
+    const logIds = lista.map((f) => f.log_id).filter(Boolean) as string[];
+    const rutas = lista.map((f) => f.storage_path as string);
+    const ids = (rel ?? []).map((r) => (r.solicitante === user.id ? r.destinatario : r.solicitante));
+    const [logsFotos, firmadas, chicas, us] = await Promise.all([
+      logIds.length ? supabase.from('logs').select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
+      rutas.length ? supabase.storage.from('fotos').createSignedUrls(rutas, 3600).then((r) => r.data ?? []) : [],
+      miniaturas(supabase, rutas),
+      ids.length ? supabase.from('usuarios_publicos').select('*').in('id', ids).then((r) => (r.data ?? []) as UsuarioPublico[]) : [],
+    ]);
+    const mapa = new Map((logsFotos as { id: string; fecha: string }[]).map((l) => [l.id, l.fecha]));
+    setFotos(
+      lista.map((f, i) => ({
+        id: f.id,
+        url: (firmadas as { signedUrl: string }[])[i]?.signedUrl ?? '',
+        miniatura: chicas[i] ?? undefined,
+        // Como la ve un amigo: con fecha solo si cuelga de un día.
+        fecha: f.log_id ? (mapa.get(f.log_id) ?? null) : null,
+      }))
     );
-    if (ids.length > 0) {
-      const { data: us } = await supabase.from('usuarios_publicos').select('*').in('id', ids);
-      setAmigos(
-        ((us ?? []) as UsuarioPublico[]).sort((a, b) =>
-          (a.username ?? '').localeCompare(b.username ?? '')
-        )
-      );
-    } else {
-      setAmigos([]);
-    }
+    setAmigos(((us as UsuarioPublico[]) ?? []).sort((a, b) => (a.username ?? '').localeCompare(b.username ?? '')));
+    setPerfil(p);
     setCargado(true);
   }, [supabase]);
 
@@ -145,7 +118,6 @@ export default function Yo() {
     if ('error' in r) return setError(r.error);
     const actualizado = { ...perfil, avatar_url: r.url };
     setPerfil(actualizado);
-    setYoPublico((y) => (y ? { ...y, avatar_url: r.url } : y));
     // sin esto, Inicio sigue mostrando la foto vieja desde la caché local
     guardarPerfilCache(actualizado);
     setAviso(T.yo.fotoActualizada);
@@ -163,8 +135,7 @@ export default function Yo() {
    * las otras — y si no, queda suelta con su fecha de subida.
    *
    * Nace COMPARTIDA, porque el único lugar donde existe este botón es la
-   * sección de "qué fotos ven tus amigos". Se apaga tocando la foto, como
-   * todas.
+   * sección de lo que ven tus amigos. Se apaga desde el Álbum, como todas.
    */
   async function sumarFotoNueva(archivo: File) {
     if (!perfil) return;
@@ -210,32 +181,6 @@ export default function Yo() {
     await cargar();
   }
 
-  async function alternarFoto(f: MiFoto) {
-    const nueva = f.visibilidad === 'privada' ? 'amigos' : 'privada';
-    setFotos((prev) => prev.map((x) => (x.id === f.id ? { ...x, visibilidad: nueva } : x)));
-    const { error } = await supabase.from('photos').update({ visibilidad: nueva }).eq('id', f.id);
-    if (error) {
-      // no se guardó: se vuelve a lo que dice la base
-      setFotos((prev) => prev.map((x) => (x.id === f.id ? { ...x, visibilidad: f.visibilidad } : x)));
-      setError(T.yo.noSeCambioFoto);
-    }
-  }
-
-  async function todasA(visibilidad: 'privada' | 'amigos') {
-    if (!perfil) return;
-    setError('');
-    const antes = fotos;
-    setFotos((prev) => prev.map((x) => ({ ...x, visibilidad })));
-    const { error } = await supabase
-      .from('photos')
-      .update({ visibilidad })
-      .eq('user_id', perfil.id);
-    if (error) {
-      setFotos(antes);
-      setError(T.yo.noSeCambiaronFotos);
-    }
-  }
-
   // ---- amigos ----
   async function quitarAmigo(id: string) {
     const { error } = await supabase.rpc('eliminar_amigo', { p_otro: id });
@@ -244,21 +189,18 @@ export default function Yo() {
     setAmigos((prev) => prev.filter((a) => a.id !== id));
   }
 
-  if (!perfil || !yoPublico) {
+  if (!perfil) {
     return (
       <>
         {/* Sin rango: todavía no se sabe, y se dibuja el último propio con su
             planeta, en el MISMO lugar que la pantalla de verdad (19/9). */}
         <FondoEspacial esquina="abajo-derecha" velo={0.72} />
-        <div className="pantalla">
-          {noCargo ? <NoCargo reintentar={cargar} /> : <Esqueleto como="perfil" />}
-        </div>
+        <PantallaDeslizable listo={noCargo}>{noCargo && <NoCargo reintentar={cargar} />}</PantallaDeslizable>
         <Nav />
       </>
     );
   }
 
-  const compartidas = fotos.filter((f) => f.visibilidad === 'amigos');
 
   return (
     <>
@@ -269,7 +211,7 @@ export default function Yo() {
         esquina="abajo-derecha"
         velo={0.72}
       />
-      <div className="pantalla">
+      <PantallaDeslizable listo={cargado}>
         <button
           className="boton-texto"
           style={{ textAlign: 'left', padding: '0 0 10px', width: 'auto' }}
@@ -331,76 +273,23 @@ export default function Yo() {
         {aviso && <p className="ok-msg">{aviso}</p>}
         {error && <p className="error-msg">{error}</p>}
 
-        {/* LAS FOTOS, DIRECTO. Antes esta sección se llamaba "Qué fotos ven tus
-            amigos" y llevaba una cuenta —3/7—, y arriba había una mirilla para
-            ver el perfil "con los ojos de un amigo". Las dos cosas explicaban
-            la app en vez de ser la app: una pantalla entera para simular otra
-            pantalla, y un título que convertía las fotos propias en un
-            problema de privacidad antes de dejarte verlas.
-
-            Lo que hacía falta de verdad —qué ve un amigo— ya está dicho donde
-            corresponde: cada foto muestra si está compartida, y el valor por
-            omisión se elige en Ajustes. */}
+        {/* TUS FOTOS COMO LAS VEN TUS AMIGOS (19/9, decisión del humano): las
+            compartidas, las últimas nueve, con el MISMO componente que usa el
+            perfil de un amigo. Acá no se ven todas ni se administran: eso es
+            el Álbum. Sumar una foto sin registrar el día sigue acá, abajo y
+            aparte, para que la grilla sea idéntica a la que ven ellos. */}
         <>
-            <div className="seccion" style={{ marginTop: 26 }}>
-              <h3>{T.yo.misFotos}</h3>
-
-              <div className="album-grilla">
-                {/* La puerta para sumar una foto sin registrar un día. Va
-                    PRIMERA y con la misma forma que las fotos: en una grilla,
-                    el hueco con un + se entiende sin rótulo. */}
-                <button
-                  className="celda-sumar"
-                  onClick={() => inputFotoNueva.current?.click()}
-                  disabled={sumandoFoto}
-                  aria-label={T.yo.sumarFotos}
-                >
-                  <span aria-hidden="true">{sumandoFoto ? '…' : '+'}</span>
-                </button>
-                {fotos.map((f) => (
-                  <button
-                    key={f.id}
-                    className={`yo-foto-celda ${f.visibilidad === 'amigos' ? 'compartida' : 'privada'}`}
-                    onClick={() => alternarFoto(f)}
-                    aria-pressed={f.visibilidad === 'amigos'}
-                  >
-                    <div className="album-celda">
-                      {f.url && (
-                        // <img> y no next/image: son URLs firmadas de Supabase que vencen en una hora, y el optimizador las cachearia vencidas.
-                        <img src={f.url} alt="" loading="lazy" />
-                      )}
-                      <span className="album-vis">
-                        {f.visibilidad === 'privada' ? T.album.soloVos : T.album.amigos}
-                      </span>
-                    </div>
-                    {f.fecha && (
-                      <div className="album-pie">
-                        <span>{fechaLinda(f.fecha)}</span>
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-              {fotos.length > 0 && (
-                <div className="yo-masivo">
-                  <button
-                    onClick={() => todasA('amigos')}
-                    disabled={compartidas.length === fotos.length}
-                  >
-                    {T.yo.compartirTodas}
-                  </button>
-                  <button onClick={() => todasA('privada')} disabled={compartidas.length === 0}>
-                    {T.yo.ocultarTodas}
-                  </button>
-                </div>
-              )}
-              {/* Se espera a `cargado`: sin eso, el que TIENE fotos ve por un
-                  instante que no tiene ninguna, cada vez que entra. */}
-              {(fotos.length > 0 || cargado) && (
-                <p className="nota-privada">
-                  {fotos.length > 0 ? T.yo.tocaUnaFoto : T.yo.sinFotos}
-                </p>
-              )}
+            <FotosQueVen fotos={fotos} />
+            <div style={{ marginTop: fotos.length > 0 ? 0 : 26, marginBottom: 30 }}>
+              <p className="nota-privada">{fotos.length > 0 ? T.yo.fotosPie : T.yo.sinFotos}</p>
+              <button
+                className="boton-texto"
+                style={{ textAlign: 'left', width: 'auto', padding: '4px 0' }}
+                onClick={() => inputFotoNueva.current?.click()}
+                disabled={sumandoFoto}
+              >
+                {sumandoFoto ? '…' : T.yo.sumarFotos}
+              </button>
             </div>
 
             {/* ---- amigos ---- */}
@@ -452,7 +341,7 @@ export default function Yo() {
               )}
             </div>
         </>
-      </div>
+      </PantallaDeslizable>
 
       {aRecortar && (
         <RecorteCircular

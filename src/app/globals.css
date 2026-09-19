@@ -302,11 +302,17 @@ body.ya-entro .pantalla > * {
 
 /* LA PANTALLA QUE ESPERA SUS DATOS (19/9, ver `PantallaDeslizable`): oculta,
    sin animar —la entrada corre cuando aparece, no a escondidas—. Se ve el
-   fondo con su rango y la barra; nunca el estado vacío. */
-.pantalla.esperando,
-.pantalla.esperando > * {
+   fondo con su rango y la barra; nunca el estado vacío.
+
+   NINGUNA animación de adentro corre mientras espera, tampoco las de más
+   abajo (las filas del ranking): si corrieran a escondidas, al aparecer ya
+   habrían terminado. Al sacar la clase arrancan todas. */
+.pantalla.esperando {
   visibility: hidden;
-  animation: none;
+}
+.pantalla.esperando,
+.pantalla.esperando * {
+  animation: none !important;
 }
 /* Una parte de la pantalla que espera lo suyo (`<Esperar>`): ocupa su lugar
    pero no se ve, y aparece entera. */
@@ -1260,6 +1266,12 @@ body.ya-entro .pantalla.aparece {
 }
 /* Con el objeto grande, la fila necesita aire: apretados, los ocho rangos se
    tocan entre sí y la lista vuelve a parecer una tabla. */
+/* Las filas entran escalonadas (19/9): 55 ms entre una y otra, y a partir de
+   la duodécima todas juntas, para que una lista larga no tarde en aparecer. */
+.ranking-lista .fila {
+  animation: surgir 0.42s var(--curva-salida) backwards;
+  animation-delay: calc(min(var(--i, 0), 12) * 55ms + 60ms);
+}
 .ranking-lista .fila {
   padding: 16px 2px;
   gap: 14px;
@@ -1446,6 +1458,17 @@ body.ya-entro .pantalla.aparece {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+/* EN EL ÁLBUM, EN ORDEN (19/9, ver `Grilla` en album/page.tsx): cada foto
+   aparece cuando ella y las de antes ya cargaron, con un escalón corto entre
+   las primeras. Antes aparecían en cualquier orden, a medida que llegaban. */
+.album-grilla.en-orden .album-celda img {
+  opacity: 0;
+}
+.album-grilla.en-orden .album-celda.cargada img {
+  opacity: 1;
+  animation: entrar-pantalla 0.3s var(--curva-suave) backwards;
+  animation-delay: calc(min(var(--i, 0), 8) * 45ms);
 }
 /* El pie ya NO va encima de la imagen: cuelga de ella, como el pie de una
    foto impresa. Es el mismo gesto que la línea de pelo de `.tarjeta`. */

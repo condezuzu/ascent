@@ -64,7 +64,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${sans.variable} ${numero.variable} ${mono.variable}`}>
+    // `suppressHydrationWarning`: el script del tema (abajo) le pone las
+    // variables del rango al `style` de <html> antes de que React hidrate, y el
+    // HTML del servidor no las tiene. Es a propósito, y solo en ESTE elemento:
+    // sin esto, cada pantalla avisaba de una hidratación que no coincidía.
+    <html lang="es" className={`${sans.variable} ${numero.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         {/* EL COLOR DEL RANGO ANTES DEL PRIMER CUADRO (19/9): el último tema
             propio, aplicado antes de que corra React. Sin esto, cada apertura

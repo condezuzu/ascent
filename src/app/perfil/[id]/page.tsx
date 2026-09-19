@@ -12,6 +12,8 @@ import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
+import PantallaDeslizable from '@/components/PantallaDeslizable';
+import { miniaturas } from '@compartido/album';
 import { T } from '@nucleo/textos';
 import ComoMeVen, {
   DIAS_VISIBLES,
@@ -95,13 +97,16 @@ export default function Perfil() {
           ? await supabase.from('logs').select('id, fecha').in('id', logIds)
           : { data: [] };
         const mapa = new Map((logsFotos ?? []).map((l) => [l.id, l.fecha]));
-        const { data: firmadas } = await supabase.storage
-          .from('fotos')
-          .createSignedUrls(fs.map((f) => f.storage_path), 3600);
+        // Las URL enteras y las miniaturas a la vez: la grilla usa la chica.
+        const [{ data: firmadas }, chicas] = await Promise.all([
+          supabase.storage.from('fotos').createSignedUrls(fs.map((f) => f.storage_path), 3600),
+          miniaturas(supabase, fs.map((f) => f.storage_path as string)),
+        ]);
         setFotos(
           fs.map((f, i) => ({
             id: f.id,
             url: firmadas?.[i]?.signedUrl ?? '',
+            miniatura: chicas[i] ?? undefined,
             fecha: f.log_id ? (mapa.get(f.log_id) ?? null) : null,
           }))
         );
@@ -224,7 +229,8 @@ export default function Perfil() {
         esquina="abajo-derecha"
         velo={0.6}
       />
-      <div className="pantalla">
+      {/* Espera también a sus fotos (19/9): ver `FotosQueVen`. */}
+      <PantallaDeslizable>
         <button className="boton-texto" style={{ textAlign: 'left', padding: '0 0 14px' }} onClick={() => router.back()}>
           {T.general.volver}
         </button>
@@ -344,7 +350,7 @@ export default function Perfil() {
             </div>
           </>
         )}
-      </div>
+      </PantallaDeslizable>
       <Nav />
     </>
   );

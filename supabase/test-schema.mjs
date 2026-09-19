@@ -8604,7 +8604,7 @@ console.log('\n130. La app no se muestra antes de saber');
   chequear('con tope, para no quedar en blanco sin red', /ESPERA_MAXIMA_MS/.test(d), true);
   chequear('la copia que asoma se va cuando la pestaña aparece', /requestAnimationFrame\(quitarAsomo\)[\s\S]{0,120}\}, \[revelada\]\)/.test(d), true);
   for (const [nombre, archivo, patron] of [
-    ['Inicio', ['src', 'app', 'page.tsx'], /listo=\{frescos \|\| cacheVieja\}/],
+    ['Inicio', ['src', 'app', 'page.tsx'], /listo=\{frescos \|\| cacheCompleta \|\| cacheVieja\}/],
     ['Ranking', ['src', 'app', 'social', 'page.tsx'], /<PantallaDeslizable listo=\{cargado\}>/],
     ['Album', ['src', 'app', 'album', 'page.tsx'], /<PantallaDeslizable listo=\{cargado\}>/],
     ['Stats', ['src', 'app', 'stats', 'page.tsx'], /<PantallaDeslizable listo=\{cargado\}>/],
@@ -8631,6 +8631,35 @@ console.log('\n130. La app no se muestra antes de saber');
   };
   recorrer('src');
   chequear('la web usa useVersion (que espera), no useVersionDelEsquema', directos, []);
+}
+
+console.log('\n131. El motor: la luna orbita, las estrellas se ven, pasa una fugaz');
+{
+  // LO QUE PASO (19/9, uso real): la luna giraba siempre ADELANTE del planeta
+  // (su orbita era mas chica que el planeta y no tenia profundidad), iba a
+  // saltos (el escalon lento a 12 cuadros), las estrellas casi no se veian
+  // (se repartian en un cuadrado donde la camara veia una de cada nueve) y no
+  // pasaba ninguna estrella fugaz.
+  const L = Q.ESPERA_LENTO_MS;
+  chequear('con movimiento, el escalon lento dibuja a 30: a los 34 ms si', Q.debeDibujar(L, 34, true), true);
+  chequear('con movimiento, a los 20 ms todavia no', Q.debeDibujar(L, 20, true), false);
+  chequear('sin movimiento sigue a 12: a los 34 ms no', Q.debeDibujar(L, 34), false);
+  chequear('quieto sigue quieto aunque haya movimiento', Q.debeDibujar(Q.ESPERA_QUIETO_MS + 1, 1000, true), false);
+
+  const { readFileSync: leer131 } = await import('node:fs');
+  const { join: unir131, dirname: dir131 } = await import('node:path');
+  const { fileURLToPath: aRuta131 } = await import('node:url');
+  const R131 = unir131(dir131(aRuta131(import.meta.url)), '..');
+  const esc = sinComentarios(leer131(unir131(R131, 'compartido', 'motor', 'escena.ts'), 'utf8'));
+  const sh = leer131(unir131(R131, 'compartido', 'motor', 'shaders.ts'), 'utf8');
+  const radio = Number((esc.match(/r: escala \* \(([\d.]+) \+ i \* 0\.28\)/) ?? [])[1]);
+  chequear('la orbita de la luna pasa el borde del planeta (radio 1) mas la luna', radio >= 1.2, true);
+  chequear('la orbita tiene profundidad: z sale del seno', /position\.set\(Math\.cos\(a\) \* o\.r, lejos \* o\.r \* o\.ry, -lejos \* [\d.]+\)/.test(esc), true);
+  chequear('y atras se achica', /scale\.setScalar\(o\.s \* \(1 - [\d.]+ \* lejos\)\)/.test(esc), true);
+  chequear('el escalon lento sabe si hay algo moviendose rapido', /debeDibujar\(ahora - ultimoToque, ahora - ultimoCuadro, hayMovimiento\)/.test(esc), true);
+  chequear('las estrellas se reparten en lo que ve la camara', /\(Math\.random\(\) - 0\.5\) \* 2 \* ancho/.test(esc) && !/pos\[i \* 3\] = \(Math\.random\(\) - 0\.5\) \* 4;/.test(esc), true);
+  chequear('titilan solo las estrellas', /materialPuntos\(true\)/.test(esc) && /uTitila/.test(sh), true);
+  chequear('pasa una estrella fugaz', /crearFugaz\(/.test(esc) && /fugaz\.actualizar\(tiempo, camara\.right\)/.test(esc), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
