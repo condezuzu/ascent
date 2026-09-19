@@ -542,7 +542,13 @@ export default function Principal() {
           />
         </div>
 
-        <div className="racha-bloque">
+        {/* CON EL ENTRENAMIENTO ANDANDO, LA RACHA SE ACHICA (19/9). Inicio
+            tiene que entrar en una pantalla sin scroll, y con el bloque, el
+            peso, la pregunta de marca y "Terminar" no entraba ni en un iPhone
+            grande (medido: herramientas/medir-inicio-en-sesion.mjs). En medio
+            de una serie lo que se mira es el +; la racha sigue a la vista,
+            chica. */}
+        <div className={`racha-bloque${sesion.estado.corriendo ? ' en-sesion' : ''}`}>
           <div className="racha-fila">
             <span className="racha-label">{T.inicio.racha}</span>
             {/* Cuenta de 46 a 47 en vez de reemplazarse. Ver
@@ -716,7 +722,9 @@ export default function Principal() {
         )}
         {sesion.estado.aviso && <p className="ok-msg">{sesion.estado.aviso}</p>}
 
-        <TiraSemanal logs={logs} descansos={descansos} cubiertos={cubiertos} />
+        {/* La semana no se mira en medio de una serie, y es la altura que
+            hacía que Inicio no entrara: vuelve al terminar. */}
+        {!sesion.estado.corriendo && <TiraSemanal logs={logs} descansos={descansos} cubiertos={cubiertos} />}
 
         {/* Los tres pesos, una sola línea, y SOLO si hay marcas cargadas
             (§16.8): al que no usa el módulo la pantalla le queda igual que

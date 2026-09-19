@@ -480,6 +480,28 @@ body.ya-entro .pantalla > * {
   transition: width 0.7s var(--curva-salida);
 }
 
+/* CON EL ENTRENAMIENTO ANDANDO (19/9): la racha chica y en una línea, para
+   que Inicio entre en una pantalla (ver el comentario en `page.tsx`). La
+   palabra se acuesta: parada necesita más alto que el número chico. */
+.racha-bloque.en-sesion {
+  margin-bottom: 14px;
+}
+.racha-bloque.en-sesion .racha-fila {
+  align-items: baseline;
+}
+.racha-bloque.en-sesion .racha-label {
+  writing-mode: horizontal-tb;
+  transform: none;
+  padding-bottom: 0;
+  order: 2;
+}
+.racha-bloque.en-sesion .racha-numero {
+  font-size: 56px;
+}
+.racha-bloque.en-sesion .progreso {
+  margin: 10px 0 0;
+}
+
 .aviso-tiempo {
   font-size: 13px;
   color: var(--sub);
@@ -3832,6 +3854,84 @@ body.con-franja.con-accion .pantalla {
 .bloque-lista {
   display: block;
   margin: 10px auto 0;
+}
+/* "Sacar una serie" y "Ver lista", en un renglón (19/9): ver `Bloque.tsx`. */
+.bloque-pie {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin-top: 10px;
+}
+.bloque-pie .bloque-menos,
+.bloque-pie .bloque-lista {
+  margin: 0;
+}
+
+/* INICIO ENTRA EN UNA PANTALLA CON EL ENTRENAMIENTO ANDANDO (19/9). Medido
+   con herramientas/medir-inicio-en-sesion.mjs en cuatro tamaños.
+   - Mientras está la pregunta de marca, el globo de la primera vez se va: la
+     pregunta es de ahora y el globo vuelve cuando se contesta.
+   - La pregunta, compacta: debajo del + no tiene el aire de una pantalla
+     propia. */
+.pantalla:has(.marcas-sugeridas.en-el-momento) .globo {
+  display: none;
+}
+.marcas-sugeridas.en-el-momento {
+  padding: 8px 12px;
+  margin-top: 10px;
+}
+.en-el-momento .marca-sugerida p {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.en-el-momento .marca-sugerida .cuantas {
+  margin-bottom: 4px;
+}
+.en-el-momento .marca-sugerida .reps {
+  gap: 5px;
+}
+.en-el-momento .marca-sugerida .reps button {
+  min-width: 36px;
+  min-height: 36px;
+}
+/* En los teléfonos bajos (el SE, o Safari con sus barras) el aire vertical
+   se achica. El + no baja de 64 px: es el botón que se toca sin mirar. */
+@media (max-height: 720px) {
+  .pantalla:has(.bloque-mas) {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .pantalla:has(.bloque-mas) .cabecera {
+    margin-bottom: 4px;
+  }
+  .pantalla:has(.bloque-mas) .bloque-mas {
+    min-height: 64px;
+  }
+  .pantalla:has(.bloque-mas) .bloque-puntos {
+    margin-bottom: 8px;
+  }
+  .pantalla:has(.bloque-mas) .bloque-cuenta {
+    margin-bottom: 8px;
+  }
+  .pantalla:has(.bloque-mas) .bloque-pie,
+  .pantalla:has(.bloque-mas) .marcas-sugeridas.en-el-momento {
+    margin-top: 6px;
+  }
+  .pantalla:has(.bloque-mas) .en-el-momento .marca-sugerida .reps button {
+    min-width: 34px;
+    min-height: 34px;
+  }
+  .pantalla:has(.bloque-mas) .globo {
+    display: none;
+  }
+  /* Con la pregunta de marca a la vista, la racha se va un momento: vuelve
+     apenas se contesta. Es lo único que queda por sacar sin tocar el bloque. */
+  .pantalla:has(.marcas-sugeridas.en-el-momento) .racha-bloque {
+    display: none;
+  }
+  /* Y sin entrenamiento tampoco sobraba: 11 a 18 px en Safari y en el SE. */
+  .pantalla:has(.racha-bloque) .cabecera {
+    margin-bottom: 14px;
+  }
 }
 .lista-bloques {
   display: flex;

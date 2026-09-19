@@ -303,24 +303,28 @@ export default function Bloque({
         </button>
       )}
 
-      {/* Quitar una es secundario y va chico: corregir pasa una vez cada
-          tantas, sumar pasa doce veces por sesión. */}
-      <button
-        className="boton-texto bloque-menos"
-        onClick={alRestar}
-        disabled={estado.hechas === 0}
-      >
-        {T.inicio.sacarSerie}
-      </button>
-
-      {/* Corregir hacia atrás vive DETRÁS de un botón, no a la vista: sumar
-          pasa doce veces por sesión y corregir una vez cada tantas. Lo que se
-          usa siempre manda en la pantalla. */}
-      {(estado.cerrados.length > 0 || estado.hechas > 0) && (
-        <button className="boton-texto bloque-lista" onClick={() => setLista(true)}>
-          {T.sesion.verLista}
+      {/* LOS DOS SECUNDARIOS EN UN RENGLÓN (19/9): uno debajo del otro eran la
+          altura que hacía que Inicio no entrara en una pantalla. */}
+      <div className="bloque-pie">
+        {/* Quitar una es secundario y va chico: corregir pasa una vez cada
+            tantas, sumar pasa doce veces por sesión. */}
+        <button
+          className="boton-texto bloque-menos"
+          onClick={alRestar}
+          disabled={estado.hechas === 0}
+        >
+          {T.inicio.sacarSerie}
         </button>
-      )}
+
+        {/* Corregir hacia atrás vive DETRÁS de un botón, no a la vista: sumar
+            pasa doce veces por sesión y corregir una vez cada tantas. Lo que
+            se usa siempre manda en la pantalla. */}
+        {(estado.cerrados.length > 0 || estado.hechas > 0) && (
+          <button className="boton-texto bloque-lista" onClick={() => setLista(true)}>
+            {T.sesion.verLista}
+          </button>
+        )}
+      </div>
 
       {abriendo && (
         <SelectorEjercicio

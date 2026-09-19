@@ -8511,6 +8511,24 @@ console.log('\n127. Los bloques de la base vuelven al telefono');
   chequear('confirmar: si conto otro lado, trae los de la base', /previo\.series !== g\.series[\s\S]{0,300}from\('sesiones'\)\.select\('bloques'\)/.test(hook), true);
 }
 
+console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
+{
+  // LO QUE PASO (19/9): con el entrenamiento andando Inicio se podia
+  // scrollear, y estaba decidido que no. Medido con
+  // herramientas/medir-inicio-en-sesion.mjs: sobraban de 47 a 461 px segun el
+  // telefono y el estado. Esto cuida que no vuelvan las dos piezas grandes.
+  const { readFileSync: leer128 } = await import('node:fs');
+  const { join: unir128, dirname: dir128 } = await import('node:path');
+  const { fileURLToPath: aRuta128 } = await import('node:url');
+  const R128 = unir128(dir128(aRuta128(import.meta.url)), '..');
+  const inicio = sinComentarios(leer128(unir128(R128, 'src', 'app', 'page.tsx'), 'utf8'));
+  const css = leer128(unir128(R128, 'src', 'app', 'globals.css'), 'utf8');
+  chequear('la tira semanal no esta durante el entrenamiento', /!sesion\.estado\.corriendo && <TiraSemanal/.test(inicio), true);
+  chequear('la racha se achica durante el entrenamiento', /racha-bloque\$\{sesion\.estado\.corriendo \? ' en-sesion'/.test(inicio), true);
+  chequear('y tiene su estilo', /\.racha-bloque\.en-sesion \.racha-numero/.test(css), true);
+  chequear('sacar y ver lista van en un renglon', /\.bloque-pie \{/.test(css), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
