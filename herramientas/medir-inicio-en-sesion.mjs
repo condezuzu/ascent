@@ -172,6 +172,26 @@ async function medirTodos(estado) {
     const linea = `  ${nombre.padEnd(34)} ${w}×${h}  sobra ${String(d.sobra).padStart(4)} px`;
     console.log(linea + (d.sobra > 0 ? `  ← empuja: ${d.primeros.slice(0, 3).map((m) => `${m.etiqueta.slice(0, 40)} (${m.abajo})`).join(', ')}` : ''));
     if (d.sobra > 0) peores.push(nombre);
+    // Con ALTOS=1, cuánto ocupa cada pieza (con sus márgenes): para decidir
+    // qué sacar con números y no a ojo.
+    if (process.env.ALTOS) {
+      const altos = await page.evaluate(() => {
+        const piezas = {
+          cabecera: '.cabecera', racha: '.racha-bloque', globo: '.globo', ejercicio: '.bloque-fila', peso: '.bloque-peso',
+          puntos: '.bloque-puntos', cuenta: '.bloque-cuenta', mas: '.bloque-mas', pregunta: '.marcas-sugeridas.en-el-momento',
+          pie: '.bloque-pie', tira: '.tira-semanal',
+        };
+        const r = {};
+        for (const [k, sel] of Object.entries(piezas)) {
+          const el = document.querySelector(sel);
+          if (!el || getComputedStyle(el).display === 'none') continue;
+          const cs = getComputedStyle(el);
+          r[k] = Math.round(el.getBoundingClientRect().height + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom));
+        }
+        return r;
+      });
+      console.log('      altos: ' + Object.entries(altos).map(([k, v]) => `${k} ${v}`).join(' · '));
+    }
     // Foto SIEMPRE: que no sobre no prueba que no quede nada tapado detrás de
     // "Terminar" y la barra, que están fijos encima.
     await page.screenshot({ path: `capturas/inicio-sesion-${estado.replace(/[^a-z]+/gi, '-')}-${w}x${h}.png`, fullPage: true });
