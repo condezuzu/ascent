@@ -8293,10 +8293,15 @@ console.log('\n122. La app nativa se puede construir: los archivos que nombra ex
   chequear('hay un perfil para el telefono', !!perfil, true);
   chequear('y es de distribucion interna', perfil?.distribution, 'internal');
   chequear('no arma para el simulador', perfil?.ios?.simulator, false);
-  const valores = Object.values(perfil?.env ?? {});
-  chequear('las variables van por secret y no pegadas',
-    valores.filter((v) => !String(v).startsWith('$')), []);
-  chequear('y estan las dos de Supabase', valores.length, 2);
+  // Las de Supabase van por secret. La de la caja negra (18/9) es un valor
+  // fijo, "1", que prende el boton de diagnostico en la build interna: no es
+  // un secreto y no tiene por que serlo.
+  const env122 = perfil?.env ?? {};
+  const deSupabase = Object.entries(env122).filter(([k]) => k.startsWith('EXPO_PUBLIC_SUPABASE_'));
+  chequear('las de Supabase van por secret y no pegadas',
+    deSupabase.filter(([, v]) => !String(v).startsWith('$')).map(([k]) => k), []);
+  chequear('y estan las dos de Supabase', deSupabase.length, 2);
+  chequear('la build interna trae la caja negra a mano', env122.EXPO_PUBLIC_DIAGNOSTICO, '1');
 
   // NO SE SUBE NADA A APP STORE desde aca: esa preparacion va despues de las
   // tandas 4, 5 y 6 (ver spec/etapa-nativa.md). Si alguien llena `submit`, que

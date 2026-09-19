@@ -7,6 +7,7 @@ import Login from './src/Login';
 import Pestanas from './src/Pestanas';
 import Onboarding from './src/Onboarding';
 import { sesionDesdeEnlace } from './src/enlace';
+import { anotar, marcarListo, registrarError } from './src/cajaNegra';
 
 /**
  * LA APP NATIVA — qué pantalla va según si hay sesión.
@@ -30,10 +31,22 @@ type Sesion = 'mirando' | 'con' | 'sin' | 'sin-nombre';
 export default function App() {
   const [sesion, setSesion] = useState<Sesion>('mirando');
 
+  // Con marcas para la caja negra: si la app se queda en negro, dice si llegó
+  // a preguntar la sesión y si la respuesta volvió.
   const mirar = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    setSesion(data.session ? 'con' : 'sin');
+    anotar('pidiendo la sesión');
+    try {
+      const { data } = await supabase.auth.getSession();
+      anotar(`sesión: ${data.session ? 'hay' : 'no hay'}`);
+      setSesion(data.session ? 'con' : 'sin');
+    } catch (e) {
+      registrarError('al pedir la sesión', e);
+    }
   }, []);
+
+  useEffect(() => {
+    if (sesion !== 'mirando') marcarListo();
+  }, [sesion]);
 
   // Con `useCallback` y no una flecha suelta: `Inicio` la tiene en las
   // dependencias de su carga, y una función nueva en cada render la haría

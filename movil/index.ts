@@ -1,8 +1,11 @@
+// LA CAJA NEGRA VA PRIMERO: engancha los errores antes de que se cargue nada
+// de la app (ver `src/cajaNegra.ts`). Los imports se evalúan en orden.
+import './src/cajaNegra';
 import { registerRootComponent } from 'expo';
 
-import App from './App';
+import Raiz from './src/Raiz';
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
-registerRootComponent(App);
+// `Raiz` carga `App` adentro de un try y muestra qué falló si algo tira: ver
+// `src/Raiz.tsx`. registerRootComponent llama a
+// AppRegistry.registerComponent('main', () => Raiz).
+registerRootComponent(Raiz);

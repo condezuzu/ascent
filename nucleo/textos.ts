@@ -1118,4 +1118,17 @@ export const T = {
     noSeSumoLaFoto: 'La foto no se sumó al día. Prueba de nuevo.',
     sumarFotos: 'Sumar fotos aquí',
   },
+
+  // ---------------------------------------------------------------
+  // LA CAJA NEGRA de la app nativa (`movil/src/cajaNegra.ts`): lo que se ve
+  // cuando algo falla al arrancar, en vez de una pantalla negra.
+  diagnostico: {
+    boton: 'Diagnóstico',
+    fallo: 'Algo falló',
+    noArranco: 'La app no terminó de arrancar',
+    explica: 'Esto es lo que pasó, en orden. Compártelo para saber qué arreglar.',
+    compartir: 'Compartir el detalle',
+    seguir: 'Seguir igual',
+    cerrar: 'Cerrar',
+  },
 } as const;
