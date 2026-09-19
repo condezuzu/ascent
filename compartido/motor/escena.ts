@@ -14,6 +14,8 @@ import {
   VERTEX,
   FRAGMENT,
   VERTEX_PUNTOS,
+  VERTEX_FUGAZ,
+  FRAGMENT_FUGAZ,
   FRAGMENT_PUNTOS,
   FRAGMENT_PRESAGIO,
   FRAGMENT_PLANO,
@@ -169,7 +171,11 @@ const AURORA_CFG: ConfigCuerpo = {
   continentes: 0, puntos: 0, mares: 0, manchas: 0, rayos: 0, lunas: 0, modo: 4,
 };
 
-function crearEstrellas(cantidad: number, rango: number, planeta?: string | null): THREE.Points {
+/**
+ * `asp` es ancho / alto del lienzo: la cámara ve x entre -asp y asp, y entre
+ * -1 y 1.
+ */
+function crearEstrellas(cantidad: number, rango: number, planeta: string | null | undefined, asp: number): THREE.Points {
   const n = Math.min(cuantas(cantidad), ESTRELLAS_TOPE);
   const pos = new Float32Array(n * 3);
   const col = new Float32Array(n * 3);
@@ -180,9 +186,15 @@ function crearEstrellas(cantidad: number, rango: number, planeta?: string | null
   const pal = paletaDe(rango, planeta);
   const cPrincipal = new THREE.Color(pal.principal);
   const cClaro = new THREE.Color(pal.claro);
+  // EN LO QUE SE VE (19/9). Se repartían en un cuadrado de -2 a 2, y la
+  // cámara de un teléfono parado ve x de -0,46 a 0,46: caía adentro UNA DE
+  // CADA NUEVE (46 de las 400 del rango 1). "Casi no se ven, y no están por
+  // toda la pantalla" era eso. Ahora van en lo que la cámara ve, con un poco
+  // de margen para la deriva.
+  const ancho = Math.max(0.3, asp) * 1.1;
   for (let i = 0; i < n; i++) {
-    pos[i * 3] = (Math.random() - 0.5) * 4;
-    pos[i * 3 + 1] = (Math.random() - 0.5) * 4;
+    pos[i * 3] = (Math.random() - 0.5) * 2 * ancho;
+    pos[i * 3 + 1] = (Math.random() - 0.5) * 2 * 1.08;
     pos[i * 3 + 2] = -1 - Math.random() * 2;
     // MÁS BRILLO, SIN MÁS TAMAÑO. "Las veo pero están muy apagadas": era
     // `0.3 + azar² · 0.9`, y elevar al cuadrado amontona casi todas contra el
@@ -192,7 +204,9 @@ function crearEstrellas(cantidad: number, rango: number, planeta?: string | null
     // El brillo es GRATIS y el tamaño no: lo que cuesta en un teléfono flojo es
     // el área que hay que pintar, no el valor del color que se pinta. Por eso
     // se toca esto y no `tam`.
-    const b = 0.45 + Math.pow(Math.random(), 1.6) * 0.95;
+    // Y un piso más alto (19/9): detrás del velo de la interfaz, las tenues no
+    // llegaban a verse.
+    const b = 0.6 + Math.pow(Math.random(), 1.4) * 0.9;
     const tinte = Math.random();
     const c =
       tinte < 0.55
@@ -213,7 +227,7 @@ function crearEstrellas(cantidad: number, rango: number, planeta?: string | null
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setAttribute('tamano', new THREE.BufferAttribute(tam, 1));
   geo.setAttribute('brillo', new THREE.BufferAttribute(bri, 1));
-  return new THREE.Points(geo, materialPuntos());
+  return new THREE.Points(geo, materialPuntos(true));
 }
 
 // Galaxia espiral en partículas (rango 7): densa en el núcleo, con brazos
@@ -260,13 +274,82 @@ function crearGalaxia(rango: number): THREE.Points {
   return new THREE.Points(geo, materialPuntos());
 }
 
+/**
+ * UNA ESTRELLA FUGAZ DE VEZ EN CUANDO (19/9).
+ *
+ * Cruza en diagonal hacia abajo por la parte de arriba de la pantalla, en un
+ * segundo, y vuelve a pasar entre 9 y 24 segundos después. Detrás del planeta
+ * (z entre las estrellas y el cuerpo). Solo con movimiento: con "reducir
+ * movimiento" o el fondo quieto no hay cuadros, y no pasa.
+ *
+ * Es un quad estirado con un shader que se afina hacia la cola, no una línea
+ * de WebGL: las líneas tienen un píxel de ancho y sin suavizado.
+ */
+function crearFugaz(rango: number, planeta?: string | null) {
+  const material = new THREE.ShaderMaterial({
+    vertexShader: VERTEX_FUGAZ,
+    fragmentShader: FRAGMENT_FUGAZ,
+    uniforms: {
+      uTime: { value: 0 },
+      uAlfa: { value: 0 },
+      uColor: { value: new THREE.Color('#eef2ff').lerp(new THREE.Color(paletaDe(rango, planeta).claro), 0.25) },
+    },
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+  mesh.visible = false;
+  const DURA = 1.0;
+  let proxima = 4 + Math.random() * 8;
+  let desde = 0;
+  let inicio = new THREE.Vector2();
+  let dir = new THREE.Vector2();
+  let recorre = 0.8;
+
+  return {
+    mesh,
+    actualizar(tiempo: number, asp: number) {
+      if (!mesh.visible) {
+        if (tiempo < proxima) return;
+        // Arranca arriba, de un costado, y baja hacia el otro.
+        const haciaIzq = Math.random() < 0.5;
+        inicio = new THREE.Vector2((Math.random() * 0.8 + 0.1) * asp * (haciaIzq ? 1 : -1), 0.35 + Math.random() * 0.55);
+        const ang = (haciaIzq ? Math.PI : 0) + (haciaIzq ? 1 : -1) * (0.35 + Math.random() * 0.3);
+        dir = new THREE.Vector2(Math.cos(ang), Math.sin(ang));
+        recorre = 0.6 + Math.random() * 0.5;
+        mesh.rotation.z = Math.atan2(dir.y, dir.x);
+        mesh.scale.set(0.28 + Math.random() * 0.14, 0.012, 1);
+        mesh.position.z = -0.5;
+        desde = tiempo;
+        mesh.visible = true;
+      }
+      const t = (tiempo - desde) / DURA;
+      if (t >= 1) {
+        mesh.visible = false;
+        material.uniforms.uAlfa.value = 0;
+        proxima = tiempo + 9 + Math.random() * 15;
+        return;
+      }
+      // La cabeza avanza; el quad va centrado medio largo detrás de ella.
+      const cabeza = inicio.clone().add(dir.clone().multiplyScalar(recorre * t));
+      const centro = cabeza.clone().sub(dir.clone().multiplyScalar(mesh.scale.x / 2));
+      mesh.position.x = centro.x;
+      mesh.position.y = centro.y;
+      material.uniforms.uAlfa.value = Math.sin(Math.PI * t) * 0.9;
+    },
+  };
+}
+
 // Material de partículas redondas y suaves. PointsMaterial dibuja cuadrados
 // duros; con shader propio cada partícula lleva su tamaño y su brillo.
-function materialPuntos(): THREE.ShaderMaterial {
+// `titila`: solo las estrellas (19/9). La galaxia y el polvo son miles de
+// partículas juntas, y titilando se verían como ruido.
+function materialPuntos(titila = false): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     vertexShader: VERTEX_PUNTOS,
     fragmentShader: FRAGMENT_PUNTOS,
-    uniforms: { uTime: { value: 0 }, uDpr: { value: densidadActual } },
+    uniforms: { uTime: { value: 0 }, uDpr: { value: densidadActual }, uTitila: { value: titila ? 1 : 0 } },
     vertexColors: true,
     transparent: true,
     blending: THREE.AdditiveBlending,
@@ -462,16 +545,26 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   camara.position.z = 2;
 
   const materiales: THREE.ShaderMaterial[] = [];
-  const orbitantes: { obj: THREE.Object3D; r: number; v: number; f: number; ry: number }[] = [];
+  // `s` es la escala de frente: atrás se achica un poco y adelante crece, para
+  // que se lea la distancia (ver `ubicarOrbitantes`).
+  const orbitantes: { obj: THREE.Object3D; r: number; v: number; f: number; ry: number; s: number }[] = [];
   let galaxia: THREE.Points | null = null;
   let auroraMesh: THREE.Mesh | null = null;
   let polvo: THREE.Points | null = null;
 
   marca('ascent:particulas-inicio');
   // --- campo estelar (el ambiente permanente, teñido por el rango) ---
-  const estrellas = crearEstrellas(ESTRELLAS_POR_RANGO[op.rango] ?? 150, op.rango, op.planeta);
+  const cajaInicial = l.tamano();
+  const estrellas = crearEstrellas(
+    ESTRELLAS_POR_RANGO[op.rango] ?? 150,
+    op.rango,
+    op.planeta,
+    (cajaInicial.w || 390) / (cajaInicial.h || 844)
+  );
   materiales.push(estrellas.material as THREE.ShaderMaterial);
   escena.add(estrellas);
+  const fugaz = crearFugaz(op.rango, op.planeta);
+  escena.add(fugaz.mesh);
 
   const cfg =
     op.rango === 4 && op.planeta && PLANETAS_CFG[op.planeta]
@@ -572,12 +665,18 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
       const lmat = crearMaterialCuerpo(LUNA_CFG, !!op.apagado, 0.02, !!op.reposo, 1, op.estilo, noche);
       materiales.push(lmat);
       const luna = new THREE.Mesh(QUAD, lmat);
-      luna.scale.setScalar(escala * (0.16 + i * 0.05));
-      luna.position.z = 0.01;
+      const tamLuna = escala * (0.16 + i * 0.05);
+      luna.scale.setScalar(tamLuna);
       grupo.add(luna);
       orbitantes.push({
         obj: luna,
-        r: escala * (0.78 + i * 0.28),
+        // POR FUERA DEL PLANETA (19/9). Era 0.78 con el planeta de radio 1: la
+        // luna giraba ADENTRO del disco y por eso siempre se la veía encima.
+        // Ahora el radio pasa el borde del planeta más el de la luna, así que
+        // cruza de adelante a atrás en los costados, fuera del disco, y el
+        // cambio no se ve.
+        r: escala * (1.3 + i * 0.28),
+        s: tamLuna,
         v: 0.30 / (1 + i * 0.5),
         f: i * 2.1,
         ry: 0.30,
@@ -597,6 +696,7 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
         grupo.add(planeta);
         orbitantes.push({
           obj: planeta,
+          s: escala * (0.045 + i * 0.011),
           r: escala * (0.26 + i * 0.155),
           v: 0.30 / (1 + i * 0.55),
           f: i * 1.35,
@@ -627,13 +727,19 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   const reloj = new THREE.Clock();
   let tiempo = Math.random() * 100;
 
+  // LA ÓRBITA TIENE PROFUNDIDAD (19/9). Antes era un óvalo plano con la luna
+  // siempre en z = 0.01, o sea siempre adelante del planeta: "no orbita, pasa
+  // por delante". La órbita se ve inclinada desde arriba, así que la mitad de
+  // ARRIBA del óvalo es la que queda del otro lado: ahí va detrás del planeta.
+  // Lo transparente se dibuja de atrás para adelante según z (así ordena
+  // three.js), y el disco del planeta la tapa sola. Un poco más chica atrás y
+  // más grande adelante: es lo que hace que se lea como una vuelta.
   function ubicarOrbitantes() {
     for (const o of orbitantes) {
-      o.obj.position.set(
-        Math.cos(tiempo * o.v + o.f) * o.r,
-        Math.sin(tiempo * o.v + o.f) * o.r * o.ry,
-        0
-      );
+      const a = tiempo * o.v + o.f;
+      const lejos = Math.sin(a); // 1 = lo más atrás, -1 = lo más adelante
+      o.obj.position.set(Math.cos(a) * o.r, lejos * o.r * o.ry, -lejos * 0.05);
+      o.obj.scale.setScalar(o.s * (1 - 0.08 * lejos));
     }
   }
 
@@ -667,7 +773,10 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     // cuadro —nada, al lado de un dibujo de WebGL— y a cambio abriría la
     // puerta a que un despertar se pierda y el fondo quede muerto. No vale.
     const ahora = performance.now();
-    if (!debeDibujar(ahora - ultimoToque, ahora - ultimoCuadro)) return;
+    // Lunas, los planetas del Sistema o una fugaz cruzando: se mueven rápido,
+    // y el escalón lento a doce cuadros los mostraba a saltos (ver quietud).
+    const hayMovimiento = orbitantes.length > 0 || fugaz.mesh.visible;
+    if (!debeDibujar(ahora - ultimoToque, ahora - ultimoCuadro, hayMovimiento)) return;
     ultimoCuadro = ahora;
 
     // `getDelta` se llama SOLO cuando se dibuja, así que trae el tiempo real
@@ -677,6 +786,7 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     tiempo += reloj.getDelta();
     for (const m of materiales) m.uniforms.uTime.value = tiempo;
     ubicarOrbitantes();
+    fugaz.actualizar(tiempo, camara.right);
     if (galaxia) galaxia.rotation.z = tiempo * 0.022;
     if (auroraMesh) auroraMesh.rotation.z = tiempo * 0.022;
     if (polvo) polvo.rotation.z = tiempo * 0.03;

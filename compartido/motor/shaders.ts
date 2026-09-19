@@ -65,9 +65,13 @@ varying vec3 vColor;
 varying float vBrillo;
 uniform float uTime;
 uniform float uDpr;
+uniform float uTitila;
 void main() {
   vColor = color;
-  vBrillo = brillo;
+  // TITILAN (19/9): lento y cada una a su ritmo, con la fase sacada de dónde
+  // está. Es lo que hace que se noten sin agrandarlas: el ojo ve lo que cambia.
+  float semilla = fract(sin(dot(position.xy, vec2(12.9898, 78.233))) * 43758.5453);
+  vBrillo = brillo * mix(1.0, 0.72 + 0.28 * sin(uTime * (0.6 + semilla * 1.4) + semilla * 6.2832), uTitila);
   vec3 p = position;
   // deriva lenta: el gas nunca está del todo quieto
   p.x += sin(uTime * 0.08 + position.y * 5.0) * 0.012;
@@ -928,5 +932,32 @@ void main() {
   }
 
   gl_FragColor = vec4(color * uAtenua, alfa);
+}
+`;
+
+// LA ESTRELLA FUGAZ (19/9). Un trazo que se afina hacia la cola: en el quad,
+// `x` va de la cola (0) a la cabeza (1) e `y` es el ancho. Cuánto se ve lo
+// maneja `uAlfa` desde la escena (entra, cruza y se apaga en un segundo).
+export const VERTEX_FUGAZ = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+export const FRAGMENT_FUGAZ = /* glsl */ `
+precision highp float;
+varying vec2 vUv;
+uniform float uAlfa;
+uniform vec3 uColor;
+void main() {
+  float cola = pow(vUv.x, 2.4);
+  float ancho = pow(max(0.0, 1.0 - abs(vUv.y - 0.5) * 2.0), 2.5);
+  // la cabeza, un punto un poco más brillante
+  float cabeza = smoothstep(0.9, 1.0, vUv.x) * 0.6;
+  float a = (cola + cabeza) * ancho * uAlfa;
+  if (a < 0.003) discard;
+  gl_FragColor = vec4(uColor, clamp(a, 0.0, 1.0));
 }
 `;

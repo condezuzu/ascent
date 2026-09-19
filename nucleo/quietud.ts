@@ -77,10 +77,21 @@ export function pasoDeQuietud(msSinTocar: number): PasoDeQuietud {
  * que SÍ se dibujó, no desde el último que pidió el navegador: es lo que
  * mantiene constante la velocidad del movimiento al bajar de escalón.
  */
-export function debeDibujar(msSinTocar: number, msDesdeElCuadro: number): boolean {
+/**
+ * Con algo que se mueve RÁPIDO en la escena, el escalón lento dibuja a esto
+ * (19/9). Los doce por segundo se decidieron para el giro del fondo, 0,022
+ * rad/s, donde el escalón no se ve. Una luna va a 0,30 rad/s: a doce cuadros
+ * salta unos 12 px por cuadro, y "la luna va a pocos fps" era eso. Treinta ya
+ * se ve continuo y sigue siendo la mitad del trabajo.
+ */
+export const CUADROS_LENTOS_CON_MOVIMIENTO = 30;
+export const MS_ENTRE_CUADROS_CON_MOVIMIENTO = 1000 / CUADROS_LENTOS_CON_MOVIMIENTO;
+
+export function debeDibujar(msSinTocar: number, msDesdeElCuadro: number, hayMovimiento = false): boolean {
   const paso = pasoDeQuietud(msSinTocar);
   if (paso === 'vivo') return true;
   if (paso === 'quieto') return false;
   if (!Number.isFinite(msDesdeElCuadro)) return true;
-  return msDesdeElCuadro >= MS_ENTRE_CUADROS_LENTOS - MARGEN_MS;
+  const entre = hayMovimiento ? MS_ENTRE_CUADROS_CON_MOVIMIENTO : MS_ENTRE_CUADROS_LENTOS;
+  return msDesdeElCuadro >= entre - MARGEN_MS;
 }
