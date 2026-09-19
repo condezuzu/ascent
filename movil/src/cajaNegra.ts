@@ -25,8 +25,20 @@ const oyentes = new Set<() => void>();
 let listo = false;
 let huboError = false;
 
+// EL AVISO SALE EN LA PRÓXIMA VUELTA, no en el momento (19/9). Lo que se
+// anota puede llegar desde adentro del dibujo de un componente —un
+// `console.warn` de React mientras dibuja— y el oyente (`Raiz`) hace un
+// `setState`: en el momento, eso es actualizar un componente mientras se
+// dibuja otro, y React lo reporta como error. Lo vio `test:real`. Varios
+// avisos seguidos salen juntos.
+let avisoPendiente = false;
 function avisar() {
-  for (const fn of [...oyentes]) fn();
+  if (avisoPendiente) return;
+  avisoPendiente = true;
+  setTimeout(() => {
+    avisoPendiente = false;
+    for (const fn of [...oyentes]) fn();
+  }, 0);
 }
 
 function agregar(tipo: Entrada['tipo'], texto: string) {
