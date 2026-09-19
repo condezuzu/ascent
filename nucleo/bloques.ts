@@ -312,6 +312,55 @@ export function sembrar(
 }
 
 /**
+ * LOS BLOQUES QUE GUARDÓ LA BASE, de vuelta en el teléfono (19/9).
+ *
+ * Los bloques viven en la caché del teléfono y la base solo tiene la lista
+ * guardada (`sesiones.bloques`, lo de `paraGuardar`). Cuando la sesión se abre
+ * desde un lugar SIN esa caché —Safari en vez de la app instalada, que en
+ * iPhone no comparten nada; la caché borrada; otro teléfono— la pantalla
+ * arrancaba con los bloques vacíos: "0 de 3 · 1 en total", con la serie en la
+ * base. Y el primer `+` de ahí mandaba esa lista vacía y BORRABA de la base
+ * los bloques de antes, con su ejercicio y sus pesos. Pasó en el gimnasio.
+ *
+ * Con la caché vacía, el ÚLTIMO bloque guardado vuelve a ser el en curso, con
+ * su peso: es lo que estabas haciendo, y la próxima serie va ahí. Si ya había
+ * algo contado acá —toques mientras la base no contestaba— lo guardado va
+ * ANTES, como cerrado: nunca se pisa lo que se hizo en ninguno de los dos
+ * lados. Quien llama no manda la lista a la base mientras no la recuperó; si
+ * no, lo "guardado" ya incluiría esos toques y se contarían dos veces.
+ */
+export function unirConGuardados(guardados: unknown, actual: EstadoBloques): EstadoBloques {
+  const lista = (Array.isArray(guardados) ? guardados : [])
+    .filter(
+      (b): b is Bloque =>
+        !!b &&
+        typeof b === 'object' &&
+        typeof (b as Bloque).ejercicio === 'string' &&
+        Number.isInteger((b as Bloque).series) &&
+        (b as Bloque).series > 0
+    )
+    .map((b) => cerrado(b.ejercicio, Math.min(999, b.series), pesosDe(b.pesos, b.series), b.carga));
+  if (lista.length === 0) return actual;
+  if (actual.hechas > 0 || actual.cerrados.length > 0) {
+    return { ...actual, cerrados: [...lista, ...actual.cerrados].slice(-TOPE_BLOQUES) };
+  }
+  const ultimo = lista[lista.length - 1];
+  const pesos = pesosDe(ultimo.pesos, ultimo.series);
+  const vigente = [...pesos].reverse().find((x) => x !== null);
+  const enCurso = conPesos(
+    { cerrados: lista.slice(0, -1), ejercicio: ultimo.ejercicio, meta: actual.meta, hechas: ultimo.series } as EstadoBloques,
+    pesos
+  );
+  const conPeso = vigente !== undefined && vigente !== null ? { ...enCurso, peso: vigente } : enCurso;
+  return ultimo.carga ? { ...conPeso, carga: ultimo.carga } : conPeso;
+}
+
+/** Si el estado todavía no tiene nada contado (puede tener ejercicio y peso sembrados). */
+export function sinNadaContado(e: EstadoBloques): boolean {
+  return e.hechas === 0 && e.cerrados.length === 0;
+}
+
+/**
  * CORREGIR HACIA ATRÁS: la lista de lo hecho, y cómo tocarla.
  *
  * El `−` solo arregla el bloque en curso. Si te equivocaste hace veinte

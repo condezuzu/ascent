@@ -75,6 +75,7 @@ import {
   sembrar,
   siguiente,
   sumar,
+  unirConGuardados,
 } from '../nucleo/bloques.ts';
 import { cargarElMotor, esPreferenciaFondo } from '../nucleo/fondo.ts';
 import { ORDEN_ZONAS, gruposDeZona, gruposSinZona } from '../nucleo/ejercicios.ts';
@@ -8458,6 +8459,56 @@ console.log('\n126. "El año" no esconde semanas');
   const alrededor = stats.slice(Math.max(0, i - 200), i + 120);
   chequear('sin scroll de costado', /overflowX/.test(alrededor), false);
   chequear('sin ancho minimo que lo saque de la pantalla', /minWidth/.test(alrededor), false);
+}
+
+console.log('\n127. Los bloques de la base vuelven al telefono');
+{
+  // LO QUE PASO (19/9). Una serie registrada; la sesion abierta desde otro
+  // lado sin la cache (Safari en vez de la app instalada, cache borrada):
+  // "0 de 3 · 1 en total" con el bloque en la base. Y el primer + de ahi
+  // mandaba la lista vacia y BORRABA en la base los bloques de antes.
+  // Reproducido con herramientas/reproducir-series-y-dia.mjs.
+  const guardados = [
+    { ejercicio: 'sentadilla', series: 3, pesos: [100, 100, 105], carga: 'total' },
+    { ejercicio: 'press_banca', series: 2, pesos: [60, 62.5], carga: 'total' },
+  ];
+  const vacio = bloquesVacios(null, 4);
+  const r = unirConGuardados(guardados, vacio);
+  chequear('el ultimo guardado vuelve a ser el en curso', [r.ejercicio, r.hechas], ['press_banca', 2]);
+  chequear('los de antes quedan cerrados', r.cerrados.map((b) => b.ejercicio), ['sentadilla']);
+  chequear('con sus pesos', r.pesos, [60, 62.5]);
+  chequear('el peso vigente es el ultimo que se uso', r.peso, 62.5);
+  chequear('y su modo', r.carga, 'total');
+  chequear('la meta es la de aca', r.meta, 4);
+  chequear('lo que se sube despues es lo mismo que estaba en la base', paraGuardar(r), guardados);
+  chequear('lo sembrado sin contar tambien se reemplaza', unirConGuardados(guardados, sembrar(vacio, 'remo', 4)).ejercicio, 'press_banca');
+
+  // Toques de aca mientras la base no contestaba: lo guardado va ANTES y no
+  // se pisa nada de ninguno de los dos lados.
+  const conToques = sumar(bloquesVacios('remo', 3));
+  const u = unirConGuardados(guardados, conToques);
+  chequear('con algo contado aca, lo guardado va antes', u.cerrados.map((b) => b.ejercicio), ['sentadilla', 'press_banca']);
+  chequear('y lo de aca sigue en curso', [u.ejercicio, u.hechas], ['remo', 1]);
+
+  chequear('sin nada guardado no cambia nada', unirConGuardados([], conToques), conToques);
+  chequear('basura de la base no entra', unirConGuardados([null, { ejercicio: 3, series: 1 }, { ejercicio: 'x', series: 0 }, 'y'], vacio), vacio);
+  chequear('lo que no es lista, tampoco', unirConGuardados(null, vacio), vacio);
+  const sinPesos = unirConGuardados([{ ejercicio: 'dominadas', series: 4 }], vacio);
+  chequear('sin pesos no inventa peso ni modo', [sinPesos.peso, sinPesos.carga, sinPesos.pesos], [undefined, undefined, undefined]);
+
+  // EL HOOK: la lista incompleta no se sube.
+  const { readFileSync: leer127 } = await import('node:fs');
+  const { join: unir127, dirname: dir127 } = await import('node:path');
+  const { fileURLToPath: aRuta127 } = await import('node:url');
+  const R127 = unir127(dir127(aRuta127(import.meta.url)), '..');
+  const hook = sinComentarios(leer127(unir127(R127, 'compartido', 'useSesion.ts'), 'utf8'));
+  const subir = hook.slice(hook.indexOf('async function subir('), hook.indexOf('async function bloqueSiguiente('));
+  const guarda = subir.indexOf('faltanBloques.current === idSesion');
+  chequear('subir: mira si faltan los bloques de la base', guarda > 0, true);
+  chequear('subir: y lo mira ANTES de mandar la lista', guarda < subir.indexOf("rpc: 'fijar_bloques'"), true);
+  chequear('confirmar: si no vinieron, los trae', /faltan && g\.id[\s\S]{0,120}recuperarBloques\(g\.id\)/.test(hook), true);
+  chequear('empezar: si ya estaba corriendo, los trae antes de sembrar', /r\.yaEstaba[\s\S]{0,400}recuperarBloques\(r\.id\)[\s\S]{0,800}sembrar\(/.test(hook), true);
+  chequear('confirmar: si conto otro lado, trae los de la base', /previo\.series !== g\.series[\s\S]{0,300}from\('sesiones'\)\.select\('bloques'\)/.test(hook), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

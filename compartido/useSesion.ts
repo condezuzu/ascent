@@ -34,6 +34,8 @@ import {
   paraGuardar,
   quitarBloque,
   sembrar,
+  sinNadaContado,
+  unirConGuardados,
   restar,
   siguiente,
   sumar,
@@ -189,6 +191,11 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // cierra sola la caché se borra, y el aviso "se cerró sola" tiene que saber
   // que era la nuestra y no una de otro aparato.
   const idVisto = useRef<string | null>(null);
+  // LA SESIÓN CUYOS BLOQUES HAY QUE TRAER DE LA BASE (19/9): se abrió sin
+  // ellos en la caché —otro lado, caché borrada—. Mientras esté puesto, la
+  // lista NO se sube: subir la de acá, incompleta, borraba en la base los
+  // bloques de antes. Ver `unirConGuardados`.
+  const faltanBloques = useRef<string | null>(null);
   const confirmando = useRef(false);
   // Lo de AHORA para el intervalo, que se creó con los valores de otro render.
   const inicioRef = useRef(inicio);
@@ -282,8 +289,31 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     if (que.accion === 'mantener') return;
     if (que.accion === 'guardar' && viva) {
       const g = que.cache as typeof viva & { bloques?: EstadoBloques };
-      guardarSesionCache(g, yo);
+      // CONTÓ OTRO LADO: la misma sesión, con otro total en la base que acá, y
+      // nada de acá esperando en la cola. Los bloques de la caché quedaron
+      // viejos —la otra pantalla sumó series— y el próximo toque de acá los
+      // subiría pisando los de allá. Se traen los de la base (19/9).
+      if (
+        g.bloques &&
+        g.id &&
+        typeof previo?.series === 'number' &&
+        previo.series !== g.series &&
+        (await cuantasPendientes()) === 0
+      ) {
+        const { data: fila, error: eFila } = await supabase.from('sesiones').select('bloques').eq('id', g.id).maybeSingle();
+        if (!eFila && fila) {
+          g.bloques = unirConGuardados((fila as { bloques?: unknown }).bloques, bloquesVacios(null, g.bloques.meta));
+        }
+      }
+      // Faltan si no vinieron, o si ya faltaban y no se pudieron traer (sin
+      // señal): lo que la caché tenga en ese caso es solo lo de acá.
+      const faltan = !!g.id && (!g.bloques || (previo?.id === g.id && previo.faltanBloques === true));
+      await guardarSesionCache(faltan ? { ...g, faltanBloques: true } : g, yo);
       if (g.bloques) setBloques(g.bloques);
+      if (faltan && g.id) {
+        faltanBloques.current = g.id;
+        void recuperarBloques(g.id);
+      }
       setInicio(g.inicio);
       setDesfasaje(g.desfasaje);
       // El servidor manda, SALVO que haya toques esperando en la cola: ahí el
@@ -308,6 +338,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     } finally {
       confirmando.current = false;
     }
+    // `yo` no cambia nunca y `recuperarBloques` solo usa refs y setters: con
+    // ellos en la lista, `confirmar` cambiaría en cada render y el efecto que
+    // lo llama al montar se volvería a armar en cada uno.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
 
   useEffect(() => {
@@ -363,6 +397,31 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inicio]);
+
+  /**
+   * Trae los bloques que la base tiene guardados para la sesión y los junta
+   * con lo que haya acá (`unirConGuardados`). Sin señal no pasa nada: queda
+   * marcado y se vuelve a intentar en el próximo toque.
+   *
+   * `actual` es el estado recién calculado por quien llama, si lo hay: el
+   * render que actualiza `bloquesRef` puede no haber pasado todavía.
+   */
+  async function recuperarBloques(id: string, actual?: EstadoBloques) {
+    if (faltanBloques.current !== id) return;
+    const { data, error } = await supabase.from('sesiones').select('bloques').eq('id', id).maybeSingle();
+    if (error || faltanBloques.current !== id) return;
+    const antes = actual ?? bloquesRef.current;
+    const unidos = unirConGuardados((data as { bloques?: unknown } | null)?.bloques, antes);
+    faltanBloques.current = null;
+    bloquesRef.current = unidos;
+    setBloques(unidos);
+    await actualizarSesionCache({ bloques: unidos, faltanBloques: false }, yo);
+    // Si se contó algo acá mientras tanto, la lista recién ahora está completa
+    // y no se había subido: se sube. Si no, la base ya la tiene así.
+    if (!sinNadaContado(antes)) {
+      await encolar(supabase, { rpc: 'fijar_bloques', args: { p_sesion: id, p_bloques: paraGuardar(unidos) } });
+    }
+  }
 
   /**
    * `desde` es la hora de LLEGADA cuando arranca sola, que no es la hora de la
@@ -424,6 +483,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // Va DESPUÉS de guardar la sesión y sin bloquear: que el chip arranque
     // vacío es un detalle; que el cronómetro tarde en aparecer, no.
     (async () => {
+      // YA ESTABA CORRIENDO (se empezó en otro lado): lo que se hizo está en la
+      // base, y eso va antes que cualquier semilla.
+      if (r.yaEstaba && r.id && sinNadaContado(bloquesRef.current)) {
+        faltanBloques.current = r.id;
+        await actualizarSesionCache({ faltanBloques: true }, yo);
+        await recuperarBloques(r.id);
+        if (!sinNadaContado(bloquesRef.current)) return;
+      }
       const [{ data: ultimo }, meta] = await Promise.all([
         supabase.rpc('ultimo_ejercicio'),
         leerMetaPreferida(),
@@ -609,6 +676,13 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       rpc: 'fijar_series',
       args: { p_sesion: idSesion, p_series: totalSeries },
     });
+    // Los bloques de antes todavía no llegaron: la lista de acá está
+    // incompleta y subirla los borraría. Se intenta traerlos; si se pudo,
+    // `recuperarBloques` ya subió la lista junta.
+    if (faltanBloques.current === idSesion) {
+      await recuperarBloques(idSesion, b);
+      return;
+    }
     await encolar(supabase, {
       rpc: 'fijar_bloques',
       args: { p_sesion: idSesion, p_bloques: paraGuardar(b) },

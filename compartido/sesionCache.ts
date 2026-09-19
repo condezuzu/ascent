@@ -64,6 +64,13 @@ export type SesionCacheada = {
    * una versión anterior cae en la regla de las dos horas.
    */
   ultimaActividad?: string | null;
+  /**
+   * Los bloques de la base todavía no se trajeron (ver `unirConGuardados`):
+   * los `bloques` de acá son solo lo contado en este teléfono y no se pueden
+   * subir tal cual. Sobrevive a cerrar la app a propósito: sin señal, la
+   * próxima apertura tiene que volver a intentarlo, no dar la caché por buena.
+   */
+  faltanBloques?: boolean;
 };
 
 /**
