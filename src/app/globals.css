@@ -3913,10 +3913,16 @@ body.con-franja.con-accion .pantalla {
 .pantalla.en-sesion > .bloque > * {
   flex-shrink: 0;
 }
+/* CON TECHO (19/9): en el Pro Max el + llegaba a 515 px y un botón de media
+   pantalla se lee como un error. 160 px: por debajo de lo que tiene en un
+   iPhone normal en TODOS los momentos (250 con la pregunta de marca, 341
+   recién empezado, 427 contestada), así que en ese teléfono el + no cambia
+   de tamaño cuando aparece la pregunta. Lo que sobra queda como aire debajo
+   del bloque, no adentro del botón. */
 .pantalla.en-sesion > .bloque > .bloque-mas {
   flex: 1 1 auto;
   min-height: 64px;
-  max-height: none;
+  max-height: 160px;
 }
 .lista-bloques {
   display: flex;
