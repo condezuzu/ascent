@@ -8529,6 +8529,24 @@ console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
   chequear('sacar y ver lista van en un renglon', /\.bloque-pie \{/.test(css), true);
 }
 
+console.log('\n129. Deslizar entre pestañas: la de al lado asoma');
+{
+  // LO QUE PASO (19/9): deslizar se sentia "se mueve, carga, se mueve,
+  // carga": la pestaña de al lado no aparecia hasta soltar. El gesto de verdad
+  // lo prueba herramientas/probar-deslizar.mjs; esto cuida las piezas.
+  const { readFileSync: leer129 } = await import('node:fs');
+  const { join: unir129, dirname: dir129 } = await import('node:path');
+  const { fileURLToPath: aRuta129 } = await import('node:url');
+  const R129 = unir129(dir129(aRuta129(import.meta.url)), '..');
+  const d = sinComentarios(leer129(unir129(R129, 'src', 'components', 'PantallaDeslizable.tsx'), 'utf8'));
+  chequear('guarda la foto de la pestaña al irse', /instantaneas\.set\(/.test(d), true);
+  chequear('con la pestaña de cuando se monto', /indiceAlMontar\.current/.test(d), true);
+  chequear('arma la copia mientras se arrastra', /alMover[\s\S]*armarAsomo\(/.test(d), true);
+  chequear('la copia no se toca', /\.inert = true/.test(d), true);
+  chequear('se va al montar la nueva, no al cambiar la ruta', /requestAnimationFrame\(quitarAsomo\)[\s\S]{0,120}\}, \[\]\)/.test(d), true);
+  chequear('pide las de al lado de antemano', /router\.prefetch\(/.test(d), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

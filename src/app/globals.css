@@ -248,6 +248,26 @@ textarea::placeholder {
   touch-action: pan-y;
 }
 
+/* LA PESTAÑA DE AL LADO, ASOMANDO mientras se arrastra (19/9, ver
+   `PantallaDeslizable`). Es una copia quieta: fija a la ventana, al mismo
+   nivel que la pantalla y debajo de la barra, y sin eventos. Adentro de un
+   `transform`, sus `position: fixed` quedan anclados a esta caja, que es la
+   ventana: "Terminar" asoma donde va. */
+.asomo {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+  will-change: transform;
+}
+.asomo > .pantalla {
+  animation: none;
+}
+.asomo > .pantalla * {
+  animation: none !important;
+}
+
 .pantalla {
   position: relative;
   z-index: 1;

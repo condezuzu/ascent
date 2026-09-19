@@ -1,13 +1,71 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { T } from '@nucleo/textos';
 
 // El mismo orden que la barra de abajo
 export const PESTANAS = ['/', '/social', '/album', '/stats', '/ajustes'] as const;
 
 const UMBRAL = 0.22; // fracción del ancho a partir de la cual se cambia
 const VELOCIDAD_MIN = 0.35; // px/ms: un gesto rápido cambia aunque sea corto
+const VIAJE_MS = 340;
+const CURVA = 'cubic-bezier(0.16,1,0.3,1)';
+
+/**
+ * LA PESTAÑA DE AL LADO ASOMA MIENTRAS SE ARRASTRA (19/9).
+ *
+ * Antes la pantalla seguía al dedo pero sola: del costado no venía nada, al
+ * soltar se desvanecía, recién ahí se navegaba y la pestaña nueva aparecía
+ * entera y de golpe cuando terminaba de cargar. Se sentía "se mueve, carga, se
+ * mueve, carga".
+ *
+ * Ahora del costado entra una COPIA de cómo quedó esa pestaña la última vez
+ * que se vio (`instantaneas`, guardada al irse de ella), pegada a la actual y
+ * siguiendo el mismo dedo. Al soltar terminan el viaje juntas, se navega, y la
+ * copia se queda puesta hasta que la pestaña de verdad está montada: no hay un
+ * momento en que no haya nada. Si nunca se abrió, asoma con su título.
+ *
+ * La copia es un clon del DOM, quieta y sin eventos (`inert`): sirve para
+ * mirar, no para tocar. Los `canvas` salen vacíos; el fondo es de todas.
+ */
+const instantaneas = new Map<string, HTMLElement>();
+let asomoVivo: HTMLDivElement | null = null;
+
+const TITULOS: Partial<Record<(typeof PESTANAS)[number], string>> = {
+  '/social': T.social.titulo,
+  '/album': T.album.titulo,
+  '/stats': T.stats.titulo,
+  '/ajustes': T.ajustes.titulo,
+};
+
+function quitarAsomo() {
+  asomoVivo?.remove();
+  asomoVivo = null;
+}
+
+function armarAsomo(ruta: (typeof PESTANAS)[number]): HTMLDivElement {
+  quitarAsomo();
+  const cont = document.createElement('div');
+  cont.className = 'asomo';
+  cont.setAttribute('aria-hidden', 'true');
+  cont.inert = true;
+  const foto = instantaneas.get(ruta);
+  if (foto) {
+    cont.appendChild(foto.cloneNode(true));
+  } else {
+    const p = document.createElement('div');
+    p.className = 'pantalla';
+    const t = document.createElement('div');
+    t.className = 'titulo-pantalla';
+    t.textContent = TITULOS[ruta] ?? '';
+    p.appendChild(t);
+    cont.appendChild(p);
+  }
+  document.body.appendChild(cont);
+  asomoVivo = cont;
+  return cont;
+}
 
 /**
  * Envuelve el contenido de una pestaña y permite cambiar deslizando.
@@ -48,6 +106,34 @@ export default function PantallaDeslizable({
     return () => clearTimeout(t);
   }, []);
 
+  // LA FOTO DE ESTA PESTAÑA, al irse: es lo que va a asomar desde la de al
+  // lado. En el `cleanup` de un layout effect el DOM todavía está.
+  //
+  // Con la pestaña de CUANDO SE MONTÓ, no la de ahora: la que se va se entera
+  // de la ruta nueva antes de desmontarse, y guardaría su foto con el nombre
+  // de la otra.
+  const indiceAlMontar = useRef(indice);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const indice = indiceAlMontar.current;
+    if (!el || indice < 0) return;
+    return () => {
+      const p = el.querySelector(':scope > .pantalla');
+      if (!p) return;
+      const copia = p.cloneNode(true) as HTMLElement;
+      copia.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+      instantaneas.set(PESTANAS[indice], copia);
+    };
+  }, []);
+
+  // Las de al lado, pedidas de antemano: al soltar, la navegación no espera
+  // a que llegue el código de la pestaña nueva.
+  useEffect(() => {
+    if (indice < 0) return;
+    if (indice > 0) router.prefetch(PESTANAS[indice - 1]);
+    if (indice < PESTANAS.length - 1) router.prefetch(PESTANAS[indice + 1]);
+  }, [indice, router]);
+
   useEffect(() => {
     const el = ref.current;
     if (el === null || indice < 0) return;
@@ -57,6 +143,9 @@ export default function PantallaDeslizable({
     let t0 = 0;
     let arrastrando = false;
     let decidido = false;
+    // De qué lado asoma la vecina: 1 = la siguiente (entra por la derecha),
+    // -1 = la anterior. 0 = ninguna.
+    let lado = 0;
 
     const ancho = () => el.clientWidth || window.innerWidth;
 
@@ -67,11 +156,12 @@ export default function PantallaDeslizable({
       t0 = performance.now();
       arrastrando = true;
       decidido = false;
+      lado = 0;
       el!.style.transition = 'none';
       // `will-change` SOLO durante el gesto: puesto siempre, este div es el
       // bloque contenedor de sus hijos `position: fixed` y la acción anclada
       // deja de estar anclada a la pantalla. Ver el comentario en globals.
-      el!.style.willChange = 'transform, opacity';
+      el!.style.willChange = 'transform';
     }
 
     function alMover(e: TouchEvent) {
@@ -90,13 +180,25 @@ export default function PantallaDeslizable({
         decidido = true;
       }
 
+      const quiere = dx > 0 ? -1 : 1;
+      const destino = indice + quiere;
+      const sinDestino = destino < 0 || destino >= PESTANAS.length;
       // en los extremos el arrastre ofrece resistencia, para que se note
       // que no hay nada más de ese lado
-      const haciaAtras = dx > 0;
-      const sinDestino = (haciaAtras && indice === 0) || (!haciaAtras && indice === PESTANAS.length - 1);
       const d = sinDestino ? dx * 0.25 : dx;
       el!.style.transform = `translate3d(${d}px, 0, 0)`;
-      el!.style.opacity = String(Math.max(0.55, 1 - Math.abs(d) / (ancho() * 1.6)));
+
+      if (sinDestino) {
+        if (lado !== 0) quitarAsomo();
+        lado = 0;
+      } else {
+        if (lado !== quiere || !asomoVivo) {
+          const a = armarAsomo(PESTANAS[destino]);
+          a.style.transition = 'none';
+          lado = quiere;
+        }
+        asomoVivo!.style.transform = `translate3d(${d + lado * ancho()}px, 0, 0)`;
+      }
       e.preventDefault();
     }
 
@@ -111,18 +213,27 @@ export default function PantallaDeslizable({
       const suficiente = Math.abs(dx) > ancho() * UMBRAL;
       const haciaAtras = dx > 0;
       const destino = haciaAtras ? indice - 1 : indice + 1;
+      const asomo = asomoVivo;
 
-      el!.style.transition = 'transform 0.34s cubic-bezier(0.16,1,0.3,1), opacity 0.34s ease';
+      const viaje = `transform ${VIAJE_MS / 1000}s ${CURVA}`;
+      el!.style.transition = viaje;
+      if (asomo) asomo.style.transition = viaje;
 
-      if ((veloz || suficiente) && destino >= 0 && destino < PESTANAS.length) {
-        // completa el movimiento y recién ahí navega
+      if ((veloz || suficiente) && destino >= 0 && destino < PESTANAS.length && asomo) {
+        // Las dos terminan el viaje juntas; recién ahí se navega. La copia se
+        // queda cubriendo hasta que la pestaña de verdad se monta (ver abajo).
         setSaliendo(haciaAtras ? 'der' : 'izq');
         el!.style.transform = `translate3d(${haciaAtras ? ancho() : -ancho()}px, 0, 0)`;
-        el!.style.opacity = '0';
-        setTimeout(() => router.push(PESTANAS[destino]), 180);
+        asomo.style.transform = 'translate3d(0, 0, 0)';
+        setTimeout(() => router.push(PESTANAS[destino]), VIAJE_MS);
       } else {
         el!.style.transform = 'translate3d(0,0,0)';
-        el!.style.opacity = '1';
+        if (asomo) {
+          asomo.style.transform = `translate3d(${lado * ancho()}px, 0, 0)`;
+          setTimeout(() => {
+            if (asomoVivo === asomo) quitarAsomo();
+          }, VIAJE_MS);
+        }
         // Y al terminar el viaje de vuelta se limpia TODO: un `transform`
         // puesto —aunque sea la identidad— también crea bloque contenedor, así
         // que dejar `translate3d(0,0,0)` sería cambiar un problema por el
@@ -160,6 +271,21 @@ export default function PantallaDeslizable({
     el.style.willChange = '';
     setSaliendo(null);
   }, [ruta]);
+
+  // La copia que cubría el viaje se va cuando ESTA pestaña ya está pintada:
+  // dos cuadros, para no dejar uno sin nada entre las dos. Al montar y no al
+  // cambiar la ruta: la pestaña que se va también se entera del cambio de
+  // ruta antes de desmontarse, y la sacaría antes de tiempo.
+  useEffect(() => {
+    let segundo = 0;
+    const primero = requestAnimationFrame(() => {
+      segundo = requestAnimationFrame(quitarAsomo);
+    });
+    return () => {
+      cancelAnimationFrame(primero);
+      cancelAnimationFrame(segundo);
+    };
+  }, []);
 
   // Renderiza la propia .pantalla para que las pantallas solo tengan que
   // cambiar su contenedor por este componente.
