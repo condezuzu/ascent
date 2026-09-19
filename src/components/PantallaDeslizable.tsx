@@ -77,9 +77,12 @@ function armarAsomo(ruta: (typeof PESTANAS)[number]): HTMLDivElement {
 export default function PantallaDeslizable({
   children,
   onClick,
+  clase,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
+  /** Una clase más para la `.pantalla` (Inicio pone `en-sesion`). */
+  clase?: string;
 }) {
   const router = useRouter();
   const ruta = usePathname();
@@ -291,7 +294,7 @@ export default function PantallaDeslizable({
   // cambiar su contenedor por este componente.
   return (
     <div ref={ref} className={`deslizable ${saliendo ? 'saliendo' : ''}`}>
-      <div className="pantalla" onClick={onClick}>
+      <div className={clase ? `pantalla ${clase}` : 'pantalla'} onClick={onClick}>
         {children}
       </div>
     </div>

@@ -15,7 +15,19 @@ import { T } from '@nucleo/textos';
  * mostrara mientras se consulta, el que ya lo cerró vería el globo parpadear
  * en cada visita.
  */
-export default function GloboPrimeraVez({ cual, children }: { cual: Globo; children: string }) {
+export default function GloboPrimeraVez({
+  cual,
+  children,
+  cerrarCuando = false,
+}: {
+  cual: Globo;
+  children: string;
+  /**
+   * Se cierra solo —y queda visto— cuando esto pasa a `true`: la cosa que
+   * explica ya se usó. El de las series se va con el primer + (19/9).
+   */
+  cerrarCuando?: boolean;
+}) {
   const [visible, setVisible] = useState(false);
   const [cerrando, setCerrando] = useState(false);
   const [uid, setUid] = useState('');
@@ -39,6 +51,11 @@ export default function GloboPrimeraVez({ cual, children }: { cual: Globo; child
     setCerrando(true);
     setTimeout(() => setVisible(false), 300);
   }
+
+  useEffect(() => {
+    if (cerrarCuando && visible && !cerrando) cerrar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cerrarCuando, visible]);
 
   if (!visible) return null;
 

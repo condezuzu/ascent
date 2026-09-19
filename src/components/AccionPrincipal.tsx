@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
  * LA ACCIÓN DE LA PANTALLA, SIEMPRE EN EL MISMO LUGAR.
@@ -33,17 +33,36 @@ export default function AccionPrincipal({
   children: React.ReactNode;
   secundaria?: React.ReactNode;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+
   // El padding de abajo del contenido lo pone una clase en el body, igual que
   // hace la franja de la sesión: `.pantalla` está anidada dentro de
   // `.deslizable`, así que no es hermana de esta barra y no hay ningún
   // selector de CSS que las relacione.
+  //
+  // Y EL ALTO LO MIDE ELLA MISMA (19/9). Era un número escrito a mano
+  // (`--alto-accion: 90px`) y se desincronizó dos veces: "Registrar día" con
+  // "Anotar peso" abajo mide más que 90, y el último renglón de Inicio quedaba
+  // tapado detrás del botón en el SE y en Safari. Ahora publica lo que mide,
+  // solo cuando cambia (no en cada render), y el 90 queda de valor inicial.
   useEffect(() => {
     document.body.classList.add('con-accion');
-    return () => document.body.classList.remove('con-accion');
+    const el = ref.current;
+    const publicar = () => {
+      if (el) document.body.style.setProperty('--alto-accion', `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    };
+    publicar();
+    const mirar = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publicar);
+    if (el) mirar?.observe(el);
+    return () => {
+      mirar?.disconnect();
+      document.body.classList.remove('con-accion');
+      document.body.style.removeProperty('--alto-accion');
+    };
   }, []);
 
   return (
-    <div className="accion-anclada">
+    <div ref={ref} className="accion-anclada">
       {children}
       {secundaria}
     </div>

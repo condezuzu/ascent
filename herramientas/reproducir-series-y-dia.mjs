@@ -109,7 +109,7 @@ async function leer(nombre, pg = page) {
     } catch {}
     return {
       llenos: puntos ? puntos.querySelectorAll('.punto.lleno').length : null,
-      numero: document.querySelector('.bloque-cuenta .numero')?.textContent ?? null,
+      numero: document.querySelector('.bloque-puntos')?.getAttribute('aria-label') ?? null,
       total: document.querySelector('.bloque-cuenta .palabra')?.textContent ?? null,
       cache,
     };

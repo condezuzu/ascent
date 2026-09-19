@@ -4,7 +4,9 @@
 // scrollear. Esto lo MIDE en la web, en varios tamaños de teléfono y en los
 // estados que cambian el alto: recién empezado (con el globo de la primera
 // vez), con una serie y el descanso andando, y con la pregunta de marca.
-// Reporta cuánto sobra y quién empuja (la misma cuenta que
+// Falla si sobra algo, si algo queda tapado detrás de lo anclado abajo, o si
+// el + (que toma lo que sobra de la pantalla) llegó a su mínimo de 64 px: eso
+// quiere decir que ya no entra. Reporta cuánto sobra y quién empuja (la misma cuenta que
 // `supabase/medir-scroll.mjs`, sin compilar: contra el servidor de desarrollo).
 //
 // Deja la cuenta como estaba, como `reproducir-series-y-dia.mjs`.
@@ -154,6 +156,35 @@ const CULPABLES = () => {
 };
 
 
+// LO QUE QUEDA TAPADO. "No sobra" no alcanza: el 19/9 daba 0 px y "Registrar
+// día" tapaba el último renglón, porque lo que está detrás de algo fijo no
+// empuja el scroll. Se busca todo lo que se lee o se toca en la pantalla
+// (hojas del árbol con texto, botones, campos) cuyo borde de abajo cae debajo
+// del borde de arriba de lo anclado abajo (la acción y la barra).
+const TAPADOS = () => {
+  const alto = window.innerHeight;
+  let techo = alto;
+  for (const sel of ['.accion-anclada', 'nav.nav']) {
+    const el = document.querySelector(sel);
+    if (el && getComputedStyle(el).display !== 'none') techo = Math.min(techo, el.getBoundingClientRect().top);
+  }
+  const tapados = [];
+  const pantalla = document.querySelector('.deslizable .pantalla');
+  if (!pantalla) return { techo, tapados };
+  for (const el of pantalla.querySelectorAll('*')) {
+    if (el.closest('.accion-anclada')) continue;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || cs.position === 'fixed') continue;
+    const hoja = ['BUTTON', 'INPUT', 'A'].includes(el.tagName) || (el.children.length === 0 && el.textContent.trim());
+    if (!hoja) continue;
+    const r = el.getBoundingClientRect();
+    if (r.height === 0 || r.top >= alto) continue;
+    if (r.bottom > techo + 1) tapados.push(`${el.tagName.toLowerCase()} "${el.textContent.trim().slice(0, 30)}"`);
+  }
+  return { techo: Math.round(techo), tapados: [...new Set(tapados)].slice(0, 4) };
+};
+const MINIMO_MAS = 64;
+
 const TAMANOS = [
   ['iPhone 12-16, app instalada', 390, 844],
   ['iPhone 12-16, Safari con barras', 390, 664],
@@ -169,9 +200,23 @@ async function medirTodos(estado) {
     await page.waitForTimeout(900);
     await page.evaluate(() => window.scrollTo(0, 0));
     const d = await page.evaluate(CULPABLES);
-    const linea = `  ${nombre.padEnd(34)} ${w}×${h}  sobra ${String(d.sobra).padStart(4)} px`;
+    // Tapado es lo que no se ve NI bajando hasta el final: con scroll, lo de
+    // abajo está detrás de la barra hasta que se baja, y eso no es tapar.
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForTimeout(150);
+    const t = await page.evaluate(TAPADOS);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const mas = await page.evaluate(() => {
+      const b = document.querySelector('.bloque-mas');
+      return b ? Math.round(b.getBoundingClientRect().height) : null;
+    });
+    const enElMinimo = mas !== null && mas <= MINIMO_MAS;
+    const linea =
+      `  ${nombre.padEnd(34)} ${w}×${h}  sobra ${String(d.sobra).padStart(4)} px` +
+      (mas !== null ? `  · + ${String(mas).padStart(3)} px${enElMinimo ? ' EN EL MÍNIMO' : ''}` : '') +
+      (t.tapados.length ? `  · TAPADO: ${t.tapados.join(', ')}` : '');
     console.log(linea + (d.sobra > 0 ? `  ← empuja: ${d.primeros.slice(0, 3).map((m) => `${m.etiqueta.slice(0, 40)} (${m.abajo})`).join(', ')}` : ''));
-    if (d.sobra > 0) peores.push(nombre);
+    if (d.sobra > 0 || enElMinimo || t.tapados.length) peores.push(nombre);
     // Con ALTOS=1, cuánto ocupa cada pieza (con sus márgenes): para decidir
     // qué sacar con números y no a ojo.
     if (process.env.ALTOS) {

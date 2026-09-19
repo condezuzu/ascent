@@ -298,6 +298,11 @@ export default function Inicio({
         )}
       </View>
 
+      {/* MIENTRAS ENTRENÁS, INICIO ES EL ENTRENAMIENTO (19/9, lo mismo que la
+          web): la racha y la semana no cambian en medio de una sesión y
+          vuelven al terminar. */}
+      {!sesion.estado.corriendo && (
+      <>
       <Text style={estilos.etiqueta}>{T.inicio.racha}</Text>
       <Text style={estilos.racha}>{perfil.racha_actual}</Text>
 
@@ -324,6 +329,8 @@ export default function Inicio({
           </View>
         ))}
       </View>
+      </>
+      )}
 
       {impulsos && (
         <View style={estilos.impulsos}>

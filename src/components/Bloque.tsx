@@ -249,17 +249,20 @@ export default function Bloque({
           </div>
         )}
 
-      <div className="bloque-puntos" aria-hidden>
-        {Array.from({ length: puntos }).map((_, i) => (
-          <span
-            key={i}
-            className={`punto ${i < estado.hechas ? 'lleno' : ''} ${i >= estado.meta ? 'extra' : ''}`}
-          />
-        ))}
-      </div>
-
+      {/* UNA SOLA CUENTA DEL BLOQUE: los circulitos (19/9, decisión del
+          humano). El "1 de 3" grande decía lo mismo con otra forma, y dos
+          lecturas de lo mismo son las que hicieron creer que se habían
+          perdido series. El total de la sesión va chico, al lado, y el
+          "1 de 3" sigue para quien no ve los puntos. */}
       <div className="bloque-cuenta" aria-live="polite">
-        <span className="numero">{T.sesion.deMeta(estado.hechas, estado.meta)}</span>
+        <span className="bloque-puntos" role="img" aria-label={T.sesion.deMeta(estado.hechas, estado.meta)}>
+          {Array.from({ length: puntos }).map((_, i) => (
+            <span
+              key={i}
+              className={`punto ${i < estado.hechas ? 'lleno' : ''} ${i >= estado.meta ? 'extra' : ''}`}
+            />
+          ))}
+        </span>
         <span className="palabra">{T.sesion.totalHoy(total)}</span>
       </div>
 

@@ -525,7 +525,9 @@ export default function Principal() {
         atmosfera
       />
 
-      <PantallaDeslizable>
+      {/* `en-sesion`: con el entrenamiento andando, Inicio es una columna
+          del alto de la pantalla y el + toma lo que sobra (ver globals). */}
+      <PantallaDeslizable clase={sesion.estado.corriendo ? 'en-sesion' : undefined}>
         {/* La cabecera es la puerta al perfil propio Y la casa del
             cronómetro (§20.2): el reloj va acá, discreto, y no en una pestaña
             propia — un cronómetro que hay que buscar no lo usa nadie. */}
@@ -542,27 +544,28 @@ export default function Principal() {
           />
         </div>
 
-        {/* CON EL ENTRENAMIENTO ANDANDO, LA RACHA SE ACHICA (19/9). Inicio
-            tiene que entrar en una pantalla sin scroll, y con el bloque, el
-            peso, la pregunta de marca y "Terminar" no entraba ni en un iPhone
-            grande (medido: herramientas/medir-inicio-en-sesion.mjs). En medio
-            de una serie lo que se mira es el +; la racha sigue a la vista,
-            chica. */}
-        <div className={`racha-bloque${sesion.estado.corriendo ? ' en-sesion' : ''}`}>
-          <div className="racha-fila">
-            <span className="racha-label">{T.inicio.racha}</span>
-            {/* Cuenta de 46 a 47 en vez de reemplazarse. Ver
-                `NumeroQueCuenta`: la primera pintada NO se anima, porque
-                contar desde cero al abrir la app contaría algo falso. */}
-            <NumeroQueCuenta valor={racha} className="racha-numero" />
-          </div>
-          {/* barra de progreso al siguiente rango, sin etiqueta de texto */}
-          {prox && (
-            <div className="progreso">
-              <div style={{ width: `${Math.round(progreso * 100)}%` }} />
+        {/* MIENTRAS ENTRENÁS, INICIO ES EL ENTRENAMIENTO (19/9, decisión del
+            humano). La racha no cambia en medio de una sesión —el día ya
+            contó al empezar— y vuelve al terminar. Sacarla del todo, y no
+            achicarla según el alto del teléfono, es lo que deja a Inicio
+            entrar en una pantalla sin reglas de qué se esconde cuándo. */}
+        {!sesion.estado.corriendo && (
+          <div className="racha-bloque">
+            <div className="racha-fila">
+              <span className="racha-label">{T.inicio.racha}</span>
+              {/* Cuenta de 46 a 47 en vez de reemplazarse. Ver
+                  `NumeroQueCuenta`: la primera pintada NO se anima, porque
+                  contar desde cero al abrir la app contaría algo falso. */}
+              <NumeroQueCuenta valor={racha} className="racha-numero" />
             </div>
-          )}
-        </div>
+            {/* barra de progreso al siguiente rango, sin etiqueta de texto */}
+            {prox && (
+              <div className="progreso">
+                <div style={{ width: `${Math.round(progreso * 100)}%` }} />
+              </div>
+            )}
+          </div>
+        )}
 
         {avisoTiempo && <p className="aviso-tiempo">{T.inicio.ultimoTramo(racha + 1)}</p>}
         {perdida && (
@@ -590,7 +593,12 @@ export default function Principal() {
                 cuántas van de CADA ejercicio había que llevarlo de memoria.
                 El + sigue siendo el mismo gesto de siempre: suma la serie y
                 arranca el descanso (§20.3). Ver `lib/bloques.ts`. */}
-            <GloboPrimeraVez cual="series">{T.inicio.globoSeries}</GloboPrimeraVez>
+            {/* Se cierra solo con el primer +: para entonces ya se entendió
+                qué hace, y la pregunta de marca —que sale después de un +—
+                nunca lo encuentra abierto. */}
+            <GloboPrimeraVez cual="series" cerrarCuando={sesion.estado.series > 0}>
+              {T.inicio.globoSeries}
+            </GloboPrimeraVez>
             <Bloque
               estado={sesion.estado.bloques}
               total={sesion.estado.series}

@@ -500,28 +500,6 @@ body.ya-entro .pantalla > * {
   transition: width 0.7s var(--curva-salida);
 }
 
-/* CON EL ENTRENAMIENTO ANDANDO (19/9): la racha chica y en una línea, para
-   que Inicio entre en una pantalla (ver el comentario en `page.tsx`). La
-   palabra se acuesta: parada necesita más alto que el número chico. */
-.racha-bloque.en-sesion {
-  margin-bottom: 14px;
-}
-.racha-bloque.en-sesion .racha-fila {
-  align-items: baseline;
-}
-.racha-bloque.en-sesion .racha-label {
-  writing-mode: horizontal-tb;
-  transform: none;
-  padding-bottom: 0;
-  order: 2;
-}
-.racha-bloque.en-sesion .racha-numero {
-  font-size: 56px;
-}
-.racha-bloque.en-sesion .progreso {
-  margin: 10px 0 0;
-}
-
 .aviso-tiempo {
   font-size: 13px;
   color: var(--sub);
@@ -3340,6 +3318,12 @@ body.con-franja .pantalla {
   font-size: 15px;
   color: var(--tinta);
   appearance: none;
+  /* UN RENGLÓN, con "…" si no entra (19/9). El `text-overflow` estaba pero
+     sin `nowrap` no hacía nada: en el SE "Press de banca · pecho" se partía
+     en dos y esos 19 px eran los que le faltaban al + con la pregunta de
+     marca abierta. El nombre entero se ve al tocarlo, en el selector. */
+  white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 .bloque-metas {
@@ -3358,14 +3342,15 @@ body.con-franja .pantalla {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
-  min-height: 14px;
+  min-height: 16px;
 }
+/* Los circulitos son LA cuenta del bloque desde que se fue el "1 de 3"
+   (19/9): un poco más grandes, para leerlos de lejos. */
 .bloque-puntos .punto {
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--pal-principal) 45%, transparent);
   transition: background-color 0.25s var(--curva-salida), transform 0.25s var(--curva-salida);
@@ -3377,24 +3362,17 @@ body.con-franja .pantalla {
 /* Los que te pasaste de la meta: más chicos, pero SE DIBUJAN. Esconderlos
    sería decirle a alguien que lo que hizo de más no cuenta. */
 .bloque-puntos .punto.extra {
-  width: 9px;
-  height: 9px;
+  width: 11px;
+  height: 11px;
 }
-/* La cuenta pasa a una línea sola: el protagonista de esta pantalla ahora es
-   el +, no el número. */
+/* Un renglón: los circulitos y, chico al lado, el total de la sesión. El
+   protagonista de esta pantalla es el +, no un número. */
 .bloque-cuenta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 14px;
-}
-.bloque-cuenta .numero {
-  font-family: var(--f-numero), system-ui, sans-serif;
-  font-size: 30px;
-  font-weight: 300;
-  font-variant-numeric: tabular-nums;
-  color: var(--tinta);
 }
 .bloque-cuenta .palabra {
   font-family: var(--f-mono), monospace;
@@ -3418,11 +3396,10 @@ body.con-franja .pantalla {
   align-items: center;
   justify-content: center;
   width: 100%;
-  /* SE PASÓ DOS VECES. Primero 28vh —media pantalla—, después 15vh, y seguía
-     tapando. Ahora 11vh: en un teléfono de 844 px son 93 px de alto por el
-     ancho entero, más del doble del botón de 44 px del que veníamos, y sigue
-     siendo un blanco que se acierta sin mirar. Lo que se gana son los 35 px
-     que hacían que Inicio no entrara en una pantalla. */
+  /* SE PASÓ DOS VECES (28vh, 15vh) y después quedó en 11vh para que Inicio
+     entrara. Desde el 19/9 el alto lo decide la estructura: durante el
+     entrenamiento el + toma lo que sobra de la pantalla, con un mínimo de
+     64 px (ver `.pantalla.en-sesion`). Esto queda para cualquier otro lugar. */
   min-height: 11vh;
   max-height: 100px;
   border: 1px solid color-mix(in srgb, var(--pal-principal) 30%, transparent);
@@ -3887,15 +3864,8 @@ body.con-franja.con-accion .pantalla {
   margin: 0;
 }
 
-/* INICIO ENTRA EN UNA PANTALLA CON EL ENTRENAMIENTO ANDANDO (19/9). Medido
-   con herramientas/medir-inicio-en-sesion.mjs en cuatro tamaños.
-   - Mientras está la pregunta de marca, el globo de la primera vez se va: la
-     pregunta es de ahora y el globo vuelve cuando se contesta.
-   - La pregunta, compacta: debajo del + no tiene el aire de una pantalla
-     propia. */
-.pantalla:has(.marcas-sugeridas.en-el-momento) .globo {
-  display: none;
-}
+/* La pregunta de marca, compacta: debajo del + no tiene el aire que tiene
+   en el resumen, que es una pantalla propia. */
 .marcas-sugeridas.en-el-momento {
   padding: 8px 12px;
   margin-top: 10px;
@@ -3914,44 +3884,39 @@ body.con-franja.con-accion .pantalla {
   min-width: 36px;
   min-height: 36px;
 }
-/* En los teléfonos bajos (el SE, o Safari con sus barras) el aire vertical
-   se achica. El + no baja de 64 px: es el botón que se toca sin mirar. */
-@media (max-height: 720px) {
-  .pantalla:has(.bloque-mas) {
-    padding-top: max(10px, env(safe-area-inset-top));
-  }
-  .pantalla:has(.bloque-mas) .cabecera {
-    margin-bottom: 4px;
-  }
-  .pantalla:has(.bloque-mas) .bloque-mas {
-    min-height: 64px;
-  }
-  .pantalla:has(.bloque-mas) .bloque-puntos {
-    margin-bottom: 8px;
-  }
-  .pantalla:has(.bloque-mas) .bloque-cuenta {
-    margin-bottom: 8px;
-  }
-  .pantalla:has(.bloque-mas) .bloque-pie,
-  .pantalla:has(.bloque-mas) .marcas-sugeridas.en-el-momento {
-    margin-top: 6px;
-  }
-  .pantalla:has(.bloque-mas) .en-el-momento .marca-sugerida .reps button {
-    min-width: 34px;
-    min-height: 34px;
-  }
-  .pantalla:has(.bloque-mas) .globo {
-    display: none;
-  }
-  /* Con la pregunta de marca a la vista, la racha se va un momento: vuelve
-     apenas se contesta. Es lo único que queda por sacar sin tocar el bloque. */
-  .pantalla:has(.marcas-sugeridas.en-el-momento) .racha-bloque {
-    display: none;
-  }
-  /* Y sin entrenamiento tampoco sobraba: 11 a 18 px en Safari y en el SE. */
-  .pantalla:has(.racha-bloque) .cabecera {
-    margin-bottom: 14px;
-  }
+
+/* INICIO DURANTE EL ENTRENAMIENTO: UNA PANTALLA, POR ESTRUCTURA (19/9).
+
+   No hay reglas de qué se esconde en qué teléfono. La pantalla mide lo que
+   mide la ventana y es una columna; todo tiene su alto natural menos el +,
+   que toma LO QUE SOBRE, con un mínimo de 64 px —el blanco que se acierta
+   sin mirar—. Lo que se agregue achica el +, no hace scroll.
+   herramientas/medir-inicio-en-sesion.mjs falla si el + llega al mínimo:
+   ese es el aviso de que ya no entra, antes de que se note en la mano.
+
+   La clase la pone Inicio con la sesión corriendo (`PantallaDeslizable`). */
+.pantalla.en-sesion {
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pantalla.en-sesion > * {
+  flex-shrink: 0;
+}
+.pantalla.en-sesion > .bloque {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pantalla.en-sesion > .bloque > * {
+  flex-shrink: 0;
+}
+.pantalla.en-sesion > .bloque > .bloque-mas {
+  flex: 1 1 auto;
+  min-height: 64px;
+  max-height: none;
 }
 .lista-bloques {
   display: flex;

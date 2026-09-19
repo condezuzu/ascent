@@ -187,17 +187,25 @@ export default function Bloque({
         </View>
       )}
 
-      <View style={estilos.puntos}>
-        {Array.from({ length: puntos }).map((_, i) => (
-          <View
-            key={i}
-            style={[estilos.punto, i < estado.hechas && estilos.puntoLleno, i >= estado.meta && estilos.puntoExtra]}
-          />
-        ))}
-      </View>
-
+      {/* UNA SOLA CUENTA DEL BLOQUE: los circulitos (19/9, lo mismo que la
+          web). El "1 de 3" grande decía lo mismo con otra forma, y dos
+          lecturas de lo mismo son las que hicieron creer que se habían
+          perdido series. El total va chico al lado; el "1 de 3" queda para
+          el lector de pantalla. */}
       <View style={estilos.cuenta} accessibilityLiveRegion="polite">
-        <Text style={estilos.cuentaNumero}>{T.sesion.deMeta(estado.hechas, estado.meta)}</Text>
+        <View
+          style={estilos.puntos}
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={T.sesion.deMeta(estado.hechas, estado.meta)}
+        >
+          {Array.from({ length: puntos }).map((_, i) => (
+            <View
+              key={i}
+              style={[estilos.punto, i < estado.hechas && estilos.puntoLleno, i >= estado.meta && estilos.puntoExtra]}
+            />
+          ))}
+        </View>
         <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
       </View>
 
@@ -287,12 +295,11 @@ const estilos = StyleSheet.create({
   },
   opcionTexto: { color: C.claro, fontSize: 13 },
   nota: { color: C.apagado, fontSize: 12, marginTop: 8 },
-  puntos: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 22, flexWrap: 'wrap' },
+  puntos: { flexDirection: 'row', justifyContent: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 1 },
   punto: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: C.sub },
   puntoLleno: { backgroundColor: C.claro, borderColor: C.claro },
   puntoExtra: { width: 11, height: 11, borderRadius: 6, marginTop: 2.5 },
-  cuenta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'baseline', gap: 10, marginTop: 14 },
-  cuentaNumero: { color: C.tinta, fontSize: 40, fontWeight: '300', fontVariant: ['tabular-nums'] },
+  cuenta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 22 },
   cuentaTotal: { color: C.apagado, fontSize: 12, letterSpacing: 1 },
   // EL + OCUPA MEDIA PANTALLA: se toca con una mano, transpirado, sin apuntar.
   mas: {

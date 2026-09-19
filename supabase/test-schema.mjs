@@ -8514,19 +8514,34 @@ console.log('\n127. Los bloques de la base vuelven al telefono');
 console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
 {
   // LO QUE PASO (19/9): con el entrenamiento andando Inicio se podia
-  // scrollear, y estaba decidido que no. Medido con
-  // herramientas/medir-inicio-en-sesion.mjs: sobraban de 47 a 461 px segun el
-  // telefono y el estado. Esto cuida que no vuelvan las dos piezas grandes.
+  // scrollear, y estaba decidido que no. Primero se arreglo escondiendo cosas
+  // segun el alto del telefono (seis reglas); el humano lo marco como deuda y
+  // se cambio por ESTRUCTURA: durante el entrenamiento Inicio es solo el
+  // entrenamiento, hay una sola cuenta del bloque, y el + toma lo que sobra
+  // con un minimo de 64 px. La prueba de verdad es
+  // herramientas/medir-inicio-en-sesion.mjs (falla si el + llega al minimo o
+  // si algo queda tapado); esto cuida que no vuelvan las reglas.
   const { readFileSync: leer128 } = await import('node:fs');
   const { join: unir128, dirname: dir128 } = await import('node:path');
   const { fileURLToPath: aRuta128 } = await import('node:url');
   const R128 = unir128(dir128(aRuta128(import.meta.url)), '..');
-  const inicio = sinComentarios(leer128(unir128(R128, 'src', 'app', 'page.tsx'), 'utf8'));
+  const de128 = (...p) => sinComentarios(leer128(unir128(R128, ...p), 'utf8'));
+  const inicio = de128('src', 'app', 'page.tsx');
   const css = leer128(unir128(R128, 'src', 'app', 'globals.css'), 'utf8');
-  chequear('la tira semanal no esta durante el entrenamiento', /!sesion\.estado\.corriendo && <TiraSemanal/.test(inicio), true);
-  chequear('la racha se achica durante el entrenamiento', /racha-bloque\$\{sesion\.estado\.corriendo \? ' en-sesion'/.test(inicio), true);
-  chequear('y tiene su estilo', /\.racha-bloque\.en-sesion \.racha-numero/.test(css), true);
-  chequear('sacar y ver lista van en un renglon', /\.bloque-pie \{/.test(css), true);
+  const bloque = de128('src', 'components', 'Bloque.tsx');
+  chequear('la racha no esta durante el entrenamiento', /!sesion\.estado\.corriendo && \(\s*<div className="racha-bloque">/.test(inicio), true);
+  chequear('la tira semanal tampoco', /!sesion\.estado\.corriendo && <TiraSemanal/.test(inicio), true);
+  chequear('sin reglas por alto de pantalla', /@media \(max-height/.test(css), false);
+  chequear('sin racha achicada', /racha-bloque\.en-sesion/.test(css), false);
+  chequear('sin cosas que se esconden segun lo que haya en pantalla', /\.pantalla:has\(/.test(css), false);
+  chequear('el + toma lo que sobra, con minimo de 64', /\.pantalla\.en-sesion > \.bloque > \.bloque-mas \{\s*flex: 1 1 auto;\s*min-height: 64px;/.test(css), true);
+  chequear('Inicio pone la clase con la sesion corriendo', /clase=\{sesion\.estado\.corriendo \? 'en-sesion'/.test(inicio), true);
+  chequear('una sola cuenta del bloque: sin el "1 de 3" a la vista (web)', /className="numero"/.test(bloque), false);
+  chequear('una sola cuenta del bloque (nativa)', /cuentaNumero/.test(de128('movil', 'src', 'Bloque.tsx')), false);
+  chequear('la racha no esta durante el entrenamiento (nativa)', /!sesion\.estado\.corriendo && \(\s*<>\s*<Text style=\{estilos\.etiqueta\}>\{T\.inicio\.racha\}/.test(de128('movil', 'src', 'Inicio.tsx')), true);
+  chequear('el globo de las series se cierra con el primer +', /cual="series" cerrarCuando=\{sesion\.estado\.series > 0\}/.test(inicio), true);
+  const accion = de128('src', 'components', 'AccionPrincipal.tsx');
+  chequear('el hueco de abajo lo mide la accion anclada', /setProperty\('--alto-accion'/.test(accion) && /new ResizeObserver\(publicar\)/.test(accion), true);
 }
 
 console.log('\n129. Deslizar entre pestañas: la de al lado asoma');
