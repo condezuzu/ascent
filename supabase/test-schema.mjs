@@ -8126,59 +8126,76 @@ console.log('\n119. Toda sonda que levanta un servidor lo limpia antes y despues
   chequear('y el ultimo que usa una sonda tambien', dentro119(3081), true);
 }
 
-console.log('\n120. Las frases de Inicio: propias, cortas y sin arengar');
+console.log('\n120. Las citas de Inicio: reales, con autor, y de un renglon');
 {
   const F = await import('../nucleo/frases.ts');
   const lista = F.TODAS_LAS_FRASES;
 
   chequear('son doce', lista.length, 12);
-  chequear('y ninguna repetida', new Set(lista).size, 12);
+  chequear('y ninguna repetida', new Set(lista.map((f) => f.texto)).size, 12);
 
-  // EL TOPE DE 45. No es estetica: la frase vive en una tira angosta al pie de
-  // Inicio, con `max-width: 30ch` y borde izquierdo. Una mas larga se parte en
-  // tres renglones y deja de leerse como una frase.
+  // EL TOPE DE 48, Y ES UNA REGLA DE PANTALLA (19/9). La cita va en UN
+  // renglon: Inicio entra sin scroll en los veinte casos medidos y dos
+  // renglones se lo comen. En el telefono mas angosto (SE, 375 px) el renglon
+  // da 316 px con el estilo de `.cita`, medido en el navegador; 48 caracteres
+  // es esa medida pasada a caracteres, con margen. Dos citas (Platon y Newton)
+  // se recortaron a un fragmento TEXTUAL para entrar.
   //
   // Se cuenta con el spread y no con `.length`: en JavaScript `.length` cuenta
   // unidades UTF-16, y una frase llena de tildes no las tiene mal contadas pero
   // un emoji o una letra compuesta si. El spread cuenta caracteres.
-  const largas = lista.filter((f) => [...f].length >= 45);
-  chequear('todas por debajo de 45 caracteres', largas, []);
+  const largas = lista.filter((f) => [...f.texto].length > 48);
+  chequear('todas de 48 caracteres o menos', largas, []);
 
-  // NINGUNA LLEVA AUTOR. Es la razon por la que se rehicieron: las citas de
-  // deportistas famosos son el cliche de cualquier app de gimnasio. Si alguien
-  // agrega una atribuida, esto la caza.
-  const codigoFrases = (await import('node:fs')).readFileSync(
-    (await import('node:path')).join(
-      (await import('node:path')).dirname(
-        (await import('node:url')).fileURLToPath(import.meta.url)
-      ),
-      '..', 'nucleo', 'frases.ts'
-    ), 'utf8'
-  );
-  const soloCodigo120 = sinComentarios(codigoFrases);
-  chequear('no quedo ninguna clave `autor`', /\bautor\s*:/.test(soloCodigo120), false);
-  const atribuidas = lista.filter((f) => /\s[—–-]\s*[A-ZÁÉÍÓÚÑ]/.test(f));
-  chequear('ninguna trae un nombre pegado con guion', atribuidas, []);
+  // CADA UNA CON SU AUTOR Y SU FUENTE. La fuente no se muestra: existe para
+  // poder verificar la atribucion, que es el problema de las citas famosas.
+  // Tres de las que se descartaron estaban mal atribuidas (Confucio en vez de
+  // Goldsmith, Aristoteles en vez de Durant, Jordan en vez del redactor de
+  // Nike) y una no tenia fuente (Ali).
+  chequear('todas con autor', lista.filter((f) => !f.autor || f.autor.length < 3), []);
+  chequear('todas con obra y lugar', lista.filter((f) => !f.fuente || f.fuente.length < 12), []);
 
-  // EL REGISTRO: afirman, no arengan. Sin imperativos y sin gritos. Esto es lo
-  // que separa estas frases de la motivacion de gimnasio, y es justo lo que se
-  // va a erosionar primero cuando alguien agregue una con apuro.
-  const gritan = lista.filter((f) => /[!¡]/.test(f));
+  // EL REGISTRO: afirman, no arengan. Sin gritos y sin ordenes. Vale igual
+  // para una cita: la que arenga no entra.
+  const gritan = lista.filter((f) => /[!¡]/.test(f.texto));
   chequear('ninguna con signo de exclamacion', gritan, []);
-  const IMPERATIVO = /\b(no aflojes|aguanta|vamos|dale|empieza|entrena|levanta|supera|lucha|conquista|cree)\b/i;
-  chequear('ninguna te da una orden', lista.filter((f) => IMPERATIVO.test(f)), []);
+  const IMPERATIVO = /\b(no aflojes|aguanta|vamos|dale|entrena|levanta|supera|lucha|conquista|cree)\b/i;
+  chequear('ninguna te da una orden', lista.filter((f) => IMPERATIVO.test(f.texto)), []);
 
-  // EL SORTEO. La misma semilla tiene que dar siempre lo mismo —si no, la frase
+  // EL AUTOR VA APARTE, en su propio renglon: pegado con un guion adentro del
+  // texto se comeria el renglon de la cita.
+  const pegadas = lista.filter((f) => /\s[—–-]\s*[A-ZÁÉÍÓÚÑ]/.test(f.texto));
+  chequear('ninguna trae el autor pegado con guion', pegadas, []);
+  const inicio = sinComentarios(
+    (await import('node:fs')).readFileSync(
+      (await import('node:path')).join(
+        (await import('node:path')).dirname((await import('node:url')).fileURLToPath(import.meta.url)),
+        '..', 'src', 'app', 'page.tsx'
+      ),
+      'utf8'
+    )
+  );
+  chequear('Inicio muestra el autor debajo', /<figcaption>\{frase\.autor\}<\/figcaption>/.test(inicio), true);
+  const css120 = (await import('node:fs')).readFileSync(
+    (await import('node:path')).join(
+      (await import('node:path')).dirname((await import('node:url')).fileURLToPath(import.meta.url)),
+      '..', 'src', 'app', 'globals.css'
+    ),
+    'utf8'
+  );
+  chequear('la cita no se parte en dos renglones', /\.cita blockquote \{[\s\S]{0,120}white-space: nowrap;/.test(css120), true);
+
+  // EL SORTEO. La misma semilla tiene que dar siempre lo mismo —si no, la cita
   // baila mientras la persona la esta leyendo— y semillas distintas tienen que
   // repartirse sobre las doce y no caer siempre en la misma.
-  chequear('la misma semilla da la misma frase', F.fraseDelDia('2026-09-17-abc'), F.fraseDelDia('2026-09-17-abc'));
+  chequear('la misma semilla da la misma cita', F.fraseDelDia('2026-09-17-abc'), F.fraseDelDia('2026-09-17-abc'));
   chequear('y siempre sale una de la lista', lista.includes(F.fraseDelDia('x')), true);
   const salieron = new Set();
-  for (let d = 1; d <= 400; d++) salieron.add(F.fraseDelDia(`2026-01-${d}-usuario`));
+  for (let d = 1; d <= 400; d++) salieron.add(F.fraseDelDia(`2026-01-${d}-usuario`).texto);
   chequear('en 400 dias salen las doce', salieron.size, 12);
 
-  // YA NO RECIBE EL RANGO: una sola bolsa para los ocho. Si vuelve a repartirse
-  // por rango, el que recien empieza ve una o dos frases y siempre las mismas.
+  // UNA SOLA BOLSA PARA LOS OCHO RANGOS: si vuelve a repartirse por rango, el
+  // que recien empieza ve una o dos citas y siempre las mismas.
   chequear('fraseDelDia toma un solo argumento', F.fraseDelDia.length, 1);
 }
 

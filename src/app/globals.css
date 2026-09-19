@@ -887,9 +887,17 @@ body.ya-entro .pantalla.aparece {
    pantalla, en el otro extremo de la escala. */
 /* Sin margen abajo desde el 19/9: los 25 px la separaban de la línea social,
    que se fue. Es lo último de Inicio, y ese margen era scroll sin nada. */
+/* LA CITA DEL DÍA Y SU AUTOR (19/9).
+
+   UN SOLO RENGLÓN: se fue el `max-width: 30ch`, que la partía en tres. Inicio
+   entra sin scroll en los veinte casos medidos y una cita de dos renglones se
+   lo come; por eso `nucleo/frases.ts` tiene tope de largo y las que no entran
+   se recortan a un fragmento textual. `white-space: nowrap` con "…" es el
+   último seguro: si alguna vez entra una más larga, se corta en vez de
+   empujar la pantalla. */
 .cita {
-  margin: 34px 2px 0;
-  max-width: 30ch;
+  /* 18 y no 34: el autor sumó un renglón y en el SE se pasaba por 7 px. */
+  margin: 18px 2px 0;
   border-left: 1px solid color-mix(in srgb, var(--pal-principal) 26%, transparent);
   padding-left: 14px;
   font-family: var(--f-numero), system-ui, sans-serif;
@@ -898,6 +906,21 @@ body.ya-entro .pantalla.aparece {
   line-height: 1.7;
   letter-spacing: 0.015em;
   color: var(--apagado);
+}
+.cita blockquote {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* El autor, más chico y más apagado: la cita manda, el nombre ubica. */
+.cita figcaption {
+  margin-top: 2px;
+  font-family: var(--f-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--apagado) 72%, transparent);
 }
 
 /* ---------- navegación ---------- */

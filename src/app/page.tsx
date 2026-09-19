@@ -789,8 +789,13 @@ export default function Principal() {
           <Link href="/fuerza" className="linea-marcas">{marcas}</Link>
         )}
 
+        {/* LA CITA DEL DÍA, con su autor debajo (19/9). Un solo renglón: ver
+            `nucleo/frases.ts`, donde está también de dónde sale cada una. */}
         {!sinNada && !entrenando && (
-          <p className="cita">{frase}</p>
+          <figure className="cita">
+            <blockquote>{frase.texto}</blockquote>
+            <figcaption>{frase.autor}</figcaption>
+          </figure>
         )}
 
         {/* LA LÍNEA SOCIAL SE FUE (19/9, decisión del humano): "fulano sigue

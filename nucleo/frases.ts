@@ -1,80 +1,128 @@
-// Una frase por pantalla, en Inicio.
+// Una cita por pantalla, en Inicio, con su autor debajo.
 //
-// SON NUESTRAS, Y NO LLEVAN AUTOR. Hasta el 2026-09-17 eran veinte citas
-// reales atribuidas —Ali, Jordan, Bruce Lee, Schwarzenegger—. Se fueron
-// enteras, y el motivo no es la atribución: las citas de deportistas famosos
-// son el cliché de cualquier app de gimnasio, y Ascent va de cuerpos celestes
-// y rangos cósmicos. Una frase de Ronnie Coleman abajo de un planeta es la
-// costura entre dos productos distintos.
+// SON CITAS REALES Y LLEVAN AUTOR (2026-09-19, decisión del humano). Hasta el
+// 17/9 fueron citas de deportistas; el 17 se cambiaron por frases propias sin
+// autor; ahora vuelven las citas, verificadas una por una. El motivo del
+// cambio del 17 —la atribución— sigue en pie, y por eso acá cada cita lleva su
+// OBRA Y SU LUGAR, no solo el nombre: `fuente` no se muestra, existe para que
+// cualquiera pueda ir a mirarla.
 //
-// EL REGISTRO: afirman, no arengan. Ninguna tiene imperativo, ninguna te dice
-// qué hacer, ninguna lleva signo de exclamación. Es el mismo tono que el resto
-// de la app —"Se dispersó un poco de masa. Hoy se recupera."—: dicen el hecho
-// y se callan. Y la metáfora sale de la física que la app ya usa (polvo, masa,
-// gravedad, luz), no de un gimnasio.
+// LO QUE SE APRENDIÓ VERIFICANDO, y es la razón de que `fuente` exista:
+//   - "Nuestra mayor gloria…" NO es de Confucio: es de Oliver Goldsmith (1762).
+//     Se le empezó a atribuir a Confucio en 1831.
+//   - "Somos lo que hacemos repetidamente" NO es de Aristóteles: es de Will
+//     Durant (1926) resumiendo la Ética a Nicómaco.
+//   - La frase del comercial de Nike la escribió un redactor de la agencia, no
+//     Michael Jordan: por eso no está.
+//   - "Odié cada minuto del entrenamiento…", de Ali, no tiene fuente primaria:
+//     por eso no está.
 //
-// UNA SOLA BOLSA PARA LOS OCHO RANGOS, y no un balde por rango como antes.
-// Con doce frases y ocho rangos, repartirlas da una o dos por balde: el que
-// recién empieza vería siempre la misma. Y el rango ya está escrito en la
-// pantalla, la frase no necesita repetirlo.
+// LOS RECORTES SON TEXTUALES. Dos citas no entraban en un renglón (Platón y
+// Newton) y se recortaron a un fragmento literal del texto, nunca reescrito.
+// Si alguna vez una cita no entra, se recorta igual o se cambia por otra: lo
+// que no se hace es reescribirla.
 //
-// SON DOCE Y NO VEINTICUATRO a propósito: doce escritas con criterio valen más
-// que veinticuatro donde la mitad rellena. Rotando una por día, ninguna vuelve
-// antes de doce días.
+// UN SOLO RENGLÓN, Y ES UNA REGLA DE PANTALLA. Inicio entra sin scroll en los
+// veinte casos medidos (ver `herramientas/medir-inicio-en-sesion.mjs`) y una
+// cita de dos renglones se lo come. En el teléfono más angosto (SE, 375 px) el
+// renglón da 316 px con el estilo de `.cita`; el tope de 48 caracteres de
+// `test:db` (sección 120) es esa medida pasada a caracteres, con margen.
 //
-// LOS EJES, que es lo que las mantiene distintas. La primera versión tenía
-// cinco frases que decían todas "la acumulación lenta funciona", y rotando
-// doce eso se lee dos veces por semana: la app parecía tener una sola idea.
-// Cada una de estas para en un eje propio —empezar, acumular, repetir, el
-// ritmo, volver, la lentitud, perder, descansar, la inercia, el camino propio,
-// el esfuerzo que no se ve—. Antes de agregar una, mirar que traiga un eje que
-// no esté; si solo trae otra manera de decir "de a poco", no entra.
-//
-// EL TOPE ES 45 CARACTERES, y lo hace cumplir `test:db` (sección 120). No es
-// estética: la frase vive en una tira angosta al pie de Inicio y una más larga
-// se parte en tres renglones y deja de ser una frase.
+// LOS EJES, que es lo que las mantiene distintas: empezar, acumular, repetir,
+// el ritmo, volver, la lentitud, perder, descansar, la inercia, el camino
+// propio, el esfuerzo que no se ve, el tiempo. Antes de cambiar una, mirar que
+// la nueva traiga su eje.
 
-export type Frase = string;
+export type Frase = {
+  /** La cita, tal cual se muestra. */
+  texto: string;
+  /** Quién la dijo o la escribió, tal cual se muestra debajo. */
+  autor: string;
+  /** Obra y lugar exacto. No se muestra: está para poder verificarla. */
+  fuente: string;
+};
 
 const FRASES: readonly Frase[] = [
-  // empezar: el punto de partida ya cuenta como algo
-  'El polvo también es materia.',
-  // acumular: el resultado es invisible hasta que deja de serlo
-  'La masa no se nota hasta que pesa.',
-  // acumular: lo que se siente como peso es tiempo
-  'La gravedad es solo tiempo acumulado.',
-  // repetir: la repetición no suma, construye
-  'Lo que se repite se vuelve estructura.',
-  // el ritmo: se avanza parejo, no a los tirones
-  'Se avanza por vueltas, no por saltos.',
-  // volver: lo que define no es no haberse caído
-  'Volver cuenta más que no haber faltado.',
-  // la lentitud: despacio sigue siendo llegar
-  'Lo lento también llega.',
-  // perder: el único eje que mira hacia abajo, y el más honesto de todos
-  'Lo que no se sostiene se dispersa.',
-  // descansar: la pausa está en el diseño, no es una falla. Es la única que
-  // le puede hablar a alguien un día que no entrena.
-  'La mitad de todo cuerpo está a oscuras.',
-  // la inercia: el eje no es cuánto llevás, es cuánto cuesta — y eso baja
-  'Cuesta más frenar que seguir.',
-  // el camino propio: la única donde existe otra gente. Hay una pantalla de
-  // Ranking y existe el DOTS: la app te compara a propósito, y en ningún otro
-  // lado dice que la comparación sirve para ubicarse y no para medirse.
-  'Nadie más recorre tu trayectoria.',
-  // el esfuerzo invisible: adentro pasa lo que cuesta, afuera se ve el resultado
-  'Nadie ve la fusión, solo la luz.',
+  // empezar
+  {
+    texto: 'El comienzo es la parte más importante.',
+    autor: 'Platón',
+    fuente: 'República, libro II, 377a-b (recorte textual de "…de cualquier obra")',
+  },
+  // acumular
+  {
+    texto: 'La gota horada la piedra.',
+    autor: 'Ovidio',
+    fuente: 'Epistulae ex Ponto IV.10.5 — "gutta cavat lapidem"',
+  },
+  // repetir
+  {
+    texto: 'Somos lo que hacemos repetidamente.',
+    autor: 'Will Durant',
+    fuente: 'The Story of Philosophy (1926), cap. II. NO es de Aristóteles',
+  },
+  // el ritmo
+  {
+    texto: 'El viaje de mil millas empieza con un paso.',
+    autor: 'Lao Tse',
+    fuente: 'Tao Te Ching, cap. 64 (traducción popular; el original dice "bajo tus pies")',
+  },
+  // volver
+  {
+    texto: 'Levantarnos cada vez que caemos.',
+    autor: 'Oliver Goldsmith',
+    fuente: 'The Citizen of the World (1762), carta 7. NO es de Confucio',
+  },
+  // la lentitud
+  {
+    texto: 'Apresúrate despacio.',
+    autor: 'Augusto',
+    fuente: 'Suetonio, Vidas de los doce césares, "Augusto", 25 — "festina lente"',
+  },
+  // perder
+  {
+    texto: 'Fracasa otra vez. Fracasa mejor.',
+    autor: 'Samuel Beckett',
+    fuente: 'Worstward Ho (1983) — "Fail again. Fail better."',
+  },
+  // descansar
+  {
+    texto: 'Lo que no alterna con el descanso no dura.',
+    autor: 'Ovidio',
+    fuente: 'Heroidas IV.89 — "quod caret alterna requie durabile non est"',
+  },
+  // la inercia
+  {
+    texto: 'Todo cuerpo persevera en su estado.',
+    autor: 'Isaac Newton',
+    fuente: 'Principia (1687), Ley I (recorte textual de "…de reposo o de movimiento uniforme")',
+  },
+  // el camino propio
+  {
+    texto: 'Este es mi camino. ¿Dónde está el vuestro?',
+    autor: 'Nietzsche',
+    fuente: 'Así habló Zaratustra, III, "Del espíritu de la pesadez"',
+  },
+  // el esfuerzo que no se ve
+  {
+    texto: 'Estamos hechos de materia estelar.',
+    autor: 'Carl Sagan',
+    fuente: 'Cosmos (1980), episodio 1 — "we are made of star-stuff"',
+  },
+  // el tiempo
+  {
+    texto: 'No tenemos poco tiempo: perdemos mucho.',
+    autor: 'Séneca',
+    fuente: 'De brevitate vitae I.3 — "non exiguum temporis habemus, sed multum perdidimus"',
+  },
 ];
 
 /**
- * La frase de hoy.
+ * La cita de hoy.
  *
  * Cambia de día en día y no en cada carga: que no baile mientras la mirás,
  * pero que no sea siempre la misma. La semilla lleva la fecha y el usuario, así
- * que dos personas no ven la misma frase el mismo día.
- *
- * YA NO RECIBE EL RANGO. Con una sola bolsa no hace falta, y pasarlo igual
- * dejaría un parámetro que no se usa esperando a que alguien lo crea vivo.
+ * que dos personas no ven la misma cita el mismo día.
  */
 export function fraseDelDia(semilla: string): Frase {
   let h = 0;
