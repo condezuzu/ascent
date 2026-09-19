@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { guardarAnotarPeso, leerAnotarPeso } from '@compartido/anotarPeso';
-import { useVersionDelEsquema } from '@compartido/esquema';
+import { useVersion } from '@/lib/version';
 import { disponible } from '@nucleo/esquema';
 import { crearCliente } from '@/lib/supabase/client';
 import { guardarPreferencia } from './guardar';
@@ -21,7 +21,7 @@ export default function UnidadPeso({
   // Del aparato, no de la cuenta: se lee del almacenamiento y arranca
   // prendido, que es el valor por omisión.
   const [anotar, setAnotar] = useState(true);
-  const version = useVersionDelEsquema();
+  const version = useVersion();
   useEffect(() => {
     leerAnotarPeso().then(setAnotar);
   }, []);

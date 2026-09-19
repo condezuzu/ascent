@@ -11,7 +11,7 @@ import type { ResumenDelDia } from '@nucleo/resumenDia';
 import { cargarDia, corregirDia, destinoActual, queHacer, revisarCarga, type Destino } from '@compartido/dia';
 import { claveDeEtiqueta, gruposDePesos, type Carga } from '@nucleo/carga';
 import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
-import { useVersionDelEsquema } from '@compartido/esquema';
+import { useVersion } from '@/lib/version';
 import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
 
@@ -53,7 +53,7 @@ export default function HojaDelDia({
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
   const [unidad, setUnidad] = useState<Unidad>('kg');
-  const versionEsquema = useVersionDelEsquema();
+  const versionEsquema = useVersion();
 
   const esFuturo = fecha > hoyISO();
 

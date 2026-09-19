@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useEsperar } from '@/components/PantallaDeslizable';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
@@ -31,19 +32,24 @@ export default function SeccionFuerza({
   const [supabase] = useState(() => crearCliente());
   const [mia, setMia] = useState<MiFuerza | null>(null);
   const [ranking, setRanking] = useState<FilaFuerza[]>([]);
+  const [cargado, setCargado] = useState(false);
+  // La pantalla no aparece sin esto (19/9): si apareciera antes, esta sección
+  // entraría después y empujaría lo de abajo. Ver `useEsperar`.
+  useEsperar(cargado);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [yo, setYo] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       const user = await miUsuario(supabase);
-      if (!user) return;
+      if (!user) return setCargado(true);
       setYo(user.id);
       // Lo que se pide vive en `compartido/fuerza.ts`, que usa también la
       // app nativa.
       const datos = await cargarFuerza(supabase);
       setMia(datos?.mia ?? null);
       setRanking(datos?.ranking ?? []);
+      setCargado(true);
     })();
   }, [supabase]);
 

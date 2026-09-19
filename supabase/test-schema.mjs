@@ -8559,8 +8559,78 @@ console.log('\n129. Deslizar entre pestañas: la de al lado asoma');
   chequear('con la pestaña de cuando se monto', /indiceAlMontar\.current/.test(d), true);
   chequear('arma la copia mientras se arrastra', /alMover[\s\S]*armarAsomo\(/.test(d), true);
   chequear('la copia no se toca', /\.inert = true/.test(d), true);
-  chequear('se va al montar la nueva, no al cambiar la ruta', /requestAnimationFrame\(quitarAsomo\)[\s\S]{0,120}\}, \[\]\)/.test(d), true);
+  chequear('se va cuando la pestaña nueva aparece, no al cambiar la ruta', /requestAnimationFrame\(quitarAsomo\)[\s\S]{0,120}\}, \[revelada\]\)/.test(d), true);
   chequear('pide las de al lado de antemano', /router\.prefetch\(/.test(d), true);
+}
+
+console.log('\n130. La app no se muestra antes de saber');
+{
+  // LO QUE PASO (19/9): todas las pantallas pintaban el estado vacio o gris
+  // antes de tener los datos (Inicio sin rango, "Buscar gente" sola, "Tus
+  // dias" que saltaba). Era UNA causa: se arreglo en dos piezas comunes.
+  // La prueba de verdad es herramientas/probar-sin-parpadeo.mjs (cuadro por
+  // cuadro: ningun gris, ningun salto despues de aparecer). Esto cuida que no
+  // vuelva.
+  const { readFileSync: leer130, readdirSync: dir130l } = await import('node:fs');
+  const { join: unir130, dirname: dir130 } = await import('node:path');
+  const { fileURLToPath: aRuta130 } = await import('node:url');
+  const R130 = unir130(dir130(aRuta130(import.meta.url)), '..');
+  const de130 = (...p) => sinComentarios(leer130(unir130(R130, ...p), 'utf8'));
+
+  // 1. El rango propio, antes del primer cuadro.
+  const layout = de130('src', 'app', 'layout.tsx');
+  chequear('el <head> aplica el tema guardado antes de pintar', /<head>[\s\S]*SCRIPT_TEMA[\s\S]*<\/head>/.test(layout), true);
+  const propias = [
+    ['src', 'app', 'page.tsx'],
+    ['src', 'app', 'ajustes', 'page.tsx'],
+    ['src', 'app', 'fuerza', 'page.tsx'],
+    ['src', 'app', 'yo', 'page.tsx'],
+    ['src', 'app', 'social', 'page.tsx'],
+    ['src', 'app', 'album', 'page.tsx'],
+    ['src', 'app', 'stats', 'page.tsx'],
+  ];
+  for (const r of propias) {
+    const c = de130(...r);
+    const nombre = r.slice(2).join('/');
+    chequear(`${nombre}: nunca rango={1} mientras espera`, /<FondoEspacial[^>]*rango=\{1\}/.test(c), false);
+    chequear(`${nombre}: el rango propio se recuerda`, /<FondoEspacial[\s\S]{0,200}\bpropio\b/.test(c), true);
+    chequear(`${nombre}: el rango no arranca en 1`, /useState\(1\)/.test(c), false);
+  }
+  chequear('el perfil de otro NO se recuerda como propio', /\bpropio\b/.test(de130('src', 'app', 'perfil', '[id]', 'page.tsx')), false);
+
+  // 2. La pantalla espera sus datos.
+  const d = de130('src', 'components', 'PantallaDeslizable.tsx');
+  chequear('la pantalla arranca oculta hasta estar lista', /'esperando'/.test(d) && /listo = true/.test(d), true);
+  chequear('con tope, para no quedar en blanco sin red', /ESPERA_MAXIMA_MS/.test(d), true);
+  chequear('la copia que asoma se va cuando la pestaña aparece', /requestAnimationFrame\(quitarAsomo\)[\s\S]{0,120}\}, \[revelada\]\)/.test(d), true);
+  for (const [nombre, archivo, patron] of [
+    ['Inicio', ['src', 'app', 'page.tsx'], /listo=\{frescos \|\| cacheVieja\}/],
+    ['Ranking', ['src', 'app', 'social', 'page.tsx'], /<PantallaDeslizable listo=\{cargado\}>/],
+    ['Album', ['src', 'app', 'album', 'page.tsx'], /<PantallaDeslizable listo=\{cargado\}>/],
+    ['Stats', ['src', 'app', 'stats', 'page.tsx'], /<PantallaDeslizable listo=\{cargado\}>/],
+  ]) {
+    chequear(`${nombre} espera sus datos`, patron.test(de130(...archivo)), true);
+  }
+  for (const s of ['Estancamiento', 'SeccionVolumen', 'CalendarioDias', 'SeccionSesiones', 'SeccionFuerza', 'Bloque']) {
+    chequear(`${s} avisa cuando cargo`, /useEsperar\(/.test(de130('src', 'components', `${s}.tsx`)), true);
+  }
+  chequear('las pestañas de Stats esperan a sus secciones', (de130('src', 'app', 'stats', 'page.tsx').match(/<Esperar>/g) ?? []).length, 2);
+
+  // 3. La version de la base, esperada: ningun componente web usa la de
+  //    `compartido` directo (su contenido aparecia tarde, Ajustes lo tenia).
+  const directos = [];
+  const recorrer = (...p) => {
+    for (const e of dir130l(unir130(R130, ...p), { withFileTypes: true })) {
+      if (e.isDirectory()) recorrer(...p, e.name);
+      else if (/\.tsx?$/.test(e.name)) {
+        const ruta = [...p, e.name];
+        if (ruta.join('/') === 'src/lib/version.ts') continue;
+        if (/useVersionDelEsquema\(/.test(de130(...ruta))) directos.push(ruta.join('/'));
+      }
+    }
+  };
+  recorrer('src');
+  chequear('la web usa useVersion (que espera), no useVersionDelEsquema', directos, []);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

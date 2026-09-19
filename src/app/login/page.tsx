@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { crearCliente, configuracionValida } from '@/lib/supabase/client';
 import { mensajeDeAuth } from '@nucleo/errores';
 import { borrarPerfilCache } from '@compartido/cache';
+import { borrarTema } from '@/plataforma/web/tema';
 import FondoEspacial from '@/components/FondoEspacial';
 import Bienvenida from '@/components/bienvenida/Bienvenida';
 import { anotarEntradaVista, vioLaEntrada } from '@/lib/entradaVista';
@@ -53,6 +54,7 @@ export default function Login() {
       // Se ESPERA: si se navega antes de que el borrado termine, la primera
       // pantalla alcanza a leer la caché vieja, que es justo lo que esto evita.
       await borrarPerfilCache();
+      borrarTema(); // y el color de esta cuenta, que se pinta antes de todo
       router.push('/');
       router.refresh();
       return;

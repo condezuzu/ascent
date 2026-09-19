@@ -9,7 +9,8 @@ import ListaDeBloques from '@/components/ListaDeBloques';
 import SelectorEjercicio from '@/components/SelectorEjercicio';
 import CampoPeso from '@/components/CampoPeso';
 import { leerAnotarPeso } from '@compartido/anotarPeso';
-import { useVersionDelEsquema } from '@compartido/esquema';
+import { useVersion } from '@/lib/version';
+import { useEsperar } from '@/components/PantallaDeslizable';
 import { disponible } from '@nucleo/esquema';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
@@ -90,6 +91,10 @@ export default function Bloque({
   alCorregirEjercicio: (indice: number, id: string, cargaQueSeVeia?: Carga) => void;
 }) {
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
+  // Sin el catálogo el nombre del ejercicio no se puede escribir: se veía
+  // "sin ejercicio" y después el nombre. La pantalla lo espera (19/9).
+  const [catalogo, setCatalogo] = useState(false);
+  useEsperar(catalogo);
   const [lista, setLista] = useState(false);
   // El ejercicio que se eligió mientras había series sin cerrar. Mientras
   // esto no es `undefined` hay una pregunta abierta y el selector ya muestra
@@ -103,7 +108,7 @@ export default function Bloque({
   // SIN LA MIGRACIÓN 36 NO HAY CAMPO. La función vieja de guardar bloques
   // tiraba los pesos sin dar error: se veían, se escribían y no se guardaba
   // nada. Ver `nucleo/esquema.ts`.
-  const version = useVersionDelEsquema();
+  const version = useVersion();
   const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
   // QUÉ SIGNIFICA EL NÚMERO (migración 38). Sin ella, el campo es el de antes:
   // una etiqueta que la base no puede guardar mentiría igual que el campo de
@@ -121,7 +126,9 @@ export default function Bloque({
     let vivo = true;
     (async () => {
       const { data } = await supabase.from('ejercicios').select('*').order('orden');
-      if (vivo && data) setEjercicios(data as Ejercicio[]);
+      if (!vivo) return;
+      if (data) setEjercicios(data as Ejercicio[]);
+      setCatalogo(true);
     })();
     return () => {
       vivo = false;

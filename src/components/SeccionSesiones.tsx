@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useEsperar } from '@/components/PantallaDeslizable';
 import { crearCliente } from '@/lib/supabase/client';
 import { duracionLinda } from '@nucleo/sesiones';
 import { agruparPorDia, etiquetaDeDia, type DiaConSesiones } from '@nucleo/dias';
@@ -16,6 +17,10 @@ export default function SeccionSesiones() {
   const [supabase] = useState(() => crearCliente());
   const [r, setR] = useState<ResumenSesiones | null>(null);
   const [dias, setDias] = useState<DiaConSesiones[]>([]);
+  const [cargado, setCargado] = useState(false);
+  // La pantalla no aparece sin esto (19/9): si apareciera antes, esta sección
+  // entraría después y empujaría lo de abajo. Ver `useEsperar`.
+  useEsperar(cargado);
 
   useEffect(() => {
     (async () => {
@@ -35,6 +40,7 @@ export default function SeccionSesiones() {
         .order('inicio', { ascending: false })
         .limit(40);
       setDias(agruparPorDia(filas ?? []).slice(0, 7));
+      setCargado(true);
     })();
   }, [supabase]);
 

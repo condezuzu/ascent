@@ -193,7 +193,7 @@ export default function Perfil() {
   if (!cargado) {
     return (
       <>
-        <FondoEspacial rango={1} vacio esquina="centro" velo={0.7} />
+        <FondoEspacial vacio esquina="centro" velo={0.7} />
         <div className="pantalla" />
         <Nav />
       </>
@@ -203,7 +203,7 @@ export default function Perfil() {
   if (!usuario) {
     return (
       <>
-        <FondoEspacial rango={1} vacio esquina="centro" velo={0.7} />
+        <FondoEspacial vacio esquina="centro" velo={0.7} />
         <div className="pantalla">
           <div className="vacio-cosmico">
             <div className="particulas"><i /><i /><i /><i /></div>

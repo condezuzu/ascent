@@ -6,6 +6,7 @@ import VigilanteDeSesion from '@/components/VigilanteDeSesion';
 import VigilanteDeGimnasio from '@/components/VigilanteDeGimnasio';
 import AvisoDeFallo from '@/components/AvisoDeFallo';
 import MedirPantallas from '@/components/MedirPantallas';
+import { SCRIPT_TEMA } from '@/plataforma/web/tema';
 
 // Inter: todo lo que se lee. Es la más común de la web justamente porque no
 // hace ruido; acá se la elige para eso, no por defecto.
@@ -64,6 +65,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${sans.variable} ${numero.variable} ${mono.variable}`}>
+      <head>
+        {/* EL COLOR DEL RANGO ANTES DEL PRIMER CUADRO (19/9): el último tema
+            propio, aplicado antes de que corra React. Sin esto, cada apertura
+            salía gris y se teñía después. Ver `plataforma/web/tema.ts`. */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+      </head>
       <body>
         {children}
         <RegistroPWA />

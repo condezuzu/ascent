@@ -12,7 +12,7 @@ import Insignia from '@/components/Insignia';
 import Nav from '@/components/Nav';
 import Estancamiento from '@/components/Estancamiento';
 import Impulsos from '@/components/Impulsos';
-import PantallaDeslizable from '@/components/PantallaDeslizable';
+import PantallaDeslizable, { Esperar } from '@/components/PantallaDeslizable';
 import SeccionFuerza from '@/components/SeccionFuerza';
 import SeccionSesiones from '@/components/SeccionSesiones';
 import GraficoPeso from '@/components/GraficoPeso';
@@ -35,6 +35,7 @@ export default function Estadisticas() {
   const [mejor, setMejor] = useState(0);
   const [unidad, setUnidad] = useState<Unidad>('kg');
   const [sexo, setSexo] = useState<string | null>(null);
+  const [cargado, setCargado] = useState(false);
   // EL RANGO Y EL PLANETA DEL PERFIL, para el fondo.
   //
   // EL BUG: esta pantalla calculaba el rango con `rangoDeRacha(racha)` y NO
@@ -45,7 +46,9 @@ export default function Estadisticas() {
   // Y sale del PERFIL y no de la racha: `rango_actual` es la autoridad —tiene
   // en cuenta la racha base y las perdidas— y es lo que usan Inicio, el Album
   // y el Ranking. Calcularlo aparte era una segunda verdad.
-  const [miRango, setMiRango] = useState(1);
+  // `undefined` = todavía no se sabe: el fondo usa el último propio, no el
+  // gris del rango 1 (19/9).
+  const [miRango, setMiRango] = useState<number | undefined>(undefined);
   const [miPlaneta, setMiPlaneta] = useState<string | null>(null);
   // LAS PESTAÑAS. "General" es lo que Stats ya era, intacto: quién sos en la
   // app. "Entrenamiento" es qué venís haciendo. Mezcladas en una sola lista,
@@ -65,7 +68,7 @@ export default function Estadisticas() {
   const cargar = useCallback(async () => {
     {
       const user = await miUsuario(supabase);
-      if (!user) return;
+      if (!user) return setCargado(true);
       const [{ data: p }, { data: ls }, { data: ws }] = await Promise.all([
         // select('*') y no la lista de columnas: si el código llega antes que
         // la migración, pedir una columna que todavía no existe rompe la
@@ -86,18 +89,21 @@ export default function Estadisticas() {
       // Los impulsos que quedan, para poder decidir ANTES de gastarlos. Si la
       // migración todavía no corrió el RPC no existe y no se muestra nada:
       // `catch` en vez de romper la pantalla por un dato de contexto.
-      supabase.rpc('mis_impulsos').then(({ data, error }) => {
-        if (!error && data)
-          setImpulsos({
-            quedan: Number(data.quedan),
-            total: Number(data.total),
-            vuelve: (data.vuelve as string | null) ?? null,
-            falta: data.falta_para_ganar === null ? null : Number(data.falta_para_ganar),
-          });
-      });
+      //
+      // Se ESPERA (19/9): era un `.then` suelto, y la sección de las vidas
+      // entraba después que todo lo demás. La pantalla no aparece sin esto.
+      const { data, error } = await supabase.rpc('mis_impulsos');
+      if (!error && data)
+        setImpulsos({
+          quedan: Number(data.quedan),
+          total: Number(data.total),
+          vuelve: (data.vuelve as string | null) ?? null,
+          falta: data.falta_para_ganar === null ? null : Number(data.falta_para_ganar),
+        });
       // en la base el peso siempre está en kilos; acá se pasa a la unidad
       // que el usuario eligió, y recién entonces se suaviza y se dibuja
       setPesos((ws ?? []).map((w) => ({ ...w, valor: Number(w.valor) })));
+      setCargado(true);
     }
   }, [supabase]);
 
@@ -141,8 +147,8 @@ export default function Estadisticas() {
 
   return (
     <>
-      <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.72} />
-      <PantallaDeslizable>
+      <FondoEspacial rango={miRango} planeta={miPlaneta} propio esquina="arriba-derecha" velo={0.72} />
+      <PantallaDeslizable listo={cargado}>
         <div className="titulo-pantalla">{T.stats.titulo}</div>
 
 
@@ -165,8 +171,11 @@ export default function Estadisticas() {
           </button>
         </div>
 
+        {/* Cada pestaña espera a sus secciones antes de mostrarse (19/9): al
+            cambiar de pestaña se montan de nuevo, y sin esto "Tus días"
+            aparecía arriba y saltaba abajo cuando llegaba el volumen. */}
         {pestana === 'entrenamiento' && (
-          <>
+          <Esperar>
             {/* El volumen arriba y el calendario abajo: primero qué venís
                 haciendo, después cada día. */}
             <SeccionVolumen
@@ -182,11 +191,11 @@ export default function Estadisticas() {
               porRevisar={porRevisar}
               alRevisar={() => setRecarga((n) => n + 1)}
             />
-          </>
+          </Esperar>
         )}
 
         {pestana === 'general' && (
-          <>
+          <Esperar>
 
         {/* EL AVISO DE ESTANCAMIENTO, si hay uno. Arriba de los números y
             no al final: escondido abajo sería un aviso que se muestra donde
@@ -323,7 +332,7 @@ export default function Estadisticas() {
             })}
           </div>
         </div>
-          </>
+          </Esperar>
         )}
       </PantallaDeslizable>
       <Nav />

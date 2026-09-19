@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useEsperar } from '@/components/PantallaDeslizable';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { DIAS_SEMANA, MESES, deISO, hoyISO } from '@nucleo/fechas';
@@ -36,6 +37,10 @@ export default function CalendarioDias({
   const [ancla, setAncla] = useState({ anio: base.getFullYear(), mes: base.getMonth() });
   const [mesCargado, setMesCargado] = useState<DatosDelMes>({ conLog: new Set(), descansoAMano: new Set(), configs: [] });
   const [abierto, setAbierto] = useState<string | null>(null);
+  const [cargado, setCargado] = useState(false);
+  // La pantalla no aparece sin esto (19/9): si apareciera antes, esta sección
+  // entraría después y empujaría lo de abajo. Ver `useEsperar`.
+  useEsperar(cargado);
   const [recalculando, setRecalculando] = useState(false);
   const [aviso, setAviso] = useState('');
   // Si se corrigió algo en esta visita. La nota de recalcular aparece recién
@@ -46,8 +51,8 @@ export default function CalendarioDias({
 
   const cargar = useCallback(async () => {
     const uid = (await miUsuario(supabase))?.id;
-    if (!uid) return;
-    setMesCargado(await cargarMes(supabase, uid, ancla.anio, ancla.mes));
+    if (uid) setMesCargado(await cargarMes(supabase, uid, ancla.anio, ancla.mes));
+    setCargado(true);
   }, [supabase, ancla]);
 
   useEffect(() => {

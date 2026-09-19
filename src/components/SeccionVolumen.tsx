@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useEsperar } from '@/components/PantallaDeslizable';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { plataforma } from '@/plataforma';
@@ -53,6 +54,10 @@ export default function SeccionVolumen({
 }) {
   const [supabase] = useState(() => crearCliente());
   const [sesiones, setSesiones] = useState<SesionConBloques[] | null>(null);
+  const [cargado, setCargado] = useState(false);
+  // La pantalla no aparece sin esto (19/9): si apareciera antes, esta sección
+  // entraría después y empujaría lo de abajo. Ver `useEsperar`.
+  useEsperar(cargado);
   const [ejercicios, setEjercicios] = useState<EjercicioDelCatalogo[]>([]);
   const [marcas, setMarcas] = useState<MarcaParaMaximo[]>([]);
   const [unidad, setUnidad] = useState<Unidad>('kg');
@@ -77,7 +82,7 @@ export default function SeccionVolumen({
     let vivo = true;
     (async () => {
       const uid = (await miUsuario(supabase))?.id;
-      if (!uid) return;
+      if (!uid) return setCargado(true);
       const [{ data: ses }, { data: cat }, { data: perfil }, { data: prs }] = await Promise.all([
         // El día sale del registro (`logs.fecha`), no de `inicio`: es el día
         // en hora del usuario, el mismo que usa el calendario.
@@ -93,6 +98,7 @@ export default function SeccionVolumen({
       setMarcas((prs ?? []) as MarcaParaMaximo[]);
       if (perfil?.unidad_peso === 'lb') setUnidad('lb');
       setUmbral(umbralValido(perfil?.umbral_estancamiento));
+      setCargado(true);
     })();
     return () => {
       vivo = false;

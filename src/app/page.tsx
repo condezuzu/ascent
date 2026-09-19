@@ -61,6 +61,9 @@ const CLAVE_LLEGADA_VISTA = 'ascent:llegada-vista';
 // puede pasar es que vuelva a aparecer una vez.
 const CLAVE_IMPULSO_VISTO = CLAVE_VIDA_VISTA;
 
+// Cuánto se espera a la red, habiendo caché, antes de mostrar la caché.
+const ESPERA_CON_CACHE_MS = 1500;
+
 export default function Principal() {
   const router = useRouter();
   const [supabase] = useState(() => crearCliente());
@@ -109,6 +112,14 @@ export default function Principal() {
   const [marcando, setMarcando] = useState(false);
   const [avisoGimnasio, setAvisoGimnasio] = useState('');
   const [cargado, setCargado] = useState(false);
+  // LO QUE DICE LA RED, no la caché (19/9). La caché no trae todo —si el
+  // gimnasio está marcado, los días de la semana— y mostrarla sola hacía
+  // aparecer "Marca tu gimnasio" un instante aunque estuviera marcado. Inicio
+  // espera esto; si la red no contesta en `ESPERA_CON_CACHE_MS` (el subsuelo
+  // del gimnasio), muestra la caché igual: con algo que mostrar, no se deja
+  // a nadie mirando el fondo.
+  const [frescos, setFrescos] = useState(false);
+  const [cacheVieja, setCacheVieja] = useState(false);
   const [noCargo, setNoCargo] = useState(false);
   // Si alguna vez hubo un perfil en pantalla —de la caché o de la red—. Con
   // uno a la vista, una falla NO se contesta con el cartel de error: se deja
@@ -242,6 +253,7 @@ export default function Principal() {
     guardarPerfilCache(p);
     huboCache.current = true;
     setCargado(true);
+    setFrescos(true);
     marca('ascent:pantalla-lista');
     despues?.();
 
@@ -341,6 +353,7 @@ export default function Principal() {
         setPerfil(cacheado);
         setCargado(true);
         huboCache.current = true;
+        setTimeout(() => setCacheVieja(true), ESPERA_CON_CACHE_MS);
       }
       cargar(true);
     })();
@@ -350,8 +363,12 @@ export default function Principal() {
     // Primera visita sin caché: se muestra el armazón, no una pantalla vacía.
     return (
       <>
-        <FondoEspacial rango={1} esquina="abajo-derecha" velo={0.55} />
-        <PantallaDeslizable>
+        {/* Sin rango: todavía no se sabe, y se dibuja el último propio con su
+            planeta, en el MISMO lugar que la pantalla de verdad (19/9). */}
+        <FondoEspacial esquina="abajo-derecha" velo={0.55} />
+        {/* Oculta mientras espera (ver `PantallaDeslizable`): el armazón solo
+            se ve si no cargó, y ahí con el cartel de reintentar. */}
+        <PantallaDeslizable listo={noCargo}>
           <div className="cabecera">
             <div className="avatar" />
           </div>
@@ -477,6 +494,7 @@ export default function Principal() {
     <>
       <FondoEspacial
         rango={perfil.rango_actual}
+        propio
         planeta={planeta}
         apagado={perdida}
         vacio={sinNada}
@@ -492,7 +510,7 @@ export default function Principal() {
 
       {/* `en-sesion`: con el entrenamiento andando, Inicio es una columna
           del alto de la pantalla y el + toma lo que sobra (ver globals). */}
-      <PantallaDeslizable clase={sesion.estado.corriendo ? 'en-sesion' : undefined}>
+      <PantallaDeslizable clase={sesion.estado.corriendo ? 'en-sesion' : undefined} listo={frescos || cacheVieja}>
         {/* La cabecera es la puerta al perfil propio Y la casa del
             cronómetro (§20.2): el reloj va acá, discreto, y no en una pestaña
             propia — un cronómetro que hay que buscar no lo usa nadie. */}

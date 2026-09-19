@@ -5,6 +5,7 @@ import type { Montaje, OpcionesFondo } from '@/motor/escena';
 import { eventos } from '@compartido/eventos';
 import { PULSO } from '@nucleo/pulso';
 import { aplicarTema } from '@/lib/paletas';
+import { leerTema } from '@/plataforma/web/tema';
 import { marca, medir, instalarLector } from '@/lib/medir';
 import { veloDeRango, msDeTransicion } from '@nucleo/atmosfera';
 import { plataforma } from '@/plataforma';
@@ -34,8 +35,29 @@ const FONDO_VELO = `${cssDeElipses(ELIPSES_VELO)}, var(--fondo)`;
 const CLAVE_RANGO_VISTO = 'ascent:rango-visto';
 
 export default function FondoEspacial(
-  op: OpcionesFondo & { velo?: number; atmosfera?: boolean }
+  entrada: Omit<OpcionesFondo, 'rango'> & {
+    /**
+     * El rango a dibujar. SIN RANGO = "todavía no se sabe" (19/9): se dibuja
+     * el último propio que se supo, nunca el gris del rango 1. Es lo que usan
+     * las pantallas mientras esperan el perfil.
+     */
+    rango?: number;
+    velo?: number;
+    atmosfera?: boolean;
+    /** Es el rango de quien usa la app: se recuerda para la próxima apertura. */
+    propio?: boolean;
+  }
 ) {
+  // En el servidor no hay tema guardado; en el teléfono se lee en el primer
+  // render. El marcado no cambia con esto (solo el velo, y quien espera pasa
+  // `velo` fijo), así que no desarma la hidratación.
+  const [guardado] = useState(() => (typeof window === 'undefined' ? null : leerTema()));
+  const sabido = entrada.rango !== undefined;
+  const op: OpcionesFondo & { velo?: number; atmosfera?: boolean } = {
+    ...entrada,
+    rango: entrada.rango ?? guardado?.rango ?? 1,
+    planeta: sabido ? entrada.planeta : (guardado?.planeta ?? null),
+  };
   const ref = useRef<HTMLDivElement>(null);
   // El impacto de registrar el día llega por el bus de eventos: quien lo
   // dispara es la pantalla, y la pantalla no tiene por qué conocer el motor.
@@ -46,12 +68,14 @@ export default function FondoEspacial(
   const [msVelo, setMsVelo] = useState(0);
 
   // La paleta se aplica de forma sincrónica, antes de pintar: así el fondo
-  // ya sale con el color del rango y no hay salto de gris a color.
-  if (typeof document !== 'undefined') aplicarTema(op.rango, op.planeta);
+  // ya sale con el color del rango y no hay salto de gris a color. Sin rango
+  // sabido no se toca nada: ya la puso el `<head>` (ver `layout.tsx`), y
+  // aplicar acá el de por omisión era justamente el gris que se veía.
+  if (typeof document !== 'undefined' && sabido) aplicarTema(op.rango, op.planeta, !!entrada.propio);
 
   useEffect(() => {
-    aplicarTema(op.rango, op.planeta);
-  }, [op.rango, op.planeta]);
+    if (sabido) aplicarTema(op.rango, op.planeta, !!entrada.propio);
+  }, [sabido, op.rango, op.planeta, entrada.propio]);
 
   useEffect(() => eventos.escuchar(PULSO, () => pulsoRef.current?.()), []);
 

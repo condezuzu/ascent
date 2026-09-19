@@ -300,6 +300,27 @@ body.ya-entro .pantalla > * {
   animation: none;
 }
 
+/* LA PANTALLA QUE ESPERA SUS DATOS (19/9, ver `PantallaDeslizable`): oculta,
+   sin animar —la entrada corre cuando aparece, no a escondidas—. Se ve el
+   fondo con su rango y la barra; nunca el estado vacío. */
+.pantalla.esperando,
+.pantalla.esperando > * {
+  visibility: hidden;
+  animation: none;
+}
+/* Una parte de la pantalla que espera lo suyo (`<Esperar>`): ocupa su lugar
+   pero no se ve, y aparece entera. */
+.parte-esperando {
+  visibility: hidden;
+}
+.parte-lista {
+  animation: entrar-pantalla 0.22s var(--curva-suave) both;
+}
+/* Y si hubo que esperar, aparece con un fundido corto, entera. */
+body.ya-entro .pantalla.aparece {
+  animation: entrar-pantalla 0.22s var(--curva-suave) both;
+}
+
 /* Cada pantalla entra, y sus bloques aparecen escalonados. Corto y sin
    rebotes: tiene que sentirse viva, no aparatosa. */
 @keyframes entrar-pantalla {

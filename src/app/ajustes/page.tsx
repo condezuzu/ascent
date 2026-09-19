@@ -62,7 +62,9 @@ export default function Ajustes() {
   if (!perfil) {
     return (
       <>
-        <FondoEspacial rango={1} vacio esquina="centro" velo={0.7} />
+        {/* Sin rango: todavía no se sabe, y se dibuja el último propio con su
+            planeta, en el MISMO lugar que la pantalla de verdad (19/9). */}
+        <FondoEspacial esquina="arriba-derecha" velo={0.74} />
         <div className="pantalla" />
         <Nav />
       </>
@@ -73,6 +75,7 @@ export default function Ajustes() {
     <>
       <FondoEspacial
         rango={perfil.rango_actual}
+        propio
         planeta={planetaDeDia(perfil.racha_actual)}
         esquina="arriba-derecha"
         velo={0.74}

@@ -133,7 +133,9 @@ try {
   esperar('asoma con el título "Álbum"', !!e.asomo && /álbum/i.test(e.asomo.texto));
   await toque('touchEnd');
   await page.waitForURL((u) => u.pathname === '/album', { timeout: 10000 }).catch(() => {});
-  await page.waitForTimeout(800);
+  // La copia se queda hasta que la pestaña de verdad tiene sus datos (19/9,
+  // ver la espera en `PantallaDeslizable`): se espera a que se vaya, con tope.
+  await page.waitForFunction(() => !document.querySelector('.asomo'), null, { timeout: 6000 }).catch(() => {});
   e = await estado();
   esperar('llegó al Álbum y la copia se fue', e.ruta === '/album' && !e.asomo);
 } catch (err) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useEsperar } from '@/components/PantallaDeslizable';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
 import { cargarEstancamiento, descartarSenal } from '@compartido/estancamiento';
@@ -34,6 +35,10 @@ import { T } from '@nucleo/textos';
 
 export default function Estancamiento({ registradoHoy }: { registradoHoy: boolean }) {
   const [senal, setSenal] = useState<Senal | null>(null);
+  const [cargado, setCargado] = useState(false);
+  // La pantalla no aparece sin esto (19/9): si apareciera antes, esta sección
+  // entraría después y empujaría lo de abajo. Ver `useEsperar`.
+  useEsperar(cargado);
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [silenciadas, setSilenciadas] = useState<Record<string, string>>({});
 
@@ -45,12 +50,14 @@ export default function Estancamiento({ registradoHoy }: { registradoHoy: boolea
         data: { session },
       } = await supabase.auth.getSession();
       const uid = session?.user?.id;
-      if (!uid) return;
-      const datos = await cargarEstancamiento(supabase, uid);
-      if (!vivo || !datos) return;
-      setEjercicios(datos.ejercicios);
-      setSilenciadas(datos.silenciadas);
-      setSenal(datos.senal);
+      const datos = uid ? await cargarEstancamiento(supabase, uid) : null;
+      if (!vivo) return;
+      if (datos) {
+        setEjercicios(datos.ejercicios);
+        setSilenciadas(datos.silenciadas);
+        setSenal(datos.senal);
+      }
+      setCargado(true);
     })();
     return () => {
       vivo = false;

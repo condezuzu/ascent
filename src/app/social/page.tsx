@@ -41,7 +41,9 @@ export default function Social() {
   const [pedidosMandados, setPedidosMandados] = useState<Set<string>>(new Set());
   const [cargado, setCargado] = useState(false);
   const [noCargo, setNoCargo] = useState(false);
-  const [miRango, setMiRango] = useState(1);
+  // `undefined` = todavía no se sabe: el fondo usa el último propio, no el
+  // gris del rango 1 (19/9).
+  const [miRango, setMiRango] = useState<number | undefined>(undefined);
   const [miPlaneta, setMiPlaneta] = useState<string | null>(null);
   const busquedaRef = useRef('');
 
@@ -120,8 +122,10 @@ export default function Social() {
 
   return (
     <>
-      <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.68} />
-      <PantallaDeslizable>
+      <FondoEspacial rango={miRango} planeta={miPlaneta} propio esquina="arriba-derecha" velo={0.68} />
+      {/* No aparece hasta tener la lista (19/9): antes salía "Buscar gente"
+          sola y la lista caía de golpe. Ver `PantallaDeslizable`. */}
+      <PantallaDeslizable listo={cargado}>
         <div className="titulo-pantalla">{T.social.titulo}</div>
 
 

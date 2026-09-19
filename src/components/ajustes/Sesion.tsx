@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { borrarPerfilCache } from '@compartido/cache';
+import { borrarTema } from '@/plataforma/web/tema';
 import { reiniciarGuia } from '@compartido/guia';
 import { T } from '@nucleo/textos';
 
@@ -20,6 +21,7 @@ export default function Sesion({ userId }: { userId: string }) {
 
   async function salir() {
     await borrarPerfilCache(); // que la próxima cuenta no vea la racha de esta
+    borrarTema(); // y el color de esta cuenta, que se pinta antes de todo
     await supabase.auth.signOut();
     router.push('/login');
   }

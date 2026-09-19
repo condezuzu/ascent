@@ -18,7 +18,9 @@ export default function Album() {
   const [supabase] = useState(() => crearCliente());
   const [celdas, setCeldas] = useState<Celda[]>([]);
   const [cargado, setCargado] = useState(false);
-  const [miRango, setMiRango] = useState(1);
+  // `undefined` = todavía no se sabe: el fondo usa el último propio, no el
+  // gris del rango 1 (19/9).
+  const [miRango, setMiRango] = useState<number | undefined>(undefined);
   const [miPlaneta, setMiPlaneta] = useState<string | null>(null);
   // Qué foto está abierta a pantalla completa. Se guarda el ÍNDICE y no el id
   // porque desde el visor se pasa a la de al lado, y "la de al lado" solo
@@ -84,8 +86,10 @@ export default function Album() {
 
   return (
     <>
-      <FondoEspacial rango={miRango} planeta={miPlaneta} esquina="arriba-derecha" velo={0.72} />
-      <PantallaDeslizable>
+      <FondoEspacial rango={miRango} planeta={miPlaneta} propio esquina="arriba-derecha" velo={0.72} />
+      {/* No aparece hasta tener la lista de fotos (19/9): antes se veía el
+          álbum vacío y después las fotos. Ver `PantallaDeslizable`. */}
+      <PantallaDeslizable listo={cargado}>
         <div className="titulo-pantalla">{T.album.titulo}</div>
 
 
