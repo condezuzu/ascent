@@ -8540,6 +8540,7 @@ console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
   chequear('una sola cuenta del bloque (nativa)', /cuentaNumero/.test(de128('movil', 'src', 'Bloque.tsx')), false);
   chequear('la racha no esta durante el entrenamiento (nativa)', /!sesion\.estado\.corriendo && \(\s*<>\s*<Text style=\{estilos\.etiqueta\}>\{T\.inicio\.racha\}/.test(de128('movil', 'src', 'Inicio.tsx')), true);
   chequear('el globo de las series se cierra con el primer +', /cual="series" cerrarCuando=\{sesion\.estado\.series > 0\}/.test(inicio), true);
+  chequear('sin la linea social en Inicio (esta en Ranking)', /linea-social|sigueSubiendo/.test(inicio), false);
   const accion = de128('src', 'components', 'AccionPrincipal.tsx');
   chequear('el hueco de abajo lo mide la accion anclada', /setProperty\('--alto-accion'/.test(accion) && /new ResizeObserver\(publicar\)/.test(accion), true);
 }

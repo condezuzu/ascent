@@ -274,7 +274,6 @@ export const T = {
     yaHabiaSesion: 'Ya tenías una corriendo. Seguimos con esa.',
     diaDeshecho: 'Muy corta para contar como día. Se deshizo.',
     sacarSerie: 'Sacar una serie',
-    sigueSubiendo: (nombre: string, dias: string) => `${nombre} sigue subiendo — ${dias}`,
     // Discreto y permanente mientras no haya punto: es el diferencial de la
     // app y vivía escondido en Ajustes.
     gimnasioRecordatorio: 'Marca tu gimnasio: el día entra al abrir la app estando ahí.',

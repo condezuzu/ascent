@@ -224,7 +224,7 @@ async function medirTodos(estado) {
         const piezas = {
           cabecera: '.cabecera', racha: '.racha-bloque', globo: '.globo', ejercicio: '.bloque-fila', peso: '.bloque-peso',
           puntos: '.bloque-puntos', cuenta: '.bloque-cuenta', mas: '.bloque-mas', pregunta: '.marcas-sugeridas.en-el-momento',
-          pie: '.bloque-pie', tira: '.tira-semanal', gimnasio: '.globo-quieto', marcas: '.linea-marcas', cita: '.cita', social: '.linea-social', accion: '.accion-anclada',
+          pie: '.bloque-pie', tira: '.tira-semanal', gimnasio: '.globo-quieto', marcas: '.linea-marcas', cita: '.cita', accion: '.accion-anclada',
         };
         const r = {};
         for (const [k, sel] of Object.entries(piezas)) {
@@ -268,8 +268,8 @@ try {
   }
   esMio = true;
 
-  // Sin sesión, de referencia.
-  await medirTodos('sin entrenamiento');
+  // Sin sesión: también tiene que entrar (19/9).
+  if ((await medirTodos('sin entrenamiento')).length) sobraAlguno = true;
 
   // El globo de la primera vez se muestra hasta que se cierra: se mide con él.
   await page.evaluate(() => {
@@ -293,8 +293,7 @@ try {
   await page.waitForTimeout(800);
   if ((await medirTodos('después de contestar la pregunta')).length) sobraAlguno = true;
   // DÍA REGISTRADO, SIN ENTRENAMIENTO: después de terminar. Abajo ya no está
-  // "Registrar día" sino la foto y el peso, en el flujo. Solo se mide; no
-  // cuenta para la falla (la de sin entrenamiento tampoco, todavía).
+  // "Registrar día" sino la foto y el peso, en el flujo, en un renglón.
   try {
     await page.locator('.accion-anclada').getByRole('button', { name: 'Terminar', exact: true }).first().click({ timeout: 10000 });
     await page.waitForTimeout(600);
@@ -303,7 +302,7 @@ try {
     const resumen = page.locator('.resumen-sesion');
     if (await resumen.count()) await resumen.click({ position: { x: 10, y: 10 } });
     await page.waitForTimeout(1500);
-    await medirTodos('día registrado, sin entrenamiento');
+    if ((await medirTodos('día registrado, sin entrenamiento')).length) sobraAlguno = true;
   } catch (e) {
     console.log(`\n(no pude terminar la sesión para medir el día registrado: ${e.message.split('\n')[0]})`);
   }

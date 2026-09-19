@@ -858,8 +858,10 @@ body.ya-entro .pantalla > * {
    que es la voz propia de la app. Eso la vuelve parte del instrumento en vez
    de un cartel motivacional pegado encima: rima con lo único grande de la
    pantalla, en el otro extremo de la escala. */
+/* Sin margen abajo desde el 19/9: los 25 px la separaban de la línea social,
+   que se fue. Es lo último de Inicio, y ese margen era scroll sin nada. */
 .cita {
-  margin: 34px 2px 25px;
+  margin: 34px 2px 0;
   max-width: 30ch;
   border-left: 1px solid color-mix(in srgb, var(--pal-principal) 26%, transparent);
   padding-left: 14px;
@@ -869,18 +871,6 @@ body.ya-entro .pantalla > * {
   line-height: 1.7;
   letter-spacing: 0.015em;
   color: var(--apagado);
-}
-
-/* ---------- una sola línea social ---------- */
-.linea-social {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: var(--sub);
-  padding: 14px 2px;
-  border-top: 0.5px solid var(--linea);
-  margin-top: 22px;
 }
 
 /* ---------- navegación ---------- */
@@ -2623,14 +2613,19 @@ body.con-franja .pantalla {
 
 /* El día ya registrado. Antes era un botón ancho que decía
    "Día registrado · sumar foto o peso": un cartel y dos acciones apretados
-   adentro del mismo rectángulo. Ahora el cartel respira arriba y las dos
-   acciones son dos botones, porque son dos cosas distintas. */
+   adentro del mismo rectángulo. Después fue el cartel arriba y dos círculos
+   grandes de 54 px debajo (~230 px de alto).
+
+   UN RENGLÓN (19/9, decisión del humano): el cartel a la izquierda y Foto y
+   Peso como dos botones chicos a la derecha. Con los círculos, Inicio sin
+   entrenamiento no entraba en el SE ni en Safari; Foto y Peso no necesitan
+   dos círculos grandes. Cada botón sigue teniendo 44 px de alto para el dedo. */
 .dia-listo {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 18px;
-  padding: 22px 0 6px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0 4px;
 }
 .dia-listo .rotulo {
   font-size: 11px;
@@ -2640,33 +2635,33 @@ body.con-franja .pantalla {
 }
 .dia-listo .acciones {
   display: flex;
-  gap: 26px;
+  gap: 8px;
 }
 .dia-listo .acciones > button {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 8px;
   width: auto;
-  padding: 0;
+  min-height: 44px;
+  padding: 0 12px 0 6px;
+  border: 1px solid var(--linea);
+  border-radius: var(--pildora);
+  transition: transform 0.16s var(--curva-salida), border-color 0.3s ease;
 }
 .dia-listo .redondo {
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  border: 1px solid var(--linea);
-  color: var(--sub);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.16s var(--curva-salida), border-color 0.3s ease;
+  width: 30px;
+  height: 30px;
+  color: var(--sub);
 }
 .dia-listo .redondo svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
 }
-.dia-listo .acciones > button:active .redondo {
-  transform: scale(0.94);
+.dia-listo .acciones > button:active {
+  transform: scale(0.96);
   border-color: color-mix(in srgb, var(--pal-claro) 55%, transparent);
 }
 .dia-listo .acciones .rotulo {

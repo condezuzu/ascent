@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
-import { enDias, hoyISO, restarDias, deISO } from '@nucleo/fechas';
+import { hoyISO, restarDias, deISO } from '@nucleo/fechas';
 import { transcurrido, duracionLinda } from '@nucleo/sesiones';
 import { planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango } from '@nucleo/rangos';
 import { fraseDelDia } from '@nucleo/frases';
@@ -44,7 +44,6 @@ import Descanso from '@/components/Descanso';
 import { useSesion } from '@compartido/useSesion';
 import { T } from '@nucleo/textos';
 
-type LineaSocial = { username: string; racha: number } | null;
 
 // El último día que entró SOLO y que esta persona ya vio. Guarda la fecha, no
 // un booleano: si guardara "ya lo vi" habría que acordarse de borrarlo cada
@@ -68,7 +67,6 @@ export default function Principal() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [logs, setLogs] = useState<Log[]>([]);
   const [descansos, setDescansos] = useState<ConfigDescanso[]>([]);
-  const [social, setSocial] = useState<LineaSocial>(null);
   const [marcas, setMarcas] = useState<string | null>(null);
   const [hojaAbierta, setHojaAbierta] = useState(false);
   const [pesoAbierto, setPesoAbierto] = useState(false);
@@ -116,37 +114,6 @@ export default function Principal() {
   // uno a la vista, una falla NO se contesta con el cartel de error: se deja
   // lo que se está viendo, que es viejo pero es de esta persona.
   const huboCache = useRef(false);
-
-  // La línea social se carga aparte y después: no puede demorar el dibujo
-  // de la pantalla, que es lo único que el usuario vino a ver.
-  const cargarSocial = useCallback(
-    async (uid: string) => {
-      const { data: amistades } = await supabase
-        .from('friendships')
-        .select('solicitante, destinatario')
-        .eq('estado', 'aceptada');
-      const amigos = (amistades ?? []).map((a) =>
-        a.solicitante === uid ? a.destinatario : a.solicitante
-      );
-      if (amigos.length === 0) return;
-      const { data: ultimo } = await supabase
-        .from('logs')
-        .select('user_id, fecha')
-        .in('user_id', amigos)
-        .eq('es_descanso', false)
-        .order('fecha', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!ultimo) return;
-      const { data: quien } = await supabase
-        .from('usuarios_publicos')
-        .select('username, racha_actual')
-        .eq('id', ultimo.user_id)
-        .maybeSingle();
-      if (quien) setSocial({ username: quien.username, racha: quien.racha_actual });
-    },
-    [supabase]
-  );
 
   // `deArranque` decide si el perfil se puede COMPARTIR con el vigilante del
   // armazon, que lo pide al mismo tiempo. Solo la carga del arranque puede:
@@ -232,7 +199,6 @@ export default function Principal() {
         despues = () => {
           leerImpulsos(d.impulsos);
           if (d.fuerza) setMarcas(lineaDeMarcas(d.fuerza.marcas, unidad));
-          setSocial(d.social);
         };
       }
     } else if (r.tipo === 'sin-funcion') {
@@ -243,7 +209,6 @@ export default function Principal() {
         setLogs(viejo.logs);
         setDescansos(viejo.descansos);
         despues = () => {
-          cargarSocial(uid);
           supabase.rpc('mis_impulsos').then(({ data, error }) => {
             if (!error) leerImpulsos(data as DatosDeInicio['impulsos']);
           });
@@ -284,7 +249,7 @@ export default function Principal() {
     // después de dibujar y solo escribe si cambió: es una llamada por viaje,
     // no una por arranque. El usuario nunca la ve ni la configura.
     sincronizarZona(supabase);
-  }, [supabase, router, cargarSocial, cargarEncadenado, leerImpulsos]);
+  }, [supabase, router, cargarEncadenado, leerImpulsos]);
 
   // El cronómetro vive acá desde §20: empezar pasa una vez por entrenamiento
   // y no merecía una pestaña, pero sí estar a la vista.
@@ -775,9 +740,8 @@ export default function Principal() {
             Medido: con la sesión abierta el contenido daba 1088 px en una
             pantalla de 844, y el humano tenía que scrollear entre serie y
             serie para ver cuántas llevaba. Nada de esto es de la sesión: la
-            cita motiva antes o después, la línea social es una distracción en
-            el medio, y las marcas y el recordatorio del gimnasio son de otro
-            momento. No se borran, vuelven solas al terminar. */}
+            cita motiva antes o después, y las marcas y el recordatorio del
+            gimnasio son de otro momento. No se borran, vuelven solas al terminar. */}
         {marcas && !entrenando && (
           <Link href="/fuerza" className="linea-marcas">{marcas}</Link>
         )}
@@ -786,13 +750,9 @@ export default function Principal() {
           <p className="cita">{frase}</p>
         )}
 
-        {social && !entrenando && (
-          <div className="linea-social">
-            <span>
-              {T.inicio.sigueSubiendo(social.username, enDias(social.racha))}
-            </span>
-          </div>
-        )}
+        {/* LA LÍNEA SOCIAL SE FUE (19/9, decisión del humano): "fulano sigue
+            subiendo" está a un deslizamiento, en Ranking, y no es un dato
+            propio. Sus 68 px eran parte de lo que no entraba. */}
 
         {sinNada && (
           <div className="vacio-cosmico">
