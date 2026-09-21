@@ -17,6 +17,34 @@
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
         "EXPO_PUBLIC_DIAGNOSTICO": "1"
       }
+    },
+    "dev": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "dev",
+      "ios": {
+        "simulator": false,
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "$EXPO_PUBLIC_SUPABASE_URL",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
+        "EXPO_PUBLIC_DIAGNOSTICO": "1"
+      }
+    },
+    "minimo": {
+      "distribution": "internal",
+      "channel": "minimo",
+      "ios": {
+        "simulator": false,
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "$EXPO_PUBLIC_SUPABASE_URL",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
+        "EXPO_PUBLIC_DIAGNOSTICO": "1",
+        "EXPO_PUBLIC_MINIMO": "1"
+      }
     }
   },
   "submit": {}
