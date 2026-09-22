@@ -11,6 +11,8 @@ import { plataforma } from '@plataforma';
 import { duracionCorta, duracionValida, guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
 import Gimnasio from './ajustes/Gimnasio';
 import Identidad from './ajustes/Identidad';
+import Fondo from './ajustes/Fondo';
+import MisDatos from './ajustes/MisDatos';
 import Sugerencias from './ajustes/Sugerencias';
 import Cuenta from './ajustes/Cuenta';
 
@@ -216,9 +218,15 @@ export default function Ajustes({
 
       {fallo !== '' && <Text style={estilos.error}>{fallo}</Text>}
 
+      {/* Antes del nombre, como en la web: el fondo es una preferencia de
+          ESTE aparato y no un dato de la cuenta. */}
+      <Fondo />
+
       <Identidad perfil={perfil} alCambiar={alCambiar} />
 
       <Sugerencias userId={perfil.id} />
+
+      <MisDatos perfil={perfil} />
 
       {/* Cerrar sesion, cambiar la clave y darse de baja: las tres son sobre
           la cuenta y no sobre como entrenas, asi que van juntas y al final. */}

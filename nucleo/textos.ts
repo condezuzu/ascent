@@ -502,6 +502,9 @@ export const T = {
     fondoAutoFlojo: 'Tu equipo va justo: está apagado y la app abre al instante.',
     fondoAutoNoSe: 'No se sabe cuánto aguanta tu equipo: está prendido. Si tarda en abrir, apágalo.',
     fondoNota: 'Apagado, la app abre al instante y el degradado queda igual.',
+    // EN EL TELÉFONO EL MOTOR SE MONTA UNA VEZ, al arrancar: apagarlo y ver la
+    // misma pantalla sin que pase nada parece que el botón no hizo nada.
+    fondoAlAbrir: 'El cambio se ve la próxima vez que abras la app.',
 
     nombreUsuario: 'Nombre de usuario',
     nombreNota: 'Así te encuentran tus amigos. No puede repetirse.',

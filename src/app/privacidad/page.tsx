@@ -13,11 +13,11 @@ import type { Metadata } from 'next';
  * abre sin cuenta, y quien todavía no se registró tiene derecho a leer qué le
  * van a guardar ANTES de registrarse.
  *
- * EL CORREO DE CONTACTO ESTÁ VACÍO A PROPÓSITO. Publicar una dirección es una
- * decisión de quien la va a recibir, no mía. Mientras esté vacío, la página no
- * inventa un canal que no existe; poner el correo es cambiar esta constante.
+ * EL CORREO DE CONTACTO lo eligió el dueño (22/9). Estuvo vacío hasta que lo
+ * dijo: publicar una dirección es decisión de quien la va a recibir, y una
+ * política que inventa un canal que nadie lee es peor que una sin contacto.
  */
-const CORREO = '';
+const CORREO = 'agustinconde@icloud.com';
 
 export const metadata: Metadata = {
   title: 'Privacidad · Ascent',
