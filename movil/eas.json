@@ -13,10 +13,9 @@
         "resourceClass": "m-medium"
       },
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "$EXPO_PUBLIC_SUPABASE_URL",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
         "EXPO_PUBLIC_DIAGNOSTICO": "1"
-      }
+      },
+      "environment": "preview"
     },
     "dev": {
       "developmentClient": true,
@@ -27,10 +26,9 @@
         "resourceClass": "m-medium"
       },
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "$EXPO_PUBLIC_SUPABASE_URL",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
         "EXPO_PUBLIC_DIAGNOSTICO": "1"
-      }
+      },
+      "environment": "preview"
     },
     "minimo": {
       "distribution": "internal",
@@ -40,11 +38,10 @@
         "resourceClass": "m-medium"
       },
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "$EXPO_PUBLIC_SUPABASE_URL",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
         "EXPO_PUBLIC_DIAGNOSTICO": "1",
         "EXPO_PUBLIC_MINIMO": "1"
-      }
+      },
+      "environment": "preview"
     }
   },
   "submit": {}

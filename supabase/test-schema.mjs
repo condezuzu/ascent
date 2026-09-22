@@ -8302,24 +8302,34 @@ console.log('\n122. La app nativa se puede construir: los archivos que nombra ex
   chequear('y sin trozo tRNS, que agrega transparencia igual',
     png.includes(Buffer.from('tRNS')), false);
 
-  // EL PERFIL DE BUILD. Lo unico que se exige es lo que hace que el IPA se
-  // instale en un telefono: distribucion interna. Y que las variables vayan por
-  // secret --con `$`-- y no pegadas: hoy la anon key es publica y no filtraria
-  // nada, pero el camino tiene que estar hecho para la que no lo sea.
+  // LOS PERFILES DE BUILD. Lo unico que se exige es lo que hace que el IPA se
+  // instale en un telefono: distribucion interna, y de donde salen las
+  // variables.
+  //
+  // ESTO ESTABA AL REVES HASTA EL 22/9 y costo varias builds: se exigia que las
+  // de Supabase estuvieran en `env` nombradas con un signo peso, creyendo que
+  // eso pedia un secret. No existe esa interpolacion: `env` son valores
+  // LITERALES, asi que la build recibia el texto "$EXPO_PUBLIC_SUPABASE_URL" y
+  // ademas PISABA la variable de verdad. Ahora las de Supabase NO van en `env`:
+  // vienen del entorno de EAS, y cual entorno lo dice `environment`.
   const eas = JSON.parse(leer122(unir122(MOVIL, 'eas.json'), 'utf8'));
-  const perfil = eas.build?.telefono;
-  chequear('hay un perfil para el telefono', !!perfil, true);
-  chequear('y es de distribucion interna', perfil?.distribution, 'internal');
-  chequear('no arma para el simulador', perfil?.ios?.simulator, false);
-  // Las de Supabase van por secret. La de la caja negra (18/9) es un valor
-  // fijo, "1", que prende el boton de diagnostico en la build interna: no es
-  // un secreto y no tiene por que serlo.
-  const env122 = perfil?.env ?? {};
-  const deSupabase = Object.entries(env122).filter(([k]) => k.startsWith('EXPO_PUBLIC_SUPABASE_'));
-  chequear('las de Supabase van por secret y no pegadas',
-    deSupabase.filter(([, v]) => !String(v).startsWith('$')).map(([k]) => k), []);
-  chequear('y estan las dos de Supabase', deSupabase.length, 2);
-  chequear('la build interna trae la caja negra a mano', env122.EXPO_PUBLIC_DIAGNOSTICO, '1');
+  const perfiles = Object.entries(eas.build ?? {});
+  chequear('hay un perfil para el telefono', !!eas.build?.telefono, true);
+  chequear('y estan tambien el minimo y el de desarrollo',
+    [!!eas.build?.minimo, !!eas.build?.dev], [true, true]);
+  for (const [nombre, perfil] of perfiles) {
+    chequear(nombre + ': distribucion interna', perfil.distribution, 'internal');
+    chequear(nombre + ': no arma para el simulador', perfil.ios?.simulator, false);
+    // Sin `environment`, EAS elige solo: 'development' para el cliente de
+    // desarrollo, donde las de Supabase NO estan cargadas.
+    chequear(nombre + ': dice de que entorno saca las variables', perfil.environment, 'preview');
+    const pegadas = Object.keys(perfil.env ?? {}).filter((k) => k.startsWith('EXPO_PUBLIC_SUPABASE_'));
+    chequear(nombre + ': las de Supabase no se pegan en env', pegadas, []);
+  }
+  // La de la caja negra (18/9) SI es un valor fijo, "1", que prende el boton de
+  // diagnostico: no es un secreto y no tiene por que serlo.
+  chequear('la build del telefono trae la caja negra a mano', eas.build?.telefono?.env?.EXPO_PUBLIC_DIAGNOSTICO, '1');
+  chequear('y la minima arranca en la pantalla minima', eas.build?.minimo?.env?.EXPO_PUBLIC_MINIMO, '1');
 
   // NO SE SUBE NADA A APP STORE desde aca: esa preparacion va despues de las
   // tandas 4, 5 y 6 (ver spec/etapa-nativa.md). Si alguien llena `submit`, que

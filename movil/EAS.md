@@ -3,35 +3,58 @@
 Este archivo explica **por qué** `eas.json` dice lo que dice. Los comandos en
 orden los pasa el agente; acá está lo que hay que saber para cambiarlo.
 
-## Un solo perfil: `telefono`
+## Tres perfiles, y cada uno existe por una razón
 
-No hay `development`, `preview` ni `production`. Hay uno, y arma exactamente lo
-que se necesita hoy: un IPA firmado ad-hoc que se instala en un iPhone
-registrado. Tres perfiles vacíos esperando a que alguien los use son tres cosas
-que se desactualizan.
+Hasta el 21/9 había uno solo (`telefono`), porque tres perfiles vacíos
+esperando a que alguien los use son tres cosas que se desactualizan. Los otros
+dos nacieron el día que la app quedó en negro en el iPhone y no había forma de
+ver por qué.
 
-- **`distribution: "internal"`** es lo que hace que salga un link de instalación
-  directo, sin TestFlight y sin revisión de Apple. Es la diferencia entre
-  "probar hoy" y "esperar a que App Store Connect procese".
+- **`telefono`** — la app, firmada ad-hoc, que se instala en un iPhone
+  registrado con un link. Es la de siempre.
+- **`minimo`** — la misma app con `EXPO_PUBLIC_MINIMO=1`: arranca la pantalla
+  mínima (`src/Minimo.tsx`), React Native y nada más, con botones para cargar
+  las piezas de a una. Contesta "¿corre el JS?" sin computadora.
+- **`dev`** — cliente de desarrollo (`expo-dev-client`): se conecta a Metro en
+  la computadora, muestra los errores en pantalla y en la terminal, y deja
+  cambiar el JS sin volver a compilar. Se levanta con `dev-telefono.cmd`.
+
+Los tres son `distribution: internal`: link directo, sin TestFlight y sin
+revisión de Apple. Es la diferencia entre "probar hoy" y "esperar a que App
+Store Connect procese".
+
 - **`simulator: false`**: el build es para el teléfono de verdad. Un build de
   simulador no se firma y no instala en un aparato.
 - **`appVersionSource: "local"`**: la versión sale de `app.json` y no de un
   contador en los servidores de Expo. Un número que vive afuera del repo es un
   número que no se puede leer mirando el código.
 
-## Las variables: secrets de EAS, no valores pegados acá
+## Las variables: el entorno de EAS, no valores pegados acá
 
-`env` nombra las variables **con `$`**: eso le dice a EAS que busque un secret
-con ese nombre, no que use el texto literal. Los valores no están en este
-archivo ni en ningún otro del repo.
+**ESTO ESTABA MAL Y COSTÓ VARIAS BUILDS (22/9).** Acá decía que nombrar la
+variable con `$` —`"EXPO_PUBLIC_SUPABASE_URL": "$EXPO_PUBLIC_SUPABASE_URL"`— le
+pedía a EAS el secret con ese nombre. **No existe esa interpolación**: el `env`
+de un perfil son valores LITERALES, así que la build recibía el texto
+`$EXPO_PUBLIC_SUPABASE_URL` y encima PISABA la variable buena. Con eso, el
+cliente de Supabase no se puede ni construir ("Invalid supabaseUrl").
 
-La anon key de Supabase es pública por diseño —viaja en cada pedido del
-navegador— así que pegarla acá no filtraría nada. Se hace con secrets igual, a
-propósito: el día que aparezca una variable que **no** sea pública, el camino ya
-está hecho y nadie tiene que acordarse de cambiar de método justo cuando
-importa. Ver `movil/.env` para los mismos nombres en desarrollo.
+Cómo es de verdad:
 
-## Lo que este perfil NO hace
+- Las variables viven en el **entorno de EAS** (el panel del proyecto:
+  development / preview / production). Los valores no están en este archivo ni
+  en ningún otro del repo.
+- **Cuál entorno usa cada build lo dice `environment`.** Si no se pone, EAS lo
+  elige solo: `production` si la distribución es `store`, `development` si es
+  cliente de desarrollo, y `preview` en los demás casos. Los tres perfiles de
+  acá dicen `preview` EXPLÍCITAMENTE, que es donde están cargadas las dos de
+  Supabase: sin decirlo, el perfil `dev` iba a buscarlas a `development`, donde
+  no están, y arrancaba sin base.
+- En `env` quedan solo valores que SON literales: `EXPO_PUBLIC_DIAGNOSTICO` y
+  `EXPO_PUBLIC_MINIMO`, que son interruptores de esta etapa.
+
+Ver `movil/.env` para los mismos nombres en desarrollo (ahí los lee Metro).
+
+## Lo que estos perfiles NO hacen
 
 - **No sube nada a App Store ni a TestFlight.** `submit` está vacío a propósito:
   la preparación de App Store (metadatos, política de privacidad, justificación
