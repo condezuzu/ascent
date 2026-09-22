@@ -485,6 +485,21 @@ contraseña no coinciden."**, que es el texto de `nucleo/errores.ts`. O sea que
 el camino entero —cliente nativo, red, error de auth, traducción compartida,
 pantalla— funciona.
 
+**Lo que sí prueba, y es lo que importaba el 22/9:** la lógica compartida
+corriendo sobre las pantallas nativas de verdad.
+`herramientas/reproducir-series-nativa.mjs` recorre a :8090 los seis momentos
+donde se podían perder series —abrir con una sesión que arrancó en otro
+aparato, el primer `+`, abrir de cero y tocar sin esperar, ir a otra pestaña y
+volver (que en nativo monta Inicio de cero), dos `+` sin señal, y corregir el
+día— y en cada parada imprime las TRES fuentes: pantalla, caché del aparato y
+base. La cuenta de prueba queda como estaba, aunque la sonda se rompa a la
+mitad.
+
+Su límite, que también hay que decir cada vez: acá el almacenamiento es
+`localStorage` y contesta casi al toque; en el iPhone es AsyncStorage y va por
+el puente. La sonda saca el tiempo del otro lado —abre de cero y toca sin
+esperar— pero no puede simular esa lentitud. Eso sigue siendo del teléfono.
+
 ### Lo que hace falta para la build de desarrollo (tanda 3)
 
 - **Cuenta de Expo** (gratis), para que EAS construya en la nube.
