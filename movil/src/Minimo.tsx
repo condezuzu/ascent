@@ -70,7 +70,7 @@ export default function Minimo() {
     <View style={estilos.todo}>
       <Text style={estilos.titulo}>Ascent · pantalla mínima</Text>
       <Text style={estilos.explica}>
-        Si ves esto, el JS del teléfono corre. Tocá las piezas de arriba hacia abajo: la primera que falle es la que
+        Si ves esto, el JS del teléfono corre. Toca las piezas de arriba hacia abajo: la primera que falle es la que
         rompe la app.
       </Text>
 
