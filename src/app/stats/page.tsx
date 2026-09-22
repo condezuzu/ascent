@@ -17,6 +17,7 @@ import SeccionFuerza from '@/components/SeccionFuerza';
 import SeccionSesiones from '@/components/SeccionSesiones';
 import GraficoPeso from '@/components/GraficoPeso';
 import AnotarPeso from '@/components/AnotarPeso';
+import ListaDePesos from '@/components/ListaDePesos';
 import CalendarioDias from '@/components/CalendarioDias';
 import SeccionVolumen from '@/components/SeccionVolumen';
 import { T } from '@nucleo/textos';
@@ -271,6 +272,7 @@ export default function Estadisticas() {
                 desde la hoja de registrar el día, y eso lo ataba a haber
                 entrenado: pesarse un domingo contaba como día de gimnasio. */}
             <AnotarPeso unidad={unidad} alGuardar={cargar} />
+            <ListaDePesos pesos={pesos} unidad={unidad} alCambiar={cargar} />
           </div>
         ) : pesos.length === 1 ? (
           // Con un solo dato no hay tendencia que dibujar, pero decirle
@@ -288,12 +290,14 @@ export default function Estadisticas() {
             </div>
             <p className="nota-privada">{T.stats.pesoUnoMas}</p>
             <AnotarPeso unidad={unidad} alGuardar={cargar} />
+            <ListaDePesos pesos={pesos} unidad={unidad} alCambiar={cargar} />
           </div>
         ) : (
           <div className="seccion">
             <h3>{T.stats.peso}</h3>
             <p className="nota-privada">{T.stats.pesoVacio}</p>
             <AnotarPeso unidad={unidad} alGuardar={cargar} />
+            <ListaDePesos pesos={pesos} unidad={unidad} alCambiar={cargar} />
           </div>
         )}
 

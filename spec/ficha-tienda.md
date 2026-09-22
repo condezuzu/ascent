@@ -143,8 +143,7 @@ teléfono y qué tiene el servidor.
 ## Lo demás de la ficha
 
 - **URL de privacidad:** `https://ascent-blush-seven.vercel.app/privacidad`
-- **URL de soporte:** falta. Apple la pide y no puede ser la misma que la de
-  privacidad; alcanza con una página con el correo de contacto.
+- **URL de soporte:** `https://ascent-blush-seven.vercel.app/soporte`
 - **Categoría:** Health & Fitness, sin secundaria.
 - **Clasificación por edad:** todo "None" → 4+.
 - **Capturas:** `capturas-tienda/`, 1290 × 2796, salen de

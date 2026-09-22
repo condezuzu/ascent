@@ -1636,6 +1636,78 @@ console.log('\n27. Cronómetro de sesión');
       0
     );
   }
+
+  // ---- corregir y borrar un peso (migracion 45) ----
+  //
+  // EL AGUJERO QUE ESTO TAPA: `weights` solo tiene `select` para el dueño, asi
+  // que un peso mal anotado se quedaba para siempre torciendo la tendencia, que
+  // es lo unico que ese dato hace. Aparecio desde afuera —una sonda fabrico un
+  // peso para una captura y no pudo sacarlo— y el dueño de la cuenta esta peor
+  // que la sonda: no tiene editor de SQL.
+  {
+    const u = await nuevoUsuario();
+    const otro = await nuevoUsuario();
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    await db.query('select anotar_peso(80)');
+
+    // CORREGIR ES ESCRIBIR ENCIMA de lo que ya esta, y devuelve si toco algo.
+    chequear('corregir el peso de hoy contesta que si',
+      (await db.query("select corregir_peso(mi_hoy(), 84.2) as ok")).rows[0].ok, true);
+    await db.exec('reset role');
+    const tras = await db.query('select valor::float8 as v from weights where user_id = $1', [u]);
+    chequear('y el valor quedo corregido', tras.rows[0].v, 84.2);
+    chequear('sin agregar una fila', tras.rows.length, 1);
+
+    // NO INVENTA HISTORIA: corregir un dia sin peso no escribe nada. Sin esto,
+    // `corregir_peso` seria un `anotar_peso` con fecha libre y la tendencia
+    // dejaria de ser un registro para pasar a ser un dibujo.
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    chequear('corregir un dia sin peso no hace nada',
+      (await db.query("select corregir_peso(mi_hoy() - 7, 70) as ok")).rows[0].ok, false);
+    await db.exec('reset role');
+    chequear('y no aparecio ninguna fila nueva',
+      (await db.query('select count(*)::int as n from weights where user_id = $1', [u])).rows[0].n, 1);
+
+    // EL PESO DE OTRO NO SE TOCA. Las dos funciones son `security definer`, o
+    // sea que corren con permisos de dueño: si no filtraran por `auth.uid()`
+    // adentro, cualquiera corregiria el peso ajeno pasando una fecha.
+    await comoUsuario(otro);
+    await db.exec('set role authenticated');
+    await db.query('select anotar_peso(60)');
+    chequear('el peso de otro no se corrige',
+      (await db.query("select corregir_peso(mi_hoy(), 99) as ok")).rows[0].ok, true);
+    await db.exec('reset role');
+    chequear('cada uno corrigio el suyo',
+      (await db.query('select valor::float8 as v from weights where user_id = $1', [u])).rows[0].v, 84.2);
+
+    // BORRAR saca la fila, y dice si habia algo que sacar.
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    chequear('borrar el peso de hoy contesta que si',
+      (await db.query("select borrar_peso(mi_hoy()) as ok")).rows[0].ok, true);
+    chequear('borrar dos veces el mismo dia contesta que no',
+      (await db.query("select borrar_peso(mi_hoy()) as ok")).rows[0].ok, false);
+    await db.exec('reset role');
+    chequear('el peso se fue',
+      (await db.query('select count(*)::int as n from weights where user_id = $1', [u])).rows[0].n, 0);
+    chequear('y el del otro sigue ahi',
+      (await db.query('select count(*)::int as n from weights where user_id = $1', [otro])).rows[0].n, 1);
+
+    // Y LA TABLA SIGUE CERRADA: las funciones nuevas no abrieron la puerta.
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    let directo2 = null;
+    try {
+      await db.query('delete from weights where user_id = $1', [otro]);
+      directo2 = false;
+    } catch (e) {
+      directo2 = /permission denied/i.test(e.message);
+    }
+    await db.exec('reset role');
+    chequear('el peso sigue sin poder borrarse directo', directo2, true);
+  }
 }
 
 // =====================================================================

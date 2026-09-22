@@ -5196,3 +5196,52 @@ body.con-franja.con-accion .pantalla {
 .legal a {
   color: var(--pal-claro);
 }
+
+/* Lo que anotaste de peso, con forma de arreglarlo (22/9). Filas chicas y en
+   voz baja: esto no es una pantalla de historial, es el lugar donde se corrige
+   un número mal escrito. El gráfico de arriba sigue siendo el que cuenta. */
+.lista-pesos {
+  margin-top: 18px;
+}
+.lista-pesos .rotulo {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--apagado);
+  margin-bottom: 4px;
+}
+.lista-pesos .fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--linea);
+  font-size: 14px;
+}
+.lista-pesos .cuando {
+  color: var(--apagado);
+  min-width: 68px;
+}
+.lista-pesos .valor {
+  color: var(--tinta);
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+}
+.lista-pesos .pregunta {
+  color: var(--sub);
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.lista-pesos input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  font-size: 14px;
+}
+.lista-pesos .boton-texto {
+  width: auto;
+  flex: none;
+  padding: 4px 2px;
+  font-size: 13px;
+}

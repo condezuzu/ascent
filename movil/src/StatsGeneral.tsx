@@ -14,6 +14,7 @@ import GraficoPeso from './GraficoPeso';
 import Insignia from './Insignia';
 import SeccionFuerza from './SeccionFuerza';
 import AnotarPeso from './AnotarPeso';
+import ListaDePesos from './ListaDePesos';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -124,6 +125,7 @@ export default function StatsGeneral({
       {pesos.length === 1 && <Text style={estilos.nota}>{T.stats.pesoUnoMas}</Text>}
       {pesos.length === 0 && <Text style={estilos.nota}>{T.stats.pesoVacio}</Text>}
       <AnotarPeso unidad={unidad} alGuardar={alCambiar} />
+      <ListaDePesos pesos={pesos} unidad={unidad} alCambiar={alCambiar} />
 
       {/* La fuerza convive con la racha, no la reemplaza (§16.1): va después
           del peso y antes de la escalera, que es el cierre de la pantalla. El

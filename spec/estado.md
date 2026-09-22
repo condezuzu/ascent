@@ -157,12 +157,20 @@ schema de la base real. El flujo es: escribir la migración → probarla con
 
 ## A medias
 
-- **La app nativa, contra la web**: el inventario pantalla por pantalla está
-  en la bitácora del 22/9. Lo que falta del lado nativo, en el orden que fijó
-  el humano: Ajustes entero (ahí vive el punto del gimnasio, que es la función
-  central, y el sexo y el nombre, sin los cuales el DOTS no calcula), el
-  perfil propio y el de un amigo (piden Expo Router), la pantalla de marcas y
-  Apple Health. El aviso de las 20:30 NO está en esa lista: se sacó.
+- **La app nativa, contra la web**: el inventario pantalla por pantalla está en
+  la bitácora del 22/9. Ajustes ya está (falta "ver la guía", que no puede
+  existir hasta que exista el recorrido). El orden de lo que queda, fijado por
+  el humano el 22/9:
+
+  1. **El perfil** con Expo Router: `/yo`, el de un amigo, y poder tocar a
+     alguien desde Ranking.
+  2. **El recorrido de primera vez.** SUBIÓ de prioridad: quien instale desde
+     TestFlight no tiene ninguna introducción, y la bienvenida de cuatro
+     pantallas es de lo mejor que tiene la app.
+  3. **DOTS + pantalla de marcas.**
+  4. **Apple Health.**
+
+  El aviso de las 20:30 NO está en esa lista: se sacó.
 - **TestFlight: ya está.** La app existe en App Store Connect como "Ascent —
   Streak & Strength" (ASC App ID 6815006917, bundle `uy.ascent.app`, contrato
   de apps gratuitas activo) y la primera build subida es `fea8f17a`. El

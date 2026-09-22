@@ -177,6 +177,17 @@ const page = await ctx.newPage();
 const errores = [];
 page.on('console', (m) => m.type() === 'error' && errores.push(m.text()));
 
+/**
+ * TOCAR EL +, QUE NO SIEMPRE ES EL +: al llegar a la meta del bloque el botón
+ * grande se vuelve "Terminar serie" y sumar otra pasa a ser un renglón de
+ * texto. Es la misma trampa que se comió `reproducir-series-nativa.mjs`.
+ */
+async function sumarSerie(page) {
+  const mas = page.getByLabel('Sumar una serie');
+  if (await mas.isVisible().catch(() => false)) return mas.click();
+  return page.getByText('Sumar otra', { exact: true }).last().click({ timeout: 30000 });
+}
+
 async function foto(nombre) {
   const ruta = join(SALIDA, `${nombre}.png`);
   await page.screenshot({ path: ruta });
@@ -196,7 +207,38 @@ try {
   await page.waitForTimeout(4000);
 
   console.log(`\n1290 × 2796, en capturas-tienda:`);
+
+  // INICIO CON EL ENTRENAMIENTO ANDANDO, y no en reposo. La primera versión
+  // sacaba la pantalla quieta: la racha arriba y media pantalla vacía abajo.
+  // Es la pantalla real, pero de una app de gimnasio en una tienda lo que hay
+  // que mostrar es lo que se hace CON ella — el bloque, las series, el peso, el
+  // cronómetro corriendo. La quieta la ve cualquiera después de instalarla.
+  //
+  // El entrenamiento se empieza tocando, como una persona, y no por RPC: así la
+  // foto sale del mismo camino que recorre quien usa la app, con el cronómetro
+  // contando de verdad.
+  await page.getByText('Iniciar entrenamiento', { exact: true }).last().click({ timeout: 30000 });
+  await page.waitForTimeout(2500);
+  // Tres series, para que los circulitos tengan algo que contar y el bloque no
+  // salga vacío.
+  for (let i = 0; i < 3; i++) {
+    await sumarSerie(page);
+    await page.waitForTimeout(700);
+  }
+  await page.waitForTimeout(2500);
   await foto('1-inicio');
+
+  // Y se termina, que además deja la cuenta como la encontró: la sesión se
+  // borra igual al final, pero una sesión abierta cambiaría las fotos de las
+  // otras pantallas.
+  await page.getByText('Terminar', { exact: true }).last().click({ timeout: 30000 });
+  await page.waitForTimeout(1200);
+  const terminar = page.getByText('Terminar', { exact: true });
+  if (await terminar.isVisible().catch(() => false)) await terminar.click();
+  await page.waitForTimeout(2500);
+  const listo = page.getByText(/Listo por hoy/i).first();
+  if (await listo.isVisible().catch(() => false)) await listo.click();
+  await page.waitForTimeout(1500);
 
   for (const [pestana, nombre] of [
     ['Ranking', '2-ranking'],

@@ -1401,6 +1401,44 @@ begin
 end;
 $$;
 
+-- CORREGIR Y BORRAR (migración 45). `weights` solo tiene `select` para el
+-- dueño, así que hasta acá un peso mal anotado se quedaba para siempre
+-- torciendo la tendencia, que es lo único que ese dato hace.
+--
+-- SON DOS FUNCIONES Y NO UN `grant update, delete`: con los permisos directos
+-- la app podría escribir CUALQUIER fecha, y ahí entra un peso de hace tres
+-- meses que nunca se pesó. `corregir_peso` SOLO actualiza una fila que ya
+-- existe —corregir es arreglar lo anotado, no inventar historia— y anotar
+-- sigue siendo `anotar_peso`, que solo escribe hoy.
+--
+-- Devuelven si tocaron algo: la pantalla no puede decir "listo" cuando no
+-- hizo nada.
+create or replace function public.corregir_peso(p_fecha date, p_valor numeric)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  tocadas int;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  update weights set valor = p_valor where user_id = uid and fecha = p_fecha;
+  get diagnostics tocadas = row_count;
+  return tocadas > 0;
+end;
+$$;
+
+create or replace function public.borrar_peso(p_fecha date)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  tocadas int;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  delete from weights where user_id = uid and fecha = p_fecha;
+  get diagnostics tocadas = row_count;
+  return tocadas > 0;
+end;
+$$;
+
 -- -------------------------------------------------------------
 -- Los dos números del cronómetro, en un solo lugar
 --
@@ -2509,6 +2547,8 @@ revoke execute on function
   public.fijar_bloques(uuid, jsonb),
   public.ultimo_ejercicio(),
   public.anotar_peso(numeric),
+  public.corregir_peso(date, numeric),
+  public.borrar_peso(date),
   public.iniciar_sesion(timestamptz, text),
   public.terminar_sesion(timestamptz),
   public.mi_sesion(),
@@ -2560,6 +2600,8 @@ grant execute on function
   public.fijar_bloques(uuid, jsonb),
   public.ultimo_ejercicio(),
   public.anotar_peso(numeric),
+  public.corregir_peso(date, numeric),
+  public.borrar_peso(date),
   public.iniciar_sesion(timestamptz, text),
   public.terminar_sesion(timestamptz),
   public.mi_sesion(),
@@ -2684,7 +2726,7 @@ grant execute on function public.olvidar_suscripcion_push(text) to service_role;
 
 -- LA VERSIÓN DEL ESQUEMA (migración 37). Cada migración la reescribe con su número.
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 44; $$;
+returns int language sql immutable as $$ select 45; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

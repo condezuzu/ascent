@@ -895,6 +895,17 @@ export const T = {
     anotar: 'Anotar',
     noDa: 'Ese peso no da.',
     privado: 'Solo lo ves tú. Nunca se comparte ni se muestra.',
+    // CORREGIR Y BORRAR (migración 45). Antes un número mal escrito se
+    // quedaba para siempre torciendo la tendencia, que es lo único que ese
+    // dato hace.
+    anotados: 'Lo que anotaste',
+    corregir: 'Corregir',
+    borrar: 'Borrar',
+    // BORRAR UN DÍA VIEJO NO SE DESHACE: anotar solo escribe hoy, así que
+    // ese día no se puede volver a llenar. Se avisa antes, no después.
+    borrarSeguro: 'Ese día no se puede volver a anotar. ¿Lo borro igual?',
+    borrarSi: 'Borrarlo',
+    noSeCorrigio: 'Ese día ya no tiene peso anotado.',
   },
 
   // ---------------------------------------------------------------

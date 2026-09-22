@@ -27,6 +27,8 @@ export const REQUIERE = {
   revisarCargas: 39,
   /** El aviso de estancamiento a las 2 semanas: la base rechazaba el 2. */
   umbralDeDosSemanas: 40,
+  /** Corregir y borrar el peso de un día: la tabla solo tenía lectura. */
+  corregirPeso: 45,
   /** El atajo "Tuyos" del selector: los ejercicios que cada persona repite. */
   tusEjercicios: 44,
 } as const;
