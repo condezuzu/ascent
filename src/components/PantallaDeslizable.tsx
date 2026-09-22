@@ -3,14 +3,15 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { T } from '@nucleo/textos';
+import { cambiaDePestana, CURVA as CURVA_BEZIER, VIAJE_MS } from '@nucleo/deslizar';
 
 // El mismo orden que la barra de abajo
 export const PESTANAS = ['/', '/social', '/album', '/stats', '/ajustes'] as const;
 
-const UMBRAL = 0.22; // fracción del ancho a partir de la cual se cambia
-const VELOCIDAD_MIN = 0.35; // px/ms: un gesto rápido cambia aunque sea corto
-const VIAJE_MS = 340;
-const CURVA = 'cubic-bezier(0.16,1,0.3,1)';
+// Las reglas del gesto viven en `nucleo/deslizar.ts`: la nativa usa las
+// mismas, y un gesto que pide la mitad de la pantalla de un lado y un quinto
+// del otro no es la misma app con dos interfaces, son dos apps.
+const CURVA = `cubic-bezier(${CURVA_BEZIER.join(',')})`;
 
 /**
  * LA PESTAÑA DE AL LADO ASOMA MIENTRAS SE ARRASTRA (19/9).
@@ -319,8 +320,7 @@ export default function PantallaDeslizable({
 
       const dx = (e.changedTouches[0]?.clientX ?? x0) - x0;
       const dt = Math.max(1, performance.now() - t0);
-      const veloz = Math.abs(dx) / dt > VELOCIDAD_MIN;
-      const suficiente = Math.abs(dx) > ancho() * UMBRAL;
+      const cambia = cambiaDePestana(dx, ancho(), dx / dt);
       const haciaAtras = dx > 0;
       const destino = haciaAtras ? indice - 1 : indice + 1;
       const asomo = asomoVivo;
@@ -329,7 +329,7 @@ export default function PantallaDeslizable({
       el!.style.transition = viaje;
       if (asomo) asomo.style.transition = viaje;
 
-      if ((veloz || suficiente) && destino >= 0 && destino < PESTANAS.length && asomo) {
+      if (cambia && destino >= 0 && destino < PESTANAS.length && asomo) {
         // Las dos terminan el viaje juntas; recién ahí se navega. La copia se
         // queda cubriendo hasta que la pestaña de verdad se monta (ver abajo).
         setSaliendo(haciaAtras ? 'der' : 'izq');

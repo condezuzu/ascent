@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { hayQueContar, valorContado } from '@/lib/contar';
+import { hayQueContar, valorContado } from '@nucleo/contar';
 
 /**
  * Un número que VIAJA hasta su valor nuevo en vez de reemplazarse.
@@ -46,7 +46,7 @@ export default function NumeroQueCuenta({
     const quieto =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // Cuándo se cuenta y qué número va en cada instante vive en `lib/contar.ts`,
+    // Cuándo se cuenta y qué número va en cada instante vive en `nucleo/contar.ts`,
     // probado con números. Acá queda solo el reloj.
     if (!hayQueContar(desde, valor, quieto)) {
       setMostrado(valor);

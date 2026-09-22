@@ -23,6 +23,9 @@ import { paletaDe } from '@nucleo/paletas';
 import { cuentaAtras, restante } from '@compartido/descanso';
 import FondoEspacial from './FondoEspacial';
 import { mostrando } from './loVisible';
+import DiaListo from './DiaListo';
+import NumeroQueCuenta from './NumeroQueCuenta';
+import PesoHoja from './PesoHoja';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -40,9 +43,9 @@ import { mostrando } from './loVisible';
  * fue el andamio que nombraba el rango en texto: en web el rango no se nombra
  * nunca (§7), lo dice el objeto, y ahora acá también.
  *
- * LO QUE FALTA, Y ES DE OTRA TANDA:
- * - **La foto y el peso** al registrar: son la hoja de registrar, que necesita
- *   cámara y otra pantalla.
+ * LA FOTO Y EL PESO ya están (22/9): la hoja de registrar con cámara y galería
+ * (`RegistrarDia`) y la del peso, que es su propia puerta porque pesarse no es
+ * haber ido al gimnasio (`PesoHoja`).
  *
  * LA SESIÓN (tanda 3, N1) NO ESTÁ ESCRITA ACÁ: es `useSesion`, el MISMO hook
  * que usa la web, desde `compartido/`. Iniciar, el cronómetro, terminar, el
@@ -95,6 +98,8 @@ export default function Inicio({
   );
   // La hoja de registrar el día (con foto): la misma que la web.
   const [registrarAbierto, setRegistrarAbierto] = useState(false);
+  // La hoja del peso: su propia puerta, como en la web.
+  const [pesoAbierto, setPesoAbierto] = useState(false);
   // Terminar pregunta antes, en el mismo lugar: es el botón más fácil de tocar
   // sin querer, y lo que hace no se deshace.
   const [terminando, setTerminando] = useState(false);
@@ -321,7 +326,11 @@ export default function Inicio({
       {!sesion.estado.corriendo && (
       <>
       <Text style={estilos.etiqueta}>{T.inicio.racha}</Text>
-      <Text style={estilos.racha}>{perfil.racha_actual}</Text>
+      {/* VIAJA HASTA EL NÚMERO NUEVO en vez de reemplazarse, igual que en la
+          web: el estado nuevo tiene que salir del viejo. La primera vez no
+          cuenta —abrir la app no es haber subido 47 hoy— y con "reducir
+          movimiento" salta. Ver `NumeroQueCuenta.tsx`. */}
+      <NumeroQueCuenta valor={perfil.racha_actual} style={estilos.racha} />
 
       <View style={estilos.tira}>
         {semana.map((d) => (
@@ -453,19 +462,30 @@ export default function Inicio({
           <SugerenciasDeMarca bloques={cierre.bloques} unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'} />
         </Pressable>
       ) : registradoHoy ? (
-        // El día ya está —casi siempre lo registró la sesión—: lo que queda
-        // es sumarle la foto, que antes en nativo no había cómo.
-        <View style={estilos.diaListo}>
-          <Text style={estilos.hecho}>{T.inicio.diaRegistrado}</Text>
-          <Pressable style={estilos.secundario} onPress={() => setRegistrarAbierto(true)}>
-            <Text style={estilos.enlace}>{T.registrar.agregarFoto}</Text>
-          </Pressable>
-        </View>
+        // El día ya está —casi siempre lo registró la sesión—: lo que queda es
+        // sumarle la foto o el peso. Era un renglón de texto que no parecía un
+        // botón; ahora es lo mismo que la web. Ver `DiaListo.tsx`.
+        <DiaListo alaFoto={() => setRegistrarAbierto(true)} alPeso={() => setPesoAbierto(true)} />
       ) : (
-        <Pressable style={estilos.solido} onPress={() => setRegistrarAbierto(true)}>
-          <Text style={estilos.textoSolido}>{T.inicio.registrarDia}</Text>
-        </Pressable>
+        <>
+          <Pressable style={estilos.solido} onPress={() => setRegistrarAbierto(true)}>
+            <Text style={estilos.textoSolido}>{T.inicio.registrarDia}</Text>
+          </Pressable>
+          {/* PEGADO AL PRINCIPAL, como en la web: el peso NO pasa por registrar
+              el día —pesarse no es haber ido al gimnasio— pero tiene que poder
+              anotarse cualquier día, entrenes o no. */}
+          <Pressable style={estilos.secundario} onPress={() => setPesoAbierto(true)}>
+            <Text style={estilos.enlace}>{T.peso.anotarPeso}</Text>
+          </Pressable>
+        </>
       )}
+
+      <PesoHoja
+        visible={pesoAbierto}
+        unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
+        alCerrar={() => setPesoAbierto(false)}
+        alGuardar={cargar}
+      />
 
       <RegistrarDia
         visible={registrarAbierto}
@@ -571,8 +591,6 @@ const estilos = StyleSheet.create({
   },
   apagado: { opacity: 0.6 },
   textoSolido: { color: '#05060a', fontSize: 15, fontWeight: '600' },
-  diaListo: { marginTop: 34, alignItems: 'center' },
-  hecho: { color: '#8a93a8', fontSize: 14, marginTop: 34, textAlign: 'center' },
   aviso: { color: '#8a93a8', fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19 },
   error: { color: '#e8705f', fontSize: 13, textAlign: 'center' },
   enlace: { color: '#8a93a8', fontSize: 13 },

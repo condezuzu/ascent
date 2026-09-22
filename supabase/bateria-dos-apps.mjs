@@ -259,7 +259,10 @@ async function correr(app) {
       await page.locator('.hoja').getByRole('button', { name: 'Guardar' }).click();
       await page.locator('.hoja').waitFor({ state: 'detached', timeout: 60000 });
     } else {
-      await texto('Agregar foto').click({ timeout: 60000 });
+      // "Agregar foto" hasta el 22/9. Ahora la nativa dice "Foto", igual que la
+      // web: era un renglon de texto que no parecia un boton, y eran dos
+      // nombres para lo mismo.
+      await texto('Foto').click({ timeout: 60000 });
       const [elegidor] = await Promise.all([page.waitForEvent('filechooser', { timeout: 60000 }), texto('Elegir de la galería', false).click()]);
       await elegidor.setFiles(fotoReal);
       await page.waitForTimeout(2000);

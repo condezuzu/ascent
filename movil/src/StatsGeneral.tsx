@@ -13,6 +13,7 @@ import { C } from './colores';
 import GraficoPeso from './GraficoPeso';
 import Insignia from './Insignia';
 import SeccionFuerza from './SeccionFuerza';
+import AnotarPeso from './AnotarPeso';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -211,48 +212,6 @@ function Sesiones() {
         </View>
       ))}
       {fuera.length > 0 && <Text style={estilos.nota}>{T.stats.fueraDelPromedio(fuera.join(', '))}</Text>}
-    </View>
-  );
-}
-
-/** Anotar el peso, fuera de registrar el día. La misma regla que la web. */
-function AnotarPeso({ unidad, alGuardar }: { unidad: Unidad; alGuardar: () => void }) {
-  const [valor, setValor] = useState('');
-  const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState('');
-
-  async function guardar() {
-    setError('');
-    const escrito = Number(valor.replace(',', '.'));
-    const tope = limites(unidad);
-    if (!valor || isNaN(escrito) || escrito < tope.min || escrito > tope.max) return setError(T.peso.noDa);
-    setGuardando(true);
-    const { error: err } = await supabase.rpc('anotar_peso', {
-      p_valor: Math.round(aKilos(escrito, unidad) * 100) / 100,
-    });
-    setGuardando(false);
-    if (err) return setError(T.general.noSePudo);
-    setValor('');
-    alGuardar();
-  }
-
-  return (
-    <View>
-      <View style={estilos.anotar}>
-        <TextInput
-          style={estilos.campo}
-          keyboardType="decimal-pad"
-          placeholder={T.peso.placeholder(unidad)}
-          placeholderTextColor={C.apagado}
-          value={valor}
-          onChangeText={setValor}
-        />
-        <Pressable style={estilos.botonFantasma} onPress={guardar} disabled={guardando}>
-          <Text style={estilos.textoBoton}>{guardando ? '…' : T.peso.anotar}</Text>
-        </Pressable>
-      </View>
-      <Text style={estilos.nota}>{T.peso.privado}</Text>
-      {!!error && <Text style={estilos.error}>{error}</Text>}
     </View>
   );
 }

@@ -14,6 +14,7 @@ import {
 } from '@compartido/ranking';
 import Avatar from './Avatar';
 import CampoEstelar from './CampoEstelar';
+import Surgir from './Surgir';
 import { FONDO_BASE, FONDO_RANGO_8 } from '@nucleo/paletas';
 import Insignia from './Insignia';
 import FondoEspacial from './FondoEspacial';
@@ -136,13 +137,16 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           <View style={estilos.ranking}>
             <CampoEstelar amigos={amigos} fondo={datos?.miRango === 8 ? FONDO_RANGO_8 : FONDO_BASE} />
             <View style={estilos.lista}>
+              {/* ESCALONADAS Y NO TODAS DE GOLPE, igual que en la web: la
+                  lista caía entera al llegar los datos y eso se lee como un
+                  parpadeo. Ver `Surgir.tsx`. */}
               {amigos.map((a, i) => (
-                <View style={estilos.fila} key={a.id}>
+                <Surgir indice={i} style={estilos.fila} key={a.id}>
                   <Text style={[estilos.dato, { width: 20 }]}>{i + 1}</Text>
                   <Insignia rango={a.rango_actual} tam={38} />
                   <Text style={estilos.nombre}>{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</Text>
                   <Text style={estilos.dato}>{a.racha_actual}</Text>
-                </View>
+                </Surgir>
               ))}
             </View>
           </View>

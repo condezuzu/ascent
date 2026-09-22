@@ -111,7 +111,7 @@ import {
   MS_CERRAR,
 } from '../nucleo/atmosfera.ts';
 import * as SUB from '../src/lib/subida.ts';
-import { hayQueContar, valorContado, SALTO_MAXIMO } from '../src/lib/contar.ts';
+import { hayQueContar, valorContado, SALTO_MAXIMO } from '../nucleo/contar.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -8691,6 +8691,79 @@ console.log('\n132. El diagnostico muestra las tres fuentes de la sesion');
   chequear('y lo hace en un efecto', /useEffect\(\(\) => \{\s*mostrando\(/.test(inicio), true);
   const visible = de132('movil', 'src', 'loVisible.ts');
   chequear('lo visible no se guarda en disco', /almacenamiento/.test(visible), false);
+}
+
+console.log('\n133. Las dos apps se mueven igual');
+{
+  // LAS REGLAS DEL GESTO Y DE LAS ENTRADAS VIVEN EN EL NUCLEO, y este test
+  // existe porque la web las escribe TAMBIEN en CSS —una hoja de estilos no
+  // importa TypeScript— y dos copias se separan en silencio. Un gesto que pide
+  // un quinto de la pantalla de un lado y la mitad del otro no es la misma app
+  // con dos interfaces: son dos apps.
+  const { readFileSync: leer133 } = await import('node:fs');
+  const { join: unir133, dirname: dir133 } = await import('node:path');
+  const { fileURLToPath: aRuta133 } = await import('node:url');
+  const R133 = unir133(dir133(aRuta133(import.meta.url)), '..');
+  const de133 = (...p) => leer133(unir133(R133, ...p), 'utf8');
+  const A = await import('../nucleo/animacion.ts');
+  const D = await import('../nucleo/deslizar.ts');
+
+  // EL CSS CONTRA EL NUCLEO, numero por numero.
+  // SE MIRA LA REGLA DE LA LISTA DEL RANKING y no cualquier `surgir`: en la
+  // web hay cinco, con duraciones distintas segun que entra. La que la nativa
+  // copia es esta, la de las filas.
+  const css = de133('src', 'app', 'globals.css');
+  const lista = css.slice(css.indexOf('.ranking-lista .fila {'));
+  const surgir = lista.match(/animation: surgir ([\d.]+)s/);
+  chequear('el CSS dura lo que dice el nucleo', Number(surgir?.[1]) * 1000, A.SURGIR_MS);
+  const escalon = lista.match(/animation-delay: calc\(min\(var\(--i, 0\), (\d+)\) \* (\d+)ms \+ (\d+)ms\)/);
+  chequear('y escalona igual', [Number(escalon?.[1]), Number(escalon?.[2]), Number(escalon?.[3])],
+    [A.ESCALON_TOPE, A.ESCALON_MS, A.DEMORA_MS]);
+  const px = css.match(/@keyframes surgir \{\s*from \{ opacity: 0; transform: translateY\((\d+)px\); \}/);
+  chequear('y arranca desde los mismos pixeles', Number(px?.[1]), A.SURGIR_PX);
+
+  // LA CUENTA DE LA ENTRADA, con numeros.
+  chequear('la primera fila espera lo justo', A.demoraDeEntrada(0), A.DEMORA_MS);
+  chequear('la segunda, un escalon mas', A.demoraDeEntrada(1), A.ESCALON_MS + A.DEMORA_MS);
+  // EL TOPE ES LO QUE HACE QUE UNA LISTA LARGA NO TARDE: sin el, cuarenta
+  // filas tardarian mas de dos segundos en terminar de aparecer.
+  chequear('a partir del tope entran todas juntas',
+    [A.demoraDeEntrada(A.ESCALON_TOPE), A.demoraDeEntrada(99)],
+    [A.demoraDeEntrada(A.ESCALON_TOPE), A.demoraDeEntrada(A.ESCALON_TOPE)]);
+  chequear('un indice roto no rompe la demora', A.demoraDeEntrada(-3), A.DEMORA_MS);
+
+  // EL GESTO: las dos formas de cambiar de pestaña, y la que NO cuenta.
+  const ANCHO = 400;
+  chequear('arrastrar lejos cambia', D.cambiaDePestana(-ANCHO * 0.3, ANCHO, -0.01), true);
+  chequear('arrastrar poco y lento no', D.cambiaDePestana(-ANCHO * 0.1, ANCHO, -0.01), false);
+  chequear('un tiron corto pero rapido si', D.cambiaDePestana(-20, ANCHO, -0.8), true);
+  // ARREPENTIRSE SOBRE EL FINAL: el dedo fue para un lado y volvio rapido para
+  // el otro. La velocidad se mira CON SIGNO justo por esto.
+  chequear('un tiron rapido hacia el otro lado no cuenta', D.cambiaDePestana(-20, ANCHO, 0.8), false);
+  chequear('sin ancho no se decide nada', D.cambiaDePestana(-100, 0, -1), false);
+
+  // LOS BORDES SON PAREDES: la primera y la ultima no dan la vuelta, porque
+  // rebotar contra una es lo que dice donde estas.
+  chequear('desde la primera no se va hacia atras', D.vecina(0, 50, 5), null);
+  chequear('desde la ultima no se va hacia adelante', D.vecina(4, -50, 5), null);
+  chequear('en el medio se va para los dos lados', [D.vecina(2, -50, 5), D.vecina(2, 50, 5)], [3, 1]);
+
+  // Y QUE LAS DOS APPS LAS USEN de verdad, no que existan.
+  const web = de133('src', 'components', 'PantallaDeslizable.tsx');
+  chequear('la web usa la regla compartida', /cambiaDePestana\(/.test(web), true);
+  const pest = de133('movil', 'src', 'Pestanas.tsx');
+  chequear('la nativa tambien', /cambiaDePestana\(/.test(pest) && /vecina\(/.test(pest), true);
+  // LA DE AL LADO ASOMA, que es la diferencia entre "se mueve" y "se mueve,
+  // carga, se mueve".
+  chequear('y la de al lado asoma mientras se arrastra', /setAsomando\(/.test(pest), true);
+
+  // LA CUENTA DE LA RACHA, ahora compartida: estaba en `src/lib` y la nativa
+  // no podia usarla.
+  const num = de133('movil', 'src', 'NumeroQueCuenta.tsx');
+  chequear('la racha nativa cuenta con la cuenta compartida', /@nucleo\/contar/.test(num), true);
+  // CON "REDUCIR MOVIMIENTO" NO SE ANIMA NADA: contar es movimiento.
+  chequear('y respeta reducir movimiento', /isReduceMotionEnabled/.test(num), true);
+  chequear('la entrada escalonada tambien', /isReduceMotionEnabled/.test(de133('movil', 'src', 'Surgir.tsx')), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
