@@ -20,11 +20,11 @@ de ser una idea a ser el paso siguiente.
   la computadora, muestra los errores en pantalla y en la terminal, y deja
   cambiar el JS sin volver a compilar. Se levanta con `dev-telefono.cmd`.
 - **`store`** — el IPA que acepta App Store Connect, para TestFlight. Es el
-  único que NO es `internal`, y el único que saca las variables del entorno
-  `production`. No lleva `EXPO_PUBLIC_DIAGNOSTICO`: la caja negra es para
-  buscar una pantalla negra, no para quien baja la app. `autoIncrement` le sube
-  solo el número de build, porque App Store Connect rechaza uno repetido
-  después de hacerte esperar el procesado.
+  único que NO es `internal`, pero saca las variables del MISMO entorno que los
+  otros tres (`preview`): ver abajo. No lleva `EXPO_PUBLIC_DIAGNOSTICO`: la
+  caja negra es para buscar una pantalla negra, no para quien baja la app.
+  `autoIncrement` le sube solo el número de build, porque App Store Connect
+  rechaza uno repetido después de hacerte esperar el procesado.
 
 Los tres primeros son `distribution: internal`: link directo, sin TestFlight y
 sin revisión de Apple. Es la diferencia entre "probar hoy" y "esperar a que App
@@ -52,14 +52,47 @@ Cómo es de verdad:
   en ningún otro del repo.
 - **Cuál entorno usa cada build lo dice `environment`.** Si no se pone, EAS lo
   elige solo: `production` si la distribución es `store`, `development` si es
-  cliente de desarrollo, y `preview` en los demás casos. Los tres perfiles de
+  cliente de desarrollo, y `preview` en los demás casos. Los CUATRO perfiles de
   acá dicen `preview` EXPLÍCITAMENTE, que es donde están cargadas las dos de
   Supabase: sin decirlo, el perfil `dev` iba a buscarlas a `development`, donde
-  no están, y arrancaba sin base.
+  no están, y `store` a `production`.
+- **`store` también dice `preview`, y no es un descuido.** Las dos variables
+  están cargadas en los dos entornos, pero son **secretas**: sus valores no se
+  pueden leer ni comparar desde acá, así que "en production también están" es
+  una lista de nombres y no una prueba de que digan lo mismo. De los dos
+  entornos, uno solo tiene una build instalada y andando en un teléfono. El día
+  que haya una de `store` abierta y funcionando se puede mover, con una build
+  de por medio, no con un razonamiento.
 - En `env` quedan solo valores que SON literales: `EXPO_PUBLIC_DIAGNOSTICO` y
   `EXPO_PUBLIC_MINIMO`, que son interruptores de esta etapa.
 
 Ver `movil/.env` para los mismos nombres en desarrollo (ahí los lee Metro).
+
+## El mensaje que asusta y no dice lo que parece
+
+Al largar una build, EAS imprime:
+
+> No environment variables with visibility "Plain text" and "Sensitive" found
+> for the "production" environment on EAS.
+
+**Eso NO quiere decir que el entorno esté vacío.** EAS tiene tres visibilidades
+—texto plano, sensible y **secreta**— y ese mensaje solo cuenta las dos
+primeras, que son las que el CLI puede mostrarte en la terminal. Las secretas
+no las nombra nunca: para eso son secretas. Llegan igual a la máquina que
+compila, y la prueba está instalada en un teléfono: la build `telefono` del
+22/9 —la primera que abrió— saca sus dos variables de `preview`, y ahí las dos
+son **secretas** igual que en `production`. Si el mensaje significara "no hay
+variables", esa build habría quedado en negro como las anteriores.
+
+Para ver qué hay de verdad en un entorno, sin valores:
+
+```
+npx eas env:list --environment production
+```
+
+Si las dos aparecen con "This is a secret env variable", están. El mensaje de
+la build no es una alarma; la pantalla negra del 19/9 fue otra cosa (variables
+literales pisando a las buenas, arriba).
 
 ## Lo que estos perfiles NO hacen
 

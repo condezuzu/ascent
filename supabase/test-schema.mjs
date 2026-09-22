@@ -8263,11 +8263,16 @@ console.log('\n122. La app nativa se puede construir: los archivos que nombra ex
     const interno = DE_LINK.includes(nombre);
     chequear(nombre + ': la distribucion que le toca', perfil.distribution, interno ? 'internal' : 'store');
     chequear(nombre + ': no arma para el simulador', perfil.ios?.simulator, false);
-    // Sin `environment`, EAS elige solo: 'development' para el cliente de
-    // desarrollo, donde las de Supabase NO estan cargadas. Las dos variables
-    // estan cargadas en `preview` y en `production`, asi que cada perfil dice
-    // la suya: `store` sube a TestFlight con las de produccion.
-    chequear(nombre + ': dice de que entorno saca las variables', perfil.environment, interno ? 'preview' : 'production');
+    // TODOS DICEN `preview`, INCLUIDO EL DE TESTFLIGHT, y el porque importa
+    // mas que la regla. Sin `environment`, EAS elige solo: 'development' para
+    // el cliente de desarrollo y 'production' para la distribucion `store`.
+    // Las dos de Supabase estan cargadas en los dos entornos, pero de los dos
+    // solo UNO tiene una build que abrio en un telefono: `preview`. Y como son
+    // secretas, sus valores no se pueden leer ni comparar desde aca, asi que
+    // "en production tambien estan" es una lista de nombres, no una prueba de
+    // que digan lo mismo. Mientras no haya una build de `store` instalada y
+    // andando, el entorno que se usa es el que ya se probo.
+    chequear(nombre + ': dice de que entorno saca las variables', perfil.environment, 'preview');
     const pegadas = Object.keys(perfil.env ?? {}).filter((k) => k.startsWith('EXPO_PUBLIC_SUPABASE_'));
     chequear(nombre + ': las de Supabase no se pegan en env', pegadas, []);
   }

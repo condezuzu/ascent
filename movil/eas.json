@@ -51,7 +51,7 @@
         "simulator": false,
         "resourceClass": "m-medium"
       },
-      "environment": "production"
+      "environment": "preview"
     }
   },
   "submit": {
