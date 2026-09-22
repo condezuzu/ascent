@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { mirarElGimnasio, registrarPorSenal } from '@/lib/gimnasio';
+import { mirarElGimnasio, registrarPorSenal } from '@compartido/gimnasio';
 import { decidir } from '@nucleo/llegada';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
 import { perfilVivo } from '@compartido/perfilVivo';

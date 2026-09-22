@@ -7,7 +7,10 @@ import {
   llevarCookies,
 } from '@nucleo/veredicto';
 
-const RUTAS_PUBLICAS = ['/login', '/auth', '/galeria'];
+// `/privacidad` es pública porque Apple la abre sin cuenta, y porque quien
+// todavía no se registró tiene derecho a leer qué le van a guardar ANTES de
+// registrarse.
+const RUTAS_PUBLICAS = ['/login', '/auth', '/galeria', '/privacidad'];
 
 /**
  * Refresca el token en cada pedido y decide si la pantalla se puede ver.

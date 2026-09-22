@@ -1,4 +1,7 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+// EL CLIENTE VIENE POR ALIAS y no de '@supabase/supabase-js' derecho: la
+// nativa tiene su propia copia del paquete, y los dos tipos no son el mismo
+// para TypeScript aunque sean la misma clase. Cada app dice que es `@cliente`.
+import type { Cliente } from '@cliente';
 import { T } from '@nucleo/textos';
 
 /**
@@ -9,7 +12,7 @@ import { T } from '@nucleo/textos';
  * guardado, con la unidad elegida anotada aparte para que el número se pueda
  * interpretar sin adivinar.
  */
-export async function juntarMisDatos(supabase: SupabaseClient, userId: string) {
+export async function juntarMisDatos(supabase: Cliente, userId: string) {
   const [perfil, logs, pesos, fotos, descansos, amistades, retos, marcas, sesiones] =
     await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
@@ -131,7 +134,7 @@ export async function juntarMisDatos(supabase: SupabaseClient, userId: string) {
  * también cualquier archivo que haya quedado suelto de una subida a medias.
  */
 export async function eliminarCuenta(
-  supabase: SupabaseClient,
+  supabase: Cliente,
   userId: string
 ): Promise<{ ok: true } | { error: string }> {
   for (const bucket of ['fotos', 'avatares']) {

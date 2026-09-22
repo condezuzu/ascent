@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { hoyISO } from '@nucleo/fechas';
-import { juntarMisDatos } from '@/lib/cuenta';
+import { juntarMisDatos } from '@compartido/cuenta';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 

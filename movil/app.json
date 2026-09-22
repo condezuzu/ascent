@@ -11,10 +11,13 @@
       "bundleIdentifier": "uy.ascent.app",
       "appleTeamId": "XF9N8X9KJG",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"],
+        "UIBackgroundModes": [
+          "audio"
+        ],
         "UIApplicationSupportsShakeToEdit": false,
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "android": {
       "package": "uy.ascent.app",

@@ -5156,3 +5156,43 @@ body.con-franja.con-accion .pantalla {
   z-index: 1;
 }
 
+
+/* La política de privacidad (/privacidad). Es la única pantalla de la app que
+   es TEXTO LARGO para leer de corrido, así que no comparte el ritmo del resto:
+   acá manda el renglón cómodo y el aire entre párrafos, no la asimetría. */
+.legal {
+  max-width: 46rem;
+  padding-bottom: 80px;
+}
+.legal h1 {
+  font-size: 30px;
+  margin-bottom: 6px;
+}
+.legal h2 {
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  margin: 34px 0 10px;
+}
+.legal p,
+.legal li {
+  color: var(--sub);
+  font-size: 15px;
+  line-height: 1.66;
+}
+.legal p {
+  margin-bottom: 14px;
+}
+.legal ul {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.legal strong {
+  color: var(--tinta);
+  font-weight: 500;
+}
+.legal a {
+  color: var(--pal-claro);
+}

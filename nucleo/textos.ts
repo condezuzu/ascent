@@ -457,6 +457,11 @@ export const T = {
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cierras, no avisa.',
     noVibra: 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.',
+    // EN LA APP DEL TELÉFONO EL AVISO ES OTRA COSA y decir lo de arriba seria
+    // mentir: es una notificación del sistema, así que llega con la pantalla
+    // bloqueada y con la app cerrada. Cuál de los tres se muestra lo decide el
+    // puerto, no la pantalla.
+    vibraBloqueada: 'Vibra y avisa al terminar, aunque guardes el teléfono.',
     // Las dos frases decían lo contrario de lo que ahora hace la app: el
     // aviso CORTA la música a propósito, porque con auriculares no se escucha
     // de ninguna otra forma.
@@ -471,6 +476,9 @@ export const T = {
     gimnasioComo: 'Márcalo parado en la puerta de tu gimnasio.',
     gimnasioParaQue: 'Después, abrir la app estando ahí registra el día sin que aprietes nada.',
     gimnasioTecho: 'Por ahora hay que abrir la app. En la del teléfono va a entrar solo.',
+    // El mismo techo, dicho desde adentro del teléfono: acá "la del teléfono"
+    // ya es esta, y lo que falta es el permiso de segundo plano.
+    gimnasioTechoNativo: 'Hoy entra al abrir la app estando ahí. Con la app cerrada, pronto.',
     gimnasioListo: (metros: number) => `Listo, con ${metros} m de precisión.`,
     gimnasioPuesto: 'Ya está marcado. Nadie más lo ve: no se comparte con tus amigos.',
     gimnasioSinGps: 'Este teléfono no da la ubicación.',

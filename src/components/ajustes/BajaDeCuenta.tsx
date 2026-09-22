@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { borrarPerfilCache } from '@compartido/cache';
 import { borrarTema } from '@/plataforma/web/tema';
-import { eliminarCuenta } from '@/lib/cuenta';
+import { eliminarCuenta } from '@compartido/cuenta';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 

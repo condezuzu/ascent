@@ -1,5 +1,8 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { plataforma } from '@/plataforma';
+// EL CLIENTE VIENE POR ALIAS y no de '@supabase/supabase-js' derecho: la
+// nativa tiene su propia copia del paquete, y los dos tipos no son el mismo
+// para TypeScript aunque sean la misma clase. Cada app dice que es `@cliente`.
+import type { Cliente } from '@cliente';
+import { plataforma } from '@plataforma';
 import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '@nucleo/geo';
 import type { OrigenDia, Perfil } from '@nucleo/tipos';
 
@@ -12,7 +15,7 @@ import type { OrigenDia, Perfil } from '@nucleo/tipos';
  * después qué días entraron solos.
  */
 export async function registrarPorSenal(
-  supabase: SupabaseClient,
+  supabase: Cliente,
   origen: Exclude<OrigenDia, 'manual'>
 ) {
   const { data, error } = await supabase.rpc('registrar_dia', {
@@ -42,7 +45,7 @@ export type ResultadoMarcar =
   | { ok: false; motivo: 'impreciso'; precision: number };
 
 export async function marcarPunto(
-  supabase: SupabaseClient,
+  supabase: Cliente,
   userId: string
 ): Promise<ResultadoMarcar> {
   if (!plataforma.ubicacion.disponible()) return { ok: false, motivo: 'sin-gps' };

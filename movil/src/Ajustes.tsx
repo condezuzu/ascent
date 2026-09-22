@@ -9,6 +9,10 @@ import { T } from '@nucleo/textos';
 import { PRESETS_DESCANSO } from '@nucleo/reglas';
 import { plataforma } from '@plataforma';
 import { duracionCorta, duracionValida, guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
+import Gimnasio from './ajustes/Gimnasio';
+import Identidad from './ajustes/Identidad';
+import Sugerencias from './ajustes/Sugerencias';
+import Cuenta from './ajustes/Cuenta';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -86,6 +90,10 @@ export default function Ajustes({
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>
 
+      {/* EL GIMNASIO VA PRIMERO, igual que en la web: es lo que diferencia a
+          la app, y en una lista de interruptores al fondo no lo marca nadie. */}
+      <Gimnasio perfil={perfil} alCambiar={alCambiar} />
+
       <Text style={estilos.seccion}>{T.ajustes.diasDescanso}</Text>
       <View style={estilos.fila}>
         {DIAS_SEMANA.map((d, i) => (
@@ -157,7 +165,16 @@ export default function Ajustes({
       >
         <Text style={estilos.enlace}>{sonido ? T.ajustes.sonidoPrendido : T.ajustes.sonidoApagado}</Text>
       </Pressable>
-      <Text style={estilos.nota}>{puedeVibrar() ? T.ajustes.vibra : T.ajustes.noVibra}</Text>
+      {/* TRES TEXTOS Y NO DOS: en el teléfono el aviso es una notificación del
+          sistema y llega con la pantalla bloqueada, así que decir "con la app
+          abierta" sería mentir. Lo decide el puerto. */}
+      <Text style={estilos.nota}>
+        {plataforma.avisos.conPantallaBloqueada()
+          ? T.ajustes.vibraBloqueada
+          : puedeVibrar()
+            ? T.ajustes.vibra
+            : T.ajustes.noVibra}
+      </Text>
       {sonido && (
         <Text style={estilos.nota}>
           {plataforma.audio.respetaLaMusica() ? T.ajustes.sonidoRespeta : T.ajustes.sonidoCorta}
@@ -199,15 +216,13 @@ export default function Ajustes({
 
       {fallo !== '' && <Text style={estilos.error}>{fallo}</Text>}
 
-      <Pressable
-        style={estilos.salir}
-        onPress={async () => {
-          await supabase.auth.signOut();
-          alSalir();
-        }}
-      >
-        <Text style={estilos.enlace}>{T.ajustes.cerrarSesion}</Text>
-      </Pressable>
+      <Identidad perfil={perfil} alCambiar={alCambiar} />
+
+      <Sugerencias userId={perfil.id} />
+
+      {/* Cerrar sesion, cambiar la clave y darse de baja: las tres son sobre
+          la cuenta y no sobre como entrenas, asi que van juntas y al final. */}
+      <Cuenta perfil={perfil} alSalir={alSalir} />
     </ScrollView>
   );
 }

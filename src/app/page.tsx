@@ -15,7 +15,7 @@ import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
 import { pedirInicio, type DatosDeInicio } from '@compartido/inicio';
 import { marca } from '@/lib/medir';
 import { sincronizarZona } from '@/lib/zona';
-import { marcarPunto } from '@/lib/gimnasio';
+import { marcarPunto } from '@compartido/gimnasio';
 import { plataforma } from '@/plataforma';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO, SUBIO_RANGO } from '@/components/VigilanteDeGimnasio';

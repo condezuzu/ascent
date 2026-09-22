@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { hoyISO } from '@nucleo/fechas';
-import { mirarElGimnasio } from '@/lib/gimnasio';
+import { mirarElGimnasio } from '@compartido/gimnasio';
 import { leerVigilancia } from '@compartido/sesionCache';
 import { anotar, borrarBitacora, comoTexto, leerBitacora } from '@compartido/bitacora';
 import { cuantasPendientes, vaciar } from '@compartido/cola';

@@ -8771,6 +8771,51 @@ console.log('\n133. Las dos apps se mueven igual');
   chequear('la entrada escalonada tambien', /isReduceMotionEnabled/.test(de133('movil', 'src', 'Surgir.tsx')), true);
 }
 
+console.log('\n134. Ajustes nativo: lo que la app necesita para existir en la tienda');
+{
+  const { readFileSync: leer134 } = await import('node:fs');
+  const { join: unir134, dirname: dir134 } = await import('node:path');
+  const { fileURLToPath: aRuta134 } = await import('node:url');
+  const R134 = unir134(dir134(aRuta134(import.meta.url)), '..');
+  const de134 = (...p) => leer134(unir134(R134, ...p), 'utf8');
+  const aj = de134('movil', 'src', 'Ajustes.tsx');
+
+  // BORRAR LA CUENTA DESDE ADENTRO NO ES OPCIONAL EN iOS: Apple lo exige a
+  // toda app que deje crear cuenta, y hasta el 22/9 eso solo existia en la
+  // web. Sin esto la app no pasa revision, asi que es un test y no un comentario.
+  const cuenta = de134('movil', 'src', 'ajustes', 'Cuenta.tsx');
+  chequear('se puede eliminar la cuenta desde la app', /eliminarCuenta\(/.test(cuenta), true);
+  // Y SE PIDE ESCRIBIR EL NOMBRE: un "seguro?" se aprieta sin leer y esto no
+  // tiene vuelta atras.
+  chequear('y pide escribir el nombre de usuario', /confirmacion\.trim\(\) !== perfil\.username/.test(cuenta), true);
+  chequear('Ajustes la muestra', /<Cuenta /.test(aj), true);
+
+  // EL PUNTO DEL GIMNASIO es la funcion que diferencia a la app y era el
+  // agujero mas raro del inventario: existia en la web, donde el navegador ni
+  // siquiera puede despertar a la app, y no en el telefono.
+  const gim = de134('movil', 'src', 'ajustes', 'Gimnasio.tsx');
+  chequear('el punto del gimnasio se marca desde la app', /marcarPunto\(/.test(gim), true);
+  chequear('y se puede borrar', /gimnasio_lat: null/.test(gim), true);
+  chequear('Ajustes lo muestra primero', aj.indexOf('<Gimnasio ') < aj.indexOf('diasDescanso'), true);
+  // LA FUNCION ES LA MISMA QUE LA WEB: si cada app tuviera su copia, la regla
+  // de "solo se marca estando ahi" se arreglaria en una sola.
+  chequear('las dos apps marcan con la misma funcion',
+    /@compartido\/gimnasio/.test(gim) && /@compartido\/gimnasio/.test(de134('src', 'components', 'ajustes', 'Gimnasio.tsx')), true);
+
+  // EL SEXO Y EL NOMBRE destraban el DOTS y la busqueda entre amigos.
+  const id = de134('movil', 'src', 'ajustes', 'Identidad.tsx');
+  chequear('se puede cargar el sexo', /'sexo'/.test(id), true);
+  chequear('y cambiar el nombre de usuario', /username: limpio/.test(id), true);
+  // EL AVISO DE §16.7c NO SE PUEDE SACAR: activar el DOTS deja deducir el peso.
+  chequear('con el aviso de lo que eso deja ver', /sexoAviso/.test(id), true);
+
+  // LOS TEXTOS DEL TELEFONO NO SON LOS DE LA WEB donde dicen algo distinto.
+  // "Vibra con la app abierta" y "en la del telefono va a entrar solo" son
+  // verdad en la web y mentira en el telefono.
+  chequear('el aviso del descanso se elige por el puerto', /conPantallaBloqueada\(\)/.test(aj), true);
+  chequear('y el techo del gimnasio lo dice desde adentro del telefono', /gimnasioTechoNativo/.test(gim), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
