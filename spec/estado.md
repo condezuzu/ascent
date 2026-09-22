@@ -157,9 +157,17 @@ schema de la base real. El flujo es: escribir la migración → probarla con
 
 ## A medias
 
+- **La app nativa, contra la web**: el inventario pantalla por pantalla está
+  en la bitácora del 22/9. Lo que falta del lado nativo, en el orden que fijó
+  el humano: Ajustes entero (ahí vive el punto del gimnasio, que es la función
+  central, y el sexo y el nombre, sin los cuales el DOTS no calcula), el
+  perfil propio y el de un amigo (piden Expo Router), la pantalla de marcas y
+  Apple Health. El aviso de las 20:30 NO está en esa lista: se sacó.
+- **El IPA de TestFlight**: el perfil `store` existe y el comando corre, pero
+  EAS no puede crear el certificado de distribución sin que alguien entre con
+  la cuenta de Apple. Eso lo hace el humano, una vez.
 - **Gente sugerida**: decidido que la lógica se escriba pero quede oculta
   hasta que haya 10 usuarios reales. Todavía NO está implementada.
-- **Recordatorio diario**: pospuesto para nativo (ver `etapa-nativa.md`).
 - **Retos**: tienen UI construida por pedido explícito. Si la beta arranca sin
   ellos, se **ocultan, no se borran**.
 - **`/galeria`**: ruta de QA pública en producción. No expone datos.
