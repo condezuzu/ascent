@@ -34,6 +34,19 @@ try {
 const CON_BOTON = process.env.EXPO_PUBLIC_DIAGNOSTICO === '1';
 const ESPERA_MS = 10000;
 
+/**
+ * LAS TRES FUENTES DE LA SESIÓN, con `require` y adentro de un try, por la
+ * misma razón que `App`: esa pantalla importa Supabase y la caché, o sea justo
+ * lo que la caja negra no puede importar. Si no carga, el registro se muestra
+ * igual — que es para lo que nació todo esto.
+ */
+let Sesion: ComponentType | null = null;
+try {
+  Sesion = (require('./DiagnosticoSesion') as { default: ComponentType }).default;
+} catch (e) {
+  registrarError('al cargar el diagnostico de la sesion', e);
+}
+
 class Limite extends Component<{ children: ReactNode }, { roto: boolean }> {
   state = { roto: false };
   static getDerivedStateFromError() {
@@ -93,6 +106,15 @@ function Registro({ titulo, alSeguir }: { titulo: string; alSeguir: () => void }
   return (
     <View style={estilos.registro}>
       <Text style={estilos.titulo}>{titulo}</Text>
+      {/* ARRIBA DEL REGISTRO Y NO ABAJO: cuando esto se abre en el gimnasio es
+          por la sesión, no por el arranque. Lo que se vino a ver tiene que
+          estar sin desplazar nada. El texto que explica el registro baja con
+          él, porque habla de él. */}
+      {Sesion && (
+        <Limite>
+          <Sesion />
+        </Limite>
+      )}
       <Text style={estilos.explica}>{T.diagnostico.explica}</Text>
       <ScrollView style={estilos.lista} contentContainerStyle={{ paddingBottom: 16 }}>
         {registro.map((r, i) => (

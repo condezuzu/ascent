@@ -8642,6 +8642,57 @@ console.log('\n131. El motor: la luna orbita, las estrellas se ven, pasa una fug
   chequear('pasa una estrella fugaz', /crearFugaz\(/.test(esc) && /fugaz\.actualizar\(tiempo, camara\.right\)/.test(esc), true);
 }
 
+console.log('\n132. El diagnostico muestra las tres fuentes de la sesion');
+{
+  // PARA QUE EL BUG DE LAS SERIES SE PUEDA CAZAR EN EL GIMNASIO (22/9). La
+  // sonda no lo encontro en seis caminos, asi que si vuelve a pasar va a ser
+  // con el telefono en la mano y no aca. Lo unico que no se puede leer despues
+  // es lo que decia la PANTALLA: por eso Inicio lo anota y el diagnostico lo
+  // lee de ahi.
+  const { readFileSync: leer132 } = await import('node:fs');
+  const { join: unir132, dirname: dir132 } = await import('node:path');
+  const { fileURLToPath: aRuta132 } = await import('node:url');
+  const R132 = unir132(dir132(aRuta132(import.meta.url)), '..');
+  const de132 = (...p) => leer132(unir132(R132, ...p), 'utf8');
+
+  const diag = de132('movil', 'src', 'DiagnosticoSesion.tsx');
+  chequear('lee lo que se ve en la pantalla', /loVisible\(\)/.test(diag), true);
+  chequear('lee la cache de este telefono', /leerSesionCache\(\)/.test(diag), true);
+  chequear('lee la sesion de la base', /rpc\('mi_sesion'\)/.test(diag), true);
+  // LOS BLOQUES NO VIENEN EN `mi_sesion`, y sin ellos esta pantalla no
+  // contesta lo unico que vino a contestar: el sintoma es el total contra los
+  // circulitos.
+  chequear('y los bloques, que esa RPC no trae', /from\('sesiones'\)[\s\S]{0,40}select\('bloques'\)/.test(diag), true);
+  // LA COLA ES LO QUE SEPARA UN BUG DE LA APP ESPERANDO SEÑAL: la misma
+  // diferencia entre pantalla y base significa una cosa con la cola llena y
+  // otra con la cola vacia.
+  chequear('y cuantas escrituras estan esperando', /cuantasPendientes\(\)/.test(diag), true);
+
+  // LO QUE SE COMPARTE TIENE QUE LLEVARLO. Una foto de la pantalla se puede
+  // sacar, pero el texto compartido es lo que llega entero.
+  chequear('lo pone en lo que se comparte', /ponerAnexo\(/.test(diag), true);
+  const caja = de132('movil', 'src', 'cajaNegra.ts');
+  chequear('y `comoTexto` lo incluye', /anexo\?\.\(\)/.test(caja), true);
+  // LA CAJA NEGRA SIGUE SIN IMPORTAR NADA DE LA APP: guarda una funcion que le
+  // pasan. Si importara Supabase, el dia que lo roto sea Supabase no habria
+  // caja negra para contarlo.
+  chequear('la caja negra no importa nada de la app', /^import /m.test(caja), false);
+  // Y SE CARGA CON `require` ADENTRO DE UN TRY, por lo mismo: esta pantalla SI
+  // importa Supabase, asi que no puede tumbar al registro.
+  const raiz = de132('movil', 'src', 'Raiz.tsx');
+  chequear('el diagnostico de sesion se carga aparte y protegido',
+    /try \{\s*Sesion = \(require\('\.\/DiagnosticoSesion'\)/.test(raiz), true);
+
+  // INICIO LO ANOTA, o no hay pantalla que leer.
+  const inicio = de132('movil', 'src', 'Inicio.tsx');
+  chequear('Inicio anota lo que esta mostrando', /mostrando\(\{/.test(inicio), true);
+  // EN UN EFECTO Y NO AL DIBUJAR: anotar mientras React dibuja es un efecto
+  // secundario en el render, que es de donde salio el error que vio test:real.
+  chequear('y lo hace en un efecto', /useEffect\(\(\) => \{\s*mostrando\(/.test(inicio), true);
+  const visible = de132('movil', 'src', 'loVisible.ts');
+  chequear('lo visible no se guarda en disco', /almacenamiento/.test(visible), false);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

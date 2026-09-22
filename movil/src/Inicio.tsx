@@ -22,6 +22,7 @@ import MarcaEnElMomento from './MarcaEnElMomento';
 import { paletaDe } from '@nucleo/paletas';
 import { cuentaAtras, restante } from '@compartido/descanso';
 import FondoEspacial from './FondoEspacial';
+import { mostrando } from './loVisible';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -167,6 +168,22 @@ export default function Inicio({
   const sesion = useSesion(() => {
     cargar();
   });
+
+  // LO QUE SE VE QUEDA ANOTADO PARA EL DIAGNÓSTICO (22/9). De las tres fuentes
+  // del bug de las series —pantalla, teléfono, base— esta es la única que no
+  // se puede leer después: la caché y la base siguen ahí dentro de un rato,
+  // pero lo que decía la pantalla se lo lleva el primer toque. Ver
+  // `loVisible.ts`. Es una anotación en un módulo suelto, no un estado: no
+  // vuelve a dibujar nada.
+  useEffect(() => {
+    mostrando({
+      corriendo: sesion.estado.corriendo,
+      series: sesion.estado.series,
+      hechas: sesion.estado.bloques.hechas,
+      meta: sesion.estado.bloques.meta,
+      ejercicio: sesion.estado.bloques.ejercicio,
+    });
+  }, [sesion.estado.corriendo, sesion.estado.series, sesion.estado.bloques]);
 
   if (estado.tipo === 'cargando') {
     return (

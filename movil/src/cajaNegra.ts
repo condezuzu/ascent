@@ -86,10 +86,35 @@ export function escuchar(fn: () => void) {
 }
 
 /** Todo el registro como texto, para compartirlo. */
+/**
+ * LO QUE SE COMPARTE, ADEMÁS DEL REGISTRO. Lo pone el diagnóstico de la sesión
+ * (`DiagnosticoSesion.tsx`) para que la foto que se manda lleve también las
+ * tres fuentes y la cola, y no solo el arranque.
+ *
+ * ES UNA FUNCIÓN Y NO UN TEXTO: se llama al compartir, así que dice cómo
+ * estaban las cosas EN ESE MOMENTO y no cuando se abrió el panel.
+ *
+ * La caja negra sigue sin importar nada de la app —que es toda su gracia—:
+ * guarda una función que le pasan, no sabe qué hay adentro, y si tira se
+ * comparte igual el registro.
+ */
+let anexo: (() => string) | null = null;
+
+export function ponerAnexo(fn: (() => string) | null) {
+  anexo = fn;
+}
+
 export function comoTexto() {
-  return registro
+  const lineas = registro
     .map((r) => `${(r.ms / 1000).toFixed(2).padStart(7)}s ${r.tipo.toUpperCase().padEnd(5)} ${r.texto}`)
     .join('\n');
+  let extra = '';
+  try {
+    extra = anexo?.() ?? '';
+  } catch {
+    extra = '(el anexo de la sesion fallo)';
+  }
+  return extra ? `${extra}\n\n${lineas}` : lineas;
 }
 
 // ---- LO QUE SE ENGANCHA AL CARGAR ----

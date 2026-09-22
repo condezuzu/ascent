@@ -1091,5 +1091,28 @@ export const T = {
     compartir: 'Compartir el detalle',
     seguir: 'Seguir igual',
     cerrar: 'Cerrar',
+
+    // LAS TRES FUENTES DE LA SESIÓN (22/9). Nació del bug de las series: el
+    // total decía una cosa y los circulitos otra, y para saber cuál de los
+    // tres lugares se había desviado había que verlos en el momento. Con esto
+    // se abre el diagnóstico en el gimnasio y se saca la foto.
+    sesionTitulo: 'La sesión, en tres lugares',
+    sesionNota: 'Si los tres no dicen lo mismo, esta es la foto que sirve.',
+    fuentePantalla: 'Pantalla',
+    fuenteCache: 'Este teléfono',
+    fuenteBase: 'La base',
+    sinSesion: 'sin sesión',
+    leyendo: 'Leyendo…',
+    noSePudoLeer: 'No se pudo leer (¿sin señal?)',
+    enTotal: (n: number) => `${n} en total`,
+    deMeta: (hechas: number, meta: number) => `${hechas} de ${meta}`,
+    // La base NO tiene la meta del bloque —"voy a hacer tres" es intención y
+    // la base solo guarda lo que pasó—, así que de ese lado se cuentan las
+    // series anotadas en los bloques y no se inventa un "de tres".
+    enBloques: (n: number) => `${n} en bloques`,
+    sinBloque: 'sin bloque',
+    colaVacia: 'Cola vacía',
+    colaCon: (n: number) => `Cola: ${n} ${n === 1 ? 'escritura esperando' : 'escrituras esperando'}`,
+    releer: 'Volver a leer',
   },
 } as const;
