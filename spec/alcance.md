@@ -34,7 +34,7 @@ Si no está claro si algo es 2 o 3, es 3.
 
 | # | Qué |
 |---|-----|
-| H1 | **Lo hace el humano esta semana y avisa.** Variables de Web Push en Vercel (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`) y redeploy. Sin esto el aviso de las 20:30 no sale. |
+| H1 | ~~Variables de Web Push en Vercel.~~ **Sin efecto desde el 22/9/2026:** el aviso de las 20:30 se sacó. Las variables que queden en Vercel (`VAPID_*`, `CRON_SECRET`) ya no las lee nadie. |
 | H2 | Probar el recorrido nuevo (Ajustes → "Ver la guía de nuevo") y el volumen nuevo. |
 
 ---

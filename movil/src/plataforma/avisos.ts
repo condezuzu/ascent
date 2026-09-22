@@ -55,22 +55,6 @@ Notifications.addNotificationReceivedListener((n) => {
 });
 
 export const avisosNativos: Avisos = {
-  // EL AVISO DE LAS 20:30, TODAVÍA NO. En nativo va a ser el token de push de
-  // Expo, que necesita la build de desarrollo y la cuenta de Apple (tanda 3).
-  // Hasta entonces contesta que no hay, y Ajustes muestra el texto de "no
-  // disponible" en vez de un botón que no hace nada.
-  remotos: {
-    async estado() {
-      return 'no-disponible';
-    },
-    async activar() {
-      return null;
-    },
-    async desactivar() {
-      return null;
-    },
-  },
-
   conPantallaBloqueada() {
     return true;
   },

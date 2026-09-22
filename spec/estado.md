@@ -325,25 +325,21 @@ deja afuera; los que sí, se arreglaron ese día.
   `simular-semana`; borrarlo necesita service_role.
 
 
-## El cron del aviso diario y las zonas horarias (17/9/2026)
+## El aviso de las 20:30, sacado (22/9/2026)
 
-`vercel.json` dispara `/api/avisos/diario` a las **23:30 UTC**, una vez por día
-y a una hora fija.
+Se fue entero, por decisión del humano: el aviso, su cron, la suscripción push
+del navegador y el puerto de avisos remotos. La nota que estaba acá explicaba
+por qué el cron a las 23:30 UTC NO se corría con el horario de verano (Uruguay
+no tiene desde 2015) y qué iba a pasar con la primera cuenta fuera de UTC−3.
+Ese problema ya no existe, porque no existe el cron.
 
-**Para Uruguay no hay problema, y me equivoqué al decir que sí.** Avisé de que
-el horario "se iba a correr con el cambio de horario de verano" y eso es falso
-por partida doble: UTC no se mueve, y **Uruguay no tiene horario de verano
-desde 2015** (es UTC−3 todo el año). 23:30 UTC son las 20:30 en Montevideo
-siempre. No hay ninguna fecha que anotar, y anotar una inventada habría sido
-peor que no anotar nada.
+**Lo que quedó en la base y no se tocó:** la tabla de suscripciones y sus tres
+funciones (`guardar_suscripcion_push`, `borrar_suscripcion_push`,
+`olvidar_suscripcion_push`, migración 35). Sacarlas pide una migración que
+aplica el humano y no molestan: no las llama nadie. Los tests que las cubren se
+quedan, porque lo que prueban sigue estando ahí.
 
-**Lo que SÍ es cierto, y es otra cosa:** el cron dispara en UN instante de UTC
-para todo el mundo, pero la app soporta zona horaria por persona
-(`profiles.zona`, `hoy_de`). Para alguien fuera de UTC−3 el aviso llega a
-cualquier hora local, y si su país tiene horario de verano, esa hora se corre
-dos veces al año sin que nadie toque nada.
+**Lo que quedó en Vercel:** `VAPID_*` y `CRON_SECRET`. Ya no los lee nadie.
 
-Hoy no muerde porque todas las cuentas están en Uruguay. Muerde el día que haya
-una que no. El arreglo, cuando llegue: disparar el cron cada hora y que la base
-elija a quién le toca según su zona, en vez de mandarle a todos a la misma hora
-de UTC.
+**El aviso de fin de descanso NO es esto y sigue vivo:** es local, lo programa
+la app, y en nativo llega con la pantalla bloqueada.

@@ -26,7 +26,6 @@ import Sesion from '@/components/ajustes/Sesion';
 import Sexo from '@/components/ajustes/Sexo';
 import Sugerencias from '@/components/ajustes/Sugerencias';
 import UnidadPeso from '@/components/ajustes/UnidadPeso';
-import AvisoDiario from '@/components/ajustes/AvisoDiario';
 import { T } from '@nucleo/textos';
 
 /**
@@ -111,8 +110,6 @@ export default function Ajustes() {
         {/* Antes del nombre: es una preferencia de ESTE aparato, como el
             descanso, y no un dato de la cuenta. */}
         <Fondo />
-        {/* Al lado del fondo: las dos son de ESTE aparato y no de la cuenta. */}
-        <AvisoDiario />
         <NombreUsuario perfil={perfil} alCambiar={alCambiar} />
         <FotosNuevas perfil={perfil} alCambiar={alCambiar} />
         <UnidadPeso perfil={perfil} alCambiar={alCambiar} />

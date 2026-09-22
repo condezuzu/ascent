@@ -17,8 +17,6 @@
  */
 
 export const REQUIERE = {
-  /** El aviso de las 20:30: las suscripciones push. */
-  avisoDiario: 35,
   /** Guardar el peso de cada serie, y el último peso usado. */
   pesoPorSerie: 36,
   /** El cierre por inactividad: marcar actividad desde el teléfono. */

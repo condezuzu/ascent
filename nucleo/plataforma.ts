@@ -119,44 +119,6 @@ export type Avisos = {
   permiso(): Promise<boolean>;
   programar(id: string, enSegundos: number, alSonar: () => void): Promise<void>;
   cancelar(id: string): Promise<void>;
-  /**
-   * Los que manda el SERVIDOR y llegan con la app cerrada: el de las 20:30.
-   *
-   * Van adentro de `Avisos` y no en un puerto aparte porque son la misma cosa
-   * para quien los recibe —una notificación— y la diferencia es solo quién la
-   * dispara. Un décimo puerto sería otra llave que implementar dos veces.
-   *
-   * En web es Web Push; en nativo va a ser el token de Expo, y hasta la tanda
-   * 3 contesta `no-disponible`.
-   */
-  remotos: AvisosRemotos;
-};
-
-/**
- * Por qué no hay un booleano: cada estado pide una cosa distinta a la persona.
- * "Hay que instalar" y "bloqueado" no se arreglan tocando el mismo botón, y
- * mostrarlos iguales es un callejón.
- */
-export type EstadoAvisoRemoto =
-  | 'activo'
-  | 'apagado'
-  | 'hay-que-instalar'
-  | 'bloqueado'
-  | 'no-disponible';
-
-/** Lo que la base necesita para mandarle algo a ESTE aparato. */
-export type SuscripcionRemota = { endpoint: string; p256dh: string; auth: string };
-
-export type AvisosRemotos = {
-  estado(): Promise<EstadoAvisoRemoto>;
-  /**
-   * Pide el permiso y suscribe. TIENE QUE llamarse desde un toque: iOS no
-   * muestra el pedido de permiso si no viene de un gesto, y lo niega en
-   * silencio.
-   */
-  activar(clavePublica: string): Promise<SuscripcionRemota | null>;
-  /** Da de baja este aparato y devuelve la dirección que tenía, para borrarla de la base. */
-  desactivar(): Promise<string | null>;
 };
 
 /** Que la pantalla no se apague sola mientras corre el descanso (§18). */

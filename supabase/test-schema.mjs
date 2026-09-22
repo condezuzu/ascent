@@ -111,7 +111,6 @@ import {
   MS_CERRAR,
 } from '../nucleo/atmosfera.ts';
 import * as SUB from '../src/lib/subida.ts';
-import { avisoDiario } from '../nucleo/avisoDiario.ts';
 import { hayQueContar, valorContado, SALTO_MAXIMO } from '../src/lib/contar.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
@@ -2317,8 +2316,9 @@ console.log('\n35. Nada del navegador fuera de src/plataforma');
     // aguanta, y por eso el que menos puede filtrarse de a poco.
     'visibilityState',
     'visibilitychange',
-    // El puerto de avisos remotos (el de las 20:30). En nativo es el token de
-    // Expo: si Ajustes llamara a `pushManager` directo, no compilaria.
+    // Notificaciones del navegador. El aviso de las 20:30 se saco el 22/9 y
+    // estas dos quedan igual: son de `window`, no existen en nativo, y el dia
+    // que vuelvan a hacer falta tienen que entrar por un puerto.
     'pushManager',
     'requestPermission',
   ];
@@ -5027,22 +5027,6 @@ console.log('\n71. Lo que el codigo nombra, existe');
   // Y que de verdad miro la app nativa: si el recorrido no la encontrara, el
   // test pasaria sin haber mirado lo que vino a mirar.
   chequear('y miro la app nativa', archivos.some((a) => a.includes('movil')), true);
-}
-console.log('\n72. Lo que dice el aviso de las 20:30');
-{
-  // Es la unica vez que la app le habla a alguien que no la abrio. Dice un
-  // hecho, nombra la racha si hay, y NUNCA menciona los impulsos: "tranquilo,
-  // tenes dos" convierte el aviso en un permiso para no ir.
-  const con = avisoDiario(25);
-  chequear('con racha, la nombra', con.cuerpo.includes('25'), true);
-  chequear('y lleva a Inicio', con.url, '/');
-  const sin = avisoDiario(0);
-  chequear('sin racha no dice "va en 0"', sin.cuerpo.includes('0'), false);
-  chequear('una racha rota es sin racha', avisoDiario(null).cuerpo, sin.cuerpo);
-  chequear('una racha con coma no sale con coma', avisoDiario(12.7).cuerpo.includes('12.7'), false);
-  const todo = [con.titulo, con.cuerpo, sin.cuerpo].join(' ').toLowerCase();
-  chequear('no nombra los impulsos', /impulso/.test(todo), false);
-  chequear('ni asusta', /pierd|perder|cuidado|!/.test(todo), false);
 }
 console.log('\n73. El resumen de un dia');
 {
@@ -7904,53 +7888,6 @@ console.log('\n115. El mapa de calor: cero es cero, y poco se ve');
   // se pintaria al 10% y seria invisible. Ese era el problema de las barras.
   chequear('un decimo del tope se ve bastante mas que un decimo', I(20, 200) > 0.3, true);
   chequear('la mitad del tope pasa la mitad de la escala', I(100, 200) > 0.5, true);
-}
-
-console.log('\n116. Una promesa colgada tiene que rendirse');
-{
-  const L = await import('../nucleo/limite.ts');
-  // El reloj entra por parametro: sin eso, probar un limite de quince segundos
-  // tardaria quince segundos.
-  const yaMismo = () => Promise.resolve();
-  const nunca = () => new Promise(() => {});
-
-  // LO QUE PASA CUANDO TODO ANDA.
-  const bien = await L.conLimite(Promise.resolve('dato'), 50);
-  chequear('si la promesa contesta, se devuelve su valor', bien, { listo: true, valor: 'dato' });
-
-  // Y LO QUE PASA CON LA QUE NUNCA VUELVE. Este es el caso de verdad: el
-  // `serviceWorker.ready` que no resolvia porque el service worker no instalaba.
-  // No fallaba, no tiraba error: no volvia. Un try/catch no lo agarra.
-  const colgada = await L.conLimite(nunca(), 0, yaMismo);
-  chequear('si no contesta, se da por vencida', colgada, { listo: false });
-
-  // UN RECHAZO SIGUE SIENDO UN RECHAZO. El limite es para el silencio, no para
-  // tapar errores: quien llama tiene que poder distinguirlos.
-  let rechazo = null;
-  await L.conLimite(Promise.reject(new Error('rota')), 50).catch((e) => (rechazo = e.message));
-  chequear('un error sigue llegando como error', rechazo, 'rota');
-
-  // GANA LA RESPUESTA DE VERDAD cuando ya esta lista, aunque el reloj tambien
-  // venza en el mismo instante. Es lo que corresponde: el limite existe para el
-  // silencio, no para descartar una respuesta que llego.
-  const carrera = await L.conLimite(Promise.resolve('a tiempo'), 0, yaMismo);
-  chequear('una respuesta ya lista le gana al reloj', carrera, { listo: true, valor: 'a tiempo' });
-
-  // EL LIMITE ES UN NUMERO CON SENTIDO: quince segundos es mucho para una
-  // suscripcion y poco para que alguien crea que la app se colgo.
-  chequear('el limite esta en un rango razonable', L.LIMITE_SUSCRIPCION_MS >= 5000 && L.LIMITE_SUSCRIPCION_MS <= 30000, true);
-
-  // Y QUE LA PANTALLA LO USE. Si alguien saca el reloj, el control vuelve a
-  // poder quedarse girando en silencio y nadie se entera hasta dentro de meses.
-  const { readFileSync: leer } = await import('node:fs');
-  const { join: unir, dirname: dir } = await import('node:path');
-  const { fileURLToPath: aRuta } = await import('node:url');
-  const aviso = leer(
-    unir(dir(aRuta(import.meta.url)), '..', 'src', 'components', 'ajustes', 'AvisoDiario.tsx'),
-    'utf8'
-  );
-  chequear('el aviso diario activa con limite', /conLimite\(\s*plataforma\.avisos\.remotos\.activar/.test(aviso), true);
-  chequear('y dice algo distinto cuando se cuelga', aviso.includes('seColgo'), true);
 }
 
 console.log('\n117. La señal del descanso vive en la tira y en el texto');

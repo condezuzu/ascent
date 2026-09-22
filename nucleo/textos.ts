@@ -175,35 +175,6 @@ export const T = {
     futuro: 'Todavía no pasó.',
   },
 
-  // ---------------------------------------------------------------
-  // EL AVISO DE LAS 20:30. Ver `nucleo/avisoDiario.ts` para las reglas: dice
-  // un hecho, nombra la racha si hay, y nunca menciona las vidas.
-  avisoDiario: {
-    titulo: 'Ascent',
-    conRacha: (racha: number) => `Tu racha va en ${racha}. Hoy todavía no está registrado.`,
-    sinRacha: 'Hoy todavía no está registrado.',
-
-    // En Ajustes.
-    rotulo: 'Aviso de las 20:30',
-    nota: 'Si a esa hora no registraste el día, te avisa. Nunca en días de descanso.',
-    prender: 'Avisarme',
-    apagar: 'No avisarme',
-    prendido: 'Prendido en este teléfono.',
-    // Cada estado dice qué hacer, no solo qué pasa: un "no disponible" sin
-    // salida es un callejón.
-    hayQueInstalar:
-      'En iPhone, primero agrega la app a la pantalla de inicio: Compartir → Agregar a inicio.',
-    bloqueado:
-      'Las notificaciones están bloqueadas. Se habilitan en los ajustes del teléfono.',
-    noDisponible: 'Este navegador no puede recibir avisos con la app cerrada.',
-    noSePudo: 'No se pudo prender el aviso. Prueba de nuevo en un rato.',
-    // CUANDO EL NAVEGADOR NO CONTESTA. No es lo mismo que "no se pudo": el
-    // pedido quedó colgado sin fallar. Eso estuvo pasando meses —el service
-    // worker no instalaba, así que la promesa no resolvía nunca— y el control
-    // se quedaba girando sin decir nada. Un silencio no es un estado.
-    seColgo: 'El navegador no respondió. Cierra la app, vuelve a abrirla y prueba otra vez.',
-  },
-
   // Las zonas del selector de ejercicios. Van en minúscula porque son
   // etiquetas de navegación, no títulos.
   ejercicios: {
