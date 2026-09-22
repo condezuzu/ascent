@@ -34,7 +34,10 @@ limiteDeSonda(10);
 
 const PUERTO = (process.argv.find((a) => a.startsWith('--puerto=')) ?? '--puerto=8090').split('=')[1];
 const BASE = `http://localhost:${PUERTO}`;
-const SALIDA = join(dirname(fileURLToPath(import.meta.url)), '..', 'capturas', 'tienda');
+// CARPETA PROPIA Y NO `capturas/tienda`: `npm run capturas` borra `capturas/`
+// entero antes de escribir (rmSync recursivo), asi que las de la tienda
+// desaparecian en el cierre de la tanda siguiente. Se perdieron una vez.
+const SALIDA = join(dirname(fileURLToPath(import.meta.url)), '..', 'capturas-tienda');
 mkdirSync(SALIDA, { recursive: true });
 
 const vivo = await fetch(BASE).then(() => true).catch(() => false);
@@ -192,7 +195,7 @@ try {
   // El motor tarda en dibujar y es la mitad de lo que se ve en la foto.
   await page.waitForTimeout(4000);
 
-  console.log(`\n1290 × 2796, en capturas/tienda:`);
+  console.log(`\n1290 × 2796, en capturas-tienda:`);
   await foto('1-inicio');
 
   for (const [pestana, nombre] of [

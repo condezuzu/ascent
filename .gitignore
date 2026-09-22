@@ -8,6 +8,8 @@ out/
 next-env.d.ts
 _tmp-*
 capturas/
+# Las de la ficha de la App Store: son entregables, no codigo.
+capturas-tienda/
 
 # Builds de los recorridos de prueba. Cada script se compila en su PROPIA
 # carpeta para poder correr con el servidor de desarrollo levantado sin que se

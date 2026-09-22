@@ -125,5 +125,5 @@ teléfono y qué tiene el servidor.
   privacidad; alcanza con una página con el correo de contacto.
 - **Categoría:** Health & Fitness, sin secundaria.
 - **Clasificación por edad:** todo "None" → 4+.
-- **Capturas:** `capturas/tienda/`, 1290 × 2796, salen de
+- **Capturas:** `capturas-tienda/`, 1290 × 2796, salen de
   `herramientas/capturas-tienda.mjs`.
