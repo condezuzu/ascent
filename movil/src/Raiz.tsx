@@ -1,35 +1,29 @@
 import { Component, useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
-import { anotar, comoTexto, escuchar, estado, registrarError } from './cajaNegra';
+import { comoTexto, escuchar, estado, registrarError } from './cajaNegra';
 
 /**
- * LA RAÍZ: la app, más lo que se muestra si la app no puede mostrarse.
+ * LA RAÍZ: lo que se muestra cuando la app no puede mostrarse.
  *
  * La primera build (18/9) quedó en negro al abrir y no había forma de saber
  * por qué. Esto hace que un fallo se VEA:
  *
- *   - `App` se carga con `require` adentro de un `try`, no con un `import`: un
- *     error al cargar un módulo (una variable que falta, una biblioteca nativa
- *     que no está) tira antes de que exista ninguna pantalla, y con un import
- *     no queda nadie para mostrarlo.
- *   - Un límite de errores alrededor de `App` atrapa lo que tire al dibujar.
+ *   - Un límite de errores alrededor de lo que envuelve atrapa lo que tire al
+ *     dibujar.
  *   - Si hubo un error, o si a los 10 s la app no llegó a ninguna pantalla, se
  *     muestra el registro de `cajaNegra.ts` con un botón para compartirlo.
  *   - EN LA BUILD INTERNA hay además un botón chico, siempre a mano, que abre
  *     el mismo registro: si la app arranca pero algo tapa la pantalla, el
  *     problema no es un error y nada lo abriría solo. Se prende con
  *     `EXPO_PUBLIC_DIAGNOSTICO=1` en el perfil de la build.
+ *
+ * ANTES CARGABA LA APP con un `require` adentro de un try, y eso se fue con el
+ * router (22/9): ahora quien monta las pantallas es Expo Router, desde
+ * `app/_layout.tsx`, y esto la envuelve. El try no se perdió, se mudó: el
+ * layout es un archivo del router, así que un error al cargarlo lo atrapa el
+ * propio router y termina acá igual, en el límite de abajo.
  */
-
-let App: ComponentType | null = null;
-try {
-  anotar('cargando App');
-  App = (require('../App') as { default: ComponentType }).default;
-  anotar('App cargada');
-} catch (e) {
-  registrarError('al cargar App', e);
-}
 
 const CON_BOTON = process.env.EXPO_PUBLIC_DIAGNOSTICO === '1';
 const ESPERA_MS = 10000;
@@ -60,7 +54,7 @@ class Limite extends Component<{ children: ReactNode }, { roto: boolean }> {
   }
 }
 
-export default function Raiz() {
+export default function Raiz({ children }: { children: ReactNode }) {
   const [, setVersion] = useState(0);
   const [tarde, setTarde] = useState(false);
   const [abierto, setAbierto] = useState(false);
@@ -74,18 +68,14 @@ export default function Raiz() {
 
   const { huboError, listo } = estado();
   const noArranco = tarde && !listo;
-  const mostrar = abierto || (!descartado && (huboError || noArranco || !App));
+  const mostrar = abierto || (!descartado && (huboError || noArranco));
 
   return (
     <View style={estilos.todo}>
-      {App && (
-        <Limite>
-          <App />
-        </Limite>
-      )}
+      <Limite>{children}</Limite>
       {mostrar && (
         <Registro
-          titulo={huboError || !App ? T.diagnostico.fallo : noArranco ? T.diagnostico.noArranco : T.diagnostico.boton}
+          titulo={huboError ? T.diagnostico.fallo : noArranco ? T.diagnostico.noArranco : T.diagnostico.boton}
           alSeguir={() => {
             setAbierto(false);
             setDescartado(true);

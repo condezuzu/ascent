@@ -35,7 +35,9 @@ const PIEZAS: Pieza[] = [
   { nombre: 'expo-gl', cargar: () => require('expo-gl') },
   { nombre: 'three', cargar: () => require('three') },
   { nombre: 'el motor (escena)', cargar: () => require('@compartido/motor/escena') },
-  { nombre: 'la app entera', cargar: () => require('../App').default },
+  // La app entera es, desde el router, el layout de `app/`: lo que carga eso
+  // carga todo lo demás.
+  { nombre: 'la app entera', cargar: () => require('../app/_layout').default },
 ];
 
 export default function Minimo() {

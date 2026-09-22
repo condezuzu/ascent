@@ -23,8 +23,16 @@ SplashScreen.hideAsync()
 const MINIMO = process.env.EXPO_PUBLIC_MINIMO === '1';
 anotar(MINIMO ? 'arranca la pantalla mínima' : 'arranca la app');
 
-// `Raiz` carga `App` adentro de un try y muestra qué falló si algo tira: ver
-// `src/Raiz.tsx`. registerRootComponent llama a
-// AppRegistry.registerComponent('main', () => Raiz).
-const Componente = (MINIMO ? require('./src/Minimo') : require('./src/Raiz')).default;
-registerRootComponent(Componente);
+// DE ACÁ EN ADELANTE MANDA EL ROUTER (22/9). `expo-router/entry` registra su
+// propio componente raíz y monta `app/_layout.tsx`, que es donde quedaron la
+// sesión y la caja negra. Por eso este archivo ya no llama a
+// `registerRootComponent` en el camino normal.
+//
+// SIGUE SIENDO UN `require` Y NO UN `import`: con import, el router entero se
+// cargaría también en el arranque mínimo, que existe justamente para no cargar
+// nada. Metro empaqueta las dos ramas; solo se evalúa la que corre.
+if (MINIMO) {
+  registerRootComponent(require('./src/Minimo').default);
+} else {
+  require('expo-router/entry');
+}

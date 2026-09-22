@@ -76,7 +76,8 @@
           "cameraPermission": "Ascent usa la cámara para sacar la foto del día."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-router"
     ],
     "extra": {
       "eas": {
