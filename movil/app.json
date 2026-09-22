@@ -11,10 +11,7 @@
       "bundleIdentifier": "uy.ascent.app",
       "appleTeamId": "XF9N8X9KJG",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio",
-          "audio"
-        ],
+        "UIBackgroundModes": ["audio"],
         "UIApplicationSupportsShakeToEdit": false,
         "ITSAppUsesNonExemptEncryption": false
       }

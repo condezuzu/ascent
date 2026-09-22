@@ -42,7 +42,23 @@
         "EXPO_PUBLIC_MINIMO": "1"
       },
       "environment": "preview"
+    },
+    "store": {
+      "distribution": "store",
+      "channel": "store",
+      "autoIncrement": true,
+      "ios": {
+        "simulator": false,
+        "resourceClass": "m-medium"
+      },
+      "environment": "production"
     }
   },
-  "submit": {}
+  "submit": {
+    "store": {
+      "ios": {
+        "appleTeamId": "XF9N8X9KJG"
+      }
+    }
+  }
 }

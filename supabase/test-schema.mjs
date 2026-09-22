@@ -8317,25 +8317,41 @@ console.log('\n122. La app nativa se puede construir: los archivos que nombra ex
   chequear('hay un perfil para el telefono', !!eas.build?.telefono, true);
   chequear('y estan tambien el minimo y el de desarrollo',
     [!!eas.build?.minimo, !!eas.build?.dev], [true, true]);
+  // TRES PERFILES PARA EL TELEFONO DE UNO Y UNO PARA TESTFLIGHT (22/9). Los
+  // tres primeros se instalan con un link, sin pasar por Apple; `store` es el
+  // que arma el IPA que acepta App Store Connect, y por eso es el unico que no
+  // es interno.
+  const DE_LINK = ['telefono', 'dev', 'minimo'];
   for (const [nombre, perfil] of perfiles) {
-    chequear(nombre + ': distribucion interna', perfil.distribution, 'internal');
+    const interno = DE_LINK.includes(nombre);
+    chequear(nombre + ': la distribucion que le toca', perfil.distribution, interno ? 'internal' : 'store');
     chequear(nombre + ': no arma para el simulador', perfil.ios?.simulator, false);
     // Sin `environment`, EAS elige solo: 'development' para el cliente de
-    // desarrollo, donde las de Supabase NO estan cargadas.
-    chequear(nombre + ': dice de que entorno saca las variables', perfil.environment, 'preview');
+    // desarrollo, donde las de Supabase NO estan cargadas. Las dos variables
+    // estan cargadas en `preview` y en `production`, asi que cada perfil dice
+    // la suya: `store` sube a TestFlight con las de produccion.
+    chequear(nombre + ': dice de que entorno saca las variables', perfil.environment, interno ? 'preview' : 'production');
     const pegadas = Object.keys(perfil.env ?? {}).filter((k) => k.startsWith('EXPO_PUBLIC_SUPABASE_'));
     chequear(nombre + ': las de Supabase no se pegan en env', pegadas, []);
   }
   // La de la caja negra (18/9) SI es un valor fijo, "1", que prende el boton de
-  // diagnostico: no es un secreto y no tiene por que serlo.
+  // diagnostico: no es un secreto y no tiene por que serlo. En `store` NO va:
+  // el boton es para encontrar una pantalla negra, no para quien baja la app.
   chequear('la build del telefono trae la caja negra a mano', eas.build?.telefono?.env?.EXPO_PUBLIC_DIAGNOSTICO, '1');
   chequear('y la minima arranca en la pantalla minima', eas.build?.minimo?.env?.EXPO_PUBLIC_MINIMO, '1');
+  chequear('la de TestFlight no lleva interruptores', eas.build?.store?.env, undefined);
 
-  // NO SE SUBE NADA A APP STORE desde aca: esa preparacion va despues de las
-  // tandas 4, 5 y 6 (ver spec/etapa-nativa.md). Si alguien llena `submit`, que
-  // sea una decision y no un descuido.
-  chequear('submit sigue vacio', Object.keys(eas.submit ?? {}), []);
+  // CADA SUBIDA A TESTFLIGHT NECESITA UN NUMERO DE BUILD NUEVO: si se repite,
+  // App Store Connect la rechaza despues de esperar el procesado. Que lo suba
+  // EAS es una cosa menos que acordarse a mano.
+  chequear('la de TestFlight sube sola el numero de build', eas.build?.store?.autoIncrement, true);
 
+  // `submit` YA NO ESTA VACIO, pero lo unico que dice es con que equipo de
+  // Apple se sube. Las credenciales no estan ni van a estar en el repo: las
+  // pide `eas submit` en el momento.
+  chequear('submit solo nombra el equipo', eas.submit?.store?.ios?.appleTeamId, 'XF9N8X9KJG');
+  const submitFeo = JSON.stringify(eas.submit ?? {});
+  chequear('y no guarda ninguna credencial', /password|appleId|ascApiKey|p8|secret/i.test(submitFeo), false);
   // EL EQUIPO DE APPLE, que es lo que firma. Sin esto EAS pregunta en cada
   // build y hay que acordarse del numero.
   chequear('el team id esta en app.json', app.ios?.appleTeamId, 'XF9N8X9KJG');

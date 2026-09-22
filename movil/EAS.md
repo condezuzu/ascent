@@ -3,12 +3,13 @@
 Este archivo explica **por qué** `eas.json` dice lo que dice. Los comandos en
 orden los pasa el agente; acá está lo que hay que saber para cambiarlo.
 
-## Tres perfiles, y cada uno existe por una razón
+## Cuatro perfiles, y cada uno existe por una razón
 
-Hasta el 21/9 había uno solo (`telefono`), porque tres perfiles vacíos
-esperando a que alguien los use son tres cosas que se desactualizan. Los otros
-dos nacieron el día que la app quedó en negro en el iPhone y no había forma de
-ver por qué.
+Hasta el 21/9 había uno solo (`telefono`), porque un perfil vacío esperando a
+que alguien lo use es una cosa más que se desactualiza. `minimo` y `dev`
+nacieron el día que la app quedó en negro en el iPhone y no había forma de ver
+por qué; `store` nació el día que abrió (22/9), que es cuando TestFlight pasó
+de ser una idea a ser el paso siguiente.
 
 - **`telefono`** — la app, firmada ad-hoc, que se instala en un iPhone
   registrado con un link. Es la de siempre.
@@ -18,9 +19,15 @@ ver por qué.
 - **`dev`** — cliente de desarrollo (`expo-dev-client`): se conecta a Metro en
   la computadora, muestra los errores en pantalla y en la terminal, y deja
   cambiar el JS sin volver a compilar. Se levanta con `dev-telefono.cmd`.
+- **`store`** — el IPA que acepta App Store Connect, para TestFlight. Es el
+  único que NO es `internal`, y el único que saca las variables del entorno
+  `production`. No lleva `EXPO_PUBLIC_DIAGNOSTICO`: la caja negra es para
+  buscar una pantalla negra, no para quien baja la app. `autoIncrement` le sube
+  solo el número de build, porque App Store Connect rechaza uno repetido
+  después de hacerte esperar el procesado.
 
-Los tres son `distribution: internal`: link directo, sin TestFlight y sin
-revisión de Apple. Es la diferencia entre "probar hoy" y "esperar a que App
+Los tres primeros son `distribution: internal`: link directo, sin TestFlight y
+sin revisión de Apple. Es la diferencia entre "probar hoy" y "esperar a que App
 Store Connect procese".
 
 - **`simulator: false`**: el build es para el teléfono de verdad. Un build de
@@ -56,10 +63,12 @@ Ver `movil/.env` para los mismos nombres en desarrollo (ahí los lee Metro).
 
 ## Lo que estos perfiles NO hacen
 
-- **No sube nada a App Store ni a TestFlight.** `submit` está vacío a propósito:
-  la preparación de App Store (metadatos, política de privacidad, justificación
-  de ubicación en segundo plano, cuenta demo para el revisor) va DESPUÉS de las
-  tandas 4, 5 y 6. Ver `spec/etapa-nativa.md`.
+- **Armar el IPA de `store` no es publicar.** `eas submit` lo sube a App Store
+  Connect y ahí hace falta la cuenta de Apple del dueño: eso no lo hace el
+  agente. Y aunque llegue a TestFlight, la preparación de App Store (metadatos,
+  política de privacidad, justificación de ubicación en segundo plano, cuenta
+  demo para el revisor) sigue pendiente. Ver `spec/etapa-nativa.md`. En `submit`
+  lo único que hay es el equipo de Apple: ninguna credencial vive en el repo.
 - **No toca `UIBackgroundModes`.** Hoy tiene `audio` —lo necesita el cronómetro
   para seguir corriendo con la pantalla apagada— y NO tiene `location`. La
   consecuencia es concreta y hay que saberla: **el registro automático al llegar

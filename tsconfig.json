@@ -53,18 +53,21 @@
     ".next-animacion/types/**/*.ts",
     ".next-arranque/types/**/*.ts",
     ".next-capturas/types/**/*.ts",
+    ".next-costo/types/**/*.ts",
     ".next-exif/types/**/*.ts",
     ".next-medir/types/**/*.ts",
     ".next-noche/types/**/*.ts",
     ".next-pantallas/types/**/*.ts",
+    ".next-perfil/types/**/*.ts",
     ".next-planetas/types/**/*.ts",
     ".next-primera/types/**/*.ts",
     ".next-quietud/types/**/*.ts",
     ".next-rangos/types/**/*.ts",
     ".next-scroll/types/**/*.ts",
+    ".next-sonda-compara/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-sonda-compara/types/**/*.ts"
+    ".next-filtro/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
