@@ -163,9 +163,12 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   central, y el sexo y el nombre, sin los cuales el DOTS no calcula), el
   perfil propio y el de un amigo (piden Expo Router), la pantalla de marcas y
   Apple Health. El aviso de las 20:30 NO está en esa lista: se sacó.
-- **El IPA de TestFlight**: el perfil `store` existe y el comando corre, pero
-  EAS no puede crear el certificado de distribución sin que alguien entre con
-  la cuenta de Apple. Eso lo hace el humano, una vez.
+- **TestFlight: ya está.** La app existe en App Store Connect como "Ascent —
+  Streak & Strength" (ASC App ID 6815006917, bundle `uy.ascent.app`, contrato
+  de apps gratuitas activo) y la primera build subida es `fea8f17a`. El
+  certificado de distribución lo creó el humano el 22/9 y quedó una clave de
+  API con rol APP_MANAGER, así que las builds y las subidas siguientes no lo
+  necesitan a él. Los textos de la ficha están en `spec/ficha-tienda.md`.
 - **Gente sugerida**: decidido que la lógica se escriba pero quede oculta
   hasta que haya 10 usuarios reales. Todavía NO está implementada.
 - **Retos**: tienen UI construida por pedido explícito. Si la beta arranca sin

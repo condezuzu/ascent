@@ -9,14 +9,36 @@ baja la app desde la ficha no puede encontrarse con otra voz al abrirla.
 
 ---
 
-## Nombre (máx. 30)
+## En App Store Connect (22/9/2026)
+
+La app ya existe y está en TestFlight. Los números que hacen falta para
+cualquier comando y para no crear una segunda por error:
+
+| | |
+|---|---|
+| **Nombre en la tienda** | Ascent — Streak & Strength |
+| **ASC App ID** | 6815006917 |
+| **Bundle** | `uy.ascent.app` |
+| **Free Apps Agreement** | activo |
+| **Clave de API** | creada, rol APP_MANAGER: las subidas ya no necesitan el Apple ID a mano |
+
+---
+
+## Nombre (máx. 30) — YA CARGADO
 
 ```
-Ascent
+Ascent — Streak & Strength
 ```
 
-Si está tomado en la App Store, la salida es un nombre con cola. En orden de
-preferencia: `Ascent · Racha de gimnasio` (26), `Ascent Racha` (12).
+28 de 30. Quedó en inglés y el resto de la ficha en español, y eso NO es un
+descuido que haya que arreglar: el nombre es lo único que se lee en una lista
+de resultados de cualquier país, y "streak" y "strength" dicen la mecánica sin
+traducción. El idioma principal sigue siendo español (Latinoamérica), que es
+donde están los usuarios.
+
+Consecuencia práctica: Apple **ya indexa** las palabras del nombre, así que
+`streak` y `strength` NO van en las palabras clave. Sería gastar dos de las
+cien.
 
 ## Subtítulo (máx. 30)
 

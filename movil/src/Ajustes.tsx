@@ -12,6 +12,7 @@ import { duracionCorta, duracionValida, guardarSonido, leerSonido, puedeVibrar }
 import Gimnasio from './ajustes/Gimnasio';
 import Identidad from './ajustes/Identidad';
 import Fondo from './ajustes/Fondo';
+import ComoSeCompara from './ajustes/ComoSeCompara';
 import MisDatos from './ajustes/MisDatos';
 import Sugerencias from './ajustes/Sugerencias';
 import Cuenta from './ajustes/Cuenta';
@@ -227,6 +228,10 @@ export default function Ajustes({
       <Sugerencias userId={perfil.id} />
 
       <MisDatos perfil={perfil} />
+
+      {/* Abajo de todo y plegado: son dos pantallas de texto, y el que las
+          busca las encuentra igual. */}
+      <ComoSeCompara />
 
       {/* Cerrar sesion, cambiar la clave y darse de baja: las tres son sobre
           la cuenta y no sobre como entrenas, asi que van juntas y al final. */}
