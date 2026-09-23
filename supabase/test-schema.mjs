@@ -10183,6 +10183,48 @@ console.log('\n146. El titileo entre pestanas, y el fondo que no volvia');
   chequear('cada pantalla pide con su id', /const id = useId\(\)/.test(fe146), true);
 }
 
+console.log('\n147. Las particulas de la subida: estrellas y no cuadraditos');
+{
+  const { readFileSync: leer147 } = await import('node:fs');
+  const { join: unir147 } = await import('node:path');
+  const R147 = unir147(import.meta.dirname, '..');
+  const sub147 = leer147(unir147(R147, 'compartido', 'motor', 'subida.ts'), 'utf8');
+
+  // `PointsMaterial` SIN TEXTURA DIBUJA UN CUADRADO: es un punto de GL y nadie
+  // le recorta las esquinas. A 2 px casi no se nota; durante la dispersion
+  // crecen y se ven novecientos cuadraditos.
+  // Se mira el codigo y no los comentarios: el encabezado NOMBRA a
+  // `PointsMaterial` para contar por que se fue, y un chequeo ingenuo lo
+  // encontraria ahi y diria que sigue puesto.
+  const codigo147 = sub147.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  chequear('ya no se usa PointsMaterial', /PointsMaterial/.test(codigo147), false);
+  chequear('sino un shader propio', /new THREE\.ShaderMaterial/.test(sub147), true);
+
+  // REDONDA: la distancia al centro del punto decide si se pinta.
+  chequear('el fragmento recorta el circulo', /gl_PointCoord/.test(sub147), true);
+  chequear('y descarta lo de afuera', /discard/.test(sub147), true);
+  // CON BORDE SUAVE: sin el antialias el circulo queda con escalones y a este
+  // tamaño se ve cuadrado igual.
+  chequear('con borde suave', /smoothstep/.test(sub147), true);
+
+  // NO SON TODAS DEL MISMO COLOR: un cielo de novecientos puntos identicos se
+  // lee como una malla.
+  chequear('cada particula lleva su tinte', /attribute vec3 tinte/.test(sub147), true);
+  chequear('y su propia magnitud', /attribute float magnitud/.test(sub147), true);
+  // TRES DESVIOS INDEPENDIENTES, uno por canal: un solo brillo daria la misma
+  // estrella mas clara o mas oscura, no una que tira a calido y otra a frio.
+  const tintes = sub147.match(/tintes\[i \* 3(?: \+ [12])?\] = 1 \+ \(azarTinte\(\) - 0\.5\) \* [\d.]+;/g) ?? [];
+  chequear('con un desvio por canal', tintes.length, 3);
+
+  // EL AZAR DE LOS TINTES ES APARTE DEL DE LA DISPERSION: mezclarlos haria que
+  // cambiar uno moviera el otro, y los dos se prueban por separado.
+  chequear('el azar de los tintes es aparte', /const azarTinte = op\.azar/.test(sub147), true);
+
+  // Y EL BUCLE MUEVE LOS UNIFORMES, no las props del material viejo.
+  chequear('el color se mueve por uniforme', /uniforms\.uColor\.value/.test(sub147), true);
+  chequear('y la opacidad tambien', /uniforms\.uOpacidad\.value/.test(sub147), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

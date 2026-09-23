@@ -83,6 +83,8 @@ export type OpcionesSubida = {
   planeta?: string | null;
   /** Con el movimiento reducido del sistema se salta al objeto ya formado. */
   movimientoReducido?: boolean;
+  /** Se inyecta para poder probar los tintes con una semilla fija. */
+  azar?: () => number;
   alTerminar: () => void;
 };
 
@@ -112,6 +114,9 @@ export function animarSubida(
   const hasta = formaDeRango(rangoDespues);
   const actual = new Float32Array(desde);
   const azar = azarDeDispersion();
+  // El azar de los tintes es aparte del de la dispersión: mezclarlos haría que
+  // cambiar uno moviera el otro, y los dos están probados por separado.
+  const azarTinte = op.azar ?? Math.random;
   const extDesde = extension(desde);
   const extHasta = extension(hasta);
 
@@ -122,13 +127,84 @@ export function animarSubida(
   // mostrar la Tierra de fondo sería un corte.
   const colA = colorDeRango(rangoAntes, planeta ?? undefined);
   const colB = colorDeRango(rangoDespues, planeta ?? undefined);
-  const mat = new THREE.PointsMaterial({
-    // sizeAttenuation:false mide en píxeles físicos: escalar por la densidad.
-    size: 2.2 * l.densidad(),
-    color: colA.clone(),
+  // ─────────────────────────────────────────────────────────────────
+  // LAS PARTÍCULAS SON ESTRELLAS, NO CUADRADITOS
+  //
+  // `PointsMaterial` sin textura dibuja un CUADRADO: es un punto de GL y nadie
+  // le recorta las esquinas. A 2 px de lado casi no se nota, pero durante la
+  // dispersión crecen y se ven novecientos cuadraditos blancos. Lo reportó el
+  // humano y tenía razón.
+  //
+  // SE ARREGLA CON UN SHADER Y NO CON UNA TEXTURA. Lo normal sería pintar un
+  // círculo en un canvas y usarlo de sprite; acá no hay canvas —`expo-gl` da un
+  // contexto, no un elemento— así que habría que generar la textura a mano en
+  // las dos apps. Doce líneas de shader hacen lo mismo, dan un borde suave
+  // gratis y no ocupan memoria de textura.
+  //
+  // Y NO SON TODAS DEL MISMO COLOR. Un cielo de novecientos puntos idénticos se
+  // lee como una malla; en el de verdad cada estrella tira a un lado. Cada
+  // partícula lleva su propio desvío —fijo, sorteado una vez al nacer— y su
+  // propio tamaño, y el color de la subida se mezcla con eso en el shader.
+  const tintes = new Float32Array(N * 3);
+  const tamanos = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    // Tres desvíos chicos e independientes: uno por canal. Independientes y no
+    // un solo brillo, que daría la misma estrella más clara o más oscura; así
+    // unas tiran a cálido y otras a frío, como en una carta celeste.
+    //
+    // EL PRIMER VALOR ERA EL DOBLE Y SE VEÍA CONFETI: sobre el dorado del
+    // Sol salían partículas claramente verdes y rosadas. Una estrella que
+    // tira a un lado sigue siendo del color del cuerpo; una verde es otra
+    // cosa. Se bajó hasta que la variación se nota y el color no se pierde.
+    tintes[i * 3] = 1 + (azarTinte() - 0.5) * 0.34;
+    tintes[i * 3 + 1] = 1 + (azarTinte() - 0.5) * 0.22;
+    tintes[i * 3 + 2] = 1 + (azarTinte() - 0.5) * 0.34;
+    // Y magnitudes distintas, con unas pocas grandes: `x^2` deja la mayoría
+    // chicas y algunas notoriamente más brillantes, que es lo que hace que un
+    // campo de estrellas tenga profundidad.
+    const m = azarTinte();
+    tamanos[i] = 0.75 + m * m * 1.9;
+  }
+  geo.setAttribute('tinte', new THREE.BufferAttribute(tintes, 3));
+  geo.setAttribute('magnitud', new THREE.BufferAttribute(tamanos, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      // El color de la subida, ya mezclado entre el de antes y el de después.
+      uColor: { value: colA.clone() },
+      uOpacidad: { value: opacidadEn(0) },
+      // En píxeles físicos, igual que `sizeAttenuation: false`.
+      uTamano: { value: 2.6 * l.densidad() },
+    },
+    vertexShader: `
+      attribute vec3 tinte;
+      attribute float magnitud;
+      uniform float uTamano;
+      varying vec3 vTinte;
+      void main() {
+        vTinte = tinte;
+        vec4 vista = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = uTamano * magnitud;
+        gl_Position = projectionMatrix * vista;
+      }
+    `,
+    fragmentShader: `
+      precision mediump float;
+      uniform vec3 uColor;
+      uniform float uOpacidad;
+      varying vec3 vTinte;
+      void main() {
+        // REDONDA Y CON BORDE SUAVE. gl_PointCoord va de 0 a 1 adentro del
+        // cuadrado del punto; la distancia al centro dice si estamos adentro
+        // del círculo. El smoothstep es el antialias: sin él el círculo
+        // queda con escalones, que a este tamaño se ven como cuadrado igual.
+        float d = length(gl_PointCoord - vec2(0.5));
+        float alfa = smoothstep(0.5, 0.18, d);
+        if (alfa <= 0.0) discard;
+        gl_FragColor = vec4(uColor * vTinte, alfa * uOpacidad);
+      }
+    `,
     transparent: true,
-    opacity: opacidadEn(0),
-    sizeAttenuation: false,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
@@ -179,8 +255,8 @@ export function animarSubida(
     posicionesSubida(desde, hasta, azar, p, segundos, ignicion, actual);
     geo.attributes.position.needsUpdate = true;
 
-    mat.color.copy(colA).lerp(colB, fasesEn(p).junta);
-    mat.opacity = opacidadEn(p);
+    (mat.uniforms.uColor.value as THREE.Color).copy(colA).lerp(colB, fasesEn(p).junta);
+    mat.uniforms.uOpacidad.value = opacidadEn(p);
     puntos.rotation.z = rotacionEn(segundos, rangoDespues);
     puntos.scale.setScalar(escalaEn(p, escalaDesde, escalaHasta));
     flashMat.opacity = flashEn(p, ignicion);
