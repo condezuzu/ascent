@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { StyleSheet } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import type { Paleta } from '@nucleo/paletas';
@@ -20,8 +21,20 @@ import { COLOR_ESTRELLA, ESTRELLAS_BASE, type Elipse } from '@compartido/fondoDe
  * LAS ESTRELLAS SON UNA APROXIMACIÓN. En CSS son un punto de 1 px que se
  * apaga en 2 px; acá, un círculo de 1 px con la mitad del brillo, que a la
  * vista queda igual.
+ *
+ * VA MEMOIZADO (25/9), y no es una optimización a ciegas: desde que el
+ * desenfoque sigue al dedo, un solo deslizamiento entre pestañas vuelve a
+ * dibujar la raíz del fondo hasta catorce veces (ver `desenfoqueDelFondo.ts`),
+ * y estas dos capas de SVG se reconciliaban en cada una para dar exactamente
+ * el mismo resultado: nada de lo que dibujan depende del desenfoque.
+ *
+ * LA COMPARACIÓN POR OMISIÓN ALCANZA, y eso hay que cuidarlo: `elipses` son
+ * constantes de módulo (`ELIPSES_BASE`/`ELIPSES_VELO`), `paleta` sale de
+ * `paletaDe`, que devuelve SIEMPRE el mismo objeto de la tabla —no uno nuevo—,
+ * y el resto son números y literales. Si alguna de las dos pasara a armarse en
+ * el render, esto dejaría de servir sin avisar.
  */
-export default function ElipsesDeLuz({
+function ElipsesDeLuz({
   elipses,
   paleta,
   ancho,
@@ -87,3 +100,5 @@ export default function ElipsesDeLuz({
     </Svg>
   );
 }
+
+export default memo(ElipsesDeLuz);

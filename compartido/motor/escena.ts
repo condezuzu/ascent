@@ -24,7 +24,7 @@ import { RANGOS_CFG, PLANETAS_CFG, ESTRELLAS_POR_RANGO, type ConfigCuerpo } from
 import { paletaDe } from '@nucleo/paletas';
 import { marca, medir } from '@compartido/medir';
 import { ALTURA, alturaDelPulso, siguePulsando } from '@nucleo/pulso';
-import { debeDibujar } from '@nucleo/quietud';
+import { debeDibujar, ESPERA_LENTO_MS } from '@nucleo/quietud';
 import { VIAJE_DE_ESQUINA_MS } from '@nucleo/animacion';
 import { plataforma } from '@plataforma';
 import { nivelDeNoche } from '@nucleo/noche';
@@ -534,6 +534,30 @@ export type Montaje = {
    */
   mover: (esquina: Esquina) => void;
   /**
+   * EL FONDO ESTÁ TAPADO: dibujar menos, porque no se ve (25/9).
+   *
+   * DE DÓNDE SALE, y es de lo más claro que dio medir: con el fondo prendido,
+   * la app entera va al mismo ritmo haciendo cualquier cosa —deslizar entre
+   * pestañas, abrir una foto, o NADA—. O sea que el costo no es de ninguna
+   * transición: es un piso que está abajo de todo, y es el motor dibujando a
+   * sesenta cuadros por segundo. Apagándolo, las mismas transiciones pasan de
+   * diez cuadros por segundo a sesenta.
+   *
+   * Y DESDE QUE EL CUERPO ESTÁ SIEMPRE (25/9) ese piso se paga en las cinco
+   * pestañas, no en una. Fuera de Inicio el fondo va desenfocado a propósito:
+   * se está gastando la GPU en animar con todo detalle algo que está detrás de
+   * un vidrio esmerilado.
+   *
+   * QUÉ HACE: baja al escalón LENTO de `nucleo/quietud.ts` —doce cuadros por
+   * segundo, o algo más si hay algo moviéndose— sin importar cuánto hace que
+   * se tocó la pantalla. No congela: congelar de golpe se ve, y además el
+   * viaje del cuerpo entre esquinas ocurre justamente mientras está tapado.
+   *
+   * NO LO USA LA WEB, donde el desenfoque es CSS y cada pantalla monta y
+   * suelta su escena. Sin llamarlo, nada cambia.
+   */
+  tapar: (si: boolean) => void;
+  /**
    * Se cumple cuando el primer cuadro ya se dibujó: los shaders compilaron.
    * Hasta ahí el canvas está vacío, y la pantalla sigue mostrando el fondo de
    * CSS. La web espera esto para el fundido de entrada.
@@ -807,6 +831,8 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   // decide el escalón; ver `nucleo/quietud.ts`.
   let ultimoToque = performance.now();
   let ultimoCuadro = 0;
+  // ¿Está el fondo detrás del desenfoque? Ver `tapar` en el tipo de arriba.
+  let tapado = false;
   const despertar = () => {
     ultimoToque = performance.now();
   };
@@ -894,7 +920,11 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
       if (t >= 1) viaje = null;
     }
     const hayMovimiento = orbitantes.length > 0 || fugaz.mesh.visible || viaje !== null;
-    if (!debeDibujar(ahora - ultimoToque, ahora - ultimoCuadro, hayMovimiento)) return;
+    // TAPADO = COMO SI HICIERA RATO QUE NADIE TOCA. No es un tercer camino: es
+    // el escalón lento que ya existe, pedido por otra razón. Así hay una sola
+    // regla de cuántos cuadros se dibujan y vive en `nucleo/quietud.ts`.
+    const sinTocar = tapado ? ESPERA_LENTO_MS : ahora - ultimoToque;
+    if (!debeDibujar(sinTocar, ahora - ultimoCuadro, hayMovimiento)) return;
     ultimoCuadro = ahora;
 
     // `getDelta` se llama SOLO cuando se dibuja, así que trae el tiempo real
@@ -1067,5 +1097,13 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     }
   };
 
-  return { soltar, pulso, pausar, mover, listo };
+  const tapar = (si: boolean) => {
+    if (tapado === si) return;
+    tapado = si;
+    // Al destaparse se despierta: si no, volver a Inicio dejaría el cuerpo a
+    // doce cuadros hasta que alguien tocara la pantalla.
+    if (!si) despertar();
+  };
+
+  return { soltar, pulso, pausar, mover, tapar, listo };
 }

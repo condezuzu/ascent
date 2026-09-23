@@ -750,6 +750,21 @@ export const T = {
     diagMotorArrancando: 'arrancando',
     diagMotorNoArranco: 'NO arrancó: el teléfono no dio contexto de dibujo',
     diagMotorSinPedido: 'todavía no se pidió',
+
+    // EL MEDIDOR DE CUADROS. Los scripts de medir corren Chromium con la CPU
+    // frenada y lo dicen ellos mismos: son un piso, no una medición. Y dos de
+    // los tirones que hay que revisar —deslizar entre pestañas y el globo de
+    // la medalla— solo existen en la app nativa, que esos scripts no abren.
+    diagCuadros: 'Medir los cuadros (20 s)',
+    diagCuadrosMidiendo: 'Midiendo… usa la app',
+    // LA INSTRUCCIÓN ES LA MITAD DE LA HERRAMIENTA: medir la app quieta da 60
+    // y no dice nada. Lo que hay que hacer es usarla mientras mide.
+    diagCuadrosNota: 'Sal de Ajustes y usa la app: desliza, abre una foto, toca una medalla.',
+    // Los tres números van juntos a propósito: un segundo trabado repartido
+    // entre veinte buenos da un promedio lindo y se ve horrible. Lo que se
+    // siente es el peor cuadro.
+    diagCuadrosListo: (fps: number, peor: number, largos: number) =>
+      `${fps} cuadros por segundo · el peor tardó ${peor} ms · ${largos} largos`,
   },
 
   // ---------------------------------------------------------------

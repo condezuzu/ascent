@@ -122,6 +122,18 @@ type Escena = { clave: string; montaje: Montaje };
 const SALIDA_MS = 220;
 const ENTRADA_MS = 520;
 
+/**
+ * A PARTIR DE ACÁ EL FONDO SE CONSIDERA TAPADO. Ver el efecto más abajo.
+ *
+ * 0,85 Y NO 0,4, que fue el primer número: abajo de eso el cuerpo TODAVÍA SE
+ * LEE como un objeto, y bajarle los cuadros ahí se puede ver —justo a mitad
+ * del deslizamiento, que es el peor momento para que algo cambie de ritmo—.
+ * Con 0,85 solo entran las pantallas que van al tope (Ranking, Álbum,
+ * Ajustes); Stats, cuyo techo es 0,45 a pedido, se queda con todos los
+ * cuadros.
+ */
+const TAPADO_DESDE = 0.85;
+
 export default function FondoRaiz() {
   const [pedido, setPedido] = useState<Pedido | null>(null);
   // El pedido de AHORA, para el montaje asíncrono: si mientras se importaba
@@ -214,6 +226,35 @@ export default function FondoRaiz() {
   const [desenfoque, setDesenfoque] = useState(0);
   useEffect(() => escucharDesenfoque(setDesenfoque), []);
 
+  /**
+   * Y LO QUE ESTÁ TAPADO SE DIBUJA MENOS (25/9).
+   *
+   * MEDIDO, y fue lo más claro que dio la medición: con el fondo prendido, la
+   * app entera va al mismo ritmo haciendo cualquier cosa —deslizar entre
+   * pestañas, abrir una foto, o NADA—. Ese "o nada" es la respuesta: el costo
+   * no es de ninguna transición, es un piso que está abajo de todo, y es este
+   * motor dibujando a sesenta cuadros por segundo. Con el fondo apagado las
+   * mismas transiciones pasan de diez cuadros por segundo a sesenta.
+   *
+   * Y desde que el cuerpo está en las cinco pestañas, ese piso se paga en las
+   * cinco — para animar con todo detalle algo que está detrás de un vidrio
+   * esmerilado. Pasado el umbral, el motor baja al escalón lento de
+   * `nucleo/quietud.ts` (ver `tapar` en `compartido/motor/escena.ts`).
+   *
+   * EL UMBRAL ES 0,4 Y NO 1 porque Stats nunca llega a 1 —su techo es 0,45, a
+   * pedido— y es la pantalla con más cosas que dibujar de la app, o sea la que
+   * más necesita el presupuesto de cuadro. A 0,4 el cuerpo ya no se lee como
+   * un objeto en ninguna de las cuatro.
+   */
+  // El valor vive también en un ref: la escena se monta dentro de una promesa,
+  // así que cuando este efecto corre puede no existir todavía, y la escena
+  // recién nacida tiene que nacer sabiendo si está tapada o no.
+  const tapadoAhora = useRef(false);
+  tapadoAhora.current = desenfoque >= TAPADO_DESDE;
+  useEffect(() => {
+    escena.current?.montaje.tapar(desenfoque >= TAPADO_DESDE);
+  }, [desenfoque, listo, pedido]);
+
   useEffect(() => {
     let vivo = true;
     (async () => {
@@ -270,6 +311,7 @@ export default function FondoRaiz() {
       // Lo normal: la misma escena de la última vez. Se reanuda, y si la
       // pantalla nueva la quiere en otra esquina, viaja hasta allá.
       actual.montaje.pausar(false);
+      actual.montaje.tapar(tapadoAhora.current);
       actual.montaje.mover(pedido.esquina ?? 'abajo-derecha');
       // El fundido de entrada solo la primera vez: al volver a Inicio la
       // escena ya estaba, y hacerla aparecer de a poco otra vez se leería como
@@ -318,6 +360,7 @@ export default function FondoRaiz() {
           { ...pedido, animar }
         );
         const vieja = escena.current;
+        m?.tapar(tapadoAhora.current);
         escena.current = m ? { clave, montaje: m } : null;
         vieja?.montaje.soltar();
         if (!pedidoAhora.current) {

@@ -53,6 +53,14 @@ const CORREO = 'agusconde20+ascent-review@gmail.com';
 const CLAVE = 'AscentReview-2026';
 const USUARIO = 'demo';
 
+// LAS DOS AMIGAS (ver el paso 7). Van declaradas acá arriba y no donde se usan
+// porque `--de-cero` tiene que poder borrarlas también: una cuenta que quedó
+// viva con la mitad de los datos es peor que no tenerla.
+const OTRAS = [
+  { correo: 'agusconde20+ascent-review-a@gmail.com', usuario: 'sofi_g', dias: 58, sexo: 'f', peso: 61 },
+  { correo: 'agusconde20+ascent-review-b@gmail.com', usuario: 'martin_r', dias: 26, sexo: 'm', peso: 78 },
+];
+
 const supabase = createClient(url, anon, { auth: { persistSession: false } });
 
 const DE_CERO = process.argv.includes('--de-cero');
@@ -60,14 +68,16 @@ const DE_CERO = process.argv.includes('--de-cero');
 console.log(`\nCuenta de App Review — ${CORREO}\n`);
 
 if (DE_CERO) {
-  const { error } = await supabase.auth.signInWithPassword({ email: CORREO, password: CLAVE });
-  if (error) {
-    console.log('  no había nada que borrar');
-  } else {
-    await supabase.rpc('eliminar_cuenta');
-    await supabase.auth.signOut();
-    console.log('  cuenta anterior borrada');
+  let borradas = 0;
+  for (const correo of [CORREO, ...OTRAS.map((o) => o.correo)]) {
+    const suyo = createClient(url, anon, { auth: { persistSession: false } });
+    const { error } = await suyo.auth.signInWithPassword({ email: correo, password: CLAVE });
+    if (error) continue;
+    await suyo.rpc('eliminar_cuenta');
+    await suyo.auth.signOut();
+    borradas++;
   }
+  console.log(borradas ? `  ${borradas} cuenta(s) anterior(es) borrada(s)` : '  no había nada que borrar');
 }
 
 // ---------------------------------------------------------------
@@ -353,6 +363,82 @@ const dia = (atras) => {
     }
     const res = (await supabase.rpc('resumen_sesiones')).data;
     console.log(`  sesiones de hoy: ${res?.validas ?? 0} válidas, ${res?.cortas ?? 0} cortas`);
+  }
+}
+
+// ---------------------------------------------------------------
+// 7. DOS AMIGAS, PARA QUE RANKING NO ESTÉ VACÍO
+// ---------------------------------------------------------------
+//
+// Ranking es una de las cinco pestañas y el revisor la va a abrir. Sin amigos
+// muestra el estado vacío —"tu cielo todavía está vacío"—, que está bien
+// escrito pero no deja ver la pantalla: el campo estelar, el orden por racha,
+// el perfil de otra persona. La app ni siquiera dibuja el ranking con menos de
+// dos, así que hacen falta dos y no una.
+//
+// SON CUENTAS DE VERDAD, con su propia historia, creadas por el mismo camino.
+// Una arriba de demo y otra abajo, para que el orden se vea hacer algo.
+//
+// LA AMISTAD SE ARMA COMO SE ARMA: la otra pide y demo acepta. La base no deja
+// otra cosa —una fila nace en 'pendiente' y solo el destinatario puede pasarla
+// a 'aceptada' (lo prueba `probar-privacidad.mjs`)—, así que acá tampoco hay
+// atajo.
+{
+  for (const o of OTRAS) {
+    // Cliente propio: cada una tiene que hablar con su sesión, no con la de
+    // demo. `persistSession: false` para que no se pisen entre ellas.
+    const suyo = createClient(url, anon, { auth: { persistSession: false } });
+    let entrada = await suyo.auth.signInWithPassword({ email: o.correo, password: CLAVE });
+    if (entrada.error) {
+      entrada = await suyo.auth.signUp({ email: o.correo, password: CLAVE });
+    }
+    const suId = entrada.data?.user?.id;
+    if (!suId) {
+      console.log(`  aviso: no se pudo entrar como ${o.usuario}`);
+      continue;
+    }
+
+    await suyo.from('profiles').update({ username: o.usuario, sexo: o.sexo }).eq('id', suId);
+
+    const { data: tiene } = await suyo.from('logs').select('fecha').eq('user_id', suId);
+    if ((tiene?.length ?? 0) < o.dias) {
+      const hay = new Set((tiene ?? []).map((l) => l.fecha));
+      const filas = [];
+      for (let atras = o.dias - 1; atras >= 0; atras--) {
+        if (!hay.has(dia(atras))) filas.push({ user_id: suId, fecha: dia(atras) });
+      }
+      if (filas.length) await suyo.from('logs').insert(filas);
+      await suyo.rpc('recalcular_desde_cero');
+    }
+
+    // Peso y una marca cada una: sin eso el ranking por fuerza las muestra
+    // sin número y la pantalla queda a medias.
+    const { data: pesos } = await suyo.from('weights').select('fecha').eq('user_id', suId);
+    if (!pesos?.length) await suyo.rpc('anotar_peso', { p_valor: o.peso });
+    const { data: marcas } = await suyo.from('prs').select('id').eq('user_id', suId);
+    if (!marcas?.length) {
+      await suyo.from('prs').insert([
+        { user_id: suId, ejercicio: 'sentadilla', peso: Math.round(o.peso * 1.5), reps: 1, es_real: true, fecha: dia(7) },
+        { user_id: suId, ejercicio: 'press_banca', peso: Math.round(o.peso * 0.95), reps: 1, es_real: true, fecha: dia(4) },
+        { user_id: suId, ejercicio: 'peso_muerto', peso: Math.round(o.peso * 1.9), reps: 1, es_real: true, fecha: dia(2) },
+      ]);
+    }
+
+    // La amistad, si no estaba.
+    const yaEs = (await suyo.rpc('son_amigos', { a: suId, b: uid })).data;
+    if (!yaEs) {
+      const { data: pedido } = await suyo
+        .from('friendships')
+        .insert({ solicitante: suId, destinatario: uid })
+        .select('id')
+        .single();
+      if (pedido?.id) {
+        await supabase.from('friendships').update({ estado: 'aceptada' }).eq('id', pedido.id);
+      }
+    }
+    const p = (await suyo.from('profiles').select('racha_actual').eq('id', suId).single()).data;
+    console.log(`  amiga ${o.usuario}: racha ${p?.racha_actual ?? '—'}`);
+    await suyo.auth.signOut();
   }
 }
 

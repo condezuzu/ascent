@@ -13,6 +13,7 @@ import SubidaRango from '../SubidaRango';
 import { C } from '../colores';
 import { comoLeyoLosPasos } from '../plataforma/salud';
 import { comoAnduvoElMotor, type EstadoDelMotor } from '../estadoDelMotor';
+import { medirCuadros, type Medicion } from '../medirCuadros';
 
 /**
  * QUÉ ESTÁ VIENDO LA APP, Y QUÉ FUE HACIENDO.
@@ -61,6 +62,9 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
   const [zona, setZona] = useState<boolean | null>(null);
   // Ver la subida de rango sin tener que llegar al día 11. Ver abajo.
   const [verSubida, setVerSubida] = useState(false);
+  // El medidor de cuadros. Ver abajo y `medirCuadros.ts`.
+  const [cuadros, setCuadros] = useState<Medicion | null>(null);
+  const [midiendoCuadros, setMidiendoCuadros] = useState(false);
 
   const cargar = useCallback(async () => {
     const { data: log } = await supabase
@@ -234,6 +238,38 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
             <Text style={estilos.botonTexto}>{T.ajustes.diagRevisarZona}</Text>
           </Pressable>
           <Text style={estilos.nota}>{T.ajustes.diagZonaNota}</Text>
+
+          {/* CUÁNTOS CUADROS POR SEGUNDO, EN ESTE TELÉFONO. Ver
+              `medirCuadros.ts`: es un bucle de `requestAnimationFrame`, o sea
+              que mide el hilo de JavaScript, que es donde vive el
+              deslizamiento entre pestañas.
+
+              MIDE MIENTRAS USÁS LA APP, no mientras mirás esta pantalla: se
+              aprieta, se sale de Ajustes y se hace el gesto que se quiere
+              revisar. El resultado va a la bitácora de acá abajo, que es lo
+              que ya se puede compartir. */}
+          <Pressable
+            style={estilos.boton}
+            onPress={async () => {
+              setMidiendoCuadros(true);
+              setCuadros(null);
+              const m = await medirCuadros();
+              setMidiendoCuadros(false);
+              setCuadros(m);
+              cargar();
+            }}
+            disabled={midiendoCuadros}
+          >
+            <Text style={estilos.botonTexto}>
+              {midiendoCuadros ? T.ajustes.diagCuadrosMidiendo : T.ajustes.diagCuadros}
+            </Text>
+          </Pressable>
+          <Text style={estilos.nota}>{T.ajustes.diagCuadrosNota}</Text>
+          {cuadros && (
+            <Text style={estilos.nota}>
+              {T.ajustes.diagCuadrosListo(cuadros.fps, cuadros.peor, cuadros.largos)}
+            </Text>
+          )}
 
           {/* EN UN CAMPO DE TEXTO Y NO EN UNA LISTA: así se puede desplazar y
               leer entero. Lo que de verdad hace falta en un teléfono es el

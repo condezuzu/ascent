@@ -7,7 +7,7 @@ import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import { planetaDeDia, rangoDeRacha } from '@nucleo/rangos';
 import { hayPresagio } from '@nucleo/atmosfera';
-import { mensajeDeAuth } from '@nucleo/errores';
+import { laCuentaYaNoExiste, mensajeDeAuth } from '@nucleo/errores';
 import type { Log, Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
@@ -128,6 +128,13 @@ export default function Inicio({
    * lugar donde el número existía. Ahora son dos cosas: `cierre` es la tarjeta
    * que se puede cerrar y esto es cuánto duró el día, que no se cierra porque
    * no es un aviso, es un dato.
+   *
+   * Y POR ESO SE LEE DEL SERVIDOR, no solo del cierre. Separarlos arreglaba
+   * cerrar la tarjeta; no arreglaba cerrar la APP. El número solo existía si
+   * esta misma pantalla había visto terminar la sesión, así que volver a abrir
+   * Ascent a la noche —o mirarlo desde el otro aparato— dejaba el dato en la
+   * nada aunque la sesión estuviera guardada. Ahora `cargar()` lo suma de las
+   * sesiones terminadas de hoy, que es donde vive de verdad.
    */
   const [minutosDeHoy, setMinutosDeHoy] = useState<number | null>(null);
   // LA SUBIDA DE RANGO. Los tres caminos que registran un dia terminan
@@ -178,16 +185,53 @@ export default function Inicio({
       const { data: verificacion } = await supabase.rpc('verificar_perdida');
 
       const desde = restarDias(hoyISO(), 6);
-      const [{ data: perfil, error }, { data: logs }, { data: descansos }, { data: impulsos }] =
-        await Promise.all([
-          supabase.from('profiles').select('*').eq('id', uid).single(),
-          supabase.from('logs').select('*').eq('user_id', uid).gte('fecha', desde).order('fecha'),
-          supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
-          supabase.rpc('mis_impulsos'),
-        ]);
+      const [
+        { data: perfil, error },
+        { data: logs },
+        { data: descansos },
+        { data: impulsos },
+        { data: deHoy },
+      ] = await Promise.all([
+        // `maybeSingle` y no `single`: que no haya fila NO es un error de la
+        // consulta, es un dato —la cuenta se borró desde otro aparato— y hay
+        // que poder distinguirlo de que la consulta no haya llegado.
+        supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
+        supabase.from('logs').select('*').eq('user_id', uid).gte('fecha', desde).order('fecha'),
+        supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
+        supabase.rpc('mis_impulsos'),
+        // CUÁNTO DURÓ HOY. Se cuelga del día por `log_id` y no de la hora de
+        // inicio: una sesión que empieza a las 23:50 y termina a las 00:10 es
+        // del día en que empezó, que es lo que dice el resto de la app.
+        //
+        // `!inner` y no un select suelto: sin eso PostgREST devuelve TODAS las
+        // sesiones con `logs` en null para las que no casan, y la suma saldría
+        // de la semana entera en vez del día.
+        supabase
+          .from('sesiones')
+          .select('inicio, fin, logs!inner(fecha)')
+          .eq('user_id', uid)
+          .eq('estado', 'terminada')
+          .eq('logs.fecha', hoyISO()),
+      ]);
 
       if (error) return fallo(mensajeDeAuth(error));
-      if (!perfil) return fallo(T.general.noSePudo);
+      if (!perfil) {
+        // HAY TOKEN PERO NO HAY FILA. Antes esto era "algo falló, probá de
+        // nuevo": un botón de reintentar que no podía funcionar nunca, porque
+        // la cuenta ya no estaba. Se le pregunta al servidor quién es este
+        // token, y solo si CONTESTA que ese usuario no existe se cierra la
+        // sesión —sin red la pregunta también falla, y ahí reintentar sí es lo
+        // correcto—. Ver `laCuentaYaNoExiste`.
+        const { error: eQuien } = await supabase.auth.getUser();
+        if (laCuentaYaNoExiste(eQuien)) {
+          // El signOut no es de más: `alSalir` solo hace que la raíz vuelva a
+          // mirar, y el token guardado sigue ahí. Sin esto la raíz lo encuentra
+          // otra vez y vuelve a esta misma pantalla.
+          await supabase.auth.signOut();
+          return alSalir();
+        }
+        return fallo(T.general.noSePudo);
+      }
 
       // CUENTA RECIÉN CREADA, SIN NOMBRE: no se dibuja Inicio a medias, se
       // manda a elegirlo. Es lo mismo que hace la web rebotando a /onboarding.
@@ -208,6 +252,16 @@ export default function Inicio({
         impulsos: impulsos ? { quedan: Number(impulsos.quedan), total: Number(impulsos.total) } : null,
         perdida: !!(verificacion as { perdida?: boolean } | null)?.perdida,
       });
+      // Las dos puntas son del SERVIDOR, así que restarlas no mete el desfasaje
+      // de reloj del teléfono —a diferencia del cierre, que tiene que corregirlo
+      // (ver `terminar` en `useSesion`)—.
+      const minutos = ((deHoy ?? []) as { inicio: string; fin: string | null }[]).reduce(
+        (t, s) => (s.fin ? t + (Date.parse(s.fin) - Date.parse(s.inicio)) / 60000 : t),
+        0
+      );
+      // Cero se guarda como `null`: "hoy entrenaste 0 minutos" no es un dato,
+      // es una línea de más.
+      setMinutosDeHoy(minutos >= 1 ? Math.round(minutos) : null);
       // Una vuelta mas: lo que se pide aparte —las medallas— se entera de que
       // hay datos nuevos. Va aca y no al empezar, para que no pregunten dos
       // veces por una carga que todavia puede fallar.

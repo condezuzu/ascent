@@ -430,7 +430,11 @@ const estilos = StyleSheet.create({
   textoBoton: { color: C.tinta, fontSize: 14 },
   vacio: { alignItems: 'center', paddingVertical: 36, gap: 6 },
   vacioTexto: { color: C.sub, fontSize: 14, textAlign: 'center' },
-  visor: { flex: 1, backgroundColor: 'rgba(5,6,10,0.96)', justifyContent: 'center' },
+  // OPACO, no al 96 % (25/9). Ese 4 % de más no dejaba pasar atmósfera: dejaba
+  // pasar EL ÁLBUM —el título, el mes, las miniaturas—, que se veía de fantasma
+  // detrás de la foto abierta y se lee como que algo quedó a medio dibujar. Lo
+  // único que tiene que competir con una foto es la foto.
+  visor: { flex: 1, backgroundColor: C.fondo, justifyContent: 'center' },
   // El encabezado: la fecha a la izquierda y la cruz a la derecha.
   encabezado: {
     position: 'absolute',

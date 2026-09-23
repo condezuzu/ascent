@@ -8775,7 +8775,11 @@ console.log('\n131. El motor: la luna orbita, las estrellas se ven, pasa una fug
   chequear('la orbita de la luna pasa el borde del planeta (radio 1) mas la luna', radio >= 1.2, true);
   chequear('la orbita tiene profundidad: z sale del seno', /position\.set\(Math\.cos\(a\) \* o\.r, lejos \* o\.r \* o\.ry, -lejos \* [\d.]+\)/.test(esc), true);
   chequear('y atras se achica', /scale\.setScalar\(o\.s \* \(1 - [\d.]+ \* lejos\)\)/.test(esc), true);
-  chequear('el escalon lento sabe si hay algo moviendose rapido', /debeDibujar\(ahora - ultimoToque, ahora - ultimoCuadro, hayMovimiento\)/.test(esc), true);
+  // El primer argumento dejo de ser "ahora - ultimoToque" a secas cuando entro
+  // `tapar` (seccion 161): tapado, se pasa ESPERA_LENTO_MS para caer en el
+  // escalon lento aunque acabes de tocar la pantalla. Lo que cuida este
+  // chequeo sigue siendo lo mismo: que hayMovimiento llegue.
+  chequear('el escalon lento sabe si hay algo moviendose rapido', /debeDibujar\(sinTocar, ahora - ultimoCuadro, hayMovimiento\)/.test(esc), true);
   chequear('las estrellas se reparten en lo que ve la camara', /\(Math\.random\(\) - 0\.5\) \* 2 \* ancho/.test(esc) && !/pos\[i \* 3\] = \(Math\.random\(\) - 0\.5\) \* 4;/.test(esc), true);
   chequear('titilan solo las estrellas', /materialPuntos\(true\)/.test(esc) && /uTitila/.test(sh), true);
   chequear('pasa una estrella fugaz', /crearFugaz\(/.test(esc) && /fugaz\.actualizar\(tiempo, camara\.right\)/.test(esc), true);
@@ -11202,6 +11206,161 @@ console.log('\n159. El aviso del motor en Diagnostico, y la mano al polvo');
   // cadena. Paso al escribir esto, y el error que da es de sintaxis a treinta
   // lineas de distancia.
   chequear('el bloque de la nebulosa no tiene backticks', neb159.includes('`'), false);
+}
+
+console.log('\n160. Barrido: la cuenta que ya no existe, los minutos, y el visor');
+{
+  const { readFileSync: leer160 } = await import('node:fs');
+  const { join: unir160 } = await import('node:path');
+  const R160 = unir160(import.meta.dirname, '..');
+  const de160 = (...p) => leer160(unir160(R160, ...p), 'utf8');
+
+  // ---- LA CUENTA QUE YA NO EXISTE ----
+  //
+  // Borrar la cuenta desde otro aparato deja este con un token que sigue
+  // siendo valido —esta firmado y no vencio— pero que apunta a un usuario que
+  // no esta. El telefono cree que hay sesion, pide el perfil, no viene
+  // ninguna fila, y la pantalla dice "algo fallo, proba de nuevo" con un boton
+  // de reintentar que no puede funcionar NUNCA. Encontrado el 25/9 rehaciendo
+  // la cuenta de App Review con la app abierta.
+  const { laCuentaYaNoExiste } = await import('../nucleo/errores.ts');
+
+  chequear('403 del servidor: la cuenta se fue',
+    laCuentaYaNoExiste({ status: 403, message: 'User from sub claim in JWT does not exist' }), true);
+  chequear('401 tambien', laCuentaYaNoExiste({ status: 401, message: 'invalid claim' }), true);
+  // LO QUE NO PUEDE PASAR, y es la mitad de por que esto es una funcion:
+  // preguntarle al servidor quien sos falla IGUAL sin red. Cerrar la sesion
+  // ahi seria echar de la app a alguien por estar en un subsuelo, que es media
+  // app de gimnasio — y encima no podria volver a entrar hasta tener senal.
+  chequear('sin red NO se concluye nada',
+    laCuentaYaNoExiste({ status: 0, message: 'Failed to fetch' }), false);
+  chequear('ni con un NetworkError',
+    laCuentaYaNoExiste({ message: 'NetworkError when attempting to fetch resource' }), false);
+  chequear('ni sin error', laCuentaYaNoExiste(null), false);
+  // Un error sin status no vino del servidor.
+  chequear('ni un error sin status', laCuentaYaNoExiste({ message: 'algo raro' }), false);
+
+  const ini160 = de160('movil', 'src', 'Inicio.tsx');
+  // maybeSingle y no single: que no haya fila NO es un error de la consulta,
+  // es un dato, y hay que poder distinguirlo de que la consulta no llegara.
+  chequear('el perfil se pide con maybeSingle',
+    /from\('profiles'\)\.select\('\*'\)\.eq\('id', uid\)\.maybeSingle\(\)/.test(ini160), true);
+  // EL signOut NO ES DE MAS: `alSalir` solo hace que la raiz vuelva a mirar la
+  // sesion, y el token guardado sigue ahi. Sin esto la raiz lo encuentra otra
+  // vez y vuelve a la misma pantalla rota.
+  chequear('si la cuenta se fue, se cierra la sesion de verdad',
+    /laCuentaYaNoExiste\(eQuien\)\) \{[\s\S]*?await supabase\.auth\.signOut\(\);[\s\S]*?return alSalir\(\);/.test(ini160), true);
+
+  // ---- LOS MINUTOS DE HOY, DEL SERVIDOR ----
+  //
+  // "Desaparecio 'Dia registrado - hoy entrenaste X minutos'. Me gustaba que
+  // apareciera el tiempo."
+  //
+  // Separarlo de `cierre` arreglaba cerrar la TARJETA; no arreglaba cerrar la
+  // APP. El numero solo existia si esta misma pantalla habia visto terminar la
+  // sesion, asi que volver a abrir Ascent a la noche lo dejaba en la nada
+  // aunque la sesion estuviera guardada.
+  chequear('los minutos salen de las sesiones terminadas de hoy',
+    /from\('sesiones'\)\s*\n?\s*\.select\('inicio, fin, logs!inner\(fecha\)'\)/.test(ini160), true);
+  // `!inner` y no un select suelto: sin eso PostgREST devuelve TODAS las
+  // sesiones con `logs` en null para las que no casan, y la suma saldria de la
+  // semana entera en vez del dia.
+  chequear('y se filtran por el dia del log, no por la hora de inicio',
+    /\.eq\('logs\.fecha', hoyISO\(\)\)/.test(ini160), true);
+  // Cero se guarda como null: "hoy entrenaste 0 minutos" no es un dato.
+  chequear('cero minutos no se dice',
+    /setMinutosDeHoy\(minutos >= 1 \? Math\.round\(minutos\) : null\)/.test(ini160), true);
+
+  // ---- EL VISOR, OPACO ----
+  //
+  // El 4% de transparencia no dejaba pasar atmosfera: dejaba pasar EL ALBUM
+  // —el titulo, el mes, las miniaturas— de fantasma detras de la foto abierta.
+  const alb160 = de160('movil', 'src', 'Album.tsx');
+  chequear('el visor de la foto es opaco',
+    /visor: \{ flex: 1, backgroundColor: C\.fondo,/.test(alb160), true);
+  chequear('y ya no deja ver el album atras',
+    /rgba\(5,6,10,0\.96\)/.test(alb160), false);
+}
+
+console.log('\n161. Pulido: lo que cuesta el fondo, y como medirlo en el telefono');
+{
+  const { readFileSync: leer161 } = await import('node:fs');
+  const { join: unir161 } = await import('node:path');
+  const R161 = unir161(import.meta.dirname, '..');
+  const de161 = (...p) => leer161(unir161(R161, ...p), 'utf8');
+
+  // ---- EL PISO ES EL FONDO ----
+  //
+  // Medido con `medir-cuadros-nativa.mjs` (Chromium, CPU frenada 4x): con el
+  // fondo prendido, TODAS las transiciones dan lo mismo —deslizar 9,8 fps,
+  // abrir una foto 11, y la app QUIETA 10,2—. Ese "y la app quieta" es la
+  // respuesta: el costo no es de ninguna transicion. Con el fondo apagado las
+  // mismas dan 45, 60 y 56.
+  //
+  // Y desde que el cuerpo esta en las cinco pestanas, ese piso se paga en las
+  // cinco, para animar con todo detalle algo que esta detras de un vidrio
+  // esmerilado.
+  const esc161 = de161('compartido', 'motor', 'escena.ts');
+  const fon161 = de161('movil', 'src', 'FondoRaiz.tsx');
+
+  // NO ES UN TERCER CAMINO: es el escalon lento que ya existe en
+  // `nucleo/quietud.ts`, pedido por otra razon. Una sola regla de cuantos
+  // cuadros se dibujan, y vive en un lugar solo.
+  chequear('tapado se traduce a "hace rato que nadie toca"',
+    /const sinTocar = tapado \? ESPERA_LENTO_MS : ahora - ultimoToque;/.test(esc161), true);
+  chequear('y el motor lo expone', /tapar: \(si: boolean\) => void;/.test(esc161), true);
+  // Al destaparse hay que DESPERTAR: si no, volver a Inicio deja el cuerpo a
+  // doce cuadros hasta que alguien toque la pantalla.
+  chequear('destaparse despierta',
+    /const tapar = \(si: boolean\) => \{[\s\S]*?if \(!si\) despertar\(\);/.test(esc161), true);
+
+  // 0,85 Y NO 0,4, que fue el primer numero: abajo de eso el cuerpo todavia se
+  // LEE como un objeto, y bajarle los cuadros ahi se puede ver, justo a mitad
+  // del deslizamiento. Con 0,85 solo entran las que van al tope; Stats, cuyo
+  // techo es 0,45 a pedido, se queda con todos los cuadros.
+  chequear('el umbral deja a Stats afuera', /const TAPADO_DESDE = 0\.85;/.test(fon161), true);
+  // LA ESCENA NACE SABIENDO si esta tapada: se monta dentro de una promesa, asi
+  // que cuando corre el efecto puede no existir todavia.
+  chequear('la escena recien montada ya sabe si esta tapada',
+    /m\?\.tapar\(tapadoAhora\.current\);/.test(fon161), true);
+  chequear('y la que se reusa tambien',
+    /actual\.montaje\.tapar\(tapadoAhora\.current\);/.test(fon161), true);
+
+  // ---- LAS ELIPSES NO SE VUELVEN A DIBUJAR ----
+  //
+  // Desde que el desenfoque sigue al dedo, un solo deslizamiento vuelve a
+  // dibujar la raiz del fondo hasta catorce veces, y estas dos capas de SVG se
+  // reconciliaban en cada una para dar exactamente el mismo resultado.
+  const eli161 = de161('movil', 'src', 'ElipsesDeLuz.tsx');
+  chequear('las elipses van memoizadas', /export default memo\(ElipsesDeLuz\);/.test(eli161), true);
+  // LA COMPARACION POR OMISION ALCANZA SOLO SI LAS PROPS SON ESTABLES:
+  // `paletaDe` devuelve el objeto de la tabla, no uno nuevo. Si alguna vez
+  // pasara a armarlo en el render, el memo dejaria de servir sin avisar.
+  const pal161 = de161('nucleo', 'paletas.ts');
+  chequear('y paletaDe devuelve el mismo objeto, no uno nuevo',
+    /return PALETAS_RANGO\[rango\] \?\? PALETAS_RANGO\[1\];/.test(pal161), true);
+
+  // ---- EL MEDIDOR QUE CORRE EN EL TELEFONO ----
+  //
+  // Los scripts de medir corren Chromium con la CPU frenada y lo dicen ellos
+  // mismos: son un piso, no una medicion. Y ahi las animaciones corren en JS,
+  // mientras que en el telefono `useNativeDriver` las saca del hilo. Lo unico
+  // que puede contestar la pregunta es el aparato.
+  const med161 = de161('movil', 'src', 'medirCuadros.ts');
+  const dia161 = de161('movil', 'src', 'ajustes', 'Diagnostico.tsx');
+  // LOS TRES NUMEROS VAN JUNTOS: un segundo trabado repartido entre veinte
+  // buenos da un promedio de 55 y se ve horrible. Lo que se siente es el peor.
+  for (const campo of ['fps', 'peor', 'largos']) {
+    chequear(`la medicion dice "${campo}"`, new RegExp(`${campo}:`).test(med161), true);
+  }
+  // NO DIBUJA MIENTRAS MIDE: un contador en pantalla seria un setState por
+  // cuadro, o sea el medidor midiendose a si mismo.
+  // SIN LOS COMENTARIOS: el propio archivo EXPLICA por que no hay un setState
+  // por cuadro, y esa explicacion hacia fallar el chequeo.
+  chequear('no hay setState por cuadro',
+    /setState|useState/.test(med161.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '')), false);
+  chequear('el resultado queda en la bitacora', /void anotar\(comoSeLlama, \{/.test(med161), true);
+  chequear('y Diagnostico lo puede arrancar', /await medirCuadros\(\);/.test(dia161), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
