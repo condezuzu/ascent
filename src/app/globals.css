@@ -1782,6 +1782,52 @@ body.ya-entro .pantalla.aparece {
   color: var(--sub);
 }
 
+/* LAS MEDALLAS POR MARCA, al lado del nombre. Los mismos números que la app
+   nativa (`movil/src/Medallas.tsx`): 18 px y 5 de separación.
+
+   EL BOTÓN NO PARECE UN BOTÓN a propósito — sin fondo, sin borde, sin padding.
+   Lo que se toca es la medalla; un marco alrededor de un dibujo de 18 px lo
+   convertiría en un control y esto no es un control, es una insignia que
+   además contesta. */
+.medallas-fila {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+}
+.medallas-una {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+}
+.medalla {
+  display: block;
+  flex: none;
+}
+/* La ventanita se abre EN SU LUGAR y no encima: un modal para dos renglones
+   taparía el perfil entero para decir una frase. */
+.medallas-ventana {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+}
+.medallas-rotulo {
+  margin-bottom: 5px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sub);
+}
+.medallas-frase {
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--tinta);
+}
+
 /* ---- interruptor de "ver como lo ven los demás" ---- */
 .mirilla-control {
   display: flex;

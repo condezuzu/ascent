@@ -9922,6 +9922,163 @@ console.log('\n144. El boton de volumen, y la insistencia con el punto del gimna
     /anotaste/i.test(T144.inicio.insistirGimnasioTitulo), true);
 }
 
+console.log('\n145. Las medallas por marca');
+{
+  const { readFileSync: leer145 } = await import('node:fs');
+  const { join: unir145 } = await import('node:path');
+  const R145 = unir145(import.meta.dirname, '..');
+  const de145 = (...p) => leer145(unir145(R145, ...p), 'utf8');
+  const sinComentarios145 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  const MED = await import('../nucleo/medallas.ts');
+  const EST = await import('../nucleo/estandares.ts');
+
+  // ---- LAS CINCO ZONAS TIENEN TABLA ----
+  //
+  // Es la razon por la que se trajeron press militar y curl con barra: un set
+  // de cinco donde dos no se pueden ganar no es un set de cinco.
+  chequear('las cinco zonas', MED.ZONAS_MEDALLA.length, 5);
+  const sinTabla = MED.ZONAS_MEDALLA.filter(
+    (z) => !EST.esEjercicioEstandar(MED.EJERCICIO_DE_ZONA[z])
+  );
+  chequear('y las cinco tienen tabla de estandares', sinTabla, []);
+
+  // Un hombre de 80 kg. Los umbrales para ese peso salen de la tabla.
+  const umbralesDe = (ej) => EST.umbrales(ej, 'm', 80).valores;
+  const banca = umbralesDe('press_banca');
+  const sentadilla = umbralesDe('sentadilla');
+  const muerto = umbralesDe('peso_muerto');
+
+  // ---- EL UMBRAL: DEBAJO DE LA MITAD NO HAY MEDALLA ----
+  //
+  // Una medalla es para mostrar que sos mejor que la mayoria, y la mitad no es
+  // una mayoria.
+  chequear('justo debajo del intermedio no hay medalla',
+    MED.medallasDe('m', 80, [{ ejercicio: 'press_banca', kg: banca[2] - 5 }]).length, 0);
+  chequear('justo en el intermedio hay luna',
+    MED.medallasDe('m', 80, [{ ejercicio: 'press_banca', kg: banca[2] }])[0]?.material, 'luna');
+  chequear('en el avanzado, planeta',
+    MED.medallasDe('m', 80, [{ ejercicio: 'press_banca', kg: banca[3] }])[0]?.material, 'planeta');
+  chequear('en el elite, estrella',
+    MED.medallasDe('m', 80, [{ ejercicio: 'press_banca', kg: banca[4] }])[0]?.material, 'estrella');
+  // Y MUY POR ENCIMA DEL ELITE SIGUE SIENDO ESTRELLA: `ubicar` corta en 95
+  // porque la tabla no separa al 96 del 99,9. No hay escalon arriba.
+  chequear('y al doble del elite sigue siendo estrella',
+    MED.medallasDe('m', 80, [{ ejercicio: 'press_banca', kg: banca[4] * 2 }])[0]?.material, 'estrella');
+
+  // ---- SIN SEXO O SIN PESO NO HAY NINGUNA ----
+  //
+  // La tabla es por sexo y por peso corporal: sin esos dos el percentil no
+  // existe. Devolver una lista vacia es lo honesto; inventar un promedio no.
+  chequear('sin sexo no hay medallas',
+    MED.medallasDe(null, 80, [{ ejercicio: 'press_banca', kg: banca[4] }]).length, 0);
+  chequear('sin peso corporal tampoco',
+    MED.medallasDe('m', null, [{ ejercicio: 'press_banca', kg: banca[4] }]).length, 0);
+  chequear('y con peso cero tampoco',
+    MED.medallasDe('m', 0, [{ ejercicio: 'press_banca', kg: banca[4] }]).length, 0);
+
+  // ---- LA GALAXIA: ESTRELLA EN LAS TRES ----
+  //
+  // No es un escalon mas de la misma escalera —arriba del 95 no hay nada— sino
+  // otro eje: no es estar mas arriba, es estarlo en los tres a la vez.
+  const tresElite = [
+    { ejercicio: 'press_banca', kg: banca[4] },
+    { ejercicio: 'sentadilla', kg: sentadilla[4] },
+    { ejercicio: 'peso_muerto', kg: muerto[4] },
+  ];
+  const conGalaxia = MED.medallasDe('m', 80, tresElite);
+  chequear('con las tres en elite, las tres son galaxia',
+    conGalaxia.filter((m) => m.material === 'galaxia').length, 3);
+  // CON DOS NO ALCANZA.
+  const dosElite = MED.medallasDe('m', 80, tresElite.slice(0, 2));
+  chequear('con dos no hay ninguna galaxia',
+    dosElite.some((m) => m.material === 'galaxia'), false);
+  chequear('y esas dos siguen siendo estrella',
+    dosElite.every((m) => m.material === 'estrella'), true);
+
+  // SE VUELVEN GALAXIA LAS TRES QUE LA GANARON, NO LAS CINCO: hombros y brazos
+  // no participaron, asi que se quedan con lo suyo.
+  const militar = umbralesDe('press_militar');
+  const conCinco = MED.medallasDe('m', 80, [
+    ...tresElite,
+    { ejercicio: 'press_militar', kg: militar[2] },
+  ]);
+  chequear('hombros no se vuelve galaxia de arrastre',
+    conCinco.find((m) => m.zona === 'hombros')?.material, 'luna');
+  chequear('y las tres del DOTS si',
+    conCinco.filter((m) => m.material === 'galaxia').map((m) => m.zona).sort(),
+    ['espalda', 'pecho', 'piernas']);
+
+  // ---- LA MEJOR MARCA, NO UN PROMEDIO ----
+  //
+  // Lo manda la frase: dice "solo el X% levanta ESTE peso", singular. Un
+  // promedio de dos marcas no tiene un "este peso". Y promediar castigaria
+  // anotar: cargar una marca floja te bajaria la medalla.
+  const conDos = MED.medallasDe('m', 80, [
+    { ejercicio: 'press_banca', kg: banca[4] },
+    { ejercicio: 'press_banca', kg: banca[0] },
+  ]);
+  chequear('con dos marcas del mismo ejercicio manda la mejor',
+    conDos[0]?.material, 'estrella');
+
+  // ---- EL ORDEN ----
+  //
+  // De arriba del cuerpo hacia abajo, no alfabetico: al lado del nombre van
+  // varias en fila y que salten de la cabeza a los pies se lee como desorden.
+  chequear('el orden va de arriba hacia abajo',
+    [...MED.ZONAS_MEDALLA],
+    ['hombros', 'brazos', 'pecho', 'espalda', 'piernas']);
+
+  // ---- LA FRASE ----
+  const T145 = (await import('../nucleo/textos.ts')).T;
+  chequear('la frase dice el complemento del percentil',
+    T145.medallas.frase(MED.cuantosLevantan(95)), 'Solo el 5% levanta este peso.');
+  chequear('en el corte de 80 dice 20', MED.cuantosLevantan(80), 20);
+  chequear('y en el de 50 dice 50', MED.cuantosLevantan(50), 50);
+  // LA GALAXIA NO DICE PERCENTIL, dice que la gano: con el percentil diria el
+  // mismo numero que estrella y en el escalon mas alto queda plano.
+  chequear('la galaxia no dice porcentaje', /%/.test(T145.medallas.galaxia), false);
+  chequear('dice que la gano', /Estrella en sentadilla/.test(T145.medallas.galaxia), true);
+
+  // ---- EL DIBUJO ES UNO SOLO PARA LAS DOS APPS ----
+  const com145 = sinComentarios145(de145('compartido', 'medallas.ts'));
+  chequear('el dibujo vive en compartido', com145.length > 0, true);
+  chequear('con las cinco zonas',
+    MED.ZONAS_MEDALLA.every((z) => new RegExp(z + ':').test(com145)), true);
+  // NI LA WEB NI LA NATIVA SABEN QUE FORMA TIENE NINGUNA: las dos reciben
+  // trazos. Si una tuviera coordenadas propias, el primer retoque las separa.
+  const web145 = sinComentarios145(de145('src', 'components', 'Medalla.tsx'));
+  const nat145 = sinComentarios145(de145('movil', 'src', 'Medalla.tsx'));
+  chequear('la web no tiene coordenadas propias', /PUNTOS|LINEAS|POLVO/.test(web145), false);
+  chequear('la nativa tampoco', /PUNTOS|LINEAS|POLVO/.test(nat145), false);
+  chequear('las dos piden los trazos',
+    /trazosDeMedalla/.test(web145) && /trazosDeMedalla/.test(nat145), true);
+  // EL RECORTE: sin el, el halo de un pie o una mano se dibuja afuera del disco.
+  chequear('las dos recortan contra el disco',
+    /clipPath/i.test(web145) && /ClipPath/.test(nat145), true);
+  // Y EL id SALE DE useId: uno repetido en una lista lo resuelve el navegador
+  // callado y mal, y en una fila puede haber dos medallas iguales.
+  chequear('y el id del recorte sale de useId',
+    /useId\(\)/.test(web145) && /useId\(\)/.test(nat145), true);
+
+  // ---- DONDE SE MUESTRAN ----
+  const filaWeb = sinComentarios145(de145('src', 'components', 'Medallas.tsx'));
+  const filaNat = sinComentarios145(de145('movil', 'src', 'Medallas.tsx'));
+  // LA GALAXIA NO LLEVA EL ROTULO DEL EJERCICIO: su linea ya nombra los tres.
+  chequear('la galaxia no lleva rotulo, en las dos',
+    /material !== 'galaxia'/.test(filaWeb) && /material !== 'galaxia'/.test(filaNat), true);
+  chequear('el perfil propio de la nativa las muestra',
+    /<Medallas/.test(de145('movil', 'src', 'PerfilPropio.tsx')), true);
+  chequear('y el de la web tambien',
+    /<Medallas/.test(de145('src', 'app', 'yo', 'page.tsx')), true);
+  // LA REGLA DE QUE SE GANA ES UNA SOLA: las dos apps llaman a lo mismo.
+  chequear('las dos cargan las medallas con la misma funcion',
+    /cargarMisMedallas/.test(de145('src', 'app', 'yo', 'page.tsx')) &&
+      /cargarMisMedallas/.test(de145('compartido', 'perfil.ts')),
+    true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

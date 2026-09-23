@@ -10,6 +10,7 @@ import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { prepararFoto } from './foto';
 import Avatar from './Avatar';
+import Medallas from './Medallas';
 import FondoEspacial from './FondoEspacial';
 import FotosQueVen from './FotosQueVen';
 import GloboPrimeraVez from './GloboPrimeraVez';
@@ -134,6 +135,10 @@ export default function PerfilPropio() {
           </Pressable>
           <View style={estilos.identidad}>
             <Text style={estilos.nombre}>{perfil.username}</Text>
+            {/* LAS MEDALLAS POR MARCA, debajo del nombre y antes de la racha:
+                al lado del nombre en la misma línea, con un nombre largo, se
+                empujaban fuera de la pantalla. */}
+            <Medallas medallas={datos.medallas} />
             <View style={estilos.meta}>
               <Insignia rango={perfil.rango_actual} tam={16} />
               <Text style={estilos.metaTexto}>

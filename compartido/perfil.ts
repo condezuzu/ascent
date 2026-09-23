@@ -2,6 +2,8 @@ import type { Cliente } from '@cliente';
 import type { Log, Perfil, UsuarioPublico } from '@nucleo/tipos';
 import { hoyISO, restarDias } from '@nucleo/fechas';
 import { miniaturas } from '@compartido/album';
+import { medallasDe, type Medalla } from '@nucleo/medallas';
+import type { MiFuerza } from '@nucleo/tipos';
 
 /**
  * LO QUE DIBUJA TU PERFIL, en dos tandas.
@@ -36,7 +38,42 @@ export type DatosDePerfil = {
   perfil: Perfil;
   fotos: FotoDePerfil[];
   amigos: UsuarioPublico[];
+  /** Las medallas por marca, para el costado del nombre. */
+  medallas: Medalla[];
 };
+
+/**
+ * TUS MEDALLAS POR MARCA. Se piden aparte de `cargarMiPerfil` porque la web las
+ * necesita sin el resto —su pantalla de perfil tiene sus propias consultas— y
+ * copiar la regla de qué se gana en dos lados es la clase de cosa que después
+ * se corrige en uno solo.
+ *
+ * TRES DATOS Y NINGUNO ES NUEVO: tus mejores marcas (`mi_fuerza`, la misma que
+ * usa Stats), tu peso corporal más reciente y tu sexo. La tabla de estándares
+ * es por sexo y por peso corporal; sin esos dos el percentil no existe y
+ * `medallasDe` devuelve una lista vacía, que es lo honesto.
+ *
+ * EL PESO SALE DE `weights` DIRECTO y no de una RPC nueva: la tabla ya tiene
+ * grant de select para el dueño y es una consulta de una fila. Va en kilos,
+ * que es como está la tabla de estándares.
+ *
+ * NO SIRVE PARA UN AMIGO, y no por olvido: el peso corporal de otra persona no
+ * se ve nunca, ni entre amigos (§16.7). Las medallas de un amigo tienen que
+ * salir calculadas del lado del servidor; ver `migracion-46-medallas.sql`.
+ */
+export async function cargarMisMedallas(
+  supabase: Cliente,
+  uid: string,
+  sexo: string | null
+): Promise<Medalla[]> {
+  const [{ data: f }, { data: w }] = await Promise.all([
+    supabase.rpc('mi_fuerza'),
+    supabase.from('weights').select('valor').eq('user_id', uid).order('fecha', { ascending: false }).limit(1),
+  ]);
+  const marcas = ((f as MiFuerza | null)?.marcas ?? []).map((m) => ({ ejercicio: m.ejercicio, kg: m.kg }));
+  const peso = ((w ?? []) as { valor: number }[])[0]?.valor ?? null;
+  return medallasDe(sexo, peso, marcas);
+}
 
 export async function cargarMiPerfil(supabase: Cliente, uid: string): Promise<DatosDePerfil | null> {
   const [{ data: p }, { data: fs }, { data: rel }] = await Promise.all([
@@ -61,13 +98,17 @@ export async function cargarMiPerfil(supabase: Cliente, uid: string): Promise<Da
     r.solicitante === uid ? r.destinatario : r.solicitante
   );
 
-  const [logsFotos, firmadas, chicas, us] = await Promise.all([
+  const [logsFotos, firmadas, chicas, us, medallas] = await Promise.all([
     logIds.length ? supabase.from('logs').select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
     rutas.length ? supabase.storage.from('fotos').createSignedUrls(rutas, 3600).then((r) => r.data ?? []) : [],
     miniaturas(supabase, rutas),
     ids.length
       ? supabase.from('usuarios_publicos').select('*').in('id', ids).then((r) => (r.data ?? []) as UsuarioPublico[])
       : [],
+    // Van en la SEGUNDA tanda y no en la primera porque necesitan el sexo, que
+    // viene en el perfil. Al lado de las fotos y los amigos no cuestan tiempo:
+    // todo lo que puede ir junto va junto.
+    cargarMisMedallas(supabase, uid, (p as Perfil).sexo),
   ]);
 
   const cuando = new Map((logsFotos as { id: string; fecha: string }[]).map((l) => [l.id, l.fecha]));
@@ -80,6 +121,7 @@ export async function cargarMiPerfil(supabase: Cliente, uid: string): Promise<Da
       fecha: f.log_id ? (cuando.get(f.log_id) ?? null) : null,
     })),
     amigos: (us as UsuarioPublico[]).sort((a, b) => (a.username ?? '').localeCompare(b.username ?? '')),
+    medallas,
   };
 }
 

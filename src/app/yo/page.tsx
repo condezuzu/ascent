@@ -21,6 +21,9 @@ import NoCargo from '@/components/NoCargo';
 import { FOTOS_VISIBLES, FotosQueVen, type FotoVisible } from '@/components/ComoMeVen';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import { miniaturas } from '@compartido/album';
+import { cargarMisMedallas } from '@compartido/perfil';
+import type { Medalla } from '@nucleo/medallas';
+import Medallas from '@/components/Medallas';
 import { T } from '@nucleo/textos';
 
 /**
@@ -40,6 +43,7 @@ export default function Yo() {
   const [sumandoFoto, setSumandoFoto] = useState(false);
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
+  const [medallas, setMedallas] = useState<Medalla[]>([]);
   const [cargado, setCargado] = useState(false);
   const [noCargo, setNoCargo] = useState(false);
   const inputFoto = useRef<HTMLInputElement>(null);
@@ -74,11 +78,15 @@ export default function Yo() {
     const logIds = lista.map((f) => f.log_id).filter(Boolean) as string[];
     const rutas = lista.map((f) => f.storage_path as string);
     const ids = (rel ?? []).map((r) => (r.solicitante === user.id ? r.destinatario : r.solicitante));
-    const [logsFotos, firmadas, chicas, us] = await Promise.all([
+    const [logsFotos, firmadas, chicas, us, misMedallas] = await Promise.all([
       logIds.length ? supabase.from('logs').select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
       rutas.length ? supabase.storage.from('fotos').createSignedUrls(rutas, 3600).then((r) => r.data ?? []) : [],
       miniaturas(supabase, rutas),
       ids.length ? supabase.from('usuarios_publicos').select('*').in('id', ids).then((r) => (r.data ?? []) as UsuarioPublico[]) : [],
+      // Van en la SEGUNDA tanda porque necesitan el sexo, que viene en el
+      // perfil. La regla de qué medalla se gana es compartida con la nativa
+      // (`cargarMisMedallas`): tenerla dos veces es tenerla mal en una.
+      cargarMisMedallas(supabase, user.id, p.sexo),
     ]);
     const mapa = new Map((logsFotos as { id: string; fecha: string }[]).map((l) => [l.id, l.fecha]));
     setFotos(
@@ -91,6 +99,7 @@ export default function Yo() {
       }))
     );
     setAmigos(((us as UsuarioPublico[]) ?? []).sort((a, b) => (a.username ?? '').localeCompare(b.username ?? '')));
+    setMedallas(misMedallas);
     setPerfil(p);
     setCargado(true);
   }, [supabase]);
@@ -238,6 +247,9 @@ export default function Yo() {
           </button>
           <div className="yo-identidad">
             <div className="yo-nombre">{perfil.username}</div>
+            {/* LAS MEDALLAS POR MARCA, debajo del nombre y antes de la racha:
+                en la misma línea, con un nombre largo, se empujaban afuera. */}
+            <Medallas medallas={medallas} />
             <div className="yo-meta">
               <Insignia rango={perfil.rango_actual} tam={16} />
               <span>{subiendo ? T.yo.subiendoFoto : T.yo.deRacha(perfil.racha_actual)}</span>

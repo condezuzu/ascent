@@ -384,6 +384,36 @@ export const T = {
   },
 
   // ---------------------------------------------------------------
+  // LAS MEDALLAS POR MARCA. Van al lado del nombre, en tu perfil y en el de
+  // tus amigos. Reemplazaron a los retos, que salieron el 23/9: un reto
+  // necesita un rival y esto funciona con un usuario o con cien.
+  medallas: {
+    // AL TOCAR UNA. Es impersonal a propósito: así sirve igual en tu perfil y
+    // en el de un amigo, sin cambiar una letra. Una sola línea.
+    frase: (porciento: number) => `Solo el ${porciento}% levanta este peso.`,
+    // LA GALAXIA NO DICE PERCENTIL, dice qué la ganó. Con el percentil diría
+    // "solo el 5%", el mismo número que estrella, y en el escalón más alto eso
+    // queda plano. Acá tampoco va el rótulo del ejercicio arriba: la línea ya
+    // nombra los tres.
+    galaxia: 'Estrella en sentadilla, press de banca y peso muerto.',
+    zonas: {
+      hombros: 'Hombros',
+      brazos: 'Brazos',
+      pecho: 'Pecho',
+      espalda: 'Espalda',
+      piernas: 'Piernas',
+    },
+    materiales: {
+      luna: 'Luna',
+      planeta: 'Planeta',
+      estrella: 'Estrella',
+      galaxia: 'Galaxia',
+    },
+    // Lo que lee un lector de pantalla, que no ve ni la forma ni el color.
+    etiqueta: (zona: string, material: string) => `${zona}, ${material.toLowerCase()}`,
+  },
+
+  // ---------------------------------------------------------------
   fuerza: {
     titulo: 'Fuerza',
     misMarcas: 'Mis marcas',
