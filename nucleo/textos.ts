@@ -740,6 +740,16 @@ export const T = {
     // qué contestó HealthKit. Esto lo dice.
     diagPasos: 'Pasos leídos',
     diagPasosNada: 'todavía no se pidieron',
+    // EL MOTOR DEL FONDO. En la web esto lo dice la galería; en el teléfono
+    // no había dónde, y un cielo sin ningún cuerpo se ve igual esté apagado
+    // a propósito o roto. Los cinco estados son los de
+    // `movil/src/estadoDelMotor.ts`.
+    diagMotor: 'El fondo',
+    diagMotorAndando: 'andando',
+    diagMotorApagado: 'apagado — está en "El fondo del espacio", más arriba',
+    diagMotorArrancando: 'arrancando',
+    diagMotorNoArranco: 'NO arrancó: el teléfono no dio contexto de dibujo',
+    diagMotorSinPedido: 'todavía no se pidió',
   },
 
   // ---------------------------------------------------------------

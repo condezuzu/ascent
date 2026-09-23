@@ -12,6 +12,7 @@ import { supabase } from '../supabase';
 import SubidaRango from '../SubidaRango';
 import { C } from '../colores';
 import { comoLeyoLosPasos } from '../plataforma/salud';
+import { comoAnduvoElMotor, type EstadoDelMotor } from '../estadoDelMotor';
 
 /**
  * QUÉ ESTÁ VIENDO LA APP, Y QUÉ FUE HACIENDO.
@@ -119,6 +120,17 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
     cargar();
   }
 
+  // Los cinco estados del motor, dichos. Es un mapa y no un `if` encadenado
+  // para que agregar un estado en `estadoDelMotor.ts` sin contarlo acá no
+  // compile.
+  const DICE_EL_MOTOR: Record<EstadoDelMotor, string> = {
+    'sin-pedido': T.ajustes.diagMotorSinPedido,
+    apagado: T.ajustes.diagMotorApagado,
+    arrancando: T.ajustes.diagMotorArrancando,
+    andando: T.ajustes.diagMotorAndando,
+    'no-arranco': T.ajustes.diagMotorNoArranco,
+  };
+
   const hora = (iso?: string | null) =>
     iso
       ? new Date(iso).toLocaleTimeString(T.general.locale, { hour: '2-digit', minute: '2-digit' })
@@ -147,6 +159,10 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
         : T.ajustes.diagSinVisita,
     ],
     [T.ajustes.diagZona, zona === null ? '—' : zona ? T.ajustes.diagZonaSi : T.ajustes.diagZonaNo],
+    // SE LEE AL DIBUJAR, no en `cargar()`: no es algo que haya que ir a
+    // buscar, es una variable que ya está en memoria, y el panel entero se
+    // vuelve a dibujar cada vez que se abre.
+    [T.ajustes.diagMotor, DICE_EL_MOTOR[comoAnduvoElMotor()]],
   ];
 
   return (

@@ -10,6 +10,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { WebGLRenderer } from 'three';
 import type { Montaje, OpcionesFondo } from '@compartido/motor/escena';
@@ -24,6 +25,7 @@ import { plataforma } from '@plataforma';
 import { conAlfa } from './colores';
 import { escucharFondo, type Pedido } from './pedidoDeFondo';
 import { escucharDesenfoque } from './desenfoqueDelFondo';
+import { ponerEstadoDelMotor } from './estadoDelMotor';
 
 /**
  * EL FONDO DE LA APP NATIVA: el motor de cuerpos celestes detrás de todo.
@@ -186,13 +188,23 @@ export default function FondoRaiz() {
    *   1. **Un velo extra**, acá mismo: una vista opaca del color del fondo que
    *      sube con la distancia a Inicio. No desenfoca —empuja el planeta hacia
    *      atrás— y es lo único que se puede hacer sin código nativo.
-   *   2. **Un desenfoque de verdad** encima, con `expo-blur` (ver más abajo).
-   *      `BlurView` NO rasteriza a nadie: es una vista del sistema que
-   *      desenfoca lo que quedó DETRÁS suyo, ya dibujado, GL incluido. Es
-   *      justamente el caso que `filter` no puede.
+   *   2. **Un desenfoque de verdad** encima, con `expo-blur`. `BlurView` NO
+   *      rasteriza a nadie: por debajo es un `UIVisualEffectView`, o sea una
+   *      vista del SISTEMA que desenfoca lo que quedó DETRÁS suyo una vez ya
+   *      compuesto en pantalla — GL incluido. Es justamente el caso que
+   *      `filter` no puede, y por eso el arreglo pasaba por acá y no por
+   *      ajustar un número.
    *
-   * La 1 viaja por el aire y la 2 necesita build, así que las dos existen: en
-   * una build sin `expo-blur` el fondo se ve bien igual, apenas más apagado.
+   * LAS DOS SE QUEDAN, y no es redundancia: el velo aporta la profundidad (el
+   * planeta se va hacia atrás) y el desenfoque aporta el foco (deja de ser
+   * legible como objeto). Juntas, el velo va a la mitad de lo que iba cuando
+   * era lo único: sumar los dos al máximo tapaba el planeta en vez de
+   * desenfocarlo.
+   *
+   * QUE EL VELO NO SOBRE EN UNA BUILD VIEJA no hace falta cuidarlo: agregar
+   * `expo-blur` mueve la huella, y una actualización publicada con ella no le
+   * llega nunca a una build que no la tiene. Las dos capas viajan siempre
+   * juntas.
    *
    * SE DIBUJA EN PASOS ENTEROS: ver `desenfoqueDelFondo.ts`. Un gesto manda
    * sesenta eventos por segundo y el desenfoque tiene catorce valores
@@ -213,7 +225,12 @@ export default function FondoRaiz() {
       setReducir(r);
       // `null` en "equipo flojo": en el teléfono no hay de dónde leerlo. La
       // regla de `nucleo/fondo.ts` es que no saber NO es flojo.
-      setCargar(cargarElMotor(esPreferenciaFondo(pref) ? pref : 'auto', null));
+      const hayQue = cargarElMotor(esPreferenciaFondo(pref) ? pref : 'auto', null);
+      setCargar(hayQue);
+      // Para Diagnóstico: ver `estadoDelMotor.ts`. Acá ya se sabe si se va a
+      // intentar; si no, el motivo es la preferencia y no hay nada más que
+      // esperar.
+      ponerEstadoDelMotor(hayQue ? 'arrancando' : 'apagado');
     })();
     return () => {
       vivo = false;
@@ -320,9 +337,16 @@ export default function FondoRaiz() {
     await new Promise<void>((r) => InteractionManager.runAfterInteractions(() => r()));
     const { crearRenderer } = await import('./motorNativo');
     const r = crearRenderer(contexto);
-    if (!r) return;
+    if (!r) {
+      // Se pidió, el lienzo llegó a existir, y aun así no hay renderer: es el
+      // único caso de los cinco que es un error de verdad. Antes esto era un
+      // `return` mudo y la pantalla quedaba sin cuerpo sin decir nada.
+      ponerEstadoDelMotor('no-arranco');
+      return;
+    }
     gl.current = contexto;
     renderer.current = r;
+    ponerEstadoDelMotor('andando');
     setListo(true);
   };
 
@@ -373,9 +397,27 @@ export default function FondoRaiz() {
           se lee encima. `pointerEvents` no hace falta: el fondo entero ya es
           `none`. */}
       {desenfoque > 0 && (
-        <View
-          style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: desenfoque * 0.4 }]}
-        />
+        <>
+          <View
+            style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: desenfoque * 0.2 }]}
+          />
+          {/* EL DESENFOQUE DE VERDAD. Va acá arriba y no más abajo porque
+              desenfoca lo que tiene DETRÁS: el motor, la base y las elipses.
+              El velo del rango y los bordes quedan encima suyo, nítidos, que
+              es lo que hay que hacer — son lo que sostiene la legibilidad del
+              texto y desenfocarlos no ayudaría a nada.
+
+              SOLO SE MONTA CUANDO HACE FALTA. Un `UIVisualEffectView` no es
+              gratis ni con intensidad cero: el sistema le sigue componiendo
+              el fondo cada cuadro. En Inicio, que es donde el planeta importa,
+              no existe. */}
+          <BlurView
+            style={StyleSheet.absoluteFill}
+            tint="dark"
+            intensity={Math.round(desenfoque * 42)}
+            pointerEvents="none"
+          />
+        </>
       )}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: velo }]}>
         {medida && <ElipsesDeLuz elipses={ELIPSES_VELO} paleta={paleta} ancho={medida.w} alto={medida.h} id="velo" />}

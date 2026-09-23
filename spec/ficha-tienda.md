@@ -151,12 +151,26 @@ primera pantalla es el login. Una app así se rechaza sin credenciales, y no por
 criterio del revisor sino por la guía 2.1 —"we were unable to review your app
 because we could not sign in"—, que es el rechazo más común que existe.
 
+**Y NO ALCANZA CON QUE EXISTA: TIENE QUE TENER ADENTRO.** Una cuenta recién
+creada muestra la app vacía —racha en cero, calendario en blanco, Stats sin una
+barra, álbum sin una foto— y una app de rachas vista vacía no se entiende. La
+carga la hace `supabase/cuenta-de-revision.mjs`, por la anon key y con RLS
+puesta, o sea por el mismo camino que cualquier usuario. Para rehacerla:
+
+```
+node --env-file=.env.local supabase/cuenta-de-revision.mjs --de-cero
+```
+
+El correo lleva etiqueta (`+ascent-review`) para poder darla de baja el día que
+la app esté publicada sin tocar la casilla de nadie.
+
 ```
 DEMO ACCOUNT (required — the app is sign-in only)
-  Email:    [PENDIENTE: correo de la cuenta de prueba]
-  Password: [PENDIENTE]
-The account already has streak history, workouts, body-weight entries and
-photos, so every screen has real content.
+  Email:    agusconde20+ascent-review@gmail.com
+  Password: AscentReview-2026
+The account already has content on every screen: a 41-day streak (rank 5 of 8),
+46 days of history, two workouts logged today with sets and weights, personal
+records, a body-weight entry and three photos in the album.
 
 WHAT THE APP DOES
 Ascent counts the days you train. One tap per day keeps a streak alive. It also

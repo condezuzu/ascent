@@ -10900,18 +10900,35 @@ console.log('\n156. El planeta esta siempre, y fuera de Inicio se ve borroso');
   // dibujado de la raiz por cuadro para no cambiar nada.
   chequear('se avisa por escalones, no por pixel', /if \(nuevo === nivel\) return;/.test(des156), true);
 
-  // ES EL filter DE REACT NATIVE y no una vista de desenfoque aparte: sin
-  // dependencia nativa, esto viaja por el aire.
   // NUNCA CON `filter`, y esto es una cicatriz: para desenfocar, iOS RASTERIZA
   // la vista, y una vista de OpenGL no tiene su contenido en la capa sino en un
   // framebuffer de la GPU que el rasterizador no lee. Lo que salia de ahi no
   // era el planeta borroso: era la capa vacia, o sea BLANCO. En el navegador
   // andaba —ahi `filter` es CSS y si funciona sobre un canvas— y por eso paso.
+  //
+  // EL CHEQUEO SE QUEDA PARA SIEMPRE: es barato, y el bug era de los que
+  // llegan al telefono sin que nada se ponga rojo antes.
   chequear('el GLView no se desenfoca con filter', /filter: \[\{ blur:/.test(fon156), false);
-  // LO QUE VIAJA POR EL AIRE: un velo extra, que empuja el planeta hacia atras
-  // sin tocar la vista del motor.
+
+  // DOS CAPAS, Y NINGUNA TOCA EL GLView (25/9).
+  //
+  // 1. EL VELO: una vista opaca del color del fondo. No desenfoca; empuja el
+  //    planeta hacia atras. Bajo de 0.4 a 0.2 cuando entro el desenfoque de
+  //    verdad: los dos al maximo tapaban el planeta en vez de desenfocarlo.
   chequear('el velo extra sube con la distancia a Inicio',
-    /opacity: desenfoque \* 0\.4/.test(fon156), true);
+    /opacity: desenfoque \* 0\.2/.test(fon156), true);
+  // 2. EL DESENFOQUE DE VERDAD, con expo-blur. Un UIVisualEffectView no
+  //    rasteriza a nadie: desenfoca lo que quedo DETRAS suyo una vez ya
+  //    compuesto en pantalla, GL incluido. Es justo lo que filter no puede.
+  chequear('y encima va un BlurView, que si puede con GL',
+    /<BlurView[\s\S]*?intensity=\{Math\.round\(desenfoque \* \d+\)\}/.test(fon156), true);
+  // SOLO SE MONTA CUANDO HACE FALTA: un UIVisualEffectView no es gratis ni con
+  // intensidad cero, y en Inicio —donde el planeta importa— no tiene que estar.
+  chequear('y no existe en Inicio', /\{desenfoque > 0 && \(\s*<>/.test(fon156), true);
+  // LAS DOS VIAJAN JUNTAS: expo-blur mueve la huella, asi que una build que no
+  // lo tiene no puede recibir este JS. No hay que cuidar que el velo sobre.
+  chequear('expo-blur esta en las dependencias',
+    /"expo-blur":/.test(de156('movil', 'package.json')), true);
 }
 
 
@@ -11095,6 +11112,96 @@ console.log('\n158. Los nombres de verdad, el rango por musculo y la tarjeta');
   // que se sume, asi que sin el mas uno la tarjeta diria una serie menos.
   chequear('la serie va con el mas uno',
     /serie: estado\.hechas \+ 1/.test(de158('movil', 'src', 'Bloque.tsx')), true);
+}
+
+console.log('\n159. El aviso del motor en Diagnostico, y la mano al polvo');
+{
+  const { readFileSync: leer159 } = await import('node:fs');
+  const { join: unir159 } = await import('node:path');
+  const R159 = unir159(import.meta.dirname, '..');
+  const de159 = (...p) => leer159(unir159(R159, ...p), 'utf8');
+
+  // ---- EL AVISO DEL MOTOR, AHORA TAMBIEN EN EL TELEFONO ----
+  //
+  // "El aviso del motor: tambien en Diagnostico."
+  //
+  // En la web lo dice /galeria: un cielo sin ningun cuerpo se ve igual este
+  // apagado a proposito o roto, y sin el aviso las dos cosas son el mismo
+  // pixel negro. En el telefono eso hace mas falta todavia: no hay consola, no
+  // hay galeria, y Diagnostico es la unica pantalla que cuenta que esta
+  // viendo la app.
+  const est159 = de159('movil', 'src', 'estadoDelMotor.ts');
+  const fon159 = de159('movil', 'src', 'FondoRaiz.tsx');
+  const dia159 = de159('movil', 'src', 'ajustes', 'Diagnostico.tsx');
+
+  // LOS CINCO ESTADOS SON LOS DEL TELEFONO, no los cuatro de la web. Dos de
+  // los de alla —"equipo flojo" y "no hay WebGL"— no pueden pasar aca: el
+  // equipo nunca se lee como flojo (FondoRaiz le pasa null a proposito) y el
+  // contexto lo da expo-gl, que no es el navegador. Mostrarlos seria ofrecer
+  // dos respuestas imposibles.
+  for (const e of ['sin-pedido', 'apagado', 'arrancando', 'andando', 'no-arranco']) {
+    chequear(`el motor puede estar "${e}"`, est159.includes(`'${e}'`), true);
+  }
+  // Se explica en el archivo, pero lo que importa es que no lo IMPORTE: los
+  // cuatro motivos de la web son del navegador y dos no pueden pasar aca.
+  chequear('y no se reusa porQueNoHayMotor, que es del navegador',
+    /^import[^;]*fondo/m.test(est159), false);
+
+  // QUIEN LO ESCRIBE: la raiz, en los tres momentos en que se sabe algo.
+  chequear('la preferencia apagada se anota al leerla',
+    /ponerEstadoDelMotor\(hayQue \? 'arrancando' : 'apagado'\)/.test(fon159), true);
+  chequear('y el renderer vivo tambien',
+    /ponerEstadoDelMotor\('andando'\)/.test(fon159), true);
+  // ERA UN return MUDO: se pedia el fondo, el lienzo llegaba a existir, el
+  // renderer salia nulo y la pantalla quedaba sin cuerpo sin decir nada. Es el
+  // unico de los cinco que es un error de verdad.
+  chequear('y el unico error de verdad deja de ser mudo',
+    /ponerEstadoDelMotor\('no-arranco'\);\s*\n\s*return;/.test(fon159), true);
+
+  // EL MAPA ES EXHAUSTIVO A PROPOSITO: con Record<EstadoDelMotor, string>,
+  // agregar un estado y no contarlo aca no compila.
+  chequear('Diagnostico los dice todos, y el tipo lo obliga',
+    /Record<EstadoDelMotor, string>/.test(dia159), true);
+  chequear('y la fila se lee al dibujar, no en cargar()',
+    /\[T\.ajustes\.diagMotor, DICE_EL_MOTOR\[comoAnduvoElMotor\(\)\]\]/.test(dia159), true);
+
+  // ---- LA MANO AL POLVO (rango 1) ----
+  //
+  // "El polvo/nebulosa: si, dale la mano."
+  //
+  // Es el rango 1: el fondo que ve TODO EL MUNDO los primeros diez dias, y el
+  // unico cuerpo que no habia pasado por la misma revision que el sol, la
+  // galaxia y el agujero negro. La critica es la misma que se le hizo a los
+  // brazos de la galaxia: la densidad era un smoothstep sobre la turbulencia,
+  // o sea una joroba, y una joroba no tiene forma.
+  const sha159 = de159('compartido', 'motor', 'shaders.ts');
+  const neb159 = sha159.slice(sha159.indexOf('NEBULOSA (modo 5)'), sha159.indexOf('AURORA (modo 4)'));
+
+  // 1. VETAS. "1 - |2f-1|" vale 1 justo donde el ruido cruza la mitad y cae a
+  //    los dos lados: dibuja la CURVA DE NIVEL del ruido como un filo fino en
+  //    vez de rellenar su interior. Es el borde encendido del motor llevado a
+  //    algo que no es una esfera.
+  chequear('el gas se dibuja por vetas y no por manchas',
+    /float veta = 1\.0 - abs\(fbm\([\s\S]*?\) \* 2\.0 - 1\.0\);/.test(neb159), true);
+  chequear('y la veta se afina elevandola', /veta = pow\(clamp\(veta/.test(neb159), true);
+  // 2. CALLES DE POLVO: franjas frias que TAPAN el gas de atras. En una
+  //    nebulosa de verdad media mitad del dibujo no la hace lo que brilla,
+  //    la hace lo que se interpone. Y arregla el apilado: el aditivo solo
+  //    suma, asi que sin algo que reste todo termina blanco.
+  chequear('hay calles de polvo que restan', /1\.0 - calle \* 0\.72/.test(neb159), true);
+  // 3. UN ADENTRO Y UN AFUERA: el calido de la paleta solo llega donde el gas
+  //    esta ionizado, o sea cerca del centro. Antes el color dependia solo del
+  //    ruido y la nube no tenia centro.
+  chequear('y un nucleo encendido que le da centro',
+    /float nucleo = smoothstep\(0\.66, 0\.04/.test(neb159), true);
+  chequear('el calido solo llega en el nucleo',
+    /uPaleta3, pow\(densidad, 2\.0\) \* nucleo/.test(neb159), true);
+
+  // NINGUN BACKTICK EN EL SHADER: vive dentro de un template literal de
+  // TypeScript, asi que un acento invertido en un comentario GLSL corta la
+  // cadena. Paso al escribir esto, y el error que da es de sintaxis a treinta
+  // lineas de distancia.
+  chequear('el bloque de la nebulosa no tiene backticks', neb159.includes('`'), false);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

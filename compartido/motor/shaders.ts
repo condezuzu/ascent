@@ -428,16 +428,48 @@ void main() {
 
     // huecos: el gas no llena parejo
     float hueco = smoothstep(0.30, 0.62, fbm(vec3(p * 1.8 + vec2(11.0), 0.5)));
-    float densidad = smoothstep(0.34, 0.86, base) * (0.45 + 0.75 * fino) * hueco;
+    float masa = smoothstep(0.34, 0.86, base) * (0.45 + 0.75 * fino) * hueco;
+
+    // ───────────────────────────────────────────────────────────────
+    // LA MANO AL POLVO (25/9). Es el rango 1: el fondo que ve TODO EL
+    // MUNDO los primeros diez días, y el único cuerpo que no había pasado
+    // por la misma revisión que el sol, la galaxia y el agujero negro.
+    //
+    // QUÉ ESTABA MAL, y es la misma crítica que se le hizo a los brazos de
+    // la galaxia: la densidad era un smoothstep sobre la turbulencia, o
+    // sea una joroba —clara en el medio, apagándose hacia afuera—. Una
+    // joroba no tiene forma. Sumadas en aditivo, muchas jorobas tampoco: dan
+    // un manchón que tiende al blanco.
+    //
+    // 1. VETAS EN VEZ DE MANCHAS. "1 - |2f-1|" vale 1 justo donde el ruido
+    //    cruza la mitad y cae a los dos lados: dibuja la CURVA DE NIVEL del
+    //    ruido como un filo fino en vez de rellenar su interior. Elevarlo
+    //    afina el filo. Es el mismo truco del borde encendido, aplicado a
+    //    algo que no es una esfera.
+    float veta = 1.0 - abs(fbm(vec3(p * 2.3 + w.xy * 0.9, uTime * 0.018)) * 2.0 - 1.0);
+    veta = pow(clamp(veta, 0.0, 1.0), 3.2);
+
+    // 2. CALLES DE POLVO: franjas frías que TAPAN el gas de atrás. En una
+    //    nebulosa de verdad la mitad del dibujo no la hace lo que brilla,
+    //    la hace lo que se interpone. Y acá además arregla el apilado: el
+    //    aditivo solo suma, así que sin algo que reste todo termina blanco.
+    float calle = smoothstep(0.42, 0.74, fbm(vec3(p * 2.9 + vec2(-7.0, 3.0), uTime * 0.01)));
+    float densidad = (masa * 0.5 + veta * masa * 1.6) * (1.0 - calle * 0.72);
+
+    // 3. UN ADENTRO Y UN AFUERA. El color dependía solo del ruido, así que
+    //    la nube no tenía centro: el cálido aparecía en cualquier parte. El
+    //    gas ionizado está cerca de la estrella que lo enciende, y nada más
+    //    ahí llega al naranja de la paleta.
+    float nucleo = smoothstep(0.66, 0.04, length(p * vec2(1.0, 1.15)));
 
     // el color viaja del violeta profundo al azul y toca un cálido donde
     // el gas está más denso, como en una nebulosa de verdad
     vec3 c = mix(uPaleta0, uPaleta1, smoothstep(0.2, 0.7, base));
     c = mix(c, uPaleta2, smoothstep(0.5, 0.95, fino));
-    c = mix(c, uPaleta3, pow(densidad, 3.0) * 0.75);
+    c = mix(c, uPaleta3, pow(densidad, 2.0) * nucleo * 0.9);
 
     float bordes = smoothstep(1.15, 0.35, length(p * vec2(0.85, 1.0)));
-    float inten = densidad * bordes;
+    float inten = densidad * bordes * (0.72 + 0.95 * nucleo);
     gl_FragColor = vec4(c * inten * 1.35 * uAtenua, clamp(inten * 0.85, 0.0, 1.0) * uAtenua);
     return;
   }
