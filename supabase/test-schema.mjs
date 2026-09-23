@@ -10070,12 +10070,23 @@ console.log('\n145. Las medallas por marca');
   chequear('y se va sola a los dos segundos',
     /DURA_MS = 2000/.test(filaWeb) && /DURA_MS = 2000/.test(filaNat), true);
 
-  // LA LINEA ES ZONA · MATERIAL · FRASE, y el material no es decoracion: a este
-  // tamaño la luna y el planeta se parecen y sin nombrarlo no hay como saber
-  // cual te toco.
-  const linea = /T\.medallas\.zonas\[m\.zona\]\} · \$\{T\.medallas\.materiales\[m\.material\]/;
-  chequear('la linea dice zona, material y frase, en las dos',
+  // LA LINEA ES MUSCULO · FRASE, y el material YA NO SE NOMBRA (25/9). Estaba
+  // por un argumento que sonaba bien —a este tamaño la luna y el planeta se
+  // parecen, y sin la palabra no se sabe cual te toco— y el argumento tenia el
+  // problema adentro: si hay que escribir que es, el dibujo no dice nada.
+  const linea = /T\.medallas\.zonas\[m\.zona\]\} · \$\{cola\}/;
+  chequear('la linea dice musculo y frase, en las dos',
     linea.test(filaWeb) && linea.test(filaNat), true);
+  chequear('y ninguna de las dos nombra el material',
+    /T\.medallas\.materiales\[m\.material\]/.test(filaWeb + filaNat), false);
+  // EL MUSCULO Y NO EL CAJON DEL SELECTOR: la de brazos se gana con curl con
+  // barra y la de piernas con sentadilla, o sea biceps y cuadriceps.
+  const T145m = (await import('../nucleo/textos.ts')).T;
+  chequear('brazos dice biceps', T145m.medallas.zonas.brazos, 'Bíceps');
+  chequear('piernas dice cuadriceps', T145m.medallas.zonas.piernas, 'Cuádriceps');
+  // EL GLOBO FLOTA POR ENCIMA: fuera del flujo ya estaba, pero un absoluto sin
+  // zIndex se pinta en el orden del arbol y lo de abajo lo tapa.
+  chequear('el globo se pinta por encima de todo', /zIndex: 30/.test(filaNat), true);
   // Y LA GALAXIA NO DICE PORCENTAJE: diria el mismo numero que estrella.
   const sinPorciento = /material === 'galaxia' \? T\.medallas\.galaxia/;
   chequear('y la galaxia dice que la gano, no el porcentaje',

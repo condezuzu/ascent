@@ -626,25 +626,40 @@ export default function Inicio({
           )}
         </View>
       ) : cierre ? (
-        // EL RESUMEN DEL FINAL: dos números y nada más. Se cierra tocando.
-        <Pressable style={estilos.resumen} onPress={() => setCierre(null)}>
-          <Text style={estilos.resumenTitulo}>{T.sesion.resumenTitulo}</Text>
-          <View style={estilos.cifras}>
-            <View style={estilos.cifra}>
-              <Text style={estilos.cifraNumero}>{cierre.minutos}</Text>
-              <Text style={estilos.etiqueta}>{T.sesion.resumenMinutos}</Text>
-            </View>
-            {cierre.series > 0 && (
+        // AL TERMINAR, PRIMERO LOS DOS BOTONES Y DESPUÉS EL RESUMEN (25/9).
+        //
+        // "No aparece dónde agregar el peso de hoy." / "Falta un botón para
+        // agregar foto." Estaban — en `DiaListo`— pero justo en el momento en
+        // que hacen falta no se dibujaban: al terminar una sesión, esta rama se
+        // quedaba con la pantalla y `DiaListo` es la rama de al lado. O sea que
+        // el único día en que la app te felicita era el único día sin forma de
+        // sumarle la foto.
+        //
+        // Y EL RESUMEN VA ABAJO Y MÁS CHICO: *"me encanta, pero hacelo más
+        // chico y poné arriba los botones de foto y peso"*. Es un premio, no
+        // una pantalla: se lee una vez y lo que queda por HACER tiene que estar
+        // primero.
+        <>
+          <DiaListo alaFoto={() => setRegistrarAbierto(true)} alPeso={() => setPesoAbierto(true)} />
+          <Pressable style={estilos.resumen} onPress={() => setCierre(null)}>
+            <Text style={estilos.resumenTitulo}>{T.sesion.resumenTitulo}</Text>
+            <View style={estilos.cifras}>
               <View style={estilos.cifra}>
-                <Text style={estilos.cifraNumero}>{cierre.series}</Text>
-                <Text style={estilos.etiqueta}>{T.sesion.resumenSeries(cierre.series)}</Text>
+                <Text style={estilos.cifraNumero}>{cierre.minutos}</Text>
+                <Text style={estilos.etiqueta}>{T.sesion.resumenMinutos}</Text>
               </View>
-            )}
-          </View>
-          {cierre.porUbicacion && <Text style={estilos.nota}>{T.sesion.resumenSolo}</Text>}
-          {/* Afuera del toque que cierra: elegir repeticiones no cierra nada. */}
-          <SugerenciasDeMarca bloques={cierre.bloques} unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'} />
-        </Pressable>
+              {cierre.series > 0 && (
+                <View style={estilos.cifra}>
+                  <Text style={estilos.cifraNumero}>{cierre.series}</Text>
+                  <Text style={estilos.etiqueta}>{T.sesion.resumenSeries(cierre.series)}</Text>
+                </View>
+              )}
+            </View>
+            {cierre.porUbicacion && <Text style={estilos.nota}>{T.sesion.resumenSolo}</Text>}
+            {/* Afuera del toque que cierra: elegir repeticiones no cierra nada. */}
+            <SugerenciasDeMarca bloques={cierre.bloques} unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'} />
+          </Pressable>
+        </>
       ) : registradoHoy ? (
         // El día ya está —casi siempre lo registró la sesión—: lo que queda es
         // sumarle la foto o el peso. Era un renglón de texto que no parecía un
@@ -841,15 +856,18 @@ const estilos = StyleSheet.create({
   preguntaFuerte: { color: '#e8ecf6', fontWeight: '600' },
   secundario: { paddingVertical: 14, alignItems: 'center' },
 
+  // MAS CHICO QUE ANTES (25/9): era marginTop 34 y 22 de alto con el numero
+  // en 40. Es un premio, se lee una vez, y arriba de el va lo que queda por
+  // hacer.
   resumen: {
-    marginTop: 34,
-    paddingVertical: 22,
+    marginTop: 18,
+    paddingVertical: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: '#1d2230',
   },
-  resumenTitulo: { color: '#e8ecf6', fontSize: 18, fontWeight: '500' },
-  cifras: { flexDirection: 'row', gap: 36, marginTop: 14 },
+  resumenTitulo: { color: '#e8ecf6', fontSize: 14, fontWeight: '500' },
+  cifras: { flexDirection: 'row', gap: 28, marginTop: 8 },
   cifra: { alignItems: 'flex-start' },
-  cifraNumero: { color: '#c4c2ba', fontSize: 40, fontWeight: '300', fontVariant: ['tabular-nums'] },
+  cifraNumero: { color: '#c4c2ba', fontSize: 26, fontWeight: '300', fontVariant: ['tabular-nums'] },
 });

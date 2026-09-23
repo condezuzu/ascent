@@ -95,21 +95,31 @@ export default function Medallas({
 }
 
 /**
- * LO QUE DICE, en una línea: zona, material y la frase.
+ * LO QUE DICE, en una línea: el músculo y la frase.
  *
- * "Pecho · Luna · Solo el 40% levanta este peso."
+ * "Cuádriceps · Solo el 12% levanta esa marca."
  *
- * EL MATERIAL VA EN EL MEDIO y no es decoración: a 24 px la luna y el planeta
- * se parecen —gris azulado contra azul— y sin nombrarlo no hay forma de saber
- * cuál te tocó.
+ * EL MATERIAL YA NO SE NOMBRA (25/9, a pedido): *"sacá los nombres de
+ * material. Nada de Luna, Planeta. Que el material solo cambie el color, sin
+ * nombrarlo."* Estaba por un argumento que sonaba bien —a este tamaño la luna
+ * y el planeta se parecen, y sin la palabra no se sabe cuál te tocó— y el
+ * argumento tenía el problema adentro: si hay que escribir qué es, el dibujo
+ * no está diciendo nada. El material vuelve a ser lo que tiene que ser, una
+ * escala de color, y la línea se queda con lo único que es un dato: el número.
  *
- * LA GALAXIA NO DICE PORCENTAJE: diría "solo el 5%", el mismo número que
- * estrella, y en el escalón más alto eso queda plano. Dice qué la ganó.
+ * (Lo sigue diciendo la etiqueta del lector de pantalla, y ahí sí corresponde:
+ * quien no ve el color no tiene de dónde sacarlo.)
+ *
+ * EL MÚSCULO Y NO LA ZONA: decía "Brazos" y "Piernas", que son los cajones del
+ * selector de ejercicios, no lo que la medalla mide. Ver `T.medallas.zonas`.
+ *
+ * LA GALAXIA NO DICE PORCENTAJE: diría el mismo número que estrella, y en el
+ * escalón más alto queda plano. Dice qué la ganó.
  */
 function frase(m: Dato): string {
   const cola =
     m.material === 'galaxia' ? T.medallas.galaxia : T.medallas.frase(cuantosLevantan(m.percentil));
-  return `${T.medallas.zonas[m.zona]} · ${T.medallas.materiales[m.material]} · ${cola}`;
+  return `${T.medallas.zonas[m.zona]} · ${cola}`;
 }
 
 /**
@@ -136,7 +146,19 @@ const estilos = StyleSheet.create({
   medallas: { flexDirection: 'row', alignItems: 'center', gap: SEPARACION },
   sueltas: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   // FLOTANDO: abrir un globo no mueve nada de lo que hay abajo.
-  globo: { position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 6 },
+  // POR ENCIMA DE TODO Y SIN EMPUJAR NADA. Lo primero ya estaba; lo segundo
+  // necesita zIndex, porque un absoluto sin el se pinta en el orden del árbol
+  // y lo que viene después lo tapa. Con `elevation` para Android, que no cuesta
+  // nada y evita que esto se descubra de nuevo el día que exista.
+  globo: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 6,
+    zIndex: 30,
+    elevation: 30,
+  },
   punta: {
     position: 'absolute',
     top: 0,

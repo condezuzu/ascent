@@ -82,12 +82,23 @@ export default function Medallas({
 }
 
 /**
- * LO QUE DICE, en una línea: zona, material y la frase.
+ * LO QUE DICE, en una línea: el músculo y la frase.
  *
- * "Pecho · Luna · Solo el 40% levanta este peso."
+ * "Cuádriceps · Solo el 12% levanta esa marca."
  *
- * EL MATERIAL VA EN EL MEDIO y no es decoración: a este tamaño la luna y el
- * planeta se parecen y sin nombrarlo no hay forma de saber cuál te tocó.
+ * EL MATERIAL YA NO SE NOMBRA (25/9, a pedido): *"sacá los nombres de
+ * material. Nada de Luna, Planeta. Que el material solo cambie el color, sin
+ * nombrarlo."* Estaba por un argumento que sonaba bien —a este tamaño la luna
+ * y el planeta se parecen, y sin la palabra no se sabe cuál te tocó— y el
+ * argumento tenía el problema adentro: si hay que escribir qué es, el dibujo
+ * no está diciendo nada. El material vuelve a ser lo que tiene que ser, una
+ * escala de color, y la línea se queda con lo único que es un dato: el número.
+ *
+ * (Lo sigue diciendo la etiqueta del lector de pantalla, y ahí sí corresponde:
+ * quien no ve el color no tiene de dónde sacarlo.)
+ *
+ * EL MÚSCULO Y NO LA ZONA: decía "Brazos" y "Piernas", que son los cajones del
+ * selector de ejercicios, no lo que la medalla mide. Ver `T.medallas.zonas`.
  *
  * LA GALAXIA NO DICE PORCENTAJE: diría el mismo número que estrella, y en el
  * escalón más alto queda plano. Dice qué la ganó.
@@ -95,7 +106,7 @@ export default function Medallas({
 function frase(m: Dato): string {
   const cola =
     m.material === 'galaxia' ? T.medallas.galaxia : T.medallas.frase(cuantosLevantan(m.percentil));
-  return `${T.medallas.zonas[m.zona]} · ${T.medallas.materiales[m.material]} · ${cola}`;
+  return `${T.medallas.zonas[m.zona]} · ${cola}`;
 }
 
 /**

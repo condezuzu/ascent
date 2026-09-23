@@ -401,12 +401,26 @@ export const T = {
     // queda plano. Acá tampoco va el rótulo del ejercicio arriba: la línea ya
     // nombra los tres.
     galaxia: 'Estrella en sentadilla, press de banca y peso muerto.',
+    // EL MUSCULO, NO LA ZONA (25/9). Decian "Brazos" y "Piernas", que es el
+    // cajon del selector de ejercicios y no lo que la medalla mide: la de
+    // brazos se gana con curl con barra y la de piernas con sentadilla, o sea
+    // biceps y cuadriceps. "Piernas" con una marca de sentadilla suena a que
+    // incluye femoral y gemelo, que no participaron.
+    //
+    // JUNTAR VARIOS EJERCICIOS DEL MISMO MUSCULO EN UN PORCENTAJE no se puede
+    // y se miro: las tablas de Strength Level son POR EJERCICIO, no por
+    // musculo, asi que un percentil de "cuadriceps" no existe en ningun lado
+    // y habria que inventarlo promediando. Queda el musculo del ejercicio, que
+    // es exactamente lo que el numero dice.
+    //
+    // Las claves NO cambian: son las cinco zonas de `nucleo/medallas.ts` y del
+    // dibujo. Lo que cambio es como se llaman en pantalla.
     zonas: {
       hombros: 'Hombros',
-      brazos: 'Brazos',
+      brazos: 'Bíceps',
       pecho: 'Pecho',
       espalda: 'Espalda',
-      piernas: 'Piernas',
+      piernas: 'Cuádriceps',
     },
     materiales: {
       luna: 'Luna',
@@ -415,6 +429,9 @@ export const T = {
       galaxia: 'Galaxia',
     },
     // Lo que lee un lector de pantalla, que no ve ni la forma ni el color.
+    // NOMBRA EL MATERIAL aunque la frase ya no lo haga: para quien ve, el
+    // material es el color y se ve; para quien no, es la unica forma de saber
+    // que la de pecho es mas alta que la de hombros.
     etiqueta: (zona: string, material: string) => `${zona}, ${material.toLowerCase()}`,
   },
 
