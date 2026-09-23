@@ -461,17 +461,40 @@ void main() {
 
     // cuatro brazos: el gas se acumula sobre ellos y ondula a lo largo
     float onda = cos(fase * 4.0 + w.x * 2.6 + sin(r * 6.0 + uTime * 0.12) * 0.9);
-    float brazo = pow(max(0.0, onda * 0.5 + 0.5), 2.2);
+
+    // BRAZOS OSCUROS CON EL BORDE ENCENDIDO (23/9).
+    //
+    // "Brilla toda pareja y parece una mancha." Y era eso: el brazo era una
+    // joroba suave, mas clara en el centro y apagandose hacia los costados.
+    // Un degrade no tiene forma; cuatro degrades juntos, menos todavia.
+    //
+    // Ahora el CUERPO del brazo queda oscuro y lo que se enciende son sus DOS
+    // FLANCOS. El perfil pasa por el valor del filo una vez de cada lado del
+    // brazo, asi que cada brazo sale dibujado por dos vetas de luz con oscuro
+    // en el medio — que es el norte del motor (cuerpo oscuro, canto luminoso)
+    // llevado a una forma que no es una esfera.
+    float perfil = max(0.0, onda * 0.5 + 0.5);
+    float cuerpo = pow(perfil, 2.6);
+    float filo = exp(-pow((perfil - 0.61) / 0.145, 2.0));
 
     // estrías siguiendo el brazo, no verticales
-    float estria = 0.4 + 0.85 * fbm(vec3(fase * 2.4, r * 9.0, uTime * 0.07));
+    float estria = 0.22 + 1.10 * fbm(vec3(fase * 2.4, r * 9.0, uTime * 0.07));
 
     // se apaga en el núcleo (ahí mandan las partículas) y hacia afuera
-    float radial = smoothstep(0.06, 0.30, r) * smoothstep(1.25, 0.45, r);
+    // Y EL GAS NO PASA DONDE NO HAY ESTRELLAS. Llegaba bastante mas lejos que
+    // las particulas, asi que alrededor del cumulo quedaba una espiral de humo
+    // sola: dos objetos en vez de uno.
+    float radial = smoothstep(0.05, 0.22, r) * smoothstep(0.95, 0.35, r);
 
-    float inten = brazo * estria * radial * (0.35 + 0.8 * base);
     // el color corre del violeta interior al verde-azulado de los bordes
-    col = mix(uPaleta2, uPaleta3, clamp(tt * 0.9 + base * 0.35, 0.0, 1.0)) * inten;
+    vec3 cGas = mix(uPaleta2, uPaleta3, clamp(tt * 0.9 + base * 0.35, 0.0, 1.0));
+    // El filo no es el mismo color mas fuerte: va lavado hacia el blanco,
+    // porque un borde encendido es luz y no mas pintura.
+    vec3 cFilo = mix(cGas, vec3(1.0, 0.96, 0.90), 0.40);
+
+    float comun = estria * radial * (0.35 + 0.8 * base);
+    float inten = (cuerpo * 0.18 + filo * 1.10) * comun;
+    col = (cGas * cuerpo * 0.18 + cFilo * filo * 1.10) * comun;
     alfa = inten * 0.75;
 
     gl_FragColor = vec4(col * uAtenua, clamp(alfa, 0.0, 1.0) * uAtenua);

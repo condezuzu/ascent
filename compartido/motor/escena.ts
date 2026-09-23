@@ -262,7 +262,13 @@ function crearGalaxia(rango: number): THREE.Points {
   const cBrazo = new THREE.Color(pal.principal);
   const cBorde = new THREE.Color(pal.apagado);
   for (let i = 0; i < n; i++) {
-    const t = Math.pow(Math.random(), 2.2);
+    // LAS ESTRELLAS LLEGAN HASTA DONDE LLEGA EL GAS. Con 2,2 el exponente
+    // amontonaba casi todo contra el núcleo —la mediana caía en el 22% del
+    // radio— y los brazos de gas quedaban vacíos: un manchón de puntos en el
+    // medio y una espiral de humo alrededor, que es parte de por qué "parece
+    // una mancha". El núcleo sigue siendo denso, pero ahora los brazos tienen
+    // estrellas adentro.
+    const t = Math.pow(Math.random(), 1.35);
     const brazo = i % 4;
     const r = 0.03 + t * 0.85;
     const disp = (Math.random() - 0.5) * (0.12 + t * 0.75);
@@ -682,7 +688,7 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     const amat = crearMaterialCuerpo(AURORA_CFG, !!op.apagado, 0.004);
     materiales.push(amat);
     const aurora = new THREE.Mesh(QUAD, amat);
-    aurora.scale.setScalar(1.35);
+    aurora.scale.setScalar(1.05);
     aurora.position.z = -0.05;
     amat.blending = THREE.AdditiveBlending;
     grupo.add(aurora);
