@@ -2314,12 +2314,27 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
     true
   );
 
-  // Y los mismos tres tienen que ser los que conoce la tabla de estándares,
-  // que vive aparte porque no puede importar nada.
+  // Y LOS TRES DEL DOTS TIENEN QUE TENER TABLA DE ESTANDARES. Hasta el 24/9
+  // esto pedia que fueran EXACTAMENTE los mismos, y dejo de ser cierto cuando
+  // entraron press militar y curl con barra.
+  //
+  // El cambio es de fondo y no de lista: el DOTS es un total de powerlifting y
+  // son tres por definicion; sumarle un curl no daria un DOTS. Los estandares
+  // son POR EJERCICIO y existen para cualquiera que la fuente publique. Eran el
+  // mismo conjunto por casualidad historica —se habian traido las tablas de los
+  // tres del DOTS y ninguna mas—, no porque tuvieran que serlo.
+  //
+  // Lo que si sigue siendo obligatorio: que ninguno del DOTS se quede sin tabla.
   chequear(
-    'y son los mismos que conocen los estándares',
-    [...EJERCICIOS_ESTANDAR].sort(),
-    [...EJERCICIOS_DOTS].sort()
+    'y los del DOTS tienen todos su tabla de estandares',
+    [...EJERCICIOS_DOTS].filter((e) => !EJERCICIOS_ESTANDAR.includes(e)).sort(),
+    []
+  );
+  // Y que las dos que se trajeron para las medallas esten.
+  chequear(
+    'y estan las dos que se trajeron para las medallas',
+    ['curl_barra', 'press_militar'].filter((e) => !EJERCICIOS_ESTANDAR.includes(e)),
+    []
   );
 }
 

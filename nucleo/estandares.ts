@@ -9,6 +9,12 @@ import { T } from './textos.ts';
 // declarados por los usuarios y sin verificar. Las cinco categorías que
 // publica son puntos de la distribución: 5, 20, 50, 80 y 95.
 //
+// CADA EJERCICIO TIENE SU PROPIA VENTANA, y las fechas de arriba son el sobre
+// que las contiene, no la de todos. Press militar: agosto 2015 a marzo 2026
+// (5.644.500 levantamientos, 1.827.472 válidos). Curl con barra: marzo 2016 a
+// marzo 2026 (2.565.545). Se dice porque la muestra de cada uno es distinta y
+// la del curl empieza un año más tarde.
+//
 // SOLO POR EJERCICIO: sumar los umbrales de los tres no da el umbral del
 // total, y en las colas se rompe (spec/trampas.md). Para el total va el DOTS.
 //
@@ -34,7 +40,12 @@ export const CATEGORIAS = [
 // Minúscula, como lo guarda la base. Con mayúsculas el bloque entero no se
 // dibujaba y no había error: lo pinea la sección 32 de `test:db`.
 export type SexoEstandar = 'm' | 'f';
-export type EjercicioEstandar = 'sentadilla' | 'press_banca' | 'peso_muerto';
+export type EjercicioEstandar =
+  | 'sentadilla'
+  | 'press_banca'
+  | 'peso_muerto'
+  | 'press_militar'
+  | 'curl_barra';
 
 /**
  * Cada fila: peso corporal y los cinco umbrales, todo en kilos. Copiadas de
@@ -94,16 +105,80 @@ const MUERTO_F: readonly Fila[] = [
   [115, 68, 94, 125, 161, 200], [120, 70, 96, 128, 164, 203],
 ];
 
+// PRESS MILITAR Y CURL CON BARRA, traídos el 24/9 de la misma fuente.
+//
+// POR QUÉ SE TRAJERON: las medallas por marca son cinco —una por zona— y dos de
+// ellas, hombros y brazos, no tenían con qué calcular un percentil. Un set de
+// cinco donde dos no se pueden ganar no es un set de cinco.
+//
+// VERIFICADAS CONTRA LA MISMA FUENTE EN LIBRAS, que es otra página y otra
+// tabla: se eligieron filas al azar, se pasaron a kilos y se interpolaron
+// contra estas. Las diez coincidieron dentro del redondeo. El primer control
+// pareció fallar en dos filas y el error era mío: la tabla en libras va de a
+// 10 lb, así que 154 y 198 no son filas impresas y lo que volvió fueron las
+// vecinas. Queda escrito para que nadie repita el susto.
+const MILITAR_M: readonly Fila[] = [
+  [50, 15, 24, 36, 51, 67], [55, 18, 28, 41, 56, 73], [60, 21, 32, 45, 62, 79],
+  [65, 24, 35, 50, 67, 85], [70, 27, 39, 54, 72, 90], [75, 30, 43, 58, 76, 96],
+  [80, 33, 46, 62, 81, 101], [85, 36, 49, 66, 85, 106], [90, 38, 53, 70, 90, 111],
+  [95, 41, 56, 74, 94, 115], [100, 44, 59, 77, 98, 120], [105, 47, 62, 81, 102, 124],
+  [110, 49, 65, 84, 105, 128], [115, 52, 68, 87, 109, 132], [120, 54, 71, 90, 113, 136],
+  [125, 56, 73, 94, 116, 140], [130, 59, 76, 97, 119, 144], [135, 61, 79, 100, 123, 147],
+  [140, 63, 81, 102, 126, 151],
+];
+const MILITAR_F: readonly Fila[] = [
+  [40, 7, 13, 22, 33, 45], [45, 9, 15, 24, 36, 48], [50, 10, 17, 27, 38, 51],
+  [55, 11, 19, 29, 41, 54], [60, 12, 20, 31, 43, 57], [65, 14, 22, 32, 45, 59],
+  [70, 15, 23, 34, 47, 62], [75, 16, 25, 36, 49, 64], [80, 17, 26, 37, 51, 66],
+  [85, 18, 27, 39, 53, 68], [90, 19, 28, 40, 54, 70], [95, 20, 30, 42, 56, 72],
+  [100, 21, 31, 43, 58, 74], [105, 22, 32, 45, 59, 75], [110, 23, 33, 46, 61, 77],
+  [115, 24, 34, 47, 62, 79], [120, 24, 35, 48, 64, 80],
+];
+const CURL_M: readonly Fila[] = [
+  [50, 11, 19, 30, 43, 58], [55, 13, 22, 33, 47, 62], [60, 15, 24, 36, 50, 66],
+  [65, 17, 26, 39, 54, 70], [70, 18, 28, 41, 57, 74], [75, 20, 31, 44, 60, 77],
+  [80, 22, 33, 46, 63, 80], [85, 23, 35, 49, 65, 84], [90, 25, 36, 51, 68, 87],
+  [95, 26, 38, 53, 71, 89], [100, 28, 40, 55, 73, 92], [105, 29, 42, 57, 75, 95],
+  [110, 31, 44, 60, 78, 97], [115, 32, 45, 61, 80, 100], [120, 34, 47, 63, 82, 102],
+  [125, 35, 49, 65, 84, 105], [130, 36, 50, 67, 86, 107], [135, 38, 52, 69, 88, 109],
+  [140, 39, 53, 71, 90, 111],
+];
+const CURL_F: readonly Fila[] = [
+  [40, 4, 10, 17, 27, 38], [45, 5, 11, 19, 29, 41], [50, 6, 12, 20, 31, 43],
+  [55, 7, 13, 22, 33, 45], [60, 8, 14, 23, 34, 47], [65, 8, 15, 24, 36, 49],
+  [70, 9, 16, 26, 37, 51], [75, 10, 17, 27, 39, 52], [80, 11, 18, 28, 40, 54],
+  [85, 11, 19, 29, 41, 55], [90, 12, 20, 30, 43, 57], [95, 12, 21, 31, 44, 58],
+  [100, 13, 21, 32, 45, 59], [105, 14, 22, 33, 46, 61], [110, 14, 23, 34, 47, 62],
+  [115, 15, 24, 35, 48, 63], [120, 15, 24, 36, 49, 64],
+];
+
 const TABLAS: Record<EjercicioEstandar, Record<SexoEstandar, readonly Fila[]>> = {
   sentadilla: { m: SENTADILLA_M, f: SENTADILLA_F },
   press_banca: { m: BANCA_M, f: BANCA_F },
   peso_muerto: { m: MUERTO_M, f: MUERTO_F },
+  press_militar: { m: MILITAR_M, f: MILITAR_F },
+  curl_barra: { m: CURL_M, f: CURL_F },
 };
 
+/**
+ * LOS QUE TIENEN TABLA. DEJARON DE SER LOS MISMOS QUE LOS DEL DOTS el 24/9, y
+ * el cambio es de fondo, no de lista:
+ *
+ * El DOTS es un total de powerlifting y son tres por definición —sentadilla,
+ * banca y peso muerto—; sumarle un curl no daría un DOTS. Los estándares, en
+ * cambio, son POR EJERCICIO y existen para cualquiera que la fuente publique.
+ * Eran el mismo conjunto por casualidad histórica: se habían traído las tablas
+ * de los tres del DOTS y ninguna más.
+ *
+ * Lo que sí sigue siendo cierto, y es lo que ahora prueba `test:db`: los tres
+ * del DOTS son un SUBCONJUNTO de estos.
+ */
 export const EJERCICIOS_ESTANDAR: EjercicioEstandar[] = [
   'sentadilla',
   'press_banca',
   'peso_muerto',
+  'press_militar',
+  'curl_barra',
 ];
 
 export function esEjercicioEstandar(id: string): id is EjercicioEstandar {
