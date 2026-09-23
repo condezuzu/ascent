@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { supabase } from './supabase';
 import { T } from '@nucleo/textos';
@@ -30,13 +31,15 @@ import { C } from './colores';
  * viven en `compartido/insignias.ts` y el lugar de cada astro en
  * `astroDeAmigo`, y las dos apps los toman de ahí.
  *
- * LO QUE NO ESTÁ, marcado:
+ * TOCAR A ALGUIEN LLEVA A SU PERFIL (22/9): la fila del ranking, la línea de
+ * actividad y el resultado de la búsqueda. Antes eran texto, no por decisión
+ * sino porque no había adónde ir.
  *
- *   - Tocar a alguien para ver su perfil: la pantalla de perfil no está
- *     portada todavía.
- *   - Los retos: en la web tampoco se muestran (`RETOS_LISTOS = false`).
+ * LO QUE NO ESTÁ, marcado: los retos. En la web tampoco se muestran
+ * (`RETOS_LISTOS = false`).
  */
 export default function Ranking({ alSalir }: { alSalir: () => void }) {
+  const router = useRouter();
   const [miId, setMiId] = useState('');
   const [datos, setDatos] = useState<DatosDeRanking | null>(null);
   const [noCargo, setNoCargo] = useState(false);
@@ -141,11 +144,21 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                   lista caía entera al llegar los datos y eso se lee como un
                   parpadeo. Ver `Surgir.tsx`. */}
               {amigos.map((a, i) => (
-                <Surgir indice={i} style={estilos.fila} key={a.id}>
-                  <Text style={[estilos.dato, { width: 20 }]}>{i + 1}</Text>
-                  <Insignia rango={a.rango_actual} tam={38} />
-                  <Text style={estilos.nombre}>{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</Text>
-                  <Text style={estilos.dato}>{a.racha_actual}</Text>
+                <Surgir indice={i} key={a.id}>
+                  {/* LA FILA LLEVA AL PERFIL (22/9), como en la web. Hasta el
+                      router esto era texto y no llevaba a ningún lado: no por
+                      decisión, sino porque no había adónde ir. Tu propia fila
+                      va a tu perfil, que es otra pantalla. */}
+                  <Pressable
+                    style={({ pressed }) => [estilos.fila, pressed && estilos.filaTocada]}
+                    onPress={() => router.push(a.id === miId ? '/yo' : `/perfil/${a.id}`)}
+                    accessibilityRole="button"
+                  >
+                    <Text style={[estilos.dato, { width: 20 }]}>{i + 1}</Text>
+                    <Insignia rango={a.rango_actual} tam={38} />
+                    <Text style={estilos.nombre}>{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</Text>
+                    <Text style={estilos.dato}>{a.racha_actual}</Text>
+                  </Pressable>
                 </Surgir>
               ))}
             </View>
@@ -164,13 +177,18 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           <View style={estilos.seccion}>
             <Text style={estilos.rotulo}>{T.social.actividad}</Text>
             {datos!.actividad.map((a, i) => (
-              <View style={estilos.fila} key={i}>
+              <Pressable
+                style={({ pressed }) => [estilos.fila, pressed && estilos.filaTocada]}
+                key={i}
+                onPress={() => router.push(a.userId === miId ? '/yo' : `/perfil/${a.userId}`)}
+                accessibilityRole="button"
+              >
                 <Avatar url={a.avatar} nombre={a.username} tam={28} />
                 {a.foto && <Image source={{ uri: a.foto }} style={estilos.miniatura} />}
                 <Text style={[estilos.nombre, { color: C.sub, fontSize: 14 }]}>
                   {T.social.registroEl(a.username, fechaLinda(a.fecha))}
                 </Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         )}
@@ -189,7 +207,12 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           {resultados.map((u) => (
             <View style={estilos.fila} key={u.id}>
               <Avatar url={u.avatar_url} nombre={u.username} />
-              <Text style={estilos.nombre}>{u.username}</Text>
+              {/* EL NOMBRE LLEVA AL PERFIL y "Agregar" queda aparte: son dos
+                  cosas distintas en la misma fila, y de un desconocido lo
+                  primero que se quiere es mirar, no agregar. */}
+              <Pressable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
+                <Text style={estilos.nombre}>{u.username}</Text>
+              </Pressable>
               {mandados.has(u.id) ? (
                 <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>
               ) : (
@@ -221,6 +244,9 @@ const estilos = StyleSheet.create({
   },
   ranking: { position: 'relative', marginBottom: 16 },
   lista: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingVertical: 4 },
+  // El hundido al tocar: sin eso, una fila que navega se ve igual que una
+  // que no hace nada, y la única forma de saberlo es tocarla.
+  filaTocada: { opacity: 0.55 },
   fila: {
     flexDirection: 'row',
     alignItems: 'center',

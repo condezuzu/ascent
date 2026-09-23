@@ -162,13 +162,20 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   existir hasta que exista el recorrido). El orden de lo que queda, fijado por
   el humano el 22/9:
 
-  1. **El perfil** con Expo Router: `/yo`, el de un amigo, y poder tocar a
-     alguien desde Ranking.
-  2. **El recorrido de primera vez.** SUBIÓ de prioridad: quien instale desde
-     TestFlight no tiene ninguna introducción, y la bienvenida de cuatro
-     pantallas es de lo mejor que tiene la app.
+  1. **EL GIMNASIO POR UBICACIÓN.** Subió al primer lugar el 23/9, por pedido
+     del humano y con razón: es la función central de Ascent y en la app no
+     está. Hoy vas al gimnasio y el día no entra solo. El reparo de que Apple
+     lo mira con lupa es de PUBLICAR en la tienda, no de TestFlight interno,
+     que no pasa por revisión.
+  2. **El recorrido de primera vez.**
   3. **DOTS + pantalla de marcas.**
-  4. **Apple Health.**
+  4. **Apple Health** (los pasos).
+  5. **Lo que falta portar**: la racha al costado, la barra de rango, la
+     animación del Álbum, "ver la guía" y los estados de borde de Inicio.
+  6. **Picture in picture del cronómetro.**
+
+  El perfil —`/yo`, `/perfil/[id]` y las filas de Ranking tocables— quedó hecho
+  el 22/9 con Expo Router.
 
   El aviso de las 20:30 NO está en esa lista: se sacó.
 

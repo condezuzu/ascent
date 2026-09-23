@@ -47,7 +47,11 @@ export default function CampoEstelar({
           <Astro key={a.id} indice={i} rango={a.rango_actual} racha={a.racha_actual} maxRacha={maxRacha} />
         ))}
       </View>
-      {caja && (
+      {/* CON ANCHO CERO NO SE DIBUJA: la escala del velo divide por el ancho,
+          y al empujar el perfil encima la pantalla de atrás se vuelve a medir
+          y pasa por cero. Ahí salían `NaN` adentro del `gradientTransform` y
+          la consola lo cantaba en cada viaje. Mismo caso que `ElipsesDeLuz`. */}
+      {caja && caja.w > 0 && caja.h > 0 && (
         <Svg width={caja.w} height={caja.h} style={StyleSheet.absoluteFill}>
           <Defs>
             <RadialGradient

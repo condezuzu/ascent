@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { cargarMiPerfil, type DatosDePerfil } from '@compartido/perfil';
 import { subirAvatar } from '@compartido/avatar';
 import { planetaDeDia } from '@nucleo/rangos';
-import { fechaCorta } from '@nucleo/fechas';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { prepararFoto } from './foto';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
+import FotosQueVen from './FotosQueVen';
 import Insignia from './Insignia';
 import Surgir from './Surgir';
 import { C } from './colores';
@@ -37,7 +37,6 @@ import { C } from './colores';
  */
 export default function PerfilPropio() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
   const [datos, setDatos] = useState<DatosDePerfil | null>(null);
   const [cargado, setCargado] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
@@ -114,8 +113,6 @@ export default function PerfilPropio() {
   }
 
   const { perfil, fotos, amigos } = datos;
-  // Tres por fila, con el mismo hueco que el Álbum.
-  const lado = (width - 24 * 2 - 6 * 2) / 3;
 
   return (
     <View style={estilos.raiz}>
@@ -147,20 +144,13 @@ export default function PerfilPropio() {
 
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
 
-        {/* LO QUE VEN TUS AMIGOS. La grilla es la misma que ellos ven, a
-            propósito: es la respuesta a "¿qué se ve de mí?". */}
-        <View style={[estilos.grilla, { gap: 6 }]}>
-          {fotos.map((f, i) => (
-            <Surgir key={f.id} indice={i}>
-              <View style={{ width: lado, height: lado }}>
-                {!!(f.miniatura || f.url) && (
-                  <Image source={{ uri: f.miniatura || f.url }} style={{ width: lado, height: lado }} />
-                )}
-                {!!f.fecha && <Text style={estilos.cuando}>{fechaCorta(f.fecha)}</Text>}
-              </View>
-            </Surgir>
-          ))}
-        </View>
+        {/* LO QUE VEN TUS AMIGOS, con el MISMO componente que dibuja el
+            perfil de un amigo. No es ahorro de código: esta pantalla promete
+            "así te ven", y la única forma de que la promesa no se rompa es
+            que sea literalmente el mismo dibujo. Con dos copias, la del dueño
+            se mejora un día y la promesa pasa a ser falsa sin que nadie lo
+            note. Lo cazó §135. */}
+        <FotosQueVen fotos={fotos} />
         <Text style={estilos.nota}>{fotos.length > 0 ? T.yo.fotosPie : T.yo.sinFotos}</Text>
 
         <Text style={estilos.seccion}>
@@ -205,8 +195,6 @@ const estilos = StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 22, fontWeight: '500' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   metaTexto: { color: C.sub, fontSize: 13 },
-  grilla: { flexDirection: 'row', flexWrap: 'wrap' },
-  cuando: { color: C.apagado, fontSize: 10, marginTop: 4 },
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 34, marginBottom: 10 },
   amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },

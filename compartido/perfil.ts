@@ -1,5 +1,6 @@
 import type { Cliente } from '@cliente';
-import type { Perfil, UsuarioPublico } from '@nucleo/tipos';
+import type { Log, Perfil, UsuarioPublico } from '@nucleo/tipos';
+import { hoyISO, restarDias } from '@nucleo/fechas';
 import { miniaturas } from '@compartido/album';
 
 /**
@@ -79,5 +80,88 @@ export async function cargarMiPerfil(supabase: Cliente, uid: string): Promise<Da
       fecha: f.log_id ? (cuando.get(f.log_id) ?? null) : null,
     })),
     amigos: (us as UsuarioPublico[]).sort((a, b) => (a.username ?? '').localeCompare(b.username ?? '')),
+  };
+}
+
+/** Cuántos días de la semana de un amigo se ven en su perfil. */
+export const DIAS_VISIBLES = 7;
+
+export type PerfilDeAmigo = {
+  usuario: UsuarioPublico;
+  /** `true` solo si la amistad está aceptada: sin eso no se ve nada suyo. */
+  esAmigo: boolean;
+  pedidoPendiente: boolean;
+  /** Su última semana. Vacío si no es amigo. */
+  logs: Log[];
+  fotos: FotoDePerfil[];
+};
+
+/**
+ * EL PERFIL DE OTRO, con lo que la base deja ver.
+ *
+ * NO ES UN ESPEJO DEL PROPIO, y la diferencia es de privacidad, no de dibujo:
+ * de un amigo NO se ven sus días de descanso —son configuración suya, y la
+ * semana se dibuja sin ellos— ni su peso ni su correo. Lo que se ve es lo que
+ * la RLS deja leer a un amigo aceptado, y por eso `esAmigo` decide si se
+ * consulta: pedir lo demás sin la amistad sería pedirle a la base que diga que
+ * no, once veces.
+ *
+ * LOS RETOS NO ESTÁN. En la web tampoco se muestran (`RETOS_LISTOS` en false):
+ * portar una pantalla que nadie ve sería portar una decisión que todavía no se
+ * tomó.
+ */
+export async function cargarPerfilDeAmigo(
+  supabase: Cliente,
+  yo: string,
+  otro: string
+): Promise<PerfilDeAmigo | null> {
+  const { data: u } = await supabase.from('usuarios_publicos').select('*').eq('id', otro).maybeSingle();
+  if (!u) return null;
+
+  const { data: rel } = await supabase
+    .from('friendships')
+    .select('*')
+    .or(`and(solicitante.eq.${yo},destinatario.eq.${otro}),and(solicitante.eq.${otro},destinatario.eq.${yo})`)
+    .maybeSingle();
+  const esAmigo = rel?.estado === 'aceptada';
+  const base = {
+    usuario: u as UsuarioPublico,
+    esAmigo,
+    pedidoPendiente: rel?.estado === 'pendiente',
+    logs: [] as Log[],
+    fotos: [] as FotoDePerfil[],
+  };
+  if (!esAmigo) return base;
+
+  const desde = restarDias(hoyISO(), DIAS_VISIBLES - 1);
+  const [{ data: ls }, { data: fs }] = await Promise.all([
+    supabase.from('logs').select('*').eq('user_id', otro).gte('fecha', desde).order('fecha'),
+    supabase
+      .from('photos')
+      .select('id, storage_path, log_id, creado')
+      .eq('user_id', otro)
+      .order('creado', { ascending: false })
+      .limit(FOTOS_VISIBLES),
+  ]);
+
+  const lista = (fs ?? []) as { id: string; storage_path: string; log_id: string | null }[];
+  const logIds = lista.map((f) => f.log_id).filter(Boolean) as string[];
+  const rutas = lista.map((f) => f.storage_path);
+  const [logsFotos, firmadas, chicas] = await Promise.all([
+    logIds.length ? supabase.from('logs').select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
+    rutas.length ? supabase.storage.from('fotos').createSignedUrls(rutas, 3600).then((r) => r.data ?? []) : [],
+    miniaturas(supabase, rutas),
+  ]);
+  const cuando = new Map((logsFotos as { id: string; fecha: string }[]).map((l) => [l.id, l.fecha]));
+
+  return {
+    ...base,
+    logs: (ls ?? []) as Log[],
+    fotos: lista.map((f, i) => ({
+      id: f.id,
+      url: (firmadas as { signedUrl: string }[])[i]?.signedUrl ?? '',
+      miniatura: chicas[i] ?? undefined,
+      fecha: f.log_id ? (cuando.get(f.log_id) ?? null) : null,
+    })),
   };
 }

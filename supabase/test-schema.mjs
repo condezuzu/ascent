@@ -8888,6 +8888,64 @@ console.log('\n134. Ajustes nativo: lo que la app necesita para existir en la ti
   chequear('y el techo del gimnasio lo dice desde adentro del telefono', /gimnasioTechoNativo/.test(gim), true);
 }
 
+console.log('\n135. El perfil, en las dos apps y con las mismas reglas');
+{
+  const { readFileSync: leer135 } = await import('node:fs');
+  const { join: unir135, dirname: dir135 } = await import('node:path');
+  const { fileURLToPath: aRuta135 } = await import('node:url');
+  const R135 = unir135(dir135(aRuta135(import.meta.url)), '..');
+  const de135 = (...p) => leer135(unir135(R135, ...p), 'utf8');
+
+  // LO QUE SE VE DE OTRO LO DECIDE LA BASE, pero la consulta es una sola para
+  // las dos apps: si cada una tuviera la suya, la regla de cuantas fotos se
+  // muestran se corregiria en un lado.
+  const compartido = de135('compartido', 'perfil.ts');
+  chequear('las fotos visibles son nueve', /FOTOS_VISIBLES = 9/.test(compartido), true);
+  chequear('y la semana de un amigo, siete dias', /DIAS_VISIBLES = 7/.test(compartido), true);
+  // SIN AMISTAD NO SE CONSULTA NADA SUYO: pedirlo igual seria pedirle a la
+  // base que diga que no, once veces.
+  chequear('sin amistad no se piden sus dias ni sus fotos', /if \(!esAmigo\) return base;/.test(compartido), true);
+
+  const propio = de135('movil', 'src', 'PerfilPropio.tsx');
+  const ajeno = de135('movil', 'src', 'PerfilDeAmigo.tsx');
+  chequear('las dos pantallas nativas usan la consulta compartida',
+    /@compartido\/perfil/.test(propio) && /@compartido\/perfil/.test(ajeno), true);
+
+  // LA GRILLA DE FOTOS ES LA MISMA EN LOS DOS PERFILES, y eso no es ahorro de
+  // codigo: el perfil propio promete "asi te ven", y la unica forma de que esa
+  // promesa no se rompa es que sea literalmente el mismo dibujo.
+  chequear('y la misma grilla de fotos',
+    /FotosQueVen/.test(propio) && /FotosQueVen/.test(ajeno), true);
+
+  // DE UN AMIGO NO SE VEN LOS DESCANSOS: son configuracion suya, no un hecho
+  // de su racha. La web dibuja su semana con `descansos={[]}`.
+  chequear('la semana de un amigo va sin sus descansos',
+    /descansos=\{\[\]\}/.test(de135('src', 'components', 'ComoMeVen.tsx')) && !/descansos/.test(ajeno), true);
+
+  // UN ID QUE NO ES UUID NO SE CONSULTA: interpolarlo en un filtro de
+  // PostgREST con formato invalido solo da errores.
+  chequear('el id se valida antes de preguntar', /\[0-9a-f\]\{8\}-/.test(ajeno), true);
+  // Y TU PROPIO PERFIL TIENE SU PANTALLA: entrar al tuyo por la ruta del ajeno
+  // mostraria una version recortada de vos mismo.
+  chequear('tu propio id va a /yo', /replace\('\/yo'\)/.test(ajeno), true);
+
+  // LAS TRES PUERTAS DESDE RANKING: la fila, la actividad y la busqueda.
+  const ranking = de135('movil', 'src', 'Ranking.tsx');
+  chequear('desde Ranking se entra a un perfil', (ranking.match(/router\.push\(/g) ?? []).length >= 3, true);
+  const web = de135('src', 'app', 'social', 'page.tsx');
+  chequear('y en la web tambien', (web.match(/href=\{`\/perfil\//g) ?? []).length >= 3, true);
+
+  // EL MOTOR SE MONTA UNA SOLA VEZ, y desde el 22/9 en la raiz del router:
+  // adentro de las pestañas quedaba tapado por lo que se apila encima.
+  const layout = de135('movil', 'app', '_layout.tsx');
+  chequear('el motor vive en la raiz del router', /<FondoRaiz \/>/.test(layout), true);
+  chequear('y ya no adentro de las pestañas', /FondoRaiz/.test(de135('movil', 'src', 'Pestanas.tsx')), false);
+  // CON EL FONDO DEL TEMA TRANSPARENTE: sin eso, cada pantalla apilada nace
+  // con el gris del sistema debajo y tapa el motor. Paso literal del 22/9: el
+  // perfil salio BLANCO con el texto claro encima.
+  chequear('las pantallas del stack no traen fondo propio', /background: 'transparent'/.test(layout), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
