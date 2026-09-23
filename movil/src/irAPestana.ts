@@ -1,4 +1,5 @@
 import { eventos } from '@compartido/eventos';
+import type { Pestana } from '@nucleo/recorrido';
 
 /**
  * PASAR A OTRA PESTAÑA desde adentro de una pantalla: el "ir a Ajustes" de un
@@ -10,7 +11,12 @@ import { eventos } from '@compartido/eventos';
  * importar el archivo que la importa a ella.
  */
 export const IR_A_PESTANA = 'ascent:ir-a-pestana';
-export type Pestana = 'inicio' | 'ranking' | 'album' | 'stats' | 'ajustes';
+
+// EL TIPO VIVE EN `nucleo/` DESDE EL 24/9, con el recorrido: esa lista nombra
+// las mismas cinco pantallas y tiene que nombrarlas igual. Estaba escrito acá
+// cuando era el único lugar que las conocía. Se reexporta para no tocar a los
+// once archivos que ya lo importaban de este.
+export type { Pestana } from '@nucleo/recorrido';
 
 export function irAPestana(p: Pestana) {
   eventos.emitir(IR_A_PESTANA, p);

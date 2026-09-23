@@ -12,6 +12,7 @@ import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
 import { eventos } from '@compartido/eventos';
 import { IR_A_PESTANA, type Pestana } from './irAPestana';
+import Recorrido from './Recorrido';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -216,6 +217,12 @@ export default function Pestanas({
           </Animated.View>
         )}
       </View>
+
+      {/* EL RECORRIDO DE LA PRIMERA VEZ (§10), encima de la barra. Va acá y no
+          adentro de cada pantalla porque la barra está en las cinco del
+          recorrido: puesto una vez, aparece donde tiene que aparecer. No
+          dibuja nada si no hay recorrido andando. */}
+      <Recorrido pestana={pestana} />
 
       <View style={estilos.barra} accessibilityRole="tablist">
         {/* El orden de la web: Inicio, Ranking, Álbum, Stats, Ajustes. */}

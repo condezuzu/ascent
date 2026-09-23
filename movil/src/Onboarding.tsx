@@ -12,6 +12,8 @@ import {
 import { supabase } from './supabase';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
+import { reiniciarGuia } from '@compartido/guia';
+import { irAPestana } from './irAPestana';
 
 /**
  * ELEGIR EL NOMBRE — lo que falta para que una cuenta nueva sirva.
@@ -58,7 +60,13 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
       if (error.code === '23514') return setError(T.entrar.nombreFormato);
       return setError(T.general.noSePudo);
     }
+    // EL RECORRIDO SE ENCIENDE ACÁ (§10) y no al abrir la app: la memoria de
+    // "ya lo vi" vive en el teléfono, así que sin este encendido explícito le
+    // aparecería a cualquiera que entrara en un aparato nuevo. Empieza en
+    // Ajustes, con el punto del gimnasio a la vista.
+    await reiniciarGuia(uid);
     alElegir();
+    irAPestana('ajustes');
   }
 
   return (
