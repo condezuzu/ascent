@@ -150,11 +150,28 @@ recibe nada**: se queda con el JS que le sirve.
 ## Cómo se publica
 
 ```
-cd movil && npx eas update --channel telefono --message "qué se arregló"
+cd movil && npx eas update --platform ios --channel telefono --message "qué se arregló"
 ```
 
 El canal es el del perfil de build (`telefono`, `store`…), y está en `eas.json`
 desde antes de que esto existiera.
+
+**`--platform ios` y no las dos**: sin eso publica también el paquete de
+Android, que nadie baja —no hay ninguna build de Android— y que encima sale con
+otra huella. Es medio minuto y un grupo de actualización de más en la lista,
+cada vez.
+
+**Cómo se comprueba que una actualización le va a llegar a una build**: las dos
+huellas tienen que ser la misma.
+
+```
+npx eas build:view <id>   # Runtime Version
+npx eas update:list --branch telefono   # Runtime Version, por plataforma
+```
+
+Si no coinciden, la app no la va a ver nunca y no va a decir por qué: para eso
+está la huella, y es lo que hay que mirar primero cuando "subí la update y no
+llegó".
 
 ## Cómo llega al teléfono
 
