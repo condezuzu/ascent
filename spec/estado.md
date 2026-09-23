@@ -219,8 +219,15 @@ diagnóstico, que hacía falta el mismo día.
   y no estaba en ninguna lista: la bitácora del vigilante se escribía y no
   había forma de leerla desde el teléfono, o sea que la función central de la
   app se probaba a ciegas.
-- ~~**La subida de rango.**~~ **Hecha el 23/9.** Era un agujero: el evento se
-  emitía y no lo escuchaba nadie.
+- ~~**La subida de rango.**~~ **Hecha el 23/9, y completa el mismo día.** Era
+  un agujero: el evento se emitía y no lo escuchaba nadie. La primera versión
+  abrió la pantalla pero mostraba el objeto nuevo **ya formado**, con la
+  animación de entrada del fondo; faltaba lo único que la subida cuenta, que es
+  la transformación. Ahora corre la coreografía de verdad —las 900 partículas
+  del objeto viejo se dispersan y se reorganizan en el nuevo, con su flash en el
+  4 → 5—, y es **el mismo archivo que la web**: la aritmética se mudó a
+  `nucleo/subida.ts` y el dibujo a `compartido/motor/subida.ts`, que pide al
+  lienzo las seis cosas que antes tomaba del navegador.
 - **El botón de volumen suma una serie** (§13f). El módulo nativo ya viaja en
   la build desde el 22/9, así que **esto ya es puro JavaScript**. Ojo con la
   promesa de la spec: en iOS solo se escucha con la app adelante.

@@ -22,7 +22,7 @@ import {
   pixelesPara,
   type NivelDeEquipo,
 } from '@/lib/bienvenida';
-import { N } from '@/lib/subida';
+import { N } from '@nucleo/subida';
 
 export default function BancoDeBienvenida() {
   const [paso, setPaso] = useState(0);

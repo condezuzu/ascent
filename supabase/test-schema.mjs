@@ -110,7 +110,7 @@ import {
   MS_ABRIR,
   MS_CERRAR,
 } from '../nucleo/atmosfera.ts';
-import * as SUB from '../src/lib/subida.ts';
+import * as SUB from '../nucleo/subida.ts';
 import { hayQueContar, valorContado, SALTO_MAXIMO } from '../nucleo/contar.ts';
 import { bordeDePalabra, retrocesosEnTemplate, sinComentarios } from './utiles.mjs';
 import { readFileSync } from 'node:fs';
@@ -7022,7 +7022,7 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
 {
   // Las capturas no ven animaciones (el navegador sin cabeza corre a un cuadro
   // por segundo), asi que lo unico que se puede verificar es la aritmetica.
-  // Misma idea que `lib/subida.ts`.
+  // Misma idea que `nucleo/subida.ts`.
   const B = await import('../src/lib/bienvenida.ts');
 
   // ---- los tramos aceleran, y ninguno se vuelve un parpadeo ----
@@ -9453,10 +9453,14 @@ console.log('\n140. El diagnostico del gimnasio, y la subida de rango');
   // Lo unico que se permite es un golpe corto cuando la forma queda hecha.
   chequear('sin sonido', /audio\.|sonido/.test(sub140), false);
   chequear('solo un golpe corto al formarse', /haptica\.pulso\(\)/.test(sub140), true);
-  // NO SE PUEDE SALTEAR ANTES DE TIEMPO: el momento dura menos de tres
-  // segundos y un toque accidental se llevaria lo unico que la app celebra.
-  chequear('no se cierra hasta que la forma esta hecha',
-    /onPress=\{formado \? alCerrar : undefined\}/.test(sub140), true);
+  // EL PRIMER TOQUE SALTEA, EL SEGUNDO CIERRA (cambiado el 23/9, con la
+  // coreografia). Antes tocar antes de tiempo no hacia NADA, para que un toque
+  // accidental no se llevara lo unico que la app celebra; con la animacion de
+  // verdad puesta eso pasaba a ser una pantalla que no responde durante cinco
+  // segundos. Ahora adelanta al objeto formado, igual que la web, y recien el
+  // segundo toque cierra: no se pierde nada y no se queda colgado.
+  chequear('el primer toque saltea en vez de no hacer nada',
+    /onPress=\{formado \? alCerrar : \(\) => saltar\.current\?\.\(\)\}/.test(sub140), true);
   // Y SE PUEDE MIRAR SIN ESPERAR DIEZ DIAS, desde el banco de trabajo: es lo
   // unico de la app que de otro modo se prueba una vez cada diez dias.
   chequear('se puede ver desde el diagnostico', /<SubidaRango/.test(diag), true);
@@ -9588,6 +9592,96 @@ console.log('\n141. Los arreglos del 23/9: OTA, salud, titileo y el planeta');
   chequear('y la foto se funde cuando termina de cargar', /onLoad=\{\(\) =>/.test(alb141), true);
 }
 
+console.log('\n142. La coreografia de la subida de rango, portada al telefono');
+{
+  const { readFileSync: leer142 } = await import('node:fs');
+  const { join: unir142 } = await import('node:path');
+  const R142 = unir142(import.meta.dirname, '..');
+  const de142 = (...p) => leer142(unir142(R142, ...p), 'utf8');
+
+  // SE MIRA EL CODIGO, NO LOS COMENTARIOS. El encabezado de la coreografia
+  // NOMBRA las seis cosas del navegador que dejo de usar —esa tabla es media
+  // explicacion del archivo— y un test ingenuo las encontraria ahi y diria que
+  // siguen puestas. Se sacan los comentarios antes de mirar.
+  const sinComentarios = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- LA ARITMETICA ES DEL NUCLEO ----
+  //
+  // 450 lineas sin un solo import, con tests desde el 68. Vivia en `src/lib`,
+  // o sea del lado de la web, y la app nativa no podia mirarla aunque fuera
+  // aritmetica pura.
+  const nuc142 = de142('nucleo', 'subida.ts');
+  chequear('la aritmetica de la subida esta en el nucleo', nuc142.length > 0, true);
+  // NUCLEO ES NUCLEO: nada del navegador, ni un import.
+  chequear('y sigue sin tocar el navegador',
+    /window\.|document\.|navigator\./.test(nuc142), false);
+  chequear('y sin importar nada', /^import /m.test(nuc142), false);
+  chequear('nadie la busca mas en src/lib',
+    /lib\/subida/.test(de142('src', 'motor', 'bienvenida.ts') + de142('src', 'motor', 'salvada.ts')),
+    false);
+
+  // ---- LA COREOGRAFIA ES UN SOLO ARCHIVO PARA LAS DOS APPS ----
+  //
+  // Lo que la separaba de la nativa eran seis cosas del navegador. Las seis se
+  // le piden ahora al lienzo, igual que ya hacia `motor/escena.ts`.
+  const com142 = sinComentarios(de142('compartido', 'motor', 'subida.ts'));
+  chequear('la coreografia vive en compartido', com142.length > 0, true);
+  chequear('no crea el renderer: se lo dan', /new THREE\.WebGLRenderer/.test(com142), false);
+  chequear('no mide con el canvas', /clientWidth/.test(com142), false);
+  chequear('no lee devicePixelRatio', /devicePixelRatio/.test(com142), false);
+  chequear('no pide cuadros al navegador', /requestAnimationFrame/.test(com142), false);
+  chequear('no mira el tamano con un ResizeObserver', /ResizeObserver/.test(com142), false);
+  chequear('no pregunta por matchMedia', /matchMedia/.test(com142), false);
+  chequear('el movimiento reducido se lo dicen', /movimientoReducido/.test(com142), true);
+  // LA SEPTIMA, QUE EN LA WEB NO EXISTIA: sin esto `expo-gl` dibuja y no se ve.
+  chequear('y presenta el cuadro, para expo-gl', /l\.presentar\(\)/.test(com142), true);
+
+  // EL RENDERER NO SE DESTRUYE ADENTRO. En la app nativa puede ser de un
+  // contexto que vive mas que la animacion; soltarlo se llevaria puesto el
+  // fondo de toda la sesion. Es la misma regla que `montarEscena`.
+  chequear('la coreografia no suelta el renderer', /renderer\.dispose\(\)/.test(com142), false);
+
+  // ---- LA WEB QUEDO DE ADAPTADOR ----
+  const web142 = sinComentarios(de142('src', 'motor', 'subida.ts'));
+  chequear('la web ya no tiene el bucle adentro', /posicionesSubida/.test(web142), false);
+  chequear('y llama a la compartida', /@compartido\/motor\/subida/.test(web142), true);
+  chequear('el renderer lo suelta quien lo creo', /renderer\.dispose\(\)/.test(web142), true);
+
+  // ---- LA NATIVA, QUE ES LO QUE FALTABA ----
+  const lie142 = sinComentarios(de142('movil', 'src', 'LienzoSubida.tsx'));
+  chequear('la nativa tiene su lienzo de subida', lie142.length > 0, true);
+  chequear('con su propio GLView', /<GLView/.test(lie142), true);
+  // SIN ESTO LA PANTALLA QUEDA NEGRA: en expo-gl el cuadro no se muestra solo.
+  chequear('que presenta el cuadro', /endFrameEXP/.test(lie142), true);
+  // LA DENSIDAD SALE DEL BUFFER: si se eligiera otra, three dibujaria en un
+  // viewport mas chico y las particulas quedarian en una esquina.
+  chequear('y saca la densidad del buffer', /drawingBufferWidth \/ w/.test(lie142), true);
+  chequear('el movimiento reducido sale del sistema', /isReduceMotionEnabled/.test(lie142), true);
+  // ESTE RENDERER SI SE SUELTA: el contexto es de esta pantalla y muere con ella.
+  chequear('y suelta su renderer al salir', /renderer\.current\?\.dispose\(\)/.test(lie142), true);
+
+  const sub142 = sinComentarios(de142('movil', 'src', 'SubidaRango.tsx'));
+  chequear('la pantalla usa la coreografia', /<LienzoSubida/.test(sub142), true);
+  chequear('y ya no el objeto ya formado del fondo', /FondoEspacial/.test(sub142), false);
+  // EL NOMBRE LO DECIDE LA ANIMACION, NO UN RELOJ. Eran 2600 ms fijos contra
+  // una animacion de 4 s —5,2 s en la ignicion—: el nombre entraba con el
+  // objeto todavia armandose.
+  chequear('el nombre ya no lo decide un temporizador', /FORMARSE_MS/.test(sub142), false);
+  chequear('lo decide el final de la animacion', /alTerminar=\{alTerminar\}/.test(sub142), true);
+  // Y EL PROP QUE ESTABA DE ADORNO AHORA ES LA MITAD DEL DIBUJO.
+  chequear('el rango anterior ya no esta sin usar', /_rangoAntes/.test(sub142), false);
+  chequear('es la forma que se deshace', /rangoAntes=\{rangoAntes\}/.test(sub142), true);
+
+  // ---- Y SE PRUEBA CON UNA GPU DELANTE ----
+  //
+  // Nada de lo de arriba prueba que el bucle CORRA sobre expo-gl: eso solo se
+  // ve abriendo la pantalla. La bateria de las dos apps la abre por el boton de
+  // diagnostico y espera el nombre del rango, que aparece recien cuando la
+  // animacion termino entera.
+  chequear('la bateria abre la subida en la nativa',
+    /Ver la subida de rango/.test(de142('supabase', 'bateria-dos-apps.mjs')), true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

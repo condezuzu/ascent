@@ -51,6 +51,10 @@ import { escucharFondo, type Pedido } from './pedidoDeFondo';
  * viven en `compartido/fondoDegradados.ts`, de donde los toma la web para su
  * CSS, y acá los dibuja `ElipsesDeLuz` con `react-native-svg`.
  *
+ * LA SUBIDA DE RANGO NO PASA POR ACÁ (23/9). Tiene su propio `GLView` dentro
+ * del modal, porque un `Modal` de iOS es otra jerarquía de vistas y este queda
+ * tapado. Ver `LienzoSubida.tsx`.
+ *
  * LO QUE FALTA RESPECTO DE LA WEB, a la vista:
  *
  *   - La animación del velo entre visitas (la "atmósfera" que se abre al subir

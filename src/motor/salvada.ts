@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { alCambiarDeTamano } from './alCambiarDeTamano';
 import { colorDeRango } from './subida';
-import { formaDeRango, extension, escalaParaEntrar } from '@/lib/subida';
+import { formaDeRango, extension, escalaParaEntrar } from '@nucleo/subida';
 import { brilloEn, sigueSalvando, dispersionDesde, posicionesEn } from '@/lib/salvada';
 import { marca } from '@/lib/medir';
 

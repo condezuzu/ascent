@@ -30,6 +30,21 @@ import { DESPERTAR_MOTOR } from './despertarMotor';
  *   - Qué pasa con el contexto al mandar la app al fondo y volver.
  */
 
+/**
+ * LA COREOGRAFIA DE LA SUBIDA, REEXPORTADA DESDE ACA.
+ *
+ * Es la misma de `compartido/motor/subida.ts`; esto es solo una puerta. Metro
+ * resuelve `@compartido` por `extraNodeModules`, y eso funciona para los
+ * imports estaticos pero NO para un `import()` dinamico: al bundlear, el
+ * especificador `@compartido/motor/subida` llegaba al resolvedor como
+ * `./compartido/motor/subida` y reventaba con "unable to resolve module".
+ *
+ * Como este archivo ya se importa tarde —y ya trae three— pasar por el
+ * de aca sale gratis: el `import()` de `LienzoSubida` queda relativo y el
+ * alias se resuelve estatico, que es donde anda.
+ */
+export { animarSubida } from '@compartido/motor/subida';
+
 export type Caja = {
   /** El tamaño en puntos, el que da `onLayout`. */
   tamano: () => { w: number; h: number };

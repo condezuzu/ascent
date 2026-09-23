@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { alCambiarDeTamano } from './alCambiarDeTamano';
 import { colorDeRango } from './subida';
-import { N, formaDeRango, extension, escalaParaEntrar } from '@/lib/subida';
+import { N, formaDeRango, extension, escalaParaEntrar } from '@nucleo/subida';
 import { cuadroEn, cuadroQuietoEn, DURACION_S, DURACION_QUIETA_S, RANGOS_DE_LA_ENTRADA, type CuadroDeLaEntrada } from '@/lib/bienvenida';
 
 /**

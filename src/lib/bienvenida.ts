@@ -2,7 +2,7 @@
  * LA PANTALLA DE ENTRADA, sin GPU: los tiempos, las curvas y qué se ve en
  * cada instante.
  *
- * POR QUÉ ES UN MÓDULO APARTE, igual que `lib/subida.ts`: las capturas no ven
+ * POR QUÉ ES UN MÓDULO APARTE, igual que `nucleo/subida.ts`: las capturas no ven
  * animaciones —el navegador sin cabeza corre `requestAnimationFrame` a un
  * cuadro por segundo— así que lo único que se puede verificar de verdad es la
  * aritmética. Acá vive toda: el motor y la pantalla solo dibujan lo que esto

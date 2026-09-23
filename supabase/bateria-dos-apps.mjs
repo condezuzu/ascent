@@ -288,6 +288,40 @@ async function correr(app) {
     stats = (await page.locator('body').innerText()).replace(/\n+/g, ' | ');
   });
 
+  // ---- la coreografia de la subida de rango (solo la nativa) ----
+  //
+  // SE PRUEBA POR EL BOTON DE DIAGNOSTICO porque subir de rango de verdad pide
+  // dias que esta cuenta no tiene. Lo que se comprueba es lo unico que no se
+  // puede comprobar sin una GPU delante: que el bucle arranque sobre el
+  // contexto de expo-gl y que LLEGUE AL FINAL. El nombre del rango aparece
+  // cuando la animacion termina —no con un reloj—, asi que si el nombre esta,
+  // la coreografia corrio entera.
+  //
+  // Antes esto no existia: la nativa mostraba el objeto nuevo ya formado.
+  if (app === 'movil') {
+    await paso('la subida de rango, con su coreografia', async () => {
+      // EL RECORRIDO DE PRIMERA VEZ VA PRIMERO. Es una cuenta recien nacida,
+      // asi que el globo esta puesto: tapa la mitad de abajo y ademas su
+      // "Saltar" devuelve a Inicio, o sea que saltearlo DESPUES de entrar a
+      // Ajustes te saca de Ajustes.
+      const saltar = page.getByText('Saltar', { exact: true }).last();
+      if (await saltar.isVisible().catch(() => false)) {
+        await saltar.click();
+        await page.waitForTimeout(800);
+      }
+      await texto('Ajustes').click();
+      await page.waitForTimeout(800);
+      // El diagnostico es una seccion plegada: hay que abrirla.
+      await page.getByText('Diagnóstico', { exact: true }).last().click({ timeout: 60000 });
+      const boton = page.getByText(/Ver la subida de rango/i).first();
+      await boton.scrollIntoViewIfNeeded();
+      await boton.click({ timeout: 60000 });
+      // 5,2 s es la ignicion, la mas larga de las siete; con margen para que
+      // nazca el contexto de GL y three compile su shader.
+      await page.getByText(/Nuevo rango/i).first().waitFor({ timeout: 30000 });
+    });
+  }
+
   await nav.close();
 
   // ---- la base, leída con la cuenta ----

@@ -1,13 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RANGOS } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
-import FondoEspacial from './FondoEspacial';
+import LienzoSubida from './LienzoSubida';
 import { C } from './colores';
-
-/** Lo que tarda en formarse el objeto nuevo antes de que aparezca su nombre. */
-const FORMARSE_MS = 2600;
 
 /**
  * SUBISTE DE RANGO. El premio de la app, que en el teléfono no existía.
@@ -29,26 +26,31 @@ const FORMARSE_MS = 2600;
  * reparte la atención. Y NO SE NOMBRA LO QUE VIENE DESPUÉS (§7): cuántos hay
  * y cuál sigue, nunca. Descubrir en qué te vas a convertir es la recompensa.
  *
- * EL OBJETO ES EL DE VERDAD, no un dibujo: `FondoEspacial` con el rango nuevo,
- * el mismo motor que pinta la pantalla principal. Lo que NO está es la
- * coreografía de la web —el objeto viejo se deshace y el nuevo se arma con sus
- * partículas, que en `src/motor/subida.ts` es una secuencia propia—. Acá el
- * nuevo se forma con la animación de entrada del motor. Es menos, y se nota;
- * es muchísimo más que nada, que es lo que había.
+ * LA COREOGRAFÍA YA ESTÁ (23/9). Hasta ahora acá se veía el objeto nuevo
+ * entrando con la animación de entrada del fondo: aparecía formado, sin que el
+ * viejo se deshiciera. Faltaba justo lo que la subida cuenta —los días que ya
+ * hiciste son el material de lo que sos ahora—, y sin eso quedaba un cartel.
+ *
+ * Ahora corre la de verdad (`LienzoSubida` → `compartido/motor/subida.ts`), que
+ * es EL MISMO ARCHIVO que la web: las 900 partículas del objeto viejo se
+ * dispersan, giran y se reorganizan en el nuevo. El salto 4 → 5 trae además su
+ * flash, que es la única de las siete que lo tiene.
+ *
+ * TOCAR ANTES DE TIEMPO LA SALTEA, no la corta. Antes tocar no hacía nada y se
+ * sentía colgado; ahora adelanta al objeto formado, igual que la web. Recién
+ * el segundo toque cierra.
  */
 export default function SubidaRango({
-  // No se usa en el cuerpo a proposito: ver el comentario del tipo.
-  rangoAntes: _rangoAntes,
+  rangoAntes,
   rangoDespues,
   planeta,
   racha,
   alCerrar,
 }: {
   /**
-   * De qué rango se viene. NO SE ESCRIBE en pantalla —"Dejaste atrás Luna"
-   * se sacó el 23/9— pero se sigue recibiendo: es la mitad del dato que
-   * necesita la coreografía del objeto viejo deshaciéndose en el nuevo,
-   * cuando se porte.
+   * De qué rango se viene. NO SE ESCRIBE en pantalla —"Dejaste atrás Luna" se
+   * sacó el 23/9— pero es la mitad de la coreografía: es la forma que se
+   * deshace.
    */
   rangoAntes: number;
   rangoDespues: number;
@@ -60,17 +62,20 @@ export default function SubidaRango({
 }) {
   const [formado, setFormado] = useState(false);
   const aparecer = useRef(new Animated.Value(0)).current;
+  const saltar = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    // EL NOMBRE APARECE ÚLTIMO, cuando el objeto ya está formado: si entrara
-    // junto con él, se leería el nombre y no se miraría la forma, que es lo
-    // que de verdad cambió.
-    const t = setTimeout(() => {
-      setFormado(true);
-      plataforma.haptica.pulso();
-      Animated.timing(aparecer, { toValue: 1, duration: 700, useNativeDriver: true }).start();
-    }, FORMARSE_MS);
-    return () => clearTimeout(t);
+  // EL NOMBRE APARECE ÚLTIMO, cuando el objeto ya está formado: si entrara
+  // junto con él, se leería el nombre y no se miraría la forma, que es lo que
+  // de verdad cambió.
+  //
+  // LO DECIDE LA ANIMACIÓN, NO UN RELOJ. Antes era un `setTimeout` de 2600 ms
+  // contra una animación que dura 4 s —y 5,2 s en la ignición—, así que el
+  // nombre entraba con el objeto todavía armándose. Ahora llega cuando llega, y
+  // sigue estando bien si alguien la saltea.
+  const alTerminar = useCallback(() => {
+    setFormado(true);
+    plataforma.haptica.pulso();
+    Animated.timing(aparecer, { toValue: 1, duration: 700, useNativeDriver: true }).start();
   }, [aparecer]);
 
   const nombre = RANGOS.find((r) => r.n === rangoDespues)?.nombre ?? '';
@@ -81,29 +86,44 @@ export default function SubidaRango({
     <Modal visible transparent={false} animationType="fade" onRequestClose={alCerrar}>
       <Pressable
         style={estilos.todo}
-        // SOLO SE PUEDE SALIR UNA VEZ FORMADO. Tocar antes no cierra: el
-        // momento dura menos de tres segundos y saltearlo de un toque
-        // accidental sería perderse lo único que la app celebra.
-        onPress={formado ? alCerrar : undefined}
+        // EL PRIMER TOQUE SALTEA, EL SEGUNDO CIERRA. Un toque accidental no se
+        // lleva puesto lo único que la app celebra —te deja el objeto formado y
+        // su nombre—, y el que ya la vio siete veces no tiene que esperar cinco
+        // segundos mirando una pantalla que no responde.
+        onPress={formado ? alCerrar : () => saltar.current?.()}
         accessibilityRole="button"
         accessibilityLabel={T.sesion.nuevoRango}
       >
-        {/* EL OBJETO NUEVO, centrado y sin velo: acá es el protagonista, no el
-            fondo de una pantalla con datos encima. */}
-        <FondoEspacial rango={rangoDespues} planeta={planeta ?? undefined} esquina="centro" />
+        {/* LA TRANSFORMACIÓN, centrada y sin velo: acá es la protagonista, no
+            el fondo de una pantalla con datos encima. */}
+        <LienzoSubida
+          rangoAntes={rangoAntes}
+          rangoDespues={rangoDespues}
+          planeta={planeta}
+          alArrancar={(fn) => {
+            saltar.current = fn;
+          }}
+          alTerminar={alTerminar}
+        />
 
         <View style={estilos.texto}>
-          <Animated.View style={{ opacity: aparecer }}>
-            <Text style={estilos.rotulo}>{T.sesion.nuevoRango}</Text>
-            <Text style={estilos.nombre}>{nombre}</Text>
-            {/* DE DÓNDE VENÍAS NO SE DICE (sacado el 23/9, a pedido). El
-                momento es el rango nuevo; nombrar el viejo al lado le
-                reparte la atención a lo que se acaba de dejar. */}
-            {typeof racha === 'number' && racha > 0 && (
-              <Text style={estilos.dia}>{T.sesion.rangoDia(racha)}</Text>
-            )}
-            <Text style={estilos.seguir}>{T.sesion.rangoSeguir}</Text>
-          </Animated.View>
+          {/* SOLO EXISTE UNA VEZ FORMADO, y no puesto con opacidad 0: así un
+              lector de pantalla no canta el rango nuevo antes de tiempo, y una
+              prueba que busca el nombre no se puede dar por satisfecha con la
+              animación sin correr. Es lo que hace la web. */}
+          {formado && (
+            <Animated.View style={{ opacity: aparecer }}>
+              <Text style={estilos.rotulo}>{T.sesion.nuevoRango}</Text>
+              <Text style={estilos.nombre}>{nombre}</Text>
+              {/* DE DÓNDE VENÍAS NO SE DICE (sacado el 23/9, a pedido). El
+                  momento es el rango nuevo; nombrar el viejo al lado le
+                  reparte la atención a lo que se acaba de dejar. */}
+              {typeof racha === 'number' && racha > 0 && (
+                <Text style={estilos.dia}>{T.sesion.rangoDia(racha)}</Text>
+              )}
+              <Text style={estilos.seguir}>{T.sesion.rangoSeguir}</Text>
+            </Animated.View>
+          )}
         </View>
       </Pressable>
     </Modal>
