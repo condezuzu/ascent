@@ -127,6 +127,16 @@ sugerencias sirve para encontrar bugs, no para decidir qué construir.
 
 ---
 
-*Nota de implementación (no es parte de la spec): los retos ya tienen UI
-construida por pedido explícito del humano — si la beta arranca sin ellos, se
-ocultan, no se borran. El §13 está documentado pero NO implementado.*
+*Nota de implementación (no es parte de la spec): los retos tienen UI y tablas
+construidas, escondidas detrás de `RETOS_LISTOS`. Esta nota decía que se
+habían construido "por pedido explícito del humano"; el 23/9 el humano dijo no
+acordarse de haberlos pedido nunca, y **esa frase no se puede verificar** —
+está adentro del repo desde el primer commit, escrita por el mismo proceso que
+escribió todo lo demás. Queda dicho así en vez de repetirse como un hecho.*
+
+*El 23/9 quedaron FUERA de la lista de pendientes, con el argumento de la
+propia §14: son lo más caro y lo que menos sirve sin usuarios activos, y sigue
+habiendo un solo usuario. No se borran. En su lugar entran las **medallas por
+marca**, que dan algo para mostrar sin necesitar un rival.*
+
+*El §13 está documentado pero NO implementado.*

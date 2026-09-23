@@ -224,8 +224,16 @@ diagnóstico, que hacía falta el mismo día.
 - **El botón de volumen suma una serie** (§13f). El módulo nativo ya viaja en
   la build desde el 22/9, así que **esto ya es puro JavaScript**. Ojo con la
   promesa de la spec: en iOS solo se escucha con la app adelante.
-- **Retos entre amigos.** No existen en la nativa (18 textos sin usar). Es la
-  pieza social más grande que falta.
+- ~~**Retos entre amigos.**~~ **Fuera de la lista el 23/9, por decisión del
+  humano.** No es una postergación más: la spec siempre dijo que eran "la más
+  cara y la que menos sirve sin usuarios activos" (§14), y sigue habiendo un
+  solo usuario — un reto contra nadie no se puede ni probar. Lo construido no
+  se toca: sigue escondido detrás de `RETOS_LISTOS`, que se prende con una
+  línea el día que entre gente.
+
+  En su lugar entran las **medallas por marca**, que hacen lo mismo que un
+  reto quería hacer —dar algo que mostrarle a alguien— y **funcionan con un
+  usuario o con cien**. Bocetos en `/galeria/medallas`, sin construir.
 - **Insistir con el punto del gimnasio** justo después de registrar el día —
   el único momento en que es probable que la persona esté parada ahí. La web
   lo hace; la nativa solo recuerda mientras no esté marcado.
