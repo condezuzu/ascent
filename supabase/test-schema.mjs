@@ -10784,6 +10784,56 @@ console.log('\n154. El entrenamiento: el menos, el peso por lado y los sin peso'
     /faltan > 0 && conPeso\.length > 0/.test(st154), true);
 }
 
+
+console.log('\n155. El album: pasar con el dedo y dos botones que se ven');
+{
+  const { readFileSync: leer155 } = await import('node:fs');
+  const { join: unir155 } = await import('node:path');
+  const R155 = unir155(import.meta.dirname, '..');
+  const de155 = (...p) => leer155(unir155(R155, ...p), 'utf8');
+  const sinComentarios155 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  const alb155 = sinComentarios155(de155('movil', 'src', 'Album.tsx'));
+
+  // ---- 20. SE PASA CON EL DEDO ----
+  //
+  // Era lo unico que faltaba respecto de la web y, ademas, lo unico que uno
+  // intenta: en un visor a pantalla completa nadie busca una flecha, arrastra.
+  chequear('hay gesto de arrastre', /PanResponder\.create/.test(alb155), true);
+  chequear('y la foto se mueve con el dedo', /translateX: desliz/.test(alb155), true);
+  // MAS HORIZONTAL QUE VERTICAL Y CON MARGEN: un toque para cerrar mueve el
+  // dedo uno o dos pixeles, y sin margen cada toque arrancaria un arrastre.
+  chequear('no se dispara con un toque',
+    /Math\.abs\(g\.dx\) > 8 && Math\.abs\(g\.dx\) > Math\.abs\(g\.dy\)/.test(alb155), true);
+  // DISTANCIA O VELOCIDAD: solo por distancia, un movimiento corto y decidido
+  // no pasa; solo por velocidad, un arrastre lento y largo tampoco.
+  chequear('pasa por distancia o por tiron',
+    /Math\.abs\(g\.dx\) > 70 \|\| Math\.abs\(g\.vx\) > 0\.4/.test(alb155), true);
+  // EL GESTO LEE EL ESTADO POR REFERENCIA: un PanResponder guarda las funciones
+  // que tenia al crearse, y con el estado de cada dibujo el primer arrastre
+  // sobre la segunda foto usaria el indice de la primera.
+  chequear('el indice viaja en una ref', /abiertaRef\.current = abierta/.test(alb155), true);
+  chequear('y la cantidad tambien', /cuantasRef\.current = celdas\.length/.test(alb155), true);
+  // LAS FLECHAS SE QUEDAN: sirven para el lector de pantalla y para saber que
+  // hay mas de una.
+  chequear('las flechas siguen estando', /T\.album\.siguiente/.test(alb155), true);
+
+  // ---- 21. LOS DOS PARECEN BOTONES ----
+  //
+  // "No parecen botones, parecen frases chicas." Y el de quitar lo era
+  // literalmente: texto suelto, del mismo tamano y color que la fecha de al
+  // lado.
+  chequear('quitar es una pildora, no texto suelto',
+    /style=\{estilos\.pastilla\} onPress=\{\(\) => setConfirmando\(true\)\}/.test(alb155), true);
+  chequear('y ya no hay texto suelto de accion', /estilos\.accion\}/.test(alb155), false);
+  // CONFIRMAR DICE QUE HACE, no "Si": con dos pildoras iguales al lado, "Si" y
+  // "No" obligan a acordarse de la pregunta que ya no esta.
+  const T155 = (await import('../nucleo/textos.ts')).T;
+  chequear('el boton de confirmar dice que hace', /quitarla/i.test(T155.album.quitarSi), true);
+  chequear('y va en rojo', /pastillaRoja/.test(alb155), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

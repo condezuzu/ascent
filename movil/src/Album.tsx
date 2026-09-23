@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, Animated, Easing, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Image,
+  Modal,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { supabase } from './supabase';
 import { SURGIR_MS } from '@nucleo/animacion';
 import { CURVA } from '@nucleo/deslizar';
@@ -22,8 +35,11 @@ import { useRecargarAlVolver } from './irAPestana';
  * una foto HEIC y su orientación— NO está probada: en :8090 el selector de
  * `expo-image-picker` es un `<input type=file>`. Queda para el iPhone.
  *
- * LO QUE FALTA RESPECTO DE LA WEB: deslizar la foto con el dedo para pasar a
- * la siguiente. Acá se pasa con las flechas.
+ * SE PASA CON EL DEDO (25/9). Era lo único que faltaba respecto de la web y
+ * era, además, lo único que uno intenta: en un visor de fotos a pantalla
+ * completa nadie busca una flecha, arrastra. Las flechas se quedan —sirven
+ * para el lector de pantalla y para saber que hay más de una— pero ya no son
+ * el camino.
  */
 export default function Album({ alSalir }: { alSalir: () => void }) {
   const [datos, setDatos] = useState<DatosDeAlbum | null>(null);
@@ -53,6 +69,69 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
 
   useEffect(() => setConfirmando(false), [abierta]);
 
+  // ---- PASAR LA FOTO CON EL DEDO ----
+  //
+  // EL GESTO SE ARMA UNA SOLA VEZ y lee el estado por REFERENCIA. Un
+  // `PanResponder` guarda las funciones que tenía cuando se creó: armado con el
+  // estado de cada dibujo, el primer arrastre después de abrir la segunda foto
+  // usaría el índice de la primera. Es la misma trampa que las teclas de
+  // volumen y la misma solución.
+  const abiertaRef = useRef(abierta);
+  abiertaRef.current = abierta;
+  const cuantasRef = useRef(0);
+  const desliz = useRef(new Animated.Value(0)).current;
+
+  const saltar = useCallback(
+    (d: 1 | -1) => {
+      // Sale por su lado y entra por el otro: sin esto, la foto nueva aparece
+      // corrida y vuelve al centro, que se lee al revés del gesto.
+      Animated.timing(desliz, {
+        toValue: -d * 600,
+        duration: 140,
+        easing: Easing.bezier(...CURVA),
+        useNativeDriver: true,
+      }).start(() => {
+        setAbierta((i) => (i === null ? null : i + d));
+        desliz.setValue(0);
+      });
+    },
+    [desliz]
+  );
+
+  const volverAlCentro = useCallback(() => {
+    Animated.timing(desliz, {
+      toValue: 0,
+      duration: 160,
+      easing: Easing.bezier(...CURVA),
+      useNativeDriver: true,
+    }).start();
+  }, [desliz]);
+
+  const gesto = useRef(
+    PanResponder.create({
+      // MÁS HORIZONTAL QUE VERTICAL, y con ocho píxeles de margen: un toque para
+      // cerrar mueve el dedo uno o dos, y sin el margen cada toque arrancaría un
+      // arrastre.
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
+      onPanResponderMove: (_e, g) => desliz.setValue(g.dx),
+      onPanResponderRelease: (_e, g) => {
+        const i = abiertaRef.current;
+        const total = cuantasRef.current;
+        // UN QUINTO DE PANTALLA O UN TIRÓN RÁPIDO. Solo por distancia, un
+        // movimiento corto y decidido no pasa; solo por velocidad, un arrastre
+        // lento y largo tampoco.
+        const fuerte = Math.abs(g.dx) > 70 || Math.abs(g.vx) > 0.4;
+        if (i === null || !fuerte) return volverAlCentro();
+        if (g.dx < 0 && i < total - 1) return saltar(1);
+        if (g.dx > 0 && i > 0) return saltar(-1);
+        // En la primera o en la última no hay adónde ir: vuelve, y ese rebote
+        // es la respuesta.
+        volverAlCentro();
+      },
+      onPanResponderTerminate: () => volverAlCentro(),
+    })
+  ).current;
+
   const celdas = datos?.celdas ?? [];
   const meses = porMes(celdas);
   // Tres por fila, todas del mismo tamaño: el criterio de la web (una grilla
@@ -60,6 +139,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
   const HUECO = 4;
   const lado = Math.floor((width - 48 - HUECO * 2) / 3);
   const foto = abierta !== null ? celdas[abierta] : null;
+  cuantasRef.current = celdas.length;
 
   async function alternar() {
     if (!foto) return;
@@ -148,7 +228,12 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
               <Text style={estilos.cerrarTexto}>×</Text>
             </Pressable>
 
-            <Image source={{ uri: foto.url }} style={{ width, height: width }} resizeMode="contain" />
+            {/* LA FOTO ES LA QUE RECIBE EL ARRASTRE, y va sola en su capa: si
+                el gesto viviera en el fondo, competiría con el toque que
+                cierra. */}
+            <Animated.View {...gesto.panHandlers} style={{ transform: [{ translateX: desliz }] }}>
+              <Image source={{ uri: foto.url }} style={{ width, height: width }} resizeMode="contain" />
+            </Animated.View>
 
             <View style={estilos.pasos}>
               {abierta! > 0 ? (
@@ -183,19 +268,27 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                     {foto.visibilidad === 'privada' ? T.album.soloVos : T.album.amigos}
                   </Text>
                 </Pressable>
+                {/* LOS DOS SON BOTONES Y SE VE (25/9). *"Los dos botones abajo
+                    a la derecha del visor no parecen botones, parecen frases
+                    chicas."* Y el de quitar lo era literalmente: texto suelto,
+                    del mismo tamaño y color que la fecha de al lado. El de
+                    visibilidad ya tenía píldora; ahora los dos la tienen, la
+                    misma, y lo único que los diferencia es lo que dicen.
+
+                    QUITAR VA EN ROJO Y SOLO AL CONFIRMAR: el primer toque
+                    pregunta, y hasta ahí no hay nada que avisar. */}
                 {confirmando ? (
                   <View style={estilos.confirmar}>
-                    <Text style={estilos.texto}>{T.album.quitarPregunta}</Text>
-                    <Pressable onPress={quitar} hitSlop={8}>
-                      <Text style={estilos.accion}>{T.album.si}</Text>
+                    <Pressable style={[estilos.pastilla, estilos.pastillaRoja]} onPress={quitar}>
+                      <Text style={[estilos.pastillaTexto, estilos.textoRojo]}>{T.album.quitarSi}</Text>
                     </Pressable>
-                    <Pressable onPress={() => setConfirmando(false)} hitSlop={8}>
-                      <Text style={estilos.accion}>{T.album.no}</Text>
+                    <Pressable style={estilos.pastilla} onPress={() => setConfirmando(false)}>
+                      <Text style={estilos.pastillaTexto}>{T.album.no}</Text>
                     </Pressable>
                   </View>
                 ) : (
-                  <Pressable onPress={() => setConfirmando(true)} hitSlop={8}>
-                    <Text style={estilos.accion}>{T.album.quitarFoto}</Text>
+                  <Pressable style={estilos.pastilla} onPress={() => setConfirmando(true)}>
+                    <Text style={estilos.pastillaTexto}>{T.album.quitarFoto}</Text>
                   </Pressable>
                 )}
               </View>
@@ -300,7 +393,8 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 16,
   },
   pastillaPrendida: { backgroundColor: C.claro, borderColor: C.claro },
+  pastillaRoja: { borderColor: C.error },
+  textoRojo: { color: C.error },
   pastillaTexto: { color: C.tinta, fontSize: 14 },
   confirmar: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  accion: { color: C.claro, fontSize: 14 },
 });

@@ -1154,6 +1154,9 @@ export const T = {
     // Para una foto el verbo es QUITAR, nunca borrar ni sacar (regla 4 de
     // spec/idioma.md). Decía "Borrar" hasta el 18/9; §54 lo mira ahora.
     quitarPregunta: '¿Quitar?',
+    // EL BOTON DE CONFIRMAR DICE QUE HACE, no 'Si'. Con dos pildoras iguales
+    // al lado, 'Si' y 'No' obligan a acordarse de la pregunta que ya no esta.
+    quitarSi: 'Sí, quitarla',
     si: 'Sí',
     no: 'No',
     soloVos: 'Solo tú',
