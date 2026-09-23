@@ -8330,11 +8330,23 @@ console.log('\n122. La app nativa se puede construir: los archivos que nombra ex
   // tres primeros se instalan con un link, sin pasar por Apple; `store` es el
   // que arma el IPA que acepta App Store Connect, y por eso es el unico que no
   // es interno.
-  const DE_LINK = ['telefono', 'dev', 'minimo'];
+  //
+  // Y DESDE EL 24/9 HAY UNO MAS, `simulador`, que es el unico que arma para el
+  // simulador y el unico que no se instala en ningun lado. Existe por lo que
+  // costo la tanda nativa: un modulo nativo nuevo puede no compilar, y
+  // averiguarlo con un build firmado gasta credenciales de Apple —que son del
+  // humano— ademas del tiempo. El del simulador NO necesita perfil de
+  // aprovisionamiento, asi que compila lo mismo sin pedirle nada a nadie: es
+  // la forma de saber si three, HealthKit y el resto arman, sin molestar.
+  const DE_LINK = ['telefono', 'dev', 'minimo', 'simulador'];
   for (const [nombre, perfil] of perfiles) {
     const interno = DE_LINK.includes(nombre);
     chequear(nombre + ': la distribucion que le toca', perfil.distribution, interno ? 'internal' : 'store');
-    chequear(nombre + ': no arma para el simulador', perfil.ios?.simulator, false);
+    // El rotulo cambia con la respuesta: "simulador: no arma para el
+    // simulador" es justo la linea que hay que poder leer sin tropezar.
+    const paraSim = nombre === 'simulador';
+    chequear(nombre + (paraSim ? ': arma para el simulador' : ': no arma para el simulador'),
+      perfil.ios?.simulator, paraSim);
     // TODOS DICEN `preview`, INCLUIDO EL DE TESTFLIGHT, y el porque importa
     // mas que la regla. Sin `environment`, EAS elige solo: 'development' para
     // el cliente de desarrollo y 'production' para la distribucion `store`.
@@ -9088,6 +9100,20 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
   // esa pestaña, y llegar al gimnasio no es asunto de una pantalla.
   chequear('y vive en la raiz, no en una pestaña',
     /<VigilanteDeGimnasio \/>/.test(de137('movil', 'app', '_layout.tsx')), true);
+
+  // EL PRIMER USO, que era el que peor salia. El vigilante lee el perfil UNA
+  // vez, al montarse; quien acababa de marcar el punto en Ajustes tenia el
+  // suyo y el seguia sin ninguno, asi que la zona NO quedaba registrada hasta
+  // el proximo arranque. Y el estreno de la funcion es justo marcar el punto y
+  // despues ir al gimnasio: marcabas, cerrabas la app, ibas, y no pasaba nada.
+  chequear('marcar el punto avisa al vigilante',
+    /eventos\.emitir\(PUNTO_CAMBIO\)/.test(de137('movil', 'src', 'ajustes', 'Gimnasio.tsx')), true);
+  chequear('y el vigilante vuelve a leer el perfil', /escuchar\(PUNTO_CAMBIO/.test(vig), true);
+  // FRESCO Y NO EL COMPARTIDO: `perfilVivo` puede devolver el pedido que ya
+  // estaba viajando —el de ANTES de marcar el punto— y entonces esto releeria
+  // justo lo que vino a dejar de creer.
+  chequear('leyendo de nuevo de verdad, no lo que ya estaba en vuelo',
+    /perfilFresco/.test(vig), true);
 
   // LA ZONA SOBREVIVE A CERRAR LA APP — para eso existe — asi que es lo unico
   // que hay que soltar a mano. Sin esto, el telefono seguiria despertando a la

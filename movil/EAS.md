@@ -231,6 +231,64 @@ Va a necesitar su propia build **igual**, se escriba hoy o en un mes. Lo que se
 puede hacer sin costo para quien instala es iterarla contra EAS hasta que salga
 verde, y recién ahí pasarla.
 
+## Lo que frenó la primera build: HealthKit pide permiso en Apple
+
+La build `e95dcbdf` **falló**, y vale la pena que quede escrito porque va a
+volver a pasar con cualquier capability nueva:
+
+```
+Provisioning profile "*[expo] uy.ascent.app AdHoc …" doesn't support
+the HealthKit capability.
+```
+
+**Qué pasó.** Un `entitlement` no es solo una línea en el `Info.plist`: el
+**App ID en el portal de Apple** tiene que tener esa capability marcada, y el
+**perfil de aprovisionamiento** tiene que estar regenerado después de
+marcarla. El que había se generó hace cuatro días, cuando HealthKit no existía
+en este proyecto.
+
+**Por qué no se arregló solo.** EAS sabe sincronizar las capabilities y
+regenerar el perfil, pero para eso necesita estar autenticado contra Apple. En
+`--non-interactive` no lo está, y lo dice:
+
+```
+Skipping Provisioning Profile validation on Apple Servers
+because we aren't authenticated.
+```
+
+Así que reintentar sin más reusa el MISMO perfil viejo y falla igual.
+
+**Cómo se destraba** (es del humano, porque es la cuenta de Apple): correr la
+build **sin** `--non-interactive` y entrar con el Apple ID cuando lo pida.
+
+```
+cd movil && npx eas build --platform ios --profile telefono
+```
+
+EAS marca HealthKit en el App ID, regenera el perfil y sigue. Es una sola vez:
+las builds siguientes vuelven a ser automáticas hasta la próxima capability.
+
+**Lo que NO necesitaba nada de esto:** el gimnasio en segundo plano.
+`UIBackgroundModes` va en el `Info.plist` y no es una capability del App ID, así
+que no toca el perfil.
+
+## Probar que compila sin gastar credenciales: el perfil `simulador`
+
+De esta misma tanda salió el perfil `simulador` (`eas.json`), y existe por lo
+que costó: **una build para el simulador no necesita perfil de
+aprovisionamiento**, así que compila los mismos pods y el mismo Swift sin
+pedirle nada a la cuenta de Apple.
+
+Es la forma de contestar "¿este módulo nativo nuevo compila?" antes de meterlo
+en la build que alguien va a instalar:
+
+```
+cd movil && npx eas build --platform ios --profile simulador
+```
+
+Un fallo ahí lo pago yo en intentos; un fallo en la otra lo paga quien espera
+para instalar.
+
 ## Todo lo demás de la lista es JavaScript
 
 El recorrido de primera vez, DOTS y la pantalla de marcas, la racha al costado,

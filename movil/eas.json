@@ -43,6 +43,15 @@
       },
       "environment": "preview"
     },
+    "simulador": {
+      "distribution": "internal",
+      "channel": "dev",
+      "ios": {
+        "simulator": true,
+        "resourceClass": "m-medium"
+      },
+      "environment": "preview"
+    },
     "store": {
       "distribution": "store",
       "channel": "store",

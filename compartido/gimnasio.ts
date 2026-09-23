@@ -30,6 +30,19 @@ export const DIA_CAMBIO = 'ascent:dia-cambio';
 export const SUBIO_RANGO = 'ascent:subio-rango';
 
 /**
+ * EL PUNTO DEL GIMNASIO CAMBIÓ: se marcó, se volvió a marcar, o se borró.
+ *
+ * EXISTE POR EL PRIMER USO, que es el que peor salía (24/9). El vigilante lee
+ * el perfil UNA vez, al montarse, así que quien acababa de marcar el punto en
+ * Ajustes tenía el suyo y él seguía con el de antes — o con ninguno. En la web
+ * eso costaba que no mirara hasta recargar; en el teléfono cuesta que **la
+ * zona no quede registrada en el sistema**, y el estreno de la función es
+ * justo ir al gimnasio después de marcarla. Sin esto: marcás el punto, cerrás
+ * la app, vas, y no pasa nada.
+ */
+export const PUNTO_CAMBIO = 'ascent:punto-gimnasio-cambio';
+
+/**
  * Registrar el día por una señal que no es un toque (§13).
  *
  * Ubicación y salud entran las dos por acá. Si cada una escribiera su propio

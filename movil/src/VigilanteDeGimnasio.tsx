@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DIA_CAMBIO,
   mirarElGimnasio,
+  PUNTO_CAMBIO,
   registrarPorSenal,
   SUBIO_RANGO,
 } from '@compartido/gimnasio';
 import { decidir } from '@nucleo/llegada';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
-import { perfilVivo } from '@compartido/perfilVivo';
+import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
 import { useSesion } from '@compartido/useSesion';
 import { ESPERA_LLEGADA_MS } from '@nucleo/reglas';
 import { anotar } from '@compartido/bitacora';
@@ -59,22 +60,34 @@ export const CERRO_SOLA = 'ascent:sesion-cerro-sola';
 export default function VigilanteDeGimnasio() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
 
-  useEffect(() => {
-    let vivo = true;
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      const uid = data.session?.user?.id;
-      if (!vivo || !uid) return;
-      const p = await perfilVivo(supabase, uid);
-      if (vivo && p) setPerfil(p);
-    })();
-    return () => {
-      vivo = false;
-    };
+  const leer = useCallback(async (fresco: boolean) => {
+    const { data } = await supabase.auth.getSession();
+    const uid = data.session?.user?.id;
+    // Sin sesión no se pregunta nada: en la pantalla de entrada eso es lo
+    // normal, no un error.
+    if (!uid) return setPerfil(null);
+    // `perfilFresco` DESPUÉS DE ESCRIBIR, porque `perfilVivo` puede devolver
+    // el pedido que ya estaba viajando —el de antes de marcar el punto—, y
+    // entonces esto releería exactamente lo que vino a dejar de creer.
+    const p = await (fresco ? perfilFresco : perfilVivo)(supabase, uid);
+    if (p) setPerfil(p);
   }, []);
 
+  useEffect(() => {
+    void leer(false);
+  }, [leer]);
+
+  // EL PUNTO RECIÉN MARCADO (24/9). Sin esto, el perfil de acá es el de cuando
+  // montó —o sea, sin punto— y la zona no se registra hasta el próximo
+  // arranque de la app. Justo el estreno de la función: marcás el punto en
+  // Ajustes, cerrás la app, vas al gimnasio, y no pasa nada.
+  useEffect(() => eventos.escuchar(PUNTO_CAMBIO, () => void leer(true)), [leer]);
+
   if (!perfil?.gimnasio_lat) return null;
-  return <Mirando perfil={perfil} />;
+  // LA CLAVE LLEVA EL PUNTO a propósito: al cambiarlo, `Mirando` se monta de
+  // nuevo entero en vez de quedarse con la visita y la sesión del gimnasio
+  // anterior, que ya no dicen nada de este.
+  return <Mirando key={`${perfil.gimnasio_lat},${perfil.gimnasio_lon}`} perfil={perfil} />;
 }
 
 function Mirando({ perfil }: { perfil: Perfil }) {

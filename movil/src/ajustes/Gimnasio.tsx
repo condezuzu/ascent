@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { marcarPunto } from '@compartido/gimnasio';
+import { marcarPunto, PUNTO_CAMBIO } from '@compartido/gimnasio';
+import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
@@ -63,6 +64,11 @@ export default function Gimnasio({
       );
     }
     alCambiar({ gimnasio_lat: r.lat, gimnasio_lon: r.lon });
+    // QUE EL VIGILANTE SE ENTERE AHORA y no en el próximo arranque: él leyó el
+    // perfil al montarse, o sea antes de que este punto existiera. Sin este
+    // aviso, el estreno de la función —marcar el punto y después ir— era el
+    // caso que no andaba.
+    eventos.emitir(PUNTO_CAMBIO);
     setEstado('listo');
     // La precisión se muestra porque cambia lo que se puede esperar: con 200
     // metros de error el atajo va a fallar, y es mejor saberlo ahora.
@@ -80,6 +86,7 @@ export default function Gimnasio({
     // despertando a la app en un lugar que ya no es el gimnasio de nadie.
     await plataforma.ubicacion.dejarDeVigilar();
     alCambiar({ gimnasio_lat: null, gimnasio_lon: null });
+    eventos.emitir(PUNTO_CAMBIO);
     setEstado('');
     setDetalle('');
   }
