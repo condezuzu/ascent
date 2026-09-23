@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
@@ -23,6 +24,7 @@ import { paletaDe } from '@nucleo/paletas';
 import { cuentaAtras, restante } from '@compartido/descanso';
 import FondoEspacial from './FondoEspacial';
 import { mostrando } from './loVisible';
+import Avatar from './Avatar';
 import DiaListo from './DiaListo';
 import NumeroQueCuenta from './NumeroQueCuenta';
 import PesoHoja from './PesoHoja';
@@ -77,6 +79,7 @@ export default function Inicio({
   /** Cuenta nueva sin nombre: la pantalla de elegirlo es de App. */
   alFaltarNombre: () => void;
 }) {
+  const router = useRouter();
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
   // EL SCROLL, para traer a la vista la pregunta de marca de la serie recién
   // confirmada (ver `MarcaEnElMomento`). Se mide en coordenadas de PANTALLA y
@@ -272,7 +275,19 @@ export default function Inicio({
       onScroll={(e) => (desplazado.current = e.nativeEvent.contentOffset.y)}
     >
       <View style={estilos.cabecera}>
-        <Text style={estilos.usuario}>{perfil.username}</Text>
+        {/* LA CABECERA ES LA PUERTA AL PERFIL, igual que en la web: el avatar
+            y el nombre juntos y tocables. Antes el nombre era un texto y no
+            llevaba a ningún lado — no porque se hubiera decidido así, sino
+            porque no había adónde ir. */}
+        <Pressable
+          style={estilos.yo}
+          onPress={() => router.push('/yo')}
+          accessibilityRole="button"
+          accessibilityLabel={T.nav.yo}
+        >
+          <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={28} />
+          <Text style={estilos.usuario}>{perfil.username}</Text>
+        </Pressable>
         {/* El chip de la sesión, arriba a la derecha como en la web: sin
             sesión la inicia; con sesión, es el reloj. */}
         {sesion.estado.corriendo && sesion.estado.inicio ? (
@@ -550,6 +565,7 @@ const estilos = StyleSheet.create({
   // Transparente: detrás está el fondo, que ya pinta el color de base.
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64 },
   centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },
+  yo: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   cabecera: {
     flexDirection: 'row',
     alignItems: 'center',

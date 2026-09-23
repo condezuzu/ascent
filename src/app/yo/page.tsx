@@ -9,7 +9,7 @@ import { miUsuario } from '@/lib/supabase/quienSoy';
 import { hoyISO } from '@nucleo/fechas';
 import { planetaDeDia } from '@nucleo/rangos';
 import { guardarPerfilCache } from '@compartido/cache';
-import { problemaConLaImagen, subirAvatar } from '@/lib/avatar';
+import { problemaConLaImagen, subirAvatar } from '@compartido/avatar';
 import type { Perfil, UsuarioPublico } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';

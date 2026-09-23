@@ -10,7 +10,6 @@ import Ranking from './Ranking';
 import Album from './Album';
 import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
-import FondoRaiz from './FondoRaiz';
 import { eventos } from '@compartido/eventos';
 import { IR_A_PESTANA, type Pestana } from './irAPestana';
 
@@ -167,12 +166,12 @@ export default function Pestanas({
     // nadie. Ver `despertarMotor.ts`.
     <View style={estilos.todo} onTouchStart={despertarMotor}>
       <View style={estilos.pantalla} {...pan.panHandlers}>
-        {/* EL MOTOR VIVE ACÁ y no adentro de Inicio: un solo contexto de GL
-            para toda la sesión. Inicio lo pide; las otras pestañas no, y
-            mientras tanto la escena queda guardada en pausa. Ocupa el área de
-            las pantallas, no la de la barra. Y NO SE MUEVE con el gesto: el
-            fondo es de todas las pantallas, no de una. Ver `FondoRaiz.tsx`. */}
-        <FondoRaiz />
+        {/* EL MOTOR YA NO VIVE ACÁ (22/9): subió a `app/_layout.tsx`, detrás
+            del stack entero. Estaba adentro de las pestañas desde que era lo
+            único que había, y con el perfil apilado encima quedaba tapado: se
+            entraba a `/yo` y el planeta desaparecía, cuando en la web está.
+            Sigue siendo UN solo contexto de GL para toda la sesión; lo que
+            cambió es de qué está detrás. */}
         <Animated.View style={[estilos.carril, { width: ancho }, { transform: [{ translateX: correr }] }]}>
           {dibujar(pestana)}
         </Animated.View>
@@ -212,7 +211,9 @@ export default function Pestanas({
 }
 
 const estilos = StyleSheet.create({
-  todo: { flex: 1, backgroundColor: '#05060a' },
+  // SIN FONDO PROPIO: el motor vive en la raíz del router, detrás de todo, y
+  // pintar acá lo taparía. Ver .
+  todo: { flex: 1 },
   pantalla: { flex: 1, overflow: 'hidden' },
   // ABSOLUTO CON ANCHO PROPIO y no `absoluteFill`: ese pone `right: 0`, y con
   // un `left` de una pantalla entera la de al lado quedaba de ancho cero. Se

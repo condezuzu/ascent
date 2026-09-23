@@ -41,7 +41,22 @@ if (errEntrar) {
   process.exit(1);
 }
 const uid = quien.user.id;
-const hoy = new Date().toISOString().slice(0, 10);
+/**
+ * EL DÍA DE LA CUENTA, no el de la máquina. `mi_hoy()` es la función que usa
+ * la app para decidir qué día es, con la zona horaria del perfil.
+ *
+ * SE PREGUNTA Y NO SE CALCULA porque acá se borra por fecha: con UTC, entre
+ * las nueve de la noche y la medianoche de Montevideo la sonda limpiaría un
+ * día que todavía no llegó y dejaría puesto el de hoy. Pasó (23/9, 00:05 UTC).
+ */
+async function diaDeLaCuenta() {
+  const { data } = await supabase.rpc('mi_hoy');
+  return data;
+}
+
+// `anotar_peso` escribe SIEMPRE el día de la cuenta: comparar contra otro
+// sería mirar una fila que no existe.
+const hoy = await diaDeLaCuenta();
 
 let fallas = 0;
 const esperar = (que, cumple) => {

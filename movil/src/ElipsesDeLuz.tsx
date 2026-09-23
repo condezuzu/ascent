@@ -37,6 +37,14 @@ export default function ElipsesDeLuz({
   /** Prefijo de los ids de los degradados: dos capas no pueden repetirlos. */
   id: string;
 }) {
+  // SIN TAMAÑO NO SE DIBUJA. Con el router (22/9), al empujar el perfil encima
+  // la pantalla de atrás se vuelve a medir y pasa por cero: ahí `rx` da 0, la
+  // escala vertical se divide por cero y salen `NaN` adentro del
+  // `gradientTransform`. El navegador lo cantaba cuatro veces por viaje
+  // ("Expected ')', translate(0 NaN)"). Un degradado sin superficie no tiene
+  // nada que pintar, así que no dibujarlo no esconde nada.
+  if (!(ancho > 0) || !(alto > 0)) return null;
+
   return (
     <Svg width={ancho} height={alto} style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
@@ -9,6 +10,7 @@ import { T } from '@nucleo/textos';
 import { PRESETS_DESCANSO } from '@nucleo/reglas';
 import { plataforma } from '@plataforma';
 import { duracionCorta, duracionValida, guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
+import Avatar from './Avatar';
 import Gimnasio from './ajustes/Gimnasio';
 import Identidad from './ajustes/Identidad';
 import Fondo from './ajustes/Fondo';
@@ -46,6 +48,7 @@ export default function Ajustes({
   alCambiar: (parcial: Partial<Perfil>) => void;
   alSalir: () => void;
 }) {
+  const router = useRouter();
   const [fallo, setFallo] = useState('');
   // El sonido del descanso es de ESTE teléfono, igual que en la web: se guarda
   // en el aparato y no en la cuenta.
@@ -92,6 +95,16 @@ export default function Ajustes({
     <ScrollView contentContainerStyle={estilos.pantalla}>
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>
+
+      {/* TU PERFIL, arriba de todo y como en la web: Ajustes es donde se lo
+          busca cuando no se lo encontró en Inicio. */}
+      <Pressable style={estilos.tuPerfil} onPress={() => router.push('/yo')} accessibilityRole="button">
+        <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={40} />
+        <View style={{ flex: 1 }}>
+          <Text style={estilos.tuNombre}>{perfil.username}</Text>
+          <Text style={estilos.tuPie}>{T.ajustes.tuPerfil}</Text>
+        </View>
+      </Pressable>
 
       {/* EL GIMNASIO VA PRIMERO, igual que en la web: es lo que diferencia a
           la app, y en una lista de interruptores al fondo no lo marca nadie. */}
@@ -241,6 +254,9 @@ export default function Ajustes({
 }
 
 const estilos = StyleSheet.create({
+  tuPerfil: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, marginBottom: 4 },
+  tuNombre: { color: '#e8ecf6', fontSize: 17 },
+  tuPie: { color: '#8a93a8', fontSize: 12, marginTop: 2 },
   pantalla: { flexGrow: 1, backgroundColor: '#05060a', padding: 24, paddingTop: 60 },
   titulo: {
     color: '#8a93a8',

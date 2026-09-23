@@ -62,8 +62,28 @@ const TABLAS = [
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
   auth: { persistSession: false },
 });
-const hoyISO = () => new Date().toISOString().slice(0, 10);
-const diasAtras = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+/**
+ * EL DÍA DE LA CUENTA, no el de la máquina. `mi_hoy()` es la función que usa
+ * la app para decidir qué día es, con la zona horaria del perfil.
+ *
+ * SE PREGUNTA Y NO SE CALCULA porque acá se borra por fecha: con UTC, entre
+ * las nueve de la noche y la medianoche de Montevideo la sonda limpiaría un
+ * día que todavía no llegó y dejaría puesto el de hoy. Pasó (23/9, 00:05 UTC).
+ */
+async function diaDeLaCuenta() {
+  const { data } = await supabase.rpc('mi_hoy');
+  return data;
+}
+
+// Los días que se fabrican se cuentan desde el día de la cuenta, por lo mismo:
+// con UTC, "hace un día" puede ser hoy.
+let HOY = null;
+const hoyISO = () => HOY;
+const diasAtras = (n) => {
+  const d = new Date(`${HOY}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - n);
+  return d.toISOString().slice(0, 10);
+};
 
 async function fotoDeLaCuenta(uid) {
   const foto = {};
@@ -98,6 +118,7 @@ if (CON_DATOS) {
     process.exit(1);
   }
   uid = quien.user.id;
+  HOY = await diaDeLaCuenta();
   antes = await fotoDeLaCuenta(uid);
 
   // TRECE DÍAS, con dos de descanso en el medio: una racha de doce que se ve

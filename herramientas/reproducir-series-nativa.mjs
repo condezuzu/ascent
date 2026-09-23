@@ -91,6 +91,19 @@ function diferencias(antes, despues) {
   return cambios;
 }
 
+/**
+ * EL DÍA DE LA CUENTA, no el de la máquina. `mi_hoy()` es la función que usa
+ * la app para decidir qué día es, con la zona horaria del perfil.
+ *
+ * SE PREGUNTA Y NO SE CALCULA porque acá se borra por fecha: con UTC, entre
+ * las nueve de la noche y la medianoche de Montevideo la sonda limpiaría un
+ * día que todavía no llegó y dejaría puesto el de hoy. Pasó (23/9, 00:05 UTC).
+ */
+async function diaDeLaCuenta() {
+  const { data } = await supabase.rpc('mi_hoy');
+  return data;
+}
+
 const antes = await fotoDeLaCuenta();
 
 // ---- LAS TRES FUENTES ----
@@ -276,7 +289,7 @@ const alVolverLaSenal = await parada(page, 'cuando vuelve la señal (sin tocar n
 // Y corregir BORRA el día, que se lleva la sesión en cascada (ver
 // `compartido/dia.ts`). O sea que al volver a Inicio la caché tiene una sesión
 // que en la base ya no existe: justo el desencuentro que se vio.
-const hoyNumero = new Date().getDate();
+const hoyNumero = Number((await diaDeLaCuenta()).slice(-2));
 await page.getByText('Stats', { exact: true }).last().click();
 await page.getByText('Entrenamiento', { exact: true }).last().click({ timeout: 30000 });
 await page.getByLabel(`Ver el día ${hoyNumero}`).click({ timeout: 30000 });
@@ -347,7 +360,7 @@ if (alCorregir.cache.hay && !alCorregir.base.hay)
   // ---- DEJAR LA CUENTA COMO ESTABA ----
   await nav.close().catch(() => {});
   await supabase.rpc('terminar_sesion');
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = await diaDeLaCuenta();
   const teniaHoy = antes.logs.some((f) => JSON.parse(f).fecha === hoy);
   if (!teniaHoy) await supabase.from('logs').delete().eq('user_id', uid).eq('fecha', hoy);
   await supabase.from('sesiones').delete().eq('id', idSesion);

@@ -1,4 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+// El cliente por alias: la nativa tiene su propia copia del paquete y los dos
+// tipos no son el mismo para TypeScript aunque sean la misma clase.
+import type { Cliente } from '@cliente';
 import { T } from '@nucleo/textos';
 
 export const TAMANO_MAXIMO = 8 * 1024 * 1024;
@@ -25,9 +27,11 @@ export function problemaConLaImagen(archivo: File): string | null {
  * Devuelve la URL nueva, o el mensaje del problema.
  */
 export async function subirAvatar(
-  supabase: SupabaseClient,
+  supabase: Cliente,
   userId: string,
-  recorte: Blob
+  // `Blob` en la web, `Uint8Array` en el teléfono: `prepararFoto` de cada app
+  // entrega lo que esa plataforma sabe armar, y a Supabase le sirven los dos.
+  recorte: Blob | ArrayBuffer | Uint8Array
 ): Promise<{ url: string } | { error: string }> {
   const ruta = `${userId}/avatar.jpg`;
   const { error } = await supabase.storage

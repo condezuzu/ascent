@@ -171,6 +171,23 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   4. **Apple Health.**
 
   El aviso de las 20:30 NO está en esa lista: se sacó.
+
+  **Detalles que faltan portar, encontrados USANDO la app el 22/9** y que el
+  inventario por pantallas no había visto, porque no son funciones que falten
+  sino formas que quedaron distintas:
+
+  - **La racha: el rótulo va al COSTADO del número, no arriba.** En la web es
+    `.racha-label`, con `writing-mode: vertical-rl`, al lado de
+    `.racha-numero` (`globals.css`); en la nativa es un `Text` encima. El
+    humano prefiere el de la web y tiene razón: el número es lo único grande de
+    esa pantalla y un rótulo arriba le roba el arranque.
+  - **Falta la barra de progreso al rango siguiente.** En la web sale de
+    `progresoEnRango` y `siguienteRango` (`nucleo/rangos.ts`, ya compartido) y
+    se dibuja sin etiqueta debajo de la racha. La nativa no la tiene: el
+    cálculo está, falta la barra.
+  - **El Álbum entra de golpe.** En la web cada celda lleva `--i` y entra
+    escalonada; en la nativa aparecen todas juntas. Ya existe `Surgir.tsx`
+    (Ranking lo usa), así que es ponerlo, no escribirlo.
 - **TestFlight: ya está.** La app existe en App Store Connect como "Ascent —
   Streak & Strength" (ASC App ID 6815006917, bundle `uy.ascent.app`, contrato
   de apps gratuitas activo) y la primera build subida es `fea8f17a`. El

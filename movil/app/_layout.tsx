@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
+import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/supabase';
 import Login from '../src/Login';
 import Onboarding from '../src/Onboarding';
+import FondoRaiz from '../src/FondoRaiz';
 import Raiz from '../src/Raiz';
 import { sesionDesdeEnlace } from '../src/enlace';
 import { ProveedorDeSesion } from '../src/sesionDeLaApp';
@@ -115,17 +117,32 @@ export default function Layout() {
             adónde navegar. */}
         {sesion === 'con' && (
         <View style={estilos.todo}>
+          {/* EL MOTOR, DETRÁS DE TODO Y UNA SOLA VEZ. Vivía adentro de las
+              pestañas, que era su lugar mientras no hubo nada apilado encima;
+              con el perfil, entrar a /yo lo tapaba y el planeta desaparecía.
+              Acá está detrás del stack entero, así que lo comparten las
+              pestañas y lo que se empuje arriba, sin volver a montarse. */}
+          <FondoRaiz />
+          {/* EL TEMA DEL NAVEGADOR, CON EL FONDO TRANSPARENTE. Cada pantalla
+              del stack nace con el gris claro del sistema (#f2f2f2) debajo, y
+              eso tapa el motor: entrar a /yo dejaba la pantalla BLANCA con el
+              texto claro encima, ilegible. `contentStyle` no alcanza —en la
+              vista web ni siquiera llega—; el color sale del tema. */}
+          <ThemeProvider value={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: 'transparent' } }}>
           <Stack
             screenOptions={{
               headerShown: false,
               // El fondo del viaje es el de la app: con el blanco de fábrica,
               // cada empujón de pantalla destella.
-              contentStyle: { backgroundColor: '#05060a' },
+              // TRANSPARENTE: detrás está el motor. Con un fondo opaco acá,
+              // el planeta quedaría tapado por la propia pantalla.
+              contentStyle: { backgroundColor: 'transparent' },
               animation: 'slide_from_right',
             }}
           >
             <Stack.Screen name="index" initialParams={{}} />
           </Stack>
+          </ThemeProvider>
         </View>
         )}
       </View>

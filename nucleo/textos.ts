@@ -884,6 +884,9 @@ export const T = {
     album: 'Álbum',
     stats: 'Stats',
     ajustes: 'Ajustes',
+    // No es una pestaña: es la etiqueta del acceso al perfil propio, que en
+    // las dos apps vive en la cabecera de Inicio.
+    yo: 'Tu perfil',
   },
 
   // ---------------------------------------------------------------
@@ -1097,6 +1100,7 @@ export const T = {
     // El link para buscar está justo arriba: repetir dónde se buscan sobraba.
     sinAmigos: 'Todavía no agregaste a nadie.',
     noSeSumoLaFoto: 'La foto no se sumó al día. Prueba de nuevo.',
+    noSePudoLaFoto: 'No se pudo cambiar la foto de perfil.',
     // Nace compartida: es la única puerta para sumar una foto sin registrar
     // el día, y vive en la pantalla de lo que ven tus amigos.
     sumarFotos: 'Sumar una foto',
