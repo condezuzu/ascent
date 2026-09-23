@@ -12,7 +12,12 @@ import { requireOptionalNativeModule } from 'expo';
  */
 type Nativo = {
   disponible(): boolean;
-  mostrar(finEnMs: number, duracion: number): Promise<void>;
+  /**
+   * `ejercicio` viaja como cadena vacía y no como `null`: los opcionales de
+   * Swift cruzan el puente de Expo con más filo del que esto necesita, y "sin
+   * ejercicio" se dibuja igual de bien preguntando si la cadena está vacía.
+   */
+  mostrar(finEnMs: number, duracion: number, ejercicio: string, serie: number, meta: number): Promise<void>;
   esconder(): Promise<void>;
 };
 

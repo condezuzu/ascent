@@ -6,8 +6,12 @@ import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { claveDeEtiqueta } from '@nucleo/carga';
 import { umbralValido } from '@nucleo/estancamiento';
 import {
+  SERIES_POR_SEMANA,
+  TOPE_DE_PISTA,
+  comoVaElMusculo,
   fechasPorRevisar,
   filasPorMusculo,
+  porcionDePista,
   maximosDelCatalogo,
   semanaParaLeer,
   sesionesConFecha,
@@ -66,7 +70,6 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState('');
   const [pestana, setPestana] = useState<'general' | 'entrenamiento'>('general');
-  const [enSeries, setEnSeries] = useState(true);
   const [tocada, setTocada] = useState<number | null>(null);
   // Los grupos de máximos tocados a mano; el resto, abierto si tiene algo.
   const [plegados, setPlegados] = useState<Record<string, boolean>>({});
@@ -186,11 +189,12 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const d = deISO(hoy);
   const esteMes = entrenados.filter((l) => l.fecha >= aISO(new Date(d.getFullYear(), d.getMonth(), 1))).length;
 
-  const { filas, totales, hayAnotado, topeSeries, topeKilos } = volumen;
-  const hayKilos = topeKilos > 0;
-  const series = enSeries || !hayKilos;
-  const valor = (s: { series: number; kilos: number }) => (series ? s.series : s.kilos);
-  const tope = series ? topeSeries : topeKilos;
+  // LOS TOPES YA NO SE USAN (25/9). Eran la escala de las barras, que se
+  // estiraba con tu propio máximo: por eso una barra llena podía ser 4 series o
+  // 40, y por eso "las barras no comunican nada". La pista tiene tope fijo y la
+  // referencia adentro. `filasPorMusculo` los sigue devolviendo porque la web
+  // los usa.
+  const { filas, totales, hayAnotado } = volumen;
   const indice = semanaParaLeer(totales, tocada);
   // La última barra es la semana de hoy, que todavía no terminó.
   const enCurso = totales.length - 1;
@@ -270,68 +274,77 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             <Text style={estilos.nota}>{T.volumen.vacio}</Text>
           ) : (
             <>
-              {hayKilos && (
-                <View style={estilos.selector}>
-                  {([true, false] as const).map((s) => (
-                    <Pressable
-                      key={String(s)}
-                      style={[estilos.opcion, series === s && estilos.opcionActiva]}
-                      onPress={() => setEnSeries(s)}
-                    >
-                      <Text style={[estilos.opcionTexto, series === s && estilos.opcionTextoActivo]}>
-                        {s ? T.volumen.enSeries : T.volumen.enKilos}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-              <Text style={estilos.cuando}>
-                {T.volumen.conTotal(
-                  indice === enCurso ? T.volumen.estaSemana : T.volumen.semanaDel(fechaLinda(leidaTotal.desde)),
-                  series ? T.volumen.soloSeries(leidaTotal.series) : `${kilosLindos(leidaTotal.kilos)} ${unidad}`
-                )}
-              </Text>
+              {/* LA SEMANA QUE SE ESTÁ LEYENDO. Las flechas reemplazan a las
+                  ocho barras: eran ellas las que dejaban elegir semana, y eran
+                  ellas las que no comunicaban nada. */}
+              <View style={estilos.semana}>
+                <Pressable
+                  onPress={() => setTocada(Math.max(0, indice - 1))}
+                  disabled={indice === 0}
+                  hitSlop={10}
+                  accessibilityLabel={T.volumen.semanaAnterior}
+                >
+                  <Text style={[estilos.flecha, indice === 0 && estilos.sinMaximo]}>‹</Text>
+                </Pressable>
+                <Text style={estilos.cuando}>
+                  {T.volumen.conTotal(
+                    indice === enCurso ? T.volumen.estaSemana : T.volumen.semanaDel(fechaLinda(leidaTotal.desde)),
+                    T.volumen.soloSeries(leidaTotal.series)
+                  )}
+                </Text>
+                <Pressable
+                  onPress={() => setTocada(Math.min(enCurso, indice + 1))}
+                  disabled={indice === enCurso}
+                  hitSlop={10}
+                  accessibilityLabel={T.volumen.semanaSiguiente}
+                >
+                  <Text style={[estilos.flecha, indice === enCurso && estilos.sinMaximo]}>›</Text>
+                </Pressable>
+              </View>
+
               {filas.map((f) => {
-                const leida = f.semanas[indice];
+                const hechas = f.semanas[indice].series;
+                const como = comoVaElMusculo(hechas);
                 return (
                   <View key={f.grupo} style={estilos.filaMusculo}>
                     <View style={estilos.rotulo}>
-                      <Text style={[estilos.nombre, f.vacia && estilos.sinMaximo]}>{mayuscula(f.grupo)}</Text>
+                      <Text style={[estilos.nombre, como === 'nada' && estilos.sinMaximo]}>{mayuscula(f.grupo)}</Text>
                       {f.dejado && (
                         <Text style={estilos.dejado}>{T.volumen.nadaDesde(fechaLinda(f.dejado.ultima))}</Text>
                       )}
                     </View>
-                    <View style={estilos.barras}>
-                      {f.semanas.map((s, i) => (
-                        <Pressable key={s.desde} style={estilos.barra} onPress={() => setTocada(i)}>
-                          <View
-                            style={[
-                              estilos.relleno,
-                              i === indice && estilos.rellenoLeido,
-                              // Sin nada no hay contorno: sería un punteado suelto sobre la base.
-                              i === enCurso && valor(s) > 0 && (i === indice ? estilos.enCursoLeido : estilos.enCurso),
-                              { height: `${tope > 0 ? (valor(s) / tope) * 100 : 0}%` },
-                            ]}
-                          />
-                        </Pressable>
-                      ))}
+                    {/* LA PISTA. El tope es FIJO (24) y ahí está la gracia: con
+                        una escala que se estirara con la fila más alta, la
+                        franja se movería de lugar en cada pantalla y volvería a
+                        no significar nada. */}
+                    <View style={estilos.pista}>
+                      <View
+                        style={[
+                          estilos.franja,
+                          {
+                            left: `${(SERIES_POR_SEMANA.minimo / TOPE_DE_PISTA) * 100}%`,
+                            width: `${((SERIES_POR_SEMANA.maximo - SERIES_POR_SEMANA.minimo) / TOPE_DE_PISTA) * 100}%`,
+                          },
+                        ]}
+                      />
+                      <View
+                        style={[
+                          estilos.llenado,
+                          como === 'poco' && estilos.llenadoPoco,
+                          como === 'dentro' && estilos.llenadoDentro,
+                          como === 'mucho' && estilos.llenadoMucho,
+                          { width: `${porcionDePista(hechas) * 100}%` },
+                        ]}
+                      />
                     </View>
-                    <Text style={[estilos.valorFila, f.vacia && estilos.sinMaximo]}>
-                      {leida.series === 0 ? T.volumen.nada : series ? String(leida.series) : `${kilosLindos(leida.kilos)} ${unidad}`}
+                    <Text style={[estilos.valorFila, como === 'nada' && estilos.sinMaximo]}>
+                      {hechas === 0 ? T.volumen.nada : String(hechas)}
                     </Text>
                   </View>
                 );
               })}
-              {/* El eje: la primera semana y la de hoy. */}
-              <View style={estilos.eje} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-                <View style={estilos.rotulo} />
-                <View style={estilos.ejeFechas}>
-                  <Text style={estilos.ejeTexto}>{fechaCorta(totales[0].desde)}</Text>
-                  <Text style={estilos.ejeTexto}>{T.volumen.esta}</Text>
-                </View>
-                <View style={estilos.ejeHueco} />
-              </View>
-              <Text style={estilos.nota}>{series ? T.volumen.notaSeries : T.volumen.notaKilos}</Text>
+              <Text style={estilos.nota}>{T.volumen.notaRango}</Text>
+              <Text style={estilos.nota}>{T.volumen.notaRangoPorque}</Text>
             </>
           )}
 
@@ -454,25 +467,22 @@ const estilos = StyleSheet.create({
   filaMusculo: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginBottom: 10 },
   rotulo: { width: 90 },
   dejado: { color: '#4a5163', fontSize: 11, marginTop: 1 },
-  barras: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 2,
-    height: 34,
-    alignItems: 'flex-end',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1d2230',
-  },
-  barra: { flex: 1, height: '100%', justifyContent: 'flex-end', paddingHorizontal: 1 },
-  relleno: { width: '100%', borderTopLeftRadius: 4, borderTopRightRadius: 4, backgroundColor: '#3d4556' },
-  rellenoLeido: { backgroundColor: '#7e8ca8' },
-  // La semana de hoy no terminó: contorno punteado, para que no parezca una caída.
-  enCurso: { backgroundColor: 'transparent', borderWidth: 1, borderStyle: 'dashed', borderColor: '#5a647a' },
-  enCursoLeido: { backgroundColor: 'rgba(126,140,168,0.3)', borderWidth: 1, borderStyle: 'dashed', borderColor: '#7e8ca8' },
-  eje: { flexDirection: 'row', gap: 10, marginTop: -4, marginBottom: 10 },
-  ejeFechas: { flex: 1, flexDirection: 'row', justifyContent: 'space-between' },
-  ejeTexto: { color: '#4a5163', fontSize: 11 },
-  ejeHueco: { width: 58 },
+  // LA SEMANA QUE SE LEE, con las flechas a los costados. Reemplazan a las ocho
+  // barras: eran ellas las que dejaban elegir semana, y eran ellas las que no
+  // comunicaban nada.
+  semana: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginBottom: 14 },
+  flecha: { color: '#8a93a8', fontSize: 22, paddingHorizontal: 2 },
+  // LA PISTA: fondo, franja de referencia, y el llenado encima.
+  pista: { flex: 1, height: 12, borderRadius: 6, backgroundColor: '#161b26', overflow: 'hidden' },
+  // La franja NO es un borde: es un bloque más claro, para que se lea como una
+  // zona y no como dos líneas sueltas.
+  franja: { position: 'absolute', top: 0, bottom: 0, backgroundColor: '#232b3b' },
+  llenado: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 6 },
+  // POR DEBAJO, APAGADO; DENTRO, EL COLOR DE LA APP; POR ENCIMA, un tono más
+  // caliente. Nada de rojo: pasarse no es un error.
+  llenadoPoco: { backgroundColor: '#4a5163' },
+  llenadoDentro: { backgroundColor: '#7e8ca8' },
+  llenadoMucho: { backgroundColor: '#c4c2ba' },
   valorFila: { width: 58, color: '#e8ecf6', fontSize: 14, textAlign: 'right' },
 
   fila: {

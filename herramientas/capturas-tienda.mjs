@@ -204,7 +204,13 @@ page.on('console', (m) => m.type() === 'error' && errores.push(m.text()));
  * texto. Es la misma trampa que se comió `reproducir-series-nativa.mjs`.
  */
 async function sumarSerie(page) {
-  const mas = page.getByLabel('Sumar una serie');
+  // `.last()` Y NO EL LOCALIZADOR PELADO: con las cinco pestañas montadas a la
+  // vez, un `getByLabel` puede encontrar más de un candidato, y ahí Playwright
+  // no elige —tira por modo estricto—. El `catch` de abajo se lo tragaba y
+  // caíamos al camino de "Sumar otra", que solo existe con la meta cumplida:
+  // o sea que el fallo se veía como un timeout de treinta segundos esperando
+  // un botón que no tenía por qué estar. Es lo mismo que ya hacía el barrido.
+  const mas = page.getByLabel('Sumar una serie').last();
   if (await mas.isVisible().catch(() => false)) return mas.click();
   return page.getByText('Sumar otra', { exact: true }).last().click({ timeout: 30000 });
 }

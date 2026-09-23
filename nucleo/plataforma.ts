@@ -170,10 +170,22 @@ export type Avisos = {
  * notificación: sin permiso, con las actividades apagadas o en un teléfono
  * viejo, el descanso tiene que seguir andando idéntico.
  */
+/**
+ * QUÉ SE ESTABA HACIENDO, para que la tarjeta diga algo más que la hora.
+ *
+ * Es OPCIONAL en serio: sin esto la cuenta se ve igual que siempre. Lo llena
+ * `compartido/enCurso.ts`, que lo escribe la pantalla del bloque.
+ */
+export type ContextoDelDescanso = {
+  ejercicio: string | null;
+  serie: number;
+  meta: number;
+};
+
 export type EnVivo = {
   disponible(): boolean;
   /** `fin` en milisegundos del reloj del teléfono; `duracion` en segundos. */
-  mostrarDescanso(fin: number, duracion: number): Promise<void>;
+  mostrarDescanso(fin: number, duracion: number, ctx?: ContextoDelDescanso | null): Promise<void>;
   esconder(): Promise<void>;
 };
 

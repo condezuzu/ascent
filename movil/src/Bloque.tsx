@@ -8,6 +8,7 @@ import { OPCIONES_DE_LA_PREGUNTA, cargaVigente, hayQuePreguntar, kilosMovidos, m
 import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
 import { leerAnotarPeso } from '@compartido/anotarPeso';
+import { ponerEnCurso } from '@compartido/enCurso';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
@@ -107,6 +108,25 @@ export default function Bloque({
     conCarga &&
     admitePeso &&
     hayQuePreguntar({ ambigua: actual?.carga_ambigua, cargaDelBloque: estado.carga, yaSeConsulto: cargaConsultada === estado.ejercicio });
+
+  // QUÉ SE ESTÁ HACIENDO, ANOTADO PARA LA PANTALLA BLOQUEADA (25/9).
+  //
+  // Esta pantalla es la única que tiene el catálogo cargado, así que es la
+  // única que puede decir "Press de banca" en vez de `press_banca`. Lo deja
+  // anotado y quien enciende la cuenta del descanso lo lee. Ver
+  // `compartido/enCurso.ts`.
+  //
+  // LA SERIE QUE SE ANOTA ES LA QUE SE ESTÁ POR TERMINAR: el descanso arranca
+  // JUSTO ANTES de que se sume, así que `hechas` todavía es la cuenta de antes.
+  // Sin el más uno, la tarjeta diría una serie menos de la que acabás de hacer.
+  useEffect(() => {
+    ponerEnCurso({
+      ejercicio: actual?.nombre ?? null,
+      serie: estado.hechas + 1,
+      meta: estado.meta,
+    });
+  }, [actual?.nombre, estado.hechas, estado.meta]);
+
 
   return (
     <View style={estilos.bloque}>

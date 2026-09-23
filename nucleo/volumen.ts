@@ -509,3 +509,58 @@ export function intensidadDeCelda(valor: number, tope: number): number {
   const proporcion = Math.min(1, valor / tope);
   return Math.round((PISO_DE_CELDA + (1 - PISO_DE_CELDA) * Math.pow(proporcion, 0.6)) * 1000) / 1000;
 }
+
+/**
+ * ─────────────────────────────────────────────────────────────────────
+ * EL RANGO DE REFERENCIA POR MÚSCULO Y POR SEMANA (25/9)
+ * ─────────────────────────────────────────────────────────────────────
+ *
+ * DE DÓNDE SALE. *"«Series por músculo» no se entiende. Las barras no
+ * comunican nada."* Y el diagnóstico estaba adentro del reporte: las barras
+ * estaban escaladas contra tu propio máximo, así que una barra llena podía ser
+ * 4 series o 40. Sin una referencia, una barra solo dice "más que la otra", y
+ * eso ya lo dice el número.
+ *
+ * LO QUE HACEN LAS APPS QUE SÍ SE ENTIENDEN —Hevy, Strong, Boostcamp— es
+ * exactamente esto: series semanales por músculo contra un RANGO, con la franja
+ * marcada, para que la barra signifique "por debajo / dentro / por encima".
+ *
+ * DIEZ A VEINTE, y no es un número inventado: es el rango que la literatura de
+ * hipertrofia viene repitiendo desde hace años como el tramo donde casi todo el
+ * mundo progresa. No es una prescripción —hay gente que rinde con seis y gente
+ * que necesita veinticinco— y por eso la app lo llama REFERENCIA y no meta, y
+ * por eso no felicita ni reta a nadie: pinta dónde caés y se calla.
+ *
+ * LOS KILOS SE FUERON con esto. Sumar kilos por músculo mezcla ejercicios con
+ * palancas distintas: una semana con prensa aplasta a todas las demás y a
+ * cualquier otro músculo. Ese número no se puede comparar ni contra vos mismo
+ * ni contra nada, que es lo que el reporte decía con *"los kilos tampoco"*.
+ */
+export const SERIES_POR_SEMANA = { minimo: 10, maximo: 20 } as const;
+
+/**
+ * HASTA DÓNDE LLEGA LA PISTA. Fijo, y ahí está la gracia: si la escala se
+ * estirara con la fila más alta, la franja se movería de lugar en cada pantalla
+ * y volvería a no significar nada. Con un tope fijo, la franja está siempre en
+ * el mismo lado y la comparación entre músculos es directa.
+ *
+ * Veinticuatro deja aire arriba del máximo del rango sin achicar tanto la
+ * franja como para que deje de leerse.
+ */
+export const TOPE_DE_PISTA = 24;
+
+export type ComoVa = 'nada' | 'poco' | 'dentro' | 'mucho';
+
+/** Dónde cae una semana respecto del rango. `nada` no es `poco`: es no haber ido. */
+export function comoVaElMusculo(series: number): ComoVa {
+  if (!Number.isFinite(series) || series <= 0) return 'nada';
+  if (series < SERIES_POR_SEMANA.minimo) return 'poco';
+  if (series > SERIES_POR_SEMANA.maximo) return 'mucho';
+  return 'dentro';
+}
+
+/** Qué porción de la pista ocupa un valor, de 0 a 1. Acotado al tope. */
+export function porcionDePista(series: number): number {
+  if (!Number.isFinite(series) || series <= 0) return 0;
+  return Math.min(1, series / TOPE_DE_PISTA);
+}

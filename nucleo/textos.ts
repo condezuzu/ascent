@@ -809,8 +809,14 @@ export const T = {
     // NO DICE "VOLUMEN": quien va al gimnasio sabe qué es una serie y no qué
     // es volumen. La pantalla lo muestra con barras y no lo explica.
     titulo: 'Series por músculo',
+    // LOS CUATRO DE ABAJO SON DE LA WEB Y NADA MAS. El telefono dejo de tener
+    // el selector series/kilos el 25/9 —los kilos por musculo no se pueden
+    // comparar entre si— y paso a la pista con la franja de referencia. La web
+    // se quedo como estaba a pedido, asi que sus textos se quedan tambien.
     enSeries: 'Series',
     enKilos: 'Kilos',
+    notaSeries: 'Cada barra es una semana. Toca una para ver cuántas hiciste.',
+    notaKilos: 'Los kilos de todas las series de la semana, sumados.',
     semanaDel: (fecha: string) => `Semana del ${fecha}`,
     // La semana de hoy no terminó: dicho, para que no se lea como una caída.
     estaSemana: 'Esta semana, hasta hoy',
@@ -822,8 +828,14 @@ export const T = {
     soloSeries: (series: number) => (series === 1 ? '1 serie' : `${series} series`),
     nada: '—',
     nadaDesde: (fecha: string) => `nada desde el ${fecha}`,
-    notaSeries: 'Cada barra es una semana. Toca una para ver cuántas hiciste.',
-    notaKilos: 'Los kilos de todas las series de la semana, sumados.',
+    // LA NOTA EXPLICA LA FRANJA, que es lo unico de la pantalla que hay que
+    // explicar una vez. Dice "referencia" y no "meta" a proposito: la app no
+    // felicita ni reta a nadie, pinta donde caes y se calla.
+    semanaAnterior: 'Semana anterior',
+    semanaSiguiente: 'Semana siguiente',
+    notaRango: 'La franja es la referencia: 10 a 20 series por músculo cada semana.',
+    // Debajo de la nota, para el que se pregunte de donde sale el numero.
+    notaRangoPorque: 'Es el tramo donde casi todos progresan. No es una meta.',
     // Sin nada: se dice qué lo llena, sin pedirlo.
     vacio: 'Aparece cuando eliges el ejercicio al entrenar.',
 
@@ -1153,6 +1165,12 @@ export const T = {
     vacioPie: 'Al registrar un día puedes sumar una: queda pegada al planeta de ese día.',
     // Para una foto el verbo es QUITAR, nunca borrar ni sacar (regla 4 de
     // spec/idioma.md). Decía "Borrar" hasta el 18/9; §54 lo mira ahora.
+    // EL ENCABEZADO DEL MES. Dice cuanto fuiste, que es lo que las fotos ya
+    // sabian: una por dia entrenado.
+    cuentaDelMes: (fotos: number, dias: number) =>
+      `${fotos === 1 ? '1 foto' : `${fotos} fotos`} · ${dias === 1 ? '1 día' : `${dias} días`}`,
+    laPrimera: 'La primera',
+    laUltima: 'La última',
     quitarPregunta: '¿Quitar?',
     // EL BOTON DE CONFIRMAR DICE QUE HACE, no 'Si'. Con dos pildoras iguales
     // al lado, 'Si' y 'No' obligan a acordarse de la pregunta que ya no esta.

@@ -28,6 +28,24 @@ struct AtributosDelDescanso: ActivityAttributes {
     /// quedaría mal apenas la pantalla se apaga. Con la fecha de fin, el
     /// sistema dibuja la cuenta atrás solo y siempre coincide con la app.
     var fin: Date
+
+    /// QUÉ SE ESTABA HACIENDO (25/9). Lo pedido: *"el cuadro de la pantalla de
+    /// bloqueo hoy es solo un timer, hacelo mejor"*. Con el teléfono boca
+    /// arriba en el banco, "2:58" te dice cuándo volver y nada sobre a qué.
+    ///
+    /// VA EN `ContentState` Y NO EN LOS ATRIBUTOS aunque no cambie durante UN
+    /// descanso: los atributos son lo único de una actividad que no se puede
+    /// tocar una vez encendida, y la actividad se REUSA entre series cuando la
+    /// duración es la misma. Ahí, en los atributos, el ejercicio y la serie
+    /// quedarían clavados en los de la primera.
+    ///
+    /// Cadena vacía = sin ejercicio elegido. Ver el módulo: un opcional de
+    /// Swift cruzando el puente de Expo tiene más filo del que esto necesita.
+    var ejercicio: String
+    /// La serie que se acaba de terminar, desde uno. Cero = no se sabe.
+    var serie: Int
+    /// Cuántas se propuso en este bloque. Cero = no se sabe.
+    var meta: Int
   }
 
   /// Cuánto duraba el descanso al empezar, en segundos. Va en los atributos y

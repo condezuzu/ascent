@@ -140,6 +140,49 @@ derecha) y manda esa foto: ahí está qué dice la pantalla, qué guardó el
 teléfono y qué tiene el servidor.
 ```
 
+## Notas para App Review (App Store Connect → "Notes")
+
+**EN INGLÉS, y no es un descuido.** Es lo único de toda la ficha que no lee un
+usuario: lo lee un revisor de Apple, que puede estar en cualquier lado. La app
+sigue siendo en español y la ficha también.
+
+**LA CUENTA DEMO NO ES OPCIONAL.** La app no muestra NADA sin sesión: la
+primera pantalla es el login. Una app así se rechaza sin credenciales, y no por
+criterio del revisor sino por la guía 2.1 —"we were unable to review your app
+because we could not sign in"—, que es el rechazo más común que existe.
+
+```
+DEMO ACCOUNT (required — the app is sign-in only)
+  Email:    [PENDIENTE: correo de la cuenta de prueba]
+  Password: [PENDIENTE]
+The account already has streak history, workouts, body-weight entries and
+photos, so every screen has real content.
+
+WHAT THE APP DOES
+Ascent counts the days you train. One tap per day keeps a streak alive. It also
+times your rest between sets, records sets and weights, and shows progress.
+
+ABOUT THE PERMISSIONS — all three are optional and the app works without them.
+- Location ("Always"): only used to auto-log the day when you arrive at the gym
+  you marked yourself, in Settings. Nothing is sent anywhere; the gym point is
+  stored in the user's own row. Tapping the button in Settings while standing
+  at the gym is how it is set.
+- Notifications: only the end-of-rest alert, scheduled locally. No marketing,
+  no remote push.
+- Health (steps and workouts, read-only): steps are displayed in Stats, and a
+  workout recorded by the phone can log the day. The app never writes to Health.
+
+HOW TO SEE THE MAIN LOOP IN TWO MINUTES
+1. Sign in. The number on Home is the streak.
+2. "Iniciar entrenamiento" (top right) starts a workout.
+3. Pick an exercise, tap the big + to count a set. A rest timer starts and also
+   appears on the Lock Screen as a Live Activity.
+4. "Terminar" ends the workout and logs the day.
+
+The interface is in Spanish (Latin America); that is the app's only language in
+this version.
+```
+
 ## Lo demás de la ficha
 
 - **URL de privacidad:** `https://ascent-blush-seven.vercel.app/privacidad`

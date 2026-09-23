@@ -27,9 +27,15 @@ export const enVivoNativo: EnVivo = {
     }
   },
 
-  async mostrarDescanso(fin, duracion) {
+  async mostrarDescanso(fin, duracion, ctx) {
     try {
-      await descansoVivoNativo?.mostrar(fin, duracion);
+      await descansoVivoNativo?.mostrar(
+        fin,
+        duracion,
+        ctx?.ejercicio ?? '',
+        ctx?.serie ?? 0,
+        ctx?.meta ?? 0
+      );
     } catch {
       /* que no se vea afuera no puede romper el descanso */
     }

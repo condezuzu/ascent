@@ -61,14 +61,23 @@ struct DescansoLiveActivity: Widget {
       // LA PANTALLA BLOQUEADA. Es lo que se ve sin desbloquear nada, y es el
       // caso que hay que ganar: el teléfono boca arriba en el banco.
       HStack(alignment: .center, spacing: 14) {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 3) {
           Text(termino(context) ? "LISTO" : "DESCANSO")
             .font(.system(size: 11, weight: .medium))
             .tracking(2)
             .foregroundStyle(termino(context) ? Color("tinta") : Color("sub"))
-          Text(termino(context) ? "Dale con la que sigue." : deLargo(context.attributes.duracion))
-            .font(.system(size: 13))
-            .foregroundStyle(Color("sub"))
+          // QUÉ ESTABAS HACIENDO, que es lo único que se mira entre serie y
+          // serie. Si no se sabe, queda la duración de siempre: la tarjeta
+          // nunca se queda sin su segunda línea.
+          Text(queHacias(context) ?? deLargo(context.attributes.duracion))
+            .font(.system(size: 14))
+            .foregroundStyle(Color("tinta"))
+            .lineLimit(1)
+          if let s = porCual(context) {
+            Text(s)
+              .font(.system(size: 12))
+              .foregroundStyle(Color("sub"))
+          }
         }
         Spacer(minLength: 0)
         cuenta(hasta: context.state.fin, tamano: 44, termino: termino(context))
@@ -89,10 +98,18 @@ struct DescansoLiveActivity: Widget {
             .padding(.leading, 4)
         }
         DynamicIslandExpandedRegion(.trailing) {
-          Text(deLargo(context.attributes.duracion))
+          Text(porCual(context) ?? deLargo(context.attributes.duracion))
             .font(.system(size: 13))
             .foregroundStyle(Color("sub"))
             .padding(.trailing, 4)
+        }
+        DynamicIslandExpandedRegion(.center) {
+          if let q = queHacias(context) {
+            Text(q)
+              .font(.system(size: 14))
+              .foregroundStyle(Color("tinta"))
+              .lineLimit(1)
+          }
         }
         DynamicIslandExpandedRegion(.bottom) {
           cuenta(hasta: context.state.fin, tamano: 40, termino: termino(context))
@@ -114,6 +131,23 @@ struct DescansoLiveActivity: Widget {
       .keylineTint(Color("tinta"))
     }
   }
+}
+
+/// EL EJERCICIO, si se sabe. Cadena vacía = no se eligió ninguno, y entonces no
+/// hay nada que decir: la tarjeta vuelve a su segunda línea de siempre.
+@available(iOS 16.2, *)
+private func queHacias(_ context: ActivityViewContext<AtributosDelDescanso>) -> String? {
+  let e = context.state.ejercicio.trimmingCharacters(in: .whitespaces)
+  return e.isEmpty ? nil : e
+}
+
+/// "Serie 3 de 4", o "Serie 3" si no se sabe la meta. Cero = no se sabe nada.
+@available(iOS 16.2, *)
+private func porCual(_ context: ActivityViewContext<AtributosDelDescanso>) -> String? {
+  let s = context.state.serie
+  guard s > 0 else { return nil }
+  let m = context.state.meta
+  return m > 0 ? "Serie \(s) de \(m)" : "Serie \(s)"
 }
 
 /// ¿YA TERMINÓ?

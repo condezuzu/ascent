@@ -52,7 +52,11 @@ public class DescansoVivoModule: Module {
     // milisegundos desde 1970, del reloj del teléfono. Viaja como `Double`
     // porque JavaScript no tiene enteros de 64 bits y un `Int` se pasaría de
     // rango.
-    AsyncFunction("mostrar") { (finEnMs: Double, duracion: Int) in
+    // `ejercicio` llega como cadena y no como opcional: "sin ejercicio" es la
+    // cadena vacía. Un opcional de Swift cruzando el puente de Expo tiene más
+    // filo del que esto necesita, y el widget lo dibuja igual de bien
+    // preguntando si está vacía.
+    AsyncFunction("mostrar") { (finEnMs: Double, duracion: Int, ejercicio: String, serie: Int, meta: Int) in
       guard #available(iOS 16.2, *) else { return }
       guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
@@ -65,7 +69,12 @@ public class DescansoVivoModule: Module {
         return
       }
 
-      let estado = AtributosDelDescanso.ContentState(fin: fin)
+      let estado = AtributosDelDescanso.ContentState(
+        fin: fin,
+        ejercicio: ejercicio,
+        serie: serie,
+        meta: meta
+      )
 
       // SI YA HAY UNA, SE MUEVE en vez de encender otra. iOS permite varias
       // actividades a la vez y encender una por serie dejaría la pantalla

@@ -87,19 +87,37 @@ const ORDEN: Pestana[] = ['inicio', 'ranking', 'album', 'stats', 'ajustes'];
 const DECIDE_PX = 14;
 
 /**
- * CUÁN LEJOS DE INICIO ESTÁ LA TIRA, de 0 a 1.
+ * CUÁNTO SE DESENFOCA EL FONDO EN CADA PESTAÑA, de 0 a 1.
+ *
+ * En el orden de `ORDEN`. Inicio en cero es la definición de todo esto: el
+ * planeta se ve entero ahí y en ningún otro lado.
+ *
+ * STATS VA A MENOS DE LA MITAD (25/9, a pedido): *"en Stats bajá el desenfoque,
+ * no lo saques del todo"*. Y tiene su lógica: Stats es la pantalla más cargada
+ * de la app —dos gráficos, el volumen, el calendario— y ahí el fondo ya compite
+ * con el contenido aunque esté nítido. Desenfocarlo a fondo, además, es plata
+ * gastada: no se ve nada del planeta atrás de todo eso.
+ */
+const DESENFOQUE: number[] = [0, 1, 1, 0.45, 1];
+
+/**
+ * CUÁNTO DESENFOQUE LE TOCA A LA TIRA DONDE ESTÁ AHORA.
  *
  * Inicio vive en `left: 0`, así que en reposo sobre Inicio la tira está en 0 y
- * sobre cualquier otra pestaña en `-ancho × índice`. Lo que interesa no es CUÁL
- * pestaña es sino cuánto falta para Inicio, y acotado a una pantalla: del
- * Álbum a Inicio hay dos anchos, y un desenfoque doble no existe.
+ * sobre cualquier otra pestaña en `-ancho × índice`. De ahí sale un índice CON
+ * DECIMALES —2,4 es "entre Álbum y Stats, más cerca del Álbum"— y el nivel se
+ * interpola entre los dos vecinos.
  *
  * Es lo que hace que el fondo se aclare MIENTRAS arrastrás y no al soltar: sale
- * de dónde está la tira ahora, no de qué pestaña va a quedar activa.
+ * de dónde está la tira ahora, no de qué pestaña va a quedar activa. Y que la
+ * bajada hacia Stats sea gradual en vez de un escalón al llegar.
  */
-function distanciaAInicio(x: number, ancho: number): number {
+function desenfoqueEn(x: number, ancho: number): number {
   if (ancho <= 0) return 0;
-  return Math.min(1, Math.abs(x) / ancho);
+  const i = Math.max(0, Math.min(DESENFOQUE.length - 1, Math.abs(x) / ancho));
+  const a = DESENFOQUE[Math.floor(i)];
+  const b = DESENFOQUE[Math.ceil(i)];
+  return a + (b - a) * (i - Math.floor(i));
 }
 
 export default function Pestanas({
@@ -222,7 +240,7 @@ export default function Pestanas({
       if (destino === pestana) return;
       montadas.current.add(destino);
       setPestana(destino);
-      ponerDesenfoque(destino === 'inicio' ? 0 : 1);
+      ponerDesenfoque(desenfoqueEn(-ORDEN.indexOf(destino) * ancho, ancho));
       Animated.timing(correr, {
         toValue: -ORDEN.indexOf(destino) * ancho,
         duration: VIAJE_MS,
@@ -267,7 +285,7 @@ export default function Pestanas({
           // y a mitad de camino la mitad. No es el índice de la pestaña sino
           // dónde está la tira AHORA, que es lo que hace que baje mientras
           // arrastrás en vez de saltar al soltar.
-          ponerDesenfoque(distanciaAInicio(enReposo + (cual === null ? g.dx * 0.25 : g.dx), ancho));
+          ponerDesenfoque(desenfoqueEn(enReposo + (cual === null ? g.dx * 0.25 : g.dx), ancho));
         },
         onPanResponderRelease: (_e, g) => {
           const destino = gesto.current.vecina;
@@ -276,7 +294,7 @@ export default function Pestanas({
           const llega = viaja && destino ? -ORDEN.indexOf(destino) * ancho : enReposo;
           // Al soltar, el desenfoque va A DONDE VA LA TIRA y no a donde está:
           // los dos viajes duran lo mismo y terminan juntos.
-          ponerDesenfoque(distanciaAInicio(llega, ancho));
+          ponerDesenfoque(desenfoqueEn(llega, ancho));
           Animated.timing(correr, {
             toValue: llega,
             duration: VIAJE_MS,

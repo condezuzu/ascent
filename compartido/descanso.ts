@@ -1,5 +1,6 @@
 import { DESCANSO_MAXIMO, DESCANSO_MINIMO, DESCANSO_PREDETERMINADO } from '@nucleo/reglas';
 import { plataforma } from '@plataforma';
+import { leerEnCurso } from './enCurso';
 import { T } from '@nucleo/textos';
 
 const CLAVE = 'ascent:descanso';
@@ -88,7 +89,10 @@ async function enVivoAlTerminar(d: DescansoVivo | null) {
   // Un descanso ya terminado se apaga igual que uno saltado: pasa al bajar la
   // duración por debajo de lo que ya descansaste.
   if (!d || restante(d.fin) <= 0) return plataforma.enVivo.esconder();
-  await plataforma.enVivo.mostrarDescanso(d.fin, d.duracion);
+  // QUÉ ESTABAS HACIENDO, si alguien lo anotó. La pantalla bloqueada pasa de
+  // decir "2:58" a decir "Press de banca · serie 3 de 4", que es lo único que
+  // se mira entre serie y serie. Ver `compartido/enCurso.ts`.
+  await plataforma.enVivo.mostrarDescanso(d.fin, d.duracion, leerEnCurso());
 }
 
 /**

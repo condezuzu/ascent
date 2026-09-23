@@ -10864,14 +10864,24 @@ console.log('\n156. El planeta esta siempre, y fuera de Inicio se ve borroso');
   // SALE DE DONDE ESTA LA TIRA, no de que pestana va a quedar activa: eso es lo
   // que hace que baje MIENTRAS arrastras en vez de saltar al soltar.
   chequear('el desenfoque se mide contra la posicion de la tira',
-    /ponerDesenfoque\(distanciaAInicio\(enReposo/.test(pes156), true);
+    /ponerDesenfoque\(desenfoqueEn\(enReposo/.test(pes156), true);
   chequear('y al soltar va a donde va la tira',
-    /ponerDesenfoque\(distanciaAInicio\(llega, ancho\)\)/.test(pes156), true);
+    /ponerDesenfoque\(desenfoqueEn\(llega, ancho\)\)/.test(pes156), true);
   chequear('tocar una pestana tambien lo mueve',
-    /ponerDesenfoque\(destino === 'inicio' \? 0 : 1\)/.test(pes156), true);
-  // ACOTADO A UNA PANTALLA: del Album a Inicio hay dos anchos, y un desenfoque
-  // doble no existe.
-  chequear('acotado a un ancho de pantalla', /Math\.min\(1, Math\.abs\(x\) \/ ancho\)/.test(pes156), true);
+    /ponerDesenfoque\(desenfoqueEn\(-ORDEN\.indexOf\(destino\) \* ancho, ancho\)\)/.test(pes156), true);
+
+  // ---- CADA PESTANA TIENE SU TECHO (25/9) ----
+  //
+  // "En Stats baja el desenfoque, no lo saques del todo." Stats es la pantalla
+  // mas cargada de la app —dos graficos, el volumen, el calendario— y ahi el
+  // fondo ya compite con el contenido aunque este nitido; desenfocarlo a fondo
+  // es ademas plata gastada, porque no se ve nada del planeta atras de todo eso.
+  chequear('Inicio en cero y Stats a menos de la mitad',
+    /const DESENFOQUE: number\[\] = \[0, 1, 1, 0\.45, 1\]/.test(pes156), true);
+  // SE INTERPOLA ENTRE VECINOS: del Album a Stats el nivel baja de a poco en
+  // vez de pegar un escalon al llegar.
+  chequear('y se interpola entre los dos vecinos',
+    /return a \+ \(b - a\) \* \(i - Math\.floor\(i\)\)/.test(pes156), true);
 
   // SE AVISA EN PASOS ENTEROS: un gesto manda sesenta eventos por segundo y el
   // desenfoque tiene catorce valores distintos. Avisar en cada pixel seria un
@@ -10950,6 +10960,122 @@ console.log('\n157. La pantalla de bloqueo: el timer que se caia y la campana');
     chequear('el widget y la app comparten ' + nombre,
       cfg157.includes(nombre + ": '" + hex + "'") && col157.includes(nombre + ": '" + hex + "'"), true);
   }
+}
+
+
+console.log('\n158. Los nombres de verdad, el rango por musculo y la tarjeta');
+{
+  const { readFileSync: leer158 } = await import('node:fs');
+  const { join: unir158 } = await import('node:path');
+  const R158 = unir158(import.meta.dirname, '..');
+  const de158 = (...p) => leer158(unir158(R158, ...p), 'utf8');
+  const sinComentarios158 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- LOS NOMBRES ----
+  //
+  // "Pone los nombres como se conocen de verdad, no la traduccion literal."
+  // Un ejercicio que no se reconoce en la lista NO SE ELIGE: se elige el de al
+  // lado, o se deja el bloque sin ejercicio, y ahi la app pierde el dato que
+  // vino a guardar.
+  const nombres158 = new Map(
+    [...de158('supabase', 'schema.sql').matchAll(/\('([a-z_0-9]+)',\s*'((?:[^']|'')*)'/g)].map((m) => [m[1], m[2]])
+  );
+  for (const [id, nombre] of [
+    ['buenos_dias', 'Good morning'],
+    ['peso_muerto_rigidas', 'Peso muerto stiff'],
+    ['subida_cajon', 'Step up'],
+    ['encogimientos', 'Shrugs'],
+    ['giros_rusos', 'Russian twist'],
+    ['sentadilla_smith', 'Sentadilla en Smith'],
+    ['fondos', 'Fondos en paralelas'],
+    ['flexiones', 'Flexiones'],
+    ['aperturas', 'Aperturas con mancuernas'],
+    ['pec_deck', 'Peck deck'],
+  ]) {
+    chequear(id + ' se llama como se dice', nombres158.get(id), nombre);
+  }
+  // LOS IDS NO CAMBIAN, y es lo que hace esto seguro: los bloques ya anotados
+  // guardan el id, asi que el historial entero sigue apuntando al mismo lugar.
+  const mig158 = de158('supabase', 'migracion-48-nombres-de-verdad.sql');
+  chequear('la migracion solo toca nombres', /set nombre =/.test(mig158), true);
+  chequear('y no toca ningun id', /set id =/.test(mig158), false);
+  // Y LOS DOS QUE QUEDARON COMO ESTABAN, con el mismo criterio: lo que la gente
+  // dice de verdad.
+  chequear('la patada de gluteo se queda', nombres158.get('patada_gluteo'), 'Patada de glúteo en polea');
+  chequear('y los abdominales en polea tambien', nombres158.get('abdominales_polea'), 'Abdominales en polea');
+
+  // ---- EL RANGO DE REFERENCIA POR MUSCULO ----
+  //
+  // "Las barras no comunican nada": estaban escaladas contra tu propio maximo,
+  // asi que una barra llena podia ser 4 series o 40. Sin referencia, una barra
+  // solo dice "mas que la otra", y eso ya lo dice el numero.
+  const V158 = await import('../nucleo/volumen.ts');
+  chequear('el rango es 10 a 20', [V158.SERIES_POR_SEMANA.minimo, V158.SERIES_POR_SEMANA.maximo], [10, 20]);
+  chequear('nada no es poco', V158.comoVaElMusculo(0), 'nada');
+  chequear('nueve es poco', V158.comoVaElMusculo(9), 'poco');
+  chequear('diez ya esta dentro', V158.comoVaElMusculo(10), 'dentro');
+  chequear('veinte todavia', V158.comoVaElMusculo(20), 'dentro');
+  chequear('veintiuno es mucho', V158.comoVaElMusculo(21), 'mucho');
+  // EL TOPE ES FIJO Y AHI ESTA LA GRACIA: con una escala que se estirara con la
+  // fila mas alta, la franja se moveria de lugar en cada pantalla y volveria a
+  // no significar nada.
+  chequear('la pista llega a veinticuatro', V158.TOPE_DE_PISTA, 24);
+  chequear('doce ocupa la mitad', V158.porcionDePista(12), 0.5);
+  chequear('y pasarse no desborda', V158.porcionDePista(40), 1);
+  const st158 = sinComentarios158(de158('movil', 'src', 'Stats.tsx'));
+  chequear('Stats dibuja la franja', /estilos\.franja/.test(st158), true);
+  chequear('y ya no tiene el selector de kilos', /T\.volumen\.enKilos/.test(st158), false);
+  // LOS KILOS POR MUSCULO NO SE PUEDEN COMPARAR ENTRE SI: una semana con prensa
+  // aplasta a todos los demas.
+  chequear('ni suma kilos por musculo', /kilosLindos\(leida/.test(st158), false);
+
+  // ---- EL ALBUM CONTESTA DOS PREGUNTAS ----
+  const A158 = await import('../nucleo/album.ts');
+  chequear('el mes cuenta fotos y dias',
+    A158.resumenDelMes([{ fecha: '2026-09-01' }, { fecha: '2026-09-01' }, { fecha: '2026-09-03' }]),
+    { fotos: 3, dias: 2 });
+  // COMPARAR UNA FOTO CON SI MISMA NO ES COMPARAR, y dos del mismo dia tampoco:
+  // no paso nada entre una y otra.
+  chequear('con una sola no hay comparacion', A158.primeraYUltima([{ fecha: '2026-09-01' }]), null);
+  chequear('con dos del mismo dia tampoco',
+    A158.primeraYUltima([{ fecha: '2026-09-01' }, { fecha: '2026-09-01' }]), null);
+  // EL ORDEN DEL ALBUM ES DE LA MAS NUEVA A LA MAS VIEJA.
+  chequear('la primera del mes es la ultima de la lista',
+    A158.primeraYUltima([{ fecha: '2026-09-09' }, { fecha: '2026-09-01' }]),
+    { primera: { fecha: '2026-09-01' }, ultima: { fecha: '2026-09-09' } });
+  const alb158 = sinComentarios158(de158('movil', 'src', 'Album.tsx'));
+  chequear('el album muestra la comparacion', /estilos\.comparar/.test(alb158), true);
+  chequear('y los numeros del mes', /T\.album\.cuentaDelMes/.test(alb158), true);
+
+  // ---- LA TARJETA DICE QUE ESTABAS HACIENDO ----
+  //
+  // "El cuadro de la pantalla de bloqueo hoy es solo un timer." Con el telefono
+  // boca arriba en el banco, "2:58" dice cuando volver y nada sobre a que.
+  const wid158 = de158('movil', 'targets', 'descanso', 'index.swift');
+  chequear('la tarjeta dibuja el ejercicio', /queHacias\(context\)/.test(wid158), true);
+  chequear('y por cual serie vas', /"Serie \\\(s\) de \\\(m\)"/.test(wid158), true);
+  // SIN DATO, LA TARJETA DE SIEMPRE: nunca se queda sin su segunda linea.
+  chequear('sin ejercicio queda la duracion',
+    /queHacias\(context\) \?\? deLargo\(context\.attributes\.duracion\)/.test(wid158), true);
+  // VA EN ContentState Y NO EN LOS ATRIBUTOS: los atributos no se pueden tocar
+  // una vez encendida la actividad, y la actividad se REUSA entre series.
+  const at158 = de158('movil', 'targets', 'descanso', 'AtributosDelDescanso.swift');
+  const estado158 = at158.slice(at158.indexOf('struct ContentState'), at158.indexOf('var duracion'));
+  for (const campo of ['var ejercicio: String', 'var serie: Int', 'var meta: Int']) {
+    chequear('el estado lleva ' + campo, estado158.includes(campo), true);
+  }
+  // EL NOMBRE LO RESUELVE LA PANTALLA DEL BLOQUE, que es la unica con el
+  // catalogo cargado; el hook de la sesion no conoce el catalogo y no tiene
+  // por que.
+  chequear('el bloque anota que se esta haciendo',
+    /ponerEnCurso\(\{/.test(sinComentarios158(de158('movil', 'src', 'Bloque.tsx'))), true);
+  chequear('y el descanso lo lee al encender la cuenta',
+    /mostrarDescanso\(d\.fin, d\.duracion, leerEnCurso\(\)\)/.test(de158('compartido', 'descanso.ts')), true);
+  // LA SERIE ES LA QUE SE ESTA POR TERMINAR: el descanso arranca JUSTO ANTES de
+  // que se sume, asi que sin el mas uno la tarjeta diria una serie menos.
+  chequear('la serie va con el mas uno',
+    /serie: estado\.hechas \+ 1/.test(de158('movil', 'src', 'Bloque.tsx')), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

@@ -264,8 +264,8 @@ insert into public.ejercicios (id, nombre, grupo, cuenta_dots, orden) values
   ('gemelos',           'Gemelos de pie',          'piernas', false, 180),
   ('press_inclinado',   'Press inclinado',         'pecho',   false, 210),
   ('press_mancuernas',  'Press con mancuernas',    'pecho',   false, 220),
-  ('aperturas',         'Aperturas',               'pecho',   false, 230),
-  ('fondos',            'Fondos',                  'pecho',   false, 240),
+  ('aperturas',         'Aperturas con mancuernas',               'pecho',   false, 230),
+  ('fondos',            'Fondos en paralelas',                  'pecho',   false, 240),
   ('dominadas',         'Dominadas',               'espalda', false, 310),
   ('remo_barra',        'Remo con barra',          'espalda', false, 320),
   ('remo_mancuerna',    'Remo con mancuerna',      'espalda', false, 330),
@@ -288,15 +288,15 @@ insert into public.ejercicios (id, nombre, grupo, cuenta_dots, orden) values
   ('sentadilla_bulgara',    'Sentadilla búlgara',          'piernas', false, 111),
   ('sentadilla_goblet',     'Sentadilla goblet',           'piernas', false, 112),
   ('sentadilla_hack',       'Sentadilla hack',             'piernas', false, 113),
-  ('sentadilla_smith',      'Sentadilla en multipower',    'piernas', false, 114),
+  ('sentadilla_smith',      'Sentadilla en Smith',    'piernas', false, 114),
   ('peso_muerto_sumo',      'Peso muerto sumo',            'piernas', false, 121),
-  ('peso_muerto_rigidas',   'Peso muerto piernas rígidas', 'piernas', false, 122),
+  ('peso_muerto_rigidas',   'Peso muerto stiff', 'piernas', false, 122),
   ('peso_muerto_una_pierna','Peso muerto a una pierna',    'piernas', false, 123),
-  ('buenos_dias',           'Buenos días',                 'piernas', false, 124),
+  ('buenos_dias',           'Good morning',                 'piernas', false, 124),
   ('prensa_una_pierna',     'Prensa a una pierna',         'piernas', false, 131),
   ('zancadas_caminando',    'Zancadas caminando',          'piernas', false, 151),
   ('zancada_inversa',       'Zancada inversa',             'piernas', false, 152),
-  ('subida_cajon',          'Subida al cajón',             'piernas', false, 153),
+  ('subida_cajon',          'Step up',             'piernas', false, 153),
   ('curl_femoral_pie',      'Curl femoral de pie',         'piernas', false, 171),
   ('gemelos_sentado',       'Gemelos sentado',             'piernas', false, 181),
   ('gemelos_prensa',        'Gemelos en prensa',           'piernas', false, 182),
@@ -309,8 +309,8 @@ insert into public.ejercicios (id, nombre, grupo, cuenta_dots, orden) values
   ('press_pecho_maquina',   'Press de pecho en máquina',   'pecho',   false, 222),
   ('cruce_polea_alta',      'Cruces en polea alta',        'pecho',   false, 231),
   ('cruce_polea_baja',      'Cruces en polea baja',        'pecho',   false, 232),
-  ('pec_deck',              'Contractora (pec deck)',      'pecho',   false, 233),
-  ('flexiones',             'Flexiones de brazos',         'pecho',   false, 241),
+  ('pec_deck',              'Peck deck',      'pecho',   false, 233),
+  ('flexiones',             'Flexiones',         'pecho',   false, 241),
   ('pullover',              'Pullover con mancuerna',      'pecho',   false, 251),
   ('dominadas_supinas',     'Dominadas supinas',           'espalda', false, 311),
   ('dominadas_lastradas',   'Dominadas con lastre',        'espalda', false, 312),
@@ -332,7 +332,7 @@ insert into public.ejercicios (id, nombre, grupo, cuenta_dots, orden) values
   ('face_pull',             'Face pull',                   'hombros', false, 441),
   ('remo_menton',           'Remo al mentón',              'hombros', false, 442),
   ('rotacion_externa',      'Rotación externa',            'hombros', false, 443),
-  ('encogimientos',         'Encogimientos',               'hombros', false, 451),
+  ('encogimientos',         'Shrugs',               'hombros', false, 451),
   ('curl_predicador',       'Curl predicador',             'brazos',  false, 511),
   ('curl_inclinado',        'Curl inclinado',              'brazos',  false, 521),
   ('curl_concentrado',      'Curl concentrado',            'brazos',  false, 522),
@@ -350,7 +350,7 @@ insert into public.ejercicios (id, nombre, grupo, cuenta_dots, orden) values
   ('crunch',                'Crunch',                      'core',    false, 611),
   ('elevacion_piernas',     'Elevación de piernas colgado','core',    false, 613),
   ('elevacion_rodillas',    'Elevación de rodillas',       'core',    false, 614),
-  ('giros_rusos',           'Giros rusos',                 'core',    false, 621),
+  ('giros_rusos',           'Russian twist',                 'core',    false, 621),
   ('bicicleta_abdominal',   'Abdominales bicicleta',       'core',    false, 622),
   ('dead_bug',              'Dead bug',                    'core',    false, 623),
   ('press_pallof',          'Press Pallof',                'core',    false, 624)
@@ -2782,7 +2782,7 @@ $$;
 grant execute on function public.medallas_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 47; $$;
+returns int language sql immutable as $$ select 48; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

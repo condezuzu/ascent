@@ -18,8 +18,9 @@ import { SURGIR_MS } from '@nucleo/animacion';
 import { CURVA } from '@nucleo/deslizar';
 import Surgir from './Surgir';
 import { T } from '@nucleo/textos';
-import { fechaLinda } from '@nucleo/fechas';
+import { fechaCorta, fechaLinda } from '@nucleo/fechas';
 import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type DatosDeAlbum } from '@compartido/album';
+import { primeraYUltima, resumenDelMes } from '@nucleo/album';
 import FondoEspacial from './FondoEspacial';
 import { C } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
@@ -178,9 +179,43 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
             </Pressable>
           </View>
         ) : celdas.length > 0 ? (
-          meses.map((m) => (
+          meses.map((m) => {
+            const cuenta = resumenDelMes(m.fotos);
+            const par = primeraYUltima(m.fotos);
+            return (
             <View key={m.clave} style={{ marginBottom: 20 }}>
-              <Text style={estilos.rotulo}>{m.titulo}</Text>
+              {/* EL ENCABEZADO DICE CUÁNTO FUISTE (25/9). Era solo el mes. Las
+                  fotos ya sabían la respuesta —una por día entrenado— y nadie
+                  se la estaba preguntando. */}
+              <View style={estilos.cabezaMes}>
+                <Text style={estilos.rotulo}>{m.titulo}</Text>
+                <Text style={estilos.cuentaMes}>{T.album.cuentaDelMes(cuenta.fotos, cuenta.dias)}</Text>
+              </View>
+
+              {/* LA COMPARACIÓN: la primera del mes y la última, lado a lado.
+                  Es lo que uno hace a mano con las fotos de gimnasio, y es lo
+                  único que una grilla no puede mostrar. Solo si hay dos de días
+                  DISTINTOS: comparar una foto con sí misma no es comparar. */}
+              {par && (
+                <View style={estilos.comparar}>
+                  {([par.primera, par.ultima] as const).map((c, i) => (
+                    <Pressable
+                      key={c.id}
+                      style={estilos.mitad}
+                      onPress={() => setAbierta(celdas.findIndex((x) => x.id === c.id))}
+                      accessibilityLabel={fechaLinda(c.fecha)}
+                    >
+                      {!!c.miniatura && (
+                        <Image source={{ uri: c.miniatura }} style={estilos.mitadFoto} resizeMode="cover" />
+                      )}
+                      <Text style={estilos.mitadCuando}>
+                        {i === 0 ? T.album.laPrimera : T.album.laUltima} · {fechaCorta(c.fecha)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
               <View style={[estilos.grilla, { gap: HUECO }]}>
                 {m.fotos.map((c, j) => (
                   // ENTRAN EN ORDEN, NO TODAS DE GOLPE (24/9). En la web cada
@@ -208,7 +243,8 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                 ))}
               </View>
             </View>
-          ))
+            );
+          })
         ) : (
           cargado && (
             <View style={estilos.vacio}>
@@ -337,7 +373,14 @@ const estilos = StyleSheet.create({
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
   titulo: { color: C.tinta, fontSize: 22, marginBottom: 20 },
   error: { color: C.error, fontSize: 14, marginBottom: 12 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
+  cabezaMes: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 },
+  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  cuentaMes: { color: C.apagado, fontSize: 11 },
+  // LA COMPARACION: dos mitades iguales, con la fecha debajo de cada una.
+  comparar: { flexDirection: 'row', gap: 4, marginBottom: 4 },
+  mitad: { flex: 1 },
+  mitadFoto: { width: '100%', aspectRatio: 1, borderRadius: 6, backgroundColor: C.hoja },
+  mitadCuando: { color: C.apagado, fontSize: 10, marginTop: 4, textAlign: 'center' },
   grilla: { flexDirection: 'row', flexWrap: 'wrap' },
   celda: { backgroundColor: C.hoja, borderRadius: 6, overflow: 'hidden' },
   punto: {
