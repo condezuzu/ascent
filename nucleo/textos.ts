@@ -651,6 +651,9 @@ export const T = {
     // COMPARTIR Y NO COPIAR: en un teléfono, seleccionar doce líneas con el
     // dedo para mandárselas a alguien es una pelea.
     diagCompartir: 'Compartir lo anotado',
+    // Es lo unico de la app que solo se puede mirar una vez cada diez dias, y
+    // ese ritmo no sirve para ajustar una animacion.
+    diagVerSubida: 'Ver la subida de rango',
   },
 
   // ---------------------------------------------------------------

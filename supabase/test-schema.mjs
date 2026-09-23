@@ -9396,6 +9396,70 @@ console.log('\n139. La Live Activity del descanso');
   chequear('y esta el plugin que arma el target', nombres139.includes('@bacons/apple-targets'), true);
 }
 
+console.log('\n140. El diagnostico del gimnasio, y la subida de rango');
+{
+  const { readFileSync: leer140 } = await import('node:fs');
+  const { join: unir140, dirname: dir140 } = await import('node:path');
+  const { fileURLToPath: aRuta140 } = await import('node:url');
+  const R140 = unir140(dir140(aRuta140(import.meta.url)), '..');
+  const de140 = (...p) => leer140(unir140(R140, ...p), 'utf8');
+
+  // ---- EL DIAGNOSTICO, QUE SOLO ESTABA EN LA WEB ----
+  //
+  // El registro por ubicacion solo se puede probar caminando hasta un gimnasio
+  // y ahi no hay consola: todo queda anotado para leerlo despues. Sin esta
+  // pantalla se anotaba todo y no habia forma de leerlo desde el telefono, que
+  // es justo el aparato donde el automatico funciona de verdad.
+  const diag = de140('movil', 'src', 'ajustes', 'Diagnostico.tsx');
+  chequear('el diagnostico existe en la nativa', diag.length > 0, true);
+  chequear('y esta puesto en Ajustes', /<Diagnostico perfil=\{perfil\} \/>/.test(de140('movil', 'src', 'Ajustes.tsx')), true);
+  chequear('lee la bitacora', /leerBitacora/.test(diag), true);
+  // LA PREGUNTA QUE EN LA WEB NO EXISTE: sin el permiso de "siempre" el
+  // geofence no se arma, la app anda IGUAL, y la unica diferencia es que el
+  // dia no entra con la app cerrada — justo lo que se fue a probar.
+  chequear('y deja revisar si la zona quedo en el sistema', /vigilarLlegada\(/.test(diag), true);
+  // SIN MODULOS NATIVOS NUEVOS: `expo-clipboard` habria sido una build nueva y
+  // las actualizaciones por el aire cortadas, por un boton de copiar.
+  chequear('compartir va por Share del nucleo de React Native', /Share\.share\(/.test(diag), true);
+  chequear('y no se agrego expo-clipboard',
+    !!JSON.parse(de140('movil', 'package.json')).dependencies['expo-clipboard'], false);
+
+  // ---- LA SUBIDA DE RANGO ----
+  //
+  // ESTO ERA UN AGUJERO, no una funcion que faltaba: `SUBIO_RANGO` se emitia
+  // desde el vigilante y desde registrar el dia, y NO LO ESCUCHABA NADIE.
+  // Subias de rango y no pasaba nada. Es el mismo bug que la web tuvo hasta el
+  // 15/9, y aca es peor: el dia puede entrar con la app cerrada, asi que este
+  // es el unico momento en que la app puede decir algo.
+  const ini140 = de140('movil', 'src', 'Inicio.tsx');
+  chequear('alguien escucha SUBIO_RANGO', /escuchar\(SUBIO_RANGO/.test(ini140), true);
+  // LOS TRES CAMINOS QUE REGISTRAN UN DIA tienen que terminar en la misma
+  // ventana. Si falta uno, subir de rango por ESE camino es silencioso.
+  chequear('el camino del toque la dispara',
+    /alConfirmar=\{\(r\) => \{[\s\S]{0,200}subio_rango/.test(ini140), true);
+  chequear('el del cronometro tambien',
+    /useSesion\(\(r\) => \{[\s\S]{0,260}subio_rango/.test(ini140), true);
+  chequear('y el del gimnasio', /SUBIO_RANGO, \(dato\)/.test(ini140), true);
+
+  const sub140 = de140('movil', 'src', 'SubidaRango.tsx');
+  // NO SE NOMBRA LO QUE VIENE DESPUES (§7): descubrir en que te vas a
+  // convertir es la recompensa, y contarlo la arruina.
+  chequear('dice a donde llegaste', /T\.sesion\.nuevoRango/.test(sub140), true);
+  chequear('y de donde veniste', /T\.sesion\.rangoDesde/.test(sub140), true);
+  chequear('sin decir cuantos rangos hay', /RANGOS\.length|de ocho|total de rangos/.test(sub140), false);
+  // SIN CONFETI Y SIN SONIDO: el silencio es lo que lo hace sentir importante.
+  // Lo unico que se permite es un golpe corto cuando la forma queda hecha.
+  chequear('sin sonido', /audio\.|sonido/.test(sub140), false);
+  chequear('solo un golpe corto al formarse', /haptica\.pulso\(\)/.test(sub140), true);
+  // NO SE PUEDE SALTEAR ANTES DE TIEMPO: el momento dura menos de tres
+  // segundos y un toque accidental se llevaria lo unico que la app celebra.
+  chequear('no se cierra hasta que la forma esta hecha',
+    /onPress=\{formado \? alCerrar : undefined\}/.test(sub140), true);
+  // Y SE PUEDE MIRAR SIN ESPERAR DIEZ DIAS, desde el banco de trabajo: es lo
+  // unico de la app que de otro modo se prueba una vez cada diez dias.
+  chequear('se puede ver desde el diagnostico', /<SubidaRango/.test(diag), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

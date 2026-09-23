@@ -9,6 +9,7 @@ import { plataforma } from '@plataforma';
 import { T } from '@nucleo/textos';
 import type { OrigenSesion, Perfil } from '@nucleo/tipos';
 import { supabase } from '../supabase';
+import SubidaRango from '../SubidaRango';
 import { C } from '../colores';
 
 /**
@@ -56,6 +57,8 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
   const [mirando, setMirando] = useState(false);
   const [pendientes, setPendientes] = useState(0);
   const [zona, setZona] = useState<boolean | null>(null);
+  // Ver la subida de rango sin tener que llegar al día 11. Ver abajo.
+  const [verSubida, setVerSubida] = useState(false);
 
   const cargar = useCallback(async () => {
     const { data: log } = await supabase
@@ -184,6 +187,15 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
           </Pressable>
           <Text style={estilos.nota}>{T.ajustes.diagMirarNota}</Text>
 
+          {/* VER LA SUBIDA DE RANGO SIN ESPERAR AL DÍA 11. Es lo único de la
+              app que solo se puede mirar una vez cada diez días, y ese ritmo
+              no sirve para ajustar una animación: mirarla, cambiar algo y
+              volver a mirarla tomaría un mes. Muestra el rango en el que
+              estás como si acabaras de llegar. */}
+          <Pressable style={estilos.boton} onPress={() => setVerSubida(true)}>
+            <Text style={estilos.botonTexto}>{T.ajustes.diagVerSubida}</Text>
+          </Pressable>
+
           <Pressable style={estilos.boton} onPress={revisarZona}>
             <Text style={estilos.botonTexto}>{T.ajustes.diagRevisarZona}</Text>
           </Pressable>
@@ -227,6 +239,15 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
             </Pressable>
           </View>
         </>
+      )}
+
+      {verSubida && (
+        <SubidaRango
+          rangoAntes={Math.max(1, (perfil.rango_actual ?? 1) - 1)}
+          rangoDespues={perfil.rango_actual ?? 1}
+          racha={perfil.racha_actual}
+          alCerrar={() => setVerSubida(false)}
+        />
       )}
     </View>
   );

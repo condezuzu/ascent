@@ -8,16 +8,17 @@ import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import { planetaDeDia, rangoDeRacha } from '@nucleo/rangos';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { mensajeDeAuth } from '@nucleo/errores';
-import type { Log, Perfil } from '@nucleo/tipos';
+import type { Log, Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
 import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
 import { eventos } from '@compartido/eventos';
-import { DIA_CAMBIO } from '@compartido/gimnasio';
+import { DIA_CAMBIO, SUBIO_RANGO } from '@compartido/gimnasio';
 import { CERRO_SOLA } from './VigilanteDeGimnasio';
 import Bloque from './Bloque';
 import Descanso from './Descanso';
 import RachaSalvada from './RachaSalvada';
+import SubidaRango from './SubidaRango';
 import RegistrarDia from './RegistrarDia';
 import { plataforma } from '@plataforma';
 import { CLAVE_VIDA_VISTA, hastaDondeVisto, impulsosSinVer, rachaSiSeDevuelve } from '@nucleo/impulsos';
@@ -112,6 +113,10 @@ export default function Inicio({
   // sin querer, y lo que hace no se deshace.
   const [terminando, setTerminando] = useState(false);
   const [cierre, setCierre] = useState<CierreDeSesion | null>(null);
+  // LA SUBIDA DE RANGO. Los tres caminos que registran un dia terminan
+  // aca: el toque, el cronometro, y el dia que entra solo al llegar al
+  // gimnasio. Antes no terminaban en ningun lado.
+  const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
   // La pantalla del descanso se abre desde la píldora, igual que en la web: el
   // + arranca el descanso pero no tapa el bloque.
   const [descansoAbierto, setDescansoAbierto] = useState(false);
@@ -178,8 +183,11 @@ export default function Inicio({
 
   // Iniciar una sesión registra el día: cuando la base avisa, se recarga la
   // racha y la semana. Va antes de cualquier `return`: es un hook.
-  const sesion = useSesion(() => {
+  const sesion = useSesion((r) => {
     cargar();
+    // EMPEZAR LA SESION REGISTRA EL DIA, asi que tambien puede subirte de
+    // rango: es el camino mas comun de los tres en un gimnasio.
+    if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
   });
 
   // EL DÍA QUE ENTRÓ SOLO AL LLEGAR AL GIMNASIO (24/9). Ese camino no pasa
@@ -187,6 +195,19 @@ export default function Inicio({
   // cerrada—, así que sin esto la racha seguía diciendo el número de ayer
   // hasta que alguien recargara la pantalla a mano.
   useEffect(() => eventos.escuchar(DIA_CAMBIO, () => cargar()), [cargar]);
+
+  // LA SUBIDA DEL DIA QUE ENTRO SOLO. Los otros dos caminos la disparan
+  // donde termina el toque; este no tenia donde, porque no hay toque — y en
+  // el telefono es peor que en la web, porque el dia puede entrar con la
+  // app cerrada y este es el unico momento en que se puede decir algo.
+  useEffect(
+    () =>
+      eventos.escuchar(SUBIO_RANGO, (dato) => {
+        const r = dato as ResultadoRegistro;
+        if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+      }),
+    []
+  );
 
   // Y LA SESIÓN QUE CERRÓ LA SALIDA DEL GIMNASIO: el resumen tiene que
   // aparecer igual que cuando la terminás con el botón. Quien sabe que se
@@ -569,15 +590,29 @@ export default function Inicio({
         logId={logs.find((l) => l.fecha === hoy && !l.es_descanso)?.id ?? null}
         visibilidadDefault={perfil.visibilidad_default}
         alCerrar={() => setRegistrarAbierto(false)}
-        alConfirmar={() => {
+        alConfirmar={(r) => {
           setRegistrarAbierto(false);
           cargar();
+          if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
         }}
       />
 
       {/* No sale con una sesión andando, igual que en la web: aparece al
           terminarla. Contestar la ventana en medio de una serie no es el
           momento. */}
+      {/* SUBISTE DE RANGO. Va antes que cualquier otra ventana: si el mismo
+          dia se salvo la racha y ademas se subio de rango, lo que hay que
+          contar es el rango. */}
+      {subida && (
+        <SubidaRango
+          rangoAntes={subida.antes}
+          rangoDespues={subida.despues}
+          planeta={planeta}
+          racha={perfil.racha_actual}
+          alCerrar={() => setSubida(null)}
+        />
+      )}
+
       {vidaUsada && !sesion.estado.corriendo && (
         <RachaSalvada
           dias={vidaUsada.dias}
