@@ -25,25 +25,31 @@ import { esSexoEstandar, ubicar, type EjercicioEstandar, type SexoEstandar } fro
  * ─────────────────────────────────────────────────────────────────────
  * EL MATERIAL SALE DE LA MEJOR MARCA, NO DE UN PROMEDIO
  *
- * Y esa decisión la manda la frase. Al tocar una dice "solo el X% levanta ESTE
- * peso" —singular—: un promedio de tres marcas no tiene un "este peso", no
+ * Y esa decisión la manda la frase. Al tocar una dice "solo el X% levanta ESA
+ * marca" —singular—: un promedio de tres marcas no tiene una "esa marca", no
  * existe ese número en ningún lado. La mejor sí.
  *
  * Además, promediar CASTIGARÍA ANOTAR: cargar tu primera marca de una zona te
  * bajaría la medalla. En una app cuyo trabajo es que registres cosas, ese es el
  * peor incentivo posible.
  *
- * Y SE RECALCULA SIEMPRE, ASÍ QUE PUEDE BAJAR (cambiado el 24/9, a pedido).
- * El percentil depende del peso corporal: si subís tres kilos, el mismo
- * levantamiento vale menos y la medalla puede pasar de planeta a luna.
+ * ─────────────────────────────────────────────────────────────────────
+ * LA MEDALLA NO BAJA NUNCA, Y EL PERCENTIL SÍ SE RECALCULA
  *
- * Esto reemplaza al "no baja nunca" que se había acordado antes, y el motivo es
- * el que se pidió: que cambiar el peso o corregir el sexo en Ajustes no deje un
- * número viejo para siempre. Las dos cosas no se pueden tener — un trofeo que
- * no se pierde ES un número que no se actualiza.
+ * Parecían incompatibles y no lo son. El día 24/9 se había resuelto que el
+ * percentil se recalculara siempre —para que cambiar el peso corporal o
+ * corregir el sexo en Ajustes no dejara un número viejo para siempre— y el
+ * precio era que la medalla pudiera bajar. El 25/9 se pidió lo otro: "que NO
+ * baje nunca. Recalculá el percentil cuando cambie mi peso o mi sexo, pero
+ * guardá el máximo histórico y mostrá ese".
  *
- * Volver atrás es una línea en `compartido/perfil.ts`: guardar el mayor entre
- * el nuevo y el guardado en vez del nuevo.
+ * Que es exactamente lo que hace `topeHistorico`: el cálculo corre igual, con
+ * el peso y el sexo de hoy, y lo que se guarda y se muestra es el MAYOR entre
+ * lo que da hoy y lo que dio alguna vez. Subir de peso ya no te saca nada; una
+ * marca nueva sí te sube la medalla el mismo día.
+ *
+ * LO QUE SE PIERDE, DICHO: el número deja de describir el presente. Es un
+ * récord, y por eso la frase del globo dice "esa marca" y no "este peso".
  */
 
 export type ZonaMedalla = 'brazos' | 'pecho' | 'espalda' | 'hombros' | 'piernas';
@@ -208,4 +214,37 @@ function conGalaxia(crudas: Map<ZonaMedalla, Medalla>): Medalla[] {
  */
 export function cuantosLevantan(percentil: number): number {
   return Math.max(1, 100 - percentil);
+}
+
+/** Un percentil por ejercicio, que es el formato con el que viaja a la base. */
+export type PercentilDeEjercicio = { ejercicio: string; percentil: number };
+
+/**
+ * EL MÁXIMO HISTÓRICO: lo mejor entre lo que da hoy y lo que dio alguna vez.
+ *
+ * Es la pieza que hace que la medalla no baje nunca sin congelar la cuenta.
+ * Cada vez que se calculan las medallas se calculan DE CERO, con el peso
+ * corporal y el sexo de hoy; después esto las compara contra lo guardado y se
+ * queda con el mayor de los dos. Subir tres kilos deja de costarte una
+ * medalla; una marca nueva te la sube el mismo día.
+ *
+ * ENTRA LO GUARDADO QUE HOY NO EXISTE. Si hoy no hay marca de un ejercicio
+ * —se borró, o el peso corporal la dejó por debajo del umbral— la fila vieja
+ * sigue: eso es justamente "no baja nunca". Una medalla ganada no se devuelve.
+ *
+ * NO FILTRA NI DERIVA NADA MÁS. Devuelve percentiles; el material y la regla
+ * de la galaxia los pone `medallasDePercentiles`, que es el mismo camino que
+ * usan las medallas de un amigo.
+ */
+export function topeHistorico(
+  hoy: readonly PercentilDeEjercicio[],
+  guardadas: readonly PercentilDeEjercicio[]
+): PercentilDeEjercicio[] {
+  const tope = new Map<string, number>();
+  for (const f of [...guardadas, ...hoy]) {
+    if (typeof f?.percentil !== 'number' || !Number.isFinite(f.percentil)) continue;
+    const previa = tope.get(f.ejercicio);
+    if (previa === undefined || f.percentil > previa) tope.set(f.ejercicio, f.percentil);
+  }
+  return [...tope].map(([ejercicio, percentil]) => ({ ejercicio, percentil }));
 }

@@ -115,13 +115,17 @@ grant execute on function public.medallas_de(uuid) to authenticated;
 -- Inicio. Con eso alcanza y sobra —son las dos pantallas que más se abren— y
 -- evita meter la tabla de estándares en la base para recalcular acá.
 --
--- OJO CON ESTO, QUE ES UNA DECISIÓN DE PRODUCTO Y NO TÉCNICA: como se
--- recalcula siempre, **el percentil PUEDE BAJAR**. Si subís tres kilos, el
--- mismo levantamiento vale menos y la medalla puede pasar de planeta a luna.
--- Eso contradice el "no baja nunca" que se había acordado antes, y se hace así
--- porque lo pedido fue justamente que no quede un número viejo. Si se quiere
--- volver al trofeo que no se pierde, el cambio es de una línea en el cliente
--- —guardar `greatest(nuevo, guardado)`— y esta tabla no se toca.
+-- OJO CON ESTO, QUE ES UNA DECISIÓN DE PRODUCTO Y NO TÉCNICA: **esta fila solo
+-- puede SUBIR**. El cálculo corre de cero con el peso y el sexo de hoy, pero
+-- lo que se escribe es el mayor entre eso y lo que ya había (`topeHistorico`,
+-- en `nucleo/medallas.ts`). O sea: el percentil se mantiene al día y la
+-- medalla no se pierde. Engordar tres kilos ya no te baja de planeta a luna.
+--
+-- LA TABLA NO LO IMPONE, y es a propósito: quien decide es el cliente, que es
+-- el único que tiene la tabla de estándares. Si algún día se quiere que la
+-- base lo garantice, va un trigger con `greatest(new.percentil, old.percentil)`
+-- y el cliente no se toca. Hasta entonces, esto es un comentario, no una
+-- restricción.
 
 -- -------------------------------------------------------------
 -- 5. LA VERSIÓN DEL ESQUEMA

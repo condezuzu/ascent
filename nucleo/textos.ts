@@ -390,7 +390,13 @@ export const T = {
   medallas: {
     // AL TOCAR UNA. Es impersonal a propósito: así sirve igual en tu perfil y
     // en el de un amigo, sin cambiar una letra. Una sola línea.
-    frase: (porciento: number) => `Solo el ${porciento}% levanta este peso.`,
+    //
+    // DICE "ESA MARCA" Y NO "ESTE PESO" desde el 25/9, y es por el máximo
+    // histórico: el percentil que se muestra es el mejor que se alcanzó
+    // alguna vez, no el que da el peso corporal de hoy. "Este peso" sonaba a
+    // lo que levantás ahora y podía quedar mintiendo; "esa marca" nombra la
+    // que ganó la medalla, que es la verdad que el número cuenta.
+    frase: (porciento: number) => `Solo el ${porciento}% levanta esa marca.`,
     // LA GALAXIA NO DICE PERCENTIL, dice qué la ganó. Con el percentil diría
     // "solo el 5%", el mismo número que estrella, y en el escalón más alto eso
     // queda plano. Acá tampoco va el rótulo del ejercicio arriba: la línea ya

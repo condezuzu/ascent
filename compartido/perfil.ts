@@ -2,7 +2,13 @@ import type { Cliente } from '@cliente';
 import type { Log, Perfil, UsuarioPublico } from '@nucleo/tipos';
 import { hoyISO, restarDias } from '@nucleo/fechas';
 import { miniaturas } from '@compartido/album';
-import { medallasDe, medallasDePercentiles, type Medalla } from '@nucleo/medallas';
+import {
+  medallasDe,
+  medallasDePercentiles,
+  topeHistorico,
+  type Medalla,
+  type PercentilDeEjercicio,
+} from '@nucleo/medallas';
 import { disponible } from '@nucleo/esquema';
 import { versionDelEsquema } from '@compartido/esquema';
 import type { MiFuerza } from '@nucleo/tipos';
@@ -68,13 +74,28 @@ export async function cargarMisMedallas(
   uid: string,
   sexo: string | null
 ): Promise<Medalla[]> {
-  const [{ data: f }, { data: w }] = await Promise.all([
+  const [{ data: f }, { data: w }, guardadas] = await Promise.all([
     supabase.rpc('mi_fuerza'),
     supabase.from('weights').select('valor').eq('user_id', uid).order('fecha', { ascending: false }).limit(1),
+    supabase.from('medallas').select('ejercicio, percentil').eq('user_id', uid),
   ]);
   const marcas = ((f as MiFuerza | null)?.marcas ?? []).map((m) => ({ ejercicio: m.ejercicio, kg: m.kg }));
   const peso = ((w ?? []) as { valor: number }[])[0]?.valor ?? null;
-  const mias = medallasDe(sexo, peso, marcas);
+  const hoy = medallasDe(sexo, peso, marcas);
+
+  // EL MÁXIMO HISTÓRICO. El cálculo de arriba corre siempre y de cero, con el
+  // peso corporal y el sexo de hoy; lo que se muestra y se guarda es el mayor
+  // entre eso y lo que dio alguna vez. Así el percentil sigue al día y la
+  // medalla no baja nunca, que es lo que se pidió el 25/9. Ver `topeHistorico`.
+  //
+  // SI NO SE PUDO LEER LO GUARDADO, NO SE ESCRIBE NADA. Sin las filas viejas
+  // el máximo no es un máximo: es el valor de hoy, y guardarlo podría BAJAR un
+  // récord por una consulta que falló. Se muestra lo de hoy y en la próxima
+  // vuelta, con la base a mano, se arregla solo.
+  if (guardadas.error) return hoy;
+
+  const viejas = (guardadas.data ?? []) as PercentilDeEjercicio[];
+  const mias = medallasDePercentiles(topeHistorico(hoy, viejas));
   void guardarParaAmigos(supabase, uid, mias);
   return mias;
 }
@@ -93,11 +114,10 @@ export async function cargarMisMedallas(
  * vuelve auto-reparable — un número que se escribió mal se corrige solo la
  * próxima vez.
  *
- * COMO SE RECALCULA SIEMPRE, PUEDE BAJAR: si subís de peso, el mismo
- * levantamiento vale menos. Es lo que se pidió —que no quede un número viejo
- * para siempre— y contradice a propósito el "no baja nunca" de antes. Volver al
- * trofeo que no se pierde es una línea: guardar el mayor entre el nuevo y el
- * guardado.
+ * LO QUE SE ESCRIBE ES EL MÁXIMO HISTÓRICO y no el número de hoy: quien llama
+ * ya hizo la cuenta con `topeHistorico`. Por eso esta fila solo puede subir, y
+ * por eso un amigo nunca ve bajar una medalla porque el dueño engordó tres
+ * kilos. Ver la cabecera de `nucleo/medallas.ts`.
  *
  * NO SE ESPERA NI SE AVISA SI FALLA. Es un espejo para otros, no un dato de
  * esta pantalla: que no se haya podido escribir no tiene que frenar ni ensuciar

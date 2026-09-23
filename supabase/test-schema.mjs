@@ -10017,8 +10017,8 @@ console.log('\n145. Las medallas por marca');
 
   // ---- LA MEJOR MARCA, NO UN PROMEDIO ----
   //
-  // Lo manda la frase: dice "solo el X% levanta ESTE peso", singular. Un
-  // promedio de dos marcas no tiene un "este peso". Y promediar castigaria
+  // Lo manda la frase: dice "solo el X% levanta ESA marca", singular. Un
+  // promedio de dos marcas no tiene una "esa marca". Y promediar castigaria
   // anotar: cargar una marca floja te bajaria la medalla.
   const conDos = MED.medallasDe('m', 80, [
     { ejercicio: 'press_banca', kg: banca[4] },
@@ -10038,7 +10038,7 @@ console.log('\n145. Las medallas por marca');
   // ---- LA FRASE ----
   const T145 = (await import('../nucleo/textos.ts')).T;
   chequear('la frase dice el complemento del percentil',
-    T145.medallas.frase(MED.cuantosLevantan(95)), 'Solo el 5% levanta este peso.');
+    T145.medallas.frase(MED.cuantosLevantan(95)), 'Solo el 5% levanta esa marca.');
   chequear('en el corte de 80 dice 20', MED.cuantosLevantan(80), 20);
   chequear('y en el de 50 dice 50', MED.cuantosLevantan(50), 50);
   // LA GALAXIA NO DICE PERCENTIL, dice que la gano: con el percentil diria el
@@ -10374,6 +10374,90 @@ console.log('\n149. Los pasos: por que salia vacio, y la meta del dia');
   const T149 = (await import('../nucleo/textos.ts')).T;
   chequear('y el texto aclara que no entra en la racha',
     /no entra en tu racha/i.test(T149.ajustes.metaPasosNota), true);
+}
+
+
+console.log('\n150. La medalla que no baja nunca: el maximo historico');
+{
+  const { readFileSync: leer150 } = await import('node:fs');
+  const { join: unir150 } = await import('node:path');
+  const R150 = unir150(import.meta.dirname, '..');
+  const de150 = (...p) => leer150(unir150(R150, ...p), 'utf8');
+  const sinComentarios150 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  const MED150 = await import('../nucleo/medallas.ts');
+
+  // ---- EL MAXIMO, EJERCICIO POR EJERCICIO ----
+  //
+  // El percentil se recalcula siempre, con el peso corporal y el sexo de hoy;
+  // lo que se muestra y se guarda es el mayor entre eso y lo que dio alguna
+  // vez. Las dos cosas a la vez, que parecian incompatibles.
+  const tope150 = (a, b) =>
+    MED150.topeHistorico(a, b).sort((x, y) => (x.ejercicio < y.ejercicio ? -1 : 1));
+
+  chequear('si hoy da mas, manda hoy',
+    tope150([{ ejercicio: 'press_banca', percentil: 90 }], [{ ejercicio: 'press_banca', percentil: 80 }]),
+    [{ ejercicio: 'press_banca', percentil: 90 }]);
+  // ESTE ES EL CASO DEL PEDIDO: subiste de peso corporal, el mismo
+  // levantamiento vale menos, y la medalla NO se mueve.
+  chequear('si hoy da menos, manda lo guardado',
+    tope150([{ ejercicio: 'press_banca', percentil: 70 }], [{ ejercicio: 'press_banca', percentil: 88 }]),
+    [{ ejercicio: 'press_banca', percentil: 88 }]);
+
+  // UNA MEDALLA GANADA NO SE DEVUELVE: si hoy no hay marca de ese ejercicio
+  // —se borro, o el peso la dejo debajo del umbral— la fila vieja sigue.
+  chequear('lo guardado que hoy no existe sigue estando',
+    tope150([], [{ ejercicio: 'sentadilla', percentil: 96 }]),
+    [{ ejercicio: 'sentadilla', percentil: 96 }]);
+  chequear('y lo de hoy que no estaba guardado entra',
+    tope150([{ ejercicio: 'sentadilla', percentil: 51 }], []),
+    [{ ejercicio: 'sentadilla', percentil: 51 }]);
+
+  // MEZCLA: cada ejercicio se decide solo.
+  chequear('cada ejercicio va por su cuenta',
+    tope150(
+      [{ ejercicio: 'press_banca', percentil: 60 }, { ejercicio: 'sentadilla', percentil: 97 }],
+      [{ ejercicio: 'press_banca', percentil: 84 }, { ejercicio: 'sentadilla', percentil: 90 }]
+    ),
+    [{ ejercicio: 'press_banca', percentil: 84 }, { ejercicio: 'sentadilla', percentil: 97 }]);
+
+  // UNA FILA ROTA NO ROMPE NI PISA: viene de la base, y la base puede tener
+  // cualquier cosa vieja adentro.
+  chequear('un percentil que no es numero se ignora',
+    tope150([{ ejercicio: 'press_banca', percentil: 75 }], [{ ejercicio: 'press_banca', percentil: null }]),
+    [{ ejercicio: 'press_banca', percentil: 75 }]);
+
+  // ---- EL MATERIAL SALE DEL MAXIMO, NO DE HOY ----
+  const desdeTope = MED150.medallasDePercentiles(
+    MED150.topeHistorico(
+      [{ ejercicio: 'press_banca', percentil: 70 }],
+      [{ ejercicio: 'press_banca', percentil: 88 }]
+    )
+  );
+  chequear('con 70 hoy y 88 guardado, la medalla es planeta',
+    desdeTope[0]?.material, 'planeta');
+  chequear('y el globo dice el numero historico',
+    desdeTope[0]?.percentil, 88);
+
+  // ---- EL CAMINO REAL ----
+  const per150 = sinComentarios150(de150('compartido', 'perfil.ts'));
+  chequear('el perfil lee lo guardado antes de decidir',
+    /from\('medallas'\)\.select\('ejercicio, percentil'\)/.test(per150), true);
+  chequear('y aplica el tope historico', /topeHistorico\(hoy, viejas\)/.test(per150), true);
+  // SI NO SE PUDO LEER LO GUARDADO NO SE ESCRIBE NADA. Sin las filas viejas el
+  // maximo no es un maximo: es el valor de hoy, y guardarlo podria BAJAR un
+  // record por una consulta que fallo.
+  chequear('y si la lectura fallo no escribe', /if \(guardadas\.error\) return hoy;/.test(per150), true);
+
+  // ---- LA FRASE DEJO DE HABLAR DE HOY ----
+  //
+  // Decia "este peso", que sonaba a lo que levantas ahora: con un numero
+  // historico eso podia quedar mintiendo.
+  const T150 = (await import('../nucleo/textos.ts')).T;
+  chequear('la frase nombra la marca, no el peso de hoy',
+    /esa marca/.test(T150.medallas.frase(5)), true);
+  chequear('y ya no dice "este peso"', /este peso/.test(T150.medallas.frase(5)), false);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
