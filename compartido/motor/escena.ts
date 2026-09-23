@@ -367,7 +367,15 @@ function materialPuntos(titila = false): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     vertexShader: VERTEX_PUNTOS,
     fragmentShader: FRAGMENT_PUNTOS,
-    uniforms: { uTime: { value: 0 }, uDpr: { value: densidadActual }, uTitila: { value: titila ? 1 : 0 } },
+    uniforms: {
+      uTime: { value: 0 },
+      uDpr: { value: densidadActual },
+      uTitila: { value: titila ? 1 : 0 },
+      // La lente del agujero negro. Arranca apagada (radio 0) y solo el rango 8
+      // la enciende; el resto de los rangos ni entra en esa rama del shader.
+      uLenteC: { value: new THREE.Vector2(0, 0) },
+      uLenteR: { value: 0 },
+    },
     vertexColors: true,
     transparent: true,
     blending: THREE.AdditiveBlending,
@@ -754,6 +762,16 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
       }
     }
   }
+  // LA LENTE, si el cuerpo es el agujero negro.
+  //
+  // El 0.46 es el radio del horizonte DENTRO del quad, y tiene que seguir al
+  // `const float R` del fragmento del cuerpo: el quad mide 2 de lado y `vP` va
+  // de -1 a 1, así que en mundo mide lo mismo multiplicado por la escala. Si
+  // alguna vez se toca allá, se toca acá.
+  const lenteR = op.rango === 8 && !op.soloEstrellas ? 0.46 : 0;
+  const uEstrellas = (estrellas.material as THREE.ShaderMaterial).uniforms;
+  uEstrellas.uLenteR.value = lenteR;
+
   marca('ascent:particulas-fin');
   medir('ascent:escena-armado', 'ascent:particulas-inicio', 'ascent:particulas-fin');
 
@@ -827,6 +845,9 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   medirLienzo();
 
   for (const m of materiales) m.uniforms.uTime.value = tiempo;
+  // También acá, y no solo en el bucle: el primer cuadro se dibuja desde
+  // `compileAsync` y el bucle puede no haber corrido todavía.
+  if (lenteR > 0) (uEstrellas.uLenteC.value as THREE.Vector2).set(grupo.position.x, grupo.position.y);
   ubicarOrbitantes();
 
   function frame() {
@@ -865,6 +886,10 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     // corresponde.
     tiempo += reloj.getDelta();
     for (const m of materiales) m.uniforms.uTime.value = tiempo;
+    // El centro de la lente viaja con el cuerpo: si se queda fijo, al cambiar
+    // de esquina las estrellas se curvan alrededor de un agujero que ya no
+    // está ahí.
+    if (lenteR > 0) (uEstrellas.uLenteC.value as THREE.Vector2).set(grupo.position.x, grupo.position.y);
     ubicarOrbitantes();
     fugaz.actualizar(tiempo, camara.right);
     if (galaxia) galaxia.rotation.z = tiempo * 0.022;

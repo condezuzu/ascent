@@ -66,6 +66,10 @@ varying float vBrillo;
 uniform float uTime;
 uniform float uDpr;
 uniform float uTitila;
+// El agujero negro, en coordenadas de mundo: donde esta y cuanto mide su
+// horizonte. En radio cero esta rama no corre, que es lo normal.
+uniform vec2 uLenteC;
+uniform float uLenteR;
 void main() {
   vColor = color;
   // TITILAN (19/9): lento y cada una a su ritmo, con la fase sacada de dónde
@@ -76,6 +80,38 @@ void main() {
   // deriva lenta: el gas nunca está del todo quieto
   p.x += sin(uTime * 0.08 + position.y * 5.0) * 0.012;
   p.y += cos(uTime * 0.06 + position.x * 4.0) * 0.010;
+
+  // LAS ESTRELLAS SE CURVAN ALREDEDOR DEL AGUJERO NEGRO.
+  //
+  // Es lo unico que hace que el circulo negro se lea como un POZO y no como un
+  // disco pintado encima del cielo: el fondo que tendria que estar tapado
+  // aparece rodeandolo. Todo lo demas que tenia el agujero —anillo de fotones,
+  // arcos de lente, disco por delante y por detras— ya describia el gas; nada
+  // tocaba el cielo.
+  //
+  // Se hace ACA, moviendo cada estrella, y no en el shader del cuerpo: no hay
+  // a que ir a buscar el fondo desde el cuerpo —no se renderiza a textura— y
+  // ademas moverlas cuesta una cuenta por estrella y no una por pixel.
+  //
+  // La cuenta es la imagen primaria del anillo de Einstein: una estrella que
+  // de verdad esta a distancia r del centro se VE a
+  //   (r + raiz(r^2 + 4 Re^2)) / 2
+  // que siempre es mayor que Re. O sea: ninguna cae adentro de la sombra, y
+  // las que estan justo detras se amontonan formando el aro. Se les sube el
+  // brillo ahi mismo, que es lo que hace una lente de verdad.
+  if (uLenteR > 0.0) {
+    vec2 v = p.xy - uLenteC;
+    float r = max(length(v), 1e-4);
+    // El aro va BASTANTE mas afuera que el horizonte. De verdad cae casi
+    // encima del anillo de fotones, y ahi no se ve: queda tapado por lo mas
+    // brillante que tiene el cuerpo. Corrido para afuera, el amontonamiento
+    // cae sobre cielo negro y se lee.
+    float Re = uLenteR * 1.55;
+    float rAp = 0.5 * (r + sqrt(r * r + 4.0 * Re * Re));
+    p.xy = uLenteC + v * (rAp / r);
+    vBrillo *= 1.0 + 3.0 * exp(-pow((rAp - Re) / (Re * 0.34), 2.0));
+  }
+
   gl_PointSize = tamano * uDpr;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
 }
@@ -762,14 +798,40 @@ void main() {
     float velD = 1.0 / max(rr, 0.22);
 
     float banda = smoothstep(R * 1.04, R * 1.18, rr) * (1.0 - smoothstep(R * 1.80, R * 2.30, rr));
-    float franjas = 0.5 + 0.5 * fbm(vec3(cos(angD + uTime * velD * 0.5) * 2.0,
-                                         sin(angD + uTime * velD * 0.5) * 2.0,
-                                         rr * 9.0));
-    franjas = pow(smoothstep(0.15, 0.9, franjas), 1.5);
+
+    // EL GRANO SIGUE LA ESPIRAL Y NO EL RADIO (23/9). El ruido estaba indexado
+    // por el radio —rr * 9.0— y el gas salia en ANILLOS CONCENTRICOS: bandas
+    // duras, que es justo lo que no queremos en ningun cuerpo del motor. Al
+    // correr el angulo con el radio, las mismas vetas se estiran en filamentos
+    // que caen hacia adentro, que es como se ve un disco de acrecion.
+    //
+    // Y la frecuencia radial baja de 9 a 1,4: es lo que deja que un filamento
+    // se mantenga a lo largo de varias vueltas en vez de cortarse cada poco.
+    float giro = angD - 2.4 * (rr / R) + uTime * velD * 0.5;
+    float franjas = 0.5 + 0.5 * fbm(vec3(cos(giro) * 2.0, sin(giro) * 2.0, rr * 1.4));
+    // una segunda pasada mas fina y mas rapida: el gas de adentro hierve
+    float fino = fbm(vec3(cos(giro * 2.7) * 3.0, sin(giro * 2.7) * 3.0, rr * 4.0));
+    franjas = pow(smoothstep(0.15, 0.9, franjas + 0.18 * fino), 1.5);
+
     // doppler: el lado que viene hacia nosotros encandila
     float doppler = 0.30 + 1.0 * smoothstep(0.6, -0.6, p.x);
-    vec3 gasCol = mix(uPaleta2, mix(uPaleta2, uPaleta3, 0.55), franjas) * doppler;
-    float dens = banda * (0.35 + 0.85 * franjas);
+
+    // TEMPERATURA: el gas pegado al horizonte esta mucho mas caliente que el
+    // del borde de afuera, y eso se ve como color, no como brillo. Antes el
+    // disco entero era un naranja con ruido y se leia como un plato pintado.
+    float temp = 1.0 - smoothstep(R * 1.05, R * 2.05, rr);
+    //
+    // El borde de afuera va APAGADO y no en el naranja puro: con los colores
+    // de la paleta a full quedaba un rosa de neon, que no es gas frio, es un
+    // cartel. Se lo baja hasta un rescoldo.
+    vec3 frio = mix(uPaleta1 * 0.55, uPaleta2 * 0.40, 0.55);
+    vec3 calor = mix(uPaleta3, vec3(1.0, 0.95, 0.88), 0.55);
+    vec3 gasCol = mix(frio, uPaleta2, smoothstep(0.0, 0.55, temp));
+    gasCol = mix(gasCol, calor, pow(temp, 2.4));
+    gasCol *= doppler * (0.55 + 0.7 * franjas);
+    // Los huecos entre filamentos son mas huecos que antes (0,18 contra 0,35):
+    // si el piso es alto, las vetas se pierden en un resplandor parejo.
+    float dens = banda * (0.18 + 1.15 * franjas);
 
     // La mitad de abajo del anillo es la que viene hacia la cámara; la de
     // arriba es la que se aleja. El borde suave evita una costura en y=0.

@@ -33,17 +33,22 @@ export default function Galeria() {
   // 0,30 / 0,40 y ver cuanto aire queda entre un dia normal y uno de
   // descanso: si a 0,20 ya se parecen, la senal del descanso se pierde.
   const [noche, setNoche] = useState<number | undefined>(undefined);
+  // DÓNDE SE PARA EL CUERPO. En la app vive en una esquina y se sale de la
+  // pantalla a propósito: así deja lugar a la interfaz. Para MIRARLO eso es un
+  // problema —se ve un cuarto de cuerpo— y revisar un diseño con un cuarto a
+  // la vista no es revisar nada. Acá se lo puede traer al medio.
+  const [alCentro, setAlCentro] = useState(false);
 
   return (
     <>
       <FondoEspacial
-        key={`${rango}-${planeta}-${presagio}-${conVelo}-${estilo}-${noche}`}
+        key={`${rango}-${planeta}-${presagio}-${conVelo}-${estilo}-${noche}-${alCentro}`}
         rango={rango}
         planeta={planeta}
         presagio={presagio}
         estilo={estilo}
         noche={noche}
-        esquina="abajo-derecha"
+        esquina={alCentro ? 'centro' : 'abajo-derecha'}
         // Se pasa el número a mano en vez de `atmosfera`: la atmósfera además
         // RECUERDA el último rango visto para animar la transición, y mirar
         // ocho rangos seguidos en la galería dejaría esa memoria apuntando a
@@ -75,6 +80,27 @@ export default function Galeria() {
                     : v === NOCHE_DESCANSO
                       ? `${v} (descanso)`
                       : String(v)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="seccion">
+          <h3>Dónde</h3>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {([false, true] as const).map((c) => (
+              <button
+                key={String(c)}
+                className="boton-fantasma"
+                style={{
+                  width: 'auto',
+                  padding: '8px 14px',
+                  borderColor: alCentro === c ? 'rgba(160,180,220,.5)' : undefined,
+                  color: alCentro === c ? 'var(--tinta)' : undefined,
+                }}
+                onClick={() => setAlCentro(c)}
+              >
+                {c ? 'al centro (para mirarlo)' : 'en la esquina (como en la app)'}
               </button>
             ))}
           </div>
