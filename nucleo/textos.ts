@@ -637,6 +637,20 @@ export const T = {
     diagVacia: 'Todavía no hay nada anotado.',
     diagRefrescar: 'Refrescar',
     diagBorrar: 'Borrar lo anotado',
+
+    // LO QUE SOLO EXISTE EN EL TELÉFONO (23/9). La zona en el sistema
+    // operativo es lo único de la app que sigue vivo con la app cerrada, y
+    // por lo tanto lo único que puede estar apagado sin que se note: sin el
+    // permiso de "siempre" la app anda igual y el día no entra solo.
+    diagZona: 'Zona',
+    diagZonaSi: 'registrada en el sistema',
+    diagZonaNo: 'no quedó: falta el permiso siempre',
+    diagRevisarZona: 'Revisar la zona',
+    diagZonaNota:
+      'Comprueba que el teléfono vaya a despertar a la app al llegar.',
+    // COMPARTIR Y NO COPIAR: en un teléfono, seleccionar doce líneas con el
+    // dedo para mandárselas a alguien es una pelea.
+    diagCompartir: 'Compartir lo anotado',
   },
 
   // ---------------------------------------------------------------

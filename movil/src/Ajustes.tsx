@@ -19,6 +19,7 @@ import ComoSeCompara from './ajustes/ComoSeCompara';
 import MisDatos from './ajustes/MisDatos';
 import Sugerencias from './ajustes/Sugerencias';
 import Cuenta from './ajustes/Cuenta';
+import Diagnostico from './ajustes/Diagnostico';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -255,6 +256,11 @@ export default function Ajustes({
       {/* Cerrar sesion, cambiar la clave y darse de baja: las tres son sobre
           la cuenta y no sobre como entrenas, asi que van juntas y al final. */}
       <Cuenta perfil={perfil} alSalir={alSalir} />
+
+      {/* ABAJO DE TODO Y PLEGADO: no es una pantalla de la app, es el banco de
+          trabajo para leer que vio el vigilante en el gimnasio. Se saca
+          cuando el automatico este probado. */}
+      <Diagnostico perfil={perfil} />
     </ScrollView>
   );
 }

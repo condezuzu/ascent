@@ -1,0 +1,266 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { hoyISO } from '@nucleo/fechas';
+import { mirarElGimnasio } from '@compartido/gimnasio';
+import { leerVigilancia } from '@compartido/sesionCache';
+import { anotar, borrarBitacora, comoTexto, leerBitacora } from '@compartido/bitacora';
+import { cuantasPendientes, vaciar } from '@compartido/cola';
+import { plataforma } from '@plataforma';
+import { T } from '@nucleo/textos';
+import type { OrigenSesion, Perfil } from '@nucleo/tipos';
+import { supabase } from '../supabase';
+import { C } from '../colores';
+
+/**
+ * QUÉ ESTÁ VIENDO LA APP, Y QUÉ FUE HACIENDO.
+ *
+ * EXISTE POR UNA RAZÓN SOLA, y acá es más cierta que en la web: **el registro
+ * por ubicación solo se puede probar caminando hasta un gimnasio**. Ahí no hay
+ * consola, ni terminal, ni forma de mirar nada — y desde que el teléfono
+ * despierta a la app con la pantalla bloqueada, buena parte de lo que pasa
+ * ocurre sin que haya siquiera una pantalla dibujada. Todo queda anotado, y
+ * esto es donde se lee después, en casa, con calma.
+ *
+ * ESTA PANTALLA FALTABA EN EL TELÉFONO (23/9) y es la que más falta hacía: la
+ * web la tenía desde que existe el vigilante, y la app —la única de las dos
+ * donde el automático funciona de verdad— no. Se anotaba todo y no había forma
+ * de leerlo.
+ *
+ * VA PLEGADA Y ABAJO DE TODO: no es una pantalla de la app, es un banco de
+ * trabajo. Se saca cuando el automático esté probado.
+ *
+ * LO QUE AGREGA SOBRE LA WEB, y las dos cosas salieron de que el automático
+ * acá es de verdad:
+ *
+ * 1. **Revisar la zona.** Es LA pregunta del teléfono y en la web no existe:
+ *    sin el permiso de ubicación "siempre", el geofence no se arma, la app
+ *    sigue andando igual, y la única diferencia es que el día no entra con la
+ *    app cerrada — justo lo que se fue a probar.
+ * 2. **Compartir lo anotado.** En la web se selecciona el texto y listo; en un
+ *    teléfono, seleccionar doce líneas con el dedo es una pelea. Va por
+ *    `Share` de React Native, que es del núcleo: agregar `expo-clipboard`
+ *    habría sido un módulo nativo, o sea una build nueva y las
+ *    actualizaciones por el aire cortadas, por un botón de copiar.
+ */
+export default function Diagnostico({ perfil }: { perfil: Perfil }) {
+  const [abierto, setAbierto] = useState(false);
+  const [dia, setDia] = useState<{ origen: string } | null>(null);
+  const [sinDia, setSinDia] = useState(false);
+  const [sesion, setSesion] = useState<{
+    corriendo: boolean;
+    inicio?: string;
+    origen?: OrigenSesion;
+  } | null>(null);
+  const [visita, setVisita] = useState<Awaited<ReturnType<typeof leerVigilancia>>>(null);
+  const [lineas, setLineas] = useState('');
+  const [mirando, setMirando] = useState(false);
+  const [pendientes, setPendientes] = useState(0);
+  const [zona, setZona] = useState<boolean | null>(null);
+
+  const cargar = useCallback(async () => {
+    const { data: log } = await supabase
+      .from('logs')
+      .select('origen')
+      .eq('user_id', perfil.id)
+      .eq('fecha', hoyISO())
+      .maybeSingle();
+    setDia(log);
+    setSinDia(!log);
+    const { data: s } = await supabase.rpc('mi_sesion');
+    setSesion(s);
+    setVisita(await leerVigilancia());
+    setLineas(comoTexto(await leerBitacora()));
+    setPendientes(await cuantasPendientes());
+  }, [perfil.id]);
+
+  useEffect(() => {
+    if (abierto) cargar();
+  }, [abierto, cargar]);
+
+  /**
+   * Mirar AHORA, a mano. Es lo que se aprieta parado en la puerta del gimnasio
+   * para ver a cuántos metros dice que estás: la única forma de saber si el
+   * radio quedó bien sin esperar los siete minutos.
+   */
+  async function mirarAhora() {
+    setMirando(true);
+    const m = await mirarElGimnasio(perfil);
+    await anotar('miré a mano', {
+      adentro: m.adentro === null ? 'no sé' : m.adentro,
+      metros: m.metros,
+      precision: m.precision,
+      radio: perfil.gimnasio_radio,
+    });
+    setMirando(false);
+    cargar();
+  }
+
+  /**
+   * ¿QUEDÓ REGISTRADA LA ZONA EN EL SISTEMA? Es la pregunta que en la web no
+   * existe y acá es LA pregunta: sin permiso de ubicación "siempre" el
+   * geofence no se arma, la app sigue andando igual, y la única diferencia es
+   * que el día no entra con la app cerrada — que es justo lo que se fue a
+   * probar. Volver a pedirla es idempotente: `startGeofencing` reemplaza la
+   * zona anterior de la misma tarea.
+   */
+  async function revisarZona() {
+    if (!perfil.gimnasio_lat || !perfil.gimnasio_lon) return setZona(false);
+    const quedo = await plataforma.ubicacion.vigilarLlegada(
+      { lat: perfil.gimnasio_lat, lon: perfil.gimnasio_lon },
+      perfil.gimnasio_radio,
+      () => {}
+    );
+    setZona(quedo);
+    await anotar(quedo ? 'zona: registrada' : 'zona: NO se pudo (falta el permiso siempre)', {});
+    cargar();
+  }
+
+  const hora = (iso?: string | null) =>
+    iso
+      ? new Date(iso).toLocaleTimeString(T.general.locale, { hour: '2-digit', minute: '2-digit' })
+      : '—';
+  const horaMs = (ms?: number | null) => (ms ? hora(new Date(ms).toISOString()) : '—');
+
+  const filas: [string, string][] = [
+    [
+      T.ajustes.diagPunto,
+      perfil.gimnasio_lat ? T.ajustes.diagRadio(perfil.gimnasio_radio) : T.ajustes.diagSinPunto,
+    ],
+    [T.ajustes.diagDia, sinDia ? T.ajustes.diagSinDia : (dia?.origen ?? '—')],
+    [
+      T.ajustes.diagSesion,
+      sesion?.corriendo
+        ? `${sesion.origen ?? '—'} · ${T.ajustes.diagDesde(hora(sesion.inicio))}`
+        : T.ajustes.diagSinSesion,
+    ],
+    [T.ajustes.diagCola, pendientes === 0 ? T.ajustes.diagColaVacia : T.ajustes.diagColaCon(pendientes)],
+    [
+      T.ajustes.diagVisita,
+      visita
+        ? `${T.ajustes.diagLlegada(horaMs(visita.desde))} · ${T.ajustes.diagVisto(
+            horaMs(visita.ultimoAdentro)
+          )}${visita.arranco ? ' · ' + T.ajustes.diagYaArranco : ''}`
+        : T.ajustes.diagSinVisita,
+    ],
+    [T.ajustes.diagZona, zona === null ? '—' : zona ? T.ajustes.diagZonaSi : T.ajustes.diagZonaNo],
+  ];
+
+  return (
+    <View style={estilos.seccion}>
+      <Pressable
+        style={estilos.plegable}
+        onPress={() => setAbierto(!abierto)}
+        accessibilityState={{ expanded: abierto }}
+      >
+        <Text style={estilos.titulo}>{T.ajustes.diagnostico}</Text>
+        <Text style={estilos.signo}>{abierto ? '−' : '+'}</Text>
+      </Pressable>
+
+      {abierto && (
+        <>
+          {filas.map(([que, dice]) => (
+            <View key={que} style={estilos.fila}>
+              <Text style={estilos.que}>{que}</Text>
+              <Text style={estilos.dice}>{dice}</Text>
+            </View>
+          ))}
+
+          {pendientes > 0 && (
+            <Pressable
+              style={estilos.boton}
+              onPress={async () => {
+                await vaciar(supabase);
+                cargar();
+              }}
+            >
+              <Text style={estilos.botonTexto}>{T.ajustes.diagVaciarCola}</Text>
+            </Pressable>
+          )}
+
+          <Pressable style={estilos.boton} onPress={mirarAhora} disabled={mirando}>
+            <Text style={estilos.botonTexto}>
+              {mirando ? T.ajustes.gimnasioBuscando : T.ajustes.diagMirarAhora}
+            </Text>
+          </Pressable>
+          <Text style={estilos.nota}>{T.ajustes.diagMirarNota}</Text>
+
+          <Pressable style={estilos.boton} onPress={revisarZona}>
+            <Text style={estilos.botonTexto}>{T.ajustes.diagRevisarZona}</Text>
+          </Pressable>
+          <Text style={estilos.nota}>{T.ajustes.diagZonaNota}</Text>
+
+          {/* EN UN CAMPO DE TEXTO Y NO EN UNA LISTA: así se puede desplazar y
+              leer entero. Lo que de verdad hace falta en un teléfono es el
+              botón de copiar, abajo. */}
+          <ScrollView style={estilos.cuadro} nestedScrollEnabled>
+            <TextInput
+              style={estilos.bitacora}
+              value={lineas || T.ajustes.diagVacia}
+              editable={false}
+              selectTextOnFocus
+              multiline
+            />
+          </ScrollView>
+
+          <View style={estilos.acciones}>
+            <Pressable onPress={cargar} hitSlop={8}>
+              <Text style={estilos.enlace}>{T.ajustes.diagRefrescar}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                // Sin bitácora no se abre nada: la hoja de compartir vacía es
+                // peor que un botón que no responde.
+                if (lineas) void Share.share({ message: lineas }).catch(() => {});
+              }}
+              hitSlop={8}
+            >
+              <Text style={estilos.enlace}>{T.ajustes.diagCompartir}</Text>
+            </Pressable>
+            <Pressable
+              onPress={async () => {
+                await borrarBitacora();
+                cargar();
+              }}
+              hitSlop={8}
+            >
+              <Text style={estilos.enlace}>{T.ajustes.diagBorrar}</Text>
+            </Pressable>
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
+const estilos = StyleSheet.create({
+  seccion: { marginTop: 34 },
+  plegable: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
+  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  signo: { color: C.sub, fontSize: 18 },
+  fila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
+  que: { color: C.apagado, fontSize: 12 },
+  dice: { color: C.sub, fontSize: 12, flexShrink: 1, textAlign: 'right' },
+  boton: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.lineaFuerte,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  botonTexto: { color: C.tinta, fontSize: 14 },
+  nota: { color: C.apagado, fontSize: 11, lineHeight: 16, marginTop: 6 },
+  cuadro: {
+    maxHeight: 220,
+    marginTop: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.linea,
+    borderRadius: 10,
+    backgroundColor: C.hoja,
+  },
+  // Monoespaciada: son pares de dato y valor, y alineados se leen de un
+  // vistazo en vez de tener que seguir cada línea.
+  bitacora: { color: C.sub, fontSize: 11, lineHeight: 16, padding: 10, fontFamily: 'Courier' },
+  acciones: { flexDirection: 'row', gap: 18, marginTop: 12 },
+  enlace: { color: C.sub, fontSize: 13 },
+});
