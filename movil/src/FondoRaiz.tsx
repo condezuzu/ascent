@@ -23,6 +23,7 @@ import { cargarElMotor, esPreferenciaFondo } from '@nucleo/fondo';
 import { plataforma } from '@plataforma';
 import { conAlfa } from './colores';
 import { escucharFondo, type Pedido } from './pedidoDeFondo';
+import { escucharDesenfoque } from './desenfoqueDelFondo';
 
 /**
  * EL FONDO DE LA APP NATIVA: el motor de cuerpos celestes detrás de todo.
@@ -147,6 +148,33 @@ export default function FondoRaiz() {
   const yaSeVio = useRef(false);
 
   useEffect(() => escucharFondo(setPedido), []);
+
+  /**
+   * EL DESENFOQUE FUERA DE INICIO (25/9).
+   *
+   * *"Quiero que el planeta esté SIEMPRE, y que en las otras pestañas se vea
+   * borroso. Que el desenfoque baje gradualmente mientras deslizo hacia
+   * Inicio, siguiendo el dedo."*
+   *
+   * LO QUE HACE QUE ESTO SEA POSIBLE es el otro medio pedido: que el cuerpo
+   * exista siempre. Antes las otras cuatro pestañas pedían `soloEstrellas` —
+   * cielo SIN cuerpo—, que es otra escena: al volver a Inicio había que
+   * construirla, y construirla es lo que se veía como "el planeta aparece de
+   * la nada". Ahora las cinco piden el mismo cuerpo, la escena no se rearma
+   * nunca al cambiar de pestaña, y lo único que cambia es cuánto se lo ve.
+   *
+   * ES `filter` DE REACT NATIVE y no una vista de desenfoque aparte: no suma
+   * ninguna dependencia nativa —o sea que esto viaja por el aire— y se aplica
+   * sobre el `GLView` ya dibujado, sin tocar el motor ni costar un cuadro más
+   * de render.
+   *
+   * SE DIBUJA EN PASOS ENTEROS: ver `desenfoqueDelFondo.ts`. Un gesto manda
+   * sesenta eventos por segundo y el desenfoque tiene catorce valores
+   * distintos; avisar en cada píxel sería un dibujado de la raíz por cuadro
+   * para no cambiar nada.
+   */
+  const [desenfoque, setDesenfoque] = useState(0);
+  useEffect(() => escucharDesenfoque(setDesenfoque), []);
 
   useEffect(() => {
     let vivo = true;
@@ -310,7 +338,15 @@ export default function FondoRaiz() {
         <ElipsesDeLuz elipses={ELIPSES_BASE} paleta={paleta} ancho={medida.w} alto={medida.h} estrellas id="base" />
       )}
       {cargar && vistaGL && (
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad }]}>
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { opacity: opacidad },
+            // MAXIMO 14 PIXELES: mas arriba el planeta deja de ser un planeta y
+            // pasa a ser una mancha de color, que es lo que ya hace el velo.
+            desenfoque > 0 && { filter: [{ blur: desenfoque * 14 }] },
+          ]}
+        >
           <GLView style={vistaGL} onContextCreate={alCrearContexto} />
         </Animated.View>
       )}

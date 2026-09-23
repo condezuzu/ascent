@@ -164,7 +164,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
 
   return (
     <View style={estilos.raiz}>
-      {datos && <FondoEspacial rango={datos.miRango} planeta={datos.miPlaneta} soloEstrellas velo={0.72} />}
+      {datos && <FondoEspacial rango={datos.miRango} planeta={datos.miPlaneta} velo={0.72} />}
       <ScrollView contentContainerStyle={estilos.pantalla}>
         <Text style={estilos.titulo}>{T.album.titulo}</Text>
         {!!error && <Text style={estilos.error}>{error}</Text>}

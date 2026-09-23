@@ -10,6 +10,7 @@ import Ranking from './Ranking';
 import Album from './Album';
 import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
+import { ponerDesenfoque } from './desenfoqueDelFondo';
 import { eventos } from '@compartido/eventos';
 import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
 import { ContextoVisible } from './pedidoDeFondo';
@@ -84,6 +85,22 @@ const ORDEN: Pestana[] = ['inicio', 'ranking', 'album', 'stats', 'ajustes'];
 // lo que decide: adentro de cada pantalla hay un ScrollView, y robarle el
 // gesto por un temblor de la mano hace que la app se sienta trabada.
 const DECIDE_PX = 14;
+
+/**
+ * CUÁN LEJOS DE INICIO ESTÁ LA TIRA, de 0 a 1.
+ *
+ * Inicio vive en `left: 0`, así que en reposo sobre Inicio la tira está en 0 y
+ * sobre cualquier otra pestaña en `-ancho × índice`. Lo que interesa no es CUÁL
+ * pestaña es sino cuánto falta para Inicio, y acotado a una pantalla: del
+ * Álbum a Inicio hay dos anchos, y un desenfoque doble no existe.
+ *
+ * Es lo que hace que el fondo se aclare MIENTRAS arrastrás y no al soltar: sale
+ * de dónde está la tira ahora, no de qué pestaña va a quedar activa.
+ */
+function distanciaAInicio(x: number, ancho: number): number {
+  if (ancho <= 0) return 0;
+  return Math.min(1, Math.abs(x) / ancho);
+}
 
 export default function Pestanas({
   alSalir,
@@ -205,6 +222,7 @@ export default function Pestanas({
       if (destino === pestana) return;
       montadas.current.add(destino);
       setPestana(destino);
+      ponerDesenfoque(destino === 'inicio' ? 0 : 1);
       Animated.timing(correr, {
         toValue: -ORDEN.indexOf(destino) * ancho,
         duration: VIAJE_MS,
@@ -244,12 +262,21 @@ export default function Pestanas({
           }
           // Sobre el reposo, no desde cero: la tira ya está corrida.
           correr.setValue(enReposo + (cual === null ? g.dx * 0.25 : g.dx));
+          // EL DESENFOQUE SIGUE AL DEDO. Lo que se mide es la distancia a
+          // Inicio en anchos de pantalla: en Inicio es 0, en cualquier otra 1,
+          // y a mitad de camino la mitad. No es el índice de la pestaña sino
+          // dónde está la tira AHORA, que es lo que hace que baje mientras
+          // arrastrás en vez de saltar al soltar.
+          ponerDesenfoque(distanciaAInicio(enReposo + (cual === null ? g.dx * 0.25 : g.dx), ancho));
         },
         onPanResponderRelease: (_e, g) => {
           const destino = gesto.current.vecina;
           const ms = Math.max(1, Date.now() - gesto.current.desde);
           const viaja = destino !== null && cambiaDePestana(g.dx, ancho, g.dx / ms);
           const llega = viaja && destino ? -ORDEN.indexOf(destino) * ancho : enReposo;
+          // Al soltar, el desenfoque va A DONDE VA LA TIRA y no a donde está:
+          // los dos viajes duran lo mismo y terminan juntos.
+          ponerDesenfoque(distanciaAInicio(llega, ancho));
           Animated.timing(correr, {
             toValue: llega,
             duration: VIAJE_MS,

@@ -198,7 +198,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   return (
     <View style={estilos.raiz}>
       {/* El fondo de Stats en la web: tu cuerpo arriba a la derecha, velo 0,72. */}
-      <FondoEspacial rango={datos.rango} planeta={datos.planeta} soloEstrellas velo={0.72} />
+      <FondoEspacial rango={datos.rango} planeta={datos.planeta} velo={0.72} />
     <ScrollView contentContainerStyle={estilos.pantalla}>
       <Text style={estilos.titulo}>{T.stats.titulo}</Text>
 
@@ -339,6 +339,20 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
               {maximos.map((g) => {
                 const clave = g.grupo ?? 'dots';
                 const abierto = plegados[clave] ?? g.conPeso > 0;
+                // LOS QUE NO TIENEN PESO NO SE LISTAN (25/9). "Los ejercicios
+                // sin peso registrado no tienen que aparecer con peso. En la
+                // web creo que ya estaba arreglado" — y estaba: allá se
+                // esconden detrás de un toque desde el 22/9 y acá se habían
+                // quedado sin portar. Con un ejercicio de pecho anotado de
+                // doce, esto eran once guiones; por seis grupos, toda la
+                // pantalla.
+                //
+                // SI NO HAY NINGUNO se muestran igual: un grupo abierto y
+                // vacío del todo no dice nada, y "ver los otros 12" sobre la
+                // nada es una puerta a un cuarto vacío.
+                const conPeso = g.filas.filter((f) => f.maximo);
+                const faltan = g.filas.length - conPeso.length;
+                const conVacios = vacios[clave] ?? conPeso.length === 0;
                 return (
                   <View key={clave}>
                     <Pressable
@@ -353,24 +367,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                       </Text>
                     </Pressable>
                     {abierto &&
-                      (() => {
-                        // LOS QUE NO TIENEN PESO NO SE LISTAN (25/9). "Los
-                        // ejercicios sin peso registrado no tienen que aparecer
-                        // con peso. En la web creo que ya estaba arreglado" —
-                        // y estaba: allá se esconden detrás de un toque desde
-                        // el 22/9 y acá se habían quedado sin portar. Con un
-                        // ejercicio de pecho anotado de doce, esto eran once
-                        // guiones; por seis grupos, toda la pantalla.
-                        //
-                        // SI NO HAY NINGUNO se muestran igual: un grupo abierto
-                        // y vacío del todo no dice nada, y "ver los otros 12"
-                        // sobre la nada es una puerta a un cuarto vacío.
-                        const conPeso = g.filas.filter((f) => f.maximo);
-                        const faltan = g.filas.length - conPeso.length;
-                        const conVacios = vacios[clave] ?? conPeso.length === 0;
-                        return (
-                          <>
-                            {(conVacios ? g.filas : conPeso).map((f) => (
+                      (conVacios ? g.filas : conPeso).map((f) => (
                         <View key={f.ejercicio} style={[estilos.fila, estilos.filaDeGrupo]}>
                           <View style={estilos.filaNombre}>
                             <Text style={[estilos.nombre, !f.maximo && estilos.sinMaximo]}>{f.nombre}</Text>
@@ -386,20 +383,17 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                               : T.volumen.nada}
                           </Text>
                         </View>
-                            ))}
-                            {faltan > 0 && conPeso.length > 0 && (
-                              <Pressable
-                                style={estilos.otros}
-                                onPress={() => setVacios((p) => ({ ...p, [clave]: !conVacios }))}
-                              >
-                                <Text style={estilos.otrosTexto}>
-                                  {conVacios ? T.volumen.ocultarLosOtros : T.volumen.verLosOtros(faltan)}
-                                </Text>
-                              </Pressable>
-                            )}
-                          </>
-                        );
-                      })()}
+                      ))}
+                    {abierto && faltan > 0 && conPeso.length > 0 && (
+                      <Pressable
+                        style={estilos.otros}
+                        onPress={() => setVacios((p) => ({ ...p, [clave]: !conVacios }))}
+                      >
+                        <Text style={estilos.otrosTexto}>
+                          {conVacios ? T.volumen.ocultarLosOtros : T.volumen.verLosOtros(faltan)}
+                        </Text>
+                      </Pressable>
+                    )}
                   </View>
                 );
               })}

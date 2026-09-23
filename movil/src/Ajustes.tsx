@@ -100,7 +100,7 @@ export default function Ajustes({
       {/* AJUSTES NO PEDÍA FONDO, así que se quedaba con el de la pantalla
           anterior — o sea, con el planeta de Inicio. Ahora pide el suyo:
           solo el cielo, como las otras tres que no son Inicio. */}
-      <FondoEspacial rango={perfil.rango_actual} planeta={planetaDeDia(perfil.racha_actual)} soloEstrellas velo={0.72} />
+      <FondoEspacial rango={perfil.rango_actual} planeta={planetaDeDia(perfil.racha_actual)} velo={0.72} />
     <ScrollView contentContainerStyle={estilos.pantalla}>
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>

@@ -93,7 +93,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
       {/* El fondo de la web en Ranking: tu propio cuerpo, arriba a la derecha,
           con más velo que en Inicio porque acá manda la lista. */}
       {datos && (
-        <FondoEspacial rango={datos.miRango} planeta={datos.miPlaneta} soloEstrellas velo={0.68} />
+        <FondoEspacial rango={datos.miRango} planeta={datos.miPlaneta} velo={0.68} />
       )}
       <ScrollView contentContainerStyle={estilos.pantalla} keyboardShouldPersistTaps="handled">
         <Text style={estilos.titulo}>{T.social.titulo}</Text>

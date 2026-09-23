@@ -9576,21 +9576,20 @@ console.log('\n141. Los arreglos del 23/9: OTA, salud, titileo y el planeta');
     chequear(`y ${p} escucha`, /useRecargarAlVolver\(/.test(de141('movil', 'src', `${p}.tsx`)), true);
   }
 
-  // ---- EL PLANETA, SOLO EN INICIO ----
+  // ---- EL PLANETA, EN TODAS LAS PESTAÑAS (25/9) ----
   //
-  // Decision del 23/9: el cuerpo viajaba de esquina entre pestañas y en
-  // Ranking quedaba arriba a la derecha, donde molesta. En las otras cuatro
-  // queda el cielo teñido por el rango y nada mas — y de paso se lleva puesto
-  // el problema del viaje entre esquinas.
+  // Era al reves y duro dos dias: el 23/9 las otras cuatro pasaron a pedir solo
+  // el cielo, porque el cuerpo viajaba de esquina y en Ranking quedaba donde
+  // molesta. El costo aparecio usando la app: al volver a Inicio el planeta
+  // "aparecia de la nada", porque cielo-sin-cuerpo es OTRA escena y habia que
+  // construirla de nuevo. Ahora el cuerpo esta siempre y lo que cambia es
+  // cuanto se lo ve — ver la seccion 156.
   const esc141 = de141('compartido', 'motor', 'escena.ts');
   chequear('la escena sabe dibujar solo el cielo', /soloEstrellas\?: boolean/.test(esc141), true);
   // NO SE ESCONDE EL CUERPO: no se construye, asi que no compila sus shaders
-  // ni se dibuja cada cuadro.
+  // ni se dibuja cada cuadro. La opcion sigue viva para el estado vacio.
   chequear('y no lo construye en vez de esconderlo',
     /if \(op\.soloEstrellas\) \{\s*\n\s*\/\/ NADA EN EL GRUPO/.test(esc141), true);
-  for (const p of ['Ranking', 'Album', 'Stats', 'Ajustes']) {
-    chequear(`${p} pide solo el cielo`, /soloEstrellas/.test(de141('movil', 'src', `${p}.tsx`)), true);
-  }
   chequear('Inicio sigue con su cuerpo abajo a la derecha',
     /esquina="abajo-derecha"/.test(de141('movil', 'src', 'Inicio.tsx')), true);
   // SIN ESTO, PASAR DE INICIO A RANKING REUSA LA ESCENA y el planeta se queda:
@@ -10832,6 +10831,60 @@ console.log('\n155. El album: pasar con el dedo y dos botones que se ven');
   const T155 = (await import('../nucleo/textos.ts')).T;
   chequear('el boton de confirmar dice que hace', /quitarla/i.test(T155.album.quitarSi), true);
   chequear('y va en rojo', /pastillaRoja/.test(alb155), true);
+}
+
+
+console.log('\n156. El planeta esta siempre, y fuera de Inicio se ve borroso');
+{
+  const { readFileSync: leer156 } = await import('node:fs');
+  const { join: unir156 } = await import('node:path');
+  const R156 = unir156(import.meta.dirname, '..');
+  const de156 = (...p) => leer156(unir156(R156, ...p), 'utf8');
+  const sinComentarios156 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- EL CUERPO YA NO DESAPARECE AL CAMBIAR DE PESTANA ----
+  //
+  // "Al volver a Inicio el planeta aparece de la nada." Y aparecia porque en
+  // las otras cuatro NO EXISTIA: pedian `soloEstrellas`, o sea cielo sin
+  // cuerpo, y eso es OTRA escena —otra clave, otro montaje—. Volver a Inicio
+  // obligaba a construirlo, y construirlo es lo que se veia.
+  for (const f of ['Ranking', 'Album', 'Stats', 'Ajustes']) {
+    chequear(f + ' ya no pide el cielo sin cuerpo',
+      /soloEstrellas/.test(sinComentarios156(de156('movil', 'src', f + '.tsx'))), false);
+  }
+  // LA OPCION SIGUE EXISTIENDO en el motor: la usa el estado vacio, y sacarla
+  // seria tirar una pieza que anda por un uso que cambio.
+  chequear('pero el motor la sigue teniendo',
+    /soloEstrellas/.test(de156('compartido', 'motor', 'escena.ts')), true);
+
+  // ---- EL DESENFOQUE SIGUE AL DEDO ----
+  const pes156 = sinComentarios156(de156('movil', 'src', 'Pestanas.tsx'));
+  const des156 = sinComentarios156(de156('movil', 'src', 'desenfoqueDelFondo.ts'));
+  const fon156 = sinComentarios156(de156('movil', 'src', 'FondoRaiz.tsx'));
+
+  // SALE DE DONDE ESTA LA TIRA, no de que pestana va a quedar activa: eso es lo
+  // que hace que baje MIENTRAS arrastras en vez de saltar al soltar.
+  chequear('el desenfoque se mide contra la posicion de la tira',
+    /ponerDesenfoque\(distanciaAInicio\(enReposo/.test(pes156), true);
+  chequear('y al soltar va a donde va la tira',
+    /ponerDesenfoque\(distanciaAInicio\(llega, ancho\)\)/.test(pes156), true);
+  chequear('tocar una pestana tambien lo mueve',
+    /ponerDesenfoque\(destino === 'inicio' \? 0 : 1\)/.test(pes156), true);
+  // ACOTADO A UNA PANTALLA: del Album a Inicio hay dos anchos, y un desenfoque
+  // doble no existe.
+  chequear('acotado a un ancho de pantalla', /Math\.min\(1, Math\.abs\(x\) \/ ancho\)/.test(pes156), true);
+
+  // SE AVISA EN PASOS ENTEROS: un gesto manda sesenta eventos por segundo y el
+  // desenfoque tiene catorce valores distintos. Avisar en cada pixel seria un
+  // dibujado de la raiz por cuadro para no cambiar nada.
+  chequear('se avisa por escalones, no por pixel', /if \(nuevo === nivel\) return;/.test(des156), true);
+
+  // ES EL filter DE REACT NATIVE y no una vista de desenfoque aparte: sin
+  // dependencia nativa, esto viaja por el aire.
+  chequear('el fondo se desenfoca con filter', /filter: \[\{ blur:/.test(fon156), true);
+  chequear('y no se sumo ninguna libreria de blur',
+    /blur/i.test(JSON.stringify(JSON.parse(de156('movil', 'package.json')).dependencies)), false);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
