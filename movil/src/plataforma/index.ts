@@ -3,6 +3,7 @@ import { almacenamientoNativo, efimeroNativo } from './almacenamiento';
 import { audioNativo } from './audio';
 import { avisosNativos } from './avisos';
 import { cicloNativo } from './ciclo';
+import { enVivoNativo } from './enVivo';
 import { hapticaNativa } from './haptica';
 import { pantallaNativa } from './pantalla';
 import { saludNativa } from './salud';
@@ -38,6 +39,7 @@ export const plataformaNativa: Plataforma = {
   audio: audioNativo,
   salud: saludNativa,
   avisos: avisosNativos,
+  enVivo: enVivoNativo,
   haptica: hapticaNativa,
   pantalla: pantallaNativa,
 };

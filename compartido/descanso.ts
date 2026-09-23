@@ -64,12 +64,31 @@ const AVISO = 'descanso';
  * sistema no entrega la notificación, el número al volver sigue bien.
  */
 async function avisarAlTerminar(d: DescansoVivo | null) {
+  // LA CUENTA A LA VISTA (§13d) VA ACÁ MISMO, y no en otra función, por lo
+  // mismo que el aviso: empezar, descansar suelto, cambiar la duración y
+  // saltar pasan todos por este punto. Puesto en cada botón, el primero que
+  // alguien agregue sin acordarse deja una cuenta colgada en la pantalla
+  // bloqueada, que es de las cosas más difíciles de notar que se rompió.
+  //
+  // NO SE ESPERA A QUE TERMINE: encender una Live Activity puede tardar, y lo
+  // que no puede tardar es que el descanso arranque. Es un agregado encima, y
+  // si falla no se entera nadie más que la pantalla de bloqueo.
+  void enVivoAlTerminar(d);
+
   if (!plataforma.avisos.conPantallaBloqueada()) return;
   const faltan = d ? restante(d.fin) : 0;
   if (faltan <= 0) return plataforma.avisos.cancelar(AVISO);
   // Con la app adelante el aviso lo da la pantalla del descanso: el callback
   // no hace nada más.
   await plataforma.avisos.programar(AVISO, faltan, () => {});
+}
+
+async function enVivoAlTerminar(d: DescansoVivo | null) {
+  if (!plataforma.enVivo.disponible()) return;
+  // Un descanso ya terminado se apaga igual que uno saltado: pasa al bajar la
+  // duración por debajo de lo que ya descansaste.
+  if (!d || restante(d.fin) <= 0) return plataforma.enVivo.esconder();
+  await plataforma.enVivo.mostrarDescanso(d.fin, d.duracion);
 }
 
 /**

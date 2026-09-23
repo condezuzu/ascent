@@ -132,6 +132,37 @@ export type Avisos = {
   cancelar(id: string): Promise<void>;
 };
 
+/**
+ * LA CUENTA DEL DESCANSO, VISIBLE SIN DESBLOQUEAR EL TELÉFONO (§13d).
+ *
+ * EL PEDIDO QUE LO ORIGINÓ, después de dos días de gimnasio: *"no se ve el
+ * descanso fuera de la app"*. El aviso sonoro ya llegaba con la pantalla
+ * bloqueada; lo que faltaba era ver CUÁNTO FALTA sin desbloquear nada, doce
+ * veces por sesión.
+ *
+ * EN WEB ES IMPOSIBLE Y NO HAY QUE SEGUIR INTENTÁNDOLO. Con la pantalla
+ * apagada, los temporizadores de una pestaña escondida se estrangulan y
+ * después se congelan; no existe ninguna API de navegador que dibuje algo en
+ * la pantalla de bloqueo. Por eso acá el puerto contesta que no y listo.
+ *
+ * SE LE PASA LA HORA DE FIN, NO LOS SEGUNDOS QUE FALTAN, y es la decisión que
+ * sostiene todo lo demás. El sistema dibuja la cuenta atrás solo a partir de
+ * esa fecha: no hay que empujar una actualización por segundo —iOS ni siquiera
+ * lo permitiría— y el número no se atrasa cuando la app deja de correr. Es la
+ * misma regla de §18.4: el timestamp de fin manda, y esto es una VISTA de ese
+ * número, nunca la fuente.
+ *
+ * NADA DE ESTO TIRA NUNCA. Es un agregado encima del descanso, igual que la
+ * notificación: sin permiso, con las actividades apagadas o en un teléfono
+ * viejo, el descanso tiene que seguir andando idéntico.
+ */
+export type EnVivo = {
+  disponible(): boolean;
+  /** `fin` en milisegundos del reloj del teléfono; `duracion` en segundos. */
+  mostrarDescanso(fin: number, duracion: number): Promise<void>;
+  esconder(): Promise<void>;
+};
+
 /** Que la pantalla no se apague sola mientras corre el descanso (§18). */
 export type Pantalla = {
   disponible(): boolean;
@@ -189,6 +220,7 @@ export type Plataforma = {
   audio: Audio;
   salud: Salud;
   avisos: Avisos;
+  enVivo: EnVivo;
   haptica: Haptica;
   pantalla: Pantalla;
 };

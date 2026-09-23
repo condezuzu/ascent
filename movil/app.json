@@ -16,9 +16,10 @@
           "location"
         ],
         "UIApplicationSupportsShakeToEdit": false,
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSupportsLiveActivities": true
       },
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
       "package": "uy.ascent.app",
@@ -86,7 +87,13 @@
         }
       ],
       "expo-asset",
-      "expo-router"
+      "expo-router",
+      [
+        "@bacons/apple-targets",
+        {
+          "appleTeamId": "XF9N8X9KJG"
+        }
+      ]
     ],
     "extra": {
       "eas": {

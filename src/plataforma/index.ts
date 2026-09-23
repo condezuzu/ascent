@@ -2,6 +2,7 @@ import type { Plataforma } from '@nucleo/plataforma';
 import { almacenamientoWeb, efimeroWeb } from './web/almacenamiento';
 import { audioWeb } from './web/audio';
 import { cicloWeb } from './web/ciclo';
+import { enVivoWeb } from './web/enVivo';
 import { avisosWeb } from './web/avisos';
 import { hapticaWeb } from './web/haptica';
 import { pantallaWeb } from './web/pantalla';
@@ -18,6 +19,7 @@ export const plataforma: Plataforma = {
   audio: audioWeb,
   salud: saludWeb,
   avisos: avisosWeb,
+  enVivo: enVivoWeb,
   haptica: hapticaWeb,
   pantalla: pantallaWeb,
 };
