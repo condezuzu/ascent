@@ -37,7 +37,6 @@
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-url-polyfill": "^2.0.0",
-    "react-native-volume-manager": "^2.2.0",
     "react-native-web": "^0.21.0",
     "three": "^0.176.0"
   },

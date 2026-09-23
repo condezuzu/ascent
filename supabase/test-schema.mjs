@@ -9103,14 +9103,12 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
 
   const dep137 = JSON.parse(de137('movil', 'package.json')).dependencies;
   chequear('la libreria de HealthKit esta instalada', !!dep137['@kingstinct/react-native-healthkit'], true);
-  // EL MODULO DEL BOTON DE VOLUMEN SIGUE INSTALADO Y YA NO LO USA NADIE, y es
-  // a proposito por dos dias: sacarlo de package.json cambia la HUELLA de la
-  // build, y con la huella cambiada ninguna actualizacion por el aire le llega
-  // al telefono que ya esta instalado. La funcion se apago en JavaScript —que
-  // es lo que viaja hoy— y la dependencia se va con la build de la tienda.
-  chequear('el modulo del volumen sigue instalado, sin usarse', !!dep137['react-native-volume-manager'], true);
-  chequear('y ya no lo importa nadie',
-    /react-native-volume-manager/.test(de137('movil', 'src', 'plataforma', 'index.ts')), false);
+  // EL MODULO DEL BOTON DE VOLUMEN YA NO ESTA. Se apago en JavaScript primero
+  // —eso viajo por el aire el mismo dia— y la dependencia se fue despues, con
+  // el lote que va en la build de la tienda: sacarla de package.json cambia la
+  // HUELLA, y con la huella cambiada ninguna actualizacion por el aire le llega
+  // al telefono que ya esta instalado.
+  chequear('el modulo del volumen ya no esta instalado', !!dep137['react-native-volume-manager'], false);
 
   // ---- QUE EL DIA ENTRE CON LA APP CERRADA ----
   const ubi = de137('movil', 'src', 'plataforma', 'ubicacion.ts');
@@ -10885,6 +10883,73 @@ console.log('\n156. El planeta esta siempre, y fuera de Inicio se ve borroso');
   chequear('el fondo se desenfoca con filter', /filter: \[\{ blur:/.test(fon156), true);
   chequear('y no se sumo ninguna libreria de blur',
     /blur/i.test(JSON.stringify(JSON.parse(de156('movil', 'package.json')).dependencies)), false);
+}
+
+
+console.log('\n157. La pantalla de bloqueo: el timer que se caia y la campana');
+{
+  const { readFileSync: leer157 } = await import('node:fs');
+  const { join: unir157 } = await import('node:path');
+  const R157 = unir157(import.meta.dirname, '..');
+  const de157 = (...p) => leer157(unir157(R157, ...p), 'utf8');
+
+  const wid157 = de157('movil', 'targets', 'descanso', 'index.swift');
+
+  // ---- 5. EL TIMER "SE QUEDABA CARGANDO" ----
+  //
+  // No se quedaba cargando: se CAIA. `Date.now...fin` es un ClosedRange, y un
+  // rango cerrado exige que el principio no sea mayor que el final. Mientras el
+  // descanso corre, `fin` esta en el futuro; al llegar a cero —que es
+  // exactamente cuando uno mira el telefono— pasa al pasado, el rango se vuelve
+  // invalido y Swift corta ahi. Lo que se ve cuando un widget se cae es el
+  // rectangulo vacio del sistema.
+  chequear('la cuenta solo se dibuja si falta tiempo',
+    /if termino \{[\s\S]*?Text\("0:00"\)/.test(wid157), true);
+  chequear('y el rango vive en la rama de "todavia no"',
+    /\} else \{[\s\S]*?Text\(timerInterval: Date\.now\.\.\.fin/.test(wid157), true);
+  // DOS PREGUNTAS Y NO UNA: `isStale` es lo que el sistema sabe sin la app
+  // viva; la comparacion contra el reloj cubre el dibujo de justo despues.
+  chequear('termino se decide con isStale y con el reloj',
+    /context\.isStale \|\| context\.state\.fin <= Date\(\)/.test(wid157), true);
+
+  // ---- 7. EL FINAL SE AVISA EN LA MISMA TARJETA ----
+  chequear('la tarjeta dice LISTO al terminar', /"LISTO" : "DESCANSO"/.test(wid157), true);
+  chequear('y lo dice tambien en la isla', (wid157.match(/"LISTO" : "DESCANSO"/g) ?? []).length >= 2, true);
+  // Y CON LA APP ADELANTE NO HAY CARTEL DEL SISTEMA: la pantalla del descanso
+  // ya avisa —cambia de color, vibra y suena— y el cartel encima era la otra
+  // mitad de "una sola cosa, no dos".
+  const avi157 = de157('movil', 'src', 'plataforma', 'avisos.ts');
+  chequear('sin cartel con la app abierta', /shouldShowBanner: false/.test(avi157), true);
+  chequear('pero con sonido', /shouldPlaySound: true/.test(avi157), true);
+
+  // ---- 8. LA CAMPANA SE ESCUCHA ----
+  //
+  // El sonido de fabrica de iOS es corto y discreto a proposito —esta pensado
+  // para un mensaje— y contra musica con auriculares no llega.
+  chequear('la notificacion usa la campana nuestra', /sound: 'campana\.wav'/.test(avi157), true);
+  // TIME SENSITIVE: atraviesa el modo de concentracion. Un temporizador que no
+  // suena por tener "No molestar" es un temporizador roto, y es justo cuando
+  // se usa.
+  chequear('y atraviesa el modo de concentracion',
+    /interruptionLevel: 'timeSensitive'/.test(avi157), true);
+  // EL ARCHIVO VA EN EL BUNDLE, no en el JavaScript: lo reproduce el sistema.
+  const app157 = JSON.parse(de157('movil', 'app.json'));
+  const notif157 = app157.expo.plugins.find((x) => Array.isArray(x) && x[0] === 'expo-notifications');
+  chequear('la campana se declara en app.json',
+    (notif157?.[1]?.sounds ?? []).some((s) => /campana\.wav$/.test(s)), true);
+  chequear('y el archivo existe', de157('movil', 'assets', 'campana.wav').length > 1000, true);
+
+  // ---- LOS COLORES DEL WIDGET SIGUEN SIENDO LOS DE LA APP ----
+  //
+  // Un target de Apple no puede importar TypeScript, asi que estan copiados.
+  // Esto compara los dos lados: si alguien cambia la paleta, se canta en vez de
+  // quedar de otro color para siempre en la pantalla que nadie mira dos veces.
+  const cfg157 = de157('movil', 'targets', 'descanso', 'expo-target.config.js');
+  const col157 = de157('movil', 'src', 'colores.ts');
+  for (const [nombre, hex] of [['fondo', '#05060a'], ['tinta', '#e8ecf6'], ['sub', '#8a93a8'], ['claro', '#c4c2ba']]) {
+    chequear('el widget y la app comparten ' + nombre,
+      cfg157.includes(nombre + ": '" + hex + "'") && col157.includes(nombre + ": '" + hex + "'"), true);
+  }
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

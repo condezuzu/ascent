@@ -24,14 +24,20 @@ import type { Avisos } from '@nucleo/plataforma';
  * alcanza para probarlo antes de la build de desarrollo.
  */
 
-// Cómo se muestra si llega con la app ABIERTA. Sin esto, iOS se la guarda para
-// el centro de notificaciones y el usuario no ve nada: justo el caso de estar
-// mirando la pantalla del descanso cuando termina.
+// CÓMO SE MUESTRA SI LLEGA CON LA APP ABIERTA.
+//
+// SIN CARTEL DESDE EL 25/9. Con la app adelante, la pantalla del descanso YA
+// avisa: cambia de color, vibra y suena. El cartel del sistema encima era la
+// segunda mitad de *"una sola cosa, no dos"* — y la más molesta, porque baja
+// desde arriba justo cuando estás mirando el número.
+//
+// EL SONIDO SÍ SE QUEDA: es el mismo aviso, y quitarlo dejaría el caso de la
+// app abierta con el teléfono en el bolsillo sin nada que se oiga.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
     shouldSetBadge: false,
-    shouldShowBanner: true,
+    shouldShowBanner: false,
     shouldShowList: false,
   }),
 });
@@ -86,6 +92,22 @@ export const avisosNativos: Avisos = {
           // bloqueada, y no comparte contexto con ninguna pantalla.
           title: 'Ascent',
           body: 'Se terminó el descanso.',
+          // LA CAMPANA NUESTRA Y NO LA DEL SISTEMA (25/9). *"La campana se
+          // escucha poco. Con música puesta no la escuché."* El sonido de
+          // fábrica de iOS es corto y discreto a propósito —está pensado para
+          // un mensaje— y contra música con auriculares no llega. Este es el
+          // mismo archivo que suena adentro de la app: tres toques, al 95% de
+          // la escala y con las frecuencias arriba, donde la música casi nunca
+          // tiene energía.
+          //
+          // El archivo tiene que estar en el BUNDLE, no en el JavaScript: lo
+          // reproduce el sistema, no la app. Por eso va declarado en
+          // `app.json` y por eso este cambio necesita una build.
+          sound: 'campana.wav',
+          // TIME SENSITIVE: atraviesa el modo de concentración. Un temporizador
+          // que no suena porque tenés "No molestar" puesto en el gimnasio es un
+          // temporizador roto, y es exactamente cuando se usa.
+          interruptionLevel: 'timeSensitive',
           data: { ascent: id },
         },
         trigger: {

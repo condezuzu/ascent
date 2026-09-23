@@ -21,6 +21,37 @@ import WidgetKit
  * calcula contra el reloj. Esto es una VISTA de ese número, nunca la fuente.
  * Si se apoyara en su propio contador, mirar la pantalla bloqueada y mirar la
  * app darían dos números distintos para la misma cosa.
+ *
+ * ─────────────────────────────────────────────────────────────────────
+ * EL TIMER QUE "SE QUEDABA CARGANDO" (25/9)
+ *
+ * Reporte del gimnasio: *"en la pantalla de bloqueo el timer se queda
+ * cargando"*. No se quedaba cargando: se CAÍA, y lo que se ve cuando un widget
+ * se cae es el rectángulo vacío del sistema.
+ *
+ * El motivo cabe en una línea: `Date.now...fin` es un `ClosedRange`, y un rango
+ * cerrado exige que el principio no sea mayor que el final. Mientras el
+ * descanso corre, `fin` está en el futuro y todo bien. Al llegar a cero —que es
+ * exactamente el momento en que uno mira el teléfono— `fin` pasa a estar en el
+ * pasado, el rango se vuelve inválido y Swift corta ahí mismo.
+ *
+ * O sea que fallaba SIEMPRE, y siempre en el peor momento.
+ *
+ * ─────────────────────────────────────────────────────────────────────
+ * Y EL FINAL SE AVISA ACÁ (25/9)
+ *
+ * *"Una sola cosa en la pantalla de bloqueo, no dos. El fin del descanso tiene
+ * que avisarse en el mismo cuadro del timer."*
+ *
+ * Esta es la mitad que se puede hacer sin servidor: cuando el descanso termina,
+ * la tarjeta deja de mostrar una cuenta en cero y pasa a decir que terminó, con
+ * el color invertido. `staleDate` es lo que lo hace posible sin que la app esté
+ * viva: al llegar esa fecha el sistema vuelve a dibujar la tarjeta y
+ * `context.isStale` ya es verdadero.
+ *
+ * La otra mitad —que además SUENE sin una notificación aparte— necesita
+ * empujar la actividad desde un servidor (APNs), porque con la app dormida no
+ * hay nadie que pueda pedir la alerta. Queda preguntado.
  */
 
 @available(iOS 16.2, *)
@@ -31,16 +62,16 @@ struct DescansoLiveActivity: Widget {
       // caso que hay que ganar: el teléfono boca arriba en el banco.
       HStack(alignment: .center, spacing: 14) {
         VStack(alignment: .leading, spacing: 2) {
-          Text("DESCANSO")
+          Text(termino(context) ? "LISTO" : "DESCANSO")
             .font(.system(size: 11, weight: .medium))
             .tracking(2)
-            .foregroundStyle(Color("sub"))
-          Text(deLargo(context.attributes.duracion))
+            .foregroundStyle(termino(context) ? Color("tinta") : Color("sub"))
+          Text(termino(context) ? "Dale con la que sigue." : deLargo(context.attributes.duracion))
             .font(.system(size: 13))
             .foregroundStyle(Color("sub"))
         }
         Spacer(minLength: 0)
-        cuenta(hasta: context.state.fin, tamano: 44)
+        cuenta(hasta: context.state.fin, tamano: 44, termino: termino(context))
       }
       .padding(.horizontal, 20)
       .padding(.vertical, 16)
@@ -51,7 +82,7 @@ struct DescansoLiveActivity: Widget {
       DynamicIsland {
         // ABIERTA: cuando se mantiene apretada la isla.
         DynamicIslandExpandedRegion(.leading) {
-          Text("DESCANSO")
+          Text(termino(context) ? "LISTO" : "DESCANSO")
             .font(.system(size: 11, weight: .medium))
             .tracking(2)
             .foregroundStyle(Color("sub"))
@@ -64,7 +95,7 @@ struct DescansoLiveActivity: Widget {
             .padding(.trailing, 4)
         }
         DynamicIslandExpandedRegion(.bottom) {
-          cuenta(hasta: context.state.fin, tamano: 40)
+          cuenta(hasta: context.state.fin, tamano: 40, termino: termino(context))
         }
       } compactLeading: {
         // CERRADA, a la izquierda: un punto y nada más. El espacio es de
@@ -73,28 +104,52 @@ struct DescansoLiveActivity: Widget {
           .fill(Color("tinta"))
           .frame(width: 7, height: 7)
       } compactTrailing: {
-        cuenta(hasta: context.state.fin, tamano: 14)
+        cuenta(hasta: context.state.fin, tamano: 14, termino: termino(context))
           // ANCHO FIJO: sin esto la isla se agranda y se achica sola cuando el
           // número pasa de 1:00 a 0:59, y el movimiento se ve como un error.
           .frame(width: 42)
       } minimal: {
-        cuenta(hasta: context.state.fin, tamano: 12)
+        cuenta(hasta: context.state.fin, tamano: 12, termino: termino(context))
       }
       .keylineTint(Color("tinta"))
     }
   }
 }
 
+/// ¿YA TERMINÓ?
+///
+/// Dos preguntas y no una. `isStale` es lo que el sistema sabe sin que la app
+/// esté viva —le dijimos que a partir de `fin` lo que muestra está vencido— y
+/// la comparación contra el reloj cubre el caso en que la tarjeta se dibuja
+/// justo después, antes de que el sistema la marque.
+@available(iOS 16.2, *)
+private func termino<T>(_ context: ActivityViewContext<T>) -> Bool where T == AtributosDelDescanso {
+  context.isStale || context.state.fin <= Date()
+}
+
 /// La cuenta atrás, que la dibuja el sistema. Monoespaciada para que los
 /// dígitos no bailen: con la fuente normal, el 1 es más angosto que el 8 y el
 /// número entero se mueve a cada segundo.
+///
+/// CON EL DESCANSO TERMINADO NO HAY CUENTA, y no es una decisión de diseño: el
+/// rango `Date.now...fin` con `fin` en el pasado es inválido y tumba el widget
+/// entero. Ver la cabecera.
 @available(iOS 16.2, *)
-private func cuenta(hasta fin: Date, tamano: CGFloat) -> some View {
-  Text(timerInterval: Date.now...fin, countsDown: true)
-    .font(.system(size: tamano, weight: .light, design: .rounded))
-    .monospacedDigit()
-    .foregroundStyle(Color("tinta"))
-    .multilineTextAlignment(.trailing)
+private func cuenta(hasta fin: Date, tamano: CGFloat, termino: Bool) -> some View {
+  Group {
+    if termino {
+      Text("0:00")
+        .font(.system(size: tamano, weight: .light, design: .rounded))
+        .monospacedDigit()
+        .foregroundStyle(Color("claro"))
+    } else {
+      Text(timerInterval: Date.now...fin, countsDown: true)
+        .font(.system(size: tamano, weight: .light, design: .rounded))
+        .monospacedDigit()
+        .foregroundStyle(Color("tinta"))
+    }
+  }
+  .multilineTextAlignment(.trailing)
 }
 
 /// "3 min" / "1:30 min". Lo mismo que `duracionCorta` en TypeScript, que es de

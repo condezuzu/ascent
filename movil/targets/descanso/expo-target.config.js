@@ -24,9 +24,12 @@ module.exports = {
   // Apple no puede importar TypeScript. `test:db` compara los dos lados: si
   // alguien cambia la paleta, esto lo canta en vez de quedar de otro color
   // para siempre en la única pantalla que nadie mira dos veces.
+  // El cuarto color entró el 25/9 con el estado TERMINADO: el cero se pinta
+  // con el mismo con el que la app pinta lo que ya está hecho.
   colors: {
     fondo: '#05060a',
     tinta: '#e8ecf6',
     sub: '#8a93a8',
+    claro: '#c4c2ba',
   },
 };
