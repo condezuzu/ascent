@@ -10,9 +10,9 @@ import { saludNativa } from './salud';
 import { ubicacionNativa } from './ubicacion';
 
 /**
- * LOS NUEVE PUERTOS, del lado nativo.
+ * LOS DIEZ PUERTOS, del lado nativo.
  *
- * El espejo de `src/plataforma/index.ts`: la misma forma, las mismas nueve
+ * El espejo de `src/plataforma/index.ts`: la misma forma, las mismas diez
  * llaves, otra implementación. El contrato vive en `nucleo/plataforma.ts`, que
  * es de las dos apps y de ninguna, así que TypeScript no deja que una de las
  * dos se olvide de un puerto o le cambie la firma.

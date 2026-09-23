@@ -4218,7 +4218,11 @@ console.log('\n60. Los dos lados de plataforma/');
   // Las llaves del tipo `Plataforma`, que es lo ultimo del archivo.
   const bloque = contrato.slice(contrato.indexOf('export type Plataforma = {'));
   const puertos = [...sinComentarios(bloque).matchAll(/^  (\w+):/gm)].map((m) => m[1]).sort();
-  chequear('el contrato tiene nueve puertos', puertos.length, 9);
+  // DIEZ DESDE EL 24/9: entro `enVivo`, la cuenta del descanso en la
+  // pantalla bloqueada. El numero esta escrito a proposito y no se calcula:
+  // lo que este chequeo cuida es que un puerto NUEVO obligue a mirar las dos
+  // implementaciones, no solo la que uno estaba escribiendo.
+  chequear('el contrato tiene diez puertos', puertos.length, 10);
 
   const llaves = (ruta) => {
     const codigo = sinComentarios(leerArch(ruta, 'utf8'));
@@ -4252,6 +4256,11 @@ console.log('\n60. Los dos lados de plataforma/');
       const propio =
         destino.startsWith('./') ||
         destino.startsWith('../../assets') ||
+        // `movil/modules/` son los modulos nativos propios de esta app (el
+        // puente a ActivityKit vive ahi). Es territorio nativo tanto como
+        // `movil/src/`: lo que este chequeo persigue es que la nativa tire de
+        // `src/`, que es el arbol de la WEB.
+        destino.startsWith('../../modules/') ||
         destino.startsWith('@nucleo/') ||
         !destino.startsWith('.');
       if (!propio) colados.push(`${n} importa ${destino}`);
@@ -9277,6 +9286,114 @@ console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
   const T138 = (await import('../nucleo/textos.ts')).T;
   chequear('el recordatorio del gimnasio no dice "al abrir la app"',
     /abrir la app/i.test(T138.inicio.gimnasioRecordatorioNativo), false);
+}
+
+console.log('\n139. La Live Activity del descanso');
+{
+  const { readFileSync: leer139 } = await import('node:fs');
+  const { join: unir139, dirname: dir139 } = await import('node:path');
+  const { fileURLToPath: aRuta139 } = await import('node:url');
+  const R139 = unir139(dir139(aRuta139(import.meta.url)), '..');
+  const de139 = (...p) => leer139(unir139(R139, ...p), 'utf8');
+
+  // ---- LOS DOS ARCHIVOS QUE TIENEN QUE SER IGUALES ----
+  //
+  // ESTE ES EL CHEQUEO QUE JUSTIFICA LA SECCION. El widget es una extension
+  // con su propio binario y el que enciende la actividad vive en un pod de
+  // Expo: son dos targets de Apple que NO se pueden ver entre si, asi que
+  // ningun archivo puede pertenecer a los dos. ActivityKit los empareja por
+  // el NOMBRE del tipo y la forma de lo que se codifica.
+  //
+  // Y SI SE SEPARAN NO HAY ERROR: la actividad se enciende, el widget no la
+  // dibuja nunca, y no pasa absolutamente nada mas. Es la forma mas dificil
+  // de darse cuenta de que algo se rompio -- por eso se compara aca.
+  const sinRuido = (s) =>
+    s
+      .replace(/\/\/[^\n]*/g, '')       // comentarios de linea
+      .replace(/\/\*[\s\S]*?\*\//g, '') // y de bloque
+      .replace(/\s+/g, ' ')
+      .trim();
+  const delWidget = de139('movil', 'targets', 'descanso', 'AtributosDelDescanso.swift');
+  const delModulo = de139('movil', 'modules', 'descanso-vivo', 'ios', 'AtributosDelDescanso.swift');
+  chequear('las dos copias de AtributosDelDescanso dicen lo mismo',
+    sinRuido(delWidget), sinRuido(delModulo));
+
+  // LO QUE VIAJA ES LA HORA DE FIN, NO LOS SEGUNDOS QUE FALTAN (§18.4). Con
+  // los restantes habria que empujar una actualizacion por segundo, que iOS
+  // no permite, y el numero quedaria mal apenas se apaga la pantalla.
+  chequear('el estado lleva la hora de fin', /var fin: Date/.test(delWidget), true);
+  // SIN LOS COMENTARIOS: el de arriba EXPLICA por que no se guardan los
+  // segundos restantes, asi que buscar esas palabras en el archivo entero
+  // encontraba justo el texto que dice que no estan.
+  chequear('y no los segundos que faltan', /restante|segundos|faltan/i.test(sinRuido(delWidget)), false);
+
+  // ---- EL WIDGET ----
+  const widget = de139('movil', 'targets', 'descanso', 'index.swift');
+  // LA CUENTA LA DIBUJA iOS: `Text(timerInterval:)` corre solo con la pantalla
+  // bloqueada y sin que la app este viva.
+  chequear('la cuenta la dibuja el sistema', /Text\(timerInterval:/.test(widget), true);
+  chequear('y cuenta hacia atras', /countsDown: true/.test(widget), true);
+  // LA ISLA TAMBIEN, no solo la pantalla bloqueada.
+  chequear('esta la Dynamic Island', /DynamicIsland \{/.test(widget), true);
+
+  const conf = de139('movil', 'targets', 'descanso', 'expo-target.config.js');
+  // ACTIVITYKIT NO VIENE PUESTO en un target de widget: sin declararlo, no
+  // compila la parte que importa.
+  chequear('el target linkea ActivityKit', /'ActivityKit'/.test(conf), true);
+  // iOS 16.2 ES EL PISO REAL: `ActivityContent` llego ahi. El valor de fabrica
+  // del plugin es 18.0, que dejaria afuera telefonos que andan perfecto.
+  chequear('y baja el piso a 16.2', /deploymentTarget: '16\.2'/.test(conf), true);
+
+  // ---- EL PUENTE ----
+  const mod = de139('movil', 'modules', 'descanso-vivo', 'ios', 'DescansoVivoModule.swift');
+  // SI YA HAY UNA, SE MUEVE en vez de encender otra: iOS permite varias a la
+  // vez y una por serie dejaria la pantalla bloqueada llena de descansos
+  // viejos. Pasa todo el tiempo -- tocar el + otra vez, cambiar la duracion.
+  chequear('una actividad que ya esta se mueve, no se duplica', /await actual\.update\(/.test(mod), true);
+  // AL APAGAR SE RECORREN TODAS LAS DEL SISTEMA y no solo la anotada: la
+  // referencia se pierde cuando el proceso muere, y la app se cierra con el
+  // descanso andando todo el tiempo (el telefono va al bolsillo).
+  chequear('se apagan tambien las que quedaron de otra vida de la app',
+    /for otra in Activity<AtributosDelDescanso>\.activities/.test(mod), true);
+
+  const podspec = de139('movil', 'modules', 'descanso-vivo', 'ios', 'DescansoVivo.podspec');
+  // LINKEADO DEBIL: el piso de la app es iOS 15.1 y ActivityKit aparecio en la
+  // 16.1. Fuerte, un telefono con iOS 15 no podria ni ABRIR la app -- fallaria
+  // al cargar el binario, antes de llegar a ninguna pantalla.
+  chequear('ActivityKit se linkea debil', /weak_frameworks = 'ActivityKit'/.test(podspec), true);
+
+  // ---- DESDE JAVASCRIPT ----
+  const port = de139('movil', 'src', 'plataforma', 'enVivo.ts');
+  // OPCIONAL Y NO OBLIGATORIO: el modulo no existe en la vista web ni en
+  // ninguna build anterior a la que lo trajo. La version que tira haria que la
+  // app muriera al arrancar en las tres.
+  chequear('el modulo nativo se pide de forma opcional',
+    /requireOptionalNativeModule/.test(de139('movil', 'modules', 'descanso-vivo', 'index.ts')), true);
+  chequear('y nada del puerto puede tirar', (port.match(/try \{/g) ?? []).length >= 3, true);
+
+  // SE ENGANCHA DONDE YA SE ENGANCHA EL AVISO. Empezar, descansar suelto,
+  // cambiar la duracion y saltar pasan todos por `avisarAlTerminar`: puesto en
+  // cada boton, el primero que alguien agregue sin acordarse deja una cuenta
+  // colgada en la pantalla bloqueada.
+  const desc = de139('compartido', 'descanso.ts');
+  const avisar139 = desc.slice(desc.indexOf('async function avisarAlTerminar'));
+  chequear('la cuenta a la vista sale del mismo lugar que el aviso',
+    /enVivoAlTerminar\(d\)/.test(avisar139.slice(0, avisar139.indexOf('\n}'))), true);
+  // Y UN DESCANSO YA TERMINADO SE APAGA: pasa al bajar la duracion por debajo
+  // de lo ya descansado.
+  chequear('un descanso terminado apaga la actividad',
+    /if \(!d \|\| restante\(d\.fin\) <= 0\) return plataforma\.enVivo\.esconder\(\)/.test(desc), true);
+
+  // LA WEB CONTESTA QUE NO, y no es que la API sea peor: no hay ninguna.
+  chequear('en web el puerto contesta que no',
+    /disponible\(\) \{\s*return false;/.test(de139('src', 'plataforma', 'web', 'enVivo.ts')), true);
+
+  // ---- LO QUE SOLO PUEDE TRAER UNA BUILD ----
+  const app139 = JSON.parse(de139('movil', 'app.json')).expo;
+  chequear('la app declara que soporta Live Activities',
+    app139.ios?.infoPlist?.NSSupportsLiveActivities, true);
+  const nombres139 = (app139.plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
+  chequear('y esta el plugin que arma el target', nombres139.includes('@bacons/apple-targets'), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

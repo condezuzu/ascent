@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { plataformaNativa } from './plataforma';
 
 /**
- * TANDA 1 — que los nueve puertos existan y contesten EN EL TELÉFONO.
+ * TANDA 1 — que los diez puertos existan y contesten EN EL TELÉFONO.
  *
  * No es una pantalla de la app: es el banco de trabajo de la migración, el
  * equivalente de la pantalla de la tanda 0. Lo que tiene que demostrar es que
@@ -52,6 +52,12 @@ export default function PruebaDePuertos() {
       filas.push({
         que: 'avisos',
         dice: p.avisos.conPantallaBloqueada() ? 'con la pantalla bloqueada' : 'solo adelante',
+      });
+      filas.push({
+        que: 'en vivo',
+        // Tres cosas tienen que ser ciertas: la version de iOS, que el sistema
+        // las tenga habilitadas, y que no las hayas apagado para Ascent.
+        dice: p.enVivo.disponible() ? 'la cuenta se ve afuera' : 'no',
       });
       filas.push({
         que: 'salud',
