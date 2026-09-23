@@ -1789,11 +1789,20 @@ body.ya-entro .pantalla.aparece {
    Lo que se toca es la medalla; un marco alrededor de un dibujo de 18 px lo
    convertiría en un control y esto no es un control, es una insignia que
    además contesta. */
+/* LA FILA ES NOMBRE + MEDALLAS. `wrap` y no `nowrap`: con un nombre largo las
+   medallas bajan a la línea siguiente, que es lo que hace cualquier fila de
+   texto. La primera versión las ponía debajo y chicas para evitar ese caso, y
+   era resolver un problema de ancho escondiendo el contenido. */
 .medallas-fila {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 6px;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.medallas-sueltas {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .medallas-una {
   display: block;

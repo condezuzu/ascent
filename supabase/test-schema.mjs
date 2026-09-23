@@ -10065,9 +10065,16 @@ console.log('\n145. Las medallas por marca');
   // ---- DONDE SE MUESTRAN ----
   const filaWeb = sinComentarios145(de145('src', 'components', 'Medallas.tsx'));
   const filaNat = sinComentarios145(de145('movil', 'src', 'Medallas.tsx'));
-  // LA GALAXIA NO LLEVA EL ROTULO DEL EJERCICIO: su linea ya nombra los tres.
-  chequear('la galaxia no lleva rotulo, en las dos',
-    /material !== 'galaxia'/.test(filaWeb) && /material !== 'galaxia'/.test(filaNat), true);
+  // LA GALAXIA NO LLEVA EL NOMBRE DEL EJERCICIO: su linea ya nombra los tres,
+  // asi que el rotulo repetiria uno. En su lugar el rotulo dice el material.
+  const soloMaterial = /galaxia'\s*\?\s*T\.medallas\.materiales\.galaxia/;
+  chequear('la galaxia no lleva el ejercicio, en las dos',
+    soloMaterial.test(filaWeb) && soloMaterial.test(filaNat), true);
+  // Y EL MATERIAL SE DICE SIEMPRE: a 24 px la luna y el planeta se parecen
+  // —gris azulado contra azul— y no habia como saber cual te toco.
+  const diceMaterial = /T\.medallas\.materiales\[elegida\.material\]/;
+  chequear('y el material se dice, en las dos',
+    diceMaterial.test(filaWeb) && diceMaterial.test(filaNat), true);
   chequear('el perfil propio de la nativa las muestra',
     /<Medallas/.test(de145('movil', 'src', 'PerfilPropio.tsx')), true);
   chequear('y el de la web tambien',

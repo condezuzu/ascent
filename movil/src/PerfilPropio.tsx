@@ -134,11 +134,14 @@ export default function PerfilPropio() {
             <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={76} />
           </Pressable>
           <View style={estilos.identidad}>
-            <Text style={estilos.nombre}>{perfil.username}</Text>
-            {/* LAS MEDALLAS POR MARCA, debajo del nombre y antes de la racha:
-                al lado del nombre en la misma línea, con un nombre largo, se
-                empujaban fuera de la pantalla. */}
-            <Medallas medallas={datos.medallas} />
+            {/* LAS MEDALLAS VAN EN LA MISMA FILA QUE EL NOMBRE y del alto del
+                nombre. Estuvieron debajo y chicas un rato, por miedo a que un
+                nombre largo las empujara afuera; el miedo estaba mal resuelto
+                —lo arregla `flexWrap`, no esconderlas—. */}
+            <Medallas
+              medallas={datos.medallas}
+              nombre={<Text style={estilos.nombre}>{perfil.username}</Text>}
+            />
             <View style={estilos.meta}>
               <Insignia rango={perfil.rango_actual} tam={16} />
               <Text style={estilos.metaTexto}>

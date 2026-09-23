@@ -15,6 +15,8 @@ import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO, SUBIO_RANGO } from '@compartido/gimnasio';
 import { useTeclasDeVolumen } from './teclasDeVolumen';
+import { FilaDeMedallas } from './Medallas';
+import { useMisMedallas } from '@compartido/misMedallas';
 import { CERRO_SOLA } from './VigilanteDeGimnasio';
 import Bloque from './Bloque';
 import Descanso from './Descanso';
@@ -246,6 +248,10 @@ export default function Inicio({
     hoyISO()
   );
 
+  // LAS MEDALLAS POR MARCA, para la fila del nombre. Va acá arriba como los
+  // otros hooks, antes de los retornos tempranos.
+  const medallas = useMisMedallas(supabase, cargado?.perfil.id, cargado?.perfil.sexo);
+
   // LAS TECLAS DE VOLUMEN SUMAN UNA SERIE (§13f). Va ACÁ ARRIBA, antes de los
   // retornos tempranos: un hook que se llama solo en algunas ramas es un hook
   // que un día no se llama, y React cuenta los hooks por posición. Adentro se
@@ -350,6 +356,10 @@ export default function Inicio({
         >
           <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={28} />
           <Text style={estilos.usuario}>{perfil.username}</Text>
+          {/* LAS MEDALLAS TAMBIÉN ACÁ, y sin tocar: esta fila entera ya es un
+              botón que lleva al perfil, y una medalla que se abriera sola
+              competiría con ese toque. Se ven; para saber qué son, se entra. */}
+          <FilaDeMedallas medallas={medallas} />
         </Pressable>
         {/* El chip de la sesión, arriba a la derecha como en la web: sin
             sesión la inicia; con sesión, es el reloj. */}

@@ -12,6 +12,8 @@ import { hayPresagio } from '@nucleo/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { guardarInicioCache, guardarPerfilCache, leerInicioCache, leerPerfilCache } from '@compartido/cache';
 import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
+import { useMisMedallas } from '@compartido/misMedallas';
+import { FilaDeMedallas } from '@/components/Medallas';
 import { pedirInicio, type DatosDeInicio } from '@compartido/inicio';
 import { marca } from '@/lib/medir';
 import { sincronizarZona } from '@/lib/zona';
@@ -68,6 +70,10 @@ export default function Principal() {
   const router = useRouter();
   const [supabase] = useState(() => crearCliente());
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  // Las medallas por marca, para la fila del nombre. Entran cuando llegan: son
+  // un adorno al lado del nombre y reservarles lugar movería el nombre medio
+  // segundo después, que es peor que aparecer.
+  const medallas = useMisMedallas(supabase, perfil?.id, perfil?.sexo);
   const [logs, setLogs] = useState<Log[]>([]);
   const [descansos, setDescansos] = useState<ConfigDescanso[]>([]);
   const [marcas, setMarcas] = useState<string | null>(null);
@@ -543,6 +549,8 @@ export default function Principal() {
           <Link href="/yo" className="cabecera-yo">
             <Avatar url={perfil.avatar_url} nombre={perfil.username} />
             <span className="nombre">{perfil.username}</span>
+            {/* Se ven y no se tocan: esta fila ya es un enlace al perfil. */}
+            <FilaDeMedallas medallas={medallas} />
           </Link>
           <ChipSesion
             estado={sesion.estado}

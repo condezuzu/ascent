@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { cuantosLevantan, type Medalla as Dato } from '@nucleo/medallas';
 import { T } from '@nucleo/textos';
@@ -8,32 +8,39 @@ import { C } from './colores';
 /**
  * LAS MEDALLAS AL LADO DEL NOMBRE, y la ventanita al tocar una.
  *
- * CHICAS Y EN FILA, que fue el pedido: 18 px, pegadas al nombre. No llevan
- * rótulo ni número a la vista — el que las tiene sabe lo que son, y el que
- * entra a un perfil ajeno ve que esa persona tiene algo y puede tocarlo.
+ * AL LADO Y NO DEBAJO, y del alto del nombre (24 px contra 22 del nombre en el
+ * perfil). La primera versión las puso debajo y chicas por miedo a que un
+ * nombre largo las empujara afuera; el miedo estaba mal resuelto. Se arregla
+ * con `flexWrap`: con un nombre largo bajan a la línea siguiente, que es lo
+ * que hace cualquier fila de texto, en vez de esconderse desde el principio.
  *
- * LA VENTANITA SE ABRE DEBAJO Y NO ES UNA HOJA. Una hoja modal para dos
- * renglones taparía el perfil entero para decir una frase; esto se abre en su
- * lugar, se cierra tocando de nuevo, y no se lleva la pantalla.
+ * POR ESO RECIBE EL NOMBRE: la fila es nombre + medallas, y la ventanita va
+ * DEBAJO DE LAS DOS. Si el componente dibujara solo las medallas, quien lo usa
+ * tendría que armar la fila por fuera y la ventanita quedaría adentro.
  *
- * LA GALAXIA NO LLEVA EL RÓTULO DEL EJERCICIO ARRIBA: su línea ya nombra los
- * tres levantamientos y el rótulo repetiría uno.
+ * LA VENTANITA SE ABRE EN SU LUGAR Y NO ES UNA HOJA. Una hoja modal para dos
+ * renglones taparía el perfil entero para decir una frase.
  */
 export default function Medallas({
   medallas,
+  nombre,
+  tam = 24,
   nombres,
 }: {
   medallas: readonly Dato[];
+  /** El nombre, que va en la misma fila. */
+  nombre?: ReactNode;
+  tam?: number;
   /** El nombre lindo de cada ejercicio, que sale del catálogo. */
   nombres?: Readonly<Record<string, string>>;
 }) {
   const [abierta, setAbierta] = useState<string | null>(null);
-  if (medallas.length === 0) return null;
   const elegida = medallas.find((m) => m.zona === abierta) ?? null;
 
   return (
     <View>
       <View style={estilos.fila}>
+        {nombre}
         {medallas.map((m) => (
           <Pressable
             key={m.zona}
@@ -45,16 +52,21 @@ export default function Medallas({
               T.medallas.materiales[m.material]
             )}
           >
-            <Medalla zona={m.zona} material={m.material} tam={18} />
+            <Medalla zona={m.zona} material={m.material} tam={tam} />
           </Pressable>
         ))}
       </View>
 
       {elegida && (
         <View style={estilos.ventana}>
-          {elegida.material !== 'galaxia' && (
-            <Text style={estilos.rotulo}>{nombres?.[elegida.ejercicio] ?? T.medallas.zonas[elegida.zona]}</Text>
-          )}
+          {/* EL MATERIAL, DICHO. A 24 px la luna y el planeta se parecen
+              —gris azulado contra azul— y no había forma de saber cuál te
+              tocó sin comparar dos medallas lado a lado. Ahora lo dice. */}
+          <Text style={estilos.rotulo}>
+            {elegida.material === 'galaxia'
+              ? T.medallas.materiales.galaxia
+              : `${nombres?.[elegida.ejercicio] ?? T.medallas.zonas[elegida.zona]} · ${T.medallas.materiales[elegida.material]}`}
+          </Text>
           <Text style={estilos.frase}>
             {elegida.material === 'galaxia'
               ? T.medallas.galaxia
@@ -66,10 +78,28 @@ export default function Medallas({
   );
 }
 
+/**
+ * LAS MEDALLAS Y NADA MÁS, sin tocar. Para Inicio, donde la fila del nombre YA
+ * es un botón que lleva al perfil: una medalla que se abriera ahí competiría
+ * con ese toque y dejaría al que apunta mal en la pantalla equivocada. Se ven;
+ * para saber qué son, se entra al perfil.
+ */
+export function FilaDeMedallas({ medallas, tam = 16 }: { medallas: readonly Dato[]; tam?: number }) {
+  if (medallas.length === 0) return null;
+  return (
+    <View style={estilos.sueltas} pointerEvents="none">
+      {medallas.map((m) => (
+        <Medalla key={m.zona} zona={m.zona} material={m.material} tam={tam} />
+      ))}
+    </View>
+  );
+}
+
 const estilos = StyleSheet.create({
-  fila: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
+  sueltas: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   ventana: {
-    marginTop: 10,
+    marginTop: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
     borderRadius: 12,

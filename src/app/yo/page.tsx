@@ -246,10 +246,10 @@ export default function Yo() {
             </span>
           </button>
           <div className="yo-identidad">
-            <div className="yo-nombre">{perfil.username}</div>
-            {/* LAS MEDALLAS POR MARCA, debajo del nombre y antes de la racha:
-                en la misma línea, con un nombre largo, se empujaban afuera. */}
-            <Medallas medallas={medallas} />
+            {/* LAS MEDALLAS VAN EN LA MISMA FILA QUE EL NOMBRE. Estuvieron
+                debajo y chicas un rato por miedo a que un nombre largo las
+                empujara afuera; lo arregla envolver la fila, no esconderlas. */}
+            <Medallas medallas={medallas} nombre={<span className="yo-nombre">{perfil.username}</span>} />
             <div className="yo-meta">
               <Insignia rango={perfil.rango_actual} tam={16} />
               <span>{subiendo ? T.yo.subiendoFoto : T.yo.deRacha(perfil.racha_actual)}</span>
