@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { cargarPerfilDeAmigo, DIAS_VISIBLES, type PerfilDeAmigo as Datos } from '@compartido/perfil';
+import Medallas from './Medallas';
 import { pedirAmistad } from '@compartido/ranking';
 import { DIAS_SEMANA, deISO, enDias, hoyISO, restarDias } from '@nucleo/fechas';
 import { planetaDeDia } from '@nucleo/rangos';
@@ -115,7 +116,14 @@ export default function PerfilDeAmigo() {
         <View style={estilos.cabecera}>
           <Avatar url={usuario.avatar_url} nombre={usuario.username} tam={52} />
           <View style={{ flex: 1 }}>
-            <Text style={estilos.nombre}>{usuario.username}</Text>
+            {/* SUS MEDALLAS, al lado de su nombre y del mismo alto, igual que
+                en tu perfil. Se pueden tocar: es la única forma de saber qué
+                son, y acá no hay ningún botón con el que competir. */}
+            <Medallas
+              medallas={datos.medallas}
+              tam={20}
+              nombre={<Text style={estilos.nombre}>{usuario.username}</Text>}
+            />
             <View style={estilos.meta}>
               <Insignia rango={usuario.rango_actual} tam={16} />
               <Text style={estilos.metaTexto}>{T.stats.rachaDe(enDias(usuario.racha_actual))}</Text>

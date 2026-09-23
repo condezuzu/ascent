@@ -2,7 +2,9 @@ import type { Cliente } from '@cliente';
 import type { Log, Perfil, UsuarioPublico } from '@nucleo/tipos';
 import { hoyISO, restarDias } from '@nucleo/fechas';
 import { miniaturas } from '@compartido/album';
-import { medallasDe, type Medalla } from '@nucleo/medallas';
+import { medallasDe, medallasDePercentiles, type Medalla } from '@nucleo/medallas';
+import { disponible } from '@nucleo/esquema';
+import { versionDelEsquema } from '@compartido/esquema';
 import type { MiFuerza } from '@nucleo/tipos';
 
 /**
@@ -72,7 +74,67 @@ export async function cargarMisMedallas(
   ]);
   const marcas = ((f as MiFuerza | null)?.marcas ?? []).map((m) => ({ ejercicio: m.ejercicio, kg: m.kg }));
   const peso = ((w ?? []) as { valor: number }[])[0]?.valor ?? null;
-  return medallasDe(sexo, peso, marcas);
+  const mias = medallasDe(sexo, peso, marcas);
+  void guardarParaAmigos(supabase, uid, mias);
+  return mias;
+}
+
+/**
+ * DEJA TUS MEDALLAS ESCRITAS PARA QUE LAS VEAN TUS AMIGOS.
+ *
+ * El percentil se calcula con tu mejor marca, tu peso corporal y tu sexo, y las
+ * tres las tiene el dueño y solo el dueño: **el peso corporal de otra persona
+ * no se ve nunca, ni entre amigos** (§16.7). Así que un amigo no puede
+ * calcularlo ni queriendo, y lo que lee es este número ya derivado.
+ *
+ * SE REESCRIBE CADA VEZ QUE SE CALCULA, y por eso no hace falta ningún gancho
+ * en "anotar peso" ni en "cambiar el sexo": cambiás cualquiera de las dos
+ * cosas, abrís tu perfil o Inicio, y la fila queda al día. Es también lo que la
+ * vuelve auto-reparable — un número que se escribió mal se corrige solo la
+ * próxima vez.
+ *
+ * COMO SE RECALCULA SIEMPRE, PUEDE BAJAR: si subís de peso, el mismo
+ * levantamiento vale menos. Es lo que se pidió —que no quede un número viejo
+ * para siempre— y contradice a propósito el "no baja nunca" de antes. Volver al
+ * trofeo que no se pierde es una línea: guardar el mayor entre el nuevo y el
+ * guardado.
+ *
+ * NO SE ESPERA NI SE AVISA SI FALLA. Es un espejo para otros, no un dato de
+ * esta pantalla: que no se haya podido escribir no tiene que frenar ni ensuciar
+ * lo que estás mirando, y la próxima vez se vuelve a intentar sola. Mientras la
+ * migración 46 no esté corrida, la tabla no existe y esto falla callado — que
+ * es exactamente el estado de hoy.
+ */
+async function guardarParaAmigos(supabase: Cliente, uid: string, mias: Medalla[]): Promise<void> {
+  try {
+    if (mias.length === 0) return;
+    await supabase.from('medallas').upsert(
+      mias.map((m) => ({ user_id: uid, ejercicio: m.ejercicio, percentil: m.percentil, actualizado: new Date().toISOString() })),
+      { onConflict: 'user_id,ejercicio' }
+    );
+  } catch {
+    // Ver arriba: falla callado a propósito.
+  }
+}
+
+/**
+ * LAS MEDALLAS DE UN AMIGO, leídas de lo que él dejó escrito.
+ *
+ * VIENE EL PERCENTIL CRUDO Y EL RESTO SE DERIVA ACÁ, con las mismas reglas que
+ * las tuyas (`medallasDe` no sirve: necesita marcas, peso y sexo). Guardar
+ * además el material sería guardar la misma verdad dos veces y poder
+ * contradecirse.
+ *
+ * SE PREGUNTA PRIMERO SI LA FUNCIÓN ESTÁ. Sin la migración 46 no existe, y
+ * llamarla igual sería un error en la consola de todo el que abra el perfil de
+ * un amigo antes de que la base esté al día. Con la versión en mano, el camino
+ * viejo es no mostrar medallas, que es exactamente lo que se ve hoy.
+ */
+export async function cargarMedallasDeAmigo(supabase: Cliente, uid: string): Promise<Medalla[]> {
+  if (!disponible('medallasDeAmigo', await versionDelEsquema(supabase))) return [];
+  const { data } = await supabase.rpc('medallas_de', { p_user: uid });
+  const filas = (data ?? []) as { ejercicio: string; percentil: number }[];
+  return medallasDePercentiles(filas);
 }
 
 export async function cargarMiPerfil(supabase: Cliente, uid: string): Promise<DatosDePerfil | null> {
@@ -136,6 +198,8 @@ export type PerfilDeAmigo = {
   /** Su última semana. Vacío si no es amigo. */
   logs: Log[];
   fotos: FotoDePerfil[];
+  /** Sus medallas por marca. Vacío si no es amigo, o si falta la migración 46. */
+  medallas: Medalla[];
 };
 
 /**
@@ -172,11 +236,12 @@ export async function cargarPerfilDeAmigo(
     pedidoPendiente: rel?.estado === 'pendiente',
     logs: [] as Log[],
     fotos: [] as FotoDePerfil[],
+    medallas: [] as Medalla[],
   };
   if (!esAmigo) return base;
 
   const desde = restarDias(hoyISO(), DIAS_VISIBLES - 1);
-  const [{ data: ls }, { data: fs }] = await Promise.all([
+  const [{ data: ls }, { data: fs }, medallas] = await Promise.all([
     supabase.from('logs').select('*').eq('user_id', otro).gte('fecha', desde).order('fecha'),
     supabase
       .from('photos')
@@ -184,6 +249,9 @@ export async function cargarPerfilDeAmigo(
       .eq('user_id', otro)
       .order('creado', { ascending: false })
       .limit(FOTOS_VISIBLES),
+    // Las suyas, del número que él dejó escrito: su peso corporal no se ve
+    // nunca, ni entre amigos, así que calcularlas acá es imposible.
+    cargarMedallasDeAmigo(supabase, otro),
   ]);
 
   const lista = (fs ?? []) as { id: string; storage_path: string; log_id: string | null }[];
@@ -198,6 +266,7 @@ export async function cargarPerfilDeAmigo(
 
   return {
     ...base,
+    medallas,
     logs: (ls ?? []) as Log[],
     fotos: lista.map((f, i) => ({
       id: f.id,

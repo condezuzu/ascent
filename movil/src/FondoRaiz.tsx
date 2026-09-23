@@ -108,6 +108,17 @@ function claveDeEscena(op: OpcionesFondo, animar: boolean) {
 
 type Escena = { clave: string; montaje: Montaje };
 
+/**
+ * EL FUNDIDO, en milisegundos.
+ *
+ * LA SALIDA ES MÁS CORTA QUE LA ENTRADA a propósito: lo que se va no tiene que
+ * hacerse rogar, y mientras se va la pantalla ya está deslizándose a otro lado.
+ * Lo que llega sí se toma su tiempo, que es lo que lo hace aparecer en vez de
+ * prenderse.
+ */
+const SALIDA_MS = 220;
+const ENTRADA_MS = 520;
+
 export default function FondoRaiz() {
   const [pedido, setPedido] = useState<Pedido | null>(null);
   // El pedido de AHORA, para el montaje asíncrono: si mientras se importaba
@@ -189,11 +200,39 @@ export default function FondoRaiz() {
       // pantalla nueva la quiere en otra esquina, viaja hasta allá.
       actual.montaje.pausar(false);
       actual.montaje.mover(pedido.esquina ?? 'abajo-derecha');
+      // El fundido de entrada solo la primera vez: al volver a Inicio la
+      // escena ya estaba, y hacerla aparecer de a poco otra vez se leería como
+      // que se cargó de nuevo.
+      if (yaSeVio.current) {
+        opacidad.setValue(1);
+      } else {
+        yaSeVio.current = true;
+        Animated.timing(opacidad, { toValue: 1, duration: ENTRADA_MS, useNativeDriver: true }).start();
+      }
     } else {
-      // Otra escena. Primero la nueva, DESPUÉS se suelta la vieja: mientras
-      // las dos existen, los programas que comparten siguen vivos y three los
-      // reusa en vez de compilarlos otra vez.
-      void import('./motorNativo').then(({ montarEscenaEnGL }) => {
+      // ─────────────────────────────────────────────────────────────
+      // OTRA ESCENA: SE DISUELVE, NO SE CORTA (24/9, a pedido)
+      //
+      // El caso que se ve es salir de Inicio: el planeta desaparecía de golpe,
+      // en el cuadro en que la escena nueva reemplazaba a la vieja. El cambio
+      // entre Ranking, Álbum y Stats no tiene este problema y no lo va a tener
+      // —los tres piden lo mismo, la clave es la misma y no se remonta nada—,
+      // así que esto solo corre cuando el fondo cambia DE VERDAD.
+      //
+      // EL FUNDIDO DE SALIDA VA EN PARALELO CON LA IMPORTACIÓN, no antes: el
+      // motor tarda en evaluarse igual, y encadenarlos sumaría la espera de los
+      // dos. Se apaga mientras el módulo llega, se monta la escena nueva con la
+      // pantalla ya oscura, y recién ahí vuelve.
+      const seVa = new Promise<void>((listo_) => {
+        Animated.timing(opacidad, { toValue: 0, duration: SALIDA_MS, useNativeDriver: true }).start(
+          () => listo_()
+        );
+      });
+
+      // Primero la nueva, DESPUÉS se suelta la vieja: mientras las dos existen,
+      // los programas que comparten siguen vivos y three los reusa en vez de
+      // compilarlos otra vez.
+      void Promise.all([import('./motorNativo'), seVa]).then(([{ montarEscenaEnGL }]) => {
         if (!renderer.current || !gl.current) return;
         const m = montarEscenaEnGL(
           renderer.current,
@@ -210,18 +249,13 @@ export default function FondoRaiz() {
         const vieja = escena.current;
         escena.current = m ? { clave, montaje: m } : null;
         vieja?.montaje.soltar();
-        if (!pedidoAhora.current) m?.pausar(true);
+        if (!pedidoAhora.current) {
+          m?.pausar(true);
+          return;
+        }
+        yaSeVio.current = true;
+        Animated.timing(opacidad, { toValue: 1, duration: ENTRADA_MS, useNativeDriver: true }).start();
       });
-    }
-
-    // El fundido de entrada solo la primera vez: al volver a Inicio la
-    // escena ya estaba, y hacerla aparecer de a poco otra vez se leería como
-    // que se cargó de nuevo.
-    if (yaSeVio.current) {
-      opacidad.setValue(1);
-    } else {
-      yaSeVio.current = true;
-      Animated.timing(opacidad, { toValue: 1, duration: 900, useNativeDriver: true }).start();
     }
   }, [pedido, listo, reducir, opacidad]);
 

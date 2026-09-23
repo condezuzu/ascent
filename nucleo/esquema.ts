@@ -31,6 +31,11 @@ export const REQUIERE = {
   corregirPeso: 45,
   /** El atajo "Tuyos" del selector: los ejercicios que cada persona repite. */
   tusEjercicios: 44,
+  /**
+   * Las medallas de un amigo. El percentil se calcula con el peso corporal, que
+   * de otra persona no se ve nunca: lo deja escrito el dueño y el amigo lo lee.
+   */
+  medallasDeAmigo: 46,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

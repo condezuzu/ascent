@@ -33,11 +33,17 @@ import { esSexoEstandar, ubicar, type EjercicioEstandar, type SexoEstandar } fro
  * bajaría la medalla. En una app cuyo trabajo es que registres cosas, ese es el
  * peor incentivo posible.
  *
- * Y NO BAJA NUNCA. Se queda con el percentil más alto que alcanzaste. Importa
- * porque el percentil depende del peso corporal: si subís de peso, el mismo
- * levantamiento da un percentil menor, y sacarte una medalla por engordar sería
- * un castigo que nadie pidió. Eso lo guarda quien llama, no esto: acá se
- * calcula el de hoy y afuera se compara con el guardado.
+ * Y SE RECALCULA SIEMPRE, ASÍ QUE PUEDE BAJAR (cambiado el 24/9, a pedido).
+ * El percentil depende del peso corporal: si subís tres kilos, el mismo
+ * levantamiento vale menos y la medalla puede pasar de planeta a luna.
+ *
+ * Esto reemplaza al "no baja nunca" que se había acordado antes, y el motivo es
+ * el que se pidió: que cambiar el peso o corregir el sexo en Ajustes no deje un
+ * número viejo para siempre. Las dos cosas no se pueden tener — un trofeo que
+ * no se pierde ES un número que no se actualiza.
+ *
+ * Volver atrás es una línea en `compartido/perfil.ts`: guardar el mayor entre
+ * el nuevo y el guardado en vez del nuevo.
  */
 
 export type ZonaMedalla = 'brazos' | 'pecho' | 'espalda' | 'hombros' | 'piernas';
@@ -138,10 +144,52 @@ export function medallasDe(
   // LA GALAXIA: estrella en las tres del DOTS. No es un escalón más de la misma
   // escalera —arriba del 95 la fuente no tiene nada, ver `ubicar`— sino otro
   // eje: no es estar más arriba, es estarlo en los tres a la vez. Y la metáfora
-  // sale sola: una galaxia es un montón de estrellas.
-  //
-  // SE VUELVEN GALAXIA LAS TRES QUE LA GANARON, no las cinco: hombros y brazos
-  // no participaron.
+  // sale sola: una galaxia es un montón de estrellas. Ver `conGalaxia`.
+  return conGalaxia(crudas);
+}
+
+/**
+ * LAS MEDALLAS DE ALGUIEN A PARTIR DE PERCENTILES YA CALCULADOS.
+ *
+ * Es el camino de las medallas de UN AMIGO: el percentil se calcula con la
+ * mejor marca, el peso corporal y el sexo, y el peso corporal de otra persona
+ * no se ve nunca (§16.7). Así que el dueño lo calcula y lo deja escrito
+ * (`medallas`, migración 46) y el amigo lee el número ya derivado.
+ *
+ * LO QUE VIENE DE LA BASE ES EL PERCENTIL Y NADA MÁS. El material y la regla
+ * de la galaxia se aplican ACÁ, con el mismo código que las tuyas: guardar
+ * además el material sería guardar la misma verdad dos veces y poder
+ * contradecirse el día que se cambie un corte.
+ *
+ * SE IGNORA LO QUE NO RECONOCE. Una fila con un ejercicio que no es de ninguna
+ * zona —el catálogo cambió, la fila quedó vieja— no dibuja nada en vez de
+ * dibujar una medalla sin zona.
+ */
+export function medallasDePercentiles(filas: readonly { ejercicio: string; percentil: number }[]): Medalla[] {
+  const porEjercicio = new Map(filas.map((f) => [f.ejercicio, f.percentil]));
+  const crudas = new Map<ZonaMedalla, Medalla>();
+
+  for (const zona of ZONAS_MEDALLA) {
+    const ejercicio = EJERCICIO_DE_ZONA[zona];
+    const percentil = porEjercicio.get(ejercicio);
+    if (typeof percentil !== 'number') continue;
+    const material = materialDe(percentil);
+    if (material === null) continue;
+    crudas.set(zona, { zona, ejercicio, percentil, material });
+  }
+
+  return conGalaxia(crudas);
+}
+
+/**
+ * LA GALAXIA: estrella en las tres del DOTS. Está aparte porque la aplican los
+ * dos caminos —el tuyo y el de un amigo— y una regla escrita dos veces es una
+ * regla que un día dice dos cosas.
+ *
+ * SE VUELVEN GALAXIA LAS TRES QUE LA GANARON, no las cinco: hombros y brazos
+ * no participaron.
+ */
+function conGalaxia(crudas: Map<ZonaMedalla, Medalla>): Medalla[] {
   const lasTres = ZONAS_DE_GALAXIA.every((z) => crudas.get(z)?.material === 'estrella');
   if (lasTres) {
     for (const z of ZONAS_DE_GALAXIA) {
@@ -149,7 +197,6 @@ export function medallasDe(
       if (m) crudas.set(z, { ...m, material: 'galaxia' });
     }
   }
-
   return ZONAS_MEDALLA.map((z) => crudas.get(z)).filter((m): m is Medalla => m !== undefined);
 }
 

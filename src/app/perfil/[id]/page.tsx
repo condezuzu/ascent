@@ -15,6 +15,9 @@ import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import { miniaturas } from '@compartido/album';
 import { T } from '@nucleo/textos';
+import Medallas from '@/components/Medallas';
+import { cargarMedallasDeAmigo } from '@compartido/perfil';
+import type { Medalla } from '@nucleo/medallas';
 import ComoMeVen, {
   DIAS_VISIBLES,
   FOTOS_VISIBLES,
@@ -35,6 +38,7 @@ export default function Perfil() {
   const [pedidoPendiente, setPedidoPendiente] = useState(false);
   const [logs, setLogs] = useState<Log[]>([]);
   const [fotos, setFotos] = useState<FotoPerfil[]>([]);
+  const [medallas, setMedallas] = useState<Medalla[]>([]);
   const [reto, setReto] = useState<Reto | null>(null);
   const [marcador, setMarcador] = useState<{ yo: number; el: number } | null>(null);
   const [cargado, setCargado] = useState(false);
@@ -110,6 +114,9 @@ export default function Perfil() {
             fecha: f.log_id ? (mapa.get(f.log_id) ?? null) : null,
           }))
         );
+        // Sus medallas, del numero que el dejo escrito: su peso corporal no se
+        // ve nunca, ni entre amigos, asi que calcularlas aca es imposible.
+        setMedallas(await cargarMedallasDeAmigo(supabase, params.id));
       }
 
       // cerrar vencidos antes de mirar (fecha local, no UTC del server)
@@ -240,7 +247,12 @@ export default function Perfil() {
             <div className="cabecera" style={{ marginBottom: 22 }}>
               <Avatar url={usuario.avatar_url} nombre={usuario.username} tam={52} />
               <div>
-                <div className="nombre" style={{ fontSize: 18 }}>{usuario.username}</div>
+                {/* SUS MEDALLAS, al lado de su nombre, igual que en el propio. */}
+                <Medallas
+                  medallas={medallas}
+                  tam={20}
+                  nombre={<span className="nombre" style={{ fontSize: 18 }}>{usuario.username}</span>}
+                />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                   <Insignia rango={usuario.rango_actual} tam={16} />
                   <span style={{ fontSize: 13, color: 'var(--sub)' }}>

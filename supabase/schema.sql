@@ -2725,8 +2725,62 @@ revoke execute on function public.olvidar_suscripcion_push(text) from public, an
 grant execute on function public.olvidar_suscripcion_push(text) to service_role;
 
 -- LA VERSIÓN DEL ESQUEMA (migración 37). Cada migración la reescribe con su número.
+-- ---------------------------------------------------------------
+-- MEDALLAS POR MARCA (migración 46)
+-- ---------------------------------------------------------------
+-- El percentil de una medalla se calcula con la mejor marca, el peso
+-- corporal y el sexo, y el peso corporal de otra persona NO SE VE NUNCA, ni
+-- entre amigos (§16.7). Así que lo calcula el dueño y lo deja escrito acá;
+-- el amigo lee el número ya derivado y nunca el peso.
+--
+-- SE GUARDA EL PERCENTIL Y NADA MÁS: el material y la regla de la galaxia se
+-- derivan de él en `nucleo/medallas.ts`, que es de las dos apps. Guardar el
+-- material además sería la misma verdad dos veces, con dos formas de
+-- contradecirse.
+create table if not exists public.medallas (
+  user_id   uuid not null references auth.users(id) on delete cascade,
+  ejercicio text not null,
+  percentil smallint not null check (percentil between 1 and 99),
+  actualizado timestamptz not null default now(),
+  primary key (user_id, ejercicio)
+);
+
+alter table public.medallas enable row level security;
+
+drop policy if exists "medallas: leer" on public.medallas;
+create policy "medallas: leer" on public.medallas for select
+  using (auth.uid() = user_id or public.son_amigos(auth.uid(), user_id));
+
+drop policy if exists "medallas: escribir" on public.medallas;
+create policy "medallas: escribir" on public.medallas for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "medallas: actualizar" on public.medallas;
+create policy "medallas: actualizar" on public.medallas for update
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "medallas: borrar" on public.medallas;
+create policy "medallas: borrar" on public.medallas for delete
+  using (auth.uid() = user_id);
+
+grant select, insert, update, delete on public.medallas to authenticated;
+
+create or replace function public.medallas_de(p_user uuid)
+returns table (ejercicio text, percentil smallint)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select m.ejercicio, m.percentil
+    from public.medallas m
+   where m.user_id = p_user
+$$;
+
+grant execute on function public.medallas_de(uuid) to authenticated;
+
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 45; $$;
+returns int language sql immutable as $$ select 46; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

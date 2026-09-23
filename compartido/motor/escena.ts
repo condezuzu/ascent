@@ -588,8 +588,18 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   marca('ascent:particulas-inicio');
   // --- campo estelar (el ambiente permanente, teñido por el rango) ---
   const cajaInicial = l.tamano();
+  // MÁS ESTRELLAS CUANDO NO HAY CUERPO (24/9, a pedido: "quedan muy vacías").
+  //
+  // Ranking, Álbum, Stats y Ajustes piden `soloEstrellas`, y hasta ahora usaban
+  // el mismo campo que Inicio — pensado para acompañar a un planeta que ocupa
+  // media pantalla. Sin el planeta, ese mismo campo se lee como un cielo casi
+  // vacío: lo que era el ambiente pasó a ser todo lo que hay.
+  //
+  // Y NO CUESTA: sin cuerpo no se construye ni el planeta, ni la atmósfera, ni
+  // la nebulosa, ni el fantasma, así que la GPU tiene de sobra. El tope de
+  // `ESTRELLAS_TOPE` sigue mandando arriba de todo.
   const estrellas = crearEstrellas(
-    ESTRELLAS_POR_RANGO[op.rango] ?? 150,
+    (ESTRELLAS_POR_RANGO[op.rango] ?? 150) * (op.soloEstrellas ? 1.8 : 1),
     op.rango,
     op.planeta,
     (cajaInicial.w || 390) / (cajaInicial.h || 844)

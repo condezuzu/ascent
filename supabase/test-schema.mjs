@@ -10067,16 +10067,30 @@ console.log('\n145. Las medallas por marca');
   // ---- DONDE SE MUESTRAN ----
   const filaWeb = sinComentarios145(de145('src', 'components', 'Medallas.tsx'));
   const filaNat = sinComentarios145(de145('movil', 'src', 'Medallas.tsx'));
-  // LA GALAXIA NO LLEVA EL NOMBRE DEL EJERCICIO: su linea ya nombra los tres,
-  // asi que el rotulo repetiria uno. En su lugar el rotulo dice el material.
-  const soloMaterial = /galaxia'\s*\?\s*T\.medallas\.materiales\.galaxia/;
-  chequear('la galaxia no lleva el ejercicio, en las dos',
-    soloMaterial.test(filaWeb) && soloMaterial.test(filaNat), true);
-  // Y EL MATERIAL SE DICE SIEMPRE: a 24 px la luna y el planeta se parecen
-  // —gris azulado contra azul— y no habia como saber cual te toco.
-  const diceMaterial = /T\.medallas\.materiales\[elegida\.material\]/;
-  chequear('y el material se dice, en las dos',
-    diceMaterial.test(filaWeb) && diceMaterial.test(filaNat), true);
+  // ES UN GLOBO QUE SALE DE LA MEDALLA, no un cartel debajo (24/9). Un cartel
+  // es una seccion mas de la pantalla: aparece, se queda, y hay que cerrarlo.
+  const globo = /medallas-globo|estilos\.globo/;
+  chequear('la ventanita es un globo, en las dos',
+    globo.test(filaWeb) && globo.test(filaNat), true);
+  // CON UNA PUNTA QUE APUNTA A LA MEDALLA QUE SE TOCO, y para eso hay que
+  // medir donde arrancan: la fila empieza con el NOMBRE, que mide lo que mida.
+  const apunta = /desdeX \+ cual \* \(tam \+ SEPARACION\)/;
+  chequear('y la punta apunta a la que se toco',
+    apunta.test(filaWeb) && apunta.test(filaNat), true);
+  // SE VA SOLA A LOS DOS SEGUNDOS: no tiene como cerrarse ni hace falta.
+  chequear('y se va sola a los dos segundos',
+    /DURA_MS = 2000/.test(filaWeb) && /DURA_MS = 2000/.test(filaNat), true);
+
+  // LA LINEA ES ZONA · MATERIAL · FRASE, y el material no es decoracion: a este
+  // tamaño la luna y el planeta se parecen y sin nombrarlo no hay como saber
+  // cual te toco.
+  const linea = /T\.medallas\.zonas\[m\.zona\]\} · \$\{T\.medallas\.materiales\[m\.material\]/;
+  chequear('la linea dice zona, material y frase, en las dos',
+    linea.test(filaWeb) && linea.test(filaNat), true);
+  // Y LA GALAXIA NO DICE PORCENTAJE: diria el mismo numero que estrella.
+  const sinPorciento = /material === 'galaxia' \? T\.medallas\.galaxia/;
+  chequear('y la galaxia dice que la gano, no el porcentaje',
+    sinPorciento.test(filaWeb) && sinPorciento.test(filaNat), true);
   chequear('el perfil propio de la nativa las muestra',
     /<Medallas/.test(de145('movil', 'src', 'PerfilPropio.tsx')), true);
   chequear('y el de la web tambien',

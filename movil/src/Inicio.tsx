@@ -135,6 +135,25 @@ export default function Inicio({
   // preguntar.
   const [vueltas, setVueltas] = useState(0);
 
+  /**
+   * UNA CARGA QUE FALLA NO BORRA LO QUE YA ESTABA.
+   *
+   * ERA UN BUG QUE METÍ HOY, y es exactamente el del gimnasio. Al hacer que
+   * Inicio recargue al volver, cada vuelta pasó a poder fallar — y fallando
+   * ponía la pantalla de error ENCIMA de una pantalla que ya tenía todo.
+   * Resultado: sótano sin señal, volvés a Inicio desde el Álbum, y en vez de tu
+   * racha y el `+` te encontrás "no hay conexión con el servidor".
+   *
+   * Lo encontró el barrido corriendo sin red, no usándola.
+   *
+   * LA PANTALLA DE ERROR ES PARA CUANDO NO HAY NADA QUE MOSTRAR: la primera
+   * carga. Si ya hay datos, se queda lo que hay —que es de hace un rato, pero
+   * es cierto— y la próxima vuelta vuelve a intentar.
+   */
+  const fallo = useCallback((que: string) => {
+    setEstado((y) => (y.tipo === 'listo' ? y : { tipo: 'error', que }));
+  }, []);
+
   const cargar = useCallback(async () => {
     try {
       const { data: sesion } = await supabase.auth.getSession();
@@ -155,8 +174,8 @@ export default function Inicio({
           supabase.rpc('mis_impulsos'),
         ]);
 
-      if (error) return setEstado({ tipo: 'error', que: mensajeDeAuth(error) });
-      if (!perfil) return setEstado({ tipo: 'error', que: T.general.noSePudo });
+      if (error) return fallo(mensajeDeAuth(error));
+      if (!perfil) return fallo(T.general.noSePudo);
 
       // CUENTA RECIÉN CREADA, SIN NOMBRE: no se dibuja Inicio a medias, se
       // manda a elegirlo. Es lo mismo que hace la web rebotando a /onboarding.
@@ -187,9 +206,9 @@ export default function Inicio({
         setVidaUsada({ dias: sinVer, quedan: Number(impulsos?.quedan ?? 0), total: Number(impulsos?.total ?? 0) });
       }
     } catch (e) {
-      setEstado({ tipo: 'error', que: String((e as Error)?.message ?? e) });
+      fallo(String((e as Error)?.message ?? e));
     }
-  }, [alSalir, alFaltarNombre]);
+  }, [alSalir, alFaltarNombre, fallo]);
 
   useEffect(() => {
     cargar();

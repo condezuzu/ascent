@@ -12,6 +12,19 @@
 //   2. Errores de la base: una escritura que falla en silencio pierde datos.
 //   3. Errores de consola: casi siempre un `undefined` que todavía no explotó.
 //
+// Y LOS TRES ESTADOS DONDE APARECEN LOS BUGS DE VERDAD (24/9, a pedido). Una
+// cuenta recién creada muestra cada pantalla en su versión más simple, que es
+// justo la que no falla. Así que antes de recorrer nada, esto:
+//
+//   1. LE PONE DATOS: dos días, cuatro series, marcas en los tres del DOTS y un
+//      peso corporal. Las pantallas pasan de "todavía no hay nada acá" a tener
+//      gráficos, listas, medallas y un calendario con cosas adentro.
+//   2. CORTA LA RED y recorre todo otra vez. Es el estado del gimnasio: sótano,
+//      sin señal, y la app tiene que seguir andando con lo que tiene guardado.
+//   3. DEJA UNA SESIÓN A MEDIO TERMINAR y recorre con ella viva. Es el otro
+//      estado del gimnasio —el que más dura— y el que mete un cronómetro, una
+//      cola de series sin subir y una hoja abierta en todas las demás pantallas.
+//
 // NO BORRA NADA QUE NO HAYA CREADO: hace su propia cuenta y la elimina al
 // final, igual que la batería.
 //
@@ -35,6 +48,11 @@ const sello = Date.now().toString(36);
 const correo = `agusconde20+ascent-barrido-${sello}@gmail.com`;
 const clave = `Br-${sello}-Kp3`;
 const usuario = `bar_${sello.slice(-6)}`;
+
+const nuevoCliente = () =>
+  createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+    auth: { persistSession: false },
+  });
 
 const hallazgos = [];
 let donde = 'arranque';
@@ -112,40 +130,89 @@ await mirar('elegir nombre', async () => {
   await tocarSiEsta('Saltar');
 });
 
-// ---- las cinco pestañas, ida y vuelta ----
-for (const p of ['Ranking', 'Álbum', 'Stats', 'Ajustes', 'Inicio']) {
-  await mirar(`pestaña ${p}`, () => texto(p).click({ timeout: 20000 }));
-}
-// Y DE NUEVO, que es donde aparecieron los dos bugs del fondo: volver a una
-// pestaña ya visitada no vuelve a montarla.
-for (const p of ['Ranking', 'Inicio', 'Stats', 'Inicio']) {
-  await mirar(`volver a ${p}`, () => texto(p).click({ timeout: 20000 }));
+/**
+ * UNA VUELTA POR TODAS LAS PANTALLAS. Se corre una vez por estado —vacía, con
+ * datos, sin red, con sesión viva— porque el mismo recorrido en dos estados
+ * distintos es lo que separa "abre" de "abre con algo adentro".
+ */
+async function recorrerTodo(estado) {
+  const con = (n) => `${estado} · ${n}`;
+
+  for (const p of ['Ranking', 'Álbum', 'Stats', 'Ajustes', 'Inicio']) {
+    await mirar(con(`pestaña ${p}`), () => texto(p).click({ timeout: 20000 }));
+  }
+  // Y DE NUEVO, que es donde aparecieron los dos bugs del fondo: volver a una
+  // pestaña ya visitada no vuelve a montarla.
+  for (const p of ['Ranking', 'Inicio', 'Stats', 'Inicio']) {
+    await mirar(con(`volver a ${p}`), () => texto(p).click({ timeout: 20000 }));
+  }
+
+  await mirar(con('Stats'), () => texto('Stats').click());
+  await mirar(con('Stats · Entrenamiento'), () =>
+    page.getByRole('tab', { name: 'Entrenamiento' }).click({ timeout: 20000 })
+  );
+  await mirar(con('Stats · General'), () => page.getByRole('tab', { name: 'General' }).click({ timeout: 20000 }));
+
+  await mirar(con('perfil propio'), async () => {
+    await texto('Inicio').click();
+    await page.waitForTimeout(600);
+    // La fila del nombre es un boton entero: se toca por su etiqueta.
+    await page.getByRole('button', { name: 'Tu perfil' }).last().click({ timeout: 20000 });
+  });
+  // El boton dice "← Volver": la flecha es parte del texto.
+  await mirar(con('volver del perfil'), () => texto('Volver', false).click({ timeout: 20000 }));
+
+  await mirar(con('Ajustes'), () => page.getByRole('tab', { name: 'Ajustes' }).click({ timeout: 20000 }));
+  for (const sec of ['Diagnóstico', 'Cómo se compara', 'Mis datos']) {
+    await mirar(con(`Ajustes · ${sec}`), () => tocarSiEsta(sec));
+  }
+  await mirar(con('Inicio'), () => texto('Inicio').click());
 }
 
-// ---- las dos solapas de Stats ----
-await mirar('Stats', () => texto('Stats').click());
-await mirar('Stats · Entrenamiento', () => page.getByRole('tab', { name: 'Entrenamiento' }).click({ timeout: 20000 }));
-await mirar('Stats · General', () => page.getByRole('tab', { name: 'General' }).click({ timeout: 20000 }));
+// ---- 1. VACÍA, que es como abre una cuenta nueva ----
+await recorrerTodo('vacía');
 
-// ---- el perfil, y volver ----
-await mirar('perfil propio', async () => {
-  await texto('Inicio').click();
-  await page.waitForTimeout(600);
-  // La fila del nombre es un boton entero: se toca por su etiqueta, que es
-  // la del perfil, y no por el texto del nombre.
-  await page.getByRole('button', { name: 'Tu perfil' }).last().click({ timeout: 20000 });
+// ---- 2. CON DATOS ----
+//
+// Una cuenta vacía muestra cada pantalla en su versión más simple, que es la
+// que no falla. Se le ponen datos POR LA API y no por la pantalla: lo que se
+// está probando es cómo se ven las pantallas llenas, no cómo se llenan.
+const sumarDatos = async () => {
+  const cli = nuevoCliente();
+  const { error: e } = await cli.auth.signInWithPassword({ email: correo, password: clave });
+  if (e) return anotar(2, `no se pudo entrar a sembrar datos — ${e.message}`);
+  const uid = (await cli.auth.getUser()).data.user.id;
+
+  // Un peso corporal y el sexo: sin los dos no hay percentil y no hay medallas.
+  await cli.rpc('anotar_peso', { p_valor: 80 });
+  await cli.from('profiles').update({ sexo: 'm' }).eq('id', uid);
+
+  // Marcas en los tres del DOTS, arriba de la mitad: tres medallas.
+  const hoy = new Date().toISOString().slice(0, 10);
+  await cli.from('prs').insert([
+    { user_id: uid, ejercicio: 'press_banca', peso: 110, reps: 1, es_real: true, fecha: hoy },
+    { user_id: uid, ejercicio: 'sentadilla', peso: 150, reps: 1, es_real: true, fecha: hoy },
+    { user_id: uid, ejercicio: 'peso_muerto', peso: 180, reps: 1, es_real: true, fecha: hoy },
+  ]);
+
+  // Dos días atrás, para que el calendario y la racha tengan algo.
+  const ayer = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  await cli.rpc('registrar_dia', { p_fecha: ayer }).then(null, () => {});
+  await cli.rpc('registrar_dia', {}).then(null, () => {});
+};
+await mirar('sembrar datos', sumarDatos);
+await mirar('recargar con datos', async () => {
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(3500);
+  await tocarSiEsta('Saltar');
 });
-// El boton dice "← Volver": la flecha es parte del texto.
-await mirar('volver del perfil', () => texto('Volver', false).click({ timeout: 20000 }));
+await recorrerTodo('con datos');
 
-// ---- ajustes, sección por sección ----
-await mirar('Ajustes', () => page.getByRole('tab', { name: 'Ajustes' }).click({ timeout: 20000 }));
-for (const s of ['Diagnóstico', 'Cómo se compara', 'Mis datos']) {
-  await mirar(`Ajustes · ${s}`, () => tocarSiEsta(s));
-}
-
-// ---- una sesión, que es donde se escriben datos ----
-await mirar('Inicio', () => texto('Inicio').click());
+// ---- 3. UNA SESIÓN A MEDIO TERMINAR ----
+//
+// Es el estado que más dura en un gimnasio: cronómetro corriendo, series en la
+// cola y una hoja abierta, y todo eso vivo mientras se abre cualquier otra
+// pantalla.
 await mirar('sesión: iniciar', () => texto('Iniciar entrenamiento').click({ timeout: 20000 }));
 await mirar('sesión: elegir ejercicio', async () => {
   await tocarSiEsta('Elegir ejercicio');
@@ -153,25 +220,44 @@ await mirar('sesión: elegir ejercicio', async () => {
   await tocarSiEsta('Press de banca');
 });
 // El `+` no tiene texto: se toca por su etiqueta.
-await mirar('sesión: sumar una serie', async () => {
+const sumarSerie = async () => {
   const mas = page.getByLabel('Sumar una serie').last();
   if (await mas.isVisible().catch(() => false)) await mas.click({ timeout: 15000 });
+};
+await mirar('sesión: sumar una serie', sumarSerie);
+await recorrerTodo('con sesión viva');
+
+// ---- 4. SIN RED ----
+//
+// El sótano del gimnasio. La app tiene que seguir andando con lo que tiene
+// guardado, y las series de la sesión viva tienen que quedar en la cola en vez
+// de perderse.
+await mirar('cortar la red', () => ctx.setOffline(true));
+await mirar('sin red: sumar dos series', async () => {
+  await texto('Inicio').click();
+  await sumarSerie();
+  await page.waitForTimeout(400);
+  await sumarSerie();
 });
+await recorrerTodo('sin red');
+await mirar('vuelve la red', async () => {
+  await ctx.setOffline(false);
+  // Lo que quedó en la cola sube solo: se le da tiempo antes de mirar.
+  await page.waitForTimeout(6000);
+});
+await mirar('con la red de vuelta', () => texto('Inicio').click());
+
+// ---- 5. CERRAR LA SESIÓN Y LAS HOJAS QUE CUELGAN ----
 await mirar('sesión: terminar', async () => {
   await tocarSiEsta('Terminar');
   await page.waitForTimeout(1500);
 });
-
-// ---- registrar el día a mano y las hojas que cuelgan ----
-await mirar('registrar el día', () => tocarSiEsta('Registrar día'));
 await mirar('anotar el peso', () => tocarSiEsta('Anotar peso'));
 
 await nav.close();
 
 // ---- limpieza: la cuenta que creó, se la lleva ----
-const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
-  auth: { persistSession: false },
-});
+const s = nuevoCliente();
 const { error: eIn } = await s.auth.signInWithPassword({ email: correo, password: clave });
 if (eIn) console.log(`\n(no se pudo entrar a borrar la cuenta: ${eIn.message})`);
 else {

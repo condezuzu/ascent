@@ -1816,24 +1816,46 @@ body.ya-entro .pantalla.aparece {
   display: block;
   flex: none;
 }
-/* La ventanita se abre EN SU LUGAR y no encima: un modal para dos renglones
-   taparía el perfil entero para decir una frase. */
-.medallas-ventana {
-  margin-top: 10px;
-  padding: 12px 14px;
+/* EL GLOBO SALE DE LA MEDALLA y flota: si empujara lo de abajo, abrirlo movería
+   media pantalla. Tapa un poco, que es lo que se pidió. Se va solo a los dos
+   segundos, así que no tiene cómo cerrarse ni hace falta.
+
+   LA PUNTA ES UN CUADRADO GIRADO 45°, con la mitad de arriba asomando: es la
+   forma más barata de hacer un triángulo sin traer nada. */
+.medallas-envoltura {
+  position: relative;
+}
+.medallas-grupo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.medallas-globo {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  pointer-events: none;
+  z-index: 3;
+}
+.medallas-punta {
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  background: #0b0d13;
+  border: 1px solid var(--linea);
+  transform: rotate(45deg);
+}
+.medallas-cuerpo {
+  margin-top: 5px;
+  padding: 10px 13px;
+  background: #0b0d13;
   border: 1px solid var(--linea);
   border-radius: 12px;
-}
-.medallas-rotulo {
-  margin-bottom: 5px;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--sub);
-}
-.medallas-frase {
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: 13px;
+  line-height: 1.38;
   color: var(--tinta);
 }
 
