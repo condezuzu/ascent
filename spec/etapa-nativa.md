@@ -709,23 +709,31 @@ momento. No hay nada que deshacer.
 
 ## 13d. PRIORIDAD — el descanso desde la pantalla bloqueada — ESCRITO el 23/9/2026
 
-> **LA LIVE ACTIVITY ESTÁ CONSTRUIDA Y COMPILA.** Lo de abajo se escribió como
-> plan y se deja como está: las razones siguen valiendo. Lo que hay hoy son
-> tres piezas —  (el widget en SwiftUI),
->  (el puente a ActivityKit) y el puerto
->  de , que engancha en  de
-> , el mismo lugar por el que ya pasaba el aviso.
+> **LA LIVE ACTIVITY ESTÁ CONSTRUIDA Y COMPILA.** Lo de abajo se escribió
+> como plan y se deja como está: las razones siguen valiendo. Lo que hay hoy
+> son tres piezas — `movil/targets/descanso/` (el widget, en SwiftUI),
+> `movil/modules/descanso-vivo/` (el puente a ActivityKit) y el puerto
+> `enVivo` de `nucleo/plataforma.ts`, que engancha en `avisarAlTerminar` de
+> `compartido/descanso.ts`: el mismo lugar por el que ya pasaba el aviso, así
+> que empezar, descansar suelto, cambiar la duración y saltar lo mueven los
+> cuatro sin que haya que acordarse en cada botón.
 >
-> **La cuenta atrás la dibuja iOS**, no nosotros:  recibe
-> la hora de fin y corre solo con la pantalla bloqueada. No es una comodidad —
-> una Live Activity no se puede actualizar una vez por segundo, así que
-> empujar el número sería imposible de hacer bien. Y así sigue valiendo §18.4:
-> el timestamp de fin manda y esto es una VISTA de ese número.
+> **La cuenta atrás la dibuja iOS**, no nosotros: `Text(timerInterval:)`
+> recibe la hora de fin y corre solo con la pantalla bloqueada. No es una
+> comodidad — una Live Activity **no se puede actualizar una vez por**
+> **segundo**, el sistema lo limita, así que empujar el número sería
+> imposible de hacer bien. Y así sigue valiendo §18.4 sin esfuerzo: el
+> timestamp de fin manda y esto es una VISTA de ese número, nunca la fuente.
 >
-> **Vive en la rama , no en **, porque cambia la huella
-> nativa y eso cortaría las actualizaciones por el aire de la build instalada.
-> Falta una corrida interactiva de --platform is required when building in non-interactive mode: el widget es otro bundle id y
-> necesita su propio perfil. Ver .
+> **Vive en la rama `live-activity`, no en `main`**, porque agrega un target
+> de widget y eso cambia la huella nativa — que es lo que decide a qué builds
+> les llega una actualización por el aire. En `main`, la build instalada
+> habría dejado de recibir OTAs en el acto.
+>
+> **Lo que falta no es código**: una corrida interactiva de `eas build`. El
+> widget es otro bundle id (`uy.ascent.app.widget`) y necesita su propio
+> perfil de aprovisionamiento, igual que hizo falta con HealthKit. El comando
+> exacto está en `movil/EAS.md`.
 
 Pedido el 2026-08-29 después de dos días de gimnasio: **"no se ve el descanso
 fuera de la app" es lo que más molesta.** Va como prioridad de esta etapa, por
