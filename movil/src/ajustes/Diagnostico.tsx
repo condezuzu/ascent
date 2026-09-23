@@ -11,6 +11,7 @@ import type { OrigenSesion, Perfil } from '@nucleo/tipos';
 import { supabase } from '../supabase';
 import SubidaRango from '../SubidaRango';
 import { C } from '../colores';
+import { comoLeyoLosPasos } from '../plataforma/salud';
 
 /**
  * QUÉ ESTÁ VIENDO LA APP, Y QUÉ FUE HACIENDO.
@@ -161,6 +162,23 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
 
       {abierto && (
         <>
+          {/* CÓMO LEYÓ LOS PASOS. El gráfico de Stats salió vacío en un
+              teléfono con Health conectado y datos adentro, y desde una
+              computadora no hay forma de ver qué contestó HealthKit. Esto lo
+              dice: "cubos: 340" es que anduvo, "uno por uno: 28" es que la
+              consulta agrupada no sirve en ese aparato y entró el camino
+              largo, y "nada" es que Health no devolvió un solo día. */}
+          {(() => {
+            const l = comoLeyoLosPasos();
+            return (
+              <View style={estilos.fila}>
+                <Text style={estilos.que}>{T.ajustes.diagPasos}</Text>
+                <Text style={estilos.dice}>
+                  {l === null ? T.ajustes.diagPasosNada : `${l.como}: ${l.dias}`}
+                </Text>
+              </View>
+            );
+          })()}
           {filas.map(([que, dice]) => (
             <View key={que} style={estilos.fila}>
               <Text style={estilos.que}>{que}</Text>

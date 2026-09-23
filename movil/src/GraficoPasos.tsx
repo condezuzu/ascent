@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { puntoMasCercano, trazarSerie } from '@nucleo/tendencia';
+import { faltanPasos } from '@nucleo/pasos';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { C, conAlfa } from './colores';
@@ -44,10 +45,13 @@ const conMiles = (n: number) => Math.round(n).toLocaleString('es-UY');
 export default function GraficoPasos({
   pasos,
   claro,
+  meta,
 }: {
   pasos: { fecha: string; valor: number }[];
   /** El `--pal-claro` de la web: la paleta del rango. */
   claro: string;
+  /** La meta diaria, para la línea y para el "te faltan". */
+  meta: number;
 }) {
   const [rango, setRango] = useState<number | null>(null);
   const [tocado, setTocado] = useState<number | null>(null);
@@ -61,6 +65,25 @@ export default function GraficoPasos({
   const alMover = (e: GestureResponderEvent) => {
     if (ancho > 0 && serie.length > 1) setTocado(puntoMasCercano(e.nativeEvent.locationX / ancho, serie.length));
   };
+  // DÓNDE CAE LA META EN EL DIBUJO. `trazarSerie` no devuelve la escala —los
+  // bordes son de dibujo y mostrarlos como datos fue un error viejo— así que se
+  // deduce de dos puntos que sí devuelve: con dos valores suavizados y sus dos
+  // alturas, la recta que los une da cualquier otro.
+  const yMeta = (() => {
+    if (!trazo || trazo.serie.length < 2) return null;
+    const a = trazo.serie[0].suave;
+    const b = trazo.serie[trazo.serie.length - 1].suave;
+    if (Math.abs(a - b) < 1e-6) return null;
+    const ya = trazo.puntos[0].y;
+    const yb = trazo.puntos[trazo.puntos.length - 1].y;
+    const y = ya + ((meta - a) * (yb - ya)) / (b - a);
+    return y >= 2 && y <= ALTO - 2 ? y : null;
+  })();
+
+  /** El último día con dato: es "hoy" para la meta. */
+  const ultimoDia = pasos.length ? pasos[pasos.length - 1].valor : 0;
+  const falta = faltanPasos(ultimoDia, meta);
+
   const elegido = tocado === null || !trazo ? null : serie[tocado];
   const posElegido = tocado === null || !trazo ? null : trazo.puntos[tocado];
   const ultimo = trazo?.puntos[trazo.puntos.length - 1];
@@ -94,6 +117,23 @@ export default function GraficoPasos({
                   <Stop offset="1" stopColor={claro} stopOpacity={0} />
                 </LinearGradient>
               </Defs>
+              {/* LA META, como línea punteada. Va DETRÁS del trazo: es la
+                  referencia contra la que se mira la línea, no un dato más.
+                  Solo se dibuja si cae adentro del gráfico — con una meta muy
+                  arriba de lo que caminás, una línea pegada al borde no dice
+                  nada y encima achicaría la escala de todo lo demás. */}
+              {yMeta !== null && (
+                <Line
+                  x1={0}
+                  y1={yMeta}
+                  x2={ancho}
+                  y2={yMeta}
+                  stroke={claro}
+                  strokeWidth={0.8}
+                  strokeDasharray="3 4"
+                  opacity={0.35}
+                />
+              )}
               <Path d={trazo.area} fill="url(#pasos-relleno)" />
               <Path
                 d={trazo.linea}
@@ -131,16 +171,16 @@ export default function GraficoPasos({
           </View>
         ) : (
           <View style={estilos.pie}>
-            <Text style={estilos.hoy}>{T.stats.pasosDia(conMiles(trazo.hoy))}</Text>
+            <Text style={estilos.hoy}>{T.stats.pasosDia(conMiles(ultimoDia))}</Text>
             {/* En el peso acá va el CAMBIO con signo; en los pasos va el
                 promedio. Un "+300 pasos" contra el primer día de la ventana no
                 dice nada —los pasos no tienen una dirección buena—, y en cambio
                 cuánto caminás por día es exactamente lo que se viene a mirar. */}
+            {/* LO QUE FALTA, que es lo que se vino a mirar. El promedio de la
+                ventana pasó al rótulo de abajo: sigue siendo cierto y deja de
+                competir con la pregunta del día. */}
             <Text style={estilos.cambio}>
-              {T.stats.pasosPromedio(
-                trazo.dias,
-                conMiles(trazo.serie.reduce((a, p) => a + p.valor, 0) / trazo.serie.length)
-              )}
+              {falta === null ? T.stats.pasosLlegaste : T.stats.pasosFaltan(conMiles(falta))}
             </Text>
           </View>
         ))}
@@ -170,6 +210,13 @@ export default function GraficoPasos({
         })}
       </View>
 
+      <Text style={estilos.nota}>
+        {T.stats.pasosMeta(conMiles(meta))} ·{' '}
+        {T.stats.pasosPromedio(
+          trazo?.dias ?? 0,
+          conMiles(trazo ? trazo.serie.reduce((a, p) => a + p.valor, 0) / trazo.serie.length : 0)
+        )}
+      </Text>
       <Text style={estilos.nota}>{T.stats.pasosNota}</Text>
     </View>
   );

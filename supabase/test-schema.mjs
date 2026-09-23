@@ -9766,7 +9766,10 @@ console.log('\n143. El grafico de pasos en Stats');
   // horas en Montevideo y los pasos de la noche caerian en el dia siguiente.
   chequear('anclado a medianoche local', /deISO\(aISO\(atras\)\)/.test(sal143), true);
   // UN DIA SIN DATO NO ES UN DIA SIN CAMINAR.
-  chequear('los dias sin dato se saltean', /continue;/.test(sal143), true);
+  // Un dia sin el telefono encima no es un dia sin caminar: el cubo vacio se
+  // saltea en vez de valer 0. El recorrido paso de `for` a `forEach` al
+  // separar la consulta buena del camino largo, asi que ahora es un `return`.
+  chequear('los dias sin dato se saltean', /n <= 0\) return;/.test(sal143), true);
 
   // La web no tiene nada parecido, y contesta "no se" y no "no".
   const web143 = sinComentarios143(de143('src', 'plataforma', 'web', 'salud.ts'));
@@ -10295,6 +10298,82 @@ console.log('\n148. El barrido de la app nativa, y lo que encontro');
   // la red llega DESPUES de todas y no corta ninguna.
   const DUR148 = await import('../nucleo/subida.ts');
   chequear('y llega despues de la mas larga', 7 > DUR148.DURACION_IGNICION_S, true);
+}
+
+console.log('\n149. Los pasos: por que salia vacio, y la meta del dia');
+{
+  const { readFileSync: leer149 } = await import('node:fs');
+  const { join: unir149 } = await import('node:path');
+  const R149 = unir149(import.meta.dirname, '..');
+  const de149 = (...p) => leer149(unir149(R149, ...p), 'utf8');
+  const sinComentarios149 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- LA LECTURA QUE SE CAIA EN SILENCIO ----
+  //
+  // El grafico salio vacio en un telefono con Health conectado y datos adentro.
+  // `queryStatisticsCollection` cruza el puente nativo, y del otro lado la
+  // fecha del cubo bien puede llegar como CADENA: `aISO` le pedia `getFullYear`
+  // y tiraba, el `catch` devolvia null, y no habia grafico ni error.
+  const sal149 = sinComentarios149(de149('movil', 'src', 'plataforma', 'salud.ts'));
+  chequear('la fecha del cubo se acepta como Date', /bruta instanceof Date/.test(sal149), true);
+  chequear('y como cadena', /typeof bruta === 'string'/.test(sal149), true);
+  // Y SI NO VIENE NINGUNA DE LAS DOS: los cubos son diarios y consecutivos
+  // desde el ancla, asi que la fecha sale del indice.
+  chequear('y si no viene, se deduce del indice', /d\.setDate\(d\.getDate\(\) \+ i\)/.test(sal149), true);
+
+  // EL CAMINO LARGO, que existe porque desde una computadora no se puede ver
+  // que contesta HealthKit: si la consulta agrupada vuelve vacia, se pregunta
+  // dia por dia con la MISMA funcion que ya alimenta la seccion de Salud.
+  chequear('hay un camino largo si los cubos vuelven vacios',
+    /const porCubos = await enCubos/.test(sal149), true);
+  chequear('que pide menos dias, porque es una consulta por dia',
+    /Math\.min\(dias, 30\)/.test(sal149), true);
+  chequear('y usa la consulta que ya se sabe que anda', /this\.pasosDe\(fecha\)/.test(sal149), true);
+
+  // Y SE PUEDE PREGUNTAR QUE PASO sin un iPhone conectado a una computadora.
+  chequear('el diagnostico dice como leyo', /export function comoLeyoLosPasos/.test(sal149), true);
+  chequear('y la pantalla de diagnostico lo muestra',
+    /comoLeyoLosPasos\(\)/.test(de149('movil', 'src', 'ajustes', 'Diagnostico.tsx')), true);
+
+  // ---- LA META DEL DIA ----
+  const MP = await import('../nucleo/pasos.ts');
+  chequear('la meta por omision son diez mil', MP.META_PASOS_POR_OMISION, 10000);
+  chequear('sin nada guardado, la de omision', MP.leerMeta(null), 10000);
+  chequear('lo guardado manda', MP.leerMeta('8000'), 8000);
+  // UN VALOR ROTO SE TRATA COMO SI NO ESTUVIERA: es una preferencia de dibujo.
+  chequear('un valor roto no rompe', MP.leerMeta('ochomil'), 10000);
+  chequear('y uno fuera de rango tampoco', MP.leerMeta('999999'), 10000);
+  chequear('mil es el minimo', MP.metaValida(1000), true);
+  chequear('y por debajo no', MP.metaValida(999), false);
+
+  // CUANTO FALTA. `null` al llegar: la pantalla dice otra cosa, porque un cero
+  // ahi se lee como un error de cuenta y no como haber llegado.
+  chequear('faltan los que faltan', MP.faltanPasos(7412, 10000), 2588);
+  chequear('y llegando no falta nada', MP.faltanPasos(10000, 10000), null);
+  chequear('ni pasandose', MP.faltanPasos(12000, 10000), null);
+
+  // ---- EN PANTALLA ----
+  const gp149 = sinComentarios149(de149('movil', 'src', 'GraficoPasos.tsx'));
+  // LA LINEA DE LA META, detras del trazo: es la referencia contra la que se
+  // mira la linea, no un dato mas.
+  chequear('el grafico dibuja la meta', /strokeDasharray="3 4"/.test(gp149), true);
+  // Y SOLO SI CAE ADENTRO: una linea pegada al borde no dice nada.
+  chequear('y solo si cae adentro del grafico', /y >= 2 && y <= ALTO - 2/.test(gp149), true);
+  chequear('y dice cuanto falta', /T\.stats\.pasosFaltan/.test(gp149), true);
+
+  // LA META VIVE EN EL APARATO Y NO EN LA BASE: es como querés ver un grafico,
+  // no un dato tuyo. Meterla en `profiles` seria una migracion para algo que
+  // nadie mas va a leer nunca.
+  chequear('la meta se guarda en el aparato',
+    /plataforma\.almacenamiento\.guardar\(CLAVE_META_PASOS/.test(de149('movil', 'src', 'ajustes', 'MetaDePasos.tsx')),
+    true);
+  chequear('y Ajustes la ofrece', /<MetaDePasos \/>/.test(de149('movil', 'src', 'Ajustes.tsx')), true);
+  // NO ENTRA EN LA RACHA, y se dice en pantalla: si contara, esta app dejaria
+  // de contar dias de gimnasio y pasaria a contar otra cosa.
+  const T149 = (await import('../nucleo/textos.ts')).T;
+  chequear('y el texto aclara que no entra en la racha',
+    /no entra en tu racha/i.test(T149.ajustes.metaPasosNota), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

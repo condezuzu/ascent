@@ -218,34 +218,98 @@ export const saludNativa: Salud = {
    */
   async pasosPorDia(dias) {
     if (!(await puedoPreguntar())) return null;
-    try {
-      const hoy = new Date();
-      const atras = new Date(hoy);
-      atras.setDate(atras.getDate() - (dias - 1));
-      const ancla = deISO(aISO(atras));
-      const hasta = deISO(aISO(hoy));
-      hasta.setDate(hasta.getDate() + 1);
 
-      const cubos = await queryStatisticsCollectionForQuantity(
-        'HKQuantityTypeIdentifierStepCount',
-        ['cumulativeSum'],
-        ancla,
-        { day: 1 },
-        { filter: { date: { startDate: ancla, endDate: hasta } }, unit: 'count' }
-      );
-
-      const serie: { fecha: string; valor: number }[] = [];
-      for (const c of cubos) {
-        const n = c.sumQuantity?.quantity;
-        if (!c.startDate || typeof n !== 'number' || !Number.isFinite(n)) continue;
-        serie.push({ fecha: aISO(c.startDate), valor: Math.round(n) });
-      }
-      // De más viejo a más nuevo: la cuenta de la tendencia recorre la serie
-      // hacia atrás y da por sentado que está ordenada.
-      serie.sort((a, b) => a.fecha.localeCompare(b.fecha));
-      return serie;
-    } catch {
-      return null;
+    const porCubos = await enCubos(dias).catch(() => null);
+    if (porCubos && porCubos.length > 0) {
+      ultimaLectura = { como: 'cubos', dias: porCubos.length };
+      return porCubos;
     }
+
+    // EL CAMINO LARGO, Y POR QUÉ EXISTE (25/9). La consulta por cubos volvió
+    // vacía en el teléfono del humano con Health conectado y datos adentro, y
+    // desde acá no hay forma de ver POR QUÉ: `queryStatisticsCollection` es una
+    // llamada al puente nativo y lo que devuelve solo se ve con el iPhone en la
+    // mano. Puede ser la forma de las fechas, el tamaño de la ventana o el
+    // filtro; en vez de adivinar, se prueba lo que ya se sabe que anda.
+    //
+    // `pasosDe` usa `queryStatisticsForQuantity`, que es la misma que alimenta
+    // la sección de Salud en Ajustes y que sí lee. Una consulta por día es
+    // muchas idas al puente, así que este camino pide MENOS DÍAS: treinta
+    // alcanzan para la ventana de un mes y para que el gráfico exista, que es
+    // lo que hoy no pasa.
+    const cuantos = Math.min(dias, 30);
+    const hoy = new Date();
+    const serie: { fecha: string; valor: number }[] = [];
+    for (let i = cuantos - 1; i >= 0; i--) {
+      const d = new Date(hoy);
+      d.setDate(d.getDate() - i);
+      const fecha = aISO(d);
+      const n = await this.pasosDe(fecha);
+      if (n !== null && n > 0) serie.push({ fecha, valor: n });
+    }
+    ultimaLectura = { como: serie.length ? 'uno por uno' : 'nada', dias: serie.length };
+    return serie;
   },
 };
+
+/**
+ * LA CONSULTA BUENA: una sola, con la suma agrupada por día del lado de iOS.
+ *
+ * Separada para que el camino largo pueda existir sin ensuciarla: si esta anda
+ * —y en el simulador anda— es la que corre siempre.
+ */
+async function enCubos(dias: number): Promise<{ fecha: string; valor: number }[]> {
+  const hoy = new Date();
+  const atras = new Date(hoy);
+  atras.setDate(atras.getDate() - (dias - 1));
+  const ancla = deISO(aISO(atras));
+  const hasta = deISO(aISO(hoy));
+  hasta.setDate(hasta.getDate() + 1);
+
+  const cubos = await queryStatisticsCollectionForQuantity(
+    'HKQuantityTypeIdentifierStepCount',
+    ['cumulativeSum'],
+    ancla,
+    { day: 1 },
+    { filter: { date: { startDate: ancla, endDate: hasta } }, unit: 'count' }
+  );
+
+  const serie: { fecha: string; valor: number }[] = [];
+  cubos.forEach((c, i) => {
+    const n = c.sumQuantity?.quantity;
+    if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) return;
+    // LA FECHA DEL CUBO, DE DONDE SE PUEDA. `startDate` debería ser un `Date`,
+    // pero esto cruza el puente nativo y del otro lado bien puede llegar una
+    // cadena; `aISO` le pediría `getFullYear` y tiraría, y toda la lectura se
+    // caía en silencio. Si no viene ninguna de las dos, los cubos son diarios y
+    // consecutivos desde el ancla, así que la fecha se deduce del índice.
+    const bruta = c.startDate as unknown;
+    let fecha: string;
+    if (bruta instanceof Date) fecha = aISO(bruta);
+    else if (typeof bruta === 'string' && bruta.length >= 10) fecha = bruta.slice(0, 10);
+    else {
+      const d = new Date(ancla);
+      d.setDate(d.getDate() + i);
+      fecha = aISO(d);
+    }
+    serie.push({ fecha, valor: Math.round(n) });
+  });
+  // De más viejo a más nuevo: la cuenta de la tendencia recorre la serie hacia
+  // atrás y da por sentado que está ordenada.
+  serie.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  return serie;
+}
+
+/**
+ * QUÉ PASÓ EN LA ÚLTIMA LECTURA DE PASOS, para el diagnóstico de Ajustes.
+ *
+ * No es telemetría ni un registro: es una variable que la pantalla de
+ * diagnóstico lee para poder contestar "¿y por qué no hay gráfico?" sin un
+ * iPhone conectado a una computadora. Con "cubos: 0" o "nada" ya se sabe si el
+ * problema es HealthKit o el dibujo.
+ */
+let ultimaLectura: { como: string; dias: number } | null = null;
+
+export function comoLeyoLosPasos(): { como: string; dias: number } | null {
+  return ultimaLectura;
+}

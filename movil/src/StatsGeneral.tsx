@@ -10,6 +10,7 @@ import { duracionLinda, type ResumenSesiones } from '@nucleo/sesiones';
 import { agruparPorDia, etiquetaDeDia, type DiaConSesiones } from '@nucleo/dias';
 import type { Log } from '@nucleo/tipos';
 import { plataforma } from '@plataforma';
+import { CLAVE_META_PASOS, leerMeta } from '@nucleo/pasos';
 import { C } from './colores';
 import GraficoPeso from './GraficoPeso';
 import GraficoPasos from './GraficoPasos';
@@ -91,8 +92,15 @@ export default function StatsGeneral({
   // día cuesta lo mismo por 30 que por 365 (ver `pasosPorDia`). Cambiar de
   // ventana es recortar una serie que ya está en memoria.
   const [pasos, setPasos] = useState<{ fecha: string; valor: number }[] | null>(null);
+  const [metaPasos, setMetaPasos] = useState(leerMeta(null));
   useEffect(() => {
     let vivo = true;
+    plataforma.almacenamiento
+      .leer(CLAVE_META_PASOS)
+      .then((m) => {
+        if (vivo) setMetaPasos(leerMeta(m));
+      })
+      .catch(() => {});
     plataforma.salud
       .pasosPorDia(365)
       .then((r) => {
@@ -164,7 +172,7 @@ export default function StatsGeneral({
       {pasos && pasos.length >= 2 && (
         <>
           <Text style={estilos.seccion}>{T.stats.pasosTendencia}</Text>
-          <GraficoPasos pasos={pasos} claro={pal.claro} />
+          <GraficoPasos pasos={pasos} claro={pal.claro} meta={metaPasos} />
         </>
       )}
 

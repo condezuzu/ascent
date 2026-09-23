@@ -14,6 +14,7 @@ import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
 import Gimnasio from './ajustes/Gimnasio';
 import Salud from './ajustes/Salud';
+import MetaDePasos from './ajustes/MetaDePasos';
 import Identidad from './ajustes/Identidad';
 import Fondo from './ajustes/Fondo';
 import ComoSeCompara from './ajustes/ComoSeCompara';
@@ -122,6 +123,9 @@ export default function Ajustes({
           día entre sin que aprietes nada, y leerlas juntas se entiende. La
           web no tiene esta sección porque el navegador no ve nada de esto. */}
       <Salud />
+      {/* La meta va PEGADA a Salud: sin Health no hay pasos, y una meta
+          para un gráfico que no existe es un campo que no sirve. */}
+      <MetaDePasos />
 
       <Text style={estilos.seccion}>{T.ajustes.diasDescanso}</Text>
       <View style={estilos.fila}>

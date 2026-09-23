@@ -563,6 +563,9 @@ export const T = {
     saludSinDatos:
       'No llega nada. Si no le diste permiso, está en Salud → Ascent.',
     saludNoHay: 'Este teléfono no tiene Salud.',
+    metaPasosTitulo: 'Meta de pasos',
+    metaPasosNota: 'Solo para el gráfico de Stats. No entra en tu racha ni la ve nadie.',
+    metaPasosFuera: 'Entre 1.000 y 100.000.',
     saludPasos: (pasos: string) => `Hoy llevas ${pasos} pasos.`,
     // LOS PASOS NO SON ENTRENAR, y hay que decirlo donde se muestran: un día
     // de caminata tiene más pasos que uno de fuerza. Se ven, no deciden.
@@ -703,6 +706,11 @@ export const T = {
     // Es lo unico de la app que solo se puede mirar una vez cada diez dias, y
     // ese ritmo no sirve para ajustar una animacion.
     diagVerSubida: 'Ver la subida de rango (diagnóstico)',
+    // POR QUÉ ESTÁ. El gráfico de pasos salió vacío en un teléfono con Health
+    // conectado y datos adentro, y desde una computadora no hay forma de ver
+    // qué contestó HealthKit. Esto lo dice.
+    diagPasos: 'Pasos leídos',
+    diagPasosNada: 'todavía no se pidieron',
   },
 
   // ---------------------------------------------------------------
@@ -745,6 +753,11 @@ export const T = {
     // `plataforma/salud.ts` y también se cuenta acá, porque quien lo mira no
     // leyó ese archivo.
     pasosNota: 'De Apple Health, todos los días. No cuentan como entrenamiento.',
+    // LA META DEL DÍA. Es una preferencia de pantalla y se dice como tal: no
+    // entra en la racha, no se compara con nadie.
+    pasosMeta: (n: string) => `Meta: ${n} por día`,
+    pasosFaltan: (n: string) => `Te faltan ${n}`,
+    pasosLlegaste: 'Llegaste a tu meta de hoy.',
     sinDuracion_: (n: number) => `${n} sin duración`,
     masCortas: (n: number) => `${n} de menos de 5 min`,
     rachaDe: (dias: string) => `racha de ${dias}`,
