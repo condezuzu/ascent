@@ -4,7 +4,7 @@
 // animación de subida sin necesidad de cuenta ni datos. No está enlazada
 // desde la app; se entra a mano por /galeria.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import FondoEspacial from '@/components/FondoEspacial';
 import SubidaRango from '@/components/SubidaRango';
 import Insignia from '@/components/Insignia';
@@ -13,6 +13,81 @@ import { veloDeRango } from '@nucleo/atmosfera';
 import { NIVELES_A_PROBAR, NOCHE_DESCANSO } from '@nucleo/noche';
 import { eventos } from '@compartido/eventos';
 import { PULSO } from '@nucleo/pulso';
+import { porQueNoHayMotor, type MotivoSinMotor } from '@nucleo/fondo';
+import { equipoFlojo, hayWebGL, leerPreferenciaFondo } from '@/lib/fondo';
+
+/**
+ * EL AVISO DE QUE EL MOTOR NO ARRANCÓ.
+ *
+ * DE DÓNDE SALE. En Brave la galería quedaba en negro con estrellas y nada
+ * más: "queda vacía y no hay forma de saber que el motor decidió no arrancar".
+ * Y no arrancar no es un solo caso —son cuatro, y se ven todos igual—, así que
+ * el aviso además dice CUÁL.
+ *
+ * SE MIRA SI HAY LIENZO, que es el único hecho que no se puede discutir. El
+ * motor se importa tarde a propósito (piso de dos segundos, ver
+ * `FondoEspacial`), así que antes de los seis no hay nada que reportar: un
+ * aviso que aparece y se va solo es peor que ninguno.
+ *
+ * SE SIGUE MIRANDO DESPUÉS, cada segundo, y no una sola vez: acá el fondo se
+ * vuelve a montar con cada rango que se toca, y un aviso que se quedó pegado
+ * de un montaje viejo mentiría.
+ *
+ * SOLO ACÁ. La app no lo lleva: a quien usa la app no le sirve saber que su
+ * navegador no da WebGL —no tiene nada que hacer con eso—, y el fondo de CSS
+ * está justamente para que no se note. Esta pantalla es para revisar el motor,
+ * y acá sí es la información más importante que puede haber.
+ */
+function AvisoDelMotor() {
+  const [motivo, setMotivo] = useState<MotivoSinMotor | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    const desde = performance.now();
+    const ESPERA_MS = 6000;
+
+    const mirar = async () => {
+      if (!vivo) return;
+      if (document.querySelector('.fondo-lienzo canvas')) {
+        setMotivo(null);
+        return;
+      }
+      if (performance.now() - desde < ESPERA_MS) return;
+      const porQue = porQueNoHayMotor(await leerPreferenciaFondo(), equipoFlojo(), hayWebGL());
+      if (vivo) setMotivo(porQue);
+    };
+
+    const id = setInterval(mirar, 1000);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  if (motivo === null) return null;
+
+  const n = navigator as Navigator & { deviceMemory?: number };
+  const detalle: Record<MotivoSinMotor, string> = {
+    preferencia: 'Está en «Fondo: nunca» en Ajustes. El motor no se importa.',
+    equipo:
+      `Este equipo se lee como flojo, así que la app decide no cargar three.js. ` +
+      `Dice ${n.hardwareConcurrency ?? '?'} núcleos y ${n.deviceMemory ?? '?'} GB. ` +
+      `Ojo con Brave: su escudo contra huellas digitales miente en esos dos números, ` +
+      `y por eso esta pantalla queda vacía aunque el equipo ande bien. ` +
+      `La salida es poner «Fondo: siempre» en Ajustes.`,
+    webgl: 'Este navegador no entrega un contexto WebGL. Puede ser el escudo del navegador o la aceleración por hardware apagada.',
+    'monto-mal': 'El motor se importó y no llegó a dibujar. Esto sí es un error: revisa la consola.',
+  };
+
+  return (
+    <div className="seccion">
+      <h3>No hay ningún cuerpo</h3>
+      <p style={{ color: 'var(--apagado)', fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+        {detalle[motivo]}
+      </p>
+    </div>
+  );
+}
 
 export default function Galeria() {
   const [rango, setRango] = useState(4);
@@ -57,6 +132,8 @@ export default function Galeria() {
       />
       <div className="pantalla">
         <div className="titulo-pantalla">Galería del motor</div>
+
+        <AvisoDelMotor />
 
         <div className="seccion">
           <h3>Superficie (cara nocturna)</h3>

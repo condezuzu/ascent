@@ -10460,6 +10460,79 @@ console.log('\n150. La medalla que no baja nunca: el maximo historico');
   chequear('y ya no dice "este peso"', /este peso/.test(T150.medallas.frase(5)), false);
 }
 
+
+console.log('\n151. El aviso de que el motor no arranco (lo de Brave)');
+{
+  const { readFileSync: leer151 } = await import('node:fs');
+  const { join: unir151 } = await import('node:path');
+  const R151 = unir151(import.meta.dirname, '..');
+  const de151 = (...p) => leer151(unir151(R151, ...p), 'utf8');
+  const sinComentarios151 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  const F151 = await import('../nucleo/fondo.ts');
+
+  // ---- LOS CUATRO MOTIVOS, EN ORDEN ----
+  //
+  // Se ven todos igual en pantalla —no hay cuerpo— y son cosas distintas. El
+  // orden es el mismo que el del codigo: si la preferencia dice que no, el
+  // motor ni se importa, asi que preguntar por WebGL despues seria contar algo
+  // que nunca llego a pasar.
+  chequear('con la preferencia en nunca, es la preferencia',
+    F151.porQueNoHayMotor('nunca', false, true), 'preferencia');
+  chequear('y manda aunque tampoco haya WebGL',
+    F151.porQueNoHayMotor('nunca', false, false), 'preferencia');
+
+  // EL CASO DE BRAVE: su escudo contra huellas le miente a
+  // hardwareConcurrency, la app lee "equipo flojo" y decide no cargar three.
+  // No es que el motor falle: es que no se enciende.
+  chequear('en auto y equipo flojo, es el equipo',
+    F151.porQueNoHayMotor('auto', true, true), 'equipo');
+  // PERO "SIEMPRE" GANA: si se pidio explicitamente, el equipo no decide.
+  chequear('con siempre, el equipo flojo no manda',
+    F151.porQueNoHayMotor('siempre', true, true) !== 'equipo', true);
+  // Y NO SE SABE NO ES FLOJO: negarle el fondo a alguien por no poder medirlo
+  // seria castigar la falta de dato.
+  chequear('no saber si es flojo no cuenta como flojo',
+    F151.porQueNoHayMotor('auto', null, true) !== 'equipo', true);
+
+  chequear('si se podia cargar y no hay WebGL, es WebGL',
+    F151.porQueNoHayMotor('auto', false, false), 'webgl');
+  // EL UNICO QUE ES UN ERROR DE VERDAD: se pidio, se pudo, hay WebGL, y aun
+  // asi no hay lienzo.
+  chequear('y si todo estaba bien, se monto mal',
+    F151.porQueNoHayMotor('auto', false, true), 'monto-mal');
+
+  // ---- LO MUESTRA LA GALERIA, Y SOLO LA GALERIA ----
+  //
+  // A quien usa la app no le sirve saber que su navegador no da WebGL: no
+  // tiene nada que hacer con eso, y el fondo de CSS esta para que no se note.
+  const gal151 = sinComentarios151(de151('src', 'app', 'galeria', 'page.tsx'));
+  chequear('la galeria muestra el aviso', /<AvisoDelMotor \/>/.test(gal151), true);
+  chequear('y pregunta el motivo', /porQueNoHayMotor\(/.test(gal151), true);
+  // SE MIRA SI HAY LIENZO, que es el unico hecho que no se puede discutir.
+  chequear('mirando si hay lienzo', /'\.fondo-lienzo canvas'/.test(gal151), true);
+  // Y SE SIGUE MIRANDO: aca el fondo se vuelve a montar con cada rango que se
+  // toca, y un aviso pegado de un montaje viejo mentiria.
+  chequear('y se sigue mirando, no una sola vez', /setInterval\(mirar/.test(gal151), true);
+
+  const otras151 = ['src/components/FondoEspacial.tsx', 'movil/src/Inicio.tsx'];
+  for (const f of otras151) {
+    chequear('no avisa en ' + f,
+      /porQueNoHayMotor/.test(de151(...f.split('/'))), false);
+  }
+
+  // ---- EL SONDEO DE WEBGL SUELTA EL CONTEXTO ----
+  //
+  // Un navegador permite unos pocos contextos vivos y el recolector tarda:
+  // sin soltarlo, preguntar varias veces se come el cupo del motor de verdad.
+  const lib151 = sinComentarios151(de151('src', 'lib', 'fondo.ts'));
+  chequear('el sondeo de WebGL usa un lienzo suelto',
+    /createElement\('canvas'\)/.test(lib151), true);
+  chequear('y lo suelta a mano',
+    /WEBGL_lose_context'\)\?\.loseContext\(\)/.test(lib151), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

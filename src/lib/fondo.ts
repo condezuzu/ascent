@@ -50,3 +50,30 @@ export function guardarPreferenciaFondo(p: PreferenciaFondo) {
 export async function hayQueCargarElMotor(): Promise<boolean> {
   return cargarElMotor(await leerPreferenciaFondo(), equipoFlojo());
 }
+
+/**
+ * ¿ESTE NAVEGADOR DA WEBGL?
+ *
+ * Se pregunta con un lienzo suelto de un píxel y se suelta enseguida: pedirle
+ * el contexto al lienzo del fondo lo dejaría tomado, y un lienzo solo entrega
+ * un tipo de contexto por vez.
+ *
+ * SE SUELTA A MANO con `WEBGL_lose_context`. Un navegador permite unos pocos
+ * contextos vivos a la vez y el recolector tarda lo suyo; sin esto, preguntar
+ * varias veces se come el cupo del motor de verdad.
+ *
+ * SOLO LA USA LA GALERÍA, para explicar por qué no se ve ningún cuerpo. La app
+ * no pregunta esto nunca: no le sirve de nada saberlo, porque igual no tiene
+ * un plan B que ofrecer.
+ */
+export function hayWebGL(): boolean {
+  try {
+    const c = document.createElement('canvas');
+    const gl = (c.getContext('webgl2') ?? c.getContext('webgl')) as WebGLRenderingContext | null;
+    if (!gl) return false;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+}

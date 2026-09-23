@@ -40,3 +40,39 @@ export function cargarElMotor(pref: PreferenciaFondo, flojo: boolean | null): bo
   if (pref === 'nunca') return false;
   return flojo !== true;
 }
+
+/**
+ * POR QUÉ NO SE VE NINGÚN CUERPO.
+ *
+ * DE DÓNDE SALE ESTO. En Brave la galería quedaba en negro con estrellas y
+ * nada más, sin ninguna forma de saber qué había pasado: "lo importante es que
+ * la galería no avisa". Y hay cuatro motivos posibles, que se parecen mucho en
+ * pantalla —no hay cuerpo— y son cosas completamente distintas.
+ *
+ * EL ORDEN IMPORTA Y NO ES ARBITRARIO: es el mismo que el del código. Si la
+ * preferencia dice que no, el motor ni se importa, así que preguntar por WebGL
+ * después sería contar algo que nunca llegó a pasar.
+ *
+ * LO DE BRAVE, QUE ES EL CASO QUE ORIGINÓ ESTO: su escudo contra huellas
+ * digitales le miente a `hardwareConcurrency`, y le puede contestar 2. La app
+ * lee eso, concluye "equipo flojo" y decide no cargar three.js. O sea que no
+ * es que el motor falle: es que la app decide no encenderlo, por una señal
+ * falseada a propósito. Sin este aviso eso es indistinguible de un bug.
+ *
+ * VIVE ACÁ Y NO EN LA PANTALLA porque es una decisión con reglas, y así se
+ * prueba sin navegador. Quién lo muestra es la galería, y solo ella.
+ */
+export type MotivoSinMotor = 'preferencia' | 'equipo' | 'webgl' | 'monto-mal';
+
+export function porQueNoHayMotor(
+  pref: PreferenciaFondo,
+  flojo: boolean | null,
+  hayWebgl: boolean
+): MotivoSinMotor {
+  if (pref === 'nunca') return 'preferencia';
+  if (!cargarElMotor(pref, flojo)) return 'equipo';
+  if (!hayWebgl) return 'webgl';
+  // Se pidió, se pudo, hay WebGL, y aun así no hay lienzo: el motor se importó
+  // y no llegó a dibujar. Es el único de los cuatro que es un error de verdad.
+  return 'monto-mal';
+}
