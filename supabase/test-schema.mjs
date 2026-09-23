@@ -9569,7 +9569,13 @@ console.log('\n141. Los arreglos del 23/9: OTA, salud, titileo y el planeta');
 
   // ---- LOS TEXTOS QUE PIDIO EL HUMANO ----
   const T141 = (await import('../nucleo/textos.ts')).T;
-  // LA SUBIDA DE RANGO DICE SOLO EL RANGO NUEVO Y EL DIA.
+  // LA SUBIDA DE RANGO DICE SOLO EL RANGO NUEVO Y EL DIA, EN LAS DOS APPS.
+  // El telefono lo perdio el 23/9 y la web el 24/9: la misma decision, y el
+  // texto se borro en vez de quedar comentado.
+  chequear('el texto de donde veniste ya no existe',
+    /rangoDesde/.test(leer141(unir141(R141, 'nucleo', 'textos.ts'), 'utf8')), false);
+  chequear('ni la web lo dice',
+    /rangoDesde/.test(de141('src', 'components', 'SubidaRango.tsx')), false);
   chequear('la subida ya no dice de donde veniste',
     /rangoDesde/.test(de141('movil', 'src', 'SubidaRango.tsx')), false);
   // LOS DOS BOTONES DE DIAGNOSTICO, MARCADOS: para que no queden puestos al

@@ -823,7 +823,9 @@ export const T = {
     // QUÉ GANASTE, dicho (15/9). Antes aparecía el nombre y nada más: se subía
     // de rango y no se enteraba nadie.
     rangoDia: (dias: number) => `Día ${dias}`,
-    rangoDesde: (antes: string) => `Dejaste atrás ${antes.toLowerCase()}.`,
+    // De dónde venías NO se dice, en ninguna de las dos apps (teléfono el
+    // 23/9, web el 24/9). El texto se borró y no se comentó: uno sin
+    // usar es un texto que alguien vuelve a poner dentro de seis meses.
     rangoSeguir: 'Toca para seguir',
 
     // EL RESUMEN DEL FINAL. Terminar un entrenamiento era el momento más

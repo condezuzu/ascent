@@ -49,7 +49,6 @@ export default function SubidaRango({
   }, [rangoAntes, rangoDespues]);
 
   const nombre = RANGOS.find((r) => r.n === rangoDespues)?.nombre ?? '';
-  const anterior = RANGOS.find((r) => r.n === rangoAntes)?.nombre ?? '';
 
   function tocar() {
     if (mostrarNombre) alCerrar();
@@ -63,10 +62,12 @@ export default function SubidaRango({
         <div className="subida-nombre">
           <div className="chico">{T.sesion.nuevoRango}</div>
           <div className="grande">{nombre}</div>
-          {/* LO QUE CAMBIÓ, con el número de días que lo pagó y el objeto que
-              quedó atrás. El nombre solo no dice qué ganaste: "Luna" es una
-              palabra hasta que se ve contra "Asteroide". */}
-          {anterior && <div className="desde">{T.sesion.rangoDesde(anterior)}</div>}
+          {/* DE DÓNDE VENÍAS NO SE DICE. "Dejaste atrás Luna" se sacó del
+              teléfono el 23/9 y de acá el 24/9: la misma decisión en las dos
+              apps. El momento es el rango al que llegaste, y nombrar el que
+              dejaste le reparte la atención a lo que se acaba de perder.
+              El argumento viejo era que "Luna" es una palabra hasta que se ve
+              contra "Asteroide"; el objeto que se está mirando ya lo dice. */}
           {racha !== undefined && <div className="dias">{T.sesion.rangoDia(racha)}</div>}
           <div className="seguir">{T.sesion.rangoSeguir}</div>
         </div>
