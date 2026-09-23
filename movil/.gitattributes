@@ -1,0 +1,38 @@
+# LOS FINALES DE LÍNEA, FIJADOS A MANO. Existe por un problema que costó
+# entender y que en este proyecto tiene dientes (23/9).
+#
+# QUÉ PASÓ. La huella nativa —`runtimeVersion: fingerprint`— se calcula
+# hasheando los BYTES de un puñado de archivos: `app.json`, `eas.json`,
+# `.gitignore`, los config plugins y todo lo nativo propio. Y una actualización
+# por el aire solo le llega a las builds cuya huella es IDÉNTICA.
+#
+# La Live Activity se armó en un worktree aparte (`../ascent-la`) para no
+# cambiarle la huella a la build que el humano ya tenía instalada. Cuando se
+# mergeó de vuelta, las dos copias del árbol resultaron distintas byte a byte
+# sin que cambiara una sola línea de código: con `core.autocrlf=true`, el
+# checkout del worktree dejó CRLF en los archivos viejos, y los archivos nuevos
+# —escritos a mano— quedaron con LF. En `main` pasó exactamente lo contrario.
+#
+# Resultado: misma app, misma configuración, huella distinta. La build
+# instalada habría dejado de recibir actualizaciones **sin ningún síntoma**:
+# se publica, dice "Published!", y al teléfono no llega nada.
+#
+# QUÉ HACE ESTE ARCHIVO. Clava el final de línea de cada fuente de la huella,
+# así un `git checkout` reproduce EXACTAMENTE los bytes con los que se armó la
+# build `a4aaf8d4`. No es una preferencia de estilo: es lo que hace que la
+# huella sea reproducible en vez de depender de cómo se hizo el checkout.
+#
+# POR QUÉ LOS VALORES SON MIXTOS. Porque son los que tiene la build que está
+# instalada hoy, no los que uno elegiría. **En la próxima build nativa esto se
+# puede normalizar todo a `lf` de una vez** —ahí la huella cambia igual, que es
+# el momento en que cambiar la huella no cuesta nada— y este archivo se reduce
+# a una línea.
+#
+# Antes de publicar, `npm run huella` compara contra la build instalada.
+
+.gitignore                eol=crlf
+eas.json                  eol=crlf
+
+# Lo nativo propio: el widget de la Live Activity y el puente a ActivityKit.
+targets/**                eol=lf
+modules/**                eol=lf

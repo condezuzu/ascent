@@ -83,7 +83,7 @@ export default function PruebaDePuertos() {
 
   return (
     <View style={estilos.caja}>
-      <Text style={estilos.titulo}>los nueve puertos</Text>
+      <Text style={estilos.titulo}>los diez puertos</Text>
       {lineas.map((l) => (
         <View key={l.que} style={estilos.fila}>
           <Text style={estilos.que}>{l.que}</Text>

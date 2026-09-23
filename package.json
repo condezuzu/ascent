@@ -27,7 +27,8 @@
     "medir:pantallas": "node --env-file=.env.local supabase/medir-pantallas.mjs",
     "medir:quietud": "node --env-file=.env.local supabase/medir-quietud.mjs",
     "medir:scroll": "node --env-file=.env.local supabase/medir-scroll.mjs",
-    "medir:pedidos": "node --env-file=.env.local supabase/medir-pedidos-inicio.mjs"
+    "medir:pedidos": "node --env-file=.env.local supabase/medir-pedidos-inicio.mjs",
+    "huella": "node supabase/huella.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
