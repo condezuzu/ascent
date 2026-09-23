@@ -248,6 +248,10 @@ export const T = {
     // Discreto y permanente mientras no haya punto: es el diferencial de la
     // app y vivía escondido en Ajustes.
     gimnasioRecordatorio: 'Marca tu gimnasio: el día entra al abrir la app estando ahí.',
+    // EL MISMO RECORDATORIO, SIN EL TECHO DE LA WEB (24/9). Acá el día entra
+    // de verdad con la app cerrada, así que decir "al abrir la app" sería
+    // vender de menos justo lo que diferencia a esta app.
+    gimnasioRecordatorioNativo: 'Marca tu gimnasio: el día entra solo al llegar.',
     // Y acá sí se insiste, porque es el único momento en que es probable que
     // la persona esté parada en el gimnasio. NUNCA al empezar la sesión:
     // ahí casi nunca está ahí todavía.

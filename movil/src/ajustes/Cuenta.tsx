@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { borrarPerfilCache } from '@compartido/cache';
+import { reiniciarGuia } from '@compartido/guia';
+import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
+import { GUIA_DE_NUEVO } from '../Recorrido';
 import { eliminarCuenta } from '@compartido/cuenta';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
@@ -31,6 +34,15 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
   const [borrando, setBorrando] = useState(false);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
+
+  // REINICIA EL RECORRIDO **Y** LOS GLOBOS. Si solo volviera el recorrido, el
+  // que quiere repasar de qué va cada pantalla no lo conseguiría: las dos
+  // cosas son la guía. Y avisa, porque el que la pide está mirando Ajustes y
+  // el recorrido tiene que aparecer ahí mismo, no al reabrir la app.
+  async function verLaGuiaDeNuevo() {
+    await reiniciarGuia(perfil.id);
+    eventos.emitir(GUIA_DE_NUEVO);
+  }
 
   async function cambiarClave() {
     setError('');
@@ -72,6 +84,11 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
 
   return (
     <View style={estilos.seccion}>
+      {/* VER LA GUÍA DE NUEVO (§10). Faltaba en el teléfono: no podía existir
+          hasta que existiera el recorrido, y ahora existe. */}
+      <Pressable style={estilos.texto} onPress={verLaGuiaDeNuevo}>
+        <Text style={estilos.enlace}>{T.ajustes.verGuia}</Text>
+      </Pressable>
       <Pressable style={estilos.texto} onPress={cambiarClave}>
         <Text style={estilos.enlace}>{T.ajustes.cambiarClave}</Text>
       </Pressable>

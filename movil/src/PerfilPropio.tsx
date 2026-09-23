@@ -12,6 +12,7 @@ import { prepararFoto } from './foto';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
 import FotosQueVen from './FotosQueVen';
+import GloboPrimeraVez from './GloboPrimeraVez';
 import Insignia from './Insignia';
 import Surgir from './Surgir';
 import { C } from './colores';
@@ -150,6 +151,9 @@ export default function PerfilPropio() {
             que sea literalmente el mismo dibujo. Con dos copias, la del dueño
             se mejora un día y la promesa pasa a ser falsa sin que nadie lo
             note. Lo cazó §135. */}
+        {/* Lo que el recorrido no puede mostrar: que estas fotos son las que
+            ven tus amigos, y que cuáles se comparten se elige en el Álbum. */}
+        <GloboPrimeraVez cual="perfil">{T.yo.globo}</GloboPrimeraVez>
         <FotosQueVen fotos={fotos} />
         <Text style={estilos.nota}>{fotos.length > 0 ? T.yo.fotosPie : T.yo.sinFotos}</Text>
 

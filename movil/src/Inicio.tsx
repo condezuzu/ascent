@@ -29,7 +29,9 @@ import FondoEspacial from './FondoEspacial';
 import { mostrando } from './loVisible';
 import Avatar from './Avatar';
 import DiaListo from './DiaListo';
-import NumeroQueCuenta from './NumeroQueCuenta';
+import GloboPrimeraVez from './GloboPrimeraVez';
+import RachaConRotulo from './RachaConRotulo';
+import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 
 /**
@@ -244,6 +246,10 @@ export default function Inicio({
   const racha = perfil.racha_actual;
   const planeta = planetaDeDia(racha);
   const esDescanso = esDiaDeDescanso(descansos, hoy) && !registradoHoy;
+  // EL AVISO SOLO CUANDO FALTA POCO DE VERDAD. A las nueve de la mañana
+  // "ultimo tramo" seria una amenaza de doce horas; a las siete de la tarde
+  // es un dato. Misma regla que la web.
+  const avisoTiempo = !registradoHoy && perfil.racha_actual > 0 && new Date().getHours() >= 19;
   const rangoMejor = rangoDeRacha(perfil.mejor_racha).n;
   const planetaMejor = planetaDeDia(perfil.mejor_racha);
   const fantasma =
@@ -357,12 +363,20 @@ export default function Inicio({
           vuelven al terminar. */}
       {!sesion.estado.corriendo && (
       <>
-      <Text style={estilos.etiqueta}>{T.inicio.racha}</Text>
-      {/* VIAJA HASTA EL NÚMERO NUEVO en vez de reemplazarse, igual que en la
-          web: el estado nuevo tiene que salir del viejo. La primera vez no
-          cuenta —abrir la app no es haber subido 47 hoy— y con "reducir
-          movimiento" salta. Ver `NumeroQueCuenta.tsx`. */}
-      <NumeroQueCuenta valor={perfil.racha_actual} style={estilos.racha} />
+      {/* EL ESTADO VACIO NO DICE "no hay datos" (§11). El dia uno no hay
+          racha, ni amigos, ni fotos, y esa es la primera impresion de la
+          app: un cero gigante seria un boletin de lo que todavia no hiciste.
+          Dos lineas y el fondo, que ya esta ahi detras. */}
+      {perfil.racha_actual === 0 && logs.length === 0 ? (
+        <View style={estilos.sinNada}>
+          <Text style={estilos.vacioTitulo}>{T.inicio.vacioTitulo}</Text>
+          <Text style={estilos.vacioPie}>{T.inicio.vacioPie}</Text>
+        </View>
+      ) : (
+        /* LA RACHA CON SU ROTULO AL COSTADO Y LA BARRA DE RANGO (24/9): las
+           dos formas que faltaban portar de la web. Ver `RachaConRotulo`. */
+        <RachaConRotulo racha={perfil.racha_actual} rango={perfil.rango_actual} />
+      )}
 
       <View style={estilos.tira}>
         {semana.map((d) => (
@@ -399,11 +413,41 @@ export default function Inicio({
         </View>
       )}
 
+      {/* LOS ESTADOS DE BORDE (24/9), que faltaban enteros en el telefono.
+          Los cuatro son de una linea y en voz baja: ninguno pide hacer nada,
+          los cuatro dicen QUE ES CIERTO AHORA. */}
+
+      {/* El aviso de tiempo solo aparece cuando falta poco DE VERDAD, no a
+          la mañana, y esta redactado hacia adelante: "ultimo tramo para el
+          48", nunca "vas a perder la racha". */}
+      {avisoTiempo && <Text style={estilos.aviso}>{T.inicio.ultimoTramo(perfil.racha_actual + 1)}</Text>}
+      {perdida && <Text style={estilos.aviso}>{T.inicio.perdida}</Text>}
+      {esDescanso && <Text style={estilos.aviso}>{T.inicio.hoyDescansa}</Text>}
+      {/* EL DIA QUE LA GUARDA DEJO ESPERANDO. Se dice aca y no solo en la
+          hoja: podes cerrar la app y volver, y lo que no podes es quedarte
+          pensando que perdiste el dia (§11). */}
+      {perfil.dia_pendiente && <Text style={estilos.aviso}>{T.inicio.diaPendiente}</Text>}
+
+      {/* MARCA TU GIMNASIO, mientras no este marcado. Se RECUERDA, no se
+          insiste: es un globo quieto que lleva a Ajustes, y no aparece
+          mientras entrenas — ahi la pantalla es el entrenamiento. */}
+      {!perfil.gimnasio_lat && !sesion.estado.corriendo && (
+        <Pressable style={estilos.globoQuieto} onPress={() => irAPestana('ajustes')}>
+          <Text style={estilos.globoTexto}>{T.inicio.gimnasioRecordatorioNativo}</Text>
+        </Pressable>
+      )}
+
       {aviso !== '' && <Text style={estilos.aviso}>{aviso}</Text>}
       {sesion.estado.aviso !== '' && <Text style={estilos.aviso}>{sesion.estado.aviso}</Text>}
 
       {sesion.estado.corriendo && sesion.estado.inicio ? (
         <View style={estilos.sesion}>
+          {/* SE CIERRA SOLO CON EL PRIMER `+`: para entonces ya se entendió qué
+              hace, y la pregunta de marca —que sale después de un `+`— nunca lo
+              encuentra abierto. */}
+          <GloboPrimeraVez cual="series" cerrarCuando={sesion.estado.series > 0}>
+            {T.inicio.globoSeries}
+          </GloboPrimeraVez>
           {/* El reloj ya está arriba, en el chip: acá manda el bloque, que es
               lo que se toca doce veces por sesión. */}
           <Bloque
@@ -624,6 +668,19 @@ const estilos = StyleSheet.create({
   },
   apagado: { opacity: 0.6 },
   textoSolido: { color: '#05060a', fontSize: 15, fontWeight: '600' },
+  // `vacio` ya era el punto apagado de la tira de la semana: este es otro.
+  sinNada: { marginTop: 26, marginBottom: 10, gap: 6 },
+  vacioTitulo: { color: '#e8ecf6', fontSize: 20, fontWeight: '300' },
+  vacioPie: { color: '#8a93a8', fontSize: 14, lineHeight: 20 },
+  globoQuieto: {
+    marginTop: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#1d2230',
+  },
+  globoTexto: { color: '#8a93a8', fontSize: 13, lineHeight: 18 },
   aviso: { color: '#8a93a8', fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19 },
   error: { color: '#e8705f', fontSize: 13, textAlign: 'center' },
   enlace: { color: '#8a93a8', fontSize: 13 },

@@ -8607,7 +8607,21 @@ console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
   chequear('Inicio pone la clase con la sesion corriendo', /clase=\{sesion\.estado\.corriendo \? 'en-sesion'/.test(inicio), true);
   chequear('una sola cuenta del bloque: sin el "1 de 3" a la vista (web)', /className="numero"/.test(bloque), false);
   chequear('una sola cuenta del bloque (nativa)', /cuentaNumero/.test(de128('movil', 'src', 'Bloque.tsx')), false);
-  chequear('la racha no esta durante el entrenamiento (nativa)', /!sesion\.estado\.corriendo && \(\s*<>\s*<Text style=\{estilos\.etiqueta\}>\{T\.inicio\.racha\}/.test(de128('movil', 'src', 'Inicio.tsx')), true);
+  // LA RACHA NO ESTA DURANTE EL ENTRENAMIENTO (nativa). Se mira por REGION y
+  // no calcando el marcado: esta linea ya se rompio una vez el 24/9 —cuando
+  // el rotulo paso a ser la columna de `RachaConRotulo`— sin que la regla
+  // cambiara ni un poco. Lo que hay que sostener es que el numero grande
+  // viva ADENTRO del guardia, no como se dibuja.
+  const ini128 = de128('movil', 'src', 'Inicio.tsx');
+  const guardia128 = ini128.indexOf('{!sesion.estado.corriendo && (');
+  const finGuardia128 = ini128.indexOf('</>', guardia128);
+  const dentro128 = guardia128 < 0 ? '' : ini128.slice(guardia128, finGuardia128);
+  chequear('la racha no esta durante el entrenamiento (nativa)',
+    /<RachaConRotulo/.test(dentro128), true);
+  // Y NO SE DIBUJA EN NINGUN OTRO LADO: con una segunda copia afuera, el
+  // guardia no serviria de nada.
+  chequear('y no hay otra racha fuera del guardia',
+    (ini128.match(/<RachaConRotulo/g) ?? []).length, 1);
   chequear('el globo de las series se cierra con el primer +', /cual="series" cerrarCuando=\{sesion\.estado\.series > 0\}/.test(inicio), true);
   chequear('sin la linea social en Inicio (esta en Ranking)', /linea-social|sigueSubiendo/.test(inicio), false);
   const accion = de128('src', 'components', 'AccionPrincipal.tsx');
@@ -9157,6 +9171,113 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
   chequear('y contesta "no se", nunca 0', /async pasosDe\(_fecha\) \{\s*return null;/.test(web137), true);
 }
 
+
+console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
+{
+  const { readFileSync: leer138 } = await import('node:fs');
+  const { join: unir138, dirname: dir138 } = await import('node:path');
+  const { fileURLToPath: aRuta138 } = await import('node:url');
+  const R138 = unir138(dir138(aRuta138(import.meta.url)), '..');
+  const de138 = (...p) => leer138(unir138(R138, ...p), 'utf8');
+
+  // ---- EL RECORRIDO ES UNA SOLA LISTA PARA LAS DOS APPS ----
+  const REC = await import('../nucleo/recorrido.ts');
+  // LA WEB NAVEGA POR RUTA Y LA NATIVA POR PESTAÑA. Son el mismo lugar con dos
+  // nombres, y llevarlos juntos es lo que deja que el recorrido sea UNA lista:
+  // con dos, agregar una pantalla se hace bien de un lado y se olvida del
+  // otro, y eso no lo canta nadie hasta que alguien recorre la app a mano.
+  chequear('cada paso del recorrido dice su ruta Y su pestaña',
+    REC.PASOS_DEL_RECORRIDO.every((p) => !!p.ruta && !!p.pestana), true);
+  const PESTANAS = ['inicio', 'ranking', 'album', 'stats', 'ajustes'];
+  chequear('y las pestañas son de las que existen',
+    REC.PASOS_DEL_RECORRIDO.every((p) => PESTANAS.includes(p.pestana)), true);
+  // NINGUNA PANTALLA DOS VECES: un recorrido que vuelve al mismo lugar se lee
+  // como que algo se rompio.
+  chequear('sin repetir pantalla',
+    new Set(REC.PASOS_DEL_RECORRIDO.map((p) => p.pestana)).size, REC.PASOS_DEL_RECORRIDO.length);
+  // EL GIMNASIO VA PRIMERO: registrar el dia solo al llegar es lo que hace
+  // distinta a la app, y en la bienvenida vieja era el cuarto parrafo de cinco.
+  chequear('el primero es el del gimnasio', REC.PASOS_DEL_RECORRIDO[0].ancla, 'gimnasio');
+
+  const rec = de138('movil', 'src', 'Recorrido.tsx');
+  // NO ARRANCA SOLO. La memoria de "ya lo vi" vive en el telefono, asi que sin
+  // un encendido explicito le aparecia a cualquiera que entrara en un aparato
+  // nuevo. Lo encienden elegir el nombre y "ver la guia" de Ajustes.
+  chequear('el recorrido lo enciende elegir el nombre',
+    /reiniciarGuia\(uid\)/.test(de138('movil', 'src', 'Onboarding.tsx')), true);
+  chequear('y "ver la guia" desde Ajustes',
+    /reiniciarGuia\(perfil\.id\)/.test(de138('movil', 'src', 'ajustes', 'Cuenta.tsx')), true);
+  // SI TE VAS POR TU CUENTA NO TE PERSIGUE: dice el paso y ofrece llevarte.
+  // Un recorrido que arrastra de vuelta cada vez que tocas otra cosa es una
+  // trampa, y lo primero que hace cualquiera con una guia es tocar otra cosa.
+  chequear('si estas en otra pantalla, ofrece llevarte', /T\.recorrido\.ir/.test(rec), true);
+  // VIVE ENCIMA DE LA BARRA y no adentro de cada pantalla: la barra esta en
+  // las cinco del recorrido.
+  chequear('la tarjeta vive encima de la barra',
+    /<Recorrido pestana=\{pestana\} \/>/.test(de138('movil', 'src', 'Pestanas.tsx')), true);
+
+  // ---- LA PANTALLA DE MARCAS ----
+  const mar = de138('movil', 'src', 'MisMarcas.tsx');
+  const car = de138('movil', 'src', 'CargarMarca.tsx');
+  // SE GUARDA LO QUE LEVANTASTE, NO EL 1RM (§16.4): el maximo lo deriva la
+  // base. Guardarlo ya calculado seria guardar una opinion, y el dia que
+  // cambie la formula los datos viejos quedarian con la vieja para siempre.
+  chequear('se guarda el peso y las veces, no el maximo',
+    /peso: Math\.round\(kg \* 100\) \/ 100,[\s\S]{0,80}reps: veces/.test(car), true);
+  // UNA CARGA NO PISA A LA ANTERIOR (§16.5): por eso hay historial desplegable
+  // y cada entrada se puede borrar. Una marca mal cargada que no se puede
+  // sacar envenena el DOTS para siempre.
+  chequear('cada marca se puede desplegar', /setAbierto\(desplegado \? null : m\.ejercicio\)/.test(mar), true);
+  chequear('y cada entrada del historial se puede borrar', /T\.general\.borrar/.test(mar), true);
+  // ES UNA PANTALLA APILADA Y NO UNA SEXTA PESTAÑA.
+  chequear('la ruta /marcas existe', /MisMarcas/.test(de138('movil', 'app', 'marcas.tsx')), true);
+  // Y LA PUERTA VA AL FINAL de la seccion de fuerza: el que abre Stats viene a
+  // mirar, no a escribir.
+  chequear('se entra desde Stats', /router\.push\('\/marcas'\)/.test(de138('movil', 'src', 'SeccionFuerza.tsx')), true);
+
+  // ---- LAS FORMAS QUE FALTABAN ----
+  const rr = de138('movil', 'src', 'RachaConRotulo.tsx');
+  // UNA LETRA POR FILA y no el contenedor rotado: §13x dejo anotados los tres
+  // caminos y este era la apuesta. Rotar pone las letras de costado —que no es
+  // apilarlas— y un SVG deja de ser texto para el lector de pantalla.
+  chequear('RACHA se apila letra por letra', /\[\.\.\.T\.inicio\.racha\]\.reverse\(\)/.test(rr), true);
+  // AL REVES, para que se lea de abajo hacia arriba como en la web.
+  chequear('y se lee de abajo hacia arriba', /reverse\(\)/.test(rr), true);
+  // PERO SIGUE SIENDO UNA PALABRA para quien no la ve: sin esto el lector de
+  // pantalla dictaria "A H C A R".
+  chequear('el lector de pantalla oye la palabra entera',
+    /accessibilityLabel=\{T\.inicio\.racha\}/.test(rr), true);
+  chequear('y no las letras sueltas', /accessibilityElementsHidden/.test(rr), true);
+  // LA BARRA NO LLEVA ETIQUETA: decir "faltan 4 dias para el rango 5"
+  // nombraria el rango, y los rangos no se nombran nunca (§7).
+  chequear('la barra de rango esta', /progresoEnRango/.test(rr), true);
+  chequear('y no nombra ningun rango', /T\.rangos|nombreDelRango/.test(rr), false);
+
+  // EL ALBUM ENTRA ESCALONADO, con el mismo escalon que Ranking: una lista de
+  // fotos que entra a otro ritmo que una de amigos se lee como dos apps.
+  const alb = de138('movil', 'src', 'Album.tsx');
+  chequear('las fotos del album entran escalonadas', /<Surgir key=\{c\.id\} indice=\{m\.desde \+ j\}>/.test(alb), true);
+
+  // LOS ESTADOS DE BORDE DE INICIO, que faltaban enteros.
+  const ini = de138('movil', 'src', 'Inicio.tsx');
+  for (const [que, re] of [
+    ['el ultimo tramo', /T\.inicio\.ultimoTramo/],
+    ['la racha perdida', /T\.inicio\.perdida/],
+    ['el dia de descanso', /T\.inicio\.hoyDescansa/],
+    ['el dia que quedo esperando', /T\.inicio\.diaPendiente/],
+    ['el estado vacio', /T\.inicio\.vacioTitulo/],
+  ]) {
+    chequear(`Inicio dice ${que}`, re.test(ini), true);
+  }
+  // EL AVISO SOLO CUANDO FALTA POCO DE VERDAD: a las nueve de la mañana
+  // "ultimo tramo" seria una amenaza de doce horas.
+  chequear('y el aviso de tiempo es de la tarde, no de la mañana', /getHours\(\) >= 19/.test(ini), true);
+  // EL RECORDATORIO DEL GIMNASIO NO PROMETE EL TECHO DE LA WEB: aca el dia
+  // entra de verdad con la app cerrada.
+  const T138 = (await import('../nucleo/textos.ts')).T;
+  chequear('el recordatorio del gimnasio no dice "al abrir la app"',
+    /abrir la app/i.test(T138.inicio.gimnasioRecordatorioNativo), false);
+}
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {

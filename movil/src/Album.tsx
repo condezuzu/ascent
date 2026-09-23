@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { supabase } from './supabase';
+import Surgir from './Surgir';
 import { T } from '@nucleo/textos';
 import { fechaLinda } from '@nucleo/fechas';
 import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type DatosDeAlbum } from '@compartido/album';
@@ -106,16 +107,28 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
               <Text style={estilos.rotulo}>{m.titulo}</Text>
               <View style={[estilos.grilla, { gap: HUECO }]}>
                 {m.fotos.map((c, j) => (
-                  <Pressable
-                    key={c.id}
-                    onPress={() => setAbierta(m.desde + j)}
-                    accessibilityLabel={fechaLinda(c.fecha)}
-                    style={[estilos.celda, { width: lado, height: lado }]}
-                  >
-                    {!!c.url && <Image source={{ uri: c.url }} style={{ width: lado, height: lado }} />}
-                    {/* Un punto y nada más: quién ve la foto, de un vistazo. */}
-                    {c.visibilidad === 'amigos' && <View style={estilos.punto} />}
-                  </Pressable>
+                  // ENTRAN EN ORDEN, NO TODAS DE GOLPE (24/9). En la web cada
+                  // celda lleva su `--i` y entra escalonada; acá aparecían
+                  // todas juntas, que es lo que el humano notó USANDO la app.
+                  // El escalón es el mismo de `nucleo/animacion.ts`, que ya
+                  // usa Ranking: una lista de fotos que entra a otro ritmo que
+                  // una de amigos se lee como dos apps.
+                  //
+                  // EL ÍNDICE ES EL DE LA FOTO EN EL ÁLBUM ENTERO y no el del
+                  // mes: con el del mes, cada mes volvería a empezar el
+                  // escalón desde cero y la segunda tanda entraría antes que
+                  // el final de la primera.
+                  <Surgir key={c.id} indice={m.desde + j}>
+                    <Pressable
+                      onPress={() => setAbierta(m.desde + j)}
+                      accessibilityLabel={fechaLinda(c.fecha)}
+                      style={[estilos.celda, { width: lado, height: lado }]}
+                    >
+                      {!!c.url && <Image source={{ uri: c.url }} style={{ width: lado, height: lado }} />}
+                      {/* Un punto y nada más: quién ve la foto, de un vistazo. */}
+                      {c.visibilidad === 'amigos' && <View style={estilos.punto} />}
+                    </Pressable>
+                  </Surgir>
                 ))}
               </View>
             </View>

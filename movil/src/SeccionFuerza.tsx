@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { supabase } from './supabase';
 import { fechaDeMarca, pesoLindo, redondear } from '@nucleo/fuerza';
 import type { Unidad } from '@nucleo/peso';
@@ -16,11 +17,14 @@ import { C } from './colores';
  * compara. La misma sección que la web (`src/components/SeccionFuerza.tsx`),
  * con lo que se pide y "dónde estoy" en `compartido/fuerza.ts`.
  *
- * LO QUE NO ESTÁ: en la web, "Mis marcas" y "Anotar una marca" llevan a la
- * pantalla donde se cargan las marcas (`/fuerza`), que no está portada. Esos
- * botones no se muestran hasta que exista, en vez de llevar a ningún lado; el
- * texto de cada caso sí, porque dice lo que pasa. "Ajustes" sí lleva: es una
- * pestaña (`irAPestana`).
+ * "MIS MARCAS" YA LLEVA A ALGÚN LADO (24/9). Hasta acá el botón no se
+ * dibujaba: la pantalla donde se cargan las marcas no estaba portada, y un
+ * botón que no lleva a ningún lado es peor que ninguno. Ahora existe como
+ * pantalla apilada (`/marcas`), igual que el perfil.
+ *
+ * LO QUE SIGUE SIENDO CIERTO: acá se COMPARA y allá se ESCRIBE. Esta sección
+ * no deja cargar nada, y esa separación es la que hace que Stats se pueda
+ * mirar sin miedo a tocar algo.
  */
 export default function SeccionFuerza({
   unidad,
@@ -39,6 +43,7 @@ export default function SeccionFuerza({
   const [ranking, setRanking] = useState<FilaFuerza[]>([]);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [yo, setYo] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     (async () => {
@@ -156,6 +161,16 @@ export default function SeccionFuerza({
           )}
         </>
       )}
+
+      {/* LA PUERTA A MIS MARCAS, al final y no arriba: el que abre Stats
+          viene a MIRAR. Cargar una marca es lo que hace de vez en cuando, y
+          un botón de escribir arriba de todo invita a tocarlo por error en
+          la pantalla que más se mira. */}
+      <Pressable style={estilos.puerta} onPress={() => router.push('/marcas')}>
+        <Text style={estilos.puertaTexto}>
+          {mia.marcas.length === 0 ? T.fuerza.anotarMarca : T.fuerza.misMarcas}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -237,6 +252,15 @@ const estilos = StyleSheet.create({
     borderRadius: 2,
     padding: 16,
   },
+  puerta: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.lineaFuerte,
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  puertaTexto: { color: C.tinta, fontSize: 14 },
   dots: { color: C.tinta, fontSize: 46, fontWeight: '300', letterSpacing: -1.4, fontVariant: ['tabular-nums'] },
   dotsPie: { color: C.sub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 8 },
   tira: { gap: 2, marginTop: 12 },
