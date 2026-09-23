@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { marcarPunto } from '@compartido/gimnasio';
+import { plataforma } from '@plataforma';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
@@ -23,10 +24,15 @@ import { C } from '../colores';
  *    coordenadas a mano.
  *  - **El registro a mano nunca desaparece.** Esto es un atajo, no el camino.
  *
- * LO QUE TODAVÍA NO HACE, y hay que decirlo cada vez: registrar con la app
- * CERRADA. Eso necesita `UIBackgroundModes: location`, que es lo que Apple
- * revisa con lupa, y va cuando la app esté en TestFlight. Mientras tanto hace
- * lo mismo que la web: si abrís la app estando ahí, el día entra solo.
+ * LO QUE ANTES NO HACÍA Y AHORA SÍ (24/9): registrar con la app CERRADA. Se
+ * registra una zona en el sistema operativo y es el teléfono el que levanta a
+ * la app al llegar. Hasta acá esta pantalla decía lo contrario, y con razón:
+ * el puerto sabía hacerlo desde la migración pero no lo llamaba nadie.
+ *
+ * EL TECHO QUE QUEDA, y por eso el texto no promete: hace falta el permiso de
+ * ubicación **siempre**, que iOS pide aparte y se puede negar. Sin él la app
+ * vuelve sola a lo que hace la web —entra si la abrís estando ahí—, que es el
+ * piso con el que esto se diseñó (§13).
  */
 export default function Gimnasio({
   perfil,
@@ -69,6 +75,10 @@ export default function Gimnasio({
       .update({ gimnasio_lat: null, gimnasio_lon: null })
       .eq('id', perfil.id);
     if (error) return setDetalle(T.general.falloPunto);
+    // SIN PUNTO NO HAY ZONA. La del sistema sobrevive a cerrar la app —para
+    // eso existe—, así que borrar el punto sin soltarla dejaría al teléfono
+    // despertando a la app en un lugar que ya no es el gimnasio de nadie.
+    await plataforma.ubicacion.dejarDeVigilar();
     alCambiar({ gimnasio_lat: null, gimnasio_lon: null });
     setEstado('');
     setDetalle('');
@@ -85,7 +95,7 @@ export default function Gimnasio({
       </Pressable>
 
       <Text style={estilos.nota}>
-        <Text style={estilos.fuerte}>{T.ajustes.gimnasioComo}</Text> {T.ajustes.gimnasioParaQue}
+        <Text style={estilos.fuerte}>{T.ajustes.gimnasioComo}</Text> {T.ajustes.gimnasioParaQueNativo}
       </Text>
       <Text style={estilos.nota}>{T.ajustes.gimnasioTechoNativo}</Text>
 

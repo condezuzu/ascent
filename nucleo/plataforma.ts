@@ -94,16 +94,27 @@ export type Audio = {
 };
 
 /**
- * Apple Health / Health Connect (§13c). En web no existe nada parecido, así
- * que el hueco queda vacío hasta la versión nativa.
+ * Apple Health / Health Connect (§13c). En web no existe nada parecido —no es
+ * que la API sea peor, es que el navegador no tiene ninguna—, así que el hueco
+ * queda vacío de ese lado y se llena del nativo.
  *
- * `entrenoEse` devuelve `null` para "no sé", que NO es lo mismo que `false`:
- * confundirlos haría que la app diera por no entrenado un día que sí lo fue.
+ * TODO DEVUELVE `null` PARA "NO SÉ", que NO es lo mismo que `false` ni que
+ * `0`. Sin permiso, sin datos o con el reloj sin sincronizar la respuesta
+ * honesta es que no se sabe; confundirla con "no entrenaste" o con "cero
+ * pasos" haría que la app diera por vacío un día que sí ocurrió. Es la única
+ * parte de este puerto que no se puede relajar.
+ *
+ * `fecha` es siempre YYYY-MM-DD en el huso del usuario, como todas las fechas
+ * de la app (`nucleo/fechas.ts`). Nunca un `Date` ni un UTC: el día de Health
+ * tiene que cortar donde corta el día de la racha, o un entrenamiento de las
+ * nueve de la noche cuenta para el día siguiente.
  */
 export type Salud = {
   disponible(): boolean;
   pedirPermiso(): Promise<boolean>;
   entrenoEse(fecha: string): Promise<boolean | null>;
+  /** Los pasos de ese día. `null` es "no sé", nunca 0. */
+  pasosDe(fecha: string): Promise<number | null>;
 };
 
 /**

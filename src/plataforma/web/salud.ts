@@ -17,4 +17,7 @@ export const saludWeb: Salud = {
   async entrenoEse(_fecha) {
     return null;
   },
+  async pasosDe(_fecha) {
+    return null;
+  },
 };

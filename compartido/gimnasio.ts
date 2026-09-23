@@ -7,6 +7,29 @@ import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '@nucl
 import type { OrigenDia, Perfil } from '@nucleo/tipos';
 
 /**
+ * Aviso de que el día de hoy cambió, para que la pantalla que lo muestre se
+ * refresque.
+ *
+ * VIVE ACÁ DESDE EL 24/9, y antes en el componente de la web. Mudarlo es lo
+ * mismo que se hizo con las reglas: la app nativa estrenó su propio vigilante
+ * y necesitaba los mismos dos nombres. Copiados, son dos cadenas iguales en
+ * dos árboles distintos que nadie compara — el día que una cambie, la otra app
+ * deja de enterarse y no lo canta nadie.
+ */
+export const DIA_CAMBIO = 'ascent:dia-cambio';
+
+/**
+ * EL DÍA ENTRÓ SOLO Y ADEMÁS SUBISTE DE RANGO (bug del 15/9).
+ *
+ * La subida se animaba en los dos caminos que empiezan con un toque —registrar
+ * a mano y empezar la sesión— y en el tercero no: el día que entra al llegar
+ * al gimnasio, que es el camino NORMAL de quien tiene el punto marcado. Se
+ * subía de rango y no se enteraba nadie. El dato venía en la respuesta de
+ * `registrar_dia` y se tiraba.
+ */
+export const SUBIO_RANGO = 'ascent:subio-rango';
+
+/**
  * Registrar el día por una señal que no es un toque (§13).
  *
  * Ubicación y salud entran las dos por acá. Si cada una escribiera su propio

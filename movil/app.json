@@ -13,12 +13,12 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "audio",
-          "audio"
+          "location"
         ],
         "UIApplicationSupportsShakeToEdit": false,
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "package": "uy.ascent.app",
@@ -30,13 +30,6 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -68,6 +61,14 @@
           "locationWhenInUsePermission": "Ascent usa tu ubicación para registrar el día solo cuando llegas al gimnasio.",
           "locationAlwaysAndWhenInUsePermission": "Con el permiso siempre, el día se registra y el cronómetro arranca al llegar al gimnasio aunque no abras la app.",
           "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Ascent lee tus pasos y tus entrenamientos para no perder un día que el teléfono ya sabe que entrenaste.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
         }
       ],
       [

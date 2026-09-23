@@ -55,7 +55,7 @@ export default function PruebaDePuertos() {
       });
       filas.push({
         que: 'salud',
-        dice: p.salud.disponible() ? 'hay' : 'vacío hasta la build de desarrollo',
+        dice: p.salud.disponible() ? 'hay' : 'no existe en este aparato',
       });
 
       // La ubicación va última: es la que abre un diálogo de permiso, y

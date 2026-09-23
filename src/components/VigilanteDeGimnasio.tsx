@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { mirarElGimnasio, registrarPorSenal } from '@compartido/gimnasio';
+import { DIA_CAMBIO, mirarElGimnasio, registrarPorSenal, SUBIO_RANGO } from '@compartido/gimnasio';
 import { decidir } from '@nucleo/llegada';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
 import { perfilVivo } from '@compartido/perfilVivo';
@@ -17,19 +17,10 @@ import ResumenSesion from './ResumenSesion';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Perfil, ResultadoRegistro } from '@nucleo/tipos';
 
-/** Aviso de que el día de hoy cambió, para que la pantalla que lo muestre se refresque. */
-export const DIA_CAMBIO = 'ascent:dia-cambio';
-
-/**
- * EL DÍA ENTRÓ SOLO Y ADEMÁS SUBISTE DE RANGO (bug del 15/9).
- *
- * La subida se animaba en los dos caminos que empiezan con un toque —registrar
- * a mano y empezar la sesión— y en el tercero no: el día que entra al llegar
- * al gimnasio, que es el camino NORMAL de quien tiene el punto marcado. Se
- * subía de rango y no se enteraba nadie. El dato venía en la respuesta de
- * `registrar_dia` y se tiraba.
- */
-export const SUBIO_RANGO = 'ascent:subio-rango';
+// LOS DOS AVISOS SE MUDARON A `compartido/gimnasio.ts` el 24/9, cuando la app
+// nativa estrenó su propio vigilante y necesitó los mismos nombres. Se
+// reexportan desde acá para no tocar a quien ya los importaba (`page.tsx`).
+export { DIA_CAMBIO, SUBIO_RANGO } from '@compartido/gimnasio';
 
 /**
  * EL QUE MIRA SI LLEGASTE AL GIMNASIO (§13).

@@ -516,7 +516,18 @@ Expo Go esté instalada, porque la build lleva el SDK adentro.
 
 ---
 
-## 13. Registro automático por ubicación (etapa nativa)
+## 13. Registro automático por ubicación (etapa nativa) — HECHO el 24/9/2026
+
+> **ESTÁ CONSTRUIDO.** Lo de abajo se escribió como plan y se deja como está
+> porque las razones siguen valiendo; lo que cambió es el tiempo verbal. Lo que
+> hay hoy, en dos archivos: `movil/src/llegadaDeFondo.ts` (el despertar con la
+> app cerrada: registra el día y anota la hora de llegada) y
+> `movil/src/VigilanteDeGimnasio.tsx` (con la app abierta: arranca y cierra la
+> sesión). Las reglas, `decidir()`, siguen en `nucleo/llegada.ts` y son las
+> mismas de la web. Detalle en `spec/estado.md`.
+>
+> **Lo único que falta es probarlo caminando hasta un gimnasio**, que es la
+> única forma que hay: en un navegador no existe ni la zona ni el despertar.
 
 El usuario guarda la ubicación de su gimnasio y el día se registra solo al llegar,
 sin abrir la app. La opción de registrar a mano se mantiene siempre: el automático
@@ -817,6 +828,22 @@ tres partes obligan a sacar el teléfono, desbloquearlo y apuntarle a un botón.
 Mientras tanto, en web se hizo lo que sí se podía: el `+` ocupa media pantalla y
 también está adentro de la pantalla del descanso, así que el bucle no obliga a
 salir y volver.
+
+### Lo que se adelantó el 24/9, y una corrección a lo de arriba
+
+**El módulo nativo ya viaja en la build** (`react-native-volume-manager`)
+aunque la función no esté escrita. Es lo único de §13f que no se puede mandar
+por el aire: con el módulo adentro, escribirla después es una actualización
+—escuchar el botón y sumar una serie, veinte líneas— y no una instalación.
+Fue parte de barrer la lista buscando todo lo que necesitara build, para que
+hubiera una sola.
+
+**Y una corrección a la promesa de arriba, encontrada al elegir el paquete:**
+*"con el teléfono en el bolsillo y sin mirar la pantalla"* **no se va a poder en
+iOS.** Los botones de volumen solo se pueden escuchar con la app ADELANTE; con
+la pantalla bloqueada, el sistema no los entrega a nadie. Lo que sí queda, que
+es el caso real del gimnasio: el teléfono apoyado en el banco con la app
+abierta, y sumar la serie sin apuntarle al `+`.
 
 ## 13g. La tarea de 2,5 segundos — anotada, no perseguida
 

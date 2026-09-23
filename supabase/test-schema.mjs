@@ -9008,6 +9008,130 @@ console.log('\n136. Actualizar sin reconstruir, y el fondo que no salta');
     /useLayoutEffect\(\(\) => \{\s*if \(!centrarDespues\.current\) return;/.test(pest), true);
 }
 
+console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
+{
+  const { readFileSync: leer137 } = await import('node:fs');
+  const { join: unir137, dirname: dir137 } = await import('node:path');
+  const { fileURLToPath: aRuta137 } = await import('node:url');
+  const R137 = unir137(dir137(aRuta137(import.meta.url)), '..');
+  const de137 = (...p) => leer137(unir137(R137, ...p), 'utf8');
+
+  // ---- LO QUE SOLO PUEDE TRAER UNA BUILD ----
+  const app137 = JSON.parse(de137('movil', 'app.json')).expo;
+  const fondoIOS = app137.ios?.infoPlist?.UIBackgroundModes ?? [];
+  // SIN ESTO NO HAY NADA. El permiso de ubicacion "siempre" se puede pedir,
+  // pero el sistema no despierta a la app sin el modo de fondo declarado — y
+  // es de lo unico que NO se puede arreglar por el aire: va en el Info.plist.
+  chequear('la app declara el fondo de ubicacion', fondoIOS.includes('location'), true);
+  // Y EL DE AUDIO SIGUE: es el aviso del descanso con la pantalla bloqueada
+  // (§13b). Estaba DOS VECES en la lista, que es como quedo al agregarlo a
+  // mano sobre lo que ya habia puesto el plugin.
+  chequear('sin repetir el de audio', fondoIOS.filter((m) => m === 'audio').length, 1);
+
+  const nombres137 = (app137.plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
+  chequear('esta el plugin de ubicacion', nombres137.includes('expo-location'), true);
+  chequear('y el de HealthKit', nombres137.includes('@kingstinct/react-native-healthkit'), true);
+  // EL ENTITLEMENT NO SE PUEDE AGREGAR POR EL AIRE: sin esto, cualquier
+  // llamada a HealthKit es una app que no abre.
+  const hk = (app137.plugins ?? []).find((p) => Array.isArray(p) && p[0] === '@kingstinct/react-native-healthkit');
+  chequear('con el texto de por que se leen los datos', typeof hk?.[1]?.NSHealthShareUsageDescription, 'string');
+  // ASCENT NO ESCRIBE EN HEALTH. Pedir el permiso de escritura sin usarlo es
+  // una fila de mas en la ventana y un dato mas que declarar en la tienda.
+  chequear('y sin pedir permiso de escritura', hk?.[1]?.NSHealthUpdateUsageDescription, false);
+
+  const dep137 = JSON.parse(de137('movil', 'package.json')).dependencies;
+  chequear('la libreria de HealthKit esta instalada', !!dep137['@kingstinct/react-native-healthkit'], true);
+  // EL BOTON DE VOLUMEN (§13f) NO ESTA ESCRITO todavia, pero el modulo nativo
+  // viaja en esta build A PROPOSITO: es lo unico de esa funcion que no se
+  // puede mandar por el aire, y sin el habria que reinstalar la app entera
+  // para una funcion que despues es puro JavaScript.
+  chequear('y el modulo del boton de volumen viaja para despues', !!dep137['react-native-volume-manager'], true);
+
+  // ---- QUE EL DIA ENTRE CON LA APP CERRADA ----
+  const ubi = de137('movil', 'src', 'plataforma', 'ubicacion.ts');
+  // EL GANCHO DE FONDO ES LO QUE ARREGLA EL CASO QUE IMPORTA. El otro gancho
+  // lo pone un componente al montarse, o sea que solo existe si la app ya
+  // estaba viva; cuando iOS levanta la app muerta no hay React y ese vale
+  // `null`. Con un solo gancho, el unico momento en que esto sirve de verdad
+  // era el unico que no hacia nada.
+  chequear('hay un gancho que sobrevive a la app cerrada', /export function alLlegarDeFondo/.test(ubi), true);
+  // SE ESPERA A QUE TERMINE: lo que devuelve la tarea es lo que iOS usa para
+  // saber que puede dormir a la app. Sin el await, la puede dormir antes de
+  // que el registro del dia salga a la red.
+  chequear('y la tarea lo espera antes de contestar', /await alLlegarDeFondoFn\?\.\(\)/.test(ubi), true);
+
+  const fondo137 = de137('movil', 'src', 'llegadaDeFondo.ts');
+  chequear('al llegar se registra el dia', /registrarPorSenal\(supabase, 'ubicacion'\)/.test(fondo137), true);
+  // LA HORA DE LLEGADA SE GUARDA aunque la sesion no arranque: §13 dice que el
+  // cronometro arranca a los siete minutos, y un despertar en segundo plano
+  // dura treinta segundos. Sin guardarla, la sesion diria la hora en que
+  // sacaste el telefono del bolsillo y la duracion saldria corta siempre.
+  chequear('y queda anotada la hora de llegada', /guardarVigilancia\(/.test(fondo137), true);
+  // SIN SESION NO SE PREGUNTA NADA: la zona sigue registrada despues de
+  // cerrar sesion hasta que alguien la suelte, y ese despertar sin usuario es
+  // normal, no un error.
+  chequear('sin cuenta abierta no se pide nada', /if \(!data\.session\) return;/.test(fondo137), true);
+  // EN EL CUERPO DEL MODULO Y NO EN UN EFECTO: en ese despertar no se dibuja
+  // nada, asi que lo unico que corre seguro es la evaluacion del bundle.
+  chequear('el gancho se pone al importar, no al montar', /^alLlegarDeFondo\(llegue\);$/m.test(fondo137), true);
+  chequear('y alguien lo importa al arrancar',
+    /import '\.\.\/src\/llegadaDeFondo';/.test(de137('movil', 'app', '_layout.tsx')), true);
+
+  // ---- EL VIGILANTE, CON LA APP ABIERTA ----
+  const vig = de137('movil', 'src', 'VigilanteDeGimnasio.tsx');
+  // LAS REGLAS NO SE REESCRIBEN: `decidir()` es de `nucleo/` y la decide igual
+  // en las dos apps. Una copia nativa de las mismas reglas es la forma segura
+  // de que dentro de un mes arranquen la sesion en momentos distintos.
+  chequear('el vigilante nativo usa las reglas compartidas', /from '@nucleo\/llegada'/.test(vig), true);
+  chequear('y registra la zona en el sistema', /ubicacion\.vigilarLlegada\(/.test(vig), true);
+  // FUERA DE UNA PANTALLA: montado adentro de Inicio solo miraria estando en
+  // esa pestaña, y llegar al gimnasio no es asunto de una pantalla.
+  chequear('y vive en la raiz, no en una pestaña',
+    /<VigilanteDeGimnasio \/>/.test(de137('movil', 'app', '_layout.tsx')), true);
+
+  // LA ZONA SOBREVIVE A CERRAR LA APP — para eso existe — asi que es lo unico
+  // que hay que soltar a mano. Sin esto, el telefono seguiria despertando a la
+  // app en el gimnasio de una cuenta que ya no esta.
+  chequear('se suelta la zona al salir de la cuenta',
+    /dejarDeVigilar\(\)/.test(de137('movil', 'src', 'ajustes', 'Cuenta.tsx')), true);
+  chequear('y al borrar el punto',
+    /dejarDeVigilar\(\)/.test(de137('movil', 'src', 'ajustes', 'Gimnasio.tsx')), true);
+
+  // ---- LO QUE DICE LA PANTALLA ----
+  const T137 = (await import('../nucleo/textos.ts')).T;
+  // EL TEXTO DECIA QUE NO SE PODIA. Mientras fue cierto estaba bien; ahora
+  // seria mentir al reves, y el que lee Ajustes decide si marca el punto.
+  chequear('ya no promete que falta', /pronto|todavia|todavía/i.test(T137.ajustes.gimnasioTechoNativo), false);
+  // PERO TAMPOCO PROMETE DE MAS: sin el permiso de "siempre" esto vuelve a ser
+  // lo de la web, y callarlo haria que "no me entro el dia" pareciera un bug.
+  chequear('y avisa del permiso que hace falta', /siempre/i.test(T137.ajustes.gimnasioTechoNativo), true);
+
+  // ---- APPLE HEALTH ----
+  const sal = de137('movil', 'src', 'plataforma', 'salud.ts');
+  // PREGUNTAR ANTES DE PEDIR EL PERMISO TIRA ABAJO LA APP. No devuelve vacio
+  // ni error: crashea. Es la unica forma de romper la app con esta libreria.
+  chequear('no se consulta Health sin haber preguntado antes', /if \(!puedoPreguntar\(\)\) return null;/.test(sal), true);
+  // EL DIA CORTA EN EL HUSO DEL USUARIO, como todo en la app. Con medianoche
+  // UTC, en Montevideo un entreno de las nueve de la noche cae en el dia
+  // siguiente y el dia se registraria corrido.
+  chequear('el dia de Health corta donde corta el dia de la racha', /deISO\(fecha\)/.test(sal), true);
+  // VACIO NO ES "NO ENTRENASTE": sin permiso Health devuelve lo mismo que un
+  // dia quieto. Decir `false` ahi seria afirmar algo que no sabemos.
+  chequear('una respuesta vacia se lee como "no se"', /if \(entrenos\.length === 0\) return null;/.test(sal), true);
+  // Y CORRER NO ES IR AL GIMNASIO: meter cualquier actividad haria que salir a
+  // correr marcara el dia de fuerza.
+  chequear('solo cuentan los entrenamientos de fuerza', /traditionalStrengthTraining/.test(sal), true);
+
+  // LOS DOS PUERTOS TIENEN QUE TENER LA MISMA FORMA. TypeScript ya lo obliga
+  // —el contrato vive en nucleo/—, pero lo que TypeScript no puede decir es
+  // que el hueco de la web conteste "no se" y no 0: las dos cosas compilan, y
+  // solo una es cierta.
+  const web137 = de137('src', 'plataforma', 'web', 'salud.ts');
+  chequear('el hueco de la web tambien contesta los pasos', /async pasosDe\(_fecha\)/.test(web137), true);
+  chequear('y contesta "no se", nunca 0', /async pasosDe\(_fecha\) \{\s*return null;/.test(web137), true);
+}
+
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

@@ -37,12 +37,39 @@ const TAREA = 'ascent-llegada-al-gimnasio';
 // `null` hasta que alguien vuelva a registrar. Ver el comentario de abajo.
 let alLlegar: (() => void) | null = null;
 
+/**
+ * LO QUE PASA CUANDO EL TELÉFONO DESPIERTA A LA APP MUERTA, que es el caso que
+ * hace que esta función exista (24/9).
+ *
+ * `alLlegar` lo pone un componente de React al montarse, así que solo existe
+ * si la app ya estaba viva. Y el caso que importa es justo el otro: llegás al
+ * gimnasio con la app cerrada, iOS la levanta en segundo plano unos segundos
+ * SIN dibujar nada, y ahí `alLlegar` está en `null`. Con un solo gancho, el
+ * único momento en que esto sirve de verdad era el único que no hacía nada.
+ *
+ * Este segundo gancho lo registra un MÓDULO al importarse —no un componente al
+ * montarse—, así que está puesto apenas el bundle se evalúa, que es lo primero
+ * que ocurre en ese despertar. Ver `src/llegadaDeFondo.ts`.
+ */
+let alLlegarDeFondoFn: (() => Promise<void>) | null = null;
+
+export function alLlegarDeFondo(fn: () => Promise<void>) {
+  alLlegarDeFondoFn = fn;
+}
+
 // `async` porque TaskManager espera una promesa: el sistema usa lo que
-// devuelve para saber cuándo puede dormir a la app de nuevo.
+// devuelve para saber cuándo puede dormir a la app de nuevo. Por eso el
+// `await` de abajo no es decorativo: sin él, iOS puede dormir la app antes de
+// que el registro del día salga a la red.
 TaskManager.defineTask(TAREA, async ({ data, error }) => {
   if (error) return;
   const evento = (data as { eventType?: Location.GeofencingEventType } | null)?.eventType;
-  if (evento === Location.GeofencingEventType.Enter) alLlegar?.();
+  if (evento !== Location.GeofencingEventType.Enter) return;
+  // Primero el de fondo, que es el que hace el trabajo y el único que existe
+  // con la app cerrada. El otro es un empujón para que el vigilante mire ya,
+  // y solo hay alguien escuchándolo si la app está viva.
+  await alLlegarDeFondoFn?.();
+  alLlegar?.();
 });
 
 export const ubicacionNativa: Ubicacion = {

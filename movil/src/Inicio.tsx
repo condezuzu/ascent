@@ -12,6 +12,9 @@ import type { Log, Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
 import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
+import { eventos } from '@compartido/eventos';
+import { DIA_CAMBIO } from '@compartido/gimnasio';
+import { CERRO_SOLA } from './VigilanteDeGimnasio';
 import Bloque from './Bloque';
 import Descanso from './Descanso';
 import RachaSalvada from './RachaSalvada';
@@ -176,6 +179,20 @@ export default function Inicio({
   const sesion = useSesion(() => {
     cargar();
   });
+
+  // EL DÍA QUE ENTRÓ SOLO AL LLEGAR AL GIMNASIO (24/9). Ese camino no pasa
+  // por `useSesion` —lo registra el vigilante, o el sistema con la app
+  // cerrada—, así que sin esto la racha seguía diciendo el número de ayer
+  // hasta que alguien recargara la pantalla a mano.
+  useEffect(() => eventos.escuchar(DIA_CAMBIO, () => cargar()), [cargar]);
+
+  // Y LA SESIÓN QUE CERRÓ LA SALIDA DEL GIMNASIO: el resumen tiene que
+  // aparecer igual que cuando la terminás con el botón. Quien sabe que se
+  // cerró es el vigilante, que no dibuja nada; el que sabe dibujarlo es este.
+  useEffect(
+    () => eventos.escuchar(CERRO_SOLA, (c) => setCierre(c as CierreDeSesion)),
+    []
+  );
 
   // LO QUE SE VE QUEDA ANOTADO PARA EL DIAGNÓSTICO (22/9). De las tres fuentes
   // del bug de las series —pantalla, teléfono, base— esta es la única que no

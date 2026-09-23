@@ -9,6 +9,13 @@ import Login from '../src/Login';
 import Onboarding from '../src/Onboarding';
 import FondoRaiz from '../src/FondoRaiz';
 import Raiz from '../src/Raiz';
+import VigilanteDeGimnasio from '../src/VigilanteDeGimnasio';
+// SOLO POR EL EFECTO DE IMPORTARLO, y tiene que estar acá arriba. Es lo que
+// deja puesto el gancho que corre cuando el teléfono despierta a la app al
+// llegar al gimnasio: en ese despertar no se dibuja nada, así que un
+// componente no alcanza — lo único que ocurre seguro es que el bundle se
+// evalúa. Ver `src/llegadaDeFondo.ts`.
+import '../src/llegadaDeFondo';
 import { sesionDesdeEnlace } from '../src/enlace';
 import { ProveedorDeSesion } from '../src/sesionDeLaApp';
 import { buscarAlArrancar } from '../src/actualizaciones';
@@ -141,6 +148,12 @@ export default function Layout() {
               Acá está detrás del stack entero, así que lo comparten las
               pestañas y lo que se empuje arriba, sin volver a montarse. */}
           <FondoRaiz />
+          {/* EL QUE MIRA SI LLEGASTE AL GIMNASIO (§13), fuera del stack y sin
+              dibujar nada. Va acá por lo mismo que el motor: llegar al
+              gimnasio no es asunto de una pantalla, y montado adentro de
+              Inicio solo miraría estando en esa pestaña. Con sesión y nada
+              más — sin usuario no hay punto que vigilar. */}
+          <VigilanteDeGimnasio />
           {/* EL TEMA DEL NAVEGADOR, CON EL FONDO TRANSPARENTE. Cada pantalla
               del stack nace con el gris claro del sistema (#f2f2f2) debajo, y
               eso tapa el motor: entrar a /yo dejaba la pantalla BLANCA con el

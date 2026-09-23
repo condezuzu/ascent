@@ -192,3 +192,47 @@ llegó".
 - Una actualización **no arregla una app que no abre**: si el JS nuevo tira al
   arrancar, `expo-updates` vuelve al anterior, pero conviene no averiguarlo en
   el gimnasio.
+
+# La tanda nativa del 24/9: una sola build, y qué se metió adentro
+
+**La regla que la ordenó, puesta por el humano:** *"No quiero descubrir en una
+semana que falta otra"*. O sea: el trabajo no era hacer dos funciones, era
+**barrer la lista entera buscando todo lo que no puede viajar por el aire** y
+subirlo al mismo avión. Lo que quede afuera cuesta otra instalación.
+
+## Lo que entró
+
+| Qué | Por qué necesitaba build |
+|---|---|
+| **El gimnasio por ubicación** (§13) | `UIBackgroundModes: location` va en el `Info.plist`, y sin él el sistema no despierta a la app |
+| **Apple Health** (§13c) | El `entitlement` de HealthKit y su texto de permiso; además es un módulo nativo (`@kingstinct/react-native-healthkit` + `react-native-nitro-modules`) |
+| **El botón de volumen** (§13f) | *La función no está escrita.* Lo que viaja es solo el módulo nativo (`react-native-volume-manager`) |
+
+**Por qué el módulo del volumen viaja sin su función.** Porque es la única
+parte de §13f que no se puede mandar por el aire. Con el módulo adentro, el día
+que se escriba —que es puro JavaScript: escuchar el botón y sumar una serie—
+sale como actualización y no como instalación. Sin él, una función de veinte
+líneas obligaría a reinstalar la app entera.
+
+**Y una advertencia para cuando se escriba:** en iOS el botón de volumen solo
+se puede escuchar **con la app adelante**. §13f lo imagina "con el teléfono en
+el bolsillo" y eso **no se va a poder**: lo que sí se puede es no tener que
+apuntarle al `+` con la app abierta en el banco, que es el caso real.
+
+## Lo que quedó afuera, y por qué
+
+**La Live Activity del descanso** (§13d, "picture in picture del cronómetro").
+Es el tercer pendiente nativo de la lista y **no entró a propósito**: no es un
+paquete que se instala, es un **target de widget** con código Swift propio. Eso
+no se puede compilar ni mirar desde acá, así que iría a ciegas — y si sale mal,
+la que se rompe es la build que trae las otras dos.
+
+Va a necesitar su propia build **igual**, se escriba hoy o en un mes. Lo que se
+puede hacer sin costo para quien instala es iterarla contra EAS hasta que salga
+verde, y recién ahí pasarla.
+
+## Todo lo demás de la lista es JavaScript
+
+El recorrido de primera vez, DOTS y la pantalla de marcas, la racha al costado,
+la barra de rango, la animación del Álbum, "ver la guía" y los estados de borde
+de Inicio: **los siete salen por el aire**, sin instalar nada.

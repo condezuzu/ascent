@@ -476,9 +476,14 @@ export const T = {
     gimnasioComo: 'Márcalo parado en la puerta de tu gimnasio.',
     gimnasioParaQue: 'Después, abrir la app estando ahí registra el día sin que aprietes nada.',
     gimnasioTecho: 'Por ahora hay que abrir la app. En la del teléfono va a entrar solo.',
-    // El mismo techo, dicho desde adentro del teléfono: acá "la del teléfono"
-    // ya es esta, y lo que falta es el permiso de segundo plano.
-    gimnasioTechoNativo: 'Hoy entra al abrir la app estando ahí. Con la app cerrada, pronto.',
+    // LO QUE LA APP DEL TELÉFONO SÍ HACE desde el 24/9, y que la web no puede:
+    // el día entra con la app cerrada. Es la promesa de §13 y por fin es
+    // cierta, así que se dice sin rodeos.
+    gimnasioParaQueNativo: 'Después, el día entra solo al llegar, aunque no abras la app.',
+    // EL TECHO QUE QUEDA, dicho antes de que se note: el permiso de "siempre"
+    // se pide aparte y se puede negar, y ahí esto vuelve a ser lo de la web.
+    // Callarlo haría que "no me entró el día" pareciera un error de la app.
+    gimnasioTechoNativo: 'Necesita el permiso de ubicación siempre. Sin él, entra al abrir la app estando ahí.',
     gimnasioListo: (metros: number) => `Listo, con ${metros} m de precisión.`,
     gimnasioPuesto: 'Ya está marcado. Nadie más lo ve: no se comparte con tus amigos.',
     gimnasioSinGps: 'Este teléfono no da la ubicación.',
@@ -489,6 +494,26 @@ export const T = {
     // hasta semanas después, cuando los días entran solos desde tu casa.
     gimnasioImpreciso: (metros: number) =>
       `Te ubica con ${metros} m de error. Sal a la vereda y prueba de nuevo.`,
+
+    // LA SALUD DEL TELÉFONO (§13c). Solo existe en la app del teléfono: el
+    // navegador no ve nada de esto, así que en la web esta sección no está.
+    salud: 'Salud del teléfono',
+    saludConectar: 'Conectar con Salud',
+    saludConectando: 'Abriendo…',
+    // QUÉ GANA QUIEN LO PRENDE, en una línea. No se promete que registre el
+    // día solo: promete que un día que el teléfono ya sabe no se pierda.
+    saludPara: 'Si tu reloj ya registra el entrenamiento, ese día no se pierde.',
+    // NUNCA SE DICE "conectado y listo": iOS no cuenta qué concediste al
+    // leer, así que afirmarlo sería inventar. Se manda a donde se ve.
+    saludListo: 'Listo. En Salud → Ascent puedes ver y cambiar qué lee.',
+    saludNoHay: 'Este teléfono no tiene Salud.',
+    saludPasos: (pasos: string) => `Hoy llevas ${pasos} pasos.`,
+    // "No sé" y no "cero": sin permiso Health contesta igual que un día
+    // quieto, y decir 0 sería afirmar algo que no sabemos.
+    saludSinPasos: 'Todavía no hay pasos de hoy.',
+    // LOS PASOS NO SON ENTRENAR, y hay que decirlo donde se muestran: un día
+    // de caminata tiene más pasos que uno de fuerza. Se ven, no deciden.
+    saludPasosNota: 'Los pasos se muestran, no registran el día: caminar no es entrenar.',
 
     // EL FONDO. El motor cuesta tres segundos de arranque, medidos: se puede
     // apagar. No dice "gráficos" ni "calidad": dice qué es y qué cuesta.

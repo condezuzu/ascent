@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { borrarPerfilCache } from '@compartido/cache';
+import { plataforma } from '@plataforma';
 import { eliminarCuenta } from '@compartido/cuenta';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
@@ -46,6 +47,11 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
 
   async function salir() {
     await borrarPerfilCache(); // que la próxima cuenta no vea la racha de esta
+    // Y SE SUELTA LA ZONA DEL GIMNASIO (24/9). Es lo único de esta app que
+    // sigue andando con la app cerrada, así que es lo único que no se va solo
+    // al salir: sin esto, el teléfono seguiría despertando a la app en el
+    // gimnasio de una cuenta que ya no está, con el punto del dueño anterior.
+    await plataforma.ubicacion.dejarDeVigilar();
     await supabase.auth.signOut();
     alSalir();
   }
@@ -59,6 +65,7 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
       return setError(r.error);
     }
     await borrarPerfilCache();
+    await plataforma.ubicacion.dejarDeVigilar();
     await supabase.auth.signOut();
     alSalir();
   }

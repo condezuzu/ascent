@@ -48,6 +48,30 @@ schema de la base real. El flujo es: escribir la migración → probarla con
 
 ## Hecho y funcionando
 
+- **EL GIMNASIO POR UBICACIÓN, EN EL TELÉFONO (24/9).** La función central de
+  Ascent, que hasta acá solo existía a medias: el puerto sabía registrar la
+  zona en el sistema operativo desde la migración, pero **no lo llamaba
+  nadie**, así que la app nativa hacía lo mismo que la web —entrar si la abrías
+  estando ahí— teniendo a mano lo único que la web no tiene.
+  - Ahora son **dos caminos y los dos hacen falta**. Con la app cerrada, iOS la
+    despierta al entrar en la zona y `movil/src/llegadaDeFondo.ts` **registra
+    el día** y **anota la hora de llegada**; ese despertar dura unos segundos y
+    no dibuja nada, así que va en el cuerpo de un módulo, no en un componente.
+    Con la app abierta, `movil/src/VigilanteDeGimnasio.tsx` arranca y cierra la
+    **sesión**, que necesita los siete minutos de espera de §13.
+  - **La sesión queda fechada en la llegada, no en el momento en que sacaste el
+    teléfono del bolsillo**: esa es la hora que dejó anotada el despertar.
+  - Las reglas no se reescribieron: `decidir()` sigue siendo el de
+    `nucleo/llegada.ts`, el mismo que usa la web.
+  - **El techo que queda** y que Ajustes dice: hace falta el permiso de
+    ubicación **siempre**. Sin él vuelve a ser lo de la web, que es el piso con
+    el que §13 se diseñó.
+- **Apple Health (24/9)**: `movil/src/plataforma/salud.ts` lee entrenamientos y
+  pasos, y Ajustes tiene su sección. **Los entrenamientos de fuerza** son la
+  señal honesta de "fui al gimnasio"; **los pasos se muestran y no deciden
+  nada** (un día de caminata tiene más pasos que uno de fuerza). Todo contesta
+  `null` para "no sé": sin permiso, HealthKit devuelve lo mismo que un día
+  quieto, y decir "no entrenaste" ahí sería inventar.
 - **Racha, rangos y pérdida**: ocho rangos de diez días, planeta del día en el
   rango 4, pérdida de −10 una vez por corte, piso de misericordia, corrección
   manual por calendario, recálculo sin rebote.
@@ -162,17 +186,15 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   existir hasta que exista el recorrido). El orden de lo que queda, fijado por
   el humano el 22/9:
 
-  1. **EL GIMNASIO POR UBICACIÓN.** Subió al primer lugar el 23/9, por pedido
-     del humano y con razón: es la función central de Ascent y en la app no
-     está. Hoy vas al gimnasio y el día no entra solo. El reparo de que Apple
-     lo mira con lupa es de PUBLICAR en la tienda, no de TestFlight interno,
-     que no pasa por revisión.
+  1. ~~**EL GIMNASIO POR UBICACIÓN.**~~ **Hecho el 24/9** (ver abajo).
   2. **El recorrido de primera vez.**
   3. **DOTS + pantalla de marcas.**
-  4. **Apple Health** (los pasos).
+  4. ~~**Apple Health** (los pasos).~~ **Hecho el 24/9** (ver abajo).
   5. **Lo que falta portar**: la racha al costado, la barra de rango, la
      animación del Álbum, "ver la guía" y los estados de borde de Inicio.
-  6. **Picture in picture del cronómetro.**
+  6. **Picture in picture del cronómetro.** Es el ÚNICO pendiente que sigue
+     necesitando una build (§13d: es un target de widget con Swift propio, no
+     un paquete). Todo lo demás de esta lista sale por el aire.
 
   El perfil —`/yo`, `/perfil/[id]` y las filas de Ranking tocables— quedó hecho
   el 22/9 con Expo Router.
@@ -216,6 +238,16 @@ schema de la base real. El flujo es: escribir la migración → probarla con
 1. **Probar en un teléfono de verdad** lo que el panel no puede: que vibre al
    terminar el descanso (Android), que la pantalla no se apague mientras corre,
    y que el aviso llegue con la app adelante.
+   - **Y desde el 24/9, lo más importante de esta lista: CAMINAR HASTA EL
+     GIMNASIO.** El geofencing no se puede probar de ninguna otra forma —en un
+     navegador no hay zona, ni despertar, ni app cerrada— así que todo lo que
+     pasa ahí queda anotado en la bitácora (Ajustes → diagnóstico) en lugar de
+     en una consola: a qué distancia te vio, con cuánto error, si registró el
+     día, cuánto falta para que arranque la sesión. Lo que hay que mirar es
+     **que el día entre con el teléfono en el bolsillo**, y después que la
+     sesión diga la hora de llegada y no la de cuando abriste la app.
+   - Apple Health igual: HealthKit no existe fuera de un iPhone. En Ajustes →
+     Salud del teléfono, conectar y ver si aparecen los pasos de hoy.
 2. **Gente sugerida**: sin usuarios no tiene a quién sugerir. Espera.
 3. **Traducir al inglés.** El texto ya está todo en `src/textos.ts`; el trabajo
    es agregar `en` con la misma forma, y el tipo de uno obliga al otro a estar

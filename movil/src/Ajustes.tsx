@@ -12,6 +12,7 @@ import { plataforma } from '@plataforma';
 import { duracionCorta, duracionValida, guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
 import Avatar from './Avatar';
 import Gimnasio from './ajustes/Gimnasio';
+import Salud from './ajustes/Salud';
 import Identidad from './ajustes/Identidad';
 import Fondo from './ajustes/Fondo';
 import ComoSeCompara from './ajustes/ComoSeCompara';
@@ -109,6 +110,11 @@ export default function Ajustes({
       {/* EL GIMNASIO VA PRIMERO, igual que en la web: es lo que diferencia a
           la app, y en una lista de interruptores al fondo no lo marca nadie. */}
       <Gimnasio perfil={perfil} alCambiar={alCambiar} />
+
+      {/* Y LA SALUD DEL TELÉFONO JUSTO DEBAJO: son las dos formas de que un
+          día entre sin que aprietes nada, y leerlas juntas se entiende. La
+          web no tiene esta sección porque el navegador no ve nada de esto. */}
+      <Salud />
 
       <Text style={estilos.seccion}>{T.ajustes.diasDescanso}</Text>
       <View style={estilos.fila}>
