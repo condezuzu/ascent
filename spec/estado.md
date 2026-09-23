@@ -205,8 +205,39 @@ schema de la base real. El flujo es: escribir la migración → probarla con
      `eas build` —el widget es otro bundle id y necesita su propio perfil de
      aprovisionamiento, igual que HealthKit—. Detalle en `movil/EAS.md`.
 
-  **La lista quedó vacía salvo el 6**, y el 6 no espera código: espera a
-  Apple.
+  **Los seis están hechos.** El 6 se instaló el 23/9 en la build `a4aaf8d4`,
+  y con eso `live-activity` se mergeó a `main` y la rama se borró.
+
+### Lo que falta de la nativa contra la web (barrido del 23/9)
+
+Salió de comparar qué textos usa cada app: si la web usa un texto y la
+nativa no, ahí hay algo que no está portado. Es un método tosco y encontró
+cosas que el inventario por pantallas no había visto — entre ellas el
+diagnóstico, que hacía falta el mismo día.
+
+- ~~**El diagnóstico del gimnasio.**~~ **Hecho el 23/9.** Era el más urgente
+  y no estaba en ninguna lista: la bitácora del vigilante se escribía y no
+  había forma de leerla desde el teléfono, o sea que la función central de la
+  app se probaba a ciegas.
+- ~~**La subida de rango.**~~ **Hecha el 23/9.** Era un agujero: el evento se
+  emitía y no lo escuchaba nadie.
+- **El botón de volumen suma una serie** (§13f). El módulo nativo ya viaja en
+  la build desde el 22/9, así que **esto ya es puro JavaScript**. Ojo con la
+  promesa de la spec: en iOS solo se escucha con la app adelante.
+- **Retos entre amigos.** No existen en la nativa (18 textos sin usar). Es la
+  pieza social más grande que falta.
+- **Insistir con el punto del gimnasio** justo después de registrar el día —
+  el único momento en que es probable que la persona esté parada ahí. La web
+  lo hace; la nativa solo recuerda mientras no esté marcado.
+- **Cambiar la contraseña desde adentro** (12 textos). Hoy la nativa lo manda
+  por correo, que es el camino de "me la olvidé". Puede quedar así.
+- **El recorte de la foto de perfil** (8 textos). La nativa usa el recorte del
+  selector de fotos del sistema.
+- **La bienvenida cinematográfica** (12 textos). NO va: la reemplazó el
+  recorrido a propósito.
+
+Lo de `nav` que aparece en ese barrido es ruido: la nativa lee `T.nav[p]` con
+índice, así que el barrido no lo ve.
 
   El perfil —`/yo`, `/perfil/[id]` y las filas de Ranking tocables— quedó hecho
   el 22/9 con Expo Router.
