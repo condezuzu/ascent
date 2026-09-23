@@ -8,12 +8,11 @@ import { hapticaNativa } from './haptica';
 import { pantallaNativa } from './pantalla';
 import { saludNativa } from './salud';
 import { ubicacionNativa } from './ubicacion';
-import { volumenNativo } from './volumen';
 
 /**
- * LOS ONCE PUERTOS, del lado nativo.
+ * LOS DIEZ PUERTOS, del lado nativo.
  *
- * El espejo de `src/plataforma/index.ts`: la misma forma, las mismas once
+ * El espejo de `src/plataforma/index.ts`: la misma forma, las mismas diez
  * llaves, otra implementación. El contrato vive en `nucleo/plataforma.ts`, que
  * es de las dos apps y de ninguna, así que TypeScript no deja que una de las
  * dos se olvide de un puerto o le cambie la firma.
@@ -30,8 +29,6 @@ import { volumenNativo } from './volumen';
  * - `almacenamiento`: de `localStorage` a AsyncStorage — el único que ya era
  *   asíncrono en web, justamente para que este día no cambiara ninguna firma.
  * - `salud`: sigue vacío, y ahora por otro motivo (ver `salud.ts`).
- * - `volumen`: de "el navegador no ve las teclas físicas" a sumar una serie
- *   apretando una tecla que ya está ahí, sin apuntarle a nada (§13f).
  * - `ciclo`, `pantalla`, `efimero`: lo mismo con otras palabras.
  */
 export const plataformaNativa: Plataforma = {
@@ -41,7 +38,6 @@ export const plataformaNativa: Plataforma = {
   ubicacion: ubicacionNativa,
   audio: audioNativo,
   salud: saludNativa,
-  volumen: volumenNativo,
   avisos: avisosNativos,
   enVivo: enVivoNativo,
   haptica: hapticaNativa,

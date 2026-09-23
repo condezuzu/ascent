@@ -14,7 +14,6 @@ import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
 import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO, SUBIO_RANGO } from '@compartido/gimnasio';
-import { useTeclasDeVolumen } from './teclasDeVolumen';
 import { FilaDeMedallas } from './Medallas';
 import { useRecargarAlVolver } from './irAPestana';
 import { useMisMedallas } from '@compartido/misMedallas';
@@ -293,12 +292,6 @@ export default function Inicio({
   // aparece hasta reiniciar la app.
   const medallas = useMisMedallas(supabase, cargado?.perfil.id, cargado?.perfil.sexo, vueltas);
 
-  // LAS TECLAS DE VOLUMEN SUMAN UNA SERIE (§13f). Va ACÁ ARRIBA, antes de los
-  // retornos tempranos: un hook que se llama solo en algunas ramas es un hook
-  // que un día no se llama, y React cuenta los hooks por posición. Adentro se
-  // decide si escucha o no.
-  useTeclasDeVolumen(sesion.estado.corriendo, sesion.serieHecha);
-
   if (estado.tipo === 'cargando') {
     return (
       <View style={estilos.centrado}>
@@ -541,13 +534,7 @@ export default function Inicio({
           {/* SE CIERRA SOLO CON EL PRIMER `+`: para entonces ya se entendió qué
               hace, y la pregunta de marca —que sale después de un `+`— nunca lo
               encuentra abierto. */}
-          {/* El segundo renglón se nombra SOLO donde el atajo existe: en web
-              el mismo globo prometería una tecla que el navegador no ve. */}
-          <GloboPrimeraVez
-            cual="series"
-            cerrarCuando={sesion.estado.series > 0}
-            segundo={plataforma.volumen.disponible() ? T.inicio.globoSeriesTeclas : undefined}
-          >
+          <GloboPrimeraVez cual="series" cerrarCuando={sesion.estado.series > 0}>
             {T.inicio.globoSeries}
           </GloboPrimeraVez>
           {/* El reloj ya está arriba, en el chip: acá manda el bloque, que es

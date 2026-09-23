@@ -214,20 +214,7 @@ export type CicloDeVida = {
   alCambiar(escuchar: (visible: boolean) => void): () => void;
 };
 
-/**
- * LAS TECLAS DE VOLUMEN, COMO ENTRADA (§13f).
- *
- * En web no existe —el navegador no ve las teclas físicas del aparato— y por
- * eso el puerto contesta `disponible(): false` y no escucha nada. No es un
- * hueco temporal como el de Health: no hay API que llegue después.
- *
- * `escucharTeclas` devuelve cómo dejar de escuchar, y ese mismo cierre es el
- * que devuelve el volumen del teléfono a como estaba.
- */
-export type Volumen = {
-  disponible(): boolean;
-  escucharTeclas(alApretar: () => void): () => void;
-};
+
 
 export type Plataforma = {
   /** Sobrevive a cerrar la app. En web, `localStorage`. */
@@ -248,7 +235,6 @@ export type Plataforma = {
   ubicacion: Ubicacion;
   audio: Audio;
   salud: Salud;
-  volumen: Volumen;
   avisos: Avisos;
   enVivo: EnVivo;
   haptica: Haptica;

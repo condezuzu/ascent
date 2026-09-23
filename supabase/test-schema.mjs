@@ -4233,12 +4233,11 @@ console.log('\n60. Los dos lados de plataforma/');
   // Las llaves del tipo `Plataforma`, que es lo ultimo del archivo.
   const bloque = contrato.slice(contrato.indexOf('export type Plataforma = {'));
   const puertos = [...sinComentarios(bloque).matchAll(/^  (\w+):/gm)].map((m) => m[1]).sort();
-  // ONCE DESDE EL 23/9: entro `volumen`, las teclas que suman una serie
-  // (§13f). Antes eran diez, desde que entro `enVivo` con la cuenta del
-  // descanso en la pantalla bloqueada. El numero esta escrito a proposito y no
-  // se calcula: lo que este chequeo cuida es que un puerto NUEVO obligue a
-  // mirar las dos implementaciones, no solo la que uno estaba escribiendo.
-  chequear('el contrato tiene once puertos', puertos.length, 11);
+  // DIEZ OTRA VEZ (25/9): se fue `volumen`, las teclas que sumaban una serie.
+  // Fueron once exactamente dos dias. El numero esta escrito a proposito y no
+  // se calcula: lo que este chequeo cuida es que un puerto que entra O QUE SALE
+  // obligue a mirar las dos implementaciones, no solo la que uno tenia abierta.
+  chequear('el contrato tiene diez puertos', puertos.length, 10);
 
   const llaves = (ruta) => {
     const codigo = sinComentarios(leerArch(ruta, 'utf8'));
@@ -9092,11 +9091,14 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
 
   const dep137 = JSON.parse(de137('movil', 'package.json')).dependencies;
   chequear('la libreria de HealthKit esta instalada', !!dep137['@kingstinct/react-native-healthkit'], true);
-  // EL BOTON DE VOLUMEN (§13f) NO ESTA ESCRITO todavia, pero el modulo nativo
-  // viaja en esta build A PROPOSITO: es lo unico de esa funcion que no se
-  // puede mandar por el aire, y sin el habria que reinstalar la app entera
-  // para una funcion que despues es puro JavaScript.
-  chequear('y el modulo del boton de volumen viaja para despues', !!dep137['react-native-volume-manager'], true);
+  // EL MODULO DEL BOTON DE VOLUMEN SIGUE INSTALADO Y YA NO LO USA NADIE, y es
+  // a proposito por dos dias: sacarlo de package.json cambia la HUELLA de la
+  // build, y con la huella cambiada ninguna actualizacion por el aire le llega
+  // al telefono que ya esta instalado. La funcion se apago en JavaScript —que
+  // es lo que viaja hoy— y la dependencia se va con la build de la tienda.
+  chequear('el modulo del volumen sigue instalado, sin usarse', !!dep137['react-native-volume-manager'], true);
+  chequear('y ya no lo importa nadie',
+    /react-native-volume-manager/.test(de137('movil', 'src', 'plataforma', 'index.ts')), false);
 
   // ---- QUE EL DIA ENTRE CON LA APP CERRADA ----
   const ubi = de137('movil', 'src', 'plataforma', 'ubicacion.ts');
@@ -9814,70 +9816,42 @@ console.log('\n144. El boton de volumen, y la insistencia con el punto del gimna
   const { join: unir144 } = await import('node:path');
   const R144 = unir144(import.meta.dirname, '..');
   const de144 = (...p) => leer144(unir144(R144, ...p), 'utf8');
+  const fs144 = await import('node:fs');
   const sinComentarios144 = (t) =>
     t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
 
-  // ---- EL PUERTO NUEVO, EN LAS DOS APPS ----
+  // ---- EL BOTON DE VOLUMEN SE FUE ENTERO (25/9) ----
   //
-  // El contrato vive en el nucleo justamente para que una de las dos no se
-  // pueda olvidar. Si esto compila, las dos lo tienen.
+  // Existio desde el 24/9: con la sesion corriendo, la app escuchaba el
+  // VOLUMEN DEL SISTEMA —iOS no entrega las teclas— y cada movimiento sumaba
+  // una serie y devolvia el volumen a donde estaba.
+  //
+  // POR QUE SE SACA, en las palabras del pedido: "No puedo subir ni bajar el
+  // volumen de la musica mientras entreno". Y es exactamente lo que hacia,
+  // por diseno: para que las dos teclas sumaran, el volumen tenia que quedar
+  // clavado. La funcion y el problema eran la misma linea de codigo, asi que
+  // no habia arreglo posible — o suma series, o deja mover el volumen.
+  //
+  // SE VA EL PUERTO ENTERO y no solo la llamada. Un puerto que nadie
+  // implementa es una firma esperando que alguien la vuelva a enchufar.
   const plat144 = de144('nucleo', 'plataforma.ts');
-  chequear('el contrato tiene el puerto del volumen', /volumen: Volumen;/.test(plat144), true);
-  chequear('con como escuchar las teclas', /escucharTeclas\(alApretar/.test(plat144), true);
-  // EN WEB NO EXISTE Y NO VA A EXISTIR: el navegador no ve las teclas fisicas.
-  // No es un hueco que llene una API futura, como el de Health.
-  const volWeb144 = sinComentarios144(de144('src', 'plataforma', 'web', 'volumen.ts'));
-  chequear('la web dice que no esta disponible', /disponible\(\) \{\s*return false;/.test(volWeb144), true);
-
-  // ---- LO QUE MUERDE DE ESCUCHAR EL VOLUMEN ----
-  //
-  // iOS no da las teclas: da el volumen del sistema. De ahi salen las tres
-  // trampas, y las tres estan resueltas en el mismo archivo.
-  const vol144 = sinComentarios144(de144('movil', 'src', 'plataforma', 'volumen.ts'));
-  chequear('la nativa escucha el volumen', /addVolumeListener/.test(vol144), true);
-  // 1. HAY QUE DEJARLE LUGAR PARA LOS DOS LADOS: con el volumen en 0 o en 1,
-  //    una de las dos teclas no cambia nada y el sistema no avisa nada.
-  chequear('se corre del extremo para que las dos teclas sirvan',
-    /REFUGIO_ABAJO/.test(vol144) && /REFUGIO_ARRIBA/.test(vol144), true);
-  // 2. VOLVER A PONERLO GENERA OTRO AVISO, que es nuestro. Sin filtrarlo, cada
-  //    serie sumaria dos.
-  chequear('y se ignora el aviso que genera el propio setVolume',
-    /Math\.abs\(e\.volume - parado\) < MINIMO/.test(vol144), true);
-  // 3. EL CARTELITO DEL SISTEMA TAPA LA PANTALLA doce veces por sesion.
-  chequear('el cartel de volumen del sistema se apaga',
-    /showNativeVolumeUI\(\{ enabled: false \}\)/.test(vol144), true);
-  // Y AL SALIR SE DEJA TODO COMO ESTABA: el volumen del telefono es de la
-  // persona, no nuestro.
-  chequear('y al salir se devuelve el volumen original',
-    /if \(original !== null\) setVolume\(original/.test(vol144), true);
-  chequear('y el cartel se vuelve a prender',
-    /showNativeVolumeUI\(\{ enabled: true \}\)/.test(vol144), true);
-
-  // ---- SOLO MIENTRAS DURA LA SESION ----
-  //
-  // Fuera de la sesion no hay ninguna serie que sumar, y quedarse con las
-  // teclas tomadas seria romperle el telefono a la persona para nada.
-  const tec144 = sinComentarios144(de144('movil', 'src', 'teclasDeVolumen.ts'));
-  chequear('solo se escucha con la sesion corriendo', /if \(!corriendo/.test(tec144), true);
-  // LA ACCION VIAJA EN UNA REF: `serieHecha` es otra funcion en cada dibujo, y
-  // como dependencia desarmaria y rearmaria la escucha en CADA serie sumada.
-  chequear('la accion va en una ref, no en las dependencias',
-    /\}, \[corriendo\]\);/.test(tec144), true);
+  chequear('el contrato ya no tiene el puerto del volumen', /volumen: Volumen;/.test(plat144), false);
+  chequear('ni el tipo', /export type Volumen/.test(plat144), false);
+  for (const f of [
+    ['movil', 'src', 'plataforma', 'volumen.ts'],
+    ['movil', 'src', 'teclasDeVolumen.ts'],
+    ['src', 'plataforma', 'web', 'volumen.ts'],
+  ]) {
+    chequear('ya no existe ' + f.join('/'), fs144.existsSync(unir144(R144, ...f)), false);
+  }
   const ini144 = sinComentarios144(de144('movil', 'src', 'Inicio.tsx'));
-  chequear('Inicio lo engancha', /useTeclasDeVolumen\(sesion\.estado\.corriendo, sesion\.serieHecha\)/.test(ini144), true);
-
-  // ---- SE CUENTA UNA VEZ, Y NO EN AJUSTES ----
-  //
-  // Ajustes acaba de perder dos botones por tener demasiados; sumar uno seria
-  // ir para atras. Se dice en el globo de la primera sesion, donde ya se
-  // explica el `+`, y SOLO donde el atajo existe.
+  chequear('Inicio no lo engancha', /useTeclasDeVolumen/.test(ini144), false);
+  // NI LO NOMBRA EL GLOBO de la primera sesion, que era donde se contaba.
   const T144 = (await import('../nucleo/textos.ts')).T;
-  chequear('el globo nombra las teclas de volumen',
-    /teclas de volumen/i.test(T144.inicio.globoSeriesTeclas), true);
-  chequear('y el de siempre no las nombra',
+  chequear('el globo de las series no nombra el volumen',
     /volumen/i.test(T144.inicio.globoSeries), false);
-  chequear('el segundo renglon solo va donde el atajo existe',
-    /plataforma\.volumen\.disponible\(\) \? T\.inicio\.globoSeriesTeclas/.test(ini144), true);
+  chequear('y el segundo renglon que existia para eso tampoco esta',
+    T144.inicio.globoSeriesTeclas, undefined);
 
   // ---- INSISTIR CON EL PUNTO DEL GIMNASIO ----
   const INS = await import('../nucleo/insistirGimnasio.ts');

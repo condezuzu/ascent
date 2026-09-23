@@ -243,7 +243,6 @@ export const T = {
     // no metido en la frase de arriba: esa ya explicaba el +, y sumarle el
     // atajo adentro la volvía un párrafo. Un globo aparte sería un segundo
     // cartel que sacarse de encima.
-    globoSeriesTeclas: 'Con la app abierta, las teclas de volumen también suman.',
     // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
     // error de la app. Con una línea deja de serlo.
     sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',

@@ -22,18 +22,10 @@ import { C, conAlfa } from './colores';
 export default function GloboPrimeraVez({
   cual,
   children,
-  segundo,
   cerrarCuando = false,
 }: {
   cual: Globo;
   children: string;
-  /**
-   * Un segundo renglón, para lo que no es lo mismo en todos los aparatos. Hoy
-   * lo usa el de las series: las teclas de volumen existen en el teléfono y no
-   * en un navegador. Aparte y no pegado a la primera frase, que ya decía todo
-   * lo que tenía que decir.
-   */
-  segundo?: string;
   /**
    * Se cierra solo —y queda visto— cuando esto pasa a `true`: la cosa que
    * explica ya se usó. El de las series se va con el primer `+` (19/9).
@@ -89,7 +81,6 @@ export default function GloboPrimeraVez({
     <Animated.View style={[estilos.globo, { opacity: opacidad }]}>
       <View style={estilos.renglones}>
         <Text style={estilos.texto}>{children}</Text>
-        {segundo ? <Text style={[estilos.texto, estilos.segundo]}>{segundo}</Text> : null}
       </View>
       <Pressable onPress={cerrar} hitSlop={12} accessibilityLabel={T.general.entendido}>
         {/* Una cruz de dos rayas, sin SVG: son dos vistas rotadas y se dibuja
@@ -121,7 +112,6 @@ const estilos = StyleSheet.create({
   renglones: { flex: 1, gap: 6 },
   texto: { color: C.sub, fontSize: 13, lineHeight: 18 },
   // Más apagado: es un extra, no la explicación.
-  segundo: { color: C.apagado },
   cruz: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
   raya: { position: 'absolute', width: 14, height: 1.6, borderRadius: 1, backgroundColor: C.apagado },
 });
