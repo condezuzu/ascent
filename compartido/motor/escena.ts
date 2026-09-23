@@ -25,6 +25,7 @@ import { paletaDe } from '@nucleo/paletas';
 import { marca, medir } from '@compartido/medir';
 import { ALTURA, alturaDelPulso, siguePulsando } from '@nucleo/pulso';
 import { debeDibujar } from '@nucleo/quietud';
+import { VIAJE_DE_ESQUINA_MS } from '@nucleo/animacion';
 import { plataforma } from '@plataforma';
 import { nivelDeNoche } from '@nucleo/noche';
 
@@ -44,7 +45,7 @@ export type OpcionesFondo = {
   // objeto. Ver `lib/atmosfera.ts` y FRAGMENT_PRESAGIO.
   presagio?: boolean;
   // posición del cuerpo: se recorta por una esquina, nunca centrado
-  esquina?: 'abajo-derecha' | 'arriba-derecha' | 'centro';
+  esquina?: Esquina;
   animar?: boolean; // false => un solo frame estático (reduced motion / equipos lentos)
   estilo?: Estilo;
   /** Fuerza el nivel de la cara nocturna. Solo la galeria lo usa. */
@@ -473,6 +474,9 @@ function crearPolvo(vacio: boolean): THREE.Points {
  * arriba se ve pegado, y todo el punto del gesto es que el día se sumó AL
  * cuerpo.
  */
+/** Dónde se recorta el cuerpo. Nunca centrado en las pantallas con contenido. */
+export type Esquina = 'abajo-derecha' | 'arriba-derecha' | 'centro';
+
 export type Montaje = {
   soltar: () => void;
   pulso: () => void;
@@ -486,6 +490,18 @@ export type Montaje = {
    * cada pantalla monta y suelta su escena—.
    */
   pausar: (si: boolean) => void;
+  /**
+   * MUEVE EL CUERPO A OTRA ESQUINA, viajando (23/9).
+   *
+   * Antes la esquina era parte de la identidad de la escena: cambiarla la
+   * armaba de nuevo, y el cuerpo aparecía en el otro lado de un cuadro para el
+   * otro. Entre Inicio (abajo) y Ranking (arriba) eso es un salto de media
+   * pantalla, y se ve como un corte.
+   *
+   * NO SIGUE AL DEDO a propósito: el gesto mueve las pantallas, no el fondo. El
+   * fondo es de todas, y atarlo al dedo lo convertiría en parte de una.
+   */
+  mover: (esquina: Esquina) => void;
   /**
    * Se cumple cuando el primer cuadro ya se dibujó: los shaders compilaron.
    * Hasta ahí el canvas está vacío, y la pantalla sigue mostrando el fondo de
@@ -708,7 +724,9 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   marca('ascent:particulas-fin');
   medir('ascent:escena-armado', 'ascent:particulas-inicio', 'ascent:particulas-fin');
 
-  const esquina = op.esquina ?? 'abajo-derecha';
+  let esquinaAhora: Esquina = op.esquina ?? 'abajo-derecha';
+  /** El viaje en curso: de dónde, hacia dónde, y cuándo empezó. */
+  let viaje: { x0: number; y0: number; x1: number; y1: number; t0: number } | null = null;
 
   let vivo = true;
   let pausado = false;
@@ -751,9 +769,27 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     camara.left = -asp;
     camara.right = asp;
     camara.updateProjectionMatrix();
-    if (esquina === 'abajo-derecha') grupo.position.set(asp * 0.8, -0.72, 0);
-    else if (esquina === 'arriba-derecha') grupo.position.set(asp * 0.82, 0.72, 0);
-    else grupo.position.set(0, 0, 0);
+    ubicarGrupo();
+  }
+
+  /**
+   * Dónde va el cuerpo según la esquina. El ancho entra en la cuenta porque la
+   * cámara es ortográfica y el borde derecho está en `asp`.
+   */
+  function destinoDe(e: Esquina, asp: number) {
+    if (e === 'abajo-derecha') return { x: asp * 0.8, y: -0.72 };
+    if (e === 'arriba-derecha') return { x: asp * 0.82, y: 0.72 };
+    return { x: 0, y: 0 };
+  }
+
+  /** Pone el cuerpo donde va AHORA, sin viaje: al armar y al cambiar de tamaño. */
+  function ubicarGrupo() {
+    const { w, h } = l.tamano();
+    const d = destinoDe(esquinaAhora, w / h);
+    // Si está viajando, el viaje manda: mover el lienzo en medio de la
+    // transición no puede teletransportarlo.
+    if (viaje) return;
+    grupo.position.set(d.x, d.y, 0);
   }
   medirLienzo();
 
@@ -775,7 +811,18 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     const ahora = performance.now();
     // Lunas, los planetas del Sistema o una fugaz cruzando: se mueven rápido,
     // y el escalón lento a doce cuadros los mostraba a saltos (ver quietud).
-    const hayMovimiento = orbitantes.length > 0 || fugaz.mesh.visible;
+    // EL VIAJE CUENTA COMO MOVIMIENTO: sin esto, el escalón lento de
+    // `debeDibujar` deja la transición en tres cuadros y se ve peor que el
+    // salto que vino a arreglar.
+    if (viaje) {
+      const t = Math.min(1, (ahora - viaje.t0) / VIAJE_DE_ESQUINA_MS);
+      // La misma curva que el resto de la app: sale y se asienta.
+      const suave = 1 - Math.pow(1 - t, 3);
+      grupo.position.x = viaje.x0 + (viaje.x1 - viaje.x0) * suave;
+      grupo.position.y = viaje.y0 + (viaje.y1 - viaje.y0) * suave;
+      if (t >= 1) viaje = null;
+    }
+    const hayMovimiento = orbitantes.length > 0 || fugaz.mesh.visible || viaje !== null;
     if (!debeDibujar(ahora - ultimoToque, ahora - ultimoCuadro, hayMovimiento)) return;
     ultimoCuadro = ahora;
 
@@ -902,6 +949,23 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     l.cuadro(paso);
   }
 
+  /**
+   * EL CUERPO VIAJA A OTRA ESQUINA en vez de saltar (23/9). Entre Inicio
+   * (abajo) y Ranking (arriba) el salto es de media pantalla y se ve como un
+   * corte. No sigue al dedo a propósito: el gesto mueve las pantallas, y el
+   * fondo es de todas.
+   */
+  const mover = (e: Esquina) => {
+    if (e === esquinaAhora) return;
+    esquinaAhora = e;
+    const { w, h } = l.tamano();
+    const d = destinoDe(e, w / h);
+    viaje = { x0: grupo.position.x, y0: grupo.position.y, x1: d.x, y1: d.y, t0: performance.now() };
+    // Despertar: en el escalón quieto, el viaje no se dibujaría hasta que
+    // alguien tocara la pantalla.
+    despertar();
+  };
+
   const soltar = () => {
     vivo = false;
     dejarDeMirar();
@@ -928,5 +992,5 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     }
   };
 
-  return { soltar, pulso, pausar, listo };
+  return { soltar, pulso, pausar, mover, listo };
 }

@@ -1140,5 +1140,11 @@ export const T = {
     colaVacia: 'Cola vacía',
     colaCon: (n: number) => `Cola: ${n} ${n === 1 ? 'escritura esperando' : 'escrituras esperando'}`,
     releer: 'Volver a leer',
+    // LAS ACTUALIZACIONES POR EL AIRE (23/9). Con ellas, "qué versión tienes"
+    // dejó de ser obvio: el JS puede ser el de la build o uno bajado después.
+    corriendo: (que: string) => `Corriendo: ${que}`,
+    buscar: 'Buscar actualización',
+    buscando: 'Buscando…',
+    sinNovedad: 'Ya tienes la última.',
   },
 } as const;

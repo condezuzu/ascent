@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
 import type { Perfil } from '@nucleo/tipos';
@@ -20,11 +20,11 @@ import { IR_A_PESTANA, type Pestana } from './irAPestana';
  * botón que miente en el lugar más tocado de la app. Cada pantalla entra
  * cuando entra, en el mismo orden que la web (Ranking y Álbum desde el 18/9).
  *
- * TODAVÍA SIN ROUTER, y ahora es una decisión más fina que antes: con
- * pestañas planas, sin pantallas apiladas ni enlaces que abran una pantalla
- * del medio, un router contesta lo mismo que este `useState`. La pregunta se
- * vuelve de verdad con la primera pantalla que se apila (el perfil de un
- * amigo, el día abierto) — ahí entra Expo Router, y esto se reemplaza entero.
+ * LAS PESTAÑAS SIGUEN SIENDO UN `useState` Y EL ROUTER VIVE AFUERA (22/9).
+ * Expo Router entró para lo que las pestañas no podían: apilar el perfil
+ * encima y volver. Una ruta por pestaña obligaría a montar y tumbar el motor
+ * en cada cambio y a reescribir el asomo del gesto con otra biblioteca, para
+ * conseguir lo mismo que ya funciona.
  *
  * SE DESLIZA ENTRE PESTAÑAS (22/9), como en la web. Las reglas del gesto
  * —cuánto hay que arrastrar, qué velocidad alcanza, cuánto dura el viaje— son
@@ -64,6 +64,8 @@ export default function Pestanas({
   const [asomando, setAsomando] = useState<Pestana | null>(null);
   const { width: ancho } = useWindowDimensions();
   const correr = useRef(new Animated.Value(0)).current;
+  /** Hay un carril corrido esperando a que la pestaña nueva se dibuje. */
+  const centrarDespues = useRef(false);
   // El gesto se lee con refs y no con estado: el estado llega un cuadro tarde,
   // y un cuadro tarde en un dedo que se mueve se ve como un tirón.
   const gesto = useRef<{ decidido: boolean; vecina: Pestana | null; desde: number; x0: number }>({
@@ -88,6 +90,16 @@ export default function Pestanas({
   useEffect(() => {
     if (pestana === 'ajustes' || asomando === 'ajustes') cargarPerfil();
   }, [pestana, asomando, cargarPerfil]);
+
+  // CENTRAR DESPUÉS DE DIBUJAR, no antes: ver el comentario del final del
+  // viaje. `useLayoutEffect` corre con la pantalla nueva ya montada y antes de
+  // que se pinte, así que el carril nunca se ve centrado con la vieja adentro.
+  useLayoutEffect(() => {
+    if (!centrarDespues.current) return;
+    centrarDespues.current = false;
+    correr.setValue(0);
+    setAsomando(null);
+  }, [pestana, correr]);
 
   // "Ir a Ajustes" desde el texto de otra pantalla: ver `irAPestana.ts`.
   useEffect(() => eventos.escuchar(IR_A_PESTANA, (p) => setPestana(p as Pestana)), []);
@@ -128,11 +140,24 @@ export default function Pestanas({
             easing: Easing.bezier(...CURVA),
             useNativeDriver: true,
           }).start(() => {
-            // La pestaña nueva se pone recién cuando el viaje terminó, y en el
-            // mismo cuadro se vuelve el carril a cero: así no se ve saltar.
-            if (viaja && destino) setPestana(destino);
-            correr.setValue(0);
-            setAsomando(null);
+            // EL TITILEO QUE ESTO ARREGLA (23/9). Acá se hacían las tres cosas
+            // juntas: poner la pestaña nueva, volver el carril a cero y sacar
+            // la que asomaba. Parecen simultáneas y no lo son — `setValue`
+            // mueve la vista EN EL ACTO, y `setPestana` recién en el próximo
+            // dibujo de React. En ese hueco de un cuadro, el carril ya estaba
+            // centrado pero todavía mostraba la pestaña VIEJA: al pasar de
+            // Inicio a Ranking, Inicio volvía a aparecer un instante.
+            //
+            // Ahora el viaje solo cambia la pestaña. Centrar el carril y sacar
+            // la que asoma pasó a `useLayoutEffect`, que corre DESPUÉS de que
+            // la pantalla nueva está dibujada y antes de que se pinte.
+            if (viaja && destino) {
+              centrarDespues.current = true;
+              setPestana(destino);
+            } else {
+              correr.setValue(0);
+              setAsomando(null);
+            }
           });
           gesto.current = { decidido: false, vecina: null, desde: 0, x0: 0 };
         },

@@ -4,6 +4,7 @@ import { T } from '@nucleo/textos';
 import { leerSesionCache } from '@compartido/sesionCache';
 import { cuantasPendientes } from '@compartido/cola';
 import { ponerAnexo } from './cajaNegra';
+import { aplicar, buscarYTraer, hayCanal, queEstoyCorriendo } from './actualizaciones';
 import { loVisible } from './loVisible';
 import { supabase } from './supabase';
 
@@ -37,6 +38,9 @@ export default function DiagnosticoSesion() {
   const [cola, setCola] = useState<number | null>(null);
   const [fallo, setFallo] = useState(false);
   const [leyendo, setLeyendo] = useState(true);
+  // La actualización por el aire: qué JS corre y si hay uno nuevo esperando.
+  const [buscando, setBuscando] = useState(false);
+  const [novedad, setNovedad] = useState<string | null>(null);
 
   const pantalla = loVisible();
 
@@ -128,6 +132,32 @@ export default function DiagnosticoSesion() {
       <Pressable onPress={leer} hitSlop={8}>
         <Text style={estilos.releer}>{T.diagnostico.releer}</Text>
       </Pressable>
+
+      {/* QUÉ JS ESTÁ CORRIENDO. Con actualizaciones por el aire, "la versión
+          que tenés" dejó de ser obvia: la app puede estar corriendo el JS que
+          vino en la build o uno bajado después. Sin esto, un bug arreglado que
+          sigue apareciendo no se distingue de uno que no se arregló. */}
+      <View style={estilos.actualizar}>
+        <Text style={estilos.nota}>{T.diagnostico.corriendo(queEstoyCorriendo())}</Text>
+        {hayCanal() && (
+          <Pressable
+            hitSlop={8}
+            onPress={async () => {
+              setBuscando(true);
+              setNovedad(null);
+              const hay = await buscarYTraer();
+              setBuscando(false);
+              // Si hay una nueva se aplica en el momento: el que abrió esto
+              // vino justamente a eso.
+              if (hay) return aplicar();
+              setNovedad(T.diagnostico.sinNovedad);
+            }}
+          >
+            <Text style={estilos.releer}>{buscando ? T.diagnostico.buscando : T.diagnostico.buscar}</Text>
+          </Pressable>
+        )}
+        {novedad !== null && <Text style={estilos.nota}>{novedad}</Text>}
+      </View>
     </View>
   );
 }
@@ -175,4 +205,5 @@ const estilos = StyleSheet.create({
   detalle: { color: '#8a93a8', fontSize: 11, fontFamily: 'Menlo', marginTop: 1 },
   cola: { color: '#8a93a8', fontSize: 12, marginTop: 8 },
   releer: { color: '#8a93a8', fontSize: 12, textDecorationLine: 'underline', marginTop: 8 },
+  actualizar: { marginTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#2a3040', paddingTop: 10 },
 });

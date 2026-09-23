@@ -35,3 +35,14 @@ export function demoraDeEntrada(i: number): number {
   const paso = Math.min(Math.max(0, Math.round(i)), ESCALON_TOPE);
   return paso * ESCALON_MS + DEMORA_MS;
 }
+
+/**
+ * Lo que tarda el cuerpo en viajar de una esquina a la otra al cambiar de
+ * pestaña.
+ *
+ * MÁS LENTO QUE EL RESTO A PROPÓSITO (el gesto entre pestañas dura 340 ms).
+ * El fondo no acompaña al dedo: se acomoda después, y que llegue un poco tarde
+ * es lo que lo mantiene de fondo. Si viajara a la misma velocidad parecería
+ * parte de la pantalla que se está yendo.
+ */
+export const VIAJE_DE_ESQUINA_MS = 620;

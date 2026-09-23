@@ -8946,6 +8946,68 @@ console.log('\n135. El perfil, en las dos apps y con las mismas reglas');
   chequear('las pantallas del stack no traen fondo propio', /background: 'transparent'/.test(layout), true);
 }
 
+console.log('\n136. Actualizar sin reconstruir, y el fondo que no salta');
+{
+  const { readFileSync: leer136 } = await import('node:fs');
+  const { join: unir136, dirname: dir136 } = await import('node:path');
+  const { fileURLToPath: aRuta136 } = await import('node:url');
+  const R136 = unir136(dir136(aRuta136(import.meta.url)), '..');
+  const de136 = (...p) => leer136(unir136(R136, ...p), 'utf8');
+
+  // ---- LAS ACTUALIZACIONES POR EL AIRE ----
+  const app = JSON.parse(de136('movil', 'app.json')).expo;
+  chequear('hay canal de actualizaciones', !!app.updates?.url, true);
+  // LA HUELLA NATIVA Y NO LA VERSION: con `appVersion`, un JS que usa un modulo
+  // nuevo se le entrega igual a una build vieja que no lo tiene, y esa app
+  // muere al abrir. Con la huella, esa build no recibe nada.
+  chequear('la version de ejecucion sale de la huella nativa', app.runtimeVersion?.policy, 'fingerprint');
+
+  const act = de136('movil', 'src', 'actualizaciones.ts');
+  // UNA ACTUALIZACION QUE NO SE PUDO BAJAR NO ES UNA APP ROTA. `registrarError`
+  // marca la caja negra y ABRE el panel de fallo encima de la app: paso el
+  // 23/9, saltaba solo a los seis segundos de entrar, sin señal de por medio.
+  chequear('un fallo al buscar no abre el panel de fallo', /registrarError/.test(act), false);
+  // Y NO SE REINICIA EN MEDIO DE UN ENTRENAMIENTO: eso se ve como que la app se
+  // cerro sola en medio de la serie.
+  chequear('reiniciar lo decide quien llama', /puedeReiniciar\(\)/.test(act), true);
+  const layout = de136('movil', 'app', '_layout.tsx');
+  chequear('y al arrancar no reinicia con el cronometro corriendo',
+    /buscarAlArrancar\(\(\) => !loVisible\(\)\?\.corriendo\)/.test(layout), true);
+  // QUE JS CORRE, EN EL DIAGNOSTICO: sin eso, un bug arreglado que sigue
+  // apareciendo no se distingue de uno que no se arreglo.
+  chequear('el diagnostico dice que JS esta corriendo',
+    /queEstoyCorriendo\(\)/.test(de136('movil', 'src', 'DiagnosticoSesion.tsx')), true);
+
+  // ---- EL FONDO QUE VIAJA ----
+  const A = await import('../nucleo/animacion.ts');
+  const D = await import('../nucleo/deslizar.ts');
+  // MAS LENTO QUE EL GESTO A PROPOSITO: el fondo no acompaña al dedo, se
+  // acomoda despues. A la misma velocidad pareceria parte de la pantalla que se
+  // esta yendo.
+  chequear('el viaje del fondo es mas lento que el de las pestañas', A.VIAJE_DE_ESQUINA_MS > D.VIAJE_MS, true);
+
+  const fondo = de136('movil', 'src', 'FondoRaiz.tsx');
+  // LA ESQUINA FUERA DE LA CLAVE: si estuviera, cambiar de pestaña armaria la
+  // escena entera de nuevo —el cuerpo aparecia en el otro lado de un cuadro
+  // para el otro— y recompilaria los shaders cada vez.
+  const clave = fondo.slice(fondo.indexOf('function claveDeEscena'), fondo.indexOf('type Escena'));
+  chequear('la esquina no arma la escena de nuevo', /op\.esquina/.test(clave), false);
+  chequear('y la escena que ya esta se mueve', /montaje\.mover\(/.test(fondo), true);
+  const escena = de136('compartido', 'motor', 'escena.ts');
+  chequear('el motor sabe viajar entre esquinas', /mover\(e: Esquina\)|const mover = \(e: Esquina\)/.test(escena), true);
+  // EL VIAJE CUENTA COMO MOVIMIENTO o el escalon lento lo deja en tres cuadros,
+  // que se ve peor que el salto que vino a arreglar.
+  chequear('y el viaje despierta al motor', /viaje !== null/.test(escena), true);
+
+  // ---- EL TITILEO AL CAMBIAR DE PESTAÑA ----
+  // `setValue` mueve la vista EN EL ACTO y `setPestana` recien en el proximo
+  // dibujo: en ese hueco, el carril ya estaba centrado mostrando la pestaña
+  // VIEJA. Centrar tiene que pasar DESPUES de dibujar.
+  const pest = de136('movil', 'src', 'Pestanas.tsx');
+  chequear('centrar el carril espera a que la pestaña nueva se dibuje',
+    /useLayoutEffect\(\(\) => \{\s*if \(!centrarDespues\.current\) return;/.test(pest), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

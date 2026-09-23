@@ -108,3 +108,70 @@ literales pisando a las buenas, arriba).
   al gimnasio no va a dispararse con la app cerrada** en esta build. Todo lo
   demás anda. Agregarlo es lo que Apple revisa con lupa y es trabajo de App
   Store, no de poner la app en un teléfono.
+
+---
+
+# Actualizar sin reconstruir (EAS Update, 23/9)
+
+**El problema que resuelve.** Con la app en un teléfono, cada arreglo costaba
+una build de cinco minutos y una instalación a mano. Ese precio no lo paga
+quien arregla: lo paga quien quiere probar. Empuja a juntar diez cambios en una
+tanda y a probar poco — exactamente al revés de cómo se encontraron los bugs de
+esta semana.
+
+**Se dijo que no dos veces antes**, y el argumento era bueno mientras la app
+vivía en una computadora: un canal de actualización es una pieza más que se
+desactualiza. Lo que cambió es quién espera.
+
+## Qué viaja por el aire y qué no
+
+| Viaja | No viaja: pide build nueva |
+|---|---|
+| Pantallas, componentes, estilos | Un módulo nativo nuevo (`expo-location`, `expo-file-system`…) |
+| Los textos y las reglas de `nucleo/` | Permisos y sus textos en `Info.plist` |
+| Lo de `compartido/` | `UIBackgroundModes` (el gimnasio en segundo plano) |
+| Imágenes y fuentes de `assets/` | Ícono, splash, nombre, bundle |
+| Arreglos de lógica, consultas, navegación | Subir de SDK de Expo, cambiar `app.json` |
+
+La regla corta: **si lo escribí en TypeScript, viaja. Si toca el `app.json` o
+agrega un paquete con lado nativo, no.**
+
+## Por qué la huella y no la versión
+
+`runtimeVersion` está en `{"policy": "fingerprint"}`, que calcula la versión de
+ejecución a partir del lado NATIVO del proyecto. Una actualización solo le llega
+a las builds cuya huella es idéntica.
+
+Con la política `appVersion` —la que pone `eas update:configure` por omisión—
+un JS que usa un módulo nuevo se le entregaría igual a una build vieja que no lo
+tiene, y esa app muere al abrir. Con la huella, esa build simplemente **no
+recibe nada**: se queda con el JS que le sirve.
+
+## Cómo se publica
+
+```
+cd movil && npx eas update --channel telefono --message "qué se arregló"
+```
+
+El canal es el del perfil de build (`telefono`, `store`…), y está en `eas.json`
+desde antes de que esto existiera.
+
+## Cómo llega al teléfono
+
+- **Al abrir la app**, tres segundos después de entrar: busca, baja y
+  **reinicia sola** para aplicarla. Esos tres segundos no son un número mágico:
+  la decisión de reiniciar necesita saber si hay un entrenamiento andando, y eso
+  lo sabe Inicio recién cuando se dibujó. **Con el cronómetro corriendo no
+  reinicia** — se aplica la próxima vez que se abra. Un reinicio en medio de una
+  serie se ve como que la app se cerró sola.
+- **A mano**, desde el botón Diagnóstico: "Buscar actualización". Ahí también
+  dice qué JS está corriendo —el de la build o una actualización, con su id—,
+  que es el dato que hace falta cuando un bug arreglado sigue apareciendo.
+
+## Lo que hay que saber igual
+
+- **La primera build con `expo-updates` adentro hay que instalarla a mano.** Lo
+  que ya está instalado no tiene el canal y no puede recibir nada.
+- Una actualización **no arregla una app que no abre**: si el JS nuevo tira al
+  arrancar, `expo-updates` vuelve al anterior, pero conviene no averiguarlo en
+  el gimnasio.

@@ -79,8 +79,12 @@ function factorDeTope() {
   return Math.min(1, DENSIDAD_TOPE / PixelRatio.get());
 }
 
-// De qué depende que haya que armar la escena de nuevo. Igual que las
-// dependencias del efecto de la web: si cambia cualquiera, el objeto es otro.
+// De qué depende que haya que armar la escena de nuevo.
+//
+// LA ESQUINA NO ESTÁ ACÁ (23/9), y antes sí: cambiar de pestaña armaba la
+// escena entera de nuevo y el cuerpo aparecía en el otro lado de un cuadro para
+// el otro. Ahora la escena es la misma y VIAJA (`montaje.mover`), que además
+// ahorra recompilar los shaders en cada cambio de pestaña.
 function claveDeEscena(op: OpcionesFondo, animar: boolean) {
   return [
     op.rango,
@@ -91,7 +95,6 @@ function claveDeEscena(op: OpcionesFondo, animar: boolean) {
     op.presagio ? 1 : 0,
     op.fantasma?.rango ?? '',
     op.fantasma?.planeta ?? '',
-    op.esquina ?? '',
     animar ? 1 : 0,
   ].join('|');
 }
@@ -175,8 +178,10 @@ export default function FondoRaiz() {
     const clave = claveDeEscena(pedido, animar);
 
     if (actual && actual.clave === clave) {
-      // Lo normal: la misma escena de la última vez. Se reanuda y listo.
+      // Lo normal: la misma escena de la última vez. Se reanuda, y si la
+      // pantalla nueva la quiere en otra esquina, viaja hasta allá.
       actual.montaje.pausar(false);
+      actual.montaje.mover(pedido.esquina ?? 'abajo-derecha');
     } else {
       // Otra escena. Primero la nueva, DESPUÉS se suelta la vieja: mientras
       // las dos existen, los programas que comparten siguen vivos y three los

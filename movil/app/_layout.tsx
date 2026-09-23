@@ -11,6 +11,8 @@ import FondoRaiz from '../src/FondoRaiz';
 import Raiz from '../src/Raiz';
 import { sesionDesdeEnlace } from '../src/enlace';
 import { ProveedorDeSesion } from '../src/sesionDeLaApp';
+import { buscarAlArrancar } from '../src/actualizaciones';
+import { loVisible } from '../src/loVisible';
 import { anotar, marcarListo, registrarError } from '../src/cajaNegra';
 
 /**
@@ -66,6 +68,22 @@ export default function Layout() {
   // primera versión llamaba a `dismissAll` y la consola lo cantaba —
   // "POP_TO_TOP was not handled"— porque no había nada que sacar.
   const salir = mirar;
+
+  // LA ACTUALIZACIÓN POR EL AIRE, al abrir y una sola vez (23/9). Se espera
+  // unos segundos a propósito: la decisión de reiniciar necesita saber si hay
+  // un entrenamiento andando, y eso lo sabe Inicio recién cuando se dibujó.
+  // Sin la espera, la app podría reiniciarse sola con el cronómetro corriendo,
+  // que se ve como que se cerró en medio de la serie.
+  useEffect(() => {
+    if (sesion !== 'con') return;
+    const t = setTimeout(() => {
+      void buscarAlArrancar(() => !loVisible()?.corriendo);
+    }, 3000);
+    return () => clearTimeout(t);
+    // Solo al pasar a 'con': buscar en cada cambio de sesión sería buscar de
+    // nuevo cada vez que el token se renueva.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesion === 'con']);
 
   // EL ENLACE DEL CORREO. Se mira de las dos formas y hacen falta las dos: la
   // app puede estar CERRADA cuando se toca el enlace —ahí llega como URL
