@@ -10588,6 +10588,10 @@ console.log('\n152. Las pantallas apiladas siempre tienen salida');
   // pudo abrir" con la pantalla perfecta. Peor: para intentarlo, Playwright
   // ARRASTRA el contenedor y deja la tira a mitad de camino.
   const bar152 = de152('supabase', 'barrido-nativa.mjs');
+  // Y CORRE SOLO EN EL CIERRE, que es lo que se pidio el 24/9: una sonda que
+  // hay que acordarse de correr es una sonda que no corre.
+  chequear('el barrido entra en el cierre',
+    /npm run barrido/.test(JSON.parse(de152('package.json')).scripts.cierre), true);
   chequear('el barrido puede buscar dentro de una pestana',
     /carril-\$\{p\}/.test(bar152), true);
   chequear('y dentro de la hoja, que se dibuja en la raiz',
