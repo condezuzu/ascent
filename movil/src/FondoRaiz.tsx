@@ -163,10 +163,36 @@ export default function FondoRaiz() {
    * la nada". Ahora las cinco piden el mismo cuerpo, la escena no se rearma
    * nunca al cambiar de pestaña, y lo único que cambia es cuánto se lo ve.
    *
-   * ES `filter` DE REACT NATIVE y no una vista de desenfoque aparte: no suma
-   * ninguna dependencia nativa —o sea que esto viaja por el aire— y se aplica
-   * sobre el `GLView` ya dibujado, sin tocar el motor ni costar un cuadro más
-   * de render.
+   * ─────────────────────────────────────────────────────────────────────
+   * EL `filter` DE REACT NATIVE NO SIRVE ACÁ, Y DEJÓ EL FONDO EN BLANCO
+   *
+   * Primer intento, y el peor bug del día: *"el fondo se ve todo BLANCO en
+   * Ranking, Álbum y Stats"*. Era `filter: [{ blur: N }]` sobre la vista que
+   * contiene el `GLView`.
+   *
+   * POR QUÉ NO PODÍA ANDAR. Para desenfocar, iOS tiene que RASTERIZAR la vista
+   * —dibujarla en un mapa de bits y pasarle el filtro—. Una vista de OpenGL no
+   * tiene su contenido en la capa: lo tiene en un framebuffer de la GPU que el
+   * rasterizador no lee. Lo que sale de ahí no es el planeta borroso, es la
+   * capa vacía, y encima del fondo claro del sistema eso es blanco.
+   *
+   * O sea que el error no fue de ajuste: era una operación imposible sobre esa
+   * vista en particular. Se probó en el navegador, donde `filter` es CSS y sí
+   * funciona sobre un canvas, y ahí se veía bien. La diferencia entre las dos
+   * plataformas era toda la historia.
+   *
+   * LO QUE SE HACE AHORA son dos capas distintas, y ninguna toca el `GLView`:
+   *
+   *   1. **Un velo extra**, acá mismo: una vista opaca del color del fondo que
+   *      sube con la distancia a Inicio. No desenfoca —empuja el planeta hacia
+   *      atrás— y es lo único que se puede hacer sin código nativo.
+   *   2. **Un desenfoque de verdad** encima, con `expo-blur` (ver más abajo).
+   *      `BlurView` NO rasteriza a nadie: es una vista del sistema que
+   *      desenfoca lo que quedó DETRÁS suyo, ya dibujado, GL incluido. Es
+   *      justamente el caso que `filter` no puede.
+   *
+   * La 1 viaja por el aire y la 2 necesita build, así que las dos existen: en
+   * una build sin `expo-blur` el fondo se ve bien igual, apenas más apagado.
    *
    * SE DIBUJA EN PASOS ENTEROS: ver `desenfoqueDelFondo.ts`. Un gesto manda
    * sesenta eventos por segundo y el desenfoque tiene catorce valores
@@ -338,17 +364,18 @@ export default function FondoRaiz() {
         <ElipsesDeLuz elipses={ELIPSES_BASE} paleta={paleta} ancho={medida.w} alto={medida.h} estrellas id="base" />
       )}
       {cargar && vistaGL && (
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            { opacity: opacidad },
-            // MAXIMO 14 PIXELES: mas arriba el planeta deja de ser un planeta y
-            // pasa a ser una mancha de color, que es lo que ya hace el velo.
-            desenfoque > 0 && { filter: [{ blur: desenfoque * 14 }] },
-          ]}
-        >
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad }]}>
           <GLView style={vistaGL} onContextCreate={alCrearContexto} />
         </Animated.View>
+      )}
+      {/* EL VELO EXTRA DE LAS OTRAS PESTAÑAS. Va ENTRE el motor y el velo del
+          rango, así que empuja el planeta hacia atrás sin tocar nada de lo que
+          se lee encima. `pointerEvents` no hace falta: el fondo entero ya es
+          `none`. */}
+      {desenfoque > 0 && (
+        <View
+          style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: desenfoque * 0.4 }]}
+        />
       )}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: velo }]}>
         {medida && <ElipsesDeLuz elipses={ELIPSES_VELO} paleta={paleta} ancho={medida.w} alto={medida.h} id="velo" />}

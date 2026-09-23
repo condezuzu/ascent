@@ -117,6 +117,19 @@ export default function Inicio({
   // sin querer, y lo que hace no se deshace.
   const [terminando, setTerminando] = useState(false);
   const [cierre, setCierre] = useState<CierreDeSesion | null>(null);
+  /**
+   * EL RESUMEN SE CIERRA, LOS MINUTOS SE QUEDAN (25/9).
+   *
+   * *"Desapareció «Día registrado · hoy entrenaste X minutos». Me gustaba que
+   * apareciera el tiempo."*
+   *
+   * Antes el resumen y el dato vivían en la misma variable: tocar el resumen
+   * para sacarlo del medio —que es lo que uno hace— se llevaba puesto el único
+   * lugar donde el número existía. Ahora son dos cosas: `cierre` es la tarjeta
+   * que se puede cerrar y esto es cuánto duró el día, que no se cierra porque
+   * no es un aviso, es un dato.
+   */
+  const [minutosDeHoy, setMinutosDeHoy] = useState<number | null>(null);
   // LA SUBIDA DE RANGO. Los tres caminos que registran un dia terminan
   // aca: el toque, el cronometro, y el dia que entra solo al llegar al
   // gimnasio. Antes no terminaban en ningun lado.
@@ -245,7 +258,11 @@ export default function Inicio({
   // aparecer igual que cuando la terminás con el botón. Quien sabe que se
   // cerró es el vigilante, que no dibuja nada; el que sabe dibujarlo es este.
   useEffect(
-    () => eventos.escuchar(CERRO_SOLA, (c) => setCierre(c as CierreDeSesion)),
+    () =>
+      eventos.escuchar(CERRO_SOLA, (c) => {
+        setCierre(c as CierreDeSesion);
+        setMinutosDeHoy((c as CierreDeSesion).minutos);
+      }),
     []
   );
 
@@ -612,7 +629,10 @@ export default function Inicio({
                   setTerminando(false);
                   // Sin resumen si la base deshizo el día: no hubo
                   // entrenamiento, y festejar un toque sin querer es peor.
-                  if (c && !c.deshizoElDia) setCierre(c);
+                  if (c && !c.deshizoElDia) {
+                    setCierre(c);
+                    setMinutosDeHoy(c.minutos);
+                  }
                   cargar();
                 }}
               >
@@ -640,7 +660,11 @@ export default function Inicio({
         // una pantalla: se lee una vez y lo que queda por HACER tiene que estar
         // primero.
         <>
-          <DiaListo alaFoto={() => setRegistrarAbierto(true)} alPeso={() => setPesoAbierto(true)} />
+          <DiaListo
+            alaFoto={() => setRegistrarAbierto(true)}
+            alPeso={() => setPesoAbierto(true)}
+            minutos={minutosDeHoy}
+          />
           <Pressable style={estilos.resumen} onPress={() => setCierre(null)}>
             <Text style={estilos.resumenTitulo}>{T.sesion.resumenTitulo}</Text>
             <View style={estilos.cifras}>
@@ -665,7 +689,11 @@ export default function Inicio({
         // sumarle la foto o el peso. Era un renglón de texto que no parecía un
         // botón; ahora es lo mismo que la web. Ver `DiaListo.tsx`.
         <>
-          <DiaListo alaFoto={() => setRegistrarAbierto(true)} alPeso={() => setPesoAbierto(true)} />
+          <DiaListo
+            alaFoto={() => setRegistrarAbierto(true)}
+            alPeso={() => setPesoAbierto(true)}
+            minutos={minutosDeHoy}
+          />
           {/* Y ACÁ SE INSISTE CON EL PUNTO DEL GIMNASIO: pegado al día que se
               acaba de anotar a mano, que es el único momento en que la oferta
               se puede demostrar en vez de explicar. Tres veces como mucho, una

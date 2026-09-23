@@ -37,7 +37,24 @@ export const enVivoNativo: EnVivo = {
         ctx?.meta ?? 0
       );
     } catch {
-      /* que no se vea afuera no puede romper el descanso */
+      // Y SI EL MÓDULO ES EL VIEJO, SE LLAMA COMO ANTES (25/9).
+      //
+      // El ejercicio y la serie llegaron en la misma tanda que la build de la
+      // tienda, así que hay un rato en el que este JavaScript —que viaja por el
+      // aire— convive con el módulo nativo de la build anterior, que recibe dos
+      // argumentos y no cinco. Expo valida la cantidad y tira.
+      //
+      // Sin esto, ese rato se quedaba sin cuenta en la pantalla bloqueada: la
+      // función que la enciende fallaba en silencio, que es lo que este `catch`
+      // hace a propósito para todo lo demás. Un reintento con la firma vieja
+      // cuesta nada y lo evita.
+      try {
+        await (descansoVivoNativo as unknown as {
+          mostrar(fin: number, duracion: number): Promise<void>;
+        } | null)?.mostrar(fin, duracion);
+      } catch {
+        /* que no se vea afuera no puede romper el descanso */
+      }
     }
   },
 

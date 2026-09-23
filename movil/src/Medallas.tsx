@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { cuantosLevantan, type Medalla as Dato } from '@nucleo/medallas';
+import { CURVA } from '@nucleo/deslizar';
 import { T } from '@nucleo/textos';
 import Medalla from './Medalla';
 import { C } from './colores';
@@ -28,8 +29,20 @@ import { C } from './colores';
  * no importa si tapa".
  */
 
-/** Cuánto queda a la vista antes de irse solo. */
-const DURA_MS = 2000;
+/**
+ * CUÁNTO DURA EL GLOBO, EN TRES TIEMPOS (25/9).
+ *
+ * *"Que dure tres o cuatro segundos en vez de dos, y que NO desaparezca de
+ * golpe, que se desvanezca. Aparecer rápido está bien."*
+ *
+ * Los tres números dicen exactamente eso: entra en un suspiro —lo que se toca
+ * tiene que contestar ya—, se queda el tiempo de leer una línea sin apuro, y se
+ * va despacio. Un cartel que se apaga de golpe se lee como un error; uno que se
+ * desvanece se lee como que terminó de decir lo suyo.
+ */
+const ENTRA_MS = 120;
+const QUIETO_MS = 3000;
+const SALE_MS = 520;
 
 /** Los números del dibujo de la fila, que la punta necesita para apuntar. */
 const SEPARACION = 7;
@@ -50,14 +63,48 @@ export default function Medallas({
   const elegida = medallas.find((m) => m.zona === abierta) ?? null;
   const cual = medallas.findIndex((m) => m.zona === abierta);
 
-  // SE VA SOLA A LOS DOS SEGUNDOS. El temporizador se rearma con cada medalla
-  // que se abre: tocar otra mientras una está abierta no deja el globo nuevo
-  // con el tiempo de la anterior.
+  /**
+   * ENTRA RÁPIDO, SE QUEDA, Y SE VA DESVANECIÉNDOSE.
+   *
+   * LA ANIMACIÓN SE REARMA CON CADA MEDALLA que se abre: tocar otra mientras
+   * una está abierta no deja el globo nuevo con el tiempo de la anterior.
+   *
+   * Y TOCAR LA MISMA OTRA VEZ LO CIERRA DE UNA, sin esperar el desvanecido
+   * —también a pedido—. Eso sale gratis de cómo está armado: el toque pone
+   * `abierta` en `null`, este efecto corre, corta la animación en el cuadro en
+   * que esté y deja la opacidad en cero.
+   *
+   * `setAbierta(null)` VA AL FINAL Y SOLO SI TERMINÓ: una animación cortada
+   * llama igual a su callback, y sin ese guardia cerrar una medalla para abrir
+   * otra cerraría la nueva un instante después.
+   */
+  const opacidad = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    if (!abierta) return;
-    const t = setTimeout(() => setAbierta(null), DURA_MS);
-    return () => clearTimeout(t);
-  }, [abierta]);
+    if (!abierta) {
+      opacidad.setValue(0);
+      return;
+    }
+    opacidad.setValue(0);
+    const seq = Animated.sequence([
+      Animated.timing(opacidad, {
+        toValue: 1,
+        duration: ENTRA_MS,
+        easing: Easing.bezier(...CURVA),
+        useNativeDriver: true,
+      }),
+      Animated.delay(QUIETO_MS),
+      Animated.timing(opacidad, {
+        toValue: 0,
+        duration: SALE_MS,
+        easing: Easing.bezier(...CURVA),
+        useNativeDriver: true,
+      }),
+    ]);
+    seq.start(({ finished }) => {
+      if (finished) setAbierta(null);
+    });
+    return () => seq.stop();
+  }, [abierta, opacidad]);
 
   return (
     <View style={estilos.envoltura}>
@@ -79,7 +126,7 @@ export default function Medallas({
       </View>
 
       {elegida && cual >= 0 && (
-        <View style={estilos.globo} pointerEvents="none">
+        <Animated.View style={[estilos.globo, { opacity: opacidad }]} pointerEvents="none">
           {/* LA PUNTA: un cuadrado girado 45°, con la mitad de arriba asomando
               del globo. Es la forma más barata de hacer un triángulo sin traer
               un SVG por seis píxeles — la misma idea que la cruz de
@@ -88,7 +135,7 @@ export default function Medallas({
           <View style={estilos.cuerpo}>
             <Text style={estilos.texto}>{frase(elegida)}</Text>
           </View>
-        </View>
+        </Animated.View>
       )}
     </View>
   );

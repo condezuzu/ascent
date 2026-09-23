@@ -260,18 +260,43 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
           <View style={estilos.visor}>
             {/* El fondo cierra; la foto y la barra de abajo no. */}
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setAbierta(null)} />
-            <Pressable style={estilos.cerrar} onPress={() => setAbierta(null)} accessibilityLabel={T.general.cerrar} hitSlop={12}>
-              <Text style={estilos.cerrarTexto}>×</Text>
-            </Pressable>
+
+            {/* LA FECHA ARRIBA, no encima de los botones (25/9). Estaba abajo,
+                en la misma fila que "solo tú" y "quitar foto", y ahí estorbaba:
+                lo de abajo son cosas que se TOCAN y la fecha es un dato que se
+                lee. Arriba, al lado de la cruz, tiene su propio renglón. */}
+            <View style={estilos.encabezado} pointerEvents="box-none">
+              <View style={estilos.cuando}>
+                <Text style={estilos.fecha}>{fechaLinda(foto.fecha)}</Text>
+                {!!foto.planeta && <Text style={estilos.planeta}>{foto.planeta}</Text>}
+                {foto.esSubida && <Text style={estilos.planeta}>{T.album.deSubida}</Text>}
+              </View>
+              <Pressable onPress={() => setAbierta(null)} accessibilityLabel={T.general.cerrar} hitSlop={12}>
+                <Text style={estilos.cerrarTexto}>×</Text>
+              </Pressable>
+            </View>
 
             {/* LA FOTO ES LA QUE RECIBE EL ARRASTRE, y va sola en su capa: si
                 el gesto viviera en el fondo, competiría con el toque que
-                cierra. */}
-            <Animated.View {...gesto.panHandlers} style={{ transform: [{ translateX: desliz }] }}>
-              <Image source={{ uri: foto.url }} style={{ width, height: width }} resizeMode="contain" />
+                cierra.
+
+                EL MARCO (25/9): *"la foto abierta queda muy cuadrada, le falta
+                un marco"*. Y era literal —una imagen a sangre sobre el negro,
+                sin nada que dijera dónde termina—. El marco es el mismo hilo
+                que separa todo en esta app: un borde de medio píxel, esquinas
+                de 14 y el fondo de las celdas atrás, para que una foto vertical
+                no deje dos huecos sin forma a los costados. */}
+            <Animated.View style={[estilos.marco, { transform: [{ translateX: desliz }] }]} {...gesto.panHandlers}>
+              <Image source={{ uri: foto.url }} style={{ width: width - 32, height: width - 32 }} resizeMode="contain" />
             </Animated.View>
 
-            <View style={estilos.pasos}>
+            {/* `box-none` ES LO QUE HACÍA QUE NO SE PUDIERA DESLIZAR (25/9).
+                Esta barra cruza la pantalla entera a la altura del medio —que
+                es justo por donde uno arrastra— y, sin esto, se comía el toque
+                antes de que llegara a la foto. El gesto estaba bien escrito y
+                no lo recibía nunca. Con `box-none` la vista deja pasar todo
+                menos lo que tocan sus hijos, o sea las dos flechas. */}
+            <View style={estilos.pasos} pointerEvents="box-none">
               {abierta! > 0 ? (
                 <Pressable onPress={() => setAbierta((i) => (i ?? 0) - 1)} accessibilityLabel={T.album.anterior} hitSlop={12}>
                   <Text style={estilos.paso}>‹</Text>
@@ -289,12 +314,6 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
             </View>
 
             <View style={estilos.pie}>
-              {/* La fecha manda y el planeta la acompaña. */}
-              <View style={estilos.cuando}>
-                <Text style={estilos.fecha}>{fechaLinda(foto.fecha)}</Text>
-                {!!foto.planeta && <Text style={estilos.planeta}>{foto.planeta}</Text>}
-                {foto.esSubida && <Text style={estilos.planeta}>{T.album.deSubida}</Text>}
-              </View>
               <View style={estilos.acciones}>
                 <Pressable
                   onPress={alternar}
@@ -412,8 +431,29 @@ const estilos = StyleSheet.create({
   vacio: { alignItems: 'center', paddingVertical: 36, gap: 6 },
   vacioTexto: { color: C.sub, fontSize: 14, textAlign: 'center' },
   visor: { flex: 1, backgroundColor: 'rgba(5,6,10,0.96)', justifyContent: 'center' },
-  cerrar: { position: 'absolute', top: 56, right: 20, zIndex: 2 },
+  // El encabezado: la fecha a la izquierda y la cruz a la derecha.
+  encabezado: {
+    position: 'absolute',
+    top: 54,
+    left: 24,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    zIndex: 2,
+  },
   cerrarTexto: { color: C.tinta, fontSize: 32, lineHeight: 34 },
+  // EL MARCO DE LA FOTO. El mismo hilo que separa todo en esta app.
+  marco: {
+    alignSelf: 'center',
+    padding: 6,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.linea,
+    backgroundColor: C.hoja,
+    overflow: 'hidden',
+  },
   pasos: {
     position: 'absolute',
     left: 12,
@@ -423,7 +463,7 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
   },
   paso: { color: C.tinta, fontSize: 40, paddingHorizontal: 8 },
-  pie: { position: 'absolute', left: 24, right: 24, bottom: 48, gap: 14 },
+  pie: { position: 'absolute', left: 24, right: 24, bottom: 48 },
   cuando: { flexDirection: 'row', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' },
   fecha: { color: C.tinta, fontSize: 16 },
   planeta: { color: C.sub, fontSize: 13 },

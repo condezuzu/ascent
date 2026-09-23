@@ -192,6 +192,10 @@ export default function PerfilPropio() {
         {/* Lo que el recorrido no puede mostrar: que estas fotos son las que
             ven tus amigos, y que cuáles se comparten se elige en el Álbum. */}
         <GloboPrimeraVez cual="perfil">{T.yo.globo}</GloboPrimeraVez>
+        {/* EL TITULO DICE QUE ES Y QUIEN LO VE, en dos palabras. Antes el pie
+            cargaba con todo —"son las que ven tus amigos, cuales compartes se
+            eligen en el album"— y nadie habla asi. */}
+        <Text style={estilos.seccion}>{T.yo.fotosTitulo}</Text>
         <FotosQueVen fotos={fotos} />
         <Text style={estilos.nota}>{fotos.length > 0 ? T.yo.fotosPie : T.yo.sinFotos}</Text>
 

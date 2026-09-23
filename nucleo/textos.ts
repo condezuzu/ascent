@@ -219,6 +219,11 @@ export const T = {
     racha: 'Racha',
     registrarDia: 'Registrar día',
     diaRegistrado: 'Día registrado',
+    // CUANTO DURO, debajo del rotulo (25/9). "Me gustaba que apareciera el
+    // tiempo". Las series no: el bloque ya las cuenta mientras entrenas y, una
+    // vez terminado el dia, el numero que queda diciendo algo es el rato que
+    // estuviste.
+    minutosDeHoy: (n: number) => `${n} minutos hoy`,
     // EL MOMENTO DE LLEGAR SIN APRETAR NADA. Desde que el día entra por
     // ubicación, el mejor momento de la app pasa en el bolsillo: abrís y ya
     // está. Hasta ahora se veía EXACTAMENTE igual que si lo hubieras apretado
@@ -1267,8 +1272,16 @@ export const T = {
     deRacha: (n: number) => `${n} de racha`,
     fotoActualizada: 'Foto actualizada.',
     noSePudoEliminar: 'No se eliminó. Prueba de nuevo.',
-    fotosPie: 'Son las que ven tus amigos. Cuáles compartes se elige en el Álbum.',
-    sinFotos: 'Tus amigos todavía no ven ninguna foto tuya. Cuáles compartes se elige en el Álbum.',
+    // EL ROTULO Y EL PIE, cortos (25/9). Decian "Son las que ven tus amigos.
+    // Cuales compartes se elige en el Album." — dos oraciones, una subordinada
+    // rara, y las dos explicando lo mismo que el globo de la primera vez ya
+    // explica. Nadie habla asi.
+    //
+    // EL TITULO HACE EL TRABAJO: "Album publico" dice que es y quien lo ve, en
+    // dos palabras. El pie queda para lo unico que el titulo no dice.
+    fotosTitulo: 'Álbum público',
+    fotosPie: 'Lo que ven tus amigos.',
+    sinFotos: 'Todavía no compartiste ninguna.',
 
     amigos: 'Amigos',
     eliminar: 'Eliminar',

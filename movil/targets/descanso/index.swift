@@ -60,27 +60,38 @@ struct DescansoLiveActivity: Widget {
     ActivityConfiguration(for: AtributosDelDescanso.self) { context in
       // LA PANTALLA BLOQUEADA. Es lo que se ve sin desbloquear nada, y es el
       // caso que hay que ganar: el teléfono boca arriba en el banco.
-      HStack(alignment: .center, spacing: 14) {
-        VStack(alignment: .leading, spacing: 3) {
-          Text(termino(context) ? "LISTO" : "DESCANSO")
-            .font(.system(size: 11, weight: .medium))
-            .tracking(2)
-            .foregroundStyle(termino(context) ? Color("tinta") : Color("sub"))
-          // QUÉ ESTABAS HACIENDO, que es lo único que se mira entre serie y
-          // serie. Si no se sabe, queda la duración de siempre: la tarjeta
-          // nunca se queda sin su segunda línea.
-          Text(queHacias(context) ?? deLargo(context.attributes.duracion))
-            .font(.system(size: 14))
-            .foregroundStyle(Color("tinta"))
-            .lineLimit(1)
-          if let s = porCual(context) {
-            Text(s)
-              .font(.system(size: 12))
-              .foregroundStyle(Color("sub"))
+      VStack(alignment: .leading, spacing: 12) {
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
+          VStack(alignment: .leading, spacing: 4) {
+            // EL RÓTULO EN VERSALITAS Y ESPACIADO, que es como la app titula
+            // todas sus secciones: chico, apagado, y nunca compitiendo con el
+            // número. Ver `estilos.seccion` en cualquier pantalla.
+            Text(termino(context) ? "LISTO" : "DESCANSO")
+              .font(.system(size: 11, weight: .medium))
+              .tracking(2.4)
+              .foregroundStyle(termino(context) ? Color("claro") : Color("sub"))
+            // QUÉ ESTABAS HACIENDO, que es lo único que se mira entre serie y
+            // serie. Si no se sabe, queda la duración: la tarjeta nunca se
+            // queda sin su segunda línea.
+            Text(queHacias(context) ?? deLargo(context.attributes.duracion))
+              .font(.system(size: 17, weight: .regular))
+              .foregroundStyle(Color("tinta"))
+              .lineLimit(1)
+            if let s = porCual(context) {
+              Text(s)
+                .font(.system(size: 13))
+                .foregroundStyle(Color("sub"))
+            }
           }
+          Spacer(minLength: 0)
+          cuenta(hasta: context.state.fin, tamano: 46, termino: termino(context))
         }
-        Spacer(minLength: 0)
-        cuenta(hasta: context.state.fin, tamano: 44, termino: termino(context))
+
+        // LA BARRA SE VACÍA, NO SE LLENA, y es la misma decisión que la
+        // pantalla del descanso adentro de la app: algo se está gastando. La
+        // dibuja el sistema con el mismo rango de tiempo que el número, así
+        // que no hay dos relojes que puedan decir cosas distintas.
+        barra(context)
       }
       .padding(.horizontal, 20)
       .padding(.vertical, 16)
@@ -129,6 +140,37 @@ struct DescansoLiveActivity: Widget {
         cuenta(hasta: context.state.fin, tamano: 12, termino: termino(context))
       }
       .keylineTint(Color("tinta"))
+    }
+  }
+}
+
+/// LA BARRA QUE SE VACÍA.
+///
+/// `ProgressView(timerInterval:)` la anima el sistema sola, igual que el
+/// número: recibe el rango y se encarga. Sin eso habría que empujar una
+/// actualización por segundo, que es justo lo que ActivityKit no permite.
+///
+/// TERMINADA, LA BARRA QUEDA LLENA Y CLARA en vez de vacía: vacía se lee como
+/// "no hiciste nada", y lo que pasó es lo contrario. Y ahí tampoco puede ir el
+/// rango —con el fin en el pasado es inválido, lo mismo que tumbaba el widget
+/// entero— así que es una barra dibujada a mano.
+@available(iOS 16.2, *)
+private func barra(_ context: ActivityViewContext<AtributosDelDescanso>) -> some View {
+  Group {
+    if termino(context) {
+      Capsule()
+        .fill(Color("claro"))
+        .frame(height: 3)
+    } else {
+      ProgressView(
+        timerInterval: Date.now...context.state.fin,
+        countsDown: true,
+        label: { EmptyView() },
+        currentValueLabel: { EmptyView() }
+      )
+      .progressViewStyle(.linear)
+      .tint(Color("claro"))
+      .frame(height: 3)
     }
   }
 }

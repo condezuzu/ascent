@@ -10079,9 +10079,21 @@ console.log('\n145. Las medallas por marca');
   const apunta = /desdeX \+ cual \* \(tam \+ SEPARACION\)/;
   chequear('y la punta apunta a la que se toco',
     apunta.test(filaWeb) && apunta.test(filaNat), true);
-  // SE VA SOLA A LOS DOS SEGUNDOS: no tiene como cerrarse ni hace falta.
-  chequear('y se va sola a los dos segundos',
-    /DURA_MS = 2000/.test(filaWeb) && /DURA_MS = 2000/.test(filaNat), true);
+  // SE VA SOLA: no tiene como cerrarse ni hace falta.
+  //
+  // EN LA WEB SIGUEN SIENDO DOS SEGUNDOS SECOS. En el telefono son tres
+  // tiempos desde el 25/9 —entra rapido, se queda tres segundos, se desvanece
+  // en medio segundo— porque desaparecer de golpe se lee como un error. La web
+  // no se toca por pedido explicito.
+  chequear('en la web se va sola a los dos segundos', /DURA_MS = 2000/.test(filaWeb), true);
+  chequear('y en el telefono se desvanece despues de tres',
+    /QUIETO_MS = 3000/.test(filaNat) && /SALE_MS = \d+/.test(filaNat), true);
+  // TOCAR LA MISMA OTRA VEZ LO CIERRA DE UNA, interrumpiendo el desvanecido.
+  chequear('y tocarla de nuevo lo corta', /return \(\) => seq\.stop\(\)/.test(filaNat), true);
+  // `setAbierta(null)` SOLO SI TERMINO: una animacion cortada llama igual a su
+  // callback, y sin el guardia cerrar una para abrir otra cerraria la nueva.
+  chequear('sin cerrar la que se acaba de abrir',
+    /if \(finished\) setAbierta\(null\)/.test(filaNat), true);
 
   // LA LINEA ES MUSCULO · FRASE, y el material YA NO SE NOMBRA (25/9). Estaba
   // por un argumento que sonaba bien —a este tamaño la luna y el planeta se
@@ -10890,9 +10902,16 @@ console.log('\n156. El planeta esta siempre, y fuera de Inicio se ve borroso');
 
   // ES EL filter DE REACT NATIVE y no una vista de desenfoque aparte: sin
   // dependencia nativa, esto viaja por el aire.
-  chequear('el fondo se desenfoca con filter', /filter: \[\{ blur:/.test(fon156), true);
-  chequear('y no se sumo ninguna libreria de blur',
-    /blur/i.test(JSON.stringify(JSON.parse(de156('movil', 'package.json')).dependencies)), false);
+  // NUNCA CON `filter`, y esto es una cicatriz: para desenfocar, iOS RASTERIZA
+  // la vista, y una vista de OpenGL no tiene su contenido en la capa sino en un
+  // framebuffer de la GPU que el rasterizador no lee. Lo que salia de ahi no
+  // era el planeta borroso: era la capa vacia, o sea BLANCO. En el navegador
+  // andaba —ahi `filter` es CSS y si funciona sobre un canvas— y por eso paso.
+  chequear('el GLView no se desenfoca con filter', /filter: \[\{ blur:/.test(fon156), false);
+  // LO QUE VIAJA POR EL AIRE: un velo extra, que empuja el planeta hacia atras
+  // sin tocar la vista del motor.
+  chequear('el velo extra sube con la distancia a Inicio',
+    /opacity: desenfoque \* 0\.4/.test(fon156), true);
 }
 
 

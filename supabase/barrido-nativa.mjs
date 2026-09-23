@@ -174,13 +174,23 @@ async function recorrerTodo(estado) {
     await mirar(con(`volver a ${p}`), () => texto(p).click({ timeout: 20000 }));
   }
 
-  await mirar(con('Stats'), () => texto('Stats').click());
-  // SIN RED, STATS NO DIBUJA SUS DOS SOLAPAS: muestra el cartel y "Reintentar",
-  // que es lo correcto — no hay nada que separar en General y Entrenamiento.
-  // Pedirlas igual era esperar veinte segundos a un botón que la pantalla no
-  // tiene por qué tener, y reportarlo como si algo se hubiera roto.
-  await mirar(con('Stats · Entrenamiento'), () => tocarSiEsta(page.getByRole('tab', { name: 'Entrenamiento' })));
-  await mirar(con('Stats · General'), () => tocarSiEsta(page.getByRole('tab', { name: 'General' })));
+  // POR ROL Y NO POR TEXTO: la pantalla de Stats se titula "Stats" igual que su
+  // pestaña, y el localizador por texto toma la ULTIMA — o sea el título, que
+  // no lleva a ningún lado.
+  await mirar(con('Stats'), () => page.getByRole('tab', { name: 'Stats' }).click({ timeout: 20000 }));
+
+  // LAS DOS SOLAPAS SE BUSCAN DENTRO DEL CARRIL DE STATS, y no en la página.
+  //
+  // Sin red, Stats no las dibuja: muestra el cartel y "Reintentar", que es lo
+  // correcto —no hay nada que separar en General y Entrenamiento—. Pedirlas en
+  // la página entera encontraba igual un candidato en otro lado, visible y sin
+  // recibir toques, y eran quince segundos esperando un click imposible que se
+  // reportaba como si la pantalla estuviera rota. Acotado al carril, cuando no
+  // están simplemente no hay nada que tocar.
+  const solapa = (n) =>
+    page.locator('[data-testid="carril-stats"]').getByRole('tab', { name: n, exact: true });
+  await mirar(con('Stats · Entrenamiento'), () => tocarSiEsta(solapa('Entrenamiento')));
+  await mirar(con('Stats · General'), () => tocarSiEsta(solapa('General')));
 
   await mirar(con('perfil propio'), async () => {
     await texto('Inicio').click();

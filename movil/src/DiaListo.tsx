@@ -19,10 +19,30 @@ import { C } from './colores';
  * EL CARTEL SE DICE UNA VEZ Y CON AIRE, afuera de los botones: apretado
  * adentro de uno ancho parecía que el día se registraba otra vez.
  */
-export default function DiaListo({ alaFoto, alPeso }: { alaFoto: () => void; alPeso: () => void }) {
+export default function DiaListo({
+  alaFoto,
+  alPeso,
+  minutos,
+}: {
+  alaFoto: () => void;
+  alPeso: () => void;
+  /** Cuánto duró el entrenamiento de hoy, si hubo. */
+  minutos?: number | null;
+}) {
   return (
     <View style={estilos.fila}>
-      <Text style={estilos.cartel}>{T.inicio.diaRegistrado}</Text>
+      {/* CUÁNTO DURÓ, DEBAJO DEL RÓTULO (25/9). *"Me gustaba que apareciera el
+          tiempo."* Se había perdido al mover el resumen: el cartel quedó solo
+          con "Día registrado" y el número se veía únicamente en el resumen del
+          final, que se cierra tocándolo.
+
+          LAS SERIES NO VUELVEN, también a pedido: el bloque ya las cuenta
+          mientras entrenás, y una vez terminado el día el número que sigue
+          diciendo algo es el rato que estuviste. */}
+      <View style={estilos.cuando}>
+        <Text style={estilos.cartel}>{T.inicio.diaRegistrado}</Text>
+        {!!minutos && <Text style={estilos.minutos}>{T.inicio.minutosDeHoy(minutos)}</Text>}
+      </View>
       <View style={estilos.acciones}>
         <Accion rotulo={T.registrar.foto} alTocar={alaFoto}>
           <IconoFoto />
@@ -72,7 +92,9 @@ function IconoPeso() {
 
 const estilos = StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 10, paddingBottom: 4 },
+  cuando: { flexShrink: 1, gap: 3 },
   cartel: { color: C.sub, fontSize: 11, letterSpacing: 2.4, textTransform: 'uppercase' },
+  minutos: { color: C.tinta, fontSize: 15 },
   acciones: { flexDirection: 'row', gap: 8 },
   pildora: {
     flexDirection: 'row',
