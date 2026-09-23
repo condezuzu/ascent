@@ -140,7 +140,7 @@ export default function Medallas() {
           Al tamaño de verdad
         </h2>
         <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, maxWidth: 620, marginBottom: 18 }}>
-          Acá se decide. Una medalla que a 96 px se ve preciosa y a 18 es una mancha no sirve, y eso
+          Aquí se decide. Una medalla que a 96 px se ve preciosa y a 18 es una mancha no sirve, y eso
           no se ve hasta ponerlo al lado de un nombre.
         </p>
 
