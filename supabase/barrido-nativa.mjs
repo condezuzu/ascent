@@ -99,9 +99,36 @@ async function mirar(nombre, fn) {
 }
 
 const texto = (t, exact = true) => page.getByText(t, { exact }).last();
-const tocarSiEsta = async (t, exact = true) => {
-  const l = texto(t, exact);
-  if (await l.isVisible().catch(() => false)) await l.click({ timeout: 15000 });
+
+/**
+ * LO MISMO, PERO DENTRO DE UNA PESTAÑA.
+ *
+ * LAS CINCO PESTAÑAS ESTÁN MONTADAS A LA VEZ —es lo que arregló el titileo,
+ * ver `Pestanas.tsx`— así que un texto suelto puede encontrarse en una
+ * pantalla que no está en pantalla. `isVisible` dice que sí (está dibujada,
+ * fuera del recorte) pero no recibe toques, y el click espera quince segundos
+ * a algo que no va a pasar. El barrido reportaba eso como "no se pudo abrir",
+ * con la pantalla perfecta.
+ *
+ * Peor todavía: para intentar el click, Playwright ARRASTRA el contenedor
+ * hasta traer el elemento a la vista, y eso deja la tira de pestañas a mitad
+ * de camino. O sea que un texto ambiguo no solo miente: rompe lo que venía
+ * después.
+ */
+const enPestana = (p, t, exact = true) =>
+  page.locator(`[data-testid="carril-${p}"]`).getByText(t, { exact }).last();
+
+/**
+ * Y LO MISMO DENTRO DE LA HOJA que sube desde abajo. No vive en ninguna
+ * pestaña —es un `Modal`, o sea que se dibuja en la raíz— así que `enPestana`
+ * no sirve para lo que ella pregunta.
+ */
+const enHoja = (t, exact = true) =>
+  page.locator('[data-testid="hoja"]').getByText(t, { exact }).last();
+
+const tocarSiEsta = async (l, exact = true) => {
+  const loc = typeof l === 'string' ? texto(l, exact) : l;
+  if (await loc.isVisible().catch(() => false)) await loc.click({ timeout: 15000 });
 };
 
 console.log(`Barrido de la app nativa · cuenta ${usuario}`);
@@ -163,7 +190,13 @@ async function recorrerTodo(estado) {
   await mirar(con('volver del perfil'), () => texto('Volver', false).click({ timeout: 20000 }));
 
   await mirar(con('Ajustes'), () => page.getByRole('tab', { name: 'Ajustes' }).click({ timeout: 20000 }));
-  for (const sec of ['Diagnóstico', 'Cómo se compara', 'Mis datos']) {
+  // EL TITULO ENTERO, y no "Cómo se compara" a secas: ese pedazo suelto
+  // también es el enlace de Stats ("Cómo se compara" → Ajustes), y como las
+  // cinco pestañas quedan montadas a la vez, el texto corto encontraba el
+  // enlace de Stats —fuera de pantalla y sin recibir toques— y esperaba
+  // quince segundos a un click imposible. El barrido reportaba "no se pudo
+  // abrir" por una pantalla que estaba perfecta.
+  for (const sec of ['Diagnóstico', 'Cómo se compara la fuerza', 'Mis datos']) {
     await mirar(con(`Ajustes · ${sec}`), () => tocarSiEsta(sec));
   }
   await mirar(con('Inicio'), () => texto('Inicio').click());
@@ -213,11 +246,16 @@ await recorrerTodo('con datos');
 // Es el estado que más dura en un gimnasio: cronómetro corriendo, series en la
 // cola y una hoja abierta, y todo eso vivo mientras se abre cualquier otra
 // pantalla.
-await mirar('sesión: iniciar', () => texto('Iniciar entrenamiento').click({ timeout: 20000 }));
+await mirar('sesión: iniciar', () =>
+  enPestana('inicio', 'Iniciar entrenamiento').click({ timeout: 20000 })
+);
+// DENTRO DE INICIO Y NO SUELTOS: "Press de banca" también está en Stats, en la
+// lista de "dónde estoy", y ese está montado aunque no se vea. Ver `enPestana`.
 await mirar('sesión: elegir ejercicio', async () => {
-  await tocarSiEsta('Elegir ejercicio');
-  await tocarSiEsta('Pecho');
-  await tocarSiEsta('Press de banca');
+  await tocarSiEsta(enPestana('inicio', 'Elegir ejercicio'));
+  // Estos dos los pregunta la hoja, que se dibuja en la raíz y no en Inicio.
+  await tocarSiEsta(enHoja('Pecho'));
+  await tocarSiEsta(enHoja('Press de banca'));
 });
 // El `+` no tiene texto: se toca por su etiqueta.
 const sumarSerie = async () => {

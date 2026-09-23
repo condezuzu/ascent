@@ -73,21 +73,37 @@ export default function PerfilDeAmigo() {
     setDatos({ ...datos, pedidoPendiente: true });
   }
 
+  // LA SALIDA SE DIBUJA SIEMPRE, también mientras carga. La rama del error ya
+  // la tenía; esta no, y una consulta que tarda encierra igual que una que
+  // falla — con mala señal, tardar mucho es lo normal. Lo encontró el barrido
+  // del 25/9 en el perfil propio, y esta pantalla tenía la mitad del problema.
+  const salida = (
+    <Pressable onPress={() => router.back()} hitSlop={8} style={estilos.volverSuelto}>
+      <Text style={estilos.enlace}>{T.general.volver}</Text>
+    </Pressable>
+  );
+
   if (!cargado) {
     return (
-      <View style={estilos.centrado}>
-        <ActivityIndicator color={C.sub} />
+      <View style={estilos.raiz}>
+        {salida}
+        <View style={estilos.centrado}>
+          <ActivityIndicator color={C.sub} />
+        </View>
       </View>
     );
   }
 
   if (!datos) {
     return (
-      <View style={estilos.centrado}>
-        <Text style={estilos.error}>{error || T.social.noExiste}</Text>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={estilos.enlace}>{T.general.volver}</Text>
-        </Pressable>
+      <View style={estilos.raiz}>
+        {salida}
+        <View style={estilos.centrado}>
+          {/* El "Volver" que estaba acá abajo se fue arriba con el resto: una
+              sola salida, en el mismo lugar en las tres ramas, en vez de una
+              que se mueve según lo que haya pasado. */}
+          <Text style={estilos.error}>{error || T.social.noExiste}</Text>
+        </View>
       </View>
     );
   }
@@ -170,6 +186,10 @@ const estilos = StyleSheet.create({
   pantalla: { padding: 24, paddingTop: 60, paddingBottom: 60 },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   volver: { paddingBottom: 10 },
+  // La misma salida cuando no hay `ScrollView` que le ponga el margen de
+  // arriba. Los 60 son el `paddingTop` de `pantalla`, para que no baile al
+  // llegar los datos.
+  volverSuelto: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 10 },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 8, marginBottom: 22 },
   nombre: { color: C.tinta, fontSize: 18, fontWeight: '500' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },

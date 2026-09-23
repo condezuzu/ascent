@@ -10533,6 +10533,71 @@ console.log('\n151. El aviso de que el motor no arranco (lo de Brave)');
     /WEBGL_lose_context'\)\?\.loseContext\(\)/.test(lib151), true);
 }
 
+
+console.log('\n152. Las pantallas apiladas siempre tienen salida');
+{
+  const { readFileSync: leer152 } = await import('node:fs');
+  const { join: unir152 } = await import('node:path');
+  const R152 = unir152(import.meta.dirname, '..');
+  const de152 = (...p) => leer152(unir152(R152, ...p), 'utf8');
+  const sinComentarios152 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- LO QUE ENCONTRO EL BARRIDO (25/9) ----
+  //
+  // Sin red, el perfil propio se abria, no podia traer los datos y mostraba el
+  // cartel A PANTALLA COMPLETA: sin barra de pestanas —es una pantalla
+  // apilada— y sin "Volver", porque esa rama no lo dibujaba. El unico boton
+  // era "Reintentar", que sin senal no puede hacer nada. De ahi no se salia
+  // mas que cerrando la app.
+  //
+  // Y NO ERA SOLO EL ERROR: mientras carga tampoco habia salida, en las tres.
+  // Una consulta que tarda encierra igual que una que falla, y con mala senal
+  // tardar mucho es lo normal.
+  //
+  // LA REGLA: en una pantalla apilada, la puerta se dibuja SIEMPRE y antes que
+  // el contenido. No depende de que el contenido haya llegado.
+  const apiladas152 = ['PerfilPropio', 'PerfilDeAmigo', 'MisMarcas'];
+  for (const f of apiladas152) {
+    const t = sinComentarios152(de152('movil', 'src', f + '.tsx'));
+    chequear(f + ': la salida se arma una sola vez', /const salida = \(/.test(t), true);
+    // Y SE DIBUJA EN TODAS LAS RAMAS TEMPRANAS: las dos que devuelven antes
+    // del contenido son las que encerraban.
+    const tempranas = t.split(/\n  if \(/).slice(1, 3);
+    chequear(f + ': las dos ramas tempranas la dibujan',
+      tempranas.length === 2 && tempranas.every((r) => /\{salida\}/.test(r)), true);
+  }
+
+  // ---- LAS PESTANAS QUE NO SE VEN TAMPOCO SE LEEN ----
+  //
+  // Las cinco estan montadas a la vez —es lo que arreglo el titileo— y el
+  // overflow recorta lo que se VE, no lo que se LEE: VoiceOver recorria las
+  // cinco pantallas seguidas. Salio del mismo barrido, que estando en Ajustes
+  // se topo con un enlace de Stats.
+  const pes152 = sinComentarios152(de152('movil', 'src', 'Pestanas.tsx'));
+  chequear('la pestana que no esta no recibe toques',
+    /pointerEvents=\{cual === pestana \? 'auto' : 'none'\}/.test(pes152), true);
+  chequear('y tampoco la lee el lector de pantalla',
+    /accessibilityElementsHidden=\{cual !== pestana\}/.test(pes152), true);
+
+  // ---- Y EL BARRIDO DEJA DE CONFUNDIRSE DE PANTALLA ----
+  //
+  // Un texto suelto se encontraba en una pestana que no estaba: visible para
+  // Playwright —esta dibujada, fuera del recorte— pero sin recibir toques, o
+  // sea quince segundos esperando un click imposible, y reportado como "no se
+  // pudo abrir" con la pantalla perfecta. Peor: para intentarlo, Playwright
+  // ARRASTRA el contenedor y deja la tira a mitad de camino.
+  const bar152 = de152('supabase', 'barrido-nativa.mjs');
+  chequear('el barrido puede buscar dentro de una pestana',
+    /carril-\$\{p\}/.test(bar152), true);
+  chequear('y dentro de la hoja, que se dibuja en la raiz',
+    /data-testid="hoja"/.test(bar152), true);
+  chequear('la hoja lleva ese testID', /testID="hoja"/.test(de152('movil', 'src', 'Hoja.tsx')), true);
+  // EL TITULO ENTERO: "Como se compara" a secas tambien es el enlace de Stats.
+  chequear('y busca el titulo entero en Ajustes',
+    /'Cómo se compara la fuerza'/.test(bar152), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

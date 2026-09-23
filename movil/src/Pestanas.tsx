@@ -331,6 +331,12 @@ export default function Pestanas({
               // La que asoma es para mirar, no para tocar: un toque ahí sería
               // en una pantalla que todavía no es la que está.
               pointerEvents={cual === pestana ? 'auto' : 'none'}
+              // Y TAMPOCO SE LEEN EN VOZ ALTA. Con las cinco montadas —que es
+              // lo que arregló el titileo— VoiceOver recorría las cinco
+              // pantallas seguidas: el `overflow: hidden` recorta lo que se
+              // ve, no lo que se lee. Salió del barrido del 25/9, que se topó
+              // con un enlace de Stats estando en Ajustes.
+              accessibilityElementsHidden={cual !== pestana}
             >
               {/* QUIÉN PUEDE PEDIR EL FONDO. Con las cinco pestañas montadas,
                   las cinco lo pedían y ganaba la última que hubiera corrido su

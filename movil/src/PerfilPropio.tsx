@@ -95,21 +95,51 @@ export default function PerfilPropio() {
     cargar();
   }
 
+  /**
+   * LA SALIDA, QUE VA EN LOS TRES ESTADOS.
+   *
+   * ENCONTRADO POR EL BARRIDO (25/9), sin red: esta pantalla se abría, no
+   * podía traer los datos y mostraba el cartel a pantalla completa —sin barra
+   * de pestañas, porque es una pantalla apilada, y sin "Volver", porque esa
+   * rama no lo dibujaba—. Quedabas encerrado: el único botón era "Reintentar",
+   * que sin señal no puede hacer nada. De ahí no se salía más que cerrando la
+   * app.
+   *
+   * Y NO ERA SOLO EL ERROR: mientras carga tampoco había salida. Una consulta
+   * que tarda mucho encierra igual que una que falla, y con mala señal tardar
+   * mucho es lo normal.
+   *
+   * La regla, entonces: la puerta de salida de una pantalla apilada se dibuja
+   * SIEMPRE, antes que su contenido, y no depende de que ese contenido haya
+   * llegado.
+   */
+  const salida = (
+    <Pressable onPress={() => router.back()} hitSlop={8} style={estilos.volverSuelto}>
+      <Text style={estilos.enlace}>{T.general.volver}</Text>
+    </Pressable>
+  );
+
   if (!cargado) {
     return (
-      <View style={estilos.centrado}>
-        <ActivityIndicator color={C.sub} />
+      <View style={estilos.raiz}>
+        {salida}
+        <View style={estilos.centrado}>
+          <ActivityIndicator color={C.sub} />
+        </View>
       </View>
     );
   }
 
   if (!datos) {
     return (
-      <View style={estilos.centrado}>
-        <Text style={estilos.error}>{error || T.inicio.noCargo}</Text>
-        <Pressable onPress={cargar}>
-          <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-        </Pressable>
+      <View style={estilos.raiz}>
+        {salida}
+        <View style={estilos.centrado}>
+          <Text style={estilos.error}>{error || T.inicio.noCargo}</Text>
+          <Pressable onPress={cargar}>
+            <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -202,6 +232,10 @@ const estilos = StyleSheet.create({
   pantalla: { padding: 24, paddingTop: 60, paddingBottom: 60 },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   volver: { paddingBottom: 10 },
+  // La misma salida cuando no hay `ScrollView` que le ponga el margen de
+  // arriba: mientras carga y cuando no se pudo cargar. Los 60 son el
+  // `paddingTop` de `pantalla`, para que no baile al llegar los datos.
+  volverSuelto: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 10 },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 8, marginBottom: 26 },
   identidad: { flex: 1 },
   nombre: { color: C.tinta, fontSize: 22, fontWeight: '500' },

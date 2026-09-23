@@ -17,7 +17,10 @@ export default function Hoja({ visible, alCerrar, children }: { visible: boolean
     <Modal visible={visible} transparent animationType="slide" onRequestClose={alCerrar}>
       <KeyboardAvoidingView style={estilos.todo} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={estilos.fondo} onPress={alCerrar} accessibilityLabel="Cerrar" />
-        <View style={estilos.hoja}>
+        {/* Para el barrido: con las cinco pestañas montadas a la vez, un texto
+            suelto puede encontrarse en una pantalla que no está. Esto le da a
+            la sonda un lugar concreto donde buscar lo que la hoja pregunta. */}
+        <View style={estilos.hoja} testID="hoja">
           <ScrollView contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled">
             {children}
           </ScrollView>

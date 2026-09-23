@@ -75,21 +75,38 @@ export default function MisMarcas() {
     cargar();
   }
 
+  // LA SALIDA SE DIBUJA SIEMPRE. Esta es una pantalla apilada: no tiene barra
+  // de pestañas debajo, así que si la rama que se dibuja no trae el "Volver",
+  // no hay ninguna otra forma de salir. Sin red el único botón era
+  // "Reintentar", que sin señal no puede hacer nada. Lo encontró el barrido
+  // del 25/9 en el perfil propio; acá estaba igual, en las dos ramas.
+  const salida = (
+    <Pressable onPress={() => router.back()} hitSlop={10} style={estilos.volverSuelto}>
+      <Text style={estilos.volver}>{T.general.volver}</Text>
+    </Pressable>
+  );
+
   if (cargando) {
     return (
-      <View style={estilos.centrado}>
-        <ActivityIndicator color={C.sub} />
+      <View style={estilos.todo}>
+        {salida}
+        <View style={estilos.centrado}>
+          <ActivityIndicator color={C.sub} />
+        </View>
       </View>
     );
   }
 
   if (!perfil) {
     return (
-      <View style={estilos.centrado}>
-        <Text style={estilos.nota}>{T.general.noSePudo}</Text>
-        <Pressable onPress={cargar}>
-          <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-        </Pressable>
+      <View style={estilos.todo}>
+        {salida}
+        <View style={estilos.centrado}>
+          <Text style={estilos.nota}>{T.general.noSePudo}</Text>
+          <Pressable onPress={cargar}>
+            <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -246,6 +263,9 @@ const estilos = StyleSheet.create({
   contenido: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   volver: { color: C.sub, fontSize: 15, paddingVertical: 6 },
+  // Cuando no hay `ScrollView` que le ponga el margen: mismos 20 y 16 que
+  // `contenido`, para que el enlace no se corra al llegar los datos.
+  volverSuelto: { paddingHorizontal: 20, paddingTop: 16 },
   titulo: { color: C.tinta, fontSize: 26, fontWeight: '300', marginTop: 10, marginBottom: 18 },
   solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
