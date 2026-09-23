@@ -175,10 +175,12 @@ async function recorrerTodo(estado) {
   }
 
   await mirar(con('Stats'), () => texto('Stats').click());
-  await mirar(con('Stats · Entrenamiento'), () =>
-    page.getByRole('tab', { name: 'Entrenamiento' }).click({ timeout: 20000 })
-  );
-  await mirar(con('Stats · General'), () => page.getByRole('tab', { name: 'General' }).click({ timeout: 20000 }));
+  // SIN RED, STATS NO DIBUJA SUS DOS SOLAPAS: muestra el cartel y "Reintentar",
+  // que es lo correcto — no hay nada que separar en General y Entrenamiento.
+  // Pedirlas igual era esperar veinte segundos a un botón que la pantalla no
+  // tiene por qué tener, y reportarlo como si algo se hubiera roto.
+  await mirar(con('Stats · Entrenamiento'), () => tocarSiEsta(page.getByRole('tab', { name: 'Entrenamiento' })));
+  await mirar(con('Stats · General'), () => tocarSiEsta(page.getByRole('tab', { name: 'General' })));
 
   await mirar(con('perfil propio'), async () => {
     await texto('Inicio').click();

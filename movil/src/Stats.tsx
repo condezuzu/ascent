@@ -88,7 +88,11 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       supabase.from('weights').select('fecha, valor').eq('user_id', uid).order('fecha'),
       supabase.rpc('mis_impulsos'),
     ]);
-    if (!perfil) return setError(T.general.noSePudo);
+    // DICE QUE NO SE PUDO TRAER, no "no se guardó" (25/9). Usaba
+    // `T.general.noSePudo`, que es el texto de una ESCRITURA que falla: sin red,
+    // Stats decía "No se guardó. Prueba de nuevo." cuando no se estaba
+    // guardando nada. Lo vio el barrido, en la captura de "sin red".
+    if (!perfil) return setError(T.inicio.noCargo);
     setDatos({
       racha: perfil.racha_actual ?? 0,
       mejor: perfil.mejor_racha ?? 0,
