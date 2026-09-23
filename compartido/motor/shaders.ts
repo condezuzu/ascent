@@ -628,16 +628,58 @@ void main() {
     }
 
     if (uModo > 0.5 && uModo < 1.5) {
-      // ---- SOL: granulación viva y limbo oscurecido ----
+      // ================= SOL =================
+      //
+      // LA CARA OSCURA Y EL CANTO EN LLAMAS (25/9). Antes era un disco
+      // amarillo brillante con OSCURECIMIENTO DE LIMBO —claro en el medio,
+      // apagado en el borde— y se veia como un render viejo: una bola de un
+      // color, sin superficie.
+      //
+      // La foto de referencia hace exactamente lo contrario, y es ademas lo que
+      // ya hacen los planetas en descanso: una esfera AMBAR OSCURA con la
+      // granulacion a la vista, y un filo blanco encendido en todo el contorno
+      // del que salen las protuberancias.
+      //
+      // EL FILO VA EN TODA LA VUELTA y no de un lado. Una estrella no tiene
+      // cara nocturna: se enciende sola, asi que no hay un lado iluminado y
+      // otro en sombra. Ademas es real — el borde del Sol brilla mas que el
+      // centro en H-alfa, que es como esta sacada la foto.
       float gran = fbm(sc * 5.0 + vec3(uTime * 0.09));
       float gran2 = fbm(sc * 13.0 - vec3(uTime * 0.15));
-      superficie = paleta(0.45 + 0.55 * gran + 0.18 * gran2);
-      // manchas solares
-      float mancha = smoothstep(0.66, 0.78, fbm(sc * 3.0 + vec3(uTime * 0.03, 0.0, 9.0)));
-      superficie *= (1.0 - 0.45 * mancha);
-      float limbo = pow(n.z, 0.45);
-      // brillo contenido: encandilaba y se comía el resto de la escena
-      col = mix(col, superficie * (0.52 + 0.5 * limbo), dentro);
+      // EL INDICE ARRANCA CASI EN CERO, Y ADEMAS SE MULTIPLICA MAS ABAJO. Toda
+      // la paleta del Sol es clara —el mas oscuro de sus cuatro colores ya es
+      // un naranja encendido— asi que correr el indice no alcanza: el primer
+      // intento dejo una cara crema, lejos de la foto. Hacen falta las dos.
+      //
+      // Y EL RANGO ES CORTO. Con un rango largo la granulacion llegaba al
+      // crema del final de la paleta y el disco salia beige; el sol de la foto
+      // es ambar, nunca crema. El indice se queda entre los dos naranjas.
+      superficie = paleta(0.02 + 0.26 * gran + 0.10 * gran2);
+
+      // MANCHAS SOLARES: pocas y chicas. En un disco brillante no se veian; en
+      // uno oscuro son lo que dice "esto tiene superficie" en vez de "esto es
+      // un degradado". El primer intento las puso grandes y seguidas y el sol
+      // quedo sucio, con manchones grises: el umbral sube para que sean pocas.
+      float mancha = smoothstep(0.76, 0.88, fbm(sc * 3.4 + vec3(uTime * 0.03, 0.0, 9.0)));
+      superficie *= (1.0 - 0.5 * mancha);
+
+      // La cara, apagada. El termino de n.z ya no ilumina el centro: apenas
+      // levanta lo que mira a la camara, para que la esfera siga siendo esfera.
+      //
+      // LA GRANULACION TAMBIEN VA EN EL BRILLO y no solo en el color. Sobre una
+      // cara oscura, correr el indice de una paleta corta casi no se nota: los
+      // dos naranjas se parecen. Lo que hace que se lea "hervido" es que unas
+      // celdas esten mas apagadas que otras.
+      float celdas = 0.55 + 0.85 * gran + 0.25 * gran2;
+      vec3 cara = superficie * celdas * (0.16 + 0.26 * pow(n.z, 0.8));
+
+      // EL CANTO. El termino 1.0 - n.z es cero en el medio y uno en el borde:
+      // la potencia lo aprieta contra el filo. Es lo unico brillante del cuerpo
+      // y por eso va con la parte mas clara de la paleta.
+      float canto = pow(1.0 - n.z, 3.2);
+      cara += mix(paleta(0.95), vec3(1.0, 0.95, 0.80), 0.5) * canto * 2.8;
+
+      col = mix(col, cara, dentro);
       alfa = max(alfa, dentro);
     } else if (uModo > 1.5 && uModo < 2.5) {
       // ---- AGUJERO NEGRO: el horizonte es negro absoluto ----
@@ -691,15 +733,20 @@ void main() {
   float fuera = smoothstep(rEff - aa, rEff + aa, d);
 
   if (uModo > 0.5 && uModo < 1.5) {
-    // ---- corona + protuberancias (ambas contenidas) ----
-    float glow = exp(-(d - R) * 9.0) * fuera;
-    col += paleta(0.9) * glow * 0.55;
-    alfa = max(alfa, glow * 0.55);
+    // ---- corona + protuberancias ----
+    //
+    // SUBEN LAS DOS, y no es decoracion: con la cara apagada, el sol dejo de
+    // ser lo mas brillante de la pantalla, y eso importa porque el rango 5 es
+    // "Jupiter se enciende y se vuelve Sol". La luz que perdio el disco la
+    // ponen el halo y las protuberancias, que es de donde sale en la foto.
+    float glow = exp(-(d - R) * 8.0) * fuera;
+    col += paleta(0.92) * glow * 0.95;
+    alfa = max(alfa, glow * 0.8);
 
     float pr = protuberancias(p, d);
-    vec3 cPr = mix(paleta(0.85), vec3(1.0, 0.8, 0.5), 0.4);
-    col += cPr * pr * 1.0;
-    alfa = max(alfa, min(1.0, pr * 0.9));
+    vec3 cPr = mix(paleta(0.9), vec3(1.0, 0.88, 0.6), 0.45);
+    col += cPr * pr * 1.6;
+    alfa = max(alfa, min(1.0, pr * 1.2));
 
   } else if (uModo > 1.5 && uModo < 2.5) {
     // ---- AGUJERO NEGRO ----
