@@ -14,7 +14,7 @@
 // y a 18 es una mancha no sirve, y eso no se ve hasta ponerlo.
 
 import { useState } from 'react';
-import { BOCETOS, FRASES, MATERIALES, UMBRAL, materialDe, type Boceto, type Material } from './bocetos';
+import { BOCETOS, MATERIALES, TRES, UMBRAL, frase, materialDe, type Boceto, type Material } from './bocetos';
 
 export default function Medallas() {
   const [percentil, setPercentil] = useState(72);
@@ -31,9 +31,10 @@ export default function Medallas() {
         </div>
         <h1 style={{ fontSize: 30, fontWeight: 300, margin: '8px 0 6px' }}>Medallas por marca</h1>
         <p style={{ color: '#8a93a8', fontSize: 14, lineHeight: 1.6, maxWidth: 640 }}>
-          Nada de esto está construido. Cada constelación dibuja el <strong>gesto</strong> del
-          levantamiento, no la zona: el brazo subiendo el peso, la pierna abajo en la sentadilla, la
-          barra empujada lejos del torso. El porqué de cada número está arriba de{' '}
+          Nada de esto está construido. Se dibuja el <strong>contorno</strong> de una figura y no un
+          esquema de articulaciones, que era la falla anterior. Con eso alcanzó para brazo y pierna.{' '}
+          <strong>No alcanzó para las tres del torso</strong>: están abajo con lo que sale en su lugar,
+          y después la salida que propongo. El porqué de cada decisión está arriba de{' '}
           <code style={{ color: '#c4c2ba' }}>bocetos.ts</code>.
         </p>
 
@@ -97,11 +98,56 @@ export default function Medallas() {
                 <Medalla boceto={b} material={mat} tam={104} />
                 <div style={{ fontSize: 15, marginTop: 12 }}>{b.zona}</div>
                 <div style={{ color: '#4a5163', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>{b.pie}</div>
+                {/* SE DICE CUÁL NO PASA Y QUÉ SALE EN SU LUGAR. Mandar cinco
+                    bocetos como si los cinco funcionaran sería hacerle perder
+                    el tiempo al que mira: tres no funcionan. */}
+                {b.advertencia && (
+                  <div
+                    style={{
+                      color: '#c98b6b', fontSize: 11, marginTop: 8, lineHeight: 1.5,
+                      borderTop: '1px solid #1d2230', paddingTop: 8,
+                    }}
+                  >
+                    {b.advertencia}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
 
+        {/* ---- la salida: tres en vez de cinco ---- */}
+        <h2 style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: '#8a93a8', margin: '44px 0 8px' }}>
+          La salida: tres en vez de cinco
+        </h2>
+        <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, maxWidth: 640, marginBottom: 18 }}>
+          Pecho, espalda y hombros son <strong>el mismo torso</strong>: de frente y de espalda el
+          contorno es idéntico, y el hombro es una esquina de ese contorno. Lo que los separa en un
+          cuerpo real es el relieve, y el relieve necesita sombra. Así que van juntos en una sola
+          medalla, que se lleva press de banca, remo y press militar. Estas tres las nombra
+          cualquiera sin leyenda.
+        </p>
+        {mat && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 18 }}>
+            {TRES.map((b) => (
+              <div
+                key={b.clave}
+                style={{ border: '1px solid #2a3040', borderRadius: 14, padding: 16, textAlign: 'center' }}
+              >
+                <Medalla boceto={b} material={mat} tam={104} />
+                <div style={{ fontSize: 15, marginTop: 12 }}>{b.zona}</div>
+                <div style={{ color: '#4a5163', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>{b.pie}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18 }}>
+          <span style={{ color: '#4a5163', fontSize: 11, width: 34, fontVariantNumeric: 'tabular-nums' }}>18px</span>
+          {mat && TRES.map((b) => <Medalla key={b.clave} boceto={b} material={mat} tam={18} />)}
+          <span style={{ color: '#4a5163', fontSize: 11, marginLeft: 10 }}>
+            tres siluetas distintas se separan mejor que cinco parecidas
+          </span>
+        </div>
         {/* ---- EL TAMAÑO DE VERDAD ---- */}
         <h2 style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: '#8a93a8', margin: '44px 0 8px' }}>
           Al tamaño de verdad
@@ -154,30 +200,21 @@ export default function Medallas() {
         <h2 style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: '#8a93a8', margin: '44px 0 8px' }}>
           Al tocar una
         </h2>
-        <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, maxWidth: 640, marginBottom: 18 }}>
-          El requisito que descarta la mitad de las opciones: la frase tiene que servir en tu perfil{' '}
-          <strong>y</strong> en el de un amigo.
-        </p>
-        <div style={{ display: 'grid', gap: 12, maxWidth: 460 }}>
-          {FRASES.map((f) => (
-            <div
-              key={f.clave}
-              style={{
-                border: '1px solid ' + (f.recomendada ? '#2a3040' : '#1d2230'),
-                borderRadius: 12,
-                padding: 14,
-                background: f.recomendada ? '#0b0d13' : 'transparent',
-              }}
-            >
-              <div style={{ fontSize: 15, color: '#e8ecf6' }}>{f.principal(cuantos)}</div>
-              <div style={{ fontSize: 12, color: '#8a93a8', marginTop: 4 }}>{f.pie}</div>
-              <div style={{ fontSize: 12, color: '#4a5163', marginTop: 10, lineHeight: 1.5 }}>
-                {f.recomendada ? '— la que propongo. ' : '— '}
-                {f.porque}
-              </div>
-            </div>
-          ))}
+        <div
+          style={{
+            border: '1px solid #2a3040',
+            borderRadius: 12,
+            padding: 16,
+            background: '#0b0d13',
+            maxWidth: 340,
+          }}
+        >
+          <div style={{ fontSize: 16, color: '#e8ecf6' }}>{frase(cuantos)}</div>
         </div>
+        <p style={{ color: '#4a5163', fontSize: 12, lineHeight: 1.6, maxWidth: 640, marginTop: 12 }}>
+          Una sola línea. Es impersonal a propósito: así sirve igual en tu perfil y en el de un
+          amigo, sin cambiar una letra.
+        </p>
       </div>
     </div>
   );
@@ -192,7 +229,7 @@ export default function Medallas() {
  * dibujan varias veces en la misma fila (ver `compartido/insignias.ts`).
  */
 function Medalla({ boceto, material, tam }: { boceto: Boceto; material: Material; tam: number }) {
-  const { puntos, lineas, faro } = boceto;
+  const { puntos, lineas, estrellas, faro } = boceto;
   const chica = tam < 40;
   // El punto no escala linealmente: a 18 px un radio proporcional desaparece,
   // así que abajo se le da un piso.
@@ -217,8 +254,18 @@ function Medalla({ boceto, material, tam }: { boceto: Boceto; material: Material
           opacity={0.8}
         />
       ))}
-      {puntos.map((p, i) => (
-        <circle key={i} cx={p[0]} cy={p[1]} r={i === faro ? r * 1.8 : r} fill={material.claro} />
+      {/* SOLO LOS VÉRTICES QUE SON ESTRELLAS llevan punto. En el cielo pasa
+          lo mismo: una constelación tiene cuatro o cinco estrellas brillantes
+          y el resto es la línea que las une. Un punto en cada esquina de un
+          contorno de doce lados da una masa de puntos, no una figura. */}
+      {estrellas.map((i) => (
+        <circle
+          key={i}
+          cx={puntos[i][0]}
+          cy={puntos[i][1]}
+          r={i === faro ? r * 1.7 : r}
+          fill={material.claro}
+        />
       ))}
 
       {/* El borde, que es lo que la despega del fondo cuando es chica. */}
