@@ -9051,12 +9051,12 @@ console.log('\n136. Actualizar sin reconstruir, y el fondo que no salta');
   chequear('y el viaje despierta al motor', /viaje !== null/.test(escena), true);
 
   // ---- EL TITILEO AL CAMBIAR DE PESTAÑA ----
-  // `setValue` mueve la vista EN EL ACTO y `setPestana` recien en el proximo
-  // dibujo: en ese hueco, el carril ya estaba centrado mostrando la pestaña
-  // VIEJA. Centrar tiene que pasar DESPUES de dibujar.
-  const pest = de136('movil', 'src', 'Pestanas.tsx');
-  chequear('centrar el carril espera a que la pestaña nueva se dibuje',
-    /useLayoutEffect\(\(\) => \{\s*if \(!centrarDespues\.current\) return;/.test(pest), true);
+  //
+  // ESTE CHEQUEO SE RETIRO EL 24/9, en el tercer intento. Pedia que centrar el
+  // carril pasara en un `useLayoutEffect`, y esa forma entera desaparecio: los
+  // carriles ya no se recolocan al cambiar de pestaña, porque ahora su lugar es
+  // absoluto y lo unico que se mueve es la tira. Lo que sustituye a esto esta
+  // en la seccion 146.
 }
 
 console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
@@ -9545,13 +9545,15 @@ console.log('\n141. Los arreglos del 23/9: OTA, salud, titileo y el planeta');
   // en el carril que asomaba, y al soltar el gesto se tiraba para crearla de
   // nuevo, vacia.
   const pest141 = de141('movil', 'src', 'Pestanas.tsx');
-  chequear('las pestañas visitadas quedan montadas', /const \[montadas, setMontadas\]/.test(pest141), true);
-  // POSICIONADAS POR SU DISTANCIA A LA ACTIVA: asi al cambiar de pestaña los
-  // desplazamientos se recalculan y la de destino no se mueve ni un pixel.
-  chequear('y se colocan por su distancia a la activa',
-    /ORDEN\.indexOf\(cual\) - ORDEN\.indexOf\(pestana\)/.test(pest141), true);
-  // LAS QUE NO SE VEN SE ESCONDEN, NO SE DESMONTAN.
-  chequear('las que no se ven se esconden, no se desmontan', /estilos\.escondida/.test(pest141), true);
+  // LO QUE DE ESTE ARREGLO SIGUE EN PIE: cada pestaña se monta una vez y se
+  // queda. Era lo importante y no cambio.
+  chequear('las pestañas visitadas quedan montadas', /montadas\.current\.add/.test(pest141), true);
+  chequear('y ninguna se desmonta al cambiar', /setMontadas/.test(pest141), false);
+  // LO QUE SE RETIRO EL 24/9 (tercer intento): colocarlas por su DISTANCIA a la
+  // activa y esconder las que no se ven. Las dos cosas hacian que cambiar de
+  // pestaña moviera algo por el camino de React mientras la tira se movia por
+  // el del driver nativo, y entre esos dos no hay orden garantizado. Ahora el
+  // lugar es absoluto y no se esconde ninguna. Ver la seccion 146.
   // LO QUE SE PERDIO AL ARREGLARLO se paga a mano: antes cada vuelta recargaba
   // los datos porque la pantalla nacia de nuevo. Sin esto, sumas una foto en
   // Inicio, vas al Album, y no esta.
@@ -10084,6 +10086,101 @@ console.log('\n145. Las medallas por marca');
     /cargarMisMedallas/.test(de145('src', 'app', 'yo', 'page.tsx')) &&
       /cargarMisMedallas/.test(de145('compartido', 'perfil.ts')),
     true);
+}
+
+console.log('\n146. El titileo entre pestanas, y el fondo que no volvia');
+{
+  const { readFileSync: leer146 } = await import('node:fs');
+  const { join: unir146 } = await import('node:path');
+  const R146 = unir146(import.meta.dirname, '..');
+  const de146 = (...p) => leer146(unir146(R146, ...p), 'utf8');
+  const sinComentarios146 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- EL TITILEO, TERCER INTENTO ----
+  //
+  // Seguia pasando en el telefono despues de dos arreglos que en el navegador
+  // se veian bien, y la causa solo existe con el driver nativo: el `left` de
+  // cada carril viajaba con React y el `translateX` con el lado nativo, sin
+  // orden garantizado entre los dos. Si el nativo centraba la tira antes de
+  // que llegaran los `left` nuevos, un cuadro entero mostraba la pestaña
+  // VIEJA centrada.
+  const pes146 = sinComentarios146(de146('movil', 'src', 'Pestanas.tsx'));
+
+  // EL LUGAR DE CADA CARRIL ES ABSOLUTO Y NO CAMBIA NUNCA. Si volviera a
+  // depender de la pestaña activa, vuelve la carrera.
+  chequear('el carril se coloca por su indice absoluto',
+    /left: ORDEN\.indexOf\(cual\) \* ancho/.test(pes146), true);
+  chequear('y no por su distancia a la activa',
+    /ORDEN\.indexOf\(cual\) - ORDEN\.indexOf\(pestana\)/.test(pes146), false);
+
+  // Y NINGUNA SE ESCONDE: esconder la vieja y mostrar la nueva es un cambio de
+  // React, mover la tira es del driver nativo, y entre los dos tampoco hay
+  // orden garantizado. Todas visibles, todas en su lugar.
+  chequear('ninguna pestana se esconde', /display: 'none'/.test(pes146), false);
+
+  // TOCAR UNA PESTANA TAMBIEN MUEVE LA TIRA. Con los lugares absolutos, si el
+  // toque no la moviera no se veria nada.
+  chequear('tocar una pestana la anima', /const irA = useCallback/.test(pes146), true);
+  chequear('y el boton de la barra la usa', /onPress=\{\(\) => irA\(p\)\}/.test(pes146), true);
+  chequear('y "ir a ajustes" desde otra pantalla tambien',
+    /escuchar\(IR_A_PESTANA, \(p\) => irA\(/.test(pes146), true);
+
+  // LA DE DESTINO SE MONTA EN EL MISMO DIBUJADO, no en un efecto de despues:
+  // tocar una pestana nunca abierta dejaba un cuadro con la vieja escondida y
+  // la nueva sin montar.
+  chequear('la pestana se monta al dibujar, no en un efecto',
+    /montadas\.current\.add\(pestana\);/.test(pes146), true);
+
+  // ---- EL FONDO QUE NO VOLVIA ----
+  //
+  // Dos bugs de la misma causa: desde que las pestañas quedan todas montadas,
+  // el efecto que pide el fondo no se vuelve a correr al volver a una.
+  const PF = await import('../movil/src/pedidoDeFondo.ts');
+
+  let visto = null;
+  const dejar = PF.escucharFondo((p) => {
+    visto = p;
+  });
+  chequear('sin nadie pidiendo, no hay fondo', visto, null);
+
+  // Inicio pide su cuerpo.
+  PF.pedirFondo('inicio', { rango: 4, planeta: 'Marte' });
+  chequear('Inicio pide el suyo', visto.planeta, 'Marte');
+
+  // El perfil se apila encima y pide el suyo.
+  PF.pedirFondo('perfil', { rango: 4, soloEstrellas: true });
+  chequear('el perfil apilado gana', visto.soloEstrellas, true);
+
+  // PEDIR DE NUEVO CON EL MISMO id ACTUALIZA EN EL LUGAR y no sube a la cima:
+  // que Inicio cambie de planeta mientras mirás tu perfil no tiene por que
+  // robarle el fondo al perfil.
+  PF.pedirFondo('inicio', { rango: 4, planeta: 'Venus' });
+  chequear('y un cambio de Inicio no le roba el fondo al perfil', visto.soloEstrellas, true);
+
+  // AL CERRAR EL PERFIL SE DESTAPA LO QUE HABIA DEBAJO. Antes soltar vaciaba el
+  // unico casillero y quedaba la escena en pausa: "el espacio sin el cuerpo".
+  PF.soltarFondo('perfil');
+  chequear('al cerrar el perfil vuelve el de Inicio', visto.planeta, 'Venus');
+  chequear('y con su cuerpo, no solo estrellas', !visto.soloEstrellas, true);
+
+  // Y SOLTAR ALGO QUE NO ESTA NO ROMPE NADA.
+  PF.soltarFondo('no-existe');
+  chequear('soltar algo que no esta no cambia nada', visto.planeta, 'Venus');
+
+  PF.soltarFondo('inicio');
+  chequear('sin nadie, vuelve a no haber fondo', visto, null);
+  dejar();
+
+  // SOLO LA PESTANA ACTIVA PIDE. La pila sola no alcanzaba: con las cinco
+  // montadas, las cinco pedian y ganaba la ultima que hubiera corrido su
+  // efecto — volvias a Inicio y te quedaba el `soloEstrellas` de Ranking.
+  chequear('las pestañas dicen cual esta a la vista',
+    /<ContextoVisible.Provider value=\{cual === pestana\}>/.test(pes146), true);
+  const fe146 = sinComentarios146(de146('movil', 'src', 'FondoEspacial.tsx'));
+  chequear('y el fondo suelta mientras no se ve', /if \(!visible\)/.test(fe146), true);
+  // Y CADA PANTALLA TIENE SU PROPIA IDENTIDAD en la pila.
+  chequear('cada pantalla pide con su id', /const id = useId\(\)/.test(fe146), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

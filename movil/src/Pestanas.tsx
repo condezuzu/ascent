@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
 import type { Perfil } from '@nucleo/tipos';
@@ -12,6 +12,7 @@ import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
 import { eventos } from '@compartido/eventos';
 import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
+import { ContextoVisible } from './pedidoDeFondo';
 import Recorrido from './Recorrido';
 
 /**
@@ -48,6 +49,32 @@ import Recorrido from './Recorrido';
  * Lo que se perdió al arreglarlo —que cada vuelta recargara los datos— se
  * paga a mano con `PESTANA_ACTIVA`: sin eso, sumás una foto en Inicio, vas
  * al Álbum, y no está.
+ *
+ * ─────────────────────────────────────────────────────────────────────
+ * EL TITILEO, TERCER INTENTO, Y ESTA VEZ LA CAUSA ERA DE iOS (24/9)
+ *
+ * Seguía pasando en el teléfono después de dos arreglos que en el navegador se
+ * veían bien, y el humano tenía razón en pedir que se midiera ahí: la causa
+ * solo existe con el driver nativo.
+ *
+ * QUÉ PASABA. Cada carril se colocaba con `left` según su DISTANCIA a la
+ * pestaña activa, y el conjunto se movía con un `translateX` animado. Al
+ * cambiar de pestaña cambiaban las dos cosas a la vez... por dos caminos
+ * distintos: `left` es una prop normal y viaja con el dibujado de React;
+ * `translateX` con `useNativeDriver` lo aplica el lado nativo por su cuenta.
+ * NADIE GARANTIZA EL ORDEN. Si el nativo centraba el carril antes de que
+ * llegaran los `left` nuevos, durante un cuadro la pestaña VIEJA quedaba
+ * centrada y visible. Eso es el parpadeo, y en la web no puede pasar porque
+ * las dos cosas salen del mismo commit del DOM.
+ *
+ * AHORA `left` NO CAMBIA NUNCA. Cada carril se coloca por su índice absoluto
+ * —Inicio en 0, Ranking en un ancho, Álbum en dos— y lo único que se mueve es
+ * UNA sola cosa: el desplazamiento de la tira entera. Sin dos caminos no hay
+ * carrera posible.
+ *
+ * Y LA DE DESTINO SE MONTA EN EL MISMO DIBUJADO, no en un efecto de después:
+ * tocar una pestaña nunca abierta dejaba un cuadro con la vieja ya escondida y
+ * la nueva todavía sin montar, o sea en blanco.
  */
 
 const ORDEN: Pestana[] = ['inicio', 'ranking', 'album', 'stats', 'ajustes'];
@@ -92,11 +119,18 @@ export default function Pestanas({
    * costaría cinco pantallas pidiendo sus datos en el arranque, que es el
    * momento en que más se nota.
    */
-  const [montadas, setMontadas] = useState<Pestana[]>(['inicio']);
+  const montadas = useRef<Set<Pestana>>(new Set(['inicio']));
   const { width: ancho } = useWindowDimensions();
+  /**
+   * CUÁNTO ESTÁ CORRIDA LA TIRA ENTERA, en píxeles. En reposo vale menos el
+   * índice de la pestaña activa por un ancho; mientras el dedo arrastra, eso
+   * más el arrastre.
+   *
+   * ES LO ÚNICO QUE SE MUEVE. Antes también cambiaba el `left` de cada carril,
+   * y esas dos cosas viajan por caminos distintos —una con React, la otra con
+   * el driver nativo— sin orden garantizado entre ellas. Ver el encabezado.
+   */
   const correr = useRef(new Animated.Value(0)).current;
-  /** Hay un carril corrido esperando a que la pestaña nueva se dibuje. */
-  const centrarDespues = useRef(false);
   // El gesto se lee con refs y no con estado: el estado llega un cuadro tarde,
   // y un cuadro tarde en un dedo que se mueve se ve como un tirón.
   const gesto = useRef<{ decidido: boolean; vecina: Pestana | null; desde: number; x0: number }>({
@@ -134,26 +168,55 @@ export default function Pestanas({
     eventos.emitir(PESTANA_ACTIVA, pestana);
   }, [pestana]);
 
-  // La que se abre —o la que asoma— pasa a estar montada para siempre.
-  useEffect(() => {
-    setMontadas((m) => {
-      const faltan = [pestana, asomando].filter((x): x is Pestana => !!x && !m.includes(x));
-      return faltan.length ? [...m, ...faltan] : m;
-    });
-  }, [pestana, asomando]);
+  // LA QUE SE ABRE —O LA QUE ASOMA— QUEDA MONTADA PARA SIEMPRE, y se anota
+  // ACÁ, al dibujar, no en un efecto de después. Un efecto corre cuando la
+  // pantalla ya se pintó: tocar una pestaña nunca abierta dejaba un cuadro con
+  // la vieja escondida y la nueva sin montar, o sea en blanco.
+  //
+  // Escribir una ref al dibujar es impuro, pero esto solo AGREGA y agregar dos
+  // veces lo mismo no cambia nada, así que un dibujado repetido da lo mismo.
+  montadas.current.add(pestana);
+  if (asomando) montadas.current.add(asomando);
 
-  // CENTRAR DESPUÉS DE DIBUJAR, no antes: ver el comentario del final del
-  // viaje. `useLayoutEffect` corre con la pantalla nueva ya montada y antes de
-  // que se pinte, así que el carril nunca se ve centrado con la vieja adentro.
-  useLayoutEffect(() => {
-    if (!centrarDespues.current) return;
-    centrarDespues.current = false;
-    correr.setValue(0);
-    setAsomando(null);
-  }, [pestana, correr]);
+  // DÓNDE TIENE QUE QUEDAR LA TIRA con esta pestaña, en reposo.
+  const enReposo = -ORDEN.indexOf(pestana) * ancho;
+
+  // SOLO SI CAMBIA EL ANCHO —girar el teléfono— se recoloca sin animar. En un
+  // cambio de pestaña no: ahí la tira ya la está moviendo la animación, y un
+  // `setValue` encima la cortaría a la mitad.
+  const anchoAnterior = useRef(ancho);
+  useEffect(() => {
+    if (anchoAnterior.current === ancho) return;
+    anchoAnterior.current = ancho;
+    correr.setValue(enReposo);
+  }, [ancho, enReposo, correr]);
+
+  /**
+   * IR A UNA PESTAÑA, tocando el botón de abajo.
+   *
+   * SE MUEVE Y SE ANIMA, igual que el gesto. Antes el toque era instantáneo
+   * porque los carriles se recolocaban solos al cambiar la activa; ahora los
+   * lugares son absolutos, así que si no se mueve la tira no se ve nada. Y ya
+   * que hay que moverla, se anima: el mismo viaje que soltando el dedo, así
+   * tocar y deslizar se sienten la misma cosa.
+   */
+  const irA = useCallback(
+    (destino: Pestana) => {
+      if (destino === pestana) return;
+      montadas.current.add(destino);
+      setPestana(destino);
+      Animated.timing(correr, {
+        toValue: -ORDEN.indexOf(destino) * ancho,
+        duration: VIAJE_MS,
+        easing: Easing.bezier(...CURVA),
+        useNativeDriver: true,
+      }).start();
+    },
+    [pestana, ancho, correr]
+  );
 
   // "Ir a Ajustes" desde el texto de otra pantalla: ver `irAPestana.ts`.
-  useEffect(() => eventos.escuchar(IR_A_PESTANA, (p) => setPestana(p as Pestana)), []);
+  useEffect(() => eventos.escuchar(IR_A_PESTANA, (p) => irA(p as Pestana)), [irA]);
 
   const pan = useMemo(
     () =>
@@ -179,42 +242,32 @@ export default function Pestanas({
             gesto.current.vecina = cual;
             setAsomando(cual);
           }
-          correr.setValue(cual === null ? g.dx * 0.25 : g.dx);
+          // Sobre el reposo, no desde cero: la tira ya está corrida.
+          correr.setValue(enReposo + (cual === null ? g.dx * 0.25 : g.dx));
         },
         onPanResponderRelease: (_e, g) => {
           const destino = gesto.current.vecina;
           const ms = Math.max(1, Date.now() - gesto.current.desde);
           const viaja = destino !== null && cambiaDePestana(g.dx, ancho, g.dx / ms);
+          const llega = viaja && destino ? -ORDEN.indexOf(destino) * ancho : enReposo;
           Animated.timing(correr, {
-            toValue: viaja ? Math.sign(g.dx) * ancho : 0,
+            toValue: llega,
             duration: VIAJE_MS,
             easing: Easing.bezier(...CURVA),
             useNativeDriver: true,
           }).start(() => {
-            // EL TITILEO QUE ESTO ARREGLA (23/9). Acá se hacían las tres cosas
-            // juntas: poner la pestaña nueva, volver el carril a cero y sacar
-            // la que asomaba. Parecen simultáneas y no lo son — `setValue`
-            // mueve la vista EN EL ACTO, y `setPestana` recién en el próximo
-            // dibujo de React. En ese hueco de un cuadro, el carril ya estaba
-            // centrado pero todavía mostraba la pestaña VIEJA: al pasar de
-            // Inicio a Ranking, Inicio volvía a aparecer un instante.
-            //
-            // Ahora el viaje solo cambia la pestaña. Centrar el carril y sacar
-            // la que asoma pasó a `useLayoutEffect`, que corre DESPUÉS de que
-            // la pantalla nueva está dibujada y antes de que se pinte.
-            if (viaja && destino) {
-              centrarDespues.current = true;
-              setPestana(destino);
-            } else {
-              correr.setValue(0);
-              setAsomando(null);
-            }
+            // LA TIRA YA ESTÁ DONDE TIENE QUE ESTAR: la animación la dejó
+            // sobre la pestaña de destino. Lo único que falta es decir cuál es
+            // la activa, y eso NO MUEVE NADA — los `left` son absolutos y no
+            // cambian. Por eso acá ya no hay nada que centrar ni que esperar.
+            if (viaja && destino) setPestana(destino);
+            setAsomando(null);
           });
           gesto.current = { decidido: false, vecina: null, desde: 0, x0: 0 };
         },
         onPanResponderTerminationRequest: () => false,
       }),
-    [pestana, ancho, correr]
+    [pestana, ancho, correr, enReposo]
   );
 
   const dibujar = (cual: Pestana) => {
@@ -247,9 +300,11 @@ export default function Pestanas({
         {/* UN CARRIL POR PESTAÑA VISITADA, colocado por su distancia a la
             activa. Ninguna se desmonta al cambiar de pestaña: ese remonte era
             el titileo. Ver `montadas`. */}
-        {montadas.map((cual) => {
-          const lejos = ORDEN.indexOf(cual) - ORDEN.indexOf(pestana);
-          const aLaVista = cual === pestana || cual === asomando;
+        {ORDEN.filter((cual) => montadas.current.has(cual)).map((cual) => {
+          // EL LUGAR ES ABSOLUTO Y NO CAMBIA NUNCA: Inicio en 0, Ranking en un
+          // ancho, Álbum en dos. Lo que se mueve es la tira entera. Ver el
+          // encabezado: dos cosas moviéndose por caminos distintos era el
+          // titileo que no se iba.
           return (
             <Animated.View
               key={cual}
@@ -259,18 +314,33 @@ export default function Pestanas({
               testID={'carril-' + cual}
               style={[
                 estilos.carril,
-                { left: lejos * ancho, width: ancho },
+                { left: ORDEN.indexOf(cual) * ancho, width: ancho },
                 { transform: [{ translateX: correr }] },
-                // LAS QUE NO SE VEN SE ESCONDEN, NO SE DESMONTAN: `display`
-                // conserva el componente y su estado, y le ahorra al motor
-                // dibujar cuatro pantallas que están fuera de la ventana.
-                !aLaVista && estilos.escondida,
+                // NINGUNA SE ESCONDE. Estuvieron con `display: none` para
+                // ahorrarle al motor dibujar las que quedan fuera de la
+                // ventana, y ese ahorro costaba un cuadro en blanco: esconder
+                // la vieja y mostrar la nueva es un cambio de React, mover la
+                // tira es del driver nativo, y entre los dos no hay orden
+                // garantizado. Todas visibles, todas en su lugar: entonces no
+                // importa cuál de las dos cosas llegue primero.
+                //
+                // Las que quedan afuera las recorta el `overflow: hidden` del
+                // contenedor, y son vistas quietas: el motor, que es lo caro,
+                // vive en la raíz y es uno solo.
               ]}
               // La que asoma es para mirar, no para tocar: un toque ahí sería
               // en una pantalla que todavía no es la que está.
               pointerEvents={cual === pestana ? 'auto' : 'none'}
             >
-              {dibujar(cual)}
+              {/* QUIÉN PUEDE PEDIR EL FONDO. Con las cinco pestañas montadas,
+                  las cinco lo pedían y ganaba la última que hubiera corrido su
+                  efecto: volvías a Inicio y te quedaba el `soloEstrellas` de
+                  Ranking, o sea el espacio sin el cuerpo. Solo la activa, y no
+                  la que asoma: el fondo es uno solo detrás de las dos, y
+                  cambiarlo a mitad del gesto se vería como un salto. */}
+              <ContextoVisible.Provider value={cual === pestana}>
+                {dibujar(cual)}
+              </ContextoVisible.Provider>
             </Animated.View>
           );
         })}
@@ -288,7 +358,7 @@ export default function Pestanas({
           <Pressable
             key={p}
             style={estilos.boton}
-            onPress={() => setPestana(p)}
+            onPress={() => irA(p)}
             accessibilityRole="tab"
             accessibilityState={{ selected: pestana === p }}
           >
@@ -309,7 +379,6 @@ const estilos = StyleSheet.create({
   // un `left` de una pantalla entera la de al lado quedaba de ancho cero. Se
   // veía el fondo del motor en vez de la pantalla que asoma (visto a :8092).
   carril: { position: 'absolute', top: 0, bottom: 0, left: 0 },
-  escondida: { display: 'none' },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   barra: {
     flexDirection: 'row',
