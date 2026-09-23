@@ -3,8 +3,10 @@ import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'r
 import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { puntoMasCercano, trazarSerie } from '@nucleo/tendencia';
 import { faltanPasos } from '@nucleo/pasos';
-import { fechaLinda } from '@nucleo/fechas';
+import { DIAS_SEMANA, aISO, deISO, fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
+import Hoja from './Hoja';
+import MetaDePasos from './ajustes/MetaDePasos';
 import { C, conAlfa } from './colores';
 
 /**
@@ -31,12 +33,24 @@ import { C, conAlfa } from './colores';
 const ALTO = 84;
 const VENTANA = 7;
 
-// Las mismas ventanas que el peso: son el mismo gesto en la misma pantalla.
-// `null` es todo el historial que haya devuelto Health.
-const RANGOS: { dias: number | null; etiqueta: () => string }[] = [
-  { dias: 30, etiqueta: () => T.stats.pesoMes },
-  { dias: 90, etiqueta: () => T.stats.pesoTresMeses },
-  { dias: null, etiqueta: () => T.stats.pesoTodo },
+/**
+ * LAS TRES VENTANAS, Y LA SEMANA NO ES UNA LÍNEA (25/9).
+ *
+ * *"Cambiá la vista por ventana: en SEMANA, siete barras, una por día. En MES
+ * y AÑO dejá el gráfico de línea como está ahora."* Y la razón está adentro
+ * del pedido: en siete días la media móvil de siete días es UN punto. La línea
+ * suavizada no puede decir nada de una semana, porque lo que hace es borrar
+ * exactamente esa escala. Siete barras contestan la pregunta que se hace
+ * mirando una semana —*"¿qué días caminé?"*— y la línea contesta la otra —*"¿voy
+ * para arriba o para abajo?"*—, que solo existe con meses.
+ *
+ * Eran las tres del peso (mes, tres meses, todo) por parecido de pantalla, y
+ * el parecido era lo único que las sostenía.
+ */
+const RANGOS: { dias: number; etiqueta: () => string }[] = [
+  { dias: 7, etiqueta: () => T.stats.pasosSemana },
+  { dias: 30, etiqueta: () => T.stats.pasosMes },
+  { dias: 365, etiqueta: () => T.stats.pasosAno },
 ];
 
 /** Con punto cada tres cifras: 12.480 se lee de un vistazo y 12480 no. */
@@ -46,16 +60,38 @@ export default function GraficoPasos({
   pasos,
   claro,
   meta,
+  alCambiarMeta,
 }: {
   pasos: { fecha: string; valor: number }[];
   /** El `--pal-claro` de la web: la paleta del rango. */
   claro: string;
   /** La meta diaria, para la línea y para el "te faltan". */
   meta: number;
+  /** Se avisa al cambiarla desde acá: la línea punteada se mueve en el acto. */
+  alCambiarMeta?: (meta: number) => void;
 }) {
-  const [rango, setRango] = useState<number | null>(null);
+  // ARRANCA EN LA SEMANA: es la ventana en la que la meta del día significa
+  // algo. En un año, "te faltan 2.588" habla de un punto perdido en 365.
+  const [rango, setRango] = useState<number>(7);
   const [tocado, setTocado] = useState<number | null>(null);
   const [ancho, setAncho] = useState(0);
+  const [cambiandoMeta, setCambiandoMeta] = useState(false);
+
+  // LOS SIETE DÍAS, uno por barra, con los huecos en su lugar. Se arma desde la
+  // fecha y no tomando los últimos siete de la serie: un día sin dato NO viene
+  // en `pasos`, así que "los últimos siete" podría abarcar tres semanas.
+  const semana = (() => {
+    const porFecha = new Map(pasos.map((p) => [p.fecha, p.valor]));
+    const hoy = pasos.length ? deISO(pasos[pasos.length - 1].fecha) : new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(hoy);
+      d.setDate(d.getDate() - (6 - i));
+      const fecha = aISO(d);
+      // `undefined` y no 0: un día sin el teléfono encima no es un día sin
+      // caminar, y una barra en cero afirmaría lo segundo.
+      return { fecha, valor: porFecha.get(fecha), letra: DIAS_SEMANA[d.getDay()] };
+    });
+  })();
 
   // LA LUZ MÍNIMA ES 1 Y NO 0,4: acá la unidad es un paso, y cuatro décimas de
   // paso no existen. Solo hace falta que una serie perfectamente plana no
@@ -87,6 +123,70 @@ export default function GraficoPasos({
   const elegido = tocado === null || !trazo ? null : serie[tocado];
   const posElegido = tocado === null || !trazo ? null : trazo.puntos[tocado];
   const ultimo = trazo?.puntos[trazo.puntos.length - 1];
+
+  // ---- LA SEMANA: SIETE BARRAS ----
+  if (rango === 7) {
+    // La escala la manda el día más alto O la meta, lo que sea mayor: si la
+    // meta quedara fuera del dibujo, la línea no tendría dónde caer y la barra
+    // más alta parecería haber llegado.
+    const tope = Math.max(meta, ...semana.map((d) => d.valor ?? 0), 1);
+    const yMetaBarras = ALTO - (meta / tope) * ALTO;
+    return (
+      <View style={estilos.grafico}>
+        <View style={[estilos.lienzo, estilos.barras]}>
+          {/* LA META CRUZA LAS SIETE, como en el trazo: es la referencia, no
+              una barra más. */}
+          <View
+            style={[estilos.metaBarras, { top: yMetaBarras, backgroundColor: claro }]}
+            pointerEvents="none"
+          />
+          {semana.map((d) => {
+            const alto = d.valor === undefined ? 0 : Math.max(2, (d.valor / tope) * ALTO);
+            const llego = (d.valor ?? 0) >= meta;
+            return (
+              <View key={d.fecha} style={estilos.columna}>
+                <View
+                  style={[
+                    estilos.barra,
+                    { height: alto, backgroundColor: llego ? claro : conAlfa(claro, 0.3) },
+                    // SIN DATO NO ES CERO: no se dibuja nada, ni siquiera el
+                    // hilo mínimo. Un día sin el teléfono encima no es un día
+                    // sin caminar.
+                    d.valor === undefined && estilos.sinDato,
+                  ]}
+                />
+              </View>
+            );
+          })}
+        </View>
+        <View style={estilos.letras}>
+          {semana.map((d) => (
+            <Text key={d.fecha} style={estilos.letra}>
+              {d.letra}
+            </Text>
+          ))}
+        </View>
+        <View style={estilos.pie}>
+          <Text style={estilos.hoy}>{T.stats.pasosDia(conMiles(ultimoDia))}</Text>
+          <Text style={estilos.cambio}>
+            {falta === null ? T.stats.pasosLlegaste : T.stats.pasosFaltan(conMiles(falta))}
+          </Text>
+        </View>
+        <Ventanas rango={rango} claro={claro} alElegir={(d) => { setRango(d); setTocado(null); }} />
+        <PieDeMeta
+          meta={meta}
+          claro={claro}
+          promedio={promedioDe(semana.map((d) => d.valor).filter((v): v is number => v !== undefined))}
+          alTocar={() => setCambiandoMeta(true)}
+        />
+        <HojaDeMeta
+          visible={cambiandoMeta}
+          alCerrar={() => setCambiandoMeta(false)}
+          alCambiar={alCambiarMeta}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={estilos.grafico}>
@@ -185,40 +285,115 @@ export default function GraficoPasos({
           </View>
         ))}
 
-      <View style={estilos.rangos}>
-        {RANGOS.map((r) => {
-          const activo = r.dias === rango;
-          return (
-            <Pressable
-              key={String(r.dias)}
-              hitSlop={8}
-              onPress={() => {
-                setRango(r.dias);
-                setTocado(null);
-              }}
-            >
-              <Text
-                style={[
-                  estilos.rango,
-                  activo && { color: claro, borderBottomWidth: 1, borderColor: conAlfa(claro, 0.45) },
-                ]}
-              >
-                {r.etiqueta()}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Ventanas rango={rango} claro={claro} alElegir={(d) => { setRango(d); setTocado(null); }} />
 
       <Text style={estilos.nota}>
-        {T.stats.pasosMeta(conMiles(meta))} ·{' '}
         {T.stats.pasosPromedio(
           trazo?.dias ?? 0,
           conMiles(trazo ? trazo.serie.reduce((a, p) => a + p.valor, 0) / trazo.serie.length : 0)
         )}
       </Text>
+      <PieDeMeta meta={meta} claro={claro} alTocar={() => setCambiandoMeta(true)} />
+      <HojaDeMeta
+        visible={cambiandoMeta}
+        alCerrar={() => setCambiandoMeta(false)}
+        alCambiar={alCambiarMeta}
+      />
       <Text style={estilos.nota}>{T.stats.pasosNota}</Text>
     </View>
+  );
+}
+
+/** El promedio de los días QUE TIENEN dato. Sin ninguno, cero. */
+function promedioDe(valores: number[]): number {
+  return valores.length ? valores.reduce((a, v) => a + v, 0) / valores.length : 0;
+}
+
+/** Las tres ventanas, iguales en los dos dibujos. */
+function Ventanas({
+  rango,
+  claro,
+  alElegir,
+}: {
+  rango: number;
+  claro: string;
+  alElegir: (dias: number) => void;
+}) {
+  return (
+    <View style={estilos.rangos}>
+      {RANGOS.map((r) => {
+        const activo = r.dias === rango;
+        return (
+          <Pressable key={r.dias} hitSlop={8} onPress={() => alElegir(r.dias)}>
+            <Text
+              style={[
+                estilos.rango,
+                activo && { color: claro, borderBottomWidth: 1, borderColor: conAlfa(claro, 0.45) },
+              ]}
+            >
+              {r.etiqueta()}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/**
+ * LA META, QUE ES UN BOTÓN.
+ *
+ * *"Falta poder elegir MI meta de pasos diarios. No la encuentro."* Estaba —en
+ * Ajustes, debajo de Salud— y ese es el problema: a dos pantallas y cuatro
+ * toques de la única pantalla donde el número significa algo. Una preferencia
+ * se busca donde se ve su efecto, no en la lista de preferencias.
+ *
+ * SE QUEDA TAMBIÉN EN AJUSTES: es la misma pieza, montada en dos lados. Quien
+ * la busque donde van las preferencias también la va a encontrar.
+ */
+function PieDeMeta({
+  meta,
+  claro,
+  promedio,
+  alTocar,
+}: {
+  meta: number;
+  claro: string;
+  promedio?: number;
+  alTocar: () => void;
+}) {
+  return (
+    <>
+      {promedio !== undefined && (
+        <Text style={estilos.nota}>{T.stats.pasosPorDiaSemana(conMiles(promedio))}</Text>
+      )}
+      <Pressable onPress={alTocar} hitSlop={8} accessibilityRole="button">
+        <Text style={[estilos.nota, estilos.notaBoton, { color: claro }]}>
+          {T.stats.pasosMeta(conMiles(meta))}
+        </Text>
+      </Pressable>
+    </>
+  );
+}
+
+function HojaDeMeta({
+  visible,
+  alCerrar,
+  alCambiar,
+}: {
+  visible: boolean;
+  alCerrar: () => void;
+  alCambiar?: (meta: number) => void;
+}) {
+  return (
+    <Hoja visible={visible} alCerrar={alCerrar}>
+      <MetaDePasos
+        alCambiar={(n) => {
+          alCambiar?.(n);
+          alCerrar();
+        }}
+      />
+    </Hoja>
   );
 }
 
@@ -255,4 +430,15 @@ const estilos = StyleSheet.create({
   rangos: { flexDirection: 'row', gap: 14, marginTop: 10 },
   rango: { color: C.apagado, fontSize: 12, paddingVertical: 4 },
   nota: { color: C.apagado, fontSize: 11, marginTop: 12, lineHeight: 16 },
+  // El de la meta se subraya: es lo unico de este pie que se toca.
+  notaBoton: { textDecorationLine: 'underline', paddingVertical: 4 },
+  // ---- LA SEMANA, EN BARRAS ----
+  barras: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  columna: { flex: 1, justifyContent: 'flex-end', height: ALTO },
+  barra: { width: '100%', borderRadius: 2 },
+  sinDato: { height: 0 },
+  // La linea de la meta cruza las siete, como en el trazo.
+  metaBarras: { position: 'absolute', left: 0, right: 0, height: 1, opacity: 0.45 },
+  letras: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  letra: { flex: 1, textAlign: 'center', color: C.apagado, fontSize: 10 },
 });

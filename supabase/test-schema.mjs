@@ -9793,9 +9793,25 @@ console.log('\n143. El grafico de pasos en Stats');
   const gra143 = sinComentarios143(de143('movil', 'src', 'GraficoPasos.tsx'));
   chequear('el grafico de pasos existe', gra143.length > 0, true);
   chequear('usa la cuenta compartida', /trazarSerie/.test(gra143), true);
-  // LAS MISMAS TRES VENTANAS QUE EL PESO: es el mismo gesto en la misma
-  // pantalla, asi que se reusan los mismos textos.
-  chequear('con las mismas tres ventanas', /pesoMes[\s\S]*pesoTresMeses[\s\S]*pesoTodo/.test(gra143), true);
+  // YA NO SON LAS DEL PESO (25/9). Eran mes / tres meses / todo por parecido de
+  // pantalla, y el parecido era lo unico que las sostenia: en siete dias, la
+  // media movil de siete dias es UN punto. La linea suavizada no puede decir
+  // nada de una semana, porque lo que hace es borrar esa escala.
+  chequear('las ventanas son semana, mes y ano',
+    /pasosSemana[\s\S]*pasosMes[\s\S]*pasosAno/.test(gra143), true);
+  chequear('y arranca en la semana', /useState<number>\(7\)/.test(gra143), true);
+  // LA SEMANA SON SIETE BARRAS, una por dia, y los dias sin dato no son cero:
+  // un dia sin el telefono encima no es un dia sin caminar.
+  chequear('la semana se dibuja en barras', /estilos\.barras/.test(gra143), true);
+  chequear('una por dia y con la letra', /estilos\.letra\}/.test(gra143), true);
+  chequear('y el dia sin dato no dibuja barra', /sinDato: \{ height: 0 \}/.test(gra143), true);
+  // LA META SE CAMBIA DESDE DONDE SE VE. "No la encuentro": estaba en Ajustes,
+  // a dos pantallas de la unica donde el numero significa algo.
+  chequear('la meta se toca en el grafico', /alTocar=\{\(\) => setCambiandoMeta\(true\)\}/.test(gra143), true);
+  chequear('y abre la misma pieza que Ajustes', /<MetaDePasos/.test(gra143), true);
+  chequear('que avisa al cambiarla', /alCambiar\?\.\(Math\.round\(n\)\)/.test(de143('movil', 'src', 'ajustes', 'MetaDePasos.tsx')), true);
+  // Y SIGUE EN AJUSTES: quien la busque donde van las preferencias la encuentra.
+  chequear('la meta sigue estando en Ajustes', /<MetaDePasos \/>/.test(de143('movil', 'src', 'Ajustes.tsx')), true);
   // ARRASTRAR PARA LEER UN DIA, igual que el peso.
   chequear('y se arrastra el dedo', /onResponderMove=\{alMover\}/.test(gra143), true);
   // EL ID DEL DEGRADADO ES OTRO. Los dos graficos viven en la misma pantalla,

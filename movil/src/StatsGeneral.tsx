@@ -172,7 +172,7 @@ export default function StatsGeneral({
       {pasos && pasos.length >= 2 && (
         <>
           <Text style={estilos.seccion}>{T.stats.pasosTendencia}</Text>
-          <GraficoPasos pasos={pasos} claro={pal.claro} meta={metaPasos} />
+          <GraficoPasos pasos={pasos} claro={pal.claro} meta={metaPasos} alCambiarMeta={setMetaPasos} />
         </>
       )}
 

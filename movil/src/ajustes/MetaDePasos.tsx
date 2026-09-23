@@ -26,7 +26,7 @@ import { C } from '../colores';
  * "1" a medio escribir sería una meta de mil pasos por un instante, y además
  * escribiría cinco veces para un número de cinco cifras.
  */
-export default function MetaDePasos() {
+export default function MetaDePasos({ alCambiar }: { alCambiar?: (meta: number) => void } = {}) {
   const [valor, setValor] = useState(String(META_PASOS_POR_OMISION));
   const [error, setError] = useState('');
 
@@ -54,6 +54,10 @@ export default function MetaDePasos() {
     setError('');
     const limpio = String(Math.round(n));
     setValor(limpio);
+    // QUIEN LA MUESTRA SE ENTERA EN EL ACTO. Sin esto, cambiar la meta desde el
+    // grafico dejaba la linea punteada donde estaba hasta volver a entrar, que
+    // es justo lo que hace dudar de si el cambio se guardo.
+    alCambiar?.(Math.round(n));
     await plataforma.almacenamiento.guardar(CLAVE_META_PASOS, limpio).catch(() => {});
   }
 

@@ -779,7 +779,18 @@ export const T = {
     pasosNota: 'De Apple Health, todos los días. No cuentan como entrenamiento.',
     // LA META DEL DÍA. Es una preferencia de pantalla y se dice como tal: no
     // entra en la racha, no se compara con nadie.
-    pasosMeta: (n: string) => `Meta: ${n} por día`,
+    // ES UN BOTON, no un rotulo: se toca y se cambia la meta ahi mismo. "No la
+    // encuentro" fue el reporte, y estaba en Ajustes — o sea, a cuatro toques y
+    // dos pantallas de la unica pantalla donde el numero significa algo.
+    pasosMeta: (n: string) => `Meta: ${n} por día · cambiar`,
+    // Las tres ventanas de los pasos. No son las del peso: la semana con siete
+    // barras es una pregunta distinta —"¿cuanto camine CADA dia?"— y por eso
+    // tiene su propio dibujo.
+    pasosSemana: 'Semana',
+    pasosMes: 'Mes',
+    pasosAno: 'Año',
+    // Debajo de las barras, el promedio de los dias que tienen dato.
+    pasosPorDiaSemana: (n: string) => `${n} por día`,
     pasosFaltan: (n: string) => `Te faltan ${n}`,
     pasosLlegaste: 'Llegaste a tu meta de hoy.',
     sinDuracion_: (n: number) => `${n} sin duración`,
