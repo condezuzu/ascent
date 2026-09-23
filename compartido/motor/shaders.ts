@@ -486,9 +486,24 @@ void main() {
   // ---- silueta ----
   float rEff = R;
   if (uModo > 2.5) {
-    // ROCA: contorno irregular fijo, que gira entero como cuerpo rígido.
-    // El perfil no cambia de forma: solo rota.
-    float ang = atan(p.y, p.x) + uTime * 0.11 * (1.0 - uReposo);
+    // ROCA: contorno irregular FIJO, que ademas no rota.
+    //
+    // POR QUE SE LE SACO EL GIRO (23/9). "Parece agua porque se mueve." Y era
+    // cierto, aunque el comentario de al lado jurara que giraba como cuerpo
+    // rigido: lo que giraba era la SILUETA, en dos dimensiones y en pantalla
+    // —el angulo del pixel mas el tiempo—, mientras la superficie giraba como
+    // esfera en longitud y a otra velocidad. Dos rotaciones distintas sobre el
+    // mismo cuerpo, y encima la normal se sacaba de p dividido rEff: al
+    // cambiar rEff con el tiempo, el mapa de la superficie se deformaba solo.
+    // Eso es una gota, no una piedra.
+    //
+    // (Y otra vez los backticks: este archivo es un template literal de JS y
+    // uno suelto en un comentario GLSL corta la cadena. Van sin.)
+    //
+    // Una roca de verdad tampoco tiene la silueta girando como una helice: si
+    // voltea, la silueta CAMBIA DE FORMA. Fija es mucho mas honesto, y deja
+    // que el unico movimiento sea el giro lento de la superficie.
+    float ang = atan(p.y, p.x);
     float g1 = ruido(vec3(cos(ang) * 1.9, sin(ang) * 1.9, uSemilla));
     float g2 = ruido(vec3(cos(ang) * 5.5, sin(ang) * 5.5, uSemilla + 3.0));
     rEff = R * (0.80 + 0.20 * g1 + 0.09 * g2);
@@ -507,7 +522,10 @@ void main() {
     if (t < 0.0) {
       float largo = exp(t * 2.6);
       float ancho = exp(-pow(perp / (0.10 + (-t) * 0.30), 2.0));
-      float turb = fbm(vec3(p * 7.0 + marcha * uTime * 1.6, uTime * 0.5));
+      // LA ESTELA TAMBIEN SE CALMO. A 1,6 el gas hervia, y ese hervor era la
+      // otra mitad de "parece agua": aunque la piedra quede quieta, algo
+      // temblando pegado a ella arrastra al conjunto.
+      float turb = fbm(vec3(p * 7.0 + marcha * uTime * 0.38, uTime * 0.12));
       float est = largo * ancho * (0.45 + 0.9 * turb);
       vec3 cEst = mix(uPaleta3, vec3(1.0, 0.72, 0.35), 0.55);
       col += cEst * est * 1.15;
@@ -545,7 +563,10 @@ void main() {
     // Coordenadas cilíndricas (cos/sin del ángulo) para que el ruido
     // no tenga costura en longitud.
     // En reposo el giro se frena: el cuerpo queda quieto, entero.
-    float vel = uModo > 2.5 ? 0.09 : 0.02;
+    // La roca gira DESPACIO. Con la silueta quieta, lo unico que se mueve es
+    // esto, y a 0,09 se notaba la textura corriendo por encima de una forma
+    // que no acompanaba.
+    float vel = uModo > 2.5 ? 0.045 : 0.02;
     float rot = uTime * vel * (1.0 - uReposo);
     float lon = atan(n.x, n.z) + rot;
     float lat = asin(clamp(n.y, -1.0, 1.0));
