@@ -929,7 +929,9 @@ export const T = {
       total: 'Barra o máquina: el total',
       par: 'Dos mancuernas: el peso de una',
       parPolea: 'Dos poleas: el de cada lado',
-      una: 'Un lado por vez: ese peso',
+      // DICE 'DE UN LADO' Y NO 'ESE PESO' desde que 'una' multiplica por dos:
+      // el numero que se escribe es el de UN lado, y el total es el doble.
+      una: 'Un lado por vez: el de un lado',
       lastre: 'Lastre: sin contar tu peso',
     },
     cargaCambiar: 'Qué significa este número',

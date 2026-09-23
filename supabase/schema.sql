@@ -379,10 +379,12 @@ update public.ejercicios set carga = 'par' where id in (
   'cruce_polea_alta', 'cruce_polea_baja'
 );
 
+-- EL MODO "una" ES "UN LADO POR VEZ" Y MULTIPLICA POR DOS (migracion 47).
+-- Antes valia ademas para "una mancuerna con las dos manos", que es otra cosa:
+-- ahi el numero escrito ES el total movido, asi que la sentadilla goblet, el
+-- pullover y el triceps con mancuerna pasaron a "total".
 update public.ejercicios set carga = 'una' where id in (
-  -- una mancuerna con las dos manos
-  'sentadilla_goblet', 'pullover', 'triceps_mancuerna',
-  -- una mancuerna, un brazo por vez
+  -- una mancuerna, un brazo por vez: el numero se mueve dos veces
   'remo_mancuerna', 'curl_concentrado', 'patada_triceps'
 );
 
@@ -2780,7 +2782,7 @@ $$;
 grant execute on function public.medallas_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 46; $$;
+returns int language sql immutable as $$ select 47; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

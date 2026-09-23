@@ -5821,7 +5821,10 @@ console.log('\n82. Que significa el numero del peso: la base');
   // ---- el catalogo ----
   chequear('la barra es total', (await catalogo('sentadilla')).carga, 'total');
   chequear('las mancuernas son par', (await catalogo('press_mancuernas')).carga, 'par');
-  chequear('la goblet es una', (await catalogo('sentadilla_goblet')).carga, 'una');
+  // LA GOBLET ES 'total' DESDE LA 47: una mancuerna con las dos manos, un solo
+  // movimiento, el numero escrito ES lo que se movio. 'una' quedo solo para lo
+  // que de verdad se hace un lado por vez, que multiplica por dos.
+  chequear('la goblet es total', (await catalogo('sentadilla_goblet')).carga, 'total');
   chequear('las dominadas con lastre son lastre', (await catalogo('dominadas_lastradas')).carga, 'lastre');
   chequear('las zancadas son par y se preguntan', await catalogo('zancadas'), { carga: 'par', carga_ambigua: true });
   chequear('el remo al menton es barra y se pregunta', await catalogo('remo_menton'), { carga: 'total', carga_ambigua: true });
@@ -5851,7 +5854,7 @@ console.log('\n82. Que significa el numero del peso: la base');
   chequear(
     'basura, el del catalogo',
     (await fijar([{ ejercicio: 'sentadilla_goblet', series: 1, pesos: [30], carga: 'discos' }]))[0].carga,
-    'una'
+    'total'
   );
   chequear(
     'pesos que se limpian a nada no dejan modo',
@@ -5864,7 +5867,7 @@ console.log('\n82. Que significa el numero del peso: la base');
     await fijar([{ ejercicio: 'sentadilla_goblet', series: 2, pesos: [30, 30] }]);
     await db.query("update ejercicios set carga = 'par' where id = 'sentadilla_goblet'");
     const guardado = (await db.query('select bloques from sesiones where id = $1', [id])).rows[0].bloques;
-    chequear('la goblet de ayer sigue siendo una aunque el catalogo cambie', guardado[0].carga, 'una');
+    chequear('la goblet de ayer sigue siendo total aunque el catalogo cambie', guardado[0].carga, 'total');
     const { resumenDelDia } = await import('../nucleo/resumenDia.ts');
     const r = resumenDelDia({
       log: { es_descanso: false },
@@ -5874,8 +5877,8 @@ console.log('\n82. Que significa el numero del peso: la base');
       esDescansoConfigurado: false,
       ejercicioSinNombre: '?',
     });
-    chequear('y el resumen la lee del bloque, no del catalogo', r.ejercicios[0].cargas, ['una', 'una']);
-    await db.query("update ejercicios set carga = 'una' where id = 'sentadilla_goblet'");
+    chequear('y el resumen la lee del bloque, no del catalogo', r.ejercicios[0].cargas, ['total', 'total']);
+    await db.query("update ejercicios set carga = 'total' where id = 'sentadilla_goblet'");
   }
 
   // ---- con que lo haces, recordado, y con cuanto arranca ----
@@ -5969,8 +5972,12 @@ console.log('\n83. Que significa el numero del peso: el telefono');
   const B = await import('../nucleo/bloques.ts');
 
   chequear('par multiplica por dos', C.kilosMovidos(30, 'par'), 60);
-  chequear('una, total y lastre no', ['una', 'total', 'lastre'].map((c) => C.kilosMovidos(30, c)), [30, 30, 30]);
-  chequear('la linea del total, solo en par', C.CARGAS.filter(C.muestraTotal), ['par']);
+  // UNA TAMBIEN MULTIPLICA POR DOS desde el 25/9: una serie de extensiones
+  // unilaterales son las dos piernas, una despues de la otra. Contar 40 cuando
+  // se movio 40 con cada una contaba la mitad del trabajo.
+  chequear('una tambien multiplica por dos', C.kilosMovidos(30, 'una'), 60);
+  chequear('total y lastre no', ['total', 'lastre'].map((c) => C.kilosMovidos(30, c)), [30, 30]);
+  chequear('la linea del total, en par y en una', C.CARGAS.filter(C.muestraTotal), ['par', 'una']);
   chequear('el elegido gana al catalogo', C.cargaVigente('total', 'par'), 'total');
   chequear('sin elegir, el catalogo', C.cargaVigente(undefined, 'una'), 'una');
   chequear('sin catalogo (base sin la 38), total', C.cargaVigente(undefined, undefined), 'total');
@@ -6171,7 +6178,8 @@ console.log('\n86. El volumen');
 
   // LOS KILOS SON LOS QUE SE MOVIERON, con el modo del bloque.
   chequear('par: 30 por mancuerna son 60 por serie', V.kilosDelBloque({ pesos: [30, 30], carga: 'par' }), 120);
-  chequear('una: la goblet de 30 son 30', V.kilosDelBloque({ pesos: [30, null], carga: 'una' }), 30);
+  // 'una' es un lado por vez: el numero se movio dos veces.
+  chequear('una: 30 por lado son 60', V.kilosDelBloque({ pesos: [30, null], carga: 'una' }), 60);
   chequear('lastre: sin peso corporal', V.kilosDelBloque({ pesos: [20, 20, 20], carga: 'lastre' }), 60);
   chequear('las series sin peso no suman kilos', V.kilosDelBloque({ pesos: [null, null], carga: 'total' }), 0);
 
@@ -6197,7 +6205,7 @@ console.log('\n86. El volumen');
   {
     const sesion = [{ fecha: '2026-09-10', bloques: [{ ejercicio: 'sentadilla_goblet', series: 2, pesos: [30, 30], carga: 'una' }] }];
     const antes = V.volumenPorSemana(sesion, catalogo, { hoy: '2026-09-15', semanas: 2 });
-    chequear('la goblet de la semana pasada son 60', antes.map((s) => s.kilos), [60, 0]);
+    chequear('un bloque de un lado por vez cuenta doble', antes.map((s) => s.kilos), [120, 0]);
     // El catalogo no se lee para los kilos: el mismo bloque da lo mismo.
     chequear('el volumen no lee el modo del catalogo', V.volumenPorSemana(sesion, new Map([['sentadilla_goblet', { nombre: 'x', grupo: 'piernas' }]]), { hoy: '2026-09-15', semanas: 2 }), antes);
   }
@@ -10680,6 +10688,73 @@ console.log('\n153. Los bugs del gimnasio: el interbloqueo, la musica y la racha
   chequear('el nombre cede antes que la fila', /usuario: \{[^}]*flexShrink: 1/.test(ini153), true);
   chequear('y los chips no se achican', /sesionViva: \{[^}]*flexShrink: 0/.test(ini153), true);
   chequear('el nombre no se parte en dos renglones', /numberOfLines=\{1\}/.test(ini153), true);
+}
+
+
+console.log('\n154. El entrenamiento: el menos, el peso por lado y los sin peso');
+{
+  const { readFileSync: leer154 } = await import('node:fs');
+  const { join: unir154 } = await import('node:path');
+  const R154 = unir154(import.meta.dirname, '..');
+  const de154 = (...p) => leer154(unir154(R154, ...p), 'utf8');
+  const sinComentarios154 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- EL − AL LADO DEL +, DEL MISMO ALTO ----
+  //
+  // "En vez de un + grande, un + y un −. Bajar series hoy es muy tosco."
+  // Sacar una serie estaba en un renglon de texto abajo de todo, mientras
+  // sumarla era un boton de media pantalla. Contar mal para abajo pasa igual
+  // de seguido que contar mal para arriba.
+  const blo154 = sinComentarios154(de154('movil', 'src', 'Bloque.tsx'));
+  chequear('el menos es un boton grande, no un renglon de texto',
+    /estilos\.mas, estilos\.menos/.test(blo154), true);
+  // EL + SIGUE MANDANDO: tres cuartos contra un cuarto. Doce sumas contra una
+  // resta; del mismo tamano seria pedirle a la mano que apunte doce veces.
+  chequear('el + se lleva tres cuartos del ancho', /masAncho: \{ flex: 3/.test(blo154), true);
+  chequear('y el − un cuarto', /menos: \{ flex: 1/.test(blo154), true);
+  // SE APAGA EN CERO EN VEZ DE DESAPARECER: un boton que aparece y se va mueve
+  // el + de lugar justo cuando se lo esta tocando.
+  chequear('el − se apaga en cero, no se esconde', /menosApagado/.test(blo154), true);
+  chequear('y ya no esta el renglon de texto de sacar serie',
+    /estilos\.texto\} onPress=\{alRestar\}/.test(blo154), false);
+
+  // ---- "POR LADO" SUMA LOS DOS LADOS ----
+  //
+  // Ya probado en la 83 y la 90; aca va lo que ata las dos puntas: que el
+  // catalogo no siga llamando 'una' a lo que se hace con las dos manos.
+  const cat154 = de154('supabase', 'schema.sql');
+  const tramo154 = cat154.slice(cat154.indexOf("set carga = 'una' where id in ("));
+  const hasta154 = tramo154.slice(0, tramo154.indexOf(');'));
+  for (const e of ['sentadilla_goblet', 'pullover', 'triceps_mancuerna']) {
+    chequear(e + ' ya no es un lado por vez', hasta154.includes(e), false);
+  }
+  for (const e of ['remo_mancuerna', 'curl_concentrado', 'patada_triceps']) {
+    chequear(e + ' si es un lado por vez', hasta154.includes(e), true);
+  }
+  // Y LA MIGRACION EXISTE PARA LA BASE QUE YA ESTA ANDANDO.
+  chequear('hay migracion para reclasificarlos',
+    /set carga = 'total'/.test(de154('supabase', 'migracion-47-una-suma-los-dos-lados.sql')), true);
+  // EL TEXTO DE LA OPCION DEJA DE DECIR "ese peso": el numero es el de UN lado.
+  const T154 = (await import('../nucleo/textos.ts')).T;
+  chequear('la opcion dice que el numero es el de un lado',
+    /de un lado/.test(T154.sesion.cargaOpcion.una), true);
+
+  // ---- LOS EJERCICIOS SIN PESO NO LLENAN LA LISTA ----
+  //
+  // "Los ejercicios sin peso registrado no tienen que aparecer con peso. En la
+  // web creo que ya estaba arreglado." Y estaba: alla se esconden detras de un
+  // toque desde el 22/9, y en el telefono se habian quedado sin portar.
+  const st154 = sinComentarios154(de154('movil', 'src', 'Stats.tsx'));
+  chequear('el telefono lista solo los que tienen peso',
+    /const conPeso = g\.filas\.filter\(\(f\) => f\.maximo\)/.test(st154), true);
+  chequear('con la puerta para ver los otros', /verLosOtros\(faltan\)/.test(st154), true);
+  // SI NO HAY NINGUNO se muestran igual: "ver los otros 12" sobre la nada es
+  // una puerta a un cuarto vacio.
+  chequear('y si no hay ninguno con peso, se muestran todos',
+    /conPeso\.length === 0/.test(st154), true);
+  chequear('la puerta no aparece sobre la nada',
+    /faltan > 0 && conPeso\.length > 0/.test(st154), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

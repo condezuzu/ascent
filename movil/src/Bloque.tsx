@@ -209,20 +209,61 @@ export default function Bloque({
         <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
       </View>
 
+      {/* EL − AL LADO DEL +, DEL MISMO ALTO (25/9).
+          *"En vez de un + grande, un + y un −. Bajar series hoy es muy
+          tosco."* Y lo era: sacar una serie estaba en un renglón de texto de
+          catorce puntos, abajo de todo, mientras sumarla era un botón de media
+          pantalla. Contar mal para abajo pasa igual de seguido que contar mal
+          para arriba —tocaste dos veces, sumaste la del calentamiento— y la
+          app lo trataba como un caso raro.
+
+          EL + SIGUE MANDANDO: se lleva tres cuartos del ancho. Son dos gestos
+          muy distintos en frecuencia —doce sumas contra una resta— y hacerlos
+          del mismo tamaño sería pedirle a la mano que apunte doce veces.
+
+          Y EL − SE APAGA EN CERO en vez de desaparecer: un botón que aparece y
+          se va mueve el + de lugar justo cuando se está tocando. */}
       {cumplida ? (
-        <Pressable
-          style={[estilos.mas, estilos.masCerrar]}
-          onPress={() => {
-            alSiguiente();
-            setLista(true);
-          }}
-        >
-          <Text style={estilos.cerrarTexto}>{T.sesion.terminarSerie}</Text>
-        </Pressable>
+        <View style={estilos.filaBotones}>
+          <Pressable
+            style={[estilos.mas, estilos.menos, estado.hechas === 0 && estilos.menosApagado]}
+            onPress={alRestar}
+            disabled={estado.hechas === 0}
+            accessibilityLabel={T.inicio.sacarSerie}
+            accessibilityRole="button"
+          >
+            <Text style={[estilos.masTexto, estado.hechas === 0 && estilos.apagadoTexto]}>−</Text>
+          </Pressable>
+          <Pressable
+            style={[estilos.mas, estilos.masCerrar]}
+            onPress={() => {
+              alSiguiente();
+              setLista(true);
+            }}
+          >
+            <Text style={estilos.cerrarTexto}>{T.sesion.terminarSerie}</Text>
+          </Pressable>
+        </View>
       ) : (
-        <Pressable style={estilos.mas} onPress={alSumar} accessibilityLabel={T.inicio.sumarSerie} accessibilityRole="button">
-          <Text style={estilos.masTexto}>+</Text>
-        </Pressable>
+        <View style={estilos.filaBotones}>
+          <Pressable
+            style={[estilos.mas, estilos.menos, estado.hechas === 0 && estilos.menosApagado]}
+            onPress={alRestar}
+            disabled={estado.hechas === 0}
+            accessibilityLabel={T.inicio.sacarSerie}
+            accessibilityRole="button"
+          >
+            <Text style={[estilos.masTexto, estado.hechas === 0 && estilos.apagadoTexto]}>−</Text>
+          </Pressable>
+          <Pressable
+            style={[estilos.mas, estilos.masAncho]}
+            onPress={alSumar}
+            accessibilityLabel={T.inicio.sumarSerie}
+            accessibilityRole="button"
+          >
+            <Text style={estilos.masTexto}>+</Text>
+          </Pressable>
+        </View>
       )}
 
       {debajoDelMas}
@@ -232,9 +273,6 @@ export default function Bloque({
           <Text style={estilos.textoBoton}>{T.sesion.sumarOtra}</Text>
         </Pressable>
       )}
-      <Pressable style={estilos.texto} onPress={alRestar} disabled={estado.hechas === 0}>
-        <Text style={[estilos.textoBoton, estado.hechas === 0 && estilos.apagadoTexto]}>{T.inicio.sacarSerie}</Text>
-      </Pressable>
       {(estado.cerrados.length > 0 || estado.hechas > 0) && (
         <Pressable style={estilos.texto} onPress={() => setLista(true)}>
           <Text style={estilos.textoBoton}>{T.sesion.verLista}</Text>
@@ -302,6 +340,8 @@ const estilos = StyleSheet.create({
   cuenta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 22 },
   cuentaTotal: { color: C.apagado, fontSize: 12, letterSpacing: 1 },
   // EL + OCUPA MEDIA PANTALLA: se toca con una mano, transpirado, sin apuntar.
+  // La fila de los dos botones: el − angosto y el + con todo lo que sobra.
+  filaBotones: { flexDirection: 'row', gap: 8, marginTop: 18 },
   mas: {
     marginTop: 18,
     minHeight: 150,
@@ -313,7 +353,11 @@ const estilos = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.03)',
   },
   masTexto: { color: C.claro, fontSize: 56, fontWeight: '200' },
-  masCerrar: { backgroundColor: C.claro, borderColor: C.claro },
+  masCerrar: { backgroundColor: C.claro, borderColor: C.claro, flex: 3, marginTop: 0 },
+  // Un cuarto del ancho contra tres: doce sumas contra una resta.
+  menos: { flex: 1, marginTop: 0 },
+  menosApagado: { opacity: 0.35 },
+  masAncho: { flex: 3, marginTop: 0 },
   cerrarTexto: { color: C.fondo, fontSize: 18, fontWeight: '600' },
   texto: { paddingVertical: 12, alignItems: 'center' },
   textoBoton: { color: C.sub, fontSize: 14 },

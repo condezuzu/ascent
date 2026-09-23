@@ -8,8 +8,23 @@
  *
  *   total   la barra con los discos, o el número de la máquina.   × 1
  *   par     dos mancuernas o dos poleas: el peso de UNA.          × 2
- *   una     un lado por vez: un brazo, una pierna, una mancuerna.  × 1
+ *   una     un lado por vez: un brazo, una pierna, una mancuerna.  × 2
  *   lastre  lo que va encima del peso corporal.                    × 1
+ *
+ * "UNA" TAMBIÉN MULTIPLICA POR DOS, desde el 25/9. Estaba en × 1 y el pedido
+ * lo corrige: *"por lado tiene que sumar el total, igual que mancuernas.
+ * Estaba haciendo extensiones unilaterales y no sumaba"*.
+ *
+ * Y es lo correcto. Una serie de extensiones unilaterales no es media serie:
+ * son las dos piernas, una después de la otra. Contar 40 cuando movió 40 con
+ * cada una era contar la mitad del trabajo, y encima hacía que el mismo
+ * ejercicio valiera el doble si lo anotabas como "par". La diferencia entre
+ * `par` y `una` es cuándo se mueven los dos lados —a la vez o uno por vez—, y
+ * eso no cambia cuánto se levantó.
+ *
+ * OJO CON LO QUE ARRASTRA: los kilos de las series `una` ya anotadas pasan a
+ * valer el doble en Stats. Es retroactivo a propósito y es lo que se pidió; el
+ * número de antes estaba mal, no es que cambie de significado.
  *
  * EL LASTRE NO SUMA EL PESO CORPORAL (decisión del humano): el peso corporal
  * cambia con el tiempo y ensuciaría la comparación hacia atrás, y "hice
@@ -47,7 +62,8 @@ export function cargaValida(x: unknown): Carga | null {
 
 /** Por cuánto se multiplica el número escrito para saber lo que se movió. */
 export function factorDeCarga(c: Carga): 1 | 2 {
-  return c === 'par' ? 2 : 1;
+  // `par` y `una` son los dos lados: a la vez o uno por vez. Ver la cabecera.
+  return c === 'par' || c === 'una' ? 2 : 1;
 }
 
 /**

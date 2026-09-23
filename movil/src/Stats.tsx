@@ -70,6 +70,8 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const [tocada, setTocada] = useState<number | null>(null);
   // Los grupos de máximos tocados a mano; el resto, abierto si tiene algo.
   const [plegados, setPlegados] = useState<Record<string, boolean>>({});
+  // Y los grupos a los que se les pidio ver tambien los que no tienen peso.
+  const [vacios, setVacios] = useState<Record<string, boolean>>({});
 
   const cargar = useCallback(async () => {
     setError('');
@@ -351,7 +353,24 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                       </Text>
                     </Pressable>
                     {abierto &&
-                      g.filas.map((f) => (
+                      (() => {
+                        // LOS QUE NO TIENEN PESO NO SE LISTAN (25/9). "Los
+                        // ejercicios sin peso registrado no tienen que aparecer
+                        // con peso. En la web creo que ya estaba arreglado" —
+                        // y estaba: allá se esconden detrás de un toque desde
+                        // el 22/9 y acá se habían quedado sin portar. Con un
+                        // ejercicio de pecho anotado de doce, esto eran once
+                        // guiones; por seis grupos, toda la pantalla.
+                        //
+                        // SI NO HAY NINGUNO se muestran igual: un grupo abierto
+                        // y vacío del todo no dice nada, y "ver los otros 12"
+                        // sobre la nada es una puerta a un cuarto vacío.
+                        const conPeso = g.filas.filter((f) => f.maximo);
+                        const faltan = g.filas.length - conPeso.length;
+                        const conVacios = vacios[clave] ?? conPeso.length === 0;
+                        return (
+                          <>
+                            {(conVacios ? g.filas : conPeso).map((f) => (
                         <View key={f.ejercicio} style={[estilos.fila, estilos.filaDeGrupo]}>
                           <View style={estilos.filaNombre}>
                             <Text style={[estilos.nombre, !f.maximo && estilos.sinMaximo]}>{f.nombre}</Text>
@@ -367,7 +386,20 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                               : T.volumen.nada}
                           </Text>
                         </View>
-                      ))}
+                            ))}
+                            {faltan > 0 && conPeso.length > 0 && (
+                              <Pressable
+                                style={estilos.otros}
+                                onPress={() => setVacios((p) => ({ ...p, [clave]: !conVacios }))}
+                              >
+                                <Text style={estilos.otrosTexto}>
+                                  {conVacios ? T.volumen.ocultarLosOtros : T.volumen.verLosOtros(faltan)}
+                                </Text>
+                              </Pressable>
+                            )}
+                          </>
+                        );
+                      })()}
                   </View>
                 );
               })}
@@ -459,6 +491,8 @@ const estilos = StyleSheet.create({
   fecha: { color: '#4a5163', fontSize: 12, marginTop: 2 },
   peso: { color: '#8a93a8', fontSize: 13 },
   filaDeGrupo: { paddingLeft: 12 },
+  otros: { paddingLeft: 12, paddingVertical: 10 },
+  otrosTexto: { color: '#8a93a8', fontSize: 13 },
   sinMaximo: { color: '#4a5163' },
   cabeza: {
     flexDirection: 'row',
