@@ -746,7 +746,18 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
       const nombres = ['Mercurio', 'Venus', 'Tierra', 'Marte', 'Júpiter', 'Saturno', 'Neptuno'] as const;
       for (let i = 0; i < nombres.length; i++) {
         const pcfg = PLANETAS_CFG[nombres[i]];
-        const pmat = crearMaterialCuerpo(pcfg, !!op.apagado, 0.008, !!op.reposo);
+        // LOS PLANETAS DEL SISTEMA SE HABÍAN QUEDADO AFUERA DE LA CARA
+        // NOCTURNA, y por eso el rango 6 "parecía un juego viejo": el cuerpo
+        // grande y las lunas recibían `estilo` y `noche`, y estos siete se
+        // creaban con cuatro argumentos, así que salían iluminados de día,
+        // con la textura y las bandas a full. Saturno con diez bandas al 0,5
+        // de contraste, del tamaño de una moneda, es la cebra que se reportó.
+        //
+        // Con `noche` puestos son lo que pide el norte del motor: cuerpos
+        // oscuros con el filo encendido. A este tamaño además es lo único que
+        // se puede leer — la textura de un planeta de 40 píxeles no se ve, se
+        // ensucia.
+        const pmat = crearMaterialCuerpo(pcfg, !!op.apagado, 0.008, !!op.reposo, 1, op.estilo, noche);
         materiales.push(pmat);
         const planeta = new THREE.Mesh(QUAD, pmat);
         planeta.scale.setScalar(escala * (0.045 + i * 0.011));
