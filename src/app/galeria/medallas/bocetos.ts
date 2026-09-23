@@ -108,16 +108,29 @@ export const PUNTOS: readonly Punto[] = [
   [14.5, 10.5], // 9  pectoral derecho
   [9.5, 15],    // 10 cadera izquierda
   [14.5, 15],   // 11 cadera derecha
-  [9, 18.5],    // 12 rodilla izquierda
-  [15, 18.5],   // 13 rodilla derecha
-  [8.5, 21.5],  // 14 PIE izquierdo
-  [15.5, 21.5], // 15 PIE derecho
+  [9, 18],      // 12 rodilla izquierda
+  [15, 18],     // 13 rodilla derecha
+  [8.5, 20.6],  // 14 PIE izquierdo
+  [15.5, 20.6], // 15 PIE derecho
   [12, 11],     // 16 columna, arriba  — solo de espaldas
   [12, 15],     // 17 cintura
   [12, 10.5],   // 18 esternón         — solo de frente
   [8, 10.5],    // 19 dorsal izquierdo — solo de espaldas
   [16, 10.5],   // 20 dorsal derecho   — solo de espaldas
+  [6.4, 9.8],   // 21 brazo alto izquierdo
+  [17.6, 9.8],  // 22 brazo alto derecho
 ];
+
+/**
+ * LOS PUNTOS QUE SOLO EXISTEN CUANDO ESTÁN ENCENDIDOS. No son estrellas de la
+ * figura: son de dónde agarrarse para dibujar la luz de una zona.
+ *
+ * Si se dibujaran siempre —aunque fuera apagados— la figura tendría cinco
+ * puntos de más y se volvería una grilla. Y en el caso del esternón y la
+ * columna sería peor: los dos en el medio del tronco, uno arriba del otro, y
+ * la señal de frente contra espaldas se perdería.
+ */
+export const SOLO_ENCENDIDAS: ReadonlySet<number> = new Set([16, 18, 19, 20, 21, 22]);
 
 /** El esqueleto de la constelación. Está en las cinco, igual. */
 export const LINEAS: readonly Linea[] = [
@@ -182,7 +195,7 @@ export const MAGNITUD: Readonly<Record<number, number>> = {
   0: 0.75, 1: 0.5, 2: 0.65, 3: 0.65, 4: 0.5, 5: 0.5,
   6: 0.7, 7: 0.7, 8: 0.4, 9: 0.4, 10: 0.55, 11: 0.55,
   12: 0.5, 13: 0.5, 14: 0.7, 15: 0.7, 16: 0.45, 17: 0.45, 18: 0.4,
-  19: 0.4, 20: 0.4,
+  19: 0.4, 20: 0.4, 21: 0.4, 22: 0.4,
 };
 
 export type Zona = {
@@ -201,9 +214,25 @@ export type Zona = {
 };
 
 /**
- * EL PAR DIFÍCIL, Y NADA MÁS POR AHORA. Las otras tres zonas se agregan recién
- * cuando estas dos se distingan: si no se separan, el camino entero no sirve y
- * no tiene sentido dibujar el resto.
+ * LAS CINCO. El par difícil —pecho contra espalda— se dibujó primero y aprobó
+ * el 24/9; las otras tres entraron después, con el mismo lenguaje.
+ *
+ * DÓNDE CAE LA LUZ EN CADA UNA, que es lo único que las separa:
+ *
+ *     hombros   arriba del todo, ancho
+ *     pecho     al centro, una barra horizontal
+ *     espalda   al centro, una V — y la figura de espaldas
+ *     brazos    por los costados, dos cadenas que bajan
+ *     piernas   abajo, dos cadenas que bajan
+ *
+ * Cinco lugares distintos del disco, que es lo que sobrevive al achique: a
+ * 18 px no se lee la forma pero sí DÓNDE está la mancha.
+ *
+ * LA MÁS BRILLANTE DE CADA UNA CAE EN EL FINAL DE LA ZONA —la mano, el pie, el
+ * esternón, la cintura, el hombro—, que es un eco del diagnóstico del que
+ * salió todo esto: lo que identifica una parte del cuerpo es dónde termina.
+ * Antes eso tenía que dibujarlo la silueta y no alcanzaba; ahora lo dice la
+ * estrella más brillante y alcanza de sobra.
  */
 export const ZONAS: readonly Zona[] = [
   {
@@ -251,6 +280,72 @@ export const ZONAS: readonly Zona[] = [
       [20, 17],
     ],
     faro: 17,
+  },
+  {
+    clave: 'hombros',
+    zona: 'Hombros',
+    pie: 'de frente, las dos puntas de arriba y la clavícula',
+    // ARRIBA DEL TODO Y ANCHO. Las dos estrellas de los hombros más las
+    // clavículas encendidas: un yugo de luz que cruza la parte alta.
+    //
+    // LAS CLAVÍCULAS ATAN LOS DOS PUNTOS. Sueltos, son dos manchitas separadas
+    // que a 18 px pueden ser cualquier cosa; unidos son una sola forma ancha, y
+    // el ancho es justamente lo que dice "hombros".
+    //
+    // Y ACÁ NO HAY NINGUNA BARRA. La versión anterior de hombros necesitaba una
+    // para leerse, y esa barra era el equipamiento que habíamos dicho que no.
+    // Con la luz haciendo el trabajo, la zona se nombra sola.
+    encendidas: [2, 3],
+    brillo: [
+      [1, 2],
+      [1, 3],
+    ],
+    faro: 2,
+  },
+  {
+    clave: 'brazos',
+    zona: 'Brazos',
+    pie: 'de frente, los dos brazos enteros hasta las manos',
+    // POR LOS COSTADOS. Dos cadenas de luz que bajan por afuera hasta las
+    // manos: es el único lugar del disco donde la luz queda pegada al borde.
+    //
+    // ARRANCAN DEBAJO DEL HOMBRO, no en él. Si la cadena empezara en la
+    // estrella del hombro, brazos CONTENDRÍA a hombros y la de hombros se
+    // leería como "brazos sin los brazos". Bajando el arranque cuatro décimas,
+    // las dos zonas dejan de pisarse — es el mismo arreglo que se le hizo a la
+    // V de la espalda por la misma razón.
+    //
+    // LOS DOS Y NO UNO. La zona es el grupo, no un miembro; y dos manchas
+    // simétricas contra los bordes son una señal más grande a 18 px que una
+    // sola de un lado.
+    encendidas: [21, 4, 6, 22, 5, 7],
+    brillo: [
+      [21, 4],
+      [4, 6],
+      [22, 5],
+      [5, 7],
+    ],
+    faro: 6,
+  },
+  {
+    clave: 'piernas',
+    zona: 'Piernas',
+    pie: 'de frente, las dos piernas enteras hasta los pies',
+    // ABAJO. Es la única zona cuya luz vive en la mitad inferior del disco, así
+    // que no se parece a ninguna otra ni de reojo — ni siquiera achicada.
+    //
+    // Arrancan en la cadera, que es donde cualquiera diría que empieza una
+    // pierna, y terminan en los pies. El pie es el faro: era la forma que hacía
+    // legible a la pierna en el intento de las siluetas, y sigue siendo lo que
+    // la nombra, ahora convertido en la estrella más brillante.
+    encendidas: [10, 12, 14, 11, 13, 15],
+    brillo: [
+      [10, 12],
+      [12, 14],
+      [11, 13],
+      [13, 15],
+    ],
+    faro: 14,
   },
 ];
 

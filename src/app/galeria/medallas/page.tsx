@@ -9,16 +9,17 @@
 // dejarlos comentados: uno que sigue ahí se vuelve a discutir cada vez que
 // alguien abre el archivo.
 //
-// ACÁ SOLO ESTÁN PECHO Y ESPALDA, a propósito. Es el único par que este camino
-// no resuelve solo —el mismo cuerpo con la luz casi en el mismo lugar— y si no
-// se distinguen, el camino entero no sirve. Dibujar las otras tres antes de
-// saberlo sería multiplicar por cinco un error que todavía no se descartó.
+// PECHO Y ESPALDA SE DIBUJARON PRIMERO Y SOLAS, porque eran el único par que
+// este camino no resolvía solo —el mismo cuerpo con la luz casi en el mismo
+// lugar—. Si no se distinguían, el camino no servía, y dibujar las otras tres
+// antes de saberlo hubiera sido multiplicar por cinco un error sin descartar.
+// Se aprobaron el 24/9 y recién ahí entraron las otras tres.
 //
 // SE MIRAN AL TAMAÑO DE VERDAD, porque la recta final de esto es 18 px al lado
 // de un nombre: la receta de `compartido/insignias.ts` dice que la decisión se
 // toma mirando el tamaño real, no el grande.
 
-import { useState } from 'react';
+import { Fragment, useId, useState } from 'react';
 import {
   COLUMNA,
   LINEAS,
@@ -26,6 +27,7 @@ import {
   MATERIALES,
   POLVO,
   PUNTOS,
+  SOLO_ENCENDIDAS,
   UMBRAL,
   ZONAS,
   frase,
@@ -54,7 +56,7 @@ export default function Medallas() {
           era el problema: una pierna tiene una forma propia y un tronco no.
         </p>
 
-        {/* ---- el par difícil, primero ---- */}
+        {/* ---- dónde cae la luz en cada una ---- */}
         <div
           style={{
             border: '1px solid #2a3040',
@@ -65,14 +67,35 @@ export default function Medallas() {
             background: '#0b0d13',
           }}
         >
-          <div style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: '#c98b6b' }}>
-            Primero el par difícil
+          <div style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: '#8a93a8' }}>
+            Dónde cae la luz
           </div>
-          <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, margin: '8px 0 0' }}>
-            Pecho y espalda son el mismo cuerpo con la luz casi en el mismo lugar: es lo único que
-            este camino no resuelve solo. Van con <strong>dos señales independientes</strong> —la
-            columna, que solo se ve de espaldas, y la forma de la luz: una barra contra una V—. Si no
-            se separan, el camino no sirve y las otras tres no se dibujan.
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'auto 1fr',
+              gap: '6px 16px',
+              margin: '12px 0 0',
+              fontSize: 13,
+              lineHeight: 1.5,
+            }}
+          >
+            {[
+              ['Hombros', 'arriba del todo, ancho'],
+              ['Pecho', 'al centro, una barra horizontal'],
+              ['Espalda', 'al centro, una V — y la figura de espaldas'],
+              ['Brazos', 'por los costados, dos cadenas que bajan'],
+              ['Piernas', 'abajo, dos cadenas que bajan'],
+            ].map(([q, donde]) => (
+              <Fragment key={q}>
+                <span style={{ color: '#e8ecf6' }}>{q}</span>
+                <span style={{ color: '#8a93a8' }}>{donde}</span>
+              </Fragment>
+            ))}
+          </div>
+          <p style={{ color: '#4a5163', fontSize: 12, lineHeight: 1.6, margin: '14px 0 0' }}>
+            Cinco lugares distintos del disco, que es lo que sobrevive al achique: a 18 px no se lee
+            la forma, pero sí dónde está la mancha.
           </p>
         </div>
 
@@ -120,22 +143,22 @@ export default function Medallas() {
 
         {/* ---- las dos, grandes ---- */}
         <h2 style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: '#8a93a8', margin: '40px 0 16px' }}>
-          Pecho contra espalda
+          Las cinco zonas
         </h2>
         {!mat ? (
           <p style={{ color: '#4a5163', fontSize: 14 }}>
             Por debajo del {UMBRAL}% no hay medalla. Subí el deslizador.
           </p>
         ) : (
-          <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
             {ZONAS.map((z) => (
               <div
                 key={z.clave}
-                style={{ border: '1px solid #1d2230', borderRadius: 14, padding: 18, textAlign: 'center', width: 230 }}
+                style={{ border: '1px solid #1d2230', borderRadius: 14, padding: 16, textAlign: 'center', width: 172 }}
               >
-                <Medalla zona={z} material={mat} tam={168} />
-                <div style={{ fontSize: 16, marginTop: 14 }}>{z.zona}</div>
-                <div style={{ color: '#4a5163', fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>{z.pie}</div>
+                <Medalla zona={z} material={mat} tam={140} />
+                <div style={{ fontSize: 16, marginTop: 12 }}>{z.zona}</div>
+                <div style={{ color: '#4a5163', fontSize: 11, marginTop: 4, lineHeight: 1.5 }}>{z.pie}</div>
               </div>
             ))}
           </div>
@@ -146,9 +169,10 @@ export default function Medallas() {
           Al tamaño de verdad
         </h2>
         <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, maxWidth: 660, marginBottom: 18 }}>
-          Aquí se decide. La apuesta del camino es que <strong>la luz sobrevive al achique y la línea
-          no</strong>: la figura se vuelve una bruma y lo que queda legible es dónde está la mancha
-          brillante —una barra en el medio contra una V ancha—.
+          Aquí se decide. La apuesta del camino es que <strong>la luz sobrevive al achique y la
+          línea no</strong>, así que el cielo se va apagando a medida que la medalla se achica y
+          abajo queda solo la luz: cinco manchas en cinco lugares distintos del disco. En rampa y
+          no en un corte —con un corte, dos tamaños de la misma medalla parecían de dos familias—.
         </p>
 
         {mat &&
@@ -180,8 +204,11 @@ export default function Medallas() {
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontSize: 17 }}>condezuzu</span>
+                {/* TRES Y NO CINCO: con el umbral puesto, estar arriba de la
+                    mitad en las cinco es raro. Así se ve lo que se va a ver. */}
                 <Medalla zona={ZONAS[0]} material={MATERIALES[0]} tam={18} />
-                <Medalla zona={ZONAS[1]} material={MATERIALES[1]} tam={18} />
+                <Medalla zona={ZONAS[3]} material={MATERIALES[1]} tam={18} />
+                <Medalla zona={ZONAS[4]} material={MATERIALES[2]} tam={18} />
               </div>
               <div style={{ color: '#4a5163', fontSize: 12, marginTop: 2 }}>racha de 34 días</div>
             </div>
@@ -224,13 +251,19 @@ export default function Medallas() {
  * veces en la misma fila (ver `compartido/insignias.ts`).
  */
 function Medalla({ zona, material, tam }: { zona: Zona; material: Material; tam: number }) {
-  const chica = tam < 40;
-  // Nada escala linealmente: a 18 px un radio proporcional desaparece, así que
-  // las chicas llevan todo con un piso.
-  const k = chica ? 1.9 : 1;
+  // EL `id` SALE DE `useId` Y NO DE LAS PROPS. La receta de
+  // `compartido/insignias.ts` avisa que un `id` repetido en una lista es un
+  // error que el navegador resuelve callado y mal, y en esta misma página hay
+  // medallas con la misma zona, el mismo material y el mismo tamaño en dos
+  // lugares distintos: armarlo con las props daría dos veces el mismo.
+  const recorte = useId();
   const encendidas = new Set(zona.encendidas);
 
-  // EL CIELO SE APAGA CUANDO LA MEDALLA ES CHICA, y esto no es un ajuste
+  // NADA ESCALA LINEALMENTE: a 18 px un radio proporcional desaparece, así que
+  // los puntos y las líneas llevan un piso.
+  const k = Math.max(1, 34 / tam);
+
+  // EL CIELO SE APAGA A MEDIDA QUE LA MEDALLA SE ACHICA, y esto no es un ajuste
   // cosmético: es la premisa del camino llevada hasta el final.
   //
   // A 18 px, treinta y un puntos —diecinueve de la figura más doce de polvo—
@@ -238,12 +271,17 @@ function Medalla({ zona, material, tam }: { zona: Zona; material: Material; tam:
   // son una mancha moteada, y la luz que tiene que leerse queda enterrada
   // adentro. Se vio poniéndolo.
   //
-  // La figura es andamio para el ojo cuando hay lugar; a este tamaño no lo hay
-  // y no la mira nadie. Así que a 18 px queda el disco, el borde y LA LUZ: una
+  // La figura es andamio para el ojo cuando hay lugar; a ese tamaño no lo hay y
+  // no la mira nadie. Así que abajo queda el disco, el borde y LA LUZ: una
   // barra o una V sobre un fondo limpio. Es exactamente lo que decía la apuesta
   // —la luz sobrevive al achique y la línea no— y el dibujo tiene que hacerle
   // caso en vez de discutirle.
-  const velo = chica ? 0.25 : 1;
+  //
+  // VA EN RAMPA Y NO EN UN CORTE. La primera versión apagaba el cielo de golpe
+  // debajo de 40 px, y entre 32 y 44 había un escalón: dos medallas de la misma
+  // familia que parecían de dos familias. Con una rampa, la misma medalla a
+  // cualquier tamaño se ve como la misma cosa, más llena o más limpia.
+  const velo = Math.min(1, Math.max(0.2, (tam - 24) / 40));
 
   const linea = (clave: string, [a, b]: readonly [number, number], ancho: number, op: number) => (
     <line
@@ -269,6 +307,16 @@ function Medalla({ zona, material, tam }: { zona: Zona; material: Material; tam:
           un disco plano, sin robarle contraste a las estrellas. */}
       <path d="M12 1 a11 11 0 0 1 0 22 a8.5 11 0 0 0 0 -22 z" fill={material.apagado} opacity={0.55} />
 
+      {/* TODO EL CIELO SE RECORTA CONTRA EL CUERPO. Sin esto, el halo de una
+          estrella del borde —un pie, una mano— se dibuja afuera del disco y
+          sobre el fondo de la pantalla. A 18 px es peor: los radios llevan un
+          piso para no desaparecer y los halos se salen mucho. */}
+      <defs>
+        <clipPath id={recorte}>
+          <circle cx="12" cy="12" r="11" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${recorte})`}>
       {/* EL CAMPO. Va primero y muy apagado: es el cielo del que la
           constelación forma parte, no un adorno encima. */}
       {POLVO.map(([x, y, r], i) => (
@@ -276,24 +324,25 @@ function Medalla({ zona, material, tam }: { zona: Zona; material: Material; tam:
       ))}
 
       {/* Las líneas de la figura UNEN, no dibujan: por eso van tan apagadas. */}
-      {LINEAS.map((l, i) => linea(`l${i}`, l, chica ? 0.55 : 0.35, 0.5 * velo))}
+      {LINEAS.map((l, i) => linea(`l${i}`, l, 0.35 * k, 0.5 * velo))}
       {/* La columna, solo de espaldas. Es lo único distinto entre las cinco. */}
-      {zona.deEspaldas && COLUMNA.map((l, i) => linea(`c${i}`, l, chica ? 0.8 : 0.55, 0.8 * velo))}
+      {zona.deEspaldas && COLUMNA.map((l, i) => linea(`c${i}`, l, 0.55 * k, 0.8 * velo))}
 
       {/* Las estrellas apagadas, con magnitudes distintas entre sí. */}
       {PUNTOS.map(([x, y], i) => {
         // El esternón solo existe de frente y la columna solo de espaldas: si
         // se dibujaran los dos siempre, las dos figuras tendrían el mismo
         // punto en el medio y se perdería la señal.
-        if (i === 18 && zona.deEspaldas) return null;
-        if ((i === 16 || i === 19 || i === 20) && !zona.deEspaldas) return null;
+        // Los puntos de agarre de la luz no son estrellas de la figura: si se
+        // dibujaran apagados, sobrarían cinco y esto sería una grilla.
+        if (SOLO_ENCENDIDAS.has(i)) return null;
         if (encendidas.has(i)) return null;
         return <circle key={`e${i}`} cx={x} cy={y} r={(MAGNITUD[i] ?? 0.5) * k} fill={material.claro} opacity={0.85 * velo} />;
       })}
 
       {/* LO QUE ARDE. Las líneas primero, que son las que le dan forma a la
           luz: una barra o una V, y eso se lee antes que los puntos. */}
-      {zona.brillo.map((l, i) => linea(`b${i}`, l, chica ? 1.5 : 1, 0.9))}
+      {zona.brillo.map((l, i) => linea(`b${i}`, l, 1 * k, 0.9))}
       {zona.encendidas.map((i) => {
         const [x, y] = PUNTOS[i];
         const r = (i === zona.faro ? 1.35 : 1.05) * k;
@@ -307,7 +356,11 @@ function Medalla({ zona, material, tam }: { zona: Zona; material: Material; tam:
         );
       })}
 
-      {/* El borde, que es lo que la despega del fondo cuando es chica. */}
+      </g>
+
+      {/* El borde, que es lo que la despega del fondo cuando es chica. Va
+          AFUERA del recorte: recortado contra sí mismo se comería la mitad de
+          su propio grosor y quedaría más fino de un lado. */}
       <circle cx="12" cy="12" r="11" fill="none" stroke={material.claro} strokeWidth="0.6" opacity={0.35} />
     </svg>
   );
