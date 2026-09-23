@@ -186,15 +186,27 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   existir hasta que exista el recorrido). El orden de lo que queda, fijado por
   el humano el 22/9:
 
-  1. ~~**EL GIMNASIO POR UBICACIÓN.**~~ **Hecho el 24/9** (ver abajo).
-  2. **El recorrido de primera vez.**
-  3. **DOTS + pantalla de marcas.**
-  4. ~~**Apple Health** (los pasos).~~ **Hecho el 24/9** (ver abajo).
-  5. **Lo que falta portar**: la racha al costado, la barra de rango, la
-     animación del Álbum, "ver la guía" y los estados de borde de Inicio.
-  6. **Picture in picture del cronómetro.** Es el ÚNICO pendiente que sigue
-     necesitando una build (§13d: es un target de widget con Swift propio, no
-     un paquete). Todo lo demás de esta lista sale por el aire.
+  1. ~~**EL GIMNASIO POR UBICACIÓN.**~~ **Hecho el 22/9**, en la build
+     `9a719bde` (ver arriba). Falta probarlo caminando hasta un gimnasio.
+  2. ~~**El recorrido de primera vez.**~~ **Hecho el 23/9**, por el aire.
+  3. ~~**DOTS + pantalla de marcas.**~~ **Hecho el 23/9**, por el aire. El
+     DOTS ya estaba; lo que faltaba era `/marcas`, donde se cargan las marcas
+     de las que sale ese número.
+  4. ~~**Apple Health** (los pasos).~~ **Hecho el 22/9**, en `9a719bde`.
+  5. ~~**Lo que falta portar**~~ **Hecho el 23/9**, por el aire: la racha al
+     costado, la barra de rango, la animación del Álbum, "ver la guía" y los
+     estados de borde de Inicio.
+  6. **Picture in picture del cronómetro** (§13d). **Escrito y compilando,
+     esperando una build.** Vive en la rama `live-activity` y no en `main`,
+     y el motivo es el que manda ahora: un target de widget cambia la huella
+     nativa, y la huella es lo que decide a qué builds les llega una
+     actualización por el aire. En `main`, la build instalada habría dejado
+     de recibir OTAs en el acto. Lo que falta es UNA corrida interactiva de
+     `eas build` —el widget es otro bundle id y necesita su propio perfil de
+     aprovisionamiento, igual que HealthKit—. Detalle en `movil/EAS.md`.
+
+  **La lista quedó vacía salvo el 6**, y el 6 no espera código: espera a
+  Apple.
 
   El perfil —`/yo`, `/perfil/[id]` y las filas de Ranking tocables— quedó hecho
   el 22/9 con Expo Router.

@@ -707,7 +707,25 @@ volvería a escribir en la app nativa. Se hace **una vez**, del otro lado.
 así que agregar el tercero es una migración de una línea cuando llegue el
 momento. No hay nada que deshacer.
 
-## 13d. PRIORIDAD — el descanso desde la pantalla bloqueada
+## 13d. PRIORIDAD — el descanso desde la pantalla bloqueada — ESCRITO el 23/9/2026
+
+> **LA LIVE ACTIVITY ESTÁ CONSTRUIDA Y COMPILA.** Lo de abajo se escribió como
+> plan y se deja como está: las razones siguen valiendo. Lo que hay hoy son
+> tres piezas —  (el widget en SwiftUI),
+>  (el puente a ActivityKit) y el puerto
+>  de , que engancha en  de
+> , el mismo lugar por el que ya pasaba el aviso.
+>
+> **La cuenta atrás la dibuja iOS**, no nosotros:  recibe
+> la hora de fin y corre solo con la pantalla bloqueada. No es una comodidad —
+> una Live Activity no se puede actualizar una vez por segundo, así que
+> empujar el número sería imposible de hacer bien. Y así sigue valiendo §18.4:
+> el timestamp de fin manda y esto es una VISTA de ese número.
+>
+> **Vive en la rama , no en **, porque cambia la huella
+> nativa y eso cortaría las actualizaciones por el aire de la build instalada.
+> Falta una corrida interactiva de --platform is required when building in non-interactive mode: el widget es otro bundle id y
+> necesita su propio perfil. Ver .
 
 Pedido el 2026-08-29 después de dos días de gimnasio: **"no se ve el descanso
 fuera de la app" es lo que más molesta.** Va como prioridad de esta etapa, por

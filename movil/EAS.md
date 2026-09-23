@@ -294,3 +294,66 @@ para instalar.
 El recorrido de primera vez, DOTS y la pantalla de marcas, la racha al costado,
 la barra de rango, la animación del Álbum, "ver la guía" y los estados de borde
 de Inicio: **los siete salen por el aire**, sin instalar nada.
+
+Y **salieron**: se publicaron el 23/9 en el canal `telefono`, contra la huella
+`0fc4a021…`, que es la de la build `9a719bde`. Eso es lo que hace que la rama
+de la Live Activity tenga que existir — ver abajo.
+
+# La Live Activity, y por qué vive en una rama (23/9)
+
+**El problema que obliga a la rama.** `runtimeVersion` sale de la huella
+NATIVA del proyecto, y una actualización solo le llega a las builds cuya huella
+es idéntica. La Live Activity agrega un target de widget y un módulo nativo: la
+huella cambia. Hecho sobre `main`, la build ya instalada habría dejado de
+recibir actualizaciones por el aire **en el acto**, y todo lo que es JavaScript
+habría quedado esperando una instalación.
+
+Así que:
+
+| Dónde | Qué hay | Huella |
+|---|---|---|
+| `main` | Todo lo que es JavaScript | `0fc4a021…`, la de la build instalada |
+| `live-activity` (worktree en `../ascent-la`) | Lo mismo **más** el widget | otra |
+
+La rama tiene `main` mergeado adentro, así que la build que traiga el widget
+trae también el recorrido, las marcas y las formas portadas: quien la instale
+no vuelve atrás en nada.
+
+## Lo que frena esta build: el widget es otro target, y Apple lo trata como otra app
+
+```
+Setting up credentials for target descanso (uy.ascent.app.widget)
+Failed to set up credentials.
+You're in non-interactive mode. EAS CLI couldn't find any credentials
+suitable for internal distribution. Run this command again in interactive mode.
+```
+
+Una extensión de widget tiene **su propio bundle identifier**
+(`uy.ascent.app.widget`) y por lo tanto **su propio perfil de
+aprovisionamiento**. El certificado de distribución se comparte; el perfil no.
+Es el mismo muro que HealthKit y se destraba igual — una vez:
+
+```
+cd ../ascent-la/movil && npx eas build --platform ios --profile telefono
+```
+
+Sin `--non-interactive`, entrando con el Apple ID cuando lo pida. EAS crea el
+App ID del widget, genera su perfil y sigue. Falla **antes de subir nada**, así
+que intentarlo no cuesta una build.
+
+## Lo que sí se pudo comprobar sin Apple
+
+Que **compila**, que es donde estaba el riesgo de verdad: Swift escrito a
+ciegas, sin un Mac donde probarlo. Las builds de simulador `68b9c317` y
+`1c5a9e64` salieron en verde — widget, `ActivityAttributes`, el pod del puente
+y el plugin de targets, todo. Ver el perfil `simulador` más arriba: no necesita
+credenciales, así que iterar ahí no le cuesta nada a nadie.
+
+## Cuando la build esté instalada
+
+`main` se puede mergear con `live-activity` y la rama se borra. Desde ese
+momento la huella nueva es la única, y las actualizaciones por el aire vuelven
+a salir de `main` como siempre.
+
+**Hasta entonces, `main` no se toca con nada nativo**: es lo que mantiene vivo
+el canal de la build que está en el teléfono hoy.
