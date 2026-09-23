@@ -115,6 +115,20 @@ export type Salud = {
   entrenoEse(fecha: string): Promise<boolean | null>;
   /** Los pasos de ese día. `null` es "no sé", nunca 0. */
   pasosDe(fecha: string): Promise<number | null>;
+  /**
+   * Los pasos de los últimos N días, uno por día, de más viejo a más nuevo.
+   *
+   * NO ES `pasosDe` EN UN BUCLE. Un gráfico de tres meses serían noventa
+   * consultas a HealthKit; esto es una sola, con la suma por día hecha del
+   * lado de iOS.
+   *
+   * LOS DÍAS SIN DATO NO VIENEN, y no vienen en 0: un día sin el teléfono
+   * encima no es un día sin caminar. Quien dibuja se saltea el hueco.
+   *
+   * `null` es "no sé" —sin permiso, sin Health, sin plataforma—, que es
+   * distinto de una lista vacía.
+   */
+  pasosPorDia(dias: number): Promise<{ fecha: string; valor: number }[] | null>;
 };
 
 /**
@@ -200,6 +214,21 @@ export type CicloDeVida = {
   alCambiar(escuchar: (visible: boolean) => void): () => void;
 };
 
+/**
+ * LAS TECLAS DE VOLUMEN, COMO ENTRADA (§13f).
+ *
+ * En web no existe —el navegador no ve las teclas físicas del aparato— y por
+ * eso el puerto contesta `disponible(): false` y no escucha nada. No es un
+ * hueco temporal como el de Health: no hay API que llegue después.
+ *
+ * `escucharTeclas` devuelve cómo dejar de escuchar, y ese mismo cierre es el
+ * que devuelve el volumen del teléfono a como estaba.
+ */
+export type Volumen = {
+  disponible(): boolean;
+  escucharTeclas(alApretar: () => void): () => void;
+};
+
 export type Plataforma = {
   /** Sobrevive a cerrar la app. En web, `localStorage`. */
   almacenamiento: Almacenamiento;
@@ -219,6 +248,7 @@ export type Plataforma = {
   ubicacion: Ubicacion;
   audio: Audio;
   salud: Salud;
+  volumen: Volumen;
   avisos: Avisos;
   enVivo: EnVivo;
   haptica: Haptica;

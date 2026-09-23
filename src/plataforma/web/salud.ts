@@ -20,4 +20,7 @@ export const saludWeb: Salud = {
   async pasosDe(_fecha) {
     return null;
   },
+  async pasosPorDia(_dias) {
+    return null;
+  },
 };

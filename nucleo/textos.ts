@@ -239,6 +239,11 @@ export const T = {
     // Esto se dice una sola vez, arriba, donde se está mirando.
     globoSeries:
       'Elige el ejercicio y cuántas series. Cada + suma una y arranca el descanso.',
+    // El atajo de las teclas, como SEGUNDO renglón del mismo globo. Aparte y
+    // no metido en la frase de arriba: esa ya explicaba el +, y sumarle el
+    // atajo adentro la volvía un párrafo. Un globo aparte sería un segundo
+    // cartel que sacarse de encima.
+    globoSeriesTeclas: 'Con la app abierta, las teclas de volumen también suman.',
     // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
     // error de la app. Con una línea deja de serlo.
     sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',
@@ -252,6 +257,12 @@ export const T = {
     // de verdad con la app cerrada, así que decir "al abrir la app" sería
     // vender de menos justo lo que diferencia a esta app.
     gimnasioRecordatorioNativo: 'Marca tu gimnasio: el día entra solo al llegar.',
+    // LA INSISTENCIA, justo después de registrar el día a mano. Dice lo que
+    // acaba de pasar y lo que podría pasar la próxima; no promete nada que la
+    // app no haga ya, y no reta a nadie por no haberlo marcado antes.
+    insistirGimnasioTitulo: 'Este día lo anotaste tú.',
+    insistirGimnasioNota: 'Con tu gimnasio marcado, el día entra solo al llegar. Sin abrir la app.',
+    insistirGimnasioAccion: 'Marcar el punto',
     // Y acá sí se insiste, porque es el único momento en que es probable que
     // la persona esté parada en el gimnasio. NUNCA al empezar la sesión:
     // ahí casi nunca está ahí todavía.
@@ -695,6 +706,15 @@ export const T = {
       `${dias} ${dias === 1 ? 'anotación' : 'anotaciones'} · ${delta} ${unidad}`,
     pesoUnoMas: 'Con uno más aparece la tendencia. Solo la ves tú.',
     pesoVacio: 'Anota tu peso y aquí aparece la tendencia. Solo la ves tú.',
+    // LOS PASOS. Son de Apple Health, TODOS los días y no solo los de
+    // entrenamiento: un día de descanso con 12.000 pasos es información.
+    pasosTendencia: 'Pasos — tendencia 7 días',
+    pasosDia: (n: string) => `${n} pasos`,
+    pasosPromedio: (dias: number, n: string) => `${dias} días · ${n} por día`,
+    // No dice que entrenaste: dice cuánto te moviste. La diferencia está en
+    // `plataforma/salud.ts` y también se cuenta acá, porque quien lo mira no
+    // leyó ese archivo.
+    pasosNota: 'De Apple Health, todos los días. No cuentan como entrenamiento.',
     sinDuracion_: (n: number) => `${n} sin duración`,
     masCortas: (n: number) => `${n} de menos de 5 min`,
     rachaDe: (dias: string) => `racha de ${dias}`,

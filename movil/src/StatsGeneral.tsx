@@ -9,8 +9,10 @@ import { paletaDe } from '@nucleo/paletas';
 import { duracionLinda, type ResumenSesiones } from '@nucleo/sesiones';
 import { agruparPorDia, etiquetaDeDia, type DiaConSesiones } from '@nucleo/dias';
 import type { Log } from '@nucleo/tipos';
+import { plataforma } from '@plataforma';
 import { C } from './colores';
 import GraficoPeso from './GraficoPeso';
+import GraficoPasos from './GraficoPasos';
 import Insignia from './Insignia';
 import SeccionFuerza from './SeccionFuerza';
 import AnotarPeso from './AnotarPeso';
@@ -28,6 +30,13 @@ import ListaDePesos from './ListaDePesos';
  * LA FUERZA, también desde el 18/9, entre el peso y la escalera como en la
  * web (`SeccionFuerza`). El aviso de estancamiento va arriba de todo y lo pone
  * `Stats`.
+ *
+ * LOS PASOS (23/9) son lo único de esta pantalla que NO está en la web, y no
+ * por falta de ganas: ningún navegador ve los pasos del teléfono. Van pegados
+ * al peso porque son el otro gráfico de la misma clase —una tendencia diaria
+ * del cuerpo, no del entrenamiento— y comparten la cuenta
+ * (`nucleo/tendencia.ts`). Sin Health o sin permiso, la sección no existe:
+ * no se muestra un hueco explicando lo que falta.
  */
 
 export type Vidas = { quedan: number; total: number; vuelve: string | null; falta: number | null };
@@ -72,6 +81,28 @@ export default function StatsGeneral({
 }) {
   const hoy = hoyISO();
   const pal = paletaDe(rango, planeta);
+
+  // LOS PASOS DE APPLE HEALTH. `null` mientras no se sabe y también cuando no
+  // hay —sin Health, sin permiso, en un iPad—, que para esta pantalla es lo
+  // mismo: no se dibuja nada.
+  //
+  // UN AÑO, y no la ventana elegida: el botón "Todo" tiene que poder mostrar
+  // todo sin volver a preguntarle a Health, y una consulta con los cubos por
+  // día cuesta lo mismo por 30 que por 365 (ver `pasosPorDia`). Cambiar de
+  // ventana es recortar una serie que ya está en memoria.
+  const [pasos, setPasos] = useState<{ fecha: string; valor: number }[] | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    plataforma.salud
+      .pasosPorDia(365)
+      .then((r) => {
+        if (vivo) setPasos(r);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   // EL AÑO: 26 semanas, una columna por semana, de domingo a sábado. La misma
   // cuenta que la web.
@@ -126,6 +157,16 @@ export default function StatsGeneral({
       {pesos.length === 0 && <Text style={estilos.nota}>{T.stats.pesoVacio}</Text>}
       <AnotarPeso unidad={unidad} alGuardar={alCambiar} />
       <ListaDePesos pesos={pesos} unidad={unidad} alCambiar={alCambiar} />
+
+      {/* LOS PASOS, si el teléfono los tiene. Con menos de dos días no hay
+          tendencia que dibujar y no se pone nada: un gráfico de un punto es
+          una mancha con un rótulo. */}
+      {pasos && pasos.length >= 2 && (
+        <>
+          <Text style={estilos.seccion}>{T.stats.pasosTendencia}</Text>
+          <GraficoPasos pasos={pasos} claro={pal.claro} />
+        </>
+      )}
 
       {/* La fuerza convive con la racha, no la reemplaza (§16.1): va después
           del peso y antes de la escalera, que es el cierre de la pantalla. El

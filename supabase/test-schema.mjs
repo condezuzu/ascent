@@ -4218,11 +4218,12 @@ console.log('\n60. Los dos lados de plataforma/');
   // Las llaves del tipo `Plataforma`, que es lo ultimo del archivo.
   const bloque = contrato.slice(contrato.indexOf('export type Plataforma = {'));
   const puertos = [...sinComentarios(bloque).matchAll(/^  (\w+):/gm)].map((m) => m[1]).sort();
-  // DIEZ DESDE EL 24/9: entro `enVivo`, la cuenta del descanso en la
-  // pantalla bloqueada. El numero esta escrito a proposito y no se calcula:
-  // lo que este chequeo cuida es que un puerto NUEVO obligue a mirar las dos
-  // implementaciones, no solo la que uno estaba escribiendo.
-  chequear('el contrato tiene diez puertos', puertos.length, 10);
+  // ONCE DESDE EL 23/9: entro `volumen`, las teclas que suman una serie
+  // (§13f). Antes eran diez, desde que entro `enVivo` con la cuenta del
+  // descanso en la pantalla bloqueada. El numero esta escrito a proposito y no
+  // se calcula: lo que este chequeo cuida es que un puerto NUEVO obligue a
+  // mirar las dos implementaciones, no solo la que uno estaba escribiendo.
+  chequear('el contrato tiene once puertos', puertos.length, 11);
 
   const llaves = (ruta) => {
     const codigo = sinComentarios(leerArch(ruta, 'utf8'));
@@ -9682,6 +9683,224 @@ console.log('\n142. La coreografia de la subida de rango, portada al telefono');
   chequear('la bateria abre la subida en la nativa',
     /Ver la subida de rango/.test(de142('supabase', 'bateria-dos-apps.mjs')), true);
 }
+console.log('\n143. El grafico de pasos en Stats');
+{
+  const { readFileSync: leer143 } = await import('node:fs');
+  const { join: unir143 } = await import('node:path');
+  const R143 = unir143(import.meta.dirname, '..');
+  const de143 = (...p) => leer143(unir143(R143, ...p), 'utf8');
+  const sinComentarios143 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  const TEN = await import('../nucleo/tendencia.ts');
+  const PESO143 = await import('../nucleo/peso.ts');
+
+  // ---- LA CUENTA SE MUDO, Y NO CAMBIO ----
+  //
+  // Vivia en `peso.ts` porque nacio ahi. Los pasos quieren exactamente lo
+  // mismo, asi que la parte generica es su propio archivo y `peso.ts` la
+  // reexporta: nada de lo que ya la importaba tuvo que cambiar de linea.
+  chequear('peso.ts sigue dando la media movil', typeof PESO143.suavizarPorFecha, 'function');
+  chequear('y ultimosDias', typeof PESO143.ultimosDias, 'function');
+  chequear('y puntoMasCercano', typeof PESO143.puntoMasCercano, 'function');
+  chequear('y son las MISMAS funciones', PESO143.suavizarPorFecha === TEN.suavizarPorFecha, true);
+
+  // Y el trazo del peso da lo mismo que antes de partirlo. Los numeros son
+  // los del 68, recalculados con la misma entrada.
+  const diasSeguidos = (n, desde, paso) =>
+    Array.from({ length: n }, (_, i) => ({
+      fecha: new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10),
+      valor: desde + i * paso,
+    }));
+  const t143 = PESO143.trazarPeso(diasSeguidos(30, 80, -0.1), 'kg', null, 300, 84);
+  chequear('el trazo del peso sigue dando 30 dias', t143.dias, 30);
+  chequear('y arranca en x = 0', t143.puntos[0].x, 0);
+  chequear('y termina en el ancho', t143.puntos[29].x, 300);
+  // La linea baja, asi que la y del final es MAYOR que la del principio (en
+  // SVG el cero esta arriba).
+  chequear('y la linea baja', t143.puntos[29].y > t143.puntos[0].y, true);
+  chequear('y el cambio es negativo', t143.cambio < 0, true);
+
+  // ---- LA LUZ MINIMA ----
+  //
+  // Una serie perfectamente plana tiene techo === piso, y sin aire eso divide
+  // por cero. En el peso el aire son 0,4 kg; en los pasos 0,4 no existe como
+  // unidad, asi que es un parametro.
+  const plano = diasSeguidos(10, 5000, 0);
+  const tp = TEN.trazarSerie(plano, null, 300, 84, 7, 1);
+  chequear('una serie plana no divide por cero', Number.isFinite(tp.puntos[0].y), true);
+  chequear('y queda en el medio', Math.round(tp.puntos[0].y), 42);
+
+  // ---- LOS PASOS SE PIDEN EN UNA SOLA CONSULTA ----
+  //
+  // Noventa llamadas a `pasosDe` para un grafico de tres meses serian noventa
+  // saltos al puente nativo para una cuenta que iOS hace de un lado solo.
+  const sal143 = sinComentarios143(de143('movil', 'src', 'plataforma', 'salud.ts'));
+  chequear('la nativa pide los pasos por cubos de un dia',
+    /queryStatisticsCollectionForQuantity/.test(sal143), true);
+  chequear('con cubos de un dia', /\{ day: 1 \}/.test(sal143), true);
+  // EL ANCLA EN MEDIANOCHE LOCAL: con una en UTC los cubos se correrian tres
+  // horas en Montevideo y los pasos de la noche caerian en el dia siguiente.
+  chequear('anclado a medianoche local', /deISO\(aISO\(atras\)\)/.test(sal143), true);
+  // UN DIA SIN DATO NO ES UN DIA SIN CAMINAR.
+  chequear('los dias sin dato se saltean', /continue;/.test(sal143), true);
+
+  // La web no tiene nada parecido, y contesta "no se" y no "no".
+  const web143 = sinComentarios143(de143('src', 'plataforma', 'web', 'salud.ts'));
+  chequear('la web contesta que no sabe', /pasosPorDia\(_dias\) \{\s*return null;/.test(web143), true);
+
+  // ---- EL GRAFICO ----
+  const gra143 = sinComentarios143(de143('movil', 'src', 'GraficoPasos.tsx'));
+  chequear('el grafico de pasos existe', gra143.length > 0, true);
+  chequear('usa la cuenta compartida', /trazarSerie/.test(gra143), true);
+  // LAS MISMAS TRES VENTANAS QUE EL PESO: es el mismo gesto en la misma
+  // pantalla, asi que se reusan los mismos textos.
+  chequear('con las mismas tres ventanas', /pesoMes[\s\S]*pesoTresMeses[\s\S]*pesoTodo/.test(gra143), true);
+  // ARRASTRAR PARA LEER UN DIA, igual que el peso.
+  chequear('y se arrastra el dedo', /onResponderMove=\{alMover\}/.test(gra143), true);
+  // EL ID DEL DEGRADADO ES OTRO. Los dos graficos viven en la misma pantalla,
+  // y un id repetido lo resuelve el motor de SVG callado y mal.
+  chequear('el degradado no comparte id con el del peso',
+    /peso-relleno/.test(gra143), false);
+  chequear('tiene el suyo', /pasos-relleno/.test(gra143), true);
+
+  // ---- EN STATS, Y SOLO SI HAY ----
+  const stg143 = sinComentarios143(de143('movil', 'src', 'StatsGeneral.tsx'));
+  chequear('Stats dibuja los pasos', /<GraficoPasos/.test(stg143), true);
+  chequear('pidiendo un ano de una sola vez', /pasosPorDia\(365\)/.test(stg143), true);
+  // SIN HEALTH NO SE MUESTRA UN HUECO: la seccion no existe.
+  chequear('sin datos no hay seccion', /pasos && pasos\.length >= 2/.test(stg143), true);
+
+  // ---- LO QUE EL TEXTO TIENE QUE DECIR ----
+  const T143 = (await import('../nucleo/textos.ts')).T;
+  // TODOS LOS DIAS, NO SOLO LOS DE ENTRENAMIENTO: era el pedido.
+  chequear('el texto dice que son todos los dias',
+    /todos los d[ií]as/i.test(T143.stats.pasosNota), true);
+  // Y QUE NO CUENTAN COMO ENTRENAMIENTO: un dia de fuerza puede tener 2.000
+  // pasos, y uno de caminata 14.000.
+  chequear('y que no cuentan como entrenamiento',
+    /no cuentan como entrenamiento/i.test(T143.stats.pasosNota), true);
+}
+
+console.log('\n144. El boton de volumen, y la insistencia con el punto del gimnasio');
+{
+  const { readFileSync: leer144 } = await import('node:fs');
+  const { join: unir144 } = await import('node:path');
+  const R144 = unir144(import.meta.dirname, '..');
+  const de144 = (...p) => leer144(unir144(R144, ...p), 'utf8');
+  const sinComentarios144 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- EL PUERTO NUEVO, EN LAS DOS APPS ----
+  //
+  // El contrato vive en el nucleo justamente para que una de las dos no se
+  // pueda olvidar. Si esto compila, las dos lo tienen.
+  const plat144 = de144('nucleo', 'plataforma.ts');
+  chequear('el contrato tiene el puerto del volumen', /volumen: Volumen;/.test(plat144), true);
+  chequear('con como escuchar las teclas', /escucharTeclas\(alApretar/.test(plat144), true);
+  // EN WEB NO EXISTE Y NO VA A EXISTIR: el navegador no ve las teclas fisicas.
+  // No es un hueco que llene una API futura, como el de Health.
+  const volWeb144 = sinComentarios144(de144('src', 'plataforma', 'web', 'volumen.ts'));
+  chequear('la web dice que no esta disponible', /disponible\(\) \{\s*return false;/.test(volWeb144), true);
+
+  // ---- LO QUE MUERDE DE ESCUCHAR EL VOLUMEN ----
+  //
+  // iOS no da las teclas: da el volumen del sistema. De ahi salen las tres
+  // trampas, y las tres estan resueltas en el mismo archivo.
+  const vol144 = sinComentarios144(de144('movil', 'src', 'plataforma', 'volumen.ts'));
+  chequear('la nativa escucha el volumen', /addVolumeListener/.test(vol144), true);
+  // 1. HAY QUE DEJARLE LUGAR PARA LOS DOS LADOS: con el volumen en 0 o en 1,
+  //    una de las dos teclas no cambia nada y el sistema no avisa nada.
+  chequear('se corre del extremo para que las dos teclas sirvan',
+    /REFUGIO_ABAJO/.test(vol144) && /REFUGIO_ARRIBA/.test(vol144), true);
+  // 2. VOLVER A PONERLO GENERA OTRO AVISO, que es nuestro. Sin filtrarlo, cada
+  //    serie sumaria dos.
+  chequear('y se ignora el aviso que genera el propio setVolume',
+    /Math\.abs\(e\.volume - parado\) < MINIMO/.test(vol144), true);
+  // 3. EL CARTELITO DEL SISTEMA TAPA LA PANTALLA doce veces por sesion.
+  chequear('el cartel de volumen del sistema se apaga',
+    /showNativeVolumeUI\(\{ enabled: false \}\)/.test(vol144), true);
+  // Y AL SALIR SE DEJA TODO COMO ESTABA: el volumen del telefono es de la
+  // persona, no nuestro.
+  chequear('y al salir se devuelve el volumen original',
+    /if \(original !== null\) setVolume\(original/.test(vol144), true);
+  chequear('y el cartel se vuelve a prender',
+    /showNativeVolumeUI\(\{ enabled: true \}\)/.test(vol144), true);
+
+  // ---- SOLO MIENTRAS DURA LA SESION ----
+  //
+  // Fuera de la sesion no hay ninguna serie que sumar, y quedarse con las
+  // teclas tomadas seria romperle el telefono a la persona para nada.
+  const tec144 = sinComentarios144(de144('movil', 'src', 'teclasDeVolumen.ts'));
+  chequear('solo se escucha con la sesion corriendo', /if \(!corriendo/.test(tec144), true);
+  // LA ACCION VIAJA EN UNA REF: `serieHecha` es otra funcion en cada dibujo, y
+  // como dependencia desarmaria y rearmaria la escucha en CADA serie sumada.
+  chequear('la accion va en una ref, no en las dependencias',
+    /\}, \[corriendo\]\);/.test(tec144), true);
+  const ini144 = sinComentarios144(de144('movil', 'src', 'Inicio.tsx'));
+  chequear('Inicio lo engancha', /useTeclasDeVolumen\(sesion\.estado\.corriendo, sesion\.serieHecha\)/.test(ini144), true);
+
+  // ---- SE CUENTA UNA VEZ, Y NO EN AJUSTES ----
+  //
+  // Ajustes acaba de perder dos botones por tener demasiados; sumar uno seria
+  // ir para atras. Se dice en el globo de la primera sesion, donde ya se
+  // explica el `+`, y SOLO donde el atajo existe.
+  const T144 = (await import('../nucleo/textos.ts')).T;
+  chequear('el globo nombra las teclas de volumen',
+    /teclas de volumen/i.test(T144.inicio.globoSeriesTeclas), true);
+  chequear('y el de siempre no las nombra',
+    /volumen/i.test(T144.inicio.globoSeries), false);
+  chequear('el segundo renglon solo va donde el atajo existe',
+    /plataforma\.volumen\.disponible\(\) \? T\.inicio\.globoSeriesTeclas/.test(ini144), true);
+
+  // ---- INSISTIR CON EL PUNTO DEL GIMNASIO ----
+  const INS = await import('../nucleo/insistirGimnasio.ts');
+  const vacia = INS.leerMemoria(null);
+  chequear('sin memoria, nunca se mostro', vacia.veces, 0);
+  // CON EL PUNTO YA MARCADO NO HAY NADA QUE OFRECER.
+  chequear('con el punto marcado no se insiste',
+    INS.hayQueInsistir(true, true, '2026-09-23', vacia), false);
+  // Y EL MOMENTO ES DESPUES DE REGISTRAR EL DIA: es el unico instante en que
+  // la frase se puede probar en vez de explicar.
+  chequear('sin el dia registrado tampoco',
+    INS.hayQueInsistir(false, false, '2026-09-23', vacia), false);
+  chequear('con el dia registrado y sin punto, si',
+    INS.hayQueInsistir(false, true, '2026-09-23', vacia), true);
+
+  // UNA VEZ POR DIA COMO MUCHO: registrar el dia, borrarlo y volver a
+  // registrarlo no cuenta tres veces.
+  const tras1 = INS.despuesDeMostrar('2026-09-23', vacia);
+  chequear('despues de mostrarlo, hoy ya no', INS.hayQueInsistir(false, true, '2026-09-23', tras1), false);
+  chequear('pero manana si', INS.hayQueInsistir(false, true, '2026-09-24', tras1), true);
+  chequear('y mostrarlo dos veces el mismo dia cuenta una', INS.despuesDeMostrar('2026-09-23', tras1).veces, 1);
+
+  // TRES DIAS Y NUNCA MAS. Un cartel que aparece todos los dias hasta que
+  // cedas no es insistir: a la tercera se vuelve parte del fondo.
+  const tras3 = INS.despuesDeMostrar('2026-09-25', INS.despuesDeMostrar('2026-09-24', tras1));
+  chequear('a los tres dias se acabo', tras3.veces, 3);
+  chequear('y ya no se insiste mas', INS.hayQueInsistir(false, true, '2026-09-26', tras3), false);
+
+  // UNA MEMORIA ROTA SE TRATA COMO VACIA: es un cartel de ayuda, y el peor
+  // caso de equivocarse es mostrarlo una vez de mas.
+  chequear('una memoria rota no rompe nada', INS.leerMemoria('{no es json').veces, 0);
+
+  // ---- Y EN PANTALLA ----
+  const insP144 = sinComentarios144(de144('movil', 'src', 'InsistirGimnasio.tsx'));
+  chequear('la tarjeta existe', insP144.length > 0, true);
+  // ES UN OFRECIMIENTO, NO UN AVISO: se toca y lleva a marcarlo.
+  chequear('y se toca', /onPress=\{alMarcar\}/.test(insP144), true);
+  // LA PREGUNTA ESPERA A QUE HAYA DATOS. Inicio llama al hook arriba de todo,
+  // antes de los retornos tempranos: sin esperar, la unica decision que se
+  // tomaria seria con `registradoHoy` en falso, o sea "no insistir", siempre.
+  chequear('espera a tener los datos', /if \(!listo \|\| preguntado\.current\) return;/.test(insP144), true);
+  // DOS CARTELES SOBRE LO MISMO SON RUIDO: cuando habla este, el globo quieto
+  // se calla.
+  chequear('el globo quieto se calla cuando habla la tarjeta',
+    /!perfil\.gimnasio_lat && !sesion\.estado\.corriendo && !insistirGimnasio/.test(ini144), true);
+  chequear('el texto dice que el dia lo anotaste vos',
+    /anotaste/i.test(T144.inicio.insistirGimnasioTitulo), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

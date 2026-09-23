@@ -14,6 +14,7 @@ import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
 import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO, SUBIO_RANGO } from '@compartido/gimnasio';
+import { useTeclasDeVolumen } from './teclasDeVolumen';
 import { CERRO_SOLA } from './VigilanteDeGimnasio';
 import Bloque from './Bloque';
 import Descanso from './Descanso';
@@ -30,6 +31,7 @@ import FondoEspacial from './FondoEspacial';
 import { mostrando } from './loVisible';
 import Avatar from './Avatar';
 import DiaListo from './DiaListo';
+import InsistirGimnasio, { useInsistirGimnasio } from './InsistirGimnasio';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import RachaConRotulo from './RachaConRotulo';
 import { irAPestana } from './irAPestana';
@@ -232,6 +234,23 @@ export default function Inicio({
       ejercicio: sesion.estado.bloques.ejercicio,
     });
   }, [sesion.estado.corriendo, sesion.estado.series, sesion.estado.bloques]);
+
+  // ¿SE INSISTE HOY CON EL PUNTO DEL GIMNASIO? Se pregunta acá arriba y no
+  // adentro del cartel porque el globo quieto de más abajo dice lo mismo: los
+  // dos juntos serían dos carteles sobre lo mismo en la misma pantalla.
+  const cargado = estado.tipo !== 'cargando' && estado.tipo !== 'error' ? estado : null;
+  const insistirGimnasio = useInsistirGimnasio(
+    cargado !== null,
+    !!cargado?.perfil.gimnasio_lat,
+    !!cargado?.logs.some((l) => l.fecha === hoyISO()),
+    hoyISO()
+  );
+
+  // LAS TECLAS DE VOLUMEN SUMAN UNA SERIE (§13f). Va ACÁ ARRIBA, antes de los
+  // retornos tempranos: un hook que se llama solo en algunas ramas es un hook
+  // que un día no se llama, y React cuenta los hooks por posición. Adentro se
+  // decide si escucha o no.
+  useTeclasDeVolumen(sesion.estado.corriendo, sesion.serieHecha);
 
   if (estado.tipo === 'cargando') {
     return (
@@ -451,8 +470,13 @@ export default function Inicio({
 
       {/* MARCA TU GIMNASIO, mientras no este marcado. Se RECUERDA, no se
           insiste: es un globo quieto que lleva a Ajustes, y no aparece
-          mientras entrenas — ahi la pantalla es el entrenamiento. */}
-      {!perfil.gimnasio_lat && !sesion.estado.corriendo && (
+          mientras entrenas — ahi la pantalla es el entrenamiento.
+
+          Y SE CALLA CUANDO HABLA LA TARJETA de abajo, que dice lo mismo con
+          mas fuerza porque el dia se acaba de anotar a mano. Dos carteles
+          sobre lo mismo en la misma pantalla no son el doble de insistencia:
+          son ruido. */}
+      {!perfil.gimnasio_lat && !sesion.estado.corriendo && !insistirGimnasio && (
         <Pressable style={estilos.globoQuieto} onPress={() => irAPestana('ajustes')}>
           <Text style={estilos.globoTexto}>{T.inicio.gimnasioRecordatorioNativo}</Text>
         </Pressable>
@@ -466,7 +490,13 @@ export default function Inicio({
           {/* SE CIERRA SOLO CON EL PRIMER `+`: para entonces ya se entendió qué
               hace, y la pregunta de marca —que sale después de un `+`— nunca lo
               encuentra abierto. */}
-          <GloboPrimeraVez cual="series" cerrarCuando={sesion.estado.series > 0}>
+          {/* El segundo renglón se nombra SOLO donde el atajo existe: en web
+              el mismo globo prometería una tecla que el navegador no ve. */}
+          <GloboPrimeraVez
+            cual="series"
+            cerrarCuando={sesion.estado.series > 0}
+            segundo={plataforma.volumen.disponible() ? T.inicio.globoSeriesTeclas : undefined}
+          >
             {T.inicio.globoSeries}
           </GloboPrimeraVez>
           {/* El reloj ya está arriba, en el chip: acá manda el bloque, que es
@@ -562,7 +592,14 @@ export default function Inicio({
         // El día ya está —casi siempre lo registró la sesión—: lo que queda es
         // sumarle la foto o el peso. Era un renglón de texto que no parecía un
         // botón; ahora es lo mismo que la web. Ver `DiaListo.tsx`.
-        <DiaListo alaFoto={() => setRegistrarAbierto(true)} alPeso={() => setPesoAbierto(true)} />
+        <>
+          <DiaListo alaFoto={() => setRegistrarAbierto(true)} alPeso={() => setPesoAbierto(true)} />
+          {/* Y ACÁ SE INSISTE CON EL PUNTO DEL GIMNASIO: pegado al día que se
+              acaba de anotar a mano, que es el único momento en que la oferta
+              se puede demostrar en vez de explicar. Tres veces como mucho, una
+              por día; la regla está en `nucleo/insistirGimnasio.ts`. */}
+          {insistirGimnasio && <InsistirGimnasio alMarcar={() => irAPestana('ajustes')} />}
+        </>
       ) : (
         <>
           <Pressable style={estilos.solido} onPress={() => setRegistrarAbierto(true)}>

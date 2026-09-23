@@ -72,6 +72,15 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   nada** (un día de caminata tiene más pasos que uno de fuerza). Todo contesta
   `null` para "no sé": sin permiso, HealthKit devuelve lo mismo que un día
   quieto, y decir "no entrenaste" ahí sería inventar.
+
+  **Y desde el 23/9 los pasos se VEN**: Stats → General tiene su gráfico, el
+  mismo que el del peso —media móvil de siete días, las tres ventanas, arrastrar
+  el dedo para leer un día— con la cuenta compartida en `nucleo/tendencia.ts`.
+  **Todos los días, no solo los de entrenamiento.** Un año se pide en UNA
+  consulta (`pasosPorDia`, cubos de un día del lado de iOS) y no en 365; los
+  días sin dato se saltean en vez de valer 0, porque un día sin el teléfono
+  encima no es un día sin caminar. En web la sección no existe: ningún navegador
+  ve los pasos del teléfono.
 - **Racha, rangos y pérdida**: ocho rangos de diez días, planeta del día en el
   rango 4, pérdida de −10 una vez por corte, piso de misericordia, corrección
   manual por calendario, recálculo sin rebote.
@@ -228,9 +237,20 @@ diagnóstico, que hacía falta el mismo día.
   4 → 5—, y es **el mismo archivo que la web**: la aritmética se mudó a
   `nucleo/subida.ts` y el dibujo a `compartido/motor/subida.ts`, que pide al
   lienzo las seis cosas que antes tomaba del navegador.
-- **El botón de volumen suma una serie** (§13f). El módulo nativo ya viaja en
-  la build desde el 22/9, así que **esto ya es puro JavaScript**. Ojo con la
-  promesa de la spec: en iOS solo se escucha con la app adelante.
+- ~~**El botón de volumen suma una serie**~~ (§13f). **Hecho el 23/9**, por el
+  aire, como estaba previsto: el módulo viajaba en la build desde el 22/9 y lo
+  que faltaba era JavaScript. Escucha solo mientras corre la sesión.
+
+  Tres cosas que solo aparecen al escribirlo, porque **iOS no da las teclas: da
+  el volumen del sistema** (todas en `movil/src/plataforma/volumen.ts`): con el
+  volumen en un extremo una de las dos teclas queda muerta y hay que correrlo;
+  devolverlo a su lugar genera otro aviso que sin filtrar contaría dos series
+  por pulsación; y el cartelito de volumen del sistema hay que apagarlo o tapa
+  la pantalla doce veces por sesión. Al salir se deja todo como estaba.
+
+  **La promesa corregida sigue en pie**: con la pantalla bloqueada no se puede,
+  y no se prometió. El globo de la primera sesión lo dice en un renglón aparte,
+  y solo en el teléfono.
 - ~~**Retos entre amigos.**~~ **Fuera de la lista el 23/9, por decisión del
   humano.** No es una postergación más: la spec siempre dijo que eran "la más
   cara y la que menos sirve sin usuarios activos" (§14), y sigue habiendo un

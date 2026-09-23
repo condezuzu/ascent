@@ -7,6 +7,7 @@ import { avisosWeb } from './web/avisos';
 import { hapticaWeb } from './web/haptica';
 import { pantallaWeb } from './web/pantalla';
 import { saludWeb } from './web/salud';
+import { volumenWeb } from './web/volumen';
 import { ubicacionWeb } from './web/ubicacion';
 
 // El único lugar que decide qué implementación corre. Al pasar a Expo se
@@ -18,6 +19,7 @@ export const plataforma: Plataforma = {
   ubicacion: ubicacionWeb,
   audio: audioWeb,
   salud: saludWeb,
+  volumen: volumenWeb,
   avisos: avisosWeb,
   enVivo: enVivoWeb,
   haptica: hapticaWeb,

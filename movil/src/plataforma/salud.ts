@@ -2,13 +2,14 @@ import {
   AuthorizationRequestStatus,
   getRequestStatusForAuthorization,
   isHealthDataAvailable,
+  queryStatisticsCollectionForQuantity,
   queryStatisticsForQuantity,
   queryWorkoutSamples,
   requestAuthorization,
   WorkoutActivityType,
   WorkoutTypeIdentifier,
 } from '@kingstinct/react-native-healthkit';
-import { deISO } from '@nucleo/fechas';
+import { aISO, deISO } from '@nucleo/fechas';
 import type { Salud } from '@nucleo/plataforma';
 
 /**
@@ -192,6 +193,57 @@ export const saludNativa: Salud = {
       // Sin suma no es cero: es que no hay dato, o que no hay permiso.
       if (typeof n !== 'number' || !Number.isFinite(n)) return null;
       return Math.round(n);
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * LOS PASOS DE MUCHOS DÍAS, EN UNA SOLA CONSULTA.
+   *
+   * `queryStatisticsCollectionForQuantity` le pide a HealthKit la suma
+   * agrupada por día. La alternativa era llamar a `pasosDe` noventa veces para
+   * un gráfico de tres meses: noventa saltos al puente nativo para una cuenta
+   * que iOS hace de un lado solo, y cada una deduplicando por su cuenta el
+   * reloj contra el teléfono.
+   *
+   * EL ANCLA ES MEDIANOCHE LOCAL, y ahí está el detalle que importa: los cubos
+   * se arman a partir del ancla, así que un ancla en UTC partiría los días tres
+   * horas corridas en Montevideo y los pasos de la noche caerían en el día
+   * siguiente. `deISO` da medianoche local, igual que en `elDia`.
+   *
+   * LOS DÍAS SIN DATO SE SALTEAN. HealthKit devuelve el cubo igual, sin suma;
+   * ponerlo en 0 diría "ese día no caminaste" cuando lo que pasó es que el
+   * teléfono no estaba encima. Un hueco es un hueco.
+   */
+  async pasosPorDia(dias) {
+    if (!(await puedoPreguntar())) return null;
+    try {
+      const hoy = new Date();
+      const atras = new Date(hoy);
+      atras.setDate(atras.getDate() - (dias - 1));
+      const ancla = deISO(aISO(atras));
+      const hasta = deISO(aISO(hoy));
+      hasta.setDate(hasta.getDate() + 1);
+
+      const cubos = await queryStatisticsCollectionForQuantity(
+        'HKQuantityTypeIdentifierStepCount',
+        ['cumulativeSum'],
+        ancla,
+        { day: 1 },
+        { filter: { date: { startDate: ancla, endDate: hasta } }, unit: 'count' }
+      );
+
+      const serie: { fecha: string; valor: number }[] = [];
+      for (const c of cubos) {
+        const n = c.sumQuantity?.quantity;
+        if (!c.startDate || typeof n !== 'number' || !Number.isFinite(n)) continue;
+        serie.push({ fecha: aISO(c.startDate), valor: Math.round(n) });
+      }
+      // De más viejo a más nuevo: la cuenta de la tendencia recorre la serie
+      // hacia atrás y da por sentado que está ordenada.
+      serie.sort((a, b) => a.fecha.localeCompare(b.fecha));
+      return serie;
     } catch {
       return null;
     }
