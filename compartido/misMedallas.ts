@@ -20,7 +20,13 @@ import type { Medalla } from '@nucleo/medallas';
 export function useMisMedallas(
   supabase: Cliente,
   uid: string | null | undefined,
-  sexo: string | null | undefined
+  sexo: string | null | undefined,
+  /**
+   * Cambiarlo las hace pedir de nuevo. Existe porque una medalla se gana
+   * cargando una marca en OTRA pantalla: sin esto, la que acabás de ganar no
+   * aparece al lado de tu nombre hasta reiniciar la app.
+   */
+  refrescar = 0
 ): Medalla[] {
   const [medallas, setMedallas] = useState<Medalla[]>([]);
 
@@ -41,7 +47,7 @@ export function useMisMedallas(
     // `supabase` es el mismo cliente siempre; meterlo acá no cambia nada y
     // obliga a memorizarlo en cada pantalla.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid, sexo]);
+  }, [uid, sexo, refrescar]);
 
   return medallas;
 }

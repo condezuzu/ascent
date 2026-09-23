@@ -16,6 +16,7 @@ import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO, SUBIO_RANGO } from '@compartido/gimnasio';
 import { useTeclasDeVolumen } from './teclasDeVolumen';
 import { FilaDeMedallas } from './Medallas';
+import { useRecargarAlVolver } from './irAPestana';
 import { useMisMedallas } from '@compartido/misMedallas';
 import { CERRO_SOLA } from './VigilanteDeGimnasio';
 import Bloque from './Bloque';
@@ -129,6 +130,11 @@ export default function Inicio({
   const [vidaUsada, setVidaUsada] = useState<{ dias: string[]; quedan: number; total: number } | null>(null);
   const [aviso, setAviso] = useState('');
 
+  // CUÁNTAS VECES SE CARGÓ. No es para mostrar: es lo que hace que las cosas
+  // que se piden aparte —hoy las medallas— se enteren de que hay que volver a
+  // preguntar.
+  const [vueltas, setVueltas] = useState(0);
+
   const cargar = useCallback(async () => {
     try {
       const { data: sesion } = await supabase.auth.getSession();
@@ -171,6 +177,10 @@ export default function Inicio({
         impulsos: impulsos ? { quedan: Number(impulsos.quedan), total: Number(impulsos.total) } : null,
         perdida: !!(verificacion as { perdida?: boolean } | null)?.perdida,
       });
+      // Una vuelta mas: lo que se pide aparte —las medallas— se entera de que
+      // hay datos nuevos. Va aca y no al empezar, para que no pregunten dos
+      // veces por una carga que todavia puede fallar.
+      setVueltas((v) => v + 1);
       const ultimas = Array.isArray(impulsos?.ultimas) ? (impulsos.ultimas as string[]) : [];
       const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
       if (sinVer.length > 0) {
@@ -248,9 +258,21 @@ export default function Inicio({
     hoyISO()
   );
 
+  // AL VOLVER A INICIO, QUE PIDA SUS DATOS DE NUEVO.
+  //
+  // ERA UN BUG, y de los que no se ven hasta que se buscan: desde que las
+  // pestañas quedan todas montadas (23/9), volver a una NO la recarga. Se le
+  // puso este aviso a Ranking, al Álbum y a Stats... y a Inicio no. O sea la
+  // pestaña que más se vuelve a abrir era la única que mostraba lo de antes:
+  // cargabas una marca en Stats y volvías a una racha, una semana y un DOTS
+  // de hace diez minutos. Encontrado en el barrido del 24/9.
+  useRecargarAlVolver('inicio', cargar);
+
   // LAS MEDALLAS POR MARCA, para la fila del nombre. Va acá arriba como los
-  // otros hooks, antes de los retornos tempranos.
-  const medallas = useMisMedallas(supabase, cargado?.perfil.id, cargado?.perfil.sexo);
+  // otros hooks, antes de los retornos tempranos. `vueltas` las hace pedir de
+  // nuevo cuando Inicio se recarga: si no, la medalla que acabás de ganar no
+  // aparece hasta reiniciar la app.
+  const medallas = useMisMedallas(supabase, cargado?.perfil.id, cargado?.perfil.sexo, vueltas);
 
   // LAS TECLAS DE VOLUMEN SUMAN UNA SERIE (§13f). Va ACÁ ARRIBA, antes de los
   // retornos tempranos: un hook que se llama solo en algunas ramas es un hook

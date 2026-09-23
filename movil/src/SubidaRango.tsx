@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RANGOS } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
@@ -77,6 +77,29 @@ export default function SubidaRango({
     plataforma.haptica.pulso();
     Animated.timing(aparecer, { toValue: 1, duration: 700, useNativeDriver: true }).start();
   }, [aparecer]);
+
+  /**
+   * LA RED DE SEGURIDAD, y tapa un agujero que dejé yo el 23/9.
+   *
+   * Esta pantalla SOLO SE CIERRA cuando el objeto está formado, y quien dice
+   * que está formado es la animación. Si la animación no arranca nunca —el
+   * contexto de GL no nace, la app estaba en segundo plano, se quedó sin
+   * memoria— `formado` se queda en falso para siempre. Y entonces: el toque no
+   * cierra (solo saltea, y no hay nada que saltear), `onRequestClose` es de
+   * Android, y esto es un `Modal` a pantalla completa. Quedás encerrado en una
+   * pantalla negra sin salida, y la única forma de salir es matar la app.
+   *
+   * Encontrado barriendo el 24/9, no usándola: es el caso raro de siempre, el
+   * que aparece el día que el teléfono está cargado de cosas.
+   *
+   * SIETE SEGUNDOS: la más larga de las siete —la ignición 4 → 5— dura 5,2, y
+   * esto tiene que llegar DESPUÉS de todas para no cortar ninguna. Si la
+   * animación anduvo, cuando salte ya está formado y no hace nada.
+   */
+  useEffect(() => {
+    const red = setTimeout(() => setFormado(true), 7000);
+    return () => clearTimeout(red);
+  }, []);
 
   const nombre = RANGOS.find((r) => r.n === rangoDespues)?.nombre ?? '';
 

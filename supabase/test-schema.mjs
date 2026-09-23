@@ -10225,6 +10225,64 @@ console.log('\n147. Las particulas de la subida: estrellas y no cuadraditos');
   chequear('y la opacidad tambien', /uniforms\.uOpacidad\.value/.test(sub147), true);
 }
 
+console.log('\n148. El barrido de la app nativa, y lo que encontro');
+{
+  const { readFileSync: leer148 } = await import('node:fs');
+  const { join: unir148 } = await import('node:path');
+  const R148 = unir148(import.meta.dirname, '..');
+  const de148 = (...p) => leer148(unir148(R148, ...p), 'utf8');
+  const sinComentarios148 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- LA HERRAMIENTA ----
+  //
+  // La bateria recorre EL CAMINO FELIZ y comprueba paso a paso. El barrido es
+  // lo otro: no comprueba nada, ABRE TODO y escucha. Existe para no esperar a
+  // que el humano encuentre los bugs usando la app.
+  const bar148 = de148('supabase', 'barrido-nativa.mjs');
+  chequear('el barrido existe', bar148.length > 0, true);
+  chequear('escucha las excepciones', /page\.on\('pageerror'/.test(bar148), true);
+  chequear('y los errores de la base', /r\.status\(\) < 400/.test(bar148), true);
+  // NO BORRA NADA QUE NO HAYA CREADO: hace su cuenta y se la lleva.
+  chequear('y borra la cuenta que crea', /eliminar_cuenta/.test(bar148), true);
+
+  // ---- LO PRIMERO QUE ENCONTRO: INICIO NO RECARGABA AL VOLVER ----
+  //
+  // Desde que las pestañas quedan todas montadas (23/9), volver a una NO la
+  // recarga. Se le puso el aviso a Ranking, al Album y a Stats, y a Inicio no:
+  // la pestaña que mas se vuelve a abrir era la unica que mostraba lo de antes.
+  const ini148 = sinComentarios148(de148('movil', 'src', 'Inicio.tsx'));
+  chequear('Inicio recarga al volver', /useRecargarAlVolver\('inicio', cargar\)/.test(ini148), true);
+  // Y LAS CUATRO PESTAÑAS QUE SE RECARGAN SOLAS LO HACEN: si alguna se queda
+  // sin el aviso, vuelve el bug.
+  for (const [p, f] of [
+    ['inicio', ['movil', 'src', 'Inicio.tsx']],
+    ['ranking', ['movil', 'src', 'Ranking.tsx']],
+    ['album', ['movil', 'src', 'Album.tsx']],
+    ['stats', ['movil', 'src', 'Stats.tsx']],
+  ]) {
+    chequear(`${p} pide sus datos de nuevo al volver`,
+      new RegExp(`useRecargarAlVolver\\('${p}'`).test(de148(...f)), true);
+  }
+  // Y LAS MEDALLAS SE ENTERAN: se ganan cargando una marca en OTRA pantalla.
+  chequear('y las medallas se piden de nuevo con Inicio',
+    /useMisMedallas\(supabase, cargado\?\.perfil\.id, cargado\?\.perfil\.sexo, vueltas\)/.test(ini148), true);
+
+  // ---- LO SEGUNDO: LA SUBIDA DE RANGO PODIA QUEDAR SIN SALIDA ----
+  //
+  // Solo se cierra cuando el objeto esta formado, y quien lo dice es la
+  // animacion. Si la animacion no arranca nunca —el contexto de GL no nace, la
+  // app estaba en segundo plano, se quedo sin memoria— el toque no cierra,
+  // `onRequestClose` es de Android, y es un Modal a pantalla completa: quedas
+  // encerrado en negro y hay que matar la app.
+  const sub148 = sinComentarios148(de148('movil', 'src', 'SubidaRango.tsx'));
+  chequear('la subida tiene red de seguridad', /setTimeout\(\(\) => setFormado\(true\), 7000\)/.test(sub148), true);
+  // SIETE SEGUNDOS: la mas larga de las siete —la ignicion— dura 5,2, asi que
+  // la red llega DESPUES de todas y no corta ninguna.
+  const DUR148 = await import('../nucleo/subida.ts');
+  chequear('y llega despues de la mas larga', 7 > DUR148.DURACION_IGNICION_S, true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

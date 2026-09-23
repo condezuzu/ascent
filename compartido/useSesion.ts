@@ -363,7 +363,11 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       dejarDeEscuchar();
       dejarDeMirar();
     };
-  }, [releerCache, confirmar]);
+    // `yo` es un Symbol que nace una vez con el hook (`useState(() => Symbol(...))`)
+    // y no cambia nunca, asi que esto no rearma nada. Va en la lista igual:
+    // estaba en el cuerpo y no en las dependencias, y era la unica advertencia
+    // del lint del repo.
+  }, [releerCache, confirmar, yo]);
 
   // Solo repinta: el tiempo sale siempre de restar contra el inicio (§17.5).
   //
