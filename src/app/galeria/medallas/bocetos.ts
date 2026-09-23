@@ -352,11 +352,39 @@ export const ZONAS: readonly Zona[] = [
 /** Por debajo de este percentil no hay medalla: es para mostrar que sos mejor que la mayoría. */
 export const UMBRAL = 50;
 
+/**
+ * UNA MANCHA DE LA NEBULOSA. Elipses planas superpuestas, con inclinación y
+ * opacidad propias: así se arma una textura de nebulosa SIN un degradado.
+ *
+ * Podría hacerse con un degradado radial ahora que el `id` sale de `useId`,
+ * pero cuatro elipses translúcidas a distintos ángulos dan algo que un
+ * degradado no da: **direcciones cruzadas**. Una nebulosa no es un halo
+ * concéntrico, es polvo tirado de costado.
+ */
+export type Mancha = {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  /** Grados. */
+  giro: number;
+  color: string;
+  opacidad: number;
+};
+
 export type Material = {
   clave: string;
   nombre: string;
-  /** Desde qué percentil. */
-  desde: number;
+  /**
+   * Desde qué percentil, o `null` si NO ES UN ESCALÓN DE PERCENTIL.
+   *
+   * La galaxia es `null` y no es una omisión: la fuente publica cinco puntos
+   * —5, 20, 50, 80 y 95— y 95 es el último. Peor todavía, `ubicar()` en
+   * `nucleo/estandares.ts` CORTA en 95 a propósito, con su razón escrita:
+   * "la tabla no tiene con qué separar al 96 del 99,9". No es que falte el
+   * dato del 99: es que con esta fuente no se puede saber.
+   */
+  desde: number | null;
   /**
    * LA CARA DEL CUERPO, Y ES CIELO. Acá estaba el error del primer dibujado de
    * este camino: la cara era `apagado`, un azul medio, y encima un lado
@@ -371,12 +399,14 @@ export type Material = {
   apagado: string;
   principal: string;
   claro: string;
+  /** Solo la galaxia. El resto son cuerpos lisos. */
+  nebulosa?: readonly Mancha[];
 };
 
 /**
- * LOS TRES MATERIALES son CUERPOS DE LA APP y no metales: luna, planeta y
- * estrella, con las paletas de los rangos 3, 4 y 5. Los tres cortes —50, 80 y
- * 95— son percentiles que publica la propia fuente, no cortes inventados.
+ * LOS MATERIALES son CUERPOS DE LA APP y no metales: luna, planeta y estrella,
+ * con las paletas de los rangos 3, 4 y 5. Los tres cortes —50, 80 y 95— son
+ * percentiles que publica la propia fuente, no cortes inventados.
  */
 export const MATERIALES: readonly Material[] = [
   { clave: 'luna', nombre: 'Luna', desde: 50, noche: '#1B2536', apagado: '#3A4A63', principal: '#7E8CA8', claro: '#D6D4CA' },
@@ -384,9 +414,72 @@ export const MATERIALES: readonly Material[] = [
   { clave: 'estrella', nombre: 'Estrella', desde: 95, noche: '#2A1D06', apagado: '#5A420F', principal: '#F2C230', claro: '#FFF1C2' },
 ];
 
-/** `null` debajo del umbral: no hay medalla que dar. */
-export const materialDe = (percentil: number): Material | null =>
-  percentil < UMBRAL ? null : ([...MATERIALES].reverse().find((m) => percentil >= m.desde) ?? MATERIALES[0]);
+/**
+ * EL CUARTO: LA GALAXIA. Es el de arriba de todo y NO es un escalón de
+ * percentil, porque arriba del 95 la fuente no tiene nada (ver `desde`).
+ *
+ * LO QUE LO GANA: tener ESTRELLA EN LAS TRES. Sentadilla, press de banca y
+ * peso muerto son los tres levantamientos con tabla, o sea los tres que pueden
+ * llegar a 95, y son piernas, pecho y espalda. Cuando las tres están en
+ * estrella, las tres se vuelven galaxia.
+ *
+ * POR QUÉ ESTO SÍ ES HONESTO: no inventa un percentil. Es un hecho que sale de
+ * nuestros propios datos —lo tenés o no lo tenés— y es más raro que cualquier
+ * 95 suelto, porque es los tres a la vez. Y la metáfora es exacta sin forzar
+ * nada: **una galaxia es un montón de estrellas**.
+ *
+ * POR QUÉ GALAXIA Y NO AGUJERO NEGRO, que era la otra opción de la familia:
+ *
+ *   1. UN AGUJERO NEGRO ES AUSENCIA DE LUZ, y todo el lenguaje de estas
+ *      medallas es "la zona es donde brilla". Un disco negro no tiene dónde
+ *      encender nada.
+ *   2. A 18 px sería un punto oscuro al lado del nombre: se leería como un
+ *      agujero en la fila, no como el premio más alto.
+ *   3. Y es el rango 8, lo último que hay en la app. Gastarlo en una medalla
+ *      sería mostrar el final antes de que nadie llegue — justo lo que §7
+ *      prohíbe.
+ *
+ * SIN ANIMACIÓN, como se pidió, y sin degradados: la textura son cuatro
+ * elipses planas cruzadas (ver `Mancha`). La paleta es la del rango 7.
+ */
+export const GALAXIA: Material = {
+  clave: 'galaxia',
+  nombre: 'Galaxia',
+  desde: null,
+  noche: '#180F2E',
+  apagado: '#3A2268',
+  principal: '#7F4FD0',
+  // Más clara que el `claro` del rango 7 (#C3A6F5): acá este color son las
+  // estrellas, y tienen que ganarle a la nebulosa que está abajo.
+  claro: '#F0E4FF',
+  nebulosa: [
+    // El brazo largo, tirado de costado: es lo que la hace galaxia y no halo.
+    { cx: 12, cy: 12, rx: 10.5, ry: 4.4, giro: -24, color: '#7F4FD0', opacidad: 0.4 },
+    { cx: 12, cy: 12, rx: 7.8, ry: 2.5, giro: -24, color: '#A86BE8', opacidad: 0.34 },
+    // Dos manchas cruzadas, en otro tono y en otro ángulo. Sin esto es una
+    // elipse violeta y no tiene profundidad.
+    { cx: 9.2, cy: 13.8, rx: 5.4, ry: 2.1, giro: 20, color: '#C2469B', opacidad: 0.24 },
+    { cx: 14.8, cy: 10.4, rx: 4.6, ry: 1.7, giro: 14, color: '#4A7FD0', opacidad: 0.2 },
+    // El núcleo. Todas las opacidades quedaron un punto por debajo de lo que
+    // pedía el ojo en el primer intento: con la nebulosa más fuerte la
+    // constelación se perdía adentro, y la constelación es lo que nombra la
+    // zona. El material dice cuánto vale la medalla; la luz dice de qué es.
+    { cx: 12, cy: 12, rx: 2.7, ry: 1.5, giro: -24, color: '#E9D8FF', opacidad: 0.34 },
+  ],
+};
+
+/**
+ * `null` debajo del umbral: no hay medalla que dar.
+ *
+ * `lasTres` es tener estrella en sentadilla, banca y peso muerto. Manda sobre
+ * el percentil porque no es el mismo eje: no es estar más arriba, es estarlo en
+ * los tres a la vez.
+ */
+export const materialDe = (percentil: number, lasTres = false): Material | null => {
+  if (percentil < UMBRAL) return null;
+  if (lasTres) return GALAXIA;
+  return [...MATERIALES].reverse().find((m) => m.desde !== null && percentil >= m.desde) ?? MATERIALES[0];
+};
 
 // ─────────────────────────────────────────────────────────────────────
 // LA FRASE, AL TOCAR

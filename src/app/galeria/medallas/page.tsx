@@ -24,6 +24,7 @@ import {
   COLUMNA,
   LINEAS,
   MAGNITUD,
+  GALAXIA,
   MATERIALES,
   POLVO,
   PUNTOS,
@@ -38,7 +39,8 @@ import {
 
 export default function Medallas() {
   const [percentil, setPercentil] = useState(72);
-  const mat = materialDe(percentil);
+  const [lasTres, setLasTres] = useState(false);
+  const mat = materialDe(percentil, lasTres);
   // Lo que diría la frase con este percentil: si superás al 72%, "solo el 28%
   // levanta este peso".
   const cuantos = Math.max(1, 100 - percentil);
@@ -125,11 +127,14 @@ export default function Medallas() {
           publica la propia fuente, no cortes inventados.
         </p>
 
-        <div style={{ display: 'flex', gap: 14, marginTop: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 14, marginTop: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           {MATERIALES.map((m) => (
             <button
               key={m.clave}
-              onClick={() => setPercentil(Math.min(99, m.desde + 4))}
+              onClick={() => {
+                setLasTres(false);
+                setPercentil(Math.min(99, (m.desde ?? UMBRAL) + 4));
+              }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'center' }}
             >
               <Medalla zona={ZONAS[0]} material={m} tam={48} />
@@ -139,6 +144,50 @@ export default function Medallas() {
               <div style={{ color: '#4a5163', fontSize: 10 }}>{m.desde}%+</div>
             </button>
           ))}
+          {/* LA GALAXIA NO ES UN ESCALÓN MÁS DE LA MISMA ESCALERA, así que se
+              separa de los otros tres: no tiene "desde", tiene una condición. */}
+          <div style={{ width: 1, alignSelf: 'stretch', background: '#1d2230', margin: '0 8px' }} />
+          <button
+            onClick={() => {
+              setLasTres(!lasTres);
+              if (!lasTres) setPercentil(96);
+            }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'center' }}
+          >
+            <Medalla zona={ZONAS[0]} material={GALAXIA} tam={48} />
+            <div style={{ color: lasTres ? GALAXIA.claro : '#4a5163', fontSize: 11, marginTop: 5 }}>
+              {GALAXIA.nombre}
+            </div>
+            <div style={{ color: '#4a5163', fontSize: 10 }}>las tres</div>
+          </button>
+        </div>
+
+        <div
+          style={{
+            border: '1px solid #2a3040',
+            borderRadius: 14,
+            padding: '16px 18px',
+            marginTop: 20,
+            maxWidth: 660,
+            background: '#0b0d13',
+          }}
+        >
+          <div style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: '#c98b6b' }}>
+            El cuarto material no es un percentil
+          </div>
+          <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, margin: '8px 0 0' }}>
+            <strong>El 99 no existe en la fuente</strong>: publica cinco puntos —5, 20, 50, 80 y
+            95— y 95 es el último. Y no es que falte un dato:{' '}
+            <code style={{ color: '#c4c2ba' }}>ubicar()</code> corta en 95 a propósito, con su razón
+            escrita desde antes —«la tabla no tiene con qué separar al 96 del 99,9»—. Con esta
+            fuente, el 1% no se puede saber.
+          </p>
+          <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, margin: '10px 0 0' }}>
+            Así que la galaxia se gana por otro eje, que sí es un hecho nuestro y no una estadística
+            inventada: <strong>tener estrella en las tres</strong> —sentadilla, press de banca y peso
+            muerto, o sea piernas, pecho y espalda—. Es más raro que cualquier 95 suelto porque es
+            los tres a la vez, y la metáfora sale sola: una galaxia es un montón de estrellas.
+          </p>
         </div>
 
         {/* ---- las dos, grandes ---- */}
@@ -317,6 +366,22 @@ function Medalla({ zona, material, tam }: { zona: Zona; material: Material; tam:
         </clipPath>
       </defs>
       <g clipPath={`url(#${recorte})`}>
+      {/* LA NEBULOSA, solo en la galaxia. Elipses planas cruzadas, sin un
+          degradado y sin una sola animación: lo que la distingue es el
+          material, no que se mueva. */}
+      {material.nebulosa?.map((m, i) => (
+        <ellipse
+          key={`n${i}`}
+          cx={m.cx}
+          cy={m.cy}
+          rx={m.rx}
+          ry={m.ry}
+          fill={m.color}
+          opacity={m.opacidad}
+          transform={`rotate(${m.giro} ${m.cx} ${m.cy})`}
+        />
+      ))}
+
       {/* EL CAMPO. Va primero y muy apagado: es el cielo del que la
           constelación forma parte, no un adorno encima. */}
       {POLVO.map(([x, y, r], i) => (
