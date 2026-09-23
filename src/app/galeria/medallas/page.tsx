@@ -3,18 +3,36 @@
 // BOCETOS DE LAS MEDALLAS POR MARCA. No está construido: es para mirar y
 // elegir. Se entra a mano por /galeria/medallas.
 //
-// EL CAMINO YA ESTÁ ELEGIDO (23/9): constelación. Se probaron tránsito y
-// grabado, se miraron y se descartaron; el código de los dos se sacó en vez de
-// dejarlo comentado, porque un camino muerto que sigue ahí se vuelve a
-// discutir cada vez que alguien abre el archivo.
+// EL CAMINO, ELEGIDO EL 24/9: la figura es siempre la misma y lo que cambia es
+// DÓNDE BRILLA. El porqué —y por qué fallaron los dos intentos anteriores—
+// está arriba de `bocetos.ts`. Los caminos muertos se sacaron en vez de
+// dejarlos comentados: uno que sigue ahí se vuelve a discutir cada vez que
+// alguien abre el archivo.
 //
-// SE MIRAN A LOS TRES TAMAÑOS, porque la recta final de esto es 18 px al lado
+// ACÁ SOLO ESTÁN PECHO Y ESPALDA, a propósito. Es el único par que este camino
+// no resuelve solo —el mismo cuerpo con la luz casi en el mismo lugar— y si no
+// se distinguen, el camino entero no sirve. Dibujar las otras tres antes de
+// saberlo sería multiplicar por cinco un error que todavía no se descartó.
+//
+// SE MIRAN AL TAMAÑO DE VERDAD, porque la recta final de esto es 18 px al lado
 // de un nombre: la receta de `compartido/insignias.ts` dice que la decisión se
-// toma mirando el tamaño real, no el grande. Un dibujo que a 96 se ve precioso
-// y a 18 es una mancha no sirve, y eso no se ve hasta ponerlo.
+// toma mirando el tamaño real, no el grande.
 
 import { useState } from 'react';
-import { BOCETOS, MATERIALES, TRES, UMBRAL, frase, materialDe, type Boceto, type Material } from './bocetos';
+import {
+  COLUMNA,
+  LINEAS,
+  MAGNITUD,
+  MATERIALES,
+  POLVO,
+  PUNTOS,
+  UMBRAL,
+  ZONAS,
+  frase,
+  materialDe,
+  type Material,
+  type Zona,
+} from './bocetos';
 
 export default function Medallas() {
   const [percentil, setPercentil] = useState(72);
@@ -30,13 +48,33 @@ export default function Medallas() {
           Bocetos · constelación
         </div>
         <h1 style={{ fontSize: 30, fontWeight: 300, margin: '8px 0 6px' }}>Medallas por marca</h1>
-        <p style={{ color: '#8a93a8', fontSize: 14, lineHeight: 1.6, maxWidth: 640 }}>
-          Nada de esto está construido. Se dibuja el <strong>contorno</strong> de una figura y no un
-          esquema de articulaciones, que era la falla anterior. Con eso alcanzó para brazo y pierna.{' '}
-          <strong>No alcanzó para las tres del torso</strong>: están abajo con lo que sale en su lugar,
-          y después la salida que propongo. El porqué de cada decisión está arriba de{' '}
-          <code style={{ color: '#c4c2ba' }}>bocetos.ts</code>.
+        <p style={{ color: '#8a93a8', fontSize: 14, lineHeight: 1.6, maxWidth: 660 }}>
+          La figura es <strong>la misma en todas</strong>, en estrellas apagadas. Lo que cambia es{' '}
+          <strong>dónde brilla</strong>. Así la silueta deja de tener que cargar el significado, que
+          era el problema: una pierna tiene una forma propia y un tronco no.
         </p>
+
+        {/* ---- el par difícil, primero ---- */}
+        <div
+          style={{
+            border: '1px solid #2a3040',
+            borderRadius: 14,
+            padding: '16px 18px',
+            marginTop: 22,
+            maxWidth: 660,
+            background: '#0b0d13',
+          }}
+        >
+          <div style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: '#c98b6b' }}>
+            Primero el par difícil
+          </div>
+          <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, margin: '8px 0 0' }}>
+            Pecho y espalda son el mismo cuerpo con la luz casi en el mismo lugar: es lo único que
+            este camino no resuelve solo. Van con <strong>dos señales independientes</strong> —la
+            columna, que solo se ve de espaldas, y la forma de la luz: una barra contra una V—. Si no
+            se separan, el camino no sirve y las otras tres no se dibujan.
+          </p>
+        </div>
 
         {/* ---- el umbral y los tres materiales ---- */}
         <div style={{ marginTop: 28, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
@@ -58,7 +96,7 @@ export default function Medallas() {
             {mat ? `material: ${mat.nombre.toLowerCase()}` : 'sin medalla'}
           </span>
         </div>
-        <p style={{ color: '#4a5163', fontSize: 12, lineHeight: 1.6, maxWidth: 640 }}>
+        <p style={{ color: '#4a5163', fontSize: 12, lineHeight: 1.6, maxWidth: 660 }}>
           Bajá el deslizador por debajo del {UMBRAL}% y desaparecen: una medalla es para mostrar que
           sos mejor que la mayoría. Los tres cortes —{UMBRAL}, 80 y 95— son los percentiles que
           publica la propia fuente, no cortes inventados.
@@ -71,7 +109,7 @@ export default function Medallas() {
               onClick={() => setPercentil(Math.min(99, m.desde + 4))}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'center' }}
             >
-              <Medalla boceto={BOCETOS[0]} material={m} tam={48} />
+              <Medalla zona={ZONAS[0]} material={m} tam={48} />
               <div style={{ color: m.clave === mat?.clave ? m.claro : '#4a5163', fontSize: 11, marginTop: 5 }}>
                 {m.nombre}
               </div>
@@ -80,91 +118,47 @@ export default function Medallas() {
           ))}
         </div>
 
-        {/* ---- las cinco, grandes ---- */}
+        {/* ---- las dos, grandes ---- */}
         <h2 style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: '#8a93a8', margin: '40px 0 16px' }}>
-          Las cinco zonas
+          Pecho contra espalda
         </h2>
         {!mat ? (
           <p style={{ color: '#4a5163', fontSize: 14 }}>
             Por debajo del {UMBRAL}% no hay medalla. Subí el deslizador.
           </p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 18 }}>
-            {BOCETOS.map((b) => (
+          <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap' }}>
+            {ZONAS.map((z) => (
               <div
-                key={b.clave}
-                style={{ border: '1px solid #1d2230', borderRadius: 14, padding: 16, textAlign: 'center' }}
+                key={z.clave}
+                style={{ border: '1px solid #1d2230', borderRadius: 14, padding: 18, textAlign: 'center', width: 230 }}
               >
-                <Medalla boceto={b} material={mat} tam={104} />
-                <div style={{ fontSize: 15, marginTop: 12 }}>{b.zona}</div>
-                <div style={{ color: '#4a5163', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>{b.pie}</div>
-                {/* SE DICE CUÁL NO PASA Y QUÉ SALE EN SU LUGAR. Mandar cinco
-                    bocetos como si los cinco funcionaran sería hacerle perder
-                    el tiempo al que mira: tres no funcionan. */}
-                {b.advertencia && (
-                  <div
-                    style={{
-                      color: '#c98b6b', fontSize: 11, marginTop: 8, lineHeight: 1.5,
-                      borderTop: '1px solid #1d2230', paddingTop: 8,
-                    }}
-                  >
-                    {b.advertencia}
-                  </div>
-                )}
+                <Medalla zona={z} material={mat} tam={168} />
+                <div style={{ fontSize: 16, marginTop: 14 }}>{z.zona}</div>
+                <div style={{ color: '#4a5163', fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>{z.pie}</div>
               </div>
             ))}
           </div>
         )}
 
-        {/* ---- la salida: tres en vez de cinco ---- */}
-        <h2 style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: '#8a93a8', margin: '44px 0 8px' }}>
-          La salida: tres en vez de cinco
-        </h2>
-        <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, maxWidth: 640, marginBottom: 18 }}>
-          Pecho, espalda y hombros son <strong>el mismo torso</strong>: de frente y de espalda el
-          contorno es idéntico, y el hombro es una esquina de ese contorno. Lo que los separa en un
-          cuerpo real es el relieve, y el relieve necesita sombra. Así que van juntos en una sola
-          medalla, que se lleva press de banca, remo y press militar. Estas tres las nombra
-          cualquiera sin leyenda.
-        </p>
-        {mat && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 18 }}>
-            {TRES.map((b) => (
-              <div
-                key={b.clave}
-                style={{ border: '1px solid #2a3040', borderRadius: 14, padding: 16, textAlign: 'center' }}
-              >
-                <Medalla boceto={b} material={mat} tam={104} />
-                <div style={{ fontSize: 15, marginTop: 12 }}>{b.zona}</div>
-                <div style={{ color: '#4a5163', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>{b.pie}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18 }}>
-          <span style={{ color: '#4a5163', fontSize: 11, width: 34, fontVariantNumeric: 'tabular-nums' }}>18px</span>
-          {mat && TRES.map((b) => <Medalla key={b.clave} boceto={b} material={mat} tam={18} />)}
-          <span style={{ color: '#4a5163', fontSize: 11, marginLeft: 10 }}>
-            tres siluetas distintas se separan mejor que cinco parecidas
-          </span>
-        </div>
         {/* ---- EL TAMAÑO DE VERDAD ---- */}
         <h2 style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: '#8a93a8', margin: '44px 0 8px' }}>
           Al tamaño de verdad
         </h2>
-        <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, maxWidth: 640, marginBottom: 18 }}>
-          Aquí se decide. Con el umbral puesto casi nadie va a llevar las cinco a la vez, que era el
-          argumento: menos medallas juntas, más fácil distinguirlas.
+        <p style={{ color: '#8a93a8', fontSize: 13, lineHeight: 1.6, maxWidth: 660, marginBottom: 18 }}>
+          Aquí se decide. La apuesta del camino es que <strong>la luz sobrevive al achique y la línea
+          no</strong>: la figura se vuelve una bruma y lo que queda legible es dónde está la mancha
+          brillante —una barra en el medio contra una V ancha—.
         </p>
 
         {mat &&
-          [18, 24, 32].map((t) => (
-            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          [18, 24, 32, 44].map((t) => (
+            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
               <span style={{ color: '#4a5163', fontSize: 11, width: 34, fontVariantNumeric: 'tabular-nums' }}>
                 {t}px
               </span>
-              {BOCETOS.map((b) => (
-                <Medalla key={b.clave} boceto={b} material={mat} tam={t} />
+              {ZONAS.map((z) => (
+                <Medalla key={z.clave} zona={z} material={mat} tam={t} />
               ))}
             </div>
           ))}
@@ -186,10 +180,8 @@ export default function Medallas() {
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontSize: 17 }}>condezuzu</span>
-                {/* DOS Y NO CINCO: con el umbral puesto, tener las cinco por
-                    encima de la mitad es raro. Así se ve lo que se va a ver. */}
-                <Medalla boceto={BOCETOS[0]} material={MATERIALES[0]} tam={18} />
-                <Medalla boceto={BOCETOS[2]} material={MATERIALES[1]} tam={18} />
+                <Medalla zona={ZONAS[0]} material={MATERIALES[0]} tam={18} />
+                <Medalla zona={ZONAS[1]} material={MATERIALES[1]} tam={18} />
               </div>
               <div style={{ color: '#4a5163', fontSize: 12, marginTop: 2 }}>racha de 34 días</div>
             </div>
@@ -209,11 +201,14 @@ export default function Medallas() {
             maxWidth: 340,
           }}
         >
+          <div style={{ color: '#8a93a8', fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 6 }}>
+            Press de banca
+          </div>
           <div style={{ fontSize: 16, color: '#e8ecf6' }}>{frase(cuantos)}</div>
         </div>
-        <p style={{ color: '#4a5163', fontSize: 12, lineHeight: 1.6, maxWidth: 640, marginTop: 12 }}>
-          Una sola línea. Es impersonal a propósito: así sirve igual en tu perfil y en el de un
-          amigo, sin cambiar una letra.
+        <p style={{ color: '#4a5163', fontSize: 12, lineHeight: 1.6, maxWidth: 660, marginTop: 12 }}>
+          El ejercicio va arriba y aparte: la frase no se toca, pero sin nombrar la marca la medalla
+          mentiría por omisión —el material sale de la mejor de las tres, no de un promedio—.
         </p>
       </div>
     </div>
@@ -221,52 +216,96 @@ export default function Medallas() {
 }
 
 /**
- * Una medalla: un cuerpo con cara oscura y lado iluminado, y la constelación
- * del gesto encima.
+ * Una medalla: un cuerpo con cara oscura y lado iluminado, y encima la
+ * constelación, con unas pocas estrellas ardiendo.
  *
- * SIN DEGRADADOS, dos capas planas. Un `id` de gradiente repetido en una
- * lista es un error que el navegador resuelve callado y mal, y estas se
- * dibujan varias veces en la misma fila (ver `compartido/insignias.ts`).
+ * SIN DEGRADADOS, capas planas. Un `id` de gradiente repetido en una lista es
+ * un error que el navegador resuelve callado y mal, y estas se dibujan varias
+ * veces en la misma fila (ver `compartido/insignias.ts`).
  */
-function Medalla({ boceto, material, tam }: { boceto: Boceto; material: Material; tam: number }) {
-  const { puntos, lineas, estrellas, faro } = boceto;
+function Medalla({ zona, material, tam }: { zona: Zona; material: Material; tam: number }) {
   const chica = tam < 40;
-  // El punto no escala linealmente: a 18 px un radio proporcional desaparece,
-  // así que abajo se le da un piso.
-  const r = chica ? 1.5 : 1.15;
+  // Nada escala linealmente: a 18 px un radio proporcional desaparece, así que
+  // las chicas llevan todo con un piso.
+  const k = chica ? 1.9 : 1;
+  const encendidas = new Set(zona.encendidas);
+
+  // EL CIELO SE APAGA CUANDO LA MEDALLA ES CHICA, y esto no es un ajuste
+  // cosmético: es la premisa del camino llevada hasta el final.
+  //
+  // A 18 px, treinta y un puntos —diecinueve de la figura más doce de polvo—
+  // con el piso de radio que necesitan para no desaparecer NO SON UNA FIGURA:
+  // son una mancha moteada, y la luz que tiene que leerse queda enterrada
+  // adentro. Se vio poniéndolo.
+  //
+  // La figura es andamio para el ojo cuando hay lugar; a este tamaño no lo hay
+  // y no la mira nadie. Así que a 18 px queda el disco, el borde y LA LUZ: una
+  // barra o una V sobre un fondo limpio. Es exactamente lo que decía la apuesta
+  // —la luz sobrevive al achique y la línea no— y el dibujo tiene que hacerle
+  // caso en vez de discutirle.
+  const velo = chica ? 0.25 : 1;
+
+  const linea = (clave: string, [a, b]: readonly [number, number], ancho: number, op: number) => (
+    <line
+      key={clave}
+      x1={PUNTOS[a][0]}
+      y1={PUNTOS[a][1]}
+      x2={PUNTOS[b][0]}
+      y2={PUNTOS[b][1]}
+      stroke={material.claro}
+      strokeWidth={ancho}
+      strokeLinecap="round"
+      opacity={op}
+    />
+  );
 
   return (
     <svg width={tam} height={tam} viewBox="0 0 24 24" style={{ flex: 'none', display: 'block' }} aria-hidden>
-      <circle cx="12" cy="12" r="11" fill={material.apagado} />
-      {/* El lado iluminado: lo que separa un objeto de una figura plana. */}
-      <path d="M12 1 a11 11 0 0 1 0 22 a8.5 11 0 0 0 0 -22 z" fill={material.principal} />
+      {/* LA CARA ES CIELO, no el color del rango. Ver `noche` en bocetos.ts:
+          con la cara clara, las estrellas apagadas se perdían y la figura
+          humana no se leía — y sin figura, "dónde brilla" no significa nada. */}
+      <circle cx="12" cy="12" r="11" fill={material.noche} />
+      {/* El lado iluminado, ahora apenas insinuado: lo que separa un objeto de
+          un disco plano, sin robarle contraste a las estrellas. */}
+      <path d="M12 1 a11 11 0 0 1 0 22 a8.5 11 0 0 0 0 -22 z" fill={material.apagado} opacity={0.55} />
 
-      {lineas.map(([a, b], i) => (
-        <line
-          key={i}
-          x1={puntos[a][0]}
-          y1={puntos[a][1]}
-          x2={puntos[b][0]}
-          y2={puntos[b][1]}
-          stroke={material.claro}
-          strokeWidth={chica ? 1.1 : 0.75}
-          strokeLinecap="round"
-          opacity={0.8}
-        />
+      {/* EL CAMPO. Va primero y muy apagado: es el cielo del que la
+          constelación forma parte, no un adorno encima. */}
+      {POLVO.map(([x, y, r], i) => (
+        <circle key={`p${i}`} cx={x} cy={y} r={r * k} fill={material.claro} opacity={0.4 * velo} />
       ))}
-      {/* SOLO LOS VÉRTICES QUE SON ESTRELLAS llevan punto. En el cielo pasa
-          lo mismo: una constelación tiene cuatro o cinco estrellas brillantes
-          y el resto es la línea que las une. Un punto en cada esquina de un
-          contorno de doce lados da una masa de puntos, no una figura. */}
-      {estrellas.map((i) => (
-        <circle
-          key={i}
-          cx={puntos[i][0]}
-          cy={puntos[i][1]}
-          r={i === faro ? r * 1.7 : r}
-          fill={material.claro}
-        />
-      ))}
+
+      {/* Las líneas de la figura UNEN, no dibujan: por eso van tan apagadas. */}
+      {LINEAS.map((l, i) => linea(`l${i}`, l, chica ? 0.55 : 0.35, 0.5 * velo))}
+      {/* La columna, solo de espaldas. Es lo único distinto entre las cinco. */}
+      {zona.deEspaldas && COLUMNA.map((l, i) => linea(`c${i}`, l, chica ? 0.8 : 0.55, 0.8 * velo))}
+
+      {/* Las estrellas apagadas, con magnitudes distintas entre sí. */}
+      {PUNTOS.map(([x, y], i) => {
+        // El esternón solo existe de frente y la columna solo de espaldas: si
+        // se dibujaran los dos siempre, las dos figuras tendrían el mismo
+        // punto en el medio y se perdería la señal.
+        if (i === 18 && zona.deEspaldas) return null;
+        if ((i === 16 || i === 19 || i === 20) && !zona.deEspaldas) return null;
+        if (encendidas.has(i)) return null;
+        return <circle key={`e${i}`} cx={x} cy={y} r={(MAGNITUD[i] ?? 0.5) * k} fill={material.claro} opacity={0.85 * velo} />;
+      })}
+
+      {/* LO QUE ARDE. Las líneas primero, que son las que le dan forma a la
+          luz: una barra o una V, y eso se lee antes que los puntos. */}
+      {zona.brillo.map((l, i) => linea(`b${i}`, l, chica ? 1.5 : 1, 0.9))}
+      {zona.encendidas.map((i) => {
+        const [x, y] = PUNTOS[i];
+        const r = (i === zona.faro ? 1.35 : 1.05) * k;
+        return (
+          <g key={`f${i}`}>
+            {/* El halo: una estrella brillante no es un punto más grande, es un
+                punto con luz alrededor. */}
+            <circle cx={x} cy={y} r={r * 2.4} fill={material.claro} opacity={0.18} />
+            <circle cx={x} cy={y} r={r} fill={material.claro} />
+          </g>
+        );
+      })}
 
       {/* El borde, que es lo que la despega del fondo cuando es chica. */}
       <circle cx="12" cy="12" r="11" fill="none" stroke={material.claro} strokeWidth="0.6" opacity={0.35} />
