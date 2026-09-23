@@ -455,6 +455,9 @@ export const T = {
     diasDescansoNota: 'Esos días puedes faltar sin perder la racha.',
 
 
+    // La seccion quedo con el sonido solo: los cinco presets de duracion se
+    // sacaron el 23/9 y ya se elegian dentro de la pantalla del descanso.
+    avisoDelDescanso: 'Aviso del descanso',
     descansoEntreSeries: 'Descanso entre series',
     descansoNota: 'Mientras descansas lo puedes cambiar ahí mismo.',
     sonidoPrendido: 'Sonido al terminar ✓',
@@ -510,11 +513,16 @@ export const T = {
     // NUNCA SE DICE "conectado y listo": iOS no cuenta qué concediste al
     // leer, así que afirmarlo sería inventar. Se manda a donde se ve.
     saludListo: 'Listo. En Salud → Ascent puedes ver y cambiar qué lee.',
+    // YA CONECTADO. El boton decia "Conectar" para siempre: lo tocabas y no
+    // pasaba nada, porque iOS no vuelve a mostrar la ventana una vez
+    // contestada. Ahora la seccion dice en que estado esta.
+    saludConectado: 'Conectado',
+    // NO SE PUEDE AFIRMAR QUE HAY PERMISO: iOS no lo dice para lectura. Lo
+    // unico honesto cuando no llega nada es decir donde se revisa.
+    saludSinDatos:
+      'No llega nada. Si no le diste permiso, está en Salud → Ascent.',
     saludNoHay: 'Este teléfono no tiene Salud.',
     saludPasos: (pasos: string) => `Hoy llevas ${pasos} pasos.`,
-    // "No sé" y no "cero": sin permiso Health contesta igual que un día
-    // quieto, y decir 0 sería afirmar algo que no sabemos.
-    saludSinPasos: 'Todavía no hay pasos de hoy.',
     // LOS PASOS NO SON ENTRENAR, y hay que decirlo donde se muestran: un día
     // de caminata tiene más pasos que uno de fuerza. Se ven, no deciden.
     saludPasosNota: 'Los pasos se muestran, no registran el día: caminar no es entrenar.',
@@ -645,7 +653,7 @@ export const T = {
     diagZona: 'Zona',
     diagZonaSi: 'registrada en el sistema',
     diagZonaNo: 'no quedó: falta el permiso siempre',
-    diagRevisarZona: 'Revisar la zona',
+    diagRevisarZona: 'Revisar la zona (diagnóstico)',
     diagZonaNota:
       'Comprueba que el teléfono vaya a despertar a la app al llegar.',
     // COMPARTIR Y NO COPIAR: en un teléfono, seleccionar doce líneas con el
@@ -653,7 +661,7 @@ export const T = {
     diagCompartir: 'Compartir lo anotado',
     // Es lo unico de la app que solo se puede mirar una vez cada diez dias, y
     // ese ritmo no sirve para ajustar una animacion.
-    diagVerSubida: 'Ver la subida de rango',
+    diagVerSubida: 'Ver la subida de rango (diagnóstico)',
   },
 
   // ---------------------------------------------------------------
@@ -1191,6 +1199,10 @@ export const T = {
     corriendo: (que: string) => `Corriendo: ${que}`,
     buscar: 'Buscar actualización',
     buscando: 'Buscando…',
+    // HAY UNA BAJADA Y ESPERANDO. Sin decirlo, "no hay nada nuevo" y "hay
+    // una lista que todavía no se aplicó" se ven igual — y la segunda es la
+    // que hace que alguien reporte bugs de código viejo.
+    hayEsperando: 'Hay una actualización bajada. Se aplica al reabrir la app.',
     sinNovedad: 'Ya tienes la última.',
   },
 } as const;

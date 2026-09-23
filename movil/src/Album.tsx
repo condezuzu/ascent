@@ -1,22 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { ActivityIndicator, Animated, Easing, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
+import { SURGIR_MS } from '@nucleo/animacion';
+import { CURVA } from '@nucleo/deslizar';
 import Surgir from './Surgir';
 import { T } from '@nucleo/textos';
 import { fechaLinda } from '@nucleo/fechas';
 import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type DatosDeAlbum } from '@compartido/album';
 import FondoEspacial from './FondoEspacial';
 import { C } from './colores';
+import { useRecargarAlVolver } from './irAPestana';
 
 /**
  * ÁLBUM — tanda 4.
@@ -55,6 +48,9 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
     cargar();
   }, [cargar]);
 
+  // Y de nuevo al volver a esta pestaña: ahora se queda montada.
+  useRecargarAlVolver('album', cargar);
+
   useEffect(() => setConfirmando(false), [abierta]);
 
   const celdas = datos?.celdas ?? [];
@@ -88,7 +84,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
 
   return (
     <View style={estilos.raiz}>
-      {datos && <FondoEspacial rango={datos.miRango} planeta={datos.miPlaneta} esquina="arriba-derecha" velo={0.72} />}
+      {datos && <FondoEspacial rango={datos.miRango} planeta={datos.miPlaneta} soloEstrellas velo={0.72} />}
       <ScrollView contentContainerStyle={estilos.pantalla}>
         <Text style={estilos.titulo}>{T.album.titulo}</Text>
         {!!error && <Text style={estilos.error}>{error}</Text>}
@@ -124,7 +120,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       accessibilityLabel={fechaLinda(c.fecha)}
                       style={[estilos.celda, { width: lado, height: lado }]}
                     >
-                      {!!c.url && <Image source={{ uri: c.url }} style={{ width: lado, height: lado }} />}
+                      {!!c.url && <Foto url={c.url} lado={lado} />}
                       {/* Un punto y nada más: quién ve la foto, de un vistazo. */}
                       {c.visibilidad === 'amigos' && <View style={estilos.punto} />}
                     </Pressable>
@@ -208,6 +204,37 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
         )}
       </Modal>
     </View>
+  );
+}
+
+/**
+ * UNA FOTO QUE APARECE, no que salta.
+ *
+ * POR QUÉ NO ALCANZABA CON `Surgir` (23/9). La celda ya entraba escalonada,
+ * pero entraba VACÍA: la animación dura poco más de un segundo y las fotos
+ * llegan de la red después. O sea que lo que se veía era un escalón de
+ * cuadrados oscuros y, un rato más tarde, las fotos apareciendo de golpe —
+ * que desde afuera es exactamente "el Álbum no tiene animación".
+ *
+ * Ahora la foto se funde cuando termina de cargar. Con la caché llena entra
+ * junto con la celda y se lee como un solo movimiento; la primera vez entra
+ * cuando puede, que es lo único honesto con una imagen que viaja.
+ */
+function Foto({ url, lado }: { url: string; lado: number }) {
+  const opacidad = useRef(new Animated.Value(0)).current;
+  return (
+    <Animated.Image
+      source={{ uri: url }}
+      style={{ width: lado, height: lado, opacity: opacidad }}
+      onLoad={() =>
+        Animated.timing(opacidad, {
+          toValue: 1,
+          duration: SURGIR_MS,
+          easing: Easing.bezier(...CURVA),
+          useNativeDriver: true,
+        }).start()
+      }
+    />
   );
 }
 

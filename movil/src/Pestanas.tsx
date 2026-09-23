@@ -11,7 +11,7 @@ import Album from './Album';
 import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
 import { eventos } from '@compartido/eventos';
-import { IR_A_PESTANA, type Pestana } from './irAPestana';
+import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
 import Recorrido from './Recorrido';
 
 /**
@@ -39,9 +39,15 @@ import Recorrido from './Recorrido';
  * misma consulta que si se tocara la pestaña— y por eso no se monta con el
  * primer píxel: recién cuando el gesto se decidió que es horizontal.
  *
- * SOLO QUEDA MONTADA LA ACTIVA cuando el gesto termina: volver a Inicio lo
- * vuelve a cargar. Es lo que hacía "volver de Ajustes" antes, y por la misma
- * razón: cambiar los días de descanso cambia qué días cortan la racha.
+ * CADA PESTAÑA SE MONTA UNA VEZ Y SE QUEDA (23/9). Antes solo quedaba la
+ * activa, y volver a una la cargaba de cero — que además de costar una
+ * consulta era el TITILEO: la pantalla de destino ya estaba montada y
+ * cargada en el carril que asomaba, y al soltar el gesto se tiraba para
+ * montarla de nuevo, vacía. Ver `montadas`.
+ *
+ * Lo que se perdió al arreglarlo —que cada vuelta recargara los datos— se
+ * paga a mano con `PESTANA_ACTIVA`: sin eso, sumás una foto en Inicio, vas
+ * al Álbum, y no está.
  */
 
 const ORDEN: Pestana[] = ['inicio', 'ranking', 'album', 'stats', 'ajustes'];
@@ -63,6 +69,30 @@ export default function Pestanas({
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   /** La de al lado, mientras el dedo está abajo. `null` = no se está arrastrando. */
   const [asomando, setAsomando] = useState<Pestana | null>(null);
+  /**
+   * LAS QUE YA SE ABRIERON ALGUNA VEZ, y la razón de que exista este estado
+   * es EL TITILEO (23/9, segundo intento).
+   *
+   * QUÉ PASABA. Cada carril dibujaba `dibujar(cual)`, o sea un elemento
+   * NUEVO. Al soltar el gesto, la pantalla de destino estaba montada y
+   * cargada en el carril que asomaba... y `setPestana` la volvía a crear
+   * desde cero en el carril principal, mientras la instancia buena se
+   * desmontaba. O sea: llegabas a Álbum cargado y la app lo tiraba y lo
+   * montaba de nuevo, vacío, pidiendo sus datos otra vez. Eso es el
+   * parpadeo, y por eso el arreglo anterior —mover el centrado a
+   * `useLayoutEffect`— no alcanzó: arreglaba CUÁNDO se centra el carril, y
+   * el problema no era el carril, era que la pantalla se remontaba.
+   *
+   * AHORA CADA PESTAÑA SE MONTA UNA VEZ Y SE QUEDA. Se colocan por su
+   * distancia a la activa, así que al cambiar de pestaña los desplazamientos
+   * se recalculan y el carril vuelve a cero en el mismo dibujo: la de
+   * destino ya estaba en su lugar y no se mueve ni un píxel.
+   *
+   * SOLO LAS VISITADAS, no las cinco: montar las cinco al abrir la app
+   * costaría cinco pantallas pidiendo sus datos en el arranque, que es el
+   * momento en que más se nota.
+   */
+  const [montadas, setMontadas] = useState<Pestana[]>(['inicio']);
   const { width: ancho } = useWindowDimensions();
   const correr = useRef(new Animated.Value(0)).current;
   /** Hay un carril corrido esperando a que la pestaña nueva se dibuje. */
@@ -91,6 +121,26 @@ export default function Pestanas({
   useEffect(() => {
     if (pestana === 'ajustes' || asomando === 'ajustes') cargarPerfil();
   }, [pestana, asomando, cargarPerfil]);
+
+  // AL VOLVER A UNA PESTAÑA, QUE PIDA SUS DATOS DE NUEVO. Antes lo hacía
+  // sola porque se remontaba entera —que era el titileo—; ahora que se
+  // queda montada, hay que avisarle. Ver `useRecargarAlVolver`.
+  const primera = useRef(true);
+  useEffect(() => {
+    if (primera.current) {
+      primera.current = false;
+      return;
+    }
+    eventos.emitir(PESTANA_ACTIVA, pestana);
+  }, [pestana]);
+
+  // La que se abre —o la que asoma— pasa a estar montada para siempre.
+  useEffect(() => {
+    setMontadas((m) => {
+      const faltan = [pestana, asomando].filter((x): x is Pestana => !!x && !m.includes(x));
+      return faltan.length ? [...m, ...faltan] : m;
+    });
+  }, [pestana, asomando]);
 
   // CENTRAR DESPUÉS DE DIBUJAR, no antes: ver el comentario del final del
   // viaje. `useLayoutEffect` corre con la pantalla nueva ya montada y antes de
@@ -181,10 +231,6 @@ export default function Pestanas({
     );
   };
 
-  // De qué lado asoma: si el dedo va a la izquierda, la de al lado entra por
-  // la derecha.
-  const ladoDelAsomo = asomando ? (ORDEN.indexOf(asomando) > ORDEN.indexOf(pestana) ? 1 : -1) : 0;
-
   return (
     // CADA TOQUE DESPIERTA AL MOTOR. En la web lo escucha el `window`; acá no
     // hay `window`, y los toques los ve la vista que los recibe. `onTouchStart`
@@ -198,24 +244,36 @@ export default function Pestanas({
             entraba a `/yo` y el planeta desaparecía, cuando en la web está.
             Sigue siendo UN solo contexto de GL para toda la sesión; lo que
             cambió es de qué está detrás. */}
-        <Animated.View style={[estilos.carril, { width: ancho }, { transform: [{ translateX: correr }] }]}>
-          {dibujar(pestana)}
-        </Animated.View>
-        {asomando && (
-          <Animated.View
-            // Pegada al borde que le toca y viajando con el mismo dedo.
-            style={[
-              estilos.carril,
-              { left: ladoDelAsomo * ancho, width: ancho },
-              { transform: [{ translateX: correr }] },
-            ]}
-            // Mientras asoma es para mirar, no para tocar: un toque que entre
-            // ahí sería en una pantalla que todavía no es la que está.
-            pointerEvents="none"
-          >
-            {dibujar(asomando)}
-          </Animated.View>
-        )}
+        {/* UN CARRIL POR PESTAÑA VISITADA, colocado por su distancia a la
+            activa. Ninguna se desmonta al cambiar de pestaña: ese remonte era
+            el titileo. Ver `montadas`. */}
+        {montadas.map((cual) => {
+          const lejos = ORDEN.indexOf(cual) - ORDEN.indexOf(pestana);
+          const aLaVista = cual === pestana || cual === asomando;
+          return (
+            <Animated.View
+              key={cual}
+              // Para la sonda del titileo: lo que hay que poder comprobar es que
+              // este nodo sea EL MISMO despues de cambiar de pestaña, porque
+              // eso es lo que significa que no se remonto.
+              testID={'carril-' + cual}
+              style={[
+                estilos.carril,
+                { left: lejos * ancho, width: ancho },
+                { transform: [{ translateX: correr }] },
+                // LAS QUE NO SE VEN SE ESCONDEN, NO SE DESMONTAN: `display`
+                // conserva el componente y su estado, y le ahorra al motor
+                // dibujar cuatro pantallas que están fuera de la ventana.
+                !aLaVista && estilos.escondida,
+              ]}
+              // La que asoma es para mirar, no para tocar: un toque ahí sería
+              // en una pantalla que todavía no es la que está.
+              pointerEvents={cual === pestana ? 'auto' : 'none'}
+            >
+              {dibujar(cual)}
+            </Animated.View>
+          );
+        })}
       </View>
 
       {/* EL RECORRIDO DE LA PRIMERA VEZ (§10), encima de la barra. Va acá y no
@@ -251,6 +309,7 @@ const estilos = StyleSheet.create({
   // un `left` de una pantalla entera la de al lado quedaba de ancho cero. Se
   // veía el fondo del motor en vez de la pantalla que asoma (visto a :8092).
   carril: { position: 'absolute', top: 0, bottom: 0, left: 0 },
+  escondida: { display: 'none' },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   barra: {
     flexDirection: 'row',

@@ -129,16 +129,17 @@ try {
   // `SUBIO_RANGO` se emitia y no lo escuchaba nadie. Subias de rango y no
   // pasaba nada. Acá se mira por el boton del banco de trabajo, porque
   // esperar al dia 11 para probar una animacion no es una forma de trabajar.
-  esperar('se puede abrir la subida', await tocar('Ver la subida de rango'));
+  esperar('se puede abrir la subida', await tocar('Ver la subida de rango', false));
   // Se espera a que el objeto se forme: el nombre del rango aparece ultimo,
   // cuando la forma ya esta hecha, y antes de eso la pantalla es solo el
   // objeto armandose.
   await page.waitForTimeout(4200);
   const enSubida = await texto();
   esperar('dice que hay un rango nuevo', /NUEVO RANGO/i.test(enSubida));
-  // NO SE NOMBRA LO QUE VIENE DESPUES (§7): se dice a donde llegaste y que
-  // dejaste atras, nunca cuantos hay ni cual sigue.
-  esperar('y de donde veniste', /Dejaste atr[aá]s/i.test(enSubida));
+  // DE DONDE VENIAS NO SE DICE (sacado el 23/9, a pedido): el momento es el
+  // rango nuevo, y nombrar el que dejaste le reparte la atencion.
+  esperar('y NO dice de donde veniste', !/Dejaste atr[aá]s/i.test(enSubida));
+  // Y sigue sin nombrarse lo que viene despues (§7).
   esperar('sin decir cuantos rangos hay', !/de 8|de ocho|rango 8/i.test(enSubida));
   esperar('y se puede cerrar tocando', /Toca para seguir/i.test(enSubida));
 

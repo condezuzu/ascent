@@ -1,6 +1,6 @@
 import {
-  authorizationStatusFor,
-  AuthorizationStatus,
+  AuthorizationRequestStatus,
+  getRequestStatusForAuthorization,
   isHealthDataAvailable,
   queryStatisticsForQuantity,
   queryWorkoutSamples,
@@ -80,28 +80,54 @@ function elDia(fecha: string) {
   return { startDate, endDate };
 }
 
-/** Si ya se pidió el permiso. Ver el comentario de arriba: sin esto, crashea. */
+/**
+ * ¿YA SE PIDIÓ EL PERMISO? Es la única pregunta que hay que contestar antes
+ * de consultar cualquier cosa, porque consultar sin haber pedido TIRA ABAJO
+ * LA APP (no devuelve vacío: crashea).
+ *
+ * LA PRIMERA VERSIÓN LA CONTESTABA MAL Y NUNCA LEYÓ NADA (bug del 23/9).
+ * Usaba `authorizationStatusFor`, que es el espejo de
+ * `HKHealthStore.authorizationStatus(for:)` — y eso informa el permiso de
+ * **ESCRITURA**, no el de lectura. Apple lo hace a propósito: decir si
+ * concediste lectura filtraría que tenés datos de algo. Ascent solo LEE, así
+ * que nunca pidió escritura, así que ese estado se quedaba en
+ * `notDetermined` para siempre.
+ *
+ * Resultado: conectabas, iOS guardaba el permiso, y la guarda seguía
+ * diciendo que no se había preguntado. `pasosDe` y `entrenoEse` devolvían
+ * "no sé" para siempre y la sección parecía no hacer nada — que es
+ * exactamente lo que se reportó.
+ *
+ * LO CORRECTO ES `getRequestStatusForAuthorization`, que contesta otra cosa:
+ * no si te lo dieron, sino **si hace falta volver a preguntar**.
+ * `unnecessary` significa que la app ya pidió por esos tipos, que es
+ * justamente lo que hay que saber para poder consultar sin crashear. Si la
+ * persona dijo que no, las consultas devuelven vacío y eso se lee como "no
+ * sé", que es lo honesto.
+ */
 let listo = false;
 
-function puedoPreguntar(): boolean {
+async function puedoPreguntar(): Promise<boolean> {
   if (!isHealthDataAvailable()) return false;
   if (listo) return true;
-  // AL VOLVER A ABRIR LA APP, `listo` arranca en `false` aunque el permiso se
-  // haya dado hace semanas. Se le pregunta a HealthKit, que se acuerda.
-  //
-  // OJO CON LO QUE CONTESTA: para LEER, iOS nunca dice "te lo dieron" —sería
-  // filtrar que la persona tiene datos de algo—, así que `sharingAuthorized`
-  // no es la respuesta esperable acá. Lo único que se puede saber es si
-  // todavía está SIN PREGUNTAR (`notDetermined`), y eso alcanza: lo que hay
-  // que evitar es consultar antes de haber preguntado.
   try {
-    listo = PEDIDOS.every(
-      (p) => authorizationStatusFor(p) !== AuthorizationStatus.notDetermined
-    );
+    const estado = await getRequestStatusForAuthorization({ toRead: PEDIDOS });
+    listo = estado === AuthorizationRequestStatus.unnecessary;
   } catch {
     listo = false;
   }
   return listo;
+}
+
+/**
+ * Si ya está conectado: o sea, si ya se pidió el permiso alguna vez.
+ *
+ * NO DICE "te dieron permiso", porque eso iOS no lo dice para lectura. Dice
+ * que la pregunta ya se hizo, que es lo que la pantalla necesita para dejar
+ * de ofrecer un botón que no va a mostrar nada.
+ */
+export async function yaSePidio(): Promise<boolean> {
+  return puedoPreguntar();
 }
 
 export const saludNativa: Salud = {
@@ -119,20 +145,18 @@ export const saludNativa: Salud = {
     if (!isHealthDataAvailable()) return false;
     try {
       await requestAuthorization({ toRead: PEDIDOS });
-      // LO QUE DEVUELVE NO ES "te dieron permiso": es "la ventana se mostró y
-      // no falló". Apple no dice qué se concedió al leer, a propósito. Así que
-      // lo único que se marca es que YA SE PREGUNTÓ, que es justo lo que hacía
-      // falta para poder consultar sin tirar la app abajo. Si la persona dijo
-      // que no, las consultas devuelven vacío y eso se lee como "no sé".
-      listo = true;
-      return true;
+      // LO QUE DEVUELVE `requestAuthorization` NO ES "te dieron permiso": es
+      // "la ventana se mostró y no falló". Apple no dice qué se concedió al
+      // leer. Lo que sí se puede saber después es si la pregunta ya está
+      // hecha, y eso es lo que habilita consultar sin crashear.
+      listo = false; // que lo vuelva a averiguar de la fuente, no de acá
+      return await puedoPreguntar();
     } catch {
       return false;
     }
   },
-
   async entrenoEse(fecha) {
-    if (!puedoPreguntar()) return null;
+    if (!(await puedoPreguntar())) return null;
     try {
       const { startDate, endDate } = elDia(fecha);
       const entrenos = await queryWorkoutSamples({
@@ -152,7 +176,7 @@ export const saludNativa: Salud = {
   },
 
   async pasosDe(fecha) {
-    if (!puedoPreguntar()) return null;
+    if (!(await puedoPreguntar())) return null;
     try {
       const { startDate, endDate } = elDia(fecha);
       // `cumulativeSum` y no traer las muestras: los pasos llegan en cientos

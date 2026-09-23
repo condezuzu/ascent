@@ -18,7 +18,7 @@ import VigilanteDeGimnasio from '../src/VigilanteDeGimnasio';
 import '../src/llegadaDeFondo';
 import { sesionDesdeEnlace } from '../src/enlace';
 import { ProveedorDeSesion } from '../src/sesionDeLaApp';
-import { buscarAlArrancar } from '../src/actualizaciones';
+import { buscarAlArrancar, useAplicarLoQueEsteListo } from '../src/actualizaciones';
 import { loVisible } from '../src/loVisible';
 import { anotar, marcarListo, registrarError } from '../src/cajaNegra';
 
@@ -67,6 +67,13 @@ export default function Layout() {
   useEffect(() => {
     if (sesion !== 'mirando') marcarListo();
   }, [sesion]);
+
+  // LA ACTUALIZACIÓN QUE YA SE BAJÓ SOLA, apenas se pueda aplicar (23/9).
+  // `expo-updates` baja en segundo plano por su cuenta y deja la
+  // actualización lista para el PRÓXIMO arranque; sin esto quedaba ahí,
+  // esperando, y el chequeo explícito de más abajo anotaba "no hay" porque el
+  // servidor no tenía nada NUEVO que dar. Ver `actualizaciones.ts`.
+  useAplicarLoQueEsteListo(() => !loVisible()?.corriendo);
 
   const sinNombre = useCallback(() => setSesion('sin-nombre'), []);
 

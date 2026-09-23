@@ -37,6 +37,23 @@ export type OpcionesFondo = {
   planeta?: string | null; // nombre del planeta del día (rango 4)
   apagado?: boolean; // pérdida de racha: el fondo se apaga
   vacio?: boolean; // estado vacío: el espacio antes de que se forme nada
+  /**
+   * SOLO EL CIELO: el campo estelar teñido por el rango, sin ningún cuerpo.
+   *
+   * Pedido el 23/9 para la app del teléfono. El cuerpo viajaba de esquina
+   * entre pestañas y en Ranking quedaba arriba a la derecha, donde molesta:
+   * la decisión es que **el cuerpo se vea solo en Inicio**. En las otras
+   * cuatro pestañas queda el ambiente y nada más.
+   *
+   * Y de paso se lleva puesto el problema del viaje entre esquinas: si no
+   * hay cuerpo, no hay nada que mover.
+   *
+   * NO ES LO MISMO QUE `vacio`, que dibuja una nebulosa con cuatro
+   * partículas —el espacio ANTES de que se forme nada, que es un estado de
+   * la cuenta—. Esto es una decisión de pantalla: el cuerpo existe, acá no
+   * se muestra.
+   */
+  soloEstrellas?: boolean;
   reposo?: boolean; // día de descanso: cara nocturna y giro frenado
   // fantasma de la mejor racha: el objeto más grande que se alcanzó alguna vez,
   // apenas insinuado detrás del actual
@@ -598,7 +615,10 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   // faltan 2). Dos manchas detrás del objeto no se leen como dos cosas, se
   // leen como una mancha sucia. Gana el presagio porque habla del día de hoy;
   // el fantasma habla de un récord que no se va a mover en estos dos días.
-  if (op.presagio) {
+  if (op.soloEstrellas) {
+    // Sin cuerpo no hay presagio ni fantasma: las dos son marcas SOBRE el
+    // cuerpo, y solas se leerían como una mancha en el cielo.
+  } else if (op.presagio) {
     const pmat = materialPresagio(op.rango, op.planeta);
     materiales.push(pmat);
     const presagio = new THREE.Mesh(QUAD, pmat);
@@ -623,7 +643,10 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     }
   }
 
-  if (op.vacio || op.rango === 1) {
+  if (op.soloEstrellas) {
+    // NADA EN EL GRUPO. No es que se esconda: no se construye, así que no
+    // se compilan sus shaders ni se dibuja cada cuadro.
+  } else if (op.vacio || op.rango === 1) {
     // el gas primero, las partículas encima: juntos leen como una nube
     const nmat = crearMaterialCuerpo(NEBULOSA_CFG, !!op.apagado, 0.004);
     nmat.blending = THREE.AdditiveBlending;

@@ -4,6 +4,7 @@ import { T } from '@nucleo/textos';
 import { leerSesionCache } from '@compartido/sesionCache';
 import { cuantasPendientes } from '@compartido/cola';
 import { ponerAnexo } from './cajaNegra';
+import * as Updates from 'expo-updates';
 import { aplicar, buscarYTraer, hayCanal, queEstoyCorriendo } from './actualizaciones';
 import { loVisible } from './loVisible';
 import { supabase } from './supabase';
@@ -40,6 +41,8 @@ export default function DiagnosticoSesion() {
   const [leyendo, setLeyendo] = useState(true);
   // La actualización por el aire: qué JS corre y si hay uno nuevo esperando.
   const [buscando, setBuscando] = useState(false);
+  // `isUpdatePending` solo se lee por el hook: no hay constante para esto.
+  const { isUpdatePending: esperando } = Updates.useUpdates();
   const [novedad, setNovedad] = useState<string | null>(null);
 
   const pantalla = loVisible();
@@ -139,6 +142,10 @@ export default function DiagnosticoSesion() {
           sigue apareciendo no se distingue de uno que no se arregló. */}
       <View style={estilos.actualizar}>
         <Text style={estilos.nota}>{T.diagnostico.corriendo(queEstoyCorriendo())}</Text>
+        {/* Y SI HAY UNA ESPERANDO. Es la mitad que faltaba: sin esto, "no
+            hay nada nuevo" y "hay una lista sin aplicar" se leen igual, y la
+            segunda es la que hace reportar bugs de código viejo. */}
+        {esperando && <Text style={estilos.nota}>{T.diagnostico.hayEsperando}</Text>}
         {hayCanal() && (
           <Pressable
             hitSlop={8}

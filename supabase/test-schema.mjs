@@ -9159,7 +9159,7 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
   const sal = de137('movil', 'src', 'plataforma', 'salud.ts');
   // PREGUNTAR ANTES DE PEDIR EL PERMISO TIRA ABAJO LA APP. No devuelve vacio
   // ni error: crashea. Es la unica forma de romper la app con esta libreria.
-  chequear('no se consulta Health sin haber preguntado antes', /if \(!puedoPreguntar\(\)\) return null;/.test(sal), true);
+  chequear('no se consulta Health sin haber preguntado antes', /if \(!\(await puedoPreguntar\(\)\)\) return null;/.test(sal), true);
   // EL DIA CORTA EN EL HUSO DEL USUARIO, como todo en la app. Con medianoche
   // UTC, en Montevideo un entreno de las nueve de la noche cae en el dia
   // siguiente y el dia se registraria corrido.
@@ -9445,7 +9445,9 @@ console.log('\n140. El diagnostico del gimnasio, y la subida de rango');
   // NO SE NOMBRA LO QUE VIENE DESPUES (§7): descubrir en que te vas a
   // convertir es la recompensa, y contarlo la arruina.
   chequear('dice a donde llegaste', /T\.sesion\.nuevoRango/.test(sub140), true);
-  chequear('y de donde veniste', /T\.sesion\.rangoDesde/.test(sub140), true);
+  // SACADO EL 23/9 A PEDIDO: el momento es el rango nuevo, y nombrar el que
+  // dejaste le reparte la atencion. Se chequea que NO este.
+  chequear('y no dice de donde veniste', /T\\.sesion\\.rangoDesde/.test(sub140), false);
   chequear('sin decir cuantos rangos hay', /RANGOS\.length|de ocho|total de rangos/.test(sub140), false);
   // SIN CONFETI Y SIN SONIDO: el silencio es lo que lo hace sentir importante.
   // Lo unico que se permite es un golpe corto cuando la forma queda hecha.
@@ -9458,6 +9460,132 @@ console.log('\n140. El diagnostico del gimnasio, y la subida de rango');
   // Y SE PUEDE MIRAR SIN ESPERAR DIEZ DIAS, desde el banco de trabajo: es lo
   // unico de la app que de otro modo se prueba una vez cada diez dias.
   chequear('se puede ver desde el diagnostico', /<SubidaRango/.test(diag), true);
+}
+
+console.log('\n141. Los arreglos del 23/9: OTA, salud, titileo y el planeta');
+{
+  const { readFileSync: leer141 } = await import('node:fs');
+  const { join: unir141, dirname: dir141 } = await import('node:path');
+  const { fileURLToPath: aRuta141 } = await import('node:url');
+  const R141 = unir141(dir141(aRuta141(import.meta.url)), '..');
+  const de141 = (...p) => leer141(unir141(R141, ...p), 'utf8');
+
+  // ---- LAS ACTUALIZACIONES QUE NO SE APLICABAN ----
+  //
+  // `expo-updates` viene con el chequeo automatico prendido: al abrir la app
+  // BAJA una actualizacion el solo y la deja lista para el proximo arranque.
+  // Nuestro chequeo explicito corria despues y le preguntaba al servidor si
+  // habia algo nuevo — y el servidor decia que no, porque lo que tenia para dar
+  // ya estaba bajado. Habia una actualizacion lista, esperando, y la app
+  // anotaba "no hay" y no la aplicaba nunca.
+  const act = de141('movil', 'src', 'actualizaciones.ts');
+  chequear('se aplica la que ya esta bajada', /isUpdatePending/.test(act), true);
+  chequear('y por el hook, que es como se entera cuando llega',
+    /Updates\.useUpdates\(\)/.test(act), true);
+  chequear('el layout lo usa', /useAplicarLoQueEsteListo\(/.test(de141('movil', 'app', '_layout.tsx')), true);
+  // NO SE REINICIA EN MEDIO DE UN ENTRENAMIENTO: se ve como que la app se cerro
+  // sola en medio de la serie.
+  chequear('pero no con el cronometro corriendo',
+    /useAplicarLoQueEsteListo\(\(\) => !loVisible\(\)\?\.corriendo\)/.test(de141('movil', 'app', '_layout.tsx')), true);
+  // Y LA ANOTACION YA NO MIENTE: "no hay" era lo que hacia parecer que las
+  // actualizaciones no llegaban nunca.
+  chequear('la bitacora no dice "no hay" cuando hay una esperando',
+    /anotar\('actualización: no hay'\)/.test(act), false);
+
+  // ---- APPLE HEALTH, QUE NUNCA LEYO NADA ----
+  //
+  // La guarda usaba `authorizationStatusFor`, que informa el permiso de
+  // ESCRITURA. Ascent solo LEE, asi que nunca pidio escritura, asi que ese
+  // estado se quedaba en `notDetermined` para siempre: conectabas, iOS
+  // guardaba el permiso, y la app seguia creyendo que no habia preguntado.
+  const sal141 = de141('movil', 'src', 'plataforma', 'salud.ts');
+  // SIN COMENTARIOS: el de arriba EXPLICA por que no se usa `authorizationStatusFor`,
+  // asi que buscarlo en el archivo entero encontraba justo el texto que dice
+  // que no esta. Es la segunda vez que caigo en esto (ver §139).
+  const sinComentarios141 = (t) => t.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  chequear('la guarda ya no mira el permiso de escritura',
+    /authorizationStatusFor/.test(sinComentarios141(sal141)), false);
+  // LO CORRECTO ES PREGUNTAR SI HACE FALTA VOLVER A PREGUNTAR.
+  chequear('pregunta si hace falta volver a pedirlo',
+    /getRequestStatusForAuthorization/.test(sal141), true);
+  chequear('y "ya se pidio" es `unnecessary`',
+    /AuthorizationRequestStatus\.unnecessary/.test(sal141), true);
+  // LA PANTALLA TIENE QUE DECIR EN QUE ESTADO ESTA: el boton decia "Conectar"
+  // para siempre, lo tocabas y no pasaba nada porque iOS no vuelve a mostrar la
+  // ventana una vez contestada.
+  const salUI = de141('movil', 'src', 'ajustes', 'Salud.tsx');
+  chequear('Ajustes sabe si ya esta conectado', /yaSePidio/.test(salUI), true);
+  chequear('y el boton no se ofrece cuando ya se pregunto',
+    /conectado === false && \(/.test(salUI), true);
+
+  // ---- EL TITILEO, SEGUNDO INTENTO ----
+  //
+  // El primer arreglo movio CUANDO se centra el carril, y el problema no era
+  // el carril: la pantalla de destino se REMONTABA. Estaba montada y cargada
+  // en el carril que asomaba, y al soltar el gesto se tiraba para crearla de
+  // nuevo, vacia.
+  const pest141 = de141('movil', 'src', 'Pestanas.tsx');
+  chequear('las pestañas visitadas quedan montadas', /const \[montadas, setMontadas\]/.test(pest141), true);
+  // POSICIONADAS POR SU DISTANCIA A LA ACTIVA: asi al cambiar de pestaña los
+  // desplazamientos se recalculan y la de destino no se mueve ni un pixel.
+  chequear('y se colocan por su distancia a la activa',
+    /ORDEN\.indexOf\(cual\) - ORDEN\.indexOf\(pestana\)/.test(pest141), true);
+  // LAS QUE NO SE VEN SE ESCONDEN, NO SE DESMONTAN.
+  chequear('las que no se ven se esconden, no se desmontan', /estilos\.escondida/.test(pest141), true);
+  // LO QUE SE PERDIO AL ARREGLARLO se paga a mano: antes cada vuelta recargaba
+  // los datos porque la pantalla nacia de nuevo. Sin esto, sumas una foto en
+  // Inicio, vas al Album, y no esta.
+  chequear('volver a una pestaña le avisa que recargue', /PESTANA_ACTIVA/.test(pest141), true);
+  for (const p of ['Ranking', 'Album', 'Stats']) {
+    chequear(`y ${p} escucha`, /useRecargarAlVolver\(/.test(de141('movil', 'src', `${p}.tsx`)), true);
+  }
+
+  // ---- EL PLANETA, SOLO EN INICIO ----
+  //
+  // Decision del 23/9: el cuerpo viajaba de esquina entre pestañas y en
+  // Ranking quedaba arriba a la derecha, donde molesta. En las otras cuatro
+  // queda el cielo teñido por el rango y nada mas — y de paso se lleva puesto
+  // el problema del viaje entre esquinas.
+  const esc141 = de141('compartido', 'motor', 'escena.ts');
+  chequear('la escena sabe dibujar solo el cielo', /soloEstrellas\?: boolean/.test(esc141), true);
+  // NO SE ESCONDE EL CUERPO: no se construye, asi que no compila sus shaders
+  // ni se dibuja cada cuadro.
+  chequear('y no lo construye en vez de esconderlo',
+    /if \(op\.soloEstrellas\) \{\s*\n\s*\/\/ NADA EN EL GRUPO/.test(esc141), true);
+  for (const p of ['Ranking', 'Album', 'Stats', 'Ajustes']) {
+    chequear(`${p} pide solo el cielo`, /soloEstrellas/.test(de141('movil', 'src', `${p}.tsx`)), true);
+  }
+  chequear('Inicio sigue con su cuerpo abajo a la derecha',
+    /esquina="abajo-derecha"/.test(de141('movil', 'src', 'Inicio.tsx')), true);
+  // SIN ESTO, PASAR DE INICIO A RANKING REUSA LA ESCENA y el planeta se queda:
+  // la clave seria la misma y el motor no armaria nada nuevo.
+  chequear('y la clave de la escena lo distingue',
+    /op\.soloEstrellas \? 1 : 0/.test(de141('movil', 'src', 'FondoRaiz.tsx')), true);
+
+  // ---- LOS TEXTOS QUE PIDIO EL HUMANO ----
+  const T141 = (await import('../nucleo/textos.ts')).T;
+  // LA SUBIDA DE RANGO DICE SOLO EL RANGO NUEVO Y EL DIA.
+  chequear('la subida ya no dice de donde veniste',
+    /rangoDesde/.test(de141('movil', 'src', 'SubidaRango.tsx')), false);
+  // LOS DOS BOTONES DE DIAGNOSTICO, MARCADOS: para que no queden puestos al
+  // publicar sin que nadie se acuerde.
+  chequear('"revisar la zona" dice que es de diagnostico',
+    /diagn[oó]stico/i.test(T141.ajustes.diagRevisarZona), true);
+  chequear('y "ver la subida de rango" tambien',
+    /diagn[oó]stico/i.test(T141.ajustes.diagVerSubida), true);
+  // AJUSTES CON MENOS BOTONES: los cinco presets de duracion se fueron, y no
+  // se perdio nada porque ya se elegia dentro de la pantalla del descanso.
+  chequear('Ajustes ya no tiene los presets de duracion',
+    /PRESETS_DESCANSO/.test(de141('movil', 'src', 'Ajustes.tsx')), false);
+
+  // ---- EL ALBUM QUE ENTRABA VACIO ----
+  //
+  // La celda ya entraba escalonada, pero entraba VACIA: la animacion dura poco
+  // mas de un segundo y las fotos llegan de la red despues. Se veia un escalon
+  // de cuadrados oscuros y, un rato mas tarde, las fotos de golpe.
+  const alb141 = de141('movil', 'src', 'Album.tsx');
+  chequear('las celdas siguen entrando escalonadas', /<Surgir key=\{c\.id\}/.test(alb141), true);
+  chequear('y la foto se funde cuando termina de cargar', /onLoad=\{\(\) =>/.test(alb141), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

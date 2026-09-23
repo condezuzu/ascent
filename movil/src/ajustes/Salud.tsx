@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { plataforma } from '@plataforma';
+import { yaSePidio } from '../plataforma/salud';
 import { hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { C } from '../colores';
@@ -33,17 +34,21 @@ export default function Salud() {
   const [pidiendo, setPidiendo] = useState(false);
   const [aviso, setAviso] = useState('');
   const [pasos, setPasos] = useState<number | null>(null);
+  // SI YA SE PIDIO EL PERMISO. `null` mientras se averigua: sin eso, la
+  // seccion parpadea entre "Conectar" y "Conectado" en cada visita.
+  const [conectado, setConectado] = useState<boolean | null>(null);
 
-  const mirarPasos = useCallback(async () => {
-    setPasos(await plataforma.salud.pasosDe(hoyISO()));
+  const mirar = useCallback(async () => {
+    const ya = await yaSePidio();
+    setConectado(ya);
+    // Los pasos solo se piden si ya se pregunto: consultar antes tira la
+    // app abajo (ver `plataforma/salud.ts`).
+    if (ya) setPasos(await plataforma.salud.pasosDe(hoyISO()));
   }, []);
 
-  // Al abrir Ajustes: si el permiso ya estaba dado de otra vez, los pasos
-  // aparecen sin que haya que tocar nada. Si no lo estaba, esto contesta
-  // `null` y no se ve ninguna diferencia — no abre ninguna ventana.
   useEffect(() => {
-    if (hay) void mirarPasos();
-  }, [hay, mirarPasos]);
+    if (hay) void mirar();
+  }, [hay, mirar]);
 
   if (!hay) {
     return (
@@ -59,34 +64,43 @@ export default function Salud() {
     const ok = await plataforma.salud.pedirPermiso();
     setPidiendo(false);
     setAviso(ok ? T.ajustes.saludListo : T.general.noSePudo);
-    // Se leen los pasos enseguida: es lo único que puede mostrar de verdad si
-    // el permiso quedó dado, ya que preguntarlo no se puede.
-    if (ok) await mirarPasos();
+    await mirar();
   }
 
   return (
     <View style={estilos.seccion}>
       <Text style={estilos.titulo}>{T.ajustes.salud}</Text>
 
-      <Pressable style={estilos.boton} onPress={conectar} disabled={pidiendo}>
-        <Text style={estilos.botonTexto}>
-          {pidiendo ? T.ajustes.saludConectando : T.ajustes.saludConectar}
-        </Text>
-      </Pressable>
+      {/* EL BOTON SOLO APARECE SI FALTA PREGUNTAR. iOS no vuelve a mostrar
+          la ventana una vez contestada, asi que dejarlo despues es un boton
+          que no hace nada — que es como se reporto el 23/9. */}
+      {conectado === false && (
+        <Pressable style={estilos.boton} onPress={conectar} disabled={pidiendo}>
+          <Text style={estilos.botonTexto}>
+            {pidiendo ? T.ajustes.saludConectando : T.ajustes.saludConectar}
+          </Text>
+        </Pressable>
+      )}
+
+      {conectado === true && <Text style={estilos.conectado}>{T.ajustes.saludConectado}</Text>}
 
       <Text style={estilos.nota}>{T.ajustes.saludPara}</Text>
       {aviso !== '' && <Text style={estilos.nota}>{aviso}</Text>}
 
-      <Text style={estilos.nota}>
-        {pasos === null
-          ? T.ajustes.saludSinPasos
-          : T.ajustes.saludPasos(pasos.toLocaleString('es-UY'))}
-      </Text>
-      <Text style={estilos.nota}>{T.ajustes.saludPasosNota}</Text>
+      {/* LOS PASOS SON LA PRUEBA DE QUE ESTA LEYENDO DE VERDAD. Mientras se
+          averigua no se dice nada: "todavia no hay pasos" y "no pregunte
+          todavia" no son lo mismo y se veian igual. */}
+      {conectado === true && (
+        <>
+          <Text style={estilos.nota}>
+            {pasos === null ? T.ajustes.saludSinDatos : T.ajustes.saludPasos(pasos.toLocaleString('es-UY'))}
+          </Text>
+          <Text style={estilos.nota}>{T.ajustes.saludPasosNota}</Text>
+        </>
+      )}
     </View>
   );
 }
-
 const estilos = StyleSheet.create({
   seccion: { marginTop: 30 },
   // El mismo rótulo que el resto de Ajustes: chico, en versalitas y apagado.
@@ -101,4 +115,5 @@ const estilos = StyleSheet.create({
   },
   botonTexto: { color: C.tinta, fontSize: 14 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  conectado: { color: C.sub, fontSize: 14, marginTop: 10 },
 });

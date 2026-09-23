@@ -22,6 +22,7 @@ import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './Stat
 import FondoEspacial from './FondoEspacial';
 import Estancamiento from './Estancamiento';
 import CalendarioDias from './CalendarioDias';
+import { useRecargarAlVolver } from './irAPestana';
 import { paletaDe } from '@nucleo/paletas';
 
 const SEMANAS = 8;
@@ -116,6 +117,9 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     cargar();
   }, [cargar]);
 
+  // Y de nuevo al volver a esta pestaña: ahora se queda montada.
+  useRecargarAlVolver('stats', cargar);
+
   // LOS TRES `useMemo` VAN ARRIBA DE LOS DOS `return` DE ABAJO, y el orden no
   // es cosmetico: es la diferencia entre que Stats ande y que se caiga.
   //
@@ -192,7 +196,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   return (
     <View style={estilos.raiz}>
       {/* El fondo de Stats en la web: tu cuerpo arriba a la derecha, velo 0,72. */}
-      <FondoEspacial rango={datos.rango} planeta={datos.planeta} esquina="arriba-derecha" velo={0.72} />
+      <FondoEspacial rango={datos.rango} planeta={datos.planeta} soloEstrellas velo={0.72} />
     <ScrollView contentContainerStyle={estilos.pantalla}>
       <Text style={estilos.titulo}>{T.stats.titulo}</Text>
 

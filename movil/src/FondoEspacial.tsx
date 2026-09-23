@@ -17,6 +17,7 @@ export default function FondoEspacial(op: Pedido) {
     op.planeta ?? null,
     !!op.apagado,
     !!op.vacio,
+    !!op.soloEstrellas,
     !!op.reposo,
     !!op.presagio,
     op.fantasma?.rango ?? null,

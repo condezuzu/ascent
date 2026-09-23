@@ -91,6 +91,9 @@ function claveDeEscena(op: OpcionesFondo, animar: boolean) {
     op.planeta ?? '',
     op.apagado ? 1 : 0,
     op.vacio ? 1 : 0,
+    // SIN ESTO, PASAR DE INICIO A RANKING REUSA LA ESCENA y el planeta se
+    // queda: la clave seria la misma y el motor no armaria nada nuevo.
+    op.soloEstrellas ? 1 : 0,
     op.reposo ? 1 : 0,
     op.presagio ? 1 : 0,
     op.fantasma?.rango ?? '',

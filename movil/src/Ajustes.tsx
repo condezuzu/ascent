@@ -3,14 +3,15 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
+import { planetaDeDia } from '@nucleo/rangos';
 import { umbralesDisponibles, umbralValido, type Umbral } from '@nucleo/estancamiento';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
-import { PRESETS_DESCANSO } from '@nucleo/reglas';
 import { plataforma } from '@plataforma';
-import { duracionCorta, duracionValida, guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
+import { guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
 import Avatar from './Avatar';
+import FondoEspacial from './FondoEspacial';
 import Gimnasio from './ajustes/Gimnasio';
 import Salud from './ajustes/Salud';
 import Identidad from './ajustes/Identidad';
@@ -94,6 +95,11 @@ export default function Ajustes({
   const avisos = perfil.avisos_estancamiento !== false;
 
   return (
+    <>
+      {/* AJUSTES NO PEDÍA FONDO, así que se quedaba con el de la pantalla
+          anterior — o sea, con el planeta de Inicio. Ahora pide el suyo:
+          solo el cielo, como las otras tres que no son Inicio. */}
+      <FondoEspacial rango={perfil.rango_actual} planeta={planetaDeDia(perfil.racha_actual)} soloEstrellas velo={0.72} />
     <ScrollView contentContainerStyle={estilos.pantalla}>
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>
@@ -158,24 +164,16 @@ export default function Ajustes({
         ))}
       </View>
 
-      {/* EL DESCANSO ENTRE SERIES: la duración de siempre (de la cuenta) y el
-          sonido (de este teléfono). Pedido para N4: el sonido arrancaba
-          apagado y no había dónde prenderlo. */}
-      <Text style={estilos.seccion}>{T.ajustes.descansoEntreSeries}</Text>
-      <View style={estilos.fila}>
-        {PRESETS_DESCANSO.map((d) => (
-          <Pressable
-            key={d}
-            onPress={() => guardar({ duracion_descanso: d }, T.general.falloPreferencia)}
-            style={[estilos.ancha, duracionValida(perfil.duracion_descanso) === d && estilos.prendida]}
-          >
-            <Text style={[estilos.textoPastilla, duracionValida(perfil.duracion_descanso) === d && estilos.textoPrendido]}>
-              {duracionCorta(d)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={estilos.nota}>{T.ajustes.descansoNota}</Text>
+      {/* LOS CINCO PRESETS DE DURACIÓN SE FUERON (23/9, "Ajustes tiene
+          demasiados botones"). No se perdió nada: la duración ya se elige
+          DENTRO de la pantalla del descanso, que es donde se decide de
+          verdad —mirando el número correr, no dos días antes—, y lo que se
+          elige ahí vale para lo que queda de la sesión (§18.5).
+
+          EL SONIDO SE QUEDA, y es una línea, no cinco botones: es de ESTE
+          teléfono, no de la cuenta, y no tiene otra casa — entró en N4
+          justamente porque arrancaba apagado y no había dónde prenderlo. */}
+      <Text style={estilos.seccion}>{T.ajustes.avisoDelDescanso}</Text>
       <Pressable
         onPress={() => {
           const nuevo = !sonido;
@@ -262,6 +260,7 @@ export default function Ajustes({
           cuando el automatico este probado. */}
       <Diagnostico perfil={perfil} />
     </ScrollView>
+    </>
   );
 }
 

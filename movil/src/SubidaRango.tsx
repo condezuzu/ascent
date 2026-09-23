@@ -24,9 +24,10 @@ const FORMARSE_MS = 2600;
  * permite es un golpe corto cuando la forma queda hecha: es un momento del
  * juego, no un aviso de sistema.
  *
- * NO SE NOMBRA LO QUE VIENE DESPUÉS (§7). Se dice el rango al que llegaste y
- * el que dejaste atrás; cuántos hay y cuál sigue, nunca. Descubrir en qué te
- * vas a convertir es la recompensa.
+ * SOLO EL RANGO NUEVO Y EL DÍA (23/9, a pedido). Antes decía también de
+ * dónde venías; el momento es al que llegaste, y nombrar el que dejaste le
+ * reparte la atención. Y NO SE NOMBRA LO QUE VIENE DESPUÉS (§7): cuántos hay
+ * y cuál sigue, nunca. Descubrir en qué te vas a convertir es la recompensa.
  *
  * EL OBJETO ES EL DE VERDAD, no un dibujo: `FondoEspacial` con el rango nuevo,
  * el mismo motor que pinta la pantalla principal. Lo que NO está es la
@@ -36,12 +37,19 @@ const FORMARSE_MS = 2600;
  * es muchísimo más que nada, que es lo que había.
  */
 export default function SubidaRango({
-  rangoAntes,
+  // No se usa en el cuerpo a proposito: ver el comentario del tipo.
+  rangoAntes: _rangoAntes,
   rangoDespues,
   planeta,
   racha,
   alCerrar,
 }: {
+  /**
+   * De qué rango se viene. NO SE ESCRIBE en pantalla —"Dejaste atrás Luna"
+   * se sacó el 23/9— pero se sigue recibiendo: es la mitad del dato que
+   * necesita la coreografía del objeto viejo deshaciéndose en el nuevo,
+   * cuando se porte.
+   */
   rangoAntes: number;
   rangoDespues: number;
   /** Los días que se llevan: el número es la mitad de lo que se ganó. */
@@ -66,7 +74,6 @@ export default function SubidaRango({
   }, [aparecer]);
 
   const nombre = RANGOS.find((r) => r.n === rangoDespues)?.nombre ?? '';
-  const anterior = RANGOS.find((r) => r.n === rangoAntes)?.nombre ?? '';
 
   return (
     // `animationType="fade"`: entrar deslizando desde abajo lo haría una hoja
@@ -89,8 +96,9 @@ export default function SubidaRango({
           <Animated.View style={{ opacity: aparecer }}>
             <Text style={estilos.rotulo}>{T.sesion.nuevoRango}</Text>
             <Text style={estilos.nombre}>{nombre}</Text>
-            {/* De dónde venís, en voz baja: el rango nuevo es el que manda. */}
-            {anterior !== '' && <Text style={estilos.desde}>{T.sesion.rangoDesde(anterior)}</Text>}
+            {/* DE DÓNDE VENÍAS NO SE DICE (sacado el 23/9, a pedido). El
+                momento es el rango nuevo; nombrar el viejo al lado le
+                reparte la atención a lo que se acaba de dejar. */}
             {typeof racha === 'number' && racha > 0 && (
               <Text style={estilos.dia}>{T.sesion.rangoDia(racha)}</Text>
             )}
@@ -108,7 +116,6 @@ const estilos = StyleSheet.create({
   texto: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 28, paddingBottom: 64 },
   rotulo: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10 },
   nombre: { color: C.tinta, fontSize: 32, fontWeight: '300', letterSpacing: -0.4 },
-  desde: { color: C.sub, fontSize: 14, lineHeight: 20, marginTop: 10 },
   dia: { color: C.apagado, fontSize: 13, marginTop: 4, fontVariant: ['tabular-nums'] },
   seguir: { color: C.apagado, fontSize: 12, marginTop: 26 },
 });

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { eventos } from '@compartido/eventos';
 import type { Pestana } from '@nucleo/recorrido';
 
@@ -20,4 +21,33 @@ export type { Pestana } from '@nucleo/recorrido';
 
 export function irAPestana(p: Pestana) {
   eventos.emitir(IR_A_PESTANA, p);
+}
+
+/**
+ * LA PESTAÑA QUE PASÓ A ESTAR ACTIVA.
+ *
+ * EXISTE POR EL ARREGLO DEL TITILEO (23/9). Antes, cambiar de pestaña
+ * DESMONTABA la anterior y montaba la nueva: feo —ese remonte era el
+ * parpadeo— pero tenía un efecto de regalo, que era que cada pantalla
+ * volvía a pedir sus datos al abrirse. Ahora las pestañas se quedan
+ * montadas, así que ese regalo hay que pagarlo a mano: sin esto, sumás una
+ * foto en Inicio, vas al Álbum, y no está.
+ */
+export const PESTANA_ACTIVA = 'ascent:pestana-activa';
+
+/**
+ * Volver a pedir los datos cada vez que ESTA pestaña pasa a estar activa.
+ *
+ * No corre al montarse: la pantalla ya pide sus datos al abrirse por
+ * primera vez, y pedirlos dos veces seguidas es un viaje de red al pedo en
+ * el momento en que más se nota.
+ */
+export function useRecargarAlVolver(mia: Pestana, recargar: () => void) {
+  useEffect(
+    () =>
+      eventos.escuchar(PESTANA_ACTIVA, (cual) => {
+        if (cual === mia) recargar();
+      }),
+    [mia, recargar]
+  );
 }

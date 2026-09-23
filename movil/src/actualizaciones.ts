@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import * as Updates from 'expo-updates';
 import { anotar } from './cajaNegra';
 
@@ -63,7 +64,16 @@ export async function buscarYTraer(): Promise<boolean> {
   try {
     const r = await Updates.checkForUpdateAsync();
     if (!r.isAvailable) {
-      anotar('actualización: no hay');
+      // "NO HAY" Y "YA ESTÁ BAJADA" NO SON LO MISMO, y confundirlas fue el
+      // bug del 23/9. El servidor contesta que no hay nada NUEVO también
+      // cuando lo que tenía para dar ya se bajó —`expo-updates` lo hace solo,
+      // en segundo plano, apenas abre la app—, así que esta rama se tomaba
+      // con una actualización lista esperando y la anotación decía "no hay".
+      // Desde afuera se veía como que las actualizaciones no llegaban nunca.
+      //
+      // Quién sabe si hay una esperando es `useAplicarLoQueEsteListo`, acá
+      // abajo: el estado de pendiente solo se lee por el hook.
+      anotar('actualización: el servidor no tiene nada nuevo');
       return false;
     }
     anotar('actualización: bajando');
@@ -92,10 +102,10 @@ export async function aplicar(): Promise<void> {
 /**
  * AL ARRANCAR: buscar, traer, y aplicar EN EL MISMO ARRANQUE.
  *
- * Lo que hace `expo-updates` solo es bajarla y dejarla para la próxima vez que
- * se abra la app. Eso alcanza para una app publicada y no alcanza acá: el que
- * la está probando arregla algo, la abre, y quiere ver el arreglo — no la vez
- * siguiente.
+ * Lo que hace `expo-updates` solo es bajarla y dejarla para la próxima vez
+ * que se abra la app. Eso alcanza para una app publicada y no alcanza acá: el
+ * que la está probando arregla algo, la abre, y quiere ver el arreglo — no la
+ * vez siguiente.
  *
  * `puedeReiniciar` lo decide quien llama y hoy es "no hay entrenamiento
  * andando". Un reinicio con el cronómetro corriendo se ve como que la app se
@@ -105,4 +115,49 @@ export async function buscarAlArrancar(puedeReiniciar: () => boolean): Promise<v
   if (!(await buscarYTraer())) return;
   if (!puedeReiniciar()) return anotar('actualización: lista, se aplica al cerrar');
   await aplicar();
+}
+
+/**
+ * APLICAR LA QUE YA ESTÁ BAJADA, apenas se pueda.
+ *
+ * EL BUG QUE ESTO ARREGLA (23/9), y que hizo que las actualizaciones
+ * parecieran no llegar nunca. `expo-updates` viene con el chequeo automático
+ * prendido: al abrir la app busca y **baja** una actualización él solo, en
+ * segundo plano, y la deja lista para el próximo arranque. Nuestro chequeo
+ * explícito corre tres segundos después y le pregunta al servidor si hay algo
+ * nuevo — y el servidor dice que no, porque lo que tenía para dar ya está
+ * bajado. Resultado: había una actualización lista, esperando, y la app
+ * anotaba "no hay" y no la aplicaba nunca. Solo entraba al cerrar y volver a
+ * abrir, que es justo lo que esto vino a evitar.
+ *
+ * Es el patrón que documenta Expo: mirar `isUpdatePending` y reiniciar.
+ *
+ * POR QUÉ UN HOOK Y NO UNA FUNCIÓN. El estado llega **cuando llega**: la
+ * descarga automática puede terminar a los dos segundos o a los veinte, y una
+ * función que mira una sola vez se pierde las dos mitades del caso. El hook
+ * escucha el cambio de estado y actúa cuando de verdad pasa.
+ *
+ * NO SE PUEDE APAGAR EL CHEQUEO AUTOMÁTICO desde acá aunque sería más
+ * prolijo: `checkAutomatically` va en `app.json`, o sea que es nativo y
+ * pediría una build. Esto se arregla del lado que sí viaja por el aire.
+ */
+export function useAplicarLoQueEsteListo(puedeReiniciar: () => boolean) {
+  const { isUpdatePending } = Updates.useUpdates();
+
+  useEffect(() => {
+    if (!isUpdatePending || !Updates.isEnabled) return;
+    if (!puedeReiniciar()) {
+      anotar('actualización: bajada, se aplica al cerrar (entrenamiento andando)');
+      return;
+    }
+    anotar('actualización: bajada, aplicando');
+    // Sin `await`: `reloadAsync` no vuelve —la app arranca de nuevo— y
+    // esperarla adentro de un efecto no agrega nada.
+    void Updates.reloadAsync().catch((e) => {
+      anotar(`actualización: no se pudo aplicar (${String((e as Error)?.message ?? e).slice(0, 60)})`);
+    });
+    // `puedeReiniciar` cambia en cada dibujo y no es lo que dispara esto: lo
+    // que dispara es que una actualización pase a estar lista.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUpdatePending]);
 }
