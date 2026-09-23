@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/supabase';
+import { plataforma } from '@plataforma';
 import Login from '../src/Login';
 import Onboarding from '../src/Onboarding';
 import FondoRaiz from '../src/FondoRaiz';
@@ -68,6 +69,21 @@ export default function Layout() {
     if (sesion !== 'mirando') marcarListo();
   }, [sesion]);
 
+  // LA SESIÓN DE AUDIO SE DECLARA ACÁ, ANTES QUE NADA (25/9).
+  //
+  // Reporte del gimnasio: *"se frena mi música, al entrar a la app"*. Quien
+  // decide la categoría de audio del proceso es el primero que la toca, y si
+  // no la tocamos nosotros la toca el módulo de audio con lo que traiga de
+  // fábrica — que en iOS puede ser una categoría que calla lo que esté
+  // sonando. Declarándola acá, y declarándola MEZCLANDO, la primera palabra de
+  // esta app sobre la música de la persona es "no la toco".
+  //
+  // Antes esto pasaba recién al abrir la pantalla del descanso, y ahí ya era
+  // tarde: la música se había frenado al abrir la app.
+  useEffect(() => {
+    void plataforma.audio.preparar();
+  }, []);
+
   // LA ACTUALIZACIÓN QUE YA SE BAJÓ SOLA, apenas se pueda aplicar (23/9).
   // `expo-updates` baja en segundo plano por su cuenta y deja la
   // actualización lista para el PRÓXIMO arranque; sin esto quedaba ahí,
@@ -119,12 +135,57 @@ export default function Layout() {
 
   useEffect(() => {
     mirar();
-    // También cuando cambia sola: el token se renueva, o la sesión vence
-    // estando la app abierta. Sin esto, una sesión muerta deja la pantalla
-    // mostrando datos viejos hasta que alguien la recargue.
-    const { data } = supabase.auth.onAuthStateChange(() => mirar());
+    // ────────────────────────────────────────────────────────────────
+    // ACÁ NO SE LE PREGUNTA NADA A SUPABASE. NUNCA. (25/9)
+    //
+    // Esto llamaba a `mirar()`, que hace `await supabase.auth.getSession()`, y
+    // eso es un INTERBLOQUEO: `onAuthStateChange` corre con el candado del
+    // cliente de auth tomado, y `getSession()` espera ese mismo candado. El
+    // callback espera a la llamada, la llamada espera al callback, y a partir
+    // de ahí **todo pedido a Supabase queda colgado para siempre**.
+    //
+    // ES EL BUG DEL GIMNASIO, el más grave de la lista: *"cuando suena la
+    // alarma de fin de descanso se buguea todo: aparece Reintentar y las
+    // páginas dejan de cargar, no puedo cambiar de pestaña"*. Es exactamente lo
+    // que se ve desde afuera cuando los pedidos no vuelven nunca: cada pantalla
+    // se queda cargando, y la que tiene reintento muestra su cartel.
+    //
+    // Y POR QUÉ JUSTO CON LA ALARMA: el candado se toma cuando el token se
+    // renueva, y el token se renueva al volver la app al frente. Con el
+    // descanso, la app pasa al fondo y vuelve doce veces por sesión, cada dos
+    // minutos. Era cuestión de tiempo, y por eso parecía que lo causaba el
+    // aviso.
+    //
+    // La sesión ya viene en el evento: no hay nada que ir a buscar.
+    // ────────────────────────────────────────────────────────────────
+    const { data } = supabase.auth.onAuthStateChange((_evento, viva) => {
+      setSesion(viva ? 'con' : 'sin');
+    });
     return () => data.subscription.unsubscribe();
   }, [mirar]);
+
+  // Y EL TOKEN SE RENUEVA SOLO MIENTRAS LA APP ESTÁ ADELANTE.
+  //
+  // La otra mitad del mismo problema. `autoRefreshToken` es un temporizador de
+  // JavaScript, y en el fondo iOS lo congela: una sesión larga —una hora de
+  // gimnasio con el teléfono en el bolsillo— puede volver con el token vencido
+  // y sin ningún intento de renovarlo hecho. Supabase pide exactamente esto en
+  // React Native, y no estaba.
+  //
+  // Al volver al frente se renueva UNA VEZ y enseguida, en vez de esperar al
+  // próximo tic: eso es lo que hace que la primera pantalla que se mire después
+  // de guardar el teléfono ya tenga un token bueno.
+  useEffect(() => {
+    if (AppState.currentState === 'active') supabase.auth.startAutoRefresh();
+    const sub = AppState.addEventListener('change', (e) => {
+      if (e === 'active') supabase.auth.startAutoRefresh();
+      else supabase.auth.stopAutoRefresh();
+    });
+    return () => {
+      sub.remove();
+      supabase.auth.stopAutoRefresh();
+    };
+  }, []);
 
   return (
     <Raiz>

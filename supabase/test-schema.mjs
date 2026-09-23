@@ -8631,21 +8631,25 @@ console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
   chequear('Inicio pone la clase con la sesion corriendo', /clase=\{sesion\.estado\.corriendo \? 'en-sesion'/.test(inicio), true);
   chequear('una sola cuenta del bloque: sin el "1 de 3" a la vista (web)', /className="numero"/.test(bloque), false);
   chequear('una sola cuenta del bloque (nativa)', /cuentaNumero/.test(de128('movil', 'src', 'Bloque.tsx')), false);
-  // LA RACHA NO ESTA DURANTE EL ENTRENAMIENTO (nativa). Se mira por REGION y
-  // no calcando el marcado: esta linea ya se rompio una vez el 24/9 —cuando
-  // el rotulo paso a ser la columna de `RachaConRotulo`— sin que la regla
-  // cambiara ni un poco. Lo que hay que sostener es que el numero grande
-  // viva ADENTRO del guardia, no como se dibuja.
+  // LA RACHA SI ESTA DURANTE EL ENTRENAMIENTO (nativa), DESDE EL 25/9. Era al
+  // reves y se cuidaba con un test; el pedido lo dio vuelta: "la racha
+  // desaparece cuando inicio el entrenamiento. Ya pedi que se quedara y quedo
+  // al reves. El numero tiene que estar siempre."
+  //
+  // El test no se borra, se invierte: lo que cuida ahora es que el numero NO
+  // vuelva a quedar colgado de la sesion. La regla de al lado —que la tira de
+  // la semana si se va— sigue valiendo y esta en la seccion 153.
+  //
+  // EN LA WEB SIGUE ESCONDIDA, a proposito y por ahora: ahi el layout de la
+  // sesion esta MEDIDO para que el + ocupe lo que sobra
+  // (herramientas/medir-inicio-en-sesion.mjs), y meterle el numero grande sin
+  // volver a medir es como romperlo. Queda preguntado.
   const ini128 = de128('movil', 'src', 'Inicio.tsx');
-  const guardia128 = ini128.indexOf('{!sesion.estado.corriendo && (');
-  const finGuardia128 = ini128.indexOf('</>', guardia128);
-  const dentro128 = guardia128 < 0 ? '' : ini128.slice(guardia128, finGuardia128);
-  chequear('la racha no esta durante el entrenamiento (nativa)',
-    /<RachaConRotulo/.test(dentro128), true);
-  // Y NO SE DIBUJA EN NINGUN OTRO LADO: con una segunda copia afuera, el
-  // guardia no serviria de nada.
-  chequear('y no hay otra racha fuera del guardia',
+  chequear('la racha esta siempre (nativa)',
     (ini128.match(/<RachaConRotulo/g) ?? []).length, 1);
+  const antesDeLaRacha = ini128.slice(0, ini128.indexOf('<RachaConRotulo'));
+  chequear('y no cuelga de que no haya sesion',
+    /\{!sesion\.estado\.corriendo && \(\s*<>\s*$/.test(antesDeLaRacha), false);
   chequear('el globo de las series se cierra con el primer +', /cual="series" cerrarCuando=\{sesion\.estado\.series > 0\}/.test(inicio), true);
   chequear('sin la linea social en Inicio (esta en Ranking)', /linea-social|sigueSubiendo/.test(inicio), false);
   const accion = de128('src', 'components', 'AccionPrincipal.tsx');
@@ -10574,6 +10578,108 @@ console.log('\n152. Las pantallas apiladas siempre tienen salida');
   // EL TITULO ENTERO: "Como se compara" a secas tambien es el enlace de Stats.
   chequear('y busca el titulo entero en Ajustes',
     /'Cómo se compara la fuerza'/.test(bar152), true);
+}
+
+
+console.log('\n153. Los bugs del gimnasio: el interbloqueo, la musica y la racha');
+{
+  const { readFileSync: leer153 } = await import('node:fs');
+  const { join: unir153 } = await import('node:path');
+  const R153 = unir153(import.meta.dirname, '..');
+  const de153 = (...p) => leer153(unir153(R153, ...p), 'utf8');
+  const sinComentarios153 = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  const lay153 = sinComentarios153(de153('movil', 'app', '_layout.tsx'));
+
+  // ---- 1. EL INTERBLOQUEO DE AUTH, que era el bug mas grave ----
+  //
+  // "Cuando suena la alarma de fin de descanso se buguea todo: aparece
+  // Reintentar y las paginas dejan de cargar, no puedo cambiar de pestana."
+  //
+  // El callback de onAuthStateChange corre CON EL CANDADO del cliente de auth
+  // tomado, y getSession() espera ese mismo candado: el callback espera a la
+  // llamada y la llamada al callback. A partir de ahi ningun pedido a Supabase
+  // vuelve nunca, que es exactamente lo que se ve desde afuera.
+  chequear('el callback de auth no le pregunta nada a Supabase',
+    /onAuthStateChange\(\([^)]*\) => \{\s*setSesion/.test(lay153), true);
+  chequear('y no llama a mirar adentro',
+    /onAuthStateChange\(\(\) => mirar\(\)\)/.test(lay153), false);
+  // LA SESION YA VIENE EN EL EVENTO: no hay nada que ir a buscar.
+  chequear('usa la sesion que trae el evento', /setSesion\(viva \? 'con' : 'sin'\)/.test(lay153), true);
+
+  // ---- 2. EL TOKEN SE RENUEVA SOLO CON LA APP ADELANTE ----
+  //
+  // La otra mitad. autoRefreshToken es un temporizador de JavaScript y en el
+  // fondo iOS lo congela: una hora de gimnasio con el telefono en el bolsillo
+  // puede volver con el token vencido y sin un solo intento hecho.
+  chequear('se arranca la renovacion al volver al frente',
+    /startAutoRefresh\(\)/.test(lay153), true);
+  chequear('y se para al irse al fondo', /stopAutoRefresh\(\)/.test(lay153), true);
+  chequear('mirando AppState', /AppState\.addEventListener\('change'/.test(lay153), true);
+
+  // ---- 3. LA APP NO CORTA LA MUSICA. NUNCA. ----
+  //
+  // "Se frena mi musica: al entrar a la app, y al elegir el tiempo de
+  // descanso." No era un bug: 'doNotMix' no dice "baja lo que suena mientras
+  // dura el bip", declara que esta app no comparte la salida de audio, y el
+  // sistema lo aplica AL ACTIVAR LA SESION.
+  const aud153 = sinComentarios153(de153('movil', 'src', 'plataforma', 'audio.ts'));
+  chequear('el audio se mezcla con lo que suene', /interruptionMode: 'mixWithOthers'/.test(aud153), true);
+  chequear('y ya no interrumpe', /interruptionMode: 'doNotMix'/.test(aud153), false);
+  // LA CATEGORIA SE DECLARA AL ARRANCAR, no al abrir el descanso: si no la
+  // tocamos nosotros la toca el modulo con lo que traiga de fabrica, y ahi la
+  // musica ya se freno.
+  chequear('la sesion de audio se declara en la raiz de la app',
+    /plataforma\.audio\.preparar\(\)/.test(lay153), true);
+  chequear('y una sola vez', /if \(modoPuesto\) return;/.test(aud153), true);
+  // Y EL TEXTO DE AJUSTES DICE LO QUE PASA AHORA, que es lo contrario.
+  const T153 = (await import('../nucleo/textos.ts')).T;
+  chequear('Ajustes ya no promete cortar la musica',
+    /[Cc]orta tu música/.test(T153.ajustes.sonidoRespeta), false);
+  chequear('dice que suena por encima', /por encima/.test(T153.ajustes.sonidoRespeta), true);
+
+  // ---- 4. LA CAMPANA SE ESCUCHA ----
+  //
+  // "Se escucha poco. Con musica puesta no la escuche." El archivo estaba al
+  // 24,7% de la escala: bajito antes de salir del parlante.
+  {
+    const b = leer153(unir153(R153, 'movil', 'assets', 'bip.wav'));
+    const buf = Buffer.from(b, 'binary');
+    let pico = 0;
+    for (let i = 44; i + 1 < buf.length; i += 2) {
+      const v = Math.abs(buf.readInt16LE(i));
+      if (v > pico) pico = v;
+    }
+    chequear('la campana usa casi toda la escala', pico / 32767 > 0.9, true);
+    // Y DURA LO SUFICIENTE para repetirse: con musica, lo que hace que un
+    // aviso se note no es solo el nivel, es que insista.
+    const dur = (buf.length - 44) / 2 / buf.readUInt32LE(24);
+    chequear('y dura mas de medio segundo', dur > 0.6, true);
+  }
+
+  // ---- 5. LA RACHA NO SE ESCONDE MAS ----
+  //
+  // "La racha desaparece cuando inicio el entrenamiento. Ya pedi que se
+  // quedara y quedo al reves. El numero tiene que estar siempre."
+  const ini153 = sinComentarios153(de153('movil', 'src', 'Inicio.tsx'));
+  const desdeRacha = ini153.indexOf('RachaConRotulo racha=');
+  const tramo = ini153.slice(Math.max(0, desdeRacha - 900), desdeRacha);
+  chequear('la racha no cuelga de que no haya sesion',
+    /\{!sesion\.estado\.corriendo && \(\s*<>/.test(tramo), false);
+  // LA TIRA DE LA SEMANA SI SE VA: son siete puntos que no cambian en medio de
+  // una sesion y empujan el bloque, que es lo que se toca doce veces.
+  chequear('la tira de la semana sigue escondida entrenando',
+    /\{!sesion\.estado\.corriendo && \(\s*<View style=\{estilos\.tira\}>/.test(ini153), true);
+
+  // ---- 6. SE PUEDE ENTRAR AL PERFIL ENTRENANDO ----
+  //
+  // Con la sesion corriendo aparecen DOS chips a la derecha, y la fila del
+  // nombre no cedia: se salia de la pantalla y quedaba sin nada tocable.
+  chequear('la fila del nombre se achica', /flexShrink: 1, minWidth: 96/.test(ini153), true);
+  chequear('el nombre cede antes que la fila', /usuario: \{[^}]*flexShrink: 1/.test(ini153), true);
+  chequear('y los chips no se achican', /sesionViva: \{[^}]*flexShrink: 0/.test(ini153), true);
+  chequear('el nombre no se parte en dos renglones', /numberOfLines=\{1\}/.test(ini153), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

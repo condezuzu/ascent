@@ -518,7 +518,9 @@ export const T = {
     // Las dos frases decían lo contrario de lo que ahora hace la app: el
     // aviso CORTA la música a propósito, porque con auriculares no se escucha
     // de ninguna otra forma.
-    sonidoRespeta: 'Corta tu música el instante que dura el aviso y la deja volver sola.',
+    // DICE LO CONTRARIO QUE HASTA EL 25/9, y es el cambio, no una correccion
+    // de estilo: la app cortaba la musica y ahora no la toca nunca.
+    sonidoRespeta: 'Suena por encima de tu música. Nunca la frena ni la baja.',
     sonidoCorta: 'En este teléfono el sonido puede taparse si tienes música fuerte.',
 
     gimnasio: 'Mi gimnasio',

@@ -382,14 +382,25 @@ export default function Inicio({
             y el nombre juntos y tocables. Antes el nombre era un texto y no
             llevaba a ningún lado — no porque se hubiera decidido así, sino
             porque no había adónde ir. */}
+        {/* POR QUÉ NO SE PODÍA ENTRAR AL PERFIL ENTRENANDO (25/9).
+            La fila no se achicaba. Con la sesión corriendo aparecen DOS chips a
+            la derecha —el cronómetro y el descanso— y entre el avatar, el
+            nombre y las medallas, esta fila necesitaba más ancho del que había:
+            se salía por la izquierda de la pantalla y lo que quedaba tocable
+            era una franja de pocos píxeles, cuando quedaba alguna. Sin sesión
+            hay un solo chip, entra todo, y por eso el perfil se abría bien.
+            `flexShrink` es lo que hace que ceda el nombre en vez de la fila. */}
         <Pressable
           style={estilos.yo}
           onPress={() => router.push('/yo')}
           accessibilityRole="button"
           accessibilityLabel={T.nav.yo}
+          hitSlop={10}
         >
           <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={28} />
-          <Text style={estilos.usuario}>{perfil.username}</Text>
+          <Text style={estilos.usuario} numberOfLines={1}>
+            {perfil.username}
+          </Text>
           {/* LAS MEDALLAS TAMBIÉN ACÁ, y sin tocar: esta fila entera ya es un
               botón que lleva al perfil, y una medalla que se abriera sola
               competiría con ese toque. Se ven; para saber qué son, se entra. */}
@@ -442,11 +453,19 @@ export default function Inicio({
         )}
       </View>
 
-      {/* MIENTRAS ENTRENÁS, INICIO ES EL ENTRENAMIENTO (19/9, lo mismo que la
-          web): la racha y la semana no cambian en medio de una sesión y
-          vuelven al terminar. */}
-      {!sesion.estado.corriendo && (
-      <>
+      {/* EL NÚMERO ESTÁ SIEMPRE (25/9). Estuvo escondido durante la sesión
+          con el argumento de que "mientras entrenás, Inicio es el
+          entrenamiento", y el pedido fue el contrario y es más simple: *"la
+          racha desaparece cuando inicio el entrenamiento. Ya pedí que se
+          quedara y quedó al revés. El número tiene que estar siempre."*
+
+          Y tiene razón hasta por lo que la app dice de sí misma: la racha es
+          LO QUE CUENTA esta app. Esconderla justo en el momento en que estás
+          sumándole un día es esconder el marcador mientras metés el gol.
+
+          LA TIRA DE LA SEMANA SÍ SE VA mientras entrenás, y eso se queda como
+          estaba: son siete puntos que no cambian en medio de una sesión y que
+          empujan el bloque —lo que se toca doce veces— más abajo. */}
       {/* EL ESTADO VACIO NO DICE "no hay datos" (§11). El dia uno no hay
           racha, ni amigos, ni fotos, y esa es la primera impresion de la
           app: un cero gigante seria un boletin de lo que todavia no hiciste.
@@ -462,6 +481,7 @@ export default function Inicio({
         <RachaConRotulo racha={perfil.racha_actual} rango={perfil.rango_actual} />
       )}
 
+      {!sesion.estado.corriendo && (
       <View style={estilos.tira}>
         {semana.map((d) => (
           <View key={d.fecha} style={estilos.tiraDia}>
@@ -485,7 +505,6 @@ export default function Inicio({
           </View>
         ))}
       </View>
-      </>
       )}
 
       {impulsos && (
@@ -736,14 +755,16 @@ const estilos = StyleSheet.create({
   // Transparente: detrás está el fondo, que ya pinta el color de base.
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64 },
   centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },
-  yo: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // FLEXIBLE Y CON MINIMO: cede el nombre, nunca la fila entera. Ver el
+  // comentario de la cabecera.
+  yo: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1, minWidth: 96 },
   cabecera: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 30,
   },
-  usuario: { color: '#e8ecf6', fontSize: 16, fontWeight: '600' },
+  usuario: { color: '#e8ecf6', fontSize: 16, fontWeight: '600', flexShrink: 1 },
   etiqueta: { color: '#8a93a8', fontSize: 10, letterSpacing: 4, textTransform: 'uppercase' },
   racha: { color: '#c4c2ba', fontSize: 92, fontWeight: '300', lineHeight: 100 },
 
@@ -808,7 +829,8 @@ const estilos = StyleSheet.create({
   },
   chipTexto: { color: '#c4c2ba', fontSize: 13, fontVariant: ['tabular-nums'] },
   latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7e8ca8' },
-  sesionViva: { flexDirection: 'row', gap: 8 },
+  // No se achica: los dos chips son numeros y un numero cortado no se lee.
+  sesionViva: { flexDirection: 'row', gap: 8, flexShrink: 0 },
   chipListo: { backgroundColor: '#c4c2ba', borderColor: '#c4c2ba' },
   chipTextoListo: { color: '#05060a' },
 
