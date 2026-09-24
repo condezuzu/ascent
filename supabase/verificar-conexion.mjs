@@ -89,7 +89,10 @@ console.log('\nLas funciones calculan bien');
 // "could not find the function" por la firma y parece que no existiera.
 console.log('\nSin sesión todo está cerrado');
 const RPCS = [
-  ['registrar_dia', { p_es_descanso: false, p_peso: null }],
+  // La firma cambió y esto no: `registrar_dia` toma `p_origen`, no el par
+  // viejo. Con los argumentos equivocados PostgREST contesta "could not find
+  // the function" —por la firma— y el chequeo lo leía como "no existe".
+  ['registrar_dia', { p_origen: 'manual' }],
   ['verificar_perdida', {}],
   ['recalcular_desde_cero', {}],
   ['cerrar_retos_vencidos', {}],
@@ -186,8 +189,12 @@ console.log('\nCronómetro de sesión');
     chequear('sesiones no entrega datos', denegado(err?.message) || (data ?? []).length === 0, true);
 
     // las dos constantes están abiertas, como rango_de_racha: son números
+    //
+    // SON DOS HORAS DESDE LA MIGRACIÓN 37, no cuatro. El cierre por
+    // inactividad bajó el tope y esto se quedó con el número viejo: el
+    // chequeo fallaba contra una producción que estaba bien.
     const { data: tope } = await db.rpc('tope_sesion');
-    chequear('tope_sesion son 4 horas', tope, '04:00:00');
+    chequear('tope_sesion son 2 horas', tope, '02:00:00');
 
     for (const [fn, args] of [
       ['iniciar_sesion', {}],
@@ -289,7 +296,12 @@ console.log('\nProducción tiene la forma del repo');
         raw_user_meta_data jsonb default '{}'::jsonb);
       create function auth.uid() returns uuid language sql stable as $fn$
         select nullif(current_setting('test.uid', true), '')::uuid; $fn$;
-      create role authenticated; create role anon;
+      -- LAS TRES, y service_role no es de adorno: alguna migracion le otorgo
+      -- permisos y sin el rol el replay CORTA ("role service_role does not
+      -- exist"). Cortaba justo antes de la unica parte que comprueba las dos
+      -- politicas de storage, que por eso no las estaba comprobando nadie:
+      -- test:db las deja explicitamente para aca.
+      create role authenticated; create role anon; create role service_role;
     `);
     const { readFileSync } = await import('node:fs');
     const { fileURLToPath } = await import('node:url');

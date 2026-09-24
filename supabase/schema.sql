@@ -1448,7 +1448,10 @@ $$;
 -- mismas cuentas. La sección 26 de test:db compara las dos copias.
 -- -------------------------------------------------------------
 
--- A las 4 horas la sesión se cierra sola y queda SIN duración (§17.3).
+-- A las 2 horas sin tocar nada la sesión se cierra sola y queda SIN duración
+-- (§17.3). Eran cuatro hasta la migración 37, que agregó el cierre por
+-- inactividad: con media hora de inactividad cerrando sesiones, cuatro horas
+-- era un tope que ya no se alcanzaba nunca.
 create or replace function public.ventana_inactividad()
 returns interval language sql immutable as $$ select interval '30 minutes' $$;
 

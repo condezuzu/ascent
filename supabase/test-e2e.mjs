@@ -291,7 +291,7 @@ console.log('\n11. Reto');
 }
 
 // =====================================================================
-console.log('\n12. Pérdida de racha: resta 10');
+console.log('\n12. Las vidas cubren el hueco, y devolverlas corta la racha');
 {
   // Borrar solo hoy NO corta nada: la racha vive hasta ayer y hoy todavía se
   // puede registrar. Para cortarla de verdad hay que dejar ayer vacío.
@@ -306,10 +306,29 @@ console.log('\n12. Pérdida de racha: resta 10');
   const vivos = SEMBRADOS - 1;
   chequear(`quedan ${vivos} días, cortados anteayer`, p0.racha_actual, vivos);
 
+  // ────────────────────────────────────────────────────────────────
+  // ESTO ESPERABA UNA PÉRDIDA Y YA NO PASA, y no es un bug: es que las
+  // VIDAS llegaron después de que se escribió esto (`mis_impulsos`). Con una
+  // racha de 38 hay tres ganadas, y el hueco de ayer lo cubre una sola —así
+  // que `verificar_perdida` no corta nada—. El chequeo viejo fallaba contra
+  // una base que estaba haciendo exactamente lo que tiene que hacer.
+  //
+  // LAS VIDAS NO SE GASTAN AL ABRIR LA APP sino cuando la base mira el hueco,
+  // que es justo esta llamada.
   const { data } = await A.rpc('verificar_perdida');
-  chequear('detecta el corte y resta 10', [data?.perdida, data?.racha], [true, vivos - 10]);
+  chequear('con vidas ganadas, el hueco se cubre y no hay pérdida', data?.perdida, false);
+  const { data: imp } = await A.rpc('mis_impulsos');
+  chequear('con racha 38 hay tres ganadas y se usó una', [imp?.total, imp?.quedan], [3, 2]);
+  chequear('y la que se usó es la de ayer', imp?.vigentes, [iso(1)]);
+  chequear('la racha sigue entera', (await A.from('profiles').select('racha_actual').eq('id', idA).single()).data.racha_actual, vivos);
+
+  // DEVOLVERLA ES LO QUE CORTA: es la decisión de "ese día no entrené, no me
+  // lo regales". Ahí sí corre la regla del -10.
+  const { data: dev } = await A.rpc('devolver_impulsos', { p_fechas: [iso(1)] });
+  chequear('se devuelve la vida', dev?.devueltas, 1);
+  chequear('y ahí sí corta', dev?.perdida?.perdida, true);
   const { data: p } = await A.from('profiles').select('racha_actual, rango_actual').eq('id', idA).single();
-  chequear('bajó justo un rango', [p.racha_actual, p.rango_actual], [vivos - 10, 3]);
+  chequear('baja 10, no a cero, y baja justo un rango', [p.racha_actual, p.rango_actual], [vivos - 10, 3]);
 }
 {
   const { data } = await A.rpc('verificar_perdida');
