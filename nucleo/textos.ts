@@ -1292,10 +1292,17 @@ export const T = {
 
   // ---------------------------------------------------------------
   yo: {
-    // El globo de la primera vez. Desde el 19/9 el perfil muestra las fotos
-    // como las ve un amigo y no se administran acá: lo que no se entiende solo
-    // es eso, y dónde se elige.
-    globo: 'Aquí ves tus fotos como las ven tus amigos. Cuáles compartes se elige en el Álbum.',
+    // EL GLOBO DE LA PRIMERA VEZ, y quedó diciendo UNA sola cosa (26/9).
+    //
+    // Decía "Aquí ves tus fotos como las ven tus amigos. Cuáles compartes se
+    // elige en el Álbum", que es la oración que se señaló: *"nadie habla
+    // así"*. Se cambió el pie por un título de dos palabras —"Álbum
+    // público"— y el globo quedó repitiendo la mitad de eso con la redacción
+    // vieja, o sea las dos cosas en pantalla a la vez, que es peor que antes.
+    //
+    // Ahora el título dice QUÉ es y QUIÉN lo ve, y al globo le queda lo único
+    // que el título no puede decir: dónde se elige.
+    globo: 'Eliges cuáles compartes en el Álbum.',
     cambiarFoto: 'Cambiar la foto de perfil',
     subiendoFoto: 'subiendo la foto…',
     deRacha: (n: number) => `${n} de racha`,
