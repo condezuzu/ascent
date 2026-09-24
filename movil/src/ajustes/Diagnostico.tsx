@@ -266,9 +266,16 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
           </Pressable>
           <Text style={estilos.nota}>{T.ajustes.diagCuadrosNota}</Text>
           {cuadros && (
-            <Text style={estilos.nota}>
-              {T.ajustes.diagCuadrosListo(cuadros.fps, cuadros.peor, cuadros.largos)}
-            </Text>
+            <>
+              <Text style={estilos.nota}>
+                {T.ajustes.diagCuadrosListo(cuadros.fps, cuadros.peor, cuadros.largos)}
+              </Text>
+              {cuadros.largos > 0 && (
+                <Text style={estilos.nota}>
+                  {T.ajustes.diagCuadrosArranque(cuadros.enElArranque, cuadros.largos)}
+                </Text>
+              )}
+            </>
           )}
 
           {/* EN UN CAMPO DE TEXTO Y NO EN UNA LISTA: así se puede desplazar y

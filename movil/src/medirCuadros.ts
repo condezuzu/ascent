@@ -23,6 +23,17 @@ import { anotar } from '@compartido/bitacora';
  * se siente es EL PEOR CUADRO y cuántos se pasaron del presupuesto. Los tres
  * números van juntos.
  *
+ * Y NI ASÍ ALCANZA: TAMBIÉN HACE FALTA CUÁNDO (26/9). La primera medición en
+ * el teléfono dio 57,3 cuadros por segundo, 16 largos (1,4 %) y el peor de 104
+ * ms, y con eso no se puede decidir nada: dieciséis largos repartidos parejo
+ * en veinte segundos serían algo que pasa todo el tiempo y hay que arreglar;
+ * los mismos dieciséis amontonados en los dos primeros son el arranque —salir
+ * de Ajustes, Inicio pidiendo sus datos— y no hay nada que arreglar.
+ *
+ * Son los mismos tres números. Lo único que cambia es que ahora se anota el
+ * SEGUNDO en que cayó cada largo, y cuántos fueron mientras la medición todavía
+ * se estaba acomodando.
+ *
  * SE ANOTA EN LA BITÁCORA, que es lo que ya se puede compartir desde
  * Diagnóstico: medir en el gimnasio y leer el número en casa es el mismo
  * problema que resolvió el resto de esa pantalla.
@@ -38,6 +49,14 @@ const PRESUPUESTO_MS = 1000 / 60;
  */
 const LARGO_MS = PRESUPUESTO_MS * 2;
 
+/**
+ * Los primeros segundos de una medición son el arranque, no la app: se apretó
+ * un botón, se cerró Ajustes, la pantalla de abajo volvió a pedir sus datos.
+ * No se descartan —esconder cuadros es la forma más fácil de mentir con una
+ * medición— pero se cuentan aparte.
+ */
+const ARRANQUE_S = 3;
+
 export type Medicion = {
   /** Cuántos cuadros se vieron. */
   cuadros: number;
@@ -51,6 +70,10 @@ export type Medicion = {
   largos: number;
   /** Qué porcentaje del total son esos. */
   porcentajeLargos: number;
+  /** En qué segundo cayó cada largo, para saber si son el arranque o no. */
+  cuando: number[];
+  /** Cuántos de esos largos fueron en los primeros `ARRANQUE_S` segundos. */
+  enElArranque: number;
 };
 
 let corriendo = false;
@@ -78,6 +101,7 @@ export function medirCuadros(segundos = 20, comoSeLlama = 'cuadros'): Promise<Me
     let cuadros = 0;
     let peor = 0;
     let largos = 0;
+    const cuando: number[] = [];
 
     const paso = () => {
       const ahora = Date.now();
@@ -87,7 +111,12 @@ export function medirCuadros(segundos = 20, comoSeLlama = 'cuadros'): Promise<Me
       // apretar el botón y que el bucle arranque, que no es un cuadro lento.
       if (cuadros > 0) {
         if (hueco > peor) peor = hueco;
-        if (hueco > LARGO_MS) largos++;
+        if (hueco > LARGO_MS) {
+          largos++;
+          // Con un decimal alcanza y el renglón de la bitácora entra: lo que
+          // se mira es si están todos juntos al principio o repartidos.
+          cuando.push(Math.round(((ahora - arranque) / 1000) * 10) / 10);
+        }
       }
       cuadros++;
 
@@ -98,6 +127,7 @@ export function medirCuadros(segundos = 20, comoSeLlama = 'cuadros'): Promise<Me
       }
 
       corriendo = false;
+      const enElArranque = cuando.filter((s) => s <= ARRANQUE_S).length;
       const medicion: Medicion = {
         cuadros,
         ms,
@@ -105,11 +135,17 @@ export function medirCuadros(segundos = 20, comoSeLlama = 'cuadros'): Promise<Me
         peor,
         largos,
         porcentajeLargos: cuadros > 1 ? Math.round((largos / (cuadros - 1)) * 1000) / 10 : 0,
+        cuando,
+        enElArranque,
       };
       void anotar(comoSeLlama, {
         fps: medicion.fps,
         peor: `${medicion.peor} ms`,
         largos: `${medicion.largos} (${medicion.porcentajeLargos}%)`,
+        // LOS PRIMEROS DOCE Y NO TODOS: es un renglón de una bitácora que se
+        // lee en un teléfono, y doce ya dicen si están amontonados o no.
+        cuando: cuando.slice(0, 12).join(' ') + (cuando.length > 12 ? ' …' : ''),
+        enElArranque: `${enElArranque} de ${largos} en los primeros ${ARRANQUE_S} s`,
         cuadros: medicion.cuadros,
         segundos: Math.round(ms / 100) / 10,
       });

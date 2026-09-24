@@ -11361,6 +11361,22 @@ console.log('\n161. Pulido: lo que cuesta el fondo, y como medirlo en el telefon
     /setState|useState/.test(med161.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '')), false);
   chequear('el resultado queda en la bitacora', /void anotar\(comoSeLlama, \{/.test(med161), true);
   chequear('y Diagnostico lo puede arrancar', /await medirCuadros\(\);/.test(dia161), true);
+
+  // ---- Y DONDE CAYERON (26/9) ----
+  //
+  // La primera medicion en el telefono dio 57,3 cuadros por segundo, 16 largos
+  // (1,4%) y el peor de 104 ms. Con eso no se decide nada: dieciseis largos
+  // repartidos parejo en veinte segundos serian algo que pasa todo el tiempo;
+  // los mismos dieciseis amontonados en los dos primeros son el arranque
+  // —salir de Ajustes, Inicio pidiendo sus datos— y no hay nada que arreglar.
+  chequear('se anota el segundo de cada largo', /cuando\.push\(/.test(med161), true);
+  chequear('y cuantos fueron en el arranque',
+    /const enElArranque = cuando\.filter\(\(s\) => s <= ARRANQUE_S\)\.length;/.test(med161), true);
+  // NO SE DESCARTAN: esconder cuadros es la forma mas facil de mentir con una
+  // medicion. Se cuentan aparte, que es otra cosa.
+  chequear('los del arranque NO se descartan del total',
+    /porcentajeLargos: cuadros > 1 \? Math\.round\(\(largos \/ \(cuadros - 1\)\)/.test(med161), true);
+  chequear('y Diagnostico lo dice', /diagCuadrosArranque\(cuadros\.enElArranque, cuadros\.largos\)/.test(dia161), true);
 }
 
 console.log('\n162. La condicion del cuerpo es de la persona, no de la pantalla');

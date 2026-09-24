@@ -765,6 +765,10 @@ export const T = {
     // siente es el peor cuadro.
     diagCuadrosListo: (fps: number, peor: number, largos: number) =>
       `${fps} cuadros por segundo · el peor tardó ${peor} ms · ${largos} largos`,
+    // DÓNDE CAYERON, que es lo que decide si hay algo que arreglar: los mismos
+    // largos amontonados al principio son el arranque; repartidos, son la app.
+    diagCuadrosArranque: (enElArranque: number, largos: number) =>
+      `${enElArranque} de ${largos} fueron en los primeros segundos`,
   },
 
   // ---------------------------------------------------------------
