@@ -20,6 +20,7 @@ import '../src/llegadaDeFondo';
 import { sesionDesdeEnlace } from '../src/enlace';
 import { ProveedorDeSesion } from '../src/sesionDeLaApp';
 import { buscarAlArrancar, useAplicarLoQueEsteListo } from '../src/actualizaciones';
+import { fijarZonaDelTelefono } from '../src/zonaHoraria';
 import { loVisible } from '../src/loVisible';
 import { anotar, marcarListo, registrarError } from '../src/cajaNegra';
 
@@ -163,6 +164,28 @@ export default function Layout() {
     });
     return () => data.subscription.unsubscribe();
   }, [mirar]);
+
+  // LA ZONA HORARIA DEL TELÉFONO, al entrar y al volver al frente (26/9).
+  //
+  // El servidor cuenta "hoy" en la zona del perfil, que de fábrica es
+  // Montevideo. La App Store es mundial: sin esto, quien esté en otro huso
+  // registra el día con el calendario uruguayo y cerca de la medianoche local
+  // eso corta o dobla una racha. Se fija al pasar a 'con' (forzado) y en cada
+  // vuelta al frente por si cruzó un huso viajando. El RPC no escribe si no
+  // cambió, y `fijarZonaDelTelefono` tampoco reenvía si no cambió. Es JS puro
+  // (Intl) y no toca `onAuthStateChange`, así que no roza el interbloqueo de
+  // arriba. Ver `src/zonaHoraria.ts`.
+  useEffect(() => {
+    if (sesion !== 'con') return;
+    void fijarZonaDelTelefono(true);
+    const sub = AppState.addEventListener('change', (e) => {
+      if (e === 'active') void fijarZonaDelTelefono();
+    });
+    return () => sub.remove();
+    // Solo al pasar a 'con', igual que el chequeo de actualización: colgarlo de
+    // cada renovación de token sería reenviar la zona sin motivo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesion === 'con']);
 
   // Y EL TOKEN SE RENUEVA SOLO MIENTRAS LA APP ESTÁ ADELANTE.
   //
