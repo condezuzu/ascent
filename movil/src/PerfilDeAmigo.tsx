@@ -123,6 +123,9 @@ export default function PerfilDeAmigo() {
         planeta={planetaDeDia(usuario.racha_actual)}
         esquina="abajo-derecha"
         velo={0.72}
+        // ES EL CUERPO DE ÉL: tu día de descanso no apaga su planeta. Ver
+        // `ponerEstadoDelCuerpo` en `pedidoDeFondo.ts`.
+        ajeno
       />
       <ScrollView contentContainerStyle={estilos.pantalla}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={estilos.volver}>

@@ -52,8 +52,21 @@ const FRENO = Number(process.env.CUADROS_FRENO ?? 4);
 // contaría el temblor del reloj.
 const LARGO_MS = (1000 / 60) * 2;
 
+// LA DENSIDAD IMPORTA MAS QUE LA CPU, y por eso se emula.
+//
+// El cuerpo se dibuja con un shader POR PIXEL: el costo es, casi exactamente,
+// cuántos píxeles hay. Chromium sin emular nada corre a densidad 1 y un iPhone
+// a 3, así que sin esto se mide un noveno del trabajo — y encima
+// `factorDeTope()` de `FondoRaiz`, que es lo que topa la densidad a 2, ni
+// siquiera llega a activarse: con densidad 1 no hay nada que topar.
+const DENSIDAD = Number(process.env.CUADROS_DPR ?? 3);
+
 const nav = await chromium.launch();
-const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, locale: 'es-UY' });
+const ctx = await nav.newContext({
+  viewport: { width: 390, height: 844 },
+  deviceScaleFactor: DENSIDAD,
+  locale: 'es-UY',
+});
 const page = await ctx.newPage();
 
 // CONTAR LOS DIBUJOS DEL MOTOR. Se cuenta el `clear` de WebGL y no cada
@@ -143,7 +156,7 @@ async function deslizar(x0, x1, y = 500, pasos = 24) {
 const CLAVE_FONDO = 'ascent:fondo';
 const SIN_MOTOR = process.argv.includes('--sin-motor');
 
-console.log(`\nCuadros de la app nativa · CPU frenada ${FRENO}x · ${SIN_MOTOR ? 'SIN' : 'con'} el fondo\n`);
+console.log(`\nCuadros de la app nativa · CPU ${FRENO}x · densidad ${DENSIDAD} · ${SIN_MOTOR ? 'SIN' : 'con'} el fondo\n`);
 
 // ---- entrar ----
 await page.goto(BASE, { waitUntil: 'networkidle', timeout: 240000 });
@@ -166,6 +179,19 @@ await page.waitForTimeout(6000);
 // EL FRENO VA DESPUÉS DE ENTRAR: frenar la CPU durante el arranque hace que el
 // login tarde minutos y no agrega nada a lo que se quiere medir.
 await cdp.send('Emulation.setCPUThrottlingRate', { rate: FRENO });
+
+// QUE TAMANO TIENE EL LIENZO DEL MOTOR DE VERDAD. Sin esto no hay forma de
+// saber si un cambio en DENSIDAD_TOPE llego a la pagina: el recargado en
+// caliente de Metro tarda, y una medicion contra el codigo viejo se ve igual
+// que una sin efecto.
+const lienzo = await page.evaluate(() => {
+  const c = document.querySelector('canvas');
+  if (!c) return null;
+  const r = c.getBoundingClientRect();
+  return { buffer: [c.width, c.height], vista: [Math.round(r.width), Math.round(r.height)] };
+});
+console.log(`  lienzo del motor: ${lienzo ? lienzo.buffer.join('x') + ' pixeles (vista ' + lienzo.vista.join('x') + ')' : 'no hay'}`);
+console.log('');
 
 const filas = [];
 

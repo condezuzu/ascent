@@ -11363,6 +11363,118 @@ console.log('\n161. Pulido: lo que cuesta el fondo, y como medirlo en el telefon
   chequear('y Diagnostico lo puede arrancar', /await medirCuadros\(\);/.test(dia161), true);
 }
 
+console.log('\n162. La condicion del cuerpo es de la persona, no de la pantalla');
+{
+  const { readFileSync: leer162 } = await import('node:fs');
+  const { join: unir162 } = await import('node:path');
+  const R162 = unir162(import.meta.dirname, '..');
+  const de162 = (...p) => leer162(unir162(R162, ...p), 'utf8');
+
+  // QUE SE ROMPIA. Inicio pedia el fondo con cinco banderas —dia de descanso,
+  // racha perdida, cuenta vacia, presagio y el fantasma del record— y las
+  // otras SEIS pantallas pedian el mismo cuerpo sin ninguna. Esas banderas son
+  // parte de la identidad de la escena (`claveDeEscena`), asi que en cualquier
+  // dia en que alguna fuera cierta, salir de Inicio hacia CUALQUIER pestana
+  // armaba la escena de nuevo: seis shaders y tres programas recompilados, a
+  // mitad del deslizamiento.
+  //
+  // Y es el peor tipo de tiron: solo aparece algunos dias, asi que mirando la
+  // app un martes cualquiera no esta.
+  //
+  // ESTO NO ES UN CHEQUEO DE TEXTO: se importa el modulo y se lo hace andar.
+  // `pedidoDeFondo.ts` solo importa `createContext` de react y un TIPO del
+  // motor, asi que corre en node tal cual.
+  const { pedirFondo, soltarFondo, escucharFondo } = await import('../movil/src/pedidoDeFondo.ts');
+
+  let visto = null;
+  const dejarDeMirar = escucharFondo((p) => { visto = p; });
+
+  // Un dia de descanso. Inicio es el unico que lo sabe —tiene los logs y los
+  // descansos— y por eso es el unico que lo nombra.
+  pedirFondo('inicio', {
+    rango: 4, planeta: 'marte', esquina: 'abajo-derecha', atmosfera: true,
+    reposo: true, apagado: false, vacio: false, presagio: false, fantasma: null,
+  });
+  chequear('Inicio nombra el reposo', visto?.reposo, true);
+
+  // Cambiar de pestana: Inicio suelta, el album pide. Antes, el album pedia
+  // sin `reposo` y la escena se armaba de nuevo.
+  soltarFondo('inicio');
+  pedirFondo('album', { rango: 4, planeta: 'marte', velo: 0.72 });
+  chequear('el album hereda el reposo sin nombrarlo', visto?.reposo, true);
+  // LO QUE LA PANTALLA SI ELIGE no se toca: el velo y la esquina son suyos, y
+  // ademas no entran en la clave de la escena.
+  chequear('y se queda con su velo', visto?.velo, 0.72);
+
+  // LA PRUEBA DE QUE NO SE REARMA: la clave de la escena, que es la que decide
+  // si hay que compilar shaders otra vez, sale igual de los dos lados.
+  const { claveDeEscenaParaProbar } = await import('./clave-de-escena.mjs');
+  const claveAlbum = claveDeEscenaParaProbar(visto);
+  pedirFondo('inicio', {
+    rango: 4, planeta: 'marte', esquina: 'arriba-derecha', atmosfera: true,
+    reposo: true, apagado: false, vacio: false, presagio: false, fantasma: null,
+  });
+  chequear('la escena del album y la de Inicio son LA MISMA',
+    claveDeEscenaParaProbar(visto), claveAlbum);
+
+  // EL PERFIL DE UN AMIGO NO HEREDA: es el unico cuerpo que no es el tuyo, y
+  // tu dia de descanso no tiene por que apagarle el planeta.
+  pedirFondo('amigo', { rango: 6, planeta: null, velo: 0.72, ajeno: true });
+  chequear('el perfil de un amigo no hereda tu reposo', visto?.reposo ?? null, null);
+  chequear('y muestra SU rango', visto?.rango, 6);
+  soltarFondo('amigo');
+  soltarFondo('album');
+  soltarFondo('inicio');
+  dejarDeMirar();
+
+  // ---- Y QUE SIGA SIENDO UNA SOLA PANTALLA LA QUE LAS NOMBRA ----
+  //
+  // La regla es "quien las nombra, las fija". Si manana otra pantalla nombra
+  // una, le estaria fijando la condicion del cuerpo a toda la app sin saberlo.
+  const PANTALLAS = ['Ranking', 'Stats', 'Ajustes', 'Album', 'PerfilPropio', 'MisMarcas', 'PerfilDeAmigo'];
+  for (const p of PANTALLAS) {
+    const src = de162('movil', 'src', `${p}.tsx`);
+    const pedido = (src.match(/<FondoEspacial[\s\S]*?\/>/) ?? [''])[0];
+    chequear(`${p} no nombra las banderas del cuerpo`,
+      /(^|\s)(reposo|apagado|vacio|presagio|fantasma)=/.test(pedido), false);
+  }
+  const ini162 = de162('movil', 'src', 'Inicio.tsx');
+  const pedidoInicio = (ini162.match(/<FondoEspacial[\s\S]*?\/>/) ?? [''])[0];
+  for (const b of ['apagado', 'vacio', 'reposo', 'presagio', 'fantasma']) {
+    chequear(`Inicio si nombra ${b}`, new RegExp(`(^|\\s)${b}=`).test(pedidoInicio), true);
+  }
+  // Y el de un amigo tiene que decir que es ajeno, o le pondriamos tu estado.
+  const ami162 = de162('movil', 'src', 'PerfilDeAmigo.tsx');
+  chequear('el perfil de un amigo se declara ajeno',
+    /ajeno\s*\n?\s*\/>/.test((ami162.match(/<FondoEspacial[\s\S]*?\/>/) ?? [''])[0]), true);
+}
+{
+  // LA COPIA DE LA CLAVE NO SE PUEDE SEPARAR DE LA DE VERDAD. Si alguien
+  // agrega un campo alla y no aca, el chequeo de arriba dejaria de ver
+  // rearmados que si ocurren, y en silencio.
+  const { readFileSync: leer162b } = await import('node:fs');
+  const { join: unir162b } = await import('node:path');
+  const R162b = unir162b(import.meta.dirname, '..');
+  const campos = (txt, desde) => {
+    const i = txt.indexOf(desde);
+    const cuerpo = txt.slice(i, txt.indexOf('].join(', i));
+    return cuerpo
+      .split('\n')
+      .map((l) => l.replace(/\/\/.*/, '').trim())
+      .filter((l) => l.endsWith(','))
+      .map((l) => l.replace(/\s/g, ''));
+  };
+  const real = campos(
+    leer162b(unir162b(R162b, 'movil', 'src', 'FondoRaiz.tsx'), 'utf8'),
+    'function claveDeEscena('
+  );
+  const copia = campos(
+    leer162b(unir162b(R162b, 'supabase', 'clave-de-escena.mjs'), 'utf8'),
+    'export function claveDeEscenaParaProbar('
+  );
+  chequear('la copia de la clave de escena no se separo de la de verdad', copia, real);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
