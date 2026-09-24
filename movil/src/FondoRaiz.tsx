@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Animated,
@@ -160,6 +160,70 @@ export default function FondoRaiz() {
   const [listo, setListo] = useState(false);
   const escena = useRef<Escena | null>(null);
   const yaSeVio = useRef(false);
+
+  /**
+   * ─────────────────────────────────────────────────────────────────────
+   * EL CONTEXTO DE GL SE PIERDE, Y HAY QUE RECONSTRUIRLO (26/9)
+   *
+   * QUÉ PASA CUANDO SE PIERDE. La GPU puede resetear el contexto —presión de
+   * memoria, un pico térmico, el sistema reclamando la GPU— y todo lo que
+   * three tenía compilado ahí (los shaders, los buffers) deja de existir. El
+   * lienzo queda con el último cuadro congelado o en negro, y el próximo
+   * dibujo tira. Forzado en el navegador con `WEBGL_lose_context`, hoy: el
+   * fondo se congela, salta un `Cannot read properties of null` y no vuelve.
+   *
+   * QUÉ SE PUEDE ESCUCHAR, Y DÓNDE. En el navegador (y en la vista web de
+   * :8090) el canvas emite `webglcontextlost`, y el `GLView` de expo lo pasa
+   * por su prop `onContextLost`. En el TELÉFONO, expo-gl NO expone ningún
+   * evento de contexto perdido: su `GLView` nativo solo tiene `onContextCreate`
+   * (verificado en expo-gl 16.0.10). Así que en nativo hay dos redes:
+   *   1. `onContextLost`, que en nativo simplemente no dispara (prop ignorada).
+   *   2. UN VIGILANTE que le pregunta al contexto si se perdió, para los casos
+   *      en que expo-gl sí implemente `isContextLost`. Si no lo implementa, no
+   *      dispara nunca — y no pasa nada, porque una pérdida de contexto de
+   *      verdad en iOS es rara y, cuando ocurre, no hay señal que capturar.
+   *
+   * OJO — LO MÁS COMÚN NO ES ESTO. Pasar a Spotify y volver es
+   * background/foreground, NO pérdida de contexto: iOS conserva el contexto y
+   * el motor solo se pausa y reanuda (`plataforma.ciclo`). Esto es la red para
+   * cuando el contexto se pierde DE VERDAD.
+   *
+   * CÓMO SE RECONSTRUYE. No se puede "restaurar" el contexto viejo: se tira el
+   * `GLView` entero y se monta uno nuevo (con una `key` que cambia), que trae
+   * un `onContextCreate` fresco. Ahí se crea un renderer nuevo y el efecto de
+   * "la escena sigue al pedido" la reconstruye desde cero, shaders incluidos.
+   * El usuario ve un parpadeo del fondo, no una app rota.
+   */
+  const [generacion, setGeneracion] = useState(0);
+  const recuperando = useRef(false);
+  const recuperar = useCallback(() => {
+    // Una sola vez por pérdida: `onContextLost` y el vigilante pueden llamar
+    // los dos, y una segunda reconstrucción a mitad de la primera deja dos
+    // renderers.
+    if (recuperando.current) return;
+    recuperando.current = true;
+    ponerEstadoDelMotor('arrancando');
+    // Soltar lo muerto. Sus llamadas a GL van contra un contexto perdido, así
+    // que cada una puede tirar: envueltas, porque lo que importa es seguir.
+    try {
+      escena.current?.montaje.soltar();
+    } catch {
+      /* el contexto ya no está: no hay nada que soltar */
+    }
+    escena.current = null;
+    try {
+      renderer.current?.dispose();
+    } catch {
+      /* idem */
+    }
+    renderer.current = null;
+    gl.current = null;
+    yaSeVio.current = false;
+    setListo(false);
+    opacidad.setValue(0);
+    // Remonta el `GLView`: nueva `key` → `onContextCreate` de nuevo.
+    setGeneracion((g) => g + 1);
+  }, [opacidad]);
 
   useEffect(() => escucharFondo(setPedido), []);
 
@@ -391,7 +455,26 @@ export default function FondoRaiz() {
     renderer.current = r;
     ponerEstadoDelMotor('andando');
     setListo(true);
+    // La reconstrucción terminó: el vigilante puede volver a disparar si se
+    // pierde otra vez.
+    recuperando.current = false;
   };
+
+  /**
+   * EL VIGILANTE DEL CONTEXTO, para el teléfono (ver el bloque de arriba). En
+   * el navegador `onContextLost` ya avisa; esto es la red para nativo, donde no
+   * hay evento. Cada dos segundos le pregunta al contexto si se perdió — y solo
+   * si el contexto contesta que sí. Si expo-gl no implementa `isContextLost`,
+   * la pregunta no existe y esto no hace nada, que es lo correcto.
+   */
+  useEffect(() => {
+    if (!listo) return;
+    const id = setInterval(() => {
+      const ctx = renderer.current?.getContext() as { isContextLost?: () => boolean } | undefined;
+      if (ctx && typeof ctx.isContextLost === 'function' && ctx.isContextLost()) recuperar();
+    }, 2000);
+    return () => clearInterval(id);
+  }, [listo, recuperar]);
 
   const alMedir = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -432,7 +515,18 @@ export default function FondoRaiz() {
       )}
       {cargar && vistaGL && (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad }]}>
-          <GLView style={vistaGL} onContextCreate={alCrearContexto} />
+          {/* `key` con la generación: al perderse el contexto se sube y el
+              GLView se monta de nuevo con uno fresco. `onContextLost` dispara
+              en la vista web; en nativo lo cubre el vigilante de arriba. */}
+          {/* `onContextLost` solo existe en el `GLView` web; el tipo nativo no
+              lo declara. Va por un spread tipado: en la web llega y dispara, en
+              nativo es una prop de más que se ignora. */}
+          <GLView
+            key={generacion}
+            style={vistaGL}
+            onContextCreate={alCrearContexto}
+            {...({ onContextLost: recuperar } as { onContextLost: () => void })}
+          />
         </Animated.View>
       )}
       {/* EL VELO EXTRA DE LAS OTRAS PESTAÑAS. Va ENTRE el motor y el velo del
