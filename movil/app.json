@@ -19,7 +19,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true
       },
-      "buildNumber": "4"
+      "buildNumber": "5"
     },
     "android": {
       "package": "uy.ascent.app",
