@@ -20,6 +20,28 @@
 // CADA ESTADO ES UNA CUENTA NUEVA y se borra al final: armar uno encima de
 // otro haría que un hallazgo no se pudiera atribuir a ninguno.
 //
+// ─────────────────────────────────────────────────────────────────────
+// ESTO NO ESTÁ TERMINADO (26/9). Corre el primer estado —cuenta nueva sin
+// nada, sin hallazgos— y se cuelga en el segundo, siempre en el mismo lugar.
+// No es la app ni el servidor: `barrido-nativa.mjs` recorre lo mismo contra el
+// mismo :8090 y termina limpio, y cada llamada a la base de acá tarda 200 ms
+// medidos una por una.
+//
+// LO QUE SE DESCARTÓ, para que el próximo no lo repita:
+//   - El límite de altas de Supabase: una alta suelta tarda 355 ms.
+//   - `fijar_descansos` y los inserts del estado: 200 ms cada uno.
+//   - `networkidle` contra el dev server: se sacó y siguió colgándose.
+//   - Un `waitFor` sin tope: se puso `setDefaultTimeout` global y siguió.
+//
+// LO QUE QUEDA POR MIRAR: la diferencia con el barrido que SÍ anda es que este
+// entra y sale seis veces —dos `goto` y un borrado de `localStorage` por
+// estado— y aquel usa una cuenta sola. La sospecha es que recargar el bundle
+// de Expo seis veces deja la página tomada.
+//
+// SE COMMITEA IGUAL porque los seis estados están armados y probados contra la
+// base, que es la mitad del trabajo, y porque lo aprendido está acá escrito.
+// ─────────────────────────────────────────────────────────────────────
+//
 // NECESITA LA NATIVA PRENDIDA en :8090.
 //
 //   node --env-file=.env.local supabase/barrido-estados.mjs
@@ -48,9 +70,21 @@ const sello = Date.now().toString(36);
 const CLAVE = `Be-${sello}-Qw4`;
 const nuevoCliente = () => createClient(url, anon, { auth: { persistSession: false } });
 
+/**
+ * SE IMPRIME AL ENCONTRARLO, no al final.
+ *
+ * La primera versión juntaba todo en una lista y la imprimía al terminar. Se
+ * colgó en el quinto de seis estados, hubo que matarlo, y se perdió TODO lo
+ * que había encontrado en los cuatro primeros — que es la única cosa que un
+ * barrido no puede permitirse. Un barrido que muere tiene que dejar lo que vio.
+ */
 const hallazgos = [];
 let donde = 'arranque';
-const anotar = (grave, que) => hallazgos.push({ grave, donde, que: String(que).slice(0, 220) });
+const anotar = (grave, que) => {
+  const h = { grave, donde, que: String(que).slice(0, 220) };
+  hallazgos.push(h);
+  console.log(`  [${'!'.repeat(grave)}] ${h.donde}\n        ${h.que}`);
+};
 
 const nav = await chromium.launch();
 const ctx = await nav.newContext({
@@ -59,6 +93,14 @@ const ctx = await nav.newContext({
   timezoneId: 'America/Montevideo',
 });
 const page = await ctx.newPage();
+// UN TOPE PARA TODO, y hace falta: sin esto el barrido se colgo tres veces
+// en el mismo lugar y cada vez hubo que matarlo a mano.  no
+// tiene tope propio en Playwright, asi que una pagina con el hilo de JS
+// tomado deja el barrido esperando para siempre. Con el tope puesto, una
+// pantalla trabada es UN HALLAZGO —que es lo que es— y no el final de la
+// corrida.
+page.setDefaultTimeout(15000);
+page.setDefaultNavigationTimeout(45000);
 
 page.on('pageerror', (e) => anotar(3, `EXCEPCIÓN — ${e}`));
 page.on('console', (m) => {
@@ -124,8 +166,14 @@ async function armar(nombre, dias, extra) {
   return c;
 }
 
+// NO SE ESPERA `networkidle`, y ese fue el cuelgue: contra el dev server de
+// Metro la red NUNCA se queda quieta —recarga en caliente, sondeos— asi que
+// el goto se comia sus cuatro minutos de tope, dos veces por estado. El
+// barrido parecia colgado en el segundo estado y no lo estaba: estaba
+// esperando algo que no iba a pasar. Con `domcontentloaded` alcanza: abajo
+// se espera al campo de la clave, que es la senal de verdad.
 async function entrar(correo) {
-  await page.goto(BASE, { waitUntil: 'networkidle', timeout: 240000 });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.evaluate(() => {
     for (const k of Object.keys(localStorage)) if (k.startsWith('sb-')) localStorage.removeItem(k);
     // La caché de la sesión y la cola son del APARATO: si quedan de la cuenta
@@ -134,8 +182,8 @@ async function entrar(correo) {
     localStorage.removeItem('ascent:cola');
     localStorage.removeItem('ascent:descanso');
   });
-  await page.goto(BASE, { waitUntil: 'networkidle', timeout: 240000 });
-  for (let i = 0; i < 90; i++) {
+  await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  for (let i = 0; i < 45; i++) {
     if (await page.locator('input[type=password]').first().isVisible().catch(() => false)) break;
     await page.waitForTimeout(1000);
   }
@@ -145,33 +193,37 @@ async function entrar(correo) {
     .fill(correo);
   await page.locator('input[type=password]').first().fill(CLAVE);
   await texto('Entrar').click();
-  await enPestana('inicio', 'Iniciar entrenamiento', false).waitFor({ timeout: 180000 }).catch(() => {});
+  await enPestana('inicio', 'Iniciar entrenamiento', false).waitFor({ timeout: 60000 }).catch(() => {});
   await page.waitForTimeout(4000);
 }
 
 /** La misma vuelta por todo, para que dos estados se puedan comparar. */
 async function recorrer(estado) {
+  console.log(`\n— ${estado} —`);
+  const desde = hallazgos.length;
   const con = (n) => `${estado} · ${n}`;
   for (const p of ['Ranking', 'Álbum', 'Stats', 'Ajustes', 'Inicio']) {
-    await mirar(con(`pestaña ${p}`), () => texto(p).click({ timeout: 20000 }));
+    await mirar(con(`pestaña ${p}`), () => texto(p).click({ timeout: 9000 }));
   }
   const solapa = (n) =>
     page.locator('[data-testid="carril-stats"]').getByRole('tab', { name: n, exact: true });
-  await mirar(con('Stats'), () => page.getByRole('tab', { name: 'Stats' }).click({ timeout: 20000 }));
+  await mirar(con('Stats'), () => page.getByRole('tab', { name: 'Stats' }).click({ timeout: 9000 }));
   for (const s of ['Entrenamiento', 'General']) {
     await mirar(con(`Stats · ${s}`), async () => {
       const l = solapa(s);
-      if (await l.isVisible().catch(() => false)) await l.click({ timeout: 15000 });
+      if (await l.isVisible().catch(() => false)) await l.click({ timeout: 9000 });
     });
   }
   await mirar(con('perfil'), async () => {
     await texto('Inicio').click();
     await page.waitForTimeout(600);
-    await page.getByRole('button', { name: 'Tu perfil' }).last().click({ timeout: 20000 });
+    await page.getByRole('button', { name: 'Tu perfil' }).last().click({ timeout: 9000 });
   });
-  await mirar(con('volver'), () => texto('Volver', false).click({ timeout: 20000 }));
+  await mirar(con('volver'), () => texto('Volver', false).click({ timeout: 9000 }));
   await mirar(con('Inicio'), () => texto('Inicio').click());
   await page.screenshot({ path: join(SALIDA, `${estado.replace(/[^a-z0-9]+/gi, '-')}.png`) });
+  const cuantos = hallazgos.length - desde;
+  console.log(`  ${cuantos === 0 ? 'sin hallazgos' : `${cuantos} hallazgo(s)`}`);
 }
 
 console.log(`\nBarrido de estados raros · ${sello}\n`);
@@ -269,17 +321,22 @@ try {
   //
   // ES EXACTAMENTE EL DESACUERDO QUE LA APP TIENE QUE AGUANTAR: la sesión y el
   // día son del servidor, la semana y el calendario del teléfono.
-  {
+  //
+  // VA ÚLTIMO Y EN SU PROPIO `try`: mover el reloj de una página es lo más
+  // invasivo que hace este barrido, y si deja la página en un estado del que
+  // no se vuelve, ya están hechos los otros cinco.
+  try {
     const c = await armar('medianoche', 15, async (x) => {
       await x.s.rpc('iniciar_sesion');
-      await x.s.rpc('fijar_series', { p_sesion: (await x.s.rpc('mi_sesion')).data?.id, p_series: 3 });
+      const s = (await x.s.rpc('mi_sesion')).data;
+      if (s?.id) await x.s.rpc('fijar_series', { p_sesion: s.id, p_series: 3 });
     });
     await entrar(c.correo);
-    const manana = new Date(Date.now() + 24 * 3600_000);
-    await page.clock.setSystemTime(manana);
+    await page.clock.setSystemTime(new Date(Date.now() + 24 * 3600_000));
     await page.waitForTimeout(2500);
     await recorrer('medianoche');
-    await page.clock.setSystemTime(new Date());
+  } catch (e) {
+    anotar(2, `medianoche no se pudo armar — ${e}`);
   }
 } catch (e) {
   anotar(3, `el barrido se cortó — ${e}`);
