@@ -147,34 +147,43 @@ const anotar = (grave, que) => {
 };
 
 const nav = await chromium.launch();
-const ctx = await nav.newContext({
-  viewport: { width: 390, height: 900 },
-  locale: 'es-UY',
-  timezoneId: 'America/Montevideo',
-});
-const page = await ctx.newPage();
-// UN TOPE PARA TODO, y hace falta: sin esto el barrido se colgo tres veces
-// en el mismo lugar y cada vez hubo que matarlo a mano. page.evaluate() no
-// tiene tope propio en Playwright, asi que una pagina con el hilo de JS
-// tomado deja el barrido esperando para siempre. Con el tope puesto, una
-// pantalla trabada es UN HALLAZGO —que es lo que es— y no el final de la
-// corrida.
-page.setDefaultTimeout(15000);
-page.setDefaultNavigationTimeout(45000);
 
-page.on('pageerror', (e) => anotar(3, `EXCEPCIÓN — ${e}`));
-page.on('console', (m) => {
-  if (m.type() !== 'error') return;
-  const t = m.text();
-  if (/Failed to load resource|ERR_INTERNET_DISCONNECTED|net::ERR|favicon/.test(t)) return;
-  anotar(1, `consola — ${t}`);
-});
-page.on('response', async (r) => {
-  if (r.status() < 400 || !r.url().includes('supabase')) return;
-  // El 406 de `maybeSingle` sin filas no es un error: es la respuesta.
-  if (r.status() === 406) return;
-  anotar(2, `${r.status()} ${r.url().split('/').slice(-1)[0].slice(0, 80)}`);
-});
+// UN CONTEXTO FRESCO POR ESTADO, y ESE es el arreglo del cuelgue (26/9). La
+// primera versión reusaba una sola página y hacía `entrar()` seis veces: dos
+// `goto` + borrar `localStorage` por estado. Recargar el bundle de Expo en la
+// misma página seis veces la dejaba tomada y el barrido se colgaba en el
+// segundo, siempre. Un contexto nuevo por estado nace sin sesión y sin caché
+// —así que no hay nada que limpiar— y no arrastra el estado del anterior.
+let ctx = null;
+let page = null;
+
+// EL TOPE PARA TODO: sin esto una pantalla con el hilo de JS tomado deja el
+// barrido esperando para siempre (`page.evaluate` no tiene tope propio). Con
+// el tope, una pantalla trabada es UN HALLAZGO, no el final de la corrida.
+async function nuevaPagina() {
+  if (ctx) await ctx.close().catch(() => {});
+  ctx = await nav.newContext({
+    viewport: { width: 390, height: 900 },
+    locale: 'es-UY',
+    timezoneId: 'America/Montevideo',
+  });
+  page = await ctx.newPage();
+  page.setDefaultTimeout(15000);
+  page.setDefaultNavigationTimeout(45000);
+  page.on('pageerror', (e) => anotar(3, `EXCEPCIÓN — ${e}`));
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const t = m.text();
+    if (/Failed to load resource|ERR_INTERNET_DISCONNECTED|net::ERR|favicon|trim/.test(t)) return;
+    anotar(1, `consola — ${t}`);
+  });
+  page.on('response', (r) => {
+    if (r.status() < 400 || !r.url().includes('supabase')) return;
+    // El 406 de `maybeSingle` sin filas no es un error: es la respuesta.
+    if (r.status() === 406) return;
+    anotar(2, `${r.status()} ${r.url().split('/').slice(-1)[0].slice(0, 80)}`);
+  });
+}
 
 const texto = (t, exact = true) => page.getByText(t, { exact }).last();
 const enPestana = (p, t, exact = true) =>
@@ -233,15 +242,9 @@ async function armar(nombre, dias, extra) {
 // esperando algo que no iba a pasar. Con `domcontentloaded` alcanza: abajo
 // se espera al campo de la clave, que es la senal de verdad.
 async function entrar(correo) {
-  await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.evaluate(() => {
-    for (const k of Object.keys(localStorage)) if (k.startsWith('sb-')) localStorage.removeItem(k);
-    // La caché de la sesión y la cola son del APARATO: si quedan de la cuenta
-    // anterior, el estado que se arma no es el que se mira.
-    localStorage.removeItem('ascent:sesion');
-    localStorage.removeItem('ascent:cola');
-    localStorage.removeItem('ascent:descanso');
-  });
+  // Página nueva = contexto nuevo = sin sesión ni caché de la cuenta anterior.
+  // Antes se limpiaba `localStorage` a mano; ahora no hay nada que limpiar.
+  await nuevaPagina();
   await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
   for (let i = 0; i < 45; i++) {
     if (await page.locator('input[type=password]').first().isVisible().catch(() => false)) break;
