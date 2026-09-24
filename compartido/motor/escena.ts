@@ -960,15 +960,74 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   //
   // De la segunda pantalla en adelante el programa ya está en caché del
   // renderer compartido y esto resuelve casi en el acto.
+  // El timer de respaldo del primer cuadro (ver abajo). Vive acá arriba para
+  // que `soltar()` lo pueda cancelar si la escena se suelta antes de dibujar.
+  let respaldoPrimerCuadro: ReturnType<typeof setTimeout> | undefined;
   marca('ascent:shader-inicio');
-  const listo = rend.compileAsync(escena, camara).then(() => {
-    if (!vivo) return;
-    rend.render(escena, camara);
-    l.presentar();
-    marca('ascent:shader-fin');
-    medir('ascent:shader-compilacion', 'ascent:shader-inicio', 'ascent:shader-fin');
-    if (op.animar !== false) l.cuadro(frame);
+  // EL PRIMER CUADRO SE DIBUJA UNA SOLA VEZ, PASE LO QUE PASE CON `compileAsync`.
+  //
+  // `compileAsync` de three sondea `program.isReady()` dentro de un `setTimeout`
+  // (no hay KHR_parallel_shader_compile en expo-gl, así que el sondeo cae a los
+  // 10 ms). Si en esa ventana un material perdió su programa —`soltar()` de
+  // acá abajo hace `material.dispose()`, que borra `currentProgram`; también un
+  // hueco `undefined` en un array de materiales— ese `program` queda `undefined`
+  // y `program.isReady()` TIRA. Y como tira DENTRO de un setTimeout, NO es un
+  // rechazo de la promesa: ningún `.catch` lo agarra, la promesa queda colgada
+  // para siempre, el `.then` no corre y el primer cuadro no se dibuja. En un
+  // teléfono lento y frío eso es el fondo en negro —y `listo` sin resolver deja
+  // el fundido de entrada de la web colgado. La three nativa NO tiene guarda:
+  // depende de que ningún material del arreglo esté sin programa cuando dispara
+  // el timer. La guarda la ponemos nosotros.
+  //
+  // `arrancar()` dibuja el primer cuadro y resuelve `listo` UNA vez
+  // (idempotente), y lo llaman tres caminos: el `.then` normal, un plazo de
+  // respaldo por si el sondeo se colgó, y el `catch` del tiro sincrónico de
+  // `compile()`. Barato: un timer que casi siempre se cancela solo, contra un
+  // fondo en negro para siempre.
+  let arrancado = false;
+  let resolverListo!: () => void;
+  const listo = new Promise<void>((r) => {
+    resolverListo = r;
   });
+  function arrancar() {
+    if (arrancado || !vivo) return;
+    arrancado = true;
+    try {
+      rend.render(escena, camara);
+      l.presentar();
+      marca('ascent:shader-fin');
+      medir('ascent:shader-compilacion', 'ascent:shader-inicio', 'ascent:shader-fin');
+      if (op.animar !== false) l.cuadro(frame);
+    } finally {
+      // Se resuelve SIEMPRE, aun si el render tira: la web espera este `listo`
+      // para el fundido de entrada y colgarlo es peor que un cuadro feo.
+      resolverListo();
+    }
+  }
+  // El respaldo: si a los 400 ms `compileAsync` no arrancó (sondeo colgado por
+  // el tiro de arriba, o la compilación muy lenta), se dibuja igual. Compilar en
+  // el hilo es un tirón de una vez; el negro es para siempre. Se cancela solo en
+  // cuanto arranca por el camino normal, y también en `soltar()`.
+  respaldoPrimerCuadro = setTimeout(arrancar, 400);
+  try {
+    rend
+      .compileAsync(escena, camara)
+      .then(() => {
+        clearTimeout(respaldoPrimerCuadro);
+        arrancar();
+      })
+      .catch(() => {
+        // Un rechazo "normal" de la promesa (no el tiro del setTimeout, que
+        // esto no ve) igual no puede dejar el fondo en negro.
+        clearTimeout(respaldoPrimerCuadro);
+        arrancar();
+      });
+  } catch {
+    // `compile()` corre sincrónico DENTRO de `compileAsync`, antes de devolver
+    // la promesa: si un material es `undefined`, tira acá, no en el setTimeout.
+    clearTimeout(respaldoPrimerCuadro);
+    arrancar();
+  }
 
   // El motor no anima con la app atrás: son sesenta cuadros por segundo de
   // GPU para algo que nadie está mirando.
@@ -1073,6 +1132,10 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
 
   const soltar = () => {
     vivo = false;
+    // Antes de disponer los materiales: si el respaldo del primer cuadro sigue
+    // pendiente, se cancela. `arrancar()` ya se protege con `!vivo`, pero no
+    // dejar timers vivos apuntando a una escena muerta es más limpio.
+    if (respaldoPrimerCuadro) clearTimeout(respaldoPrimerCuadro);
     dejarDeMirar();
     dejarDeMedir();
     dejarDeEscuchar();
