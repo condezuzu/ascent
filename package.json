@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p 3020",
     "lint": "eslint .",
-    "cierre": "npm run lint && npm run test:db && npm run test:conexion && npm run capturas && npm run test:real && npm run barrido && npm run verificar:sw",
+    "cierre": "npm run verificar:servidores && npm run lint && npm run test:db && npm run test:conexion && npm run capturas && npm run test:real && npm run barrido && npm run verificar:sw",
     "barrido": "node --env-file=.env.local supabase/barrido-nativa.mjs",
     "verificar:sw": "node supabase/verificar-sw.mjs",
     "capturas:rangos": "node --env-file=.env.local supabase/capturas-rangos.mjs",
@@ -32,7 +32,8 @@
     "huella": "node supabase/huella.mjs",
     "medir:cuadros": "node --env-file=.env.local supabase/medir-cuadros-nativa.mjs",
     "cuenta:revision": "node --env-file=.env.local supabase/cuenta-de-revision.mjs",
-    "ataque": "node --env-file=.env.local supabase/ataque.mjs"
+    "ataque": "node --env-file=.env.local supabase/ataque.mjs",
+    "verificar:servidores": "node supabase/exigir-servidores.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

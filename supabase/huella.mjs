@@ -26,6 +26,18 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { exigirApagados } from './puertos.mjs';
+
+// LOS DEV SERVERS, APAGADOS ANTES DE BUILDEAR (26/9). Este es el gate previo a
+// `eas build`, y es el momento en que "acordarse de apagar el servidor" dejó de
+// ser un sistema. Aborta claro si hay uno prendido. `FORZAR=1` lo saltea.
+//
+// HONESTO: la build de `store` corre en la NUBE (resourceClass), y su huella
+// sale de los archivos commiteados, no del Metro local — así que un dev server
+// prendido no la contamina de verdad. El guardián igual va: es el ritual donde
+// el humano lo pidió, cuesta nada, y protege una build `--local` si alguna vez
+// se usa.
+await exigirApagados([3020, 8090]);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MOVIL = join(RAIZ, 'movil');
