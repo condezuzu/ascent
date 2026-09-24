@@ -49,7 +49,7 @@ import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { limiteDeSonda } from './utiles.mjs';
 
 limiteDeSonda(25);
@@ -69,6 +69,66 @@ if (!url || !anon) {
 const sello = Date.now().toString(36);
 const CLAVE = `Be-${sello}-Qw4`;
 const nuevoCliente = () => createClient(url, anon, { auth: { persistSession: false } });
+
+/**
+ * LO QUE EL `finally` NO ALCANZA A BORRAR.
+ *
+ * DE DÓNDE SALE. Este barrido se colgó tres veces y hubo que matarlo a mano las
+ * tres. Cada vez, el `finally` que borra las cuentas NO CORRIÓ —un proceso
+ * muerto no ejecuta nada— y quedaron veintiuna cuentas vivas en la base de
+ * producción, con nombre, con días cargados y una hasta con una sesión
+ * abierta. Basura de una herramienta, en la base de verdad.
+ *
+ * Y NO SE ARREGLA BORRANDO MEJOR AL FINAL: el final es justamente lo que no
+ * pasa. Se arregla borrando AL EMPEZAR, que es un momento que sí ocurre
+ * siempre.
+ *
+ * EL ARCHIVO ES LA LISTA DE PENDIENTES. Las cuentas de una corrida solo se
+ * pueden borrar sabiendo su sello —de ahí salen el correo y la clave— así que
+ * el sello se anota antes de crear nada y se tacha al terminar bien. Lo que
+ * quede anotado es una corrida que murió.
+ */
+const PENDIENTES = join(RAIZ, 'capturas', 'estados', '.sellos-sin-borrar');
+
+function leerSellos() {
+  try {
+    return readFileSync(PENDIENTES, 'utf8').split('\n').map((s) => s.trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function anotarSello(s) {
+  const l = leerSellos();
+  if (!l.includes(s)) writeFileSync(PENDIENTES, [...l, s].join('\n') + '\n');
+}
+
+function tacharSello(s) {
+  writeFileSync(PENDIENTES, leerSellos().filter((x) => x !== s).join('\n'));
+}
+
+/** Los nombres de estado que este barrido crea, para poder rearmar los correos. */
+const NOMBRES = ['vacia', 'descanso', 'perdida', 'vida', 'abierta', 'medianoche'];
+
+async function limpiarLoQueQuedo() {
+  const viejos = leerSellos().filter((s) => s !== sello);
+  if (viejos.length === 0) return;
+  let ok = 0;
+  for (const s of viejos) {
+    for (const n of NOMBRES) {
+      const c = createClient(url, anon, { auth: { persistSession: false } });
+      const { error } = await c.auth.signInWithPassword({
+        email: `agusconde20+ascent-estado-${s}-${n}@gmail.com`,
+        password: `Be-${s}-Qw4`,
+      });
+      // La mayoría no va a existir: cada corrida crea las que llegó a crear.
+      if (error) continue;
+      if (!(await c.rpc('eliminar_cuenta')).error) ok++;
+    }
+    tacharSello(s);
+  }
+  console.log(`  ${ok} cuenta(s) de corridas anteriores, borradas.`);
+}
 
 /**
  * SE IMPRIME AL ENCONTRARLO, no al final.
@@ -94,7 +154,7 @@ const ctx = await nav.newContext({
 });
 const page = await ctx.newPage();
 // UN TOPE PARA TODO, y hace falta: sin esto el barrido se colgo tres veces
-// en el mismo lugar y cada vez hubo que matarlo a mano.  no
+// en el mismo lugar y cada vez hubo que matarlo a mano. page.evaluate() no
 // tiene tope propio en Playwright, asi que una pagina con el hilo de JS
 // tomado deja el barrido esperando para siempre. Con el tope puesto, una
 // pantalla trabada es UN HALLAZGO —que es lo que es— y no el final de la
@@ -227,6 +287,12 @@ async function recorrer(estado) {
 }
 
 console.log(`\nBarrido de estados raros · ${sello}\n`);
+
+// ANTES DE CREAR NADA: se barre lo que dejaron las corridas que no llegaron al
+// final, y se anota esta para que la próxima pueda barrer la de ahora si
+// tampoco llega.
+await limpiarLoQueQuedo();
+anotarSello(sello);
 
 try {
   // ─────────────────────────────────────────────────────────────
@@ -361,6 +427,9 @@ try {
     }
   }
   console.log(`  ${borradas} de ${cuentas.length} cuentas borradas.`);
+  // Se tacha solo si se borraron TODAS: si quedó alguna, el sello se queda
+  // anotado y la próxima corrida la limpia.
+  if (borradas === cuentas.length) tacharSello(sello);
 }
 
 console.log('\n================ hallazgos ================');
