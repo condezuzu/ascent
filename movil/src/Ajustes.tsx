@@ -43,6 +43,20 @@ import Diagnostico from './ajustes/Diagnostico';
  * de lo que depende de los puertos. El sexo para el DOTS y el descanso entre
  * series llegan con sus pantallas.
  */
+
+/**
+ * EL PANEL DE DIAGNÓSTICO SOLO EN LAS BUILDS INTERNAS (26/9).
+ *
+ * Es el mismo flag con el que `Raiz` ya esconde el botón flotante de la caja
+ * negra (`EXPO_PUBLIC_DIAGNOSTICO`), y va puesto en los perfiles `telefono`,
+ * `dev` y `minimo` de `eas.json` — pero NO en `store`. El panel de abajo de
+ * Ajustes (la caja negra, el vigilante del gimnasio, medir cuadros, compartir
+ * el log crudo) no leía el flag y se colaba en la build de tienda, visible
+ * para cualquiera. Es un banco de trabajo, no una pantalla de la app: en
+ * producción no va.
+ */
+const CON_DIAGNOSTICO = process.env.EXPO_PUBLIC_DIAGNOSTICO === '1';
+
 export default function Ajustes({
   perfil,
   alCambiar,
@@ -260,9 +274,9 @@ export default function Ajustes({
       <Cuenta perfil={perfil} alSalir={alSalir} />
 
       {/* ABAJO DE TODO Y PLEGADO: no es una pantalla de la app, es el banco de
-          trabajo para leer que vio el vigilante en el gimnasio. Se saca
-          cuando el automatico este probado. */}
-      <Diagnostico perfil={perfil} />
+          trabajo para leer que vio el vigilante en el gimnasio. Solo en las
+          builds internas — en la de tienda no existe (ver `CON_DIAGNOSTICO`). */}
+      {CON_DIAGNOSTICO && <Diagnostico perfil={perfil} />}
     </ScrollView>
     </>
   );

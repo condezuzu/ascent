@@ -20,27 +20,12 @@
 // CADA ESTADO ES UNA CUENTA NUEVA y se borra al final: armar uno encima de
 // otro haría que un hallazgo no se pudiera atribuir a ninguno.
 //
-// ─────────────────────────────────────────────────────────────────────
-// ESTO NO ESTÁ TERMINADO (26/9). Corre el primer estado —cuenta nueva sin
-// nada, sin hallazgos— y se cuelga en el segundo, siempre en el mismo lugar.
-// No es la app ni el servidor: `barrido-nativa.mjs` recorre lo mismo contra el
-// mismo :8090 y termina limpio, y cada llamada a la base de acá tarda 200 ms
-// medidos una por una.
-//
-// LO QUE SE DESCARTÓ, para que el próximo no lo repita:
-//   - El límite de altas de Supabase: una alta suelta tarda 355 ms.
-//   - `fijar_descansos` y los inserts del estado: 200 ms cada uno.
-//   - `networkidle` contra el dev server: se sacó y siguió colgándose.
-//   - Un `waitFor` sin tope: se puso `setDefaultTimeout` global y siguió.
-//
-// LO QUE QUEDA POR MIRAR: la diferencia con el barrido que SÍ anda es que este
-// entra y sale seis veces —dos `goto` y un borrado de `localStorage` por
-// estado— y aquel usa una cuenta sola. La sospecha es que recargar el bundle
-// de Expo seis veces deja la página tomada.
-//
-// SE COMMITEA IGUAL porque los seis estados están armados y probados contra la
-// base, que es la mitad del trabajo, y porque lo aprendido está acá escrito.
-// ─────────────────────────────────────────────────────────────────────
+// SE COLGABA Y YA NO (26/9). La primera versión reusaba una sola página y
+// hacía `entrar()` seis veces —dos `goto` + limpiar `localStorage` cada uno—;
+// recargar el bundle de Expo en la misma página la dejaba tomada y moría en el
+// segundo estado, siempre. El arreglo fue un CONTEXTO DE NAVEGADOR FRESCO por
+// estado (ver `nuevaPagina`): nace sin sesión ni caché, así que no hay nada que
+// limpiar, y no arrastra el anterior. Ahora corre los seis de una.
 //
 // NECESITA LA NATIVA PRENDIDA en :8090.
 //
