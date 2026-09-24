@@ -12,7 +12,8 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["expo", "start", "--web", "--port", "8090"],
       "cwd": "movil",
-      "port": 8090
+      "port": 8090,
+      "env": { "EXPO_PUBLIC_DIAGNOSTICO": "1" }
     }
   ]
 }
