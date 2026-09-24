@@ -13,6 +13,7 @@ import SubidaRango from '../SubidaRango';
 import { C } from '../colores';
 import { comoLeyoLosPasos } from '../plataforma/salud';
 import { comoAnduvoElMotor, type EstadoDelMotor } from '../estadoDelMotor';
+import { comoEstanLosAvisos } from '../plataforma/avisos';
 import { medirCuadros, type Medicion } from '../medirCuadros';
 
 /**
@@ -60,6 +61,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
   const [mirando, setMirando] = useState(false);
   const [pendientes, setPendientes] = useState(0);
   const [zona, setZona] = useState<boolean | null>(null);
+  const [avisos, setAvisos] = useState<Awaited<ReturnType<typeof comoEstanLosAvisos>> | null>(null);
   // Ver la subida de rango sin tener que llegar al día 11. Ver abajo.
   const [verSubida, setVerSubida] = useState(false);
   // El medidor de cuadros. Ver abajo y `medirCuadros.ts`.
@@ -80,6 +82,9 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
     setVisita(await leerVigilancia());
     setLineas(comoTexto(await leerBitacora()));
     setPendientes(await cuantasPendientes());
+    // MIRA, NO PREGUNTA: ver `comoEstanLosAvisos`. Una pantalla de diagnóstico
+    // que abre el diálogo del sistema al entrar sería una trampa.
+    setAvisos(await comoEstanLosAvisos());
   }, [perfil.id]);
 
   useEffect(() => {
@@ -167,6 +172,18 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
     // buscar, es una variable que ya está en memoria, y el panel entero se
     // vuelve a dibujar cada vez que se abre.
     [T.ajustes.diagMotor, DICE_EL_MOTOR[comoAnduvoElMotor()]],
+    [
+      T.ajustes.diagAvisos,
+      avisos === null
+        ? '—'
+        : avisos === 'si'
+          ? T.ajustes.diagAvisosSi
+          : avisos === 'no'
+            ? T.ajustes.diagAvisosNo
+            : avisos === 'sin-decidir'
+              ? T.ajustes.diagAvisosSinDecidir
+              : T.ajustes.diagAvisosNoSe,
+    ],
   ];
 
   return (

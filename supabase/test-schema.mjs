@@ -11491,6 +11491,57 @@ console.log('\n162. La condicion del cuerpo es de la persona, no de la pantalla'
   chequear('la copia de la clave de escena no se separo de la de verdad', copia, real);
 }
 
+console.log('\n163. Pantallas sin salida: la de elegir nombre');
+{
+  const { readFileSync: leer163 } = await import('node:fs');
+  const { join: unir163 } = await import('node:path');
+  const R163 = unir163(import.meta.dirname, '..');
+  const de163 = (...p) => leer163(unir163(R163, ...p), 'utf8');
+
+  // LA TERCERA DE LA MISMA FAMILIA. Las otras dos fueron el perfil sin senal
+  // —una pantalla apilada cuya rama de error no dibujaba el "Volver"— y la
+  // cuenta borrada desde otro aparato, que dejaba un "Reintentar" que no podia
+  // funcionar nunca.
+  //
+  // Esta es peor que las dos: la pantalla de elegir nombre no tiene barra de
+  // pestanas —la cuenta todavia no esta terminada— ni nada apilado abajo, asi
+  // que el unico boton era "Empezar". Sin senal ese boton no puede hacer nada,
+  // porque el nombre se guarda en la base. Y cerrar la app no ayudaba: al
+  // volver hay sesion y sigue sin haber nombre, o sea que la raiz dibuja esta
+  // misma pantalla otra vez.
+  const onb = de163('movil', 'src', 'Onboarding.tsx');
+
+  chequear('hay una salida', /function salir\(\)/.test(onb), true);
+  // EL signOut VA PRIMERO y no alcanza con avisarle a la raiz: `alElegir` es
+  // `mirar`, que vuelve a preguntar si hay sesion. Con la sesion todavia
+  // guardada, la respuesta es que si y se vuelve a entrar a lo mismo.
+  chequear('cierra la sesion antes de avisar',
+    /await supabase\.auth\.signOut\(\)[\s\S]{0,60}alElegir\(\);/.test(onb), true);
+  // SIN RED TAMBIEN, que es el caso en el que esto hace falta: el signOut
+  // contra el servidor falla, pero la sesion local se borra igual, y la local
+  // es la que mira la raiz.
+  chequear('y sin red se sale igual', /signOut\(\)\.catch\(\(\) => \{\}\)/.test(onb), true);
+  chequear('y esta en pantalla', /onPress=\{salir\}/.test(onb), true);
+
+  // ---- Y LAS OTRAS DOS NO SE VUELVEN ATRAS ----
+  for (const [p, que] of [
+    ['PerfilPropio', 'el perfil propio'],
+    ['PerfilDeAmigo', 'el perfil de un amigo'],
+    ['MisMarcas', 'mis marcas'],
+  ]) {
+    const src = de163('movil', 'src', `${p}.tsx`);
+    // El "Volver" tiene que estar FUERA de la rama feliz: en estas tres es una
+    // constante que se dibuja en todas las ramas.
+    chequear(`${que} se puede cerrar siempre`, /router\.back\(\)/.test(src), true);
+  }
+
+  // Y los cuatro modales se pueden cerrar.
+  for (const m of ['Descanso', 'Hoja', 'RachaSalvada', 'SubidaRango']) {
+    const src = de163('movil', 'src', `${m}.tsx`);
+    chequear(`el modal ${m} se puede cerrar`, /onRequestClose=/.test(src), true);
+  }
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

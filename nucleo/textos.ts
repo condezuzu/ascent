@@ -751,6 +751,15 @@ export const T = {
     diagMotorNoArranco: 'NO arrancó: el teléfono no dio contexto de dibujo',
     diagMotorSinPedido: 'todavía no se pidió',
 
+    // ¿DEJASTE QUE AVISE? El permiso se pide recién al programar el primer
+    // descanso, o sea en el gimnasio y con el dedo apurado. Un "no" de hace
+    // semanas se ve, desde afuera, igual que una campana rota.
+    diagAvisos: 'Avisos',
+    diagAvisosSi: 'sí',
+    diagAvisosNo: 'NO — hay que prenderlos en Ajustes del teléfono',
+    diagAvisosSinDecidir: 'todavía no se preguntó',
+    diagAvisosNoSe: 'no se pudo averiguar',
+
     // EL MEDIDOR DE CUADROS. Los scripts de medir corren Chromium con la CPU
     // frenada y lo dicen ellos mismos: son un piso, no una medición. Y dos de
     // los tirones que hay que revisar —deslizar entre pestañas y el globo de

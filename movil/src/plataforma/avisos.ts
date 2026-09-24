@@ -60,6 +60,33 @@ Notifications.addNotificationReceivedListener((n) => {
   alSonar.get(id)?.();
 });
 
+/**
+ * ¿DEJASTE QUE AVISE?, SIN PREGUNTAR.
+ *
+ * POR QUÉ HACE FALTA APARTE de `permiso()`. Ese, si todavía no se decidió,
+ * ABRE EL DIÁLOGO del sistema — es lo que tiene que hacer, porque se llama al
+ * programar el primer descanso y ese es el momento en que el permiso se
+ * entiende. Pero Diagnóstico solo quiere MIRAR: una pantalla de diagnóstico
+ * que abre un diálogo del sistema al entrar sería una trampa.
+ *
+ * Y HACE FALTA. El permiso se pide recién en el primer descanso, así que se
+ * puede haber dicho que no hace semanas, en el gimnasio, con el dedo apurado.
+ * Desde afuera eso se ve igual que una campana rota: el descanso termina y no
+ * suena nada. Esto lo separa en un renglón.
+ */
+export async function comoEstanLosAvisos(): Promise<'si' | 'no' | 'sin-decidir' | 'no-se'> {
+  try {
+    const p = await Notifications.getPermissionsAsync();
+    if (p.granted) return 'si';
+    // `canAskAgain` en falso: ya dijo que no y el sistema no vuelve a
+    // preguntar. Es el caso que hay que poder distinguir, porque la única
+    // salida es Ajustes de iOS.
+    return p.canAskAgain ? 'sin-decidir' : 'no';
+  } catch {
+    return 'no-se';
+  }
+}
+
 export const avisosNativos: Avisos = {
   conPantallaBloqueada() {
     return true;

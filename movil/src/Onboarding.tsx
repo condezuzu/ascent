@@ -36,6 +36,20 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
+  /**
+   * Salir de una cuenta a la que todavía no se le pudo poner nombre.
+   *
+   * `alElegir` es `mirar` en la raíz: vuelve a preguntar si hay sesión. Sin
+   * ella, la raíz dibuja el login. Por eso el `signOut` va antes y no alcanza
+   * con avisar.
+   */
+  async function salir() {
+    // Si el `signOut` no llega al servidor —que es el caso en el que esto hace
+    // falta— igual se borra la sesión local, que es lo que mira la raíz.
+    await supabase.auth.signOut().catch(() => {});
+    alElegir();
+  }
+
   async function guardar() {
     setError('');
     // Se recorta antes de juzgar: al que le sobró un espacio no cometió un
@@ -103,6 +117,20 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
         </Pressable>
 
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
+
+        {/* LA SALIDA, QUE NO ESTABA (26/9).
+            Esta pantalla no tiene barra de pestañas —la cuenta todavía no
+            existe del todo— ni nada apilado abajo, así que el único botón era
+            "Empezar". Sin señal, ese botón no puede hacer nada: el nombre se
+            guarda en la base. Quedabas encerrado, y cerrar la app no ayudaba
+            porque al volver hay sesión y sigue sin haber nombre, o sea que
+            caías justo acá otra vez.
+
+            Es la misma familia que el perfil sin señal y que la cuenta
+            borrada desde otro aparato: una pantalla de la que no se sale. */}
+        <Pressable style={estilos.salir} onPress={salir} hitSlop={8}>
+          <Text style={estilos.salirTexto}>{T.ajustes.cerrarSesion}</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -140,4 +168,7 @@ const estilos = StyleSheet.create({
   apagado: { opacity: 0.6 },
   textoSolido: { color: '#05060a', fontSize: 15, fontWeight: '600' },
   error: { color: '#e8705f', fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
+  // Discreta y abajo: es la salida de emergencia, no una de las dos opciones.
+  salir: { marginTop: 28, alignItems: 'center', paddingVertical: 10 },
+  salirTexto: { color: '#8a93a8', fontSize: 14 },
 });
