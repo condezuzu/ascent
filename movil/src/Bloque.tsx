@@ -359,12 +359,23 @@ const estilos = StyleSheet.create({
   puntoExtra: { width: 11, height: 11, borderRadius: 6, marginTop: 2.5 },
   cuenta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 22 },
   cuentaTotal: { color: C.apagado, fontSize: 12, letterSpacing: 1 },
-  // EL + OCUPA MEDIA PANTALLA: se toca con una mano, transpirado, sin apuntar.
   // La fila de los dos botones: el − angosto y el + con todo lo que sobra.
   filaBotones: { flexDirection: 'row', gap: 8, marginTop: 18 },
+  // A LA MITAD (26/9), de 150 a 75 y el signo de 56 a 28.
+  //
+  // La regla original era "el + ocupa media pantalla: se toca con una mano,
+  // transpirado, sin apuntar", y para UN botón solo estaba bien. Dejó de
+  // estarlo cuando entró el − al lado: ahora son dos bloques de 150 que entre
+  // los dos se comían la pantalla del ejercicio, y el resto —el peso, las
+  // series hechas, la lista— quedaba arriba de todo peleando por lugar.
+  //
+  // 75 NO ES CHICO: el mínimo que pide Apple para un blanco de toque son 44
+  // puntos, así que sigue siendo casi el doble. Lo que se pierde es el "sin
+  // apuntar", y eso lo compensa el ancho: el + se lleva tres cuartos de la
+  // fila, o sea que el blanco real sigue teniendo el tamaño de una mano.
   mas: {
     marginTop: 18,
-    minHeight: 150,
+    minHeight: 75,
     borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 2,
@@ -372,7 +383,7 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.03)',
   },
-  masTexto: { color: C.claro, fontSize: 56, fontWeight: '200' },
+  masTexto: { color: C.claro, fontSize: 28, fontWeight: '200' },
   masCerrar: { backgroundColor: C.claro, borderColor: C.claro, flex: 3, marginTop: 0 },
   // Un cuarto del ancho contra tres: doce sumas contra una resta.
   menos: { flex: 1, marginTop: 0 },
