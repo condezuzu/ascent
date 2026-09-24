@@ -164,10 +164,16 @@ node --env-file=.env.local supabase/cuenta-de-revision.mjs --de-cero
 El correo lleva etiqueta (`+ascent-review`) para poder darla de baja el día que
 la app esté publicada sin tocar la casilla de nadie.
 
+> **Las credenciales NO van acá.** Este archivo está en un repo público, así
+> que el usuario y la contraseña de la cuenta demo van SOLO en el campo "Demo
+> Account" de App Store Connect. Viven en `.env.local` (`DEMO_EMAIL` /
+> `DEMO_PASSWORD`), que no se commitea. La contraseña que estuvo acá antes se
+> rotó el 26/9 y ya no sirve.
+
 ```
 DEMO ACCOUNT (required — the app is sign-in only)
-  Email:    agusconde20+ascent-review@gmail.com
-  Password: AscentReview-2026
+  Email:    (en .env.local → DEMO_EMAIL — pegar en App Store Connect)
+  Password: (en .env.local → DEMO_PASSWORD — pegar en App Store Connect)
 The account already has content on every screen: a 41-day streak (rank 5 of 8),
 46 days of history, two workouts logged today with sets and weights, personal
 records, a body-weight entry and three photos in the album.

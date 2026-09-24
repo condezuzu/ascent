@@ -41,17 +41,18 @@ if (!url || !anon) {
   process.exit(1);
 }
 
-// FIJOS Y ESCRITOS ACÁ. Van en la ficha de la tienda, así que no pueden
-// depender de un sello de tiempo: tienen que ser los mismos la próxima vez que
-// esto corra.
-//
-// EL CORREO ES REAL Y CON ETIQUETA (`+`): Supabase rechaza los dominios
-// inventados, y Apple no le manda nada a esta casilla — solo la escribe en un
-// formulario de login. La etiqueta hace que se pueda borrar el día que la app
-// esté publicada sin tocar nada más.
-const CORREO = 'agusconde20+ascent-review@gmail.com';
-const CLAVE = 'AscentReview-2026';
+// LAS CREDENCIALES SALEN DE .env.local, NO DEL REPO (26/9). La contraseña vieja
+// se commiteó en spec/ficha-tienda.md en un repo público, así que se rotó y
+// ahora vive solo en .env.local (DEMO_EMAIL/DEMO_PASSWORD) y en App Store
+// Connect. El correo es real y con etiqueta (`+`): Supabase rechaza dominios
+// inventados, Apple no le manda nada, y la etiqueta deja borrarla al publicar.
+const CORREO = process.env.DEMO_EMAIL;
+const CLAVE = process.env.DEMO_PASSWORD;
 const USUARIO = 'demo';
+if (!CORREO || !CLAVE) {
+  console.log('Faltan DEMO_EMAIL y DEMO_PASSWORD en .env.local.');
+  process.exit(1);
+}
 
 // LAS DOS AMIGAS (ver el paso 7). Van declaradas acá arriba y no donde se usan
 // porque `--de-cero` tiene que poder borrarlas también: una cuenta que quedó

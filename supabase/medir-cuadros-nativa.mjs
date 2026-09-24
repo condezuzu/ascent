@@ -42,8 +42,9 @@ import { limiteDeSonda } from './utiles.mjs';
 limiteDeSonda(10);
 
 const BASE = 'http://localhost:8090';
-const CORREO = 'agusconde20+ascent-review@gmail.com';
-const CLAVE = 'AscentReview-2026';
+// La cuenta demo sale de .env.local, no del repo (ver cuenta-de-revision).
+const CORREO = process.env.DEMO_EMAIL;
+const CLAVE = process.env.DEMO_PASSWORD;
 // 4x es, más o menos, un teléfono bueno contra esta máquina. El barrido y los
 // medidores de la web usan 6 para simular un Android de gama media; acá se
 // apunta a un iPhone, que es lo que se va a publicar.

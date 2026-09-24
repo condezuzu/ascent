@@ -29,8 +29,9 @@ const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SALIDA = join(RAIZ, 'capturas', 'densidad');
 const FONDO_RAIZ = join(RAIZ, 'movil', 'src', 'FondoRaiz.tsx');
 const BASE = 'http://localhost:8090';
-const CORREO = 'agusconde20+ascent-review@gmail.com';
-const CLAVE = 'AscentReview-2026';
+// La cuenta demo sale de .env.local, no del repo (ver cuenta-de-revision).
+const CORREO = process.env.DEMO_EMAIL;
+const CLAVE = process.env.DEMO_PASSWORD;
 
 // Los tres a comparar. 2 es lo de hoy.
 const TOPES = [2, 1.5, 1];
