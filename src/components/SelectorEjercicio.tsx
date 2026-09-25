@@ -79,7 +79,10 @@ export default function SelectorEjercicio({
     }
   }
 
-  const lista = grupo ? ejercicios.filter((e) => e.grupo === grupo && !e.cuenta_dots) : [];
+  // Los del DOTS aparecen arriba de todo Y TAMBIÉN dentro de su grupo (press de
+  // banca en pecho, sentadilla en piernas, peso muerto en espalda): su `orden`
+  // bajo los deja primeros. Antes se filtraban acá y faltaban donde uno los busca.
+  const lista = grupo ? ejercicios.filter((e) => e.grupo === grupo) : [];
 
   // Al final del body: ver `EnElBody`, que nació de este mismo bug.
   return (
@@ -135,7 +138,7 @@ export default function SelectorEjercicio({
               <button key={g} className="selector-fila zona" onClick={() => setGrupo(g)}>
                 {g}
                 <span className="apagado">
-                  {ejercicios.filter((e) => e.grupo === g && !e.cuenta_dots).length}
+                  {ejercicios.filter((e) => e.grupo === g).length}
                 </span>
               </button>
             ))}

@@ -98,14 +98,18 @@ export default function SelectorEjercicio({
           <Fila
             key={g}
             texto={g.charAt(0).toUpperCase() + g.slice(1)}
-            extra={String(ejercicios.filter((e) => e.grupo === g && !e.cuenta_dots).length)}
+            extra={String(ejercicios.filter((e) => e.grupo === g).length)}
             onPress={() => setGrupo(g)}
           />
         ))}
 
+      {/* Los del DOTS aparecen ARRIBA (arriba de todo) Y TAMBIÉN acá, dentro de
+          su grupo: press de banca en pecho, sentadilla en piernas, peso muerto
+          en espalda. Su `orden` bajo (10/20/30) los deja primeros del grupo.
+          Antes se filtraban con `!e.cuenta_dots` y faltaban donde uno los busca. */}
       {grupo &&
         ejercicios
-          .filter((e) => e.grupo === grupo && !e.cuenta_dots)
+          .filter((e) => e.grupo === grupo)
           .map((e) => <Fila key={e.id} texto={e.nombre} elegido={e.id === valor} onPress={() => elegir(e.id)} />)}
 
       <Pressable style={estilos.cancelar} onPress={alCerrar}>
