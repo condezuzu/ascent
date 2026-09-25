@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
@@ -21,6 +21,7 @@ import { sesionDesdeEnlace } from '../src/enlace';
 import { ProveedorDeSesion } from '../src/sesionDeLaApp';
 import { buscarAlArrancar, useAplicarLoQueEsteListo } from '../src/actualizaciones';
 import { fijarZonaDelTelefono } from '../src/zonaHoraria';
+import { iniciarReporteDeErrores, fijarPantalla } from '../src/reporteDeErrores';
 import { loVisible } from '../src/loVisible';
 import { anotar, marcarListo, registrarError } from '../src/cajaNegra';
 
@@ -84,6 +85,20 @@ export default function Layout() {
   useEffect(() => {
     void plataforma.audio.preparar();
   }, []);
+
+  // EL BUZÓN DE ERRORES DE JS, encendido temprano y una sola vez (26/9). Manda
+  // a Supabase lo que la app no atrapa: un error de JS no sale en el reporte de
+  // crashes de App Store Connect, y una actualización OTA se lo empuja a todos
+  // en segundos. Dispara y se olvida, sin PII. Ver `src/reporteDeErrores.ts`.
+  useEffect(() => {
+    iniciarReporteDeErrores();
+  }, []);
+
+  // La pantalla actual, para que el reporte de un error diga en cuál pasó.
+  const pantalla = usePathname();
+  useEffect(() => {
+    fijarPantalla(pantalla);
+  }, [pantalla]);
 
   // LA ACTUALIZACIÓN QUE YA SE BAJÓ SOLA, apenas se pueda aplicar (23/9).
   // `expo-updates` baja en segundo plano por su cuenta y deja la

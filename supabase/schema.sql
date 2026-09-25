@@ -480,6 +480,37 @@ create table public.feedback (
 );
 
 -- -------------------------------------------------------------
+-- ERRORES DE JS SIN ATRAPAR (el buzón de errores de la app)
+--
+-- POR QUÉ EXISTE. Una actualización por el aire le llega a todos en segundos,
+-- y un error de JS —no un crash nativo— NO aparece en el reporte de fallos de
+-- App Store Connect: pasa en silencio. Este es el único lugar donde queda
+-- rastro de que a alguien, en algún teléfono, la app le tiró.
+--
+-- QUÉ GUARDA Y QUÉ NO. El mensaje, la pila, la pantalla/contexto, la versión de
+-- la app y la de OTA, la plataforma y un id anónimo por instalación. NADA de
+-- datos personales ni contenido del usuario: el id no se puede volver a una
+-- persona, es un número al azar que solo sirve para saber si diez errores son
+-- de diez teléfonos o del mismo.
+--
+-- QUIÉN ESCRIBE Y QUIÉN LEE. Inserta CUALQUIERA, con sesión o sin ella (un
+-- error puede pasar en el login, antes de entrar). NADIE lee desde el cliente:
+-- no hay policy de select, así que solo el dueño lo ve por el panel o con la
+-- service key. Los `check` de largo acotan lo que un insert abierto puede meter.
+-- -------------------------------------------------------------
+create table public.errores_js (
+  id uuid primary key default gen_random_uuid(),
+  creado timestamptz not null default now(),
+  mensaje text check (mensaje is null or char_length(mensaje) <= 2000),
+  stack text check (stack is null or char_length(stack) <= 8000),
+  pantalla text check (pantalla is null or char_length(pantalla) <= 300),
+  version_app text check (version_app is null or char_length(version_app) <= 100),
+  version_ota text check (version_ota is null or char_length(version_ota) <= 100),
+  plataforma text check (plataforma is null or char_length(plataforma) <= 40),
+  id_anonimo text check (id_anonimo is null or char_length(id_anonimo) <= 100)
+);
+
+-- -------------------------------------------------------------
 -- EL DÍA DE CADA USUARIO
 -- -------------------------------------------------------------
 
@@ -2354,6 +2385,7 @@ alter table public.feedback enable row level security;
 alter table public.ejercicios enable row level security;
 alter table public.prs enable row level security;
 alter table public.sesiones enable row level security;
+alter table public.errores_js enable row level security;
 
 -- ¿Somos amigos aceptados? (contempla ambos sentidos)
 -- Solo contesta sobre una amistad de QUIEN PREGUNTA (migración 41): con los
@@ -2414,6 +2446,12 @@ create policy "retos: borrar pendiente" on public.challenges for delete
 -- feedback: cualquiera logueado inserta; nadie lee desde el cliente
 -- (el dueño de la app lo lee desde el dashboard de Supabase)
 create policy "feedback: insertar" on public.feedback for insert with check (auth.uid() = user_id);
+
+-- errores_js: inserta CUALQUIERA, con sesión o sin ella (un error puede pasar
+-- en el login). Nadie lee desde el cliente: sin policy de select, solo el dueño
+-- lo ve por el panel / service key. `with check (true)` porque no hay dueño de
+-- fila que validar — es un buzón, no datos de una cuenta.
+create policy "errores: insertar" on public.errores_js for insert with check (true);
 
 -- ejercicios: catálogo de solo lectura, igual para todos
 create policy "ejercicios: catálogo con sesión" on public.ejercicios for select
@@ -2486,14 +2524,16 @@ create policy "avatares: dueño lista lo suyo" on storage.objects for select
 -- Se parte de cero a propósito y se otorga solo lo necesario, en vez de
 -- confiar en los privilegios por defecto del host: así el schema funciona
 -- igual en un proyecto nuevo, en una restauración o en un Postgres pelado.
--- `anon` no recibe NADA: sin sesión solo se ve la pantalla de entrada.
+-- `anon` casi no recibe NADA: sin sesión solo se ve la pantalla de entrada. La
+-- ÚNICA excepción es insertar en `errores_js` —un error de JS puede tirar en el
+-- login, antes de haber entrado, y ese es justo el que hay que poder ver.
 -- -------------------------------------------------------------
 grant usage on schema public to authenticated, anon;
 
 revoke all on table
   public.profiles, public.logs, public.photos, public.weights,
   public.friendships, public.challenges, public.feedback, public.descansos,
-  public.ejercicios, public.prs, public.sesiones
+  public.ejercicios, public.prs, public.sesiones, public.errores_js
   from anon, authenticated;
 
 -- lectura y escritura mínimas, siempre acotadas después por la RLS
@@ -2507,6 +2547,9 @@ grant select                 on public.weights      to authenticated;
 grant select, insert, delete on public.friendships  to authenticated;
 grant select, insert, delete on public.challenges   to authenticated;
 grant insert                 on public.feedback     to authenticated;
+-- errores_js: SOLO insert, y para los DOS roles (un error puede pasar sin
+-- sesión). Sin select para nadie: el buzón lo lee el dueño por fuera del cliente.
+grant insert                 on public.errores_js   to authenticated, anon;
 grant select                 on public.usuarios_publicos to authenticated;
 -- el catálogo de ejercicios es de solo lectura: lo edita el schema, no la app
 grant select                 on public.ejercicios   to authenticated;
@@ -2785,7 +2828,7 @@ $$;
 grant execute on function public.medallas_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 48; $$;
+returns int language sql immutable as $$ select 49; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

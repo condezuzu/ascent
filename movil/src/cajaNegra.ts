@@ -61,10 +61,29 @@ export function anotar(texto: string) {
   agregar('marca', texto);
 }
 
+// UN SUMIDERO OPCIONAL DE ERRORES, para mandarlos afuera.
+//
+// La caja negra sigue sin importar NADA de la app —esa es toda su gracia: si
+// Supabase o el motor están rotos, esto igual junta el rastro—. Así que no
+// manda ella el error a ningún lado: guarda una función que le registran, y la
+// llama. Quien la registra (`reporteDeErrores.ts`) es el que sí importa
+// Supabase. Si esa función tira, se traga acá: reportar un error NO puede
+// romper el registro del error.
+let sumidero: ((donde: string, e: unknown) => void) | null = null;
+
+export function reportarErroresA(fn: ((donde: string, e: unknown) => void) | null) {
+  sumidero = fn;
+}
+
 /** Un error, con dónde pasó. */
 export function registrarError(donde: string, e: unknown) {
   huboError = true;
   agregar('error', `${donde}: ${describir(e)}`);
+  try {
+    sumidero?.(donde, e);
+  } catch {
+    /* un reporte que falla no puede tapar el error que venía a contar */
+  }
 }
 
 /** La app llegó a una pantalla de verdad (Login, Onboarding o las pestañas). */
