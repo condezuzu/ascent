@@ -5,6 +5,7 @@ import { cargarPerfilDeAmigo, DIAS_VISIBLES, type PerfilDeAmigo as Datos } from 
 import Medallas from './Medallas';
 import { pedirAmistad } from '@compartido/ranking';
 import { DIAS_SEMANA, deISO, enDias, hoyISO, restarDias } from '@nucleo/fechas';
+import { conComa } from '@nucleo/peso';
 import { planetaDeDia } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
@@ -37,6 +38,7 @@ export default function PerfilDeAmigo() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [datos, setDatos] = useState<Datos | null>(null);
+  const [dots, setDots] = useState<number | null>(null);
   const [cargado, setCargado] = useState(false);
   const [error, setError] = useState('');
 
@@ -57,6 +59,18 @@ export default function PerfilDeAmigo() {
     if (!d) setError(T.social.noExiste);
     setDatos(d);
     setCargado(true);
+    // El DOTS del amigo, número crudo. Sale de `ranking_fuerza`, que ya está
+    // gateada a amigos aceptados (self + amigos): un no-amigo no aparece ahí, y
+    // solo lo pedimos si esta persona ES amiga. Nunca expone su peso corporal,
+    // solo el número, que los amigos ya ven en el ranking (§16.7).
+    if (d?.esAmigo) {
+      supabase.rpc('ranking_fuerza').then(({ data }) => {
+        const fila = (data as { id: string; dots: number }[] | null)?.find((f) => f.id === id);
+        setDots(fila && typeof fila.dots === 'number' ? fila.dots : null);
+      });
+    } else {
+      setDots(null);
+    }
   }, [id, router]);
 
   useEffect(() => {
@@ -147,6 +161,11 @@ export default function PerfilDeAmigo() {
               <Insignia rango={usuario.rango_actual} tam={16} />
               <Text style={estilos.metaTexto}>{T.stats.rachaDe(enDias(usuario.racha_actual))}</Text>
             </View>
+            {esAmigo && dots !== null && (
+              <Text style={estilos.dots}>
+                <Text style={estilos.dotsNumero}>{conComa(String(dots))}</Text> DOTS
+              </Text>
+            )}
           </View>
         </View>
 
@@ -197,6 +216,8 @@ const estilos = StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 18, fontWeight: '500' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
   metaTexto: { color: C.sub, fontSize: 13 },
+  dots: { color: C.sub, fontSize: 12, letterSpacing: 1, marginTop: 4 },
+  dotsNumero: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 26 },
   tiraDia: { alignItems: 'center', gap: 7 },
   punto: { width: 26, height: 26, borderRadius: 13 },

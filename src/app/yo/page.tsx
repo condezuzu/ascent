@@ -24,6 +24,7 @@ import { miniaturas } from '@compartido/album';
 import { cargarMisMedallas } from '@compartido/perfil';
 import type { Medalla } from '@nucleo/medallas';
 import Medallas from '@/components/Medallas';
+import { conComa } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
 
 /**
@@ -44,6 +45,7 @@ export default function Yo() {
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
   const [medallas, setMedallas] = useState<Medalla[]>([]);
+  const [dots, setDots] = useState<number | null>(null);
   const [cargado, setCargado] = useState(false);
   const [noCargo, setNoCargo] = useState(false);
   const inputFoto = useRef<HTMLInputElement>(null);
@@ -102,6 +104,12 @@ export default function Yo() {
     setMedallas(misMedallas);
     setPerfil(p);
     setCargado(true);
+    // El DOTS propio, número crudo (dos decimales de la base), no el redondeo
+    // del ranking. Su propia carga: si no llega, el perfil no se rompe.
+    supabase.rpc('mi_fuerza').then(({ data }) => {
+      const d = (data as { dots?: number | null } | null)?.dots;
+      setDots(typeof d === 'number' ? d : null);
+    });
   }, [supabase]);
 
   useEffect(() => {
@@ -254,6 +262,11 @@ export default function Yo() {
               <Insignia rango={perfil.rango_actual} tam={16} />
               <span>{subiendo ? T.yo.subiendoFoto : T.yo.deRacha(perfil.racha_actual)}</span>
             </div>
+            {dots !== null && (
+              <div className="yo-dots">
+                <strong>{conComa(String(dots))}</strong> DOTS
+              </div>
+            )}
           </div>
         </div>
 

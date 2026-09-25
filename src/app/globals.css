@@ -1782,6 +1782,21 @@ body.ya-entro .pantalla.aparece {
   color: var(--sub);
 }
 
+/* El DOTS, número crudo, debajo de la racha. En el perfil propio y en el de un
+   amigo (mismo estilo). */
+.yo-dots {
+  margin-top: 4px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--sub);
+}
+.yo-dots strong {
+  color: var(--tinta);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* LAS MEDALLAS POR MARCA, al lado del nombre. Los mismos números que la app
    nativa (`movil/src/Medallas.tsx`): 18 px y 5 de separación.
 

@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { cargarMiPerfil, type DatosDePerfil } from '@compartido/perfil';
 import { subirAvatar } from '@compartido/avatar';
+import { conComa } from '@nucleo/peso';
 import { planetaDeDia } from '@nucleo/rangos';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
@@ -40,6 +41,7 @@ import { C } from './colores';
 export default function PerfilPropio() {
   const router = useRouter();
   const [datos, setDatos] = useState<DatosDePerfil | null>(null);
+  const [dots, setDots] = useState<number | null>(null);
   const [cargado, setCargado] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const [porQuitar, setPorQuitar] = useState<string | null>(null);
@@ -54,6 +56,13 @@ export default function PerfilPropio() {
     if (!d) setError(T.inicio.noCargo);
     setDatos(d);
     setCargado(true);
+    // El DOTS propio, aparte: su propia carga, y si no llega no rompe el perfil.
+    // Número CRUDO (lo que devuelve la base, dos decimales), no el redondeo del
+    // ranking: acá es tu marca exacta.
+    supabase.rpc('mi_fuerza').then(({ data }) => {
+      const d2 = (data as { dots?: number | null } | null)?.dots;
+      setDots(typeof d2 === 'number' ? d2 : null);
+    });
   }, []);
 
   useEffect(() => {
@@ -178,6 +187,11 @@ export default function PerfilPropio() {
                 {subiendo ? T.yo.subiendoFoto : T.yo.deRacha(perfil.racha_actual)}
               </Text>
             </View>
+            {dots !== null && (
+              <Text style={estilos.dots}>
+                <Text style={estilos.dotsNumero}>{conComa(String(dots))}</Text> DOTS
+              </Text>
+            )}
           </View>
         </View>
 
@@ -245,6 +259,8 @@ const estilos = StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 22, fontWeight: '500' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   metaTexto: { color: C.sub, fontSize: 13 },
+  dots: { color: C.sub, fontSize: 12, letterSpacing: 1, marginTop: 4 },
+  dotsNumero: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 34, marginBottom: 10 },
   amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },

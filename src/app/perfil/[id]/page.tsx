@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { enDias, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
+import { conComa } from '@nucleo/peso';
 import { planetaDeDia } from '@nucleo/rangos';
 import { RETOS_LISTOS } from '@nucleo/reglas';
 import type { Log, Reto, UsuarioPublico } from '@nucleo/tipos';
@@ -39,6 +40,7 @@ export default function Perfil() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [fotos, setFotos] = useState<FotoPerfil[]>([]);
   const [medallas, setMedallas] = useState<Medalla[]>([]);
+  const [dots, setDots] = useState<number | null>(null);
   const [reto, setReto] = useState<Reto | null>(null);
   const [marcador, setMarcador] = useState<{ yo: number; el: number } | null>(null);
   const [cargado, setCargado] = useState(false);
@@ -79,6 +81,12 @@ export default function Perfil() {
     setPedidoPendiente(rel?.estado === 'pendiente');
 
     if (amigos) {
+      // El DOTS del amigo, número crudo. Sale de `ranking_fuerza`, ya gateada a
+      // amigos aceptados; solo se pide porque acá ya se confirmó la amistad.
+      supabase.rpc('ranking_fuerza').then(({ data }) => {
+        const fila = (data as { id: string; dots: number }[] | null)?.find((f) => f.id === params.id);
+        setDots(fila && typeof fila.dots === 'number' ? fila.dots : null);
+      });
       // La RLS permite leer logs y fotos visibles de amigos aceptados.
       const desde = restarDias(hoyISO(), DIAS_VISIBLES - 1);
       const { data: ls } = await supabase
@@ -259,6 +267,11 @@ export default function Perfil() {
                     {T.stats.rachaDe(enDias(usuario.racha_actual))}
                   </span>
                 </div>
+                {esAmigo && dots !== null && (
+                  <div className="yo-dots">
+                    <strong>{conComa(String(dots))}</strong> DOTS
+                  </div>
+                )}
               </div>
             </div>
 
