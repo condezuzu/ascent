@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { supabase } from './supabase';
 import { T } from '@nucleo/textos';
@@ -18,6 +18,7 @@ import Insignia from './Insignia';
 import SeccionFuerza from './SeccionFuerza';
 import AnotarPeso from './AnotarPeso';
 import ListaDePesos from './ListaDePesos';
+import { useRecargarAlVolver } from './irAPestana';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -93,6 +94,27 @@ export default function StatsGeneral({
   // ventana es recortar una serie que ya está en memoria.
   const [pasos, setPasos] = useState<{ fecha: string; valor: number }[] | null>(null);
   const [metaPasos, setMetaPasos] = useState(leerMeta(null));
+
+  // LOS PASOS SON SU PROPIO SEGMENTO, CON SU PROPIA CARGA (27/9).
+  //
+  // El bug: los pasos solo se actualizaban al cerrar y abrir la app. Salían de
+  // un efecto de montaje, y como Stats se queda montada al cambiar de pestaña
+  // (ver `irAPestana`), ese efecto no volvía a correr nunca. HealthKit no avisa
+  // cuando cambian los pasos, así que hay que volver a preguntarle: se hace al
+  // ENTRAR a Stats, sin recargar el resto —es una consulta barata y aparte, y
+  // lo ya mostrado no parpadea—. La `generación` descarta una respuesta vieja
+  // que llegue tarde y pise a una nueva (dos entradas rápidas a la pestaña).
+  const genPasos = useRef(0);
+  const cargarPasos = useCallback(() => {
+    const g = ++genPasos.current;
+    plataforma.salud
+      .pasosPorDia(365)
+      .then((r) => {
+        if (g === genPasos.current) setPasos(r);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     let vivo = true;
     plataforma.almacenamiento
@@ -101,16 +123,15 @@ export default function StatsGeneral({
         if (vivo) setMetaPasos(leerMeta(m));
       })
       .catch(() => {});
-    plataforma.salud
-      .pasosPorDia(365)
-      .then((r) => {
-        if (vivo) setPasos(r);
-      })
-      .catch(() => {});
+    cargarPasos();
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [cargarPasos]);
+
+  // Y otra vez al volver a Stats: es lo que faltaba para que los pasos del día
+  // se actualicen sin cerrar la app.
+  useRecargarAlVolver('stats', cargarPasos);
 
   // EL AÑO: 26 semanas, una columna por semana, de domingo a sábado. La misma
   // cuenta que la web.
