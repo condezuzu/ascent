@@ -8486,11 +8486,23 @@ console.log('\n124. El shader de cuerpos compila rápido en Direct3D y sin traba
   chequear('todos con límite que el compilador no conoce', bucles.filter((c) => !c.includes('uCero')), []);
   chequear('y uCero existe', /uCero:\s*\{\s*value:\s*0\s*\}/.test(escena), true);
 
-  // 3. El primer cuadro espera a compileAsync: nada de dibujar antes.
+  // 3. El primer cuadro cuelga de compileAsync Y tiene red de seguridad.
+  //
+  // Sigue sin bloquear: compila con `compileAsync`, no con un render sincrónico
+  // al montar. Pero además está la guarda contra el fondo en negro: el sondeo
+  // interno de three (`checkMaterialsReady`) corre en un `setTimeout` y, si un
+  // material perdió su programa en esa ventana, TIRA adentro del timer —uncaught,
+  // ningún `.catch` lo agarra, la promesa queda colgada y el primer cuadro no se
+  // dibuja nunca. Por eso el ÚNICO que dibuja el primer cuadro es `arrancar()`,
+  // que se llama diferido desde tres lados: el `.then`, el `.catch` y un
+  // `setTimeout` de respaldo. Ver `compartido/motor/escena.ts`.
   const montar = escena.slice(escena.indexOf("marca('ascent:shader-inicio')"));
-  chequear('compila sin bloquear', montar.includes('rend.compileAsync(escena, camara)'), true);
-  const antesDeCompilar = montar.slice(0, montar.indexOf('compileAsync'));
-  chequear('y no dibuja antes', antesDeCompilar.includes('rend.render('), false);
+  const m = montar.replace(/\s+/g, ' ');
+  chequear('compila sin bloquear', m.includes('.compileAsync(escena, camara)'), true);
+  chequear('el primer cuadro lo dibuja arrancar()', /function arrancar\(\) \{/.test(m), true);
+  chequear('arrancar cuelga del .then de compileAsync', m.includes('.compileAsync(escena, camara) .then(() => { clearTimeout(respaldoPrimerCuadro); arrancar(); })'), true);
+  chequear('y del .catch, para que un rechazo no deje el fondo negro', m.includes('.catch(() => { clearTimeout(respaldoPrimerCuadro); arrancar(); })'), true);
+  chequear('y hay un respaldo por si el sondeo interno se cuelga', m.includes('setTimeout(arrancar, 400)'), true);
 }
 
 console.log('\n125. Lo que se dibuja con SVG se escribe una vez: las dos apps lo toman de compartido/');

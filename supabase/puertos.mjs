@@ -15,6 +15,11 @@
 //
 // SIN DEPENDENCIAS: un intento de conexión TCP crudo. Prendido = algo acepta la
 // conexión; apagado = la rechaza. No pega a ninguna ruta ni interpreta HTTP.
+//
+// ESTO NO ES UNA SONDA: mira los servidores, no los levanta. La sección de
+// sondas de `test:db` exige que todo lo que arranca un dev server limpie y
+// cierre su puerto; este archivo nombra "npm run dev" solo en un rótulo, así
+// que la saltea con su frase acordada — No los levanta.
 import { createConnection } from 'node:net';
 
 /** ¿Hay algo escuchando en ese puerto de localhost? Resuelve true/false, nunca tira. */
