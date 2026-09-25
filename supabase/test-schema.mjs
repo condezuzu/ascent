@@ -77,6 +77,7 @@ import {
   sumar,
   unirConGuardados,
 } from '../nucleo/bloques.ts';
+import { sumarSerie, restarSerie, corregirEnLista } from '../nucleo/conteo.ts';
 import { cargarElMotor, esPreferenciaFondo } from '../nucleo/fondo.ts';
 import { ORDEN_ZONAS, gruposDeZona, gruposSinZona } from '../nucleo/ejercicios.ts';
 import { detectar, idDeSenal, umbralValido, unRm } from '../nucleo/estancamiento.ts';
@@ -3284,6 +3285,45 @@ console.log('\n48. El bloque: qué estás haciendo y cuántas te propusiste');
 
 
 // =====================================================================
+console.log('\n48b. El conteo: total y lista se mueven juntos y no se pisan');
+{
+  // La única fuente del conteo: `sumarSerie` mueve el total Y la lista, juntos.
+  let c = { series: 0, bloques: bloquesVacios('sentadilla', 3) };
+  for (let i = 0; i < 5; i++) c = sumarSerie(c);
+  chequear('cinco series: el total es 5', c.series, 5);
+  chequear('y la lista tambien cuenta 5', c.bloques.hechas, 5);
+  const enLista = c.bloques.cerrados.reduce((n, b) => n + b.series, 0) + c.bloques.hechas;
+  chequear('total y lista coinciden siempre', c.series, enLista);
+
+  c = restarSerie(restarSerie(c));
+  chequear('restar dos: total 3', c.series, 3);
+  chequear('y la lista 3', c.bloques.hechas, 3);
+
+  // Corregir en la lista mueve las dos cuentas por igual.
+  let d = { series: 0, bloques: bloquesVacios('sentadilla', 3) };
+  d = sumarSerie(sumarSerie(sumarSerie(d)));
+  d = { series: d.series, bloques: cambiarEjercicio(d.bloques, 'press_banca') };
+  d = sumarSerie(sumarSerie(d));
+  chequear('cinco entre dos bloques: total 5', d.series, 5);
+  const q = corregirEnLista(d, 0, 'quitar');
+  chequear('quitar un bloque baja el total', q.series, 2);
+  chequear('y lo saca de la lista', q.bloques.cerrados.length, 0);
+
+  // EL PISÓN — el bug del gimnasio (27/9). Dos "toques" que arrancan del MISMO
+  // snapshot (el closure viejo, con un await en el medio) pierden uno: los dos
+  // leen `base` y el segundo pisa al primero. El patrón nuevo encadena sobre el
+  // resultado anterior (los refs de `useSesion`) y cuenta los dos.
+  const base = { series: 0, bloques: bloquesVacios('sentadilla', 3) };
+  const tap1Viejo = sumarSerie(base);
+  const tap2Viejo = sumarSerie(base);
+  chequear('el patron viejo (mismo snapshot) PIERDE una', Math.max(tap1Viejo.series, tap2Viejo.series), 1);
+  let nuevo = base;
+  nuevo = sumarSerie(nuevo);
+  nuevo = sumarSerie(nuevo);
+  chequear('el patron nuevo (encadenado) cuenta las dos', nuevo.series, 2);
+  chequear('y la lista tambien', nuevo.bloques.hechas, 2);
+}
+
 console.log('\n49. El pulso del dia: la curva');
 {
   // EL BUG QUE ESTO GUARDA. El timestamp de requestAnimationFrame es el del

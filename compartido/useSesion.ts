@@ -30,17 +30,14 @@ import {
   corregirPeso,
   mudarEjercicio,
   cambiarMeta,
-  corregirBloque,
   paraGuardar,
-  quitarBloque,
   sembrar,
   sinNadaContado,
   unirConGuardados,
-  restar,
   siguiente,
-  sumar,
   type EstadoBloques,
 } from '@nucleo/bloques';
+import { sumarSerie, restarSerie, corregirEnLista } from '@nucleo/conteo';
 import {
   AVISO,
   esMio,
@@ -174,6 +171,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // el estado viejo y podía pisar toques que llegaron mientras esperaba.
   const bloquesRef = useRef(bloques);
   bloquesRef.current = bloques;
+  // LO MISMO PARA EL TOTAL. Dos toques rápidos, sin re-render en el medio,
+  // tienen que ver cada uno el número del anterior y no el del render. Antes el
+  // conteo se leía del closure y, con un `await` en el medio, el segundo toque
+  // arrancaba del número viejo y pisaba al primero: el total quedaba una serie
+  // atrás mientras la lista llegaba entera (bug del gimnasio, 27/9). Ahora las
+  // dos cuentas se mueven juntas desde estos refs. Ver `nucleo/conteo.ts`.
+  const seriesRef = useRef(series);
+  seriesRef.current = series;
   // El ejercicio del que ya se sabe con qué se hace —la base contestó, o no
   // hay señal y se decidió con lo que había—. Hasta entonces la pregunta de la
   // primera vez no se muestra: a quien la contestó en otro teléfono se le
@@ -631,6 +636,20 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   }
 
   async function serieHecha() {
+    // EL CONTEO SE MUEVE PRIMERO, JUNTO Y DESDE LOS REFS. Las dos cuentas —el
+    // total y la lista— salen de la misma función (`sumarSerie`) sobre el mismo
+    // objeto, leído de refs siempre-al-día y NO del render: así dos toques
+    // rápidos no se pisan y el total y la lista no pueden discrepar. Va ANTES de
+    // cualquier `await`: el descanso y la marca tardan, y el conteo no puede
+    // esperarlos. `series` sigue siendo la única verdad del conteo —no se deriva
+    // de los bloques (regla 3 de `bloques.ts`)—, solo se mueve al mismo tiempo.
+    const nc = sumarSerie({ series: seriesRef.current, bloques: bloquesRef.current });
+    seriesRef.current = nc.series;
+    bloquesRef.current = nc.bloques;
+    setSeries(nc.series);
+    setBloques(nc.bloques);
+    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
+    // Recién ahora el descanso, que necesita leer la duración.
     const seg =
       (await leerDuracionDeSesion()) ??
       duracionValida(duracionPredeterminada(await leerPerfilCache()));
@@ -638,18 +657,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     setDescanso(d);
     // El descanso que arranca ES actividad hasta que termina: la persona está
     // entrenando mientras el temporizador anda.
-    const marca = marcar(d.fin);
-    // DOS CUENTAS QUE NO SE DERIVAN UNA DE LA OTRA. `series` es el total de la
-    // sesión y la única verdad del conteo; `hechas` es cuántas van en ESTE
-    // bloque. Derivar el total de los bloques haría que ignorar el chip
-    // rompiera la racha, que es justo lo que no puede pasar.
-    const nuevas = series + 1;
-    const b = sumar(bloques);
-    setSeries(nuevas);
-    setBloques(b);
-    await marca;
-    await actualizarSesionCache({ series: nuevas, bloques: b }, yo);
-    await subir(nuevas, b);
+    await marcar(d.fin);
+    await subir(nc.series, nc.bloques);
   }
 
   /**
@@ -658,13 +667,16 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * estabas usando.
    */
   async function deshacerSerie() {
+    // Igual que `serieHecha`: las dos cuentas juntas y desde los refs, antes de
+    // cualquier `await`, para que no se pisen con un toque simultáneo.
+    const nc = restarSerie({ series: seriesRef.current, bloques: bloquesRef.current });
+    seriesRef.current = nc.series;
+    bloquesRef.current = nc.bloques;
+    setSeries(nc.series);
+    setBloques(nc.bloques);
     await marcar();
-    const nuevas = Math.max(0, series - 1);
-    const b = restar(bloques);
-    setSeries(nuevas);
-    setBloques(b);
-    await actualizarSesionCache({ series: nuevas, bloques: b }, yo);
-    await subir(nuevas, b);
+    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
+    await subir(nc.series, nc.bloques);
   }
 
   /**
@@ -696,21 +708,27 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   /** Cerrar el bloque y arrancar otro con el mismo ejercicio y la misma meta. */
   async function bloqueSiguiente() {
     await marcar();
-    const b = siguiente(bloques);
-    if (b === bloques) return; // no había nada hecho: no se cierra un bloque vacío
+    // Desde el ref y no del closure, y `subir` con el total del ref: si justo
+    // se contó una serie, esta operación no puede pisarla con datos viejos.
+    const previo = bloquesRef.current;
+    const b = siguiente(previo);
+    if (b === previo) return; // no había nada hecho: no se cierra un bloque vacío
+    bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
-    await subir(series, b);
+    await subir(seriesRef.current, b);
   }
 
   /** Cambiar de ejercicio cierra el bloque anterior (ver `nucleo/bloques.ts`). */
   async function elegirEjercicio(id: string | null) {
     await marcar();
-    const b = cambiarEjercicio(bloques, id);
-    if (b === bloques) return;
+    const previo = bloquesRef.current;
+    const b = cambiarEjercicio(previo, id);
+    if (b === previo) return;
+    bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
-    await subir(series, b);
+    await subir(seriesRef.current, b);
     if (id) proponerArranque(id);
   }
 
@@ -812,25 +830,29 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    */
   async function elegirCarga(c: Carga) {
     await marcar();
-    const b = cambiarCarga(bloques, c);
-    if (b === bloques || !b.ejercicio) return;
+    const previo = bloquesRef.current;
+    const b = cambiarCarga(previo, c);
+    if (b === previo || !b.ejercicio) return;
+    bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
     await recordar(b.ejercicio, c);
     // Si ya hay series, lo guardado cambia de significado: se sube.
-    if (b.hechas > 0) await subir(series, b);
+    if (b.hechas > 0) await subir(seriesRef.current, b);
   }
 
   /** Lo mismo en un bloque ya cerrado, desde la lista. */
   async function corregirCargaDeBloque(indice: number, c: Carga) {
     await marcar();
-    const b = corregirCarga(bloques, indice, c);
-    if (b === bloques) return;
+    const previo = bloquesRef.current;
+    const b = corregirCarga(previo, indice, c);
+    if (b === previo) return;
+    bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
     const ejercicio = indice === -1 ? b.ejercicio : b.cerrados[indice]?.ejercicio;
     if (ejercicio) await recordar(ejercicio, c);
-    await subir(series, b);
+    await subir(seriesRef.current, b);
   }
 
   /**
@@ -840,11 +862,13 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    */
   async function corregirEjercicioDeBloque(indice: number, id: string, cargaQueSeVeia?: Carga) {
     await marcar();
-    const b = corregirEjercicio(bloques, indice, id, cargaQueSeVeia);
-    if (b === bloques) return;
+    const previo = bloquesRef.current;
+    const b = corregirEjercicio(previo, indice, id, cargaQueSeVeia);
+    if (b === previo) return;
+    bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
-    await subir(series, b);
+    await subir(seriesRef.current, b);
   }
 
   async function recordar(ejercicio: string, c: Carga) {
@@ -859,7 +883,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    */
   async function elegirPeso(kg: number | null) {
     await marcar();
-    const b = cambiarPeso(bloques, kg);
+    const b = cambiarPeso(bloquesRef.current, kg);
+    bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
   }
@@ -867,11 +892,13 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   /** El peso de una serie ya hecha, desde la lista. `indice` -1 es el bloque en curso. */
   async function corregirPesoDeSerie(indice: number, serie: number, kg: number | null) {
     await marcar();
-    const b = corregirPeso(bloques, indice, serie, kg);
-    if (b === bloques) return;
+    const previo = bloquesRef.current;
+    const b = corregirPeso(previo, indice, serie, kg);
+    if (b === previo) return;
+    bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
-    await subir(series, b);
+    await subir(seriesRef.current, b);
   }
 
   /**
@@ -881,11 +908,13 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    */
   async function mudarSeries(id: string | null, cargaQueSeVeia?: Carga) {
     await marcar();
-    const b = mudarEjercicio(bloques, id, cargaQueSeVeia);
-    if (b === bloques) return;
+    const previo = bloquesRef.current;
+    const b = mudarEjercicio(previo, id, cargaQueSeVeia);
+    if (b === previo) return;
+    bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
-    await subir(series, b);
+    await subir(seriesRef.current, b);
   }
 
   /**
@@ -896,22 +925,22 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * ejercicio— así que la corrección dice explícitamente cuánto cambió.
    */
   async function tocarBloque(indice: number, delta: number | 'quitar') {
+    const antes = { series: seriesRef.current, bloques: bloquesRef.current };
+    const nc = corregirEnLista(antes, indice, delta);
+    if (nc.series === antes.series && nc.bloques === antes.bloques) return;
+    seriesRef.current = nc.series;
+    bloquesRef.current = nc.bloques;
+    setSeries(nc.series);
+    setBloques(nc.bloques);
     await marcar();
-    const r =
-      delta === 'quitar'
-        ? quitarBloque(bloques, indice)
-        : corregirBloque(bloques, indice, delta);
-    if (r.cambioEnTotal === 0 && r.estado === bloques) return;
-    const nuevoTotal = Math.max(0, series + r.cambioEnTotal);
-    setBloques(r.estado);
-    setSeries(nuevoTotal);
-    await actualizarSesionCache({ series: nuevoTotal, bloques: r.estado }, yo);
-    await subir(nuevoTotal, r.estado);
+    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
+    await subir(nc.series, nc.bloques);
   }
 
   /** La meta no se sube a ningún lado: es intención, no un hecho. */
   async function elegirMeta(meta: number) {
-    const b = cambiarMeta(bloques, meta);
+    const b = cambiarMeta(bloquesRef.current, meta);
+    bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
     await guardarMetaPreferida(b.meta);

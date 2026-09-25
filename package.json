@@ -23,6 +23,8 @@
     "test:privacidad": "node --env-file=.env.local supabase/probar-privacidad.mjs",
     "test:real": "node --env-file=.env.local supabase/pruebas-reales.mjs",
     "test:zona": "node --env-file=.env.local supabase/probar-zona-horaria.mjs",
+    "test:errores": "node --env-file=.env.local supabase/probar-errores.mjs",
+    "test:series": "node --env-file=.env.local supabase/probar-series-rapidas.mjs",
     "test:exif": "node --env-file=.env.local supabase/probar-exif.mjs",
     "medir:arranque": "node --env-file=.env.local supabase/medir-arranque.mjs",
     "medir:sin-motor": "node --env-file=.env.local supabase/medir-sin-motor.mjs",
