@@ -14,11 +14,12 @@ import {
   type DatosDeRanking,
 } from '@compartido/ranking';
 import Avatar from './Avatar';
-import CampoEstelar from './CampoEstelar';
 import Surgir from './Surgir';
-import { FONDO_BASE, FONDO_RANGO_8 } from '@nucleo/paletas';
 import Insignia from './Insignia';
+import Medallas from './Medallas';
 import FondoEspacial from './FondoEspacial';
+import { cargarMedallasDeAmigo } from '@compartido/perfil';
+import type { Medalla } from '@nucleo/medallas';
 import { C } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
 
@@ -48,6 +49,10 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const [busqueda, setBusqueda] = useState('');
   const [resultados, setResultados] = useState<UsuarioPublico[]>([]);
   const [mandados, setMandados] = useState<Set<string>>(new Set());
+  // Las medallas de cada amigo, para mostrarlas en la fila. Se traen APARTE y
+  // en segundo plano (una consulta por amigo, en paralelo) para no demorar la
+  // primera pintada del ranking: la lista aparece y las medallas caen encima.
+  const [medallas, setMedallas] = useState<Record<string, Medalla[]>>({});
   const busquedaAhora = useRef('');
 
   const cargar = useCallback(async () => {
@@ -71,6 +76,24 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
 
   // Y de nuevo al volver a esta pestaña: ahora se queda montada.
   useRecargarAlVolver('ranking', cargar);
+
+  // LAS MEDALLAS DE LOS AMIGOS, en segundo plano. Una consulta por amigo, en
+  // paralelo, disparada solo cuando cambia la lista de amigos —no en cada
+  // carga—: la lista del ranking se pinta ya y las medallas aparecen encima.
+  const idsAmigos = (datos?.amigos ?? []).map((a) => a.id).join(',');
+  useEffect(() => {
+    const ids = idsAmigos ? idsAmigos.split(',') : [];
+    if (ids.length === 0) return;
+    let vivo = true;
+    Promise.all(
+      ids.map(async (id) => [id, await cargarMedallasDeAmigo(supabase, id).catch(() => [])] as const)
+    ).then((pares) => {
+      if (vivo) setMedallas(Object.fromEntries(pares));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [idsAmigos]);
 
   async function buscar(texto: string) {
     setBusqueda(texto);
@@ -109,63 +132,41 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           </View>
         )}
 
-        {(datos?.solicitudes ?? []).length > 0 && (
-          <View style={estilos.tarjeta}>
-            {datos!.solicitudes.map((s) => (
-              <View style={estilos.fila} key={s.id}>
-                <Avatar url={s.de.avatar_url} nombre={s.de.username} />
-                <Text style={estilos.nombre}>{s.de.username}</Text>
-                <Pressable
-                  onPress={async () => {
-                    await aceptarAmistad(supabase, s.id);
-                    cargar();
-                  }}
-                  hitSlop={8}
-                >
-                  <Text style={estilos.accion}>{T.social.aceptar}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={async () => {
-                    await rechazarAmistad(supabase, s.id);
-                    cargar();
-                  }}
-                  hitSlop={8}
-                >
-                  <Text style={[estilos.accion, { color: C.apagado }]}>{T.social.no}</Text>
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        )}
+        {/* Las solicitudes recibidas ya NO van acá arriba: empujaban el ranking
+            hacia abajo. Ahora van al final, después del ranking. Ver `solicitudes`. */}
 
         {amigos.length > 1 ? (
-          // Sin caja oscura, como en la web: detrás está el campo estelar, y lo
-          // que sostiene la lectura es su velo, no una tarjeta encima.
-          <View style={estilos.ranking}>
-            <CampoEstelar amigos={amigos} fondo={datos?.miRango === 8 ? FONDO_RANGO_8 : FONDO_BASE} />
-            <View style={estilos.lista}>
-              {/* ESCALONADAS Y NO TODAS DE GOLPE, igual que en la web: la
-                  lista caía entera al llegar los datos y eso se lee como un
-                  parpadeo. Ver `Surgir.tsx`. */}
-              {amigos.map((a, i) => (
-                <Surgir indice={i} key={a.id}>
-                  {/* LA FILA LLEVA AL PERFIL (22/9), como en la web. Hasta el
-                      router esto era texto y no llevaba a ningún lado: no por
-                      decisión, sino porque no había adónde ir. Tu propia fila
-                      va a tu perfil, que es otra pantalla. */}
-                  <Pressable
-                    style={({ pressed }) => [estilos.fila, pressed && estilos.filaTocada]}
-                    onPress={() => router.push(a.id === miId ? '/yo' : `/perfil/${a.id}`)}
-                    accessibilityRole="button"
-                  >
-                    <Text style={[estilos.dato, { width: 20 }]}>{i + 1}</Text>
-                    <Insignia rango={a.rango_actual} tam={38} />
-                    <Text style={estilos.nombre}>{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</Text>
-                    <Text style={estilos.dato}>{a.racha_actual}</Text>
-                  </Pressable>
-                </Surgir>
-              ))}
-            </View>
+          // SIN EL CAMPO ESTELAR DETRÁS (27/9): eran las insignias flotando,
+          // quietas y sin aportar ("sacá los emojis del fondo"). La lista se lee
+          // sobre el velo de `FondoEspacial`, que ya está detrás.
+          <View style={estilos.lista}>
+            {/* ESCALONADAS Y NO TODAS DE GOLPE, igual que en la web. Ver `Surgir`. */}
+            {amigos.map((a, i) => (
+              <Surgir indice={i} key={a.id}>
+                {/* LA FILA LLEVA AL PERFIL, como en la web. Tu propia fila va a
+                    tu perfil, que es otra pantalla. */}
+                <Pressable
+                  style={({ pressed }) => [estilos.fila, pressed && estilos.filaTocada]}
+                  onPress={() => router.push(a.id === miId ? '/yo' : `/perfil/${a.id}`)}
+                  accessibilityRole="button"
+                >
+                  <Text style={[estilos.dato, { width: 20 }]}>{i + 1}</Text>
+                  <Insignia rango={a.rango_actual} tam={38} />
+                  {/* LAS MEDALLAS, al lado del nombre, igual que en el perfil.
+                      Caen en segundo plano (ver el efecto de arriba). */}
+                  <View style={{ flex: 1 }}>
+                    <Medallas
+                      medallas={medallas[a.id] ?? []}
+                      tam={15}
+                      nombre={
+                        <Text style={estilos.nombre}>{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</Text>
+                      }
+                    />
+                  </View>
+                  <Text style={estilos.dato}>{a.racha_actual}</Text>
+                </Pressable>
+              </Surgir>
+            ))}
           </View>
         ) : (
           cargado &&
@@ -197,8 +198,44 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           </View>
         )}
 
+        {/* LAS SOLICITUDES RECIBIDAS, al final: es "algo que te llegó", no la
+            tabla, así que no tiene por qué empujar el ranking hacia abajo.
+            (El aviso de que HAY una, estando en otra pestaña, es aparte.) */}
+        {(datos?.solicitudes ?? []).length > 0 && (
+          <View style={estilos.seccion}>
+            <Text style={estilos.rotulo}>{T.social.solicitudes}</Text>
+            <View style={estilos.tarjeta}>
+              {datos!.solicitudes.map((s) => (
+                <View style={estilos.fila} key={s.id}>
+                  <Avatar url={s.de.avatar_url} nombre={s.de.username} />
+                  <Text style={estilos.nombre}>{s.de.username}</Text>
+                  <Pressable
+                    onPress={async () => {
+                      await aceptarAmistad(supabase, s.id);
+                      cargar();
+                    }}
+                    hitSlop={8}
+                  >
+                    <Text style={estilos.accion}>{T.social.aceptar}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={async () => {
+                      await rechazarAmistad(supabase, s.id);
+                      cargar();
+                    }}
+                    hitSlop={8}
+                  >
+                    <Text style={[estilos.accion, { color: C.apagado }]}>{T.social.no}</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         <View style={estilos.seccion}>
           <Text style={estilos.rotulo}>{T.social.buscarGente}</Text>
+          <Text style={estilos.pieBusqueda}>{T.social.buscarPie}</Text>
           <TextInput
             style={estilos.campo}
             placeholder={T.ajustes.nombrePlaceholder}
@@ -211,9 +248,10 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           {resultados.map((u) => (
             <View style={estilos.fila} key={u.id}>
               <Avatar url={u.avatar_url} nombre={u.username} />
-              {/* EL NOMBRE LLEVA AL PERFIL y "Agregar" queda aparte: son dos
-                  cosas distintas en la misma fila, y de un desconocido lo
-                  primero que se quiere es mirar, no agregar. */}
+              {/* Su rango al lado, como en el ranking: de un desconocido, lo
+                  primero que dice algo es en qué anda. El nombre lleva al perfil
+                  y "Agregar" queda aparte: mirar antes que agregar. */}
+              <Insignia rango={u.rango_actual} tam={26} />
               <Pressable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
                 <Text style={estilos.nombre}>{u.username}</Text>
               </Pressable>
@@ -226,6 +264,12 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               )}
             </View>
           ))}
+          {/* "No encontramos a nadie": solo cuando se buscó algo de verdad y no
+              hubo con qué. Antes un nombre inexistente no decía nada y parecía
+              que la búsqueda no andaba. */}
+          {busqueda.trim().length >= 2 && resultados.length === 0 && (
+            <Text style={estilos.sinResultado}>{T.social.sinResultado}</Text>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -275,6 +319,8 @@ const estilos = StyleSheet.create({
   vacioTexto: { color: C.sub, fontSize: 14, textAlign: 'center' },
   seccion: { marginTop: 24 },
   rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
+  pieBusqueda: { color: C.apagado, fontSize: 12, marginBottom: 8 },
+  sinResultado: { color: C.apagado, fontSize: 13, paddingVertical: 12 },
   miniatura: {
     width: 38,
     height: 38,

@@ -1241,6 +1241,8 @@ export const T = {
     titulo: 'Ranking',
     amigos: 'Amigos',
     buscarGente: 'Buscar gente',
+    buscarPie: 'Por nombre de usuario, para agregar.',
+    sinResultado: 'No encontramos a nadie con ese nombre.',
     // El título decía "Leaderboard" mientras la barra de abajo decía
     // "Ranking": la misma pantalla con dos nombres. Manda el de la barra.
     // Solo para quien lee la pantalla en voz alta: el punto de la barra no
@@ -1248,6 +1250,7 @@ export const T = {
     tePidieron: (n: number) =>
       n === 1 ? 'Tienes 1 cosa sin responder' : `Tienes ${n} cosas sin responder`,
     aceptar: 'Aceptar',
+    solicitudes: 'Te quieren agregar',
     no: 'No',
     teReto: (nombre: string) => `${nombre} te retó a 7 días: quien entrene más, gana.`,
     acepto: 'Acepto',
