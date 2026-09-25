@@ -379,12 +379,16 @@ export const T = {
   // La guarda de las 20 horas por cambio de zona (§12b). Tiene que decir dos
   // cosas y las dos importan: que el día NO se perdió, y cuándo entra. Un
   // rechazo mudo con la racha en juego se lee como que la app está rota.
+  // Sin la palabra "bloqueado" y sin acusar de nada: la persona tiene que
+  // entender que su día ESTÁ guardado y que se va a contar, nada más. El caso
+  // casi no aparece (el anti-trampa solo frena el flip-flop, no un viaje), pero
+  // cuando aparece no puede leerse como que la app se rompió o la está acusando.
   bloqueo: {
-    sinHora: 'Tu día quedó anotado y se suma solo en cuanto la app lo pueda confirmar.',
+    sinHora: 'Tu día de hoy ya quedó guardado y se cuenta solo en cuanto la app lo confirme.',
     aLaHora: (hora: string) =>
-      `Cambiaste de zona horaria: tu día se suma solo a las ${hora}. No lo perdiste.`,
+      `Tu día de hoy ya quedó guardado. Se cuenta solo a las ${hora}.`,
     enMinutos: (min: number) =>
-      `Cambiaste de zona horaria: tu día se suma solo en ${min} min. No lo perdiste.`,
+      `Tu día de hoy ya quedó guardado. Se cuenta solo en ${min} min.`,
   },
 
   // ---------------------------------------------------------------

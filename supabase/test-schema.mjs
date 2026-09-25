@@ -1867,6 +1867,46 @@ console.log('\n29. La zona sale del teléfono, y cambiarla no regala días');
     const dAdelante = (await db.query('select mi_hoy()::text as d')).rows[0].d;
     chequear('el par de zonas cae en días distintos, a cualquier hora', dAdelante > dCasa, true);
   }
+  // B+C (migración 50): solo el patrón del que hace trampa arma el bloqueo. Un
+  // cambio ÚNICO (un viaje) y el PRIMER cambio de un usuario nuevo NO bloquean;
+  // dos cambios en <24 h o volver a la zona anterior, SÍ. Antes cualquier cambio
+  // bloqueaba, y con `fijar_zona` automático eso castigaba al viajero honesto.
+  const fijar = async (uid, z) => {
+    await comoUsuario(uid);
+    await db.exec('set role authenticated');
+    await db.query(`select fijar_zona($1)`, [z]);
+    await db.exec('reset role');
+  };
+
+  // 1. UN VIAJE (cambio único hacia adelante) NO arma el bloqueo. Se mira
+  //    `bloqueo_hasta` directo y no un segundo `registrar_dia`: si el huso nuevo
+  //    cae en el mismo día, registrar de nuevo chocaría con el único (user,
+  //    fecha) y eso taparía lo que se quiere probar.
+  {
+    const t = await nuevoUsuario();
+    await zona(t, CASA);
+    await comoUsuario(t);
+    await db.query('select registrar_dia()');
+    await fijar(t, ADELANTE); // un solo cambio
+    const bloq = (await db.query('select bloqueo_hasta($1) as h', [t])).rows[0].h;
+    chequear('un viaje (un cambio) no bloquea', bloq, null);
+  }
+
+  // 2. EL REVISOR DE APPLE: teléfono en otro huso, cuenta demo con un log de
+  //    hoy, toca "registrar". Su primer `fijar_zona` cambia la zona desde el
+  //    default de Montevideo — primer cambio, no sospechoso — así que NO queda
+  //    bloqueado. Es el caso que nos podía costar el rechazo.
+  {
+    const rev = await nuevoUsuario(); // arranca en 'America/Montevideo' por default
+    await comoUsuario(rev);
+    await db.query('select registrar_dia()'); // la demo ya tiene contenido
+    await fijar(rev, 'America/New_York'); // el huso del revisor, primer cambio
+    const bloq = (await db.query('select bloqueo_hasta($1) as h', [rev])).rows[0].h;
+    chequear('el revisor en otro huso NO queda bloqueado', bloq, null);
+  }
+
+  // 3. DOS CAMBIOS EN <24 H (el flip-flop rápido) SÍ arma el bloqueo, pero el
+  //    día no se pierde: queda pendiente y entra solo.
   {
     const v = await nuevoUsuario();
     await zona(v, CASA);
@@ -1874,13 +1914,12 @@ console.log('\n29. La zona sale del teléfono, y cambiarla no regala días');
     await db.query('select registrar_dia()');
     chequear('registró el día', (await perfil(v)).racha_actual, 1);
 
-    // se mueve la zona hacia adelante, que es el ataque
-    await db.exec('set role authenticated');
-    await db.query(`select fijar_zona($1)`, [ADELANTE]);
-    await db.exec('reset role');
+    await fijar(v, 'Europe/Madrid'); // cambio 1 (no sospechoso por sí solo)
+    await fijar(v, ADELANTE); // cambio 2 en <24 h → sospechoso
+    await comoUsuario(v);
 
     const r = (await db.query('select registrar_dia() as v')).rows[0].v;
-    chequear('mover la zona no da un segundo día', r.bloqueado, true);
+    chequear('dos cambios en <24 h no dan un segundo día', r.bloqueado, true);
     chequear('y la racha no se movió', (await perfil(v)).racha_actual, 1);
 
     // ---- pero el día NO se pierde ----
@@ -1916,15 +1955,28 @@ console.log('\n29. La zona sale del teléfono, y cambiarla no regala días');
     chequear('el pendiente queda limpio', limpio.rows[0].dia_pendiente, null);
   }
 
+  // 4. VOLVER A LA ZONA ANTERIOR (A -> B -> A) también arma el bloqueo.
+  {
+    const o = await nuevoUsuario();
+    await zona(o, CASA);
+    await comoUsuario(o);
+    await db.query('select registrar_dia()');
+    await fijar(o, ADELANTE); // A -> B (no sospechoso)
+    await fijar(o, CASA); // B -> A: oscilación → sospechoso
+    await comoUsuario(o);
+    const r = (await db.query('select registrar_dia() as v')).rows[0].v;
+    chequear('volver a la zona anterior bloquea', r.bloqueado, true);
+  }
+
   // ---- el pendiente no duplica si el día ya entró por otro lado ----
   {
     const x = await nuevoUsuario();
     await zona(x, CASA);
     await comoUsuario(x);
     await db.query('select registrar_dia()');
-    await db.exec('set role authenticated');
-    await db.query(`select fijar_zona($1)`, [ADELANTE]);
-    await db.exec('reset role');
+    await fijar(x, 'Europe/Madrid'); // dos cambios en <24 h para armar el bloqueo
+    await fijar(x, ADELANTE);
+    await comoUsuario(x);
     const r = (await db.query('select registrar_dia() as v')).rows[0].v;
     // el usuario lo agrega a mano desde el calendario mientras tanto
     await db.query(`insert into logs (user_id, fecha) values ($1, $2::date)`, [x, r.pendiente]);
@@ -1970,7 +2022,10 @@ console.log('\n30. El día pendiente espera, no vence, y entra con SU fecha');
     await db.query('update profiles set zona = $2 where id = $1', [uid, CASA]);
     await comoUsuario(uid);
     await db.query('select registrar_dia()');
+    // DOS cambios en <24 h para armar el bloqueo (B+C, migración 50): un cambio
+    // único ya no bloquea, porque un viaje no puede castigarse.
     await db.exec('set role authenticated');
+    await db.query(`select fijar_zona('Europe/Madrid')`);
     await db.query(`select fijar_zona($1)`, [ADELANTE]);
     await db.exec('reset role');
     const r = (await db.query('select registrar_dia() as v')).rows[0].v;

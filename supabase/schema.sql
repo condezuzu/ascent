@@ -93,6 +93,15 @@ create table public.profiles (
   -- Cuándo cambió: sin esto no hay forma de distinguir un viaje de un cambio
   -- de hora a mano, que es lo que separa la guarda de §12b.
   zona_cambiada timestamptz,
+  -- La zona que estaba ANTES de la actual. Sirve para detectar el flip-flop
+  -- del que hace trampa (A -> B -> A), que es una de las dos señales que arman
+  -- el bloqueo (migración 50).
+  zona_previa text,
+  -- Cuándo se armó el bloqueo por un cambio SOSPECHOSO. Es lo que mira
+  -- `bloqueo_hasta`, y no `zona_cambiada`: un viaje real (un solo cambio) o el
+  -- primer cambio de un usuario nuevo NO lo tocan, así que no bloquean. Se
+  -- separó de `zona_cambiada` en la migración 50 justo por eso.
+  zona_bloqueo_desde timestamptz,
   -- El día que la guarda dejó esperando. Se registra solo apenas pasa la
   -- ventana: un rechazo mudo cuando lo que está en juego es la racha se lee
   -- como que la app está rota (§11).
@@ -530,6 +539,9 @@ returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
   actual text;
+  previa text;
+  cambiada timestamptz;
+  sospechoso boolean;
 begin
   if uid is null or p_zona is null then return; end if;
   -- Texto libre no: una zona inventada haría que `at time zone` reviente en
@@ -538,9 +550,27 @@ begin
   if not exists (select 1 from pg_timezone_names where name = p_zona) then
     raise exception 'zona horaria desconocida: %', p_zona;
   end if;
-  select zona into actual from profiles where id = uid;
+  select zona, zona_previa, zona_cambiada into actual, previa, cambiada
+    from profiles where id = uid;
   if actual is distinct from p_zona then
-    update profiles set zona = p_zona, zona_cambiada = now() where id = uid;
+    -- SOSPECHOSO = el patrón del que hace trampa, no el del que viaja. Dos
+    -- señales, y solo estas arman el bloqueo (migración 50, "B+C"):
+    --   - dos cambios en menos de 24 h (el flip-flop: registrar, cambiar de
+    --     huso, registrar de nuevo), o
+    --   - volver a la zona inmediatamente anterior (A -> B -> A).
+    -- Un cambio ÚNICO (un viaje real) NO es sospechoso, y el PRIMER cambio de
+    -- un usuario nuevo tampoco: ahí `zona_cambiada` es null y `zona_previa`
+    -- también, así que ninguna de las dos señales se cumple. Resultado: el
+    -- viajero honesto y el que recién baja la app fuera de Uruguay nunca ven
+    -- "tu día quedó pendiente".
+    sospechoso := (cambiada is not null and now() - cambiada < interval '24 hours')
+                  or (p_zona is not distinct from previa);
+    update profiles set
+      zona_previa = actual,
+      zona = p_zona,
+      zona_cambiada = now(),
+      zona_bloqueo_desde = case when sospechoso then now() else zona_bloqueo_desde end
+    where id = uid;
   end if;
 end;
 $$;
@@ -550,8 +580,13 @@ returns timestamptz language sql stable security definer set search_path = publi
   select max(l.creado) + interval '20 hours'
     from logs l, profiles p
    where l.user_id = p_user and p.id = p_user
-     and p.zona_cambiada is not null
-     and l.creado > p.zona_cambiada - interval '20 hours'
+     -- Solo un cambio SOSPECHOSO arma el bloqueo (ver `fijar_zona`), y solo por
+     -- 20 h: pasada la ventana ya no frena nada. Sin el segundo `and`, un
+     -- cambio sospechoso de hace meses bloquearía para siempre el registro
+     -- diario, porque el resto del filtro se cumple con cualquier log reciente.
+     and p.zona_bloqueo_desde is not null
+     and p.zona_bloqueo_desde > now() - interval '20 hours'
+     and l.creado > p.zona_bloqueo_desde - interval '20 hours'
      and now() - l.creado < interval '20 hours';
 $$;
 
@@ -2828,7 +2863,7 @@ $$;
 grant execute on function public.medallas_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 49; $$;
+returns int language sql immutable as $$ select 50; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;
