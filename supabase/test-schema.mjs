@@ -9413,7 +9413,9 @@ console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
     ['la racha perdida', /T\.inicio\.perdida/],
     ['el dia de descanso', /T\.inicio\.hoyDescansa/],
     ['el dia que quedo esperando', /T\.inicio\.diaPendiente/],
-    ['el estado vacio', /T\.inicio\.vacioTitulo/],
+    // EL DÍA UNO YA NO ES UN CARTEL (27/9): en vez de "no hay nada aquí" muestra
+    // la pantalla real y el botón "Registra tu primer día".
+    ['el dia uno invita a registrar', /T\.inicio\.registrarPrimerDia/],
   ]) {
     chequear(`Inicio dice ${que}`, re.test(ini), true);
   }
@@ -9918,8 +9920,10 @@ console.log('\n143. El grafico de pasos en Stats');
   chequear('la meta se toca en el grafico', /alTocar=\{\(\) => setCambiandoMeta\(true\)\}/.test(gra143), true);
   chequear('y abre la misma pieza que Ajustes', /<MetaDePasos/.test(gra143), true);
   chequear('que avisa al cambiarla', /alCambiar\?\.\(Math\.round\(n\)\)/.test(de143('movil', 'src', 'ajustes', 'MetaDePasos.tsx')), true);
-  // Y SIGUE EN AJUSTES: quien la busque donde van las preferencias la encuentra.
-  chequear('la meta sigue estando en Ajustes', /<MetaDePasos \/>/.test(de143('movil', 'src', 'Ajustes.tsx')), true);
+  // Y YA NO EN AJUSTES (27/9): se movió a Stats, al lado del gráfico, que es la
+  // única pantalla donde el número significa algo. En Ajustes era un campo
+  // suelto que parecía un enlace.
+  chequear('la meta ya no está en Ajustes', /<MetaDePasos \/>/.test(de143('movil', 'src', 'Ajustes.tsx')), false);
   // ARRASTRAR PARA LEER UN DIA, igual que el peso.
   chequear('y se arrastra el dedo', /onResponderMove=\{alMover\}/.test(gra143), true);
   // EL ID DEL DEGRADADO ES OTRO. Los dos graficos viven en la misma pantalla,
@@ -10501,7 +10505,7 @@ console.log('\n149. Los pasos: por que salia vacio, y la meta del dia');
   chequear('la meta se guarda en el aparato',
     /plataforma\.almacenamiento\.guardar\(CLAVE_META_PASOS/.test(de149('movil', 'src', 'ajustes', 'MetaDePasos.tsx')),
     true);
-  chequear('y Ajustes la ofrece', /<MetaDePasos \/>/.test(de149('movil', 'src', 'Ajustes.tsx')), true);
+  chequear('y Ajustes ya no la ofrece (se movió a Stats)', /<MetaDePasos \/>/.test(de149('movil', 'src', 'Ajustes.tsx')), false);
   // NO ENTRA EN LA RACHA, y se dice en pantalla: si contara, esta app dejaria
   // de contar dias de gimnasio y pasaria a contar otra cosa.
   const T149 = (await import('../nucleo/textos.ts')).T;
