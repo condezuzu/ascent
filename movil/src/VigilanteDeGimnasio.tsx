@@ -110,7 +110,13 @@ function Mirando({ perfil }: { perfil: Perfil }) {
     // mirar seguido. Si está en cualquier otro lado, mirar de nuevo en dos
     // minutos no puede decir nada nuevo.
     const hayAlgoQueHacer = !!vigilancia || s.estado.porUbicacion;
-    const CADA = hayAlgoQueHacer ? 0 : 5 * 60 * 1000;
+    // Un PISO de 5 s aun cuando hay algo que hacer: dos disparos casi juntos
+    // —volver a la pantalla justo cuando el sistema avisa, o el parpadeo de
+    // visibilidad— hacían dos "miré" idénticos con dos segundos de diferencia
+    // (se vio en la bitácora, 24/9 2:48:46 y :48). Cinco segundos siguen siendo
+    // "mirar seguido" para una llegada al gimnasio. El aviso del sistema fuerza
+    // igual la mirada: pone `ultimaMirada.current = 0`, que saltea este piso.
+    const CADA = hayAlgoQueHacer ? 5000 : 5 * 60 * 1000;
     if (Date.now() - ultimaMirada.current < CADA) return;
     ultimaMirada.current = Date.now();
 
@@ -247,6 +253,8 @@ function Mirando({ perfil }: { perfil: Perfil }) {
    */
   useEffect(() => {
     let id: ReturnType<typeof setInterval> | undefined;
+    let rebote: ReturnType<typeof setTimeout> | undefined;
+    let ultimoEstado = plataforma.ciclo.visible();
 
     const arrancar = () => {
       clearInterval(id);
@@ -260,10 +268,27 @@ function Mirando({ perfil }: { perfil: Perfil }) {
       id = setInterval(vigilar, 2 * 60 * 1000);
     };
 
+    // HISTÉRESIS (27/9). iOS parpadea active/inactive por cosas que no son salir
+    // de la app: el banner de un aviso, el centro de control, una llamada que se
+    // asoma. El 23/9 a las 22:31 eso alternó "mirando"/"detenido" seis veces en
+    // 50 s, cada una prendiendo y apagando el intervalo y leyendo el GPS —
+    // batería tirada. Ahora un cambio se toma en serio solo si se ASIENTA 1,5 s:
+    // si vuelve al estado anterior antes de eso, no pasó nada.
+    const alCambiar = () => {
+      clearTimeout(rebote);
+      rebote = setTimeout(() => {
+        const ahora = plataforma.ciclo.visible();
+        if (ahora === ultimoEstado) return; // parpadeó y volvió: no cambió nada
+        ultimoEstado = ahora;
+        arrancar();
+      }, 1500);
+    };
+
     arrancar();
-    const dejarDeMirar = plataforma.ciclo.alCambiar(arrancar);
+    const dejarDeMirar = plataforma.ciclo.alCambiar(alCambiar);
     return () => {
       clearInterval(id);
+      clearTimeout(rebote);
       dejarDeMirar();
     };
   }, [vigilar]);
