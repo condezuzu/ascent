@@ -14,7 +14,6 @@ import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
 import Gimnasio from './ajustes/Gimnasio';
 import Salud from './ajustes/Salud';
-import MetaDePasos from './ajustes/MetaDePasos';
 import Identidad from './ajustes/Identidad';
 import Fondo from './ajustes/Fondo';
 import ComoSeCompara from './ajustes/ComoSeCompara';
@@ -137,9 +136,10 @@ export default function Ajustes({
           día entre sin que aprietes nada, y leerlas juntas se entiende. La
           web no tiene esta sección porque el navegador no ve nada de esto. */}
       <Salud />
-      {/* La meta va PEGADA a Salud: sin Health no hay pasos, y una meta
-          para un gráfico que no existe es un campo que no sirve. */}
-      <MetaDePasos />
+      {/* LA META DE PASOS YA NO VA ACÁ (27/9). Vive en Stats, al lado del
+          gráfico de pasos (`GraficoPasos` → `PieDeMeta`/`HojaDeMeta`), que es
+          donde se ve para qué sirve. Acá era un campo de texto suelto que
+          parecía un enlace azul, y encima a veces abría el editor al entrar. */}
 
       <Text style={estilos.seccion}>{T.ajustes.diasDescanso}</Text>
       <View style={estilos.fila}>

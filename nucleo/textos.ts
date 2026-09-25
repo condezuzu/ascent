@@ -1216,8 +1216,8 @@ export const T = {
     // sabian: una por dia entrenado.
     cuentaDelMes: (fotos: number, dias: number) =>
       `${fotos === 1 ? '1 foto' : `${fotos} fotos`} · ${dias === 1 ? '1 día' : `${dias} días`}`,
-    laPrimera: 'La primera',
-    laUltima: 'La última',
+    laPrimera: 'La primera del mes',
+    laUltima: 'La última del mes',
     quitarPregunta: '¿Quitar?',
     // EL BOTON DE CONFIRMAR DICE QUE HACE, no 'Si'. Con dos pildoras iguales
     // al lado, 'Si' y 'No' obligan a acordarse de la pregunta que ya no esta.
@@ -1315,7 +1315,7 @@ export const T = {
     //
     // Ahora el título dice QUÉ es y QUIÉN lo ve, y al globo le queda lo único
     // que el título no puede decir: dónde se elige.
-    globo: 'Eliges cuáles compartes en el Álbum.',
+    globo: 'Se elige en el Álbum.',
     cambiarFoto: 'Cambiar la foto de perfil',
     subiendoFoto: 'subiendo la foto…',
     deRacha: (n: number) => `${n} de racha`,
