@@ -90,6 +90,10 @@ export type Perfil = {
   gimnasio_lat: number | null;
   gimnasio_lon: number | null;
   gimnasio_radio: number;
+  // Actividad en vivo: si tus amigos ven "estás entrenando ahora" al llegar al
+  // gimnasio. Opt-in, apagado por defecto. Opcional en el tipo porque la
+  // columna la agrega una migración y el código puede llegar antes.
+  comparte_gimnasio?: boolean;
   // El detector de estancamiento (migración 30). Opcionales en el tipo porque
   // la pantalla pide `select *` y el código puede llegar antes que la
   // migración: sin las columnas, `undefined` significa "el valor por omisión

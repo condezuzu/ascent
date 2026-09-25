@@ -1,12 +1,12 @@
 -- DRY-RUN de la racha por replay — SOLO LECTURA, no cambia ningún dato.
 --
--- Para ver el ANTES y DESPUÉS de la migración 51 sobre las cuentas reales, sin
+-- Para ver el ANTES y DESPUÉS de la migración 52 sobre las cuentas reales, sin
 -- aplicar nada. Pegar entero en el SQL Editor de Supabase y correr. Devuelve una
 -- fila por cuenta con la racha guardada de hoy, la que daría el replay, y la
 -- diferencia. NO escribe en ninguna tabla: solo crea una función de lectura y
 -- hace un SELECT. Si querés, al final la borra sola (ver la última línea).
 --
--- Es EXACTAMENTE la función que instala la migración 51; correrla acá primero
+-- Es EXACTAMENTE la función que instala la migración 52; correrla acá primero
 -- es el "en seco" que pediste. Si alguna diferencia es grande, paramos.
 
 create or replace function public.racha_replay(p_user uuid)

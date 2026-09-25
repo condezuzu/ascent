@@ -53,6 +53,9 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   // en segundo plano (una consulta por amigo, en paralelo) para no demorar la
   // primera pintada del ranking: la lista aparece y las medallas caen encima.
   const [medallas, setMedallas] = useState<Record<string, Medalla[]>>({});
+  // AMIGOS ENTRENANDO AHORA (actividad en vivo). Se refresca con el ranking.
+  // Si la migración de actividad no corrió, vuelve vacío y no se muestra nada.
+  const [entrenando, setEntrenando] = useState<{ id: string; username: string; avatar_url: string | null }[]>([]);
   const busquedaAhora = useRef('');
 
   const cargar = useCallback(async () => {
@@ -68,6 +71,15 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
       setMandados(d.pedidosMandados);
     }
     setCargado(true);
+    // Quién está entrenando ahora, aparte y sin frenar el ranking.
+    void (async () => {
+      try {
+        const { data: viv } = await supabase.rpc('entrenando_ahora');
+        setEntrenando(Array.isArray(viv) ? viv : []);
+      } catch {
+        setEntrenando([]);
+      }
+    })();
   }, [alSalir]);
 
   useEffect(() => {
@@ -176,6 +188,26 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               <Text style={estilos.vacioTexto}>{T.social.vacioPie}</Text>
             </View>
           )
+        )}
+
+        {/* ENTRENANDO AHORA (en vivo): arriba del historial, porque es lo que
+            está pasando. Solo dice que están entrenando, nunca dónde. */}
+        {entrenando.length > 0 && (
+          <View style={estilos.seccion}>
+            <Text style={estilos.rotulo}>{T.social.entrenandoAhora}</Text>
+            {entrenando.map((e) => (
+              <Pressable
+                style={({ pressed }) => [estilos.fila, pressed && estilos.filaTocada]}
+                key={e.id}
+                onPress={() => router.push(`/perfil/${e.id}`)}
+                accessibilityRole="button"
+              >
+                <View style={estilos.puntoVivo} />
+                <Avatar url={e.avatar_url} nombre={e.username} tam={28} />
+                <Text style={[estilos.nombre, { fontSize: 14 }]}>{T.social.estaEntrenando(e.username)}</Text>
+              </Pressable>
+            ))}
+          </View>
         )}
 
         {(datos?.actividad ?? []).length > 0 && (
@@ -320,6 +352,8 @@ const estilos = StyleSheet.create({
   seccion: { marginTop: 24 },
   rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
   pieBusqueda: { color: C.apagado, fontSize: 12, marginBottom: 8 },
+  // El punto verde de "en vivo", al lado de quien está entrenando ahora.
+  puntoVivo: { width: 8, height: 8, borderRadius: 999, backgroundColor: '#5fd08a' },
   sinResultado: { color: C.apagado, fontSize: 13, paddingVertical: 12 },
   miniatura: {
     width: 38,

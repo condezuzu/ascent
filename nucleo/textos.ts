@@ -288,7 +288,7 @@ export const T = {
     // falta se lee como un boletín. Estos apuntan al próximo paso —agregar
     // gente, que se hace justo abajo— en vez de anunciar el vacío.
     vacioTitulo: 'Tu ranking te espera.',
-    vacioPie: 'Busca gente abajo y agrégala: acá van a competir por la racha.',
+    vacioPie: 'Busca gente abajo y agrégala: aquí van a competir por la racha.',
     vacio: 'Tu ranking te espera.\nBusca gente abajo y agrégala para competir por la racha.',
   },
 
@@ -529,6 +529,8 @@ export const T = {
     // Tres cosas que cambian cómo funciona la app y que nadie encuentra si
     // no se las nombra una vez.
 
+    comparteGimnasio: 'Avisar cuando entreno',
+    comparteGimnasioNota: 'Tus amigos ven que estás entrenando al llegar. Nunca dónde.',
     diasDescanso: 'Días de descanso',
     diasDescansoNota: 'Esos días puedes faltar sin perder la racha.',
 
@@ -1257,6 +1259,8 @@ export const T = {
       n === 1 ? 'Tienes 1 cosa sin responder' : `Tienes ${n} cosas sin responder`,
     aceptar: 'Aceptar',
     solicitudes: 'Te quieren agregar',
+    entrenandoAhora: 'Entrenando ahora',
+    estaEntrenando: (nombre: string) => `${nombre} está entrenando`,
     no: 'No',
     teReto: (nombre: string) => `${nombre} te retó a 7 días: quien entrene más, gana.`,
     acepto: 'Acepto',

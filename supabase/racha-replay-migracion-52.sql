@@ -1,11 +1,11 @@
 -- =============================================================
--- MIGRACIÓN 51 (PREPARADA, NO APLICAR TODAVÍA) — la racha, derivada por replay
+-- MIGRACIÓN 52 (PREPARADA, NO APLICAR TODAVÍA) — la racha, derivada por replay
 --
 -- ⚠️ ESTE ARCHIVO NO ESTÁ CABLEADO AL SCHEMA NI A LOS TESTS a propósito. Cambia
 -- cómo se DERIVA la racha (la mecánica central), y el humano quiere revisar el
 -- dry-run (`dry-run-racha.sql`) antes de que sea real. Cuando dé el OK:
 --   1. se vuelca este contenido a schema.sql,
---   2. se renombra a `migracion-51-racha-derivada.sql`,
+--   2. se renombra a `migracion-52-racha-derivada.sql`,
 --   3. se actualizan los tests de racha al modelo nuevo,
 --   4. recién ahí se aplica.
 -- Aplicarlo suelto ahora dejaría prod distinto del repo (test:conexion en rojo).
@@ -213,6 +213,6 @@ update profiles p set
 -- grant select on public.usuarios_publicos to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 51; $$;
+returns int language sql immutable as $$ select 52; $$;
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

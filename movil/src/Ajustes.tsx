@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
 import { planetaDeDia } from '@nucleo/rangos';
@@ -131,6 +131,28 @@ export default function Ajustes({
       {/* EL GIMNASIO VA PRIMERO, igual que en la web: es lo que diferencia a
           la app, y en una lista de interruptores al fondo no lo marca nadie. */}
       <Gimnasio perfil={perfil} alCambiar={alCambiar} />
+
+      {/* ACTIVIDAD EN VIVO: opt-in, apagado por defecto (27/9). Cuando el
+          vigilante te detecta en el gimnasio, tus amigos ven "estás entrenando
+          ahora" en Ranking —nunca dónde—; caduca sola a las 2 h. Solo tiene
+          sentido con un punto marcado, así que aparece cuando lo hay. Se apaga
+          acá y deja de aparecer al toque. */}
+      {perfil.gimnasio_lat != null && (
+        <View style={estilos.filaOpcion}>
+          <View style={estilos.textoOpcion}>
+            <Text style={estilos.opcion}>{T.ajustes.comparteGimnasio}</Text>
+            <Text style={estilos.nota}>{T.ajustes.comparteGimnasioNota}</Text>
+          </View>
+          <Switch
+            value={perfil.comparte_gimnasio === true}
+            onValueChange={async (v) => {
+              alCambiar({ comparte_gimnasio: v } as Partial<Perfil>);
+              const { error } = await supabase.rpc('fijar_comparte_gimnasio', { p_valor: v });
+              if (error) alCambiar({ comparte_gimnasio: !v } as Partial<Perfil>);
+            }}
+          />
+        </View>
+      )}
 
       {/* Y LA SALUD DEL TELÉFONO JUSTO DEBAJO: son las dos formas de que un
           día entre sin que aprietes nada, y leerlas juntas se entiende. La
@@ -326,6 +348,9 @@ const estilos = StyleSheet.create({
   textoPastilla: { color: '#8a93a8', fontSize: 13 },
   textoPrendido: { color: '#c4c2ba' },
   nota: { color: '#4a5163', fontSize: 12, marginTop: 8, lineHeight: 18 },
+  filaOpcion: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18 },
+  textoOpcion: { flex: 1 },
+  opcion: { color: '#e8ecf6', fontSize: 15 },
   error: { color: '#e8705f', fontSize: 13, marginTop: 18, lineHeight: 19 },
   enlace: { color: '#8a93a8', fontSize: 13 },
   salir: { marginTop: 48, alignItems: 'center' },

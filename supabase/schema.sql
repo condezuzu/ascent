@@ -123,6 +123,10 @@ create table public.profiles (
     (gimnasio_lon is null or gimnasio_lon between -180 and 180)
   ),
   pendiente_desde timestamptz,
+  -- Actividad en vivo (migración 51): si tus amigos ven "estás entrenando
+  -- ahora" al llegar al gimnasio. Opt-in, apagado por defecto. Se escribe solo
+  -- por `fijar_comparte_gimnasio`.
+  comparte_gimnasio boolean not null default false,
   creado timestamptz not null default now()
 );
 
@@ -2437,6 +2441,62 @@ returns boolean language sql stable security definer set search_path = public as
     );
 $$;
 
+-- -------------------------------------------------------------
+-- ACTIVIDAD EN VIVO — "fulano está en el gimnasio ahora" (migración 51)
+--
+-- Al llegar al gimnasio, el vigilante marca "hasta = now()+2h"; las lecturas
+-- filtran `hasta > now()`, así CADUCA SOLA sin cron ni detectar la salida.
+-- OPT-IN (`profiles.comparte_gimnasio`): el vigilante solo publica si está
+-- prendido. NUNCA dice dónde: `entrenando_ahora` devuelve nombre, avatar y
+-- desde cuándo, jamás el gimnasio ni la distancia.
+-- -------------------------------------------------------------
+create table public.en_el_gimnasio (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  desde timestamptz not null default now(),
+  hasta timestamptz not null
+);
+-- RLS acá y no en el bloque de arriba: esa lista corre antes de que esta tabla
+-- exista. Sin acceso directo del cliente; se entra y se lee por las funciones.
+alter table public.en_el_gimnasio enable row level security;
+
+create or replace function public.fijar_comparte_gimnasio(p_valor boolean)
+returns void language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then return; end if;
+  update profiles set comparte_gimnasio = coalesce(p_valor, false) where id = uid;
+  -- Al apagarlo deja de aparecer YA: se borra la marca vigente.
+  if not coalesce(p_valor, false) then delete from en_el_gimnasio where user_id = uid; end if;
+end;
+$$;
+
+create or replace function public.marcar_en_gimnasio()
+returns void language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then return; end if;
+  if not exists (select 1 from profiles where id = uid and comparte_gimnasio) then return; end if;
+  insert into en_el_gimnasio (user_id, desde, hasta)
+    values (uid, now(), now() + interval '2 hours')
+    on conflict (user_id) do update set hasta = now() + interval '2 hours';
+end;
+$$;
+
+create or replace function public.entrenando_ahora()
+returns table (id uuid, username text, avatar_url text, desde timestamptz)
+language sql stable security definer set search_path = public as $$
+  select u.id, u.username, u.avatar_url, g.desde
+    from en_el_gimnasio g
+    join usuarios_publicos u on u.id = g.user_id
+   where g.hasta > now()
+     and g.user_id <> auth.uid()
+     and public.son_amigos(auth.uid(), g.user_id)
+   order by g.desde desc;
+$$;
+
+revoke execute on function public.fijar_comparte_gimnasio(boolean), public.marcar_en_gimnasio(), public.entrenando_ahora() from public, anon;
+grant execute on function public.fijar_comparte_gimnasio(boolean), public.marcar_en_gimnasio(), public.entrenando_ahora() to authenticated;
+
 -- profiles: solo el dueño (lo público sale por la vista)
 create policy "perfil propio: leer" on public.profiles for select using (auth.uid() = id);
 create policy "perfil propio: editar" on public.profiles for update using (auth.uid() = id);
@@ -2568,7 +2628,8 @@ grant usage on schema public to authenticated, anon;
 revoke all on table
   public.profiles, public.logs, public.photos, public.weights,
   public.friendships, public.challenges, public.feedback, public.descansos,
-  public.ejercicios, public.prs, public.sesiones, public.errores_js
+  public.ejercicios, public.prs, public.sesiones, public.errores_js,
+  public.en_el_gimnasio
   from anon, authenticated;
 
 -- lectura y escritura mínimas, siempre acotadas después por la RLS
@@ -2863,7 +2924,7 @@ $$;
 grant execute on function public.medallas_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 50; $$;
+returns int language sql immutable as $$ select 51; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

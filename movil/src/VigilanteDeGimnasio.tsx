@@ -133,6 +133,21 @@ function Mirando({ perfil }: { perfil: Perfil }) {
       edadDelPunto: Math.round((Date.now() - medidoEn) / 1000) + 's',
     });
 
+    // ACTIVIDAD EN VIVO: si estás adentro, se publica "en el gimnasio ahora"
+    // para tus amigos (caduca sola en 2 h). El RPC no hace nada si el opt-in
+    // está apagado, así que llamarlo siempre-que-adentro es seguro. Dispara y
+    // se olvida; si la migración de actividad no corrió, PGRST202 y nada. Ver
+    // `supabase/actividad-en-vivo.sql`.
+    if (adentro) {
+      void (async () => {
+        try {
+          await supabase.rpc('marcar_en_gimnasio');
+        } catch {
+          /* opt-in apagado o migración sin correr: nada que hacer */
+        }
+      })();
+    }
+
     if (adentro && diaRegistrado.current !== hoyISO()) {
       const r = await registrarPorSenal(supabase, 'ubicacion');
       await anotar('registré el día', { entró: r.registrado, yaEstaba: r.yaEstaba });
