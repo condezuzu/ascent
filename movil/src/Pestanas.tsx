@@ -129,6 +129,11 @@ export default function Pestanas({
 }) {
   const [pestana, setPestana] = useState<Pestana>('inicio');
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  // CUÁNTAS SOLICITUDES DE AMISTAD ESPERAN. Para el puntito en la pestaña
+  // Ranking: sin esto, alguien te agrega y no hay forma de enterarse hasta que
+  // entrás a Ranking por tu cuenta. Es una cuenta barata (head), se refresca al
+  // cambiar de pestaña. El aviso al teléfono (push) es aparte y es nativo.
+  const [solicitudes, setSolicitudes] = useState(0);
   /** La de al lado, mientras el dedo está abajo. `null` = no se está arrastrando. */
   const [asomando, setAsomando] = useState<Pestana | null>(null);
   /**
@@ -190,6 +195,23 @@ export default function Pestanas({
   useEffect(() => {
     if (pestana === 'ajustes' || asomando === 'ajustes') cargarPerfil();
   }, [pestana, asomando, cargarPerfil]);
+
+  // El puntito de "te llegó una solicitud": se cuenta al montar y al cambiar de
+  // pestaña (entrar a Ranking la deja al día en cuanto la ves).
+  const contarSolicitudes = useCallback(async () => {
+    const { data: sesion } = await supabase.auth.getSession();
+    const uid = sesion.session?.user?.id;
+    if (!uid) return;
+    const { count } = await supabase
+      .from('friendships')
+      .select('id', { count: 'exact', head: true })
+      .eq('destinatario', uid)
+      .eq('estado', 'pendiente');
+    setSolicitudes(count ?? 0);
+  }, []);
+  useEffect(() => {
+    contarSolicitudes();
+  }, [contarSolicitudes, pestana]);
 
   // AL VOLVER A UNA PESTAÑA, QUE PIDA SUS DATOS DE NUEVO. Antes lo hacía
   // sola porque se remontaba entera —que era el titileo—; ahora que se
@@ -405,17 +427,26 @@ export default function Pestanas({
 
       <View style={estilos.barra} accessibilityRole="tablist">
         {/* El orden de la web: Inicio, Ranking, Álbum, Stats, Ajustes. */}
-        {ORDEN.map((p) => (
-          <Pressable
-            key={p}
-            style={estilos.boton}
-            onPress={() => irA(p)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: pestana === p }}
-          >
-            <Text style={[estilos.texto, pestana === p && estilos.activo]}>{T.nav[p]}</Text>
-          </Pressable>
-        ))}
+        {ORDEN.map((p) => {
+          // EL PUNTITO EN RANKING: hay solicitudes esperando y no estás mirando
+          // Ranking. Estando ahí ya las ves (van al final de la pantalla).
+          const avisa = p === 'ranking' && solicitudes > 0 && pestana !== 'ranking';
+          return (
+            <Pressable
+              key={p}
+              style={estilos.boton}
+              onPress={() => irA(p)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: pestana === p }}
+              accessibilityLabel={avisa ? `${T.nav[p]} — ${T.social.tePidieron(solicitudes)}` : undefined}
+            >
+              <View>
+                <Text style={[estilos.texto, pestana === p && estilos.activo]}>{T.nav[p]}</Text>
+                {avisa && <View style={estilos.punto} />}
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
@@ -442,4 +473,14 @@ const estilos = StyleSheet.create({
   boton: { flex: 1, alignItems: 'center', paddingVertical: 6, minHeight: 44, justifyContent: 'center' },
   texto: { color: '#4a5163', fontSize: 12, letterSpacing: 0.5 },
   activo: { color: '#e8ecf6' },
+  // El puntito de aviso, arriba a la derecha del rótulo de la pestaña.
+  punto: {
+    position: 'absolute',
+    top: -3,
+    right: -9,
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: '#e8705f',
+  },
 });
