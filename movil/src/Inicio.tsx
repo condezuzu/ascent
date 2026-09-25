@@ -8,6 +8,7 @@ import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import { planetaDeDia, rangoDeRacha } from '@nucleo/rangos';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { laCuentaYaNoExiste, mensajeDeAuth } from '@nucleo/errores';
+import { pedirInicio } from '@compartido/inicio';
 import type { Log, Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
@@ -173,108 +174,123 @@ export default function Inicio({
     setEstado((y) => (y.tipo === 'listo' ? y : { tipo: 'error', que }));
   }, []);
 
+  // EL DÍA DE HOY, EN MINUTOS: cuánto duró lo entrenado hoy. Va aparte de
+  // `pantalla_inicio` (que no lo trae) y en paralelo, así no suma otra ida y
+  // vuelta. `!inner` y no un select suelto: sin eso PostgREST devuelve TODAS
+  // las sesiones y la suma saldría de la semana entera en vez del día.
+  const pedirDeHoy = useCallback(
+    (uid: string) =>
+      supabase
+        .from('sesiones')
+        .select('inicio, fin, logs!inner(fecha)')
+        .eq('user_id', uid)
+        .eq('estado', 'terminada')
+        .eq('logs.fecha', hoyISO()),
+    [supabase]
+  );
+
+  // EL POST-PROCESADO, COMPARTIDO por el camino rápido (`pantalla_inicio`) y el
+  // viejo (por si la migración 43 no corriera): decide cuenta-borrada /
+  // sin-nombre, pinta el estado, los minutos de hoy y el aviso de vida.
+  const aplicar = useCallback(
+    async (
+      uid: string,
+      d: {
+        perfil: Perfil | null;
+        logs: Log[];
+        descansos: ConfigDescanso[];
+        impulsos: { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number } | null;
+        perdida: boolean;
+        deHoy: { inicio: string; fin: string | null }[];
+      }
+    ) => {
+      if (!d.perfil) {
+        // HAY TOKEN PERO NO HAY FILA: se le pregunta al servidor quién es, y solo
+        // si CONTESTA que no existe se cierra sesión (sin red reintentar es lo
+        // correcto). Ver `laCuentaYaNoExiste`.
+        const { error: eQuien } = await supabase.auth.getUser();
+        if (laCuentaYaNoExiste(eQuien)) {
+          await supabase.auth.signOut();
+          return alSalir();
+        }
+        return fallo(T.general.noSePudo);
+      }
+      // Cuenta nueva sin nombre: a elegirlo, no Inicio a medias.
+      if (!d.perfil.username) return alFaltarNombre();
+
+      setEstado({
+        tipo: 'listo',
+        perfil: d.perfil,
+        logs: d.logs,
+        descansos: d.descansos,
+        cubiertos: Array.isArray(d.impulsos?.vigentes) ? (d.impulsos!.vigentes as string[]) : [],
+        impulsos:
+          d.impulsos && d.impulsos.quedan !== undefined
+            ? { quedan: Number(d.impulsos.quedan), total: Number(d.impulsos.total) }
+            : null,
+        perdida: d.perdida,
+      });
+      // Las dos puntas son del SERVIDOR: restarlas no mete el desfasaje de reloj.
+      const minutos = d.deHoy.reduce((t, s) => (s.fin ? t + (Date.parse(s.fin) - Date.parse(s.inicio)) / 60000 : t), 0);
+      setMinutosDeHoy(minutos >= 1 ? Math.round(minutos) : null);
+      setVueltas((v) => v + 1);
+      const ultimas = Array.isArray(d.impulsos?.ultimas) ? (d.impulsos!.ultimas as string[]) : [];
+      const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
+      if (sinVer.length > 0) {
+        setVidaUsada({ dias: sinVer, quedan: Number(d.impulsos?.quedan ?? 0), total: Number(d.impulsos?.total ?? 0) });
+      }
+    },
+    [alSalir, alFaltarNombre, fallo]
+  );
+
   const cargar = useCallback(async () => {
     try {
       const { data: sesion } = await supabase.auth.getSession();
       const uid = sesion.session?.user?.id;
       if (!uid) return alSalir();
 
-      // La pérdida se verifica ANTES de leer el perfil: es la llamada que
-      // aplica los impulsos, y si se leyera el perfil primero se mostraría por un
-      // instante una racha que la base está por corregir.
-      const { data: verificacion } = await supabase.rpc('verificar_perdida');
+      // UN SOLO PEDIDO (pantalla_inicio, el mismo que la web), en paralelo con
+      // los minutos de hoy. Antes eran DOS idas y vuelta encadenadas —
+      // verificar_perdida y después cinco consultas—; `pantalla_inicio` trae
+      // todo en una, con verificar_perdida adentro y en el orden correcto.
+      const [inicio, { data: deHoy }] = await Promise.all([pedirInicio(supabase), pedirDeHoy(uid)]);
+      const dh = (deHoy ?? []) as { inicio: string; fin: string | null }[];
 
+      if (inicio.tipo === 'listo') {
+        const x = inicio.datos;
+        return aplicar(uid, {
+          perfil: x.perfil,
+          logs: x.logs,
+          descansos: x.descansos,
+          impulsos: x.impulsos,
+          perdida: !!x.perdida?.perdida,
+          deHoy: dh,
+        });
+      }
+      if (inicio.tipo === 'falla') return fallo(T.general.noSePudo);
+
+      // 'sin-funcion': la migración 43 no corrió. Camino viejo, completo.
+      const { data: verificacion } = await supabase.rpc('verificar_perdida');
       const desde = restarDias(hoyISO(), 6);
-      const [
-        { data: perfil, error },
-        { data: logs },
-        { data: descansos },
-        { data: impulsos },
-        { data: deHoy },
-      ] = await Promise.all([
-        // `maybeSingle` y no `single`: que no haya fila NO es un error de la
-        // consulta, es un dato —la cuenta se borró desde otro aparato— y hay
-        // que poder distinguirlo de que la consulta no haya llegado.
+      const [{ data: perfil, error }, { data: logs }, { data: descansos }, { data: impulsos }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
         supabase.from('logs').select('*').eq('user_id', uid).gte('fecha', desde).order('fecha'),
         supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
         supabase.rpc('mis_impulsos'),
-        // CUÁNTO DURÓ HOY. Se cuelga del día por `log_id` y no de la hora de
-        // inicio: una sesión que empieza a las 23:50 y termina a las 00:10 es
-        // del día en que empezó, que es lo que dice el resto de la app.
-        //
-        // `!inner` y no un select suelto: sin eso PostgREST devuelve TODAS las
-        // sesiones con `logs` en null para las que no casan, y la suma saldría
-        // de la semana entera en vez del día.
-        supabase
-          .from('sesiones')
-          .select('inicio, fin, logs!inner(fecha)')
-          .eq('user_id', uid)
-          .eq('estado', 'terminada')
-          .eq('logs.fecha', hoyISO()),
       ]);
-
       if (error) return fallo(mensajeDeAuth(error));
-      if (!perfil) {
-        // HAY TOKEN PERO NO HAY FILA. Antes esto era "algo falló, probá de
-        // nuevo": un botón de reintentar que no podía funcionar nunca, porque
-        // la cuenta ya no estaba. Se le pregunta al servidor quién es este
-        // token, y solo si CONTESTA que ese usuario no existe se cierra la
-        // sesión —sin red la pregunta también falla, y ahí reintentar sí es lo
-        // correcto—. Ver `laCuentaYaNoExiste`.
-        const { error: eQuien } = await supabase.auth.getUser();
-        if (laCuentaYaNoExiste(eQuien)) {
-          // El signOut no es de más: `alSalir` solo hace que la raíz vuelva a
-          // mirar, y el token guardado sigue ahí. Sin esto la raíz lo encuentra
-          // otra vez y vuelve a esta misma pantalla.
-          await supabase.auth.signOut();
-          return alSalir();
-        }
-        return fallo(T.general.noSePudo);
-      }
-
-      // CUENTA RECIÉN CREADA, SIN NOMBRE: no se dibuja Inicio a medias, se
-      // manda a elegirlo. Es lo mismo que hace la web rebotando a /onboarding.
-      //
-      // Se avisa ACÁ y no al dibujar. Estaba en el render y React lo cantó:
-      // "Cannot update a component while rendering a different component".
-      // Cambiarle el estado al padre mientras el hijo se dibuja es pedirle a
-      // React que rehaga un árbol que todavía no terminó; que hoy funcione no
-      // lo hace correcto, y en modo concurrente deja de funcionar.
-      if (!perfil.username) return alFaltarNombre();
-
-      setEstado({
-        tipo: 'listo',
-        perfil: perfil as Perfil,
+      return aplicar(uid, {
+        perfil: (perfil ?? null) as Perfil | null,
         logs: (logs ?? []) as Log[],
         descansos: (descansos ?? []) as ConfigDescanso[],
-        cubiertos: Array.isArray(impulsos?.vigentes) ? (impulsos.vigentes as string[]) : [],
-        impulsos: impulsos ? { quedan: Number(impulsos.quedan), total: Number(impulsos.total) } : null,
+        impulsos: (impulsos ?? null) as { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number } | null,
         perdida: !!(verificacion as { perdida?: boolean } | null)?.perdida,
+        deHoy: dh,
       });
-      // Las dos puntas son del SERVIDOR, así que restarlas no mete el desfasaje
-      // de reloj del teléfono —a diferencia del cierre, que tiene que corregirlo
-      // (ver `terminar` en `useSesion`)—.
-      const minutos = ((deHoy ?? []) as { inicio: string; fin: string | null }[]).reduce(
-        (t, s) => (s.fin ? t + (Date.parse(s.fin) - Date.parse(s.inicio)) / 60000 : t),
-        0
-      );
-      // Cero se guarda como `null`: "hoy entrenaste 0 minutos" no es un dato,
-      // es una línea de más.
-      setMinutosDeHoy(minutos >= 1 ? Math.round(minutos) : null);
-      // Una vuelta mas: lo que se pide aparte —las medallas— se entera de que
-      // hay datos nuevos. Va aca y no al empezar, para que no pregunten dos
-      // veces por una carga que todavia puede fallar.
-      setVueltas((v) => v + 1);
-      const ultimas = Array.isArray(impulsos?.ultimas) ? (impulsos.ultimas as string[]) : [];
-      const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
-      if (sinVer.length > 0) {
-        setVidaUsada({ dias: sinVer, quedan: Number(impulsos?.quedan ?? 0), total: Number(impulsos?.total ?? 0) });
-      }
     } catch (e) {
       fallo(String((e as Error)?.message ?? e));
     }
-  }, [alSalir, alFaltarNombre, fallo]);
+  }, [alSalir, aplicar, fallo, pedirDeHoy]);
 
   useEffect(() => {
     cargar();
