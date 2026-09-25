@@ -218,6 +218,9 @@ export const T = {
   inicio: {
     racha: 'Racha',
     registrarDia: 'Registrar día',
+    // El día uno: el botón invita a empezar en vez de nombrar una tarea. En
+    // tú neutro (§54), como el resto de la app.
+    registrarPrimerDia: 'Registra tu primer día',
     diaRegistrado: 'Día registrado',
     // CUANTO DURO, debajo del rotulo (25/9). "Me gustaba que apareciera el
     // tiempo". Las series no: el bloque ya las cuenta mientras entrenas y, una
@@ -281,9 +284,12 @@ export const T = {
     gimnasioAhoraNo: 'Ahora no',
     noCargo: 'No se pudieron traer tus datos. Puede ser la conexión.',
     reintentar: 'Reintentar',
-    vacioTitulo: 'Todavía no hay nada aquí.',
-    vacioPie: 'Registra tu primer día y algo se empieza a formar.',
-    vacio: 'Todavía no hay nada aquí.\nRegistra tu primer día y algo se empieza a formar.',
+    // NO "no hay nada aquí" (§11, 27/9): un estado vacío que solo dice lo que
+    // falta se lee como un boletín. Estos apuntan al próximo paso —agregar
+    // gente, que se hace justo abajo— en vez de anunciar el vacío.
+    vacioTitulo: 'Tu ranking te espera.',
+    vacioPie: 'Busca gente abajo y agrégala: acá van a competir por la racha.',
+    vacio: 'Tu ranking te espera.\nBusca gente abajo y agrégala para competir por la racha.',
   },
 
   // ---------------------------------------------------------------

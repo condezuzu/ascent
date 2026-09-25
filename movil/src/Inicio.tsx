@@ -186,7 +186,7 @@ export default function Inicio({
         .eq('user_id', uid)
         .eq('estado', 'terminada')
         .eq('logs.fecha', hoyISO()),
-    [supabase]
+    []
   );
 
   // EL POST-PROCESADO, COMPARTIDO por el camino rápido (`pantalla_inicio`) y el
@@ -553,20 +553,14 @@ export default function Inicio({
           LA TIRA DE LA SEMANA SÍ SE VA mientras entrenás, y eso se queda como
           estaba: son siete puntos que no cambian en medio de una sesión y que
           empujan el bloque —lo que se toca doce veces— más abajo. */}
-      {/* EL ESTADO VACIO NO DICE "no hay datos" (§11). El dia uno no hay
-          racha, ni amigos, ni fotos, y esa es la primera impresion de la
-          app: un cero gigante seria un boletin de lo que todavia no hiciste.
-          Dos lineas y el fondo, que ya esta ahi detras. */}
-      {perfil.racha_actual === 0 && logs.length === 0 ? (
-        <View style={estilos.sinNada}>
-          <Text style={estilos.vacioTitulo}>{T.inicio.vacioTitulo}</Text>
-          <Text style={estilos.vacioPie}>{T.inicio.vacioPie}</Text>
-        </View>
-      ) : (
-        /* LA RACHA CON SU ROTULO AL COSTADO Y LA BARRA DE RANGO (24/9): las
-           dos formas que faltaban portar de la web. Ver `RachaConRotulo`. */
-        <RachaConRotulo racha={perfil.racha_actual} rango={perfil.rango_actual} />
-      )}
+      {/* EL DÍA UNO NO ES UN CARTEL (27/9). Antes, con racha 0 y sin días, se
+          mostraba "Todavía no hay nada aquí": un boletín de lo que no hiciste.
+          Ahora se muestra la pantalla REAL —el 0 con su rótulo, la barra de
+          rango 1 y el fondo entero detrás—, y abajo el botón "Registrá tu
+          primer día". El día cero no es una versión pobre del día 40: es la
+          nube de polvo antes de la estrella, y por eso el fondo del rango 1 va
+          a fondo (caos, color, movimiento; ver `FondoEspacial`/shaders). */}
+      <RachaConRotulo racha={perfil.racha_actual} rango={perfil.rango_actual} />
 
       {!sesion.estado.corriendo && (
       <View style={estilos.tira}>
@@ -773,7 +767,7 @@ export default function Inicio({
       ) : (
         <>
           <Pressable style={estilos.solido} onPress={() => setRegistrarAbierto(true)}>
-            <Text style={estilos.textoSolido}>{T.inicio.registrarDia}</Text>
+            <Text style={estilos.textoSolido}>{sinNada ? T.inicio.registrarPrimerDia : T.inicio.registrarDia}</Text>
           </Pressable>
           {/* PEGADO AL PRINCIPAL, como en la web: el peso NO pasa por registrar
               el día —pesarse no es haber ido al gimnasio— pero tiene que poder
