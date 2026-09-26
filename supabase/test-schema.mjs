@@ -10931,9 +10931,10 @@ console.log('\n155. El album: pasar con el dedo y dos botones que se ven');
   chequear('no se dispara con un toque',
     /Math\.abs\(g\.dx\) > 8 && Math\.abs\(g\.dx\) > Math\.abs\(g\.dy\)/.test(alb155), true);
   // DISTANCIA O VELOCIDAD: solo por distancia, un movimiento corto y decidido
-  // no pasa; solo por velocidad, un arrastre lento y largo tampoco.
+  // no pasa; solo por velocidad, un arrastre lento y largo tampoco. Umbral
+  // bajado el 27/9 (45px / 0,25) porque con 70/0,4 "solo andaban los botones".
   chequear('pasa por distancia o por tiron',
-    /Math\.abs\(g\.dx\) > 70 \|\| Math\.abs\(g\.vx\) > 0\.4/.test(alb155), true);
+    /Math\.abs\(g\.dx\) > 45 \|\| Math\.abs\(g\.vx\) > 0\.25/.test(alb155), true);
   // EL GESTO LEE EL ESTADO POR REFERENCIA: un PanResponder guarda las funciones
   // que tenia al crearse, y con el estado de cada dibujo el primer arrastre
   // sobre la segunda foto usaria el indice de la primera.

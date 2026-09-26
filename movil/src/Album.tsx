@@ -24,6 +24,7 @@ import { primeraYUltima, resumenDelMes } from '@nucleo/album';
 import FondoEspacial from './FondoEspacial';
 import { C } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
+import { bloquearDeslizarPestanas, desbloquearDeslizarPestanas } from './gestoDePestanas';
 
 /**
  * ÁLBUM — tanda 4.
@@ -69,6 +70,16 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
   useRecargarAlVolver('album', cargar);
 
   useEffect(() => setConfirmando(false), [abierta]);
+
+  // MIENTRAS LA FOTO ESTÁ ABIERTA, LAS PESTAÑAS NO DESLIZAN (27/9): así el
+  // arrastre para pasar de foto es de la foto, y no se escapa a otra pestaña.
+  // Ver `gestoDePestanas.ts`. (La hoja es un Modal, pero el candado no cuesta
+  // nada y cubre cualquier borde.)
+  useEffect(() => {
+    if (abierta === null) return;
+    bloquearDeslizarPestanas();
+    return () => desbloquearDeslizarPestanas();
+  }, [abierta]);
 
   // ---- PASAR LA FOTO CON EL DEDO ----
   //
@@ -121,7 +132,10 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
         // UN QUINTO DE PANTALLA O UN TIRÓN RÁPIDO. Solo por distancia, un
         // movimiento corto y decidido no pasa; solo por velocidad, un arrastre
         // lento y largo tampoco.
-        const fuerte = Math.abs(g.dx) > 70 || Math.abs(g.vx) > 0.4;
+        // Umbral más bajo (27/9): con 70px/0,4 el deslizamiento entre fotos casi
+        // no disparaba y "solo andaban los botones". 45px o un envión suave ya
+        // pasan de foto; sigue pidiendo intención, no un temblor.
+        const fuerte = Math.abs(g.dx) > 45 || Math.abs(g.vx) > 0.25;
         if (i === null || !fuerte) return volverAlCentro();
         if (g.dx < 0 && i < total - 1) return saltar(1);
         if (g.dx > 0 && i > 0) return saltar(-1);

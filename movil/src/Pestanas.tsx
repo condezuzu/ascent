@@ -14,6 +14,7 @@ import { ponerDesenfoque } from './desenfoqueDelFondo';
 import { eventos } from '@compartido/eventos';
 import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
 import { ContextoVisible } from './pedidoDeFondo';
+import { deslizarPestanasBloqueado } from './gestoDePestanas';
 import Recorrido from './Recorrido';
 
 /**
@@ -283,6 +284,12 @@ export default function Pestanas({
         // se tocó. Se pide recién al MOVERSE, y solo si el movimiento es
         // claramente horizontal.
         onMoveShouldSetPanResponder: (_e, g) => {
+          // EL CANDADO (27/9): si un hijo está manejando el horizontal —la foto
+          // abierta, un carrusel, un campo de texto por el que se está
+          // deslizando— las pestañas NO agarran el gesto. Sin esto, el
+          // `PanResponder` de acá le robaba el deslizamiento a la foto abierta y
+          // terminabas en otra pestaña. Ver `gestoDePestanas.ts`.
+          if (deslizarPestanasBloqueado()) return false;
           if (Math.abs(g.dx) < DECIDE_PX || Math.abs(g.dx) < Math.abs(g.dy) * 1.5) return false;
           return vecina(ORDEN.indexOf(pestana), g.dx, ORDEN.length) !== null;
         },
