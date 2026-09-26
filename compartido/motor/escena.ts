@@ -425,7 +425,11 @@ function materialPresagio(rango: number, planeta?: string | null): THREE.ShaderM
  * porque un gris plano se ve pobre.
  */
 function crearPolvo(vacio: boolean): THREE.Points {
-  const n = vacio ? 8 : cuantas(700);
+  // MÁS DENSO Y CON VETAS (26/9). El polvo es el protagonista del día uno y
+  // era ralo: 700 puntos en grumos redondos. Ahora son más, y una parte cae
+  // sobre FILAMENTOS —vetas finas que cruzan la nube— en vez de solo manchas,
+  // que es lo que le da a una nebulosa su textura hilada.
+  const n = vacio ? 8 : cuantas(1100);
   const pos = new Float32Array(n * 3);
   const col = new Float32Array(n * 3);
   const tam = new Float32Array(n);
@@ -433,15 +437,34 @@ function crearPolvo(vacio: boolean): THREE.Points {
 
   const paleta = NEBULOSA.map((h) => new THREE.Color(h));
   // núcleos de condensación: alrededor de estos se junta el gas
-  const grumos = Array.from({ length: 5 }, () => ({
-    x: (Math.random() - 0.5) * 0.8,
-    y: (Math.random() - 0.5) * 0.6,
+  const grumos = Array.from({ length: 6 }, () => ({
+    x: (Math.random() - 0.5) * 0.85,
+    y: (Math.random() - 0.5) * 0.62,
     r: 0.10 + Math.random() * 0.20,
   }));
+  // filamentos: segmentos por los que corre el polvo, como hebras de gas
+  const vetas = Array.from({ length: 4 }, () => {
+    const a = Math.random() * Math.PI * 2;
+    const largo = 0.35 + Math.random() * 0.5;
+    return {
+      x: (Math.random() - 0.5) * 0.5,
+      y: (Math.random() - 0.5) * 0.4,
+      dx: Math.cos(a) * largo,
+      dy: Math.sin(a) * largo * 0.7,
+    };
+  });
 
   for (let i = 0; i < n; i++) {
     let x: number, y: number;
-    if (!vacio && Math.random() < 0.68) {
+    const dado = Math.random();
+    if (!vacio && dado < 0.30) {
+      // una veta: el punto cae cerca de una hebra, con poco desvío perpendicular
+      const v = vetas[Math.floor(Math.random() * vetas.length)];
+      const t = Math.random();
+      const desvio = (Math.random() - 0.5) * 0.05;
+      x = v.x + v.dx * t + -v.dy * desvio;
+      y = v.y + v.dy * t + v.dx * desvio;
+    } else if (!vacio && dado < 0.74) {
       // la mayoría cae dentro de un grumo: eso arma las zonas cargadas
       const g = grumos[Math.floor(Math.random() * grumos.length)];
       const a = Math.random() * Math.PI * 2;

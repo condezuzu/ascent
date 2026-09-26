@@ -482,7 +482,45 @@ void main() {
 
     float bordes = smoothstep(1.15, 0.35, length(p * vec2(0.85, 1.0)));
     float inten = densidad * bordes * (0.72 + 0.95 * nucleo);
-    gl_FragColor = vec4(c * inten * 1.35 * uAtenua, clamp(inten * 0.85, 0.0, 1.0) * uAtenua);
+
+    // ───────────────────────────────────────────────────────────────
+    // EL DÍA UNO (26/9). Es la primera pantalla de toda la app y estaba casi
+    // vacía: gas tenue, centro negro, sin nada que diga "acá empieza algo".
+    // Se le suman dos cosas al gas, sin tocar su color base (queda constante).
+    //
+    // 1. LA ESTRELLA NACIENTE. Un protostar en el centro: NO una linterna —un
+    //    disco plano de luz—, sino un corazón chico y compacto con un halo
+    //    amplio que respira y no es un círculo perfecto, más unos rayos apenas
+    //    marcados. Va DETRÁS del polvo (este quad es el fondo), así que las
+    //    partículas lo velan y se lee metido en el gas, no pegado encima.
+    // p en pantalla llega a ~0.667 (el quad va escalado 1.5), así que los
+    // gaussianos van MUY apretados o el brillo se come media pantalla —fue el
+    // primer error, una linterna—. Es un protostar cálido, no un sol blanco.
+    float rc = length(p * vec2(1.0, 1.12));
+    float corazon = exp(-rc * rc * 430.0);   // el punto: compacto
+    float glow = exp(-rc * rc * 90.0);       // un bloom chico y contenido
+    float ang = atan(p.y, p.x);
+    float pelusa = 0.60 + 0.40 * fbm(vec3(cos(ang) * 2.0, sin(ang) * 2.0, uTime * 0.05));
+    float halo = exp(-rc * 12.0) * pelusa * 0.35;  // resplandor tenue y ACOTADO
+    float rayos = pow(max(0.0, cos(ang * 3.0 + uTime * 0.06)), 12.0) * exp(-rc * 13.0) * 0.25;
+    vec3 cCalido = mix(uPaleta3, vec3(1.0, 0.72, 0.45), 0.35);       // ámbar
+    vec3 cEstrella = mix(cCalido, vec3(1.0, 0.92, 0.78), corazon * 0.6);
+    float brilloEstrella = corazon * 0.95 + glow * 0.55 + halo + rayos;
+
+    // 2. CORTINAS DE AURORA. Velos que fluyen hacia arriba, tenues y de color
+    //    fijo (teal hacia violeta), por encima del gas. Bandas suaves en x
+    //    deformadas por ruido que sube con el tiempo (movimiento), apagadas
+    //    contra los dos bordes. Nada de esto rota el tono: solo se mueve la
+    //    forma.
+    float cx = p.x * 2.3 + fbm(vec3(p.x * 1.4, p.y * 0.6 - uTime * 0.05, 3.0)) * 2.4;
+    float cortina = pow(max(0.0, sin(cx)), 3.0);
+    cortina *= smoothstep(-1.05, -0.15, p.y) * smoothstep(1.05, 0.05, p.y);
+    cortina *= 0.45 + 0.55 * fbm(vec3(p.x * 3.0, p.y * 2.0 - uTime * 0.09, 7.0));
+    vec3 cAurora = mix(uPaleta1, vec3(0.38, 0.92, 0.72), 0.55);
+
+    vec3 finalCol = c * inten * 1.35 + cEstrella * brilloEstrella + cAurora * cortina * 0.75;
+    float finalA = clamp(inten * 0.85 + brilloEstrella * 0.9 + cortina * 0.5, 0.0, 1.0);
+    gl_FragColor = vec4(finalCol * uAtenua, finalA * uAtenua);
     return;
   }
 
