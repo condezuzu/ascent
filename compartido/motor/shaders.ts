@@ -365,6 +365,18 @@ float ridged(vec3 p) {
   return v;
 }
 
+// ALTURA DE LA ROCA: el campo de relieve de la piedra, como un solo número.
+// Existe aparte para poder muestrearlo en tres puntos y sacar la PENDIENTE:
+// sin eso el ridged solo teñía el color y la superficie se leía plana —una
+// mancha. Con la pendiente, la luz global talla las crestas (ver el bump más
+// abajo). El floor deja caras planas: piedra facetada, no degradé continuo.
+float alturaRoca(vec3 s) {
+  float cr = ridged(s * 3.2);
+  float cr2 = ridged(s * 9.0 + vec3(7.0));
+  float piedra = cr * 0.7 + cr2 * 0.3;
+  return mix(piedra, floor(piedra * 7.0) / 7.0, 0.45);
+}
+
 // =====================================================================
 // PROTUBERANCIAS SOLARES: arcos de plasma que salen del borde, crecen,
 // se estiran y se apagan. Cada una con su tamaño, ángulo y tiempo, así
@@ -673,13 +685,24 @@ void main() {
 
     // ---- ROCA: superficie pétrea, con crestas y facetas ----
     if (uModo > 2.5) {
-      float cr = ridged(sc * 3.2);
-      float cr2 = ridged(sc * 9.0 + vec3(7.0));
-      float piedra = cr * 0.7 + cr2 * 0.3;
-      // escalones: la piedra tiene caras planas, no degradés continuos
-      piedra = mix(piedra, floor(piedra * 7.0) / 7.0, 0.45);
+      float piedra = alturaRoca(sc);
       superficie = paleta(clamp(piedra * 1.15, 0.0, 1.0));
       superficie *= 0.75 + 0.5 * ridged(sc * 20.0); // grano mineral
+
+      // BUMP: LA LUZ TALLA EL RELIEVE. Hasta acá el ridged solo teñía el
+      // color y la normal seguía siendo la de una esfera lisa: la piedra se
+      // leía como una mancha con manchas, sin volumen. Ahora muestreo la
+      // altura en dos puntos vecinos, saco la pendiente en los dos tangentes
+      // de la esfera (este y norte) e inclino la normal contra ella. La luz
+      // fija de arriba-izquierda pega distinto en cada cara y aparecen las
+      // sombras propias de las crestas: recién ahí se lee rocoso.
+      float e = 0.06;
+      float h0 = piedra;
+      float hLon = alturaRoca(vec3(cos(lon + e) * 1.6, sin(lon + e) * 1.6, lat * 2.2));
+      float hLat = alturaRoca(vec3(cos(lon) * 1.6, sin(lon) * 1.6, (lat + e) * 2.2));
+      vec3 tanE = vec3(cos(lon), 0.0, -sin(lon));                          // hacia el este
+      vec3 tanN = vec3(-sin(lat) * sin(lon), cos(lat), -sin(lat) * cos(lon)); // hacia el norte
+      n = normalize(n - 2.2 * ((hLon - h0) * tanE + (hLat - h0) * tanN));
     }
 
     // ---- CRÁTERES ----
