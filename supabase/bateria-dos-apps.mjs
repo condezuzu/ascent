@@ -179,7 +179,10 @@ async function correr(app) {
   // ---- 4. Inicio vacío ----
   const fotoReal = join(SALIDA, `${app}-foto-real.jpg`);
   await paso('Inicio con la cuenta vacía', async () => {
-    await texto('Registrar día').waitFor({ timeout: 120000 });
+    // El día uno (27/9): con la cuenta vacía el botón invita a empezar
+    // ("Registra tu primer día"), no "Registrar día" — ese es el de todos los
+    // días. Ver `T.inicio.registrarPrimerDia` y `sinNada` en Inicio.
+    await texto('Registra tu primer día').waitFor({ timeout: 120000 });
     // La foto de prueba: una captura de verdad, en JPEG.
     await page.screenshot({ path: fotoReal, type: 'jpeg', quality: 80 });
   });

@@ -739,7 +739,7 @@ export default function Principal() {
               }
             >
               <button className="boton-solido" onClick={() => setHojaAbierta(true)}>
-                {T.inicio.registrarDia}
+                {sinNada ? T.inicio.registrarPrimerDia : T.inicio.registrarDia}
               </button>
             </AccionPrincipal>
           </>
@@ -810,16 +810,10 @@ export default function Principal() {
             subiendo" está a un deslizamiento, en Ranking, y no es un dato
             propio. Sus 68 px eran parte de lo que no entraba. */}
 
-        {sinNada && (
-          <div className="vacio-cosmico">
-            <div className="particulas">
-              <i /><i /><i /><i />
-            </div>
-            {T.inicio.vacioTitulo}
-            <br />
-            {T.inicio.vacioPie}
-          </div>
-        )}
+        {/* EL DÍA UNO YA NO ES UN CARTEL (27/9), igual que en la nativa: en vez
+            de "Todavía no hay nada aquí" se muestra la pantalla real —la racha 0
+            con su barra de rango, el fondo entero— y el botón "Registra tu
+            primer día". El día cero no es una versión pobre del día 40. */}
       </PantallaDeslizable>
 
       {hojaAbierta && (
