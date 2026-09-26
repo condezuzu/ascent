@@ -33,6 +33,7 @@
     "medir:scroll": "node --env-file=.env.local supabase/medir-scroll.mjs",
     "medir:pedidos": "node --env-file=.env.local supabase/medir-pedidos-inicio.mjs",
     "huella": "node supabase/huella.mjs",
+    "ota": "node supabase/publicar-ota.mjs",
     "medir:cuadros": "node --env-file=.env.local supabase/medir-cuadros-nativa.mjs",
     "cuenta:revision": "node --env-file=.env.local supabase/cuenta-de-revision.mjs",
     "ataque": "node --env-file=.env.local supabase/ataque.mjs",

@@ -25,35 +25,17 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { exigirApagados } from './puertos.mjs';
-
-// LOS DEV SERVERS, APAGADOS ANTES DE BUILDEAR (26/9). Este es el gate previo a
-// `eas build`, y es el momento en que "acordarse de apagar el servidor" dejó de
-// ser un sistema. Aborta claro si hay uno prendido. `FORZAR=1` lo saltea.
-//
-// HONESTO: la build de `store` corre en la NUBE (resourceClass), y su huella
-// sale de los archivos commiteados, no del Metro local — así que un dev server
-// prendido no la contamina de verdad. El guardián igual va: es el ritual donde
-// el humano lo pidió, cuesta nada, y protege una build `--local` si alguna vez
-// se usa.
-await exigirApagados([3020, 8090]);
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MOVIL = join(RAIZ, 'movil');
 
-/** La build que el humano tiene puesta, y su versión de ejecución. */
-const INSTALADA = {
-  id: 'a4aaf8d4',
-  runtime: '150d200e43c0d9addf3cee2ad25eb40a0c9fce87',
-  cuando: '23/9/2026',
-  que: 'la primera con la Live Activity del descanso',
-};
-
 /** Dónde se guarda el detalle de la última corrida, para poder comparar. */
 const GUARDADO = join(RAIZ, 'capturas-tienda', '.huella.json');
 
-function calcular() {
+/** La huella nativa de AHORA (el runtime que tendría lo que se publique hoy). */
+export function calcular() {
   // `shell: true` EN WINDOWS y no un `.cmd` a mano: desde Node 20, spawnear un
   // `.cmd` directo tira EINVAL —es el arreglo de una vulnerabilidad de
   // inyección de argumentos— y `npx` en Windows ES un `.cmd`.
@@ -67,43 +49,106 @@ function calcular() {
   return JSON.parse(salida);
 }
 
-const ahora = calcular();
-const coincide = ahora.hash === INSTALADA.runtime;
+/**
+ * LAS BUILDS REALES, DE EAS — NO UN DATO A MANO (27/9).
+ *
+ * Antes la build instalada estaba escrita a mano acá y quedó vieja: durante
+ * días la huella dijo "coincide" contra una build que ya no era la del
+ * teléfono, y las OTAs se publicaban al vacío sin avisar. Es el mismo patrón
+ * que el `finally` del barrido y el `:3020` del cierre: una herramienta que
+ * miente en silencio. Ahora la verdad sale de EAS. Si no se puede consultar,
+ * esto TIRA —no asume—: quien llama decide qué hacer con esa falla, pero nadie
+ * publica una OTA creyendo que llega cuando no se pudo confirmar.
+ */
+export function buildsDeEas() {
+  const salida = execFileSync(
+    'npx',
+    ['eas', 'build:list', '--platform', 'ios', '--limit', '20', '--json', '--non-interactive'],
+    { cwd: MOVIL, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' }
+  );
+  const arr = JSON.parse(salida);
+  return arr
+    .filter((b) => b.status === 'FINISHED' || b.status === 'finished')
+    .map((b) => ({
+      id: String(b.id ?? '').slice(0, 8),
+      runtime: b.runtime?.version ?? b.fingerprint?.hash ?? null,
+      canal: b.updateChannel?.name ?? b.buildProfile ?? '?',
+      cuando: b.completedAt ?? b.createdAt ?? '',
+    }))
+    .filter((b) => b.runtime);
+}
 
-console.log(`\nhuella de ahora   : ${ahora.hash}`);
-console.log(`build ${INSTALADA.id} (${INSTALADA.cuando}) : ${INSTALADA.runtime}`);
-console.log(`  ${INSTALADA.que}\n`);
+/**
+ * El estado de la huella: la de ahora, las builds reales, y con cuáles coincide.
+ * `builds` es null si EAS no se pudo consultar (y `motivo` dice por qué).
+ */
+export function estadoDeHuella() {
+  const ahora = calcular();
+  try {
+    const builds = buildsDeEas();
+    const coinciden = builds.filter((b) => b.runtime === ahora.hash);
+    return { hash: ahora.hash, ahora, builds, coinciden, motivo: null };
+  } catch (e) {
+    return { hash: ahora.hash, ahora, builds: null, coinciden: [], motivo: String(e?.message ?? e).split('\n')[0] };
+  }
+}
 
-if (coincide) {
-  console.log('IGUALES: una actualización publicada ahora le llega al teléfono.\n');
-} else {
-  console.log('DISTINTAS: lo que se publique ahora NO le llega a esa build.\n');
-  // QUÉ LA MOVIÓ, que es la pregunta siguiente y la que cuesta contestar a
-  // mano: son cientos de fuentes y la mayoría son archivos de node_modules.
+function guardar(ahora) {
+  try {
+    mkdirSync(dirname(GUARDADO), { recursive: true });
+    writeFileSync(GUARDADO, JSON.stringify(ahora));
+  } catch {
+    /* el guardado es una ayuda para el diff, no el resultado */
+  }
+}
+
+// ---- COMO SCRIPT (`npm run huella`) ----
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  // Los dev servers, apagados: la huella es un retrato del proyecto quieto, y
+  // un Metro reconstruyendo al lado es ruido. `FORZAR=1` lo saltea.
+  await exigirApagados([3020, 8090]);
+  const { hash, ahora, builds, coinciden, motivo } = estadoDeHuella();
+  console.log(`\nhuella de ahora   : ${hash}\n`);
+  guardar(ahora);
+
+  if (builds === null) {
+    console.error('NO PUDE CONSULTAR EAS para saber qué build hay de verdad:');
+    console.error('  ' + motivo);
+    console.error('\nSin eso NO se puede confirmar si una OTA llegaría. Revisá la sesión');
+    console.error('(cd movil && npx eas whoami) y volvé a correr. NO asumo un valor viejo.\n');
+    process.exit(2);
+  }
+
+  console.log('builds en EAS (iOS, terminadas):');
+  for (const b of builds.slice(0, 8)) {
+    console.log(`  ${b.runtime === hash ? '➜' : ' '} ${b.id}  canal ${String(b.canal).padEnd(9)}  runtime ${b.runtime}`);
+  }
+  console.log('');
+
+  if (coinciden.length) {
+    const canales = [...new Set(coinciden.map((b) => b.canal))];
+    console.log(`COINCIDE con ${coinciden.length} build(s). Una OTA a ${canales.map((c) => `\`${c}\``).join(' / ')} le llega.\n`);
+    process.exit(0);
+  }
+
+  console.log('NO COINCIDE con NINGUNA build: una OTA publicada ahora NO le llegaría a NADIE.');
+  // QUÉ LA MOVIÓ, contra la última corrida guardada.
   if (existsSync(GUARDADO)) {
     try {
       const antes = JSON.parse(readFileSync(GUARDADO, 'utf8'));
       const clave = (s) => s.filePath ?? s.id ?? JSON.stringify(s).slice(0, 70);
       const deAntes = new Map((antes.sources ?? []).map((s) => [clave(s), s.hash]));
-      const cambiadas = ahora.sources.filter((s) => deAntes.get(clave(s)) !== s.hash);
-      if (antes.hash === INSTALADA.runtime && cambiadas.length) {
-        console.log('Lo que cambió desde la última corrida que sí coincidía:');
+      const cambiadas = (ahora.sources ?? []).filter((s) => deAntes.get(clave(s)) !== s.hash);
+      if (antes.hash !== hash && cambiadas.length) {
+        console.log('Lo que cambió desde la última corrida:');
         for (const s of cambiadas.slice(0, 12)) console.log('  - ' + clave(s));
         if (cambiadas.length > 12) console.log(`  …y ${cambiadas.length - 12} más`);
-        console.log('');
       }
     } catch {
       /* si el guardado está roto, no es el problema de hoy */
     }
   }
-  console.log('Si el cambio es NATIVO a propósito, hace falta una build nueva.');
-  console.log('Si no cambió nada nativo, mirá los finales de línea:');
-  console.log('  movil/.gitattributes explica por qué eso puede moverla.\n');
+  console.log('\nHace falta una BUILD nueva (o, si no cambió nada nativo, mirá los finales');
+  console.log('de línea: movil/.gitattributes explica por qué pueden mover la huella).\n');
+  process.exit(1);
 }
-
-// Se guarda SIEMPRE, también cuando falla: la próxima corrida necesita saber
-// contra qué comparar, y la última que coincidió es la referencia útil.
-mkdirSync(dirname(GUARDADO), { recursive: true });
-writeFileSync(GUARDADO, JSON.stringify(ahora));
-
-process.exit(coincide ? 0 : 1);
