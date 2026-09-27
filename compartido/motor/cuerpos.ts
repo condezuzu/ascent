@@ -101,12 +101,15 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
   // Tapado de nubes: nunca se le ve la superficie
   Venus: {
     ...base,
-    // NO CAQUI. El caqui la hacia leer como gas sucio; Venus es una capa de
-    // nubes espesas y palidas, asi que va hacia el marfil calido. Ademas la
-    // separa de Saturno, que se queda con el amarillo.
-    paleta: ['#5e4a3a', '#a08064', '#e2c8ac', '#fff4e8'],
+    // CREMA AMARILLENTO Y BRILLANTE (27/9). El extremo oscuro era un marrón
+    // caqui (#5e4a3a) que ensuciaba toda la cara: Venus salía la más sucia de la
+    // app cuando debería ser la más brillante. Ahora la paleta ARRANCA en un
+    // gold-tan claro y sube a marfil: nubes espesas, pálidas y cálidas, sin
+    // marrón. Amarillenta pero más pálida que el dorado de Saturno, para que no
+    // se confundan. Noche 0,055 → 0,055 (ya era brillante, sigue en el piso).
+    paleta: ['#9c8358', '#cdb27a', '#eedfb0', '#fff8ec'],
     bandas: 5,
-    contraste: 0.3,
+    contraste: 0.28,
     turbulencia: 2.2,
   },
   // Océano, continentes, nubes, casquetes y una luna
