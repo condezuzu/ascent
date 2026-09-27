@@ -35,3 +35,22 @@ export function medir(nombre: string, desde: string, hasta: string) {
     // si falta alguna marca, no vale la pena romper nada por una métrica
   }
 }
+
+// UN NÚMERO QUE TIENE QUE LLEGAR AL TELÉFONO (27/9). `performance.measure` sirve
+// para las herramientas de la web, pero en el teléfono no hay dónde leerlo. La
+// app nativa engancha acá un sumidero que escribe el número en la bitácora
+// (Ajustes → Diagnóstico), para poder leer, por ejemplo, cuánto tardó en
+// compilar los shaders la primera vez —el camino sincrónico que en Metal nadie
+// midió—. Igual que el reporte de errores: la lógica compartida NO conoce la
+// bitácora; solo dispara al sumidero que le pongan.
+let sumidero: ((nombre: string, ms: number) => void) | null = null;
+export function reportarMedicionA(fn: ((nombre: string, ms: number) => void) | null) {
+  sumidero = fn;
+}
+export function anotarMedicion(nombre: string, ms: number) {
+  try {
+    sumidero?.(nombre, Math.round(ms));
+  } catch {
+    // una métrica jamás rompe al que la reporta
+  }
+}

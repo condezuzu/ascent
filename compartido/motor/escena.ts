@@ -22,7 +22,7 @@ import {
 } from './shaders';
 import { RANGOS_CFG, PLANETAS_CFG, ESTRELLAS_POR_RANGO, type ConfigCuerpo } from './cuerpos';
 import { paletaDe } from '@nucleo/paletas';
-import { marca, medir } from '@compartido/medir';
+import { marca, medir, anotarMedicion } from '@compartido/medir';
 import { ALTURA, alturaDelPulso, siguePulsando } from '@nucleo/pulso';
 import { debeDibujar, ESPERA_LENTO_MS } from '@nucleo/quietud';
 import { VIAJE_DE_ESQUINA_MS } from '@nucleo/animacion';
@@ -1003,6 +1003,11 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   // que `soltar()` lo pueda cancelar si la escena se suelta antes de dibujar.
   let respaldoPrimerCuadro: ReturnType<typeof setTimeout> | undefined;
   marca('ascent:shader-inicio');
+  // El reloj del compilado, para la bitácora del teléfono: el camino sincrónico
+  // en Metal nadie lo midió, y este número es lo PRIMERO que hay que mirar al
+  // instalar. Solo la primera escena de cada modo compila; las demás reusan el
+  // programa del renderer compartido y esto da ~0.
+  const t0Shaders = typeof performance !== 'undefined' && performance.now ? performance.now() : null;
   // EL PRIMER CUADRO SE DIBUJA UNA SOLA VEZ, PASE LO QUE PASE CON `compileAsync`.
   //
   // `compileAsync` de three sondea `program.isReady()` dentro de un `setTimeout`
@@ -1036,6 +1041,11 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
       l.presentar();
       marca('ascent:shader-fin');
       medir('ascent:shader-compilacion', 'ascent:shader-inicio', 'ascent:shader-fin');
+      // A la bitácora del teléfono (solo si de verdad compiló algo: >1 ms).
+      if (t0Shaders != null) {
+        const ms = performance.now() - t0Shaders;
+        if (ms > 1) anotarMedicion('shaders (compilación)', ms);
+      }
       if (op.animar !== false) l.cuadro(frame);
     } finally {
       // Se resuelve SIEMPRE, aun si el render tira: la web espera este `listo`

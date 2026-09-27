@@ -24,6 +24,7 @@ import { fijarZonaDelTelefono } from '../src/zonaHoraria';
 import { iniciarReporteDeErrores, fijarPantalla } from '../src/reporteDeErrores';
 import { loVisible } from '../src/loVisible';
 import { anotar, marcarListo, registrarError } from '../src/cajaNegra';
+import { reportarMedicionA } from '@compartido/medir';
 
 /**
  * LA RAÍZ DE LA APP, y desde el 22/9 también la raíz del router.
@@ -92,6 +93,10 @@ export default function Layout() {
   // en segundos. Dispara y se olvida, sin PII. Ver `src/reporteDeErrores.ts`.
   useEffect(() => {
     iniciarReporteDeErrores();
+    // Las mediciones del motor (p. ej. cuánto tardó en compilar los shaders la
+    // primera vez) van a la bitácora del Diagnóstico: es lo PRIMERO que hay que
+    // mirar al instalar, porque el camino sincrónico en Metal nadie lo midió.
+    reportarMedicionA((nombre, ms) => anotar(`${nombre}: ${ms} ms`));
   }, []);
 
   // La pantalla actual, para que el reporte de un error diga en cuál pasó.
