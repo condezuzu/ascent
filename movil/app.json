@@ -58,7 +58,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Ascent no graba audio; solo reproduce el aviso del descanso. iOS pide este texto porque el componente de sonido incluye la grabación.",
+          "microphonePermission": "Ascent no graba audio. Solo reproduce el aviso de fin del descanso.",
           "recordAudioAndroid": false
         }
       ],
