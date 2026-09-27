@@ -166,6 +166,13 @@ begin
 end;
 $$;
 
+-- SUS PERMISOS. La 53 la había DROPeado; recrearla con `create or replace` le
+-- deja el grant por defecto de Postgres (EXECUTE a PUBLIC). El repo la quiere
+-- solo para `authenticated`. Sin estas dos líneas, test:conexion queda en rojo
+-- por "permisos más abiertos de lo que debería". (Se descubrió en el cierre.)
+revoke execute on function public.recalcular_desde_cero() from public;
+grant execute on function public.recalcular_desde_cero() to authenticated;
+
 -- 4) SACAR LO QUE AGREGÓ LA 53. El trigger de vidas es nuevo (antes solo logs
 --    disparaba); las funciones del replay ya no las referencia nadie después
 --    de restaurar las de arriba.
