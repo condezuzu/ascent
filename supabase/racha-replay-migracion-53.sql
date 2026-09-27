@@ -1,5 +1,12 @@
 -- =============================================================
--- MIGRACIÓN 53 (PREPARADA, NO APLICAR TODAVÍA) — la racha, derivada por replay
+-- ⛔ ROTA — NO APLICAR. Esta migración se aplicó el 27/9 sin dry-run y ROMPIÓ
+-- una racha: una cuenta de 39 pasó a 69 (tres castigos de −10 que el modelo
+-- viejo cobraba y el replay no detecta). Se revirtió con `revertir-replay-53.sql`.
+-- El replay se re-hará cuando se entienda por qué se come esos huecos, probándolo
+-- contra el historial real (ver `diagnostico-racha.sql`), NO contra un caso
+-- inventado. Mientras tanto, el GUARD de abajo la bloquea sola.
+--
+-- MIGRACIÓN 53 — la racha, derivada por replay
 --
 -- PASÓ DE 52 A 53 (27/9): la 52 se la llevó `medallas_de_muchos`, que se aplica
 -- primero. Esta se aplica DESPUÉS, así que tiene que llevar el número más alto —
@@ -39,6 +46,11 @@
 -- castigo sea el hueco de 1 día o de 30), y vidas y descansos funcionan igual.
 -- =============================================================
 
+-- TODO EN UNA TRANSACCIÓN: si el guard de más abajo corta, no queda NADA a
+-- medio aplicar (ni siquiera racha_replay). Fue justamente la falla de la 53
+-- original: sin esto, un corte dejaba la base en un estado intermedio.
+begin;
+
 create or replace function public.racha_replay(p_user uuid)
 returns int language plpgsql stable security definer set search_path = public as $$
 declare
@@ -69,6 +81,47 @@ begin
   return r;
 end;
 $$;
+
+-- ============================================================================
+-- GUARD OBLIGATORIO — EL DRY-RUN ADENTRO DEL PROPIO SQL (27/9).
+--
+-- LA LECCIÓN: la 53 se aplicó sin correr el dry-run y rompió una racha. Un
+-- recordatorio en el informe no alcanza; el chequeo tiene que estar acá y CORTAR
+-- la transacción. Esto compara, para CADA cuenta, el replay contra el modelo
+-- viejo (racha_base + calcular_racha). Si difieren en aunque sea una, LEVANTA
+-- EXCEPCIÓN y no se aplica nada. Solo cuando el replay reproduzca EXACTO lo que
+-- el modelo viejo tenía para todos, esta migración se deja aplicar.
+--
+-- (Va después de definir racha_replay —lo usa— y ANTES de tocar triggers y de
+--  recomputar, que es lo destructivo. Si corta, la base queda intacta.)
+-- ============================================================================
+do $$
+declare
+  malas int;
+  ejemplo record;
+begin
+  select count(*) into malas
+    from profiles p
+   where public.racha_replay(p.id) <> (
+     p.racha_base + public.calcular_racha(p.id,
+       coalesce((select max(fecha) from logs where user_id = p.id), public.hoy_de(p.id)))
+   );
+  if malas > 0 then
+    select p.username,
+           public.racha_replay(p.id) as replay,
+           p.racha_base + public.calcular_racha(p.id,
+             coalesce((select max(fecha) from logs where user_id = p.id), public.hoy_de(p.id))) as viejo
+      into ejemplo
+      from profiles p
+     where public.racha_replay(p.id) <> (
+       p.racha_base + public.calcular_racha(p.id,
+         coalesce((select max(fecha) from logs where user_id = p.id), public.hoy_de(p.id)))
+     )
+     limit 1;
+    raise exception 'REPLAY BLOQUEADO: difiere del modelo viejo en % cuenta(s) (ej: % replay=% viejo=%). NO se aplica hasta entender por qué. Ver diagnostico-racha.sql.',
+      malas, ejemplo.username, ejemplo.replay, ejemplo.viejo;
+  end if;
+end $$;
 
 -- El trigger de logs ahora deriva la racha del replay. El bloque del planeta del
 -- día se mantiene igual (es cosmético y su cuenta por-día se afina aparte).
@@ -245,3 +298,5 @@ create or replace function public.version_del_esquema()
 returns int language sql immutable as $$ select 53; $$;
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;
+
+commit;
