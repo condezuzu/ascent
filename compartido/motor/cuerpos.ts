@@ -149,12 +149,16 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
   // Bandas marcadas y la mancha girando; tampoco lleva lunas sueltas
   'Júpiter': {
     ...base,
-    // MAS NARANJA, pero un naranja AMBAR y no el rojo de Marte: los dos van
-    // para el mismo lado y tienen que poder distinguirse de un vistazo.
-    // Marte es rojo y mas saturado; este es mas claro y mas amarillo.
-    paleta: ['#5a3520', '#96622f', '#d8975a', '#f5d3a8'],
+    // BANDAS CREMA / NARANJA / MARRÓN, BIEN CONTRASTADAS (27/9). Era un marrón
+    // parejo que se confundía con Marte. Ahora la paleta abre de un marrón
+    // PROFUNDO (los cinturones oscuros) a un crema claro (las zonas), pasando
+    // por el naranja ámbar: es el contraste entre banda y banda lo que lo hace
+    // leer como Júpiter, no un color solo. La mancha roja la pone el shader
+    // (uTormenta), porque las bandas no tienen rojo —eso lo separa de Marte,
+    // que es rojo entero—. El nivel de noche no se movió: sigue en 0,055.
+    paleta: ['#3d2110', '#8a4a1e', '#d38a3e', '#f5e2b8'],
     bandas: 13,
-    contraste: 0.62,
+    contraste: 0.72,
     turbulencia: 1.6,
     tormenta: 1.0,
     tormentaPos: [0.9, -0.4],

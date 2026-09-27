@@ -692,18 +692,33 @@ void main() {
     }
 
     // Tormenta: mancha elíptica en coordenadas de superficie,
-    // rota con el planeta y desaparece por el borde.
+    // rota con el planeta y desaparece por el borde. El remolino lo da la t; el
+    // COLOR rojo se lo pone más abajo, sobre la superficie ya pintada.
+    float manchaTormenta = 0.0;
     if (uTormenta > 0.0) {
       vec2 dt = vec2(mod(lon - uTormentaPos.x + PI, 2.0 * PI) - PI, (lat - uTormentaPos.y) * 2.4);
       // el óvalo gira sobre sí mismo, como el ojo de Júpiter
       float a2 = uTime * 0.05;
       dt = vec2(dt.x * cos(a2) - dt.y * sin(a2), dt.x * sin(a2) + dt.y * cos(a2));
-      float dist2 = dot(dt * vec2(1.0, 1.7), dt * vec2(1.0, 1.7)) * 20.0;
-      float mancha = exp(-dist2) * uTormenta;
-      t += mancha * (0.6 + 0.5 * fbm(sc * 6.0 + warp));
+      // MÁS GRANDE (11, no 20): a la cara nocturna un óvalo chico se le pierde.
+      float dist2 = dot(dt * vec2(1.0, 1.7), dt * vec2(1.0, 1.7)) * 11.0;
+      manchaTormenta = exp(-dist2) * uTormenta;
+      // un poco de estructura al remolino, sin llevarlo al crema de la paleta
+      t += manchaTormenta * (0.2 + 0.35 * fbm(sc * 6.0 + warp));
     }
 
     vec3 superficie = paleta(t);
+
+    // LA MANCHA ROJA (Júpiter): un óvalo rojo óxido sobre las bandas. Las bandas
+    // no tienen rojo —van del marrón al crema—, así que el rojo es lo que la
+    // separa de todo lo demás. Va SATURADO: aunque la cara nocturna lo apague,
+    // un rojo saturado se sigue leyendo rojo (el mismo principio que la luz nueva).
+    if (manchaTormenta > 0.0) {
+      vec3 rojoOjo = mix(vec3(0.88, 0.20, 0.08), vec3(1.0, 0.52, 0.24), 0.3 + 0.4 * fbm(sc * 5.0 + warp));
+      // un anillo un poco más claro alrededor del ojo, como en la foto
+      float halo = smoothstep(0.10, 0.35, manchaTormenta);
+      superficie = mix(superficie, rojoOjo, clamp(manchaTormenta * 1.4, 0.0, 0.92) * (0.6 + 0.4 * halo));
+    }
 
     // ---- CONTINENTES (Tierra): tierra firme con costa, sobre océano ----
     if (uContinentes > 0.0) {
