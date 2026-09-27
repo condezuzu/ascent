@@ -14,9 +14,12 @@ const CLAVE = 'ascent:guia';
 // que es justo lo que se quiere para una parte nueva.
 //
 // Stats, Álbum, Ranking y Ajustes ya no tienen globo: los presenta el recorrido,
-// una línea por pantalla. Quedan los dos que explican algo que el recorrido no
-// muestra: contar series adentro de una sesión, y las fotos privadas del perfil.
-export type Globo = 'series' | 'perfil';
+// una línea por pantalla. Quedan los que explican algo que el recorrido no
+// muestra: contar series adentro de una sesión, las fotos privadas del perfil,
+// y la actividad en vivo del ranking —que solo tiene sentido una vez que marcaste
+// tu gimnasio, así que su globo no lo presenta el recorrido sino el Ranking, y
+// solo cuando el gimnasio ya está puesto—.
+export type Globo = 'series' | 'perfil' | 'actividad';
 
 type Guia = { uid: string; recorrido: boolean; paso?: number; globos: Globo[] };
 

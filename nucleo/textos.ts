@@ -1261,6 +1261,10 @@ export const T = {
     solicitudes: 'Te quieren agregar',
     entrenandoAhora: 'Entrenando ahora',
     estaEntrenando: (nombre: string) => `${nombre} está entrenando`,
+    // El aviso de la actividad en vivo, la primera vez en Ranking ya con el
+    // gimnasio marcado. Explica la función y apunta al opt-in de Ajustes.
+    avisoActividad:
+      'Aquí ves quién está entrenando. Para que te vean, activa «Avisar cuando entreno» en Ajustes.',
     no: 'No',
     teReto: (nombre: string) => `${nombre} te retó a 7 días: quien entrene más, gana.`,
     acepto: 'Acepto',

@@ -18,7 +18,9 @@ import Surgir from './Surgir';
 import Insignia from './Insignia';
 import Medallas from './Medallas';
 import FondoEspacial from './FondoEspacial';
+import GloboPrimeraVez from './GloboPrimeraVez';
 import { cargarMedallasDeMuchos } from '@compartido/perfil';
+import { leerPerfilCache } from '@compartido/cache';
 import type { Medalla } from '@nucleo/medallas';
 import { C } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
@@ -56,6 +58,10 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   // AMIGOS ENTRENANDO AHORA (actividad en vivo). Se refresca con el ranking.
   // Si la migración de actividad no corrió, vuelve vacío y no se muestra nada.
   const [entrenando, setEntrenando] = useState<{ id: string; username: string; avatar_url: string | null }[]>([]);
+  // ¿Ya marcó su gimnasio? Del caché del perfil (que guarda si está marcado,
+  // nunca dónde). Es la condición para el aviso de actividad en vivo: antes de
+  // marcarlo, explicaría algo que la persona todavía no puede usar.
+  const [gimnasioMarcado, setGimnasioMarcado] = useState(false);
   const busquedaAhora = useRef('');
 
   const cargar = useCallback(async () => {
@@ -88,6 +94,19 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
 
   // Y de nuevo al volver a esta pestaña: ahora se queda montada.
   useRecargarAlVolver('ranking', cargar);
+
+  // ¿El gimnasio ya está marcado? Del caché del perfil, para gatear el aviso.
+  useEffect(() => {
+    let vivo = true;
+    leerPerfilCache()
+      .then((p) => {
+        if (vivo && p?.gimnasio_lat != null) setGimnasioMarcado(true);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   // LAS MEDALLAS DE LOS AMIGOS, en segundo plano y en UNA sola consulta
   // (`medallas_de_muchos`), disparada solo cuando cambia la lista de amigos —no
@@ -134,6 +153,13 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
       )}
       <ScrollView contentContainerStyle={estilos.pantalla} keyboardShouldPersistTaps="handled">
         <Text style={estilos.titulo}>{T.social.titulo}</Text>
+
+        {/* EL AVISO DE LA ACTIVIDAD EN VIVO, la primera vez y solo si ya marcaste
+            tu gimnasio: antes de eso explicaría algo que no podés usar. Aparece
+            una vez y no vuelve (misma memoria que el resto de la guía). */}
+        {gimnasioMarcado && (
+          <GloboPrimeraVez cual="actividad">{T.social.avisoActividad}</GloboPrimeraVez>
+        )}
 
         {!cargado && <ActivityIndicator color={C.sub} style={{ marginTop: 24 }} />}
 
