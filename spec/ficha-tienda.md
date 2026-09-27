@@ -180,9 +180,10 @@ la app esté publicada sin tocar la casilla de nadie.
 DEMO ACCOUNT (required — the app is sign-in only)
   Email:    (en .env.local → DEMO_EMAIL — pegar en App Store Connect)
   Password: (en .env.local → DEMO_PASSWORD — pegar en App Store Connect)
-The account already has content on every screen: a 41-day streak (rank 5 of 8),
-46 days of history, two workouts logged today with sets and weights, personal
-records, a body-weight entry and three photos in the album.
+The account already has content on every screen: a 45-day streak (rank 5 of 8),
+50 days of history, a ranking with six friends, two workouts with sets and
+weights, personal records feeding a DOTS score, a body-weight entry and three
+photos in the album.
 
 WHAT THE APP DOES
 Ascent counts the days you train. One tap per day keeps a streak alive. It also
@@ -219,11 +220,14 @@ this version.
 - **Categoría:** Health & Fitness, sin secundaria.
 - **Clasificación por edad:** todo "None" → 4+.
 - **Capturas:** `capturas-tienda/`, 1290 × 2796, salen de
-  `herramientas/capturas-tienda.mjs`.
+  `herramientas/capturas-tienda.mjs` corrido sobre la cuenta demo ya sembrada
+  (sin `--con-datos`).
 
-  > **HAY QUE REHACER EL SET ENTERO (26/9).** Las cuatro capturas que ya están
-  > subidas a App Store Connect son del **fondo viejo** —de antes de rehacer los
-  > ocho rangos—. No se rehacen todavía: primero los ocho rangos tienen que
-  > quedar bien (asteroide y día uno ya están; faltan los otros seis). Recién
-  > cuando el motor esté aprobado se corre `herramientas/capturas-tienda.mjs` y
-  > se reemplaza el set completo. Va junto con el envío a revisión, no antes.
+  > **SET NUEVO LISTO (27/9).** Seis capturas con el motor de ocho rangos ya
+  > aprobado y la cuenta demo sembrada rica (racha 45, rango 5, 6 amigos, DOTS).
+  > Curadas y con veredicto en `Escritorio\ascent-tienda\` (orden de subida:
+  > racha → ranking → contar series → fuerza/DOTS → el año → álbum). El álbum es
+  > la única floja (imágenes abstractas del demo, no fotos reales) y es la
+  > primera a reemplazar cuando haya fotos de gimnasio de verdad. Las cuatro
+  > viejas que están en App Store Connect son del fondo viejo: se reemplazan por
+  > este set junto con el envío a revisión.

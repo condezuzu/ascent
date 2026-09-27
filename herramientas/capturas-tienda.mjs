@@ -223,8 +223,13 @@ async function foto(nombre) {
 
 try {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await page.locator('input[type=email], input[inputmode=email]').first().fill(process.env.CONEXION_EMAIL, { timeout: 90000 });
-  await page.locator('input[type=password]').first().fill(process.env.CONEXION_PASSWORD);
+  // LA CUENTA DEMO, no la de prueba (27/9): la demo ya está sembrada rica por
+  // `cuenta-de-revision.mjs` (racha 41 = rango 5, seis amigos, marcas, DOTS,
+  // peso, fotos), así que acá NO se siembra ni se restaura nada —se captura y
+  // listo—. La de prueba daba racha 8 y dos amigos: capturas pobres. Correr
+  // ANTES: `node --env-file=.env.local supabase/cuenta-de-revision.mjs --de-cero`.
+  await page.locator('input[type=email], input[inputmode=email]').first().fill(process.env.DEMO_EMAIL, { timeout: 90000 });
+  await page.locator('input[type=password]').first().fill(process.env.DEMO_PASSWORD);
   await page.getByText('Entrar', { exact: true }).last().click({ timeout: 60000 });
   await page.waitForTimeout(8000);
   // La ventana de las vidas tapa Inicio. Es de esta cuenta, no del producto.
@@ -234,6 +239,11 @@ try {
   await page.waitForTimeout(4000);
 
   console.log(`\n1290 × 2796, en capturas-tienda:`);
+
+  // EL HERO: Inicio EN REPOSO, con la racha alta y el rango 5 (el sol) de fondo.
+  // Es la captura más vendedora de una app de rachas —un número grande con un
+  // cuerpo lindo detrás— y va PRIMERA, antes de arrancar el entrenamiento.
+  await foto('1-inicio-hero');
 
   // INICIO CON EL ENTRENAMIENTO ANDANDO, y no en reposo. La primera versión
   // sacaba la pantalla quieta: la racha arriba y media pantalla vacía abajo.
@@ -253,7 +263,7 @@ try {
     await page.waitForTimeout(700);
   }
   await page.waitForTimeout(2500);
-  await foto('1-inicio');
+  await foto('2-inicio-entreno');
 
   // Y se termina, que además deja la cuenta como la encontró: la sesión se
   // borra igual al final, pero una sesión abierta cambiaría las fotos de las
@@ -268,9 +278,9 @@ try {
   await page.waitForTimeout(1500);
 
   for (const [pestana, nombre] of [
-    ['Ranking', '2-ranking'],
-    ['Álbum', '3-album'],
-    ['Stats', '4-stats'],
+    ['Ranking', '3-ranking'],
+    ['Álbum', '4-album'],
+    ['Stats', '5-stats'],
   ]) {
     await page.getByText(pestana, { exact: true }).last().click();
     await page.waitForTimeout(4000);
@@ -280,7 +290,7 @@ try {
   // Stats → Entrenamiento, que es la pantalla con más sustancia de la app.
   await page.getByText('Entrenamiento', { exact: true }).last().click({ timeout: 30000 });
   await page.waitForTimeout(3000);
-  await foto('5-entrenamiento');
+  await foto('6-entrenamiento');
 } catch (e) {
   console.log('SE ROMPIO:', e.message.split('\n').slice(0, 3).join(' | '));
 } finally {
