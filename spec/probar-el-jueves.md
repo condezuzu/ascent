@@ -1,44 +1,61 @@
-# Probar en el teléfono — jueves 1/10
+# Probar en el teléfono — build nueva (e17f30c0, 27/9)
 
-*Lista aparte, a propósito. Todo lo que NO se puede verificar en el navegador ni
-contra la base y quedó esperando la build nueva de EAS (la cuota iOS del plan
-Free resetea el 1/10 — ver `movil/EAS.md`). Nada de esto se intenta antes; se
-junta acá y se prueba el jueves con la app instalada.*
+*Todo lo que se hizo desde la build del 23 y NUNCA corrió en un dispositivo. La
+build del 23 no recibía OTAs, así que nada de esto llegó hasta ahora. En orden
+de importancia. Tachá cada uno con el resultado al probarlo.*
 
-*Se agrega a esta lista cada vez que una tanda toca algo que solo el teléfono
-puede confirmar. Al probar cada punto, tacharlo con el resultado.*
+Link de la build: https://expo.dev/accounts/condeag/projects/ascent/builds/e17f30c0-1ec2-4bf9-a646-c21af8532432
 
----
+## 0 · LO PRIMERO, apenas abra
+- [ ] **Tiempo de compilación de shaders.** Ajustes → Diagnóstico, buscá
+      `shaders (compilación): N ms`. Es el camino sincrónico nuevo en Metal que
+      nadie midió. **Máximo aceptable ~1.500–2.000 ms** (un tirón tolerable en el
+      primer cuadro). Si es más, hay que cambiar el enfoque (compilar por modo en
+      diferido, o mostrar el fondo CSS y compilar atrás). Pasame el número.
 
-## Lo central (geofencing) — lo más importante
-- [ ] **Caminar hasta el gimnasio con la app CERRADA** y ver que el día entra
-      solo (iOS despierta la app en la zona → `movil/src/llegadaDeFondo.ts`).
-- [ ] La sesión queda fechada en la **hora de llegada**, no en cuando abriste la
-      app.
-- [ ] Con la app ABIERTA, el vigilante arranca/cierra la sesión (§13, 7 min).
-- [ ] Radio del gimnasio: "Mirar ahora" en Ajustes → Diagnóstico dice a cuántos
-      metros te ve; ajustar el radio si el automático no dispara.
+## 1 · El crash de three.js (era app-breaking)
+- [ ] **La app NO se cierra** usándola largo. El 23 se cerró a los 36 min por
+      `checkMaterialsReady` (compileAsync sin la extensión). Ahora compila
+      sincrónico: no debería pasar. Si el fondo falla, que se congele, nunca que
+      cierre la app.
 
-## Permisos y hardware (no existen fuera del iPhone)
+## 2 · El gimnasio por ubicación (la función central)
+- [ ] **Caminar al gimnasio con la app CERRADA** → el día entra solo.
+- [ ] La sesión queda fechada en la **hora de llegada**, no en cuando abriste.
+- [ ] Con la app abierta, el **vigilante** arranca/cierra la sesión (7 min).
+- [ ] Radio: "Mirar ahora" en Diagnóstico dice a cuántos metros te ve.
+
+## 3 · Pantalla de bloqueo + Live Activity del descanso
+- [ ] El aviso de fin de descanso llega **con la pantalla bloqueada**.
+- [ ] La **Live Activity** del descanso aparece en la pantalla de bloqueo, el
+      timer no se cae, el aviso y la campana andan (era lo de `cc0db15`).
+- [ ] La pantalla no se apaga mientras corre el descanso (Wake Lock).
+
+## 4 · Los gestos
+- [ ] Deslizar entre pestañas con el dedo, fluido.
+- [ ] El Álbum: abrir/cerrar foto a pantalla completa sin que el gesto pelee con
+      el de pestañas.
+
+## 5 · Registro optimista
+- [ ] Al registrar el día, la marca de "listo" es **instantánea**; el número de
+      la racha y la animación de rango llegan cuando confirma el servidor.
+      Probar con red lenta o cortada: el número espera, no miente.
+
+## 6 · Actividad en vivo (Ranking)
+- [ ] Con "Avisar cuando entreno" prendido y estando en el gimnasio, aparecés en
+      "entrenando ahora" para un amigo.
+- [ ] El aviso de esa función aparece la primera vez que abrís Ranking con el
+      gimnasio ya marcado.
+
+## 7 · Lo demás que solo existe en el teléfono
 - [ ] Apple Health: Ajustes → Salud, conectar y ver los pasos de hoy en Stats.
-- [ ] Aviso de fin de descanso **con la pantalla bloqueada** (Live Activity).
-- [ ] Que la pantalla no se apague mientras corre el descanso (Wake Lock).
 - [ ] Botón de volumen suma una serie durante la sesión (no con pantalla
       bloqueada — eso no se prometió).
-- [ ] No te desloguea en un uso largo (buscar `SESIÓN PERDIDA`/`REBOTE` en
+- [ ] No te desloguea en un uso largo (buscá `SESIÓN PERDIDA`/`REBOTE` en
       Diagnóstico).
+- [ ] Los colores nuevos de los planetas y el día uno se ven bien en la pantalla
+      real (no solo en captura).
 
-## De esta tanda (27/9 en adelante)
-- [ ] **Registro optimista**: al marcar el día, el círculo/visual cambia al
-      instante y el número de racha + animación de rango aparecen cuando el
-      servidor confirma. Verificado en navegador; en el teléfono mirar que la
-      espera del número no se sienta rara con red lenta o cortada.
-- [ ] **Push de solicitud de amistad**: solo hay PLAN escrito, no código. No se
-      prueba el jueves; queda para cuando se implemente el módulo nativo (ver el
-      plan en `spec/push-solicitud-plan.md`).
-
-## Al final, cuando los 8 rangos estén bien
-- [ ] Rehacer las capturas de la tienda con el fondo nuevo
-      (`herramientas/capturas-tienda.mjs`) — ver `spec/ficha-tienda.md`.
-- [ ] Re-sembrar la cuenta demo **justo antes** de mandar a revisión
-      (`--de-cero`) — ver `spec/ficha-tienda.md`.
+## Push de solicitud
+- [ ] NO está en esta build (solo hay plan, `spec/push-solicitud-plan.md`). No se
+      prueba.
