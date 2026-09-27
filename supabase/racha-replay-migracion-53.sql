@@ -30,6 +30,10 @@
 --   - `racha_base` y `perdida_fecha` quedan como columnas MUERTAS (no se borran:
 --     borrar es irreversible; dejan de leerse para la racha).
 --   - Recálculo único de todas las cuentas al final.
+--   - `racha_replay_de_muchos(uuid[])`: la racha EN VIVO de un puñado de amigos
+--     (las filas del ranking), sin tocar `usuarios_publicos` —que la usa el
+--     buscador y no escala—. Queda lista acá pero el cliente todavía NO la llama:
+--     eso se cablea cuando se apruebe esta migración (ver el bloque al final).
 --
 -- LO QUE NO CAMBIA (condición del humano): el −10 por hueco es idéntico (mismo
 -- castigo sea el hueco de 1 día o de 30), y vidas y descansos funcionan igual.
@@ -206,15 +210,36 @@ update profiles p set
   mejor_racha = greatest(mejor_racha_real(p.id), racha_replay(p.id)),
   rango_actual = rango_de_racha(racha_replay(p.id));
 
--- OPCIÓN (comentada) — LA RACHA FRESCA EN EL RANKING. Descomentar si se decide
--- que el ranking calcule en vivo en vez de leer la columna guardada (arregla que
--- la racha de otro se vea vieja hasta que ESA persona abra su app). Cuesta un
--- replay por fila por carga; con listas de amigos chicas es barato.
+-- LA RACHA EN VIVO, SOLO PARA LAS FILAS DEL RANKING (decisión del 27/9).
 --
--- create or replace view public.usuarios_publicos as
---   select id, username, avatar_url, racha_replay(id) as racha_actual, rango_de_racha(racha_replay(id)) as rango_actual
---   from public.profiles;
--- grant select on public.usuarios_publicos to authenticated;
+-- El problema: la racha guardada de otra persona se ve vieja hasta que ESA
+-- persona abre su app y corre `verificar_perdida` (el −10 por hueco). En el
+-- ranking eso se nota: un amigo que dejó de entrenar sigue arriba con un número
+-- que ya no es cierto.
+--
+-- POR QUÉ NO SE TOCA `usuarios_publicos`: esa vista la usa TAMBIÉN el buscador
+-- de gente, que la recorre con `ilike` sobre muchos usuarios. Calcular el replay
+-- ahí sería un walk por cada usuario de cada búsqueda — no escala. La lista de
+-- amigos, en cambio, es chica y acotada. Así que la racha en vivo va en una
+-- función APARTE que recibe SOLO los ids del ranking, y el buscador sigue
+-- leyendo la columna guardada, barata.
+--
+-- COSTO MEDIDO (PGlite, 10 amigos, 180 días): leer la guardada 0,63 ms; calcular
+-- en vivo 9,2 ms; +8,6 ms por apertura de Ranking. En Postgres real, menos.
+--
+-- SEGURIDAD: `security definer` para poder derivar la de un amigo, con el chequeo
+-- de amistad explícito adentro (el definer saltea la RLS, así que la puerta la
+-- pone esta condición): solo devuelve la propia y las de los amigos.
+create or replace function public.racha_replay_de_muchos(p_users uuid[])
+returns table (user_id uuid, racha int)
+language sql stable security definer set search_path = public as $$
+  select p.id, racha_replay(p.id)
+    from public.profiles p
+   where p.id = any(p_users)
+     and (p.id = auth.uid() or son_amigos(auth.uid(), p.id))
+$$;
+revoke execute on function public.racha_replay_de_muchos(uuid[]) from public, anon;
+grant execute on function public.racha_replay_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
 returns int language sql immutable as $$ select 53; $$;
