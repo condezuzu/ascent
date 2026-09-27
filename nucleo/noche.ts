@@ -58,6 +58,62 @@ export function nivelDeNoche(reposo: boolean, suelto?: number): number {
 }
 
 /**
+ * EL NIVEL DE NOCHE, PERO POR CUERPO (27/9).
+ *
+ * EL PROBLEMA. `NOCHE_DESCANSO` (5,5%) se fijó igual para todos mirando Tierra,
+ * Neptuno y Urano —azules—. Un azul al 5,5% se sigue leyendo azul; un gris al
+ * 5,5% se lee NEGRO. Por eso Ceres y Mercurio salían "grises y feos": el nivel
+ * no estaba mal para los azules, estaba mal para los grises.
+ *
+ * LA REGLA. El nivel sube SOLO lo necesario según cuánto sobrevive el color
+ * propio del cuerpo en la sombra:
+ *  - Un cuerpo OSCURO necesita más piso, porque su superficie ya es casi negra.
+ *  - Un cuerpo CROMÁTICO (un azul, un rojo) no necesita nada: el color se lee
+ *    aunque esté muy apagado. Un GRIS no tiene color que lo salve, solo brillo.
+ * Así los azules y los brillantes quedan como estaban (que es lo que gustaba) y
+ * los grises oscuros se despegan del negro.
+ *
+ * Se mira el tono medio-oscuro (`paleta[1]` y `[2]`), que es lo que muestra la
+ * cara nocturna. `suelto` (la galería) sigue forzando un valor uniforme para
+ * poder comparar.
+ */
+function aRGB(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  return [parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255];
+}
+const luminancia = ([r, g, b]: [number, number, number]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+const saturacion = ([r, g, b]: [number, number, number]) => {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  return mx <= 0 ? 0 : (mx - mn) / mx;
+};
+const suave = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+/** Calibra el piso de los grises. Chico: el piso sube fuerte en los cuerpos
+ *  oscuros pero deja quietos a los grises CLAROS (la Luna) y a los brillantes.
+ *  Va al cuadrado del brillo, no lineal, para separar bien un gris oscuro
+ *  (Ceres, Mercurio) de uno claro (Luna): en lineal subían casi igual. */
+export const OBJETIVO_PERCIBIDO = 0.014;
+/** El techo: por más oscuro que sea el cuerpo, la cara nocturna no pasa de acá. */
+export const NOCHE_TECHO = 0.2;
+
+export function nivelDeNocheDeCuerpo(paleta: readonly string[], suelto?: number): number {
+  if (typeof suelto === 'number' && Number.isFinite(suelto) && suelto >= 0) return suelto;
+  const c1 = aRGB(paleta[1]), c2 = aRGB(paleta[2]);
+  const lum = (luminancia(c1) + luminancia(c2)) / 2;
+  const sat = (saturacion(c1) + saturacion(c2)) / 2;
+  // Lo que un gris de este brillo necesita para despegarse del negro. Al cuadrado:
+  // un cuerpo el doble de oscuro necesita cuatro veces más piso.
+  const pisoGris = OBJETIVO_PERCIBIDO / Math.pow(Math.max(lum, 0.05), 2);
+  // Cuánto lo salva su propio color: cromático → no hace falta subir nada.
+  const alivio = suave(0.2, 0.5, sat);
+  const nivel = pisoGris * (1 - alivio) + NOCHE_DESCANSO * alivio;
+  return Math.min(NOCHE_TECHO, Math.max(NOCHE_DESCANSO, nivel));
+}
+
+/**
  * ¿Se distinguen dos niveles a simple vista? El ojo no lee el brillo de forma
  * lineal, así que lo que importa es la RAZÓN entre los dos y no la resta: de
  * 0,055 a 0,10 hay casi el doble, y de 0,30 a 0,35 no hay casi nada, aunque la

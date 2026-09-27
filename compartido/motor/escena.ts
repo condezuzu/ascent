@@ -27,7 +27,7 @@ import { ALTURA, alturaDelPulso, siguePulsando } from '@nucleo/pulso';
 import { debeDibujar, ESPERA_LENTO_MS } from '@nucleo/quietud';
 import { VIAJE_DE_ESQUINA_MS } from '@nucleo/animacion';
 import { plataforma } from '@plataforma';
-import { nivelDeNoche } from '@nucleo/noche';
+import { nivelDeNocheDeCuerpo } from '@nucleo/noche';
 
 /** Como se dibujan los cuerpos. Ver `FRAGMENT_PLANO` en `shaders.ts`. */
 export type Estilo = 'realista' | 'plano';
@@ -764,15 +764,19 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     const escala = op.rango >= 5 ? 1.0 : 0.88;
     const caja = l.tamano();
     const pixel = 2 / (escala * Math.min(caja.w || 400, caja.h || 700));
-    const noche = nivelDeNoche(!!op.reposo, op.noche);
-    const mat = crearMaterialCuerpo(cfg, !!op.apagado, pixel, !!op.reposo, 1, op.estilo, noche);
+    // EL NIVEL DE NOCHE, POR CUERPO (27/9). Antes era uno solo para toda la
+    // escena; ahora cada cuerpo saca el suyo de su paleta —los grises oscuros
+    // suben, los azules quedan igual—. La galería (op.noche) sigue forzando uno
+    // uniforme para comparar. Ver `nucleo/noche.ts`.
+    const nocheDe = (c: ConfigCuerpo) => nivelDeNocheDeCuerpo(c.paleta, op.noche);
+    const mat = crearMaterialCuerpo(cfg, !!op.apagado, pixel, !!op.reposo, 1, op.estilo, nocheDe(cfg));
     materiales.push(mat);
     const cuerpo = new THREE.Mesh(QUAD, mat);
     cuerpo.scale.setScalar(escala);
     grupo.add(cuerpo);
 
     for (let i = 0; i < cfg.lunas; i++) {
-      const lmat = crearMaterialCuerpo(LUNA_CFG, !!op.apagado, 0.02, !!op.reposo, 1, op.estilo, noche);
+      const lmat = crearMaterialCuerpo(LUNA_CFG, !!op.apagado, 0.02, !!op.reposo, 1, op.estilo, nocheDe(LUNA_CFG));
       materiales.push(lmat);
       const luna = new THREE.Mesh(QUAD, lmat);
       const tamLuna = escala * (0.16 + i * 0.05);
@@ -810,7 +814,7 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
         // oscuros con el filo encendido. A este tamaño además es lo único que
         // se puede leer — la textura de un planeta de 40 píxeles no se ve, se
         // ensucia.
-        const pmat = crearMaterialCuerpo(pcfg, !!op.apagado, 0.008, !!op.reposo, 1, op.estilo, noche);
+        const pmat = crearMaterialCuerpo(pcfg, !!op.apagado, 0.008, !!op.reposo, 1, op.estilo, nocheDe(pcfg));
         materiales.push(pmat);
         const planeta = new THREE.Mesh(QUAD, pmat);
         planeta.scale.setScalar(escala * (0.045 + i * 0.011));

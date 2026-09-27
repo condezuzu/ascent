@@ -8136,6 +8136,23 @@ console.log('\n117. La señal del descanso vive en la tira y en el texto');
   chequear('la galeria puede forzar otro', N.nivelDeNoche(true, 0.4), 0.4);
   chequear('forzar cero es "de dia, como antes"', N.nivelDeNoche(false, 0), 0);
   chequear('un valor sin sentido no fuerza nada', N.nivelDeNoche(true, NaN), N.NOCHE_DESCANSO);
+
+  // EL NIVEL DE NOCHE POR CUERPO: los grises oscuros suben, los azules quedan.
+  // El problema que arregla: un gris al 5,5% se lee negro; un azul, no.
+  const { PLANETAS_CFG } = await import('../compartido/motor/cuerpos.ts');
+  const nocheDe = (nombre) => N.nivelDeNocheDeCuerpo(PLANETAS_CFG[nombre].paleta);
+  // Los azules/brillantes que al humano le gustan quedan en el piso (5,5%).
+  chequear('Tierra (azul) queda en 0,055', nocheDe('Tierra'), N.NOCHE_DESCANSO);
+  chequear('Neptuno (azul) queda en 0,055', nocheDe('Neptuno'), N.NOCHE_DESCANSO);
+  chequear('Urano queda en 0,055', nocheDe('Urano'), N.NOCHE_DESCANSO);
+  // Los grises oscuros suben por encima del piso.
+  chequear('Ceres (gris oscuro) sube', nocheDe('Ceres') > N.NOCHE_DESCANSO, true);
+  chequear('Mercurio (gris oscuro) sube', nocheDe('Mercurio') > N.NOCHE_DESCANSO, true);
+  // Marte es cromático: no necesita subir aunque sea oscuro (el color lo salva).
+  chequear('Marte (rojo) no necesita subir', nocheDe('Marte'), N.NOCHE_DESCANSO);
+  // Nunca pasa del techo, y la galería sigue forzando uniforme.
+  chequear('nunca pasa del techo', nocheDe('Ceres') <= N.NOCHE_TECHO, true);
+  chequear('la galeria fuerza uniforme', N.nivelDeNocheDeCuerpo(PLANETAS_CFG.Ceres.paleta, 0.4), 0.4);
 }
 
 console.log('\n118. Ningun backtick suelto adentro de un shader');
