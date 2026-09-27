@@ -1,7 +1,43 @@
-# Por qué falló la build 5 en Apple (investigación 27/9)
+# Por qué falló la build 5 en Apple (RESUELTO, 27/9)
 
-**Estado: el ícono queda DESCARTADO como causa. Falta el texto exacto del error
-de App Store Connect para cerrarlo del todo (solo Apple lo tiene).**
+**CAUSA CONFIRMADA (error textual de Apple): ITMS-90683 — faltaba
+`NSHealthUpdateUsageDescription` en el Info.plist.** El ícono NO tenía nada que
+ver (se descartó con pruebas, ver abajo).
+
+```
+90683: Missing purpose string in Info.plist. ... should contain a
+NSHealthUpdateUsageDescription key with a user-facing purpose string ...
+```
+
+## Por qué pasó y cómo se arregló
+
+- La app **solo LEE** de Salud (`salud.ts` pide `toRead`, nunca `toShare`). Pero
+  la librería `@kingstinct/react-native-healthkit` **enlaza las APIs de
+  escritura** de HealthKit igual, así que el binario las referencia y Apple
+  exige el texto de escritura aunque la app no escriba.
+- En `app.json` estaba `NSHealthUpdateUsageDescription: false` —a propósito,
+  creyendo que "no escribe = no hace falta"—. Eso fue lo que rompió: `false`
+  omite el texto, pero la API sigue enlazada. Sacar la escritura de verdad
+  significaría forkear/cambiar la librería (no conservador).
+- **Arreglo:** se puso un texto honesto (dice que la app solo lee). Sacarlo NO es
+  opción: `false` es justo lo que Apple rechazó.
+- **Micrófono, de paso:** `expo-audio` agregaba un texto de micrófono genérico y
+  en inglés (la app solo REPRODUCE, no graba). Se cambió a un texto honesto en
+  español y se sacó `RECORD_AUDIO` de Android. No se puede sacar el de iOS por lo
+  mismo que Salud (la librería enlaza la grabación). Los textos están en `app.json`
+  y esperan aprobación del humano antes de buildear.
+
+## LA LECCIÓN
+
+El motivo estaba en App Store Connect desde el miércoles, a un clic, y estuvimos
+DEDUCIENDO (bajando .ipa, comparando íconos) en vez de leerlo. **La próxima vez
+que una build falle, lo PRIMERO es leer el error textual de Apple** (el mail
+"We identified one or more issues…" o App Store Connect → la build → el error).
+Recién después, investigar.
+
+---
+
+## Lo que se miró para descartar el ícono (queda como registro)
 
 ## Qué se miró
 

@@ -55,7 +55,13 @@
           "backgroundColor": "#000000"
         }
       ],
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Ascent no graba audio; solo reproduce el aviso del descanso. iOS pide este texto porque el componente de sonido incluye la grabación.",
+          "recordAudioAndroid": false
+        }
+      ],
       [
         "expo-location",
         {
@@ -68,7 +74,7 @@
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "Ascent lee tus pasos y tus entrenamientos para no perder un día que el teléfono ya sabe que entrenaste.",
-          "NSHealthUpdateUsageDescription": false,
+          "NSHealthUpdateUsageDescription": "Ascent solo lee tus pasos y entrenamientos de Salud; no guarda ni modifica nada en Salud.",
           "background": false
         }
       ],

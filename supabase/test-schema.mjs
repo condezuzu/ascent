@@ -9233,9 +9233,17 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
   // llamada a HealthKit es una app que no abre.
   const hk = (app137.plugins ?? []).find((p) => Array.isArray(p) && p[0] === '@kingstinct/react-native-healthkit');
   chequear('con el texto de por que se leen los datos', typeof hk?.[1]?.NSHealthShareUsageDescription, 'string');
-  // ASCENT NO ESCRIBE EN HEALTH. Pedir el permiso de escritura sin usarlo es
-  // una fila de mas en la ventana y un dato mas que declarar en la tienda.
-  chequear('y sin pedir permiso de escritura', hk?.[1]?.NSHealthUpdateUsageDescription, false);
+  // ASCENT NO ESCRIBE EN HEALTH, y eso se garantiza EN EL CODIGO: `salud.ts`
+  // pide solo `toRead`, nunca `toShare`. Esa es la verdad que importa.
+  const salud137 = de137('movil', 'src', 'plataforma', 'salud.ts');
+  chequear('salud.ts no pide escritura (sin toShare)', /toShare\s*:/.test(salud137), false);
+  // PERO EL TEXTO DE ESCRITURA TIENE QUE ESTAR. La build 5 se rechazo (ITMS-90683)
+  // por FALTARLE `NSHealthUpdateUsageDescription`: la libreria de HealthKit enlaza
+  // las APIs de escritura aunque la app no las use, y Apple exige el texto por eso.
+  // Ponerlo en `false` —lo que rompio la build 5— ya no se permite. Ver
+  // `spec/build-5-apple.md`. Que sea una frase honesta (dice que solo lee).
+  chequear('el texto de escritura de Salud esta presente (lo exige Apple)', typeof hk?.[1]?.NSHealthUpdateUsageDescription, 'string');
+  chequear('y es honesto: aclara que solo lee', /solo lee|no guarda|no escribe|no modifica/i.test(hk?.[1]?.NSHealthUpdateUsageDescription ?? ''), true);
 
   const dep137 = JSON.parse(de137('movil', 'package.json')).dependencies;
   chequear('la libreria de HealthKit esta instalada', !!dep137['@kingstinct/react-native-healthkit'], true);
