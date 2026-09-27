@@ -8615,6 +8615,14 @@ console.log('\n124. El shader de cuerpos compila rápido en Direct3D y sin traba
   chequear('arrancar cuelga del .then de compileAsync', m.includes('.compileAsync(escena, camara) .then(() => { clearTimeout(respaldoPrimerCuadro); arrancar(); })'), true);
   chequear('y del .catch, para que un rechazo no deje el fondo negro', m.includes('.catch(() => { clearTimeout(respaldoPrimerCuadro); arrancar(); })'), true);
   chequear('y hay un respaldo por si el sondeo interno se cuelga', m.includes('setTimeout(arrancar, 400)'), true);
+  // EL CRASH DEL 27/9: sin KHR_parallel_shader_compile (el iPhone), el sondeo de
+  // compileAsync hace program.isReady() sobre un material undefined y TIRA dentro
+  // de un setTimeout —fatal, cerró la app—. El arreglo: sin la extensión NO se
+  // usa ese sondeo, se compila sincrónico. Esto lo bloquea para no volver atrás.
+  chequear('mira si existe KHR_parallel_shader_compile', m.includes("getExtension('KHR_parallel_shader_compile')"), true);
+  chequear('sin la extensión compila sincrónico (sin el sondeo que tiraba)', /else \{[^}]*rend\.compile\(escena, camara\)/.test(m), true);
+  // Y un error de un cuadro no puede cerrar la app: el dibujo va en try/catch.
+  chequear('el dibujo de cada cuadro va contenido en try/catch', escena.replace(/\s+/g, ' ').includes('try { dibujarCuadro(); } catch'), true);
 }
 
 console.log('\n125. Lo que se dibuja con SVG se escribe una vez: las dos apps lo toman de compartido/');

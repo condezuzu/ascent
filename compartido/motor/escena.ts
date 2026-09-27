@@ -926,6 +926,18 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     // salida temprana de las de abajo cortaba el bucle para siempre y el
     // fondo no volvía ni tocando la pantalla.
     if (op.animar !== false) l.cuadro(frame);
+    // UN ERROR DEL MOTOR NUNCA CIERRA LA APP (27/9). El dibujo va dentro de un
+    // try: si `render` tira en un cuadro (un uniform raro, un contexto perdido),
+    // se contiene acá y el bucle sigue —el próximo cuadro ya está pedido arriba—.
+    // Que el fondo se congele un cuadro es feo; que se cierre la app, no va.
+    try {
+      dibujarCuadro();
+    } catch {
+      /* contenido: el fondo puede fallar, la app no */
+    }
+  }
+
+  function dibujarCuadro() {
     if (pausado || pausadoPorFuera) return;
 
     // EL BUCLE SIGUE VIVO EN EL ESCALÓN 'QUIETO', sin dibujar. Cancelar el
@@ -1031,28 +1043,57 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
       resolverListo();
     }
   }
-  // El respaldo: si a los 400 ms `compileAsync` no arrancó (sondeo colgado por
-  // el tiro de arriba, o la compilación muy lenta), se dibuja igual. Compilar en
-  // el hilo es un tirón de una vez; el negro es para siempre. Se cancela solo en
-  // cuanto arranca por el camino normal, y también en `soltar()`.
-  respaldoPrimerCuadro = setTimeout(arrancar, 400);
+  // DOS CAMINOS SEGÚN LA EXTENSIÓN, y esta es la corrección del crash del 27/9.
+  //
+  // `compileAsync` de three tiene DOS implementaciones adentro. Con
+  // KHR_parallel_shader_compile pregunta el estado con COMPLETION_STATUS_KHR y no
+  // bloquea. SIN la extensión —expo-gl en el iPhone NO la tiene— cae a un sondeo
+  // con `checkMaterialsReady`, que recorre los materiales y hace
+  // `program.isReady()`. Si un material del set quedó sin programa (un `soltar()`
+  // que hizo `dispose()`, un hueco `undefined` en el arreglo), ese `program` es
+  // `undefined` y TIRA —`Cannot read property 'isReady' of undefined`— DENTRO de
+  // un `setTimeout`. Eso no es un rechazo de promesa: ningún `.catch` lo agarra,
+  // se va al handler global y en el teléfono del humano CERRÓ LA APP (traza del
+  // 27/9, 36 min de uso). El guard viejo dibujaba el primer cuadro igual, pero no
+  // impedía el tiro.
+  //
+  // Arreglo de raíz: sin la extensión NO usamos el sondeo de three. Compilamos
+  // nosotros con `compile()` —sincrónico, un tirón corto en Metal porque los
+  // shaders van por modo— y dibujamos. Sin sondeo no existe `checkMaterialsReady`
+  // ni nada que pueda tirar por el aire. Con la extensión (web) seguimos como
+  // antes: async y sin bloquear.
+  let tieneCompilacionParalela = false;
   try {
-    rend
-      .compileAsync(escena, camara)
-      .then(() => {
-        clearTimeout(respaldoPrimerCuadro);
-        arrancar();
-      })
-      .catch(() => {
-        // Un rechazo "normal" de la promesa (no el tiro del setTimeout, que
-        // esto no ve) igual no puede dejar el fondo en negro.
-        clearTimeout(respaldoPrimerCuadro);
-        arrancar();
-      });
+    const gl = rend.getContext();
+    tieneCompilacionParalela = !!gl.getExtension('KHR_parallel_shader_compile');
   } catch {
-    // `compile()` corre sincrónico DENTRO de `compileAsync`, antes de devolver
-    // la promesa: si un material es `undefined`, tira acá, no en el setTimeout.
-    clearTimeout(respaldoPrimerCuadro);
+    tieneCompilacionParalela = false;
+  }
+  if (tieneCompilacionParalela) {
+    respaldoPrimerCuadro = setTimeout(arrancar, 400);
+    try {
+      rend
+        .compileAsync(escena, camara)
+        .then(() => {
+          clearTimeout(respaldoPrimerCuadro);
+          arrancar();
+        })
+        .catch(() => {
+          clearTimeout(respaldoPrimerCuadro);
+          arrancar();
+        });
+    } catch {
+      clearTimeout(respaldoPrimerCuadro);
+      arrancar();
+    }
+  } else {
+    // Sincrónico y contenido: si un material falla, se atrapa acá y se dibuja el
+    // resto igual. Nada de esto puede escaparse a un timer.
+    try {
+      rend.compile(escena, camara);
+    } catch {
+      /* un material sin programa no puede tumbar el arranque */
+    }
     arrancar();
   }
 
