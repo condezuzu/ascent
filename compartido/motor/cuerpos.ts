@@ -89,7 +89,12 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
   // bien y agregárselos lo empeoró.
   Marte: {
     ...base,
-    paleta: ['#6e1f08', '#a83812', '#d9531e', '#f0925c'],
+    // ROJO ÓXIDO, más rojo y cálido que Júpiter (27/9). El salmón claro del final
+    // (#f0925c) tiraba a naranja y lo acercaba al ámbar de Júpiter; ahora el
+    // extremo claro es un rust más rojo (#e2703a) y los medios más profundos, así
+    // que se lee óxido de hierro, no naranja. Júpiter tiene bandas y crema; este
+    // es rojo entero: no se confunden. Noche 0,055 → 0,055 (sigue cromático).
+    paleta: ['#4a1204', '#8a2810', '#c23c14', '#e2703a'],
     casquetes: 0.85,
     turbulencia: 1.1,
   },
