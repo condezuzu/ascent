@@ -1,7 +1,27 @@
 # Por qué el replay se comió tres huecos (39 → 69)
 
-Diagnóstico del 27/9. **No se aplicó nada.** El replay (migración 53) sigue
-revertido; esto explica la causa para poder rehacerlo bien en 1.0.1.
+Diagnóstico del 27/9. **No se aplicó nada.** El replay (migración 53 vieja, la de
+la racha) sigue revertido; esto explica la causa para poder rehacerlo bien en
+1.0.1. (La migración 53 que SÍ existe ahora es otra: denunciar/bloquear.)
+
+---
+
+## ✅ DECISIÓN TOMADA (27/9) — no volver a discutir
+
+**El castigo queda.** Si faltaste y se te cobraron los −10, tapar ese día después
+—con una vida, corrigiendo el calendario, lo que sea— **no te los devuelve**. La
+racha del humano es 39, y 39 es la correcta. El replay que daba 69 estaba
+aplicando otra regla (perdonar el castigo si el día deja de ser hueco), y esa
+regla NO es la que queremos.
+
+**Para 1.0.1, cómo se hace bien:** guardar las pérdidas como **eventos con
+fecha** (una tabla de −10 ya cobrados) y que la racha reste esos eventos
+registrados, en vez de re-detectar huecos desde los datos de hoy. Así se
+conserva lo bueno del replay —racha en vivo, sin depender de cuándo abriste la
+app— SIN descongelar un castigo que ya ocurrió. Con el dry-run del guard sobre el
+historial real (no un caso inventado) antes de aplicar.
+
+Lo que sigue es el diagnóstico que llevó a esta decisión.
 
 ## La respuesta en una frase
 
