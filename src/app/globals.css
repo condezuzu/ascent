@@ -1166,6 +1166,39 @@ body.ya-entro .pantalla.aparece {
   color: var(--sub);
   font-variant-numeric: tabular-nums;
 }
+/* El "⋯" al final de una fila de amigo: abre denunciar/bloquear sin navegar.
+   Discreto —del color más apagado— y con área tocable propia. */
+.fila-mas {
+  flex: none;
+  color: var(--apagado);
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 6px;
+  margin-right: -4px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.fila-mas:hover {
+  color: var(--sub);
+}
+
+/* Las opciones de la hoja de denunciar/bloquear: filas de texto separadas por
+   una línea, como en la hoja nativa. */
+.hoja-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 15px 0;
+  font-size: 16px;
+  color: var(--tinta);
+  border-top: 0.5px solid var(--linea);
+}
+.hoja-item.peligro {
+  color: var(--peligro);
+}
+.hoja-item:disabled {
+  opacity: 0.4;
+}
 
 .avatar {
   width: 34px;

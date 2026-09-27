@@ -20,6 +20,7 @@ import ComoSeCompara from './ajustes/ComoSeCompara';
 import MisDatos from './ajustes/MisDatos';
 import Sugerencias from './ajustes/Sugerencias';
 import Cuenta from './ajustes/Cuenta';
+import Bloqueados from './ajustes/Bloqueados';
 import Diagnostico from './ajustes/Diagnostico';
 
 /**
@@ -290,6 +291,9 @@ export default function Ajustes({
       {/* Abajo de todo y plegado: son dos pantallas de texto, y el que las
           busca las encuentra igual. */}
       <ComoSeCompara />
+
+      {/* Cuentas bloqueadas: privacidad/seguridad, cerca de la baja de cuenta. */}
+      <Bloqueados />
 
       {/* Cerrar sesion, cambiar la clave y darse de baja: las tres son sobre
           la cuenta y no sobre como entrenas, asi que van juntas y al final. */}

@@ -176,6 +176,42 @@ export async function responderReto(supabase: Cliente, id: string, acepta: boole
   return !error;
 }
 
+// -------------------------------------------------------------
+// DENUNCIAR Y BLOQUEAR (migración 53)
+// -------------------------------------------------------------
+// Todo por RPC: bloquear además borra la amistad y cierra el reto, y las tablas
+// no tienen acceso directo desde el cliente. Los motivos son una lista cerrada
+// (no texto libre); las etiquetas visibles viven en T.denuncia.
+export const MOTIVOS_DENUNCIA = ['spam', 'acoso', 'inapropiado', 'suplantacion', 'otro'] as const;
+export type MotivoDenuncia = (typeof MOTIVOS_DENUNCIA)[number];
+
+export type Bloqueado = { id: string; username: string; avatar_url: string | null };
+
+// NO_EXISTE mira el PGRST202 de PostgREST ("esa función no existe"). Si la
+// migración 53 todavía no corrió —una actualización por el aire puede llegar
+// antes que la migración—, estas acciones nuevas no rompen nada: devuelven false
+// o una lista vacía hasta que esté. Mismo patrón que compartido/inicio.ts. Las
+// cuatro llamadas van pegadas a esta guarda a propósito: cada una degrada sola.
+// (cargarBloqueados = mis_bloqueados; bloquear corta la amistad y esconde.)
+const NO_EXISTE = (e: { code?: string } | null | undefined) => e?.code === 'PGRST202';
+export async function cargarBloqueados(supabase: Cliente): Promise<Bloqueado[]> {
+  const { data, error } = await supabase.rpc('mis_bloqueados');
+  if (NO_EXISTE(error)) return [];
+  return (data ?? []) as Bloqueado[];
+}
+export async function denunciar(supabase: Cliente, denunciado: string, motivo: MotivoDenuncia) {
+  const { error } = await supabase.rpc('denunciar', { p_denunciado: denunciado, p_motivo: motivo });
+  return !NO_EXISTE(error) && !error;
+}
+export async function bloquear(supabase: Cliente, otro: string) {
+  const { error } = await supabase.rpc('bloquear', { p_otro: otro });
+  return !NO_EXISTE(error) && !error;
+}
+export async function desbloquear(supabase: Cliente, otro: string) {
+  const { error } = await supabase.rpc('desbloquear', { p_otro: otro });
+  return !NO_EXISTE(error) && !error;
+}
+
 /**
  * DÓNDE VA CADA AMIGO EN EL CAMPO ESTELAR de detrás de la lista, y de qué
  * tamaño y brillo. El tamaño y el brillo dicen la racha de un vistazo.

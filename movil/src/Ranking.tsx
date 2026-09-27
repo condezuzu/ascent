@@ -14,6 +14,7 @@ import {
   type DatosDeRanking,
 } from '@compartido/ranking';
 import Avatar from './Avatar';
+import AccionesDeUsuario from './AccionesDeUsuario';
 import Surgir from './Surgir';
 import Insignia from './Insignia';
 import Medallas from './Medallas';
@@ -58,6 +59,8 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   // AMIGOS ENTRENANDO AHORA (actividad en vivo). Se refresca con el ranking.
   // Si la migración de actividad no corrió, vuelve vacío y no se muestra nada.
   const [entrenando, setEntrenando] = useState<{ id: string; username: string; avatar_url: string | null }[]>([]);
+  // A quién denunciar o bloquear (long-press en una fila). null = hoja cerrada.
+  const [accion, setAccion] = useState<{ id: string; username: string } | null>(null);
   // ¿Ya marcó su gimnasio? Del caché del perfil (que guarda si está marcado,
   // nunca dónde). Es la condición para el aviso de actividad en vivo: antes de
   // marcarlo, explicaría algo que la persona todavía no puede usar.
@@ -188,6 +191,9 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 <Pressable
                   style={({ pressed }) => [estilos.fila, pressed && estilos.filaTocada]}
                   onPress={() => router.push(a.id === miId ? '/yo' : `/perfil/${a.id}`)}
+                  // Mantener apretado sobre un amigo: denunciar o bloquear, sin
+                  // tener que entrar al perfil. Sobre tu propia fila no hace nada.
+                  onLongPress={() => a.id !== miId && setAccion({ id: a.id, username: a.username })}
                   accessibilityRole="button"
                 >
                   <Text style={[estilos.dato, { width: 20 }]}>{i + 1}</Text>
@@ -332,6 +338,12 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           )}
         </View>
       </ScrollView>
+
+      <AccionesDeUsuario
+        usuario={accion}
+        onCerrar={() => setAccion(null)}
+        onBloqueado={() => cargar()}
+      />
     </View>
   );
 }

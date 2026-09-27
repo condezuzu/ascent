@@ -215,6 +215,33 @@ create unique index challenges_vigente_unico on public.challenges
   (least(retador, rival), greatest(retador, rival))
   where estado in ('pendiente', 'activo');
 
+-- BLOQUEOS (migración 53). Quién bloqueó a quién. Bloquear corta la amistad,
+-- borra las solicitudes en las dos direcciones, impide nuevas (por policy) y los
+-- saca del ranking, del buscador y de la vista del otro (por RLS/vista/función).
+create table public.bloqueos (
+  bloqueador uuid not null references public.profiles(id) on delete cascade,
+  bloqueado  uuid not null references public.profiles(id) on delete cascade,
+  creado timestamptz not null default now(),
+  primary key (bloqueador, bloqueado),
+  check (bloqueador <> bloqueado)
+);
+create index bloqueos_por_bloqueado on public.bloqueos (bloqueado);
+alter table public.bloqueos enable row level security;
+
+-- REPORTES / denuncias (migración 53). denunciante + denunciado + motivo (de una
+-- lista cerrada, no texto libre). Una fila por par (la última gana). Se lee desde
+-- el dashboard, como el feedback; NO es el buzón de errores.
+create table public.reportes (
+  denunciante uuid not null references public.profiles(id) on delete cascade,
+  denunciado  uuid not null references public.profiles(id) on delete cascade,
+  motivo text not null check (motivo in ('spam','acoso','inapropiado','suplantacion','otro')),
+  creado timestamptz not null default now(),
+  primary key (denunciante, denunciado),
+  check (denunciante <> denunciado)
+);
+create index reportes_por_denunciado on public.reportes (denunciado);
+alter table public.reportes enable row level security;
+
 -- Catálogo de ejercicios. Es grande a propósito (§16.3): el usuario anota lo
 -- que quiera. Pero al total DOTS entran SOLO los tres marcados con
 -- cuenta_dots: la fórmula está calibrada sobre esos tres y sumarle otros no
@@ -1131,6 +1158,77 @@ begin
      and ((retador = uid and rival = p_otro) or (retador = p_otro and rival = uid));
 end;
 $$;
+
+-- BLOQUEAR (migración 53). Crea el bloqueo, borra la amistad en las dos
+-- direcciones (cualquier estado: también una solicitud pendiente) y cierra el
+-- reto vigente. Es eliminar_amigo + registrar el bloqueo, en una sola operación.
+create or replace function public.bloquear(p_otro uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null or p_otro is null or uid = p_otro then return; end if;
+  insert into bloqueos (bloqueador, bloqueado) values (uid, p_otro)
+    on conflict (bloqueador, bloqueado) do nothing;
+  delete from friendships
+   where (solicitante = uid and destinatario = p_otro)
+      or (solicitante = p_otro and destinatario = uid);
+  delete from challenges
+   where estado in ('pendiente', 'activo')
+     and ((retador = uid and rival = p_otro) or (retador = p_otro and rival = uid));
+end;
+$$;
+revoke execute on function public.bloquear(uuid) from public, anon;
+grant execute on function public.bloquear(uuid) to authenticated;
+
+-- DESBLOQUEAR. Solo saca la fila de bloqueo; no recompone la amistad (si se
+-- quieren volver a agregar, uno pide y el otro acepta, como cualquiera).
+create or replace function public.desbloquear(p_otro uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null or p_otro is null then return; end if;
+  delete from bloqueos where bloqueador = uid and bloqueado = p_otro;
+end;
+$$;
+revoke execute on function public.desbloquear(uuid) from public, anon;
+grant execute on function public.desbloquear(uuid) to authenticated;
+
+-- MIS BLOQUEADOS, para Ajustes. Lee `profiles` directo (y no `usuarios_publicos`)
+-- a propósito: la vista justamente esconde a los bloqueados, así que para
+-- LISTARLOS hay que saltearla, cosa que este SECURITY DEFINER puede.
+create or replace function public.mis_bloqueados()
+returns table (id uuid, username text, avatar_url text)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.username, p.avatar_url
+    from bloqueos b
+    join profiles p on p.id = b.bloqueado
+   where b.bloqueador = auth.uid()
+   order by b.creado desc;
+$$;
+revoke execute on function public.mis_bloqueados() from public, anon;
+grant execute on function public.mis_bloqueados() to authenticated;
+
+-- DENUNCIAR. Registra denunciante→denunciado con un motivo de la lista. Una por
+-- par (la última gana). El dueño la lee desde el dashboard.
+create or replace function public.denunciar(p_denunciado uuid, p_motivo text)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null or p_denunciado is null or uid = p_denunciado then return; end if;
+  if p_motivo is null or p_motivo not in ('spam','acoso','inapropiado','suplantacion','otro') then
+    raise exception 'motivo inválido';
+  end if;
+  insert into reportes (denunciante, denunciado, motivo)
+    values (uid, p_denunciado, p_motivo)
+    on conflict (denunciante, denunciado) do update
+      set motivo = excluded.motivo, creado = now();
+end;
+$$;
+revoke execute on function public.denunciar(uuid, text) from public, anon;
+grant execute on function public.denunciar(uuid, text) to authenticated;
 
 -- Eliminar la cuenta. Borra la fila de auth.users; el resto se va en cascada
 -- desde profiles (logs, fotos, pesos, descansos, amistades, retos, sugerencias).
@@ -2231,11 +2329,19 @@ grant execute on function public.retrato_del_schema() to authenticated;
 -- BÚSQUEDA PÚBLICA: vista que expone SOLO lo mínimo.
 -- La tabla profiles completa nunca se abre.
 -- -------------------------------------------------------------
+-- El buscador no muestra a los bloqueados (en los dos sentidos) (migración 53):
+-- la vista lee auth.uid() aunque corra como su dueño, así que el que busca no ve
+-- a quien bloqueó ni a quien lo bloqueó.
 create view public.usuarios_publicos
 with (security_invoker = off) as
   select id, username, avatar_url, racha_actual, rango_actual
-  from public.profiles
-  where username is not null;
+  from public.profiles p
+  where username is not null
+    and not exists (
+      select 1 from public.bloqueos b
+       where (b.bloqueador = auth.uid() and b.bloqueado = p.id)
+          or (b.bloqueador = p.id and b.bloqueado = auth.uid())
+    );
 
 grant select on public.usuarios_publicos to authenticated;
 
@@ -2426,14 +2532,33 @@ alter table public.prs enable row level security;
 alter table public.sesiones enable row level security;
 alter table public.errores_js enable row level security;
 
+-- ¿Hay un bloqueo entre dos? (en cualquiera de los dos sentidos) (migración 53)
+-- La llama la policy de "amistad: pedir" (evaluada como el usuario), así que
+-- necesita execute; para que no sea una sonda —averiguar si dos ajenos se
+-- bloquearon— solo contesta cuando el que pregunta es una de las dos puntas,
+-- igual que son_amigos (migración 41).
+create or replace function public.hay_bloqueo(a uuid, b uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select auth.uid() in (a, b) and exists (
+    select 1 from bloqueos
+     where (bloqueador = a and bloqueado = b)
+        or (bloqueador = b and bloqueado = a)
+  );
+$$;
+revoke execute on function public.hay_bloqueo(uuid, uuid) from public, anon;
+grant execute on function public.hay_bloqueo(uuid, uuid) to authenticated;
+
 -- ¿Somos amigos aceptados? (contempla ambos sentidos)
 -- Solo contesta sobre una amistad de QUIEN PREGUNTA (migración 41): con los
 -- ids públicos, cualquiera podía averiguar si otras dos personas eran amigas.
 -- Las políticas la llaman siempre con `auth.uid()` en una punta.
+-- Y respeta el bloqueo (migración 53): un bloqueo corta el acceso a logs y fotos
+-- aunque quedara una amistad suelta (cinturón y tirantes; bloquear ya la borra).
 create or replace function public.son_amigos(a uuid, b uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select auth.uid() is not null
     and auth.uid() in (a, b)
+    and not public.hay_bloqueo(a, b)
     and exists (
       select 1 from friendships
       where estado = 'aceptada'
@@ -2520,8 +2645,13 @@ create policy "peso: solo dueño" on public.weights for all using (auth.uid() = 
 -- friendships: las dos puntas leen; el solicitante crea; el destinatario acepta; cualquiera de los dos borra
 create policy "amistad: leer" on public.friendships for select
   using (auth.uid() = solicitante or auth.uid() = destinatario);
+-- No se puede pedir amistad si hay un bloqueo en cualquier sentido (migración 53).
 create policy "amistad: pedir" on public.friendships for insert
-  with check (auth.uid() = solicitante and estado = 'pendiente');
+  with check (
+    auth.uid() = solicitante
+    and estado = 'pendiente'
+    and not public.hay_bloqueo(solicitante, destinatario)
+  );
 create policy "amistad: aceptar" on public.friendships for update
   using (auth.uid() = destinatario) with check (estado = 'aceptada');
 create policy "amistad: borrar" on public.friendships for delete
@@ -2629,7 +2759,7 @@ revoke all on table
   public.profiles, public.logs, public.photos, public.weights,
   public.friendships, public.challenges, public.feedback, public.descansos,
   public.ejercicios, public.prs, public.sesiones, public.errores_js,
-  public.en_el_gimnasio
+  public.en_el_gimnasio, public.bloqueos, public.reportes
   from anon, authenticated;
 
 -- lectura y escritura mínimas, siempre acotadas después por la RLS
@@ -2941,7 +3071,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 52; $$;
+returns int language sql immutable as $$ select 53; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

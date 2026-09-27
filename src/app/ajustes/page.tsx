@@ -12,6 +12,7 @@ import InstalarPWA from '@/components/InstalarPWA';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import BajaDeCuenta from '@/components/ajustes/BajaDeCuenta';
+import Bloqueados from '@/components/ajustes/Bloqueados';
 import ComoSeCompara from '@/components/ajustes/ComoSeCompara';
 import Estancamiento from '@/components/ajustes/Estancamiento';
 import Diagnostico from '@/components/ajustes/Diagnostico';
@@ -126,6 +127,9 @@ export default function Ajustes() {
         {/* Abajo de todo y plegado: acá el párrafo largo SÍ vale, porque
             el que lo abre lo está buscando (§8 del repaso). */}
         <ComoSeCompara />
+        {/* Cuentas bloqueadas: privacidad/seguridad, cerca de la baja de
+            cuenta. Mismo lugar que en la app nativa. */}
+        <Bloqueados />
         {/* Banco de trabajo del automático por ubicación, no una pantalla de
             la app: se saca cuando el automático esté probado en un gimnasio
             de verdad. Ver spec/etapa-nativa.md §13. */}

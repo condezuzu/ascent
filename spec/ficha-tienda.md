@@ -130,6 +130,10 @@ LO PRINCIPAL
 5. Sumar una foto al día y mirarla en el Álbum.
 6. Entrar al perfil de un amigo desde el Ranking y ver sus medallas.
 7. Anotar el peso corporal desde Inicio.
+8. En el perfil de alguien (o manteniendo apretada su fila en el Ranking),
+   probar "Denunciar o bloquear". Al bloquear, esa persona desaparece del
+   ranking y del buscador y no te puede volver a agregar; se gestiona en
+   Ajustes → "Cuentas bloqueadas".
 
 SI ALGO SE VE MAL
 Ajustes → Sugerencias, que llega directo. Y si una pantalla queda en blanco o
@@ -201,6 +205,20 @@ ABOUT THE PERMISSIONS — all three are optional and the app works without them.
   and never requests write access. The NSHealthUpdateUsageDescription string is
   present only because the HealthKit library links its write APIs; the app does
   not use them (verified: it requests `toRead` only, never `toShare`).
+
+USER-GENERATED CONTENT — REPORT AND BLOCK (Guideline 1.2)
+Usernames, avatars and (only between accepted friends) photos are visible to
+other users, so the app has both required controls:
+- Report: on any user's profile, and by long-pressing a row in the Ranking →
+  "Denunciar", picking a reason from a fixed list. Reports are stored server-side
+  and reviewed.
+- Block: on any user's profile → "Bloquear". Blocking removes the friendship,
+  hides the two users from each other in search and in the ranking, and prevents
+  any new friend request in either direction. This is enforced by row-level
+  security in the database, not just hidden in the UI. Blocked accounts are
+  listed and can be unblocked under Ajustes → "Cuentas bloqueadas".
+There is no public content, no comments and no likes: anything from another
+person is only visible inside a mutually-accepted friend relationship.
 
 HOW TO SEE THE MAIN LOOP IN TWO MINUTES
 1. Sign in. The number on Home is the streak.

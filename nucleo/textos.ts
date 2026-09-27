@@ -675,6 +675,12 @@ export const T = {
     cerrarSesion: 'Cerrar sesión',
     eliminarCuenta: 'Eliminar mi cuenta',
 
+    // Cuentas bloqueadas (migración 53)
+    bloqueados: 'Cuentas bloqueadas',
+    bloqueadosVacio: 'No bloqueaste a nadie.',
+    bloqueadosPie: 'A quien bloqueas no te ve ni te puede agregar. Puedes desbloquear cuando quieras.',
+    desbloquear: 'Desbloquear',
+
     exportando: 'Armando el archivo…',
     exportarError: 'El archivo no se armó. Prueba de nuevo.',
 
@@ -1295,6 +1301,24 @@ export const T = {
     yElRetoSeCancela: ', y el reto se cancela',
     eliminar: 'Eliminar',
     eliminarDeAmigos: 'Eliminar de mis amigos',
+    // Denunciar y bloquear (migración 53)
+    denunciar: 'Denunciar',
+    denunciarOBloquear: 'Denunciar o bloquear',
+    denunciaTitulo: '¿Por qué lo denuncias?',
+    denunciaMotivos: {
+      spam: 'Spam o publicidad',
+      acoso: 'Acoso o insultos',
+      inapropiado: 'Contenido inapropiado',
+      suplantacion: 'Se hace pasar por otra persona',
+      otro: 'Otra cosa',
+    } as Record<string, string>,
+    denunciaEnviada: 'Gracias. Lo vamos a revisar.',
+    bloquear: 'Bloquear',
+    bloquearTitulo: (nombre: string) => `¿Bloquear a ${nombre}?`,
+    bloquearQue:
+      'Se cancela la amistad y dejan de verse la actividad y las fotos. No puede volver a agregarte.',
+    bloquearConfirmar: 'Bloquear',
+    bloqueado: 'Bloqueado',
     sinNombre: '¿?',
   },
 

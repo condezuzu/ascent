@@ -25,6 +25,7 @@ import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import NoCargo from '@/components/NoCargo';
+import AccionesDeUsuario from '@/components/AccionesDeUsuario';
 import { T } from '@nucleo/textos';
 import { olvidarPendientes } from '@/lib/avisos';
 
@@ -45,6 +46,8 @@ export default function Social() {
   // gris del rango 1 (19/9).
   const [miRango, setMiRango] = useState<number | undefined>(undefined);
   const [miPlaneta, setMiPlaneta] = useState<string | null>(null);
+  // A quién se le abrió el menú de denunciar/bloquear (el "⋯" de su fila).
+  const [accion, setAccion] = useState<{ id: string; username: string } | null>(null);
   const busquedaRef = useRef('');
 
   // LAS CONSULTAS VIVEN EN `compartido/ranking.ts` desde el 18/9: las usa
@@ -221,6 +224,32 @@ export default function Social() {
                       <Insignia rango={a.rango_actual} tam={38} />
                       <span className="nombre">{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</span>
                       <span className="dato">{a.racha_actual}</span>
+                      {/* Denunciar o bloquear: no en la fila propia. Es un
+                          <span> y no un <button> porque va dentro del <Link>
+                          (un botón dentro de un ancla es HTML inválido). Frena
+                          la navegación del Link con preventDefault. */}
+                      {a.id !== miId && (
+                        <span
+                          className="fila-mas"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={T.social.denunciarOBloquear}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setAccion({ id: a.id, username: a.username });
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setAccion({ id: a.id, username: a.username });
+                            }
+                          }}
+                        >
+                          ⋯
+                        </span>
+                      )}
                     </>
                   );
                   // ESCALONADAS (19/9): la primera, la segunda, la tercera, en vez
@@ -351,6 +380,12 @@ export default function Social() {
           ))}
         </div>
       </PantallaDeslizable>
+
+      <AccionesDeUsuario
+        usuario={accion}
+        onCerrar={() => setAccion(null)}
+        onBloqueado={() => cargar()}
+      />
       <Nav />
     </>
   );

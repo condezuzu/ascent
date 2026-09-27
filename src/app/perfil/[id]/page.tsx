@@ -17,6 +17,7 @@ import PantallaDeslizable from '@/components/PantallaDeslizable';
 import { miniaturas } from '@compartido/album';
 import { T } from '@nucleo/textos';
 import Medallas from '@/components/Medallas';
+import AccionesDeUsuario from '@/components/AccionesDeUsuario';
 import { cargarMedallasDeAmigo } from '@compartido/perfil';
 import type { Medalla } from '@nucleo/medallas';
 import ComoMeVen, {
@@ -45,6 +46,7 @@ export default function Perfil() {
   const [marcador, setMarcador] = useState<{ yo: number; el: number } | null>(null);
   const [cargado, setCargado] = useState(false);
   const [confirmandoBaja, setConfirmandoBaja] = useState(false);
+  const [accion, setAccion] = useState(false);
 
   const cargar = useCallback(async () => {
     // el id viene de la URL: si no es un uuid, ni consultar
@@ -375,7 +377,26 @@ export default function Perfil() {
             </div>
           </>
         )}
+
+        {/* Denunciar o bloquear: al alcance en el perfil de cualquiera, sea
+            amigo o no. Bloquear también sirve para frenar a alguien que
+            todavía no es amigo pero insiste con solicitudes. */}
+        <div className="seccion" style={{ marginTop: 40, textAlign: 'center' }}>
+          <button
+            className="boton-texto"
+            style={{ color: 'var(--apagado)', fontSize: 13 }}
+            onClick={() => setAccion(true)}
+          >
+            {T.social.denunciarOBloquear}
+          </button>
+        </div>
       </PantallaDeslizable>
+
+      <AccionesDeUsuario
+        usuario={accion ? { id: usuario.id, username: usuario.username } : null}
+        onCerrar={() => setAccion(false)}
+        onBloqueado={() => router.push('/social')}
+      />
       <Nav />
     </>
   );

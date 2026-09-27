@@ -7055,6 +7055,94 @@ console.log('\n102. Nadie pregunta por los datos de otro (migracion 41)');
   chequear('la racha la sigue calculando el trigger', (await db.query('select racha_actual from profiles where id = $1', [x])).rows[0].racha_actual, 1);
 }
 
+console.log('\n164. Bloquear y denunciar (migración 53)');
+{
+  const a = await nuevoUsuario();
+  const b = await nuevoUsuario();
+  // amigos, con un reto vigente y una foto compartida, para ver que el bloqueo
+  // corta TODO (no solo la fila de amistad).
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1,$2,'aceptada')`, [a, b]);
+  await db.query(`insert into challenges (retador, rival, desde, hasta, estado) values ($1,$2,mi_hoy(),mi_hoy()+6,'activo')`, [a, b]);
+  const la = await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy()) returning id`, [a]);
+  await db.query(`insert into photos (user_id, log_id, storage_path, visibilidad) values ($1,$2,$3,'amigos')`, [a, la.rows[0].id, a + '/f.jpg']);
+
+  // b ve el log y la foto de a mientras son amigos
+  await comoUsuario(b); await db.exec('set role authenticated');
+  chequear('antes del bloqueo b ve el log de a', (await db.query('select 1 from logs where user_id=$1', [a])).rows.length, 1);
+  chequear('antes del bloqueo b ve la foto de a', (await db.query('select 1 from photos where user_id=$1', [a])).rows.length, 1);
+  await db.exec('reset role');
+
+  // a bloquea a b
+  await comoUsuario(a);
+  await db.query('select bloquear($1)', [b]);
+  chequear('bloquear borró la amistad',
+    (await db.query(`select 1 from friendships where (solicitante=$1 and destinatario=$2) or (solicitante=$2 and destinatario=$1)`, [a, b])).rows.length, 0);
+  chequear('bloquear cerró el reto vigente',
+    (await db.query(`select 1 from challenges where estado in ('pendiente','activo') and ((retador=$1 and rival=$2) or (retador=$2 and rival=$1))`, [a, b])).rows.length, 0);
+  chequear('quedó registrado el bloqueo',
+    (await db.query('select 1 from bloqueos where bloqueador=$1 and bloqueado=$2', [a, b])).rows.length, 1);
+  chequear('bloqueados no son amigos', (await db.query('select son_amigos($1,$2) as s', [a, b])).rows[0].s, false);
+
+  // el contenido deja de verse (por son_amigos, a nivel RLS)
+  await comoUsuario(b); await db.exec('set role authenticated');
+  chequear('tras el bloqueo b no ve el log de a', (await db.query('select 1 from logs where user_id=$1', [a])).rows.length, 0);
+  chequear('tras el bloqueo b no ve la foto de a', (await db.query('select 1 from photos where user_id=$1', [a])).rows.length, 0);
+  await db.exec('reset role');
+
+  // no se puede re-solicitar, en las dos direcciones (RLS)
+  const noPide = async (sol, dest) => {
+    await comoUsuario(sol); await db.exec('set role authenticated');
+    let r = null;
+    try { await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1,$2,'pendiente')`, [sol, dest]); r = false; }
+    catch (e) { r = /row-level security|policy/i.test(e.message); }
+    await db.exec('reset role');
+    return r;
+  };
+  chequear('el que bloqueó no puede re-solicitar', await noPide(a, b), true);
+  chequear('el bloqueado tampoco puede solicitar', await noPide(b, a), true);
+
+  // el buscador los esconde el uno del otro
+  await comoUsuario(a); await db.exec('set role authenticated');
+  chequear('a no ve a b en el buscador', (await db.query('select 1 from usuarios_publicos where id=$1', [b])).rows.length, 0);
+  await db.exec('reset role');
+  await comoUsuario(b); await db.exec('set role authenticated');
+  chequear('b no ve a a en el buscador', (await db.query('select 1 from usuarios_publicos where id=$1', [a])).rows.length, 0);
+  await db.exec('reset role');
+
+  // mis_bloqueados lista, desbloquear revierte
+  await comoUsuario(a);
+  chequear('mis_bloqueados lista a b', (await db.query('select 1 from mis_bloqueados() where id=$1', [b])).rows.length, 1);
+  await db.query('select desbloquear($1)', [b]);
+  chequear('desbloquear lo saca de la lista', (await db.query('select 1 from mis_bloqueados() where id=$1', [b])).rows.length, 0);
+  await comoUsuario(a); await db.exec('set role authenticated');
+  chequear('desbloqueado vuelve al buscador', (await db.query('select 1 from usuarios_publicos where id=$1', [b])).rows.length, 1);
+  await db.exec('reset role');
+
+  // denunciar: registra, una por par (la última gana), motivo de la lista, sin auto-denuncia
+  const c = await nuevoUsuario();
+  await comoUsuario(a);
+  await db.query('select denunciar($1,$2)', [c, 'spam']);
+  chequear('denunciar guardó el reporte',
+    (await db.query('select motivo from reportes where denunciante=$1 and denunciado=$2', [a, c])).rows[0]?.motivo, 'spam');
+  await db.query('select denunciar($1,$2)', [c, 'acoso']);
+  const rep2 = (await db.query('select count(*)::int as n, max(motivo) as m from reportes where denunciante=$1 and denunciado=$2', [a, c])).rows[0];
+  chequear('una denuncia por par, la última gana', [rep2.n, rep2.m], [1, 'acoso']);
+  let malMotivo = null;
+  try { await db.query('select denunciar($1,$2)', [c, 'porque_si']); malMotivo = false; }
+  catch (e) { malMotivo = /motivo/i.test(e.message); }
+  chequear('motivo fuera de la lista se rechaza', malMotivo, true);
+  await db.query('select denunciar($1,$2)', [a, 'spam']); // a se denuncia a sí mismo → no-op
+  chequear('no hay auto-denuncia', (await db.query('select 1 from reportes where denunciante=$1 and denunciado=$1', [a])).rows.length, 0);
+
+  // ni bloqueos ni reportes se tocan directo desde el cliente
+  await comoUsuario(a); await db.exec('set role authenticated');
+  chequear('bloqueos: sin acceso directo',
+    (await db.query(`select has_table_privilege('authenticated','public.bloqueos','select') as s`)).rows[0].s, false);
+  chequear('reportes: sin acceso directo',
+    (await db.query(`select has_table_privilege('authenticated','public.reportes','insert') as s`)).rows[0].s, false);
+  await db.exec('reset role');
+}
+
 console.log('\n103. Rangos y descansos: lo que se ve en Inicio y en el calendario');
 {
   // Deciden la barra de progreso, el nombre del rango, el planeta del dia y si

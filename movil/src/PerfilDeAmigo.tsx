@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { cargarPerfilDeAmigo, DIAS_VISIBLES, type PerfilDeAmigo as Datos } from '@compartido/perfil';
 import Medallas from './Medallas';
 import { pedirAmistad } from '@compartido/ranking';
+import AccionesDeUsuario from './AccionesDeUsuario';
 import { DIAS_SEMANA, deISO, enDias, hoyISO, restarDias } from '@nucleo/fechas';
 import { conComa } from '@nucleo/peso';
 import { planetaDeDia } from '@nucleo/rangos';
@@ -41,6 +42,7 @@ export default function PerfilDeAmigo() {
   const [dots, setDots] = useState<number | null>(null);
   const [cargado, setCargado] = useState(false);
   const [error, setError] = useState('');
+  const [accion, setAccion] = useState(false);
 
   const cargar = useCallback(async () => {
     setError('');
@@ -197,7 +199,20 @@ export default function PerfilDeAmigo() {
             <Text style={estilos.nota}>{T.social.cuandoSeanAmigos}</Text>
           </>
         )}
+
+        {/* Denunciar o bloquear: al alcance en el perfil de cualquiera, sea
+            amigo o no. Bloquear también sirve para frenar a alguien que todavía
+            no es amigo pero insiste con solicitudes. */}
+        <Pressable onPress={() => setAccion(true)} hitSlop={8} style={estilos.reportar}>
+          <Text style={estilos.reportarTexto}>{T.social.denunciarOBloquear}</Text>
+        </Pressable>
       </ScrollView>
+
+      <AccionesDeUsuario
+        usuario={accion ? { id: usuario.id, username: usuario.username } : null}
+        onCerrar={() => setAccion(false)}
+        onBloqueado={() => router.back()}
+      />
     </View>
   );
 }
@@ -239,4 +254,6 @@ const estilos = StyleSheet.create({
   nota: { color: C.apagado, fontSize: 13, lineHeight: 19, marginTop: 20 },
   enlace: { color: C.sub, fontSize: 15 },
   error: { color: C.error, fontSize: 13, marginTop: 10 },
+  reportar: { marginTop: 40, alignItems: 'center', paddingVertical: 8 },
+  reportarTexto: { color: C.apagado, fontSize: 13 },
 });

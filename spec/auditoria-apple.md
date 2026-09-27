@@ -9,7 +9,13 @@ bloquear).** El resto va de verde a amarillo.
 
 ---
 
-## 🔴 Contenido de usuarios (Guideline 1.2 — Safety, UGC)
+## 🟢 Contenido de usuarios (Guideline 1.2 — Safety, UGC) — RESUELTO (27/9)
+
+> **HECHO (migración 53).** Se implementó denunciar (perfil + long-press en el
+> ranking, motivo de una lista) y bloquear (corta la amistad, impide nuevas
+> solicitudes en las dos direcciones, esconde el uno del otro en buscador y
+> ranking, todo por RLS) + gestión en Ajustes → "Cuentas bloqueadas". Notas de
+> App Review actualizadas. Lo de abajo queda como el análisis original.
 
 **Esto es lo que me preocupa y lo confirmo: estamos expuestos.**
 
