@@ -6469,8 +6469,11 @@ console.log('\n90. El recorrido de la primera vez');
     (p) => !existe(join(RAIZ, 'src', 'app', ...p.ruta.split('/').filter(Boolean), 'page.tsx'))
   ).map((p) => p.ruta);
   chequear('cada paso lleva a una pantalla que existe', faltan, []);
-  // Lo primero, el gimnasio: es lo que hace distinta a la app.
-  chequear('el primer paso es el gimnasio', [PASOS_DEL_RECORRIDO[0].ruta, PASOS_DEL_RECORRIDO[0].ancla], ['/ajustes', 'gimnasio']);
+  // Lo primero, Inicio: la racha y el cuerpo naciendo, no la configuración (27/9).
+  chequear('el primer paso es Inicio', [PASOS_DEL_RECORRIDO[0].ruta, PASOS_DEL_RECORRIDO[0].ancla], ['/', undefined]);
+  // El gimnasio sigue siendo un paso (ahora el segundo) y su sección existe.
+  const pasoGim = PASOS_DEL_RECORRIDO.find((p) => p.ancla === 'gimnasio');
+  chequear('el gimnasio es un paso del recorrido', pasoGim?.ruta, '/ajustes');
   const gimnasio = leer(join(RAIZ, 'src', 'components', 'ajustes', 'Gimnasio.tsx'), 'utf8');
   chequear('y la seccion a la que apunta existe', gimnasio.includes('id="gimnasio"'), true);
   chequear('una linea por pantalla', PASOS_DEL_RECORRIDO.filter((p) => p.texto.length > 80).map((p) => p.ruta), []);
@@ -9464,9 +9467,10 @@ console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
   // como que algo se rompio.
   chequear('sin repetir pantalla',
     new Set(REC.PASOS_DEL_RECORRIDO.map((p) => p.pestana)).size, REC.PASOS_DEL_RECORRIDO.length);
-  // EL GIMNASIO VA PRIMERO: registrar el dia solo al llegar es lo que hace
-  // distinta a la app, y en la bienvenida vieja era el cuarto parrafo de cinco.
-  chequear('el primero es el del gimnasio', REC.PASOS_DEL_RECORRIDO[0].ancla, 'gimnasio');
+  // INICIO VA PRIMERO (27/9): el primer minuto es la racha y el cuerpo naciendo,
+  // no la configuracion. El gimnasio paso al segundo paso.
+  chequear('el primero es Inicio', REC.PASOS_DEL_RECORRIDO[0].pestana, 'inicio');
+  chequear('el gimnasio sigue estando', REC.PASOS_DEL_RECORRIDO.some((p) => p.ancla === 'gimnasio'), true);
 
   const rec = de138('movil', 'src', 'Recorrido.tsx');
   // NO ARRANCA SOLO. La memoria de "ya lo vi" vive en el telefono, asi que sin

@@ -331,6 +331,9 @@ export const T = {
     correo: 'Correo',
     contrasena: 'Contraseña',
     primeraVez: '¿Primera vez? Crear cuenta',
+    // Una línea de qué es la app, solo en el alta: quien llega frío tiene que
+    // saber qué está por crear antes de dar un correo.
+    queEs: 'Ascent lleva tu racha en el gimnasio: un toque por día y no se corta.',
     olvide: 'Olvidé mi contraseña',
     volverAEntrar: 'Volver a entrar',
     revisaCorreo: 'Listo. Revisa tu correo para confirmar la cuenta.',
@@ -353,8 +356,8 @@ export const T = {
   // que hace distinta a la app. REGLA DURA de siempre: ningún rango nombrado.
   recorrido: {
     titulo: 'Recorrido por la app',
-    gimnasio: 'Lo primero: marca tu gimnasio. Al llegar, el día se registra solo.',
-    inicio: 'Tu racha. En el gimnasio tocas Iniciar y cuentas tus series.',
+    inicio: 'Tu racha: sube con cada día que entrenas. Un toque y sigue.',
+    gimnasio: 'Marca tu gimnasio y el día se registra solo al llegar.',
     stats: 'Tus números: constancia, series por músculo y tus mejores pesos.',
     album: 'Una foto por día, si quieres. Solo la ves tú, salvo que la compartas.',
     ranking: 'Tu racha y la de tus amigos. Desde aquí los buscas y agregas.',

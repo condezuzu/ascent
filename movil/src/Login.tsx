@@ -112,6 +112,10 @@ export default function Login({ alEntrar }: { alEntrar: () => void }) {
       <ScrollView contentContainerStyle={estilos.centro} keyboardShouldPersistTaps="handled">
         <Text style={estilos.marca}>{T.entrar.marca}</Text>
 
+        {/* Qué es Ascent, solo al crear la cuenta: quien llega frío lo lee antes
+            de dar un correo. Al entrar sobra; el que vuelve ya sabe. */}
+        {modo === 'crear' && <Text style={estilos.queEs}>{T.entrar.queEs}</Text>}
+
         <Text style={estilos.etiqueta}>{T.entrar.correo}</Text>
         <TextInput
           style={estilos.campo}
@@ -192,6 +196,14 @@ const estilos = StyleSheet.create({
     textTransform: 'uppercase',
     textAlign: 'center',
     marginBottom: 44,
+  },
+  queEs: {
+    color: '#8a93a8',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: -28,
+    marginBottom: 32,
   },
   etiqueta: {
     color: '#8a93a8',

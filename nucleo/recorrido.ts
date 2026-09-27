@@ -8,9 +8,11 @@ import { T } from './textos.ts';
  * pantalla una línea corta de qué hace". Una línea mirando la pantalla de la
  * que habla se entiende; cinco párrafos antes de ver nada, no.
  *
- * EL GIMNASIO VA PRIMERO. Registrar el día solo al llegar es lo que hace
- * distinta a la app, y en la bienvenida vieja era el cuarto párrafo de cinco.
- * El primer paso lleva a Ajustes con el punto del gimnasio a la vista.
+ * INICIO VA PRIMERO (27/9). El primer minuto de alguien que se acaba de anotar
+ * tiene que ser su racha y su cuerpo naciendo, no la pantalla de configuración.
+ * Antes el paso 1 era Ajustes (el gimnasio); se corrió al segundo. Lo del
+ * gimnasio sigue siendo lo que hace distinta a la app, pero va DESPUÉS del
+ * enganche, no antes de verlo.
  *
  * Sigue valiendo la regla dura de siempre: no se nombra ningún rango ni
  * cuántos hay. Descubrirlo es la recompensa del juego.
@@ -39,8 +41,8 @@ export type PasoDelRecorrido = {
 };
 
 export const PASOS_DEL_RECORRIDO: readonly PasoDelRecorrido[] = [
-  { ruta: '/ajustes', pestana: 'ajustes', ancla: 'gimnasio', texto: T.recorrido.gimnasio },
   { ruta: '/', pestana: 'inicio', texto: T.recorrido.inicio },
+  { ruta: '/ajustes', pestana: 'ajustes', ancla: 'gimnasio', texto: T.recorrido.gimnasio },
   { ruta: '/stats', pestana: 'stats', texto: T.recorrido.stats },
   { ruta: '/album', pestana: 'album', texto: T.recorrido.album },
   { ruta: '/social', pestana: 'ranking', texto: T.recorrido.ranking },

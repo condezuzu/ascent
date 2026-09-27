@@ -32,9 +32,11 @@ export const GUIA_DE_NUEVO = 'ascent:guia-de-nuevo';
  * devuelve a los tirones cada vez que tocás otra cosa es una trampa, no una
  * guía — y lo primero que hace cualquiera con una guía es tocar otra cosa.
  *
- * EL GIMNASIO VA PRIMERO, igual que en la web: registrar el día solo al llegar
- * es lo que hace distinta a la app. El primer paso lleva a Ajustes con el
- * punto del gimnasio a la vista.
+ * INICIO VA PRIMERO (27/9), igual que en la web: el primer minuto es la racha y
+ * el cuerpo naciendo, no la configuración. El gimnasio pasó al segundo paso. Y
+ * acá el cambio de paso NO parpadea: `irAPestana` cambia de pestaña sin
+ * desmontar el motor, así que el fondo no se rearma (a diferencia de la web,
+ * donde cada ruta lo vuelve a montar).
  */
 export default function Recorrido({ pestana }: { pestana: Pestana }) {
   const [uid, setUid] = useState('');

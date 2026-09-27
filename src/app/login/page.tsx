@@ -68,6 +68,13 @@ export default function Login() {
       });
       setCargando(false);
       if (error) return setError(mensajeDeAuth(error));
+      // La caché puede ser de OTRA cuenta si en este aparato ya había alguien
+      // (un teléfono prestado, mi sesión de demo): sin esto, la cuenta recién
+      // creada abre Inicio mostrando por un instante la racha y las marcas de la
+      // anterior. Faltaba justo en el alta (lo tenía "entrar"); se vio a una
+      // cuenta nueva heredar el SQ/BP/DL de la de al lado (27/9).
+      await borrarPerfilCache();
+      borrarTema();
       // Si Supabase no exige confirmar el correo, el alta ya devuelve sesión:
       // hay que entrar derecho. Mandarlo a revisar un correo que nunca va a
       // llegar lo deja mirando el login estando ya adentro.
@@ -137,6 +144,14 @@ export default function Login() {
         {modo === 'recuperar' && (
           <p style={{ color: 'var(--sub)', fontSize: 14, marginBottom: 18, textAlign: 'center' }}>
             {T.entrar.paraRecuperar}
+          </p>
+        )}
+
+        {/* Qué es Ascent, solo al crear la cuenta: quien llega frío lo lee antes
+            de dar un correo. En "entrar" sobra; el que vuelve ya sabe. */}
+        {modo === 'crear' && (
+          <p style={{ color: 'var(--sub)', fontSize: 14, marginBottom: 18, textAlign: 'center' }}>
+            {T.entrar.queEs}
           </p>
         )}
 
