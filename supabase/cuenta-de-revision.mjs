@@ -54,6 +54,24 @@ if (!CORREO || !CLAVE) {
   process.exit(1);
 }
 
+// CLAVES QUE YA NO SON LA ACTUAL, pero con las que todavía puede haber cuentas
+// vivas en producción. Cada vez que se rota DEMO_PASSWORD, la clave saliente se
+// agrega ACÁ. Sirven para lo único que no se puede hacer sin ellas por la anon
+// key: entrar a una cuenta que existe con una clave vieja para borrarla y
+// rehacerla (ver entrarOReparar). Sin esta lista, una rotación deja cuentas
+// muertas que no se pueden ni tocar.
+const CLAVES_RETIRADAS = ['AscentReview-2026'];
+
+// CORREOS QUE YA NO SE USAN y que NO deben quedar vivos en producción. sofi_g y
+// martin_r vivieron acá antes de la rotación del 26/9; cuando la clave cambió no
+// se pudo entrar y —el error que se arregla ahora— se crearon dos cuentas al lado
+// (-g/-h) en vez de limpiar estas. Este script las borra en cada corrida: quedan
+// anotadas y la limpieza es idempotente (si ya no existen, no hace nada).
+const RETIRADOS = [
+  'agusconde20+ascent-review-a@gmail.com', // sofi_g, antes de la rotación del 26/9
+  'agusconde20+ascent-review-b@gmail.com', // martin_r, antes de la rotación del 26/9
+];
+
 // LAS AMIGAS/OS (ver el paso 7). Van declaradas acá arriba y no donde se usan
 // porque `--de-cero` tiene que poder borrarlas también: una cuenta que quedó
 // viva con la mitad de los datos es peor que no tenerla.
@@ -62,10 +80,11 @@ if (!CORREO || !CLAVE) {
 // un ranking poblado, no dos filas. Rachas variadas ALREDEDOR de la de demo (41)
 // para que el orden por racha se vea hacer algo —unas arriba, unas abajo—.
 const OTRAS = [
-  // sofi_g/martin_r estaban en los correos -a/-b, creados con la contraseña
-  // vieja (rotada el 26/9): ya no se puede entrar ni recrearlos por anon. Se les
-  // dan correos frescos (-g/-h) para que se creen limpios con la clave actual.
-  // Los -a/-b viejos quedan huérfanos (sin amistad, inofensivos).
+  // sofi_g/martin_r viven en -g/-h. Sus correos originales (-a/-b) se crearon con
+  // la contraseña vieja y quedaron muertos en la rotación del 26/9; están en
+  // RETIRADOS y este script los borra. Ya NO se deja una cuenta al lado: si un
+  // correo de acá existe con una clave retirada, entrarOReparar lo borra y lo
+  // rehace con la clave actual, así que una rotación no vuelve a dejar basura.
   { correo: 'agusconde20+ascent-review-g@gmail.com', usuario: 'sofi_g', dias: 58, sexo: 'f', peso: 61 },
   { correo: 'agusconde20+ascent-review-c@gmail.com', usuario: 'lucia_p', dias: 47, sexo: 'f', peso: 58 },
   { correo: 'agusconde20+ascent-review-d@gmail.com', usuario: 'diego_a', dias: 33, sexo: 'm', peso: 84 },
@@ -76,6 +95,71 @@ const OTRAS = [
 
 const supabase = createClient(url, anon, { auth: { persistSession: false } });
 
+// Un cliente propio por cuenta: cada una habla con su sesión sin pisar a las
+// otras (persistSession: false).
+const nuevoCliente = () => createClient(url, anon, { auth: { persistSession: false } });
+const etiqueta = (correo) => correo.replace('agusconde20+ascent-review', '…');
+
+// Los archivos de storage NO se borran en cascada (ver eliminar_cuenta en el
+// schema): hay que sacarlos por la API ANTES de borrar la cuenta, o quedan
+// colgados sin dueño. Los amigos no suben fotos, pero se limpia igual por si un
+// correo reutilizado arrastra algo.
+async function borrarArchivos(client, uid) {
+  try {
+    const { data: files } = await client.storage.from('fotos').list(uid);
+    if (files?.length) {
+      await client.storage.from('fotos').remove(files.map((f) => `${uid}/${f.name}`));
+    }
+  } catch {
+    /* sin fotos o sin permiso: no es fatal para el borrado de la fila */
+  }
+}
+
+// Entrar probando varias claves en orden. Devuelve { uid, clave } o null.
+async function entrarConAlguna(client, correo, claves) {
+  for (const clave of claves) {
+    const r = await client.auth.signInWithPassword({ email: correo, password: clave });
+    if (!r.error) return { uid: r.data.user.id, clave };
+  }
+  return null;
+}
+
+// EL ARREGLO DE LA CAUSA. Deja la cuenta lista con la clave ACTUAL, pase lo que
+// pase, sin crear una segunda al lado:
+//   ok        entró con la clave actual, no se tocó nada.
+//   rehecha   existía con una clave retirada → se borró y se recreó limpia.
+//   creada    no existía → se creó.
+//   trabada   existe con una clave que no conocemos (no está en CLAVES_RETIRADAS):
+//             por la anon key no hay forma de recuperarla. Se avisa fuerte; el
+//             arreglo es agregar esa clave a CLAVES_RETIRADAS o borrarla a mano.
+async function entrarOReparar(client, correo, clave, clavesViejas) {
+  let r = await client.auth.signInWithPassword({ email: correo, password: clave });
+  if (!r.error) return { uid: r.data.user.id, estado: 'ok' };
+
+  for (const vieja of clavesViejas) {
+    const rv = await client.auth.signInWithPassword({ email: correo, password: vieja });
+    if (!rv.error) {
+      await borrarArchivos(client, rv.data.user.id);
+      await client.rpc('eliminar_cuenta');
+      await client.auth.signOut();
+      const s = await client.auth.signUp({ email: correo, password: clave });
+      if (s.error || !s.data?.user?.id) {
+        return { uid: null, estado: 'trabada', msg: s.error?.message ?? 'no recreó tras borrar' };
+      }
+      return { uid: s.data.user.id, estado: 'rehecha' };
+    }
+  }
+
+  const s = await client.auth.signUp({ email: correo, password: clave });
+  // Con "Confirm email" apagado, un alta nueva trae sesión; un correo que YA
+  // existe trae user sin session (Supabase no filtra si el correo existe). Sin
+  // session no hay forma de operar esa cuenta por anon.
+  if (!s.error && s.data?.user?.id && s.data?.session) {
+    return { uid: s.data.user.id, estado: 'creada' };
+  }
+  return { uid: null, estado: 'trabada', msg: s.error?.message ?? 'existe con clave desconocida' };
+}
+
 const DE_CERO = process.argv.includes('--de-cero');
 
 console.log(`\nCuenta de App Review — ${CORREO}\n`);
@@ -83,9 +167,10 @@ console.log(`\nCuenta de App Review — ${CORREO}\n`);
 if (DE_CERO) {
   let borradas = 0;
   for (const correo of [CORREO, ...OTRAS.map((o) => o.correo)]) {
-    const suyo = createClient(url, anon, { auth: { persistSession: false } });
-    const { error } = await suyo.auth.signInWithPassword({ email: correo, password: CLAVE });
-    if (error) continue;
+    const suyo = nuevoCliente();
+    const e = await entrarConAlguna(suyo, correo, [CLAVE, ...CLAVES_RETIRADAS]);
+    if (!e) continue;
+    await borrarArchivos(suyo, e.uid);
     await suyo.rpc('eliminar_cuenta');
     await suyo.auth.signOut();
     borradas++;
@@ -94,28 +179,43 @@ if (DE_CERO) {
 }
 
 // ---------------------------------------------------------------
+// LIMPIEZA DE CUENTAS RETIRADAS (siempre, no solo con --de-cero)
+// ---------------------------------------------------------------
+//
+// Que una herramienta no deje basura cada vez que algo cambia: si un correo de
+// RETIRADOS sigue vivo, se borra por el mismo camino que un usuario (entrar +
+// eliminar_cuenta). Idempotente: en cuanto no queda ninguno, no hace nada.
+{
+  let limpiadas = 0;
+  for (const correo of RETIRADOS) {
+    const c = nuevoCliente();
+    const e = await entrarConAlguna(c, correo, [CLAVE, ...CLAVES_RETIRADAS]);
+    if (!e) continue; // ya no existe (o clave desconocida: no hay forma por anon)
+    await borrarArchivos(c, e.uid);
+    const { error } = await c.rpc('eliminar_cuenta');
+    if (error) console.log(`  aviso: no se pudo borrar la retirada ${etiqueta(correo)} — ${error.message}`);
+    else {
+      limpiadas++;
+      console.log(`  cuenta retirada borrada: ${etiqueta(correo)}`);
+    }
+    await c.auth.signOut();
+  }
+  if (!limpiadas) console.log('  cuentas retiradas: no quedaba ninguna viva');
+}
+
+// ---------------------------------------------------------------
 // ENTRAR (o crearla)
 // ---------------------------------------------------------------
-let { data: sesionAuth, error: eEntrar } = await supabase.auth.signInWithPassword({
-  email: CORREO,
-  password: CLAVE,
-});
-if (eEntrar) {
-  const { data, error } = await supabase.auth.signUp({ email: CORREO, password: CLAVE });
-  if (error) {
-    console.log('No se pudo crear la cuenta:', error.message);
-    process.exit(1);
-  }
-  sesionAuth = data;
-  console.log('  cuenta creada');
-} else {
-  console.log('  la cuenta ya existía: se entra y se repone');
-}
-const uid = sesionAuth?.user?.id;
+const rep = await entrarOReparar(supabase, CORREO, CLAVE, CLAVES_RETIRADAS);
+const uid = rep.uid;
 if (!uid) {
-  console.log('El alta no devolvió sesión. ¿Está prendido "Confirm email" en Supabase?');
+  console.log(`No se pudo preparar la cuenta demo (${rep.estado}): ${rep.msg ?? ''}`);
+  console.log('¿Está prendido "Confirm email" en Supabase, o la clave vieja no está en CLAVES_RETIRADAS?');
   process.exit(1);
 }
+console.log(
+  { ok: '  la cuenta ya existía: se entra y se repone', rehecha: '  la cuenta existía con la clave vieja: se rehízo limpia', creada: '  cuenta creada' }[rep.estado]
+);
 
 const perfil = async () => (await supabase.from('profiles').select('*').eq('id', uid).single()).data;
 const HOY = (await supabase.rpc('mi_hoy')).data;
@@ -399,17 +499,16 @@ const dia = (atras) => {
 {
   for (const o of OTRAS) {
     // Cliente propio: cada una tiene que hablar con su sesión, no con la de
-    // demo. `persistSession: false` para que no se pisen entre ellas.
-    const suyo = createClient(url, anon, { auth: { persistSession: false } });
-    let entrada = await suyo.auth.signInWithPassword({ email: o.correo, password: CLAVE });
-    if (entrada.error) {
-      entrada = await suyo.auth.signUp({ email: o.correo, password: CLAVE });
-    }
-    const suId = entrada.data?.user?.id;
+    // demo. entrarOReparar deja la cuenta con la clave actual sin crear otra al
+    // lado si el correo existía con una clave vieja.
+    const suyo = nuevoCliente();
+    const rep = await entrarOReparar(suyo, o.correo, CLAVE, CLAVES_RETIRADAS);
+    const suId = rep.uid;
     if (!suId) {
-      console.log(`  aviso: no se pudo entrar como ${o.usuario}`);
+      console.log(`  aviso: no se pudo preparar ${o.usuario} (${rep.estado}): ${rep.msg ?? ''}`);
       continue;
     }
+    if (rep.estado === 'rehecha') console.log(`  ${o.usuario}: existía con la clave vieja, se rehízo`);
 
     await suyo.from('profiles').update({ username: o.usuario, sexo: o.sexo }).eq('id', suId);
 

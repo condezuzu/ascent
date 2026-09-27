@@ -404,20 +404,41 @@ console.log('\n16. Eliminar amigo');
 // =====================================================================
 console.log('\n17. Limpieza');
 {
-  await A.storage.from('fotos').remove([rutaFoto]);
-  await A.from('photos').delete().eq('user_id', idA);
-  await A.from('logs').delete().eq('user_id', idA);
-  await A.from('weights').delete().eq('user_id', idA);
-  await A.from('challenges').delete().eq('retador', idA);
-  const { data } = await A.from('logs').select('id').eq('user_id', idA);
-  chequear('datos de prueba borrados', data ?? [], []);
+  // La cuenta entera se borra sola: eliminar_cuenta() es SECURITY DEFINER y
+  // borra la fila de auth.users del que la llama, y el resto cae en cascada
+  // (logs, fotos, pesos, retos, amistades). Como cada cliente está en su propia
+  // sesión, cada uno puede borrarse a sí mismo SIN service_role. Antes esto
+  // borraba solo los datos y dejaba las dos cuentas de auth colgadas en cada
+  // corrida: ese goteo era el que juntaba huérfanas de a dos por vez.
+  //
+  // Los ARCHIVOS de storage NO caen en cascada, así que se sacan primero (el
+  // mismo orden que exige eliminar_cuenta): se listan todos los del usuario, no
+  // solo el que subió esta corrida, por si alguna quedó a medias antes.
+  const borrarCuenta = async (cliente, uid) => {
+    const { data: files } = await cliente.storage.from('fotos').list(uid);
+    if (files?.length) {
+      await cliente.storage.from('fotos').remove(files.map((f) => `${uid}/${f.name}`));
+    }
+    const { error } = await cliente.rpc('eliminar_cuenta');
+    return error;
+  };
+
+  const eA = await borrarCuenta(A, idA);
+  const eB = idB ? await borrarCuenta(B, idB) : null;
+  chequear('cuenta A borrada entera (sin dejar huérfana)', eA ?? null, null);
+  chequear('cuenta B borrada entera (sin dejar huérfana)', eB ?? null, null);
+
+  // La prueba de que no quedó nada: sin sesión válida, un cliente nuevo no puede
+  // entrar con esas credenciales porque el usuario ya no existe.
+  const reintento = nuevoCliente();
+  const { error: noEntra } = await reintento.auth.signInWithPassword({ email: emailA, password: clave });
+  chequear('la cuenta A ya no existe (no se puede entrar)', Boolean(noEntra), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 avisos.forEach((a) => console.log(`aviso: ${a}`));
 console.log(
-  '\nQuedan 2 usuarios de prueba en Authentication -> Users (borrarlos necesita\n' +
-    'la service_role, que este script no usa). Borralos a mano del dashboard:\n' +
-    `  ${emailA}\n  ${emailB}`
+  '\nLas dos cuentas de prueba se borran solas al terminar (eliminar_cuenta), así\n' +
+    'que no queda nada en Authentication -> Users. Ya no hace falta borrarlas a mano.'
 );
 if (fallos.length) process.exitCode = 1;
