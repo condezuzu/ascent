@@ -142,6 +142,14 @@ export default function Inicio({
   // aca: el toque, el cronometro, y el dia que entra solo al llegar al
   // gimnasio. Antes no terminaban en ningun lado.
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
+  // REGISTRO OPTIMISTA, LA MITAD SEGURA (27/9). Al confirmar, el día se marca
+  // como listo AL INSTANTE, sin esperar a que `cargar()` vuelva del servidor:
+  // guardamos la FECHA marcada, no un booleano, así al pasar la medianoche no
+  // ensucia el día siguiente y se auto-corrige. Lo que NO se adelanta —la mitad
+  // segura— es el número de la racha (sale de `perfil`, que solo cambia con
+  // `cargar()`) y la animación de subida de rango (sale de la respuesta del
+  // servidor). Nunca se muestra un número ni un festejo que la base no confirmó.
+  const [marcadoOptimista, setMarcadoOptimista] = useState<string | null>(null);
   // La pantalla del descanso se abre desde la píldora, igual que en la web: el
   // + arranca el descanso pero no tapa el bloque.
   const [descansoAbierto, setDescansoAbierto] = useState(false);
@@ -405,7 +413,7 @@ export default function Inicio({
   // 15/9). Contarlo como vacío ofrecía "Registrar día", la base lo rechazaba
   // por repetido y la hoja lo tomaba como hecho: la racha no subía y nadie
   // decía nada.
-  const registradoHoy = logs.some((l) => l.fecha === hoy);
+  const registradoHoy = marcadoOptimista === hoy || logs.some((l) => l.fecha === hoy);
 
   // LO QUE SE LE PASA AL MOTOR, con las mismas reglas que Inicio de la web
   // (`src/app/page.tsx`): el planeta del día, el lado nocturno los días de
@@ -793,6 +801,7 @@ export default function Inicio({
         alCerrar={() => setRegistrarAbierto(false)}
         alConfirmar={(r) => {
           setRegistrarAbierto(false);
+          setMarcadoOptimista(hoy); // el día se marca YA; el número y el rango esperan al servidor
           cargar();
           if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
         }}

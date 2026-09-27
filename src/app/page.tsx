@@ -83,6 +83,12 @@ export default function Principal() {
   // El toque que pregunta si de verdad se termina la sesión.
   const [terminando, setTerminando] = useState(false);
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
+  // REGISTRO OPTIMISTA, LA MITAD SEGURA (27/9). Al confirmar, el día se marca
+  // listo al instante (se guarda la FECHA, no un booleano: al pasar la medianoche
+  // no ensucia el día siguiente y se auto-corrige). Lo que NO se adelanta es el
+  // número de la racha (sale de `perfil`, solo cambia con `cargar`) ni la
+  // animación de subida de rango (sale de la respuesta del servidor).
+  const [marcadoOptimista, setMarcadoOptimista] = useState<string | null>(null);
   // Lo que dejó la sesión al cerrarse, para el resumen del final.
   const [cierre, setCierre] = useState<CierreDeSesion | null>(null);
   // El día entró solo Y esta persona todavía no lo vio. Es lo que convierte
@@ -425,7 +431,7 @@ export default function Principal() {
 
   const hoy = hoyISO();
   const logHoy = logs.find((l) => l.fecha === hoy) ?? null;
-  const registradoHoy = !!logHoy;
+  const registradoHoy = marcadoOptimista === hoy || !!logHoy;
   const racha = perfil.racha_actual;
   const sinNada = racha === 0 && logs.length === 0;
   // Mientras se entrena, Inicio se despeja: ver el bloque de abajo.
@@ -487,6 +493,9 @@ export default function Principal() {
 
   function alConfirmar(r: ResultadoRegistro | null) {
     setHojaAbierta(false);
+    // El día se marca YA (optimista); el número de la racha y el festejo de
+    // rango esperan a que el servidor conteste (ver `marcadoOptimista`).
+    if (r) setMarcadoOptimista(hoy);
     // Solo cuando el día ACABA de entrar. Si `r` viene en null es que ya
     // estaba y solo se le sumó una foto o el peso: ahí no se sumó ninguna
     // masa, y animar igual sería festejar algo que no pasó.
