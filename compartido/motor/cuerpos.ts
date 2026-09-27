@@ -56,10 +56,19 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
     // Luna. Las sales de Occator son brillantisimas pero son manchas chicas —
     // eso ya lo dibuja `puntos`— y no son lo que se ve en el canto.
     // Asi que su filo es gris FRIO y APAGADO: el mas tenue de los diez.
+    //
+    // MÁS LISO QUE MERCURIO (27/9). El humano quería que se distingan: Mercurio
+    // martillado, Ceres más claro y liso. Lo "más claro" YA está —su paleta fría y
+    // oscura ganó el piso de noche más alto de todos (0,137 vs 0,111 de Mercurio),
+    // así que percibido es apenas más claro—. Lo que faltaba es la textura: se le
+    // BAJAN los cráteres (0,85 → 0,30) y la turbulencia (lisa), y quedan los puntos
+    // brillantes (Occator). Paleta intacta → noche 0,137 → 0,137.
+    // (Aclarar la paleta lo oscurecería: bajaría el piso más rápido de lo que sube
+    //  el color. Por eso se deja oscura y lisa, no clara.)
     paleta: ['#1e2228', '#333a44', '#5c6a76', '#8e9aa4'],
-    crateres: 0.85,
-    puntos: 0.9,
-    turbulencia: 0.9,
+    crateres: 0.3,
+    puntos: 1.0,
+    turbulencia: 0.7,
   },
   // Manchado, no cratereado: la llanura de nitrógeno clarísima contra las
   // regiones oscuras rojizas, con bordes difusos (la foto de New Horizons).
@@ -81,9 +90,15 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
     // optico propio no es un color sino la falta de el: neutro y apagado.
     // Se separa de Ceres por TEMPERATURA y por brillo, no por tono: Ceres frio
     // y mas tenue, este neutro-calido y un poco mas claro.
+    //
+    // MÁS CASTIGADO (27/9). El gris está bien; lo que faltaba era superficie. Se
+    // sube el cráter POR ENCIMA de 1 (1,35): profundiza el piso y aviva el borde
+    // más que en la Luna (que queda en 1,0, sin tocar), así que se lee martillado.
+    // Y más turbulencia para las zonas claras y oscuras. La PALETA no cambia, así
+    // que el nivel de noche queda igual (0,111 → 0,111).
     paleta: ['#26252a', '#453f3a', '#7d746a', '#b9b2ac'],
-    crateres: 1.0,
-    turbulencia: 0.8,
+    crateres: 1.35,
+    turbulencia: 1.05,
   },
   // Naranja de verdad, con casquetes de hielo seco. Sin cráteres: así estaba
   // bien y agregárselos lo empeoró.
@@ -146,9 +161,12 @@ export const PLANETAS_CFG: Record<string, ConfigCuerpo> = {
   // y los satélites sueltos ensuciaban la composición.
   Saturno: {
     ...base,
-    // MAS AMARILLO. En cara nocturna lo que se ve es el filo, que sale de
-    // los dos colores claros: son ESOS los que tienen que llevar el color.
-    paleta: ['#6b5c34', '#9c8842', '#d8bf6a', '#f6ecc4'],
+    // DORADO, NO OLIVA (27/9). Los medios eran verdosos (#6b5c34/#9c8842) y en
+    // cara nocturna el cuerpo se leía oliva. Ahora la paleta va de un ámbar
+    // oscuro a un dorado claro, más cálida y saturada, sin verde. Los anillos
+    // salen de la misma paleta (`paleta(0.72…)`), así que se doran con ella —su
+    // forma no se toca—. Noche 0,055 → 0,055 (cromático, sigue en el piso).
+    paleta: ['#7a5a1e', '#c19a34', '#e8c65e', '#faefc6'],
     bandas: 10,
     contraste: 0.5,
     turbulencia: 0.9,
