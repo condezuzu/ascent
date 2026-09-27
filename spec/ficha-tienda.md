@@ -197,8 +197,11 @@ ABOUT THE PERMISSIONS — all three are optional and the app works without them.
   at the gym is how it is set.
 - Notifications: only the end-of-rest alert, scheduled locally. No marketing,
   no remote push.
-- Health (steps and workouts, read-only): steps are displayed in Stats, and a
-  workout recorded by the phone can log the day. The app never writes to Health.
+- Health (steps and workouts, READ-ONLY): steps are displayed in Stats, and a
+  workout recorded by the phone can log the day. The app never writes to Health
+  and never requests write access. The NSHealthUpdateUsageDescription string is
+  present only because the HealthKit library links its write APIs; the app does
+  not use them (verified: it requests `toRead` only, never `toShare`).
 
 HOW TO SEE THE MAIN LOOP IN TWO MINUTES
 1. Sign in. The number on Home is the streak.
