@@ -54,12 +54,24 @@ if (!CORREO || !CLAVE) {
   process.exit(1);
 }
 
-// LAS DOS AMIGAS (ver el paso 7). Van declaradas acá arriba y no donde se usan
+// LAS AMIGAS/OS (ver el paso 7). Van declaradas acá arriba y no donde se usan
 // porque `--de-cero` tiene que poder borrarlas también: una cuenta que quedó
 // viva con la mitad de los datos es peor que no tenerla.
+//
+// SEIS, no dos (27/9): para las capturas de la tienda y para que el revisor vea
+// un ranking poblado, no dos filas. Rachas variadas ALREDEDOR de la de demo (41)
+// para que el orden por racha se vea hacer algo —unas arriba, unas abajo—.
 const OTRAS = [
-  { correo: 'agusconde20+ascent-review-a@gmail.com', usuario: 'sofi_g', dias: 58, sexo: 'f', peso: 61 },
-  { correo: 'agusconde20+ascent-review-b@gmail.com', usuario: 'martin_r', dias: 26, sexo: 'm', peso: 78 },
+  // sofi_g/martin_r estaban en los correos -a/-b, creados con la contraseña
+  // vieja (rotada el 26/9): ya no se puede entrar ni recrearlos por anon. Se les
+  // dan correos frescos (-g/-h) para que se creen limpios con la clave actual.
+  // Los -a/-b viejos quedan huérfanos (sin amistad, inofensivos).
+  { correo: 'agusconde20+ascent-review-g@gmail.com', usuario: 'sofi_g', dias: 58, sexo: 'f', peso: 61 },
+  { correo: 'agusconde20+ascent-review-c@gmail.com', usuario: 'lucia_p', dias: 47, sexo: 'f', peso: 58 },
+  { correo: 'agusconde20+ascent-review-d@gmail.com', usuario: 'diego_a', dias: 33, sexo: 'm', peso: 84 },
+  { correo: 'agusconde20+ascent-review-h@gmail.com', usuario: 'martin_r', dias: 26, sexo: 'm', peso: 78 },
+  { correo: 'agusconde20+ascent-review-e@gmail.com', usuario: 'caro_m', dias: 19, sexo: 'f', peso: 55 },
+  { correo: 'agusconde20+ascent-review-f@gmail.com', usuario: 'nico_v', dias: 12, sexo: 'm', peso: 72 },
 ];
 
 const supabase = createClient(url, anon, { auth: { persistSession: false } });

@@ -99,7 +99,9 @@ opcional: sin cargarlo, todo lo demás funciona igual.
 
 AMIGOS, SIN RUIDO
 Un ranking con la gente que agregas, y nada más. No hay comentarios, no hay
-likes, no hay desconocidos.
+likes, no hay desconocidos. Cuando un amigo está entrenando, lo ves en vivo
+—solo eso, nunca dónde—. Y por cada marca de fuerza ganas una medalla que
+aparece al lado de tu nombre.
 
 UNA FOTO POR DÍA, SI QUIERES
 Las fotos nacen privadas. Eliges una por una cuáles ven tus amigos.
@@ -122,16 +124,12 @@ LO PRINCIPAL
    terminarlo. Guarda el teléfono entre series: el aviso del descanso tiene que
    llegar con la pantalla bloqueada.
 3. Marcar el punto del gimnasio (Ajustes, arriba de todo), parado ahí. Después
-   cerrar la app, volver a abrirla en el gimnasio y ver si el día entra solo.
+   cerrar la app y volver a abrirla EN el gimnasio: el día tiene que entrar solo,
+   con la app cerrada, sin tocar nada.
 4. Deslizar entre pestañas con el dedo.
 5. Sumar una foto al día y mirarla en el Álbum.
-6. Anotar el peso corporal desde Inicio.
-
-LO QUE YA SABEMOS QUE FALTA, no hace falta reportarlo
-- Con la app CERRADA el día todavía no entra solo: falta un permiso del sistema
-  que llega en la próxima.
-- No se puede entrar al perfil propio ni al de un amigo desde Ranking.
-- Ajustes todavía no tiene exportar datos ni la guía.
+6. Entrar al perfil de un amigo desde el Ranking y ver sus medallas.
+7. Anotar el peso corporal desde Inicio.
 
 SI ALGO SE VE MAL
 Ajustes → Sugerencias, que llega directo. Y si una pantalla queda en blanco o

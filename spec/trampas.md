@@ -1097,3 +1097,15 @@ reconstruía día por día (`probar-privacidad.mjs`, migración 41).
 → **Regla:** una función que recibe `p_user` y lee por encima de la RLS nace
 con `revoke ... from public, anon, authenticated`. Si la usa una política, no
 se puede cerrar: se acota a que `auth.uid()` sea una de las puntas.
+
+---
+
+## Tests / proceso
+
+**Un test puede estar defendiendo un error.** El test "y sin pedir permiso de
+escritura" EXIGÍA `NSHealthUpdateUsageDescription: false` —justo lo que hizo que
+Apple rechazara la build 5 (ITMS-90683)—. El test verde daba una falsa
+tranquilidad: no probaba que estuviera bien, protegía la decisión equivocada.
+→ **Regla:** cuando algo falla en PRODUCCIÓN, el test que "lo cubre" es
+SOSPECHOSO, no coartada. Revisá qué decisión tiene grabada antes de confiar en
+que el verde significa que está bien. Ver `spec/build-5-apple.md`.
