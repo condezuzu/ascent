@@ -161,6 +161,14 @@ puesta, o sea por el mismo camino que cualquier usuario. Para rehacerla:
 node --env-file=.env.local supabase/cuenta-de-revision.mjs --de-cero
 ```
 
+> **CUÁNDO SE RE-SIEMBRA — PASO OBLIGATORIO, JUSTO ANTES DE MANDAR A REVISIÓN,
+> NO ANTES (26/9).** La cuenta demo se re-siembra en el último momento, no días
+> antes: la racha se calcula por días transcurridos, así que una cuenta sembrada
+> el lunes y enviada el viernes le muestra al revisor una racha con cuatro
+> huecos y menos días de los que dice esta ficha. El orden correcto es: build →
+> subir → **re-sembrar demo** → recién ahí "Submit for Review". Si el envío se
+> demora un día, se vuelve a correr `--de-cero` antes de reintentar.
+
 El correo lleva etiqueta (`+ascent-review`) para poder darla de baja el día que
 la app esté publicada sin tocar la casilla de nadie.
 
@@ -211,3 +219,10 @@ this version.
 - **Clasificación por edad:** todo "None" → 4+.
 - **Capturas:** `capturas-tienda/`, 1290 × 2796, salen de
   `herramientas/capturas-tienda.mjs`.
+
+  > **HAY QUE REHACER EL SET ENTERO (26/9).** Las cuatro capturas que ya están
+  > subidas a App Store Connect son del **fondo viejo** —de antes de rehacer los
+  > ocho rangos—. No se rehacen todavía: primero los ocho rangos tienen que
+  > quedar bien (asteroide y día uno ya están; faltan los otros seis). Recién
+  > cuando el motor esté aprobado se corre `herramientas/capturas-tienda.mjs` y
+  > se reemplaza el set completo. Va junto con el envío a revisión, no antes.
