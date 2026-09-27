@@ -2923,8 +2923,25 @@ $$;
 
 grant execute on function public.medallas_de(uuid) to authenticated;
 
+-- Las medallas de varios amigos en una sola consulta (migración 52). Misma
+-- seguridad que `medallas_de`: `security invoker`, la RLS de `medallas` filtra a
+-- las propias y las de los amigos, así que un id ajeno en la lista no da nada.
+create or replace function public.medallas_de_muchos(p_users uuid[])
+returns table (user_id uuid, ejercicio text, percentil smallint)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select m.user_id, m.ejercicio, m.percentil
+    from public.medallas m
+   where m.user_id = any(p_users)
+$$;
+
+grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
+
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 51; $$;
+returns int language sql immutable as $$ select 52; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

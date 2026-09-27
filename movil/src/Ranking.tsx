@@ -18,7 +18,7 @@ import Surgir from './Surgir';
 import Insignia from './Insignia';
 import Medallas from './Medallas';
 import FondoEspacial from './FondoEspacial';
-import { cargarMedallasDeAmigo } from '@compartido/perfil';
+import { cargarMedallasDeMuchos } from '@compartido/perfil';
 import type { Medalla } from '@nucleo/medallas';
 import { C } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
@@ -50,8 +50,8 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const [resultados, setResultados] = useState<UsuarioPublico[]>([]);
   const [mandados, setMandados] = useState<Set<string>>(new Set());
   // Las medallas de cada amigo, para mostrarlas en la fila. Se traen APARTE y
-  // en segundo plano (una consulta por amigo, en paralelo) para no demorar la
-  // primera pintada del ranking: la lista aparece y las medallas caen encima.
+  // en segundo plano (UNA sola consulta para todos, `medallas_de_muchos`) para
+  // no demorar la primera pintada: la lista aparece y las medallas caen encima.
   const [medallas, setMedallas] = useState<Record<string, Medalla[]>>({});
   // AMIGOS ENTRENANDO AHORA (actividad en vivo). Se refresca con el ranking.
   // Si la migración de actividad no corrió, vuelve vacío y no se muestra nada.
@@ -89,19 +89,21 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   // Y de nuevo al volver a esta pestaña: ahora se queda montada.
   useRecargarAlVolver('ranking', cargar);
 
-  // LAS MEDALLAS DE LOS AMIGOS, en segundo plano. Una consulta por amigo, en
-  // paralelo, disparada solo cuando cambia la lista de amigos —no en cada
-  // carga—: la lista del ranking se pinta ya y las medallas aparecen encima.
+  // LAS MEDALLAS DE LOS AMIGOS, en segundo plano y en UNA sola consulta
+  // (`medallas_de_muchos`), disparada solo cuando cambia la lista de amigos —no
+  // en cada carga—: la lista del ranking se pinta ya y las medallas caen encima.
   const idsAmigos = (datos?.amigos ?? []).map((a) => a.id).join(',');
   useEffect(() => {
     const ids = idsAmigos ? idsAmigos.split(',') : [];
     if (ids.length === 0) return;
     let vivo = true;
-    Promise.all(
-      ids.map(async (id) => [id, await cargarMedallasDeAmigo(supabase, id).catch(() => [])] as const)
-    ).then((pares) => {
-      if (vivo) setMedallas(Object.fromEntries(pares));
-    });
+    cargarMedallasDeMuchos(supabase, ids)
+      .then((mapa) => {
+        if (vivo) setMedallas(mapa);
+      })
+      .catch(() => {
+        // Sin medallas la lista se dibuja igual: son un adorno, no un dato.
+      });
     return () => {
       vivo = false;
     };

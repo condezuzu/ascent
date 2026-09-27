@@ -36,6 +36,8 @@ export const REQUIERE = {
    * de otra persona no se ve nunca: lo deja escrito el dueño y el amigo lo lee.
    */
   medallasDeAmigo: 46,
+  /** Las medallas de varios amigos en una sola consulta, para el ranking. */
+  medallasDeMuchos: 52,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

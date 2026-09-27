@@ -157,6 +157,41 @@ export async function cargarMedallasDeAmigo(supabase: Cliente, uid: string): Pro
   return medallasDePercentiles(filas);
 }
 
+/**
+ * LAS MEDALLAS DE VARIOS AMIGOS, EN UNA SOLA CONSULTA.
+ *
+ * El ranking mostraba una medalla por fila y las traía con UNA consulta POR
+ * amigo, en paralelo: con diez amigos son diez idas al servidor para pintar una
+ * lista. Esto las trae todas juntas con `medallas_de_muchos` (migración 52) y
+ * devuelve un mapa `id → medallas` listo para la fila.
+ *
+ * MISMA SEGURIDAD QUE LA DE A UNA: la función es `security invoker` y la RLS de
+ * `medallas` ya deja leer solo las propias y las de los amigos, así que pedir
+ * por un ajeno no devuelve nada aunque su id vaya en la lista.
+ *
+ * SIN LA MIGRACIÓN devuelve un mapa vacío, igual que la de a una devolvía []:
+ * el ranking se dibuja sin medallas, que es lo que se ve hoy.
+ */
+export async function cargarMedallasDeMuchos(
+  supabase: Cliente,
+  uids: string[]
+): Promise<Record<string, Medalla[]>> {
+  if (uids.length === 0) return {};
+  if (!disponible('medallasDeMuchos', await versionDelEsquema(supabase))) return {};
+  const { data } = await supabase.rpc('medallas_de_muchos', { p_users: uids });
+  const filas = (data ?? []) as { user_id: string; ejercicio: string; percentil: number }[];
+  // Agrupar por usuario y derivar las medallas de cada uno con la misma regla.
+  const porUsuario = new Map<string, { ejercicio: string; percentil: number }[]>();
+  for (const f of filas) {
+    const lista = porUsuario.get(f.user_id) ?? [];
+    lista.push({ ejercicio: f.ejercicio, percentil: f.percentil });
+    porUsuario.set(f.user_id, lista);
+  }
+  const salida: Record<string, Medalla[]> = {};
+  for (const [id, lista] of porUsuario) salida[id] = medallasDePercentiles(lista);
+  return salida;
+}
+
 export async function cargarMiPerfil(supabase: Cliente, uid: string): Promise<DatosDePerfil | null> {
   const [{ data: p }, { data: fs }, { data: rel }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', uid).single(),
