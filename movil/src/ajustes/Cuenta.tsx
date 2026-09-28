@@ -6,6 +6,7 @@ import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
 import { GUIA_DE_NUEVO } from '../Recorrido';
 import { eliminarCuenta } from '@compartido/cuenta';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
@@ -39,12 +40,15 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
   // que quiere repasar de qué va cada pantalla no lo conseguiría: las dos
   // cosas son la guía. Y avisa, porque el que la pide está mirando Ajustes y
   // el recorrido tiene que aparecer ahí mismo, no al reabrir la app.
-  async function verLaGuiaDeNuevo() {
+  // Todas las de acá escriben o disparan un efecto de una sola vez, así que van
+  // con traba contra el doble-tap: sin ella, dos toques mandaban dos correos de
+  // reseteo, dos bajas de cuenta, o dos salidas encimadas.
+  const verLaGuiaDeNuevo = useEnVuelo(async () => {
     await reiniciarGuia(perfil.id);
     eventos.emitir(GUIA_DE_NUEVO);
-  }
+  });
 
-  async function cambiarClave() {
+  const cambiarClave = useEnVuelo(async () => {
     setError('');
     setAviso('');
     const { data } = await supabase.auth.getUser();
@@ -55,9 +59,9 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
     });
     if (err) return setError(T.general.noSePudo);
     setAviso(T.entrar.revisaCorreo);
-  }
+  });
 
-  async function salir() {
+  const salir = useEnVuelo(async () => {
     await borrarPerfilCache(); // que la próxima cuenta no vea la racha de esta
     // Y SE SUELTA LA ZONA DEL GIMNASIO (24/9). Es lo único de esta app que
     // sigue andando con la app cerrada, así que es lo único que no se va solo
@@ -66,9 +70,9 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
     await plataforma.ubicacion.dejarDeVigilar();
     await supabase.auth.signOut();
     alSalir();
-  }
+  });
 
-  async function borrar() {
+  const borrar = useEnVuelo(async () => {
     setBorrando(true);
     setError('');
     const r = await eliminarCuenta(supabase, perfil.id);
@@ -80,7 +84,7 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
     await plataforma.ubicacion.dejarDeVigilar();
     await supabase.auth.signOut();
     alSalir();
-  }
+  });
 
   return (
     <View style={estilos.seccion}>

@@ -7,6 +7,7 @@ import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import type { ResultadoRegistro, Visibilidad } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { subirFotoDelDia } from '@compartido/foto';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import { prepararFoto } from './foto';
 import Hoja from './Hoja';
 import { C } from './colores';
@@ -90,7 +91,9 @@ export default function RegistrarDia({
     return true;
   }
 
-  async function confirmar() {
+  // Traba contra el doble-tap: sin esto, dos toques subían DOS fotos al mismo día
+  // (el día se dedupe por el unique, pero `subir` no estaba guardado).
+  const confirmar = useEnVuelo(async () => {
     setError('');
     setAviso('');
     setCargando(true);
@@ -123,7 +126,7 @@ export default function RegistrarDia({
     if (!ok) return setRegistradoAca(resultado);
     setFoto(null);
     alConfirmar(resultado);
-  }
+  });
 
   return (
     <Hoja

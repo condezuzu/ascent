@@ -202,6 +202,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // bloques de antes. Ver `unirConGuardados`.
   const faltanBloques = useRef<string | null>(null);
   const confirmando = useRef(false);
+  // TRABA SÍNCRONA CONTRA EL DOBLE-TAP en empezar/terminar (la misma idea que
+  // `compartido/useEnVuelo.ts`, pero acá adentro: estas dos ya devuelven un
+  // valor que el llamador usa, así que no se envuelven desde afuera). El
+  // `disabled={ocupado}` del botón es de ESTADO y recién frena en el próximo
+  // render; un segundo toque que cae antes pasaba igual y mandaba dos
+  // `iniciar_sesion`/`terminar_sesion`. Una sola para las dos: no tiene sentido
+  // arrancar y cerrar a la vez, y así un toque en cada botón tampoco se pisa.
+  const operandoSesion = useRef(false);
   // Lo de AHORA para el intervalo, que se creó con los valores de otro render.
   const inicioRef = useRef(inicio);
   inicioRef.current = inicio;
@@ -439,9 +447,17 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * servidor la acota; acá se manda lo que se vio.
    */
   async function empezar(opciones?: { desde?: number; origen?: OrigenSesion }) {
+    // Un arranque ya en curso se ignora: el segundo toque no abre otra sesión.
+    if (operandoSesion.current) return false;
+    operandoSesion.current = true;
     setOcupado(true);
     setAviso('');
-    const { data, error } = await iniciar(supabase, opciones);
+    let data: unknown, error: unknown;
+    try {
+      ({ data, error } = await iniciar(supabase, opciones));
+    } finally {
+      operandoSesion.current = false;
+    }
     setOcupado(false);
     // Devuelve si SALIÓ, porque el que llama por ubicación necesita saberlo:
     // un gimnasio en un subsuelo se queda sin señal, y si el arranque se diera
@@ -532,6 +548,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * de cinco horas.
    */
   async function terminar(opciones?: { hasta?: number }): Promise<CierreDeSesion | null> {
+    // Un cierre ya en curso se ignora: el segundo toque no vuelve a cerrar.
+    if (operandoSesion.current) return null;
+    operandoSesion.current = true;
     setOcupado(true);
     setAviso('');
     // Se anota lo que había ANTES de cerrar: abajo se pone todo en cero y el
@@ -550,16 +569,21 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     //
     // Si después de intentarlo algo de ESTA sesión sigue esperando, no se
     // cierra: es lo mismo que no tener señal, y cerrar ahí es el bug.
-    await vaciar(supabase);
-    const idQueTermina = idSesion;
-    const esperando =
-      !!idQueTermina &&
-      ((await estaPendiente('fijar_series', idQueTermina)) ||
-        (await estaPendiente('fijar_bloques', idQueTermina)) ||
-        (await estaPendiente('marcar_actividad', idQueTermina)));
-    const { data, error } = esperando
-      ? { data: null, error: { message: 'quedan escrituras de la sesión en la cola' } }
-      : await cerrar(supabase, opciones);
+    let data: unknown, error: unknown;
+    try {
+      await vaciar(supabase);
+      const idQueTermina = idSesion;
+      const esperando =
+        !!idQueTermina &&
+        ((await estaPendiente('fijar_series', idQueTermina)) ||
+          (await estaPendiente('fijar_bloques', idQueTermina)) ||
+          (await estaPendiente('marcar_actividad', idQueTermina)));
+      ({ data, error } = esperando
+        ? { data: null, error: { message: 'quedan escrituras de la sesión en la cola' } }
+        : await cerrar(supabase, opciones));
+    } finally {
+      operandoSesion.current = false;
+    }
     setOcupado(false);
     // Lo mismo al revés: si el cierre no llegó, quien llama tiene que poder
     // volver a intentarlo con la hora de salida correcta.

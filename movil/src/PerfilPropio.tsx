@@ -8,6 +8,7 @@ import { conComa } from '@nucleo/peso';
 import { planetaDeDia } from '@nucleo/rangos';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import { supabase } from './supabase';
 import { prepararFoto } from './foto';
 import Avatar from './Avatar';
@@ -97,12 +98,15 @@ export default function PerfilPropio() {
     }
   }
 
-  async function quitarAmigo(id: string) {
+  // Traba contra el doble-tap: una sola a nivel del componente (el botón vive en
+  // un `.map`) y el `id` decide a quién quita. Sin esto, dos toques mandaban dos
+  // `eliminar_amigo` sobre el mismo amigo (el segundo ya no encuentra la amistad).
+  const quitarAmigo = useEnVuelo(async (id: string) => {
     const { error: err } = await supabase.rpc('eliminar_amigo', { p_otro: id });
     if (err) return setError(T.general.noSePudo);
     setPorQuitar(null);
     cargar();
-  }
+  });
 
   /**
    * LA SALIDA, QUE VA EN LOS TRES ESTADOS.

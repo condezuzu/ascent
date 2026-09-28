@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { cargarPerfilDeAmigo, DIAS_VISIBLES, type PerfilDeAmigo as Datos } from '@compartido/perfil';
 import Medallas from './Medallas';
 import { pedirAmistad } from '@compartido/ranking';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import AccionesDeUsuario from './AccionesDeUsuario';
 import { DIAS_SEMANA, deISO, enDias, hoyISO, restarDias } from '@nucleo/fechas';
 import { conComa } from '@nucleo/peso';
@@ -79,7 +80,9 @@ export default function PerfilDeAmigo() {
     cargar();
   }, [cargar]);
 
-  async function mandarPedido() {
+  // Traba contra el doble-tap: sin esto, dos toques mandaban dos pedidos de
+  // amistad a la misma persona.
+  const mandarPedido = useEnVuelo(async () => {
     if (!datos) return;
     const { data: sesion } = await supabase.auth.getSession();
     const yo = sesion.session?.user?.id;
@@ -87,7 +90,7 @@ export default function PerfilDeAmigo() {
     // La misma función que usa Ranking: la amistad se pide en un solo lugar.
     if (!(await pedirAmistad(supabase, yo, datos.usuario.id))) return setError(T.general.noSePudo);
     setDatos({ ...datos, pedidoPendiente: true });
-  }
+  });
 
   // LA SALIDA SE DIBUJA SIEMPRE, también mientras carga. La rama del error ya
   // la tenía; esta no, y una consulta que tarda encierra igual que una que

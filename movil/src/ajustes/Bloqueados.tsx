@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { cargarBloqueados, desbloquear, type Bloqueado } from '@compartido/ranking';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
 import Avatar from '../Avatar';
@@ -22,12 +23,15 @@ export default function Bloqueados() {
     }
   }, [abierto, lista]);
 
-  async function quitar(id: string) {
+  // Traba contra el doble-tap: aunque la fila sale de la lista al instante,
+  // dos toques antes del render dispararían dos veces el RPC (idempotente, pero
+  // de más). Una traba, y el `id` decide sobre qué fila actúa.
+  const quitar = useEnVuelo(async (id: string) => {
     // Optimista: sale de la lista al instante; si el RPC falla, la próxima
     // apertura lo vuelve a traer (no se pierde el bloqueo, solo la vista).
     setLista((l) => (l ?? []).filter((b) => b.id !== id));
     await desbloquear(supabase, id);
-  }
+  });
 
   return (
     <View style={estilos.seccion}>

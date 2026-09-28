@@ -4,6 +4,7 @@ import type { EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import type { Unidad } from '@nucleo/peso';
 import { cargaVigente, type Carga } from '@nucleo/carga';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import CampoPeso from './CampoPeso';
@@ -47,6 +48,12 @@ export default function ListaDeBloques({
   alCerrar: () => void;
 }) {
   const [porQuitar, setPorQuitar] = useState<number | null>(null);
+  // Quitar con traba: sin esto, un doble-tap en "Sí" quitaba el bloque y después
+  // un vecino, porque la lista ya se había corrido y el índice apuntaba a otro.
+  const quitar = useEnVuelo((i: number) => {
+    alTocar(i, 'quitar');
+    setPorQuitar(null);
+  });
   // El bloque cuyo ejercicio se está corrigiendo: abre el selector.
   const [cambiando, setCambiando] = useState<number | null>(null);
   const del = (id: string | null) => ejercicios.find((e) => e.id === id);
@@ -101,13 +108,7 @@ export default function ListaDeBloques({
                 {porQuitar === i ? (
                   <View style={estilos.controles}>
                     <Text style={estilos.pregunta}>{T.sesion.listaQuitarPregunta}</Text>
-                    <Pressable
-                      style={estilos.boton}
-                      onPress={() => {
-                        alTocar(i, 'quitar');
-                        setPorQuitar(null);
-                      }}
-                    >
+                    <Pressable style={estilos.boton} onPress={() => quitar(i)}>
                       <Text style={estilos.botonTexto}>{T.album.si}</Text>
                     </Pressable>
                     <Pressable style={estilos.boton} onPress={() => setPorQuitar(null)}>

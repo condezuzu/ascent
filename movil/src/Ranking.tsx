@@ -13,6 +13,7 @@ import {
   rechazarAmistad,
   type DatosDeRanking,
 } from '@compartido/ranking';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import Avatar from './Avatar';
 import AccionesDeUsuario from './AccionesDeUsuario';
 import CampoTexto from './CampoTexto';
@@ -138,10 +139,25 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
     setResultados(encontrados);
   }
 
-  async function agregar(destino: string) {
+  // Trabas contra el doble-tap en las acciones que escriben una amistad. Cada
+  // una es una sola traba a nivel del componente (los botones viven en un
+  // `.map`, donde no van hooks) y el `id` de la fila decide sobre quién actúa:
+  //  - agregar: sin traba, dos toques mandaban DOS pedidos al mismo destino.
+  //  - aceptar/rechazar: dos toques resolvían la misma solicitud dos veces.
+  const agregar = useEnVuelo(async (destino: string) => {
     if (!(await pedirAmistad(supabase, miId, destino))) return cargar();
     setMandados(new Set([...mandados, destino]));
-  }
+  });
+
+  const aceptar = useEnVuelo(async (id: string) => {
+    await aceptarAmistad(supabase, id);
+    cargar();
+  });
+
+  const rechazar = useEnVuelo(async (id: string) => {
+    await rechazarAmistad(supabase, id);
+    cargar();
+  });
 
   const amigos = datos?.amigos ?? [];
 
@@ -273,22 +289,10 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 <View style={estilos.fila} key={s.id}>
                   <Avatar url={s.de.avatar_url} nombre={s.de.username} />
                   <Text style={estilos.nombre}>{s.de.username}</Text>
-                  <Pressable
-                    onPress={async () => {
-                      await aceptarAmistad(supabase, s.id);
-                      cargar();
-                    }}
-                    hitSlop={8}
-                  >
+                  <Pressable onPress={() => aceptar(s.id)} hitSlop={8}>
                     <Text style={estilos.accion}>{T.social.aceptar}</Text>
                   </Pressable>
-                  <Pressable
-                    onPress={async () => {
-                      await rechazarAmistad(supabase, s.id);
-                      cargar();
-                    }}
-                    hitSlop={8}
-                  >
+                  <Pressable onPress={() => rechazar(s.id)} hitSlop={8}>
                     <Text style={[estilos.accion, { color: C.apagado }]}>{T.social.no}</Text>
                   </Pressable>
                 </View>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Animated, AppState, Easing, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
@@ -225,6 +225,29 @@ export default function Pestanas({
     }
     eventos.emitir(PESTANA_ACTIVA, pestana);
   }, [pestana]);
+
+  // AL VOLVER LA APP AL FRENTE, RECARGAR LA PESTAÑA ACTIVA (H3 #7+#8).
+  //
+  // Las pantallas se quedan montadas y solo recargan al CAMBIAR de pestaña. Si
+  // dejás la app abierta y volvés a la MISMA pestaña una hora después, pasan
+  // dos cosas feas: las URL firmadas de las fotos viven 1 h
+  // (`createSignedUrl(..., 3600)`) y ya vencieron —403, fotos rotas—, y la
+  // racha/`perdida` quedaron congeladas en lo de hace una hora. El token se
+  // renueva al frente (ver `app/_layout.tsx`), pero eso no vuelve a pedir los
+  // datos ni a re-firmar las fotos.
+  //
+  // Reusa el MISMO aviso que el cambio de pestaña: `PESTANA_ACTIVA` dispara el
+  // `cargar()` de la pantalla que esté activa (`useRecargarAlVolver`), que es
+  // el que vuelve a firmar las fotos y a traer la racha. Un solo lugar arregla
+  // las dos cosas, y solo para la activa: las otras recargan al volver a ellas.
+  const pestanaAhora = useRef(pestana);
+  pestanaAhora.current = pestana;
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (e) => {
+      if (e === 'active') eventos.emitir(PESTANA_ACTIVA, pestanaAhora.current);
+    });
+    return () => sub.remove();
+  }, []);
 
   // LA QUE SE ABRE —O LA QUE ASOMA— QUEDA MONTADA PARA SIEMPRE, y se anota
   // ACÁ, al dibujar, no en un efecto de después. Un efecto corre cuando la

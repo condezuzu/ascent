@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { bloquear, denunciar, MOTIVOS_DENUNCIA, type MotivoDenuncia } from '@compartido/ranking';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import Hoja from './Hoja';
@@ -42,18 +43,22 @@ export default function AccionesDeUsuario({
     }, 200);
   }
 
-  async function elegirMotivo(m: MotivoDenuncia) {
-    if (!usuario || ocupado) return;
+  // Traba contra el doble-tap: sin esto, dos toques dejaban DOS denuncias (la
+  // tabla dedupe por (denunciante,denunciado), así que la segunda choca, pero
+  // igual dispara la RPC de más). El bloqueo es idempotente, pero el segundo
+  // toque caía sobre una hoja ya cerrándose.
+  const elegirMotivo = useEnVuelo(async (m: MotivoDenuncia) => {
+    if (!usuario) return;
     setOcupado(true);
     setError('');
     const ok = await denunciar(supabase, usuario.id, m);
     setOcupado(false);
     if (!ok) return setError(T.general.noSePudo);
     setEnviada(true);
-  }
+  });
 
-  async function confirmarBloqueo() {
-    if (!usuario || ocupado) return;
+  const confirmarBloqueo = useEnVuelo(async () => {
+    if (!usuario) return;
     setOcupado(true);
     setError('');
     const ok = await bloquear(supabase, usuario.id);
@@ -61,7 +66,7 @@ export default function AccionesDeUsuario({
     if (!ok) return setError(T.general.noSePudo);
     onBloqueado?.(usuario.id);
     cerrar();
-  }
+  });
 
   return (
     <Hoja visible={usuario !== null} alCerrar={cerrar}>

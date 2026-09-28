@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { aKilos, limites, type Unidad } from '@nucleo/peso';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { C } from './colores';
@@ -24,7 +25,10 @@ export default function AnotarPeso({ unidad, alGuardar }: { unidad: Unidad; alGu
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
-  async function guardar() {
+  // Traba contra el doble-tap: `anotar_peso` es un upsert por día, así que dos
+  // toques no ensucian la base —el segundo pisa con el mismo número—, pero se
+  // envuelve igual para que la puerta se cierre de una y no dispare dos RPC.
+  const guardar = useEnVuelo(async () => {
     setError('');
     // La coma es lo que sale del teclado en español y `Number` no la entiende.
     const escrito = Number(valor.replace(',', '.'));
@@ -38,7 +42,7 @@ export default function AnotarPeso({ unidad, alGuardar }: { unidad: Unidad; alGu
     if (err) return setError(T.general.noSePudo);
     setValor('');
     alGuardar();
-  }
+  });
 
   return (
     <View>

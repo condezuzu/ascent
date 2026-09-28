@@ -4,6 +4,7 @@ import { hoyISO, deISO, MESES } from '@nucleo/fechas';
 import { aKilos, deKilos, type Unidad } from '@nucleo/peso';
 import { redondear, unRM } from '@nucleo/fuerza';
 import type { Ejercicio } from '@nucleo/tipos';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import Hoja from './Hoja';
@@ -56,7 +57,10 @@ export default function CargarMarca({
   const elegido = ejercicios.find((e) => e.id === ejercicio) ?? null;
   const veces = unaVez ? 1 : Number(reps);
 
-  async function guardar() {
+  // Traba contra el doble-tap: sin esto, dos toques dejaban DOS filas de PR
+  // iguales (prs no tiene unique). El número no se corrompe —vale el máximo— pero
+  // dos marcas iguales en la lista se leen como un error.
+  const guardar = useEnVuelo(async () => {
     setError('');
     if (kg === null || kg <= 0) return setError(T.peso.noDa);
     if (!Number.isInteger(veces) || veces < 1 || veces > 20) return setError(T.marca.vecesFuera);
@@ -85,7 +89,7 @@ export default function CargarMarca({
     setGuardando(false);
     if (err) return setError(T.general.noSePudo);
     alGuardar();
-  }
+  });
 
   const hoy = deISO(hoyISO());
 
