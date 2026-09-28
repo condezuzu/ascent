@@ -509,7 +509,7 @@ export const T = {
     faltaPesoEnMarcas: 'Falta tu peso corporal, que se anota en',
     faltaPesoEnMarcasFin: '. Solo lo ves tú.',
     loDemas: 'Lo demás',
-    loDemasNota: 'Anotalas todas las que quieras. Estas no entran al número.',
+    loDemasNota: 'Anótalas todas las que quieras. Estas no entran al número.',
     ningunaCargada: 'Sentadilla, press de banca y peso muerto. Ninguna cargada todavía.',
     esLaUnica: 'Es la única que anotaste.',
     cuantasAnotaste: (n: number) => `Anotaste ${n}. Vale la mejor.`,
@@ -1212,8 +1212,8 @@ export const T = {
   // ---------------------------------------------------------------
   // El recorte de la foto de perfil.
   recorte: {
-    titulo: 'Encuadrá tu foto',
-    sub: 'Arrastrala y agrandala hasta que quede como quieres.',
+    titulo: 'Encuadra tu foto',
+    sub: 'Arrástrala y agrándala hasta que quede como quieras.',
     etiqueta: 'Recortar la foto',
     acercar: 'Acercar',
     trabajando: 'Recortando…',
