@@ -38,9 +38,8 @@ export const PALETAS_RANGO: Record<number, Paleta> = {
   3: { apagado: '#5B7BA8', principal: '#7E8CA8', claro: '#C4C2BA' }, // Luna: celeste alrededor
   4: { apagado: '#2E4A78', principal: '#4A7FD0', claro: '#DBE7F5' }, // Planeta (respaldo; manda el planeta del día)
   5: { apagado: '#EF9F27', principal: '#F2C230', claro: '#FFF1C2' }, // Sol
-  6: { apagado: '#0E6B6B', principal: '#1FA5A0', claro: '#6FD6D0' }, // Sistema
-  7: { apagado: '#4A2A8C', principal: '#7F4FD0', claro: '#C3A6F5' }, // Galaxia
-  8: { apagado: '#05050A', principal: '#FF6A00', claro: '#A78BFA' }, // Agujero negro
+  6: { apagado: '#4A2A8C', principal: '#7F4FD0', claro: '#C3A6F5' }, // Galaxia (era 7; el "Sistema" se sacó)
+  7: { apagado: '#05050A', principal: '#FF6A00', claro: '#A78BFA' }, // Agujero negro (era 8)
 };
 
 // Rango 4: la paleta la define el planeta del día — cambia diez veces
@@ -58,9 +57,9 @@ export const PALETAS_PLANETA: Record<string, Paleta> = {
   'Júpiter': { apagado: '#6E523E', principal: '#B08662', claro: '#E8D0B0' },
 };
 
-// El agujero negro tiene el negro más profundo de todos los rangos.
+// El agujero negro (rango 7) tiene el negro más profundo de todos los rangos.
 export const FONDO_BASE = '#05060a';
-export const FONDO_RANGO_8 = '#020204';
+export const FONDO_RANGO_7 = '#020204';
 
 export function paletaDe(rango: number, planeta?: string | null): Paleta {
   if (rango === 4 && planeta && PALETAS_PLANETA[planeta]) return PALETAS_PLANETA[planeta];

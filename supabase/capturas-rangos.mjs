@@ -76,7 +76,7 @@ for (let i = 0; i < 90; i++) {
   await new Promise((r) => setTimeout(r, 1000));
 }
 
-const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Sistema', 'Galaxia', 'Agujero negro'];
+const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Galaxia', 'Agujero negro'];
 
 const nav = await chromium.launch();
 const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });

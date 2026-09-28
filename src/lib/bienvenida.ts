@@ -18,11 +18,17 @@
  * NO IMPORTA three.js ni React.
  */
 
-/** Los ocho objetos, del primero al último. Los nombres NO se dicen acá. */
-export const RANGOS_DE_LA_ENTRADA = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+/** Los SIETE objetos, del primero al último. Los nombres NO se dicen acá. (El
+ * "Sistema" se sacó en la migración 54.) */
+export const RANGOS_DE_LA_ENTRADA = [1, 2, 3, 4, 5, 6, 7] as const;
 
-/** Días de racha que representa cada tramo: el número sube de diez en diez. */
-export const DIAS_POR_RANGO = 10;
+/**
+ * Espejo de `DESDE_RANGO` en `nucleo/reglas.ts`: el día en que arranca cada
+ * rango. Se copia acá y NO se importa a propósito — este archivo se carga con
+ * node pelado en `test:db` y no resuelve el alias `@nucleo`. Para que la copia
+ * no derive, `test:db` compara las dos y falla si difieren.
+ */
+export const DESDE_RANGO = [0, 6, 16, 31, 51, 76, 106] as const;
 
 /**
  * EL PRIMER TRAMO Y CUÁNTO SE ACORTA CADA UNO.
@@ -170,14 +176,18 @@ export function cuadroEn(t: number): CuadroDeLaEntrada {
     for (let i = 0; i < tramos.length; i++) {
       if (resto < tramos[i]) {
         const p = resto / tramos[i];
-        const base = i * DIAS_POR_RANGO;
+        // El número sale de los umbrales REALES (`DESDE_RANGO`): cada tramo va
+        // del `desde` de un rango al del siguiente, así que la racha que se ve
+        // coincide con las duraciones nuevas (5/10/15/20/25/30 días).
+        const base = DESDE_RANGO[i];
+        const tramo = (DESDE_RANGO[i + 1] ?? base) - base;
         return {
           desde: RANGOS_DE_LA_ENTRADA[i],
           hasta: RANGOS_DE_LA_ENTRADA[i + 1],
           mezcla: curva(p),
           // El número NO usa la curva: los días pasan parejos, y que el
           // objeto se demore en arrancar es cosa del objeto.
-          racha: Math.round(base + p * DIAS_POR_RANGO),
+          racha: Math.round(base + p * tramo),
           tragoRacha: 0,
           trago: 0,
           estrellas: 0,
@@ -189,7 +199,7 @@ export function cuadroEn(t: number): CuadroDeLaEntrada {
   }
 
   const ultimo = RANGOS_DE_LA_ENTRADA[RANGOS_DE_LA_ENTRADA.length - 1];
-  const desdeElUltimo = (RANGOS_DE_LA_ENTRADA.length - 1) * DIAS_POR_RANGO;
+  const desdeElUltimo = DESDE_RANGO[RANGOS_DE_LA_ENTRADA.length - 1];
   // Desde que está el agujero negro, el número se dispara y no para hasta que
   // se lo tragan.
   const disparada = Math.round(desdeElUltimo * Math.exp(DISPARO_POR_SEGUNDO * (seg - morfeo)));
@@ -278,7 +288,7 @@ export const DURACION_QUIETA_S = 1.6;
 export function cuadroQuietoEn(t: number): CuadroDeLaEntrada {
   const seg = Number.isFinite(t) ? Math.max(0, t) : 0;
   const ultimo = RANGOS_DE_LA_ENTRADA[RANGOS_DE_LA_ENTRADA.length - 1];
-  const tope = (RANGOS_DE_LA_ENTRADA.length - 1) * DIAS_POR_RANGO;
+  const tope = DESDE_RANGO[RANGOS_DE_LA_ENTRADA.length - 1];
   const arranque = DURACION_QUIETA_S * 0.5;
   return {
     desde: ultimo,

@@ -153,30 +153,8 @@ export const INSIGNIAS: Record<number, Trazo[]> = {
     },
   ],
 
-  // Sistema: sol + órbita inclinada + planeta.
-  //
-  // LA ÓRBITA VA INCLINADA, y es todo el arreglo: derecha y simétrica, un
-  // anillo con un círculo en el medio es un OJO, y a 16 px eso es lo único
-  // que se ve. Veinte grados alcanzan para que deje de serlo sin dejar de ser
-  // una órbita.
-  // Y pasa por detrás del sol: el arco de adelante se dibuja después del
-  // disco, que es lo que da la vuelta completa.
-  6: [
-    {
-      t: 'g',
-      transform: 'rotate(-20 12 12)',
-      hijos: [
-        { t: 'ellipse', cx: 12, cy: 12, rx: 10.4, ry: 4.2, stroke: 'principal', strokeWidth: 1.6, fill: 'none', opacity: 0.5 },
-        { t: 'circle', cx: 12, cy: 12, r: 5.8, fill: 'principal', opacity: 0.2 },
-        { t: 'circle', cx: 12, cy: 12, r: 3.7, fill: 'trazo' },
-        { t: 'path', d: 'M1.6 12 a10.4 4.2 0 0 0 20.8 0', stroke: 'principal', strokeWidth: 1.7, fill: 'none' },
-        { t: 'circle', cx: 21.6, cy: 12.9, r: 2.1, fill: 'principal' },
-        { t: 'path', d: 'M21.6 10.8 a2.1 2.1 0 0 1 0 4.2 a2.8 2.8 0 0 0 0 -4.2 Z', fill: 'oscuro', opacity: 0.45 },
-      ],
-    },
-  ],
-
-  // Galaxia: bulbo encendido y dos brazos que se abren y se afinan.
+  // Galaxia (era el 7; el "Sistema" se sacó en la migración 54):
+  // bulbo encendido y dos brazos que se abren y se afinan.
   //
   // Sigue a la forma de la animación (15/9), que es lo que se ve al subir de
   // rango y en la entrada: BULBO grande y brillante, dos brazos ANCHOS que
@@ -190,7 +168,7 @@ export const INSIGNIAS: Record<number, Trazo[]> = {
   //
   // El bulbo: tres discos, del halo al corazón. Es lo que hace que a 16 px se
   // lea una galaxia y no dos rayas cruzadas.
-  7: [
+  6: [
     { t: 'ellipse', cx: 12, cy: 12, rx: 10.8, ry: 6.2, fill: 'principal', opacity: 0.16, transform: 'rotate(-24 12 12)' },
     {
       t: 'g',
@@ -225,7 +203,7 @@ export const INSIGNIAS: Record<number, Trazo[]> = {
   // firma de un agujero negro y es lo que este ícono no tenía— y el frente del
   // disco vuelve por delante. Todos los trazos un poco más gruesos, para que a
   // 16 px el anillo de luz no desaparezca.
-  8: [
+  7: [
     { t: 'ellipse', cx: 12, cy: 13, rx: 11, ry: 3.6, fill: 'none', stroke: 'principal', strokeWidth: 2.4 },
     { t: 'circle', cx: 12, cy: 12, r: 6.2, fill: 'negro' },
     { t: 'path', d: 'M4.2 11.5 A 8.4 8.4 0 0 1 19.8 11.5', fill: 'none', stroke: 'trazo', strokeWidth: 2.2, strokeLinecap: 'round' },

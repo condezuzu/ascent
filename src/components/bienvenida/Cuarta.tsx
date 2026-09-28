@@ -126,7 +126,7 @@ export default function Cuarta({
         <canvas ref={lienzo} className="bienv-lienzo" />
       ) : (
         <div
-          className={`bienv-cuerpo ${cuadro.hasta === 8 && cuadro.mezcla > 0.5 ? 'bienv-cuerpo-negro' : ''}`}
+          className={`bienv-cuerpo ${cuadro.hasta === 7 && cuadro.mezcla > 0.5 ? 'bienv-cuerpo-negro' : ''}`}
           style={{
             width: `${lado}vmin`,
             height: `${lado}vmin`,

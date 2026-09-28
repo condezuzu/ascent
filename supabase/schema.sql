@@ -653,16 +653,29 @@ $$;
 -- FUNCIONES DE RACHA
 -- -------------------------------------------------------------
 
--- Cada rango dura diez días; al 8 (agujero negro) se llega y se queda.
--- Rango 4 = rachas 30..39: Ceres..Júpiter, uno por día.
+-- Duraciones crecientes (migración 54), siete rangos, sin "Sistema":
+-- Polvo 1-5 · Asteroide 6-15 · Luna 16-30 · Planeta 31-50 · Sol 51-75 ·
+-- Galaxia 76-105 · Agujero negro 106+. Mismos umbrales que DESDE_RANGO en
+-- `nucleo/reglas.ts`; `test:db` los compara día por día del 1 al 200.
 create or replace function public.rango_de_racha(r int)
 returns int language sql immutable as $$
-  select least(8, greatest(0, r) / 10 + 1);
+  select case
+    when r >= 106 then 7
+    when r >= 76  then 6
+    when r >= 51  then 5
+    when r >= 31  then 4
+    when r >= 16  then 3
+    when r >= 6   then 2
+    else 1
+  end;
 $$;
 
+-- Rango 4 (Planeta) = rachas 31..50: cuatro días por planeta.
 create or replace function public.planeta_de_dia(r int)
 returns text language sql immutable as $$
-  select (array['Ceres','Plutón','Mercurio','Marte','Venus','Tierra','Neptuno','Urano','Saturno','Júpiter'])[r - 29];
+  select case when r between 31 and 50
+    then (array['Ceres','Mercurio','Marte','Venus','Saturno'])[(r - 31) / 4 + 1]
+  end;
 $$;
 
 -- Racha calculada caminando hacia atrás desde p_hasta:
@@ -3071,7 +3084,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 53; $$;
+returns int language sql immutable as $$ select 54; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

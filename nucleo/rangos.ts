@@ -1,11 +1,11 @@
-import { numeroDeRango } from './reglas.ts';
+import { DESDE_RANGO, numeroDeRango } from './reglas.ts';
 
 // Escalera de rangos. El nombre NUNCA aparece en la interfaz corriente:
-// solo en la subida de rango y en Estadísticas.
+// solo en la subida de rango y en Estadísticas ("Rangos").
 //
-// El NÚMERO de rango y los planetas viven en `reglas.ts`, que es lo que
-// también está escrito en SQL. Acá quedan los nombres, que son solo del
-// cliente: la base nunca los conoce.
+// El NÚMERO de rango, los UMBRALES (`DESDE_RANGO`) y los planetas viven en
+// `reglas.ts`, que es lo que también está escrito en SQL. Acá quedan los
+// nombres, que son solo del cliente: la base nunca los conoce.
 export { PLANETAS, planetaDeDia } from './reglas.ts';
 export type Rango = {
   n: number;
@@ -13,18 +13,11 @@ export type Rango = {
   desde: number; // día de racha en que arranca
 };
 
-// Cada rango dura diez días: ochenta días hasta el agujero negro.
-// Al llegar al rango 8 se queda ahí; la racha sigue subiendo igual.
-export const RANGOS: Rango[] = [
-  { n: 1, nombre: 'Polvo', desde: 0 },
-  { n: 2, nombre: 'Asteroide', desde: 10 },
-  { n: 3, nombre: 'Luna', desde: 20 },
-  { n: 4, nombre: 'Planeta', desde: 30 },
-  { n: 5, nombre: 'Sol', desde: 40 },
-  { n: 6, nombre: 'Sistema', desde: 50 },
-  { n: 7, nombre: 'Galaxia', desde: 60 },
-  { n: 8, nombre: 'Agujero negro', desde: 70 },
-];
+// SIETE rangos, de duración creciente (5/10/15/20/25/30 días, y el último sin
+// techo). El viejo "Sistema" se sacó. Los `desde` salen de `DESDE_RANGO` para
+// que no puedan contradecir a `numeroDeRango` ni a la base.
+const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Galaxia', 'Agujero negro'];
+export const RANGOS: Rango[] = NOMBRES.map((nombre, i) => ({ n: i + 1, nombre, desde: DESDE_RANGO[i] }));
 
 // El rango sale del número, no de recorrer la tabla buscando el `desde`: así
 // hay UNA sola regla —la misma que corre en la base— y el nombre no puede

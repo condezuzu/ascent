@@ -1,4 +1,4 @@
-import { numeroDeRango } from './reglas.ts';
+import { DESDE_RANGO, numeroDeRango } from './reglas.ts';
 
 /**
  * CUÁNTO DEL FONDO SE TE DEJA VER, Y CUÁNDO SE INSINÚA LO QUE VIENE.
@@ -34,7 +34,7 @@ import { numeroDeRango } from './reglas.ts';
 // arbitrario: con menos de ~0.18 de diferencia el cambio no se percibe, y con
 // más de ~0.25 los rangos brillantes (Sol, agujero negro) lastiman de noche.
 const VELO_PISO = 0.58; // rango 1
-const VELO_TECHO = 0.38; // rango 8
+const VELO_TECHO = 0.38; // rango 7 (el último)
 
 /** Cuánto velo le toca a un rango. Entre VELO_PISO y VELO_TECHO, lineal. */
 export function veloDeRango(rango: number): number {
@@ -47,8 +47,8 @@ export function veloDeRango(rango: number): number {
   // Puede llegar roto de verdad: el rango sale del perfil, y un perfil que no
   // cargó es `undefined`.
   if (!Number.isFinite(rango)) return VELO_PISO;
-  const n = Math.min(8, Math.max(1, Math.round(rango)));
-  const t = (n - 1) / 7;
+  const n = Math.min(7, Math.max(1, Math.round(rango)));
+  const t = (n - 1) / 6;
   return Number((VELO_PISO + (VELO_TECHO - VELO_PISO) * t).toFixed(3));
 }
 
@@ -89,8 +89,10 @@ export const DIAS_DE_PRESAGIO = 3;
 /** Cuántos días de racha faltan para el rango siguiente. `null` en el último. */
 export function faltanParaSubir(racha: number): number | null {
   const n = numeroDeRango(racha);
-  if (n >= 8) return null; // no hay nada después del agujero negro
-  return n * 10 - Math.max(0, racha);
+  if (n >= 7) return null; // no hay nada después del agujero negro
+  // El umbral del rango siguiente (n es 1-based; DESDE_RANGO es 0-based, así que
+  // el índice n es el `desde` del rango n+1) menos lo que ya llevás.
+  return DESDE_RANGO[n] - Math.max(0, racha);
 }
 
 /**

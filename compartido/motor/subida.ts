@@ -97,7 +97,7 @@ export function colorDeRango(rango: number, planeta?: string): THREE.Color {
     rango === 4
       ? PLANETAS_CFG[planeta && PLANETAS_CFG[planeta] ? planeta : 'Ceres']
       : RANGOS_CFG[rango];
-  return new THREE.Color(cfg ? cfg.paleta[2] : rango >= 7 ? '#9a86ff' : '#aebfe0');
+  return new THREE.Color(cfg ? cfg.paleta[2] : rango >= 6 ? '#9a86ff' : '#aebfe0');
 }
 
 export function animarSubida(

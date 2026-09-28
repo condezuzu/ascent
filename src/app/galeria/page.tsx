@@ -298,7 +298,7 @@ export default function Galeria() {
         <div className="seccion">
           <h3>Subidas de rango</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {RANGOS.slice(0, 7).map((r) => (
+            {RANGOS.slice(0, RANGOS.length - 1).map((r) => (
               <button
                 key={r.n}
                 className="boton-fantasma"

@@ -216,10 +216,9 @@ export const RANGOS_CFG: Record<number, ConfigCuerpo | null> = {
   4: PLANETAS_CFG['Tierra'],
   // Sol incandescente con protuberancias
   5: { ...base, paleta: ['#EF9F27', '#F2C230', '#FFF1C2', '#ffffff'], modo: 1, turbulencia: 1.3 },
-  6: { ...base, paleta: ['#EF9F27', '#F2C230', '#FFF1C2', '#ffffff'], modo: 1, turbulencia: 1.3 },
-  7: null, // Galaxia: partículas
-  // Agujero negro: negro absoluto; el naranja puro va solo en el disco
-  8: { ...base, paleta: ['#05050A', '#4A2A8C', '#FF6A00', '#FFC46B'], modo: 2 },
+  6: null, // Galaxia: partículas (era el 7; el "Sistema" se sacó en la migración 54)
+  // Agujero negro: negro absoluto; el naranja puro va solo en el disco (era el 8)
+  7: { ...base, paleta: ['#05050A', '#4A2A8C', '#FF6A00', '#FFC46B'], modo: 2 },
 };
 
 // Densidad del campo estelar de fondo por rango (la galaxia es el ambiente
@@ -232,6 +231,8 @@ export const RANGOS_CFG: Record<number, ConfigCuerpo | null> = {
 // está medido y anda. Y las partículas NO son el costo del motor: 0,006 ms por
 // cuadro. Lo que se paga por píxel es el ÁREA pintada, así que se sube la
 // cantidad y el brillo, nunca el tamaño.
+// Siete rangos (migración 54). Galaxia y agujero negro conservan su densidad
+// alta (eran 7 y 8); el "Sistema" se sacó.
 export const ESTRELLAS_POR_RANGO: Record<number, number> = {
-  1: 400, 2: 440, 3: 500, 4: 560, 5: 640, 6: 760, 7: 900, 8: 1150,
+  1: 400, 2: 440, 3: 500, 4: 560, 5: 640, 6: 900, 7: 1150,
 };

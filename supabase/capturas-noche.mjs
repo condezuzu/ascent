@@ -34,7 +34,7 @@ mkdirSync(SALIDA, { recursive: true });
 // CUERPO. El sol emite, el agujero negro es un disco, y el polvo y la galaxia
 // son partículas: ninguno tiene una superficie que apagar ni un filo que
 // encender. Se sacan igual para dejar por escrito que no cambian.
-const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Sistema', 'Galaxia', 'Agujero negro'];
+const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Galaxia', 'Agujero negro'];
 const CON_CUERPO = [2, 3, 4, 6];
 
 const librePara = (p) =>

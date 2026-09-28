@@ -15,6 +15,7 @@ import {
   PLANETAS,
   TOPE_SESION_SEGUNDOS,
   VENTANA_INACTIVIDAD_SEGUNDOS,
+  DESDE_RANGO,
   descansosVigentes,
   numeroDeRango,
   planetaDeDia,
@@ -241,7 +242,7 @@ async function perder(uid) {
 await cuotaDeVidas(0);
 
 // =====================================================================
-console.log('1. Umbrales de rango (cada 10 días, tope en 8)');
+console.log('1. Umbrales de rango (duraciones crecientes, tope en 7)');
 {
   const r = await db.query(`
     select array_agg(rango_de_racha(x) order by x) as g
@@ -250,7 +251,7 @@ console.log('1. Umbrales de rango (cada 10 días, tope en 8)');
   chequear(
     'racha → rango',
     r.rows[0].g,
-    [1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 8, 8]
+    [1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 7]
   );
 }
 
@@ -262,26 +263,30 @@ console.log('\n2. Racha se acumula y el rango sube solo');
   chequear('30 días', await perfil(u), {
     racha_actual: 30,
     mejor_racha: 30,
-    rango_actual: 4,
+    rango_actual: 3, // 16-30 es Luna (migración 54)
     racha_base: 0,
   });
 }
 
 // =====================================================================
-console.log('\n3. Planeta del día: rachas 30..39 = Ceres..Júpiter');
+console.log('\n3. Planeta del día: rachas 31..50 = Ceres..Saturno, 4 días c/u');
 {
   const u = await nuevoUsuario();
   await rachaDe(u, 41);
+  // Cada log que tenga planeta guarda EXACTAMENTE el que le toca por su día
+  // (row_number = racha en una racha continua). Robusto a cuántos días quedaron
+  // con planeta guardado: solo verifica que los guardados sean los correctos.
   const r = await db.query(
-    `select planeta_del_dia from logs where user_id = $1 and planeta_del_dia is not null order by fecha`,
+    `select planeta_del_dia, racha from (
+       select planeta_del_dia, row_number() over (order by fecha) as racha
+       from logs where user_id = $1
+     ) t where planeta_del_dia is not null order by racha`,
     [u]
   );
-  chequear(
-    'secuencia de planetas',
-    r.rows.map((x) => x.planeta_del_dia),
-    ['Ceres', 'Plutón', 'Mercurio', 'Marte', 'Venus', 'Tierra', 'Neptuno', 'Urano', 'Saturno', 'Júpiter']
-  );
-  chequear('racha 41 no tiene planeta', (await perfil(u)).rango_actual, 5);
+  const malos = r.rows.filter((x) => x.planeta_del_dia !== planetaDeDia(Number(x.racha)));
+  chequear('cada log guarda el planeta que le toca', malos.map((x) => `${x.racha}:${x.planeta_del_dia}`), []);
+  chequear('y son los cinco nuevos', [...new Set(r.rows.map((x) => x.planeta_del_dia))], ['Ceres', 'Mercurio', 'Marte']);
+  chequear('racha 41 es Planeta (rango 4)', (await perfil(u)).rango_actual, 4);
 }
 
 // =====================================================================
@@ -503,12 +508,12 @@ console.log('\n9. registrar_dia: RPC devuelve el salto de rango');
 {
   const u = await nuevoUsuario();
   await comoUsuario(u);
-  await rachaDe(u, 9, 1); // 9 días terminando ayer
+  await rachaDe(u, 5, 1); // 5 días terminando ayer: hoy es el 6, sube de Polvo a Asteroide
   const r = await db.query(
     `select anotar_peso(82.5), registrar_dia() as v`
   );
   const v = r.rows[0].v;
-  chequear('subió de rango', [v.racha, v.rango_antes, v.rango_despues, v.subio_rango], [10, 1, 2, true]);
+  chequear('subió de rango', [v.racha, v.rango_antes, v.rango_despues, v.subio_rango], [6, 1, 2, true]);
   const p = await db.query('select valor from weights where user_id = $1', [u]);
   chequear('peso guardado', Number(p.rows[0].valor), 82.5);
 }
@@ -773,13 +778,17 @@ console.log('\n19b. Corregir un día viejo recalcula los planetas posteriores');
   await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, faltante]);
   chequear('la racha se completa', (await perfil(u)).racha_actual, 39);
   const despues = await db.query(
-    `select planeta_del_dia from logs where user_id = $1 and planeta_del_dia is not null order by fecha`,
+    `select planeta_del_dia, racha from (
+       select planeta_del_dia, row_number() over (order by fecha) as racha
+       from logs where user_id = $1
+     ) t where planeta_del_dia is not null order by racha`,
     [u]
   );
+  const corridos = despues.rows.filter((x) => x.planeta_del_dia !== planetaDeDia(Number(x.racha)));
   chequear(
-    'los diez planetas quedan bien, sin corrimiento',
-    despues.rows.map((x) => x.planeta_del_dia),
-    ['Ceres', 'Plutón', 'Mercurio', 'Marte', 'Venus', 'Tierra', 'Neptuno', 'Urano', 'Saturno', 'Júpiter']
+    'los planetas quedan bien, sin corrimiento',
+    corridos.map((x) => `${x.racha}:${x.planeta_del_dia}`),
+    []
   );
   // y borrar un día viejo tiene que limpiarlos de nuevo
   await db.query(`delete from logs where user_id = $1 and fecha = mi_hoy() - $2::int`, [u, faltante]);
@@ -1238,26 +1247,30 @@ console.log('\n26. Las reglas escritas dos veces: SQL contra cliente');
     [150, 150]
   );
 
-  // ---- número de rango ----
+  // ---- número de rango: base vs cliente, DÍA POR DÍA del 0 al 200 ----
+  // La fórmula está escrita dos veces (SQL y `nucleo/reglas.ts`, `DESDE_RANGO`)
+  // y no se pueden compartir. Con umbrales de ancho variable (migración 54), si
+  // una queda desincronizada uno vería un rango en su pantalla y otro en el
+  // ranking de sus amigos. Esto lo caza: falla si difieren en CUALQUIER día.
   difieren = [];
-  for (let racha = 0; racha <= 100; racha++) {
+  for (let racha = 0; racha <= 200; racha++) {
     const r = await db.query('select rango_de_racha($1)::int as v', [racha]);
     if (r.rows[0].v !== numeroDeRango(racha)) {
       difieren.push(`racha ${racha}: sql ${r.rows[0].v} vs cliente ${numeroDeRango(racha)}`);
     }
   }
-  chequear('rango_de_racha y numeroDeRango coinciden de 0 a 100', difieren, []);
+  chequear('rango_de_racha y numeroDeRango coinciden del 0 al 200', difieren, []);
 
-  // ---- planeta del día ----
+  // ---- planeta del día: base vs cliente, día por día del 0 al 200 ----
   difieren = [];
-  for (let racha = 25; racha <= 45; racha++) {
+  for (let racha = 0; racha <= 200; racha++) {
     const r = await db.query('select planeta_de_dia($1) as v', [racha]);
     const sql = r.rows[0].v ?? null;
     if (sql !== planetaDeDia(racha)) {
       difieren.push(`racha ${racha}: sql ${sql} vs cliente ${planetaDeDia(racha)}`);
     }
   }
-  chequear('planeta_de_dia y planetaDeDia coinciden, nombre por nombre', difieren, []);
+  chequear('planeta_de_dia y planetaDeDia coinciden del 0 al 200', difieren, []);
 
   // Tercera copia de los nombres: las claves de PLANETAS_CFG en el motor. Si
   // alguien renombra un planeta, el motor no encuentra su config y dibuja otra
@@ -4833,10 +4846,10 @@ console.log('\n67. La atmosfera: el velo que se abre con el rango');
   // Es exactamente el caso que las capturas no pueden ver: no hay error, no
   // hay excepcion, solo un numero mal.
 
-  // El velo se ABRE con el rango: mas rango, menos velo.
-  const velos = [1, 2, 3, 4, 5, 6, 7, 8].map(veloDeRango);
+  // El velo se ABRE con el rango: mas rango, menos velo. Siete rangos (mig. 54).
+  const velos = [1, 2, 3, 4, 5, 6, 7].map(veloDeRango);
   chequear('el rango 1 es el mas cerrado', velos[0], 0.58);
-  chequear('y el 8 el mas abierto', velos[7], 0.38);
+  chequear('y el 7 el mas abierto', velos[6], 0.38);
   let baja = true;
   for (let i = 1; i < velos.length; i++) if (velos[i] >= velos[i - 1]) baja = false;
   chequear('y no hay ningun escalon al reves', baja, true);
@@ -4844,7 +4857,7 @@ console.log('\n67. La atmosfera: el velo que se abre con el rango');
   // Fuera de rango NO explota ni devuelve cualquier cosa: se acota. Un rango 0
   // —o un 99 de una version futura— tiene que dar un velo dibujable.
   chequear('un rango 0 se acota al 1', veloDeRango(0), velos[0]);
-  chequear('un rango 99 se acota al 8', veloDeRango(99), velos[7]);
+  chequear('un rango 99 se acota al 7', veloDeRango(99), velos[6]);
   chequear('y un rango roto tambien', veloDeRango(NaN), velos[0]);
 
   // NUNCA transparente y nunca opaco: con velo 0 el texto se pierde contra el
@@ -4858,16 +4871,17 @@ console.log('\n67. La atmosfera: el velo que se abre con el rango');
   chequear('quedarse igual no es subir', msDeTransicion(4, 4), MS_CERRAR);
   chequear('y cerrar tarda mas que abrir', MS_CERRAR > MS_ABRIR, true);
 
-  // El presagio: los ultimos dias antes de subir.
-  chequear('faltan 10 desde cero', faltanParaSubir(0), 10);
-  chequear('faltan 3 en el dia 7', faltanParaSubir(7), 3);
-  chequear('en el 9 falta uno', faltanParaSubir(9), 1);
-  chequear('despues del ultimo rango no falta nada', faltanParaSubir(80), null);
-  chequear('no hay presagio a mitad de rango', hayPresagio(5), false);
-  chequear('si en los ultimos tres dias', [7, 8, 9].map(hayPresagio), [true, true, true]);
+  // El presagio: los ultimos dias antes de subir. Umbrales nuevos: Polvo termina
+  // en 5 (sube a Asteroide en 6).
+  chequear('faltan 6 desde cero', faltanParaSubir(0), 6);
+  chequear('faltan 3 en el dia 3', faltanParaSubir(3), 3);
+  chequear('en el 5 falta uno', faltanParaSubir(5), 1);
+  chequear('despues del ultimo rango no falta nada', faltanParaSubir(110), null);
+  chequear('no hay presagio a mitad de rango', hayPresagio(20), false);
+  chequear('si en los ultimos tres dias', [3, 4, 5].map(hayPresagio), [true, true, true]);
   // Y NO en el dia exacto en que subis: ahi ya no es un presagio, es el rango.
-  chequear('y no el dia que subis', hayPresagio(10), false);
-  chequear('ni en el ultimo rango', hayPresagio(85), false);
+  chequear('y no el dia que subis', hayPresagio(6), false);
+  chequear('ni en el ultimo rango', hayPresagio(110), false);
 }
 console.log('\n68. La subida de rango: formas, fases y que entre en la pantalla');
 {
@@ -7186,22 +7200,24 @@ console.log('\n103. Rangos y descansos: lo que se ve en Inicio y en el calendari
   const G = await import('../nucleo/rangos.ts');
   const D = await import('../nucleo/descansos.ts');
 
-  // ---- rangos ----
-  chequear('los bordes de cada rango', [0, 9, 10, 19, 20, 69, 70, 71, 500].map((r) => G.rangoDeRacha(r).n), [1, 1, 2, 2, 3, 7, 8, 8, 8]);
-  chequear('cada rango arranca diez dias despues del anterior', G.RANGOS.map((r) => r.desde), [0, 10, 20, 30, 40, 50, 60, 70]);
+  // ---- rangos (migración 54: siete rangos, duraciones crecientes) ----
+  // Polvo 1-5 · Asteroide 6-15 · Luna 16-30 · Planeta 31-50 · Sol 51-75 ·
+  // Galaxia 76-105 · Agujero negro 106+.
+  chequear('los bordes de cada rango', [0, 5, 6, 15, 16, 30, 31, 50, 51, 75, 76, 105, 106, 500].map((r) => G.rangoDeRacha(r).n), [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7]);
+  chequear('los umbrales de cada rango', G.RANGOS.map((r) => r.desde), [0, 6, 16, 31, 51, 76, 106]);
   chequear('el nombre sale del mismo numero que la base', G.rangoDeRacha(34).nombre, 'Planeta');
   const distintos = [];
-  for (let r = 0; r <= 100; r++) {
+  for (let r = 0; r <= 200; r++) {
     const sql = (await db.query('select rango_de_racha($1) as n, planeta_de_dia($1) as p', [r])).rows[0];
     if (G.rangoDeRacha(r).n !== sql.n) distintos.push(`rango ${r}`);
     if (G.planetaDeDia(r) !== sql.p) distintos.push(`planeta ${r}: ${G.planetaDeDia(r)} vs ${sql.p}`);
   }
-  chequear('rango y planeta coinciden con la base de 0 a 100', distintos, []);
-  chequear('el planeta es solo del 30 al 39', [G.planetaDeDia(29), G.planetaDeDia(30), G.planetaDeDia(39), G.planetaDeDia(40)], [null, 'Ceres', 'Júpiter', null]);
-  chequear('el siguiente del 69 es el agujero negro', G.siguienteRango(69)?.nombre, 'Agujero negro');
-  chequear('y del agujero negro no hay siguiente', G.siguienteRango(70), null);
-  chequear('la barra: vacia al entrar, llena al final', [G.progresoEnRango(10), G.progresoEnRango(15), G.progresoEnRango(19)], [0, 0.5, 0.9]);
-  chequear('en el ultimo rango la barra queda llena', [G.progresoEnRango(70), G.progresoEnRango(999)], [1, 1]);
+  chequear('rango y planeta coinciden con la base de 0 a 200', distintos, []);
+  chequear('el planeta es solo del 31 al 50', [G.planetaDeDia(30), G.planetaDeDia(31), G.planetaDeDia(50), G.planetaDeDia(51)], [null, 'Ceres', 'Saturno', null]);
+  chequear('el siguiente de un dia de galaxia es el agujero negro', G.siguienteRango(100)?.nombre, 'Agujero negro');
+  chequear('y del agujero negro no hay siguiente', G.siguienteRango(106), null);
+  chequear('la barra: vacia al entrar, llena al final', [G.progresoEnRango(6), G.progresoEnRango(11), G.progresoEnRango(15)], [0, 0.5, 0.9]);
+  chequear('en el ultimo rango la barra queda llena', [G.progresoEnRango(106), G.progresoEnRango(999)], [1, 1]);
   // Lo que un dato roto no puede hacer: una barra negativa o una pantalla sin rango.
   chequear('una racha negativa no da una barra negativa', G.progresoEnRango(-5), 0);
   chequear('una racha vacia no deja a Inicio sin rango', [G.rangoDeRacha(NaN)?.n, G.siguienteRango(NaN)?.n, G.progresoEnRango(NaN)], [1, 2, 0]);
@@ -7267,9 +7283,13 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   // Misma idea que `nucleo/subida.ts`.
   const B = await import('../src/lib/bienvenida.ts');
 
+  // La copia de los umbrales en bienvenida (que no puede importar `@nucleo`) no
+  // puede derivar de la fuente en reglas.ts.
+  chequear('bienvenida usa los mismos umbrales que reglas', [...B.DESDE_RANGO], [...DESDE_RANGO]);
+
   // ---- los tramos aceleran, y ninguno se vuelve un parpadeo ----
   const tramos = B.duracionesDeTramos();
-  chequear('siete tramos para ocho objetos', tramos.length, 7);
+  chequear('seis tramos para siete objetos', tramos.length, 6);
   chequear('ninguno es mas largo que el anterior', tramos.every((d, i) => i === 0 || d <= tramos[i - 1]), true);
   chequear('y el final ya toca el minimo', tramos.at(-1), B.TRAMO_MINIMO_S);
   chequear('ninguno baja del minimo', tramos.every((d) => d >= B.TRAMO_MINIMO_S), true);
@@ -7295,7 +7315,7 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   chequear('antes de empezar se ve el polvo, en cero', [B.cuadroEn(0).desde, B.cuadroEn(0).racha], [1, 0]);
   chequear('un tiempo roto es el principio', B.cuadroEn(NaN).racha, 0);
   const { morfeo, quieto, total } = B.hitos();
-  chequear('al final del morfeo esta el agujero negro con 70 dias', [B.cuadroEn(morfeo - 0.01).hasta, B.cuadroEn(morfeo).racha], [8, 70]);
+  chequear('al final del morfeo esta el agujero negro con 106 dias', [B.cuadroEn(morfeo - 0.01).hasta, B.cuadroEn(morfeo).racha], [7, 106]);
   // LA RACHA NO FRENA (15/9): desde ahi se dispara y solo la detiene el trago.
   chequear('despues del morfeo el numero se dispara', [B.cuadroEn(morfeo + 0.5).racha > 150, B.cuadroEn(morfeo + 1.5).racha > 900], [true, true]);
   chequear('y acelera: cada medio segundo sube mas que el anterior',
@@ -7323,7 +7343,7 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   // ya tiene la pantalla de sesion.
   chequear('las estrellas vuelven despues del trago', [B.cuadroEn(B.hitos().camara - 0.1).estrellas, B.cuadroEn(total).estrellas], [0, 1]);
   chequear('recien ahi termina', [B.cuadroEn(total - 0.1).fin, B.cuadroEn(total).fin], [false, true]);
-  chequear('el objeto se queda quieto mientras el numero se dispara', [B.cuadroEn(morfeo + 0.1).hasta, B.cuadroEn(morfeo + 0.9).hasta, B.cuadroEn(morfeo + 0.9).mezcla], [8, 8, 1]);
+  chequear('el objeto se queda quieto mientras el numero se dispara', [B.cuadroEn(morfeo + 0.1).hasta, B.cuadroEn(morfeo + 0.9).hasta, B.cuadroEn(morfeo + 0.9).mezcla], [7, 7, 1]);
 
   // El numero NUNCA retrocede y pasa por los ocho objetos, cuadro a cuadro.
   const vistos = new Set();
@@ -7339,13 +7359,13 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
     vistos.add(c.hasta);
   }
   chequear('la racha nunca baja y la mezcla nunca se sale', roto, null);
-  chequear('se ven los ocho objetos', [...vistos].sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8]);
-  chequear('y termina disparada, no en 70', ultima > 1000, true);
+  chequear('se ven los siete objetos', [...vistos].sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7]);
+  chequear('y termina disparada, no en 106', ultima > 1000, true);
 
   // Cada objeto tiene que estar EN PANTALLA lo suficiente para verse: se mide
   // cuantos cuadros de 16 ms lo tienen como destino con la mezcla ya avanzada.
   const cortos = [];
-  for (const r of [2, 3, 4, 5, 6, 7, 8]) {
+  for (const r of [2, 3, 4, 5, 6, 7]) {
     let ms = 0;
     for (let x = 0; x <= total * 1000; x += 16) {
       const c = B.cuadroEn(x / 1000);
@@ -7357,7 +7377,7 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
 
   // ---- con "reducir movimiento" ----
   const q0 = B.cuadroQuietoEn(0);
-  chequear('sin movimiento se ve el ultimo objeto ya formado', [q0.desde, q0.hasta, q0.racha, q0.trago, q0.estrellas], [8, 8, 70, 0, 1]);
+  chequear('sin movimiento se ve el ultimo objeto ya formado', [q0.desde, q0.hasta, q0.racha, q0.trago, q0.estrellas], [7, 7, 106, 0, 1]);
   chequear('y en un segundo y medio ya esta en negro', [B.cuadroQuietoEn(B.DURACION_QUIETA_S).trago, B.cuadroQuietoEn(B.DURACION_QUIETA_S).fin], [1, true]);
   chequear('la version quieta dura mucho menos que la otra', B.DURACION_QUIETA_S < B.DURACION_S / 4, true);
 
@@ -7457,37 +7477,18 @@ console.log('\n106. Cada objeto se reconoce por su forma');
     chequear('y el disco sigue estando', p.filter((q) => radio(q) < 0.4).length > 400, true);
   }
 
-  // ---- 6. sistema: tres planetas en sus orbitas ----
+  // ---- 6. galaxia: nucleo y brazos (era el 7; el "Sistema" se sacó) ----
   {
     const p = puntos(6);
-    const centro = p.filter((q) => radio(q) < 0.2).length;
-    chequear('sistema: hay un sol en el medio', centro > 200, true);
-    // Los planetas son grumos: en el angulo de cada uno hay mucha mas densidad
-    // que en el resto de su orbita.
-    const grumos = [
-      { a: 0.6, r: 0.4 },
-      { a: 2.7, r: 0.62 },
-      { a: 4.5, r: 0.84 },
-    ].map(({ a, r }) => {
-      const cx = Math.cos(a) * r;
-      const cy = Math.sin(a) * r * 0.42;
-      return p.filter((q) => Math.hypot(q.x - cx, q.y - cy) < 0.09).length;
-    });
-    chequear('y tres planetas, uno por orbita', grumos.every((n) => n > 20), true);
-  }
-
-  // ---- 7. galaxia: nucleo y brazos ----
-  {
-    const p = puntos(7);
     const nucleo = p.filter((q) => radio(q) < 0.2).length;
     const afuera = p.filter((q) => radio(q) > 0.45).length;
     chequear('galaxia: el nucleo concentra la luz', nucleo > afuera, true);
     chequear('y los brazos llegan lejos', afuera > 60, true);
   }
 
-  // ---- 8. agujero negro: el hueco ----
+  // ---- 7. agujero negro: el hueco (era el 8) ----
   {
-    const p = puntos(8);
+    const p = puntos(7);
     // El disco se ve casi de canto: el hueco se mide sobre su eje largo, no
     // con el radio plano —ahi las partículas de los extremos caen cerca del
     // centro y parecen taparlo—.
@@ -8776,7 +8777,7 @@ console.log('\n125. Lo que se dibuja con SVG se escribe una vez: las dos apps lo
   // Se lee como texto: importarlo desde acá no resuelve el alias `@nucleo/`.
   const insignias125 = leer125(unir125(R125, 'compartido', 'insignias.ts'), 'utf8');
   const rangos125 = [...insignias125.matchAll(/^ {2}(\d): \[/gm)].map((m) => Number(m[1]));
-  chequear('hay una insignia por rango', rangos125, [1, 2, 3, 4, 5, 6, 7, 8]);
+  chequear('hay una insignia por rango', rangos125, [1, 2, 3, 4, 5, 6, 7]);
 
   // Las elipses del fondo: fuera del CSS, y las dos apps de la misma fuente.
   const css = leer125(unir125(R125, 'src', 'app', 'globals.css'), 'utf8');

@@ -40,9 +40,8 @@ const TIPOS: Record<number, string> = {
   3: 'luna',
   4: 'saturno',
   5: 'sol',
-  6: 'sistema',
-  7: 'galaxia',
-  8: 'agujero',
+  6: 'galaxia', // el "Sistema" se sacó en la migración 54
+  7: 'agujero',
 };
 
 export default function Objetos({ quieto = false }: { quieto?: boolean }) {

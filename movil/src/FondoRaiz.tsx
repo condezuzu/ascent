@@ -17,7 +17,7 @@ import type { Montaje, OpcionesFondo } from '@compartido/motor/escena';
 import { eventos } from '@compartido/eventos';
 import { PULSO } from '@nucleo/pulso';
 import { veloDeRango } from '@nucleo/atmosfera';
-import { FONDO_BASE, FONDO_RANGO_8, paletaDe } from '@nucleo/paletas';
+import { FONDO_BASE, FONDO_RANGO_7, paletaDe } from '@nucleo/paletas';
 import { ELIPSES_BASE, ELIPSES_VELO } from '@compartido/fondoDegradados';
 import ElipsesDeLuz from './ElipsesDeLuz';
 import { CAMBIO_FONDO, cargarElMotor, esPreferenciaFondo, type PreferenciaFondo } from '@nucleo/fondo';
@@ -526,7 +526,7 @@ export default function FondoRaiz() {
   const op = pedido ?? ultimoPedido.current;
   // Hasta el primer pedido no se crea nada: ni el contexto ni three.
   if (!op) return null;
-  const fondo = op.rango === 8 ? FONDO_RANGO_8 : FONDO_BASE;
+  const fondo = op.rango === 7 ? FONDO_RANGO_7 : FONDO_BASE;
   const paleta = paletaDe(op.rango, op.planeta);
   // Prioridad igual que en la web —lo que pidió la pantalla, después lo que
   // dice el rango, después el valor fijo—, menos el velo animado entre visitas.

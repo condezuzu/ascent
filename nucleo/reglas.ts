@@ -20,41 +20,50 @@
 // ---------------------------------------------------------------
 
 /**
- * El NÚMERO de rango, que es lo que guarda `profiles.rango_actual`. Cada
- * rango dura diez días y en el 8 se queda. La tabla con los nombres vive en
- * `rangos.ts` y sale de acá, para que el nombre no pueda contradecir al
- * número que tiene guardado la base.
+ * LOS UMBRALES DE RANGO, EN UN SOLO LUGAR (28/9). El día DESDE el que empieza
+ * cada rango. Antes cada rango duraba diez días parejos (`/10`); ahora crecen:
+ *
+ *   Polvo 1-5 (5) · Asteroide 6-15 (10) · Luna 16-30 (15) · Planeta 31-50 (20)
+ *   · Sol 51-75 (25) · Galaxia 76-105 (30) · Agujero negro 106+.
+ *
+ * Son SIETE rangos: el "Sistema" (el viejo 6) se sacó. La base tiene su propia
+ * copia de esta tabla en `rango_de_racha`; no se pueden compartir —una es SQL y
+ * la otra corre offline en el teléfono— así que `test:db` las compara día por
+ * día del 1 al 200 y falla si difieren. Este array es la fuente: el de nombres
+ * (`rangos.ts`) y la base salen de acá.
+ */
+export const DESDE_RANGO = [0, 6, 16, 31, 51, 76, 106] as const;
+
+/**
+ * El NÚMERO de rango, que es lo que guarda `profiles.rango_actual`: el rango
+ * más alto cuyo umbral ya alcanzó la racha. La tabla con los nombres vive en
+ * `rangos.ts` y sale de acá, para que el nombre no pueda contradecir al número
+ * que tiene guardado la base.
  */
 export function numeroDeRango(racha: number): number {
   // Sin número (un perfil a medio cargar), rango 1: un NaN acá dejaba a
   // `rangoDeRacha` sin rango y a Inicio sin pantalla. En la base no pasa.
   if (!Number.isFinite(racha)) return 1;
-  return Math.min(8, Math.floor(Math.max(0, racha) / 10) + 1);
+  const r = Math.max(0, Math.floor(racha));
+  let n = 1;
+  for (let i = 0; i < DESDE_RANGO.length; i++) if (r >= DESDE_RANGO[i]) n = i + 1;
+  return n;
 }
 
 // ---------------------------------------------------------------
 // Planetas — espejo de public.planeta_de_dia(int)
 // ---------------------------------------------------------------
 
-// Rango 4: diez días exactos, un planeta por día, de menor a mayor.
-// El planeta ES la barra de progreso: si ves Saturno, estás por subir.
-// El orden importa: la base guarda el NOMBRE en logs.planeta_del_dia, así que
-// cambiar uno de lugar reescribiría el significado de los días ya guardados.
-export const PLANETAS = [
-  'Ceres',
-  'Plutón',
-  'Mercurio',
-  'Marte',
-  'Venus',
-  'Tierra',
-  'Neptuno',
-  'Urano',
-  'Saturno',
-  'Júpiter',
-] as const;
+// Rango 4 (Planeta): días 31-50, CUATRO días por planeta, de menor a mayor.
+// El planeta ES la barra de progreso dentro del rango: si ves Saturno, estás
+// por subir a Sol. El orden importa: la base guarda el NOMBRE en
+// logs.planeta_del_dia, así que cambiar uno de lugar reescribiría el
+// significado de los días ya guardados.
+//   Ceres 31-34 · Mercurio 35-38 · Marte 39-42 · Venus 43-46 · Saturno 47-50.
+export const PLANETAS = ['Ceres', 'Mercurio', 'Marte', 'Venus', 'Saturno'] as const;
 
 export function planetaDeDia(racha: number): string | null {
-  if (racha >= 30 && racha <= 39) return PLANETAS[racha - 30];
+  if (racha >= 31 && racha <= 50) return PLANETAS[Math.floor((racha - 31) / 4)];
   return null;
 }
 

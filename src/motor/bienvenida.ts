@@ -221,7 +221,7 @@ export function animarEntrada(
 
     // El horizonte aparece con el agujero negro y se va con el trago. Su
     // tamaño acompaña al objeto, o dejaría de tapar lo que tiene que tapar.
-    const esAgujero = (c.hasta === 8 ? m : 0) + (c.desde === 8 ? 1 - m : 0);
+    const esAgujero = (c.hasta === 7 ? m : 0) + (c.desde === 7 ? 1 - m : 0);
     const matHorizonte = horizonte.material as THREE.MeshBasicMaterial;
     matHorizonte.opacity = esAgujero * (1 - c.trago);
     horizonte.visible = matHorizonte.opacity > 0.01;

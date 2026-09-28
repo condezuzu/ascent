@@ -731,7 +731,8 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     materiales.push(polvo.material as THREE.ShaderMaterial);
     grupo.add(polvo);
     grupo.scale.setScalar(0.95);
-  } else if (op.rango === 7) {
+  } else if (op.rango === 6) {
+    // Galaxia (era el 7; el "Sistema" se sacó en la migración 54).
     const amat = crearMaterialCuerpo(AURORA_CFG, !!op.apagado, 0.004);
     materiales.push(amat);
     const aurora = new THREE.Mesh(QUAD, amat);
@@ -796,47 +797,14 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
         ry: 0.30,
       });
     }
-
-    // Rango 6 (Sistema): un sol chico y muchos planetas más chicos todavía.
-    if (op.rango === 6) {
-      cuerpo.scale.setScalar(escala * 0.17);
-      const nombres = ['Mercurio', 'Venus', 'Tierra', 'Marte', 'Júpiter', 'Saturno', 'Neptuno'] as const;
-      for (let i = 0; i < nombres.length; i++) {
-        const pcfg = PLANETAS_CFG[nombres[i]];
-        // LOS PLANETAS DEL SISTEMA SE HABÍAN QUEDADO AFUERA DE LA CARA
-        // NOCTURNA, y por eso el rango 6 "parecía un juego viejo": el cuerpo
-        // grande y las lunas recibían `estilo` y `noche`, y estos siete se
-        // creaban con cuatro argumentos, así que salían iluminados de día,
-        // con la textura y las bandas a full. Saturno con diez bandas al 0,5
-        // de contraste, del tamaño de una moneda, es la cebra que se reportó.
-        //
-        // Con `noche` puestos son lo que pide el norte del motor: cuerpos
-        // oscuros con el filo encendido. A este tamaño además es lo único que
-        // se puede leer — la textura de un planeta de 40 píxeles no se ve, se
-        // ensucia.
-        const pmat = crearMaterialCuerpo(pcfg, !!op.apagado, 0.008, !!op.reposo, 1, op.estilo, nocheDe(pcfg));
-        materiales.push(pmat);
-        const planeta = new THREE.Mesh(QUAD, pmat);
-        planeta.scale.setScalar(escala * (0.045 + i * 0.011));
-        grupo.add(planeta);
-        orbitantes.push({
-          obj: planeta,
-          s: escala * (0.045 + i * 0.011),
-          r: escala * (0.26 + i * 0.155),
-          v: 0.30 / (1 + i * 0.55),
-          f: i * 1.35,
-          ry: 0.34,
-        });
-      }
-    }
   }
-  // LA LENTE, si el cuerpo es el agujero negro.
+  // LA LENTE, si el cuerpo es el agujero negro (era el 8).
   //
   // El 0.46 es el radio del horizonte DENTRO del quad, y tiene que seguir al
   // `const float R` del fragmento del cuerpo: el quad mide 2 de lado y `vP` va
   // de -1 a 1, así que en mundo mide lo mismo multiplicado por la escala. Si
   // alguna vez se toca allá, se toca acá.
-  const lenteR = op.rango === 8 && !op.soloEstrellas ? 0.46 : 0;
+  const lenteR = op.rango === 7 && !op.soloEstrellas ? 0.46 : 0;
   const uEstrellas = (estrellas.material as THREE.ShaderMaterial).uniforms;
   uEstrellas.uLenteR.value = lenteR;
 

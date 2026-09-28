@@ -172,42 +172,8 @@ export function formaDeRango(rango: number, azar: () => number = Math.random): F
       }
     }
   } else if (rango === 6) {
-    // SISTEMA: un sol chico y TRES planetas en sus órbitas. Antes eran cinco
-    // anillos de puntos sueltos y no se veía nada: la órbita vacía no se lee,
-    // lo que se lee es el planeta que la recorre.
-    const ORBITAS = [0.4, 0.62, 0.84];
-    const EN_EL_CENTRO = Math.round(N * 0.3);
-    const PLANETA = Math.round(N * 0.09); // partículas por planeta
-    for (let i = 0; i < N; i++) {
-      if (i < EN_EL_CENTRO) {
-        const e = enLaEsfera();
-        const r = 0.16 * (0.85 + azar() * 0.2);
-        poner(i, e.x * r, e.y * r, e.z * r * 0.4);
-        continue;
-      }
-      const k = (i - EN_EL_CENTRO) % 3;
-      const radio = ORBITAS[k];
-      const resto = i - EN_EL_CENTRO;
-      if (resto < PLANETA * 3) {
-        // los planetas: un grumo denso sobre cada órbita
-        const anguloPlaneta = [0.6, 2.7, 4.5][k];
-        const e = enLaEsfera();
-        const rr = (0.07 - k * 0.012) * (0.8 + azar() * 0.4);
-        poner(
-          i,
-          Math.cos(anguloPlaneta) * radio + e.x * rr,
-          Math.sin(anguloPlaneta) * radio * 0.42 + e.y * rr,
-          e.z * rr
-        );
-      } else {
-        // la órbita: una línea fina de polvo, para que se vea el camino
-        const a = azar() * Math.PI * 2;
-        const j = (azar() - 0.5) * 0.012;
-        poner(i, Math.cos(a) * (radio + j), Math.sin(a) * (radio + j) * 0.42, 0);
-      }
-    }
-  } else if (rango === 7) {
-    // GALAXIA: bulbo denso, DOS brazos anchos y un halo. Lo que la hacía sosa
+    // GALAXIA (era el 7; el "Sistema" se sacó en la migración 54): bulbo denso,
+    // DOS brazos anchos y un halo. Lo que la hacía sosa
     // no era la espiral sino la falta de contraste: brazos de una partícula de
     // ancho y un centro igual de tenue que el resto. Ahora el bulbo se lleva
     // un tercio de las partículas y los brazos tienen grosor —se abren y se
@@ -237,8 +203,8 @@ export function formaDeRango(rango: number, azar: () => number = Math.random): F
       }
     }
   } else {
-    // AGUJERO NEGRO. Es el último y el que se espera: tiene que ser el mejor
-    // de los ocho.
+    // AGUJERO NEGRO (rango 7, el último). Es el que se espera: tiene que ser el
+    // mejor de los siete.
     //
     // LO QUE ESTABA MAL (15/9): "parece un ojo, el anillo se ve transparente,
     // no hay un adelante y un atrás". El disco era PLANO (z = 0), así que no
@@ -433,7 +399,7 @@ export function flashEn(p: number, ignicion: boolean): number {
 /** El giro. Galaxia y agujero negro giran más: son lo que gira. */
 export function rotacionEn(segundos: number, rangoDespues: number): number {
   if (!Number.isFinite(segundos)) return 0;
-  return segundos * (rangoDespues >= 7 ? 0.25 : 0.08);
+  return segundos * (rangoDespues >= 6 ? 0.25 : 0.08);
 }
 
 /**
