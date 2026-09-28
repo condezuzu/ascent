@@ -386,6 +386,12 @@ float alturaRoca(vec3 s) {
 // superficie. Si crecen mucho se comen la pantalla y tapan al sol.
 float protuberancias(vec2 p, float d) {
   float total = 0.0;
+  // LEJOS DEL LIMBO NO HAY PROTUBERANCIAS (28/9): los arcos viven pegados al
+  // borde (hasta ~R+0.08) y se desvanecen enseguida. Más allá de R+0.18 el
+  // aporte es < 1e-5, imperceptible. Antes el bucle entero —9 arcos— corría en
+  // CADA pixel del cuadro, esquinas transparentes incluidas. Cortar acá saca ese
+  // trabajo de casi toda la pantalla sin tocar el aspecto.
+  if (d > R + 0.18) return total;
   for (int i = 0; i < 9 + uCero; i++) {
     float fi = float(i);
     float sa = hash1(fi, 3.0);
@@ -413,6 +419,12 @@ float protuberancias(vec2 p, float d) {
     // se recorta contra el disco y se desvanece con la altura
     float fuera = smoothstep(R - 0.012, R + 0.012, d);
     float forma = exp(-pow(dl / ancho, 2.0)) * fuera;
+
+    // ESTE ARCO NO APORTA ACA (28/9): si forma es casi cero, el termino entero
+    // --forma * vida * hilo-- es casi cero pase lo que pase hilo. Calcular el
+    // fbm de los hilos (5 octavas) ahi era gastar en un aporte invisible. Con
+    // esto el fbm caro solo corre en los pocos pixeles pegados a un arco vivo.
+    if (forma < 0.001) continue;
 
     // hilos internos: el plasma no es liso
     float hilo = 0.7 + 0.45 * fbm(vec3(p * 30.0, uTime * 0.3 + fi * 3.0));
@@ -679,8 +691,16 @@ void main() {
     // La roca NO se deforma: su superficie es fija y solo gira como cuerpo
     // rígido. Cualquier ruido que dependa del tiempo acá la vuelve líquida.
 
-    vec3 warp;
-    float t = turbulento(sc * 2.0, uTurbulencia, warp);
+    // EL SOL NO USA turbulento (28/9). Su rama de abajo (MODO 1) pinta la
+    // superficie con su propia granulacion y SOBREESCRIBE superficie, asi que
+    // t y warp no los lee nadie en el Sol: calcular turbulento --tres fbm,
+    // 15 octavas por pixel adentro del disco-- era trabajo tirado. Se saltea para
+    // el Sol. Sin cambio visual: el resultado no se usaba.
+    vec3 warp = vec3(0.0);
+    float t = 0.0;
+    if (!(uModo > 0.5 && uModo < 1.5)) {
+      t = turbulento(sc * 2.0, uTurbulencia, warp);
+    }
 
     // Bandas: seno de la latitud modulado por el ruido deformado
     float banda = 0.0;

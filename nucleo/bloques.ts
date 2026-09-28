@@ -222,6 +222,25 @@ export function siguiente(e: EstadoBloques): EstadoBloques {
 }
 
 /**
+ * "TERMINAR SERIE": cerrar el bloque y volver a elegir ejercicio (28/9).
+ *
+ * Cierra el bloque actual —como `siguiente`— PERO deja el siguiente en blanco:
+ * sin ejercicio, sin peso y sin modo. Antes "terminar serie" arrancaba otro
+ * bloque con el MISMO ejercicio, y había que cambiarlo a mano cada vez, que se
+ * volvía tosco: al terminar un ejercicio, lo normal es pasar a otro.
+ *
+ * No usa `cambiarEjercicio(e, null)` porque ese no cierra nada cuando el
+ * ejercicio ya era null ("Cualquier cosa"): ahí no habría cambio de ejercicio,
+ * pero el bloque igual hay que cerrarlo. Un bloque en cero no se cierra, igual
+ * que en `siguiente`.
+ */
+export function terminarBloque(e: EstadoBloques): EstadoBloques {
+  const cerradoB = siguiente(e);
+  if (cerradoB === e) return e; // nada hecho: no se cierra un bloque vacío
+  return { ...(sinCarga(sinPeso(cerradoB)) as EstadoBloques), ejercicio: null };
+}
+
+/**
  * Cambiar de ejercicio cierra el bloque anterior: es la señal más clara que
  * hay de que ese tramo terminó, y pedir un toque extra para confirmarlo sería
  * el impuesto que hace que se deje de usar.

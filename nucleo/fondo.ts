@@ -23,6 +23,14 @@ export type PreferenciaFondo = 'auto' | 'siempre' | 'nunca';
 
 export const PREFERENCIAS: PreferenciaFondo[] = ['auto', 'siempre', 'nunca'];
 
+/**
+ * Aviso de que cambió la preferencia del fondo, para APLICARLA SIN REABRIR. El
+ * fondo se lee una vez al montar; sin esto, cambiarlo en Ajustes no se veía
+ * hasta relanzar la app, y "nunca" parecía no hacer nada. Lo emite la pantalla
+ * de Ajustes y lo escucha la raíz del fondo.
+ */
+export const CAMBIO_FONDO = 'ascent:fondo-cambio';
+
 export function esPreferenciaFondo(v: unknown): v is PreferenciaFondo {
   return typeof v === 'string' && (PREFERENCIAS as string[]).includes(v);
 }

@@ -74,6 +74,7 @@ import {
   quitarBloque,
   sembrar,
   siguiente,
+  terminarBloque,
   sumar,
   unirConGuardados,
 } from '../nucleo/bloques.ts';
@@ -3277,6 +3278,20 @@ console.log('\n48. El bloque: qué estás haciendo y cuántas te propusiste');
     const antes = b.cerrados.length;
     b = siguiente(b);
     chequear('siguiente sin nada hecho no cierra un bloque vacio', b.cerrados.length, antes);
+  }
+
+  // "Terminar serie" (28/9): cierra el bloque Y vuelve a elegir ejercicio.
+  {
+    let b = bloquesVacios('press_banca', 3);
+    b = sumar(sumar(sumar(cambiarPeso(b, 60))));
+    b = terminarBloque(b);
+    chequear('terminarBloque cierra el bloque', b.cerrados, [{ ejercicio: 'press_banca', series: 3, pesos: [60, 60, 60] }]);
+    chequear('y deja el ejercicio, el peso y el modo en blanco', [b.ejercicio, b.hechas, b.peso, b.carga], [null, 0, undefined, undefined]);
+    // Con "Cualquier cosa" (ejercicio null) igual cierra: es la diferencia con
+    // cambiarEjercicio(e, null), que ahí no haría nada.
+    let c = terminarBloque(sumar(sumar(bloquesVacios(null, 3))));
+    chequear('terminarBloque cierra aunque no haya ejercicio', [c.cerrados.length, c.ejercicio], [1, null]);
+    chequear('terminarBloque sin nada hecho no cierra vacio', terminarBloque(bloquesVacios('x', 3)).cerrados.length, 0);
   }
 
   // Cambiar de ejercicio cierra el anterior, sin pedir confirmacion.

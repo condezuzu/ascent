@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { esPreferenciaFondo, type PreferenciaFondo } from '@nucleo/fondo';
+import { CAMBIO_FONDO, esPreferenciaFondo, type PreferenciaFondo } from '@nucleo/fondo';
+import { eventos } from '@compartido/eventos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import { C } from '../colores';
@@ -41,6 +42,9 @@ export default function Fondo() {
   async function elegir(p: PreferenciaFondo) {
     setPref(p);
     await plataforma.almacenamiento.guardar(CLAVE, p);
+    // Que se vea AL INSTANTE, sin reabrir: la raíz del fondo lo escucha y
+    // re-aplica la preferencia (motor y capas del espacio).
+    eventos.emitir(CAMBIO_FONDO, p);
   }
 
   return (
@@ -69,7 +73,6 @@ export default function Fondo() {
         ))}
       </View>
       <Text style={estilos.nota}>{pref === 'auto' ? T.ajustes.fondoAutoNoSe : T.ajustes.fondoNota}</Text>
-      <Text style={estilos.nota}>{T.ajustes.fondoAlAbrir}</Text>
     </View>
   );
 }

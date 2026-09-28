@@ -34,7 +34,7 @@ import {
   sembrar,
   sinNadaContado,
   unirConGuardados,
-  siguiente,
+  terminarBloque,
   type EstadoBloques,
 } from '@nucleo/bloques';
 import { sumarSerie, restarSerie, corregirEnLista } from '@nucleo/conteo';
@@ -672,6 +672,21 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     bloquesRef.current = nc.bloques;
     setSeries(nc.series);
     setBloques(nc.bloques);
+    // GUARDAR ANTES QUE NADA, Y ANTES QUE LA CACHÉ (bug del gimnasio, 28/9).
+    //
+    // Apagar la pantalla justo después de sumar una serie la perdía. El motivo:
+    // la escritura a la cola —`subir`— era lo ÚLTIMO, después de la caché y de
+    // `marcar`, que TOCA LA RED (`versionDelEsquema`). En esa ventana el conteo
+    // estaba en la caché pero NO en la cola; iOS suspende la app a los pocos
+    // segundos de bloquear y, si la mataba ahí, la cola nunca lo recibía. Al
+    // volver, `confirmar` leía el servidor —atrasado— y con la cola vacía pisaba
+    // la caché con el número viejo. La serie desaparecía.
+    //
+    // `subir` encola `fijar_series`, que lleva el TOTAL absoluto y el id de la
+    // sesión: apenas está en la cola, la serie está a salvo —sale sola cuando
+    // vuelve la red— y `confirmar` ya no la pisa (respeta la cola no vacía). Va
+    // PRIMERO, antes de la caché y de cualquier cosa que espere a la red.
+    await subir(nc.series, nc.bloques);
     await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
     // Recién ahora el descanso, que necesita leer la duración.
     const seg =
@@ -682,7 +697,6 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // El descanso que arranca ES actividad hasta que termina: la persona está
     // entrenando mientras el temporizador anda.
     await marcar(d.fin);
-    await subir(nc.series, nc.bloques);
   }
 
   /**
@@ -698,9 +712,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     bloquesRef.current = nc.bloques;
     setSeries(nc.series);
     setBloques(nc.bloques);
-    await marcar();
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
+    // Guardar primero (ver `serieHecha`): la cola antes que la caché y que `marcar`.
     await subir(nc.series, nc.bloques);
+    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
+    await marcar();
   }
 
   /**
@@ -731,16 +746,21 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
 
   /** Cerrar el bloque y arrancar otro con el mismo ejercicio y la misma meta. */
   async function bloqueSiguiente() {
-    await marcar();
     // Desde el ref y no del closure, y `subir` con el total del ref: si justo
     // se contó una serie, esta operación no puede pisarla con datos viejos.
     const previo = bloquesRef.current;
-    const b = siguiente(previo);
+    // "Terminar serie" cierra el bloque Y vuelve a elegir ejercicio (28/9): deja
+    // el siguiente en blanco en vez de repetir el ejercicio. Ver `terminarBloque`.
+    const b = terminarBloque(previo);
     if (b === previo) return; // no había nada hecho: no se cierra un bloque vacío
     bloquesRef.current = b;
     setBloques(b);
-    await actualizarSesionCache({ bloques: b }, yo);
+    // Guardar primero (ver `serieHecha`): "terminar serie" cierra el bloque, y
+    // ese cierre tiene que quedar en la cola antes que la caché y que `marcar`,
+    // que toca la red. Apagar la pantalla justo después no puede perderlo.
     await subir(seriesRef.current, b);
+    await actualizarSesionCache({ bloques: b }, yo);
+    await marcar();
   }
 
   /** Cambiar de ejercicio cierra el bloque anterior (ver `nucleo/bloques.ts`). */
@@ -956,9 +976,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     bloquesRef.current = nc.bloques;
     setSeries(nc.series);
     setBloques(nc.bloques);
-    await marcar();
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
+    // Guardar primero (ver `serieHecha`): la cola antes que la caché y que `marcar`.
     await subir(nc.series, nc.bloques);
+    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
+    await marcar();
   }
 
   /** La meta no se sube a ningún lado: es intención, no un hecho. */

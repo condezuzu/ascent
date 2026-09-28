@@ -20,7 +20,7 @@ import { veloDeRango } from '@nucleo/atmosfera';
 import { FONDO_BASE, FONDO_RANGO_8, paletaDe } from '@nucleo/paletas';
 import { ELIPSES_BASE, ELIPSES_VELO } from '@compartido/fondoDegradados';
 import ElipsesDeLuz from './ElipsesDeLuz';
-import { cargarElMotor, esPreferenciaFondo } from '@nucleo/fondo';
+import { CAMBIO_FONDO, cargarElMotor, esPreferenciaFondo, type PreferenciaFondo } from '@nucleo/fondo';
 import { plataforma } from '@plataforma';
 import { conAlfa } from './colores';
 import { escucharFondo, type Pedido } from './pedidoDeFondo';
@@ -145,6 +145,12 @@ export default function FondoRaiz() {
   const ultimoPedido = useRef<Pedido | null>(null);
   // `null` = todavía no se sabe si hay que cargar el motor.
   const [cargar, setCargar] = useState<boolean | null>(null);
+  // La preferencia del fondo: además del motor, decide si se dibujan las capas
+  // ESTÁTICAS del espacio (estrellas, elipses, velo). En "nunca" no se dibuja
+  // nada: fondo liso. Antes "nunca" solo apagaba el motor y las estrellas
+  // seguían — por eso parecía que el botón no hacía nada (bug del 28/9).
+  const [pref, setPref] = useState<PreferenciaFondo>('auto');
+  const mostrarEspacio = pref !== 'nunca';
   const [reducir, setReducir] = useState(false);
   const opacidad = useRef(new Animated.Value(0)).current;
 
@@ -319,28 +325,50 @@ export default function FondoRaiz() {
     escena.current?.montaje.tapar(desenfoque >= TAPADO_DESDE);
   }, [desenfoque, listo, pedido]);
 
+  // LEER Y APLICAR LA PREFERENCIA. Se corre al montar y CADA VEZ que cambia en
+  // Ajustes (por el bus, `CAMBIO_FONDO`): antes se leía una sola vez y el cambio
+  // no se veía hasta reabrir. Si el aviso trae la preferencia nueva, se usa esa
+  // y no se relee del disco (la escritura puede no haber terminado).
+  const aplicarPreferencia = useCallback(async (prefNueva?: PreferenciaFondo) => {
+    const [guardada, r] = await Promise.all([
+      prefNueva ? Promise.resolve(prefNueva) : plataforma.almacenamiento.leer(CLAVE_FONDO),
+      AccessibilityInfo.isReduceMotionEnabled().catch(() => false),
+    ]);
+    const p = esPreferenciaFondo(guardada) ? guardada : 'auto';
+    setReducir(r);
+    setPref(p);
+    // `null` en "equipo flojo": en el teléfono no hay de dónde leerlo. La
+    // regla de `nucleo/fondo.ts` es que no saber NO es flojo.
+    const hayQue = cargarElMotor(p, null);
+    setCargar(hayQue);
+    // Para Diagnóstico: ver `estadoDelMotor.ts`.
+    ponerEstadoDelMotor(hayQue ? 'arrancando' : 'apagado');
+  }, []);
+
   useEffect(() => {
     let vivo = true;
-    (async () => {
-      const [pref, r] = await Promise.all([
-        plataforma.almacenamiento.leer(CLAVE_FONDO),
-        AccessibilityInfo.isReduceMotionEnabled().catch(() => false),
-      ]);
-      if (!vivo) return;
-      setReducir(r);
-      // `null` en "equipo flojo": en el teléfono no hay de dónde leerlo. La
-      // regla de `nucleo/fondo.ts` es que no saber NO es flojo.
-      const hayQue = cargarElMotor(esPreferenciaFondo(pref) ? pref : 'auto', null);
-      setCargar(hayQue);
-      // Para Diagnóstico: ver `estadoDelMotor.ts`. Acá ya se sabe si se va a
-      // intentar; si no, el motivo es la preferencia y no hay nada más que
-      // esperar.
-      ponerEstadoDelMotor(hayQue ? 'arrancando' : 'apagado');
-    })();
+    void aplicarPreferencia().catch(() => {});
+    const dejar = eventos.escuchar(CAMBIO_FONDO, (p) => {
+      if (vivo) void aplicarPreferencia(esPreferenciaFondo(p) ? p : undefined).catch(() => {});
+    });
     return () => {
       vivo = false;
+      dejar();
     };
-  }, []);
+  }, [aplicarPreferencia]);
+
+  // SOLTAR EL MOTOR CUANDO SE APAGA EN VIVO (pref "nunca" a mitad de sesión). El
+  // `GLView` se desmonta al dejar de renderizarse, pero los recursos de three
+  // (programas, texturas) hay que soltarlos a mano, igual que al desmontar la
+  // raíz. Sin esto quedarían en la GPU hasta cerrar la app.
+  useEffect(() => {
+    if (cargar === false && escena.current) {
+      escena.current.montaje.soltar();
+      escena.current = null;
+      renderer.current?.dispose();
+      renderer.current = null;
+    }
+  }, [cargar]);
 
   // El impacto de registrar el día llega por el bus, igual que en la web.
   useEffect(() => eventos.escuchar(PULSO, () => escena.current?.montaje.pulso()), []);
@@ -510,6 +538,11 @@ export default function FondoRaiz() {
       pointerEvents="none"
       onLayout={alMedir}
     >
+      {/* EN "NUNCA" NO SE DIBUJA NADA DEL ESPACIO: ni estrellas, ni motor, ni
+          velo, ni bordes. Queda el color liso de arriba. Todo lo demás va gated
+          en `mostrarEspacio`. */}
+      {mostrarEspacio && (
+      <>
       {medida && (
         <ElipsesDeLuz elipses={ELIPSES_BASE} paleta={paleta} ancho={medida.w} alto={medida.h} estrellas id="base" />
       )}
@@ -569,6 +602,8 @@ export default function FondoRaiz() {
         colors={[conAlfa(fondo, 0.8), conAlfa(fondo, 0), conAlfa(fondo, 0), conAlfa(fondo, 0.88)]}
         locations={[0, 0.26, 0.86, 1]}
       />
+      </>
+      )}
     </View>
   );
 }
