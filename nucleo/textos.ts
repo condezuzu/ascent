@@ -852,7 +852,7 @@ export const T = {
     masCortas: (n: number) => `${n} de menos de 5 min`,
     rachaDe: (dias: string) => `racha de ${dias}`,
     diaN: (n: number) => `día ${n}`,
-    laEscalera: 'La escalera',
+    laEscalera: 'Rangos',
     acaEstas: 'aquí estás',
   },
 

@@ -132,6 +132,26 @@ export function cacheTrasConfirmar(
 }
 
 /**
+ * EL CONTEO QUE `confirmar` PUEDE ESCRIBIR EN LA CACHÉ, sin pisarla hacia abajo.
+ *
+ * INVARIANTE (28/9): si hay una escritura PENDIENTE de esta sesión en la cola,
+ * el servidor está atrasado —la serie que sumaste todavía no llegó—, así que la
+ * caché NO puede bajar de lo que ya tenía. Es la misma forma del bug que perdía
+ * series: el refresco escribiendo un número más viejo que la cola. Con pendiente,
+ * gana el más alto entre la caché y el servidor; sin pendiente, manda el servidor
+ * (pudo contar en otro aparato). Es puro para poder probarlo sin app.
+ */
+export function conteoAlConfirmar(
+  cacheado: number | undefined,
+  servidor: number | undefined,
+  hayPendiente: boolean
+): number {
+  const c = cacheado ?? 0;
+  const s = servidor ?? 0;
+  return hayPendiente ? Math.max(c, s) : s;
+}
+
+/**
  * SI LA SESIÓN YA SE CERRÓ SOLA, y cómo. La misma regla que
  * `cerrar_sesiones_vencidas` en la base (migración 37), repetida acá para que
  * el teléfono no muestre como corriendo una sesión que la base ya dio por

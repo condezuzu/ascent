@@ -103,7 +103,7 @@ import {
   DURACION_MS as SALVADA_MS,
 } from '../src/lib/salvada.ts';
 import { impulsosSinVer, hastaDondeVisto, rachaSiSeDevuelve } from '../nucleo/impulsos.ts';
-import { cacheTrasConfirmar } from '../nucleo/sesiones.ts';
+import { cacheTrasConfirmar, conteoAlConfirmar } from '../nucleo/sesiones.ts';
 import {
   veloDeRango,
   msDeTransicion,
@@ -4808,6 +4808,18 @@ console.log('\n66. El contador de series no se resetea solo');
   {
     const q = cacheTrasConfirmar(null, servidor, false);
     chequear('sin cache previa, se guarda igual', q.cache, servidor);
+  }
+
+  // INVARIANTE: el refresco no puede escribir un conteo mas viejo que la cola.
+  {
+    // Con pendiente, el servidor atrasado NO baja la cache (el bug de perder series).
+    chequear('con pendiente, no baja del cache', conteoAlConfirmar(3, 2, true), 3);
+    // Con pendiente y el servidor mas alto (contaste en otro aparato), gana el alto.
+    chequear('con pendiente, si el servidor es mayor, gana el servidor', conteoAlConfirmar(3, 5, true), 5);
+    // Sin pendiente, manda el servidor aunque sea menor.
+    chequear('sin pendiente, manda el servidor', conteoAlConfirmar(3, 2, false), 2);
+    // Sin cache (undefined) no rompe.
+    chequear('sin cache previa, toma el servidor', conteoAlConfirmar(undefined, 4, true), 4);
   }
 }
 console.log('\n67. La atmosfera: el velo que se abre con el rango');

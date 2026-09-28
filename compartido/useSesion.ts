@@ -11,6 +11,7 @@ import { eventos } from '@compartido/eventos';
 import {
   desfasajeDelReloj,
   cacheTrasConfirmar,
+  conteoAlConfirmar,
   cierreSolo,
   duracionLinda,
   masReciente,
@@ -318,6 +319,16 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
           g.bloques = unirConGuardados((fila as { bloques?: unknown }).bloques, bloquesVacios(null, g.bloques.meta));
         }
       }
+      // INVARIANTE: el refresco no puede escribir un conteo más viejo que la cola.
+      // Si hay una escritura pendiente de ESTA sesión, el servidor está atrasado
+      // —la serie que sumaste todavía no subió— y ni la caché ni la pantalla
+      // pueden bajar de lo local. Vale para las DOS escrituras, la caché y el
+      // estado: antes solo el estado estaba protegido y la caché se pisaba con el
+      // número del servidor (la "carrera" que dejaba la caché en 2 con la pantalla
+      // en 3). Ver `conteoAlConfirmar`.
+      const hayPendiente = !!g.id && (await estaPendiente('fijar_series', g.id));
+      const seriesGuardado = conteoAlConfirmar(previo?.series, g.series, hayPendiente);
+      g.series = seriesGuardado;
       // Faltan si no vinieron, o si ya faltaban y no se pudieron traer (sin
       // señal): lo que la caché tenga en ese caso es solo lo de acá.
       const faltan = !!g.id && (!g.bloques || (previo?.id === g.id && previo.faltanBloques === true));
@@ -329,11 +340,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       }
       setInicio(g.inicio);
       setDesfasaje(g.desfasaje);
-      // El servidor manda, SALVO que haya toques esperando en la cola: ahí el
-      // número bueno es el del teléfono, porque el servidor todavía no se
-      // enteró. Sin esto, volver a abrir la app en el gimnasio sin señal
-      // borraba las series que acababas de contar.
-      if ((await cuantasPendientes()) === 0) setSeries(g.series ?? 0);
+      setSeries(seriesGuardado);
       setIdSesion(g.id ?? null);
       // Si la migración 24 todavía no corrió, `origen` no viene: se asume
       // manual, que es lo seguro — no cerrarla sola.
