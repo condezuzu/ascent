@@ -33,6 +33,38 @@ import { useCallback, useRef } from 'react';
  * componente (no adentro de un `.map`: los hooks no van en loops — para una
  * lista alcanza una traba y la clave decide sobre qué fila actúa).
  */
+/**
+ * La clave de una llamada. Con `clave` explícita, lo que devuelva. Sin ella, el
+ * primer argumento —el id del bloque, de la solicitud, del amigo— convertido a
+ * texto.
+ *
+ * FALLA FUERTE en desarrollo si el primer argumento NO es una identidad estable
+ * (string o número): eso pasa cuando un handler se ató como `onPress={accion}`
+ * en vez de `onPress={() => accion(id)}` y le llega el EVENTO del toque. Con el
+ * evento como clave, cada fila usaría "[object Object]" —la misma para todas— y
+ * la traba pasaría a bloquear acciones DISTINTAS en silencio (o, si fuera por
+ * referencia, a no bloquear nada). Mejor que reviente en la prueba y no en
+ * producción. En producción degrada a una clave única antes que romper.
+ *
+ * Los handlers sin argumento se atan como `() => accion()` (sin evento): ahí el
+ * primer argumento es `undefined` y la clave es la vacía, la acción es una sola.
+ */
+function derivarClave<A extends unknown[]>(clave: ((...args: A) => string) | undefined, args: A): string {
+  if (clave) return clave(...args);
+  const primero = args[0];
+  const tipo = typeof primero;
+  if (primero !== undefined && primero !== null && tipo !== 'string' && tipo !== 'number') {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        `useEnVuelo: el primer argumento no es una identidad estable (string|número), es "${tipo}". ` +
+          'Atá el handler como () => accion(id) —o () => accion() si no lleva id—, o pasá `clave`.'
+      );
+    }
+    return '';
+  }
+  return String(primero ?? '');
+}
+
 export function useEnVuelo<A extends unknown[], R>(
   fn: (...args: A) => R | Promise<R>,
   opciones: { ventanaMs?: number; clave?: (...args: A) => string } = {}
@@ -50,7 +82,7 @@ export function useEnVuelo<A extends unknown[], R>(
   // así conviven varias acciones distintas a la vez y solo choca el repetido.
   const enVuelo = useRef<Set<string>>(new Set());
   return useCallback(async (...args: A) => {
-    const k = claveRef.current ? claveRef.current(...args) : String(args[0] ?? '');
+    const k = derivarClave(claveRef.current, args);
     if (enVuelo.current.has(k)) return undefined;
     enVuelo.current.add(k);
     try {

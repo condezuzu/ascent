@@ -195,7 +195,7 @@ export default function PerfilDeAmigo() {
                 <Text style={estilos.botonTexto}>{T.social.pedidoDeAmistad}</Text>
               </View>
             ) : (
-              <Pressable style={estilos.solido} onPress={mandarPedido}>
+              <Pressable style={estilos.solido} onPress={() => mandarPedido()}>
                 <Text style={estilos.solidoTexto}>{T.social.agregar}</Text>
               </Pressable>
             )}

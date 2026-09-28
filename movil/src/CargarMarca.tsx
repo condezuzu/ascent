@@ -155,7 +155,7 @@ export default function CargarMarca({
 
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
 
-        <Pressable style={estilos.solido} onPress={guardar} disabled={guardando}>
+        <Pressable style={estilos.solido} onPress={() => guardar()} disabled={guardando}>
           <Text style={estilos.solidoTexto}>{guardando ? T.sesion.guardando : T.marca.anotar}</Text>
         </Pressable>
         <Pressable style={estilos.texto} onPress={alCerrar} disabled={guardando}>

@@ -170,7 +170,7 @@ export default function RegistrarDia({
 
       <Pressable
         style={[estilos.solido, (cargando || (yaEsta && !foto)) && estilos.apagado]}
-        onPress={confirmar}
+        onPress={() => confirmar()}
         disabled={cargando || (yaEsta && !foto)}
       >
         {cargando ? (

@@ -123,9 +123,15 @@ const RUTA_SCHEMA = join(dirname(fileURLToPath(import.meta.url)), 'schema.sql');
 let ok = 0;
 let fallos = [];
 
+// El id de un bloque cerrado (`nucleo/bloques.ts`) es una identidad EN MEMORIA,
+// no un dato: no viaja a la base y cambia en cada corrida. No se compara. Su
+// formato (`b<base36>-<base36>`, un solo guion) no choca con los uuid de la base
+// (varios guiones), así que se saca solo el id del bloque y nada más.
+const esIdDeBloque = (v) => typeof v === 'string' && /^b[0-9a-z]+-[0-9a-z]+$/.test(v);
 function chequear(nombre, real, esperado) {
-  const a = JSON.stringify(real);
-  const b = JSON.stringify(esperado);
+  const sinIdDeBloque = (k, v) => (k === 'id' && esIdDeBloque(v) ? undefined : v);
+  const a = JSON.stringify(real, sinIdDeBloque);
+  const b = JSON.stringify(esperado, sinIdDeBloque);
   if (a === b) {
     ok++;
     console.log(`  ok   ${nombre}`);

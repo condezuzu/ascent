@@ -55,7 +55,7 @@ export default function AnotarPeso({ unidad, alGuardar }: { unidad: Unidad; alGu
           value={valor}
           onChangeText={setValor}
         />
-        <Pressable style={estilos.botonFantasma} onPress={guardar} disabled={guardando}>
+        <Pressable style={estilos.botonFantasma} onPress={() => guardar()} disabled={guardando}>
           <Text style={estilos.textoBoton}>{guardando ? '…' : T.peso.anotar}</Text>
         </Pressable>
       </View>

@@ -59,7 +59,15 @@ import { cargaValida, type Carga } from './carga.ts';
  * `pesos[i]` es el peso de la serie i, en kilos; `null` si esa serie se hizo sin
  * anotar peso. La llave NO EXISTE si ninguna serie tiene peso.
  */
-export type Bloque = { ejercicio: string | null; series: number; pesos?: (number | null)[]; carga?: Carga };
+/**
+ * `id` es una IDENTIDAD EN MEMORIA del bloque cerrado, no un dato: nace al
+ * cerrarse el bloque y sirve para tocarlo por identidad y no por índice. El
+ * índice se corre cuando se quita un bloque, y quitar por índice —con la lista
+ * cambiando debajo entre "✕" y "Sí"— borra el bloque equivocado (bug A6). No
+ * viaja a la base (`paraGuardar` lo saca): el bloque tampoco persiste con id, y
+ * al volver de la base se le asigna uno nuevo (`unirConGuardados`).
+ */
+export type Bloque = { id?: string; ejercicio: string | null; series: number; pesos?: (number | null)[]; carga?: Carga };
 
 export type EstadoBloques = {
   /** Los que ya se cerraron, en orden. */
@@ -124,10 +132,25 @@ function sinPeso<T extends { peso?: number }>(obj: T): Omit<T, 'peso'> {
  * nada que interpretar, y guardarla sería una llave nueva para quien no anota
  * pesos (regla 4).
  */
-function cerrado(ejercicio: string | null, series: number, pesos: (number | null)[], carga: unknown): Bloque {
+/**
+ * UN ID DE BLOQUE, en memoria y para este proceso. No se guarda ni se compara
+ * entre aparatos: solo distingue un bloque cerrado de sus vecinos mientras la
+ * sesión está viva, para poder quitarlo por identidad y no por índice.
+ */
+let contadorDeBloque = 0;
+function nuevoIdBloque(): string {
+  contadorDeBloque += 1;
+  return `b${Date.now().toString(36)}-${contadorDeBloque.toString(36)}`;
+}
+
+// `id` se agrega SOLO si se pasa: los que nacen (al cerrarse) o vuelven de la
+// base (al hidratarse) llevan uno; `paraGuardar` no lo pasa, así lo que viaja a
+// la base queda igual que siempre (regla 4: sin llaves de más).
+function cerrado(ejercicio: string | null, series: number, pesos: (number | null)[], carga: unknown, id?: string): Bloque {
   const b = conPesos({ ejercicio, series } as Bloque, pesos);
   const c = cargaValida(carga);
-  return b.pesos && c ? { ...b, carga: c } : b;
+  const conCarga = b.pesos && c ? { ...b, carga: c } : b;
+  return id ? { ...conCarga, id } : conCarga;
 }
 
 function sinCarga<T extends { carga?: Carga }>(obj: T): Omit<T, 'carga'> {
@@ -187,7 +210,8 @@ export function cambiarPeso(e: EstadoBloques, kg: unknown): EstadoBloques {
  */
 export function siguiente(e: EstadoBloques): EstadoBloques {
   if (e.hechas === 0) return e;
-  const b = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga);
+  // NACE con id: es un bloque cerrado nuevo, y desde acá se lo toca por identidad.
+  const b = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga, nuevoIdBloque());
   // El peso vigente SE QUEDA, y el modo también: el bloque que sigue es del
   // mismo ejercicio, y lo más probable después de tres series con 60 son otras
   // tres con 60, con lo mismo en la mano.
@@ -339,7 +363,9 @@ export function unirConGuardados(guardados: unknown, actual: EstadoBloques): Est
         Number.isInteger((b as Bloque).series) &&
         (b as Bloque).series > 0
     )
-    .map((b) => cerrado(b.ejercicio, Math.min(999, b.series), pesosDe(b.pesos, b.series), b.carga));
+    // Vuelven de la base SIN id (nunca viajó): se les asigna uno nuevo acá, para
+    // que se los pueda quitar por identidad como a cualquier otro.
+    .map((b) => cerrado(b.ejercicio, Math.min(999, b.series), pesosDe(b.pesos, b.series), b.carga, b.id ?? nuevoIdBloque()));
   if (lista.length === 0) return actual;
   if (actual.hechas > 0 || actual.cerrados.length > 0) {
     return { ...actual, cerrados: [...lista, ...actual.cerrados].slice(-TOPE_BLOQUES) };
@@ -398,7 +424,7 @@ export function corregirPeso(
   pesos[serie] = pesoValido(kg);
   return {
     ...e,
-    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, x.series, pesos, x.carga) : x)),
+    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, x.series, pesos, x.carga, x.id) : x)),
   };
 }
 
@@ -431,7 +457,7 @@ export function corregirEjercicio(
   const carga = cargaValida(b.carga) ?? cargaValida(cargaQueSeVeia);
   return {
     ...e,
-    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(id, x.series, pesosDe(x.pesos, x.series), carga) : x)),
+    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(id, x.series, pesosDe(x.pesos, x.series), carga, x.id) : x)),
   };
 }
 
@@ -464,7 +490,7 @@ export function corregirBloque(e: EstadoBloques, indice: number, delta: number):
   return {
     estado: {
       ...e,
-      cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, nuevas, pesos, x.carga) : x)),
+      cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, nuevas, pesos, x.carga, x.id) : x)),
     },
     cambioEnTotal: nuevas - b.series,
   };

@@ -47,13 +47,30 @@ export default function ListaDeBloques({
   alTocar: (indice: number, delta: number | 'quitar') => void;
   alCerrar: () => void;
 }) {
-  const [porQuitar, setPorQuitar] = useState<number | null>(null);
-  // Quitar con traba: sin esto, un doble-tap en "Sí" quitaba el bloque y después
-  // un vecino, porque la lista ya se había corrido y el índice apuntaba a otro.
-  const quitar = useEnVuelo((i: number) => {
-    alTocar(i, 'quitar');
-    setPorQuitar(null);
-  });
+  // El bloque que está por quitarse, POR IDENTIDAD (su id) y no por índice: el
+  // índice se corre si la lista cambia entre "✕" y "Sí". `i:<n>` es el respaldo
+  // para bloques de una caché vieja sin id.
+  const [porQuitar, setPorQuitar] = useState<string | null>(null);
+  const claveDe = (b: { id?: string }, i: number) => b.id ?? 'i:' + i;
+  // Quitar POR IDENTIDAD, con traba. Dos motivos, el mismo arreglo:
+  //  - doble-tap en "Sí": sin traba, quitaba el bloque y después un vecino,
+  //    porque la lista ya se había corrido y el índice apuntaba a otro (A6);
+  //  - la lista cambia debajo (otro cierre, una recarga de la base) entre "✕" y
+  //    "Sí": el índice guardado quedaba stale y borraba el bloque equivocado.
+  // Se resuelve el índice ACTUAL desde el id al momento de quitar; si el bloque
+  // ya no está, no se borra nada. La clave de la traba es el id, así el repetido
+  // se ignora pero quitar dos bloques distintos seguidos NO se pisa.
+  const quitar = useEnVuelo(
+    (clave: string) => {
+      const idx = clave.startsWith('i:')
+        ? Number(clave.slice(2))
+        : estado.cerrados.findIndex((b) => b.id === clave);
+      if (idx < 0 || idx >= estado.cerrados.length) return setPorQuitar(null);
+      alTocar(idx, 'quitar');
+      setPorQuitar(null);
+    },
+    { clave: (c) => c }
+  );
   // El bloque cuyo ejercicio se está corrigiendo: abre el selector.
   const [cambiando, setCambiando] = useState<number | null>(null);
   const del = (id: string | null) => ejercicios.find((e) => e.id === id);
@@ -93,7 +110,9 @@ export default function ListaDeBloques({
         <Text style={estilos.vacio}>{T.sesion.listaVacia}</Text>
       ) : (
         <>
-          {estado.cerrados.map((b, i) => (
+          {estado.cerrados.map((b, i) => {
+            const clave = claveDe(b, i);
+            return (
             <View key={i} style={estilos.fila}>
               <View style={estilos.filaArriba}>
                 <Pressable
@@ -105,10 +124,10 @@ export default function ListaDeBloques({
                 >
                   <Text style={[estilos.nombre, estilos.tocable]}>{nombre(b.ejercicio)}</Text>
                 </Pressable>
-                {porQuitar === i ? (
+                {porQuitar === clave ? (
                   <View style={estilos.controles}>
                     <Text style={estilos.pregunta}>{T.sesion.listaQuitarPregunta}</Text>
-                    <Pressable style={estilos.boton} onPress={() => quitar(i)}>
+                    <Pressable style={estilos.boton} onPress={() => quitar(clave)}>
                       <Text style={estilos.botonTexto}>{T.album.si}</Text>
                     </Pressable>
                     <Pressable style={estilos.boton} onPress={() => setPorQuitar(null)}>
@@ -124,7 +143,7 @@ export default function ListaDeBloques({
                     <Pressable style={estilos.paso} onPress={() => alTocar(i, 1)} accessibilityLabel={T.inicio.sumarSerie}>
                       <Text style={estilos.pasoTexto}>+</Text>
                     </Pressable>
-                    <Pressable style={estilos.paso} onPress={() => setPorQuitar(i)} accessibilityLabel={T.sesion.listaQuitar}>
+                    <Pressable style={estilos.paso} onPress={() => setPorQuitar(clave)} accessibilityLabel={T.sesion.listaQuitar}>
                       <Text style={estilos.quitar}>✕</Text>
                     </Pressable>
                   </View>
@@ -132,7 +151,8 @@ export default function ListaDeBloques({
               </View>
               {pesos(i, b.ejercicio, b.series, b.pesos, b.carga)}
             </View>
-          ))}
+            );
+          })}
 
           {estado.hechas > 0 && (
             <View style={[estilos.fila, estilos.ahora]}>

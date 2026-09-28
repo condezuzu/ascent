@@ -90,13 +90,13 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
     <View style={estilos.seccion}>
       {/* VER LA GUÍA DE NUEVO (§10). Faltaba en el teléfono: no podía existir
           hasta que existiera el recorrido, y ahora existe. */}
-      <Pressable style={estilos.texto} onPress={verLaGuiaDeNuevo}>
+      <Pressable style={estilos.texto} onPress={() => verLaGuiaDeNuevo()}>
         <Text style={estilos.enlace}>{T.ajustes.verGuia}</Text>
       </Pressable>
-      <Pressable style={estilos.texto} onPress={cambiarClave}>
+      <Pressable style={estilos.texto} onPress={() => cambiarClave()}>
         <Text style={estilos.enlace}>{T.ajustes.cambiarClave}</Text>
       </Pressable>
-      <Pressable style={estilos.texto} onPress={salir}>
+      <Pressable style={estilos.texto} onPress={() => salir()}>
         <Text style={estilos.enlace}>{T.ajustes.cerrarSesion}</Text>
       </Pressable>
 
@@ -123,7 +123,7 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
           <View style={estilos.botones}>
             <Pressable
               style={[estilos.botonPeligro, confirmacion.trim() !== perfil.username && estilos.apagado]}
-              onPress={borrar}
+              onPress={() => borrar()}
               disabled={borrando || confirmacion.trim() !== perfil.username}
             >
               <Text style={estilos.botonPeligroTexto}>{borrando ? T.ajustes.bajaEliminando : T.ajustes.bajaConfirmar}</Text>

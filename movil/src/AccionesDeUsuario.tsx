@@ -108,7 +108,7 @@ export default function AccionesDeUsuario({
           <Text style={estilos.titulo}>{usuario ? T.social.bloquearTitulo(usuario.username) : ''}</Text>
           <Text style={estilos.que}>{T.social.bloquearQue}</Text>
           {error !== '' && <Text style={estilos.error}>{error}</Text>}
-          <Pressable style={estilos.peligro} disabled={ocupado} onPress={confirmarBloqueo}>
+          <Pressable style={estilos.peligro} disabled={ocupado} onPress={() => confirmarBloqueo()}>
             <Text style={estilos.peligroTexto}>{T.social.bloquearConfirmar}</Text>
           </Pressable>
           <Pressable style={estilos.cancelar} onPress={() => setPaso('menu')}>
