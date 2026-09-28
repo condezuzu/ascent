@@ -21,6 +21,18 @@ mismo: traba `useRef` antes del `await`.
 
 ## ANTES DE PUBLICAR
 
+> **ESTADO (28/9): los cuatro ARREGLADOS y verificados.** Typecheck en el cierre
+> (commit `4c3e09c`, 0 errores escondidos en web y móvil). Doble-tap resuelto por
+> patrón, no por casos: traba reutilizable `compartido/useEnVuelo.ts` aplicada a
+> **todas** las acciones que escriben (marca, día+foto, quitar bloque, peso,
+> denunciar/bloquear/desbloquear, amistad pedir/aceptar/rechazar/quitar, cuenta
+> baja/salir/clave/guía) + traba síncrona propia en `useSesion.empezar/terminar`.
+> Refresco al volver: `AppState 'active' → PESTANA_ACTIVA → cargar()` en
+> `Pestanas.tsx`. Verificado de verdad (no solo compila): contra prod una firma
+> vencida da 400 y re-firmar da 200; en la app real (react-native-web) volver a
+> primer plano re-firma las fotos y recarga los datos de la pestaña activa.
+> Cierre verde: tsc, lint, test:db (10/10), barrido ×2 "Ninguno". Commit `fab9c2b`.
+
 ### 1. No hay typecheck en el pipeline (meta, alto valor, barato)
 `cierre` corre `eslint`, y eslint **no caza errores de tipo ni referencias
 indefinidas**. Metro (la build nativa) transpila sin chequear tipos. Resultado:
