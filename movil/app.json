@@ -7,7 +7,7 @@
     "icon": "./assets/icono.png",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "uy.ascent.app",
       "appleTeamId": "XF9N8X9KJG",
       "infoPlist": {
