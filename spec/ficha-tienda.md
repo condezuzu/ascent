@@ -241,11 +241,11 @@ this version.
   `herramientas/capturas-tienda.mjs` corrido sobre la cuenta demo ya sembrada
   (sin `--con-datos`).
 
-  > **SET NUEVO LISTO (27/9).** Seis capturas con el motor de ocho rangos ya
-  > aprobado y la cuenta demo sembrada rica (racha 45, rango 5, 6 amigos, DOTS).
-  > Curadas y con veredicto en `Escritorio\ascent-tienda\` (orden de subida:
-  > racha → ranking → contar series → fuerza/DOTS → el año → álbum). El álbum es
-  > la única floja (imágenes abstractas del demo, no fotos reales) y es la
-  > primera a reemplazar cuando haya fotos de gimnasio de verdad. Las cuatro
-  > viejas que están en App Store Connect son del fondo viejo: se reemplazan por
-  > este set junto con el envío a revisión.
+  > **SET LISTO — CINCO capturas (27/9).** Motor de ocho rangos aprobado y cuenta
+  > demo sembrada rica (racha 45, rango 5, 6 amigos, DOTS). Curadas y con
+  > veredicto en `Escritorio\ascent-tienda\` (orden de subida: racha → ranking →
+  > contar series → fuerza/DOTS → el año). **La del álbum se sacó**: las fotos del
+  > demo son degradados abstractos y no hay forma limpia de que se vean como fotos
+  > de gimnasio sin inventar imágenes; cinco buenas antes que seis con una floja.
+  > Las cuatro viejas que están en App Store Connect son del fondo viejo: se
+  > reemplazan por este set junto con el envío a revisión.
