@@ -81,6 +81,21 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
     return () => desbloquearDeslizarPestanas();
   }, [abierta]);
 
+  // PRECARGAR LAS VECINAS (27/9). El salto entre fotos dura 140 ms; lo que se
+  // sentía como un tirón era que la foto nueva EMPEZABA a bajar recién después
+  // del salto (URL firmada, imagen grande). Mientras mirás la actual, la
+  // anterior y la siguiente se bajan a la caché de imágenes de RN, así que al
+  // pasar ya están y aparecen al instante. `Image.prefetch` no bloquea nada y si
+  // falla (sin señal) no pasa nada: la foto se baja igual cuando llega su turno.
+  useEffect(() => {
+    if (abierta === null) return;
+    const cs = datos?.celdas ?? [];
+    for (const j of [abierta - 1, abierta + 1]) {
+      const u = cs[j]?.url;
+      if (u) Image.prefetch(u).catch(() => {});
+    }
+  }, [abierta, datos]);
+
   // ---- PASAR LA FOTO CON EL DEDO ----
   //
   // EL GESTO SE ARMA UNA SOLA VEZ y lee el estado por REFERENCIA. Un

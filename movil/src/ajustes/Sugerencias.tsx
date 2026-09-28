@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
+import CampoTexto from '../CampoTexto';
 import { C } from '../colores';
 
 /**
@@ -40,7 +41,7 @@ export default function Sugerencias({ userId }: { userId: string }) {
   return (
     <View style={estilos.seccion}>
       <Text style={estilos.titulo}>{T.ajustes.sugerencias}</Text>
-      <TextInput
+      <CampoTexto
         style={estilos.campo}
         placeholder={T.ajustes.sugerenciasPlaceholder}
         placeholderTextColor={C.apagado}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { T } from '@nucleo/textos';
 import { fechaLinda } from '@nucleo/fechas';
@@ -15,6 +15,7 @@ import {
 } from '@compartido/ranking';
 import Avatar from './Avatar';
 import AccionesDeUsuario from './AccionesDeUsuario';
+import CampoTexto from './CampoTexto';
 import Surgir from './Surgir';
 import Insignia from './Insignia';
 import Medallas from './Medallas';
@@ -302,7 +303,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
         <View style={estilos.seccion}>
           <Text style={estilos.rotulo}>{T.social.buscarGente}</Text>
           <Text style={estilos.pieBusqueda}>{T.social.buscarPie}</Text>
-          <TextInput
+          <CampoTexto
             style={estilos.campo}
             placeholder={T.ajustes.nombrePlaceholder}
             placeholderTextColor={C.apagado}
