@@ -40,9 +40,6 @@ import { useRecargarAlVolver } from './irAPestana';
  * TOCAR A ALGUIEN LLEVA A SU PERFIL (22/9): la fila del ranking, la línea de
  * actividad y el resultado de la búsqueda. Antes eran texto, no por decisión
  * sino porque no había adónde ir.
- *
- * LO QUE NO ESTÁ, marcado: los retos. En la web tampoco se muestran
- * (`RETOS_LISTOS = false`).
  */
 export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const router = useRouter();

@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { fechaLinda, hoyISO } from '@nucleo/fechas';
-import { RETOS_LISTOS } from '@nucleo/reglas';
+import { fechaLinda } from '@nucleo/fechas';
 import type { UsuarioPublico } from '@nucleo/tipos';
 import {
   aceptarAmistad,
@@ -13,10 +12,8 @@ import {
   cargarRanking,
   pedirAmistad as mandarPedido,
   rechazarAmistad,
-  responderReto as contestarReto,
   astroDeAmigo,
   type Actividad,
-  type RetoConNombre,
   type Solicitud,
 } from '@compartido/ranking';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -35,7 +32,6 @@ export default function Social() {
   const [miId, setMiId] = useState('');
   const [amigos, setAmigos] = useState<UsuarioPublico[]>([]);
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
-  const [retos, setRetos] = useState<RetoConNombre[]>([]);
   const [actividad, setActividad] = useState<Actividad[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [resultados, setResultados] = useState<UsuarioPublico[]>([]);
@@ -71,7 +67,6 @@ export default function Social() {
     setMiPlaneta(d.miPlaneta);
     setAmigos(d.amigos);
     setSolicitudes(d.solicitudes);
-    setRetos(d.retos);
     // SIEMPRE, aunque venga vacía. Antes solo se actualizaba con amigos, así
     // que quien se quedaba sin ninguno seguía viendo la actividad de antes.
     setActividad(d.actividad);
@@ -108,20 +103,7 @@ export default function Social() {
     cargar();
   }
 
-  async function responderReto(id: string, acepta: boolean) {
-    await contestarReto(supabase, id, acepta);
-    olvidarPendientes();
-    cargar();
-  }
-
   const maxRacha = Math.max(1, ...amigos.map((a) => a.racha_actual));
-  const hoy = hoyISO();
-  // Con los retos escondidos las tres listas quedan vacías, y entonces no se
-  // dibuja ninguna de sus secciones. Ver RETOS_LISTOS.
-  const conRetos = RETOS_LISTOS ? retos : [];
-  const retosPendientesMios = conRetos.filter((r) => r.estado === 'pendiente' && r.rival === miId);
-  const retosActivos = conRetos.filter((r) => r.estado === 'activo');
-  const retosCerrados = conRetos.filter((r) => r.estado === 'terminado').slice(0, 3);
 
   return (
     <>
@@ -154,26 +136,6 @@ export default function Social() {
             ))}
           </div>
         )}
-
-        {retosPendientesMios.map((r) => (
-          <div className="tarjeta" key={r.id} style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 14, marginBottom: 12 }}>
-              {T.social.teReto(r.nombreRival)}
-            </p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="boton-solido" style={{ flex: 1 }} onClick={() => responderReto(r.id, true)}>
-                {T.social.acepto}
-              </button>
-              <button
-                className="boton-fantasma"
-                style={{ flex: 1, width: 'auto' }}
-                onClick={() => responderReto(r.id, false)}
-              >
-                {T.social.paso}
-              </button>
-            </div>
-          </div>
-        ))}
 
         {amigos.length > 1 ? (
           <>
@@ -281,35 +243,6 @@ export default function Social() {
           )
         )}
 
-        {(retosActivos.length > 0 || retosCerrados.length > 0) && (
-          <div className="seccion" style={{ marginTop: 24 }}>
-            <h3>{T.social.retos}</h3>
-            {retosActivos.map((r) => (
-              <Link href={`/perfil/${r.idRival}`} className="fila" key={r.id}>
-                <span className="nombre" style={{ fontSize: 14 }}>
-                  {T.social.vs(r.nombreRival)}
-                </span>
-                <span className="dato" style={{ fontSize: 13 }}>
-                  {r.hasta >= hoy ? T.social.hastaEl(fechaLinda(r.hasta)) : T.social.cerrando}
-                </span>
-              </Link>
-            ))}
-            {retosCerrados.map((r) => (
-              <div className="fila" key={r.id}>
-                <span className="nombre" style={{ fontSize: 14, color: 'var(--sub)' }}>
-                  {T.social.vs(r.nombreRival)}
-                </span>
-                <span className="dato" style={{ fontSize: 13 }}>
-                  {r.ganador === null
-                    ? T.social.empate
-                    : r.ganador === miId
-                      ? T.social.ganaste
-                      : T.social.gano(r.nombreRival)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
 
         {actividad.length > 0 && (
           <div className="seccion" style={{ marginTop: 24 }}>

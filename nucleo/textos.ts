@@ -284,12 +284,6 @@ export const T = {
     gimnasioAhoraNo: 'Ahora no',
     noCargo: 'No se pudieron traer tus datos. Puede ser la conexión.',
     reintentar: 'Reintentar',
-    // NO "no hay nada aquí" (§11, 27/9): un estado vacío que solo dice lo que
-    // falta se lee como un boletín. Estos apuntan al próximo paso —agregar
-    // gente, que se hace justo abajo— en vez de anunciar el vacío.
-    vacioTitulo: 'Tu ranking te espera.',
-    vacioPie: 'Busca gente abajo y agrégala: aquí van a competir por la racha.',
-    vacio: 'Tu ranking te espera.\nBusca gente abajo y agrégala para competir por la racha.',
   },
 
   // ---------------------------------------------------------------
@@ -1275,20 +1269,11 @@ export const T = {
     avisoActividad:
       'Aquí ves quién está entrenando. Para que te vean, activa «Avisar cuando entreno» en Ajustes.',
     no: 'No',
-    teReto: (nombre: string) => `${nombre} te retó a 7 días: quien entrene más, gana.`,
-    acepto: 'Acepto',
-    paso: 'Paso',
+    // "tú" para tu propia fila en el ranking de fuerza (SeccionFuerza).
     vos: 'tú',
     yoEnLista: (nombre: string) => `${nombre} (tú)`,
     vacioTitulo: 'Tu cielo todavía está vacío.',
     vacioPie: 'Busca a alguien más abajo y empieza la constelación.',
-    retos: 'Retos',
-    vs: (nombre: string) => `vs ${nombre}`,
-    hastaEl: (fecha: string) => `hasta el ${fecha}`,
-    cerrando: 'cerrando…',
-    empate: 'empate',
-    ganaste: 'ganaste',
-    gano: (nombre: string) => `ganó ${nombre}`,
     actividad: 'Actividad',
     registroEl: (nombre: string, fecha: string) => `${nombre} registró el ${fecha}`,
     pedidoEnviado: 'Pedido enviado',
@@ -1297,11 +1282,7 @@ export const T = {
     noExiste: 'Este usuario no existe.',
     pedidoDeAmistad: 'Pedido de amistad enviado',
     cuandoSeanAmigos: 'Cuando sean amigos vas a ver su semana y sus fotos.',
-    reto: 'Reto',
-    retarA7: 'Retar a 7 días',
-    retoEnviado: 'Reto enviado — esperando respuesta',
     dejanDeVer: 'Dejan de ver la actividad y las fotos del otro',
-    yElRetoSeCancela: ', y el reto se cancela',
     eliminar: 'Eliminar',
     eliminarDeAmigos: 'Eliminar de mis amigos',
     // Denunciar y bloquear (migración 53)

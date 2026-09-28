@@ -4,11 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { enDias, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
+import { enDias, hoyISO, restarDias } from '@nucleo/fechas';
 import { conComa } from '@nucleo/peso';
 import { planetaDeDia } from '@nucleo/rangos';
-import { RETOS_LISTOS } from '@nucleo/reglas';
-import type { Log, Reto, UsuarioPublico } from '@nucleo/tipos';
+import type { Log, UsuarioPublico } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
@@ -42,8 +41,6 @@ export default function Perfil() {
   const [fotos, setFotos] = useState<FotoPerfil[]>([]);
   const [medallas, setMedallas] = useState<Medalla[]>([]);
   const [dots, setDots] = useState<number | null>(null);
-  const [reto, setReto] = useState<Reto | null>(null);
-  const [marcador, setMarcador] = useState<{ yo: number; el: number } | null>(null);
   const [cargado, setCargado] = useState(false);
   const [confirmandoBaja, setConfirmandoBaja] = useState(false);
   const [accion, setAccion] = useState(false);
@@ -128,42 +125,6 @@ export default function Perfil() {
         // ve nunca, ni entre amigos, asi que calcularlas aca es imposible.
         setMedallas(await cargarMedallasDeAmigo(supabase, params.id));
       }
-
-      // cerrar vencidos antes de mirar (fecha local, no UTC del server)
-      await supabase.rpc('cerrar_retos_vencidos');
-
-      // reto vigente entre los dos (pendiente o activo)
-      const { data: retos } = await supabase
-        .from('challenges')
-        .select('*')
-        .in('estado', ['pendiente', 'activo'])
-        .or(
-          `and(retador.eq.${user.id},rival.eq.${params.id}),and(retador.eq.${params.id},rival.eq.${user.id})`
-        )
-        .order('creado', { ascending: false })
-        .limit(1);
-      const r = (retos?.[0] as Reto) ?? null;
-      setReto(r);
-
-      if (r && r.estado === 'activo') {
-        const [{ count: cYo }, { count: cEl }] = await Promise.all([
-          supabase
-            .from('logs')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('es_descanso', false)
-            .gte('fecha', r.desde)
-            .lte('fecha', r.hasta),
-          supabase
-            .from('logs')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', params.id)
-            .eq('es_descanso', false)
-            .gte('fecha', r.desde)
-            .lte('fecha', r.hasta),
-        ]);
-        setMarcador({ yo: cYo ?? 0, el: cEl ?? 0 });
-      }
     }
     setCargado(true);
   }, [supabase, params.id, router]);
@@ -171,26 +132,6 @@ export default function Perfil() {
   useEffect(() => {
     cargar();
   }, [cargar]);
-
-  async function retar() {
-    const hoy = hoyISO();
-    await supabase.from('challenges').insert({
-      retador: miId,
-      rival: params.id,
-      desde: hoy,
-      hasta: restarDias(hoy, -6), // 7 días
-    });
-    cargar();
-  }
-
-  async function responderReto(acepta: boolean) {
-    if (!reto) return;
-    await supabase
-      .from('challenges')
-      .update({ estado: acepta ? 'activo' : 'rechazado' })
-      .eq('id', reto.id);
-    cargar();
-  }
 
   async function pedirAmistad() {
     const { error } = await supabase
@@ -296,65 +237,14 @@ export default function Perfil() {
             {/* Exactamente lo que esta persona comparte: el mismo componente
                 que usa el modo "ver como lo ven los demás" del perfil propio,
                 para que la vista previa nunca prometa algo distinto. */}
-            <ComoMeVen usuario={usuario} logs={logs} fotos={fotos}>
-            {/* ---- reto ---- */}
-            {RETOS_LISTOS && (
-            <div className="seccion" style={{ marginTop: 20 }}>
-              <h3>{T.social.reto}</h3>
-              {!reto && (
-                <button className="boton-solido" onClick={retar}>
-                  {T.social.retarA7}
-                </button>
-              )}
-              {reto?.estado === 'pendiente' && reto.retador === miId && (
-                <div className="boton-fantasma" style={{ pointerEvents: 'none' }}>
-                  {T.social.retoEnviado}
-                </div>
-              )}
-              {reto?.estado === 'pendiente' && reto.rival === miId && (
-                <div className="tarjeta">
-                  <p style={{ fontSize: 14, marginBottom: 12 }}>
-                    {T.social.teReto(usuario.username)}
-                  </p>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="boton-solido" style={{ flex: 1 }} onClick={() => responderReto(true)}>
-                      {T.social.acepto}
-                    </button>
-                    <button className="boton-fantasma" style={{ flex: 1, width: 'auto' }} onClick={() => responderReto(false)}>
-                      {T.social.paso}
-                    </button>
-                  </div>
-                </div>
-              )}
-              {reto?.estado === 'activo' && marcador && (
-                <div className="tarjeta">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <div style={{ textAlign: 'center', flex: 1 }}>
-                      <div style={{ fontSize: 34, fontWeight: 200 }}>{marcador.yo}</div>
-                      <div style={{ fontSize: 11, color: 'var(--sub)' }}>{T.social.vos}</div>
-                    </div>
-                    <div style={{ color: 'var(--apagado)', fontSize: 13 }}>vs</div>
-                    <div style={{ textAlign: 'center', flex: 1 }}>
-                      <div style={{ fontSize: 34, fontWeight: 200 }}>{marcador.el}</div>
-                      <div style={{ fontSize: 11, color: 'var(--sub)' }}>{usuario.username}</div>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: 12, color: 'var(--apagado)', textAlign: 'center', marginTop: 8 }}>
-                    {T.social.hastaEl(fechaLinda(reto.hasta))}
-                  </p>
-                </div>
-              )}
-            </div>
-            )}
-            </ComoMeVen>
+            <ComoMeVen usuario={usuario} logs={logs} fotos={fotos} />
 
             {/* ---- dejar de ser amigos ---- */}
             <div className="seccion" style={{ marginTop: 30 }}>
               {confirmandoBaja ? (
                 <div className="tarjeta">
                   <p style={{ fontSize: 14, marginBottom: 12 }}>
-                    {T.social.dejanDeVer}
-                    {reto && reto.estado !== 'terminado' ? T.social.yElRetoSeCancela : ''}.
+                    {T.social.dejanDeVer}.
                   </p>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="boton-fantasma" style={{ flex: 1, width: 'auto' }} onClick={eliminarAmigo}>

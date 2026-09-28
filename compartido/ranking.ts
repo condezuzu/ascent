@@ -1,7 +1,7 @@
 import type { Cliente } from '@cliente';
 import { planetaDeDia } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
-import type { Reto, UsuarioPublico } from '@nucleo/tipos';
+import type { UsuarioPublico } from '@nucleo/tipos';
 
 /**
  * LO QUE MUESTRA RANKING, pedido una sola vez para las dos apps.
@@ -26,31 +26,23 @@ export type Actividad = {
   planeta: string | null;
   foto: string | null;
 };
-export type RetoConNombre = Reto & { nombreRival: string; idRival: string };
-
 export type DatosDeRanking = {
   /** Yo y mis amigos, de mayor racha a menor. */
   amigos: UsuarioPublico[];
   solicitudes: Solicitud[];
   /** A quiénes ya les mandé pedido y todavía no contestaron. */
   pedidosMandados: Set<string>;
-  retos: RetoConNombre[];
   actividad: Actividad[];
   miRango: number;
   miPlaneta: string | null;
 };
 
 export async function cargarRanking(supabase: Cliente, uid: string): Promise<DatosDeRanking | null> {
-  // EN TANDAS Y NO EN FILA (19/9). Eran siete viajes a la base uno detrás del
-  // otro, y Ranking tardaba en aparecer. Ahora van juntos los que no dependen
-  // entre sí: cuatro viajes seguidos en vez de siete.
+  // EN TANDAS Y NO EN FILA (19/9). Los viajes que no dependen entre sí van
+  // juntos, para que Ranking no tarde en aparecer.
   //
-  // Tanda 1: cerrar los retos vencidos (fecha local, no UTC del server) y las
-  // amistades. Los retos se piden recién en la tanda 2, después de cerrarlos.
-  const [, { data: rel, error: errAmigos }] = await Promise.all([
-    supabase.rpc('cerrar_retos_vencidos'),
-    supabase.from('friendships').select('*'),
-  ]);
+  // Tanda 1: las amistades.
+  const { data: rel, error: errAmigos } = await supabase.from('friendships').select('*');
   if (errAmigos) return null;
 
   const aceptadas = (rel ?? []).filter((r) => r.estado === 'aceptada');
@@ -61,16 +53,9 @@ export async function cargarRanking(supabase: Cliente, uid: string): Promise<Dat
   // yo también aparezco en el campo estelar
   const idsInteres = [...new Set([...idsAmigos, uid, ...pendientes.map((p) => p.solicitante)])];
 
-  // Tanda 2: quiénes son, los retos y la actividad de los amigos.
-  const [{ data: publicos }, { data: rs }, ls] = await Promise.all([
+  // Tanda 2: quiénes son y la actividad de los amigos.
+  const [{ data: publicos }, ls] = await Promise.all([
     supabase.from('usuarios_publicos').select('*').in('id', idsInteres),
-    supabase
-      .from('challenges')
-      .select('*')
-      .or(`retador.eq.${uid},rival.eq.${uid}`)
-      .neq('estado', 'rechazado')
-      .order('creado', { ascending: false })
-      .limit(6),
     idsAmigos.length > 0
       ? supabase
           .from('logs')
@@ -92,11 +77,6 @@ export async function cargarRanking(supabase: Cliente, uid: string): Promise<Dat
   const solicitudes = pendientes
     .map((p) => ({ id: p.id as string, de: mapaUsuarios.get(p.solicitante) as UsuarioPublico }))
     .filter((s) => s.de);
-
-  const retos = ((rs ?? []) as Reto[]).map((r) => {
-    const otro = r.retador === uid ? r.rival : r.retador;
-    return { ...r, idRival: otro, nombreRival: mapaUsuarios.get(otro)?.username ?? '¿?' };
-  });
 
   // Tanda 3: las fotos de esa actividad, y sus URL.
   let actividad: Actividad[] = [];
@@ -127,7 +107,6 @@ export async function cargarRanking(supabase: Cliente, uid: string): Promise<Dat
     amigos,
     solicitudes,
     pedidosMandados: new Set(mandadas.map((r) => r.destinatario as string)),
-    retos,
     actividad,
     miRango: yo?.rango_actual ?? 1,
     miPlaneta: yo ? planetaDeDia(yo.racha_actual) : null,
@@ -166,13 +145,6 @@ export async function aceptarAmistad(supabase: Cliente, id: string) {
 }
 export async function rechazarAmistad(supabase: Cliente, id: string) {
   const { error } = await supabase.from('friendships').delete().eq('id', id);
-  return !error;
-}
-export async function responderReto(supabase: Cliente, id: string, acepta: boolean) {
-  const { error } = await supabase
-    .from('challenges')
-    .update({ estado: acepta ? 'activo' : 'rechazado' })
-    .eq('id', id);
   return !error;
 }
 

@@ -266,10 +266,6 @@ export type PerfilDeAmigo = {
  * la RLS deja leer a un amigo aceptado, y por eso `esAmigo` decide si se
  * consulta: pedir lo demás sin la amistad sería pedirle a la base que diga que
  * no, once veces.
- *
- * LOS RETOS NO ESTÁN. En la web tampoco se muestran (`RETOS_LISTOS` en false):
- * portar una pantalla que nadie ve sería portar una decisión que todavía no se
- * tomó.
  */
 export async function cargarPerfilDeAmigo(
   supabase: Cliente,
