@@ -131,6 +131,105 @@ export async function yaSePidio(): Promise<boolean> {
   return puedoPreguntar();
 }
 
+// ============================================================================
+// EL LAG ERA ESTO (28/9). Stats pedía `pasosPorDia(365)` en CADA entrada y en
+// cada vuelta al frente, a veces DOS veces (montaje + PESTANA_ACTIVA), y sin
+// caché. Y en el teléfono del humano la consulta agrupada (`enCubos`) vuelve
+// vacía —lo dice el comentario de abajo— así que entra el CAMINO LARGO, que
+// hacía 30 idas al puente UNA TRAS OTRA. Resultado: hasta ~60 round-trips
+// seriados a HealthKit por entrada a Stats, sobre el hilo de JS, justo mientras
+// se desliza la pestaña. Se arregla con tres cosas, y se MIDE de paso.
+//   1. CACHÉ CON TTL: dentro de una ventana corta no se vuelve a preguntar.
+//   2. DEDUP EN VUELO: dos pedidos iguales a la vez comparten una sola promesa.
+//   3. EL CAMINO LARGO EN PARALELO, no seriado (30× la latencia → ~1×).
+// ============================================================================
+
+// Lo que el HUD de diagnóstico lee: la última consulta a Salud y cuántas van.
+let ultimaConsulta: { tipo: string; ms: number; cuando: number } | null = null;
+let totalConsultas = 0;
+
+export function consultasDeSalud() {
+  return ultimaConsulta ? { ...ultimaConsulta, total: totalConsultas } : null;
+}
+
+async function medido<T>(tipo: string, fn: () => Promise<T>): Promise<T> {
+  const t0 = Date.now();
+  try {
+    return await fn();
+  } finally {
+    ultimaConsulta = { tipo, ms: Date.now() - t0, cuando: Date.now() };
+    totalConsultas++;
+  }
+}
+
+// La caché vive `TTL_MS`; pasado eso se vuelve a preguntar. 90 s es más que una
+// vuelta entre pantallas —así deja de re-pedir en cada cambio de pestaña— y
+// menos que una caminata, así que el número no se congela. Además se olvida al
+// volver la app al frente (`olvidarLoLeido`), para que "los pasos de hoy" de
+// Inicio se refresquen en cada entrada real (item 5.2).
+const TTL_MS = 90_000;
+type Entrada<T> = { cuando: number; valor: T };
+const cacheUnDia = new Map<string, Entrada<number | null>>();
+const cacheSerie = new Map<number, Entrada<{ fecha: string; valor: number }[] | null>>();
+const enVueloDia = new Map<string, Promise<number | null>>();
+const enVueloSerie = new Map<number, Promise<{ fecha: string; valor: number }[] | null>>();
+
+function fresco<T>(e: Entrada<T> | undefined): e is Entrada<T> {
+  return !!e && Date.now() - e.cuando < TTL_MS;
+}
+
+/** Se olvida lo leído: al volver la app al frente y al conceder el permiso. */
+export function olvidarLoLeido() {
+  cacheUnDia.clear();
+  cacheSerie.clear();
+}
+
+/**
+ * LA LECTURA CRUDA DE UN DÍA, sin caché ni permiso (el que llama ya preguntó).
+ * Es lo que usa tanto `pasosDe` como el camino largo de `pasosPorDia`.
+ */
+async function leerUnDia(fecha: string): Promise<number | null> {
+  try {
+    const { startDate, endDate } = elDia(fecha);
+    const r = await queryStatisticsForQuantity(
+      'HKQuantityTypeIdentifierStepCount',
+      ['cumulativeSum'],
+      { filter: { date: { startDate, endDate } }, unit: 'count' }
+    );
+    const n = r.sumQuantity?.quantity;
+    if (typeof n !== 'number' || !Number.isFinite(n)) return null;
+    return Math.round(n);
+  } catch {
+    return null;
+  }
+}
+
+/** La serie cruda de muchos días: cubos si andan, si no el camino largo. */
+async function leerSerie(dias: number): Promise<{ fecha: string; valor: number }[] | null> {
+  const porCubos = await enCubos(dias).catch(() => null);
+  if (porCubos && porCubos.length > 0) {
+    ultimaLectura = { como: 'cubos', dias: porCubos.length };
+    return porCubos;
+  }
+  // EL CAMINO LARGO, AHORA EN PARALELO (28/9). Antes eran 30 `await` uno tras
+  // otro: 30× la latencia del puente, en cada entrada a Stats. En paralelo, las
+  // 30 resuelven en ~1× la latencia. HealthKit atiende consultas concurrentes.
+  const cuantos = Math.min(dias, 30);
+  const hoy = new Date();
+  const fechas: string[] = [];
+  for (let i = cuantos - 1; i >= 0; i--) {
+    const d = new Date(hoy);
+    d.setDate(d.getDate() - i);
+    fechas.push(aISO(d));
+  }
+  const valores = await Promise.all(fechas.map((f) => leerUnDia(f)));
+  const serie = fechas
+    .map((fecha, i) => ({ fecha, valor: valores[i] }))
+    .filter((x): x is { fecha: string; valor: number } => x.valor !== null && x.valor > 0);
+  ultimaLectura = { como: serie.length ? 'uno por uno' : 'nada', dias: serie.length };
+  return serie;
+}
+
 export const saludNativa: Salud = {
   disponible() {
     // En iPad y en el simulador HealthKit no existe. Ahí esto queda como
@@ -151,6 +250,7 @@ export const saludNativa: Salud = {
       // leer. Lo que sí se puede saber después es si la pregunta ya está
       // hecha, y eso es lo que habilita consultar sin crashear.
       listo = false; // que lo vuelva a averiguar de la fuente, no de acá
+      olvidarLoLeido(); // los `null` cacheados de antes del permiso ya no valen
       return await puedoPreguntar();
     } catch {
       return false;
@@ -176,26 +276,27 @@ export const saludNativa: Salud = {
     }
   },
 
+  // `cumulativeSum` y no traer las muestras: los pasos llegan en cientos de
+  // pedacitos por día, y sumarlos acá sería traerlos todos a JavaScript para una
+  // cuenta que HealthKit ya sabe hacer. Con caché + dedup en vuelo: el mismo día
+  // no se vuelve a preguntar dentro de la ventana, y dos pedidos simultáneos
+  // comparten una sola consulta. Sin suma no es cero: es que no hay dato.
   async pasosDe(fecha) {
     if (!(await puedoPreguntar())) return null;
-    try {
-      const { startDate, endDate } = elDia(fecha);
-      // `cumulativeSum` y no traer las muestras: los pasos llegan en cientos
-      // de pedacitos por día, y sumarlos acá sería traerlos todos a JavaScript
-      // para hacer una cuenta que HealthKit ya sabe hacer. Además deduplica
-      // solo cuando el reloj y el teléfono contaron lo mismo dos veces.
-      const r = await queryStatisticsForQuantity(
-        'HKQuantityTypeIdentifierStepCount',
-        ['cumulativeSum'],
-        { filter: { date: { startDate, endDate } }, unit: 'count' }
-      );
-      const n = r.sumQuantity?.quantity;
-      // Sin suma no es cero: es que no hay dato, o que no hay permiso.
-      if (typeof n !== 'number' || !Number.isFinite(n)) return null;
-      return Math.round(n);
-    } catch {
-      return null;
-    }
+    const cacheado = cacheUnDia.get(fecha);
+    if (fresco(cacheado)) return cacheado.valor;
+    const yaEnVuelo = enVueloDia.get(fecha);
+    if (yaEnVuelo) return yaEnVuelo;
+    const p = medido('día', () => leerUnDia(fecha))
+      .then((v) => {
+        cacheUnDia.set(fecha, { cuando: Date.now(), valor: v });
+        return v;
+      })
+      .finally(() => {
+        enVueloDia.delete(fecha);
+      });
+    enVueloDia.set(fecha, p);
+    return p;
   },
 
   /**
@@ -218,37 +319,20 @@ export const saludNativa: Salud = {
    */
   async pasosPorDia(dias) {
     if (!(await puedoPreguntar())) return null;
-
-    const porCubos = await enCubos(dias).catch(() => null);
-    if (porCubos && porCubos.length > 0) {
-      ultimaLectura = { como: 'cubos', dias: porCubos.length };
-      return porCubos;
-    }
-
-    // EL CAMINO LARGO, Y POR QUÉ EXISTE (25/9). La consulta por cubos volvió
-    // vacía en el teléfono del humano con Health conectado y datos adentro, y
-    // desde acá no hay forma de ver POR QUÉ: `queryStatisticsCollection` es una
-    // llamada al puente nativo y lo que devuelve solo se ve con el iPhone en la
-    // mano. Puede ser la forma de las fechas, el tamaño de la ventana o el
-    // filtro; en vez de adivinar, se prueba lo que ya se sabe que anda.
-    //
-    // `pasosDe` usa `queryStatisticsForQuantity`, que es la misma que alimenta
-    // la sección de Salud en Ajustes y que sí lee. Una consulta por día es
-    // muchas idas al puente, así que este camino pide MENOS DÍAS: treinta
-    // alcanzan para la ventana de un mes y para que el gráfico exista, que es
-    // lo que hoy no pasa.
-    const cuantos = Math.min(dias, 30);
-    const hoy = new Date();
-    const serie: { fecha: string; valor: number }[] = [];
-    for (let i = cuantos - 1; i >= 0; i--) {
-      const d = new Date(hoy);
-      d.setDate(d.getDate() - i);
-      const fecha = aISO(d);
-      const n = await this.pasosDe(fecha);
-      if (n !== null && n > 0) serie.push({ fecha, valor: n });
-    }
-    ultimaLectura = { como: serie.length ? 'uno por uno' : 'nada', dias: serie.length };
-    return serie;
+    const cacheado = cacheSerie.get(dias);
+    if (fresco(cacheado)) return cacheado.valor;
+    const yaEnVuelo = enVueloSerie.get(dias);
+    if (yaEnVuelo) return yaEnVuelo;
+    const p = medido('serie', () => leerSerie(dias))
+      .then((v) => {
+        cacheSerie.set(dias, { cuando: Date.now(), valor: v });
+        return v;
+      })
+      .finally(() => {
+        enVueloSerie.delete(dias);
+      });
+    enVueloSerie.set(dias, p);
+    return p;
   },
 };
 

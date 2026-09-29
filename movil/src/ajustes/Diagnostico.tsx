@@ -15,6 +15,8 @@ import { comoLeyoLosPasos } from '../plataforma/salud';
 import { comoAnduvoElMotor, type EstadoDelMotor } from '../estadoDelMotor';
 import { comoEstanLosAvisos } from '../plataforma/avisos';
 import { medirCuadros, type Medicion } from '../medirCuadros';
+import { CLAVE_HUD, HUD_CAMBIO } from '../HudDiagnostico';
+import { eventos } from '@compartido/eventos';
 
 /**
  * QUÉ ESTÁ VIENDO LA APP, Y QUÉ FUE HACIENDO.
@@ -67,6 +69,28 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
   // El medidor de cuadros. Ver abajo y `medirCuadros.ts`.
   const [cuadros, setCuadros] = useState<Medicion | null>(null);
   const [midiendoCuadros, setMidiendoCuadros] = useState(false);
+  // El medidor en pantalla (cuadros por segundo + última consulta a Salud).
+  const [hud, setHud] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    plataforma.almacenamiento
+      .leer(CLAVE_HUD)
+      .then((v) => {
+        if (vivo) setHud(v === '1');
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  async function cambiarHud() {
+    const nuevo = !hud;
+    setHud(nuevo);
+    eventos.emitir(HUD_CAMBIO, nuevo);
+    await plataforma.almacenamiento.guardar(CLAVE_HUD, nuevo ? '1' : '0').catch(() => {});
+  }
 
   const cargar = useCallback(async () => {
     const { data: log } = await supabase
@@ -294,6 +318,21 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
               )}
             </>
           )}
+
+          {/* EL MEDIDOR EN PANTALLA: cuadros por segundo, el peor cuadro y la
+              última consulta a Salud, SIEMPRE a la vista mientras se usa la app.
+              Es lo que hace falta para cazar el lag en el gimnasio: entrar a
+              Stats y ver si el tirón coincide con una lectura de HealthKit. */}
+          <Pressable style={estilos.boton} onPress={cambiarHud}>
+            <Text style={estilos.botonTexto}>
+              {hud ? 'Apagar el medidor en pantalla' : 'Prender el medidor en pantalla'}
+            </Text>
+          </Pressable>
+          <Text style={estilos.nota}>
+            Muestra cuadros por segundo, el peor cuadro del último medio segundo y
+            la última consulta a Salud (qué fue y cuánto tardó). Andá a Stats y
+            mirá si el número se cae justo ahí.
+          </Text>
 
           {/* EN UN CAMPO DE TEXTO Y NO EN UNA LISTA: así se puede desplazar y
               leer entero. Lo que de verdad hace falta en un teléfono es el

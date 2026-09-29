@@ -10625,7 +10625,17 @@ console.log('\n149. Los pasos: por que salia vacio, y la meta del dia');
     /const porCubos = await enCubos/.test(sal149), true);
   chequear('que pide menos dias, porque es una consulta por dia',
     /Math\.min\(dias, 30\)/.test(sal149), true);
-  chequear('y usa la consulta que ya se sabe que anda', /this\.pasosDe\(fecha\)/.test(sal149), true);
+  chequear('y usa la consulta por dia que ya se sabe que anda', /leerUnDia\(/.test(sal149), true);
+  // Y EN PARALELO, NO SERIADO (28/9). Era EL lag de Stats: hasta 30 idas al
+  // puente una tras otra por cada entrada, sobre el hilo de JS. Ahora Promise.all
+  // las pide a la vez. Un regreso a la version seriada volveria a trabar Stats.
+  chequear('y las pide en paralelo, no una tras otra', /await Promise\.all\(fechas\.map/.test(sal149), true);
+  // Y NO SE RE-PREGUNTA EN CADA PANTALLA: cache con TTL + dedup en vuelo. Stats
+  // pedia pasosPorDia(365) en cada entrada y foreground, a veces dos veces.
+  chequear('la lectura se cachea para no re-preguntar en cada pantalla',
+    /const cacheSerie = new Map/.test(sal149), true);
+  chequear('y dos pedidos iguales a la vez comparten una promesa',
+    /enVueloSerie/.test(sal149), true);
 
   // Y SE PUEDE PREGUNTAR QUE PASO sin un iPhone conectado a una computadora.
   chequear('el diagnostico dice como leyo', /export function comoLeyoLosPasos/.test(sal149), true);

@@ -11,6 +11,8 @@ import Onboarding from '../src/Onboarding';
 import FondoRaiz from '../src/FondoRaiz';
 import Raiz from '../src/Raiz';
 import VigilanteDeGimnasio from '../src/VigilanteDeGimnasio';
+import HudDiagnostico from '../src/HudDiagnostico';
+import { olvidarLoLeido } from '../src/plataforma/salud';
 // SOLO POR EL EFECTO DE IMPORTARLO, y tiene que estar acá arriba. Es lo que
 // deja puesto el gancho que corre cuando el teléfono despierta a la app al
 // llegar al gimnasio: en ese despertar no se dibuja nada, así que un
@@ -51,6 +53,11 @@ import { reportarMedicionA } from '@compartido/medir';
  */
 
 type Sesion = 'mirando' | 'con' | 'sin' | 'sin-nombre';
+
+// El mismo flag con el que se esconde el botón de la caja negra y el panel de
+// Diagnóstico (`EXPO_PUBLIC_DIAGNOSTICO`, perfil `telefono`). El medidor en
+// pantalla no se monta siquiera en la build de tienda: no puede aparecer.
+const CON_DIAGNOSTICO = process.env.EXPO_PUBLIC_DIAGNOSTICO === '1';
 
 export default function Layout() {
   const [sesion, setSesion] = useState<Sesion>('mirando');
@@ -221,8 +228,13 @@ export default function Layout() {
   useEffect(() => {
     if (AppState.currentState === 'active') supabase.auth.startAutoRefresh();
     const sub = AppState.addEventListener('change', (e) => {
-      if (e === 'active') supabase.auth.startAutoRefresh();
-      else supabase.auth.stopAutoRefresh();
+      if (e === 'active') {
+        supabase.auth.startAutoRefresh();
+        // AL VOLVER AL FRENTE, SE OLVIDA LO LEÍDO DE SALUD: así "los pasos de
+        // hoy" se refrescan en cada entrada real (item 5.2), pero dentro de una
+        // sesión la caché evita re-preguntarle a HealthKit en cada pestaña.
+        olvidarLoLeido();
+      } else supabase.auth.stopAutoRefresh();
     });
     return () => {
       sub.remove();
@@ -265,6 +277,11 @@ export default function Layout() {
               Inicio solo miraría estando en esa pestaña. Con sesión y nada
               más — sin usuario no hay punto que vigilar. */}
           <VigilanteDeGimnasio />
+          {/* EL MEDIDOR EN PANTALLA (28/9), detrás del interruptor de
+              Diagnóstico. Solo se monta en las builds con `EXPO_PUBLIC_DIAGNOSTICO`
+              (perfil `telefono`); en la de tienda ni existe. Y aun montado,
+              renderiza null salvo que se prenda desde Ajustes. */}
+          {CON_DIAGNOSTICO && <HudDiagnostico />}
           {/* EL TEMA DEL NAVEGADOR, CON EL FONDO TRANSPARENTE. Cada pantalla
               del stack nace con el gris claro del sistema (#f2f2f2) debajo, y
               eso tapa el motor: entrar a /yo dejaba la pantalla BLANCA con el
