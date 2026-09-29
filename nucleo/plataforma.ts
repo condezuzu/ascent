@@ -129,6 +129,11 @@ export type Salud = {
    * distinto de una lista vacía.
    */
   pasosPorDia(dias: number): Promise<{ fecha: string; valor: number }[] | null>;
+  /**
+   * Los pasos entre dos instantes (para "cuántos caminaste EN la sesión", 3.3).
+   * Fechas de reloj del aparato, no ISO de día. `null` es "no sé".
+   */
+  pasosEntre(inicio: Date, fin: Date): Promise<number | null>;
 };
 
 /**

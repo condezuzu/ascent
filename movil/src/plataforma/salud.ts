@@ -299,6 +299,27 @@ export const saludNativa: Salud = {
     return p;
   },
 
+  // LOS PASOS DE UNA VENTANA CUALQUIERA (3.3): "cuántos caminaste EN la sesión".
+  // La misma consulta que `pasosDe` pero con las fechas del reloj del aparato en
+  // vez de un día entero. Sin caché: cada sesión es una ventana distinta y se
+  // pregunta una sola vez, al cerrar. `null` es "no sé" (sin permiso/Health), 0
+  // es "no caminó" —acá 0 sí es un dato, pero el resumen no lo muestra—.
+  async pasosEntre(inicio, fin) {
+    if (!(await puedoPreguntar())) return null;
+    try {
+      const r = await queryStatisticsForQuantity(
+        'HKQuantityTypeIdentifierStepCount',
+        ['cumulativeSum'],
+        { filter: { date: { startDate: inicio, endDate: fin } }, unit: 'count' }
+      );
+      const n = r.sumQuantity?.quantity;
+      if (typeof n !== 'number' || !Number.isFinite(n)) return null;
+      return Math.round(n);
+    } catch {
+      return null;
+    }
+  },
+
   /**
    * LOS PASOS DE MUCHOS DÍAS, EN UNA SOLA CONSULTA.
    *
