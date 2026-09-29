@@ -1,5 +1,5 @@
 import type { Cliente } from '@cliente';
-import { MESES } from '@nucleo/fechas';
+import { MESES, aISO } from '@nucleo/fechas';
 import { planetaDeDia } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 
@@ -100,7 +100,11 @@ export async function cargarAlbum(supabase: Cliente, uid: string): Promise<Datos
         url: firmadas?.[i]?.signedUrl ?? '',
         miniatura: chicas[i] ?? firmadas?.[i]?.signedUrl ?? '',
         ruta: f.storage_path as string,
-        fecha: (log?.fecha as string | undefined) ?? (f.creado as string).slice(0, 10),
+        // Sin log (la foto quedó huérfana al corregir el día: photos.log_id es
+        // ON DELETE SET NULL) la fecha sale de `creado`, PERO en local, no en
+        // UTC: `.slice(0,10)` cortaba el día en UTC y una foto de las 22:30 en
+        // Montevideo caía al día —y a veces al mes— siguiente. (29/9)
+        fecha: (log?.fecha as string | undefined) ?? aISO(new Date(f.creado as string)),
         planeta: (log?.planeta_del_dia as string | null | undefined) ?? null,
         visibilidad: f.visibilidad as 'privada' | 'amigos',
         esSubida: !!f.es_subida_de_rango,

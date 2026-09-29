@@ -25,6 +25,7 @@ import FondoEspacial from './FondoEspacial';
 import { C } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
 import { bloquearDeslizarPestanas, desbloquearDeslizarPestanas } from './gestoDePestanas';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 
 /**
  * ÁLBUM — tanda 4.
@@ -68,8 +69,6 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
 
   // Y de nuevo al volver a esta pestaña: ahora se queda montada.
   useRecargarAlVolver('album', cargar);
-
-  useEffect(() => setConfirmando(false), [abierta]);
 
   // MIENTRAS LA FOTO ESTÁ ABIERTA, LAS PESTAÑAS NO DESLIZAN (27/9): así el
   // arrastre para pasar de foto es de la foto, y no se escapa a otra pestaña.
@@ -171,6 +170,12 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
   const foto = abierta !== null ? celdas[abierta] : null;
   cuantasRef.current = celdas.length;
 
+  // EL "¿QUITAR?" SE DESARMA CUANDO CAMBIA LA FOTO (su id), NO EL ÍNDICE (29/9).
+  // Al borrar una del medio, el índice queda igual pero pasás a la de al lado;
+  // con el reset atado al índice, el "sí" quedaba armado apuntando a OTRA foto y
+  // un segundo toque borraba la equivocada. La web ya lo ataba al id (VisorFoto).
+  useEffect(() => setConfirmando(false), [foto?.id]);
+
   async function alternar() {
     if (!foto) return;
     const nueva = foto.visibilidad === 'privada' ? 'amigos' : 'privada';
@@ -191,6 +196,9 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
       return { ...d, celdas: quedan };
     });
   }
+  // Traba síncrona contra el doble-tap: quitar ESCRIBE y borra para siempre, y el
+  // segundo toque del rebote no puede colarse (ver `useEnVuelo`).
+  const quitarGuardado = useEnVuelo(quitar);
 
   return (
     <View style={estilos.raiz}>
@@ -363,7 +371,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                     pregunta, y hasta ahí no hay nada que avisar. */}
                 {confirmando ? (
                   <View style={estilos.confirmar}>
-                    <Pressable style={[estilos.pastilla, estilos.pastillaRoja]} onPress={quitar}>
+                    <Pressable style={[estilos.pastilla, estilos.pastillaRoja]} onPress={() => quitarGuardado()}>
                       <Text style={[estilos.pastillaTexto, estilos.textoRojo]}>{T.album.quitarSi}</Text>
                     </Pressable>
                     <Pressable style={estilos.pastilla} onPress={() => setConfirmando(false)}>
