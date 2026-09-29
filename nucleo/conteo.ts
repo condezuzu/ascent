@@ -29,6 +29,7 @@ import {
   sumar,
   type EstadoBloques,
 } from './bloques.ts';
+import { reconciliarConteo } from './reconciliar.ts';
 
 /** El total de la sesión y la lista de bloques, que se mueven juntos. */
 export type Conteo = {
@@ -44,23 +45,13 @@ export function sumarSerie(c: Conteo): Conteo {
 }
 
 /**
- * QUÉ TOTAL USAR AL REABRIR (bug del gimnasio, 29/9): "3 de 3 · 0 en total".
- *
- * Al volver de que iOS mate la app, el número EN PANTALLA es el 0 inicial del
- * estado, y la CACHÉ tiene la verdad (lo que se contó antes del cierre). La regla
- * vieja —"si hay toques esperando en la cola, quedate con lo de la pantalla"—
- * asumía que la pantalla iba ADELANTE de la caché; tras un cierre va ATRÁS (en 0),
- * así que dejaba el total en 0 mientras los puntos se restauraban en 3. El
- * contador y la lista discrepaban, y el próximo `+` arrastraba el hueco.
- *
- * Ahora, con cola pendiente, se toma el MÁXIMO: respeta un valor de pantalla más
- * nuevo (dos toques rápidos que todavía no llegaron a la caché) Y restaura la
- * caché cuando la pantalla venía en cero (el cierre). Sin cola pendiente, manda
- * la caché: ya está todo subido y es la verdad, igual que antes.
+ * QUÉ TOTAL USAR AL REABRIR (bug "3 de 3 · 0 en total"): la pantalla (efímero,
+ * 0 tras un cierre de iOS) contra la caché (autoridad durable). La regla vive
+ * una sola vez en `reconciliarConteo` — la misma que usa `confirmar` contra el
+ * servidor—; acá solo se le ponen los nombres del caso del releer.
  */
 export function seriesAlReleer(enPantalla: number, cacheada: number | undefined, hayPendientes: boolean): number {
-  if (cacheada === undefined) return enPantalla;
-  return hayPendientes ? Math.max(enPantalla, cacheada) : cacheada;
+  return reconciliarConteo(enPantalla, cacheada, hayPendientes);
 }
 
 /** Una serie menos en el bloque en curso: baja el total (nunca de cero). */

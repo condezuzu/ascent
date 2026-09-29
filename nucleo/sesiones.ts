@@ -1,4 +1,5 @@
 import { TOPE_SESION_SEGUNDOS, VENTANA_INACTIVIDAD_SEGUNDOS } from './reglas.ts';
+import { reconciliarConteo } from './reconciliar.ts';
 import { T } from './textos.ts';
 
 export type SesionViva = {
@@ -146,9 +147,11 @@ export function conteoAlConfirmar(
   servidor: number | undefined,
   hayPendiente: boolean
 ): number {
-  const c = cacheado ?? 0;
-  const s = servidor ?? 0;
-  return hayPendiente ? Math.max(c, s) : s;
+  // La MISMA regla que `seriesAlReleer`, escrita una sola vez en
+  // `reconciliarConteo`: acá lo efímero es la caché y la autoridad el servidor.
+  // (Si el servidor no trajo número, queda la caché — más seguro que el viejo
+  // "0": en la rama `guardar` de confirmar el servidor siempre viene.)
+  return reconciliarConteo(cacheado ?? 0, servidor, hayPendiente);
 }
 
 /**
