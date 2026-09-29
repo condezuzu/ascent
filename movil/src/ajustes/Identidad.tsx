@@ -117,7 +117,6 @@ export default function Identidad({
             alTocar={() => guardar('visibilidad_default', 'amigos')}
           />
         </View>
-        <Text style={estilos.nota}>{T.ajustes.fotosNota}</Text>
       </View>
 
       <View style={estilos.seccion}>

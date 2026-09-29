@@ -38,7 +38,6 @@ export default function FotosNuevas({
           {T.ajustes.amigos}
         </button>
       </div>
-      <p className="nota-privada">{T.ajustes.fotosNota}</p>
     </div>
   );
 }

@@ -534,7 +534,7 @@ export const T = {
     // no se las nombra una vez.
 
     comparteGimnasio: 'Avisar cuando entreno',
-    comparteGimnasioNota: 'Tus amigos ven que estás entrenando al llegar. Nunca dónde.',
+    comparteGimnasioNota: 'Tus amigos ven que estás entrenando al llegar.',
     diasDescanso: 'Días de descanso',
     diasDescansoNota: 'Esos días puedes faltar sin perder la racha.',
 
@@ -630,11 +630,10 @@ export const T = {
     fondoNota: 'Apagado, no se dibuja el espacio: fondo liso y la app abre al instante.',
 
     nombreUsuario: 'Nombre de usuario',
-    nombreNota: 'Así te encuentran tus amigos. No puede repetirse.',
+    nombreNota: 'Así te encuentran tus amigos.',
     nombreListo: 'Listo, ese es tu nombre ahora.',
 
     fotosNuevas: 'Quién ve tus fotos nuevas',
-    fotosNota: 'Cada foto se puede cambiar después, una por una.',
     soloYo: 'Solo yo',
     amigos: 'Amigos',
 
