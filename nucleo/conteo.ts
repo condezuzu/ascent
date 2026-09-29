@@ -43,6 +43,26 @@ export function sumarSerie(c: Conteo): Conteo {
   return { series: c.series + 1, bloques: sumar(c.bloques) };
 }
 
+/**
+ * QUÉ TOTAL USAR AL REABRIR (bug del gimnasio, 29/9): "3 de 3 · 0 en total".
+ *
+ * Al volver de que iOS mate la app, el número EN PANTALLA es el 0 inicial del
+ * estado, y la CACHÉ tiene la verdad (lo que se contó antes del cierre). La regla
+ * vieja —"si hay toques esperando en la cola, quedate con lo de la pantalla"—
+ * asumía que la pantalla iba ADELANTE de la caché; tras un cierre va ATRÁS (en 0),
+ * así que dejaba el total en 0 mientras los puntos se restauraban en 3. El
+ * contador y la lista discrepaban, y el próximo `+` arrastraba el hueco.
+ *
+ * Ahora, con cola pendiente, se toma el MÁXIMO: respeta un valor de pantalla más
+ * nuevo (dos toques rápidos que todavía no llegaron a la caché) Y restaura la
+ * caché cuando la pantalla venía en cero (el cierre). Sin cola pendiente, manda
+ * la caché: ya está todo subido y es la verdad, igual que antes.
+ */
+export function seriesAlReleer(enPantalla: number, cacheada: number | undefined, hayPendientes: boolean): number {
+  if (cacheada === undefined) return enPantalla;
+  return hayPendientes ? Math.max(enPantalla, cacheada) : cacheada;
+}
+
 /** Una serie menos en el bloque en curso: baja el total (nunca de cero). */
 export function restarSerie(c: Conteo): Conteo {
   return { series: Math.max(0, c.series - 1), bloques: restar(c.bloques) };

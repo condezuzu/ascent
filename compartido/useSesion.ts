@@ -38,7 +38,7 @@ import {
   terminarBloque,
   type EstadoBloques,
 } from '@nucleo/bloques';
-import { sumarSerie, restarSerie, corregirEnLista } from '@nucleo/conteo';
+import { sumarSerie, restarSerie, corregirEnLista, seriesAlReleer } from '@nucleo/conteo';
 import { hoyISO, restarDias } from '@nucleo/fechas';
 import {
   rutinaParaHoy,
@@ -160,6 +160,12 @@ export type CierreDeSesion = {
    * al cerrar se ponen en cero, y si no salen de acá ya no están.
    */
   bloques: ReturnType<typeof paraGuardar>;
+  /**
+   * Los pasos caminados DURANTE la sesión (3.3), de Apple Health. `null` cuando
+   * no se sabe (sin Health/permiso); el resumen solo lo muestra si hay dato > 0.
+   * Se calcula una vez al cerrar; al reabrir el resumen a mano no está.
+   */
+  pasos?: number | null;
 };
 
 export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void) {
@@ -253,9 +259,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       // una sugerencia sin confirmar, al reabrir sigue viéndose como sugerencia
       // y no como algo ya elegido (ver `SesionCacheada.sugerido`).
       setSugerido(!!c.sugerido);
-      // Las series NO se pisan si hay toques esperando en la cola: ahí el
-      // número bueno es el que está en pantalla, no el que se guardó.
-      if (c.series !== undefined && (await cuantasPendientes()) === 0) setSeries(c.series);
+      // EL TOTAL AL REABRIR (bug "3 de 3 · 0 en total", 29/9). Antes: con cola
+      // pendiente se descartaba la caché y quedaba el total EN PANTALLA —que tras
+      // un cierre de iOS es el 0 inicial—, mientras los puntos se restauraban del
+      // bloque. Ahora `seriesAlReleer` toma el máximo entre pantalla y caché
+      // cuando hay pendientes (respeta toques nuevos sin perder lo guardado), y la
+      // caché cuando no hay. Se lee del ref, no del closure viejo. Ver conteo.ts.
+      const hayPendientes = (await cuantasPendientes()) > 0;
+      setSeries(seriesAlReleer(seriesRef.current, c.series, hayPendientes));
     }
     setDescanso(await leerDescanso());
   }, []);
@@ -664,6 +675,17 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // el fin a hora de servidor antes de restar, igual que hace `transcurrido`
     // para el cronómetro que se ve en pantalla.
     const finServidor = (opciones?.hasta ?? Date.now()) - desfase;
+    // LOS PASOS DE LA SESIÓN (3.3): mucha gente mete cardio en el entrenamiento.
+    // Se piden a Health entre el inicio y el fin, en hora del APARATO (el inicio
+    // es de servidor: se le suma el desfasaje para volverlo a reloj local). `null`
+    // si no hay Health/permiso; el resumen lo muestra solo si hay algo. No frena
+    // el cierre si falla.
+    let pasos: number | null = null;
+    if (arranco && !deshizoElDia) {
+      const inicioAparato = new Date(Date.parse(arranco) + desfase);
+      const finAparato = new Date(opciones?.hasta ?? Date.now());
+      pasos = await plataforma.salud.pasosEntre(inicioAparato, finAparato).catch(() => null);
+    }
     return {
       minutos: arranco
         ? Math.max(0, Math.round((finServidor - Date.parse(arranco)) / 60000))
@@ -672,6 +694,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       porUbicacion: eraPorUbicacion,
       deshizoElDia,
       bloques: bloquesHechos,
+      pasos,
     };
   }
 
@@ -701,7 +724,12 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     const c = await leerSesionCache();
     const nueva = masReciente(c?.ultimaActividad, iso);
     setUltimaActividad(nueva);
-    if (c) await guardarSesionCache({ ...c, ultimaActividad: nueva }, yo);
+    // PARCIAL, no reescribir el objeto entero (29/9). Guardar `{...c, ...}` con el
+    // `c` leído arriba pisaba `series`/`bloques` con lo de hace unos ms: si un `+`
+    // tocó la caché durante estos awaits, `marcar` lo revertía —el mismo pisón que
+    // los refs matan en el estado, pero en la caché—. `actualizarSesionCache`
+    // relee y mezcla solo esta clave.
+    await actualizarSesionCache({ ultimaActividad: nueva }, yo);
     if (!disponible('cierrePorInactividad', await versionDelEsquema(supabase))) return;
     await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: iso } });
   }

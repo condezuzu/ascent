@@ -341,8 +341,14 @@ export default function FondoRaiz() {
     if (desenfoque >= TAPADO_INMEDIATO) {
       aplicar(true); // tapa del todo (Ranking/Álbum/Ajustes): al toque
     } else if (desenfoque >= TAPADO_ASENTADO) {
-      // Stats: esperar a que el deslizamiento asiente, para no bajar los cuadros
-      // a mitad de la transición (que se ve). Quieto en Stats → lento → batería.
+      // Stats: el cuerpo se ve a MEDIAS acá (desenfoque ~0,45), así que bajarle
+      // los cuadros MIENTRAS te movés se ve como un titileo de la pantalla
+      // anterior (regresión del 29/9: antes el único umbral era 0,85 y Stats
+      // nunca bajaba, así que iba fluido). Ahora: al toque vuelve a 60 —cualquier
+      // cambio del desenfoque es movimiento— y recién si te QUEDÁS quieto 400 ms
+      // baja a lento. Así el deslizamiento va fluido y el ahorro de batería sigue
+      // intacto (Stats asentado sí baja).
+      aplicar(false);
       id = setTimeout(() => aplicar(true), ASENTARSE_MS);
     } else {
       aplicar(false); // destapado (Inicio, o volviendo): 60 al toque para el viaje

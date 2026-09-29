@@ -79,7 +79,7 @@ import {
   sumar,
   unirConGuardados,
 } from '../nucleo/bloques.ts';
-import { sumarSerie, restarSerie, corregirEnLista } from '../nucleo/conteo.ts';
+import { sumarSerie, restarSerie, corregirEnLista, seriesAlReleer } from '../nucleo/conteo.ts';
 import { cargarElMotor, esPreferenciaFondo } from '../nucleo/fondo.ts';
 import { ORDEN_ZONAS, gruposDeZona, gruposSinZona } from '../nucleo/ejercicios.ts';
 import { detectar, idDeSenal, umbralValido, unRm } from '../nucleo/estancamiento.ts';
@@ -3411,6 +3411,16 @@ console.log('\n48b. El conteo: total y lista se mueven juntos y no se pisan');
   nuevo = sumarSerie(nuevo);
   chequear('el patron nuevo (encadenado) cuenta las dos', nuevo.series, 2);
   chequear('y la lista tambien', nuevo.bloques.hechas, 2);
+
+  // EL "3 DE 3 · 0 EN TOTAL" (bug del gimnasio, 29/9). Al reabrir tras un cierre
+  // de iOS, la pantalla arranca en 0 y la caché tiene la verdad (3). La regla
+  // vieja, con toques en la cola, se quedaba con la pantalla (0) y los puntos
+  // mostraban 3: discrepaban. `seriesAlReleer` lo arregla.
+  chequear('reabrir con cola pendiente y pantalla en 0: toma la cache (3)', seriesAlReleer(0, 3, true), 3);
+  chequear('reabrir sin cola pendiente: manda la cache (3)', seriesAlReleer(0, 3, false), 3);
+  chequear('dos toques nuevos no llegados a cache: gana la pantalla (5>3)', seriesAlReleer(5, 3, true), 5);
+  chequear('sin cache no inventa: queda lo de pantalla', seriesAlReleer(2, undefined, true), 2);
+  chequear('cache al dia, pantalla vieja: sin pendientes manda la cache', seriesAlReleer(4, 6, false), 6);
 }
 
 console.log('\n49. El pulso del dia: la curva');
