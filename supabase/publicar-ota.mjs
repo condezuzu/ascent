@@ -81,7 +81,13 @@ if (simular) {
   process.exit(0);
 }
 console.log('Publicando…\n');
-execFileSync('npx', ['eas', 'update', '--channel', canal, '--message', mensaje, '--non-interactive'], {
+// EL MENSAJE VA ENTRECOMILLADO (bug de Windows, 29/9). Con `shell: true` —que en
+// Windows hace falta para correr `npx.cmd`— los args se pegan en una linea de
+// comando SIN comillas, asi que un mensaje con espacios, comas o parentesis lo
+// re-parte cmd.exe y `eas update` falla. Se lo envuelve en comillas (sacando las
+// comillas internas, que romperian el entrecomillado) para que viaje como un arg.
+const mensajeArg = process.platform === 'win32' ? `"${mensaje.replace(/"/g, '')}"` : mensaje;
+execFileSync('npx', ['eas', 'update', '--channel', canal, '--message', mensajeArg, '--non-interactive'], {
   cwd: MOVIL,
   stdio: 'inherit',
   shell: process.platform === 'win32',
