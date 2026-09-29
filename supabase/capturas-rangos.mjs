@@ -78,7 +78,12 @@ for (let i = 0; i < 90; i++) {
 
 const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Galaxia', 'Agujero negro'];
 
-const nav = await chromium.launch();
+// CON GPU: sin estos flags Chromium headless no da WebGL y el motor no dibuja
+// —la foto sale con "no hay ningún cuerpo" y el fondo de CSS—. Los mismos que
+// usa `medir-costo-cuadro.mjs`. Ver `capturas-cuerpos.mjs`.
+const nav = await chromium.launch({
+  args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=d3d11', '--enable-unsafe-swiftshader=false'],
+});
 const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 const page = await ctx.newPage();
 await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded' });
@@ -100,7 +105,11 @@ console.log('\nestilo      rango                  foto');
 for (const estilo of ESTILOS) {
   await page.getByRole('button', { name: estilo, exact: true }).first().click();
   await page.waitForTimeout(800);
-  for (let n = 1; n <= 8; n++) {
+  // HASTA `NOMBRES.length` Y NO 8 (28/9): la migración 54 sacó "Sistema", así
+  // que hoy hay 7 rangos. El 8 fijo hacía que la última vuelta pidiera
+  // `NOMBRES[7]` (undefined) y tirara `toLowerCase of undefined` al final,
+  // después de haber sacado bien las 7 fotos.
+  for (let n = 1; n <= NOMBRES.length; n++) {
     await page.getByRole('button', { name: NOMBRES[n - 1], exact: false }).first().click();
     // El motor remonta con `key`, así que hay que esperar a que dibuje.
     await page.waitForTimeout(2500);

@@ -114,6 +114,29 @@ export default function Galeria() {
   // la vista no es revisar nada. Acá se lo puede traer al medio.
   const [alCentro, setAlCentro] = useState(false);
 
+  // MODO CAPTURA LIMPIA (28/9). `/galeria?limpio=1&rango=6` deja SOLO el fondo
+  // —el cuerpo al centro, sin la interfaz encima ni el aviso—, para poder sacar
+  // una foto legible del cuerpo. Antes había que tapar `.pantalla` a mano desde
+  // el capturador y la foto salía a medias; esto lo hace bien de una.
+  //
+  // Se lee de `window.location.search` en un efecto (cliente), NO con
+  // `useSearchParams`: eso obliga a un <Suspense> o el build de producción
+  // —que es el único que dibuja el cuerpo— se cae. Acá no hace falta.
+  const [limpio, setLimpio] = useState(false);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('limpio') === '1') {
+      setLimpio(true);
+      setAlCentro(true);
+    }
+    const r = p.get('rango');
+    if (r && Number.isFinite(Number(r))) setRango(Number(r));
+    const pl = p.get('planeta');
+    if (pl) setPlaneta(pl);
+    const e = p.get('estilo');
+    if (e === 'plano' || e === 'realista') setEstilo(e);
+  }, []);
+
   return (
     <>
       <FondoEspacial
@@ -130,6 +153,7 @@ export default function Galeria() {
         // cualquier lado. Acá solo interesa cuánto velo le toca a cada uno.
         velo={conVelo ? veloDeRango(rango) : 0.35}
       />
+      {!limpio && (
       <div className="pantalla">
         <div className="titulo-pantalla">Galería del motor</div>
 
@@ -312,6 +336,7 @@ export default function Galeria() {
           </div>
         </div>
       </div>
+      )}
 
       {subida && (
         <SubidaRango
