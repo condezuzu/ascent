@@ -124,6 +124,15 @@ export default function RegistrarDia({
     const ok = await subir(resultado.log_id, resultado.subio_rango);
     setCargando(false);
     if (!ok) return setRegistradoAca(resultado);
+    // SUBISTE DE RANGO Y NO PUSISTE FOTO (4.4): el momento de más orgullo de la
+    // app no puede pasar en silencio. Se OFRECE sacar una foto —no se obliga—: el
+    // día ya está registrado, la hoja queda en modo "sumar foto" con el aviso, y
+    // si cerrás seguís normal (el cierre confirma igual, ver `alCerrar`).
+    if (resultado.subio_rango && !foto) {
+      setRegistradoAca(resultado);
+      setAviso(T.registrar.subioRangoFoto);
+      return;
+    }
     setFoto(null);
     alConfirmar(resultado);
   });
@@ -179,7 +188,7 @@ export default function RegistrarDia({
           <Text style={estilos.solidoTexto}>{yaEsta ? T.general.guardar : T.inicio.registrarDia}</Text>
         )}
       </Pressable>
-      {aviso !== '' && <Text style={estilos.aviso}>{aviso}</Text>}
+      {aviso !== '' && <Text style={[estilos.aviso, registradoAca?.subio_rango && estilos.avisoSubida]}>{aviso}</Text>}
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
     </Hoja>
   );
@@ -200,5 +209,7 @@ const estilos = StyleSheet.create({
   apagado: { opacity: 0.5 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   aviso: { color: C.sub, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
+  // El aviso de subida de rango va encendido: es un premio, no un aviso más.
+  avisoSubida: { color: C.claro, fontSize: 14, fontWeight: '500' },
   error: { color: C.error, fontSize: 13, marginTop: 14, textAlign: 'center' },
 });

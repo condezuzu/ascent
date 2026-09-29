@@ -21,8 +21,9 @@ import { T } from '@nucleo/textos';
 import { fechaCorta, fechaLinda } from '@nucleo/fechas';
 import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type DatosDeAlbum } from '@compartido/album';
 import { primeraYUltima, resumenDelMes } from '@nucleo/album';
+import { paletaDe } from '@nucleo/paletas';
 import FondoEspacial from './FondoEspacial';
-import { C } from './colores';
+import { C, conAlfa } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
 import { bloquearDeslizarPestanas, desbloquearDeslizarPestanas } from './gestoDePestanas';
 import { useEnVuelo } from '@compartido/useEnVuelo';
@@ -169,6 +170,12 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
   const lado = Math.floor((width - 48 - HUECO * 2) / 3);
   const foto = abierta !== null ? celdas[abierta] : null;
   cuantasRef.current = celdas.length;
+
+  // EL MARCO SIENTE EL RANGO (4.2): el borde de la foto abierta se tiñe apenas
+  // con el color del rango —a un 45% de alfa, para que se sienta y no grite—. El
+  // rango ya vive acá; escribirlo además sería de más (por eso el número NO va
+  // en la foto, 4.3).
+  const acentoRango = datos ? paletaDe(datos.miRango, datos.miPlaneta).principal : C.linea;
 
   // EL "¿QUITAR?" SE DESARMA CUANDO CAMBIA LA FOTO (su id), NO EL ÍNDICE (29/9).
   // Al borrar una del medio, el índice queda igual pero pasás a la de al lado;
@@ -323,7 +330,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                 que separa todo en esta app: un borde de medio píxel, esquinas
                 de 14 y el fondo de las celdas atrás, para que una foto vertical
                 no deje dos huecos sin forma a los costados. */}
-            <Animated.View style={[estilos.marco, { transform: [{ translateX: desliz }] }]} {...gesto.panHandlers}>
+            <Animated.View style={[estilos.marco, { borderColor: conAlfa(acentoRango, 0.45), transform: [{ translateX: desliz }] }]} {...gesto.panHandlers}>
               <Image source={{ uri: foto.url }} style={{ width: width - 32, height: width - 32 }} resizeMode="contain" />
             </Animated.View>
 

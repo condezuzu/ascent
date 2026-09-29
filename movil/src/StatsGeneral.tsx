@@ -203,6 +203,7 @@ export default function StatsGeneral({
           objetivo={objetivoPeso}
           unidad={unidad}
           pesoActual={pesos.length ? pesos[pesos.length - 1].valor : null}
+          recientes={pesos}
           alCambiar={setObjetivoPeso}
         />
       )}

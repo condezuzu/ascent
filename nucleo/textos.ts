@@ -244,6 +244,11 @@ export const T = {
     // voz baja: no es la racha, es el dato que el teléfono ya tiene. Solo
     // aparece si Health está conectado y hay pasos que mostrar.
     pasosHoy: (hechos: string, meta: string) => `${hechos} de ${meta} pasos`,
+    // Los pasos con barra (5.1): el número es tuyo, la meta va chica al lado, y
+    // al llegar la meta se convierte en un ✓ que se celebra.
+    pasosUnidad: 'pasos',
+    pasosMetaChica: (meta: string) => `meta ${meta}`,
+    pasosMetaLlego: '✓ meta',
     // El resumen de hoy queda a un toque, después de registrar el día: ya no se
     // borra solo al tocarlo, y si lo cerraste podés volver a abrirlo (1.2/5.4).
     verResumen: 'Ver lo que hiciste hoy',
@@ -813,6 +818,10 @@ export const T = {
     ultimos30: 'Últimos 30 días',
     esteMes: 'Este mes',
     esteAno: 'Este año',
+    // La cuarta celda: la cuenta regresiva de la próxima vida (5.3).
+    proximaVidaDias: 'Días · próxima vida',
+    proximaVidaDia: 'Día · próxima vida',
+    vidasLlenas: 'Vidas al máximo',
     elAno: 'El año',
     sesiones: 'Sesiones',
     promedio: 'Promedio',
@@ -839,6 +848,7 @@ export const T = {
     objetivoPlaceholder: (u: string) => `Objetivo en ${u}`,
     objetivoFuera: 'Pon un peso entre 20 y 400.',
     objetivoQuitar: 'Quitar',
+    objetivoUltimos: 'Últimos registros',
     // LOS PASOS. Son de Apple Health, TODOS los días y no solo los de
     // entrenamiento: un día de descanso con 12.000 pasos es información.
     pasosTendencia: 'Pasos — tendencia 7 días',
@@ -1086,6 +1096,7 @@ export const T = {
     resumenTitulo: 'Listo por hoy.',
     resumenMinutos: 'minutos',
     resumenSeries: (n: number) => (n === 1 ? 'serie' : 'series'),
+    resumenPasos: 'pasos',
     // Cuando la cerró la salida del gimnasio, no un botón.
     resumenSolo: 'Se cerró cuando saliste.',
   },
@@ -1157,6 +1168,8 @@ export const T = {
   // La hoja que registra el día.
   registrar: {
     sumarAlDia: 'Sumar al día',
+    // El aviso al subir de rango (4.4): se ofrece la foto, no se obliga.
+    subioRangoFoto: '¡Subiste de rango! Es el momento de una foto — o no, como prefieras.',
     diaN: (n: number) => `Día ${n}`,
     corregirDia: 'Corregir día',
     foto: 'Foto',
@@ -1292,6 +1305,8 @@ export const T = {
     vacioPie: 'Busca a alguien más abajo y empieza la constelación.',
     actividad: 'Actividad',
     registroEl: (nombre: string, fecha: string) => `${nombre} registró el ${fecha}`,
+    actividadMas: (n: number) => `Ver ${n} más`,
+    actividadMenos: 'Ver menos',
     pedidoEnviado: 'Pedido enviado',
     agregar: 'Agregar',
 

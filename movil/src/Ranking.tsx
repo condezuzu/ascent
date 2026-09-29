@@ -44,6 +44,8 @@ import { useRecargarAlVolver } from './irAPestana';
  */
 export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const router = useRouter();
+  // Cuántas actividades se ven antes de "ver más".
+  const ACTIVIDAD_TOPE = 8;
   const [miId, setMiId] = useState('');
   const [datos, setDatos] = useState<DatosDeRanking | null>(null);
   const [noCargo, setNoCargo] = useState(false);
@@ -64,6 +66,12 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   // nunca dónde). Es la condición para el aviso de actividad en vivo: antes de
   // marcarlo, explicaría algo que la persona todavía no puede usar.
   const [gimnasioMarcado, setGimnasioMarcado] = useState(false);
+  // La actividad se muestra recortada: un amigo que registró muchos días —o
+  // varios amigos— la vuelven kilométrica (5.4). Se ven las últimas ACTIVIDAD_TOPE
+  // y el resto se despliega a un toque. Feed cronológico, no por-amigo: lo que
+  // uno quiere de acá es "qué pasó último", y agrupar por amigo con varios amigos
+  // no achica nada (2-3 × N amigos). Cortar + desplegar sí escala a cualquier N.
+  const [verTodaLaActividad, setVerTodaLaActividad] = useState(false);
   const busquedaAhora = useRef('');
 
   const cargar = useCallback(async () => {
@@ -261,7 +269,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
         {(datos?.actividad ?? []).length > 0 && (
           <View style={estilos.seccion}>
             <Text style={estilos.rotulo}>{T.social.actividad}</Text>
-            {datos!.actividad.map((a, i) => (
+            {(verTodaLaActividad ? datos!.actividad : datos!.actividad.slice(0, ACTIVIDAD_TOPE)).map((a, i) => (
               <Pressable
                 style={({ pressed }) => [estilos.fila, pressed && estilos.filaTocada]}
                 key={i}
@@ -275,6 +283,13 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 </Text>
               </Pressable>
             ))}
+            {datos!.actividad.length > ACTIVIDAD_TOPE && (
+              <Pressable onPress={() => setVerTodaLaActividad((v) => !v)} hitSlop={8} style={estilos.verMas}>
+                <Text style={estilos.verMasTexto}>
+                  {verTodaLaActividad ? T.social.actividadMenos : T.social.actividadMas(datos!.actividad.length - ACTIVIDAD_TOPE)}
+                </Text>
+              </Pressable>
+            )}
           </View>
         )}
 
@@ -393,6 +408,8 @@ const estilos = StyleSheet.create({
   vacioTexto: { color: C.sub, fontSize: 14, textAlign: 'center' },
   seccion: { marginTop: 24 },
   rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
+  verMas: { paddingVertical: 10, alignItems: 'center' },
+  verMasTexto: { color: C.sub, fontSize: 13 },
   pieBusqueda: { color: C.apagado, fontSize: 12, marginBottom: 8 },
   // El punto verde de "en vivo", al lado de quien está entrenando ahora.
   puntoVivo: { width: 8, height: 8, borderRadius: 999, backgroundColor: '#5fd08a' },

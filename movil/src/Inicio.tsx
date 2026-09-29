@@ -38,6 +38,7 @@ import DiaListo from './DiaListo';
 import InsistirGimnasio, { useInsistirGimnasio } from './InsistirGimnasio';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import RachaConRotulo from './RachaConRotulo';
+import PasosInicio from './PasosInicio';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 
@@ -619,9 +620,7 @@ export default function Inicio({
           voz baja: es el dato del teléfono, no la racha. Solo si hay algo que
           decir —Health conectado y con pasos—; si no, ni aparece. */}
       {!sesion.estado.corriendo && pasosHoy !== null && (
-        <Text style={estilos.pasos}>
-          {T.inicio.pasosHoy(pasosHoy.toLocaleString('es-UY'), metaPasos.toLocaleString('es-UY'))}
-        </Text>
+        <PasosInicio pasos={pasosHoy} meta={metaPasos} acento={paletaDe(perfil.rango_actual ?? 1, null).principal} />
       )}
 
       {!sesion.estado.corriendo && (
@@ -818,6 +817,14 @@ export default function Inicio({
                 <View style={estilos.cifra}>
                   <Text style={estilos.cifraNumero}>{cierre.series}</Text>
                   <Text style={estilos.etiqueta}>{T.sesion.resumenSeries(cierre.series)}</Text>
+                </View>
+              )}
+              {/* LOS PASOS DE LA SESIÓN (3.3): el cardio que metiste en el medio.
+                  Solo si Health lo sabe y hubo pasos —0 o "no sé" no se muestran. */}
+              {cierre.pasos != null && cierre.pasos > 0 && (
+                <View style={estilos.cifra}>
+                  <Text style={estilos.cifraNumero}>{cierre.pasos.toLocaleString('es-UY')}</Text>
+                  <Text style={estilos.etiqueta}>{T.sesion.resumenPasos}</Text>
                 </View>
               )}
             </View>

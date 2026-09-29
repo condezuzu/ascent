@@ -66,6 +66,21 @@ type Datos = {
  * arriba del volumen. Los días igual llevan su marca en el calendario, y la
  * revisión se hace adentro de cada día, como en la web.
  */
+/**
+ * LA CUARTA CELDA DE LA GRILLA (5.3): la cuenta regresiva de la próxima vida.
+ * Al máximo de vidas no hay cuenta que dar —se celebra con un ✓ encendido—; si
+ * falta, muestra los días que faltan. Sin datos de vidas, no ocupa lugar (quedan
+ * las tres de siempre). El dato ya viene del server (`vidas.falta` / `quedan`).
+ */
+function celdaProximaVida(vidas: Vidas | null): { v: string; e: string; acento?: boolean }[] {
+  if (!vidas) return [];
+  if (vidas.quedan >= vidas.total) return [{ v: '✓', e: T.stats.vidasLlenas, acento: true }];
+  if (vidas.falta !== null && vidas.falta > 0) {
+    return [{ v: String(vidas.falta), e: vidas.falta === 1 ? T.stats.proximaVidaDia : T.stats.proximaVidaDias }];
+  }
+  return [];
+}
+
 export default function Stats({ alSalir }: { alSalir: () => void }) {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState('');
@@ -238,14 +253,17 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
         <View style={estilos.grilla}>
           {[
             // Se sacaron "Racha actual" (ya está en Inicio) y "Últimos 30 días"
-            // (no aportaba). Queda mes y mejor, y se suma el año (28/9).
-            [String(esteMes), T.stats.esteMes],
-            [String(esteAno), T.stats.esteAno],
-            [String(mejor), T.stats.mejorRacha],
-          ].map(([v, e]) => (
-            <View key={e} style={estilos.celda}>
-              <Text style={estilos.valor}>{v}</Text>
-              <Text style={estilos.etiqueta}>{e}</Text>
+            // (no aportaba). Queda mes y mejor, y se suma el año (28/9). El cuarto
+            // lugar —que quedaba vacío— es la cuenta regresiva de la próxima vida
+            // (5.3): faltan N días, y al máximo un ✓ que lo celebra.
+            { v: String(esteMes), e: T.stats.esteMes },
+            { v: String(esteAno), e: T.stats.esteAno },
+            { v: String(mejor), e: T.stats.mejorRacha },
+            ...celdaProximaVida(datos.vidas),
+          ].map((c) => (
+            <View key={c.e} style={estilos.celda}>
+              <Text style={[estilos.valor, c.acento === true && estilos.valorVivo]}>{c.v}</Text>
+              <Text style={estilos.etiqueta}>{c.e}</Text>
             </View>
           ))}
         </View>
@@ -452,6 +470,8 @@ const estilos = StyleSheet.create({
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   celda: { width: '47%', paddingVertical: 14 },
   valor: { color: '#c4c2ba', fontSize: 34, fontWeight: '300' },
+  // Vidas al máximo: el ✓ va encendido, para que conseguirlas no pase en silencio.
+  valorVivo: { color: '#7fae86' },
   etiqueta: { color: '#4a5163', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
 
   seccion: {
