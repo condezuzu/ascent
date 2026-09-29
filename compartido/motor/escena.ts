@@ -183,7 +183,10 @@ const NEBULOSA_CFG: ConfigCuerpo = {
 
 // Cortinas de aurora para acompañar a la galaxia
 const AURORA_CFG: ConfigCuerpo = {
-  paleta: ['#1a0f38', '#4A2A8C', '#7F4FD0', '#8fe3d0'],
+  // SIN EL TEAL BRILLANTE (variante C): el #8fe3d0 era lo que pintaba las
+  // bandas suaves de humo. Con violetas oscuros el aura queda como un bulbo
+  // tenue en el centro, y los brazos pasan a ser estrellas, no niebla.
+  paleta: ['#0d0722', '#1a0f38', '#2a1a5c', '#3a2a6c'],
   bandas: 0, contraste: 0, turbulencia: 1.0, tormenta: 0, tormentaPos: [0, 0],
   anillo: false, anilloVertical: false, crateres: 0, casquetes: 0,
   continentes: 0, puntos: 0, mares: 0, manchas: 0, rayos: 0, lunas: 0, modo: 4,
@@ -251,44 +254,62 @@ function crearEstrellas(cantidad: number, rango: number, planeta: string | null 
 // Galaxia espiral en partículas (rango 7): densa en el núcleo, con brazos
 // que se abren y variedad de color entre el centro caliente y los bordes.
 function crearGalaxia(rango: number): THREE.Points {
-  const n = cuantas(GALAXIA_BASE);
+  // VARIANTE B: MENOS puntos que la A. Con 4200 los brazos se empastaban en
+  // bandas suaves (humo); con ~2500 quedan estrellas DISCRETAS y separadas.
+  const n = cuantas(2500);
   const pos = new Float32Array(n * 3);
   const col = new Float32Array(n * 3);
   const tam = new Float32Array(n);
   const bri = new Float32Array(n);
-  const pal = paletaDe(rango, null);
-  const cNucleo = new THREE.Color('#fff3d0');
-  const cMedio = new THREE.Color(pal.claro);
-  const cBrazo = new THREE.Color(pal.principal);
-  const cBorde = new THREE.Color(pal.apagado);
+  // COLOR REPARTIDO, NO UN SOLO VIOLETA (variante A). Una espiral real tiene
+  // poblaciones distintas: azules jóvenes en los brazos, un bulbo cálido, y el
+  // rosa del gas ionizado en las regiones de formación. Acá lo leemos como
+  // rosa + azul repartidos, que es lo pedido, con el núcleo cálido (no blanco).
+  const cNucleo = new THREE.Color('#ffcf9e'); // bulbo ámbar cálido, no blanco puro
+  const cAzul = new THREE.Color('#5c8cff');   // azul de brazo
+  const cRosa = new THREE.Color('#ff5fb0');   // rosa de brazo
+  const cLila = new THREE.Color('#b98cf5');   // lila de transición
   for (let i = 0; i < n; i++) {
-    // LAS ESTRELLAS LLEGAN HASTA DONDE LLEGA EL GAS. Con 2,2 el exponente
-    // amontonaba casi todo contra el núcleo —la mediana caía en el 22% del
-    // radio— y los brazos de gas quedaban vacíos: un manchón de puntos en el
-    // medio y una espiral de humo alrededor, que es parte de por qué "parece
-    // una mancha". El núcleo sigue siendo denso, pero ahora los brazos tienen
-    // estrellas adentro.
-    const t = Math.pow(Math.random(), 1.35);
-    const brazo = i % 4;
-    const r = 0.03 + t * 0.85;
-    const disp = (Math.random() - 0.5) * (0.12 + t * 0.75);
-    const ang = brazo * (Math.PI / 2) + t * 5.0 + disp;
-    const grosor = (Math.random() - 0.5) * (0.10 - t * 0.06);
+    // LAS ESTRELLAS POBLAN LOS BRAZOS, no se amontonan en el centro (variante
+    // A). Exponente 1,1 —casi lineal— para que la mediana caiga bien afuera y
+    // los brazos tengan estrellas propias en vez de humo.
+    const t = Math.pow(Math.random(), 1.1);
+    // DOS BRAZOS MANDAN Y DOS SON TENUES: la asimetría es lo que saca el look
+    // de "cuatro brazos de compás". El brazo 0 y el 2 llevan el doble de peso.
+    const brazo = [0, 0, 1, 2, 2, 3][Math.floor(Math.random() * 6)];
+    const r = 0.05 + t * 0.9;
+    const anchoArm = 0.10 + t * 0.62;
+    const off = (Math.random() - 0.5);       // -0.5..0.5 dentro del brazo
+    const disp = off * anchoArm;
+    // ESPIRAL MÁS ABIERTA: 3,4 en vez de 5,0 → menos remolino apretado.
+    const ang = brazo * (Math.PI / 2) + t * 3.4 + disp;
+    const grosor = (Math.random() - 0.5) * (0.09 - t * 0.05);
     pos[i * 3] = Math.cos(ang) * r + (Math.random() - 0.5) * 0.03;
-    pos[i * 3 + 1] = (Math.sin(ang) * r) * 0.42 + grosor * 0.4;
+    pos[i * 3 + 1] = (Math.sin(ang) * r) * 0.40 + grosor * 0.4;
     pos[i * 3 + 2] = (Math.random() - 0.5) * 0.05;
 
+    // Color: núcleo cálido en el centro; hacia afuera, cada estrella cae en
+    // azul o en rosa según un tinte por-estrella, con lila de por medio. Así
+    // el azul y el rosa quedan REPARTIDOS por todo el disco, no en anillos.
+    const tinte = Math.random();
+    const cBrazo = tinte < 0.5 ? cAzul.clone().lerp(cLila, tinte * 2) : cLila.clone().lerp(cRosa, (tinte - 0.5) * 2);
     let c: THREE.Color;
-    if (t < 0.12) c = cNucleo.clone();
-    else if (t < 0.4) c = cNucleo.clone().lerp(cMedio, (t - 0.12) / 0.28);
-    else if (t < 0.75) c = cMedio.clone().lerp(cBrazo, (t - 0.4) / 0.35);
-    else c = cBrazo.clone().lerp(cBorde, (t - 0.75) / 0.25);
+    if (t < 0.14) c = cNucleo.clone();
+    else if (t < 0.34) c = cNucleo.clone().lerp(cBrazo, (t - 0.14) / 0.2);
+    else c = cBrazo;
     col[i * 3] = c.r;
     col[i * 3 + 1] = c.g;
     col[i * 3 + 2] = c.b;
-    const grande = Math.random() < 0.05;
-    tam[i] = grande ? 3.0 + Math.random() * 2.0 : 1.0 + Math.pow(Math.random(), 2.2) * 1.8;
-    bri[i] = (0.35 + Math.pow(Math.random(), 3) * 1.2) * (1.25 - t * 0.5);
+    // MÁS GRANDES Y MÁS BRILLANTES (variante B): estrellas que se leen como
+    // estrellas, no como un velo. Y el brillo NO cae tanto hacia afuera, así
+    // los brazos brillan igual que el centro en vez de apagarse en humo.
+    const grande = Math.random() < 0.08;
+    tam[i] = grande ? 3.6 + Math.random() * 2.4 : 1.4 + Math.pow(Math.random(), 2.0) * 2.0;
+    bri[i] = (0.6 + Math.pow(Math.random(), 2.2) * 1.5) * (1.1 - t * 0.28);
+    // CARRIL DE POLVO: una veta oscura sobre el borde interno de cada brazo.
+    // Con blending aditivo, un carril = ausencia de estrellas: se apagan las
+    // que caen en una franja fina del lado interno (off en ~[0.06, 0.24]).
+    if (off > 0.06 && off < 0.24) bri[i] *= 0.06;
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -736,7 +757,10 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     const amat = crearMaterialCuerpo(AURORA_CFG, !!op.apagado, 0.004);
     materiales.push(amat);
     const aurora = new THREE.Mesh(QUAD, amat);
-    aurora.scale.setScalar(1.05);
+    // EL HUMO SE ACHICA AL NÚCLEO (variante A). Antes cubría todo el disco
+    // (1,05) y esas bandas suaves eran lo que se leía como humo en vez de
+    // brazos. Ahora es una nebulosidad central; los brazos son estrellas.
+    aurora.scale.setScalar(0.42);
     aurora.position.z = -0.05;
     amat.blending = THREE.AdditiveBlending;
     grupo.add(aurora);
