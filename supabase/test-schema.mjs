@@ -11542,7 +11542,14 @@ console.log('\n160. Barrido: la cuenta que ya no existe, los minutos, y el visor
   // sesion, asi que volver a abrir Ascent a la noche lo dejaba en la nada
   // aunque la sesion estuviera guardada.
   chequear('los minutos salen de las sesiones terminadas de hoy',
-    /from\('sesiones'\)\s*\n?\s*\.select\('inicio, fin, logs!inner\(fecha\)'\)/.test(ini160), true);
+    /\.select\('inicio, fin, bloques, logs!inner\(fecha\)'\)/.test(ini160), true);
+  // Y TAMBIEN LOS BLOQUES (1.2/5.4): es lo que deja volver a ver el resumen de
+  // hoy a un toque, aun despues de recargar. El resumen ya no se cierra solo:
+  // se cierra con una equis, y 'Ver lo que hiciste hoy' lo reabre.
+  chequear('trae los bloques de hoy para reabrir el resumen',
+    /const \[bloquesDeHoy, setBloquesDeHoy\]/.test(ini160), true);
+  chequear('el resumen se cierra con una equis explicita, no tocando en cualquier lado',
+    /setCierre\(null\)/.test(ini160) && !/<Pressable style=\{estilos\.resumen\} onPress=\{\(\) => setCierre\(null\)\}/.test(ini160), true);
   // `!inner` y no un select suelto: sin eso PostgREST devuelve TODAS las
   // sesiones con `logs` en null para las que no casan, y la suma saldria de la
   // semana entera en vez del dia.
