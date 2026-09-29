@@ -1,6 +1,8 @@
 import type { Cliente } from '@cliente';
 import { MESES, aISO } from '@nucleo/fechas';
 import { planetaDeDia } from '@nucleo/rangos';
+import { disponible } from '@nucleo/esquema';
+import { versionDelEsquema } from '@compartido/esquema';
 import { T } from '@nucleo/textos';
 
 /**
@@ -28,6 +30,8 @@ export type Celda = {
   ruta: string;
   fecha: string;
   planeta: string | null;
+  /** El día de racha en que se sacó (item 6.4): "día 41". `null` = sin dato. */
+  dia: number | null;
   visibilidad: 'privada' | 'amigos';
   esSubida: boolean;
 };
@@ -80,15 +84,24 @@ export async function cargarAlbum(supabase: Cliente, uid: string): Promise<Datos
 
   const logIds = fotos.map((f) => f.log_id).filter(Boolean) as string[];
   const rutas = fotos.map((f) => f.storage_path as string);
+  // `racha_del_dia` recién existe con la migración 57 (item 6.4). Sin ella, la
+  // columna no está y pedirla haría fallar TODA la consulta: se pide solo cuando
+  // el esquema ya la tiene; hasta entonces el álbum anda igual, sin el "día N".
+  const conDia = disponible('diaDeRacha', await versionDelEsquema(supabase).catch(() => null));
+  const colsLog = conDia ? 'id, fecha, planeta_del_dia, racha_del_dia' : 'id, fecha, planeta_del_dia';
   // Los días, las URL y las miniaturas, también a la vez.
   const [{ data: logsDatos }, { data: firmadas }, chicas] = await Promise.all([
     logIds.length
-      ? supabase.from('logs').select('id, fecha, planeta_del_dia').in('id', logIds)
-      : Promise.resolve({ data: [] as { id: string; fecha: string; planeta_del_dia: string | null }[] }),
+      ? supabase.from('logs').select(colsLog).in('id', logIds)
+      : Promise.resolve({ data: [] as { id: string; fecha: string; planeta_del_dia: string | null; racha_del_dia: number | null }[] }),
     supabase.storage.from('fotos').createSignedUrls(rutas, 3600),
     miniaturas(supabase, rutas.slice(0, MINIATURAS_PRIMERAS)),
   ]);
-  const mapa = new Map((logsDatos ?? []).map((l) => [l.id, l]));
+  // El cast: `select(colsLog)` con una columna variable le saca el tipo a
+  // supabase-js (no puede parsear un string de runtime). Es la misma forma en los
+  // dos casos, con `racha_del_dia` opcional según el esquema.
+  type LogFila = { id: string; fecha: string; planeta_del_dia: string | null; racha_del_dia?: number | null };
+  const mapa = new Map(((logsDatos ?? []) as unknown as LogFila[]).map((l) => [l.id, l]));
 
   return {
     miRango,
@@ -106,6 +119,7 @@ export async function cargarAlbum(supabase: Cliente, uid: string): Promise<Datos
         // Montevideo caía al día —y a veces al mes— siguiente. (29/9)
         fecha: (log?.fecha as string | undefined) ?? aISO(new Date(f.creado as string)),
         planeta: (log?.planeta_del_dia as string | null | undefined) ?? null,
+        dia: (log?.racha_del_dia as number | null | undefined) ?? null,
         visibilidad: f.visibilidad as 'privada' | 'amigos',
         esSubida: !!f.es_subida_de_rango,
       };

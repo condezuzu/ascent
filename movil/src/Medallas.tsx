@@ -4,6 +4,7 @@ import { cuantosLevantan, type Medalla as Dato } from '@nucleo/medallas';
 import { CURVA } from '@nucleo/deslizar';
 import { T } from '@nucleo/textos';
 import Medalla from './Medalla';
+import MedallaSaturno from './MedallaRacha';
 import { C } from './colores';
 
 /**
@@ -50,11 +51,14 @@ const SEPARACION = 7;
 export default function Medallas({
   medallas,
   nombre,
+  mejorRacha,
   tam = 24,
 }: {
   medallas: readonly Dato[];
   /** El nombre, que va en la misma fila. */
   nombre?: ReactNode;
+  /** La racha más larga histórica: si hay, se agrega la medalla de Saturno (item 5). */
+  mejorRacha?: number;
   tam?: number;
 }) {
   const [abierta, setAbierta] = useState<string | null>(null);
@@ -62,6 +66,16 @@ export default function Medallas({
   const [desdeX, setDesdeX] = useState(0);
   const elegida = medallas.find((m) => m.zona === abierta) ?? null;
   const cual = medallas.findIndex((m) => m.zona === abierta);
+  // LA MEDALLA DE SATURNO (racha más larga) va al final de la fila, con su propio
+  // globo. Su "índice" para la punta es después de todas las de fuerza.
+  const conSaturno = typeof mejorRacha === 'number' && mejorRacha > 0;
+  const saturnoAbierto = abierta === 'racha';
+  const idxGlobo = saturnoAbierto ? medallas.length : cual;
+  const fraseGlobo = saturnoAbierto
+    ? T.yo.rachaMasLargaLarga(mejorRacha ?? 0)
+    : elegida
+      ? frase(elegida)
+      : null;
 
   /**
    * ENTRA RÁPIDO, SE QUEDA, Y SE VA DESVANECIÉNDOSE.
@@ -122,18 +136,28 @@ export default function Medallas({
               <Medalla zona={m.zona} material={m.material} tam={tam} />
             </Pressable>
           ))}
+          {conSaturno && (
+            <Pressable
+              onPress={() => setAbierta(saturnoAbierto ? null : 'racha')}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={T.yo.rachaMasLargaLarga(mejorRacha ?? 0)}
+            >
+              <MedallaSaturno tam={tam} />
+            </Pressable>
+          )}
         </View>
       </View>
 
-      {elegida && cual >= 0 && (
+      {fraseGlobo && idxGlobo >= 0 && (
         <Animated.View style={[estilos.globo, { opacity: opacidad }]} pointerEvents="none">
           {/* LA PUNTA: un cuadrado girado 45°, con la mitad de arriba asomando
               del globo. Es la forma más barata de hacer un triángulo sin traer
               un SVG por seis píxeles — la misma idea que la cruz de
               `GloboPrimeraVez`. */}
-          <View style={[estilos.punta, { left: desdeX + cual * (tam + SEPARACION) + tam / 2 - 5 }]} />
+          <View style={[estilos.punta, { left: desdeX + idxGlobo * (tam + SEPARACION) + tam / 2 - 5 }]} />
           <View style={estilos.cuerpo}>
-            <Text style={estilos.texto}>{frase(elegida)}</Text>
+            <Text style={estilos.texto}>{fraseGlobo}</Text>
           </View>
         </Animated.View>
       )}

@@ -136,20 +136,31 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
 
   const gesto = useRef(
     PanResponder.create({
-      // MÁS HORIZONTAL QUE VERTICAL, y con ocho píxeles de margen: un toque para
-      // cerrar mueve el dedo uno o dos, y sin el margen cada toque arrancaría un
-      // arrastre.
+      // ARRANCA EL RESPONDER EN EL TOUCH-DOWN (bug del iPhone, 29/9). Adentro de un
+      // <Modal> de iOS, un PanResponder que SOLO tiene `onMoveShouldSet...` nunca
+      // se consulta en el move: el gesto quedaba muerto en el teléfono aunque
+      // anduviera en la web (donde se construyó y probó). Con `onStartShouldSet`
+      // la capa entra en la cadena de responders al tocar, y ahí sí se le pregunta
+      // por el movimiento. La foto no tiene toque propio, así que tomar el
+      // responder acá no le saca nada a nadie; el toque corto cierra (abajo).
+      onStartShouldSetPanResponder: () => true,
+      // MÁS HORIZONTAL QUE VERTICAL, con ocho píxeles de margen. La variante de
+      // CAPTURA además le gana a los Pressable hermanos (flechas, cerrar) cuando
+      // el gesto ya es claramente un arrastre horizontal.
       onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
+      onMoveShouldSetPanResponderCapture: (_e, g) => Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderMove: (_e, g) => desliz.setValue(g.dx),
       onPanResponderRelease: (_e, g) => {
         const i = abiertaRef.current;
         const total = cuantasRef.current;
+        // UN TOQUE (casi sin desplazamiento) CIERRA. El fondo dejó de ser un
+        // Pressable aparte —competía por el touch y era parte de por qué el gesto
+        // no agarraba en el teléfono—; ahora la capa del gesto es una sola y el
+        // toque para cerrar se resuelve acá.
+        if (Math.abs(g.dx) < 8 && Math.abs(g.dy) < 8) return setAbierta(null);
         // UN QUINTO DE PANTALLA O UN TIRÓN RÁPIDO. Solo por distancia, un
         // movimiento corto y decidido no pasa; solo por velocidad, un arrastre
-        // lento y largo tampoco.
-        // Umbral más bajo (27/9): con 70px/0,4 el deslizamiento entre fotos casi
-        // no disparaba y "solo andaban los botones". 45px o un envión suave ya
-        // pasan de foto; sigue pidiendo intención, no un temblor.
+        // lento y largo tampoco. 45px o un envión suave ya pasan de foto.
         const fuerte = Math.abs(g.dx) > 45 || Math.abs(g.vx) > 0.25;
         if (i === null || !fuerte) return volverAlCentro();
         if (g.dx < 0 && i < total - 1) return saltar(1);
@@ -302,16 +313,35 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
       <Modal visible={!!foto} transparent animationType="fade" onRequestClose={() => setAbierta(null)}>
         {foto && (
           <View style={estilos.visor}>
-            {/* El fondo cierra; la foto y la barra de abajo no. */}
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setAbierta(null)} />
+            {/* UNA SOLA CAPA PARA EL GESTO, a pantalla completa, con la foto
+                centrada adentro (29/9). Antes el fondo era un Pressable aparte
+                que cerraba al tocar: competía por el touch y —adentro del Modal
+                de iOS— dejaba el gesto de deslizar MUERTO en el teléfono (andaba
+                solo en la web). Ahora la capa es una: el toque corto cierra
+                (en `onPanResponderRelease`) y el arrastre pasa de foto. El
+                encabezado y las flechas van DESPUÉS, así quedan por encima y
+                sus toques siguen andando.
 
-            {/* LA FECHA ARRIBA, no encima de los botones (25/9). Estaba abajo,
-                en la misma fila que "solo tú" y "quitar foto", y ahí estorbaba:
-                lo de abajo son cosas que se TOCAN y la fecha es un dato que se
-                lee. Arriba, al lado de la cruz, tiene su propio renglón. */}
+                EL MARCO (25/9): un borde fino, teñido apenas por el rango (4.2),
+                para que una foto vertical no deje dos huecos sin forma. */}
+            <Animated.View
+              style={[StyleSheet.absoluteFill, estilos.capaGesto, { transform: [{ translateX: desliz }] }]}
+              {...gesto.panHandlers}
+            >
+              <View style={[estilos.marco, { borderColor: conAlfa(acentoRango, 0.45) }]}>
+                <Image source={{ uri: foto.url }} style={{ width: width - 32, height: width - 32 }} resizeMode="contain" />
+              </View>
+            </Animated.View>
+
+            {/* LA FECHA ARRIBA, al lado de la cruz, en su propio renglón. Se
+                dibuja después de la capa del gesto: queda por encima. */}
             <View style={estilos.encabezado} pointerEvents="box-none">
               <View style={estilos.cuando}>
                 <Text style={estilos.fecha}>{fechaLinda(foto.fecha)}</Text>
+                {/* EL DÍA DE RACHA (6.4): "día 41" — la foto pasa de suelta a
+                    registro. Va al lado de la fecha, no sobre la imagen, para no
+                    ensuciarla. El rango NO se escribe: vive en el color del marco. */}
+                {foto.dia != null && <Text style={estilos.diaDeRacha}>{T.album.diaDeRacha(foto.dia)}</Text>}
                 {!!foto.planeta && <Text style={estilos.planeta}>{foto.planeta}</Text>}
                 {foto.esSubida && <Text style={estilos.planeta}>{T.album.deSubida}</Text>}
               </View>
@@ -319,20 +349,6 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                 <Text style={estilos.cerrarTexto}>×</Text>
               </Pressable>
             </View>
-
-            {/* LA FOTO ES LA QUE RECIBE EL ARRASTRE, y va sola en su capa: si
-                el gesto viviera en el fondo, competiría con el toque que
-                cierra.
-
-                EL MARCO (25/9): *"la foto abierta queda muy cuadrada, le falta
-                un marco"*. Y era literal —una imagen a sangre sobre el negro,
-                sin nada que dijera dónde termina—. El marco es el mismo hilo
-                que separa todo en esta app: un borde de medio píxel, esquinas
-                de 14 y el fondo de las celdas atrás, para que una foto vertical
-                no deje dos huecos sin forma a los costados. */}
-            <Animated.View style={[estilos.marco, { borderColor: conAlfa(acentoRango, 0.45), transform: [{ translateX: desliz }] }]} {...gesto.panHandlers}>
-              <Image source={{ uri: foto.url }} style={{ width: width - 32, height: width - 32 }} resizeMode="contain" />
-            </Animated.View>
 
             {/* `box-none` ES LO QUE HACÍA QUE NO SE PUDIERA DESLIZAR (25/9).
                 Esta barra cruza la pantalla entera a la altura del medio —que
@@ -492,6 +508,9 @@ const estilos = StyleSheet.create({
     zIndex: 2,
   },
   cerrarTexto: { color: C.tinta, fontSize: 32, lineHeight: 34 },
+  // La capa del gesto ocupa toda la pantalla y centra la foto: así el arrastre
+  // se puede empezar en cualquier lado, no solo sobre el cuadrado de la foto.
+  capaGesto: { alignItems: 'center', justifyContent: 'center' },
   // EL MARCO DE LA FOTO. El mismo hilo que separa todo en esta app.
   marco: {
     alignSelf: 'center',
@@ -514,6 +533,8 @@ const estilos = StyleSheet.create({
   pie: { position: 'absolute', left: 24, right: 24, bottom: 48 },
   cuando: { flexDirection: 'row', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' },
   fecha: { color: C.tinta, fontSize: 16 },
+  // "día 41": el registro, en el claro de la app para que se lea como un logro.
+  diaDeRacha: { color: C.claro, fontSize: 13, fontVariant: ['tabular-nums'] },
   planeta: { color: C.sub, fontSize: 13 },
   acciones: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pastilla: {

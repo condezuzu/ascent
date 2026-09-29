@@ -6,10 +6,13 @@
  * sumar a nadie. Se escribe el número que está impreso en lo que agarraste y la
  * etiqueta dice cuál es.
  *
- *   total   la barra con los discos, o el número de la máquina.   × 1
- *   par     dos mancuernas o dos poleas: el peso de UNA.          × 2
- *   una     un lado por vez: un brazo, una pierna, una mancuerna.  × 2
- *   lastre  lo que va encima del peso corporal.                    × 1
+ *   total    la barra con los discos, o el número de la máquina.   × 1
+ *   par      dos mancuernas o dos poleas: el peso de UNA.          × 2
+ *   una      un lado por vez: un brazo, una pierna, una mancuerna.  × 2
+ *   lastre   lo que va encima del peso corporal.                    × 1
+ *   corporal el peso ES tu cuerpo: abdominales, flexiones, fondos. Sin número:
+ *            se cuentan las series y nada más (6.2). No suma volumen —el peso
+ *            corporal cambia y ensuciaría la comparación, igual que el lastre—.
  *
  * "UNA" TAMBIÉN MULTIPLICA POR DOS, desde el 25/9. Estaba en × 1 y el pedido
  * lo corrige: *"por lado tiene que sumar el total, igual que mancuernas.
@@ -38,10 +41,21 @@
  * NO IMPORTA NADA, igual que el resto de `nucleo`.
  */
 
-export type Carga = 'total' | 'par' | 'una' | 'lastre';
+import { disponible } from './esquema.ts';
+
+export type Carga = 'total' | 'par' | 'una' | 'lastre' | 'corporal';
 
 /** En el orden en que se ofrecen al cambiarla. */
-export const CARGAS: readonly Carga[] = ['total', 'par', 'una', 'lastre'];
+export const CARGAS: readonly Carga[] = ['total', 'par', 'una', 'lastre', 'corporal'];
+
+/**
+ * Las que se OFRECEN según el esquema. 'corporal' recién existe con la migración
+ * 58 (la base lo valida en checks y funciones); antes de eso no se ofrece, para
+ * no dejar elegir algo que la base descartaría en silencio.
+ */
+export function cargasOfrecidas(version: number | null): readonly Carga[] {
+  return disponible('cargaCorporal', version) ? CARGAS : CARGAS.filter((c) => c !== 'corporal');
+}
 
 /**
  * Lo que se ofrece en la pregunta de la primera vez. El lastre no: los

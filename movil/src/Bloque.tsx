@@ -111,6 +111,7 @@ export default function Bloque({
   const cumplida = metaCumplida(estado);
   const puntos = Math.max(estado.meta, estado.hechas);
   const cargaVista = cargaVigente(estado.carga, actual?.carga);
+  const esCorporal = cargaVista === 'corporal';
   const admitePeso = !!estado.ejercicio && actual?.admite_peso !== false;
   const preguntar =
     conCarga &&
@@ -166,11 +167,14 @@ export default function Bloque({
 
       {anotarPeso && admitePeso && (
         <View style={[estilos.peso, esFantasma && estilos.fantasmaPeso]}>
-          <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} />
+          {/* PESO CORPORAL (6.2): el peso es tu cuerpo, no hay número que anotar.
+              Se esconde el campo pero se DEJA la etiqueta, para poder volver a un
+              peso si algún día lo hacés con lastre. */}
+          {!esCorporal && <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} />}
           {conCarga && !preguntar && (
             <EtiquetaDeCarga carga={cargaVista} ejercicio={estado.ejercicio} alElegir={alElegirCarga} />
           )}
-          {conCarga && !preguntar && !!estado.peso && muestraTotal(cargaVista) && (
+          {conCarga && !preguntar && !esCorporal && !!estado.peso && muestraTotal(cargaVista) && (
             <Text style={estilos.total}>
               {T.sesion.enTotal(pesoCorto(kilosMovidos(estado.peso, cargaVista), unidad), unidad)}
             </Text>

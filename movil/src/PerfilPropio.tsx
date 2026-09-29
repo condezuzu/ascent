@@ -183,6 +183,7 @@ export default function PerfilPropio() {
                 —lo arregla `flexWrap`, no esconderlas—. */}
             <Medallas
               medallas={datos.medallas}
+              mejorRacha={perfil.mejor_racha}
               nombre={<Text style={estilos.nombre}>{perfil.username}</Text>}
             />
             <View style={estilos.meta}>

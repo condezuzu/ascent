@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CARGAS, claveDeEtiqueta, type Carga } from '@nucleo/carga';
+import { cargasOfrecidas, claveDeEtiqueta, type Carga } from '@nucleo/carga';
 import { T } from '@nucleo/textos';
+import { useVersionDelEsquema } from '@compartido/esquema';
 import { C } from './colores';
 
 /**
@@ -25,6 +26,7 @@ export default function EtiquetaDeCarga({
   chica?: boolean;
 }) {
   const [abierta, setAbierta] = useState(false);
+  const version = useVersionDelEsquema();
   const clave = claveDeEtiqueta(carga, ejercicio);
 
   return (
@@ -40,7 +42,7 @@ export default function EtiquetaDeCarga({
       </Pressable>
       {abierta && (
         <View style={estilos.opciones}>
-          {CARGAS.map((c) => (
+          {cargasOfrecidas(version).map((c) => (
             <Pressable
               key={c}
               style={[estilos.opcion, c === carga && estilos.prendida]}

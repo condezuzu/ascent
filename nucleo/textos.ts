@@ -152,9 +152,9 @@ export const T = {
     sinEjercicio: 'Sin ejercicio',
     // "60, 60 kg" · "30, 30 kg por mancuerna". El modo sale del bloque, no del
     // catálogo: es lo que quedó escrito ese día.
-    pesosDeSeries: (lista: string, unidad: string, carga: 'total' | 'par' | 'parPolea' | 'una' | 'lastre' = 'total') =>
+    pesosDeSeries: (lista: string, unidad: string, carga: 'total' | 'par' | 'parPolea' | 'una' | 'lastre' | 'corporal' = 'total') =>
       `${lista} ${unidad}${
-        { total: '', par: ' por mancuerna', parPolea: ' de cada lado', una: ', un lado por vez', lastre: ' de lastre' }[carga]
+        { total: '', par: ' por mancuerna', parPolea: ' de cada lado', una: ', un lado por vez', lastre: ' de lastre', corporal: '' }[carga]
       }`,
     ejercicioSinNombre: 'Un ejercicio que ya no está',
     enCurso: 'La sesión sigue abierta: esto se completa al terminarla.',
@@ -1047,6 +1047,7 @@ export const T = {
       // ninguna mancuerna—, y el nombre viejo la dejaba afuera.
       una: 'un lado por vez',
       lastre: 'de lastre',
+      corporal: 'peso corporal',
     },
     // Al tocar la etiqueta. Dicen QUÉ número escribir, no el nombre del modo.
     cargaOpcion: {
@@ -1057,6 +1058,7 @@ export const T = {
       // el numero que se escribe es el de UN lado, y el total es el doble.
       una: 'Un lado por vez: el de un lado',
       lastre: 'Lastre: sin contar tu peso',
+      corporal: 'Peso corporal: sin número, solo las series',
     },
     cargaCambiar: 'Qué significa este número',
     // Debajo del campo, solo cuando lo escrito no es el total. Además de
@@ -1274,6 +1276,7 @@ export const T = {
     anterior: 'Foto anterior',
     siguiente: 'Foto siguiente',
     deSubida: 'Subiste de rango',
+    diaDeRacha: (n: number) => `día ${n}`,
   },
 
   // ---------------------------------------------------------------
@@ -1375,6 +1378,8 @@ export const T = {
     cambiarFoto: 'Cambiar la foto de perfil',
     subiendoFoto: 'subiendo la foto…',
     deRacha: (n: number) => `${n} de racha`,
+    // La medalla de Saturno (item 5): el texto del globo al tocarla.
+    rachaMasLargaLarga: (n: number) => `Tu racha más larga fue de ${n} ${n === 1 ? 'día' : 'días'}`,
     fotoActualizada: 'Foto actualizada.',
     noSePudoEliminar: 'No se eliminó. Prueba de nuevo.',
     // EL ROTULO Y EL PIE, cortos (25/9). Decian "Son las que ven tus amigos.

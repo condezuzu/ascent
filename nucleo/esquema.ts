@@ -38,6 +38,10 @@ export const REQUIERE = {
   medallasDeAmigo: 46,
   /** Las medallas de varios amigos en una sola consulta, para el ranking. */
   medallasDeMuchos: 52,
+  /** La racha de cada día en el log, para el "día 41" del álbum. */
+  diaDeRacha: 57,
+  /** El modo de carga "peso corporal": la base lo valida en checks y funciones. */
+  cargaCorporal: 58,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;
