@@ -705,6 +705,7 @@ export default function Inicio({
             estado={sesion.estado.bloques}
             total={sesion.estado.series}
             unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
+            sugerido={sesion.estado.sugerido}
             cargaConsultada={sesion.estado.cargaConsultada}
             alSumar={sesion.serieHecha}
             alRestar={sesion.deshacerSerie}

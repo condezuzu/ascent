@@ -1002,6 +1002,9 @@ export const T = {
     // verdad, y las dos palabras suenan a que falta algo.
     sinEjercicio: 'Cualquier cosa',
     cuantasVasAHacer: 'Cuántas vas a hacer',
+    // LA RUTINA QUE SE PROPONE SOLA: lo sugerido se muestra distinto de lo hecho.
+    sugerido: 'Sugerido',
+    sugeridoNota: 'De tu rutina. Cuenta la primera serie para confirmarlo.',
 
     // CAMBIÉ DE EJERCICIO / ME EQUIVOQUÉ DE EJERCICIO. Son dos cosas
     // distintas y la app no puede adivinar cuál fue: si ya hay series

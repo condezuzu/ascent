@@ -35,6 +35,7 @@ export default function Bloque({
   estado,
   total,
   unidad,
+  sugerido,
   cargaConsultada,
   alSumar,
   debajoDelMas,
@@ -53,6 +54,8 @@ export default function Bloque({
   estado: EstadoBloques;
   total: number;
   unidad: Unidad;
+  /** El ejercicio/peso del bloque son una SUGERENCIA de la rutina, sin confirmar. */
+  sugerido?: boolean;
   cargaConsultada: string | null;
   alSumar: () => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
@@ -98,6 +101,11 @@ export default function Bloque({
     };
   }, []);
 
+  // FANTASMA: el ejercicio/peso vienen sugeridos por la rutina y todavía no se
+  // confirmaron (nadie contó una serie). Se muestra distinto —tenue, punteado y
+  // con una etiqueta— para que la diferencia con lo confirmado sea obvia de un
+  // vistazo: si se viera igual, un toque de más registraría una serie no hecha.
+  const esFantasma = !!sugerido && estado.hechas === 0 && !!estado.ejercicio;
   const actual = ejercicios.find((e) => e.id === estado.ejercicio) ?? null;
   const nombreDe = (id: string | null) => (id ? (ejercicios.find((e) => e.id === id)?.nombre ?? id) : T.sesion.sinEjercicio);
   const cumplida = metaCumplida(estado);
@@ -132,11 +140,16 @@ export default function Bloque({
     <View style={estilos.bloque}>
       <View style={estilos.fila}>
         <Pressable style={estilos.ejercicio} onPress={() => setEligiendo(true)} accessibilityRole="button">
-          <Text style={[estilos.ejercicioTexto, !estado.ejercicio && estilos.apagadoTexto]} numberOfLines={1}>
+          <Text
+            style={[estilos.ejercicioTexto, !estado.ejercicio && estilos.apagadoTexto, esFantasma && estilos.fantasmaTexto]}
+            numberOfLines={1}
+          >
             {actual ? `${actual.nombre} · ${actual.grupo}` : T.sesion.sinEjercicio}
           </Text>
         </Pressable>
+        {esFantasma && <Text style={estilos.badgeSugerido}>{T.sesion.sugerido}</Text>}
       </View>
+      {esFantasma && <Text style={estilos.sugeridoNota}>{T.sesion.sugeridoNota}</Text>}
 
       <View style={estilos.metas} accessibilityLabel={T.sesion.cuantasVasAHacer}>
         {METAS.map((m) => (
@@ -152,7 +165,7 @@ export default function Bloque({
       </View>
 
       {anotarPeso && admitePeso && (
-        <View style={estilos.peso}>
+        <View style={[estilos.peso, esFantasma && estilos.fantasmaPeso]}>
           <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} />
           {conCarga && !preguntar && (
             <EtiquetaDeCarga carga={cargaVista} ejercicio={estado.ejercicio} alElegir={alElegirCarga} />
@@ -332,6 +345,24 @@ const estilos = StyleSheet.create({
   ejercicio: { flex: 1, borderBottomWidth: 1, borderBottomColor: C.lineaFuerte, paddingVertical: 10 },
   ejercicioTexto: { color: C.tinta, fontSize: 17 },
   apagadoTexto: { color: C.apagado },
+  // FANTASMA (sugerido sin confirmar): tenue y en cursiva, distinto del confirmado.
+  fantasmaTexto: { color: C.sub, fontStyle: 'italic' },
+  fantasmaPeso: { opacity: 0.5 },
+  // La etiqueta "sugerido": una píldora chica al lado del ejercicio, imposible
+  // de confundir con un bloque ya cargado.
+  badgeSugerido: {
+    color: C.fondo,
+    backgroundColor: C.sub,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 999,
+    marginLeft: 8,
+    overflow: 'hidden',
+  },
+  sugeridoNota: { color: C.apagado, fontSize: 12, lineHeight: 16, marginTop: 6 },
   metas: { flexDirection: 'row', gap: 8, marginTop: 12 },
   meta: { flex: 1, borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
   metaPrendida: { borderColor: C.sub },

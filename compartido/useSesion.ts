@@ -39,6 +39,14 @@ import {
   type EstadoBloques,
 } from '@nucleo/bloques';
 import { sumarSerie, restarSerie, corregirEnLista } from '@nucleo/conteo';
+import { hoyISO, restarDias } from '@nucleo/fechas';
+import {
+  rutinaParaHoy,
+  siguienteEnRutina,
+  reengancharDesde,
+  ejerciciosEnOrden,
+  type SesionRutina,
+} from '@nucleo/rutina';
 import {
   AVISO,
   esMio,
@@ -185,6 +193,15 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // primera vez no se muestra: a quien la contestó en otro teléfono se le
   // aparecería un segundo, hasta que llega la respuesta.
   const [cargaConsultada, setCargaConsultada] = useState<string | null>(null);
+  // LA RUTINA QUE SE PROPONE SOLA (ver `nucleo/rutina.ts`). `sugerido` dice si el
+  // ejercicio y el peso del bloque actual son una SUGERENCIA que todavía no se
+  // confirmó (contando una serie): la UI la muestra distinta —"fantasma"— para
+  // que nadie cuente una serie que no hizo. `rutinaRef` es la cadena propuesta
+  // para hoy; `sesionesRutinaRef` es el historial reciente, para re-enganchar la
+  // cadena si se cambia el primer ejercicio. Todo del lado del cliente.
+  const [sugerido, setSugerido] = useState(false);
+  const rutinaRef = useRef<string[]>([]);
+  const sesionesRutinaRef = useRef<SesionRutina[]>([]);
   const [idSesion, setIdSesion] = useState<string | null>(null);
   const [descanso, setDescanso] = useState<DescansoVivo | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -515,6 +532,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // Va DESPUÉS de guardar la sesión y sin bloquear: que el chip arranque
     // vacío es un detalle; que el cronómetro tarde en aparecer, no.
     (async () => {
+      // LA RUTINA DEL DÍA: se trae el historial reciente y se calcula qué
+      // proponer (mismo día de la semana → rotación). Va antes de sembrar, y
+      // también deja el historial listo para re-enganchar la cadena si se cambia
+      // el primer ejercicio. Sin historial, `rutinaParaHoy` da vacío y todo
+      // queda como estaba (cae al `ultimo_ejercicio` de siempre).
+      await cargarHistorialRutina();
+      rutinaRef.current = rutinaParaHoy(sesionesRutinaRef.current, hoyISO());
+
       // YA ESTABA CORRIENDO (se empezó en otro lado): lo que se hizo está en la
       // base, y eso va antes que cualquier semilla.
       if (r.yaEstaba && r.id && sinNadaContado(bloquesRef.current)) {
@@ -523,8 +548,11 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
         await recuperarBloques(r.id);
         if (!sinNadaContado(bloquesRef.current)) return;
       }
+      // La semilla sale de la rutina del día; si no hay rutina, del último
+      // ejercicio de siempre (regla 2 de la migración 27).
+      const deRutina = rutinaRef.current[0] ?? null;
       const [{ data: ultimo }, meta] = await Promise.all([
-        supabase.rpc('ultimo_ejercicio'),
+        deRutina ? Promise.resolve({ data: deRutina }) : supabase.rpc('ultimo_ejercicio'),
         leerMetaPreferida(),
       ]);
       // `sembrar` y NO `bloquesVacios`: en un gimnasio con mala señal esta
@@ -539,7 +567,11 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       // Si ya había algo contado, `sembrar` devuelve lo mismo que entró y acá
       // no hay nada que escribir.
       if (sembrado === bloquesRef.current) return;
+      bloquesRef.current = sembrado;
       setBloques(sembrado);
+      // Si la semilla vino de la rutina, es una SUGERENCIA (fantasma) hasta que
+      // se cuente una serie. Si vino del último ejercicio, es como siempre.
+      setSugerido(!!deRutina && sembrado.ejercicio === deRutina);
       await actualizarSesionCache({ bloques: sembrado }, yo);
       if (sembrado.ejercicio) proponerArranque(sembrado.ejercicio);
     })();
@@ -679,6 +711,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     bloquesRef.current = nc.bloques;
     setSeries(nc.series);
     setBloques(nc.bloques);
+    // CONTAR UNA SERIE CONFIRMA la sugerencia: deja de ser fantasma. Es EL gesto
+    // que la vuelve real, así que a partir de acá se ve como cualquier bloque.
+    setSugerido(false);
     // GUARDAR ANTES QUE NADA, Y ANTES QUE LA CACHÉ (bug del gimnasio, 28/9).
     //
     // Apagar la pantalla justo después de sumar una serie la perdía. El motivo:
@@ -768,6 +803,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     await subir(seriesRef.current, b);
     await actualizarSesionCache({ bloques: b }, yo);
     await marcar();
+    // LA CADENA: proponer el siguiente de la rutina como sugerencia (fantasma).
+    // Los ya hechos salen de los bloques cerrados; si queda uno por proponer, va
+    // con su peso. Si no hay rutina o ya se hicieron todos, el bloque queda en
+    // blanco, como siempre.
+    const hechos = ejerciciosEnOrden(b.cerrados.map((x) => x.ejercicio));
+    const siguiente = siguienteEnRutina(rutinaRef.current, hechos);
+    if (siguiente) await proponerEjercicioSugerido(siguiente);
+    else setSugerido(false);
   }
 
   /** Cambiar de ejercicio cierra el bloque anterior (ver `nucleo/bloques.ts`). */
@@ -778,9 +821,50 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     if (b === previo) return;
     bloquesRef.current = b;
     setBloques(b);
+    // Lo eligió la persona: ya no es una sugerencia. Y LA CADENA SE RE-ENGANCHA a
+    // la rutina de ESE ejercicio —lo que suele venir después de él—.
+    setSugerido(false);
+    if (id) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
     await actualizarSesionCache({ bloques: b }, yo);
     await subir(seriesRef.current, b);
     if (id) proponerArranque(id);
+  }
+
+  // EL HISTORIAL RECIENTE PARA LA RUTINA: sesiones terminadas de las últimas 8
+  // semanas, cada una reducida a sus ejercicios en orden. Del lado del cliente
+  // (la RLS deja ver solo las propias). Sin bloquear ni romper: si falla, queda
+  // vacío y la rutina no propone nada (todo como hoy).
+  async function cargarHistorialRutina() {
+    try {
+      const desde = restarDias(hoyISO(), 56);
+      const { data } = await supabase
+        .from('sesiones')
+        .select('bloques, logs!inner(fecha)')
+        .eq('estado', 'terminada')
+        .gte('logs.fecha', desde)
+        .order('inicio');
+      const filas = (data ?? []) as { bloques?: unknown; logs?: unknown }[];
+      sesionesRutinaRef.current = filas
+        .map((s) => {
+          const bloques = Array.isArray(s.bloques) ? (s.bloques as { ejercicio?: string | null }[]) : [];
+          const log = Array.isArray(s.logs) ? (s.logs[0] as { fecha?: string }) : (s.logs as { fecha?: string } | null);
+          return { fecha: log?.fecha ?? '', ejercicios: ejerciciosEnOrden(bloques.map((b) => b?.ejercicio ?? null)) };
+        })
+        .filter((s) => s.fecha);
+    } catch {
+      sesionesRutinaRef.current = [];
+    }
+  }
+
+  // PONER UN EJERCICIO COMO SUGERENCIA (fantasma): lo deja en el bloque actual con
+  // su peso, marcado como sugerido hasta que se cuente una serie.
+  async function proponerEjercicioSugerido(id: string) {
+    const b = cambiarEjercicio(bloquesRef.current, id);
+    bloquesRef.current = b;
+    setBloques(b);
+    setSugerido(true);
+    await actualizarSesionCache({ bloques: b }, yo);
+    proponerArranque(id);
   }
 
   /**
@@ -1020,6 +1104,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       bloques,
       ultimaActividad,
       cargaConsultada,
+      sugerido,
     },
     empezar,
     terminar,
