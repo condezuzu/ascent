@@ -59,6 +59,14 @@ export type SesionCacheada = {
    */
   bloques?: EstadoBloques;
   /**
+   * Si el bloque en curso es una SUGERENCIA de la rutina sin confirmar (fantasma).
+   * Vive acá para que sobreviva a que iOS mate la app: sin esto, al reabrir la
+   * sesión el ejercicio propuesto se vería como uno YA elegido, y el primer + le
+   * anotaría una serie a lo adivinado —justo lo que el fantasma existe para
+   * evitar—. Opcional como el resto: una caché vieja simplemente no lo trae.
+   */
+  sugerido?: boolean;
+  /**
    * La última actividad, en hora de SERVIDOR (migración 37): la sesión se
    * cierra sola media hora después. Opcional, como el resto: una caché de
    * una versión anterior cae en la regla de las dos horas.

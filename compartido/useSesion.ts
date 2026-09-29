@@ -249,6 +249,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       if (c.id) idVisto.current = c.id;
       setUltimaActividad(c.ultimaActividad ?? null);
       if (c.bloques) setBloques(c.bloques);
+      // El fantasma sobrevive a que iOS mate la app: si el bloque en curso era
+      // una sugerencia sin confirmar, al reabrir sigue viéndose como sugerencia
+      // y no como algo ya elegido (ver `SesionCacheada.sugerido`).
+      setSugerido(!!c.sugerido);
       // Las series NO se pisan si hay toques esperando en la cola: ahí el
       // número bueno es el que está en pantalla, no el que se guardó.
       if (c.series !== undefined && (await cuantasPendientes()) === 0) setSeries(c.series);
@@ -571,8 +575,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       setBloques(sembrado);
       // Si la semilla vino de la rutina, es una SUGERENCIA (fantasma) hasta que
       // se cuente una serie. Si vino del último ejercicio, es como siempre.
-      setSugerido(!!deRutina && sembrado.ejercicio === deRutina);
-      await actualizarSesionCache({ bloques: sembrado }, yo);
+      const esSugerencia = !!deRutina && sembrado.ejercicio === deRutina;
+      setSugerido(esSugerencia);
+      await actualizarSesionCache({ bloques: sembrado, sugerido: esSugerencia }, yo);
       if (sembrado.ejercicio) proponerArranque(sembrado.ejercicio);
     })();
 
@@ -639,6 +644,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     setDescanso(null);
     setPorUbicacion(false);
     setBloques(bloquesVacios());
+    // El fantasma no sobrevive a terminar: la próxima sesión decide de cero si
+    // hay algo que sugerir. Sin esto la bandera quedaba en true entre sesiones.
+    setSugerido(false);
     // Se dice, porque si no el día desaparece de la tira semanal sin
     // explicación y parece que la app se comió algo.
     if ((data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia) {
@@ -729,7 +737,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // vuelve la red— y `confirmar` ya no la pisa (respeta la cola no vacía). Va
     // PRIMERO, antes de la caché y de cualquier cosa que espere a la red.
     await subir(nc.series, nc.bloques);
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
+    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques, sugerido: false }, yo);
     // Recién ahora el descanso, que necesita leer la duración.
     const seg =
       (await leerDuracionDeSesion()) ??
@@ -801,7 +809,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // ese cierre tiene que quedar en la cola antes que la caché y que `marcar`,
     // que toca la red. Apagar la pantalla justo después no puede perderlo.
     await subir(seriesRef.current, b);
-    await actualizarSesionCache({ bloques: b }, yo);
+    // sugerido:false por defecto; si hay un siguiente en la cadena,
+    // `proponerEjercicioSugerido` lo vuelve a poner en true al toque.
+    await actualizarSesionCache({ bloques: b, sugerido: false }, yo);
     await marcar();
     // LA CADENA: proponer el siguiente de la rutina como sugerencia (fantasma).
     // Los ya hechos salen de los bloques cerrados; si queda uno por proponer, va
@@ -825,7 +835,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // la rutina de ESE ejercicio —lo que suele venir después de él—.
     setSugerido(false);
     if (id) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
-    await actualizarSesionCache({ bloques: b }, yo);
+    await actualizarSesionCache({ bloques: b, sugerido: false }, yo);
     await subir(seriesRef.current, b);
     if (id) proponerArranque(id);
   }
@@ -863,7 +873,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     bloquesRef.current = b;
     setBloques(b);
     setSugerido(true);
-    await actualizarSesionCache({ bloques: b }, yo);
+    await actualizarSesionCache({ bloques: b, sugerido: true }, yo);
     proponerArranque(id);
   }
 
@@ -1048,6 +1058,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     if (b === previo) return;
     bloquesRef.current = b;
     setBloques(b);
+    // Corregir el ejercicio también re-engancha la cadena, igual que
+    // `elegirEjercicio`: si no, el próximo sugerido saldría de la rutina del
+    // ejercicio equivocado. (29/9)
+    if (id) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
     await actualizarSesionCache({ bloques: b }, yo);
     await subir(seriesRef.current, b);
   }
