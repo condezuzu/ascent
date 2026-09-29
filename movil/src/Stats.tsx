@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
-import { aISO, deISO, fechaCorta, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
+import { aISO, deISO, fechaCorta, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { claveDeEtiqueta } from '@nucleo/carga';
 import { umbralValido } from '@nucleo/estancamiento';
@@ -183,11 +183,11 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
 
   const { racha, mejor, unidad, logs, sesiones } = datos;
   const entrenados = logs.filter((l) => !l.es_descanso);
-  // Las mismas dos cuentas que la web: los últimos 30 días contando hoy, y el
-  // mes calendario.
-  const en30 = entrenados.filter((l) => l.fecha >= restarDias(hoy, 29)).length;
   const d = deISO(hoy);
   const esteMes = entrenados.filter((l) => l.fecha >= aISO(new Date(d.getFullYear(), d.getMonth(), 1))).length;
+  // Cuántas veces fue este AÑO calendario (28/9): un amigo le preguntó y no lo
+  // tenía. Los logs vienen completos (sin filtro de fecha), así que es exacto.
+  const esteAno = entrenados.filter((l) => l.fecha >= aISO(new Date(d.getFullYear(), 0, 1))).length;
 
   // LOS TOPES YA NO SE USAN (25/9). Eran la escala de las barras, que se
   // estiraba con tu propio máximo: por eso una barra llena podía ser 4 series o
@@ -237,10 +237,11 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       {pestana === 'general' && (
         <View style={estilos.grilla}>
           {[
-            [String(racha), T.stats.rachaActual],
-            [String(mejor), T.stats.mejorRacha],
-            [`${en30}/30`, T.stats.ultimos30],
+            // Se sacaron "Racha actual" (ya está en Inicio) y "Últimos 30 días"
+            // (no aportaba). Queda mes y mejor, y se suma el año (28/9).
             [String(esteMes), T.stats.esteMes],
+            [String(esteAno), T.stats.esteAno],
+            [String(mejor), T.stats.mejorRacha],
           ].map(([v, e]) => (
             <View key={e} style={estilos.celda}>
               <Text style={estilos.valor}>{v}</Text>

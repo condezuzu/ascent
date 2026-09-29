@@ -804,6 +804,7 @@ export const T = {
     mejorRacha: 'Mejor racha',
     ultimos30: 'Últimos 30 días',
     esteMes: 'Este mes',
+    esteAno: 'Este año',
     elAno: 'El año',
     sesiones: 'Sesiones',
     promedio: 'Promedio',
