@@ -172,15 +172,18 @@ export function puedeVibrar(): boolean {
 const CLAVE_SONIDO = 'ascent:descanso-sonido';
 
 /**
- * Si el aviso suena, además de vibrar. **Apagado por defecto**: sonar sin
- * avisar en un gimnasio es peor que no sonar (§18.7).
+ * Si el aviso suena, además de vibrar. **PRENDIDO por defecto** (6.1, decisión
+ * del humano): el descanso es un cronómetro que uno mismo arrancó, no una
+ * notificación sorpresa, así que sonar es lo esperable. Solo un '0' explícito
+ * —apagarlo a mano en Ajustes— lo silencia. En silencio (timbre bajo) igual
+ * suena en primer plano, que es cuando el teléfono está en el banco.
  *
  * Va en el teléfono y no en `profiles` a propósito: es una preferencia del
  * TELÉFONO, no de la cuenta. El mismo usuario puede querer sonido en casa y
  * no en el gimnasio, y eso no viaja con la sesión.
  */
 export async function leerSonido(): Promise<boolean> {
-  return (await plataforma.almacenamiento.leer(CLAVE_SONIDO)) === '1';
+  return (await plataforma.almacenamiento.leer(CLAVE_SONIDO)) !== '0';
 }
 
 export function guardarSonido(prendido: boolean) {
