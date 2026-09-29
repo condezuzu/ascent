@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
 import { planetaDeDia } from '@nucleo/rangos';
@@ -22,6 +22,7 @@ import Sugerencias from './ajustes/Sugerencias';
 import Cuenta from './ajustes/Cuenta';
 import Bloqueados from './ajustes/Bloqueados';
 import Diagnostico from './ajustes/Diagnostico';
+import Interruptor from './Interruptor';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -149,8 +150,9 @@ export default function Ajustes({
             <Text style={estilos.opcion}>{T.ajustes.comparteGimnasio}</Text>
             <Text style={estilos.nota}>{T.ajustes.comparteGimnasioNota}</Text>
           </View>
-          <Switch
+          <Interruptor
             value={perfil.comparte_gimnasio === true}
+            accessibilityLabel={T.ajustes.comparteGimnasio}
             onValueChange={async (v) => {
               alCambiar({ comparte_gimnasio: v } as Partial<Perfil>);
               const { error } = await supabase.rpc('fijar_comparte_gimnasio', { p_valor: v });
