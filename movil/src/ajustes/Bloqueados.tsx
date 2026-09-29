@@ -15,13 +15,14 @@ export default function Bloqueados() {
   const [abierto, setAbierto] = useState(false);
   const [lista, setLista] = useState<Bloqueado[] | null>(null);
 
+  // SE CARGA AL MONTAR (ya vive dentro de "Ajustes avanzados", que es su propio
+  // pliegue perezoso), para poder decir CUÁNTAS hay en el título: "2 cuentas
+  // bloqueadas" es contexto; "Cuentas bloqueadas" a secas no dice si hay alguna.
   useEffect(() => {
-    if (abierto && lista === null) {
-      cargarBloqueados(supabase)
-        .then(setLista)
-        .catch(() => setLista([]));
-    }
-  }, [abierto, lista]);
+    cargarBloqueados(supabase)
+      .then(setLista)
+      .catch(() => setLista([]));
+  }, []);
 
   // Traba contra el doble-tap: aunque la fila sale de la lista al instante,
   // dos toques antes del render dispararían dos veces el RPC (idempotente, pero
@@ -41,7 +42,9 @@ export default function Bloqueados() {
         accessibilityRole="button"
         accessibilityState={{ expanded: abierto }}
       >
-        <Text style={estilos.titulo}>{T.ajustes.bloqueados}</Text>
+        <Text style={estilos.titulo}>
+          {lista && lista.length > 0 ? T.ajustes.bloqueadosCuenta(lista.length) : T.ajustes.bloqueados}
+        </Text>
         <Text style={estilos.signo}>{abierto ? '−' : '+'}</Text>
       </Pressable>
 

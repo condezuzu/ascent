@@ -72,6 +72,11 @@ export default function Ajustes({
   // El sonido del descanso es de ESTE teléfono, igual que en la web: se guarda
   // en el aparato y no en la cuenta.
   const [sonido, setSonido] = useState(false);
+  // LO QUE NO SE USA TODOS LOS DÍAS, plegado (item estructura). Lo frecuente
+  // —gimnasio, salud, descanso, peso, avisos, quién sos— queda arriba y a la
+  // vista; el resto entra acá adentro para que Ajustes no sea una lista larga y
+  // plana donde "cuentas bloqueadas" aparecía de la nada.
+  const [avanzado, setAvanzado] = useState(false);
   useEffect(() => {
     leerSonido().then(setSonido);
   }, []);
@@ -285,31 +290,44 @@ export default function Ajustes({
 
       {fallo !== '' && <Text style={estilos.error}>{fallo}</Text>}
 
-      {/* Antes del nombre, como en la web: el fondo es una preferencia de
-          ESTE aparato y no un dato de la cuenta. */}
-      <Fondo />
-
       <Identidad perfil={perfil} alCambiar={alCambiar} />
 
-      <Sugerencias userId={perfil.id} />
+      {/* AJUSTES AVANZADOS: todo lo que no se toca seguido, detrás de un solo
+          pliegue. Adentro va cada cosa con su propio contexto —incluida cuentas
+          bloqueadas— así ninguna aparece suelta en medio de la lista. */}
+      <Pressable
+        style={estilos.avanzadoCabe}
+        onPress={() => setAvanzado(!avanzado)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: avanzado }}
+      >
+        <Text style={estilos.avanzadoTitulo}>{T.ajustes.avanzados}</Text>
+        <Text style={estilos.avanzadoSigno}>{avanzado ? '−' : '+'}</Text>
+      </Pressable>
 
-      <MisDatos perfil={perfil} />
+      {avanzado && (
+        <>
+          {/* El fondo es una preferencia de ESTE aparato, no un dato de la cuenta. */}
+          <Fondo />
 
-      {/* Abajo de todo y plegado: son dos pantallas de texto, y el que las
-          busca las encuentra igual. */}
-      <ComoSeCompara />
+          <Sugerencias userId={perfil.id} />
 
-      {/* Cuentas bloqueadas: privacidad/seguridad, cerca de la baja de cuenta. */}
-      <Bloqueados />
+          <MisDatos perfil={perfil} />
 
-      {/* Cerrar sesion, cambiar la clave y darse de baja: las tres son sobre
-          la cuenta y no sobre como entrenas, asi que van juntas y al final. */}
-      <Cuenta perfil={perfil} alSalir={alSalir} />
+          {/* Dos pantallas de texto: el que las busca las encuentra igual. */}
+          <ComoSeCompara />
 
-      {/* ABAJO DE TODO Y PLEGADO: no es una pantalla de la app, es el banco de
-          trabajo para leer que vio el vigilante en el gimnasio. Solo en las
-          builds internas — en la de tienda no existe (ver `CON_DIAGNOSTICO`). */}
-      {CON_DIAGNOSTICO && <Diagnostico perfil={perfil} />}
+          {/* Cuentas bloqueadas: privacidad, con su contexto y su cuenta. */}
+          <Bloqueados />
+
+          {/* Cerrar sesion, cambiar la clave y darse de baja: sobre la cuenta,
+              no sobre como entrenas. Van juntas y al final. */}
+          <Cuenta perfil={perfil} alSalir={alSalir} />
+
+          {/* El banco de trabajo del gimnasio. Solo en builds internas. */}
+          {CON_DIAGNOSTICO && <Diagnostico perfil={perfil} />}
+        </>
+      )}
     </ScrollView>
     </>
   );
@@ -335,6 +353,20 @@ const estilos = StyleSheet.create({
     marginTop: 26,
     marginBottom: 10,
   },
+  // El pliegue de "Ajustes avanzados": una línea con su signo, separada arriba
+  // por una hairline para que se lea como el corte entre lo de siempre y el resto.
+  avanzadoCabe: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 48,
+    marginTop: 30,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#1d2230',
+    paddingTop: 18,
+  },
+  avanzadoTitulo: { color: '#8a93a8', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  avanzadoSigno: { color: '#8a93a8', fontSize: 18 },
   fila: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   pastilla: {
     width: 40,

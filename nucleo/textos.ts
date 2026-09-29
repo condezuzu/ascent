@@ -524,6 +524,7 @@ export const T = {
   // ---------------------------------------------------------------
   ajustes: {
     titulo: 'Ajustes',
+    avanzados: 'Ajustes avanzados',
     // El peso por serie se puede apagar entero: el que no quiere anotar nada no
     // tiene por qué ver un campo vacío en cada bloque.
     pesoPorSerie: 'Peso de cada serie',
@@ -677,6 +678,7 @@ export const T = {
 
     // Cuentas bloqueadas (migración 53)
     bloqueados: 'Cuentas bloqueadas',
+    bloqueadosCuenta: (n: number) => (n === 1 ? '1 cuenta bloqueada' : `${n} cuentas bloqueadas`),
     bloqueadosVacio: 'No bloqueaste a nadie.',
     bloqueadosPie: 'A quien bloqueas no te ve ni te puede agregar. Puedes desbloquear cuando quieras.',
     desbloquear: 'Desbloquear',
