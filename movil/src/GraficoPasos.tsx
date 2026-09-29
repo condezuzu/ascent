@@ -175,7 +175,6 @@ export default function GraficoPasos({
         <Ventanas rango={rango} claro={claro} alElegir={(d) => { setRango(d); setTocado(null); }} />
         <PieDeMeta
           meta={meta}
-          claro={claro}
           promedio={promedioDe(semana.map((d) => d.valor).filter((v): v is number => v !== undefined))}
           alTocar={() => setCambiandoMeta(true)}
         />
@@ -293,7 +292,7 @@ export default function GraficoPasos({
           conMiles(trazo ? trazo.serie.reduce((a, p) => a + p.valor, 0) / trazo.serie.length : 0)
         )}
       </Text>
-      <PieDeMeta meta={meta} claro={claro} alTocar={() => setCambiandoMeta(true)} />
+      <PieDeMeta meta={meta} alTocar={() => setCambiandoMeta(true)} />
       <HojaDeMeta
         visible={cambiandoMeta}
         alCerrar={() => setCambiandoMeta(false)}
@@ -353,12 +352,10 @@ function Ventanas({
  */
 function PieDeMeta({
   meta,
-  claro,
   promedio,
   alTocar,
 }: {
   meta: number;
-  claro: string;
   promedio?: number;
   alTocar: () => void;
 }) {
@@ -367,10 +364,10 @@ function PieDeMeta({
       {promedio !== undefined && (
         <Text style={estilos.nota}>{T.stats.pasosPorDiaSemana(conMiles(promedio))}</Text>
       )}
-      <Pressable onPress={alTocar} hitSlop={8} accessibilityRole="button">
-        <Text style={[estilos.nota, estilos.notaBoton, { color: claro }]}>
-          {T.stats.pasosMeta(conMiles(meta))}
-        </Text>
+      {/* Un botón de verdad, no un texto subrayado que parecía un link (28/9):
+          píldora con borde, del mismo lenguaje que el resto de la app. */}
+      <Pressable onPress={alTocar} hitSlop={8} accessibilityRole="button" style={estilos.metaBoton}>
+        <Text style={estilos.metaBotonTexto}>{T.stats.pasosMeta(conMiles(meta))}</Text>
       </Pressable>
     </>
   );
@@ -431,7 +428,16 @@ const estilos = StyleSheet.create({
   rango: { color: C.apagado, fontSize: 12, paddingVertical: 4 },
   nota: { color: C.apagado, fontSize: 11, marginTop: 12, lineHeight: 16 },
   // El de la meta se subraya: es lo unico de este pie que se toca.
-  notaBoton: { textDecorationLine: 'underline', paddingVertical: 4 },
+  metaBoton: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.lineaFuerte,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  metaBotonTexto: { color: C.sub, fontSize: 13 },
   // ---- LA SEMANA, EN BARRAS ----
   barras: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
   columna: { flex: 1, justifyContent: 'flex-end', height: ALTO },
