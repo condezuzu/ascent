@@ -7,6 +7,11 @@
 // "permission denied" prueba que la tabla existe y está protegida. Lo que
 // delataría un problema es que devuelva datos, o que diga que no existe.
 import { createClient } from '@supabase/supabase-js';
+import { readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+import { numeroDeRango } from '../nucleo/reglas.ts';
+import { planetaDeDia } from '../nucleo/rangos.ts';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -49,6 +54,40 @@ function chequear(nombre, real, esperado) {
 const noExiste = (m) => /could not find|does not exist|schema cache/i.test(m ?? '');
 const denegado = (m) => /permission denied/i.test(m ?? '');
 
+// ¿PRODUCCIÓN ESTÁ AL DÍA CON LAS MIGRACIONES? (item: nos mordió que no avisara).
+//
+// El único dato que lo dice sin adivinar: `version_del_esquema()` en PROD contra
+// el número de migración más alto del repo. La versión "solo sube" con cada
+// migración, y la función es anon —no hace falta sesión—. Antes este test no la
+// miraba nunca: comparaba la math de prod contra números escritos a mano que
+// además quedaban viejos (rango_de_racha(150)=8 era el esquema PRE-54), así que
+// pasaba en verde contra una base atrasada. Ahora, si prod está atrás, lo grita.
+const AQUI = dirname(fileURLToPath(import.meta.url));
+const maxMigracion = Math.max(
+  0,
+  ...readdirSync(AQUI).map((f) => {
+    const m = f.match(/^migracion-(\d+)-/);
+    return m ? Number(m[1]) : 0;
+  })
+);
+let prodAtrasada = 0;
+console.log('Las migraciones están aplicadas');
+{
+  const { data: ver, error } = await db.rpc('version_del_esquema');
+  if (error || typeof ver !== 'number') {
+    chequear('version_del_esquema responde', false, true);
+  } else {
+    prodAtrasada = Math.max(0, maxMigracion - ver);
+    chequear(`producción al día (esquema ${ver}, repo va por ${maxMigracion})`, prodAtrasada, 0);
+    if (prodAtrasada > 0) {
+      console.log(
+        `\n  ⚠  PRODUCCIÓN ESTÁ ${prodAtrasada} MIGRACIÓN(ES) ATRÁS: tiene ${ver}, el repo va por ${maxMigracion}.` +
+          `\n     Falta aplicar hasta migracion-${maxMigracion}. Todo lo que dependa del esquema puede no coincidir.\n`
+      );
+    }
+  }
+}
+
 const TABLAS = [
   'profiles', 'descansos', 'logs', 'photos', 'weights',
   'friendships', 'challenges', 'feedback',
@@ -65,23 +104,25 @@ for (const tabla of TABLAS) {
   chequear('vista usuarios_publicos existe', !noExiste(error?.message), true);
 }
 
-// --- las funciones existen y calculan bien ---
-console.log('\nLas funciones calculan bien');
-{
-  const { data, error } = await db.rpc('rango_de_racha', { r: 35 });
-  chequear('rango_de_racha(35) = 4', error?.message ?? data, 4);
-}
-{
-  const { data } = await db.rpc('rango_de_racha', { r: 150 });
-  chequear('rango_de_racha(150) = 8 (tope)', data, 8);
-}
-{
-  const { data } = await db.rpc('planeta_de_dia', { r: 30 });
-  chequear('planeta_de_dia(30) = Ceres', data, 'Ceres');
-}
-{
-  const { data } = await db.rpc('planeta_de_dia', { r: 39 });
-  chequear('planeta_de_dia(39) = Júpiter', data, 'Júpiter');
+// --- las funciones calculan igual que el repo ---
+// CONTRA EL REPO, no contra números a mano. Los viejos (rango_de_racha(150)=8,
+// planeta_de_dia(30)=Ceres) eran el esquema PRE-54 y por eso pasaban en verde
+// contra una prod atrasada, tapando el problema. Ahora el esperado sale de las
+// MISMAS funciones del cliente (`numeroDeRango`, `planetaDeDia`), así no vuelven
+// a quedar viejos. Y solo se corren si prod está al día: si está atrás, ya lo
+// gritó el chequeo de migraciones y estos números difieren a propósito.
+if (prodAtrasada > 0) {
+  console.log('\nLas funciones calculan bien — se omite: producción está atrás (ver arriba)');
+} else {
+  console.log('\nLas funciones calculan igual que el repo');
+  for (const r of [0, 35, 150]) {
+    const { data, error } = await db.rpc('rango_de_racha', { r });
+    chequear(`rango_de_racha(${r}) = ${numeroDeRango(r)}`, error?.message ?? data, numeroDeRango(r));
+  }
+  for (const r of [31, 50]) {
+    const { data } = await db.rpc('planeta_de_dia', { r });
+    chequear(`planeta_de_dia(${r}) = ${planetaDeDia(r)}`, data ?? null, planetaDeDia(r) ?? null);
+  }
 }
 
 // --- los permisos: sin sesión no se toca nada ---
