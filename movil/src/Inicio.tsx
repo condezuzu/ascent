@@ -168,6 +168,12 @@ export default function Inicio({
   const [pasosHoy, setPasosHoy] = useState<number | null>(null);
   const [metaPasos, setMetaPasos] = useState<number>(META_PASOS_POR_OMISION);
 
+  // LOS BLOQUES DE LA SESION DE HOY, para poder volver a ABRIR el resumen a un
+  // toque (1.2/5.4). Antes el resumen vivia solo en `cierre` —efimero: se perdia
+  // al tocar o al recargar—; ahora sale de la base, asi que "ver lo que hiciste
+  // hoy" sigue estando aunque cierres la app.
+  const [bloquesDeHoy, setBloquesDeHoy] = useState<CierreDeSesion['bloques'] | null>(null);
+
   // CUÁNTAS VECES SE CARGÓ. No es para mostrar: es lo que hace que las cosas
   // que se piden aparte —hoy las medallas— se enteren de que hay que volver a
   // preguntar.
@@ -200,7 +206,9 @@ export default function Inicio({
     (uid: string) =>
       supabase
         .from('sesiones')
-        .select('inicio, fin, logs!inner(fecha)')
+        // `bloques` tambien: es lo que deja volver a ver el resumen de hoy a un
+        // toque, aun despues de recargar (1.2/5.4). Ver `bloquesDeHoy`.
+        .select('inicio, fin, bloques, logs!inner(fecha)')
         .eq('user_id', uid)
         .eq('estado', 'terminada')
         .eq('logs.fecha', hoyISO()),
@@ -219,7 +227,7 @@ export default function Inicio({
         descansos: ConfigDescanso[];
         impulsos: { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number } | null;
         perdida: boolean;
-        deHoy: { inicio: string; fin: string | null }[];
+        deHoy: { inicio: string; fin: string | null; bloques?: CierreDeSesion['bloques'] | null }[];
       }
     ) => {
       if (!d.perfil) {
@@ -251,6 +259,11 @@ export default function Inicio({
       // Las dos puntas son del SERVIDOR: restarlas no mete el desfasaje de reloj.
       const minutos = d.deHoy.reduce((t, s) => (s.fin ? t + (Date.parse(s.fin) - Date.parse(s.inicio)) / 60000 : t), 0);
       setMinutosDeHoy(minutos >= 1 ? Math.round(minutos) : null);
+      // Los bloques de la ultima sesion de hoy que tenga: es lo que reabre el
+      // resumen. Si hoy no se entreno (dia a mano), no hay y el resumen no se
+      // ofrece —no habria nada que mostrar—.
+      const conBloques = d.deHoy.filter((s) => Array.isArray(s.bloques) && s.bloques.length > 0);
+      setBloquesDeHoy(conBloques.length ? (conBloques[conBloques.length - 1].bloques ?? null) : null);
       setVueltas((v) => v + 1);
       const ultimas = Array.isArray(d.impulsos?.ultimas) ? (d.impulsos!.ultimas as string[]) : [];
       const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
@@ -272,7 +285,7 @@ export default function Inicio({
       // verificar_perdida y después cinco consultas—; `pantalla_inicio` trae
       // todo en una, con verificar_perdida adentro y en el orden correcto.
       const [inicio, { data: deHoy }] = await Promise.all([pedirInicio(supabase), pedirDeHoy(uid)]);
-      const dh = (deHoy ?? []) as { inicio: string; fin: string | null }[];
+      const dh = (deHoy ?? []) as { inicio: string; fin: string | null; bloques?: CierreDeSesion['bloques'] | null }[];
 
       if (inicio.tipo === 'listo') {
         const x = inicio.datos;
@@ -778,8 +791,23 @@ export default function Inicio({
             alPeso={() => setPesoAbierto(true)}
             minutos={minutosDeHoy}
           />
-          <Pressable style={estilos.resumen} onPress={() => setCierre(null)}>
-            <Text style={estilos.resumenTitulo}>{T.sesion.resumenTitulo}</Text>
+          <View style={estilos.resumen}>
+            <View style={estilos.resumenCabe}>
+              <Text style={estilos.resumenTitulo}>{T.sesion.resumenTitulo}</Text>
+              {/* CERRAR ES EXPLICITO (1.2/5.4): una equis, no tocar en cualquier
+                  lado. Antes TODA la tarjeta era un Pressable que hacia
+                  setCierre(null), y un toque al pasar la borraba sin querer —el
+                  bug reportado—. Cerrar algo sin querer no puede ser lo que pasa
+                  por defecto. */}
+              <Pressable
+                onPress={() => setCierre(null)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel={T.general.cerrar}
+              >
+                <Text style={estilos.resumenCerrar}>✕</Text>
+              </Pressable>
+            </View>
             <View style={estilos.cifras}>
               <View style={estilos.cifra}>
                 <Text style={estilos.cifraNumero}>{cierre.minutos}</Text>
@@ -793,9 +821,8 @@ export default function Inicio({
               )}
             </View>
             {cierre.porUbicacion && <Text style={estilos.nota}>{T.sesion.resumenSolo}</Text>}
-            {/* Afuera del toque que cierra: elegir repeticiones no cierra nada. */}
             <SugerenciasDeMarca bloques={cierre.bloques} unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'} />
-          </Pressable>
+          </View>
         </>
       ) : registradoHoy ? (
         // El día ya está —casi siempre lo registró la sesión—: lo que queda es
@@ -807,6 +834,28 @@ export default function Inicio({
             alPeso={() => setPesoAbierto(true)}
             minutos={minutosDeHoy}
           />
+          {/* VER LO DE HOY, A UN TOQUE (1.2/5.4). El resumen ya no se borra solo;
+              y si lo cerraste con la equis —o recargaste—, esto lo vuelve a
+              abrir. Solo si hubo entrenamiento con bloques: un día a mano no
+              tiene resumen que mostrar. */}
+          {bloquesDeHoy && bloquesDeHoy.length > 0 && (
+            <Pressable
+              onPress={() => {
+                const series = bloquesDeHoy.reduce((t, b) => t + (b.series ?? 0), 0);
+                setCierre({
+                  minutos: minutosDeHoy ?? 0,
+                  series,
+                  porUbicacion: false,
+                  deshizoElDia: false,
+                  bloques: bloquesDeHoy,
+                });
+              }}
+              hitSlop={8}
+              style={estilos.verResumen}
+            >
+              <Text style={estilos.verResumenTexto}>{T.inicio.verResumen}</Text>
+            </Pressable>
+          )}
           {/* Y ACÁ SE INSISTE CON EL PUNTO DEL GIMNASIO: pegado al día que se
               acaba de anotar a mano, que es el único momento en que la oferta
               se puede demostrar en vez de explicar. Tres veces como mucho, una
@@ -1012,8 +1061,13 @@ const estilos = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: '#1d2230',
   },
+  resumenCabe: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   resumenTitulo: { color: '#e8ecf6', fontSize: 14, fontWeight: '500' },
+  resumenCerrar: { color: '#8a93a8', fontSize: 16, paddingHorizontal: 4 },
   cifras: { flexDirection: 'row', gap: 28, marginTop: 8 },
   cifra: { alignItems: 'flex-start' },
   cifraNumero: { color: '#c4c2ba', fontSize: 26, fontWeight: '300', fontVariant: ['tabular-nums'] },
+  // "Ver lo que hiciste hoy": tenue, debajo de los botones de foto/peso.
+  verResumen: { paddingVertical: 10, marginTop: 2 },
+  verResumenTexto: { color: '#8a93a8', fontSize: 13 },
 });

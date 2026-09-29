@@ -244,6 +244,9 @@ export const T = {
     // voz baja: no es la racha, es el dato que el teléfono ya tiene. Solo
     // aparece si Health está conectado y hay pasos que mostrar.
     pasosHoy: (hechos: string, meta: string) => `${hechos} de ${meta} pasos`,
+    // El resumen de hoy queda a un toque, después de registrar el día: ya no se
+    // borra solo al tocarlo, y si lo cerraste podés volver a abrirlo (1.2/5.4).
+    verResumen: 'Ver lo que hiciste hoy',
     diaPendiente: 'Tu día de hoy quedó anotado y se suma solo. No lo perdiste.',
     sumarSerie: 'Sumar una serie',
     // La nota de arriba está debajo del contador y se lee tarde: la primera
