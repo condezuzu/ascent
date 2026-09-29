@@ -161,6 +161,11 @@ create table public.logs (
   origen text not null default 'manual'
     constraint logs_origen_valido check (origen in ('manual', 'ubicacion', 'salud')),
   planeta_del_dia text,
+  -- LA RACHA DE ESE DÍA (item 6.4): "día 41". Se anota al registrar y sirve para
+  -- que cada foto sea un registro, no una foto suelta. Nullable: los días viejos
+  -- se rellenan una vez (aprox. con calcular_racha), y sin dato la foto no lo
+  -- muestra. El rango NO se escribe: vive en el color del marco.
+  racha_del_dia int,
   creado timestamptz not null default now(),
   unique (user_id, fecha)
 );
@@ -264,7 +269,7 @@ create table public.ejercicios (
   carga text not null default 'total',
   -- El nombre no dice con qué se hace ("Zancadas"): se pregunta una vez.
   carga_ambigua boolean not null default false,
-  constraint ejercicios_carga_valida check (carga in ('total', 'par', 'una', 'lastre'))
+  constraint ejercicios_carga_valida check (carga in ('total', 'par', 'una', 'lastre', 'corporal'))
 );
 
 -- Las marcas. Se guarda lo que el usuario LEVANTÓ (peso y repeticiones), no
@@ -388,6 +393,7 @@ insert into public.ejercicios (id, nombre, grupo, cuenta_dots, orden) values
   ('plancha',               'Plancha',                     'core',    false, 601),
   ('plancha_lateral',       'Plancha lateral',             'core',    false, 602),
   ('crunch',                'Crunch',                      'core',    false, 611),
+  ('crunch_declinado',      'Crunch en banco declinado',   'core',    false, 612),
   ('elevacion_piernas',     'Elevación de piernas colgado','core',    false, 613),
   ('elevacion_rodillas',    'Elevación de rodillas',       'core',    false, 614),
   ('giros_rusos',           'Russian twist',                 'core',    false, 621),
@@ -1050,29 +1056,31 @@ create trigger trg_logs_after_change after insert or update or delete on public.
 -- p_hoy viene del cliente: el servidor corre en UTC y el usuario en UTC-3;
 -- sin esto, a la noche uruguaya el servidor evaluaría "hoy" un día adelantado
 -- y quitaría rachas con el día todavía en curso.
-create or replace function public.verificar_perdida()
+-- POR ID, para que la pueda correr el trabajo nocturno (sin sesión). Ver
+-- migración 55. `hoy_de(p_user)` usa la zona de cada usuario, así una sola
+-- corrida sirve para todos los husos.
+create or replace function public.verificar_perdida_de(p_user uuid)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  uid uuid := auth.uid();
   perfil profiles;
   viva int;
   nuevo_rango int;
   nueva_racha int;
-  hoy date := mi_hoy();
+  hoy date := hoy_de(p_user);
   resuelto date;
   d date;
   cubiertos date[] := '{}';
 begin
-  resuelto := resolver_pendiente(uid);
+  resuelto := resolver_pendiente(p_user);
 
-  select * into perfil from profiles where id = uid;
+  select * into perfil from profiles where id = p_user;
   if perfil.id is null or perfil.racha_actual = 0 then
     return jsonb_build_object('perdida', false, 'pendiente_resuelto', resuelto);
   end if;
-  if exists (select 1 from logs where user_id = uid and fecha = hoy) then
+  if exists (select 1 from logs where user_id = p_user and fecha = hoy) then
     return jsonb_build_object('perdida', false, 'pendiente_resuelto', resuelto);
   end if;
-  viva := perfil.racha_base + calcular_racha(uid, hoy - 1);
+  viva := perfil.racha_base + calcular_racha(p_user, hoy - 1);
   if viva >= perfil.racha_actual then
     return jsonb_build_object('perdida', false, 'pendiente_resuelto', resuelto);
   end if;
@@ -1080,12 +1088,12 @@ begin
   d := hoy - 1;
   loop
     exit when perfil.perdida_fecha is not null and d <= perfil.perdida_fecha;
-    exit when exists (select 1 from logs where user_id = uid and fecha = d);
-    exit when extract(dow from d)::int = any(descansos_vigentes(uid, d));
-    exit when exists (select 1 from vidas_usadas where user_id = uid and fecha = d);
+    exit when exists (select 1 from logs where user_id = p_user and fecha = d);
+    exit when extract(dow from d)::int = any(descansos_vigentes(p_user, d));
+    exit when exists (select 1 from vidas_usadas where user_id = p_user and fecha = d);
     -- ¿queda un impulso disponible para ESE día?
-    exit when impulsos_disponibles(uid, d) <= 0;
-    insert into vidas_usadas (user_id, fecha) values (uid, d)
+    exit when impulsos_disponibles(p_user, d) <= 0;
+    insert into vidas_usadas (user_id, fecha) values (p_user, d)
       on conflict (user_id, fecha) do nothing;
     cubiertos := cubiertos || d;
     d := d - 1;
@@ -1093,13 +1101,13 @@ begin
   end loop;
 
   if array_length(cubiertos, 1) > 0 then
-    viva := perfil.racha_base + calcular_racha(uid, hoy - 1);
+    viva := perfil.racha_base + calcular_racha(p_user, hoy - 1);
     if viva >= perfil.racha_actual then
       return jsonb_build_object(
         'perdida', false,
         'pendiente_resuelto', resuelto,
         'vidas_usadas', to_jsonb(cubiertos),
-        'vidas_quedan', impulsos_disponibles(uid, hoy)
+        'vidas_quedan', impulsos_disponibles(p_user, hoy)
       );
     end if;
   end if;
@@ -1115,13 +1123,44 @@ begin
     racha_base = nueva_racha,
     rango_actual = nuevo_rango,
     perdida_fecha = hoy - 1
-  where id = uid;
+  where id = p_user;
   return jsonb_build_object('perdida', true, 'rango_anterior', perfil.rango_actual,
     'rango_nuevo', nuevo_rango, 'racha', nueva_racha, 'pendiente_resuelto', resuelto,
     'vidas_usadas', to_jsonb(cubiertos),
-    'vidas_quedan', impulsos_disponibles(uid, hoy));
+    'vidas_quedan', impulsos_disponibles(p_user, hoy));
 end;
 $$;
+
+-- El envoltorio: el camino de abrir la app. UNA línea, para que no pueda diverger
+-- del batch. Mantiene la firma y los permisos de siempre.
+create or replace function public.verificar_perdida()
+returns jsonb language sql security definer set search_path = public as $$
+  select public.verificar_perdida_de(auth.uid());
+$$;
+
+-- El barrido: corre la pérdida por cada cuenta con racha viva. Cada una en su
+-- propio bloque, para que una fila mala no aborte el barrido entero.
+create or replace function public.barrer_perdidas()
+returns int language plpgsql security definer set search_path = public as $$
+declare
+  u uuid;
+  n int := 0;
+begin
+  for u in select id from profiles where racha_actual > 0 loop
+    begin
+      perform verificar_perdida_de(u);
+      n := n + 1;
+    exception when others then
+      null;
+    end;
+  end loop;
+  return n;
+end;
+$$;
+
+revoke execute on function public.verificar_perdida_de(uuid) from public, anon, authenticated;
+revoke execute on function public.barrer_perdidas() from public, anon, authenticated;
+grant execute on function public.barrer_perdidas() to service_role;
 
 -- Corrección manual: recalcular todo desde los logs, sin piso de misericordia,
 -- y aplicar la pérdida en la MISMA transacción. Devuelve el número final:
@@ -1299,6 +1338,9 @@ begin
     values (uid, hoy, p_origen)
     returning * into nuevo_log;
   select * into perfil from profiles where id = uid;
+  -- La racha de ESTE día queda anotada en el log (item 6.4): el trigger del
+  -- insert ya subió profiles.racha_actual, así que es la de recién.
+  update logs set racha_del_dia = perfil.racha_actual where id = nuevo_log.id;
   return jsonb_build_object(
     'bloqueado', false,
     'log_id', nuevo_log.id,
@@ -1916,7 +1958,7 @@ begin
     select
       f.e, f.s, f.i,
       pesos_limpios(f.pesos, f.s) as p,
-      case when f.carga in ('total', 'par', 'una', 'lastre') then f.carga
+      case when f.carga in ('total', 'par', 'una', 'lastre', 'corporal') then f.carga
            else (select carga from ejercicios where id = f.e)
       end as c
     from (
@@ -2001,7 +2043,7 @@ create table if not exists public.cargas_elegidas (
   carga text not null,
   elegida timestamptz not null default now(),
   primary key (user_id, ejercicio),
-  constraint cargas_elegidas_valida check (carga in ('total', 'par', 'una', 'lastre'))
+  constraint cargas_elegidas_valida check (carga in ('total', 'par', 'una', 'lastre', 'corporal'))
 );
 
 alter table public.cargas_elegidas enable row level security;
@@ -2020,7 +2062,7 @@ declare
   uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre') then return; end if;
+  if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre', 'corporal') then return; end if;
   if not exists (select 1 from ejercicios where id = p_ejercicio) then return; end if;
   insert into cargas_elegidas (user_id, ejercicio, carga)
        values (uid, p_ejercicio, p_carga)
@@ -2096,7 +2138,7 @@ declare
   guardado jsonb;
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre') then return null; end if;
+  if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre', 'corporal') then return null; end if;
 
   update sesiones s
      set bloques = (
@@ -3084,7 +3126,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 54; $$;
+returns int language sql immutable as $$ select 58; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

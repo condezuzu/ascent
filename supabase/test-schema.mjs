@@ -2356,7 +2356,7 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
   // seguiria saliendo, mas alto y sin significado.
   const cat = (await db.query(`select grupo, count(*)::int n from ejercicios group by 1`)).rows;
   const cuantos = (await db.query(`select count(*)::int n from ejercicios`)).rows[0].n;
-  chequear('el catalogo tiene 100 ejercicios', cuantos, 100);
+  chequear('el catalogo tiene 101 ejercicios', cuantos, 101);
   chequear('y solo 3 mueven el DOTS', delDots.length, 3);
   chequear(
     'los grupos son los seis de siempre',
@@ -3900,7 +3900,7 @@ console.log('\n56. El arbol del selector llega a los 100');
       llegan += porGrupo.find((f) => f.grupo === g)?.n ?? 0;
     }
   }
-  chequear('se llega a los 100 ejercicios', llegan, 100);
+  chequear('se llega a los 101 ejercicios', llegan, 101);
 
   // QUE ADMITEN PESO (migracion 31). Una marca es peso por repeticiones, asi
   // que la pantalla de marcas filtra por esta columna. Se fija la lista de
@@ -6204,7 +6204,7 @@ console.log('\n84. El catalogo y el telefono dicen lo mismo del modo');
   );
   chequear('no se pregunta por un ejercicio sin peso', filas.filter((f) => f.carga_ambigua && !f.admite_peso).map((f) => f.id), []);
   chequear('los cuatro modos estan en uso', [...new Set(filas.map((f) => f.carga))].sort(), ['lastre', 'par', 'total', 'una']);
-  chequear('los del telefono son los de la base', [...C.CARGAS].sort(), ['lastre', 'par', 'total', 'una']);
+  chequear('los del telefono son los de la base', [...C.CARGAS].sort(), ['corporal', 'lastre', 'par', 'total', 'una']);
 }
 console.log('\n85. Los pesos de antes de los modos: marcados y revisables');
 {
