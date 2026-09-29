@@ -11602,11 +11602,16 @@ console.log('\n161. Pulido: lo que cuesta el fondo, y como medirlo en el telefon
   chequear('destaparse despierta',
     /const tapar = \(si: boolean\) => \{[\s\S]*?if \(!si\) despertar\(\);/.test(esc161), true);
 
-  // 0,85 Y NO 0,4, que fue el primer numero: abajo de eso el cuerpo todavia se
-  // LEE como un objeto, y bajarle los cuadros ahi se puede ver, justo a mitad
-  // del deslizamiento. Con 0,85 solo entran las que van al tope; Stats, cuyo
-  // techo es 0,45 a pedido, se queda con todos los cuadros.
-  chequear('el umbral deja a Stats afuera', /const TAPADO_DESDE = 0\.85;/.test(fon161), true);
+  // STATS AHORA BAJA LOS CUADROS, PERO RECIEN ASENTADO (item bateria). Antes el
+  // umbral unico 0,85 dejaba a Stats a 60 cuadros detras de la pantalla mas
+  // pesada: el mayor gasto del motor, y calor. Ahora hay dos umbrales: 0,85 tapa
+  // AL TOQUE lo que se ve del todo (Ranking/Album/Ajustes), y 0,4 tapa a Stats
+  // pero DESPUES de que el deslizamiento asienta (setTimeout), para no bajar los
+  // cuadros a mitad de la transicion, que era la razon del 0,85.
+  chequear('el umbral inmediato tapa lo que se ve del todo', /const TAPADO_INMEDIATO = 0\.85;/.test(fon161), true);
+  chequear('un umbral mas bajo tapa a Stats', /const TAPADO_ASENTADO = 0\.4;/.test(fon161), true);
+  chequear('Stats se tapa recien cuando el deslizamiento asienta',
+    /setTimeout\(\(\) => aplicar\(true\), ASENTARSE_MS\)/.test(fon161), true);
   // LA ESCENA NACE SABIENDO si esta tapada: se monta dentro de una promesa, asi
   // que cuando corre el efecto puede no existir todavia.
   chequear('la escena recien montada ya sabe si esta tapada',

@@ -123,16 +123,24 @@ const SALIDA_MS = 220;
 const ENTRADA_MS = 520;
 
 /**
- * A PARTIR DE ACÁ EL FONDO SE CONSIDERA TAPADO. Ver el efecto más abajo.
+ * CUÁNDO EL FONDO SE CONSIDERA TAPADO Y BAJA LOS CUADROS. Dos umbrales, y la
+ * diferencia es de BATERÍA (item batería): antes había uno solo en 0,85, así
+ * que Stats —cuyo techo es 0,45— dejaba el motor a 60 cuadros por segundo
+ * detrás de la pantalla más pesada de la app. Eso es el mayor gasto del motor
+ * y calienta el teléfono.
  *
- * 0,85 Y NO 0,4, que fue el primer número: abajo de eso el cuerpo TODAVÍA SE
- * LEE como un objeto, y bajarle los cuadros ahí se puede ver —justo a mitad
- * del deslizamiento, que es el peor momento para que algo cambie de ritmo—.
- * Con 0,85 solo entran las pantallas que van al tope (Ranking, Álbum,
- * Ajustes); Stats, cuyo techo es 0,45 a pedido, se queda con todos los
- * cuadros.
+ * - `TAPADO_INMEDIATO` (0,85): las pantallas que tapan del todo (Ranking,
+ *   Álbum, Ajustes). El cuerpo no se ve, así que se baja a lento AL TOQUE.
+ * - `TAPADO_ASENTADO` (0,4): Stats. El cuerpo se ve a medias, y bajarle los
+ *   cuadros A MITAD DEL DESLIZAMIENTO se nota (por eso el umbral único era
+ *   0,85). Así que acá se espera a que el deslizamiento ASIENTE (ver el efecto):
+ *   el deslizamiento va fluido a 60, y recién cuando te quedaste en Stats el
+ *   motor baja a lento. Ahí es donde se pasa el tiempo, y donde estaba el gasto.
  */
-const TAPADO_DESDE = 0.85;
+const TAPADO_INMEDIATO = 0.85;
+const TAPADO_ASENTADO = 0.4;
+/** Cuánto tiene que quedarse quieto el desenfoque de Stats antes de bajar. */
+const ASENTARSE_MS = 400;
 
 export default function FondoRaiz() {
   const [pedido, setPedido] = useState<Pedido | null>(null);
@@ -319,10 +327,30 @@ export default function FondoRaiz() {
   // El valor vive también en un ref: la escena se monta dentro de una promesa,
   // así que cuando este efecto corre puede no existir todavía, y la escena
   // recién nacida tiene que nacer sabiendo si está tapada o no.
+  // Para el montaje de una escena nueva (abajo): una escena que nace ya estando
+  // en una pantalla tapada nace tapada, sin deslizamiento de por medio, así que
+  // usa el umbral instantáneo bajo —no hay ritmo que se pueda ver cambiar—.
   const tapadoAhora = useRef(false);
-  tapadoAhora.current = desenfoque >= TAPADO_DESDE;
+  tapadoAhora.current = desenfoque >= TAPADO_ASENTADO;
   useEffect(() => {
-    escena.current?.montaje.tapar(desenfoque >= TAPADO_DESDE);
+    let cancelado = false;
+    let id: ReturnType<typeof setTimeout> | undefined;
+    const aplicar = (v: boolean) => {
+      if (!cancelado) escena.current?.montaje.tapar(v);
+    };
+    if (desenfoque >= TAPADO_INMEDIATO) {
+      aplicar(true); // tapa del todo (Ranking/Álbum/Ajustes): al toque
+    } else if (desenfoque >= TAPADO_ASENTADO) {
+      // Stats: esperar a que el deslizamiento asiente, para no bajar los cuadros
+      // a mitad de la transición (que se ve). Quieto en Stats → lento → batería.
+      id = setTimeout(() => aplicar(true), ASENTARSE_MS);
+    } else {
+      aplicar(false); // destapado (Inicio, o volviendo): 60 al toque para el viaje
+    }
+    return () => {
+      cancelado = true;
+      if (id) clearTimeout(id);
+    };
   }, [desenfoque, listo, pedido]);
 
   // LEER Y APLICAR LA PREFERENCIA. Se corre al montar y CADA VEZ que cambia en
