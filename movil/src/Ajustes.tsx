@@ -126,7 +126,7 @@ export default function Ajustes({
         ciegas (28/9). iOS ahora insetea el scroll y lleva el campo enfocado a la
         vista. Cubre también el nombre de usuario y la meta de pasos, que viven
         en esta misma pantalla. */}
-    <ScrollView contentContainerStyle={estilos.pantalla} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
+    <ScrollView style={estilos.scroll} contentContainerStyle={estilos.pantalla} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>
 
@@ -337,6 +337,13 @@ const estilos = StyleSheet.create({
   tuPerfil: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, marginBottom: 4 },
   tuNombre: { color: '#e8ecf6', fontSize: 17 },
   tuPie: { color: '#8a93a8', fontSize: 12, marginTop: 2 },
+  // EL FONDO VA EN EL SCROLLVIEW, NO SOLO EN EL CONTENIDO (29/9). El
+  // `contentContainerStyle` pinta el ALTO DEL CONTENIDO; con Ajustes corto (todo
+  // plegado en avanzados) el rebote de iOS tiraba de más y dejaba ver el motor
+  // detrás —el rectángulo negro se terminaba y aparecía el sol—. El fondo en el
+  // ScrollView mismo llega hasta el borde con el contenido corto, largo, y con
+  // el rebote. `pantalla` mantiene su fondo por si el contenido no llena.
+  scroll: { flex: 1, backgroundColor: '#05060a' },
   pantalla: { flexGrow: 1, backgroundColor: '#05060a', padding: 24, paddingTop: 60 },
   titulo: {
     color: '#8a93a8',
