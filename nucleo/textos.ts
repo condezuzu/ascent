@@ -240,6 +240,10 @@ export const T = {
     ultimoTramo: (n: number) => `Último tramo para el ${n}.`,
     perdida: 'Se dispersó un poco de masa. Hoy se recupera.',
     hoyDescansa: 'Hoy descansa. La racha sigue igual.',
+    // El renglón de pasos de hoy, debajo del número de la racha. Compacto y en
+    // voz baja: no es la racha, es el dato que el teléfono ya tiene. Solo
+    // aparece si Health está conectado y hay pasos que mostrar.
+    pasosHoy: (hechos: string, meta: string) => `${hechos} de ${meta} pasos`,
     diaPendiente: 'Tu día de hoy quedó anotado y se suma solo. No lo perdiste.',
     sumarSerie: 'Sumar una serie',
     // La nota de arriba está debajo del contador y se lee tarde: la primera

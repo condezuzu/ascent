@@ -26,6 +26,7 @@ import SubidaRango from './SubidaRango';
 import RegistrarDia from './RegistrarDia';
 import { plataforma } from '@plataforma';
 import { CLAVE_VIDA_VISTA, hastaDondeVisto, impulsosSinVer, rachaSiSeDevuelve } from '@nucleo/impulsos';
+import { CLAVE_META_PASOS, META_PASOS_POR_OMISION, leerMeta } from '@nucleo/pasos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import MarcaEnElMomento from './MarcaEnElMomento';
 import { paletaDe } from '@nucleo/paletas';
@@ -157,6 +158,15 @@ export default function Inicio({
   // anunció. Misma regla y misma marca que la web (`nucleo/impulsos.ts`).
   const [vidaUsada, setVidaUsada] = useState<{ dias: string[]; quedan: number; total: number } | null>(null);
   const [aviso, setAviso] = useState('');
+
+  // LOS PASOS DE HOY, debajo del número de la racha. No son la racha ni entran
+  // en ella (ver `nucleo/pasos.ts`): son el dato que el teléfono ya tiene y que
+  // acá se muestra en voz baja. `null` mientras no se sepa —Health sin
+  // conectar, sin permiso, sin dato— y ahí el renglón no aparece: un "0 de
+  // 10.000" se leería como que hoy no caminaste, y lo que pasó es que no
+  // sabemos. La meta es una preferencia del aparato, la misma que el gráfico.
+  const [pasosHoy, setPasosHoy] = useState<number | null>(null);
+  const [metaPasos, setMetaPasos] = useState<number>(META_PASOS_POR_OMISION);
 
   // CUÁNTAS VECES SE CARGÓ. No es para mostrar: es lo que hace que las cosas
   // que se piden aparte —hoy las medallas— se enteren de que hay que volver a
@@ -381,6 +391,28 @@ export default function Inicio({
   // de hace diez minutos. Encontrado en el barrido del 24/9.
   useRecargarAlVolver('inicio', cargar);
 
+  // LOS PASOS DE HOY, PEDIDOS DE NUEVO EN CADA VUELTA. `vueltas` sube con cada
+  // `cargar()` —al montar, al volver a la pestaña, cuando el día entra solo—,
+  // así que este renglón NO SE QUEDA CONGELADO: cada vez que se vuelve a Inicio
+  // se vuelve a preguntar cuántos pasos van, que es justo lo que se pidió.
+  // Health puede no estar conectado o no tener dato: ahí `pasosDe` da `null` y
+  // el renglón no se dibuja.
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      const [n, crudo] = await Promise.all([
+        plataforma.salud.pasosDe(hoyISO()).catch(() => null),
+        plataforma.almacenamiento.leer(CLAVE_META_PASOS).catch(() => null),
+      ]);
+      if (!vivo) return;
+      setPasosHoy(n);
+      setMetaPasos(leerMeta(crudo));
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [vueltas]);
+
   // LAS MEDALLAS POR MARCA, para la fila del nombre. Va acá arriba como los
   // otros hooks, antes de los retornos tempranos. `vueltas` las hace pedir de
   // nuevo cuando Inicio se recarga: si no, la medalla que acabás de ganar no
@@ -569,6 +601,15 @@ export default function Inicio({
           nube de polvo antes de la estrella, y por eso el fondo del rango 1 va
           a fondo (caos, color, movimiento; ver `FondoEspacial`/shaders). */}
       <RachaConRotulo racha={perfil.racha_actual} rango={perfil.rango_actual} />
+
+      {/* LOS PASOS DE HOY (5.2). Debajo del número, arriba de la semana, y en
+          voz baja: es el dato del teléfono, no la racha. Solo si hay algo que
+          decir —Health conectado y con pasos—; si no, ni aparece. */}
+      {!sesion.estado.corriendo && pasosHoy !== null && (
+        <Text style={estilos.pasos}>
+          {T.inicio.pasosHoy(pasosHoy.toLocaleString('es-UY'), metaPasos.toLocaleString('es-UY'))}
+        </Text>
+      )}
 
       {!sesion.estado.corriendo && (
       <View style={estilos.tira}>
@@ -883,6 +924,10 @@ const estilos = StyleSheet.create({
   usuario: { color: '#e8ecf6', fontSize: 16, fontWeight: '600', flexShrink: 1 },
   etiqueta: { color: '#8a93a8', fontSize: 10, letterSpacing: 4, textTransform: 'uppercase' },
   racha: { color: '#c4c2ba', fontSize: 92, fontWeight: '300', lineHeight: 100 },
+
+  // El renglón de pasos: tabular para que el número no baile, tenue y con aire
+  // arriba (bajo el número de la racha) y abajo (antes de la semana).
+  pasos: { color: '#6a7286', fontSize: 13, marginTop: 14, fontVariant: ['tabular-nums'] },
 
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 34 },
   tiraDia: { alignItems: 'center', gap: 7 },
