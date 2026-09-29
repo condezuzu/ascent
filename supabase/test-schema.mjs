@@ -10706,6 +10706,60 @@ console.log('\n149b. El objetivo de peso: un numero, y el color por cercania');
 }
 
 
+console.log('\n149c. La rutina que se propone sola');
+{
+  const RU = await import('../nucleo/rutina.ts');
+  const { restarDias } = await import('../nucleo/fechas.ts');
+  const hoy = '2026-09-27';
+
+  chequear('ejercicios en orden, sin repetir ni vacios',
+    RU.ejerciciosEnOrden(['a', null, 'a', 'b', '', 'c']), ['a', 'b', 'c']);
+  chequear('sin historia no propone nada', RU.rutinaParaHoy([], hoy), []);
+
+  // (1) MISMO DIA DE LA SEMANA: 7 y 14 dias atras son el mismo dia; gana el mas
+  // reciente (7). El de 3 dias es otro dia de la semana y no cuenta para esto.
+  const sesiones = [
+    { fecha: restarDias(hoy, 14), ejercicios: ['sentadilla', 'prensa'] },
+    { fecha: restarDias(hoy, 7), ejercicios: ['banca', 'remo', 'curl'] },
+    { fecha: restarDias(hoy, 3), ejercicios: ['peso-muerto'] },
+  ];
+  chequear('propone lo del mismo dia, lo mas reciente',
+    RU.rutinaParaHoy(sesiones, hoy), ['banca', 'remo', 'curl']);
+
+  // El mismo dia pero de hace 5 semanas (35) queda fuera de la ventana de 4.
+  const viejo = [
+    { fecha: restarDias(hoy, 35), ejercicios: ['banca'] },
+    { fecha: restarDias(hoy, 2), ejercicios: ['sentadilla'] },
+  ];
+  chequear('el mismo dia de hace 5 semanas no cuenta (cae a rotacion)',
+    RU.rutinaParaHoy(viejo, hoy), ['sentadilla']);
+
+  // (2) ROTACION: ciclo A,B,C,A,B; ninguno cae en el dia de hoy. Ultima = B;
+  // la vez anterior que hice B, despues hice C -> propone C.
+  const ciclo = [
+    { fecha: restarDias(hoy, 20), ejercicios: ['A'] },
+    { fecha: restarDias(hoy, 18), ejercicios: ['B'] },
+    { fecha: restarDias(hoy, 16), ejercicios: ['C'] },
+    { fecha: restarDias(hoy, 4), ejercicios: ['A'] },
+    { fecha: restarDias(hoy, 2), ejercicios: ['B'] },
+  ];
+  chequear('rotacion: la que sigue a la ultima', RU.rutinaParaHoy(ciclo, hoy), ['C']);
+
+  // (3) RE-ENGANCHE: cambio el primer ejercicio a 'remo' -> la cadena sale de la
+  // sesion que lo tiene, de 'remo' en adelante.
+  chequear('re-engancha desde el ejercicio elegido',
+    RU.reengancharDesde(sesiones, 'remo'), ['remo', 'curl']);
+  chequear('re-engancha a uno solo si nunca se hizo',
+    RU.reengancharDesde(sesiones, 'zancada'), ['zancada']);
+
+  // LA CADENA: el siguiente es el primero de la rutina que falta.
+  chequear('el siguiente es el primero no hecho',
+    RU.siguienteEnRutina(['banca', 'remo', 'curl'], ['banca']), 'remo');
+  chequear('si ya hice todos, no hay siguiente',
+    RU.siguienteEnRutina(['banca'], ['banca']), null);
+}
+
+
 console.log('\n150. La medalla que no baja nunca: el maximo historico');
 {
   const { readFileSync: leer150 } = await import('node:fs');
