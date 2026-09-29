@@ -889,18 +889,25 @@ void main() {
       float celdas = 0.55 + 0.85 * gran + 0.25 * gran2 * mirando;
       vec3 cara = superficie * celdas * (0.16 + 0.26 * pow(n.z, 0.8));
 
-      // EL CANTO, MAS BAJO Y MENOS BLANCO (item 4). El termino 1.0 - n.z es cero
-      // en el medio y uno en el borde: la potencia lo aprieta contra el filo.
-      // Era 2.8 con medio blanco puro y salia una LINEA DURA de neon en todo el
-      // contorno. Baja a 1.6 y el blanco a un tercio: sigue habiendo un borde
-      // encendido —de ahi salen las protuberancias— pero es un filo calido, no
-      // una raya. De paso saca el elemento mas brillante y de mas overdraw del
-      // disco, que no estorba al costo.
-      float canto = pow(1.0 - n.z, 3.2);
-      cara += mix(paleta(0.95), vec3(1.0, 0.95, 0.80), 0.32) * canto * 1.6;
+      // EL DISCO DEL SOL SE DESVANECE, NO CORTA (item 2a). *"Hay una linea dura
+      // entre el sol y lo de afuera; necesita un desvanecido de verdad."* La
+      // superficie se apaga a lo largo de ~0.06 HACIA el filo, en vez del corte
+      // de un pixel del mask duro: asi el amarillo no termina en un circulo, se
+      // deshilacha. Solo el sol —un planeta SI tiene limbo nitido y corta.
+      float discoSol = 1.0 - smoothstep(rEff - 0.035, rEff + 0.005, d);
+      col = mix(col, cara, discoSol);
+      alfa = max(alfa, discoSol);
 
-      col = mix(col, cara, dentro);
-      alfa = max(alfa, dentro);
+      // EL FILO, COMO UN RESPLANDOR CONTINUO A TRAVES DEL BORDE (item 2a/4). Es
+      // funcion de la DISTANCIA AL BORDE, no del mask, asi que cruza rEff sin
+      // escalon: sube hacia el filo y cae a los dos lados. Reemplaza al viejo
+      // canto, que vivia DENTRO del disco y se cortaba con el —esa era la raya—.
+      // CALIDO (naranja), no el crema casi blanco de la paleta que salia gris; y
+      // ajustado y tenue, un limbo encendido y no un aro grueso.
+      float filo = exp(-abs(d - rEff) * 11.0);
+      vec3 calido = vec3(1.0, 0.66, 0.30);
+      col += mix(calido, vec3(1.0, 0.90, 0.70), 0.28) * filo * 1.0;
+      alfa = max(alfa, filo * 0.6);
     } else if (uModo > 1.5 && uModo < 2.5) {
       // ---- AGUJERO NEGRO: el horizonte es negro absoluto ----
       col = mix(col, vec3(0.0), dentro);
@@ -959,9 +966,17 @@ void main() {
     // ser lo mas brillante de la pantalla, y eso importa porque el rango 5 es
     // "Jupiter se enciende y se vuelve Sol". La luz que perdio el disco la
     // ponen el halo y las protuberancias, que es de donde sale en la foto.
-    float glow = exp(-(d - R) * 8.0) * fuera;
-    col += paleta(0.92) * glow * 0.95;
-    alfa = max(alfa, glow * 0.8);
+    // EL HALO QUE DISUELVE EL BORDE (item 2a). Antes empezaba en R con un palido
+    // paleta(0.92) —distinto del canto calido del disco—, y esa diferencia de
+    // color + el corte del disco dejaban una LINEA DURA entre el sol y el fondo.
+    // Ahora arranca EN EL BORDE mismo (rEff), con el MISMO calor que el limbo, y
+    // cae un poco mas suave: el disco no termina en una raya, se deshilacha.
+    // La COLA de la corona, más allá del filo continuo de arriba: cae más lento
+    // (exponente menor) para que el resplandor se desvanezca en el fondo en vez
+    // de terminar. Del mismo calor que el filo, así no hay costura de color.
+    float halo = exp(-(d - rEff) * 4.5) * fuera;
+    col += vec3(1.0, 0.66, 0.30) * halo * 0.45;
+    alfa = max(alfa, halo * 0.4);
 
     float pr = protuberancias(p, d);
     vec3 cPr = mix(paleta(0.9), vec3(1.0, 0.88, 0.6), 0.45);
