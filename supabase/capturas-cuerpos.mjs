@@ -37,11 +37,18 @@ const RANGOS = [
 ];
 
 const args = process.argv.slice(2);
-const sufijo = args[0] && !/^\d+$/.test(args[0]) && !RANGOS.some((r) => r.nombre.startsWith(args[0].toLowerCase())) ? args[0] : (args[0]?.startsWith('-') ? args[0] : '');
+const sufijo = args[0] && !/^\d+$/.test(args[0]) && !args[0].startsWith('planeta:') && !RANGOS.some((r) => r.nombre.startsWith(args[0].toLowerCase())) ? args[0] : (args[0]?.startsWith('-') ? args[0] : '');
 const pedidos = args.filter((a) => a !== sufijo);
-const cuales = pedidos.length
-  ? RANGOS.filter((r) => pedidos.some((p) => String(r.n) === p || r.nombre.startsWith(p.toLowerCase())))
-  : RANGOS;
+// `planeta:Tierra` captura el rango 4 con ese planeta (para revisar Tierra/Marte
+// aparte de Jupiter, que es el planeta por omision).
+const planetas = pedidos.filter((p) => p.startsWith('planeta:')).map((p) => p.slice('planeta:'.length));
+const soloRangos = pedidos.filter((p) => !p.startsWith('planeta:'));
+const cuales = [
+  ...(soloRangos.length
+    ? RANGOS.filter((r) => soloRangos.some((p) => String(r.n) === p || r.nombre.startsWith(p.toLowerCase())))
+    : (planetas.length ? [] : RANGOS)),
+  ...planetas.map((pl) => ({ n: 4, nombre: pl.toLowerCase(), planeta: pl })),
+];
 
 const librePara = (p) =>
   new Promise((r) => {
@@ -93,7 +100,8 @@ await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 180000
 
 console.log(`\nrango                  foto`);
 for (const r of cuales) {
-  await page.goto(`${BASE}/galeria?limpio=1&rango=${r.n}`, { waitUntil: 'domcontentloaded' });
+  const q = `limpio=1&rango=${r.n}${r.planeta ? `&planeta=${encodeURIComponent(r.planeta)}` : ''}`;
+  await page.goto(`${BASE}/galeria?${q}`, { waitUntil: 'domcontentloaded' });
   // Esperar a que el motor cree el lienzo y dibuje unos cuadros. El fondo se
   // monta con `key`, así que hay que darle tiempo a compilar sus shaders.
   await page.waitForFunction(() => !!document.querySelector('.fondo-lienzo canvas'), null, { timeout: 60000 }).catch(() => {});
