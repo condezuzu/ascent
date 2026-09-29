@@ -10683,6 +10683,29 @@ console.log('\n149. Los pasos: por que salia vacio, y la meta del dia');
 }
 
 
+console.log('\n149b. El objetivo de peso: un numero, y el color por cercania');
+{
+  const PO = await import('../nucleo/pesoObjetivo.ts');
+  // Un numero valido se lee; roto o fuera de rango es null (sin objetivo, sin color).
+  chequear('sin nada guardado, sin objetivo', PO.leerObjetivo(null), null);
+  chequear('un numero se lee', PO.leerObjetivo('85'), 85);
+  chequear('un valor roto es null', PO.leerObjetivo('ochenta'), null);
+  chequear('fuera de rango es null', PO.leerObjetivo('5'), null);
+  // El margen de llegada es un kilo, y esta justificado (fluctuacion diaria).
+  chequear('el margen de llegada es un kilo', PO.MARGEN_LLEGADA_KG, 1);
+  chequear('a un kilo o menos, llego', PO.llego(85.8, 85), true);
+  chequear('a mas de un kilo, todavia no', PO.llego(83, 85), false);
+  chequear('sin objetivo nunca se llega', PO.llego(85, null), false);
+  // EL COLOR SALE DE ACERCARSE, NO DE SUBIR. Objetivo 85: subir de 80 a 82 se
+  // ACERCA (bien); objetivo 70: subir de 72 a 74 se ALEJA. La direccion no manda.
+  chequear('sin objetivo, sin rumbo', PO.rumboDelPaso(82, 80, null), 'sin-objetivo');
+  chequear('subir hacia 85 se acerca', PO.rumboDelPaso(82, 80, 85), 'acerca');
+  chequear('subir lejos de 70 se aleja', PO.rumboDelPaso(74, 72, 70), 'aleja');
+  chequear('bajar hacia 70 se acerca', PO.rumboDelPaso(74, 76, 70), 'acerca');
+  chequear('un paso que deja en el objetivo, llegado', PO.rumboDelPaso(85.5, 83, 85), 'llegado');
+}
+
+
 console.log('\n150. La medalla que no baja nunca: el maximo historico');
 {
   const { readFileSync: leer150 } = await import('node:fs');

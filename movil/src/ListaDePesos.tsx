@@ -6,6 +6,7 @@ import { useVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 import { fechaCorta } from '@nucleo/fechas';
 import { aKilos, conComa, deKilos, limites, type Unidad } from '@nucleo/peso';
+import { rumboDelPaso } from '@nucleo/pesoObjetivo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { C } from './colores';
@@ -56,6 +57,7 @@ function IconoTacho() {
 export default function ListaDePesos({
   pesos,
   unidad,
+  objetivo = null,
   alCambiar,
 }: {
   /** Solo hace falta la fecha y el número: la fila se identifica por el día,
@@ -63,6 +65,8 @@ export default function ListaDePesos({
    * lee la web como lo que lee la nativa, que traen columnas distintas. */
   pesos: { fecha: string; valor: number }[];
   unidad: Unidad;
+  /** El objetivo de peso en kg, o null. De él sale el color de cada cambio. */
+  objetivo?: number | null;
   alCambiar: () => void;
 }) {
   const version = useVersionDelEsquema();
@@ -116,6 +120,15 @@ export default function ListaDePesos({
         // esconde si es 0,0: "sin cambio" no es una flecha, es nada.
         const dLindo = p.delta === null ? null : deKilos(p.valor, unidad) - deKilos(p.valor - p.delta, unidad);
         const dRedondo = dLindo === null ? 0 : Math.round(dLindo * 10) / 10;
+        // EL COLOR SALE DEL OBJETIVO, no de si subió o bajó (item peso). Acercarse
+        // al objetivo = bien; alejarse = lejos; ya en el objetivo = claro; sin
+        // objetivo = gris. La flecha sigue mostrando la dirección física.
+        const rumbo = p.delta === null ? 'sin-objetivo' : rumboDelPaso(p.valor, p.valor - p.delta, objetivo);
+        const colorRumbo =
+          rumbo === 'acerca' ? estilos.bien
+          : rumbo === 'aleja' ? estilos.lejos
+          : rumbo === 'llegado' ? estilos.enObjetivo
+          : estilos.neutro;
         return (
           <View style={[estilos.fila, (editando || preguntando) && estilos.filaActiva]} key={p.fecha}>
             <Text style={estilos.cuando}>{fechaCorta(p.fecha)}</Text>
@@ -156,7 +169,7 @@ export default function ListaDePesos({
                     <Text style={estilos.unidad}> {unidad}</Text>
                   </Text>
                   {dRedondo !== 0 && (
-                    <Text style={[estilos.delta, dRedondo > 0 ? estilos.sube : estilos.baja]}>
+                    <Text style={[estilos.delta, colorRumbo]}>
                       {dRedondo > 0 ? '▲' : '▼'} {conComa(Math.abs(dRedondo).toFixed(1))}
                     </Text>
                   )}
@@ -216,10 +229,13 @@ const estilos = StyleSheet.create({
   valor: { color: C.tinta, fontSize: 17, fontWeight: '400', fontVariant: ['tabular-nums'] },
   unidad: { color: C.apagado, fontSize: 12, fontWeight: '400' },
   delta: { fontSize: 11, fontVariant: ['tabular-nums'] },
-  // Subir de peso no es "malo" ni bajar "bueno": son grises con una pizca de
-  // tono, no un semáforo. La tendencia se lee, no se juzga.
-  sube: { color: '#c58f7a' },
-  baja: { color: '#7aa6c5' },
+  // El color sale del OBJETIVO, no de subir/bajar. Acercarse = verde tenue;
+  // alejarse = terracota; ya en el objetivo = el claro de la app; sin objetivo
+  // = gris (no se juzga nada hasta que haya un número al que llegar).
+  bien: { color: '#7fae86' },
+  lejos: { color: '#c58f7a' },
+  enObjetivo: { color: C.claro },
+  neutro: { color: C.apagado },
   pregunta: { color: C.sub, fontSize: 12, flex: 1, lineHeight: 16 },
   campo: {
     flex: 1,

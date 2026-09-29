@@ -830,6 +830,13 @@ export const T = {
       `${dias} ${dias === 1 ? 'anotación' : 'anotaciones'} · ${delta} ${unidad}`,
     pesoUnoMas: 'Con uno más aparece la tendencia. Solo la ves tú.',
     pesoVacio: 'Anota tu peso y aquí aparece la tendencia. Solo la ves tú.',
+    // EL OBJETIVO DE PESO: un número, no una dirección (ver `pesoObjetivo.ts`).
+    objetivoPoner: 'Pon un objetivo de peso',
+    objetivoEs: (n: string, u: string) => `Objetivo: ${n} ${u} · cambiar`,
+    objetivoLlegado: 'Estás en tu objetivo:',
+    objetivoPlaceholder: (u: string) => `Objetivo en ${u}`,
+    objetivoFuera: 'Pon un peso entre 20 y 400.',
+    objetivoQuitar: 'Quitar',
     // LOS PASOS. Son de Apple Health, TODOS los días y no solo los de
     // entrenamiento: un día de descanso con 12.000 pasos es información.
     pasosTendencia: 'Pasos — tendencia 7 días',

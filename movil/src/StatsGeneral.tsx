@@ -11,6 +11,7 @@ import { agruparPorDia, etiquetaDeDia, type DiaConSesiones } from '@nucleo/dias'
 import type { Log } from '@nucleo/tipos';
 import { plataforma } from '@plataforma';
 import { CLAVE_META_PASOS, leerMeta } from '@nucleo/pasos';
+import { CLAVE_OBJETIVO_PESO, leerObjetivo } from '@nucleo/pesoObjetivo';
 import { C } from './colores';
 import GraficoPeso from './GraficoPeso';
 import GraficoPasos from './GraficoPasos';
@@ -18,6 +19,7 @@ import Insignia from './Insignia';
 import SeccionFuerza from './SeccionFuerza';
 import AnotarPeso from './AnotarPeso';
 import ListaDePesos from './ListaDePesos';
+import ObjetivoDePeso from './ObjetivoDePeso';
 import { useRecargarAlVolver } from './irAPestana';
 
 /**
@@ -94,6 +96,7 @@ export default function StatsGeneral({
   // ventana es recortar una serie que ya está en memoria.
   const [pasos, setPasos] = useState<{ fecha: string; valor: number }[] | null>(null);
   const [metaPasos, setMetaPasos] = useState(leerMeta(null));
+  const [objetivoPeso, setObjetivoPeso] = useState<number | null>(null);
 
   // LOS PASOS SON SU PROPIO SEGMENTO, CON SU PROPIA CARGA (27/9).
   //
@@ -121,6 +124,12 @@ export default function StatsGeneral({
       .leer(CLAVE_META_PASOS)
       .then((m) => {
         if (vivo) setMetaPasos(leerMeta(m));
+      })
+      .catch(() => {});
+    plataforma.almacenamiento
+      .leer(CLAVE_OBJETIVO_PESO)
+      .then((o) => {
+        if (vivo) setObjetivoPeso(leerObjetivo(o));
       })
       .catch(() => {});
     cargarPasos();
@@ -185,7 +194,19 @@ export default function StatsGeneral({
       {pesos.length === 1 && <Text style={estilos.nota}>{T.stats.pesoUnoMas}</Text>}
       {pesos.length === 0 && <Text style={estilos.nota}>{T.stats.pesoVacio}</Text>}
       <AnotarPeso unidad={unidad} alGuardar={alCambiar} />
-      <ListaDePesos pesos={pesos} unidad={unidad} alCambiar={alCambiar} />
+      {/* EL OBJETIVO DE PESO, arriba de la lista: un número al que llegar. De él
+          sale el color de cada cambio (acercarse/alejarse) y el momento de haber
+          llegado. Solo con al menos un peso anotado —sin peso no hay contra qué
+          compararse—. Ver `ObjetivoDePeso` y `nucleo/pesoObjetivo.ts`. */}
+      {pesos.length >= 1 && (
+        <ObjetivoDePeso
+          objetivo={objetivoPeso}
+          unidad={unidad}
+          pesoActual={pesos.length ? pesos[pesos.length - 1].valor : null}
+          alCambiar={setObjetivoPeso}
+        />
+      )}
+      <ListaDePesos pesos={pesos} unidad={unidad} objetivo={objetivoPeso} alCambiar={alCambiar} />
 
       {/* LOS PASOS, si el teléfono los tiene. Con menos de dos días no hay
           tendencia que dibujar y no se pone nada: un gráfico de un punto es
