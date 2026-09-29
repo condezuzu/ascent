@@ -878,14 +878,26 @@ void main() {
       // cara oscura, correr el indice de una paleta corta casi no se nota: los
       // dos naranjas se parecen. Lo que hace que se lea "hervido" es que unas
       // celdas esten mas apagadas que otras.
-      float celdas = 0.55 + 0.85 * gran + 0.25 * gran2;
+      // LA GRANULACION FINA NO PUEDE AMONTONARSE EN EL BORDE (item 4, 28/9).
+      // *"Las pulsaciones se dan solo en la circunferencia, no en el centro."*
+      // Es el escorzo de la esfera: hacia el limbo, la textura 3D se comprime y
+      // la granulacion rapida (gran2, la que hierve) queda diminuta y veloz, y
+      // se lee como un parpadeo en el contorno. Se la atenua donde la cara se
+      // aleja de la camara, asi el hervor queda parejo en vez de apretarse en el
+      // filo. El hervor lento (gran) queda igual: ese no parpadea.
+      float mirando = smoothstep(0.0, 0.45, n.z);
+      float celdas = 0.55 + 0.85 * gran + 0.25 * gran2 * mirando;
       vec3 cara = superficie * celdas * (0.16 + 0.26 * pow(n.z, 0.8));
 
-      // EL CANTO. El termino 1.0 - n.z es cero en el medio y uno en el borde:
-      // la potencia lo aprieta contra el filo. Es lo unico brillante del cuerpo
-      // y por eso va con la parte mas clara de la paleta.
+      // EL CANTO, MAS BAJO Y MENOS BLANCO (item 4). El termino 1.0 - n.z es cero
+      // en el medio y uno en el borde: la potencia lo aprieta contra el filo.
+      // Era 2.8 con medio blanco puro y salia una LINEA DURA de neon en todo el
+      // contorno. Baja a 1.6 y el blanco a un tercio: sigue habiendo un borde
+      // encendido —de ahi salen las protuberancias— pero es un filo calido, no
+      // una raya. De paso saca el elemento mas brillante y de mas overdraw del
+      // disco, que no estorba al costo.
       float canto = pow(1.0 - n.z, 3.2);
-      cara += mix(paleta(0.95), vec3(1.0, 0.95, 0.80), 0.5) * canto * 2.8;
+      cara += mix(paleta(0.95), vec3(1.0, 0.95, 0.80), 0.32) * canto * 1.6;
 
       col = mix(col, cara, dentro);
       alfa = max(alfa, dentro);
