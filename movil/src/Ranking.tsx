@@ -168,7 +168,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
       {datos && (
         <FondoEspacial rango={datos.miRango} planeta={datos.miPlaneta} velo={0.68} />
       )}
-      <ScrollView contentContainerStyle={estilos.pantalla} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={estilos.pantalla} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <Text style={estilos.titulo}>{T.social.titulo}</Text>
 
         {/* EL AVISO DE LA ACTIVIDAD EN VIVO, la primera vez y solo si ya marcaste

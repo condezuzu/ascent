@@ -115,7 +115,12 @@ export default function Ajustes({
           anterior — o sea, con el planeta de Inicio. Ahora pide el suyo:
           solo el cielo, como las otras tres que no son Inicio. */}
       <FondoEspacial rango={perfil.rango_actual} planeta={planetaDeDia(perfil.racha_actual)} velo={0.72} />
-    <ScrollView contentContainerStyle={estilos.pantalla}>
+    {/* `automaticallyAdjustKeyboardInsets`: sin esto el teclado tapaba el campo
+        de abajo —el de escribir el nombre para darse de baja— y se escribía a
+        ciegas (28/9). iOS ahora insetea el scroll y lleva el campo enfocado a la
+        vista. Cubre también el nombre de usuario y la meta de pasos, que viven
+        en esta misma pantalla. */}
+    <ScrollView contentContainerStyle={estilos.pantalla} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>
 
