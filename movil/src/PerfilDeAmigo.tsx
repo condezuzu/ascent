@@ -5,6 +5,8 @@ import { cargarPerfilDeAmigo, DIAS_VISIBLES, type PerfilDeAmigo as Datos } from 
 import Medallas from './Medallas';
 import { pedirAmistad } from '@compartido/ranking';
 import { useEnVuelo } from '@compartido/useEnVuelo';
+import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
+import { plataforma } from '@plataforma';
 import AccionesDeUsuario from './AccionesDeUsuario';
 import { DIAS_SEMANA, deISO, enDias, hoyISO, restarDias } from '@nucleo/fechas';
 import { conComa } from '@nucleo/peso';
@@ -76,9 +78,12 @@ export default function PerfilDeAmigo() {
     }
   }, [id, router]);
 
+  // Las fotos del perfil vencen a la hora: se vuelven a pedir antes de que se
+  // rompan (ver `useRefrescoDeFirmadas`). Es lo que ve un amigo mirando tu perfil.
+  const recargar = useRefrescoDeFirmadas(cargar, plataforma.ciclo.alCambiar);
   useEffect(() => {
-    cargar();
-  }, [cargar]);
+    recargar();
+  }, [recargar]);
 
   // Traba contra el doble-tap: sin esto, dos toques mandaban dos pedidos de
   // amistad a la misma persona.

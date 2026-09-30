@@ -14,6 +14,8 @@ import {
   type DatosDeRanking,
 } from '@compartido/ranking';
 import { useEnVuelo } from '@compartido/useEnVuelo';
+import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
+import { plataforma } from '@plataforma';
 import Avatar from './Avatar';
 import AccionesDeUsuario from './AccionesDeUsuario';
 import CampoTexto from './CampoTexto';
@@ -98,12 +100,15 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
     })();
   }, [alSalir]);
 
+  // Las fotos de la actividad vencen a la hora: se vuelven a pedir antes de que se
+  // rompan (ver `useRefrescoDeFirmadas`).
+  const recargar = useRefrescoDeFirmadas(cargar, plataforma.ciclo.alCambiar);
   useEffect(() => {
-    cargar();
-  }, [cargar]);
+    recargar();
+  }, [recargar]);
 
   // Y de nuevo al volver a esta pestaña: ahora se queda montada.
-  useRecargarAlVolver('ranking', cargar);
+  useRecargarAlVolver('ranking', recargar);
 
   // ¿El gimnasio ya está marcado? Del caché del perfil, para gatear el aviso.
   useEffect(() => {

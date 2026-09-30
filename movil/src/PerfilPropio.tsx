@@ -9,6 +9,8 @@ import { planetaDeDia } from '@nucleo/rangos';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { useEnVuelo } from '@compartido/useEnVuelo';
+import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
+import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
 import { prepararFoto } from './foto';
 import Avatar from './Avatar';
@@ -66,9 +68,12 @@ export default function PerfilPropio() {
     });
   }, []);
 
+  // Las fotos que ven tus amigos vencen a la hora: se vuelven a pedir antes de que
+  // se rompan (ver `useRefrescoDeFirmadas`).
+  const recargar = useRefrescoDeFirmadas(cargar, plataforma.ciclo.alCambiar);
   useEffect(() => {
-    cargar();
-  }, [cargar]);
+    recargar();
+  }, [recargar]);
 
   async function cambiarFoto() {
     if (!datos) return;

@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda } from '@nucleo/fechas';
 import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type Celda } from '@compartido/album';
 import { avisarFallo } from '@compartido/cola';
+import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 import { plataforma } from '@/plataforma';
 import FondoEspacial from '@/components/FondoEspacial';
 import Nav from '@/components/Nav';
@@ -29,17 +30,12 @@ export default function Album() {
   const [error, setError] = useState('');
   const [noCargo, setNoCargo] = useState(false);
 
-  // Cuándo se pidieron las URL firmadas por última vez: viven una hora, y con
-  // eso se decide si hay que volver a pedirlas al volver a la pestaña.
-  const ultimaCarga = useRef(0);
-
   // LAS CONSULTAS VIVEN EN `compartido/album.ts` desde el 18/9: las usa
   // también la app nativa.
   const cargar = useCallback(async () => {
     const user = await miUsuario(supabase);
     if (!user) return;
     const d = await cargarAlbum(supabase, user.id);
-    ultimaCarga.current = Date.now();
     if (!d) {
       setNoCargo(true);
       return setCargado(true);
@@ -51,32 +47,12 @@ export default function Album() {
     setCargado(true);
   }, [supabase]);
 
+  // Las URL firmadas de las fotos vencen a la hora: se vuelven a pedir antes de
+  // que se rompan (ver `useRefrescoDeFirmadas`).
+  const recargar = useRefrescoDeFirmadas(cargar, plataforma.ciclo.alCambiar);
   useEffect(() => {
-    cargar();
-  }, [cargar]);
-
-  // LAS URL FIRMADAS VENCEN A LA HORA (`createSignedUrl(..., 3600)` en
-  // `album.ts`). Si te quedás en el álbum más de una hora sin tocar nada, vencen
-  // y las fotos pasan a dar 403 —se ven rotas—. Se vuelven a pedir cuando falta
-  // poco para la hora: al volver a la pestaña (el puerto de ciclo de vida avisa
-  // "volvé a mirar" —visibilidad/foco en web, AppState en nativo—, así las APIs
-  // del navegador quedan detrás del puerto y no acá, como exige `test:db` §35), y
-  // —por si nunca la soltás— con un chequeo cada cinco minutos. La guarda de "más
-  // de 50 min" evita re-bajar todo por cada vuelta corta.
-  useEffect(() => {
-    const CASI_UNA_HORA = 50 * 60 * 1000;
-    const siHaceFalta = () => {
-      if (Date.now() - ultimaCarga.current > CASI_UNA_HORA) cargar();
-    };
-    const dejarDeMirar = plataforma.ciclo.alCambiar((visible) => {
-      if (visible) siHaceFalta();
-    });
-    const reloj = setInterval(siHaceFalta, 5 * 60 * 1000);
-    return () => {
-      dejarDeMirar();
-      clearInterval(reloj);
-    };
-  }, [cargar]);
+    recargar();
+  }, [recargar]);
 
   async function alternarVisibilidad(c: Celda) {
     const nueva = c.visibilidad === 'privada' ? 'amigos' : 'privada';

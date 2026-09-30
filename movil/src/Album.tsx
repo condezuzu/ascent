@@ -28,6 +28,7 @@ import { C, conAlfa } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
 import { bloquearDeslizarPestanas, desbloquearDeslizarPestanas } from './gestoDePestanas';
 import { useEnVuelo } from '@compartido/useEnVuelo';
+import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 
 /**
  * ÁLBUM — tanda 4.
@@ -55,48 +56,25 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
   const [error, setError] = useState('');
   const { width } = useWindowDimensions();
 
-  // Cuándo se pidieron las URL firmadas por última vez: viven una hora.
-  const ultimaCarga = useRef(0);
-
   const cargar = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     const uid = data.session?.user?.id;
     if (!uid) return alSalir();
     const d = await cargarAlbum(supabase, uid).catch(() => null);
-    ultimaCarga.current = Date.now();
     setNoCargo(!d);
     if (d) setDatos(d);
     setCargado(true);
   }, [alSalir]);
 
+  // Las URL firmadas vencen a la hora: se vuelven a pedir antes de que se rompan,
+  // al volver al frente y con un chequeo periódico (ver `useRefrescoDeFirmadas`).
+  const recargar = useRefrescoDeFirmadas(cargar, plataforma.ciclo.alCambiar);
   useEffect(() => {
-    cargar();
-  }, [cargar]);
+    recargar();
+  }, [recargar]);
 
   // Y de nuevo al volver a esta pestaña: ahora se queda montada.
-  useRecargarAlVolver('album', cargar);
-
-  // LAS URL FIRMADAS VENCEN A LA HORA (`createSignedUrl(..., 3600)` en
-  // `album.ts`). `useRecargarAlVolver` cubre el cambio de pestaña, pero si te
-  // quedás en el álbum y mandás la app al fondo una hora, al volver las fotos
-  // dan 403 —rotas—. Se vuelven a pedir cuando la app vuelve a primer plano (el
-  // puerto de ciclo de vida, `AppState` por detrás), y —por si la dejás abierta
-  // y quieta— con un chequeo cada cinco minutos. La guarda de "más de 50 min"
-  // evita recargar de gusto en cada vuelta corta.
-  useEffect(() => {
-    const CASI_UNA_HORA = 50 * 60 * 1000;
-    const siHaceFalta = () => {
-      if (Date.now() - ultimaCarga.current > CASI_UNA_HORA) cargar();
-    };
-    const dejarDeMirar = plataforma.ciclo.alCambiar((visible) => {
-      if (visible) siHaceFalta();
-    });
-    const reloj = setInterval(siHaceFalta, 5 * 60 * 1000);
-    return () => {
-      dejarDeMirar();
-      clearInterval(reloj);
-    };
-  }, [cargar]);
+  useRecargarAlVolver('album', recargar);
 
   // MIENTRAS LA FOTO ESTÁ ABIERTA, LAS PESTAÑAS NO DESLIZAN (27/9): así el
   // arrastre para pasar de foto es de la foto, y no se escapa a otra pestaña.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import EnElBody from '@/components/EnElBody';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
@@ -10,6 +10,8 @@ import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import type { ResumenDelDia } from '@nucleo/resumenDia';
 import { cargarDia, corregirDia, destinoActual, queHacer, revisarCarga, type Destino } from '@compartido/dia';
 import { claveDeEtiqueta, gruposDePesos, type Carga } from '@nucleo/carga';
+import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
+import { plataforma } from '@/plataforma';
 import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
 import { useVersion } from '@/lib/version';
 import { disponible } from '@nucleo/esquema';
@@ -57,22 +59,29 @@ export default function HojaDelDia({
 
   const esFuturo = fecha > hoyISO();
 
+  // El id de carga reemplaza al viejo `vivo`: si sale una carga más nueva (cambió
+  // la fecha, se corrigió el día, o se refrescaron las URL), la vieja que llegue
+  // tarde no pisa el resultado.
+  const cargaId = useRef(0);
+  const cargar = useCallback(async () => {
+    const id = ++cargaId.current;
+    const uid = (await miUsuario(supabase))?.id;
+    if (!uid) return;
+    const d = await cargarDia(supabase, uid, fecha, esFuturo);
+    if (id !== cargaId.current) return;
+    setUnidad(d.unidad);
+    setCuantasSesiones(d.cuantasSesiones);
+    setResumen(d.resumen);
+    setFoto(d.foto);
+  }, [supabase, fecha, esFuturo]);
+
+  // La foto del día se sirve con una URL firmada que vence a la hora: se vuelve a
+  // pedir antes de que se rompa (ver `useRefrescoDeFirmadas`). Se recarga además
+  // cuando cambia la fecha o se corrige el día (`version`).
+  const recargar = useRefrescoDeFirmadas(cargar, plataforma.ciclo.alCambiar);
   useEffect(() => {
-    let vivo = true;
-    (async () => {
-      const uid = (await miUsuario(supabase))?.id;
-      if (!uid) return;
-      const d = await cargarDia(supabase, uid, fecha, esFuturo);
-      if (!vivo) return;
-      setUnidad(d.unidad);
-      setCuantasSesiones(d.cuantasSesiones);
-      setResumen(d.resumen);
-      setFoto(d.foto);
-    })();
-    return () => {
-      vivo = false;
-    };
-  }, [supabase, fecha, esFuturo, version]);
+    recargar();
+  }, [recargar, fecha, esFuturo, version]);
 
   function cerrar() {
     setCerrando(true);

@@ -21,6 +21,8 @@ import NoCargo from '@/components/NoCargo';
 import { FOTOS_VISIBLES, FotosQueVen, type FotoVisible } from '@/components/ComoMeVen';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import { miniaturas } from '@compartido/album';
+import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
+import { plataforma } from '@/plataforma';
 import { cargarMisMedallas } from '@compartido/perfil';
 import type { Medalla } from '@nucleo/medallas';
 import Medallas from '@/components/Medallas';
@@ -112,9 +114,12 @@ export default function Yo() {
     });
   }, [supabase]);
 
+  // Las fotos que ven tus amigos se sirven con URL firmadas que vencen a la hora:
+  // se vuelven a pedir antes de que se rompan (ver `useRefrescoDeFirmadas`).
+  const recargar = useRefrescoDeFirmadas(cargar, plataforma.ciclo.alCambiar);
   useEffect(() => {
-    cargar();
-  }, [cargar]);
+    recargar();
+  }, [recargar]);
 
   // ---- foto de perfil ----
   function elegirArchivo(archivo: File) {

@@ -14,6 +14,8 @@ import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import { miniaturas } from '@compartido/album';
+import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
+import { plataforma } from '@/plataforma';
 import { T } from '@nucleo/textos';
 import Medallas from '@/components/Medallas';
 import AccionesDeUsuario from '@/components/AccionesDeUsuario';
@@ -129,9 +131,13 @@ export default function Perfil() {
     setCargado(true);
   }, [supabase, params.id, router]);
 
+  // Las fotos del perfil se sirven con URL firmadas que vencen a la hora: se
+  // vuelven a pedir antes de que se rompan (ver `useRefrescoDeFirmadas`). Es el
+  // caso que ven los amigos: dejan tu perfil abierto y las fotos se rompen.
+  const recargar = useRefrescoDeFirmadas(cargar, plataforma.ciclo.alCambiar);
   useEffect(() => {
-    cargar();
-  }, [cargar]);
+    recargar();
+  }, [recargar]);
 
   async function pedirAmistad() {
     const { error } = await supabase
