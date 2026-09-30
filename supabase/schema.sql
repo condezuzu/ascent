@@ -1088,9 +1088,19 @@ begin
   d := hoy - 1;
   loop
     exit when perfil.perdida_fecha is not null and d <= perfil.perdida_fecha;
+    -- Tope de seguridad: un año atrás la racha ya sería 0 y no hay nada que
+    -- cubrir. Sin esto, saltar descansos podría no terminar.
+    exit when hoy - d > 366;
     exit when exists (select 1 from logs where user_id = p_user and fecha = d);
-    exit when extract(dow from d)::int = any(descansos_vigentes(p_user, d));
-    exit when exists (select 1 from vidas_usadas where user_id = p_user and fecha = d);
+    -- UN DÍA DE DESCANSO NO CORTA LA COBERTURA (arreglo del 30/9). Antes hacía
+    -- `exit` y una falta real MÁS VIEJA que un descanso quedaba sin cubrir aunque
+    -- hubiera vidas: quien descansa el finde perdía la racha injustamente. Ahora
+    -- se SALTA —igual que un día ya cubierto— y se sigue mirando más atrás.
+    if extract(dow from d)::int = any(descansos_vigentes(p_user, d))
+       or exists (select 1 from vidas_usadas where user_id = p_user and fecha = d) then
+      d := d - 1;
+      continue;
+    end if;
     -- ¿queda un impulso disponible para ESE día?
     exit when impulsos_disponibles(p_user, d) <= 0;
     insert into vidas_usadas (user_id, fecha) values (p_user, d)

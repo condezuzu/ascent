@@ -30,13 +30,14 @@
 -- que el `cron.schedule(...)` vive en `supabase/cron-racha.sql`, que se corre a
 -- mano UNA vez después de aplicar esta migración. Ver ese archivo.
 --
--- OJO (heredado, NO introducido acá): el `exit when ... descansos_vigentes` corta
--- la cobertura al toparse con un día de descanso caminando hacia atrás, así que
--- una falta real más vieja que un descanso puede quedar sin cubrir aunque haya
--- vidas. Ya pasa al abrir la app; el barrido lo hace determinístico. Se deja
--- IGUAL que hoy (paridad app-open ↔ batch); si se decide arreglar, se cambia el
--- núcleo compartido y, como `verificar_perdida()` es un envoltorio, los dos
--- caminos quedan iguales de una.
+-- ARREGLADO ACÁ (30/9): un día de descanso YA NO corta la cobertura. Antes el
+-- loop hacía `exit` al toparse con un descanso caminando hacia atrás, así que una
+-- falta real más vieja que un descanso quedaba sin cubrir aunque hubiera vidas
+-- —quien descansa el finde perdía la racha injustamente, que es el caso normal—.
+-- Ahora los descansos (y los días ya cubiertos) se SALTAN y se sigue mirando más
+-- atrás. Como `verificar_perdida()` es un envoltorio de `verificar_perdida_de`,
+-- el arreglo vale para los dos caminos (abrir la app y el barrido). Es monótono:
+-- solo puede PRESERVAR rachas, nunca bajar una que antes sobrevivía.
 
 create or replace function public.verificar_perdida_de(p_user uuid)
 returns jsonb language plpgsql security definer set search_path = public as $$
@@ -67,9 +68,19 @@ begin
   d := hoy - 1;
   loop
     exit when perfil.perdida_fecha is not null and d <= perfil.perdida_fecha;
+    -- Tope de seguridad: un año atrás la racha ya sería 0 y no hay nada que
+    -- cubrir. Sin esto, saltar descansos podría no terminar.
+    exit when hoy - d > 366;
     exit when exists (select 1 from logs where user_id = p_user and fecha = d);
-    exit when extract(dow from d)::int = any(descansos_vigentes(p_user, d));
-    exit when exists (select 1 from vidas_usadas where user_id = p_user and fecha = d);
+    -- UN DÍA DE DESCANSO NO CORTA LA COBERTURA (arreglo del 30/9). Antes hacía
+    -- `exit` y una falta real MÁS VIEJA que un descanso quedaba sin cubrir aunque
+    -- hubiera vidas: quien descansa el finde perdía la racha injustamente. Ahora
+    -- se SALTA —igual que un día ya cubierto— y se sigue mirando más atrás.
+    if extract(dow from d)::int = any(descansos_vigentes(p_user, d))
+       or exists (select 1 from vidas_usadas where user_id = p_user and fecha = d) then
+      d := d - 1;
+      continue;
+    end if;
     -- ¿queda un impulso disponible para ESE día?
     exit when impulsos_disponibles(p_user, d) <= 0;
     insert into vidas_usadas (user_id, fecha) values (p_user, d)
