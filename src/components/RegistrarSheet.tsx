@@ -8,6 +8,7 @@ import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import { avisarFallo } from '@compartido/cola';
 import { prepararFoto } from '@/lib/foto';
 import { subirFotoDelDia } from '@compartido/foto';
+import { useEnVuelo } from '@compartido/useEnVuelo';
 import type { ResultadoRegistro } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 
@@ -94,7 +95,13 @@ export default function RegistrarSheet({
     if (r === 'no-subio') avisarFallo(T.general.falloFoto);
   }
 
-  async function confirmar() {
+  // TRABA CONTRA EL DOBLE-TOQUE. `disabled={cargando}` no alcanza: `cargando` es
+  // estado y se ve recién en el próximo render, así que dos toques rápidos entran
+  // los dos a `confirmar` antes de que el botón se apague y suben DOS fotos al
+  // mismo día —el duplicado que aparece en el álbum al adjuntar una foto a un día
+  // pasado—. `useEnVuelo` traba en el acto (la misma pieza que la nativa usa en
+  // `RegistrarDia`), sin esperar el render.
+  const confirmar = useEnVuelo(async () => {
     setError('');
     setCargando(true);
 
@@ -132,7 +139,7 @@ export default function RegistrarSheet({
 
     setCargando(false);
     alConfirmar(resultado);
-  }
+  });
 
   return (
     <EnElBody>
@@ -168,7 +175,7 @@ export default function RegistrarSheet({
           )}
         </div>
 
-        <button className="boton-solido" onClick={confirmar} disabled={cargando}>
+        <button className="boton-solido" onClick={() => confirmar()} disabled={cargando}>
           {cargando ? T.sesion.guardando : yaEsta ? T.general.guardar : T.inicio.registrarDia}
         </button>
         {aviso && <p className="ok-msg">{aviso}</p>}
