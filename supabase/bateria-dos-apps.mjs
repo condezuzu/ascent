@@ -21,7 +21,7 @@ import { createClient } from '@supabase/supabase-js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { pasarLaEntrada, limiteDeSonda } from './utiles.mjs';
+import { pasarLaEntrada, pasarLaEntradaNativa, limiteDeSonda } from './utiles.mjs';
 
 // Ninguna sonda corre sin limite (ver utiles.mjs).
 limiteDeSonda(20);
@@ -127,11 +127,15 @@ async function correr(app) {
   // ---- 1. crear la cuenta por la pantalla ----
   await paso('crear cuenta', async () => {
     await page.goto(app === 'web' ? `${base}/login` : base, { waitUntil: 'networkidle', timeout: 240000 });
-    // La web muestra la pantalla de entrada antes del formulario (la nativa
-    // todavía no): se pasa como pasaría alguien apurado.
+    // Las dos apps muestran la pantalla de entrada antes del formulario: se
+    // pasa como pasaría alguien apurado. La web y la nativa exponen la entrada
+    // distinto (la web por clases del DOM, la nativa por texto y toque), así
+    // que cada una tiene su cruce.
     if (app === 'web') {
       await page.waitForTimeout(1500);
       await pasarLaEntrada(page);
+    } else {
+      await pasarLaEntradaNativa(page);
     }
     // Hasta que la pantalla responda: un toque antes de que React tome la
     // página no hace nada.

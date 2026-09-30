@@ -91,6 +91,67 @@ export function retrocesosEnTemplate(codigo) {
  * secuencia entera. Si después de tres vueltas no está, tira con la URL y lo
  * que se ve en pantalla, que es lo que hace falta para entender por qué.
  */
+/**
+ * CRUZAR LA ENTRADA EN LA NATIVA (Expo web, :8090).
+ *
+ * Desde la tanda 9 las cuatro diapositivas de bienvenida van ANTES del login y
+ * se muestran en CADA entrada —no se guarda ningún "ya las viste"—, así que las
+ * sondas de la nativa tienen que pasarlas para llegar al formulario. Sin esto,
+ * `barrido-nativa`, `barrido-estados` y la rama móvil de `bateria-dos-apps` se
+ * quedaban esperando un login que no aparecía y morían recién en el tope de 15
+ * min de la sonda (exit 0, pero sin recorrer nada).
+ *
+ * La web tiene su propia `pasarLaEntrada`, que mira `.bienv`/`.bienv-tocar`
+ * —clases del DOM que react-native-web NO emite—. Acá se va por TEXTO y TOQUE,
+ * que es lo único que expone la nativa: se toca "Siguiente" en las tres
+ * primeras, se salta la cuarta tocando la pantalla (un `Pressable` a pantalla
+ * completa, sin botón) y se cae en "Ya tengo cuenta", que abre el login en modo
+ * ENTRAR —que es donde las sondas esperan caer: de ahí salen "Entrar" y el
+ * enlace "¿Primera vez? Crear cuenta"—.
+ */
+export async function pasarLaEntradaNativa(page, espera = 60000) {
+  const hayLogin = () =>
+    page.locator('input[type=email]').first().isVisible().catch(() => false);
+
+  // Montó algo: o el login (por si algún día no hay entrada) o la bienvenida.
+  await page
+    .waitForFunction(
+      () => {
+        const t = document.body.innerText || '';
+        return (
+          !!document.querySelector('input[type=email]') ||
+          /Siguiente|Ya tengo cuenta/.test(t)
+        );
+      },
+      null,
+      { timeout: espera }
+    )
+    .catch(() => {});
+  if (await hayLogin()) return false;
+
+  // Las tres primeras: "Siguiente" avanza y desaparece en la cuarta.
+  for (let i = 0; i < 4; i++) {
+    const sig = page.getByText('Siguiente', { exact: true }).first();
+    if (!(await sig.isVisible().catch(() => false))) break;
+    await sig.click({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(600);
+  }
+
+  // La cuarta se salta TOCANDO (Pressable a pantalla completa, aria-label
+  // "Saltar"; sin botón visible). Se toca hasta que aparece el final.
+  for (let i = 0; i < 40; i++) {
+    if (await page.getByText('Ya tengo cuenta', { exact: true }).isVisible().catch(() => false)) break;
+    const saltar = page.getByLabel('Saltar', { exact: true }).first();
+    if (await saltar.isVisible().catch(() => false)) await saltar.click({ timeout: 5000 }).catch(() => {});
+    else await page.mouse.click(30, 120).catch(() => {});
+    await page.waitForTimeout(600);
+  }
+
+  await page.getByText('Ya tengo cuenta', { exact: true }).click({ timeout: 20000 }).catch(() => {});
+  await page.locator('input[type=email]').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+  return true;
+}
+
 export async function pasarLaEntrada(page, espera = 20000) {
   const hayLogin = () => page.locator('input[type=email]').count().then((n) => n > 0);
 

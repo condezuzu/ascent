@@ -35,7 +35,7 @@ import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { limiteDeSonda } from './utiles.mjs';
+import { limiteDeSonda, pasarLaEntradaNativa } from './utiles.mjs';
 
 // Lo que espera para siempre no falla: desaparece. Ver la seccion 123.
 limiteDeSonda(15);
@@ -136,6 +136,9 @@ console.log(`Barrido de la app nativa · cuenta ${usuario}`);
 // ---- la cuenta ----
 await mirar('cuenta', async () => {
   await page.goto(BASE, { waitUntil: 'networkidle', timeout: 240000 });
+  // Las diapositivas de bienvenida van ANTES del login (tanda 9): cruzarlas
+  // deja el formulario en modo entrar, donde vive el enlace de abajo.
+  await pasarLaEntradaNativa(page);
   // Hasta que la pantalla responda: un toque antes de que React tome la
   // página no hace nada. Mismo bucle que la batería.
   for (let i = 0; i < 60; i++) {

@@ -35,7 +35,7 @@ import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { limiteDeSonda } from './utiles.mjs';
+import { limiteDeSonda, pasarLaEntradaNativa } from './utiles.mjs';
 
 limiteDeSonda(25);
 
@@ -231,6 +231,9 @@ async function entrar(correo) {
   // Antes se limpiaba `localStorage` a mano; ahora no hay nada que limpiar.
   await nuevaPagina();
   await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  // Las diapositivas de bienvenida van ANTES del login (tanda 9): cruzarlas
+  // deja el formulario en modo entrar, que es lo que espera este barrido.
+  await pasarLaEntradaNativa(page);
   for (let i = 0; i < 45; i++) {
     if (await page.locator('input[type=password]').first().isVisible().catch(() => false)) break;
     await page.waitForTimeout(1000);
