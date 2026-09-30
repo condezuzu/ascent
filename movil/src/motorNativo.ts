@@ -44,6 +44,11 @@ import { DESPERTAR_MOTOR } from './despertarMotor';
  * alias se resuelve estatico, que es donde anda.
  */
 export { animarSubida } from '@compartido/motor/subida';
+// Misma puerta para la entrada (bienvenida): el `import()` dinámico resuelve el
+// alias @compartido de forma estática al pasar por acá. Ver el comentario de arriba.
+export { animarEntrada } from '@compartido/motor/bienvenida';
+// Y el campo de estrellas de la entrada (opción C, expo-gl). Misma puerta.
+export { animarCielo } from '@compartido/motor/cielo';
 
 export type Caja = {
   /** El tamaño en puntos, el que da `onLayout`. */

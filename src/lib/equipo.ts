@@ -1,4 +1,4 @@
-import type { NivelDeEquipo } from '@/lib/bienvenida';
+import type { NivelDeEquipo } from '@nucleo/bienvenida';
 
 /**
  * QUÉ TAN BUENO ES ESTE APARATO. Se mide una vez por sesión y de ahí sale

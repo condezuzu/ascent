@@ -1,7 +1,7 @@
 'use client';
 
 import { paletaDe } from '@/lib/paletas';
-import { RANGOS_DE_LA_ENTRADA } from '@/lib/bienvenida';
+import { RANGOS_DE_LA_ENTRADA } from '@nucleo/bienvenida';
 
 /**
  * EL FONDO DE LA TERCERA: los objetos de otras rachas, flotando lejos. La

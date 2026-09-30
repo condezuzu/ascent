@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { particulasPara, PASOS_DE_LA_ENTRADA, type NivelDeEquipo } from '@/lib/bienvenida';
+import { particulasPara, PASOS_DE_LA_ENTRADA, type NivelDeEquipo } from '@nucleo/bienvenida';
 import { N } from '@nucleo/subida';
 import { nivelEquipo } from '@/lib/equipo';
 import { T } from '@nucleo/textos';

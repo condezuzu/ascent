@@ -12,7 +12,7 @@ import {
   RANGOS_DE_LA_ENTRADA,
   type CuadroDeLaEntrada,
   type NivelDeEquipo,
-} from '@/lib/bienvenida';
+} from '@nucleo/bienvenida';
 import { paletaDe } from '@/lib/paletas';
 import { T } from '@nucleo/textos';
 import Cielo from './Cielo';

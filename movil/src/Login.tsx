@@ -40,8 +40,8 @@ import { T } from '@nucleo/textos';
 
 type Modo = 'entrar' | 'crear' | 'recuperar';
 
-export default function Login({ alEntrar }: { alEntrar: () => void }) {
-  const [modo, setModo] = useState<Modo>('entrar');
+export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: () => void; modoInicial?: 'entrar' | 'crear' }) {
+  const [modo, setModo] = useState<Modo>(modoInicial);
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');

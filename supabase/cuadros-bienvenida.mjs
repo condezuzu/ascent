@@ -12,7 +12,7 @@ mkdirSync(SALIDA, { recursive: true });
 // Los segundos en que cada objeto está formado: el final de cada tramo.
 const SEGUNDOS = [];
 {
-  const B = await import('../src/lib/bienvenida.ts');
+  const B = await import('../nucleo/bienvenida.ts');
   let t = B.ANTES_S;
   SEGUNDOS.push(0.5);
   for (const d of B.duracionesDeTramos()) {

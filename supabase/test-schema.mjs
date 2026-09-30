@@ -7291,7 +7291,7 @@ console.log('\n105. La pantalla de entrada: los tiempos y las curvas');
   // Las capturas no ven animaciones (el navegador sin cabeza corre a un cuadro
   // por segundo), asi que lo unico que se puede verificar es la aritmetica.
   // Misma idea que `nucleo/subida.ts`.
-  const B = await import('../src/lib/bienvenida.ts');
+  const B = await import('../nucleo/bienvenida.ts');
 
   // La copia de los umbrales en bienvenida (que no puede importar `@nucleo`) no
   // puede derivar de la fuente en reglas.ts.
@@ -7530,7 +7530,7 @@ console.log('\n107. El cielo de la entrada');
 {
   // Las tres primeras pantallas corren mientras three.js se descarga: este
   // campo tiene que salir en el primer cuadro y sin motor.
-  const E = await import('../src/lib/estrellas.ts');
+  const E = await import('../nucleo/estrellas.ts');
   const a = E.cielo(120, 3);
   const b = E.cielo(120, 3);
   chequear('el mismo cielo con la misma semilla', JSON.stringify(a), JSON.stringify(b));
@@ -10360,7 +10360,9 @@ console.log('\n145. Las medallas por marca');
     globo.test(filaWeb) && globo.test(filaNat), true);
   // CON UNA PUNTA QUE APUNTA A LA MEDALLA QUE SE TOCO, y para eso hay que
   // medir donde arrancan: la fila empieza con el NOMBRE, que mide lo que mida.
-  const apunta = /desdeX \+ cual \* \(tam \+ SEPARACION\)/;
+  // El índice de la medalla tocada: `cual` en la web; en la nativa `idxGlobo`
+  // (que además ubica la medalla de Saturno al final de la fila, item 5).
+  const apunta = /desdeX \+ \w+ \* \(tam \+ SEPARACION\)/;
   chequear('y la punta apunta a la que se toco',
     apunta.test(filaWeb) && apunta.test(filaNat), true);
   // SE VA SOLA: no tiene como cerrarse ni hace falta.

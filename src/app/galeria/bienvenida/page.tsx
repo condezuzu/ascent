@@ -21,7 +21,7 @@ import {
   particulasPara,
   pixelesPara,
   type NivelDeEquipo,
-} from '@/lib/bienvenida';
+} from '@nucleo/bienvenida';
 import { N } from '@nucleo/subida';
 
 export default function BancoDeBienvenida() {

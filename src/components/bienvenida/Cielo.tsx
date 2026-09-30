@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { brilloEn, cielo, cuantasPara, type Estrella } from '@/lib/estrellas';
+import { brilloEn, cielo, cuantasPara, type Estrella } from '@nucleo/estrellas';
 
 /**
  * EL FONDO DE LAS TRES PRIMERAS PANTALLAS: estrellas, en canvas 2D.

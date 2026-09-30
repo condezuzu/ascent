@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/supabase';
 import { plataforma } from '@plataforma';
-import Login from '../src/Login';
+import EntradaYLogin from '../src/EntradaYLogin';
 import Onboarding from '../src/Onboarding';
 import FondoRaiz from '../src/FondoRaiz';
 import Raiz from '../src/Raiz';
@@ -252,7 +252,7 @@ export default function Layout() {
             <ActivityIndicator color="#8a93a8" />
           </View>
         )}
-        {sesion === 'sin' && <Login alEntrar={mirar} />}
+        {sesion === 'sin' && <EntradaYLogin alEntrar={mirar} />}
         {sesion === 'sin-nombre' && <Onboarding alElegir={mirar} />}
         {/* EL STACK SOLO EXISTE CON SESIÓN, y la primera versión lo dejaba
             montado y escondido "para no perder el estado del router". Eso
