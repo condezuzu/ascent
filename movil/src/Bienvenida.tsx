@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PASOS_DE_LA_ENTRADA } from '@nucleo/bienvenida';
 import { T } from '@nucleo/textos';
 import Cielo from './bienvenida/Cielo';
+import Registro from './bienvenida/Registro';
+import Objetos from './bienvenida/Objetos';
 import Cuarta from './bienvenida/Cuarta';
 import { C } from './colores';
 
@@ -16,11 +18,11 @@ import { C } from './colores';
  * tocar). Se muestra CADA vez que se llega al login, no solo la primera: el
  * padre (`EntradaYLogin`) la monta de nuevo en cada logout, sin guardar nada.
  *
- * PENDIENTE respecto de la web (marcado, a decidir): el fondo de estrellas de
- * 1-3 es más simple (sin titileo por-estrella ni paralaje por capa; ver `Cielo`),
- * y las capas de encima de la 2 (la lista de ejercicios acelerando) y la 3 (los
- * planetas de otras rachas flotando) todavía no están: por ahora esas dos son
- * cielo + texto. La 1 y la 4 —las que más pesan— sí están completas.
+ * Las cuatro están completas y con sus capas, iguales que la web: el cielo en
+ * GPU (`Cielo`, con titileo por-estrella y paralaje por capa), la lista de
+ * ejercicios acelerando de la 2 (`Registro`), los objetos de otras rachas
+ * flotando de la 3 (`Objetos`) y el motor con el agujero negro de la 4
+ * (`Cuarta`).
  */
 export default function Bienvenida({
   alSalir,
@@ -44,6 +46,12 @@ export default function Bienvenida({
       {/* El cielo: en las tres primeras, y de nuevo cuando el agujero se lo tragó
           y el espacio vuelve a existir (sobre él van los botones). */}
       {(!ultima || terminada) && <Cielo paso={ultima ? 3 : paso} />}
+
+      {/* La segunda suma la lista de ejercicios acelerando; la tercera, los
+          objetos de otras rachas flotando. Van sobre el cielo, iguales que la
+          web (`src/components/bienvenida/Bienvenida.tsx`). */}
+      {paso === 1 && <Registro quieto={quieta} />}
+      {paso === 2 && <Objetos quieto={quieta} />}
 
       {/* La cuarta ANIMA: el motor con el objeto y el agujero negro. */}
       {ultima && !terminada && <Cuarta quieta={quieta} alTerminar={() => setTerminada(true)} />}
