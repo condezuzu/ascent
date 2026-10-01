@@ -3,6 +3,11 @@
 *Para seguir de arriba a abajo, sin saltear. Cada paso dice qué correr y qué
 tiene que contestar. Si un paso no contesta lo que dice acá: **parar** e ir a §6.*
 
+*Las consultas SQL de §1 y §2 están PROBADAS (1/10) contra PGlite replayando la
+historia: original + migraciones hasta la 53, y después 54 a 58 de a una. Cada
+consulta se corrió antes de su migración (da otra cosa, o error) y después (da
+lo que dice acá). Las que tocan `cron` NO se pudieron probar y están marcadas.*
+
 Orden, y no se cambia: **verificar → migraciones → confirmar 58 → OTA → teléfono.**
 
 Dónde se corre cada cosa:
@@ -60,7 +65,8 @@ Dónde se corre cada cosa:
   ```sql
   select public.version_del_esquema();
   ```
-  Tiene que dar **53**. Si da más, empezar §2 en la migración siguiente a ese
+  Tiene que dar **53** (probado: la base replayada hasta la 53 contesta `53`).
+  Si da más, empezar §2 en la migración siguiente a ese
   número.
 
 ---
@@ -79,21 +85,26 @@ Siete rangos, duraciones crecientes. Re-etiqueta el rango de todos; la racha no
 se toca.
 
 ```sql
-select public.version_del_esquema(), public.rango_de_racha(150), public.planeta_de_dia(31);
+select public.version_del_esquema() as version,
+       public.rango_de_racha(150)   as rango_150,
+       public.planeta_de_dia(31)    as planeta_31;
 ```
-→ `54`, `7`, `Ceres`
+→ `54`, `7`, `Ceres`  (antes de aplicarla: `53`, `8`, `Plutón`)
 
 ### 2.2 — `supabase/migracion-55-racha-nocturna.sql`
 
 Opcional, antes de aplicarla: pegar `supabase/dry-run-descanso.sql` (solo
-lectura) para ver cuántas cuentas puede tocar el arreglo del descanso.
+lectura) para ver cuántas cuentas puede tocar el arreglo del descanso. Devuelve
+dos tablas: `cota_superior_cuentas_afectadas` (un número) y la lista de esas
+cuentas. Probado que corre con la base en 54; el número real depende de
+producción.
 
 ```sql
-select public.version_del_esquema(),
-       to_regprocedure('public.barrer_perdidas()') is not null,
-       to_regprocedure('public.verificar_perdida_de(uuid)') is not null;
+select public.version_del_esquema() as version,
+       to_regprocedure('public.barrer_perdidas()') is not null as hay_barrido,
+       to_regprocedure('public.verificar_perdida_de(uuid)') is not null as hay_verificar_de;
 ```
-→ `55`, `true`, `true`
+→ `55`, `true`, `true`  (antes de aplicarla: `54`, `false`, `false`)
 
 ### 2.3 — `supabase/cron-racha.sql` — UNA sola vez, recién ahora
 
@@ -102,6 +113,10 @@ No es una migración: no cambia la versión. Agenda el barrido de rachas cada ho
 ```sql
 select jobname, schedule, active from cron.job;
 ```
+> **NO VERIFICADA.** La base de pruebas (PGlite) no tiene `pg_cron`: ni
+> `cron-racha.sql` ni esta consulta se pudieron correr ahí (`relation "cron.job"
+> does not exist`). Está escrita según cómo funciona pg_cron, no probada.
+
 → **una** fila: `barrer-perdidas-horario`, `0 * * * *`, `true`. Si hay dos
 filas con ese nombre, se corrió dos veces: §6.
 
@@ -112,10 +127,10 @@ app.
 ### 2.4 — `supabase/migracion-56-crunch-declinado.sql`
 
 ```sql
-select public.version_del_esquema(),
-       (select nombre from public.ejercicios where id = 'crunch_declinado');
+select public.version_del_esquema() as version,
+       (select nombre from public.ejercicios where id = 'crunch_declinado') as ejercicio;
 ```
-→ `56`, `Crunch en banco declinado`
+→ `56`, `Crunch en banco declinado`  (antes de aplicarla: `55`, vacío)
 
 ### 2.5 — `supabase/migracion-57-dia-de-racha.sql`
 
@@ -123,19 +138,26 @@ Agrega `logs.racha_del_dia` y la rellena para los días viejos. Es la que
 necesita el "día 41" de las fotos.
 
 ```sql
-select public.version_del_esquema(),
-       (select count(*) from public.logs where racha_del_dia is null);
+select public.version_del_esquema() as version,
+       (select count(*) from public.logs where racha_del_dia is null) as logs_sin_dia;
 ```
 → `57`, `0`
+
+Antes de aplicarla esta consulta da ERROR (`column "racha_del_dia" does not
+exist`): es lo esperado, la columna la crea la 57.
+
+> **El `0` está verificado solo a medias.** Se probó con seis días sembrados en
+> la base de pruebas (quedaron con día 1 a 6). Con los logs reales de producción
+> no se pudo probar. Si ahí da más de `0`: parar, §6.
 
 ### 2.6 — `supabase/migracion-58-peso-corporal.sql`
 
 ```sql
-select public.version_del_esquema(),
-       pg_get_constraintdef(oid) like '%corporal%'
+select public.version_del_esquema() as version,
+       pg_get_constraintdef(oid) like '%corporal%' as acepta_corporal
   from pg_constraint where conname = 'ejercicios_carga_valida';
 ```
-→ `58`, `true`
+→ `58`, `true`  (antes de aplicarla: `57`, `false`)
 
 ---
 
@@ -246,13 +268,14 @@ select public.version_del_esquema();
 y `npm run test:conexion` en la PC: entre los dos dicen qué quedó aplicado y
 qué no. Guardar el texto del error.
 
-**Frenar el barrido de rachas** (deja de correr; no devuelve nada):
+**Frenar el barrido de rachas** (deja de correr; no devuelve nada). **NO
+VERIFICADA**: usa `pg_cron`, que la base de pruebas no tiene.
 ```sql
 select cron.unschedule('barrer-perdidas-horario');
 ```
 
 **`cron-racha.sql` se corrió dos veces.** Mirar `select jobid, jobname from
-cron.job;`. Si hay dos, frenar con la línea de arriba y volver a correr
+cron.job;` (tampoco verificada: `pg_cron`). Si hay dos, frenar con la línea de arriba y volver a correr
 `cron-racha.sql` una vez.
 
 **Quedaste a mitad de las migraciones** (por ejemplo en 56). La app aguanta: el
