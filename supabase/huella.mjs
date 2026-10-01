@@ -63,7 +63,9 @@ export function calcular() {
 export function buildsDeEas() {
   const salida = execFileSync(
     'npx',
-    ['eas', 'build:list', '--platform', 'ios', '--limit', '20', '--json', '--non-interactive'],
+    // `eas-cli` y no `eas`: el paquete se llama así, y `npx eas` solo anda en
+    // una máquina que lo tenga instalado global.
+    ['eas-cli', 'build:list', '--platform', 'ios', '--limit', '20', '--json', '--non-interactive'],
     { cwd: MOVIL, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' }
   );
   const arr = JSON.parse(salida);
@@ -115,7 +117,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     console.error('NO PUDE CONSULTAR EAS para saber qué build hay de verdad:');
     console.error('  ' + motivo);
     console.error('\nSin eso NO se puede confirmar si una OTA llegaría. Revisá la sesión');
-    console.error('(cd movil && npx eas whoami) y volvé a correr. NO asumo un valor viejo.\n');
+    console.error('(cd movil && npx eas-cli whoami) y volvé a correr. NO asumo un valor viejo.\n');
     process.exit(2);
   }
 

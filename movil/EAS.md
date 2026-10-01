@@ -87,7 +87,7 @@ variables", esa build habría quedado en negro como las anteriores.
 Para ver qué hay de verdad en un entorno, sin valores:
 
 ```
-npx eas env:list --environment production
+npx eas-cli env:list --environment production
 ```
 
 Si las dos aparecen con "This is a secret env variable", están. El mensaje de
@@ -150,7 +150,7 @@ recibe nada**: se queda con el JS que le sirve.
 ## Cómo se publica
 
 ```
-cd movil && npx eas update --platform ios --channel telefono --message "qué se arregló"
+cd movil && npx eas-cli update --platform ios --channel telefono --message "qué se arregló"
 ```
 
 El canal es el del perfil de build (`telefono`, `store`…), y está en `eas.json`
@@ -165,8 +165,8 @@ cada vez.
 huellas tienen que ser la misma.
 
 ```
-npx eas build:view <id>   # Runtime Version
-npx eas update:list --branch telefono   # Runtime Version, por plataforma
+npx eas-cli build:view <id>   # Runtime Version
+npx eas-cli update:list --branch telefono   # Runtime Version, por plataforma
 ```
 
 Si no coinciden, la app no la va a ver nunca y no va a decir por qué: para eso
@@ -262,7 +262,7 @@ Así que reintentar sin más reusa el MISMO perfil viejo y falla igual.
 build **sin** `--non-interactive` y entrar con el Apple ID cuando lo pida.
 
 ```
-cd movil && npx eas build --platform ios --profile telefono
+cd movil && npx eas-cli build --platform ios --profile telefono
 ```
 
 EAS marca HealthKit en el App ID, regenera el perfil y sigue. Es una sola vez:
@@ -283,7 +283,7 @@ Es la forma de contestar "¿este módulo nativo nuevo compila?" antes de meterlo
 en la build que alguien va a instalar:
 
 ```
-cd movil && npx eas build --platform ios --profile simulador
+cd movil && npx eas-cli build --platform ios --profile simulador
 ```
 
 Un fallo ahí lo pago yo en intentos; un fallo en la otra lo paga quien espera
@@ -334,7 +334,7 @@ aprovisionamiento**. El certificado de distribución se comparte; el perfil no.
 Es el mismo muro que HealthKit y se destraba igual — una vez:
 
 ```
-cd ../ascent-la/movil && npx eas build --platform ios --profile telefono
+cd ../ascent-la/movil && npx eas-cli build --platform ios --profile telefono
 ```
 
 Sin `--non-interactive`, entrando con el Apple ID cuando lo pida. EAS crea el

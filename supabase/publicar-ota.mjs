@@ -87,7 +87,7 @@ console.log('Publicando…\n');
 // re-parte cmd.exe y `eas update` falla. Se lo envuelve en comillas (sacando las
 // comillas internas, que romperian el entrecomillado) para que viaje como un arg.
 const mensajeArg = process.platform === 'win32' ? `"${mensaje.replace(/"/g, '')}"` : mensaje;
-execFileSync('npx', ['eas', 'update', '--channel', canal, '--message', mensajeArg, '--non-interactive'], {
+execFileSync('npx', ['eas-cli', 'update', '--channel', canal, '--message', mensajeArg, '--non-interactive'], {
   cwd: MOVIL,
   stdio: 'inherit',
   shell: process.platform === 'win32',
