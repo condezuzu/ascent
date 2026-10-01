@@ -80,11 +80,11 @@ Detalle completo en `auditoria-apple.md`.
 
 **B. Construir la build de tienda (número 6, sube solo):**
 3. `cd movil`
-4. `eas build --platform ios --profile store`
+4. `npx eas-cli build --platform ios --profile store`
    - Espera a que termine (link en la terminal). Queda en ASC como build **6**.
 
 **C. Subir la build a App Store Connect:**
-5. `eas submit --platform ios --profile store --latest`
+5. `npx eas-cli submit --platform ios --profile store --latest`
    - Usa la clave de API (rol APP_MANAGER); no pide el Apple ID a mano.
    - Espera a que ASC la procese: aparece en la app → TestFlight/Builds, primero
      "Processing", después lista.
@@ -143,8 +143,8 @@ correr `--de-cero` antes de reintentar. Es barato y evita el hueco.
 ## 5 · Checklist de un vistazo
 
 - [ ] `test:conexion` verde · `test:bloqueo` 26/26
-- [ ] `eas build --profile store` (build 6, sube solo)
-- [ ] `eas submit --profile store --latest`
+- [ ] `npx eas-cli build --profile store` (build 6, sube solo)
+- [ ] `npx eas-cli submit --profile store --latest`
 - [ ] Build 6 elegida en la versión 1.0.0
 - [ ] Textos pegados (subtítulo, keywords, promo, descripción, URLs)
 - [ ] Cinco capturas subidas, las viejas borradas
