@@ -48,8 +48,10 @@ esos dos archivos.
    `git` pida las credenciales al primer `push`).
 
 La CLI de Expo viaja como dependencia del proyecto. La de EAS **no**:
-`npx eas ...` la baja sola la primera vez (pide confirmar), o se instala global
-con `npm i -g eas-cli`. Cualquiera de las dos anda.
+`npx eas-cli ...` la baja sola la primera vez (pide confirmar). **El paquete se
+llama `eas-cli`, no `eas`:** `npx eas ...` falla con "could not determine
+executable to run" salvo que esté instalada global (`npm i -g eas-cli`, que
+deja el comando `eas` a secas).
 
 ## 2. Clonar y poner las claves
 
@@ -73,6 +75,13 @@ pero no conecta con Supabase, y los tests contra la nube fallan.
 npm install
 cd movil && npm install && cd ..
 ```
+
+(En PowerShell 5.1, el de Windows por defecto, `&&` no existe: correr las tres
+órdenes por separado.)
+
+Para `npm run capturas`, `test:real` y el resto de lo que abre un navegador,
+una vez por máquina: `npx playwright install chromium` (el binario no viene con
+`npm install`). El portón de §4 no lo necesita.
 
 ## 4. Comprobar que quedó bien
 
@@ -105,9 +114,9 @@ diciendo que el esquema no coincide, faltan aplicar migraciones (§6).
 
 ```
 cd movil
-npx eas login
-npx eas whoami
-npx eas build:list --platform ios --limit 3
+npx eas-cli login
+npx eas-cli whoami
+npx eas-cli build:list --platform ios --limit 3
 cd ..
 ```
 
@@ -116,14 +125,14 @@ cd ..
   0946b9e1-20a2-4471-8c77-fdf937d7cfa8`).
 - **Si EAS "no reconoce la cuenta"** (dice que no tenés acceso al proyecto, o
   `whoami` muestra otro usuario): entraste con una cuenta distinta de `condeag`.
-  `npx eas logout` y volvé a entrar como `condeag`. NO cambies el `owner` ni el
+  `npx eas-cli logout` y volvé a entrar como `condeag`. NO cambies el `owner` ni el
   `projectId` del `app.json` para "arreglarlo": eso rompe el vínculo con las
   builds y los OTA de verdad.
 - **Las credenciales de firma de Apple (certificado + perfiles) viven en EAS**,
   no en esta máquina (se comprobó: no hay `.p8`/`.p12`/`.mobileprovision` en el
   repo). Con el login vuelven solas; no hay que recrear nada.
 - Una capacidad nueva (HealthKit) o un target nuevo (widget) sí necesitan que el
-  humano corra `npx eas build --platform ios --profile telefono` UNA vez de forma
+  humano corra `npx eas-cli build --platform ios --profile telefono` UNA vez de forma
   interactiva, para crear el App ID / perfil contra Apple. `--non-interactive`
   reusa el perfil viejo y falla. Detalle en `movil/EAS.md`.
 
@@ -146,9 +155,10 @@ con `npm run test:db` (PGlite) → aplicarla a mano.
    `schema.sql`). Aplicá, **en orden numérico**, cada
    `supabase/migracion-NN-*.sql` cuyo número sea mayor al que devolvió la base.
    No saltear ninguno: cada uno sube `version_del_esquema()` a su número.
-3. **Pendientes conocidas al escribir esto: 55, 56, 57 y 58**, en ese orden
-   (racha nocturna, crunch declinado, día de racha, peso corporal). Si la base
-   ya está en 58, no hay nada que aplicar.
+3. **Pendientes conocidas al escribir esto: 54, 55, 56, 57 y 58**, en ese orden
+   (rangos nuevos, racha nocturna, crunch declinado, día de racha, peso
+   corporal): producción está en 53. Si la base ya está en 58, no hay nada que
+   aplicar.
 4. **Después de la 55**, correr UNA vez `supabase/cron-racha.sql` (agenda el
    barrido horario de rachas). **No es una migración** —usa `pg_cron`, que
    PGlite no tiene— por eso va aparte y no lo aplica `test:db`. Alternativa sin
