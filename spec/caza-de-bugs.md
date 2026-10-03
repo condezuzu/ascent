@@ -132,7 +132,15 @@ cambies de pestaña.
   VOS bloqueás sí hace lo correcto (`router.back()`). Cosmético/menor privacidad.
 
 ### Pantallas chicas: entrenando, el `+` queda debajo de la barra (3/10)
-**Sin arreglar, a propósito** (decisión del 3/10). Queda registrado.
+**Sin arreglar todavía. Va para la 1.1.**
+
+> **DECISIÓN (3/10): Inicio tiene que ENTRAR en las pantallas chicas, o como
+> mínimo el botón `+` tiene que quedar siempre alcanzable sin desplazar.**
+>
+> **El iOS mínimo NO se sube.** Dejar afuera a usuarios reales para resolver a
+> medias un problema de diseño es el intercambio equivocado: saca los teléfonos
+> de 320 de ancho, pero no arregla los de 375×667, donde entrenando tampoco
+> entra. El problema es del diseño de Inicio y se arregla ahí.
 
 En un iPhone SE de 1ª generación (320×568), con una sesión corriendo, el botón
 `+` grande queda entero debajo de la barra de pestañas: **no se puede contar una
@@ -168,10 +176,10 @@ Lo que SÍ se hizo ese día: Inicio dejó de rebotar cuando el contenido entra
 (`alwaysBounceVertical={false}`). No se bloqueó el desplazamiento justamente por
 esto: en estas pantallas hace falta.
 
-Para la 1.1, dos caminos: subir el iOS mínimo y dejar afuera a los teléfonos de
-320 de ancho (necesita build nueva; el SE de 1ª gen quedó en iOS 15, que en
-agosto de 2026 era entre el 0,6 % y el 2 % del uso de iOS según la fuente, y el
-SE es solo una parte de eso), o compactar Inicio cuando hay sesión.
+El dato que se miró antes de decidir, para que no haya que buscarlo de nuevo:
+el SE de 1ª gen quedó en iOS 15, que en agosto de 2026 era entre el 0,6 % y el
+2 % del uso de iOS según la fuente, y el SE es solo una parte de eso. Aun siendo
+poco, no se los deja afuera (ver la decisión de arriba).
 
 ### Confirmado SANO (revisado, sin bug)
 Muchos días/cero amigos, amigos/racha 0, racha recién perdida (0 vidas, dias
