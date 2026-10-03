@@ -198,3 +198,46 @@ cola offline, y las escrituras encoladas de `useSesion` están bien diseñadas.
   dos pasadas seguidas, las dos "Ninguno". (El barrido recorre pantallas y caza
   crashes; NO ve los bugs de lógica/doble-tap/ciclo de vida de arriba, que salen
   de la revisión de código.)
+
+---
+
+## Filas en `errores_js` que NO son bugs (3/10)
+
+**Cualquier fila con `plataforma = 'web'` sale de una prueba, nunca de un
+usuario.** Al buzón solo escribe la app nativa (`movil/src/reporteDeErrores.ts`,
+con `Platform.OS`), y `web` es la nativa corriendo en un navegador: el barrido,
+las sondas, una filmación. Los usuarios de verdad llegan como `ios`.
+
+Las del **3/10/2026, entre las 16:49 y las 16:56 de Uruguay** (19:49–19:56 UTC),
+las dejó una filmación de prueba de la luz de la barra de pestañas:
+
+- **Motivo:** el navegador de la filmación corría con WebGL apagado a propósito
+  (`--disable-3d-apis`), el motor no tuvo dónde dibujar, la app mostró "Algo
+  falló" y avisó como avisa siempre. En el teléfono el motor siempre tiene
+  contexto: no es un bug de la app.
+- **Cuenta:** `prueba_uno` (la de `test:conexion`), cuando la corrida llegó a
+  entrar. La fila no la nombra: el buzón es anónimo y solo guarda un
+  `id_anonimo` al azar por navegador.
+- **Cuántas:** cuatro corridas sin tapar el aviso, así que cuatro filas o alguna
+  más. Desde el cliente no se pueden leer (solo `insert`): el número lo dice la
+  consulta.
+
+Se miran y se borran en el SQL Editor (lo corre el humano):
+
+```sql
+select id, creado, pantalla, left(mensaje, 80) as mensaje
+  from public.errores_js
+ where plataforma = 'web'
+   and creado >= '2026-10-03 19:45:00+00'
+   and creado <  '2026-10-03 20:15:00+00'
+ order by creado;
+
+delete from public.errores_js
+ where plataforma = 'web'
+   and creado >= '2026-10-03 19:45:00+00'
+   and creado <  '2026-10-03 20:15:00+00';
+```
+
+La ventana cubre toda la media hora de filmación, no solo las cuatro corridas,
+por si alguna otra avisó algo. Con `plataforma = 'web'` no puede entrar la fila
+de un usuario.
