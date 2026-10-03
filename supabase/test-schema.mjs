@@ -12343,6 +12343,77 @@ console.log('\n167. Deslizar rapido: el gesto parte de la pestaña a la que va l
   chequear('sin depender de la pestaña que se esta dibujando', /\[ancho, correr\]/.test(irA167) && !/\[pestana/.test(irA167), true);
 }
 
+console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CLI fija, y el error se ve');
+{
+  const H = await import('./huella.mjs');
+  const { readFileSync: leer168 } = await import('node:fs');
+  const { join: unir168, isAbsolute: entera168, basename: nombre168 } = await import('node:path');
+  const { tmpdir: temporal168 } = await import('node:os');
+
+  // LO QUE PASO (3/10). Al publicar, el guardian dijo "No pude consultar EAS
+  // (Command failed: npx eas-cli build:list...)" y nada mas. La causa estaba en
+  // el log de npm: npx sin version le pregunta al registro en cada corrida, y
+  // esa consulta fallo por un archivo que faltaba en la cache de npm. EAS nunca
+  // llego a correr. Al repetir el comando a mano DESDE LA RAIZ, eas-cli contesto
+  // "EAS project not configured": otro error, por la carpeta, que parecia la
+  // causa y no lo era. El guardian ya corria EAS adentro de movil.
+
+  // ---- DESDE CUALQUIER CARPETA: se cambia de carpeta de verdad ----
+  const aca168 = process.cwd();
+  const desdeAca = H.llamadaAEas(['build:list']);
+  let desdeOtra;
+  try {
+    process.chdir(temporal168());
+    desdeOtra = H.llamadaAEas(['build:list']);
+  } finally {
+    process.chdir(aca168);
+  }
+  chequear('EAS corre en la misma carpeta se llame desde donde se llame', desdeOtra.opciones.cwd, desdeAca.opciones.cwd);
+  chequear('esa carpeta es movil, con la ruta entera',
+    [entera168(desdeAca.opciones.cwd), nombre168(desdeAca.opciones.cwd)], [true, 'movil']);
+  // Y ES DONDE ESTA EL PROYECTO. El id se lee, no se escribe: eas init no se
+  // corre nunca desde un script.
+  let app168 = null;
+  try {
+    app168 = JSON.parse(leer168(unir168(desdeAca.opciones.cwd, 'app.json'), 'utf8'));
+  } catch {
+    // sin app.json ahi, la comprobacion de abajo falla sola
+  }
+  chequear('ahi esta el proyecto de EAS, con su id', /^[0-9a-f-]{36}$/.test(app168?.expo?.extra?.eas?.projectId ?? ''), true);
+
+  // ---- LA CLI FIJA, y sin preguntarle nada al registro ----
+  chequear('la CLI va con la version escrita', /^eas-cli@\d+\.\d+\.\d+$/.test(H.EAS_CLI), true);
+  chequear('npx usa la ya bajada y no pregunta', desdeAca.args, ['--prefer-offline', '--yes', H.EAS_CLI, 'build:list']);
+
+  // ---- CUANDO FALLA, SE VE LO QUE CONTESTO ----
+  // El error como lo arma execFileSync: la primera linea y, debajo, la salida.
+  const falla168 = new Error(
+    'Command failed: npx eas-cli build:list --json\n' +
+      'npm error code ENOENT\n' +
+      'npm error enoent Invalid response body while trying to fetch https://registry.npmjs.org/eas-cli\n\n'
+  );
+  const dicho168 = H.loQueContesto(falla168).split('\n');
+  chequear('la primera linea dice que comando fallo', dicho168[0], 'Command failed: npx eas-cli build:list --json');
+  chequear('y debajo va el motivo de verdad', dicho168.slice(1), [
+    'npm error code ENOENT',
+    'npm error enoent Invalid response body while trying to fetch https://registry.npmjs.org/eas-cli',
+  ]);
+  // EL PATRON VIEJO, AL LADO: solo la primera linea. Con eso no se sabia nada.
+  chequear('el patron viejo se quedaba sin el motivo', /ENOENT/.test(String(falla168.message).split('\n')[0]), false);
+  chequear('una salida larga se recorta a lo ultimo', H.loQueContesto(new Error(['a', ...Array.from({ length: 30 }, (_, i) => 'l' + i)].join('\n'))).split('\n').length, 9);
+  chequear('y algo que no es un error no rompe', H.loQueContesto(undefined).length > 0, true);
+
+  // ---- EL CABLEADO: nadie llama a EAS por su cuenta ----
+  const hue168 = sinComentarios(leer168(unir168(import.meta.dirname, 'huella.mjs'), 'utf8'));
+  const pub168 = sinComentarios(leer168(unir168(import.meta.dirname, 'publicar-ota.mjs'), 'utf8'));
+  chequear('leer las builds pasa por la llamada unica', /llamadaAEas\(\['build:list'/.test(hue168), true);
+  chequear('publicar tambien', /llamadaAEas\(\['update'/.test(pub168), true);
+  chequear('y ninguno nombra a la CLI por otro lado', [/eas-cli/.test(pub168), (hue168.match(/eas-cli@/g) ?? []).length], [false, 1]);
+  chequear('el guardian muestra lo que contesto', /motivo\.split\('\\n'\)/.test(pub168) && /loQueContesto\(e\)/.test(hue168), true);
+  // LEER SE REINTENTA UNA VEZ; PUBLICAR, NUNCA: publicar dos veces no es gratis.
+  chequear('publicar se llama una sola vez, sin reintento', (pub168.match(/execFileSync\(/g) ?? []).length, 1);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

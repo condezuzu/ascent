@@ -23,13 +23,13 @@
 // publicado van ahí. Se publica solo si una build `store` del registro lleva
 // esta huella.
 
+// SE PUEDE LLAMAR DESDE CUALQUIER CARPETA: la raíz, `movil/` o donde sea. Todo
+// lo que habla con EAS corre adentro de `movil/` por `llamadaAEas` (huella.mjs).
+
 import { execFileSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { estadoDeHuella } from './huella.mjs';
+import { estadoDeHuella, llamadaAEas, SI_EAS_FALLA } from './huella.mjs';
 import { exigirApagados } from './puertos.mjs';
 
-const MOVIL = join(dirname(fileURLToPath(import.meta.url)), '..', 'movil');
 const args = process.argv.slice(2);
 const simular = args.includes('--simular');
 // SOLO para el dry-run: forzar la huella "de ahora" y así demostrar que el freno
@@ -60,7 +60,12 @@ const hash = huellaDePrueba ?? estado.hash;
 if (huellaDePrueba) console.log(`(dry-run con huella forzada: ${hash})`);
 
 if (builds === null) {
-  console.error(`No pude consultar EAS (${motivo}). NO publico sin confirmar que llegue.`);
+  // SE MUESTRA LO QUE CONTESTÓ, no solo que falló: con "Command failed" a secas
+  // hubo que repetir el comando a mano para saber por qué, y a mano desde la
+  // raíz falla por otra cosa. Se persiguió un error que no era (3/10).
+  console.error('No pude consultar EAS. NO publico sin confirmar que llegue. Lo que contestó:');
+  for (const l of motivo.split('\n')) console.error('  ' + l);
+  console.error('\n' + SI_EAS_FALLA);
   process.exit(2);
 }
 
@@ -87,8 +92,7 @@ console.log('Publicando…\n');
 // re-parte cmd.exe y `eas update` falla. Se lo envuelve en comillas (sacando las
 // comillas internas, que romperian el entrecomillado) para que viaje como un arg.
 const mensajeArg = process.platform === 'win32' ? `"${mensaje.replace(/"/g, '')}"` : mensaje;
-execFileSync('npx', ['eas-cli', 'update', '--channel', canal, '--message', mensajeArg, '--non-interactive'], {
-  cwd: MOVIL,
-  stdio: 'inherit',
-  shell: process.platform === 'win32',
-});
+// La misma llamada que la lectura: adentro de `movil/` y con la CLI fija. SIN
+// REINTENTO: leer dos veces no cuesta nada, publicar dos veces sí.
+const eas = llamadaAEas(['update', '--channel', canal, '--message', mensajeArg, '--non-interactive']);
+execFileSync(eas.comando, eas.args, { ...eas.opciones, stdio: 'inherit' });

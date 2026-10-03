@@ -12,7 +12,11 @@ Orden, y no se cambia: **verificar → migraciones → confirmar 58 → OTA → 
 
 Dónde se corre cada cosa:
 
-- **[PC]** — PowerShell, en `C:\Users\agusc\ascent`.
+- **[PC]** — PowerShell, en `C:\Users\agusc\ascent` (la raíz del repo).
+  El guardián (`publicar-ota.mjs`, `npm run huella`) anda igual desde cualquier
+  carpeta: él solo corre EAS adentro de `movil/`. Los `npx eas-cli …` **a mano**
+  van SIEMPRE adentro de `movil/`: desde la raíz contestan "EAS project not
+  configured" —que no es el error real— y dejan un `app.json` suelto.
 - **[SQL]** — Supabase → proyecto `okeanaihymbvbdmrdqph` → SQL Editor.
 - **[TEL]** — el iPhone.
 
@@ -185,6 +189,10 @@ Con un solo `FALLA`: **no publicar la OTA**. Ir a §6.
 Siempre con el guardián, nunca con `eas-cli update` a mano. Primero el teléfono
 propio, se mira, y después la tienda.
 
+Los comandos de abajo se corren tal cual, parados en la raíz del repo
+(`C:\Users\agusc\ascent`). Probado el 3/10 en seco desde la raíz, desde
+`movil/` y desde otra carpeta: da lo mismo.
+
 ### 4.1 — Canal `telefono`
 
 **[PC]** En seco:
@@ -285,6 +293,12 @@ Lo que no hay que hacer es publicar la OTA con `test:conexion` en rojo.
 **El guardián se niega.** Es el guardián funcionando. `npm run huella` dice con
 qué builds coincide la huella; si no coincide con ninguna hace falta una build
 nueva, y eso ya no es de hoy.
+
+**El guardián dice "No pude consultar EAS".** Debajo imprime lo que contestó el
+comando. Si son líneas `npm error`, falló npm antes de llegar a EAS —pasó el
+3/10, por un archivo que faltaba en su caché—: no publicó nada, se vuelve a
+correr el mismo comando. NO repetir `npx eas-cli …` a mano desde la raíz para
+"ver el error": ahí falla por otra cosa. Y nunca `eas init`.
 
 **La OTA rompió algo en el teléfono.** No publicar a `store`. Arreglar, commit,
 y publicar de nuevo a `telefono` por §4.1.

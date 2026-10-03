@@ -1122,3 +1122,19 @@ que ese camino ve, por una función de `nucleo/` que `test:db` pueda EJECUTAR
 (`serieDelDescanso`). Un valor que sale bien o mal según qué corre primero no
 se puede probar. Y una regex sobre el fuente sirve para cuidar el cableado,
 nunca como única prueba de una conducta.
+
+**Una herramienta que se niega sin decir por qué manda a buscar el error a otro
+lado.** El 3/10 el guardián de la OTA dijo "No pude consultar EAS (Command
+failed…)" y nada más. La causa estaba en el log de npm: `npx eas-cli`, sin
+versión, le pregunta al registro en cada corrida, y esa consulta falló por un
+archivo que faltaba en la caché de npm (ENOENT). EAS nunca llegó a correr. Para
+ver el motivo se repitió el comando a mano, desde la raíz, y ahí eas-cli
+contestó "EAS project not configured": otro error —por la carpeta— que parecía
+la causa y no lo era, y que además dejó un `app.json` suelto en la raíz. El
+guardián ya corría EAS adentro de `movil/`. Y de paso la CLI había pasado sola
+de 24.8 a 24.10.
+→ **Regla:** lo que se niega muestra lo que contestó el comando, entero. Lo que
+se usa para publicar va con la versión escrita y sin consultarle al registro
+(`llamadaAEas` en `supabase/huella.mjs`). `eas-cli` a mano, siempre adentro de
+`movil/`, y nunca `eas init`. Y antes de arreglar "la causa", mirar el log
+(`%LocalAppData%\npm-cache\_logs`): acá decía otra cosa.

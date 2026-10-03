@@ -50,6 +50,67 @@ export function calcular() {
 }
 
 /**
+ * QUÉ `eas-cli` SE USA, CON LA VERSIÓN ESCRITA (3/10).
+ *
+ * `npx eas-cli`, sin versión, le pregunta al registro de npm EN CADA CORRIDA si
+ * hay una más nueva. El día de publicar eso es depender de algo que no hace
+ * falta: el 3/10 esa consulta falló por un archivo que faltaba en la caché de
+ * npm (ENOENT) y el guardián se negó sin que EAS llegara a correr. Y de paso la
+ * CLI había pasado sola de 24.8 a 24.10 de un día para el otro.
+ *
+ * Con la versión escrita la CLI no cambia sola. Y con `--prefer-offline` (ver
+ * `llamadaAEas`) npx usa lo que ya bajó sin consultarle nada al registro: la
+ * versión sola NO alcanzaba, npx igual revalidaba en cada corrida (mirado en
+ * el log de npm: una consulta por corrida sin la opción, ninguna con ella).
+ * Subir la CLI es cambiar este número a propósito y correr `npm run huella`.
+ */
+export const EAS_CLI = 'eas-cli@24.10.0';
+
+/**
+ * CÓMO SE LLAMA A EAS: SIEMPRE ADENTRO DE `movil/`, se llame a este script
+ * desde la carpeta que sea. Ahí está el proyecto (`app.json` con su
+ * `projectId`); corrido desde la raíz, eas-cli contesta "EAS project not
+ * configured" y deja un `app.json` suelto. Una sola función para leer y para
+ * publicar, así ninguno de los dos puede olvidarse de la carpeta.
+ *
+ * `--prefer-offline`: usar la CLI ya bajada sin preguntarle al registro; en una
+ * máquina que no la tiene, la baja igual. `--yes`: si hay que bajarla, que no
+ * pregunte. Acá no contesta nadie.
+ */
+export function llamadaAEas(args) {
+  return {
+    comando: 'npx',
+    args: ['--prefer-offline', '--yes', EAS_CLI, ...args],
+    // `shell: true` EN WINDOWS: ver `calcular`, `npx` ahí es un `.cmd`.
+    opciones: { cwd: MOVIL, shell: process.platform === 'win32' },
+  };
+}
+
+/**
+ * LO QUE CONTESTÓ UN COMANDO QUE FALLÓ, y no solo que falló.
+ *
+ * Antes se mostraba la primera línea —"Command failed: npx eas-cli…"— y el
+ * motivo de verdad quedaba tapado. Para verlo había que repetir el comando a
+ * mano, y a mano desde otra carpeta falla POR OTRA COSA: se perseguía un error
+ * que no era (3/10).
+ */
+export function loQueContesto(e) {
+  const lineas = String(e?.message ?? e)
+    .replace(/\u001b\[[0-9;]*m/g, '')
+    .split(/\r?\n/)
+    .map((l) => l.trimEnd())
+    .filter((l) => l.trim());
+  return [lineas[0] ?? 'falló sin decir nada', ...lineas.slice(1).slice(-8)].join('\n');
+}
+
+/** Qué hacer cuando EAS no contesta. Lo imprimen `huella` y `publicar-ota`. */
+export const SI_EAS_FALLA =
+  'Si arriba dice "npm error", el que falló fue npm y no EAS: volver a correr.\n' +
+  'Para probar EAS a mano, SIEMPRE adentro de movil/ (desde la raíz contesta\n' +
+  '"EAS project not configured", que es otro error, y deja un app.json suelto):\n' +
+  `  cd movil\n  npx --yes ${EAS_CLI} whoami`;
+
+/**
  * LAS BUILDS REALES, DE EAS — NO UN DATO A MANO (27/9).
  *
  * Antes la build instalada estaba escrita a mano acá y quedó vieja: durante
@@ -61,13 +122,17 @@ export function calcular() {
  * publica una OTA creyendo que llega cuando no se pudo confirmar.
  */
 export function buildsDeEas() {
-  const salida = execFileSync(
-    'npx',
-    // `eas-cli` y no `eas`: el paquete se llama así, y `npx eas` solo anda en
-    // una máquina que lo tenga instalado global.
-    ['eas-cli', 'build:list', '--platform', 'ios', '--limit', '20', '--json', '--non-interactive'],
-    { cwd: MOVIL, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' }
-  );
+  const l = llamadaAEas(['build:list', '--platform', 'ios', '--limit', '20', '--json', '--non-interactive']);
+  const opciones = { ...l.opciones, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] };
+  let salida;
+  try {
+    salida = execFileSync(l.comando, l.args, opciones);
+  } catch {
+    // UN REINTENTO, y solo acá, porque esto es una LECTURA: lo que falla una
+    // vez por la red o por la caché de npm suele andar a la segunda. Si vuelve a
+    // fallar, tira. Publicar no se reintenta nunca (ver `publicar-ota.mjs`).
+    salida = execFileSync(l.comando, l.args, opciones);
+  }
   const arr = JSON.parse(salida);
   return arr
     .filter((b) => b.status === 'FINISHED' || b.status === 'finished')
@@ -91,7 +156,7 @@ export function estadoDeHuella() {
     const coinciden = builds.filter((b) => b.runtime === ahora.hash);
     return { hash: ahora.hash, ahora, builds, coinciden, motivo: null };
   } catch (e) {
-    return { hash: ahora.hash, ahora, builds: null, coinciden: [], motivo: String(e?.message ?? e).split('\n')[0] };
+    return { hash: ahora.hash, ahora, builds: null, coinciden: [], motivo: loQueContesto(e) };
   }
 }
 
@@ -114,10 +179,10 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   guardar(ahora);
 
   if (builds === null) {
-    console.error('NO PUDE CONSULTAR EAS para saber qué build hay de verdad:');
-    console.error('  ' + motivo);
-    console.error('\nSin eso NO se puede confirmar si una OTA llegaría. Revisá la sesión');
-    console.error('(cd movil && npx eas-cli whoami) y volvé a correr. NO asumo un valor viejo.\n');
+    console.error('NO PUDE CONSULTAR EAS para saber qué build hay de verdad. Lo que contestó:');
+    for (const l of motivo.split('\n')) console.error('  ' + l);
+    console.error('\nSin eso NO se puede confirmar si una OTA llegaría. NO asumo un valor viejo.');
+    console.error(SI_EAS_FALLA + '\n');
     process.exit(2);
   }
 
