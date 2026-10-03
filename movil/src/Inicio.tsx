@@ -515,6 +515,13 @@ export default function Inicio({
     <ScrollView
       ref={scroll}
       contentContainerStyle={estilos.pantalla}
+      // QUIETA CUANDO EL CONTENIDO ENTRA (3/10). iOS rebota una lista vertical
+      // aunque no haya nada que desplazar, y en reposo Inicio entra entera: se
+      // movía sin ir a ningún lado. Así solo se desplaza cuando hace falta
+      // —entrenando, en pantallas chicas, con el texto agrandado—. `bounces` SE
+      // DEJA: cuando sí se desplaza, el rebote es lo que avisa que se llegó al
+      // final; sin él parece que la app se trabó.
+      alwaysBounceVertical={false}
       scrollEventThrottle={32}
       onScroll={(e) => (desplazado.current = e.nativeEvent.contentOffset.y)}
     >
