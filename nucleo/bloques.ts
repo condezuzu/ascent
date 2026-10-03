@@ -88,6 +88,13 @@ export type EstadoBloques = {
    * y, al guardar, la base.
    */
   carga?: Carga;
+  /**
+   * El peso vigente lo PROPUSO la app —el último que usaste en ese modo— y la
+   * persona todavía no lo tocó. Solo existe junto a `peso` y solo en `true`:
+   * sin llave = lo escribió la persona, que es lo que nunca se pisa. Las cachés
+   * de antes de esto traen pesos sin marca y caen del lado seguro.
+   */
+  pesoPropuesto?: true;
 };
 
 /** El peso más alto que se acepta, en kilos. Lo mismo acota la base. */
@@ -122,8 +129,13 @@ function conPesos<T extends object>(obj: T, pesos: (number | null)[]): T & { pes
   return pesos.some((x) => x !== null) ? { ...(resto as T), pesos } : (resto as T);
 }
 
-function sinPeso<T extends { peso?: number }>(obj: T): Omit<T, 'peso'> {
-  const { peso: _p, ...resto } = obj;
+function sinPeso<T extends { peso?: number; pesoPropuesto?: true }>(obj: T): Omit<T, 'peso' | 'pesoPropuesto'> {
+  const { peso: _p, pesoPropuesto: _m, ...resto } = obj;
+  return resto;
+}
+
+function sinMarca<T extends { pesoPropuesto?: true }>(obj: T): Omit<T, 'pesoPropuesto'> {
+  const { pesoPropuesto: _m, ...resto } = obj;
   return resto;
 }
 
@@ -181,7 +193,8 @@ export function metaValida(meta: number): number {
  */
 export function sumar(e: EstadoBloques): EstadoBloques {
   const pesos = [...pesosDe(e.pesos, e.hechas), pesoValido(e.peso)];
-  return conPesos({ ...e, hechas: e.hechas + 1 }, pesos);
+  // Contar una serie con el peso propuesto lo CONFIRMA: deja de ser propuesto.
+  return conPesos({ ...sinMarca(e), hechas: e.hechas + 1 }, pesos);
 }
 
 /** Corregir de menos. Nunca baja de cero ni toca los bloques ya cerrados. */
@@ -198,7 +211,38 @@ export function restar(e: EstadoBloques): EstadoBloques {
  */
 export function cambiarPeso(e: EstadoBloques, kg: unknown): EstadoBloques {
   const v = pesoValido(kg);
-  return v === null ? (sinPeso(e) as EstadoBloques) : { ...e, peso: v };
+  // Lo escribió la persona: la marca de "propuesto" se va, aunque el número sea
+  // el mismo que la app había puesto.
+  return v === null ? (sinPeso(e) as EstadoBloques) : { ...sinMarca(e), peso: v };
+}
+
+/**
+ * PROPONER un peso: el último que se usó en ese modo. Es una conveniencia y
+ * NUNCA pisa lo que escribió la persona —perder lo escrito es peor que proponer
+ * mal—: solo entra si no hay peso o si el que hay también era una propuesta.
+ *
+ * `null` —no hay nada que proponer— saca la propuesta anterior: dejar los 50
+ * de la máquina debajo de la etiqueta "por mancuerna" es proponer el doble.
+ */
+export function proponerPeso(e: EstadoBloques, kg: unknown): EstadoBloques {
+  if (e.peso !== undefined && !e.pesoPropuesto) return e;
+  const v = pesoValido(kg);
+  if (v === null) return e.peso === undefined ? e : (sinPeso(e) as EstadoBloques);
+  if (v === e.peso && e.pesoPropuesto) return e;
+  return { ...e, peso: v, pesoPropuesto: true };
+}
+
+/**
+ * QUÉ PASA CON EL PESO AL CAMBIAR DE MODO. `recordado` es el último peso que se
+ * usó con este ejercicio EN EL MODO NUEVO (`null` si no hay).
+ *
+ * Con series ya hechas no se toca nada: ahí cambiar el modo es "me equivoqué
+ * de etiqueta", no "empiezo de nuevo", y el peso es el que se está usando. Con
+ * el bloque vacío se propone el del modo nuevo, con la regla de `proponerPeso`.
+ */
+export function pesoAlCambiarDeModo(e: EstadoBloques, recordado: number | null): EstadoBloques {
+  if (e.hechas > 0) return e;
+  return proponerPeso(e, recordado);
 }
 
 /**
@@ -518,4 +562,27 @@ export function corregirBloque(e: EstadoBloques, indice: number, delta: number):
 /** Si ya se llegó a lo que se había propuesto. */
 export function metaCumplida(e: EstadoBloques): boolean {
   return e.hechas >= e.meta;
+}
+
+/** Lo que dice la pantalla bloqueada durante el descanso. `serie` 0 = nada que decir. */
+export type HechoAntesDelDescanso = { ejercicio: string | null; serie: number; meta: number };
+
+/**
+ * LA SERIE QUE SE ACABA DE HACER, para la cuenta de la pantalla bloqueada.
+ *
+ * Sale del estado que el descanso VE al arrancar, y no de un efecto de la
+ * pantalla: el número se anotaba aparte con un "más uno" que suponía que el
+ * descanso arrancaba antes de sumar. El orden se invirtió y nadie lo notó: una
+ * semana diciendo "serie 4 de 3" (1/10). Quien arranca el descanso le pasa el
+ * estado YA SUMADO y la cuenta es esta, sin sumarle nada.
+ *
+ * Con el bloque en cero —se cerró el anterior, o es un descanso suelto— lo
+ * último que se hizo es la última serie del bloque cerrado. La meta de ese
+ * bloque no se guarda, así que va en 0 y la tarjeta dice "Serie 3" a secas.
+ */
+export function serieDelDescanso(e: EstadoBloques): HechoAntesDelDescanso {
+  if (e.hechas > 0) return { ejercicio: e.ejercicio, serie: e.hechas, meta: e.meta };
+  const ultimo = e.cerrados[e.cerrados.length - 1];
+  if (ultimo) return { ejercicio: ultimo.ejercicio, serie: ultimo.series, meta: 0 };
+  return { ejercicio: e.ejercicio, serie: 0, meta: 0 };
 }

@@ -41,6 +41,19 @@ export function confirmarCampo(
   return { cambia: enKilos !== actual, kg: enKilos };
 }
 
+/**
+ * SI HAY QUE AVISAR AL SALIR DEL CAMPO. Que el número cambie, obvio. Y también
+ * que la persona haya TECLEADO el mismo que ya estaba: el peso puede ser una
+ * propuesta de la app (`pesoPropuesto` en `bloques.ts`), y escribirlo a mano
+ * lo vuelve suyo. Sin esto, reescribir "60" sobre un 60 propuesto no llegaba a
+ * nadie, y el próximo cambio de modo se lo llevaba puesto.
+ *
+ * Entrar al campo y salir sin tocar nada NO avisa: eso no es escribir.
+ */
+export function hayQueAvisar(r: { cambia: boolean; kg: number | null }, tecleo: boolean): boolean {
+  return r.cambia || (tecleo && r.kg !== null);
+}
+
 /** Un toque en + o −: el disco chico. Sin peso no hace nada (`undefined`). */
 export function pasoDelCampo(kg: number | null | undefined, unidad: Unidad, signo: 1 | -1): number | null | undefined {
   if (!kg) return undefined;

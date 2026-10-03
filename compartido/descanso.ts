@@ -1,11 +1,35 @@
 import { DESCANSO_MAXIMO, DESCANSO_MINIMO, DESCANSO_PREDETERMINADO } from '@nucleo/reglas';
 import { plataforma } from '@plataforma';
-import { leerEnCurso } from './enCurso';
+import { nombreDe } from './enCurso';
 import { T } from '@nucleo/textos';
+import type { HechoAntesDelDescanso } from '@nucleo/bloques';
+import type { ContextoDelDescanso } from '@nucleo/plataforma';
 
 const CLAVE = 'ascent:descanso';
 
-export type DescansoVivo = { fin: number; duracion: number };
+/**
+ * `ejercicio`, `serie` y `meta` son LO QUE SE ACABABA DE HACER cuando arrancó
+ * el descanso, para la pantalla bloqueada. Van CONGELADOS acá adentro y no se
+ * vuelven a leer de la pantalla: cambiar la duración a mitad del descanso, o
+ * reabrir la app, no puede cambiar de qué serie era. Sin llaves = no se sabe,
+ * y la tarjeta muestra el temporizador solo.
+ */
+export type DescansoVivo = {
+  fin: number;
+  duracion: number;
+  ejercicio?: string | null;
+  serie?: number;
+  meta?: number;
+};
+
+function loQueSeHacia(d: DescansoVivo): ContextoDelDescanso | null {
+  if (typeof d.serie !== 'number') return null;
+  return {
+    ejercicio: typeof d.ejercicio === 'string' ? d.ejercicio : null,
+    serie: d.serie,
+    meta: typeof d.meta === 'number' ? d.meta : 0,
+  };
+}
 
 /**
  * El descanso en curso vive en el teléfono, no en la base (§18.3): no hay
@@ -40,8 +64,13 @@ export async function leerDescanso(): Promise<DescansoVivo | null> {
  * sirve para que sobreviva a cerrar la app. Si la escritura falla o tarda, el
  * descanso corre igual.
  */
-export function guardarDescanso(duracion: number): DescansoVivo {
-  const d = { fin: Date.now() + duracion * 1000, duracion };
+export function guardarDescanso(duracion: number, hecho?: HechoAntesDelDescanso): DescansoVivo {
+  const fin = Date.now() + duracion * 1000;
+  // El nombre se resuelve ACÁ, al arrancar: después el catálogo puede no estar
+  // (la app se reabrió sin señal) y el descanso tiene que seguir diciéndolo.
+  const d: DescansoVivo = hecho
+    ? { fin, duracion, ejercicio: nombreDe(hecho.ejercicio), serie: hecho.serie, meta: hecho.meta }
+    : { fin, duracion };
   void plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(d));
   void avisarAlTerminar(d);
   return d;
@@ -89,10 +118,10 @@ async function enVivoAlTerminar(d: DescansoVivo | null) {
   // Un descanso ya terminado se apaga igual que uno saltado: pasa al bajar la
   // duración por debajo de lo que ya descansaste.
   if (!d || restante(d.fin) <= 0) return plataforma.enVivo.esconder();
-  // QUÉ ESTABAS HACIENDO, si alguien lo anotó. La pantalla bloqueada pasa de
-  // decir "2:58" a decir "Press de banca · serie 3 de 4", que es lo único que
-  // se mira entre serie y serie. Ver `compartido/enCurso.ts`.
-  await plataforma.enVivo.mostrarDescanso(d.fin, d.duracion, leerEnCurso());
+  // QUÉ ESTABAS HACIENDO, si se sabe. La pantalla bloqueada pasa de decir
+  // "2:58" a decir "Press de banca · serie 3 de 4", que es lo único que se mira
+  // entre serie y serie. Sale del descanso mismo, no de la pantalla.
+  await plataforma.enVivo.mostrarDescanso(d.fin, d.duracion, loQueSeHacia(d));
 }
 
 /**
@@ -109,7 +138,8 @@ async function enVivoAlTerminar(d: DescansoVivo | null) {
  */
 export function cambiarDuracion(vivo: DescansoVivo, duracion: number): DescansoVivo {
   const inicio = vivo.fin - vivo.duracion * 1000;
-  const d = { fin: inicio + duracion * 1000, duracion };
+  // Con `...vivo`: lo que se acababa de hacer viaja con el descanso.
+  const d = { ...vivo, fin: inicio + duracion * 1000, duracion };
   void plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(d));
   // Bajar a 2 con 2:30 encima deja el descanso terminado: ahí se cancela.
   void avisarAlTerminar(d);

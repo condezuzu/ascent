@@ -32,7 +32,10 @@ import {
   mudarEjercicio,
   cambiarMeta,
   paraGuardar,
+  pesoAlCambiarDeModo,
+  proponerPeso,
   sembrar,
+  serieDelDescanso,
   sinNadaContado,
   unirConGuardados,
   terminarBloque,
@@ -72,6 +75,14 @@ import {
 import { marcarComoUsada } from '@nucleo/llegada';
 import { cuantasPendientes, encolar, estaPendiente, vaciar } from '@compartido/cola';
 import { leerCargasElegidas, recordarCarga } from '@compartido/cargas';
+import {
+  leerRecordados,
+  recordadosAlDia,
+  sumarSesionARecordados,
+  traerRecordados,
+  type Recordados,
+} from '@compartido/pesosRecordados';
+import { modoDelBloqueEnCurso, ultimoPesoEnModo } from '@nucleo/pesoRecordado';
 import { cargaValida, type Carga } from '@nucleo/carga';
 import type { OrigenSesion, ResultadoRegistro } from '@nucleo/tipos';
 
@@ -591,6 +602,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       await actualizarSesionCache({ bloques: sembrado, sugerido: esSugerencia }, yo);
       if (sembrado.ejercicio) proponerArranque(sembrado.ejercicio);
     })();
+    // EL HISTORIAL DE PESOS, también de fondo: es una sesión nueva y puede haber
+    // series anotadas desde otro aparato. Quien lo necesite antes de que llegue
+    // espera a esta misma respuesta (ver `compartido/pesosRecordados.ts`).
+    void traerRecordados(supabase);
 
     if (r.yaEstaba) setAviso(T.inicio.yaHabiaSesion);
     alCambiarElDia?.(r.registro);
@@ -649,6 +664,12 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     }
     borrarSesionCache(yo);
     borrarDescanso();
+    // Lo de hoy pasa a ser historial: el último peso de cada modo queda en la
+    // copia del teléfono para la próxima sesión, aunque no haya señal. Si la
+    // base deshizo el día —un toque sin querer— no hay nada que sumar.
+    void sumarSesionARecordados(
+      (data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia ? [] : bloquesHechos
+    );
     setInicio(null);
     setSeries(0);
     setIdSesion(null);
@@ -770,7 +791,11 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     const seg =
       (await leerDuracionDeSesion()) ??
       duracionValida(duracionPredeterminada(await leerPerfilCache()));
-    const d = guardarDescanso(seg);
+    // LA SERIE DE LA PANTALLA BLOQUEADA SALE DE `nc`, el estado YA SUMADO, y no
+    // de `bloquesRef`: un "Terminar serie" tocado durante los `await` de arriba
+    // deja el ref en cero. Y no de un efecto de la pantalla: eso fue el "serie 4
+    // de 3". Ver `serieDelDescanso`.
+    const d = guardarDescanso(seg, serieDelDescanso(nc.bloques));
     setDescanso(d);
     // El descanso que arranca ES actividad hasta que termina: la persona está
     // entrenando mientras el temporizador anda.
@@ -922,11 +947,48 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       if (error || data === null || data === undefined) return;
       const actual = bloquesRef.current;
       if (actual.ejercicio !== id || actual.peso !== undefined) return;
-      const conPeso = cambiarPeso(actual, Number(data));
-      if (conPeso.peso === undefined) return;
+      const conPeso = proponerPeso(actual, Number(data));
+      if (conPeso === actual) return;
+      bloquesRef.current = conPeso;
       setBloques(conPeso);
       actualizarSesionCache({ bloques: conPeso }, yo);
     });
+  }
+
+  /**
+   * PONER EN EL BLOQUE EL ÚLTIMO PESO DE ESE MODO, como propuesta.
+   *
+   * Es el único lugar que propone, al elegir el ejercicio y al cambiar de modo:
+   * la regla —nunca pisar lo que escribió la persona— está en `proponerPeso` y
+   * no se repite acá.
+   *
+   * `respaldo` es el peso que mandó `como_arranca`: vale solo si el teléfono
+   * todavía no tiene NADA del historial (ni el catálogo), que es el caso de una
+   * instalación nueva a la que la consulta le falló.
+   */
+  async function proponerElPesoDe(id: string, modo: Carga, datos: Recordados, respaldo?: unknown) {
+    // OTRA INSTANCIA DEL HOOK pudo haber recibido un peso escrito que esta
+    // todavía no releyó (el vigilante arranca la sesión, la persona escribe en
+    // Inicio). La caché es lo que comparten: si ahí hay un peso escrito para
+    // este ejercicio, no se propone nada. No proponer nunca pierde un dato.
+    const enCache = (await leerSesionCache())?.bloques;
+    if (enCache && enCache.ejercicio === id && enCache.peso !== undefined && !enCache.pesoPropuesto) return;
+    // Recién ahora el estado, y de acá al final SIN `await`: la decisión y la
+    // escritura salen del mismo valor.
+    const actual = bloquesRef.current;
+    // SOLO CON EL BLOQUE VACÍO. Con series hechas el peso es el que se está
+    // usando: una respuesta que llega tarde no lo cambia a mitad del bloque.
+    if (actual.ejercicio !== id || actual.hechas > 0) return;
+    // El modo cambió mientras se esperaba: este peso es de otra cosa.
+    if ((modoDelBloqueEnCurso(actual, datos.catalogo) ?? modo) !== modo) return;
+    const sinHistorial = Object.keys(datos.catalogo).length === 0;
+    const recordado =
+      ultimoPesoEnModo(actual, datos.pesos, id, modo, datos.catalogo) ?? (sinHistorial ? respaldo ?? null : null);
+    const b = proponerPeso(actual, recordado);
+    if (b === actual) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
   }
 
   /**
@@ -937,12 +999,21 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * vez fueron zancadas con barra y 60, hoy con mancuernas "60 por mancuerna"
    * sería proponer el doble.
    *
+   * EL PESO YA NO SALE DE `como_arranca` (2/10) sino de `proponerElPesoDe`, el
+   * mismo camino que usa el cambio de modo: lo de hoy, y después el historial
+   * que guarda el teléfono. De la base se sigue leyendo el MODO.
+   *
    * Nada de esto pisa lo que la persona ya hizo en el bloque: la respuesta
    * puede llegar tarde, con otro ejercicio elegido o el modo ya cambiado.
    */
   async function proponerCargaYPeso(id: string) {
     const local = (await leerCargasElegidas())[id];
     if (local) aplicarCargaSabida(id, local);
+    // CON LO QUE EL TELÉFONO YA SABE, sin esperar a la base: en el subsuelo la
+    // respuesta de abajo no llega nunca.
+    const sabido = await leerRecordados();
+    const modoSabido = bloquesRef.current.ejercicio === id ? modoDelBloqueEnCurso(bloquesRef.current, sabido.catalogo) : null;
+    if (modoSabido) await proponerElPesoDe(id, modoSabido, sabido);
 
     // `disponible(...)` se preguntó en `proponerArranque`, que es el único que
     // llama acá; se repite para que la regla se vea al lado de la llamada.
@@ -964,22 +1035,15 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
         }
         await recordarCarga(id, delServidor);
       }
-      const actual = bloquesRef.current;
-      // El peso vino calculado para el modo de la base. Si el teléfono sabe
-      // otro —se eligió sin señal y todavía no subió—, ese peso es de otra cosa.
-      const mismoModo = !actual.carga || actual.carga === delServidor;
-      if (
-        mismoModo &&
-        actual.ejercicio === id &&
-        actual.peso === undefined &&
-        r.peso !== null &&
-        r.peso !== undefined
-      ) {
-        const conPeso = cambiarPeso(actual, Number(r.peso));
-        if (conPeso.peso !== undefined) {
-          setBloques(conPeso);
-          await actualizarSesionCache({ bloques: conPeso }, yo);
-        }
+      // EL MODO YA QUEDÓ DECIDIDO: el del bloque, y si el bloque no dice nada,
+      // el que contestó la base (el elegido o el del catálogo). El peso que se
+      // propone es el de ESE modo. Si la base trajo otro modo que el que se
+      // había supuesto arriba, la propuesta anterior se reemplaza o se va.
+      const modo = cargaValida(bloquesRef.current.carga) ?? delServidor;
+      if (modo && bloquesRef.current.ejercicio === id) {
+        // El peso de `como_arranca` vino calculado para el modo de la base: si
+        // el teléfono sabe otro, no sirve ni de respaldo.
+        await proponerElPesoDe(id, modo, await recordadosAlDia(supabase), modo === delServidor ? r.peso : null);
       }
     }
     // Con respuesta o sin señal: ya se decidió con lo que había.
@@ -1003,15 +1067,27 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    */
   async function elegirCarga(c: Carga) {
     await marcar();
+    // La copia del teléfono, antes de mirar el estado: es una lectura local, y
+    // de acá hasta escribir el bloque no hay otro `await`.
+    const sabido = await leerRecordados();
     const previo = bloquesRef.current;
-    const b = cambiarCarga(previo, c);
-    if (b === previo || !b.ejercicio) return;
+    const conModo = cambiarCarga(previo, c);
+    if (conModo === previo || !conModo.ejercicio) return;
+    const id = conModo.ejercicio;
+    // EL PESO SIGUE AL MODO (2/10): con el bloque vacío se propone el último que
+    // se usó en el modo nuevo, y si no hay ninguno la propuesta anterior se va.
+    // Con series hechas, o con un peso escrito a mano, no se toca: lo decide
+    // `pesoAlCambiarDeModo`, que es lo que prueba `test:db`.
+    const b = pesoAlCambiarDeModo(conModo, ultimoPesoEnModo(conModo, sabido.pesos, id, c, sabido.catalogo));
     bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
-    await recordar(b.ejercicio, c);
+    await recordar(id, c);
     // Si ya hay series, lo guardado cambia de significado: se sube.
     if (b.hechas > 0) await subir(seriesRef.current, b);
+    // Y con el historial de la base, si en esta sesión todavía no se había
+    // traído: recién instalada, la copia del teléfono está vacía.
+    else await proponerElPesoDe(id, c, await recordadosAlDia(supabase));
   }
 
   /** Lo mismo en un bloque ya cerrado, desde la lista. */
@@ -1128,7 +1204,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     const seg =
       (await leerDuracionDeSesion()) ??
       duracionValida(duracionPredeterminada(await leerPerfilCache()));
-    const d = guardarDescanso(seg);
+    // No suma nada: la tarjeta dice la serie que YA se hizo, no la que viene.
+    const d = guardarDescanso(seg, serieDelDescanso(bloquesRef.current));
     setDescanso(d);
     await marcar(d.fin);
   }

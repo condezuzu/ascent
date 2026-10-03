@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Unidad } from '@nucleo/peso';
-import { confirmarCampo, limpiarTecleo, pasoDelCampo, textoDelCampo } from '@nucleo/campoPeso';
+import { confirmarCampo, hayQueAvisar, limpiarTecleo, pasoDelCampo, textoDelCampo } from '@nucleo/campoPeso';
 import { T } from '@nucleo/textos';
 
 /**
@@ -37,11 +37,16 @@ export default function CampoPeso({
 }) {
   const mostrar = (v: number | null | undefined) => textoDelCampo(v, unidad);
   const [texto, setTexto] = useState(mostrar(kg));
+  // HAY ALGO TECLEADO SIN CONFIRMAR: lo escrito gana (ver abajo).
+  const tecleando = useRef(false);
 
-  // Si el peso cambia desde afuera —llegó el último que usaste, o se tocó un
-  // paso— el campo lo refleja. Mientras se escribe no, porque `kg` no cambia
-  // hasta confirmar.
+  // Si el peso cambia desde afuera —llegó el último que usaste, se cambió de
+  // modo, o se tocó un paso— el campo lo refleja. Mientras se escribe NO: una
+  // propuesta que llega tarde no puede reescribir lo que la persona está
+  // tecleando. Antes se suponía que `kg` no cambiaba hasta confirmar, y no era
+  // cierto: la propuesta de la base llegaba igual.
   useEffect(() => {
+    if (tecleando.current) return;
     setTexto(mostrar(kg));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kg, unidad]);
@@ -49,15 +54,23 @@ export default function CampoPeso({
   // Las cuentas están en `nucleo/campoPeso.ts`, probadas: el texto tiene coma
   // y no se vuelve a leer con `Number`.
   function confirmar() {
+    const tecleo = tecleando.current;
+    tecleando.current = false;
     const r = confirmarCampo(texto, kg, unidad);
-    if (!r.cambia) return setTexto(mostrar(kg));
+    // En la lista (`compacto`) el mismo número no es noticia: ahí no hay
+    // propuestas, y avisar sería reescribir la serie con lo que ya tenía.
+    if (!hayQueAvisar(r, tecleo && !compacto)) return setTexto(mostrar(kg));
     alCambiar(r.kg);
     setTexto(mostrar(r.kg));
   }
 
   function paso(signo: 1 | -1) {
     const nuevo = pasoDelCampo(kg, unidad, signo);
-    if (nuevo !== undefined) alCambiar(nuevo);
+    if (nuevo === undefined) return;
+    // El paso se da sobre el peso confirmado: lo que hubiera a medio teclear se
+    // descarta, como siempre, y el campo vuelve a seguir al número.
+    tecleando.current = false;
+    alCambiar(nuevo);
   }
 
   return (
@@ -75,7 +88,10 @@ export default function CampoPeso({
           value={texto}
           placeholder={compacto ? T.sesion.sinPeso : ''}
           aria-label={etiqueta ?? T.sesion.pesoDelBloque}
-          onChange={(e) => setTexto(limpiarTecleo(e.target.value))}
+          onChange={(e) => {
+            tecleando.current = true;
+            setTexto(limpiarTecleo(e.target.value));
+          }}
           onBlur={confirmar}
           onKeyDown={(e) => {
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur();

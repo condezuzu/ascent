@@ -11477,15 +11477,21 @@ console.log('\n158. Los nombres de verdad, el rango por musculo y la tarjeta');
   }
   // EL NOMBRE LO RESUELVE LA PANTALLA DEL BLOQUE, que es la unica con el
   // catalogo cargado; el hook de la sesion no conoce el catalogo y no tiene
-  // por que.
-  chequear('el bloque anota que se esta haciendo',
-    /ponerEnCurso\(\{/.test(sinComentarios158(de158('movil', 'src', 'Bloque.tsx'))), true);
-  chequear('y el descanso lo lee al encender la cuenta',
-    /mostrarDescanso\(d\.fin, d\.duracion, leerEnCurso\(\)\)/.test(de158('compartido', 'descanso.ts')), true);
-  // LA SERIE ES LA QUE SE ESTA POR TERMINAR: el descanso arranca JUSTO ANTES de
-  // que se sume, asi que sin el mas uno la tarjeta diria una serie menos.
-  chequear('la serie va con el mas uno',
-    /serie: estado\.hechas \+ 1/.test(de158('movil', 'src', 'Bloque.tsx')), true);
+  // por que. SOLO EL NOMBRE: la serie y la meta salen del descanso (la 165).
+  const blo158 = sinComentarios158(de158('movil', 'src', 'Bloque.tsx'));
+  chequear('el bloque anota como se llama cada ejercicio', /ponerNombres\(ejercicios\)/.test(blo158), true);
+  chequear('y el descanso manda lo que el mismo lleva adentro',
+    /mostrarDescanso\(d\.fin, d\.duracion, loQueSeHacia\(d\)\)/.test(de158('compartido', 'descanso.ts')), true);
+  // EL TEST NO SE BORRA, SE INVIERTE (2/10). Aca decia "la serie va con el mas
+  // uno" y exigia el texto "serie: estado.hechas + 1". Era cierto el 23/9; el
+  // 25/9 el conteo paso a moverse ANTES del descanso (62c8cc5) y el mas uno
+  // empezo a contar dos veces la misma serie: "serie 4 de 3" en la pantalla
+  // bloqueada, una semana, con este test en verde. Comprobaba que el archivo
+  // dijera lo que decia, no lo que le llegaba al telefono. La conducta esta en
+  // la 165, ejecutada.
+  chequear('la pantalla del bloque ya no anota la serie, ni con mas uno ni sin',
+    [/hechas \+ 1/.test(blo158), /serie: estado\.hechas/.test(blo158), /ponerEnCurso/.test(blo158)],
+    [false, false, false]);
 }
 
 console.log('\n159. El aviso del motor en Diagnostico, y la mano al polvo');
@@ -11921,6 +11927,319 @@ console.log('\n163. Pantallas sin salida: la de elegir nombre');
   for (const m of ['Descanso', 'Hoja', 'RachaSalvada', 'SubidaRango']) {
     const src = de163('movil', 'src', `${m}.tsx`);
     chequear(`el modal ${m} se puede cerrar`, /onRequestClose=/.test(src), true);
+  }
+}
+
+console.log('\n165. La pantalla bloqueada dice la serie que se acaba de hacer');
+{
+  const { serieDelDescanso } = await import('../nucleo/bloques.ts');
+  const N165 = await import('../compartido/enCurso.ts');
+  const { readFileSync: leer165 } = await import('node:fs');
+  const { join: unir165 } = await import('node:path');
+  const R165 = unir165(import.meta.dirname, '..');
+  const de165 = (...p) => sinComentarios(leer165(unir165(R165, ...p), 'utf8'));
+  const entre165 = (texto, desde, hasta) => {
+    const i = texto.indexOf(desde);
+    return i < 0 ? '' : texto.slice(i, texto.indexOf(hasta, i + desde.length));
+  };
+
+  // EL BUG (1/10, del gimnasio): "Listo · Remo con mancuerna · serie 4 de 3".
+  //
+  // La pantalla del bloque anotaba la serie desde un efecto, con un mas uno que
+  // suponia que el descanso arrancaba ANTES de sumar. El 25/9 el conteo paso a
+  // moverse primero (commit 62c8cc5) y el mas uno quedo contando dos veces la
+  // misma serie. Una semana asi, con un test en verde: el de la 158 exigia el
+  // texto "serie: estado.hechas + 1", o sea que comprobaba que el archivo
+  // coincidiera con el bug.
+  //
+  // Por eso aca la cuenta SE EJECUTA: es una funcion de nucleo/, y el caso es
+  // el del gimnasio, sumando con la misma funcion que usa el boton.
+
+  // ---- LA CONDUCTA ----
+  let c165 = { series: 0, bloques: bloquesVacios('remo_mancuerna', 3) };
+  c165 = sumarSerie(c165);
+  chequear('terminada la 1a de 3, dice serie 1 de 3',
+    serieDelDescanso(c165.bloques), { ejercicio: 'remo_mancuerna', serie: 1, meta: 3 });
+  c165 = sumarSerie(sumarSerie(c165));
+  chequear('terminada la 3a de 3, dice 3 y NO 4',
+    serieDelDescanso(c165.bloques), { ejercicio: 'remo_mancuerna', serie: 3, meta: 3 });
+  // EL PATRON VIEJO, AL LADO: el mas uno sobre el estado ya sumado. Es lo que
+  // se veia en el telefono, y es lo que esta prueba no deja volver.
+  chequear('el patron viejo (mas uno sobre lo ya sumado) decia 4 de 3', c165.bloques.hechas + 1, 4);
+  // PASARSE DE LA META ES LEGITIMO (regla 1 de bloques.ts): una cuarta serie de
+  // verdad SI dice "4 de 3". Un test que prohibiera serie > meta estaria mal.
+  c165 = sumarSerie(c165);
+  chequear('una cuarta serie de verdad si dice 4 de 3',
+    serieDelDescanso(c165.bloques), { ejercicio: 'remo_mancuerna', serie: 4, meta: 3 });
+
+  // ---- EL DESCANSO SUELTO: la que YA se hizo, no la que viene ----
+  let s165 = { series: 0, bloques: bloquesVacios('remo_mancuerna', 3) };
+  s165 = sumarSerie(sumarSerie(s165));
+  chequear('descansar suelto con 2 hechas dice la 2, no la 3',
+    serieDelDescanso(s165.bloques), { ejercicio: 'remo_mancuerna', serie: 2, meta: 3 });
+  // Recien cerrado el bloque, lo ultimo que se hizo es la ultima serie del
+  // bloque cerrado. Su meta no se guarda: va en 0 y la tarjeta dice "Serie 3".
+  const cerrado165 = terminarBloque(sumarSerie(s165).bloques);
+  chequear('recien cerrado el bloque: la ultima del bloque cerrado',
+    serieDelDescanso(cerrado165), { ejercicio: 'remo_mancuerna', serie: 3, meta: 0 });
+  chequear('y lo mismo con el ejercicio siguiente ya elegido',
+    serieDelDescanso(cambiarEjercicio(cerrado165, 'press_banca')), { ejercicio: 'remo_mancuerna', serie: 3, meta: 0 });
+  // CERO = NO HAY SERIE QUE DECIR, y el widget con cero no dibuja la linea.
+  chequear('sin nada hecho no inventa una serie',
+    serieDelDescanso(bloquesVacios('press_banca', 3)), { ejercicio: 'press_banca', serie: 0, meta: 0 });
+  chequear('y el widget con cero no dibuja la linea',
+    /guard s > 0 else \{ return nil \}/.test(leer165(unir165(R165, 'movil', 'targets', 'descanso', 'index.swift'), 'utf8')), true);
+
+  // ---- EL CABLEADO: que el descanso reciba ESA cuenta, del estado ya sumado ----
+  //
+  // El hook no se puede cargar con node, asi que el orden se lee. Solo, esto
+  // seria un proxy; va junto con la conducta de arriba, y con el detector
+  // probado contra las dos formas del bug.
+  const hook165 = de165('compartido', 'useSesion.ts');
+  const mirar165 = (texto) => {
+    const iSuma = texto.indexOf('sumarSerie(');
+    const iDescanso = texto.indexOf('guardarDescanso(');
+    return {
+      sumaAntesDelDescanso: iSuma > -1 && iDescanso > iSuma,
+      conLoYaSumado: /guardarDescanso\(seg, serieDelDescanso\(nc\.bloques\)\)/.test(texto),
+    };
+  };
+  chequear('serieHecha suma primero y le pasa al descanso lo ya sumado',
+    mirar165(entre165(hook165, 'async function serieHecha(', 'async function deshacerSerie(')),
+    { sumaAntesDelDescanso: true, conLoYaSumado: true });
+  // QUE EL DETECTOR SIRVA DE ALGO: las dos formas de volver a romperlo.
+  chequear('con el descanso antes de la suma, salta',
+    mirar165('const d = guardarDescanso(seg, serieDelDescanso(nc.bloques)); const nc = sumarSerie(x);').sumaAntesDelDescanso, false);
+  chequear('y leyendo otra cosa que lo sumado, tambien',
+    mirar165('const nc = sumarSerie(x); const d = guardarDescanso(seg, serieDelDescanso(bloquesRef.current));').conLoYaSumado, false);
+
+  const suelto165 = entre165(hook165, 'async function descansarSuelto(', 'return {');
+  chequear('el descanso suelto manda lo que ya se hizo',
+    /guardarDescanso\(seg, serieDelDescanso\(bloquesRef\.current\)\)/.test(suelto165), true);
+  chequear('y no suma nada', /sumarSerie\(/.test(suelto165), false);
+
+  // ---- EL DESCANSO LLEVA ADENTRO LO QUE SE HACIA ----
+  //
+  // Antes lo releia de la pantalla cada vez: cambiar la duracion despues de
+  // "Terminar serie" pisaba la tarjeta con el bloque siguiente, y al reabrir la
+  // app se perdia. Ahora viaja congelado en el descanso guardado.
+  const desc165 = de165('compartido', 'descanso.ts');
+  chequear('guardarDescanso congela lo que recibe, sin tocarlo',
+    /serie: hecho\.serie, meta: hecho\.meta/.test(desc165), true);
+  chequear('nadie le suma nada en el camino',
+    [/hecho\.serie \+/.test(desc165), /hechas \+ 1/.test(desc165), /serie \+ 1/.test(desc165)], [false, false, false]);
+  chequear('cambiar la duracion arrastra lo que se hacia',
+    /\{ \.\.\.vivo, fin: inicio \+ duracion \* 1000, duracion \}/.test(desc165), true);
+  chequear('la pantalla bloqueada lee del descanso y no de la pantalla',
+    /mostrarDescanso\(d\.fin, d\.duracion, loQueSeHacia\(d\)\)/.test(desc165), true);
+  chequear('y el puerto nativo pasa la serie tal cual',
+    /ctx\?\.serie \?\? 0/.test(de165('movil', 'src', 'plataforma', 'enVivo.ts')), true);
+
+  // ---- DE LA PANTALLA DEL BLOQUE SALEN SOLO LOS NOMBRES ----
+  const nom165 = de165('compartido', 'enCurso.ts');
+  chequear('el modulo de los nombres no sabe de series ni de metas',
+    [/serie/.test(nom165), /meta/.test(nom165), /hechas/.test(nom165)], [false, false, false]);
+  chequear('sin catalogo no hay nombre', N165.nombreDe('press_banca'), null);
+  N165.ponerNombres([{ id: 'press_banca', nombre: 'Press de banca' }]);
+  chequear('con catalogo, el nombre de verdad', N165.nombreDe('press_banca'), 'Press de banca');
+  chequear('sin ejercicio no hay nombre', N165.nombreDe(null), null);
+  // Un catalogo que no llego (sin senal) no borra lo que ya se sabia.
+  N165.ponerNombres([]);
+  chequear('un catalogo vacio no borra los nombres', N165.nombreDe('press_banca'), 'Press de banca');
+}
+
+console.log('\n166. El peso se recuerda por ejercicio Y por modo');
+{
+  const B = await import('../nucleo/bloques.ts');
+  const P = await import('../nucleo/pesoRecordado.ts');
+  const CP = await import('../nucleo/campoPeso.ts');
+  const { readFileSync: leer166 } = await import('node:fs');
+  const { join: unir166 } = await import('node:path');
+  const R166 = unir166(import.meta.dirname, '..');
+  const de166 = (...p) => sinComentarios(leer166(unir166(R166, ...p), 'utf8'));
+  const entre166 = (texto, desde, hasta) => {
+    const i = texto.indexOf(desde);
+    return i < 0 ? '' : texto.slice(i, texto.indexOf(hasta, i + desde.length));
+  };
+
+  // EL PEDIDO (1/10): "si un dia hago remo por mancuerna a 20 y otro dia el
+  // mismo remo por maquina a 50, se pisan entre ellos". El peso se recuerda por
+  // la combinacion ejercicio + modo, y al cambiar de modo el que se propone es
+  // el ultimo de ESE modo.
+  //
+  // EL MODO DEL CATALOGO SE LE PREGUNTA A LA BASE, no se escribe de memoria.
+  const cat166 = Object.fromEntries(
+    (await db.query('select id, carga from ejercicios')).rows.map((f) => [f.id, f.carga])
+  );
+  chequear('el catalogo trae el modo de las zancadas', cat166.zancadas, 'par');
+  const REMO = 'remo_mancuerna';
+
+  // ---- NO SE PISAN: un peso por modo ----
+  const historial166 = [
+    { bloques: [{ ejercicio: REMO, series: 3, pesos: [50, 50, 50], carga: 'total' }] },
+    { bloques: [{ ejercicio: REMO, series: 3, pesos: [20, 20, 22], carga: 'par' }] },
+  ];
+  const copia166 = P.pesosDelHistorial(historial166, cat166);
+  chequear('el remo guarda un peso por modo', copia166[REMO], { total: 50, par: 22 });
+  chequear('de cada bloque, la ULTIMA serie con peso',
+    P.pesosDelHistorial([{ bloques: [{ ejercicio: REMO, series: 3, pesos: [20, 24, null], carga: 'par' }] }], cat166)[REMO],
+    { par: 24 });
+  chequear('la sesion mas nueva gana, y solo en su modo',
+    P.pesosDelHistorial([...historial166, { bloques: [{ ejercicio: REMO, series: 1, pesos: [55], carga: 'total' }] }], cat166)[REMO],
+    { total: 55, par: 22 });
+  chequear('un bloque sin pesos no dice nada',
+    P.pesosDelHistorial([{ bloques: [{ ejercicio: REMO, series: 3 }] }], cat166), {});
+  chequear('y con peso corporal no hay numero que recordar',
+    P.pesosDelHistorial([{ bloques: [{ ejercicio: REMO, series: 2, pesos: [10, 10], carga: 'corporal' }] }], cat166), {});
+  chequear('basura no rompe nada',
+    [P.pesosDelHistorial(null, cat166), P.pesosDelHistorial([null, 7, { bloques: 'x' }, { bloques: [null, { ejercicio: 3 }] }], cat166)],
+    [{}, {}]);
+
+  // ---- UN BLOQUE SIN MODO USA EL DEL CATALOGO, NO 'total' ----
+  //
+  // No se puede arreglar en la base sin una migracion, y no hace falta: desde
+  // la 38 todo bloque con pesos lleva su modo. Pero la regla queda escrita del
+  // lado que propone, y se ve contra la base con el MISMO bloque.
+  {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    const s = (await db.query('select iniciar_sesion() as v')).rows[0].v;
+    const id = s.id ?? (await db.query('select id from sesiones where user_id = $1 order by inicio desc limit 1', [u])).rows[0].id;
+    // Directo a la tabla, como en la 82: fijar_bloques le pondria el modo.
+    await db.query('update sesiones set bloques = $2::jsonb where id = $1',
+      [id, JSON.stringify([{ ejercicio: 'zancadas', series: 2, pesos: [18, 18] }])]);
+    const enLaBase = (await db.query("select como_arranca('zancadas') as v")).rows[0].v;
+    chequear('la base lo lee como total: busca en par y no lo encuentra', [enLaBase.carga, enLaBase.peso], ['par', null]);
+    const filas = (await db.query('select bloques from sesiones where user_id = $1 order by inicio', [u])).rows;
+    chequear('el telefono lee ESE MISMO bloque con el modo del catalogo',
+      P.pesosDelHistorial(filas, cat166).zancadas, { par: 18 });
+    chequear('y sin catalogo no adivina: no lo cuenta como total', P.pesosDelHistorial(filas, {}), {});
+  }
+
+  // ---- CAMBIAR DE MODO CON EL BLOQUE VACIO: el peso sigue al modo ----
+  const proponer166 = (e, modo) =>
+    B.pesoAlCambiarDeModo(B.cambiarCarga(e, modo), P.ultimoPesoEnModo(B.cambiarCarga(e, modo), copia166, REMO, modo, cat166));
+  const vacio166 = B.bloquesVacios(REMO, 3);
+  let e166 = B.proponerPeso(B.cambiarCarga(vacio166, 'total'), P.ultimoPesoEnModo(vacio166, copia166, REMO, 'total', cat166));
+  chequear('al arrancar en total propone 50, y lo marca como propuesta', [e166.peso, e166.pesoPropuesto], [50, true]);
+  e166 = proponer166(e166, 'par');
+  chequear('al pasar a por mancuerna propone 22, no 50', [e166.carga, e166.peso, e166.pesoPropuesto], ['par', 22, true]);
+  e166 = proponer166(e166, 'total');
+  chequear('y de vuelta en total, otra vez 50', [e166.carga, e166.peso], ['total', 50]);
+  // SIN NADA RECORDADO EN ESE MODO, la propuesta vieja se va: dejar los 50 de
+  // la maquina debajo de "un lado por vez" es proponer cualquier cosa.
+  const sinRecuerdo166 = proponer166(e166, 'una');
+  chequear('en un modo sin historia la propuesta se va',
+    [sinRecuerdo166.carga, 'peso' in sinRecuerdo166, 'pesoPropuesto' in sinRecuerdo166], ['una', false, false]);
+  const aCorporal166 = proponer166(e166, 'corporal');
+  chequear('y con peso corporal tambien: no hay numero', ['peso' in aCorporal166, 'pesoPropuesto' in aCorporal166], [false, false]);
+
+  // ---- LO ESCRITO A MANO NO SE PISA NUNCA ----
+  //
+  // "Perder lo que escribi es el peor resultado posible, peor que proponer mal."
+  let mano166 = B.cambiarPeso(B.cambiarCarga(vacio166, 'total'), 35);
+  chequear('un peso escrito no lleva marca', [mano166.peso, 'pesoPropuesto' in mano166], [35, false]);
+  chequear('cambiar de modo no lo toca, aunque haya uno recordado', proponer166(mano166, 'par').peso, 35);
+  chequear('ni lo borra cuando no hay ninguno', proponer166(mano166, 'una').peso, 35);
+  chequear('ni al pasar a peso corporal', proponer166(mano166, 'corporal').peso, 35);
+  chequear('una propuesta que llega tarde tampoco', B.proponerPeso(mano166, 50), mano166);
+  // ESCRIBIR ENCIMA DE UNA PROPUESTA LA VUELVE DE LA PERSONA, aunque el numero
+  // sea el mismo que la app habia puesto.
+  const reescrito166 = B.cambiarPeso(e166, 50);
+  chequear('reescribir el mismo numero propuesto le saca la marca', [reescrito166.peso, 'pesoPropuesto' in reescrito166], [50, false]);
+  chequear('y ya no se pisa al cambiar de modo', proponer166(reescrito166, 'par').peso, 50);
+  // ...y para eso el campo tiene que AVISAR cuando se teclea el mismo numero.
+  // Antes no avisaba: confirmar lo que se ve no cambia el peso (la 100).
+  chequear('teclear el mismo numero avisa', CP.hayQueAvisar(CP.confirmarCampo('50', 50, 'kg'), true), true);
+  chequear('entrar y salir sin tocar no avisa', CP.hayQueAvisar(CP.confirmarCampo('50', 50, 'kg'), false), false);
+  chequear('un numero distinto avisa siempre', CP.hayQueAvisar(CP.confirmarCampo('52,5', 50, 'kg'), false), true);
+  chequear('teclear y dejar vacio un campo vacio no avisa', CP.hayQueAvisar(CP.confirmarCampo('', undefined, 'kg'), true), false);
+  // Los pasos + y - son de la persona: salen por cambiarPeso.
+  chequear('borrar el peso se lleva la marca', 'pesoPropuesto' in B.cambiarPeso(e166, null), false);
+
+  // ---- CON SERIES HECHAS EL PESO NO CAMBIA ----
+  //
+  // Ahi cambiar el modo es "me equivoque de etiqueta", no "empiezo de nuevo".
+  const conSeries166 = B.sumar(e166);
+  chequear('contar una serie confirma la propuesta', [conSeries166.peso, 'pesoPropuesto' in conSeries166, conSeries166.pesos], [50, false, [50]]);
+  const reetiquetado166 = proponer166(conSeries166, 'par');
+  chequear('cambiar de modo con series hechas no toca el peso', [reetiquetado166.carga, reetiquetado166.peso, reetiquetado166.pesos], ['par', 50, [50]]);
+  const sinPesoConSeries166 = B.sumar(B.cambiarCarga(vacio166, 'total'));
+  chequear('ni le inventa uno a un bloque que venia sin peso', 'peso' in proponer166(sinPesoConSeries166, 'par'), false);
+
+  // ---- LO DE HOY VA ANTES QUE EL HISTORIAL, y sigue a las correcciones ----
+  let hoy166 = B.cambiarCarga(B.cambiarPeso(vacio166, 24), 'par');
+  hoy166 = B.terminarBloque(B.sumar(B.sumar(hoy166)));
+  chequear('lo que se hizo hoy gana sobre la copia', P.ultimoPesoEnModo(hoy166, copia166, REMO, 'par', cat166), 24);
+  chequear('y no contamina el otro modo', P.ultimoPesoEnModo(hoy166, copia166, REMO, 'total', cat166), 50);
+  // "Esas no eran por mancuerna": se corrige la etiqueta del bloque cerrado, y
+  // el recuerdo se corrige solo, porque sale de los bloques y no de una copia
+  // que se fue sumando serie a serie.
+  const corregido166 = B.corregirCarga(hoy166, 0, 'total');
+  chequear('corregir la etiqueta mueve el recuerdo de modo',
+    [P.ultimoPesoEnModo(corregido166, copia166, REMO, 'total', cat166), P.ultimoPesoEnModo(corregido166, copia166, REMO, 'par', cat166)],
+    [24, 22]);
+  // El bloque en curso con series tambien cuenta, y sin modo propio usa el del
+  // catalogo (las zancadas son par).
+  const zancadas166 = B.sumar(B.cambiarPeso(B.bloquesVacios('zancadas', 3), 16));
+  chequear('el bloque en curso sin modo cuenta en el del catalogo',
+    [P.ultimoPesoEnModo(zancadas166, {}, 'zancadas', 'par', cat166), P.ultimoPesoEnModo(zancadas166, {}, 'zancadas', 'total', cat166)],
+    [16, null]);
+  chequear('el modo que se ve en un bloque sin modo es el del catalogo', P.modoDelBloqueEnCurso(zancadas166, cat166), 'par');
+  chequear('y sin catalogo no se sabe', P.modoDelBloqueEnCurso(zancadas166, {}), null);
+  chequear('nunca se propone nada para peso corporal', P.ultimoPesoEnModo(hoy166, { [REMO]: { corporal: 10 } }, REMO, 'corporal', cat166), null);
+
+  // ---- LA MARCA NO VIAJA A LA BASE NI ROMPE LA REGLA 4 ----
+  chequear('proponer nada sobre un bloque sin peso no agrega ni una llave', B.proponerPeso(vacio166, null), vacio166);
+  chequear('lo que se manda a la base no lleva la marca',
+    B.paraGuardar(B.sumar(B.proponerPeso(B.cambiarCarga(vacio166, 'par'), 22))),
+    [{ ejercicio: REMO, series: 1, pesos: [22], carga: 'par' }]);
+  chequear('cambiar de ejercicio no arrastra la marca', 'pesoPropuesto' in B.cambiarEjercicio(e166, 'press_banca'), false);
+  // Una cache de antes de esto trae pesos sin marca: cae del lado seguro.
+  chequear('un peso sin marca (cache vieja) se trata como escrito',
+    B.proponerPeso({ cerrados: [], ejercicio: REMO, meta: 3, hechas: 0, peso: 40 }, 50).peso, 40);
+
+  // ---- LA COPIA DEL TELEFONO: lo guardado vuelve limpio ----
+  chequear('lo que no tiene forma de peso por modo se descarta',
+    P.leerPesosPorModo({ [REMO]: { par: 22, discos: 9, total: 'x', una: -3 }, otro: null, vacio: {} }),
+    { [REMO]: { par: 22 } });
+  chequear('y basura da vacio', [P.leerPesosPorModo(null), P.leerPesosPorModo([1]), P.leerPesosPorModo('x')], [{}, {}, {}]);
+  chequear('los modos del catalogo tambien se filtran',
+    P.leerModosDelCatalogo({ a: 'par', b: 'discos', c: null }), { a: 'par' });
+
+  // ---- EL CABLEADO (se lee: el hook no se puede cargar con node) ----
+  const hook166 = de166('compartido', 'useSesion.ts');
+  const cambio166 = entre166(hook166, 'async function elegirCarga(', 'async function corregirCargaDeBloque(');
+  chequear('cambiar de modo pasa por la regla probada arriba',
+    /pesoAlCambiarDeModo\(conModo, ultimoPesoEnModo\(conModo, sabido\.pesos, id, c, sabido\.catalogo\)\)/.test(cambio166), true);
+  const propone166 = entre166(hook166, 'async function proponerElPesoDe(', 'async function proponerCargaYPeso(');
+  chequear('las propuestas entran por proponerPeso', /const b = proponerPeso\(actual, recordado\)/.test(propone166), true);
+  chequear('y solo con el bloque vacio', /actual\.hechas > 0\) return/.test(propone166), true);
+  // UN PESO ESCRITO SE ESCRIBE EN UN SOLO LUGAR. Si una propuesta entrara por
+  // cambiarPeso quedaria sin marca, o sea como escrita por la persona, y a
+  // partir de ahi no se podria reemplazar nunca mas.
+  chequear('cambiarPeso se llama solo desde elegirPeso', (hook166.match(/cambiarPeso\(/g) ?? []).length, 1);
+  chequear('y es el de la persona',
+    /cambiarPeso\(bloquesRef\.current, kg\)/.test(entre166(hook166, 'async function elegirPeso(', 'async function corregirPesoDeSerie(')), true);
+  const arranque166 = entre166(hook166, 'async function proponerCargaYPeso(', 'function aplicarCargaSabida(');
+  chequear('al elegir el ejercicio el peso sale del mismo camino', (arranque166.match(/proponerElPesoDe\(/g) ?? []).length, 2);
+  chequear('y ya no se escribe directo el de como_arranca', /cambiarPeso|Number\(r\.peso\)/.test(arranque166), false);
+
+  // LA COPIA ES DE UNA CUENTA y sale del historial, sin la sesion que corre:
+  // lo de hoy esta en el telefono, mas al dia que la base.
+  const copiaTs166 = de166('compartido', 'pesosRecordados.ts');
+  chequear('la copia no se lee con otra cuenta', /g\?\.de === yo/.test(copiaTs166), true);
+  chequear('el historial no incluye la sesion en curso', /\.neq\('estado', 'corriendo'\)/.test(copiaTs166), true);
+  chequear('y un error de red devuelve la copia, no nada',
+    /if \(sesiones\.error \|\| ejercicios\.error\) return leerRecordados\(\)/.test(copiaTs166), true);
+
+  // EL CAMPO NO REESCRIBE LO QUE SE ESTA TECLEANDO. Una propuesta que llega
+  // mientras la persona escribe cambiaba el peso desde afuera y el campo se
+  // reescribia con ella: lo escrito se perdia sin haberse confirmado nunca.
+  for (const [ruta, que] of [[['movil', 'src', 'CampoPeso.tsx'], 'nativa'], [['src', 'components', 'CampoPeso.tsx'], 'web']]) {
+    const campo = de166(...ruta);
+    chequear('el campo de la ' + que + ' no pisa lo que se esta tecleando', /if \(tecleando\.current\) return;\s*setTexto\(mostrar\(kg\)\)/.test(campo), true);
+    chequear('y avisa cuando se teclea el mismo numero (' + que + ')', /hayQueAvisar\(r, tecleo && !compacto\)/.test(campo), true);
   }
 }
 

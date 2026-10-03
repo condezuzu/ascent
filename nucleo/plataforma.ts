@@ -178,8 +178,8 @@ export type Avisos = {
 /**
  * QUÉ SE ESTABA HACIENDO, para que la tarjeta diga algo más que la hora.
  *
- * Es OPCIONAL en serio: sin esto la cuenta se ve igual que siempre. Lo llena
- * `compartido/enCurso.ts`, que lo escribe la pantalla del bloque.
+ * Es OPCIONAL en serio: sin esto la cuenta se ve igual que siempre. Sale del descanso
+ * mismo (`compartido/descanso.ts`), que lo congela al arrancar.
  */
 export type ContextoDelDescanso = {
   ejercicio: string | null;

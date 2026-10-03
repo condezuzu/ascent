@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Unidad } from '@nucleo/peso';
-import { confirmarCampo, limpiarTecleo, pasoDelCampo, textoDelCampo } from '@nucleo/campoPeso';
+import { confirmarCampo, hayQueAvisar, limpiarTecleo, pasoDelCampo, textoDelCampo } from '@nucleo/campoPeso';
 import { T } from '@nucleo/textos';
 import { C } from './colores';
 
@@ -29,8 +29,14 @@ export default function CampoPeso({
 }) {
   const mostrar = (v: number | null | undefined) => textoDelCampo(v, unidad);
   const [texto, setTexto] = useState(mostrar(kg));
+  // HAY ALGO TECLEADO SIN CONFIRMAR. El peso puede cambiar desde afuera —llega
+  // el último que usaste, o se cambia de modo— y acá tocar la etiqueta del modo
+  // NO saca el foco del campo: sin esto, la propuesta nueva reescribía lo que
+  // la persona estaba escribiendo. Lo escrito gana; se confirma al salir.
+  const tecleando = useRef(false);
 
   useEffect(() => {
+    if (tecleando.current) return;
     setTexto(mostrar(kg));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kg, unidad]);
@@ -38,15 +44,23 @@ export default function CampoPeso({
   // Las cuentas están en `nucleo/campoPeso.ts`, probadas: el texto tiene coma
   // y no se vuelve a leer con `Number`.
   function confirmar() {
+    const tecleo = tecleando.current;
+    tecleando.current = false;
     const r = confirmarCampo(texto, kg, unidad);
-    if (!r.cambia) return setTexto(mostrar(kg));
+    // En la lista (`compacto`) el mismo número no es noticia: ahí no hay
+    // propuestas, y avisar sería reescribir la serie con lo que ya tenía.
+    if (!hayQueAvisar(r, tecleo && !compacto)) return setTexto(mostrar(kg));
     alCambiar(r.kg);
     setTexto(mostrar(r.kg));
   }
 
   function paso(signo: 1 | -1) {
     const nuevo = pasoDelCampo(kg, unidad, signo);
-    if (nuevo !== undefined) alCambiar(nuevo);
+    if (nuevo === undefined) return;
+    // El paso se da sobre el peso confirmado: lo que hubiera a medio teclear se
+    // descarta, como siempre, y el campo vuelve a seguir al número.
+    tecleando.current = false;
+    alCambiar(nuevo);
   }
 
   return (
@@ -60,7 +74,10 @@ export default function CampoPeso({
         <TextInput
           style={[estilos.input, compacto && estilos.inputCompacto]}
           value={texto}
-          onChangeText={(v) => setTexto(limpiarTecleo(v))}
+          onChangeText={(v) => {
+            tecleando.current = true;
+            setTexto(limpiarTecleo(v));
+          }}
           onBlur={confirmar}
           onSubmitEditing={confirmar}
           keyboardType="decimal-pad"

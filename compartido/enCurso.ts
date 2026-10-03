@@ -1,5 +1,5 @@
 /**
- * QUÉ SE ESTÁ HACIENDO AHORA MISMO: el ejercicio y en qué serie va.
+ * CÓMO SE LLAMA CADA EJERCICIO, para la cuenta de la pantalla bloqueada.
  *
  * ─────────────────────────────────────────────────────────────────────
  * PARA QUÉ EXISTE (25/9)
@@ -10,43 +10,33 @@
  * secas te dice cuándo volver y nada sobre a qué volver.
  *
  * ─────────────────────────────────────────────────────────────────────
- * POR QUÉ UN MÓDULO SUELTO Y NO UN ARGUMENTO MÁS
+ * POR QUÉ SOLO LOS NOMBRES (2/10)
  *
- * El que sabe el NOMBRE del ejercicio es la pantalla del bloque, que es la
- * única que tiene el catálogo cargado; el que enciende la cuenta de la pantalla
- * bloqueada es `descanso.ts`, al guardar el descanso. Entre los dos hay un hook
- * (`useSesion`) que no conoce el catálogo y no tiene por qué: su trabajo es
- * contar series, no traducir identificadores a nombres.
+ * Antes la pantalla del bloque anotaba acá TODO —el nombre, la serie y la
+ * meta— desde un efecto, y el descanso lo leía al arrancar. El número de serie
+ * dependía de cuándo corría ese efecto respecto de la suma, y cuando el orden
+ * cambió la tarjeta pasó una semana diciendo "serie 4 de 3".
  *
- * Pasarlo como argumento obligaría a subir el catálogo hasta Inicio y bajarlo
- * de nuevo por tres capas, para un dato que solo se lee en un lugar. Es el
- * mismo patrón que `pedidoDeFondo` y `loVisible`, y por el mismo motivo.
+ * La serie y la meta ahora salen del estado que el descanso ve
+ * (`serieDelDescanso` en `nucleo/bloques.ts`). De la pantalla del bloque queda
+ * lo único que solo ella sabe: el catálogo, o sea que `press_banca` se dice
+ * "Press de banca". El hook de la sesión no conoce el catálogo y no tiene por
+ * qué: su trabajo es contar series, no traducir identificadores.
  *
- * NO ES LA FUENTE DE NADA. Si nadie lo escribió, la tarjeta muestra el
- * temporizador solo, que es exactamente lo que mostraba antes. Nada de lo que
- * hay acá puede romper un descanso.
+ * NO ES LA FUENTE DE NADA. Si nadie lo escribió, la tarjeta sale sin nombre,
+ * que es exactamente lo que mostraba antes. Nada de lo que hay acá puede
+ * romper un descanso.
  */
 
-export type EnCurso = {
-  /** El nombre, ya resuelto. `null` = todavía no se eligió ejercicio. */
-  ejercicio: string | null;
-  /** La serie que se acaba de hacer, contando desde uno. */
-  serie: number;
-  /** Cuántas se propuso la persona en este bloque. */
-  meta: number;
-};
+let nombres: Record<string, string> = {};
 
-let actual: EnCurso | null = null;
-
-export function ponerEnCurso(e: EnCurso) {
-  actual = e;
+export function ponerNombres(lista: readonly { id: string; nombre: string }[]) {
+  // Un catálogo que no llegó (sin señal) no borra los nombres que ya se sabían.
+  if (lista.length === 0) return;
+  nombres = Object.fromEntries(lista.map((e) => [e.id, e.nombre]));
 }
 
-export function leerEnCurso(): EnCurso | null {
-  return actual;
-}
-
-/** Al terminar la sesión: lo de recién deja de ser cierto. */
-export function olvidarEnCurso() {
-  actual = null;
+/** El nombre, ya resuelto. `null` = sin ejercicio, o todavía no se sabe. */
+export function nombreDe(id: string | null): string | null {
+  return id === null ? null : (nombres[id] ?? null);
 }
