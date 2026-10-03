@@ -126,9 +126,60 @@ const enPestana = (p, t, exact = true) =>
 const enHoja = (t, exact = true) =>
   page.locator('[data-testid="hoja"]').getByText(t, { exact }).last();
 
+/**
+ * ESPERAR A QUE UNA PANTALLA SE ASIENTE antes de preguntarle qué tiene.
+ *
+ * "Asentada" es que lo que dibuja dejó de cambiar durante un segundo. Mira los
+ * nodos y el texto, no los estilos: las animaciones mueven estilos todo el
+ * tiempo y con eso no se asentaría nunca. Tiene tope: si la pantalla no para,
+ * se sigue igual, que es lo que hacía antes.
+ */
+async function asentar(selector, quieto = 1000, tope = 15000) {
+  await page
+    .evaluate(
+      ({ selector, quieto, tope }) =>
+        new Promise((listo) => {
+          const raiz = document.querySelector(selector) ?? document.body;
+          let espera;
+          const fin = () => {
+            observador.disconnect();
+            clearTimeout(espera);
+            clearTimeout(limite);
+            listo();
+          };
+          const observador = new MutationObserver(() => {
+            clearTimeout(espera);
+            espera = setTimeout(fin, quieto);
+          });
+          observador.observe(raiz, { childList: true, subtree: true, characterData: true });
+          espera = setTimeout(fin, quieto);
+          const limite = setTimeout(fin, tope);
+        }),
+      { selector, quieto, tope }
+    )
+    .catch(() => {});
+}
+
+/**
+ * TOCAR ALGO SI ESTÁ.
+ *
+ * Y SI DESAPARECE MIENTRAS SE LO INTENTA TOCAR, NO ESTABA (3/10). Entre mirar
+ * que algo se ve y tocarlo, la pantalla puede cambiar: el click se quedaba
+ * quince segundos esperando un elemento que ya no existía y lo anotaba como
+ * "no se pudo abrir", con la pantalla perfecta. Un aviso que salta una de cada
+ * dos corridas enseña a no mirarlo.
+ *
+ * Lo que SÍ sigue siendo un hallazgo: que el elemento siga a la vista y no se
+ * deje tocar. Eso es una pantalla tapada o muerta, y hay que saberlo.
+ */
 const tocarSiEsta = async (l, exact = true) => {
   const loc = typeof l === 'string' ? texto(l, exact) : l;
-  if (await loc.isVisible().catch(() => false)) await loc.click({ timeout: 15000 });
+  if (!(await loc.isVisible().catch(() => false))) return;
+  try {
+    await loc.click({ timeout: 15000 });
+  } catch (e) {
+    if (await loc.isVisible().catch(() => false)) throw e;
+  }
 };
 
 console.log(`Barrido de la app nativa · cuenta ${usuario}`);
@@ -192,8 +243,20 @@ async function recorrerTodo(estado) {
   // están simplemente no hay nada que tocar.
   const solapa = (n) =>
     page.locator('[data-testid="carril-stats"]').getByRole('tab', { name: n, exact: true });
-  await mirar(con('Stats · Entrenamiento'), () => tocarSiEsta(solapa('Entrenamiento')));
-  await mirar(con('Stats · General'), () => tocarSiEsta(solapa('General')));
+  // Y SE ESPERA A QUE STATS SE ASIENTE (3/10). Sin red no pasa al cartel en el
+  // acto: se queda unos segundos con lo que tenía —solapas incluidas— mientras
+  // el pedido falla, y recién ahí las reemplaza. La sonda las veía, iba a tocar
+  // y se le iban de abajo del dedo: el aviso "sin red · Stats · Entrenamiento",
+  // que salía en más de la mitad de las corridas sin que hubiera nada roto.
+  const CARRIL_STATS = '[data-testid="carril-stats"]';
+  await mirar(con('Stats · Entrenamiento'), async () => {
+    await asentar(CARRIL_STATS);
+    await tocarSiEsta(solapa('Entrenamiento'));
+  });
+  await mirar(con('Stats · General'), async () => {
+    await asentar(CARRIL_STATS);
+    await tocarSiEsta(solapa('General'));
+  });
 
   await mirar(con('perfil propio'), async () => {
     await texto('Inicio').click();
