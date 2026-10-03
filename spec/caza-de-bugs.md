@@ -131,6 +131,48 @@ cambies de pestaña.
   pantalla abierta, seguís viendo su semana y fotos (~1 h) hasta salir. Cuando
   VOS bloqueás sí hace lo correcto (`router.back()`). Cosmético/menor privacidad.
 
+### Pantallas chicas: entrenando, el `+` queda debajo de la barra (3/10)
+**Sin arreglar, a propósito** (decisión del 3/10). Queda registrado.
+
+En un iPhone SE de 1ª generación (320×568), con una sesión corriendo, el botón
+`+` grande queda entero debajo de la barra de pestañas: **no se puede contar una
+serie sin desplazar la pantalla.** No se pierde nada —Inicio se desplaza— pero el
+botón más tocado de la app no está a la vista.
+
+> **LOS NÚMEROS DE ABAJO SON APROXIMADOS, NO EXACTOS.** Se midieron en la
+> versión web de la app nativa, en un navegador (Chromium) con la ventana del
+> tamaño de cada teléfono, y NO en un iPhone. En un teléfono de verdad el alto
+> útil es otro: la barra de estado arriba y el indicador de inicio abajo ocupan
+> lugar que el navegador no descuenta; la tipografía del sistema no mide lo
+> mismo; el texto sigue el tamaño que la persona eligió en iOS; y aparece una
+> fila de pasos (Apple Health) que en el navegador no se dibuja. Sirven para
+> saber DÓNDE no entra y más o menos por cuánto, no para afinar píxeles.
+>
+> **No hay forma de verificarlos con lo que tenemos:** hace falta una Mac con el
+> simulador de iOS, o el teléfono en la mano. Hasta entonces, orientativos.
+
+Alto útil de la ventana contra alto del contenido de Inicio, en píxeles:
+
+- **320×568 (iPhone SE 1ª gen):** en reposo 491 contra 612 (unos 121 afuera);
+  entrenando 491 contra 715 (unos 224 afuera, y ahí queda el `+`).
+- **375×667 (SE 2ª y 3ª gen, iPhone 8):** en reposo 590 contra 594 (unos 4
+  afuera); entrenando 590 contra 715 (unos 125 afuera).
+- **390×844 (iPhone 12 a 15):** en reposo sobran unos 173; entrenando, unos 52.
+- **430×932 (Pro Max):** sobran unos 261 y unos 140.
+
+"Entrenando" fue una sesión armada para medir: una serie hecha de tres, dos
+bloques cerrados, sin la lista de bloques abierta y sin la pregunta de marca,
+que suman alto. O sea que el caso real con más cosas en pantalla es peor.
+
+Lo que SÍ se hizo ese día: Inicio dejó de rebotar cuando el contenido entra
+(`alwaysBounceVertical={false}`). No se bloqueó el desplazamiento justamente por
+esto: en estas pantallas hace falta.
+
+Para la 1.1, dos caminos: subir el iOS mínimo y dejar afuera a los teléfonos de
+320 de ancho (necesita build nueva; el SE de 1ª gen quedó en iOS 15, que en
+agosto de 2026 era entre el 0,6 % y el 2 % del uso de iOS según la fuente, y el
+SE es solo una parte de eso), o compactar Inicio cuando hay sesión.
+
 ### Confirmado SANO (revisado, sin bug)
 Muchos días/cero amigos, amigos/racha 0, racha recién perdida (0 vidas, dias
 vacío), foto borrada con el visor abierto (índice clampeado + guarda `!!foto`),
