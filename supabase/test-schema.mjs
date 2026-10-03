@@ -12414,6 +12414,95 @@ console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CL
   chequear('publicar se llama una sola vez, sin reintento', (pub168.match(/execFileSync\(/g) ?? []).length, 1);
 }
 
+console.log('\n169. La luz de la barra sale de la posicion de la tira');
+{
+  const D = await import('../nucleo/deslizar.ts');
+  const { readFileSync: leer169 } = await import('node:fs');
+  const { join: unir169 } = await import('node:path');
+  const pes169 = sinComentarios(leer169(unir169(import.meta.dirname, '..', 'movil', 'src', 'Pestanas.tsx'), 'utf8'));
+  const ANCHO = 390;
+  const TOTAL = 5;
+
+  // LA LUZ TARDABA (3/10). Seguia a la pestaña activa, que es estado: al deslizar
+  // llegaba 340 ms tarde, cuando terminaba el viaje, y ademas esperaba a que se
+  // redibujaran todas las pantallas. Ahora es una opacidad que sale de DONDE
+  // ESTA LA TIRA, con el mismo valor animado que mueve las pantallas.
+  //
+  // LA PROPIEDAD QUE SE CUIDA: no es un estado aparte, asi que no se puede
+  // desincronizar de lo que se ve. Es la que falto cuando se rompio el titileo.
+
+  // La misma cuenta que hace la interpolacion: por tramos, y fija en las puntas.
+  const valor = (x, { entrada, salida }) => {
+    if (x <= entrada[0]) return salida[0];
+    for (let k = 1; k < entrada.length; k++) {
+      if (x <= entrada[k]) {
+        return salida[k - 1] + ((salida[k] - salida[k - 1]) * (x - entrada[k - 1])) / (entrada[k] - entrada[k - 1]);
+      }
+    }
+    return salida[salida.length - 1];
+  };
+  const crudas = (x) => Array.from({ length: TOTAL }, (_, i) => valor(x, D.luzDePestana(i, TOTAL, ANCHO)));
+  const luces = (x) => crudas(x).map((v) => Math.round(v * 100) / 100);
+
+  // ---- EN REPOSO: una sola encendida, la de la pestaña donde esta la tira ----
+  for (let i = 0; i < TOTAL; i++) {
+    chequear('con la tira en la pestaña ' + i + ' se enciende solo esa',
+      luces(D.reposo(i, ANCHO)), Array.from({ length: TOTAL }, (_, j) => (j === i ? 1 : 0)));
+  }
+
+  // ---- ACOMPAÑA AL DEDO: no espera a que se suelte ni a que termine el viaje ----
+  chequear('a un cuarto del camino a Ranking: tres cuartos y un cuarto', luces(-97.5), [0.75, 0.25, 0, 0, 0]);
+  chequear('a mitad de camino, las dos a medias', luces(-195), [0.5, 0.5, 0, 0, 0]);
+  // EL SEGUNDO GESTO PEGADO, el del titileo: la tira en -414 es Ranking con el
+  // Album asomando, y la luz dice exactamente eso sin que nadie le avise.
+  chequear('con la tira pasando Ranking, la luz esta en Ranking', luces(-414), [0, 0.94, 0.06, 0, 0]);
+
+  // ---- SIEMPRE HAY UNA LUZ ENTERA, repartida entre a lo sumo dos ----
+  const sumas169 = new Set();
+  const prendidas169 = new Set();
+  for (let x = 0; x >= D.reposo(TOTAL - 1, ANCHO); x -= 13) {
+    sumas169.add(Math.round(crudas(x).reduce((a, b) => a + b, 0) * 1e6) / 1e6);
+    prendidas169.add(crudas(x).filter((v) => v > 0).length <= 2);
+  }
+  chequear('en todo el recorrido la luz suma siempre uno', [...sumas169], [1]);
+  chequear('y nunca hay mas de dos prendidas a la vez', [...prendidas169], [true]);
+
+  // ---- EN LOS BORDES NO SE APAGA: ahi la tira cede un poco ----
+  chequear('tirando contra el borde, Inicio sigue entera', luces(D.arrastre(0, 100, ANCHO, TOTAL).x), [1, 0, 0, 0, 0]);
+  chequear('y Ajustes tambien', luces(D.arrastre(TOTAL - 1, -100, ANCHO, TOTAL).x), [0, 0, 0, 0, 1]);
+
+  // La interpolacion animada exige las posiciones en orden creciente; con un
+  // ancho de cero —el primer dibujado— tres puntos iguales la romperian.
+  chequear('las posiciones van siempre de menor a mayor, tambien con ancho cero',
+    [ANCHO, 0].every((a) =>
+      Array.from({ length: TOTAL }, (_, i) => D.luzDePestana(i, TOTAL, a).entrada).every((e) => e.every((v, k) => k === 0 || v > e[k - 1]))
+    ), true);
+
+  // ---- EL CABLEADO (se lee: un .tsx no se puede cargar con node) ----
+  const barra169 = (texto) => {
+    const i = texto.indexOf('accessibilityRole="tablist"');
+    const barra = i < 0 ? '' : texto.slice(i, texto.indexOf('const estilos = StyleSheet.create(', i));
+    return {
+      laLuzEsUnaOpacidadDeLaTira:
+        /opacity: luces\[i\]/.test(barra) &&
+        /luzDePestana\(i, ORDEN\.length, ancho\)/.test(texto) &&
+        /correr\.interpolate\(\{ inputRange: entrada, outputRange: salida, extrapolate: 'clamp' \}\)/.test(texto),
+      // Ni el color ni la opacidad pueden volver a salir de la pestaña activa.
+      noSaleDeLaPestanaActiva: barra !== '' && !/pestana === p (&&|\?)/.test(barra) && !/estilos\.activo/.test(barra),
+    };
+  };
+  chequear('la luz de la barra es una opacidad atada a la tira, no a la pestaña activa', barra169(pes169), {
+    laLuzEsUnaOpacidadDeLaTira: true,
+    noSaleDeLaPestanaActiva: true,
+  });
+  // QUE EL DETECTOR SIRVA: la barra como estaba antes.
+  chequear('la barra de antes no pasa', barra169(
+    'accessibilityRole="tablist"> <Text style={[estilos.texto, pestana === p && estilos.activo]}>{T.nav[p]}</Text> const estilos = StyleSheet.create('
+  ), { laLuzEsUnaOpacidadDeLaTira: false, noSaleDeLaPestanaActiva: false });
+  // EL ROTULO ESTA DOS VECES (apagado y encendido): que no se lea dos veces.
+  chequear('cada pestaña lleva su nombre para el lector de pantalla', /: T\.nav\[p\]\}/.test(pes169), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

@@ -86,3 +86,32 @@ export function alSoltar(indice: number, dx: number, ancho: number, velocidad: n
   const destino = vecina(indice, dx, total);
   return destino !== null && cambiaDePestana(dx, ancho, velocidad) ? destino : indice;
 }
+
+/**
+ * LA LUZ DE LA BARRA SALE DE LA TIRA (3/10).
+ *
+ * Cuánto se enciende el rótulo de cada pestaña según DÓNDE ESTÁ LA TIRA: entera
+ * cuando la tira descansa en esa pestaña, apagada a un ancho de distancia, y en
+ * el medio lo que corresponda. Devuelve los dos rangos de una interpolación:
+ * posiciones de la tira (`entrada`, de menor a mayor) y opacidad (`salida`).
+ *
+ * POR QUÉ ASÍ. La luz seguía a la pestaña activa, que es estado: al deslizar
+ * llegaba 340 ms tarde —al terminar el viaje— y encima esperaba a que se
+ * redibujaran todas las pantallas. Atada a la posición de la tira no espera a
+ * nadie, acompaña al dedo, y NO SE PUEDE DESINCRONIZAR de lo que se ve: no es
+ * un estado aparte que alguien tenga que acordarse de mover. Esa es la
+ * propiedad que faltó cuando se rompió el titileo.
+ *
+ * EN LOS BORDES LA LUZ NO SE APAGA: contra el borde la tira cede un poco
+ * (`arrastre`), y sin esto Inicio se oscurecería al tirar hacia la derecha.
+ */
+export function luzDePestana(indice: number, total: number, ancho: number): { entrada: number[]; salida: number[] } {
+  const aca = reposo(indice, ancho);
+  // Un ancho de cero dejaría los tres puntos iguales, y la interpolación los
+  // quiere en orden.
+  const paso = Math.max(1, ancho);
+  if (total <= 1) return { entrada: [aca - paso, aca], salida: [1, 1] };
+  if (indice === 0) return { entrada: [aca - paso, aca], salida: [0, 1] };
+  if (indice === total - 1) return { entrada: [aca, aca + paso], salida: [1, 0] };
+  return { entrada: [aca - paso, aca, aca + paso], salida: [0, 1, 0] };
+}

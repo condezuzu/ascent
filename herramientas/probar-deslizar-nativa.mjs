@@ -56,25 +56,24 @@ async function arrastrar(x0, x1, y = 420, pasos = 12) {
 }
 
 /**
- * Cuál pestaña está marcada en la barra de abajo. SE MIRA EL COLOR y no
- * `aria-selected`: React Native Web no traduce `accessibilityState.selected` a
- * ese atributo, así que el único rastro en el DOM de cuál está activa es que
- * su texto está claro y el de las otras apagado. En el teléfono el atributo
- * sí existe y lo usa VoiceOver; esto es una limitación de mirarlo acá.
+ * Cuál pestaña está marcada en la barra de abajo.
+ *
+ * SE MIRA LA LUZ (3/10). El rótulo de cada pestaña está dos veces, apagado y
+ * encendido, y el encendido lleva una opacidad atada a la posición de la tira
+ * (`luzDePestana` en nucleo/deslizar.ts). La marcada es la que tiene la luz más
+ * prendida. Antes se miraba el color del texto, que salía de la pestaña activa.
+ *
+ * No se usa `aria-selected`: React Native Web no traduce
+ * `accessibilityState.selected` a ese atributo.
  */
 const activa = () =>
   page.evaluate(() => {
-    const claro = (e) => {
-      const c = getComputedStyle(e).color.match(/\d+/g) ?? [];
-      return Number(c[0]) > 150;
-    };
-    // SOLO LA BARRA DE ABAJO, que es la ultima lista de pestañas del documento:
-    // Stats trae las suyas adentro ("General"...), y con Stats montada esto
-    // devolvia la de Stats en vez de la de la barra.
-    const barras = document.querySelectorAll('[role="tablist"]');
-    const barra = barras[barras.length - 1];
-    const t = [...(barra?.querySelectorAll('[role="tab"]') ?? [])].find((e) => [...e.querySelectorAll('*')].some(claro));
-    return t?.innerText?.trim() ?? null;
+    const luces = [...document.querySelectorAll('[data-testid^="luz-"]')].map((e) => ({
+      nombre: e.textContent.trim(),
+      luz: Number(getComputedStyle(e).opacity),
+    }));
+    const mas = luces.sort((a, b) => b.luz - a.luz)[0];
+    return mas && mas.luz > 0.5 ? mas.nombre : null;
   });
 
 /** Los títulos de pantalla puestos, SIN la barra de abajo: con dos, una asoma. */

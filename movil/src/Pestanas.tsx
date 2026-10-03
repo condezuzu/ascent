@@ -3,7 +3,7 @@ import { ActivityIndicator, Animated, AppState, Easing, PanResponder, Pressable,
 import { supabase } from './supabase';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
-import { alSoltar, arrastre, CURVA, reposo, VIAJE_MS, vecina } from '@nucleo/deslizar';
+import { alSoltar, arrastre, CURVA, luzDePestana, reposo, VIAJE_MS, vecina } from '@nucleo/deslizar';
 import Inicio from './Inicio';
 import Stats from './Stats';
 import Ranking from './Ranking';
@@ -290,6 +290,20 @@ export default function Pestanas({
   }, [ancho, correr]);
 
   /**
+   * LA LUZ DE CADA PESTAÑA, ATADA A LA TIRA (3/10). Es una opacidad que sale del
+   * mismo valor animado que mueve las pantallas: no hay estado, no espera al
+   * viaje ni al redibujado, y acompaña al dedo. Ver `luzDePestana`.
+   */
+  const luces = useMemo(
+    () =>
+      ORDEN.map((_p, i) => {
+        const { entrada, salida } = luzDePestana(i, ORDEN.length, ancho);
+        return correr.interpolate({ inputRange: entrada, outputRange: salida, extrapolate: 'clamp' });
+      }),
+    [correr, ancho]
+  );
+
+  /**
    * IR A UNA PESTAÑA, tocando el botón de abajo.
    *
    * SE MUEVE Y SE ANIMA, igual que el gesto. Antes el toque era instantáneo
@@ -495,7 +509,7 @@ export default function Pestanas({
 
       <View style={estilos.barra} accessibilityRole="tablist">
         {/* El orden de la web: Inicio, Ranking, Álbum, Stats, Ajustes. */}
-        {ORDEN.map((p) => {
+        {ORDEN.map((p, i) => {
           // EL PUNTITO EN RANKING: hay solicitudes esperando y no estás mirando
           // Ranking. Estando ahí ya las ves (van al final de la pantalla).
           const avisa = p === 'ranking' && solicitudes > 0 && pestana !== 'ranking';
@@ -506,10 +520,23 @@ export default function Pestanas({
               onPress={() => irA(p)}
               accessibilityRole="tab"
               accessibilityState={{ selected: pestana === p }}
-              accessibilityLabel={avisa ? `${T.nav[p]} — ${T.social.tePidieron(solicitudes)}` : undefined}
+              // SIEMPRE CON SU NOMBRE: el rótulo está dos veces —apagado y
+              // encendido— y sin esto se leería dos veces en voz alta.
+              accessibilityLabel={avisa ? `${T.nav[p]} — ${T.social.tePidieron(solicitudes)}` : T.nav[p]}
             >
               <View>
-                <Text style={[estilos.texto, pestana === p && estilos.activo]}>{T.nav[p]}</Text>
+                <Text style={estilos.texto}>{T.nav[p]}</Text>
+                {/* LA LUZ: el mismo rótulo, encendido, encima del apagado. Lo
+                    que cambia es su opacidad, y sale de la tira (`luces`), no
+                    de `pestana`. */}
+                <Animated.Text
+                  testID={'luz-' + p}
+                  style={[estilos.texto, estilos.luz, { opacity: luces[i] }]}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                >
+                  {T.nav[p]}
+                </Animated.Text>
                 {avisa && <View style={estilos.punto} />}
               </View>
             </Pressable>
@@ -540,7 +567,8 @@ const estilos = StyleSheet.create({
   },
   boton: { flex: 1, alignItems: 'center', paddingVertical: 6, minHeight: 44, justifyContent: 'center' },
   texto: { color: '#4a5163', fontSize: 12, letterSpacing: 0.5 },
-  activo: { color: '#e8ecf6' },
+  // Encima del rótulo apagado, calzado: mismo texto, mismo tamaño, otro color.
+  luz: { position: 'absolute', left: 0, top: 0, color: '#e8ecf6' },
   // El puntito de aviso, arriba a la derecha del rótulo de la pestaña.
   punto: {
     position: 'absolute',
