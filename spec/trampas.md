@@ -1109,3 +1109,16 @@ tranquilidad: no probaba que estuviera bien, protegía la decisión equivocada.
 → **Regla:** cuando algo falla en PRODUCCIÓN, el test que "lo cubre" es
 SOSPECHOSO, no coartada. Revisá qué decisión tiene grabada antes de confiar en
 que el verde significa que está bien. Ver `spec/build-5-apple.md`.
+
+**Una prueba que exige el texto del código también fija el bug.** La pantalla
+del bloque anotaba la serie para la pantalla bloqueada desde un `useEffect`,
+con un "+1" que suponía que el descanso arrancaba antes de sumar. El 25/9 el
+conteo pasó a moverse primero (62c8cc5) y el "+1" contó dos veces la misma
+serie: "serie 4 de 3" en el gimnasio, una semana. El test que lo cubría exigía
+el texto `serie: estado.hechas + 1`: comprobaba que el archivo dijera lo que
+decía, no lo que le llegaba al teléfono.
+→ **Regla:** lo que un camino necesita de otro se le PASA, calculado del estado
+que ese camino ve, por una función de `nucleo/` que `test:db` pueda EJECUTAR
+(`serieDelDescanso`). Un valor que sale bien o mal según qué corre primero no
+se puede probar. Y una regex sobre el fuente sirve para cuidar el cableado,
+nunca como única prueba de una conducta.
