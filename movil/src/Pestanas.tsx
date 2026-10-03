@@ -3,7 +3,7 @@ import { ActivityIndicator, Animated, AppState, Easing, PanResponder, Pressable,
 import { supabase } from './supabase';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
-import { cambiaDePestana, CURVA, VIAJE_MS, vecina } from '@nucleo/deslizar';
+import { alSoltar, arrastre, CURVA, reposo, VIAJE_MS, vecina } from '@nucleo/deslizar';
 import Inicio from './Inicio';
 import Stats from './Stats';
 import Ranking from './Ranking';
@@ -172,6 +172,24 @@ export default function Pestanas({
    * el driver nativo— sin orden garantizado entre ellas. Ver el encabezado.
    */
   const correr = useRef(new Animated.Value(0)).current;
+  /**
+   * EN CUÁL ESTÁ LA TIRA, O A CUÁL ESTÁ YENDO — EL TITILEO AL DESLIZAR RÁPIDO (3/10).
+   *
+   * El gesto leía `pestana`, que es estado: cambia recién cuando el viaje
+   * TERMINA (340 ms) y la pantalla se vuelve a dibujar. Un segundo gesto en ese
+   * rato todavía creía estar en la pestaña de antes y colocaba la tira ahí: se
+   * veía la anterior un cuadro o dos y después la nueva. Medido con dos gestos
+   * pegados: la tira iba de −390 (Ranking) a −17 (Inicio) y a −414.
+   *
+   * Los tres intentos anteriores arreglaron otras cosas —el remontaje, el
+   * `left` contra el `translateX`, los cuadros del motor— y por eso este
+   * seguía: no era de dibujado, era de QUÉ PESTAÑA CREE EL GESTO QUE ES.
+   *
+   * Esto se actualiza AL SOLTAR, antes de que arranque el viaje, y es lo único
+   * que miran el gesto y la barra. `pestana` sigue siendo lo que se dibuja como
+   * activa, y se pone al día cuando el viaje llega.
+   */
+  const rumbo = useRef<Pestana>('inicio');
   // El gesto se lee con refs y no con estado: el estado llega un cuadro tarde,
   // y un cuadro tarde en un dedo que se mueve se ve como un tirón.
   const gesto = useRef<{ decidido: boolean; vecina: Pestana | null; desde: number; x0: number }>({
@@ -259,9 +277,6 @@ export default function Pestanas({
   montadas.current.add(pestana);
   if (asomando) montadas.current.add(asomando);
 
-  // DÓNDE TIENE QUE QUEDAR LA TIRA con esta pestaña, en reposo.
-  const enReposo = -ORDEN.indexOf(pestana) * ancho;
-
   // SOLO SI CAMBIA EL ANCHO —girar el teléfono— se recoloca sin animar. En un
   // cambio de pestaña no: ahí la tira ya la está moviendo la animación, y un
   // `setValue` encima la cortaría a la mitad.
@@ -269,8 +284,10 @@ export default function Pestanas({
   useEffect(() => {
     if (anchoAnterior.current === ancho) return;
     anchoAnterior.current = ancho;
-    correr.setValue(enReposo);
-  }, [ancho, enReposo, correr]);
+    correr.setValue(reposo(ORDEN.indexOf(rumbo.current), ancho));
+    // Si esto cortó un viaje, aquel ya no va a decir cuál quedó activa.
+    setPestana(rumbo.current);
+  }, [ancho, correr]);
 
   /**
    * IR A UNA PESTAÑA, tocando el botón de abajo.
@@ -283,18 +300,25 @@ export default function Pestanas({
    */
   const irA = useCallback(
     (destino: Pestana) => {
-      if (destino === pestana) return;
+      // Contra el RUMBO y no contra `pestana`: con un viaje en curso la activa
+      // todavía es la de antes y la tira ya va para otro lado.
+      if (destino === rumbo.current) return;
+      rumbo.current = destino;
       montadas.current.add(destino);
       setPestana(destino);
-      ponerDesenfoque(desenfoqueEn(-ORDEN.indexOf(destino) * ancho, ancho));
+      setAsomando(null);
+      const llega = reposo(ORDEN.indexOf(destino), ancho);
+      ponerDesenfoque(desenfoqueEn(llega, ancho));
+      // Sin nada al terminar: la activa ya quedó dicha arriba. Si este viaje
+      // corta uno del gesto, aquel se entera de que no terminó y no decide.
       Animated.timing(correr, {
-        toValue: -ORDEN.indexOf(destino) * ancho,
+        toValue: llega,
         duration: VIAJE_MS,
         easing: Easing.bezier(...CURVA),
         useNativeDriver: true,
       }).start();
     },
-    [pestana, ancho, correr]
+    [ancho, correr]
   );
 
   // "Ir a Ajustes" desde el texto de otra pantalla: ver `irAPestana.ts`.
@@ -314,36 +338,40 @@ export default function Pestanas({
           // terminabas en otra pestaña. Ver `gestoDePestanas.ts`.
           if (deslizarPestanasBloqueado()) return false;
           if (Math.abs(g.dx) < DECIDE_PX || Math.abs(g.dx) < Math.abs(g.dy) * 1.5) return false;
-          return vecina(ORDEN.indexOf(pestana), g.dx, ORDEN.length) !== null;
+          return vecina(ORDEN.indexOf(rumbo.current), g.dx, ORDEN.length) !== null;
         },
         onPanResponderGrant: (_e, g) => {
-          const destino = vecina(ORDEN.indexOf(pestana), g.dx, ORDEN.length);
+          const destino = vecina(ORDEN.indexOf(rumbo.current), g.dx, ORDEN.length);
           gesto.current = { decidido: true, vecina: destino === null ? null : ORDEN[destino], desde: Date.now(), x0: g.dx };
           setAsomando(destino === null ? null : ORDEN[destino]);
         },
         onPanResponderMove: (_e, g) => {
           if (!gesto.current.decidido) return;
           // Si el dedo cambia de lado a mitad del gesto, cambia la que asoma.
-          const destino = vecina(ORDEN.indexOf(pestana), g.dx, ORDEN.length);
-          const cual = destino === null ? null : ORDEN[destino];
+          // Desde el RUMBO: la cuenta está en `nucleo/deslizar.ts`, probada.
+          const { asoma, x } = arrastre(ORDEN.indexOf(rumbo.current), g.dx, ancho, ORDEN.length);
+          const cual = asoma === null ? null : ORDEN[asoma];
           if (cual !== gesto.current.vecina) {
             gesto.current.vecina = cual;
             setAsomando(cual);
           }
           // Sobre el reposo, no desde cero: la tira ya está corrida.
-          correr.setValue(enReposo + (cual === null ? g.dx * 0.25 : g.dx));
+          correr.setValue(x);
           // EL DESENFOQUE SIGUE AL DEDO. Lo que se mide es la distancia a
           // Inicio en anchos de pantalla: en Inicio es 0, en cualquier otra 1,
           // y a mitad de camino la mitad. No es el índice de la pestaña sino
           // dónde está la tira AHORA, que es lo que hace que baje mientras
           // arrastrás en vez de saltar al soltar.
-          ponerDesenfoque(desenfoqueEn(enReposo + (cual === null ? g.dx * 0.25 : g.dx), ancho));
+          ponerDesenfoque(desenfoqueEn(x, ancho));
         },
         onPanResponderRelease: (_e, g) => {
-          const destino = gesto.current.vecina;
           const ms = Math.max(1, Date.now() - gesto.current.desde);
-          const viaja = destino !== null && cambiaDePestana(g.dx, ancho, g.dx / ms);
-          const llega = viaja && destino ? -ORDEN.indexOf(destino) * ancho : enReposo;
+          const hasta = alSoltar(ORDEN.indexOf(rumbo.current), g.dx, ancho, g.dx / ms, ORDEN.length);
+          // EL RUMBO CAMBIA ACÁ, AL SOLTAR, y no cuando el viaje termina: el
+          // gesto que venga en los próximos 340 ms ya parte de la pestaña a la
+          // que va la tira. Esperar al final era el titileo.
+          rumbo.current = ORDEN[hasta];
+          const llega = reposo(hasta, ancho);
           // Al soltar, el desenfoque va A DONDE VA LA TIRA y no a donde está:
           // los dos viajes duran lo mismo y terminan juntos.
           ponerDesenfoque(desenfoqueEn(llega, ancho));
@@ -352,19 +380,29 @@ export default function Pestanas({
             duration: VIAJE_MS,
             easing: Easing.bezier(...CURVA),
             useNativeDriver: true,
-          }).start(() => {
+          }).start(({ finished }) => {
+            // UN VIAJE CORTADO NO DECIDE NADA. Lo corta otro gesto o un toque en
+            // la barra, y el que lo cortó sabe dónde queda la tira. Antes esto
+            // corría igual: pisaba la pestaña que acababa de elegir el toque
+            // —la barra marcaba una y se veía otra— y le apagaba al gesto nuevo
+            // la que asomaba.
+            if (!finished) return;
             // LA TIRA YA ESTÁ DONDE TIENE QUE ESTAR: la animación la dejó
             // sobre la pestaña de destino. Lo único que falta es decir cuál es
             // la activa, y eso NO MUEVE NADA — los `left` son absolutos y no
             // cambian. Por eso acá ya no hay nada que centrar ni que esperar.
-            if (viaja && destino) setPestana(destino);
-            setAsomando(null);
+            setPestana(rumbo.current);
+            // Si ya hay otro gesto en curso, la que asoma es de él.
+            if (!gesto.current.decidido) setAsomando(null);
           });
           gesto.current = { decidido: false, vecina: null, desde: 0, x0: 0 };
         },
         onPanResponderTerminationRequest: () => false,
       }),
-    [pestana, ancho, correr, enReposo]
+    // SIN `pestana`: el gesto no puede depender de lo que se está dibujando.
+    // Además así el PanResponder no se rearma debajo del dedo a mitad de un
+    // gesto, que le ponía el arrastre en cero.
+    [ancho, correr]
   );
 
   const dibujar = (cual: Pestana) => {

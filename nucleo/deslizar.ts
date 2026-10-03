@@ -55,3 +55,34 @@ export function vecina(indice: number, dx: number, total: number): number | null
   const destino = dx < 0 ? indice + 1 : indice - 1;
   return destino < 0 || destino >= total ? null : destino;
 }
+
+/**
+ * DÓNDE DESCANSA LA TIRA con la pestaña `indice` al frente: Inicio en 0 y cada
+ * una un ancho más a la izquierda.
+ */
+export function reposo(indice: number, ancho: number): number {
+  return 0 - indice * ancho;
+}
+
+/** Contra el borde —no hay pestaña de ese lado— la tira cede un cuarto del dedo. */
+const CEDE_EN_EL_BORDE = 0.25;
+
+/**
+ * MIENTRAS SE ARRASTRA: cuál asoma y dónde va la tira.
+ *
+ * `indice` es la pestaña en la que la tira ESTÁ O A LA QUE ESTÁ YENDO, que
+ * durante un viaje no es "la activa". Esa diferencia fue el titileo al deslizar
+ * rápido (3/10): el gesto partía de la activa, que cambia recién cuando el
+ * viaje termina, y un segundo gesto en ese rato colocaba la tira en la pestaña
+ * de antes. Quien llama le pasa el rumbo, no lo que se está dibujando.
+ */
+export function arrastre(indice: number, dx: number, ancho: number, total: number): { asoma: number | null; x: number } {
+  const asoma = vecina(indice, dx, total);
+  return { asoma, x: reposo(indice, ancho) + (asoma === null ? dx * CEDE_EN_EL_BORDE : dx) };
+}
+
+/** AL SOLTAR: en qué pestaña queda la tira. La misma si el gesto no alcanzó. */
+export function alSoltar(indice: number, dx: number, ancho: number, velocidad: number, total: number): number {
+  const destino = vecina(indice, dx, total);
+  return destino !== null && cambiaDePestana(dx, ancho, velocidad) ? destino : indice;
+}

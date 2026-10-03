@@ -9162,7 +9162,9 @@ console.log('\n133. Las dos apps se mueven igual');
   const web = de133('src', 'components', 'PantallaDeslizable.tsx');
   chequear('la web usa la regla compartida', /cambiaDePestana\(/.test(web), true);
   const pest = de133('movil', 'src', 'Pestanas.tsx');
-  chequear('la nativa tambien', /cambiaDePestana\(/.test(pest) && /vecina\(/.test(pest), true);
+  // La nativa la usa por alSoltar, que es la que llama a cambiaDePestana (ver
+  // la 167): la regla sigue siendo una sola.
+  chequear('la nativa tambien', /alSoltar\(/.test(pest) && /vecina\(/.test(pest), true);
   // LA DE AL LADO ASOMA, que es la diferencia entre "se mueve" y "se mueve,
   // carga, se mueve".
   chequear('y la de al lado asoma mientras se arrastra', /setAsomando\(/.test(pest), true);
@@ -11250,11 +11252,13 @@ console.log('\n156. El planeta esta siempre, y fuera de Inicio se ve borroso');
   // SALE DE DONDE ESTA LA TIRA, no de que pestana va a quedar activa: eso es lo
   // que hace que baje MIENTRAS arrastras en vez de saltar al soltar.
   chequear('el desenfoque se mide contra la posicion de la tira',
-    /ponerDesenfoque\(desenfoqueEn\(enReposo/.test(pes156), true);
+    /const \{ asoma, x \} = arrastre\(/.test(pes156) && /ponerDesenfoque\(desenfoqueEn\(x, ancho\)\)/.test(pes156), true);
   chequear('y al soltar va a donde va la tira',
     /ponerDesenfoque\(desenfoqueEn\(llega, ancho\)\)/.test(pes156), true);
+  const iIrA156 = pes156.indexOf('const irA = useCallback(');
+  const irA156 = pes156.slice(iIrA156, pes156.indexOf('eventos.escuchar(IR_A_PESTANA', iIrA156));
   chequear('tocar una pestana tambien lo mueve',
-    /ponerDesenfoque\(desenfoqueEn\(-ORDEN\.indexOf\(destino\) \* ancho, ancho\)\)/.test(pes156), true);
+    /const llega = reposo\(ORDEN\.indexOf\(destino\), ancho\);\s*ponerDesenfoque\(desenfoqueEn\(llega, ancho\)\)/.test(irA156), true);
 
   // ---- CADA PESTANA TIENE SU TECHO (25/9) ----
   //
@@ -12241,6 +12245,102 @@ console.log('\n166. El peso se recuerda por ejercicio Y por modo');
     chequear('el campo de la ' + que + ' no pisa lo que se esta tecleando', /if \(tecleando\.current\) return;\s*setTexto\(mostrar\(kg\)\)/.test(campo), true);
     chequear('y avisa cuando se teclea el mismo numero (' + que + ')', /hayQueAvisar\(r, tecleo && !compacto\)/.test(campo), true);
   }
+}
+
+console.log('\n167. Deslizar rapido: el gesto parte de la pestaña a la que va la tira');
+{
+  const D = await import('../nucleo/deslizar.ts');
+  const { readFileSync: leer167 } = await import('node:fs');
+  const { join: unir167 } = await import('node:path');
+  const pes167 = sinComentarios(leer167(unir167(import.meta.dirname, '..', 'movil', 'src', 'Pestanas.tsx'), 'utf8'));
+  const ANCHO = 390;
+  const TOTAL = 5;
+
+  // EL TITILEO AL DESLIZAR RAPIDO (3/10), el que sobrevivio a tres arreglos.
+  //
+  // El gesto partia de la pestaña ACTIVA, que es estado de React y cambia recien
+  // cuando el viaje termina (340 ms) y la pantalla se vuelve a dibujar. Un
+  // segundo gesto en ese rato colocaba la tira en la pestaña de antes: se veia
+  // la anterior un cuadro o dos, y despues la nueva. Medido: la tira iba de
+  // -390 (Ranking) a -17 (Inicio) y a -414.
+  //
+  // Ahora el gesto parte del RUMBO —a donde va la tira—, que cambia al soltar.
+  // La cuenta esta en nucleo/ para poder ejecutarla aca.
+
+  // ---- LA CONDUCTA: dos gestos pegados ----
+  let rumbo167 = 0; // Inicio
+  rumbo167 = D.alSoltar(rumbo167, -190, ANCHO, -0.9, TOTAL);
+  chequear('al soltar el primer gesto el rumbo YA es Ranking', rumbo167, 1);
+  chequear('y la tira viaja a su lugar', D.reposo(rumbo167, ANCHO), -390);
+  // EL SEGUNDO GESTO EMPIEZA ANTES DE QUE EL VIAJE TERMINE: entre soltar y
+  // volver a arrastrar no pasa nada mas, y la cuenta ya tiene que dar bien.
+  chequear('el segundo gesto arrastra desde Ranking, y asoma el Album',
+    D.arrastre(rumbo167, -24, ANCHO, TOTAL), { asoma: 2, x: -414 });
+  // EL PATRON VIEJO, AL LADO: con la pestaña de antes, la misma cuenta manda la
+  // tira de vuelta a Inicio. Ese era el cuadro que se veia.
+  chequear('el patron viejo (la pestaña de antes) devolvia la tira a Inicio',
+    D.arrastre(0, -24, ANCHO, TOTAL), { asoma: 1, x: -24 });
+  rumbo167 = D.alSoltar(rumbo167, -190, ANCHO, -0.9, TOTAL);
+  chequear('dos gestos pegados avanzan dos pestañas', rumbo167, 2);
+
+  // ---- las reglas de siempre siguen valiendo por este camino ----
+  chequear('un gesto corto y lento no cambia el rumbo', D.alSoltar(2, -40, ANCHO, -0.1, TOTAL), 2);
+  chequear('uno corto pero rapido si', D.alSoltar(2, -40, ANCHO, -0.5, TOTAL), 3);
+  chequear('hacia la derecha se vuelve a la anterior', D.alSoltar(2, 190, ANCHO, 0.9, TOTAL), 1);
+  chequear('en los bordes no hay a donde ir',
+    [D.alSoltar(0, 190, ANCHO, 0.9, TOTAL), D.alSoltar(4, -190, ANCHO, -0.9, TOTAL)], [0, 4]);
+  chequear('y contra el borde la tira cede un cuarto del dedo', D.arrastre(0, 100, ANCHO, TOTAL), { asoma: null, x: 25 });
+  chequear('cada pestaña descansa un ancho mas a la izquierda',
+    [0, 1, 2, 3, 4].map((i) => D.reposo(i, ANCHO)), [0, -390, -780, -1170, -1560]);
+  chequear('Inicio descansa en cero, sin signo', Object.is(D.reposo(0, ANCHO), 0), true);
+
+  // ---- EL CABLEADO (se lee: un .tsx no se puede cargar con node) ----
+  //
+  // Solo, esto seria un proxy. Va junto con la conducta de arriba y con la
+  // sonda que lo mide en la pantalla, con el procesador frenado
+  // (herramientas/probar-deslizar-nativa.mjs, pasos 5 y 6).
+  const gesto167 = (texto) => {
+    const i = texto.indexOf('PanResponder.create({');
+    const cuerpo = i < 0 ? '' : texto.slice(i, texto.indexOf('const dibujar', i));
+    const iRumbo = cuerpo.indexOf('rumbo.current = ORDEN[hasta]');
+    return {
+      parteDelRumbo:
+        /arrastre\(ORDEN\.indexOf\(rumbo\.current\)/.test(cuerpo) && /alSoltar\(ORDEN\.indexOf\(rumbo\.current\)/.test(cuerpo),
+      noMiraLaActiva: cuerpo !== '' && !bordeDePalabra('pestana').test(cuerpo) && !/enReposo/.test(cuerpo),
+      elRumboCambiaAntesDelViaje: iRumbo > -1 && iRumbo < cuerpo.indexOf('Animated.timing('),
+      unViajeCortadoNoDecide: /\.start\(\(\{ finished \}\) => \{\s*if \(!finished\) return;/.test(cuerpo),
+      noSeRearmaConLaPestana: /\[ancho, correr\]\s*\);/.test(cuerpo),
+    };
+  };
+  chequear('el gesto parte del rumbo, lo cambia al soltar, y un viaje cortado no decide', gesto167(pes167), {
+    parteDelRumbo: true,
+    noMiraLaActiva: true,
+    elRumboCambiaAntesDelViaje: true,
+    unViajeCortadoNoDecide: true,
+    noSeRearmaConLaPestana: true,
+  });
+  // QUE EL DETECTOR SIRVA DE ALGO: el gesto como estaba antes del arreglo.
+  const viejo167 =
+    'PanResponder.create({ onPanResponderMove: (_e, g) => { ' +
+    'const destino = vecina(ORDEN.indexOf(pestana), g.dx, ORDEN.length); correr.setValue(enReposo + g.dx); }, ' +
+    'onPanResponderRelease: (_e, g) => { Animated.timing(correr, {}).start(() => { if (viaja && destino) setPestana(destino); }); } }), ' +
+    '[pestana, ancho, correr, enReposo] ); const dibujar';
+  chequear('el gesto de antes no pasa ninguna', gesto167(viejo167), {
+    parteDelRumbo: false,
+    noMiraLaActiva: false,
+    elRumboCambiaAntesDelViaje: false,
+    unViajeCortadoNoDecide: false,
+    noSeRearmaConLaPestana: false,
+  });
+
+  // LA BARRA: tocar una pestaña durante el viaje. El viaje cortado pisaba la
+  // pestaña recien elegida: la barra marcaba una y se veia otra.
+  const iIrA167 = pes167.indexOf('const irA = useCallback(');
+  const irA167 = pes167.slice(iIrA167, pes167.indexOf('eventos.escuchar(IR_A_PESTANA', iIrA167));
+  const iRumboBarra167 = irA167.indexOf('rumbo.current = destino;');
+  chequear('la barra compara contra el rumbo', /if \(destino === rumbo\.current\) return;/.test(irA167), true);
+  chequear('y lo cambia antes de mover la tira', iRumboBarra167 > -1 && iRumboBarra167 < irA167.indexOf('Animated.timing('), true);
+  chequear('sin depender de la pestaña que se esta dibujando', /\[ancho, correr\]/.test(irA167) && !/\[pestana/.test(irA167), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
