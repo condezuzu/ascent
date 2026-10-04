@@ -4,7 +4,7 @@ import { reiniciarGuia } from '@compartido/guia';
 import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
 import { GUIA_DE_NUEVO } from '../Recorrido';
-import { eliminarCuenta, limpiarAlSalir } from '@compartido/cuenta';
+import { cerrarSesion, eliminarCuenta, limpiarAlSalir } from '@compartido/cuenta';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
@@ -62,17 +62,16 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
   });
 
   const salir = useEnVuelo(async () => {
-    // Que la próxima cuenta no herede nada de esta: ver `limpiarAlSalir`.
-    await limpiarAlSalir(supabase);
+    setError('');
+    setAviso('');
+    // Sube lo pendiente, cierra SOLO en este aparato y recién si cerró borra:
+    // ver `cerrarSesion`. Sin señal no cierra, y se dice.
+    if (!(await cerrarSesion(supabase))) return setError(T.ajustes.noSeCerro);
     // Y SE SUELTA LA ZONA DEL GIMNASIO (24/9). Es lo único de esta app que
     // sigue andando con la app cerrada, así que es lo único que no se va solo
     // al salir: sin esto, el teléfono seguiría despertando a la app en el
     // gimnasio de una cuenta que ya no está, con el punto del dueño anterior.
     await plataforma.ubicacion.dejarDeVigilar();
-    // SOLO EN ESTE APARATO (4/10). Sin el alcance, la librería cierra la sesión
-    // en TODOS: salir del teléfono te sacaba de la web dentro de la hora, y al
-    // revés. Borrar la cuenta sí sale de todos lados (más abajo).
-    await supabase.auth.signOut({ scope: 'local' });
     alSalir();
   });
 
@@ -84,7 +83,8 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
       setBorrando(false);
       return setError(r.error);
     }
-    await limpiarAlSalir(supabase);
+    // La cuenta ya no existe: se borra sin mirar si el cierre contestó.
+    await limpiarAlSalir();
     await plataforma.ubicacion.dejarDeVigilar();
     await supabase.auth.signOut();
     alSalir();

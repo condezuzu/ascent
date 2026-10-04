@@ -5,41 +5,56 @@ import type { Cliente } from '@cliente';
 import { T } from '@nucleo/textos';
 import { numeroDeRango } from '@nucleo/rangos';
 import { plataforma } from '@plataforma';
-import { vaciar } from '@compartido/cola';
+import { soltarCola, vaciar } from '@compartido/cola';
+import { borrarDescanso } from '@compartido/descanso';
 import { borrarPerfilCache } from '@compartido/cache';
 import { borrarSesionCache } from '@compartido/sesionCache';
 
 /**
- * UNA SOLA LIMPIEZA AL SALIR DE LA CUENTA (4/10).
+ * SALIR DE LA CUENTA, Y QUE NO QUEDE NADA PARA LA QUE ENTRE (4/10).
  *
  * Al cerrar sesión se borraba la copia del perfil y nada más. Quedaban en el
  * aparato, sin dueño anotado, la cola de escrituras, la sesión en curso, los
  * modos de carga elegidos y el objetivo de peso; la cuenta que entraba después
  * los heredaba. Lo peor era la cola: lo pendiente de una cuenta salía con el
- * token de la siguiente, la base no lo aplicaba —no era su sesión— y contestaba
- * sin error, así que se daba por enviado. Y el modo de carga quedaba anotado en
- * la cuenta equivocada.
+ * token de la siguiente.
  *
- * Primero se intenta subir lo pendiente, con el token de quien lo hizo y con
- * un tope de tiempo: sin señal no se puede, y salir no puede quedar esperando.
+ * SON DOS MOMENTOS, y la primera versión los juntó mal:
  *
- * Lo que NO se borra es del aparato y no de la cuenta: la meta de series, la de
- * pasos, el sonido del descanso. Los pesos recordados y la guía ya se guardan
- * con su dueño y se descartan solos.
+ * - AL SALIR (`cerrarSesion`): primero sube lo pendiente, con el token de quien
+ *   lo hizo y con tope de tiempo; después cierra; y RECIÉN SI CERRÓ borra lo de
+ *   la sesión. Sin señal la librería no cierra —devuelve el error y la sesión
+ *   sigue—, y borrar antes dejaba a la persona adentro y sin sus series
+ *   pendientes.
+ * - AL ENTRAR OTRA CUENTA (`alEntrarCon`): ahí se va también lo que es de la
+ *   persona y vive solo en el aparato (los modos de carga, el objetivo de
+ *   peso). Si vuelve a entrar la misma, lo encuentra. Y cubre las salidas que no
+ *   pasan por el botón: una sesión que venció, una cuenta borrada desde otro
+ *   aparato.
+ *
+ * Lo que NO se borra nunca es del aparato y no de la cuenta: la meta de series,
+ * la de pasos, el sonido del descanso. Los pesos recordados y la guía ya se
+ * guardan con su dueño y se descartan solos.
  */
 // Las claves son de cada módulo y acá van repetidas: la sección 193 de `test:db`
-// escribe por los módulos de verdad y comprueba que después no quede nada, así
-// que si una cambia de nombre, falla.
-const DE_LA_CUENTA = [
-  'ascent:cola',
+// escribe por los módulos de verdad y mira qué queda, así que si una cambia de
+// nombre, falla.
+const DE_LA_SESION = ['ascent:llegada'];
+const DE_LA_PERSONA = [
   'ascent:cargas-elegidas',
   'ascent:objetivo-peso',
-  'ascent:descanso',
-  'ascent:llegada',
+  // La web solo manda la zona cuando cambia respecto de esta: a la cuenta nueva
+  // le quedaba la de fábrica.
+  'ascent:zona',
+  'ascent:impulso-visto',
+  'ascent:estancamiento-visto',
+  'ascent:rango-visto',
 ];
+const ULTIMA_CUENTA = 'ascent:ultima-cuenta';
 const TOPE_PARA_SUBIR_MS = 3000;
 
-export async function limpiarAlSalir(supabase: Cliente) {
+/** Lo pendiente sube con el token de quien lo hizo. Con tope: salir no puede quedar esperando a la red. */
+async function subirAntesDeSalir(supabase: Cliente) {
   let tope: ReturnType<typeof setTimeout> | undefined;
   await Promise.race([
     vaciar(supabase).catch(() => undefined),
@@ -48,9 +63,51 @@ export async function limpiarAlSalir(supabase: Cliente) {
     }),
   ]);
   clearTimeout(tope);
+}
+
+/**
+ * Lo de la sesión que termina: lo pendiente (y la pasada que estuviera en
+ * vuelo), el entrenamiento en curso, el descanso CON su aviso programado, y la
+ * copia del perfil.
+ */
+export async function limpiarAlSalir() {
+  await soltarCola();
   await borrarSesionCache();
-  await Promise.all(DE_LA_CUENTA.map((clave) => plataforma.almacenamiento.borrar(clave)));
+  await borrarDescanso();
+  await Promise.all(DE_LA_SESION.map((clave) => plataforma.almacenamiento.borrar(clave)));
   await borrarPerfilCache();
+}
+
+/**
+ * CERRAR SESIÓN EN ESTE APARATO. `false` si no se pudo cerrar, y entonces no
+ * se borró nada: la persona sigue adentro, con todo.
+ *
+ * SOLO EN ESTE APARATO: sin el alcance, la librería cierra la sesión en TODOS;
+ * salir del teléfono te sacaba de la web dentro de la hora, y al revés.
+ */
+export async function cerrarSesion(supabase: Cliente): Promise<boolean> {
+  await subirAntesDeSalir(supabase);
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
+  if (error) return false;
+  await limpiarAlSalir();
+  return true;
+}
+
+/**
+ * AL ENTRAR: si no es la última cuenta que usó este aparato, lo que quedó de
+ * la otra se va antes de que nada lo use.
+ *
+ * Sin marca no se sabe de quién es lo que hay —es la primera vez con este
+ * código— y casi siempre es de la misma persona: no se borra, se anota.
+ */
+export async function alEntrarCon(uid: string) {
+  const ultima = await plataforma.almacenamiento.leer(ULTIMA_CUENTA);
+  if (ultima === uid) return;
+  if (ultima) {
+    await limpiarAlSalir();
+    await Promise.all(DE_LA_PERSONA.map((clave) => plataforma.almacenamiento.borrar(clave)));
+  }
+  await plataforma.almacenamiento.guardar(ULTIMA_CUENTA, uid);
 }
 
 /**

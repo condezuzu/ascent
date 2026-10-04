@@ -28,7 +28,7 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
       setBorrando(false);
       return setError(r.error);
     }
-    await limpiarAlSalir(supabase);
+    await limpiarAlSalir();
     olvidarPendientes();
     borrarTema(); // y el color de esta cuenta, que se pinta antes de todo
     await supabase.auth.signOut();

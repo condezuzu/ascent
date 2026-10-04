@@ -13304,7 +13304,7 @@ console.log('\n177. La app nativa no manda al login por no tener señal');
   const cableado177 = (texto) => ({
     // Desde la tanda 2 no lo pregunta él: se lo pregunta a `quienSoy`, que es el
     // único que mira el error (sección 187).
-    miraElError: /const visto = \(await quienSoy\(supabase\)\)\.estado;/.test(texto),
+    miraElError: /const quien = await quienSoy\(supabase\);\s*const visto = quien\.estado;/.test(texto),
     noPisaLoQueHabia: /setSesion\(\(actual\) => trasMirar\(actual, visto\)\)/.test(texto),
     elAvisoNoDecideSolo: /trasElAviso\(evento, !!viva\)/.test(texto) && !/setSesion\(viva \? 'con' : 'sin'\)/.test(texto),
     yNoConcluyeDeLaSesionSola: !/setSesion\(data\.session \? 'con' : 'sin'\)/.test(texto),
@@ -14118,12 +14118,15 @@ console.log('\n187. Una sola respuesta a "¿hay sesión?": hay, no hay, o no sé
   // salida vale si viene de esa condición o justo después de cerrar sesión.
   const TRAS_UN_NO_HAY = /if \(\w+\.estado === 'sin'\) return\s*$/;
   const TRAS_CERRAR_SESION = /signOut\((\{ scope: 'local' \})?\);\s*(return\s+)?$/;
+  // El botón de salir: cerró de verdad (`cerrarSesion` devuelve si pudo), y
+  // entre eso y la salida solo hay limpieza conocida.
+  const TRAS_CERRAR_BIEN = /if \(!\(await cerrarSesion\(supabase\)\)\) return [^;]+;(\s*(await plataforma\.ubicacion\.dejarDeVigilar|olvidarPendientes|borrarTema)\(\);)*\s*$/;
   const salidasSinMirar = (codigo, patron) =>
     Object.entries(codigo).flatMap(([ruta, texto]) =>
       [...texto.matchAll(patron)]
         .filter((m) => {
-          const antes = texto.slice(Math.max(0, m.index - 120), m.index);
-          return !TRAS_UN_NO_HAY.test(antes) && !TRAS_CERRAR_SESION.test(antes);
+          const antes = texto.slice(Math.max(0, m.index - 220), m.index);
+          return !TRAS_UN_NO_HAY.test(antes) && !TRAS_CERRAR_SESION.test(antes) && !TRAS_CERRAR_BIEN.test(antes);
         })
         .map(() => ruta)
     );
@@ -14474,44 +14477,95 @@ console.log('\n193. Salir de la cuenta: nada queda para la que entra después, y
   });
   const NADA = { pendientes: 0, sesion: null, modos: {}, llegada: null, objetivo: null, descanso: null, perfil: null, metaDelAparato: '4' };
 
+  // Una base de mentira con la sesión de Auth: lo que contesta `signOut` es lo
+  // que decide si se borra o no.
+  const base193 = (rpc, cierre = { error: null }) => {
+    const cierres = [];
+    return { rpc, cierres, auth: { signOut: async (opciones) => (cierres.push(opciones), cierre) } };
+  };
+  const pausa193 = (ms) => new Promise((r) => setTimeout(r, ms));
+  // Lo de la sesión se va; lo que es de la persona (modos, objetivo) queda para
+  // cuando vuelva a entrar.
+  const sinLaSesion = (antes) => ({ ...antes, pendientes: 0, sesion: null, llegada: null, descanso: null, perfil: null });
+
   await dejarLoDeLaCuentaA();
-  chequear('antes de salir, lo de la cuenta está en el aparato', (await loQueQueda()).pendientes, 2);
+  const conTodo = await loQueQueda();
+  chequear('antes de salir, lo de la cuenta está en el aparato', [conTodo.pendientes, conTodo.objetivo, conTodo.metaDelAparato], [2, '85', '4']);
 
   // Con señal: lo pendiente sube ANTES de salir, con el token de quien lo hizo.
   const subieron = [];
-  const conRed193 = { rpc: async (nombre, args) => { subieron.push([nombre, args.p_sesion ?? args.p_ejercicio]); return { data: null, error: null }; } };
-  await CU193.limpiarAlSalir(conRed193);
-  chequear('con señal, la cola sube antes de salir', subieron, [['fijar_series', 'sesion-a'], ['elegir_carga', 'remo']]);
-  chequear('y no queda nada de la cuenta (lo del aparato sí)', await loQueQueda(), NADA);
+  const conRed193 = base193(async (nombre, args) => {
+    subieron.push([nombre, args.p_sesion ?? args.p_ejercicio]);
+    return { data: null, error: null };
+  });
+  chequear('con señal, la sesión se cierra', await CU193.cerrarSesion(conRed193), true);
+  chequear('la cola subió antes, y se cerró SOLO en este aparato', [subieron, conRed193.cierres], [[['fijar_series', 'sesion-a'], ['elegir_carga', 'remo']], [{ scope: 'local' }]]);
+  chequear('no queda nada de la sesión; lo de la persona y lo del aparato sí', await loQueQueda(), sinLaSesion(conTodo));
 
-  // Sin señal: no se puede subir, pero tampoco queda para que salga con otro token.
+  // SIN SEÑAL LA LIBRERÍA NO CIERRA: devuelve el error y la sesión sigue. La
+  // primera versión borraba antes de cerrar: la persona quedaba adentro y sin
+  // sus series pendientes.
   await dejarLoDeLaCuentaA();
-  const antes193 = Date.now();
-  await CU193.limpiarAlSalir(sinRed193);
-  chequear('sin señal tampoco queda nada, y salir no se queda esperando', [await loQueQueda(), Date.now() - antes193 < 2500], [NADA, true]);
+  const sinSenal = base193(sinRed193.rpc, { error: { message: 'Network request failed' } });
+  // Cada escenario compara contra SU foto: la sesión y el descanso llevan la hora.
+  const antesDeIntentar = await loQueQueda();
+  chequear('sin señal no se pudo cerrar, y se dice', await CU193.cerrarSesion(sinSenal), false);
+  chequear('y entonces no se borró NADA', await loQueQueda(), antesDeIntentar);
+
+  // LA RED COLGADA (ni contesta ni falla): salir espera el tope y no más. Y la
+  // pasada que quedó esperando no sigue mandando lo de esa cuenta cuando el
+  // pedido vuelve: para entonces puede haber entrado otra.
+  await dejarLoDeLaCuentaA();
+  const pedidos193 = [];
+  let soltar193 = null;
+  const colgada = base193((nombre) => {
+    pedidos193.push(nombre);
+    return new Promise((listo) => (soltar193 = listo));
+  });
+  const salida = await Promise.race([CU193.cerrarSesion(colgada), pausa193(4500).then(() => 'sigue esperando')]);
+  chequear('con la red colgada, salir no espera más que el tope', [salida, (await loQueQueda()).pendientes], [true, 0]);
+  soltar193({ data: null, error: null });
+  await pausa193(30);
+  chequear('y lo que quedaba de esa cuenta no sale después, con el token de otra', [pedidos193, await COLA193.cuantasPendientes()], [['fijar_series'], 0]);
+
+  // AL ENTRAR: las salidas que no pasan por el botón (una sesión que venció, una
+  // cuenta borrada desde otro aparato) no limpian nada. Lo hace la entrada, y
+  // solo si la cuenta es OTRA.
+  await dejarLoDeLaCuentaA();
+  memoria193.set('ascent:zona', 'America/Montevideo');
+  const antesDeEntrar = await loQueQueda();
+  await CU193.alEntrarCon('cuenta-a');
+  chequear('la primera vez no se sabe de quién es lo que hay: no se borra', [await loQueQueda(), memoria193.get('ascent:ultima-cuenta')], [antesDeEntrar, 'cuenta-a']);
+  await CU193.alEntrarCon('cuenta-a');
+  chequear('la misma cuenta que vuelve encuentra todo', await loQueQueda(), antesDeEntrar);
+  await CU193.alEntrarCon('cuenta-b');
+  chequear('otra cuenta que entra no hereda nada, ni lo de la sesión ni lo de la persona', [await loQueQueda(), memoria193.get('ascent:zona') ?? null, memoria193.get('ascent:ultima-cuenta')], [NADA, null, 'cuenta-b']);
   const paraLaQueEntra = [];
-  await COLA193.vaciar({ rpc: async (nombre) => { paraLaQueEntra.push(nombre); return { data: null, error: null }; } });
-  chequear('la cuenta que entra después no manda nada de la anterior', paraLaQueEntra, []);
+  await COLA193.vaciar({ rpc: async (nombre) => (paraLaQueEntra.push(nombre), { data: null, error: null }) });
+  chequear('y no manda nada de la anterior', paraLaQueEntra, []);
   memoria193.clear();
 
-  // CABLEADO: los cuatro lugares que cierran sesión usan esa limpieza, y el
-  // botón de salir sale SOLO de este aparato (borrar la cuenta, de todos).
+  // CABLEADO: quién llama a qué.
   const de193 = (ruta) => sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'));
   const cuentaNativa = de193('movil/src/ajustes/Cuenta.tsx');
   const sesionWeb = de193('src/components/ajustes/Sesion.tsx');
-  chequear('las salidas limpian con la función única', [
-    (cuentaNativa.match(/await limpiarAlSalir\(supabase\)/g) ?? []).length,
-    /await limpiarAlSalir\(supabase\)/.test(sesionWeb),
-    /await limpiarAlSalir\(supabase\)/.test(de193('src/components/ajustes/BajaDeCuenta.tsx')),
+  chequear('los dos botones de salir cierran con la función única, y dicen si no se pudo', [
+    /if \(!\(await cerrarSesion\(supabase\)\)\) return setError\(T\.ajustes\.noSeCerro\);/.test(cuentaNativa),
+    /if \(!\(await cerrarSesion\(supabase\)\)\) return avisarFallo\(T\.ajustes\.noSeCerro\);/.test(sesionWeb),
+    // Nadie cierra "solo acá" por su cuenta, y nadie borra antes de cerrar.
+    /signOut\(\{ scope: 'local' \}\)/.test(cuentaNativa + sesionWeb),
     /borrarPerfilCache\(\)/.test(cuentaNativa + sesionWeb),
-  ], [2, true, true, false]);
+  ], [true, true, false, false]);
   // NO SE PUEDE PROBAR ACÁ que el servidor deje vivas las otras sesiones: es lo
   // que significa `scope: 'local'` en la librería. Se mira que se pida así.
-  chequear('cerrar sesión es solo en este aparato; borrar la cuenta, en todos', [
-    /signOut\(\{ scope: 'local' \}\)/.test(sesionWeb),
-    (cuentaNativa.match(/signOut\(\{ scope: 'local' \}\)/g) ?? []).length,
-    (cuentaNativa.match(/signOut\(\)/g) ?? []).length,
-  ], [true, 1, 1]);
+  chequear('borrar la cuenta limpia sin mirar el cierre, y cierra en todos los aparatos', [
+    /await limpiarAlSalir\(\);\s*await plataforma\.ubicacion\.dejarDeVigilar\(\);\s*await supabase\.auth\.signOut\(\);/.test(cuentaNativa),
+    /await limpiarAlSalir\(\);[\s\S]{0,120}await supabase\.auth\.signOut\(\);/.test(de193('src/components/ajustes/BajaDeCuenta.tsx')),
+  ], [true, true]);
+  chequear('al entrar, las dos apps preguntan si la cuenta es otra antes de usar nada', [
+    /if \(quien\.estado === 'con'\) await alEntrarCon\(quien\.uid\)/.test(de193('movil/app/_layout.tsx')),
+    /const uid = yo\.uid;\s*await alEntrarCon\(uid\)/.test(de193('src/app/page.tsx')),
+  ], [true, true]);
   chequear('en la web, salir olvida también el punto de "te espera algo"', /olvidarPendientes\(\)/.test(sesionWeb), true);
 }
 

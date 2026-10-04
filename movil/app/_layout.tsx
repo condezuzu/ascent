@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/supabase';
 import { quienSoy } from '@compartido/quienSoy';
+import { alEntrarCon } from '@compartido/cuenta';
 import { plataforma } from '@plataforma';
 import EntradaYLogin from '../src/EntradaYLogin';
 import Onboarding from '../src/Onboarding';
@@ -75,7 +76,11 @@ export default function Layout() {
       // SIN RED NO SE CONCLUYE NADA (4/10). Sin señal y con el token vencido,
       // esto devuelve "sin sesión" con un error: antes se leía como "no hay
       // sesión" y aparecía el login en pleno entrenamiento. Ver `quienSoy`.
-      const visto = (await quienSoy(supabase)).estado;
+      const quien = await quienSoy(supabase);
+      const visto = quien.estado;
+      // Si no es la última cuenta que usó este teléfono, lo que quedó de la
+      // otra se va ANTES de dibujar nada que lo use: ver `alEntrarCon`.
+      if (quien.estado === 'con') await alEntrarCon(quien.uid).catch(() => undefined);
       anotar(`sesión: ${visto === 'con' ? 'hay' : visto === 'sin' ? 'no hay' : 'no se pudo preguntar'}`);
       setSesion((actual) => trasMirar(actual, visto));
     } catch (e) {

@@ -186,13 +186,32 @@ export async function vaciar(supabase: Cliente): Promise<void> {
 }
 
 /** Devuelve `true` si cortó por un error (la red, casi siempre). */
+/**
+ * SE SUELTA LA COLA (4/10): al salir de la cuenta, o cuando entra otra.
+ *
+ * Borrar la clave no alcanzaba. Una pasada que estaba esperando a la red seguía
+ * recorriendo su lista en memoria: cuando el pedido colgado volvía, lo que
+ * quedaba salía con el token de quien hubiera entrado después —y
+ * `elegir_carga`, que no lleva sesión, quedaba anotado en la cuenta
+ * equivocada—. Y su `guardar` del final podía resucitar la cola recién borrada.
+ * Por eso la pasada mira este número antes de cada envío y antes de escribir.
+ */
+let sueltas = 0;
+export async function soltarCola() {
+  sueltas++;
+  olvidarReintento();
+  await enTurno(() => plataforma.almacenamiento.borrar(CLAVE));
+}
+
 async function unaPasada(supabase: Cliente): Promise<boolean> {
+    const alEmpezar = sueltas;
     const lista = await enTurno(leer);
     if (lista.length === 0) return false;
     // Lo que esta pasada mandó o descartó: es lo único que se saca al final.
     const sacados: Pendiente[] = [];
     let corto = false;
     for (const p of lista) {
+      if (sueltas !== alEmpezar) return false;
       const { error } = await supabase.rpc(p.rpc, p.args);
       // UNA FUNCIÓN QUE NO EXISTE NO VA A EXISTIR REINTENTANDO. Antes cualquier
       // error dejaba el pendiente al frente y cortaba la cola, así que una
@@ -214,6 +233,8 @@ async function unaPasada(supabase: Cliente): Promise<boolean> {
       }
       sacados.push(p);
     }
+    // La cola ya no es la de quien empezó esta pasada: no se toca.
+    if (sueltas !== alEmpezar) return false;
     // NO `guardar(quedan)`: mientras se mandaba se pudo encolar algo, y eso
     // pisaba lo nuevo. Se saca de la cola de AHORA solo lo que salió.
     const resto = await enTurno(async () => {

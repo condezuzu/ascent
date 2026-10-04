@@ -12,6 +12,7 @@ import { hayPresagio } from '@nucleo/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { guardarInicioCache, guardarPerfilCache, leerInicioCache, leerPerfilCache, type PerfilGuardado } from '@compartido/cache';
 import { quienSoy } from '@compartido/quienSoy';
+import { alEntrarCon } from '@compartido/cuenta';
 import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
 import { useMisMedallas } from '@compartido/misMedallas';
 import { FilaDeMedallas } from '@/components/Medallas';
@@ -222,6 +223,9 @@ export default function Principal() {
     if (yo.estado === 'sin') return router.push('/login');
     if (yo.estado === 'no-se') return setNoCargo(!huboCache.current);
     const uid = yo.uid;
+    // Si no es la última cuenta que usó este navegador, lo que quedó de la otra
+    // se va antes de pedir nada: ver `alEntrarCon`.
+    await alEntrarCon(uid).catch(() => undefined);
 
     // UN SOLO PEDIDO, y si la migración no corrió, el camino viejo.
     const r = await pedirInicio(supabase);

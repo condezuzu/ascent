@@ -686,6 +686,7 @@ export const T = {
     verGuia: 'Volver a ver la guía',
     cambiarClave: 'Cambiar contraseña',
     cerrarSesion: 'Cerrar sesión',
+    noSeCerro: 'No se pudo cerrar la sesión. Prueba de nuevo con conexión.',
     eliminarCuenta: 'Eliminar mi cuenta',
 
     // Cuentas bloqueadas (migración 53)
