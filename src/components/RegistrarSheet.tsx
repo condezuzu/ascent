@@ -5,7 +5,7 @@ import EnElBody from '@/components/EnElBody';
 import { crearCliente } from '@/lib/supabase/client';
 import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
-import { avisarFallo } from '@compartido/cola';
+
 import { prepararFoto } from '@/lib/foto';
 import { subirFotoDelDia } from '@compartido/foto';
 import { anotarElDia } from '@compartido/anotarDia';
@@ -54,7 +54,13 @@ export default function RegistrarSheet({
   const supabase = crearCliente();
   const dia = fecha ?? hoyISO();
   const esHoy = dia === hoyISO();
-  const yaEsta = !!logId;
+  // EL DÍA ENTRÓ PERO LA FOTO NO (4/10), igual que en la nativa: la hoja no se
+  // cierra. Queda con la foto elegida, en modo "sumar al día", y reintentar la
+  // cuelga del día que entró acá.
+  const [registradoAca, setRegistradoAca] = useState<ResultadoRegistro | null>(null);
+  const [subioAca, setSubioAca] = useState(false);
+  const idDelDia = logId ?? registradoAca?.log_id ?? null;
+  const yaEsta = !!idDelDia;
   const [foto, setFoto] = useState<File | null>(null);
   // arranca donde el usuario dijo en Ajustes, para no elegir una por una
   const [fotoVisible, setFotoVisible] = useState(visibilidadDefault === 'amigos');
@@ -68,12 +74,16 @@ export default function RegistrarSheet({
   function cerrar() {
     if (cargando) return;
     setCerrando(true);
-    setTimeout(alCerrar, 200);
+    // Si el día entró acá, cerrar sin la foto igual lo confirma: la racha subió.
+    setTimeout(registradoAca ? () => alConfirmar(registradoAca) : alCerrar, 200);
   }
 
-  /** Sube la foto y la cuelga del día. Vale para los dos modos. */
-  async function subirFoto(idDelLog: string | null, subioRango: boolean) {
-    if (!foto) return;
+  /**
+   * Sube la foto y la cuelga del día. Vale para los dos modos. Devuelve si
+   * quedó: sin foto elegida también es `true`, no había nada que subir.
+   */
+  async function subirFoto(idDelLog: string | null, subioRango: boolean): Promise<boolean> {
+    if (!foto) return true;
     // Se recodifica ANTES de subir. No es por el peso: el archivo de la
     // cámara trae el EXIF, y el EXIF trae las coordenadas GPS de dónde se
     // sacó. Compartir la foto con un amigo compartía la ubicación del
@@ -81,7 +91,10 @@ export default function RegistrarSheet({
     const lista = await prepararFoto(foto);
     // Si no se pudo preparar NO se sube el original: el original es
     // justamente el que tiene las coordenadas.
-    if (!lista.ok) return avisarFallo(T.general.falloFotoPreparar);
+    if (!lista.ok) {
+      setError(T.general.falloFotoPreparar);
+      return false;
+    }
     // La subida y la fila son las mismas que en la app nativa
     // (`compartido/foto.ts`).
     const r = await subirFotoDelDia(supabase, {
@@ -94,7 +107,15 @@ export default function RegistrarSheet({
     // No va a la cola: el archivo puede pesar megas y guardarlo para después
     // llenaría el teléfono. Pero callarse era peor — creías que la habías
     // subido. El día ya quedó registrado igual, que es lo que importa.
-    if (r === 'no-subio') avisarFallo(T.general.falloFoto);
+    //
+    // CUALQUIER resultado que no sea 'ok' (4/10). Se avisaba solo por
+    // 'no-subio'; sin conexión `getUser` no contesta y sale 'sin-sesion', que
+    // pasaba callado: la hoja se cerraba como si la foto hubiera subido.
+    if (r !== 'ok') {
+      setError(T.general.falloFoto);
+      return false;
+    }
+    return true;
   }
 
   // TRABA CONTRA EL DOBLE-TOQUE. `disabled={cargando}` no alcanza: `cargando` es
@@ -109,9 +130,12 @@ export default function RegistrarSheet({
 
     // ---- el día YA está: solo se cuelga la foto ----
     if (yaEsta) {
-      await subirFoto(logId ?? null, false);
+      const ok = await subirFoto(idDelDia, !!registradoAca && subioAca);
       setCargando(false);
-      return alConfirmar(null); // no hay nada que festejar: el día ya contaba
+      // No subió: la hoja queda abierta con la foto, para reintentar.
+      if (!ok) return;
+      // `null` si el día ya contaba de antes: no hay nada que festejar.
+      return alConfirmar(registradoAca);
     }
 
     // ---- el día no existe: se registra ----
@@ -136,7 +160,15 @@ export default function RegistrarSheet({
     const resultado = data as ResultadoRegistro;
     // La foto se sube después de que el día quedó confirmado en la base.
     // `racha` es la que se veía al abrir la hoja: la de antes de registrar.
-    await subirFoto(resultado.log_id, subidaDeRango(racha, resultado.racha) !== null);
+    const subio = subidaDeRango(racha, resultado.racha) !== null;
+    setSubioAca(subio);
+    const ok = await subirFoto(resultado.log_id, subio);
+    // El día ya entró: si la foto falló se dice, y la hoja pasa a "sumar al
+    // día" con la foto elegida. Cerrarla confirma el día igual (ver `cerrar`).
+    if (!ok) {
+      setCargando(false);
+      return setRegistradoAca(resultado);
+    }
 
     setCargando(false);
     alConfirmar(resultado);

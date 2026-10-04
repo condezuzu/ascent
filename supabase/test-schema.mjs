@@ -13778,6 +13778,44 @@ console.log('\n184. La copia del perfil: trae la unidad, y dice qué tiene');
   chequear('el tipo de la copia sale de la lista de lo guardado', /leerPerfilCache\([^)]*\): Promise<PerfilGuardado \| null>/.test(cache184) && /Pick<Perfil, \(typeof CAMPOS_GUARDADOS\)\[number\]>/.test(cache184), true);
 }
 
+console.log('\n185. Web: una foto que no subió no cierra la hoja como si hubiera subido');
+{
+  // SIN CONEXIÓN, la subida no falla con 'no-subio': `getUser` no contesta y
+  // sale 'sin-sesion'. La web avisaba solo por 'no-subio', así que la hoja se
+  // cerraba callada y la foto no estaba en ningún lado. Se corre la subida de
+  // verdad con una base de mentira para ver qué devuelve en cada caso.
+  const FO = await import('../compartido/foto.ts');
+  const baseDeFotos = ({ usuario = { id: 'u1' }, errorSubida = null, errorFila = null } = {}) => ({
+    auth: { getUser: async () => ({ data: { user: usuario }, error: usuario ? null : { name: 'AuthRetryableFetchError' } }) },
+    storage: { from: () => ({ upload: async () => ({ error: errorSubida }) }) },
+    from: () => ({ insert: async () => ({ error: errorFila }) }),
+  });
+  const subir185 = (base) => FO.subirFotoDelDia(base, { datos: new Uint8Array(4), dia: '2026-10-04', logId: 'l1', visible: false, subioRango: false });
+  chequear('lo que devuelve la subida: bien, sin conexión, archivo que no sube, fila que no entra', [
+    await subir185(baseDeFotos()),
+    await subir185(baseDeFotos({ usuario: null })),
+    await subir185(baseDeFotos({ errorSubida: { message: 'Failed to fetch' } })),
+    await subir185(baseDeFotos({ errorFila: { message: 'Failed to fetch' } })),
+  ], ['ok', 'sin-sesion', 'no-subio', 'no-subio']);
+
+  // CABLEADO: las dos hojas (no se pueden dibujar acá). Solo 'ok' es haber
+  // subido; cualquier otra cosa deja la hoja abierta, con la foto, y lo dice.
+  const hoja185 = (texto) => ({
+    soloOkEsHaberSubido: /if \(r !== 'ok'\)/.test(texto) && !/if \(r === 'no-subio'\)/.test(texto),
+    // Confirmar sin mirar si subió es lo que cerraba la hoja.
+    confirmaSinMirar: /await subirFoto\([^;]*\);\s*setCargando\(false\);\s*(return )?alConfirmar\(/.test(texto),
+    siElDiaEntroQuedaAbierta: /if \(!ok\)[\s\S]{0,80}?setRegistradoAca\(resultado\)/.test(texto),
+  });
+  const bien185 = { soloOkEsHaberSubido: true, confirmaSinMirar: false, siElDiaEntroQuedaAbierta: true };
+  chequear('la hoja de la web solo cierra si la foto quedó', hoja185(sinComentarios(leer179(join(aca179, '../src/components/RegistrarSheet.tsx'), 'utf8'))), bien185);
+  chequear('la de la nativa también', hoja185(sinComentarios(leer179(join(aca179, '../movil/src/RegistrarDia.tsx'), 'utf8'))), bien185);
+  chequear(
+    'la hoja de antes no pasa',
+    hoja185("if (r === 'no-subio') avisarFallo(x); } if (yaEsta) { await subirFoto(logId ?? null, false); setCargando(false); return alConfirmar(null); }"),
+    { soloOkEsHaberSubido: false, confirmaSinMirar: true, siElDiaEntroQuedaAbierta: false }
+  );
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
