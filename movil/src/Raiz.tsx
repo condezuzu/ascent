@@ -1,4 +1,4 @@
-import { Component, useEffect, useState, type ComponentType, type ReactNode } from 'react';
+import { Component, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { comoTexto, escuchar, estado, registrarError } from './cajaNegra';
@@ -41,13 +41,22 @@ try {
   registrarError('al cargar el diagnostico de la sesion', e);
 }
 
-class Limite extends Component<{ children: ReactNode }, { roto: boolean }> {
+class Limite extends Component<{ children: ReactNode; alRomper?: () => void }, { roto: boolean }> {
   state = { roto: false };
   static getDerivedStateFromError() {
     return { roto: true };
   }
   componentDidCatch(e: unknown, info: { componentStack?: string | null }) {
     registrarError(`al dibujar${info.componentStack ? ` (en ${info.componentStack.trim().split('\n')[0]})` : ''}`, e);
+    this.props.alRomper?.();
+  }
+  /**
+   * 'SEGUIR IGUAL' VUELVE A MONTAR LO QUE TIRÓ (4/10). Antes solo escondía el
+   * panel: debajo no había nada dibujado y la app quedaba en negro para
+   * siempre. Si vuelve a tirar, `alRomper` trae el panel de nuevo.
+   */
+  reintentar() {
+    if (this.state.roto) this.setState({ roto: false });
   }
   render() {
     return this.state.roto ? null : this.props.children;
@@ -59,6 +68,7 @@ export default function Raiz({ children }: { children: ReactNode }) {
   const [tarde, setTarde] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const [descartado, setDescartado] = useState(false);
+  const limite = useRef<Limite>(null);
 
   useEffect(() => escuchar(() => setVersion((v) => v + 1)), []);
   useEffect(() => {
@@ -72,13 +82,16 @@ export default function Raiz({ children }: { children: ReactNode }) {
 
   return (
     <View style={estilos.todo}>
-      <Limite>{children}</Limite>
+      <Limite ref={limite} alRomper={() => setDescartado(false)}>
+        {children}
+      </Limite>
       {mostrar && (
         <Registro
           titulo={huboError ? T.diagnostico.fallo : noArranco ? T.diagnostico.noArranco : T.diagnostico.boton}
           alSeguir={() => {
             setAbierto(false);
             setDescartado(true);
+            limite.current?.reintentar();
           }}
         />
       )}

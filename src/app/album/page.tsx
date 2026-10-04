@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda } from '@nucleo/fechas';
-import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type Celda } from '@compartido/album';
+import { cambiarVisibilidad, cargadasEnOrden, cargarAlbum, porMes, quitarFoto, type Celda } from '@compartido/album';
 import { avisarFallo } from '@compartido/cola';
 import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 import { plataforma } from '@/plataforma';
@@ -163,8 +163,13 @@ function Grilla({ meses, alAbrir }: { meses: ReturnType<typeof porMes>; alAbrir:
   const total = meses.reduce((n, m) => n + m.fotos.length, 0);
   const [cargadas, setCargadas] = useState<Set<number>>(() => new Set());
   const [enteras, setEnteras] = useState<Set<number>>(() => new Set());
-  let hasta = 0;
-  while (cargadas.has(hasta)) hasta++;
+  const sinFoto = new Set<number>();
+  meses.forEach((m) =>
+    m.fotos.forEach((c, j) => {
+      if (!(c.miniatura || c.url)) sinFoto.add(m.desde + j);
+    })
+  );
+  const hasta = cargadasEnOrden(cargadas, sinFoto);
   useEsperar(hasta >= Math.min(6, total));
   const lista = (i: number) => setCargadas((prev) => (prev.has(i) ? prev : new Set(prev).add(i)));
 

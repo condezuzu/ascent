@@ -19,6 +19,8 @@ export default function CampoPeso({
   alCambiar,
   compacto = false,
   etiqueta,
+  enCadaTecla = false,
+  alTeclear,
 }: {
   kg: number | null | undefined;
   unidad: Unidad;
@@ -26,6 +28,13 @@ export default function CampoPeso({
   /** En la lista: sin los botones de más y menos. */
   compacto?: boolean;
   etiqueta?: string;
+  /** Avisa el peso mientras se escribe, sin esperar a salir del campo. */
+  enCadaTecla?: boolean;
+  /**
+   * Hay algo tecleado sin confirmar (llega la función que lo confirma) o ya no
+   * (`null`). Para quien cierra la pantalla sin sacar el foco del campo.
+   */
+  alTeclear?: (confirmar: (() => void) | null) => void;
 }) {
   const mostrar = (v: number | null | undefined) => textoDelCampo(v, unidad);
   const [texto, setTexto] = useState(mostrar(kg));
@@ -46,6 +55,7 @@ export default function CampoPeso({
   function confirmar() {
     const tecleo = tecleando.current;
     tecleando.current = false;
+    alTeclear?.(null);
     const r = confirmarCampo(texto, kg, unidad);
     // En la lista (`compacto`) el mismo número no es noticia: ahí no hay
     // propuestas, y avisar sería reescribir la serie con lo que ya tenía.
@@ -53,6 +63,11 @@ export default function CampoPeso({
     alCambiar(r.kg);
     setTexto(mostrar(r.kg));
   }
+  // La de ESTE dibujo: la que se entrega con `alTeclear` se llama más tarde.
+  const ultima = useRef(confirmar);
+  useEffect(() => {
+    ultima.current = confirmar;
+  });
 
   function paso(signo: 1 | -1) {
     const nuevo = pasoDelCampo(kg, unidad, signo);
@@ -76,7 +91,10 @@ export default function CampoPeso({
           value={texto}
           onChangeText={(v) => {
             tecleando.current = true;
-            setTexto(limpiarTecleo(v));
+            const limpio = limpiarTecleo(v);
+            setTexto(limpio);
+            if (enCadaTecla) alCambiar(confirmarCampo(limpio, kg, unidad).kg);
+            alTeclear?.(() => ultima.current());
           }}
           onBlur={confirmar}
           onSubmitEditing={confirmar}

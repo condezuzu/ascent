@@ -14542,6 +14542,232 @@ console.log('\n194. El gráfico del peso: una ventana vacía no se lleva los bot
   chequear('la nativa tampoco se va entera sin dibujo', /if \(!trazo\) return null;/.test(nativo), false);
 }
 
+console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se toca queda');
+{
+  const { readFileSync: leer195 } = await import('node:fs');
+  const de195 = (ruta) => sinComentarios(leer195(new URL('../' + ruta, import.meta.url), 'utf8'));
+
+  // ---- DÍAS DE DESCANSO EN FILA ----
+  const { escritorEnFila } = await import('../compartido/enFila.ts');
+  const mismos = (a, b) => a.length === b.length && a.every((d) => b.includes(d));
+  const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
+  const armar = (escribir) => {
+    const visto = { pantalla: [], fallos: 0 };
+    const fila = escritorEnFila({
+      guardado: [],
+      escribir,
+      iguales: mismos,
+      pintar: (v) => (visto.pantalla = v),
+      alFallar: () => visto.fallos++,
+    });
+    const tocar = (dia) => {
+      const ahora = fila.deseado();
+      const nuevos = ahora.includes(dia) ? ahora.filter((d) => d !== dia) : [...ahora, dia];
+      visto.pantalla = nuevos;
+      return fila.pedir(nuevos);
+    };
+    return { fila, visto, tocar };
+  };
+
+  // La primera escritura tarda más que la segunda: sueltas, llegaban cruzadas y
+  // la base quedaba con lo del primer toque.
+  {
+    let base = [];
+    const llegaron = [];
+    const { visto, tocar } = armar(async (dias) => {
+      await pausa(llegaron.length === 0 ? 30 : 1);
+      llegaron.push(dias);
+      base = dias;
+      return true;
+    });
+    tocar(1);
+    await pausa(5); // el segundo toque llega con la primera escritura en vuelo
+    await tocar(3);
+    chequear('dos toques seguidos llegan en orden y la base queda con los dos', [llegaron, base, visto.pantalla], [[[1], [1, 3]], [1, 3], [1, 3]]);
+  }
+  // Los dos en el mismo instante: una sola escritura, con el conjunto final.
+  {
+    const llegaron = [];
+    const { tocar } = armar(async (dias) => {
+      llegaron.push(dias);
+      return true;
+    });
+    tocar(1);
+    await tocar(3);
+    chequear('y dos toques a la vez son una sola escritura con todo', llegaron, [[1, 3]]);
+  }
+  // La primera falla con la segunda ya pedida: la pantalla tiene que quedar
+  // igual que la base, no en "antes del primer toque" con la base en otra cosa.
+  {
+    let base = [];
+    let intento = 0;
+    const { visto, tocar } = armar(async (dias) => {
+      await pausa(5);
+      if (intento++ === 0) return false;
+      base = dias;
+      return true;
+    });
+    tocar(1);
+    await pausa(1);
+    await tocar(3);
+    chequear('si la primera falla, pantalla y base quedan iguales y se avisa una vez', [visto.pantalla, base, visto.fallos], [[], [], 1]);
+    await tocar(5);
+    chequear('y el toque siguiente sale de lo que quedó guardado', [visto.pantalla, base], [[5], [5]]);
+  }
+  // Una recarga vieja que llega con una escritura en vuelo no manda.
+  {
+    let base = [];
+    const { fila, visto, tocar } = armar(async (dias) => {
+      await pausa(10);
+      base = dias;
+      return true;
+    });
+    const enVuelo = tocar(2);
+    fila.alDia([]); // el perfil viejo, que salió antes del toque
+    visto.pantalla = [];
+    await enVuelo;
+    chequear('una recarga vieja no deshace el toque que está en vuelo', [fila.deseado(), visto.pantalla, base], [[2], [2], [2]]);
+    fila.alDia([4]); // ya sin nada en vuelo, lo de afuera es la verdad
+    chequear('sin nada en vuelo, lo que llega de afuera sí manda', fila.deseado(), [4]);
+  }
+  // Una escritura que tira (no que contesta error) es un fallo, no una fila colgada.
+  {
+    const { visto, tocar } = armar(async () => {
+      throw new Error('sin red');
+    });
+    await tocar(1);
+    chequear('si la escritura tira, se avisa y la fila sigue', [visto.pantalla, visto.fallos], [[], 1]);
+  }
+  const ajustesNativa = de195('movil/src/Ajustes.tsx');
+  const descansosWeb = de195('src/components/ajustes/Descansos.tsx');
+  chequear('los días de descanso de las dos apps van por la fila', [
+    /descansos\.pedir\(nuevos\)/.test(ajustesNativa) && /descansos\.deseado\(\)/.test(ajustesNativa),
+    /fila\.pedir\(nuevos\)/.test(descansosWeb) && /fila\.deseado\(\)/.test(descansosWeb),
+    (ajustesNativa.match(/fijar_descansos/g) ?? []).length,
+    (descansosWeb.match(/fijar_descansos/g) ?? []).length,
+  ], [true, true, 1, 1]);
+
+  // ---- EL ÁLBUM DE LA WEB: UNA CELDA SIN FOTO NO FRENA A LAS DEMÁS ----
+  const A195 = await import('../compartido/album.ts');
+  chequear('una celda sin foto cuenta como lista', [
+    A195.cargadasEnOrden(new Set([0, 1, 3]), new Set([2])),
+    A195.cargadasEnOrden(new Set([0, 1, 3]), new Set()),
+    A195.cargadasEnOrden(new Set(), new Set([0])),
+  ], [4, 2, 1]);
+  const albumWeb = de195('src/app/album/page.tsx');
+  chequear('y la grilla de la web cuenta así', [
+    /const hasta = cargadasEnOrden\(cargadas, sinFoto\);/.test(albumWeb),
+    /if \(!\(c\.miniatura \|\| c\.url\)\) sinFoto\.add\(m\.desde \+ j\);/.test(albumWeb),
+    /while \(cargadas\.has\(hasta\)\) hasta\+\+;/.test(albumWeb),
+  ], [true, true, false]);
+
+  // ---- CON DOS FOTOS EN EL DÍA, SIEMPRE LA MISMA ----
+  // Se mira el PEDIDO: el orden lo hace la base, y acá no hay una.
+  const pedidos = [];
+  const respuestas = {
+    logs: { id: 'log-1', es_descanso: false, origen: 'manual' },
+    ejercicios: [],
+    descansos: [],
+    profiles: { unidad_peso: 'kg' },
+    sesiones: [],
+    photos: [{ storage_path: 'u/nueva.jpg' }],
+  };
+  const consulta = (tabla) => {
+    const c = new Proxy(function () {}, {
+      get(_, k) {
+        if (k === 'then') return (listo) => listo({ data: respuestas[tabla], error: null });
+        return (...args) => {
+          pedidos.push([tabla, k, ...args]);
+          return c;
+        };
+      },
+    });
+    return c;
+  };
+  const baseDelDia = {
+    from: consulta,
+    storage: { from: () => ({ createSignedUrl: async (ruta) => ({ data: { signedUrl: 'firmada:' + ruta } }) }) },
+  };
+  const D195 = await import('../compartido/dia.ts');
+  const delDia = await D195.cargarDia(baseDelDia, 'yo', '2026-10-04', false);
+  chequear('la foto del día se pide en orden: la más nueva', [
+    pedidos.filter((p) => p[0] === 'photos' && p[1] === 'order').map((p) => p.slice(2)),
+    delDia.foto,
+  ], [[['creado', { ascending: false }]], 'firmada:u/nueva.jpg']);
+
+  // ---- EL AVISO DE ESTANCAMIENTO FECHA CON EL RELOJ DE LA PERSONA ----
+  // Como las manda la base: en UTC. Las once y media de la noche y las doce y
+  // media de la madrugada del 5 son el 5 en cualquier zona; cortando el texto
+  // en UTC, una de las dos cae en otro día (salvo con el reloj en UTC justo).
+  const E195 = await import('../compartido/estancamiento.ts');
+  const enUTC = (h, m) => new Date(2026, 8, 5, h, m).toISOString();
+  chequear('una sesión de noche es del día en que se hizo', E195.sesionesCrudas([
+    { inicio: enUTC(23, 30), fin: new Date(2026, 8, 6, 0, 30).toISOString() },
+    { inicio: enUTC(0, 30), fin: enUTC(1, 15) },
+    { inicio: enUTC(12, 0), fin: null },
+  ]), [
+    { fecha: '2026-09-05', minutos: 60 },
+    { fecha: '2026-09-05', minutos: 45 },
+  ]);
+  chequear('y el aviso usa esa cuenta', /const sesiones = sesionesCrudas\(/.test(de195('compartido/estancamiento.ts')), true);
+
+  // ---- LO QUE SIGUE ES CABLEADO: son componentes, y acá no hay pantalla ----
+  const marca = de195('movil/src/CargarMarca.tsx');
+  chequear('en el teléfono no se anota una marca de un ejercicio sin peso', [
+    /const conPeso = ejercicios\.filter\(\(e\) => e\.admite_peso !== false\);/.test(marca),
+    /ejercicios=\{conPeso\}/.test(marca),
+    /useState\(inicial \?\? conPeso\[0\]\?\.id \?\? ''\)/.test(marca),
+  ], [true, true, true]);
+  const campo = de195('movil/src/CampoPeso.tsx');
+  chequear('la hoja de marcas recibe el peso en cada tecla, sin esperar a salir del campo', [
+    /<CampoPeso kg=\{kg\} unidad=\{unidad\} alCambiar=\{setKg\} etiqueta=\{T\.marca\.peso\} enCadaTecla \/>/.test(marca),
+    /if \(enCadaTecla\) alCambiar\(confirmarCampo\(limpio, kg, unidad\)\.kg\);/.test(campo),
+  ], [true, true]);
+  const C195 = await import('../nucleo/campoPeso.ts');
+  chequear('tecla por tecla, el número que se ve es el que queda', ['1', '10', '100'].reduce((kg, texto) => C195.confirmarCampo(texto, kg, 'kg').kg, null), 100);
+
+  const lista = de195('movil/src/ListaDeBloques.tsx');
+  chequear('cerrar la lista confirma lo que quedó tecleado', [
+    /const cerrar = \(\) => \{\s*sinConfirmar\.current\?\.\(\);\s*sinConfirmar\.current = null;\s*alCerrar\(\);\s*\};/.test(lista),
+    /<Hoja visible=\{visible\} alCerrar=\{cerrar\}>/.test(lista),
+    /style=\{estilos\.listo\} onPress=\{cerrar\}/.test(lista),
+    /alTeclear=\{\(confirmar\) => \{\s*sinConfirmar\.current = confirmar;/.test(lista),
+    /alTeclear\?\.\(\(\) => ultima\.current\(\)\);/.test(campo) && /alTeclear\?\.\(null\);/.test(campo),
+  ], [true, true, true, true, true]);
+
+  const ajustesWeb = de195('src/app/ajustes/page.tsx');
+  chequear('en la web, una recarga que falla no deja Ajustes en blanco', [
+    /if \(p\) setPerfil\(p\);\s*else setNoCargo\(true\);/.test(ajustesWeb),
+    /\n\s*setPerfil\(p\);/.test(ajustesWeb),
+    /\{noCargo && <NoCargo reintentar=\{cargar\} \/>\}/.test(ajustesWeb),
+  ], [true, false, true]);
+
+  const sugerencias = de195('movil/src/ajustes/Sugerencias.tsx');
+  chequear('las sugerencias del teléfono llevan la versión de verdad', [
+    /version_app: versionCompleta\(\)/.test(sugerencias),
+    /0\.1\.0/.test(sugerencias),
+    /export function versionCompleta\(\)/.test(de195('movil/src/reporteDeErrores.ts')),
+  ], [true, false, true]);
+
+  chequear('la hoja de la foto conoce el día de hoy aunque sea de descanso', [
+    /logId=\{logs\.find\(\(l\) => l\.fecha === hoy\)\?\.id \?\? null\}/.test(de195('movil/src/Inicio.tsx')),
+  ], [true]);
+
+  const raiz = de195('movil/src/Raiz.tsx');
+  chequear("'Seguir igual' vuelve a montar lo que tiró, y si tira de nuevo vuelve el panel", [
+    /reintentar\(\) \{\s*if \(this\.state\.roto\) this\.setState\(\{ roto: false \}\);/.test(raiz),
+    /setDescartado\(true\);\s*limite\.current\?\.reintentar\(\);/.test(raiz),
+    /<Limite ref=\{limite\} alRomper=\{\(\) => setDescartado\(false\)\}>/.test(raiz),
+    /this\.props\.alRomper\?\.\(\);/.test(raiz),
+  ], [true, true, true, true]);
+
+  const pestanas = de195('movil/src/Pestanas.tsx');
+  chequear('un deslizamiento que corta el sistema vuelve a su pestaña', [
+    /onPanResponderTerminate: \(\) => \{\s*const llega = reposo\(ORDEN\.indexOf\(rumbo\.current\), ancho\);/.test(pestanas),
+    /onPanResponderTerminate:[\s\S]{0,700}gesto\.current = \{ decidido: false, vecina: null, desde: 0, x0: 0 \};\s*\},\s*onPanResponderTerminationRequest/.test(pestanas),
+  ], [true, true]);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

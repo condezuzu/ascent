@@ -48,7 +48,9 @@ function CargarMarca({
   alCerrar: () => void;
   alGuardar: () => void;
 }) {
-  const [ejercicio, setEjercicio] = useState(inicial ?? ejercicios[0]?.id ?? '');
+  // SOLO LOS QUE LLEVAN PESO, como en la web: acá se podía anotar "Plancha 40 kg".
+  const conPeso = ejercicios.filter((e) => e.admite_peso !== false);
+  const [ejercicio, setEjercicio] = useState(inicial ?? conPeso[0]?.id ?? '');
   const [unaVez, setUnaVez] = useState(true);
   const [kg, setKg] = useState<number | null>(null);
   const [reps, setReps] = useState('5');
@@ -125,7 +127,10 @@ function CargarMarca({
           ))}
         </View>
 
-        <CampoPeso kg={kg} unidad={unidad} alCambiar={setKg} etiqueta={T.marca.peso} />
+        {/* EN CADA TECLA (4/10): el campo confirma al SALIR, y acá tocar
+            "Anotar" con el teclado arriba no lo saca. El número estaba a la
+            vista y la hoja contestaba "ese peso no da". */}
+        <CampoPeso kg={kg} unidad={unidad} alCambiar={setKg} etiqueta={T.marca.peso} enCadaTecla />
 
         {!unaVez && (
           <>
@@ -173,7 +178,7 @@ function CargarMarca({
           que venía puesto. */}
       <SelectorEjercicio
         visible={eligiendo}
-        ejercicios={ejercicios}
+        ejercicios={conPeso}
         valor={ejercicio}
         alElegir={(id) => {
           if (id) setEjercicio(id);

@@ -431,6 +431,23 @@ export default function Pestanas({
           });
           gesto.current = { decidido: false, vecina: null, desde: 0, x0: 0 };
         },
+        // EL SISTEMA CORTÓ EL GESTO (4/10): bloquear el teléfono o bajar el
+        // centro de notificaciones con el dedo apoyado. No llega "soltar", y la
+        // tira quedaba parada entre dos pantallas. Vuelve a la pestaña de la
+        // que salió, como soltar sin haber movido.
+        onPanResponderTerminate: () => {
+          const llega = reposo(ORDEN.indexOf(rumbo.current), ancho);
+          ponerDesenfoque(desenfoqueEn(llega, ancho));
+          Animated.timing(correr, {
+            toValue: llega,
+            duration: VIAJE_MS,
+            easing: Easing.bezier(...CURVA),
+            useNativeDriver: true,
+          }).start(({ finished }) => {
+            if (finished && !gesto.current.decidido) setAsomando(null);
+          });
+          gesto.current = { decidido: false, vecina: null, desde: 0, x0: 0 };
+        },
         onPanResponderTerminationRequest: () => false,
       }),
     // SIN `pestana`: el gesto no puede depender de lo que se está dibujando.

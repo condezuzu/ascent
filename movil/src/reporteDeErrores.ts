@@ -74,6 +74,11 @@ async function cargarId(): Promise<void> {
   }
 }
 
+/** Con qué versión se mandó algo: la de la app y la OTA que está corriendo. */
+export function versionCompleta(): string {
+  return `${versionApp()} · ${versionOta()}`.slice(0, 100);
+}
+
 function versionApp(): string {
   return (Constants.expoConfig?.version ?? 'desconocida').slice(0, 100);
 }

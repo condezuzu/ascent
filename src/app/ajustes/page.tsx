@@ -10,6 +10,7 @@ import FondoEspacial from '@/components/FondoEspacial';
 import Avatar from '@/components/Avatar';
 import InstalarPWA from '@/components/InstalarPWA';
 import Nav from '@/components/Nav';
+import NoCargo from '@/components/NoCargo';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import BajaDeCuenta from '@/components/ajustes/BajaDeCuenta';
 import Bloqueados from '@/components/ajustes/Bloqueados';
@@ -38,15 +39,21 @@ import { T } from '@nucleo/textos';
 export default function Ajustes() {
   const [supabase] = useState(() => crearCliente());
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [noCargo, setNoCargo] = useState(false);
 
   const cargar = useCallback(async () => {
+    setNoCargo(false);
     const user = await miUsuario(supabase);
     if (!user) return;
     // select('*') y no la lista de columnas: si el código llega antes que la
     // migración, pedir una columna que todavía no existe rompe la pantalla
     // entera en vez de dejar la sección nueva en su estado vacío.
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    setPerfil(p);
+    // UNA RECARGA QUE FALLA NO BORRA LO QUE YA ESTABA (4/10). Las secciones
+    // recargan cuando un guardado falla, y sin red eso dejaba Ajustes entero
+    // en blanco. Si es la primera carga, se dice y se ofrece reintentar.
+    if (p) setPerfil(p);
+    else setNoCargo(true);
   }, [supabase]);
 
   useEffect(() => {
@@ -65,7 +72,7 @@ export default function Ajustes() {
         {/* Sin rango: todavía no se sabe, y se dibuja el último propio con su
             planeta, en el MISMO lugar que la pantalla de verdad (19/9). */}
         <FondoEspacial esquina="arriba-derecha" velo={0.74} />
-        <div className="pantalla" />
+        <div className="pantalla">{noCargo && <NoCargo reintentar={cargar} />}</div>
         <Nav />
       </>
     );

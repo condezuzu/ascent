@@ -37,7 +37,10 @@ export async function cargarDia(supabase: Cliente, uid: string, fecha: string, e
   const [{ data: sesiones }, { data: fotos }] = log
     ? await Promise.all([
         supabase.from('sesiones').select('id, inicio, fin, estado, series, bloques').eq('log_id', log.id),
-        supabase.from('photos').select('storage_path').eq('log_id', log.id).limit(1),
+        // LA MÁS NUEVA, SIEMPRE LA MISMA (4/10). Sin orden, con dos fotos en el
+        // día salía la que la base devolviera primero, y cambiaba sola al tocar
+        // cualquiera de las dos.
+        supabase.from('photos').select('storage_path').eq('log_id', log.id).order('creado', { ascending: false }).limit(1),
       ])
     : [{ data: [] }, { data: [] }];
 

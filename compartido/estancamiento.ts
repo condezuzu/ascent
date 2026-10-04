@@ -1,6 +1,6 @@
 import type { Cliente } from '@cliente';
 import { plataforma } from '@plataforma';
-import { hoyISO } from '@nucleo/fechas';
+import { aISO, hoyISO } from '@nucleo/fechas';
 import { detectar, idDeSenal, umbralValido, type MarcaCruda, type Senal, type SesionCruda } from '@nucleo/estancamiento';
 import type { Ejercicio } from '@nucleo/tipos';
 
@@ -37,6 +37,21 @@ export type DatosDeEstancamiento = {
 };
 
 /** La señal que hay, o `null` si no hay ninguna (o el aviso está apagado). */
+/**
+ * EL DÍA DE UNA SESIÓN ES EL DEL RELOJ DE LA PERSONA (4/10). `inicio` viene en
+ * UTC, y quedarse con los primeros diez caracteres fechaba un día después a
+ * toda sesión empezada de noche (desde las 21 en Uruguay): caía en la ventana
+ * equivocada de "últimas 4 semanas".
+ */
+export function sesionesCrudas(ses: { inicio: string; fin: string | null }[]): SesionCruda[] {
+  return ses
+    .filter((s) => s.fin)
+    .map((s) => ({
+      fecha: aISO(new Date(s.inicio)),
+      minutos: Math.round((new Date(s.fin as string).getTime() - new Date(s.inicio).getTime()) / 60000),
+    }));
+}
+
 export async function cargarEstancamiento(supabase: Cliente, uid: string): Promise<DatosDeEstancamiento | null> {
   const [{ data: perfil }, { data: prs }, { data: ses }, { data: cat }, silenciadas] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', uid).single(),
@@ -56,12 +71,7 @@ export async function cargarEstancamiento(supabase: Cliente, uid: string): Promi
   // omisión de la base.
   if (perfil.avisos_estancamiento === false) return null;
 
-  const sesiones: SesionCruda[] = (ses ?? [])
-    .filter((s) => s.fin)
-    .map((s) => ({
-      fecha: String(s.inicio).slice(0, 10),
-      minutos: Math.round((new Date(s.fin as string).getTime() - new Date(s.inicio).getTime()) / 60000),
-    }));
+  const sesiones = sesionesCrudas((ses ?? []) as { inicio: string; fin: string | null }[]);
 
   const senal = detectar({
     marcas: (prs ?? []).map((m) => ({

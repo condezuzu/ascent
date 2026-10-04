@@ -927,7 +927,10 @@ export default function Inicio({
       <RegistrarDia
         visible={registrarAbierto}
         racha={perfil.racha_actual}
-        logId={logs.find((l) => l.fecha === hoy && !l.es_descanso)?.id ?? null}
+        // El día de hoy, sea de gimnasio o de descanso, como en la web. Con el
+        // filtro de "no descanso", un día marcado 'Descansé' abría la hoja como
+        // si no existiera: decía "Registrar día" en vez de "Sumar al día".
+        logId={logs.find((l) => l.fecha === hoy)?.id ?? null}
         visibilidadDefault={perfil.visibilidad_default}
         alCerrar={() => setRegistrarAbierto(false)}
         alConfirmar={(r) => {

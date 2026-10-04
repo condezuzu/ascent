@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
@@ -10,6 +10,7 @@ import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import { guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
+import { escritorEnFila } from '@compartido/enFila';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
 import Gimnasio from './ajustes/Gimnasio';
@@ -96,18 +97,31 @@ export default function Ajustes({
     }
   }
 
-  async function alternarDia(dia: number) {
-    const nuevos = perfil.dias_descanso.includes(dia)
-      ? perfil.dias_descanso.filter((d) => d !== dia)
-      : [...perfil.dias_descanso, dia];
-    const antes = perfil.dias_descanso;
+  // LOS DÍAS DE DESCANSO VAN EN FILA: ver `escritorEnFila`. `alCambiar` llega
+  // nuevo en cada dibujo, y la fila vive más que un dibujo: se llama al último.
+  const pintarDias = useRef(alCambiar);
+  useEffect(() => {
+    pintarDias.current = alCambiar;
+  });
+  const [descansos] = useState(() =>
+    escritorEnFila<number[]>({
+      guardado: perfil.dias_descanso,
+      escribir: async (dias) => !(await supabase.rpc('fijar_descansos', { p_dias: dias })).error,
+      iguales: (a, b) => a.length === b.length && a.every((d) => b.includes(d)),
+      pintar: (dias) => pintarDias.current({ dias_descanso: dias }),
+      alFallar: () => setFallo(T.general.falloDescansos),
+    })
+  );
+  useEffect(() => {
+    descansos.alDia(perfil.dias_descanso);
+  }, [descansos, perfil.dias_descanso]);
+
+  function alternarDia(dia: number) {
+    const ahora = descansos.deseado();
+    const nuevos = ahora.includes(dia) ? ahora.filter((d) => d !== dia) : [...ahora, dia];
     setFallo('');
     alCambiar({ dias_descanso: nuevos });
-    const { error } = await supabase.rpc('fijar_descansos', { p_dias: nuevos });
-    if (error) {
-      alCambiar({ dias_descanso: antes });
-      setFallo(T.general.falloDescansos);
-    }
+    descansos.pedir(nuevos);
   }
 
   const umbral = umbralValido(perfil.umbral_estancamiento);

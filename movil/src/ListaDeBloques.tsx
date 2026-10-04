@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
@@ -61,6 +61,16 @@ function ListaDeBloques({
   // Se resuelve el índice ACTUAL desde el id al momento de quitar; si el bloque
   // ya no está, no se borra nada. La clave de la traba es el id, así el repetido
   // se ignora pero quitar dos bloques distintos seguidos NO se pisa.
+  // LO TECLEADO SIN CONFIRMAR NO SE PIERDE AL CERRAR (4/10). El campo confirma
+  // cuando pierde el foco, y tocar "Listo" o el fondo no se lo saca: la hoja se
+  // desmontaba con el número nuevo a la vista y la serie quedaba con el viejo.
+  const sinConfirmar = useRef<(() => void) | null>(null);
+  const cerrar = () => {
+    sinConfirmar.current?.();
+    sinConfirmar.current = null;
+    alCerrar();
+  };
+
   const quitar = useEnVuelo(
     (clave: string) => {
       const idx = clave.startsWith('i:')
@@ -96,6 +106,9 @@ function ListaDeBloques({
               unidad={unidad}
               etiqueta={T.sesion.pesoDeSerie(s + 1)}
               alCambiar={(kg) => alCorregirPeso(indice, s, kg)}
+              alTeclear={(confirmar) => {
+                sinConfirmar.current = confirmar;
+              }}
             />
           ))}
         {conCarga && (lista || !conNumero) && (
@@ -106,7 +119,7 @@ function ListaDeBloques({
   };
 
   return (
-    <Hoja visible={visible} alCerrar={alCerrar}>
+    <Hoja visible={visible} alCerrar={cerrar}>
       <Text style={estilos.titulo}>{T.sesion.listaTitulo}</Text>
 
       {nada ? (
@@ -172,7 +185,7 @@ function ListaDeBloques({
         </>
       )}
 
-      <Pressable style={estilos.listo} onPress={alCerrar}>
+      <Pressable style={estilos.listo} onPress={cerrar}>
         <Text style={estilos.listoTexto}>{T.sesion.listo}</Text>
       </Pressable>
       {cambiando !== null && estado.cerrados[cambiando] && (

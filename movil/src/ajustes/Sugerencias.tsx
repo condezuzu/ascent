@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
+import { versionCompleta } from '../reporteDeErrores';
 import CampoTexto from '../CampoTexto';
 import { C } from '../colores';
 
@@ -28,7 +29,8 @@ export default function Sugerencias({ userId }: { userId: string }) {
       user_id: userId,
       texto: texto.trim(),
       tipo: 'idea',
-      version_app: '0.1.0',
+      // La de verdad, como el buzón de errores. Había un '0.1.0' escrito a mano.
+      version_app: versionCompleta(),
       plataforma: Platform.OS,
       pantalla_origen: 'ajustes',
     });

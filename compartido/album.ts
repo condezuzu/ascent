@@ -145,6 +145,18 @@ export async function quitarFoto(supabase: Cliente, id: string, ruta: string) {
   return !errFila;
 }
 
+/**
+ * HASTA DÓNDE SE MUESTRA LA GRILLA EN ORDEN: la primera celda que todavía no
+ * cargó. Una celda SIN foto que pedir —la fila existe y el archivo no— cuenta
+ * como lista: no va a avisar nunca que cargó, y esperarla dejaba invisibles a
+ * todas las que venían después (4/10).
+ */
+export function cargadasEnOrden(cargadas: ReadonlySet<number>, sinFoto: ReadonlySet<number>): number {
+  let hasta = 0;
+  while (cargadas.has(hasta) || sinFoto.has(hasta)) hasta++;
+  return hasta;
+}
+
 /** Las fotos por mes, en el orden en que vienen (la más nueva primero). */
 export function porMes(celdas: Celda[]) {
   const meses: { clave: string; titulo: string; desde: number; fotos: Celda[] }[] = [];
