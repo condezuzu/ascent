@@ -53,7 +53,7 @@
  * carga con node pelado y prueba las cuentas de verdad.
  */
 
-import { cargaValida, type Carga } from './carga.ts';
+import { cargaValida, llevaNumero, type Carga } from './carga.ts';
 
 /**
  * `pesos[i]` es el peso de la serie i, en kilos; `null` si esa serie se hizo sin
@@ -192,7 +192,10 @@ export function metaValida(meta: number): number {
  * al llegar a la meta.
  */
 export function sumar(e: EstadoBloques): EstadoBloques {
-  const pesos = [...pesosDe(e.pesos, e.hechas), pesoValido(e.peso)];
+  // Con peso corporal la serie va SIN número. El peso vigente puede seguir en el
+  // bloque —lo escrito a mano no se pisa al cambiar de modo— y vuelve a valer si
+  // se pasa a otro modo, pero mientras tanto no se anota.
+  const pesos = [...pesosDe(e.pesos, e.hechas), llevaNumero(e.carga) ? pesoValido(e.peso) : null];
   // Contar una serie con el peso propuesto lo CONFIRMA: deja de ser propuesto.
   return conPesos({ ...sinMarca(e), hechas: e.hechas + 1 }, pesos);
 }

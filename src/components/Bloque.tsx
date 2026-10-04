@@ -19,6 +19,7 @@ import {
   cargaVigente,
   hayQuePreguntar,
   kilosMovidos,
+  llevaNumero,
   muestraTotal,
   type Carga,
 } from '@nucleo/carga';
@@ -195,14 +196,16 @@ export default function Bloque({
           nada (migración 31). */}
       {anotarPeso && admitePeso && (
         <div className="bloque-peso">
-          <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} />
+          {/* Con peso corporal no hay número: se esconde el campo y queda la
+              etiqueta, para poder volver a un peso (igual que la nativa). */}
+          {llevaNumero(cargaVista) && <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} />}
           {conCarga && !preguntar && (
             <EtiquetaDeCarga carga={cargaVista} ejercicio={estado.ejercicio} alElegir={alElegirCarga} />
           )}
           {/* LA LÍNEA DEL TOTAL, solo cuando lo escrito no es el total. Además
               de informar, delata al que escribió la suma: "120 kg en total" en
               un curl se ve raro enseguida. */}
-          {conCarga && !preguntar && estado.peso && muestraTotal(cargaVista) && (
+          {conCarga && !preguntar && llevaNumero(cargaVista) && estado.peso && muestraTotal(cargaVista) && (
             <p className="carga-total">
               {T.sesion.enTotal(pesoCorto(kilosMovidos(estado.peso, cargaVista), unidad), unidad)}
             </p>

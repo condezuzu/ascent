@@ -9,7 +9,7 @@ import CampoPeso from '@/components/CampoPeso';
 import SelectorEjercicio from '@/components/SelectorEjercicio';
 import { T } from '@nucleo/textos';
 import EtiquetaDeCarga from '@/components/EtiquetaDeCarga';
-import { cargaVigente, type Carga } from '@nucleo/carga';
+import { cargaVigente, llevaNumero, type Carga } from '@nucleo/carga';
 
 /**
  * LO QUE LLEVÁS HECHO EN ESTA SESIÓN, Y CÓMO CORREGIRLO.
@@ -145,19 +145,23 @@ export default function ListaDeBloques({
                     si se anota peso y el ejercicio lo admite. */}
                 {anotarPeso && b.series > 0 && admitePeso(b.ejercicio) && (
                   <span className="pesos-serie">
-                    {Array.from({ length: b.series }, (_, s) => (
-                      <CampoPeso
-                        key={s}
-                        compacto
-                        kg={b.pesos?.[s]}
-                        unidad={unidad}
-                        etiqueta={T.sesion.pesoDeSerie(s + 1)}
-                        alCambiar={(kg) => alCorregirPeso(i, s, kg)}
-                      />
-                    ))}
+                    {/* Con peso corporal no hay número: no se ofrece un campo
+                        por serie (ver `llevaNumero`). */}
+                    {llevaNumero(cargaVigente(b.carga, delCatalogo(b.ejercicio))) &&
+                      Array.from({ length: b.series }, (_, s) => (
+                        <CampoPeso
+                          key={s}
+                          compacto
+                          kg={b.pesos?.[s]}
+                          unidad={unidad}
+                          etiqueta={T.sesion.pesoDeSerie(s + 1)}
+                          alCambiar={(kg) => alCorregirPeso(i, s, kg)}
+                        />
+                      ))}
                     {/* El modo de ESTE bloque, que es el que quedó escrito.
-                        Solo con pesos: sin números no hay nada que significar. */}
-                    {conCarga && b.pesos && (
+                        Solo con pesos: sin números no hay nada que significar.
+                        Salvo en corporal, donde la etiqueta es la salida. */}
+                    {conCarga && (b.pesos || !llevaNumero(cargaVigente(b.carga, delCatalogo(b.ejercicio)))) && (
                       <EtiquetaDeCarga
                         carga={cargaVigente(b.carga, delCatalogo(b.ejercicio))}
                         ejercicio={b.ejercicio}
@@ -181,17 +185,18 @@ export default function ListaDeBloques({
                     + y el − de afuera cuentan series, no arreglan pesos. */}
                 {anotarPeso && admitePeso(estado.ejercicio) && (
                   <span className="pesos-serie">
-                    {Array.from({ length: estado.hechas }, (_, s) => (
-                      <CampoPeso
-                        key={s}
-                        compacto
-                        kg={estado.pesos?.[s]}
-                        unidad={unidad}
-                        etiqueta={T.sesion.pesoDeSerie(s + 1)}
-                        alCambiar={(kg) => alCorregirPeso(-1, s, kg)}
-                      />
-                    ))}
-                    {conCarga && estado.pesos && (
+                    {llevaNumero(cargaVigente(estado.carga, delCatalogo(estado.ejercicio))) &&
+                      Array.from({ length: estado.hechas }, (_, s) => (
+                        <CampoPeso
+                          key={s}
+                          compacto
+                          kg={estado.pesos?.[s]}
+                          unidad={unidad}
+                          etiqueta={T.sesion.pesoDeSerie(s + 1)}
+                          alCambiar={(kg) => alCorregirPeso(-1, s, kg)}
+                        />
+                      ))}
+                    {conCarga && (estado.pesos || !llevaNumero(cargaVigente(estado.carga, delCatalogo(estado.ejercicio)))) && (
                       <EtiquetaDeCarga
                         carga={cargaVigente(estado.carga, delCatalogo(estado.ejercicio))}
                         ejercicio={estado.ejercicio}

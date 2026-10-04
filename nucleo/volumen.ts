@@ -22,7 +22,7 @@
  * NO IMPORTA NADA salvo `carga` y `fechas`: se prueba con node pelado.
  */
 
-import { cargaValida, kilosMovidos, type Carga } from './carga.ts';
+import { cargaValida, kilosMovidos, llevaNumero, type Carga } from './carga.ts';
 import { deISO, restarDias } from './fechas.ts';
 import { ORDEN_ZONAS, ZONAS } from './ejercicios.ts';
 
@@ -178,6 +178,8 @@ export function maximosPorEjercicio(sesiones: SesionConBloques[], catalogo: Cata
       if (!nombre) continue;
       const previo = por.get(b.ejercicio);
       if (previo) previo.ultimaVez = s.fecha;
+      // Con peso corporal no hay número que comparar (ver `llevaNumero`).
+      if (!llevaNumero(b.carga)) continue;
       for (const p of b.pesos) {
         if (p === null) continue;
         const kilos = kilosMovidos(p, b.carga);

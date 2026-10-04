@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import type { Unidad } from '@nucleo/peso';
-import { cargaVigente, type Carga } from '@nucleo/carga';
+import { cargaVigente, llevaNumero, type Carga } from '@nucleo/carga';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
@@ -78,29 +78,31 @@ export default function ListaDeBloques({
   const admitePeso = (id: string | null) => id !== null && del(id)?.admite_peso !== false;
   const nada = estado.cerrados.length === 0 && estado.hechas === 0;
 
-  const pesos = (indice: number, ejercicio: string | null, series: number, lista: (number | null)[] | undefined, carga: Carga | undefined) =>
-    anotarPeso && series > 0 && admitePeso(ejercicio) ? (
+  const pesos = (indice: number, ejercicio: string | null, series: number, lista: (number | null)[] | undefined, carga: Carga | undefined) => {
+    if (!anotarPeso || series <= 0 || !admitePeso(ejercicio)) return null;
+    // CON PESO CORPORAL NO HAY NÚMERO: no se ofrece un campo por serie, y la
+    // etiqueta queda siempre, que es por donde se vuelve a un peso.
+    const vista = cargaVigente(carga, del(ejercicio)?.carga);
+    const conNumero = llevaNumero(vista);
+    return (
       <View style={estilos.pesos}>
-        {Array.from({ length: series }, (_, s) => (
-          <CampoPeso
-            key={s}
-            compacto
-            kg={lista?.[s]}
-            unidad={unidad}
-            etiqueta={T.sesion.pesoDeSerie(s + 1)}
-            alCambiar={(kg) => alCorregirPeso(indice, s, kg)}
-          />
-        ))}
-        {conCarga && lista && (
-          <EtiquetaDeCarga
-            chica
-            carga={cargaVigente(carga, del(ejercicio)?.carga)}
-            ejercicio={ejercicio}
-            alElegir={(c) => alCorregirCarga(indice, c)}
-          />
+        {conNumero &&
+          Array.from({ length: series }, (_, s) => (
+            <CampoPeso
+              key={s}
+              compacto
+              kg={lista?.[s]}
+              unidad={unidad}
+              etiqueta={T.sesion.pesoDeSerie(s + 1)}
+              alCambiar={(kg) => alCorregirPeso(indice, s, kg)}
+            />
+          ))}
+        {conCarga && (lista || !conNumero) && (
+          <EtiquetaDeCarga chica carga={vista} ejercicio={ejercicio} alElegir={(c) => alCorregirCarga(indice, c)} />
         )}
       </View>
-    ) : null;
+    );
+  };
 
   return (
     <Hoja visible={visible} alCerrar={alCerrar}>

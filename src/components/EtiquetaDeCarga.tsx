@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { CARGAS, claveDeEtiqueta, type Carga } from '@nucleo/carga';
+import { cargasOfrecidas, claveDeEtiqueta, type Carga } from '@nucleo/carga';
 import { T } from '@nucleo/textos';
+import { useVersion } from '@/lib/version';
 
 /**
  * QUÉ SIGNIFICA EL NÚMERO, pegado al número.
@@ -23,6 +24,10 @@ export default function EtiquetaDeCarga({
   alElegir: (c: Carga) => void;
 }) {
   const [abierta, setAbierta] = useState(false);
+  // Igual que la nativa: "peso corporal" recién se ofrece con la migración 58.
+  // Antes la base lo descarta en silencio y guarda el modo del catálogo: la
+  // pantalla decía una cosa y quedaba anotada otra.
+  const version = useVersion();
 
   return (
     <span className="carga">
@@ -39,7 +44,7 @@ export default function EtiquetaDeCarga({
       </button>
       {abierta && (
         <span className="carga-opciones" role="group" aria-label={T.sesion.cargaCambiar}>
-          {CARGAS.map((c) => (
+          {cargasOfrecidas(version).map((c) => (
             <button
               key={c}
               className={c === carga ? 'prendida' : ''}

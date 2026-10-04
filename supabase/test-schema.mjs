@@ -13539,6 +13539,75 @@ console.log('\n180. Elegir y tocar el + enseguida: el bloque cambia antes de cua
   );
 }
 
+console.log('\n181. Peso corporal: sin número en la serie, en el volumen y en la pantalla');
+{
+  // ANTES DE APLICAR LA 58 (4/10). "Peso corporal" es sin número: se cuentan las
+  // series y no suma volumen. Pero un peso escrito ANTES de cambiar de modo se
+  // quedaba en el bloque —a propósito: lo escrito no se pisa (sección 166)—, se
+  // seguía anotando en cada serie, escondido, y sumaba kilos en Stats.
+  const B181 = await import('../nucleo/bloques.ts');
+  const CG181 = await import('../nucleo/carga.ts');
+  const V181 = await import('../nucleo/volumen.ts');
+  const CT181 = await import('../nucleo/conteo.ts');
+  const numeros = (pesos) => (pesos ?? []).filter((p) => p !== null);
+
+  // El camino del hallazgo: Fondos, se escribe 20, se pasa a peso corporal
+  // (lo que hace `elegirCarga`) y se suman tres series.
+  let fondos = B181.cambiarPeso(B181.cambiarCarga(B181.cambiarEjercicio(B181.bloquesVacios(), 'fondos'), 'lastre'), 20);
+  fondos = B181.pesoAlCambiarDeModo(B181.cambiarCarga(fondos, 'corporal'), null);
+  chequear('al pasar a corporal lo escrito se queda en el bloque', [fondos.peso, fondos.carga], [20, 'corporal']);
+  let conteo181 = { series: 0, bloques: fondos };
+  for (let i = 0; i < 3; i++) conteo181 = CT181.sumarSerie(conteo181);
+  const aLaBase = B181.paraGuardar(conteo181.bloques);
+  // (Sin números el bloque viaja sin modo, como cualquier bloque sin pesos:
+  // "sin números no hay nada que significar". Son tres series y nada más.)
+  chequear(
+    'pero las tres series se anotan sin número',
+    aLaBase.map((b) => [b.ejercicio, b.series, numeros(b.pesos)]),
+    [['fondos', 3, []]]
+  );
+  chequear('y no suman kilos', V181.kilosDelBloque(V181.leerBloques(aLaBase)[0]), 0);
+  // El 20 no se perdió: de vuelta con lastre, la serie siguiente lo lleva.
+  const conLastre = CT181.sumarSerie({ series: 3, bloques: B181.cambiarCarga(conteo181.bloques, 'lastre') });
+  chequear('de vuelta con lastre, el número vuelve a valer', numeros(B181.paraGuardar(conLastre.bloques)[0].pesos), [20]);
+
+  // LO QUE YA ESTÁ GUARDADO: un bloque que se pasó a corporal con series hechas
+  // con peso conserva sus números, pero no cuentan.
+  const catalogo181 = new Map([['fondos', { nombre: 'Fondos', grupo: 'pecho' }]]);
+  const guardado181 = [{ ejercicio: 'fondos', series: 3, pesos: [20, 20, 20], carga: 'corporal' }];
+  const leido181 = V181.leerBloques(guardado181);
+  chequear('un bloque guardado con números y modo corporal no suma', [
+    V181.kilosDelBloque(leido181[0]),
+    V181.volumenPorGrupo(leido181, catalogo181).map((g) => [g.grupo, g.kilos, g.series]),
+  ], [0, [['pecho', 0, 3]]]);
+  chequear('ni figura como peso máximo', V181.maximosPorEjercicio([{ fecha: '2026-10-01', bloques: guardado181 }], catalogo181), []);
+  chequear(
+    'el mismo bloque con lastre sí suma y sí es un máximo',
+    [
+      V181.kilosDelBloque(V181.leerBloques([{ ...guardado181[0], carga: 'lastre' }])[0]),
+      V181.maximosPorEjercicio([{ fecha: '2026-10-01', bloques: [{ ...guardado181[0], carga: 'lastre' }] }], catalogo181).map((m) => m.kilos),
+    ],
+    [60, [20]]
+  );
+  chequear('los otros cuatro modos cuentan como siempre', ['total', 'par', 'una', 'lastre', 'corporal'].map((m) => CG181.kilosMovidos(20, m)), [20, 40, 40, 20, 0]);
+  chequear('la regla, de un solo lugar: solo corporal va sin número', CG181.CARGAS.filter((c) => !CG181.llevaNumero(c)), ['corporal']);
+
+  // CABLEADO: lo que se dibuja no se puede correr acá. Se mira que las cuatro
+  // pantallas que muestran un campo de peso le pregunten a `llevaNumero`, y que
+  // la web ofrezca los modos según el esquema, igual que la nativa.
+  const de181 = (ruta) => sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'));
+  const sinGuarda = (texto) => (texto.match(/<CampoPeso\b/g) ?? []).length - (texto.match(/(llevaNumero\([^\n]*\)|conNumero|!esCorporal) &&\s*(<CampoPeso|Array\.from\()/g) ?? []).length;
+  chequear(
+    'ningún campo de peso se dibuja sin preguntar si el modo lleva número',
+    ['src/components/Bloque.tsx', 'movil/src/Bloque.tsx', 'src/components/ListaDeBloques.tsx', 'movil/src/ListaDeBloques.tsx'].map((r) => sinGuarda(de181(r))),
+    [0, 0, 0, 0]
+  );
+  chequear('y la nativa decide "corporal" con la misma regla', /const esCorporal = !llevaNumero\(cargaVista\)/.test(de181('movil/src/Bloque.tsx')), true);
+  chequear('el detector ve un campo suelto', sinGuarda('{anotarPeso && <CampoPeso kg={estado.peso} />}'), 1);
+  const etiquetaWeb = de181('src/components/EtiquetaDeCarga.tsx');
+  chequear('la web ofrece "peso corporal" recién con la 58, como la nativa', [/cargasOfrecidas\(version\)\.map/.test(etiquetaWeb), /\bCARGAS\.map/.test(etiquetaWeb)], [true, false]);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
-import { OPCIONES_DE_LA_PREGUNTA, cargaVigente, hayQuePreguntar, kilosMovidos, muestraTotal, type Carga } from '@nucleo/carga';
+import { OPCIONES_DE_LA_PREGUNTA, cargaVigente, hayQuePreguntar, kilosMovidos, llevaNumero, muestraTotal, type Carga } from '@nucleo/carga';
 import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
 import { leerAnotarPeso } from '@compartido/anotarPeso';
@@ -111,7 +111,7 @@ export default function Bloque({
   const cumplida = metaCumplida(estado);
   const puntos = Math.max(estado.meta, estado.hechas);
   const cargaVista = cargaVigente(estado.carga, actual?.carga);
-  const esCorporal = cargaVista === 'corporal';
+  const esCorporal = !llevaNumero(cargaVista);
   const admitePeso = !!estado.ejercicio && actual?.admite_peso !== false;
   const preguntar =
     conCarga &&

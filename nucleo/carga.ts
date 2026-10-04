@@ -74,6 +74,18 @@ export function cargaValida(x: unknown): Carga | null {
   return typeof x === 'string' && (CARGAS as readonly string[]).includes(x) ? (x as Carga) : null;
 }
 
+/**
+ * SI EN ESTE MODO HAY UN NÚMERO. Con peso corporal no hay: ni campo para
+ * escribirlo, ni peso en la serie, ni kilos en el volumen (ver la cabecera).
+ *
+ * Es UNA regla y la preguntan todos acá (4/10). Estaba repartida: la nativa
+ * escondía el campo, pero un peso escrito antes de cambiar de modo se seguía
+ * anotando en cada serie, escondido, y sumaba kilos.
+ */
+export function llevaNumero(c: Carga | null | undefined): boolean {
+  return c !== 'corporal';
+}
+
 /** Por cuánto se multiplica el número escrito para saber lo que se movió. */
 export function factorDeCarga(c: Carga): 1 | 2 {
   // `par` y `una` son los dos lados: a la vez o uno por vez. Ver la cabecera.
@@ -85,6 +97,9 @@ export function factorDeCarga(c: Carga): 1 | 2 {
  * volumen y de la línea "60 kg en total" debajo del campo.
  */
 export function kilosMovidos(peso: number, c: Carga): number {
+  // También para lo ya guardado: un bloque que se pasó a corporal con series
+  // hechas conserva sus números (no se pisa lo escrito), pero no suman.
+  if (!llevaNumero(c)) return 0;
   return Math.round(peso * factorDeCarga(c) * 100) / 100;
 }
 
