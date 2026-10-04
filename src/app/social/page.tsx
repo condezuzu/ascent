@@ -237,7 +237,9 @@ export default function Social() {
             </div>
           </>
         ) : (
-          cargado && (
+          // Sin `!noCargo` salían juntos el cartel de "no se pudo" y "tu cielo
+          // está vacío": lo segundo no se sabe.
+          cargado && !noCargo && (
             <div className="vacio-cosmico">
               <div className="particulas">
                 <i /><i /><i /><i />
@@ -304,7 +306,17 @@ export default function Social() {
               <Link href={`/perfil/${u.id}`} className="nombre">
                 {u.username}
               </Link>
-              {pedidosMandados.has(u.id) ? (
+              {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
+                  silencio contra el suyo: acá se acepta. */}
+              {solicitudes.some((s) => s.de.id === u.id) ? (
+                <button
+                  className="boton-texto"
+                  style={{ width: 'auto' }}
+                  onClick={() => aceptar(solicitudes.find((s) => s.de.id === u.id)!.id)}
+                >
+                  {T.social.aceptar}
+                </button>
+              ) : pedidosMandados.has(u.id) ? (
                 <span className="dato">{T.social.pedidoEnviado}</span>
               ) : (
                 <button

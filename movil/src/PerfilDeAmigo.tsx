@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { cargarPerfilDeAmigo, DIAS_VISIBLES, type PerfilDeAmigo as Datos } from '@compartido/perfil';
+import { cargarPerfilDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
 import Medallas from './Medallas';
-import { pedirAmistad } from '@compartido/ranking';
+import { aceptarAmistad, pedirAmistad } from '@compartido/ranking';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 import { plataforma } from '@plataforma';
@@ -13,7 +13,7 @@ import { conComa } from '@nucleo/peso';
 import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
-import { miId } from '@compartido/quienSoy';
+import { miId, quienSoy } from '@compartido/quienSoy';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
 import FotosQueVen from './FotosQueVen';
@@ -46,6 +46,7 @@ export default function PerfilDeAmigo() {
   const [dots, setDots] = useState<number | null>(null);
   const [cargado, setCargado] = useState(false);
   const [error, setError] = useState('');
+  const [noCargo, setNoCargo] = useState(false);
   const [accion, setAccion] = useState(false);
 
   const cargar = useCallback(async () => {
@@ -55,12 +56,23 @@ export default function PerfilDeAmigo() {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id ?? '')) {
       return setCargado(true);
     }
-    const yo = await miId(supabase);
-    if (!yo) return setCargado(true);
+    setNoCargo(false);
+    const quien = await quienSoy(supabase);
+    if (quien.estado !== 'con') {
+      // Sin sesión lo resuelve la raíz. Sin poder preguntar, no es "no existe".
+      setNoCargo(quien.estado === 'no-se');
+      return setCargado(true);
+    }
+    const yo = quien.uid;
     // Tu propio perfil tiene su pantalla: entrar al tuyo por acá mostraría una
     // versión recortada de vos mismo.
     if (yo === id) return router.replace('/yo');
     const d = await cargarPerfilDeAmigo(supabase, yo, id);
+    // Sin señal: se dice, con Reintentar, y lo que ya estaba en pantalla queda.
+    if (d === NO_SE_PUDO) {
+      setNoCargo(true);
+      return setCargado(true);
+    }
     if (!d) setError(T.social.noExiste);
     setDatos(d);
     setCargado(true);
@@ -96,6 +108,12 @@ export default function PerfilDeAmigo() {
     setDatos({ ...datos, pedidoPendiente: true });
   });
 
+  const aceptarPedido = useEnVuelo(async () => {
+    if (!datos?.pedidoRecibido) return;
+    if (!(await aceptarAmistad(supabase, datos.pedidoRecibido))) return setError(T.general.noSePudo);
+    cargar();
+  });
+
   // LA SALIDA SE DIBUJA SIEMPRE, también mientras carga. La rama del error ya
   // la tenía; esta no, y una consulta que tarda encierra igual que una que
   // falla — con mala señal, tardar mucho es lo normal. Lo encontró el barrido
@@ -125,13 +143,18 @@ export default function PerfilDeAmigo() {
           {/* El "Volver" que estaba acá abajo se fue arriba con el resto: una
               sola salida, en el mismo lugar en las tres ramas, en vez de una
               que se mueve según lo que haya pasado. */}
-          <Text style={estilos.error}>{error || T.social.noExiste}</Text>
+          <Text style={estilos.error}>{noCargo ? T.inicio.noCargo : error || T.social.noExiste}</Text>
+          {noCargo && (
+            <Pressable onPress={cargar} hitSlop={8} style={{ marginTop: 14 }}>
+              <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     );
   }
 
-  const { usuario, esAmigo, pedidoPendiente, logs, fotos } = datos;
+  const { usuario, esAmigo, pedidoPendiente, pedidoRecibido, logs, fotos } = datos;
   const hoy = hoyISO();
   const semana = Array.from({ length: DIAS_VISIBLES }, (_, i) => {
     const fecha = restarDias(hoy, DIAS_VISIBLES - 1 - i);
@@ -194,7 +217,11 @@ export default function PerfilDeAmigo() {
           </>
         ) : (
           <>
-            {pedidoPendiente ? (
+            {pedidoRecibido ? (
+              <Pressable style={estilos.solido} onPress={() => aceptarPedido()}>
+                <Text style={estilos.solidoTexto}>{T.social.aceptar}</Text>
+              </Pressable>
+            ) : pedidoPendiente ? (
               <View style={estilos.boton}>
                 <Text style={estilos.botonTexto}>{T.social.pedidoDeAmistad}</Text>
               </View>

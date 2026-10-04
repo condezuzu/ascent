@@ -14317,6 +14317,110 @@ console.log('\n191. El aviso de pérdida sale de lo que quedó guardado, no de u
   chequear('Inicio de la web', usaLoGuardado('src/app/page.tsx'), [true, true, true, false]);
 }
 
+console.log('\n192. Amigos: "no se pudo preguntar" no es "no existe", y un pedido dice de quién es');
+{
+  // Una base de mentira que contesta por tabla. Cada consulta devuelve lo que
+  // se le configuró, se la espere directo o con `maybeSingle()`.
+  const baseQue = (porTabla) => ({
+    from: (tabla) => {
+      const r = porTabla[tabla] ?? { data: null, error: null };
+      const q = new Proxy(
+        {},
+        {
+          get: (_, clave) =>
+            clave === 'then'
+              ? (a, b) => Promise.resolve(r).then(a, b)
+              : clave === 'maybeSingle' || clave === 'single'
+                ? () => Promise.resolve(r)
+                : () => q,
+        }
+      );
+      return q;
+    },
+    rpc: async () => ({ data: null, error: null }),
+  });
+  const DE_RED192 = { message: 'Network request failed' };
+  const P192 = await import('../compartido/perfil.ts');
+  const ana = { id: 'ana', username: 'ana', racha_actual: 12 };
+
+  // ---- EL PERFIL DE UN AMIGO, SIN SEÑAL ----
+  chequear(
+    'si no se pudo preguntar quién es, no es "no existe"',
+    await P192.cargarPerfilDeAmigo(baseQue({ usuarios_publicos: { data: null, error: DE_RED192 } }), 'yo', 'ana'),
+    P192.NO_SE_PUDO
+  );
+  chequear('"no existe" sigue siendo cuando la base contesta que no está', await P192.cargarPerfilDeAmigo(baseQue({ usuarios_publicos: { data: null, error: null } }), 'yo', 'ana'), null);
+  chequear(
+    'y si falló la consulta de la amistad, tampoco se lo muestra como "no es tu amigo"',
+    await P192.cargarPerfilDeAmigo(baseQue({ usuarios_publicos: { data: ana, error: null }, friendships: { data: null, error: DE_RED192 } }), 'yo', 'ana'),
+    P192.NO_SE_PUDO
+  );
+
+  // ---- DE QUIÉN ES EL PEDIDO ----
+  const conPedido = async (solicitante) => {
+    const d = await P192.cargarPerfilDeAmigo(
+      baseQue({ usuarios_publicos: { data: ana, error: null }, friendships: { data: { id: 'f1', estado: 'pendiente', solicitante, destinatario: solicitante === 'yo' ? 'ana' : 'yo' }, error: null } }),
+      'yo',
+      'ana'
+    );
+    return [d.esAmigo, d.pedidoPendiente, d.pedidoRecibido];
+  };
+  chequear('el pedido que mandé yo: "enviado", y nada que aceptar', await conPedido('yo'), [false, true, null]);
+  chequear('el que me mandó ella: no dice "enviado", y trae con qué aceptarlo', await conPedido('ana'), [false, false, 'f1']);
+
+  // ---- "TU CIELO ESTÁ VACÍO" CUANDO FALLÓ LA RED ----
+  const RK192 = await import('../compartido/ranking.ts');
+  chequear(
+    'el ranking sin poder saber quiénes son es "no se pudo", no una lista vacía',
+    await RK192.cargarRanking(baseQue({ friendships: { data: [{ id: 'f', estado: 'aceptada', solicitante: 'yo', destinatario: 'ana' }], error: null }, usuarios_publicos: { data: null, error: DE_RED192 } }), 'yo'),
+    null
+  );
+
+  // CABLEADO: las pantallas hacen algo distinto con cada caso.
+  const de192 = (ruta) => sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'));
+  const nativa192 = de192('movil/src/PerfilDeAmigo.tsx');
+  const web192 = de192('src/app/perfil/[id]/page.tsx');
+  chequear('el perfil de la nativa: cartel con Reintentar, y "Aceptar" si el pedido es de él', [
+    /if \(d === NO_SE_PUDO\) \{\s*setNoCargo\(true\);/.test(nativa192),
+    /\{noCargo \? T\.inicio\.noCargo : error \|\| T\.social\.noExiste\}/.test(nativa192),
+    /\{pedidoRecibido \? \(/.test(nativa192),
+  ], [true, true, true]);
+  chequear('el de la web, igual', [
+    /if \(errUsuario\) \{\s*setNoCargo\(true\);/.test(web192),
+    /if \(errRelacion\) \{\s*setNoCargo\(true\);/.test(web192),
+    /\{noCargo \? T\.inicio\.noCargo : T\.social\.noExiste\}/.test(web192),
+    /rel\.solicitante === user\.id/.test(web192),
+  ], [true, true, true, true]);
+  chequear('en la búsqueda, a quien ya te mandó un pedido se lo acepta', [
+    /solicitudes\.some\(\(s\) => s\.de\.id === u\.id\) \?/.test(de192('movil/src/Ranking.tsx')),
+    /solicitudes\.some\(\(s\) => s\.de\.id === u\.id\) \?/.test(de192('src/app/social/page.tsx')),
+  ], [true, true]);
+  chequear('y el Ranking de la web no dice "vacío" cuando no cargó', /cargado && !noCargo && \(/.test(de192('src/app/social/page.tsx')), true);
+
+  // ---- CON LA MISMA RACHA, EL ORDEN NO DEPENDE DE CÓMO LLEGUEN ----
+  const empatados = [{ id: 'yo', username: 'zoe', racha_actual: 5 }, { id: 'ana', username: 'ana', racha_actual: 5 }, { id: 'beto', username: 'beto', racha_actual: 9 }];
+  const amistades = [
+    { id: 'f1', estado: 'aceptada', solicitante: 'yo', destinatario: 'ana' },
+    { id: 'f2', estado: 'aceptada', solicitante: 'beto', destinatario: 'yo' },
+  ];
+  const ordenDe = async (publicos) =>
+    (await RK192.cargarRanking(baseQue({ friendships: { data: amistades, error: null }, usuarios_publicos: { data: publicos, error: null }, logs: { data: [], error: null } }), 'yo')).amigos.map((a) => a.username);
+  chequear('los empatados salen en el mismo orden lleguen como lleguen', [await ordenDe(empatados), await ordenDe([...empatados].reverse())], [
+    ['beto', 'ana', 'zoe'],
+    ['beto', 'ana', 'zoe'],
+  ]);
+
+  // ---- EN LA WEB, EL DOTS Y LAS MEDALLAS DE UN AMIGO SE DIBUJAN ----
+  // Se pedían y quedaban en la rama de "no es tu amigo". Cableado: son componentes.
+  const comoMeVen = de192('src/components/ComoMeVen.tsx');
+  chequear('el perfil de un amigo en la web dibuja sus medallas y su DOTS', [
+    /<Medallas\s+medallas=\{medallas\}/.test(comoMeVen) && /\{dots !== null && \(/.test(comoMeVen),
+    /<ComoMeVen usuario=\{usuario\} logs=\{logs\} fotos=\{fotos\} medallas=\{medallas\} dots=\{dots\} \/>/.test(web192),
+    // Las medallas se piden fuera del `if` de las fotos.
+    /\}\s*setMedallas\(await cargarMedallasDeAmigo\(supabase, params\.id\)\);\s*\}\s*setCargado\(true\);/.test(web192),
+  ], [true, true, true]);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

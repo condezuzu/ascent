@@ -14,6 +14,7 @@ import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import { miniaturas } from '@compartido/album';
+import { aceptarAmistad } from '@compartido/ranking';
 import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 import { plataforma } from '@/plataforma';
 import { T } from '@nucleo/textos';
@@ -39,6 +40,10 @@ export default function Perfil() {
   const [usuario, setUsuario] = useState<UsuarioPublico | null>(null);
   const [esAmigo, setEsAmigo] = useState(false);
   const [pedidoPendiente, setPedidoPendiente] = useState(false);
+  // El pedido que me mandó ÉL: el id de la fila, que es con lo que se acepta.
+  const [pedidoRecibido, setPedidoRecibido] = useState<string | null>(null);
+  // No se pudo preguntar (la red): no es "no existe".
+  const [noCargo, setNoCargo] = useState(false);
   const [logs, setLogs] = useState<Log[]>([]);
   const [fotos, setFotos] = useState<FotoPerfil[]>([]);
   const [medallas, setMedallas] = useState<Medalla[]>([]);
@@ -59,27 +64,42 @@ export default function Perfil() {
     if (params.id === user.id) return router.replace('/');
     setMiId(user.id);
 
-    const { data: u } = await supabase
+    setNoCargo(false);
+    const { data: u, error: errUsuario } = await supabase
       .from('usuarios_publicos')
       .select('*')
       .eq('id', params.id)
       .maybeSingle();
+    // NO PODER PREGUNTAR NO ES "NO EXISTE" (4/10): sin señal esto decía "Este
+    // usuario no existe", o mostraba a un amigo como si no lo fuera.
+    if (errUsuario) {
+      setNoCargo(true);
+      setCargado(true);
+      return;
+    }
     if (!u) {
       setCargado(true);
       return;
     }
     setUsuario(u as UsuarioPublico);
 
-    const { data: rel } = await supabase
+    const { data: rel, error: errRelacion } = await supabase
       .from('friendships')
       .select('*')
       .or(
         `and(solicitante.eq.${user.id},destinatario.eq.${params.id}),and(solicitante.eq.${params.id},destinatario.eq.${user.id})`
       )
       .maybeSingle();
+    if (errRelacion) {
+      setNoCargo(true);
+      setCargado(true);
+      return;
+    }
     const amigos = rel?.estado === 'aceptada';
     setEsAmigo(amigos);
-    setPedidoPendiente(rel?.estado === 'pendiente');
+    // De quién es el pedido: el de él se acepta, el mío se espera.
+    setPedidoPendiente(rel?.estado === 'pendiente' && rel.solicitante === user.id);
+    setPedidoRecibido(rel?.estado === 'pendiente' && rel.solicitante === params.id ? (rel.id as string) : null);
 
     if (amigos) {
       // El DOTS del amigo, número crudo. Sale de `ranking_fuerza`, ya gateada a
@@ -123,10 +143,12 @@ export default function Perfil() {
             fecha: f.log_id ? (mapa.get(f.log_id) ?? null) : null,
           }))
         );
-        // Sus medallas, del numero que el dejo escrito: su peso corporal no se
-        // ve nunca, ni entre amigos, asi que calcularlas aca es imposible.
-        setMedallas(await cargarMedallasDeAmigo(supabase, params.id));
       }
+      // Sus medallas, del numero que el dejo escrito: su peso corporal no se
+      // ve nunca, ni entre amigos, asi que calcularlas aca es imposible. Van
+      // AFUERA del `if` de las fotos: adentro, solo se pedían si el amigo
+      // compartía alguna.
+      setMedallas(await cargarMedallasDeAmigo(supabase, params.id));
     }
     setCargado(true);
   }, [supabase, params.id, router]);
@@ -176,7 +198,15 @@ export default function Perfil() {
         <div className="pantalla">
           <div className="vacio-cosmico">
             <div className="particulas"><i /><i /><i /><i /></div>
-            {T.social.noExiste}
+            {noCargo ? T.inicio.noCargo : T.social.noExiste}
+            {noCargo && (
+              <>
+                <br />
+                <button className="boton-texto" onClick={() => cargar()}>
+                  {T.inicio.reintentar}
+                </button>
+              </>
+            )}
           </div>
         </div>
         <Nav />
@@ -224,7 +254,16 @@ export default function Perfil() {
               </div>
             </div>
 
-            {pedidoPendiente ? (
+            {pedidoRecibido ? (
+              <button
+                className="boton-solido"
+                onClick={async () => {
+                  if (await aceptarAmistad(supabase, pedidoRecibido)) cargar();
+                }}
+              >
+                {T.social.aceptar}
+              </button>
+            ) : pedidoPendiente ? (
               <div className="boton-fantasma" style={{ pointerEvents: 'none' }}>
                 {T.social.pedidoDeAmistad}
               </div>
@@ -243,7 +282,7 @@ export default function Perfil() {
             {/* Exactamente lo que esta persona comparte: el mismo componente
                 que usa el modo "ver como lo ven los demás" del perfil propio,
                 para que la vista previa nunca prometa algo distinto. */}
-            <ComoMeVen usuario={usuario} logs={logs} fotos={fotos} />
+            <ComoMeVen usuario={usuario} logs={logs} fotos={fotos} medallas={medallas} dots={dots} />
 
             {/* ---- dejar de ser amigos ---- */}
             <div className="seccion" style={{ marginTop: 30 }}>

@@ -351,7 +351,13 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               <Pressable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
                 <Text style={estilos.nombre}>{u.username}</Text>
               </Pressable>
-              {mandados.has(u.id) ? (
+              {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
+                  silencio contra el suyo: acá se acepta. */}
+              {datos?.solicitudes.some((s) => s.de.id === u.id) ? (
+                <Pressable onPress={() => aceptar(datos.solicitudes.find((s) => s.de.id === u.id)!.id)} hitSlop={8}>
+                  <Text style={estilos.accion}>{T.social.aceptar}</Text>
+                </Pressable>
+              ) : mandados.has(u.id) ? (
                 <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>
               ) : (
                 <Pressable onPress={() => agregar(u.id)} hitSlop={8}>

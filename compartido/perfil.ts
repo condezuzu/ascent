@@ -249,7 +249,10 @@ export type PerfilDeAmigo = {
   usuario: UsuarioPublico;
   /** `true` solo si la amistad está aceptada: sin eso no se ve nada suyo. */
   esAmigo: boolean;
+  /** El pedido que le mandé YO y todavía no contestó. */
   pedidoPendiente: boolean;
+  /** El que me mandó ÉL: el id de la fila, que es con lo que se acepta. */
+  pedidoRecibido: string | null;
   /** Su última semana. Vacío si no es amigo. */
   logs: Log[];
   fotos: FotoDePerfil[];
@@ -267,24 +270,38 @@ export type PerfilDeAmigo = {
  * consulta: pedir lo demás sin la amistad sería pedirle a la base que diga que
  * no, once veces.
  */
+/**
+ * NO PODER PREGUNTAR NO ES "NO EXISTE" (4/10). Las dos primeras consultas
+ * miraban solo `data`: sin señal, el perfil de un amigo decía "Este usuario no
+ * existe", o lo mostraba como si no fuera tu amigo, con el botón de agregar.
+ * `null` sigue siendo "no existe"; esto es "no se sabe".
+ */
+export const NO_SE_PUDO = 'no-se-pudo' as const;
+
 export async function cargarPerfilDeAmigo(
   supabase: Cliente,
   yo: string,
   otro: string
-): Promise<PerfilDeAmigo | null> {
-  const { data: u } = await supabase.from('usuarios_publicos').select('*').eq('id', otro).maybeSingle();
+): Promise<PerfilDeAmigo | null | typeof NO_SE_PUDO> {
+  const { data: u, error: errUsuario } = await supabase.from('usuarios_publicos').select('*').eq('id', otro).maybeSingle();
+  if (errUsuario) return NO_SE_PUDO;
   if (!u) return null;
 
-  const { data: rel } = await supabase
+  const { data: rel, error: errRelacion } = await supabase
     .from('friendships')
     .select('*')
     .or(`and(solicitante.eq.${yo},destinatario.eq.${otro}),and(solicitante.eq.${otro},destinatario.eq.${yo})`)
     .maybeSingle();
+  if (errRelacion) return NO_SE_PUDO;
   const esAmigo = rel?.estado === 'aceptada';
   const base = {
     usuario: u as UsuarioPublico,
     esAmigo,
-    pedidoPendiente: rel?.estado === 'pendiente',
+    // DE QUIÉN ES EL PEDIDO. Sin mirar quién lo mandó, el perfil de alguien que
+    // te había pedido amistad decía "Pedido de amistad enviado", y no había
+    // cómo aceptarlo desde ahí.
+    pedidoPendiente: rel?.estado === 'pendiente' && rel.solicitante === yo,
+    pedidoRecibido: rel?.estado === 'pendiente' && rel.solicitante === otro ? (rel.id as string) : null,
     logs: [] as Log[],
     fotos: [] as FotoDePerfil[],
     medallas: [] as Medalla[],

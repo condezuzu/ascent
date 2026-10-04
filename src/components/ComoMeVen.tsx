@@ -9,6 +9,9 @@ import { numeroDeRango } from '@nucleo/rangos';
 import Avatar from '@/components/Avatar';
 import { T } from '@nucleo/textos';
 import { useEsperar } from '@/components/PantallaDeslizable';
+import Medallas from '@/components/Medallas';
+import type { Medalla } from '@nucleo/medallas';
+import { conComa } from '@nucleo/peso';
 
 /** `miniatura`: la misma foto achicada para la grilla (ver `compartido/album.ts`). */
 export type FotoVisible = { id: string; url: string; miniatura?: string; fecha: string | null };
@@ -37,11 +40,16 @@ export default function ComoMeVen({
   usuario,
   logs,
   fotos,
+  medallas = [],
+  dots = null,
   children,
 }: {
   usuario: UsuarioPublico;
   logs: Log[];
   fotos: FotoVisible[];
+  /** Sus medallas por marca y su DOTS, cuando es el perfil de un amigo. */
+  medallas?: Medalla[];
+  dots?: number | null;
   children?: React.ReactNode;
 }) {
   return (
@@ -49,15 +57,29 @@ export default function ComoMeVen({
       <div className="cabecera" style={{ marginBottom: 22 }}>
         <Avatar url={usuario.avatar_url} nombre={usuario.username} tam={52} />
         <div>
-          <div className="nombre" style={{ fontSize: 18 }}>
-            {usuario.username}
-          </div>
+          {/* SUS MEDALLAS Y SU DOTS (4/10). El perfil de un amigo los pedía y los
+              dibujaba en la rama de "no es tu amigo", donde no pueden estar: no
+              se veían nunca. La nativa sí los muestra. */}
+          <Medallas
+            medallas={medallas}
+            tam={20}
+            nombre={
+              <span className="nombre" style={{ fontSize: 18 }}>
+                {usuario.username}
+              </span>
+            }
+          />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
             <Insignia rango={numeroDeRango(usuario.racha_actual)} tam={16} />
             <span style={{ fontSize: 13, color: 'var(--sub)' }}>
               {T.stats.rachaDe(enDias(usuario.racha_actual))}
             </span>
           </div>
+          {dots !== null && (
+            <div className="yo-dots">
+              <strong>{conComa(String(dots))}</strong> DOTS
+            </div>
+          )}
         </div>
       </div>
 

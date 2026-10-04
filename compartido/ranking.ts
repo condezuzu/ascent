@@ -65,7 +65,7 @@ export async function cargarRanking(supabase: Cliente, uid: string): Promise<Dat
   const idsInteres = [...new Set([...idsAmigos, uid, ...pendientes.map((p) => p.solicitante)])];
 
   // Tanda 2: quiénes son y la actividad de los amigos.
-  const [{ data: publicos }, ls] = await Promise.all([
+  const [{ data: publicos, error: errPublicos }, ls] = await Promise.all([
     supabase.from('usuarios_publicos').select('*').in('id', idsInteres),
     idsAmigos.length > 0
       ? supabase
@@ -78,12 +78,18 @@ export async function cargarRanking(supabase: Cliente, uid: string): Promise<Dat
           .then((r) => r.data ?? [])
       : Promise.resolve([] as { id: string; user_id: string; fecha: string; planeta_del_dia: string | null }[]),
   ]);
+  // Sin saber quiénes son no hay ranking que mostrar: es "no se pudo", no "tu
+  // cielo está vacío". La actividad sí puede faltar sin que se note.
+  if (errPublicos) return null;
   const mapaUsuarios = new Map(((publicos ?? []) as UsuarioPublico[]).map((p) => [p.id, p]));
   const yo = mapaUsuarios.get(uid);
 
   const amigos = ((publicos ?? []) as UsuarioPublico[])
     .filter((p) => p.id === uid || idsAmigos.includes(p.id))
-    .sort((a, b) => b.racha_actual - a.racha_actual);
+    // CON LA MISMA RACHA, POR NOMBRE. La consulta no trae orden, así que dos
+    // empatados quedaban como llegaran, y podían cambiar de puesto de una carga
+    // a la otra con el mismo número al lado.
+    .sort((a, b) => b.racha_actual - a.racha_actual || (a.username ?? '').localeCompare(b.username ?? ''));
 
   const solicitudes = pendientes
     .map((p) => ({ id: p.id as string, de: mapaUsuarios.get(p.solicitante) as UsuarioPublico }))
@@ -153,6 +159,9 @@ export async function pedirAmistad(supabase: Cliente, miId: string, destino: str
 }
 export async function aceptarAmistad(supabase: Cliente, id: string) {
   const { error } = await supabase.from('friendships').update({ estado: 'aceptada' }).eq('id', id);
+  // Avisa, como `bloquear`: ahora también se acepta desde el perfil, que se
+  // apila encima de Ranking.
+  if (!error) eventos.emitir(SOCIAL_CAMBIO);
   return !error;
 }
 export async function rechazarAmistad(supabase: Cliente, id: string) {

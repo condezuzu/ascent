@@ -11,6 +11,7 @@
 const RAIZ = new URL('../../', import.meta.url);
 const DOBLES = {
   '@plataforma': new URL('./plataforma.mjs', import.meta.url).href,
+  '@cliente': new URL('./cliente.mjs', import.meta.url).href,
 };
 
 export async function resolve(especificador, contexto, siguiente) {
