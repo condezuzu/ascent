@@ -13732,7 +13732,11 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
     ],
     ['SIN DECIDIR', 'SIN DECIDIR']
   );
-  chequear('la foto ya no copia a Ajustes en un estado', /useState\(visibilidadDefault/.test(nativa182['movil/src/RegistrarDia.tsx']), false);
+  chequear(
+    'la foto ya no copia a Ajustes en un estado',
+    [/useState(<[^>]*>)?\(visibilidadDefault/.test(nativa182['movil/src/RegistrarDia.tsx']), /fotoCompartida\(tocado, visibilidadDefault\)/.test(nativa182['movil/src/RegistrarDia.tsx'])],
+    [false, true]
+  );
 }
 
 console.log('\n183. Nativa: borrar una marca pregunta, y dice si no se pudo');
