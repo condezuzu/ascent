@@ -15,6 +15,7 @@ import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
 import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO, SUBIO_RANGO } from '@compartido/gimnasio';
+import { guardarPerfilCache } from '@compartido/cache';
 import { FilaDeMedallas } from './Medallas';
 import { useRecargarAlVolver } from './irAPestana';
 import { useMisMedallas } from '@compartido/misMedallas';
@@ -257,6 +258,12 @@ export default function Inicio({
             : null,
         perdida: d.perdida,
       });
+      // LA COPIA DEL PERFIL EN EL TELÉFONO (4/10). La web la guardó siempre; acá
+      // no la guardaba nadie, y dos cosas de `compartido/` que la leen quedaban
+      // muertas sin dar ningún error: el peso recordado por modo (no sabía de
+      // quién era el historial) y el descanso elegido en Ajustes (arrancaba
+      // siempre en el de fábrica).
+      void guardarPerfilCache(d.perfil);
       // Las dos puntas son del SERVIDOR: restarlas no mete el desfasaje de reloj.
       const minutos = d.deHoy.reduce((t, s) => (s.fin ? t + (Date.parse(s.fin) - Date.parse(s.inicio)) / 60000 : t), 0);
       setMinutosDeHoy(minutos >= 1 ? Math.round(minutos) : null);

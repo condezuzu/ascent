@@ -13022,6 +13022,73 @@ console.log('\n174. Anotar el día: la revisión de la pérdida va adelante tamb
     fuentes.filter((f) => /from\('logs'\)\s*\.insert\(/.test(codigo(f))), ['compartido/dia.ts']);
 }
 
+console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene quien la escriba');
+{
+  // POR QUÉ LA SECCIÓN 166 DABA VERDE Y EN EL TELÉFONO NO ANDABA (4/10). La 166
+  // prueba la CUENTA (`nucleo/pesoRecordado`). Lo que la usa es
+  // `compartido/pesosRecordados`, que para saber de quién es el historial lee la
+  // copia del perfil guardada en el aparato. Esa copia la escribía solo la web:
+  // la app nativa no la guardó nunca, así que ahí "¿quién soy?" contestaba
+  // nadie y no se proponía ningún peso. Nada corría ese archivo.
+  //
+  // Acá se corre el archivo DE VERDAD, con el almacenamiento como lo deja cada
+  // app. Los alias los resuelve `dobles/alias.mjs`.
+  const { register } = await import('node:module');
+  register('./dobles/alias.mjs', import.meta.url);
+  const { memoria } = await import('./dobles/plataforma.mjs');
+  const R = await import('../compartido/pesosRecordados.ts');
+  const { guardarPerfilCache } = await import('../compartido/cache.ts');
+
+  const REMO = 'remo_mancuerna';
+  const historial = [
+    { bloques: [{ ejercicio: REMO, series: 3, pesos: [50, 50, 50], carga: 'total' }] },
+    { bloques: [{ ejercicio: REMO, series: 3, pesos: [20, 20, 22], carga: 'par' }] },
+  ];
+  const consulta = (resultado) => {
+    const c = { select: () => c, neq: () => c, gte: () => c, order: () => c, then: (bien, mal) => Promise.resolve(resultado).then(bien, mal) };
+    return c;
+  };
+  let pedidos = 0;
+  const base = {
+    from: (tabla) => {
+      pedidos++;
+      return consulta(tabla === 'sesiones' ? { data: historial, error: null } : { data: [{ id: REMO, carga: 'total' }], error: null });
+    },
+  };
+  const perfilDe = (id) => ({
+    id, username: id, avatar_url: null, racha_actual: 3, mejor_racha: 3, rango_actual: 1, racha_base: 0,
+    perdida_fecha: null, dias_descanso: [], duracion_descanso: 90, dia_pendiente: null,
+  });
+
+  // ---- COMO ESTABA EL TELÉFONO: nadie guardó la copia ----
+  memoria.clear();
+  chequear('sin la copia del perfil no hay de quién sea el historial: no propone nada',
+    [await R.traerRecordados(base), pedidos], [{ pesos: {}, catalogo: {} }, 0]);
+
+  // ---- COMO QUEDA DESPUÉS DE CARGAR INICIO, que ahora la guarda ----
+  await guardarPerfilCache(perfilDe('cuenta-a'));
+  const traidos = await R.traerRecordados(base);
+  chequear('con la copia, trae el historial y guarda un peso por modo', traidos.pesos[REMO], { total: 50, par: 22 });
+  chequear('y queda en el aparato, para el subsuelo sin señal', (await R.leerRecordados()).pesos[REMO], { total: 50, par: 22 });
+  chequear('guardado con su dueño', JSON.parse(memoria.get('ascent:pesos-por-modo')).de, 'cuenta-a');
+
+  // ---- Y NO SE CRUZA DE CUENTA ----
+  await guardarPerfilCache(perfilDe('cuenta-b'));
+  chequear('otra cuenta en el mismo teléfono no ve los pesos de la anterior', await R.leerRecordados(), { pesos: {}, catalogo: {} });
+
+  // ---- EL CABLEADO: las DOS apps guardan la copia donde cargan el perfil ----
+  // `compartido/` la lee desde las dos; si una sola la escribe, en la otra todo
+  // lo que la lee queda muerto sin dar ningún error.
+  const { readFileSync: leer175 } = await import('node:fs');
+  const raiz175 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const inicioDe = { nativa: 'movil/src/Inicio.tsx', web: 'src/app/page.tsx' };
+  chequear('la web y la nativa guardan la copia del perfil al cargar Inicio',
+    Object.fromEntries(
+      Object.entries(inicioDe).map(([app, ruta]) => [app, /guardarPerfilCache\(/.test(sinComentarios(leer175(join(raiz175, ruta), 'utf8')))])
+    ),
+    { nativa: true, web: true });
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

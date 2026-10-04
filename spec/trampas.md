@@ -1100,6 +1100,26 @@ se puede cerrar: se acota a que `auth.uid()` sea una de las puntas.
 
 ---
 
+## La cuenta probada no es la función probada
+
+El peso recordado por modo (3/10) salió con su prueba en verde y en el teléfono
+no proponía nada. La prueba corría la cuenta —`nucleo/pesoRecordado`, pura— y
+eso estaba bien. Lo que la usa es `compartido/pesosRecordados`, que para saber de
+quién es el historial lee la copia del perfil guardada en el aparato. Esa copia
+la escribía la web; **la app nativa no la guardó nunca**. "¿Quién soy?"
+contestaba nadie y todo lo demás devolvía vacío, sin un solo error. De paso
+estaba muerto el descanso elegido en Ajustes, que lee la misma copia.
+
+Por qué no lo vio nadie: `test:db` solo podía cargar archivos que no importan
+nada por alias, o sea la cuenta pura. El archivo del medio —el que junta la
+cuenta con el almacenamiento y la base— no se corría en ningún lado.
+
+**La regla:** cuando algo de `compartido/` lee un dato que guardó otro archivo,
+la prueba corre ese archivo de verdad con el almacenamiento *como lo deja cada
+app*, y mira que las dos apps lo dejen. `supabase/dobles/alias.mjs` resuelve los
+alias para eso (sección 175). Y en el informe se dice qué camino quedó sin
+probar en el teléfono, en vez de dar la función por hecha.
+
 ## Tests / proceso
 
 **Un test puede estar defendiendo un error.** El test "y sin pedir permiso de
