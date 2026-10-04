@@ -17,9 +17,24 @@ La racha va guardada como columna, no calculada al vuelo. Se actualiza con un
 trigger al registrar un día. Es duplicación deliberada: sin eso, la tabla de
 posiciones tendría que recorrer los logs de todos los amigos en cada carga.
 
-`mejor_racha` **sale del historial, no es un contador que solo sube**. Si se
-borran días registrados por error, tiene que bajar: un récord inflado que no hay
-manera de corregir es un dato falso para siempre.
+`mejor_racha` **no es un contador que solo sube**. Si se borran días registrados
+por error, tiene que bajar: un récord inflado que no hay manera de corregir es
+un dato falso para siempre.
+
+Desde la migración 61 (4/10/2026) son dos reglas, según qué pasó con los logs:
+
+- **Entra un día:** el récord guardado se queda y solo puede subir —con la racha
+  de hoy, o con una tirada de días seguidos del historial—. Antes se recalculaba
+  entero en cada día, y un récord hecho con racha arrastrada (§12: perder resta
+  10, no vuelve a cero) bajaba solo con la pérdida siguiente, sin borrar nada.
+- **Se borra o se cambia un día:** el historial es el techo. Si ya no sostiene
+  el récord, baja.
+
+El techo (`techo_de_mejor_racha`) cuenta el historial con la regla de la racha
+—un corte resta 10—, y **solo se usa para bajar**. Subir el récord desde el
+historial le daría a la persona un número que nunca tuvo: la racha de verdad no
+siempre arrastra (borrar un día del medio o recalcular desde cero cortan en
+seco).
 
 ### logs
 `id`, `user_id`, `fecha`, `es_descanso`, `planeta_del_dia`

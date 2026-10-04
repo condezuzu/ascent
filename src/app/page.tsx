@@ -78,7 +78,6 @@ export default function Principal() {
   // compara con la que devuelve la base (ver `subidaDeRango`). En una ref
   // porque la leen avisos que llegan de afuera, con la pantalla ya dibujada.
   const rachaVista = useRef<number | null>(null);
-  if (perfil) rachaVista.current = perfil.racha_actual;
   // Las medallas por marca, para la fila del nombre. Entran cuando llegan: son
   // un adorno al lado del nombre y reservarles lugar movería el nombre medio
   // segundo después, que es peor que aparecer.
@@ -87,6 +86,10 @@ export default function Principal() {
   const [descansos, setDescansos] = useState<ConfigDescanso[]>([]);
   const [marcas, setMarcas] = useState<string | null>(null);
   const [hojaAbierta, setHojaAbierta] = useState(false);
+  // Con la hoja de registrar abierta la racha vista NO se mueve: el día pudo
+  // entrar ahí y la hoja seguir abierta esperando la foto. Si una recarga la
+  // adelantara, al cerrar no habría subida de rango que festejar.
+  if (perfil && !hojaAbierta) rachaVista.current = perfil.racha_actual;
   const [pesoAbierto, setPesoAbierto] = useState(false);
   const [descansoAbierto, setDescansoAbierto] = useState(false);
   // El toque que pregunta si de verdad se termina la sesión.

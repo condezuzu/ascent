@@ -19,8 +19,13 @@ const CLAVE = 'ascent:perfil';
  *
  * Ahora la lista es una, de ella sale el tipo, y leer un campo que no está no
  * compila. `duracion_descanso` la usa la franja para saber con cuánto arranca
- * el descanso; `unidad_peso`, todo lo que muestra o recibe un peso;
- * `visibilidad_default`, la hoja de la foto, que arranca donde dice Ajustes.
+ * el descanso; `unidad_peso`, todo lo que muestra o recibe un peso.
+ *
+ * `visibilidad_default` NO va, a propósito. La copia puede estar vieja —la
+ * preferencia se cambió en otro aparato— y la hoja de la foto decide quién la
+ * ve al abrirse: con una copia que dijera "amigos" saldría compartida una foto
+ * que Ajustes ya dice privada. Sin el dato, la hoja cae en privada, que es el
+ * lado seguro, hasta que llegue el perfil de verdad.
  *
  * Del gimnasio se guarda SI ESTÁ MARCADO (`tieneGimnasio`) y nunca dónde: las
  * coordenadas no salen de la base. Ranking de la nativa leía `gimnasio_lat` de
@@ -38,7 +43,6 @@ const CAMPOS_GUARDADOS = [
   'duracion_descanso',
   'dia_pendiente',
   'unidad_peso',
-  'visibilidad_default',
 ] as const satisfies readonly (keyof Perfil)[];
 
 export type PerfilGuardado = Pick<Perfil, (typeof CAMPOS_GUARDADOS)[number]> & { tieneGimnasio: boolean };

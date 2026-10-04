@@ -12980,45 +12980,13 @@ console.log('\n173. La 59 y la 60 se pueden correr HOY, sobre el esquema 53, y o
   await prod.exec(migracion(60));
   chequear('correrlas dos veces no rompe ni sube nada', [await version(), await llegarAlGimnasio('ubicacion')], [53, 31]);
 
-  // ---- HOY TAMBIÉN: la 61, la mejor racha que bajaba sola (sección 186) ----
-  // 40 días, uno faltado, 25 días, otro faltado y un día más: la racha fue 40,
-  // 30, 55, 45 y 46. El récord es 55.
-  const recordArrastrado = async () => {
-    const u = await cuenta();
-    for (const [desde, hasta] of [[69, 30], [28, 4], [2, 2]]) {
-      for (let i = desde; i >= hasta; i--) await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, i]);
-    }
-    return u;
-  };
-  const rachaYRecord = async (u) => {
-    const p = (await prod.query(`select racha_actual, mejor_racha from profiles where id = $1`, [u])).rows[0];
-    return [p.racha_actual, p.mejor_racha];
-  };
-  const conRecord = await recordArrastrado();
-  chequear('en producción el récord de 55 baja a 46 sin que se borre nada', await rachaYRecord(conRecord), [46, 46]);
-  // La consulta de comprobación del runbook (spec/dia-de-aprobacion.md §0 y §2.9).
-  const comprobar61 = async () => {
-    const f = (
-      await prod.query(
-        `select public.version_del_esquema() as version,
-                (select prosrc like '%corriente - 10%' from pg_proc
-                  where oid = 'public.mejor_racha_real(uuid)'::regprocedure) as corte_resta_10,
-                (select count(*) from public.profiles p
-                  where public.mejor_racha_real(p.id) > p.mejor_racha) as records_por_debajo`
-      )
-    ).rows[0];
-    return [f.version, f.corte_resta_10, Number(f.records_por_debajo)];
-  };
-  chequear('la consulta del runbook, antes de la 61', (await comprobar61()).slice(0, 2), [53, false]);
-  await prod.exec(migracion(61));
-  chequear('la 61 corre sobre el 53 y NO sube la versión', await version(), 53);
-  chequear('la consulta del runbook, después', await comprobar61(), [53, true, 0]);
-  chequear('y repone el récord que el bug ya había bajado', await rachaYRecord(conRecord), [46, 55]);
-  await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 1)`, [conRecord]);
-  chequear('el día siguiente ya no lo vuelve a bajar', await rachaYRecord(conRecord), [47, 55]);
-  chequear('una cuenta nueva, con la 61 puesta, no lo pierde nunca', await rachaYRecord(await recordArrastrado()), [46, 55]);
-  await prod.exec(migracion(61));
-  chequear('correrla dos veces tampoco cambia nada', [await version(), await rachaYRecord(conRecord)], [53, [47, 55]]);
+  // ---- LA 61 NO ES DE HOY: va en su lugar, después de la 60 ----
+  // Vuelve a definir `logs_after_change`, que desde la 57 escribe una columna
+  // que el 53 no tiene. Corrida antes rompería el registro de días, así que se
+  // niega sola.
+  const negada = await prod.exec(migracion(61)).then(() => 'corrió', (e) => e.message);
+  chequear('la 61 se niega a correr sobre el 53', /va después de la 60/.test(negada), true);
+  chequear('y no dejó nada tocado: la versión, y el día sigue entrando', [await version(), await llegarAlGimnasio('ubicacion')], [53, 31]);
 
   // ---- EL DÍA DE LA APROBACIÓN: 54 a 58 encima, y después la 59 y la 60 de nuevo ----
   for (const n of [54, 55, 56, 57, 58]) await prod.exec(migracion(n));
@@ -13030,9 +12998,53 @@ console.log('\n173. La 59 y la 60 se pueden correr HOY, sobre el esquema 53, y o
   chequear('la 59 en su lugar sube a 59', await version(), 59);
   await prod.exec(migracion(60));
   chequear('y la 60 a 60', await version(), 60);
+  // LA 61, EN SU LUGAR (sección 186). 40 días, uno faltado, 25 días, otro
+  // faltado y un día más: la racha fue 40, 30, 55, 45 y 46. El récord es 55.
+  const recordArrastrado = async () => {
+    const u = await cuenta();
+    for (const [desde, hasta] of [[69, 30], [28, 4], [2, 2]]) {
+      for (let i = desde; i >= hasta; i--) await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, i]);
+    }
+    return u;
+  };
+  const rachaYRecord = async (u) => {
+    const p = (await prod.query(`select racha_actual, mejor_racha from profiles where id = $1`, [u])).rows[0];
+    return [p.racha_actual, p.mejor_racha];
+  };
+  // La consulta de comprobación del runbook (spec/dia-de-aprobacion.md §2.9).
+  const comprobar61 = async () => {
+    const f = (
+      await prod.query(
+        `select public.version_del_esquema() as version,
+                to_regprocedure('public.techo_de_mejor_racha(uuid)') is not null as hay_techo,
+                (select prosrc like '%techo_de_mejor_racha%' from pg_proc
+                  where oid = 'public.logs_after_change()'::regprocedure) as el_record_no_baja_solo`
+      )
+    ).rows[0];
+    return [f.version, f.hay_techo, f.el_record_no_baja_solo];
+  };
+  const deAntes = await recordArrastrado();
+  chequear('con la 60 puesta el bug sigue: el récord de 55 baja a 46 sin que se borre nada', await rachaYRecord(deAntes), [46, 46]);
+  chequear('la consulta del runbook, antes de la 61', await comprobar61(), [60, false, false]);
   await prod.exec(migracion(61));
   chequear('y la 61 a 61', await version(), 61);
-  chequear('la consulta del runbook, en su lugar', await comprobar61(), [61, true, 0]);
+  chequear('la consulta del runbook, después', await comprobar61(), [61, true, true]);
+  chequear('con la 61, el récord de 55 se queda en 55', await rachaYRecord(await recordArrastrado()), [46, 55]);
+  // No hay cómo saber qué número llegó a ver cada persona: no se inventa.
+  chequear('y a quien el bug ya se lo había bajado NO se le sube solo', await rachaYRecord(deAntes), [46, 46]);
+  // La consulta del runbook que lista a quién mirar a mano, y la corrección.
+  const porMirar = (
+    await prod.query(
+      `select id, mejor_racha, public.techo_de_mejor_racha(id) as techo
+         from public.profiles where public.techo_de_mejor_racha(id) > mejor_racha order by 3 desc`
+    )
+  ).rows;
+  chequear('esa cuenta sale en la lista de las que hay que mirar a mano, con su techo', porMirar.filter((f) => f.id === deAntes).map((f) => [f.mejor_racha, f.techo]), [[46, 55]]);
+  await prod.query(`update public.profiles set mejor_racha = 55 where id = $1`, [deAntes]);
+  await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 1)`, [deAntes]);
+  chequear('corregida a mano, el día siguiente no se la vuelve a bajar', await rachaYRecord(deAntes), [47, 55]);
+  await prod.exec(migracion(61));
+  chequear('correrla dos veces no cambia nada', [await version(), await rachaYRecord(deAntes)], [61, [47, 55]]);
   chequear('al final: la racha', await llegarAlGimnasio('ubicacion'), 31);
   chequear('y la foto', await puedeAnotarRutaAjena(), false);
   await prod.close();
@@ -13629,6 +13641,14 @@ console.log('\n181. Peso corporal: sin número en la serie, en el volumen y en l
     ],
     [60, [20]]
   );
+  // EL + DE LA LISTA repite el último peso del bloque. En un bloque corporal
+  // no: anotaba un número escondido que aparecía al volver a otro modo.
+  const conUna = B181.siguiente(B181.cambiarCarga(CT181.sumarSerie({ series: 0, bloques: B181.cambiarPeso(B181.cambiarCarga(B181.cambiarEjercicio(B181.bloquesVacios(), 'fondos'), 'lastre'), 20) }).bloques, 'corporal'));
+  const masUna = CT181.corregirEnLista({ series: 1, bloques: conUna }, 0, 1);
+  chequear('el + de la lista sobre un bloque corporal agrega la serie sin número', [masUna.series, masUna.bloques.cerrados[0].pesos], [2, [20, null]]);
+  const conLastre181 = CT181.corregirEnLista({ series: 1, bloques: B181.siguiente(CT181.sumarSerie({ series: 0, bloques: B181.cambiarPeso(B181.cambiarCarga(B181.cambiarEjercicio(B181.bloquesVacios(), 'fondos'), 'lastre'), 20) }).bloques) }, 0, 1);
+  chequear('y con lastre lo repite, como siempre', conLastre181.bloques.cerrados[0].pesos, [20, 20]);
+
   chequear('los otros cuatro modos cuentan como siempre', ['total', 'par', 'una', 'lastre', 'corporal'].map((m) => CG181.kilosMovidos(20, m)), [20, 40, 40, 20, 0]);
   chequear('la regla, de un solo lugar: solo corporal va sin número', CG181.CARGAS.filter((c) => !CG181.llevaNumero(c)), ['corporal']);
 
@@ -13732,6 +13752,23 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
     ],
     ['SIN DECIDIR', 'SIN DECIDIR']
   );
+  // UNA HOJA QUE ABRE OTRA LA LLEVA ADENTRO. En iOS un modal solo se presenta
+  // encima de otro si está dentro de su contenido: el selector de ejercicio de
+  // "Anotar una marca" iba de hermano de la hoja, y con la hoja abierta tocar
+  // el ejercicio no abría nada (la marca se guardaba en el que venía puesto).
+  const HOJAS_QUE_SE_ABREN = ['SelectorEjercicio', 'ListaDeBloques', 'CargarMarca', 'RegistrarDia', 'AccionesDeUsuario', 'PesoHoja', 'HojaDelDia'];
+  const deHermanas = (texto) => {
+    const cierre = texto.lastIndexOf('</Hoja>');
+    if (cierre < 0) return [];
+    return HOJAS_QUE_SE_ABREN.filter((h) => [...texto.matchAll(new RegExp(`<${h}\\b`, 'g'))].some((m) => m.index > cierre));
+  };
+  chequear(
+    'ninguna hoja de la nativa abre otra hoja desde afuera de su contenido',
+    Object.entries(nativa182).flatMap(([ruta, texto]) => deHermanas(texto).map((h) => `${h} en ${ruta}`)),
+    []
+  );
+  chequear('el detector ve la hoja de antes', deHermanas('<><Hoja visible={visible}><Text/></Hoja><SelectorEjercicio visible={eligiendo} /></>'), ['SelectorEjercicio']);
+
   chequear(
     'la foto ya no copia a Ajustes en un estado',
     [/useState(<[^>]*>)?\(visibilidadDefault/.test(nativa182['movil/src/RegistrarDia.tsx']), /fotoCompartida\(tocado, visibilidadDefault\)/.test(nativa182['movil/src/RegistrarDia.tsx'])],
@@ -13807,7 +13844,26 @@ console.log('\n184. La copia del perfil: trae la unidad, y dice qué tiene');
   const tecleado = CP184.confirmarCampo('135', undefined, unidadDeInicio);
   chequear('con la copia sola, el campo de peso está en libras', unidadDeInicio, 'lb');
   chequear('y 135 tecleado se guarda como 61 kilos y pico, no como 135', Math.round(tecleado.kg * 100) / 100, 61.23);
-  chequear('la hoja de la foto también arranca donde dice Ajustes', copia184.visibilidad_default, 'amigos');
+  // "Quién ve la foto" NO viaja en la copia: puede estar vieja (se cambió en
+  // otro aparato) y la hoja lo fija al abrirse. Sin el dato cae en privada.
+  const F184 = await import('../nucleo/foto.ts');
+  chequear('la copia no dice quién ve las fotos, y sin ese dato la foto es privada', [
+    'visibilidad_default' in copia184,
+    F184.fotoCompartida(null, copia184.visibilidad_default),
+  ], [false, false]);
+
+  // CAMBIAR LA UNIDAD EN AJUSTES DE LA WEB reescribe la copia: si no, Inicio
+  // arrancaba con la unidad de antes hasta que contestara la red. Se corre
+  // `guardarPreferencia` de verdad, con una base de mentira.
+  const GP184 = await import('../src/components/ajustes/guardar.ts');
+  const baseQueGuarda = (error) => ({ from: () => ({ update: () => ({ eq: async () => ({ error }) }) }) });
+  await GP184.guardarPreferencia(baseQueGuarda(null), enLibras, 'unidad_peso', 'kg', () => {});
+  await new Promise((r) => setTimeout(r, 0));
+  chequear('pasar a kilos en Ajustes deja la copia en kilos', (await C184.leerPerfilCache()).unidad_peso, 'kg');
+  await GP184.guardarPreferencia(baseQueGuarda({ message: 'Failed to fetch' }), { ...enLibras, unidad_peso: 'kg' }, 'unidad_peso', 'lb', () => {});
+  await new Promise((r) => setTimeout(r, 0));
+  chequear('y si la base no lo guardó, la copia no cambia', (await C184.leerPerfilCache()).unidad_peso, 'kg');
+  await C184.guardarPerfilCache(enLibras);
   // Del gimnasio, si está marcado y nada más: las coordenadas no salen de la base.
   chequear('del gimnasio se guarda que está marcado, nunca dónde', [
     copia184.tieneGimnasio,
@@ -13864,6 +13920,24 @@ console.log('\n185. Web: una foto que no subió no cierra la hoja como si hubier
   const bien185 = { soloOkEsHaberSubido: true, confirmaSinMirar: false, siElDiaEntroQuedaAbierta: true };
   chequear('la hoja de la web solo cierra si la foto quedó', hoja185(sinComentarios(leer179(join(aca179, '../src/components/RegistrarSheet.tsx'), 'utf8'))), bien185);
   chequear('la de la nativa también', hoja185(sinComentarios(leer179(join(aca179, '../movil/src/RegistrarDia.tsx'), 'utf8'))), bien185);
+  const web185 = sinComentarios(leer179(join(aca179, '../src/components/RegistrarSheet.tsx'), 'utf8'));
+  chequear('la hoja de la web no se cierra dos veces (cada cierre confirma el día)', [
+    /if \(cargando \|\| cerrando\) return;/.test(web185),
+    /disabled=\{cargando \|\| cerrando\}/.test(web185),
+  ], [true, true]);
+  // Con la hoja abierta esperando la foto, la racha "vista" no se mueve: si una
+  // recarga la adelantara, al cerrar no habría subida de rango que festejar.
+  chequear('la racha vista no se adelanta con la hoja de registrar abierta', [
+    /if \(perfil && !hojaAbierta\) rachaVista\.current = perfil\.racha_actual;/.test(sinComentarios(leer179(join(aca179, '../src/app/page.tsx'), 'utf8'))),
+    /if \(estado\.tipo === 'listo' && !registrarAbierto\) rachaVista\.current =/.test(sinComentarios(leer179(join(aca179, '../movil/src/Inicio.tsx'), 'utf8'))),
+  ], [true, true]);
+  // El día ya estaba y la pantalla no lo sabía: con una foto elegida no se cierra tirándola.
+  chequear(
+    'en la nativa, "el día ya estaba" con una foto elegida la cuelga de ese día',
+    /if \(e\.code === '23505'\) \{\s*if \(!foto\) return alConfirmar\(null\);/.test(sinComentarios(leer179(join(aca179, '../movil/src/RegistrarDia.tsx'), 'utf8'))),
+    true
+  );
+
   chequear(
     'la hoja de antes no pasa',
     hoja185("if (r === 'no-subio') avisarFallo(x); } if (yaEsta) { await subirFoto(logId ?? null, false); setCargando(false); return alConfirmar(null); }"),
@@ -13875,36 +13949,92 @@ console.log('\n186. La mejor racha no baja sola después de una pérdida (migrac
 {
   // EL RÉCORD HECHO CON RACHA ARRASTRADA (4/10). Perder resta 10 y lo que
   // sobrevive se arrastra: 40 días, se pierde (30), 25 más y la racha dice 55.
-  // `mejor_racha_real`, de donde sale el récord, volvía a cero en cada corte y
-  // de ese historial sacaba 40: el 55 quedaba sostenido solo por la racha, y con
-  // la pérdida siguiente y el primer día de después bajaba a 46. Sin borrar nada.
+  // El disparador recalculaba el récord en cada día como "la tirada más larga
+  // del historial o la racha de hoy", y la tirada más larga es 40: el 55 quedaba
+  // sostenido solo por la racha, y con la pérdida siguiente bajaba a 46.
+  //
+  // Ahora el récord guardado no se recalcula al ENTRAR un día —solo puede
+  // subir— y el historial es su techo cuando se BORRA uno.
   await cuotaDeVidas(0);
-  const u186 = await nuevoUsuario();
-  const estado186 = async () => {
-    const p = (await db.query(`select racha_actual, mejor_racha, mejor_racha_real(id) as del_historial from profiles where id = $1`, [u186])).rows[0];
-    return [p.racha_actual, p.mejor_racha, p.del_historial];
+  const estado186 = async (u) => {
+    const p = (await db.query(`select racha_actual, mejor_racha from profiles where id = $1`, [u])).rows[0];
+    return [p.racha_actual, p.mejor_racha];
   };
+  const u186 = await nuevoUsuario();
   await rachaDe(u186, 40, 30);
-  chequear('cuarenta días seguidos', await estado186(), [40, 40, 40]);
+  chequear('cuarenta días seguidos', await estado186(u186), [40, 40]);
   await rachaDe(u186, 25, 4);
-  chequear('se pierde (30) y se suman 25: la racha y el récord dicen 55, y el historial también', await estado186(), [55, 55, 55]);
+  chequear('se pierde (30) y se suman 25: la racha y el récord dicen 55', await estado186(u186), [55, 55]);
   await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 2)`, [u186]);
-  chequear('se pierde otra vez y entra un día: la racha es 46 y el récord sigue en 55', await estado186(), [46, 55, 55]);
+  chequear('se pierde otra vez y entra un día: la racha es 46 y el récord sigue en 55', await estado186(u186), [46, 55]);
   await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 1)`, [u186]);
-  chequear('y con el día siguiente tampoco baja', await estado186(), [47, 55, 55]);
+  chequear('y con el día siguiente tampoco baja', await estado186(u186), [47, 55]);
 
-  // LA REGLA DE SIEMPRE SIGUE: el récord sale del historial, así que si se
-  // borran días tiene que poder bajar. Se parte la primera tirada al medio.
+  // LA REGLA DE SIEMPRE SIGUE: si se borran días, el récord tiene que poder
+  // bajar. Se parte la tirada larga al medio: con tres cortes el historial
+  // sostiene, como mucho, 19, 9 + 20 y 19 + 25 = 44.
   await db.query(`delete from logs where user_id = $1 and fecha = mi_hoy() - 50`, [u186]);
-  const trasBorrar = await estado186();
-  chequear('si se borra un día de la tirada larga, el récord baja', [trasBorrar[1] < 55, trasBorrar[1] === Math.max(trasBorrar[0], trasBorrar[2])], [true, true]);
-  chequear('y lo que da el historial es la cuenta con los tres cortes: 19, 9 + 20, 19 + 25', trasBorrar[2], 44);
+  const trasBorrar = await estado186(u186);
+  chequear('si se borra un día de la tirada larga, el récord baja hasta donde llega el historial', [
+    trasBorrar[1],
+    (await db.query(`select techo_de_mejor_racha($1) as t`, [u186])).rows[0].t,
+  ], [Math.max(44, trasBorrar[0]), 44]);
 
-  // Una racha corta que se pierde no arrastra nada: restar 10 no baja de cero.
-  const corta186 = await nuevoUsuario();
-  await rachaDe(corta186, 6, 6);
-  await rachaDe(corta186, 3, 2);
-  chequear('seis días, un corte y tres más: el récord es 6, no 9', (await db.query(`select mejor_racha_real($1) as m`, [corta186])).rows[0].m, 6);
+  // Días anotados por error y borrados: el caso que hizo falta desde el principio.
+  const error186 = await nuevoUsuario();
+  await rachaDe(error186, 10, 0);
+  await db.query(`delete from logs where user_id = $1 and fecha >= mi_hoy() - 4`, [error186]);
+  chequear('diez días, se borran los últimos cinco: el récord baja a cinco', await estado186(error186), [5, 5]);
+
+  // ---- EL HISTORIAL NO SUBE EL RÉCORD A NADIE (lo vio la revisión) ----
+  //
+  // El techo cuenta "un corte resta 10" en TODO hueco, pero la racha de verdad
+  // no siempre arrastra: borrar un día del medio y recalcular desde cero cortan
+  // en seco. Usarlo para subir le daba a la persona un récord que nunca tuvo.
+  const recalculo = await nuevoUsuario();
+  await rachaDe(recalculo, 40, 6);
+  await rachaDe(recalculo, 5, 0);
+  chequear('40 días, un corte y 5 más: racha 35, récord 40', await estado186(recalculo), [35, 40]);
+  await comoUsuario(recalculo);
+  await db.query(`select recalcular_desde_cero()`);
+  chequear('recalcular desde cero: racha 5, y el récord sigue en 40', await estado186(recalculo), [5, 40]);
+
+  // Lo mismo, pero con días DESPUÉS del recálculo. No se puede adelantar el
+  // reloj, así que el recálculo se deja escrito como lo deja la función (base 0,
+  // sin pérdida anotada, la racha de la tirada) en mitad del historial.
+  const despues = await nuevoUsuario();
+  await rachaDe(despues, 40, 37);
+  await rachaDe(despues, 5, 31);
+  await db.query(`update profiles set racha_base = 0, perdida_fecha = null, racha_actual = 5 where id = $1`, [despues]);
+  await rachaDe(despues, 30, 1);
+  // El techo da 65 (40 - 10 + 5 + 30): con el primer arreglo ese era el récord.
+  chequear('treinta días más tras recalcular: racha 35, récord 40, aunque el techo diga 65', [
+    ...(await estado186(despues)),
+    (await db.query(`select techo_de_mejor_racha($1) as t`, [despues])).rows[0].t,
+  ], [35, 40, 65]);
+
+  const delMedio = await nuevoUsuario();
+  await rachaDe(delMedio, 40, 16);
+  await db.query(`delete from logs where user_id = $1 and fecha = mi_hoy() - 36`, [delMedio]);
+  const partido = await estado186(delMedio);
+  await rachaDe(delMedio, 15, 1);
+  const seguido = await estado186(delMedio);
+  chequear('se saca un día del medio y se siguen 15 más: el récord no corre por delante de la racha', seguido[1] <= Math.max(partido[1], seguido[0]), true);
+
+  // Un hueco de tres días al que después se le marca el del medio: el historial
+  // pasa a tener dos cortes donde la racha cobró uno. Agregar un día no baja nada.
+  const hueco = await nuevoUsuario();
+  await rachaDe(hueco, 40, 30);
+  await rachaDe(hueco, 25, 2);
+  chequear('40 días, tres faltados, 25 días: 55 y 55', await estado186(hueco), [55, 55]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 28)`, [hueco]);
+  chequear('marcar después el día del medio no le baja el récord', (await estado186(hueco))[1], 55);
+
+  // Y una tirada vieja cargada después desde el calendario sí cuenta, como siempre.
+  const vieja = await nuevoUsuario();
+  await rachaDe(vieja, 3, 0);
+  await rachaDe(vieja, 12, 40);
+  chequear('doce días seguidos de hace un mes, cargados hoy: el récord es 12', (await estado186(vieja))[1], 12);
   await cuotaDeVidas(2);
 }
 
@@ -13971,39 +14101,95 @@ console.log('\n187. Una sola respuesta a "¿hay sesión?": hay, no hay, o no sé
   chequear('`auth.getUser()` solo donde está anotado por qué', quienes(/auth\s*\.getUser\(/), Object.keys(LE_PREGUNTAN_AL_SERVIDOR).sort());
 
   // Y LO QUE SE HACE CON LA RESPUESTA: mandar afuera, solo con un 'sin'.
-  const salidasSinMirar = (patron, permitidos) =>
-    Object.entries(codigo187).flatMap(([ruta, t]) =>
-      [...t.matchAll(patron)]
-        .filter((m) => !/estado === 'sin'\) return\s*$/.test(t.slice(Math.max(0, m.index - 40), m.index)))
+  //
+  // La primera versión de esta guarda dejaba pasar tres formas de volver al bug
+  // (lo mostró la revisión, rompiendo el código en memoria): miraba solo el
+  // final de la condición, así que `=== 'no-se' || … === 'sin'` pasaba; en la
+  // web conocía un solo modo de ir al login; y a Inicio lo exceptuaba entero.
+  // Ahora la condición se ancla ENTERA, y no hay archivos exceptuados: una
+  // salida vale si viene de esa condición o justo después de cerrar sesión.
+  const TRAS_UN_NO_HAY = /if \(\w+\.estado === 'sin'\) return\s*$/;
+  const TRAS_CERRAR_SESION = /signOut\(\);\s*(return\s+)?$/;
+  const salidasSinMirar = (codigo, patron) =>
+    Object.entries(codigo).flatMap(([ruta, texto]) =>
+      [...texto.matchAll(patron)]
+        .filter((m) => {
+          const antes = texto.slice(Math.max(0, m.index - 120), m.index);
+          return !TRAS_UN_NO_HAY.test(antes) && !TRAS_CERRAR_SESION.test(antes);
+        })
         .map(() => ruta)
-        .filter((r) => !permitidos.includes(r))
     );
+  const AL_SALIR = /\balSalir\(\)/g;
+  // Cualquier forma de irse al login desde el cliente.
+  const AL_LOGIN = /router\.(push|replace)\(\s*['"`]\/login|location[^;\n]*['"`]\/login/g;
+  chequear('en la nativa, una pantalla solo llama a `alSalir` con un "no hay" o tras cerrar sesión', salidasSinMirar(codigo187, AL_SALIR), []);
   chequear(
-    'en la nativa, una pantalla solo llama a `alSalir` con un "no hay"',
-    // Cuenta sale después de cerrar sesión o de borrar la cuenta; Inicio, cuando
-    // el servidor contestó que la cuenta ya no existe.
-    salidasSinMirar(/\balSalir\(\)/g, ['movil/src/ajustes/Cuenta.tsx', 'movil/src/Inicio.tsx']),
+    'en la web, una pantalla solo manda al login con un "no hay" o tras cerrar sesión',
+    // Lo único fuera de eso: el botón "volver a entrar" de nueva-clave, y el
+    // `router.push` de BajaDeCuenta, que va después de `signOut` con una línea
+    // en el medio.
+    salidasSinMirar(codigo187, AL_LOGIN).filter((r) => r !== 'src/app/nueva-clave/page.tsx'),
     []
   );
+  // QUE EL DETECTOR SIRVA: las formas de volver al bug, una por una.
+  const vuelve = (texto, patron) => salidasSinMirar({ 'x.tsx': texto }, patron).length;
+  chequear('el detector ve cada forma de volver al bug', [
+    vuelve('const uid = sesion.session?.user?.id;\n    if (!uid) return alSalir();', AL_SALIR),
+    vuelve("if (yo.estado !== 'con') return alSalir();", AL_SALIR),
+    vuelve("if (yo.estado === 'no-se' || yo.estado === 'sin') return alSalir();", AL_SALIR),
+    vuelve("if (yo.estado !== 'con') return router.replace('/login');", AL_LOGIN),
+    vuelve("if (!user) { window.location.href = '/login'; }", AL_LOGIN),
+  ], [1, 1, 1, 1, 1]);
+  chequear('y deja pasar las dos buenas', [
+    vuelve("if (yo.estado === 'sin') return alSalir();", AL_SALIR),
+    vuelve('await supabase.auth.signOut();\n    alSalir();', AL_SALIR),
+    vuelve("if (yo.estado === 'sin') return router.push('/login');", AL_LOGIN),
+  ], [0, 0, 0]);
+
+  // EL "NO" DE VERDAD que da el servidor al renovar es un 400, no un 401.
   chequear(
-    'y en Inicio esa salida es una sola',
-    (codigo187['movil/src/Inicio.tsx'].match(/\balSalir\(\)/g) ?? []).length,
-    2
+    'el refresh token rechazado (400) es un "no hay", no un "no sé"',
+    await Q187.quienSoy(conSesion(null, { name: 'AuthApiError', status: 400, code: 'refresh_token_not_found' })),
+    { estado: 'sin' }
   );
-  chequear(
-    'en la web, una pantalla solo manda al login con un "no hay"',
-    // Los dos de Ajustes salen después de cerrar sesión o borrar la cuenta; el
-    // de nueva-clave es un botón.
-    salidasSinMirar(/router\.push\('\/login'\)/g, ['src/components/ajustes/Sesion.tsx', 'src/components/ajustes/BajaDeCuenta.tsx', 'src/app/nueva-clave/page.tsx']),
-    []
-  );
-  chequear(
-    'el detector ve la pantalla de antes',
-    [...'const uid = sesion.session?.user?.id;\n    if (!uid) return alSalir();'.matchAll(/\balSalir\(\)/g)].filter(
-      (m) => !/estado === 'sin'\) return\s*$/.test(m.input.slice(Math.max(0, m.index - 40), m.index))
-    ).length,
-    1
-  );
+  // Anotar una marca decidía con `miId`, que junta los dos casos: sin señal y
+  // con el token vencido decía "Se cerró la sesión. Vuelve a entrar."
+  const marca187 = codigo187['movil/src/CargarMarca.tsx'];
+  chequear('anotar una marca dice "se cerró la sesión" solo si se cerró', [
+    /yo\.estado === 'sin' \? T\.marca\.sesionCerrada : T\.general\.noSePudo/.test(marca187),
+    /await miId\(supabase\)/.test(marca187),
+  ], [true, false]);
+  // Una recarga que no pudo preguntar no tapa lo que ya estaba en pantalla.
+  chequear('Stats y Álbum dejan lo que había si la recarga falla', [
+    /if \(error && !datos\)/.test(codigo187['movil/src/Stats.tsx']),
+    /\{noCargo && !datos \? \(/.test(codigo187['movil/src/Album.tsx']),
+  ], [true, true]);
+}
+
+console.log('\n188. La sesión guardada se cambia de a uno: dos que guardan a la vez no se pisan');
+{
+  // LO ENCONTRÓ LA REVISIÓN DE LA ETAPA 1 (4/10). Cambiar una clave de la sesión
+  // guardada es leer, mezclar y guardar, y no había fila: dos cruzados se
+  // pisaban. Al sacar `marcar` de adelante de `elegirEjercicio` (sección 180)
+  // quedó corriendo a la vez que la propuesta del modo, y la marca de actividad
+  // no llegaba a la caché: media hora después la sesión se daba por cerrada.
+  // Era también la tercera carrera anotada en la tanda 1: dos `+` casi juntos.
+  const [actividad188, modo188, doble188] = await Promise.all(['actividad', 'modo', 'doble'].map((c) => escenarioDeSesion('turno', c)));
+  chequear('elegir un ejercicio con modo recordado: la marca de actividad queda guardada', actividad188.fallo ?? actividad188, { marcaFresca: true, modo: 'par' });
+  chequear('"Terminar serie" con la rutina proponiendo: el modo queda en la caché, no solo en pantalla', modo188.fallo ?? modo188, {
+    pantalla: ['remo', 'par'],
+    cache: ['remo', 'par'],
+  });
+  chequear('dos + casi juntos: la caché queda con las dos', doble188.fallo ?? doble188, { pantalla: [7, 7], cache: [7, 7], base: [7, 7] });
+
+  // La fila, sola: dos cambios pedidos a la vez sobre claves distintas.
+  const SC188 = await import('../compartido/sesionCache.ts');
+  const { memoria: memoria188 } = await import('./dobles/plataforma.mjs');
+  memoria188.set('ascent:sesion', JSON.stringify({ inicio: new Date().toISOString(), desfasaje: 0, series: 1, id: 's' }));
+  await Promise.all([SC188.actualizarSesionCache({ series: 2 }), SC188.actualizarSesionCache({ ultimaActividad: '2026-10-04T12:00:00.000Z' })]);
+  const tras188 = JSON.parse(memoria188.get('ascent:sesion'));
+  chequear('dos cambios pedidos a la vez quedan los dos', [tras188.series, tras188.ultimaActividad], [2, '2026-10-04T12:00:00.000Z']);
+  memoria188.delete('ascent:sesion');
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

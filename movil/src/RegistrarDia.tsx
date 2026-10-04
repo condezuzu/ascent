@@ -7,6 +7,7 @@ import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import type { ResultadoRegistro, Visibilidad } from '@nucleo/tipos';
 import { subidaDeRango } from '@nucleo/rangos';
 import { fotoCompartida } from '@nucleo/foto';
+import { miId } from '@compartido/quienSoy';
 import { T } from '@nucleo/textos';
 import { subirFotoDelDia } from '@compartido/foto';
 import { anotarElDia } from '@compartido/anotarDia';
@@ -119,8 +120,23 @@ function RegistrarDia({
     const { data, error: e } = await anotarElDia(supabase, 'manual');
     if (e) {
       setCargando(false);
-      // 23505: el día ya estaba. No es un error que haya que mostrar.
-      if (e.code === '23505') return alConfirmar(null);
+      // 23505: el día ya estaba (lo anotó la sesión o la ubicación y esta
+      // pantalla no llegó a enterarse). No es un error que haya que mostrar.
+      if (e.code === '23505') {
+        if (!foto) return alConfirmar(null);
+        // CON UNA FOTO ELEGIDA NO SE CIERRA TIRÁNDOLA: se busca el día y se
+        // cuelga de él. Si no se puede, la hoja queda abierta con la foto.
+        setCargando(true);
+        const uid = await miId(supabase);
+        const { data: log } = uid
+          ? await supabase.from('logs').select('id').eq('user_id', uid).eq('fecha', dia).maybeSingle()
+          : { data: null };
+        const subio = log?.id ? await subir(log.id as string, false) : false;
+        setCargando(false);
+        if (!subio) return setError(T.general.falloFoto);
+        setFoto(null);
+        return alConfirmar(null);
+      }
       return setError(T.general.noSePudo);
     }
     if (estaBloqueado(data)) {

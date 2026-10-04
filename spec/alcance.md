@@ -96,9 +96,10 @@ la web mientras tanto. Si va antes, suma unas tres tandas a la llegada.
   *Lo que queda abierto hasta entonces*, de esa misma familia (está en
   `spec/trampas.md`, "Un refresco decide con una foto, y el toque cae en el
   medio"): la respuesta vieja de "no hay sesión" que llega después de Iniciar,
-  la de "está corriendo" que llega después de Terminar, y dos `+` con
-  milisegundos de diferencia.
+  y la de "está corriendo" que llega después de Terminar. (La tercera —dos `+`
+  con milisegundos de diferencia— se arregló en la tanda 2: el
+  leer-mezclar-guardar de la caché va en fila.)
 
   *Antes de empezar:* la red son los escenarios de `supabase/dobles/sesion/`
   (sección 179 de `test:db`), que corren el hook de verdad. Primero se escriben
-  ahí los tres casos de arriba, en rojo, y recién después se toca el hook.
+  ahí los dos casos de arriba, en rojo, y recién después se toca el hook.

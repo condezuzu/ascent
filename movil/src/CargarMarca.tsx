@@ -7,7 +7,7 @@ import type { Ejercicio } from '@nucleo/tipos';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
-import { miId } from '@compartido/quienSoy';
+import { quienSoy } from '@compartido/quienSoy';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import SelectorEjercicio from './SelectorEjercicio';
@@ -68,11 +68,14 @@ function CargarMarca({
     if (!Number.isInteger(veces) || veces < 1 || veces > 20) return setError(T.marca.vecesFuera);
 
     setGuardando(true);
-    const uid = await miId(supabase);
-    if (!uid) {
+    const yo = await quienSoy(supabase);
+    if (yo.estado !== 'con') {
       setGuardando(false);
-      return setError(T.marca.sesionCerrada);
+      // "Se cerró la sesión" solo si se cerró. Sin poder preguntar —el subsuelo,
+      // con el token vencido— la sesión sigue ahí: es un "no se guardó".
+      return setError(yo.estado === 'sin' ? T.marca.sesionCerrada : T.general.noSePudo);
     }
+    const uid = yo.uid;
     // A LA BASE VA SIEMPRE EN KILOS. La unidad es solo cómo se escribe y se
     // lee, igual que el peso corporal: si se guardara en libras, comparar dos
     // cuentas con unidades distintas sería comparar números de cosas
@@ -96,8 +99,7 @@ function CargarMarca({
   const hoy = deISO(hoyISO());
 
   return (
-    <>
-      <Hoja visible={visible} alCerrar={guardando ? () => {} : alCerrar}>
+    <Hoja visible={visible} alCerrar={guardando ? () => {} : alCerrar}>
         <Text style={estilos.titulo}>{T.marca.titulo}</Text>
         <Text style={estilos.sub}>{T.marca.sub}</Text>
 
@@ -163,8 +165,12 @@ function CargarMarca({
         <Pressable style={estilos.texto} onPress={alCerrar} disabled={guardando}>
           <Text style={estilos.enlace}>{T.general.cancelar}</Text>
         </Pressable>
-      </Hoja>
 
+      {/* EL SELECTOR VA ADENTRO DE LA HOJA (4/10), como en `ListaDeBloques`: en
+          iOS un modal solo se presenta encima de otro si está dentro de su
+          contenido. Estaba afuera, de hermano: con la hoja abierta, tocar el
+          ejercicio para cambiarlo no abría nada, y la marca se guardaba en el
+          que venía puesto. */}
       <SelectorEjercicio
         visible={eligiendo}
         ejercicios={ejercicios}
@@ -175,7 +181,7 @@ function CargarMarca({
         }}
         alCerrar={() => setEligiendo(false)}
       />
-    </>
+    </Hoja>
   );
 }
 

@@ -136,6 +136,15 @@ export async function leerSesionCache(): Promise<SesionCacheada | null> {
 let toques = 0; // cambios locales del conteo o de los bloques, desde que arrancó la app
 let enVuelo = 0; // de esos, los que todavía no terminaron de escribirse en la caché
 
+// EL LEER-MEZCLAR-GUARDAR, DE A UNO (4/10). Cambiar una clave de la sesión
+// guardada es leer el objeto, mezclarle la clave y guardarlo. Dos que lo hacían
+// cruzados —el `+` y la marca de actividad, o proponer el modo y la marca— se
+// pisaban: el segundo en guardar escribía lo que había leído ANTES de que
+// guardara el primero. La caché quedaba una serie atrás, o sin la marca de
+// actividad (y media hora después daba la sesión por cerrada), o sin el modo
+// del bloque. Es la misma fila que usa la cola (`enTurno`, en `cola.ts`).
+let turno: Promise<unknown> = Promise.resolve();
+
 /** Cuántos cambios locales van. Se anota al EMPEZAR a preguntarle a la base. */
 export function relojDeToques(): number {
   return toques;
@@ -180,12 +189,17 @@ export async function actualizarSesionCache(
   }
   let guardado = false;
   try {
+    // `antes` va AFUERA de la fila: es la cola, que tiene la suya, y puede
+    // tardar; adentro tendría esperando a todos los demás.
     if (antes) await antes();
-    const actual = await leerSesionCache();
-    if (actual) {
+    const paso = turno.then(async () => {
+      const actual = await leerSesionCache();
+      if (!actual) return false;
       await plataforma.almacenamiento.guardar(CLAVE, JSON.stringify({ ...actual, ...parcial }));
-      guardado = true;
-    }
+      return true;
+    });
+    turno = paso.catch(() => undefined);
+    guardado = await paso;
   } finally {
     // ANTES del aviso y no después: la otra instancia relee al oírlo, y con el
     // toque todavía "en vuelo" descartaría justo la lectura que ya es buena.

@@ -159,8 +159,18 @@ no se reescribe nunca.
 
 **`mejor_racha` como contador que solo sube es un dato falso para siempre.**
 Si alguien registra días por error y los borra, el récord tiene que bajar.
-→ **Regla:** el máximo **sale del historial** (`mejor_racha_real`), no se
-acumula.
+→ **Regla:** al borrar días, el historial es el **techo** del récord.
+
+**Y recalcularlo entero en cada día también era falso (4/10).** La primera
+regla fue "el máximo sale del historial": en cada día, `greatest(tirada más
+larga, racha de hoy)`. Un récord hecho con racha arrastrada no está en ninguna
+tirada, así que lo sostenía solo la racha y bajaba con la pérdida siguiente. El
+primer arreglo —que el historial contara "un corte resta 10"— lo empeoraba: le
+SUBÍA el récord a quien nunca lo tuvo, porque la racha de verdad no siempre
+arrastra. Lo cazó la revisión, no las pruebas, que probaban el caso lindo.
+→ **Regla:** el récord sube solo con lo que pasó (la racha de hoy, una tirada de
+días seguidos). Lo reconstruido del historial sirve para bajar, nunca para
+subir. Ver `spec/modelo-de-datos.md`, `profiles`.
 
 **El servidor está en UTC y el usuario en UTC−3**, así que a las 21:00 de
 Uruguay el día del servidor ya cambiaba. El primer arreglo fue peor que el
@@ -1150,12 +1160,21 @@ bloques de la anterior y al volver al frente se subían a la base.
   `supabase/dobles/sesion/` (React, almacenamiento en fila y base de mentira;
   sección 179). Es un sustituto del teléfono: prueba el orden, no lo que se ve.
 
-**Quedan, de la misma familia y sin tocar** (los tres existen desde antes y se
+**Y el tercero de la familia, que se arregló en la tanda 2:** cambiar una clave
+de la sesión guardada es leer, mezclar y guardar, y no había fila. Dos cruzados
+se pisaban: dos `+` con milisegundos de diferencia dejaban la caché una serie
+atrás, y al sacar `marcar` de adelante de `elegirEjercicio` quedó corriendo a
+la vez que la propuesta del modo y la marca de actividad no llegaba a guardarse
+(media hora después la sesión se daba por cerrada). Lo segundo lo introdujo un
+arreglo y lo cazó la revisión de los commits, no las pruebas.
+→ **Regla:** un leer-mezclar-guardar va en fila (`turno`, en
+`compartido/sesionCache`), igual que la cola.
+
+**Quedan, de la misma familia y sin tocar** (los dos existen desde antes y se
 reproducen con esos dobles): una respuesta vieja de "no hay sesión" que llega
-después de Iniciar saca la sesión de la pantalla; una de "está corriendo" que
-llega después de Terminar la vuelve a mostrar; y dos `+` con milisegundos de
-diferencia dejan la caché una serie atrás (la escritura de `marcar` pisa la del
-segundo toque), que con señal se corrige sola contra la base.
+después de Iniciar saca la sesión de la pantalla, y una de "está corriendo" que
+llega después de Terminar la vuelve a mostrar. Están anotados en
+`spec/alcance.md`, con el dueño único del estado de la sesión.
 
 ## Tests / proceso
 

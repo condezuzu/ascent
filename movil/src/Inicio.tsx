@@ -100,7 +100,6 @@ export default function Inicio({
   // compara con la que devuelve la base (ver `subidaDeRango`). En una ref
   // porque la leen avisos que llegan de afuera, con la pantalla ya dibujada.
   const rachaVista = useRef<number | null>(null);
-  if (estado.tipo === 'listo') rachaVista.current = estado.perfil.racha_actual;
   // EL SCROLL, para traer a la vista la pregunta de marca de la serie recién
   // confirmada (ver `MarcaEnElMomento`). Se mide en coordenadas de PANTALLA y
   // no con `measureLayout`, que no se porta igual en la vista web de la nativa y
@@ -121,6 +120,9 @@ export default function Inicio({
   );
   // La hoja de registrar el día (con foto): la misma que la web.
   const [registrarAbierto, setRegistrarAbierto] = useState(false);
+  // Con la hoja abierta la racha vista NO se mueve: el día pudo entrar ahí y
+  // la hoja seguir abierta esperando la foto (igual que en la web).
+  if (estado.tipo === 'listo' && !registrarAbierto) rachaVista.current = estado.perfil.racha_actual;
   // La hoja del peso: su propia puerta, como en la web.
   const [pesoAbierto, setPesoAbierto] = useState(false);
   // Terminar pregunta antes, en el mismo lugar: es el botón más fácil de tocar

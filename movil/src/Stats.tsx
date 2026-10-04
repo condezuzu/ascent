@@ -180,7 +180,9 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     [datos?.sesiones, datos?.marcas, datos?.ejercicios]
   );
 
-  if (error) {
+  // El cartel, solo si no hay nada que mostrar: una recarga que falla no tapa
+  // lo que ya estaba en pantalla.
+  if (error && !datos) {
     return (
       <View style={estilos.centrado}>
         <Text style={estilos.error}>{error}</Text>

@@ -5,6 +5,7 @@
 //   node --import ./ganchos.mjs escenarios.mjs releer   <n>
 //   node --import ./ganchos.mjs escenarios.mjs eleccion <peso|ejercicio|sugerencia|sugerencia-sola>
 //   node --import ./ganchos.mjs escenarios.mjs hoja
+//   node --import ./ganchos.mjs escenarios.mjs turno    <actividad|modo|doble> [n]
 //
 // Imprime UNA línea de JSON con lo que se vio. Quien decide si está bien es la
 // sección 179 de `test-schema.mjs`. Es un sustituto del teléfono, no el teléfono:
@@ -356,8 +357,77 @@ async function hoja() {
   return { pasos, laMisma: i.r.type === LaHoja, montadaAbierta: abierta.r.key };
 }
 
+/**
+ * DOS QUE GUARDAN LA CACHÉ A LA VEZ. Cambiar una cosa de la sesión guardada es
+ * leer, mezclar y guardar; si dos lo hacen cruzados, el segundo en guardar pisa
+ * al primero con lo que había leído antes.
+ *  - `actividad`: se elige un ejercicio con modo recordado. Proponer el modo y
+ *    marcar la actividad guardan a la vez: la marca tiene que quedar.
+ *  - `modo`: "Terminar serie" con una rutina que propone remo (modo recordado:
+ *    por mancuerna). El modo tiene que quedar en la caché, no solo en pantalla.
+ *  - `doble`: dos `+` casi juntos (el segundo, `n` operaciones de
+ *    almacenamiento después; cuatro si no se dice): la caché tiene que quedar
+ *    con las dos.
+ */
+async function turno(cual, nTxt = '4') {
+  servidor.ultimoEjercicio = 'press_banca';
+  datos.set('ascent:cargas-elegidas', JSON.stringify({ remo: 'par' }));
+  if (cual === 'modo') {
+    const { hoyISO, restarDias } = await import('@nucleo/fechas');
+    servidor.historial = [
+      { bloques: [{ ejercicio: 'press_banca' }, { ejercicio: 'remo' }], logs: { fecha: restarDias(hoyISO(), 7) } },
+    ];
+  }
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  for (let i = 0; i < (cual === 'doble' ? 5 : 1); i++) await inicio.r.serieHecha();
+  await asentar();
+
+  if (cual === 'actividad') {
+    // La última actividad guardada es de hace diez minutos.
+    const vieja = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    datos.set('ascent:sesion', JSON.stringify({ ...cache(), ultimaActividad: vieja }));
+    const desde = Date.now();
+    await inicio.r.elegirEjercicio('remo');
+    await asentar();
+    return { marcaFresca: Date.parse(cache().ultimaActividad) >= desde - 1000, modo: cache().bloques?.carga ?? null };
+  }
+  if (cual === 'modo') {
+    await inicio.r.bloqueSiguiente();
+    await asentar();
+    const e = inicio.r.estado;
+    return { pantalla: [e.bloques.ejercicio, e.bloques.carga ?? null], cache: [cache().bloques?.ejercicio, cache().bloques?.carga ?? null] };
+  }
+  const desde = servidas.n;
+  const segundo = new Promise((listo) => {
+    servidas.alServir = (k) => {
+      if (k - desde < Number(nTxt)) return;
+      servidas.alServir = null;
+      void inicio.r.serieHecha();
+      listo();
+    };
+  });
+  void inicio.r.serieHecha();
+  if (Number(nTxt) === 0) {
+    servidas.alServir = null;
+    void inicio.r.serieHecha();
+  } else {
+    await segundo;
+  }
+  await asentar();
+  const e = inicio.r.estado;
+  const base = servidor.sesiones[0];
+  return {
+    pantalla: [e.series, e.bloques.hechas],
+    cache: [cache()?.series, cache()?.bloques?.hechas],
+    base: [base.series, base.bloques[0]?.series],
+  };
+}
+
 const [escenario, ...argumentos] = process.argv.slice(2);
-const resultado = await { bloques, refresco, releer, eleccion, hoja }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

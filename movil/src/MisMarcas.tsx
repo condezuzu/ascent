@@ -83,7 +83,8 @@ export default function MisMarcas() {
     setNoSeBorro(false);
     const ok = await borrarMarca(supabase, id);
     setBorrando(null);
-    setPorBorrar(null);
+    // Solo la pregunta de ESTA fila: mientras viajaba se pudo abrir la de otra.
+    setPorBorrar((p) => (p === id ? null : p));
     if (!ok) return setNoSeBorro(true);
     cargar();
   }
@@ -136,7 +137,12 @@ export default function MisMarcas() {
       <Surgir key={m.ejercicio} indice={i}>
         <Pressable
           style={estilos.fila}
-          onPress={() => setAbierto(desplegado ? null : m.ejercicio)}
+          onPress={() => {
+            // La pregunta y el aviso son del ejercicio que estaba desplegado.
+            setPorBorrar(null);
+            setNoSeBorro(false);
+            setAbierto(desplegado ? null : m.ejercicio);
+          }}
           accessibilityState={{ expanded: desplegado }}
         >
           <Text style={estilos.nombre} numberOfLines={1}>

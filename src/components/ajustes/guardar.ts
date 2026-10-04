@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Perfil } from '@nucleo/tipos';
 import { avisarFallo } from '@compartido/cola';
+import { guardarPerfilCache } from '@compartido/cache';
 import { T } from '@nucleo/textos';
 
 /**
@@ -33,5 +34,9 @@ export async function guardarPreferencia<K extends keyof Perfil>(
     avisarFallo(T.general.falloPreferencia);
     return false;
   }
+  // LA COPIA DEL APARATO TAMBIÉN (4/10). Inicio se dibuja primero con ella: sin
+  // esto, pasar de libras a kilos dejaba el campo de peso en libras hasta que
+  // contestara la red, y la franja arrancaba el descanso con la duración vieja.
+  void guardarPerfilCache({ ...perfil, [campo]: valor });
   return true;
 }

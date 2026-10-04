@@ -907,11 +907,50 @@ begin
               where user_id = p_user and fecha = d and not devuelta
            )
         then
-          -- UN CORTE RESTA 10, NO VUELVE A CERO: es la regla de la racha (§12)
-          -- y acá estaba la de antes. La racha de después de una pérdida
-          -- arrastra lo que sobrevivió, y el récord hecho con esos días no
-          -- salía del historial: quedaba guardado solo mientras la racha lo
-          -- sostenía, y bajaba solo con la pérdida siguiente (migración 61).
+          corriente := 0;
+          exit;
+        end if;
+        d := d + 1;
+      end loop;
+    end if;
+    if not r.es_descanso then corriente := corriente + 1; end if;
+    if corriente > maximo then maximo := corriente; end if;
+    anterior := r.fecha;
+  end loop;
+  return maximo;
+end;
+$$;
+
+-- EL TECHO DEL RÉCORD: hasta dónde puede haber llegado la racha con ESTE
+-- historial, contando como cuenta la racha —un corte resta 10, una vez por
+-- corte, y no vuelve a cero (§12)—.
+--
+-- No es el récord: es su tope cuando se BORRAN días (migración 61). El récord
+-- sube con la racha de verdad; este número solo sirve para bajarlo si el
+-- historial ya no lo sostiene. Puede dar más que lo que la persona tuvo (la
+-- racha no siempre arrastra: borrar un día del medio o recalcular desde cero
+-- cortan en seco), y por eso nunca se usa para SUBIR nada.
+create or replace function public.techo_de_mejor_racha(p_user uuid)
+returns int language plpgsql stable security definer set search_path = public as $$
+declare
+  r record;
+  anterior date := null;
+  corriente int := 0;
+  maximo int := 0;
+  d date;
+begin
+  for r in
+    select fecha, es_descanso from logs where user_id = p_user order by fecha
+  loop
+    if anterior is not null then
+      d := anterior + 1;
+      while d < r.fecha loop
+        if not (extract(dow from d)::int = any(descansos_vigentes(p_user, d)))
+           and not exists (
+             select 1 from vidas_usadas
+              where user_id = p_user and fecha = d and not devuelta
+           )
+        then
           corriente := greatest(0, corriente - 10);
           exit;
         end if;
@@ -1017,8 +1056,20 @@ begin
   r := base + calcular_racha(uid, hasta);
   update profiles set
     racha_actual = r,
-    -- el máximo sale del historial: si se borran días, baja
-    mejor_racha = greatest(mejor_racha_real(uid), r),
+    -- EL RÉCORD NO BAJA SOLO (migración 61). Antes era
+    -- `greatest(mejor_racha_real, r)` a secas: un récord hecho con racha
+    -- arrastrada (40 días, se pierde, 25 más: 55) no salía del historial, que
+    -- da 40, así que lo sostenía solo la racha y con la pérdida siguiente
+    -- bajaba a 46 sin que se borrara nada.
+    --  - Al ENTRAR un día, el récord guardado se queda: solo puede subir.
+    --  - Al BORRAR o cambiar un día, el historial es el techo: si ya no lo
+    --    sostiene, baja. Es la regla de siempre —un récord de días anotados
+    --    por error tiene que poder corregirse—.
+    mejor_racha = greatest(
+      case when tg_op = 'INSERT' then mejor_racha
+           else least(mejor_racha, techo_de_mejor_racha(uid)) end,
+      mejor_racha_real(uid),
+      r),
     rango_actual = rango_de_racha(r)
   where id = uid;
 
@@ -1266,7 +1317,8 @@ begin
   r := calcular_racha(uid, hasta);
   update profiles set
     racha_actual = r,
-    mejor_racha = greatest(mejor_racha_real(uid), r),
+    -- Recalcular es mirar el historial de nuevo: el techo vale (ver `logs_after_change`).
+    mejor_racha = greatest(least(mejor_racha, techo_de_mejor_racha(uid)), mejor_racha_real(uid), r),
     rango_actual = rango_de_racha(r)
   where id = uid;
   perdida := verificar_perdida();
@@ -3005,6 +3057,7 @@ revoke execute on function public.cerrar_sesiones_vencidas(uuid)
 revoke execute on function
   public.calcular_racha(uuid, date),
   public.mejor_racha_real(uuid),
+  public.techo_de_mejor_racha(uuid),
   public.descansos_vigentes(uuid, date),
   public.impulsos_ganados(uuid),
   public.impulsos_disponibles(uuid, date),

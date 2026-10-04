@@ -14,7 +14,8 @@ sobre el esquema 53 sacado de git, antes y después de cada una. Lo que mira el
 storage no se pudo probar (PGlite no lo tiene) y está marcado.*
 
 *En la tanda 2 del 4/10 se sumó la 61 (la mejor racha que bajaba sola), con su
-consulta —§0 y §2.9— probada de la misma forma.*
+consulta —§2.9— probada de la misma forma. A diferencia de la 59 y la 60, la 61
+NO se puede correr antes: va en su lugar, después de la 60.*
 
 Orden, y no se cambia: **verificar → migraciones → confirmar 61 → OTA → teléfono.**
 
@@ -32,7 +33,7 @@ Dónde se corre cada cosa:
 
 ## 0. Lo que se puede aplicar ANTES de que Apple apruebe (opcional)
 
-Tres migraciones no dependen de la 54 a la 58 y cierran cosas de la base
+Dos migraciones no dependen de la 54 a la 58 y cierran cosas graves en la base
 que producción tiene HOY. Se pueden correr ya, en este orden, y **no suben la
 versión** (queda en 53), así que ningún cliente se entera:
 
@@ -42,11 +43,12 @@ versión** (queda en 53), así que ningún cliente se entera:
   al teléfono a la vez.
 - `supabase/migracion-60-fotos-privadas.sql` — la foto privada que otra cuenta
   podía leer anotando su ruta como propia.
-- `supabase/migracion-61-mejor-racha-arrastrada.sql` — la mejor racha que bajaba
-  sola después de una pérdida, sin que se borrara ningún día. Además repone el
-  récord a quien el bug ya se lo bajó (esa sentencia solo sube, nunca baja).
 
-**[SQL]** Después de correr la 59 y la 60:
+**La 61 NO va acá.** Vuelve a definir el disparador de los logs, que desde la 57
+escribe una columna que el esquema 53 no tiene; corrida antes rompería el
+registro de días. Se niega sola si la base no está en 60 (probado).
+
+**[SQL]** Después de correr las dos:
 ```sql
 select public.version_del_esquema() as version,
        to_regprocedure('public.aplicar_perdida_al(uuid, date)') is not null as racha_cuidada,
@@ -55,21 +57,10 @@ select public.version_del_esquema() as version,
 ```
 → `53`, `true`, `true`  (antes de correrlas: `53`, `false`, `false`)
 
-**[SQL]** Después de correr la 61:
-```sql
-select public.version_del_esquema() as version,
-       (select prosrc like '%corriente - 10%' from pg_proc
-         where oid = 'public.mejor_racha_real(uuid)'::regprocedure) as corte_resta_10,
-       (select count(*) from public.profiles p
-         where public.mejor_racha_real(p.id) > p.mejor_racha) as records_por_debajo;
-```
-→ `53`, `true`, `0`  (antes de correrla: `53`, `false`, y un número que no dice
-nada, porque la función todavía cuenta con la regla vieja)
-
-**Si se corrieron acá, igual se vuelven a correr en §2.7, §2.8 y §2.9.** No
-rompe nada: son las mismas sentencias, y esa segunda pasada es la que sube la
-versión. Está probado en ese orden (`test:db`, sección 173): 59, 60 y 61 sobre
-el 53, después la 54 a la 58, y otra vez la 59, la 60 y la 61.
+**Si se corrieron acá, igual se vuelven a correr en §2.7 y §2.8.** No rompe
+nada: son las mismas sentencias, y esa segunda pasada es la que sube la versión.
+Está probado en ese orden (`test:db`, sección 173): 59 y 60 sobre el 53, después
+la 54 a la 58, otra vez la 59 y la 60, y al final la 61.
 
 Qué cambia para alguien que ya usa la app: solo el caso que estaba roto. Antes,
 el día que entraba detrás de una falta sin revisar dejaba la racha en 1; ahora
@@ -266,18 +257,33 @@ select public.version_del_esquema() as version,
 
 ### 2.9 — `supabase/migracion-61-mejor-racha-arrastrada.sql`
 
-La mejor racha sale del historial contando como cuenta la racha: un corte resta
-10, no vuelve a cero. Si se corrió en §0, se corre de nuevo acá.
+El récord deja de recalcularse entero cada vez que entra un día: solo puede
+subir, y el historial es su techo cuando se borra uno. Va acá, después de la 60;
+antes se niega sola.
 
 ```sql
 select public.version_del_esquema() as version,
-       (select prosrc like '%corriente - 10%' from pg_proc
-         where oid = 'public.mejor_racha_real(uuid)'::regprocedure) as corte_resta_10,
-       (select count(*) from public.profiles p
-         where public.mejor_racha_real(p.id) > p.mejor_racha) as records_por_debajo;
+       to_regprocedure('public.techo_de_mejor_racha(uuid)') is not null as hay_techo,
+       (select prosrc like '%techo_de_mejor_racha%' from pg_proc
+         where oid = 'public.logs_after_change()'::regprocedure) as el_record_no_baja_solo;
 ```
-→ `61`, `true`, `0`  (antes de aplicarla: `60`, `false`, y un número cualquiera;
-o `60`, `true`, `0` si ya se había corrido en §0)
+→ `61`, `true`, `true`  (antes de aplicarla: `60`, `false`, `false`)
+
+**La 61 no repone nada.** A quien el bug ya le bajó el récord no se le sube solo:
+desde el historial no se puede saber qué número llegó a ver cada persona. Esta
+consulta (solo lee) lista las cuentas cuyo historial sostendría un récord más
+alto que el guardado; es una pista, no una prueba —también aparecen cuentas que
+recalcularon desde cero o que perdieron la racha por el bug de la 59—:
+
+```sql
+select username, racha_actual, mejor_racha, public.techo_de_mejor_racha(id) as techo
+  from public.profiles
+ where public.techo_de_mejor_racha(id) > mejor_racha
+ order by 4 desc;
+```
+
+Si alguna es de verdad un récord perdido, se corrige a mano:
+`update public.profiles set mejor_racha = <número> where username = '<nombre>';`
 
 ---
 

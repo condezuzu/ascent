@@ -131,6 +131,11 @@ export type EstadoDeSesion = 'con' | 'sin' | 'no-se';
 
 export function sesionSegun(haySesion: boolean, error: { name?: string; status?: number } | null): EstadoDeSesion {
   if (haySesion) return 'con';
+  // EL "NO" QUE DA EL SERVIDOR AL RENOVAR ES UN 400 (refresh_token_not_found):
+  // la librería ya borró la sesión guardada. Sin esto contaba como "no sé", y
+  // la web —que no escucha el aviso de salida— necesitaba dos intentos para
+  // mandar al login.
+  if (error?.status === 400) return 'sin';
   // Sin sesión y sin error: nunca entró, o salió. Con un "no" del servidor,
   // también. Cualquier otro error es no haber podido preguntar.
   return clasificar(error) === 'de-red' ? 'no-se' : 'sin';

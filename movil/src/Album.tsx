@@ -232,7 +232,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
         {!!error && <Text style={estilos.error}>{error}</Text>}
         {!cargado && <ActivityIndicator color={C.sub} style={{ marginTop: 24 }} />}
 
-        {noCargo ? (
+        {noCargo && !datos ? (
           <View style={estilos.tarjeta}>
             <Text style={estilos.texto}>{T.inicio.noCargo}</Text>
             <Pressable style={estilos.botonFantasma} onPress={cargar}>

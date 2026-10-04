@@ -72,7 +72,9 @@ export default function RegistrarSheet({
 
   // la hoja se va con su animación antes de desmontarse
   function cerrar() {
-    if (cargando) return;
+    // Ni mientras guarda ni dos veces: con el día entrado acá, cada cierre
+    // confirma, y dos toques en el fondo confirmaban dos veces.
+    if (cargando || cerrando) return;
     setCerrando(true);
     // Si el día entró acá, cerrar sin la foto igual lo confirma: la racha subió.
     setTimeout(registradoAca ? () => alConfirmar(registradoAca) : alCerrar, 200);
@@ -208,7 +210,7 @@ export default function RegistrarSheet({
           )}
         </div>
 
-        <button className="boton-solido" onClick={() => confirmar()} disabled={cargando}>
+        <button className="boton-solido" onClick={() => confirmar()} disabled={cargando || cerrando}>
           {cargando ? T.sesion.guardando : yaEsta ? T.general.guardar : T.inicio.registrarDia}
         </button>
         {aviso && <p className="ok-msg">{aviso}</p>}

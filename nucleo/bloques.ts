@@ -551,7 +551,8 @@ export function corregirBloque(e: EstadoBloques, indice: number, delta: number):
   // probable, y si no, se corrige con un toque. Una que se saca, se lleva el
   // último.
   const previos = pesosDe(b.pesos, b.series);
-  const ultimo = [...previos].reverse().find((x) => x !== null) ?? null;
+  // Salvo con peso corporal, donde la serie va sin número (ver `sumar`).
+  const ultimo = llevaNumero(b.carga) ? ([...previos].reverse().find((x) => x !== null) ?? null) : null;
   const pesos = Array.from({ length: nuevas }, (_, i) => (i < previos.length ? previos[i] : ultimo));
   return {
     estado: {
