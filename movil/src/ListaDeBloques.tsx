@@ -7,6 +7,7 @@ import { cargaVigente, llevaNumero, type Carga } from '@nucleo/carga';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
+import { nuevaEnCadaApertura } from './hojaNueva';
 import CampoPeso from './CampoPeso';
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import SelectorEjercicio from './SelectorEjercicio';
@@ -22,7 +23,7 @@ import { C } from './colores';
  * de esta hoja: en iOS un modal solo se presenta encima de otro si está dentro
  * de su contenido.
  */
-export default function ListaDeBloques({
+function ListaDeBloques({
   visible,
   estado,
   ejercicios,
@@ -192,6 +193,8 @@ export default function ListaDeBloques({
     </Hoja>
   );
 }
+
+export default nuevaEnCadaApertura(ListaDeBloques, (p) => p.visible);
 
 const estilos = StyleSheet.create({
   // Una línea punteada debajo: "esto se toca" sin parecer un enlace.

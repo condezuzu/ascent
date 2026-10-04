@@ -8,6 +8,7 @@ import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import Hoja from './Hoja';
+import { nuevaEnCadaApertura } from './hojaNueva';
 import SelectorEjercicio from './SelectorEjercicio';
 import CampoPeso from './CampoPeso';
 import { C } from './colores';
@@ -30,7 +31,7 @@ import { C } from './colores';
  * misma pregunta hecha en dos pantallas, y no puede verse distinta en cada
  * una.
  */
-export default function CargarMarca({
+function CargarMarca({
   visible,
   ejercicios,
   unidad,
@@ -176,6 +177,8 @@ export default function CargarMarca({
     </>
   );
 }
+
+export default nuevaEnCadaApertura(CargarMarca, (p) => p.visible);
 
 const estilos = StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 19, marginBottom: 4 },

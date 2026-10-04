@@ -4,6 +4,7 @@
 //   node --import ./ganchos.mjs escenarios.mjs refresco <despues|antes|siempre> <n> <telefono|web> <solo|vigilante>
 //   node --import ./ganchos.mjs escenarios.mjs releer   <n>
 //   node --import ./ganchos.mjs escenarios.mjs eleccion <peso|ejercicio|sugerencia|sugerencia-sola>
+//   node --import ./ganchos.mjs escenarios.mjs hoja
 //
 // Imprime UNA línea de JSON con lo que se vio. Quien decide si está bien es la
 // sección 179 de `test-schema.mjs`. Es un sustituto del teléfono, no el teléfono:
@@ -327,8 +328,36 @@ async function eleccion(cual) {
   };
 }
 
+/**
+ * UNA HOJA DE LA NATIVA, abierta y cerrada con su prop. No es de la sesión, pero
+ * se corre con el mismo React de mentira: lo que se mira es qué pide dibujar
+ * `nuevaEnCadaApertura` en cada paso —con qué llave—, que es lo que decide si
+ * el estado de la hoja nace de nuevo o sigue siendo el de antes.
+ */
+async function hoja() {
+  const { nuevaEnCadaApertura } = await import(new URL('../../../movil/src/hojaNueva.ts', import.meta.url).href);
+  const LaHoja = () => null;
+  const Envuelta = nuevaEnCadaApertura(LaHoja, (p) => p.visible);
+  let props = { visible: false, inicial: 'sentadilla' };
+  const i = montar(() => Envuelta(props));
+  const pasos = [];
+  const con = (nuevas) => {
+    props = nuevas;
+    i.render();
+    pasos.push([i.r.key, i.r.props.visible, i.r.props.inicial]);
+  };
+  con({ visible: false, inicial: 'sentadilla' });
+  con({ visible: true, inicial: 'press_banca' });
+  con({ visible: true, inicial: 'remo' });
+  con({ visible: false, inicial: 'remo' });
+  con({ visible: true, inicial: 'peso_muerto' });
+  // Una hoja que se monta ya abierta (las que se dibujan solo al abrirlas).
+  const abierta = montar(() => Envuelta({ visible: true, inicial: 'x' }));
+  return { pasos, laMisma: i.r.type === LaHoja, montadaAbierta: abierta.r.key };
+}
+
 const [escenario, ...argumentos] = process.argv.slice(2);
-const resultado = await { bloques, refresco, releer, eleccion }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

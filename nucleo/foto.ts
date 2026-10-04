@@ -8,6 +8,21 @@
  * no necesita los 4000 px del sensor, y subir doce megas por un subsuelo con
  * mala señal es la forma más segura de que la foto no llegue nunca.
  */
+import type { Visibilidad } from './tipos.ts';
+
+/**
+ * QUIÉN VE LA FOTO QUE SE ESTÁ POR SUBIR: lo que la persona tocó en ESTA hoja,
+ * y si no tocó nada, lo que eligió en Ajustes. `null` es "no tocó".
+ *
+ * Es una función y no un `useState(porDefecto)` porque de ahí salió el bug
+ * (4/10): la hoja quedaba montada, el estado se leía una sola vez y "quién la
+ * ve" quedaba en lo último que se había tocado. Una foto salía compartida sin
+ * que nadie lo eligiera. Sin dato de Ajustes, privada: es el lado seguro.
+ */
+export function fotoCompartida(tocado: boolean | null, deAjustes: Visibilidad | null | undefined): boolean {
+  return tocado ?? deAjustes === 'amigos';
+}
+
 export const LADO_MAXIMO_FOTO = 1600;
 export const CALIDAD_FOTO = 0.86;
 

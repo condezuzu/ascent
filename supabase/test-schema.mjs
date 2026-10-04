@@ -13290,21 +13290,15 @@ console.log('\n178. Bloquear avisa, y la marca se anota en el ejercicio que se t
   // ---- LA MARCA QUE SE GUARDABA EN OTRO EJERCICIO (4/10) ----
   //
   // ESTO ES CABLEADO, NO COMPORTAMIENTO: la hoja es un componente de React
-  // Native y acá no se puede dibujar. Lo que se fija es lo que la hace nacer de
-  // nuevo en cada apertura. Que abra con el ejercicio correcto se ve en el
-  // teléfono.
-  const marcas178 = (texto) => ({
-    cadaAperturaEsNueva: /<CargarMarca\s+key=\{apertura\}/.test(texto) && /setApertura\(\(n\) => n \+ 1\)/.test(texto),
-    // Abrirla por un costado, sin cambiar la `key`, es volver al bug.
-    seAbrePorUnSoloLugar: (texto.match(/setHoja\(\{ abierta: true/g) ?? []).length === 1,
-  });
-  chequear('la hoja de anotar una marca nace de nuevo en cada apertura', marcas178(de178('movil/src/MisMarcas.tsx')), {
-    cadaAperturaEsNueva: true,
-    seAbrePorUnSoloLugar: true,
-  });
-  chequear('la pantalla de antes no pasa', marcas178(
-    "onPress={() => setHoja({ abierta: true, ejercicio: m.ejercicio })} onPress={() => setHoja({ abierta: true })} <CargarMarca visible={!!hoja?.abierta} inicial={hoja?.ejercicio} />"
-  ), { cadaAperturaEsNueva: false, seAbrePorUnSoloLugar: false });
+  // Native y acá no se puede dibujar. Que abra con el ejercicio correcto se ve
+  // en el teléfono. El mecanismo que la hace nacer de nuevo —que ya no es una
+  // `key` puesta a mano en esta pantalla, sino el de todas las hojas— sí se
+  // corre: sección 182.
+  chequear(
+    'la hoja de anotar una marca nace de nuevo en cada apertura',
+    /export default nuevaEnCadaApertura\(CargarMarca, \(p\) => p\.visible\)/.test(de178('movil/src/CargarMarca.tsx')),
+    true
+  );
 }
 
 // LOS ESCENARIOS DE LA SESIÓN: cada uno corre `useSesion` de verdad, en su propio
@@ -13606,6 +13600,93 @@ console.log('\n181. Peso corporal: sin número en la serie, en el volumen y en l
   chequear('el detector ve un campo suelto', sinGuarda('{anotarPeso && <CampoPeso kg={estado.peso} />}'), 1);
   const etiquetaWeb = de181('src/components/EtiquetaDeCarga.tsx');
   chequear('la web ofrece "peso corporal" recién con la 58, como la nativa', [/cargasOfrecidas\(version\)\.map/.test(etiquetaWeb), /\bCARGAS\.map/.test(etiquetaWeb)], [true, false]);
+}
+
+console.log('\n182. Las hojas nacen de nuevo en cada apertura');
+{
+  // LA CAUSA DE RAÍZ (4/10). En la nativa las hojas quedan montadas —así cierran
+  // con su animación— y se abren con una prop. Su estado se leía UNA vez, al
+  // montarse la pantalla: la marca se guardaba en otro ejercicio y la foto salía
+  // compartida sin que nadie lo eligiera. `nuevaEnCadaApertura` les cambia la
+  // llave al abrir. Se corre de verdad (con el React de mentira de los
+  // escenarios) y se mira qué pide dibujar en cada paso.
+  const r182 = await escenarioDeSesion('hoja');
+  chequear(
+    'la llave cambia al abrir, y no al cerrar ni mientras está abierta',
+    r182.fallo ?? r182.pasos.map(([llave, visible]) => [llave, visible]),
+    [[0, false], [1, true], [1, true], [1, false], [2, true]]
+  );
+  chequear('lo que se dibuja es la hoja, con las props de ese momento', [r182.laMisma, r182.pasos?.map((p) => p[2])], [
+    true,
+    ['sentadilla', 'press_banca', 'remo', 'remo', 'peso_muerto'],
+  ]);
+  chequear('una hoja que se monta ya abierta nace una sola vez', r182.montadaAbierta, 0);
+
+  // ---- QUIÉN VE LA FOTO ----
+  //
+  // Además de nacer de nuevo, "quién la ve" dejó de ser un estado que copia a
+  // Ajustes: mientras no se toque, ES lo de Ajustes, el de ese momento.
+  const F182 = await import('../nucleo/foto.ts');
+  const TP182 = await import('../nucleo/tipos.ts');
+  chequear('sin tocar nada, la foto sigue a Ajustes', TP182.VISIBILIDADES.map((v) => F182.fotoCompartida(null, v)), [false, true]);
+  chequear('lo que se toca en la hoja manda, para los dos lados', [F182.fotoCompartida(false, 'amigos'), F182.fotoCompartida(true, 'privada')], [false, true]);
+  chequear('y sin dato de Ajustes, privada', [F182.fotoCompartida(null, null), F182.fotoCompartida(null, undefined)], [false, false]);
+
+  // ---- EL INVENTARIO: QUE NO VUELVA A PASAR ----
+  //
+  // Todo archivo de la nativa que dibuja una hoja (`Hoja` o `Modal`) Y guarda
+  // estado propio tiene que caer en uno de tres casos. Una hoja nueva que no
+  // esté en ninguno hace fallar esto: obliga a decidir.
+  const { readdirSync: dir182 } = await import('node:fs');
+  const tsxDe = (dir) =>
+    dir182(join(aca179, '..', dir), { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? tsxDe(`${dir}/${e.name}`) : /\.tsx$/.test(e.name) ? [`${dir}/${e.name}`] : []
+    );
+  const nativa182 = Object.fromEntries(
+    [...tsxDe('movil/src'), ...tsxDe('movil/app')].map((ruta) => [ruta, sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'))])
+  );
+  // 1. Las que se dibujan SOLO mientras están abiertas: nacen al abrir sin ayuda.
+  const SE_MONTAN_AL_ABRIR = ['HojaDelDia', 'RachaSalvada', 'SubidaRango'];
+  // 2. Las que no son una hoja que se abre con algo, sino parte de su pantalla.
+  const SON_DE_SU_PANTALLA = {
+    'movil/src/Hoja.tsx': 'es la hoja base',
+    'movil/src/Album.tsx': 'el visor de fotos: su estado es qué foto se mira, y es de la pantalla',
+    'movil/src/Descanso.tsx': 'el descanso sigue corriendo con la pantalla escondida: su estado es del temporizador',
+    'movil/src/GraficoPasos.tsx': 'el estado es del gráfico; lo de la hoja de la meta vive adentro de la hoja',
+  };
+  const clasificar182 = (ruta, texto) => {
+    // `useState<Tipo>(` también: con solo `useState(` se escapaban dos de las cinco.
+    if (!/<Hoja\b|<Modal\b/.test(texto) || !/\buseState(<|\()/.test(texto)) return 'no-aplica';
+    if (/export default nuevaEnCadaApertura\(/.test(texto)) return 'nace-al-abrir';
+    if (SE_MONTAN_AL_ABRIR.includes(ruta.split('/').pop().replace('.tsx', ''))) return 'se-monta-al-abrir';
+    return ruta in SON_DE_SU_PANTALLA ? 'de-su-pantalla' : 'SIN DECIDIR';
+  };
+  const clases182 = Object.entries(nativa182).map(([ruta, t]) => [ruta, clasificar182(ruta, t)]);
+  chequear('ninguna hoja con estado propio queda sin decidir', clases182.filter(([, c]) => c === 'SIN DECIDIR').map(([ruta]) => ruta), []);
+  chequear(
+    'las cinco que se abren con una prop nacen de nuevo en cada apertura',
+    clases182.filter(([, c]) => c === 'nace-al-abrir').map(([ruta]) => ruta.split('/').pop()).sort(),
+    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx']
+  );
+  // Lo anotado a mano se comprueba: si alguien pasa a dibujar siempre una de
+  // las que "se montan al abrir", vuelve a ser una hoja montada con estado viejo.
+  const dibujadasSiempre = SE_MONTAN_AL_ABRIR.flatMap((nombre) =>
+    Object.entries(nativa182).flatMap(([ruta, t]) =>
+      [...t.matchAll(new RegExp(`<${nombre}\\b`, 'g'))]
+        .filter((m) => !/(&&|\?)\s*\(?\s*$/.test(t.slice(Math.max(0, m.index - 40), m.index)))
+        .map(() => `${nombre} en ${ruta}`)
+    )
+  );
+  chequear('y las que se montan al abrir se dibujan solo con una condición adelante', dibujadasSiempre, []);
+  chequear(
+    'el detector: una hoja de antes, montada siempre y con estado, queda sin decidir',
+    [
+      clasificar182('movil/src/Nueva.tsx', 'export default function Nueva({ visible }) { const [x] = useState(inicial); return <Hoja visible={visible} />; }'),
+      clasificar182('movil/src/Otra.tsx', 'export default function Otra({ visible }) { const [x] = useState<string | null>(null); return <Modal visible={visible} />; }'),
+    ],
+    ['SIN DECIDIR', 'SIN DECIDIR']
+  );
+  chequear('la foto ya no copia a Ajustes en un estado', /useState\(visibilidadDefault/.test(nativa182['movil/src/RegistrarDia.tsx']), false);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

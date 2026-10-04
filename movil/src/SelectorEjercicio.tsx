@@ -4,6 +4,7 @@ import type { Ejercicio } from '@nucleo/tipos';
 import { ORDEN_ZONAS, gruposDeZona, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
+import { nuevaEnCadaApertura } from './hojaNueva';
 import { C } from './colores';
 
 /**
@@ -11,7 +12,7 @@ import { C } from './colores';
  * (`nucleo/ejercicios.ts`): los tres del DOTS arriba, después zona y músculo,
  * y ahí la lista corta. Una zona con un solo músculo no pregunta dos veces.
  */
-export default function SelectorEjercicio({
+function SelectorEjercicio({
   visible,
   ejercicios,
   valor,
@@ -118,6 +119,8 @@ export default function SelectorEjercicio({
     </Hoja>
   );
 }
+
+export default nuevaEnCadaApertura(SelectorEjercicio, (p) => p.visible);
 
 const estilos = StyleSheet.create({
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },

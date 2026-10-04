@@ -6,12 +6,14 @@ import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import type { ResultadoRegistro, Visibilidad } from '@nucleo/tipos';
 import { subidaDeRango } from '@nucleo/rangos';
+import { fotoCompartida } from '@nucleo/foto';
 import { T } from '@nucleo/textos';
 import { subirFotoDelDia } from '@compartido/foto';
 import { anotarElDia } from '@compartido/anotarDia';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { prepararFoto } from './foto';
 import Hoja from './Hoja';
+import { nuevaEnCadaApertura } from './hojaNueva';
 import { C } from './colores';
 
 type Elegida = { uri: string; ancho: number; alto: number };
@@ -33,7 +35,7 @@ type Elegida = { uri: string; ancho: number; alto: number };
  * LA FOTO SE PREPARA ANTES DE SUBIR (`foto.ts`): sin EXIF y achicada. Si no se
  * puede, no se sube el original.
  */
-export default function RegistrarDia({
+function RegistrarDia({
   visible,
   racha,
   logId,
@@ -49,7 +51,9 @@ export default function RegistrarDia({
   alConfirmar: (r: ResultadoRegistro | null) => void;
 }) {
   const [foto, setFoto] = useState<Elegida | null>(null);
-  const [compartida, setCompartida] = useState(visibilidadDefault === 'amigos');
+  // Lo que se tocó en ESTA apertura. Mientras no se toque, sigue a Ajustes.
+  const [tocado, setTocado] = useState<boolean | null>(null);
+  const compartida = fotoCompartida(tocado, visibilidadDefault);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
@@ -166,7 +170,7 @@ export default function RegistrarDia({
       {foto ? (
         <>
           <Image source={{ uri: foto.uri }} style={estilos.vista} resizeMode="cover" accessibilityIgnoresInvertColors />
-          <Pressable style={estilos.texto} onPress={() => setCompartida((x) => !x)}>
+          <Pressable style={estilos.texto} onPress={() => setTocado(!compartida)}>
             <Text style={estilos.textoBoton}>{compartida ? T.registrar.laVenAmigos : T.registrar.soloLaVesVos}</Text>
           </Pressable>
           <Pressable style={estilos.texto} onPress={() => setFoto(null)}>
@@ -200,6 +204,8 @@ export default function RegistrarDia({
     </Hoja>
   );
 }
+
+export default nuevaEnCadaApertura(RegistrarDia, (p) => p.visible);
 
 const estilos = StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 22, fontWeight: '500' },
