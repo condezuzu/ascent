@@ -20,6 +20,7 @@ import {
 import { disponible } from '@nucleo/esquema';
 import { versionDelEsquema } from '@compartido/esquema';
 import { leerPerfilCache } from '@compartido/cache';
+import { revisarPerdidaAntes, SIN_REVISAR } from '@compartido/anotarDia';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import {
   bloquesVacios,
@@ -132,6 +133,10 @@ async function iniciar(
   supabase: Cliente,
   opciones?: { desde?: number; origen?: OrigenSesion }
 ) {
+  // EMPEZAR LA SESIÓN TAMBIÉN ANOTA EL DÍA si no estaba, así que lleva la misma
+  // revisión adelante que `registrar_dia` (ver `anotarDia.ts`). El vigilante la
+  // arranca solo al llegar al gimnasio, sin que nadie haya abierto Inicio.
+  if (!(await revisarPerdidaAntes(supabase))) return { data: null, error: SIN_REVISAR };
   const r = await supabase.rpc('iniciar_sesion', {
     p_desde: opciones?.desde ? new Date(opciones.desde).toISOString() : null,
     p_origen: opciones?.origen ?? 'manual',

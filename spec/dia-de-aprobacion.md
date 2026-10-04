@@ -8,7 +8,12 @@ historia: original + migraciones hasta la 53, y después 54 a 58 de a una. Cada
 consulta se corrió antes de su migración (da otra cosa, o error) y después (da
 lo que dice acá). Las que tocan `cron` NO se pudieron probar y están marcadas.*
 
-Orden, y no se cambia: **verificar → migraciones → confirmar 58 → OTA → teléfono.**
+*El 4/10 cambiaron la 54 y la 57 (corregidas antes de aplicarlas) y se sumaron
+la 59 y la 60. Sus consultas —§0, §2.1, §2.5, §2.7 y §2.8— se probaron igual:
+sobre el esquema 53 sacado de git, antes y después de cada una. Lo que mira el
+storage no se pudo probar (PGlite no lo tiene) y está marcado.*
+
+Orden, y no se cambia: **verificar → migraciones → confirmar 60 → OTA → teléfono.**
 
 Dónde se corre cada cosa:
 
@@ -19,6 +24,39 @@ Dónde se corre cada cosa:
   configured" —que no es el error real— y dejan un `app.json` suelto.
 - **[SQL]** — Supabase → proyecto `okeanaihymbvbdmrdqph` → SQL Editor.
 - **[TEL]** — el iPhone.
+
+---
+
+## 0. Lo que se puede aplicar ANTES de que Apple apruebe (opcional)
+
+Dos migraciones no dependen de la 54 a la 58 y cierran cosas graves en la base
+que producción tiene HOY. Se pueden correr ya, en este orden, y **no suben la
+versión** (queda en 53), así que ningún cliente se entera:
+
+- `supabase/migracion-59-perdida-antes-del-dia.sql` — la racha que se caía a 1
+  cuando el día entraba sin pasar por Inicio (por ubicación con la app cerrada,
+  o marcando hoy desde el calendario). Cuida a la build de tienda, a la web y
+  al teléfono a la vez.
+- `supabase/migracion-60-fotos-privadas.sql` — la foto privada que otra cuenta
+  podía leer anotando su ruta como propia.
+
+**[SQL]** Después de correr las dos:
+```sql
+select public.version_del_esquema() as version,
+       to_regprocedure('public.aplicar_perdida_al(uuid, date)') is not null as racha_cuidada,
+       (select with_check like '%storage_path%' from pg_policies
+         where schemaname = 'public' and tablename = 'photos' and policyname = 'fotos: dueño') as foto_cuidada;
+```
+→ `53`, `true`, `true`  (antes de correrlas: `53`, `false`, `false`)
+
+**Si se corrieron acá, igual se vuelven a correr en §2.7 y §2.8.** No rompe
+nada: son las mismas sentencias, y esa segunda pasada es la que sube la versión.
+Está probado en ese orden (`test:db`, sección 173): 59 y 60 sobre el 53, después
+la 54 a la 58, y otra vez la 59 y la 60.
+
+Qué cambia para alguien que ya usa la app: solo el caso que estaba roto. Antes,
+el día que entraba detrás de una falta sin revisar dejaba la racha en 1; ahora
+gasta una vida o resta 10, igual que si hubiera abierto Inicio primero.
 
 ---
 
@@ -86,14 +124,16 @@ la siguiente si la verificación no da.
 ### 2.1 — `supabase/migracion-54-rangos-nuevos.sql`
 
 Siete rangos, duraciones crecientes. Re-etiqueta el rango de todos; la racha no
-se toca.
+se toca. Trae también los dos disparadores que guardan el planeta del día, sin
+el borde viejo de 30 a 39 (corregida el 4/10: del 40 al 50 no se guardaba nada).
 
 ```sql
 select public.version_del_esquema() as version,
        public.rango_de_racha(150)   as rango_150,
-       public.planeta_de_dia(31)    as planeta_31;
+       public.planeta_de_dia(31)    as planeta_31,
+       pg_get_functiondef('public.logs_before_insert()'::regprocedure) not like '%between 30 and 39%' as sin_borde_viejo;
 ```
-→ `54`, `7`, `Ceres`  (antes de aplicarla: `53`, `8`, `Plutón`)
+→ `54`, `7`, `Ceres`, `true`  (antes de aplicarla: `53`, `8`, `Plutón`, `false`)
 
 ### 2.2 — `supabase/migracion-55-racha-nocturna.sql`
 
@@ -141,18 +181,27 @@ select public.version_del_esquema() as version,
 Agrega `logs.racha_del_dia` y la rellena para los días viejos. Es la que
 necesita el "día 41" de las fotos.
 
+Corregida el 4/10: **los días anteriores a la última pérdida de cada cuenta
+quedan SIN número, a propósito** (antes les ponía "día 0"). Qué día de racha era
+cada uno ya no se puede saber, y la foto sin número es mejor que la foto con un
+número inventado. Los de después de la pérdida llevan el suyo, exacto.
+
 ```sql
 select public.version_del_esquema() as version,
-       (select count(*) from public.logs where racha_del_dia is null) as logs_sin_dia;
+       (select count(*) from public.logs l join public.profiles p on p.id = l.user_id
+         where l.racha_del_dia is null
+           and (p.perdida_fecha is null or l.fecha > p.perdida_fecha)) as les_falta_el_dia,
+       (select count(*) from public.logs where racha_del_dia = 0 and not es_descanso) as con_dia_cero;
 ```
-→ `57`, `0`
+→ `57`, `0`, `0`
 
-Antes de aplicarla esta consulta da ERROR (`column "racha_del_dia" does not
+Antes de aplicarla esta consulta da ERROR (`column l.racha_del_dia does not
 exist`): es lo esperado, la columna la crea la 57.
 
-> **El `0` está verificado solo a medias.** Se probó con seis días sembrados en
-> la base de pruebas (quedaron con día 1 a 6). Con los logs reales de producción
-> no se pudo probar. Si ahí da más de `0`: parar, §6.
+> **Los dos ceros están verificados solo a medias.** Se probó con una cuenta
+> sembrada en la base de pruebas: doce días, una pérdida y ocho más (los doce
+> quedaron sin número y los ocho con día 3 a 10). Con los logs reales de
+> producción no se pudo probar. Si ahí alguno da más de `0`: parar, §6.
 
 ### 2.6 — `supabase/migracion-58-peso-corporal.sql`
 
@@ -163,9 +212,44 @@ select public.version_del_esquema() as version,
 ```
 → `58`, `true`  (antes de aplicarla: `57`, `false`)
 
+### 2.7 — `supabase/migracion-59-perdida-antes-del-dia.sql`
+
+La pérdida de racha se revisa en la base antes de que entre cualquier día nuevo:
+ya no depende de haber abierto Inicio. Si se corrió en §0, se corre de nuevo acá.
+
+```sql
+select public.version_del_esquema() as version,
+       to_regprocedure('public.aplicar_perdida_al(uuid, date)') is not null as hay_cuenta,
+       exists (select 1 from pg_trigger
+                where tgname = 'trg_logs_antes_perdida' and not tgisinternal) as hay_disparador;
+```
+→ `59`, `true`, `true`  (antes de aplicarla: `58`, `false`, `false`; o `58`,
+`true`, `true` si ya se había corrido en §0)
+
+### 2.8 — `supabase/migracion-60-fotos-privadas.sql`
+
+La ruta de una foto tiene que ser de quien la anota. Si se corrió en §0, se
+corre de nuevo acá.
+
+```sql
+select public.version_del_esquema() as version,
+       (select with_check like '%storage_path%' from pg_policies
+         where schemaname = 'public' and tablename = 'photos' and policyname = 'fotos: dueño') as fotos_mira_la_ruta,
+       (select qual like '%foldername%' and qual like '%user_id%' from pg_policies
+         where schemaname = 'storage' and tablename = 'objects'
+           and policyname = 'fotos storage: amigos leen visibles') as storage_mira_la_carpeta;
+```
+→ `60`, `true`, `true`  (antes de aplicarla: `59`, `false`, `false`; o `59`,
+`true`, `true` si ya se había corrido en §0)
+
+> **La tercera columna NO ESTÁ VERIFICADA.** La base de pruebas no tiene el
+> storage de Supabase, así que la regla de storage se probó contra una tabla de
+> reemplazo (`test:db`, sección 172) y esta columna no se pudo correr. Las otras
+> dos sí.
+
 ---
 
-## 3. Confirmar que producción quedó en 58
+## 3. Confirmar que producción quedó en 60
 
 **[PC]**
 ```
@@ -174,7 +258,7 @@ npm run test:conexion
 
 Tiene que decir, arriba:
 ```
-  ok   producción al día (esquema 58, repo va por 58)
+  ok   producción al día (esquema 60, repo va por 60)
 ```
 y al final `N pasaron, 0 fallaron`, sin el cartel de "PRODUCCIÓN ESTÁ N
 MIGRACIÓN(ES) ATRÁS" ni ninguna línea `FALTA en producción` / `SOBRA en
@@ -263,7 +347,7 @@ y abrirla de nuevo.
 | Dónde estás | Qué se puede deshacer |
 |---|---|
 | Antes de la 54 | Todo. No se tocó nada: se deja para otro día. |
-| Entre la 54 y `cron-racha.sql` | El esquema no vuelve atrás (no hay scripts de reversa para 54–58 y la versión solo sube). No se perdió ningún dato: se sigue para adelante. |
+| Entre la 54 y `cron-racha.sql` | El esquema no vuelve atrás (no hay scripts de reversa para 54–60 y la versión solo sube). No se perdió ningún dato: se sigue para adelante. |
 | Después de `cron-racha.sql` | El barrido se puede **frenar**, pero las rachas que ya cobró no vuelven solas. |
 | Después de la OTA a `telefono` | Solo la ve tu teléfono. Se corrige y se publica otra. |
 | Después de la OTA a `store` | Ya está en la calle. Se arregla publicando otra OTA encima. |

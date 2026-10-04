@@ -7,6 +7,7 @@ import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import type { ResultadoRegistro, Visibilidad } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { subirFotoDelDia } from '@compartido/foto';
+import { anotarElDia } from '@compartido/anotarDia';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { prepararFoto } from './foto';
 import Hoja from './Hoja';
@@ -108,7 +109,7 @@ export default function RegistrarDia({
       }
       return;
     }
-    const { data, error: e } = await supabase.rpc('registrar_dia', { p_origen: 'manual' });
+    const { data, error: e } = await anotarElDia(supabase, 'manual');
     if (e) {
       setCargando(false);
       // 23505: el día ya estaba. No es un error que haya que mostrar.

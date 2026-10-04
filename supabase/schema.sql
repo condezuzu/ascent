@@ -1071,41 +1071,45 @@ create trigger trg_logs_after_change after insert or update or delete on public.
 -- p_hoy viene del cliente: el servidor corre en UTC y el usuario en UTC-3;
 -- sin esto, a la noche uruguaya el servidor evaluaría "hoy" un día adelantado
 -- y quitaría rachas con el día todavía en curso.
--- POR ID, para que la pueda correr el trabajo nocturno (sin sesión). Ver
--- migración 55. `hoy_de(p_user)` usa la zona de cada usuario, así una sola
--- corrida sirve para todos los husos.
-create or replace function public.verificar_perdida_de(p_user uuid)
+
+-- LA CUENTA DE LA PÉRDIDA, "A TAL DÍA" (migración 59).
+--
+-- Es la lógica de siempre —¿quedó un hueco?, ¿lo cubre una vida?, y si no,
+-- restar 10— mirando la racha como estaba la mañana de `p_dia`. Con `p_dia` =
+-- hoy es lo que hace `verificar_perdida` al abrir Inicio. Se separó para que la
+-- pueda correr también el disparador de los logs ANTES de que entre un día: ver
+-- `logs_antes_revisar_perdida`, más abajo.
+--
+-- NO resuelve el día pendiente: eso es de `verificar_perdida_de`. Si lo hiciera,
+-- el día pendiente —que entra con un insert— volvería a llamarla desde adentro.
+create or replace function public.aplicar_perdida_al(p_user uuid, p_dia date)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   perfil profiles;
   viva int;
   nuevo_rango int;
   nueva_racha int;
-  hoy date := hoy_de(p_user);
-  resuelto date;
   d date;
   cubiertos date[] := '{}';
 begin
-  resuelto := resolver_pendiente(p_user);
-
   select * into perfil from profiles where id = p_user;
   if perfil.id is null or perfil.racha_actual = 0 then
-    return jsonb_build_object('perdida', false, 'pendiente_resuelto', resuelto);
+    return jsonb_build_object('perdida', false);
   end if;
-  if exists (select 1 from logs where user_id = p_user and fecha = hoy) then
-    return jsonb_build_object('perdida', false, 'pendiente_resuelto', resuelto);
+  if exists (select 1 from logs where user_id = p_user and fecha = p_dia) then
+    return jsonb_build_object('perdida', false);
   end if;
-  viva := perfil.racha_base + calcular_racha(p_user, hoy - 1);
+  viva := perfil.racha_base + calcular_racha(p_user, p_dia - 1);
   if viva >= perfil.racha_actual then
-    return jsonb_build_object('perdida', false, 'pendiente_resuelto', resuelto);
+    return jsonb_build_object('perdida', false);
   end if;
 
-  d := hoy - 1;
+  d := p_dia - 1;
   loop
     exit when perfil.perdida_fecha is not null and d <= perfil.perdida_fecha;
     -- Tope de seguridad: un año atrás la racha ya sería 0 y no hay nada que
     -- cubrir. Sin esto, saltar descansos podría no terminar.
-    exit when hoy - d > 366;
+    exit when p_dia - d > 366;
     exit when exists (select 1 from logs where user_id = p_user and fecha = d);
     -- UN DÍA DE DESCANSO NO CORTA LA COBERTURA (arreglo del 30/9). Antes hacía
     -- `exit` y una falta real MÁS VIEJA que un descanso quedaba sin cubrir aunque
@@ -1126,13 +1130,12 @@ begin
   end loop;
 
   if array_length(cubiertos, 1) > 0 then
-    viva := perfil.racha_base + calcular_racha(p_user, hoy - 1);
+    viva := perfil.racha_base + calcular_racha(p_user, p_dia - 1);
     if viva >= perfil.racha_actual then
       return jsonb_build_object(
         'perdida', false,
-        'pendiente_resuelto', resuelto,
         'vidas_usadas', to_jsonb(cubiertos),
-        'vidas_quedan', impulsos_disponibles(p_user, hoy)
+        'vidas_quedan', impulsos_disponibles(p_user, p_dia)
       );
     end if;
   end if;
@@ -1147,14 +1150,64 @@ begin
     racha_actual = nueva_racha,
     racha_base = nueva_racha,
     rango_actual = nuevo_rango,
-    perdida_fecha = hoy - 1
+    perdida_fecha = p_dia - 1
   where id = p_user;
   return jsonb_build_object('perdida', true, 'rango_anterior', perfil.rango_actual,
-    'rango_nuevo', nuevo_rango, 'racha', nueva_racha, 'pendiente_resuelto', resuelto,
+    'rango_nuevo', nuevo_rango, 'racha', nueva_racha,
     'vidas_usadas', to_jsonb(cubiertos),
-    'vidas_quedan', impulsos_disponibles(p_user, hoy));
+    'vidas_quedan', impulsos_disponibles(p_user, p_dia));
 end;
 $$;
+
+-- POR ID, para que la pueda correr el trabajo nocturno (sin sesión). Ver
+-- migración 55. `hoy_de(p_user)` usa la zona de cada usuario, así una sola
+-- corrida sirve para todos los husos. Primero entra el día que estaba
+-- pendiente, y después se hace la cuenta a hoy.
+create or replace function public.verificar_perdida_de(p_user uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  resuelto date;
+begin
+  resuelto := resolver_pendiente(p_user);
+  return aplicar_perdida_al(p_user, hoy_de(p_user))
+    || jsonb_build_object('pendiente_resuelto', resuelto);
+end;
+$$;
+
+-- ANTES DE QUE ENTRE UN DÍA NUEVO SE REVISA LO QUE QUEDÓ SIN REVISAR ATRÁS
+-- (migración 59).
+--
+-- EL BUG (4/10): LA RACHA SE CAÍA A 1. La pérdida la aplicaba solo
+-- `verificar_perdida`, que corre al abrir Inicio. Si el día de hoy entraba
+-- ANTES —el registro por ubicación con la app cerrada, la sesión que arranca
+-- sola al llegar, marcar hoy desde el calendario— `logs_after_change` contaba
+-- hacia atrás desde hoy, se topaba con el hueco de ayer y dejaba la racha en 1.
+-- Y la revisión, cuando por fin llegaba, veía que hoy ya tenía día y salía sin
+-- hacer nada. Ni vida ni -10: cuarenta días perdidos por llegar al gimnasio con
+-- la app cerrada.
+--
+-- VA EN UN DISPARADOR, y no adentro de `registrar_dia`, porque el día entra por
+-- más de un camino y el calendario lo inserta directo. Acá no lo puede saltear
+-- ningún cliente, viejo o nuevo.
+--
+-- SOLO CUANDO EL DÍA QUE ENTRA ES MÁS NUEVO QUE TODOS LOS REGISTRADOS. Corregir
+-- un día viejo es otra cosa: "ayer sí fui" tapa el hueco y no cobra nada, y un
+-- día de hace un mes no dice nada de la racha de hoy.
+create or replace function public.logs_antes_revisar_perdida()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from logs where user_id = new.user_id and fecha >= new.fecha) then
+    perform aplicar_perdida_al(new.user_id, new.fecha);
+  end if;
+  return new;
+end;
+$$;
+
+-- EL NOMBRE DECIDE EL ORDEN: los disparadores de un mismo momento corren por
+-- orden alfabético, y este tiene que ir ANTES que `trg_logs_before_insert`, que
+-- calcula el planeta del día con la racha que quede después de la pérdida.
+create trigger trg_logs_antes_perdida before insert on public.logs
+  for each row execute function public.logs_antes_revisar_perdida();
 
 -- El envoltorio: el camino de abrir la app. UNA línea, para que no pueda diverger
 -- del batch. Mantiene la firma y los permisos de siempre.
@@ -1184,6 +1237,10 @@ end;
 $$;
 
 revoke execute on function public.verificar_perdida_de(uuid) from public, anon, authenticated;
+-- Con la cuenta "a tal día" suelta, cualquiera podría cobrarle una pérdida a
+-- otra cuenta: solo la llaman el disparador y `verificar_perdida_de`.
+revoke execute on function public.aplicar_perdida_al(uuid, date) from public, anon, authenticated;
+revoke execute on function public.logs_antes_revisar_perdida() from public, anon, authenticated;
 revoke execute on function public.barrer_perdidas() from public, anon, authenticated;
 grant execute on function public.barrer_perdidas() to service_role;
 
@@ -2715,7 +2772,22 @@ create policy "logs: dueño" on public.logs for all using (auth.uid() = user_id)
 create policy "logs: amigos leen" on public.logs for select using (public.son_amigos(auth.uid(), user_id));
 
 -- photos: dueño todo; amigos leen solo las visibles
-create policy "fotos: dueño" on public.photos for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+-- LA RUTA Y EL DÍA TIENEN QUE SER DE QUIEN ANOTA LA FOTO (migración 60). Con
+-- solo `auth.uid() = user_id` se podía anotar una fila propia con la ruta del
+-- archivo de OTRO, y esa fila le abría el archivo a los amigos de quien la
+-- anotaba (ver la regla del storage, más abajo): una foto privada, leída por
+-- dos cuentas puestas de acuerdo. La app siempre subió a su carpeta y anotó esa
+-- misma ruta, así que para ella no cambia nada.
+create policy "fotos: dueño" on public.photos for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and storage_path like auth.uid()::text || '/%'
+    and (
+      photos.log_id is null
+      or exists (select 1 from public.logs l where l.id = photos.log_id and l.user_id = auth.uid())
+    )
+  );
 create policy "fotos: amigos leen visibles" on public.photos for select
   using (visibilidad = 'amigos' and public.son_amigos(auth.uid(), user_id));
 
@@ -2795,6 +2867,10 @@ create policy "fotos storage: amigos leen visibles" on storage.objects for selec
       select 1 from public.photos p
       where p.storage_path = name
         and p.visibilidad = 'amigos'
+        -- La fila que da permiso tiene que ser del DUEÑO DE LA CARPETA
+        -- (migración 60): sin esto alcanzaba con cualquier fila que nombrara
+        -- la ruta, aunque la hubiera anotado otro.
+        and (storage.foldername(name))[1] = p.user_id::text
         and public.son_amigos(auth.uid(), p.user_id)
     )
   );
@@ -3151,7 +3227,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 58; $$;
+returns int language sql immutable as $$ select 60; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

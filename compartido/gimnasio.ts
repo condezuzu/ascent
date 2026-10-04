@@ -5,6 +5,7 @@ import type { Cliente } from '@cliente';
 import { plataforma } from '@plataforma';
 import { estaAdentro, medicionSirve, metrosEntre, PRECISION_MAXIMA } from '@nucleo/geo';
 import type { OrigenDia, Perfil } from '@nucleo/tipos';
+import { anotarElDia } from '@compartido/anotarDia';
 
 /**
  * Aviso de que el día de hoy cambió, para que la pantalla que lo muestre se
@@ -54,9 +55,9 @@ export async function registrarPorSenal(
   supabase: Cliente,
   origen: Exclude<OrigenDia, 'manual'>
 ) {
-  const { data, error } = await supabase.rpc('registrar_dia', {
-    p_origen: origen,
-  });
+  // Con la revisión de la pérdida adelante: este es el camino que corre con la
+  // app cerrada, o sea el que nunca pasó por Inicio (ver `anotarDia.ts`).
+  const { data, error } = await anotarElDia(supabase, origen);
   // 23505 = el día ya estaba. No es un error: es el caso normal de abrir la
   // app dos veces en el gimnasio, y no tiene que ensuciar nada.
   if (error) return { registrado: false, yaEstaba: error.code === '23505' };

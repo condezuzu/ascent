@@ -532,7 +532,11 @@ console.log('\n8c. La mejor racha sale del historial (baja si se borran días)')
   await rachaDe(u, 15, 5); // 15 días que terminaron hace 5
   await rachaDe(u, 2); // y 2 días ahora
   const p = await perfil(u);
-  chequear('la racha actual es la corta', p.racha_actual, 2);
+  // Eran "2": los dos días nuevos entraban sin que nadie revisara los tres
+  // faltados, y la racha se caía a contar desde cero. Ese era el bug de la
+  // sección 171. Ahora al entrar el primero se aplica la pérdida: 15 - 10, y
+  // los dos días encima.
+  chequear('la racha actual es lo que quedó al perder, más los dos días', p.racha_actual, 7);
   chequear('pero el récord conserva los 15', p.mejor_racha, 15);
 }
 {
@@ -801,13 +805,16 @@ console.log('\n19. Borrar foto: solo el dueño');
 console.log('\n19b. Corregir un día viejo recalcula los planetas posteriores');
 {
   const u = await nuevoUsuario();
-  // 39 días seguidos, pero salteando uno en el medio y agregándolo al final:
-  // así se fuerza el caso de la corrección manual.
+  // 39 días seguidos, y uno del medio borrado a mano: el hueco como lo hace una
+  // persona desde el calendario.
+  //
+  // ANTES el hueco se armaba insertando los días salteando uno. Eso dejaba de
+  // ser una corrección desde la migración 59: un día que entra DESPUÉS de un
+  // hueco sin revisar cobra la pérdida (sección 171), y ahí lo que se prueba es
+  // otra cosa. Corregir es sacar y volver a poner un día del medio.
   const faltante = 20;
-  for (let i = 38; i >= 0; i--) {
-    if (i === faltante) continue;
-    await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, i]);
-  }
+  await rachaDe(u, 39);
+  await db.query(`delete from logs where user_id = $1 and fecha = mi_hoy() - $2::int`, [u, faltante]);
   const antes = await db.query(
     `select planeta_del_dia from logs where user_id = $1 and planeta_del_dia is not null order by fecha`,
     [u]
@@ -817,6 +824,7 @@ console.log('\n19b. Corregir un día viejo recalcula los planetas posteriores');
     antes.rows.map((x) => x.planeta_del_dia),
     []
   );
+  chequear('y la racha es la de después del hueco', (await perfil(u)).racha_actual, 20);
   // ahora se corrige el día que faltaba
   await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, faltante]);
   chequear('la racha se completa', (await perfil(u)).racha_actual, 39);
@@ -12606,6 +12614,412 @@ console.log('\n170. El día de racha que guarda cada log (migración 57)');
   chequear('correr el relleno de nuevo deja todo igual',
     (await db.query(`select array_agg(racha_del_dia order by fecha) as d from logs where user_id = $1 and fecha >= mi_hoy() - 7`, [u])).rows[0].d,
     [3, 4, 5, 6, 7, 8, 9, 10]);
+}
+
+console.log('\n171. Un día que entra antes de que nadie revise la pérdida (migración 59)');
+{
+  // LA RACHA QUE SE CAÍA A 1 (4/10). La pérdida —gastar una vida o restar 10—
+  // la aplica `verificar_perdida`, que corre al abrir Inicio. Si el día de hoy
+  // entraba ANTES de esa revisión, el disparador de los logs contaba hacia atrás
+  // desde hoy, se topaba con el hueco de ayer y dejaba la racha en 1; y la
+  // revisión, al llegar después, veía que hoy ya tenía día y no hacía nada. Ni
+  // vida ni -10: cuarenta días perdidos por llegar al gimnasio con la app
+  // cerrada.
+  //
+  // Se prueba POR LOS CAMINOS QUE ESCRIBEN el día sin pasar por Inicio, y lo que
+  // se mira es lo que queda guardado: la racha, lo que quedó de antes, cuándo
+  // fue la pérdida y cuántas vidas se gastaron.
+  const estado = async (uid) => {
+    const p = (
+      await db.query(
+        `select racha_actual, racha_base, mi_hoy() - perdida_fecha as perdio_hace,
+                (select count(*)::int from vidas_usadas v where v.user_id = p.id and not v.devuelta) as vidas
+           from profiles p where id = $1`,
+        [uid]
+      )
+    ).rows[0];
+    return { racha: p.racha_actual, base: p.racha_base, perdioHace: p.perdio_hace === null ? null : Number(p.perdio_hace), vidasUsadas: p.vidas };
+  };
+  const conAyerFaltado = async (dias = 40) => {
+    const u = await nuevoUsuario();
+    await rachaDe(u, dias, 2);
+    return u;
+  };
+  const SIN_VIDAS = { racha: 31, base: 30, perdioHace: 1, vidasUsadas: 0 };
+  const CON_VIDA = { racha: 41, base: 0, perdioHace: null, vidasUsadas: 1 };
+
+  // ---- 1. LLEGAR AL GIMNASIO CON LA APP CERRADA: registrar_dia('ubicacion') ----
+  await cuotaDeVidas(0);
+  const a = await conAyerFaltado();
+  await comoUsuario(a);
+  const ra = (await db.query(`select registrar_dia('ubicacion') as r`)).rows[0].r;
+  chequear('por ubicación y sin vidas: resta 10 y suma el día (40 → 31), no cae a 1', await estado(a), SIN_VIDAS);
+  chequear('y la respuesta trae la racha que quedó', ra.racha, 31);
+  chequear('revisar después no cobra de nuevo', [(await perder(a)).perdida, (await estado(a)).racha], [false, 31]);
+
+  await cuotaDeVidas(2);
+  const b = await conAyerFaltado();
+  await comoUsuario(b);
+  await db.query(`select registrar_dia('ubicacion')`);
+  chequear('por ubicación y con vidas: se gasta una y la racha sigue (40 → 41)', await estado(b), CON_VIDA);
+
+  // EL ORDEN NO PUEDE CAMBIAR EL RESULTADO: revisar primero y registrar después
+  // —lo que pasa al abrir Inicio— tiene que dejar exactamente lo mismo.
+  const c = await conAyerFaltado();
+  await perder(c);
+  await db.query(`select registrar_dia('manual')`);
+  chequear('revisar primero y registrar después deja lo mismo', await estado(c), await estado(b));
+
+  // ---- 2. MARCAR HOY DESDE EL CALENDARIO: un insert directo en logs ----
+  const d = await conAyerFaltado();
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy())`, [d]);
+  chequear('desde el calendario y con vidas: una vida y 41', await estado(d), CON_VIDA);
+
+  await cuotaDeVidas(0);
+  const e = await conAyerFaltado();
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy())`, [e]);
+  chequear('desde el calendario y sin vidas: resta 10 y suma el día', await estado(e), SIN_VIDAS);
+
+  // ---- 3. EMPEZAR LA SESIÓN (el vigilante al llegar) ----
+  const f = await conAyerFaltado();
+  await comoUsuario(f);
+  await db.query(`select iniciar_sesion(null, 'ubicacion')`);
+  chequear('empezar la sesión sin haber revisado: resta 10 y suma el día', await estado(f), SIN_VIDAS);
+
+  // ---- 4. MARCAR HOY COMO DESCANSO A MANO, con ayer faltado ----
+  // Un descanso no suma, pero tampoco puede esconder la falta de ayer: antes
+  // dejaba la racha en 0.
+  const g = await conAyerFaltado();
+  await db.query(`insert into logs (user_id, fecha, es_descanso) values ($1, mi_hoy(), true)`, [g]);
+  chequear('descanso a mano con ayer faltado: resta 10 y no suma', await estado(g), { racha: 30, base: 30, perdioHace: 1, vidasUsadas: 0 });
+
+  // ---- 5. LA FALTA ES MÁS VIEJA QUE EL DÍA QUE ENTRA ----
+  // Veinte días, anteayer faltado, y se anota AYER sin haber abierto Inicio.
+  const h = await nuevoUsuario();
+  await rachaDe(h, 20, 3);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 1)`, [h]);
+  chequear('anotar ayer con anteayer faltado: resta 10 y suma el día (20 → 11)', await estado(h), { racha: 11, base: 10, perdioHace: 2, vidasUsadas: 0 });
+
+  // ---- LO QUE NO TIENE QUE COBRAR NADA ----
+  await cuotaDeVidas(2);
+  // Corregir el día que faltaba ES tapar el hueco: ni vida ni -10.
+  const i = await nuevoUsuario();
+  await rachaDe(i, 10, 2);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 1)`, [i]);
+  chequear('corregir "ayer sí fui" no gasta una vida ni resta', await estado(i), { racha: 11, base: 0, perdioHace: null, vidasUsadas: 0 });
+
+  // Un día viejo, en el medio de la historia, no es "un día que entra".
+  const j = await nuevoUsuario();
+  await rachaDe(j, 10);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 20)`, [j]);
+  chequear('anotar un día de hace tres semanas no toca la racha de hoy', await estado(j), { racha: 10, base: 0, perdioHace: null, vidasUsadas: 0 });
+
+  // Y el caso de todos los días: sin huecos, registrar suma uno.
+  const k = await nuevoUsuario();
+  await rachaDe(k, 9, 1);
+  await comoUsuario(k);
+  await db.query(`select registrar_dia('ubicacion')`);
+  chequear('sin huecos, registrar suma uno y nada más', await estado(k), { racha: 10, base: 0, perdioHace: null, vidasUsadas: 0 });
+
+  // La cuenta de la pérdida "a tal día" no se llama desde el cliente: con ella
+  // se le podría cobrar una pérdida a otra cuenta.
+  const abiertas = (
+    await db.query(
+      `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname in ('aplicar_perdida_al', 'verificar_perdida_de')
+          and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))`
+    )
+  ).rows.map((x) => x.proname);
+  chequear('ni la cuenta de la pérdida ni la revisión por id se pueden llamar desde el cliente', abiertas, []);
+
+  await cuotaDeVidas(0);
+}
+
+console.log('\n172. La ruta de una foto tiene que ser de quien la anota (migración 60)');
+{
+  // EL AGUJERO (4/10). `photos` dejaba anotar una fila propia con la RUTA del
+  // archivo de otro, y la regla del storage daba permiso con cualquier fila
+  // visible de un amigo que tuviera esa ruta. Con dos cuentas amigas entre sí,
+  // una anotaba la foto privada de un tercero como suya y la otra la bajaba.
+  //
+  // Se prueba el ataque entero. El storage de Supabase no existe en PGlite, así
+  // que la tabla es de reemplazo; LAS REGLAS son las de schema.sql, sacadas del
+  // archivo, que es lo que se está probando.
+  const { readFileSync: leer172 } = await import('node:fs');
+  const esquema172 = leer172(RUTA_SCHEMA, 'utf8').replace(/\r\n/g, '\n');
+  const reglasDeStorage = esquema172.match(/create policy "fotos storage: [^"]+" on storage\.objects[\s\S]*?;\n/g) ?? [];
+  chequear('schema.sql trae las dos reglas del storage de fotos', reglasDeStorage.length, 2);
+
+  await db.exec(`
+    create schema if not exists storage;
+    create table storage.objects (bucket_id text not null, name text not null);
+    create function storage.foldername(name text) returns text[] language sql immutable as $f$
+      select (string_to_array(name, '/'))[1 : array_length(string_to_array(name, '/'), 1) - 1];
+    $f$;
+    alter table storage.objects enable row level security;
+    grant usage on schema storage to authenticated;
+    grant select on storage.objects to authenticated;
+  `);
+  for (const regla of reglasDeStorage) await db.exec(regla);
+
+  const victima = await nuevoUsuario();
+  const atacante = await nuevoUsuario();
+  const complice = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [atacante, complice]);
+
+  const privada = `${victima}/2026-10-04-123.jpg`;
+  await db.query(`insert into storage.objects (bucket_id, name) values ('fotos', $1)`, [privada]);
+  await db.query(`insert into photos (user_id, storage_path, visibilidad) values ($1, $2, 'privada')`, [victima, privada]);
+
+  const como = async (uid, hacer) => {
+    await comoUsuario(uid);
+    await db.exec('set role authenticated');
+    try {
+      return await hacer();
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  const entra = (uid, fila) =>
+    como(uid, () =>
+      db
+        .query(`insert into photos (user_id, log_id, storage_path, visibilidad) values ($1, $2, $3, 'amigos')`, [uid, fila.log ?? null, fila.ruta])
+        .then(() => true, () => false)
+    );
+  const archivosQueVe = (uid) =>
+    como(uid, async () => (await db.query(`select name from storage.objects where bucket_id = 'fotos' order by name`)).rows.map((x) => x.name));
+
+  chequear('antes de nada, el cómplice no ve la foto privada', await archivosQueVe(complice), []);
+
+  // ---- 1. LA PUERTA DE ENTRADA: anotar como propia la ruta de otro ----
+  chequear('no se puede anotar como propia la ruta del archivo de otro', await entra(atacante, { ruta: privada }), false);
+  chequear('y el cómplice sigue sin verla', await archivosQueVe(complice), []);
+
+  // ---- 2. Y SI LA FILA YA ESTABA (anotada antes del arreglo), TAMPOCO DA PERMISO ----
+  await db.query(`insert into photos (user_id, storage_path, visibilidad) values ($1, $2, 'amigos')`, [atacante, privada]);
+  chequear('una fila ajena que ya estaba no le abre el archivo al cómplice', await archivosQueVe(complice), []);
+
+  // ---- 3. EL LOG TAMBIÉN: no se cuelga una foto del día de otro ----
+  await comoUsuario(victima);
+  const logAjeno = (await db.query(`select registrar_dia() as r`)).rows[0].r.log_id;
+  chequear('no se puede colgar una foto del día de otro',
+    await entra(atacante, { ruta: `${atacante}/2026-10-04-1.jpg`, log: logAjeno }), false);
+
+  // ---- LO QUE TIENE QUE SEGUIR ANDANDO: la app de siempre ----
+  await comoUsuario(atacante);
+  const logPropio = (await db.query(`select registrar_dia() as r`)).rows[0].r.log_id;
+  const propia = `${atacante}/2026-10-04-999.jpg`;
+  await db.query(`insert into storage.objects (bucket_id, name) values ('fotos', $1)`, [propia]);
+  chequear('una foto propia, en su carpeta y con su día, entra', await entra(atacante, { ruta: propia, log: logPropio }), true);
+  chequear('y sin día también', await entra(atacante, { ruta: `${atacante}/2026-10-04-1000.jpg` }), true);
+  chequear('el amigo ve la que le compartieron, y solo esa', await archivosQueVe(complice), [propia]);
+  chequear('el dueño ve lo suyo', await archivosQueVe(victima), [privada]);
+  chequear('y pasarla a privada sigue andando',
+    await como(atacante, () =>
+      db.query(`update photos set visibilidad = 'privada' where storage_path = $1 and user_id = $2`, [propia, atacante]).then(() => true, () => false)
+    ), true);
+  chequear('con lo que el amigo deja de verla', await archivosQueVe(complice), []);
+}
+
+console.log('\n173. La 59 y la 60 se pueden correr HOY, sobre el esquema 53, y otra vez en su lugar');
+{
+  // LO QUE SE PRUEBA ES EL ORDEN REAL. Producción está en el 53 con la 54 a la
+  // 58 sin aplicar. La 59 (la racha que se caía a 1) y la 60 (la foto privada)
+  // no dependen de ellas, y su cabecera dice que se pueden correr ya, sin subir
+  // la versión, y de nuevo después de la 58. Eso no se deduce: se corre.
+  //
+  // La base de acá es la de producción: el schema.sql del commit anterior a la
+  // migración 54, sacado de git como hace `test-deriva`.
+  const { execFileSync } = await import('node:child_process');
+  const { readFileSync: leer173, readdirSync } = await import('node:fs');
+  const aqui = dirname(fileURLToPath(import.meta.url));
+  const git = (...a) => execFileSync('git', a, { cwd: join(aqui, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+  const la54 = git('log', '--diff-filter=A', '--format=%H', '--', 'supabase/migracion-54-rangos-nuevos.sql').trim().split('\n').pop();
+  const sinStorage = (texto) => {
+    const t = texto.replace(/\r\n/g, '\n');
+    const ini = t.indexOf('-- STORAGE: bucket privado de fotos');
+    const fin = t.indexOf('-- PERMISOS (capa extra debajo de la RLS)');
+    return ini === -1 || fin === -1 ? t : t.slice(0, t.lastIndexOf('-- ----', ini)) + t.slice(t.lastIndexOf('-- ----', fin));
+  };
+  const migracion = (n) => {
+    const archivo = readdirSync(aqui).find((f) => f.startsWith(`migracion-${n}-`));
+    return leer173(join(aqui, archivo), 'utf8').replace(/\r\n/g, '\n');
+  };
+
+  const prod = new PGlite();
+  await prod.exec(`set timezone = 'UTC'`);
+  await prod.exec(`
+    create schema if not exists auth;
+    create table auth.users (id uuid primary key default gen_random_uuid(), raw_user_meta_data jsonb default '{}'::jsonb);
+    create function auth.uid() returns uuid language sql stable as $fn$
+      select nullif(current_setting('test.uid', true), '')::uuid;
+    $fn$;
+    create role authenticated;
+    create role anon;
+    create role service_role;
+  `);
+  await prod.exec(sinStorage(git('show', `${la54}^:supabase/schema.sql`)));
+
+  const version = async () => (await prod.query(`select version_del_esquema() as v`)).rows[0].v;
+  const vidas = (n) =>
+    prod.query(
+      `create or replace function public.impulsos_ganados(p_user uuid)
+       returns int language sql stable security definer set search_path = public
+       as $fn$ select case when p_user is null then 0 else ${n} end $fn$`
+    );
+  const cuenta = async () => {
+    const id = (await prod.query('insert into auth.users default values returning id')).rows[0].id;
+    await prod.query('update profiles set username = $1 where id = $2', ['p' + id.slice(0, 8), id]);
+    return id;
+  };
+  // Cuarenta días, ayer faltado, y hoy el día entra sin que nadie haya revisado.
+  const llegarAlGimnasio = async (como) => {
+    const u = await cuenta();
+    for (let i = 41; i >= 2; i--) await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, i]);
+    await prod.query(`select set_config('test.uid', $1, false)`, [u]);
+    if (como === 'ubicacion') await prod.query(`select registrar_dia('ubicacion')`);
+    else if (como === 'cliente') await anotarElDia(clienteDePrueba, 'ubicacion');
+    else await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy())`, [u]);
+    return (await prod.query(`select racha_actual from profiles where id = $1`, [u])).rows[0].racha_actual;
+  };
+  const puedeAnotarRutaAjena = async () => {
+    const victima = await cuenta();
+    const atacante = await cuenta();
+    await prod.query(`select set_config('test.uid', $1, false)`, [atacante]);
+    await prod.exec('set role authenticated');
+    try {
+      return await prod
+        .query(`insert into photos (user_id, storage_path, visibilidad) values ($1, $2, 'amigos')`, [atacante, `${victima}/2026-10-04-1.jpg`])
+        .then(() => true, () => false);
+    } finally {
+      await prod.exec('reset role');
+    }
+  };
+
+  // EL PARCHE DEL CLIENTE, que es lo único que cuida al teléfono y a la web
+  // MIENTRAS NO SE MIGRE. Se corre el código de verdad (`compartido/anotarDia`)
+  // contra las funciones de verdad del esquema 53: el "cliente" de acá solo
+  // traduce `rpc(nombre, args)` a una consulta.
+  const { anotarElDia } = await import('../compartido/anotarDia.ts');
+  const clienteDePrueba = {
+    rpc: async (nombre, args = {}) => {
+      const claves = Object.keys(args);
+      try {
+        const r = await prod.query(
+          `select ${nombre}(${claves.map((k, i) => `${k} => $${i + 1}`).join(', ')}) as v`,
+          claves.map((k) => args[k])
+        );
+        return { data: r.rows[0].v, error: null };
+      } catch (e) {
+        return { data: null, error: { code: e.code, message: e.message } };
+      }
+    },
+  };
+
+  await vidas(0);
+  chequear('la base de la prueba es la de producción: esquema 53', await version(), 53);
+  chequear('y ahí el bug está: llegar al gimnasio con ayer faltado deja la racha en 1', await llegarAlGimnasio('ubicacion'), 1);
+  chequear('y la ruta ajena entra', await puedeAnotarRutaAjena(), true);
+  chequear('con el parche del cliente, sobre el 53 SIN migrar: 40 - 10 + el día', await llegarAlGimnasio('cliente'), 31);
+  await vidas(2);
+  chequear('y con vidas, el parche del cliente gasta una y sigue', await llegarAlGimnasio('cliente'), 41);
+  await vidas(0);
+
+  // ---- HOY: la 59 y la 60 sueltas, sobre el 53 ----
+  await prod.exec(migracion(59));
+  await prod.exec(migracion(60));
+  chequear('la 59 y la 60 corren sobre el 53 y NO suben la versión', await version(), 53);
+  chequear('con la 59, por ubicación: 40 - 10 + el día', await llegarAlGimnasio('ubicacion'), 31);
+  chequear('y desde el calendario igual', await llegarAlGimnasio('calendario'), 31);
+  await vidas(2);
+  chequear('y con vidas se gasta una y sigue', await llegarAlGimnasio('ubicacion'), 41);
+  await vidas(0);
+  chequear('con la 60, la ruta ajena no entra', await puedeAnotarRutaAjena(), false);
+  chequear('abrir Inicio sigue contestando lo de siempre',
+    Object.keys((await prod.query(`select verificar_perdida() as v`)).rows[0].v).sort(), ['pendiente_resuelto', 'perdida']);
+
+  await prod.exec(migracion(59));
+  await prod.exec(migracion(60));
+  chequear('correrlas dos veces no rompe ni sube nada', [await version(), await llegarAlGimnasio('ubicacion')], [53, 31]);
+
+  // ---- EL DÍA DE LA APROBACIÓN: 54 a 58 encima, y después la 59 y la 60 de nuevo ----
+  for (const n of [54, 55, 56, 57, 58]) await prod.exec(migracion(n));
+  chequear('con la 54 a la 58 encima la versión es 58', await version(), 58);
+  // La 55 vuelve a definir `verificar_perdida_de` con su cuerpo de antes. El
+  // disparador de la 59 sigue puesto: la racha sigue cuidada en el medio.
+  chequear('y la racha sigue cuidada antes de volver a correr la 59', await llegarAlGimnasio('ubicacion'), 31);
+  await prod.exec(migracion(59));
+  chequear('la 59 en su lugar sube a 59', await version(), 59);
+  await prod.exec(migracion(60));
+  chequear('y la 60 a 60', await version(), 60);
+  chequear('al final: la racha', await llegarAlGimnasio('ubicacion'), 31);
+  chequear('y la foto', await puedeAnotarRutaAjena(), false);
+  await prod.close();
+}
+
+console.log('\n174. Anotar el día: la revisión de la pérdida va adelante también en el cliente');
+{
+  const { anotarElDia, revisarPerdidaAntes, SIN_REVISAR } = await import('../compartido/anotarDia.ts');
+  const llamadas = [];
+  const cliente = (respuestas = {}) => ({
+    rpc: async (nombre, args) => {
+      llamadas.push([nombre, args ?? null]);
+      return respuestas[nombre] ?? { data: null, error: null };
+    },
+  });
+
+  const bien = await anotarElDia(cliente({ registrar_dia: { data: { racha: 5 }, error: null } }), 'ubicacion');
+  chequear('primero revisa y después registra, con el origen que le dieron', llamadas, [
+    ['verificar_perdida', null],
+    ['registrar_dia', { p_origen: 'ubicacion' }],
+  ]);
+  chequear('y devuelve lo que contestó la base', bien, { data: { racha: 5 }, error: null });
+
+  // SI NO SE PUDO REVISAR, NO SE REGISTRA: registrar igual es el bug.
+  llamadas.length = 0;
+  const sinRed = await anotarElDia(cliente({ verificar_perdida: { data: null, error: { message: 'Network request failed' } } }), 'manual');
+  chequear('si la revisión falla, no llega a registrar', llamadas.map(([nombre]) => nombre), ['verificar_perdida']);
+  chequear('y lo devuelve como un error', sinRed, { data: null, error: SIN_REVISAR });
+  chequear('revisar dice si se pudo', [
+    await revisarPerdidaAntes(cliente()),
+    await revisarPerdidaAntes(cliente({ verificar_perdida: { data: null, error: { message: 'x' } } })),
+  ], [true, false]);
+
+  // ---- EL CABLEADO: que nadie anote el día por un costado ----
+  const { readFileSync: leer174, readdirSync: listar174 } = await import('node:fs');
+  const raiz174 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const fuentes = [];
+  const recorrer174 = (carpeta) => {
+    for (const e of listar174(join(raiz174, carpeta), { withFileTypes: true })) {
+      const ruta = `${carpeta}/${e.name}`;
+      if (e.isDirectory()) {
+        if (e.name !== 'node_modules') recorrer174(ruta);
+      } else if (/\.tsx?$/.test(e.name)) fuentes.push(ruta);
+    }
+  };
+  for (const c of ['compartido', 'nucleo', 'src', 'movil/src', 'movil/app']) recorrer174(c);
+  const codigo = (ruta) => sinComentarios(leer174(join(raiz174, ruta), 'utf8'));
+
+  chequear('`registrar_dia` se llama desde un solo archivo',
+    fuentes.filter((f) => /rpc\(\s*'registrar_dia'/.test(codigo(f))), ['compartido/anotarDia.ts']);
+
+  // Empezar la sesión también anota el día: la revisión va antes del pedido.
+  const sesion174 = codigo('compartido/useSesion.ts');
+  const iniciar174 = sesion174.slice(sesion174.indexOf('async function iniciar('), sesion174.indexOf('async function cerrar('));
+  chequear('empezar la sesión revisa antes de pedirla',
+    iniciar174.includes('revisarPerdidaAntes(supabase)') &&
+      iniciar174.indexOf('revisarPerdidaAntes(supabase)') < iniciar174.indexOf("rpc('iniciar_sesion'"), true);
+  chequear('y `iniciar_sesion` tampoco se llama por otro lado',
+    fuentes.filter((f) => /rpc\(\s*'iniciar_sesion'/.test(codigo(f))), ['compartido/useSesion.ts']);
+
+  // Y el calendario, que inserta directo: marcar HOY revisa antes de tocar nada.
+  const dia174 = codigo('compartido/dia.ts');
+  const corregir174 = dia174.slice(dia174.indexOf('export async function corregirDia('), dia174.indexOf('export function queHacer('));
+  chequear('marcar hoy desde el calendario revisa antes de borrar o insertar',
+    /fecha === hoyISO\(\) && !\(await revisarPerdidaAntes\(supabase\)\)/.test(corregir174) &&
+      corregir174.indexOf('revisarPerdidaAntes(supabase)') < corregir174.indexOf(".from('logs')"), true);
+  chequear('y es el único lugar del cliente que inserta un log a mano',
+    fuentes.filter((f) => /from\('logs'\)\s*\.insert\(/.test(codigo(f))), ['compartido/dia.ts']);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

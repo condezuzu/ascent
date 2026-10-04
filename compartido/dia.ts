@@ -3,6 +3,8 @@ import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { resumenDelDia, type ResumenDelDia, type SesionDelDia } from '@nucleo/resumenDia';
 import type { Carga } from '@nucleo/carga';
 import { disponible } from '@nucleo/esquema';
+import { hoyISO } from '@nucleo/fechas';
+import { revisarPerdidaAntes } from '@compartido/anotarDia';
 import type { Unidad } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
 
@@ -82,6 +84,12 @@ export function destinoActual(resumen: ResumenDelDia | null): Destino | null {
  * `queHacer`).
  */
 export async function corregirDia(supabase: Cliente, uid: string, fecha: string, destino: Destino) {
+  // MARCAR HOY DESDE EL CALENDARIO es anotar el día por otra puerta: lleva la
+  // misma revisión adelante (ver `anotarDia.ts`). Va antes de borrar nada: si
+  // no se pudo revisar, el día queda como estaba.
+  if (destino !== 'nada' && fecha === hoyISO() && !(await revisarPerdidaAntes(supabase))) {
+    return { error: T.calendario.noSeAgrego, cambio: false };
+  }
   const { error: eBorrar } = await supabase.from('logs').delete().eq('user_id', uid).eq('fecha', fecha);
   if (eBorrar) return { error: T.calendario.noSeSaco, cambio: false };
   if (destino !== 'nada') {
