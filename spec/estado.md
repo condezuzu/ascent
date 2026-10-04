@@ -478,6 +478,38 @@ deja afuera; los que sí, se arreglaron ese día.
   `simular-semana`; borrarlo necesita service_role.
 
 
+### De la caza del 4/10/2026: lo que quedó sin tocar, y por qué
+
+El detalle de cada hallazgo está en `spec/caza-2026-10-04-detalle.md` (local,
+sin subir). Lo arreglado está en el historial; esto es lo que NO.
+
+**Dejado a propósito (más riesgo arreglarlo que dejarlo, tan cerca del lanzamiento)**
+- **Un solo dueño del estado de la sesión de entrenamiento.** Ver
+  `spec/alcance.md`, "Después": quedan dos carreras de respuesta vieja.
+- **Viajar hacia el oeste:** la web revisa la pérdida con la zona guardada y
+  recién después manda la nueva (en la nativa es una carrera). Cobra un día que
+  todavía no terminó solo si se abre en las últimas horas del día local, sin
+  haber entrenado, después de cruzar husos. El arreglo cambia el orden del
+  arranque de Inicio y se cruza con la guarda de las 20 horas (§12b).
+- **Guardar la vida para después con el día de hoy ya registrado** no corta
+  nada hoy: el −10 cae mañana. El arreglo es en `devolver_impulsos` (la lógica
+  de pérdida, en SQL) y sería otra migración encima de la 61.
+- **El enlace de recuperar la contraseña de la web sigue sin servir en otro
+  navegador.** Ahora lo DICE (`/auth/enlace-vencido`). Para que funcione hay
+  que cambiar la plantilla del correo a `token_hash`, y esa plantilla es la
+  misma que usa la build de tienda para volver por `ascent://confirmar`.
+
+**Límites conocidos de lo que sí se arregló**
+- Un bloque hecho entero en peso corporal pierde el modo al cerrarse: en la
+  lista se ve con los campos de peso vacíos.
+- Una foto elegida se pierde si se cierra la hoja de registrar (la hoja nace
+  de nuevo en cada apertura; es el precio de que no arrastre estado viejo).
+- Si la app se reinicia sola (una OTA) dentro de la hora de haber entrado por
+  el enlace de cambiar la contraseña, la pantalla de elegirla aparece otra vez.
+  "Ahora no" la cierra.
+- `signOut({ scope: 'local' })` y la política de Storage no se pueden probar
+  desde acá: se mira que se pidan así.
+
 ## El aviso de las 20:30, sacado (22/9/2026)
 
 Se fue entero, por decisión del humano: el aviso, su cron, la suscripción push

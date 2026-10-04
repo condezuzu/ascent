@@ -1214,3 +1214,29 @@ se usa para publicar va con la versión escrita y sin consultarle al registro
 (`llamadaAEas` en `supabase/huella.mjs`). `eas-cli` a mano, siempre adentro de
 `movil/`, y nunca `eas init`. Y antes de arreglar "la causa", mirar el log
 (`%LocalAppData%\npm-cache\_logs`): acá decía otra cosa.
+
+**Un campo que confirma al salir pierde lo escrito si la pantalla se va sin
+sacarle el foco.** El campo de peso avisa en `onBlur`. En el teléfono, tocar un
+botón con el teclado arriba NO le saca el foco (`keyboardShouldPersistTaps`):
+"Anotar" leía el peso viejo con el nuevo a la vista ("ese peso no da"), y
+"Listo" cerraba la lista y desmontaba el campo antes de que confirmara. En la
+web no pasa: el clic saca el foco primero.
+→ **Regla:** quien cierra o guarda con un campo así adentro no espera el
+`blur`: o el campo avisa en cada tecla (`enCadaTecla`, donde no hay nada que
+escribir en la base por tecla), o entrega su confirmación (`alTeclear`) y el
+que cierra la llama antes de irse.
+
+**Dos escrituras sueltas del mismo valor pueden llegar cruzadas, y volver
+"a lo de antes" cuando una falla deja la pantalla distinta de la base.** Los
+días de descanso se mandan como conjunto entero; dos toques seguidos eran dos
+pedidos sin orden entre sí.
+→ **Regla:** un valor que se guarda entero va por `escritorEnFila`
+(`compartido/enFila.ts`): cada pedido espera al anterior, manda lo último que
+se pidió, y si falla la pantalla vuelve a lo último que la base aceptó.
+
+**"Para todos los pesos" recorría solo los que ya andaban.** La prueba de
+"salir del campo sin tocarlo no cambia nada" probaba, en libras, kilos que ya
+caían justo en la media libra. Lo que la persona tiene guardado son kilos
+redondos —60, 100— y esos se corrían (60 → 60,1).
+→ **Regla:** un barrido recorre lo que la BASE guarda, visto como lo ve la
+persona; no los valores que se eligieron porque dan bien.
