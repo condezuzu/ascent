@@ -1120,6 +1120,43 @@ app*, y mira que las dos apps lo dejen. `supabase/dobles/alias.mjs` resuelve los
 alias para eso (sección 175). Y en el informe se dice qué camino quedó sin
 probar en el teléfono, en vez de dar la función por hecha.
 
+## Un refresco decide con una foto, y el toque cae en el medio
+
+Dos bugs de la sesión (4/10), los dos de **orden** y ninguno de cuenta: cada
+función estaba bien y probada, y el conjunto perdía una serie.
+
+**El refresco que pisaba el `+`.** `confirmar` y `releerCache` leen la caché y la
+respuesta de la base, esperan, y recién después escriben la pantalla y la caché.
+Un `+` tocado en ese rato no estaba en lo leído: el descanso arrancaba, el punto
+y el total volvían atrás, y el `+` siguiente subía el mismo número. En el
+teléfono el hueco son las operaciones de AsyncStorage; en la web no existe ese,
+pero sí el de la respuesta que llega cuando el toque ya subió y la cola quedó
+vacía. De 55 momentos probados alrededor de la respuesta, 42 perdían la serie.
+
+**Los bloques sin dueño.** Vivían en memoria sin saber de qué sesión eran. El
+único que los vaciaba era `terminar`, en la instancia que terminaba. Sesión
+cerrada sola, o por otra pantalla, u otro aparato: la siguiente nacía con los
+bloques de la anterior y al volver al frente se subían a la base.
+
+**Las reglas:**
+- Lo que se lee para decidir lleva una marca de **cuándo** se leyó
+  (`fotoDeLaCache`, en `compartido/sesionCache`), y antes de escribir se pregunta
+  si sigue valiendo. Un cambio local —el toque— se anota en ese reloj **antes
+  del primer `await`**, no cuando le llega el turno de guardarse.
+- El reloj vive a nivel de módulo y no en el hook: hay dos instancias (la
+  pantalla y el vigilante) y una pisaba a la otra a través de la caché.
+- Un estado que es de una sesión guarda **de cuál** (`bloquesSonDe`).
+- Un bug de orden no se prueba con la función pura. Se corre el hook:
+  `supabase/dobles/sesion/` (React, almacenamiento en fila y base de mentira;
+  sección 179). Es un sustituto del teléfono: prueba el orden, no lo que se ve.
+
+**Quedan, de la misma familia y sin tocar** (los tres existen desde antes y se
+reproducen con esos dobles): una respuesta vieja de "no hay sesión" que llega
+después de Iniciar saca la sesión de la pantalla; una de "está corriendo" que
+llega después de Terminar la vuelve a mostrar; y dos `+` con milisegundos de
+diferencia dejan la caché una serie atrás (la escritura de `marcar` pisa la del
+segundo toque), que con señal se corrige sola contra la base.
+
 ## Tests / proceso
 
 **Un test puede estar defendiendo un error.** El test "y sin pedir permiso de

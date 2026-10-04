@@ -6674,7 +6674,9 @@ console.log('\n93. Dos toques seguidos no le devuelven al total el numero de ant
       k++;
     }
     const args = cuerpo.slice(m.index + m[0].length, k - 1);
-    if (!/(^|,)\s*yo\s*$/.test(args)) sinFirma.push(`${m[1]}SesionCache(${args.slice(0, 40)})`);
+    // Desde el 4/10 la firma puede no ser lo ultimo: los cambios del conteo
+    // llevan detras lo que se guarda ANTES que la cache (seccion 179).
+    if (!/(^|,)\s*yo\s*(,\s*\(\)\s*=>[\s\S]*)?$/.test(args)) sinFirma.push(`${m[1]}SesionCache(${args.slice(0, 40)})`);
   }
   chequear('toda escritura de la cache desde el hook va firmada', sinFirma, []);
   chequear('y el hook no relee las suyas', /escuchar\(AVISO,[^]*?esMio\(dato, yo\)/.test(cuerpo), true);
@@ -13279,6 +13281,173 @@ console.log('\n178. Bloquear avisa, y la marca se anota en el ejercicio que se t
   chequear('la pantalla de antes no pasa', marcas178(
     "onPress={() => setHoja({ abierta: true, ejercicio: m.ejercicio })} onPress={() => setHoja({ abierta: true })} <CargarMarca visible={!!hoja?.abierta} inicial={hoja?.ejercicio} />"
   ), { cadaAperturaEsNueva: false, seAbrePorUnSoloLugar: false });
+}
+
+console.log('\n179. La sesión con el hook de verdad: los bloques de otra sesión y el refresco que pisa un toque');
+{
+  // SE CORRE `useSesion`, NO UNA CUENTA SACADA DE ÉL (4/10). Los dos bugs de acá
+  // eran de ORDEN —qué llega antes, el toque o la respuesta— y ninguna función
+  // pura los tenía: cada pieza estaba bien y el conjunto perdía una serie. Los
+  // escenarios viven en `dobles/sesion/` y van cada uno en su proceso, porque el
+  // hook guarda cosas a nivel de módulo. Es un sustituto del teléfono: prueba el
+  // orden de las operaciones, no lo que se dibuja.
+  const { execFile } = await import('node:child_process');
+  const { pathToFileURL } = await import('node:url');
+  const { readFileSync: leer179 } = await import('node:fs');
+  const aca179 = dirname(fileURLToPath(import.meta.url));
+  const escenario = (...argumentos) =>
+    new Promise((listo) => {
+      execFile(
+        process.execPath,
+        [
+          '--disable-warning=MODULE_TYPELESS_PACKAGE_JSON',
+          '--import',
+          pathToFileURL(join(aca179, 'dobles/sesion/ganchos.mjs')).href,
+          join(aca179, 'dobles/sesion/escenarios.mjs'),
+          ...argumentos,
+        ],
+        { timeout: 120000 },
+        (error, salida, errores) => {
+          if (error) return listo({ fallo: String(errores || error.message).slice(-300) });
+          try {
+            listo(JSON.parse(salida.trim().split('\n').pop()));
+          } catch {
+            listo({ fallo: salida.slice(-300) });
+          }
+        }
+      );
+    });
+
+  const VARIANTES = ['sola', 'vigilante', 'otroAparato', 'sinPreguntar'];
+  // [modo, n, aparato, instancias]. Ver `refresco` en `escenarios.mjs`.
+  const TOQUES = [
+    ['despues', '0', 'telefono', 'solo'],
+    ['despues', '2', 'telefono', 'solo'],
+    // Justo mientras el refresco guarda la caché: lo ataja el segundo chequeo.
+    ['despues', '3', 'telefono', 'solo'],
+    ['antes', '0', 'telefono', 'solo'],
+    ['antes', '6', 'telefono', 'solo'],
+    ['antes', 'una', 'telefono', 'solo'],
+    ['antes', 'fin', 'telefono', 'solo'],
+    ['despues', '0', 'telefono', 'vigilante'],
+    // La web no tiene el hueco del almacenamiento, pero sí el de la respuesta
+    // que llega cuando el toque ya subió.
+    ['antes', 'fin', 'web', 'solo'],
+    // Un toque con CADA respuesta: son dos preguntas y dos toques, no una fila.
+    ['siempre', '0', 'telefono', 'solo'],
+  ];
+  // Cuántas operaciones de almacenamiento después del `+` se bloquea el teléfono.
+  const BLOQUEOS = ['0', '3'];
+  const [deBloques, deToques, deBloqueos] = await Promise.all([
+    Promise.all(VARIANTES.map((v) => escenario('bloques', v))),
+    Promise.all(TOQUES.map((t) => escenario('refresco', ...t))),
+    Promise.all(BLOQUEOS.map((n) => escenario('releer', n))),
+  ]);
+
+  // ---- LOS BLOQUES DE LA SESIÓN ANTERIOR SE COLABAN EN LA NUEVA ----
+  //
+  // Ayer: press 3 y sentadilla 3. Hoy la sesión nueva tiene que nacer sin eso,
+  // no subirlo a la base al volver al frente, y contar el primer `+` en lo suyo.
+  VARIANTES.forEach((v, i) => {
+    const r = deBloques[i];
+    const deAyer = (lista) => (lista ?? [['?']]).some(([e]) => e === 'press_banca' || e === 'sentadilla' || e === '?');
+    chequear(`bloques (${v}): el escenario corrió y ayer quedó anotado`, r.fallo ?? r.ayer?.base, [['press_banca', 3], ['sentadilla', 3]]);
+    chequear(`bloques (${v}): sin tocar el +, a la base no le llega nada de ayer`, [r.sinTocar?.subidos, deAyer(r.sinTocar?.base)], [[], false]);
+    chequear(`bloques (${v}): el primer + se anota en lo de hoy`, [deAyer(r.primerMas?.bloques), deAyer(r.primerMas?.base)], [false, false]);
+    // La web ya llevaba 2 de remo: el + de acá es la tercera, del mismo bloque.
+    chequear(
+      `bloques (${v}): y el total y la lista dicen lo mismo`,
+      [r.primerMas?.total, r.primerMas?.baseSeries, r.primerMas?.base],
+      v === 'otroAparato' ? [3, 3, [['remo', 3]]] : [1, 1, [['remo', 1]]]
+    );
+  });
+  chequear('al cerrarse sola, la pantalla ya no tiene los bloques', deBloques[0].alCerrar?.bloques, [[null, 0]]);
+  chequear('al terminar en Inicio, el vigilante tampoco se los queda', deBloques[1].alCerrar?.delVigilante, [[null, 0]]);
+  chequear('la sesión nueva arranca con la semilla y en cero', [deBloques[0].nueva, deBloques[3].nueva], [
+    { total: 0, bloques: [['remo', 0]] },
+    { total: 0, bloques: [['remo', 0]] },
+  ]);
+
+  // ---- EL REFRESCO QUE BORRABA LA SERIE RECIÉN SUMADA ----
+  //
+  // 5 series, se bloquea y se desbloquea, y un `+` cae cerca de la respuesta de
+  // `mi_sesion`. Tiene que quedar en 6 en los tres lados, y el `+` siguiente en 7.
+  TOQUES.forEach((t, i) => {
+    const van = t[0] === 'siempre' ? 7 : 6;
+    chequear(`refresco (${t.join(' ')}): el + queda, y el siguiente también`, deToques[i].fallo ?? deToques[i], {
+      trasElToque: { pantalla: [van, van], cache: [van, van], base: [van, van] },
+      trasElSiguiente: { pantalla: [van + 1, van + 1], base: [van + 1, van + 1] },
+      // La respuesta vieja se descarta y se vuelve a pedir UNA vez por instancia
+      // del hook: lo que traía no era solo el conteo.
+      preguntas: t[3] === 'vigilante' ? 4 : 2,
+      // Ni por un instante: si la app se cerrara ahí, eso es lo que quedaría.
+      cacheRetrocedio: false,
+    });
+  });
+
+  // TOCAR EL + Y BLOQUEAR: bloquear relee la caché, que todavía no tiene el
+  // toque. Con 0 el total volvía a 5; con 3 quedaba "6 en total" y cinco puntos.
+  BLOQUEOS.forEach((n, i) => {
+    chequear(`tocar el + y bloquear (${n} operaciones después): la relectura no lo pisa`, deBloqueos[i].fallo ?? deBloqueos[i], {
+      trasElToque: { pantalla: [6, 6], cache: [6, 6] },
+      trasElSiguiente: { pantalla: [7, 7], base: [7, 7] },
+    });
+  });
+
+  // ---- EL RELOJ DE LOS TOQUES, solo ----
+  const SC = await import('../compartido/sesionCache.ts');
+  const { memoria: memoria179 } = await import('./dobles/plataforma.mjs');
+  memoria179.set('ascent:sesion', JSON.stringify({ inicio: new Date().toISOString(), desfasaje: 0, series: 5, id: 's' }));
+
+  const foto = SC.fotoDeLaCache();
+  chequear('una foto sin toques sigue valiendo', foto(), true);
+  await SC.actualizarSesionCache({ ultimaActividad: new Date().toISOString() });
+  chequear('marcar actividad no es un toque', foto(), true);
+  await SC.actualizarSesionCache({ series: 6 });
+  chequear('sumar una serie sí: la foto de antes ya no vale', foto(), false);
+
+  // EN VUELO: desde que se tocó hasta que la caché lo tiene. Y `antes` —la
+  // cola— corre primero.
+  const orden = [];
+  let soltar;
+  const fotos = {};
+  const dejarDeOir = eventos.escuchar(SC.AVISO, () => {
+    orden.push('aviso');
+    fotos.alAvisar = SC.fotoDeLaCache()();
+  });
+  const guardando = SC.actualizarSesionCache({ series: 7 }, undefined, () => {
+    orden.push('cola');
+    return new Promise((r) => (soltar = r));
+  });
+  fotos.conElToqueEnVuelo = SC.fotoDeLaCache()();
+  const antesDeLaCache = JSON.parse(memoria179.get('ascent:sesion')).series;
+  soltar();
+  await guardando;
+  dejarDeOir();
+  chequear('una foto sacada con un toque en vuelo nace vieja', fotos.conElToqueEnVuelo, false);
+  chequear('la cola va antes que la caché', [orden, antesDeLaCache, JSON.parse(memoria179.get('ascent:sesion')).series], [['cola', 'aviso'], 6, 7]);
+  chequear('y cuando se avisa a la otra instancia, el toque ya no está en vuelo', fotos.alAvisar, true);
+  memoria179.delete('ascent:sesion');
+
+  // ---- CABLEADO: lo que los escenarios no tocan ----
+  //
+  // Los escenarios suman con el `+`. Restar, corregir en la lista y cerrar el
+  // bloque guardan igual, y tienen que anotarse en el reloj desde el toque: la
+  // cola va ADENTRO de `actualizarSesionCache`, no suelta antes.
+  const hook179 = sinComentarios(leer179(join(aca179, '../compartido/useSesion.ts'), 'utf8'));
+  const cableado179 = (texto) => ({
+    colaSueltaAntesDeLaCache: /await subir\([^;]*\);\s*await actualizarSesionCache\(/.test(texto),
+    conLaColaAdentro: (texto.match(/await actualizarSesionCache\([^;]*?,\s*yo,\s*\(\) =>\s*subir\(/g) ?? []).length,
+  });
+  chequear('los cuatro cambios del conteo guardan la cola adentro del toque', cableado179(hook179), {
+    colaSueltaAntesDeLaCache: false,
+    conLaColaAdentro: 4,
+  });
+  chequear(
+    'el hook de antes no pasa',
+    cableado179('await subir(nc.series, nc.bloques); await actualizarSesionCache({ series: nc.series }, yo);').colaSueltaAntesDeLaCache,
+    true
+  );
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

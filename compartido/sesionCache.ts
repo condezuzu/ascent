@@ -120,6 +120,37 @@ export async function leerSesionCache(): Promise<SesionCacheada | null> {
   }
 }
 
+// ---------------------------------------------------------------
+// EL RELOJ DE LOS TOQUES (4/10)
+// ---------------------------------------------------------------
+//
+// Un refresco —`confirmar` contra la base, o `releerCache`— decide con una FOTO:
+// la caché y la respuesta de la base, leídas un rato antes de aplicarlas. Un `+`
+// tocado en el medio no está en la foto, y el refresco lo pisaba: el descanso
+// arrancaba pero el punto y el total volvían atrás, y el `+` siguiente subía el
+// mismo número. Quedaba una serie menos de las que se hicieron.
+//
+// Vive ACÁ, a nivel de módulo, y no en el hook: hay más de una instancia —la
+// pantalla y el vigilante— y el refresco de una pisaba el toque de la otra a
+// través de la caché.
+let toques = 0; // cambios locales del conteo o de los bloques, desde que arrancó la app
+let enVuelo = 0; // de esos, los que todavía no terminaron de escribirse en la caché
+
+/** Cuántos cambios locales van. Se anota al EMPEZAR a preguntarle a la base. */
+export function relojDeToques(): number {
+  return toques;
+}
+
+/**
+ * Se llama justo ANTES de leer la caché y devuelve la pregunta "¿lo que leí
+ * sigue valiendo?". Deja de valer si había un toque sin terminar de guardarse
+ * —la lectura no lo trae— o si hubo otro después de `desde`.
+ */
+export function fotoDeLaCache(desde: number = toques): () => boolean {
+  const completa = enVuelo === 0;
+  return () => completa && toques === desde;
+}
+
 /**
  * Cambiar UNA cosa de la sesión cacheada sin tocar el resto.
  *
@@ -130,11 +161,37 @@ export async function leerSesionCache(): Promise<SesionCacheada | null> {
  *
  * Si no hay sesión guardada no hace nada: no se inventa una a partir de un
  * cambio parcial.
+ *
+ * `antes` es lo que tiene que quedar a salvo ANTES que la caché: la cola (ver
+ * `serieHecha`). Va acá adentro para que el toque cuente como "en vuelo" desde
+ * que se tocó, y no recién cuando le llega el turno a la caché.
  */
-export async function actualizarSesionCache(parcial: Partial<SesionCacheada>, dueno?: symbol) {
-  const actual = await leerSesionCache();
-  if (!actual) return;
-  await guardarSesionCache({ ...actual, ...parcial }, dueno);
+export async function actualizarSesionCache(
+  parcial: Partial<SesionCacheada>,
+  dueno?: symbol,
+  antes?: () => Promise<unknown>
+) {
+  // Un cambio del conteo o de los bloques es un TOQUE, y se anota YA, antes del
+  // primer `await` (ver "el reloj de los toques").
+  const esToque = 'series' in parcial || 'bloques' in parcial;
+  if (esToque) {
+    toques++;
+    enVuelo++;
+  }
+  let guardado = false;
+  try {
+    if (antes) await antes();
+    const actual = await leerSesionCache();
+    if (actual) {
+      await plataforma.almacenamiento.guardar(CLAVE, JSON.stringify({ ...actual, ...parcial }));
+      guardado = true;
+    }
+  } finally {
+    // ANTES del aviso y no después: la otra instancia relee al oírlo, y con el
+    // toque todavía "en vuelo" descartaría justo la lectura que ya es buena.
+    if (esToque) enVuelo--;
+  }
+  if (guardado) avisar(dueno);
 }
 
 export async function borrarSesionCache(dueno?: symbol) {

@@ -65,6 +65,8 @@ import {
   leerSesionCache,
   leerVigilancia,
   guardarVigilancia,
+  fotoDeLaCache,
+  relojDeToques,
 } from '@compartido/sesionCache';
 import {
   borrarDescanso,
@@ -258,10 +260,35 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   const desfasajeRef = useRef(desfasaje);
   desfasajeRef.current = desfasaje;
 
+  // LOS BLOQUES SON DE UNA SESIÓN (4/10). Vivían en memoria sin saber de cuál:
+  // el único que los vaciaba era `terminar`, y solo en la instancia que
+  // terminaba. Si la sesión se cerraba sola, o la terminaba otra pantalla u otro
+  // aparato, la siguiente nacía con los bloques de la anterior y al volver al
+  // frente se subían a la base: los kilos de ese día quedaban anotados dos veces.
+  // Acá se anota de qué sesión son, y cuando la sesión es otra —o ninguna— se
+  // tiran. Con una base sin ids (`null`) queda como antes.
+  const bloquesDe = useRef<string | null>(null);
+  const bloquesSonDe = useCallback((id: string | null) => {
+    const deOtra = bloquesDe.current !== null && bloquesDe.current !== id;
+    bloquesDe.current = id;
+    if (!deOtra) return;
+    // El ref también, y ya: la semilla de `empezar` y `recuperarBloques` lo leen
+    // antes del próximo render.
+    const vacios = bloquesVacios();
+    bloquesRef.current = vacios;
+    setBloques(vacios);
+    setSugerido(false);
+  }, []);
+
   const releerCache = useCallback(async () => {
+    // LA FOTO, ANTES DE LEER (4/10): si hay un toque que todavía no llegó a la
+    // caché, o cae uno mientras se lee, lo leído es más viejo que la pantalla y
+    // el conteo no se toca. Ver "el reloj de los toques" en `sesionCache`.
+    const alDia = fotoDeLaCache();
     const c = await leerSesionCache();
     setInicio(c?.inicio ?? null);
     setDesfasaje(c?.desfasaje ?? 0);
+    bloquesSonDe(c?.id ?? null);
     // También lo que hace falta para DECIDIR, no solo para pintar: si la
     // sesión arrancó sola hay que poder cerrarla al salir, y eso lo mira el
     // vigilante, que es otra instancia de este mismo hook.
@@ -270,11 +297,13 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       setIdSesion(c.id ?? null);
       if (c.id) idVisto.current = c.id;
       setUltimaActividad(c.ultimaActividad ?? null);
-      if (c.bloques) setBloques(c.bloques);
-      // El fantasma sobrevive a que iOS mate la app: si el bloque en curso era
-      // una sugerencia sin confirmar, al reabrir sigue viéndose como sugerencia
-      // y no como algo ya elegido (ver `SesionCacheada.sugerido`).
-      setSugerido(!!c.sugerido);
+      if (alDia()) {
+        if (c.bloques) setBloques(c.bloques);
+        // El fantasma sobrevive a que iOS mate la app: si el bloque en curso era
+        // una sugerencia sin confirmar, al reabrir sigue viéndose como sugerencia
+        // y no como algo ya elegido (ver `SesionCacheada.sugerido`).
+        setSugerido(!!c.sugerido);
+      }
       // EL TOTAL AL REABRIR (bug "3 de 3 · 0 en total", 29/9). Antes: con cola
       // pendiente se descartaba la caché y quedaba el total EN PANTALLA —que tras
       // un cierre de iOS es el 0 inicial—, mientras los puntos se restauraban del
@@ -282,10 +311,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       // cuando hay pendientes (respeta toques nuevos sin perder lo guardado), y la
       // caché cuando no hay. Se lee del ref, no del closure viejo. Ver conteo.ts.
       const hayPendientes = (await cuantasPendientes()) > 0;
-      setSeries(seriesAlReleer(seriesRef.current, c.series, hayPendientes));
+      if (alDia()) setSeries(seriesAlReleer(seriesRef.current, c.series, hayPendientes));
     }
     setDescanso(await leerDescanso());
-  }, []);
+  }, [bloquesSonDe]);
 
   // La consulta de verdad. La caché pinta al instante, esto la corrige.
   //
@@ -294,9 +323,11 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // borraba todo, y la escritura reemplazaba la caché entera, así que se
   // llevaba puestos los bloques —que el servidor no manda en esta forma— cada
   // vez que la pantalla se montaba.
-  const confirmar = useCallback(async () => {
+  const preguntar = useCallback(async (): Promise<'vieja' | void> => {
     if (confirmando.current) return;
     confirmando.current = true;
+    // Lo que se toque desde acá no está en lo que la base va a contestar.
+    const reloj = relojDeToques();
     try {
     // PRIMERO SE SUBE LO PENDIENTE, DESPUÉS SE PREGUNTA. La base decide si la
     // sesión se cerró sola mirando la última actividad que TIENE; si se le
@@ -313,6 +344,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
           cerrada_sola?: { id: string; inicio: string; fin: string | null; estado: string } | null;
         })
       | null;
+    const alDia = fotoDeLaCache(reloj);
     const previo = await leerSesionCache();
     const viva = s?.corriendo && s.inicio
       ? {
@@ -380,7 +412,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       // Faltan si no vinieron, o si ya faltaban y no se pudieron traer (sin
       // señal): lo que la caché tenga en ese caso es solo lo de acá.
       const faltan = !!g.id && (!g.bloques || (previo?.id === g.id && previo.faltanBloques === true));
+      // EL REFRESCO NO PISA UN TOQUE (4/10). Si mientras se preguntaba se tocó
+      // algo, todo lo de arriba se calculó sin ese toque: no se escribe ni en la
+      // caché ni en la pantalla, y `confirmar` vuelve a preguntar. Se mira dos
+      // veces porque guardar la caché también espera, y el toque puede caer ahí.
+      if (!alDia()) return 'vieja';
       await guardarSesionCache(faltan ? { ...g, faltanBloques: true } : g, yo);
+      if (!alDia()) return 'vieja';
+      bloquesSonDe(g.id ?? null);
       if (g.bloques) setBloques(g.bloques);
       if (faltan && g.id) {
         faltanBloques.current = g.id;
@@ -397,6 +436,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       if (g.id) idVisto.current = g.id;
     } else {
       borrarSesionCache(yo);
+      bloquesSonDe(null);
       setInicio(null);
       setSeries(0);
       setIdSesion(null);
@@ -411,6 +451,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // lo llama al montar se volvería a armar en cada uno.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
+
+  // UNA RESPUESTA VIEJA SE VUELVE A PEDIR, y una sola vez. Lo que quedó sin
+  // aplicar no era solo el conteo: también si la sesión es otra, o los bloques
+  // que faltaba traer. Una y no más, para que un toque tras otro no lo deje
+  // preguntando en fila: lo de acá ya es lo más nuevo que hay.
+  const confirmar = useCallback(async () => {
+    if ((await preguntar()) === 'vieja') await preguntar();
+  }, [preguntar]);
 
   useEffect(() => {
     releerCache();
@@ -539,6 +587,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       registro: ResultadoRegistro | null;
     };
     const porUbi = (r.origen ?? opciones?.origen) === 'ubicacion';
+    // UNA SESIÓN NUEVA NO HEREDA BLOQUES (ver `bloquesSonDe`). Va antes de la
+    // semilla de abajo, que no siembra si encuentra algo contado.
+    bloquesSonDe(r.id ?? null);
     // La caché lleva TODO lo que hace falta para decidir, no solo para pintar:
     // la otra instancia del hook —la del vigilante— se entera por acá.
     guardarSesionCache({
@@ -790,8 +841,13 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // sesión: apenas está en la cola, la serie está a salvo —sale sola cuando
     // vuelve la red— y `confirmar` ya no la pisa (respeta la cola no vacía). Va
     // PRIMERO, antes de la caché y de cualquier cosa que espere a la red.
-    await subir(nc.series, nc.bloques);
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques, sugerido: false }, yo);
+    //
+    // `subir` va ADENTRO de `actualizarSesionCache`, que lo corre antes de tocar
+    // la caché: el orden es el mismo, y el toque queda anotado en el reloj desde
+    // ahora y no desde que le llega el turno a la caché (4/10).
+    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques, sugerido: false }, yo, () =>
+      subir(nc.series, nc.bloques)
+    );
     // Recién ahora el descanso, que necesita leer la duración.
     const seg =
       (await leerDuracionDeSesion()) ??
@@ -821,8 +877,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     setSeries(nc.series);
     setBloques(nc.bloques);
     // Guardar primero (ver `serieHecha`): la cola antes que la caché y que `marcar`.
-    await subir(nc.series, nc.bloques);
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
+    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo, () => subir(nc.series, nc.bloques));
     await marcar();
   }
 
@@ -866,10 +921,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // Guardar primero (ver `serieHecha`): "terminar serie" cierra el bloque, y
     // ese cierre tiene que quedar en la cola antes que la caché y que `marcar`,
     // que toca la red. Apagar la pantalla justo después no puede perderlo.
-    await subir(seriesRef.current, b);
     // sugerido:false por defecto; si hay un siguiente en la cadena,
     // `proponerEjercicioSugerido` lo vuelve a poner en true al toque.
-    await actualizarSesionCache({ bloques: b, sugerido: false }, yo);
+    await actualizarSesionCache({ bloques: b, sugerido: false }, yo, () => subir(seriesRef.current, b));
     await marcar();
     // LA CADENA: proponer el siguiente de la rutina como sugerencia (fantasma).
     // Los ya hechos salen de los bloques cerrados; si queda uno por proponer, va
@@ -1191,8 +1245,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     setSeries(nc.series);
     setBloques(nc.bloques);
     // Guardar primero (ver `serieHecha`): la cola antes que la caché y que `marcar`.
-    await subir(nc.series, nc.bloques);
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo);
+    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo, () => subir(nc.series, nc.bloques));
     await marcar();
   }
 
