@@ -845,6 +845,9 @@ export const T = {
     pesoCambio: (dias: number, delta: string, unidad: string) =>
       `${dias} ${dias === 1 ? 'anotación' : 'anotaciones'} · ${delta} ${unidad}`,
     pesoUnoMas: 'Con uno más aparece la tendencia. Solo la ves tú.',
+    // La ventana elegida ("1 mes") no tiene dos anotaciones: antes el gráfico
+    // desaparecía entero, con los botones para volver.
+    pesoSinVentana: 'En este período no hay dos anotaciones: con menos no se ve una tendencia.',
     pesoVacio: 'Anota tu peso y aquí aparece la tendencia. Solo la ves tú.',
     // EL OBJETIVO DE PESO: un número, no una dirección (ver `pesoObjetivo.ts`).
     objetivoPoner: 'Pon un objetivo de peso',

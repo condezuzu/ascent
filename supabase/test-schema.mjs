@@ -7058,7 +7058,15 @@ console.log('\n100. El campo de peso con coma decimal');
   for (let x = 100; x <= 40000; x += 25) probar(x / 100, 'kg');
   for (const kg of [61.25, 63.75, 101.25, 1.25, 0.5]) probar(kg, 'kg');
   for (let lb = 2; lb <= 880; lb += 0.5) probar(P.aKilos(lb, 'lb') > 0 ? Math.round(P.aKilos(lb, 'lb') * 100) / 100 : 1, 'lb');
+  // EL CAMINO DE LA PERSONA (4/10): pesos anotados en KILOS, vistos en libras.
+  // El lazo de arriba solo probaba kilos que ya caían en la media libra, y por
+  // eso pasaba en verde con 60 kg -> "132,5" -> 60,1.
+  for (let x = 100; x <= 40000; x += 25) probar(x / 100, 'lb');
   chequear('confirmar lo que se ve nunca cambia el peso (kg y lb)', movidos.slice(0, 5), []);
+  chequear('60 kg visto en libras sigue siendo 60 al salir del campo', C.confirmarCampo(C.textoDelCampo(60, 'lb'), 60, 'lb'), { cambia: false, kg: 60 });
+  // Reescribir a mano el mismo número que se ve lo vuelve de la persona, sin correrlo.
+  chequear('y teclear el mismo número avisa con el peso que ya estaba', [C.hayQueAvisar(C.confirmarCampo('132.5', 60, 'lb'), true), C.confirmarCampo('132.5', 60, 'lb').kg], [true, 60]);
+  chequear('otro número en libras sí cambia', C.confirmarCampo('135', 60, 'lb'), { cambia: true, kg: 61.23 });
 
   // ---- el + y el - ----
   chequear('un toque suma el disco chico', [C.pasoDelCampo(62.5, 'kg', 1), C.pasoDelCampo(62.5, 'kg', -1)], [65, 60]);
@@ -14504,6 +14512,34 @@ console.log('\n193. Salir de la cuenta: nada queda para la que entra después, y
     (cuentaNativa.match(/signOut\(\)/g) ?? []).length,
   ], [true, 1, 1]);
   chequear('en la web, salir olvida también el punto de "te espera algo"', /olvidarPendientes\(\)/.test(sesionWeb), true);
+}
+
+console.log('\n194. El gráfico del peso: una ventana vacía no se lleva los botones');
+{
+  const { readFileSync: leer194 } = await import('node:fs');
+  const P194 = await import('../nucleo/peso.ts');
+  const { T: T194 } = await import('../nucleo/textos.ts');
+  // Dos anotaciones separadas por más de un mes: hay historial, pero "1 mes"
+  // —que se cuenta desde la ÚLTIMA anotación, no desde hoy— se queda con una.
+  const haceDias = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+  const viejos = [{ fecha: haceDias(80), valor: 82 }, { fecha: haceDias(10), valor: 81 }];
+  chequear('con el historial entero hay dibujo, y con "1 mes" no', [
+    P194.trazarPeso(viejos, 'kg', null, 300, 84, 7) !== null,
+    P194.trazarPeso(viejos, 'kg', 90, 300, 84, 7) !== null,
+    P194.trazarPeso(viejos, 'kg', 30, 300, 84, 7),
+  ], [true, true, null]);
+  // CABLEADO: es un componente. Sin dibujo, solo desaparece con el historial
+  // entero (eso lo dice quien llama); con una ventana, quedan los botones.
+  const grafico = sinComentarios(leer194(new URL('../src/components/GraficoPeso.tsx', import.meta.url), 'utf8'));
+  chequear('la web deja los botones cuando la ventana queda vacía', [
+    /if \(!trazo\) \{\s*if \(rango === null\) return null;/.test(grafico),
+    /\{T\.stats\.pesoSinVentana\}\s*<\/p>\s*<\/div>\s*\{ventanas\}/.test(grafico),
+    /if \(!trazo\) return null;/.test(grafico),
+    typeof T194.stats.pesoSinVentana,
+  ], [true, true, false, 'string']);
+  // La nativa no devolvía null: se mira que siga así.
+  const nativo = sinComentarios(leer194(new URL('../movil/src/GraficoPeso.tsx', import.meta.url), 'utf8'));
+  chequear('la nativa tampoco se va entera sin dibujo', /if \(!trazo\) return null;/.test(nativo), false);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

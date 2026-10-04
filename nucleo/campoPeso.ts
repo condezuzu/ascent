@@ -37,6 +37,11 @@ export function confirmarCampo(
   const actual = kg ?? null;
   if (escrito === '') return { cambia: actual !== null, kg: null };
   const v = pesoValido(escrito);
+  // LO QUE SE VE, CONFIRMADO TAL CUAL, ES EL MISMO PESO (4/10). En libras el
+  // campo muestra redondeado a la media libra, y volver de ahí a kilos da otro
+  // número: 60 kg se ve "132,5" y vuelve como 60,1. Entrar y salir sin escribir
+  // corría el peso guardado. Se compara contra el número a la vista.
+  if (actual !== null && v !== null && v === pesoRedondeado(actual, unidad)) return { cambia: false, kg: actual };
   const enKilos = v === null ? null : pesoValido(aKilos(v, unidad));
   return { cambia: enKilos !== actual, kg: enKilos };
 }

@@ -58,7 +58,45 @@ export default function GraficoPeso({
   // La cuenta —suavizado, ventana, márgenes y trazos— vive en
   // `nucleo/peso.ts` y la comparte con la app nativa. Ahí están los porqués.
   const trazo = trazarPeso(pesos, unidad, rango, ANCHO, ALTO, VENTANA);
-  if (!trazo) return null;
+
+  // La ventana. Con todo el historial, tres meses de una bajada de dos kilos se
+  // ven planos: la escala la manda el punto más lejano.
+  const ventanas = (
+    <div className="grafico-peso-rangos">
+      {RANGOS.map((r) => (
+        <button
+          key={String(r.dias)}
+          className={r.dias === rango ? 'activo' : ''}
+          onClick={() => {
+            setRango(r.dias);
+            setTocado(null);
+          }}
+        >
+          {r.etiqueta()}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (!trazo) {
+    // Sin dos anotaciones en TODO el historial no hay ventana que elegir: ese
+    // caso ya lo dice quien llama (`T.stats.pesoUnoMas`).
+    if (rango === null) return null;
+    // UNA VENTANA VACÍA NO SE LLEVA EL GRÁFICO (4/10). Elegir "1 mes" sin dos
+    // anotaciones en ese mes lo hacía desaparecer entero, con los botones: no
+    // había cómo volver sin recargar. Quedan los botones y una línea que dice
+    // por qué no hay dibujo, con el mismo alto para que no salten de lugar.
+    return (
+      <div className="grafico-peso">
+        <div className="grafico-peso-lienzo" style={{ display: 'flex', alignItems: 'center' }}>
+          <p className="nota-privada" style={{ margin: 0 }}>
+            {T.stats.pesoSinVentana}
+          </p>
+        </div>
+        {ventanas}
+      </div>
+    );
+  }
   const { serie, puntos, linea, area, hoy, cambio, dias } = trazo;
   const ultimo = puntos[puntos.length - 1];
 
@@ -176,22 +214,7 @@ export default function GraficoPeso({
         </div>
       )}
 
-      {/* La ventana. Con todo el historial, tres meses de una bajada de dos
-          kilos se ven planos: la escala la manda el punto más lejano. */}
-      <div className="grafico-peso-rangos">
-        {RANGOS.map((r) => (
-          <button
-            key={String(r.dias)}
-            className={r.dias === rango ? 'activo' : ''}
-            onClick={() => {
-              setRango(r.dias);
-              setTocado(null);
-            }}
-          >
-            {r.etiqueta()}
-          </button>
-        ))}
-      </div>
+      {ventanas}
     </div>
   );
 }
