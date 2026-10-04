@@ -1,4 +1,5 @@
 import { DESDE_RANGO, numeroDeRango, planetaDeDia } from './reglas.ts';
+import { restarDias } from './fechas.ts';
 
 // Escalera de rangos. El nombre NUNCA aparece en la interfaz corriente:
 // solo en la subida de rango y en Estadísticas ("Rangos").
@@ -60,6 +61,22 @@ export function progresoEnRango(racha: number): number {
  * base en la migración que esté. `test:db` falla si una pantalla vuelve a leer
  * la columna (sección 176).
  */
+/**
+ * SI AYER SE PERDIÓ LA RACHA: el aviso sale del ESTADO, no de un reporte (4/10).
+ *
+ * La base dice "hubo pérdida" solo en la llamada que la aplica. Las pantallas
+ * mostraban el aviso con ese reporte, así que duraba hasta la primera recarga;
+ * y si la pérdida la aplicaba otro —la revisión de antes de anotar el día, el
+ * disparador de la migración 59, el barrido nocturno de la 55— no aparecía
+ * nunca: la racha amanecía 10 más abajo sin una palabra.
+ *
+ * `perdida_fecha` es el día que se faltó, y queda guardada. El día siguiente a
+ * ese es el día en que se ve.
+ */
+export function perdidaDeAyer(perdidaFecha: string | null | undefined, hoy: string): boolean {
+  return !!perdidaFecha && perdidaFecha === restarDias(hoy, 1);
+}
+
 export function cuerpoDe(racha: number | null | undefined): { rango: number; planeta: string | null } {
   const r = racha ?? 0;
   return { rango: numeroDeRango(r), planeta: planetaDeDia(r) };

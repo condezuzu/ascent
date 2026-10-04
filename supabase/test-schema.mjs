@@ -14264,6 +14264,59 @@ console.log('\n190. Nativa: el resumen de ayer, el cartel sin señal y los pasos
   ], [true, true, false]);
 }
 
+console.log('\n191. El aviso de pérdida sale de lo que quedó guardado, no de un reporte');
+{
+  // La base dice "hubo pérdida" solo en la llamada que la aplica. El aviso duraba
+  // hasta la primera recarga, y si la pérdida la aplicaba otro —la revisión de
+  // antes de anotar el día, el disparador de la 59, el barrido nocturno de la
+  // 55— no aparecía nunca. Se prueba contra la base: qué deja guardado cada
+  // camino, y qué contesta la función con eso.
+  const R191 = await import('../nucleo/rangos.ts');
+  const hoy191 = (await db.query(`select mi_hoy()::text as h`)).rows[0].h;
+  const ayer191 = (await db.query(`select (mi_hoy() - 1)::text as h`)).rows[0].h;
+  const fechaDePerdida = async (u) => (await db.query(`select perdida_fecha::text as f from profiles where id = $1`, [u])).rows[0].f;
+  await cuotaDeVidas(0);
+
+  // 1. Al abrir Inicio: la revisión la aplica y lo dice... una sola vez.
+  const abre = await nuevoUsuario();
+  await rachaDe(abre, 20, 2);
+  await comoUsuario(abre);
+  const primera = (await db.query(`select verificar_perdida() as v`)).rows[0].v;
+  const segunda = (await db.query(`select verificar_perdida() as v`)).rows[0].v;
+  chequear('la base lo reporta en la primera llamada y en la segunda ya no', [primera.perdida, segunda.perdida], [true, false]);
+  chequear('pero lo guardado sigue diciendo que ayer se perdió', R191.perdidaDeAyer(await fechaDePerdida(abre), hoy191), true);
+
+  // 2. El día entra sin pasar por Inicio (ubicación con la app cerrada): la
+  //    pérdida la aplica el disparador y nadie recibe ningún reporte.
+  const cerrada = await nuevoUsuario();
+  await rachaDe(cerrada, 20, 2);
+  await comoUsuario(cerrada);
+  await db.query(`select registrar_dia('ubicacion')`);
+  chequear('con la pérdida aplicada por el disparador, el aviso igual sale', R191.perdidaDeAyer(await fechaDePerdida(cerrada), hoy191), true);
+
+  // 3. Quien no perdió nada, o perdió hace días.
+  const sinPerder = await nuevoUsuario();
+  await rachaDe(sinPerder, 5, 0);
+  chequear('sin pérdida no hay aviso', R191.perdidaDeAyer(await fechaDePerdida(sinPerder), hoy191), false);
+  chequear('y al día siguiente ya no se muestra', [R191.perdidaDeAyer(ayer191, hoy191), R191.perdidaDeAyer(ayer191, (await db.query(`select (mi_hoy() + 1)::text as h`)).rows[0].h)], [true, false]);
+  chequear('sin fecha, nada', [R191.perdidaDeAyer(null, hoy191), R191.perdidaDeAyer(undefined, hoy191)], [false, false]);
+  await cuotaDeVidas(2);
+
+  // CABLEADO: las dos pantallas muestran el aviso por lo guardado; el fondo
+  // apagado dura hasta que se registra el día.
+  const usaLoGuardado = (ruta) => {
+    const t = sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'));
+    return [
+      /const perdioAyer = perdida \|\| perdidaDeAyer\(perfil\.perdida_fecha, hoy\);/.test(t),
+      /apagado=\{perdioAyer && !registradoHoy\}/.test(t),
+      /\{perdioAyer && [(<]/.test(t),
+      /\{perdida && [(<]/.test(t),
+    ];
+  };
+  chequear('Inicio de la nativa', usaLoGuardado('movil/src/Inicio.tsx'), [true, true, true, false]);
+  chequear('Inicio de la web', usaLoGuardado('src/app/page.tsx'), [true, true, true, false]);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { hoyISO, restarDias, deISO } from '@nucleo/fechas';
 import { transcurrido, duracionLinda } from '@nucleo/sesiones';
-import { numeroDeRango, planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango, subidaDeRango } from '@nucleo/rangos';
+import { numeroDeRango, perdidaDeAyer, planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango, subidaDeRango } from '@nucleo/rangos';
 import { fraseDelDia } from '@nucleo/frases';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
@@ -448,6 +448,10 @@ export default function Principal() {
   const hoy = hoyISO();
   const logHoy = logs.find((l) => l.fecha === hoy) ?? null;
   const registradoHoy = marcadoOptimista === hoy || !!logHoy;
+  // La pérdida se ve por lo que quedó guardado, no solo por el reporte de esta
+  // carga: ver `perdidaDeAyer`. El aviso dura el día; el fondo apagado, hasta
+  // que se registra.
+  const perdioAyer = perdida || perdidaDeAyer(perfil.perdida_fecha, hoy);
   const racha = perfil.racha_actual;
   const sinNada = racha === 0 && logs.length === 0;
   // Mientras se entrena, Inicio se despeja: ver el bloque de abajo.
@@ -552,7 +556,7 @@ export default function Principal() {
         rango={numeroDeRango(racha)}
         propio
         planeta={planeta}
-        apagado={perdida}
+        apagado={perdioAyer && !registradoHoy}
         vacio={sinNada}
         reposo={esDescanso}
         fantasma={fantasma}
@@ -609,7 +613,7 @@ export default function Principal() {
         )}
 
         {avisoTiempo && <p className="aviso-tiempo">{T.inicio.ultimoTramo(racha + 1)}</p>}
-        {perdida && (
+        {perdioAyer && (
           <p className="aviso-tiempo">{T.inicio.perdida}</p>
         )}
         {esDescanso && <p className="aviso-tiempo">{T.inicio.hoyDescansa}</p>}

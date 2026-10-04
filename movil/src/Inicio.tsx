@@ -6,7 +6,7 @@ import { quienSoy } from '@compartido/quienSoy';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
-import { numeroDeRango, planetaDeDia, rangoDeRacha, subidaDeRango } from '@nucleo/rangos';
+import { numeroDeRango, perdidaDeAyer, planetaDeDia, rangoDeRacha, subidaDeRango } from '@nucleo/rangos';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { laCuentaYaNoExiste, mensajeDeAuth } from '@nucleo/errores';
 import { pedirInicio } from '@compartido/inicio';
@@ -477,6 +477,10 @@ export default function Inicio({
 
   const hoy = hoyISO();
   const cierre = cierreVigente(cierreGuardado, hoy);
+  // La pérdida se ve por lo que quedó guardado, no solo por el reporte de esta
+  // carga: ver `perdidaDeAyer`. El aviso dura el día; el fondo apagado, hasta
+  // que se registra.
+  const perdioAyer = perdida || perdidaDeAyer(perfil.perdida_fecha, hoy);
   // Igual que la web: un día marcado como descanso a mano TAMBIÉN está (bug del
   // 15/9). Contarlo como vacío ofrecía "Registrar día", la base lo rechazaba
   // por repetido y la hoja lo tomaba como hecho: la racha no subía y nadie
@@ -525,7 +529,7 @@ export default function Inicio({
       <FondoEspacial
         rango={numeroDeRango(racha)}
         planeta={planeta}
-        apagado={perdida}
+        apagado={perdioAyer && !registradoHoy}
         vacio={sinNada}
         reposo={esDescanso}
         fantasma={fantasma}
@@ -695,7 +699,7 @@ export default function Inicio({
           la mañana, y esta redactado hacia adelante: "ultimo tramo para el
           48", nunca "vas a perder la racha". */}
       {avisoTiempo && <Text style={estilos.aviso}>{T.inicio.ultimoTramo(perfil.racha_actual + 1)}</Text>}
-      {perdida && <Text style={estilos.aviso}>{T.inicio.perdida}</Text>}
+      {perdioAyer && <Text style={estilos.aviso}>{T.inicio.perdida}</Text>}
       {esDescanso && <Text style={estilos.aviso}>{T.inicio.hoyDescansa}</Text>}
       {/* EL DIA QUE LA GUARDA DEJO ESPERANDO. Se dice aca y no solo en la
           hoja: podes cerrar la app y volver, y lo que no podes es quedarte
