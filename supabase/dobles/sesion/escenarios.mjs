@@ -3,6 +3,7 @@
 //   node --import ./ganchos.mjs escenarios.mjs bloques  <sola|vigilante|otroAparato|sinPreguntar>
 //   node --import ./ganchos.mjs escenarios.mjs refresco <despues|antes|siempre> <n> <telefono|web> <solo|vigilante>
 //   node --import ./ganchos.mjs escenarios.mjs releer   <n>
+//   node --import ./ganchos.mjs escenarios.mjs eleccion <peso|ejercicio|sugerencia|sugerencia-sola>
 //
 // Imprime UNA línea de JSON con lo que se vio. Quien decide si está bien es la
 // sección 179 de `test-schema.mjs`. Es un sustituto del teléfono, no el teléfono:
@@ -272,8 +273,62 @@ async function releer(nTxt) {
   };
 }
 
+/**
+ * ELEGIR Y TOCAR EL `+` ENSEGUIDA, CON LA RED COLGADA. La app se abrió de cero
+ * en el subsuelo: la versión del esquema no se sabe y cada pedido que la
+ * pregunta tarda y falla. Va una serie de press hecha, y sin esperar:
+ *  - `peso`: se escribe 60 y se toca el `+`.
+ *  - `ejercicio`: se elige remo y se toca el `+`.
+ *  - `sugerencia`: se toca "Terminar serie" y el `+`; la rutina del día
+ *    (press, remo) propone remo, y llega con la serie ya contada.
+ *  - `sugerencia-sola`: "Terminar serie" y nada más; se mira enseguida, antes
+ *    de que la red suelte: la sugerencia no tiene por qué esperarla.
+ */
+async function eleccion(cual) {
+  servidor.ida.version_del_esquema = 300;
+  servidor.falla.version_del_esquema = true;
+  servidor.ultimoEjercicio = 'press_banca';
+  if (cual.startsWith('sugerencia')) {
+    const { hoyISO, restarDias } = await import('@nucleo/fechas');
+    servidor.historial = [
+      { bloques: [{ ejercicio: 'press_banca' }, { ejercicio: 'remo' }], logs: { fecha: restarDias(hoyISO(), 7) } },
+    ];
+  }
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await dormir(700);
+  await asentar();
+  await inicio.r.serieHecha();
+  await asentar();
+
+  if (cual === 'peso') void inicio.r.elegirPeso(60);
+  else if (cual === 'ejercicio') void inicio.r.elegirEjercicio('remo');
+  else void inicio.r.bloqueSiguiente();
+  if (cual === 'sugerencia-sola') {
+    await dormir(120);
+  } else {
+    void inicio.r.serieHecha();
+    // Lo que esperaba a la red tarda en soltar: se le da tiempo antes de mirar.
+    await dormir(900);
+    await asentar();
+  }
+
+  const e = inicio.r.estado;
+  const conPesos = (b) => [
+    ...b.cerrados.map((x) => [x.ejercicio, x.series, x.pesos ?? null]),
+    [b.ejercicio, b.hechas, b.pesos ?? null],
+  ];
+  return {
+    total: e.series,
+    bloques: conPesos(e.bloques),
+    sugerido: e.sugerido,
+    base: (servidor.sesiones[0].bloques ?? []).map((x) => [x.ejercicio, x.series, x.pesos ?? null]),
+  };
+}
+
 const [escenario, ...argumentos] = process.argv.slice(2);
-const resultado = await { bloques, refresco, releer }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

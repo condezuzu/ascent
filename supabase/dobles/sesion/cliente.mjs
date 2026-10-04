@@ -6,6 +6,8 @@ export const servidor = {
   sesiones: [], // { id, inicio, series, bloques, estado, ultima_actividad, origen, cerro_sola }
   n: 0,
   ida: {}, // ms por rpc
+  falla: {}, // rpc -> true: después de la espera contesta un error de red
+  historial: [], // lo que devuelve la lista de sesiones terminadas (la rutina)
   registro: [], // lo que LLEGÓ a la base, en orden
   ultimoEjercicio: null,
   // rpc -> función que corre con la respuesta ya calculada y todavía en viaje
@@ -78,6 +80,7 @@ function procesar(rpc, a) {
 
 async function llamar(rpc, a) {
   await espera(servidor.ida[rpc] ?? 5);
+  if (servidor.falla[rpc]) return { data: null, error: { message: 'Network request failed' } };
   const data = copia(procesar(rpc, a));
   servidor.registro.push({ rpc, args: copia(a) });
   await espera(5);
@@ -102,7 +105,7 @@ function consulta(tabla) {
   async function ejecutar(uno) {
     await espera(5);
     const s = tabla === 'sesiones' && uno ? porId(filtro.id) : null;
-    const data = uno ? (s ? { bloques: copia(s.bloques) } : null) : [];
+    const data = uno ? (s ? { bloques: copia(s.bloques) } : null) : tabla === 'sesiones' ? copia(servidor.historial) : [];
     await espera(5);
     return { data, error: null };
   }

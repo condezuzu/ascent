@@ -13307,6 +13307,35 @@ console.log('\n178. Bloquear avisa, y la marca se anota en el ejercicio que se t
   ), { cadaAperturaEsNueva: false, seAbrePorUnSoloLugar: false });
 }
 
+// LOS ESCENARIOS DE LA SESIÓN: cada uno corre `useSesion` de verdad, en su propio
+// proceso (ver `dobles/sesion/`). Los usan la 179 y las que siguen.
+const { execFile } = await import('node:child_process');
+const { pathToFileURL } = await import('node:url');
+const { readFileSync: leer179 } = await import('node:fs');
+const aca179 = dirname(fileURLToPath(import.meta.url));
+const escenarioDeSesion = (...argumentos) =>
+  new Promise((listo) => {
+    execFile(
+      process.execPath,
+      [
+        '--disable-warning=MODULE_TYPELESS_PACKAGE_JSON',
+        '--import',
+        pathToFileURL(join(aca179, 'dobles/sesion/ganchos.mjs')).href,
+        join(aca179, 'dobles/sesion/escenarios.mjs'),
+        ...argumentos,
+      ],
+      { timeout: 120000 },
+      (error, salida, errores) => {
+        if (error) return listo({ fallo: String(errores || error.message).slice(-300) });
+        try {
+          listo(JSON.parse(salida.trim().split('\n').pop()));
+        } catch {
+          listo({ fallo: salida.slice(-300) });
+        }
+      }
+    );
+  });
+
 console.log('\n179. La sesión con el hook de verdad: los bloques de otra sesión y el refresco que pisa un toque');
 {
   // SE CORRE `useSesion`, NO UNA CUENTA SACADA DE ÉL (4/10). Los dos bugs de acá
@@ -13315,33 +13344,6 @@ console.log('\n179. La sesión con el hook de verdad: los bloques de otra sesió
   // escenarios viven en `dobles/sesion/` y van cada uno en su proceso, porque el
   // hook guarda cosas a nivel de módulo. Es un sustituto del teléfono: prueba el
   // orden de las operaciones, no lo que se dibuja.
-  const { execFile } = await import('node:child_process');
-  const { pathToFileURL } = await import('node:url');
-  const { readFileSync: leer179 } = await import('node:fs');
-  const aca179 = dirname(fileURLToPath(import.meta.url));
-  const escenario = (...argumentos) =>
-    new Promise((listo) => {
-      execFile(
-        process.execPath,
-        [
-          '--disable-warning=MODULE_TYPELESS_PACKAGE_JSON',
-          '--import',
-          pathToFileURL(join(aca179, 'dobles/sesion/ganchos.mjs')).href,
-          join(aca179, 'dobles/sesion/escenarios.mjs'),
-          ...argumentos,
-        ],
-        { timeout: 120000 },
-        (error, salida, errores) => {
-          if (error) return listo({ fallo: String(errores || error.message).slice(-300) });
-          try {
-            listo(JSON.parse(salida.trim().split('\n').pop()));
-          } catch {
-            listo({ fallo: salida.slice(-300) });
-          }
-        }
-      );
-    });
-
   const VARIANTES = ['sola', 'vigilante', 'otroAparato', 'sinPreguntar'];
   // [modo, n, aparato, instancias]. Ver `refresco` en `escenarios.mjs`.
   const TOQUES = [
@@ -13363,9 +13365,9 @@ console.log('\n179. La sesión con el hook de verdad: los bloques de otra sesió
   // Cuántas operaciones de almacenamiento después del `+` se bloquea el teléfono.
   const BLOQUEOS = ['0', '3'];
   const [deBloques, deToques, deBloqueos] = await Promise.all([
-    Promise.all(VARIANTES.map((v) => escenario('bloques', v))),
-    Promise.all(TOQUES.map((t) => escenario('refresco', ...t))),
-    Promise.all(BLOQUEOS.map((n) => escenario('releer', n))),
+    Promise.all(VARIANTES.map((v) => escenarioDeSesion('bloques', v))),
+    Promise.all(TOQUES.map((t) => escenarioDeSesion('refresco', ...t))),
+    Promise.all(BLOQUEOS.map((n) => escenarioDeSesion('releer', n))),
   ]);
 
   // ---- LOS BLOQUES DE LA SESIÓN ANTERIOR SE COLABAN EN LA NUEVA ----
@@ -13471,6 +13473,69 @@ console.log('\n179. La sesión con el hook de verdad: los bloques de otra sesió
     'el hook de antes no pasa',
     cableado179('await subir(nc.series, nc.bloques); await actualizarSesionCache({ series: nc.series }, yo);').colaSueltaAntesDeLaCache,
     true
+  );
+}
+
+console.log('\n180. Elegir y tocar el + enseguida: el bloque cambia antes de cualquier espera');
+{
+  // LA RED COLGADA, NO CAÍDA (4/10). La app se abrió de cero en el subsuelo y la
+  // versión del esquema no se sabe: cada pedido que la pregunta tarda y falla.
+  // Las siete funciones que cambian el bloque empezaban con `await marcar()`,
+  // que hace ese pedido, y el `+` de ese rato anotaba con lo de antes.
+  const CASOS180 = ['peso', 'ejercicio', 'sugerencia', 'sugerencia-sola'];
+  const [conPeso, conEjercicio, conSugerencia, sugerenciaSola] = await Promise.all(
+    CASOS180.map((c) => escenarioDeSesion('eleccion', c))
+  );
+  chequear('se escribe 60 y se toca el +: la serie sale con 60, acá y en la base', conPeso.fallo ?? [conPeso.bloques, conPeso.base], [
+    [['press_banca', 2, [null, 60]]],
+    [['press_banca', 2, [null, 60]]],
+  ]);
+  // La base también: `elegirEjercicio` subía la lista que había guardado ANTES
+  // de esperar, detrás de la del `+`, y le sacaba esa serie.
+  chequear('se elige remo y se toca el +: la serie es de remo, acá y en la base', conEjercicio.fallo ?? [conEjercicio.bloques, conEjercicio.base], [
+    [['press_banca', 1, null], ['remo', 1, null]],
+    [['press_banca', 1, null], ['remo', 1, null]],
+  ]);
+  chequear(
+    'una sugerencia que llega con la serie ya contada no cierra un bloque sin ejercicio',
+    conSugerencia.fallo ?? [conSugerencia.bloques, conSugerencia.sugerido],
+    [[['press_banca', 1, null], [null, 1, null]], false]
+  );
+  chequear('y la sugerencia no espera a la red para aparecer', sugerenciaSola.fallo ?? [sugerenciaSola.bloques, sugerenciaSola.sugerido], [
+    [['press_banca', 1, null], ['remo', 0, null]],
+    true,
+  ]);
+  chequear('el total cuenta todas', [conPeso.total, conEjercicio.total, conSugerencia.total], [2, 2, 2]);
+
+  // CABLEADO: los escenarios corren tres de las siete. Las otras cuatro tienen
+  // la misma forma y se miran por el texto: nada que salga a la red antes de
+  // cambiar el bloque, y nada que suba una lista guardada antes de esperar.
+  const hook180 = sinComentarios(leer179(join(aca179, '../compartido/useSesion.ts'), 'utf8'));
+  const cuerpo180 = (texto, nombre) => {
+    const i = texto.indexOf(`async function ${nombre}(`);
+    return i < 0 ? '' : texto.slice(i, texto.indexOf('\n  }\n', i));
+  };
+  const LAS_SIETE = [
+    'elegirEjercicio',
+    'elegirCarga',
+    'corregirCargaDeBloque',
+    'corregirEjercicioDeBloque',
+    'elegirPeso',
+    'corregirPesoDeSerie',
+    'mudarSeries',
+  ];
+  const esperanAntes = (texto) =>
+    LAS_SIETE.filter((f) => {
+      const c = cuerpo180(texto, f);
+      const cambia = c.indexOf('bloquesRef.current = ');
+      return cambia < 0 || /await marcar\(\)|await versionDelEsquema|await supabase\./.test(c.slice(0, cambia));
+    });
+  chequear('ninguna de las siete sale a la red antes de cambiar el bloque', esperanAntes(hook180), []);
+  chequear('y ninguna sube la lista que guardó antes de esperar', /await subir\(seriesRef\.current, b\);/.test(hook180), false);
+  chequear(
+    'el detector ve la forma de antes',
+    esperanAntes('async function elegirPeso(kg) {\n    await marcar();\n    const b = x;\n    bloquesRef.current = b;\n  }\n'),
+    LAS_SIETE
   );
 }
 

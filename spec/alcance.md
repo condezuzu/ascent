@@ -76,3 +76,29 @@ la web mientras tanto. Si va antes, suma unas tres tandas a la llegada.
 - **Series por músculo → los ejercicios de esa semana** (15/9/2026). Tocar una
   fila de la pantalla de series y ver qué ejercicios de ese músculo se hicieron
   en la semana leída, con sus series. Es una pantalla nueva, no un ajuste.
+
+- **Un solo dueño del estado de la sesión de entrenamiento** (4/10/2026).
+  PENDIENTE PARA DESPUÉS DEL LANZAMIENTO, por decisión del humano: "es el
+  código más delicado y no quiero tocarlo tan cerca del lanzamiento".
+
+  *El problema.* El conteo y los bloques viven en cuatro lugares que se copian
+  entre sí: el estado de React de cada instancia de `useSesion` (la pantalla y
+  el vigilante del gimnasio), sus refs, la caché del aparato y la cola. Cada bug
+  de la familia "una copia pisó a la otra" se arregló agregando una regla: los
+  refs antes del `await`, la escritura firmada, `reconciliarConteo`, el reloj de
+  toques, `bloquesSonDe`. Andan, pero se sostienen entre sí y cada una nueva
+  hay que pensarla contra todas las anteriores.
+
+  *La propuesta.* Sacar ese estado de React a un módulo de `compartido/` con un
+  solo dueño, al que las instancias se suscriben. Sin copias no hay nada que
+  reconciliar. Es un rediseño de `useSesion` entero, no un arreglo.
+
+  *Lo que queda abierto hasta entonces*, de esa misma familia (está en
+  `spec/trampas.md`, "Un refresco decide con una foto, y el toque cae en el
+  medio"): la respuesta vieja de "no hay sesión" que llega después de Iniciar,
+  la de "está corriendo" que llega después de Terminar, y dos `+` con
+  milisegundos de diferencia.
+
+  *Antes de empezar:* la red son los escenarios de `supabase/dobles/sesion/`
+  (sección 179 de `test:db`), que corren el hook de verdad. Primero se escriben
+  ahí los tres casos de arriba, en rojo, y recién después se toca el hook.

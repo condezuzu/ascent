@@ -924,7 +924,6 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // sugerido:false por defecto; si hay un siguiente en la cadena,
     // `proponerEjercicioSugerido` lo vuelve a poner en true al toque.
     await actualizarSesionCache({ bloques: b, sugerido: false }, yo, () => subir(seriesRef.current, b));
-    await marcar();
     // LA CADENA: proponer el siguiente de la rutina como sugerencia (fantasma).
     // Los ya hechos salen de los bloques cerrados; si queda uno por proponer, va
     // con su peso. Si no hay rutina o ya se hicieron todos, el bloque queda en
@@ -933,14 +932,26 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     const siguiente = siguienteEnRutina(rutinaRef.current, hechos);
     if (siguiente) await proponerEjercicioSugerido(siguiente);
     else setSugerido(false);
+    // `marcar` al final (ver `elegirEjercicio`): con la red colgada, la
+    // sugerencia llegaba varios segundos tarde, encima de un `+` ya contado.
+    await marcar();
   }
 
-  /** Cambiar de ejercicio cierra el bloque anterior (ver `nucleo/bloques.ts`). */
+  /**
+   * Cambiar de ejercicio cierra el bloque anterior (ver `nucleo/bloques.ts`).
+   *
+   * EL CAMBIO, ANTES DE CUALQUIER ESPERA (4/10). Esta y las otras seis que
+   * cambian el bloque —el peso, el modo y las correcciones— empezaban con
+   * `await marcar()`, que puede salir a la red a preguntar la versión del
+   * esquema. Con la app recién abierta en el subsuelo y la red colgada, el
+   * cambio tardaba segundos en aplicarse, y el `+` de ese rato anotaba la serie
+   * con el ejercicio o el peso de antes. Ahora primero se cambia el bloque y
+   * `marcar` va al final, como en `serieHecha`.
+   */
   async function elegirEjercicio(id: string | null) {
-    await marcar();
     const previo = bloquesRef.current;
     const b = cambiarEjercicio(previo, id);
-    if (b === previo) return;
+    if (b === previo) return marcar();
     bloquesRef.current = b;
     setBloques(b);
     // Lo eligió la persona: ya no es una sugerencia. Y LA CADENA SE RE-ENGANCHA a
@@ -948,8 +959,11 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     setSugerido(false);
     if (id) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
     await actualizarSesionCache({ bloques: b, sugerido: false }, yo);
-    await subir(seriesRef.current, b);
+    // Lo de AHORA y no `b`: si un `+` cayó mientras se guardaba la caché, `b` ya
+    // es viejo, y subirlo detrás del `+` le sacaba esa serie a la lista de la base.
+    await subir(seriesRef.current, bloquesRef.current);
     if (id) proponerArranque(id);
+    await marcar();
   }
 
   // EL HISTORIAL RECIENTE PARA LA RUTINA: sesiones terminadas de las últimas 8
@@ -981,7 +995,12 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // PONER UN EJERCICIO COMO SUGERENCIA (fantasma): lo deja en el bloque actual con
   // su peso, marcado como sugerido hasta que se cuente una serie.
   async function proponerEjercicioSugerido(id: string) {
-    const b = cambiarEjercicio(bloquesRef.current, id);
+    // SOLO SOBRE EL BLOQUE EN BLANCO, como `sembrar` y `proponerPeso`: si ya se
+    // contó una serie o se eligió algo, la sugerencia llegó tarde. Ponerla igual
+    // cerraba un bloque sin ejercicio con esa serie adentro, que no se guarda.
+    const actual = bloquesRef.current;
+    if (actual.ejercicio || actual.hechas > 0) return;
+    const b = cambiarEjercicio(actual, id);
     bloquesRef.current = b;
     setBloques(b);
     setSugerido(true);
@@ -1125,13 +1144,12 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * la próxima vez arranca así.
    */
   async function elegirCarga(c: Carga) {
-    await marcar();
     // La copia del teléfono, antes de mirar el estado: es una lectura local, y
     // de acá hasta escribir el bloque no hay otro `await`.
     const sabido = await leerRecordados();
     const previo = bloquesRef.current;
     const conModo = cambiarCarga(previo, c);
-    if (conModo === previo || !conModo.ejercicio) return;
+    if (conModo === previo || !conModo.ejercicio) return marcar();
     const id = conModo.ejercicio;
     // EL PESO SIGUE AL MODO (2/10): con el bloque vacío se propone el último que
     // se usó en el modo nuevo, y si no hay ninguno la propuesta anterior se va.
@@ -1143,24 +1161,25 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     await actualizarSesionCache({ bloques: b }, yo);
     await recordar(id, c);
     // Si ya hay series, lo guardado cambia de significado: se sube.
-    if (b.hechas > 0) await subir(seriesRef.current, b);
+    if (bloquesRef.current.hechas > 0) await subir(seriesRef.current, bloquesRef.current);
     // Y con el historial de la base, si en esta sesión todavía no se había
     // traído: recién instalada, la copia del teléfono está vacía.
     else await proponerElPesoDe(id, c, await recordadosAlDia(supabase));
+    await marcar();
   }
 
   /** Lo mismo en un bloque ya cerrado, desde la lista. */
   async function corregirCargaDeBloque(indice: number, c: Carga) {
-    await marcar();
     const previo = bloquesRef.current;
     const b = corregirCarga(previo, indice, c);
-    if (b === previo) return;
+    if (b === previo) return marcar();
     bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
     const ejercicio = indice === -1 ? b.ejercicio : b.cerrados[indice]?.ejercicio;
     if (ejercicio) await recordar(ejercicio, c);
-    await subir(seriesRef.current, b);
+    await subir(seriesRef.current, bloquesRef.current);
+    await marcar();
   }
 
   /**
@@ -1169,14 +1188,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * `corregirEjercicio` en `nucleo/bloques.ts`). `indice` -1 es el en curso.
    */
   async function corregirEjercicioDeBloque(indice: number, id: string, cargaQueSeVeia?: Carga) {
-    await marcar();
     const previo = bloquesRef.current;
     const b = corregirEjercicio(previo, indice, id, cargaQueSeVeia);
-    if (b === previo) return;
+    if (b === previo) return marcar();
     bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
-    await subir(seriesRef.current, b);
+    await subir(seriesRef.current, bloquesRef.current);
+    await marcar();
   }
 
   async function recordar(ejercicio: string, c: Carga) {
@@ -1190,23 +1209,23 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * cambiarlo sin haber sumado ninguna no es un hecho todavía.
    */
   async function elegirPeso(kg: number | null) {
-    await marcar();
     const b = cambiarPeso(bloquesRef.current, kg);
     bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
+    await marcar();
   }
 
   /** El peso de una serie ya hecha, desde la lista. `indice` -1 es el bloque en curso. */
   async function corregirPesoDeSerie(indice: number, serie: number, kg: number | null) {
-    await marcar();
     const previo = bloquesRef.current;
     const b = corregirPeso(previo, indice, serie, kg);
-    if (b === previo) return;
+    if (b === previo) return marcar();
     bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
-    await subir(seriesRef.current, b);
+    await subir(seriesRef.current, bloquesRef.current);
+    await marcar();
   }
 
   /**
@@ -1215,10 +1234,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * fue lo pregunta la interfaz; acá solo se aplica.
    */
   async function mudarSeries(id: string | null, cargaQueSeVeia?: Carga) {
-    await marcar();
     const previo = bloquesRef.current;
     const b = mudarEjercicio(previo, id, cargaQueSeVeia);
-    if (b === previo) return;
+    if (b === previo) return marcar();
     bloquesRef.current = b;
     setBloques(b);
     // Corregir el ejercicio también re-engancha la cadena, igual que
@@ -1226,7 +1244,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // ejercicio equivocado. (29/9)
     if (id) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
     await actualizarSesionCache({ bloques: b }, yo);
-    await subir(seriesRef.current, b);
+    await subir(seriesRef.current, bloquesRef.current);
+    await marcar();
   }
 
   /**
