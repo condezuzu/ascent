@@ -10,30 +10,49 @@ import { olvidarPerfilVivo } from '@compartido/perfilVivo';
 // No se guarda nada sensible: ni peso, ni fotos, ni datos de amigos.
 const CLAVE = 'ascent:perfil';
 
+/**
+ * LO QUE SE GUARDA, Y NADA MÁS. La copia decía ser un `Perfil` entero y
+ * guardaba diez campos: leer uno de los que no están compilaba y daba
+ * `undefined` sin un solo error. Así, en la web, quien usa libras veía y cargaba
+ * los pesos en kilos mientras Inicio se dibujaba con la copia (4/10): la unidad
+ * no estaba en la lista.
+ *
+ * Ahora la lista es una, de ella sale el tipo, y leer un campo que no está no
+ * compila. `duracion_descanso` la usa la franja para saber con cuánto arranca
+ * el descanso; `unidad_peso`, todo lo que muestra o recibe un peso;
+ * `visibilidad_default`, la hoja de la foto, que arranca donde dice Ajustes.
+ *
+ * Del gimnasio se guarda SI ESTÁ MARCADO (`tieneGimnasio`) y nunca dónde: las
+ * coordenadas no salen de la base. Ranking de la nativa leía `gimnasio_lat` de
+ * esta copia, que nunca lo tuvo, y su aviso no aparecía jamás.
+ */
+const CAMPOS_GUARDADOS = [
+  'id',
+  'username',
+  'avatar_url',
+  'racha_actual',
+  'mejor_racha',
+  'racha_base',
+  'perdida_fecha',
+  'dias_descanso',
+  'duracion_descanso',
+  'dia_pendiente',
+  'unidad_peso',
+  'visibilidad_default',
+] as const satisfies readonly (keyof Perfil)[];
+
+export type PerfilGuardado = Pick<Perfil, (typeof CAMPOS_GUARDADOS)[number]> & { tieneGimnasio: boolean };
+
 export function guardarPerfilCache(p: Perfil) {
-  return plataforma.almacenamiento.guardar(
-    CLAVE,
-    JSON.stringify({
-        id: p.id,
-        username: p.username,
-        avatar_url: p.avatar_url,
-        racha_actual: p.racha_actual,
-        mejor_racha: p.mejor_racha,
-        racha_base: p.racha_base,
-        perdida_fecha: p.perdida_fecha,
-        dias_descanso: p.dias_descanso,
-        // lo usa la franja para saber con cuánto arranca el descanso
-        duracion_descanso: p.duracion_descanso,
-      dia_pendiente: p.dia_pendiente,
-    })
-  );
+  const copia = { ...Object.fromEntries(CAMPOS_GUARDADOS.map((c) => [c, p[c]])), tieneGimnasio: p.gimnasio_lat != null };
+  return plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(copia));
 }
 
-export async function leerPerfilCache(idEsperado?: string): Promise<Perfil | null> {
+export async function leerPerfilCache(idEsperado?: string): Promise<PerfilGuardado | null> {
   const crudo = await plataforma.almacenamiento.leer(CLAVE);
   if (!crudo) return null;
   try {
-    const p = JSON.parse(crudo) as Perfil;
+    const p = JSON.parse(crudo) as PerfilGuardado;
     // si la caché es de otra cuenta, no sirve
     if (idEsperado && p.id !== idEsperado) return null;
     return p;

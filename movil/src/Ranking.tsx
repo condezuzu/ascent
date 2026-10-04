@@ -122,7 +122,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
     let vivo = true;
     leerPerfilCache()
       .then((p) => {
-        if (vivo && p?.gimnasio_lat != null) setGimnasioMarcado(true);
+        if (vivo && p?.tieneGimnasio) setGimnasioMarcado(true);
       })
       .catch(() => {});
     return () => {

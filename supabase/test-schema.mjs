@@ -13734,6 +13734,50 @@ console.log('\n183. Nativa: borrar una marca pregunta, y dice si no se pudo');
   );
 }
 
+console.log('\n184. La copia del perfil: trae la unidad, y dice qué tiene');
+{
+  // WEB, EN LIBRAS Y SIN RED (4/10). Inicio se dibuja primero con la copia del
+  // perfil guardada en el aparato, y sin red se queda con ella. La copia no
+  // traía la unidad: el campo decía "kg", y 135 escrito por alguien que piensa
+  // en libras se guardaba como 135 kilos. Se corre el archivo de verdad, con el
+  // almacenamiento de mentira.
+  const C184 = await import('../compartido/cache.ts');
+  const CP184 = await import('../nucleo/campoPeso.ts');
+  const { memoria: memoria184 } = await import('./dobles/plataforma.mjs');
+  const enLibras = {
+    id: 'cuenta-lb', username: 'ana', avatar_url: null, racha_actual: 12, mejor_racha: 30, rango_actual: 2,
+    racha_base: 0, perdida_fecha: null, dias_descanso: [0], visibilidad_default: 'amigos', unidad_peso: 'lb',
+    sexo: 'F', duracion_descanso: 120, dia_pendiente: null, gimnasio_lat: -34.9, gimnasio_lon: -56.2, gimnasio_radio: 150,
+  };
+  memoria184.delete('ascent:perfil');
+  await C184.guardarPerfilCache(enLibras);
+  const copia184 = await C184.leerPerfilCache();
+  // La unidad con la que Inicio dibuja el campo, igual que `src/app/page.tsx`.
+  const unidadDeInicio = copia184.unidad_peso === 'lb' ? 'lb' : 'kg';
+  const tecleado = CP184.confirmarCampo('135', undefined, unidadDeInicio);
+  chequear('con la copia sola, el campo de peso está en libras', unidadDeInicio, 'lb');
+  chequear('y 135 tecleado se guarda como 61 kilos y pico, no como 135', Math.round(tecleado.kg * 100) / 100, 61.23);
+  chequear('la hoja de la foto también arranca donde dice Ajustes', copia184.visibilidad_default, 'amigos');
+  // Del gimnasio, si está marcado y nada más: las coordenadas no salen de la base.
+  chequear('del gimnasio se guarda que está marcado, nunca dónde', [
+    copia184.tieneGimnasio,
+    Object.keys(copia184).filter((k) => /lat|lon|radio/.test(k)),
+  ], [true, []]);
+  await C184.guardarPerfilCache({ ...enLibras, gimnasio_lat: null, gimnasio_lon: null });
+  chequear('y sin gimnasio, que no', (await C184.leerPerfilCache()).tieneGimnasio, false);
+  chequear('nada de lo demás viaja a la copia', ['sexo', 'rango_actual'].filter((k) => k in copia184), []);
+  chequear('una copia de otra cuenta no sirve', await C184.leerPerfilCache('otra-cuenta'), null);
+  memoria184.delete('ascent:perfil');
+
+  // El que leía un campo que la copia nunca tuvo: el aviso de Ranking en la nativa.
+  const ranking184 = sinComentarios(leer179(join(aca179, '../movil/src/Ranking.tsx'), 'utf8'));
+  chequear('Ranking de la nativa pregunta lo que la copia sí guarda', [/p\?\.tieneGimnasio/.test(ranking184), /p\?\.gimnasio_lat/.test(ranking184)], [true, false]);
+  // Que leer un campo que no está NO COMPILE lo cuida `npm run typecheck`: el
+  // tipo de la copia sale de la lista de lo que se guarda.
+  const cache184 = sinComentarios(leer179(join(aca179, '../compartido/cache.ts'), 'utf8'));
+  chequear('el tipo de la copia sale de la lista de lo guardado', /leerPerfilCache\([^)]*\): Promise<PerfilGuardado \| null>/.test(cache184) && /Pick<Perfil, \(typeof CAMPOS_GUARDADOS\)\[number\]>/.test(cache184), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

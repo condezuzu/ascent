@@ -10,7 +10,7 @@ import { numeroDeRango, planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRa
 import { fraseDelDia } from '@nucleo/frases';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
-import { guardarInicioCache, guardarPerfilCache, leerInicioCache, leerPerfilCache } from '@compartido/cache';
+import { guardarInicioCache, guardarPerfilCache, leerInicioCache, leerPerfilCache, type PerfilGuardado } from '@compartido/cache';
 import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
 import { useMisMedallas } from '@compartido/misMedallas';
 import { FilaDeMedallas } from '@/components/Medallas';
@@ -69,7 +69,10 @@ const ESPERA_CON_CACHE_MS = 1500;
 export default function Principal() {
   const router = useRouter();
   const [supabase] = useState(() => crearCliente());
-  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  // LA COPIA O EL DE VERDAD. Al entrar se dibuja con la copia guardada, que
+  // tiene unos pocos campos; después llega el de la base. El tipo lo dice: lo
+  // que no está en la copia puede faltar, y hay que decidir qué pasa si falta.
+  const [perfil, setPerfil] = useState<(Omit<PerfilGuardado, 'tieneGimnasio'> & Partial<Perfil>) | null>(null);
   // LA RACHA QUE SE ESTÁ VIENDO, para saber si un registro sube de rango: se
   // compara con la que devuelve la base (ver `subidaDeRango`). En una ref
   // porque la leen avisos que llegan de afuera, con la pantalla ya dibujada.
