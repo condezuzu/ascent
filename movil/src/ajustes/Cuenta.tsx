@@ -57,7 +57,8 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
       redirectTo: VUELTA,
     });
     if (err) return setError(T.general.noSePudo);
-    setAviso(T.entrar.revisaCorreo);
+    // Decía "revisa tu correo para confirmar la cuenta", que es el de crearla.
+    setAviso(T.clave.correoEnviado);
   });
 
   const salir = useEnVuelo(async () => {

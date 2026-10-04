@@ -20,6 +20,22 @@
 export type TokensDeSesion = { access_token: string; refresh_token: string };
 
 /** Los tokens de una URL, vengan en el `#` o en la `?`. `null` si no hay. */
+/**
+ * SI EL ENLACE ES EL DE CAMBIAR LA CONTRASEÑA (4/10). Supabase lo marca con
+ * `type=recovery` al lado de los tokens. Se tiraba, y por eso la app nativa
+ * entraba y nunca preguntaba la clave nueva.
+ */
+export function esDeRecuperacion(url: string | null): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    const tipo = new URLSearchParams(u.hash.replace(/^#/, '')).get('type') ?? u.searchParams.get('type');
+    return tipo === 'recovery';
+  } catch {
+    return false;
+  }
+}
+
 export function tokensDeUrl(url: string | null): TokensDeSesion | null {
   if (!url) return null;
   try {

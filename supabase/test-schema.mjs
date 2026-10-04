@@ -14133,10 +14133,11 @@ console.log('\n187. Una sola respuesta a "¿hay sesión?": hay, no hay, o no sé
   chequear('en la nativa, una pantalla solo llama a `alSalir` con un "no hay" o tras cerrar sesión', salidasSinMirar(codigo187, AL_SALIR), []);
   chequear(
     'en la web, una pantalla solo manda al login con un "no hay" o tras cerrar sesión',
-    // Lo único fuera de eso: el botón "volver a entrar" de nueva-clave, y el
-    // `router.push` de BajaDeCuenta, que va después de `signOut` con una línea
-    // en el medio.
-    salidasSinMirar(codigo187, AL_LOGIN).filter((r) => r !== 'src/app/nueva-clave/page.tsx'),
+    // Lo único fuera de eso: el botón "Ir a entrar" de nueva-clave y el de
+    // enlace-vencido —los toca la persona, en páginas a las que se llega SIN
+    // sesión—, y el `router.push` de BajaDeCuenta, que va después de `signOut`
+    // con una línea en el medio.
+    salidasSinMirar(codigo187, AL_LOGIN).filter((r) => !['src/app/nueva-clave/page.tsx', 'src/app/auth/enlace-vencido/page.tsx'].includes(r)),
     []
   );
   // QUE EL DETECTOR SIRVA: las formas de volver al bug, una por una.
@@ -14762,6 +14763,54 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   ], [true, true, true, true]);
 
   const pestanas = de195('movil/src/Pestanas.tsx');
+  // ---- LA CONTRASEÑA NUEVA: la nativa no tenía dónde elegirla, y la web no decía por qué falló el enlace ----
+  const EN195 = await import('../nucleo/enlace.ts');
+  chequear('el enlace de cambiar la contraseña se reconoce, venga como venga', [
+    EN195.esDeRecuperacion('ascent://confirmar#access_token=aaa&refresh_token=bbb&type=recovery'),
+    EN195.esDeRecuperacion('ascent://confirmar?access_token=aaa&refresh_token=bbb&type=recovery'),
+    EN195.esDeRecuperacion('ascent://confirmar#access_token=aaa&refresh_token=bbb&type=signup'),
+    EN195.esDeRecuperacion('ascent://confirmar#access_token=aaa&refresh_token=bbb'),
+    EN195.esDeRecuperacion('esto no es una url'),
+    EN195.esDeRecuperacion(null),
+  ], [true, true, false, false, false, false]);
+  chequear('y los tokens se siguen sacando igual', EN195.tokensDeUrl('ascent://confirmar#access_token=aaa&refresh_token=bbb&type=recovery'), { access_token: 'aaa', refresh_token: 'bbb' });
+  const CL195 = await import('../nucleo/clave.ts');
+  const { T: T195 } = await import('../nucleo/textos.ts');
+  chequear('una clave nueva: corta, distinta de la repetida, o bien', [
+    CL195.claveNuevaInvalida('12345', '12345'),
+    CL195.claveNuevaInvalida('123456', '123457'),
+    CL195.claveNuevaInvalida('123456', '123456'),
+  ], [T195.clave.corta, T195.clave.noCoinciden, null]);
+  // Lo que manda el servidor de Auth cuando es la misma: el código, con este texto.
+  chequear('"es la misma" se reconoce por el código, y lo demás es "no se cambió"', [
+    CL195.porQueNoCambio({ code: 'same_password', message: 'New password should be different from the old password.' }),
+    CL195.porQueNoCambio({ message: 'New password should be different from the old password.' }),
+    CL195.porQueNoCambio({ message: 'Network request failed' }),
+    CL195.porQueNoCambio(null),
+  ], [T195.clave.esLaMisma, T195.clave.esLaMisma, T195.clave.noSePudo, T195.clave.noSePudo]);
+  // CABLEADO: el enlace, la pantalla y la ruta son de cada app.
+  const enlaceNativo = de195('movil/src/enlace.ts');
+  const capa = de195('movil/app/_layout.tsx');
+  const claveNueva = de195('movil/src/ClaveNueva.tsx');
+  chequear('en el teléfono, el enlace de cambiar la contraseña termina eligiéndola', [
+    /if \(error\) return false;\s*return esDeRecuperacion\(url\) \? 'clave-nueva' : 'entro';/.test(enlaceNativo),
+    /if \(entro === 'clave-nueva'\) setClaveNueva\(true\);\s*mirar\(\);/.test(capa),
+    /\{claveNueva && \(sesion === 'con' \|\| sesion === 'sin-nombre'\) && <ClaveNueva alTerminar=\{\(\) => setClaveNueva\(false\)\} \/>\}/.test(capa),
+    /const mal = claveNuevaInvalida\(clave, repetida\);\s*if \(mal\) return setError\(mal\);/.test(claveNueva),
+    /supabase\.auth\.updateUser\(\{ password: clave \}\)/.test(claveNueva),
+    /setAviso\(T\.clave\.correoEnviado\)/.test(de195('movil/src/ajustes/Cuenta.tsx')),
+  ], [true, true, true, true, true, true]);
+  const canje = de195('src/lib/supabase/intercambiar.ts');
+  const publicas = JSON.parse(de195('src/lib/supabase/middleware.ts').match(/const RUTAS_PUBLICAS = (\[[^\]]*\]);/)[1].replace(/'/g, '"'));
+  chequear('en la web, un enlace de recuperar que no se pudo canjear lo dice', [
+    /intercambiarYRedirigir\(request, '\/nueva-clave', '\/auth\/enlace-vencido'\)/.test(de195('src/app/auth/recuperar/route.ts')),
+    (canje.match(/NextResponse\.redirect\(`\$\{origin\}\$\{siFalla\}`\)/g) ?? []).length,
+    /\$\{origin\}\/login/.test(canje),
+    // Se llega sin sesión: la página tiene que estar entre las públicas.
+    publicas.some((r) => '/auth/enlace-vencido'.startsWith(r)),
+    /T\.clave\.enlaceVencido\}/.test(de195('src/app/auth/enlace-vencido/page.tsx')),
+  ], [true, 3, false, true, true]);
+
   chequear('un deslizamiento que corta el sistema vuelve a su pestaña', [
     /onPanResponderTerminate: \(\) => \{\s*const llega = reposo\(ORDEN\.indexOf\(rumbo\.current\), ancho\);/.test(pestanas),
     /onPanResponderTerminate:[\s\S]{0,700}gesto\.current = \{ decidido: false, vecina: null, desde: 0, x0: 0 \};\s*\},\s*onPanResponderTerminationRequest/.test(pestanas),

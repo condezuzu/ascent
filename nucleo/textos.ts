@@ -388,6 +388,8 @@ export const T = {
     enlaceVencido: 'El enlace ya venció o se abrió en otro navegador.',
     enlaceVencidoPie: 'Pide uno nuevo desde la pantalla de entrada.',
     irAEntrar: 'Ir a entrar',
+    ahoraNo: 'Ahora no',
+    correoEnviado: 'Listo. Te llega un correo con el enlace para cambiarla.',
   },
 
   // ---------------------------------------------------------------

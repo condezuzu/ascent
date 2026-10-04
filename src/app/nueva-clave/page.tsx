@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import FondoEspacial from '@/components/FondoEspacial';
 import { T } from '@nucleo/textos';
+import { claveNuevaInvalida, porQueNoCambio } from '@nucleo/clave';
 
 // Se llega acá desde el correo de recuperación (con la sesión ya abierta por
 // el callback) o desde Ajustes para cambiar la contraseña estando adentro.
@@ -25,15 +26,12 @@ export default function NuevaClave() {
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (pass.length < 6) return setError(T.clave.corta);
-    if (pass !== pass2) return setError(T.clave.noCoinciden);
+    const mal = claveNuevaInvalida(pass, pass2);
+    if (mal) return setError(mal);
     setCargando(true);
     const { error } = await supabase.auth.updateUser({ password: pass });
     setCargando(false);
-    if (error) {
-      if (/same/i.test(error.message)) return setError(T.clave.esLaMisma);
-      return setError(T.clave.noSePudo);
-    }
+    if (error) return setError(porQueNoCambio(error));
     setListo(true);
     setTimeout(() => {
       router.push('/');

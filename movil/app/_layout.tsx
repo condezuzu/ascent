@@ -21,6 +21,7 @@ import { olvidarLoLeido } from '../src/plataforma/salud';
 // evalúa. Ver `src/llegadaDeFondo.ts`.
 import '../src/llegadaDeFondo';
 import { sesionDesdeEnlace } from '../src/enlace';
+import ClaveNueva from '../src/ClaveNueva';
 import { ProveedorDeSesion } from '../src/sesionDeLaApp';
 import { buscarAlArrancar, useAplicarLoQueEsteListo } from '../src/actualizaciones';
 import { fijarZonaDelTelefono } from '../src/zonaHoraria';
@@ -63,6 +64,8 @@ const CON_DIAGNOSTICO = process.env.EXPO_PUBLIC_DIAGNOSTICO === '1';
 
 export default function Layout() {
   const [sesion, setSesion] = useState<Sesion>('mirando');
+  // Se entró con el enlace de cambiar la contraseña: falta elegirla.
+  const [claveNueva, setClaveNueva] = useState(false);
 
   // Con marcas para la caja negra: si la app se queda en negro, dice si llegó
   // a preguntar la sesión y si la respuesta volvió.
@@ -154,12 +157,14 @@ export default function Layout() {
   // de las confirmaciones no entran y no hay forma de saber cuál mitad.
   useEffect(() => {
     let vivo = true;
-    Linking.getInitialURL().then(async (url) => {
-      if (vivo && (await sesionDesdeEnlace(url))) mirar();
-    });
-    const sub = Linking.addEventListener('url', async ({ url }) => {
-      if (await sesionDesdeEnlace(url)) mirar();
-    });
+    const entrarCon = async (url: string | null) => {
+      const entro = await sesionDesdeEnlace(url);
+      if (!vivo || !entro) return;
+      if (entro === 'clave-nueva') setClaveNueva(true);
+      mirar();
+    };
+    Linking.getInitialURL().then(entrarCon);
+    const sub = Linking.addEventListener('url', ({ url }) => entrarCon(url));
     return () => {
       vivo = false;
       sub.remove();
@@ -316,6 +321,8 @@ export default function Layout() {
           </ThemeProvider>
         </View>
         )}
+        {/* Sobre lo que haya debajo, que sigue montado: ver `ClaveNueva`. */}
+        {claveNueva && (sesion === 'con' || sesion === 'sin-nombre') && <ClaveNueva alTerminar={() => setClaveNueva(false)} />}
       </View>
       </ProveedorDeSesion>
     </Raiz>

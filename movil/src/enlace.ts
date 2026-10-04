@@ -1,6 +1,6 @@
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
-import { tokensDeUrl } from '@nucleo/enlace';
+import { esDeRecuperacion, tokensDeUrl } from '@nucleo/enlace';
 
 /**
  * EL ENLACE DEL CORREO QUE VUELVE A LA APP.
@@ -36,14 +36,17 @@ import { tokensDeUrl } from '@nucleo/enlace';
 export const VUELTA = Linking.createURL('confirmar');
 
 /**
- * Abre la sesión con lo que vino en el enlace. Devuelve `true` si entró.
+ * Abre la sesión con lo que vino en el enlace. Devuelve `false` si no entró,
+ * y si entró dice con qué enlace: el de cambiar la contraseña pide, además,
+ * elegir la nueva.
  *
  * No decide nada más: quién vuelve a mirar la sesión es la pantalla, igual que
  * después de entrar con contraseña.
  */
-export async function sesionDesdeEnlace(url: string | null): Promise<boolean> {
+export async function sesionDesdeEnlace(url: string | null): Promise<false | 'entro' | 'clave-nueva'> {
   const tokens = tokensDeUrl(url);
   if (!tokens) return false;
   const { error } = await supabase.auth.setSession(tokens);
-  return !error;
+  if (error) return false;
+  return esDeRecuperacion(url) ? 'clave-nueva' : 'entro';
 }
