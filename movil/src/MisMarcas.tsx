@@ -6,6 +6,7 @@ import { esUnidad, type Unidad } from '@nucleo/peso';
 import { fechaDeMarca, origenDeMarca, pesoLindo } from '@nucleo/fuerza';
 import type { Ejercicio, MiFuerza, PR, Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
+import { borrarMarca } from '@compartido/fuerza';
 import { supabase } from './supabase';
 import { irAPestana } from './irAPestana';
 import FondoEspacial from './FondoEspacial';
@@ -40,6 +41,11 @@ export default function MisMarcas() {
   const [historial, setHistorial] = useState<PR[]>([]);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [borrando, setBorrando] = useState<string | null>(null);
+  // BORRAR PREGUNTA (4/10), igual que el peso (`ListaDePesos`): era de un toque,
+  // con los "Borrar" de dos filas vecinas pisándose, y acá una marca se anota
+  // siempre con la fecha de hoy: la original no se recupera.
+  const [porBorrar, setPorBorrar] = useState<string | null>(null);
+  const [noSeBorro, setNoSeBorro] = useState(false);
   const [hoja, setHoja] = useState<{ abierta: boolean; ejercicio?: string } | null>(null);
   // "Otra de press de banca" abría con Sentadilla y la marca se guardaba en otro
   // ejercicio (4/10): la hoja quedaba montada con el estado de antes. Ahora nace
@@ -74,8 +80,11 @@ export default function MisMarcas() {
 
   async function borrar(id: string) {
     setBorrando(id);
-    await supabase.from('prs').delete().eq('id', id);
+    setNoSeBorro(false);
+    const ok = await borrarMarca(supabase, id);
     setBorrando(null);
+    setPorBorrar(null);
+    if (!ok) return setNoSeBorro(true);
     cargar();
   }
 
@@ -145,21 +154,40 @@ export default function MisMarcas() {
             <Text style={estilos.nota}>
               {previas.length === 1 ? T.fuerza.esLaUnica : T.fuerza.cuantasAnotaste(previas.length)}
             </Text>
-            {previas.map((h) => (
-              <View key={h.id} style={estilos.previa}>
-                {/* PRIMERO LO QUE LEVANTÓ —100 kg × 8—, que es lo que la
-                    persona hizo. El máximo calculado va al lado y en chico. */}
-                <Text style={estilos.previaPeso}>
-                  {pesoLindo(h.peso, unidad)}
-                  {h.reps > 1 && <Text style={estilos.apagado}> × {h.reps}</Text>}
-                </Text>
-                <Text style={estilos.apagado}>{origenDeMarca(h)}</Text>
-                <Text style={estilos.apagado}>{fechaDeMarca(h.fecha)}</Text>
-                <Pressable onPress={() => borrar(h.id)} disabled={borrando === h.id} hitSlop={8}>
-                  <Text style={estilos.peligro}>{T.general.borrar}</Text>
-                </Pressable>
-              </View>
-            ))}
+            {previas.map((h) =>
+              porBorrar === h.id ? (
+                <View key={h.id} style={estilos.previa}>
+                  <Text style={[estilos.apagado, estilos.pregunta]}>{T.fuerza.borrarSeguro}</Text>
+                  <Pressable onPress={() => borrar(h.id)} disabled={borrando === h.id} hitSlop={8}>
+                    <Text style={estilos.peligro}>{T.fuerza.borrarSi}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setPorBorrar(null)} hitSlop={8}>
+                    <Text style={estilos.apagado}>{T.general.cancelar}</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View key={h.id} style={estilos.previa}>
+                  {/* PRIMERO LO QUE LEVANTÓ —100 kg × 8—, que es lo que la
+                      persona hizo. El máximo calculado va al lado y en chico. */}
+                  <Text style={estilos.previaPeso}>
+                    {pesoLindo(h.peso, unidad)}
+                    {h.reps > 1 && <Text style={estilos.apagado}> × {h.reps}</Text>}
+                  </Text>
+                  <Text style={estilos.apagado}>{origenDeMarca(h)}</Text>
+                  <Text style={estilos.apagado}>{fechaDeMarca(h.fecha)}</Text>
+                  <Pressable
+                    onPress={() => {
+                      setNoSeBorro(false);
+                      setPorBorrar(h.id);
+                    }}
+                    hitSlop={8}
+                  >
+                    <Text style={estilos.peligro}>{T.general.borrar}</Text>
+                  </Pressable>
+                </View>
+              )
+            )}
+            {noSeBorro && <Text style={estilos.peligro}>{T.fuerza.noSeBorro}</Text>}
             <Pressable
               style={estilos.texto}
               onPress={() => abrirHoja(m.ejercicio)}
@@ -290,6 +318,7 @@ const estilos = StyleSheet.create({
   previaPeso: { flex: 1, color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
   apagado: { color: C.apagado, fontSize: 12 },
   peligro: { color: C.error, fontSize: 12 },
+  pregunta: { flex: 1, lineHeight: 17 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 18, marginTop: 10 },
   texto: { paddingVertical: 10 },
   enlace: { color: C.sub, fontSize: 13 },

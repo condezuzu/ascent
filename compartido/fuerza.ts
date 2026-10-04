@@ -12,6 +12,16 @@ import { esEjercicioEstandar, ubicar, type SexoEstandar } from '@nucleo/estandar
  * función no existe, y es preferible no mostrar la sección a mostrarla rota en
  * medio de Stats.
  */
+/**
+ * BORRAR UNA MARCA, mirando si se borró (4/10). En la nativa el `delete` iba
+ * suelto: sin red no avisaba nada y la fila seguía ahí. `true` solo si la base
+ * dijo que sí.
+ */
+export async function borrarMarca(supabase: Cliente, id: string): Promise<boolean> {
+  const { error } = await supabase.from('prs').delete().eq('id', id);
+  return !error;
+}
+
 export async function cargarFuerza(supabase: Cliente): Promise<{ mia: MiFuerza; ranking: FilaFuerza[] } | null> {
   const [{ data: f }, { data: r }] = await Promise.all([supabase.rpc('mi_fuerza'), supabase.rpc('ranking_fuerza')]);
   if (!f) return null;

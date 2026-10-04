@@ -520,6 +520,11 @@ export const T = {
     esLaUnica: 'Es la única que anotaste.',
     cuantasAnotaste: (n: number) => `Anotaste ${n}. Vale la mejor.`,
     otraDe: (nombre: string) => `Otra de ${nombre}`,
+    // Borrar una marca pregunta (4/10): en el teléfono se anota siempre con la
+    // fecha de hoy, así que una marca vieja borrada sin querer no se rehace.
+    borrarSeguro: 'La fecha no se puede volver a poner. ¿La borro igual?',
+    borrarSi: 'Borrarla',
+    noSeBorro: 'No se borró. Prueba de nuevo.',
     vacioTitulo: 'Todavía no cargaste ninguna.',
     vacioPie: 'Sentadilla, banca y peso muerto son las tres que arman tu número.',
     sinNada:

@@ -13689,6 +13689,51 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
   chequear('la foto ya no copia a Ajustes en un estado', /useState\(visibilidadDefault/.test(nativa182['movil/src/RegistrarDia.tsx']), false);
 }
 
+console.log('\n183. Nativa: borrar una marca pregunta, y dice si no se pudo');
+{
+  // Era de un toque, con los "Borrar" de dos filas vecinas pisándose, y en el
+  // teléfono una marca se anota siempre con la fecha de hoy: la original no se
+  // recupera. Y el `delete` iba suelto: sin red no avisaba nada.
+  const FZ = await import('../compartido/fuerza.ts');
+  const baseQueBorra = (error, visto = {}) => ({
+    from: (tabla) => ({
+      delete: () => ({
+        eq: async (columna, valor) => {
+          Object.assign(visto, { tabla, columna, valor });
+          return { error };
+        },
+      }),
+    }),
+  });
+  const visto183 = {};
+  chequear('borrar una marca que sale bien', [await FZ.borrarMarca(baseQueBorra(null, visto183), 'm1'), visto183], [
+    true,
+    { tabla: 'prs', columna: 'id', valor: 'm1' },
+  ]);
+  chequear('y sin red dice que no', await FZ.borrarMarca(baseQueBorra({ message: 'Network request failed' }), 'm1'), false);
+
+  // CABLEADO: la pantalla no se puede dibujar acá. Se mira que "Borrar" solo
+  // PREGUNTE, que el borrado salga de un solo lugar —el "sí"— y que el fallo se
+  // diga. Hay que verlo en el teléfono.
+  const marcas183 = (texto) => ({
+    elBotonSoloPregunta: /setPorBorrar\(h\.id\)/.test(texto),
+    seBorraDesdeUnSoloLugar: (texto.match(/\bborrar\(h\.id\)/g) ?? []).length === 1,
+    yEseLugarEsElSi: /porBorrar === h\.id \?[\s\S]{0,400}?onPress=\{\(\) => borrar\(h\.id\)\}[\s\S]{0,200}?T\.fuerza\.borrarSi/.test(texto),
+    miraSiSeBorro: /await borrarMarca\(supabase, id\)/.test(texto) && /T\.fuerza\.noSeBorro/.test(texto),
+  });
+  chequear('en Mis marcas, "Borrar" pregunta antes', marcas183(sinComentarios(leer179(join(aca179, '../movil/src/MisMarcas.tsx'), 'utf8'))), {
+    elBotonSoloPregunta: true,
+    seBorraDesdeUnSoloLugar: true,
+    yEseLugarEsElSi: true,
+    miraSiSeBorro: true,
+  });
+  chequear(
+    'la pantalla de antes no pasa',
+    marcas183("<Pressable onPress={() => borrar(h.id)} disabled={borrando === h.id} hitSlop={8}> await supabase.from('prs').delete().eq('id', id);"),
+    { elBotonSoloPregunta: false, seBorraDesdeUnSoloLugar: true, yEseLugarEsElSi: false, miraSiSeBorro: false }
+  );
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
