@@ -1,5 +1,5 @@
 import type { Cliente } from '@cliente';
-import { planetaDeDia } from '@nucleo/rangos';
+import { cuerpoDe } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import type { UsuarioPublico } from '@nucleo/tipos';
 
@@ -108,8 +108,9 @@ export async function cargarRanking(supabase: Cliente, uid: string): Promise<Dat
     solicitudes,
     pedidosMandados: new Set(mandadas.map((r) => r.destinatario as string)),
     actividad,
-    miRango: yo?.rango_actual ?? 1,
-    miPlaneta: yo ? planetaDeDia(yo.racha_actual) : null,
+    // El rango y el planeta, los dos de la racha: ver `cuerpoDe`.
+    miRango: cuerpoDe(yo?.racha_actual).rango,
+    miPlaneta: cuerpoDe(yo?.racha_actual).planeta,
   };
 }
 

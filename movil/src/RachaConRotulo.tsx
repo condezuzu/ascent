@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { progresoEnRango, siguienteRango } from '@nucleo/rangos';
+import { numeroDeRango, progresoEnRango, siguienteRango } from '@nucleo/rangos';
 import { paletaDe } from '@nucleo/paletas';
 import { T } from '@nucleo/textos';
 import NumeroQueCuenta from './NumeroQueCuenta';
@@ -43,13 +43,12 @@ import { conAlfa } from './colores';
  */
 export default function RachaConRotulo({
   racha,
-  rango,
 }: {
   racha: number;
-  /** El rango actual, para el color. Es una de las tres cosas que lo llevan. */
-  rango: number | null;
 }) {
-  const pal = paletaDe(rango ?? 1, null);
+  // El color sale del rango, y el rango de la misma racha que llena la barra:
+  // antes venía aparte, del perfil, y podía ser de otro rango que el relleno.
+  const pal = paletaDe(numeroDeRango(racha), null);
   const prox = siguienteRango(racha);
   const progreso = progresoEnRango(racha);
   // Al revés: la palabra se lee de abajo hacia arriba.

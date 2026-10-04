@@ -9,6 +9,7 @@ import { avisarFallo } from '@compartido/cola';
 import { prepararFoto } from '@/lib/foto';
 import { subirFotoDelDia } from '@compartido/foto';
 import { anotarElDia } from '@compartido/anotarDia';
+import { subidaDeRango } from '@nucleo/rangos';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import type { ResultadoRegistro } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
@@ -134,7 +135,8 @@ export default function RegistrarSheet({
 
     const resultado = data as ResultadoRegistro;
     // La foto se sube después de que el día quedó confirmado en la base.
-    await subirFoto(resultado.log_id, resultado.subio_rango);
+    // `racha` es la que se veía al abrir la hoja: la de antes de registrar.
+    await subirFoto(resultado.log_id, subidaDeRango(racha, resultado.racha) !== null);
 
     setCargando(false);
     alConfirmar(resultado);

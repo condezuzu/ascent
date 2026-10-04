@@ -1,6 +1,6 @@
 import type { Cliente } from '@cliente';
 import { MESES, aISO } from '@nucleo/fechas';
-import { planetaDeDia } from '@nucleo/rangos';
+import { cuerpoDe } from '@nucleo/rangos';
 import { disponible } from '@nucleo/esquema';
 import { versionDelEsquema } from '@compartido/esquema';
 import { T } from '@nucleo/textos';
@@ -70,15 +70,15 @@ export async function cargarAlbum(supabase: Cliente, uid: string): Promise<Datos
   // El perfil y las fotos A LA VEZ (19/9): uno no depende del otro, y en fila
   // eran dos viajes esperando uno detrás del otro.
   const [{ data: p }, { data: fotos, error: errFotos }] = await Promise.all([
-    supabase.from('profiles').select('rango_actual, racha_actual').eq('id', uid).single(),
+    supabase.from('profiles').select('racha_actual').eq('id', uid).single(),
     supabase
       .from('photos')
       .select('id, storage_path, visibilidad, es_subida_de_rango, log_id, creado')
       .eq('user_id', uid)
       .order('creado', { ascending: false }),
   ]);
-  const miRango = p?.rango_actual ?? 1;
-  const miPlaneta = p ? planetaDeDia(p.racha_actual) : null;
+  // El rango y el planeta, los dos de la racha: ver `cuerpoDe`.
+  const { rango: miRango, planeta: miPlaneta } = cuerpoDe(p?.racha_actual);
   if (errFotos) return null;
   if (!fotos || fotos.length === 0) return { celdas: [], miRango, miPlaneta };
 

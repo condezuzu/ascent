@@ -21,7 +21,7 @@ import {
 } from '@nucleo/volumen';
 import type { Log } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
-import { planetaDeDia } from '@nucleo/rangos';
+import { cuerpoDe } from '@nucleo/rangos';
 import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './StatsGeneral';
 import FondoEspacial from './FondoEspacial';
 import Estancamiento from './Estancamiento';
@@ -120,8 +120,8 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       sesiones: sesionesConFecha(ses),
       ejercicios: (cat ?? []) as EjercicioDelCatalogo[],
       marcas: (prs ?? []) as MarcaParaMaximo[],
-      rango: perfil.rango_actual ?? 1,
-      planeta: planetaDeDia(perfil.racha_actual ?? 0),
+      // El rango y el planeta del fondo, los dos de la racha: ver `cuerpoDe`.
+      ...cuerpoDe(perfil.racha_actual),
       pesajes: (ws ?? []).map((w) => ({ fecha: w.fecha as string, valor: Number(w.valor) })),
       // Igual que la web: si las vidas no llegan, la línea no se muestra.
       vidas:

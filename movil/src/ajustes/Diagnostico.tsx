@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { hoyISO } from '@nucleo/fechas';
+import { numeroDeRango } from '@nucleo/rangos';
 import { mirarElGimnasio } from '@compartido/gimnasio';
 import { leerVigilancia } from '@compartido/sesionCache';
 import { anotar, borrarBitacora, comoTexto, leerBitacora } from '@compartido/bitacora';
@@ -376,8 +377,8 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
 
       {verSubida && (
         <SubidaRango
-          rangoAntes={Math.max(1, (perfil.rango_actual ?? 1) - 1)}
-          rangoDespues={perfil.rango_actual ?? 1}
+          rangoAntes={Math.max(1, numeroDeRango(perfil.racha_actual) - 1)}
+          rangoDespues={numeroDeRango(perfil.racha_actual)}
           racha={perfil.racha_actual}
           alCerrar={() => setVerSubida(false)}
         />

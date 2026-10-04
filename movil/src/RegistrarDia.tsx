@@ -5,6 +5,7 @@ import { supabase } from './supabase';
 import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import type { ResultadoRegistro, Visibilidad } from '@nucleo/tipos';
+import { subidaDeRango } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import { subirFotoDelDia } from '@compartido/foto';
 import { anotarElDia } from '@compartido/anotarDia';
@@ -56,6 +57,8 @@ export default function RegistrarDia({
   // el error quedaba escondido y la foto, descartada. Ahora queda abierta, con
   // la foto, en modo "sumar al día", y reintentar la cuelga del día que entró.
   const [registradoAca, setRegistradoAca] = useState<ResultadoRegistro | null>(null);
+  // Si ese registro subió de rango, con la regla del cliente (`subidaDeRango`).
+  const [subioAca, setSubioAca] = useState(false);
   const dia = hoyISO();
   const idDelDia = logId ?? registradoAca?.log_id ?? null;
   const yaEsta = !!idDelDia;
@@ -99,7 +102,7 @@ export default function RegistrarDia({
     setAviso('');
     setCargando(true);
     if (yaEsta) {
-      const ok = await subir(idDelDia, !!registradoAca?.subio_rango);
+      const ok = await subir(idDelDia, !!registradoAca && subioAca);
       setCargando(false);
       if (ok) {
         setFoto(null);
@@ -121,15 +124,18 @@ export default function RegistrarDia({
       return setAviso(textoDeBloqueo(data.hasta));
     }
     const resultado = data as ResultadoRegistro;
+    // `racha` es la que se veía al abrir la hoja: la de antes de registrar.
+    const subio = subidaDeRango(racha, resultado.racha) !== null;
+    setSubioAca(subio);
     // El día ya entró: si la foto falla se dice, pero el día no se pierde.
-    const ok = await subir(resultado.log_id, resultado.subio_rango);
+    const ok = await subir(resultado.log_id, subio);
     setCargando(false);
     if (!ok) return setRegistradoAca(resultado);
     // SUBISTE DE RANGO Y NO PUSISTE FOTO (4.4): el momento de más orgullo de la
     // app no puede pasar en silencio. Se OFRECE sacar una foto —no se obliga—: el
     // día ya está registrado, la hoja queda en modo "sumar foto" con el aviso, y
     // si cerrás seguís normal (el cierre confirma igual, ver `alCerrar`).
-    if (resultado.subio_rango && !foto) {
+    if (subio && !foto) {
       setRegistradoAca(resultado);
       setAviso(T.registrar.subioRangoFoto);
       return;
@@ -189,7 +195,7 @@ export default function RegistrarDia({
           <Text style={estilos.solidoTexto}>{yaEsta ? T.general.guardar : T.inicio.registrarDia}</Text>
         )}
       </Pressable>
-      {aviso !== '' && <Text style={[estilos.aviso, registradoAca?.subio_rango && estilos.avisoSubida]}>{aviso}</Text>}
+      {aviso !== '' && <Text style={[estilos.aviso, !!registradoAca && subioAca && estilos.avisoSubida]}>{aviso}</Text>}
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
     </Hoja>
   );

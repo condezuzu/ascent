@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { aISO, deISO, hoyISO, restarDias, fechaLinda } from '@nucleo/fechas';
-import { RANGOS, planetaDeDia, rangoDeRacha } from '@nucleo/rangos';
+import { RANGOS, cuerpoDe, rangoDeRacha } from '@nucleo/rangos';
 import { conComa, deKilos, esUnidad, type Unidad } from '@nucleo/peso';
 import type { Log, Peso } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -44,9 +44,11 @@ export default function Estadisticas() {
   // generica del rango 4 en vez de la de Marte: estando en Marte, que es
   // naranja, Stats se veia azul. Es la unica pantalla que se lo olvidaba.
   //
-  // Y sale del PERFIL y no de la racha: `rango_actual` es la autoridad —tiene
-  // en cuenta la racha base y las perdidas— y es lo que usan Inicio, el Album
-  // y el Ranking. Calcularlo aparte era una segunda verdad.
+  // Y SALEN LOS DOS DE LA RACHA, juntos (`cuerpoDe`). Hasta el 4/10 el rango
+  // salía de la columna que guarda la base, con la idea de que era la
+  // autoridad: lo era mientras la base y el cliente tenían la misma tabla.
+  // Cuando no la tuvieron, esta misma pantalla decía "Planeta" en la escalera
+  // y dibujaba el Sol atrás. La racha ya trae adentro la base y las pérdidas.
   // `undefined` = todavía no se sabe: el fondo usa el último propio, no el
   // gris del rango 1 (19/9).
   const [miRango, setMiRango] = useState<number | undefined>(undefined);
@@ -81,8 +83,9 @@ export default function Estadisticas() {
       if (p) {
         setRacha(p.racha_actual);
         setMejor(p.mejor_racha);
-        setMiRango(p.rango_actual);
-        setMiPlaneta(planetaDeDia(p.racha_actual));
+        const cuerpo = cuerpoDe(p.racha_actual);
+        setMiRango(cuerpo.rango);
+        setMiPlaneta(cuerpo.planeta);
         setSexo(p.sexo ?? null);
         if (esUnidad(p.unidad_peso)) setUnidad(p.unidad_peso);
       }

@@ -3,6 +3,7 @@
 // para TypeScript aunque sean la misma clase. Cada app dice que es `@cliente`.
 import type { Cliente } from '@cliente';
 import { T } from '@nucleo/textos';
+import { numeroDeRango } from '@nucleo/rangos';
 
 /**
  * Junta TODO el historial del usuario en un objeto para bajar como archivo.
@@ -62,7 +63,8 @@ export async function juntarMisDatos(supabase: Cliente, userId: string) {
           username: p.username,
           racha_actual: p.racha_actual,
           mejor_racha: p.mejor_racha,
-          rango_actual: p.rango_actual,
+          // El rango que se ve, de la racha: no el que tenga guardado la base.
+          rango_actual: numeroDeRango(p.racha_actual),
           dias_descanso: p.dias_descanso,
           unidad_peso: p.unidad_peso,
           sexo: p.sexo ?? null,

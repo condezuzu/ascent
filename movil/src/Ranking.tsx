@@ -21,6 +21,7 @@ import AccionesDeUsuario from './AccionesDeUsuario';
 import CampoTexto from './CampoTexto';
 import Surgir from './Surgir';
 import Insignia from './Insignia';
+import { numeroDeRango } from '@nucleo/rangos';
 import Medallas from './Medallas';
 import FondoEspacial from './FondoEspacial';
 import GloboPrimeraVez from './GloboPrimeraVez';
@@ -224,7 +225,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                   accessibilityRole="button"
                 >
                   <Text style={[estilos.dato, { width: 20 }]}>{i + 1}</Text>
-                  <Insignia rango={a.rango_actual} tam={38} />
+                  <Insignia rango={numeroDeRango(a.racha_actual)} tam={38} />
                   {/* LAS MEDALLAS, al lado del nombre, igual que en el perfil.
                       Caen en segundo plano (ver el efecto de arriba). */}
                   <View style={{ flex: 1 }}>
@@ -339,7 +340,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               {/* Su rango al lado, como en el ranking: de un desconocido, lo
                   primero que dice algo es en qué anda. El nombre lleva al perfil
                   y "Agregar" queda aparte: mirar antes que agregar. */}
-              <Insignia rango={u.rango_actual} tam={26} />
+              <Insignia rango={numeroDeRango(u.racha_actual)} tam={26} />
               <Pressable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
                 <Text style={estilos.nombre}>{u.username}</Text>
               </Pressable>

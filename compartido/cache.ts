@@ -19,7 +19,6 @@ export function guardarPerfilCache(p: Perfil) {
         avatar_url: p.avatar_url,
         racha_actual: p.racha_actual,
         mejor_racha: p.mejor_racha,
-        rango_actual: p.rango_actual,
         racha_base: p.racha_base,
         perdida_fecha: p.perdida_fecha,
         dias_descanso: p.dias_descanso,

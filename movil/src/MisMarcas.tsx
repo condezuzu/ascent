@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { planetaDeDia } from '@nucleo/rangos';
+import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import { esUnidad, type Unidad } from '@nucleo/peso';
 import { fechaDeMarca, origenDeMarca, pesoLindo } from '@nucleo/fuerza';
 import type { Ejercicio, MiFuerza, PR, Perfil } from '@nucleo/tipos';
@@ -171,7 +171,7 @@ export default function MisMarcas() {
   return (
     <View style={estilos.todo}>
       <FondoEspacial
-        rango={perfil.rango_actual}
+        rango={numeroDeRango(perfil.racha_actual)}
         planeta={planetaDeDia(perfil.racha_actual)}
         esquina="arriba-derecha"
         velo={0.74}

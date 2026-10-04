@@ -9798,11 +9798,15 @@ console.log('\n140. El diagnostico del gimnasio, y la subida de rango');
   chequear('alguien escucha SUBIO_RANGO', /escuchar\(SUBIO_RANGO/.test(ini140), true);
   // LOS TRES CAMINOS QUE REGISTRAN UN DIA tienen que terminar en la misma
   // ventana. Si falta uno, subir de rango por ESE camino es silencioso.
+  // Desde el 4/10 los tres deciden con la regla del CLIENTE (`subidaDeRango`,
+  // contra la racha que se estaba viendo) y no con lo que diga la base: ver la
+  // sección 176.
   chequear('el camino del toque la dispara',
-    /alConfirmar=\{\(r\) => \{[\s\S]{0,200}subio_rango/.test(ini140), true);
+    /alConfirmar=\{\(r\) => \{[\s\S]{0,200}subidaDeRango\(rachaVista\.current, r\.racha\)/.test(ini140), true);
   chequear('el del cronometro tambien',
-    /useSesion\(\(r\) => \{[\s\S]{0,260}subio_rango/.test(ini140), true);
-  chequear('y el del gimnasio', /SUBIO_RANGO, \(dato\)/.test(ini140), true);
+    /useSesion\(\(r\) => \{[\s\S]{0,260}subidaDeRango\(rachaVista\.current, r\.racha\)/.test(ini140), true);
+  chequear('y el del gimnasio',
+    /SUBIO_RANGO, \(dato\)[\s\S]{0,160}subidaDeRango\(rachaVista\.current, r\.racha\)/.test(ini140), true);
 
   const sub140 = de140('movil', 'src', 'SubidaRango.tsx');
   // NO SE NOMBRA LO QUE VIENE DESPUES (§7): descubrir en que te vas a
@@ -13087,6 +13091,83 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
       Object.entries(inicioDe).map(([app, ruta]) => [app, /guardarPerfilCache\(/.test(sinComentarios(leer175(join(raiz175, ruta), 'utf8')))])
     ),
     { nativa: true, web: true });
+}
+
+console.log('\n176. El rango que se ve sale de la racha, y de ningún otro lado');
+{
+  // EL BUG (4/10): con racha 43, Stats decía "Planeta" y el fondo dibujaba el
+  // Sol. El nombre salía de la racha con la tabla del cliente; el fondo, la
+  // insignia, los colores y la subida, del número que guarda la base con la
+  // suya. Con la migración 54 sin aplicar, las dos tablas no eran la misma.
+  const RG = await import('../nucleo/rangos.ts');
+
+  chequear('racha 43: Planeta y Venus, los dos de la misma racha', RG.cuerpoDe(43), { rango: 4, planeta: 'Venus' });
+  chequear('sin racha todavía: Polvo, sin planeta', [RG.cuerpoDe(null), RG.cuerpoDe(undefined), RG.cuerpoDe(NaN)], [
+    { rango: 1, planeta: null },
+    { rango: 1, planeta: null },
+    { rango: 1, planeta: null },
+  ]);
+
+  // DÍA POR DÍA: lo que se dibuja y lo que se nombra son el mismo rango, hay
+  // planeta solo en Planeta, y nunca sale un número que el cliente no sepa
+  // dibujar (el "rango 8" que mandaba la base vieja dejaba el cielo vacío).
+  const malos = [];
+  for (let r = 0; r <= 200; r++) {
+    const c = RG.cuerpoDe(r);
+    if (c.rango !== RG.rangoDeRacha(r).n || (c.planeta !== null) !== (c.rango === 4) || !RG.RANGOS.some((x) => x.n === c.rango)) malos.push(r);
+  }
+  chequear('del 0 al 200, el fondo y el nombre son el mismo rango', malos, []);
+
+  // ---- LA SUBIDA, con la regla del cliente ----
+  chequear('del 30 al 31 se sube a Planeta', RG.subidaDeRango(30, 31), { antes: 3, despues: 4 });
+  chequear('del 39 al 40 no se sube a nada (lo celebraba la base vieja)', RG.subidaDeRango(39, 40), null);
+  chequear('se celebra exactamente en los umbrales, ni un día antes ni uno después',
+    Array.from({ length: 131 }, (_, r) => r).filter((r) => RG.subidaDeRango(r - 1, r) !== null), [...DESDE_RANGO.slice(1)]);
+  // Quien tenía Luna (25), pierde 10 y al registrar queda en 16 —el primer día
+  // de Luna— no subió: se compara con lo que se VEÍA, no con el día anterior.
+  chequear('perder 10 y volver a cruzar el umbral del rango que ya se veía no es subir', RG.subidaDeRango(25, 16), null);
+  chequear('sin racha vista se compara con el día anterior', [RG.subidaDeRango(null, 6), RG.subidaDeRango(null, 7)], [{ antes: 1, despues: 2 }, null]);
+  chequear('y sin número no inventa una subida', RG.subidaDeRango(5, NaN), null);
+
+  // ---- EL CABLEADO: que ninguna pantalla vuelva a la otra fuente ----
+  const { readFileSync: leer176, readdirSync: listar176 } = await import('node:fs');
+  const raiz176 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const fuentes176 = [];
+  const recorrer176 = (carpeta) => {
+    for (const e of listar176(join(raiz176, carpeta), { withFileTypes: true })) {
+      const ruta = `${carpeta}/${e.name}`;
+      if (e.isDirectory()) {
+        if (e.name !== 'node_modules') recorrer176(ruta);
+      } else if (/\.tsx?$/.test(e.name)) fuentes176.push(ruta);
+    }
+  };
+  for (const c of ['compartido', 'src', 'movil/src', 'movil/app']) recorrer176(c);
+  const codigo176 = (ruta) => sinComentarios(leer176(join(raiz176, ruta), 'utf8'));
+
+  chequear('ninguna pantalla lee el rango que guarda la base',
+    fuentes176.filter((f) => /\.rango_actual\b/.test(codigo176(f))), []);
+  chequear('ni lo pide en una consulta',
+    fuentes176.filter((f) => /select\([^)]*rango_actual/.test(codigo176(f))), []);
+  chequear('ni le pregunta a la base si hubo subida',
+    fuentes176.filter((f) => /\.(subio_rango|rango_antes|rango_despues)\b/.test(codigo176(f))), []);
+  // LOS TRES CAMINOS QUE REGISTRAN EL DÍA —el toque, empezar la sesión y el
+  // gimnasio— celebran con la regla del cliente, en las dos apps. Y el
+  // vigilante avisa siempre que el día entró: quién subió lo decide Inicio.
+  for (const [app, ruta] of [['nativa', 'movil/src/Inicio.tsx'], ['web', 'src/app/page.tsx']]) {
+    chequear(`${app}: los tres caminos celebran comparando con la racha que se veía`,
+      (codigo176(ruta).match(/setSubida\(subidaDeRango\(rachaVista\.current, r\.racha\)\)/g) ?? []).length, 3);
+  }
+  chequear('los dos vigilantes avisan que el día entró, sin preguntarle a la base si subió',
+    ['movil/src/VigilanteDeGimnasio.tsx', 'src/components/VigilanteDeGimnasio.tsx'].map((f) =>
+      /if \(reg\) eventos\.emitir\(SUBIO_RANGO, reg\)/.test(codigo176(f))
+    ), [true, true]);
+
+  // QUE EL DETECTOR SIRVA: las tres formas en que se leía antes.
+  chequear('el detector caza las lecturas de antes', [
+    /\.rango_actual\b/.test(sinComentarios('<FondoEspacial rango={perfil.rango_actual} />')),
+    /select\([^)]*rango_actual/.test(sinComentarios(".select('rango_actual, racha_actual')")),
+    /\.(subio_rango|rango_antes|rango_despues)\b/.test(sinComentarios('if (r?.subio_rango) setSubida({ antes: r.rango_antes })')),
+  ], [true, true, true]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

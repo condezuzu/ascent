@@ -7,7 +7,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { prepararFoto } from '@/lib/foto';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { hoyISO } from '@nucleo/fechas';
-import { planetaDeDia } from '@nucleo/rangos';
+import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import { guardarPerfilCache } from '@compartido/cache';
 import { problemaConLaImagen, subirAvatar } from '@compartido/avatar';
 import type { Perfil, UsuarioPublico } from '@nucleo/tipos';
@@ -227,7 +227,7 @@ export default function Yo() {
   return (
     <>
       <FondoEspacial
-        rango={perfil.rango_actual}
+        rango={numeroDeRango(perfil.racha_actual)}
         propio
         planeta={planetaDeDia(perfil.racha_actual)}
         esquina="abajo-derecha"
@@ -264,7 +264,7 @@ export default function Yo() {
                 empujara afuera; lo arregla envolver la fila, no esconderlas. */}
             <Medallas medallas={medallas} nombre={<span className="yo-nombre">{perfil.username}</span>} />
             <div className="yo-meta">
-              <Insignia rango={perfil.rango_actual} tam={16} />
+              <Insignia rango={numeroDeRango(perfil.racha_actual)} tam={16} />
               <span>{subiendo ? T.yo.subiendoFoto : T.yo.deRacha(perfil.racha_actual)}</span>
             </div>
             {dots !== null && (

@@ -6,7 +6,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { enDias, hoyISO, restarDias } from '@nucleo/fechas';
 import { conComa } from '@nucleo/peso';
-import { planetaDeDia } from '@nucleo/rangos';
+import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import type { Log, UsuarioPublico } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
@@ -188,7 +188,7 @@ export default function Perfil() {
     <>
       {/* el perfil de un amigo se ve con SU paleta y SU objeto: entrás a su cielo */}
       <FondoEspacial
-        rango={usuario.rango_actual}
+        rango={numeroDeRango(usuario.racha_actual)}
         planeta={planetaDeDia(usuario.racha_actual)}
         esquina="abajo-derecha"
         velo={0.6}
@@ -211,7 +211,7 @@ export default function Perfil() {
                   nombre={<span className="nombre" style={{ fontSize: 18 }}>{usuario.username}</span>}
                 />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                  <Insignia rango={usuario.rango_actual} tam={16} />
+                  <Insignia rango={numeroDeRango(usuario.racha_actual)} tam={16} />
                   <span style={{ fontSize: 13, color: 'var(--sub)' }}>
                     {T.stats.rachaDe(enDias(usuario.racha_actual))}
                   </span>

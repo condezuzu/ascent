@@ -5,6 +5,7 @@ import { fechaLinda, enDias } from '@nucleo/fechas';
 import type { Log, UsuarioPublico } from '@nucleo/tipos';
 import TiraSemanal from '@/components/TiraSemanal';
 import Insignia from '@/components/Insignia';
+import { numeroDeRango } from '@nucleo/rangos';
 import Avatar from '@/components/Avatar';
 import { T } from '@nucleo/textos';
 import { useEsperar } from '@/components/PantallaDeslizable';
@@ -52,7 +53,7 @@ export default function ComoMeVen({
             {usuario.username}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-            <Insignia rango={usuario.rango_actual} tam={16} />
+            <Insignia rango={numeroDeRango(usuario.racha_actual)} tam={16} />
             <span style={{ fontSize: 13, color: 'var(--sub)' }}>
               {T.stats.rachaDe(enDias(usuario.racha_actual))}
             </span>

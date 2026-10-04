@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { astroDeAmigo } from '@compartido/ranking';
 import Insignia from './Insignia';
+import { numeroDeRango } from '@nucleo/rangos';
 
 /**
  * EL CAMPO ESTELAR DE DETRÁS DE LA LISTA DEL RANKING, como en la web: cada
@@ -25,7 +26,7 @@ export default function CampoEstelar({
   amigos,
   fondo,
 }: {
-  amigos: { id: string; rango_actual: number; racha_actual: number }[];
+  amigos: { id: string; racha_actual: number }[];
   /** El `--fondo` de la web: el del rango propio. */
   fondo: string;
 }) {
@@ -44,7 +45,7 @@ export default function CampoEstelar({
     >
       <View style={[StyleSheet.absoluteFill, { opacity: 0.78 }]}>
         {amigos.map((a, i) => (
-          <Astro key={a.id} indice={i} rango={a.rango_actual} racha={a.racha_actual} maxRacha={maxRacha} />
+          <Astro key={a.id} indice={i} rango={numeroDeRango(a.racha_actual)} racha={a.racha_actual} maxRacha={maxRacha} />
         ))}
       </View>
       {/* CON ANCHO CERO NO SE DIBUJA: la escala del velo divide por el ancho,

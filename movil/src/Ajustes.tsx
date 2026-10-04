@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
-import { planetaDeDia } from '@nucleo/rangos';
+import { cuerpoDe } from '@nucleo/rangos';
 import { umbralesDisponibles, umbralValido, type Umbral } from '@nucleo/estancamiento';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil, UnidadPeso } from '@nucleo/tipos';
@@ -120,7 +120,7 @@ export default function Ajustes({
       {/* AJUSTES NO PEDÍA FONDO, así que se quedaba con el de la pantalla
           anterior — o sea, con el planeta de Inicio. Ahora pide el suyo:
           solo el cielo, como las otras tres que no son Inicio. */}
-      <FondoEspacial rango={perfil.rango_actual} planeta={planetaDeDia(perfil.racha_actual)} velo={0.72} />
+      <FondoEspacial {...cuerpoDe(perfil.racha_actual)} velo={0.72} />
     {/* `automaticallyAdjustKeyboardInsets`: sin esto el teclado tapaba el campo
         de abajo —el de escribir el nombre para darse de baja— y se escribía a
         ciegas (28/9). iOS ahora insetea el scroll y lleva el campo enfocado a la

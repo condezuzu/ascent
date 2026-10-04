@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { cargarMiPerfil, type DatosDePerfil } from '@compartido/perfil';
 import { subirAvatar } from '@compartido/avatar';
 import { conComa } from '@nucleo/peso';
-import { planetaDeDia } from '@nucleo/rangos';
+import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { useEnVuelo } from '@compartido/useEnVuelo';
@@ -167,7 +167,7 @@ export default function PerfilPropio() {
   return (
     <View style={estilos.raiz}>
       <FondoEspacial
-        rango={perfil.rango_actual}
+        rango={numeroDeRango(perfil.racha_actual)}
         planeta={planetaDeDia(perfil.racha_actual)}
         esquina="abajo-derecha"
         velo={0.72}
@@ -192,7 +192,7 @@ export default function PerfilPropio() {
               nombre={<Text style={estilos.nombre}>{perfil.username}</Text>}
             />
             <View style={estilos.meta}>
-              <Insignia rango={perfil.rango_actual} tam={16} />
+              <Insignia rango={numeroDeRango(perfil.racha_actual)} tam={16} />
               <Text style={estilos.metaTexto}>
                 {subiendo ? T.yo.subiendoFoto : T.yo.deRacha(perfil.racha_actual)}
               </Text>

@@ -5,7 +5,7 @@ import { supabase } from './supabase';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
-import { planetaDeDia, rangoDeRacha } from '@nucleo/rangos';
+import { numeroDeRango, planetaDeDia, rangoDeRacha, subidaDeRango } from '@nucleo/rangos';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { laCuentaYaNoExiste, mensajeDeAuth } from '@nucleo/errores';
 import { pedirInicio } from '@compartido/inicio';
@@ -95,6 +95,11 @@ export default function Inicio({
 }) {
   const router = useRouter();
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
+  // LA RACHA QUE SE ESTÁ VIENDO, para saber si un registro sube de rango: se
+  // compara con la que devuelve la base (ver `subidaDeRango`). En una ref
+  // porque la leen avisos que llegan de afuera, con la pantalla ya dibujada.
+  const rachaVista = useRef<number | null>(null);
+  if (estado.tipo === 'listo') rachaVista.current = estado.perfil.racha_actual;
   // EL SCROLL, para traer a la vista la pregunta de marca de la serie recién
   // confirmada (ver `MarcaEnElMomento`). Se mide en coordenadas de PANTALLA y
   // no con `measureLayout`, que no se porta igual en la vista web de la nativa y
@@ -341,7 +346,7 @@ export default function Inicio({
     cargar();
     // EMPEZAR LA SESION REGISTRA EL DIA, asi que tambien puede subirte de
     // rango: es el camino mas comun de los tres en un gimnasio.
-    if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+    if (r) setSubida(subidaDeRango(rachaVista.current, r.racha));
   });
 
   // EL DÍA QUE ENTRÓ SOLO AL LLEGAR AL GIMNASIO (24/9). Ese camino no pasa
@@ -358,7 +363,7 @@ export default function Inicio({
     () =>
       eventos.escuchar(SUBIO_RANGO, (dato) => {
         const r = dato as ResultadoRegistro;
-        if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+        if (r) setSubida(subidaDeRango(rachaVista.current, r.racha));
       }),
     []
   );
@@ -481,7 +486,7 @@ export default function Inicio({
   const rangoMejor = rangoDeRacha(perfil.mejor_racha).n;
   const planetaMejor = planetaDeDia(perfil.mejor_racha);
   const fantasma =
-    racha < perfil.mejor_racha && (rangoMejor !== perfil.rango_actual || planetaMejor !== planeta)
+    racha < perfil.mejor_racha && (rangoMejor !== numeroDeRango(racha) || planetaMejor !== planeta)
       ? { rango: rangoMejor, planeta: planetaMejor }
       : null;
   // "Sin nada" es la cuenta recién abierta: el espacio antes de que se forme
@@ -508,7 +513,7 @@ export default function Inicio({
   return (
     <View style={estilos.raiz}>
       <FondoEspacial
-        rango={perfil.rango_actual}
+        rango={numeroDeRango(racha)}
         planeta={planeta}
         apagado={perdida}
         vacio={sinNada}
@@ -628,13 +633,13 @@ export default function Inicio({
           primer día". El día cero no es una versión pobre del día 40: es la
           nube de polvo antes de la estrella, y por eso el fondo del rango 1 va
           a fondo (caos, color, movimiento; ver `FondoEspacial`/shaders). */}
-      <RachaConRotulo racha={perfil.racha_actual} rango={perfil.rango_actual} />
+      <RachaConRotulo racha={perfil.racha_actual} />
 
       {/* LOS PASOS DE HOY (5.2). Debajo del número, arriba de la semana, y en
           voz baja: es el dato del teléfono, no la racha. Solo si hay algo que
           decir —Health conectado y con pasos—; si no, ni aparece. */}
       {!sesion.estado.corriendo && pasosHoy !== null && (
-        <PasosInicio pasos={pasosHoy} meta={metaPasos} acento={paletaDe(perfil.rango_actual ?? 1, null).principal} />
+        <PasosInicio pasos={pasosHoy} meta={metaPasos} acento={paletaDe(numeroDeRango(racha), null).principal} />
       )}
 
       {!sesion.estado.corriendo && (
@@ -738,7 +743,7 @@ export default function Inicio({
                 bloques={sesion.estado.bloques}
                 inicio={sesion.estado.inicio}
                 unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
-                principal={paletaDe(perfil.rango_actual ?? 1, null).principal}
+                principal={paletaDe(numeroDeRango(racha), null).principal}
                 alAparecer={traerALaVista}
               />
             }
@@ -915,7 +920,7 @@ export default function Inicio({
           setRegistrarAbierto(false);
           setMarcadoOptimista(hoy); // el día se marca YA; el número y el rango esperan al servidor
           cargar();
-          if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+          if (r) setSubida(subidaDeRango(rachaVista.current, r.racha));
         }}
       />
 

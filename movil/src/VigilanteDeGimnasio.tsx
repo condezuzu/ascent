@@ -157,8 +157,10 @@ function Mirando({ perfil }: { perfil: Perfil }) {
       if (r.registrado || r.yaEstaba) diaRegistrado.current = hoyISO();
       if (r.registrado) {
         eventos.emitir(DIA_CAMBIO);
+        // Se avisa SIEMPRE que el día entró: si eso subió de rango lo decide
+        // Inicio, que sabe qué racha se estaba viendo (ver `subidaDeRango`).
         const reg = r.data as ResultadoRegistro | undefined;
-        if (reg?.subio_rango) eventos.emitir(SUBIO_RANGO, reg);
+        if (reg) eventos.emitir(SUBIO_RANGO, reg);
       }
     }
 

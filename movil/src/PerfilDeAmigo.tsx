@@ -10,7 +10,7 @@ import { plataforma } from '@plataforma';
 import AccionesDeUsuario from './AccionesDeUsuario';
 import { DIAS_SEMANA, deISO, enDias, hoyISO, restarDias } from '@nucleo/fechas';
 import { conComa } from '@nucleo/peso';
-import { planetaDeDia } from '@nucleo/rangos';
+import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import Avatar from './Avatar';
@@ -143,7 +143,7 @@ export default function PerfilDeAmigo() {
   return (
     <View style={estilos.raiz}>
       <FondoEspacial
-        rango={usuario.rango_actual}
+        rango={numeroDeRango(usuario.racha_actual)}
         planeta={planetaDeDia(usuario.racha_actual)}
         esquina="abajo-derecha"
         velo={0.72}
@@ -168,7 +168,7 @@ export default function PerfilDeAmigo() {
               nombre={<Text style={estilos.nombre}>{usuario.username}</Text>}
             />
             <View style={estilos.meta}>
-              <Insignia rango={usuario.rango_actual} tam={16} />
+              <Insignia rango={numeroDeRango(usuario.racha_actual)} tam={16} />
               <Text style={estilos.metaTexto}>{T.stats.rachaDe(enDias(usuario.racha_actual))}</Text>
             </View>
             {esAmigo && dots !== null && (

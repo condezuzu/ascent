@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
 import { hoyISO, restarDias, deISO } from '@nucleo/fechas';
 import { transcurrido, duracionLinda } from '@nucleo/sesiones';
-import { planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango } from '@nucleo/rangos';
+import { numeroDeRango, planetaDeDia, progresoEnRango, rangoDeRacha, siguienteRango, subidaDeRango } from '@nucleo/rangos';
 import { fraseDelDia } from '@nucleo/frases';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
@@ -70,6 +70,11 @@ export default function Principal() {
   const router = useRouter();
   const [supabase] = useState(() => crearCliente());
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  // LA RACHA QUE SE ESTÁ VIENDO, para saber si un registro sube de rango: se
+  // compara con la que devuelve la base (ver `subidaDeRango`). En una ref
+  // porque la leen avisos que llegan de afuera, con la pantalla ya dibujada.
+  const rachaVista = useRef<number | null>(null);
+  if (perfil) rachaVista.current = perfil.racha_actual;
   // Las medallas por marca, para la fila del nombre. Entran cuando llegan: son
   // un adorno al lado del nombre y reservarles lugar movería el nombre medio
   // segundo después, que es peor que aparecer.
@@ -294,7 +299,7 @@ export default function Principal() {
   // El cronómetro vive acá desde §20: empezar pasa una vez por entrenamiento
   // y no merecía una pestaña, pero sí estar a la vista.
   const sesion = useSesion((r) => {
-    if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+    if (r) setSubida(subidaDeRango(rachaVista.current, r.racha));
     cargar(false);
   });
 
@@ -363,7 +368,7 @@ export default function Principal() {
     () =>
       eventos.escuchar(SUBIO_RANGO, (dato) => {
         const r = dato as ResultadoRegistro;
-        if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+        if (r) setSubida(subidaDeRango(rachaVista.current, r.racha));
       }),
     []
   );
@@ -450,7 +455,7 @@ export default function Principal() {
   const rangoMejor = rangoDeRacha(perfil.mejor_racha).n;
   const planetaMejor = planetaDeDia(perfil.mejor_racha);
   const fantasma =
-    racha < perfil.mejor_racha && (rangoMejor !== perfil.rango_actual || planetaMejor !== planeta)
+    racha < perfil.mejor_racha && (rangoMejor !== numeroDeRango(racha) || planetaMejor !== planeta)
       ? { rango: rangoMejor, planeta: planetaMejor }
       : null;
 
@@ -503,7 +508,7 @@ export default function Principal() {
     // La animación se dispara SOLO después de que la base confirmó. Viene en
     // null cuando el día ya estaba y solo se le sumó foto o peso: ahí no hay
     // subida de rango que festejar.
-    if (r?.subio_rango) setSubida({ antes: r.rango_antes, despues: r.rango_despues });
+    if (r) setSubida(subidaDeRango(rachaVista.current, r.racha));
     // `r` en null = el dia ya estaba y solo se le sumo foto o peso: ahi la
     // persona puede estar en cualquier lado. Solo se pregunta cuando el dia
     // ACABA de entrar.
@@ -533,7 +538,7 @@ export default function Principal() {
   return (
     <>
       <FondoEspacial
-        rango={perfil.rango_actual}
+        rango={numeroDeRango(racha)}
         propio
         planeta={planeta}
         apagado={perdida}
@@ -893,7 +898,7 @@ export default function Principal() {
           dias={impulsoUsado.dias}
           quedan={impulsoUsado.quedan}
           total={impulsoUsado.total}
-          rango={perfil.rango_actual}
+          rango={numeroDeRango(racha)}
           planeta={planeta}
           rachaSiGuarda={rachaSiSeDevuelve(racha)}
           alGuardar={guardarImpulsos}

@@ -18,6 +18,7 @@ import {
 } from '@compartido/ranking';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
+import { numeroDeRango } from '@nucleo/rangos';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
@@ -170,7 +171,7 @@ export default function Social() {
                         animationDelay: `${astro.retraso}s`,
                       }}
                     >
-                      <Insignia rango={a.rango_actual} tam={astro.tam} />
+                      <Insignia rango={numeroDeRango(a.racha_actual)} tam={astro.tam} />
                     </div>
                   );
                 })}
@@ -188,7 +189,7 @@ export default function Social() {
                           acá es lo que se viene a ver —quién es qué— y el
                           nombre es la etiqueta. Es la misma escalera que en
                           Inicio, vista en fila. */}
-                      <Insignia rango={a.rango_actual} tam={38} />
+                      <Insignia rango={numeroDeRango(a.racha_actual)} tam={38} />
                       <span className="nombre">{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</span>
                       <span className="dato">{a.racha_actual}</span>
                       {/* Denunciar o bloquear: no en la fila propia. Es un

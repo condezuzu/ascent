@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
-import { planetaDeDia } from '@nucleo/rangos';
+import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import type { Perfil } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Avatar from '@/components/Avatar';
@@ -74,7 +74,7 @@ export default function Ajustes() {
   return (
     <>
       <FondoEspacial
-        rango={perfil.rango_actual}
+        rango={numeroDeRango(perfil.racha_actual)}
         propio
         planeta={planetaDeDia(perfil.racha_actual)}
         esquina="arriba-derecha"
