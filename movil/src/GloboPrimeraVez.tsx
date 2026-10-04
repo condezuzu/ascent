@@ -3,6 +3,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { faltaElGlobo, marcarGloboVisto, type Globo } from '@compartido/guia';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import { C, conAlfa } from './colores';
 
 /**
@@ -40,8 +41,7 @@ export default function GloboPrimeraVez({
   useEffect(() => {
     let vivo = true;
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      const u = data.session?.user?.id;
+      const u = await miId(supabase);
       if (!vivo || !u) return;
       setUid(u);
       if (await faltaElGlobo(u, cual)) {

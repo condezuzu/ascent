@@ -17,6 +17,7 @@ import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
 import type { Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 
 /**
  * La sesión la cerró la salida del gimnasio, no un toque. Lleva el
@@ -61,8 +62,7 @@ export default function VigilanteDeGimnasio() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
 
   const leer = useCallback(async (fresco: boolean) => {
-    const { data } = await supabase.auth.getSession();
-    const uid = data.session?.user?.id;
+    const uid = await miId(supabase);
     // Sin sesión no se pregunta nada: en la pantalla de entrada eso es lo
     // normal, no un error.
     if (!uid) return setPerfil(null);

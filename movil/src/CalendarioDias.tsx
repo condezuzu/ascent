@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import { DIAS_SEMANA, MESES, deISO, hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { cargarMes, celdasDelMes, moverMes, recalcularRacha, type DatosDelMes } from '@compartido/calendario';
@@ -43,10 +44,7 @@ export default function CalendarioDias({
   const [corrigio, setCorrigio] = useState(false);
 
   const cargar = useCallback(async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const uid = session?.user?.id;
+    const uid = await miId(supabase);
     if (!uid) return;
     setMes(await cargarMes(supabase, uid, ancla.anio, ancla.mes));
   }, [ancla]);

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { crearCliente, type Cliente } from '@cliente';
 import { hoyISO } from '@nucleo/fechas';
+import { miId } from '@compartido/quienSoy';
 import {
   filaDeMarca,
   superaLaMarca,
@@ -25,8 +26,7 @@ export async function buscarSugerencias(
   bloques: unknown
 ): Promise<(Sugerencia & { nombre: string })[]> {
   if (!Array.isArray(bloques) || bloques.length === 0) return [];
-  const { data: usuario } = await supabase.auth.getUser();
-  const uid = usuario.user?.id;
+  const uid = await miId(supabase);
   if (!uid) return [];
   // CON `user_id`: la tabla de marcas deja leer las de los amigos, así que sin
   // el filtro una marca ajena de 140 escondería tu 102.
@@ -53,8 +53,8 @@ function aCatalogo(catalogo: unknown[]) {
 }
 
 export async function guardarSugerencia(supabase: Cliente, s: Sugerencia, reps: number): Promise<boolean> {
-  const { data: usuario } = await supabase.auth.getUser();
-  if (!usuario.user) return false;
+  const uid = await miId(supabase);
+  if (!uid) return false;
   const fila = filaDeMarca(s, reps, hoyISO());
   // REINTENTAR NO DUPLICA (15/9). Sin señal la escritura puede llegar y la
   // respuesta perderse: la app dice "no se guardó", se vuelve a tocar, y la
@@ -62,7 +62,7 @@ export async function guardarSugerencia(supabase: Cliente, s: Sugerencia, reps: 
   const { data: ya, error: eMirar } = await supabase
     .from('prs')
     .select('id')
-    .eq('user_id', usuario.user.id)
+    .eq('user_id', uid)
     .eq('ejercicio', fila.ejercicio)
     .eq('peso', fila.peso)
     .eq('reps', fila.reps)
@@ -70,7 +70,7 @@ export async function guardarSugerencia(supabase: Cliente, s: Sugerencia, reps: 
     .limit(1);
   if (eMirar) return false;
   if (ya && ya.length > 0) return true;
-  const { error } = await supabase.from('prs').insert({ user_id: usuario.user.id, ...fila });
+  const { error } = await supabase.from('prs').insert({ user_id: uid, ...fila });
   return !error;
 }
 
@@ -173,8 +173,7 @@ export function useMarcaEnElMomento(
     let vivo = true;
     (async () => {
       if (!datos.current) {
-        const { data: usuario } = await supabase.auth.getUser();
-        const uid = usuario.user?.id;
+        const uid = await miId(supabase);
         if (!uid) return;
         // CON `user_id`: la tabla de marcas deja leer las de los amigos.
         const [{ data: marcas, error: e1 }, { data: catalogo, error: e2 }] = await Promise.all([

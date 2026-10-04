@@ -1,4 +1,5 @@
 import type { Cliente } from '@cliente';
+import { miId } from '@compartido/quienSoy';
 import { rutaDeFoto } from '@nucleo/foto';
 
 /**
@@ -26,8 +27,10 @@ export async function subirFotoDelDia(
     subioRango: boolean;
   }
 ): Promise<'ok' | 'sin-sesion' | 'no-subio'> {
-  const { data: usuario } = await supabase.auth.getUser();
-  const uid = usuario.user?.id;
+  // El id sale de la sesión guardada, sin viaje: la RLS es la que cuida la
+  // escritura. Con `getUser`, sin conexión esto daba 'sin-sesion' antes de
+  // intentar nada.
+  const uid = await miId(supabase);
   if (!uid) return 'sin-sesion';
   const ruta = rutaDeFoto(uid, dia, Date.now());
   const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, datos, { contentType: 'image/jpeg' });

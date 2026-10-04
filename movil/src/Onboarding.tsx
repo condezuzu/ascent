@@ -10,6 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import { supabase } from './supabase';
+import { quienSoy } from '@compartido/quienSoy';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
 import { reiniciarGuia } from '@compartido/guia';
@@ -58,13 +59,14 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
     if (!nombreValido(limpio)) return setError(T.entrar.nombreFormato);
 
     setCargando(true);
-    const { data } = await supabase.auth.getSession();
-    const uid = data.session?.user?.id;
-    if (!uid) {
+    const yo = await quienSoy(supabase);
+    if (yo.estado !== 'con') {
       setCargando(false);
-      return alElegir();
+      // Sin sesión lo resuelve la raíz. Sin poder preguntar, el nombre no se
+      // guardó: se dice, en vez de seguir como si hubiera quedado.
+      return yo.estado === 'sin' ? alElegir() : setError(T.general.noSePudo);
     }
-    const { error } = await supabase.from('profiles').update({ username: limpio }).eq('id', uid);
+    const { error } = await supabase.from('profiles').update({ username: limpio }).eq('id', yo.uid);
     setCargando(false);
     if (error) {
       // 23505 es el índice único: ese nombre ya lo tiene alguien. 23514 es el
@@ -78,7 +80,7 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
     // "ya lo vi" vive en el teléfono, así que sin este encendido explícito le
     // aparecería a cualquiera que entrara en un aparato nuevo. Empieza en
     // Ajustes, con el punto del gimnasio a la vista.
-    await reiniciarGuia(uid);
+    await reiniciarGuia(yo.uid);
     alElegir();
     irAPestana('ajustes');
   }

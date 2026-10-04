@@ -3,6 +3,7 @@ import { anotar } from '@compartido/bitacora';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
 import { VISITA_VENCIDA_MS } from '@nucleo/llegada';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import { alLlegarDeFondo } from './plataforma/ubicacion';
 
 /**
@@ -46,8 +47,7 @@ async function llegue() {
     // cerrar sesión hasta que alguien lo suelte, así que este despertar puede
     // caer sin usuario: pedir el RPC ahí es un 401 y una línea de error en la
     // caja negra por algo que es normal.
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) return;
+    if (!(await miId(supabase))) return;
 
     const r = await registrarPorSenal(supabase, 'ubicacion');
     await anotar('llegué (app cerrada): registré el día', {

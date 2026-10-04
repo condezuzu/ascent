@@ -6710,7 +6710,7 @@ console.log('\n93. Dos toques seguidos no le devuelven al total el numero de ant
   const guia = sinComentarios(leer(join(RAIZ, 'compartido', 'guia.ts'), 'utf8'));
   chequear('sin paso guardado no hay recorrido', /g\.paso === undefined\s*\?\s*null/.test(guia), true);
   const onboarding = leer(join(RAIZ, 'src', 'app', 'onboarding', 'page.tsx'), 'utf8');
-  chequear('elegir el nombre lo enciende', onboarding.includes('reiniciarGuia(user.id)'), true);
+  chequear('elegir el nombre lo enciende', onboarding.includes('reiniciarGuia(yo.uid)'), true);
 }
 console.log('\n94. La consulta que encuentra sesiones con el total contado de menos');
 {
@@ -9491,7 +9491,7 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
   // SIN SESION NO SE PREGUNTA NADA: la zona sigue registrada despues de
   // cerrar sesion hasta que alguien la suelte, y ese despertar sin usuario es
   // normal, no un error.
-  chequear('sin cuenta abierta no se pide nada', /if \(!data\.session\) return;/.test(fondo137), true);
+  chequear('sin cuenta abierta no se pide nada', /if \(!\(await miId\(supabase\)\)\) return;/.test(fondo137), true);
   // EN EL CUERPO DEL MODULO Y NO EN UN EFECTO: en ese despertar no se dibuja
   // nada, asi que lo unico que corre seguro es la evaluacion del bundle.
   chequear('el gancho se pone al importar, no al montar', /^alLlegarDeFondo\(llegue\);$/m.test(fondo137), true);
@@ -9600,7 +9600,7 @@ console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
   // un encendido explicito le aparecia a cualquiera que entrara en un aparato
   // nuevo. Lo encienden elegir el nombre y "ver la guia" de Ajustes.
   chequear('el recorrido lo enciende elegir el nombre',
-    /reiniciarGuia\(uid\)/.test(de138('movil', 'src', 'Onboarding.tsx')), true);
+    /reiniciarGuia\(yo\.uid\)/.test(de138('movil', 'src', 'Onboarding.tsx')), true);
   chequear('y "ver la guia" desde Ajustes',
     /reiniciarGuia\(perfil\.id\)/.test(de138('movil', 'src', 'ajustes', 'Cuenta.tsx')), true);
   // SI TE VAS POR TU CUENTA NO TE PERSIGUE: dice el paso y ofrece llevarte.
@@ -13282,7 +13282,9 @@ console.log('\n177. La app nativa no manda al login por no tener señal');
   const raiz177 = join(dirname(fileURLToPath(import.meta.url)), '..');
   const layout = sinComentarios(leer177(join(raiz177, 'movil', 'app', '_layout.tsx'), 'utf8'));
   const cableado177 = (texto) => ({
-    miraElError: /const \{ data, error \} = await supabase\.auth\.getSession\(\);\s*const visto = sesionSegun\(!!data\.session, error\);/.test(texto),
+    // Desde la tanda 2 no lo pregunta él: se lo pregunta a `quienSoy`, que es el
+    // único que mira el error (sección 187).
+    miraElError: /const visto = \(await quienSoy\(supabase\)\)\.estado;/.test(texto),
     noPisaLoQueHabia: /setSesion\(\(actual\) => trasMirar\(actual, visto\)\)/.test(texto),
     elAvisoNoDecideSolo: /trasElAviso\(evento, !!viva\)/.test(texto) && !/setSesion\(viva \? 'con' : 'sin'\)/.test(texto),
     yNoConcluyeDeLaSesionSola: !/setSesion\(data\.session \? 'con' : 'sin'\)/.test(texto),
@@ -13300,8 +13302,9 @@ console.log('\n177. La app nativa no manda al login por no tener señal');
 
   // Inicio, sin sesión que mostrar: no se queda con la ruedita para siempre.
   const inicio177 = sinComentarios(leer177(join(raiz177, 'movil', 'src', 'Inicio.tsx'), 'utf8'));
-  chequear('Inicio, si no hay a quién cargar, avisa y deja Reintentar',
-    /if \(!uid\) \{\s*alSalir\(\);\s*return fallo\(T\.general\.noSePudo\);\s*\}/.test(inicio177), true);
+  // Desde la tanda 2 son dos casos: "no hay" sale, "no sé" avisa (sección 187).
+  chequear('Inicio, si no se pudo preguntar quién es, avisa y deja Reintentar',
+    /if \(yo\.estado === 'no-se'\) return fallo\(T\.general\.noSePudo\);/.test(inicio177), true);
 }
 
 console.log('\n178. Bloquear avisa, y la marca se anota en el ejercicio que se tocó');
@@ -13829,7 +13832,12 @@ console.log('\n185. Web: una foto que no subió no cierra la hoja como si hubier
   // verdad con una base de mentira para ver qué devuelve en cada caso.
   const FO = await import('../compartido/foto.ts');
   const baseDeFotos = ({ usuario = { id: 'u1' }, errorSubida = null, errorFila = null } = {}) => ({
-    auth: { getUser: async () => ({ data: { user: usuario }, error: usuario ? null : { name: 'AuthRetryableFetchError' } }) },
+    auth: {
+      getSession: async () => ({
+        data: { session: usuario ? { user: usuario } : null },
+        error: usuario ? null : { name: 'AuthRetryableFetchError', status: 0 },
+      }),
+    },
     storage: { from: () => ({ upload: async () => ({ error: errorSubida }) }) },
     from: () => ({ insert: async () => ({ error: errorFila }) }),
   });
@@ -13894,6 +13902,104 @@ console.log('\n186. La mejor racha no baja sola después de una pérdida (migrac
   await rachaDe(corta186, 3, 2);
   chequear('seis días, un corte y tres más: el récord es 6, no 9', (await db.query(`select mejor_racha_real($1) as m`, [corta186])).rows[0].m, 6);
   await cuotaDeVidas(2);
+}
+
+console.log('\n187. Una sola respuesta a "¿hay sesión?": hay, no hay, o no sé');
+{
+  // LA CAUSA DE RAÍZ DEL LOGIN SIN SEÑAL (4/10). Sin red y con el token vencido
+  // `auth.getSession()` devuelve "sin sesión" CON un error. Cada pantalla lo
+  // preguntaba por su cuenta y miraba solo la sesión. La tanda 1 lo arregló en
+  // la raíz; quedaban las demás con el mismo error por delante. Ahora pregunta
+  // un solo lugar, y contesta con tres valores.
+  const Q187 = await import('../compartido/quienSoy.ts');
+  const conSesion = (sesion, error = null) => ({ auth: { getSession: async () => ({ data: { session: sesion }, error }) } });
+  const DE_RED187 = { name: 'AuthRetryableFetchError', status: 0 };
+  chequear('con sesión: quién soy', await Q187.quienSoy(conSesion({ user: { id: 'u1' } })), { estado: 'con', uid: 'u1' });
+  chequear('sin sesión y sin error: no hay', await Q187.quienSoy(conSesion(null)), { estado: 'sin' });
+  chequear('sin sesión porque no se pudo renovar sin red: no sé', await Q187.quienSoy(conSesion(null, DE_RED187)), { estado: 'no-se' });
+  chequear(
+    'un 500 o un límite de pedidos tampoco dicen que no haya',
+    [await Q187.quienSoy(conSesion(null, { status: 500 })), await Q187.quienSoy(conSesion(null, { status: 429 }))],
+    [{ estado: 'no-se' }, { estado: 'no-se' }]
+  );
+  chequear(
+    'el servidor diciendo que no, sí',
+    [await Q187.quienSoy(conSesion(null, { status: 401 })), await Q187.quienSoy(conSesion(null, { status: 403 }))],
+    [{ estado: 'sin' }, { estado: 'sin' }]
+  );
+  chequear(
+    'si la librería tira en vez de contestar, tampoco se concluye nada',
+    await Q187.quienSoy({ auth: { getSession: async () => { throw new TypeError('Network request failed'); } } }),
+    { estado: 'no-se' }
+  );
+  chequear(
+    'para lo que solo necesita el id: el id, o nada',
+    [await Q187.miId(conSesion({ user: { id: 'u1' } })), await Q187.miId(conSesion(null)), await Q187.miId(conSesion(null, DE_RED187))],
+    ['u1', null, null]
+  );
+
+  // ---- QUE NO VUELVA A PASAR: nadie más pregunta por su cuenta ----
+  const { readdirSync: dir187 } = await import('node:fs');
+  const fuentesDe = (dir) =>
+    dir187(join(aca179, '..', dir), { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? (e.name === 'node_modules' ? [] : fuentesDe(`${dir}/${e.name}`)) : /\.tsx?$/.test(e.name) ? [`${dir}/${e.name}`] : []
+    );
+  const codigo187 = Object.fromEntries(
+    ['movil/src', 'movil/app', 'compartido', 'src'].flatMap(fuentesDe).map((ruta) => [ruta, sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'))])
+  );
+  const quienes = (patron) => Object.entries(codigo187).filter(([, t]) => patron.test(t)).map(([ruta]) => ruta).sort();
+
+  // `getSession`: el módulo, y su gemelo de la web (que devuelve el usuario
+  // entero para las pantallas de la web que solo quieren el id).
+  chequear('`auth.getSession()` se llama desde un solo lugar por app', quienes(/auth\s*\.getSession\(/), [
+    'compartido/quienSoy.ts',
+    'src/lib/supabase/quienSoy.ts',
+  ]);
+  // `getUser` va al SERVIDOR: es otra pregunta, y cada uno de estos la hace por
+  // un motivo propio. Uno nuevo hace fallar esto: obliga a decidir.
+  const LE_PREGUNTAN_AL_SERVIDOR = {
+    'movil/src/Inicio.tsx': 'hay token pero no hay fila: pregunta si la cuenta todavía existe',
+    'movil/src/ajustes/Cuenta.tsx': 'necesita el correo para mandar el cambio de clave',
+    'src/app/nueva-clave/page.tsx': 'decide si el enlace de recuperación sigue vivo',
+    'src/components/VigilanteDeSesion.tsx': 'su pregunta es si la sesión sigue viva después de un rato en segundo plano',
+    'src/lib/supabase/middleware.ts': 'es LA verificación, en el servidor, en cada pedido',
+  };
+  chequear('`auth.getUser()` solo donde está anotado por qué', quienes(/auth\s*\.getUser\(/), Object.keys(LE_PREGUNTAN_AL_SERVIDOR).sort());
+
+  // Y LO QUE SE HACE CON LA RESPUESTA: mandar afuera, solo con un 'sin'.
+  const salidasSinMirar = (patron, permitidos) =>
+    Object.entries(codigo187).flatMap(([ruta, t]) =>
+      [...t.matchAll(patron)]
+        .filter((m) => !/estado === 'sin'\) return\s*$/.test(t.slice(Math.max(0, m.index - 40), m.index)))
+        .map(() => ruta)
+        .filter((r) => !permitidos.includes(r))
+    );
+  chequear(
+    'en la nativa, una pantalla solo llama a `alSalir` con un "no hay"',
+    // Cuenta sale después de cerrar sesión o de borrar la cuenta; Inicio, cuando
+    // el servidor contestó que la cuenta ya no existe.
+    salidasSinMirar(/\balSalir\(\)/g, ['movil/src/ajustes/Cuenta.tsx', 'movil/src/Inicio.tsx']),
+    []
+  );
+  chequear(
+    'y en Inicio esa salida es una sola',
+    (codigo187['movil/src/Inicio.tsx'].match(/\balSalir\(\)/g) ?? []).length,
+    2
+  );
+  chequear(
+    'en la web, una pantalla solo manda al login con un "no hay"',
+    // Los dos de Ajustes salen después de cerrar sesión o borrar la cuenta; el
+    // de nueva-clave es un botón.
+    salidasSinMirar(/router\.push\('\/login'\)/g, ['src/components/ajustes/Sesion.tsx', 'src/components/ajustes/BajaDeCuenta.tsx', 'src/app/nueva-clave/page.tsx']),
+    []
+  );
+  chequear(
+    'el detector ve la pantalla de antes',
+    [...'const uid = sesion.session?.user?.id;\n    if (!uid) return alSalir();'.matchAll(/\balSalir\(\)/g)].filter(
+      (m) => !/estado === 'sin'\) return\s*$/.test(m.input.slice(Math.max(0, m.index - 40), m.index))
+    ).length,
+    1
+  );
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, AppState, Easing, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
+import { miId, quienSoy } from '@compartido/quienSoy';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { alSoltar, arrastre, CURVA, luzDePestana, reposo, VIAJE_MS, vecina } from '@nucleo/deslizar';
@@ -130,6 +131,7 @@ export default function Pestanas({
 }) {
   const [pestana, setPestana] = useState<Pestana>('inicio');
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [perfilNoCargo, setPerfilNoCargo] = useState(false);
   // CUÁNTAS SOLICITUDES DE AMISTAD ESPERAN. Para el puntito en la pestaña
   // Ranking: sin esto, alguien te agrega y no hay forma de enterarse hasta que
   // entrás a Ranking por tu cuenta. Es una cuenta barata (head), se refresca al
@@ -204,11 +206,13 @@ export default function Pestanas({
   // en el momento en que más se nota. También se pide cuando Ajustes es la que
   // asoma: si no, la primera mitad del gesto muestra una ruedita.
   const cargarPerfil = useCallback(async () => {
-    const { data: sesion } = await supabase.auth.getSession();
-    const uid = sesion.session?.user?.id;
-    if (!uid) return alSalir();
-    const { data } = await supabase.from('profiles').select('*').eq('id', uid).single();
+    const yo = await quienSoy(supabase);
+    if (yo.estado === 'sin') return alSalir();
+    setPerfilNoCargo(false);
+    const data = yo.estado === 'con' ? (await supabase.from('profiles').select('*').eq('id', yo.uid).single()).data : null;
     if (data) setPerfil(data as Perfil);
+    // Sin red esto era una ruedita para siempre: ni mensaje ni reintento.
+    else setPerfilNoCargo(true);
   }, [alSalir]);
 
   useEffect(() => {
@@ -218,8 +222,7 @@ export default function Pestanas({
   // El puntito de "te llegó una solicitud": se cuenta al montar y al cambiar de
   // pestaña (entrar a Ranking la deja al día en cuanto la ves).
   const contarSolicitudes = useCallback(async () => {
-    const { data: sesion } = await supabase.auth.getSession();
-    const uid = sesion.session?.user?.id;
+    const uid = await miId(supabase);
     if (!uid) return;
     const { count } = await supabase
       .from('friendships')
@@ -426,6 +429,13 @@ export default function Pestanas({
     if (cual === 'stats') return <Stats alSalir={alSalir} />;
     return perfil ? (
       <Ajustes perfil={perfil} alCambiar={(parcial) => setPerfil((p) => (p ? { ...p, ...parcial } : p))} alSalir={alSalir} />
+    ) : perfilNoCargo ? (
+      <View style={estilos.centrado}>
+        <Text style={estilos.noCargo}>{T.inicio.noCargo}</Text>
+        <Pressable style={estilos.reintentar} onPress={cargarPerfil}>
+          <Text style={estilos.reintentarTexto}>{T.inicio.reintentar}</Text>
+        </Pressable>
+      </View>
     ) : (
       <View style={estilos.centrado}>
         <ActivityIndicator color="#8a93a8" />
@@ -557,6 +567,9 @@ const estilos = StyleSheet.create({
   // veía el fondo del motor en vez de la pantalla que asoma (visto a :8092).
   carril: { position: 'absolute', top: 0, bottom: 0, left: 0 },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  noCargo: { color: '#8a93a8', fontSize: 14, textAlign: 'center', paddingHorizontal: 32, marginBottom: 14 },
+  reintentar: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#8a93a8', borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
+  reintentarTexto: { color: '#e8ebf2', fontSize: 14 },
   barra: {
     flexDirection: 'row',
     borderTopWidth: StyleSheet.hairlineWidth,

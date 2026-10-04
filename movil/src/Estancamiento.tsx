@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import type { Senal } from '@nucleo/estancamiento';
 import type { Ejercicio } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
@@ -35,10 +36,7 @@ export default function Estancamiento({
   useEffect(() => {
     let vivo = true;
     (async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const uid = session?.user?.id;
+      const uid = await miId(supabase);
       if (!uid) return;
       const datos = await cargarEstancamiento(supabase, uid);
       if (!vivo || !datos) return;

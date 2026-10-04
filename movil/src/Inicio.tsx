@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
+import { quienSoy } from '@compartido/quienSoy';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
@@ -289,15 +290,12 @@ export default function Inicio({
 
   const cargar = useCallback(async () => {
     try {
-      const { data: sesion } = await supabase.auth.getSession();
-      const uid = sesion.session?.user?.id;
-      if (!uid) {
-        // No hay sesión, o no se pudo renovar sin señal: lo decide `alSalir`,
-        // que mira el error. Si era lo segundo queda lo que había en pantalla,
-        // o el cartel con Reintentar si todavía no había nada.
-        alSalir();
-        return fallo(T.general.noSePudo);
-      }
+      const yo = await quienSoy(supabase);
+      if (yo.estado === 'sin') return alSalir();
+      // No se pudo renovar sin señal: queda lo que había en pantalla, o el
+      // cartel con Reintentar si todavía no había nada.
+      if (yo.estado === 'no-se') return fallo(T.general.noSePudo);
+      const uid = yo.uid;
 
       // UN SOLO PEDIDO (pantalla_inicio, el mismo que la web), en paralelo con
       // los minutos de hoy. Antes eran DOS idas y vuelta encadenadas —

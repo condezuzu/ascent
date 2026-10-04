@@ -5,6 +5,7 @@ import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/supabase';
+import { quienSoy } from '@compartido/quienSoy';
 import { plataforma } from '@plataforma';
 import EntradaYLogin from '../src/EntradaYLogin';
 import Onboarding from '../src/Onboarding';
@@ -27,7 +28,7 @@ import { iniciarReporteDeErrores, fijarPantalla } from '../src/reporteDeErrores'
 import { loVisible } from '../src/loVisible';
 import { anotar, marcarListo, registrarError } from '../src/cajaNegra';
 import { reportarMedicionA } from '@compartido/medir';
-import { sesionSegun, trasElAviso, trasMirar } from '@nucleo/veredicto';
+import { trasElAviso, trasMirar } from '@nucleo/veredicto';
 
 /**
  * LA RAÍZ DE LA APP, y desde el 22/9 también la raíz del router.
@@ -70,9 +71,8 @@ export default function Layout() {
     try {
       // SIN RED NO SE CONCLUYE NADA (4/10). Sin señal y con el token vencido,
       // esto devuelve "sin sesión" con un error: antes se leía como "no hay
-      // sesión" y aparecía el login en pleno entrenamiento. Ver `sesionSegun`.
-      const { data, error } = await supabase.auth.getSession();
-      const visto = sesionSegun(!!data.session, error);
+      // sesión" y aparecía el login en pleno entrenamiento. Ver `quienSoy`.
+      const visto = (await quienSoy(supabase)).estado;
       anotar(`sesión: ${visto === 'con' ? 'hay' : visto === 'sin' ? 'no hay' : 'no se pudo preguntar'}`);
       setSesion((actual) => trasMirar(actual, visto));
     } catch (e) {

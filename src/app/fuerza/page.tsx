@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
-import { miUsuario } from '@/lib/supabase/quienSoy';
+import { quienSoy } from '@compartido/quienSoy';
 import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import { esUnidad, type Unidad } from '@nucleo/peso';
 import { fechaDeMarca, origenDeMarca, pesoLindo } from '@nucleo/fuerza';
@@ -37,16 +37,18 @@ export default function Fuerza() {
   const [noCargo, setNoCargo] = useState(false);
 
   const cargar = useCallback(async () => {
-    const user = await miUsuario(supabase);
-    if (!user) return router.push('/login');
+    // Sin sesión, al login. Sin poder preguntar (la red), no: cartel y reintento.
+    const yo = await quienSoy(supabase);
+    if (yo.estado === 'sin') return router.push('/login');
+    if (yo.estado === 'no-se') return setNoCargo(true);
     const [{ data: p }, { data: ejs }, { data: f }, { data: prs }] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase.from('profiles').select('*').eq('id', yo.uid).single(),
       supabase.from('ejercicios').select('*').order('orden'),
       supabase.rpc('mi_fuerza'),
       supabase
         .from('prs')
         .select('id, ejercicio, peso, reps, es_real, fecha')
-        .eq('user_id', user.id)
+        .eq('user_id', yo.uid)
         .order('fecha', { ascending: false }),
     ]);
     // Sin perfil no se dibuja nada: hay que decirlo y dar por dónde salir, o

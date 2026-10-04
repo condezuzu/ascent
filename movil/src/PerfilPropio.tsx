@@ -12,6 +12,7 @@ import { useEnVuelo } from '@compartido/useEnVuelo';
 import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import { prepararFoto } from './foto';
 import Avatar from './Avatar';
 import Medallas from './Medallas';
@@ -52,8 +53,7 @@ export default function PerfilPropio() {
 
   const cargar = useCallback(async () => {
     setError('');
-    const { data: sesion } = await supabase.auth.getSession();
-    const uid = sesion.session?.user?.id;
+    const uid = await miId(supabase);
     if (!uid) return setCargado(true);
     const d = await cargarMiPerfil(supabase, uid);
     if (!d) setError(T.inicio.noCargo);

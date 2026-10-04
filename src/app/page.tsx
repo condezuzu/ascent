@@ -11,6 +11,7 @@ import { fraseDelDia } from '@nucleo/frases';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { guardarInicioCache, guardarPerfilCache, leerInicioCache, leerPerfilCache, type PerfilGuardado } from '@compartido/cache';
+import { quienSoy } from '@compartido/quienSoy';
 import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
 import { useMisMedallas } from '@compartido/misMedallas';
 import { FilaDeMedallas } from '@/components/Medallas';
@@ -207,13 +208,17 @@ export default function Principal() {
   );
 
   const cargar = useCallback(async (deArranque: boolean) => {
-    // getSession lee la cookie sin ir a la red; el JWT igual lo valida la
-    // base en cada consulta, así que no se pierde nada de seguridad.
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const uid = session?.user?.id;
-    if (!uid) return router.push('/login');
+    // Lee la cookie sin ir a la red; el JWT igual lo valida la base en cada
+    // consulta, así que no se pierde nada de seguridad.
+    //
+    // LA MISMA RESPUESTA DE TRES VALORES QUE LA NATIVA (4/10). Con el token
+    // vencido y sin red la sesión viene vacía CON un error: mandar al login por
+    // eso es el bug del teléfono, acá. Queda la pantalla de la copia, o la de
+    // reintento si no hay nada que mostrar.
+    const yo = await quienSoy(supabase);
+    if (yo.estado === 'sin') return router.push('/login');
+    if (yo.estado === 'no-se') return setNoCargo(!huboCache.current);
+    const uid = yo.uid;
 
     // UN SOLO PEDIDO, y si la migración no corrió, el camino viejo.
     const r = await pedirInicio(supabase);

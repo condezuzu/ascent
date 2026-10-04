@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
+import { quienSoy } from '@compartido/quienSoy';
 import { T } from '@nucleo/textos';
 import { fechaLinda } from '@nucleo/fechas';
 import type { UsuarioPublico } from '@nucleo/tipos';
@@ -80,11 +81,11 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const busquedaAhora = useRef('');
 
   const cargar = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    const uid = data.session?.user?.id;
-    if (!uid) return alSalir();
-    setMiId(uid);
-    const d = await cargarRanking(supabase, uid).catch(() => null);
+    const yo = await quienSoy(supabase);
+    if (yo.estado === 'sin') return alSalir();
+    if (yo.estado === 'con') setMiId(yo.uid);
+    // No poder preguntar quién soy es no haber podido cargar: cartel y Reintentar.
+    const d = yo.estado === 'con' ? await cargarRanking(supabase, yo.uid).catch(() => null) : null;
     // No poder preguntar no es no tener amigos: ver `compartido/ranking.ts`.
     setNoCargo(!d);
     if (d) {

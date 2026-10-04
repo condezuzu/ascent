@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import { fechaDeMarca, pesoLindo, redondear } from '@nucleo/fuerza';
 import type { Unidad } from '@nucleo/peso';
 import type { FilaFuerza, MiFuerza } from '@nucleo/tipos';
@@ -47,11 +48,9 @@ export default function SeccionFuerza({
 
   useEffect(() => {
     (async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.user) return;
-      setYo(session.user.id);
+      const uid = await miId(supabase);
+      if (!uid) return;
+      setYo(uid);
       const datos = await cargarFuerza(supabase);
       setMia(datos?.mia ?? null);
       setRanking(datos?.ranking ?? []);

@@ -5,6 +5,7 @@ import { PASOS_DEL_RECORRIDO } from '@nucleo/recorrido';
 import { eventos } from '@compartido/eventos';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import { irAPestana, type Pestana } from './irAPestana';
 import { C, conAlfa } from './colores';
 
@@ -49,8 +50,7 @@ export default function Recorrido({ pestana }: { pestana: Pestana }) {
   useEffect(() => {
     let vivo = true;
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      const u = data.session?.user?.id;
+      const u = await miId(supabase);
       if (!vivo || !u) return;
       setUid(u);
       await mirar(u);

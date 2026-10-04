@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
+import { quienSoy } from '@compartido/quienSoy';
 import { SURGIR_MS } from '@nucleo/animacion';
 import { CURVA } from '@nucleo/deslizar';
 import Surgir from './Surgir';
@@ -57,10 +58,10 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
   const { width } = useWindowDimensions();
 
   const cargar = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    const uid = data.session?.user?.id;
-    if (!uid) return alSalir();
-    const d = await cargarAlbum(supabase, uid).catch(() => null);
+    const yo = await quienSoy(supabase);
+    if (yo.estado === 'sin') return alSalir();
+    // No poder preguntar quién soy es no haber podido cargar: cartel y Reintentar.
+    const d = yo.estado === 'con' ? await cargarAlbum(supabase, yo.uid).catch(() => null) : null;
     setNoCargo(!d);
     if (d) setDatos(d);
     setCargado(true);

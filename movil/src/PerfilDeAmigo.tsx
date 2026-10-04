@@ -13,6 +13,7 @@ import { conComa } from '@nucleo/peso';
 import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
 import FotosQueVen from './FotosQueVen';
@@ -54,8 +55,7 @@ export default function PerfilDeAmigo() {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id ?? '')) {
       return setCargado(true);
     }
-    const { data: sesion } = await supabase.auth.getSession();
-    const yo = sesion.session?.user?.id;
+    const yo = await miId(supabase);
     if (!yo) return setCargado(true);
     // Tu propio perfil tiene su pantalla: entrar al tuyo por acá mostraría una
     // versión recortada de vos mismo.
@@ -89,8 +89,7 @@ export default function PerfilDeAmigo() {
   // amistad a la misma persona.
   const mandarPedido = useEnVuelo(async () => {
     if (!datos) return;
-    const { data: sesion } = await supabase.auth.getSession();
-    const yo = sesion.session?.user?.id;
+    const yo = await miId(supabase);
     if (!yo) return;
     // La misma función que usa Ranking: la amistad se pide en un solo lugar.
     if (!(await pedirAmistad(supabase, yo, datos.usuario.id))) return setError(T.general.noSePudo);

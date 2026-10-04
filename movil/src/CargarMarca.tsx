@@ -7,6 +7,7 @@ import type { Ejercicio } from '@nucleo/tipos';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import SelectorEjercicio from './SelectorEjercicio';
@@ -67,8 +68,8 @@ function CargarMarca({
     if (!Number.isInteger(veces) || veces < 1 || veces > 20) return setError(T.marca.vecesFuera);
 
     setGuardando(true);
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) {
+    const uid = await miId(supabase);
+    if (!uid) {
       setGuardando(false);
       return setError(T.marca.sesionCerrada);
     }
@@ -77,7 +78,7 @@ function CargarMarca({
     // cuentas con unidades distintas sería comparar números de cosas
     // distintas, y el ranking de fuerza no tendría sentido.
     const { error: err } = await supabase.from('prs').insert({
-      user_id: data.user.id,
+      user_id: uid,
       ejercicio,
       peso: Math.round(kg * 100) / 100,
       reps: veces,

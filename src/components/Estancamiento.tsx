@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useEsperar } from '@/components/PantallaDeslizable';
 import Link from 'next/link';
 import { crearCliente } from '@/lib/supabase/client';
+import { miId } from '@compartido/quienSoy';
 import { cargarEstancamiento, descartarSenal } from '@compartido/estancamiento';
 import type { Senal } from '@nucleo/estancamiento';
 import type { Ejercicio } from '@nucleo/tipos';
@@ -46,10 +47,7 @@ export default function Estancamiento({ registradoHoy }: { registradoHoy: boolea
     let vivo = true;
     (async () => {
       const supabase = crearCliente();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const uid = session?.user?.id;
+      const uid = await miId(supabase);
       const datos = uid ? await cargarEstancamiento(supabase, uid) : null;
       if (!vivo) return;
       if (datos) {

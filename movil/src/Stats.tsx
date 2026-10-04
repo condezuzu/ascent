@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
+import { quienSoy } from '@compartido/quienSoy';
 import { aISO, deISO, fechaCorta, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { claveDeEtiqueta } from '@nucleo/carga';
@@ -93,9 +94,10 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
 
   const cargar = useCallback(async () => {
     setError('');
-    const { data: sesion } = await supabase.auth.getSession();
-    const uid = sesion.session?.user?.id;
-    if (!uid) return alSalir();
+    const yo = await quienSoy(supabase);
+    if (yo.estado === 'sin') return alSalir();
+    if (yo.estado === 'no-se') return setError(T.inicio.noCargo);
+    const uid = yo.uid;
     const [{ data: perfil }, { data: logs }, { data: ses }, { data: cat }, { data: prs }, { data: ws }, vid] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).single(),
       supabase.from('logs').select('*').eq('user_id', uid).order('fecha'),

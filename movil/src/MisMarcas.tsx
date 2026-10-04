@@ -8,6 +8,7 @@ import type { Ejercicio, MiFuerza, PR, Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { borrarMarca } from '@compartido/fuerza';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import { irAPestana } from './irAPestana';
 import FondoEspacial from './FondoEspacial';
 import AnotarPeso from './AnotarPeso';
@@ -54,8 +55,7 @@ export default function MisMarcas() {
   const [cargando, setCargando] = useState(true);
 
   const cargar = useCallback(async () => {
-    const { data: sesion } = await supabase.auth.getSession();
-    const uid = sesion.session?.user?.id;
+    const uid = await miId(supabase);
     if (!uid) return setCargando(false);
     const [{ data: p }, { data: ejs }, { data: f }, { data: prs }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).single(),

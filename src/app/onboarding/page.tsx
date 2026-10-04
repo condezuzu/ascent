@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
-import { miUsuario } from '@/lib/supabase/quienSoy';
+import { quienSoy } from '@compartido/quienSoy';
 import { reiniciarGuia } from '@compartido/guia';
 import FondoEspacial from '@/components/FondoEspacial';
 import { nombreValido } from '@nucleo/usuario';
@@ -26,13 +26,17 @@ export default function Onboarding() {
       return setError(T.entrar.nombreFormato);
     }
     setCargando(true);
-    const user = await miUsuario(supabase);
-    if (!user) return router.push('/login');
+    const yo = await quienSoy(supabase);
+    if (yo.estado === 'sin') return router.push('/login');
+    if (yo.estado === 'no-se') {
+      setCargando(false);
+      return setError(T.general.noSePudo);
+    }
 
     const { error } = await supabase
       .from('profiles')
       .update({ username: limpio })
-      .eq('id', user.id);
+      .eq('id', yo.uid);
     setCargando(false);
     if (error) {
       if (error.code === '23505') return setError(T.ajustes.nombreTomado);
@@ -42,7 +46,7 @@ export default function Onboarding() {
     }
     // El recorrido empieza en Ajustes, con el punto del gimnasio a la vista.
     // Se ENCIENDE acá, a propósito: no sale solo en un aparato nuevo.
-    await reiniciarGuia(user.id);
+    await reiniciarGuia(yo.uid);
     router.push('/ajustes');
     router.refresh();
   }

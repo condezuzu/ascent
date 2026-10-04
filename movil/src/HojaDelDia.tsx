@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
+import { miId } from '@compartido/quienSoy';
 import { DIAS_SEMANA_LARGO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { duracionLinda } from '@nucleo/sesiones';
 import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
@@ -57,10 +58,7 @@ export default function HojaDelDia({
   const cargaId = useRef(0);
   const cargar = useCallback(async () => {
     const id = ++cargaId.current;
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const uid = session?.user?.id;
+    const uid = await miId(supabase);
     if (!uid) return;
     const d = await cargarDia(supabase, uid, fecha, esFuturo);
     if (id !== cargaId.current) return;
@@ -96,10 +94,7 @@ export default function HojaDelDia({
     setPorConfirmar(null);
     setError('');
     setOcupado(true);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const uid = session?.user?.id;
+    const uid = await miId(supabase);
     if (!uid) return setOcupado(false);
     const r = await corregirDia(supabase, uid, fecha, destino);
     if (r.error) setError(r.error);
