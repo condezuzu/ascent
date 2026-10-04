@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
-import { borrarPerfilCache } from '@compartido/cache';
+import { limpiarAlSalir } from '@compartido/cuenta';
+import { olvidarPendientes } from '@/lib/avisos';
 import { borrarTema } from '@/plataforma/web/tema';
 import { reiniciarGuia } from '@compartido/guia';
 import { T } from '@nucleo/textos';
@@ -20,9 +21,13 @@ export default function Sesion({ userId }: { userId: string }) {
   }
 
   async function salir() {
-    await borrarPerfilCache(); // que la próxima cuenta no vea la racha de esta
+    // Que la próxima cuenta no herede nada de esta: ver `limpiarAlSalir`.
+    await limpiarAlSalir(supabase);
+    olvidarPendientes(); // el punto de "te espera algo" era de esta cuenta
     borrarTema(); // y el color de esta cuenta, que se pinta antes de todo
-    await supabase.auth.signOut();
+    // SOLO EN ESTE APARATO (4/10). Sin el alcance, la librería cierra la sesión
+    // en TODOS: salir de la web te sacaba del teléfono dentro de la hora.
+    await supabase.auth.signOut({ scope: 'local' });
     router.push('/login');
   }
 

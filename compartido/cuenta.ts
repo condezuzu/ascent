@@ -4,6 +4,54 @@
 import type { Cliente } from '@cliente';
 import { T } from '@nucleo/textos';
 import { numeroDeRango } from '@nucleo/rangos';
+import { plataforma } from '@plataforma';
+import { vaciar } from '@compartido/cola';
+import { borrarPerfilCache } from '@compartido/cache';
+import { borrarSesionCache } from '@compartido/sesionCache';
+
+/**
+ * UNA SOLA LIMPIEZA AL SALIR DE LA CUENTA (4/10).
+ *
+ * Al cerrar sesión se borraba la copia del perfil y nada más. Quedaban en el
+ * aparato, sin dueño anotado, la cola de escrituras, la sesión en curso, los
+ * modos de carga elegidos y el objetivo de peso; la cuenta que entraba después
+ * los heredaba. Lo peor era la cola: lo pendiente de una cuenta salía con el
+ * token de la siguiente, la base no lo aplicaba —no era su sesión— y contestaba
+ * sin error, así que se daba por enviado. Y el modo de carga quedaba anotado en
+ * la cuenta equivocada.
+ *
+ * Primero se intenta subir lo pendiente, con el token de quien lo hizo y con
+ * un tope de tiempo: sin señal no se puede, y salir no puede quedar esperando.
+ *
+ * Lo que NO se borra es del aparato y no de la cuenta: la meta de series, la de
+ * pasos, el sonido del descanso. Los pesos recordados y la guía ya se guardan
+ * con su dueño y se descartan solos.
+ */
+// Las claves son de cada módulo y acá van repetidas: la sección 193 de `test:db`
+// escribe por los módulos de verdad y comprueba que después no quede nada, así
+// que si una cambia de nombre, falla.
+const DE_LA_CUENTA = [
+  'ascent:cola',
+  'ascent:cargas-elegidas',
+  'ascent:objetivo-peso',
+  'ascent:descanso',
+  'ascent:llegada',
+];
+const TOPE_PARA_SUBIR_MS = 3000;
+
+export async function limpiarAlSalir(supabase: Cliente) {
+  let tope: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    vaciar(supabase).catch(() => undefined),
+    new Promise((listo) => {
+      tope = setTimeout(listo, TOPE_PARA_SUBIR_MS);
+    }),
+  ]);
+  clearTimeout(tope);
+  await borrarSesionCache();
+  await Promise.all(DE_LA_CUENTA.map((clave) => plataforma.almacenamiento.borrar(clave)));
+  await borrarPerfilCache();
+}
 
 /**
  * Junta TODO el historial del usuario en un objeto para bajar como archivo.

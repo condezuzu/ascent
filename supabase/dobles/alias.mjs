@@ -18,5 +18,13 @@ export async function resolve(especificador, contexto, siguiente) {
   if (DOBLES[especificador]) return { url: DOBLES[especificador], shortCircuit: true };
   const m = especificador.match(/^@(nucleo|compartido)\/(.+)$/);
   if (m) return { url: new URL(`${m[1]}/${m[2]}.ts`, RAIZ).href, shortCircuit: true };
+  // `compartido/descanso.ts` importa './enCurso', sin extensión.
+  if (
+    especificador.startsWith('./') &&
+    contexto.parentURL?.startsWith(new URL('compartido/', RAIZ).href) &&
+    !/\.\w+$/.test(especificador)
+  ) {
+    return { url: new URL(especificador + '.ts', contexto.parentURL).href, shortCircuit: true };
+  }
   return siguiente(especificador, contexto);
 }

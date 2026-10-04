@@ -14109,7 +14109,7 @@ console.log('\n187. Una sola respuesta a "¿hay sesión?": hay, no hay, o no sé
   // Ahora la condición se ancla ENTERA, y no hay archivos exceptuados: una
   // salida vale si viene de esa condición o justo después de cerrar sesión.
   const TRAS_UN_NO_HAY = /if \(\w+\.estado === 'sin'\) return\s*$/;
-  const TRAS_CERRAR_SESION = /signOut\(\);\s*(return\s+)?$/;
+  const TRAS_CERRAR_SESION = /signOut\((\{ scope: 'local' \})?\);\s*(return\s+)?$/;
   const salidasSinMirar = (codigo, patron) =>
     Object.entries(codigo).flatMap(([ruta, texto]) =>
       [...texto.matchAll(patron)]
@@ -14419,6 +14419,91 @@ console.log('\n192. Amigos: "no se pudo preguntar" no es "no existe", y un pedid
     // Las medallas se piden fuera del `if` de las fotos.
     /\}\s*setMedallas\(await cargarMedallasDeAmigo\(supabase, params\.id\)\);\s*\}\s*setCargado\(true\);/.test(web192),
   ], [true, true, true]);
+}
+
+console.log('\n193. Salir de la cuenta: nada queda para la que entra después, y se sale solo de este aparato');
+{
+  // Al cerrar sesión se borraba la copia del perfil y nada más. La cola, la
+  // sesión en curso, los modos de carga y el objetivo de peso quedaban sin
+  // dueño anotado y los heredaba la cuenta siguiente; lo pendiente salía con su
+  // token, la base no lo aplicaba y se daba por enviado.
+  //
+  // Se escribe TODO por los módulos de verdad (no por las claves) y se lee igual:
+  // así, si una clave cambia de nombre, esto falla.
+  const CU193 = await import('../compartido/cuenta.ts');
+  const COLA193 = await import('../compartido/cola.ts');
+  const CARGAS193 = await import('../compartido/cargas.ts');
+  const SC193 = await import('../compartido/sesionCache.ts');
+  const C193 = await import('../compartido/cache.ts');
+  const PO193 = await import('../nucleo/pesoObjetivo.ts');
+  const D193 = await import('../compartido/descanso.ts');
+  const { memoria: memoria193 } = await import('./dobles/plataforma.mjs');
+  const sinRed193 = { rpc: async () => ({ data: null, error: { message: 'Network request failed' } }) };
+
+  const dejarLoDeLaCuentaA = async () => {
+    memoria193.clear();
+    memoria193.set('ascent:meta-bloque', '4'); // del aparato, no de la cuenta
+    await C193.guardarPerfilCache({ id: 'cuenta-a', username: 'a', racha_actual: 7, mejor_racha: 9, racha_base: 0, perdida_fecha: null, dias_descanso: [], duracion_descanso: 120, dia_pendiente: null, unidad_peso: 'kg', gimnasio_lat: null });
+    await SC193.guardarSesionCache({ inicio: new Date().toISOString(), desfasaje: 0, series: 3, id: 'sesion-a' });
+    await COLA193.encolar(sinRed193, { rpc: 'fijar_series', args: { p_sesion: 'sesion-a', p_series: 3 } });
+    await COLA193.encolar(sinRed193, { rpc: 'elegir_carga', args: { p_ejercicio: 'remo', p_carga: 'par' } });
+    await CARGAS193.recordarCarga('remo', 'par');
+    await SC193.guardarVigilancia({ desde: 1, ultimoAdentro: 2, arranco: true });
+    await memoria193.set(PO193.CLAVE_OBJETIVO_PESO, '85');
+    D193.guardarDescanso(120, { ejercicio: 'remo', serie: 1, meta: 3 });
+    await new Promise((r) => setTimeout(r, 20));
+  };
+  const loQueQueda = async () => ({
+    pendientes: await COLA193.cuantasPendientes(),
+    sesion: await SC193.leerSesionCache(),
+    modos: await CARGAS193.leerCargasElegidas(),
+    llegada: await SC193.leerVigilancia(),
+    objetivo: memoria193.get(PO193.CLAVE_OBJETIVO_PESO) ?? null,
+    descanso: await D193.leerDescanso(),
+    perfil: await C193.leerPerfilCache(),
+    metaDelAparato: memoria193.get('ascent:meta-bloque') ?? null,
+  });
+  const NADA = { pendientes: 0, sesion: null, modos: {}, llegada: null, objetivo: null, descanso: null, perfil: null, metaDelAparato: '4' };
+
+  await dejarLoDeLaCuentaA();
+  chequear('antes de salir, lo de la cuenta está en el aparato', (await loQueQueda()).pendientes, 2);
+
+  // Con señal: lo pendiente sube ANTES de salir, con el token de quien lo hizo.
+  const subieron = [];
+  const conRed193 = { rpc: async (nombre, args) => { subieron.push([nombre, args.p_sesion ?? args.p_ejercicio]); return { data: null, error: null }; } };
+  await CU193.limpiarAlSalir(conRed193);
+  chequear('con señal, la cola sube antes de salir', subieron, [['fijar_series', 'sesion-a'], ['elegir_carga', 'remo']]);
+  chequear('y no queda nada de la cuenta (lo del aparato sí)', await loQueQueda(), NADA);
+
+  // Sin señal: no se puede subir, pero tampoco queda para que salga con otro token.
+  await dejarLoDeLaCuentaA();
+  const antes193 = Date.now();
+  await CU193.limpiarAlSalir(sinRed193);
+  chequear('sin señal tampoco queda nada, y salir no se queda esperando', [await loQueQueda(), Date.now() - antes193 < 2500], [NADA, true]);
+  const paraLaQueEntra = [];
+  await COLA193.vaciar({ rpc: async (nombre) => { paraLaQueEntra.push(nombre); return { data: null, error: null }; } });
+  chequear('la cuenta que entra después no manda nada de la anterior', paraLaQueEntra, []);
+  memoria193.clear();
+
+  // CABLEADO: los cuatro lugares que cierran sesión usan esa limpieza, y el
+  // botón de salir sale SOLO de este aparato (borrar la cuenta, de todos).
+  const de193 = (ruta) => sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'));
+  const cuentaNativa = de193('movil/src/ajustes/Cuenta.tsx');
+  const sesionWeb = de193('src/components/ajustes/Sesion.tsx');
+  chequear('las salidas limpian con la función única', [
+    (cuentaNativa.match(/await limpiarAlSalir\(supabase\)/g) ?? []).length,
+    /await limpiarAlSalir\(supabase\)/.test(sesionWeb),
+    /await limpiarAlSalir\(supabase\)/.test(de193('src/components/ajustes/BajaDeCuenta.tsx')),
+    /borrarPerfilCache\(\)/.test(cuentaNativa + sesionWeb),
+  ], [2, true, true, false]);
+  // NO SE PUEDE PROBAR ACÁ que el servidor deje vivas las otras sesiones: es lo
+  // que significa `scope: 'local'` en la librería. Se mira que se pida así.
+  chequear('cerrar sesión es solo en este aparato; borrar la cuenta, en todos', [
+    /signOut\(\{ scope: 'local' \}\)/.test(sesionWeb),
+    (cuentaNativa.match(/signOut\(\{ scope: 'local' \}\)/g) ?? []).length,
+    (cuentaNativa.match(/signOut\(\)/g) ?? []).length,
+  ], [true, 1, 1]);
+  chequear('en la web, salir olvida también el punto de "te espera algo"', /olvidarPendientes\(\)/.test(sesionWeb), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

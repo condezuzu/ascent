@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
-import { borrarPerfilCache } from '@compartido/cache';
+import { olvidarPendientes } from '@/lib/avisos';
 import { borrarTema } from '@/plataforma/web/tema';
-import { eliminarCuenta } from '@compartido/cuenta';
+import { eliminarCuenta, limpiarAlSalir } from '@compartido/cuenta';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 
@@ -28,7 +28,8 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
       setBorrando(false);
       return setError(r.error);
     }
-    await borrarPerfilCache();
+    await limpiarAlSalir(supabase);
+    olvidarPendientes();
     borrarTema(); // y el color de esta cuenta, que se pinta antes de todo
     await supabase.auth.signOut();
     router.push('/login');
