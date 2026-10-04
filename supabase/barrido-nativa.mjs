@@ -370,6 +370,20 @@ await mirar('sesión: terminar', async () => {
 });
 await mirar('anotar el peso', () => tocarSiEsta('Anotar peso'));
 
+// ---- 6. EL ENLACE DEL CORREO NO ES UNA PANTALLA ----
+//
+// El correo de confirmar la cuenta y el de cambiar la contraseña vuelven por
+// `ascent://confirmar`. El router también recibe ese enlace y busca una ruta
+// con ese nombre: sin `movil/app/confirmar.tsx` caía en su pantalla de "ruta
+// que no existe". Acá se entra por esa ruta, con la sesión viva, y se mira
+// dónde queda. (En el navegador es una recarga; en el teléfono, el enlace.)
+await mirar('el enlace del correo', async () => {
+  await page.goto(`${BASE}/confirmar`, { waitUntil: 'networkidle', timeout: 240000 });
+  const perdida = page.getByText('Unmatched Route', { exact: false }).first();
+  await Promise.race([texto('Inicio').waitFor({ timeout: 90000 }), perdida.waitFor({ timeout: 90000 })]);
+  if (await perdida.isVisible().catch(() => false)) anotar(3, 'el enlace del correo cae en la pantalla de "ruta que no existe"');
+});
+
 await nav.close();
 
 // ---- limpieza: la cuenta que creó, se la lleva ----

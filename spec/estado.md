@@ -504,9 +504,23 @@ sin subir). Lo arreglado está en el historial; esto es lo que NO.
   lista se ve con los campos de peso vacíos.
 - Una foto elegida se pierde si se cierra la hoja de registrar (la hoja nace
   de nuevo en cada apertura; es el precio de que no arrastre estado viejo).
-- Si la app se reinicia sola (una OTA) dentro de la hora de haber entrado por
-  el enlace de cambiar la contraseña, la pantalla de elegirla aparece otra vez.
-  "Ahora no" la cierra.
+- El enlace con el que ARRANCÓ la app se vuelve a leer en cada reinicio del
+  JavaScript (una OTA). Si entró por el de cambiar la contraseña, la pantalla
+  de elegirla aparece otra vez ("Ahora no" la cierra); y un enlace ya viejo
+  puede fallar al renovarse. El mecanismo es anterior —pasa igual con el de
+  confirmar la cuenta—; arreglarlo es tocar el camino del reinicio por OTA.
+- La pantalla de la clave nueva queda debajo de una hoja o del descanso si el
+  enlace llega con uno de esos abierto: aparece al cerrarlo.
+- Cerrar sesión sin señal no cierra (la librería no lo hace): ahora se dice, y
+  no se borra nada.
+- Un resumen de sesión que cruza la medianoche (empezó a las 23:30, terminó a
+  las 00:15) se fecha con el día en que se muestra: ese día Inicio dice "Día
+  registrado" hasta que se cierra el resumen con la equis.
+- Días de descanso: una recarga del perfil que leyó ANTES de un toque y llega
+  DESPUÉS de que el toque se guardó todavía puede pisar la pantalla. Se corrige
+  con la recarga o el toque siguiente; la base queda bien.
+- La suite de `test:db` corre en UTC desde la sección 101 (ver el comentario
+  ahí). Una prueba que dependa del huso tiene que fijarlo a mano.
 - `signOut({ scope: 'local' })` y la política de Storage no se pueden probar
   desde acá: se mira que se pidan así.
 
