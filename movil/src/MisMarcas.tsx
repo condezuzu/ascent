@@ -41,6 +41,17 @@ export default function MisMarcas() {
   const [abierto, setAbierto] = useState<string | null>(null);
   const [borrando, setBorrando] = useState<string | null>(null);
   const [hoja, setHoja] = useState<{ abierta: boolean; ejercicio?: string } | null>(null);
+  // CADA APERTURA ES UNA HOJA NUEVA (4/10). La hoja queda siempre montada —así
+  // cierra con su animación— y su estado nacía una sola vez, antes de saber qué
+  // ejercicio se iba a tocar: "Otra de press de banca" abría con Sentadilla (el
+  // primero del catálogo) o con el último elegido, con el peso de la vez
+  // anterior puesto, y la marca se guardaba en otro ejercicio. La `key` cambia
+  // al ABRIR y no al cerrar, para no cortarle la salida.
+  const [apertura, setApertura] = useState(0);
+  const abrirHoja = (ejercicio?: string) => {
+    setApertura((n) => n + 1);
+    setHoja({ abierta: true, ejercicio });
+  };
   const [cargando, setCargando] = useState(true);
 
   const cargar = useCallback(async () => {
@@ -158,7 +169,7 @@ export default function MisMarcas() {
             ))}
             <Pressable
               style={estilos.texto}
-              onPress={() => setHoja({ abierta: true, ejercicio: m.ejercicio })}
+              onPress={() => abrirHoja(m.ejercicio)}
             >
               <Text style={estilos.enlace}>{T.fuerza.otraDe(m.nombre.toLowerCase())}</Text>
             </Pressable>
@@ -183,7 +194,7 @@ export default function MisMarcas() {
 
         <Text style={estilos.titulo}>{T.fuerza.misMarcas}</Text>
 
-        <Pressable style={estilos.solido} onPress={() => setHoja({ abierta: true })}>
+        <Pressable style={estilos.solido} onPress={() => abrirHoja()}>
           <Text style={estilos.solidoTexto}>{T.fuerza.anotarMarca}</Text>
         </Pressable>
 
@@ -244,6 +255,7 @@ export default function MisMarcas() {
       </ScrollView>
 
       <CargarMarca
+        key={apertura}
         visible={!!hoja?.abierta}
         ejercicios={ejercicios}
         unidad={unidad}

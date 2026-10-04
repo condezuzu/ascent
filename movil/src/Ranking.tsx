@@ -12,7 +12,9 @@ import {
   pedirAmistad,
   rechazarAmistad,
   type DatosDeRanking,
+  SOCIAL_CAMBIO,
 } from '@compartido/ranking';
+import { eventos } from '@compartido/eventos';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 import { plataforma } from '@plataforma';
@@ -110,6 +112,10 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
 
   // Y de nuevo al volver a esta pestaña: ahora se queda montada.
   useRecargarAlVolver('ranking', recargar);
+
+  // Y CUANDO SE BLOQUEA O DESBLOQUEA A ALGUIEN DESDE OTRA PANTALLA (4/10): el
+  // perfil se apila encima de esta, que al volver seguía mostrando al bloqueado.
+  useEffect(() => eventos.escuchar(SOCIAL_CAMBIO, () => recargar()), [recargar]);
 
   // ¿El gimnasio ya está marcado? Del caché del perfil, para gatear el aviso.
   useEffect(() => {

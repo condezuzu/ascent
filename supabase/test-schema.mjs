@@ -13235,6 +13235,52 @@ console.log('\n177. La app nativa no manda al login por no tener señal');
     /if \(!uid\) \{\s*alSalir\(\);\s*return fallo\(T\.general\.noSePudo\);\s*\}/.test(inicio177), true);
 }
 
+console.log('\n178. Bloquear avisa, y la marca se anota en el ejercicio que se tocó');
+{
+  const { readFileSync: leer178 } = await import('node:fs');
+  const raiz178 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de178 = (ruta) => sinComentarios(leer178(join(raiz178, ruta), 'utf8'));
+
+  // ---- EL BLOQUEADO QUE SEGUÍA EN EL RANKING (4/10) ----
+  //
+  // Se corre el `bloquear` de verdad con una base de mentira, y se mira que el
+  // aviso salga por el bus real: es lo que hace que Ranking, montada debajo del
+  // perfil, vuelva a pedir sus datos.
+  const RK = await import('../compartido/ranking.ts');
+  let avisos = 0;
+  const dejarDeOir = eventos.escuchar(RK.SOCIAL_CAMBIO, () => avisos++);
+  const baseQue = (error) => ({ rpc: async () => ({ data: null, error }) });
+
+  chequear('bloquear, cuando sale bien, avisa', [await RK.bloquear(baseQue(null), 'x'), avisos], [true, 1]);
+  chequear('si falla, no avisa nada', [await RK.bloquear(baseQue({ message: 'Network request failed' }), 'x'), avisos], [false, 1]);
+  chequear('y si la base todavía no tiene la función, tampoco', [await RK.bloquear(baseQue({ code: 'PGRST202' }), 'x'), avisos], [false, 1]);
+  chequear('desbloquear también avisa', [await RK.desbloquear(baseQue(null), 'x'), avisos], [true, 2]);
+  dejarDeOir();
+
+  const ranking178 = de178('movil/src/Ranking.tsx');
+  chequear('Ranking de la nativa escucha el aviso y vuelve a pedir',
+    /eventos\.escuchar\(SOCIAL_CAMBIO, \(\) => recargar\(\)\)/.test(ranking178), true);
+
+  // ---- LA MARCA QUE SE GUARDABA EN OTRO EJERCICIO (4/10) ----
+  //
+  // ESTO ES CABLEADO, NO COMPORTAMIENTO: la hoja es un componente de React
+  // Native y acá no se puede dibujar. Lo que se fija es lo que la hace nacer de
+  // nuevo en cada apertura. Que abra con el ejercicio correcto se ve en el
+  // teléfono.
+  const marcas178 = (texto) => ({
+    cadaAperturaEsNueva: /<CargarMarca\s+key=\{apertura\}/.test(texto) && /setApertura\(\(n\) => n \+ 1\)/.test(texto),
+    // Abrirla por un costado, sin cambiar la `key`, es volver al bug.
+    seAbrePorUnSoloLugar: (texto.match(/setHoja\(\{ abierta: true/g) ?? []).length === 1,
+  });
+  chequear('la hoja de anotar una marca nace de nuevo en cada apertura', marcas178(de178('movil/src/MisMarcas.tsx')), {
+    cadaAperturaEsNueva: true,
+    seAbrePorUnSoloLugar: true,
+  });
+  chequear('la pantalla de antes no pasa', marcas178(
+    "onPress={() => setHoja({ abierta: true, ejercicio: m.ejercicio })} onPress={() => setHoja({ abierta: true })} <CargarMarca visible={!!hoja?.abierta} inicial={hoja?.ejercicio} />"
+  ), { cadaAperturaEsNueva: false, seAbrePorUnSoloLugar: false });
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

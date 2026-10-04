@@ -2,6 +2,17 @@ import type { Cliente } from '@cliente';
 import { cuerpoDe } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import type { UsuarioPublico } from '@nucleo/tipos';
+import { eventos } from '@compartido/eventos';
+
+/**
+ * LO SOCIAL CAMBIÓ por algo que se hizo en OTRA pantalla (4/10).
+ *
+ * En la app nativa las pestañas quedan montadas y el perfil de un amigo se
+ * apila encima. Bloquear desde ese perfil volvía a un Ranking que seguía con lo
+ * que tenía: el bloqueado en la lista, en la actividad y en "entrenando ahora",
+ * hasta cambiar de pestaña.
+ */
+export const SOCIAL_CAMBIO = 'ascent:social-cambio';
 
 /**
  * LO QUE MUESTRA RANKING, pedido una sola vez para las dos apps.
@@ -176,13 +187,19 @@ export async function denunciar(supabase: Cliente, denunciado: string, motivo: M
   const { error } = await supabase.rpc('denunciar', { p_denunciado: denunciado, p_motivo: motivo });
   return !NO_EXISTE(error) && !error;
 }
+// Los dos avisan ACÁ, y no en cada pantalla que bloquea: el que sabe que salió
+// bien es este, y una pantalla nueva que bloquee no se puede olvidar de avisar.
 export async function bloquear(supabase: Cliente, otro: string) {
   const { error } = await supabase.rpc('bloquear', { p_otro: otro });
-  return !NO_EXISTE(error) && !error;
+  const ok = !NO_EXISTE(error) && !error;
+  if (ok) eventos.emitir(SOCIAL_CAMBIO);
+  return ok;
 }
 export async function desbloquear(supabase: Cliente, otro: string) {
   const { error } = await supabase.rpc('desbloquear', { p_otro: otro });
-  return !NO_EXISTE(error) && !error;
+  const ok = !NO_EXISTE(error) && !error;
+  if (ok) eventos.emitir(SOCIAL_CAMBIO);
+  return ok;
 }
 
 /**
