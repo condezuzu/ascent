@@ -951,9 +951,11 @@ begin
   select * into perfil from profiles where id = new.user_id;
   if not new.es_descanso then
     r := perfil.racha_base + calcular_racha(new.user_id, new.fecha - 1) + 1;
-    if r between 30 and 39 then
-      new.planeta_del_dia := planeta_de_dia(r);
-    end if;
+    -- SIN BORDE PROPIO. Qué días tienen planeta lo dice `planeta_de_dia`, que
+    -- devuelve null fuera del rango. Acá había un "entre 30 y 39" copiado, y
+    -- cuando la migración 54 corrió el rango a 31..50 los días 40 a 50
+    -- quedaban sin planeta guardado.
+    new.planeta_del_dia := planeta_de_dia(r);
   end if;
   return new;
 end;
@@ -971,6 +973,19 @@ declare
   base int;
   r int;
 begin
+  -- UN CAMBIO QUE NO MUEVE LA RACHA NO RECALCULA NADA (migración 57). Desde que
+  -- el log guarda etiquetas —el día de racha, el planeta—, escribirlas es un
+  -- UPDATE, y este disparador lo trataba como una corrección: volvía a contar
+  -- la racha y a calcular los planetas de ese día en adelante. Para los días de
+  -- antes de la última pérdida esa cuenta da "sin planeta", así que el relleno
+  -- de la 57 —que toca todos los logs— borraba los planetas de las rachas
+  -- viejas. Lo que mueve la racha es de quién es el día, qué día es y si es
+  -- descanso; lo demás son etiquetas.
+  if tg_op = 'UPDATE'
+     and new.user_id = old.user_id and new.fecha = old.fecha and new.es_descanso = old.es_descanso then
+    return new;
+  end if;
+
   -- Perfil borrado (baja de cuenta): al borrar el perfil, la cascada arrastra
   -- todos sus logs y este trigger correría una vez por fila, recorriendo el
   -- historial completo cada vez, para terminar escribiendo sobre un perfil
@@ -1011,7 +1026,7 @@ begin
   if pg_trigger_depth() = 1 then
     update logs l set planeta_del_dia = c.nuevo
       from (
-        select id, case when r2 between 30 and 39 then planeta_de_dia(r2) else null end as nuevo
+        select id, planeta_de_dia(r2) as nuevo
           from (
             select x.id, base + calcular_racha(uid, x.fecha) as r2
               from logs x

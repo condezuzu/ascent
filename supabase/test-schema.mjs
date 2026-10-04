@@ -285,8 +285,51 @@ console.log('\n3. Planeta del día: rachas 31..50 = Ceres..Saturno, 4 días c/u'
   );
   const malos = r.rows.filter((x) => x.planeta_del_dia !== planetaDeDia(Number(x.racha)));
   chequear('cada log guarda el planeta que le toca', malos.map((x) => `${x.racha}:${x.planeta_del_dia}`), []);
-  chequear('y son los cinco nuevos', [...new Set(r.rows.map((x) => x.planeta_del_dia))], ['Ceres', 'Mercurio', 'Marte']);
   chequear('racha 41 es Planeta (rango 4)', (await perfil(u)).rango_actual, 4);
+
+  // LOS CINCUENTA DÍAS, UNO POR UNO Y SIN SACAR LOS VACÍOS (4/10).
+  //
+  // El chequeo de arriba mira solo los días que TIENEN planeta, así que era
+  // ciego al que le falta: la migración 54 corrió el rango a 31..50 y los dos
+  // disparadores que lo guardan siguieron con el "entre 30 y 39" de antes. Del
+  // 40 al 50 no se guardaba nada, y esta sección daba verde igual —esperaba
+  // tres planetas, que era justo lo que el bug dejaba—.
+  const queGuarda = async (uid) =>
+    (
+      await db.query(
+        `select racha_base + calcular_racha(l.user_id, l.fecha) as racha, l.planeta_del_dia
+           from logs l join profiles p on p.id = l.user_id
+          where l.user_id = $1 and not l.es_descanso order by l.fecha`,
+        [uid]
+      )
+    ).rows.map((x) => [Number(x.racha), x.planeta_del_dia]);
+  const loQueToca = (filas) => filas.map(([racha]) => [racha, planetaDeDia(racha)]);
+
+  const largo = await nuevoUsuario();
+  await rachaDe(largo, 50);
+  const guardado = await queGuarda(largo);
+  chequear('son cincuenta días, del 1 al 50', guardado.map(([racha]) => racha), Array.from({ length: 50 }, (_, i) => i + 1));
+  chequear('día por día, el log guarda el planeta de ese día (o ninguno)', guardado, loQueToca(guardado));
+  chequear(
+    'y están los cinco, cuatro días cada uno',
+    PLANETAS.map((p) => guardado.filter(([, planeta]) => planeta === p).length),
+    [4, 4, 4, 4, 4]
+  );
+  chequear('racha 50 sigue siendo Planeta', (await perfil(largo)).rango_actual, 4);
+
+  // EL OTRO DISPARADOR: al corregir un día viejo, los de adelante cambian de
+  // racha y su planeta se vuelve a calcular. Tenía el mismo borde copiado.
+  // Sesenta días y se borra el 12: los 48 que quedan pasan a ser del 1 al 48,
+  // y del 40 al 48 tienen que quedar con planeta.
+  const corregido = await nuevoUsuario();
+  await rachaDe(corregido, 60);
+  await db.query(`delete from logs where user_id = $1 and fecha = mi_hoy() - 48`, [corregido]);
+  const despues = (await queGuarda(corregido)).filter(([racha]) => racha <= 48).slice(-48);
+  chequear('después de borrar el día 12 quedan 48 seguidos', despues.map(([racha]) => racha), Array.from({ length: 48 }, (_, i) => i + 1));
+  chequear('y cada uno queda con el planeta que le toca ahora', despues, loQueToca(despues));
+  chequear('incluidos los del 40 al 48', despues.filter(([racha]) => racha >= 40).map(([, planeta]) => planeta), [
+    'Marte', 'Marte', 'Marte', 'Venus', 'Venus', 'Venus', 'Venus', 'Saturno', 'Saturno',
+  ]);
 }
 
 // =====================================================================
@@ -12501,6 +12544,68 @@ console.log('\n169. La luz de la barra sale de la posicion de la tira');
   ), { laLuzEsUnaOpacidadDeLaTira: false, noSaleDeLaPestanaActiva: false });
   // EL ROTULO ESTA DOS VECES (apagado y encendido): que no se lea dos veces.
   chequear('cada pestaña lleva su nombre para el lector de pantalla', /: T\.nav\[p\]\}/.test(pes169), true);
+}
+
+console.log('\n170. El día de racha que guarda cada log (migración 57)');
+{
+  const { readFileSync: leer170 } = await import('node:fs');
+  const { join: unir170 } = await import('node:path');
+  const mig57 = leer170(unir170(import.meta.dirname, 'migracion-57-dia-de-racha.sql'), 'utf8').replace(/\r\n/g, '\n');
+
+  // ---- de acá en más: registrar anota el día ----
+  const nuevo = await nuevoUsuario();
+  await rachaDe(nuevo, 12, 1);
+  await comoUsuario(nuevo);
+  const reg = (await db.query(`select registrar_dia() as r`)).rows[0].r;
+  chequear('registrar anota en el log la racha de ese día',
+    (await db.query(`select racha_del_dia from logs where id = $1`, [reg.log_id])).rows[0].racha_del_dia, 13);
+
+  // ---- EL RELLENO DE LOS DÍAS VIEJOS, que es lo que estaba mal (4/10) ----
+  //
+  // Se corre LA SENTENCIA DE LA MIGRACIÓN, sacada del archivo, sobre una
+  // historia con una pérdida en el medio: doce días, uno faltado, y ocho más.
+  // Al perder quedó en 2 (12 - 10), así que los ocho de después son del 3 al 10.
+  const u = await nuevoUsuario();
+  await rachaDe(u, 12, 9);
+  await db.query(`update profiles set racha_actual = 2, racha_base = 2, perdida_fecha = mi_hoy() - 8 where id = $1`, [u]);
+  await rachaDe(u, 8);
+  chequear('la historia de la prueba: 12, se pierde, y 8 más = 10', (await perfil(u)).racha_actual, 10);
+
+  // UN PLANETA DE ANTES, en un día anterior a la pérdida. Tocar una etiqueta
+  // de un log no puede volver a calcular los planetas de ese día en adelante:
+  // el disparador lo hacía con CUALQUIER update, y para los días de antes de la
+  // pérdida la cuenta da "sin planeta", así que el relleno de la 57 —que toca
+  // todos los logs— borraba los planetas de las rachas viejas.
+  await db.query(`update logs set planeta_del_dia = 'Tierra' where user_id = $1 and fecha = mi_hoy() - 15`, [u]);
+  const planetaViejo = async () =>
+    (await db.query(`select planeta_del_dia from logs where user_id = $1 and fecha = mi_hoy() - 15`, [u])).rows[0].planeta_del_dia;
+  chequear('escribirle el planeta a un log viejo no lo recalcula', await planetaViejo(), 'Tierra');
+
+  // Como estaba la base antes de la 57: ningún log sabe su día.
+  await db.query(`update logs set racha_del_dia = null where user_id = $1`, [u]);
+  chequear('vaciar la etiqueta tampoco toca el planeta', await planetaViejo(), 'Tierra');
+
+  const relleno = mig57.match(/\nupdate public\.logs[\s\S]*?;\n/);
+  chequear('la migración 57 trae su relleno', relleno !== null, true);
+  await db.exec(relleno[0]);
+
+  const dias = (
+    await db.query(`select mi_hoy() - fecha as hace, racha_del_dia from logs where user_id = $1 order by fecha`, [u])
+  ).rows.map((x) => [Number(x.hace), x.racha_del_dia]);
+  chequear('después de la pérdida, cada día lleva su número (con lo que quedó de antes)',
+    dias.filter(([hace]) => hace <= 7), [[7, 3], [6, 4], [5, 5], [4, 6], [3, 7], [2, 8], [1, 9], [0, 10]]);
+  // Qué día de racha era cada uno de los de ANTES de la pérdida ya no se puede
+  // saber: se queda sin número. Un "día 0" inventado en la foto es peor que nada.
+  chequear('antes de la pérdida no se inventa un número: queda vacío',
+    [...new Set(dias.filter(([hace]) => hace > 7).map(([, dia]) => dia))], [null]);
+  chequear('y el relleno no le borró el planeta al día viejo', await planetaViejo(), 'Tierra');
+  chequear('ni movió la racha', (await perfil(u)).racha_actual, 10);
+
+  // Correrla dos veces no cambia nada: solo rellena lo que está vacío.
+  await db.exec(relleno[0]);
+  chequear('correr el relleno de nuevo deja todo igual',
+    (await db.query(`select array_agg(racha_del_dia order by fecha) as d from logs where user_id = $1 and fecha >= mi_hoy() - 7`, [u])).rows[0].d,
+    [3, 4, 5, 6, 7, 8, 9, 10]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
