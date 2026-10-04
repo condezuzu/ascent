@@ -31,11 +31,20 @@ import { T } from './textos.ts';
  * sesión sería echar de la app a alguien por estar en un subsuelo —que es
  * media app de gimnasio—. Solo cuenta cuando el servidor CONTESTÓ que no.
  */
+/**
+ * SIN RED, dicho como lo dice cada uno: los tres navegadores y React Native
+ * ("network request failed"). Sin ese último, en el teléfono quedarse sin señal
+ * era "algo falló".
+ */
+function esDeRed(m: string): boolean {
+  return m.includes('failed to fetch') || m.includes('networkerror') || m.includes('load failed') || m.includes('network request failed');
+}
+
 export function laCuentaYaNoExiste(error: { message?: string; status?: number } | null): boolean {
   if (!error) return false;
   const m = (error.message ?? '').toLowerCase();
   // Sin red no se concluye nada. `AuthRetryableFetchError` llega con status 0.
-  if (m.includes('failed to fetch') || m.includes('networkerror') || m.includes('load failed')) {
+  if (esDeRed(m)) {
     return false;
   }
   if (!error.status) return false;
@@ -53,7 +62,7 @@ export function mensajeDeAuth(error: { message?: string; status?: number } | nul
   if (m.includes('invalid api key') || m.includes('no api key')) {
     return T.errores.malConfigurada;
   }
-  if (m.includes('failed to fetch') || m.includes('networkerror') || m.includes('load failed')) {
+  if (esDeRed(m)) {
     return T.errores.sinConexion;
   }
   if (m.includes('email not confirmed')) {

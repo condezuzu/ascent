@@ -77,6 +77,26 @@ export function perdidaDeAyer(perdidaFecha: string | null | undefined, hoy: stri
   return !!perdidaFecha && perdidaFecha === restarDias(hoy, 1);
 }
 
+/**
+ * SI HAY UNA PÉRDIDA QUE LA PERSONA TODAVÍA NO VIO.
+ *
+ * "La de ayer" no alcanza. Con el barrido nocturno (migración 55) o el
+ * disparador (59), la pérdida se aplica con la app cerrada: faltás el viernes,
+ * el sábado y el domingo son descanso y no abrís, y el lunes `perdida_fecha`
+ * dice viernes. No era "ayer", así que la racha aparecía 10 más abajo sin una
+ * palabra —el mismo hueco que se quería cerrar—.
+ *
+ * La de ayer se dice todo el día. Una más vieja, hasta que se vuelve a
+ * entrenar, y solo dentro de la semana que Inicio tiene cargada: de más atrás
+ * no se sabe si se entrenó después.
+ */
+export function perdidaSinVer(perdidaFecha: string | null | undefined, diasDeGimnasio: readonly string[], hoy: string): boolean {
+  if (!perdidaFecha) return false;
+  if (perdidaDeAyer(perdidaFecha, hoy)) return true;
+  if (perdidaFecha < restarDias(hoy, 6)) return false;
+  return !diasDeGimnasio.some((dia) => dia > perdidaFecha);
+}
+
 export function cuerpoDe(racha: number | null | undefined): { rango: number; planeta: string | null } {
   const r = racha ?? 0;
   return { rango: numeroDeRango(r), planeta: planetaDeDia(r) };

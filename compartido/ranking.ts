@@ -157,6 +157,24 @@ export async function pedirAmistad(supabase: Cliente, miId: string, destino: str
   const { error } = await supabase.from('friendships').insert({ solicitante: miId, destinatario: destino });
   return !error;
 }
+/**
+ * QUÉ SE OFRECE AL LADO DE ALGUIEN EN LA BÚSQUEDA. La búsqueda saca a los que
+ * ya son amigos, pero la lista en pantalla es de cuando se buscó: después de
+ * aceptar a alguien desde ahí, su fila pasaba a decir "Agregar", y tocarlo
+ * rebotaba en silencio contra la amistad que ya existía.
+ */
+export function accionDeBusqueda(
+  id: string,
+  amigos: readonly { id: string }[],
+  solicitudes: readonly { id: string; de: { id: string } }[],
+  mandados: ReadonlySet<string>
+): { que: 'nada' } | { que: 'aceptar'; pedido: string } | { que: 'enviado' } | { que: 'agregar' } {
+  if (amigos.some((a) => a.id === id)) return { que: 'nada' };
+  const recibido = solicitudes.find((s) => s.de.id === id);
+  if (recibido) return { que: 'aceptar', pedido: recibido.id };
+  return mandados.has(id) ? { que: 'enviado' } : { que: 'agregar' };
+}
+
 export async function aceptarAmistad(supabase: Cliente, id: string) {
   const { error } = await supabase.from('friendships').update({ estado: 'aceptada' }).eq('id', id);
   // Avisa, como `bloquear`: ahora también se acepta desde el perfil, que se

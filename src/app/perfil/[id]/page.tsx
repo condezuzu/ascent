@@ -15,6 +15,7 @@ import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import { miniaturas } from '@compartido/album';
 import { aceptarAmistad } from '@compartido/ranking';
+import { olvidarPendientes } from '@/lib/avisos';
 import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 import { plataforma } from '@/plataforma';
 import { T } from '@nucleo/textos';
@@ -81,7 +82,6 @@ export default function Perfil() {
       setCargado(true);
       return;
     }
-    setUsuario(u as UsuarioPublico);
 
     const { data: rel, error: errRelacion } = await supabase
       .from('friendships')
@@ -95,6 +95,10 @@ export default function Perfil() {
       setCargado(true);
       return;
     }
+    // RECIÉN ACÁ, con las dos respuestas. Puesto antes de preguntar la amistad,
+    // si esa consulta fallaba el perfil ya estaba en pantalla y se dibujaba
+    // como "no es tu amigo", con "Agregar": justo lo que se quería sacar.
+    setUsuario(u as UsuarioPublico);
     const amigos = rel?.estado === 'aceptada';
     setEsAmigo(amigos);
     // De quién es el pedido: el de él se acepta, el mío se espera.
@@ -258,7 +262,9 @@ export default function Perfil() {
               <button
                 className="boton-solido"
                 onClick={async () => {
-                  if (await aceptarAmistad(supabase, pedidoRecibido)) cargar();
+                  if (!(await aceptarAmistad(supabase, pedidoRecibido))) return;
+                  olvidarPendientes(); // el punto de "te espera algo" contaba este pedido
+                  cargar();
                 }}
               >
                 {T.social.aceptar}

@@ -7,6 +7,7 @@ import { T } from '@nucleo/textos';
 import { fechaLinda } from '@nucleo/fechas';
 import type { UsuarioPublico } from '@nucleo/tipos';
 import {
+  accionDeBusqueda,
   aceptarAmistad,
   buscarGente,
   cargarRanking,
@@ -341,7 +342,9 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          {resultados.map((u) => (
+          {resultados.map((u) => {
+            const accion = accionDeBusqueda(u.id, datos?.amigos ?? [], datos?.solicitudes ?? [], mandados);
+            return (
             <View style={estilos.fila} key={u.id}>
               <Avatar url={u.avatar_url} nombre={u.username} />
               {/* Su rango al lado, como en el ranking: de un desconocido, lo
@@ -352,20 +355,22 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 <Text style={estilos.nombre}>{u.username}</Text>
               </Pressable>
               {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
-                  silencio contra el suyo: acá se acepta. */}
-              {datos?.solicitudes.some((s) => s.de.id === u.id) ? (
-                <Pressable onPress={() => aceptar(datos.solicitudes.find((s) => s.de.id === u.id)!.id)} hitSlop={8}>
+                  silencio contra el suyo: acá se acepta. Y si ya es tu amiga
+                  —la acabás de aceptar— no se ofrece nada: ver `accionDeBusqueda`. */}
+              {accion.que === 'aceptar' ? (
+                <Pressable onPress={() => aceptar(accion.pedido)} hitSlop={8}>
                   <Text style={estilos.accion}>{T.social.aceptar}</Text>
                 </Pressable>
-              ) : mandados.has(u.id) ? (
+              ) : accion.que === 'enviado' ? (
                 <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>
-              ) : (
+              ) : accion.que === 'agregar' ? (
                 <Pressable onPress={() => agregar(u.id)} hitSlop={8}>
                   <Text style={estilos.accion}>{T.social.agregar}</Text>
                 </Pressable>
-              )}
+              ) : null}
             </View>
-          ))}
+            );
+          })}
           {/* "No encontramos a nadie": solo cuando se buscó algo de verdad y no
               hubo con qué. Antes un nombre inexistente no decía nada y parecía
               que la búsqueda no andaba. */}

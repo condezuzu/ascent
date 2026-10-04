@@ -75,7 +75,9 @@ export default function ClaveNueva({ alTerminar }: { alTerminar: () => void }) {
               <Text style={estilos.solidoTexto}>{guardando ? T.sesion.guardando : T.general.guardar}</Text>
             </Pressable>
             {error !== '' && <Text style={estilos.error}>{error}</Text>}
-            <Pressable onPress={alTerminar} hitSlop={10} style={estilos.despues}>
+            {/* Apagado mientras guarda: cerrar acá no frena el cambio, y la
+                contraseña cambiaba igual un segundo después, sin aviso. */}
+            <Pressable onPress={alTerminar} hitSlop={10} style={[estilos.despues, guardando && estilos.apagado]} disabled={guardando}>
               <Text style={estilos.despuesTexto}>{T.clave.ahoraNo}</Text>
             </Pressable>
           </>

@@ -25,6 +25,18 @@ export function limpiarTecleo(texto: string): string {
 }
 
 /**
+ * EL PESO QUE DICE EL TEXTO, sin comparar con nada. Es lo que usa el campo que
+ * avisa en cada tecla (la hoja de marcas): ahí no hay un peso guardado "a la
+ * vista" contra el que comparar, y `confirmarCampo` se quedaba con los kilos de
+ * la tecla anterior cuando redondeaban a la misma media libra ("12.2" y después
+ * "12" guardaba 5,53 kg en vez de 5,44).
+ */
+export function pesoEscrito(texto: string, unidad: Unidad): number | null {
+  const v = pesoValido(texto.trim());
+  return v === null ? null : pesoValido(aKilos(v, unidad));
+}
+
+/**
  * AL SALIR DEL CAMPO: qué peso queda. `cambia: false` si es el mismo que ya
  * estaba —con o sin coma, o redondeado igual—, y entonces no se escribe nada.
  */

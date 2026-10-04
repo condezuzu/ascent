@@ -7345,7 +7345,12 @@ console.log('\n103. Rangos y descansos: lo que se ve en Inicio y en el calendari
       if (!D.esDiaDeDescanso(todos, fecha)) huecos.push(`${zona} ${fecha}`);
     }
   }
-  process.env.TZ = TZ;
+  // OJO: `process.env.TZ = undefined` NO restaura nada —deja el texto
+  // "undefined", que Node lee como UTC—. Así estuvo siempre: de acá en adelante
+  // la suite corre en UTC, sin que nadie lo haya decidido. Se vio el 4/10, con
+  // una prueba de fechas que pasaba en verde con el código roto. Queda dicho
+  // con todas las letras: lo que dependa del huso lo fija a mano (sección 195).
+  process.env.TZ = TZ ?? 'UTC';
   chequear('el dia de la semana es el de la base en cualquier huso', huecos, []);
 }
 
@@ -14319,7 +14324,7 @@ console.log('\n191. El aviso de pérdida sale de lo que quedó guardado, no de u
   const usaLoGuardado = (ruta) => {
     const t = sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'));
     return [
-      /const perdioAyer = perdida \|\| perdidaDeAyer\(perfil\.perdida_fecha, hoy\);/.test(t),
+      /const perdioAyer = perdida \|\| perdidaSinVer\(perfil\.perdida_fecha, logs\.filter\(\(l\) => !l\.es_descanso\)\.map\(\(l\) => l\.fecha\), hoy\);/.test(t),
       /apagado=\{perdioAyer && !registradoHoy\}/.test(t),
       /\{perdioAyer && [(<]/.test(t),
       /\{perdida && [(<]/.test(t),
@@ -14404,8 +14409,9 @@ console.log('\n192. Amigos: "no se pudo preguntar" no es "no existe", y un pedid
     /rel\.solicitante === user\.id/.test(web192),
   ], [true, true, true, true]);
   chequear('en la búsqueda, a quien ya te mandó un pedido se lo acepta', [
-    /solicitudes\.some\(\(s\) => s\.de\.id === u\.id\) \?/.test(de192('movil/src/Ranking.tsx')),
-    /solicitudes\.some\(\(s\) => s\.de\.id === u\.id\) \?/.test(de192('src/app/social/page.tsx')),
+    // La cuenta se mudó a `accionDeBusqueda` (sección 195, ejecutada).
+    /accion\.que === 'aceptar' \?[\s\S]{0,120}aceptar\(accion\.pedido\)/.test(de192('movil/src/Ranking.tsx')),
+    /accion\.que === 'aceptar' \?[\s\S]{0,160}aceptar\(accion\.pedido\)/.test(de192('src/app/social/page.tsx')),
   ], [true, true]);
   chequear('y el Ranking de la web no dice "vacío" cuando no cargó', /cargado && !noCargo && \(/.test(de192('src/app/social/page.tsx')), true);
 
@@ -14754,16 +14760,26 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   // Como las manda la base: en UTC. Las once y media de la noche y las doce y
   // media de la madrugada del 5 son el 5 en cualquier zona; cortando el texto
   // en UTC, una de las dos cae en otro día (salvo con el reloj en UTC justo).
+  //
+  // CON EL HUSO PUESTO A MANO. La primera versión de esta prueba pasaba en
+  // verde con el código roto: a esta altura la suite corre en UTC (ver la
+  // sección 101), donde cortar el texto y mirar el reloj dan lo mismo.
   const E195 = await import('../compartido/estancamiento.ts');
-  const enUTC = (h, m) => new Date(2026, 8, 5, h, m).toISOString();
-  chequear('una sesión de noche es del día en que se hizo', E195.sesionesCrudas([
-    { inicio: enUTC(23, 30), fin: new Date(2026, 8, 6, 0, 30).toISOString() },
-    { inicio: enUTC(0, 30), fin: enUTC(1, 15) },
-    { inicio: enUTC(12, 0), fin: null },
-  ]), [
-    { fecha: '2026-09-05', minutos: 60 },
-    { fecha: '2026-09-05', minutos: 45 },
-  ]);
+  const zonaDeAntes = process.env.TZ;
+  const porZona = {};
+  for (const zona of ['America/Montevideo', 'Asia/Tokyo']) {
+    process.env.TZ = zona;
+    const enUTC = (h, m) => new Date(2026, 8, 5, h, m).toISOString();
+    porZona[zona] = E195.sesionesCrudas([
+      { inicio: enUTC(23, 30), fin: new Date(2026, 8, 6, 0, 30).toISOString() },
+      { inicio: enUTC(0, 30), fin: enUTC(1, 15) },
+      { inicio: enUTC(12, 0), fin: null },
+    ]);
+  }
+  if (zonaDeAntes === undefined) delete process.env.TZ;
+  else process.env.TZ = zonaDeAntes;
+  const delCinco = [{ fecha: '2026-09-05', minutos: 60 }, { fecha: '2026-09-05', minutos: 45 }];
+  chequear('una sesión de noche es del día en que se hizo, al oeste y al este de UTC', porZona, { 'America/Montevideo': delCinco, 'Asia/Tokyo': delCinco });
   chequear('y el aviso usa esa cuenta', /const sesiones = sesionesCrudas\(/.test(de195('compartido/estancamiento.ts')), true);
 
   // ---- LO QUE SIGUE ES CABLEADO: son componentes, y acá no hay pantalla ----
@@ -14776,10 +14792,22 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   const campo = de195('movil/src/CampoPeso.tsx');
   chequear('la hoja de marcas recibe el peso en cada tecla, sin esperar a salir del campo', [
     /<CampoPeso kg=\{kg\} unidad=\{unidad\} alCambiar=\{setKg\} etiqueta=\{T\.marca\.peso\} enCadaTecla \/>/.test(marca),
-    /if \(enCadaTecla\) alCambiar\(confirmarCampo\(limpio, kg, unidad\)\.kg\);/.test(campo),
+    /if \(enCadaTecla\) alCambiar\(pesoEscrito\(limpio, unidad\)\);/.test(campo),
   ], [true, true]);
+  // TECLA POR TECLA, y en libras: es donde la primera versión fallaba. Comparaba
+  // contra el peso de la tecla anterior, y "12.2" seguido de "12" guardaba los
+  // kilos de 12,2 (5,53) porque redondean a la misma media libra.
   const C195 = await import('../nucleo/campoPeso.ts');
-  chequear('tecla por tecla, el número que se ve es el que queda', ['1', '10', '100'].reduce((kg, texto) => C195.confirmarCampo(texto, kg, 'kg').kg, null), 100);
+  const teclear = (teclas, unidad) => teclas.map((texto) => C195.pesoEscrito(texto, unidad)).at(-1);
+  chequear('tecla por tecla, el número que se ve es el que queda (kg y lb)', [
+    teclear(['1', '10', '100'], 'kg'),
+    teclear(['1', '12', '12.', '12.2', '12.', '12'], 'lb'),
+    teclear(['2', '22', '225', '225.', '225.2', '225.', '225'], 'lb'),
+    teclear(['6', '62', '62,', '62,5'], 'kg'),
+    teclear(['6', ''], 'kg'),
+  ], [100, 5.44, 102.06, 62.5, null]);
+  // Y al salir del campo después, ese peso no se mueve.
+  chequear('y salir del campo lo deja como quedó', C195.confirmarCampo('12', 5.44, 'lb'), { cambia: false, kg: 5.44 });
 
   const lista = de195('movil/src/ListaDeBloques.tsx');
   chequear('cerrar la lista confirma lo que quedó tecleado', [
@@ -14816,6 +14844,97 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
     /this\.props\.alRomper\?\.\(\);/.test(raiz),
   ], [true, true, true, true]);
 
+  // ================= LO QUE ENCONTRÓ LA REVISIÓN DE LA ETAPA 2 =================
+
+  // ---- EL AVISO DE PÉRDIDA, CUANDO LA APLICÓ OTRO Y SE ABRE DÍAS DESPUÉS ----
+  // Con el barrido nocturno la pérdida se aplica con la app cerrada. "La de
+  // ayer" dejaba sin aviso a quien abría dos o tres días después.
+  const R195 = await import('../nucleo/rangos.ts');
+  const { restarDias: restar195 } = await import('../nucleo/fechas.ts');
+  const lunes = '2026-10-05';
+  const hace = (n) => restar195(lunes, n);
+  chequear('faltó el viernes y no abrió el fin de semana: el lunes se le dice', R195.perdidaSinVer(hace(3), [hace(5), hace(4)], lunes), true);
+  chequear('y deja de decirse cuando vuelve a entrenar', R195.perdidaSinVer(hace(3), [hace(4), lunes], lunes), false);
+  chequear('la de ayer se dice todo el día, aunque ya haya entrenado hoy', R195.perdidaSinVer(hace(1), [lunes], lunes), true);
+  chequear('de más de una semana atrás no: de ahí no se sabe si entrenó después', [R195.perdidaSinVer(hace(7), [], lunes), R195.perdidaSinVer(hace(6), [], lunes)], [false, true]);
+  chequear('sin pérdida, nada', [R195.perdidaSinVer(null, [], lunes), R195.perdidaSinVer(undefined, [hace(1)], lunes)], [false, false]);
+
+  // ---- ESTANCAMIENTO: "no hay aviso" no es "no se pudo preguntar" ----
+  // Devolvía `null` en los dos casos y la pantalla no los distinguía: al
+  // recargar después de anotar una marca más alta, el aviso viejo quedaba.
+  const baseDe = (respuestas) => ({
+    from: (tabla) => {
+      const c = new Proxy(function () {}, {
+        get(_, k) {
+          if (k === 'then') return (listo) => listo(respuestas[tabla] ?? { data: null, error: null });
+          return () => c;
+        },
+      });
+      return c;
+    },
+  });
+  const elPerfil = { data: { id: 'yo', avisos_estancamiento: true, umbral_estancamiento: 4 }, error: null };
+  const sinNada = { data: [], error: null };
+  const cortado = { data: null, error: { message: 'Network request failed' } };
+  const pedir = (respuestas) => E195.cargarEstancamiento(baseDe({ profiles: elPerfil, prs: sinNada, sesiones: sinNada, ejercicios: sinNada, ...respuestas }), 'yo');
+  chequear('sin nada que avisar contesta "no hay aviso", no "no se pudo"', await pedir({}), { senal: null, ejercicios: [], silenciadas: {} });
+  chequear('con el aviso apagado, lo mismo', (await pedir({ profiles: { data: { id: 'yo', avisos_estancamiento: false }, error: null } }))?.senal, null);
+  chequear('sin poder preguntar contesta null, y lo que estaba en pantalla queda', [await pedir({ profiles: cortado }), await pedir({ prs: cortado }), await pedir({ sesiones: cortado })], [null, null, null]);
+  chequear('y la sección de fuerza del teléfono no se vacía si la recarga falla', /if \(!datos\) return;\s*setMia\(datos\.mia\);\s*setRanking\(datos\.ranking\);/.test(de195('movil/src/SeccionFuerza.tsx')), true);
+
+  // ---- AMIGOS: lo que se ofrece en la búsqueda, y aceptar avisa ----
+  const RK195 = await import('../compartido/ranking.ts');
+  const pedidosRecibidos = [{ id: 'pedido-1', de: { id: 'ana' } }];
+  chequear('en la búsqueda: aceptar, enviado, agregar, y nada si ya es tu amiga', [
+    RK195.accionDeBusqueda('ana', [], pedidosRecibidos, new Set()),
+    RK195.accionDeBusqueda('beto', [], pedidosRecibidos, new Set(['beto'])),
+    RK195.accionDeBusqueda('caro', [], pedidosRecibidos, new Set()),
+    // La acabás de aceptar: la lista de la búsqueda es vieja, la de amigos no.
+    RK195.accionDeBusqueda('ana', [{ id: 'ana' }], [], new Set()),
+    RK195.accionDeBusqueda('ana', [{ id: 'ana' }], pedidosRecibidos, new Set(['ana'])),
+  ], [{ que: 'aceptar', pedido: 'pedido-1' }, { que: 'enviado' }, { que: 'agregar' }, { que: 'nada' }, { que: 'nada' }]);
+  const { eventos: eventos195 } = await import('../compartido/eventos.ts');
+  let avisosDeAmistad = 0;
+  const dejarDeOir = eventos195.escuchar(RK195.SOCIAL_CAMBIO, () => avisosDeAmistad++);
+  const acepto = await RK195.aceptarAmistad(baseDe({ friendships: { data: null, error: null } }), 'pedido-1');
+  const noAcepto = await RK195.aceptarAmistad(baseDe({ friendships: cortado }), 'pedido-1');
+  dejarDeOir();
+  chequear('aceptar una amistad avisa a las pantallas, y solo si entró', [acepto, noAcepto, avisosDeAmistad], [true, false, 1]);
+  const perfilWeb = de195('src/app/perfil/[id]/page.tsx');
+  chequear('las dos búsquedas usan esa cuenta, y el perfil web no se dibuja sin saber la amistad', [
+    /accionDeBusqueda\(u\.id, datos\?\.amigos \?\? \[\], datos\?\.solicitudes \?\? \[\], mandados\)/.test(de195('movil/src/Ranking.tsx')),
+    /accionDeBusqueda\(u\.id, amigos, solicitudes, pedidosMandados\)/.test(de195('src/app/social/page.tsx')),
+    // `setUsuario` va DESPUÉS de las dos consultas: antes, con la segunda
+    // fallando, el amigo salía como "no es tu amigo".
+    /if \(errRelacion\) \{[^}]*\}\s*setUsuario\(u as UsuarioPublico\);/.test(perfilWeb),
+    /setUsuario\(u as UsuarioPublico\);\s*const \{ data: rel/.test(perfilWeb),
+  ], [true, true, true, false]);
+
+  // ---- LA CONTRASEÑA: por qué no cambió ----
+  const { T: T195b } = await import('../nucleo/textos.ts');
+  const CLb = await import('../nucleo/clave.ts');
+  chequear('sin señal, con demasiados intentos o con una clave floja no se manda a pedir otro correo', [
+    CLb.porQueNoCambio({ message: 'Network request failed' }),
+    CLb.porQueNoCambio({ message: 'Failed to fetch' }),
+    CLb.porQueNoCambio({ status: 429, message: 'over_request_rate_limit' }),
+    CLb.porQueNoCambio({ code: 'weak_password', message: 'Password is known to be weak' }),
+    CLb.porQueNoCambio({ message: 'otra cosa' }),
+  ], [T195b.errores.sinConexion, T195b.errores.sinConexion, T195b.errores.demasiadosIntentos, T195b.errores.claveCorta, T195b.clave.noSePudo]);
+  chequear('el enlace del correo tiene ruta, la pantalla no se cierra mientras guarda y no sobrevive a la sesión', [
+    /if \(router\.canGoBack\(\)\) router\.back\(\);\s*else router\.replace\('\/'\);/.test(de195('movil/app/confirmar.tsx')),
+    /style=\{\[estilos\.despues, guardando && estilos\.apagado\]\} disabled=\{guardando\}/.test(de195('movil/src/ClaveNueva.tsx')),
+    /if \(sesion === 'sin'\) setClaveNueva\(false\);/.test(de195('movil/app/_layout.tsx')),
+  ], [true, true, true]);
+
+  // ---- LA LISTA DE LO HECHO: un peso a medio teclear no cae en otro bloque ----
+  chequear('las filas de la lista van por su id, y un campo que se va retira su confirmación', [
+    /<View key=\{clave\} style=\{estilos\.fila\}>/.test(lista),
+    /<View key=\{i\} style=\{estilos\.fila\}>/.test(lista),
+    /if \(tecleando\.current\) avisarQueSeVa\.current\?\.\(null\);/.test(campo),
+  ], [true, false, true]);
+
+  chequear('en la web, Ajustes sin poder saber quién es también ofrece reintentar', /if \(!user\) return setNoCargo\(true\);/.test(ajustesWeb), true);
+
   const pestanas = de195('movil/src/Pestanas.tsx');
   // ---- LA CONTRASEÑA NUEVA: la nativa no tenía dónde elegirla, y la web no decía por qué falló el enlace ----
   const EN195 = await import('../nucleo/enlace.ts');
@@ -14839,7 +14958,7 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   chequear('"es la misma" se reconoce por el código, y lo demás es "no se cambió"', [
     CL195.porQueNoCambio({ code: 'same_password', message: 'New password should be different from the old password.' }),
     CL195.porQueNoCambio({ message: 'New password should be different from the old password.' }),
-    CL195.porQueNoCambio({ message: 'Network request failed' }),
+    CL195.porQueNoCambio({ message: 'el enlace ya no sirve' }),
     CL195.porQueNoCambio(null),
   ], [T195.clave.esLaMisma, T195.clave.esLaMisma, T195.clave.noSePudo, T195.clave.noSePudo]);
   // CABLEADO: el enlace, la pantalla y la ruta son de cada app.

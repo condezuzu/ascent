@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Unidad } from '@nucleo/peso';
-import { confirmarCampo, hayQueAvisar, limpiarTecleo, pasoDelCampo, textoDelCampo } from '@nucleo/campoPeso';
+import { confirmarCampo, hayQueAvisar, limpiarTecleo, pasoDelCampo, pesoEscrito, textoDelCampo } from '@nucleo/campoPeso';
 import { T } from '@nucleo/textos';
 import { C } from './colores';
 
@@ -68,6 +68,18 @@ export default function CampoPeso({
   useEffect(() => {
     ultima.current = confirmar;
   });
+  // Un campo que se va con algo a medio teclear (se quitó su serie) no deja su
+  // confirmación en manos de quien cierra: escribiría en la serie que ocupe su lugar.
+  const avisarQueSeVa = useRef(alTeclear);
+  useEffect(() => {
+    avisarQueSeVa.current = alTeclear;
+  });
+  useEffect(
+    () => () => {
+      if (tecleando.current) avisarQueSeVa.current?.(null);
+    },
+    []
+  );
 
   function paso(signo: 1 | -1) {
     const nuevo = pasoDelCampo(kg, unidad, signo);
@@ -93,7 +105,7 @@ export default function CampoPeso({
             tecleando.current = true;
             const limpio = limpiarTecleo(v);
             setTexto(limpio);
-            if (enCadaTecla) alCambiar(confirmarCampo(limpio, kg, unidad).kg);
+            if (enCadaTecla) alCambiar(pesoEscrito(limpio, unidad));
             alTeclear?.(() => ultima.current());
           }}
           onBlur={confirmar}

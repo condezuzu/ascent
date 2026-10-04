@@ -90,6 +90,9 @@ export default function Layout() {
 
   useEffect(() => {
     if (sesion !== 'mirando') marcarListo();
+    // Si la sesión se cae con la pantalla de la clave abierta, no vuelve a
+    // aparecer sobre la cuenta que entre después.
+    if (sesion === 'sin') setClaveNueva(false);
   }, [sesion]);
 
   // LA SESIÓN DE AUDIO SE DECLARA ACÁ, ANTES QUE NADA (25/9).

@@ -44,7 +44,9 @@ export default function Ajustes() {
   const cargar = useCallback(async () => {
     setNoCargo(false);
     const user = await miUsuario(supabase);
-    if (!user) return;
+    // Sin poder preguntar quién es (sin red y con el token vencido) también es
+    // "no cargó": si no, quedaba el armazón vacío sin nada que tocar.
+    if (!user) return setNoCargo(true);
     // select('*') y no la lista de columnas: si el código llega antes que la
     // migración, pedir una columna que todavía no existe rompe la pantalla
     // entera en vez de dejar la sección nueva en su estado vacío.

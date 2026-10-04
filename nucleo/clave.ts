@@ -1,4 +1,5 @@
 import { T } from './textos.ts';
+import { mensajeDeAuth } from './errores.ts';
 
 /**
  * ELEGIR UNA CONTRASEÑA NUEVA, sin la pantalla. Lo usan la web
@@ -18,7 +19,13 @@ export function claveNuevaInvalida(clave: string, repetida: string): string | nu
  * CÓDIGO (`same_password`), que es lo estable; el texto queda de respaldo
  * porque cambió entre versiones del servidor y la web miraba solo eso.
  */
-export function porQueNoCambio(e: { code?: string; message?: string } | null | undefined): string {
+export function porQueNoCambio(e: { code?: string; message?: string; status?: number } | null | undefined): string {
   const esLaMisma = e?.code === 'same_password' || /same|different from the old/i.test(e?.message ?? '');
-  return esLaMisma ? T.clave.esLaMisma : T.clave.noSePudo;
+  if (esLaMisma) return T.clave.esLaMisma;
+  if (e?.code === 'weak_password') return T.errores.claveCorta;
+  // SIN SEÑAL, DEMASIADOS INTENTOS O UNA CLAVE QUE EL SERVIDOR NO ACEPTA: el
+  // enlace sigue sirviendo y alcanza con reintentar. "Pide el correo otra vez"
+  // mandaba a hacer algo que no hacía falta.
+  const conocido = mensajeDeAuth(e ?? null);
+  return conocido && conocido !== T.errores.algoFallo ? conocido : T.clave.noSePudo;
 }

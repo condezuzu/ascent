@@ -31,7 +31,8 @@ async function leerSilenciadas(): Promise<Record<string, string>> {
 }
 
 export type DatosDeEstancamiento = {
-  senal: Senal;
+  /** `null`: se preguntó y no hay nada que avisar (o el aviso está apagado). */
+  senal: Senal | null;
   ejercicios: Ejercicio[];
   silenciadas: Record<string, string>;
 };
@@ -53,7 +54,7 @@ export function sesionesCrudas(ses: { inicio: string; fin: string | null }[]): S
 }
 
 export async function cargarEstancamiento(supabase: Cliente, uid: string): Promise<DatosDeEstancamiento | null> {
-  const [{ data: perfil }, { data: prs }, { data: ses }, { data: cat }, silenciadas] = await Promise.all([
+  const [{ data: perfil }, { data: prs, error: errMarcas }, { data: ses, error: errSesiones }, { data: cat }, silenciadas] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', uid).single(),
     // SOLO LAS PROPIAS. La tabla de marcas deja leer las de los amigos (el
     // ranking las usa), y sin este filtro el detector decía "tu mejor
@@ -64,12 +65,16 @@ export async function cargarEstancamiento(supabase: Cliente, uid: string): Promi
     supabase.from('ejercicios').select('*'),
     leerSilenciadas(),
   ]);
-  if (!perfil) return null;
+  // `null` ES "NO SE PUDO PREGUNTAR" Y NADA MÁS (4/10). Antes también era "no
+  // hay aviso", y la pantalla no podía distinguirlos: al recargar después de
+  // anotar una marca más alta, el aviso viejo se quedaba para siempre.
+  if (!perfil || errMarcas || errSesiones) return null;
+  const sinAviso: DatosDeEstancamiento = { senal: null, ejercicios: (cat ?? []) as Ejercicio[], silenciadas };
 
   // El interruptor. Si la migración todavía no corrió, la columna no existe y
   // el valor es `undefined`: se trata como prendido, que es el valor por
   // omisión de la base.
-  if (perfil.avisos_estancamiento === false) return null;
+  if (perfil.avisos_estancamiento === false) return sinAviso;
 
   const sesiones = sesionesCrudas((ses ?? []) as { inicio: string; fin: string | null }[]);
 
@@ -86,8 +91,7 @@ export async function cargarEstancamiento(supabase: Cliente, uid: string): Promi
     umbral: umbralValido(perfil.umbral_estancamiento),
     silenciadas,
   });
-  if (!senal) return null;
-  return { senal, ejercicios: (cat ?? []) as Ejercicio[], silenciadas };
+  return { ...sinAviso, senal };
 }
 
 /** "Ya lo vi": esa señal no vuelve por seis semanas en este aparato. */

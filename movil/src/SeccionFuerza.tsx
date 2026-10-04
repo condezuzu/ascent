@@ -51,8 +51,12 @@ export default function SeccionFuerza({
     if (!uid) return;
     setYo(uid);
     const datos = await cargarFuerza(supabase);
-    setMia(datos?.mia ?? null);
-    setRanking(datos?.ranking ?? []);
+    // UNA RECARGA QUE FALLA NO VACÍA LA SECCIÓN (4/10). Ahora se recarga al
+    // volver, y sin señal eso se llevaba el DOTS, las marcas y el ranking que
+    // ya estaban en pantalla.
+    if (!datos) return;
+    setMia(datos.mia);
+    setRanking(datos.ranking);
   }, []);
 
   // SE PEDÍA UNA SOLA VEZ, al montar (4/10), y Stats queda montada: anotar una

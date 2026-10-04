@@ -129,7 +129,10 @@ function ListaDeBloques({
           {estado.cerrados.map((b, i) => {
             const clave = claveDe(b, i);
             return (
-            <View key={i} style={estilos.fila}>
+            // POR SU ID, NO POR EL LUGAR (4/10). Con el lugar, quitar el bloque
+            // de arriba le dejaba a la fila de abajo los campos del anterior:
+            // un peso a medio teclear se anotaba en OTRO bloque.
+            <View key={clave} style={estilos.fila}>
               <View style={estilos.filaArriba}>
                 <Pressable
                   style={{ flexShrink: 1 }}

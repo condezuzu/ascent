@@ -7,6 +7,7 @@ import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda } from '@nucleo/fechas';
 import type { UsuarioPublico } from '@nucleo/tipos';
 import {
+  accionDeBusqueda,
   aceptarAmistad,
   buscarGente,
   cargarRanking,
@@ -300,35 +301,31 @@ export default function Social() {
               autoCapitalize="off"
             />
           </div>
-          {resultados.map((u) => (
-            <div className="fila" key={u.id}>
-              <Avatar url={u.avatar_url} nombre={u.username} />
-              <Link href={`/perfil/${u.id}`} className="nombre">
-                {u.username}
-              </Link>
-              {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
-                  silencio contra el suyo: acá se acepta. */}
-              {solicitudes.some((s) => s.de.id === u.id) ? (
-                <button
-                  className="boton-texto"
-                  style={{ width: 'auto' }}
-                  onClick={() => aceptar(solicitudes.find((s) => s.de.id === u.id)!.id)}
-                >
-                  {T.social.aceptar}
-                </button>
-              ) : pedidosMandados.has(u.id) ? (
-                <span className="dato">{T.social.pedidoEnviado}</span>
-              ) : (
-                <button
-                  className="boton-texto"
-                  style={{ width: 'auto' }}
-                  onClick={() => pedirAmistad(u.id)}
-                >
-                  {T.social.agregar}
-                </button>
-              )}
-            </div>
-          ))}
+          {resultados.map((u) => {
+            const accion = accionDeBusqueda(u.id, amigos, solicitudes, pedidosMandados);
+            return (
+              <div className="fila" key={u.id}>
+                <Avatar url={u.avatar_url} nombre={u.username} />
+                <Link href={`/perfil/${u.id}`} className="nombre">
+                  {u.username}
+                </Link>
+                {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
+                    silencio contra el suyo: acá se acepta. Y si ya es tu amiga
+                    —la acabás de aceptar— no se ofrece nada: ver `accionDeBusqueda`. */}
+                {accion.que === 'aceptar' ? (
+                  <button className="boton-texto" style={{ width: 'auto' }} onClick={() => aceptar(accion.pedido)}>
+                    {T.social.aceptar}
+                  </button>
+                ) : accion.que === 'enviado' ? (
+                  <span className="dato">{T.social.pedidoEnviado}</span>
+                ) : accion.que === 'agregar' ? (
+                  <button className="boton-texto" style={{ width: 'auto' }} onClick={() => pedirAmistad(u.id)}>
+                    {T.social.agregar}
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </PantallaDeslizable>
 

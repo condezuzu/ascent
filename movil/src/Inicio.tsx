@@ -6,7 +6,7 @@ import { quienSoy } from '@compartido/quienSoy';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
-import { numeroDeRango, perdidaDeAyer, planetaDeDia, rangoDeRacha, subidaDeRango } from '@nucleo/rangos';
+import { numeroDeRango, perdidaSinVer, planetaDeDia, rangoDeRacha, subidaDeRango } from '@nucleo/rangos';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { laCuentaYaNoExiste, mensajeDeAuth } from '@nucleo/errores';
 import { pedirInicio } from '@compartido/inicio';
@@ -478,9 +478,8 @@ export default function Inicio({
   const hoy = hoyISO();
   const cierre = cierreVigente(cierreGuardado, hoy);
   // La pérdida se ve por lo que quedó guardado, no solo por el reporte de esta
-  // carga: ver `perdidaDeAyer`. El aviso dura el día; el fondo apagado, hasta
-  // que se registra.
-  const perdioAyer = perdida || perdidaDeAyer(perfil.perdida_fecha, hoy);
+  // carga: ver `perdidaSinVer`. El fondo apagado dura hasta que se registra.
+  const perdioAyer = perdida || perdidaSinVer(perfil.perdida_fecha, logs.filter((l) => !l.es_descanso).map((l) => l.fecha), hoy);
   // Igual que la web: un día marcado como descanso a mano TAMBIÉN está (bug del
   // 15/9). Contarlo como vacío ofrecía "Registrar día", la base lo rechazaba
   // por repetido y la hoja lo tomaba como hecho: la racha no subía y nadie
