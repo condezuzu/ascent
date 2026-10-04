@@ -317,6 +317,30 @@ console.log('\n3. Planeta del día: rachas 31..50 = Ceres..Saturno, 4 días c/u'
   );
   chequear('racha 50 sigue siendo Planeta', (await perfil(largo)).rango_actual, 4);
 
+  // EL DISPARADOR DE ANTES DE INSERTAR, SOLO. Lo de arriba no lo mira: en un
+  // insert directo el de después vuelve a rotular todo desde ese día y tapa lo
+  // que haya puesto este (se rompió a propósito y dio verde igual). Pero cuando
+  // el día entra desde ADENTRO de otro disparador, el de después no rotula y
+  // queda lo de este. Se saca el último día, se apaga el de después SOLO para
+  // volver a meterlo, y se mira qué quedó.
+  const alInsertar = [];
+  for (const [uid, dia] of [[u, 41], [largo, 50]]) {
+    await db.query(`delete from logs where user_id = $1 and fecha = mi_hoy()`, [uid]);
+    await db.query(`alter table logs disable trigger trg_logs_after_change`);
+    await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy())`, [uid]);
+    await db.query(`alter table logs enable trigger trg_logs_after_change`);
+    const fila = await db.query(`select planeta_del_dia from logs where user_id = $1 and fecha = mi_hoy()`, [uid]);
+    alInsertar.push([dia, fila.rows[0].planeta_del_dia]);
+    // Y se deja todo como estaba: el perfil quedó sin recalcular.
+    await db.query(`delete from logs where user_id = $1 and fecha = mi_hoy()`, [uid]);
+    await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy())`, [uid]);
+  }
+  chequear('el disparador de antes de insertar, solo, también rotula del 40 al 50', alInsertar, [
+    [41, planetaDeDia(41)],
+    [50, planetaDeDia(50)],
+  ]);
+  chequear('y no son días sin planeta', alInsertar.map(([, p]) => p !== null), [true, true]);
+
   // EL OTRO DISPARADOR: al corregir un día viejo, los de adelante cambian de
   // racha y su planeta se vuelve a calcular. Tenía el mismo borde copiado.
   // Sesenta días y se borra el 12: los 48 que quedan pasan a ser del 1 al 48,
