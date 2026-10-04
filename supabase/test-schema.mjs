@@ -12980,6 +12980,46 @@ console.log('\n173. La 59 y la 60 se pueden correr HOY, sobre el esquema 53, y o
   await prod.exec(migracion(60));
   chequear('correrlas dos veces no rompe ni sube nada', [await version(), await llegarAlGimnasio('ubicacion')], [53, 31]);
 
+  // ---- HOY TAMBIÉN: la 61, la mejor racha que bajaba sola (sección 186) ----
+  // 40 días, uno faltado, 25 días, otro faltado y un día más: la racha fue 40,
+  // 30, 55, 45 y 46. El récord es 55.
+  const recordArrastrado = async () => {
+    const u = await cuenta();
+    for (const [desde, hasta] of [[69, 30], [28, 4], [2, 2]]) {
+      for (let i = desde; i >= hasta; i--) await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, i]);
+    }
+    return u;
+  };
+  const rachaYRecord = async (u) => {
+    const p = (await prod.query(`select racha_actual, mejor_racha from profiles where id = $1`, [u])).rows[0];
+    return [p.racha_actual, p.mejor_racha];
+  };
+  const conRecord = await recordArrastrado();
+  chequear('en producción el récord de 55 baja a 46 sin que se borre nada', await rachaYRecord(conRecord), [46, 46]);
+  // La consulta de comprobación del runbook (spec/dia-de-aprobacion.md §0 y §2.9).
+  const comprobar61 = async () => {
+    const f = (
+      await prod.query(
+        `select public.version_del_esquema() as version,
+                (select prosrc like '%corriente - 10%' from pg_proc
+                  where oid = 'public.mejor_racha_real(uuid)'::regprocedure) as corte_resta_10,
+                (select count(*) from public.profiles p
+                  where public.mejor_racha_real(p.id) > p.mejor_racha) as records_por_debajo`
+      )
+    ).rows[0];
+    return [f.version, f.corte_resta_10, Number(f.records_por_debajo)];
+  };
+  chequear('la consulta del runbook, antes de la 61', (await comprobar61()).slice(0, 2), [53, false]);
+  await prod.exec(migracion(61));
+  chequear('la 61 corre sobre el 53 y NO sube la versión', await version(), 53);
+  chequear('la consulta del runbook, después', await comprobar61(), [53, true, 0]);
+  chequear('y repone el récord que el bug ya había bajado', await rachaYRecord(conRecord), [46, 55]);
+  await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 1)`, [conRecord]);
+  chequear('el día siguiente ya no lo vuelve a bajar', await rachaYRecord(conRecord), [47, 55]);
+  chequear('una cuenta nueva, con la 61 puesta, no lo pierde nunca', await rachaYRecord(await recordArrastrado()), [46, 55]);
+  await prod.exec(migracion(61));
+  chequear('correrla dos veces tampoco cambia nada', [await version(), await rachaYRecord(conRecord)], [53, [47, 55]]);
+
   // ---- EL DÍA DE LA APROBACIÓN: 54 a 58 encima, y después la 59 y la 60 de nuevo ----
   for (const n of [54, 55, 56, 57, 58]) await prod.exec(migracion(n));
   chequear('con la 54 a la 58 encima la versión es 58', await version(), 58);
@@ -12990,6 +13030,9 @@ console.log('\n173. La 59 y la 60 se pueden correr HOY, sobre el esquema 53, y o
   chequear('la 59 en su lugar sube a 59', await version(), 59);
   await prod.exec(migracion(60));
   chequear('y la 60 a 60', await version(), 60);
+  await prod.exec(migracion(61));
+  chequear('y la 61 a 61', await version(), 61);
+  chequear('la consulta del runbook, en su lugar', await comprobar61(), [61, true, 0]);
   chequear('al final: la racha', await llegarAlGimnasio('ubicacion'), 31);
   chequear('y la foto', await puedeAnotarRutaAjena(), false);
   await prod.close();
@@ -13814,6 +13857,43 @@ console.log('\n185. Web: una foto que no subió no cierra la hoja como si hubier
     hoja185("if (r === 'no-subio') avisarFallo(x); } if (yaEsta) { await subirFoto(logId ?? null, false); setCargando(false); return alConfirmar(null); }"),
     { soloOkEsHaberSubido: false, confirmaSinMirar: true, siElDiaEntroQuedaAbierta: false }
   );
+}
+
+console.log('\n186. La mejor racha no baja sola después de una pérdida (migración 61)');
+{
+  // EL RÉCORD HECHO CON RACHA ARRASTRADA (4/10). Perder resta 10 y lo que
+  // sobrevive se arrastra: 40 días, se pierde (30), 25 más y la racha dice 55.
+  // `mejor_racha_real`, de donde sale el récord, volvía a cero en cada corte y
+  // de ese historial sacaba 40: el 55 quedaba sostenido solo por la racha, y con
+  // la pérdida siguiente y el primer día de después bajaba a 46. Sin borrar nada.
+  await cuotaDeVidas(0);
+  const u186 = await nuevoUsuario();
+  const estado186 = async () => {
+    const p = (await db.query(`select racha_actual, mejor_racha, mejor_racha_real(id) as del_historial from profiles where id = $1`, [u186])).rows[0];
+    return [p.racha_actual, p.mejor_racha, p.del_historial];
+  };
+  await rachaDe(u186, 40, 30);
+  chequear('cuarenta días seguidos', await estado186(), [40, 40, 40]);
+  await rachaDe(u186, 25, 4);
+  chequear('se pierde (30) y se suman 25: la racha y el récord dicen 55, y el historial también', await estado186(), [55, 55, 55]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 2)`, [u186]);
+  chequear('se pierde otra vez y entra un día: la racha es 46 y el récord sigue en 55', await estado186(), [46, 55, 55]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 1)`, [u186]);
+  chequear('y con el día siguiente tampoco baja', await estado186(), [47, 55, 55]);
+
+  // LA REGLA DE SIEMPRE SIGUE: el récord sale del historial, así que si se
+  // borran días tiene que poder bajar. Se parte la primera tirada al medio.
+  await db.query(`delete from logs where user_id = $1 and fecha = mi_hoy() - 50`, [u186]);
+  const trasBorrar = await estado186();
+  chequear('si se borra un día de la tirada larga, el récord baja', [trasBorrar[1] < 55, trasBorrar[1] === Math.max(trasBorrar[0], trasBorrar[2])], [true, true]);
+  chequear('y lo que da el historial es la cuenta con los tres cortes: 19, 9 + 20, 19 + 25', trasBorrar[2], 44);
+
+  // Una racha corta que se pierde no arrastra nada: restar 10 no baja de cero.
+  const corta186 = await nuevoUsuario();
+  await rachaDe(corta186, 6, 6);
+  await rachaDe(corta186, 3, 2);
+  chequear('seis días, un corte y tres más: el récord es 6, no 9', (await db.query(`select mejor_racha_real($1) as m`, [corta186])).rows[0].m, 6);
+  await cuotaDeVidas(2);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

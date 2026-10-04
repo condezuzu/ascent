@@ -907,7 +907,12 @@ begin
               where user_id = p_user and fecha = d and not devuelta
            )
         then
-          corriente := 0;
+          -- UN CORTE RESTA 10, NO VUELVE A CERO: es la regla de la racha (§12)
+          -- y acá estaba la de antes. La racha de después de una pérdida
+          -- arrastra lo que sobrevivió, y el récord hecho con esos días no
+          -- salía del historial: quedaba guardado solo mientras la racha lo
+          -- sostenía, y bajaba solo con la pérdida siguiente (migración 61).
+          corriente := greatest(0, corriente - 10);
           exit;
         end if;
         d := d + 1;
@@ -3227,7 +3232,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 60; $$;
+returns int language sql immutable as $$ select 61; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

@@ -13,7 +13,10 @@ la 59 y la 60. Sus consultas —§0, §2.1, §2.5, §2.7 y §2.8— se probaron 
 sobre el esquema 53 sacado de git, antes y después de cada una. Lo que mira el
 storage no se pudo probar (PGlite no lo tiene) y está marcado.*
 
-Orden, y no se cambia: **verificar → migraciones → confirmar 60 → OTA → teléfono.**
+*En la tanda 2 del 4/10 se sumó la 61 (la mejor racha que bajaba sola), con su
+consulta —§0 y §2.9— probada de la misma forma.*
+
+Orden, y no se cambia: **verificar → migraciones → confirmar 61 → OTA → teléfono.**
 
 Dónde se corre cada cosa:
 
@@ -29,7 +32,7 @@ Dónde se corre cada cosa:
 
 ## 0. Lo que se puede aplicar ANTES de que Apple apruebe (opcional)
 
-Dos migraciones no dependen de la 54 a la 58 y cierran cosas graves en la base
+Tres migraciones no dependen de la 54 a la 58 y cierran cosas de la base
 que producción tiene HOY. Se pueden correr ya, en este orden, y **no suben la
 versión** (queda en 53), así que ningún cliente se entera:
 
@@ -39,8 +42,11 @@ versión** (queda en 53), así que ningún cliente se entera:
   al teléfono a la vez.
 - `supabase/migracion-60-fotos-privadas.sql` — la foto privada que otra cuenta
   podía leer anotando su ruta como propia.
+- `supabase/migracion-61-mejor-racha-arrastrada.sql` — la mejor racha que bajaba
+  sola después de una pérdida, sin que se borrara ningún día. Además repone el
+  récord a quien el bug ya se lo bajó (esa sentencia solo sube, nunca baja).
 
-**[SQL]** Después de correr las dos:
+**[SQL]** Después de correr la 59 y la 60:
 ```sql
 select public.version_del_esquema() as version,
        to_regprocedure('public.aplicar_perdida_al(uuid, date)') is not null as racha_cuidada,
@@ -49,10 +55,21 @@ select public.version_del_esquema() as version,
 ```
 → `53`, `true`, `true`  (antes de correrlas: `53`, `false`, `false`)
 
-**Si se corrieron acá, igual se vuelven a correr en §2.7 y §2.8.** No rompe
-nada: son las mismas sentencias, y esa segunda pasada es la que sube la versión.
-Está probado en ese orden (`test:db`, sección 173): 59 y 60 sobre el 53, después
-la 54 a la 58, y otra vez la 59 y la 60.
+**[SQL]** Después de correr la 61:
+```sql
+select public.version_del_esquema() as version,
+       (select prosrc like '%corriente - 10%' from pg_proc
+         where oid = 'public.mejor_racha_real(uuid)'::regprocedure) as corte_resta_10,
+       (select count(*) from public.profiles p
+         where public.mejor_racha_real(p.id) > p.mejor_racha) as records_por_debajo;
+```
+→ `53`, `true`, `0`  (antes de correrla: `53`, `false`, y un número que no dice
+nada, porque la función todavía cuenta con la regla vieja)
+
+**Si se corrieron acá, igual se vuelven a correr en §2.7, §2.8 y §2.9.** No
+rompe nada: son las mismas sentencias, y esa segunda pasada es la que sube la
+versión. Está probado en ese orden (`test:db`, sección 173): 59, 60 y 61 sobre
+el 53, después la 54 a la 58, y otra vez la 59, la 60 y la 61.
 
 Qué cambia para alguien que ya usa la app: solo el caso que estaba roto. Antes,
 el día que entraba detrás de una falta sin revisar dejaba la racha en 1; ahora
@@ -247,9 +264,24 @@ select public.version_del_esquema() as version,
 > reemplazo (`test:db`, sección 172) y esta columna no se pudo correr. Las otras
 > dos sí.
 
+### 2.9 — `supabase/migracion-61-mejor-racha-arrastrada.sql`
+
+La mejor racha sale del historial contando como cuenta la racha: un corte resta
+10, no vuelve a cero. Si se corrió en §0, se corre de nuevo acá.
+
+```sql
+select public.version_del_esquema() as version,
+       (select prosrc like '%corriente - 10%' from pg_proc
+         where oid = 'public.mejor_racha_real(uuid)'::regprocedure) as corte_resta_10,
+       (select count(*) from public.profiles p
+         where public.mejor_racha_real(p.id) > p.mejor_racha) as records_por_debajo;
+```
+→ `61`, `true`, `0`  (antes de aplicarla: `60`, `false`, y un número cualquiera;
+o `60`, `true`, `0` si ya se había corrido en §0)
+
 ---
 
-## 3. Confirmar que producción quedó en 60
+## 3. Confirmar que producción quedó en 61
 
 **[PC]**
 ```
@@ -258,7 +290,7 @@ npm run test:conexion
 
 Tiene que decir, arriba:
 ```
-  ok   producción al día (esquema 60, repo va por 60)
+  ok   producción al día (esquema 61, repo va por 61)
 ```
 y al final `N pasaron, 0 fallaron`, sin el cartel de "PRODUCCIÓN ESTÁ N
 MIGRACIÓN(ES) ATRÁS" ni ninguna línea `FALTA en producción` / `SOBRA en
@@ -347,7 +379,7 @@ y abrirla de nuevo.
 | Dónde estás | Qué se puede deshacer |
 |---|---|
 | Antes de la 54 | Todo. No se tocó nada: se deja para otro día. |
-| Entre la 54 y `cron-racha.sql` | El esquema no vuelve atrás (no hay scripts de reversa para 54–60 y la versión solo sube). No se perdió ningún dato: se sigue para adelante. |
+| Entre la 54 y `cron-racha.sql` | El esquema no vuelve atrás (no hay scripts de reversa para 54–61 y la versión solo sube). No se perdió ningún dato: se sigue para adelante. |
 | Después de `cron-racha.sql` | El barrido se puede **frenar**, pero las rachas que ya cobró no vuelven solas. |
 | Después de la OTA a `telefono` | Solo la ve tu teléfono. Se corrige y se publica otra. |
 | Después de la OTA a `store` | Ya está en la calle. Se arregla publicando otra OTA encima. |
