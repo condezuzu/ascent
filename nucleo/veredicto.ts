@@ -112,3 +112,44 @@ export function llevarCookies<T extends ConCookies>(destino: T, origen: ConCooki
   for (const cookie of origen.cookies.getAll()) destino.cookies.set(cookie);
   return destino;
 }
+
+// ---------------------------------------------------------------
+// LA APP NATIVA: "¿hay sesión?" tiene tres respuestas (4/10)
+// ---------------------------------------------------------------
+//
+// EL BUG. `getSession()` renueva el token si venció, y si no hay red devuelve
+// "sin sesión" CON un error. El layout miraba solo la sesión: sin señal y con
+// más de una hora desde el último uso —el subsuelo del gimnasio— "no pude
+// renovar" se leía como "no tenés sesión" y aparecía el login, que sin red
+// tampoco se puede usar. Es la misma confusión que el middleware de la web
+// (arriba), por otro camino.
+//
+// La sesión guardada NO se borra cuando la renovación falla por red: sigue en
+// el teléfono y se renueva sola cuando vuelve la señal. "No se pudo preguntar"
+// no es "sin".
+export type EstadoDeSesion = 'con' | 'sin' | 'no-se';
+
+export function sesionSegun(haySesion: boolean, error: { name?: string; status?: number } | null): EstadoDeSesion {
+  if (haySesion) return 'con';
+  // Sin sesión y sin error: nunca entró, o salió. Con un "no" del servidor,
+  // también. Cualquier otro error es no haber podido preguntar.
+  return clasificar(error) === 'de-red' ? 'no-se' : 'sin';
+}
+
+/** A qué estado pasa el layout después de mirar la sesión. */
+export function trasMirar<E extends string>(actual: E, visto: EstadoDeSesion): E | 'con' | 'sin' {
+  if (visto !== 'no-se') return visto;
+  // Un error al renovar solo aparece si HABÍA una sesión guardada: al arrancar
+  // se entra con ella. En cualquier otro momento queda todo como estaba.
+  return actual === 'mirando' ? 'con' : actual;
+}
+
+/**
+ * Qué hacer con un aviso de `onAuthStateChange`. Salir de verdad es
+ * `SIGNED_OUT`. El aviso inicial llega vacío también cuando la renovación falló
+ * por red, así que con ese no alcanza: hay que `preguntar`.
+ */
+export function trasElAviso(evento: string, haySesion: boolean): 'con' | 'sin' | 'preguntar' {
+  if (haySesion) return 'con';
+  return evento === 'SIGNED_OUT' ? 'sin' : 'preguntar';
+}

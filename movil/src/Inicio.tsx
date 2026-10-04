@@ -291,7 +291,13 @@ export default function Inicio({
     try {
       const { data: sesion } = await supabase.auth.getSession();
       const uid = sesion.session?.user?.id;
-      if (!uid) return alSalir();
+      if (!uid) {
+        // No hay sesión, o no se pudo renovar sin señal: lo decide `alSalir`,
+        // que mira el error. Si era lo segundo queda lo que había en pantalla,
+        // o el cartel con Reintentar si todavía no había nada.
+        alSalir();
+        return fallo(T.general.noSePudo);
+      }
 
       // UN SOLO PEDIDO (pantalla_inicio, el mismo que la web), en paralelo con
       // los minutos de hoy. Antes eran DOS idas y vuelta encadenadas —

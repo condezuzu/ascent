@@ -11075,12 +11075,20 @@ console.log('\n153. Los bugs del gimnasio: el interbloqueo, la musica y la racha
   // tomado, y getSession() espera ese mismo candado: el callback espera a la
   // llamada y la llamada al callback. A partir de ahi ningun pedido a Supabase
   // vuelve nunca, que es exactamente lo que se ve desde afuera.
-  chequear('el callback de auth no le pregunta nada a Supabase',
-    /onAuthStateChange\(\([^)]*\) => \{\s*setSesion/.test(lay153), true);
+  //
+  // Desde el 4/10 el callback ya no decide solo "sin sesion": un aviso vacio que
+  // no es una salida se pregunta con `mirar` (seccion 177). Lo que esto cuida
+  // sigue igual, y se mira en el CUERPO del callback: ahi adentro no se toca
+  // Supabase, y `mirar` solo se llama soltando antes el candado.
+  const aviso153 = lay153.slice(lay153.indexOf('onAuthStateChange('), lay153.indexOf('data.subscription.unsubscribe'));
+  chequear('el callback de auth existe y se encontro', aviso153.length > 40, true);
+  chequear('el callback de auth no le pregunta nada a Supabase', /supabase\./.test(aviso153), false);
   chequear('y no llama a mirar adentro',
     /onAuthStateChange\(\(\) => mirar\(\)\)/.test(lay153), false);
-  // LA SESION YA VIENE EN EL EVENTO: no hay nada que ir a buscar.
-  chequear('usa la sesion que trae el evento', /setSesion\(viva \? 'con' : 'sin'\)/.test(lay153), true);
+  chequear('si tiene que preguntar, lo hace despues de soltar el candado',
+    aviso153.replace(/setTimeout\(\(\) => void mirar\(\), 0\)/g, '').includes('mirar('), false);
+  // LA SESION YA VIENE EN EL EVENTO: cuando viene, no hay nada que ir a buscar.
+  chequear('usa la sesion que trae el evento', /trasElAviso\(evento, !!viva\)/.test(aviso153), true);
 
   // ---- 2. EL TOKEN SE RENUEVA SOLO CON LA APP ADELANTE ----
   //
@@ -13168,6 +13176,63 @@ console.log('\n176. El rango que se ve sale de la racha, y de ningún otro lado'
     /select\([^)]*rango_actual/.test(sinComentarios(".select('rango_actual, racha_actual')")),
     /\.(subio_rango|rango_antes|rango_despues)\b/.test(sinComentarios('if (r?.subio_rango) setSubida({ antes: r.rango_antes })')),
   ], [true, true, true]);
+}
+
+console.log('\n177. La app nativa no manda al login por no tener señal');
+{
+  // EL BUG (4/10). Sin señal y con más de una hora desde el último uso —el
+  // subsuelo del gimnasio—, `getSession()` no puede renovar el token y devuelve
+  // "sin sesión" CON un error. El layout miraba solo la sesión, y aparecía el
+  // login en pleno entrenamiento. Es el bug del middleware de la web
+  // (trampas.md, "La app te desloguea sola") por otro camino.
+  const V = await import('../nucleo/veredicto.ts');
+  const DE_RED = { name: 'AuthRetryableFetchError', status: 0 };
+
+  chequear('con sesión: adentro', V.sesionSegun(true, null), 'con');
+  chequear('sin sesión y sin error: nunca entró, o salió', V.sesionSegun(false, null), 'sin');
+  chequear('sin sesión porque no se pudo renovar sin red: NO se sabe', V.sesionSegun(false, DE_RED), 'no-se');
+  chequear('un 500 o un límite de pedidos tampoco dicen que no haya sesión',
+    [V.sesionSegun(false, { status: 500 }), V.sesionSegun(false, { status: 429 }), V.sesionSegun(false, {})], ['no-se', 'no-se', 'no-se']);
+  chequear('el servidor diciendo que no, sí', [V.sesionSegun(false, { status: 401 }), V.sesionSegun(false, { status: 403 })], ['sin', 'sin']);
+
+  // ---- qué hace el layout con eso ----
+  chequear('en pleno uso, no saber deja todo como estaba', V.trasMirar('con', 'no-se'), 'con');
+  // Un error al renovar solo aparece si HABÍA una sesión guardada.
+  chequear('al arrancar, no saber es entrar con la sesión guardada', V.trasMirar('mirando', 'no-se'), 'con');
+  chequear('y no saber no saca del login a quien estaba en el login', V.trasMirar('sin', 'no-se'), 'sin');
+  chequear('saber manda', [V.trasMirar('con', 'sin'), V.trasMirar('sin', 'con'), V.trasMirar('sin-nombre', 'con')], ['sin', 'con', 'con']);
+
+  // ---- los avisos de Supabase ----
+  chequear('un aviso con sesión: adentro', V.trasElAviso('TOKEN_REFRESHED', true), 'con');
+  chequear('salir de verdad es SIGNED_OUT', V.trasElAviso('SIGNED_OUT', false), 'sin');
+  // Al abrir sin señal con el token vencido, el aviso inicial llega vacío.
+  chequear('el aviso inicial vacío no alcanza: hay que preguntar', V.trasElAviso('INITIAL_SESSION', false), 'preguntar');
+
+  // ---- EL CABLEADO ----
+  const { readFileSync: leer177 } = await import('node:fs');
+  const raiz177 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const layout = sinComentarios(leer177(join(raiz177, 'movil', 'app', '_layout.tsx'), 'utf8'));
+  const cableado177 = (texto) => ({
+    miraElError: /const \{ data, error \} = await supabase\.auth\.getSession\(\);\s*const visto = sesionSegun\(!!data\.session, error\);/.test(texto),
+    noPisaLoQueHabia: /setSesion\(\(actual\) => trasMirar\(actual, visto\)\)/.test(texto),
+    elAvisoNoDecideSolo: /trasElAviso\(evento, !!viva\)/.test(texto) && !/setSesion\(viva \? 'con' : 'sin'\)/.test(texto),
+    yNoConcluyeDeLaSesionSola: !/setSesion\(data\.session \? 'con' : 'sin'\)/.test(texto),
+  });
+  chequear('el layout decide con el error a la vista y no pisa lo que había', cableado177(layout), {
+    miraElError: true,
+    noPisaLoQueHabia: true,
+    elAvisoNoDecideSolo: true,
+    yNoConcluyeDeLaSesionSola: true,
+  });
+  // QUE EL DETECTOR SIRVA: el layout como estaba.
+  chequear('el layout de antes no pasa', cableado177(
+    "const { data } = await supabase.auth.getSession(); setSesion(data.session ? 'con' : 'sin'); supabase.auth.onAuthStateChange((_evento, viva) => { setSesion(viva ? 'con' : 'sin'); });"
+  ), { miraElError: false, noPisaLoQueHabia: false, elAvisoNoDecideSolo: false, yNoConcluyeDeLaSesionSola: false });
+
+  // Inicio, sin sesión que mostrar: no se queda con la ruedita para siempre.
+  const inicio177 = sinComentarios(leer177(join(raiz177, 'movil', 'src', 'Inicio.tsx'), 'utf8'));
+  chequear('Inicio, si no hay a quién cargar, avisa y deja Reintentar',
+    /if \(!uid\) \{\s*alSalir\(\);\s*return fallo\(T\.general\.noSePudo\);\s*\}/.test(inicio177), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

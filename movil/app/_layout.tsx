@@ -27,6 +27,7 @@ import { iniciarReporteDeErrores, fijarPantalla } from '../src/reporteDeErrores'
 import { loVisible } from '../src/loVisible';
 import { anotar, marcarListo, registrarError } from '../src/cajaNegra';
 import { reportarMedicionA } from '@compartido/medir';
+import { sesionSegun, trasElAviso, trasMirar } from '@nucleo/veredicto';
 
 /**
  * LA RAÍZ DE LA APP, y desde el 22/9 también la raíz del router.
@@ -67,9 +68,13 @@ export default function Layout() {
   const mirar = useCallback(async () => {
     anotar('pidiendo la sesión');
     try {
-      const { data } = await supabase.auth.getSession();
-      anotar(`sesión: ${data.session ? 'hay' : 'no hay'}`);
-      setSesion(data.session ? 'con' : 'sin');
+      // SIN RED NO SE CONCLUYE NADA (4/10). Sin señal y con el token vencido,
+      // esto devuelve "sin sesión" con un error: antes se leía como "no hay
+      // sesión" y aparecía el login en pleno entrenamiento. Ver `sesionSegun`.
+      const { data, error } = await supabase.auth.getSession();
+      const visto = sesionSegun(!!data.session, error);
+      anotar(`sesión: ${visto === 'con' ? 'hay' : visto === 'sin' ? 'no hay' : 'no se pudo preguntar'}`);
+      setSesion((actual) => trasMirar(actual, visto));
     } catch (e) {
       registrarError('al pedir la sesión', e);
     }
@@ -185,9 +190,16 @@ export default function Layout() {
     // aviso.
     //
     // La sesión ya viene en el evento: no hay nada que ir a buscar.
+    //
+    // SALVO CUANDO VIENE VACÍO Y NO ES UNA SALIDA (4/10): al abrir sin señal con
+    // el token vencido, el aviso inicial llega sin sesión y antes mandaba al
+    // login. Ahí se pregunta con `mirar`, que sí ve el error — y FUERA de este
+    // aviso, por el mismo candado de arriba.
     // ────────────────────────────────────────────────────────────────
-    const { data } = supabase.auth.onAuthStateChange((_evento, viva) => {
-      setSesion(viva ? 'con' : 'sin');
+    const { data } = supabase.auth.onAuthStateChange((evento, viva) => {
+      const que = trasElAviso(evento, !!viva);
+      if (que === 'preguntar') setTimeout(() => void mirar(), 0);
+      else setSesion(que);
     });
     return () => data.subscription.unsubscribe();
   }, [mirar]);
