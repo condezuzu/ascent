@@ -168,6 +168,18 @@ export function conteoAlConfirmar(
  * `ultimaActividad` en `null` o igual al inicio es "sin actividad". Los
  * tiempos son de SERVIDOR: quien llama resta el desfasaje del reloj.
  */
+/**
+ * EL RESUMEN DE LA SESIÓN ES DEL DÍA EN QUE SE CERRÓ (4/10).
+ *
+ * En la nativa Inicio queda montada y el resumen vivía en un estado sin fecha:
+ * solo lo sacaba la equis. Si la app quedaba abierta de un día para el otro,
+ * Inicio seguía diciendo "Día registrado" con los números de ayer y no ofrecía
+ * registrar hoy. Se guarda con su día, y de otro día no hay resumen.
+ */
+export function cierreVigente<C>(guardado: { de: string; cierre: C } | null, hoy: string): C | null {
+  return guardado && guardado.de === hoy ? guardado.cierre : null;
+}
+
 export function cierreSolo(
   s: { inicio: string; ultimaActividad?: string | null },
   ahoraServidorMs: number

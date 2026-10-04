@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
@@ -7,6 +7,7 @@ import type { Ejercicio } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cargarEstancamiento, descartarSenal } from '@compartido/estancamiento';
 import { C, conAlfa } from './colores';
+import { useRecargarAlVolver } from './irAPestana';
 
 /**
  * EL AVISO DE ESTANCAMIENTO, en la app nativa. Uno, o ninguno. El mismo que
@@ -33,21 +34,28 @@ export default function Estancamiento({
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [silenciadas, setSilenciadas] = useState<Record<string, string>>({});
 
+  const vivo = useRef(true);
   useEffect(() => {
-    let vivo = true;
-    (async () => {
-      const uid = await miId(supabase);
-      if (!uid) return;
-      const datos = await cargarEstancamiento(supabase, uid);
-      if (!vivo || !datos) return;
-      setEjercicios(datos.ejercicios);
-      setSilenciadas(datos.silenciadas);
-      setSenal(datos.senal);
-    })();
+    vivo.current = true;
     return () => {
-      vivo = false;
+      vivo.current = false;
     };
   }, []);
+  const cargar = useCallback(async () => {
+    const uid = await miId(supabase);
+    if (!uid) return;
+    const datos = await cargarEstancamiento(supabase, uid);
+    if (!vivo.current || !datos) return;
+    setEjercicios(datos.ejercicios);
+    setSilenciadas(datos.silenciadas);
+    setSenal(datos.senal);
+  }, []);
+
+  // Se pedía una sola vez (4/10) y Stats queda montada. Ahora también al volver.
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+  useRecargarAlVolver('stats', cargar);
 
   // Nunca el día que se registra: en Stats no hay sesión corriendo, pero sí se
   // puede entrar diez minutos después de haber entrenado.

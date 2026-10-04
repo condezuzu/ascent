@@ -256,18 +256,26 @@ function Sesiones() {
   const [r, setR] = useState<ResumenSesiones | null>(null);
   const [dias, setDias] = useState<DiaConSesiones[]>([]);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.rpc('resumen_sesiones');
-      setR(data as ResumenSesiones | null);
-      const { data: filas } = await supabase
-        .from('sesiones')
-        .select('inicio, fin, estado, series, logs(fecha)')
-        .order('inicio', { ascending: false })
-        .limit(40);
-      setDias(agruparPorDia(filas ?? []).slice(0, 7));
-    })();
+  const cargar = useCallback(async () => {
+    const { data, error } = await supabase.rpc('resumen_sesiones');
+    // Si no se pudo preguntar queda lo que había: una recarga sin señal no
+    // vacía la sección.
+    if (error) return;
+    setR(data as ResumenSesiones | null);
+    const { data: filas } = await supabase
+      .from('sesiones')
+      .select('inicio, fin, estado, series, logs(fecha)')
+      .order('inicio', { ascending: false })
+      .limit(40);
+    if (filas) setDias(agruparPorDia(filas).slice(0, 7));
   }, []);
+
+  // Se pedía una sola vez (4/10): la sesión de hoy no aparecía en Stats hasta
+  // desmontar la sección. Ahora también al volver, como los pasos.
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+  useRecargarAlVolver('stats', cargar);
 
   if (!r || (r.validas === 0 && r.abandonadas === 0 && r.cortas === 0)) return null;
 

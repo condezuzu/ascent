@@ -51,7 +51,9 @@ export default function SeccionFuerza({
       setRanking(datos?.ranking ?? []);
       setCargado(true);
     })();
-  }, [supabase]);
+    // El DOTS sale del peso corporal: anotarlo en Stats tiene que volver a
+    // pedirlo, o arriba seguía diciendo que falta el peso.
+  }, [supabase, pesoCorporal]);
 
   // Mientras la base no tenga la migración, mi_fuerza no existe y esto queda
   // en nada. Preferible a una sección rota en medio de Stats.

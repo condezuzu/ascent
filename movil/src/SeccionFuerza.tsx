@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from './supabase';
@@ -10,7 +10,7 @@ import { esSexoEstandar, muestraFina, type SexoEstandar } from '@nucleo/estandar
 import { T } from '@nucleo/textos';
 import { cargarFuerza, filasDondeEstoy } from '@compartido/fuerza';
 import Avatar from './Avatar';
-import { irAPestana } from './irAPestana';
+import { irAPestana, useRecargarAlVolver } from './irAPestana';
 import { C } from './colores';
 
 /**
@@ -46,16 +46,23 @@ export default function SeccionFuerza({
   const [yo, setYo] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    (async () => {
-      const uid = await miId(supabase);
-      if (!uid) return;
-      setYo(uid);
-      const datos = await cargarFuerza(supabase);
-      setMia(datos?.mia ?? null);
-      setRanking(datos?.ranking ?? []);
-    })();
+  const cargar = useCallback(async () => {
+    const uid = await miId(supabase);
+    if (!uid) return;
+    setYo(uid);
+    const datos = await cargarFuerza(supabase);
+    setMia(datos?.mia ?? null);
+    setRanking(datos?.ranking ?? []);
   }, []);
+
+  // SE PEDÍA UNA SOLA VEZ, al montar (4/10), y Stats queda montada: anotar una
+  // marca más alta y volver dejaba el DOTS, las tres marcas y el ranking de
+  // antes. Ahora se pide de nuevo al volver a Stats —de otra pestaña o de una
+  // pantalla apilada— y cuando cambia el peso corporal, del que sale el DOTS.
+  useEffect(() => {
+    cargar();
+  }, [cargar, pesoCorporal]);
+  useRecargarAlVolver('stats', cargar);
 
   // Sin `mi_fuerza` (base sin la migración) la sección no se muestra:
   // preferible a una sección rota en medio de Stats.

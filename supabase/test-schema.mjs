@@ -14192,6 +14192,78 @@ console.log('\n188. La sesión guardada se cambia de a uno: dos que guardan a la
   memoria188.delete('ascent:sesion');
 }
 
+console.log('\n189. Stats del teléfono vuelve a pedir lo suyo al volver');
+{
+  // ESTO ES CABLEADO: son componentes de React Native y acá no se dibujan. Stats
+  // queda montada entre pestañas y debajo de las pantallas apiladas, y tres de
+  // sus secciones pedían sus datos una sola vez: el DOTS y las marcas, las
+  // sesiones y el aviso de estancamiento se quedaban con lo del primer montaje.
+  // Hay que verlo en el teléfono: anotar una marca más alta y tocar Volver.
+  const de189 = (ruta) => sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'));
+  const recarga = (texto) => /useRecargarAlVolver\('stats', cargar\)/.test(texto) && !/useEffect\(\(\) => \{\s*(let vivo = true;\s*)?\(async \(\) => \{/.test(texto);
+  chequear('las tres secciones que pedían una sola vez ahora recargan al volver a Stats', [
+    recarga(de189('movil/src/SeccionFuerza.tsx')),
+    recarga(de189('movil/src/Estancamiento.tsx')),
+    /function Sesiones\(\)[\s\S]*?useRecargarAlVolver\('stats', cargar\)/.test(de189('movil/src/StatsGeneral.tsx')),
+  ], [true, true, true]);
+  chequear('el detector ve la sección de antes', recarga('useEffect(() => { (async () => { const datos = await cargarFuerza(supabase); })(); }, []);'), false);
+  // El DOTS sale del peso corporal: anotarlo tiene que volver a pedirlo, en las dos apps.
+  chequear('y la fuerza se vuelve a pedir cuando cambia el peso corporal', [
+    /\}, \[cargar, pesoCorporal\]\);/.test(de189('movil/src/SeccionFuerza.tsx')),
+    /\}, \[supabase, pesoCorporal\]\);/.test(de189('src/components/SeccionFuerza.tsx')),
+  ], [true, true]);
+  // Volver de una pantalla apilada (Mis marcas, un perfil) no cambia de pestaña
+  // ni trae la app al frente: tiene que avisar igual.
+  const pestanas189 = de189('movil/src/Pestanas.tsx');
+  chequear('volver de una pantalla apilada avisa a la pestaña activa, y el montaje no', [
+    /useFocusEffect\(\s*useCallback\(\(\) => \{[\s\S]{0,200}?eventos\.emitir\(PESTANA_ACTIVA, pestanaAhora\.current\)/.test(pestanas189),
+    /if \(!yaTuvoFoco\.current\) \{\s*yaTuvoFoco\.current = true;\s*return;/.test(pestanas189),
+  ], [true, true]);
+}
+
+console.log('\n190. Nativa: el resumen de ayer, el cartel sin señal y los pasos de ayer');
+{
+  const de190 = (ruta) => sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'));
+
+  // ---- "DÍA REGISTRADO" CON EL RESUMEN DE AYER ----
+  // Inicio queda montada y el resumen de la sesión no tenía fecha: con la app
+  // abierta de un día para el otro seguía diciendo "Día registrado" y no ofrecía
+  // registrar hoy.
+  const S190 = await import('../nucleo/sesiones.ts');
+  const resumen190 = { minutos: 52, series: 14 };
+  chequear('el resumen de hoy se muestra', S190.cierreVigente({ de: '2026-10-04', cierre: resumen190 }, '2026-10-04'), resumen190);
+  chequear('el de ayer, no', S190.cierreVigente({ de: '2026-10-03', cierre: resumen190 }, '2026-10-04'), null);
+  chequear('y sin resumen, nada', S190.cierreVigente(null, '2026-10-04'), null);
+  const inicio190 = de190('movil/src/Inicio.tsx');
+  chequear('Inicio guarda el resumen con su día y dibuja solo el de hoy', [
+    /setCierreGuardado\(c \? \{ de: hoyISO\(\), cierre: c \} : null\)/.test(inicio190),
+    /const cierre = cierreVigente\(cierreGuardado, hoy\);/.test(inicio190),
+    /useState<CierreDeSesion \| null>\(null\)/.test(inicio190),
+  ], [true, true, false]);
+
+  // ---- "ALGO FALLÓ" AL ABRIR SIN SEÑAL ----
+  // Fijar la zona horaria fallaba sin red y usaba `registrarError`, que prende el
+  // panel a pantalla completa con el registro técnico. Es de los caminos que
+  // tienen que fallar en silencio. No se puede cargar el archivo acá (importa el
+  // cliente de la nativa): se mira que no vuelva a prender el panel.
+  const zona190 = de190('movil/src/zonaHoraria.ts');
+  chequear('fijar la zona horaria anota y no prende el panel de error', [/registrarError/.test(zona190), /anotar\(`no se pudo fijar la zona horaria/.test(zona190)], [false, true]);
+
+  // ---- LOS PASOS DE AYER COMO SI FUERAN DE HOY ----
+  const P190 = await import('../nucleo/pasos.ts');
+  const serie190 = [{ fecha: '2026-10-02', valor: 8000 }, { fecha: '2026-10-03', valor: 12000 }];
+  chequear('a la mañana, sin pasos todavía, los de hoy son 0 y no los de ayer', P190.pasosDeHoy(serie190, '2026-10-04'), 0);
+  chequear('y la meta de hoy no está cumplida por lo de ayer', P190.faltanPasos(P190.pasosDeHoy(serie190, '2026-10-04'), 10000), 10000);
+  chequear('con pasos de hoy, son esos', P190.pasosDeHoy([...serie190, { fecha: '2026-10-04', valor: 3500 }], '2026-10-04'), 3500);
+  chequear('sin ningún dato, 0', P190.pasosDeHoy([], '2026-10-04'), 0);
+  const pasos190 = de190('movil/src/GraficoPasos.tsx');
+  chequear('el gráfico usa los de hoy y sus barras terminan hoy', [
+    /const ultimoDia = pasosDeHoy\(pasos, hoyISO\(\)\);/.test(pasos190),
+    /const hoy = deISO\(hoyISO\(\)\);/.test(pasos190),
+    /pasos\[pasos\.length - 1\]\.valor/.test(pasos190),
+  ], [true, true, false]);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

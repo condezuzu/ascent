@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { puntoMasCercano, trazarSerie } from '@nucleo/tendencia';
-import { faltanPasos } from '@nucleo/pasos';
-import { DIAS_SEMANA, aISO, deISO, fechaLinda } from '@nucleo/fechas';
+import { faltanPasos, pasosDeHoy } from '@nucleo/pasos';
+import { DIAS_SEMANA, aISO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import MetaDePasos from './ajustes/MetaDePasos';
@@ -82,7 +82,9 @@ export default function GraficoPasos({
   // en `pasos`, así que "los últimos siete" podría abarcar tres semanas.
   const semana = (() => {
     const porFecha = new Map(pasos.map((p) => [p.fecha, p.valor]));
-    const hoy = pasos.length ? deISO(pasos[pasos.length - 1].fecha) : new Date();
+    // Termina HOY, no en el último día con dato: si hoy todavía no hay pasos,
+    // la barra de hoy queda vacía en vez de correrse todo un día.
+    const hoy = deISO(hoyISO());
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(hoy);
       d.setDate(d.getDate() - (6 - i));
@@ -116,8 +118,8 @@ export default function GraficoPasos({
     return y >= 2 && y <= ALTO - 2 ? y : null;
   })();
 
-  /** El último día con dato: es "hoy" para la meta. */
-  const ultimoDia = pasos.length ? pasos[pasos.length - 1].valor : 0;
+  /** Los de HOY para la meta: el último día con dato solo si es hoy. */
+  const ultimoDia = pasosDeHoy(pasos, hoyISO());
   const falta = faltanPasos(ultimoDia, meta);
 
   const elegido = tocado === null || !trazo ? null : serie[tocado];

@@ -42,6 +42,18 @@ export function metaValida(n: number): boolean {
  * `null` si ya se llegó: la pantalla dice otra cosa, no "faltan 0". Un cero
  * ahí se lee como un error de cuenta y no como haber llegado.
  */
+/**
+ * LOS PASOS DE HOY: los del último día de la serie SOLO si ese día es hoy.
+ *
+ * La serie no trae los días sin dato. El gráfico tomaba el último elemento
+ * como "hoy" (4/10): a la mañana, antes de caminar con el teléfono encima, ese
+ * era ayer, y con la meta de ayer cumplida decía "Llegaste a tu meta de hoy".
+ */
+export function pasosDeHoy(pasos: { fecha: string; valor: number }[], hoy: string): number {
+  const ultimo = pasos[pasos.length - 1];
+  return ultimo && ultimo.fecha === hoy ? ultimo.valor : 0;
+}
+
 export function faltanPasos(hoy: number, meta: number): number | null {
   const falta = Math.max(0, Math.round(meta - hoy));
   return falta > 0 ? falta : null;

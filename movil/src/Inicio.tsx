@@ -12,7 +12,7 @@ import { laCuentaYaNoExiste, mensajeDeAuth } from '@nucleo/errores';
 import { pedirInicio } from '@compartido/inicio';
 import type { Log, Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
-import { cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
+import { cierreVigente, cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
 import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO, SUBIO_RANGO } from '@compartido/gimnasio';
@@ -128,7 +128,10 @@ export default function Inicio({
   // Terminar pregunta antes, en el mismo lugar: es el botón más fácil de tocar
   // sin querer, y lo que hace no se deshace.
   const [terminando, setTerminando] = useState(false);
-  const [cierre, setCierre] = useState<CierreDeSesion | null>(null);
+  // El resumen se guarda CON SU DÍA: ver `cierreVigente`. Lo que se dibuja es
+  // `cierre`, más abajo, que es el de hoy o nada.
+  const [cierreGuardado, setCierreGuardado] = useState<{ de: string; cierre: CierreDeSesion } | null>(null);
+  const setCierre = (c: CierreDeSesion | null) => setCierreGuardado(c ? { de: hoyISO(), cierre: c } : null);
   /**
    * EL RESUMEN SE CIERRA, LOS MINUTOS SE QUEDAN (25/9).
    *
@@ -473,6 +476,7 @@ export default function Inicio({
   const { perfil, logs, descansos, cubiertos, impulsos, perdida } = estado;
 
   const hoy = hoyISO();
+  const cierre = cierreVigente(cierreGuardado, hoy);
   // Igual que la web: un día marcado como descanso a mano TAMBIÉN está (bug del
   // 15/9). Contarlo como vacío ofrecía "Registrar día", la base lo rechazaba
   // por repetido y la hoja lo tomaba como hecho: la racha no subía y nadie

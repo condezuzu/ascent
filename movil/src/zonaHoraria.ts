@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { anotar, registrarError } from './cajaNegra';
+import { anotar } from './cajaNegra';
 
 /**
  * LA ZONA HORARIA DEL TELÉFONO, PARA QUE EL DÍA SE CUENTE DONDE LA PERSONA ESTÁ.
@@ -58,13 +58,18 @@ export async function fijarZonaDelTelefono(forzar = false): Promise<void> {
   if (!forzar && zona === ultimaEnviada) return;
   try {
     const { error } = await supabase.rpc('fijar_zona', { p_zona: zona });
+    // SE ANOTA Y SE SIGUE, SIN CARTEL (4/10). Esto usaba `registrarError`, que
+    // prende el panel "Algo falló" a pantalla completa: abrir la app sin señal
+    // lo mostraba siempre, con el registro técnico, por algo que se reintenta
+    // solo al volver al frente y con lo que la persona no puede hacer nada. Es
+    // uno de los dos caminos que tienen que fallar en silencio (trampas.md).
     if (error) {
-      registrarError('al fijar la zona horaria', error);
+      anotar(`no se pudo fijar la zona horaria: ${error.message ?? 'sin detalle'}`);
       return;
     }
     ultimaEnviada = zona;
     anotar(`zona horaria: ${zona}`);
   } catch (e) {
-    registrarError('al fijar la zona horaria', e);
+    anotar(`no se pudo fijar la zona horaria: ${e instanceof Error ? e.message : String(e)}`);
   }
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, AppState, Easing, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { supabase } from './supabase';
 import { miId, quienSoy } from '@compartido/quienSoy';
 import type { Perfil } from '@nucleo/tipos';
@@ -269,6 +270,22 @@ export default function Pestanas({
     });
     return () => sub.remove();
   }, []);
+
+  // Y AL VOLVER DE UNA PANTALLA APILADA (4/10). Mis marcas, un perfil o el
+  // calendario se apilan encima de las pestañas, que siguen montadas debajo:
+  // al volver no cambia la pestaña ni la app vuelve al frente, así que no
+  // avisaba nadie. Se anotaba una marca más alta y Stats seguía con la de antes.
+  // La primera vez no: es el montaje, y cada pantalla ya carga sola.
+  const yaTuvoFoco = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!yaTuvoFoco.current) {
+        yaTuvoFoco.current = true;
+        return;
+      }
+      eventos.emitir(PESTANA_ACTIVA, pestanaAhora.current);
+    }, [])
+  );
 
   // LA QUE SE ABRE —O LA QUE ASOMA— QUEDA MONTADA PARA SIEMPRE, y se anota
   // ACÁ, al dibujar, no en un efecto de después. Un efecto corre cuando la
