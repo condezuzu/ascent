@@ -14935,6 +14935,32 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
 
   chequear('en la web, Ajustes sin poder saber quién es también ofrece reintentar', /if \(!user\) return setNoCargo\(true\);/.test(ajustesWeb), true);
 
+  // ---- NINGÚN COMPONENTE SE DEFINE ADENTRO DE OTRO ----
+  //
+  // El renglón del selector de ejercicios estaba definido adentro del selector:
+  // un componente nuevo en cada dibujado, así que React desmontaba y volvía a
+  // montar todos los renglones cada vez. Con una sesión corriendo eso es una
+  // vez por segundo, y un toque que cae en el medio se pierde. Lo cazó la
+  // batería de `test:real`, que ahora mira la hoja abierta (ahí está la prueba
+  // de verdad); esto es la guarda barata para que no vuelva en otro archivo.
+  const { readdirSync: listar195 } = await import('node:fs');
+  const COMPONENTE_ADENTRO = /^[ \t]+(const [A-Z][A-Za-z]+ = (\(|\{[^=\n]*\}\) =>)|function [A-Z][A-Za-z]+\()/m;
+  const tsxDe = (carpeta) =>
+    listar195(new URL('../' + carpeta, import.meta.url), { recursive: true, withFileTypes: true })
+      .filter((f) => f.isFile() && f.name.endsWith('.tsx'))
+      .map((f) => (f.parentPath ?? f.path).replace(/\\/g, '/') + '/' + f.name)
+      .filter((ruta) => !ruta.includes('/galeria/'));
+  const conComponenteAdentro = ['movil/src', 'movil/app', 'src/components', 'src/app']
+    .flatMap(tsxDe)
+    .filter((ruta) => COMPONENTE_ADENTRO.test(sinComentarios(leer195(ruta, 'utf8'))))
+    .map((ruta) => ruta.split('/ascent/').pop());
+  chequear('ningún componente se define adentro de otro', conComponenteAdentro, []);
+  // QUE EL DETECTOR SIRVA: el selector como estaba.
+  chequear('el selector de antes no pasa', [
+    COMPONENTE_ADENTRO.test("function Selector() {\n  const Fila = ({ texto }: { texto: string }) => (\n    <Text>{texto}</Text>\n  );\n  return <Fila texto=\"a\" />;\n}"),
+    COMPONENTE_ADENTRO.test("function Fila({ texto }: { texto: string }) {\n  return <Text>{texto}</Text>;\n}\nfunction Selector() {\n  const filas = [1, 2];\n  return <Fila texto=\"a\" />;\n}"),
+  ], [true, false]);
+
   const pestanas = de195('movil/src/Pestanas.tsx');
   // ---- LA CONTRASEÑA NUEVA: la nativa no tenía dónde elegirla, y la web no decía por qué falló el enlace ----
   const EN195 = await import('../nucleo/enlace.ts');

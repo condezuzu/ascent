@@ -169,8 +169,12 @@ async function correr(app) {
       // haría otro guion que la nativa (que todavía no tiene el automático).
       await ctx.setGeolocation({ latitude: -34.8, longitude: -56.0, accuracy: 25 });
       // El recorrido cambia de pantalla en cada paso: se sigue hasta que no esté.
+      // "Ir" TAMBIÉN (4/10): desde que el recorrido arranca en Inicio, en
+      // Ajustes —a donde manda el alta— el primer paso ofrece "Ir" y no
+      // "Siguiente". Sin eso este lazo no tocaba nada, el recorrido quedaba
+      // abierto toda la batería y tapaba "Terminar".
       for (let i = 0; i < 12; i++) {
-        const b = page.locator('.recorrido').getByRole('button', { name: /Siguiente|Listo/ });
+        const b = page.locator('.recorrido').getByRole('button', { name: /^(Siguiente|Listo|Ir)$/ });
         const hay = await b.first().waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
         if (!hay) break;
         await b.first().click();
@@ -202,6 +206,31 @@ async function correr(app) {
   await paso('elegir press de banca, meta ×5 y peso 60', async () => {
     const chip = app === 'web' ? page.locator('.bloque-ejercicio') : texto('Cualquier cosa');
     await chip.first().click({ timeout: 60000 });
+    // CON EL SELECTOR ABIERTO NO SE DESMONTA NADA (4/10). Con una sesión
+    // corriendo la pantalla se redibuja una vez por segundo, y los renglones del
+    // selector nativo se desmontaban y volvían a montar en cada vuelta: este
+    // paso tardaba un minuto en poder tocar "Press de banca", o no podía. En el
+    // teléfono es un toque que se pierde. Se mira la hoja durante dos vueltas.
+    await page.waitForTimeout(1200);
+    const movidos = await page.evaluate(
+      (selector) =>
+        new Promise((listo) => {
+          const hoja = [...document.querySelectorAll(selector)].at(-1);
+          if (!hoja) return listo(-1);
+          let n = 0;
+          const o = new MutationObserver((ms) => {
+            for (const m of ms) n += m.addedNodes.length + m.removedNodes.length;
+          });
+          o.observe(hoja, { childList: true, subtree: true });
+          setTimeout(() => {
+            o.disconnect();
+            listo(n);
+          }, 2500);
+        }),
+      app === 'web' ? '.hoja' : '[data-testid="hoja"]'
+    );
+    if (movidos < 0) throw new Error('no encontré la hoja del selector para mirarla');
+    if (movidos > 0) throw new Error(`con el selector abierto se montaron o desmontaron ${movidos} nodos en 2,5 s: un toque se puede perder`);
     await texto('Press de banca').click({ timeout: 60000 });
     await page.waitForTimeout(1500);
     // Con la meta de siempre (×3) el + se vuelve "Terminar serie" al llegar.
@@ -248,6 +277,26 @@ async function correr(app) {
     nota(`subieron solas en ${Math.round((Date.now() - t0) / 1000)} s`);
   });
 
+  // ---- la primera marca, EN LA SESIÓN si la pregunta ya salió ----
+  //
+  // DESDE EL 4/10 PUEDE SALIR ACÁ. La pregunta de la serie necesitaba la red
+  // para saber quién sos, así que entrenando sin señal no salía nunca y quedaba
+  // para el resumen del final. Ahora eso se lee del teléfono, y el pedido de las
+  // marcas —que la librería reintenta sola— entra apenas vuelve la señal: la
+  // pregunta aparece en la sesión. Lo que se preguntó ahí NO se repite al
+  // terminar (así es desde el 18/9), o sea que si esta batería no la contesta
+  // acá, la marca no se guarda nunca.
+  let marcaEnLaSesion = false;
+  await paso('¿lo guardo como marca?, en la sesión si ya preguntó', async () => {
+    const pregunta = page.getByText(/La guardo como marca/i).first();
+    await pregunta.waitFor({ timeout: 8000 }).catch(() => {});
+    if (!(await pregunta.isVisible().catch(() => false))) return nota('no preguntó en la sesión: queda para el final');
+    nota((await pregunta.innerText()).replace(/\n/g, ' '));
+    await texto('5').click();
+    await page.waitForTimeout(2500);
+    marcaEnLaSesion = true;
+  });
+
   // Y el cierre con lo último todavía en la cola: Terminar tiene que subirlo
   // antes de cerrar.
   await paso('dos más sin red; vuelve la red y se termina al instante', async () => {
@@ -265,10 +314,13 @@ async function correr(app) {
 
   // ---- 6. la primera marca, desde la pregunta ----
   await paso('¿lo guardo como marca? → 5 repeticiones', async () => {
-    await page.getByText(/La guardo como marca/i).first().waitFor({ timeout: 60000 });
-    nota((await page.getByText(/La guardo como marca/i).first().innerText()).replace(/\n/g, ' '));
-    await texto('5').click();
-    await page.waitForTimeout(4000);
+    if (marcaEnLaSesion) nota('ya se contestó en la sesión: el resumen no la repite');
+    else {
+      await page.getByText(/La guardo como marca/i).first().waitFor({ timeout: 60000 });
+      nota((await page.getByText(/La guardo como marca/i).first().innerText()).replace(/\n/g, ' '));
+      await texto('5').click();
+      await page.waitForTimeout(4000);
+    }
     // Cerrar el resumen tocándolo.
     await page.getByText(/Listo por hoy/i).first().click();
     await page.waitForTimeout(2000);

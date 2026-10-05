@@ -1240,3 +1240,23 @@ caían justo en la media libra. Lo que la persona tiene guardado son kilos
 redondos —60, 100— y esos se corrían (60 → 60,1).
 → **Regla:** un barrido recorre lo que la BASE guarda, visto como lo ve la
 persona; no los valores que se eligieron porque dan bien.
+
+**Un componente definido adentro de otro se desmonta y se vuelve a montar en
+cada dibujado.** El renglón del selector de ejercicios (`Fila`) vivía adentro
+del selector. Con una sesión corriendo la pantalla se redibuja una vez por
+segundo, así que los renglones nacían de nuevo cada segundo: un toque que
+empezaba en uno y terminaba en su reemplazo se perdía. Era viejo y nadie lo
+había visto; lo cazó `test:real`, que a veces tardaba un minuto en poder tocar
+"Press de banca" y a veces no podía.
+→ **Regla:** los componentes se definen afuera, al nivel del archivo. La guarda
+está en `test:db` (sección 195) y la prueba de verdad en la batería, que mira
+la hoja abierta durante dos vueltas y falla si algo se monta o se desmonta.
+
+**Un guion que quedó atrás de la pantalla falla por el motivo equivocado.** La
+batería de `test:real` esperaba el recorrido en el orden viejo: no lo
+terminaba, la tarjeta quedaba abierta todo el guion y tapaba "Terminar". Fallaba
+igual con el código de la tanda anterior —se comprobó volviendo a ese commit—,
+o sea que no estaba midiendo nada desde que el recorrido cambió de orden.
+→ **Regla:** `test:real` se corre en CADA tanda (la del 4/10 se había salteado
+en la etapa 1). Y cuando falla, antes de tocar nada se corre contra el commit
+anterior: es lo único que separa "lo rompí yo" de "el guion ya venía roto".

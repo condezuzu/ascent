@@ -521,6 +521,20 @@ sin subir). Lo arreglado está en el historial; esto es lo que NO.
   con la recarga o el toque siguiente; la base queda bien.
 - La suite de `test:db` corre en UTC desde la sección 101 (ver el comentario
   ahí). Una prueba que dependa del huso tiene que fijarlo a mano.
+
+**Cambios de conducta que no se pidieron, y conviene saber**
+- **"¿La guardo como marca?" aparece más seguido DURANTE la sesión.** Antes
+  necesitaba la red para saber quién eras, así que entrenando sin señal no
+  salía y quedaba para el resumen del final. Desde la etapa 1 eso se lee del
+  teléfono, y la pregunta sale apenas vuelve la señal. Lo que se preguntó en la
+  sesión NO se repite al terminar (así es desde el 18/9): si se la deja pasar
+  mientras se entrena, esa marca no se vuelve a ofrecer.
+- **El aviso de pérdida dura hasta que se vuelve a entrenar** (como mucho una
+  semana), no solo el día siguiente. La alternativa —mostrarlo una sola vez por
+  pérdida— pide anotar en el teléfono cuál ya se vio.
+- **La web manda a Ajustes después de elegir el nombre, y el recorrido arranca
+  en Inicio:** el primer paso ofrece "Ir" en vez de "Siguiente". Funciona; es
+  una vuelta de más que quedó de cuando el recorrido empezaba por el gimnasio.
 - `signOut({ scope: 'local' })` y la política de Storage no se pueden probar
   desde acá: se mira que se pidan así.
 

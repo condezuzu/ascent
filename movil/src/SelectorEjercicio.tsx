@@ -12,6 +12,23 @@ import { C } from './colores';
  * (`nucleo/ejercicios.ts`): los tres del DOTS arriba, después zona y músculo,
  * y ahí la lista corta. Una zona con un solo músculo no pregunta dos veces.
  */
+/**
+ * UN RENGLÓN DE LA LISTA. AFUERA DEL SELECTOR, y no es prolijidad (4/10):
+ * definido adentro era un componente NUEVO en cada dibujado, así que React
+ * desmontaba y volvía a montar todos los renglones cada vez. Con una sesión
+ * corriendo la pantalla se redibuja una vez por segundo: un toque que empezaba
+ * en un renglón y terminaba en su reemplazo se perdía. Lo cazó la batería, que
+ * no podía tocar "Press de banca" durante un minuto.
+ */
+function Fila({ texto, extra, elegido, onPress }: { texto: string; extra?: string; elegido?: boolean; onPress: () => void }) {
+  return (
+    <Pressable style={estilos.fila} onPress={onPress} accessibilityRole="button">
+      <Text style={[estilos.filaTexto, elegido && estilos.elegido]}>{texto}</Text>
+      {extra !== undefined && <Text style={estilos.extra}>{extra}</Text>}
+    </Pressable>
+  );
+}
+
 function SelectorEjercicio({
   visible,
   ejercicios,
@@ -62,12 +79,6 @@ function SelectorEjercicio({
 
   const titulo = grupo ? grupo.charAt(0).toUpperCase() + grupo.slice(1) : zona ? T.ejercicios[zona] : T.sesion.queEstasHaciendo;
 
-  const Fila = ({ texto, extra, elegido, onPress }: { texto: string; extra?: string; elegido?: boolean; onPress: () => void }) => (
-    <Pressable style={estilos.fila} onPress={onPress} accessibilityRole="button">
-      <Text style={[estilos.filaTexto, elegido && estilos.elegido]}>{texto}</Text>
-      {extra !== undefined && <Text style={estilos.extra}>{extra}</Text>}
-    </Pressable>
-  );
 
   return (
     <Hoja visible={visible} alCerrar={alCerrar}>
