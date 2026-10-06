@@ -12514,6 +12514,19 @@ console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CL
   chequear('el guardian muestra lo que contesto', /motivo\.split\('\\n'\)/.test(pub168) && /loQueContesto\(e\)/.test(hue168), true);
   // LEER SE REINTENTA UNA VEZ; PUBLICAR, NUNCA: publicar dos veces no es gratis.
   chequear('publicar se llama una sola vez, sin reintento', (pub168.match(/execFileSync\(/g) ?? []).length, 1);
+
+  // ---- LA OTA SE ARMA CON LAS VARIABLES DE LA BUILD DE SU CANAL (6/10) ----
+  // La de `telefono` salía sin EXPO_PUBLIC_DIAGNOSTICO y le borraba Diagnóstico
+  // al teléfono. Y a `store` no le puede llegar ni estando suelta en la terminal.
+  const suelta = { PATH: 'x', EXPO_PUBLIC_DIAGNOSTICO: '1', EXPO_PUBLIC_MINIMO: '1' };
+  chequear('la OTA a telefono lleva el diagnostico; la de store, nunca', [
+    H.entornoDeLaOta('telefono', { PATH: 'x' }).EXPO_PUBLIC_DIAGNOSTICO,
+    H.entornoDeLaOta('store', suelta).EXPO_PUBLIC_DIAGNOSTICO,
+    H.entornoDeLaOta('store', suelta).EXPO_PUBLIC_MINIMO,
+    H.entornoDeLaOta('telefono', suelta).EXPO_PUBLIC_MINIMO,
+    H.entornoDeLaOta('store', suelta).PATH,
+  ], ['1', undefined, undefined, undefined, 'x']);
+  chequear('y el guardian publica con ese entorno', /execFileSync\(eas\.comando, eas\.args, \{ \.\.\.eas\.opciones, env: entornoDeLaOta\(canal\), stdio: 'inherit' \}\)/.test(pub168), true);
 }
 
 console.log('\n169. La luz de la barra sale de la posicion de la tira');

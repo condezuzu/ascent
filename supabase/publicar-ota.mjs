@@ -27,7 +27,7 @@
 // lo que habla con EAS corre adentro de `movil/` por `llamadaAEas` (huella.mjs).
 
 import { execFileSync } from 'node:child_process';
-import { estadoDeHuella, llamadaAEas, SI_EAS_FALLA } from './huella.mjs';
+import { entornoDeLaOta, estadoDeHuella, llamadaAEas, SI_EAS_FALLA } from './huella.mjs';
 import { exigirApagados } from './puertos.mjs';
 
 const args = process.argv.slice(2);
@@ -95,4 +95,5 @@ const mensajeArg = process.platform === 'win32' ? `"${mensaje.replace(/"/g, '')}
 // La misma llamada que la lectura: adentro de `movil/` y con la CLI fija. SIN
 // REINTENTO: leer dos veces no cuesta nada, publicar dos veces sí.
 const eas = llamadaAEas(['update', '--channel', canal, '--message', mensajeArg, '--non-interactive']);
-execFileSync(eas.comando, eas.args, { ...eas.opciones, stdio: 'inherit' });
+// Con las variables de la build de ESE canal y ninguna otra: ver `entornoDeLaOta`.
+execFileSync(eas.comando, eas.args, { ...eas.opciones, env: entornoDeLaOta(canal), stdio: 'inherit' });

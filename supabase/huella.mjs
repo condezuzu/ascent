@@ -87,6 +87,25 @@ export function llamadaAEas(args) {
 }
 
 /**
+ * CON QUÉ VARIABLES SE ARMA EL JAVASCRIPT DE UNA OTA (6/10).
+ *
+ * `eas.json` le pone variables a la BUILD de cada perfil, y `eas update` no lo
+ * mira: el JavaScript de la OTA se arma en esta PC, con lo que haya acá. La
+ * build de `telefono` trae EXPO_PUBLIC_DIAGNOSTICO=1 y sus OTAs salían sin él:
+ * cada una le borraba al teléfono la pantalla de Diagnóstico.
+ *
+ * Se usan las del perfil del canal y NINGUNA otra de esas: `store` no tiene, y
+ * una que hubiera quedado suelta en la terminal no puede viajar a la tienda. Por
+ * eso no va en `movil/.env`, que lo leen las dos.
+ */
+const SOLO_DEL_PERFIL = ['EXPO_PUBLIC_DIAGNOSTICO', 'EXPO_PUBLIC_MINIMO'];
+export function entornoDeLaOta(canal, base = process.env, eas = JSON.parse(readFileSync(join(MOVIL, 'eas.json'), 'utf8'))) {
+  const entorno = { ...base };
+  for (const nombre of SOLO_DEL_PERFIL) delete entorno[nombre];
+  return { ...entorno, ...(eas.build?.[canal]?.env ?? {}) };
+}
+
+/**
  * LO QUE CONTESTÓ UN COMANDO QUE FALLÓ, y no solo que falló.
  *
  * Antes se mostraba la primera línea —"Command failed: npx eas-cli…"— y el

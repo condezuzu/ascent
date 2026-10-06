@@ -1252,6 +1252,16 @@ había visto; lo cazó `test:real`, que a veces tardaba un minuto en poder tocar
 está en `test:db` (sección 195) y la prueba de verdad en la batería, que mira
 la hoja abierta durante dos vueltas y falla si algo se monta o se desmonta.
 
+**Una variable puesta en `eas.json` es de la BUILD, no de la OTA.** El perfil
+`telefono` trae `EXPO_PUBLIC_DIAGNOSTICO=1`, pero `eas update` no mira
+`eas.json`: el JavaScript de la OTA se arma en la PC, con lo que haya ahí. Cada
+OTA a `telefono` salía sin la variable y le borraba al teléfono la pantalla de
+Diagnóstico (se vio el 6/10, el día de la aprobación, buscándola para confirmar
+que la OTA había llegado).
+→ **Regla:** la OTA se arma con las variables del perfil de SU canal y ninguna
+otra (`entornoDeLaOta` en `supabase/huella.mjs`). No va en `movil/.env`: ese lo
+leen las dos, y Diagnóstico terminaría en la tienda.
+
 **Un guion que quedó atrás de la pantalla falla por el motivo equivocado.** La
 batería de `test:real` esperaba el recorrido en el orden viejo: no lo
 terminaba, la tarjeta quedaba abierta todo el guion y tapaba "Terminar". Fallaba
