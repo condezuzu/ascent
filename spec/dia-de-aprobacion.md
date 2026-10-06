@@ -285,9 +285,36 @@ select username, racha_actual, mejor_racha, public.techo_de_mejor_racha(id) as t
 Si alguna es de verdad un récord perdido, se corrige a mano:
 `update public.profiles set mejor_racha = <número> where username = '<nombre>';`
 
+### 2.10 — `supabase/migracion-62-dia-y-planeta-en-todos.sql`
+
+Escrita el día de la aprobación (6/10), con la 54 a la 61 ya aplicadas. El día
+de racha lo escribe el disparador de los logs —antes solo `registrar_dia`: un
+día marcado desde el calendario o que entraba por el pendiente de cambio de
+zona nacía sin número—, y el planeta guardado de todos los días pasa a la
+escalera de hoy (31 a 50, de Ceres a Saturno). Va después de la 61; antes se
+niega sola. No tiene vuelta atrás: los nombres viejos se pisan.
+
+```sql
+select public.version_del_esquema() as version,
+       (select count(*) from public.logs l join public.profiles p on p.id = l.user_id
+         where not l.es_descanso and l.racha_del_dia is null
+           and (p.perdida_fecha is null or l.fecha > p.perdida_fecha)) as sin_numero,
+       (select count(*) from public.logs
+         where racha_del_dia is not null
+           and planeta_del_dia is distinct from public.planeta_de_dia(racha_del_dia)) as planeta_desfasado,
+       (select count(*) from public.logs
+         where planeta_del_dia in ('Plutón','Tierra','Neptuno','Urano','Júpiter')) as nombres_viejos;
+```
+→ `62`, `0`, `0`, `0`  (antes de aplicarla: `61` y los tres contadores con lo
+que haya; el 6/10 en producción, al menos los dos últimos mayores que cero)
+
+Probada como las otras: sobre el esquema 53 de git con la 54 a la 61 encima y
+datos sembrados como los de producción (`test:db`, sección 173). Con los logs
+reales no se pudo probar.
+
 ---
 
-## 3. Confirmar que producción quedó en 61
+## 3. Confirmar que producción quedó en 62
 
 **[PC]**
 ```
@@ -296,7 +323,7 @@ npm run test:conexion
 
 Tiene que decir, arriba:
 ```
-  ok   producción al día (esquema 61, repo va por 61)
+  ok   producción al día (esquema 62, repo va por 62)
 ```
 y al final `N pasaron, 0 fallaron`, sin el cartel de "PRODUCCIÓN ESTÁ N
 MIGRACIÓN(ES) ATRÁS" ni ninguna línea `FALTA en producción` / `SOBRA en

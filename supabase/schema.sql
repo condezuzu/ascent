@@ -992,8 +992,15 @@ declare
 begin
   -- el planeta lo decide siempre el trigger, nunca el cliente
   new.planeta_del_dia := null;
+  -- EL DÍA DE RACHA TAMPOCO LO TRAE EL CLIENTE (migración 62). Lo escribe
+  -- `logs_after_change`, por donde pasan todos los caminos: antes lo ponía solo
+  -- `registrar_dia`, y un día que entraba por el pendiente de cambio de zona o
+  -- marcado a mano desde el calendario nacía sin número.
+  new.racha_del_dia := null;
   select * into perfil from profiles where id = new.user_id;
-  if not new.es_descanso then
+  -- Un día de ANTES de la última pérdida no tiene cuenta posible: la racha se
+  -- mide desde ahí. Queda sin número y sin planeta, en vez de con uno inventado.
+  if not new.es_descanso and (perfil.perdida_fecha is null or new.fecha > perfil.perdida_fecha) then
     r := perfil.racha_base + calcular_racha(new.user_id, new.fecha - 1) + 1;
     -- SIN BORDE PROPIO. Qué días tienen planeta lo dice `planeta_de_dia`, que
     -- devuelve null fuera del rango. Acá había un "entre 30 y 39" copiado, y
@@ -1079,17 +1086,21 @@ begin
   -- desde el que cambió en adelante.
   -- pg_trigger_depth() corta la recursión de este mismo update, y el
   -- "is distinct from" evita escrituras que no cambian nada.
+  --
+  -- EL DÍA DE RACHA VA CON ÉL (migración 62): meter o sacar un día viejo corre
+  -- el número de todos los de después, y el planeta sale de ese número. Solo
+  -- los posteriores a la última pérdida: los de antes no tienen cuenta posible
+  -- y se quedan como estén.
   if pg_trigger_depth() = 1 then
-    update logs l set planeta_del_dia = c.nuevo
+    update logs l set racha_del_dia = c.dia, planeta_del_dia = planeta_de_dia(c.dia)
       from (
-        select id, planeta_de_dia(r2) as nuevo
-          from (
-            select x.id, base + calcular_racha(uid, x.fecha) as r2
-              from logs x
-             where x.user_id = uid and not x.es_descanso and x.fecha >= desde
-          ) t
+        select x.id, base + calcular_racha(uid, x.fecha) as dia
+          from logs x
+         where x.user_id = uid and not x.es_descanso and x.fecha >= desde
+           and x.fecha > coalesce((select perdida_fecha from profiles where id = uid), '-infinity'::date)
       ) c
-     where l.id = c.id and l.planeta_del_dia is distinct from c.nuevo;
+     where l.id = c.id
+       and (l.racha_del_dia is distinct from c.dia or l.planeta_del_dia is distinct from planeta_de_dia(c.dia));
   end if;
 
   if tg_op = 'DELETE' then return old; end if;
@@ -3285,7 +3296,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 61; $$;
+returns int language sql immutable as $$ select 62; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

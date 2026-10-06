@@ -13073,6 +13073,88 @@ console.log('\n173. La 59 y la 60 se pueden correr HOY, sobre el esquema 53, y o
   chequear('correrla dos veces no cambia nada', [await version(), await rachaYRecord(deAntes)], [61, [47, 55]]);
   chequear('al final: la racha', await llegarAlGimnasio('ubicacion'), 31);
   chequear('y la foto', await puedeAnotarRutaAjena(), false);
+
+  // ================= LA 62: el día en todos los caminos, y una sola escalera =================
+  //
+  // Se arma lo que producción tenía el 6/10, con la 61 puesta: días con su
+  // número (el relleno de la 57), planetas de la escalera VIEJA del 30 al 39 y
+  // nada del 40 en adelante, y dos días nacidos sin número (el calendario).
+  const VIEJA = ['Ceres', 'Plutón', 'Mercurio', 'Marte', 'Venus', 'Tierra', 'Neptuno', 'Urano', 'Saturno', 'Júpiter'];
+  const dias62 = async (u) =>
+    (await prod.query(`select (mi_hoy() - fecha)::int as hace, racha_del_dia as dia, planeta_del_dia as planeta from logs where user_id = $1 order by fecha`, [u])).rows;
+  const comoEnProduccion = async (u, conNumeroHasta) => {
+    const filas = (await prod.query(`select id from logs where user_id = $1 order by fecha`, [u])).rows;
+    for (let i = 0; i < filas.length; i++) {
+      const dia = i + 1;
+      await prod.query(`update logs set racha_del_dia = $2, planeta_del_dia = $3 where id = $1`, [filas[i].id, dia <= conNumeroHasta ? dia : null, dia >= 30 && dia <= 39 ? VIEJA[dia - 30] : null]);
+    }
+  };
+  // Nunca perdió: 45 días seguidos, los dos últimos sin número.
+  const sinPerder = await cuenta();
+  for (let i = 45; i >= 1; i--) await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [sinPerder, i]);
+  await comoEnProduccion(sinPerder, 43);
+  // Perdió después: 40 días, y la pérdida más acá. Sus días no tienen número.
+  const conPerdida = await cuenta();
+  for (let i = 50; i >= 11; i--) await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [conPerdida, i]);
+  await comoEnProduccion(conPerdida, 0);
+  await prod.query(`update profiles set perdida_fecha = mi_hoy() - 5, racha_base = 30, racha_actual = 30 where id = $1`, [conPerdida]);
+  const elDia = (filas, n) => filas[n - 1];
+  const antes62 = await dias62(sinPerder);
+  chequear('antes de la 62: nombres de la escalera vieja, nada del 40 en adelante, y días sin número', [elDia(antes62, 31).planeta, elDia(antes62, 39).planeta, elDia(antes62, 40).planeta, elDia(antes62, 45).dia], ['Plutón', 'Júpiter', null, null]);
+
+  // La consulta de comprobación del runbook (spec/dia-de-aprobacion.md §2.10).
+  const comprobar62 = async () => {
+    const f = (
+      await prod.query(
+        `select public.version_del_esquema() as version,
+                (select count(*) from public.logs l join public.profiles p on p.id = l.user_id
+                  where not l.es_descanso and l.racha_del_dia is null
+                    and (p.perdida_fecha is null or l.fecha > p.perdida_fecha))::int as sin_numero,
+                (select count(*) from public.logs
+                  where racha_del_dia is not null
+                    and planeta_del_dia is distinct from public.planeta_de_dia(racha_del_dia))::int as planeta_desfasado,
+                (select count(*) from public.logs
+                  where planeta_del_dia in ('Plutón','Tierra','Neptuno','Urano','Júpiter'))::int as nombres_viejos`
+      )
+    ).rows[0];
+    return [f.version, f.sin_numero > 0, f.planeta_desfasado > 0, f.nombres_viejos > 0];
+  };
+  chequear('la consulta del runbook, antes de la 62', await comprobar62(), [61, true, true, true]);
+  await prod.exec(migracion(62));
+  chequear('y la 62 a 62', await version(), 62);
+  chequear('la consulta del runbook, después', await comprobar62(), [62, false, false, false]);
+  const despues62 = await dias62(sinPerder);
+  chequear('todos los días tienen su número, del 1 al 45', despues62.map((f) => f.dia), Array.from({ length: 45 }, (_, i) => i + 1));
+  chequear('y el planeta es el de la escalera de hoy: del 31 al 50, de Ceres a Saturno', [30, 31, 34, 35, 39, 40, 43, 45].map((n) => elDia(despues62, n).planeta), [null, 'Ceres', 'Ceres', 'Mercurio', 'Marte', 'Marte', 'Venus', 'Venus']);
+  const perdio62 = await dias62(conPerdida);
+  chequear('los de antes de la pérdida siguen SIN número: no se inventa', perdio62.every((f) => f.dia === null), true);
+  // Día 30 era Ceres (afuera de la escalera nueva), 31 Plutón, 35 Tierra, 39 Júpiter.
+  chequear('y su planeta se tradujo por nombre', [29, 30, 31, 35, 39, 40].map((n) => elDia(perdio62, n).planeta), [null, null, 'Ceres', 'Mercurio', 'Marte', null]);
+  await prod.exec(migracion(62));
+  chequear('correrla dos veces no vuelve a traducir lo traducido', [await version(), (await dias62(conPerdida)).map((f) => f.planeta), (await dias62(sinPerder)).map((f) => f.dia)], [62, perdio62.map((f) => f.planeta), despues62.map((f) => f.dia)]);
+
+  // ---- Y DE ACÁ EN ADELANTE, CUALQUIER CAMINO ESCRIBE EL NÚMERO ----
+  const numeros = async (u) => (await dias62(u)).map((f) => [f.hace, f.dia]);
+  const nuevo62 = await cuenta();
+  // A mano desde el calendario: el cliente inserta la fila, sin `registrar_dia`.
+  for (const hace of [6, 5, 4, 3, 2]) await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [nuevo62, hace]);
+  chequear('un día marcado a mano desde el calendario nace con su número', await numeros(nuevo62), [[6, 1], [5, 2], [4, 3], [3, 4], [2, 5]]);
+  // Corregir un día viejo corre el número de todos los de después.
+  await prod.query(`delete from logs where user_id = $1 and fecha = mi_hoy() - 4`, [nuevo62]);
+  chequear('sacar un día viejo corre el número de los de después', await numeros(nuevo62), [[6, 1], [5, 2], [3, 1], [2, 2]]);
+  await prod.query(`insert into logs (user_id, fecha, es_descanso) values ($1, mi_hoy() - 4, true)`, [nuevo62]);
+  chequear('y un descanso en el hueco los vuelve a unir, sin llevar número él', await numeros(nuevo62), [[6, 1], [5, 2], [4, null], [3, 3], [2, 4]]);
+  // El pendiente de cambio de zona: el día lo pone la base, sin `registrar_dia`.
+  const conPendiente = await cuenta();
+  for (const hace of [2, 1]) await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [conPendiente, hace]);
+  await prod.query(`update profiles set dia_pendiente = mi_hoy(), pendiente_desde = now() - interval '2 days' where id = $1`, [conPendiente]);
+  await prod.query(`select resolver_pendiente($1)`, [conPendiente]);
+  chequear('el día que entra por el pendiente de cambio de zona, también', await numeros(conPendiente), [[2, 1], [1, 2], [0, 3]]);
+  // Antes de la última pérdida no hay cuenta posible: ni número ni planeta inventados.
+  await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 8)`, [conPerdida]);
+  const metido = (await dias62(conPerdida)).find((f) => f.hace === 8);
+  chequear('un día agregado antes de la última pérdida queda sin número y sin planeta', [metido.dia, metido.planeta], [null, null]);
+  chequear('y no les cambia nada a los demás de esa cuenta', (await dias62(conPerdida)).filter((f) => f.hace !== 8).map((f) => f.planeta), perdio62.map((f) => f.planeta));
   await prod.close();
 }
 
@@ -14947,6 +15029,57 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   ], [true, false, true]);
 
   chequear('en la web, Ajustes sin poder saber quién es también ofrece reintentar', /if \(!user\) return setNoCargo\(true\);/.test(ajustesWeb), true);
+
+  // ---- LA VERSIÓN DEL ESQUEMA VENCE, Y SE VUELVE A PREGUNTAR AL VOLVER AL FRENTE (6/10) ----
+  //
+  // Se preguntaba una vez y quedaba en memoria mientras viviera la app, que en
+  // un teléfono son días. El día de la aprobación la base pasó de la 53 a la 61
+  // y el teléfono siguió en 53 —sin "día N" en las fotos— hasta cerrarla a mano.
+  {
+    const { plataforma: plat } = await import('./dobles/plataforma.mjs');
+    let alFrente = null;
+    const cicloDeAntes = plat.ciclo;
+    plat.ciclo = { visible: () => true, alCambiar: (fn) => ((alFrente = fn), () => {}) };
+    // Una copia nueva del módulo: su memoria es de esta prueba y de nadie más.
+    const ESQ = await import('../compartido/esquema.ts?caducidad');
+    const { eventos: ev } = await import('../compartido/eventos.ts');
+    let enLaBase = 53;
+    let hayRed = true;
+    let preguntas = 0;
+    const base = {
+      rpc: async (nombre) => {
+        if (nombre !== 'version_del_esquema') return { data: null, error: { code: 'PGRST202' } };
+        preguntas++;
+        return hayRed ? { data: enLaBase, error: null } : { data: null, error: { message: 'Network request failed' } };
+      },
+    };
+    const avisos = [];
+    const dejar = ev.escuchar(ESQ.ESQUEMA_CAMBIO, (v) => avisos.push(v));
+    const asentar = () => new Promise((r) => setTimeout(r, 5));
+    const t0 = 1_000_000;
+    chequear('la primera vez pregunta', [await ESQ.versionDelEsquema(base, t0), preguntas], [53, 1]);
+    enLaBase = 61; // las migraciones del día de la aprobación, con la app abierta
+    chequear('mientras lo sabido vale, no vuelve a preguntar', [await ESQ.versionDelEsquema(base, t0 + ESQ.VIGENCIA_MS - 1), preguntas], [53, 1]);
+    // Vencida: contesta al toque con lo que sabe (es el camino del "+") y pregunta por atrás.
+    chequear('vencida, contesta con lo que sabe sin esperar a la red', await ESQ.versionDelEsquema(base, t0 + ESQ.VIGENCIA_MS + 1), 53);
+    await asentar();
+    chequear('y ya se enteró de la versión nueva, sin que nadie cierre la app', [await ESQ.versionDelEsquema(base, t0 + ESQ.VIGENCIA_MS + 2), preguntas, avisos], [61, 2, [53, 61]]);
+    chequear('la que queda guardada en el aparato es la nueva', await plat.almacenamiento.leer('ascent:version-esquema'), '61');
+    // Al volver al frente, sin esperar a que venza.
+    enLaBase = 62;
+    alFrente?.(true);
+    await asentar();
+    chequear('al volver al frente pregunta de nuevo', [await ESQ.versionDelEsquema(base, t0 + ESQ.VIGENCIA_MS + 3), avisos], [62, [53, 61, 62]]);
+    // Sin señal no se pierde lo que se sabía.
+    hayRed = false;
+    alFrente?.(true);
+    await asentar();
+    chequear('sin señal queda la que se sabía', await ESQ.versionDelEsquema(base, t0 + 5 * ESQ.VIGENCIA_MS), 62);
+    dejar();
+    plat.ciclo = cicloDeAntes;
+    const esq = de195('compartido/esquema.ts');
+    chequear('y las pantallas se enteran del cambio estando abiertas', /eventos\.escuchar\(ESQUEMA_CAMBIO, \(v\) => \{\s*if \(vivo && typeof v === 'number'\) setVersion\(v\);/.test(esq), true);
+  }
 
   // ---- NINGÚN COMPONENTE SE DEFINE ADENTRO DE OTRO ----
   //

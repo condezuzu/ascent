@@ -77,6 +77,44 @@ la web mientras tanto. Si va antes, suma unas tres tandas a la llegada.
   fila de la pantalla de series y ver qué ejercicios de ese músculo se hicieron
   en la semana leída, con sus series. Es una pantalla nueva, no un ajuste.
 
+- **El planeta del día se guarda como NOMBRE y se podría derivar del NÚMERO —
+  PENDIENTE PARA DESPUÉS DEL LANZAMIENTO** (decisión del humano, 6/10/2026).
+  `logs.planeta_del_dia` guarda el nombre que tocaba ese día según la escalera de
+  ese momento. Pero el nombre es una función del día de racha
+  (`logs.racha_del_dia`, que ya se guarda) y de la escalera de hoy
+  (`planeta_de_dia`): se puede calcular en el momento de mostrarlo.
+  - **Por qué importa:** guardar el nombre obligó a la migración 62 (la 54 cambió
+    la escalera y lo guardado quedó con nombres que ya no existen y con días en
+    blanco) y a un disparador que recalcula todos los días hacia adelante cada vez
+    que se corrige uno viejo. Si se deriva, no hay nada que rellenar nunca, ese
+    recálculo desaparece, y el día que se vuelva a tocar la escalera no hace falta
+    ninguna migración 63.
+  - **Por qué no ahora:** toca lo que dibuja el visor de fotos en la web y en la
+    nativa (`VisorFoto.tsx`, `Album.tsx`, `compartido/album.ts`) a días del
+    lanzamiento.
+  - **Qué queda igual hasta entonces:** los días anteriores a la última pérdida
+    no tienen número, así que su planeta no se podría derivar: hoy conservan el
+    nombre guardado (traducido por la 62). Hay que decidir qué mostrar ahí.
+- **El rango: la base manda el NÚMERO y la app calcula el NOMBRE con una regla
+  propia — PENDIENTE PARA DESPUÉS DEL LANZAMIENTO** (decisión del humano,
+  6/10/2026). Es el mismo error que el del planeta, al revés, y los dos se
+  vieron el mismo día: el mismo dato vive en dos lugares con dos reglas.
+  - **Qué pasó:** la migración 54 cambió la escalera en la base. La build 7 de
+    la tienda, sin OTA, siguió calculando el nombre con la regla vieja (un rango
+    cada 10 días) mientras pintaba el fondo con el número nuevo que le manda la
+    base: con racha de 6 a 9, fondo del rango 2 y nombre del 1; el festejo de
+    subida, en los días de la escalera nueva con los nombres de la vieja.
+  - **Por qué importa:** mientras el nombre —o cualquier parte de la regla— se
+    calcule en la app, cada cambio futuro de escalera rompe toda build que no
+    tenga una OTA encima. Sacar el rango de la racha en el cliente (tanda 1 del
+    4/10: ninguna pantalla lee `rango_actual`) dejó una sola regla ADENTRO de
+    la app, pero sigue siendo una copia de la de la base.
+  - **Qué habría que hacer:** que la base mande el nombre del rango y el planeta
+    junto con el número (en `pantalla_inicio`, `registrar_dia`,
+    `usuarios_publicos`), y que la app solo los muestre. La regla queda en un
+    lugar y una build vieja muestra lo correcto sin enterarse del cambio.
+  - **Por qué no ahora:** toca Inicio, Stats, Ranking, el álbum y el festejo de
+    subida en las dos apps, a días del lanzamiento.
 - **Un solo dueño del estado de la sesión de entrenamiento** (4/10/2026).
   PENDIENTE PARA DESPUÉS DEL LANZAMIENTO, por decisión del humano: "es el
   código más delicado y no quiero tocarlo tan cerca del lanzamiento".
