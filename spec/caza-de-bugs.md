@@ -181,6 +181,17 @@ el SE de 1ª gen quedó en iOS 15, que en agosto de 2026 era entre el 0,6 % y el
 2 % del uso de iOS según la fuente, y el SE es solo una parte de eso. Aun siendo
 poco, no se los deja afuera (ver la decisión de arriba).
 
+### Álbum nativo: al deslizar entre fotos parpadea la anterior (6/10) — ANOTADO, sin tocar
+
+Reporte del iPhone, el día de la aprobación (primera vez que el deslizar del
+álbum se prueba en un teléfono de verdad): con una foto abierta, al deslizar a
+la izquierda o a la derecha parpadea la foto anterior. Es la misma familia que
+el titileo de las pestañas (`Pestanas.tsx`: el rumbo cambiaba al terminar el
+viaje y no al soltar, y la vista vieja se dibujaba un cuadro de más). Sin
+investigar todavía: mirar en `movil/src/Album.tsx` en qué momento cambia el
+índice de la foto respecto de la animación, y si la vecina se monta con la
+imagen ya cargada. No bloquea la OTA a `store` (decisión del humano).
+
 ### Confirmado SANO (revisado, sin bug)
 Muchos días/cero amigos, amigos/racha 0, racha recién perdida (0 vidas, dias
 vacío), foto borrada con el visor abierto (índice clampeado + guarda `!!foto`),
