@@ -71,6 +71,71 @@ la web mientras tanto. Si va antes, suma unas tres tandas a la llegada.
 
 ---
 
+## El plan después del lanzamiento (decidido por el humano el 8/10/2026)
+
+La 1.0 está en la tienda. Esto es lo que sigue, EN ESTE ORDEN. La regla del
+alcance congelado sigue valiendo adentro de cada tanda: lo que aparezca en el
+camino se anota abajo, en "Después", y no se mete.
+
+**Cómo se publica cada tanda:** migración primero (si hay), después UNA OTA a
+`telefono`, la prueba el humano en el iPhone, y recién después `store`.
+
+### Hecho el 8/10 (sale en la próxima OTA)
+
+- El álbum: miniaturas hechas por el teléfono (no la transformación de
+  Supabase, que es de plan pago y con cupo de 100 por mes), la tira del visor
+  que no titila, y no recargar al volver a la pestaña.
+- Saber qué versión corre la gente (migración 63).
+- La tarjeta de la pantalla bloqueada sigue al ejercicio y no dice "4 de 3".
+- Bienvenida: sin el desenfoque que en el iPhone se veía como una placa blanca,
+  y la lista de ejercicios más larga.
+
+### Tanda 1 — entender la app y que ande en cualquier teléfono (hecha el 8/10)
+
+- **A) La guía de primera vez.** Ya existía (cinco pantallas, una línea cada
+  una, con "Saltar"). Le faltaba decir cómo se entrena: se sumó ese paso.
+- **B) Calidad del fondo.** La app mide los cuadros por segundo y baja sola la
+  calidad si el teléfono no da; en Ajustes se puede fijar a mano.
+
+### Tanda 2 — barato y se nota (SIN EMPEZAR: primero propuesta y costo)
+
+- **C) Ver los pasos durante el entrenamiento.** Hoy al iniciar la sesión
+  Inicio se despeja y los pasos no se ven; para mucha gente son parte del
+  entreno.
+- **D) Abrir la foto de perfil de un amigo** para verla grande.
+- **E) La vibración del descanso, más larga y marcada**, sin exagerar: con el
+  teléfono en silencio la notificación no llega. Hay que ver qué permite iOS.
+
+### Tanda 3 — crecimiento (SIN EMPEZAR)
+
+- **F) Amigos por enlace**, mandable por WhatsApp: al abrirlo lleva a instalar
+  la app y deja la solicitud YA HECHA. No es "lo mismo que buscar por nombre":
+  el enlace tiene que sobrevivir a la instalación.
+- **G) Ver la rutina de un amigo desde su perfil:** debajo del álbum, el
+  historial por día (el lunes, qué ejercicios, cuántas series), con un
+  interruptor para esconderlo. La razón: a quien le preguntan qué rutina hace
+  hoy tiene que explicarla por audio, y quien ve un buen físico quiere ver la
+  rutina.
+
+### Tanda 4 — lo grande (SIN EMPEZAR)
+
+- **I) Entrenamiento compartido:** ver a alguien "entrenando ahora" y unirse, y
+  en Ranking ver en vivo su descanso, su serie y qué está haciendo. Entre 5 y
+  10 personas. No es solo diversión: sirve para organizarse mientras se
+  descansa, y si entrenás con alguien que no tiene la app, verla funcionar es
+  el mejor anuncio que hay.
+  - **Paso 1 de la I (antes era la "H"): un solo dueño del estado del
+    entrenamiento.** Es el refactor que ya estaba anotado más abajo ("Un solo
+    dueño del estado de la sesión de entrenamiento"). No es una tarea aparte:
+    la I no se empieza hasta que esté.
+
+### Al terminar todas las tandas: otra cacería de bugs
+
+Con muchos agentes ("ultracode"), como la del 4/10 que encontró 65. Con la regla
+que funcionó: **la cacería es para ENCONTRAR, no para diseñar ni implementar.**
+Los agentes buscan y reportan; qué se arregla y cómo se decide después, con el
+humano.
+
 ## Después (lo que aparezca, anotado y sin tocar)
 
 - **Series por músculo → los ejercicios de esa semana** (15/9/2026). Tocar una

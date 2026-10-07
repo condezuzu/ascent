@@ -4,6 +4,8 @@ import type { ExpoWebGLRenderingContext } from 'expo-gl';
 import { montarEscena, type Lienzo, type Montaje, type OpcionesFondo } from '@compartido/motor/escena';
 import { eventos } from '@compartido/eventos';
 import { DESPERTAR_MOTOR } from './despertarMotor';
+import { nivelDelMotor } from '@nucleo/calidad';
+import { calidadAhora } from './calidad';
 
 /**
  * EL MOTOR EN LA APP NATIVA: el adaptador de `expo-gl`.
@@ -124,7 +126,8 @@ export function montarEscenaEnGL(
       // Ante la duda, el del medio: es la misma regla que la web
       // (`src/lib/equipo.ts`) cuando el navegador no dice nada. Castigar por
       // falta de dato dejaría sin fondo a un teléfono bueno.
-      nivel: () => 'medio',
+      // Menos partículas con la calidad en "baja": ver `nucleo/calidad.ts`.
+      nivel: () => nivelDelMotor(calidadAhora()),
       cuadro: (fn) => {
         requestAnimationFrame(fn);
       },

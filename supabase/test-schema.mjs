@@ -9599,10 +9599,13 @@ console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
   const PESTANAS = ['inicio', 'ranking', 'album', 'stats', 'ajustes'];
   chequear('y las pestañas son de las que existen',
     REC.PASOS_DEL_RECORRIDO.every((p) => PESTANAS.includes(p.pestana)), true);
-  // NINGUNA PANTALLA DOS VECES: un recorrido que vuelve al mismo lugar se lee
-  // como que algo se rompio.
-  chequear('sin repetir pantalla',
-    new Set(REC.PASOS_DEL_RECORRIDO.map((p) => p.pestana)).size, REC.PASOS_DEL_RECORRIDO.length);
+  // NUNCA VUELVE A UNA PANTALLA QUE YA DEJO: un recorrido que vuelve al mismo
+  // lugar se lee como que algo se rompio. Dos pasos SEGUIDOS en la misma si
+  // (8/10: Inicio lleva dos, la racha y como se entrena): ahi no se va a ningun
+  // lado. Se cuentan las pantallas juntando los pasos seguidos.
+  const visitas = REC.PASOS_DEL_RECORRIDO.map((p) => p.pestana).filter((p, i, todas) => p !== todas[i - 1]);
+  chequear('sin volver a una pantalla que ya se dejo', [new Set(visitas).size, visitas.length], [5, 5]);
+  chequear('y el recorrido dice como se entrena, pegado al primer paso', [REC.PASOS_DEL_RECORRIDO[1].pestana, /Iniciar entrenamiento/.test(REC.PASOS_DEL_RECORRIDO[1].texto)], ['inicio', true]);
   // INICIO VA PRIMERO (27/9): el primer minuto es la racha y el cuerpo naciendo,
   // no la configuracion. El gimnasio paso al segundo paso.
   chequear('el primero es Inicio', REC.PASOS_DEL_RECORRIDO[0].pestana, 'inicio');
@@ -15424,6 +15427,41 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
   const sesion196 = de196('compartido/useSesion.ts');
   chequear('elegir ejercicio, mudarlo, cambiar la meta y deshacer una serie refrescan la tarjeta', (sesion196.match(/setBloques\(\w+(\.bloques)?\);\s*refrescarTarjeta\(\);/g) ?? []).length, 4);
   chequear('la lista de la bienvenida no se desenfoca en el teléfono', /\.\.\.\(CON_DESENFOQUE \? \{ filter: `blur\(\$\{desenfoque\}px\)` \} : null\)/.test(de196('movil/src/bienvenida/Registro.tsx')), true);
+
+  // ---- LA CALIDAD DEL FONDO: baja sola si el teléfono no da ----
+  const Q196 = await import('../nucleo/calidad.ts');
+  chequear('a mano manda; en automático, lo que se midió', [
+    Q196.calidadEfectiva('auto', false), Q196.calidadEfectiva('auto', true),
+    Q196.calidadEfectiva('alta', true), Q196.calidadEfectiva('baja', false),
+    Q196.preferenciaValida('cualquier cosa'), Q196.preferenciaValida(null),
+  ], ['alta', 'baja', 'alta', 'baja', 'auto', 'auto']);
+  chequear('"baja" es la mitad de resolución y menos partículas', [Q196.densidadTope('alta'), Q196.densidadTope('baja'), Q196.nivelDelMotor('alta'), Q196.nivelDelMotor('baja')], [2, 1, 'medio', 'bajo']);
+  const med = (fps, ms = 6000, cuadros = 200) => ({ fps, ms, cuadros });
+  chequear('qué dice una medición', [
+    Q196.veredictoDeMedicion(med(58)),
+    Q196.veredictoDeMedicion(med(39.9)),
+    // La app estuvo en segundo plano en el medio: tardó mucho más de lo pedido.
+    Q196.veredictoDeMedicion(med(12, 19000)),
+    Q196.veredictoDeMedicion(null),
+    Q196.veredictoDeMedicion(med(0, 6000, 1)),
+  ], ['bien', 'mal', null, null, null]);
+  // Por el camino entero: una mala suelta no baja nada; dos seguidas, sí.
+  const correr = (veredictos) => veredictos.reduce((e, v) => (e.bajar ? e : Q196.trasMedir(e.malas, v)), { malas: 0, bajar: false }).bajar;
+  chequear('una medición mala suelta no baja la calidad; dos seguidas sí', [
+    correr(['mal']),
+    correr(['mal', 'bien', 'mal']),
+    correr(['mal', null, 'mal']),
+    correr(['mal', 'mal']),
+    correr(['bien', 'bien', 'bien']),
+  ], [false, false, true, true, false]);
+  const fondoRaiz = de196('movil/src/FondoRaiz.tsx');
+  chequear('el motor nativo usa esa calidad, y la pantalla de Ajustes la deja elegir', [
+    /densidadTope\(calidadAhora\(\)\) \/ PixelRatio\.get\(\)/.test(fondoRaiz),
+    /eventos\.escuchar\(CALIDAD_CAMBIO, \(\) => recuperar\(\)\)/.test(fondoRaiz),
+    /if \(listo\) void vigilarCalidad\(\);/.test(fondoRaiz),
+    /nivel: \(\) => nivelDelMotor\(calidadAhora\(\)\)/.test(de196('movil/src/motorNativo.ts')),
+    /void fijarCalidad\(valor\);/.test(de196('movil/src/ajustes/Fondo.tsx')),
+  ], [true, true, true, true, true]);
 
   // ---- CABLEADO DEL ÁLBUM NATIVO: son componentes ----
   const alb196 = de196('movil/src/Album.tsx');

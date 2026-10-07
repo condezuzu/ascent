@@ -26,6 +26,8 @@ import { conAlfa } from './colores';
 import { escucharFondo, type Pedido } from './pedidoDeFondo';
 import { escucharDesenfoque } from './desenfoqueDelFondo';
 import { ponerEstadoDelMotor } from './estadoDelMotor';
+import { CALIDAD_CAMBIO, densidadTope } from '@nucleo/calidad';
+import { calidadAhora, leerCalidad, vigilarCalidad } from './calidad';
 
 /**
  * EL FONDO DE LA APP NATIVA: el motor de cuerpos celestes detrás de todo.
@@ -81,9 +83,12 @@ const CLAVE_FONDO = 'ascent:fondo';
 // tamaño de verdad y una densidad de 2, y el buffer tiene justo eso.
 //
 // En pantallas de 2x o menos el factor es 1: no cambia nada.
-const DENSIDAD_TOPE = 2;
+//
+// EL TOPE BAJA A 1X CON LA CALIDAD EN "BAJA" (8/10): un cuarto de los píxeles
+// de 2x, que es lo que más pesa. Lo decide `calidad.ts` —la persona en Ajustes,
+// o la app sola si mide que el teléfono no da—.
 function factorDeTope() {
-  return Math.min(1, DENSIDAD_TOPE / PixelRatio.get());
+  return Math.min(1, densidadTope(calidadAhora()) / PixelRatio.get());
 }
 
 // De qué depende que haya que armar la escena de nuevo.
@@ -240,6 +245,18 @@ export default function FondoRaiz() {
   }, [opacidad]);
 
   useEffect(() => escucharFondo(setPedido), []);
+
+  // LA CALIDAD. El tamaño del buffer se fija al crear el `GLView`, así que
+  // cambiarla es montarlo de nuevo: el mismo camino que recuperar un contexto
+  // perdido. Y con el motor andando arranca el vigilante, que mide de a ratos y
+  // la baja sola si el teléfono no da (`vigilarCalidad`).
+  useEffect(() => {
+    void leerCalidad();
+    return eventos.escuchar(CALIDAD_CAMBIO, () => recuperar());
+  }, [recuperar]);
+  useEffect(() => {
+    if (listo) void vigilarCalidad();
+  }, [listo]);
 
   /**
    * EL DESENFOQUE FUERA DE INICIO (25/9).

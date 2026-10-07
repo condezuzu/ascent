@@ -5,6 +5,8 @@ import { eventos } from '@compartido/eventos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import { C } from '../colores';
+import { CALIDAD_CAMBIO, type PreferenciaDeCalidad } from '@nucleo/calidad';
+import { bajoSola, fijarCalidad, leerCalidad, preferenciaAhora } from '../calidad';
 
 /**
  * EL FONDO: automático, siempre, o nunca.
@@ -37,6 +39,19 @@ export default function Fondo() {
       .leer(CLAVE)
       .then((v) => setPref(esPreferenciaFondo(v) ? v : 'auto'))
       .catch(() => setPref('auto'));
+  }, []);
+
+  // LA CALIDAD (8/10): un punto medio entre "siempre" y "nunca". Por omisión la
+  // decide la app midiendo; acá se la puede fijar a mano.
+  const [calidad, setCalidad] = useState<PreferenciaDeCalidad | null>(null);
+  const [laBajo, setLaBajo] = useState(false);
+  useEffect(() => {
+    const leer = () => {
+      setCalidad(preferenciaAhora());
+      setLaBajo(bajoSola());
+    };
+    void leerCalidad().then(leer);
+    return eventos.escuchar(CALIDAD_CAMBIO, leer);
   }, []);
 
   async function elegir(p: PreferenciaFondo) {
@@ -73,6 +88,37 @@ export default function Fondo() {
         ))}
       </View>
       <Text style={estilos.nota}>{pref === 'auto' ? T.ajustes.fondoAutoNoSe : T.ajustes.fondoNota}</Text>
+
+      <Text style={[estilos.titulo, { marginTop: 22 }]}>{T.ajustes.calidad}</Text>
+      <View style={estilos.selector}>
+        {(
+          [
+            ['auto', T.ajustes.calidadAuto],
+            ['alta', T.ajustes.calidadAlta],
+            ['baja', T.ajustes.calidadBaja],
+          ] as [PreferenciaDeCalidad, string][]
+        ).map(([valor, texto]) => (
+          <Pressable
+            key={valor}
+            style={[estilos.opcion, calidad === valor && estilos.opcionActiva]}
+            onPress={() => {
+              setCalidad(valor);
+              void fijarCalidad(valor);
+            }}
+          >
+            <Text style={[estilos.opcionTexto, calidad === valor && estilos.opcionTextoActivo]}>{texto}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={estilos.nota}>
+        {calidad === 'alta'
+          ? T.ajustes.calidadNotaAlta
+          : calidad === 'baja'
+            ? T.ajustes.calidadNotaBaja
+            : laBajo
+              ? T.ajustes.calidadNotaBajoSola
+              : T.ajustes.calidadNotaAuto}
+      </Text>
     </View>
   );
 }

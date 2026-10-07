@@ -363,6 +363,7 @@ export const T = {
   recorrido: {
     titulo: 'Recorrido por la app',
     inicio: 'Tu racha: sube con cada día que entrenas. Un toque y sigue.',
+    entrenar: 'Arriba, Iniciar entrenamiento: eliges el ejercicio y cada + suma una serie.',
     gimnasio: 'Marca tu gimnasio y el día se registra solo al llegar.',
     stats: 'Tus números: constancia, series por músculo y tus mejores pesos.',
     album: 'Una foto por día, si quieres. Solo la ves tú, salvo que la compartas.',
@@ -632,6 +633,14 @@ export const T = {
     // EL FONDO. El motor cuesta tres segundos de arranque, medidos: se puede
     // apagar. No dice "gráficos" ni "calidad": dice qué es y qué cuesta.
     fondo: 'El fondo del espacio',
+    calidad: 'Calidad del fondo',
+    calidadAuto: 'Automática',
+    calidadAlta: 'Alta',
+    calidadBaja: 'Baja',
+    calidadNotaAuto: 'La app mide cómo va y la baja sola si este teléfono no da.',
+    calidadNotaBajoSola: 'En este teléfono la bajó sola: iba a los saltos. Elige Alta si quieres probarla igual.',
+    calidadNotaAlta: 'El fondo con todo el detalle.',
+    calidadNotaBaja: 'El fondo con menos detalle: la app va más fluida y gasta menos batería.',
     fondoAuto: 'Automático',
     fondoSiempre: 'Siempre',
     fondoNunca: 'Nunca',
