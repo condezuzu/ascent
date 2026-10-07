@@ -12073,11 +12073,13 @@ console.log('\n165. La pantalla bloqueada dice la serie que se acaba de hacer');
   // EL PATRON VIEJO, AL LADO: el mas uno sobre el estado ya sumado. Es lo que
   // se veia en el telefono, y es lo que esta prueba no deja volver.
   chequear('el patron viejo (mas uno sobre lo ya sumado) decia 4 de 3', c165.bloques.hechas + 1, 4);
-  // PASARSE DE LA META ES LEGITIMO (regla 1 de bloques.ts): una cuarta serie de
-  // verdad SI dice "4 de 3". Un test que prohibiera serie > meta estaria mal.
+  // PASARSE DE LA META ES LEGITIMO (regla 1 de bloques.ts): la cuarta serie se
+  // CUENTA. Lo que cambio el 8/10 es como se DICE: hasta entonces la tarjeta
+  // decia "4 de 3", que el humano pidio que no se vea nunca. Ahora dice
+  // "Serie 4" a secas (meta 0 = se omite). Ver `metaQueSeDice`.
   c165 = sumarSerie(c165);
-  chequear('una cuarta serie de verdad si dice 4 de 3',
-    serieDelDescanso(c165.bloques), { ejercicio: 'remo_mancuerna', serie: 4, meta: 3 });
+  chequear('una cuarta serie de verdad se cuenta, y se dice sin la meta',
+    serieDelDescanso(c165.bloques), { ejercicio: 'remo_mancuerna', serie: 4, meta: 0 });
 
   // ---- EL DESCANSO SUELTO: la que YA se hizo, no la que viene ----
   let s165 = { series: 0, bloques: bloquesVacios('remo_mancuerna', 3) };
@@ -15372,6 +15374,56 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
   chequear('la consulta del reparto de versiones', cuantas, [{ v: 'sin dato', n: 2 }]);
   const cliente196 = de196('movil/src/supabase.ts');
   chequear('la app manda su versión en cada pedido', /global: \{ headers: \{ 'X-Client-Info': encabezadoDeVersion\(\) \} \}/.test(cliente196), true);
+
+  // ---- LA TARJETA DE LA PANTALLA BLOQUEADA ----
+  const B196 = await import('../nucleo/bloques.ts');
+  // "SERIE 4 DE 3" SALÍA DE VERDAD: meta de 3, "Sumar otra", y la cuarta se
+  // contaba con la meta en 3. Por el camino de la persona: el + cuatro veces.
+  let conExtra = B196.cambiarMeta(B196.bloquesVacios('press_banca'), 3);
+  for (let i = 0; i < 4; i++) conExtra = B196.sumar(conExtra);
+  chequear('pasada la meta se dice la serie y no una meta menor', [
+    B196.serieDelDescanso(conExtra),
+    B196.serieDelDescanso(B196.restar(conExtra)),
+    [B196.metaQueSeDice(4, 3), B196.metaQueSeDice(3, 3), B196.metaQueSeDice(1, 4), B196.metaQueSeDice(2, 0)],
+  ], [{ ejercicio: 'press_banca', serie: 4, meta: 0 }, { ejercicio: 'press_banca', serie: 3, meta: 3 }, [0, 3, 4, 0]]);
+  // CAMBIAR DE EJERCICIO A MITAD DEL DESCANSO: la tarjeta decía el anterior.
+  let cuatroDeCuatro = B196.cambiarMeta(B196.bloquesVacios('press_banca'), 4);
+  for (let i = 0; i < 4; i++) cuatroDeCuatro = B196.sumar(cuatroDeCuatro);
+  const otroEjercicio = B196.cambiarEjercicio(cuatroDeCuatro, 'sentadilla');
+  chequear('con otro ejercicio elegido, lo que se dice es ESE y cero series', [
+    B196.loQueSeHaceAhora(cuatroDeCuatro),
+    B196.loQueSeHaceAhora(otroEjercicio).ejercicio,
+    B196.loQueSeHaceAhora(otroEjercicio).serie,
+    // Sin ejercicio elegido, lo último que se hizo: como al arrancar el descanso.
+    B196.loQueSeHaceAhora(B196.terminarBloque(cuatroDeCuatro)),
+  ], [{ ejercicio: 'press_banca', serie: 4, meta: 4 }, 'sentadilla', 0, { ejercicio: 'press_banca', serie: 4, meta: 0 }]);
+  // Y LLEGA A LA PANTALLA BLOQUEADA: se mira lo que recibe el puerto.
+  {
+    const { plataforma: plat } = await import('./dobles/plataforma.mjs');
+    const D196 = await import('../compartido/descanso.ts');
+    const EC196 = await import('../compartido/enCurso.ts');
+    EC196.ponerNombres([{ id: 'press_banca', nombre: 'Press de banca' }, { id: 'sentadilla', nombre: 'Sentadilla' }]);
+    const tarjetas = [];
+    const deAntes = plat.enVivo;
+    plat.enVivo = { disponible: () => true, mostrarDescanso: async (fin, duracion, ctx) => void tarjetas.push(ctx), esconder: async () => void tarjetas.push('escondida') };
+    const asentar = () => new Promise((r) => setTimeout(r, 5));
+    const vivo = D196.guardarDescanso(120, B196.serieDelDescanso(cuatroDeCuatro));
+    await asentar();
+    const despues = D196.actualizarLoQueSeHace(vivo, B196.loQueSeHaceAhora(otroEjercicio));
+    await asentar();
+    chequear('la tarjeta pasa del ejercicio anterior al nuevo, sin tocar la cuenta atrás', [tarjetas, despues.fin === vivo.fin], [[{ ejercicio: 'Press de banca', serie: 4, meta: 4 }, { ejercicio: 'Sentadilla', serie: 0, meta: 4 }], true]);
+    // Un descanso guardado por una versión vieja, con la meta menor que la serie.
+    tarjetas.length = 0;
+    D196.actualizarLoQueSeHace(vivo, { ejercicio: 'press_banca', serie: 4, meta: 3 });
+    await asentar();
+    chequear('venga de donde venga, "4 de 3" no llega a la pantalla bloqueada', tarjetas, [{ ejercicio: 'Press de banca', serie: 4, meta: 0 }]);
+    D196.borrarDescanso();
+    await asentar();
+    plat.enVivo = deAntes;
+  }
+  const sesion196 = de196('compartido/useSesion.ts');
+  chequear('elegir ejercicio, mudarlo, cambiar la meta y deshacer una serie refrescan la tarjeta', (sesion196.match(/setBloques\(\w+(\.bloques)?\);\s*refrescarTarjeta\(\);/g) ?? []).length, 4);
+  chequear('la lista de la bienvenida no se desenfoca en el teléfono', /\.\.\.\(CON_DESENFOQUE \? \{ filter: `blur\(\$\{desenfoque\}px\)` \} : null\)/.test(de196('movil/src/bienvenida/Registro.tsx')), true);
 
   // ---- CABLEADO DEL ÁLBUM NATIVO: son componentes ----
   const alb196 = de196('movil/src/Album.tsx');

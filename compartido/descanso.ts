@@ -2,7 +2,7 @@ import { DESCANSO_MAXIMO, DESCANSO_MINIMO, DESCANSO_PREDETERMINADO } from '@nucl
 import { plataforma } from '@plataforma';
 import { nombreDe } from './enCurso';
 import { T } from '@nucleo/textos';
-import type { HechoAntesDelDescanso } from '@nucleo/bloques';
+import { metaQueSeDice, type HechoAntesDelDescanso } from '@nucleo/bloques';
 import type { ContextoDelDescanso } from '@nucleo/plataforma';
 
 const CLAVE = 'ascent:descanso';
@@ -27,7 +27,10 @@ function loQueSeHacia(d: DescansoVivo): ContextoDelDescanso | null {
   return {
     ejercicio: typeof d.ejercicio === 'string' ? d.ejercicio : null,
     serie: d.serie,
-    meta: typeof d.meta === 'number' ? d.meta : 0,
+    // ÚLTIMA PUERTA antes de la pantalla bloqueada: venga de donde venga el
+    // descanso —uno guardado por una versión vieja, también—, no sale una meta
+    // menor que la serie. Ver `metaQueSeDice`.
+    meta: typeof d.meta === 'number' ? metaQueSeDice(d.serie, d.meta) : 0,
   };
 }
 
@@ -143,6 +146,19 @@ export function cambiarDuracion(vivo: DescansoVivo, duracion: number): DescansoV
   void plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(d));
   // Bajar a 2 con 2:30 encima deja el descanso terminado: ahí se cancela.
   void avisarAlTerminar(d);
+  return d;
+}
+
+/**
+ * CAMBIÓ LO QUE SE ESTÁ HACIENDO, CON EL DESCANSO CORRIENDO (8/10): otro
+ * ejercicio, otra meta, una serie deshecha. La cuenta atrás no se toca —mismo
+ * `fin`, y el aviso programado sigue valiendo—; solo se reescribe lo que dice
+ * la tarjeta de la pantalla bloqueada. Ver `loQueSeHaceAhora`.
+ */
+export function actualizarLoQueSeHace(vivo: DescansoVivo, hecho: HechoAntesDelDescanso): DescansoVivo {
+  const d: DescansoVivo = { ...vivo, ejercicio: nombreDe(hecho.ejercicio), serie: hecho.serie, meta: hecho.meta };
+  void plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(d));
+  void enVivoAlTerminar(d);
   return d;
 }
 

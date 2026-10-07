@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C } from '../colores';
 
@@ -37,7 +37,32 @@ const EJERCICIOS = [
   'Elevaciones laterales · 4 × 10 kg',
   'Prensa · 4 × 180 kg',
   'Plancha · 3 × 60 s',
+  // MÁS LARGA (8/10): con doce, el viaje llegaba al final de la lista antes de
+  // deshacerse y se veía el hueco. Todos del catálogo, como los de arriba.
+  'Hip thrust · 4 × 90 kg',
+  'Jalón al pecho · 4 × 55 kg',
+  'Press inclinado · 4 × 60 kg',
+  'Sentadilla búlgara · 3 × 24 kg',
+  'Remo en polea · 4 × 50 kg',
+  'Curl predicador · 3 × 25 kg',
+  'Peso muerto rumano · 4 × 80 kg',
+  'Face pull · 3 × 20 kg',
+  'Extensión de cuádriceps · 3 × 45 kg',
+  'Press Arnold · 3 × 18 kg',
+  'Gemelos de pie · 4 × 60 kg',
+  'Elevación de piernas colgado · 3 × 12',
 ];
+
+/**
+ * EL DESENFOQUE, SOLO EN LA WEB (8/10). En el iPhone se veía "un cuadrado blanco
+ * semitransparente que pasa por encima". `filter: blur` hace que iOS dibuje el
+ * contenedor entero aparte, como una sola imagen: con veinte renglones de letra
+ * clara, inclinados y al 40%, eso se lee como una placa blancuzca cruzando la
+ * pantalla. En el teléfono la velocidad la dan el movimiento y el
+ * desvanecimiento; el desenfoque queda para la web, donde se ve bien.
+ * (No se pudo ver en un iPhone desde acá: es la causa más probable, leída.)
+ */
+const CON_DESENFOQUE = Platform.OS === 'web';
 
 /** Lo que dura el viaje de la lista, en segundos. */
 const VIAJE_S = 3.4;
@@ -103,7 +128,7 @@ export default function Registro({ quieto = false }: { quieto?: boolean }) {
             // react-native-web (la mapea a `filter: blur()` de CSS) y la New
             // Architecture en iOS (RN 0.81). La forma array `[{blur}]` no la
             // tomaba react-native-web, así que el barrido no la mostraba.
-            filter: `blur(${desenfoque}px)`,
+            ...(CON_DESENFOQUE ? { filter: `blur(${desenfoque}px)` } : null),
             transform: [
               { perspective: 700 },
               { rotateX: `${inclina}deg` },

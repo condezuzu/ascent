@@ -37,6 +37,7 @@ import {
   proponerPeso,
   sembrar,
   serieDelDescanso,
+  loQueSeHaceAhora,
   sinNadaContado,
   unirConGuardados,
   terminarBloque,
@@ -69,10 +70,12 @@ import {
   relojDeToques,
 } from '@compartido/sesionCache';
 import {
+  actualizarLoQueSeHace,
   borrarDescanso,
   duracionValida,
   guardarDescanso,
   leerDescanso,
+  restante,
   type DescansoVivo,
 } from '@compartido/descanso';
 import { marcarComoUsada } from '@nucleo/llegada';
@@ -228,6 +231,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   const sesionesRutinaRef = useRef<SesionRutina[]>([]);
   const [idSesion, setIdSesion] = useState<string | null>(null);
   const [descanso, setDescanso] = useState<DescansoVivo | null>(null);
+  // Para quien cambia algo a mitad del descanso (`refrescarTarjeta`).
+  const descansoRef = useRef(descanso);
+  descansoRef.current = descanso;
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState('');
   const [, repintar] = useState(0);
@@ -876,6 +882,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     bloquesRef.current = nc.bloques;
     setSeries(nc.series);
     setBloques(nc.bloques);
+    refrescarTarjeta();
     // Guardar primero (ver `serieHecha`): la cola antes que la caché y que `marcar`.
     await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo, () => subir(nc.series, nc.bloques));
     await marcar();
@@ -948,12 +955,26 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * con el ejercicio o el peso de antes. Ahora primero se cambia el bloque y
    * `marcar` va al final, como en `serieHecha`.
    */
+  /**
+   * La tarjeta de la pantalla bloqueada dice lo que se está haciendo AHORA. Se
+   * llama cada vez que eso cambia con un descanso corriendo; sin descanso no
+   * hace nada. Ver `loQueSeHaceAhora`.
+   */
+  function refrescarTarjeta() {
+    const vivo = descansoRef.current;
+    if (!vivo || restante(vivo.fin) <= 0) return;
+    const d = actualizarLoQueSeHace(vivo, loQueSeHaceAhora(bloquesRef.current));
+    descansoRef.current = d;
+    setDescanso(d);
+  }
+
   async function elegirEjercicio(id: string | null) {
     const previo = bloquesRef.current;
     const b = cambiarEjercicio(previo, id);
     if (b === previo) return marcar();
     bloquesRef.current = b;
     setBloques(b);
+    refrescarTarjeta();
     // Lo eligió la persona: ya no es una sugerencia. Y LA CADENA SE RE-ENGANCHA a
     // la rutina de ESE ejercicio —lo que suele venir después de él—.
     setSugerido(false);
@@ -1239,6 +1260,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     if (b === previo) return marcar();
     bloquesRef.current = b;
     setBloques(b);
+    refrescarTarjeta();
     // Corregir el ejercicio también re-engancha la cadena, igual que
     // `elegirEjercicio`: si no, el próximo sugerido saldría de la rutina del
     // ejercicio equivocado. (29/9)
@@ -1273,6 +1295,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     const b = cambiarMeta(bloquesRef.current, meta);
     bloquesRef.current = b;
     setBloques(b);
+    refrescarTarjeta();
     await actualizarSesionCache({ bloques: b }, yo);
     await guardarMetaPreferida(b.meta);
   }

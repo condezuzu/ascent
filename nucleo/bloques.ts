@@ -585,8 +585,37 @@ export type HechoAntesDelDescanso = { ejercicio: string | null; serie: number; m
  * bloque no se guarda, así que va en 0 y la tarjeta dice "Serie 3" a secas.
  */
 export function serieDelDescanso(e: EstadoBloques): HechoAntesDelDescanso {
-  if (e.hechas > 0) return { ejercicio: e.ejercicio, serie: e.hechas, meta: e.meta };
+  if (e.hechas > 0) return { ejercicio: e.ejercicio, serie: e.hechas, meta: metaQueSeDice(e.hechas, e.meta) };
   const ultimo = e.cerrados[e.cerrados.length - 1];
   if (ultimo) return { ejercicio: ultimo.ejercicio, serie: ultimo.series, meta: 0 };
   return { ejercicio: e.ejercicio, serie: 0, meta: 0 };
+}
+
+/**
+ * LA META QUE SE PUEDE DECIR AL LADO DE UNA SERIE: nunca una menor que la serie.
+ *
+ * "Serie 4 de 3" salía de verdad (8/10), y no por un teléfono viejo: llegás a
+ * la meta de 3, tocás "Sumar otra" y la cuarta se cuenta con la meta en 3. La
+ * meta es lo que te propusiste, no un tope, así que pasarla está bien; lo que
+ * no tiene sentido es decirla. Pasada la meta se dice "Serie 4", a secas (cero
+ * = sin meta, y la tarjeta la omite).
+ */
+export function metaQueSeDice(serie: number, meta: number): number {
+  return meta >= serie ? meta : 0;
+}
+
+/**
+ * LO QUE HAY QUE DECIR SI ALGO CAMBIA A MITAD DEL DESCANSO (8/10).
+ *
+ * La tarjeta de la pantalla bloqueada se escribía al arrancar el descanso y
+ * nadie la volvía a tocar: terminabas la cuarta de cuatro, cambiabas de
+ * ejercicio, y seguía diciendo el anterior con su "4 de 4".
+ *
+ * Con series contadas en el bloque, es ese bloque. Con un ejercicio recién
+ * ELEGIDO y nada contado, es ese ejercicio y cero series: lo que viene, no lo
+ * que pasó. Y si no hay ejercicio, lo último que se hizo, como al arrancar.
+ */
+export function loQueSeHaceAhora(e: EstadoBloques): HechoAntesDelDescanso {
+  if (e.hechas > 0 || e.ejercicio === null) return serieDelDescanso(e);
+  return { ejercicio: e.ejercicio, serie: 0, meta: e.meta };
 }
