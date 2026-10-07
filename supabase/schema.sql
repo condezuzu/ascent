@@ -1000,14 +1000,24 @@ begin
   select * into perfil from profiles where id = new.user_id;
   -- Un día de ANTES de la última pérdida no tiene cuenta posible: la racha se
   -- mide desde ahí. Queda sin número y sin planeta, en vez de con uno inventado.
-  if not new.es_descanso and (perfil.perdida_fecha is null or new.fecha > perfil.perdida_fecha) then
-    r := perfil.racha_base + calcular_racha(new.user_id, new.fecha - 1) + 1;
-    -- SIN BORDE PROPIO. Qué días tienen planeta lo dice `planeta_de_dia`, que
-    -- devuelve null fuera del rango. Acá había un "entre 30 y 39" copiado, y
-    -- cuando la migración 54 corrió el rango a 31..50 los días 40 a 50
-    -- quedaban sin planeta guardado.
-    new.planeta_del_dia := planeta_de_dia(r);
-  end if;
+  --
+  -- UNA ETIQUETA NO PUEDE FRENAR EL DÍA (migración 62). Un error en un
+  -- disparador aborta la sentencia entera: si esta cuenta fallara, nadie podría
+  -- registrar. El planeta es un dato derivado; si no se puede calcular, el día
+  -- entra sin él y queda un aviso en el registro de la base.
+  begin
+    if not new.es_descanso and (perfil.perdida_fecha is null or new.fecha > perfil.perdida_fecha) then
+      r := perfil.racha_base + calcular_racha(new.user_id, new.fecha - 1) + 1;
+      -- SIN BORDE PROPIO. Qué días tienen planeta lo dice `planeta_de_dia`, que
+      -- devuelve null fuera del rango. Acá había un "entre 30 y 39" copiado, y
+      -- cuando la migración 54 corrió el rango a 31..50 los días 40 a 50
+      -- quedaban sin planeta guardado.
+      new.planeta_del_dia := planeta_de_dia(r);
+    end if;
+  exception when others then
+    new.planeta_del_dia := null;
+    raise warning 'logs_before_insert: el planeta del día no se pudo calcular (%)', sqlerrm;
+  end;
   return new;
 end;
 $$;
@@ -1091,16 +1101,25 @@ begin
   -- el número de todos los de después, y el planeta sale de ese número. Solo
   -- los posteriores a la última pérdida: los de antes no tienen cuenta posible
   -- y se quedan como estén.
+  --
+  -- Y NINGUNO DE LOS DOS PUEDE FRENAR EL DÍA: son etiquetas. Van en su propio
+  -- bloque: si fallan, se deshace SOLO esto —el día y la racha de arriba ya
+  -- quedaron— y se deja un aviso en el registro de la base. Antes de la 62 el
+  -- recálculo del planeta ya corría acá sin esta red.
   if pg_trigger_depth() = 1 then
-    update logs l set racha_del_dia = c.dia, planeta_del_dia = planeta_de_dia(c.dia)
-      from (
-        select x.id, base + calcular_racha(uid, x.fecha) as dia
-          from logs x
-         where x.user_id = uid and not x.es_descanso and x.fecha >= desde
-           and x.fecha > coalesce((select perdida_fecha from profiles where id = uid), '-infinity'::date)
-      ) c
-     where l.id = c.id
-       and (l.racha_del_dia is distinct from c.dia or l.planeta_del_dia is distinct from planeta_de_dia(c.dia));
+    begin
+      update logs l set racha_del_dia = c.dia, planeta_del_dia = planeta_de_dia(c.dia)
+        from (
+          select x.id, base + calcular_racha(uid, x.fecha) as dia
+            from logs x
+           where x.user_id = uid and not x.es_descanso and x.fecha >= desde
+             and x.fecha > coalesce((select perdida_fecha from profiles where id = uid), '-infinity'::date)
+        ) c
+       where l.id = c.id
+         and (l.racha_del_dia is distinct from c.dia or l.planeta_del_dia is distinct from planeta_de_dia(c.dia));
+    exception when others then
+      raise warning 'logs_after_change: el día de racha y el planeta no se pudieron escribir (%)', sqlerrm;
+    end;
   end if;
 
   if tg_op = 'DELETE' then return old; end if;

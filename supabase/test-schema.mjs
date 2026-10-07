@@ -13155,6 +13155,31 @@ console.log('\n173. La 59 y la 60 se pueden correr HOY, sobre el esquema 53, y o
   const metido = (await dias62(conPerdida)).find((f) => f.hace === 8);
   chequear('un día agregado antes de la última pérdida queda sin número y sin planeta', [metido.dia, metido.planeta], [null, null]);
   chequear('y no les cambia nada a los demás de esa cuenta', (await dias62(conPerdida)).filter((f) => f.hace !== 8).map((f) => f.planeta), perdio62.map((f) => f.planeta));
+
+  // ---- UNA ETIQUETA QUE FALLA NO FRENA EL DÍA ----
+  // Un error en un disparador aborta la inserción entera. Se rompe a propósito
+  // la cuenta del planeta —de la que cuelgan las dos etiquetas— y se registra
+  // un día por los tres caminos: tiene que entrar igual, con su racha.
+  const escalera = (await prod.query(`select pg_get_functiondef('public.planeta_de_dia(int)'::regprocedure) as def`)).rows[0].def;
+  await prod.exec(`create or replace function public.planeta_de_dia(r int) returns text language plpgsql immutable as $f$ begin raise exception 'escalera rota a propósito'; end $f$`);
+  const conFalla = await cuenta();
+  await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 2)`, [conFalla]);
+  await prod.query(`select set_config('test.uid', $1, false)`, [conFalla]);
+  await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 1)`, [conFalla]);
+  const porRegistrar = (await prod.query(`select registrar_dia('manual') as r`)).rows[0].r;
+  chequear('con la cuenta de las etiquetas rota, el día entra igual por los tres caminos', [
+    (await numeros(conFalla)).map((f) => f[0]),
+    (await prod.query(`select racha_actual from profiles where id = $1`, [conFalla])).rows[0].racha_actual,
+    porRegistrar.racha,
+  ], [[2, 1, 0], 3, 3]);
+  await prod.query(`delete from logs where user_id = $1 and fecha = mi_hoy() - 1`, [conFalla]);
+  chequear('y borrar un día tampoco se frena', (await numeros(conFalla)).map((f) => f[0]), [2, 0]);
+  await prod.exec(escalera);
+  // Arreglada la cuenta, el cambio siguiente numera desde el día que cambió en
+  // adelante. El de más atrás, que entró durante la falla, queda sin número
+  // hasta que se corra un relleno: se pierde una etiqueta, no un día.
+  await prod.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 1)`, [conFalla]);
+  chequear('con la cuenta arreglada, el cambio siguiente numera de ahí en adelante', (await numeros(conFalla)).map((f) => f[1]), [null, 2, 3]);
   await prod.close();
 }
 
