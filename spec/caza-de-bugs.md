@@ -192,6 +192,16 @@ investigar todavía: mirar en `movil/src/Album.tsx` en qué momento cambia el
 índice de la foto respecto de la animación, y si la vecina se monta con la
 imagen ya cargada. No bloquea la OTA a `store` (decisión del humano).
 
+**7/10 — PENDIENTE PARA DESPUÉS DEL LANZAMIENTO, a propósito.** Revisado de
+nuevo en el iPhone con la última OTA de `telefono`: fue lo único de toda la
+lista que no pasó. Son dos cosas en la misma pantalla:
+- al deslizar entre fotos **sigue titilando**;
+- y la foto **tarda mucho en cargar**.
+
+Se deja así por decisión del humano: el álbum es la parte menos usada de la
+app y las dos cosas son cosméticas (no se pierde ni se muestra mal ningún
+dato). La web ya no se usa, así que esto es solo de la nativa.
+
 ### Confirmado SANO (revisado, sin bug)
 Muchos días/cero amigos, amigos/racha 0, racha recién perdida (0 vidas, dias
 vacío), foto borrada con el visor abierto (índice clampeado + guarda `!!foto`),
