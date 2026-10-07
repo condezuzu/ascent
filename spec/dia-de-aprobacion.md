@@ -17,7 +17,11 @@ storage no se pudo probar (PGlite no lo tiene) y está marcado.*
 consulta —§2.9— probada de la misma forma. A diferencia de la 59 y la 60, la 61
 NO se puede correr antes: va en su lugar, después de la 60.*
 
-Orden, y no se cambia: **verificar → migraciones → confirmar 61 → OTA → teléfono.**
+*El 6 y 7/10 se usó de verdad, con la 1.0 aprobada. Lo que cambió respecto de
+lo escrito está en §7, y vale para la próxima versión: leerlo ANTES de empezar.*
+
+Orden, y no se cambia: **verificar → migraciones → confirmar el esquema → OTA a
+`telefono` → teléfono → OTA a `store`.**
 
 Dónde se corre cada cosa:
 
@@ -354,7 +358,10 @@ De verdad (la misma línea, sin `--simular`):
 ```
 node supabase/publicar-ota.mjs telefono "tanda 9: album, bienvenida, dia en foto, peso corporal"
 ```
-→ termina con el "Published!" de EAS.
+→ antes de subir dice `Paquete revisado: trae las variables del perfil
+`telefono` y ninguna otra.` y termina con el bloque de EAS (`Branch telefono`,
+`Update group ID`). Si dice `El paquete exportado NO es el que corresponde`:
+no publicó nada (§7).
 
 **Ahora §5 entero, en el teléfono, antes de seguir.**
 
@@ -456,3 +463,57 @@ y publicar de nuevo a `telefono` por §4.1.
 publicar otra con el guardián. EAS también tiene `npx eas-cli update:republish`
 para volver a poner un grupo anterior, pero pasa por fuera del guardián y nunca
 se usó en este proyecto.
+
+---
+
+## 7. Lo que enseñó la 1.0 (6 y 7/10/2026), para la próxima versión
+
+**El orden que se siguió de verdad.**
+1. Verificaciones de §1, más una que no estaba: las filas que ya existen
+   cumplen las reglas nuevas (la 60 exige que la ruta de la foto empiece con el
+   id del dueño: se contó en producción antes de aplicarla; 18 de 18).
+2. Migraciones 54 → 55 → `cron-racha.sql` → 56 → 57 → 58 → 59 → 60 → 61, una por
+   vez, cada una con su consulta. Para pegarlas sin errores de acentos, se
+   copian al portapapeles con `Get-Content -Raw -Encoding utf8 <archivo> |
+   Set-Clipboard` (NO `clip`, que rompe los acentos, y hay nombres con acento
+   adentro de las migraciones).
+3. `npm run test:conexion` → OTA a `telefono`.
+4. En el teléfono aparecieron tres cosas, y se arreglaron ANTES de `store`:
+   la versión del esquema quedaba vieja con la app abierta; días que nacían sin
+   número; y el planeta guardado de dos escaleras (migración 62, §2.10).
+5. Migración 62 → `test:conexion` → OTA a `telefono` → teléfono → push → OTA a
+   `store`.
+
+**Entre aprobar y publicar a `store` pasaron más de 24 horas, y en ese rato la
+build de la tienda corrió sin OTA contra la base ya migrada.** No se rompió
+nada —se comprobó comparando lo que llama esa build con lo que cambió en la
+base—, pero pintó el rango con dos reglas (`spec/alcance.md`). Para la próxima:
+antes de aplicar la primera migración, correr esa misma comparación
+(qué funciones y columnas usa la build publicada contra lo que cambian las
+migraciones) y tener la OTA ya revisada en `telefono` con la base de prueba.
+
+**La regla del artefacto** (`spec/trampas.md`). Una publicación se comprueba
+mirando lo que se publicó, nunca el comando que lo arma. El guardián ahora
+exporta él, lee el paquete y recién ahí sube; si no trae exactamente las
+variables que declara el perfil del canal en `eas.json`, se niega.
+
+**La caché del empaquetador filtra variables entre canales.** Guarda cada
+archivo ya transformado sin mirar el valor de las variables `EXPO_PUBLIC_…`.
+Una OTA a `telefono` salió sin Diagnóstico por eso; al revés, una a `store`
+habría salido CON Diagnóstico. Por eso el guardián exporta siempre con la caché
+limpia y cada variable de perfil deja un sello en el paquete
+(`movil/src/sello.ts`). Nunca correr `eas update` ni `expo export` a mano para
+publicar.
+
+**Lo que NO confirma que una OTA llegó:** ver una función nueva en pantalla
+(puede venir de una OTA anterior o de la base). Lo que sí: Ajustes → Ajustes
+avanzados → Diagnóstico (solo en `telefono`), o mandar una sugerencia y mirar
+`select version_app from public.feedback order by fecha desc limit 1;`.
+
+**El push va antes de la OTA a `store`.** GitHub puede fallar (pasó: tres
+`Internal Server Error` seguidos); no se publica a `store` desde un commit que
+solo existe en la PC.
+
+**La build de la tienda busca la actualización una sola vez por arranque**, a
+los tres segundos de entrar. Quien tiene la app abierta en segundo plano no la
+recibe hasta que arranque de cero.
