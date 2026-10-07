@@ -432,10 +432,17 @@ async function correr(app) {
       sesiones: ses.data?.map((x) => ({ estado: x.estado, series: x.series, bloques: x.bloques, creo: x.creo_el_dia })),
       fotos: fotos.data?.length,
       fotosColgadas: fotos.data?.filter((f) => f.log_id).length,
-      archivos: gim.data?.length,
+      // LA MINIATURA VA APARTE (8/10): desde que el teléfono la sube al lado de
+      // la entera, la nativa deja dos archivos por foto y la web uno (la web no
+      // la hace). Lo que se compara entre las dos apps son las fotos enteras.
+      archivos: gim.data?.filter((o) => !o.name.endsWith('.mini.jpg')).length,
+      miniaturas: gim.data?.filter((o) => o.name.endsWith('.mini.jpg')).length,
       marcas: prs.data,
       gimnasio: p.data?.gimnasio_lat !== null && p.data?.gimnasio_lat !== undefined,
     };
+    // Y EN LA NATIVA, CADA FOTO TIENE LA SUYA: es el archivo de verdad en el
+    // bucket, no que el código la haya mandado.
+    if (app === 'movil' && base_.miniaturas !== base_.fotos) problemas.push(`la nativa subió ${base_.fotos} foto(s) y ${base_.miniaturas} miniatura(s)`);
     // limpieza
     const rutas = (gim.data ?? []).map((o) => `${uid}/${o.name}`);
     if (rutas.length) await s.storage.from('fotos').remove(rutas);
