@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -30,6 +30,10 @@ import { useRecargarAlVolver } from './irAPestana';
 import { bloquearDeslizarPestanas, desbloquearDeslizarPestanas } from './gestoDePestanas';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
+import { eventos } from '@compartido/eventos';
+import { FOTOS_CAMBIO } from '@compartido/foto';
+import { DIA_CAMBIO } from '@compartido/gimnasio';
+import { completarMiniaturas } from './miniaturas';
 
 /**
  * ÁLBUM — tanda 4.
@@ -65,6 +69,9 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
     setNoCargo(!d);
     if (d) setDatos(d);
     setCargado(true);
+    // Las miniaturas que falten las hace este teléfono, por atrás: ver
+    // `completarMiniaturas`. Se ven en la apertura siguiente.
+    if (d) void completarMiniaturas(d.celdas);
   }, [alSalir]);
 
   // Las URL firmadas vencen a la hora: se vuelven a pedir antes de que se rompan,
@@ -74,8 +81,30 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
     recargar();
   }, [recargar]);
 
-  // Y de nuevo al volver a esta pestaña: ahora se queda montada.
-  useRecargarAlVolver('album', recargar);
+  // AL VOLVER A ESTA PESTAÑA, SOLO SI ALGO CAMBIÓ (8/10). Se recargaba siempre,
+  // y cada recarga firma enlaces nuevos: el teléfono guarda las imágenes por
+  // enlace, así que volver a la pestaña era bajar todas las fotos otra vez.
+  // Ahora se recarga si se sumó una foto o se tocó un día; el vencimiento de
+  // los enlaces lo cuida `useRefrescoDeFirmadas`, y quitar o cambiar una foto
+  // acá adentro ya actualiza lo que se ve.
+  const cambioAlgo = useRef(false);
+  useEffect(() => {
+    const marcar = () => {
+      cambioAlgo.current = true;
+    };
+    const dejarFotos = eventos.escuchar(FOTOS_CAMBIO, marcar);
+    const dejarDias = eventos.escuchar(DIA_CAMBIO, marcar);
+    return () => {
+      dejarFotos();
+      dejarDias();
+    };
+  }, []);
+  const recargarSiCambio = useCallback(() => {
+    if (!cambioAlgo.current) return;
+    cambioAlgo.current = false;
+    recargar();
+  }, [recargar]);
+  useRecargarAlVolver('album', recargarSiCambio);
 
   // MIENTRAS LA FOTO ESTÁ ABIERTA, LAS PESTAÑAS NO DESLIZAN (27/9): así el
   // arrastre para pasar de foto es de la foto, y no se escapa a otra pestaña.
@@ -87,16 +116,14 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
     return () => desbloquearDeslizarPestanas();
   }, [abierta]);
 
-  // PRECARGAR LAS VECINAS (27/9). El salto entre fotos dura 140 ms; lo que se
-  // sentía como un tirón era que la foto nueva EMPEZABA a bajar recién después
-  // del salto (URL firmada, imagen grande). Mientras mirás la actual, la
-  // anterior y la siguiente se bajan a la caché de imágenes de RN, así que al
-  // pasar ya están y aparecen al instante. `Image.prefetch` no bloquea nada y si
-  // falla (sin señal) no pasa nada: la foto se baja igual cuando llega su turno.
+  // PRECARGAR LAS QUE SIGUEN A LAS VECINAS. La anterior y la siguiente ya están
+  // DIBUJADAS al lado (ver la tira, más abajo) y bajan solas; acá se adelantan
+  // las de dos lugares, para que al pasar la vecina nueva ya esté. No bloquea
+  // nada y si falla (sin señal) la foto se baja igual cuando llega su turno.
   useEffect(() => {
     if (abierta === null) return;
     const cs = datos?.celdas ?? [];
-    for (const j of [abierta - 1, abierta + 1]) {
+    for (const j of [abierta - 2, abierta + 2]) {
       const u = cs[j]?.url;
       if (u) Image.prefetch(u).catch(() => {});
     }
@@ -114,21 +141,47 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
   const cuantasRef = useRef(0);
   const desliz = useRef(new Animated.Value(0)).current;
 
+  // LA TIRA (8/10). El visor tenía UNA imagen: al soltar la animaba hacia
+  // afuera y, al terminar, cambiaba la foto y volvía la posición al centro.
+  // Eran dos relojes: la posición volvía al instante y la foto nueva llegaba un
+  // dibujado después (y además tenía que decodificarse), así que en el medio se
+  // veía la ANTERIOR de nuevo en el centro. Es el titileo de las pestañas.
+  //
+  // Ahora las fotos están en una tira, cada una en su lugar fijo (su índice por
+  // el ancho), y lo único que se mueve es la tira: `base` dice en qué foto está
+  // parada y `desliz` cuánto la corre el dedo. Al pasar, `base` avanza un ancho
+  // y `desliz` vuelve a cero en el mismo instante: la suma no cambia, no se
+  // mueve nada, y la foto que queda en el centro es la vecina que YA estaba
+  // dibujada. Qué índice está abierto se actualiza después y no mueve nada.
+  const base = useRef(new Animated.Value(0)).current;
+  const corrimiento = useMemo(() => Animated.add(base, desliz), [base, desliz]);
+  const anchoRef = useRef(width);
+  anchoRef.current = width;
+  // Abrir, cerrar, las flechas, quitar una foto o girar el teléfono: la tira se
+  // para en la foto abierta antes de pintarse.
+  useLayoutEffect(() => {
+    if (abierta === null) return;
+    base.setValue(-abierta * width);
+    desliz.setValue(0);
+  }, [abierta, width, base, desliz]);
+
   const saltar = useCallback(
     (d: 1 | -1) => {
-      // Sale por su lado y entra por el otro: sin esto, la foto nueva aparece
-      // corrida y vuelve al centro, que se lee al revés del gesto.
       Animated.timing(desliz, {
-        toValue: -d * 600,
-        duration: 140,
+        toValue: -d * anchoRef.current,
+        duration: 180,
         easing: Easing.bezier(...CURVA),
         useNativeDriver: true,
       }).start(() => {
-        setAbierta((i) => (i === null ? null : i + d));
+        const i = abiertaRef.current;
+        if (i === null) return;
+        // Las dos juntas, y ANTES de avisarle a React: ver arriba.
+        base.setValue(-(i + d) * anchoRef.current);
         desliz.setValue(0);
+        setAbierta(i + d);
       });
     },
-    [desliz]
+    [base, desliz]
   );
 
   const volverAlCentro = useCallback(() => {
@@ -266,8 +319,8 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       onPress={() => setAbierta(celdas.findIndex((x) => x.id === c.id))}
                       accessibilityLabel={fechaLinda(c.fecha)}
                     >
-                      {!!c.miniatura && (
-                        <Image source={{ uri: c.miniatura }} style={estilos.mitadFoto} resizeMode="cover" />
+                      {!!(c.miniatura || c.url) && (
+                        <Image source={{ uri: c.miniatura || c.url }} style={estilos.mitadFoto} resizeMode="cover" />
                       )}
                       <Text style={estilos.mitadCuando}>
                         {i === 0 ? T.album.laPrimera : T.album.laUltima} · {fechaCorta(c.fecha)}
@@ -296,7 +349,10 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       accessibilityLabel={fechaLinda(c.fecha)}
                       style={[estilos.celda, { width: lado, height: lado }]}
                     >
-                      {!!c.url && <Foto url={c.url} lado={lado} />}
+                      {/* LA MINIATURA, no la entera (8/10): la celda mide un
+                          tercio de pantalla y bajaba la foto de 1600 px. La
+                          entera queda de respaldo para la que todavía no tiene. */}
+                      {!!(c.miniatura || c.url) && <Foto url={c.miniatura || c.url} lado={lado} />}
                       {/* Un punto y nada más: quién ve la foto, de un vistazo. */}
                       {c.visibilidad === 'amigos' && <View style={estilos.punto} />}
                     </Pressable>
@@ -330,13 +386,21 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
 
                 EL MARCO (25/9): un borde fino, teñido apenas por el rango (4.2),
                 para que una foto vertical no deje dos huecos sin forma. */}
-            <Animated.View
-              style={[StyleSheet.absoluteFill, estilos.capaGesto, { transform: [{ translateX: desliz }] }]}
-              {...gesto.panHandlers}
-            >
-              <View style={[estilos.marco, { borderColor: conAlfa(acentoRango, 0.45) }]}>
-                <Image source={{ uri: foto.url }} style={{ width: width - 32, height: width - 32 }} resizeMode="contain" />
-              </View>
+            <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: corrimiento }] }]} {...gesto.panHandlers}>
+              {/* La abierta y sus dos vecinas, cada una en su lugar de la tira
+                  y con su id: al pasar, la vecina es la MISMA imagen, ya
+                  bajada, que queda en el centro. */}
+              {[abierta! - 1, abierta!, abierta! + 1].map((j) => {
+                const c = celdas[j];
+                if (!c) return null;
+                return (
+                  <View key={c.id} style={[estilos.capaGesto, { position: 'absolute', top: 0, bottom: 0, left: j * width, width }]}>
+                    <View style={[estilos.marco, { borderColor: conAlfa(acentoRango, 0.45) }]}>
+                      <Image source={{ uri: c.url }} style={{ width: width - 32, height: width - 32 }} resizeMode="contain" />
+                    </View>
+                  </View>
+                );
+              })}
             </Animated.View>
 
             {/* LA FECHA ARRIBA, al lado de la cruz, en su propio renglón. Se

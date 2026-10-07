@@ -32,6 +32,30 @@ export function medidasParaSubir(ancho: number, alto: number): { ancho: number; 
   return { ancho: Math.round(ancho * escala), alto: Math.round(alto * escala) };
 }
 
+/**
+ * LA MINIATURA (8/10): la misma foto a 400 px, guardada al lado de la entera.
+ *
+ * La grilla del álbum bajaba la foto ENTERA (1600 px) por cada celda. Achicarla
+ * al vuelo en el servidor existe, pero es del plan pago de Supabase y con cupo
+ * de 100 fotos por mes: no se puede apoyar nada ahí. La miniatura la hace el
+ * teléfono al subir, y la de las fotos viejas la primera vez que las muestra.
+ *
+ * LA RUTA SE DERIVA DEL NOMBRE, sin columna ni migración: misma carpeta —que es
+ * lo que mira la política del dueño— y `.mini.jpg` al final.
+ */
+export const LADO_MINIATURA = 400;
+export const CALIDAD_MINIATURA = 0.7;
+
+export function rutaDeMiniatura(ruta: string): string {
+  return ruta.replace(/.jpe?g$/i, '') + '.mini.jpg';
+}
+
+/** El escalado para que el lado CORTO quede en `LADO_MINIATURA`: la celda es cuadrada y recorta. Nunca agrandar. */
+export function medidasDeMiniatura(ancho: number, alto: number): { ancho: number; alto: number } {
+  const escala = Math.min(1, LADO_MINIATURA / Math.min(ancho, alto));
+  return { ancho: Math.round(ancho * escala), alto: Math.round(alto * escala) };
+}
+
 /** Dónde queda en el storage: la carpeta del usuario es lo que mira la política. */
 export function rutaDeFoto(uid: string, dia: string, ahora: number): string {
   return `${uid}/${dia}-${ahora}.jpg`;

@@ -4,6 +4,7 @@ import { cuerpoDe } from '@nucleo/rangos';
 import { disponible } from '@nucleo/esquema';
 import { versionDelEsquema } from '@compartido/esquema';
 import { T } from '@nucleo/textos';
+import { rutaDeMiniatura } from '@nucleo/foto';
 
 /**
  * LO QUE MUESTRA EL ÁLBUM, pedido una sola vez para las dos apps.
@@ -21,10 +22,10 @@ export type Celda = {
   /** URL firmada: vence en una hora. La foto entera, para el visor. */
   url: string;
   /**
-   * La misma foto achicada a 400 px, para la grilla (19/9). Las fotos se
-   * guardan a 1600 px y la celda mide un tercio de pantalla: bajar la entera
-   * por cada miniatura era lo que hacía tardar el álbum. Si no se pudo
-   * pedir, es la entera.
+   * La misma foto a 400 px, para la grilla: un archivo aparte, al lado de la
+   * entera (`rutaDeMiniatura`). Vacía si todavía no existe —una foto de antes
+   * del 8/10, o una subida a la que no le llegó la suya—: la celda usa la
+   * entera y el teléfono del dueño la genera (`completarMiniaturas`).
    */
   miniatura: string;
   ruta: string;
@@ -38,32 +39,23 @@ export type Celda = {
 
 export type DatosDeAlbum = { celdas: Celda[]; miRango: number; miPlaneta: string | null };
 
-/** Cuántas miniaturas se piden a la vez: una por foto, sin inundar la red. */
-const MINIATURAS_A_LA_VEZ = 12;
 /**
- * Solo las de arriba llevan miniatura: son las que se ven al abrir, y cada
- * una es un pedido. Con cien fotos, pedirlas todas antes de mostrar nada eran
- * nueve tandas en fila. Las de más abajo cargan la entera cuando se llega a
- * ellas (la grilla las pide perezosas).
+ * Las miniaturas de estas rutas, en el mismo orden (`null` donde no existe).
+ *
+ * UN SOLO PEDIDO PARA TODAS. Antes era un pedido por foto, con la
+ * transformación de imágenes del servidor —que es del plan pago y con cupo—, y
+ * por eso se pedían solo las primeras 18. Ahora son archivos de verdad: se
+ * firman todas juntas y la que no existe vuelve con su error, que es como se
+ * sabe cuáles faltan.
  */
-const MINIATURAS_PRIMERAS = 18;
-
-/** Las miniaturas de estas rutas, en el mismo orden (`null` si alguna no se pudo). */
 export async function miniaturas(supabase: Cliente, rutas: string[]): Promise<(string | null)[]> {
-  const salida: (string | null)[] = [];
-  for (let i = 0; i < rutas.length; i += MINIATURAS_A_LA_VEZ) {
-    const tanda = await Promise.all(
-      rutas.slice(i, i + MINIATURAS_A_LA_VEZ).map((r) =>
-        supabase.storage
-          .from('fotos')
-          .createSignedUrl(r, 3600, { transform: { width: 400, height: 400, resize: 'cover', quality: 70 } })
-          .then(({ data }) => data?.signedUrl ?? null)
-          .catch(() => null)
-      )
-    );
-    salida.push(...tanda);
+  if (rutas.length === 0) return [];
+  try {
+    const { data } = await supabase.storage.from('fotos').createSignedUrls(rutas.map(rutaDeMiniatura), 3600);
+    return rutas.map((_, i) => (data?.[i] && !data[i].error && data[i].signedUrl ? data[i].signedUrl : null));
+  } catch {
+    return rutas.map(() => null);
   }
-  return salida;
 }
 
 export async function cargarAlbum(supabase: Cliente, uid: string): Promise<DatosDeAlbum | null> {
@@ -95,7 +87,7 @@ export async function cargarAlbum(supabase: Cliente, uid: string): Promise<Datos
       ? supabase.from('logs').select(colsLog).in('id', logIds)
       : Promise.resolve({ data: [] as { id: string; fecha: string; planeta_del_dia: string | null; racha_del_dia: number | null }[] }),
     supabase.storage.from('fotos').createSignedUrls(rutas, 3600),
-    miniaturas(supabase, rutas.slice(0, MINIATURAS_PRIMERAS)),
+    miniaturas(supabase, rutas),
   ]);
   // El cast: `select(colsLog)` con una columna variable le saca el tipo a
   // supabase-js (no puede parsear un string de runtime). Es la misma forma en los
@@ -111,7 +103,7 @@ export async function cargarAlbum(supabase: Cliente, uid: string): Promise<Datos
       return {
         id: f.id as string,
         url: firmadas?.[i]?.signedUrl ?? '',
-        miniatura: chicas[i] ?? firmadas?.[i]?.signedUrl ?? '',
+        miniatura: chicas[i] ?? '',
         ruta: f.storage_path as string,
         // Sin log (la foto quedó huérfana al corregir el día: photos.log_id es
         // ON DELETE SET NULL) la fecha sale de `creado`, PERO en local, no en
@@ -139,7 +131,8 @@ export async function cambiarVisibilidad(supabase: Cliente, id: string, nueva: '
  * sigue ocupando lugar para siempre.
  */
 export async function quitarFoto(supabase: Cliente, id: string, ruta: string) {
-  const { error: errArchivo } = await supabase.storage.from('fotos').remove([ruta]);
+  // La miniatura se va con ella: si no existe, borrarla no es un error.
+  const { error: errArchivo } = await supabase.storage.from('fotos').remove([ruta, rutaDeMiniatura(ruta)]);
   if (errArchivo) return false;
   const { error: errFila } = await supabase.from('photos').delete().eq('id', id);
   return !errFila;

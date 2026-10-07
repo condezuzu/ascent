@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { encabezadoDeVersion } from './version';
 
 /**
  * EL CLIENTE DE SUPABASE, VERSIÓN NATIVA.
@@ -40,4 +41,6 @@ export const supabase = createClient(url, anon, {
     persistSession: true,
     detectSessionInUrl: false,
   },
+  // Con qué versión llega cada pedido: ver `encabezadoDeVersion`.
+  global: { headers: { 'X-Client-Info': encabezadoDeVersion() } },
 });

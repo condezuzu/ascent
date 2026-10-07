@@ -1,9 +1,11 @@
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
-import * as Updates from 'expo-updates';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { reportarErroresA } from './cajaNegra';
+import { versionApp, versionOta } from './version';
+
+// Se mudaron a `version.ts`; se reexporta para quien ya la importaba de acá.
+export { versionCompleta } from './version';
 
 /**
  * EL BUZÓN DE ERRORES DE JS — manda afuera lo que la app no atrapó.
@@ -72,22 +74,6 @@ async function cargarId(): Promise<void> {
     // Sin almacenamiento, un id de esta corrida igual sirve para agrupar.
     idAnonimo = idAnonimo ?? nuevoId();
   }
-}
-
-/** Con qué versión se mandó algo: la de la app y la OTA que está corriendo. */
-export function versionCompleta(): string {
-  return `${versionApp()} · ${versionOta()}`.slice(0, 100);
-}
-
-function versionApp(): string {
-  return (Constants.expoConfig?.version ?? 'desconocida').slice(0, 100);
-}
-
-function versionOta(): string {
-  // `updateId` es null cuando corre la build incrustada (sin OTA aplicada);
-  // ahí lo que identifica la versión es la huella de ejecución.
-  const id = Updates.updateId ?? `incrustada@${Updates.runtimeVersion ?? '?'}`;
-  return id.slice(0, 100);
 }
 
 function mensajeDe(e: unknown): string {

@@ -11287,7 +11287,8 @@ console.log('\n155. El album: pasar con el dedo y dos botones que se ven');
   // Era lo unico que faltaba respecto de la web y, ademas, lo unico que uno
   // intenta: en un visor a pantalla completa nadie busca una flecha, arrastra.
   chequear('hay gesto de arrastre', /PanResponder\.create/.test(alb155), true);
-  chequear('y la foto se mueve con el dedo', /translateX: desliz/.test(alb155), true);
+  // Desde el 8/10 lo que se mueve es la tira entera: su lugar más el dedo (sección 196).
+  chequear('y la foto se mueve con el dedo', /onPanResponderMove: \(_e, g\) => desliz\.setValue\(g\.dx\)/.test(alb155) && /translateX: corrimiento/.test(alb155), true);
   // MAS HORIZONTAL QUE VERTICAL Y CON MARGEN: un toque para cerrar mueve el
   // dedo uno o dos pixeles, y sin margen cada toque arrancaria un arrastre.
   chequear('no se dispara con un toque',
@@ -15008,7 +15009,7 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   chequear('las sugerencias del teléfono llevan la versión de verdad', [
     /version_app: versionCompleta\(\)/.test(sugerencias),
     /0\.1\.0/.test(sugerencias),
-    /export function versionCompleta\(\)/.test(de195('movil/src/reporteDeErrores.ts')),
+    /export function versionCompleta\(\)/.test(de195('movil/src/version.ts')),
   ], [true, false, true]);
 
   chequear('la hoja de la foto conoce el día de hoy aunque sea de descanso', [
@@ -15244,6 +15245,159 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
     /onPanResponderTerminate: \(\) => \{\s*const llega = reposo\(ORDEN\.indexOf\(rumbo\.current\), ancho\);/.test(pestanas),
     /onPanResponderTerminate:[\s\S]{0,700}gesto\.current = \{ decidido: false, vecina: null, desde: 0, x0: 0 \};\s*\},\s*onPanResponderTerminationRequest/.test(pestanas),
   ], [true, true]);
+}
+
+console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué versión corre la gente');
+{
+  const { readFileSync: leer196 } = await import('node:fs');
+  const de196 = (ruta) => sinComentarios(leer196(new URL('../' + ruta, import.meta.url), 'utf8'));
+  const F196 = await import('../nucleo/foto.ts');
+
+  // ---- LA RUTA DE LA MINIATURA SE DERIVA DEL NOMBRE ----
+  chequear('la miniatura va al lado de la entera, en la misma carpeta', [
+    F196.rutaDeMiniatura('uid-1/2026-10-08-123.jpg'),
+    F196.rutaDeMiniatura('uid-1/2026-10-08-123.JPEG'),
+    F196.rutaDeMiniatura(F196.rutaDeFoto('uid-1', '2026-10-08', 5)).startsWith('uid-1/'),
+  ], ['uid-1/2026-10-08-123.mini.jpg', 'uid-1/2026-10-08-123.mini.jpg', true]);
+  chequear('400 px en el lado corto, sin agrandar', [
+    F196.medidasDeMiniatura(1600, 1200),
+    F196.medidasDeMiniatura(1200, 1600),
+    F196.medidasDeMiniatura(300, 200),
+  ], [{ ancho: 533, alto: 400 }, { ancho: 400, alto: 533 }, { ancho: 300, alto: 200 }]);
+
+  // ---- UN SOLO PEDIDO PARA TODAS, Y SIN LA TRANSFORMACIÓN DEL SERVIDOR ----
+  // Era un pedido por foto con `transform`, que es del plan pago y con cupo.
+  const pedidos = [];
+  const almacen = (existen) => ({
+    storage: {
+      from: () => ({
+        createSignedUrls: async (rutas, segundos) => {
+          pedidos.push(['firmar', rutas.length, segundos]);
+          return { data: rutas.map((r) => (existen(r) ? { path: r, signedUrl: 'firmada:' + r, error: null } : { path: r, signedUrl: null, error: 'Either the object does not exist or you do not have access to it' })), error: null };
+        },
+        createSignedUrl: async () => {
+          pedidos.push(['de a una']);
+          return { data: null, error: { message: 'no' } };
+        },
+        upload: async (ruta, _datos, opciones) => {
+          pedidos.push(['subir', ruta, opciones?.upsert ?? false]);
+          return { data: {}, error: ruta.endsWith('.mini.jpg') && fallaLaMiniatura ? { message: 'se cortó' } : null };
+        },
+        remove: async (rutas) => {
+          pedidos.push(['borrar', rutas]);
+          return { data: [], error: null };
+        },
+      }),
+    },
+    auth: { getSession: async () => ({ data: { session: { user: { id: 'uid-1' } } }, error: null }) },
+    from: () => ({
+      insert: async (fila) => {
+        pedidos.push(['fila', fila.storage_path]);
+        return { error: null };
+      },
+      delete: () => ({ eq: async () => ({ error: null }) }),
+    }),
+  });
+  let fallaLaMiniatura = false;
+  const A196 = await import('../compartido/album.ts');
+  const trescientas = Array.from({ length: 300 }, (_, i) => `uid-1/foto-${i}.jpg`);
+  const chicas = await A196.miniaturas(almacen((r) => !r.includes('foto-7.')), trescientas);
+  chequear('300 miniaturas son UN pedido, y la que no existe vuelve vacía', [pedidos, chicas[0], chicas[7], chicas.filter(Boolean).length], [[['firmar', 300, 3600]], 'firmada:uid-1/foto-0.mini.jpg', null, 299]);
+  const album196 = de196('compartido/album.ts');
+  chequear('nada depende ya de achicar en el servidor', [/transform/.test(album196), /transform/.test(de196('compartido/perfil.ts'))], [false, false]);
+
+  // ---- AL SUBIR: LA ENTERA, LA MINIATURA Y LA FILA; Y LA MINIATURA NO FRENA ----
+  const FO196 = await import('../compartido/foto.ts');
+  const { eventos: ev196 } = await import('../compartido/eventos.ts');
+  let avisos196 = 0;
+  const dejar196 = ev196.escuchar(FO196.FOTOS_CAMBIO, () => avisos196++);
+  pedidos.length = 0;
+  const subida = await FO196.subirFotoDelDia(almacen(() => true), { datos: new Uint8Array(3), miniatura: new Uint8Array(1), dia: '2026-10-08', logId: null, visible: false, subioRango: false });
+  const laEntera = pedidos[0][1];
+  chequear('la foto sube con su miniatura al lado, y avisa', [subida, pedidos.map((p) => p[0]), pedidos[1][1] === F196.rutaDeMiniatura(laEntera), pedidos[2][1] === laEntera, avisos196], ['ok', ['subir', 'subir', 'fila'], true, true, 1]);
+  fallaLaMiniatura = true;
+  pedidos.length = 0;
+  chequear('si la miniatura no sube, la foto entra igual', [await FO196.subirFotoDelDia(almacen(() => true), { datos: new Uint8Array(3), miniatura: new Uint8Array(1), dia: '2026-10-08', logId: null, visible: false, subioRango: false }), pedidos.at(-1)[0]], ['ok', 'fila']);
+  fallaLaMiniatura = false;
+  dejar196();
+  pedidos.length = 0;
+  await A196.quitarFoto(almacen(() => true), 'id-1', 'uid-1/a.jpg');
+  chequear('quitar una foto se lleva también su miniatura', pedidos[0], ['borrar', ['uid-1/a.jpg', 'uid-1/a.mini.jpg']]);
+
+  // ---- QUIÉN PUEDE LEER UNA MINIATURA: quien puede ver la foto, y nadie más ----
+  // Las reglas son las de schema.sql (sección 172 las cargó sobre una tabla de reemplazo).
+  const duena = await nuevoUsuario();
+  const amiga = await nuevoUsuario();
+  const ajena = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [duena, amiga]);
+  const visible = `${duena}/2026-10-08-1.jpg`;
+  const privada196 = `${duena}/2026-10-08-2.jpg`;
+  for (const [ruta, visibilidad] of [[visible, 'amigos'], [privada196, 'privada']]) {
+    await db.query(`insert into photos (user_id, storage_path, visibilidad) values ($1, $2, $3)`, [duena, ruta, visibilidad]);
+    for (const nombre of [ruta, F196.rutaDeMiniatura(ruta)]) await db.query(`insert into storage.objects (bucket_id, name) values ('fotos', $1)`, [nombre]);
+  }
+  const loQueVe = async (uid) => {
+    await comoUsuario(uid);
+    await db.exec('set role authenticated');
+    try {
+      return (await db.query(`select name from storage.objects where name like $1 order by name`, [`${duena}/%`])).rows.map((f) => f.name.split('/')[1]);
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  chequear('la dueña ve sus cuatro archivos', (await loQueVe(duena)).length, 4);
+  chequear('la amiga ve la foto compartida Y su miniatura, y nada de la privada', await loQueVe(amiga), ['2026-10-08-1.jpg', '2026-10-08-1.mini.jpg']);
+  chequear('quien no es amiga no ve ninguna', await loQueVe(ajena), []);
+
+  // ---- QUÉ VERSIÓN ABRIÓ LA APP ----
+  // Como llega de verdad: en los encabezados del pedido, que la base lee.
+  const abrir = async (uid, cliente) => {
+    await comoUsuario(uid);
+    await db.query(`select set_config('request.headers', $1, false)`, [cliente === null ? '' : JSON.stringify({ 'x-client-info': cliente })]);
+    const r = (await db.query(`select pantalla_inicio() as r`)).rows[0].r;
+    const p = (await db.query(`select version_vista, ultima_apertura is not null as abrio from profiles where id = $1`, [uid])).rows[0];
+    return [r?.perfil?.id === uid, p.version_vista, p.abrio];
+  };
+  const conApp = await nuevoUsuario();
+  chequear('la app con OTA deja su versión', await abrir(conApp, 'ascent/1.0.0 01a116f5-f27c'), [true, 'ascent/1.0.0 01a116f5-f27c', true]);
+  chequear('la build sin OTA (manda el de la librería) queda sin versión, pero se sabe que abrió', await abrir(conApp, 'supabase-js-react-native/2.114.0'), [true, null, true]);
+  const sinNada = await nuevoUsuario();
+  chequear('sin encabezados la pantalla abre igual', await abrir(sinNada, null), [true, null, true]);
+  // UN DATO PARA MIRAR NO FRENA LA APERTURA: encabezados que no son JSON.
+  await comoUsuario(sinNada);
+  await db.query(`select set_config('request.headers', 'esto no es json', false)`);
+  chequear('con los encabezados rotos, la pantalla abre igual', (await db.query(`select pantalla_inicio() as r`)).rows[0].r?.perfil?.id, sinNada);
+  await db.query(`select set_config('request.headers', '', false)`);
+  const cuantas = (await db.query(`select coalesce(version_vista, 'sin dato') as v, count(*)::int as n from profiles where id in ($1, $2) group by 1 order by 1`, [conApp, sinNada])).rows;
+  chequear('la consulta del reparto de versiones', cuantas, [{ v: 'sin dato', n: 2 }]);
+  const cliente196 = de196('movil/src/supabase.ts');
+  chequear('la app manda su versión en cada pedido', /global: \{ headers: \{ 'X-Client-Info': encabezadoDeVersion\(\) \} \}/.test(cliente196), true);
+
+  // ---- CABLEADO DEL ÁLBUM NATIVO: son componentes ----
+  const alb196 = de196('movil/src/Album.tsx');
+  chequear('las celdas y el par del mes usan la miniatura, con la entera de respaldo', [
+    /<Foto url=\{c\.miniatura \|\| c\.url\} lado=\{lado\} \/>/.test(alb196),
+    /<Image source=\{\{ uri: c\.miniatura \|\| c\.url \}\} style=\{estilos\.mitadFoto\}/.test(alb196),
+    /<Foto url=\{c\.url\}/.test(alb196),
+  ], [true, true, false]);
+  // LA TIRA: el lugar y el dedo se suman, y al pasar cambian JUNTOS, antes de avisarle a React.
+  chequear('el visor es una tira: al pasar, lugar y dedo cambian en el mismo instante', [
+    /Animated\.add\(base, desliz\)/.test(alb196),
+    /base\.setValue\(-\(i \+ d\) \* anchoRef\.current\);\s*desliz\.setValue\(0\);\s*setAbierta\(i \+ d\);/.test(alb196),
+    /\[abierta! - 1, abierta!, abierta! \+ 1\]\.map/.test(alb196) && /<View key=\{c\.id\}[^>]*left: j \* width/.test(alb196),
+    // Lo de antes: cambiar la foto y volver al centro por separado.
+    /setAbierta\(\(i\) => \(i === null \? null : i \+ d\)\);\s*desliz\.setValue\(0\);/.test(alb196),
+  ], [true, true, true, false]);
+  chequear('al volver a la pestaña solo se recarga si algo cambió', [
+    /useRecargarAlVolver\('album', recargarSiCambio\)/.test(alb196),
+    /if \(!cambioAlgo\.current\) return;/.test(alb196),
+    /eventos\.escuchar\(FOTOS_CAMBIO, marcar\)/.test(alb196) && /eventos\.escuchar\(DIA_CAMBIO, marcar\)/.test(alb196),
+  ], [true, true, true]);
+  chequear('y las miniaturas que faltan las completa el teléfono, sin transformar en el servidor', [
+    /void completarMiniaturas\(d\.celdas\)/.test(alb196),
+    /upload\(rutaDeMiniatura\(c\.ruta\), datos, \{ contentType: 'image\/jpeg', upsert: true \}\)/.test(de196('movil/src/miniaturas.ts')),
+    /prepararMiniatura\(foto\.uri, foto\.ancho, foto\.alto\)/.test(de196('movil/src/RegistrarDia.tsx')),
+  ], [true, true, true]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

@@ -1,6 +1,10 @@
 import type { Cliente } from '@cliente';
 import { miId } from '@compartido/quienSoy';
-import { rutaDeFoto } from '@nucleo/foto';
+import { rutaDeFoto, rutaDeMiniatura } from '@nucleo/foto';
+import { eventos } from '@compartido/eventos';
+
+/** Se sumó, se quitó o cambió una foto: el álbum que esté montado tiene que volver a pedir. */
+export const FOTOS_CAMBIO = 'ascent:fotos-cambio';
 
 /**
  * SUBIR LA FOTO DEL DÍA Y COLGARLA DEL REGISTRO. La misma para la web y la app
@@ -15,12 +19,15 @@ export async function subirFotoDelDia(
   supabase: Cliente,
   {
     datos,
+    miniatura,
     dia,
     logId,
     visible,
     subioRango,
   }: {
     datos: Blob | ArrayBuffer | Uint8Array;
+    /** La misma foto a 400 px (`rutaDeMiniatura`). Si no viene o no sube, se hace después. */
+    miniatura?: Blob | ArrayBuffer | Uint8Array | null;
     dia: string;
     logId: string | null;
     visible: boolean;
@@ -35,6 +42,14 @@ export async function subirFotoDelDia(
   const ruta = rutaDeFoto(uid, dia, Date.now());
   const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, datos, { contentType: 'image/jpeg' });
   if (errSubida) return 'no-subio';
+  // LA MINIATURA NO FRENA LA FOTO: si no sube, el álbum la genera la primera
+  // vez que la muestra (`completarMiniaturas`).
+  if (miniatura) {
+    await supabase.storage
+      .from('fotos')
+      .upload(rutaDeMiniatura(ruta), miniatura, { contentType: 'image/jpeg', upsert: true })
+      .catch(() => null);
+  }
   const { error } = await supabase.from('photos').insert({
     user_id: uid,
     log_id: logId,
@@ -42,5 +57,7 @@ export async function subirFotoDelDia(
     visibilidad: visible ? 'amigos' : 'privada',
     es_subida_de_rango: subioRango,
   });
-  return error ? 'no-subio' : 'ok';
+  if (error) return 'no-subio';
+  eventos.emitir(FOTOS_CAMBIO);
+  return 'ok';
 }

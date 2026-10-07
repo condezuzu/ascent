@@ -12,7 +12,7 @@ import { T } from '@nucleo/textos';
 import { subirFotoDelDia } from '@compartido/foto';
 import { anotarElDia } from '@compartido/anotarDia';
 import { useEnVuelo } from '@compartido/useEnVuelo';
-import { prepararFoto } from './foto';
+import { prepararFoto, prepararMiniatura } from './foto';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import { C } from './colores';
@@ -92,7 +92,10 @@ function RegistrarDia({
       setError(T.general.falloFotoPreparar);
       return false;
     }
-    const r = await subirFotoDelDia(supabase, { datos: lista.datos, dia, logId: idDelLog, visible: compartida, subioRango });
+    // La miniatura para la grilla del álbum, de la misma imagen. Si no sale, la
+    // foto sube igual.
+    const miniatura = await prepararMiniatura(foto.uri, foto.ancho, foto.alto);
+    const r = await subirFotoDelDia(supabase, { datos: lista.datos, miniatura, dia, logId: idDelLog, visible: compartida, subioRango });
     if (r !== 'ok') {
       setError(T.general.falloFoto);
       return false;

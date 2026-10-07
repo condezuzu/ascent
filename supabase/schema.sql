@@ -63,6 +63,12 @@ create table public.profiles (
   -- se guardaran libras, cambiar la preferencia reinterpretaría el historial
   -- entero y la tendencia daría un salto que no ocurrió.
   unidad_peso text not null default 'kg' check (unidad_peso in ('kg','lb')),
+  -- QUÉ VERSIÓN ABRIÓ LA APP POR ÚLTIMA VEZ (migración 63). Las escribe
+  -- `pantalla_inicio`, que se llama en cada apertura, con lo que la app manda
+  -- en el encabezado `X-Client-Info`. `version_vista` queda en null cuando
+  -- abrió algo que no la manda (la build de la tienda sin OTA encima).
+  ultima_apertura timestamptz,
+  version_vista text,
   -- El detector de estancamiento (migración 30). Van en la CUENTA y no en el
   -- aparato: cada cuánto querés que te avisen es una pregunta sobre tu
   -- entrenamiento, y la respuesta es la misma en el teléfono y en la
@@ -2587,6 +2593,7 @@ declare
   hoy date;
   r jsonb := '{}'::jsonb;
   pedazo jsonb;
+  cliente text;
 begin
   -- Sin sesión no se contesta nada. No es un error: la pantalla de entrada
   -- monta cosas que preguntan, y un 401 por carga ensucia el informe.
@@ -2620,6 +2627,22 @@ begin
     pedazo := null;
   end;
   r := r || jsonb_build_object('perfil', pedazo);
+
+  -- QUÉ VERSIÓN ABRIÓ LA APP (migración 63). No había forma de saber qué versión
+  -- corre la gente: solo se veía a quien tuvo un error o mandó una sugerencia.
+  -- La app la manda en `X-Client-Info` ("ascent/1.0.0 <ota>"); lo que no empieza
+  -- así —la build de la tienda sin OTA, que manda el de la librería— deja la
+  -- versión en null, y eso es "sigue en la vieja". En su propio bloque: es un
+  -- dato para mirar, y no puede frenar que alguien abra la app.
+  begin
+    cliente := nullif(current_setting('request.headers', true), '')::json ->> 'x-client-info';
+    update profiles
+       set ultima_apertura = now(),
+           version_vista = case when cliente like 'ascent/%' then left(cliente, 100) end
+     where id = uid;
+  exception when others then
+    null;
+  end;
 
   -- Los últimos siete días, que es lo que dibuja la tira. El orden lo pone la
   -- base para que el cliente no tenga que ordenar nada.
@@ -2952,7 +2975,9 @@ create policy "fotos storage: amigos leen visibles" on storage.objects for selec
     bucket_id = 'fotos'
     and exists (
       select 1 from public.photos p
-      where p.storage_path = name
+      -- LA FOTO O SU MINIATURA (migración 63): la miniatura es un archivo al
+      -- lado de la entera, con `.mini.jpg` al final. La ve quien ve la foto.
+      where (p.storage_path = name or regexp_replace(p.storage_path, '\.jpe?g$', '', 'i') || '.mini.jpg' = name)
         and p.visibilidad = 'amigos'
         -- La fila que da permiso tiene que ser del DUEÑO DE LA CARPETA
         -- (migración 60): sin esto alcanzaba con cualquier fila que nombrara
@@ -3315,7 +3340,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 62; $$;
+returns int language sql immutable as $$ select 63; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;
