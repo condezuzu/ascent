@@ -23,7 +23,7 @@
 // verdad, y una nota vieja es peor que no tener nota.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { exigirApagados } from './puertos.mjs';
@@ -103,6 +103,76 @@ export function entornoDeLaOta(canal, base = process.env, eas = JSON.parse(readF
   const entorno = { ...base };
   for (const nombre of SOLO_DEL_PERFIL) delete entorno[nombre];
   return { ...entorno, ...(eas.build?.[canal]?.env ?? {}) };
+}
+
+/**
+ * CÓMO SE EXPORTA EL PAQUETE DE UNA OTA: lo hace el guardián, no `eas update`,
+ * para poder MIRARLO antes de subirlo (ver `revisarPaquete`).
+ *
+ * `--clear` SIEMPRE (7/10). El empaquetador guarda cada archivo ya transformado
+ * y no mira el valor de las variables para decidir si lo rehace: con la caché
+ * de una exportación anterior, la variable nueva no entra (así salió una OTA a
+ * `telefono` sin Diagnóstico) o la vieja no se va (así habría salido una a
+ * `store` CON Diagnóstico). Cuesta un minuto más por publicación.
+ *
+ * Las mismas opciones con las que exporta `eas update`.
+ */
+export function llamadaAExportar() {
+  return {
+    comando: 'npx',
+    args: ['expo', 'export', '--clear', '--output-dir', 'dist', '--dump-sourcemap', '--dump-assetmap', '--platform', 'all'],
+    opciones: { cwd: MOVIL, shell: process.platform === 'win32' },
+  };
+}
+
+/**
+ * QUÉ SELLOS TIENE QUE TRAER EL PAQUETE DE UN CANAL: por cada variable
+ * `EXPO_PUBLIC_…` que algún perfil de `eas.json` declare, el valor que declara
+ * el perfil de ESE canal, o "no" si no la declara. Ver `movil/src/sello.ts`.
+ */
+export function sellosEsperados(canal, eas = JSON.parse(readFileSync(join(MOVIL, 'eas.json'), 'utf8'))) {
+  const perfiles = Object.values(eas.build ?? {});
+  const nombres = [...new Set(perfiles.flatMap((p) => Object.keys(p.env ?? {})))].filter((n) => n.startsWith('EXPO_PUBLIC_')).sort();
+  const propias = eas.build?.[canal]?.env ?? {};
+  return nombres.map((nombre) => ({
+    nombre,
+    tiene: `ascent-sello:${nombre}=${nombre in propias ? propias[nombre] : 'no'};`,
+    // Cualquier otro valor que algún perfil le dé a esa variable, y el "no".
+    noTiene: [...new Set([...perfiles.map((p) => p.env?.[nombre]).filter((v) => v !== undefined), 'no'])]
+      .map((v) => `ascent-sello:${nombre}=${v};`)
+      .filter((s) => s !== `ascent-sello:${nombre}=${nombre in propias ? propias[nombre] : 'no'};`),
+  }));
+}
+
+/**
+ * EL PAQUETE EXPORTADO, CONTRA LO QUE DECLARA EL PERFIL DE SU CANAL (7/10).
+ *
+ * LA REGLA: una publicación se comprueba mirando el ARTEFACTO, nunca el comando
+ * que lo arma. El 6/10 se probó que el guardián le pasaba la variable al
+ * comando; el paquete salió sin ella igual, por la caché.
+ *
+ * Devuelve la lista de problemas (vacía = se puede subir). Se mira el paquete
+ * de cada plataforma: tiene que traer el sello que corresponde y NINGUNO de los
+ * otros. Si no se encuentra ninguno, tampoco se sube: no se pudo comprobar.
+ */
+export function revisarPaquete(canal, dist = join(MOVIL, 'dist'), eas = undefined) {
+  const esperados = eas ? sellosEsperados(canal, eas) : sellosEsperados(canal);
+  const problemas = [];
+  for (const plataforma of ['ios', 'android']) {
+    const carpeta = join(dist, '_expo', 'static', 'js', plataforma);
+    const paquetes = existsSync(carpeta) ? readdirSync(carpeta).filter((f) => /\.(hbc|js)$/.test(f)) : [];
+    if (paquetes.length === 0) {
+      problemas.push(`${plataforma}: no hay paquete exportado en ${carpeta}`);
+      continue;
+    }
+    // Todo junto: el sello vive en UNO de los paquetes de la plataforma.
+    const contenido = paquetes.map((f) => readFileSync(join(carpeta, f), 'latin1')).join('\n');
+    for (const s of esperados) {
+      if (!contenido.includes(s.tiene)) problemas.push(`${plataforma}: falta ${s.tiene}`);
+      for (const otro of s.noTiene) if (contenido.includes(otro)) problemas.push(`${plataforma}: trae ${otro} y no corresponde a \`${canal}\``);
+    }
+  }
+  return problemas;
 }
 
 /**

@@ -27,7 +27,7 @@
 // lo que habla con EAS corre adentro de `movil/` por `llamadaAEas` (huella.mjs).
 
 import { execFileSync } from 'node:child_process';
-import { entornoDeLaOta, estadoDeHuella, llamadaAEas, SI_EAS_FALLA } from './huella.mjs';
+import { entornoDeLaOta, estadoDeHuella, llamadaAEas, llamadaAExportar, revisarPaquete, SI_EAS_FALLA } from './huella.mjs';
 import { exigirApagados } from './puertos.mjs';
 
 const args = process.argv.slice(2);
@@ -92,8 +92,23 @@ console.log('Publicando…\n');
 // re-parte cmd.exe y `eas update` falla. Se lo envuelve en comillas (sacando las
 // comillas internas, que romperian el entrecomillado) para que viaje como un arg.
 const mensajeArg = process.platform === 'win32' ? `"${mensaje.replace(/"/g, '')}"` : mensaje;
+// EXPORTAR, MIRAR, Y RECIÉN AHÍ SUBIR (7/10). Antes lo hacía todo `eas update`
+// en un paso, y lo que subía no lo miraba nadie. Ahora el guardián exporta —con
+// la caché limpia y con las variables del perfil de ESE canal y ninguna otra—,
+// lee el paquete que quedó en `movil/dist`, y si no trae exactamente lo que el
+// perfil declara NO SUBE. Ver `llamadaAExportar`, `entornoDeLaOta` y
+// `revisarPaquete` en huella.mjs.
+const exportar = llamadaAExportar();
+execFileSync(exportar.comando, exportar.args, { ...exportar.opciones, env: entornoDeLaOta(canal), stdio: 'inherit' });
+const problemas = revisarPaquete(canal);
+if (problemas.length > 0) {
+  console.error(`\nEl paquete exportado NO es el que corresponde a \`${canal}\`. NO publico:`);
+  for (const p of problemas) console.error('  ' + p);
+  process.exit(1);
+}
+console.log(`\nPaquete revisado: trae las variables del perfil \`${canal}\` y ninguna otra.\n`);
 // La misma llamada que la lectura: adentro de `movil/` y con la CLI fija. SIN
-// REINTENTO: leer dos veces no cuesta nada, publicar dos veces sí.
-const eas = llamadaAEas(['update', '--channel', canal, '--message', mensajeArg, '--non-interactive']);
-// Con las variables de la build de ESE canal y ninguna otra: ver `entornoDeLaOta`.
+// REINTENTO: leer dos veces no cuesta nada, publicar dos veces sí. Sube lo que
+// se acaba de revisar, sin volver a empaquetar.
+const eas = llamadaAEas(['update', '--channel', canal, '--message', mensajeArg, '--skip-bundler', '--input-dir', 'dist', '--non-interactive']);
 execFileSync(eas.comando, eas.args, { ...eas.opciones, env: entornoDeLaOta(canal), stdio: 'inherit' });

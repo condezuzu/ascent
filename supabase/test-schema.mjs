@@ -12513,7 +12513,8 @@ console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CL
   chequear('y ninguno nombra a la CLI por otro lado', [/eas-cli/.test(pub168), (hue168.match(/eas-cli@/g) ?? []).length], [false, 1]);
   chequear('el guardian muestra lo que contesto', /motivo\.split\('\\n'\)/.test(pub168) && /loQueContesto\(e\)/.test(hue168), true);
   // LEER SE REINTENTA UNA VEZ; PUBLICAR, NUNCA: publicar dos veces no es gratis.
-  chequear('publicar se llama una sola vez, sin reintento', (pub168.match(/execFileSync\(/g) ?? []).length, 1);
+  // Dos llamadas: exportar y subir. Ninguna se reintenta.
+  chequear('exportar y subir se llaman una sola vez cada uno, sin reintento', (pub168.match(/execFileSync\(/g) ?? []).length, 2);
 
   // ---- LA OTA SE ARMA CON LAS VARIABLES DE LA BUILD DE SU CANAL (6/10) ----
   // La de `telefono` salía sin EXPO_PUBLIC_DIAGNOSTICO y le borraba Diagnóstico
@@ -12526,7 +12527,65 @@ console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CL
     H.entornoDeLaOta('telefono', suelta).EXPO_PUBLIC_MINIMO,
     H.entornoDeLaOta('store', suelta).PATH,
   ], ['1', undefined, undefined, undefined, 'x']);
-  chequear('y el guardian publica con ese entorno', /execFileSync\(eas\.comando, eas\.args, \{ \.\.\.eas\.opciones, env: entornoDeLaOta\(canal\), stdio: 'inherit' \}\)/.test(pub168), true);
+  chequear('y el guardian exporta con ese entorno', /execFileSync\(exportar\.comando, exportar\.args, \{ \.\.\.exportar\.opciones, env: entornoDeLaOta\(canal\), stdio: 'inherit' \}\)/.test(pub168), true);
+
+  // ---- EL PAQUETE EXPORTADO, CONTRA LO QUE DECLARA EL PERFIL (7/10) ----
+  //
+  // LA REGLA: una publicación se comprueba mirando el ARTEFACTO, nunca el
+  // comando que lo arma. La prueba de arriba pasaba y la OTA salió sin la
+  // variable igual: la caché del empaquetador reusó el archivo de antes. Acá se
+  // arman paquetes de mentira con los sellos adentro —los de verdad se vieron
+  // exportando a mano, con y sin la variable y con la caché de antes— y se mira
+  // qué deja pasar el guardián.
+  const { mkdtempSync, mkdirSync: carpeta168, writeFileSync: escribir168, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const paquete = (sellos) => {
+    const dist = mkdtempSync(unir168(tmpdir(), 'ascent-dist-'));
+    for (const [plataforma, textos] of Object.entries(sellos)) {
+      carpeta168(unir168(dist, '_expo', 'static', 'js', plataforma), { recursive: true });
+      // Como en el paquete de verdad: los textos van pegados, entre bytes sueltos.
+      escribir168(unir168(dist, '_expo', 'static', 'js', plataforma, 'index-abc.hbc'), Buffer.from('\u0000\u0001basura' + textos.join('') + 'tate\u0000', 'latin1'));
+    }
+    return dist;
+  };
+  const CON = 'ascent-sello:EXPO_PUBLIC_DIAGNOSTICO=1;';
+  const SIN = 'ascent-sello:EXPO_PUBLIC_DIAGNOSTICO=no;';
+  const MIN_NO = 'ascent-sello:EXPO_PUBLIC_MINIMO=no;';
+  const MIN_SI = 'ascent-sello:EXPO_PUBLIC_MINIMO=1;';
+  const revisar = (canal, sellos) => {
+    const dist = paquete(sellos);
+    try {
+      return H.revisarPaquete(canal, dist).length;
+    } finally {
+      rmSync(dist, { recursive: true, force: true });
+    }
+  };
+  const deTelefono = { ios: [CON, MIN_NO], android: [CON, MIN_NO] };
+  const deTienda = { ios: [SIN, MIN_NO], android: [SIN, MIN_NO] };
+  chequear('cada canal acepta SU paquete', [revisar('telefono', deTelefono), revisar('store', deTienda), revisar('minimo', { ios: [CON, MIN_SI], android: [CON, MIN_SI] })], [0, 0, 0]);
+  // Lo del 7/10: la caché dejó afuera la variable, o la dejó adentro.
+  chequear('a telefono no sube un paquete sin Diagnóstico', revisar('telefono', deTienda) > 0, true);
+  chequear('a store no sube un paquete CON Diagnóstico', revisar('store', deTelefono) > 0, true);
+  chequear('ni uno que lo traiga en una sola plataforma', revisar('store', { ios: [SIN, MIN_NO], android: [CON, MIN_NO] }) > 0, true);
+  chequear('ni otra variable de otro perfil', revisar('store', { ios: [SIN, MIN_SI], android: [SIN, MIN_SI] }) > 0, true);
+  chequear('ni uno con los dos sellos a la vez', revisar('store', { ios: [SIN, CON, MIN_NO], android: [SIN, MIN_NO] }) > 0, true);
+  // Sin sello no se pudo comprobar: tampoco se sube.
+  chequear('un paquete sin sello no se sube', [revisar('store', { ios: [], android: [] }) > 0, revisar('telefono', { ios: [CON, MIN_NO] }) > 0], [true, true]);
+  // CADA VARIABLE DE CADA PERFIL TIENE SU SELLO. Si se agrega una a `eas.json`
+  // y no a `sello.ts`, el guardián no tendría qué buscar: esto falla antes.
+  const selloTs = leer168(unir168(import.meta.dirname, '..', 'movil', 'src', 'sello.ts'), 'utf8');
+  const easJson = JSON.parse(leer168(unir168(import.meta.dirname, '..', 'movil', 'eas.json'), 'utf8'));
+  const sinSello = Object.keys(easJson.build).flatMap((canal) =>
+    H.sellosEsperados(canal).flatMap((s) => [s.tiene, ...s.noTiene]).filter((texto) => !selloTs.includes(`'${texto}'`))
+  );
+  chequear('toda variable de todo perfil de eas.json tiene su sello en sello.ts', [...new Set(sinSello)], []);
+  chequear('y el sello se usa al arrancar: si nadie lo importa, no viaja en el paquete', /anotar\(SELLOS\.join\(' '\)\);/.test(leer168(unir168(import.meta.dirname, '..', 'movil', 'app', '_layout.tsx'), 'utf8')), true);
+  chequear('el guardian exporta con la cache limpia, mira el paquete, y sube ESE', [
+    H.llamadaAExportar().args.includes('--clear'),
+    /const problemas = revisarPaquete\(canal\);\s*if \(problemas\.length > 0\) \{[\s\S]{0,260}process\.exit\(1\);/.test(pub168),
+    /llamadaAEas\(\['update', '--channel', canal, '--message', mensajeArg, '--skip-bundler', '--input-dir', 'dist', '--non-interactive'\]\)/.test(pub168),
+    pub168.indexOf('revisarPaquete(canal)') < pub168.indexOf("llamadaAEas(['update'"),
+  ], [true, true, true, true]);
 }
 
 console.log('\n169. La luz de la barra sale de la posicion de la tira');

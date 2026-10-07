@@ -1252,15 +1252,30 @@ había visto; lo cazó `test:real`, que a veces tardaba un minuto en poder tocar
 está en `test:db` (sección 195) y la prueba de verdad en la batería, que mira
 la hoja abierta durante dos vueltas y falla si algo se monta o se desmonta.
 
-**Una variable puesta en `eas.json` es de la BUILD, no de la OTA.** El perfil
-`telefono` trae `EXPO_PUBLIC_DIAGNOSTICO=1`, pero `eas update` no mira
-`eas.json`: el JavaScript de la OTA se arma en la PC, con lo que haya ahí. Cada
-OTA a `telefono` salía sin la variable y le borraba al teléfono la pantalla de
-Diagnóstico (se vio el 6/10, el día de la aprobación, buscándola para confirmar
-que la OTA había llegado).
-→ **Regla:** la OTA se arma con las variables del perfil de SU canal y ninguna
-otra (`entornoDeLaOta` en `supabase/huella.mjs`). No va en `movil/.env`: ese lo
-leen las dos, y Diagnóstico terminaría en la tienda.
+**LA REGLA DEL ARTEFACTO: una publicación se comprueba mirando lo que se
+publicó, nunca el comando que lo arma.** Pasó dos veces.
+- *El peso por modo* (25/9): se probó la cuenta —qué peso corresponde a cada
+  modo— y no el cableado que lo llevaba a la pantalla del teléfono. La cuenta
+  daba bien y el teléfono mostraba otra cosa.
+- *Diagnóstico en la OTA* (6 y 7/10): el perfil `telefono` de `eas.json` trae
+  `EXPO_PUBLIC_DIAGNOSTICO=1`, pero eso es de la BUILD: `eas update` no lo mira
+  y arma el JavaScript en la PC. El 6/10 se arregló pasándole la variable al
+  comando, con una prueba de que el guardián armaba bien el entorno. La OTA
+  salió sin Diagnóstico igual: el empaquetador guarda cada archivo ya
+  transformado y NO mira el valor de las variables para decidir si lo rehace,
+  así que reusó el de antes. Con la caché al revés pasa lo contrario, y es
+  peor: una exportación con la variable seguida de una sin ella (la de `store`)
+  reusa la que trae Diagnóstico. Se vio exportando a mano y comparando los
+  paquetes, no leyendo el guardián.
+→ **Regla:** lo que se comprueba es el ARTEFACTO. Para una OTA: el guardián
+exporta él (`llamadaAExportar`, siempre con la caché limpia), lee el paquete que
+quedó en `movil/dist` y lo compara con lo que declara el perfil del canal
+(`revisarPaquete` en `supabase/huella.mjs`); si falta una variable que tendría
+que estar o aparece una que no, NO sube. Para poder leerlo, cada variable de
+perfil deja un sello en el paquete (`movil/src/sello.ts`): una variable nueva
+en `eas.json` sin su sello hace fallar `test:db`. Y no va en `movil/.env`, que
+lo leen los dos canales. En general: una prueba que termina en "el comando
+recibió lo correcto" no probó nada de lo que salió.
 
 **Un guion que quedó atrás de la pantalla falla por el motivo equivocado.** La
 batería de `test:real` esperaba el recorrido en el orden viejo: no lo

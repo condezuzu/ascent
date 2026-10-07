@@ -115,6 +115,21 @@ la web mientras tanto. Si va antes, suma unas tres tandas a la llegada.
     lugar y una build vieja muestra lo correcto sin enterarse del cambio.
   - **Por qué no ahora:** toca Inicio, Stats, Ranking, el álbum y el festejo de
     subida en las dos apps, a días del lanzamiento.
+- **Diagnóstico depende de una variable de COMPILACIÓN — PENDIENTE PARA
+  DESPUÉS DEL LANZAMIENTO** (decisión del humano, 7/10/2026). La pantalla de
+  Diagnóstico, el botón de la caja negra y el HUD se dibujan si el JavaScript se
+  armó con `EXPO_PUBLIC_DIAGNOSTICO=1`.
+  - **Por qué importa:** mientras dependa de eso, un error de empaquetado la
+    puede mandar a la tienda. El 7/10 la caché del empaquetador dejó afuera la
+    variable en una OTA a `telefono`, y con la caché al revés la habría dejado
+    adentro en una a `store`. Hoy lo frena el guardián mirando el paquete
+    (`revisarPaquete`), pero es una red debajo de un diseño que permite la caída.
+  - **Qué habría que hacer:** decidirlo en tiempo de ejecución —por el canal de
+    actualizaciones en el que corre la app (`Updates.channel`), o por cuenta—.
+    Así el mismo paquete sirve para los dos canales y ningún error de
+    empaquetado la puede filtrar.
+  - **Por qué no ahora:** toca el arranque (`Raiz`, el layout) y Ajustes, a días
+    del lanzamiento, y una decisión por cuenta pide una columna o una lista.
 - **Un solo dueño del estado de la sesión de entrenamiento** (4/10/2026).
   PENDIENTE PARA DESPUÉS DEL LANZAMIENTO, por decisión del humano: "es el
   código más delicado y no quiero tocarlo tan cerca del lanzamiento".

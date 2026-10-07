@@ -29,6 +29,7 @@ import { fijarZonaDelTelefono } from '../src/zonaHoraria';
 import { iniciarReporteDeErrores, fijarPantalla } from '../src/reporteDeErrores';
 import { loVisible } from '../src/loVisible';
 import { anotar, marcarListo, registrarError } from '../src/cajaNegra';
+import { SELLOS } from '../src/sello';
 import { reportarMedicionA } from '@compartido/medir';
 import { trasElAviso, trasMirar } from '@nucleo/veredicto';
 
@@ -55,6 +56,9 @@ import { trasElAviso, trasMirar } from '@nucleo/veredicto';
  * - **La sesión** se decide acá, como antes en `App.tsx`: sin sesión no hay
  *   router que valga, porque no hay adónde navegar.
  */
+
+// Queda en la caja negra con qué variables se armó este JavaScript: ver `sello.ts`.
+anotar(SELLOS.join(' '));
 
 type Sesion = 'mirando' | 'con' | 'sin' | 'sin-nombre';
 
