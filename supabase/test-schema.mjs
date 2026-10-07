@@ -6705,10 +6705,18 @@ console.log('\n93. Dos toques seguidos no le devuelven al total el numero de ant
   chequear('toda escritura de la cache desde el hook va firmada', sinFirma, []);
   chequear('y el hook no relee las suyas', /escuchar\(AVISO,[^]*?esMio\(dato, yo\)/.test(cuerpo), true);
 
-  // EL RECORRIDO NO ARRANCA SOLO en un aparato nuevo: lo enciende elegir el
-  // nombre o "Ver la guia de nuevo".
+  // EL RECORRIDO ARRANCA SOLO en un aparato nuevo (7/10). Hasta ese dia esto
+  // fijaba lo contrario; la decision cambio cuando hubo que explicarle la app a
+  // mano a alguien que recien entraba.
   const guia = sinComentarios(leer(join(RAIZ, 'compartido', 'guia.ts'), 'utf8'));
-  chequear('sin paso guardado no hay recorrido', /g\.paso === undefined\s*\?\s*null/.test(guia), true);
+  const REC93 = await import('../nucleo/recorrido.ts');
+  chequear('sin nada guardado arranca en el primer paso; a medias, sigue; visto, no vuelve', [
+    REC93.pasoAlAbrir({ recorrido: false }),
+    REC93.pasoAlAbrir({ recorrido: false, paso: 3 }),
+    REC93.pasoAlAbrir({ recorrido: true, paso: 0 }),
+    REC93.pasoAlAbrir({ recorrido: true }),
+  ], [0, 3, null, null]);
+  chequear('y la guia guardada pasa por ahi', /return pasoAlAbrir\(await leer\(uid\)\);/.test(guia), true);
   const onboarding = leer(join(RAIZ, 'src', 'app', 'onboarding', 'page.tsx'), 'utf8');
   chequear('elegir el nombre lo enciende', onboarding.includes('reiniciarGuia(yo.uid)'), true);
 }
@@ -9612,10 +9620,10 @@ console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
   chequear('el gimnasio sigue estando', REC.PASOS_DEL_RECORRIDO.some((p) => p.ancla === 'gimnasio'), true);
 
   const rec = de138('movil', 'src', 'Recorrido.tsx');
-  // NO ARRANCA SOLO. La memoria de "ya lo vi" vive en el telefono, asi que sin
-  // un encendido explicito le aparecia a cualquiera que entrara en un aparato
-  // nuevo. Lo encienden elegir el nombre y "ver la guia" de Ajustes.
-  chequear('el recorrido lo enciende elegir el nombre',
+  // ARRANCA SOLO en un aparato nuevo (seccion 93). Elegir el nombre y "ver la
+  // guia" lo REINICIAN: vuelven los globos y el primer paso.
+  chequear('saltar es un boton con borde, no un texto gris', /testID="recorrido-saltar" style=\{estilos\.borde\}/.test(rec), true);
+  chequear('el recorrido lo reinicia elegir el nombre',
     /reiniciarGuia\(yo\.uid\)/.test(de138('movil', 'src', 'Onboarding.tsx')), true);
   chequear('y "ver la guia" desde Ajustes',
     /reiniciarGuia\(perfil\.id\)/.test(de138('movil', 'src', 'ajustes', 'Cuenta.tsx')), true);

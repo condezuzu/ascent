@@ -428,6 +428,17 @@ for (const tamano of TAMANOS) {
     continue;
   }
 
+  // EL RECORRIDO ARRANCA SOLO en un navegador limpio (7/10) y taparía la mitad
+  // de abajo de todas las fotos. Se salta UNA vez, que es lo que hace una
+  // persona; si no aparece es un problema, no un atajo: tenía que aparecer.
+  const saltar = page.locator('.recorrido').getByRole('button', { name: 'Saltar', exact: true });
+  if (await saltar.waitFor({ state: 'visible', timeout: 20000 }).then(() => true, () => false)) {
+    await saltar.click();
+    await page.locator('.recorrido').waitFor({ state: 'detached', timeout: 10000 }).catch(() => {});
+  } else {
+    problemas.push(`${tamano.nombre}: el recorrido no arrancó solo en un navegador limpio`);
+  }
+
   for (const p of PANTALLAS) {
     // PAGINA NUEVA PARA CADA PANTALLA, no una sola para todas.
     //

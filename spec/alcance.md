@@ -94,6 +94,9 @@ camino se anota abajo, en "Después", y no se mete.
 
 - **A) La guía de primera vez.** Ya existía (cinco pantallas, una línea cada
   una, con "Saltar"). Le faltaba decir cómo se entrena: se sumó ese paso.
+  **Desde el 7/10 arranca sola** en un aparato que no la vio (antes solo al
+  elegir el nombre), y "Saltar" es un botón con borde. Consecuencia sabida: con
+  esa OTA la ve una vez todo el que no la había terminado en ese teléfono.
 - **B) Calidad del fondo.** La app mide los cuadros por segundo y baja sola la
   calidad si el teléfono no da; en Ajustes se puede fijar a mano.
 
@@ -101,7 +104,23 @@ camino se anota abajo, en "Después", y no se mete.
 
 - **C) Ver los pasos durante el entrenamiento.** Hoy al iniciar la sesión
   Inicio se despeja y los pasos no se ven; para mucha gente son parte del
-  entreno.
+  entreno. **Dentro de la app sale por OTA**: los pasos ya se leen de Salud
+  (HealthKit está en la build 7). El 7/10 se dijo por error que pedía build
+  —se buscó un podómetro que la app no usa—. Lo que SÍ pide build es verlos
+  en la tarjeta de la pantalla bloqueada.
+
+### UNA sola build para todo lo nativo (decidido el 7/10/2026)
+
+Cuando toque compilar, va **todo junto en la misma build**, para gastar una
+revisión de Apple y no tres. Hasta entonces se junta acá y no se compila por
+una sola cosa:
+
+- la tarjeta de la pantalla bloqueada: que muestre "Serie 0" / el ejercicio
+  recién elegido con su meta (hoy el widget esconde la serie 0), y los pasos
+  si se decide mostrarlos ahí;
+- enlaces `https` que abran la app (dominios asociados), si F los necesita;
+- Diagnóstico sin depender de una variable de compilación (ya anotado abajo);
+- lo que quede pendiente de capa nativa al llegar ese día.
 - **D) Abrir la foto de perfil de un amigo** para verla grande.
 - **E) La vibración del descanso, más larga y marcada**, sin exagerar: con el
   teléfono en silencio la notificación no llega. Hay que ver qué permite iOS.

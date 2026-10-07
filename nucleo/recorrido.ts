@@ -58,3 +58,16 @@ export function pasoValido(n: unknown): number {
   const i = Number(n);
   return Number.isInteger(i) && i >= 0 && i < PASOS_DEL_RECORRIDO.length ? i : 0;
 }
+
+/**
+ * EN QUÉ PASO SE ABRE; `null` si ya se vio.
+ *
+ * ARRANCA SOLO EN UN APARATO NUEVO (7/10/2026). Antes pedía un encendido
+ * explícito —elegir el nombre, o "ver la guía"— para que no le apareciera al
+ * que cambia de teléfono. Salió al revés: alguien abrió la app sin pasar por
+ * ahí y hubo que explicarle todo a mano. Que la vea de más el que ya la conoce
+ * cuesta un toque en "Saltar"; que no la vea el nuevo cuesta la app entera.
+ */
+export function pasoAlAbrir(guardado: { recorrido: boolean; paso?: number }): number | null {
+  return guardado.recorrido ? null : pasoValido(guardado.paso ?? 0);
+}

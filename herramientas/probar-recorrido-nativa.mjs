@@ -18,7 +18,7 @@
 //
 // Necesita la nativa prendida.
 import { chromium } from 'playwright';
-import { limiteDeSonda } from '../supabase/utiles.mjs';
+import { limiteDeSonda, pasarLaEntradaNativa } from '../supabase/utiles.mjs';
 
 limiteDeSonda(10);
 
@@ -110,6 +110,9 @@ async function encender() {
 
 try {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  // La bienvenida va antes del formulario: sin pasarla esta sonda no llegaba
+  // nunca al correo (estaba rota desde que la bienvenida existe).
+  await pasarLaEntradaNativa(page);
   await page.locator('input[type=email], input[inputmode=email]').first().fill(process.env.CONEXION_EMAIL, { timeout: 90000 });
   await page.locator('input[type=password]').first().fill(process.env.CONEXION_PASSWORD);
   await page.getByText('Entrar', { exact: true }).last().click({ timeout: 60000 });
@@ -123,6 +126,10 @@ try {
   const entendido = page.getByText('Entendido', { exact: true });
   if (await entendido.isVisible().catch(() => false)) await entendido.click();
   await page.waitForTimeout(2000);
+
+  console.log('\n0. Navegador limpio, cuenta que ya existia: el recorrido arranca SOLO');
+  // Sin escribir nada en el almacenamiento: es el aparato nuevo de verdad.
+  esperar('hay tarjeta de recorrido sin haberla encendido', await hayTarjeta());
 
   console.log('\n1. Con la guia vista, el recorrido NO aparece');
   // Es el estado normal de quien ya usó la app, y el que más veces se ve.

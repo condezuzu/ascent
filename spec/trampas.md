@@ -1178,6 +1178,12 @@ llega después de Terminar la vuelve a mostrar. Están anotados en
 
 ## Tests / proceso
 
+**La consulta que se le pasa al humano se corre antes de pasarla.** El 7/10 se
+le dio `select version from public.esquema` para comprobar la migración 63:
+esa tabla no existe. La versión se lee con `select version_del_esquema();`.
+→ **Regla:** toda consulta que va al SQL Editor se corre primero contra PGlite
+(`test:db` tiene la base armada); escrita de memoria no se entrega.
+
 **Un test puede estar defendiendo un error.** El test "y sin pedir permiso de
 escritura" EXIGÍA `NSHealthUpdateUsageDescription: false` —justo lo que hizo que
 Apple rechazara la build 5 (ITMS-90683)—. El test verde daba una falsa

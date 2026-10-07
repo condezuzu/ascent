@@ -116,7 +116,7 @@ export default function Recorrido({ pestana }: { pestana: Pestana }) {
             estos dos botones cambian solos —"Ir" / "Siguiente" / "Listo"— y
             además "Ir" es una palabra de dos letras que aparece suelta en
             otras pantallas. Buscarlos por texto encontraba otra cosa. */}
-        <Pressable testID="recorrido-saltar" onPress={terminar} hitSlop={10}>
+        <Pressable testID="recorrido-saltar" style={estilos.borde} onPress={terminar} hitSlop={10}>
           <Text style={estilos.saltar}>{T.recorrido.saltar}</Text>
         </Pressable>
         <Pressable
@@ -153,7 +153,10 @@ const estilos = StyleSheet.create({
   numero: { color: C.apagado, fontSize: 11, letterSpacing: 1 },
   texto: { color: C.tinta, fontSize: 15, lineHeight: 21 },
   botones: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 },
-  saltar: { color: C.apagado, fontSize: 14 },
+  // UN BOTÓN, no un texto gris (7/10): desde que el recorrido arranca solo le
+  // aparece también al que ya conoce la app, y ese tiene que poder irse sin buscar.
+  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
+  saltar: { color: C.tinta, fontSize: 14 },
   solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
   solidoTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
 });
