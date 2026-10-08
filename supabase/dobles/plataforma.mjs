@@ -12,7 +12,7 @@ export const plataforma = {
   salud: { pasosEntre: async () => null },
   avisos: { conPantallaBloqueada: () => false, cancelar: async () => {}, programar: async () => {} },
   enVivo: { disponible: () => false, esconder: async () => {}, mostrarDescanso: async () => {} },
-  haptica: { pulso: () => false, disponible: () => false },
+  haptica: { pulso: () => false, aviso: () => false, disponible: () => false },
   efimero: {
     leer: async (clave) => (efimera.has(clave) ? efimera.get(clave) : null),
     guardar: async (clave, valor) => {

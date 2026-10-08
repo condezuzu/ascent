@@ -549,6 +549,8 @@ export const T = {
 
     comparteGimnasio: 'Avisar cuando entreno',
     comparteGimnasioNota: 'Tus amigos ven que estás entrenando al llegar.',
+    comparteRutina: 'Mostrar mi rutina',
+    comparteRutinaNota: 'Tus amigos ven qué ejercicios haces cada día y cuántas series. Nunca los pesos ni cuánto dura.',
     diasDescanso: 'Días de descanso',
     diasDescansoNota: 'Esos días puedes faltar sin perder la racha.',
 
@@ -1305,6 +1307,21 @@ export const T = {
     amigos: 'Amigos',
     buscarGente: 'Buscar gente',
     buscarPie: 'Por nombre de usuario, para agregar.',
+    invitar: 'Invitar con tu link',
+    invitacion: (url: string) => `Agrégame en Ascent: ${url}`,
+
+    suRutina: 'Su rutina',
+    seriesDeRutina: (n: number) => (n === 1 ? '1 serie' : `${n} series`),
+    cerrarFoto: 'Cerrar',
+    verFoto: (nombre: string) => `Ver la foto de ${nombre}`,
+    // La página de la web a la que lleva el link de amigo.
+    enlaceTitulo: (nombre: string) => `${nombre} te invita a Ascent`,
+    enlacePie: 'Abre su perfil en la app para agregarlo.',
+    enlaceAbrir: 'Abrir en Ascent',
+    enlaceSinApp: '¿Todavía no la tienes?',
+    enlaceTienda: 'Descárgala en el App Store',
+    enlaceDespues: 'y vuelve a tocar este enlace.',
+    enlaceMalo: 'Este enlace no lleva a nadie.',
     sinResultado: 'No encontramos a nadie con ese nombre.',
     // El título decía "Leaderboard" mientras la barra de abajo decía
     // "Ranking": la misma pantalla con dos nombres. Manda el de la barra.

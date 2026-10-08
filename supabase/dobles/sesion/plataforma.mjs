@@ -60,5 +60,5 @@ export const plataforma = {
   salud: { pasosEntre: async () => null },
   avisos: { conPantallaBloqueada: () => false, cancelar: async () => {}, programar: async () => {} },
   enVivo: { disponible: () => false, esconder: async () => {}, mostrarDescanso: async () => {} },
-  haptica: { pulso: () => false, disponible: () => false },
+  haptica: { pulso: () => false, aviso: () => false, disponible: () => false },
 };

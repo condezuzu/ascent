@@ -5313,6 +5313,12 @@ body.con-franja.con-accion .pantalla {
 .legal a {
   color: var(--pal-claro);
 }
+/* El botón de la página del link de amigo: el color de enlace de arriba le
+   ganaba al del botón y el texto quedaba del mismo color que el fondo. */
+.legal a.boton-solido {
+  color: #08080c;
+  margin: 22px 0;
+}
 
 /* Lo que anotaste de peso, con forma de arreglarlo (22/9). Filas chicas y en
    voz baja: esto no es una pantalla de historial, es el lugar donde se corrige

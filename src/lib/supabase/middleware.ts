@@ -10,7 +10,8 @@ import {
 // `/privacidad` y `/soporte` son públicas porque Apple las abre sin cuenta, y
 // porque quien todavía no se registró tiene derecho a leer qué le van a guardar
 // —y a quién escribirle— ANTES de registrarse.
-const RUTAS_PUBLICAS = ['/login', '/auth', '/galeria', '/privacidad', '/soporte'];
+// `/amigo` es a donde cae el link de invitación: lo abre gente sin cuenta.
+const RUTAS_PUBLICAS = ['/login', '/auth', '/galeria', '/privacidad', '/soporte', '/amigo'];
 
 /**
  * Refresca el token en cada pedido y decide si la pantalla se puede ver.

@@ -152,6 +152,22 @@ export async function buscarGente(
   return ((data ?? []) as UsuarioPublico[]).filter((u) => !yaSonAmigos.has(u.id));
 }
 
+/**
+ * A QUIÉN LLEVA UN LINK DE AMIGO. El nombre es único sin mirar mayúsculas
+ * (`profiles_username_unico`), así que se busca igual. El `_` se escapa: en un
+ * `ilike` es "cualquier letra" y `ana_1` encontraría también a `anab1`.
+ * `null` = no existe (o te bloqueó); `'no-se-pudo'` = no se pudo preguntar.
+ */
+export async function buscarPorNombre(supabase: Cliente, nombre: string): Promise<string | null | 'no-se-pudo'> {
+  const { data, error } = await supabase
+    .from('usuarios_publicos')
+    .select('id')
+    .ilike('username', nombre.replace(/_/g, '\\_'))
+    .maybeSingle();
+  if (error) return 'no-se-pudo';
+  return (data as { id: string } | null)?.id ?? null;
+}
+
 /** Las cuatro respuestas de la pantalla. Devuelven si salió bien. */
 export async function pedirAmistad(supabase: Cliente, miId: string, destino: string) {
   const { error } = await supabase.from('friendships').insert({ solicitante: miId, destinatario: destino });

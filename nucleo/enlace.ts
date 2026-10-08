@@ -19,6 +19,29 @@
 
 export type TokensDeSesion = { access_token: string; refresh_token: string };
 
+/**
+ * EL LINK PARA AGREGAR A ALGUIEN (8/10/2026). Va por `https` —que se puede
+ * tocar en cualquier chat— a una página de la web que ofrece abrir la app con
+ * `ascent://amigo/<nombre>`. Las dos formas terminan en el mismo nombre.
+ */
+export const SITIO = 'https://ascent-blush-seven.vercel.app';
+export const TIENDA = 'https://apps.apple.com/app/id6815006917';
+const NOMBRE = /^[a-zA-Z0-9_]{3,20}$/;
+
+export function enlaceDeAmigo(usuario: string): string {
+  return `${SITIO}/amigo/${usuario}`;
+}
+
+export function enlaceALaApp(usuario: string): string {
+  return `ascent://amigo/${usuario}`;
+}
+
+/** El nombre de usuario de un link de amigo, sea el de la web o el de la app. `null` si no es uno. */
+export function usuarioDeEnlace(url: string | null | undefined): string | null {
+  const m = /^(?:https?:\/\/[^/]+|ascent:\/\/)\/?amigo\/([^/?#]+)\/?(?:[?#].*)?$/.exec((url ?? '').trim());
+  return m && NOMBRE.test(m[1]) ? m[1] : null;
+}
+
 /** Los tokens de una URL, vengan en el `#` o en la `?`. `null` si no hay. */
 /**
  * SI EL ENLACE ES EL DE CAMBIAR LA CONTRASEÑA (4/10). Supabase lo marca con

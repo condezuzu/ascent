@@ -22,6 +22,7 @@ import GloboPrimeraVez from './GloboPrimeraVez';
 import Insignia from './Insignia';
 import Surgir from './Surgir';
 import { C } from './colores';
+import InvitarConLink from './InvitarConLink';
 
 /**
  * TU PERFIL: quién sos acá adentro, cómo te ven tus amigos, y quiénes son.
@@ -227,6 +228,7 @@ export default function PerfilPropio() {
           {T.yo.amigos} {amigos.length > 0 ? amigos.length : ''}
         </Text>
         {amigos.length === 0 && <Text style={estilos.nota}>{T.yo.sinAmigos}</Text>}
+        <InvitarConLink usuario={perfil.username} />
         {amigos.map((a, i) => (
           <Surgir key={a.id} indice={i}>
             <View style={estilos.amigo}>

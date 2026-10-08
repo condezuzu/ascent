@@ -94,6 +94,8 @@ export type Perfil = {
   // gimnasio. Opt-in, apagado por defecto. Opcional en el tipo porque la
   // columna la agrega una migración y el código puede llegar antes.
   comparte_gimnasio?: boolean;
+  /** Si los amigos ven su rutina (migración 64). Sin dato es que sí. */
+  comparte_rutina?: boolean;
   // El detector de estancamiento (migración 30). Opcionales en el tipo porque
   // la pantalla pide `select *` y el código puede llegar antes que la
   // migración: sin las columnas, `undefined` significa "el valor por omisión

@@ -180,6 +180,7 @@ export default function Inicio({
   // sabemos. La meta es una preferencia del aparato, la misma que el gráfico.
   const [pasosHoy, setPasosHoy] = useState<number | null>(null);
   const [metaPasos, setMetaPasos] = useState<number>(META_PASOS_POR_OMISION);
+  const [latidoDePasos, setLatidoDePasos] = useState(0);
 
   // LOS BLOQUES DE LA SESION DE HOY, para poder volver a ABRIR el resumen a un
   // toque (1.2/5.4). Antes el resumen vivia solo en `cierre` —efimero: se perdia
@@ -446,7 +447,16 @@ export default function Inicio({
     return () => {
       vivo = false;
     };
-  }, [vueltas]);
+  }, [vueltas, latidoDePasos]);
+
+  // MIENTRAS SE ENTRENA SE VUELVEN A PEDIR CADA MINUTO (8/10). Ahora el renglón
+  // se queda a la vista durante la sesión, y en una hora de gimnasio nadie
+  // "vuelve a Inicio": sin esto mostraría los pasos de cuando tocaste Iniciar.
+  useEffect(() => {
+    if (!sesion.estado.corriendo) return;
+    const t = setInterval(() => setLatidoDePasos((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, [sesion.estado.corriendo]);
 
   // LAS MEDALLAS POR MARCA, para la fila del nombre. Va acá arriba como los
   // otros hooks, antes de los retornos tempranos. `vueltas` las hace pedir de
@@ -651,8 +661,16 @@ export default function Inicio({
       {/* LOS PASOS DE HOY (5.2). Debajo del número, arriba de la semana, y en
           voz baja: es el dato del teléfono, no la racha. Solo si hay algo que
           decir —Health conectado y con pasos—; si no, ni aparece. */}
-      {!sesion.estado.corriendo && pasosHoy !== null && (
-        <PasosInicio pasos={pasosHoy} meta={metaPasos} acento={paletaDe(numeroDeRango(racha), null).principal} />
+      {/* TAMBIÉN MIENTRAS SE ENTRENA (8/10), en un renglón y sin la barra: para
+          mucha gente los pasos son parte del entreno, y la barra empujaba el
+          bloque —lo que se toca doce veces— más abajo. */}
+      {pasosHoy !== null && (
+        <PasosInicio
+          pasos={pasosHoy}
+          meta={metaPasos}
+          acento={paletaDe(numeroDeRango(racha), null).principal}
+          compacto={sesion.estado.corriendo}
+        />
       )}
 
       {!sesion.estado.corriendo && (

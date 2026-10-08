@@ -120,6 +120,42 @@ export function siguienteEnRutina(rutina: string[], yaHechos: string[]): string 
  * rutina que corresponde a ESE ejercicio —la vez más reciente que lo hiciste,
  * de ahí en adelante—. Si nunca lo hiciste, la cadena es solo ese ejercicio.
  */
+/**
+ * LA RUTINA DE LA SEMANA, para mostrársela a un amigo (8/10/2026): por cada día
+ * de la semana, lo último que se hizo ese día. Lunes primero; el día sin
+ * sesiones no aparece. `dia` es 0=domingo, como `Date.getDay()`.
+ */
+export type EjercicioDeRutina = { ejercicio: string; series: number };
+export type DiaDeRutina = { dia: number; ejercicios: EjercicioDeRutina[] };
+type SesionVista = { fecha: string; bloques: { ejercicio?: string | null; series?: number | null }[] };
+
+/** Los bloques de una sesión, juntando los del mismo ejercicio: dos tandas de sentadilla son una, con las series sumadas. */
+function ejerciciosConSeries(bloques: SesionVista['bloques']): EjercicioDeRutina[] {
+  const orden: EjercicioDeRutina[] = [];
+  for (const b of bloques ?? []) {
+    if (typeof b?.ejercicio !== 'string' || !b.ejercicio) continue;
+    const series = Number.isFinite(b.series) && (b.series as number) > 0 ? Math.round(b.series as number) : 0;
+    const ya = orden.find((e) => e.ejercicio === b.ejercicio);
+    if (ya) ya.series += series;
+    else orden.push({ ejercicio: b.ejercicio, series });
+  }
+  return orden;
+}
+
+export function rutinaPorDia(sesiones: SesionVista[]): DiaDeRutina[] {
+  const porDia = new Map<number, { fecha: string; ejercicios: EjercicioDeRutina[] }>();
+  for (const s of sesiones) {
+    const ejercicios = ejerciciosConSeries(s.bloques);
+    if (ejercicios.length === 0) continue;
+    const dia = diaDeSemana(s.fecha);
+    const ya = porDia.get(dia);
+    // Con dos sesiones el mismo día queda la primera que llega: la base las
+    // manda de la más nueva a la más vieja.
+    if (!ya || s.fecha > ya.fecha) porDia.set(dia, { fecha: s.fecha, ejercicios });
+  }
+  return [1, 2, 3, 4, 5, 6, 0].filter((d) => porDia.has(d)).map((d) => ({ dia: d, ejercicios: porDia.get(d)!.ejercicios }));
+}
+
 export function reengancharDesde(sesiones: SesionRutina[], primerEjercicio: string): string[] {
   const orden = [...sesiones].filter(conEjercicios).sort(porFechaAsc).reverse();
   for (const s of orden) {

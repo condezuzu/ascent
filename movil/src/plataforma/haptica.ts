@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
+import { Platform, Vibration } from 'react-native';
+import { GOLPES, PAUSA_MS } from '@nucleo/avisoDescanso';
 import type { Haptica } from '@nucleo/plataforma';
 
 /**
@@ -29,6 +30,22 @@ export const hapticaNativa: Haptica = {
     // No se espera: es un efecto, no un dato. Si falla —modo de bajo consumo,
     // teléfono sin motor— no pasa nada y la app no se entera.
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    return true;
+  },
+
+  // LA VIBRACIÓN DE VERDAD, no el golpecito háptico (8/10): es la que se siente
+  // con el teléfono en el bolsillo. El patrón se lee distinto en cada sistema:
+  // en iOS cada vibración dura lo suyo (~0,4 s) y los números son ESPERAS
+  // entre el arranque de una y el de la otra; en Android alternan espera y
+  // duración. SOLO SE PUEDE COMPROBAR EN EL TELÉFONO.
+  aviso() {
+    if (!this.disponible()) return false;
+    try {
+      const esperas = Array.from({ length: GOLPES - 1 }, () => PAUSA_MS);
+      Vibration.vibrate(Platform.OS === 'ios' ? [0, ...esperas] : [0, 400, ...esperas.flatMap(() => [PAUSA_MS - 400, 400])]);
+    } catch {
+      return this.pulso();
+    }
     return true;
   },
 };

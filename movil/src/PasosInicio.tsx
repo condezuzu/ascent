@@ -16,7 +16,18 @@ import { C, conAlfa } from './colores';
  * El color de acento sale del rango (lo pasa Inicio): el logro se siente parte
  * del mismo mundo que el planeta del fondo, no un verde de sistema.
  */
-export default function PasosInicio({ pasos, meta, acento }: { pasos: number; meta: number; acento: string }) {
+export default function PasosInicio({
+  pasos,
+  meta,
+  acento,
+  compacto = false,
+}: {
+  pasos: number;
+  meta: number;
+  acento: string;
+  /** Mientras se entrena (8/10): el renglón solo, sin la barra, para no empujar el bloque. */
+  compacto?: boolean;
+}) {
   const llego = meta > 0 && pasos >= meta;
   const pct = meta > 0 ? Math.min(1, pasos / meta) : 0;
 
@@ -49,7 +60,7 @@ export default function PasosInicio({ pasos, meta, acento }: { pasos: number; me
   const escalaLatido = latido.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
 
   return (
-    <View style={estilos.raiz}>
+    <View testID={compacto ? 'pasos-en-sesion' : 'pasos-de-hoy'} style={[estilos.raiz, compacto && estilos.raizCompacta]}>
       <View style={estilos.fila}>
         <Text style={estilos.numero}>
           {pasos.toLocaleString('es-UY')} <Text style={estilos.unidad}>{T.inicio.pasosUnidad}</Text>
@@ -62,6 +73,7 @@ export default function PasosInicio({ pasos, meta, acento }: { pasos: number; me
           <Text style={estilos.meta}>{T.inicio.pasosMetaChica(meta.toLocaleString('es-UY'))}</Text>
         )}
       </View>
+      {!compacto && (
       <View style={estilos.pista}>
         <Animated.View style={[estilos.relleno, { width: ancho, backgroundColor: acento }]} />
         {/* El brillo del latido: un velo del color que aparece y se va al llegar. */}
@@ -70,12 +82,14 @@ export default function PasosInicio({ pasos, meta, acento }: { pasos: number; me
           style={[estilos.brillo, { backgroundColor: acento, opacity: latido.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] }) }]}
         />
       </View>
+      )}
     </View>
   );
 }
 
 const estilos = StyleSheet.create({
   raiz: { marginTop: 14, gap: 7 },
+  raizCompacta: { marginTop: 8, marginBottom: 2 },
   fila: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   numero: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
   unidad: { color: C.sub, fontSize: 13 },

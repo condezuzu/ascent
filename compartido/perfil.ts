@@ -10,6 +10,7 @@ import {
   type PercentilDeEjercicio,
 } from '@nucleo/medallas';
 import { disponible } from '@nucleo/esquema';
+import { rutinaPorDia, type DiaDeRutina } from '@nucleo/rutina';
 import { versionDelEsquema } from '@compartido/esquema';
 import type { MiFuerza } from '@nucleo/tipos';
 
@@ -277,6 +278,29 @@ export type PerfilDeAmigo = {
  * `null` sigue siendo "no existe"; esto es "no se sabe".
  */
 export const NO_SE_PUDO = 'no-se-pudo' as const;
+
+/**
+ * LA RUTINA DE UN AMIGO: qué hace cada día de la semana, con los nombres ya
+ * puestos. Vacío si la escondió, si no entrenó en cuatro semanas, o si la base
+ * todavía no tiene la migración 64 — las tres se ven igual a propósito: la
+ * sección no aparece y nadie se entera de que alguien la apagó.
+ */
+export async function cargarRutinaDeAmigo(supabase: Cliente, otro: string): Promise<DiaDeRutina[]> {
+  if (!disponible('rutinaDeAmigo', await versionDelEsquema(supabase).catch(() => null))) return [];
+  const [{ data: filas }, { data: catalogo }] = await Promise.all([
+    supabase.rpc('rutina_de_amigo', { p_quien: otro }),
+    supabase.from('ejercicios').select('id, nombre'),
+  ]);
+  const nombre = new Map(((catalogo ?? []) as { id: string; nombre: string }[]).map((e) => [e.id, e.nombre]));
+  const sesiones = ((filas ?? []) as { fecha: string; bloques: { ejercicio: string; series: number | null }[] | null }[]).map((f) => ({
+    fecha: f.fecha,
+    bloques: f.bloques ?? [],
+  }));
+  return rutinaPorDia(sesiones).map((d) => ({
+    dia: d.dia,
+    ejercicios: d.ejercicios.map((e) => ({ ejercicio: nombre.get(e.ejercicio) ?? e.ejercicio, series: e.series })),
+  }));
+}
 
 export async function cargarPerfilDeAmigo(
   supabase: Cliente,

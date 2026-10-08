@@ -181,6 +181,24 @@ export default function Ajustes({
         </View>
       )}
 
+      {/* LA RUTINA A LA VISTA DE LOS AMIGOS (8/10): prendido por omisión, se
+          esconde acá. Solo los ejercicios de cada día; ver la migración 64. */}
+      <View style={estilos.filaOpcion}>
+        <View style={estilos.textoOpcion}>
+          <Text style={estilos.opcion}>{T.ajustes.comparteRutina}</Text>
+          <Text style={estilos.nota}>{T.ajustes.comparteRutinaNota}</Text>
+        </View>
+        <Interruptor
+          value={perfil.comparte_rutina !== false}
+          accessibilityLabel={T.ajustes.comparteRutina}
+          onValueChange={async (v) => {
+            alCambiar({ comparte_rutina: v } as Partial<Perfil>);
+            const { error } = await supabase.rpc('fijar_comparte_rutina', { p_valor: v });
+            if (error) alCambiar({ comparte_rutina: !v } as Partial<Perfil>);
+          }}
+        />
+      </View>
+
       {/* Y LA SALUD DEL TELÉFONO JUSTO DEBAJO: son las dos formas de que un
           día entre sin que aprietes nada, y leerlas juntas se entiende. La
           web no tiene esta sección porque el navegador no ve nada de esto. */}

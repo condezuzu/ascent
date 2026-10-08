@@ -15,4 +15,9 @@ export const hapticaWeb: Haptica = {
     // notificación cualquiera del teléfono.
     return navigator.vibrate([120, 90, 120]);
   },
+
+  aviso() {
+    if (!this.disponible()) return false;
+    return navigator.vibrate([400, 200, 400, 200, 400]);
+  },
 };

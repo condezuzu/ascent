@@ -42,6 +42,8 @@ export const REQUIERE = {
   diaDeRacha: 57,
   /** El modo de carga "peso corporal": la base lo valida en checks y funciones. */
   cargaCorporal: 58,
+  /** La rutina que ve un amigo, y el interruptor para esconderla. */
+  rutinaDeAmigo: 64,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

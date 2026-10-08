@@ -375,16 +375,17 @@ async function correr(app) {
   //
   // Antes esto no existia: la nativa mostraba el objeto nuevo ya formado.
   if (app === 'movil') {
+    // EL RECORRIDO, QUE ANTES SE SALTABA "SI ESTABA" (8/10). Tiene que estar:
+    // es una cuenta recién nacida en un navegador limpio. Y "Saltar" tiene que
+    // sacarlo. Reemplaza a `herramientas/probar-recorrido-nativa.mjs`, que no
+    // corría en ninguna rutina y estuvo semanas rota sin que nadie se enterara.
+    await paso('el recorrido está, y Saltar lo saca', async () => {
+      const saltar = page.getByTestId('recorrido-saltar');
+      await saltar.waitFor({ state: 'visible', timeout: 15000 });
+      await saltar.click();
+      await page.getByTestId('recorrido-avanzar').waitFor({ state: 'detached', timeout: 10000 });
+    });
     await paso('la subida de rango, con su coreografia', async () => {
-      // EL RECORRIDO DE PRIMERA VEZ VA PRIMERO. Es una cuenta recien nacida,
-      // asi que el globo esta puesto: tapa la mitad de abajo y ademas su
-      // "Saltar" devuelve a Inicio, o sea que saltearlo DESPUES de entrar a
-      // Ajustes te saca de Ajustes.
-      const saltar = page.getByText('Saltar', { exact: true }).last();
-      if (await saltar.isVisible().catch(() => false)) {
-        await saltar.click();
-        await page.waitForTimeout(800);
-      }
       await texto('Ajustes').click();
       await page.waitForTimeout(800);
       // EL PANEL DIAGNOSTICO SOLO EXISTE CON EL FLAG (26/9, item 14). La vista

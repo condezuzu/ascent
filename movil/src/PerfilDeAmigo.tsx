@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { cargarPerfilDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
+import { cargarPerfilDeAmigo, cargarRutinaDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
+import FotoGrande from './FotoGrande';
+import type { DiaDeRutina } from '@nucleo/rutina';
 import Medallas from './Medallas';
 import { aceptarAmistad, pedirAmistad } from '@compartido/ranking';
 import { useEnVuelo } from '@compartido/useEnVuelo';
@@ -48,6 +50,8 @@ export default function PerfilDeAmigo() {
   const [error, setError] = useState('');
   const [noCargo, setNoCargo] = useState(false);
   const [accion, setAccion] = useState(false);
+  const [fotoGrande, setFotoGrande] = useState(false);
+  const [rutina, setRutina] = useState<DiaDeRutina[]>([]);
 
   const cargar = useCallback(async () => {
     setError('');
@@ -80,6 +84,10 @@ export default function PerfilDeAmigo() {
     // gateada a amigos aceptados (self + amigos): un no-amigo no aparece ahí, y
     // solo lo pedimos si esta persona ES amiga. Nunca expone su peso corporal,
     // solo el número, que los amigos ya ven en el ranking (§16.7).
+    // SU RUTINA (8/10): solo de un amigo, y solo si no la escondió. Si falla o
+    // viene vacía, la sección no aparece.
+    if (d?.esAmigo) cargarRutinaDeAmigo(supabase, id).then(setRutina, () => setRutina([]));
+    else setRutina([]);
     if (d?.esAmigo) {
       supabase.rpc('ranking_fuerza').then(({ data }) => {
         const fila = (data as { id: string; dots: number }[] | null)?.find((f) => f.id === id);
@@ -179,7 +187,17 @@ export default function PerfilDeAmigo() {
         </Pressable>
 
         <View style={estilos.cabecera}>
-          <Avatar url={usuario.avatar_url} nombre={usuario.username} tam={52} />
+          {/* LA FOTO SE ABRE GRANDE (8/10). Sin foto no hay nada que abrir: la
+              inicial no es un botón. */}
+          <Pressable
+            testID="abrir-foto-de-perfil"
+            disabled={!usuario.avatar_url}
+            onPress={() => setFotoGrande(true)}
+            accessibilityRole="imagebutton"
+            accessibilityLabel={T.social.verFoto(usuario.username ?? '')}
+          >
+            <Avatar url={usuario.avatar_url} nombre={usuario.username} tam={52} />
+          </Pressable>
           <View style={{ flex: 1 }}>
             {/* SUS MEDALLAS, al lado de su nombre y del mismo alto, igual que
                 en tu perfil. Se pueden tocar: es la única forma de saber qué
@@ -214,6 +232,22 @@ export default function PerfilDeAmigo() {
               ))}
             </View>
             <FotosQueVen fotos={fotos} />
+            {rutina.length > 0 && (
+              <View testID="rutina-de-amigo" style={estilos.rutina}>
+                <Text style={estilos.rotulo}>{T.social.suRutina}</Text>
+                {rutina.map((d) => (
+                  <View key={d.dia} style={estilos.rutinaDia}>
+                    <Text style={estilos.rutinaNombre}>{T.fechas.diasLargos[d.dia]}</Text>
+                    {d.ejercicios.map((e) => (
+                      <View key={e.ejercicio} style={estilos.rutinaFila}>
+                        <Text style={estilos.rutinaEjercicios}>{e.ejercicio}</Text>
+                        {e.series > 0 && <Text style={estilos.rutinaSeries}>{T.social.seriesDeRutina(e.series)}</Text>}
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            )}
           </>
         ) : (
           <>
@@ -247,6 +281,7 @@ export default function PerfilDeAmigo() {
         onCerrar={() => setAccion(false)}
         onBloqueado={() => router.back()}
       />
+      <FotoGrande url={fotoGrande ? usuario.avatar_url : null} onCerrar={() => setFotoGrande(false)} />
     </View>
   );
 }
@@ -274,6 +309,13 @@ const estilos = StyleSheet.create({
   vacio: { borderWidth: 1, borderColor: '#2a3040' },
   puntoHoy: { borderWidth: 1, borderColor: C.claro },
   letra: { color: '#4a5163', fontSize: 11 },
+  rutina: { marginTop: 26 },
+  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  rutinaDia: { paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
+  rutinaNombre: { color: C.tinta, fontSize: 14, marginBottom: 3 },
+  rutinaFila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  rutinaEjercicios: { color: C.sub, fontSize: 13, lineHeight: 21, flexShrink: 1 },
+  rutinaSeries: { color: C.apagado, fontSize: 12, lineHeight: 21, fontVariant: ['tabular-nums'] },
   solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   boton: {

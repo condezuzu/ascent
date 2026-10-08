@@ -34,6 +34,7 @@ import { leerPerfilCache } from '@compartido/cache';
 import type { Medalla } from '@nucleo/medallas';
 import { C } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
+import InvitarConLink from './InvitarConLink';
 
 /**
  * RANKING — tanda 4.
@@ -333,6 +334,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
         <View style={estilos.seccion}>
           <Text style={estilos.rotulo}>{T.social.buscarGente}</Text>
           <Text style={estilos.pieBusqueda}>{T.social.buscarPie}</Text>
+          <InvitarConLink usuario={datos?.amigos.find((a) => a.id === miId)?.username} />
           <CampoTexto
             style={estilos.campo}
             placeholder={T.ajustes.nombrePlaceholder}

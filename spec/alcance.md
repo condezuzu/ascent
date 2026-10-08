@@ -100,14 +100,33 @@ camino se anota abajo, en "Después", y no se mete.
 - **B) Calidad del fondo.** La app mide los cuadros por segundo y baja sola la
   calidad si el teléfono no da; en Ajustes se puede fijar a mano.
 
-### Tanda 2 — barato y se nota (SIN EMPEZAR: primero propuesta y costo)
+### Tanda 2 — barato y se nota (hecha el 8/10, sin probar en el teléfono)
 
-- **C) Ver los pasos durante el entrenamiento.** Hoy al iniciar la sesión
-  Inicio se despeja y los pasos no se ven; para mucha gente son parte del
-  entreno. **Dentro de la app sale por OTA**: los pasos ya se leen de Salud
-  (HealthKit está en la build 7). El 7/10 se dijo por error que pedía build
-  —se buscó un podómetro que la app no usa—. Lo que SÍ pide build es verlos
-  en la tarjeta de la pantalla bloqueada.
+- **C) Ver los pasos durante el entrenamiento.** Hecho dentro de la app: el
+  renglón de pasos se queda durante la sesión, sin la barra, y se vuelve a
+  pedir cada minuto. Los pasos ya se leían de Salud (HealthKit está en la
+  build 7). Verlos en la tarjeta de la pantalla bloqueada queda para la build.
+- **D) Abrir la foto de perfil de un amigo** para verla grande. Hecho, sin
+  migración: el bucket `avatares` es público desde siempre.
+- **E) La vibración del descanso, más larga y marcada.** Hecho. iOS no deja
+  elegir cuánto dura una vibración, así que son varias: con la app abierta,
+  tres encadenadas; bloqueado, tres avisos separados por un segundo (los dos
+  de más no suenan con la app abierta). **Solo verificable en el teléfono.**
+  Consecuencia sabida: en el centro de notificaciones quedan tres avisos.
+
+### Tanda 3 — crecimiento (hecha el 8/10, sin probar en el teléfono)
+
+- **F) Amigos por enlace.** Hecho: `https://…/amigo/<nombre>` es una página
+  pública de la web con un botón que abre `ascent://amigo/<nombre>`; la app
+  manda el pedido sola y muestra el perfil. **No sobrevive a la instalación**:
+  quien no tiene la app la baja, crea la cuenta y vuelve a tocar el enlace
+  (la página lo dice). Eso pide capa nativa y va a la build única. El pedido
+  no los hace amigos: quien invitó acepta, porque el enlace lleva solo un
+  nombre y cualquiera puede armar uno.
+- **G) Ver la rutina de un amigo desde su perfil.** Hecho (migración 64):
+  debajo de las fotos, por día de la semana, los ejercicios y cuántas series,
+  de las últimas cuatro semanas. Nunca pesos ni duración (§17.8 sigue: la
+  tabla de sesiones no se abre). Prendido por omisión; se esconde en Ajustes.
 
 ### UNA sola build para todo lo nativo (decidido el 7/10/2026)
 
@@ -118,23 +137,11 @@ una sola cosa:
 - la tarjeta de la pantalla bloqueada: que muestre "Serie 0" / el ejercicio
   recién elegido con su meta (hoy el widget esconde la serie 0), y los pasos
   si se decide mostrarlos ahí;
-- enlaces `https` que abran la app (dominios asociados), si F los necesita;
+- el enlace de amigo que sobreviva a la instalación, y que el `https` abra la
+  app directo sin pasar por la página (dominios asociados);
+- un solo aviso de fin de descanso con vibración larga, en vez de tres;
 - Diagnóstico sin depender de una variable de compilación (ya anotado abajo);
 - lo que quede pendiente de capa nativa al llegar ese día.
-- **D) Abrir la foto de perfil de un amigo** para verla grande.
-- **E) La vibración del descanso, más larga y marcada**, sin exagerar: con el
-  teléfono en silencio la notificación no llega. Hay que ver qué permite iOS.
-
-### Tanda 3 — crecimiento (SIN EMPEZAR)
-
-- **F) Amigos por enlace**, mandable por WhatsApp: al abrirlo lleva a instalar
-  la app y deja la solicitud YA HECHA. No es "lo mismo que buscar por nombre":
-  el enlace tiene que sobrevivir a la instalación.
-- **G) Ver la rutina de un amigo desde su perfil:** debajo del álbum, el
-  historial por día (el lunes, qué ejercicios, cuántas series), con un
-  interruptor para esconderlo. La razón: a quien le preguntan qué rutina hace
-  hoy tiene que explicarla por audio, y quien ve un buen físico quiere ver la
-  rutina.
 
 ### Tanda 4 — lo grande (SIN EMPEZAR)
 

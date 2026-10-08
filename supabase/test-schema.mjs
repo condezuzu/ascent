@@ -11458,7 +11458,8 @@ console.log('\n157. La pantalla de bloqueo: el timer que se caia y la campana');
   // mitad de "una sola cosa, no dos".
   const avi157 = de157('movil', 'src', 'plataforma', 'avisos.ts');
   chequear('sin cartel con la app abierta', /shouldShowBanner: false/.test(avi157), true);
-  chequear('pero con sonido', /shouldPlaySound: true/.test(avi157), true);
+  // Desde el 8/10 los ecos del aviso largo no suenan con la app abierta; el primero sí (sección 197).
+  chequear('pero con sonido', /shouldPlaySound: !esEco\(/.test(avi157), true);
 
   // ---- 8. LA CAMPANA SE ESCUCHA ----
   //
@@ -15496,6 +15497,204 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
     /upload\(rutaDeMiniatura\(c\.ruta\), datos, \{ contentType: 'image\/jpeg', upsert: true \}\)/.test(de196('movil/src/miniaturas.ts')),
     /prepararMiniatura\(foto\.uri, foto\.ancho, foto\.alto\)/.test(de196('movil/src/RegistrarDia.tsx')),
   ], [true, true, true]);
+}
+
+console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo, link de amigo, rutina del amigo');
+{
+  const { readFileSync: leer197 } = await import('node:fs');
+  const RAIZ197 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de197 = (...p) => sinComentarios(leer197(join(RAIZ197, ...p), 'utf8').replace(/\r\n/g, '\n'));
+
+  // ---- G. LA RUTINA DEL AMIGO: contra la base, con tres personas ----
+  const duena = await nuevoUsuario();
+  const amiga = await nuevoUsuario();
+  const extrana = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [duena, amiga]);
+  await comoUsuario(duena);
+  await db.query('select iniciar_sesion()');
+  // Un bloque sin ejercicio en el medio y uno repetido: lo que se ve son los nombres, en orden.
+  await db.query(`update sesiones set series = 7, bloques = $2::jsonb where user_id = $1 and estado = 'corriendo'`, [
+    duena,
+    JSON.stringify([
+      { ejercicio: 'sentadilla', series: 3, pesos: [100, 100, 100], carga: 'total' },
+      { ejercicio: null, series: 1 },
+      { ejercicio: 'press_banca', series: 3, pesos: [60, 60, 60], carga: 'total' },
+    ]),
+  ]);
+  await db.query('select terminar_sesion()');
+  const rutinaVistaPor = async (quien) => {
+    await comoUsuario(quien);
+    return (await db.query('select * from rutina_de_amigo($1)', [duena])).rows;
+  };
+  const deAmiga = await rutinaVistaPor(amiga);
+  chequear('la amiga ve los ejercicios del día con sus series, en orden y sin el bloque sin nombre', deAmiga.map((f) => f.bloques), [[
+    // jsonb ordena las claves a su manera: primero la más corta.
+    { series: 3, ejercicio: 'sentadilla' }, { series: 3, ejercicio: 'press_banca' },
+  ]]);
+  // Los pesos están guardados en el mismo bloque: no pueden salir ni por descuido.
+  chequear('y NADA más: ni pesos, ni carga, ni horas', [deAmiga.map((f) => Object.keys(f).sort()), /pesos|carga|100|inicio|fin/.test(JSON.stringify(deAmiga.map((f) => f.bloques)))], [[['bloques', 'fecha']], false]);
+  chequear('una extraña no ve nada', (await rutinaVistaPor(extrana)).length, 0);
+  await comoUsuario(duena);
+  await db.query('select fijar_comparte_rutina(false)');
+  chequear('con el interruptor apagado la amiga deja de verla', (await rutinaVistaPor(amiga)).length, 0);
+  chequear('y la dueña sigue viendo la suya', (await rutinaVistaPor(duena)).length, 1);
+  await comoUsuario(duena);
+  await db.query('select fijar_comparte_rutina(true)');
+  chequear('prendido de nuevo, vuelve', (await rutinaVistaPor(amiga)).length, 1);
+  // La sesión misma sigue siendo solo de la dueña (§17.8): la función no abre la tabla.
+  chequear('la tabla de sesiones sigue con una sola regla de lectura, la de la dueña',
+    (await db.query(`select policyname, qual from pg_policies where schemaname = 'public' and tablename = 'sesiones' and cmd = 'SELECT'`)).rows.map((p) => [p.policyname, /son_amigos/.test(p.qual)]),
+    [['sesiones: solo dueño', false]]);
+  chequear('sin sesión no se puede ni llamar', (await db.query(`select has_function_privilege('anon', 'public.rutina_de_amigo(uuid)', 'execute') as p`)).rows[0].p, false);
+  chequear('por omisión la rutina se comparte', (await db.query('select comparte_rutina from profiles where id = $1', [extrana])).rows[0].comparte_rutina, true);
+
+  // LA CONSULTA QUE CORRE EL HUMANO después de aplicar la 64, tal cual está en el archivo.
+  const comprobar64 = leer197(join(RAIZ197, 'supabase', 'comprobar-64.sql'), 'utf8').replace(/\r\n/g, '\n').split('\n').filter((l) => !l.startsWith('--')).join('\n');
+  const fila64 = (await db.query(comprobar64)).rows;
+  chequear('la comprobación de la 64 corre y dice lo que promete', fila64.map((f) => [f.version, Number(f.comparten) === Number(f.perfiles), f.amigos_pueden, f.anon_puede]), [[64, true, true, false]]);
+
+  const RU197 = await import('../nucleo/rutina.ts');
+  const b197 = (ejercicio, series) => ({ ejercicio, series });
+  chequear('por día de la semana queda lo último, lunes primero, el mismo ejercicio se suma, y el día vacío no aparece', RU197.rutinaPorDia([
+    { fecha: '2026-10-04', bloques: [b197('dominadas', 4)] }, // domingo
+    { fecha: '2026-10-05', bloques: [b197('sentadilla', 3), b197('prensa', 2), b197('sentadilla', 2), b197(null, 5)] }, // lunes, el más nuevo
+    { fecha: '2026-09-28', bloques: [b197('peso_muerto', 3)] }, // lunes anterior
+    { fecha: '2026-10-07', bloques: [] }, // miércoles sin nada anotado
+  ]), [{ dia: 1, ejercicios: [b197('sentadilla', 5), b197('prensa', 2)] }, { dia: 0, ejercicios: [b197('dominadas', 4)] }]);
+
+  // Por el camino de la app: la función que llama el perfil, con un cliente que contesta lo que contestó la base.
+  const P197 = await import('../compartido/perfil.ts');
+  const E197 = await import('../compartido/esquema.ts');
+  // La versión queda recordada diez minutos: para cambiarla hay que hacerla
+  // vencer, que es lo que pasa en el teléfono. Cada vez, más adelante en el reloj.
+  let reloj197 = Date.now();
+  const olvidarEsquema = async (version) => {
+    reloj197 += E197.VIGENCIA_MS * 3;
+    await E197.versionDelEsquema(cliente197(version), reloj197);
+    await new Promise((r) => setTimeout(r, 20));
+  };
+  const cliente197 = (version) => ({
+    rpc: async (nombre) => (nombre === 'version_del_esquema' ? { data: version, error: null } : { data: deAmiga.map((f) => ({ fecha: '2026-10-05', bloques: f.bloques })), error: null }),
+    from: () => ({ select: async () => ({ data: [{ id: 'sentadilla', nombre: 'Sentadilla' }, { id: 'press_banca', nombre: 'Press de banca' }], error: null }) }),
+  });
+  await olvidarEsquema(64);
+  chequear('el perfil recibe la rutina con los nombres puestos y las series', await P197.cargarRutinaDeAmigo(cliente197(64), duena), [
+    { dia: 1, ejercicios: [{ ejercicio: 'Sentadilla', series: 3 }, { ejercicio: 'Press de banca', series: 3 }] },
+  ]);
+  await olvidarEsquema(63);
+  chequear('y con la base sin la migración 64 no pide nada', await P197.cargarRutinaDeAmigo(cliente197(63), duena), []);
+  await olvidarEsquema(64);
+
+  // ---- E. EL AVISO LARGO: tres avisos separados por un segundo, y se van los tres ----
+  const AV197 = await import('../nucleo/avisoDescanso.ts');
+  chequear('a 90 segundos: el aviso y dos ecos, uno por segundo', AV197.avisosDelDescanso('descanso', 90), [
+    { id: 'descanso', en: 90 }, { id: 'descanso-eco-1', en: 91 }, { id: 'descanso-eco-2', en: 92 },
+  ]);
+  chequear('con la app abierta suena solo el primero', AV197.idsDelAviso('descanso').map((id) => AV197.esEco(id)).concat(AV197.esEco(undefined)), [false, true, true, false]);
+  // Por el camino entero: arrancar un descanso y saltarlo, con el puerto de avisos anotando.
+  const { plataforma: plat197 } = await import('./dobles/plataforma.mjs');
+  const D197 = await import('../compartido/descanso.ts');
+  const avisosDeVerdad = plat197.avisos;
+  const hapticaDeVerdad = plat197.haptica;
+  const anotado = [];
+  plat197.avisos = {
+    conPantallaBloqueada: () => true,
+    programar: async (id, en) => void anotado.push(['programar', id, Math.round(en)]),
+    cancelar: async (id) => void anotado.push(['cancelar', id]),
+  };
+  plat197.haptica = { disponible: () => true, pulso: () => (anotado.push(['pulso']), true), aviso: () => (anotado.push(['aviso']), true) };
+  D197.guardarDescanso(90);
+  await new Promise((r) => setTimeout(r, 20));
+  chequear('empezar un descanso programa los tres', anotado.filter((a) => a[0] === 'programar'), [
+    ['programar', 'descanso', 90], ['programar', 'descanso-eco-1', 91], ['programar', 'descanso-eco-2', 92],
+  ]);
+  anotado.length = 0;
+  D197.borrarDescanso();
+  await new Promise((r) => setTimeout(r, 20));
+  chequear('saltarlo cancela los tres: no queda ningún eco sonando', anotado.filter((a) => a[0] === 'cancelar').map((a) => a[1]).sort(), ['descanso', 'descanso-eco-1', 'descanso-eco-2']);
+  anotado.length = 0;
+  D197.vibrar();
+  chequear('al terminar vibra el aviso largo, no el golpe corto', anotado, [['aviso']]);
+  plat197.avisos = avisosDeVerdad;
+  plat197.haptica = hapticaDeVerdad;
+  const hap197 = de197('movil', 'src', 'plataforma', 'haptica.ts');
+  chequear('en el teléfono el aviso es la vibración de verdad, encadenada', [
+    /Vibration\.vibrate\(Platform\.OS === 'ios' \? \[0, \.\.\.esperas\]/.test(hap197),
+    /length: GOLPES - 1 \}, \(\) => PAUSA_MS/.test(hap197),
+    [AV197.GOLPES, AV197.PAUSA_MS, AV197.ECOS, AV197.SEPARACION_ECO_S],
+  ], [true, true, [3, 600, 2, 1]]);
+  chequear('y un eco no hace sonar la campana con la app abierta', /shouldPlaySound: !esEco\(/.test(de197('movil', 'src', 'plataforma', 'avisos.ts')), true);
+
+  // ---- F. EL LINK DE AMIGO ----
+  const EN197 = await import('../nucleo/enlace.ts');
+  chequear('el link es https a la web, y la web abre la app', [EN197.enlaceDeAmigo('ana_1'), EN197.enlaceALaApp('ana_1')], ['https://ascent-blush-seven.vercel.app/amigo/ana_1', 'ascent://amigo/ana_1']);
+  chequear('de un link sale el nombre, venga de la web o de la app; de otra cosa, nada', [
+    EN197.usuarioDeEnlace('https://ascent-blush-seven.vercel.app/amigo/ana_1'),
+    EN197.usuarioDeEnlace('ascent://amigo/ana_1'),
+    EN197.usuarioDeEnlace('ascent://amigo/ana_1?x=1'),
+    EN197.usuarioDeEnlace('ascent://amigo/a b'),
+    EN197.usuarioDeEnlace('ascent://amigo/../perfil/x'),
+    EN197.usuarioDeEnlace('ascent://confirmar#access_token=a&refresh_token=b'),
+    EN197.usuarioDeEnlace('ascent://amigo/'),
+    EN197.usuarioDeEnlace(null),
+  ], ['ana_1', 'ana_1', 'ana_1', null, null, null, null, null]);
+  // El nombre se busca en la base como lo busca la app: sin mirar mayúsculas y con el `_` literal.
+  await db.query(`update profiles set username = 'ana_1' where id = $1`, [duena]);
+  await db.query(`update profiles set username = 'anab1' where id = $1`, [extrana]);
+  const R197 = await import('../compartido/ranking.ts');
+  const clienteBase = {
+    from: (tabla) => ({
+      select: (cols) => ({
+        ilike: (col, patron) => ({
+          maybeSingle: async () => {
+            const filas = (await db.query(`select ${cols} from ${tabla} where ${col} ilike $1`, [patron])).rows;
+            return filas.length > 1 ? { data: null, error: { message: 'más de una fila' } } : { data: filas[0] ?? null, error: null };
+          },
+        }),
+      }),
+    }),
+  };
+  await comoUsuario(amiga);
+  chequear('el link encuentra a esa persona y a nadie parecido', [
+    await R197.buscarPorNombre(clienteBase, 'ANA_1'),
+    await R197.buscarPorNombre(clienteBase, 'nadie_asi'),
+  ], [duena, null]);
+  const medio197 = de197('src', 'lib', 'supabase', 'middleware.ts');
+  const pagina197 = de197('src', 'app', 'amigo', '[usuario]', 'page.tsx');
+  chequear('la página del link es pública, abre la app con un botón y no salta sola', [
+    /RUTAS_PUBLICAS = \[[^\]]*'\/amigo'/.test(medio197),
+    /href=\{enlaceALaApp\(nombre\)\}/.test(pagina197),
+    /href=\{TIENDA\}/.test(pagina197),
+    /http-?equiv|location\.|redirect\(/i.test(pagina197),
+  ], [true, true, true, false]);
+  chequear('la app tiene a dónde caer: manda el pedido sola (nunca a uno mismo) y va al perfil', [
+    /if \(yo && yo !== id\) await pedirAmistad\(supabase, yo, id\)[^;]*;\s*router\.replace\(`\/perfil\/\$\{id\}`\)/.test(de197('movil', 'src', 'AmigoPorEnlace.tsx')),
+    /<AmigoPorEnlace \/>/.test(de197('movil', 'app', 'amigo', '[usuario].tsx')),
+    /Share\.share\(\{ message: T\.social\.invitacion\(enlaceDeAmigo\(usuario\)\) \}\)/.test(de197('movil', 'src', 'InvitarConLink.tsx')),
+    /<InvitarConLink usuario=/.test(de197('movil', 'src', 'Ranking.tsx')) && /<InvitarConLink usuario=\{perfil\.username\}/.test(de197('movil', 'src', 'PerfilPropio.tsx')),
+  ], [true, true, true, true]);
+
+  // ---- C y D, y el interruptor de G: son componentes, se leen ----
+  const inicio197 = de197('movil', 'src', 'Inicio.tsx');
+  chequear('los pasos se ven también entrenando, compactos, y se vuelven a pedir cada minuto', [
+    /\{pasosHoy !== null && \(\s*<PasosInicio/.test(inicio197),
+    /compacto=\{sesion\.estado\.corriendo\}/.test(inicio197),
+    /\{!sesion\.estado\.corriendo && pasosHoy !== null/.test(inicio197),
+    /setInterval\(\(\) => setLatidoDePasos\(\(n\) => n \+ 1\), 60_000\)/.test(inicio197) && /\[vueltas, latidoDePasos\]/.test(inicio197),
+    /\{!compacto && \(/.test(de197('movil', 'src', 'PasosInicio.tsx')),
+  ], [true, true, false, true, true]);
+  const amigo197 = de197('movil', 'src', 'PerfilDeAmigo.tsx');
+  chequear('la foto de perfil del amigo se abre grande, y sin foto no hay botón', [
+    /disabled=\{!usuario\.avatar_url\}/.test(amigo197),
+    /<FotoGrande url=\{fotoGrande \? usuario\.avatar_url : null\}/.test(amigo197),
+    /resizeMode="contain"/.test(de197('movil', 'src', 'FotoGrande.tsx')),
+  ], [true, true, true]);
+  chequear('la rutina se pide solo de un amigo, y vacía no se dibuja', [
+    /if \(d\?\.esAmigo\) cargarRutinaDeAmigo\(supabase, id\)/.test(amigo197),
+    /\{rutina\.length > 0 && \(/.test(amigo197),
+    /rpc\('fijar_comparte_rutina', \{ p_valor: v \}\)/.test(de197('movil', 'src', 'Ajustes.tsx')),
+    /value=\{perfil\.comparte_rutina !== false\}/.test(de197('movil', 'src', 'Ajustes.tsx')),
+  ], [true, true, true, true]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

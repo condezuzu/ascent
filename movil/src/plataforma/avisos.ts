@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import type { Avisos } from '@nucleo/plataforma';
+import { esEco } from '@nucleo/avisoDescanso';
 
 /**
  * EL AVISO DE FIN DE DESCANSO — y la otra mitad de la razón de migrar.
@@ -33,9 +34,13 @@ import type { Avisos } from '@nucleo/plataforma';
 //
 // EL SONIDO SÍ SE QUEDA: es el mismo aviso, y quitarlo dejaría el caso de la
 // app abierta con el teléfono en el bolsillo sin nada que se oiga.
+//
+// LOS ECOS NO SUENAN CON LA APP ABIERTA (8/10): existen para vibrar con el
+// teléfono bloqueado. Adelante, la pantalla ya vibró tres veces y la campana
+// ya sonó: repetirla dos veces más sería una alarma.
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
+  handleNotification: async (n) => ({
+    shouldPlaySound: !esEco((n.request.content.data as { ascent?: string } | null)?.ascent),
     shouldSetBadge: false,
     shouldShowBanner: false,
     shouldShowList: false,

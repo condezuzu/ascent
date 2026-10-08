@@ -206,6 +206,8 @@ export type Pantalla = {
 export type Haptica = {
   disponible(): boolean;
   pulso(): boolean;
+  /** El aviso de fin de descanso: varios golpes seguidos (`nucleo/avisoDescanso.ts`). */
+  aviso(): boolean;
 };
 
 /**

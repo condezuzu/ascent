@@ -4,6 +4,7 @@ import { nombreDe } from './enCurso';
 import { T } from '@nucleo/textos';
 import { metaQueSeDice, type HechoAntesDelDescanso } from '@nucleo/bloques';
 import type { ContextoDelDescanso } from '@nucleo/plataforma';
+import { avisosDelDescanso, idsDelAviso } from '@nucleo/avisoDescanso';
 
 const CLAVE = 'ascent:descanso';
 
@@ -110,10 +111,16 @@ async function avisarAlTerminar(d: DescansoVivo | null) {
 
   if (!plataforma.avisos.conPantallaBloqueada()) return;
   const faltan = d ? restante(d.fin) : 0;
-  if (faltan <= 0) return plataforma.avisos.cancelar(AVISO);
+  // TRES AVISOS, NO UNO (8/10): bloqueado, lo único que vibra es el aviso del
+  // sistema, y uno solo en el bolsillo no se siente. Se cancelan los tres
+  // siempre juntos. Ver `nucleo/avisoDescanso.ts`.
+  if (faltan <= 0) {
+    await Promise.all(idsDelAviso(AVISO).map((id) => plataforma.avisos.cancelar(id)));
+    return;
+  }
   // Con la app adelante el aviso lo da la pantalla del descanso: el callback
   // no hace nada más.
-  await plataforma.avisos.programar(AVISO, faltan, () => {});
+  for (const a of avisosDelDescanso(AVISO, faltan)) await plataforma.avisos.programar(a.id, a.en, () => {});
 }
 
 async function enVivoAlTerminar(d: DescansoVivo | null) {
@@ -208,7 +215,7 @@ export function duracionValida(valor: unknown): number {
  * notificación.
  */
 export function vibrar(): boolean {
-  return plataforma.haptica.pulso();
+  return plataforma.haptica.aviso();
 }
 
 export function puedeVibrar(): boolean {
