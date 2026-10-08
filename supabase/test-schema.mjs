@@ -15627,6 +15627,7 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
 
   // ---- F. EL LINK DE AMIGO ----
   const EN197 = await import('../nucleo/enlace.ts');
+  const { T: T197 } = await import('../nucleo/textos.ts');
   chequear('el link es https a la web, y la web abre la app', [EN197.enlaceDeAmigo('ana_1'), EN197.enlaceALaApp('ana_1')], ['https://ascent-blush-seven.vercel.app/amigo/ana_1', 'ascent://amigo/ana_1']);
   chequear('de un link sale el nombre, venga de la web o de la app; de otra cosa, nada', [
     EN197.usuarioDeEnlace('https://ascent-blush-seven.vercel.app/amigo/ana_1'),
@@ -15673,6 +15674,34 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     /Share\.share\(\{ message: T\.social\.invitacion\(enlaceDeAmigo\(usuario\)\) \}\)/.test(de197('movil', 'src', 'InvitarConLink.tsx')),
     /<InvitarConLink usuario=/.test(de197('movil', 'src', 'Ranking.tsx')) && /<InvitarConLink usuario=\{perfil\.username\}/.test(de197('movil', 'src', 'PerfilPropio.tsx')),
   ], [true, true, true, true]);
+
+  // ---- EL AVISO DE UNA VEZ DE QUE LA RUTINA SE VE ----
+  const AR197 = await import('../nucleo/avisoRutina.ts');
+  const toca = (e) => AR197.tocaAvisarDeLaRutina({ uid: 'u1', vistoPor: [], recorridoAndando: false, comparte: true, ...e });
+  chequear('se avisa a quien la comparte y no lo vio; no con el recorrido andando, ni a quien la escondió, ni sin saber', [
+    toca({}), toca({ vistoPor: ['u1'] }), toca({ vistoPor: ['otra'] }), toca({ recorridoAndando: true }),
+    toca({ comparte: false }), toca({ comparte: null }), toca({ uid: '' }),
+  ], [true, false, true, false, false, false, false]);
+  // Por el camino entero: lo que se guarda al verlo es lo que después se lee, y dos cuentas no se pisan.
+  const trasUna = AR197.conEsteVisto(null, 'u1');
+  const trasDos = AR197.conEsteVisto(AR197.conEsteVisto(trasUna, 'u2'), 'u1');
+  chequear('visto queda visto, por cuenta, y la basura no rompe', [
+    toca({ vistoPor: AR197.quienesLoVieron(trasUna) }),
+    AR197.quienesLoVieron(trasDos),
+    AR197.quienesLoVieron('{no es json'), AR197.quienesLoVieron('"u1"'),
+  ], [false, ['u1', 'u2'], [], []]);
+  const aviso197 = de197('movil', 'src', 'AvisoRutina.tsx');
+  chequear('el aviso está montado, lleva a Ajustes y los dos botones lo dan por visto', [
+    /<AvisoRutina \/>/.test(de197('movil', 'src', 'Pestanas.tsx')),
+    /if \(irAAjustes\) irAPestana\('ajustes'\)/.test(aviso197),
+    /guardar\(CLAVE_AVISO_RUTINA, conEsteVisto\(crudo, yo\)\)/.test(aviso197),
+    /onPress=\{\(\) => void visto\(false\)\}/.test(aviso197) && /onPress=\{\(\) => void visto\(true\)\}/.test(aviso197),
+    /\(await leerPasoDelRecorrido\(yo\)\) !== null/.test(aviso197),
+  ], [true, true, true, true, true]);
+  chequear('la página del link numera los pasos del que no tiene la app, y el último dice que hay que volver', [
+    /<ol>[\s\S]*enlacePaso1[\s\S]*enlacePaso2[\s\S]*enlacePaso3\(nombre\)[\s\S]*<\/ol>/.test(pagina197),
+    /Vuelve a este mismo enlace/.test(T197.social.enlacePaso3('ana')),
+  ], [true, true]);
 
   // ---- C y D, y el interruptor de G: son componentes, se leen ----
   const inicio197 = de197('movil', 'src', 'Inicio.tsx');

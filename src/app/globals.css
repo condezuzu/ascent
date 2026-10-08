@@ -5315,6 +5315,13 @@ body.con-franja.con-accion .pantalla {
 }
 /* El botón de la página del link de amigo: el color de enlace de arriba le
    ganaba al del botón y el texto quedaba del mismo color que el fondo. */
+.legal ol {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .legal a.boton-solido {
   color: #08080c;
   margin: 22px 0;

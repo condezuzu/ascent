@@ -18,6 +18,7 @@ import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
 import Recorrido from './Recorrido';
+import AvisoRutina from './AvisoRutina';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -550,6 +551,9 @@ export default function Pestanas({
           recorrido: puesto una vez, aparece donde tiene que aparecer. No
           dibuja nada si no hay recorrido andando. */}
       <Recorrido pestana={pestana} />
+      {/* El aviso de una vez de que la rutina se ve (8/10). Espera a que el
+          recorrido no esté: nunca se ven los dos juntos. */}
+      <AvisoRutina />
 
       <View style={estilos.barra} accessibilityRole="tablist">
         {/* El orden de la web: Inicio, Ranking, Álbum, Stats, Ajustes. */}

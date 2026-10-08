@@ -127,6 +127,9 @@ camino se anota abajo, en "Después", y no se mete.
   debajo de las fotos, por día de la semana, los ejercicios y cuántas series,
   de las últimas cuatro semanas. Nunca pesos ni duración (§17.8 sigue: la
   tabla de sesiones no se abre). Prendido por omisión; se esconde en Ajustes.
+  Como ya había 42 cuentas, la app lo AVISA una vez (`nucleo/avisoRutina.ts`)
+  con un botón a Ajustes. "Una vez" es por cuenta y por teléfono: lo visto se
+  guarda en el aparato; por cuenta de verdad pide una columna en la base.
 
 ### UNA sola build para todo lo nativo (decidido el 7/10/2026)
 
@@ -137,8 +140,11 @@ una sola cosa:
 - la tarjeta de la pantalla bloqueada: que muestre "Serie 0" / el ejercicio
   recién elegido con su meta (hoy el widget esconde la serie 0), y los pasos
   si se decide mostrarlos ahí;
-- el enlace de amigo que sobreviva a la instalación, y que el `https` abra la
-  app directo sin pasar por la página (dominios asociados);
+- **el enlace de amigo tiene que sobrevivir a la instalación.** Hoy el
+  invitado sin la app la baja, crea la cuenta y tiene que VOLVER a tocar el
+  enlace (la página lo dice en tres pasos numerados): se pierde la mitad de la
+  gracia de la invitación. Y que el `https` abra la app directo, sin pasar
+  por la página (dominios asociados);
 - un solo aviso de fin de descanso con vibración larga, en vez de tres;
 - Diagnóstico sin depender de una variable de compilación (ya anotado abajo);
 - lo que quede pendiente de capa nativa al llegar ese día.

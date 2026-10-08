@@ -43,10 +43,29 @@ export default async function Amigo({ params }: Props) {
       ) : (
         <p>{T.social.enlaceMalo}</p>
       )}
-      <p>
-        {T.social.enlaceSinApp} <a href={TIENDA}>{T.social.enlaceTienda}</a>
-        {nombre ? ` ${T.social.enlaceDespues}` : '.'}
-      </p>
+      {/* LOS TRES PASOS DEL QUE NO TIENE LA APP, numerados (8/10): el enlace
+          no sobrevive a la instalación, así que hay que volver a tocarlo. Si
+          eso no queda dicho, el invitado instala, no pasa nada y nadie sabe
+          por qué. */}
+      {nombre ? (
+        <>
+          <h2>{T.social.enlaceSinApp}</h2>
+          <ol>
+            <li>
+              <a href={TIENDA}>{T.social.enlacePaso1}</a>.
+            </li>
+            <li>{T.social.enlacePaso2}</li>
+            <li>
+              <strong>{T.social.enlacePaso3(nombre)}</strong>
+            </li>
+          </ol>
+          <p>{T.social.enlaceOjo}</p>
+        </>
+      ) : (
+        <p>
+          <a href={TIENDA}>{T.social.enlaceTienda}</a>.
+        </p>
+      )}
     </main>
   );
 }

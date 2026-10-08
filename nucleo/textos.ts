@@ -1311,6 +1311,14 @@ export const T = {
     invitacion: (url: string) => `Agrégame en Ascent: ${url}`,
 
     suRutina: 'Su rutina',
+    avisoRutina: 'Novedad: tus amigos ahora ven tu rutina, ejercicios y series. Se apaga en Ajustes.',
+    // No 'Entendido': así se llama el botón de la ventana de las vidas, y las sondas la cierran por ese texto.
+    avisoRutinaEntendido: 'De acuerdo',
+    avisoRutinaAjustes: 'Ir a Ajustes',
+    enlacePaso1: 'Descárgala en el App Store',
+    enlacePaso2: 'Crea tu cuenta.',
+    enlacePaso3: (nombre: string) => `Vuelve a este mismo enlace y toca "Abrir en Ascent": ahí se agrega a ${nombre}.`,
+    enlaceOjo: 'Sin ese último paso la solicitud no se manda.',
     seriesDeRutina: (n: number) => (n === 1 ? '1 serie' : `${n} series`),
     cerrarFoto: 'Cerrar',
     verFoto: (nombre: string) => `Ver la foto de ${nombre}`,
@@ -1318,9 +1326,8 @@ export const T = {
     enlaceTitulo: (nombre: string) => `${nombre} te invita a Ascent`,
     enlacePie: 'Abre su perfil en la app para agregarlo.',
     enlaceAbrir: 'Abrir en Ascent',
-    enlaceSinApp: '¿Todavía no la tienes?',
-    enlaceTienda: 'Descárgala en el App Store',
-    enlaceDespues: 'y vuelve a tocar este enlace.',
+    enlaceSinApp: '¿Todavía no tienes la app? Son tres pasos:',
+    enlaceTienda: 'Descarga Ascent en el App Store',
     enlaceMalo: 'Este enlace no lleva a nadie.',
     sinResultado: 'No encontramos a nadie con ese nombre.',
     // El título decía "Leaderboard" mientras la barra de abajo decía
