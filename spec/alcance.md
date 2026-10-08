@@ -129,7 +129,8 @@ camino se anota abajo, en "Después", y no se mete.
   tabla de sesiones no se abre). Prendido por omisión; se esconde en Ajustes.
   Como ya había 42 cuentas, la app lo AVISA una vez (`nucleo/avisoRutina.ts`)
   con un botón a Ajustes. "Una vez" es por cuenta y por teléfono: lo visto se
-  guarda en el aparato; por cuenta de verdad pide una columna en la base.
+  guarda en el aparato. **Decidido el 8/10: queda así, por teléfono.** No es
+  un pendiente: no se hace la migración para guardarlo en la base.
 
 ### UNA sola build para todo lo nativo (decidido el 7/10/2026)
 
