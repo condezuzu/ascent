@@ -6,6 +6,11 @@ import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import { C } from './colores';
+import { supabase } from './supabase';
+import { leerRecordados, recordadosAlDia, type Recordados } from '@compartido/pesosRecordados';
+import { leerPerfilCache } from '@compartido/cache';
+import { claveDeEtiqueta } from '@nucleo/carga';
+import { pesoLindo } from '@nucleo/fuerza';
 
 /**
  * ELEGIR ENTRE CIEN EJERCICIOS, NAVEGANDO. El mismo árbol que la web
@@ -23,7 +28,7 @@ import { C } from './colores';
 function Fila({ texto, extra, elegido, onPress }: { texto: string; extra?: string; elegido?: boolean; onPress: () => void }) {
   return (
     <Pressable style={estilos.fila} onPress={onPress} accessibilityRole="button">
-      <Text style={[estilos.filaTexto, elegido && estilos.elegido]}>{texto}</Text>
+      <Text style={[estilos.filaTexto, elegido && estilos.elegido]} numberOfLines={1}>{texto}</Text>
       {extra !== undefined && <Text style={estilos.extra}>{extra}</Text>}
     </Pressable>
   );
@@ -45,6 +50,28 @@ function SelectorEjercicio({
   const actual = ejercicios.find((e) => e.id === valor) ?? null;
   const [zona, setZona] = useState<Zona | null>(null);
   const [grupo, setGrupo] = useState<string | null>(null);
+
+  // LO MÁS PESADO DE LA ÚLTIMA VEZ, al lado de cada nombre (10/10). Primero lo
+  // que el teléfono ya tiene guardado —aparece en el acto, también sin señal— y
+  // después lo de la base, por si se entrenó en otro aparato.
+  const [ultimos, setUltimos] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!visible) return;
+    let vivo = true;
+    const poner = async (r: Recordados) => {
+      const unidad = (await leerPerfilCache())?.unidad_peso ?? 'kg';
+      if (!vivo) return;
+      setUltimos(
+        Object.fromEntries(
+          Object.entries(r.maximos).map(([id, m]) => [id, T.resumen.pesoEnLista(pesoLindo(m.peso, unidad), claveDeEtiqueta(m.carga, id))])
+        )
+      );
+    };
+    void leerRecordados().then(poner).then(() => recordadosAlDia(supabase)).then(poner).catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [visible]);
 
   // Abre donde está lo que ya tenías: pasar de press inclinado a declinado no
   // obliga a bajar todo el árbol.
@@ -96,7 +123,7 @@ function SelectorEjercicio({
           <Fila texto={T.sesion.sinEjercicio} onPress={() => elegir(null)} />
           <Text style={estilos.rotulo}>{T.marca.cuentanDots}</Text>
           {delDots.map((e) => (
-            <Fila key={e.id} texto={e.nombre} elegido={e.id === valor} onPress={() => elegir(e.id)} />
+            <Fila key={e.id} texto={e.nombre} extra={ultimos[e.id]} elegido={e.id === valor} onPress={() => elegir(e.id)} />
           ))}
           <View style={estilos.separa} />
           {ORDEN_ZONAS.filter((z) => gruposDeZona(z, grupos).length > 0).map((z) => (
@@ -122,7 +149,7 @@ function SelectorEjercicio({
       {grupo &&
         ejercicios
           .filter((e) => e.grupo === grupo)
-          .map((e) => <Fila key={e.id} texto={e.nombre} elegido={e.id === valor} onPress={() => elegir(e.id)} />)}
+          .map((e) => <Fila key={e.id} texto={e.nombre} extra={ultimos[e.id]} elegido={e.id === valor} onPress={() => elegir(e.id)} />)}
 
       <Pressable style={estilos.cancelar} onPress={alCerrar}>
         <Text style={estilos.cancelarTexto}>{T.general.cancelar}</Text>
@@ -148,9 +175,11 @@ const estilos = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.linea,
   },
-  filaTexto: { color: C.sub, fontSize: 16 },
+  // `flexShrink`: con el peso al lado, un nombre largo se corta él y no empuja el número afuera.
+  filaTexto: { color: C.sub, fontSize: 16, flexShrink: 1, paddingRight: 12 },
   elegido: { color: C.tinta, fontWeight: '600' },
-  extra: { color: C.apagado, fontSize: 14 },
+  // Más claro que el nombre: el peso es lo que se viene a leer (10/10).
+  extra: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
   cancelar: { paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   cancelarTexto: { color: C.sub, fontSize: 14 },
 });

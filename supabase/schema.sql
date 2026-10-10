@@ -710,9 +710,10 @@ $$;
 -- -------------------------------------------------------------
 -- LAS VIDAS (migración 32)
 -- -------------------------------------------------------------
--- Tres por mes, se aplican solas y no se acumulan. El porqué de cada
--- una de esas tres cosas está en `supabase/migracion-32-vidas.sql` y en
--- `spec/producto.md`.
+-- Se aplican solas y no se acumulan (el porqué, en
+-- `supabase/migracion-32-vidas.sql` y `spec/producto.md`). CUÁNTAS: no son
+-- "tres por mes" desde la migración 34 — son DOS, y la tercera se tiene
+-- mientras la racha esté en 20 o más (`impulsos_ganados`, abajo).
 create table if not exists public.vidas_usadas (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,

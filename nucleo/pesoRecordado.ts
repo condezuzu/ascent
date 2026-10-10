@@ -61,6 +61,53 @@ export function pesosDeBloques(bloques: unknown, catalogo: ModosDelCatalogo, sob
   return r;
 }
 
+/**
+ * LO MÁS PESADO DE LA ÚLTIMA VEZ (10/10/2026), para la lista de ejercicios.
+ *
+ * No es lo mismo que `PesosPorModo`: aquel guarda la ÚLTIMA serie de cada modo,
+ * para proponer con qué arrancar. Este guarda la serie MÁS PESADA de la última
+ * sesión en que se hizo el ejercicio, con el modo en que se anotó: es lo que
+ * uno quiere leer al lado del nombre para acordarse de dónde estaba.
+ */
+export type MaximosDeLaUltima = Record<string, { peso: number; carga: Carga }>;
+
+/** Los bloques de UNA sesión: lo más pesado de cada ejercicio pisa lo que se sabía de antes. */
+export function maximosDeBloques(bloques: unknown, catalogo: ModosDelCatalogo, sobre: MaximosDeLaUltima = {}): MaximosDeLaUltima {
+  if (!Array.isArray(bloques)) return sobre;
+  const deEsta: MaximosDeLaUltima = {};
+  for (const b of bloques) {
+    if (!b || typeof b !== 'object') continue;
+    const x = b as { ejercicio?: unknown; pesos?: unknown; carga?: unknown };
+    if (typeof x.ejercicio !== 'string' || !Array.isArray(x.pesos)) continue;
+    const modo = modoDeBloque(x.ejercicio, x.carga, catalogo);
+    if (modo === null || modo === 'corporal') continue;
+    for (const crudo of x.pesos) {
+      const p = pesoValido(crudo);
+      if (p !== null && p > (deEsta[x.ejercicio]?.peso ?? 0)) deEsta[x.ejercicio] = { peso: p, carga: modo };
+    }
+  }
+  return { ...sobre, ...deEsta };
+}
+
+export function maximosDelHistorial(sesiones: unknown, catalogo: ModosDelCatalogo): MaximosDeLaUltima {
+  if (!Array.isArray(sesiones)) return {};
+  return sesiones.reduce<MaximosDeLaUltima>(
+    (r, s) => maximosDeBloques((s as { bloques?: unknown } | null)?.bloques, catalogo, r),
+    {}
+  );
+}
+
+export function leerMaximos(crudo: unknown): MaximosDeLaUltima {
+  if (!crudo || typeof crudo !== 'object' || Array.isArray(crudo)) return {};
+  const r: MaximosDeLaUltima = {};
+  for (const [ejercicio, m] of Object.entries(crudo)) {
+    const peso = pesoValido((m as { peso?: unknown } | null)?.peso);
+    const carga = cargaValida((m as { carga?: unknown } | null)?.carga);
+    if (peso !== null && carga !== null && carga !== 'corporal') r[ejercicio] = { peso, carga };
+  }
+  return r;
+}
+
 /** El historial entero: las sesiones de la más vieja a la más nueva. */
 export function pesosDelHistorial(sesiones: unknown, catalogo: ModosDelCatalogo): PesosPorModo {
   if (!Array.isArray(sesiones)) return {};

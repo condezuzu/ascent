@@ -13363,7 +13363,7 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
   // ---- COMO ESTABA EL TELÉFONO: nadie guardó la copia ----
   memoria.clear();
   chequear('sin la copia del perfil no hay de quién sea el historial: no propone nada',
-    [await R.traerRecordados(base), pedidos], [{ pesos: {}, catalogo: {} }, 0]);
+    [await R.traerRecordados(base), pedidos], [{ pesos: {}, catalogo: {}, maximos: {} }, 0]);
 
   // ---- COMO QUEDA DESPUÉS DE CARGAR INICIO, que ahora la guarda ----
   await guardarPerfilCache(perfilDe('cuenta-a'));
@@ -13374,7 +13374,47 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
 
   // ---- Y NO SE CRUZA DE CUENTA ----
   await guardarPerfilCache(perfilDe('cuenta-b'));
-  chequear('otra cuenta en el mismo teléfono no ve los pesos de la anterior', await R.leerRecordados(), { pesos: {}, catalogo: {} });
+  chequear('otra cuenta en el mismo teléfono no ve los pesos de la anterior', await R.leerRecordados(), { pesos: {}, catalogo: {}, maximos: {} });
+
+  // ---- LO MÁS PESADO DE LA ÚLTIMA VEZ, para la lista de ejercicios (10/10) ----
+  // Por el mismo camino: lo que trae la base, lo que queda en el aparato, y lo
+  // que suma una sesión recién terminada.
+  await guardarPerfilCache(perfilDe('cuenta-a'));
+  chequear('la copia trae además lo más pesado de la última vez, con su modo', (await R.traerRecordados(base)).maximos[REMO], { peso: 22, carga: 'par' });
+  chequear('y eso también queda en el aparato', (await R.leerRecordados()).maximos[REMO], { peso: 22, carga: 'par' });
+  await R.sumarSesionARecordados([
+    { ejercicio: REMO, series: 2, pesos: [24, 26], carga: 'par' },
+    { ejercicio: 'sentadilla', series: 1, pesos: [100], carga: 'total' },
+    { ejercicio: REMO, series: 1, pesos: [25], carga: 'par' },
+  ]);
+  chequear('terminar una sesión lo actualiza sin esperar a la base', (await R.leerRecordados()).maximos, {
+    [REMO]: { peso: 26, carga: 'par' }, sentadilla: { peso: 100, carga: 'total' },
+  });
+  // AL REABRIR LA APP se lee del aparato, no de la memoria. Pasar por otra
+  // cuenta y volver es lo que tira la copia en memoria: lo que vuelve salió
+  // del almacenamiento. (Sin esto, perder los máximos al leer pasaba en verde.)
+  await guardarPerfilCache(perfilDe('cuenta-b'));
+  await R.leerRecordados();
+  await guardarPerfilCache(perfilDe('cuenta-a'));
+  chequear('y al reabrir la app sigue ahí: se lee del aparato', (await R.leerRecordados()).maximos, {
+    [REMO]: { peso: 26, carga: 'par' }, sentadilla: { peso: 100, carga: 'total' },
+  });
+  const PR197 = await import('../nucleo/pesoRecordado.ts');
+  const cat197 = { press_banca: 'total', dominadas: 'corporal', remo: 'total' };
+  chequear('es lo más pesado de la ÚLTIMA sesión, no de la historia; lo que no se repitió queda; sin número no hay nada', PR197.maximosDelHistorial([
+    { bloques: [{ ejercicio: 'press_banca', pesos: [80, 90, 85] }, { ejercicio: 'remo', pesos: [70] }] },
+    { bloques: [{ ejercicio: 'press_banca', pesos: [60, 62.5] }, { ejercicio: 'press_banca', pesos: [55] }, { ejercicio: 'dominadas', pesos: [10] }, { ejercicio: 'remo', pesos: [] }] },
+  ], cat197), { press_banca: { peso: 62.5, carga: 'total' }, remo: { peso: 70, carga: 'total' } });
+  chequear('lo guardado con otra forma se descarta', PR197.leerMaximos({ a: { peso: 60, carga: 'total' }, b: { peso: 'x', carga: 'total' }, c: { peso: 5, carga: 'corporal' }, d: null }), { a: { peso: 60, carga: 'total' } });
+  const { T: T166 } = await import('../nucleo/textos.ts');
+  chequear('en la lista se lee corto, y por mancuerna lo dice', [T166.resumen.pesoEnLista('60 kg', 'total'), T166.resumen.pesoEnLista('30 kg', 'par'), T166.resumen.pesoEnLista('20 kg', 'parPolea')], ['60 kg', '30 kg c/u', '20 kg c/lado']);
+  const { readFileSync: leerSel } = await import('node:fs');
+  const sel197 = sinComentarios(leerSel(new URL('../movil/src/SelectorEjercicio.tsx', import.meta.url), 'utf8'));
+  chequear('la lista de ejercicios lo muestra al lado de cada nombre, en la unidad de la persona', [
+    (sel197.match(/extra=\{ultimos\[e\.id\]\}/g) ?? []).length,
+    /pesoLindo\(m\.peso, unidad\), claveDeEtiqueta\(m\.carga, id\)/.test(sel197),
+    /leerRecordados\(\)\.then\(poner\)\.then\(\(\) => recordadosAlDia\(supabase\)\)\.then\(poner\)/.test(sel197),
+  ], [2, true, true]);
 
   // ---- EL CABLEADO: las DOS apps guardan la copia donde cargan el perfil ----
   // `compartido/` la lee desde las dos; si una sola la escribe, en la otra todo

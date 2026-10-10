@@ -156,6 +156,10 @@ export const T = {
       `${lista} ${unidad}${
         { total: '', par: ' por mancuerna', parPolea: ' de cada lado', una: ', un lado por vez', lastre: ' de lastre', corporal: '' }[carga]
       }`,
+    // Al lado del nombre, en la lista de ejercicios: "60 kg" · "30 kg c/u".
+    // Corto a propósito: es para leer de un vistazo, no una explicación.
+    pesoEnLista: (peso: string, carga: 'total' | 'par' | 'parPolea' | 'una' | 'lastre' | 'corporal') =>
+      peso + { total: '', par: ' c/u', parPolea: ' c/lado', una: '', lastre: ' de lastre', corporal: '' }[carga],
     ejercicioSinNombre: 'Un ejercicio que ya no está',
     enCurso: 'La sesión sigue abierta: esto se completa al terminarla.',
     // Cada forma de entrar dice lo que pasó, sin disculparse por lo que falta.

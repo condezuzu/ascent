@@ -6,6 +6,10 @@ import {
   leerPesosPorModo,
   pesosDeBloques,
   pesosDelHistorial,
+  leerMaximos,
+  maximosDeBloques,
+  maximosDelHistorial,
+  type MaximosDeLaUltima,
   type ModosDelCatalogo,
   type PesosPorModo,
 } from '@nucleo/pesoRecordado';
@@ -32,9 +36,11 @@ const CLAVE = 'ascent:pesos-por-modo';
 /** La misma ventana que `como_arranca`: un peso de hace un año no se propone. */
 const DIAS = 90;
 
-export type Recordados = { pesos: PesosPorModo; catalogo: ModosDelCatalogo };
+// `maximos` (10/10): lo más pesado de la última vez de cada ejercicio, para la
+// lista. Sale de las mismas sesiones y viaja en la misma copia.
+export type Recordados = { pesos: PesosPorModo; catalogo: ModosDelCatalogo; maximos: MaximosDeLaUltima };
 
-const NADA: Recordados = { pesos: {}, catalogo: {} };
+const NADA: Recordados = { pesos: {}, catalogo: {}, maximos: {} };
 
 // En memoria y fuera del hook: `useSesion` tiene dos instancias (Inicio y el
 // vigilante) y las dos tienen que ver lo mismo sin pedirlo dos veces.
@@ -55,8 +61,11 @@ export async function leerRecordados(): Promise<Recordados> {
     if (!yo) return NADA;
     if (memo?.de === yo) return memo.datos;
     const crudo = await plataforma.almacenamiento.leer(CLAVE);
-    const g = crudo ? (JSON.parse(crudo) as { de?: unknown; pesos?: unknown; catalogo?: unknown }) : null;
-    const datos = g?.de === yo ? { pesos: leerPesosPorModo(g.pesos), catalogo: leerModosDelCatalogo(g.catalogo) } : NADA;
+    const g = crudo ? (JSON.parse(crudo) as { de?: unknown; pesos?: unknown; catalogo?: unknown; maximos?: unknown }) : null;
+    const datos =
+      g?.de === yo
+        ? { pesos: leerPesosPorModo(g.pesos), catalogo: leerModosDelCatalogo(g.catalogo), maximos: leerMaximos(g.maximos) }
+        : NADA;
     memo = { de: yo, datos };
     return datos;
   } catch {
@@ -94,7 +103,11 @@ export function traerRecordados(supabase: Cliente): Promise<Recordados> {
       const catalogo = leerModosDelCatalogo(
         Object.fromEntries(((ejercicios.data ?? []) as { id: string; carga?: unknown }[]).map((e) => [e.id, e.carga]))
       );
-      const datos = { pesos: pesosDelHistorial(sesiones.data ?? [], catalogo), catalogo };
+      const datos = {
+        pesos: pesosDelHistorial(sesiones.data ?? [], catalogo),
+        catalogo,
+        maximos: maximosDelHistorial(sesiones.data ?? [], catalogo),
+      };
       await guardar(yo, datos);
       alDiaDe = yo;
       return datos;
@@ -125,7 +138,11 @@ export async function sumarSesionARecordados(bloques: unknown): Promise<void> {
     const yo = await quienSoy();
     if (!yo) return;
     const antes = await leerRecordados();
-    await guardar(yo, { pesos: pesosDeBloques(bloques, antes.catalogo, antes.pesos), catalogo: antes.catalogo });
+    await guardar(yo, {
+      pesos: pesosDeBloques(bloques, antes.catalogo, antes.pesos),
+      catalogo: antes.catalogo,
+      maximos: maximosDeBloques(bloques, antes.catalogo, antes.maximos),
+    });
   } catch {
     // Es una conveniencia: no puede frenar el cierre de la sesión.
   }

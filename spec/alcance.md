@@ -162,6 +162,52 @@ una sola cosa:
     dueño del estado de la sesión de entrenamiento"). No es una tarea aparte:
     la I no se empieza hasta que esté.
 
+### Del gimnasio, 10/10/2026 (después de dos días de uso)
+
+- **Hecho: el peso de la última vez al lado de cada ejercicio**, en la lista.
+  Es lo más pesado de la última sesión en que se hizo, con su modo ("30 kg
+  c/u"). Mira 90 días, como el resto de los pesos recordados. Solo en la app.
+- **Las vidas no están rotas.** La regla (`impulsos_ganados`, migración 34):
+  dos para todos, y la tercera se tiene mientras la racha esté en 20 o más. Si
+  la racha baja de 20, la tercera se va.
+- **PENDIENTE DE DECISIÓN: marcar que la próxima vez se puede con más peso.**
+  La app NO sabe si salieron todas las repeticiones: no las anota (regla del
+  módulo: "no es Hevy"), y la meta de series tampoco se guarda con el bloque.
+  Opciones y costo, para decidir:
+  - *A mano, guardado en el teléfono:* un toque "la próxima, más" en el
+    bloque; la vez siguiente propone el peso más un disco. Chico, solo OTA.
+    Se pierde al cambiar de teléfono.
+  - *A mano, guardado en la base:* lo mismo y sobrevive al cambio de
+    teléfono. Chico más una migración corta.
+  - *Que lo ofrezca la app en el momento (recomendado):* al llegar a la meta
+    con el mismo peso en todas las series aparece el toque, y la vez siguiente
+    dice "la última 4 × 60 kg; prueba 62,5". Es la opción a mano más un
+    disparador. Chico a medio.
+  - *Que lo proponga sola, sin preguntar:* barato de escribir y propone mal,
+    porque subir depende de las repeticiones que la app no conoce.
+  - *Anotar repeticiones:* grande, y contradice cómo se cuenta una serie hoy
+    (un toque, sin teclado).
+- **Anotado, ÚLTIMO en prioridad: un logro por llegar a los pasos varios días
+  seguidos.** Los pasos se leen de Salud en el teléfono y no están en la base.
+  - *Solo para uno* (una racha de pasos en Inicio o en Stats, calculada en el
+    teléfono con el historial de Salud): chico a medio, solo OTA.
+  - *Que la vean los amigos*, como las medallas: medio, con migración, y es
+    subir a la base un dato de salud que hoy no sale del teléfono.
+  - A decidir antes: si cambiar la meta reescribe los días ya cumplidos
+    (regla 3 del proyecto: el pasado no se reescribe).
+- **Anotado: dominio propio para el link de invitación** (hoy
+  `ascent-blush-seven.vercel.app`, que en un chat parece spam).
+  - Hace falta: comprar el dominio (lo hace el humano, es un pago anual),
+    agregarlo al proyecto en Vercel y cargar los registros DNS que Vercel
+    indica. El dominio viejo sigue andando: los links ya mandados no se rompen.
+  - En el código es UNA línea (`SITIO` en `nucleo/enlace.ts`), pero esa línea
+    viaja en la app: los links que arma "Invitar con tu link" cambian recién
+    con una OTA. No pide build.
+  - Revisar al hacerlo: la URL del sitio y las de vuelta permitidas en
+    Supabase Auth, y las de privacidad y soporte en App Store Connect.
+  - **Elegirlo ANTES de la build única:** los dominios asociados (que el
+    `https` abra la app directo) se compilan con un dominio fijo.
+
 ### Al terminar todas las tandas: otra cacería de bugs
 
 Con muchos agentes ("ultracode"), como la del 4/10 que encontró 65. Con la regla
