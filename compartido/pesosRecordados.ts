@@ -1,6 +1,11 @@
 import type { Cliente } from '@cliente';
 import { plataforma } from '@plataforma';
 import { leerPerfilCache } from '@compartido/cache';
+import { encolar, estaPendiente } from '@compartido/cola';
+import { versionDelEsquema } from '@compartido/esquema';
+import { disponible } from '@nucleo/esquema';
+import { hoyISO } from '@nucleo/fechas';
+import { leerSubidas, subidasDeLaBase, subidasTrasLaSesion, type Subida, type Subidas } from '@nucleo/subir';
 import {
   leerModosDelCatalogo,
   leerPesosPorModo,
@@ -38,9 +43,11 @@ const DIAS = 90;
 
 // `maximos` (10/10): lo más pesado de la última vez de cada ejercicio, para la
 // lista. Sale de las mismas sesiones y viaja en la misma copia.
-export type Recordados = { pesos: PesosPorModo; catalogo: ModosDelCatalogo; maximos: MaximosDeLaUltima };
+// `subidas` (10/10): las marcas de "la próxima, más". La verdad está en la base
+// (migración 65); esta copia es para proponer el peso sin señal.
+export type Recordados = { pesos: PesosPorModo; catalogo: ModosDelCatalogo; maximos: MaximosDeLaUltima; subidas: Subidas };
 
-const NADA: Recordados = { pesos: {}, catalogo: {}, maximos: {} };
+const NADA: Recordados = { pesos: {}, catalogo: {}, maximos: {}, subidas: {} };
 
 // En memoria y fuera del hook: `useSesion` tiene dos instancias (Inicio y el
 // vigilante) y las dos tienen que ver lo mismo sin pedirlo dos veces.
@@ -61,10 +68,17 @@ export async function leerRecordados(): Promise<Recordados> {
     if (!yo) return NADA;
     if (memo?.de === yo) return memo.datos;
     const crudo = await plataforma.almacenamiento.leer(CLAVE);
-    const g = crudo ? (JSON.parse(crudo) as { de?: unknown; pesos?: unknown; catalogo?: unknown; maximos?: unknown }) : null;
+    const g = crudo
+      ? (JSON.parse(crudo) as { de?: unknown; pesos?: unknown; catalogo?: unknown; maximos?: unknown; subidas?: unknown })
+      : null;
     const datos =
       g?.de === yo
-        ? { pesos: leerPesosPorModo(g.pesos), catalogo: leerModosDelCatalogo(g.catalogo), maximos: leerMaximos(g.maximos) }
+        ? {
+            pesos: leerPesosPorModo(g.pesos),
+            catalogo: leerModosDelCatalogo(g.catalogo),
+            maximos: leerMaximos(g.maximos),
+            subidas: leerSubidas(g.subidas),
+          }
         : NADA;
     memo = { de: yo, datos };
     return datos;
@@ -95,11 +109,26 @@ export function traerRecordados(supabase: Cliente): Promise<Recordados> {
       const yo = await quienSoy();
       if (!yo) return NADA;
       const desde = new Date(Date.now() - DIAS * 24 * 60 * 60 * 1000).toISOString();
-      const [sesiones, ejercicios] = await Promise.all([
+      const conSubidas = disponible('subirPeso', await versionDelEsquema(supabase).catch(() => null));
+      const [sesiones, ejercicios, marcas] = await Promise.all([
         supabase.from('sesiones').select('bloques').neq('estado', 'corriendo').gte('inicio', desde).order('inicio'),
         supabase.from('ejercicios').select('id, carga'),
+        conSubidas ? supabase.rpc('mis_subidas') : Promise.resolve({ data: null, error: null }),
       ]);
       if (sesiones.error || ejercicios.error) return leerRecordados();
+      // LAS MARCAS: manda la base, que sabe cuáles ya se gastaron. Salvo la que
+      // este teléfono cambió y todavía no subió: esa es más nueva. Y si la base
+      // no contestó, se queda la copia.
+      const copia = (await leerRecordados()).subidas;
+      let subidas = copia;
+      if (conSubidas && !marcas.error) {
+        const deLaBase = subidasDeLaBase(marcas.data);
+        subidas = {};
+        for (const ejercicio of new Set([...Object.keys(deLaBase), ...Object.keys(copia)])) {
+          const vale = (await estaPendiente('marcar_subida', ejercicio)) ? copia[ejercicio] : deLaBase[ejercicio];
+          if (vale) subidas[ejercicio] = vale;
+        }
+      }
       const catalogo = leerModosDelCatalogo(
         Object.fromEntries(((ejercicios.data ?? []) as { id: string; carga?: unknown }[]).map((e) => [e.id, e.carga]))
       );
@@ -107,6 +136,7 @@ export function traerRecordados(supabase: Cliente): Promise<Recordados> {
         pesos: pesosDelHistorial(sesiones.data ?? [], catalogo),
         catalogo,
         maximos: maximosDelHistorial(sesiones.data ?? [], catalogo),
+        subidas,
       };
       await guardar(yo, datos);
       alDiaDe = yo;
@@ -121,6 +151,26 @@ export function traerRecordados(supabase: Cliente): Promise<Recordados> {
 }
 
 /** Lo más al día que se pueda: de la base una vez por sesión, y si no la copia. */
+/**
+ * MARCAR (o sacar, con `null`) "la próxima, más" de un ejercicio. Primero en el
+ * teléfono —el toque se ve en el acto y vale sin señal— y después a la base,
+ * por la cola: es de la cuenta, no del aparato.
+ */
+export async function marcarSubida(supabase: Cliente, ejercicio: string, s: Subida | null): Promise<void> {
+  const yo = await quienSoy();
+  if (!yo) return;
+  const antes = await leerRecordados();
+  const subidas = { ...antes.subidas };
+  if (s) subidas[ejercicio] = s;
+  else delete subidas[ejercicio];
+  await guardar(yo, { ...antes, subidas });
+  if (!disponible('subirPeso', await versionDelEsquema(supabase).catch(() => null))) return;
+  await encolar(supabase, {
+    rpc: 'marcar_subida',
+    args: { p_ejercicio: ejercicio, p_carga: s?.carga ?? null, p_peso: s?.peso ?? null, p_series: s?.series ?? null, p_dia: s?.dia ?? null },
+  });
+}
+
 export async function recordadosAlDia(supabase: Cliente): Promise<Recordados> {
   const yo = await quienSoy();
   if (yo && alDiaDe === yo) return leerRecordados();
@@ -142,6 +192,7 @@ export async function sumarSesionARecordados(bloques: unknown): Promise<void> {
       pesos: pesosDeBloques(bloques, antes.catalogo, antes.pesos),
       catalogo: antes.catalogo,
       maximos: maximosDeBloques(bloques, antes.catalogo, antes.maximos),
+      subidas: subidasTrasLaSesion(antes.subidas, bloques, hoyISO()),
     });
   } catch {
     // Es una conveniencia: no puede frenar el cierre de la sesión.

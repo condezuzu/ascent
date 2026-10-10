@@ -1108,6 +1108,11 @@ export const T = {
     // meta es normal y la app no puede dejar de permitirlo solo porque el
     // botón grande cambió de trabajo.
     sumarOtra: 'Sumar otra',
+    // "LA PRÓXIMA, MÁS" (10/10): se ofrece al llegar a la meta con el mismo
+    // peso en todas las series; la vez siguiente la app propone un disco más.
+    proximaMas: 'La próxima, más',
+    proximaMasMarcada: (peso: string) => `La próxima: ${peso} ✓`,
+    subidaNota: (series: number, antes: string, ahora: string) => `La última: ${series} × ${antes}. Hoy prueba ${ahora}.`,
 
     // LA LISTA DE LO HECHO. El − solo arregla el bloque en curso; si te
     // equivocaste hace veinte minutos no había forma de volver.

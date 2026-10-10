@@ -297,6 +297,27 @@ async function correr(app) {
     marcaEnLaSesion = true;
   });
 
+  // ---- "LA PRÓXIMA, MÁS" (10/10), solo en la nativa, que es donde existe ----
+  // Van dos series con 60 y la meta en ×5. Bajando la meta a ×2 queda cumplida
+  // con el mismo peso en todas: el toque tiene que aparecer, prenderse y llegar
+  // a la base. Después la meta vuelve a ×5 para que lo que sigue no cambie.
+  let marcoSubida = false;
+  if (app === 'movil') {
+    await paso('la próxima, más: se ofrece al llegar a la meta, y la marca llega a la base', async () => {
+      const { data: version } = await nuevoCliente().rpc('version_del_esquema');
+      if (!(version >= 65)) return nota(`la base está en ${version}: sin la migración 65 el toque no existe y no se prueba`);
+      const toque = page.getByTestId('la-proxima-mas');
+      if (await toque.isVisible().catch(() => false)) throw new Error('se ofrece subir ANTES de llegar a la meta (van 2 de 5)');
+      await texto('×2').click({ timeout: 30000 });
+      await toque.waitFor({ state: 'visible', timeout: 15000 });
+      await toque.click();
+      await page.getByText(/La próxima: 62,5 kg/).first().waitFor({ timeout: 15000 });
+      marcoSubida = true;
+      await texto('×5').click({ timeout: 30000 });
+      await toque.waitFor({ state: 'detached', timeout: 15000 });
+    });
+  }
+
   // Y el cierre con lo último todavía en la cola: Terminar tiene que subirlo
   // antes de cerrar.
   await paso('dos más sin red; vuelve la red y se termina al instante', async () => {
@@ -444,6 +465,13 @@ async function correr(app) {
     // Y EN LA NATIVA, CADA FOTO TIENE LA SUYA: es el archivo de verdad en el
     // bucket, no que el código la haya mandado.
     if (app === 'movil' && base_.miniaturas !== base_.fotos) problemas.push(`la nativa subió ${base_.fotos} foto(s) y ${base_.miniaturas} miniatura(s)`);
+    // LA MARCA DE "LA PRÓXIMA, MÁS", leída de la base y no de la pantalla: lo
+    // que se hizo (60 kg, 2 series), no lo que se va a proponer.
+    if (marcoSubida) {
+      const { data: marcas } = await s.from('subidas_marcadas').select('ejercicio, carga, peso, series').eq('user_id', uid);
+      const dicho = JSON.stringify((marcas ?? []).map((m) => [m.ejercicio, m.carga, Number(m.peso), m.series]));
+      if (dicho !== JSON.stringify([['press_banca', 'total', 60, 2]])) problemas.push(`la marca de "la próxima, más" no quedó en la base como se marcó: ${dicho}`);
+    }
     // limpieza
     const rutas = (gim.data ?? []).map((o) => `${uid}/${o.name}`);
     if (rutas.length) await s.storage.from('fotos').remove(rutas);

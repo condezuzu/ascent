@@ -89,6 +89,7 @@ import {
   type Recordados,
 } from '@compartido/pesosRecordados';
 import { modoDelBloqueEnCurso, ultimoPesoEnModo } from '@nucleo/pesoRecordado';
+import { pesoConSubida } from '@nucleo/subir';
 import { cargaValida, type Carga } from '@nucleo/carga';
 import type { OrigenSesion, ResultadoRegistro } from '@nucleo/tipos';
 
@@ -220,6 +221,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // primera vez no se muestra: a quien la contestó en otro teléfono se le
   // aparecería un segundo, hasta que llega la respuesta.
   const [cargaConsultada, setCargaConsultada] = useState<string | null>(null);
+  // "LA PRÓXIMA, MÁS" (10/10): el peso propuesto salió de una marca. Es para que
+  // la pantalla diga de dónde sale ese disco de más; no se guarda.
+  const [subida, setSubida] = useState<{ ejercicio: string; series: number; antes: number; ahora: number } | null>(null);
   // LA RUTINA QUE SE PROPONE SOLA (ver `nucleo/rutina.ts`). `sugerido` dice si el
   // ejercicio y el peso del bloque actual son una SUGERENCIA que todavía no se
   // confirmó (contando una serie): la UI la muestra distinta —"fantasma"— para
@@ -1072,6 +1076,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // este ejercicio, no se propone nada. No proponer nunca pierde un dato.
     const enCache = (await leerSesionCache())?.bloques;
     if (enCache && enCache.ejercicio === id && enCache.peso !== undefined && !enCache.pesoPropuesto) return;
+    // El disco se suma en la unidad de la persona. Se lee ACÁ, antes de mirar el estado.
+    const unidad = (await leerPerfilCache())?.unidad_peso ?? 'kg';
     // Recién ahora el estado, y de acá al final SIN `await`: la decisión y la
     // escritura salen del mismo valor.
     const actual = bloquesRef.current;
@@ -1083,7 +1089,12 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     const sinHistorial = Object.keys(datos.catalogo).length === 0;
     const recordado =
       ultimoPesoEnModo(actual, datos.pesos, id, modo, datos.catalogo) ?? (sinHistorial ? respaldo ?? null : null);
-    const b = proponerPeso(actual, recordado);
+    // CON UNA MARCA DE "LA PRÓXIMA, MÁS", un disco más que la última vez. La
+    // regla de cuándo vale está en `pesoConSubida`.
+    const marca = datos.subidas[id];
+    const subido = pesoConSubida(marca, modo, typeof recordado === 'number' ? recordado : null, hoyISO(), unidad);
+    setSubida(marca && subido !== null ? { ejercicio: id, series: marca.series, antes: marca.peso, ahora: subido } : null);
+    const b = proponerPeso(actual, subido ?? recordado);
     if (b === actual) return;
     bloquesRef.current = b;
     setBloques(b);
@@ -1324,6 +1335,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       ultimaActividad,
       cargaConsultada,
       sugerido,
+      subida,
     },
     empezar,
     terminar,

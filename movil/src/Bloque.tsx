@@ -15,6 +15,10 @@ import ListaDeBloques from './ListaDeBloques';
 import CampoPeso from './CampoPeso';
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import { C } from './colores';
+import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
+import { loQueSePuedeSubir, type Subida } from '@nucleo/subir';
+import { pasoDelCampo } from '@nucleo/campoPeso';
+import { hoyISO } from '@nucleo/fechas';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN — en nativo.
@@ -37,6 +41,7 @@ export default function Bloque({
   unidad,
   sugerido,
   cargaConsultada,
+  subida,
   alSumar,
   debajoDelMas,
   alRestar,
@@ -57,6 +62,8 @@ export default function Bloque({
   /** El ejercicio/peso del bloque son una SUGERENCIA de la rutina, sin confirmar. */
   sugerido?: boolean;
   cargaConsultada: string | null;
+  /** El peso propuesto salió de una marca de "la próxima, más" (ver `nucleo/subir.ts`). */
+  subida?: { ejercicio: string; series: number; antes: number; ahora: number } | null;
   alSumar: () => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
@@ -118,6 +125,41 @@ export default function Bloque({
     admitePeso &&
     hayQuePreguntar({ ambigua: actual?.carga_ambigua, cargaDelBloque: estado.carga, yaSeConsulto: cargaConsultada === estado.ejercicio });
 
+  // "LA PRÓXIMA, MÁS" (10/10). Se ofrece al llegar a la meta con el mismo peso
+  // en todas las series; `nucleo/subir.ts` dice cuándo. La marca que se
+  // muestra prendida es la de HOY para ese peso: la de otro día ya se usó para
+  // proponer el de hoy.
+  const conSubir = conCarga && disponible('subirPeso', version);
+  const oferta = conSubir && admitePeso ? loQueSePuedeSubir(estado, cargaVista) : null;
+  const [marca, setMarca] = useState<Subida | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    setMarca(null);
+    if (estado.ejercicio) {
+      const id = estado.ejercicio;
+      void leerRecordados().then((r) => {
+        if (vivo) setMarca(r.subidas[id] ?? null);
+      });
+    }
+    return () => {
+      vivo = false;
+    };
+  }, [estado.ejercicio]);
+  const marcada = !!oferta && !!marca && marca.dia === hoyISO() && marca.peso === oferta.peso && marca.carga === cargaVista;
+  function ponerMarca(s: Subida | null) {
+    if (!estado.ejercicio) return;
+    setMarca(s);
+    void marcarSubida(supabase, estado.ejercicio, s);
+  }
+  // Una serie más con el mismo peso después de marcar: la marca dice cuántas fueron.
+  const seriesDeLaOferta = oferta?.series;
+  useEffect(() => {
+    if (marcada && oferta && marca && marca.series !== oferta.series) ponerMarca({ ...marca, series: oferta.series });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seriesDeLaOferta, marcada]);
+  const enUnidad = (kg: number) => `${pesoCorto(kg, unidad)} ${unidad}`;
+  const deUnaMarca = !!subida && subida.ejercicio === estado.ejercicio && estado.peso === subida.ahora;
+
   // CÓMO SE LLAMA CADA EJERCICIO, PARA LA PANTALLA BLOQUEADA (25/9).
   //
   // Esta pantalla es la única que tiene el catálogo cargado, así que es la
@@ -175,6 +217,12 @@ export default function Bloque({
             </Text>
           )}
         </View>
+      )}
+
+      {deUnaMarca && subida && (
+        <Text testID="subida-nota" style={estilos.subidaNota}>
+          {T.sesion.subidaNota(subida.series, enUnidad(subida.antes), enUnidad(subida.ahora))}
+        </Text>
       )}
 
       {/* CON QUÉ LO HACÉS, la primera vez. No bloquea: el + anda igual. */}
@@ -300,6 +348,22 @@ export default function Bloque({
 
       {debajoDelMas}
 
+      {oferta && (
+        <Pressable
+          testID="la-proxima-mas"
+          style={[estilos.subir, marcada && estilos.subirPrendido]}
+          onPress={() =>
+            ponerMarca(marcada ? null : { carga: cargaVista, peso: oferta.peso, series: oferta.series, dia: hoyISO() })
+          }
+          accessibilityRole="button"
+          accessibilityState={{ selected: marcada }}
+        >
+          <Text style={[estilos.subirTexto, marcada && estilos.subirTextoPrendido]}>
+            {marcada ? T.sesion.proximaMasMarcada(enUnidad(pasoDelCampo(oferta.peso, unidad, 1) ?? oferta.peso)) : T.sesion.proximaMas}
+          </Text>
+        </Pressable>
+      )}
+
       {cumplida && (
         <Pressable style={estilos.texto} onPress={alSumar}>
           <Text style={estilos.textoBoton}>{T.sesion.sumarOtra}</Text>
@@ -422,4 +486,19 @@ const estilos = StyleSheet.create({
   cerrarTexto: { color: C.fondo, fontSize: 18, fontWeight: '600' },
   texto: { paddingVertical: 12, alignItems: 'center' },
   textoBoton: { color: C.sub, fontSize: 14 },
+  // "La próxima, más": un contorno, no un sólido. No compite con el `+`, que
+  // es lo que se toca doce veces; este se toca una.
+  subir: {
+    alignSelf: 'center',
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.lineaFuerte,
+  },
+  subirPrendido: { borderColor: C.sub },
+  subirTexto: { color: C.sub, fontSize: 14 },
+  subirTextoPrendido: { color: C.tinta },
+  subidaNota: { color: C.sub, fontSize: 13, marginTop: 8 },
 });

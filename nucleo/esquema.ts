@@ -44,6 +44,8 @@ export const REQUIERE = {
   cargaCorporal: 58,
   /** La rutina que ve un amigo, y el interruptor para esconderla. */
   rutinaDeAmigo: 64,
+  /** "La próxima, más": marcar que un peso quedó chico, y que se proponga un disco más. */
+  subirPeso: 65,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

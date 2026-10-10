@@ -146,6 +146,8 @@ una sola cosa:
   enlace (la página lo dice en tres pasos numerados): se pierde la mitad de la
   gracia de la invitación. Y que el `https` abra la app directo, sin pasar
   por la página (dominios asociados);
+- **con el dominio definitivo ya elegido** (ver "dominio propio" más abajo):
+  es condición para compilar, no un detalle;
 - un solo aviso de fin de descanso con vibración larga, en vez de tres;
 - Diagnóstico sin depender de una variable de compilación (ya anotado abajo);
 - lo que quede pendiente de capa nativa al llegar ese día.
@@ -170,23 +172,29 @@ una sola cosa:
 - **Las vidas no están rotas.** La regla (`impulsos_ganados`, migración 34):
   dos para todos, y la tercera se tiene mientras la racha esté en 20 o más. Si
   la racha baja de 20, la tercera se va.
-- **PENDIENTE DE DECISIÓN: marcar que la próxima vez se puede con más peso.**
-  La app NO sabe si salieron todas las repeticiones: no las anota (regla del
-  módulo: "no es Hevy"), y la meta de series tampoco se guarda con el bloque.
-  Opciones y costo, para decidir:
-  - *A mano, guardado en el teléfono:* un toque "la próxima, más" en el
-    bloque; la vez siguiente propone el peso más un disco. Chico, solo OTA.
-    Se pierde al cambiar de teléfono.
-  - *A mano, guardado en la base:* lo mismo y sobrevive al cambio de
-    teléfono. Chico más una migración corta.
-  - *Que lo ofrezca la app en el momento (recomendado):* al llegar a la meta
-    con el mismo peso en todas las series aparece el toque, y la vez siguiente
-    dice "la última 4 × 60 kg; prueba 62,5". Es la opción a mano más un
-    disparador. Chico a medio.
-  - *Que lo proponga sola, sin preguntar:* barato de escribir y propone mal,
-    porque subir depende de las repeticiones que la app no conoce.
-  - *Anotar repeticiones:* grande, y contradice cómo se cuenta una serie hoy
-    (un toque, sin teclado).
+- **Hecho: "la próxima, más"** (migración 65, decidido el 10/10). Al llegar a
+  la meta con el mismo peso en todas las series el bloque ofrece el toque; la
+  vez siguiente la app propone ese peso con un disco más y dice de dónde sale
+  ("La última: 4 × 60 kg. Hoy prueba 62,5 kg."). La marca vive EN LA BASE —es
+  una decisión sobre el futuro y no se puede ir con el teléfono— y se gasta
+  sola la próxima vez que se hace ese ejercicio con peso. Se descartó que la
+  app lo proponga sin preguntar: subir depende de las repeticiones, que no
+  conoce.
+- **DECISIÓN A REVISAR (no es un pendiente): no se guardan repeticiones.**
+  Escrito con las dos caras, porque la premisa de la app pasó a ser anotar lo
+  que se levanta:
+  - *Lo que cuesta:* el registro queda a mitad de camino. "4 series con 60"
+    no es "4 × 8 con 60": no se puede calcular volumen de verdad, ni saber
+    sola si un peso quedó chico, ni comparar una sesión con otra más que por
+    peso y cantidad de series. "La próxima, más" existe para tapar justo ese
+    hueco, y lo tapa preguntando.
+  - *Lo que da:* una serie es UN toque, sin teclado, con una mano y
+    transpirado. Es la ventaja real en el gimnasio y la razón por la que se
+    sigue contando. Pedir un número por serie convierte contar en un trámite.
+  - *Decidido hoy:* la serie de un toque no se rompe. Si algún día se
+    revisa, la pregunta no es "¿anotamos repeticiones?" sino "¿hay forma de
+    anotarlas sin agregar un toque obligatorio?" (por ejemplo, una sola vez
+    por bloque y optativa).
 - **Anotado, ÚLTIMO en prioridad: un logro por llegar a los pasos varios días
   seguidos.** Los pasos se leen de Salud en el teléfono y no están en la base.
   - *Solo para uno* (una racha de pasos en Inicio o en Stats, calculada en el
@@ -205,8 +213,11 @@ una sola cosa:
     con una OTA. No pide build.
   - Revisar al hacerlo: la URL del sitio y las de vuelta permitidas en
     Supabase Auth, y las de privacidad y soporte en App Store Connect.
-  - **Elegirlo ANTES de la build única:** los dominios asociados (que el
-    `https` abra la app directo) se compilan con un dominio fijo.
+  - **El dominio lo elige el humano y avisa (10/10).**
+  - **HAY QUE DECIDIRLO ANTES DE LA BUILD ÚNICA:** los dominios asociados
+    (que el `https` abra la app directo) se compilan con un dominio fijo. Si
+    la build sale con `ascent-blush-seven.vercel.app`, cambiarlo después es
+    otra build y otra revisión de Apple.
 
 ### Al terminar todas las tandas: otra cacería de bugs
 

@@ -12334,7 +12334,8 @@ console.log('\n166. El peso se recuerda por ejercicio Y por modo');
   chequear('cambiar de modo pasa por la regla probada arriba',
     /pesoAlCambiarDeModo\(conModo, ultimoPesoEnModo\(conModo, sabido\.pesos, id, c, sabido\.catalogo\)\)/.test(cambio166), true);
   const propone166 = entre166(hook166, 'async function proponerElPesoDe(', 'async function proponerCargaYPeso(');
-  chequear('las propuestas entran por proponerPeso', /const b = proponerPeso\(actual, recordado\)/.test(propone166), true);
+  // Desde el 10/10 lo que entra puede ser el recordado con un disco más (sección 198).
+  chequear('las propuestas entran por proponerPeso', /const b = proponerPeso\(actual, subido \?\? recordado\)/.test(propone166), true);
   chequear('y solo con el bloque vacio', /actual\.hechas > 0\) return/.test(propone166), true);
   // UN PESO ESCRITO SE ESCRIBE EN UN SOLO LUGAR. Si una propuesta entrara por
   // cambiarPeso quedaria sin marca, o sea como escrita por la persona, y a
@@ -13363,7 +13364,7 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
   // ---- COMO ESTABA EL TELÉFONO: nadie guardó la copia ----
   memoria.clear();
   chequear('sin la copia del perfil no hay de quién sea el historial: no propone nada',
-    [await R.traerRecordados(base), pedidos], [{ pesos: {}, catalogo: {}, maximos: {} }, 0]);
+    [await R.traerRecordados(base), pedidos], [{ pesos: {}, catalogo: {}, maximos: {}, subidas: {} }, 0]);
 
   // ---- COMO QUEDA DESPUÉS DE CARGAR INICIO, que ahora la guarda ----
   await guardarPerfilCache(perfilDe('cuenta-a'));
@@ -13374,7 +13375,7 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
 
   // ---- Y NO SE CRUZA DE CUENTA ----
   await guardarPerfilCache(perfilDe('cuenta-b'));
-  chequear('otra cuenta en el mismo teléfono no ve los pesos de la anterior', await R.leerRecordados(), { pesos: {}, catalogo: {}, maximos: {} });
+  chequear('otra cuenta en el mismo teléfono no ve los pesos de la anterior', await R.leerRecordados(), { pesos: {}, catalogo: {}, maximos: {}, subidas: {} });
 
   // ---- LO MÁS PESADO DE LA ÚLTIMA VEZ, para la lista de ejercicios (10/10) ----
   // Por el mismo camino: lo que trae la base, lo que queda en el aparato, y lo
@@ -15591,7 +15592,7 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   // LA CONSULTA QUE CORRE EL HUMANO después de aplicar la 64, tal cual está en el archivo.
   const comprobar64 = leer197(join(RAIZ197, 'supabase', 'comprobar-64.sql'), 'utf8').replace(/\r\n/g, '\n').split('\n').filter((l) => !l.startsWith('--')).join('\n');
   const fila64 = (await db.query(comprobar64)).rows;
-  chequear('la comprobación de la 64 corre y dice lo que promete', fila64.map((f) => [f.version, Number(f.comparten) === Number(f.perfiles), f.amigos_pueden, f.anon_puede]), [[64, true, true, false]]);
+  chequear('la comprobación de la 64 corre y dice lo que promete', fila64.map((f) => [f.version >= 64, Number(f.comparten) === Number(f.perfiles), f.amigos_pueden, f.anon_puede]), [[true, true, true, false]]);
 
   const RU197 = await import('../nucleo/rutina.ts');
   const b197 = (ejercicio, series) => ({ ejercicio, series });
@@ -15764,6 +15765,182 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     /rpc\('fijar_comparte_rutina', \{ p_valor: v \}\)/.test(de197('movil', 'src', 'Ajustes.tsx')),
     /value=\{perfil\.comparte_rutina !== false\}/.test(de197('movil', 'src', 'Ajustes.tsx')),
   ], [true, true, true, true]);
+}
+
+console.log('\n198. "La próxima, más": marcar que un peso quedó chico, y que la vez siguiente se proponga un disco más');
+{
+  const { readFileSync: leer198 } = await import('node:fs');
+  const RAIZ198 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de198 = (...p) => sinComentarios(leer198(join(RAIZ198, ...p), 'utf8').replace(/\r\n/g, '\n'));
+
+  // ---- LA BASE: la marca, de quién es, y cuándo se gasta ----
+  const u = await nuevoUsuario();
+  const otra = await nuevoUsuario();
+  const sesionDe = async (quien, haceDias, bloques) => {
+    const log = (await db.query('insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int) on conflict do nothing returning id', [quien, haceDias])).rows[0]
+      ?? (await db.query('select id from logs where user_id = $1 and fecha = mi_hoy() - $2::int', [quien, haceDias])).rows[0];
+    await db.query(
+      `insert into sesiones (user_id, log_id, inicio, fin, estado, series, bloques)
+       values ($1, $2, now() - ($3::int || ' days')::interval - interval '1 hour', now() - ($3::int || ' days')::interval, 'terminada', 4, $4::jsonb)`,
+      [quien, log.id, haceDias, JSON.stringify(bloques)]
+    );
+  };
+  const banca = (pesos) => ({ ejercicio: 'press_banca', series: pesos.length, pesos, carga: 'total' });
+  await comoUsuario(u);
+  await sesionDe(u, 1, [banca([60, 60, 60, 60])]);
+  const marcar = (...a) => db.query('select marcar_subida($1, $2, $3, $4, $5::date)', a);
+  const ayer = (await db.query(`select (mi_hoy() - 1)::text as d, mi_hoy()::text as h, (mi_hoy() + 9)::text as f`)).rows[0];
+  const vigentes = async () => (await db.query('select ejercicio, carga, peso::float as peso, series, dia::text as dia from mis_subidas() order by ejercicio')).rows;
+  await marcar('press_banca', 'total', 60, 4, ayer.d);
+  chequear('la marca queda, con lo que se hizo ese día', await vigentes(), [{ ejercicio: 'press_banca', carga: 'total', peso: 60, series: 4, dia: ayer.d }]);
+  await marcar('press_banca', 'total', 60, 4, ayer.d);
+  chequear('marcar dos veces deja una: se puede reintentar desde la cola', (await db.query('select count(*)::int as n from subidas_marcadas where user_id = $1', [u])).rows[0].n, 1);
+  // Lo que no tiene sentido se ignora sin romper: es lo que hace segura la cola.
+  await marcar('press_banca', 'corporal', 60, 4, ayer.d);
+  await marcar('press_banca', 'total', -5, 4, ayer.d);
+  await marcar('press_banca', 'total', 61, 4, ayer.f);
+  await marcar('no_existe_este_ejercicio', 'total', 61, 4, ayer.d);
+  chequear('una marca sin sentido (sin número, negativa, del futuro, de un ejercicio que no hay) no pisa la buena', await vigentes(), [{ ejercicio: 'press_banca', carga: 'total', peso: 60, series: 4, dia: ayer.d }]);
+  await comoUsuario(otra);
+  chequear('es de quien la marcó: otra persona no la ve', await vigentes(), []);
+  await marcar('press_banca', 'total', 40, 3, ayer.d);
+  await comoUsuario(u);
+  chequear('y la marca de la otra no toca la mía', (await vigentes()).map((m) => m.peso), [60]);
+  // SE GASTA SOLA: vale hasta la próxima vez que se hace ESE ejercicio con peso, un día posterior.
+  await sesionDe(u, 0, [{ ejercicio: 'sentadilla', series: 3, pesos: [100, 100, 100], carga: 'total' }, { ejercicio: 'press_banca', series: 2 }]);
+  chequear('otro ejercicio, o el mismo sin peso anotado, no la gasta', (await vigentes()).length, 1);
+  await sesionDe(u, 0, [banca([62.5, 62.5])]);
+  chequear('hacerlo de nuevo con peso, otro día, la gasta', await vigentes(), []);
+  await marcar('press_banca', 'total', 62.5, 2, ayer.h);
+  chequear('y la de HOY vale aunque hoy ya se haya hecho: es para la próxima', (await vigentes()).map((m) => [m.peso, m.dia]), [[62.5, ayer.h]]);
+  await marcar('press_banca', null, null, null, null);
+  chequear('con el peso en nulo se saca', [(await vigentes()).length, (await db.query('select count(*)::int as n from subidas_marcadas where user_id = $1', [u])).rows[0].n], [0, 0]);
+  chequear('la tabla solo la lee el dueño, y nadie la escribe directo', [
+    (await db.query(`select policyname, cmd from pg_policies where tablename = 'subidas_marcadas'`)).rows.map((p) => [p.policyname, p.cmd]),
+    (await db.query(`select has_table_privilege('authenticated', 'public.subidas_marcadas', 'insert') as i, has_table_privilege('authenticated', 'public.subidas_marcadas', 'delete') as d`)).rows[0],
+  ], [[['subidas: solo dueño', 'SELECT']], { i: false, d: false }]);
+  const comprobar65 = leer198(join(RAIZ198, 'supabase', 'comprobar-65.sql'), 'utf8').replace(/\r\n/g, '\n').split('\n').filter((l) => !l.startsWith('--')).join('\n');
+  chequear('la comprobación de la 65 corre y dice lo que promete', (await db.query(comprobar65)).rows.map((f) => [f.version, Number(f.marcas) >= 0, f.con_regla, f.dueno_puede, f.anon_puede]), [[65, true, true, true, false]]);
+
+  // ---- LA REGLA, sin base ----
+  const SU = await import('../nucleo/subir.ts');
+  const bloque = (x) => ({ cerrados: [], ejercicio: 'press_banca', meta: 4, hechas: 4, pesos: [60, 60, 60, 60], peso: 60, ...x });
+  chequear('se ofrece al llegar a la meta con el mismo peso en todas; si no, no', [
+    SU.loQueSePuedeSubir(bloque({}), 'total'),
+    SU.loQueSePuedeSubir(bloque({ hechas: 5, pesos: [60, 60, 60, 60, 60] }), 'par'),
+    SU.loQueSePuedeSubir(bloque({ hechas: 3, pesos: [60, 60, 60] }), 'total'), // falta una para la meta
+    SU.loQueSePuedeSubir(bloque({ pesos: [60, 60, 60, 62.5] }), 'total'), // una distinta
+    SU.loQueSePuedeSubir(bloque({ pesos: [60, 60, null, 60] }), 'total'), // una sin anotar
+    SU.loQueSePuedeSubir(bloque({ pesos: undefined, peso: undefined }), 'total'), // sin pesos
+    SU.loQueSePuedeSubir(bloque({}), 'corporal'), // no hay número que subir
+    SU.loQueSePuedeSubir(bloque({ ejercicio: null }), 'total'),
+  ], [{ peso: 60, series: 4 }, { peso: 60, series: 5 }, null, null, null, null, null, null]);
+  const m198 = { carga: 'total', peso: 60, series: 4, dia: '2026-10-08' };
+  chequear('la vez siguiente propone un disco más, en la unidad de la persona; y solo si la marca aplica', [
+    SU.pesoConSubida(m198, 'total', 60, '2026-10-10', 'kg'),
+    SU.pesoConSubida(m198, 'total', 60, '2026-10-08', 'kg'), // el mismo día: es para la próxima
+    SU.pesoConSubida(m198, 'par', 60, '2026-10-10', 'kg'), // otro modo
+    SU.pesoConSubida(m198, 'total', 55, '2026-10-10', 'kg'), // después se hizo otra cosa
+    SU.pesoConSubida(m198, 'total', null, '2026-10-10', 'kg'),
+    SU.pesoConSubida(undefined, 'total', 60, '2026-10-10', 'kg'),
+  ], [62.5, null, null, null, null, null]);
+  const { pasoDelCampo: paso198 } = await import('../nucleo/campoPeso.ts');
+  chequear('en libras el disco es el de libras, el mismo del + del campo', SU.pesoConSubida(m198, 'total', 60, '2026-10-10', 'lb'), paso198(60, 'lb', 1));
+  chequear('al terminar la sesión se gastan las de días anteriores de lo que se hizo con peso', SU.subidasTrasLaSesion(
+    { press_banca: m198, remo: m198, sentadilla: { ...m198, dia: '2026-10-10' }, dominadas: m198 },
+    [banca([62.5]), { ejercicio: 'sentadilla', series: 1, pesos: [100] }, { ejercicio: 'dominadas', series: 3 }],
+    '2026-10-10'
+  ), { remo: m198, sentadilla: { ...m198, dia: '2026-10-10' }, dominadas: m198 });
+  chequear('lo que manda la base llega bien aunque el peso venga como texto; la basura, afuera', SU.subidasDeLaBase([
+    { ejercicio: 'press_banca', carga: 'total', peso: '62.5', series: 4, dia: '2026-10-08' },
+    { ejercicio: 'remo', carga: 'corporal', peso: 10, series: 4, dia: '2026-10-08' },
+    { ejercicio: 'curl', carga: 'par', peso: 12, series: 0, dia: '2026-10-08' },
+    { ejercicio: 'x', carga: 'par', peso: 12, series: 3, dia: 'ayer' },
+  ]), { press_banca: { carga: 'total', peso: 62.5, series: 4, dia: '2026-10-08' } });
+
+  // ---- POR EL CAMINO DE LA APP: el toque, la cola, la copia del teléfono y la base ----
+  const { memoria: memoria198 } = await import('./dobles/plataforma.mjs');
+  const R198 = await import('../compartido/pesosRecordados.ts');
+  const COLA198 = await import('../compartido/cola.ts');
+  const E198 = await import('../compartido/esquema.ts');
+  const { guardarPerfilCache: perfil198 } = await import('../compartido/cache.ts');
+  memoria198.clear();
+  await perfil198({ id: 'cuenta-198', username: 'x', avatar_url: null, racha_actual: 3, mejor_racha: 3, rango_actual: 1, racha_base: 0, perdida_fecha: null, dias_descanso: [], duracion_descanso: 90, dia_pendiente: null, unidad_peso: 'kg' });
+  const llamadas = [];
+  let hayRed = true;
+  let enLaBase = [];
+  const cliente198 = (version) => {
+    const consulta = (resultado) => {
+      const c = { select: () => c, neq: () => c, gte: () => c, order: () => c, then: (bien, mal) => Promise.resolve(resultado).then(bien, mal) };
+      return c;
+    };
+    return {
+      from: (tabla) => consulta(tabla === 'sesiones' ? { data: [{ bloques: [banca([60, 60, 60, 60])] }], error: null } : { data: [{ id: 'press_banca', carga: 'total' }], error: null }),
+      rpc: async (nombre, args) => {
+        if (nombre === 'version_del_esquema') return { data: version, error: null };
+        if (nombre === 'mis_subidas') return { data: enLaBase, error: null };
+        if (!hayRed) return { data: null, error: { message: 'Network request failed' } };
+        llamadas.push([nombre, args]);
+        return { data: null, error: null };
+      },
+    };
+  };
+  // La versión se recuerda diez minutos: se la hace vencer, como en el teléfono.
+  let reloj198 = Date.now() + E198.VIGENCIA_MS * 100;
+  const conVersion = async (v) => {
+    reloj198 += E198.VIGENCIA_MS * 3;
+    await E198.versionDelEsquema(cliente198(v), reloj198);
+    await new Promise((r) => setTimeout(r, 20));
+    return cliente198(v);
+  };
+  const quieto = () => new Promise((r) => setTimeout(r, 40));
+  const hoy198 = (await import('../nucleo/fechas.ts')).hoyISO();
+  const marcaDeHoy = { carga: 'total', peso: 60, series: 4, dia: hoy198 };
+
+  const sin65 = await conVersion(64);
+  await R198.marcarSubida(sin65, 'press_banca', marcaDeHoy);
+  await quieto();
+  chequear('con la base sin la 65 la marca no se manda (pero el toque queda en el teléfono)', [llamadas.length, (await R198.leerRecordados()).subidas.press_banca], [0, marcaDeHoy]);
+
+  const con65 = await conVersion(65);
+  hayRed = false;
+  await R198.marcarSubida(con65, 'press_banca', marcaDeHoy);
+  await quieto();
+  enLaBase = []; // la base todavía no la tiene: no llegó
+  chequear('sin señal: queda en la cola, y traer el historial NO la borra del teléfono', [
+    await COLA198.estaPendiente('marcar_subida', 'press_banca'),
+    (await R198.traerRecordados(con65)).subidas,
+  ], [true, { press_banca: marcaDeHoy }]);
+  hayRed = true;
+  await COLA198.vaciar(con65);
+  chequear('vuelve la señal: sube con lo que se marcó y con SU día', llamadas, [['marcar_subida', { p_ejercicio: 'press_banca', p_carga: 'total', p_peso: 60, p_series: 4, p_dia: hoy198 }]]);
+  enLaBase = [{ ejercicio: 'remo', carga: 'par', peso: '20', series: 3, dia: '2026-10-01' }];
+  chequear('ya sin nada pendiente manda la base: lo que ella no tiene se va y lo de otro teléfono llega', (await R198.traerRecordados(con65)).subidas, { remo: { carga: 'par', peso: 20, series: 3, dia: '2026-10-01' } });
+  await R198.sumarSesionARecordados([{ ejercicio: 'remo', series: 3, pesos: [22, 22, 22], carga: 'par' }]);
+  chequear('terminar una sesión con ese ejercicio gasta la marca también en el teléfono', (await R198.leerRecordados()).subidas, {});
+  llamadas.length = 0;
+  await R198.marcarSubida(con65, 'remo', null);
+  await COLA198.vaciar(con65);
+  chequear('desmarcar manda el peso en nulo', llamadas, [['marcar_subida', { p_ejercicio: 'remo', p_carga: null, p_peso: null, p_series: null, p_dia: null }]]);
+  await COLA198.soltarCola();
+
+  // ---- EL CABLEADO: son un hook y un componente, se leen ----
+  const hook198 = de198('compartido', 'useSesion.ts');
+  chequear('el peso que se propone pasa por la marca, y la pantalla se entera de dónde salió', [
+    /const subido = pesoConSubida\(marca, modo, typeof recordado === 'number' \? recordado : null, hoyISO\(\), unidad\);/.test(hook198),
+    /const b = proponerPeso\(actual, subido \?\? recordado\);/.test(hook198),
+    /setSubida\(marca && subido !== null \? \{ ejercicio: id, series: marca\.series, antes: marca\.peso, ahora: subido \} : null\);/.test(hook198),
+    /subida=\{sesion\.estado\.subida\}/.test(de198('movil', 'src', 'Inicio.tsx')),
+  ], [true, true, true, true]);
+  const bloque198 = de198('movil', 'src', 'Bloque.tsx');
+  chequear('el bloque ofrece el toque solo con la 65, lo prende y lo apaga, y dice de dónde sale el disco de más', [
+    /const conSubir = conCarga && disponible\('subirPeso', version\);/.test(bloque198),
+    /const oferta = conSubir && admitePeso \? loQueSePuedeSubir\(estado, cargaVista\) : null;/.test(bloque198),
+    /ponerMarca\(marcada \? null : \{ carga: cargaVista, peso: oferta\.peso, series: oferta\.series, dia: hoyISO\(\) \}\)/.test(bloque198),
+    /void marcarSubida\(supabase, estado\.ejercicio, s\);/.test(bloque198),
+    /T\.sesion\.subidaNota\(subida\.series, enUnidad\(subida\.antes\), enUnidad\(subida\.ahora\)\)/.test(bloque198),
+    /estado\.peso === subida\.ahora/.test(bloque198),
+  ], [true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

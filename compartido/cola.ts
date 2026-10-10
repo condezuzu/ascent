@@ -73,7 +73,17 @@ type Encolable =
   // - *No cambia de significado más tarde*: lleva el ejercicio. No lleva
   //   sesión porque no es de una sesión: es de la cuenta, y por eso se pisa
   //   por ejercicio y no por sesión.
-  | { rpc: 'elegir_carga'; args: { p_ejercicio: string; p_carga: string } };
+  | { rpc: 'elegir_carga'; args: { p_ejercicio: string; p_carga: string } }
+  // `marcar_subida` (migración 65): "la próxima, más".
+  //
+  // - *Idempotente*: guarda LA marca de ese ejercicio (o la saca, con el peso
+  //   en nulo), no "sumá una". Repetirla deja lo mismo.
+  // - *No cambia de significado más tarde*: lleva el ejercicio Y el día del
+  //   toque. Subir mañana desde el subsuelo sigue siendo la marca de hoy.
+  | {
+      rpc: 'marcar_subida';
+      args: { p_ejercicio: string; p_carga: string | null; p_peso: number | null; p_series: number | null; p_dia: string | null };
+    };
 
 type Pendiente = Encolable & { id: string };
 
