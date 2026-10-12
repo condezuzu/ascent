@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ascent",
     "slug": "ascent",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icono.png",
     "userInterfaceStyle": "dark",
@@ -84,7 +84,9 @@
           "icon": "./assets/android-icon-monochrome.png",
           "color": "#05060a",
           "sounds": [
-            "./assets/campana.wav"
+            "./assets/campana.wav",
+            "./assets/aviso-descanso.wav",
+            "./assets/silencio.wav"
           ]
         }
       ],

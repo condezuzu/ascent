@@ -137,7 +137,12 @@ export const avisosNativos: Avisos = {
           // El archivo tiene que estar en el BUNDLE, no en el JavaScript: lo
           // reproduce el sistema, no la app. Por eso va declarado en
           // `app.json` y por eso este cambio necesita una build.
-          sound: conSonido ? 'campana.wav' : false,
+          // EL SONIDO PROPIO DE LA BUILD 8, más fuerte y más largo que la
+          // campana (cuatro golpes en 2,4 s; ver `herramientas/hacer-sonidos.mjs`).
+          // Y CON EL SONIDO APAGADO, UN ARCHIVO DE SILENCIO en vez de nada: una
+          // notificación sin sonido tampoco vibra, y con este vibra sin sonar.
+          // Los dos archivos viajan en la build: por eso esto no pudo salir por OTA.
+          sound: conSonido ? 'aviso-descanso.wav' : 'silencio.wav',
           // TIME SENSITIVE: atraviesa el modo de concentración. Un temporizador
           // que no suena porque tenés "No molestar" puesto en el gimnasio es un
           // temporizador roto, y es exactamente cuando se usa.

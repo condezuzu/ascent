@@ -11466,7 +11466,7 @@ console.log('\n157. La pantalla de bloqueo: el timer que se caia y la campana');
   //
   // El sonido de fabrica de iOS es corto y discreto a proposito —esta pensado
   // para un mensaje— y contra musica con auriculares no llega.
-  chequear('la notificacion usa la campana nuestra', /sound: conSonido \? 'campana\.wav' : false/.test(avi157), true);
+  chequear('la notificacion usa la campana nuestra', /sound: conSonido \? 'aviso-descanso\.wav' : 'silencio\.wav'/.test(avi157), true);
   // TIME SENSITIVE: atraviesa el modo de concentracion. Un temporizador que no
   // suena por tener "No molestar" es un temporizador roto, y es justo cuando
   // se usa.
@@ -15694,9 +15694,36 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   ], [true, true, [3, 600]]);
   const avisos197 = de197('movil', 'src', 'plataforma', 'avisos.ts');
   chequear('la notificación sale callada si se apagó el sonido, también con la app abierta', [
-    /sound: conSonido \? 'campana\.wav' : false/.test(avisos197),
+    /sound: conSonido \? 'aviso-descanso\.wav' : 'silencio\.wav'/.test(avisos197),
     /sonidoAlFrente = conSonido;/.test(avisos197) && /shouldPlaySound: sonidoAlFrente/.test(avisos197),
   ], [true, true]);
+  // LA BUILD 8: los sonidos que nombra el código tienen que estar en el paquete
+  // (declarados en app.json y en disco). Uno que falte no da error: el aviso
+  // llega con el sonido de fábrica, o callado, y nadie se entera hasta el gimnasio.
+  {
+    const { existsSync: hay197, readFileSync: leerBin197 } = await import('node:fs');
+    const app197 = JSON.parse(leer197(join(RAIZ197, 'movil', 'app.json'), 'utf8'));
+    const declarados = app197.expo.plugins.find((p) => Array.isArray(p) && p[0] === 'expo-notifications')[1].sounds;
+    const nombrados = [...avisos197.matchAll(/'([a-z-]+\.wav)'/g)].map((m) => m[1]);
+    chequear('los sonidos que usa el aviso están declarados y existen', nombrados.map((n) => [n, declarados.includes(`./assets/${n}`), hay197(join(RAIZ197, 'movil', 'assets', n))]), [
+      ['aviso-descanso.wav', true, true], ['silencio.wav', true, true],
+    ]);
+    // Lo que se puede medir sin oírlo: el formato que iOS acepta, que dure menos de 30 s, y que sea más fuerte y más largo que la de antes.
+    const medir = (n) => {
+      const b = leerBin197(join(RAIZ197, 'movil', 'assets', n));
+      const total = (b.length - 44) / 2;
+      let suma = 0;
+      for (let i = 0; i < total; i++) suma += (b.readInt16LE(44 + i * 2) / 32768) ** 2;
+      return { pcm: b.readUInt16LE(20) === 1, bits: b.readUInt16LE(34), segundos: total / b.readUInt32LE(24) / b.readUInt16LE(22), rms: Math.sqrt(suma / total) };
+    };
+    const nuevo = medir('aviso-descanso.wav');
+    const viejo = medir('campana.wav');
+    const mudo = medir('silencio.wav');
+    chequear('el aviso nuevo es PCM de 16 bits, dura menos de 30 s, y es más largo y más fuerte que la campana de antes', [
+      nuevo.pcm, nuevo.bits, nuevo.segundos < 30, nuevo.segundos > viejo.segundos * 2, nuevo.rms > viejo.rms * 1.8,
+    ], [true, 16, true, true, true]);
+    chequear('y el silencio es silencio de verdad, y corto', [mudo.rms, mudo.segundos <= 1], [0, true]);
+  }
   const pant197 = de197('movil', 'src', 'Descanso.tsx');
   chequear('la pantalla del descanso avisa por avisarFin, y solo hace sonar la campana si avisó', [
     /if \(!avisarFin\(fin\)\) return;\s*if \(sonido\.current\) plataforma\.audio\.avisar\(\);/.test(pant197),
