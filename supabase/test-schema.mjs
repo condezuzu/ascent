@@ -15977,6 +15977,101 @@ console.log('\n199. Ranking: la cara de cada uno y la medalla del rango más alt
   ], [true, true, false]);
 }
 
+console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, y cortar');
+{
+  const a = await nuevoUsuario();
+  const b = await nuevoUsuario();
+  const c = await nuevoUsuario(); // amiga de A, no de B
+  const x = await nuevoUsuario(); // nadie
+  for (const [u, n] of [[a, 'ana'], [b, 'beto'], [c, 'caro'], [x, 'equis']]) {
+    await db.query(`update profiles set username = $2 || '_' || substr(id::text, 1, 6) where id = $1`, [u, n]);
+  }
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada'), ($1, $3, 'aceptada')`, [a, b, c]);
+  const como = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const uniones = async (u) => (await como(u, 'select mis_uniones() as v'))[0].v;
+  const resumen = (lista) => lista.map((l) => [l.estado, l.la_pedi_yo, l.otro.id, l.en_vivo]);
+
+  await como(x, 'select pedir_unirse($1)', [a]);
+  chequear('quien no es amigo no puede pedir', [(await uniones(a)).length, (await uniones(x)).length], [0, 0]);
+  await como(b, 'select pedir_unirse($1)', [b]);
+  chequear('ni pedirse a uno mismo', (await uniones(b)).length, 0);
+
+  await como(a, 'select publicar_en_vivo($1, $2, $3, $4)', ['press_banca', 2, 4, 90]);
+  await como(b, 'select pedir_unirse($1)', [a]);
+  await como(b, 'select pedir_unirse($1)', [a]);
+  chequear('el pedido le aparece a los dos, una sola vez, y todavía no muestra nada', [resumen(await uniones(a)), resumen(await uniones(b))], [
+    [['pendiente', false, b, null]], [['pendiente', true, a, null]],
+  ]);
+  const id = (await uniones(a))[0].id;
+  await como(b, 'select responder_union($1, true)', [id]);
+  chequear('el que pidió no se puede aceptar a sí mismo', (await uniones(a))[0].estado, 'pendiente');
+  await como(c, 'select responder_union($1, true)', [id]);
+  chequear('ni un tercero', (await uniones(a))[0].estado, 'pendiente');
+  await como(a, 'select responder_union($1, true)', [id]);
+  const deB = (await uniones(b))[0];
+  chequear('aceptado: B ve lo que A está haciendo', [deB.estado, deB.en_vivo.ejercicio, deB.en_vivo.serie, deB.en_vivo.meta], ['aceptada', 'press_banca', 2, 4]);
+  // El descanso llega como una hora de la base, y `ahora` es esa misma base: la cuenta no depende del teléfono.
+  const faltan = Math.round((new Date(deB.en_vivo.descanso_fin) - new Date(deB.ahora)) / 1000);
+  chequear('el descanso llega como "cuánto falta" medido contra el reloj de la base', faltan >= 88 && faltan <= 90, true);
+  chequear('y NADA de pesos ni de cuánto lleva: no hay por dónde', Object.keys(deB.en_vivo).sort(), ['actualizado', 'descanso_fin', 'ejercicio', 'meta', 'serie']);
+  chequear('A ve a B aunque B todavía no publicó nada', resumen(await uniones(a)), [['aceptada', false, b, null]]);
+  chequear('y la otra amiga de A, que no pidió nada, no ve nada', (await uniones(c)).length, 0);
+
+  // Lo que manda el teléfono no se cree: se acota.
+  await como(a, 'select publicar_en_vivo($1, $2, $3, $4)', ['ejercicio_inventado', 500, -3, 999999]);
+  const raro = (await uniones(b))[0].en_vivo;
+  chequear('un ejercicio que no existe, series imposibles y un descanso de días se acotan', [raro.ejercicio, raro.serie, raro.meta, Math.round((new Date(raro.descanso_fin) - Date.now()) / 60000) <= 61], [null, 99, 0, true]);
+  await como(a, 'select publicar_en_vivo($1, $2, $3, $4)', ['sentadilla', 1, 3, null]);
+  chequear('publicar de nuevo pisa, y sin descanso no hay hora', [(await uniones(b))[0].en_vivo.ejercicio, (await uniones(b))[0].en_vivo.descanso_fin], ['sentadilla', null]);
+
+  // CORTAR: terminar la sesión me saca de todo y deja de mostrarme.
+  await como(c, 'select pedir_unirse($1)', [a]);
+  await db.query('update profiles set comparte_gimnasio = true where id = $1', [a]);
+  await como(a, 'select marcar_en_gimnasio()');
+  chequear('con el aviso prendido, A aparece entrenando para sus amigos', (await como(b, 'select id from entrenando_ahora()')).map((r) => r.id), [a]);
+  await como(a, 'select dejar_de_entrenar()');
+  chequear('A termina: se van sus vínculos, lo que publicó y su "entrenando ahora"', [
+    (await uniones(a)).length, (await uniones(b)).length, (await uniones(c)).length,
+    (await db.query('select count(*)::int as n from en_vivo where user_id = $1', [a])).rows[0].n,
+    (await como(b, 'select id from entrenando_ahora()')).length,
+  ], [0, 0, 0, 0, 0]);
+
+  // Pedirse los dos a la vez: el segundo pedido es aceptar.
+  await como(a, 'select pedir_unirse($1)', [b]);
+  await como(b, 'select pedir_unirse($1)', [a]);
+  chequear('si los dos se piden, quedan unidos sin que nadie conteste', [(await uniones(a))[0].estado, (await uniones(a)).length], ['aceptada', 1]);
+  await como(b, 'select salir_de_union($1)', [a]);
+  chequear('cualquiera de los dos puede salir', [(await uniones(a)).length, (await uniones(b)).length], [0, 0]);
+  await como(b, 'select pedir_unirse($1)', [a]);
+  await como(a, 'select responder_union($1, false)', [(await uniones(a))[0].id]);
+  chequear('decir que no lo borra, y se puede volver a pedir', [(await uniones(b)).length, (await como(b, 'select pedir_unirse($1)', [a]), (await uniones(a)).length)], [0, 1]);
+  // VENCE SOLO, y dejar de ser amigos lo corta.
+  await db.query(`update entrenos_compartidos set hasta = now() - interval '1 minute'`);
+  chequear('vencido no se ve', (await uniones(a)).length, 0);
+  await como(b, 'select pedir_unirse($1)', [a]);
+  chequear('y uno vencido no impide pedir de nuevo', (await uniones(a)).length, 1);
+  await db.query('delete from friendships where (solicitante = $1 and destinatario = $2)', [a, b]);
+  chequear('si dejan de ser amigos, deja de verse', [(await uniones(a)).length, (await uniones(b)).length], [0, 0]);
+
+  chequear('las dos tablas no se leen ni se escriben directo, y sin sesión no se llama a nada', [
+    (await db.query(`select tablename, rowsecurity from pg_tables where tablename in ('en_vivo', 'entrenos_compartidos') order by 1`)).rows.map((t) => [t.tablename, t.rowsecurity]),
+    (await db.query(`select count(*)::int as n from pg_policies where tablename in ('en_vivo', 'entrenos_compartidos')`)).rows[0].n,
+    (await db.query(`select has_table_privilege('authenticated', 'public.en_vivo', 'select') as a, has_table_privilege('authenticated', 'public.entrenos_compartidos', 'select') as b`)).rows[0],
+    (await db.query(`select bool_or(has_function_privilege('anon', p.oid, 'execute')) as alguna from pg_proc p where p.proname in ('pedir_unirse', 'responder_union', 'salir_de_union', 'publicar_en_vivo', 'dejar_de_entrenar', 'mis_uniones', 'me_muestra_su_rutina')`)).rows[0].alguna,
+  ], [[['en_vivo', true], ['entrenos_compartidos', true]], 0, { a: false, b: false }, false]);
+
+  // ---- "SU RUTINA": la escondió, o no hay datos ----
+  chequear('una amiga que comparte: sí; una extraña: no (aunque comparta)', [
+    (await como(c, 'select me_muestra_su_rutina($1) as v', [a]))[0].v,
+    (await como(x, 'select me_muestra_su_rutina($1) as v', [a]))[0].v,
+  ], [true, false]);
+  await como(a, 'select fijar_comparte_rutina(false)');
+  chequear('si la escondió, a la amiga le dice que no', (await como(c, 'select me_muestra_su_rutina($1) as v', [a]))[0].v, false);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
