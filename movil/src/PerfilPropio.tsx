@@ -22,6 +22,7 @@ import GloboPrimeraVez from './GloboPrimeraVez';
 import Insignia from './Insignia';
 import Surgir from './Surgir';
 import { C } from './colores';
+import { volverOInicio } from './volver';
 import InvitarConLink from './InvitarConLink';
 
 /**
@@ -133,7 +134,7 @@ export default function PerfilPropio() {
    * llegado.
    */
   const salida = (
-    <Pressable onPress={() => router.back()} hitSlop={8} style={estilos.volverSuelto}>
+    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volverSuelto}>
       <Text style={estilos.enlace}>{T.general.volver}</Text>
     </Pressable>
   );
@@ -174,7 +175,7 @@ export default function PerfilPropio() {
         velo={0.72}
       />
       <ScrollView contentContainerStyle={estilos.pantalla}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={estilos.volver}>
+        <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
           <Text style={estilos.enlace}>{T.general.volver}</Text>
         </Pressable>
 

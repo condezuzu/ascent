@@ -21,6 +21,7 @@ import FondoEspacial from './FondoEspacial';
 import FotosQueVen from './FotosQueVen';
 import Insignia from './Insignia';
 import { C } from './colores';
+import { volverOInicio } from './volver';
 
 /**
  * EL PERFIL DE OTRO: su racha, su semana y lo que comparte.
@@ -133,7 +134,7 @@ export default function PerfilDeAmigo() {
   // falla — con mala señal, tardar mucho es lo normal. Lo encontró el barrido
   // del 25/9 en el perfil propio, y esta pantalla tenía la mitad del problema.
   const salida = (
-    <Pressable onPress={() => router.back()} hitSlop={8} style={estilos.volverSuelto}>
+    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volverSuelto}>
       <Text style={estilos.enlace}>{T.general.volver}</Text>
     </Pressable>
   );
@@ -188,7 +189,7 @@ export default function PerfilDeAmigo() {
         ajeno
       />
       <ScrollView contentContainerStyle={estilos.pantalla}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={estilos.volver}>
+        <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
           <Text style={estilos.enlace}>{T.general.volver}</Text>
         </Pressable>
 
@@ -286,7 +287,7 @@ export default function PerfilDeAmigo() {
       <AccionesDeUsuario
         usuario={accion ? { id: usuario.id, username: usuario.username } : null}
         onCerrar={() => setAccion(false)}
-        onBloqueado={() => router.back()}
+        onBloqueado={() => volverOInicio(router)}
       />
       <FotoGrande url={fotoGrande ? usuario.avatar_url : null} onCerrar={() => setFotoGrande(false)} />
     </View>

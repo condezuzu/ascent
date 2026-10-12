@@ -12039,7 +12039,8 @@ console.log('\n163. Pantallas sin salida: la de elegir nombre');
     const src = de163('movil', 'src', `${p}.tsx`);
     // El "Volver" tiene que estar FUERA de la rama feliz: en estas tres es una
     // constante que se dibuja en todas las ramas.
-    chequear(`${que} se puede cerrar siempre`, /router\.back\(\)/.test(src), true);
+    // Desde el 12/10 "siempre" incluye haber llegado por un enlace: sección 202.
+    chequear(`${que} se puede cerrar siempre`, /volverOInicio\(router\)/.test(src), true);
   }
 
   // Y los cuatro modales se pueden cerrar.
@@ -15156,7 +15157,7 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
     CLb.porQueNoCambio({ message: 'otra cosa' }),
   ], [T195b.errores.sinConexion, T195b.errores.sinConexion, T195b.errores.demasiadosIntentos, T195b.errores.claveCorta, T195b.clave.noSePudo]);
   chequear('el enlace del correo tiene ruta, la pantalla no se cierra mientras guarda y no sobrevive a la sesión', [
-    /if \(router\.canGoBack\(\)\) router\.back\(\);\s*else router\.replace\('\/'\);/.test(de195('movil/app/confirmar.tsx')),
+    /volverOInicio\(router\);/.test(de195('movil/app/confirmar.tsx')),
     /style=\{\[estilos\.despues, guardando && estilos\.apagado\]\} disabled=\{guardando\}/.test(de195('movil/src/ClaveNueva.tsx')),
     /if \(sesion === 'sin'\) setClaveNueva\(false\);/.test(de195('movil/app/_layout.tsx')),
   ], [true, true, true]);
@@ -15710,7 +15711,7 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     /http-?equiv|location\.|redirect\(/i.test(pagina197),
   ], [true, true, true, false]);
   chequear('la app tiene a dónde caer: manda el pedido sola (nunca a uno mismo) y va al perfil', [
-    /if \(yo && yo !== id\) await pedirAmistad\(supabase, yo, id\)[^;]*;\s*router\.replace\(`\/perfil\/\$\{id\}`\)/.test(de197('movil', 'src', 'AmigoPorEnlace.tsx')),
+    /if \(yo && yo !== id\) await pedirAmistad\(supabase, yo, id\)[^;]*;\s*if \(!sigueAca\.current\) return;\s*router\.replace\(`\/perfil\/\$\{id\}`\)/.test(de197('movil', 'src', 'AmigoPorEnlace.tsx')),
     /<AmigoPorEnlace \/>/.test(de197('movil', 'app', 'amigo', '[usuario].tsx')),
     /Share\.share\(\{ message: T\.social\.invitacion\(enlaceDeAmigo\(usuario\)\) \}\)/.test(de197('movil', 'src', 'InvitarConLink.tsx')),
     /<InvitarConLink usuario=/.test(de197('movil', 'src', 'Ranking.tsx')) && /<InvitarConLink usuario=\{perfil\.username\}/.test(de197('movil', 'src', 'PerfilPropio.tsx')),
@@ -16237,6 +16238,43 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   ], [true, false, false]);
   const aj201 = de201('movil', 'src', 'Ajustes.tsx');
   chequear('"Avisar cuando entreno" está a la vista con gimnasio marcado o sin él', [/gimnasio_lat != null && \(/.test(aj201), /rpc\('fijar_comparte_gimnasio'/.test(aj201)], [false, true]);
+}
+
+console.log('\n202. "Volver" anda siempre, también cuando la app arrancó por un enlace');
+{
+  // EL BUG (en la tienda, 12/10): con la app cerrada, el link de amigo abría un
+  // perfil del que no se podía salir. `router.back()` no hace nada si no hay
+  // pantalla debajo, y en frío las pestañas nunca se montaron.
+  const { readdirSync: dir202, readFileSync: leer202, statSync: es202 } = await import('node:fs');
+  const RAIZ202 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const { volverOInicio } = await import('../movil/src/volver.ts');
+  const navegar = (puede) => {
+    const hizo = [];
+    volverOInicio({ canGoBack: () => puede, back: () => hizo.push('atrás'), replace: (a) => hizo.push('a ' + a) });
+    return hizo;
+  };
+  chequear('con pantalla debajo vuelve; sin nada debajo va a Inicio', [navegar(true), navegar(false)], [['atrás'], ['a /']]);
+  // LA REGLA: nadie llama a `router.back()` directo. Se recorren TODAS las pantallas de la nativa.
+  const directos = [];
+  const recorrer202 = (d) => {
+    for (const n of dir202(d)) {
+      if (n === 'node_modules') continue;
+      const r = join(d, n);
+      if (es202(r).isDirectory()) recorrer202(r);
+      else if (/\.tsx?$/.test(n) && !r.endsWith('volver.ts') && /router\.back\(\)/.test(sinComentarios(leer202(r, 'utf8')))) directos.push(r.slice(RAIZ202.length + 1).replace(/\\/g, '/'));
+    }
+  };
+  recorrer202(join(RAIZ202, 'movil', 'src'));
+  recorrer202(join(RAIZ202, 'movil', 'app'));
+  chequear('ninguna pantalla de la nativa llama a router.back() directo', directos, []);
+  // Y SI LA PERSONA SE FUE MIENTRAS EL LINK BUSCABA, no se manda el pedido ni se navega.
+  const link202 = sinComentarios(leer202(join(RAIZ202, 'movil', 'src', 'AmigoPorEnlace.tsx'), 'utf8')).replace(/\r\n/g, '\n');
+  chequear('el link mira si la persona sigue ahí después de cada espera, antes de pedir y antes de navegar', [
+    /const id = await buscarPorNombre\(supabase, nombre\);\s*if \(!sigueAca\.current\) return;/.test(link202),
+    /const yo = await miId\(supabase\);\s*if \(!sigueAca\.current\) return;\s*if \(yo && yo !== id\) await pedirAmistad/.test(link202),
+    /await pedirAmistad\(supabase, yo, id\)[^;]*;\s*if \(!sigueAca\.current\) return;\s*router\.replace/.test(link202),
+    /sigueAca\.current = false;\s*volverOInicio\(router\);/.test(link202),
+  ], [true, true, true, true]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

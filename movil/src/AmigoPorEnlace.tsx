@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { buscarPorNombre, pedirAmistad } from '@compartido/ranking';
@@ -7,6 +7,7 @@ import { enlaceALaApp, usuarioDeEnlace } from '@nucleo/enlace';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { C } from './colores';
+import { volverOInicio } from './volver';
 
 /**
  * A DÓNDE CAE UN LINK DE AMIGO (`ascent://amigo/<nombre>`, 8/10/2026).
@@ -29,16 +30,31 @@ export default function AmigoPorEnlace() {
   const { usuario } = useLocalSearchParams<{ usuario: string }>();
   const [estado, setEstado] = useState<'buscando' | 'no-existe' | 'no-se-pudo'>('buscando');
 
+  // SI LA PERSONA SE FUE, NO SE HACE NADA MÁS (12/10). Con mala señal la
+  // búsqueda tarda; quien tocaba "Volver" en el medio igual mandaba el pedido de
+  // amistad que acababa de descartar, y cuando llegaba la respuesta la pantalla
+  // de pestañas se reemplazaba por el perfil. Se mira después de CADA espera.
+  const sigueAca = useRef(true);
+  useEffect(() => {
+    sigueAca.current = true;
+    return () => {
+      sigueAca.current = false;
+    };
+  }, []);
+
   const buscar = useCallback(async () => {
     setEstado('buscando');
     // Lo que vino en la URL lo escribió cualquiera: pasa por el mismo filtro que el link.
     const nombre = usuarioDeEnlace(enlaceALaApp(usuario ?? ''));
     if (!nombre) return setEstado('no-existe');
     const id = await buscarPorNombre(supabase, nombre);
+    if (!sigueAca.current) return;
     if (id === 'no-se-pudo') return setEstado('no-se-pudo');
     if (!id) return setEstado('no-existe');
     const yo = await miId(supabase);
+    if (!sigueAca.current) return;
     if (yo && yo !== id) await pedirAmistad(supabase, yo, id).catch(() => false);
+    if (!sigueAca.current) return;
     router.replace(`/perfil/${id}`);
   }, [usuario, router]);
 
@@ -46,9 +62,15 @@ export default function AmigoPorEnlace() {
     void buscar();
   }, [buscar]);
 
+  function irse() {
+    // Antes de navegar, no al desmontarse: el desmontaje puede llegar un instante después.
+    sigueAca.current = false;
+    volverOInicio(router);
+  }
+
   return (
     <View style={estilos.raiz}>
-      <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} hitSlop={8} style={estilos.volver}>
+      <Pressable onPress={irse} hitSlop={8} style={estilos.volver}>
         <Text style={estilos.enlace}>{T.general.volver}</Text>
       </Pressable>
       <View style={estilos.centrado}>

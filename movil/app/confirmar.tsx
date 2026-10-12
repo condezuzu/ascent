@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
+import { volverOInicio } from '../src/volver';
 
 /**
  * `/confirmar` — EL ENLACE DEL CORREO NO ES UNA PANTALLA.
@@ -16,8 +17,7 @@ import { useRouter } from 'expo-router';
 export default function Confirmar() {
   const router = useRouter();
   useEffect(() => {
-    if (router.canGoBack()) router.back();
-    else router.replace('/');
+    volverOInicio(router);
   }, [router]);
   return null;
 }

@@ -15,6 +15,7 @@ import AnotarPeso from './AnotarPeso';
 import CargarMarca from './CargarMarca';
 import Surgir from './Surgir';
 import { C } from './colores';
+import { volverOInicio } from './volver';
 
 /**
  * MIS MARCAS (§16): donde se cargan, se miran y se borran.
@@ -95,7 +96,7 @@ export default function MisMarcas() {
   // "Reintentar", que sin señal no puede hacer nada. Lo encontró el barrido
   // del 25/9 en el perfil propio; acá estaba igual, en las dos ramas.
   const salida = (
-    <Pressable onPress={() => router.back()} hitSlop={10} style={estilos.volverSuelto}>
+    <Pressable onPress={() => volverOInicio(router)} hitSlop={10} style={estilos.volverSuelto}>
       <Text style={estilos.volver}>{T.general.volver}</Text>
     </Pressable>
   );
@@ -215,7 +216,7 @@ export default function MisMarcas() {
         velo={0.74}
       />
       <ScrollView contentContainerStyle={estilos.contenido}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable onPress={() => volverOInicio(router)} hitSlop={10}>
           <Text style={estilos.volver}>{T.general.volver}</Text>
         </Pressable>
 
