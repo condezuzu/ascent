@@ -517,3 +517,12 @@ solo existe en la PC.
 **La build de la tienda busca la actualización una sola vez por arranque**, a
 los tres segundos de entrar. Quien tiene la app abierta en segundo plano no la
 recibe hasta que arranque de cero.
+
+**Cómo se comprueba una migración (regla del 12/10/2026).** El humano la pega
+y desde acá se corre `npm run test:conexion`, que dice en qué esquema quedó
+producción y compara funciones, reglas, índices y disparadores contra el repo.
+**No se le arma una consulta de comprobación a mano**: era ceremonia de más
+(la 63 hasta llevó una consulta mal escrita). La excepción es la migración que
+REESCRIBE datos que ya existían, como la 54 o la 62: ahí sí va una consulta,
+porque "corrió" no es lo mismo que "hizo lo correcto" y `test:conexion` no
+mira las filas.
