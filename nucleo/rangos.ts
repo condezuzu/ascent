@@ -27,6 +27,16 @@ export function rangoDeRacha(racha: number): Rango {
   return RANGOS[numeroDeRango(racha) - 1];
 }
 
+/**
+ * EL RANGO MÁS ALTO QUE ALCANZÓ ALGUIEN (12/10/2026), para su medalla en
+ * Ranking. Sale de la mejor racha con la MISMA escalera que el rango de hoy:
+ * 58 días es Sol, no Saturno. Nunca es menos que el de hoy, y con eso alcanza
+ * cuando la base todavía no manda la mejor racha.
+ */
+export function mejorRangoDe(u: { racha_actual: number; mejor_racha?: number | null }): number {
+  return numeroDeRango(Math.max(u.racha_actual ?? 0, u.mejor_racha ?? 0));
+}
+
 export function siguienteRango(racha: number): Rango | null {
   const actual = rangoDeRacha(racha);
   return RANGOS.find((r) => r.n === actual.n + 1) ?? null;

@@ -25,7 +25,7 @@ import AccionesDeUsuario from './AccionesDeUsuario';
 import CampoTexto from './CampoTexto';
 import Surgir from './Surgir';
 import Insignia from './Insignia';
-import { numeroDeRango } from '@nucleo/rangos';
+import { mejorRangoDe, numeroDeRango } from '@nucleo/rangos';
 import Medallas from './Medallas';
 import FondoEspacial from './FondoEspacial';
 import GloboPrimeraVez from './GloboPrimeraVez';
@@ -234,7 +234,9 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                   accessibilityRole="button"
                 >
                   <Text style={[estilos.dato, { width: 20 }]}>{i + 1}</Text>
-                  <Insignia rango={numeroDeRango(a.racha_actual)} tam={38} />
+                  {/* LA CARA, no la insignia del rango de hoy (12/10): en una
+                      lista de amigos se busca a la persona. */}
+                  <Avatar url={a.avatar_url} nombre={a.username} tam={38} />
                   {/* LAS MEDALLAS, al lado del nombre, igual que en el perfil.
                       Caen en segundo plano (ver el efecto de arriba). */}
                   <View style={{ flex: 1 }}>
@@ -245,6 +247,11 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                         <Text style={estilos.nombre}>{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</Text>
                       }
                     />
+                  </View>
+                  {/* LA MEDALLA DEL RANGO MÁS ALTO que alcanzó, no el de hoy:
+                      lo de hoy ya lo dice el número de al lado. */}
+                  <View testID="mejor-rango" accessibilityLabel={T.social.mejorRango}>
+                    <Insignia rango={mejorRangoDe(a)} tam={22} />
                   </View>
                   <Text style={estilos.dato}>{a.racha_actual}</Text>
                 </Pressable>

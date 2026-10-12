@@ -2653,7 +2653,9 @@ grant execute on function public.retrato_del_schema() to authenticated;
 -- a quien bloqueó ni a quien lo bloqueó.
 create view public.usuarios_publicos
 with (security_invoker = off) as
-  select id, username, avatar_url, racha_actual, rango_actual
+  -- `mejor_racha` (migración 66): para la medalla del rango más alto que
+  -- alcanzó cada uno, en Ranking. Es tan pública como la racha de hoy.
+  select id, username, avatar_url, racha_actual, rango_actual, mejor_racha
   from public.profiles p
   where username is not null
     and not exists (
@@ -3467,7 +3469,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 65; $$;
+returns int language sql immutable as $$ select 66; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

@@ -15820,7 +15820,7 @@ console.log('\n198. "La próxima, más": marcar que un peso quedó chico, y que 
     (await db.query(`select has_table_privilege('authenticated', 'public.subidas_marcadas', 'insert') as i, has_table_privilege('authenticated', 'public.subidas_marcadas', 'delete') as d`)).rows[0],
   ], [[['subidas: solo dueño', 'SELECT']], { i: false, d: false }]);
   const comprobar65 = leer198(join(RAIZ198, 'supabase', 'comprobar-65.sql'), 'utf8').replace(/\r\n/g, '\n').split('\n').filter((l) => !l.startsWith('--')).join('\n');
-  chequear('la comprobación de la 65 corre y dice lo que promete', (await db.query(comprobar65)).rows.map((f) => [f.version, Number(f.marcas) >= 0, f.con_regla, f.dueno_puede, f.anon_puede]), [[65, true, true, true, false]]);
+  chequear('la comprobación de la 65 corre y dice lo que promete', (await db.query(comprobar65)).rows.map((f) => [f.version >= 65, Number(f.marcas) >= 0, f.con_regla, f.dueno_puede, f.anon_puede]), [[true, true, true, true, false]]);
 
   // ---- LA REGLA, sin base ----
   const SU = await import('../nucleo/subir.ts');
@@ -15941,6 +15941,40 @@ console.log('\n198. "La próxima, más": marcar que un peso quedó chico, y que 
     /T\.sesion\.subidaNota\(subida\.series, enUnidad\(subida\.antes\), enUnidad\(subida\.ahora\)\)/.test(bloque198),
     /estado\.peso === subida\.ahora/.test(bloque198),
   ], [true, true, true, true, true, true]);
+}
+
+console.log('\n199. Ranking: la cara de cada uno y la medalla del rango más alto que alcanzó');
+{
+  const { readFileSync: leer199 } = await import('node:fs');
+  const RAIZ199 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de199 = (...p) => sinComentarios(leer199(join(RAIZ199, ...p), 'utf8').replace(/\r\n/g, '\n'));
+  const RG199 = await import('../nucleo/rangos.ts');
+  const nombreDe199 = (u) => RG199.RANGOS[RG199.mejorRangoDe(u) - 1].nombre;
+  // EL CASO QUE LO ORIGINÓ: mejor racha de 58 días. Con la escalera de hoy es
+  // Sol (51 a 75), no Saturno, que es un planeta del rango anterior (47 a 50).
+  chequear('el rango más alto sale de la mejor racha, con la misma escalera que el de hoy', [
+    nombreDe199({ racha_actual: 45, mejor_racha: 58 }),
+    nombreDe199({ racha_actual: 3, mejor_racha: 50 }),
+    nombreDe199({ racha_actual: 0, mejor_racha: 0 }),
+    nombreDe199({ racha_actual: 80, mejor_racha: 80 }),
+  ], ['Sol', 'Planeta', 'Polvo', 'Galaxia']);
+  chequear('sin la mejor racha (la base todavía no la manda) vale el de hoy, que nunca es más', [
+    nombreDe199({ racha_actual: 20 }), nombreDe199({ racha_actual: 20, mejor_racha: null }), nombreDe199({ racha_actual: 60, mejor_racha: 12 }),
+  ], ['Luna', 'Luna', 'Sol']);
+  // La base, por donde lee la app: la vista pública, con la cuenta de otra persona.
+  const yo199 = await nuevoUsuario();
+  const otro199 = await nuevoUsuario();
+  await db.query(`update profiles set username = 'rk_' || substr(id::text, 1, 8), racha_actual = 45, mejor_racha = 58 where id = $1`, [otro199]);
+  await comoUsuario(yo199);
+  const visto199 = (await db.query('select * from usuarios_publicos where id = $1', [otro199])).rows[0];
+  chequear('la vista pública trae la mejor racha, y con eso su rango más alto', [visto199.mejor_racha, nombreDe199(visto199)], [58, 'Sol']);
+  chequear('y sigue sin traer nada privado', Object.keys(visto199).sort(), ['avatar_url', 'id', 'mejor_racha', 'racha_actual', 'rango_actual', 'username']);
+  const rk199 = de199('movil', 'src', 'Ranking.tsx');
+  chequear('la fila del ranking muestra la cara y la medalla del rango más alto', [
+    /<Avatar url=\{a\.avatar_url\} nombre=\{a\.username\} tam=\{38\} \/>/.test(rk199),
+    /<Insignia rango=\{mejorRangoDe\(a\)\} tam=\{22\} \/>/.test(rk199),
+    /<Insignia rango=\{numeroDeRango\(a\.racha_actual\)\} tam=\{38\} \/>/.test(rk199),
+  ], [true, true, false]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

@@ -1320,6 +1320,7 @@ export const T = {
     invitacion: (url: string) => `Agrégame en Ascent: ${url}`,
 
     suRutina: 'Su rutina',
+    mejorRango: 'El rango más alto que alcanzó',
     avisoRutina: 'Novedad: tus amigos ahora ven tu rutina, ejercicios y series. Se apaga en Ajustes.',
     // No 'Entendido': así se llama el botón de la ventana de las vidas, y las sondas la cierran por ese texto.
     avisoRutinaEntendido: 'De acuerdo',

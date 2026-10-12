@@ -151,6 +151,8 @@ export type UsuarioPublico = {
   avatar_url: string | null;
   racha_actual: number;
   rango_actual: number;
+  /** La racha más larga que tuvo (migración 66). Sin la migración no viene. */
+  mejor_racha?: number;
 };
 
 export type Ejercicio = {

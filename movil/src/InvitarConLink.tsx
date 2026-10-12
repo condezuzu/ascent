@@ -26,13 +26,16 @@ export default function InvitarConLink({ usuario }: { usuario: string | null | u
 }
 
 const estilos = StyleSheet.create({
+  // CHICO Y A LA IZQUIERDA (12/10): a todo el ancho y en blanco competía con
+  // el nombre de usuario, que es lo que importa en esa pantalla.
   boton: {
+    alignSelf: 'flex-start',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 14,
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    marginTop: 12,
   },
-  texto: { color: C.tinta, fontSize: 14 },
+  texto: { color: C.sub, fontSize: 13 },
 });
