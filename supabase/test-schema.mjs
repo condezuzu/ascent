@@ -15759,9 +15759,10 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     /<FotoGrande url=\{fotoGrande \? usuario\.avatar_url : null\}/.test(amigo197),
     /resizeMode="contain"/.test(de197('movil', 'src', 'FotoGrande.tsx')),
   ], [true, true, true]);
+  // Desde el 12/10 "vacía" tiene dos casos: escondida (nada) y sin datos (se explica). Sección 201.
   chequear('la rutina se pide solo de un amigo, y vacía no se dibuja', [
-    /if \(d\?\.esAmigo\) cargarRutinaDeAmigo\(supabase, id\)/.test(amigo197),
-    /\{rutina\.length > 0 && \(/.test(amigo197),
+    /if \(d\?\.esAmigo\) cargarSuRutina\(supabase, id\)/.test(amigo197),
+    /\{\(rutina\.length > 0 \|\| rutinaSinDatos\) && \(/.test(amigo197),
     /rpc\('fijar_comparte_rutina', \{ p_valor: v \}\)/.test(de197('movil', 'src', 'Ajustes.tsx')),
     /value=\{perfil\.comparte_rutina !== false\}/.test(de197('movil', 'src', 'Ajustes.tsx')),
   ], [true, true, true, true]);
@@ -15996,6 +15997,10 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
 
   await como(x, 'select pedir_unirse($1)', [a]);
   chequear('quien no es amigo no puede pedir', [(await uniones(a)).length, (await uniones(x)).length], [0, 0]);
+  // Y NO QUEDA GUARDADO. Que no se vea no alcanza: un pedido escondido en la
+  // tabla aparecería solo el día que se hicieran amigos. (Sin este chequeo,
+  // sacar la regla de `pedir_unirse` pasaba en verde: lo tapaba `mis_uniones`.)
+  chequear('y el pedido de un extraño ni siquiera queda guardado', (await db.query('select count(*)::int as n from entrenos_compartidos where solicitante = $1', [x])).rows[0].n, 0);
   await como(b, 'select pedir_unirse($1)', [b]);
   chequear('ni pedirse a uno mismo', (await uniones(b)).length, 0);
 
@@ -16070,6 +16075,168 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
   ], [true, false]);
   await como(a, 'select fijar_comparte_rutina(false)');
   chequear('si la escondió, a la amiga le dice que no', (await como(c, 'select me_muestra_su_rutina($1) as v', [a]))[0].v, false);
+}
+
+console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué se dibuja, y que es de una sola mano');
+{
+  const { readFileSync: leer201, existsSync: existe201 } = await import('node:fs');
+  const RAIZ201 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const cruda201 = (...p) => leer201(join(RAIZ201, ...p), 'utf8').replace(/\r\n/g, '\n');
+  const de201 = (...p) => sinComentarios(cruda201(...p));
+  const EV = await import('../nucleo/enVivo.ts');
+
+  // ---- LO QUE SE PUBLICA ----
+  const visto = (x) => ({ corriendo: true, ejercicio: 'press_banca', hechas: 2, meta: 4, descansoFin: null, ...x });
+  chequear('se publica el ejercicio, la serie, la meta y cuánto falta de descanso; sin sesión, nada', [
+    EV.loQueSePublica(visto({}), 1000),
+    EV.loQueSePublica(visto({ descansoFin: 91_000 }), 1000),
+    EV.loQueSePublica(visto({ descansoFin: 500 }), 1000), // el descanso ya terminó
+    EV.loQueSePublica(visto({ corriendo: false }), 1000),
+  ], [
+    { ejercicio: 'press_banca', serie: 2, meta: 4, descansoFaltan: null },
+    { ejercicio: 'press_banca', serie: 2, meta: 4, descansoFaltan: 90 },
+    { ejercicio: 'press_banca', serie: 2, meta: 4, descansoFaltan: null },
+    null,
+  ]);
+  chequear('lo que se publica no tiene dónde llevar pesos', Object.keys(EV.loQueSePublica(visto({ peso: 60, pesos: [60, 60] }), 0)).sort(), ['descansoFaltan', 'ejercicio', 'meta', 'serie']);
+  chequear('se vuelve a publicar cuando cambia algo, y el descanso cuenta por su fin, no segundo a segundo', [
+    EV.firmaDe(visto({})) === EV.firmaDe(visto({})),
+    EV.firmaDe(visto({})) === EV.firmaDe(visto({ hechas: 3 })),
+    EV.firmaDe(visto({})) === EV.firmaDe(visto({ ejercicio: 'sentadilla' })),
+    EV.firmaDe(visto({})) === EV.firmaDe(visto({ meta: 5 })),
+    EV.firmaDe(visto({})) === EV.firmaDe(visto({ descansoFin: 91_000 })),
+    EV.firmaDe(visto({ descansoFin: 91_000 })) === EV.firmaDe(visto({ descansoFin: 91_000 })),
+  ], [true, false, false, false, false, true]);
+
+  // ---- LO QUE SE DIBUJA: con lo que manda la base de verdad (sección 200) ----
+  const p = await nuevoUsuario();
+  const q = await nuevoUsuario();
+  await db.query(`update profiles set username = 'vivo_' || substr(id::text, 1, 6) where id in ($1, $2)`, [p, q]);
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [p, q]);
+  await comoUsuario(q);
+  await db.query('select pedir_unirse($1)', [p]);
+  await comoUsuario(p);
+  const pendiente = EV.leerUniones((await db.query('select mis_uniones() as v')).rows[0].v);
+  chequear('el pedido llega con forma: de quién es y que no lo pedí yo', pendiente.map((u) => [u.estado, u.laPediYo, u.otro.id, u.enVivo]), [['pendiente', false, q, null]]);
+  await db.query('select responder_union($1, true)', [pendiente[0].id]);
+  await db.query('select publicar_en_vivo($1, $2, $3, $4)', ['press_banca', 3, 4, 90]);
+  await comoUsuario(q);
+  const [u201] = EV.leerUniones((await db.query('select mis_uniones() as v')).rows[0].v);
+  chequear('aceptado: llega lo que el otro publicó, con las horas ya convertidas', [u201.estado, u201.laPediYo, u201.enVivo.ejercicio, u201.enVivo.serie, u201.enVivo.meta, Number.isFinite(u201.enVivo.descansoFin), Number.isFinite(u201.ahora)], ['aceptada', true, 'press_banca', 3, 4, true, true]);
+  // LA CUENTA DEL DESCANSO se hace contra el reloj de la base más lo que corrió acá.
+  const r0 = EV.renglonDe(u201, 0);
+  chequear('recién llegado: le faltan unos 90 s y no está "sin señal"', [r0.descanso >= 88 && r0.descanso <= 90, r0.sinSenal, r0.sinDatos, r0.serie, r0.meta], [true, false, false, 3, 4]);
+  chequear('treinta segundos después, sin volver a preguntar, la cuenta bajó treinta', r0.descanso - EV.renglonDe(u201, 30_000).descanso, 30);
+  chequear('al terminar dice 0 (listo), y pasado un minuto deja de ser noticia', [EV.renglonDe(u201, 95_000).descanso, EV.renglonDe(u201, 200_000).descanso], [0, null]);
+  chequear('sin novedades por más de dos minutos: sin señal', [EV.renglonDe(u201, 119_000).sinSenal, EV.renglonDe(u201, 125_000).sinSenal], [false, true]);
+  // LA HORA DEL TELÉFONO NO ENTRA EN LA CUENTA: la función no la mira. Todo sale
+  // de lo que mandó la base y de cuánto pasó, que se le pasa por parámetro. Así
+  // dos teléfonos con la hora distinta ven la misma cuenta.
+  chequear('la cuenta no lee el reloj del teléfono', /Date\.now|new Date\(\)/.test(EV.renglonDe.toString()), false);
+  chequear('aceptado y sin publicar todavía: "todavía no empezó", no un renglón vacío', EV.renglonDe({ ...u201, enVivo: null }, 0), { ejercicio: null, serie: 0, meta: 0, descanso: null, sinSenal: false, sinDatos: true });
+  chequear('con quién tengo algo, para saber qué botón va', [EV.unionCon([u201], p)?.id, EV.unionCon([u201], q)], [u201.id, null]);
+  chequear('basura de la base no rompe la pantalla', [EV.leerUniones(null), EV.leerUniones([{ id: 1 }, null, { id: 'x', estado: 'otra', otro: { id: 'y' }, ahora: '2026-10-12T10:00:00Z' }])], [[], []]);
+  // LA SEGUNDA TRABA: aunque la base mandara lo que hace alguien que todavía no
+  // aceptó, la pantalla no lo guarda. Hoy la base no lo manda; si un día lo
+  // hiciera por error, esto es lo que evita que se dibuje.
+  chequear('de un pedido sin aceptar no se guarda lo que hace el otro, aunque llegue', EV.leerUniones([{
+    id: 'u1', estado: 'pendiente', la_pedi_yo: true, otro: { id: 'o1', username: 'ana', avatar_url: null }, ahora: '2026-10-12T10:00:00Z',
+    en_vivo: { ejercicio: 'press_banca', serie: 2, meta: 4, descanso_fin: null, actualizado: '2026-10-12T09:59:00Z' },
+  }]).map((u) => [u.estado, u.laPediYo, u.enVivo]), [['pendiente', true, null]]);
+  const { T: T201 } = await import('../nucleo/textos.ts');
+  chequear('el renglón: sin serie solo el ejercicio; una de más, sin "de"', [
+    T201.social.enVivoSerie('Press de banca', 0, 4), T201.social.enVivoSerie('Press de banca', 3, 4), T201.social.enVivoSerie('Press de banca', 5, 4),
+  ], ['Press de banca', 'Press de banca · serie 3 de 4', 'Press de banca · serie 5']);
+
+  // ---- DE UNA SOLA MANO: es lo que permite hacerlo sin el dueño único ----
+  // Los archivos que publican NO importan nada que escriba el estado de la sesión.
+  const queEscribe = /useSesion|sesionCache|@compartido\/cola|pesosRecordados|actualizarSesionCache|encolar\(/;
+  chequear('lo que publica y lo que dibuja no toca la sesión, la caché ni la cola', [
+    ['compartido', 'enVivo.ts'], ['movil', 'src', 'EnVivoDeInicio.tsx'], ['movil', 'src', 'useUniones.ts'], ['movil', 'src', 'Juntos.tsx'],
+  ].filter((ruta) => queEscribe.test(de201(...ruta))).map((r) => r.join('/')), []);
+  const inicio201 = de201('movil', 'src', 'Inicio.tsx');
+  chequear('Inicio le pasa lo que muestra, y solo CORTA el botón Terminar cuando terminó de verdad', [
+    /<EnVivoDeInicio\s+corriendo=\{sesion\.estado\.corriendo\}\s+ejercicio=\{sesion\.estado\.bloques\.ejercicio\}\s+hechas=\{sesion\.estado\.bloques\.hechas\}\s+meta=\{sesion\.estado\.bloques\.meta\}\s+descansoFin=\{sesion\.estado\.descanso\?\.fin \?\? null\}/.test(inicio201),
+    /const c = await sesion\.terminar\(\);\s*setTerminando\(false\);\s*if \(c\) void dejarDeEntrenar\(supabase\)/.test(inicio201),
+    (inicio201.match(/dejarDeEntrenar\(/g) ?? []).length,
+    /dejarDeEntrenar/.test(de201('movil', 'src', 'EnVivoDeInicio.tsx')),
+  ], [true, true, 1, false]);
+  const vivo201 = de201('movil', 'src', 'EnVivoDeInicio.tsx');
+  chequear('al iniciar avisa que entreno; publica solo si hay alguien, con un respiro y un latido', [
+    /if \(!visto\.corriendo\) return;\s*void avisarQueEntreno\(supabase\)/.test(vivo201),
+    /if \(!visto\.corriendo \|\| !hayAlguien\) return;/.test(vivo201),
+    /const p = loQueSePublica\(ultimo\.current, Date\.now\(\)\);\s*if \(p\) void publicarEnVivo\(supabase, p\)/.test(vivo201),
+    /setTimeout\(publicar, 700\)/.test(vivo201) && /setInterval\(publicar, LATIDO_MS\)/.test(vivo201),
+    /u\.estado === 'pendiente' && !u\.laPediYo/.test(vivo201),
+  ], [true, true, true, true, true]);
+  const rk201 = de201('movil', 'src', 'Ranking.tsx');
+  chequear('Ranking pregunta cada diez segundos solo con la pestaña a la vista, y ofrece Unirse a quien no tengo', [
+    /setActiva\(cual === 'ranking'\)/.test(rk201) && /const juntos = useUniones\(activa\);/.test(rk201),
+    /\{conJuntos && !union && \(/.test(rk201),
+    /void pedirUnirse\(supabase, e\.id\)\.then\(juntos\.recargar\)/.test(rk201),
+    /<Juntos uniones=\{juntos\.uniones\} recibidoEn=\{juntos\.recibidoEn\} recargar=\{juntos\.recargar\} \/>/.test(rk201),
+    /if \(!error\) setEntrenando\(/.test(rk201),
+    [EV.CADA_CUANTO_MS, EV.SIN_SENAL_S],
+  ], [true, true, true, true, true, [10_000, 120]]);
+  chequear('y la cuenta se dibuja contra lo que pasó desde que llegó la respuesta', /renglonDe\(u, ahora - recibidoEn\)/.test(de201('movil', 'src', 'Juntos.tsx')), true);
+
+  // Por el camino de la app: sin la 67, nada de esto llama a la base.
+  const E201 = await import('../compartido/esquema.ts');
+  const C201 = await import('../compartido/enVivo.ts');
+  const llamadas201 = [];
+  const cliente201 = (version, respuestas = {}) => ({
+    rpc: async (nombre, args) => {
+      if (nombre === 'version_del_esquema') return { data: version, error: null };
+      llamadas201.push(nombre);
+      return respuestas[nombre] ?? { data: null, error: null };
+    },
+    from: () => ({ select: async () => ({ data: [], error: null }) }),
+  });
+  let reloj201 = Date.now() + E201.VIGENCIA_MS * 1000;
+  const conVersion201 = async (v, respuestas) => {
+    reloj201 += E201.VIGENCIA_MS * 3;
+    await E201.versionDelEsquema(cliente201(v), reloj201);
+    await new Promise((r) => setTimeout(r, 20));
+    llamadas201.length = 0;
+    return cliente201(v, respuestas);
+  };
+  const vieja = await conVersion201(66);
+  await C201.avisarQueEntreno(vieja);
+  await C201.publicarEnVivo(vieja, { ejercicio: null, serie: 0, meta: 0, descansoFaltan: null });
+  await C201.dejarDeEntrenar(vieja);
+  chequear('con la base sin la 67 no se llama a nada, y la lista viene vacía', [(await C201.traerUniones(vieja)).uniones, await C201.pedirUnirse(vieja, 'x'), llamadas201], [[], false, []]);
+  const nueva = await conVersion201(67, { mis_uniones: { data: null, error: { message: 'Network request failed' } } });
+  chequear('si la lista no se pudo pedir se dice (null): la pantalla se queda con lo que tenía', await C201.traerUniones(nueva), null);
+  await C201.avisarQueEntreno(nueva);
+  await C201.publicarEnVivo(nueva, { ejercicio: 'press_banca', serie: 1, meta: 3, descansoFaltan: 60 });
+  chequear('con la 67, iniciar avisa con la marca de siempre y se publica', llamadas201, ['mis_uniones', 'marcar_en_gimnasio', 'publicar_en_vivo']);
+
+  // ---- "SU RUTINA": la escondió, o no hay datos ----
+  const P201 = await import('../compartido/perfil.ts');
+  const rutinaCon = async (filas, muestra) => {
+    const c = await conVersion201(67, { rutina_de_amigo: { data: filas, error: null }, me_muestra_su_rutina: { data: muestra, error: null } });
+    return [await P201.cargarSuRutina(c, 'alguien'), [...llamadas201]];
+  };
+  chequear('con datos: se muestran y no hace falta preguntar nada más', await rutinaCon([{ fecha: '2026-10-05', bloques: [{ ejercicio: 'x', series: 3 }] }], true), [
+    { dias: [{ dia: 1, ejercicios: [{ ejercicio: 'x', series: 3 }] }], sinDatos: false }, ['rutina_de_amigo'],
+  ]);
+  chequear('sin datos y NO la escondió: se explica', (await rutinaCon([], true))[0], { dias: [], sinDatos: true });
+  chequear('sin datos y la escondió: nada, como siempre', (await rutinaCon([], false))[0], { dias: [], sinDatos: false });
+  const amigo201 = de201('movil', 'src', 'PerfilDeAmigo.tsx');
+  chequear('el perfil dibuja la sección también cuando está vacía sin estar escondida, con su línea', [
+    /\{\(rutina\.length > 0 \|\| rutinaSinDatos\) && \(/.test(amigo201),
+    /\{rutina\.length === 0 && <Text style=\{estilos\.rutinaEjercicios\}>\{T\.social\.rutinaVacia\}<\/Text>\}/.test(amigo201),
+  ], [true, true]);
+
+  // ---- LA MEDALLA DEL PERFIL Y EL INTERRUPTOR ----
+  const med201 = de201('movil', 'src', 'Medallas.tsx');
+  chequear('en el perfil, la medalla es la del rango más alto y no un Saturno fijo', [
+    /<Insignia rango=\{numeroDeRango\(mejorRacha \?\? 0\)\} tam=\{tam\} \/>/.test(med201),
+    /Saturno/.test(med201.replace(/conSaturno|saturnoAbierto/g, '')),
+    existe201(join(RAIZ201, 'movil', 'src', 'MedallaRacha.tsx')),
+  ], [true, false, false]);
+  const aj201 = de201('movil', 'src', 'Ajustes.tsx');
+  chequear('"Avisar cuando entreno" está a la vista con gimnasio marcado o sin él', [/gimnasio_lat != null && \(/.test(aj201), /rpc\('fijar_comparte_gimnasio'/.test(aj201)], [false, true]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

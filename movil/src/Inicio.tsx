@@ -41,6 +41,8 @@ import InsistirGimnasio, { useInsistirGimnasio } from './InsistirGimnasio';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import RachaConRotulo from './RachaConRotulo';
 import PasosInicio from './PasosInicio';
+import EnVivoDeInicio from './EnVivoDeInicio';
+import { dejarDeEntrenar } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 
@@ -740,6 +742,17 @@ export default function Inicio({
       {aviso !== '' && <Text style={estilos.aviso}>{aviso}</Text>}
       {sesion.estado.aviso !== '' && <Text style={estilos.aviso}>{sesion.estado.aviso}</Text>}
 
+      {/* ENTRENAR CON OTRO (12/10): avisa que estoy entrenando, publica lo que
+          se ve acá y muestra el pedido de quien quiere unirse. De una sola
+          mano: no le devuelve nada a la sesión. Ver `EnVivoDeInicio`. */}
+      <EnVivoDeInicio
+        corriendo={sesion.estado.corriendo}
+        ejercicio={sesion.estado.bloques.ejercicio}
+        hechas={sesion.estado.bloques.hechas}
+        meta={sesion.estado.bloques.meta}
+        descansoFin={sesion.estado.descanso?.fin ?? null}
+      />
+
       {sesion.estado.corriendo && sesion.estado.inicio ? (
         <View style={estilos.sesion}>
           {/* SE CIERRA SOLO CON EL PRIMER `+`: para entonces ya se entendió qué
@@ -804,6 +817,9 @@ export default function Inicio({
                 onPress={async () => {
                   const c = await sesion.terminar();
                   setTerminando(false);
+                  // TERMINÉ DE VERDAD (no un parpadeo de `corriendo`): dejo de
+                  // aparecer entrenando y se cortan mis vínculos.
+                  if (c) void dejarDeEntrenar(supabase).catch(() => undefined);
                   // Sin resumen si la base deshizo el día: no hubo
                   // entrenamiento, y festejar un toque sin querer es peor.
                   if (c && !c.deshizoElDia) {

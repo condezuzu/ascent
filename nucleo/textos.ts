@@ -552,7 +552,7 @@ export const T = {
     // no se las nombra una vez.
 
     comparteGimnasio: 'Avisar cuando entreno',
-    comparteGimnasioNota: 'Tus amigos ven que estás entrenando al llegar.',
+    comparteGimnasioNota: 'Tus amigos ven que estás entrenando, nunca dónde. Hace falta para entrenar con otro.',
     comparteRutina: 'Mostrar mi rutina',
     comparteRutinaNota: 'Tus amigos ven qué ejercicios haces cada día y cuántas series. Nunca los pesos ni cuánto dura.',
     diasDescanso: 'Días de descanso',
@@ -1320,6 +1320,19 @@ export const T = {
     invitacion: (url: string) => `Agrégame en Ascent: ${url}`,
 
     suRutina: 'Su rutina',
+    rutinaVacia: 'Todavía no anotó ejercicios en las últimas cuatro semanas.',
+    // ENTRENAR CON OTRO (12/10), de a dos: ejercicio, serie y descanso.
+    juntos: 'Entrenando contigo',
+    unirse: 'Unirse',
+    quiereUnirse: (nombre: string) => `${nombre} quiere unirse a tu entrenamiento`,
+    esperandoA: (nombre: string) => `Esperando a ${nombre}`,
+    salirDeUnion: 'Salir',
+    enVivoSerie: (ejercicio: string, serie: number, meta: number) =>
+      serie < 1 ? ejercicio : meta >= serie ? `${ejercicio} · serie ${serie} de ${meta}` : `${ejercicio} · serie ${serie}`,
+    enVivoSinDatos: 'Todavía no empezó',
+    enVivoDescansa: (falta: string) => `descansa ${falta}`,
+    enVivoListo: 'listo',
+    enVivoSinSenal: 'sin señal',
     mejorRango: 'El rango más alto que alcanzó',
     avisoRutina: 'Novedad: tus amigos ahora ven tu rutina, ejercicios y series. Se apaga en Ajustes.',
     // No 'Entendido': así se llama el botón de la ventana de las vidas, y las sondas la cierran por ese texto.

@@ -152,7 +152,32 @@ una sola cosa:
 - Diagnóstico sin depender de una variable de compilación (ya anotado abajo);
 - lo que quede pendiente de capa nativa al llegar ese día.
 
-### Tanda 4 — lo grande (SIN EMPEZAR)
+### Tanda 4 — lo grande (la versión chica de la I, hecha el 12/10 SIN el dueño único)
+
+- **Hecho el 12/10: "entrenar con otro", de a dos** (migración 67), para
+  probarlo en el gimnasio. En "Entrenando ahora" hay un "Unirse"; al otro le
+  aparece el pedido en Inicio; si acepta, los dos se ven en Ranking, en
+  "Entrenando contigo": ejercicio, serie y descanso. Nunca pesos ni duración.
+  - *Cómo se hizo sin el dueño único:* el teléfono PUBLICA una foto de lo que
+    muestra Inicio, por un canal aparte, y nunca lee de vuelta. No toca el
+    contador, la caché ni la cola (`nucleo/enVivo.ts`, y un test lo exige).
+    Cortar lo hace el botón "Terminar", no una lectura de "corriendo", que
+    puede parpadear.
+  - *Límites aceptados por el humano:* se pregunta cada 10 segundos (no es
+    tiempo real) y solo con la app adelante; de a dos; sin aviso fuera de la
+    app; con el teléfono bloqueado el renglón queda congelado (el descanso se
+    sigue viendo bien: se publica cuándo termina); y el parpadeo cosmético de
+    lo que ve el otro cuando las copias del estado no coinciden.
+  - *Probado:* por la API y con dos navegadores a la vez contra la base real
+    (`supabase/probar-juntos.mjs`, que corre en `test:real`). **No probado en
+    dos teléfonos.**
+  - *"Entrenando ahora" se prende también al iniciar una sesión a mano*, no
+    solo al llegar al gimnasio marcado. Sigue pidiendo "Avisar cuando
+    entreno", que ahora está en Ajustes para todos (antes solo con gimnasio
+    marcado).
+- **Lo que falta de la I**, y sigue esperando al dueño único: grupos de más de
+  dos, tiempo real, la tira en Inicio, echar, invitar por link, y el aviso
+  fuera de la app (este último va a la build única).
 
 - **I) Entrenamiento compartido:** ver a alguien "entrenando ahora" y unirse, y
   en Ranking ver en vivo su descanso, su serie y qué está haciendo. Entre 5 y

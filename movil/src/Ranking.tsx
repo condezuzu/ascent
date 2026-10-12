@@ -35,6 +35,13 @@ import type { Medalla } from '@nucleo/medallas';
 import { C } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
 import InvitarConLink from './InvitarConLink';
+import Juntos from './Juntos';
+import { useUniones } from './useUniones';
+import { PESTANA_ACTIVA } from './irAPestana';
+import { pedirUnirse } from '@compartido/enVivo';
+import { CADA_CUANTO_MS, unionCon } from '@nucleo/enVivo';
+import { disponible } from '@nucleo/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
 
 /**
  * RANKING — tanda 4.
@@ -68,6 +75,31 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   // AMIGOS ENTRENANDO AHORA (actividad en vivo). Se refresca con el ranking.
   // Si la migración de actividad no corrió, vuelve vacío y no se muestra nada.
   const [entrenando, setEntrenando] = useState<{ id: string; username: string; avatar_url: string | null }[]>([]);
+  // Si no contesta, queda la lista que había: un hipo de red no puede sacar a
+  // alguien de "entrenando ahora" justo cuando se lo está mirando.
+  const pedirEntrenando = useCallback(async () => {
+    try {
+      const { data: viv, error } = await supabase.rpc('entrenando_ahora');
+      if (!error) setEntrenando(Array.isArray(viv) ? viv : []);
+    } catch {
+      /* queda lo que había */
+    }
+  }, []);
+
+  // ENTRENAR CON OTRO (12/10). Mientras se mira esta pestaña se pregunta cada
+  // diez segundos quién entrena y qué hacen los que están conmigo. No es tiempo
+  // real: es una pregunta repetida, y se apaga al salir de la pestaña.
+  const [activa, setActiva] = useState(false);
+  useEffect(() => eventos.escuchar(PESTANA_ACTIVA, (cual) => setActiva(cual === 'ranking')), []);
+  const juntos = useUniones(activa);
+  const conJuntos = disponible('entrenarConOtro', useVersionDelEsquema());
+  useEffect(() => {
+    if (!activa) return;
+    const t = setInterval(() => {
+      if (plataforma.ciclo.visible()) void pedirEntrenando();
+    }, CADA_CUANTO_MS);
+    return () => clearInterval(t);
+  }, [activa, pedirEntrenando]);
   // A quién denunciar o bloquear (long-press en una fila). null = hoja cerrada.
   const [accion, setAccion] = useState<{ id: string; username: string } | null>(null);
   // ¿Ya marcó su gimnasio? Del caché del perfil (que guarda si está marcado,
@@ -96,15 +128,8 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
     }
     setCargado(true);
     // Quién está entrenando ahora, aparte y sin frenar el ranking.
-    void (async () => {
-      try {
-        const { data: viv } = await supabase.rpc('entrenando_ahora');
-        setEntrenando(Array.isArray(viv) ? viv : []);
-      } catch {
-        setEntrenando([]);
-      }
-    })();
-  }, [alSalir]);
+    void pedirEntrenando();
+  }, [alSalir, pedirEntrenando]);
 
   // Las fotos de la actividad vencen a la hora: se vuelven a pedir antes de que se
   // rompan (ver `useRefrescoDeFirmadas`).
@@ -270,21 +295,41 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
 
         {/* ENTRENANDO AHORA (en vivo): arriba del historial, porque es lo que
             está pasando. Solo dice que están entrenando, nunca dónde. */}
+        <Juntos uniones={juntos.uniones} recibidoEn={juntos.recibidoEn} recargar={juntos.recargar} />
+
         {entrenando.length > 0 && (
           <View style={estilos.seccion}>
             <Text style={estilos.rotulo}>{T.social.entrenandoAhora}</Text>
-            {entrenando.map((e) => (
-              <Pressable
-                style={({ pressed }) => [estilos.fila, pressed && estilos.filaTocada]}
-                key={e.id}
-                onPress={() => router.push(`/perfil/${e.id}`)}
-                accessibilityRole="button"
-              >
-                <View style={estilos.puntoVivo} />
-                <Avatar url={e.avatar_url} nombre={e.username} tam={28} />
-                <Text style={[estilos.nombre, { fontSize: 14 }]}>{T.social.estaEntrenando(e.username)}</Text>
-              </Pressable>
-            ))}
+            {entrenando.map((e) => {
+              const union = unionCon(juntos.uniones, e.id);
+              return (
+                // LA FILA YA NO ES UN BOTÓN ENTERO: lleva "Unirse" adentro, y un
+                // botón adentro de otro se come el toque del de adentro.
+                <View style={estilos.fila} key={e.id}>
+                  <Pressable
+                    style={({ pressed }) => [estilos.filaAdentro, pressed && estilos.filaTocada]}
+                    onPress={() => router.push(`/perfil/${e.id}`)}
+                    accessibilityRole="button"
+                  >
+                    <View style={estilos.puntoVivo} />
+                    <Avatar url={e.avatar_url} nombre={e.username} tam={28} />
+                    <Text style={[estilos.nombre, { fontSize: 14 }]}>{T.social.estaEntrenando(e.username)}</Text>
+                  </Pressable>
+                  {conJuntos && !union && (
+                    <Pressable
+                      testID="unirse"
+                      style={estilos.unirse}
+                      hitSlop={8}
+                      onPress={() => void pedirUnirse(supabase, e.id).then(juntos.recargar)}
+                      accessibilityRole="button"
+                    >
+                      <Text style={estilos.unirseTexto}>{T.social.unirse}</Text>
+                    </Pressable>
+                  )}
+                  {union?.estado === 'pendiente' && union.laPediYo && <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>}
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -426,6 +471,9 @@ const estilos = StyleSheet.create({
   },
   nombre: { flex: 1, color: C.tinta, fontSize: 15 },
   dato: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
+  filaAdentro: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  unirse: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
+  unirseTexto: { color: C.tinta, fontSize: 13 },
   accion: { color: C.claro, fontSize: 14 },
   texto: { color: C.sub, fontSize: 14, marginVertical: 10 },
   botonFantasma: {

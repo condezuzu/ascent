@@ -163,8 +163,10 @@ export default function Ajustes({
           ahora" en Ranking —nunca dónde—; caduca sola a las 2 h. Solo tiene
           sentido con un punto marcado, así que aparece cuando lo hay. Se apaga
           acá y deja de aparecer al toque. */}
-      {perfil.gimnasio_lat != null && (
-        <View style={estilos.filaOpcion}>
+      {/* A LA VISTA DE TODOS, con gimnasio marcado o sin él (12/10): desde que
+          "entrenando ahora" se prende también al iniciar una sesión a mano,
+          quien no marcó su gimnasio no tenía cómo prenderlo. */}
+      <View style={estilos.filaOpcion}>
           <View style={estilos.textoOpcion}>
             <Text style={estilos.opcion}>{T.ajustes.comparteGimnasio}</Text>
             <Text style={estilos.nota}>{T.ajustes.comparteGimnasioNota}</Text>
@@ -178,8 +180,7 @@ export default function Ajustes({
               if (error) alCambiar({ comparte_gimnasio: !v } as Partial<Perfil>);
             }}
           />
-        </View>
-      )}
+      </View>
 
       {/* LA RUTINA A LA VISTA DE LOS AMIGOS (8/10): prendido por omisión, se
           esconde acá. Solo los ejercicios de cada día; ver la migración 64. */}

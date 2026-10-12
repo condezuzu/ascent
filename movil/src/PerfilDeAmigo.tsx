@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { cargarPerfilDeAmigo, cargarRutinaDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
+import { cargarPerfilDeAmigo, cargarSuRutina, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
 import FotoGrande from './FotoGrande';
 import type { DiaDeRutina } from '@nucleo/rutina';
 import Medallas from './Medallas';
@@ -52,6 +52,8 @@ export default function PerfilDeAmigo() {
   const [accion, setAccion] = useState(false);
   const [fotoGrande, setFotoGrande] = useState(false);
   const [rutina, setRutina] = useState<DiaDeRutina[]>([]);
+  // No la escondió, pero no hay nada que mostrar: se dice, en vez de no dibujar nada.
+  const [rutinaSinDatos, setRutinaSinDatos] = useState(false);
 
   const cargar = useCallback(async () => {
     setError('');
@@ -86,8 +88,12 @@ export default function PerfilDeAmigo() {
     // solo el número, que los amigos ya ven en el ranking (§16.7).
     // SU RUTINA (8/10): solo de un amigo, y solo si no la escondió. Si falla o
     // viene vacía, la sección no aparece.
-    if (d?.esAmigo) cargarRutinaDeAmigo(supabase, id).then(setRutina, () => setRutina([]));
-    else setRutina([]);
+    const ponerRutina = (r: { dias: DiaDeRutina[]; sinDatos: boolean }) => {
+      setRutina(r.dias);
+      setRutinaSinDatos(r.sinDatos);
+    };
+    if (d?.esAmigo) cargarSuRutina(supabase, id).then(ponerRutina, () => ponerRutina({ dias: [], sinDatos: false }));
+    else ponerRutina({ dias: [], sinDatos: false });
     if (d?.esAmigo) {
       supabase.rpc('ranking_fuerza').then(({ data }) => {
         const fila = (data as { id: string; dots: number }[] | null)?.find((f) => f.id === id);
@@ -232,9 +238,10 @@ export default function PerfilDeAmigo() {
               ))}
             </View>
             <FotosQueVen fotos={fotos} />
-            {rutina.length > 0 && (
+            {(rutina.length > 0 || rutinaSinDatos) && (
               <View testID="rutina-de-amigo" style={estilos.rutina}>
                 <Text style={estilos.rotulo}>{T.social.suRutina}</Text>
+                {rutina.length === 0 && <Text style={estilos.rutinaEjercicios}>{T.social.rutinaVacia}</Text>}
                 {rutina.map((d) => (
                   <View key={d.dia} style={estilos.rutinaDia}>
                     <Text style={estilos.rutinaNombre}>{T.fechas.diasLargos[d.dia]}</Text>

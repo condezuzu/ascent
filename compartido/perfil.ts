@@ -285,6 +285,20 @@ export const NO_SE_PUDO = 'no-se-pudo' as const;
  * todavía no tiene la migración 64 — las tres se ven igual a propósito: la
  * sección no aparece y nadie se entera de que alguien la apagó.
  */
+/**
+ * SU RUTINA, Y POR QUÉ ESTÁ VACÍA SI LO ESTÁ (12/10). Vacía podía ser "la
+ * escondió" o "no anotó nada", y las dos se veían igual: nada. Quien entraba
+ * pensaba que estaba roto. Ahora, si NO la escondió y no hay datos, se dice;
+ * si la escondió, sigue sin dibujarse nada.
+ */
+export async function cargarSuRutina(supabase: Cliente, otro: string): Promise<{ dias: DiaDeRutina[]; sinDatos: boolean }> {
+  const dias = await cargarRutinaDeAmigo(supabase, otro);
+  if (dias.length > 0) return { dias, sinDatos: false };
+  if (!disponible('entrenarConOtro', await versionDelEsquema(supabase).catch(() => null))) return { dias, sinDatos: false };
+  const { data, error } = await supabase.rpc('me_muestra_su_rutina', { p_quien: otro });
+  return { dias, sinDatos: !error && data === true };
+}
+
 export async function cargarRutinaDeAmigo(supabase: Cliente, otro: string): Promise<DiaDeRutina[]> {
   if (!disponible('rutinaDeAmigo', await versionDelEsquema(supabase).catch(() => null))) return [];
   const [{ data: filas }, { data: catalogo }] = await Promise.all([

@@ -4,7 +4,8 @@ import { cuantosLevantan, type Medalla as Dato } from '@nucleo/medallas';
 import { CURVA } from '@nucleo/deslizar';
 import { T } from '@nucleo/textos';
 import Medalla from './Medalla';
-import MedallaSaturno from './MedallaRacha';
+import Insignia from './Insignia';
+import { numeroDeRango } from '@nucleo/rangos';
 import { C } from './colores';
 
 /**
@@ -143,7 +144,11 @@ export default function Medallas({
               accessibilityRole="button"
               accessibilityLabel={T.yo.rachaMasLargaLarga(mejorRacha ?? 0)}
             >
-              <MedallaSaturno tam={tam} />
+              {/* LA MEDALLA DEL RANGO MÁS ALTO QUE ALCANZASTE (12/10), no un
+                  Saturno fijo: era el mismo dibujo para 3 días que para 300, y
+                  se leía como "llegué a Saturno". Es la misma que muestra
+                  Ranking, y sale de la misma escalera que el rango de hoy. */}
+              <Insignia rango={numeroDeRango(mejorRacha ?? 0)} tam={tam} />
             </Pressable>
           )}
         </View>

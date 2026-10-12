@@ -37,6 +37,9 @@ const soloApi = process.argv.includes('api');
 const PRUEBAS = [
   { nombre: 'cuatro semanas', archivo: 'simular-cuatro-semanas.mjs', args: [] },
   { nombre: 'privacidad', archivo: 'probar-privacidad.mjs', args: [] },
+  // Dos cuentas, y con navegador dos pantallas a la vez: lo más parecido a dos
+  // teléfonos que hay acá. Con `api` corre solo la parte de la base.
+  { nombre: 'entrenar con otro', archivo: 'probar-juntos.mjs', args: soloApi ? ['api'] : [] },
   ...(soloApi ? [] : [{ nombre: 'web y nativa', archivo: 'bateria-dos-apps.mjs', args: ['ambas'], navegador: true }]),
 ];
 

@@ -46,6 +46,8 @@ export const REQUIERE = {
   rutinaDeAmigo: 64,
   /** "La próxima, más": marcar que un peso quedó chico, y que se proponga un disco más. */
   subirPeso: 65,
+  /** Entrenar con otro (de a dos), y saber si un amigo escondió su rutina. */
+  entrenarConOtro: 67,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;
