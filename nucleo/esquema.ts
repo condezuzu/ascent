@@ -48,6 +48,8 @@ export const REQUIERE = {
   subirPeso: 65,
   /** Entrenar con otro (de a dos), y saber si un amigo escondió su rutina. */
   entrenarConOtro: 67,
+  /** "Avisar cuando entreno" nace prendido: recién ahí tiene sentido avisarlo. */
+  avisoDeEntrenoPrendido: 68,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

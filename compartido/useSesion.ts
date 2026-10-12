@@ -89,7 +89,7 @@ import {
   type Recordados,
 } from '@compartido/pesosRecordados';
 import { modoDelBloqueEnCurso, ultimoPesoEnModo } from '@nucleo/pesoRecordado';
-import { pesoConSubida } from '@nucleo/subir';
+import { pesoConSubida, seHizoHoy } from '@nucleo/subir';
 import { cargaValida, type Carga } from '@nucleo/carga';
 import type { OrigenSesion, ResultadoRegistro } from '@nucleo/tipos';
 
@@ -1092,7 +1092,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // CON UNA MARCA DE "LA PRÓXIMA, MÁS", un disco más que la última vez. La
     // regla de cuándo vale está en `pesoConSubida`.
     const marca = datos.subidas[id];
-    const subido = pesoConSubida(marca, modo, typeof recordado === 'number' ? recordado : null, hoyISO(), unidad);
+    const subido = pesoConSubida(marca, modo, typeof recordado === 'number' ? recordado : null, hoyISO(), unidad, seHizoHoy(actual, id));
     setSubida(marca && subido !== null ? { ejercicio: id, series: marca.series, antes: marca.peso, ahora: subido } : null);
     const b = proponerPeso(actual, subido ?? recordado);
     if (b === actual) return;

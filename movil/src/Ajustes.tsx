@@ -11,6 +11,8 @@ import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import { guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
 import { escritorEnFila } from '@compartido/enFila';
+import { eventos } from '@compartido/eventos';
+import { AVISO_DE_ENTRENO_CAMBIO } from '@nucleo/enVivo';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
 import Gimnasio from './ajustes/Gimnasio';
@@ -178,6 +180,8 @@ export default function Ajustes({
               alCambiar({ comparte_gimnasio: v } as Partial<Perfil>);
               const { error } = await supabase.rpc('fijar_comparte_gimnasio', { p_valor: v });
               if (error) alCambiar({ comparte_gimnasio: !v } as Partial<Perfil>);
+              // Si hay una sesión corriendo, que aparezca (o deje de aparecer) ya.
+              else eventos.emitir(AVISO_DE_ENTRENO_CAMBIO);
             }}
           />
       </View>

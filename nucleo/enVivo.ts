@@ -18,6 +18,9 @@
  * NO IMPORTA NADA del teléfono: se prueba con node pelado.
  */
 
+/** Se prendió o apagó "Avisar cuando entreno": si hay una sesión corriendo, tiene que surtir efecto YA. */
+export const AVISO_DE_ENTRENO_CAMBIO = 'ascent:aviso-de-entreno-cambio';
+
 /** Cada cuánto se vuelve a preguntar. */
 export const CADA_CUANTO_MS = 10_000;
 /** Sin novedades por más de esto, el renglón dice "sin señal". */

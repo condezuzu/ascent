@@ -61,6 +61,8 @@ try {
 
   console.log('\n1. Por la API');
   // ---- aparecer entrenando: solo con el aviso prendido, y solo para amigos ----
+  // Desde la migración 68 nace prendido: se apaga a mano para probar que respeta el interruptor.
+  await B.s.rpc('fijar_comparte_gimnasio', { p_valor: false });
   await B.s.rpc('marcar_en_gimnasio');
   chequear('sin "Avisar cuando entreno", B no aparece entrenando', await entrenando(A), []);
   await B.s.rpc('fijar_comparte_gimnasio', { p_valor: true });
@@ -100,6 +102,18 @@ try {
   // ---- terminar corta ----
   await B.s.rpc('dejar_de_entrenar');
   chequear('B termina: A deja de verlo unido y entrenando', [await uniones(A), await entrenando(A)], [[], []]);
+
+  // ---- y corta también si la sesión se cierra por la base, sin que el teléfono avise (migración 68) ----
+  if (version >= 68) {
+    await B.s.rpc('iniciar_sesion');
+    await B.s.rpc('marcar_en_gimnasio');
+    await A.s.rpc('pedir_unirse', { p_a: B.id });
+    await B.s.rpc('responder_union', { p_id: (await uniones(B))[0]?.id, p_acepta: true });
+    await B.s.rpc('publicar_en_vivo', { p_ejercicio: 'sentadilla', p_serie: 1, p_meta: 3, p_descanso_faltan: null });
+    chequear('unidos de nuevo, con una sesión de verdad', [(await uniones(A))[0]?.en_vivo?.ejercicio, await entrenando(A)], ['sentadilla', [B.id]]);
+    await B.s.rpc('terminar_sesion');
+    chequear('la sesión se cierra por la base (sin "dejar de entrenar") y A deja de verlo igual', [await uniones(A), await entrenando(A)], [[], []]);
+  } else nota(`la base está en ${version}: el corte al cerrarse la sesión (migración 68) no se probó`);
 
   if (soloApi) nota('sin navegador (api): la parte de la pantalla no se corrió');
   else {

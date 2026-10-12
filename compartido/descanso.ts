@@ -4,7 +4,7 @@ import { nombreDe } from './enCurso';
 import { T } from '@nucleo/textos';
 import { metaQueSeDice, type HechoAntesDelDescanso } from '@nucleo/bloques';
 import type { ContextoDelDescanso } from '@nucleo/plataforma';
-import { avisosDelDescanso, idsDelAviso } from '@nucleo/avisoDescanso';
+import { ecosViejos, queHacerAlTerminar } from '@nucleo/avisoDescanso';
 
 const CLAVE = 'ascent:descanso';
 
@@ -111,16 +111,30 @@ async function avisarAlTerminar(d: DescansoVivo | null) {
 
   if (!plataforma.avisos.conPantallaBloqueada()) return;
   const faltan = d ? restante(d.fin) : 0;
-  // TRES AVISOS, NO UNO (8/10): bloqueado, lo único que vibra es el aviso del
-  // sistema, y uno solo en el bolsillo no se siente. Se cancelan los tres
-  // siempre juntos. Ver `nucleo/avisoDescanso.ts`.
-  if (faltan <= 0) {
-    await Promise.all(idsDelAviso(AVISO).map((id) => plataforma.avisos.cancelar(id)));
-    return;
-  }
-  // Con la app adelante el aviso lo da la pantalla del descanso: el callback
-  // no hace nada más.
-  for (const a of avisosDelDescanso(AVISO, faltan)) await plataforma.avisos.programar(a.id, a.en, () => {});
+  // UNA SOLA NOTIFICACIÓN (12/10). Los dos avisos de más que programaba la
+  // versión anterior se cancelan siempre, por si quedó alguno esperando.
+  await Promise.all(ecosViejos(AVISO).map((id) => plataforma.avisos.cancelar(id)));
+  if (faltan <= 0 || !d) return plataforma.avisos.cancelar(AVISO);
+  const fin = d.fin;
+  // SI LLEGA CON LA APP ABIERTA, VIBRA DESDE ACÁ: la pantalla grande del
+  // descanso puede no estar a la vista (lo normal después del `+` es la
+  // píldora), y ahí no vibraba nadie. `avisarFin` cuida que no sean dos.
+  await plataforma.avisos.programar(AVISO, faltan, () => void avisarFin(fin), { sonido: await leerSonido() });
+}
+
+// De qué descanso ya se avisó, para que la pantalla y la notificación no vibren las dos.
+let avisado: number | null = null;
+
+/**
+ * AVISAR QUE TERMINÓ, UNA VEZ Y A TIEMPO. Devuelve si avisó: quien además hace
+ * sonar algo lo hace solo en ese caso. Ver `queHacerAlTerminar`.
+ */
+export function avisarFin(fin: number): boolean {
+  const que = queHacerAlTerminar(fin, avisado, Date.now());
+  avisado = fin;
+  if (que !== 'avisar') return false;
+  vibrar();
+  return true;
 }
 
 async function enVivoAlTerminar(d: DescansoVivo | null) {

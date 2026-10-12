@@ -147,7 +147,8 @@ export type Salud = {
 export type Avisos = {
   conPantallaBloqueada(): boolean;
   permiso(): Promise<boolean>;
-  programar(id: string, enSegundos: number, alSonar: () => void): Promise<void>;
+  /** `sonido: false` = la persona apagó "Sonido al terminar": el aviso llega callado. */
+  programar(id: string, enSegundos: number, alSonar: () => void, opciones?: { sonido?: boolean }): Promise<void>;
   cancelar(id: string): Promise<void>;
 };
 

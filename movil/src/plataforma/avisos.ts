@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import type { Avisos } from '@nucleo/plataforma';
-import { esEco } from '@nucleo/avisoDescanso';
+
 
 /**
  * EL AVISO DE FIN DE DESCANSO — y la otra mitad de la razón de migrar.
@@ -35,12 +35,12 @@ import { esEco } from '@nucleo/avisoDescanso';
 // EL SONIDO SÍ SE QUEDA: es el mismo aviso, y quitarlo dejaría el caso de la
 // app abierta con el teléfono en el bolsillo sin nada que se oiga.
 //
-// LOS ECOS NO SUENAN CON LA APP ABIERTA (8/10): existen para vibrar con el
-// teléfono bloqueado. Adelante, la pantalla ya vibró tres veces y la campana
-// ya sonó: repetirla dos veces más sería una alarma.
+// CON "SONIDO AL TERMINAR" APAGADO NO SUENA (12/10): antes la campana del
+// aviso sonaba igual, con la app abierta y con el teléfono bloqueado.
+let sonidoAlFrente = true;
 Notifications.setNotificationHandler({
-  handleNotification: async (n) => ({
-    shouldPlaySound: !esEco((n.request.content.data as { ascent?: string } | null)?.ascent),
+  handleNotification: async () => ({
+    shouldPlaySound: sonidoAlFrente,
     shouldSetBadge: false,
     shouldShowBanner: false,
     shouldShowList: false,
@@ -111,7 +111,9 @@ export const avisosNativos: Avisos = {
     }
   },
 
-  async programar(id, enSegundos, cuandoSuene) {
+  async programar(id, enSegundos, cuandoSuene, opciones) {
+    const conSonido = opciones?.sonido !== false;
+    sonidoAlFrente = conSonido;
     await this.cancelar(id);
     if (!(await this.permiso())) return;
     try {
@@ -135,7 +137,7 @@ export const avisosNativos: Avisos = {
           // El archivo tiene que estar en el BUNDLE, no en el JavaScript: lo
           // reproduce el sistema, no la app. Por eso va declarado en
           // `app.json` y por eso este cambio necesita una build.
-          sound: 'campana.wav',
+          sound: conSonido ? 'campana.wav' : false,
           // TIME SENSITIVE: atraviesa el modo de concentración. Un temporizador
           // que no suena porque tenés "No molestar" puesto en el gimnasio es un
           // temporizador roto, y es exactamente cuando se usa.
@@ -159,6 +161,14 @@ export const avisosNativos: Avisos = {
       await Notifications.cancelScheduledNotificationAsync(delSistema(id));
     } catch {
       /* ya había sonado o ya no existía */
+    }
+    // Y LA QUE YA SONÓ SE VA DEL CENTRO DE NOTIFICACIONES (12/10). Se pasa por
+    // acá al empezar el descanso siguiente y al saltar uno: sin esto quedaba
+    // un "Se terminó el descanso" por cada serie del entrenamiento.
+    try {
+      await Notifications.dismissNotificationAsync(delSistema(id));
+    } catch {
+      /* no estaba */
     }
   },
 };

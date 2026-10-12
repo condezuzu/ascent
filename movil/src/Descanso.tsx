@@ -10,7 +10,7 @@ import {
   duracionCorta,
   leerSonido,
   restante,
-  vibrar,
+  avisarFin,
   type DescansoVivo,
 } from '@compartido/descanso';
 import { C } from './colores';
@@ -73,8 +73,12 @@ export default function Descanso({
     };
   }, [visible]);
 
-  const avisar = useCallback(() => {
-    vibrar();
+  // UNA VEZ Y A TIEMPO (12/10): `avisarFin` no vibra si ya avisó la
+  // notificación que llegó con la app abierta, ni si el descanso terminó hace
+  // rato y recién ahora se lo mira (volver a la app a los cinco minutos vibraba
+  // tres veces por nada).
+  const avisar = useCallback((fin: number) => {
+    if (!avisarFin(fin)) return;
     if (sonido.current) plataforma.audio.avisar();
   }, []);
 
@@ -94,7 +98,7 @@ export default function Descanso({
       if (restante(vivo.fin) === 0 && !yaAviso.current) {
         yaAviso.current = true;
         setTerminado(true);
-        avisar();
+        avisar(vivo.fin);
       }
       repintar((n) => n + 1);
     };

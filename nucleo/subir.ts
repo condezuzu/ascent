@@ -47,9 +47,29 @@ export function loQueSePuedeSubir(e: EstadoBloques, modo: Carga | null): { peso:
  * - y el último peso recordado tiene que seguir siendo el marcado: si después
  *   se hizo otra cosa, la marca quedó vieja aunque la copia todavía la tenga.
  */
-export function pesoConSubida(s: Subida | undefined, modo: Carga, recordado: number | null, hoy: string, unidad: Unidad): number | null {
+export function pesoConSubida(
+  s: Subida | undefined,
+  modo: Carga,
+  recordado: number | null,
+  hoy: string,
+  unidad: Unidad,
+  /**
+   * Hoy ya se hizo ese ejercicio con peso: LA MARCA YA SE USÓ (12/10). Sin
+   * esto, quien no se animaba al disco de más y hacía el primer bloque con el
+   * peso de siempre recibía el disco de más OTRA VEZ en cada bloque nuevo de
+   * la misma sesión — y si no miraba, el `+` anotaba series con un peso que no
+   * hizo. Un dato falso, sin aviso.
+   */
+  yaSeHizoHoy = false
+): number | null {
+  if (yaSeHizoHoy) return null;
   if (!s || s.carga !== modo || !(s.dia < hoy) || recordado !== s.peso) return null;
   return pasoDelCampo(s.peso, unidad, 1) ?? null;
+}
+
+/** Si en la sesión de hoy ya hay un bloque CERRADO de ese ejercicio con algún peso anotado. */
+export function seHizoHoy(e: EstadoBloques, ejercicio: string): boolean {
+  return e.cerrados.some((b) => b.ejercicio === ejercicio && (b.pesos ?? []).some((p) => pesoValido(p) !== null));
 }
 
 /**

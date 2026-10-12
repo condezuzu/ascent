@@ -132,7 +132,8 @@ create table public.profiles (
   -- Actividad en vivo (migración 51): si tus amigos ven "estás entrenando
   -- ahora" al llegar al gimnasio. Opt-in, apagado por defecto. Se escribe solo
   -- por `fijar_comparte_gimnasio`.
-  comparte_gimnasio boolean not null default false,
+  -- Nace PRENDIDO desde la migración 68: apagado no arrancaba nunca.
+  comparte_gimnasio boolean not null default true,
   -- Si los amigos ven qué ejercicios hace cada día (migración 64). Se cambia
   -- por `fijar_comparte_rutina`.
   comparte_rutina boolean not null default true,
@@ -3138,7 +3139,7 @@ returns jsonb language sql stable security definer set search_path = public as $
              select jsonb_build_object(
                       'ejercicio', v.ejercicio, 'serie', v.serie, 'meta', v.meta,
                       'descanso_fin', v.descanso_fin, 'actualizado', v.actualizado)
-               from en_vivo v where v.user_id = u.id) end
+               from en_vivo v where v.user_id = u.id and v.actualizado >= c.creado) end
          ) order by c.creado), '[]'::jsonb)
     from entrenos_compartidos c
     join usuarios_publicos u
@@ -3165,6 +3166,46 @@ revoke execute on function public.pedir_unirse(uuid), public.responder_union(uui
 grant execute on function public.pedir_unirse(uuid), public.responder_union(uuid, boolean), public.salir_de_union(uuid),
   public.publicar_en_vivo(text, int, int, int), public.dejar_de_entrenar(), public.mis_uniones(),
   public.me_muestra_su_rutina(uuid) to authenticated;
+
+-- -------------------------------------------------------------
+-- ENTRENAR CON OTRO, DOS ARREGLOS (migración 68)
+-- -------------------------------------------------------------
+-- 1. EL VÍNCULO SE CORTA CUANDO LA SESIÓN SE CIERRA, LA CIERRE QUIEN LA CIERRE.
+--    Antes solo cortaba el botón "Terminar" del teléfono. Si la cerraba el
+--    vigilante del gimnasio, la inactividad o deshacer el día, el otro seguía
+--    viendo un entrenamiento viejo hasta tres horas. Va en un disparador y no
+--    en cada función que cierra: la próxima que se agregue también corta.
+--
+--    NUNCA PUEDE IMPEDIR QUE LA SESIÓN SE CIERRE: si esto falla, se traga el
+--    error. Cerrar la sesión es el dato; cortar el vínculo es limpieza.
+create or replace function public.sesion_cerrada_corta_el_entreno()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  begin
+    delete from en_vivo where user_id = old.user_id;
+    delete from entrenos_compartidos where solicitante = old.user_id or destinatario = old.user_id;
+    delete from en_el_gimnasio where user_id = old.user_id;
+  exception when others then
+    null;
+  end;
+  return null;
+end;
+$$;
+revoke execute on function public.sesion_cerrada_corta_el_entreno() from public, anon, authenticated;
+
+drop trigger if exists sesiones_al_cerrar_corta on public.sesiones;
+create trigger sesiones_al_cerrar_corta
+  after update of estado on public.sesiones
+  for each row when (old.estado = 'corriendo' and new.estado <> 'corriendo')
+  execute function public.sesion_cerrada_corta_el_entreno();
+
+-- La sesión que se BORRA estando corriendo (deshacer el día se lleva el log, y
+-- el log se lleva la sesión).
+drop trigger if exists sesiones_al_borrar_corta on public.sesiones;
+create trigger sesiones_al_borrar_corta
+  after delete on public.sesiones
+  for each row when (old.estado = 'corriendo')
+  execute function public.sesion_cerrada_corta_el_entreno();
 
 -- profiles: solo el dueño (lo público sale por la vista)
 create policy "perfil propio: leer" on public.profiles for select using (auth.uid() = id);
@@ -3637,7 +3678,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 67; $$;
+returns int language sql immutable as $$ select 68; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

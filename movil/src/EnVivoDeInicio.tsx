@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { avisarQueEntreno, publicarEnVivo, responderUnion } from '@compartido/enVivo';
-import { firmaDe, loQueSePublica } from '@nucleo/enVivo';
+import { AVISO_DE_ENTRENO_CAMBIO, firmaDe, loQueSePublica } from '@nucleo/enVivo';
+import { eventos } from '@compartido/eventos';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { useUniones } from './useUniones';
@@ -41,6 +42,17 @@ export default function EnVivoDeInicio(visto: Visto) {
   // Lo último que se vio, para que el latido publique lo de AHORA y no lo de cuando se armó.
   const ultimo = useRef(visto);
   ultimo.current = visto;
+
+  // PRENDER "AVISAR CUANDO ENTRENO" A MITAD DE SESIÓN SURTE EFECTO YA (12/10).
+  // La marca se ponía solo al iniciar: quien lo prendía después no aparecía
+  // hasta veinte minutos más tarde, o hasta terminar y volver a iniciar.
+  useEffect(
+    () =>
+      eventos.escuchar(AVISO_DE_ENTRENO_CAMBIO, () => {
+        if (ultimo.current.corriendo) void avisarQueEntreno(supabase).catch(() => undefined);
+      }),
+    []
+  );
   const hayAlguien = uniones.length > 0;
   const firma = firmaDe(visto);
   useEffect(() => {

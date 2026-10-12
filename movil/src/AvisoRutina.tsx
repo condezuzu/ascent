@@ -4,34 +4,52 @@ import { plataforma } from '@plataforma';
 import { leerPasoDelRecorrido } from '@compartido/guia';
 import { miId } from '@compartido/quienSoy';
 import { versionDelEsquema } from '@compartido/esquema';
-import { disponible } from '@nucleo/esquema';
-import { CLAVE_AVISO_RUTINA, conEsteVisto, quienesLoVieron, tocaAvisarDeLaRutina } from '@nucleo/avisoRutina';
+import { disponible, type Funcion } from '@nucleo/esquema';
+import { CLAVE_AVISO_ENTRENO, CLAVE_AVISO_RUTINA, conEsteVisto, quienesLoVieron, tocaAvisarDeLaRutina } from '@nucleo/avisoRutina';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { irAPestana } from './irAPestana';
 import { C, conAlfa } from './colores';
 
 /**
- * "TUS AMIGOS AHORA VEN TU RUTINA", una sola vez. Ver `nucleo/avisoRutina.ts`.
+ * LAS NOVEDADES QUE SE AVISAN UNA SOLA VEZ. Ver `nucleo/avisoRutina.ts`.
+ *
+ * Son cosas que nacieron PRENDIDAS para cuentas que ya existían, y que la
+ * persona tiene derecho a saber y a apagar: que sus amigos ven su rutina
+ * (8/10) y que ven cuando está entrenando (12/10). De a una por vez: la
+ * segunda aparece la próxima vez que se abre la app.
  *
  * Va encima de la barra, donde va el recorrido, y por eso espera a que el
- * recorrido no esté. Los dos botones lo dan por visto: es un aviso, no una
+ * recorrido no esté. Los dos botones la dan por vista: es un aviso, no una
  * pregunta que haya que contestar bien.
  */
+type Novedad = { clave: string; columna: 'comparte_rutina' | 'comparte_gimnasio'; requiere: Funcion; texto: string };
+const NOVEDADES: Novedad[] = [
+  { clave: CLAVE_AVISO_RUTINA, columna: 'comparte_rutina', requiere: 'rutinaDeAmigo', texto: T.social.avisoRutina },
+  { clave: CLAVE_AVISO_ENTRENO, columna: 'comparte_gimnasio', requiere: 'avisoDeEntrenoPrendido', texto: T.social.avisoEntreno },
+];
+
 export default function AvisoRutina() {
-  const [uid, setUid] = useState('');
+  const [aviso, setAviso] = useState<{ uid: string; novedad: Novedad } | null>(null);
 
   const mirar = useCallback(async () => {
     const yo = await miId(supabase);
     if (!yo) return;
-    // Lo barato primero: si ya lo vio, no se le pregunta nada a la base.
-    const vistoPor = quienesLoVieron(await plataforma.almacenamiento.leer(CLAVE_AVISO_RUTINA).catch(() => null));
-    if (vistoPor.includes(yo)) return;
-    if (!disponible('rutinaDeAmigo', await versionDelEsquema(supabase).catch(() => null))) return;
-    const { data, error } = await supabase.from('profiles').select('comparte_rutina').eq('id', yo).maybeSingle();
-    const comparte = error || !data ? null : (data as { comparte_rutina: boolean }).comparte_rutina === true;
+    // Lo barato primero: si ya vio todas, no se le pregunta nada a la base.
+    const vistas = await Promise.all(
+      NOVEDADES.map(async (n) => quienesLoVieron(await plataforma.almacenamiento.leer(n.clave).catch(() => null)))
+    );
+    if (vistas.every((v) => v.includes(yo))) return setAviso(null);
+    const version = await versionDelEsquema(supabase).catch(() => null);
+    const { data, error } = await supabase.from('profiles').select('comparte_rutina, comparte_gimnasio').eq('id', yo).maybeSingle();
+    const perfil = error || !data ? null : (data as Record<Novedad['columna'], boolean>);
     const recorridoAndando = (await leerPasoDelRecorrido(yo)) !== null;
-    setUid(tocaAvisarDeLaRutina({ uid: yo, vistoPor, recorridoAndando, comparte }) ? yo : '');
+    const toca = NOVEDADES.find(
+      (n, i) =>
+        disponible(n.requiere, version) &&
+        tocaAvisarDeLaRutina({ uid: yo, vistoPor: vistas[i], recorridoAndando, comparte: perfil ? perfil[n.columna] === true : null })
+    );
+    setAviso(toca ? { uid: yo, novedad: toca } : null);
   }, []);
 
   // Al abrir y cada vez que la app vuelve adelante: el que saltó el recorrido
@@ -43,19 +61,20 @@ export default function AvisoRutina() {
     });
   }, [mirar]);
 
-  if (!uid) return null;
+  if (!aviso) return null;
 
   async function visto(irAAjustes: boolean) {
-    const yo = uid;
-    setUid('');
+    if (!aviso) return;
+    const { uid: yo, novedad } = aviso;
+    setAviso(null);
     if (irAAjustes) irAPestana('ajustes');
-    const crudo = await plataforma.almacenamiento.leer(CLAVE_AVISO_RUTINA).catch(() => null);
-    await plataforma.almacenamiento.guardar(CLAVE_AVISO_RUTINA, conEsteVisto(crudo, yo)).catch(() => undefined);
+    const crudo = await plataforma.almacenamiento.leer(novedad.clave).catch(() => null);
+    await plataforma.almacenamiento.guardar(novedad.clave, conEsteVisto(crudo, yo)).catch(() => undefined);
   }
 
   return (
     <View testID="aviso-rutina" style={estilos.tarjeta} accessibilityRole="alert">
-      <Text style={estilos.texto}>{T.social.avisoRutina}</Text>
+      <Text style={estilos.texto}>{aviso.novedad.texto}</Text>
       <View style={estilos.botones}>
         <Pressable testID="aviso-rutina-entendido" style={estilos.borde} onPress={() => void visto(false)} hitSlop={10}>
           <Text style={estilos.bordeTexto}>{T.social.avisoRutinaEntendido}</Text>

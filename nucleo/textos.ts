@@ -1336,6 +1336,7 @@ export const T = {
     mejorRango: 'El rango más alto que alcanzó',
     avisoRutina: 'Novedad: tus amigos ahora ven tu rutina, ejercicios y series. Se apaga en Ajustes.',
     // No 'Entendido': así se llama el botón de la ventana de las vidas, y las sondas la cierran por ese texto.
+    avisoEntreno: 'Novedad: tus amigos ven cuando estás entrenando, nunca dónde. Se apaga en Ajustes.',
     avisoRutinaEntendido: 'De acuerdo',
     avisoRutinaAjustes: 'Ir a Ajustes',
     enlacePaso1: 'Descárgala en el App Store',

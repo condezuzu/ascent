@@ -86,14 +86,19 @@ export default function Juntos({ uniones, recibidoEn, recargar }: { uniones: Uni
                 <Text style={estilos.nombreVivo} numberOfLines={1}>
                   {u.otro.username}
                 </Text>
-                {r.sinSenal ? (
-                  <Text style={estilos.apagada}>{T.social.enVivoSinSenal}</Text>
-                ) : r.descanso !== null ? (
+                {/* EL DESCANSO GANA A "SIN SEÑAL" (12/10). Con el teléfono del
+                    otro bloqueado no llegan novedades, pero la cuenta no las
+                    necesita: se publicó cuándo termina. Antes "sin señal" la
+                    tapaba a los dos minutos, y con un descanso de tres no se
+                    veía el último minuto ni el "listo". */}
+                {r.descanso !== null ? (
                   <View style={[estilos.pildora, r.descanso === 0 && estilos.pildoraLista]}>
                     <Text style={[estilos.pildoraTexto, r.descanso === 0 && estilos.pildoraTextoLista]}>
                       {r.descanso === 0 ? T.social.enVivoListo : T.social.enVivoDescansa(cuentaAtras(r.descanso))}
                     </Text>
                   </View>
+                ) : r.sinSenal ? (
+                  <Text style={estilos.apagada}>{T.social.enVivoSinSenal}</Text>
                 ) : null}
               </View>
               <Text style={[estilos.detalle, r.sinSenal && estilos.viejo]} numberOfLines={2}>

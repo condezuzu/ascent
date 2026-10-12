@@ -11459,13 +11459,14 @@ console.log('\n157. La pantalla de bloqueo: el timer que se caia y la campana');
   const avi157 = de157('movil', 'src', 'plataforma', 'avisos.ts');
   chequear('sin cartel con la app abierta', /shouldShowBanner: false/.test(avi157), true);
   // Desde el 8/10 los ecos del aviso largo no suenan con la app abierta; el primero sí (sección 197).
-  chequear('pero con sonido', /shouldPlaySound: !esEco\(/.test(avi157), true);
+  // Desde el 12/10 suena salvo que la persona haya apagado "Sonido al terminar" (sección 197).
+  chequear('pero con sonido', /shouldPlaySound: sonidoAlFrente/.test(avi157), true);
 
   // ---- 8. LA CAMPANA SE ESCUCHA ----
   //
   // El sonido de fabrica de iOS es corto y discreto a proposito —esta pensado
   // para un mensaje— y contra musica con auriculares no llega.
-  chequear('la notificacion usa la campana nuestra', /sound: 'campana\.wav'/.test(avi157), true);
+  chequear('la notificacion usa la campana nuestra', /sound: conSonido \? 'campana\.wav' : false/.test(avi157), true);
   // TIME SENSITIVE: atraviesa el modo de concentracion. Un temporizador que no
   // suena por tener "No molestar" es un temporizador roto, y es justo cuando
   // se usa.
@@ -15627,45 +15628,81 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   chequear('y con la base sin la migración 64 no pide nada', await P197.cargarRutinaDeAmigo(cliente197(63), duena), []);
   await olvidarEsquema(64);
 
-  // ---- E. EL AVISO LARGO: tres avisos separados por un segundo, y se van los tres ----
+  // ---- E. EL AVISO DE FIN DE DESCANSO: UNO solo, a tiempo, y callado si se apagó el sonido ----
+  // (El 8/10 eran tres notificaciones seguidas: dejaban tres avisos en el centro
+  // de notificaciones por cada descanso. El 12/10 volvió a ser una.)
   const AV197 = await import('../nucleo/avisoDescanso.ts');
-  chequear('a 90 segundos: el aviso y dos ecos, uno por segundo', AV197.avisosDelDescanso('descanso', 90), [
-    { id: 'descanso', en: 90 }, { id: 'descanso-eco-1', en: 91 }, { id: 'descanso-eco-2', en: 92 },
-  ]);
-  chequear('con la app abierta suena solo el primero', AV197.idsDelAviso('descanso').map((id) => AV197.esEco(id)).concat(AV197.esEco(undefined)), [false, true, true, false]);
-  // Por el camino entero: arrancar un descanso y saltarlo, con el puerto de avisos anotando.
-  const { plataforma: plat197 } = await import('./dobles/plataforma.mjs');
+  chequear('cuándo se avisa: recién terminado sí; el mismo dos veces no; uno que terminó hace rato tampoco', [
+    AV197.queHacerAlTerminar(1000, null, 1000),
+    AV197.queHacerAlTerminar(1000, null, 1000 + AV197.TARDE_MS),
+    AV197.queHacerAlTerminar(1000, 1000, 1200), // ya se avisó de este
+    AV197.queHacerAlTerminar(1000, 500, 1200), // se había avisado de OTRO descanso
+    AV197.queHacerAlTerminar(1000, null, 1000 + 5 * 60_000), // se volvió a la app a los cinco minutos
+  ], ['avisar', 'avisar', 'ya', 'avisar', 'tarde']);
+  // Por el camino entero: arrancar un descanso, que llegue el aviso, y saltarlo, con los puertos anotando.
+  const { plataforma: plat197, memoria: mem197 } = await import('./dobles/plataforma.mjs');
   const D197 = await import('../compartido/descanso.ts');
   const avisosDeVerdad = plat197.avisos;
   const hapticaDeVerdad = plat197.haptica;
   const anotado = [];
+  let alSonar197 = null;
   plat197.avisos = {
     conPantallaBloqueada: () => true,
-    programar: async (id, en) => void anotado.push(['programar', id, Math.round(en)]),
+    programar: async (id, en, alSonar, opciones) => {
+      alSonar197 = alSonar;
+      anotado.push(['programar', id, Math.round(en), opciones]);
+    },
     cancelar: async (id) => void anotado.push(['cancelar', id]),
   };
   plat197.haptica = { disponible: () => true, pulso: () => (anotado.push(['pulso']), true), aviso: () => (anotado.push(['aviso']), true) };
-  D197.guardarDescanso(90);
-  await new Promise((r) => setTimeout(r, 20));
-  chequear('empezar un descanso programa los tres', anotado.filter((a) => a[0] === 'programar'), [
-    ['programar', 'descanso', 90], ['programar', 'descanso-eco-1', 91], ['programar', 'descanso-eco-2', 92],
-  ]);
+  const quieto197 = () => new Promise((r) => setTimeout(r, 25));
+  const d197 = D197.guardarDescanso(90);
+  await quieto197();
+  chequear('empezar un descanso programa UNA notificación, con sonido', anotado.filter((a) => a[0] === 'programar'), [['programar', 'descanso', 90, { sonido: true }]]);
+  chequear('y cancela los dos avisos de más que programaba la versión anterior', anotado.filter((a) => a[0] === 'cancelar').map((a) => a[1]).sort(), ['descanso-eco-1', 'descanso-eco-2']);
+  // LLEGA CON LA APP ABIERTA y la pantalla grande cerrada (la píldora): tiene que vibrar igual.
+  anotado.length = 0;
+  alSonar197();
+  chequear('si el aviso llega con la app abierta vibra el aviso largo, aunque la pantalla del descanso no esté a la vista', anotado, [['aviso']]);
+  // Y LA PANTALLA, que ve el cero un instante después, no vibra de nuevo.
+  anotado.length = 0;
+  chequear('la pantalla del descanso no vibra de nuevo por el mismo descanso', [D197.avisarFin(d197.fin), anotado], [false, []]);
+  // UN DESCANSO QUE TERMINÓ HACE RATO: ni vibra ni dice que avisó (quien hace sonar la campana mira eso).
+  chequear('volver a la app por un descanso que terminó hace cinco minutos no vibra', [D197.avisarFin(Date.now() - 5 * 60_000), anotado], [false, []]);
+  chequear('uno que terminó recién, sí', [D197.avisarFin(Date.now() - 300), anotado], [true, [['aviso']]]);
   anotado.length = 0;
   D197.borrarDescanso();
-  await new Promise((r) => setTimeout(r, 20));
-  chequear('saltarlo cancela los tres: no queda ningún eco sonando', anotado.filter((a) => a[0] === 'cancelar').map((a) => a[1]).sort(), ['descanso', 'descanso-eco-1', 'descanso-eco-2']);
+  await quieto197();
+  chequear('saltarlo cancela la notificación y los avisos viejos: no queda nada sonando', anotado.filter((a) => a[0] === 'cancelar').map((a) => a[1]).sort(), ['descanso', 'descanso-eco-1', 'descanso-eco-2']);
+  // "SONIDO AL TERMINAR" APAGADO: la notificación sale callada.
   anotado.length = 0;
-  D197.vibrar();
-  chequear('al terminar vibra el aviso largo, no el golpe corto', anotado, [['aviso']]);
+  await D197.guardarSonido(false);
+  D197.guardarDescanso(60);
+  await quieto197();
+  chequear('con "Sonido al terminar" apagado la notificación se programa SIN sonido', anotado.filter((a) => a[0] === 'programar').map((a) => a[3]), [{ sonido: false }]);
+  await D197.guardarSonido(true);
+  D197.borrarDescanso();
+  await quieto197();
+  mem197.delete('ascent:descanso');
   plat197.avisos = avisosDeVerdad;
   plat197.haptica = hapticaDeVerdad;
   const hap197 = de197('movil', 'src', 'plataforma', 'haptica.ts');
   chequear('en el teléfono el aviso es la vibración de verdad, encadenada', [
     /Vibration\.vibrate\(Platform\.OS === 'ios' \? \[0, \.\.\.esperas\]/.test(hap197),
     /length: GOLPES - 1 \}, \(\) => PAUSA_MS/.test(hap197),
-    [AV197.GOLPES, AV197.PAUSA_MS, AV197.ECOS, AV197.SEPARACION_ECO_S],
-  ], [true, true, [3, 600, 2, 1]]);
-  chequear('y un eco no hace sonar la campana con la app abierta', /shouldPlaySound: !esEco\(/.test(de197('movil', 'src', 'plataforma', 'avisos.ts')), true);
+    [AV197.GOLPES, AV197.PAUSA_MS],
+  ], [true, true, [3, 600]]);
+  const avisos197 = de197('movil', 'src', 'plataforma', 'avisos.ts');
+  chequear('la notificación sale callada si se apagó el sonido, también con la app abierta', [
+    /sound: conSonido \? 'campana\.wav' : false/.test(avisos197),
+    /sonidoAlFrente = conSonido;/.test(avisos197) && /shouldPlaySound: sonidoAlFrente/.test(avisos197),
+  ], [true, true]);
+  const pant197 = de197('movil', 'src', 'Descanso.tsx');
+  chequear('la pantalla del descanso avisa por avisarFin, y solo hace sonar la campana si avisó', [
+    /if \(!avisarFin\(fin\)\) return;\s*if \(sonido\.current\) plataforma\.audio\.avisar\(\);/.test(pant197),
+    /avisar\(vivo\.fin\);/.test(pant197),
+    /[^a-zA-Z]vibrar\(\)/.test(pant197),
+  ], [true, true, false]);
 
   // ---- F. EL LINK DE AMIGO ----
   const EN197 = await import('../nucleo/enlace.ts');
@@ -15736,7 +15773,7 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   chequear('el aviso está montado, lleva a Ajustes y los dos botones lo dan por visto', [
     /<AvisoRutina \/>/.test(de197('movil', 'src', 'Pestanas.tsx')),
     /if \(irAAjustes\) irAPestana\('ajustes'\)/.test(aviso197),
-    /guardar\(CLAVE_AVISO_RUTINA, conEsteVisto\(crudo, yo\)\)/.test(aviso197),
+    /guardar\(novedad\.clave, conEsteVisto\(crudo, yo\)\)/.test(aviso197),
     /onPress=\{\(\) => void visto\(false\)\}/.test(aviso197) && /onPress=\{\(\) => void visto\(true\)\}/.test(aviso197),
     /\(await leerPasoDelRecorrido\(yo\)\) !== null/.test(aviso197),
   ], [true, true, true, true, true]);
@@ -15848,6 +15885,19 @@ console.log('\n198. "La próxima, más": marcar que un peso quedó chico, y que 
   ], [62.5, null, null, null, null, null]);
   const { pasoDelCampo: paso198 } = await import('../nucleo/campoPeso.ts');
   chequear('en libras el disco es el de libras, el mismo del + del campo', SU.pesoConSubida(m198, 'total', 60, '2026-10-10', 'lb'), paso198(60, 'lb', 1));
+  // LA MARCA SE USA UNA VEZ POR SESIÓN (12/10). El caso: no me animé al disco de
+  // más, hice el primer bloque con 60, cambié de ejercicio y volví. Antes volvía
+  // a proponer 62,5 en cada bloque nuevo, y sin mirar el + anotaba series con un
+  // peso que no hice.
+  const conBloqueHecho = { cerrados: [{ ejercicio: 'press_banca', series: 2, pesos: [60, 60] }, { ejercicio: 'remo', series: 3, pesos: [40, 40, 40] }], ejercicio: 'press_banca', meta: 4, hechas: 0 };
+  chequear('si hoy ya se hizo ese ejercicio con peso, la marca ya se usó: no vuelve a proponer el disco de más', [
+    SU.seHizoHoy(conBloqueHecho, 'press_banca'),
+    SU.pesoConSubida(m198, 'total', 60, '2026-10-10', 'kg', SU.seHizoHoy(conBloqueHecho, 'press_banca')),
+    // Otro ejercicio hecho hoy no gasta la de este; y un bloque sin pesos anotados tampoco.
+    SU.seHizoHoy(conBloqueHecho, 'sentadilla'),
+    SU.seHizoHoy({ ...conBloqueHecho, cerrados: [{ ejercicio: 'press_banca', series: 2 }] }, 'press_banca'),
+    SU.pesoConSubida(m198, 'total', 60, '2026-10-10', 'kg', false),
+  ], [true, null, false, false, 62.5]);
   chequear('al terminar la sesión se gastan las de días anteriores de lo que se hizo con peso', SU.subidasTrasLaSesion(
     { press_banca: m198, remo: m198, sentadilla: { ...m198, dia: '2026-10-10' }, dominadas: m198 },
     [banca([62.5]), { ejercicio: 'sentadilla', series: 1, pesos: [100] }, { ejercicio: 'dominadas', series: 3 }],
@@ -15929,7 +15979,7 @@ console.log('\n198. "La próxima, más": marcar que un peso quedó chico, y que 
   // ---- EL CABLEADO: son un hook y un componente, se leen ----
   const hook198 = de198('compartido', 'useSesion.ts');
   chequear('el peso que se propone pasa por la marca, y la pantalla se entera de dónde salió', [
-    /const subido = pesoConSubida\(marca, modo, typeof recordado === 'number' \? recordado : null, hoyISO\(\), unidad\);/.test(hook198),
+    /const subido = pesoConSubida\(marca, modo, typeof recordado === 'number' \? recordado : null, hoyISO\(\), unidad, seHizoHoy\(actual, id\)\);/.test(hook198),
     /const b = proponerPeso\(actual, subido \?\? recordado\);/.test(hook198),
     /setSubida\(marca && subido !== null \? \{ ejercicio: id, series: marca\.series, antes: marca\.peso, ahora: subido \} : null\);/.test(hook198),
     /subida=\{sesion\.estado\.subida\}/.test(de198('movil', 'src', 'Inicio.tsx')),
@@ -16005,7 +16055,10 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
   await como(b, 'select pedir_unirse($1)', [b]);
   chequear('ni pedirse a uno mismo', (await uniones(b)).length, 0);
 
-  await como(a, 'select publicar_en_vivo($1, $2, $3, $4)', ['press_banca', 2, 4, 90]);
+  // Lo que A publicó ANTES de que existiera el vínculo (un entrenamiento de
+  // otro día, por ejemplo) no se le muestra a quien se une después: migración 68.
+  await como(a, 'select publicar_en_vivo($1, $2, $3, $4)', ['sentadilla', 9, 9, null]);
+  await db.query(`update en_vivo set actualizado = now() - interval '1 day' where user_id = $1`, [a]);
   await como(b, 'select pedir_unirse($1)', [a]);
   await como(b, 'select pedir_unirse($1)', [a]);
   chequear('el pedido le aparece a los dos, una sola vez, y todavía no muestra nada', [resumen(await uniones(a)), resumen(await uniones(b))], [
@@ -16017,6 +16070,8 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
   await como(c, 'select responder_union($1, true)', [id]);
   chequear('ni un tercero', (await uniones(a))[0].estado, 'pendiente');
   await como(a, 'select responder_union($1, true)', [id]);
+  chequear('aceptado, pero lo que A publicó en un entrenamiento ANTERIOR no se muestra como de ahora', resumen(await uniones(b)), [['aceptada', true, a, null]]);
+  await como(a, 'select publicar_en_vivo($1, $2, $3, $4)', ['press_banca', 2, 4, 90]);
   const deB = (await uniones(b))[0];
   chequear('aceptado: B ve lo que A está haciendo', [deB.estado, deB.en_vivo.ejercicio, deB.en_vivo.serie, deB.en_vivo.meta], ['aceptada', 'press_banca', 2, 4]);
   // El descanso llega como una hora de la base, y `ahora` es esa misma base: la cuenta no depende del teléfono.
@@ -16238,6 +16293,93 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   ], [true, false, false]);
   const aj201 = de201('movil', 'src', 'Ajustes.tsx');
   chequear('"Avisar cuando entreno" está a la vista con gimnasio marcado o sin él', [/gimnasio_lat != null && \(/.test(aj201), /rpc\('fijar_comparte_gimnasio'/.test(aj201)], [false, true]);
+}
+
+console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre quien la cierre; y el aviso nace prendido');
+{
+  const a = await nuevoUsuario();
+  const b = await nuevoUsuario();
+  await db.query(`update profiles set username = 'cz_' || substr(id::text, 1, 8) where id in ($1, $2)`, [a, b]);
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [a, b]);
+  const como = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const cuantas = async (u) => (await como(u, 'select mis_uniones() as v'))[0].v.length;
+  // B entrena, A se une, B publica y aparece entrenando.
+  const unir = async () => {
+    await como(b, 'select iniciar_sesion()');
+    await como(b, 'select marcar_en_gimnasio()');
+    await como(a, 'select pedir_unirse($1)', [b]);
+    const id = (await como(b, 'select mis_uniones() as v'))[0].v[0].id;
+    await como(b, 'select responder_union($1, true)', [id]);
+    await como(b, 'select publicar_en_vivo($1, $2, $3, $4)', ['press_banca', 1, 3, 60]);
+  };
+  const loQueQueda = async () => [
+    await cuantas(a),
+    (await db.query('select count(*)::int as n from en_vivo where user_id = $1', [b])).rows[0].n,
+    (await como(a, 'select id from entrenando_ahora()')).length,
+  ];
+  chequear('una cuenta nueva nace con "Avisar cuando entreno" prendido', (await db.query('select comparte_gimnasio from profiles where id = $1', [b])).rows[0].comparte_gimnasio, true);
+
+  await unir();
+  chequear('unidos: A ve a B, hay algo publicado y B figura entrenando', await loQueQueda(), [1, 1, 1]);
+  // 1. LA CIERRA LA INACTIVIDAD: nadie tocó "Terminar".
+  await db.query(`update sesiones set inicio = now() - interval '3 hours', ultima_actividad = now() - interval '2 hours' where user_id = $1 and estado = 'corriendo'`, [b]);
+  await db.query('select cerrar_sesiones_vencidas($1)', [b]);
+  chequear('la sesión se cerró sola por inactividad', (await db.query(`select estado, cerro_sola from sesiones where user_id = $1 order by inicio desc limit 1`, [b])).rows[0], { estado: 'terminada', cerro_sola: true });
+  chequear('y con eso se cortó todo: el vínculo, lo publicado y el "entrenando ahora"', await loQueQueda(), [0, 0, 0]);
+
+  // 2. LA TERMINA LA BASE POR OTRO CAMINO (el vigilante llama a terminar_sesion, no al botón).
+  await db.query('delete from sesiones where user_id = $1', [b]);
+  await unir();
+  await db.query(`update sesiones set inicio = now() - interval '20 minutes', series = 3 where user_id = $1 and estado = 'corriendo'`, [b]);
+  await como(b, 'select terminar_sesion()');
+  chequear('terminar la sesión, por la función que sea, también corta', await loQueQueda(), [0, 0, 0]);
+
+  // 3. SE BORRA CORRIENDO (deshacer el día se lleva el log, y el log la sesión).
+  await db.query('delete from sesiones where user_id = $1', [b]);
+  await unir();
+  await db.query(`delete from logs where user_id = $1`, [b]);
+  chequear('la sesión borrada estando corriendo también corta', [(await db.query('select count(*)::int as n from sesiones where user_id = $1', [b])).rows[0].n, ...(await loQueQueda())], [0, 0, 0, 0]);
+
+  // 4. Y NO CORTA LO QUE NO DEBE: contar una serie no es cerrar; y el que mira sin entrenar no pierde nada por lo suyo.
+  await unir();
+  await db.query(`update sesiones set series = series + 1, ultima_actividad = now() where user_id = $1 and estado = 'corriendo'`, [b]);
+  chequear('contar una serie no corta nada', await loQueQueda(), [1, 1, 1]);
+  await como(a, 'select cerrar_sesiones_vencidas($1)', [a]);
+  chequear('que A (que solo mira) abra la app no corta el vínculo', await cuantas(a), 1);
+  // ---- LO DEL TELÉFONO: son componentes, se leen ----
+  const { readFileSync: leer203 } = await import('node:fs');
+  const de203 = (...p) => sinComentarios(leer203(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n'));
+  const juntos203 = de203('movil', 'src', 'Juntos.tsx');
+  chequear('la cuenta del descanso del otro gana a "sin señal": se ve aunque tenga el teléfono bloqueado', [
+    /\{r\.descanso !== null \? \([\s\S]*?\) : r\.sinSenal \? \(/.test(juntos203),
+    /\{r\.sinSenal \? \([\s\S]*?\) : r\.descanso !== null \? \(/.test(juntos203),
+  ], [true, false]);
+  const vivo203 = de203('movil', 'src', 'EnVivoDeInicio.tsx');
+  chequear('prender "Avisar cuando entreno" con la sesión corriendo surte efecto en el acto', [
+    /else eventos\.emitir\(AVISO_DE_ENTRENO_CAMBIO\);/.test(de203('movil', 'src', 'Ajustes.tsx')),
+    /eventos\.escuchar\(AVISO_DE_ENTRENO_CAMBIO, \(\) => \{\s*if \(ultimo\.current\.corriendo\) void avisarQueEntreno\(supabase\)/.test(vivo203),
+  ], [true, true]);
+  const nov203 = de203('movil', 'src', 'AvisoRutina.tsx');
+  const { REQUIERE: REQ203 } = await import('../nucleo/esquema.ts');
+  const { T: T203 } = await import('../nucleo/textos.ts');
+  chequear('que tus amigos vean cuando entrenas se avisa una vez, recién con la 68, y con su propia marca de "visto"', [
+    /\{ clave: CLAVE_AVISO_ENTRENO, columna: 'comparte_gimnasio', requiere: 'avisoDeEntrenoPrendido', texto: T\.social\.avisoEntreno \}/.test(nov203),
+    /\{ clave: CLAVE_AVISO_RUTINA, columna: 'comparte_rutina', requiere: 'rutinaDeAmigo', texto: T\.social\.avisoRutina \}/.test(nov203),
+    REQ203.avisoDeEntrenoPrendido,
+    /nunca dónde/.test(T203.social.avisoEntreno) && /Ajustes/.test(T203.social.avisoEntreno),
+    (await import('../nucleo/avisoRutina.ts')).CLAVE_AVISO_ENTRENO !== (await import('../nucleo/avisoRutina.ts')).CLAVE_AVISO_RUTINA,
+  ], [true, true, 68, true, true]);
+
+  // 5. NUNCA IMPIDE CERRAR: la limpieza va en su propio bloque.
+  const disparador = (await db.query(`select prosrc from pg_proc where proname = 'sesion_cerrada_corta_el_entreno'`)).rows[0].prosrc;
+  chequear('si la limpieza falla, la sesión se cierra igual; y el teléfono no puede llamarla', [
+    /exception when others then\s*null;/.test(disparador),
+    (await db.query(`select has_function_privilege('authenticated', 'public.sesion_cerrada_corta_el_entreno()', 'execute') as p`)).rows[0].p,
+  ], [true, false]);
+  await como(b, 'select terminar_sesion()');
 }
 
 console.log('\n202. "Volver" anda siempre, también cuando la app arrancó por un enlace');

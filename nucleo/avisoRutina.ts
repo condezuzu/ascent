@@ -11,6 +11,8 @@
  */
 
 export const CLAVE_AVISO_RUTINA = 'ascent:aviso-rutina';
+/** El mismo aviso de una vez, para "tus amigos ven cuando entrenas" (12/10, migración 68). */
+export const CLAVE_AVISO_ENTRENO = 'ascent:aviso-entreno';
 
 /** Las cuentas que ya lo vieron en este aparato. Basura de otra versión = nadie. */
 export function quienesLoVieron(crudo: string | null | undefined): string[] {

@@ -148,7 +148,21 @@ una sola cosa:
   por la página (dominios asociados);
 - **con el dominio definitivo ya elegido** (ver "dominio propio" más abajo):
   es condición para compilar, no un detalle;
-- un solo aviso de fin de descanso con vibración larga, en vez de tres;
+- **el aviso de fin de descanso** (decidido el 12/10): desde ese día es UNA
+  notificación —las tres del 8/10 llenaban el centro de notificaciones—, y la
+  tarjeta con la cuenta corriendo ya existe desde la build 7. Lo que la build
+  agrega, y está preparado en la rama `build-8-nativo` (NO en `main`): un
+  sonido propio más fuerte y más largo, y un archivo de silencio para que, con
+  "Sonido al terminar" apagado, el aviso vibre sin sonar. Sonar con el teléfono
+  en silencio pide un permiso de Apple que no se va a pedir. Que la tarjeta
+  SUENE sola al terminar, sin notificación, pide un servidor que la empuje
+  (APNs): no entra en esta build;
+- **por qué lo nativo va en una rama y no en `main`:** tocar `app.json` o los
+  archivos nativos cambia la huella de la app, y el guardián deja de publicar
+  OTAs a las builds que ya están en la calle. La rama se junta con `main`
+  recién cuando la build nueva existe;
+- lo que NO se pudo preparar desde esta PC: los cambios al widget (Swift). Acá
+  no se compila Swift, y un error ahí se ve recién en la build;
 - Diagnóstico sin depender de una variable de compilación (ya anotado abajo);
 - lo que quede pendiente de capa nativa al llegar ese día.
 
@@ -175,9 +189,22 @@ una sola cosa:
     solo al llegar al gimnasio marcado. Sigue pidiendo "Avisar cuando
     entreno", que ahora está en Ajustes para todos (antes solo con gimnasio
     marcado).
+  - *Arreglos del 12/10, después de la cacería* (migración 68): el vínculo se
+    corta cuando la sesión se cierra por CUALQUIER camino (un disparador en la
+    base, no solo el botón "Terminar"); lo que el otro publicó en un
+    entrenamiento anterior ya no se muestra como de ahora; la cuenta del
+    descanso del otro se ve aunque tenga el teléfono bloqueado ("sin señal" la
+    tapaba a los dos minutos); y prender "Avisar cuando entreno" a mitad de
+    sesión surte efecto en el acto.
+  - *"Avisar cuando entreno" nace PRENDIDO* (decidido el 12/10, migración 68):
+    apagado no arrancaba nunca. Se avisa una vez, igual que la rutina.
+  - *De a dos por ahora* (decidido el 12/10). Grupos, después del dueño único.
 - **Lo que falta de la I**, y sigue esperando al dueño único: grupos de más de
   dos, tiempo real, la tira en Inicio, echar, invitar por link, y el aviso
   fuera de la app (este último va a la build única).
+- **Propuesto, sin hacer (12/10):** rediseñar la pantalla del descanso, y que
+  cuando se entrena con otro muestre abajo, en chico, el ejercicio, la serie y
+  la cuenta del otro.
 
 - **I) Entrenamiento compartido:** ver a alguien "entrenando ahora" y unirse, y
   en Ranking ver en vivo su descanso, su serie y qué está haciendo. Entre 5 y
@@ -243,6 +270,24 @@ una sola cosa:
     (que el `https` abra la app directo) se compilan con un dominio fijo. Si
     la build sale con `ascent-blush-seven.vercel.app`, cambiarlo después es
     otra build y otra revisión de Apple.
+
+### PARA DESPUÉS: tres personas se trabaron en el mismo lugar (anotado el 12/10)
+
+Tres personas no entendieron la app, y las tres se trabaron en lo mismo:
+**elegir un ejercicio**. Cuando se retome, el orden es este y no otro:
+
+1. **Primero, ver si esa pantalla se puede hacer obvia sola.** Si hace falta
+   explicarla, el problema es la pantalla.
+2. **Recién después, explicaciones**, y solo si hacen falta. Van EN EL
+   MOMENTO —la primera vez que alguien toca "Iniciar entrenamiento"— y con el
+   mínimo texto posible: cuanto más texto, más gente saltea todo.
+3. **Nada de guía obligatoria con esperas forzadas.**
+
+Y antes de tocar nada, **una consulta que diga dónde se cae la gente**: de
+las cuentas que hay (42 al 12/10), cuántas iniciaron un entrenamiento, cuántas
+anotaron una serie, cuántas eligieron un ejercicio y cuántas terminaron la
+guía. Hoy la base sabe las tres primeras; que alguien terminó la guía se
+guarda solo en el teléfono, así que para contarlo hay que empezar a mandarlo.
 
 ### Al terminar todas las tandas: otra cacería de bugs
 
