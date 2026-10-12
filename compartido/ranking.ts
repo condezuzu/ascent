@@ -3,6 +3,7 @@ import { cuerpoDe } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import type { UsuarioPublico } from '@nucleo/tipos';
 import { eventos } from '@compartido/eventos';
+import { miniaturas } from '@compartido/album';
 
 /**
  * LO SOCIAL CAMBIÓ por algo que se hizo en OTRA pantalla (4/10).
@@ -102,13 +103,18 @@ export async function cargarRanking(supabase: Cliente, uid: string): Promise<Dat
     let fotosPorLog = new Map<string, string>();
     const { data: fs } = await supabase.from('photos').select('log_id, storage_path').in('log_id', logIds);
     if (fs && fs.length > 0) {
-      const { data: firmadas } = await supabase.storage
-        .from('fotos')
-        .createSignedUrls(
-          fs.map((f) => f.storage_path as string),
-          3600
-        );
-      fotosPorLog = new Map(fs.map((f, i) => [f.log_id as string, firmadas?.[i]?.signedUrl ?? '']));
+      // LA MINIATURA, NO LA ENTERA (12/10). Esto dibuja un cuadrito de 38 px y
+      // bajaba la foto de 1600: el mismo error que se arregló en el Álbum el
+      // 8/10, en otra pantalla. La entera queda solo para la foto que todavía
+      // no tiene miniatura (la subió una app vieja y su dueño no abrió el álbum).
+      const rutas = fs.map((f) => f.storage_path as string);
+      const chicas = await miniaturas(supabase, rutas);
+      const sinChica = rutas.filter((_, i) => !chicas[i]);
+      const { data: enteras } = sinChica.length
+        ? await supabase.storage.from('fotos').createSignedUrls(sinChica, 3600)
+        : { data: [] as { signedUrl: string }[] };
+      const deEntera = new Map(sinChica.map((r, i) => [r, enteras?.[i]?.signedUrl ?? '']));
+      fotosPorLog = new Map(fs.map((f, i) => [f.log_id as string, chicas[i] ?? deEntera.get(rutas[i]) ?? '']));
     }
     actividad = ls.map((l) => ({
       username: mapaUsuarios.get(l.user_id as string)?.username ?? T.social.sinNombre,

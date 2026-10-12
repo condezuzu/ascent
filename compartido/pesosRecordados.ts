@@ -5,7 +5,8 @@ import { encolar, estaPendiente } from '@compartido/cola';
 import { versionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
 import { hoyISO } from '@nucleo/fechas';
-import { leerSubidas, subidasDeLaBase, subidasTrasLaSesion, type Subida, type Subidas } from '@nucleo/subir';
+import { claveDeSubida, leerSubidas, marcasDelDia, subidasDeLaBase, subidasTrasLaSesion, type Subida, type Subidas } from '@nucleo/subir';
+import type { Carga } from '@nucleo/carga';
 import {
   leerModosDelCatalogo,
   leerPesosPorModo,
@@ -124,9 +125,9 @@ export function traerRecordados(supabase: Cliente): Promise<Recordados> {
       if (conSubidas && !marcas.error) {
         const deLaBase = subidasDeLaBase(marcas.data);
         subidas = {};
-        for (const ejercicio of new Set([...Object.keys(deLaBase), ...Object.keys(copia)])) {
-          const vale = (await estaPendiente('marcar_subida', ejercicio)) ? copia[ejercicio] : deLaBase[ejercicio];
-          if (vale) subidas[ejercicio] = vale;
+        for (const clave of new Set([...Object.keys(deLaBase), ...Object.keys(copia)])) {
+          const vale = (await estaPendiente('marcar_subida', clave)) ? copia[clave] : deLaBase[clave];
+          if (vale) subidas[clave] = vale;
         }
       }
       const catalogo = leerModosDelCatalogo(
@@ -156,19 +157,30 @@ export function traerRecordados(supabase: Cliente): Promise<Recordados> {
  * teléfono —el toque se ve en el acto y vale sin señal— y después a la base,
  * por la cola: es de la cuenta, no del aparato.
  */
-export async function marcarSubida(supabase: Cliente, ejercicio: string, s: Subida | null): Promise<void> {
+export async function marcarSubida(supabase: Cliente, ejercicio: string, carga: Carga, s: Subida | null): Promise<void> {
   const yo = await quienSoy();
   if (!yo) return;
   const antes = await leerRecordados();
   const subidas = { ...antes.subidas };
-  if (s) subidas[ejercicio] = s;
-  else delete subidas[ejercicio];
+  const clave = claveDeSubida(ejercicio, carga);
+  if (s) subidas[clave] = s;
+  else delete subidas[clave];
   await guardar(yo, { ...antes, subidas });
   if (!disponible('subirPeso', await versionDelEsquema(supabase).catch(() => null))) return;
+  // El modo viaja SIEMPRE, también al sacarla: es lo que dice cuál de las del ejercicio.
   await encolar(supabase, {
     rpc: 'marcar_subida',
-    args: { p_ejercicio: ejercicio, p_carga: s?.carga ?? null, p_peso: s?.peso ?? null, p_series: s?.series ?? null, p_dia: s?.dia ?? null },
+    args: { p_ejercicio: ejercicio, p_carga: carga, p_peso: s?.peso ?? null, p_series: s?.series ?? null, p_dia: s?.dia ?? null },
   });
+}
+
+/**
+ * SACAR LAS MARCAS DE HOY DE UN EJERCICIO QUE YA NO ESTÁ EN LA SESIÓN (se
+ * corrigió por otro, o se quitó su bloque). Ver `ejerciciosQueSeFueron`.
+ */
+export async function quitarMarcasDeHoy(supabase: Cliente, ejercicio: string, dia: string): Promise<void> {
+  const { subidas } = await leerRecordados();
+  for (const clave of marcasDelDia(subidas, ejercicio, dia)) await marcarSubida(supabase, ejercicio, subidas[clave].carga, null);
 }
 
 export async function recordadosAlDia(supabase: Cliente): Promise<Recordados> {
@@ -182,7 +194,7 @@ export async function recordadosAlDia(supabase: Cliente): Promise<Recordados> {
  * copia en el acto —por si la próxima vez no hay señal— y se marca que hay que
  * volver a pedirle a la base, que es la que manda.
  */
-export async function sumarSesionARecordados(bloques: unknown): Promise<void> {
+export async function sumarSesionARecordados(bloques: unknown, dia: string = hoyISO()): Promise<void> {
   alDiaDe = null;
   try {
     const yo = await quienSoy();
@@ -192,7 +204,9 @@ export async function sumarSesionARecordados(bloques: unknown): Promise<void> {
       pesos: pesosDeBloques(bloques, antes.catalogo, antes.pesos),
       catalogo: antes.catalogo,
       maximos: maximosDeBloques(bloques, antes.catalogo, antes.maximos),
-      subidas: subidasTrasLaSesion(antes.subidas, bloques, hoyISO()),
+      // El día es el de la SESIÓN: terminar pasada la medianoche no puede
+      // gastar las marcas que se pusieron en ella.
+      subidas: subidasTrasLaSesion(antes.subidas, bloques, dia, antes.catalogo),
     });
   } catch {
     // Es una conveniencia: no puede frenar el cierre de la sesión.

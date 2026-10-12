@@ -30,7 +30,7 @@ const CADA_CUANTO_AVISO_MS = 20 * 60_000;
 const LATIDO_MS = 45_000;
 
 export default function EnVivoDeInicio(visto: Visto) {
-  const { uniones, recargar } = useUniones(visto.corriendo);
+  const { uniones, recargar } = useUniones(visto.corriendo, true);
 
   useEffect(() => {
     if (!visto.corriendo) return;
@@ -71,7 +71,9 @@ export default function EnVivoDeInicio(visto: Visto) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firma, hayAlguien]);
 
-  const pedidos = uniones.filter((u) => u.estado === 'pendiente' && !u.laPediYo);
+  // SOLO MIENTRAS ENTRENO (12/10): terminada la sesión el pedido ya no tiene a
+  // qué unirse, y la tarjeta quedaba en Inicio hasta volver a entrenar.
+  const pedidos = visto.corriendo ? uniones.filter((u) => u.estado === 'pendiente' && !u.laPediYo) : [];
   if (pedidos.length === 0) return null;
 
   return (

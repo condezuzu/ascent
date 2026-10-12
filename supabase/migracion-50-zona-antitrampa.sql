@@ -1,3 +1,16 @@
+-- NO SE VUELVE A CORRER SOBRE UNA BASE MÁS NUEVA (regla del 12/10/2026). Pegar esta
+-- migración encima de una posterior bajaba `version_del_esquema()` y apagaba
+-- funciones en todos los teléfonos, sin un solo error a la vista.
+do $guarda$
+declare v int;
+begin
+  if to_regprocedure('public.version_del_esquema()') is null then return; end if;
+  execute 'select public.version_del_esquema()' into v;
+  if v > 50 then
+    raise exception 'Esta es la migración 50 y la base ya está en la %: no se vuelve a correr.', v;
+  end if;
+end $guarda$;
+
 -- =============================================================
 -- MIGRACIÓN 50 — el anti-trampa de zona horaria no castiga al que viaja
 --

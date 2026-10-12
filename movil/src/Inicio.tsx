@@ -42,6 +42,7 @@ import GloboPrimeraVez from './GloboPrimeraVez';
 import RachaConRotulo from './RachaConRotulo';
 import PasosInicio from './PasosInicio';
 import EnVivoDeInicio from './EnVivoDeInicio';
+import { diaDeLaSesion } from '@nucleo/subir';
 import { dejarDeEntrenar } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
@@ -770,6 +771,7 @@ export default function Inicio({
             sugerido={sesion.estado.sugerido}
             cargaConsultada={sesion.estado.cargaConsultada}
             subida={sesion.estado.subida}
+            diaDeSesion={diaDeLaSesion(sesion.estado.inicio)}
             alSumar={sesion.serieHecha}
             alRestar={sesion.deshacerSerie}
             alSiguiente={sesion.bloqueSiguiente}

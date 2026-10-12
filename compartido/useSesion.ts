@@ -83,13 +83,14 @@ import { cuantasPendientes, encolar, estaPendiente, vaciar } from '@compartido/c
 import { leerCargasElegidas, recordarCarga } from '@compartido/cargas';
 import {
   leerRecordados,
+  quitarMarcasDeHoy,
   recordadosAlDia,
   sumarSesionARecordados,
   traerRecordados,
   type Recordados,
 } from '@compartido/pesosRecordados';
 import { modoDelBloqueEnCurso, ultimoPesoEnModo } from '@nucleo/pesoRecordado';
-import { pesoConSubida, seHizoHoy } from '@nucleo/subir';
+import { claveDeSubida, diaDeLaSesion, ejerciciosQueSeFueron, pesoConSubida, seHizoHoy } from '@nucleo/subir';
 import { cargaValida, type Carga } from '@nucleo/carga';
 import type { OrigenSesion, ResultadoRegistro } from '@nucleo/tipos';
 
@@ -734,7 +735,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // copia del teléfono para la próxima sesión, aunque no haya señal. Si la
     // base deshizo el día —un toque sin querer— no hay nada que sumar.
     void sumarSesionARecordados(
-      (data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia ? [] : bloquesHechos
+      (data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia ? [] : bloquesHechos,
+      diaDeLaSesion(inicioRef.current)
     );
     setInicio(null);
     setSeries(0);
@@ -1091,8 +1093,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       ultimoPesoEnModo(actual, datos.pesos, id, modo, datos.catalogo) ?? (sinHistorial ? respaldo ?? null : null);
     // CON UNA MARCA DE "LA PRÓXIMA, MÁS", un disco más que la última vez. La
     // regla de cuándo vale está en `pesoConSubida`.
-    const marca = datos.subidas[id];
-    const subido = pesoConSubida(marca, modo, typeof recordado === 'number' ? recordado : null, hoyISO(), unidad, seHizoHoy(actual, id));
+    const marca = datos.subidas[claveDeSubida(id, modo)];
+    const subido = pesoConSubida(marca, modo, typeof recordado === 'number' ? recordado : null, diaDeLaSesion(inicioRef.current), unidad, seHizoHoy(actual, id));
     setSubida(marca && subido !== null ? { ejercicio: id, series: marca.series, antes: marca.peso, ahora: subido } : null);
     const b = proponerPeso(actual, subido ?? recordado);
     if (b === actual) return;
@@ -1219,10 +1221,17 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * series y sus pesos se quedan, cambia de qué fueron (ver
    * `corregirEjercicio` en `nucleo/bloques.ts`). `indice` -1 es el en curso.
    */
+  /** Las marcas de "la próxima, más" de hoy de los ejercicios que el cambio sacó de la sesión. */
+  function soltarMarcas(antes: EstadoBloques, despues: EstadoBloques) {
+    const dia = diaDeLaSesion(inicioRef.current);
+    for (const ejercicio of ejerciciosQueSeFueron(antes, despues)) void quitarMarcasDeHoy(supabase, ejercicio, dia);
+  }
+
   async function corregirEjercicioDeBloque(indice: number, id: string, cargaQueSeVeia?: Carga) {
     const previo = bloquesRef.current;
     const b = corregirEjercicio(previo, indice, id, cargaQueSeVeia);
     if (b === previo) return marcar();
+    soltarMarcas(previo, b);
     bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
@@ -1269,6 +1278,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     const previo = bloquesRef.current;
     const b = mudarEjercicio(previo, id, cargaQueSeVeia);
     if (b === previo) return marcar();
+    soltarMarcas(previo, b);
     bloquesRef.current = b;
     setBloques(b);
     refrescarTarjeta();
@@ -1292,6 +1302,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     const antes = { series: seriesRef.current, bloques: bloquesRef.current };
     const nc = corregirEnLista(antes, indice, delta);
     if (nc.series === antes.series && nc.bloques === antes.bloques) return;
+    soltarMarcas(antes.bloques, nc.bloques);
     seriesRef.current = nc.series;
     bloquesRef.current = nc.bloques;
     setSeries(nc.series);

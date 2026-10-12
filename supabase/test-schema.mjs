@@ -15419,7 +15419,17 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
   chequear('la app con OTA deja su versión', await abrir(conApp, 'ascent/1.0.0 01a116f5-f27c'), [true, 'ascent/1.0.0 01a116f5-f27c', true]);
   chequear('la build sin OTA (manda el de la librería) queda sin versión, pero se sabe que abrió', await abrir(conApp, 'supabase-js-react-native/2.114.0'), [true, null, true]);
   const sinNada = await nuevoUsuario();
-  chequear('sin encabezados la pantalla abre igual', await abrir(sinNada, null), [true, null, true]);
+  // SOLO LA APP ANOTA (migración 69). Sin encabezados, o con el de la web, la
+  // pantalla abre igual y NO se toca lo anotado.
+  chequear('sin encabezados la pantalla abre igual, y no anota nada', await abrir(sinNada, null), [true, null, false]);
+  const alDia = await nuevoUsuario();
+  await abrir(alDia, 'ascent/1.0.0 01a116f5-f27c');
+  chequear('abrir la web (o un script) NO borra la versión de quien tiene la app al día', [
+    await abrir(alDia, 'supabase-ssr/0.5.2 createBrowserClient'),
+    await abrir(alDia, 'supabase-js-web/2.45.0'),
+    await abrir(alDia, 'supabase-js-node/2.45.0'),
+  ], [[true, 'ascent/1.0.0 01a116f5-f27c', true], [true, 'ascent/1.0.0 01a116f5-f27c', true], [true, 'ascent/1.0.0 01a116f5-f27c', true]]);
+  chequear('pero la app de la tienda sin OTA sí: esa persona de verdad sigue en la vieja', await abrir(alDia, 'supabase-js-react-native/2.114.0'), [true, null, true]);
   // UN DATO PARA MIRAR NO FRENA LA APERTURA: encabezados que no son JSON.
   await comoUsuario(sinNada);
   await db.query(`select set_config('request.headers', 'esto no es json', false)`);
@@ -15898,17 +15908,57 @@ console.log('\n198. "La próxima, más": marcar que un peso quedó chico, y que 
     SU.seHizoHoy({ ...conBloqueHecho, cerrados: [{ ejercicio: 'press_banca', series: 2 }] }, 'press_banca'),
     SU.pesoConSubida(m198, 'total', 60, '2026-10-10', 'kg', false),
   ], [true, null, false, false, 62.5]);
-  chequear('al terminar la sesión se gastan las de días anteriores de lo que se hizo con peso', SU.subidasTrasLaSesion(
-    { press_banca: m198, remo: m198, sentadilla: { ...m198, dia: '2026-10-10' }, dominadas: m198 },
-    [banca([62.5]), { ejercicio: 'sentadilla', series: 1, pesos: [100] }, { ejercicio: 'dominadas', series: 3 }],
-    '2026-10-10'
-  ), { remo: m198, sentadilla: { ...m198, dia: '2026-10-10' }, dominadas: m198 });
-  chequear('lo que manda la base llega bien aunque el peso venga como texto; la basura, afuera', SU.subidasDeLaBase([
+  // POR EJERCICIO Y POR MODO (migración 69): hacer remo en la máquina no gasta la marca del remo con mancuernas.
+  const k = SU.claveDeSubida;
+  const cat198 = { press_banca: 'total', remo: 'par', sentadilla: 'total', dominadas: 'lastre' };
+  const m198par = { ...m198, carga: 'par' };
+  chequear('al terminar la sesión se gastan las de días anteriores de lo que se hizo con peso, EN ESE MODO', SU.subidasTrasLaSesion(
+    { [k('press_banca', 'total')]: m198, [k('remo', 'par')]: m198par, [k('remo', 'total')]: m198, [k('sentadilla', 'total')]: { ...m198, dia: '2026-10-10' }, [k('dominadas', 'lastre')]: { ...m198, carga: 'lastre' } },
+    [
+      banca([62.5]), // total: gasta la de banca
+      { ejercicio: 'remo', series: 3, pesos: [50, 50, 50], carga: 'total' }, // en la máquina: gasta la de total, NO la de mancuernas
+      { ejercicio: 'sentadilla', series: 1, pesos: [100] }, // la de hoy no se gasta
+      { ejercicio: 'dominadas', series: 3 }, // sin pesos: no gasta nada
+    ],
+    '2026-10-10', cat198
+  ), { [k('remo', 'par')]: m198par, [k('sentadilla', 'total')]: { ...m198, dia: '2026-10-10' }, [k('dominadas', 'lastre')]: { ...m198, carga: 'lastre' } });
+  chequear('el bloque que no dice su modo usa el del catálogo', SU.subidasTrasLaSesion(
+    { [k('remo', 'par')]: m198par, [k('remo', 'total')]: m198 }, [{ ejercicio: 'remo', series: 2, pesos: [20, 20] }], '2026-10-10', cat198
+  ), { [k('remo', 'total')]: m198 });
+  chequear('lo que manda la base llega bien aunque el peso venga como texto, una por modo; la basura, afuera', SU.subidasDeLaBase([
     { ejercicio: 'press_banca', carga: 'total', peso: '62.5', series: 4, dia: '2026-10-08' },
+    { ejercicio: 'remo', carga: 'par', peso: 20, series: 3, dia: '2026-10-08' },
+    { ejercicio: 'remo', carga: 'total', peso: 50, series: 3, dia: '2026-10-09' },
     { ejercicio: 'remo', carga: 'corporal', peso: 10, series: 4, dia: '2026-10-08' },
     { ejercicio: 'curl', carga: 'par', peso: 12, series: 0, dia: '2026-10-08' },
     { ejercicio: 'x', carga: 'par', peso: 12, series: 3, dia: 'ayer' },
-  ]), { press_banca: { carga: 'total', peso: 62.5, series: 4, dia: '2026-10-08' } });
+  ]), {
+    [k('press_banca', 'total')]: { carga: 'total', peso: 62.5, series: 4, dia: '2026-10-08' },
+    [k('remo', 'par')]: { carga: 'par', peso: 20, series: 3, dia: '2026-10-08' },
+    [k('remo', 'total')]: { carga: 'total', peso: 50, series: 3, dia: '2026-10-09' },
+  });
+  chequear('lo guardado en el teléfono antes de la 69 (una por ejercicio) se lee con su modo', SU.leerSubidas({ remo: m198par, [k('press_banca', 'total')]: m198 }), { [k('remo', 'par')]: m198par, [k('press_banca', 'total')]: m198 });
+  // EL DÍA DE LA MARCA ES EL DE LA SESIÓN: una sesión que arranca 23:20 es de ese día aunque el reloj ya marque el siguiente.
+  const local = (a, m, d, h, mi) => new Date(a, m - 1, d, h, mi);
+  chequear('el día de la marca es el día en que ARRANCÓ la sesión, no el del reloj', [
+    SU.diaDeLaSesion(local(2026, 10, 9, 23, 20).toISOString(), local(2026, 10, 10, 0, 5)),
+    SU.diaDeLaSesion(null, local(2026, 10, 10, 0, 5)),
+    SU.diaDeLaSesion('no es una fecha', local(2026, 10, 10, 0, 5)),
+  ], ['2026-10-09', '2026-10-10', '2026-10-10']);
+  // Marcada a las 23:50 de una sesión del día 9; a las 00:05 se reabre el ejercicio: sigue siendo la misma sesión.
+  const sesionDel9 = SU.diaDeLaSesion(local(2026, 10, 9, 23, 20).toISOString(), local(2026, 10, 10, 0, 5));
+  chequear('cruzar la medianoche dentro de la sesión no da el disco de más en esa misma sesión', SU.pesoConSubida({ ...m198, dia: sesionDel9 }, 'total', 60, sesionDel9, 'kg'), null);
+  // CORREGIR EL EJERCICIO DESPUÉS DE MARCAR: la marca del que ya no está se saca.
+  const conBanca = { cerrados: [{ ejercicio: 'remo', series: 2, pesos: [40, 40] }], ejercicio: 'press_banca', meta: 3, hechas: 3, pesos: [60, 60, 60], peso: 60 };
+  chequear('qué ejercicios dejaron de estar tras corregir o quitar un bloque', [
+    SU.ejerciciosQueSeFueron(conBanca, { ...conBanca, ejercicio: 'press_inclinado' }), // "eran de press inclinado"
+    SU.ejerciciosQueSeFueron(conBanca, { ...conBanca, cerrados: [] }), // se quitó el bloque de remo
+    SU.ejerciciosQueSeFueron(conBanca, { ...conBanca, cerrados: [...conBanca.cerrados, { ejercicio: 'press_banca', series: 1, pesos: [60] }], ejercicio: 'curl', hechas: 0, pesos: [] }), // banca sigue en otro bloque
+    SU.ejerciciosQueSeFueron(conBanca, conBanca),
+  ], [['press_banca'], ['remo'], [], []]);
+  chequear('de un ejercicio se sacan las marcas de HOY, en cualquier modo, y no las de otro día', SU.marcasDelDia(
+    { [k('remo', 'par')]: { ...m198par, dia: '2026-10-10' }, [k('remo', 'total')]: m198, [k('remolacha', 'par')]: { ...m198par, dia: '2026-10-10' } }, 'remo', '2026-10-10'
+  ), [k('remo', 'par')]);
 
   // ---- POR EL CAMINO DE LA APP: el toque, la cola, la copia del teléfono y la base ----
   const { memoria: memoria198 } = await import('./dobles/plataforma.mjs');
@@ -15950,36 +16000,55 @@ console.log('\n198. "La próxima, más": marcar que un peso quedó chico, y que 
   const marcaDeHoy = { carga: 'total', peso: 60, series: 4, dia: hoy198 };
 
   const sin65 = await conVersion(64);
-  await R198.marcarSubida(sin65, 'press_banca', marcaDeHoy);
+  const kb = SU.claveDeSubida('press_banca', 'total');
+  await R198.marcarSubida(sin65, 'press_banca', 'total', marcaDeHoy);
   await quieto();
-  chequear('con la base sin la 65 la marca no se manda (pero el toque queda en el teléfono)', [llamadas.length, (await R198.leerRecordados()).subidas.press_banca], [0, marcaDeHoy]);
+  chequear('con la base sin la 65 la marca no se manda (pero el toque queda en el teléfono)', [llamadas.length, (await R198.leerRecordados()).subidas[kb]], [0, marcaDeHoy]);
 
   const con65 = await conVersion(65);
   hayRed = false;
-  await R198.marcarSubida(con65, 'press_banca', marcaDeHoy);
+  await R198.marcarSubida(con65, 'press_banca', 'total', marcaDeHoy);
+  // EL MISMO EJERCICIO EN OTRO MODO: en la cola son dos cosas, una no pisa a la otra.
+  const marcaPar = { carga: 'par', peso: 30, series: 3, dia: hoy198 };
+  await R198.marcarSubida(con65, 'press_banca', 'par', marcaPar);
   await quieto();
-  enLaBase = []; // la base todavía no la tiene: no llegó
-  chequear('sin señal: queda en la cola, y traer el historial NO la borra del teléfono', [
-    await COLA198.estaPendiente('marcar_subida', 'press_banca'),
+  enLaBase = []; // la base todavía no las tiene: no llegaron
+  chequear('sin señal: quedan las dos en la cola (una por modo), y traer el historial NO las borra del teléfono', [
+    await COLA198.estaPendiente('marcar_subida', kb),
+    await COLA198.estaPendiente('marcar_subida', SU.claveDeSubida('press_banca', 'par')),
     (await R198.traerRecordados(con65)).subidas,
-  ], [true, { press_banca: marcaDeHoy }]);
+  ], [true, true, { [kb]: marcaDeHoy, [SU.claveDeSubida('press_banca', 'par')]: marcaPar }]);
   hayRed = true;
   await COLA198.vaciar(con65);
-  chequear('vuelve la señal: sube con lo que se marcó y con SU día', llamadas, [['marcar_subida', { p_ejercicio: 'press_banca', p_carga: 'total', p_peso: 60, p_series: 4, p_dia: hoy198 }]]);
+  chequear('vuelve la señal: suben las dos, cada una con su modo y con SU día', llamadas, [
+    ['marcar_subida', { p_ejercicio: 'press_banca', p_carga: 'total', p_peso: 60, p_series: 4, p_dia: hoy198 }],
+    ['marcar_subida', { p_ejercicio: 'press_banca', p_carga: 'par', p_peso: 30, p_series: 3, p_dia: hoy198 }],
+  ]);
   enLaBase = [{ ejercicio: 'remo', carga: 'par', peso: '20', series: 3, dia: '2026-10-01' }];
-  chequear('ya sin nada pendiente manda la base: lo que ella no tiene se va y lo de otro teléfono llega', (await R198.traerRecordados(con65)).subidas, { remo: { carga: 'par', peso: 20, series: 3, dia: '2026-10-01' } });
-  await R198.sumarSesionARecordados([{ ejercicio: 'remo', series: 3, pesos: [22, 22, 22], carga: 'par' }]);
-  chequear('terminar una sesión con ese ejercicio gasta la marca también en el teléfono', (await R198.leerRecordados()).subidas, {});
-  llamadas.length = 0;
-  await R198.marcarSubida(con65, 'remo', null);
+  const kr = SU.claveDeSubida('remo', 'par');
+  chequear('ya sin nada pendiente manda la base: lo que ella no tiene se va y lo de otro teléfono llega', (await R198.traerRecordados(con65)).subidas, { [kr]: { carga: 'par', peso: 20, series: 3, dia: '2026-10-01' } });
+  await R198.sumarSesionARecordados([{ ejercicio: 'remo', series: 3, pesos: [50, 50, 50], carga: 'total' }], hoy198);
+  chequear('hacer remo en la MÁQUINA no gasta la marca del remo con mancuernas', Object.keys((await R198.leerRecordados()).subidas), [kr]);
+  await R198.sumarSesionARecordados([{ ejercicio: 'remo', series: 3, pesos: [22, 22, 22], carga: 'par' }], hoy198);
+  chequear('hacerlo con mancuernas, sí: se gasta también en el teléfono', (await R198.leerRecordados()).subidas, {});
+  // TERMINAR PASADA LA MEDIANOCHE: el día que cuenta es el de la sesión, y la marca puesta en ella no se gasta.
+  await R198.marcarSubida(con65, 'remo', 'par', { carga: 'par', peso: 22, series: 3, dia: '2026-10-09' });
+  await R198.sumarSesionARecordados([{ ejercicio: 'remo', series: 3, pesos: [22, 22, 22], carga: 'par' }], '2026-10-09');
+  chequear('la marca puesta en la sesión no se gasta al terminarla, aunque el reloj ya esté en el día siguiente', Object.keys((await R198.leerRecordados()).subidas), [kr]);
+  // CORREGIR EL EJERCICIO: se sacan las marcas de hoy del que ya no está, en el teléfono y en la base.
   await COLA198.vaciar(con65);
-  chequear('desmarcar manda el peso en nulo', llamadas, [['marcar_subida', { p_ejercicio: 'remo', p_carga: null, p_peso: null, p_series: null, p_dia: null }]]);
+  llamadas.length = 0;
+  await R198.quitarMarcasDeHoy(con65, 'remo', '2026-10-09');
+  await COLA198.vaciar(con65);
+  chequear('sacar las marcas de hoy de un ejercicio: se van del teléfono y se le avisa a la base, con su modo', [(await R198.leerRecordados()).subidas, llamadas], [
+    {}, [['marcar_subida', { p_ejercicio: 'remo', p_carga: 'par', p_peso: null, p_series: null, p_dia: null }]],
+  ]);
   await COLA198.soltarCola();
 
   // ---- EL CABLEADO: son un hook y un componente, se leen ----
   const hook198 = de198('compartido', 'useSesion.ts');
   chequear('el peso que se propone pasa por la marca, y la pantalla se entera de dónde salió', [
-    /const subido = pesoConSubida\(marca, modo, typeof recordado === 'number' \? recordado : null, hoyISO\(\), unidad, seHizoHoy\(actual, id\)\);/.test(hook198),
+    /const marca = datos\.subidas\[claveDeSubida\(id, modo\)\];\s*const subido = pesoConSubida\(marca, modo, typeof recordado === 'number' \? recordado : null, diaDeLaSesion\(inicioRef\.current\), unidad, seHizoHoy\(actual, id\)\);/.test(hook198),
     /const b = proponerPeso\(actual, subido \?\? recordado\);/.test(hook198),
     /setSubida\(marca && subido !== null \? \{ ejercicio: id, series: marca\.series, antes: marca\.peso, ahora: subido \} : null\);/.test(hook198),
     /subida=\{sesion\.estado\.subida\}/.test(de198('movil', 'src', 'Inicio.tsx')),
@@ -15988,8 +16057,8 @@ console.log('\n198. "La próxima, más": marcar que un peso quedó chico, y que 
   chequear('el bloque ofrece el toque solo con la 65, lo prende y lo apaga, y dice de dónde sale el disco de más', [
     /const conSubir = conCarga && disponible\('subirPeso', version\);/.test(bloque198),
     /const oferta = conSubir && admitePeso \? loQueSePuedeSubir\(estado, cargaVista\) : null;/.test(bloque198),
-    /ponerMarca\(marcada \? null : \{ carga: cargaVista, peso: oferta\.peso, series: oferta\.series, dia: hoyISO\(\) \}\)/.test(bloque198),
-    /void marcarSubida\(supabase, estado\.ejercicio, s\);/.test(bloque198),
+    /ponerMarca\(marcada \? null : \{ carga: cargaVista, peso: oferta\.peso, series: oferta\.series, dia \}\)/.test(bloque198) && /const dia = diaDeSesion \?\? hoyISO\(\);/.test(bloque198),
+    /void marcarSubida\(supabase, estado\.ejercicio, cargaVista, s\);/.test(bloque198) && /r\.subidas\[claveDeSubida\(id, cargaVista\)\]/.test(bloque198),
     /T\.sesion\.subidaNota\(subida\.series, enUnidad\(subida\.antes\), enUnidad\(subida\.ahora\)\)/.test(bloque198),
     /estado\.peso === subida\.ahora/.test(bloque198),
   ], [true, true, true, true, true, true]);
@@ -16380,6 +16449,137 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
     (await db.query(`select has_function_privilege('authenticated', 'public.sesion_cerrada_corta_el_entreno()', 'execute') as p`)).rows[0].p,
   ], [true, false]);
   await como(b, 'select terminar_sesion()');
+}
+
+console.log('\n204. Ocho arreglos de la cacería del 12/10, y la guarda de las migraciones');
+{
+  const { readFileSync: leer204, readdirSync: dir204 } = await import('node:fs');
+  const AQUI204 = dirname(fileURLToPath(import.meta.url));
+  const de204 = (...p) => sinComentarios(leer204(join(AQUI204, '..', ...p), 'utf8').replace(/\r\n/g, '\n'));
+
+  // ---- LA MARCA ES POR EJERCICIO Y POR MODO, en la base ----
+  const u = await nuevoUsuario();
+  const sesionDe = async (haceDias, bloques) => {
+    const log = (await db.query('insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int) on conflict do nothing returning id', [u, haceDias])).rows[0]
+      ?? (await db.query('select id from logs where user_id = $1 and fecha = mi_hoy() - $2::int', [u, haceDias])).rows[0];
+    await db.query(
+      `insert into sesiones (user_id, log_id, inicio, fin, estado, series, bloques)
+       values ($1, $2, now() - ($3::int || ' days')::interval - interval '1 hour', now() - ($3::int || ' days')::interval, 'terminada', 3, $4::jsonb)`,
+      [u, log.id, haceDias, JSON.stringify(bloques)]
+    );
+  };
+  await comoUsuario(u);
+  const dias = (await db.query(`select (mi_hoy() - 3)::text as hace3`)).rows[0];
+  const marcar = (...a) => db.query('select marcar_subida($1, $2, $3, $4, $5::date)', a);
+  const vigentes = async () => (await db.query('select ejercicio, carga, peso::float as peso from mis_subidas() order by ejercicio, carga')).rows.map((m) => [m.ejercicio, m.carga, m.peso]);
+  await marcar('remo_mancuerna', 'par', 20, 3, dias.hace3);
+  await marcar('remo_mancuerna', 'total', 50, 3, dias.hace3);
+  chequear('el mismo ejercicio guarda una marca por modo: una no pisa a la otra', await vigentes(), [['remo_mancuerna', 'par', 20], ['remo_mancuerna', 'total', 50]]);
+  await sesionDe(2, [{ ejercicio: 'remo_mancuerna', series: 3, pesos: [50, 50, 50], carga: 'total' }]);
+  chequear('hacerlo en la máquina gasta la marca de la máquina y NO la de mancuernas', await vigentes(), [['remo_mancuerna', 'par', 20]]);
+  // El bloque que no dice su modo es del modo del catálogo.
+  const delCatalogo = (await db.query(`select carga from ejercicios where id = 'remo_mancuerna'`)).rows[0].carga;
+  await sesionDe(1, [{ ejercicio: 'remo_mancuerna', series: 2, pesos: [22, 22] }]);
+  chequear('un bloque sin modo cuenta como el del catálogo', [(await vigentes()).length, delCatalogo === 'par' ? 0 : 1], [delCatalogo === 'par' ? 0 : 1, delCatalogo === 'par' ? 0 : 1]);
+  await db.query('delete from subidas_marcadas where user_id = $1', [u]);
+  await marcar('press_banca', 'total', 60, 4, dias.hace3);
+  await marcar('press_banca', 'par', 30, 4, dias.hace3);
+  await marcar('press_banca', 'par', null, null, null);
+  chequear('sacar una marca con su modo saca solo esa', (await db.query('select carga from subidas_marcadas where user_id = $1', [u])).rows.map((r) => r.carga), ['total']);
+  await marcar('press_banca', 'par', 30, 4, dias.hace3);
+  await marcar('press_banca', null, null, null, null);
+  chequear('y sin modo (la app de antes) saca todas las del ejercicio', (await db.query('select count(*)::int as n from subidas_marcadas where user_id = $1', [u])).rows[0].n, 0);
+
+  // ---- LA GUARDA: una migración no corre sobre una base más nueva ----
+  // Casi pasa el 12/10: pegar la 66 encima de la 67 bajaba la versión y apagaba
+  // "entrenar con otro" en todos los teléfonos, sin un error a la vista.
+  const migraciones = dir204(AQUI204).filter((f) => /^migracion-\d+.*\.sql$/.test(f)).sort();
+  const queMuevenLaVersion = migraciones.filter((f) => /function public\.version_del_esquema\(\)/.test(leer204(join(AQUI204, f), 'utf8')));
+  const guardaDe = (f) => {
+    const texto = leer204(join(AQUI204, f), 'utf8').replace(/\r\n/g, '\n');
+    const i = texto.indexOf('do $guarda$');
+    return i < 0 ? null : texto.slice(i, texto.indexOf('end $guarda$;', i) + 'end $guarda$;'.length);
+  };
+  chequear('toda migración que mueve la versión se niega a correr sobre una más nueva, con SU número', queMuevenLaVersion.filter((f) => {
+    const n = Number(/^migracion-(\d+)/.exec(f)[1]);
+    const g = guardaDe(f);
+    return !g || !new RegExp(`if v > ${n} then`).test(g) || leer204(join(AQUI204, f), 'utf8').replace(/\r\n/g, '\n').indexOf('do $guarda$') > 400;
+  }), []);
+  chequear('y son todas las recientes', [queMuevenLaVersion.length >= 30, queMuevenLaVersion.at(-1) === migraciones.at(-1)], [true, true]);
+  const corre = async (f) => db.query(guardaDe(f)).then(() => 'corre', (e) => String(e.message));
+  const v204 = (await db.query('select version_del_esquema() as v')).rows[0].v;
+  chequear('pegar la 66 encima de esta base se frena, y dice por qué', await corre(migraciones.find((f) => f.startsWith('migracion-66-'))), `Esta es la migración 66 y la base ya está en la ${v204}: no se vuelve a correr.`);
+  chequear('la última, y repetir la misma, sí corren', await corre(migraciones.at(-1)), 'corre');
+  chequear('y la versión del repo es la de la última migración', v204, Number(/^migracion-(\d+)/.exec(migraciones.at(-1))[1]));
+
+  // ---- BORRAR LA CUENTA SE LLEVA TODOS LOS ARCHIVOS, no los primeros mil ----
+  const CU204 = await import('../compartido/cuenta.ts');
+  const almacen = (cuantos, { noBorra = false, borraDeMenos = false } = {}) => {
+    const quedan = { fotos: Array.from({ length: cuantos }, (_, i) => `f${i}.jpg`), avatares: ['avatar.jpg'] };
+    const hecho = [];
+    return {
+      quedan,
+      hecho,
+      storage: {
+        from: (bucket) => ({
+          list: async (_carpeta, { limit }) => ({ data: quedan[bucket].slice(0, limit).map((name) => ({ name })), error: null }),
+          remove: async (rutas) => {
+            hecho.push([bucket, rutas.length]);
+            if (!noBorra) quedan[bucket] = quedan[bucket].slice(rutas.length);
+            return { data: rutas.slice(0, borraDeMenos ? rutas.length - 1 : rutas.length).map((name) => ({ name })), error: null };
+          },
+        }),
+      },
+      rpc: async (nombre) => {
+        hecho.push(['rpc', nombre]);
+        return { error: null };
+      },
+    };
+  };
+  const grande = almacen(2300); // 1150 fotos con su miniatura
+  chequear('con 2300 archivos se borran TODOS, en tres pasadas, y recién después la cuenta', [await CU204.eliminarCuenta(grande, 'uid'), grande.quedan, grande.hecho], [
+    { ok: true }, { fotos: [], avatares: [] }, [['fotos', 1000], ['fotos', 1000], ['fotos', 300], ['avatares', 1], ['rpc', 'eliminar_cuenta']],
+  ]);
+  const mal = almacen(5, { borraDeMenos: true });
+  chequear('si el storage borra de menos, la cuenta NO se borra', ['error' in (await CU204.eliminarCuenta(mal, 'uid')), mal.hecho.some((h) => h[0] === 'rpc')], [true, false]);
+  const pegado = almacen(5, { noBorra: true });
+  chequear('si algo se lista y no se va nunca, se corta con la cuenta viva (y no queda dando vueltas)', ['error' in (await CU204.eliminarCuenta(pegado, 'uid')), pegado.hecho.some((h) => h[0] === 'rpc'), pegado.hecho.length <= 101], [true, false, true]);
+
+  // ---- TERMINAR DENTRO DEL GIMNASIO NO TE VUELVE A MARCAR ENTRENANDO ----
+  const EV204 = await import('../nucleo/enVivo.ts');
+  chequear('después de "Terminar" hay una pausa; vencida, o sin ella, se marca como siempre', [
+    EV204.puedeMarcarPresencia(String(1000 + 5), 1000), EV204.puedeMarcarPresencia(String(999), 1000),
+    EV204.puedeMarcarPresencia(null, 1000), EV204.puedeMarcarPresencia('basura', 1000),
+  ], [false, true, true, true]);
+  // Por el camino de la app: terminar deja la pausa en el teléfono; iniciar otra sesión la levanta.
+  const C204 = await import('../compartido/enVivo.ts');
+  const callado = { rpc: async () => ({ data: 0, error: null }) };
+  await C204.dejarDeEntrenar(callado);
+  const trasTerminar = await C204.sePuedeMarcarPresencia();
+  await C204.avisarQueEntreno(callado);
+  chequear('terminar a mano frena al vigilante; iniciar otra sesión lo suelta', [trasTerminar, await C204.sePuedeMarcarPresencia()], [false, true]);
+  chequear('el vigilante lo mira antes de marcar', /if \(!\(await sePuedeMarcarPresencia\(\)\)\) return;\s*await supabase\.rpc\('marcar_en_gimnasio'\);/.test(de204('movil', 'src', 'VigilanteDeGimnasio.tsx')), true);
+
+  // ---- LO QUE SE LEE: componentes y consultas largas ----
+  const vivo204 = de204('movil', 'src', 'EnVivoDeInicio.tsx');
+  chequear('la tarjeta "quiere unirse" se va al terminar: solo se dibuja entrenando, y la lista se olvida', [
+    /const pedidos = visto\.corriendo \? uniones\.filter\(/.test(vivo204),
+    /useUniones\(visto\.corriendo, true\)/.test(vivo204),
+    /if \(olvidarAlApagar\) setDatos\(\{ uniones: \[\], recibidoEn: Date\.now\(\) \}\);/.test(de204('movil', 'src', 'useUniones.ts')),
+  ], [true, true, true]);
+  const rk204 = de204('compartido', 'ranking.ts');
+  chequear('la actividad de Ranking pide la miniatura, y la entera solo para la que no tiene', [
+    /const chicas = await miniaturas\(supabase, rutas\);/.test(rk204),
+    /const sinChica = rutas\.filter\(\(_, i\) => !chicas\[i\]\);/.test(rk204),
+    /createSignedUrls\(sinChica, 3600\)/.test(rk204),
+    /createSignedUrls\(\s*fs\.map\(/.test(rk204),
+  ], [true, true, true, false]);
+  const hook204 = de204('compartido', 'useSesion.ts');
+  chequear('corregir el ejercicio o quitar un bloque suelta las marcas de hoy del que se fue', [
+    (hook204.match(/soltarMarcas\((previo, b|antes\.bloques, nc\.bloques)\);/g) ?? []).length,
+    /for \(const ejercicio of ejerciciosQueSeFueron\(antes, despues\)\) void quitarMarcasDeHoy\(supabase, ejercicio, dia\);/.test(hook204),
+    /diaDeLaSesion\(inicioRef\.current\)\s*\);/.test(hook204),
+  ], [3, true, true]);
 }
 
 console.log('\n202. "Volver" anda siempre, también cuando la app arrancó por un enlace');

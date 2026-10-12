@@ -14,13 +14,60 @@
  */
 
 import { cargaValida, llevaNumero, type Carga } from './carga.ts';
-import { pesoValido, type EstadoBloques } from './bloques.ts';
+import { paraGuardar, pesoValido, type EstadoBloques } from './bloques.ts';
+import { aISO } from './fechas.ts';
+import { modoDeBloque, type ModosDelCatalogo } from './pesoRecordado.ts';
 import { pasoDelCampo } from './campoPeso.ts';
 import type { Unidad } from './peso.ts';
 
 export type Subida = { carga: Carga; peso: number; series: number; dia: string };
-/** ejercicio → su marca. */
+/**
+ * `claveDeSubida(ejercicio, modo)` → su marca. POR EJERCICIO Y POR MODO
+ * (12/10, migración 69): el remo con mancuernas y el remo en la máquina son dos
+ * progresiones. Con una sola marca por ejercicio, hacer uno gastaba la del otro.
+ */
 export type Subidas = Record<string, Subida>;
+
+export function claveDeSubida(ejercicio: string, carga: Carga): string {
+  return `${ejercicio}|${carga}`;
+}
+
+const ejercicioDeClave = (clave: string) => clave.split('|')[0];
+
+/**
+ * EL DÍA DE LA MARCA ES EL DE LA SESIÓN, no el del reloj (12/10). Una sesión
+ * que arranca a las 23:20 es del día en que arrancó, también para la base
+ * (`logs.fecha`). Con el reloj, marcar a las 23:50 y reabrir el ejercicio a las
+ * 00:05 daba el disco de más en la MISMA sesión, y terminar pasada la
+ * medianoche borraba del teléfono las marcas recién puestas.
+ */
+export function diaDeLaSesion(inicio: string | null | undefined, ahora: Date = new Date()): string {
+  const d = inicio ? new Date(inicio) : ahora;
+  return aISO(Number.isNaN(d.getTime()) ? ahora : d);
+}
+
+/** Los ejercicios con peso anotado en una sesión, estén en un bloque cerrado o en el que se está haciendo. */
+function conPeso(e: EstadoBloques): Set<string> {
+  const r = new Set<string>();
+  for (const b of paraGuardar(e)) if (b.ejercicio && (b.pesos ?? []).some((p) => pesoValido(p) !== null)) r.add(b.ejercicio);
+  return r;
+}
+
+/**
+ * LOS EJERCICIOS QUE DEJARON DE ESTAR tras corregir o quitar un bloque. Sus
+ * marcas de hoy se sacan: marcar press de banca y después decir "eran de press
+ * inclinado" dejaba la marca puesta en banca, sin botón para sacarla, y la
+ * próxima banca proponía un disco de más por algo que nunca se marcó ahí.
+ */
+export function ejerciciosQueSeFueron(antes: EstadoBloques, despues: EstadoBloques): string[] {
+  const quedan = conPeso(despues);
+  return [...conPeso(antes)].filter((e) => !quedan.has(e));
+}
+
+/** Las claves de las marcas de ESE día de un ejercicio, en cualquier modo. */
+export function marcasDelDia(subidas: Subidas, ejercicio: string, dia: string): string[] {
+  return Object.keys(subidas).filter((clave) => ejercicioDeClave(clave) === ejercicio && subidas[clave].dia === dia);
+}
 
 /**
  * QUÉ SE PUEDE MARCAR AHORA en el bloque en curso; `null` si no corresponde
@@ -77,14 +124,17 @@ export function seHizoHoy(e: EstadoBloques, ejercicio: string): boolean {
  * se hicieron hoy con peso ya se usaron. Es la misma regla con la que la base
  * decide cuáles siguen valiendo (`mis_subidas`).
  */
-export function subidasTrasLaSesion(subidas: Subidas, bloques: unknown, hoy: string): Subidas {
+export function subidasTrasLaSesion(subidas: Subidas, bloques: unknown, hoy: string, catalogo: ModosDelCatalogo = {}): Subidas {
   if (!Array.isArray(bloques)) return subidas;
+  // EN EL MODO EN QUE SE HIZO: el bloque que no dice el suyo usa el del catálogo.
   const hechos = new Set<string>();
   for (const b of bloques) {
-    const x = b as { ejercicio?: unknown; pesos?: unknown } | null;
-    if (x && typeof x.ejercicio === 'string' && Array.isArray(x.pesos) && x.pesos.length > 0) hechos.add(x.ejercicio);
+    const x = b as { ejercicio?: unknown; pesos?: unknown; carga?: unknown } | null;
+    if (!x || typeof x.ejercicio !== 'string' || !Array.isArray(x.pesos) || x.pesos.length === 0) continue;
+    const modo = modoDeBloque(x.ejercicio, x.carga, catalogo) ?? 'total';
+    hechos.add(claveDeSubida(x.ejercicio, modo));
   }
-  return Object.fromEntries(Object.entries(subidas).filter(([ejercicio, s]) => !(hechos.has(ejercicio) && s.dia < hoy)));
+  return Object.fromEntries(Object.entries(subidas).filter(([clave, s]) => !(hechos.has(clave) && s.dia < hoy)));
 }
 
 /** Una marca con cualquier forma (de la base o del teléfono), o `null`. */
@@ -104,9 +154,10 @@ export function subidaValida(crudo: unknown): Subida | null {
 export function leerSubidas(crudo: unknown): Subidas {
   if (!crudo || typeof crudo !== 'object' || Array.isArray(crudo)) return {};
   const r: Subidas = {};
-  for (const [ejercicio, s] of Object.entries(crudo)) {
+  for (const [clave, s] of Object.entries(crudo)) {
     const v = subidaValida(s);
-    if (v) r[ejercicio] = v;
+    // Lo guardado antes de la 69 venía por ejercicio solo: se le pone su modo.
+    if (v) r[claveDeSubida(ejercicioDeClave(clave), v.carga)] = v;
   }
   return r;
 }
@@ -114,5 +165,11 @@ export function leerSubidas(crudo: unknown): Subidas {
 /** Las filas de `mis_subidas`, como las quiere el teléfono. */
 export function subidasDeLaBase(filas: unknown): Subidas {
   if (!Array.isArray(filas)) return {};
-  return leerSubidas(Object.fromEntries(filas.map((f) => [String((f as { ejercicio?: unknown } | null)?.ejercicio ?? ''), f])));
+  const r: Subidas = {};
+  for (const f of filas) {
+    const v = subidaValida(f);
+    const ejercicio = (f as { ejercicio?: unknown } | null)?.ejercicio;
+    if (v && typeof ejercicio === 'string' && ejercicio) r[claveDeSubida(ejercicio, v.carga)] = v;
+  }
+  return r;
 }

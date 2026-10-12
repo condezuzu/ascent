@@ -132,7 +132,15 @@ async function guardar(l: Pendiente[]) {
  * `vaciar` y lo espera.
  */
 export async function encolar(supabase: Cliente, tarea: Encolable) {
-  const id = `${tarea.rpc}:${'p_sesion' in tarea.args ? tarea.args.p_sesion : tarea.args.p_ejercicio}`;
+  // La marca de "la próxima, más" es por ejercicio Y por modo: sin el modo en el
+  // id, marcar el remo con mancuernas pisaba en la cola al remo en la máquina.
+  const de =
+    'p_sesion' in tarea.args
+      ? tarea.args.p_sesion
+      : tarea.rpc === 'marcar_subida'
+        ? `${tarea.args.p_ejercicio}|${tarea.args.p_carga ?? ''}`
+        : tarea.args.p_ejercicio;
+  const id = `${tarea.rpc}:${de}`;
   await enTurno(async () => {
     const lista = (await leer()).filter((p) => p.id !== id);
     lista.push({ ...tarea, id });

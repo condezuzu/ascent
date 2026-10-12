@@ -1,3 +1,16 @@
+-- NO SE VUELVE A CORRER SOBRE UNA BASE MÁS NUEVA (regla del 12/10/2026). Pegar esta
+-- migración encima de una posterior bajaba `version_del_esquema()` y apagaba
+-- funciones en todos los teléfonos, sin un solo error a la vista.
+do $guarda$
+declare v int;
+begin
+  if to_regprocedure('public.version_del_esquema()') is null then return; end if;
+  execute 'select public.version_del_esquema()' into v;
+  if v > 63 then
+    raise exception 'Esta es la migración 63 y la base ya está en la %: no se vuelve a correr.', v;
+  end if;
+end $guarda$;
+
 -- MIGRACIÓN 63 — QUÉ VERSIÓN CORRE LA GENTE, Y QUIÉN PUEDE LEER UNA MINIATURA
 --
 -- 1. QUÉ VERSIÓN ABRIÓ LA APP (8/10/2026). Después de publicar la 1.0 no había

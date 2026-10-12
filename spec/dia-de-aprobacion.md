@@ -526,3 +526,11 @@ producción y compara funciones, reglas, índices y disparadores contra el repo.
 REESCRIBE datos que ya existían, como la 54 o la 62: ahí sí va una consulta,
 porque "corrió" no es lo mismo que "hizo lo correcto" y `test:conexion` no
 mira las filas.
+
+**Una migración no corre sobre una base más nueva (regla del 12/10/2026).**
+Si al pegar una aparece *"Esta es la migración N y la base ya está en la M: no
+se vuelve a correr"*, no es un error a resolver: es que se pegó una vieja.
+No pasó nada; se busca la que corresponde. Antes de esa guarda, pegar la 66
+sobre la 67 habría apagado funciones en todos los teléfonos sin avisar. Ver
+`spec/trampas.md`. Al escribir una migración nueva, la guarda va primera y con
+su número: se copia de la anterior y se cambia el número (lo exige `test:db`).
