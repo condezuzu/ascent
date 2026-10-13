@@ -12295,6 +12295,24 @@ console.log('\n166. El peso se recuerda por ejercicio Y por modo');
   hoy166 = B.terminarBloque(B.sumar(B.sumar(hoy166)));
   chequear('lo que se hizo hoy gana sobre la copia', P.ultimoPesoEnModo(hoy166, copia166, REMO, 'par', cat166), 24);
   chequear('y no contamina el otro modo', P.ultimoPesoEnModo(hoy166, copia166, REMO, 'total', cat166), 50);
+  // ---- DE LA ÚLTIMA SESIÓN, LO MÁS PESADO (13/10) ----
+  // Los pesos BAJAN dentro de la sesión, que es lo que pasa en el gimnasio: con
+  // pesos que suben, "la última serie" y "la más pesada" dan lo mismo y no se prueba nada.
+  const baja166 = [
+    { bloques: [{ ejercicio: REMO, series: 3, pesos: [70, 70, 65], carga: 'total' }] },
+    { bloques: [
+      { ejercicio: REMO, series: 3, pesos: [60, 55, 50], carga: 'total' },
+      { ejercicio: 'press_banca', series: 1, pesos: [40], carga: 'total' },
+      { ejercicio: REMO, series: 2, pesos: [45, 45], carga: 'total' },
+    ] },
+  ];
+  const copiaBaja166 = P.pesosDelHistorial(baja166, cat166);
+  chequear('del historial se propone lo más pesado de la ÚLTIMA sesión: ni su última serie, ni el tope de otra sesión', copiaBaja166[REMO], { total: 60 });
+  chequear('y es el mismo número que la lista muestra al lado del ejercicio', P.maximosDelHistorial(baja166, cat166)[REMO], { peso: copiaBaja166[REMO].total, carga: 'total' });
+  chequear('con el bloque vacío, eso es lo que va al campo', P.ultimoPesoEnModo(vacio166, copiaBaja166, REMO, 'total', cat166), 60);
+  let bajaHoy166 = B.cambiarCarga(B.cambiarPeso(vacio166, 60), 'total');
+  bajaHoy166 = B.terminarBloque(B.sumar(B.cambiarPeso(B.sumar(bajaHoy166), 50)));
+  chequear('DENTRO de la sesión de hoy se sigue desde la última serie, no desde el tope', [bajaHoy166.cerrados[0].pesos, P.ultimoPesoEnModo(bajaHoy166, copiaBaja166, REMO, 'total', cat166)], [[60, 50], 50]);
   // "Esas no eran por mancuerna": se corrige la etiqueta del bloque cerrado, y
   // el recuerdo se corrige solo, porque sale de los bloques y no de una copia
   // que se fue sumando serie a serie.
@@ -15892,7 +15910,9 @@ console.log('\n198. "La próxima, más": marcar que un peso quedó chico, y que 
     SU.pesoConSubida(m198, 'total', 55, '2026-10-10', 'kg'), // después se hizo otra cosa
     SU.pesoConSubida(m198, 'total', null, '2026-10-10', 'kg'),
     SU.pesoConSubida(undefined, 'total', 60, '2026-10-10', 'kg'),
-  ], [62.5, null, null, null, null, null]);
+    // LA MARCA GANA (13/10): lo recordado es lo más pesado de la sesión, y ese día hubo una serie de 65.
+    SU.pesoConSubida(m198, 'total', 65, '2026-10-10', 'kg'),
+  ], [62.5, null, null, null, null, null, 62.5]);
   const { pasoDelCampo: paso198 } = await import('../nucleo/campoPeso.ts');
   chequear('en libras el disco es el de libras, el mismo del + del campo', SU.pesoConSubida(m198, 'total', 60, '2026-10-10', 'lb'), paso198(60, 'lb', 1));
   // LA MARCA SE USA UNA VEZ POR SESIÓN (12/10). El caso: no me animé al disco de

@@ -13,7 +13,7 @@ import {
 // porque quien todavía no se registró tiene derecho a leer qué le van a guardar
 // —y a quién escribirle— ANTES de registrarse.
 // `/amigo` es a donde cae el link de invitación: lo abre gente sin cuenta.
-const RUTAS_PUBLICAS = ['/login', '/auth', '/galeria', '/privacidad', '/soporte', '/amigo'];
+const RUTAS_PUBLICAS = ['/login', '/auth', '/galeria', '/privacidad', '/soporte', '/amigo', '/version'];
 
 /**
  * Refresca el token en cada pedido y decide si la pantalla se puede ver.

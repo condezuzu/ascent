@@ -16,9 +16,10 @@ se rediscute; lo marcado PENDIENTE se pregunta antes de asumir.
   Desde acá solo hay anon key. Flujo: escribir la migración → probarla con
   `test:db` contra PGlite → avisar.
 - **Migración con orden invertido** (primero desplegar, después migrar): el
-  deploy se comprueba con `npm run verificar:deploy`, que mira el cuerpo del
-  pedido real. **Deducirlo no sirve** — el hash de los chunks cambia por el
-  entorno y los marcadores obvios dan igual antes y después.
+  deploy se comprueba con `npm run verificar:deploy`, que le pregunta a
+  producción qué commit sirve (`/version`) y lo compara con `HEAD`.
+  **Deducirlo no sirve** — el hash de los chunks cambia por el entorno y los
+  marcadores obvios dan igual antes y después.
 - Español rioplatense, en el código y en la interfaz.
 - **Nada del navegador fuera de `src/plataforma/`.** Ni `localStorage`, ni
   `navigator`, ni nada que Expo no tenga: va detrás de un puerto, con la
@@ -93,7 +94,7 @@ seguro.
 | `npm run capturas` | levanta la app, recorre las pantallas y deja PNG en `capturas/` |
 | `npm run capturas:bienvenida` | fotos de la animación de entrada en segundos fijos (con motor y sin motor) |
 | `npm run test:real` | contra Supabase real, con cuentas descartables: cuatro semanas, privacidad, y web + nativa con el mismo guion (necesita :3020 y :8090 prendidos; `-- api` sin navegador) |
-| `npm run verificar:deploy` | ¿producción ya sirve este commit? Mira el pedido real, no deduce |
+| `npm run verificar:deploy` | ¿producción ya sirve este commit? Le pregunta el commit a `/version`; con `-- esperar` insiste 10 min |
 | `npm run build` | build de producción — **dev server apagado** |
 
 Rutas de QA: `/galeria` (motor) y `/galeria/bienvenida` (la pantalla de entrada: se repite, se congela en cualquier segundo, se mira sin motor y compara textos). `/tipografias` era andamio de una decisión ya tomada y se borró.

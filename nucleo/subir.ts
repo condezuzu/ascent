@@ -91,8 +91,10 @@ export function loQueSePuedeSubir(e: EstadoBloques, modo: Carga | null): { peso:
  * - del mismo modo: 30 por mancuerna no dice nada de la barra;
  * - de un día ANTERIOR: la de hoy es para la próxima vez, no para el bloque que
  *   se abre de nuevo dentro de la misma sesión;
- * - y el último peso recordado tiene que seguir siendo el marcado: si después
- *   se hizo otra cosa, la marca quedó vieja aunque la copia todavía la tenga.
+ * - y lo recordado no puede ser MENOS que lo marcado: ahí después se hizo otra
+ *   cosa y la marca quedó vieja aunque la copia todavía la tenga. Que sea MÁS
+ *   no la anula (13/10): lo recordado es lo más pesado de la sesión, y se pudo
+ *   marcar un bloque de 60 el mismo día que hubo una serie de 65. La marca gana.
  */
 export function pesoConSubida(
   s: Subida | undefined,
@@ -110,7 +112,7 @@ export function pesoConSubida(
   yaSeHizoHoy = false
 ): number | null {
   if (yaSeHizoHoy) return null;
-  if (!s || s.carga !== modo || !(s.dia < hoy) || recordado !== s.peso) return null;
+  if (!s || s.carga !== modo || !(s.dia < hoy) || recordado === null || recordado < s.peso) return null;
   return pasoDelCampo(s.peso, unidad, 1) ?? null;
 }
 

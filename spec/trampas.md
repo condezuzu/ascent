@@ -693,8 +693,15 @@ ENTORNO y no solo por el código, así que "distinto a mi build local" no
 significa "viejo"; y buscar `localStorage` en el bundle da lo mismo antes y
 después del puerto de almacenamiento, porque el módulo de plataforma queda
 empaquetado ahí igual.
-→ **Regla:** `npm run verificar:deploy` entra con un navegador real y mira una
-MARCA. Hay dos clases y no siempre sirve la misma: algo que el cliente viejo
+→ **Regla, desde el 13/10/2026:** `npm run verificar:deploy` le pregunta al
+deploy qué commit es (`/version`, que lee lo que Vercel pone en el entorno) y
+lo compara con `HEAD`. Da DESPLEGADO, TODAVÍA VIEJO o NO SUPE MIRAR, y nunca
+"no concluyente". **Una verificación que depende de acordarse de prepararla en
+cada tanda termina sin verificar nada:** la versión anterior, la de abajo, dio
+"no concluyente" tres veces seguidas porque casi ninguna tanda dejaba marca.
+
+*La versión anterior (hasta el 13/10):* entraba con un navegador real y miraba
+una MARCA. Hay dos clases y no siempre sirve la misma: algo que el cliente viejo
 mandaba en un RPC —solo si ese RPC sale al abrir la app— o un texto que solo
 existe en el cliente nuevo. La 23 necesitó la segunda: agrega un parámetro a
 `registrar_dia`, que se llama recién cuando alguien registra un día. La sonda
