@@ -106,6 +106,9 @@ try {
   chequear('la vista pública trae la mejor racha', 'mejor_racha' in publico, true);
 
   // ---- terminar corta ----
+  // Como en el teléfono: "Terminar" cierra la sesión y después corta lo demás.
+  // Desde la 72, lo que saca de "Entrenando ahora" es que la sesión se cierre.
+  await B.s.rpc('terminar_sesion');
   await B.s.rpc('dejar_de_entrenar');
   chequear('B termina: A deja de verlo unido y entrenando', [await uniones(A), await entrenando(A)], [[], []]);
 
