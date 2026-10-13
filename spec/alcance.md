@@ -77,6 +77,26 @@ La 1.0 está en la tienda. Esto es lo que sigue, EN ESTE ORDEN. La regla del
 alcance congelado sigue valiendo adentro de cada tanda: lo que aparezca en el
 camino se anota abajo, en "Después", y no se mete.
 
+### EL ORDEN, desde el 13/10/2026 (reemplaza al orden de las tandas de abajo)
+
+1. **Probar la pantalla del descanso** en el teléfono (`telefono`).
+2. **`store` al día:** todo lo que hoy solo está en `telefono`.
+3. **El refactor del estado del entrenamiento** —un solo dueño del dato— y,
+   encima, **el multijugador completo**: grupos, tiempo real y sin el parpadeo.
+   **Al arrancar este punto, recordarle al humano el dominio** (ver punto 6).
+4. **El resto de los hallazgos** de la cacería del 12/10.
+5. **El selector de ejercicio y la guía** (ver "tres personas se trabaron").
+6. **La build 8, al final de todo.** Primero se publica todo por OTA y recién
+   ahí se compila, con todo lo nativo junto: una sola revisión de Apple y una
+   actualización completa. La rama `build-8-nativo` queda como está y no se
+   compila. **El widget de la pantalla bloqueada SÍ entra** (decidido el
+   13/10): se prepara en la rama cuando llegue el momento, no antes.
+   **El dominio es lo único que no puede esperar al final:** queda compilado
+   adentro de la build, así que se decide antes.
+
+Las letras del plan viejo (de la A a la I) ya no se usan: cada cosa va con su
+nombre. La que era "H" es el refactor del estado del entrenamiento.
+
 **Cómo se publica cada tanda:** migración primero (si hay), después UNA OTA a
 `telefono`, la prueba el humano en el iPhone, y recién después `store`.
 
@@ -92,23 +112,23 @@ camino se anota abajo, en "Después", y no se mete.
 
 ### Tanda 1 — entender la app y que ande en cualquier teléfono (hecha el 8/10)
 
-- **A) La guía de primera vez.** Ya existía (cinco pantallas, una línea cada
+- **La guía de primera vez.** Ya existía (cinco pantallas, una línea cada
   una, con "Saltar"). Le faltaba decir cómo se entrena: se sumó ese paso.
   **Desde el 7/10 arranca sola** en un aparato que no la vio (antes solo al
   elegir el nombre), y "Saltar" es un botón con borde. Consecuencia sabida: con
   esa OTA la ve una vez todo el que no la había terminado en ese teléfono.
-- **B) Calidad del fondo.** La app mide los cuadros por segundo y baja sola la
+- **Calidad del fondo.** La app mide los cuadros por segundo y baja sola la
   calidad si el teléfono no da; en Ajustes se puede fijar a mano.
 
 ### Tanda 2 — barato y se nota (hecha el 8/10, sin probar en el teléfono)
 
-- **C) Ver los pasos durante el entrenamiento.** Hecho dentro de la app: el
+- **Ver los pasos durante el entrenamiento.** Hecho dentro de la app: el
   renglón de pasos se queda durante la sesión, sin la barra, y se vuelve a
   pedir cada minuto. Los pasos ya se leían de Salud (HealthKit está en la
   build 7). Verlos en la tarjeta de la pantalla bloqueada queda para la build.
-- **D) Abrir la foto de perfil de un amigo** para verla grande. Hecho, sin
+- **Abrir la foto de perfil de un amigo** para verla grande. Hecho, sin
   migración: el bucket `avatares` es público desde siempre.
-- **E) La vibración del descanso, más larga y marcada.** Hecho. iOS no deja
+- **La vibración del descanso, más larga y marcada.** Hecho. iOS no deja
   elegir cuánto dura una vibración, así que son varias: con la app abierta,
   tres encadenadas; bloqueado, tres avisos separados por un segundo (los dos
   de más no suenan con la app abierta). **Solo verificable en el teléfono.**
@@ -116,14 +136,14 @@ camino se anota abajo, en "Después", y no se mete.
 
 ### Tanda 3 — crecimiento (hecha el 8/10, sin probar en el teléfono)
 
-- **F) Amigos por enlace.** Hecho: `https://…/amigo/<nombre>` es una página
+- **Amigos por enlace.** Hecho: `https://…/amigo/<nombre>` es una página
   pública de la web con un botón que abre `ascent://amigo/<nombre>`; la app
   manda el pedido sola y muestra el perfil. **No sobrevive a la instalación**:
   quien no tiene la app la baja, crea la cuenta y vuelve a tocar el enlace
   (la página lo dice). Eso pide capa nativa y va a la build única. El pedido
   no los hace amigos: quien invitó acepta, porque el enlace lleva solo un
   nombre y cualquiera puede armar uno.
-- **G) Ver la rutina de un amigo desde su perfil.** Hecho (migración 64):
+- **Ver la rutina de un amigo desde su perfil.** Hecho (migración 64):
   debajo de las fotos, por día de la semana, los ejercicios y cuántas series,
   de las últimas cuatro semanas. Nunca pesos ni duración (§17.8 sigue: la
   tabla de sesiones no se abre). Prendido por omisión; se esconde en Ajustes.
@@ -152,7 +172,8 @@ una sola cosa:
   notificación —las tres del 8/10 llenaban el centro de notificaciones—, y la
   tarjeta con la cuenta corriendo ya existe desde la build 7. Lo que la build
   agrega, y está preparado en la rama `build-8-nativo` (NO en `main`): un
-  sonido propio más fuerte y más largo, y un archivo de silencio para que, con
+  sonido propio (el "corte 1", elegido el 13/10: ver
+  `spec/sonido-del-aviso.md`), y un archivo de silencio para que, con
   "Sonido al terminar" apagado, el aviso vibre sin sonar. Sonar con el teléfono
   en silencio pide un permiso de Apple que no se va a pedir. Que la tarjeta
   SUENE sola al terminar, sin notificación, pide un servidor que la empuje
@@ -161,12 +182,13 @@ una sola cosa:
   archivos nativos cambia la huella de la app, y el guardián deja de publicar
   OTAs a las builds que ya están en la calle. La rama se junta con `main`
   recién cuando la build nueva existe;
-- lo que NO se pudo preparar desde esta PC: los cambios al widget (Swift). Acá
-  no se compila Swift, y un error ahí se ve recién en la build;
+- los cambios al widget (Swift): entran en la build 8, y se preparan en la
+  rama cuando llegue el momento. Acá no se compila Swift, y un error ahí se ve
+  recién en la build: se prueba primero con una build `telefono`;
 - Diagnóstico sin depender de una variable de compilación (ya anotado abajo);
 - lo que quede pendiente de capa nativa al llegar ese día.
 
-### Tanda 4 — lo grande (la versión chica de la I, hecha el 12/10 SIN el dueño único)
+### Tanda 4 — lo grande (la versión chica del entrenamiento compartido, hecha el 12/10 SIN el dueño único)
 
 - **Hecho el 12/10: "entrenar con otro", de a dos** (migración 67), para
   probarlo en el gimnasio. En "Entrenando ahora" hay un "Unirse"; al otro le
@@ -199,22 +221,24 @@ una sola cosa:
   - *"Avisar cuando entreno" nace PRENDIDO* (decidido el 12/10, migración 68):
     apagado no arrancaba nunca. Se avisa una vez, igual que la rutina.
   - *De a dos por ahora* (decidido el 12/10). Grupos, después del dueño único.
-- **Lo que falta de la I**, y sigue esperando al dueño único: grupos de más de
+- **Lo que falta del entrenamiento compartido**, y sigue esperando al refactor
+  del estado del entrenamiento: grupos de más de
   dos, tiempo real, la tira en Inicio, echar, invitar por link, y el aviso
   fuera de la app (este último va a la build única).
-- **Propuesto, sin hacer (12/10):** rediseñar la pantalla del descanso, y que
-  cuando se entrena con otro muestre abajo, en chico, el ejercicio, la serie y
-  la cuenta del otro.
+- **Hecho el 13/10, en `telefono`:** la pantalla del descanso nueva, que
+  cuando se entrena con otro muestra abajo, en chico, el ejercicio, la serie y
+  la cuenta del otro. El arco va con el color del rango; el celeste queda
+  pendiente de decisión (es una línea).
 
-- **I) Entrenamiento compartido:** ver a alguien "entrenando ahora" y unirse, y
+- **Entrenamiento compartido:** ver a alguien "entrenando ahora" y unirse, y
   en Ranking ver en vivo su descanso, su serie y qué está haciendo. Entre 5 y
   10 personas. No es solo diversión: sirve para organizarse mientras se
   descansa, y si entrenás con alguien que no tiene la app, verla funcionar es
   el mejor anuncio que hay.
-  - **Paso 1 de la I (antes era la "H"): un solo dueño del estado del
-    entrenamiento.** Es el refactor que ya estaba anotado más abajo ("Un solo
-    dueño del estado de la sesión de entrenamiento"). No es una tarea aparte:
-    la I no se empieza hasta que esté.
+  - **Primer paso: el refactor del estado del entrenamiento** (un solo dueño
+    del dato). Es el que ya estaba anotado más abajo ("Un solo dueño del
+    estado de la sesión de entrenamiento"). No es una tarea aparte: el
+    multijugador completo no se empieza hasta que esté.
 
 ### Del gimnasio, 10/10/2026 (después de dos días de uso)
 
