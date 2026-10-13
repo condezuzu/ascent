@@ -747,6 +747,20 @@ que Node pueda cargarlo, y la sección 26 de `test:db` corre las dos contra los
 mismos valores. Si le agregás un import a ese archivo, el test deja de poder
 cargarlo y la red se cae sin hacer ruido.
 
+**Un mismo hecho guardado en dos tablas: "está entrenando" (12 y 13/10/2026).**
+La sesión ya decía cuándo empieza y cuándo termina un entrenamiento, pero
+"Entrenando ahora" salía de otra tabla, `en_el_gimnasio`, con una marca de dos
+horas que ponía también el vigilante con solo estar adentro del radio del
+gimnasio. Las dos se separaron solas: aparecía entrenando quien había terminado
+hacía dos horas y quien vivía al lado. Es la misma forma que el planeta, el
+rango y el peso propuesto.
+→ **Regla:** un hecho, una tabla. Desde la migración 72 `entrenando_ahora` lee
+`sesiones` y la otra tabla no existe. Y **no se inventa una señal que el
+teléfono no puede dar**: con la pantalla bloqueada iOS congela la app, así que
+no hay "sigo acá" posible; lo único que hay es la última serie. La primera
+versión de la 72 pedía esa señal y habría borrado de la lista a quien entrena
+con el teléfono en el bolsillo; la frenó el humano antes de pegarla.
+
 ---
 
 ## Lo que solo se ve mirando

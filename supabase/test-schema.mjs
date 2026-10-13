@@ -16228,6 +16228,9 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
   chequear('con el aviso prendido pero SIN sesión, A no aparece: estar adentro del gimnasio no es entrenar (migración 72)', (await como(b, 'select id from entrenando_ahora()')).length, 0);
   await como(a, 'select iniciar_sesion()');
   chequear('con el aviso prendido, A aparece entrenando para sus amigos', (await como(b, 'select id from entrenando_ahora()')).map((r) => r.id), [a]);
+  // Como en el teléfono: "Terminar" cierra la sesión y después corta lo demás.
+  await db.query(`update sesiones set inicio = now() - interval '20 minutes', series = 3 where user_id = $1 and estado = 'corriendo'`, [a]);
+  await como(a, 'select terminar_sesion()');
   await como(a, 'select dejar_de_entrenar()');
   chequear('A termina: se van sus vínculos, lo que publicó y su "entrenando ahora"', [
     (await uniones(a)).length, (await uniones(b)).length, (await uniones(c)).length,
@@ -16465,35 +16468,54 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
   chequear('la sesión se cerró sola por inactividad', (await db.query(`select estado, cerro_sola from sesiones where user_id = $1 order by inicio desc limit 1`, [b])).rows[0], { estado: 'terminada', cerro_sola: true });
   chequear('y con eso se cortó todo: el vínculo, lo publicado y el "entrenando ahora"', await loQueQueda(), [0, 0, 0]);
 
-  // ---- "ENTRENANDO AHORA" PIDE UNA SESIÓN VIVA (migración 72) ----
+  // ---- "ENTRENANDO AHORA" SALE DE LA SESIÓN, Y DE NINGÚN OTRO LADO (migración 72) ----
   // El bug del 12/10: alguien seguía entrenando dos horas después de terminar, y
-  // otro aparecía a las diez de la noche. Cada caso deja la MARCA VIGENTE, que es
-  // lo único que se miraba antes: si la regla vuelve a ser "la marca alcanza", fallan.
+  // otro aparecía a las diez de la noche. Salía de una tabla aparte con una marca
+  // de dos horas, que ponía también el vigilante por estar adentro del gimnasio.
   {
-    await db.query('delete from sesiones where user_id = $1', [b]);
-    await unir();
     const veA = async () => (await como(a, 'select id from entrenando_ahora()')).length;
-    const marcaVigente = async () => (await db.query('select count(*)::int as n from en_el_gimnasio where user_id = $1 and hasta > now()', [b])).rows[0].n;
-    const ultimaSerieHace = (min) => db.query(`update sesiones set inicio = now() - interval '3 hours', ultima_actividad = now() - make_interval(mins => $2) where user_id = $1 and estado = 'corriendo'`, [b, min]);
-    const sigoAcaHace = (min) => db.query('update en_el_gimnasio set visto = now() - make_interval(mins => $2) where user_id = $1', [b, min]);
-    // Se quedó sin batería a mitad: la sesión sigue abierta en la base y nadie avisa nada.
-    await ultimaSerieHace(31);
-    await sigoAcaHace(31);
-    chequear('31 minutos sin una serie ni un "sigo acá": deja de aparecer, con la sesión abierta y la marca sin vencer', [await veA(), await marcaVigente(), (await db.query(`select count(*)::int as n from sesiones where user_id = $1 and estado = 'corriendo'`, [b])).rows[0].n], [0, 1, 1]);
-    await ultimaSerieHace(29);
-    chequear('una serie hace 29 minutos alcanza', await veA(), 1);
-    await ultimaSerieHace(31);
-    await como(b, 'select marcar_en_gimnasio()');
-    chequear('y un "sigo acá" del teléfono también, aunque no haya series', await veA(), 1);
-    // Terminó, sigue adentro del gimnasio, y un teléfono sin actualizar lo vuelve a marcar.
+    const estadoDeB = async () => (await db.query('select estado from sesiones where user_id = $1 order by inicio desc limit 1', [b])).rows[0]?.estado;
+    const nueva = async () => {
+      await db.query('delete from sesiones where user_id = $1', [b]);
+      await como(b, 'select iniciar_sesion()');
+    };
+    chequear('la tabla aparte ya no existe, y la función que la escribía quedó para los teléfonos viejos sin hacer nada', [
+      (await db.query("select to_regclass('public.en_el_gimnasio') as t")).rows[0].t,
+      await como(b, 'select marcar_en_gimnasio() as v').then(() => 'no rompe', (e) => String(e.message)),
+    ], [null, 'no rompe']);
+
+    // LOS DOS BORDES, Y QUE COINCIDAN CON LA REGLA QUE CIERRA LAS SESIONES. Con el
+    // teléfono bloqueado no sale ningún "sigo acá": lo único que hay es la sesión.
+    const casos = [
+      ['con series, la última hace 29 min', "ultima_actividad = now() - interval '29 minutes'", 1],
+      ['con series, la última hace 31 min', "ultima_actividad = now() - interval '31 minutes'", 0],
+      ['sin ninguna serie, iniciada hace 119 min', "inicio = now() - interval '119 minutes', ultima_actividad = now() - interval '119 minutes'", 1],
+      ['sin ninguna serie, iniciada hace 121 min', "inicio = now() - interval '121 minutes', ultima_actividad = now() - interval '121 minutes'", 0],
+    ];
+    const visto = [];
+    for (const [que, cambio] of casos) {
+      await nueva();
+      await db.query(`update sesiones set inicio = now() - interval '3 hours' where user_id = $1 and estado = 'corriendo'`, [b]);
+      await db.query(`update sesiones set ${cambio} where user_id = $1 and estado = 'corriendo'`, [b]);
+      const antes = [await veA(), await estadoDeB()];
+      await db.query('select cerrar_sesiones_vencidas($1)', [b]);
+      // Aparece si y solo si la base NO la cierra: una sola regla, dicha dos veces.
+      visto.push([que, antes[0], antes[1], (await estadoDeB()) === 'corriendo' ? 1 : 0]);
+    }
+    chequear('aparece entrenando mientras la base da la sesión por viva (30 min sin series, o 2 h sin ninguna), con la sesión todavía abierta', visto.map((v) => [v[0], v[1], v[2]]), casos.map((c) => [c[0], c[2], 'corriendo']));
+    chequear('y es la MISMA regla con la que la base cierra la sesión: aparece si y solo si no la cierra', visto.map((v) => v[1] === v[3]), [true, true, true, true]);
+
+    // Estar adentro del gimnasio no es entrenar: el teléfono viejo sigue "marcando".
+    await nueva();
     await db.query(`update sesiones set inicio = now() - interval '20 minutes', ultima_actividad = now(), series = 3 where user_id = $1 and estado = 'corriendo'`, [b]);
+    chequear('entrenando de verdad, aparece', await veA(), 1);
+    await como(b, 'select fijar_comparte_gimnasio(false)');
+    const apagado = await veA();
+    await como(b, 'select fijar_comparte_gimnasio(true)');
+    chequear('apagar "Avisar cuando entreno" a mitad de sesión lo saca en el acto, y prenderlo lo vuelve a mostrar', [apagado, await veA()], [0, 1]);
     await como(b, 'select terminar_sesion()');
     await como(b, 'select marcar_en_gimnasio()');
-    chequear('terminó y el vigilante lo volvió a marcar por seguir adentro: la marca está, y no aparece', [await marcaVigente(), await veA()], [1, 0]);
-    // Una marca vencida que se vuelve a poner es una vez nueva.
-    await db.query(`update en_el_gimnasio set desde = now() - interval '3 days', hasta = now() - interval '1 day' where user_id = $1`, [b]);
-    await como(b, 'select marcar_en_gimnasio()');
-    chequear('la marca vieja que se vuelve a poner no arrastra el "desde" de hace tres días', (await db.query(`select desde > now() - interval '1 minute' as nueva from en_el_gimnasio where user_id = $1`, [b])).rows[0].nueva, true);
+    chequear('terminó, sigue adentro del gimnasio y un teléfono sin actualizar lo "marca": no aparece', await veA(), 0);
   }
 
   // 2. LA TERMINA LA BASE POR OTRO CAMINO (el vigilante llama a terminar_sesion, no al botón).

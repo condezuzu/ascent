@@ -2960,81 +2960,68 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 -- -------------------------------------------------------------
--- ACTIVIDAD EN VIVO — "fulano está en el gimnasio ahora" (migración 51)
+-- QUIÉN ESTÁ ENTRENANDO AHORA (migración 51; UNA SOLA FUENTE desde la 72)
 --
--- Al llegar al gimnasio, el vigilante marca "hasta = now()+2h"; las lecturas
--- filtran `hasta > now()`, así CADUCA SOLA sin cron ni detectar la salida.
--- OPT-IN (`profiles.comparte_gimnasio`): el vigilante solo publica si está
--- prendido. NUNCA dice dónde: `entrenando_ahora` devuelve nombre, avatar y
--- desde cuándo, jamás el gimnasio ni la distancia.
+-- Está entrenando quien tiene UNA SESIÓN CORRIENDO QUE LA BASE TODAVÍA DA POR
+-- VIVA, y tiene prendido "Avisar cuando entreno" (`profiles.comparte_gimnasio`).
+-- Nada más: sale de `sesiones`, la misma tabla que dice cuándo empezó y cuándo
+-- terminó el entrenamiento.
+--
+-- Hasta la 72 salía de una tabla aparte, `en_el_gimnasio`, con una marca de dos
+-- horas que ponía también el vigilante con solo estar adentro del radio del
+-- gimnasio. Eran dos fuentes para lo mismo: aparecía entrenando quien había
+-- terminado hacía dos horas y quien vivía al lado. La tabla se fue.
+--
+-- CON EL TELÉFONO BLOQUEADO NO SALE NADA (iOS congela la app, y la tarjeta de
+-- la pantalla bloqueada no tiene botones): no hay "sigo acá" posible. Por eso
+-- no se pide una señal aparte y se usa la regla con la que la base YA cierra
+-- las sesiones: media hora sin series, o dos horas si nunca hubo una.
+-- NUNCA dice dónde: nombre, avatar y desde cuándo.
 -- -------------------------------------------------------------
-create table public.en_el_gimnasio (
-  user_id uuid primary key references public.profiles(id) on delete cascade,
-  desde timestamptz not null default now(),
-  hasta timestamptz not null,
-  -- La última vez que el teléfono dijo "sigo acá" (migración 72).
-  visto timestamptz not null default now()
-);
--- RLS acá y no en el bloque de arriba: esa lista corre antes de que esta tabla
--- exista. Sin acceso directo del cliente; se entra y se lee por las funciones.
-alter table public.en_el_gimnasio enable row level security;
+
+-- ¿LA BASE TODAVÍA DA POR VIVA ESTA SESIÓN? Es la regla de
+-- `cerrar_sesiones_vencidas`, dicha al revés; `test:db` comprueba que las dos
+-- coinciden en el borde, para que no se separen.
+create or replace function public.sesion_sigue_viva(p_inicio timestamptz, p_ultima_actividad timestamptz)
+returns boolean language sql stable set search_path = public as $$
+  select case
+           when p_ultima_actividad > p_inicio then now() < p_ultima_actividad + public.ventana_inactividad()
+           else now() - p_inicio < public.tope_sesion()
+         end;
+$$;
+revoke execute on function public.sesion_sigue_viva(timestamptz, timestamptz) from public, anon, authenticated;
 
 create or replace function public.fijar_comparte_gimnasio(p_valor boolean)
 returns void language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid();
 begin
   if uid is null then return; end if;
+  -- Al apagarlo deja de aparecer YA: `entrenando_ahora` lo lee de acá.
   update profiles set comparte_gimnasio = coalesce(p_valor, false) where id = uid;
-  -- Al apagarlo deja de aparecer YA: se borra la marca vigente.
-  if not coalesce(p_valor, false) then delete from en_el_gimnasio where user_id = uid; end if;
 end;
 $$;
 
+-- YA NO HACE NADA (migración 72). Queda porque los teléfonos sin actualizar la
+-- siguen llamando: al llegar al gimnasio y al iniciar una sesión.
 create or replace function public.marcar_en_gimnasio()
 returns void language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid();
 begin
-  if uid is null then return; end if;
-  if not exists (select 1 from profiles where id = uid and comparte_gimnasio) then return; end if;
-  insert into en_el_gimnasio (user_id, desde, hasta, visto)
-    values (uid, now(), now() + interval '2 hours', now())
-    on conflict (user_id) do update
-       set hasta = now() + interval '2 hours',
-           visto = now(),
-           -- Una marca vencida que se vuelve a poner es una vez NUEVA: sin esto
-           -- `desde` quedaba en la primera vez que se marcó, hace días.
-           desde = case when en_el_gimnasio.hasta > now() then en_el_gimnasio.desde else now() end;
+  return;
 end;
 $$;
 
--- QUIÉN ESTÁ ENTRENANDO AHORA (migración 72). La marca sola NO alcanza: la pone
--- también el vigilante cada vez que el teléfono está adentro del radio del
--- gimnasio, haya o no entrenamiento, y dura dos horas. Así aparecía entrenando
--- quien había terminado hacía dos horas y quien vivía al lado.
--- Ahora hacen falta las dos cosas:
---   1. una SESIÓN CORRIENDO (terminar, o que se cierre sola, saca en el acto);
---   2. una SEÑAL DE VIDA en la última media hora: una serie, el inicio de la
---      sesión, o un "sigo acá" del teléfono (`visto`).
--- La media hora es `ventana_inactividad()`: la misma con la que la base da por
--- terminada una sesión. Sin batería, sin señal o con la app cerrada, nadie
--- queda entrenando más que eso.
 create or replace function public.entrenando_ahora()
 returns table (id uuid, username text, avatar_url text, desde timestamptz)
 language sql stable security definer set search_path = public as $$
-  select u.id, u.username, u.avatar_url, g.desde
-    from en_el_gimnasio g
-    join usuarios_publicos u on u.id = g.user_id
-   where g.hasta > now()
-     and g.user_id <> auth.uid()
-     and public.son_amigos(auth.uid(), g.user_id)
-     and exists (
-           select 1
-             from sesiones s
-            where s.user_id = g.user_id
-              and s.estado = 'corriendo'
-              and greatest(s.inicio, s.ultima_actividad, g.visto) > now() - public.ventana_inactividad()
-         )
-   order by g.desde desc;
+  select u.id, u.username, u.avatar_url, s.inicio
+    from sesiones s
+    join profiles p on p.id = s.user_id and p.comparte_gimnasio
+    join usuarios_publicos u on u.id = s.user_id
+   where s.estado = 'corriendo'
+     and public.sesion_sigue_viva(s.inicio, s.ultima_actividad)
+     and s.user_id <> auth.uid()
+     and public.son_amigos(auth.uid(), s.user_id)
+   order by s.inicio desc;
 $$;
 
 revoke execute on function public.fijar_comparte_gimnasio(boolean), public.marcar_en_gimnasio(), public.entrenando_ahora() from public, anon;
@@ -3198,7 +3185,6 @@ begin
   if uid is null then return; end if;
   delete from en_vivo where user_id = uid;
   delete from entrenos_compartidos where solicitante = uid or destinatario = uid;
-  delete from en_el_gimnasio where user_id = uid;
 end;
 $$;
 
@@ -3263,7 +3249,6 @@ begin
   begin
     delete from en_vivo where user_id = old.user_id;
     delete from entrenos_compartidos where solicitante = old.user_id or destinatario = old.user_id;
-    delete from en_el_gimnasio where user_id = old.user_id;
   exception when others then
     null;
   end;
@@ -3444,7 +3429,7 @@ revoke all on table
   public.profiles, public.logs, public.photos, public.weights,
   public.friendships, public.challenges, public.feedback, public.descansos,
   public.ejercicios, public.prs, public.sesiones, public.errores_js,
-  public.en_el_gimnasio, public.bloqueos, public.reportes
+  public.bloqueos, public.reportes
   from anon, authenticated;
 
 -- lectura y escritura mínimas, siempre acotadas después por la RLS
