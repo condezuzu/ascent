@@ -1020,6 +1020,8 @@ export default function Inicio({
         <Descanso
           visible={descansoAbierto}
           vivo={sesion.estado.descanso}
+          // EL COLOR DEL ARCO se decide ACÁ, en una línea: hoy, el del rango.
+          acento={paletaDe(numeroDeRango(racha), null).principal}
           alReiniciar={sesion.reiniciarDescanso}
           alSaltar={() => {
             setDescansoAbierto(false);

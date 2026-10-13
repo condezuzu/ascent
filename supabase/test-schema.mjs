@@ -16610,6 +16610,34 @@ console.log('\n205. Las propuestas de diseño están en la web, pero las ve solo
   ], [true, true]);
 }
 
+console.log('\n206. La pantalla del descanso: qué se estaba haciendo, el arco, cuánto te pasaste, y el compañero abajo');
+{
+  const { readFileSync: leer206 } = await import('node:fs');
+  const de206 = (...p) => sinComentarios(leer206(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n'));
+  const AV206 = await import('../nucleo/avisoDescanso.ts');
+  chequear('al terminar cuenta cuánto te pasaste; antes del final, cero', [
+    AV206.pasadoDe(10_000, 9_000), AV206.pasadoDe(10_000, 10_000), AV206.pasadoDe(10_000, 10_999), AV206.pasadoDe(10_000, 22_400),
+  ], [0, 0, 0, 12]);
+  const { T: T206 } = await import('../nucleo/textos.ts');
+  chequear('la serie se dice como en la tarjeta bloqueada: una de más, sin "de"', [T206.descanso.serieDe(3, 4), T206.descanso.serieDe(4, 4), T206.descanso.serieDe(5, 4)], ['serie 3 de 4', 'serie 4 de 4', 'serie 5']);
+  const p206 = de206('movil', 'src', 'Descanso.tsx');
+  chequear('la pantalla dice qué se hacía, dibuja el arco con el color que le pasan, y al terminar cuenta hacia arriba', [
+    /\{!!vivo\.ejercicio && \(/.test(p206) && /T\.descanso\.serieDe\(vivo\.serie, vivo\.meta \?\? 0\)/.test(p206),
+    /stroke=\{acento\}/.test(p206) && /strokeDashoffset=\{LARGO \* \(1 - proporcion\)\}/.test(p206),
+    /terminado \? '\+' \+ cuentaAtras\(pasadoDe\(vivo\.fin, ahora\)\) : cuentaAtras\(falta\)/.test(p206),
+    /<CompaneroEnDescanso visible=\{visible\} ahora=\{ahora\} \/>/.test(p206),
+  ], [true, true, true, true]);
+  const c206 = de206('movil', 'src', 'CompaneroEnDescanso.tsx');
+  chequear('el compañero solo se pregunta con el descanso a la vista, solo si aceptó, y su cuenta gana a "sin señal"', [
+    /useUniones\(visible, true\)/.test(c206),
+    /uniones\.filter\(\(u\) => u\.estado === 'aceptada'\)/.test(c206) && /if \(!hay\) return null;/.test(c206),
+    /renglonDe\(u, ahora - recibidoEn\)/.test(c206),
+    /\{r\.descanso !== null \? \([\s\S]*?\) : r\.sinSenal \? \(/.test(c206),
+    /useSesion|sesionCache|@compartido\/cola/.test(c206),
+  ], [true, true, true, true, false]);
+  chequear('el color del arco se decide en un solo lugar', (de206('movil', 'src', 'Inicio.tsx').match(/<Descanso[\s\S]{0,200}?acento=\{paletaDe\(numeroDeRango\(racha\), null\)\.principal\}/g) ?? []).length, 1);
+}
+
 console.log('\n202. "Volver" anda siempre, también cuando la app arrancó por un enlace');
 {
   // EL BUG (en la tienda, 12/10): con la app cerrada, el link de amigo abría un

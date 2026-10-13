@@ -173,6 +173,18 @@ try {
       await pa.screenshot({ path: 'capturas/bateria/juntos-a-ranking.png' }).catch(() => {});
       await pb.screenshot({ path: 'capturas/bateria/juntos-b-inicio.png' }).catch(() => {});
 
+      // LA PANTALLA DEL DESCANSO DE B (12/10): arriba lo que estaba haciendo, y
+      // abajo, en chico, quien entrena con él.
+      await pb.getByText(/^\d+:\d\d$/).last().click({ timeout: 15000 });
+      await esperar('B abre su descanso: dice qué ejercicio y qué serie', pb.getByText('serie 1 de 3', { exact: true }).first(), 15000);
+      const companero = pb.getByTestId('companero-en-descanso').first();
+      if (await esperar('y abajo aparece A, que entrena con él', companero, 20000)) {
+        chequear('con su nombre', (await companero.innerText()).includes(A.nombre), true);
+      }
+      await pb.screenshot({ path: 'capturas/bateria/juntos-b-descanso.png' }).catch(() => {});
+      await pb.getByLabel('Cerrar').first().click({ timeout: 15000 });
+      await pb.waitForTimeout(800);
+
       // DE UNA SOLA MANO: lo de B, en la base, es lo que B hizo.
       await pb.waitForTimeout(2500);
       const ses = (await B.s.from('sesiones').select('estado, series, bloques').eq('user_id', B.id)).data ?? [];

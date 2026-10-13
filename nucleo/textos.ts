@@ -988,6 +988,11 @@ export const T = {
     serieHecha: '+ Serie hecha',
     listoPie: 'Listo. Cuando quieras, la que sigue.',
     seguir: 'Seguir',
+    // La pantalla nueva del descanso (12/10): qué se estaba haciendo, arriba.
+    rotulo: 'DESCANSO',
+    rotuloListo: 'LISTO',
+    serieDe: (serie: number, meta: number) => (meta >= serie ? `serie ${serie} de ${meta}` : `serie ${serie}`),
+    deMas: 'de más',
   },
 
   // ---------------------------------------------------------------
