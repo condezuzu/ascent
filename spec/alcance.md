@@ -79,8 +79,10 @@ camino se anota abajo, en "Después", y no se mete.
 
 ### EL ORDEN, desde el 13/10/2026 (reemplaza al orden de las tandas de abajo)
 
-1. **Probar la pantalla del descanso** en el teléfono (`telefono`).
-2. **`store` al día:** todo lo que hoy solo está en `telefono`.
+1. ~~Probar la pantalla del descanso en el teléfono (`telefono`).~~ Hecho.
+2. ~~`store` al día.~~ **Hecho el 13/10:** OTA desde `e5928a8`, grupo
+   `24aa0f9e-4a97-461b-a234-4b13d2711ed8`. Qué se probó antes y cómo:
+   `spec/prueba-antes-de-store.md`.
 3. **El refactor del estado del entrenamiento** —un solo dueño del dato— y,
    encima, **el multijugador completo**: grupos, tiempo real y sin el parpadeo.
    **Al arrancar este punto, recordarle al humano el dominio** (ver punto 6).
@@ -185,7 +187,18 @@ una sola cosa:
 - los cambios al widget (Swift): entran en la build 8, y se preparan en la
   rama cuando llegue el momento. Acá no se compila Swift, y un error ahí se ve
   recién en la build: se prueba primero con una build `telefono`;
-- Diagnóstico sin depender de una variable de compilación (ya anotado abajo);
+- ~~Diagnóstico sin depender de una variable de compilación~~: **NO es de la
+  build** (revisado el 13/10). La variable se mete en el JavaScript al
+  exportar, y decidirlo por `Updates.channel` es código que viaja por OTA;
+- **el aviso fuera de la app** (alguien quiere unirse) **tampoco pide build,
+  a confirmar:** `expo-notifications` ya está en la build 7 y su plugin pone el
+  permiso de avisos remotos. Falta pedir el token (OTA), un servidor que mande
+  y la clave de APNs cargada en EAS (lo hace el humano). Se confirma pidiendo
+  un token en `telefono`: si lo da, no hace falta build;
+- **si alguna vez se quiere que la tarjeta suene sola** (APNs sobre la Live
+  Activity), el módulo Swift tiene que pedirla con `pushType: .token` (hoy
+  `nil`): eso SÍ es build. No está en el alcance; si no entra en la 8, es
+  otra build;
 - lo que quede pendiente de capa nativa al llegar ese día.
 
 ### Tanda 4 — lo grande (la versión chica del entrenamiento compartido, hecha el 12/10 SIN el dueño único)
