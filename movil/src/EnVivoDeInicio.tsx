@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { avisarQueEntreno, publicarEnVivo, responderUnion } from '@compartido/enVivo';
-import { AVISO_DE_ENTRENO_CAMBIO, firmaDe, loQueSePublica } from '@nucleo/enVivo';
-import { eventos } from '@compartido/eventos';
+import { publicarEnVivo, responderUnion } from '@compartido/enVivo';
+import { firmaDe, loQueSePublica } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { useUniones } from './useUniones';
@@ -25,34 +24,16 @@ import { C, conAlfa } from './colores';
  */
 type Visto = { corriendo: boolean; ejercicio: string | null; hechas: number; meta: number; descansoFin: number | null };
 
-const CADA_CUANTO_AVISO_MS = 20 * 60_000;
 /** Aunque no cambie nada, cada tanto se vuelve a publicar: es lo que dice "sigo acá". */
 const LATIDO_MS = 45_000;
 
 export default function EnVivoDeInicio(visto: Visto) {
   const { uniones, recargar } = useUniones(visto.corriendo, true);
 
-  useEffect(() => {
-    if (!visto.corriendo) return;
-    void avisarQueEntreno(supabase).catch(() => undefined);
-    const t = setInterval(() => void avisarQueEntreno(supabase).catch(() => undefined), CADA_CUANTO_AVISO_MS);
-    return () => clearInterval(t);
-  }, [visto.corriendo]);
-
   // Lo último que se vio, para que el latido publique lo de AHORA y no lo de cuando se armó.
   const ultimo = useRef(visto);
   ultimo.current = visto;
 
-  // PRENDER "AVISAR CUANDO ENTRENO" A MITAD DE SESIÓN SURTE EFECTO YA (12/10).
-  // La marca se ponía solo al iniciar: quien lo prendía después no aparecía
-  // hasta veinte minutos más tarde, o hasta terminar y volver a iniciar.
-  useEffect(
-    () =>
-      eventos.escuchar(AVISO_DE_ENTRENO_CAMBIO, () => {
-        if (ultimo.current.corriendo) void avisarQueEntreno(supabase).catch(() => undefined);
-      }),
-    []
-  );
   const hayAlguien = uniones.length > 0;
   const firma = firmaDe(visto);
   useEffect(() => {

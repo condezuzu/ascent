@@ -754,6 +754,17 @@ horas que ponía también el vigilante con solo estar adentro del radio del
 gimnasio. Las dos se separaron solas: aparecía entrenando quien había terminado
 hacía dos horas y quien vivía al lado. Es la misma forma que el planeta, el
 rango y el peso propuesto.
+
+*La evidencia, de la base real (consultas del humano, 13/10/2026, antes de
+aplicar la 72):* sesiones corriendo en toda la base, **cero**. Filas en
+`en_el_gimnasio`, **tres, las tres sin sesión**:
+- `valentinossj100`: marcada por primera vez el 7/10, última marca el 13/10 a
+  las 15:50, **vigente** — figuraba entrenando en ese momento, sin sesión;
+- `jererossano`: última marca el 12/10 a las 21:25 — es el amigo que el humano
+  vio "entrenando" a las 21;
+- `marrconndee`: última marca el 9/10 a las 19:19.
+Ninguna de las tres personas estaba entrenando. No es una explicación
+probable: es lo que había en la tabla.
 → **Regla:** un hecho, una tabla. Desde la migración 72 `entrenando_ahora` lee
 `sesiones` y la otra tabla no existe. Y **no se inventa una señal que el
 teléfono no puede dar**: con la pantalla bloqueada iOS congela la app, así que

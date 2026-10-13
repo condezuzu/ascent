@@ -18,24 +18,6 @@
  * NO IMPORTA NADA del teléfono: se prueba con node pelado.
  */
 
-/** Se prendió o apagó "Avisar cuando entreno": si hay una sesión corriendo, tiene que surtir efecto YA. */
-export const AVISO_DE_ENTRENO_CAMBIO = 'ascent:aviso-de-entreno-cambio';
-
-/**
- * DESPUÉS DE "TERMINAR", NO SE VUELVE A MARCAR "ENTRENANDO" (12/10). Se termina
- * estando todavía en el gimnasio, y el vigilante —que marca la presencia al
- * verte adentro— te volvía a poner en "Entrenando ahora" a los dos minutos, con
- * su botón "Unirse" y sin nadie del otro lado para contestar. La pausa dura lo
- * que dura la marca; iniciar otra sesión la levanta.
- */
-export const CLAVE_NO_AVISAR_HASTA = 'ascent:no-avisar-hasta';
-export const PAUSA_TRAS_TERMINAR_MS = 2 * 60 * 60 * 1000;
-
-export function puedeMarcarPresencia(noAvisarHasta: string | null | undefined, ahora: number): boolean {
-  const hasta = Number(noAvisarHasta);
-  return !(Number.isFinite(hasta) && hasta > ahora);
-}
-
 /** Cada cuánto se vuelve a preguntar. */
 export const CADA_CUANTO_MS = 10_000;
 /** Sin novedades por más de esto, el renglón dice "sin señal". */

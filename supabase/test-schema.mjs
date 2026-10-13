@@ -16356,13 +16356,12 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
     /dejarDeEntrenar/.test(de201('movil', 'src', 'EnVivoDeInicio.tsx')),
   ], [true, true, 1, false]);
   const vivo201 = de201('movil', 'src', 'EnVivoDeInicio.tsx');
-  chequear('al iniciar avisa que entreno; publica solo si hay alguien, con un respiro y un latido', [
-    /if \(!visto\.corriendo\) return;\s*void avisarQueEntreno\(supabase\)/.test(vivo201),
+  chequear('publica solo si hay alguien, con un respiro y un latido', [
     /if \(!visto\.corriendo \|\| !hayAlguien\) return;/.test(vivo201),
     /const p = loQueSePublica\(ultimo\.current, Date\.now\(\)\);\s*if \(p\) void publicarEnVivo\(supabase, p\)/.test(vivo201),
     /setTimeout\(publicar, 700\)/.test(vivo201) && /setInterval\(publicar, LATIDO_MS\)/.test(vivo201),
     /u\.estado === 'pendiente' && !u\.laPediYo/.test(vivo201),
-  ], [true, true, true, true, true]);
+  ], [true, true, true, true]);
   const rk201 = de201('movil', 'src', 'Ranking.tsx');
   chequear('Ranking pregunta cada diez segundos solo con la pestaña a la vista, y ofrece Unirse a quien no tengo', [
     /setActiva\(cual === 'ranking'\)/.test(rk201) && /const juntos = useUniones\(activa\);/.test(rk201),
@@ -16395,15 +16394,13 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
     return cliente201(v, respuestas);
   };
   const vieja = await conVersion201(66);
-  await C201.avisarQueEntreno(vieja);
   await C201.publicarEnVivo(vieja, { ejercicio: null, serie: 0, meta: 0, descansoFaltan: null });
   await C201.dejarDeEntrenar(vieja);
   chequear('con la base sin la 67 no se llama a nada, y la lista viene vacía', [(await C201.traerUniones(vieja)).uniones, await C201.pedirUnirse(vieja, 'x'), llamadas201], [[], false, []]);
   const nueva = await conVersion201(67, { mis_uniones: { data: null, error: { message: 'Network request failed' } } });
   chequear('si la lista no se pudo pedir se dice (null): la pantalla se queda con lo que tenía', await C201.traerUniones(nueva), null);
-  await C201.avisarQueEntreno(nueva);
   await C201.publicarEnVivo(nueva, { ejercicio: 'press_banca', serie: 1, meta: 3, descansoFaltan: 60 });
-  chequear('con la 67, iniciar avisa con la marca de siempre y se publica', llamadas201, ['mis_uniones', 'marcar_en_gimnasio', 'publicar_en_vivo']);
+  chequear('con la 67 se publica, y nada marca "entrenando": eso sale de la sesión', llamadas201, ['mis_uniones', 'publicar_en_vivo']);
 
   // ---- "SU RUTINA": la escondió, o no hay datos ----
   const P201 = await import('../compartido/perfil.ts');
@@ -16546,10 +16543,6 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
     /\{r\.sinSenal \? \([\s\S]*?\) : r\.descanso !== null \? \(/.test(juntos203),
   ], [true, false]);
   const vivo203 = de203('movil', 'src', 'EnVivoDeInicio.tsx');
-  chequear('prender "Avisar cuando entreno" con la sesión corriendo surte efecto en el acto', [
-    /else eventos\.emitir\(AVISO_DE_ENTRENO_CAMBIO\);/.test(de203('movil', 'src', 'Ajustes.tsx')),
-    /eventos\.escuchar\(AVISO_DE_ENTRENO_CAMBIO, \(\) => \{\s*if \(ultimo\.current\.corriendo\) void avisarQueEntreno\(supabase\)/.test(vivo203),
-  ], [true, true]);
   const nov203 = de203('movil', 'src', 'AvisoRutina.tsx');
   const { REQUIERE: REQ203 } = await import('../nucleo/esquema.ts');
   const { T: T203 } = await import('../nucleo/textos.ts');
@@ -16664,20 +16657,20 @@ console.log('\n204. Ocho arreglos de la cacería del 12/10, y la guarda de las m
   const pegado = almacen(5, { noBorra: true });
   chequear('si algo se lista y no se va nunca, se corta con la cuenta viva (y no queda dando vueltas)', ['error' in (await CU204.eliminarCuenta(pegado, 'uid')), pegado.hecho.some((h) => h[0] === 'rpc'), pegado.hecho.length <= 101], [true, false, true]);
 
-  // ---- TERMINAR DENTRO DEL GIMNASIO NO TE VUELVE A MARCAR ENTRENANDO ----
-  const EV204 = await import('../nucleo/enVivo.ts');
-  chequear('después de "Terminar" hay una pausa; vencida, o sin ella, se marca como siempre', [
-    EV204.puedeMarcarPresencia(String(1000 + 5), 1000), EV204.puedeMarcarPresencia(String(999), 1000),
-    EV204.puedeMarcarPresencia(null, 1000), EV204.puedeMarcarPresencia('basura', 1000),
-  ], [false, true, true, true]);
-  // Por el camino de la app: terminar deja la pausa en el teléfono; iniciar otra sesión la levanta.
-  const C204 = await import('../compartido/enVivo.ts');
-  const callado = { rpc: async () => ({ data: 0, error: null }) };
-  await C204.dejarDeEntrenar(callado);
-  const trasTerminar = await C204.sePuedeMarcarPresencia();
-  await C204.avisarQueEntreno(callado);
-  chequear('terminar a mano frena al vigilante; iniciar otra sesión lo suelta', [trasTerminar, await C204.sePuedeMarcarPresencia()], [false, true]);
-  chequear('el vigilante lo mira antes de marcar', /if \(!\(await sePuedeMarcarPresencia\(\)\)\) return;\s*await supabase\.rpc\('marcar_en_gimnasio'\);/.test(de204('movil', 'src', 'VigilanteDeGimnasio.tsx')), true);
+
+  // ---- "ENTRENANDO" NO SE MARCA DESDE LA APP (migración 72) ----
+  // Sale de la sesión. Lo que marcaba aparte —al iniciar, cada veinte minutos y el
+  // vigilante con solo estar adentro del gimnasio— era una segunda fuente: se fue.
+  {
+    const { readdirSync: dir72 } = await import('node:fs');
+    const fuentes = [
+      ...['nucleo', 'compartido'].flatMap((c) => dir72(join(AQUI204, '..', c)).filter((f) => f.endsWith('.ts')).map((f) => [c, f])),
+      ...dir72(join(AQUI204, '..', 'movil', 'src'), { recursive: true }).filter((f) => /\.tsx?$/.test(String(f))).map((f) => ['movil', 'src', String(f)]),
+    ];
+    const nombran = fuentes.filter((p) => /marcar_en_gimnasio|avisarQueEntreno|sePuedeMarcarPresencia|no-avisar-hasta/.test(de204(...p))).map((p) => p.join('/'));
+    chequear('ningún archivo de la app llama a la función vacía ni guarda la pausa de "no volver a marcar"', [fuentes.length > 60, nombran], [true, []]);
+    chequear('el vigilante sigue registrando el día al llegar: eso no era código muerto', /if \(adentro && diaRegistrado\.current !== hoyISO\(\)\) \{\s*const r = await registrarPorSenal\(supabase, 'ubicacion'\);/.test(de204('movil', 'src', 'VigilanteDeGimnasio.tsx')), true);
+  }
 
   // ---- LO QUE SE LEE: componentes y consultas largas ----
   const vivo204 = de204('movil', 'src', 'EnVivoDeInicio.tsx');
