@@ -190,11 +190,15 @@ una sola cosa:
 - ~~Diagnóstico sin depender de una variable de compilación~~: **NO es de la
   build** (revisado el 13/10). La variable se mete en el JavaScript al
   exportar, y decidirlo por `Updates.channel` es código que viaja por OTA;
-- **el aviso fuera de la app** (alguien quiere unirse) **tampoco pide build,
-  a confirmar:** `expo-notifications` ya está en la build 7 y su plugin pone el
-  permiso de avisos remotos. Falta pedir el token (OTA), un servidor que mande
-  y la clave de APNs cargada en EAS (lo hace el humano). Se confirma pidiendo
-  un token en `telefono`: si lo da, no hace falta build;
+- **el aviso fuera de la app** (alguien quiere unirse) **NO pide build: va
+  por OTA. Comprobado el 14/10/2026**, de dos formas:
+  - en la build de `telefono`, Diagnóstico → "Probar avisos remotos": Apple
+    dio un token (264 caracteres) y Expo otro (`ExponentPushToken…`);
+  - en la build 7 DE TIENDA, bajada de EAS (`bd30a91b`): el perfil de
+    aprovisionamiento y la firma del ejecutable traen
+    `aps-environment = production`.
+  Falta hacerlo: pedir y guardar el token (OTA y una migración), y algo que
+  mande cuando se crea un pedido de unión. **Sin armar todavía**;
 - **si alguna vez se quiere que la tarjeta suene sola** (APNs sobre la Live
   Activity), el módulo Swift tiene que pedirla con `pushType: .token` (hoy
   `nil`): eso SÍ es build. No está en el alcance; si no entra en la 8, es
