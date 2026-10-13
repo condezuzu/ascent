@@ -1311,3 +1311,12 @@ versión solo si es menor (nunca la baja). Las 32 que ya existían la recibieron
 el 12/10. `test:db` (sección 204) falla si una migración no la tiene, si el
 número no es el suyo o si no está al principio, y prueba que la 66 se frena
 sobre la base de hoy. Repetir la MISMA migración sigue pudiéndose.
+
+**Caso real, 13/10/2026: la guarda frenó una.** Con la 70 recién aplicada, el
+humano abrió sin querer una pestaña vieja del SQL Editor que tenía la 69 y le
+dio Run. La guarda la cortó con su mensaje ("Esta es la migración 69 y la base
+ya está en la 70") y la versión no se movió. Es la SEGUNDA vez que una pestaña
+o un portapapeles viejo casi baja el esquema (la primera, el 12/10, es la de
+arriba, y ahí no había guarda): dejó de ser un riesgo teórico.
+→ **Y de paso:** cerrar la pestaña del SQL Editor después de correr cada
+migración. La guarda es la red, no el plan.

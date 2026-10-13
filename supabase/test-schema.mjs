@@ -6137,19 +6137,32 @@ console.log('\n82. Que significa el numero del peso: la base');
       ]],
     ];
     for (const [dias, bloques] of historia70) await pasada(dias, bloques);
-    // La que está corriendo no cuenta: lo de hoy lo sabe el teléfono.
-    await fijar([
-      { ejercicio: 'zancadas', series: 1, pesos: [40], carga: 'total' },
-      { ejercicio: 'zancadas', series: 1, pesos: [10], carga: 'par' },
-    ]);
     const sinElegir = await arranca('zancadas');
     chequear('sin elegir: el del catalogo, y hay que preguntar', [sinElegir.carga, sinElegir.elegida, sinElegir.ambigua], ['par', false, true]);
-    chequear('el peso propuesto es el MÁS PESADO de la última sesión cerrada, EN ESE MODO: ni su última serie, ni el tope de otra, ni lo de hoy', Number(sinElegir.peso), 22);
+    chequear('el peso propuesto es el MÁS PESADO de la última sesión cerrada, EN ESE MODO: ni su última serie, ni el tope de otra', Number(sinElegir.peso), 22);
     chequear('y pasados los 90 días no se propone', (await arranca('sentadilla')).peso, null);
     // LA MISMA REGLA QUE EL TELÉFONO, con las mismas sesiones: son dos lugares que calculan un mismo número.
     const P70 = await import('../nucleo/pesoRecordado.ts');
     const enElTelefono70 = P70.pesosDelHistorial(historia70.slice(1).map(([, bloques]) => ({ bloques })), { zancadas: 'par' }).zancadas;
     chequear('el teléfono, con esas mismas sesiones, propone lo mismo que la base', [enElTelefono70.par, enElTelefono70.total], [Number(sinElegir.peso), 60]);
+
+    // CON UNA SESIÓN ABIERTA ENCIMA (migración 71): lo de hoy va primero, y es
+    // la ÚLTIMA serie, no la más pesada. Dos bloques con mancuernas, bajando; con
+    // barra hoy no se hizo nada, así que ese modo sigue saliendo del historial.
+    const hoy71 = [
+      { ejercicio: 'zancadas', series: 2, pesos: [16, 14], carga: 'par' },
+      { ejercicio: 'sentadilla', series: 1, pesos: [90], carga: 'total' },
+      { ejercicio: 'zancadas', series: 2, pesos: [12, 10], carga: 'par' },
+    ];
+    await fijar(hoy71);
+    const B71 = await import('../nucleo/bloques.ts');
+    const estadoHoy71 = B71.unirConGuardados(hoy71, B71.bloquesVacios());
+    const copia71 = P70.pesosDelHistorial(historia70.slice(1).map(([, bloques]) => ({ bloques })), { zancadas: 'par', sentadilla: 'total' });
+    const telefono71 = (e, modo) => P70.ultimoPesoEnModo(estadoHoy71, copia71, e, modo, { zancadas: 'par', sentadilla: 'total' });
+    const base71 = async (e) => Number((await arranca(e)).peso);
+    chequear('con una sesión abierta, la base propone la ÚLTIMA serie de hoy: ni el tope de hoy ni el de otro día', await base71('zancadas'), 10);
+    chequear('y el teléfono, con esa misma sesión abierta, lo mismo', [telefono71('zancadas', 'par'), telefono71('sentadilla', 'total')], [await base71('zancadas'), await base71('sentadilla')]);
+    chequear('lo que hoy no se hizo en ese modo sigue saliendo del historial, en los dos', [telefono71('zancadas', 'total')], [60]);
 
     await db.query("select elegir_carga('zancadas', 'total')");
     const conBarra = await arranca('zancadas');

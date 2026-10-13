@@ -28,7 +28,7 @@
  * etiqueta no fue "en total". Acá no se adivina: sin modo y sin catálogo, el
  * bloque no dice nada.
  *
- * `como_arranca` EN LA BASE ES LA MISMA REGLA (migración 70) y es solo el
+ * `como_arranca` EN LA BASE ES LA MISMA REGLA (migraciones 70 y 71) y es solo el
  * respaldo de un teléfono sin historial. Quien cambie una cambia la otra:
  * `test:db` les pasa las mismas sesiones a las dos y compara.
  *

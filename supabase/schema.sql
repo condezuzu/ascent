@@ -2263,13 +2263,18 @@ grant execute on function public.elegir_carga(text, text) to authenticated;
 --
 -- `elegida` dice si el modo lo dijo la persona o es el del catálogo: con eso el
 -- teléfono sabe si tiene que preguntar.
--- EL PESO ES EL MÁS PESADO DE LA ÚLTIMA SESIÓN (migración 70), no su última
--- serie: casi todos arrancan con el peso más alto y bajan al cansarse. Es LA
--- MISMA REGLA que `nucleo/pesoRecordado.ts`, que es quien propone en el
--- teléfono; esto es su respaldo, y dos reglas para el mismo número ya costaron
--- tres veces. Igual que allá: solo sesiones cerradas (lo de hoy lo sabe el
--- teléfono), de los últimos 90 días, y el bloque que no dice su modo usa el
--- del catálogo.
+-- EL PESO QUE SE PROPONE. ES LA MISMA REGLA que `nucleo/pesoRecordado.ts`, que
+-- es quien propone en el teléfono; esto es su respaldo, y dos reglas para el
+-- mismo número ya costaron tres veces. En este orden:
+--   1. LO DE HOY (migración 71): la última serie de la sesión que está
+--      corriendo. Quien reabre un ejercicio a los veinte minutos sigue desde
+--      donde quedó. La 70 la había dejado afuera, y un teléfono recién
+--      instalado que retoma una sesión abierta —sin sus bloques todavía y sin
+--      historial— recibía de acá el tope de otro día.
+--   2. Si hoy no se hizo: LO MÁS PESADO DE LA ÚLTIMA SESIÓN CERRADA
+--      (migración 70), no su última serie: casi todos arrancan con el peso
+--      más alto y bajan al cansarse. De los últimos 90 días.
+-- El bloque que no dice su modo usa el del catálogo.
 create or replace function public.como_arranca(p_ejercicio text)
 returns jsonb language sql stable security definer set search_path = public as $$
   with modo as (
@@ -2285,32 +2290,49 @@ returns jsonb language sql stable security definer set search_path = public as $
            'carga', m.carga,
            'elegida', m.elegida is not null,
            'ambigua', m.ambigua,
-           'peso', (
-             select max(x.v::numeric)
-               from sesiones s,
-                    jsonb_array_elements(s.bloques) as b(bloque),
-                    jsonb_array_elements_text(
-                      case when jsonb_typeof(b.bloque->'pesos') = 'array' then b.bloque->'pesos' else '[]'::jsonb end
-                    ) as x(v)
-              where s.id = (
-                      select s2.id
-                        from sesiones s2,
-                             jsonb_array_elements(s2.bloques) as b2(bloque),
-                             jsonb_array_elements_text(
-                               case when jsonb_typeof(b2.bloque->'pesos') = 'array' then b2.bloque->'pesos' else '[]'::jsonb end
-                             ) as y(v)
-                       where s2.user_id = auth.uid()
-                         and s2.estado <> 'corriendo'
-                         and s2.inicio > now() - interval '90 days'
-                         and b2.bloque->>'ejercicio' = p_ejercicio
-                         and coalesce(b2.bloque->>'carga', m.catalogo) = m.carga
-                         and y.v is not null
-                       order by s2.inicio desc
-                       limit 1
-                    )
-                and b.bloque->>'ejercicio' = p_ejercicio
-                and coalesce(b.bloque->>'carga', m.catalogo) = m.carga
-                and x.v is not null
+           'peso', coalesce(
+             (
+               select x.v::numeric
+                 from sesiones s,
+                      jsonb_array_elements(s.bloques) with ordinality as b(bloque, ob),
+                      jsonb_array_elements_text(
+                        case when jsonb_typeof(b.bloque->'pesos') = 'array' then b.bloque->'pesos' else '[]'::jsonb end
+                      ) with ordinality as x(v, ox)
+                where s.user_id = auth.uid()
+                  and s.estado = 'corriendo'
+                  and b.bloque->>'ejercicio' = p_ejercicio
+                  and coalesce(b.bloque->>'carga', m.catalogo) = m.carga
+                  and x.v is not null
+                order by s.inicio desc, b.ob desc, x.ox desc
+                limit 1
+             ),
+             (
+               select max(x.v::numeric)
+                 from sesiones s,
+                      jsonb_array_elements(s.bloques) as b(bloque),
+                      jsonb_array_elements_text(
+                        case when jsonb_typeof(b.bloque->'pesos') = 'array' then b.bloque->'pesos' else '[]'::jsonb end
+                      ) as x(v)
+                where s.id = (
+                        select s2.id
+                          from sesiones s2,
+                               jsonb_array_elements(s2.bloques) as b2(bloque),
+                               jsonb_array_elements_text(
+                                 case when jsonb_typeof(b2.bloque->'pesos') = 'array' then b2.bloque->'pesos' else '[]'::jsonb end
+                               ) as y(v)
+                         where s2.user_id = auth.uid()
+                           and s2.estado <> 'corriendo'
+                           and s2.inicio > now() - interval '90 days'
+                           and b2.bloque->>'ejercicio' = p_ejercicio
+                           and coalesce(b2.bloque->>'carga', m.catalogo) = m.carga
+                           and y.v is not null
+                         order by s2.inicio desc
+                         limit 1
+                      )
+                  and b.bloque->>'ejercicio' = p_ejercicio
+                  and coalesce(b.bloque->>'carga', m.catalogo) = m.carga
+                  and x.v is not null
+             )
            )
          )
     from modo m;
@@ -3710,7 +3732,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 70; $$;
+returns int language sql immutable as $$ select 71; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;
