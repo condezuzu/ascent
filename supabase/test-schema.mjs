@@ -15718,21 +15718,28 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     chequear('los sonidos que usa el aviso están declarados y existen', nombrados.map((n) => [n, declarados.includes(`./assets/${n}`), hay197(join(RAIZ197, 'movil', 'assets', n))]), [
       ['aviso-descanso.wav', true, true], ['silencio.wav', true, true],
     ]);
-    // Lo que se puede medir sin oírlo: el formato que iOS acepta, que dure menos de 30 s, y que sea más fuerte y más largo que la de antes.
+    // Lo que se puede medir sin oírlo: el formato que iOS acepta, que sea corto, que no recorte, y que tenga la
+    // energía de la campana de antes. Se mide MIENTRAS SUENA: con los silencios adentro, un toque corto daría
+    // menos que uno largo igual de fuerte.
     const medir = (n) => {
       const b = leerBin197(join(RAIZ197, 'movil', 'assets', n));
       const total = (b.length - 44) / 2;
-      let suma = 0;
-      for (let i = 0; i < total; i++) suma += (b.readInt16LE(44 + i * 2) / 32768) ** 2;
-      return { pcm: b.readUInt16LE(20) === 1, bits: b.readUInt16LE(34), segundos: total / b.readUInt32LE(24) / b.readUInt16LE(22), rms: Math.sqrt(suma / total) };
+      let suma = 0, sonando = 0, pico = 0;
+      for (let i = 0; i < total; i++) {
+        const v = Math.abs(b.readInt16LE(44 + i * 2) / 32768);
+        pico = Math.max(pico, v);
+        if (v > 0.01) { suma += v * v; sonando++; }
+      }
+      const db = sonando ? 20 * Math.log10(Math.sqrt(suma / sonando)) : null;
+      return { pcm: b.readUInt16LE(20) === 1, bits: b.readUInt16LE(34), segundos: total / b.readUInt32LE(24) / b.readUInt16LE(22), pico, db };
     };
     const nuevo = medir('aviso-descanso.wav');
     const viejo = medir('campana.wav');
     const mudo = medir('silencio.wav');
-    chequear('el aviso nuevo es PCM de 16 bits, dura menos de 30 s, y es más largo y más fuerte que la campana de antes', [
-      nuevo.pcm, nuevo.bits, nuevo.segundos < 30, nuevo.segundos > viejo.segundos * 2, nuevo.rms > viejo.rms * 1.8,
+    chequear('el aviso nuevo es PCM de 16 bits, corto, no recorta, y suena con la energía de la campana de antes (a menos de 1 dB)', [
+      nuevo.pcm, nuevo.bits, nuevo.segundos < 2, nuevo.pico < 0.99, Math.abs(nuevo.db - viejo.db) < 1,
     ], [true, 16, true, true, true]);
-    chequear('y el silencio es silencio de verdad, y corto', [mudo.rms, mudo.segundos <= 1], [0, true]);
+    chequear('y el silencio es silencio de verdad, y corto', [mudo.pico, mudo.db, mudo.segundos <= 1], [0, null, true]);
   }
   const pant197 = de197('movil', 'src', 'Descanso.tsx');
   chequear('la pantalla del descanso avisa por avisarFin, y solo hace sonar la campana si avisó', [

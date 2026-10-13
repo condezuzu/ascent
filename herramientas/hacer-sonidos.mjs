@@ -1,4 +1,10 @@
-// Genera los dos archivos de sonido de la build 8. Sin dependencias: WAV PCM 16 bits, mono, 44,1 kHz.
+// Los dos archivos de sonido de la build 8. Sin dependencias: WAV PCM 16 bits, mono, 44,1 kHz.
+//
+//   node herramientas/hacer-sonidos.mjs                      → solo el silencio
+//   node herramientas/hacer-sonidos.mjs <recorte.wav> [dB]   → además, el aviso a partir de ese recorte
+//
+// El aviso NO se sintetiza: es un recorte de un archivo que trajo el humano
+// (ver spec/sonido-del-aviso.md). Acá solo se le sube el volumen.
 import fs from 'node:fs';
 const FS = 44100;
 
@@ -21,41 +27,40 @@ function wav(muestras) {
   return Buffer.concat([cab, datos]);
 }
 
-// LA CAMPANA NUEVA. Cuatro golpes en 2,4 s (la de antes: tres en uno). Cada
-// golpe es una campana: la fundamental y tres parciales que no son múltiplos
-// exactos, que es lo que la hace sonar a metal y no a pitido. La energía va
-// entre 1,5 y 6,5 kHz: donde el oído es más sensible y donde la música y la voz
-// de un video tienen menos, así se separa sin tapar nada.
-const DURA = 2.4;
-const GOLPES = [0, 0.42, 0.84, 1.26];
-const F0 = 1568; // sol 6
-const PARCIALES = [[1, 1], [2.0, 0.6], [2.76, 0.45], [4.07, 0.25]];
-const n = Math.round(DURA * FS);
-const s = new Float64Array(n);
-for (const t0 of GOLPES) {
-  for (let i = Math.round(t0 * FS); i < n; i++) {
-    const t = i / FS - t0;
-    const ataque = Math.min(1, t / 0.003); // 3 ms: sin clic
-    const cae = Math.exp(-t / 0.33);
-    let v = 0;
-    for (const [mult, amp] of PARCIALES) v += amp * Math.sin(2 * Math.PI * F0 * mult * t) * Math.exp(-t * (mult - 1) * 1.2);
-    s[i] += v * ataque * cae;
-  }
+function leer(ruta) {
+  const b = fs.readFileSync(ruta);
+  const m = [];
+  for (let i = 44; i + 1 < b.length; i += 2) m.push(b.readInt16LE(i) / 32768);
+  return m;
 }
-// Compresión suave (sube lo que se percibe sin recortar feo) y al 97 % de la escala.
-let pico = 0;
-for (let i = 0; i < n; i++) {
-  s[i] = Math.tanh(1.5 * s[i]);
-  pico = Math.max(pico, Math.abs(s[i]));
+
+// La energía de la parte que SUENA: con los silencios adentro, un sonido corto
+// y uno largo igual de fuertes dan números distintos.
+function medir(m) {
+  const sonando = m.filter((v) => Math.abs(v) > 0.01);
+  let suma = 0;
+  let pico = 0;
+  for (const v of sonando) suma += v * v;
+  for (const v of m) pico = Math.max(pico, Math.abs(v));
+  return { seg: m.length / FS, pico, db: 20 * Math.log10(Math.sqrt(suma / Math.max(1, sonando.length))) };
 }
-// Cola: los últimos 60 ms bajan a cero, para que no termine en un chasquido.
-const cola = Math.round(0.06 * FS);
-const fuerte = Array.from(s, (v, i) => (v / pico) * 0.97 * (i > n - cola ? (n - i) / cola : 1));
-fs.writeFileSync('movil/assets/aviso-descanso.wav', wav(fuerte));
+const decir = (nombre, r) => console.log(`${nombre}: ${r.seg.toFixed(2)} s, pico ${r.pico.toFixed(2)}, ${r.db.toFixed(1)} dBFS mientras suena`);
 
 // EL SILENCIO: medio segundo de nada. Una notificación con este "sonido" hace
 // vibrar el teléfono sin sonar: es lo que usa "Sonido al terminar" apagado.
 fs.writeFileSync('movil/assets/silencio.wav', wav(new Array(Math.round(0.5 * FS)).fill(0)));
 
-const rms = Math.sqrt(fuerte.reduce((a, v) => a + v * v, 0) / n);
-console.log(`aviso-descanso.wav: ${DURA} s, pico ${Math.max(...fuerte.map(Math.abs)).toFixed(2)}, RMS ${rms.toFixed(3)} (${(20 * Math.log10(rms)).toFixed(1)} dBFS)`);
+const [recorte, db] = process.argv.slice(2);
+if (recorte) {
+  const original = leer(recorte);
+  const campana = medir(leer('movil/assets/campana.wav'));
+  // Sin número, se iguala a la campana de antes.
+  const sube = db === undefined ? campana.db - medir(original).db : Number(db);
+  const aviso = original.map((v) => v * 10 ** (sube / 20));
+  const r = medir(aviso);
+  if (r.pico >= 1) throw new Error(`Con ${sube.toFixed(1)} dB el pico llega a ${r.pico.toFixed(2)}: recorta.`);
+  fs.writeFileSync('movil/assets/aviso-descanso.wav', wav(aviso));
+  decir('el recorte   ', medir(original));
+  decir('la campana   ', campana);
+  decir(`el aviso (+${sube.toFixed(1)} dB)`, r);
+}

@@ -14,8 +14,12 @@ cuando exista la build 8). Un toque solo, suave, de 0,8 segundos.
   Dura 9,17 s y son cuatro toques separados por silencios.
 - **Lo que se usa** es el primero de esos cuatro toques (del segundo 0,76 al
   1,56), pasado a WAV PCM de 16 bits, mono, 44,1 kHz, con 5 ms de entrada y
-  40 ms de salida para que no haga clic, y subido 2,3 dB para que quede con la
-  misma energía que la campana anterior.
+  40 ms de salida para que no haga clic, y subido 2,1 dB para que quede con la
+  misma energía que la campana anterior, medida mientras suena (−13,8 contra
+  −13,7 dBFS). El pico queda en 0,59: no recorta. Igual energía no es igual
+  volumen al oído; es lo que se puede medir sin escucharlo.
+- **Cómo se rehace:** `node herramientas/hacer-sonidos.mjs <recorte.wav> [dB]`.
+  Sin número, lo iguala a la campana.
 
 ## La licencia: SIN VERIFICAR
 

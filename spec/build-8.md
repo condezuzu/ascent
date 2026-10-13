@@ -8,11 +8,11 @@ que ya están en la calle. Se junta con `main` recién cuando la build exista.
 
 ## Lo que ya está hecho en esta rama
 
-- **El sonido del fin de descanso**, propio: `movil/assets/aviso-descanso.wav`.
-  Cuatro golpes de campana en 2,4 segundos, con 6 dB más de energía media que
-  la campana de hoy (−7,8 contra −14,2 dBFS) y más del doble de largo. Lo
-  genera `herramientas/hacer-sonidos.mjs`: para cambiarlo se toca ahí y se
-  corre de nuevo. **Nadie lo escuchó todavía.**
+- **El sonido del fin de descanso**: `movil/assets/aviso-descanso.wav`. Un
+  toque solo, suave, de 0,8 segundos: el "corte 1" que el humano eligió el
+  13/10/2026, subido 2,1 dB para igualar la energía de la campana de hoy. La
+  primera versión (cuatro golpes sintetizados) se descartó por fuerte. De dónde
+  salió y el estado de su licencia: `spec/sonido-del-aviso.md`.
 - **`movil/assets/silencio.wav`**: medio segundo de nada. Con "Sonido al
   terminar" apagado, el aviso usa este archivo: vibra sin sonar. Por OTA lo
   único posible era mandarlo sin sonido, y una notificación sin sonido tampoco
@@ -21,7 +21,8 @@ que ya están en la calle. Se junta con `main` recién cuando la build exista.
 - **La versión pasa a 1.1.0.** Apple no deja subir otra build de la 1.0.0 una
   vez publicada.
 - `test:db` comprueba que los archivos existen, están declarados, tienen el
-  formato que iOS acepta y son más fuertes y más largos que la campana.
+  formato que iOS acepta, y que el aviso no recorta y tiene la energía de la
+  campana.
 
 ## Lo que NO está hecho, y por qué
 
@@ -38,8 +39,8 @@ que ya están en la calle. Se junta con `main` recién cuando la build exista.
 
 ## Los pasos que son del humano, sí o sí
 
-1. **Escuchar `aviso-descanso.wav`** en la PC y decir si sirve. Si no, se
-   ajusta antes de compilar: después es otra build.
+1. **El sonido ya está elegido** (corte 1). Lo único que queda es oírlo con
+   el volumen final, si se quiere: después de compilar, cambiarlo es otra build.
 2. **Elegir el dominio**, si se quiere que esta build traiga los enlaces que
    abren la app directo. Si no se elige, la build sale sin eso y queda para la
    siguiente (otra revisión de Apple).
