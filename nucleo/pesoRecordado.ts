@@ -24,10 +24,13 @@
  *   2. la copia del historial que guarda el teléfono (`compartido/pesosRecordados`),
  *      que es lo que anda en el subsuelo sin señal.
  *
- * UN BLOQUE SIN MODO USA EL DEL CATÁLOGO, no `total`. `como_arranca` en la base
- * lo lee como `total`; hoy no cambia nada —desde la migración 38 todo bloque con
- * pesos lleva su modo— pero un remo con mancuernas sin etiqueta no fue "en
- * total". Acá no se adivina: sin modo y sin catálogo, el bloque no dice nada.
+ * UN BLOQUE SIN MODO USA EL DEL CATÁLOGO, no `total`: un remo con mancuernas sin
+ * etiqueta no fue "en total". Acá no se adivina: sin modo y sin catálogo, el
+ * bloque no dice nada.
+ *
+ * `como_arranca` EN LA BASE ES LA MISMA REGLA (migración 70) y es solo el
+ * respaldo de un teléfono sin historial. Quien cambie una cambia la otra:
+ * `test:db` les pasa las mismas sesiones a las dos y compara.
  *
  * Solo importa de `./`, igual que el resto de `nucleo`: `test:db` lo carga con
  * node pelado.

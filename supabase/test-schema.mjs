@@ -6114,18 +6114,47 @@ console.log('\n82. Que significa el numero del peso: la base');
     const antes = await arranca('curl_martillo_no_existe');
     chequear('un ejercicio que no existe no devuelve nada', antes, null);
 
+    // LO MÁS PESADO DE LA ÚLTIMA SESIÓN CERRADA (migración 70). Los pesos BAJAN
+    // dentro de cada sesión, como en el gimnasio: si subieran, "la última serie"
+    // y "la más pesada" darían lo mismo y esto no probaría nada.
+    const pasada = (haceDias, bloques) =>
+      db.query(
+        `insert into sesiones (user_id, log_id, inicio, fin, estado, bloques)
+         select user_id, log_id, now() - make_interval(days => $2), now() - make_interval(days => $2) + interval '1 hour', 'terminada', $3::jsonb
+           from sesiones where id = $1`,
+        [id, haceDias, JSON.stringify(bloques)]
+      );
+    const historia70 = [
+      [100, [{ ejercicio: 'sentadilla', series: 1, pesos: [100], carga: 'total' }]],
+      [5, [
+        { ejercicio: 'zancadas', series: 2, pesos: [80, 75], carga: 'total' },
+        { ejercicio: 'zancadas', series: 1, pesos: [30], carga: 'par' },
+      ]],
+      [2, [
+        { ejercicio: 'zancadas', series: 3, pesos: [60, 55, 50], carga: 'total' },
+        { ejercicio: 'zancadas', series: 3, pesos: [22, 20, 18], carga: 'par' },
+        { ejercicio: 'zancadas', series: 2, pesos: [57.5, 45], carga: 'total' },
+      ]],
+    ];
+    for (const [dias, bloques] of historia70) await pasada(dias, bloques);
+    // La que está corriendo no cuenta: lo de hoy lo sabe el teléfono.
     await fijar([
-      { ejercicio: 'zancadas', series: 2, pesos: [60, 60], carga: 'total' },
-      { ejercicio: 'zancadas', series: 2, pesos: [20, 22], carga: 'par' },
+      { ejercicio: 'zancadas', series: 1, pesos: [40], carga: 'total' },
+      { ejercicio: 'zancadas', series: 1, pesos: [10], carga: 'par' },
     ]);
     const sinElegir = await arranca('zancadas');
     chequear('sin elegir: el del catalogo, y hay que preguntar', [sinElegir.carga, sinElegir.elegida, sinElegir.ambigua], ['par', false, true]);
-    chequear('el peso propuesto es el ultimo EN ESE MODO', Number(sinElegir.peso), 22);
+    chequear('el peso propuesto es el MÁS PESADO de la última sesión cerrada, EN ESE MODO: ni su última serie, ni el tope de otra, ni lo de hoy', Number(sinElegir.peso), 22);
+    chequear('y pasados los 90 días no se propone', (await arranca('sentadilla')).peso, null);
+    // LA MISMA REGLA QUE EL TELÉFONO, con las mismas sesiones: son dos lugares que calculan un mismo número.
+    const P70 = await import('../nucleo/pesoRecordado.ts');
+    const enElTelefono70 = P70.pesosDelHistorial(historia70.slice(1).map(([, bloques]) => ({ bloques })), { zancadas: 'par' }).zancadas;
+    chequear('el teléfono, con esas mismas sesiones, propone lo mismo que la base', [enElTelefono70.par, enElTelefono70.total], [Number(sinElegir.peso), 60]);
 
     await db.query("select elegir_carga('zancadas', 'total')");
     const conBarra = await arranca('zancadas');
     chequear('elegida: se recuerda', [conBarra.carga, conBarra.elegida], ['total', true]);
-    chequear('y el peso es el de la barra, no el de las mancuernas', Number(conBarra.peso), 60);
+    chequear('y el peso es el de la barra, no el de las mancuernas: lo más pesado entre los dos bloques de esa sesión', Number(conBarra.peso), 60);
 
     await db.query("select elegir_carga('zancadas', 'total')");
     chequear(
@@ -12220,9 +12249,9 @@ console.log('\n166. El peso se recuerda por ejercicio Y por modo');
 
   // ---- UN BLOQUE SIN MODO USA EL DEL CATALOGO, NO 'total' ----
   //
-  // No se puede arreglar en la base sin una migracion, y no hace falta: desde
-  // la 38 todo bloque con pesos lleva su modo. Pero la regla queda escrita del
-  // lado que propone, y se ve contra la base con el MISMO bloque.
+  // Desde la 38 todo bloque con pesos lleva su modo, así que casi no pasa. Hasta
+  // la migración 70 la base lo leía como 'total' y el teléfono con el del
+  // catálogo; ahora los dos igual, y se ve con el MISMO bloque.
   {
     const u = await nuevoUsuario();
     await comoUsuario(u);
@@ -12231,8 +12260,10 @@ console.log('\n166. El peso se recuerda por ejercicio Y por modo');
     // Directo a la tabla, como en la 82: fijar_bloques le pondria el modo.
     await db.query('update sesiones set bloques = $2::jsonb where id = $1',
       [id, JSON.stringify([{ ejercicio: 'zancadas', series: 2, pesos: [18, 18] }])]);
+    // Cerrada: la que está corriendo no entra en lo que propone la base.
+    await db.query("update sesiones set estado = 'terminada', fin = now() where id = $1", [id]);
     const enLaBase = (await db.query("select como_arranca('zancadas') as v")).rows[0].v;
-    chequear('la base lo lee como total: busca en par y no lo encuentra', [enLaBase.carga, enLaBase.peso], ['par', null]);
+    chequear('la base lo lee con el modo del catálogo', [enLaBase.carga, Number(enLaBase.peso)], ['par', 18]);
     const filas = (await db.query('select bloques from sesiones where user_id = $1 order by inicio', [u])).rows;
     chequear('el telefono lee ESE MISMO bloque con el modo del catalogo',
       P.pesosDelHistorial(filas, cat166).zancadas, { par: 18 });
