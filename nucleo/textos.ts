@@ -775,6 +775,11 @@ export const T = {
     diagZonaSi: 'registrada en el sistema',
     diagZonaNo: 'no quedó: falta el permiso siempre',
     diagRevisarZona: 'Revisar la zona (diagnóstico)',
+    diagRemoto: 'Probar avisos remotos',
+    diagRemotoPidiendo: 'Pidiendo el token…',
+    diagRemotoNota: 'Le pide un token a Apple y a Expo. No manda ningún aviso ni pide permiso.',
+    diagRemotoAparato: 'Apple (el aparato)',
+    diagRemotoExpo: 'Expo',
     diagZonaNota:
       'Comprueba que el teléfono vaya a despertar a la app al llegar.',
     // COMPARTIR Y NO COPIAR: en un teléfono, seleccionar doce líneas con el

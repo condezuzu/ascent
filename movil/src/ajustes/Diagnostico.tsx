@@ -14,7 +14,7 @@ import SubidaRango from '../SubidaRango';
 import { C } from '../colores';
 import { comoLeyoLosPasos } from '../plataforma/salud';
 import { comoAnduvoElMotor, type EstadoDelMotor } from '../estadoDelMotor';
-import { comoEstanLosAvisos } from '../plataforma/avisos';
+import { comoEstanLosAvisos, probarAvisoRemoto } from '../plataforma/avisos';
 import { medirCuadros, type Medicion } from '../medirCuadros';
 import { CLAVE_HUD, HUD_CAMBIO } from '../HudDiagnostico';
 import { eventos } from '@compartido/eventos';
@@ -64,6 +64,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
   const [mirando, setMirando] = useState(false);
   const [pendientes, setPendientes] = useState(0);
   const [zona, setZona] = useState<boolean | null>(null);
+  const [remoto, setRemoto] = useState<Awaited<ReturnType<typeof probarAvisoRemoto>> | 'pidiendo' | null>(null);
   const [avisos, setAvisos] = useState<Awaited<ReturnType<typeof comoEstanLosAvisos>> | null>(null);
   // Ver la subida de rango sin tener que llegar al día 11. Ver abajo.
   const [verSubida, setVerSubida] = useState(false);
@@ -142,6 +143,15 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
    * probar. Volver a pedirla es idempotente: `startGeofencing` reemplaza la
    * zona anterior de la misma tarea.
    */
+  // A la bitácora también: es lo que se comparte, y el resultado hay que poder mandarlo.
+  async function probarRemoto() {
+    setRemoto('pidiendo');
+    const r = await probarAvisoRemoto();
+    setRemoto(r);
+    await anotar(`aviso remoto — aparato: ${r.aparato} · expo: ${r.expo}`, {});
+    cargar();
+  }
+
   async function revisarZona() {
     if (!perfil.gimnasio_lat || !perfil.gimnasio_lon) return setZona(false);
     const quedo = await plataforma.ubicacion.vigilarLlegada(
@@ -280,6 +290,23 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
             <Text style={estilos.botonTexto}>{T.ajustes.diagRevisarZona}</Text>
           </Pressable>
           <Text style={estilos.nota}>{T.ajustes.diagZonaNota}</Text>
+
+          <Pressable testID="diag-aviso-remoto" style={estilos.boton} onPress={probarRemoto} disabled={remoto === 'pidiendo'}>
+            <Text style={estilos.botonTexto}>{remoto === 'pidiendo' ? T.ajustes.diagRemotoPidiendo : T.ajustes.diagRemoto}</Text>
+          </Pressable>
+          <Text style={estilos.nota}>{T.ajustes.diagRemotoNota}</Text>
+          {remoto && remoto !== 'pidiendo' && (
+            <>
+              <View style={estilos.fila}>
+                <Text style={estilos.que}>{T.ajustes.diagRemotoAparato}</Text>
+                <Text style={estilos.dice}>{remoto.aparato}</Text>
+              </View>
+              <View style={estilos.fila}>
+                <Text style={estilos.que}>{T.ajustes.diagRemotoExpo}</Text>
+                <Text style={estilos.dice}>{remoto.expo}</Text>
+              </View>
+            </>
+          )}
 
           {/* CUÁNTOS CUADROS POR SEGUNDO, EN ESTE TELÉFONO. Ver
               `medirCuadros.ts`: es un bucle de `requestAnimationFrame`, o sea

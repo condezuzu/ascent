@@ -1290,6 +1290,28 @@ en `eas.json` sin su sello hace fallar `test:db`. Y no va en `movil/.env`, que
 lo leen los dos canales. En general: una prueba que termina en "el comando
 recibió lo correcto" no probó nada de lo que salió.
 
+**LÍMITE CONOCIDO DE LA REGLA DEL ARTEFACTO (13/10/2026): el paquete publicado
+no se puede bajar desde la PC.** Al publicar a `store` se intentó bajar lo que
+quedó servido para leerle los sellos, y el servidor de archivos de EAS
+(`assets.eascdn.net`) contestó 403 "Unauthorized asset request" tres veces, de
+dos formas (node y curl, con las cabeceras de la app). Lo que se comprueba es
+esto, y no más:
+- **SÍ, antes de subir:** el guardián lee el paquete exportado y se niega si
+  no trae los sellos del perfil del canal.
+- **SÍ, después de subir:** se le pide el manifiesto al servidor de
+  actualizaciones COMO LO PIDE LA APP (canal, plataforma y la huella de la
+  build) y se mira qué grupo entrega y el `hash` de su paquete. Ese hash se
+  compara con el del paquete local que revisó el guardián (`movil/dist`).
+- **NO:** leer los sellos en los bytes que baja el teléfono. Que sean los
+  mismos se apoya en que EAS entregue el archivo cuyo hash declara. La app sí
+  lo verifica al bajarlo: `expo-updates` descarta un paquete que no coincide
+  con el hash del manifiesto.
+- **Tampoco** dice que un teléfono ya la recibió: eso es Diagnóstico o
+  `version_app` en una sugerencia (ver `dia-de-aprobacion.md`).
+→ **Regla:** decir "comprobado por hash contra el manifiesto", nunca "bajé el
+paquete publicado". Y `movil/dist` se compara ANTES de volver a exportar: la
+siguiente publicación lo pisa.
+
 **Un guion que quedó atrás de la pantalla falla por el motivo equivocado.** La
 batería de `test:real` esperaba el recorrido en el orden viejo: no lo
 terminaba, la tarjeta quedaba abierta todo el guion y tapaba "Terminar". Fallaba

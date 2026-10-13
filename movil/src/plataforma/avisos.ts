@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import type { Avisos } from '@nucleo/plataforma';
 
 
@@ -90,6 +91,34 @@ export async function comoEstanLosAvisos(): Promise<'si' | 'no' | 'sin-decidir' 
   } catch {
     return 'no-se';
   }
+}
+
+/**
+ * ¿ESTA BUILD PUEDE RECIBIR AVISOS REMOTOS? (13/10/2026) — solo Diagnóstico.
+ *
+ * Para saber si "alguien quiere unirse" puede avisar con la app cerrada sin
+ * una build nueva, no alcanza con leer que el plugin pone el permiso: hay que
+ * pedirle el token a Apple desde una build de verdad. Sin el permiso
+ * compilado, Apple contesta con un error que lo dice.
+ *
+ * Pide dos cosas y no manda nada: el token del APARATO (Apple: prueba el
+ * permiso) y el de EXPO (prueba el camino por el que se mandaría). No abre el
+ * diálogo de permisos. Del token se muestra el largo y el principio: entero
+ * sirve para mandarle avisos a este teléfono.
+ */
+export async function probarAvisoRemoto(): Promise<{ aparato: string; expo: string }> {
+  const conLimite = <T,>(p: Promise<T>): Promise<T> =>
+    // Sin el permiso, o en un simulador, Apple puede no contestar nunca.
+    Promise.race([p, new Promise<T>((_, no) => setTimeout(() => no(new Error('no contestó en 20 s')), 20000))]);
+  const decir = (token: unknown) => {
+    const t = typeof token === 'string' ? token : JSON.stringify(token);
+    return `SÍ: ${t.length} caracteres, empieza ${t.slice(0, 8)}…`;
+  };
+  const fallo = (e: unknown) => `NO: ${String((e as { message?: unknown } | null)?.message ?? e).slice(0, 160)}`;
+  const aparato = await conLimite(Notifications.getDevicePushTokenAsync()).then((t) => decir(t.data), fallo);
+  const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+  const expo = await conLimite(Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).then((t) => decir(t.data), fallo);
+  return { aparato, expo };
 }
 
 export const avisosNativos: Avisos = {

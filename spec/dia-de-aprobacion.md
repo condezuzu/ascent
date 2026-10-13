@@ -76,6 +76,12 @@ gasta una vida o resta 10, igual que si hubiera abierto Inicio primero.
 
 - [ ] **La app figura aprobada.** App Store Connect → Ascent → versión 1.0 →
       build **7**. Con "In Review" o "Waiting for Review" no se sigue.
+      **ESTA COMPROBACIÓN ES DEL HUMANO, SIEMPRE (anotado el 13/10/2026).**
+      Desde la PC no se ve App Store Connect. Lo único que se puede mirar acá
+      es el registro de EAS (`eas build:list`): que no exista una build de
+      tienda más nueva que la publicada. Eso NO descarta una versión mandada a
+      revisión a mano. Antes de cada OTA a `store` se le pregunta al humano y
+      se espera su respuesta; "no hay build nueva" no cuenta como confirmación.
 - [ ] **[PC] El árbol está limpio y al día:**
   ```
   git pull
