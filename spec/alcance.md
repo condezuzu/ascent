@@ -191,7 +191,7 @@ una sola cosa:
   build** (revisado el 13/10). La variable se mete en el JavaScript al
   exportar, y decidirlo por `Updates.channel` es código que viaja por OTA;
 - **el aviso fuera de la app** (alguien quiere unirse) **NO pide build: va
-  por OTA. Comprobado el 14/10/2026**, de dos formas:
+  por OTA. Comprobado el 13/10/2026**, de dos formas:
   - en la build de `telefono`, Diagnóstico → "Probar avisos remotos": Apple
     dio un token (264 caracteres) y Expo otro (`ExponentPushToken…`);
   - en la build 7 DE TIENDA, bajada de EAS (`bd30a91b`): el perfil de

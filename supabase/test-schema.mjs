@@ -16466,7 +16466,7 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
   chequear('y con eso se cortó todo: el vínculo, lo publicado y el "entrenando ahora"', await loQueQueda(), [0, 0, 0]);
 
   // ---- "ENTRENANDO AHORA" PIDE UNA SESIÓN VIVA (migración 72) ----
-  // El bug del 13/10: alguien seguía entrenando dos horas después de terminar, y
+  // El bug del 12/10: alguien seguía entrenando dos horas después de terminar, y
   // otro aparecía a las diez de la noche. Cada caso deja la MARCA VIGENTE, que es
   // lo único que se miraba antes: si la regla vuelve a ser "la marca alcanza", fallan.
   {

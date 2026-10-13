@@ -13,7 +13,7 @@ end $guarda$;
 
 -- MIGRACIÓN 72 — "ENTRENANDO AHORA" PIDE UNA SESIÓN VIVA
 --
--- El bug (13/10, del gimnasio): un amigo seguía "entrenando" dos horas después
+-- El bug (12/10, del gimnasio): un amigo seguía "entrenando" dos horas después
 -- de terminar, y otro aparecía a las diez de la noche. La marca la ponía el
 -- vigilante con solo estar adentro del radio del gimnasio, y duraba dos horas.
 --
