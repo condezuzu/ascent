@@ -62,6 +62,12 @@ try {
   console.log('\n1. Por la API');
   // ---- aparecer entrenando: solo con el aviso prendido, y solo para amigos ----
   // Desde la migración 68 nace prendido: se apaga a mano para probar que respeta el interruptor.
+  // Desde la migración 72 la marca sola no alcanza: hace falta una sesión corriendo.
+  await B.s.rpc('fijar_comparte_gimnasio', { p_valor: true });
+  await B.s.rpc('marcar_en_gimnasio');
+  if (version >= 72) chequear('marcado pero SIN sesión (adentro del gimnasio, sin entrenar), B no aparece', await entrenando(A), []);
+  else nota(`la base está en ${version}: que la marca sin sesión no alcance (migración 72) no se probó`);
+  await B.s.rpc('iniciar_sesion');
   await B.s.rpc('fijar_comparte_gimnasio', { p_valor: false });
   await B.s.rpc('marcar_en_gimnasio');
   chequear('sin "Avisar cuando entreno", B no aparece entrenando', await entrenando(A), []);
@@ -113,6 +119,10 @@ try {
     chequear('unidos de nuevo, con una sesión de verdad', [(await uniones(A))[0]?.en_vivo?.ejercicio, await entrenando(A)], ['sentadilla', [B.id]]);
     await B.s.rpc('terminar_sesion');
     chequear('la sesión se cierra por la base (sin "dejar de entrenar") y A deja de verlo igual', [await uniones(A), await entrenando(A)], [[], []]);
+    if (version >= 72) {
+      await B.s.rpc('marcar_en_gimnasio');
+      chequear('terminó y un teléfono sin actualizar lo vuelve a marcar por seguir adentro: no aparece', await entrenando(A), []);
+    }
   } else nota(`la base está en ${version}: el corte al cerrarse la sesión (migración 68) no se probó`);
 
   if (soloApi) nota('sin navegador (api): la parte de la pantalla no se corrió');

@@ -2971,7 +2971,9 @@ $$;
 create table public.en_el_gimnasio (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   desde timestamptz not null default now(),
-  hasta timestamptz not null
+  hasta timestamptz not null,
+  -- La última vez que el teléfono dijo "sigo acá" (migración 72).
+  visto timestamptz not null default now()
 );
 -- RLS acá y no en el bloque de arriba: esa lista corre antes de que esta tabla
 -- exista. Sin acceso directo del cliente; se entra y se lee por las funciones.
@@ -2994,12 +2996,28 @@ declare uid uuid := auth.uid();
 begin
   if uid is null then return; end if;
   if not exists (select 1 from profiles where id = uid and comparte_gimnasio) then return; end if;
-  insert into en_el_gimnasio (user_id, desde, hasta)
-    values (uid, now(), now() + interval '2 hours')
-    on conflict (user_id) do update set hasta = now() + interval '2 hours';
+  insert into en_el_gimnasio (user_id, desde, hasta, visto)
+    values (uid, now(), now() + interval '2 hours', now())
+    on conflict (user_id) do update
+       set hasta = now() + interval '2 hours',
+           visto = now(),
+           -- Una marca vencida que se vuelve a poner es una vez NUEVA: sin esto
+           -- `desde` quedaba en la primera vez que se marcó, hace días.
+           desde = case when en_el_gimnasio.hasta > now() then en_el_gimnasio.desde else now() end;
 end;
 $$;
 
+-- QUIÉN ESTÁ ENTRENANDO AHORA (migración 72). La marca sola NO alcanza: la pone
+-- también el vigilante cada vez que el teléfono está adentro del radio del
+-- gimnasio, haya o no entrenamiento, y dura dos horas. Así aparecía entrenando
+-- quien había terminado hacía dos horas y quien vivía al lado.
+-- Ahora hacen falta las dos cosas:
+--   1. una SESIÓN CORRIENDO (terminar, o que se cierre sola, saca en el acto);
+--   2. una SEÑAL DE VIDA en la última media hora: una serie, el inicio de la
+--      sesión, o un "sigo acá" del teléfono (`visto`).
+-- La media hora es `ventana_inactividad()`: la misma con la que la base da por
+-- terminada una sesión. Sin batería, sin señal o con la app cerrada, nadie
+-- queda entrenando más que eso.
 create or replace function public.entrenando_ahora()
 returns table (id uuid, username text, avatar_url text, desde timestamptz)
 language sql stable security definer set search_path = public as $$
@@ -3009,6 +3027,13 @@ language sql stable security definer set search_path = public as $$
    where g.hasta > now()
      and g.user_id <> auth.uid()
      and public.son_amigos(auth.uid(), g.user_id)
+     and exists (
+           select 1
+             from sesiones s
+            where s.user_id = g.user_id
+              and s.estado = 'corriendo'
+              and greatest(s.inicio, s.ultima_actividad, g.visto) > now() - public.ventana_inactividad()
+         )
    order by g.desde desc;
 $$;
 
@@ -3732,7 +3757,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 71; $$;
+returns int language sql immutable as $$ select 72; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;
