@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
+import { pasadoDe } from '@nucleo/avisoDescanso';
+import CompaneroEnDescanso from './CompaneroEnDescanso';
 import { PRESETS_DESCANSO } from '@nucleo/reglas';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
@@ -32,6 +35,7 @@ import { C } from './colores';
 export default function Descanso({
   visible,
   vivo,
+  acento,
   alReiniciar,
   alSaltar,
   alOcultar,
@@ -39,6 +43,8 @@ export default function Descanso({
 }: {
   visible: boolean;
   vivo: DescansoVivo;
+  /** El color del arco. Hoy, el del rango de cada uno; se decide en un solo lugar (Inicio). */
+  acento: string;
   alReiniciar: (d: DescansoVivo) => void;
   alSaltar: () => void;
   /** Cerrar la pantalla SIN cortar el descanso: sigue en la píldora de arriba. */
@@ -121,6 +127,9 @@ export default function Descanso({
 
   const falta = restante(vivo.fin);
   const proporcion = terminado ? 0 : Math.min(1, falta / vivo.duracion);
+  const ahora = Date.now();
+  // Lo que se estaba haciendo: lo mismo que dice la tarjeta de la pantalla bloqueada.
+  const serie = vivo.serie && vivo.serie > 0 ? T.descanso.serieDe(vivo.serie, vivo.meta ?? 0) : null;
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={alOcultar} statusBarTranslucent>
@@ -129,19 +138,46 @@ export default function Descanso({
           <Text style={estilos.cerrarTexto}>✕</Text>
         </Pressable>
 
+        {/* ARRIBA, CHICO: qué estabas haciendo (12/10). Antes la pantalla era un
+            número solo: decía cuándo volver y nada sobre a qué. */}
+        <View style={estilos.arriba}>
+          <Text style={[estilos.rotulo, terminado && { color: acento }]}>{terminado ? T.descanso.rotuloListo : T.descanso.rotulo}</Text>
+          {!!vivo.ejercicio && (
+            <Text style={estilos.ejercicio} numberOfLines={1}>
+              {vivo.ejercicio}
+            </Text>
+          )}
+          {serie && <Text style={estilos.serie}>{serie}</Text>}
+        </View>
+
+        {/* EL ARCO SE VACÍA, con el color de quien entrena. Al terminar no se
+            queda en 0:00: cuenta cuánto te pasaste. */}
         <View style={estilos.centro}>
-          <Text style={estilos.numero} accessibilityLiveRegion="polite">
-            {cuentaAtras(falta)}
-          </Text>
-          <View style={estilos.pista}>
-            <View style={[estilos.barra, { width: `${proporcion * 100}%` }, !terminado && falta <= 10 && estilos.barraFinal]} />
+          <View style={estilos.arco}>
+            <Svg width={LADO} height={LADO} style={estilos.dibujo}>
+              <Circle cx={LADO / 2} cy={LADO / 2} r={RADIO} fill="none" stroke={C.linea} strokeWidth={2} />
+              <Circle
+                cx={LADO / 2}
+                cy={LADO / 2}
+                r={RADIO}
+                fill="none"
+                stroke={acento}
+                strokeWidth={4}
+                strokeLinecap="round"
+                strokeDasharray={LARGO}
+                strokeDashoffset={LARGO * (1 - proporcion)}
+              />
+            </Svg>
+            <Text style={[estilos.numero, terminado && estilos.numeroPasado]} accessibilityLiveRegion="polite">
+              {terminado ? '+' + cuentaAtras(pasadoDe(vivo.fin, ahora)) : cuentaAtras(falta)}
+            </Text>
+            {terminado && <Text style={estilos.deMas}>{T.descanso.deMas}</Text>}
           </View>
         </View>
 
         {terminado ? (
           <View style={estilos.abajo}>
-            <Text style={estilos.pie}>{T.descanso.listoPie}</Text>
-            <Pressable style={estilos.solido} onPress={alSumar}>
+            <Pressable style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={alSumar}>
               <Text style={estilos.solidoTexto}>{T.descanso.serieHecha}</Text>
             </Pressable>
             <Pressable
@@ -156,6 +192,11 @@ export default function Descanso({
           </View>
         ) : (
           <View style={estilos.abajo}>
+            {/* "SERIE HECHA" ES UN BOTÓN, no un enlace: sumar la serie sin salir
+                es lo que más se hace desde acá. */}
+            <Pressable style={estilos.borde} onPress={alSumar}>
+              <Text style={estilos.bordeTexto}>{T.descanso.serieHecha}</Text>
+            </Pressable>
             <View style={estilos.presets}>
               {PRESETS_DESCANSO.map((p) => (
                 <Pressable key={p} style={[estilos.preset, p === vivo.duracion && estilos.presetActivo]} onPress={() => usarPreset(p)}>
@@ -163,39 +204,50 @@ export default function Descanso({
                 </Pressable>
               ))}
             </View>
-            <Pressable style={estilos.texto} onPress={alSumar}>
-              <Text style={estilos.textoBoton}>{T.descanso.serieHecha}</Text>
-            </Pressable>
             <Pressable style={estilos.texto} onPress={alOcultar}>
               <Text style={estilos.textoBoton}>{T.descanso.saltar}</Text>
             </Pressable>
           </View>
         )}
+
+        <CompaneroEnDescanso visible={visible} ahora={ahora} />
       </View>
     </Modal>
   );
 }
 
+// El arco: 272 de lado entra con aire en el teléfono más angosto (320).
+const RADIO = 128;
+const LADO = RADIO * 2 + 16;
+const LARGO = 2 * Math.PI * RADIO;
+
 const estilos = StyleSheet.create({
-  pantalla: { flex: 1, backgroundColor: C.fondo, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 36 },
+  pantalla: { flex: 1, backgroundColor: C.fondo, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 30 },
   // Al terminar el fondo cambia de golpe: es el aviso que siempre funciona.
   listo: { backgroundColor: '#1a1f2b' },
   cerrar: { position: 'absolute', top: 48, right: 16, minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
   cerrarTexto: { color: C.sub, fontSize: 20 },
+  arriba: { alignItems: 'center', minHeight: 70 },
+  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2.6 },
+  ejercicio: { color: C.tinta, fontSize: 19, marginTop: 8, maxWidth: '80%' },
+  serie: { color: C.sub, fontSize: 14, marginTop: 3 },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  numero: { color: C.tinta, fontSize: 104, fontWeight: '200', fontVariant: ['tabular-nums'] },
-  pista: { width: '72%', height: 4, borderRadius: 2, backgroundColor: C.linea, marginTop: 18, overflow: 'hidden' },
-  barra: { height: '100%', backgroundColor: C.principal },
-  barraFinal: { backgroundColor: C.claro },
+  arco: { width: LADO, height: LADO, alignItems: 'center', justifyContent: 'center' },
+  // Girado un cuarto: el arco arranca arriba, como un reloj.
+  dibujo: { position: 'absolute', top: 0, left: 0, transform: [{ rotate: '-90deg' }] },
+  numero: { color: C.tinta, fontSize: 84, fontWeight: '200', fontVariant: ['tabular-nums'] },
+  numeroPasado: { fontSize: 72 },
+  deMas: { color: C.sub, fontSize: 13, marginTop: 6 },
   abajo: { alignItems: 'stretch' },
-  pie: { color: C.sub, fontSize: 15, textAlign: 'center', marginBottom: 18 },
-  solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 16, alignItems: 'center' },
+  solido: { borderWidth: 1, borderRadius: 4, paddingVertical: 16, alignItems: 'center' },
   solidoTexto: { color: C.fondo, fontSize: 16, fontWeight: '600' },
-  presets: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 10 },
-  preset: { borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
+  borde: { borderWidth: 1, borderColor: C.sub, borderRadius: 4, paddingVertical: 16, alignItems: 'center' },
+  bordeTexto: { color: C.tinta, fontSize: 16 },
+  presets: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
+  preset: { borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 11 },
   presetActivo: { borderColor: C.sub },
-  presetTexto: { color: C.apagado, fontSize: 13 },
+  presetTexto: { color: C.apagado, fontSize: 12 },
   presetTextoActivo: { color: C.tinta },
-  texto: { paddingVertical: 13, alignItems: 'center' },
-  textoBoton: { color: C.sub, fontSize: 15 },
+  texto: { paddingVertical: 9, alignItems: 'center' },
+  textoBoton: { color: C.sub, fontSize: 14 },
 });

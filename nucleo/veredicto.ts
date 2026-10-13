@@ -108,6 +108,30 @@ type ConCookies = {
   };
 };
 
+/**
+ * QUIÉN VE LAS PROPUESTAS DE DISEÑO (`/galeria/propuestas`, 12/10/2026).
+ *
+ * Están en la web desplegada para poder abrirlas desde el teléfono, pero no son
+ * para cualquiera: son diseños sin decidir. Solo las ve quien entró con una
+ * cuenta de esta lista. A diferencia del resto de la web, ACÁ LA DUDA CIERRA:
+ * si no se pudo confirmar quién es (un hipo de red), no pasa.
+ */
+export const RUTA_DE_PROPUESTAS = '/galeria/propuestas';
+const VEN_LAS_PROPUESTAS = ['agusconde20@gmail.com'];
+
+export function esDePropuestas(ruta: string): boolean {
+  return ruta === RUTA_DE_PROPUESTAS || ruta.startsWith(RUTA_DE_PROPUESTAS + '/');
+}
+
+export function puedeVerPropuestas(correo: string | null | undefined): boolean {
+  return typeof correo === 'string' && VEN_LAS_PROPUESTAS.includes(correo.trim().toLowerCase());
+}
+
+/** Lo que el middleware hace con una ruta de propuestas, dado lo que decidió para cualquier otra. */
+export function decidirPropuesta(veredicto: Veredicto, correo: string | null | undefined): Veredicto | 'no-existe' {
+  return veredicto === 'seguir' && !puedeVerPropuestas(correo) ? 'no-existe' : veredicto;
+}
+
 export function llevarCookies<T extends ConCookies>(destino: T, origen: ConCookies): T {
   for (const cookie of origen.cookies.getAll()) destino.cookies.set(cookie);
   return destino;

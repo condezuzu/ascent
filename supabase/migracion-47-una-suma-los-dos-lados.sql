@@ -1,3 +1,16 @@
+-- NO SE VUELVE A CORRER SOBRE UNA BASE MÁS NUEVA (regla del 12/10/2026). Pegar esta
+-- migración encima de una posterior bajaba `version_del_esquema()` y apagaba
+-- funciones en todos los teléfonos, sin un solo error a la vista.
+do $guarda$
+declare v int;
+begin
+  if to_regprocedure('public.version_del_esquema()') is null then return; end if;
+  execute 'select public.version_del_esquema()' into v;
+  if v > 47 then
+    raise exception 'Esta es la migración 47 y la base ya está en la %: no se vuelve a correr.', v;
+  end if;
+end $guarda$;
+
 -- MIGRACIÓN 47 — "un lado por vez" pasa a sumar los dos lados
 --
 -- -------------------------------------------------------------

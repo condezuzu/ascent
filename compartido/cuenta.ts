@@ -240,28 +240,41 @@ export async function juntarMisDatos(supabase: Cliente, userId: string) {
  * Se listan las carpetas en vez de leer la tabla `photos` para llevarse
  * también cualquier archivo que haya quedado suelto de una subida a medias.
  */
+/** De a cuántos archivos se lista y se borra, y cuántas pasadas como mucho (100.000 archivos). */
+const TANDA_DE_BORRADO = 1000;
+const VUELTAS_DE_BORRADO = 100;
+
 export async function eliminarCuenta(
   supabase: Cliente,
   userId: string
 ): Promise<{ ok: true } | { error: string }> {
   for (const bucket of ['fotos', 'avatares']) {
-    const { data: archivos, error: errListar } = await supabase.storage
-      .from(bucket)
-      .list(userId, { limit: 1000 });
-    if (errListar) return { error: T.errores.noSeQuitaronFotos };
-    if (!archivos || archivos.length === 0) continue;
+    // HASTA QUE LA CARPETA QUEDE VACÍA (12/10). `list` devuelve como mucho mil
+    // archivos, y desde que cada foto lleva su miniatura al lado mil archivos
+    // son quinientas fotos: una sola pasada dejaba el resto huérfano para
+    // siempre, con la cuenta ya borrada. Si alguien pide que se borren sus
+    // datos, se borran todos.
+    for (let vuelta = 0; ; vuelta++) {
+      const { data: archivos, error: errListar } = await supabase.storage
+        .from(bucket)
+        .list(userId, { limit: TANDA_DE_BORRADO });
+      if (errListar) return { error: T.errores.noSeQuitaronFotos };
+      if (!archivos || archivos.length === 0) break;
+      // Algo que se lista y no se va nunca: se corta acá, con la cuenta todavía viva.
+      if (vuelta >= VUELTAS_DE_BORRADO) return { error: T.errores.noSeQuitaronFotos };
 
-    const { data: borrados, error: errBorrar } = await supabase.storage
-      .from(bucket)
-      .remove(archivos.map((a) => `${userId}/${a.name}`));
-    if (errBorrar) return { error: T.errores.noSeQuitaronFotos };
+      const { data: borrados, error: errBorrar } = await supabase.storage
+        .from(bucket)
+        .remove(archivos.map((a) => `${userId}/${a.name}`));
+      if (errBorrar) return { error: T.errores.noSeQuitaronFotos };
 
-    // No alcanza con que no haya error. Si a un bucket le falta la política
-    // de delete, la RLS lo frena EN SILENCIO: la respuesta viene sin error y
-    // con cero archivos borrados. Así fue como una baja de cuenta dejó el
-    // avatar huérfano en un bucket público. Se cuenta lo que volvió.
-    if ((borrados?.length ?? 0) !== archivos.length) {
-      return { error: T.errores.noSeQuitaronFotos };
+      // No alcanza con que no haya error. Si a un bucket le falta la política
+      // de delete, la RLS lo frena EN SILENCIO: la respuesta viene sin error y
+      // con cero archivos borrados. Así fue como una baja de cuenta dejó el
+      // avatar huérfano en un bucket público. Se cuenta lo que volvió.
+      if ((borrados?.length ?? 0) !== archivos.length) {
+        return { error: T.errores.noSeQuitaronFotos };
+      }
     }
   }
 

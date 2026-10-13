@@ -1,3 +1,16 @@
+-- NO SE VUELVE A CORRER SOBRE UNA BASE MÁS NUEVA (regla del 12/10/2026). Pegar esta
+-- migración encima de una posterior bajaba `version_del_esquema()` y apagaba
+-- funciones en todos los teléfonos, sin un solo error a la vista.
+do $guarda$
+declare v int;
+begin
+  if to_regprocedure('public.version_del_esquema()') is null then return; end if;
+  execute 'select public.version_del_esquema()' into v;
+  if v > 59 then
+    raise exception 'Esta es la migración 59 y la base ya está en la %: no se vuelve a correr.', v;
+  end if;
+end $guarda$;
+
 -- MIGRACIÓN 59 — LA PÉRDIDA SE REVISA ANTES DE QUE ENTRE UN DÍA
 --
 -- EL BUG (4/10/2026): LA RACHA SE CAÍA A 1.

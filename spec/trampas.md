@@ -1291,3 +1291,16 @@ o sea que no estaba midiendo nada desde que el recorrido cambió de orden.
 → **Regla:** `test:real` se corre en CADA tanda (la del 4/10 se había salteado
 en la etapa 1). Y cuando falla, antes de tocar nada se corre contra el commit
 anterior: es lo único que separa "lo rompí yo" de "el guion ya venía roto".
+
+**Una migración vieja pegada encima de una nueva baja la versión, sin un solo
+error.** El 12/10 casi pasa: con la 67 aplicada, la 66 seguía en el
+portapapeles. Su guarda solo frenaba "la base es más VIEJA de lo que necesito";
+sobre una más nueva corría entera y dejaba `version_del_esquema()` en 66. En
+menos de diez minutos todos los teléfonos la releen y apagan lo que pide 67:
+"entrenar con otro" desaparece, y lo único que lo muestra es `test:conexion`.
+→ **Regla:** toda migración que mueve la versión EMPIEZA con la guarda
+`do $guarda$ … if v > N then raise exception …` con SU número, y sube la
+versión solo si es menor (nunca la baja). Las 32 que ya existían la recibieron
+el 12/10. `test:db` (sección 204) falla si una migración no la tiene, si el
+número no es el suyo o si no está al principio, y prueba que la 66 se frena
+sobre la base de hoy. Repetir la MISMA migración sigue pudiéndose.

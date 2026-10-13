@@ -16,7 +16,7 @@ import CampoPeso from './CampoPeso';
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import { C } from './colores';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
-import { loQueSePuedeSubir, type Subida } from '@nucleo/subir';
+import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
 import { hoyISO } from '@nucleo/fechas';
 
@@ -42,6 +42,7 @@ export default function Bloque({
   sugerido,
   cargaConsultada,
   subida,
+  diaDeSesion,
   alSumar,
   debajoDelMas,
   alRestar,
@@ -64,6 +65,8 @@ export default function Bloque({
   cargaConsultada: string | null;
   /** El peso propuesto salió de una marca de "la próxima, más" (ver `nucleo/subir.ts`). */
   subida?: { ejercicio: string; series: number; antes: number; ahora: number } | null;
+  /** El día de la sesión (no el del reloj): es el día de las marcas. Ver `diaDeLaSesion`. */
+  diaDeSesion?: string;
   alSumar: () => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
@@ -138,18 +141,19 @@ export default function Bloque({
     if (estado.ejercicio) {
       const id = estado.ejercicio;
       void leerRecordados().then((r) => {
-        if (vivo) setMarca(r.subidas[id] ?? null);
+        if (vivo) setMarca(r.subidas[claveDeSubida(id, cargaVista)] ?? null);
       });
     }
     return () => {
       vivo = false;
     };
-  }, [estado.ejercicio]);
-  const marcada = !!oferta && !!marca && marca.dia === hoyISO() && marca.peso === oferta.peso && marca.carga === cargaVista;
+  }, [estado.ejercicio, cargaVista]);
+  const dia = diaDeSesion ?? hoyISO();
+  const marcada = !!oferta && !!marca && marca.dia === dia && marca.peso === oferta.peso && marca.carga === cargaVista;
   function ponerMarca(s: Subida | null) {
     if (!estado.ejercicio) return;
     setMarca(s);
-    void marcarSubida(supabase, estado.ejercicio, s);
+    void marcarSubida(supabase, estado.ejercicio, cargaVista, s);
   }
   // Una serie más con el mismo peso después de marcar: la marca dice cuántas fueron.
   const seriesDeLaOferta = oferta?.series;
@@ -353,7 +357,7 @@ export default function Bloque({
           testID="la-proxima-mas"
           style={[estilos.subir, marcada && estilos.subirPrendido]}
           onPress={() =>
-            ponerMarca(marcada ? null : { carga: cargaVista, peso: oferta.peso, series: oferta.series, dia: hoyISO() })
+            ponerMarca(marcada ? null : { carga: cargaVista, peso: oferta.peso, series: oferta.series, dia })
           }
           accessibilityRole="button"
           accessibilityState={{ selected: marcada }}

@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import {
   clasificar,
   decidirRuta,
+  esDePropuestas,
+  decidirPropuesta,
   hayCookiesDeSesion,
   llevarCookies,
 } from '@nucleo/veredicto';
@@ -70,12 +72,20 @@ export async function actualizarSesion(request: NextRequest) {
     ? await supabase.auth.getUser()
     : { data: { user: null }, error: null };
 
+  const propuesta = esDePropuestas(request.nextUrl.pathname);
   const veredicto = decidirRuta({
     hayCookiesDeSesion: conCookies,
     hayUsuario: !!data.user,
     fallo: clasificar(error),
-    esPublica: RUTAS_PUBLICAS.some((r) => request.nextUrl.pathname.startsWith(r)),
+    // Las propuestas cuelgan de `/galeria`, que es pública, pero ellas no lo son.
+    esPublica: !propuesta && RUTAS_PUBLICAS.some((r) => request.nextUrl.pathname.startsWith(r)),
   });
+
+  // LAS PROPUESTAS, SOLO PARA LA LISTA. Con sesión de otra cuenta —o sin poder
+  // confirmar cuál es— la página no existe: un 404, sin decir que hay algo ahí.
+  if (propuesta && decidirPropuesta(veredicto, data.user?.email) === 'no-existe') {
+    return llevarCookies(new NextResponse('No encontrado', { status: 404 }), respuesta);
+  }
 
   if (veredicto === 'seguir') return respuesta;
 

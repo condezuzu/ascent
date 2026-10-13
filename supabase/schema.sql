@@ -2320,7 +2320,9 @@ create table if not exists public.subidas_marcadas (
   -- marca que sube tarde desde el subsuelo es del día del toque.
   dia date not null,
   marcada timestamptz not null default now(),
-  primary key (user_id, ejercicio),
+  -- Por ejercicio Y POR MODO (migración 69): el remo con mancuernas y el remo
+  -- en la máquina son dos progresiones, y una marca no pisa ni gasta la otra.
+  primary key (user_id, ejercicio, carga),
   constraint subidas_carga_valida check (carga in ('total', 'par', 'una', 'lastre')),
   constraint subidas_peso_valido check (peso > 0 and peso <= 1000),
   constraint subidas_series_validas check (series between 1 and 99)
@@ -2344,7 +2346,9 @@ begin
   if uid is null then raise exception 'sin sesión'; end if;
   if p_ejercicio is null then return; end if;
   if p_peso is null then
-    delete from subidas_marcadas where user_id = uid and ejercicio = p_ejercicio;
+    -- Con el modo, saca la de ESE modo; sin modo (la app de antes), todas las del ejercicio.
+    delete from subidas_marcadas
+     where user_id = uid and ejercicio = p_ejercicio and (p_carga is null or carga = p_carga);
     return;
   end if;
   if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre') then return; end if;
@@ -2354,8 +2358,8 @@ begin
   if not exists (select 1 from ejercicios where id = p_ejercicio) then return; end if;
   insert into subidas_marcadas (user_id, ejercicio, carga, peso, series, dia)
        values (uid, p_ejercicio, p_carga, p_peso, p_series, p_dia)
-  on conflict (user_id, ejercicio) do update
-     set carga = excluded.carga, peso = excluded.peso, series = excluded.series, dia = excluded.dia, marcada = now();
+  on conflict (user_id, ejercicio, carga) do update
+     set peso = excluded.peso, series = excluded.series, dia = excluded.dia, marcada = now();
 end;
 $$;
 
@@ -2376,6 +2380,8 @@ language sql stable security definer set search_path = public as $$
         where s.user_id = m.user_id
           and l.fecha > m.dia
           and b.bloque ->> 'ejercicio' = m.ejercicio
+          -- EN ESE MODO (migración 69). El bloque que no dice el suyo usa el del catálogo.
+          and coalesce(b.bloque ->> 'carga', (select e.carga from ejercicios e where e.id = m.ejercicio), 'total') = m.carga
           and jsonb_typeof(b.bloque -> 'pesos') = 'array'
           and jsonb_array_length(b.bloque -> 'pesos') > 0
      );
@@ -2728,10 +2734,16 @@ begin
   -- dato para mirar, y no puede frenar que alguien abra la app.
   begin
     cliente := nullif(current_setting('request.headers', true), '')::json ->> 'x-client-info';
-    update profiles
-       set ultima_apertura = now(),
-           version_vista = case when cliente like 'ascent/%' then left(cliente, 100) end
-     where id = uid;
+    -- SOLO LA APP ANOTA (migración 69). Antes cualquier pedido pisaba la versión
+    -- con null: una cuenta al día que abría la web —o un script de prueba—
+    -- pasaba a contarse como "sigue en la vieja". La app de la tienda sin OTA
+    -- manda el encabezado de la librería para React Native: esa SÍ anota, en null.
+    if cliente like 'ascent/%' or cliente like '%react-native%' then
+      update profiles
+         set ultima_apertura = now(),
+             version_vista = case when cliente like 'ascent/%' then left(cliente, 100) end
+       where id = uid;
+    end if;
   exception when others then
     null;
   end;
@@ -3678,7 +3690,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 68; $$;
+returns int language sql immutable as $$ select 69; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

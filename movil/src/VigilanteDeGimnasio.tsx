@@ -17,6 +17,7 @@ import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
 import type { Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import { supabase } from './supabase';
+import { sePuedeMarcarPresencia } from '@compartido/enVivo';
 import { miId } from '@compartido/quienSoy';
 
 /**
@@ -141,6 +142,8 @@ function Mirando({ perfil }: { perfil: Perfil }) {
     if (adentro) {
       void (async () => {
         try {
+          // Recién terminaste a mano y seguís adentro: no se te vuelve a marcar.
+          if (!(await sePuedeMarcarPresencia())) return;
           await supabase.rpc('marcar_en_gimnasio');
         } catch {
           /* opt-in apagado o migración sin correr: nada que hacer */

@@ -1,6 +1,7 @@
 import type { Cliente } from '@cliente';
 import { disponible } from '@nucleo/esquema';
-import { leerUniones, type LoPublicado, type Union } from '@nucleo/enVivo';
+import { CLAVE_NO_AVISAR_HASTA, PAUSA_TRAS_TERMINAR_MS, leerUniones, puedeMarcarPresencia, type LoPublicado, type Union } from '@nucleo/enVivo';
+import { plataforma } from '@plataforma';
 import { versionDelEsquema } from '@compartido/esquema';
 
 /**
@@ -61,12 +62,23 @@ export async function publicarEnVivo(supabase: Cliente, p: LoPublicado): Promise
  * sale junto con "entrenar con otro".
  */
 export async function avisarQueEntreno(supabase: Cliente): Promise<void> {
+  // Una sesión nueva levanta la pausa que dejó el "Terminar" anterior.
+  await plataforma.almacenamiento.borrar(CLAVE_NO_AVISAR_HASTA).catch(() => undefined);
   if (!disponible('entrenarConOtro', await version(supabase))) return;
   await supabase.rpc('marcar_en_gimnasio');
 }
 
+/** Lo que mira el vigilante del gimnasio antes de marcar que estás entrenando. Ver `puedeMarcarPresencia`. */
+export async function sePuedeMarcarPresencia(): Promise<boolean> {
+  return puedeMarcarPresencia(await plataforma.almacenamiento.leer(CLAVE_NO_AVISAR_HASTA).catch(() => null), Date.now());
+}
+
 /** Terminé: dejo de aparecer y se cortan mis vínculos. */
 export async function dejarDeEntrenar(supabase: Cliente): Promise<void> {
+  // Antes que nada, y aunque la base no conteste: el vigilante lo mira en el teléfono.
+  await plataforma.almacenamiento
+    .guardar(CLAVE_NO_AVISAR_HASTA, String(Date.now() + PAUSA_TRAS_TERMINAR_MS))
+    .catch(() => undefined);
   if (!disponible('entrenarConOtro', await version(supabase))) return;
   await supabase.rpc('dejar_de_entrenar');
 }

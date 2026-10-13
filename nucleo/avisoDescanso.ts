@@ -42,3 +42,12 @@ export function queHacerAlTerminar(fin: number, avisado: number | null, ahora: n
   if (avisado === fin) return 'ya';
   return ahora - fin > TARDE_MS ? 'tarde' : 'avisar';
 }
+
+/**
+ * CUÁNTO SE PASÓ del descanso, en segundos (12/10). Al terminar, la pantalla no
+ * se queda clavada en 0:00: cuenta hacia arriba, y con eso se sabe cuánto de
+ * más se descansó. Antes del final es cero.
+ */
+export function pasadoDe(fin: number, ahora: number): number {
+  return Math.max(0, Math.floor((ahora - fin) / 1000));
+}
