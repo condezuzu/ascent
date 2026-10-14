@@ -96,7 +96,6 @@ export default function Identidad({
             <Text style={estilos.botonTexto}>{guardando ? '…' : T.general.guardar}</Text>
           </Pressable>
         </View>
-        <Text style={estilos.nota}>{T.ajustes.nombreNota}</Text>
         {aviso !== '' && <Text style={estilos.ok}>{aviso}</Text>}
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
       </View>
@@ -126,7 +125,7 @@ export default function Identidad({
           <Opcion texto={T.ajustes.mujer} activa={sexo === 'f'} alTocar={() => guardar('sexo', 'f' as SexoValor)} />
           <Opcion texto={T.ajustes.hombre} activa={sexo === 'm'} alTocar={() => guardar('sexo', 'm' as SexoValor)} />
         </View>
-        <Text style={estilos.nota}>{T.ajustes.sexoNota}</Text>
+        {/* §16.7c: este aviso no se saca (activar el DOTS deja deducir el peso). */}
         <Text style={estilos.nota}>{T.ajustes.sexoAviso}</Text>
       </View>
     </>

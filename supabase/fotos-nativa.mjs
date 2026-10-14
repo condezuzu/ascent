@@ -169,6 +169,26 @@ const RECETAS = {
     await foto(page, 'cartel-union');
     return page;
   },
+  async ajustes(nav, gente) {
+    const sufijo = process.env.FOTOS_SUFIJO ?? '';
+    const { page } = await abrir(nav, gente.a);
+    await page.getByText('Ajustes', { exact: true }).last().click({ timeout: 30000 });
+    await page.waitForTimeout(2500);
+    await page.mouse.move(195, 500);
+    for (let i = 0; i < 4; i++) {
+      await foto(page, `ajustes${sufijo}-${i + 1}`);
+      await page.mouse.wheel(0, 650);
+      await page.waitForTimeout(700);
+    }
+    await page.getByText('Ajustes avanzados', { exact: false }).first().click({ timeout: 20000 }).catch(() => undefined);
+    await page.waitForTimeout(800);
+    for (let i = 4; i < 9; i++) {
+      await page.mouse.wheel(0, 650);
+      await page.waitForTimeout(700);
+      await foto(page, `ajustes${sufijo}-${i + 1}`);
+    }
+    return page;
+  },
   async ranking(nav, gente) {
     const { a: A, b: B } = gente;
     const { data: pedido } = await A.s.from('friendships').insert({ solicitante: A.id, destinatario: B.id }).select('id').single();

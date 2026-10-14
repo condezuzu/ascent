@@ -6,7 +6,7 @@ import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import { C } from '../colores';
 import { CALIDAD_CAMBIO, type PreferenciaDeCalidad } from '@nucleo/calidad';
-import { bajoSola, fijarCalidad, leerCalidad, preferenciaAhora } from '../calidad';
+import { fijarCalidad, leerCalidad, preferenciaAhora } from '../calidad';
 
 /**
  * EL FONDO: automático, siempre, o nunca.
@@ -44,12 +44,8 @@ export default function Fondo() {
   // LA CALIDAD (8/10): un punto medio entre "siempre" y "nunca". Por omisión la
   // decide la app midiendo; acá se la puede fijar a mano.
   const [calidad, setCalidad] = useState<PreferenciaDeCalidad | null>(null);
-  const [laBajo, setLaBajo] = useState(false);
   useEffect(() => {
-    const leer = () => {
-      setCalidad(preferenciaAhora());
-      setLaBajo(bajoSola());
-    };
+    const leer = () => setCalidad(preferenciaAhora());
     void leerCalidad().then(leer);
     return eventos.escuchar(CALIDAD_CAMBIO, leer);
   }, []);
@@ -87,7 +83,6 @@ export default function Fondo() {
           </Pressable>
         ))}
       </View>
-      <Text style={estilos.nota}>{pref === 'auto' ? T.ajustes.fondoAutoNoSe : T.ajustes.fondoNota}</Text>
 
       <Text style={[estilos.titulo, { marginTop: 22 }]}>{T.ajustes.calidad}</Text>
       <View style={estilos.selector}>
@@ -110,15 +105,6 @@ export default function Fondo() {
           </Pressable>
         ))}
       </View>
-      <Text style={estilos.nota}>
-        {calidad === 'alta'
-          ? T.ajustes.calidadNotaAlta
-          : calidad === 'baja'
-            ? T.ajustes.calidadNotaBaja
-            : laBajo
-              ? T.ajustes.calidadNotaBajoSola
-              : T.ajustes.calidadNotaAuto}
-      </Text>
     </View>
   );
 }

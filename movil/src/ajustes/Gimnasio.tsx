@@ -72,7 +72,7 @@ export default function Gimnasio({
     setEstado('listo');
     // La precisión se muestra porque cambia lo que se puede esperar: con 200
     // metros de error el atajo va a fallar, y es mejor saberlo ahora.
-    setDetalle(T.ajustes.gimnasioListo(Math.round(r.precision)));
+    setDetalle(T.ajustes.gimnasioListoNativo(Math.round(r.precision)));
   }
 
   async function borrar() {
@@ -101,16 +101,11 @@ export default function Gimnasio({
         </Text>
       </Pressable>
 
-      <Text style={estilos.nota}>
-        <Text style={estilos.fuerte}>{T.ajustes.gimnasioComo}</Text> {T.ajustes.gimnasioParaQueNativo}
-      </Text>
-      <Text style={estilos.nota}>{T.ajustes.gimnasioTechoNativo}</Text>
 
       {detalle !== '' && <Text style={[estilos.nota, estado === 'error' && estilos.error]}>{detalle}</Text>}
 
       {puesto && (
         <>
-          <Text style={estilos.nota}>{T.ajustes.gimnasioPuesto}</Text>
           <Pressable style={estilos.boton} onPress={borrar}>
             <Text style={estilos.botonTexto}>{T.ajustes.gimnasioBorrar}</Text>
           </Pressable>
@@ -136,6 +131,5 @@ const estilos = StyleSheet.create({
   },
   botonTexto: { color: C.tinta, fontSize: 14 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
-  fuerte: { color: C.sub },
   error: { color: C.error },
 });

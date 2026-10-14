@@ -9361,8 +9361,8 @@ console.log('\n134. Ajustes nativo: lo que la app necesita para existir en la ti
   // LOS TEXTOS DEL TELEFONO NO SON LOS DE LA WEB donde dicen algo distinto.
   // "Vibra con la app abierta" y "en la del telefono va a entrar solo" son
   // verdad en la web y mentira en el telefono.
-  chequear('el aviso del descanso se elige por el puerto', /conPantallaBloqueada\(\)/.test(aj), true);
-  chequear('y el techo del gimnasio lo dice desde adentro del telefono', /gimnasioTechoNativo/.test(gim), true);
+  // Desde el 14/10 Ajustes no lleva notas debajo de cada opción: lo que importa es que no use las de la web.
+  chequear('el teléfono no usa los textos de la web que ahí serían mentira', [/T\.ajustes\.vibra\b/.test(aj), /gimnasioParaQue\b/.test(gim)], [false, false]);
 }
 
 console.log('\n135. El perfil, en las dos apps y con las mismas reglas');
@@ -9601,10 +9601,11 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
   const T137 = (await import('../nucleo/textos.ts')).T;
   // EL TEXTO DECIA QUE NO SE PODIA. Mientras fue cierto estaba bien; ahora
   // seria mentir al reves, y el que lee Ajustes decide si marca el punto.
-  chequear('ya no promete que falta', /pronto|todavia|todavía/i.test(T137.ajustes.gimnasioTechoNativo), false);
+  // Desde el 14/10 no hay nota fija debajo del botón: lo dice el renglón que aparece al marcar.
+  chequear('ya no promete que falta', /pronto|todavia|todavía/i.test(T137.ajustes.gimnasioListoNativo(20)), false);
   // PERO TAMPOCO PROMETE DE MAS: sin el permiso de "siempre" esto vuelve a ser
   // lo de la web, y callarlo haria que "no me entro el dia" pareciera un bug.
-  chequear('y avisa del permiso que hace falta', /siempre/i.test(T137.ajustes.gimnasioTechoNativo), true);
+  chequear('y avisa del permiso que hace falta', /siempre/i.test(T137.ajustes.gimnasioListoNativo(20)), true);
 
   // ---- APPLE HEALTH ----
   const sal = de137('movil', 'src', 'plataforma', 'salud.ts');

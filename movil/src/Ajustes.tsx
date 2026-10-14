@@ -8,8 +8,7 @@ import { umbralesDisponibles, umbralValido, type Umbral } from '@nucleo/estancam
 import { useVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
-import { plataforma } from '@plataforma';
-import { guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
+import { guardarSonido, leerSonido } from '@compartido/descanso';
 import { escritorEnFila } from '@compartido/enFila';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
@@ -150,7 +149,6 @@ export default function Ajustes({
         <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={40} />
         <View style={{ flex: 1 }}>
           <Text style={estilos.tuNombre}>{perfil.username}</Text>
-          <Text style={estilos.tuPie}>{T.ajustes.tuPerfil}</Text>
         </View>
       </Pressable>
 
@@ -169,7 +167,6 @@ export default function Ajustes({
       <View style={estilos.filaOpcion}>
           <View style={estilos.textoOpcion}>
             <Text style={estilos.opcion}>{T.ajustes.comparteGimnasio}</Text>
-            <Text style={estilos.nota}>{T.ajustes.comparteGimnasioNota}</Text>
           </View>
           <Interruptor
             value={perfil.comparte_gimnasio === true}
@@ -188,7 +185,6 @@ export default function Ajustes({
       <View style={estilos.filaOpcion}>
         <View style={estilos.textoOpcion}>
           <Text style={estilos.opcion}>{T.ajustes.comparteRutina}</Text>
-          <Text style={estilos.nota}>{T.ajustes.comparteRutinaNota}</Text>
         </View>
         <Interruptor
           value={perfil.comparte_rutina !== false}
@@ -229,7 +225,6 @@ export default function Ajustes({
           </Pressable>
         ))}
       </View>
-      <Text style={estilos.nota}>{T.ajustes.diasDescansoNota}</Text>
 
       <Text style={estilos.seccion}>{T.ajustes.peso}</Text>
       <View style={estilos.fila}>
@@ -273,21 +268,6 @@ export default function Ajustes({
       >
         <Text style={estilos.enlace}>{sonido ? T.ajustes.sonidoPrendido : T.ajustes.sonidoApagado}</Text>
       </Pressable>
-      {/* TRES TEXTOS Y NO DOS: en el teléfono el aviso es una notificación del
-          sistema y llega con la pantalla bloqueada, así que decir "con la app
-          abierta" sería mentir. Lo decide el puerto. */}
-      <Text style={estilos.nota}>
-        {plataforma.avisos.conPantallaBloqueada()
-          ? T.ajustes.vibraBloqueada
-          : puedeVibrar()
-            ? T.ajustes.vibra
-            : T.ajustes.noVibra}
-      </Text>
-      {sonido && (
-        <Text style={estilos.nota}>
-          {plataforma.audio.respetaLaMusica() ? T.ajustes.sonidoRespeta : T.ajustes.sonidoCorta}
-        </Text>
-      )}
 
       <Text style={estilos.seccion}>{T.ajustes.estancamiento}</Text>
       <View style={estilos.fila}>
@@ -318,7 +298,6 @@ export default function Ajustes({
               </Pressable>
             ))}
           </View>
-          <Text style={estilos.nota}>{T.ajustes.estancamientoNota(umbral)}</Text>
         </>
       )}
 
@@ -370,7 +349,6 @@ export default function Ajustes({
 const estilos = StyleSheet.create({
   tuPerfil: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, marginBottom: 4 },
   tuNombre: { color: '#e8ecf6', fontSize: 17 },
-  tuPie: { color: '#8a93a8', fontSize: 12, marginTop: 2 },
   // EL FONDO VA EN EL SCROLLVIEW, NO SOLO EN EL CONTENIDO (29/9). El
   // `contentContainerStyle` pinta el ALTO DEL CONTENIDO; con Ajustes corto (todo
   // plegado en avanzados) el rebote de iOS tiraba de más y dejaba ver el motor

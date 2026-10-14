@@ -84,7 +84,6 @@ export default function Salud() {
 
       {conectado === true && <Text style={estilos.conectado}>{T.ajustes.saludConectado}</Text>}
 
-      <Text style={estilos.nota}>{T.ajustes.saludPara}</Text>
       {aviso !== '' && <Text style={estilos.nota}>{aviso}</Text>}
 
       {/* LOS PASOS SON LA PRUEBA DE QUE ESTA LEYENDO DE VERDAD. Mientras se
@@ -95,7 +94,6 @@ export default function Salud() {
           <Text style={estilos.nota}>
             {pasos === null ? T.ajustes.saludSinDatos : T.ajustes.saludPasos(pasos.toLocaleString('es-UY'))}
           </Text>
-          <Text style={estilos.nota}>{T.ajustes.saludPasosNota}</Text>
         </>
       )}
     </View>

@@ -573,9 +573,7 @@ export const T = {
     // no se las nombra una vez.
 
     comparteGimnasio: 'Avisar cuando entreno',
-    comparteGimnasioNota: 'Tus amigos ven que estás entrenando, nunca dónde. Hace falta para entrenar con otro.',
     comparteRutina: 'Mostrar mi rutina',
-    comparteRutinaNota: 'Tus amigos ven qué ejercicios haces cada día y cuántas series. Nunca los pesos ni cuánto dura.',
     diasDescanso: 'Días de descanso',
     diasDescansoNota: 'Esos días puedes faltar sin perder la racha.',
 
@@ -589,11 +587,6 @@ export const T = {
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cierras, no avisa.',
     noVibra: 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.',
-    // EN LA APP DEL TELÉFONO EL AVISO ES OTRA COSA y decir lo de arriba seria
-    // mentir: es una notificación del sistema, así que llega con la pantalla
-    // bloqueada y con la app cerrada. Cuál de los tres se muestra lo decide el
-    // puerto, no la pantalla.
-    vibraBloqueada: 'Vibra y avisa al terminar, aunque guardes el teléfono.',
     // Las dos frases decían lo contrario de lo que ahora hace la app: el
     // aviso CORTA la música a propósito, porque con auriculares no se escucha
     // de ninguna otra forma.
@@ -603,22 +596,16 @@ export const T = {
     sonidoCorta: 'En este teléfono el sonido puede taparse si tienes música fuerte.',
 
     gimnasio: 'Mi gimnasio',
-    gimnasioMarcar: 'Marcar el punto',
+    gimnasioMarcar: 'Marcar mi gimnasio, estando ahí',
     gimnasioRemarcar: 'Volver a marcar el punto',
     gimnasioBuscando: 'Buscando…',
     gimnasioBorrar: 'Borrar el punto',
     gimnasioComo: 'Márcalo parado en la puerta de tu gimnasio.',
     gimnasioParaQue: 'Después, abrir la app estando ahí registra el día sin que aprietes nada.',
     gimnasioTecho: 'Por ahora hay que abrir la app. En la del teléfono va a entrar solo.',
-    // LO QUE LA APP DEL TELÉFONO SÍ HACE desde el 24/9, y que la web no puede:
-    // el día entra con la app cerrada. Es la promesa de §13 y por fin es
-    // cierta, así que se dice sin rodeos.
-    gimnasioParaQueNativo: 'Después, el día entra solo al llegar, aunque no abras la app.',
-    // EL TECHO QUE QUEDA, dicho antes de que se note: el permiso de "siempre"
-    // se pide aparte y se puede negar, y ahí esto vuelve a ser lo de la web.
-    // Callarlo haría que "no me entró el día" pareciera un error de la app.
-    gimnasioTechoNativo: 'Necesita el permiso de ubicación siempre. Sin él, entra al abrir la app estando ahí.',
     gimnasioListo: (metros: number) => `Listo, con ${metros} m de precisión.`,
+    // En el teléfono, al marcar (14/10): sin nota fija debajo, el permiso se dice acá.
+    gimnasioListoNativo: (metros: number) => `Listo, con ${metros} m de precisión. Para que entre solo: ubicación «Siempre».`,
     gimnasioPuesto: 'Ya está marcado. Nadie más lo ve: no se comparte con tus amigos.',
     gimnasioSinGps: 'Este teléfono no da la ubicación.',
     gimnasioSinPermiso:
@@ -634,9 +621,6 @@ export const T = {
     salud: 'Salud del teléfono',
     saludConectar: 'Conectar con Salud',
     saludConectando: 'Abriendo…',
-    // QUÉ GANA QUIEN LO PRENDE, en una línea. No se promete que registre el
-    // día solo: promete que un día que el teléfono ya sabe no se pierda.
-    saludPara: 'Si tu reloj ya registra el entrenamiento, ese día no se pierde.',
     // NUNCA SE DICE "conectado y listo": iOS no cuenta qué concediste al
     // leer, así que afirmarlo sería inventar. Se manda a donde se ve.
     saludListo: 'Listo. En Salud → Ascent puedes ver y cambiar qué lee.',
@@ -653,9 +637,6 @@ export const T = {
     metaPasosNota: 'Solo para el gráfico de Stats. No entra en tu racha ni la ve nadie.',
     metaPasosFuera: 'Entre 1.000 y 100.000.',
     saludPasos: (pasos: string) => `Hoy llevas ${pasos} pasos.`,
-    // LOS PASOS NO SON ENTRENAR, y hay que decirlo donde se muestran: un día
-    // de caminata tiene más pasos que uno de fuerza. Se ven, no deciden.
-    saludPasosNota: 'Los pasos se muestran, no registran el día: caminar no es entrenar.',
 
     // EL FONDO. El motor cuesta tres segundos de arranque, medidos: se puede
     // apagar. No dice "gráficos" ni "calidad": dice qué es y qué cuesta.
@@ -664,10 +645,6 @@ export const T = {
     calidadAuto: 'Automática',
     calidadAlta: 'Alta',
     calidadBaja: 'Baja',
-    calidadNotaAuto: 'La app mide cómo va y la baja sola si este teléfono no da.',
-    calidadNotaBajoSola: 'En este teléfono la bajó sola: iba a los saltos. Elige Alta si quieres probarla igual.',
-    calidadNotaAlta: 'El fondo con todo el detalle.',
-    calidadNotaBaja: 'El fondo con menos detalle: la app va más fluida y gasta menos batería.',
     fondoAuto: 'Automático',
     fondoSiempre: 'Siempre',
     fondoNunca: 'Nunca',
