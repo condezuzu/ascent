@@ -143,6 +143,27 @@ const RECETAS = {
     await foto(page, 'ejercicios-crear');
     return page;
   },
+  async cartel(nav, gente) {
+    // Datos de verdad: A le manda solicitud a B, y B abre la app.
+    const { a: A, b: B } = gente;
+    await A.s.from('friendships').insert({ solicitante: A.id, destinatario: B.id });
+    const { page } = await abrir(nav, B);
+    await page.getByTestId('cartel-de-arriba').first().waitFor({ state: 'visible', timeout: 60000 });
+    await page.waitForTimeout(900);
+    await foto(page, 'cartel-amistad');
+    await tocar(page, 'cartel-aceptar');
+    await page.waitForTimeout(1500);
+    await foto(page, 'cartel-aceptado');
+    // Ya amigos: B entrena y A pide unirse.
+    await B.s.rpc('iniciar_sesion');
+    const { data: r } = await A.s.rpc('pedir_unirse', { p_a: B.id });
+    console.log(`  pedir_unirse: ${r}`);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByTestId('cartel-de-arriba').first().waitFor({ state: 'visible', timeout: 90000 });
+    await page.waitForTimeout(900);
+    await foto(page, 'cartel-union');
+    return page;
+  },
   async 'rutina-cardio'(nav, gente) {
     const A = gente.a;
     const dias = await semanaDeMuestra(A.s);

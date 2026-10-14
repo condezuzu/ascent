@@ -10,7 +10,7 @@ export const plataforma = {
   // Los puertos que no importan para lo que se prueba acá, sin hacer nada.
   ciclo: { visible: () => true, alCambiar: () => () => {} },
   salud: { pasosEntre: async () => null },
-  avisos: { conPantallaBloqueada: () => false, cancelar: async () => {}, programar: async () => {} },
+  avisos: { conPantallaBloqueada: () => false, cancelar: async () => {}, programar: async () => {}, tokenRemoto: async () => null },
   enVivo: { disponible: () => false, esconder: async () => {}, mostrarDescanso: async () => {} },
   haptica: { pulso: () => false, aviso: () => false, disponible: () => false },
   audio: { preparar: async () => {}, avisar: async () => {}, soltar: async () => {}, respetaLaMusica: () => true },

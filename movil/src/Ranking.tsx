@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
+import { registrarAvisosRemotos } from '@compartido/avisosRemotos';
 import { T } from '@nucleo/textos';
 import { fechaLinda } from '@nucleo/fechas';
 import type { UsuarioPublico } from '@nucleo/tipos';
@@ -59,6 +60,11 @@ import { useVersionDelEsquema } from '@compartido/esquema';
  */
 export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const router = useRouter();
+  // LA PRIMERA VEZ QUE SE ENTRA A RANKING se pide dejar avisar (si nunca se pidió):
+  // es donde se entiende para qué —que te avisen cuando te quieren agregar.
+  useEffect(() => {
+    void registrarAvisosRemotos(supabase, true).catch(() => undefined);
+  }, []);
   // Cuántas actividades se ven antes de "ver más".
   const ACTIVIDAD_TOPE = 8;
   const [miId, setMiId] = useState('');

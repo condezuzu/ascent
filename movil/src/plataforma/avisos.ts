@@ -65,8 +65,18 @@ const delSistema = (id: string) => `ascent-${id}`;
 // hacía el `setTimeout` de la web.
 const alSonar = new Map<string, () => void>();
 
+// LOS AVISOS PUSH (migración 77) que llegan con la app adelante: no muestran
+// cartel del sistema (ver arriba); el cartel lo pone la app, que se entera acá.
+const alLlegarRemoto = new Set<(tipo: string) => void>();
+export function alLlegarAvisoRemoto(fn: (tipo: string) => void): () => void {
+  alLlegarRemoto.add(fn);
+  return () => void alLlegarRemoto.delete(fn);
+}
+
 Notifications.addNotificationReceivedListener((n) => {
-  const id = (n.request.content.data as { ascent?: string } | null)?.ascent;
+  const datos = n.request.content.data as { ascent?: string; aviso?: string } | null;
+  if (datos?.aviso) alLlegarRemoto.forEach((fn) => fn(datos.aviso as string));
+  const id = datos?.ascent;
   if (!id) return;
   alSonar.get(id)?.();
 });
@@ -188,6 +198,18 @@ export const avisosNativos: Avisos = {
       });
     } catch {
       /* si no se pudo programar, la cuenta de la pantalla sigue igual */
+    }
+  },
+
+  async tokenRemoto(pedir) {
+    try {
+      const actual = await Notifications.getPermissionsAsync();
+      const deja = actual.granted || (pedir && actual.canAskAgain && (await Notifications.requestPermissionsAsync()).granted);
+      if (!deja) return null;
+      const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+      return (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
+    } catch {
+      return null;
     }
   },
 

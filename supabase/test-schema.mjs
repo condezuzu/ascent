@@ -17641,6 +17641,197 @@ console.log('\n218. Empezar con una sesión que ya corría no deja cartel');
   chequear('se sigue con la que corría (no se crea otra) y no aparece "Ya tenías una corriendo", que quedaba toda la sesión', await escenarioDeSesion('yaCorria'), { ok: true, corre: true, vivas: 1, aviso: '' });
 }
 
+console.log('\n219. Avisos push: te quieren agregar, quieren unirse (migración 77)');
+{
+  const yo = await nuevoUsuario();
+  const otra = await nuevoUsuario();
+  const tercera = await nuevoUsuario();
+  const nombre = async (u) => (await db.query('select username from profiles where id = $1', [u])).rows[0].username;
+  const TOKEN = (n) => `ExponentPushToken[prueba-${n}]`;
+  const error = (p) => p.then(() => 'entró', (e) => String(e.message));
+  // Como lo hace el teléfono: con su sesión y por la regla de la tabla.
+  const comoApp = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    try {
+      return (await db.query(sql, args)).rows;
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  const pedirAmistad = (de, a) => comoApp(de, 'insert into friendships (solicitante, destinatario) values ($1, $2) returning id', [de, a]);
+
+  // ---- SIN pg_net: el pedido se crea igual y nada explota ----
+  const listosSin = (await db.query('select avisos_push_listos() as v')).rows[0].v;
+  await comoApp(yo, 'select guardar_token_push($1, $2)', [TOKEN('yo'), 'es']);
+  const sinNet = await error(pedirAmistad(tercera, yo));
+  chequear('sin pg_net los avisos no están listos, y una solicitud se crea igual', [listosSin, sinNet], [false, 'entró']);
+
+  // ---- UN pg_net DE PRUEBA, con la firma del de verdad, que anota lo que se le pide ----
+  await db.exec(`
+    create schema if not exists net;
+    create table if not exists net.pedidos (n serial, url text, body jsonb, headers jsonb);
+    create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}',
+      headers jsonb default '{}', timeout_milliseconds integer default 5000) returns bigint
+    language sql as $$ insert into net.pedidos (url, body, headers) values (url, body, headers); select 1::bigint; $$;
+  `);
+  const pedidos = async () => (await db.query('select url, body from net.pedidos order by n')).rows;
+  const vaciar = () => db.exec('delete from net.pedidos');
+  chequear('con pg_net, los avisos están listos', (await db.query('select avisos_push_listos() as v')).rows[0].v, true);
+
+  // ---- LOS TOKENS ----
+  chequear('guardar un token pide sesión y uno con forma de token; la tabla no se lee directo', [
+    await error(comoApp(null, 'select guardar_token_push($1, $2)', [TOKEN('x'), 'es'])),
+    /tokens_push_forma/.test(await error(comoApp(yo, 'select guardar_token_push($1, $2)', ['https://algo', 'es']))),
+    /permission denied/.test(await error(comoApp(yo, 'select * from tokens_push'))),
+  ], ['sin sesión', true, true]);
+  await comoApp(yo, 'select guardar_token_push($1, $2)', [TOKEN('yo-en'), 'en']);
+  await comoApp(tercera, 'select guardar_token_push($1, $2)', [TOKEN('prestado'), 'es']);
+  await comoApp(yo, 'select guardar_token_push($1, $2)', [TOKEN('prestado'), 'es']);
+  await comoApp(tercera, 'select borrar_token_push($1)', [TOKEN('yo')]);
+  const tokens = async (u) => (await db.query('select token, idioma from tokens_push where user_id = $1', [u])).rows.map((r) => [r.token, r.idioma]).sort();
+  chequear('el teléfono que pasa a otra cuenta se lleva el token; borrar solo borra lo propio', [await tokens(yo), await tokens(tercera)], [
+    [[TOKEN('prestado'), 'es'], [TOKEN('yo'), 'es'], [TOKEN('yo-en'), 'en']].sort(), [],
+  ]);
+  await comoApp(yo, 'select borrar_token_push($1)', [TOKEN('prestado')]);
+
+  // ---- TE QUIEREN AGREGAR ----
+  await vaciar();
+  await pedirAmistad(otra, yo);
+  const deOtra = await nombre(otra);
+  const p1 = await pedidos();
+  chequear('una solicitud de amistad avisa a quien la recibe, en su idioma, a cada aparato', [
+    p1.length, p1[0]?.url,
+    (p1[0]?.body ?? []).map((m) => [m.to, m.title, m.body, m.data]).sort(),
+  ], [1, 'https://exp.host/--/api/v2/push/send', [
+    [TOKEN('yo'), 'Ascent', `${deOtra} te quiere agregar.`, { aviso: 'amistad' }],
+    [TOKEN('yo-en'), 'Ascent', `${deOtra} wants to add you.`, { aviso: 'amistad' }],
+  ].sort()]);
+  await vaciar();
+  await pedirAmistad(yo, await nuevoUsuario());
+  await comoApp(yo, `update friendships set estado = 'aceptada' where solicitante = $1 and destinatario = $2`, [otra, yo]);
+  chequear('a quien no tiene aparato no se le manda nada, y aceptar no avisa', (await pedidos()).length, 0);
+
+  // ---- QUIEREN UNIRSE A TU ENTRENAMIENTO ----
+  await comoUsuario(yo);
+  await db.query('select iniciar_sesion()');
+  await vaciar();
+  const union = (await comoApp(otra, 'select pedir_unirse($1) as r', [yo]))[0].r;
+  const p2 = await pedidos();
+  chequear('pedir unirse a quien entrena le avisa', [union, (p2[0]?.body ?? []).map((m) => [m.to, m.body, m.data]).sort()], ['ok', [
+    [TOKEN('yo'), `${deOtra} quiere unirse a tu entrenamiento.`, { aviso: 'union' }],
+    [TOKEN('yo-en'), `${deOtra} wants to join your workout.`, { aviso: 'union' }],
+  ].sort()]);
+  await comoUsuario(yo);
+  await db.query('select terminar_sesion()');
+
+  // ---- SI MANDAR FALLA, EL PEDIDO SE CREA IGUAL ----
+  await db.exec(`create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}',
+      headers jsonb default '{}', timeout_milliseconds integer default 5000) returns bigint
+    language plpgsql as $$ begin raise exception 'se cayó la red'; end $$;`);
+  const otraMas = await nuevoUsuario();
+  chequear('si el aviso no se puede mandar, la solicitud se crea igual', await error(pedirAmistad(otraMas, yo)), 'entró');
+
+  // ---- TOPE: diez aparatos por cuenta ----
+  for (let i = 0; i < 12; i++) await comoApp(tercera, 'select guardar_token_push($1, $2)', [TOKEN('t' + i), 'es']);
+  const quedan = (await tokens(tercera)).map((t) => t[0]);
+  chequear('no más de diez aparatos por cuenta: se olvidan los más viejos', [quedan.length, quedan.includes(TOKEN('t11')), quedan.includes(TOKEN('t0'))], [10, true, false]);
+  await db.exec('drop schema net cascade');
+}
+
+console.log('\n220. El cartel que baja de arriba, y el token del aparato');
+{
+  const NV = await import('../nucleo/novedades.ts');
+  const CN = await import('../compartido/novedades.ts');
+  const AR = await import('../compartido/avisosRemotos.ts');
+  const E220 = await import('../compartido/esquema.ts');
+  const { plataforma: plat220, memoria: mem220 } = await import('./dobles/plataforma.mjs');
+  let reloj220 = Date.now() + E220.VIGENCIA_MS * 12000;
+
+  // ---- QUÉ SE MUESTRA: cada pedido una vez, por cuenta ----
+  const ana = { tipo: 'amistad', id: 'f1', otro: { id: 'a', username: 'ana', avatar_url: null } };
+  const beto = { tipo: 'union', id: 'u1', otro: { id: 'b', username: 'beto', avatar_url: null } };
+  const visto1 = NV.conVista(null, 'yo', beto);
+  const visto2 = NV.conVista(visto1, 'yo', ana);
+  let lleno = null;
+  for (let i = 0; i < 205; i++) lleno = NV.conVista(lleno, 'yo', { ...ana, id: 'f' + (100 + i) });
+  chequear('el cartel muestra el primero que no se vio; visto, no vuelve; lo que vio otra cuenta en el teléfono no cuenta; guarda los últimos 200', [
+    NV.cualMostrar([beto, ana], null, 'yo')?.id,
+    NV.cualMostrar([beto, ana], visto1, 'yo')?.id,
+    NV.cualMostrar([beto, ana], visto2, 'yo'),
+    NV.cualMostrar([beto, ana], visto2, 'otra')?.id,
+    NV.cualMostrar([ana], 'basura', 'yo')?.id,
+    JSON.parse(lleno).ids.length,
+  ], ['u1', 'f1', null, 'u1', 'f1', 200]);
+
+  // ---- DE DÓNDE SALEN: las solicitudes que me mandaron y los pedidos de unirse que me hicieron ----
+  const baseDe = (version, { amistades = [], gente = [], uniones = [], fallaAmistad = false } = {}) => {
+    const cadena = (resultado) => {
+      const q = { select: () => q, eq: () => q, in: () => q, then: (ok, no) => Promise.resolve(resultado).then(ok, no) };
+      return q;
+    };
+    return {
+      rpc: async (n) => (n === 'version_del_esquema' ? { data: version, error: null } : n === 'mis_uniones' ? { data: uniones, error: null } : { data: null, error: null }),
+      from: (t) => cadena(t === 'friendships' ? (fallaAmistad ? { data: null, error: { message: 'sin red' } } : { data: amistades, error: null }) : { data: gente, error: null }),
+    };
+  };
+  // Vencida contesta lo viejo y pregunta por atrás: se espera a que llegue lo nuevo.
+  const aVersion = async (b) => {
+    reloj220 += E220.VIGENCIA_MS * 3;
+    await E220.versionDelEsquema(b, reloj220);
+    await new Promise((r) => setTimeout(r, 20));
+  };
+  const ahora = new Date().toISOString();
+  const b1 = baseDe(77, {
+    amistades: [{ id: 'f1', solicitante: 'a' }],
+    gente: [{ id: 'a', username: 'ana', avatar_url: null }],
+    uniones: [
+      { id: 'u1', estado: 'pendiente', la_pedi_yo: false, otro: { id: 'b', username: 'beto', avatar_url: null }, ahora },
+      { id: 'u2', estado: 'pendiente', la_pedi_yo: true, otro: { id: 'c', username: 'caro', avatar_url: null }, ahora },
+      { id: 'u3', estado: 'aceptada', la_pedi_yo: false, otro: { id: 'd', username: 'dani', avatar_url: null }, ahora },
+    ],
+  });
+  await aVersion(b1);
+  const traidas = await CN.traerNovedades(b1, 'yo');
+  const bFalla = baseDe(77, { fallaAmistad: true });
+  await aVersion(bFalla);
+  chequear('primero quien quiere unirse (los míos y los aceptados no), después las solicitudes; si no se pudo preguntar, null', [
+    traidas?.map((n) => [n.tipo, n.id, n.otro.username]), await CN.traerNovedades(bFalla, 'yo'),
+  ], [[['union', 'u1', 'beto'], ['amistad', 'f1', 'ana']], null]);
+
+  // ---- EL TOKEN: se guarda con la 77, y se olvida al salir ----
+  const anotado = [];
+  const conRpc = (version) => ({
+    rpc: async (n, a) => {
+      if (n === 'version_del_esquema') return { data: version, error: null };
+      anotado.push([n, a]);
+      return { data: null, error: null };
+    },
+  });
+  const avisosAntes = plat220.avisos;
+  const pedidos = [];
+  plat220.avisos = { ...avisosAntes, tokenRemoto: async (pedir) => (pedidos.push(pedir), 'ExponentPushToken[telefono]') };
+  try {
+    const b76 = conRpc(76);
+    await aVersion(b76);
+    await AR.registrarAvisosRemotos(b76, true);
+    const b77 = conRpc(77);
+    await aVersion(b77);
+    await AR.registrarAvisosRemotos(b77, false);
+    const guardado = mem220.get('ascent:token-push');
+    await AR.olvidarAvisosRemotos(b77);
+    chequear('con la 77 se guarda el token del aparato (sin la 77 ni se le pide al teléfono), y al salir se borra de la base y del teléfono', [
+      pedidos, anotado, guardado, mem220.has('ascent:token-push'),
+    ], [[false], [['guardar_token_push', { p_token: 'ExponentPushToken[telefono]', p_idioma: 'es' }], ['borrar_token_push', { p_token: 'ExponentPushToken[telefono]' }]], 'ExponentPushToken[telefono]', false]);
+  } finally {
+    plat220.avisos = avisosAntes;
+  }
+  const { readFileSync: leer220 } = await import('node:fs');
+  const cuenta220 = leer220(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'cuenta.ts'), 'utf8');
+  chequear('cerrar sesión olvida el token ANTES de soltar la sesión (después la base ya no deja borrar lo propio)',
+    /await olvidarAvisosRemotos\(supabase\)[\s\S]{0,120}supabase\.auth\.signOut/.test(cuenta220), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

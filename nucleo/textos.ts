@@ -36,6 +36,8 @@
 const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 export const T = {
+  // En qué idioma están estos textos: se lo dice a la base para los avisos push (migración 77).
+  idioma: 'es' as 'es' | 'en',
   // ---------------------------------------------------------------
   // LAS VIDAS. Se llamaron "impulsos" un tiempo, por elegancia, y el humano lo
   // probó en el gimnasio: no se entendía, ni él lo entendía. "Vidas" es más
@@ -1428,6 +1430,9 @@ export const T = {
       n === 1 ? 'Tienes 1 cosa sin responder' : `Tienes ${n} cosas sin responder`,
     aceptar: 'Aceptar',
     solicitudes: 'Te quieren agregar',
+    // El cartel que baja de arriba (14/10): el nombre va en el renglón de arriba.
+    cartelAmistad: 'Te quiere agregar',
+    cartelUnion: 'Quiere unirse a tu entrenamiento',
     entrenandoAhora: 'Entrenando ahora',
     estaEntrenando: (nombre: string) => `${nombre} está entrenando`,
     // El aviso de la actividad en vivo, la primera vez en Ranking ya con el

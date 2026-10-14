@@ -56,6 +56,8 @@ export const REQUIERE = {
   rutinas: 75,
   /** Ejercicios propios y cardio (se mide en minutos). */
   ejerciciosPropios: 76,
+  /** Avisos push: te quieren agregar, quieren unirse a tu entrenamiento. */
+  avisosRemotos: 77,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

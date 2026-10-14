@@ -9,6 +9,7 @@ import { soltarCola, vaciar } from '@compartido/cola';
 import { borrarDescanso } from '@compartido/descanso';
 import { borrarPerfilCache } from '@compartido/cache';
 import { borrarSesionCache } from '@compartido/sesionCache';
+import { olvidarAvisosRemotos } from '@compartido/avisosRemotos';
 
 /**
  * SALIR DE LA CUENTA, Y QUE NO QUEDE NADA PARA LA QUE ENTRE (4/10).
@@ -87,6 +88,8 @@ export async function limpiarAlSalir() {
  */
 export async function cerrarSesion(supabase: Cliente): Promise<boolean> {
   await subirAntesDeSalir(supabase);
+  // Con la sesión todavía puesta: después ya no se puede borrar lo propio.
+  await olvidarAvisosRemotos(supabase).catch(() => undefined);
   const { error } = await supabase.auth.signOut({ scope: 'local' });
   if (error) return false;
   await limpiarAlSalir();

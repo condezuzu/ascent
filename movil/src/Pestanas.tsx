@@ -19,6 +19,7 @@ import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
 import Recorrido from './Recorrido';
 import AvisoRutina from './AvisoRutina';
+import CartelDeArriba from './CartelDeArriba';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -591,6 +592,9 @@ export default function Pestanas({
           );
         })}
       </View>
+
+      {/* Te quieren agregar / quieren unirse: encima de todo (14/10). */}
+      <CartelDeArriba />
     </View>
   );
 }
