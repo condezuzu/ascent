@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { cuentaAtras } from '@compartido/descanso';
 import { renglonDe } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
-import { supabase } from './supabase';
 import { useUniones } from './useUniones';
+import { useNombresDeEjercicios } from './useNombresDeEjercicios';
 import Avatar from './Avatar';
 import { C } from './colores';
 
@@ -19,24 +18,10 @@ import { C } from './colores';
  */
 export default function CompaneroEnDescanso({ visible, ahora }: { visible: boolean; ahora: number }) {
   const { uniones, recibidoEn } = useUniones(visible, true);
-  const [nombres, setNombres] = useState<Record<string, string>>({});
   const aceptadas = uniones.filter((u) => u.estado === 'aceptada');
   const hay = aceptadas.length > 0;
+  const nombres = useNombresDeEjercicios(hay, recibidoEn);
 
-  // Los nombres de los ejercicios, una vez: lo que se publica es el id.
-  useEffect(() => {
-    if (!hay || Object.keys(nombres).length > 0) return;
-    let vivo = true;
-    supabase
-      .from('ejercicios')
-      .select('id, nombre')
-      .then(({ data }) => {
-        if (vivo && data) setNombres(Object.fromEntries((data as { id: string; nombre: string }[]).map((e) => [e.id, e.nombre])));
-      });
-    return () => {
-      vivo = false;
-    };
-  }, [hay, nombres]);
 
   if (!hay) return null;
 

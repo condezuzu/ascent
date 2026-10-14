@@ -10,7 +10,7 @@ import { supabase } from './supabase';
 import { leerRecordados, recordadosAlDia, type Recordados } from '@compartido/pesosRecordados';
 import { leerPerfilCache } from '@compartido/cache';
 import { claveDeEtiqueta } from '@nucleo/carga';
-import { pesoLindo } from '@nucleo/fuerza';
+import { pesoEnLaLista } from '@nucleo/peso';
 
 /**
  * ELEGIR ENTRE CIEN EJERCICIOS, NAVEGANDO. El mismo árbol que la web
@@ -63,7 +63,7 @@ function SelectorEjercicio({
       if (!vivo) return;
       setUltimos(
         Object.fromEntries(
-          Object.entries(r.maximos).map(([id, m]) => [id, T.resumen.pesoEnLista(pesoLindo(m.peso, unidad), claveDeEtiqueta(m.carga, id))])
+          Object.entries(r.maximos).map(([id, m]) => [id, T.resumen.pesoEnLista(pesoEnLaLista(m.peso, unidad), claveDeEtiqueta(m.carga, id))])
         )
       );
     };

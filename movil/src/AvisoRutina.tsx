@@ -8,6 +8,8 @@ import { disponible, type Funcion } from '@nucleo/esquema';
 import { CLAVE_AVISO_ENTRENO, CLAVE_AVISO_RUTINA, conEsteVisto, quienesLoVieron, tocaAvisarDeLaRutina } from '@nucleo/avisoRutina';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
+import { eventos } from '@compartido/eventos';
+import { GUIA_DE_NUEVO } from './Recorrido';
 import { irAPestana } from './irAPestana';
 import { C, conAlfa } from './colores';
 
@@ -60,6 +62,10 @@ export default function AvisoRutina() {
       if (visible) void mirar();
     });
   }, [mirar]);
+
+  // "Ver la guía de nuevo" la arranca con este aviso ya en pantalla: quedaban
+  // las dos tarjetas apiladas. Se guarda y vuelve cuando la app pase al frente.
+  useEffect(() => eventos.escuchar(GUIA_DE_NUEVO, () => setAviso(null)), []);
 
   if (!aviso) return null;
 

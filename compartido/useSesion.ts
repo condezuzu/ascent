@@ -8,6 +8,7 @@ import { crearCliente } from '@cliente';
 import { plataforma } from '@plataforma';
 import { T } from '@nucleo/textos';
 import { eventos } from '@compartido/eventos';
+import { DIA_CAMBIO } from '@compartido/gimnasio';
 import {
   desfasajeDelReloj,
   cacheTrasConfirmar,
@@ -598,6 +599,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       registro: ResultadoRegistro | null;
     };
     const porUbi = (r.origen ?? opciones?.origen) === 'ubicacion';
+    // Iniciar registra el día y con eso puede cambiar el rango: el Álbum, que no
+    // recarga solo, se quedaba con el cuerpo y el color de ayer. El arranque por
+    // ubicación ya lo avisa el vigilante.
+    if (r.registro && !porUbi) eventos.emitir(DIA_CAMBIO);
     // UNA SESIÓN NUEVA NO HEREDA BLOQUES (ver `bloquesSonDe`). Va antes de la
     // semilla de abajo, que no siembra si encuentra algo contado.
     bloquesSonDe(r.id ?? null);

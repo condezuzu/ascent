@@ -23,8 +23,14 @@ export type Globo = 'series' | 'perfil' | 'actividad';
 
 type Guia = { uid: string; recorrido: boolean; paso?: number; globos: Globo[] };
 
+// UNA CLAVE POR CUENTA (13/10). Era una sola con un dueño: en un teléfono con
+// dos cuentas que se alternan, cada una pisaba lo de la otra y a quien ya la
+// había terminado la guía le volvía a arrancar en cada ida y vuelta. La clave
+// vieja se sigue leyendo, para no mostrársela de nuevo a quien ya la vio.
+const claveDe = (uid: string) => `${CLAVE}:${uid}`;
+
 async function leer(uid: string): Promise<Guia> {
-  const crudo = await plataforma.almacenamiento.leer(CLAVE);
+  const crudo = (await plataforma.almacenamiento.leer(claveDe(uid))) ?? (await plataforma.almacenamiento.leer(CLAVE));
   if (crudo) {
     try {
       const g = JSON.parse(crudo) as Guia;
@@ -36,7 +42,7 @@ async function leer(uid: string): Promise<Guia> {
   return { uid, recorrido: false, globos: [] };
 }
 
-const escribir = (g: Guia) => plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(g));
+const escribir = (g: Guia) => plataforma.almacenamiento.guardar(claveDe(g.uid), JSON.stringify(g));
 
 /** En qué paso del recorrido va; `null` si ya se vio. Ver `pasoAlAbrir`. */
 export async function leerPasoDelRecorrido(uid: string): Promise<number | null> {

@@ -5,6 +5,7 @@ import { cuentaAtras } from '@compartido/descanso';
 import { renglonDe, type Union } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
+import { useNombresDeEjercicios } from './useNombresDeEjercicios';
 import Avatar from './Avatar';
 import { C } from './colores';
 
@@ -19,8 +20,8 @@ import { C } from './colores';
  */
 export default function Juntos({ uniones, recibidoEn, recargar }: { uniones: Union[]; recibidoEn: number; recargar: () => Promise<void> }) {
   const [ahora, setAhora] = useState(Date.now());
-  const [nombres, setNombres] = useState<Record<string, string>>({});
   const hayAceptada = uniones.some((u) => u.estado === 'aceptada');
+  const nombres = useNombresDeEjercicios(hayAceptada, recibidoEn);
 
   useEffect(() => {
     if (!hayAceptada) return;
@@ -28,20 +29,6 @@ export default function Juntos({ uniones, recibidoEn, recargar }: { uniones: Uni
     return () => clearInterval(t);
   }, [hayAceptada]);
 
-  // Los nombres de los ejercicios, una vez: lo que se publica es el id.
-  useEffect(() => {
-    if (!hayAceptada || Object.keys(nombres).length > 0) return;
-    let vivo = true;
-    supabase
-      .from('ejercicios')
-      .select('id, nombre')
-      .then(({ data }) => {
-        if (vivo && data) setNombres(Object.fromEntries((data as { id: string; nombre: string }[]).map((e) => [e.id, e.nombre])));
-      });
-    return () => {
-      vivo = false;
-    };
-  }, [hayAceptada, nombres]);
 
   if (uniones.length === 0) return null;
 

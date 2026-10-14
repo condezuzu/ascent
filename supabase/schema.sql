@@ -2976,7 +2976,8 @@ $$;
 -- la pantalla bloqueada no tiene botones): no hay "sigo acá" posible. Por eso
 -- no se pide una señal aparte y se usa la regla con la que la base YA cierra
 -- las sesiones: media hora sin series, o dos horas si nunca hubo una.
--- NUNCA dice dónde: nombre, avatar y desde cuándo.
+-- NUNCA dice dónde ni desde cuándo: nombre y avatar. La hora de inicio de la
+-- sesión dejaría calcular cuánto dura, y la duración no se muestra a nadie.
 -- -------------------------------------------------------------
 
 -- ¿LA BASE TODAVÍA DA POR VIVA ESTA SESIÓN? Es la regla de
@@ -3011,9 +3012,9 @@ end;
 $$;
 
 create or replace function public.entrenando_ahora()
-returns table (id uuid, username text, avatar_url text, desde timestamptz)
+returns table (id uuid, username text, avatar_url text)
 language sql stable security definer set search_path = public as $$
-  select u.id, u.username, u.avatar_url, s.inicio
+  select u.id, u.username, u.avatar_url
     from sesiones s
     join profiles p on p.id = s.user_id and p.comparte_gimnasio
     join usuarios_publicos u on u.id = s.user_id
@@ -3102,41 +3103,113 @@ create unique index if not exists entrenos_par_unico on public.entrenos_comparti
   (least(solicitante, destinatario), greatest(solicitante, destinatario));
 alter table public.entrenos_compartidos enable row level security;
 
--- PEDIR UNIRSE. Solo a un amigo. Si el otro ya me lo había pedido a mí, pedir
--- es aceptar. Repetirlo no hace nada: se puede reintentar.
+-- ¿ESTE VÍNCULO SIGUE VIVO? (migración 73). No alcanza con que no haya vencido:
+-- quien se va sin tocar "Terminar" deja la sesión `corriendo` en la base hasta
+-- que vuelva a abrir la app, y el disparador que corta el vínculo no dispara.
+-- El otro lo seguía viendo en "Entrenando contigo" hasta tres horas, mientras
+-- "Entrenando ahora" ya lo había sacado. Una sola regla para las dos listas: si
+-- alguno de los dos tiene una sesión que la base ya no da por viva, no hay
+-- vínculo. Quien no tiene sesión y solo mira no cuenta.
+create or replace function public.vinculo_vivo(p_solicitante uuid, p_destinatario uuid, p_hasta timestamptz)
+returns boolean language sql stable security definer set search_path = public as $$
+  select p_hasta > now()
+     and not exists (
+           select 1
+             from sesiones s
+            where s.user_id in (p_solicitante, p_destinatario)
+              and s.estado = 'corriendo'
+              and not public.sesion_sigue_viva(s.inicio, s.ultima_actividad)
+         );
+$$;
+revoke execute on function public.vinculo_vivo(uuid, uuid, timestamptz) from public, anon, authenticated;
+
+-- ¿YA ENTRENA CON ALGUIEN? DE A DOS, DE VERDAD (migración 73). El índice es por
+-- par, no por persona: quien ya estaba unido podía aceptar a un segundo y
+-- quedaba una estrella donde los otros dos no se veían entre sí. Los grupos de
+-- verdad llegan con el multijugador completo; hasta entonces, uno solo.
+create or replace function public.entrena_con_otro(p_quien uuid, p_salvo uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1
+      from entrenos_compartidos c
+     where c.estado = 'aceptada'
+       and p_quien in (c.solicitante, c.destinatario)
+       and p_salvo not in (c.solicitante, c.destinatario)
+       and public.vinculo_vivo(c.solicitante, c.destinatario, c.hasta)
+  );
+$$;
+revoke execute on function public.entrena_con_otro(uuid, uuid) from public, anon, authenticated;
+
+-- PEDIR UNIRSE. Solo a un amigo QUE ESTÉ ENTRENANDO AHORA (la misma regla que
+-- `entrenando_ahora`: la lista del teléfono puede ser de hace un rato) y que no
+-- esté ya con otro. Si el otro ya me lo había pedido a mí, pedir es aceptar.
+-- Repetirlo no hace nada: se puede reintentar. Contesta qué pasó, para que el
+-- teléfono pueda decirlo: 'ok', 'no-entrena', 'ocupado' (el otro ya entrena con
+-- alguien) o 'ya-unido' (yo ya entreno con alguien).
 create or replace function public.pedir_unirse(p_a uuid)
-returns void language plpgsql security definer set search_path = public as $$
+returns text language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  if p_a is null or p_a = uid or not public.son_amigos(uid, p_a) then return; end if;
+  if p_a is null or p_a = uid or not public.son_amigos(uid, p_a) then return 'no-entrena'; end if;
   delete from entrenos_compartidos
    where least(solicitante, destinatario) = least(uid, p_a)
      and greatest(solicitante, destinatario) = greatest(uid, p_a)
-     and hasta <= now();
-  update entrenos_compartidos set estado = 'aceptada', hasta = now() + interval '3 hours'
-   where solicitante = p_a and destinatario = uid;
-  if found then return; end if;
+     and not public.vinculo_vivo(solicitante, destinatario, hasta);
+  if public.entrena_con_otro(uid, p_a) then return 'ya-unido'; end if;
+  if public.entrena_con_otro(p_a, uid) then return 'ocupado'; end if;
+  -- Él me lo había pedido a mí (y sigue vivo: lo de arriba borró lo que no).
+  if exists (select 1 from entrenos_compartidos where solicitante = p_a and destinatario = uid) then
+    update entrenos_compartidos set estado = 'aceptada', hasta = now() + interval '3 hours'
+     where solicitante = p_a and destinatario = uid;
+    delete from entrenos_compartidos
+     where estado = 'pendiente' and (uid in (solicitante, destinatario) or p_a in (solicitante, destinatario));
+    return 'ok';
+  end if;
+  if not exists (
+       select 1
+         from sesiones s
+         join profiles p on p.id = s.user_id and p.comparte_gimnasio
+        where s.user_id = p_a and s.estado = 'corriendo'
+          and public.sesion_sigue_viva(s.inicio, s.ultima_actividad)) then
+    return 'no-entrena';
+  end if;
   insert into entrenos_compartidos (solicitante, destinatario, hasta)
        values (uid, p_a, now() + interval '3 hours')
   on conflict do nothing;
+  return 'ok';
 end;
 $$;
 
--- CONTESTAR. Solo quien la recibió. Decir que no la borra: el otro puede volver a pedir.
+-- CONTESTAR. Solo quien la recibió. Decir que no la borra: el otro puede volver
+-- a pedir. Aceptar pide que el vínculo siga vivo y que ninguno de los dos esté
+-- ya con otro (migración 73); si no se puede, el pedido se borra: ya no sirve.
+-- Al aceptar se van los demás pedidos pendientes de los dos. No hace falta
+-- mirar si quien acepta entrena: si cerró su sesión, el disparador ya se llevó
+-- el pedido, y si la dejó abierta y se fue, el vínculo no está vivo.
 create or replace function public.responder_union(p_id uuid, p_acepta boolean)
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
+  c entrenos_compartidos;
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  if coalesce(p_acepta, false) then
-    update entrenos_compartidos set estado = 'aceptada', hasta = now() + interval '3 hours'
-     where id = p_id and destinatario = uid and estado = 'pendiente' and hasta > now();
-  else
+  if not coalesce(p_acepta, false) then
     delete from entrenos_compartidos where id = p_id and destinatario = uid and estado = 'pendiente';
+    return;
   end if;
+  select * into c from entrenos_compartidos where id = p_id and destinatario = uid and estado = 'pendiente';
+  if c.id is null then return; end if;
+  if not public.vinculo_vivo(c.solicitante, c.destinatario, c.hasta)
+     or public.entrena_con_otro(uid, c.solicitante)
+     or public.entrena_con_otro(c.solicitante, uid) then
+    delete from entrenos_compartidos where id = c.id;
+    return;
+  end if;
+  update entrenos_compartidos set estado = 'aceptada', hasta = now() + interval '3 hours' where id = c.id;
+  delete from entrenos_compartidos
+   where estado = 'pendiente' and (uid in (solicitante, destinatario) or c.solicitante in (solicitante, destinatario));
 end;
 $$;
 
@@ -3210,7 +3283,7 @@ returns jsonb language sql stable security definer set search_path = public as $
     join usuarios_publicos u
       on u.id = case when c.solicitante = auth.uid() then c.destinatario else c.solicitante end
    where auth.uid() in (c.solicitante, c.destinatario)
-     and c.hasta > now()
+     and public.vinculo_vivo(c.solicitante, c.destinatario, c.hasta)
      and public.son_amigos(c.solicitante, c.destinatario);
 $$;
 
@@ -3742,7 +3815,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 72; $$;
+returns int language sql immutable as $$ select 73; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

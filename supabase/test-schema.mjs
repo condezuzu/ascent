@@ -13477,7 +13477,7 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
   const sel197 = sinComentarios(leerSel(new URL('../movil/src/SelectorEjercicio.tsx', import.meta.url), 'utf8'));
   chequear('la lista de ejercicios lo muestra al lado de cada nombre, en la unidad de la persona', [
     (sel197.match(/extra=\{ultimos\[e\.id\]\}/g) ?? []).length,
-    /pesoLindo\(m\.peso, unidad\), claveDeEtiqueta\(m\.carga, id\)/.test(sel197),
+    /pesoEnLaLista\(m\.peso, unidad\), claveDeEtiqueta\(m\.carga, id\)/.test(sel197),
     /leerRecordados\(\)\.then\(poner\)\.then\(\(\) => recordadosAlDia\(supabase\)\)\.then\(poner\)/.test(sel197),
   ], [2, true, true]);
 
@@ -16192,6 +16192,14 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
   // otro día, por ejemplo) no se le muestra a quien se une después: migración 68.
   await como(a, 'select publicar_en_vivo($1, $2, $3, $4)', ['sentadilla', 9, 9, null]);
   await db.query(`update en_vivo set actualizado = now() - interval '1 day' where user_id = $1`, [a]);
+  // Desde la migración 73 solo se le pide unirse a quien ESTÁ entrenando: A inicia.
+  chequear('a quien no está entrenando no se le puede pedir, y el pedido no queda guardado', [
+    (await como(b, 'select pedir_unirse($1) as v', [a]))[0].v,
+    (await db.query('select count(*)::int as n from entrenos_compartidos')).rows[0].n,
+  ], ['no-entrena', 0]);
+  await como(a, 'select marcar_en_gimnasio()');
+  chequear('con el aviso prendido pero SIN sesión, A no aparece: estar adentro del gimnasio no es entrenar (migración 72)', (await como(b, 'select id from entrenando_ahora()')).length, 0);
+  await como(a, 'select iniciar_sesion()');
   await como(b, 'select pedir_unirse($1)', [a]);
   await como(b, 'select pedir_unirse($1)', [a]);
   chequear('el pedido le aparece a los dos, una sola vez, y todavía no muestra nada', [resumen(await uniones(a)), resumen(await uniones(b))], [
@@ -16223,10 +16231,6 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
 
   // CORTAR: terminar la sesión me saca de todo y deja de mostrarme.
   await como(c, 'select pedir_unirse($1)', [a]);
-  await db.query('update profiles set comparte_gimnasio = true where id = $1', [a]);
-  await como(a, 'select marcar_en_gimnasio()');
-  chequear('con el aviso prendido pero SIN sesión, A no aparece: estar adentro del gimnasio no es entrenar (migración 72)', (await como(b, 'select id from entrenando_ahora()')).length, 0);
-  await como(a, 'select iniciar_sesion()');
   chequear('con el aviso prendido, A aparece entrenando para sus amigos', (await como(b, 'select id from entrenando_ahora()')).map((r) => r.id), [a]);
   // Como en el teléfono: "Terminar" cierra la sesión y después corta lo demás.
   await db.query(`update sesiones set inicio = now() - interval '20 minutes', series = 3 where user_id = $1 and estado = 'corriendo'`, [a]);
@@ -16238,7 +16242,9 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
     (await como(b, 'select id from entrenando_ahora()')).length,
   ], [0, 0, 0, 0, 0]);
 
-  // Pedirse los dos a la vez: el segundo pedido es aceptar.
+  // Pedirse los dos a la vez: el segundo pedido es aceptar. Los dos entrenando (migración 73).
+  await como(a, 'select iniciar_sesion()');
+  await como(b, 'select iniciar_sesion()');
   await como(a, 'select pedir_unirse($1)', [b]);
   await como(b, 'select pedir_unirse($1)', [a]);
   chequear('si los dos se piden, quedan unidos sin que nadie conteste', [(await uniones(a))[0].estado, (await uniones(a)).length], ['aceptada', 1]);
@@ -16307,6 +16313,9 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   const q = await nuevoUsuario();
   await db.query(`update profiles set username = 'vivo_' || substr(id::text, 1, 6) where id in ($1, $2)`, [p, q]);
   await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [p, q]);
+  // P entrena: desde la migración 73 solo se le pide unirse a quien está entrenando.
+  await comoUsuario(p);
+  await db.query('select iniciar_sesion()');
   await comoUsuario(q);
   await db.query('select pedir_unirse($1)', [p]);
   await comoUsuario(p);
@@ -16366,7 +16375,7 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   chequear('Ranking pregunta cada diez segundos solo con la pestaña a la vista, y ofrece Unirse a quien no tengo', [
     /setActiva\(cual === 'ranking'\)/.test(rk201) && /const juntos = useUniones\(activa\);/.test(rk201),
     /\{conJuntos && !union && \(/.test(rk201),
-    /void pedirUnirse\(supabase, e\.id\)\.then\(juntos\.recargar\)/.test(rk201),
+    /onPress=\{\(\) => void unirseA\(e\)\}/.test(rk201) && /const r = await pedirUnirse\(supabase, e\.id\);[\s\S]*?juntos\.recargar\(\);/.test(rk201),
     /<Juntos uniones=\{juntos\.uniones\} recibidoEn=\{juntos\.recibidoEn\} recargar=\{juntos\.recargar\} \/>/.test(rk201),
     /if \(!error\) setEntrenando\(/.test(rk201),
     [EV.CADA_CUANTO_MS, EV.SIN_SENAL_S],
@@ -16396,7 +16405,7 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   const vieja = await conVersion201(66);
   await C201.publicarEnVivo(vieja, { ejercicio: null, serie: 0, meta: 0, descansoFaltan: null });
   await C201.dejarDeEntrenar(vieja);
-  chequear('con la base sin la 67 no se llama a nada, y la lista viene vacía', [(await C201.traerUniones(vieja)).uniones, await C201.pedirUnirse(vieja, 'x'), llamadas201], [[], false, []]);
+  chequear('con la base sin la 67 no se llama a nada, y la lista viene vacía', [(await C201.traerUniones(vieja)).uniones, await C201.pedirUnirse(vieja, 'x'), llamadas201], [[], 'fallo', []]);
   const nueva = await conVersion201(67, { mis_uniones: { data: null, error: { message: 'Network request failed' } } });
   chequear('si la lista no se pudo pedir se dice (null): la pantalla se queda con lo que tenía', await C201.traerUniones(nueva), null);
   await C201.publicarEnVivo(nueva, { ejercicio: 'press_banca', serie: 1, meta: 3, descansoFaltan: 60 });
@@ -16513,6 +16522,83 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
     await como(b, 'select terminar_sesion()');
     await como(b, 'select marcar_en_gimnasio()');
     chequear('terminó, sigue adentro del gimnasio y un teléfono sin actualizar lo "marca": no aparece', await veA(), 0);
+  }
+
+  // ---- EL VÍNCULO SIGUE A LA SESIÓN, Y ES DE A DOS (migración 73, cacería del 13/10) ----
+  {
+    const c = await nuevoUsuario();
+    await db.query(`update profiles set username = 'tres_' || substr(id::text, 1, 6) where id = $1`, [c]);
+    await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada'), ($1, $3, 'aceptada')`, [c, a, b]);
+    const filas = async () => (await db.query('select count(*)::int as n from entrenos_compartidos')).rows[0].n;
+    const pedir = async (quien, aQuien) => (await como(quien, 'select pedir_unirse($1) as v', [aQuien]))[0].v;
+    const limpiar = async () => {
+      await db.query('delete from sesiones where user_id in ($1, $2, $3)', [a, b, c]);
+      await db.query('delete from entrenos_compartidos');
+    };
+    // La última serie fue hace N minutos y NADIE le pregunta nada a la base: el
+    // teléfono está guardado. No se llama a cerrar_sesiones_vencidas, que es
+    // justo lo que no pasa en la calle.
+    const seFueHace = (quien, min) =>
+      db.query(`update sesiones set inicio = now() - interval '3 hours', ultima_actividad = now() - make_interval(mins => $2) where user_id = $1 and estado = 'corriendo'`, [quien, min]);
+
+    // EL COMPAÑERO FANTASMA: B se va sin tocar Terminar. A mira sin sesión propia.
+    await limpiar();
+    await unir();
+    await seFueHace(b, 10);
+    const vivo = await cuantas(a);
+    await seFueHace(b, 45);
+    chequear('B se fue sin tocar Terminar: a los 45 min A ya no lo ve unido, con la sesión de B todavía "corriendo" y el vínculo todavía en la tabla', [
+      vivo, await cuantas(a), await cuantas(b),
+      (await db.query(`select estado from sesiones where user_id = $1`, [b])).rows[0].estado, await filas(),
+    ], [1, 0, 0, 'corriendo', 1]);
+    chequear('y deja de estar en las dos listas a la vez: tampoco figura entrenando', (await como(a, 'select id from entrenando_ahora()')).length, 0);
+
+    // UN FANTASMA NO OCUPA: A sigue entrenando y C se le puede unir.
+    await como(a, 'select iniciar_sesion()');
+    chequear('el que quedó con un compañero fantasma no figura "ya con alguien": otro le puede pedir', await pedir(c, a), 'ok');
+
+    // PEDIR SOLO A QUIEN ENTRENA AHORA.
+    await limpiar();
+    chequear('a quien no entrena no se le pide, y no queda nada guardado', [await pedir(a, b), await filas()], ['no-entrena', 0]);
+    await como(b, 'select iniciar_sesion()');
+    await db.query('update profiles set comparte_gimnasio = false where id = $1', [b]);
+    chequear('ni a quien apagó "Avisar cuando entreno", aunque esté entrenando', [await pedir(a, b), await filas()], ['no-entrena', 0]);
+    await db.query('update profiles set comparte_gimnasio = true where id = $1', [b]);
+    await seFueHace(b, 45);
+    chequear('ni a quien dejó la sesión abierta y se fue', [await pedir(a, b), await filas()], ['no-entrena', 0]);
+    await db.query(`update sesiones set inicio = now() - interval '20 minutes', ultima_actividad = now(), series = 3 where user_id = $1 and estado = 'corriendo'`, [b]);
+    await como(b, 'select terminar_sesion()');
+    chequear('ni a quien terminó hace un minuto (la lista de Ranking todavía lo muestra)', [await pedir(a, b), await filas()], ['no-entrena', 0]);
+
+    // ACEPTAR PIDE ESTAR ENTRENANDO.
+    await limpiar();
+    await como(b, 'select iniciar_sesion()');
+    await pedir(a, b);
+    const pendiente73 = (await como(b, 'select mis_uniones() as v'))[0].v[0].id;
+    await seFueHace(b, 45);
+    await como(b, 'select responder_union($1, true)', [pendiente73]);
+    chequear('aceptar un pedido cuando ya no se está entrenando no une a nadie: el pedido se va', [await filas(), await cuantas(a)], [0, 0]);
+
+    // DE A DOS: B ya entrena con A; C no puede sumarse, y se le dice por qué.
+    await limpiar();
+    await unir();
+    await como(c, 'select iniciar_sesion()');
+    chequear('quien ya entrena con alguien no recibe otro pedido: al que pide se le contesta "ocupado"', [await pedir(c, b), await filas()], ['ocupado', 1]);
+    chequear('y quien ya entrena con alguien tampoco puede pedirle a otro', [await pedir(a, c), await filas()], ['ya-unido', 1]);
+    chequear('repetirle el pedido al compañero que ya tengo sigue sin hacer nada', [await pedir(a, b), await cuantas(a)], ['ok', 1]);
+
+    // LA CARRERA: dos le piden a B antes de que conteste. Al aceptar a uno, el otro pedido se va.
+    await limpiar();
+    await como(b, 'select iniciar_sesion()');
+    await pedir(a, b);
+    await pedir(c, b);
+    const pedidos = (await como(b, 'select mis_uniones() as v'))[0].v;
+    await como(b, 'select responder_union($1, true)', [pedidos.find((u) => u.otro.id === a).id]);
+    chequear('con dos pedidos esperando, aceptar uno borra el otro: no queda la estrella', [pedidos.length, await filas(), await cuantas(c), (await como(b, 'select mis_uniones() as v'))[0].v.map((u) => [u.estado, u.otro.id])], [2, 1, 0, [['aceptada', a]]]);
+
+    // Y "ENTRENANDO AHORA" NO DICE DESDE CUÁNDO.
+    chequear('"Entrenando ahora" entrega nombre y foto, y nada con lo que calcular cuánto lleva', Object.keys((await como(a, 'select * from entrenando_ahora()'))[0]).sort(), ['avatar_url', 'id', 'username']);
+    await limpiar();
   }
 
   // 2. LA TERMINA LA BASE POR OTRO CAMINO (el vigilante llama a terminar_sesion, no al botón).
@@ -16785,6 +16871,70 @@ console.log('\n202. "Volver" anda siempre, también cuando la app arrancó por u
     /await pedirAmistad\(supabase, yo, id\)[^;]*;\s*if \(!sigueAca\.current\) return;\s*router\.replace/.test(link202),
     /sigueAca\.current = false;\s*volverOInicio\(router\);/.test(link202),
   ], [true, true, true, true]);
+}
+
+// ============================================================================
+// 207. CACERÍA DEL 13/10: lo que seguía vivo de la anterior, y el aviso de "ocupado"
+// ============================================================================
+console.log('\n207. Cacería del 13/10: los que seguían vivos');
+{
+  const { readFileSync: leer207 } = await import('node:fs');
+  const AQUI207 = dirname(fileURLToPath(import.meta.url));
+  const de207 = (...p) => leer207(join(AQUI207, '..', ...p), 'utf8').replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  // ---- EL PESO DE LA LISTA SE ESCRIBE COMO EL DEL CAMPO ----
+  const PE207 = await import('../nucleo/peso.ts');
+  chequear('en la lista, 61,25 kg se lee 61,25 y no 61,3; y en libras, la misma media libra que muestra el campo', [
+    PE207.pesoEnLaLista(61.25, 'kg'), PE207.pesoEnLaLista(60, 'kg'),
+    PE207.pesoEnLaLista(60, 'lb') === PE207.pesoCorto(60, 'lb') + ' lb', PE207.pesoEnLaLista(60, 'lb'),
+  ], ['61,25 kg', '60 kg', true, '132,5 lb']);
+  const sel207 = de207('movil', 'src', 'SelectorEjercicio.tsx');
+  chequear('y la lista de ejercicios usa esa función, no la de las marcas (que redondea a un decimal)', [/pesoEnLista\(pesoEnLaLista\(m\.peso, unidad\)/.test(sel207), /pesoLindo/.test(sel207)], [true, false]);
+
+  // ---- LA GUÍA ES POR CUENTA: dos cuentas alternándose en el mismo teléfono ----
+  const { memoria: mem207 } = await import('./dobles/plataforma.mjs');
+  const G207 = await import('../compartido/guia.ts');
+  mem207.delete('ascent:guia');
+  await G207.marcarRecorridoVisto('cuenta-a');
+  await G207.marcarGloboVisto('cuenta-a', 'series');
+  const antesDeB = await G207.leerPasoDelRecorrido('cuenta-b');
+  await G207.guardarPasoDelRecorrido('cuenta-b', 2);
+  await G207.marcarRecorridoVisto('cuenta-b');
+  chequear('A terminó la guía, entró B y la terminó: a B le arrancó, y a A no le vuelve a arrancar ni le vuelven los globos', [
+    antesDeB, await G207.leerPasoDelRecorrido('cuenta-a'), await G207.faltaElGlobo('cuenta-a', 'series'), await G207.leerPasoDelRecorrido('cuenta-b'),
+  ], [0, null, false, null]);
+  mem207.set('ascent:guia', JSON.stringify({ uid: 'cuenta-vieja', recorrido: true, globos: ['perfil'] }));
+  chequear('quien la había visto con la clave vieja (una sola para el teléfono) no la vuelve a ver', [await G207.leerPasoDelRecorrido('cuenta-vieja'), await G207.faltaElGlobo('cuenta-vieja', 'perfil')], [null, false]);
+
+  // ---- PEDIR UNIRSE CONTESTA QUÉ PASÓ (migración 73) ----
+  const EV207 = await import('../nucleo/enVivo.ts');
+  chequear('la respuesta de pedir unirse: una base sin la 73 no contesta nada y eso es "salió"', [
+    EV207.leerRespuestaDeUnirse(null), EV207.leerRespuestaDeUnirse(undefined), EV207.leerRespuestaDeUnirse('ok'),
+    EV207.leerRespuestaDeUnirse('ocupado'), EV207.leerRespuestaDeUnirse('ya-unido'), EV207.leerRespuestaDeUnirse('no-entrena'), EV207.leerRespuestaDeUnirse('cualquier cosa'),
+  ], ['ok', 'ok', 'ok', 'ocupado', 'ya-unido', 'no-entrena', 'ok']);
+  const rk207 = de207('movil', 'src', 'Ranking.tsx');
+  chequear('Ranking le dice al que pide por qué no se pudo, en un renglón propio', [
+    /r === 'ocupado' \? T\.social\.unirseOcupado\(e\.username\)/.test(rk207),
+    /r === 'ya-unido' \? T\.social\.unirseYaUnido/.test(rk207),
+    /r === 'no-entrena' \? T\.social\.unirseNoEntrena\(e\.username\)/.test(rk207),
+    /noSePudo\?\.id === e\.id && \(\s*<Text testID="unirse-no-se-pudo"/.test(rk207),
+  ], [true, true, true, true]);
+
+  // ---- LO QUE SOLO SE PUEDE FIJAR LEYENDO: efectos de pantalla ----
+  const nom207 = de207('movil', 'src', 'useNombresDeEjercicios.ts');
+  chequear('los nombres de los ejercicios del compañero miran el error y se vuelven a pedir en cada latido mientras falten', [
+    /if \(error \|\| !data\) return null;/.test(nom207),
+    /if \(!hacenFalta \|\| tengo\) return;/.test(nom207) && /\}, \[hacenFalta, tengo, latido\]\);/.test(nom207),
+    /useNombresDeEjercicios\(hayAceptada, recibidoEn\)/.test(de207('movil', 'src', 'Juntos.tsx')),
+    /useNombresDeEjercicios\(hay, recibidoEn\)/.test(de207('movil', 'src', 'CompaneroEnDescanso.tsx')),
+    /from\('ejercicios'\)/.test(de207('movil', 'src', 'Juntos.tsx')) || /from\('ejercicios'\)/.test(de207('movil', 'src', 'CompaneroEnDescanso.tsx')),
+  ], [true, true, true, true, false]);
+  chequear('"Ver la guía de nuevo" esconde el aviso de novedad: no quedan las dos tarjetas', /eventos\.escuchar\(GUIA_DE_NUEVO, \(\) => setAviso\(null\)\)/.test(de207('movil', 'src', 'AvisoRutina.tsx')), true);
+  chequear('registrar el día sin foto, o iniciando la sesión a mano, le avisa al Álbum', [
+    /if \(r\.registro && !porUbi\) eventos\.emitir\(DIA_CAMBIO\);/.test(de207('compartido', 'useSesion.ts')),
+    /const resultado = data as ResultadoRegistro;\s*eventos\.emitir\(DIA_CAMBIO\);/.test(de207('movil', 'src', 'RegistrarDia.tsx')),
+    /eventos\.escuchar\(DIA_CAMBIO, marcar\)/.test(de207('movil', 'src', 'Album.tsx')),
+  ], [true, true, true]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

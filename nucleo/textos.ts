@@ -1334,6 +1334,10 @@ export const T = {
     // ENTRENAR CON OTRO (12/10), de a dos: ejercicio, serie y descanso.
     juntos: 'Entrenando contigo',
     unirse: 'Unirse',
+    // Lo que contesta la base cuando no se pudo (migración 73). Es de a dos.
+    unirseOcupado: (nombre: string) => `${nombre} ya está entrenando con alguien.`,
+    unirseYaUnido: 'Ya estás entrenando con alguien. Sal de ese entrenamiento para unirte a otro.',
+    unirseNoEntrena: (nombre: string) => `${nombre} ya no está entrenando.`,
     quiereUnirse: (nombre: string) => `${nombre} quiere unirse a tu entrenamiento`,
     esperandoA: (nombre: string) => `Esperando a ${nombre}`,
     salirDeUnion: 'Salir',

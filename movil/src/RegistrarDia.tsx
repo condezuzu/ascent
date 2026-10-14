@@ -12,6 +12,8 @@ import { T } from '@nucleo/textos';
 import { subirFotoDelDia } from '@compartido/foto';
 import { anotarElDia } from '@compartido/anotarDia';
 import { useEnVuelo } from '@compartido/useEnVuelo';
+import { eventos } from '@compartido/eventos';
+import { DIA_CAMBIO } from '@compartido/gimnasio';
 import { prepararFoto, prepararMiniatura } from './foto';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
@@ -147,6 +149,8 @@ function RegistrarDia({
       return setAviso(textoDeBloqueo(data.hasta));
     }
     const resultado = data as ResultadoRegistro;
+    // Sin foto no sale FOTOS_CAMBIO: el Álbum se entera por acá de que el día entró.
+    eventos.emitir(DIA_CAMBIO);
     // `racha` es la que se veía al abrir la hoja: la de antes de registrar.
     const subio = subidaDeRango(racha, resultado.racha) !== null;
     setSubioAca(subio);

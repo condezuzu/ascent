@@ -1,6 +1,6 @@
 import type { Cliente } from '@cliente';
 import { disponible } from '@nucleo/esquema';
-import { leerUniones, type LoPublicado, type Union } from '@nucleo/enVivo';
+import { leerRespuestaDeUnirse, leerUniones, type LoPublicado, type RespuestaDeUnirse, type Union } from '@nucleo/enVivo';
 import { versionDelEsquema } from '@compartido/esquema';
 
 /**
@@ -26,9 +26,10 @@ export async function traerUniones(supabase: Cliente): Promise<Uniones | null> {
   return { uniones: leerUniones(data), recibidoEn: Date.now() };
 }
 
-export async function pedirUnirse(supabase: Cliente, aQuien: string): Promise<boolean> {
-  if (!disponible('entrenarConOtro', await version(supabase))) return false;
-  return !(await supabase.rpc('pedir_unirse', { p_a: aQuien })).error;
+export async function pedirUnirse(supabase: Cliente, aQuien: string): Promise<RespuestaDeUnirse> {
+  if (!disponible('entrenarConOtro', await version(supabase))) return 'fallo';
+  const { data, error } = await supabase.rpc('pedir_unirse', { p_a: aQuien });
+  return error ? 'fallo' : leerRespuestaDeUnirse(data);
 }
 
 export async function responderUnion(supabase: Cliente, id: string, acepta: boolean): Promise<boolean> {

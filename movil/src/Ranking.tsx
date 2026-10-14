@@ -92,6 +92,18 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const [activa, setActiva] = useState(false);
   useEffect(() => eventos.escuchar(PESTANA_ACTIVA, (cual) => setActiva(cual === 'ranking')), []);
   const juntos = useUniones(activa);
+  // Por qué no se pudo pedir unirse, al lado de quién. Se va al salir de la pestaña.
+  const [noSePudo, setNoSePudo] = useState<{ id: string; texto: string } | null>(null);
+  useEffect(() => {
+    if (!activa) setNoSePudo(null);
+  }, [activa]);
+  async function unirseA(e: { id: string; username: string }) {
+    const r = await pedirUnirse(supabase, e.id);
+    const texto =
+      r === 'ocupado' ? T.social.unirseOcupado(e.username) : r === 'ya-unido' ? T.social.unirseYaUnido : r === 'no-entrena' ? T.social.unirseNoEntrena(e.username) : null;
+    setNoSePudo(texto ? { id: e.id, texto } : null);
+    juntos.recargar();
+  }
   const conJuntos = disponible('entrenarConOtro', useVersionDelEsquema());
   useEffect(() => {
     if (!activa) return;
@@ -305,7 +317,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               return (
                 // LA FILA YA NO ES UN BOTÓN ENTERO: lleva "Unirse" adentro, y un
                 // botón adentro de otro se come el toque del de adentro.
-                <View style={estilos.fila} key={e.id}>
+                <View style={[estilos.fila, noSePudo?.id === e.id && estilos.filaConAviso]} key={e.id}>
                   <Pressable
                     style={({ pressed }) => [estilos.filaAdentro, pressed && estilos.filaTocada]}
                     onPress={() => router.push(`/perfil/${e.id}`)}
@@ -320,13 +332,19 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                       testID="unirse"
                       style={estilos.unirse}
                       hitSlop={8}
-                      onPress={() => void pedirUnirse(supabase, e.id).then(juntos.recargar)}
+                      onPress={() => void unirseA(e)}
                       accessibilityRole="button"
                     >
                       <Text style={estilos.unirseTexto}>{T.social.unirse}</Text>
                     </Pressable>
                   )}
                   {union?.estado === 'pendiente' && union.laPediYo && <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>}
+                  {/* Renglón propio y a todo el ancho: al lado del nombre no entra. */}
+                  {noSePudo?.id === e.id && (
+                    <Text testID="unirse-no-se-pudo" style={estilos.noSePudo}>
+                      {noSePudo.texto}
+                    </Text>
+                  )}
                 </View>
               );
             })}
@@ -474,6 +492,8 @@ const estilos = StyleSheet.create({
   filaAdentro: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   unirse: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
   unirseTexto: { color: C.tinta, fontSize: 13 },
+  filaConAviso: { flexWrap: 'wrap' },
+  noSePudo: { color: C.sub, fontSize: 13, lineHeight: 18, flexBasis: '100%', paddingTop: 2, paddingBottom: 6 },
   accion: { color: C.claro, fontSize: 14 },
   texto: { color: C.sub, fontSize: 14, marginVertical: 10 },
   botonFantasma: {

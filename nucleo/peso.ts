@@ -47,6 +47,15 @@ export function pesoCorto(kg: number, unidad: Unidad): string {
   return conComa(pesoRedondeado(kg, unidad));
 }
 
+/**
+ * EL PESO AL LADO DEL EJERCICIO, EN LA LISTA. Es el mismo número que el campo
+ * propone al elegirlo (lo más pesado de la última vez), así que se escribe
+ * igual: antes la lista redondeaba a un decimal y 61,25 se leía "61,3".
+ */
+export function pesoEnLaLista(kg: number, unidad: Unidad): string {
+  return `${pesoCorto(kg, unidad)} ${unidad}`;
+}
+
 /** Lo que suma o resta un toque en el campo de peso: el disco chico de cada lado. */
 export function pasoDePeso(unidad: Unidad): number {
   return unidad === 'lb' ? 5 : 2.5;
