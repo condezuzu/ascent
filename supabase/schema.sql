@@ -2137,7 +2137,13 @@ begin
   from (
     select
       f.e, f.s, f.i,
-      pesos_limpios(f.pesos, f.s) as p,
+      -- UN EJERCICIO QUE NO LLEVA PESO NO GUARDA PESOS (migración 74). La plancha
+      -- no muestra el campo, pero el bloque podía llegar con los kilos del
+      -- ejercicio anterior: quedaban guardados sin verse, la app los volvía a
+      -- proponer y el "+" los anotaba en cada serie, sesión tras sesión.
+      case when (select x.admite_peso from ejercicios x where x.id = f.e) is false then null
+           else pesos_limpios(f.pesos, f.s)
+      end as p,
       case when f.carga in ('total', 'par', 'una', 'lastre', 'corporal') then f.carga
            else (select carga from ejercicios where id = f.e)
       end as c
@@ -2252,6 +2258,32 @@ $$;
 
 revoke execute on function public.elegir_carga(text, text) from public, anon;
 grant execute on function public.elegir_carga(text, text) to authenticated;
+
+-- CORREGIR UN DÍA, DE UNA (migración 74). El teléfono lo hacía en dos pedidos
+-- sueltos —borrar el día y volver a ponerlo—: si el primero entraba y el
+-- segundo no (la señal del gimnasio), el día quedaba BORRADO, con su sesión, y
+-- la racha caía en seco. Acá las dos cosas van en una transacción: o entran las
+-- dos, o no pasa nada.
+--
+-- `security invoker` A PROPÓSITO: corre con los permisos de quien llama, así
+-- que valen las mismas reglas y disparadores que cuando lo hacía a mano.
+create or replace function public.corregir_dia(p_fecha date, p_destino text)
+returns void language plpgsql security invoker set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if p_fecha is null or p_destino is null or p_destino not in ('fui', 'descanso', 'nada') then
+    raise exception 'no sé qué hacer con ese día';
+  end if;
+  delete from logs where user_id = uid and fecha = p_fecha;
+  if p_destino <> 'nada' then
+    insert into logs (user_id, fecha, es_descanso) values (uid, p_fecha, p_destino = 'descanso');
+  end if;
+end;
+$$;
+revoke execute on function public.corregir_dia(date, text) from public, anon;
+grant execute on function public.corregir_dia(date, text) to authenticated;
 
 -- -------------------------------------------------------------
 -- CÓMO ARRANCA EL BLOQUE (migración 38): el modo y el último peso EN ESE MODO
@@ -3815,7 +3847,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 73; $$;
+returns int language sql immutable as $$ select 74; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

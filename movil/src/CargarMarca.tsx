@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { guardarMarcaUnaVez } from '@compartido/guardarMarca';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { hoyISO, deISO, MESES } from '@nucleo/fechas';
 import { aKilos, deKilos, type Unidad } from '@nucleo/peso';
@@ -82,8 +83,9 @@ function CargarMarca({
     // lee, igual que el peso corporal: si se guardara en libras, comparar dos
     // cuentas con unidades distintas sería comparar números de cosas
     // distintas, y el ranking de fuerza no tendría sentido.
-    const { error: err } = await supabase.from('prs').insert({
-      user_id: uid,
+    // Mirando antes: si un intento anterior entró y se perdió la respuesta,
+    // reintentar no deja la marca dos veces.
+    const entro = await guardarMarcaUnaVez(supabase, uid, {
       ejercicio,
       peso: Math.round(kg * 100) / 100,
       reps: veces,
@@ -94,7 +96,7 @@ function CargarMarca({
       fecha: hoyISO(),
     });
     setGuardando(false);
-    if (err) return setError(T.general.noSePudo);
+    if (!entro) return setError(T.general.noSePudo);
     alGuardar();
   });
 

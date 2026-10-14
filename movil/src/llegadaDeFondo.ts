@@ -1,9 +1,10 @@
-import { registrarPorSenal } from '@compartido/gimnasio';
+import { anotarLlegadaPendiente, registrarPorSenal } from '@compartido/gimnasio';
 import { anotar } from '@compartido/bitacora';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
 import { VISITA_VENCIDA_MS } from '@nucleo/llegada';
 import { supabase } from './supabase';
-import { miId } from '@compartido/quienSoy';
+import { quienSoy } from '@compartido/quienSoy';
+import { aISO } from '@nucleo/fechas';
 import { alLlegarDeFondo } from './plataforma/ubicacion';
 
 /**
@@ -47,17 +48,18 @@ async function llegue() {
     // cerrar sesión hasta que alguien lo suelte, así que este despertar puede
     // caer sin usuario: pedir el RPC ahí es un 401 y una línea de error en la
     // caja negra por algo que es normal.
-    if (!(await miId(supabase))) return;
+    //
+    // "SIN SESIÓN" Y "NO PUDE SABER" NO SON LO MISMO (13/10). Con el token
+    // vencido y sin datos, preguntar quién soy falla; antes eso se tomaba por
+    // "no hay nadie" y se salía sin dejar rastro: ni día, ni visita, ni una
+    // línea en la bitácora.
+    const yo = await quienSoy(supabase);
+    if (yo.estado === 'sin') return;
 
-    const r = await registrarPorSenal(supabase, 'ubicacion');
-    await anotar('llegué (app cerrada): registré el día', {
-      entró: r.registrado,
-      yaEstaba: r.yaEstaba,
-    });
-
-    // LA VISITA, para que la sesión pueda arrancar fechada en la llegada.
-    // Una visita de hace horas es otra visita (el bug del 15/9, en
-    // `nucleo/llegada.ts`): si la guardada está vencida se empieza de cero.
+    // LA VISITA PRIMERO, que no necesita red: para que la sesión pueda arrancar
+    // fechada en la llegada. Una visita de hace horas es otra visita (el bug
+    // del 15/9, en `nucleo/llegada.ts`): si la guardada está vencida se
+    // empieza de cero.
     const v = await leerVigilancia();
     const sigueSiendoEsta = v && ahora - v.ultimoAdentro <= VISITA_VENCIDA_MS;
     await guardarVigilancia(
@@ -65,6 +67,18 @@ async function llegue() {
         ? { ...v, ultimoAdentro: ahora }
         : { desde: ahora, ultimoAdentro: ahora, arranco: false }
     );
+
+    // EL DÍA. Si no entró —sin datos en la puerta— queda pendiente y lo
+    // reintenta el vigilante la próxima vez que la app esté abierta.
+    const dia = aISO(new Date(ahora));
+    const r = yo.estado === 'con' ? await registrarPorSenal(supabase, 'ubicacion') : { registrado: false, yaEstaba: false };
+    const entro = r.registrado || r.yaEstaba;
+    if (!entro) await anotarLlegadaPendiente(dia);
+    await anotar('llegué (app cerrada): registré el día', {
+      entró: r.registrado,
+      yaEstaba: r.yaEstaba,
+      quedóPendiente: !entro,
+    });
   } catch (e) {
     // NO PUEDE TIRAR. Lo que esto devuelve es lo que iOS usa para saber que
     // puede dormir a la app; una promesa rechazada acá es una tarea en segundo

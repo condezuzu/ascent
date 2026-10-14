@@ -79,22 +79,45 @@ camino se anota abajo, en "Después", y no se mete.
 
 ### EL ORDEN, desde el 13/10/2026 (reemplaza al orden de las tandas de abajo)
 
-1. ~~Probar la pantalla del descanso en el teléfono (`telefono`).~~ Hecho.
-2. ~~`store` al día.~~ **Hecho el 13/10:** OTA desde `e5928a8`, grupo
-   `24aa0f9e-4a97-461b-a234-4b13d2711ed8`. Qué se probó antes y cómo:
-   `spec/prueba-antes-de-store.md`.
-3. **El refactor del estado del entrenamiento** —un solo dueño del dato— y,
-   encima, **el multijugador completo**: grupos, tiempo real y sin el parpadeo.
-   **Al arrancar este punto, recordarle al humano el dominio** (ver punto 6).
-4. **El resto de los hallazgos** de la cacería del 12/10.
-5. **El selector de ejercicio y la guía** (ver "tres personas se trabaron").
-6. **La build 8, al final de todo.** Primero se publica todo por OTA y recién
+Decidido por el humano el 13/10, después de la cacería de ese día. **La regla
+que lo ordena: antes de agregar nada nuevo, la app no puede perder lo que la
+gente ya hizo.** En una app de racha, perder un día es lo peor que puede pasar.
+
+1. **Cerrar la cacería del 13/10.** Regla: no se arregla nada que no esté
+   reproducido. Hecho: los que seguían vivos de la anterior, la migración 73
+   (el vínculo sigue a la sesión y es de a dos) y **los 13 que rompían datos**
+   (casi todos de señal mala; migración 74). Detalle local:
+   `spec/caza-2026-10-13-detalle.md`. Quedan sin tocar los "se ve feo" y los
+   teóricos no verificados.
+2. **La rutina como algo propio** (decidido el 13/10, hacerla tal cual):
+   - una tabla propia: por cuenta y por día de la semana, los ejercicios con
+     sus series. Nunca pesos;
+   - paso 1, SIN migración: mirarla, plegada por día ("Lunes — Pecho, hombro y
+     brazo"; los grupos salen del catálogo), en Stats → Entrenamiento, en el
+     perfil propio y en el de un amigo. Mientras no se edite, se llena con lo
+     deducido del historial. Arregla que hoy nadie ve su propia rutina (la
+     función la devuelve; `PerfilPropio` nunca la pide);
+   - paso 2: editarla desde Stats (con migración);
+   - paso 3: copiar y pegar un día propio a otro, y la rutina de un amigo. Si
+     el destino ya tiene ejercicios, PREGUNTA "reemplazar" o "agregar al
+     final". La copiada de otro es una copia libre, sin atadura;
+   - paso 4: que la sesión arranque desde la rutina del día.
+3. **El aviso fuera de la app** cuando alguien quiere unirse. Va por OTA
+   (comprobado en `telefono` y en la build 7 de tienda): falta pedir el token,
+   la tabla de tokens, y algo que mande.
+4. **El refactor del estado del entrenamiento** —un solo dueño del dato—.
+   **Al arrancar este punto, recordarle al humano el dominio** (ver punto 7).
+5. **El multijugador completo**: grupos de verdad, tiempo real, sin el parpadeo.
+6. **El selector de ejercicio y la guía corta** (ver "tres personas se trabaron").
+7. **La build 8, al final de todo.** Primero se publica todo por OTA y recién
    ahí se compila, con todo lo nativo junto: una sola revisión de Apple y una
    actualización completa. La rama `build-8-nativo` queda como está y no se
    compila. **El widget de la pantalla bloqueada SÍ entra** (decidido el
    13/10): se prepara en la rama cuando llegue el momento, no antes.
    **El dominio es lo único que no puede esperar al final:** queda compilado
    adentro de la build, así que se decide antes.
+
+**Las medallas por pasos NO se hacen** (decidido el 13/10): ver abajo.
 
 Las letras del plan viejo (de la A a la I) ya no se usan: cada cosa va con su
 nombre. La que era "H" es el refactor del estado del entrenamiento.
@@ -288,12 +311,14 @@ una sola cosa:
     revisa, la pregunta no es "¿anotamos repeticiones?" sino "¿hay forma de
     anotarlas sin agregar un toque obligatorio?" (por ejemplo, una sola vez
     por bloque y optativa).
-- **Anotado, ÚLTIMO en prioridad: un logro por llegar a los pasos varios días
-  seguidos.** Los pasos se leen de Salud en el teléfono y no están en la base.
-  - *Solo para uno* (una racha de pasos en Inicio o en Stats, calculada en el
-    teléfono con el historial de Salud): chico a medio, solo OTA.
-  - *Que la vean los amigos*, como las medallas: medio, con migración, y es
-    subir a la base un dato de salud que hoy no sale del teléfono.
+- **LOS PASOS NO SALEN DEL TELÉFONO (decidido por el humano el 13/10/2026).**
+  No se hacen medallas por pasos que vean los amigos: subir pasos a la base es
+  subir un dato de salud de 46 personas, con lo que eso implica con Apple y con
+  la privacidad de la gente. **Si alguna vez se hace algo con pasos, se
+  calcula en el teléfono y no sale de ahí.**
+  - Lo único que sigue siendo posible, sin prioridad: *solo para uno* (una
+    racha de pasos en Inicio o en Stats, calculada en el teléfono con el
+    historial de Salud): chico a medio, solo OTA.
   - A decidir antes: si cambiar la meta reescribe los días ya cumplidos
     (regla 3 del proyecto: el pasado no se reescribe).
 - **Anotado: dominio propio para el link de invitación** (hoy

@@ -50,6 +50,8 @@ export const REQUIERE = {
   entrenarConOtro: 67,
   /** "Avisar cuando entreno" nace prendido: recién ahí tiene sentido avisarlo. */
   avisoDeEntrenoPrendido: 68,
+  /** Corregir un día en una sola transacción, en vez de borrar y volver a poner. */
+  corregirDiaDeUna: 74,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

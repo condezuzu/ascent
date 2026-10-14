@@ -772,6 +772,37 @@ no hay "sigo acá" posible; lo único que hay es la última serie. La primera
 versión de la 72 pedía esa señal y habría borrado de la lista a quien entrena
 con el teléfono en el bolsillo; la frenó el humano antes de pegarla.
 
+**La base juzga la sesión con lo que le llegó, y el teléfono le preguntaba con
+cosas sin subir (13/10/2026).** Cuatro bugs de señal mala eran el mismo:
+preguntar si la sesión sigue viva (`mi_sesion`), abrir Stats
+(`resumen_sesiones`), iniciar otra o adoptar la que devuelve la base, todo con
+series de esa sesión todavía en la cola. La base cerraba en el minuto 3 un
+entrenamiento de 47, o devolvía un conteo viejo que el toque siguiente daba por
+bueno. `terminar` ya lo miraba desde el 15/9; los demás no.
+→ **Regla:** mientras `quedaDeLaSesion(id)` (`compartido/cola.ts`) diga que hay
+escrituras de una sesión sin subir, no se le pregunta a la base nada que la
+haga juzgar esa sesión, ni se adopta lo que conteste de ella. `test:db` (208)
+corre el hook de verdad en cada caso, y falla si algún archivo de la app llama
+a `mi_sesion` o `resumen_sesiones` sin esa guarda al lado.
+
+**No saber no es lo mismo que no haber (13/10/2026).** Una lectura que falla
+por la señal volvía vacía y se tomaba por "no hay": la hoja de un día entrenado
+decía "Sin registrar" y ofrecía el botón que lo borraba de verdad; el despertar
+al llegar al gimnasio tomaba "no pude saber quién soy" por "no hay sesión" y no
+dejaba ni rastro.
+→ **Regla:** de cada lectura que decide algo se mira el `error`. Si falló, no
+hay respuesta: no se arma un resumen, no se ofrece corregir, y lo que había
+que hacer queda pendiente para reintentarlo (`reintentarLlegadaPendiente`).
+
+**La respuesta que se pierde no es un "no entró" (13/10/2026).** Sin señal una
+escritura puede llegar y su respuesta no: la app dice "no se guardó", se toca
+de nuevo, y quedaban dos marcas de fuerza iguales o dos fotos del mismo día.
+→ **Regla:** toda escritura que se puede reintentar tiene que poder repetirse
+sin duplicar: o es idempotente (un nombre de archivo que no cambia entre
+intentos, `upsert`), o mira antes si ya está (`guardarMarcaUnaVez`). Y lo que
+son dos pedidos que tienen que entrar juntos va en UNA función de la base
+(`corregir_dia`), no en dos viajes.
+
 ---
 
 ## Lo que solo se ve mirando

@@ -24,6 +24,7 @@ export async function subirFotoDelDia(
     logId,
     visible,
     subioRango,
+    sello,
   }: {
     datos: Blob | ArrayBuffer | Uint8Array;
     /** La misma foto a 400 px (`rutaDeMiniatura`). Si no viene o no sube, se hace después. */
@@ -32,6 +33,14 @@ export async function subirFotoDelDia(
     logId: string | null;
     visible: boolean;
     subioRango: boolean;
+    /**
+     * CUÁNDO SE ELIGIÓ LA FOTO: es lo que le da nombre al archivo. Lo fija la
+     * hoja al elegirla y lo manda igual en cada intento, así reintentar es
+     * volver a subir LA MISMA foto y no otra. Sin él, el nombre salía de la hora
+     * de cada intento: si el primero había entrado y se perdió la respuesta, el
+     * segundo dejaba dos fotos iguales en el álbum (13/10).
+     */
+    sello?: number;
   }
 ): Promise<'ok' | 'sin-sesion' | 'no-subio'> {
   // El id sale de la sesión guardada, sin viaje: la RLS es la que cuida la
@@ -39,8 +48,9 @@ export async function subirFotoDelDia(
   // intentar nada.
   const uid = await miId(supabase);
   if (!uid) return 'sin-sesion';
-  const ruta = rutaDeFoto(uid, dia, Date.now());
-  const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, datos, { contentType: 'image/jpeg' });
+  const ruta = rutaDeFoto(uid, dia, sello ?? Date.now());
+  // `upsert`: el reintento pisa el archivo del intento anterior en vez de chocar con él.
+  const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, datos, { contentType: 'image/jpeg', upsert: true });
   if (errSubida) return 'no-subio';
   // LA MINIATURA NO FRENA LA FOTO: si no sube, el álbum la genera la primera
   // vez que la muestra (`completarMiniaturas`).
@@ -49,6 +59,13 @@ export async function subirFotoDelDia(
       .from('fotos')
       .upload(rutaDeMiniatura(ruta), miniatura, { contentType: 'image/jpeg', upsert: true })
       .catch(() => null);
+  }
+  // ¿La fila ya entró en un intento anterior? Entonces ya está: no se anota dos veces.
+  const { data: ya, error: eMirar } = await supabase.from('photos').select('id').eq('storage_path', ruta).limit(1);
+  if (eMirar) return 'no-subio';
+  if (ya && ya.length > 0) {
+    eventos.emitir(FOTOS_CAMBIO);
+    return 'ok';
   }
   const { error } = await supabase.from('photos').insert({
     user_id: uid,

@@ -4,6 +4,7 @@ import {
   mirarElGimnasio,
   PUNTO_CAMBIO,
   registrarPorSenal,
+  reintentarLlegadaPendiente,
   SUBIO_RANGO,
 } from '@compartido/gimnasio';
 import { decidir, sinDesmarcar } from '@nucleo/llegada';
@@ -102,6 +103,12 @@ function Mirando({ perfil }: { perfil: Perfil }) {
   const diaRegistrado = useRef<string | null>(null);
 
   const mirarYActuar = useCallback(async (perfilAhora: Perfil) => {
+    // UNA LLEGADA QUE NO SE PUDO REGISTRAR con la app cerrada se reintenta acá,
+    // estés donde estés: ver `reintentarLlegadaPendiente`. Sin pendiente es una
+    // lectura del teléfono y nada más.
+    const pendiente = await reintentarLlegadaPendiente(supabase, hoyISO()).catch(() => 'nada' as const);
+    if (pendiente !== 'nada') await anotar('llegada pendiente', { resultado: pendiente });
+    if (pendiente === 'entro') eventos.emitir(DIA_CAMBIO);
     const s = sesionRef.current;
     const vigilancia = await leerVigilancia();
 

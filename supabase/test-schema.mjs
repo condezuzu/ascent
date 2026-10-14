@@ -9554,7 +9554,7 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
   // SIN SESION NO SE PREGUNTA NADA: la zona sigue registrada despues de
   // cerrar sesion hasta que alguien la suelte, y ese despertar sin usuario es
   // normal, no un error.
-  chequear('sin cuenta abierta no se pide nada', /if \(!\(await miId\(supabase\)\)\) return;/.test(fondo137), true);
+  chequear('sin cuenta abierta no se pide nada', /const yo = await quienSoy\(supabase\);\s*if \(yo\.estado === 'sin'\) return;/.test(fondo137), true);
   // EN EL CUERPO DEL MODULO Y NO EN UN EFECTO: en ese despertar no se dibuja
   // nada, asi que lo unico que corre seguro es la evaluacion del bundle.
   chequear('el gancho se pone al importar, no al montar', /^alLlegarDeFondo\(llegue\);$/m.test(fondo137), true);
@@ -14214,7 +14214,10 @@ console.log('\n185. Web: una foto que no subió no cierra la hoja como si hubier
       }),
     },
     storage: { from: () => ({ upload: async () => ({ error: errorSubida }) }) },
-    from: () => ({ insert: async () => ({ error: errorFila }) }),
+    from: () => {
+      const q = { select: () => q, eq: () => q, limit: () => q, insert: async () => ({ error: errorFila }), then: (a, b) => Promise.resolve({ data: [], error: null }).then(a, b) };
+      return q;
+    },
   });
   const subir185 = (base) => FO.subirFotoDelDia(base, { datos: new Uint8Array(4), dia: '2026-10-04', logId: 'l1', visible: false, subioRango: false });
   chequear('lo que devuelve la subida: bien, sin conexión, archivo que no sube, fila que no entra', [
@@ -15412,13 +15415,21 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
       }),
     },
     auth: { getSession: async () => ({ data: { session: { user: { id: 'uid-1' } } }, error: null }) },
-    from: () => ({
-      insert: async (fila) => {
-        pedidos.push(['fila', fila.storage_path]);
-        return { error: null };
-      },
-      delete: () => ({ eq: async () => ({ error: null }) }),
-    }),
+    from: () => {
+      // Leer `photos` no cuenta como pedido: la subida mira si la fila ya está antes de anotarla.
+      const q = {
+        select: () => q,
+        eq: () => q,
+        limit: () => q,
+        then: (a, b) => Promise.resolve({ data: [], error: null }).then(a, b),
+        insert: async (fila) => {
+          pedidos.push(['fila', fila.storage_path]);
+          return { error: null };
+        },
+        delete: () => ({ eq: async () => ({ error: null }) }),
+      };
+      return q;
+    },
   });
   let fallaLaMiniatura = false;
   const A196 = await import('../compartido/album.ts');
@@ -17068,6 +17079,209 @@ console.log('\n210. El vigilante no prende una sesión que nadie pidió');
     term210.indexOf('await guardarVigilancia(marcarComoUsada(await leerVigilancia()));') < term210.indexOf('borrarSesionCache(yo);'),
     (term210.match(/guardarVigilancia\(/g) ?? []).length,
   ], [true, true, 1]);
+}
+
+console.log('\n211. Señal mala: la respuesta que se pierde no duplica, y lo que no entró se reintenta');
+{
+  const { readFileSync: leer211 } = await import('node:fs');
+  const RAIZ211 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de211 = (...p) => leer211(join(RAIZ211, ...p), 'utf8').replace(/\r\n/g, '\n');
+  const { memoria: mem211 } = await import('./dobles/plataforma.mjs');
+
+  // UNA BASE DE MENTIRA DONDE LA ESCRITURA PUEDE LLEGAR Y LA RESPUESTA PERDERSE,
+  // que es lo que pasa en un subsuelo: `pierde` es la lista de respuestas que no vuelven.
+  const baseConPerdidas = (uid) => {
+    const b = { filas: { prs: [], photos: [] }, archivos: [], llamadas: [], pierde: [], falla: [] };
+    const red = { message: 'Network request failed' };
+    b.cliente = {
+      auth: { getSession: async () => ({ data: { session: { user: { id: uid } } }, error: null }) },
+      rpc: async (nombre, args) => {
+        b.llamadas.push([nombre, args ?? null]);
+        if (b.falla.includes(nombre)) return { data: null, error: red };
+        if (nombre === 'registrar_dia') return b.yaEstaElDia ? { data: null, error: { code: '23505', message: 'ya estaba' } } : { data: { bloqueado: false }, error: null };
+        return { data: null, error: null };
+      },
+      from: (tabla) => {
+        const filtros = {};
+        const q = {
+          select: () => q,
+          eq: (c, v) => { filtros[c] = v; return q; },
+          limit: () => q,
+          insert: async (fila) => {
+            if (b.falla.includes(tabla)) return { error: red };
+            b.filas[tabla].push(fila);
+            if (b.pierde.includes(tabla)) { b.pierde.splice(b.pierde.indexOf(tabla), 1); return { error: red }; }
+            return { error: null };
+          },
+          then: (a, c) => Promise.resolve(b.falla.includes('leer:' + tabla) ? { data: null, error: red } : { data: b.filas[tabla].filter((x) => Object.entries(filtros).every(([k, v]) => x[k] === v)), error: null }).then(a, c),
+        };
+        return q;
+      },
+      storage: { from: () => ({ upload: async (ruta, _datos, opciones) => { b.archivos.push([ruta, !!opciones?.upsert]); return { error: null }; } }) },
+    };
+    return b;
+  };
+
+  // ---- LA MARCA DE FUERZA: reintentar no la deja dos veces ----
+  const GM = await import('../compartido/guardarMarca.ts');
+  const fila211 = { ejercicio: 'press_banca', peso: 100, reps: 3, es_real: false, fecha: '2026-10-13' };
+  const m = baseConPerdidas('yo');
+  m.pierde.push('prs');
+  const primero = await GM.guardarMarcaUnaVez(m.cliente, 'yo', fila211);
+  const segundo = await GM.guardarMarcaUnaVez(m.cliente, 'yo', fila211);
+  chequear('la marca entró pero la respuesta se perdió ("no se guardó"); al reintentar da por buena la que ya está: queda UNA', [primero, segundo, m.filas.prs.length], [false, true, 1]);
+  m.falla.push('leer:prs');
+  chequear('y si no se puede mirar, no se inserta a ciegas', [await GM.guardarMarcaUnaVez(m.cliente, 'yo', { ...fila211, peso: 105 }), m.filas.prs.length], [false, 1]);
+  const cargar211 = de211('movil', 'src', 'CargarMarca.tsx');
+  chequear('anotar una marca a mano pasa por la misma función, sin insertar por su cuenta', [/await guardarMarcaUnaVez\(supabase, uid, \{/.test(cargar211), /from\('prs'\)\.insert/.test(cargar211)], [true, false]);
+
+  // ---- "¿LO GUARDO COMO MARCA?" QUE NO SE GUARDÓ SE VUELVE A OFRECER ----
+  GM.preguntadasDe('sesion-211');
+  const antes211 = GM.anotarPreguntada('press_banca', 100);
+  const preguntada = GM.yaSePregunto('press_banca', 100);
+  GM.deshacerPreguntada('press_banca', antes211);
+  GM.anotarPreguntada('sentadilla', 80);
+  const antesDeLos100 = GM.anotarPreguntada('sentadilla', 100);
+  GM.deshacerPreguntada('sentadilla', antesDeLos100);
+  chequear('lo preguntado que no se pudo guardar vuelve a estar SIN preguntar (el resumen del final lo ofrece); lo de antes sigue preguntado', [
+    preguntada, GM.yaSePregunto('press_banca', 100), GM.yaSePregunto('sentadilla', 100), GM.yaSePregunto('sentadilla', 80),
+  ], [true, false, false, true]);
+  GM.preguntadasDe('sesion-212');
+  chequear('y otra sesión arranca sin nada preguntado', GM.yaSePregunto('sentadilla', 80), false);
+  const ms211 = de211('compartido', 'marcaSugerida.ts');
+  chequear('el hook lo deshace cuando guardar falla, y un segundo toque no guarda dos veces', [
+    /if \(!ok\) deshacerPreguntada\(actual\.ejercicio, antesDePreguntar\.current\);/.test(ms211),
+    /if \(!actual \|\| guardando\.current\) return;\s*guardando\.current = true;/.test(ms211),
+    /if \(enVuelo\.current\.has\(s\.ejercicio\)\) return;\s*enVuelo\.current\.add\(s\.ejercicio\);/.test(ms211),
+    /\.filter\(\(s\) => !yaSePregunto\(s\.ejercicio, s\.peso\)\)/.test(ms211),
+  ], [true, true, true, true]);
+
+  // ---- LA FOTO DEL DÍA: reintentar sube LA MISMA, no otra ----
+  const FO = await import('../compartido/foto.ts');
+  const p = baseConPerdidas('yo');
+  p.pierde.push('photos');
+  const foto211 = { datos: new Uint8Array([1, 2, 3]), dia: '2026-10-13', logId: 'log-1', visible: false, subioRango: false, sello: 1_800_000_000_000 };
+  const subida1 = await FO.subirFotoDelDia(p.cliente, foto211);
+  const subida2 = await FO.subirFotoDelDia(p.cliente, foto211);
+  chequear('la foto entró y la respuesta se perdió; al tocar Guardar de nuevo queda UNA foto, en el mismo archivo', [
+    subida1, subida2, p.filas.photos.length, [...new Set(p.archivos.map((a) => a[0]))].length, p.archivos.every((a) => a[1]),
+  ], ['no-subio', 'ok', 1, 1, true]);
+  const reg211 = de211('movil', 'src', 'RegistrarDia.tsx');
+  chequear('la hoja fija el sello al ELEGIR la foto y manda el mismo en cada intento', [
+    /selloDeFoto\.current = Date\.now\(\);\s*setFoto\(/.test(reg211),
+    /subioRango, sello: selloDeFoto\.current \|\| undefined \}\)/.test(reg211),
+  ], [true, true]);
+
+  // ---- LLEGAR CON LA APP CERRADA Y SIN DATOS: queda pendiente y se reintenta ----
+  const GI = await import('../compartido/gimnasio.ts');
+  const CLAVE211 = GI.CLAVE_LLEGADA_PENDIENTE;
+  mem211.delete(CLAVE211);
+  const g = baseConPerdidas('yo');
+  const nada = await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13');
+  await GI.anotarLlegadaPendiente('2026-10-13');
+  g.falla.push('verificar_perdida');
+  const sinSenal = [await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13'), mem211.get(CLAVE211) ?? null];
+  g.falla.length = 0;
+  g.llamadas.length = 0;
+  const conSenal = [await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13'), mem211.get(CLAVE211) ?? null, g.llamadas.filter((l) => l[0] === 'registrar_dia').map((l) => l[1].p_origen)];
+  chequear('sin pendiente no se llama a nada; con pendiente y sin señal sigue pendiente; con señal el día entra (por ubicación) y el pendiente se va', [nada, sinSenal, conSenal], ['nada', ['sigue', '2026-10-13'], ['entro', null, ['ubicacion']]]);
+  await GI.anotarLlegadaPendiente('2026-10-12');
+  g.llamadas.length = 0;
+  chequear('una llegada de AYER no registra el día de hoy: se tira sin llamar a la base', [await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13'), mem211.get(CLAVE211) ?? null, g.llamadas.length], ['vencio', null, 0]);
+  await GI.anotarLlegadaPendiente('2026-10-13');
+  g.yaEstaElDia = true;
+  chequear('y si el día ya había entrado por otro lado, el pendiente se va sin festejar nada', [await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13'), mem211.get(CLAVE211) ?? null], ['nada', null]);
+  const fondo211 = de211('movil', 'src', 'llegadaDeFondo.ts');
+  const vig211 = de211('movil', 'src', 'VigilanteDeGimnasio.tsx');
+  chequear('el despertar distingue "sin sesión" de "no pude saber", guarda la visita ANTES de los viajes y deja el pendiente si el día no entró', [
+    /const yo = await quienSoy\(supabase\);\s*if \(yo\.estado === 'sin'\) return;/.test(fondo211),
+    fondo211.indexOf('await guardarVigilancia(') > 0 && fondo211.indexOf('await guardarVigilancia(') < fondo211.indexOf("await registrarPorSenal(supabase, 'ubicacion')"),
+    /if \(!entro\) await anotarLlegadaPendiente\(dia\);/.test(fondo211),
+    /await miId\(supabase\)/.test(fondo211),
+  ], [true, true, true, false]);
+  chequear('y el vigilante lo reintenta en cada mirada, esté donde esté', /const mirarYActuar = useCallback\(async \(perfilAhora: Perfil\) => \{[\s\S]{0,400}?await reintentarLlegadaPendiente\(supabase, hoyISO\(\)\)/.test(vig211), true);
+}
+
+console.log('\n212. Migración 74: corregir un día de una, y los ejercicios sin peso no guardan pesos');
+{
+  // ---- CORREGIR UN DÍA: O ENTRAN LAS DOS COSAS, O NO PASA NADA ----
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const log = (await db.query('insert into logs (user_id, fecha) values ($1, mi_hoy() - 2) returning id, fecha', [u])).rows[0];
+  await db.query(`insert into sesiones (user_id, log_id, inicio, fin, estado, series) values ($1, $2, now() - interval '2 days', now() - interval '2 days' + interval '1 hour', 'terminada', 9)`, [u, log.id]);
+  const loQueHay = async () => {
+    const l = (await db.query('select es_descanso from logs where user_id = $1 and fecha = $2', [u, log.fecha])).rows;
+    const s = (await db.query('select count(*)::int as n from sesiones where user_id = $1', [u])).rows[0].n;
+    return [l.length ? (l[0].es_descanso ? 'descanso' : 'fui') : 'nada', s];
+  };
+  // LA SEÑAL SE CORTA EN EL MEDIO: el día se borró y volver a ponerlo falla.
+  await db.exec(`
+    create function public.prueba_se_corta() returns trigger language plpgsql as $f$ begin raise exception 'se cortó la señal'; end $f$;
+    create trigger prueba_se_corta before insert on public.logs for each row execute function public.prueba_se_corta();
+  `);
+  const cortado = await db.query("select corregir_dia($1, 'descanso')", [log.fecha]).then(() => 'entró', (e) => String(e.message));
+  await db.exec('drop trigger prueba_se_corta on public.logs; drop function public.prueba_se_corta();');
+  chequear('si volver a poner el día falla, el día NO queda borrado: sigue entrenado, con su sesión', [cortado, await loQueHay()], ['se cortó la señal', ['fui', 1]]);
+  await db.query("select corregir_dia($1, 'descanso')", [log.fecha]);
+  const comoDescanso = await loQueHay();
+  await db.query("select corregir_dia($1, 'nada')", [log.fecha]);
+  chequear('con señal: pasa a descanso (la sesión se va, como siempre que se saca el "fui"), y después a nada', [comoDescanso, await loQueHay()], [['descanso', 0], ['nada', 0]]);
+  chequear('un destino que no existe no borra nada', [
+    await db.query("select corregir_dia($1, 'fui')", [log.fecha]).then(() => 'ok'),
+    await db.query("select corregir_dia($1, 'cualquiera')", [log.fecha]).then(() => 'entró', () => 'se niega'),
+    await loQueHay(),
+  ], ['ok', 'se niega', ['fui', 0]]);
+  chequear('corre con los permisos de quien llama (las mismas reglas que a mano) y no la puede llamar un anónimo', (await db.query(`
+    select p.prosecdef as definer, has_function_privilege('anon', p.oid, 'execute') as anon, has_function_privilege('authenticated', p.oid, 'execute') as entra
+      from pg_proc p where p.proname = 'corregir_dia'`)).rows[0], { definer: false, anon: false, entra: true });
+
+  // ---- EL TELÉFONO LA USA SI LA BASE LA TIENE ----
+  const E212 = await import('../compartido/esquema.ts');
+  const D212 = await import('../compartido/dia.ts');
+  let reloj212 = Date.now() + E212.VIGENCIA_MS * 5000;
+  const baseEn = async (version, fallaLaFuncion = false) => {
+    const hecho = [];
+    const b = {
+      hecho,
+      rpc: async (nombre, args) => {
+        if (nombre === 'version_del_esquema') return { data: version, error: null };
+        hecho.push([nombre, args?.p_destino ?? null]);
+        return { data: null, error: nombre === 'corregir_dia' && fallaLaFuncion ? { message: 'Network request failed' } : null };
+      },
+      from: (tabla) => {
+        const q = { eq: () => q, then: (a, c) => Promise.resolve({ error: null }).then(a, c) };
+        return { delete: () => { hecho.push(['borrar ' + tabla]); return q; }, insert: async () => { hecho.push(['poner ' + tabla]); return { error: null }; } };
+      },
+    };
+    reloj212 += E212.VIGENCIA_MS * 3;
+    await E212.versionDelEsquema(b, reloj212);
+    await new Promise((r) => setTimeout(r, 20));
+    hecho.length = 0;
+    return b;
+  };
+  const b74 = await baseEn(74);
+  const r74 = await D212.corregirDia(b74, 'uid', '2020-01-01', 'descanso');
+  const bCae = await baseEn(74, true);
+  const rCae = await D212.corregirDia(bCae, 'uid', '2020-01-01', 'descanso');
+  const b73 = await baseEn(73);
+  await D212.corregirDia(b73, 'uid', '2020-01-01', 'descanso');
+  chequear('con la base en 74, corregir es UN pedido; si falla no cambió nada; con una base anterior siguen siendo los dos de antes', [
+    [r74.cambio, b74.hecho], [rCae.cambio, rCae.error !== null, bCae.hecho], b73.hecho,
+  ], [[true, [['corregir_dia', 'descanso']]], [false, true, [['corregir_dia', 'descanso']]], [['borrar logs'], ['poner logs']]]);
+
+  // ---- UN EJERCICIO QUE NO LLEVA PESO NO GUARDA PESOS ----
+  const sinPeso = (await db.query('select id from ejercicios where not admite_peso order by id limit 1')).rows[0].id;
+  const v = await nuevoUsuario();
+  await comoUsuario(v);
+  const ses = (await db.query('select iniciar_sesion() as s')).rows[0].s;
+  await db.query('select fijar_series($1, 4)', [ses.id]);
+  const guardado = (await db.query('select fijar_bloques($1, $2::jsonb) as b', [ses.id, JSON.stringify([
+    { ejercicio: sinPeso, series: 2, pesos: [20, 20], carga: 'total' },
+    { ejercicio: 'press_banca', series: 2, pesos: [60, 62.5], carga: 'total' },
+  ])])).rows[0].b.bloques;
+  chequear('los kilos que llegan pegados a un ejercicio sin peso no se guardan; los del que sí lleva, sí', [
+    'pesos' in guardado[0], guardado[0].series, guardado[1].pesos.map(Number),
+  ], [false, 2, [60, 62.5]]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

@@ -5,6 +5,7 @@ import type { Carga } from '@nucleo/carga';
 import { disponible } from '@nucleo/esquema';
 import { hoyISO } from '@nucleo/fechas';
 import { revisarPerdidaAntes } from '@compartido/anotarDia';
+import { versionDelEsquema } from '@compartido/esquema';
 import type { Unidad } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
 
@@ -102,6 +103,14 @@ export async function corregirDia(supabase: Cliente, uid: string, fecha: string,
   // no se pudo revisar, el día queda como estaba.
   if (destino !== 'nada' && fecha === hoyISO() && !(await revisarPerdidaAntes(supabase))) {
     return { error: T.calendario.noSeAgrego, cambio: false };
+  }
+  // DE UNA (migración 74): borrar y volver a poner en la misma transacción. En
+  // dos pedidos, si entraba el primero y el segundo no, el día quedaba borrado
+  // con su sesión. Lo de abajo queda solo para una base que todavía no la tiene.
+  if (disponible('corregirDiaDeUna', await versionDelEsquema(supabase).catch(() => null))) {
+    const { error } = await supabase.rpc('corregir_dia', { p_fecha: fecha, p_destino: destino });
+    if (error) return { error: destino === 'nada' ? T.calendario.noSeSaco : T.calendario.noSeAgrego, cambio: false };
+    return { error: null, cambio: true };
   }
   const { error: eBorrar } = await supabase.from('logs').delete().eq('user_id', uid).eq('fecha', fecha);
   if (eBorrar) return { error: T.calendario.noSeSaco, cambio: false };
