@@ -15736,8 +15736,9 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     const nuevo = medir('aviso-descanso.wav');
     const viejo = medir('campana.wav');
     const mudo = medir('silencio.wav');
-    chequear('el aviso nuevo es PCM de 16 bits, corto, no recorta, y suena con la energía de la campana de antes (a menos de 1 dB)', [
-      nuevo.pcm, nuevo.bits, nuevo.segundos < 2, nuevo.pico < 0.99, Math.abs(nuevo.db - viejo.db) < 1,
+    // Desde el 14/10, más fuerte que la campana de antes: el humano pidió subir el volumen del aviso.
+    chequear('el aviso nuevo es PCM de 16 bits, corto, no recorta, y suena al menos 3 dB más fuerte que la campana de antes', [
+      nuevo.pcm, nuevo.bits, nuevo.segundos < 2, nuevo.pico < 0.99, nuevo.db - viejo.db >= 3,
     ], [true, 16, true, true, true]);
     chequear('y el silencio es silencio de verdad, y corto', [mudo.pico, mudo.db, mudo.segundos <= 1], [0, null, true]);
   }
