@@ -189,6 +189,14 @@ una sola cosa:
 - **la tarjeta de la pantalla bloqueada muestra al compañero** (pedido del
   humano, 14/10): entrenando con otro, su ejercicio y su serie, o al menos
   cuánto le falta de descanso. Es Swift (el widget): va en esta build;
+- **el inglés de lo que vive en la build** (14/10): la app ya cambia de idioma
+  por OTA, pero los carteles de permisos de iOS (ubicación, cámara, Salud,
+  avisos: `infoPlist` de `app.json`) y la tarjeta Swift ("DESCANSO"/"LISTO")
+  siguen en español. Van con `InfoPlist.strings` en inglés y el texto del widget
+  según el idioma;
+- **que el aviso del descanso suene con el teléfono en silencio y la app cerrada**
+  pide el permiso de alertas críticas de Apple, que ya se decidió no pedir (ver
+  arriba). Con la app abierta ya suena en silencio (categoría de audio Playback);
 - **el enlace de amigo tiene que sobrevivir a la instalación.** Hoy el
   invitado sin la app la baja, crea la cuenta y tiene que VOLVER a tocar el
   enlace (la página lo dice en tres pasos numerados): se pierde la mitad de la
