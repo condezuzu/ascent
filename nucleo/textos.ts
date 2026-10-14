@@ -290,7 +290,6 @@ export const T = {
     // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
     // error de la app. Con una línea deja de serlo.
     sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',
-    yaHabiaSesion: 'Ya tenías una corriendo. Seguimos con esa.',
     diaDeshecho: 'Muy corta para contar como día. Se deshizo.',
     sacarSerie: 'Sacar una serie',
     // Discreto y permanente mientras no haya punto: es el diferencial de la

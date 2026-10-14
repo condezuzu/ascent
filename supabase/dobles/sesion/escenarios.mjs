@@ -571,8 +571,19 @@ async function cardio() {
   return { tras, corregido, comun: inicio.r.estado.descanso !== null };
 }
 
+/** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
+async function yaCorria() {
+  const inicio = montar(() => useSesion());
+  await asentar();
+  const ahora = new Date().toISOString();
+  servidor.sesiones.push({ id: 'sesion-de-otro-lado', inicio: ahora, series: 2, bloques: [], estado: 'corriendo', ultima_actividad: ahora, origen: 'manual', cerro_sola: false });
+  const ok = await inicio.r.empezar();
+  await asentar();
+  return { ok, corre: inicio.r.estado.corriendo ?? null, vivas: servidor.sesiones.filter((s) => s.estado === 'corriendo').length, aviso: inicio.r.estado.aviso };
+}
+
 const [escenario, ...argumentos] = process.argv.slice(2);
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

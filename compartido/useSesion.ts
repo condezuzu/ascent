@@ -720,7 +720,6 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // espera a esta misma respuesta (ver `compartido/pesosRecordados.ts`).
     void traerRecordados(supabase);
 
-    if (r.yaEstaba) setAviso(T.inicio.yaHabiaSesion);
     alCambiarElDia?.(r.registro);
     return true;
   }

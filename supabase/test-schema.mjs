@@ -17636,6 +17636,11 @@ console.log('\n217. El fin del descanso suena en el cero, una sola vez');
   }
 }
 
+console.log('\n218. Empezar con una sesión que ya corría no deja cartel');
+{
+  chequear('se sigue con la que corría (no se crea otra) y no aparece "Ya tenías una corriendo", que quedaba toda la sesión', await escenarioDeSesion('yaCorria'), { ok: true, corre: true, vivas: 1, aviso: '' });
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
