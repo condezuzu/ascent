@@ -893,7 +893,7 @@ export default function Inicio({
                   Solo si Health lo sabe y hubo pasos —0 o "no sé" no se muestran. */}
               {cierre.pasos != null && cierre.pasos > 0 && (
                 <View style={estilos.cifra}>
-                  <Text style={estilos.cifraNumero}>{cierre.pasos.toLocaleString('es-UY')}</Text>
+                  <Text style={estilos.cifraNumero}>{cierre.pasos.toLocaleString(T.general.locale)}</Text>
                   <Text style={estilos.etiqueta}>{T.sesion.resumenPasos}</Text>
                 </View>
               )}

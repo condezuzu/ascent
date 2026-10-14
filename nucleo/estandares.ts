@@ -28,13 +28,13 @@ export const FUENTE = {
   hasta: 'marzo de 2026',
 };
 
-/** Las cinco categorías, con el porcentaje de gente que cada una supera. */
+/** Las cinco categorías, con el porcentaje de gente que cada una supera. El nombre se lee al usarlo: cambia con el idioma. */
 export const CATEGORIAS = [
-  { clave: 'principiante', nombre: T.fuerza.categorias.principiante, supera: 5 },
-  { clave: 'novato', nombre: T.fuerza.categorias.novato, supera: 20 },
-  { clave: 'intermedio', nombre: T.fuerza.categorias.intermedio, supera: 50 },
-  { clave: 'avanzado', nombre: T.fuerza.categorias.avanzado, supera: 80 },
-  { clave: 'elite', nombre: T.fuerza.categorias.elite, supera: 95 },
+  { clave: 'principiante', get nombre() { return T.fuerza.categorias.principiante; }, supera: 5 },
+  { clave: 'novato', get nombre() { return T.fuerza.categorias.novato; }, supera: 20 },
+  { clave: 'intermedio', get nombre() { return T.fuerza.categorias.intermedio; }, supera: 50 },
+  { clave: 'avanzado', get nombre() { return T.fuerza.categorias.avanzado; }, supera: 80 },
+  { clave: 'elite', get nombre() { return T.fuerza.categorias.elite; }, supera: 95 },
 ] as const;
 
 // Minúscula, como lo guarda la base. Con mayúsculas el bloque entero no se

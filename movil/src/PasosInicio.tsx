@@ -63,14 +63,14 @@ export default function PasosInicio({
     <View testID={compacto ? 'pasos-en-sesion' : 'pasos-de-hoy'} style={[estilos.raiz, compacto && estilos.raizCompacta]}>
       <View style={estilos.fila}>
         <Text style={estilos.numero}>
-          {pasos.toLocaleString('es-UY')} <Text style={estilos.unidad}>{T.inicio.pasosUnidad}</Text>
+          {pasos.toLocaleString(T.general.locale)} <Text style={estilos.unidad}>{T.inicio.pasosUnidad}</Text>
         </Text>
         {llego ? (
           <Animated.Text style={[estilos.meta, { color: acento, transform: [{ scale: escalaLatido }] }]}>
             {T.inicio.pasosMetaLlego}
           </Animated.Text>
         ) : (
-          <Text style={estilos.meta}>{T.inicio.pasosMetaChica(meta.toLocaleString('es-UY'))}</Text>
+          <Text style={estilos.meta}>{T.inicio.pasosMetaChica(meta.toLocaleString(T.general.locale))}</Text>
         )}
       </View>
       {!compacto && (

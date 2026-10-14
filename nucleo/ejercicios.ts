@@ -1,3 +1,4 @@
+import { T } from './textos.ts';
 /**
  * CÓMO SE NAVEGAN CIEN EJERCICIOS.
  *
@@ -59,6 +60,11 @@ export function gruposDeZona(zona: Zona, grupos: string[]): string[] {
  * ninguna de las dos mitades — el catálogo sigue completo y el selector sigue
  * funcionando, solo que a esos ejercicios no se llega.
  */
+/** El músculo como se lee en pantalla, en el idioma de la app ("pecho" → "Pecho" / "Chest"). */
+export function nombreDeGrupo(grupo: string): string {
+  return T.ejercicios.grupos[grupo] ?? grupo.charAt(0).toUpperCase() + grupo.slice(1);
+}
+
 /** Los grupos en los que se puede crear un ejercicio propio, en el orden del selector. */
 export const GRUPOS_PROPIOS = ['pecho', 'espalda', 'hombros', 'brazos', 'piernas', 'core', 'cardio'] as const;
 

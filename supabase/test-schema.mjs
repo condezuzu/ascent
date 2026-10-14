@@ -3831,7 +3831,8 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
       if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
       const r = join(dir, e.name);
       if (e.isDirectory()) recorrer(r);
-      else if (/\.tsx?$/.test(e.name)) fuentes.push(r);
+      // Los textos en inglés (14/10) no son español: "Chest" no es un "che".
+      else if (/\.tsx?$/.test(e.name) && !/^(textos-en|ejerciciosEn)\.ts$/.test(e.name)) fuentes.push(r);
     }
   };
   recorrer(join(RAIZ, 'src'));
@@ -15518,7 +15519,7 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
   const cuantas = (await db.query(`select coalesce(version_vista, 'sin dato') as v, count(*)::int as n from profiles where id in ($1, $2) group by 1 order by 1`, [conApp, sinNada])).rows;
   chequear('la consulta del reparto de versiones', cuantas, [{ v: 'sin dato', n: 2 }]);
   const cliente196 = de196('movil/src/supabase.ts');
-  chequear('la app manda su versión en cada pedido', /global: \{ headers: \{ 'X-Client-Info': encabezadoDeVersion\(\) \} \}/.test(cliente196), true);
+  chequear('la app manda su versión en cada pedido', /global: \{ headers: \{ 'X-Client-Info': encabezadoDeVersion\(\) \}/.test(cliente196), true);
 
   // ---- LA TARJETA DE LA PANTALLA BLOQUEADA ----
   const B196 = await import('../nucleo/bloques.ts');
@@ -16655,8 +16656,9 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
   const { REQUIERE: REQ203 } = await import('../nucleo/esquema.ts');
   const { T: T203 } = await import('../nucleo/textos.ts');
   chequear('que tus amigos vean cuando entrenas se avisa una vez, recién con la 68, y con su propia marca de "visto"', [
-    /\{ clave: CLAVE_AVISO_ENTRENO, columna: 'comparte_gimnasio', requiere: 'avisoDeEntrenoPrendido', texto: T\.social\.avisoEntreno \}/.test(nov203),
-    /\{ clave: CLAVE_AVISO_RUTINA, columna: 'comparte_rutina', requiere: 'rutinaDeAmigo', texto: T\.social\.avisoRutina \}/.test(nov203),
+    // Desde el 14/10 el texto se lee al usarlo (getter): cambia con el idioma.
+    /\{ clave: CLAVE_AVISO_ENTRENO, columna: 'comparte_gimnasio', requiere: 'avisoDeEntrenoPrendido', get texto\(\) \{ return T\.social\.avisoEntreno; \} \}/.test(nov203),
+    /\{ clave: CLAVE_AVISO_RUTINA, columna: 'comparte_rutina', requiere: 'rutinaDeAmigo', get texto\(\) \{ return T\.social\.avisoRutina; \} \}/.test(nov203),
     REQ203.avisoDeEntrenoPrendido,
     /nunca dónde/.test(T203.social.avisoEntreno) && /Ajustes/.test(T203.social.avisoEntreno),
     (await import('../nucleo/avisoRutina.ts')).CLAVE_AVISO_ENTRENO !== (await import('../nucleo/avisoRutina.ts')).CLAVE_AVISO_RUTINA,
@@ -17912,6 +17914,109 @@ console.log('\n221. Perfiles: los amigos de un amigo (migración 78), y tu perfi
   const cuenta221 = leer221(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'cuenta.ts'), 'utf8');
   chequear('al salir de la cuenta se olvida el perfil de memoria (otra cuenta no lo ve)', /export async function limpiarAlSalir\(\) \{[\s\S]{0,400}olvidarMiPerfil\(\);/.test(cuenta221), true);
   void CU221;
+}
+
+console.log('\n222. El idioma: español o inglés según el teléfono, y a mano en Ajustes');
+{
+  const TX = await import('../nucleo/textos.ts');
+  const { EN } = await import('../nucleo/textos-en.ts');
+  const ID = await import('../compartido/idioma.ts');
+  const FE = await import('../nucleo/fechas.ts');
+  const RG = await import('../nucleo/rangos.ts');
+  const ES222 = await import('../nucleo/estandares.ts');
+  const RC = await import('../nucleo/recorrido.ts');
+  const EJ = await import('../nucleo/ejerciciosEn.ts');
+  const { eventos: ev222 } = await import('../compartido/eventos.ts');
+  const { memoria: mem222 } = await import('./dobles/plataforma.mjs');
+
+  // ---- EL INGLÉS ESTÁ COMPLETO Y NO TIENE HUECOS ----
+  const llaves = (o, pre = '') => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' && !Array.isArray(v) ? llaves(v, pre + k + '.') : [pre + k]));
+  const muestra = (f) => f(3, 4, 5).toString ? f(3, 4, 5) : '';
+  const vacias = [];
+  const recorrer = (o, pre = '') => {
+    for (const [k, v] of Object.entries(o)) {
+      if (typeof v === 'string' && v.trim() === '') vacias.push(pre + k);
+      else if (typeof v === 'function') {
+        // Sin tipos acá: se prueba con textos, con números y mezclado, y vale el primero que contesta.
+        const intentos = [Array(v.length).fill('Press'), Array(v.length).fill(3), Array.from({ length: v.length }, (_, i) => (i === 0 ? 'Press' : 3))];
+        let r = null;
+        for (const a of intentos) { try { r = v(...a); break; } catch { r = null; } }
+        // Si el español contesta igual de raro con estos datos de prueba, es el dato, no la traducción.
+        const enEs = (pre + k).split('.').reduce((o, c) => o?.[c], TX.TEXTOS_ES);
+        let rEs = null;
+        for (const a of intentos) { try { rEs = enEs(...a); break; } catch { rEs = null; } }
+        const raro = (x) => typeof x !== 'string' || x.trim() === '' || /undefined|NaN|\[object/.test(x);
+        if (raro(r) && !raro(rEs)) vacias.push(pre + k);
+      } else if (Array.isArray(v) && v.some((x) => typeof x !== 'string' || x === '')) vacias.push(pre + k);
+      else if (v && typeof v === 'object' && !Array.isArray(v)) recorrer(v, pre + k + '.');
+    }
+  };
+  recorrer(EN);
+  void muestra;
+  chequear('el inglés tiene las mismas claves que el español, y ninguna vacía ni con huecos', [llaves(EN).sort().join() === llaves(TX.TEXTOS_ES).sort().join(), vacias], [true, []]);
+  const largos = [];
+  const medir = (o, pre = '') => { for (const [k, v] of Object.entries(o)) { if (typeof v === 'string' && v.length > 110) largos.push(pre + k); else if (v && typeof v === 'object' && !Array.isArray(v)) medir(v, pre + k + '.'); } };
+  medir(EN);
+  chequear('los textos en inglés entran en dos renglones (110 caracteres)', largos, []);
+
+  // ---- QUÉ IDIOMA ----
+  chequear('teléfono en español (cualquier variante) → español; en cualquier otro → inglés', ['es-UY', 'es', 'ES-ar', 'en-US', 'pt-BR', 'fr', ''].map((l) => ID.idiomaDelAparato(l)), ['es', 'es', 'es', 'en', 'en', 'en', 'en']);
+  chequear('lo elegido a mano gana; "del teléfono" usa el del teléfono', [ID.idiomaElegido('auto', 'en'), ID.idiomaElegido('es', 'en'), ID.idiomaElegido('en', 'es')], ['en', 'es', 'en']);
+
+  // ---- CAMBIAR EN SU LUGAR: lo que guardó una referencia se entera ----
+  const diasAntes = FE.DIAS_SEMANA_LARGO;
+  ID.aplicarIdioma('en');
+  const enIngles = [TX.T.idioma, TX.T.nav.ajustes, FE.DIAS_SEMANA_LARGO[1], diasAntes === FE.DIAS_SEMANA_LARGO, RG.RANGOS[0].nombre, ES222.CATEGORIAS[0].nombre, RC.PASOS_DEL_RECORRIDO[0].texto.slice(0, 11), TX.T.fuerza.faltaPara('5 kg')];
+  ID.aplicarIdioma('es');
+  const deVuelta = [TX.T.idioma, TX.T.nav.ajustes, FE.DIAS_SEMANA_LARGO[1], RG.RANGOS[0].nombre, ES222.CATEGORIAS[0].nombre];
+  chequear('el cambio pisa los textos en su lugar: los días, los rangos, las categorías y el recorrido cambian; y vuelve', [enIngles, deVuelta], [
+    ['en', 'Settings', 'Monday', true, 'Dust', 'Beginner', 'Your streak', '5 kg to go for beginner'],
+    ['es', 'Ajustes', 'Lunes', 'Polvo', 'Principiante'],
+  ]);
+
+  // ---- A MANO, EN AJUSTES: se guarda en el teléfono y se avisa a la raíz ----
+  let avisos = 0;
+  const dejar = ev222.escuchar(ID.IDIOMA_CAMBIO, () => avisos++);
+  await ID.fijarPreferenciaIdioma('en');
+  const guardado = mem222.get('ascent:idioma');
+  const tras = TX.T.idioma;
+  await ID.fijarPreferenciaIdioma('en');
+  await ID.fijarPreferenciaIdioma('es');
+  dejar();
+  chequear('elegir inglés lo guarda, cambia los textos y avisa una vez; repetirlo no avisa de nuevo', [guardado, tras, avisos, TX.T.idioma], ['en', 'en', 2, 'es']);
+  mem222.delete('ascent:idioma');
+
+  // ---- LOS NOMBRES DEL CATÁLOGO ----
+  const filas = [
+    { id: 'press_banca', nombre: 'Press de banca', creado_por: null },
+    { id: 'cinta', nombre: 'Cinta' },
+    { id: 'propio_x', nombre: 'Mi ejercicio', creado_por: 'u1' },
+    { id: 'id_nuevo', nombre: 'Uno nuevo', creado_por: null },
+  ];
+  chequear('en inglés el catálogo usa su nombre en inglés; los propios y los que no están en la lista quedan como vinieron', EJ.conNombresEn(filas).map((f) => f.nombre), ['Bench press', 'Treadmill', 'Mi ejercicio', 'Uno nuevo']);
+  const { readFileSync: leer222 } = await import('node:fs');
+  const catalogo222 = leer222(join(dirname(fileURLToPath(import.meta.url)), 'schema.sql'), 'utf8');
+  const ids222 = [...catalogo222.matchAll(/\(\s*'([a-z_0-9]+)',\s*'[^']+',\s*'(?:pecho|espalda|hombros|brazos|piernas|core|cardio)'/g)].map((m) => m[1]).filter((id) => !['pecho'].includes(id));
+  chequear('todo el catálogo de la base tiene nombre en inglés', ids222.filter((id) => !EJ.NOMBRES_EN[id]), []);
+  const sb222 = leer222(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'supabase.ts'), 'utf8');
+  chequear('y se traduce al llegar, en el cliente de la app, solo la tabla de ejercicios y solo en inglés', [
+    /fetch: conElIdioma/.test(sb222), /if \(T\.idioma !== 'en' \|\| !r\.ok\) return r;/.test(sb222), /\\\/rest\\\/v1\\\/ejercicios/.test(sb222),
+  ], [true, true, true]);
+  const raiz222 = leer222(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'app', '_layout.tsx'), 'utf8');
+  chequear('el idioma del teléfono se aplica antes que cualquier otra cosa, y la raíz redibuja al cambiar', [
+    raiz222.split('\n')[0].trim(), /eventos\.escuchar\(IDIOMA_CAMBIO/.test(raiz222), /<View key=\{versionIdioma\}/.test(raiz222),
+  ], ["import '../src/idiomaAlArrancar';", true, true]);
+}
+
+console.log('\n223. El músculo se lee en el idioma de la app');
+{
+  const EJ223 = await import('../nucleo/ejercicios.ts');
+  const ID223 = await import('../compartido/idioma.ts');
+  const es = ['pecho', 'cardio', 'inventado'].map(EJ223.nombreDeGrupo);
+  ID223.aplicarIdioma('en');
+  const en = ['pecho', 'cardio', 'inventado'].map(EJ223.nombreDeGrupo);
+  ID223.aplicarIdioma('es');
+  chequear('el músculo sale de los textos (y uno desconocido, con mayúscula)', [es, en], [['Pecho', 'Cardio', 'Inventado'], ['Chest', 'Cardio', 'Inventado']]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

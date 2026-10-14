@@ -40,17 +40,18 @@ export type PasoDelRecorrido = {
   texto: string;
 };
 
+// El texto se lee al usarlo (getter): cambia con el idioma.
 export const PASOS_DEL_RECORRIDO: readonly PasoDelRecorrido[] = [
-  { ruta: '/', pestana: 'inicio', texto: T.recorrido.inicio },
+  { ruta: '/', pestana: 'inicio', get texto() { return T.recorrido.inicio; } },
   // CÓMO SE ENTRENA (8/10). El recorrido presentaba las cinco pantallas y no
   // decía lo único que hay que saber para usar la app: dónde se empieza y qué
   // hace el +. Hubo que explicárselo a mano a alguien que recién entraba. Es el
   // único paso que repite pantalla, y va pegado al primero: no vuelve atrás.
-  { ruta: '/', pestana: 'inicio', texto: T.recorrido.entrenar },
-  { ruta: '/ajustes', pestana: 'ajustes', ancla: 'gimnasio', texto: T.recorrido.gimnasio },
-  { ruta: '/stats', pestana: 'stats', texto: T.recorrido.stats },
-  { ruta: '/album', pestana: 'album', texto: T.recorrido.album },
-  { ruta: '/social', pestana: 'ranking', texto: T.recorrido.ranking },
+  { ruta: '/', pestana: 'inicio', get texto() { return T.recorrido.entrenar; } },
+  { ruta: '/ajustes', pestana: 'ajustes', ancla: 'gimnasio', get texto() { return T.recorrido.gimnasio; } },
+  { ruta: '/stats', pestana: 'stats', get texto() { return T.recorrido.stats; } },
+  { ruta: '/album', pestana: 'album', get texto() { return T.recorrido.album; } },
+  { ruta: '/social', pestana: 'ranking', get texto() { return T.recorrido.ranking; } },
 ];
 
 /** Un paso guardado que ya no existe (se sacó uno) vuelve al principio. */

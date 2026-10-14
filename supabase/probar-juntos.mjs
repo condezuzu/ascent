@@ -135,7 +135,7 @@ try {
     const nav = await chromium.launch();
     const errores = [];
     const entrar = async (quien) => {
-      const page = await (await nav.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+      const page = await (await nav.newContext({ viewport: { width: 390, height: 844 }, locale: 'es-UY' })).newPage();
       page.on('pageerror', (e) => errores.push(`${quien.nombre}: ${String(e).slice(0, 140)}`));
       await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 180000 });
       await pasarLaEntradaNativa(page);

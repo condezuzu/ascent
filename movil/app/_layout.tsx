@@ -1,3 +1,4 @@
+import '../src/idiomaAlArrancar';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
@@ -6,6 +7,8 @@ import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/supabase';
 import { quienSoy } from '@compartido/quienSoy';
+import { aplicarLoElegido, IDIOMA_CAMBIO } from '@compartido/idioma';
+import { eventos } from '@compartido/eventos';
 import { alEntrarCon } from '@compartido/cuenta';
 import { plataforma } from '@plataforma';
 import EntradaYLogin from '../src/EntradaYLogin';
@@ -69,6 +72,14 @@ const CON_DIAGNOSTICO = process.env.EXPO_PUBLIC_DIAGNOSTICO === '1';
 
 export default function Layout() {
   const [sesion, setSesion] = useState<Sesion>('mirando');
+  // OTRO IDIOMA, TODO DE NUEVO (14/10): los textos ya cambiaron en `T`; con la
+  // llave nueva se vuelve a dibujar todo lo de abajo. La sesión vive acá arriba y no se pierde.
+  const [versionIdioma, setVersionIdioma] = useState(0);
+  useEffect(() => {
+    const dejar = eventos.escuchar(IDIOMA_CAMBIO, () => setVersionIdioma((v) => v + 1));
+    void aplicarLoElegido();
+    return dejar;
+  }, []);
   // Se entró con el enlace de cambiar la contraseña: falta elegirla.
   const [claveNueva, setClaveNueva] = useState(false);
 
@@ -274,7 +285,7 @@ export default function Layout() {
   return (
     <Raiz>
       <ProveedorDeSesion valor={{ salir, sinNombre }}>
-      <View style={estilos.todo}>
+      <View key={versionIdioma} style={estilos.todo}>
         <StatusBar style="light" />
         {sesion === 'mirando' && (
           <View style={estilos.centrado}>

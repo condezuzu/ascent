@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { nombreDeGrupo } from '@nucleo/ejercicios';
 import MiRutina from './MiRutina';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
@@ -220,7 +221,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const enCurso = totales.length - 1;
   const leidaTotal = totales[indice];
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString(T.general.locale);
-  const mayuscula = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
+  const mayuscula = nombreDeGrupo;
   const pal = paletaDe(datos.rango, datos.planeta);
 
   return (

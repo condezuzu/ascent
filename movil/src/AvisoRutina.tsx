@@ -27,8 +27,8 @@ import { C, conAlfa } from './colores';
  */
 type Novedad = { clave: string; columna: 'comparte_rutina' | 'comparte_gimnasio'; requiere: Funcion; texto: string };
 const NOVEDADES: Novedad[] = [
-  { clave: CLAVE_AVISO_RUTINA, columna: 'comparte_rutina', requiere: 'rutinaDeAmigo', texto: T.social.avisoRutina },
-  { clave: CLAVE_AVISO_ENTRENO, columna: 'comparte_gimnasio', requiere: 'avisoDeEntrenoPrendido', texto: T.social.avisoEntreno },
+  { clave: CLAVE_AVISO_RUTINA, columna: 'comparte_rutina', requiere: 'rutinaDeAmigo', get texto() { return T.social.avisoRutina; } },
+  { clave: CLAVE_AVISO_ENTRENO, columna: 'comparte_gimnasio', requiere: 'avisoDeEntrenoPrendido', get texto() { return T.social.avisoEntreno; } },
 ];
 
 export default function AvisoRutina() {

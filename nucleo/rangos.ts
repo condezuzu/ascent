@@ -1,5 +1,6 @@
 import { DESDE_RANGO, numeroDeRango, planetaDeDia } from './reglas.ts';
 import { restarDias } from './fechas.ts';
+import { T } from './textos.ts';
 
 // Escalera de rangos. El nombre NUNCA aparece en la interfaz corriente:
 // solo en la subida de rango y en Estadísticas ("Rangos").
@@ -18,7 +19,15 @@ export type Rango = {
 // techo). El viejo "Sistema" se sacó. Los `desde` salen de `DESDE_RANGO` para
 // que no puedan contradecir a `numeroDeRango` ni a la base.
 const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Galaxia', 'Agujero negro'];
-export const RANGOS: Rango[] = NOMBRES.map((nombre, i) => ({ n: i + 1, nombre, desde: DESDE_RANGO[i] }));
+// En inglés (14/10). El nombre se lee al usarlo: cambia con el idioma.
+const NOMBRES_EN = ['Dust', 'Asteroid', 'Moon', 'Planet', 'Sun', 'Galaxy', 'Black hole'];
+export const RANGOS: Rango[] = NOMBRES.map((nombre, i) => ({
+  n: i + 1,
+  get nombre() {
+    return T.idioma === 'en' ? NOMBRES_EN[i] : nombre;
+  },
+  desde: DESDE_RANGO[i],
+}));
 
 // El rango sale del número, no de recorrer la tabla buscando el `desde`: así
 // hay UNA sola regla en el cliente. Lo que guarda la base (`rango_actual`) no

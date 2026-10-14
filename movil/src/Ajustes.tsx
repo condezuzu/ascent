@@ -9,6 +9,7 @@ import { useVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { guardarSonido, leerSonido } from '@compartido/descanso';
+import { fijarPreferenciaIdioma, leerPreferenciaIdioma, type PreferenciaIdioma } from '@compartido/idioma';
 import { escritorEnFila } from '@compartido/enFila';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
@@ -77,8 +78,11 @@ export default function Ajustes({
   // vista; el resto entra acá adentro para que Ajustes no sea una lista larga y
   // plana donde "cuentas bloqueadas" aparecía de la nada.
   const [avanzado, setAvanzado] = useState(false);
+  // El idioma, también de este teléfono (14/10).
+  const [idioma, setIdioma] = useState<PreferenciaIdioma>('auto');
   useEffect(() => {
     leerSonido().then(setSonido);
+    void leerPreferenciaIdioma().then(setIdioma);
   }, []);
 
   /** Pinta el cambio, guarda, y vuelve atrás si la base dice que no. */
@@ -241,6 +245,25 @@ export default function Ajustes({
               ]}
             >
               {u === 'kg' ? T.ajustes.kilos : T.ajustes.libras}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Text style={estilos.seccion}>{T.ajustes.idioma}</Text>
+      <View style={estilos.fila}>
+        {(['auto', 'es', 'en'] as PreferenciaIdioma[]).map((p) => (
+          <Pressable
+            key={p}
+            testID={'idioma-' + p}
+            onPress={() => {
+              setIdioma(p);
+              void fijarPreferenciaIdioma(p);
+            }}
+            style={[estilos.ancha, idioma === p && estilos.prendida]}
+          >
+            <Text style={[estilos.textoPastilla, idioma === p && estilos.textoPrendido]} numberOfLines={1}>
+              {p === 'auto' ? T.ajustes.idiomaAuto : p === 'es' ? T.ajustes.idiomaEs : T.ajustes.idiomaEn}
             </Text>
           </Pressable>
         ))}

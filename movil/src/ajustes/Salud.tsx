@@ -92,7 +92,7 @@ export default function Salud() {
       {conectado === true && (
         <>
           <Text style={estilos.nota}>
-            {pasos === null ? T.ajustes.saludSinDatos : T.ajustes.saludPasos(pasos.toLocaleString('es-UY'))}
+            {pasos === null ? T.ajustes.saludSinDatos : T.ajustes.saludPasos(pasos.toLocaleString(T.general.locale))}
           </Text>
         </>
       )}

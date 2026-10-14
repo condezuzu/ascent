@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
@@ -206,7 +207,7 @@ export default function Bloque({
             style={[estilos.ejercicioTexto, !estado.ejercicio && estilos.apagadoTexto, esFantasma && estilos.fantasmaTexto]}
             numberOfLines={1}
           >
-            {actual ? `${actual.nombre} · ${actual.grupo}` : T.sesion.sinEjercicio}
+            {actual ? `${actual.nombre} · ${nombreDeGrupo(actual.grupo).toLowerCase()}` : T.sesion.sinEjercicio}
           </Text>
         </Pressable>
         {esFantasma && <Text style={estilos.badgeSugerido}>{T.sesion.sugerido}</Text>}

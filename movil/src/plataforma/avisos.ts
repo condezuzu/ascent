@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { T } from '@nucleo/textos';
 import type { Avisos } from '@nucleo/plataforma';
 
 
@@ -170,7 +171,8 @@ export const avisosNativos: Avisos = {
           // único de la app que se lee FUERA de la app, en la pantalla
           // bloqueada, y no comparte contexto con ninguna pantalla.
           title: 'Ascent',
-          body: 'Se terminó el descanso.',
+          // En el idioma de la app (14/10): el de la pantalla bloqueada también cambia.
+          body: T.idioma === 'en' ? 'Rest is over.' : 'Se terminó el descanso.',
           // LA CAMPANA NUESTRA Y NO LA DEL SISTEMA (25/9). *"La campana se
           // escucha poco. Con música puesta no la escuché."* El sonido de
           // fábrica de iOS es corto y discreto a propósito —está pensado para

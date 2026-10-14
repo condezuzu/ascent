@@ -20,6 +20,8 @@ import { mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { limiteDeSonda, pasarLaEntradaNativa } from './utiles.mjs';
+import { TEXTOS_ES } from '../nucleo/textos.ts';
+import { EN } from '../nucleo/textos-en.ts';
 
 limiteDeSonda(12);
 
@@ -59,8 +61,10 @@ async function semanaDeMuestra(s) {
   return dias;
 }
 
-async function abrir(nav, quien, respuestas) {
-  const page = await (await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })).newPage();
+// `ingles`: el navegador en inglés, como un teléfono en inglés: la app tiene que salir en inglés sola.
+async function abrir(nav, quien, respuestas, ingles = false) {
+  const tx = ingles ? EN : TEXTOS_ES;
+  const page = await (await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: ingles ? 'en-US' : 'es-UY' })).newPage();
   const errores = [];
   page.on('pageerror', (e) => errores.push(String(e).slice(0, 160)));
   for (const [rpc, cuerpo] of Object.entries(respuestas ?? {})) {
@@ -68,15 +72,15 @@ async function abrir(nav, quien, respuestas) {
     console.log(`  (muestra) ${rpc}`);
   }
   await page.goto(NATIVA, { waitUntil: 'domcontentloaded', timeout: 180000 });
-  await pasarLaEntradaNativa(page);
+  await pasarLaEntradaNativa(page, 60000, tx);
   await page.locator('input[type=email], input[inputmode=email]').first().fill(quien.correo, { timeout: 90000 });
   await page.locator('input[type=password]').first().fill(quien.clave);
-  await page.getByText('Entrar', { exact: true }).last().click({ timeout: 60000 });
+  await page.getByText(tx.entrar.entrar, { exact: true }).last().click({ timeout: 60000 });
   const saltar = page.getByTestId('recorrido-saltar');
   await saltar.waitFor({ state: 'visible', timeout: 60000 }).catch(() => {});
   await saltar.click().catch(() => {});
   // El aviso de una vez de la cuenta nueva tapa la mitad de abajo: se cierra.
-  const deAcuerdo = page.getByText('De acuerdo', { exact: true }).first();
+  const deAcuerdo = page.getByText(tx.social.avisoRutinaEntendido, { exact: true }).first();
   await deAcuerdo.waitFor({ state: 'visible', timeout: 8000 }).then(() => deAcuerdo.click(), () => {});
   await page.waitForTimeout(800);
   return { page, errores };
@@ -187,6 +191,35 @@ const RECETAS = {
       await page.waitForTimeout(700);
       await foto(page, `ajustes${sufijo}-${i + 1}`);
     }
+    return page;
+  },
+  async ingles(nav, gente) {
+    const A = gente.a;
+    const { page } = await abrir(nav, A, { version_del_esquema: 76 }, true);
+    await conCatalogo76(page);
+    await page.waitForTimeout(1500);
+    await foto(page, 'ingles-inicio');
+    await page.getByText(EN.inicio.iniciarEntrenamiento, { exact: true }).first().click({ timeout: 60000 });
+    await page.getByLabel(EN.inicio.sumarSerie).first().waitFor({ timeout: 60000 });
+    await page.getByText(EN.sesion.sinEjercicio, { exact: true }).first().click({ timeout: 60000 });
+    await page.waitForTimeout(1000);
+    await page.getByTestId('buscar-ejercicio').first().fill('press');
+    await page.waitForTimeout(600);
+    await foto(page, 'ingles-selector');
+    await page.getByText('Bench press', { exact: true }).first().click({ timeout: 20000 });
+    await page.waitForTimeout(1500);
+    await foto(page, 'ingles-sesion');
+    await page.getByText(EN.nav.stats, { exact: true }).last().click({ timeout: 30000 });
+    await page.waitForTimeout(2500);
+    await foto(page, 'ingles-stats');
+    await page.getByText(EN.nav.ajustes, { exact: true }).last().click({ timeout: 30000 });
+    await page.waitForTimeout(2000);
+    await page.getByText(EN.ajustes.idioma, { exact: true }).first().scrollIntoViewIfNeeded({ timeout: 20000 });
+    await foto(page, 'ingles-ajustes');
+    // A mano, a español: la app entera se redibuja en español.
+    await tocar(page, 'idioma-es');
+    await page.waitForTimeout(3000);
+    await foto(page, 'ingles-a-espanol');
     return page;
   },
   async ranking(nav, gente) {

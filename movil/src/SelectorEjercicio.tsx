@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
-import { GRUPOS_PROPIOS, ORDEN_ZONAS, buscarEjercicios, gruposDeZona, sinAcentos, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
+import { GRUPOS_PROPIOS, ORDEN_ZONAS, buscarEjercicios, gruposDeZona, nombreDeGrupo, sinAcentos, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
 import { disponible } from '@nucleo/esquema';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { crearEjercicio } from '@compartido/ejerciciosPropios';
@@ -126,7 +126,7 @@ function SelectorEjercicio({
     }
   }
 
-  const titulo = grupo ? grupo.charAt(0).toUpperCase() + grupo.slice(1) : zona ? T.ejercicios[zona] : T.sesion.queEstasHaciendo;
+  const titulo = grupo ? nombreDeGrupo(grupo) : zona ? T.ejercicios[zona] : T.sesion.queEstasHaciendo;
 
 
   return (
@@ -223,7 +223,7 @@ function SelectorEjercicio({
         gruposDeZona(zona, grupos).map((g) => (
           <Fila
             key={g}
-            texto={g.charAt(0).toUpperCase() + g.slice(1)}
+            texto={nombreDeGrupo(g)}
             extra={String(ejercicios.filter((e) => e.grupo === g).length)}
             onPress={() => setGrupo(g)}
           />

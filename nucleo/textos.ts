@@ -8,10 +8,12 @@
 // autocompleta y una clave mal escrita no compila. Con `t()` y claves de texto
 // suelto, un error de tipeo se descubre en pantalla.
 //
-// Para el inglés (después de migrar a nativo): esto pasa a ser `es` y se
-// agrega `en` con la misma forma; el tipo de uno obliga al otro a estar
-// completo, así que no se puede olvidar una clave. No hace falta nada más:
-// ningún componente cambia.
+// EL INGLÉS (14/10/2026): esto es `ES`, y `textos-en.ts` tiene la misma forma
+// (`Textos`): el tipo obliga al otro a estar completo, así que no se puede
+// olvidar una clave. `T` es el que se usa; `usarTextos` lo pisa EN SU LUGAR
+// —los objetos y los arreglos son los mismos, cambia lo de adentro—, así que
+// ningún componente cambia y lo que guardó una referencia (`DIAS_SEMANA`) se
+// entera solo.
 //
 // Las que llevan datos adentro son funciones, no plantillas: `faltaPara(8)` en
 // vez de pegar el número al string. Cuando haya inglés, el orden de las
@@ -35,7 +37,7 @@
 /** "Press de banca" → "press de banca", para meterlo en medio de una frase. */
 const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
-export const T = {
+const ES = {
   // En qué idioma están estos textos: se lo dice a la base para los avisos push (migración 77).
   idioma: 'es' as 'es' | 'en',
   // ---------------------------------------------------------------
@@ -666,6 +668,12 @@ export const T = {
     peso: 'Peso',
     kilos: 'Kilos',
     libras: 'Libras',
+
+    // El idioma (14/10). Los nombres de los idiomas van en su idioma, como en todos lados.
+    idioma: 'Idioma',
+    idiomaAuto: 'El del teléfono',
+    idiomaEs: 'Español',
+    idiomaEn: 'English',
 
     sexo: 'Sexo — solo para el DOTS',
     sinCargar: 'Sin cargar',
@@ -1570,3 +1578,37 @@ export const T = {
     sinNovedad: 'Ya tienes la última.',
   },
 } as const;
+
+/** La forma de los textos con cualquier texto en cada lugar: la que tiene que tener otro idioma. */
+type Ancho<X> = X extends string
+  ? string
+  : X extends (...a: infer A) => infer R
+    ? (...a: A) => Ancho<R>
+    : X extends readonly (infer U)[]
+      ? readonly Ancho<U>[]
+      : X extends object
+        ? { readonly [K in keyof X]: Ancho<X[K]> }
+        : X;
+export type Textos = Ancho<typeof ES>;
+export const TEXTOS_ES: Textos = ES;
+
+function copiar<X>(x: X): X {
+  if (Array.isArray(x)) return x.map(copiar) as X;
+  if (x && typeof x === 'object') return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, copiar(v)])) as X;
+  return x;
+}
+function pisar(destino: Record<string, unknown>, desde: Record<string, unknown>) {
+  for (const [k, v] of Object.entries(desde)) {
+    const d = destino[k];
+    if (Array.isArray(v) && Array.isArray(d)) d.splice(0, d.length, ...v);
+    else if (v && typeof v === 'object' && d && typeof d === 'object') pisar(d as Record<string, unknown>, v as Record<string, unknown>);
+    else destino[k] = v;
+  }
+}
+
+export const T: Textos = copiar(ES);
+
+/** Cambia el idioma de `T` en su lugar. Lo que ya se dibujó se vuelve a dibujar aparte. */
+export function usarTextos(textos: Textos): void {
+  pisar(T as unknown as Record<string, unknown>, textos as unknown as Record<string, unknown>);
+}

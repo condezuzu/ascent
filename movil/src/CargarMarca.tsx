@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { guardarMarcaUnaVez } from '@compartido/guardarMarca';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { hoyISO, deISO, MESES } from '@nucleo/fechas';
@@ -110,7 +111,7 @@ function CargarMarca({
         <Text style={estilos.etiqueta}>{T.marca.ejercicio}</Text>
         <Pressable style={estilos.selector} onPress={() => setEligiendo(true)}>
           <Text style={estilos.selectorTexto}>
-            {elegido ? `${elegido.nombre} · ${elegido.grupo}` : ''}
+            {elegido ? `${elegido.nombre} · ${nombreDeGrupo(elegido.grupo).toLowerCase()}` : ''}
           </Text>
         </Pressable>
 

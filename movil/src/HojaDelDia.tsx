@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
@@ -184,7 +185,7 @@ export default function HojaDelDia({
               <Text style={estilos.rotulo}>{T.volumen.porMusculo}</Text>
               {resumen.volumen.map((v) => (
                 <View style={estilos.filaMusculo} key={v.grupo}>
-                  <Text style={[estilos.nombre, estilos.musculo]}>{v.grupo}</Text>
+                  <Text style={[estilos.nombre, estilos.musculo]}>{nombreDeGrupo(v.grupo)}</Text>
                   <View style={estilos.barra}>
                     <View
                       style={{
@@ -198,7 +199,7 @@ export default function HojaDelDia({
                   </View>
                   <Text style={estilos.cuantas}>
                     {v.kilos > 0
-                      ? T.volumen.kilosYSeries(Math.round(deKilos(v.kilos, unidad)).toLocaleString('es-UY'), unidad, v.series)
+                      ? T.volumen.kilosYSeries(Math.round(deKilos(v.kilos, unidad)).toLocaleString(T.general.locale), unidad, v.series)
                       : T.volumen.soloSeries(v.series)}
                   </Text>
                 </View>

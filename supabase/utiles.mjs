@@ -1,3 +1,4 @@
+import { TEXTOS_ES } from '../nucleo/textos.ts';
 import { execSync } from 'node:child_process';
 
 // Herramientas chicas compartidas por los tests.
@@ -109,21 +110,20 @@ export function retrocesosEnTemplate(codigo) {
  * ENTRAR —que es donde las sondas esperan caer: de ahí salen "Entrar" y el
  * enlace "¿Primera vez? Crear cuenta"—.
  */
-export async function pasarLaEntradaNativa(page, espera = 60000) {
+// `textos`: los de la app en el idioma en que se abrió (14/10): en inglés los botones dicen otra cosa.
+export async function pasarLaEntradaNativa(page, espera = 60000, textos = TEXTOS_ES) {
+  const { siguiente, entrar: yaTengo, saltar: saltarTexto } = textos.bienvenida;
   const hayLogin = () =>
     page.locator('input[type=email]').first().isVisible().catch(() => false);
 
   // Montó algo: o el login (por si algún día no hay entrada) o la bienvenida.
   await page
     .waitForFunction(
-      () => {
+      ([a, b]) => {
         const t = document.body.innerText || '';
-        return (
-          !!document.querySelector('input[type=email]') ||
-          /Siguiente|Ya tengo cuenta/.test(t)
-        );
+        return !!document.querySelector('input[type=email]') || t.includes(a) || t.includes(b);
       },
-      null,
+      [siguiente, yaTengo],
       { timeout: espera }
     )
     .catch(() => {});
@@ -131,7 +131,7 @@ export async function pasarLaEntradaNativa(page, espera = 60000) {
 
   // Las tres primeras: "Siguiente" avanza y desaparece en la cuarta.
   for (let i = 0; i < 4; i++) {
-    const sig = page.getByText('Siguiente', { exact: true }).first();
+    const sig = page.getByText(siguiente, { exact: true }).first();
     if (!(await sig.isVisible().catch(() => false))) break;
     await sig.click({ timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(600);
@@ -140,14 +140,14 @@ export async function pasarLaEntradaNativa(page, espera = 60000) {
   // La cuarta se salta TOCANDO (Pressable a pantalla completa, aria-label
   // "Saltar"; sin botón visible). Se toca hasta que aparece el final.
   for (let i = 0; i < 40; i++) {
-    if (await page.getByText('Ya tengo cuenta', { exact: true }).isVisible().catch(() => false)) break;
-    const saltar = page.getByLabel('Saltar', { exact: true }).first();
+    if (await page.getByText(yaTengo, { exact: true }).isVisible().catch(() => false)) break;
+    const saltar = page.getByLabel(saltarTexto, { exact: true }).first();
     if (await saltar.isVisible().catch(() => false)) await saltar.click({ timeout: 5000 }).catch(() => {});
     else await page.mouse.click(30, 120).catch(() => {});
     await page.waitForTimeout(600);
   }
 
-  await page.getByText('Ya tengo cuenta', { exact: true }).click({ timeout: 20000 }).catch(() => {});
+  await page.getByText(yaTengo, { exact: true }).click({ timeout: 20000 }).catch(() => {});
   await page.locator('input[type=email]').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
   return true;
 }
