@@ -169,6 +169,31 @@ const RECETAS = {
     await foto(page, 'cartel-union');
     return page;
   },
+  async ranking(nav, gente) {
+    const { a: A, b: B } = gente;
+    const { data: pedido } = await A.s.from('friendships').insert({ solicitante: A.id, destinatario: B.id }).select('id').single();
+    if (pedido) await B.s.from('friendships').update({ estado: 'aceptada' }).eq('id', pedido.id);
+    const { page } = await abrir(nav, A, {
+      medallas_de_muchos: [
+        { user_id: B.id, ejercicio: 'press_banca', percentil: 92 },
+        { user_id: B.id, ejercicio: 'sentadilla', percentil: 70 },
+      ],
+    });
+    // Rachas de muestra: B lleva 12 días y su mejor racha fue de 58.
+    await page.route('**/rest/v1/usuarios_publicos*', async (r) => {
+      const real = await r.fetch();
+      const filas = await real.json().catch(() => null);
+      if (!Array.isArray(filas)) return r.fulfill({ response: real });
+      r.fulfill({ response: real, body: JSON.stringify(filas.map((f) => (f.id === B.id ? { ...f, racha_actual: 12, mejor_racha: 58 } : { ...f, racha_actual: 3, mejor_racha: 21 }))) });
+    });
+    console.log('  (muestra) rachas de usuarios_publicos');
+    await page.getByText('Ranking', { exact: true }).last().click({ timeout: 30000 });
+    await page.waitForTimeout(3500);
+    await foto(page, 'ranking-medallas');
+    await page.screenshot({ path: join(CARPETA, 'ranking-fila.png'), clip: { x: 0, y: 120, width: 390, height: 100 } });
+    console.log('  foto: capturas-nativa/ranking-fila.png');
+    return page;
+  },
   async perfiles(nav, gente) {
     const { a: A, b: B } = gente;
     const { data: pedido } = await A.s.from('friendships').insert({ solicitante: A.id, destinatario: B.id }).select('id').single();

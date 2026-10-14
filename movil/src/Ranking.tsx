@@ -26,7 +26,7 @@ import AccionesDeUsuario from './AccionesDeUsuario';
 import CampoTexto from './CampoTexto';
 import Surgir from './Surgir';
 import Insignia from './Insignia';
-import { mejorRangoDe, numeroDeRango } from '@nucleo/rangos';
+import { numeroDeRango } from '@nucleo/rangos';
 import Medallas from './Medallas';
 import FondoEspacial from './FondoEspacial';
 import GloboPrimeraVez from './GloboPrimeraVez';
@@ -283,20 +283,18 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                   {/* LAS MEDALLAS, al lado del nombre, igual que en el perfil.
                       Caen en segundo plano (ver el efecto de arriba). */}
                   <View style={{ flex: 1 }}>
+                    {/* LA DEL RANGO MÁS ALTO VA ACÁ, con las otras medallas (14/10): al lado
+                        del número de la racha se confundía con la racha de hoy. */}
                     <Medallas
                       medallas={medallas[a.id] ?? []}
-                      tam={15}
+                      mejorRacha={Math.max(a.racha_actual, a.mejor_racha ?? 0)}
+                      tam={20}
                       nombre={
                         <Text style={estilos.nombre}>{a.id === miId ? T.social.yoEnLista(a.username) : a.username}</Text>
                       }
                     />
                   </View>
-                  {/* LA MEDALLA DEL RANGO MÁS ALTO que alcanzó, no el de hoy:
-                      lo de hoy ya lo dice el número de al lado. */}
-                  <View testID="mejor-rango" accessibilityLabel={T.social.mejorRango}>
-                    <Insignia rango={mejorRangoDe(a)} tam={22} />
-                  </View>
-                  <Text style={estilos.dato}>{a.racha_actual}</Text>
+                  <Text style={[estilos.dato, estilos.racha]}>{a.racha_actual}</Text>
                 </Pressable>
               </Surgir>
             ))}
@@ -493,8 +491,11 @@ const estilos = StyleSheet.create({
     paddingVertical: 10,
     minHeight: 48,
   },
-  nombre: { flex: 1, color: C.tinta, fontSize: 15 },
+  // Sin flex: las medallas van pegadas al nombre (14/10); uno largo las baja de renglón.
+  nombre: { flexShrink: 1, color: C.tinta, fontSize: 15 },
   dato: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
+  // La racha de hoy, sola y apartada a la derecha: lo de al lado del nombre son logros.
+  racha: { color: C.tinta, fontSize: 16, minWidth: 34, textAlign: 'right', marginLeft: 14 },
   filaAdentro: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   unirse: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
   unirseTexto: { color: C.tinta, fontSize: 13 },

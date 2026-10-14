@@ -1402,7 +1402,6 @@ export const T = {
     enVivoDescansa: (falta: string) => `descansa ${falta}`,
     enVivoListo: 'listo',
     enVivoSinSenal: 'sin señal',
-    mejorRango: 'El rango más alto que alcanzó',
     avisoRutina: 'Novedad: tus amigos ahora ven tu rutina, ejercicios y series. Se apaga en Ajustes.',
     // No 'Entendido': así se llama el botón de la ventana de las vidas, y las sondas la cierran por ese texto.
     avisoEntreno: 'Novedad: tus amigos ven cuando estás entrenando, nunca dónde. Se apaga en Ajustes.',
@@ -1520,7 +1519,8 @@ export const T = {
     subiendoFoto: 'subiendo la foto…',
     deRacha: (n: number) => `${n} de racha`,
     // La medalla de Saturno (item 5): el texto del globo al tocarla.
-    rachaMasLargaLarga: (n: number) => `Tu racha más larga fue de ${n} ${n === 1 ? 'día' : 'días'}`,
+    // Sin "Tu": el mismo globo sale en el perfil de un amigo y en Ranking (14/10).
+    rachaMasLargaLarga: (n: number) => `Racha más larga: ${n} ${n === 1 ? 'día' : 'días'}`,
     fotoActualizada: 'Foto actualizada.',
     noSePudoEliminar: 'No se eliminó. Prueba de nuevo.',
     // EL ROTULO Y EL PIE, cortos (25/9). Decian "Son las que ven tus amigos.

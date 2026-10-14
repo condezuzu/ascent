@@ -16176,7 +16176,8 @@ console.log('\n199. Ranking: la cara de cada uno y la medalla del rango más alt
   const rk199 = de199('movil', 'src', 'Ranking.tsx');
   chequear('la fila del ranking muestra la cara y la medalla del rango más alto', [
     /<Avatar url=\{a\.avatar_url\} nombre=\{a\.username\} tam=\{38\} \/>/.test(rk199),
-    /<Insignia rango=\{mejorRangoDe\(a\)\} tam=\{22\} \/>/.test(rk199),
+    // Desde el 14/10 va al lado del nombre, con forma de medalla, y la racha de hoy queda sola.
+    /mejorRacha=\{Math\.max\(a\.racha_actual, a\.mejor_racha \?\? 0\)\}/.test(rk199) && /<MedallaDeRango rango=\{numeroDeRango\(mejorRacha \?\? 0\)\}/.test(de199('movil', 'src', 'Medallas.tsx')),
     /<Insignia rango=\{numeroDeRango\(a\.racha_actual\)\} tam=\{38\} \/>/.test(rk199),
   ], [true, true, false]);
 }
@@ -16450,7 +16451,8 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   // ---- LA MEDALLA DEL PERFIL Y EL INTERRUPTOR ----
   const med201 = de201('movil', 'src', 'Medallas.tsx');
   chequear('en el perfil, la medalla es la del rango más alto y no un Saturno fijo', [
-    /<Insignia rango=\{numeroDeRango\(mejorRacha \?\? 0\)\} tam=\{tam\} \/>/.test(med201),
+    // Desde el 14/10 con forma de medalla (cinta y disco), la misma insignia adentro.
+    /<MedallaDeRango rango=\{numeroDeRango\(mejorRacha \?\? 0\)\} tam=\{tam\} \/>/.test(med201),
     /Saturno/.test(med201.replace(/conSaturno|saturnoAbierto/g, '')),
     existe201(join(RAIZ201, 'movil', 'src', 'MedallaRacha.tsx')),
   ], [true, false, false]);
