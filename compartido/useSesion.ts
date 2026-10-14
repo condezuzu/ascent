@@ -203,6 +203,11 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   const [desfasaje, setDesfasaje] = useState(0);
   const [series, setSeries] = useState(0);
   const [porUbicacion, setPorUbicacion] = useState(false);
+  // Si ya se leyó la copia de la sesión que guarda el teléfono (14/10). Antes de
+  // eso `corriendo` es el valor de arranque, `false`, aunque haya una sesión:
+  // quien decide algo con eso —el vigilante, al abrir la app de cero— arrancaba
+  // otra encima de la que ya estaba.
+  const [cacheLeida, setCacheLeida] = useState(false);
   // El bloque en curso: en qué estás, cuántas te propusiste, cuántas van.
   // Ver `lib/bloques.ts` — el total de la sesión sigue siendo `series` y esto
   // es una anotación encima, no un reemplazo.
@@ -328,6 +333,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       if (alDia()) setSeries(seriesAlReleer(seriesRef.current, c.series, hayPendientes));
     }
     setDescanso(await leerDescanso());
+    setCacheLeida(true);
   }, [bloquesSonDe]);
 
   // La consulta de verdad. La caché pinta al instante, esto la corrige.
@@ -1390,6 +1396,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       porUbicacion,
       bloques,
       ultimaActividad,
+      cacheLeida,
       cargaConsultada,
       sugerido,
       subida,

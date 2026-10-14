@@ -159,6 +159,13 @@ function Mirando({ perfil }: { perfil: Perfil }) {
     // SE DECIDE CON LO DE AHORA, no con la foto de antes del GPS (13/10): entre
     // aquella lectura y esta línea pasan segundos, y "Terminar" pudo caer en el medio.
     const ahoraS = sesionRef.current;
+    // AL ABRIR DE CERO, todavía sin leer la sesión guardada: no se decide nada.
+    // Con eso `corriendo` sería el `false` de arranque y se arrancaría otra. La
+    // mirada siguiente ya la tiene.
+    if (!ahoraS.estado.cacheLeida) {
+      ultimaMirada.current = 0;
+      return;
+    }
     const visita = await leerVigilancia();
     const decision = decidir(adentro, medidoEn, Date.now(), visita, {
       corriendo: ahoraS.estado.corriendo,

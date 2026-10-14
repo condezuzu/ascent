@@ -1,11 +1,11 @@
-import { anotarLlegadaPendiente, registrarPorSenal } from '@compartido/gimnasio';
+import { anotarLlegadaPendiente, registrarPorSenal, reintentarLlegadaPendiente } from '@compartido/gimnasio';
 import { anotar } from '@compartido/bitacora';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
 import { VISITA_VENCIDA_MS } from '@nucleo/llegada';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { aISO } from '@nucleo/fechas';
-import { alLlegarDeFondo } from './plataforma/ubicacion';
+import { alLlegarDeFondo, alSalirDeFondo } from './plataforma/ubicacion';
 
 /**
  * LLEGASTE AL GIMNASIO CON LA APP CERRADA (§13). Lo que en web no se podía.
@@ -91,3 +91,20 @@ async function llegue() {
 // que hace es dejar la función a mano, así que importar esto no cuesta nada ni
 // enciende ninguna antena.
 alLlegarDeFondo(llegue);
+
+/**
+ * TE FUISTE DEL GIMNASIO CON LA APP CERRADA (14/10): si el día quedó pendiente
+ * al llegar —sin datos en la puerta—, se reintenta ahora, que afuera suele haber
+ * señal. Si ya es otro día, `reintentarLlegadaPendiente` lo tira sin escribir.
+ */
+async function meFui() {
+  try {
+    if ((await quienSoy(supabase)).estado !== 'con') return;
+    const r = await reintentarLlegadaPendiente(supabase, aISO(new Date()));
+    if (r !== 'nada') await anotar('me fui (app cerrada): llegada pendiente', { resultado: r });
+  } catch (e) {
+    await anotar('me fui (app cerrada): falló', { por: String((e as Error)?.message ?? e) });
+  }
+}
+
+alSalirDeFondo(meFui);

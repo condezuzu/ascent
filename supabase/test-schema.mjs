@@ -17070,7 +17070,7 @@ console.log('\n210. El vigilante no prende una sesión que nadie pidió');
   const ses210 = leer210(join(RAIZ210, 'compartido', 'useSesion.ts'), 'utf8').replace(/\r\n/g, '\n');
   const term210 = ses210.slice(ses210.indexOf('async function terminar('), ses210.indexOf('async function marcar('));
   chequear('el vigilante decide con la sesión y la visita de AHORA (después del GPS), y guarda sin desmarcar', [
-    /const ahoraS = sesionRef\.current;\s*const visita = await leerVigilancia\(\);\s*const decision = decidir\(adentro, medidoEn, Date\.now\(\), visita, \{\s*corriendo: ahoraS\.estado\.corriendo,/.test(vig210),
+    /const ahoraS = sesionRef\.current;[\s\S]{0,400}?const visita = await leerVigilancia\(\);\s*const decision = decidir\(adentro, medidoEn, Date\.now\(\), visita, \{\s*corriendo: ahoraS\.estado\.corriendo,/.test(vig210),
     /await guardarVigilancia\(sinDesmarcar\(decision\.vigilancia, await leerVigilancia\(\)\)\);/.test(vig210),
     /decidir\([^)]*vigilancia, \{\s*corriendo: s\.estado/.test(vig210),
   ], [true, true, false]);
@@ -17441,6 +17441,25 @@ console.log('\n214. La rutina en el teléfono: qué se muestra, y con qué arran
   const { readFileSync: leer214 } = await import('node:fs');
   const ses214 = leer214(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'useSesion.ts'), 'utf8').replace(/\r\n/g, '\n');
   chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(await rutinaActivaDelTelefono\(\), new Date\(\)\.getDay\(\)\);\s*rutinaRef\.current = deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
+}
+
+console.log('\n215. El día que se entrena sin abrir la app, y el vigilante al abrir de cero');
+{
+  const { readFileSync: leer215 } = await import('node:fs');
+  const RAIZ215 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de215 = (...p) => leer215(join(RAIZ215, ...p), 'utf8').replace(/\r\n/g, '\n');
+  const ubi = de215('movil', 'src', 'plataforma', 'ubicacion.ts');
+  const fondo = de215('movil', 'src', 'llegadaDeFondo.ts');
+  chequear('el sistema avisa también la salida, y ahí se reintenta el día pendiente (sin tocar la sesión)', [
+    /notifyOnEnter: true,[\s\S]{0,400}notifyOnExit: true,/.test(ubi),
+    /if \(evento === Location\.GeofencingEventType\.Exit\) \{\s*await alSalirDeFondoFn\?\.\(\);\s*return;\s*\}/.test(ubi),
+    /async function meFui\(\) \{[\s\S]{0,300}await reintentarLlegadaPendiente\(supabase, aISO\(new Date\(\)\)\)/.test(fondo),
+    /alSalirDeFondo\(meFui\);/.test(fondo),
+    /async function meFui\(\) \{[\s\S]{0,600}?(terminar|empezar)\(/.test(fondo),
+  ], [true, true, true, true, false]);
+  chequear('al montar, la sesión no dice "no corre" hasta haber leído lo que guarda el teléfono', await escenarioDeSesion('copia'), { alMontar: false, despues: true });
+  const vig215 = de215('movil', 'src', 'VigilanteDeGimnasio.tsx');
+  chequear('y el vigilante no decide nada antes de eso', /const ahoraS = sesionRef\.current;[\s\S]{0,400}if \(!ahoraS\.estado\.cacheLeida\) \{[\s\S]{0,80}return;\s*\}\s*const visita = await leerVigilancia\(\);/.test(vig215), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

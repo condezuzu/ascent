@@ -538,8 +538,16 @@ async function senal(cual) {
   return { fallo: 'no conozco ' + cual };
 }
 
+/** `copia`: `cacheLeida` al montar es false, y pasa a true recién cuando se leyó la copia de la sesión. */
+async function copia() {
+  const inicio = montar(() => useSesion());
+  const alMontar = inicio.r.estado.cacheLeida;
+  await asentar();
+  return { alMontar, despues: inicio.r.estado.cacheLeida };
+}
+
 const [escenario, ...argumentos] = process.argv.slice(2);
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

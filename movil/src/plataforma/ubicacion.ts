@@ -57,6 +57,19 @@ export function alLlegarDeFondo(fn: () => Promise<void>) {
   alLlegarDeFondoFn = fn;
 }
 
+/**
+ * LA SALIDA, CON LA APP CERRADA (14/10). Sirve para UNA cosa: reintentar el
+ * día que no se pudo registrar al llegar (la puerta de un subsuelo sin datos).
+ * Afuera, en la calle, casi siempre hay señal. El día en que alguien entrena y
+ * no abre la app es justo el que no se puede perder. La sesión NO se toca acá:
+ * cerrarla sigue siendo del vigilante, que sabe la hora de la última vez adentro.
+ */
+let alSalirDeFondoFn: (() => Promise<void>) | null = null;
+
+export function alSalirDeFondo(fn: () => Promise<void>) {
+  alSalirDeFondoFn = fn;
+}
+
 // `async` porque TaskManager espera una promesa: el sistema usa lo que
 // devuelve para saber cuándo puede dormir a la app de nuevo. Por eso el
 // `await` de abajo no es decorativo: sin él, iOS puede dormir la app antes de
@@ -64,6 +77,10 @@ export function alLlegarDeFondo(fn: () => Promise<void>) {
 TaskManager.defineTask(TAREA, async ({ data, error }) => {
   if (error) return;
   const evento = (data as { eventType?: Location.GeofencingEventType } | null)?.eventType;
+  if (evento === Location.GeofencingEventType.Exit) {
+    await alSalirDeFondoFn?.();
+    return;
+  }
   if (evento !== Location.GeofencingEventType.Enter) return;
   // Primero el de fondo, que es el que hace el trabajo y el único que existe
   // con la app cerrada. El otro es un empujón para que el vigilante mire ya,
@@ -133,11 +150,11 @@ export const ubicacionNativa: Ubicacion = {
           longitude: centro.lon,
           radius: radio,
           notifyOnEnter: true,
-          // La SALIDA no se vigila desde el sistema: la sesión se cierra con
-          // la última vez que se lo vio adentro, y esa hora la tiene la app.
-          // Un evento de salida que llegue con la app muerta no sabría con qué
-          // hora cerrar.
-          notifyOnExit: false,
+          // LA SALIDA SÍ (14/10), pero solo para reintentar el día pendiente
+          // (`alSalirDeFondo`). La sesión no se cierra con esto: un evento de
+          // salida con la app muerta no sabría con qué hora cerrar, y esa hora
+          // la tiene el vigilante.
+          notifyOnExit: true,
         },
       ]);
       return true;
