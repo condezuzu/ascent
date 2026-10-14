@@ -54,6 +54,8 @@ export const REQUIERE = {
   corregirDiaDeUna: 74,
   /** Las rutinas guardadas: varias por cuenta, una activa. */
   rutinas: 75,
+  /** Ejercicios propios y cardio (se mide en minutos). */
+  ejerciciosPropios: 76,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

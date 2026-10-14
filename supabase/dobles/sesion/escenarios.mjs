@@ -546,8 +546,33 @@ async function copia() {
   return { alMontar, despues: inicio.r.estado.cacheLeida };
 }
 
+/**
+ * `cardio`: una vuelta con minutos se anota y sube como una serie, sin descanso
+ * después; corregir los minutos con la vuelta contada llega a la base. Y una serie
+ * común, en el mismo hook, sí arranca el descanso (que el escenario no pase en
+ * verde porque los descansos estén apagados).
+ */
+async function cardio() {
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirEjercicio('cinta');
+  await inicio.r.elegirMinutos(25);
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  const s = servidor.sesiones.find((x) => x.estado === 'corriendo');
+  const tras = { series: s?.series ?? null, minutos: (s?.bloques ?? []).map((b) => b.minutos ?? null), descanso: inicio.r.estado.descanso !== null };
+  await inicio.r.elegirMinutos(30);
+  await asentar();
+  const corregido = (s?.bloques ?? []).map((b) => b.minutos ?? null);
+  await inicio.r.serieHecha();
+  await asentar();
+  return { tras, corregido, comun: inicio.r.estado.descanso !== null };
+}
+
 const [escenario, ...argumentos] = process.argv.slice(2);
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

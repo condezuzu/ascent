@@ -61,7 +61,9 @@ export function diasLimpios(crudo: unknown): DiaDeSemana[] {
 /** La semana deducida del historial (solo trae los días que tienen sesiones), como semana entera. */
 export function semanaDeLaDeducida(dias: DiaDeRutina[]): DiaDeSemana[] {
   const s = semanaVacia();
-  for (const d of dias) if (d.dia >= 0 && d.dia <= 6) s[d.dia] = { descanso: false, ejercicios: d.ejercicios.map((e) => ({ ejercicio: e.ejercicio, series: e.series })) };
+  for (const d of dias)
+    if (d.dia >= 0 && d.dia <= 6)
+      s[d.dia] = { descanso: false, ejercicios: d.ejercicios.map((e) => (e.minutos ? { ejercicio: e.ejercicio, series: e.series, minutos: e.minutos } : { ejercicio: e.ejercicio, series: e.series })) };
   return s;
 }
 

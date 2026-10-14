@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
-import { ORDEN_ZONAS, gruposDeZona, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
+import { GRUPOS_PROPIOS, ORDEN_ZONAS, buscarEjercicios, gruposDeZona, sinAcentos, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
+import { disponible } from '@nucleo/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
+import { crearEjercicio } from '@compartido/ejerciciosPropios';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
@@ -50,6 +53,11 @@ function SelectorEjercicio({
   const actual = ejercicios.find((e) => e.id === valor) ?? null;
   const [zona, setZona] = useState<Zona | null>(null);
   const [grupo, setGrupo] = useState<string | null>(null);
+  // LA LUPA Y EL "+" (14/10): buscar por nombre, ver los parecidos, y agregar el que no está.
+  const [busqueda, setBusqueda] = useState('');
+  const [creando, setCreando] = useState<{ nombre: string; grupo: string | null } | null>(null);
+  const [creandoError, setCreandoError] = useState('');
+  const conPropios = disponible('ejerciciosPropios', useVersionDelEsquema());
 
   // LO MÁS PESADO DE LA ÚLTIMA VEZ, al lado de cada nombre (10/10). Primero lo
   // que el teléfono ya tiene guardado —aparece en el acto, también sin señal— y
@@ -86,9 +94,23 @@ function SelectorEjercicio({
   const delDots = ejercicios.filter((e) => e.cuenta_dots);
 
   function elegir(id: string | null) {
+    setBusqueda('');
+    setCreando(null);
     alElegir(id);
     alCerrar();
   }
+
+  async function crear() {
+    if (!creando?.grupo || creando.nombre.trim().length < 2) return;
+    setCreandoError('');
+    const id = await crearEjercicio(supabase, creando.nombre.trim(), creando.grupo);
+    if (!id) return setCreandoError(T.general.noSePudo);
+    elegir(id);
+  }
+
+  const hallados = buscarEjercicios(ejercicios, busqueda, 12, (g) => T.ejercicios.grupos[g] ?? g);
+  // Con uno que ya se llama así, no se ofrece crear otro igual.
+  const hayIgual = hallados.coinciden.some((e) => sinAcentos(e.nombre) === sinAcentos(busqueda));
 
   function abrirZona(z: Zona) {
     const suyos = gruposDeZona(z, grupos);
@@ -118,7 +140,71 @@ function SelectorEjercicio({
         <Text style={estilos.titulo}>{titulo}</Text>
       </View>
 
-      {!zona && (
+      {!zona && !creando && (
+        <View style={estilos.buscador}>
+          <Text style={estilos.lupa}>⌕</Text>
+          <TextInput
+            testID="buscar-ejercicio"
+            style={estilos.buscar}
+            value={busqueda}
+            onChangeText={setBusqueda}
+            placeholder={T.ejercicios.buscar}
+            placeholderTextColor={C.apagado}
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+        </View>
+      )}
+
+      {creando && (
+        <View testID="crear-ejercicio">
+          <View style={estilos.buscador}>
+          <TextInput
+            style={estilos.buscar}
+            value={creando.nombre}
+            onChangeText={(nombre) => setCreando({ ...creando, nombre })}
+            placeholder={T.ejercicios.nombreDelPropio}
+            placeholderTextColor={C.apagado}
+            maxLength={40}
+          />
+          </View>
+          <Text style={estilos.rotulo}>{T.ejercicios.queMusculo}</Text>
+          <View style={estilos.chips}>
+            {GRUPOS_PROPIOS.map((g) => (
+              <Pressable key={g} style={[estilos.chip, creando.grupo === g && estilos.chipElegido]} onPress={() => setCreando({ ...creando, grupo: g })}>
+                <Text style={[estilos.chipTexto, creando.grupo === g && estilos.elegido]}>{T.ejercicios.grupos[g] ?? g}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {creando.grupo === 'cardio' && <Text style={estilos.nota}>{T.ejercicios.seMideEnMinutos}</Text>}
+          {!!creandoError && <Text style={estilos.nota}>{creandoError}</Text>}
+          <Pressable
+            testID="crear-ejercicio-listo"
+            style={[estilos.crear, (!creando.grupo || creando.nombre.trim().length < 2) && estilos.apagado]}
+            onPress={() => void crear()}
+            disabled={!creando.grupo || creando.nombre.trim().length < 2}
+          >
+            <Text style={estilos.crearTexto}>{T.ejercicios.crear}</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {!zona && !creando && busqueda.trim() !== '' && (
+        <>
+          {hallados.coinciden.map((e) => (
+            <Fila key={e.id} texto={e.nombre} extra={ultimos[e.id]} elegido={e.id === valor} onPress={() => elegir(e.id)} />
+          ))}
+          {hallados.coinciden.length === 0 && <Text style={estilos.nota}>{T.ejercicios.nadaConEseNombre}</Text>}
+          {/* Antes de los parecidos y no al final: debajo de doce quedaba fuera de la pantalla. */}
+          {conPropios && !hayIgual && <Fila texto={T.ejercicios.agregarPropio(busqueda.trim())} onPress={() => setCreando({ nombre: busqueda.trim(), grupo: null })} />}
+          {hallados.parecidos.length > 0 && <Text style={estilos.rotulo}>{T.ejercicios.parecidos}</Text>}
+          {hallados.parecidos.map((e) => (
+            <Fila key={e.id} texto={e.nombre} extra={ultimos[e.id]} elegido={e.id === valor} onPress={() => elegir(e.id)} />
+          ))}
+        </>
+      )}
+
+      {!zona && !creando && busqueda.trim() === '' && (
         <>
           <Fila texto={T.sesion.sinEjercicio} onPress={() => elegir(null)} />
           <Text style={estilos.rotulo}>{T.marca.cuentanDots}</Text>
@@ -129,6 +215,7 @@ function SelectorEjercicio({
           {ORDEN_ZONAS.filter((z) => gruposDeZona(z, grupos).length > 0).map((z) => (
             <Fila key={z} texto={T.ejercicios[z]} extra="›" onPress={() => abrirZona(z)} />
           ))}
+          {conPropios && <Fila texto={T.ejercicios.nuevoPropio} onPress={() => setCreando({ nombre: '', grupo: null })} />}
         </>
       )}
 
@@ -151,7 +238,14 @@ function SelectorEjercicio({
           .filter((e) => e.grupo === grupo)
           .map((e) => <Fila key={e.id} texto={e.nombre} extra={ultimos[e.id]} elegido={e.id === valor} onPress={() => elegir(e.id)} />)}
 
-      <Pressable style={estilos.cancelar} onPress={alCerrar}>
+      <Pressable
+        style={estilos.cancelar}
+        onPress={() => {
+          setBusqueda('');
+          setCreando(null);
+          alCerrar();
+        }}
+      >
         <Text style={estilos.cancelarTexto}>{T.general.cancelar}</Text>
       </Pressable>
     </Hoja>
@@ -181,5 +275,16 @@ const estilos = StyleSheet.create({
   // Más claro que el nombre: el peso es lo que se viene a leer (10/10).
   extra: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
   cancelar: { paddingVertical: 16, alignItems: 'center', marginTop: 8 },
+  buscador: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingHorizontal: 12, marginBottom: 8 },
+  lupa: { color: C.sub, fontSize: 18 },
+  buscar: { flex: 1, color: C.tinta, fontSize: 16, paddingVertical: 10 },
+  nota: { color: C.apagado, fontSize: 13, marginVertical: 8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 6 },
+  chip: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  chipElegido: { borderColor: C.tinta },
+  chipTexto: { color: C.sub, fontSize: 14 },
+  crear: { alignSelf: 'flex-start', borderWidth: StyleSheet.hairlineWidth, borderColor: C.tinta, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18, marginTop: 12 },
+  crearTexto: { color: C.tinta, fontSize: 15 },
+  apagado: { opacity: 0.4 },
   cancelarTexto: { color: C.sub, fontSize: 14 },
 });

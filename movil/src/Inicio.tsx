@@ -780,6 +780,7 @@ export default function Inicio({
             alElegirMeta={sesion.elegirMeta}
             alTocarBloque={sesion.tocarBloque}
             alElegirPeso={sesion.elegirPeso}
+            alElegirMinutos={sesion.elegirMinutos}
             alCorregirPeso={sesion.corregirPesoDeSerie}
             alElegirCarga={sesion.elegirCarga}
             alCorregirCarga={sesion.corregirCargaDeBloque}

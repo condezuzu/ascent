@@ -279,7 +279,16 @@ create table public.ejercicios (
   carga text not null default 'total',
   -- El nombre no dice con qué se hace ("Zancadas"): se pregunta una vez.
   carga_ambigua boolean not null default false,
-  constraint ejercicios_carga_valida check (carga in ('total', 'par', 'una', 'lastre', 'corporal'))
+  -- QUIÉN LO AGREGÓ (migración 76): null es el catálogo de todos; con un id, es
+  -- un ejercicio propio de esa cuenta. Lo ven ella y sus amigos (para leer su
+  -- rutina y su entrenamiento con nombre); nadie más.
+  creado_por uuid references public.profiles(id) on delete cascade,
+  -- QUÉ SE ANOTA (migración 76): 'series' (series y peso, lo de siempre) o
+  -- 'tiempo' (minutos: el cardio). El cardio es un ejercicio más del catálogo,
+  -- no un modo aparte: entra en la rutina, el historial y el día igual que todos.
+  mide text not null default 'series',
+  constraint ejercicios_carga_valida check (carga in ('total', 'par', 'una', 'lastre', 'corporal')),
+  constraint ejercicios_mide_valido check (mide in ('series', 'tiempo'))
 );
 
 -- Las marcas. Se guarda lo que el usuario LEVANTÓ (peso y repeticiones), no
@@ -461,6 +470,21 @@ update public.ejercicios set carga_ambigua = true where id in (
   'aperturas', 'pajaros', 'elevaciones_frontales', 'encogimientos',
   'rotacion_externa', 'press_frances', 'curl_predicador', 'patada_triceps'
 );
+
+-- EL CARDIO (migración 76): ejercicios que se miden en minutos. Sin peso, fuera
+-- del DOTS, con su propio grupo.
+insert into public.ejercicios (id, nombre, grupo, cuenta_dots, admite_peso, orden, carga, mide) values
+  ('cinta',           'Cinta',             'cardio', false, false, 900, 'total', 'tiempo'),
+  ('correr',          'Correr afuera',     'cardio', false, false, 901, 'total', 'tiempo'),
+  ('caminar',         'Caminar',           'cardio', false, false, 902, 'total', 'tiempo'),
+  ('bicicleta_fija',  'Bicicleta fija',    'cardio', false, false, 903, 'total', 'tiempo'),
+  ('eliptica',        'Elíptica',          'cardio', false, false, 904, 'total', 'tiempo'),
+  ('remo_ergometro',  'Remo ergómetro',    'cardio', false, false, 905, 'total', 'tiempo'),
+  ('escaladora',      'Escaladora',        'cardio', false, false, 906, 'total', 'tiempo'),
+  ('soga',            'Saltar la soga',    'cardio', false, false, 907, 'total', 'tiempo'),
+  ('natacion',        'Natación',          'cardio', false, false, 908, 'total', 'tiempo')
+on conflict (id) do nothing;
+
 
 -- -------------------------------------------------------------
 -- Las sesiones
@@ -2132,7 +2156,10 @@ begin
            case when p is null
                 then jsonb_build_object('ejercicio', e, 'series', s)
                 else jsonb_build_object('ejercicio', e, 'series', s, 'pesos', p, 'carga', c)
-           end order by i), '[]'::jsonb)
+           end
+           -- LOS MINUTOS (migración 76): solo de un ejercicio que se mide en tiempo.
+           || case when m is null then '{}'::jsonb else jsonb_build_object('minutos', m) end
+           order by i), '[]'::jsonb)
     into limpio
   from (
     select
@@ -2146,13 +2173,19 @@ begin
       end as p,
       case when f.carga in ('total', 'par', 'una', 'lastre', 'corporal') then f.carga
            else (select carga from ejercicios where id = f.e)
-      end as c
+      end as c,
+      -- Igual que el teléfono (minutosValidos): menos de 1 no es un dato, más de 600 se topa.
+      case when (select x.mide from ejercicios x where x.id = f.e) = 'tiempo' and jsonb_typeof(f.minutos) = 'number'
+                and (f.minutos #>> '{}')::numeric >= 1
+           then least(round((f.minutos #>> '{}')::numeric), 600)::int
+      end as m
     from (
       select
         b.valor->>'ejercicio' as e,
         greatest(0, least((b.valor->>'series')::int, 999)) as s,
         b.valor->'pesos' as pesos,
         b.valor->>'carga' as carga,
+        b.valor->'minutos' as minutos,
         b.orden as i
       from jsonb_array_elements(p_bloques) with ordinality as b(valor, orden)
       where b.valor->>'ejercicio' in (select id from ejercicios)
@@ -2168,6 +2201,36 @@ begin
   return jsonb_build_object('bloques', coalesce(guardado, '[]'::jsonb), 'total_series', total);
 end;
 $$;
+
+-- UN EJERCICIO PROPIO (migración 76). Hay muchos que no están y no se van a
+-- poner todos los del mundo: cada cuenta agrega los suyos con un "+". Un nombre
+-- que ya tiene (sin importar mayúsculas) devuelve ese mismo: tocar dos veces no
+-- crea dos. Hasta cien por cuenta. Devuelve el id.
+create or replace function public.crear_ejercicio(p_nombre text, p_grupo text, p_mide text)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  limpio text := left(regexp_replace(btrim(coalesce(p_nombre, '')), '\s+', ' ', 'g'), 40);
+  mide text := case when p_mide = 'tiempo' or p_grupo = 'cardio' then 'tiempo' else 'series' end;
+  ya text;
+  v_id text;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if char_length(limpio) < 2 then raise exception 'el nombre es muy corto'; end if;
+  if p_grupo is null or p_grupo not in ('pecho', 'espalda', 'hombros', 'brazos', 'piernas', 'core', 'cardio') then
+    raise exception 'grupo desconocido';
+  end if;
+  select id into ya from ejercicios where creado_por = uid and lower(nombre) = lower(limpio) limit 1;
+  if ya is not null then return ya; end if;
+  if (select count(*) from ejercicios where creado_por = uid) >= 100 then raise exception 'ya hay cien ejercicios propios'; end if;
+  v_id := 'propio_' || substr(md5(uid::text || clock_timestamp()::text || random()::text), 1, 12);
+  insert into ejercicios (id, nombre, grupo, cuenta_dots, admite_peso, orden, carga, mide, creado_por)
+       values (v_id, limpio, p_grupo, false, mide = 'series', 9000, 'total', mide, uid);
+  return v_id;
+end;
+$$;
+revoke execute on function public.crear_ejercicio(text, text, text) from public, anon;
+grant execute on function public.crear_ejercicio(text, text, text) to authenticated;
 
 -- En qué terminaste la última vez, para que la app abra ahí. Si entrenás
 -- siempre parecido, cambiar de ejercicio es la excepción; elegirlo cada día
@@ -3081,7 +3144,9 @@ language sql stable security definer set search_path = public as $$
   select l.fecha,
          -- Se arma de nuevo con SOLO esas dos claves: el bloque guardado lleva
          -- además los pesos, y esos no salen de acá.
-         (select jsonb_agg(jsonb_build_object('ejercicio', b.value ->> 'ejercicio', 'series', b.value -> 'series') order by b.ordinality)
+         (select jsonb_agg(jsonb_build_object('ejercicio', b.value ->> 'ejercicio', 'series', b.value -> 'series')
+                           || case when jsonb_typeof(b.value -> 'minutos') = 'number' then jsonb_build_object('minutos', b.value -> 'minutos') else '{}'::jsonb end
+                           order by b.ordinality)
             from jsonb_array_elements(s.bloques) with ordinality b
            where coalesce(b.value ->> 'ejercicio', '') <> '')
     from sesiones s
@@ -3582,8 +3647,9 @@ create policy "feedback: insertar" on public.feedback for insert with check (aut
 create policy "errores: insertar" on public.errores_js for insert with check (true);
 
 -- ejercicios: catálogo de solo lectura, igual para todos
+-- Los propios (migración 76): los ve quien los creó y sus amigos.
 create policy "ejercicios: catálogo con sesión" on public.ejercicios for select
-  using (auth.uid() is not null);
+  using (auth.uid() is not null and (creado_por is null or creado_por = auth.uid() or public.son_amigos(auth.uid(), creado_por)));
 
 -- prs: las marcas se ven igual que los logs — el dueño todo, los amigos
 -- aceptados leen. El peso CORPORAL sigue afuera, siempre (§16.6).
@@ -3981,7 +4047,7 @@ $$;
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 75; $$;
+returns int language sql immutable as $$ select 76; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

@@ -165,7 +165,7 @@ export default function HojaDelDia({
                       </Text>
                     )}
                   </View>
-                  <Text style={estilos.cuantas}>{T.resumen.series(e.series)}</Text>
+                  <Text style={estilos.cuantas}>{e.minutos ? T.rutina.minutos(e.minutos) : T.resumen.series(e.series)}</Text>
                 </View>
               ))}
               {resumen.sinEjercicio > 0 && (

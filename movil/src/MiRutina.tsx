@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import {
@@ -74,6 +75,8 @@ export default function MiRutina({ visible }: { visible: boolean }) {
   useEffect(() => {
     if (visible) void cargar();
   }, [visible, cargar]);
+  // Un ejercicio propio recién agregado tiene que verse con su nombre.
+  useEffect(() => eventos.escuchar(EJERCICIOS_CAMBIO, () => void cargar()), [cargar]);
 
   const actual = rutinas.find((r) => r.id === sel) ?? null;
 

@@ -170,6 +170,10 @@ export type Ejercicio = {
   // vez (migración 38). Opcionales por la misma razón que `admite_peso`.
   carga?: string;
   carga_ambigua?: boolean;
+  // Qué se anota (migración 76): series y peso, o minutos (el cardio). Opcional como el resto.
+  mide?: 'series' | 'tiempo';
+  // De quién es, si es un ejercicio propio (migración 76).
+  creado_por?: string | null;
 };
 
 // Una marca cargada, tal como la escribió el usuario. El 1RM no se guarda:

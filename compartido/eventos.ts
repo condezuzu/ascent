@@ -21,6 +21,9 @@ export type Eventos = {
   escuchar(nombre: string, fn: Oyente): () => void;
 };
 
+/** Se agregó un ejercicio propio: quien tenga el catálogo cargado, lo vuelve a pedir. */
+export const EJERCICIOS_CAMBIO = 'ascent:ejercicios-cambio';
+
 export const eventos: Eventos = {
   emitir(nombre, dato) {
     // La garantía es: **los que estaban escuchando cuando se emitió reciben el

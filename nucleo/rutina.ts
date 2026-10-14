@@ -125,9 +125,9 @@ export function siguienteEnRutina(rutina: string[], yaHechos: string[]): string 
  * de la semana, lo último que se hizo ese día. Lunes primero; el día sin
  * sesiones no aparece. `dia` es 0=domingo, como `Date.getDay()`.
  */
-export type EjercicioDeRutina = { ejercicio: string; series: number };
+export type EjercicioDeRutina = { ejercicio: string; series: number; minutos?: number };
 export type DiaDeRutina = { dia: number; ejercicios: EjercicioDeRutina[] };
-type SesionVista = { fecha: string; bloques: { ejercicio?: string | null; series?: number | null }[] };
+type SesionVista = { fecha: string; bloques: { ejercicio?: string | null; series?: number | null; minutos?: number | null }[] };
 
 /** Los bloques de una sesión, juntando los del mismo ejercicio: dos tandas de sentadilla son una, con las series sumadas. */
 function ejerciciosConSeries(bloques: SesionVista['bloques']): EjercicioDeRutina[] {
@@ -135,9 +135,12 @@ function ejerciciosConSeries(bloques: SesionVista['bloques']): EjercicioDeRutina
   for (const b of bloques ?? []) {
     if (typeof b?.ejercicio !== 'string' || !b.ejercicio) continue;
     const series = Number.isFinite(b.series) && (b.series as number) > 0 ? Math.round(b.series as number) : 0;
+    const minutos = typeof b.minutos === 'number' && b.minutos > 0 ? Math.round(b.minutos) : 0;
     const ya = orden.find((e) => e.ejercicio === b.ejercicio);
-    if (ya) ya.series += series;
-    else orden.push({ ejercicio: b.ejercicio, series });
+    if (ya) {
+      ya.series += series;
+      if (minutos) ya.minutos = (ya.minutos ?? 0) + minutos;
+    } else orden.push(minutos ? { ejercicio: b.ejercicio, series, minutos } : { ejercicio: b.ejercicio, series });
   }
   return orden;
 }

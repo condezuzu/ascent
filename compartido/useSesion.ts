@@ -31,6 +31,7 @@ import {
   cambiarEjercicio,
   corregirCarga,
   corregirEjercicio,
+  cambiarMinutos,
   cambiarPeso,
   corregirPeso,
   mudarEjercicio,
@@ -870,7 +871,12 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: iso } });
   }
 
-  async function serieHecha() {
+  /**
+   * `sinDescanso`: el cardio (14/10). Se anota igual que una serie —cuenta, sube,
+   * queda en el día— pero no arranca un descanso: después de veinte minutos de
+   * cinta no se espera noventa segundos para la próxima vuelta.
+   */
+  async function serieHecha(opciones?: { sinDescanso?: boolean }) {
     // SIN SESIÓN EN EL TELÉFONO NO SE CUENTA (13/10). La pantalla del descanso
     // queda abierta con su "+ Serie hecha" aunque la sesión se haya cerrado sola:
     // ese toque encolaba series y bloques contra una sesión que ya no existe, y
@@ -912,6 +918,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     await actualizarSesionCache({ series: nc.series, bloques: nc.bloques, sugerido: false }, yo, () =>
       subir(nc.series, nc.bloques)
     );
+    if (opciones?.sinDescanso === true) {
+      await marcar();
+      return;
+    }
     // Recién ahora el descanso, que necesita leer la duración.
     const seg =
       (await leerDuracionDeSesion()) ??
@@ -1309,6 +1319,20 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     await marcar();
   }
 
+  /**
+   * LOS MINUTOS DEL CARDIO (14/10). Con la vuelta ya contada se suben en el acto:
+   * corregir "eran 25, no 20" tiene que llegar a la base.
+   */
+  async function elegirMinutos(m: number | null) {
+    const b = cambiarMinutos(bloquesRef.current, m);
+    if (b === bloquesRef.current) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
+    if (bloquesRef.current.hechas > 0) await subir(seriesRef.current, bloquesRef.current);
+    await marcar();
+  }
+
   /** El peso de una serie ya hecha, desde la lista. `indice` -1 es el bloque en curso. */
   async function corregirPesoDeSerie(indice: number, serie: number, kg: number | null) {
     const previo = bloquesRef.current;
@@ -1411,6 +1435,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     mudarSeries,
     elegirMeta,
     elegirPeso,
+    elegirMinutos,
     corregirPesoDeSerie,
     elegirCarga,
     corregirCargaDeBloque,

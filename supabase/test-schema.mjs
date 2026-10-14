@@ -2431,12 +2431,13 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
   // seguiria saliendo, mas alto y sin significado.
   const cat = (await db.query(`select grupo, count(*)::int n from ejercicios group by 1`)).rows;
   const cuantos = (await db.query(`select count(*)::int n from ejercicios`)).rows[0].n;
-  chequear('el catalogo tiene 101 ejercicios', cuantos, 101);
+  // 101 de fuerza y 9 de cardio (migración 76).
+  chequear('el catalogo tiene 110 ejercicios', cuantos, 110);
   chequear('y solo 3 mueven el DOTS', delDots.length, 3);
   chequear(
-    'los grupos son los seis de siempre',
+    'los grupos son los seis de siempre, y el cardio',
     cat.map((f) => f.grupo).sort(),
-    ['brazos', 'core', 'espalda', 'hombros', 'pecho', 'piernas'].sort()
+    ['brazos', 'cardio', 'core', 'espalda', 'hombros', 'pecho', 'piernas'].sort()
   );
   // El `orden` es lo que AGRUPA en el selector: la lista se ordena por el, sin
   // ordenar por grupo. Si dos grupos se entreveran en la numeracion, la lista
@@ -2455,7 +2456,7 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
       select distinct grupo from x where ant is not null and ant <> grupo
     `)
   ).rows.length;
-  chequear('cada grupo ocupa un tramo seguido de `orden`', arranques, 5);
+  chequear('cada grupo ocupa un tramo seguido de `orden`', arranques, 6);
 
   // Los literales sueltos de los módulos que no pueden importar nada, pineados
   // igual: son los que ningún tipo protege.
@@ -3975,7 +3976,7 @@ console.log('\n56. El arbol del selector llega a los 100');
       llegan += porGrupo.find((f) => f.grupo === g)?.n ?? 0;
     }
   }
-  chequear('se llega a los 101 ejercicios', llegan, 101);
+  chequear('se llega a los 110 ejercicios', llegan, 110);
 
   // QUE ADMITEN PESO (migracion 31). Una marca es peso por repeticiones, asi
   // que la pantalla de marcas filtra por esta columna. Se fija la lista de
@@ -3984,7 +3985,7 @@ console.log('\n56. El arbol del selector llega a los 100');
   const sinPeso = (
     await db.query('select id from ejercicios where not admite_peso order by id')
   ).rows.map((f) => f.id);
-  chequear('los que no admiten peso son los isometricos', sinPeso, ['dead_bug', 'plancha', 'plancha_lateral']);
+  chequear('los que no admiten peso son los isometricos y el cardio', sinPeso, ['bicicleta_fija', 'caminar', 'cinta', 'correr', 'dead_bug', 'eliptica', 'escaladora', 'natacion', 'plancha', 'plancha_lateral', 'remo_ergometro', 'soga']);
   const dotsConPeso = (
     await db.query('select count(*)::int n from ejercicios where cuenta_dots and admite_peso')
   ).rows[0].n;
@@ -6550,7 +6551,8 @@ console.log('\n86. El volumen');
   // Los grupos del volumen son los del selector.
   {
     const { ZONAS } = await import('../nucleo/ejercicios.ts');
-    chequear('el orden de grupos cubre todas las zonas', [...V.ORDEN_GRUPOS].sort(), Object.values(ZONAS).flat().sort());
+    // Todas menos el cardio, que se mide en minutos y no entra en las series por músculo (14/10).
+    chequear('el orden de grupos cubre todas las zonas de fuerza', [...V.ORDEN_GRUPOS].sort(), Object.entries(ZONAS).filter(([z]) => z !== 'cardio').flatMap(([, g]) => g).sort());
   }
 }
 console.log('\n87. Lo que leen igual la web y la app nativa');
@@ -13479,7 +13481,7 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
     (sel197.match(/extra=\{ultimos\[e\.id\]\}/g) ?? []).length,
     /pesoEnLaLista\(m\.peso, unidad\), claveDeEtiqueta\(m\.carga, id\)/.test(sel197),
     /leerRecordados\(\)\.then\(poner\)\.then\(\(\) => recordadosAlDia\(supabase\)\)\.then\(poner\)/.test(sel197),
-  ], [2, true, true]);
+  ], [4, true, true]);
 
   // ---- EL CABLEADO: las DOS apps guardan la copia donde cargan el perfil ----
   // `compartido/` la lee desde las dos; si una sola la escribe, en la otra todo
@@ -17460,6 +17462,143 @@ console.log('\n215. El día que se entrena sin abrir la app, y el vigilante al a
   chequear('al montar, la sesión no dice "no corre" hasta haber leído lo que guarda el teléfono', await escenarioDeSesion('copia'), { alMontar: false, despues: true });
   const vig215 = de215('movil', 'src', 'VigilanteDeGimnasio.tsx');
   chequear('y el vigilante no decide nada antes de eso', /const ahoraS = sesionRef\.current;[\s\S]{0,400}if \(!ahoraS\.estado\.cacheLeida\) \{[\s\S]{0,80}return;\s*\}\s*const visita = await leerVigilancia\(\);/.test(vig215), true);
+}
+
+console.log('\n216. Ejercicios propios, la lupa y el cardio (migración 76)');
+{
+  const EJ = await import('../nucleo/ejercicios.ts');
+  const BL = await import('../nucleo/bloques.ts');
+  const RD = await import('../nucleo/resumenDia.ts');
+  const VO = await import('../nucleo/volumen.ts');
+  const yo = await nuevoUsuario();
+  const amiga = await nuevoUsuario();
+  const extrana = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [yo, amiga]);
+  const como = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const error = (p) => p.then(() => 'entró', (e) => String(e.message));
+
+  // ---- CREAR ----
+  const hip = (await como(yo, 'select crear_ejercicio($1, $2, $3) as id', ['  Hip   thrust en máquina ', 'piernas', 'series']))[0].id;
+  const otraVez = (await como(yo, 'select crear_ejercicio($1, $2, $3) as id', ['HIP THRUST EN MÁQUINA', 'piernas', 'series']))[0].id;
+  const tenis = (await como(yo, 'select crear_ejercicio($1, $2, $3) as id', ['Tenis', 'cardio', 'series']))[0].id;
+  const fila = async (id) => (await db.query('select nombre, grupo, admite_peso, mide, creado_por, cuenta_dots from ejercicios where id = $1', [id])).rows[0];
+  chequear('crear uno lo deja con mi nombre, sin espacios de más, con peso y sin entrar al ranking; el mismo nombre otra vez es el mismo', [
+    /^propio_[0-9a-f]{12}$/.test(hip), otraVez === hip, await fila(hip),
+  ], [true, true, { nombre: 'Hip thrust en máquina', grupo: 'piernas', admite_peso: true, mide: 'series', creado_por: yo, cuenta_dots: false }]);
+  chequear('uno de cardio se mide en minutos y no lleva peso, aunque pidan series', [(await fila(tenis)).mide, (await fila(tenis)).admite_peso], ['tiempo', false]);
+  chequear('nombre de una letra, músculo inventado o sin sesión: no entra', [
+    await error(como(yo, 'select crear_ejercicio($1, $2, $3)', [' x ', 'pecho', 'series'])),
+    await error(como(yo, 'select crear_ejercicio($1, $2, $3)', ['Algo', 'gluteos', 'series'])),
+    await error(como(null, 'select crear_ejercicio($1, $2, $3)', ['Algo', 'pecho', 'series'])),
+    (await db.query(`select has_function_privilege('anon', 'public.crear_ejercicio(text, text, text)', 'execute') as p`)).rows[0].p,
+  ], ['el nombre es muy corto', 'grupo desconocido', 'sin sesión', false]);
+
+  // ---- QUIÉN LOS VE: por la regla de la tabla, como lo pide el teléfono ----
+  const veo = async (u) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    try {
+      return (await db.query('select id from ejercicios where id = any($1)', [[hip, tenis]])).rows.map((r) => r.id).sort();
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  const catalogoComun = async (u) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    try {
+      return Number((await db.query('select count(*) as n from ejercicios where creado_por is null')).rows[0].n);
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  chequear('los míos los veo yo y mis amigos; una extraña no; el catálogo común lo ven todos', [
+    await veo(yo), await veo(amiga), await veo(extrana), (await catalogoComun(extrana)) === (await catalogoComun(yo)),
+  ], [[hip, tenis].sort(), [hip, tenis].sort(), [], true]);
+
+  // ---- EL TOPE ----
+  for (let i = (await db.query('select count(*) as n from ejercicios where creado_por = $1', [yo])).rows[0].n; i < 100; i++)
+    await como(yo, 'select crear_ejercicio($1, $2, $3)', ['Propio ' + i, 'core', 'series']);
+  chequear('no más de cien por cuenta', await error(como(yo, 'select crear_ejercicio($1, $2, $3)', ['El ciento uno', 'core', 'series'])), 'ya hay cien ejercicios propios');
+
+  // ---- EL CARDIO DEL CATÁLOGO ----
+  chequear('el catálogo trae cardio que se mide en minutos y sin peso', (await db.query(`select bool_and(mide = 'tiempo' and not admite_peso) as todos, count(*) as n from ejercicios where grupo = 'cardio' and creado_por is null`)).rows[0], { todos: true, n: 9 });
+
+  // ---- LOS MINUTOS SE GUARDAN SOLO DONDE VAN ----
+  await comoUsuario(amiga);
+  const ses = (await db.query('select iniciar_sesion() as s')).rows[0].s;
+  await db.query('select fijar_series($1, 5)', [ses.id]);
+  const guardado = (await db.query('select fijar_bloques($1, $2::jsonb) as b', [ses.id, JSON.stringify([
+    { ejercicio: 'cinta', series: 1, minutos: 25.4 },
+    { ejercicio: 'press_banca', series: 2, pesos: [60, 60], carga: 'total', minutos: 30 },
+    { ejercicio: 'eliptica', series: 1, minutos: 900 },
+    { ejercicio: 'remo_ergometro', series: 1, minutos: 0 },
+  ])])).rows[0].b.bloques;
+  chequear('los minutos quedan en el cardio (redondeados), no en el press; más de 600 se topa y menos de 1 no se guarda, igual que en el teléfono', [guardado.map((b) => b.minutos ?? null), [25.4, 30, 900, 0].map(BL.minutosValidos)], [[25, null, 600, null], [25, 30, 600, null]]);
+  await db.query('select terminar_sesion()');
+  const deAmiga = (await como(yo, 'select * from rutina_de_amigo($1)', [amiga])).flatMap((f) => f.bloques.map((b) => [b.ejercicio, b.minutos ?? null]));
+  chequear('y la rutina de una amiga muestra los minutos de su cardio', deAmiga, [['cinta', 25], ['press_banca', null], ['eliptica', 600], ['remo_ergometro', null]]);
+
+  // ---- EN EL TELÉFONO: el bloque lleva sus minutos de punta a punta ----
+  let e = BL.cambiarMinutos(BL.bloquesVacios('cinta'), 25);
+  e = BL.sumar(e);
+  const guardar = BL.paraGuardar(e);
+  const sigue = BL.siguiente(e);
+  const otro = BL.cambiarEjercicio(e, 'press_banca');
+  const vuelve = BL.unirConGuardados([{ ejercicio: 'cinta', series: 1, minutos: 25 }], BL.bloquesVacios());
+  chequear('los minutos viajan a la base, quedan en el bloque cerrado, se van al cambiar de ejercicio y vuelven desde la base', [
+    guardar.map((b) => b.minutos), sigue.cerrados[0].minutos, otro.cerrados[0].minutos, 'minutos' in otro, vuelve.minutos,
+  ], [[25], 25, 25, false, 25]);
+  chequear('minutos que no son un número desde 1 se sacan, más de 600 se topa, y repetir el mismo no cambia nada', [
+    'minutos' in BL.cambiarMinutos(e, 0), 'minutos' in BL.cambiarMinutos(e, 'veinte'), BL.cambiarMinutos(e, 601).minutos, BL.cambiarMinutos(e, 25) === e, BL.minutosValidos(30.6),
+  ], [false, false, 600, true, 31]);
+
+  // ---- EL DÍA Y EL VOLUMEN ----
+  const dia = RD.resumenDelDia({
+    log: { es_descanso: false }, esFuturo: false, esDescansoConfigurado: false, ejercicioSinNombre: '?',
+    catalogo: new Map([['cinta', 'Cinta'], ['press_banca', 'Press de banca']]),
+    sesiones: [
+      { inicio: '2026-10-14T10:00:00Z', fin: '2026-10-14T11:00:00Z', estado: 'terminada', series: 3, bloques: [{ ejercicio: 'cinta', series: 1, minutos: 20 }, { ejercicio: 'press_banca', series: 2, pesos: [60, 60], carga: 'total' }] },
+      { inicio: '2026-10-14T18:00:00Z', fin: '2026-10-14T18:30:00Z', estado: 'terminada', series: 1, bloques: [{ ejercicio: 'cinta', series: 1, minutos: 15 }] },
+    ],
+  });
+  chequear('en el día, el cardio suma sus minutos de las dos sesiones y el press no tiene minutos', dia.ejercicios.map((x) => [x.id, x.minutos ?? null]), [['cinta', 35], ['press_banca', null]]);
+  chequear('el volumen por músculo no cuenta el cardio (son minutos, no series de fuerza)', VO.ORDEN_GRUPOS.includes('cardio'), false);
+
+  // ---- LA LUPA ----
+  const lista = [
+    { id: 'press_banca', nombre: 'Press de banca', grupo: 'pecho' },
+    { id: 'aperturas', nombre: 'Aperturas', grupo: 'pecho' },
+    { id: 'press_militar', nombre: 'Press militar', grupo: 'hombros' },
+    { id: 'eliptica', nombre: 'Elíptica', grupo: 'cardio' },
+    { id: 'cinta', nombre: 'Cinta', grupo: 'cardio' },
+    { id: 'sentadilla', nombre: 'Sentadilla', grupo: 'piernas' },
+  ];
+  const ids = (r) => [r.coinciden.map((x) => x.id), r.parecidos.map((x) => x.id)];
+  const nombreGrupo = (g) => ({ pecho: 'Pecho', hombros: 'Hombros', cardio: 'Cardio', piernas: 'Piernas' })[g] ?? g;
+  chequear('la lupa: sin acentos ni mayúsculas, todas las palabras en cualquier orden, y los parecidos son del mismo músculo', [
+    ids(EJ.buscarEjercicios(lista, 'ELIPTICA')),
+    ids(EJ.buscarEjercicios(lista, 'banca press')),
+    ids(EJ.buscarEjercicios(lista, 'press')),
+    ids(EJ.buscarEjercicios(lista, '   ')),
+    ids(EJ.buscarEjercicios(lista, 'pecho', 12, nombreGrupo)),
+    ids(EJ.buscarEjercicios(lista, 'pecho')),
+  ], [
+    [['eliptica'], ['cinta']],
+    [['press_banca'], ['aperturas']],
+    [['press_banca', 'press_militar'], ['aperturas']],
+    [[], []],
+    [['press_banca', 'aperturas'], []],
+    [[], []],
+  ]);
+
+  // ---- LA SESIÓN: la vuelta de cardio no arranca un descanso ----
+  chequear('una vuelta de cardio sube con sus minutos y sin descanso; corregir los minutos llega a la base; una serie común sí descansa', await escenarioDeSesion('cardio'), {
+    tras: { series: 1, minutos: [25], descanso: false }, corregido: [30], comun: true,
+  });
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

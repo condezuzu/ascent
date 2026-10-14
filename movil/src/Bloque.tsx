@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
@@ -13,6 +14,9 @@ import { useVersionDelEsquema } from '@compartido/esquema';
 import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
 import CampoPeso from './CampoPeso';
+
+// Con lo que arranca una vuelta de cardio si no se tocaron los minutos.
+const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import { C } from './colores';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
@@ -52,6 +56,7 @@ export default function Bloque({
   alElegirMeta,
   alTocarBloque,
   alElegirPeso,
+  alElegirMinutos,
   alCorregirPeso,
   alElegirCarga,
   alCorregirCarga,
@@ -67,7 +72,7 @@ export default function Bloque({
   subida?: { ejercicio: string; series: number; antes: number; ahora: number } | null;
   /** El día de la sesión (no el del reloj): es el día de las marcas. Ver `diaDeLaSesion`. */
   diaDeSesion?: string;
-  alSumar: () => void;
+  alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
   alRestar: () => void;
@@ -77,6 +82,8 @@ export default function Bloque({
   alElegirMeta: (meta: number) => void;
   alTocarBloque: (indice: number, delta: number | 'quitar') => void;
   alElegirPeso: (kg: number | null) => void;
+  /** Los minutos del cardio (14/10). */
+  alElegirMinutos?: (m: number | null) => void;
   alCorregirPeso: (indice: number, serie: number, kg: number | null) => void;
   alElegirCarga: (c: Carga) => void;
   alCorregirCarga: (indice: number, c: Carga) => void;
@@ -97,6 +104,10 @@ export default function Bloque({
 
   // El catálogo se pide una vez y no bloquea nada: sin él el contador anda
   // igual, con "sin ejercicio".
+  // Y SE VUELVE A PEDIR al agregar un ejercicio propio: si no, el recién creado
+  // se vería con su id en lugar del nombre.
+  const [versionCatalogo, setVersionCatalogo] = useState(0);
+  useEffect(() => eventos.escuchar(EJERCICIOS_CAMBIO, () => setVersionCatalogo((v) => v + 1)), []);
   useEffect(() => {
     let vivo = true;
     supabase
@@ -109,7 +120,7 @@ export default function Bloque({
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [versionCatalogo]);
 
   // FANTASMA: el ejercicio/peso vienen sugeridos por la rutina y todavía no se
   // confirmaron (nadie contó una serie). Se muestra distinto —tenue, punteado y
@@ -118,7 +129,16 @@ export default function Bloque({
   const esFantasma = !!sugerido && estado.hechas === 0 && !!estado.ejercicio;
   const actual = ejercicios.find((e) => e.id === estado.ejercicio) ?? null;
   const nombreDe = (id: string | null) => (id ? (ejercicios.find((e) => e.id === id)?.nombre ?? id) : T.sesion.sinEjercicio);
-  const cumplida = metaCumplida(estado);
+  // EL CARDIO (14/10): se anota en minutos. Una vuelta ya es "cumplida": no hay
+  // meta de series, y no arranca un descanso.
+  const esTiempo = actual?.mide === 'tiempo';
+  const minutos = estado.minutos ?? MINUTOS_DE_ARRANQUE;
+  const cumplida = esTiempo ? estado.hechas >= 1 : metaCumplida(estado);
+  const sumar = () => {
+    if (!esTiempo) return alSumar();
+    if (estado.minutos === undefined) alElegirMinutos?.(minutos);
+    alSumar({ sinDescanso: true });
+  };
   const puntos = Math.max(estado.meta, estado.hechas);
   const cargaVista = cargaVigente(estado.carga, actual?.carga);
   const esCorporal = !llevaNumero(cargaVista);
@@ -193,6 +213,19 @@ export default function Bloque({
       </View>
       {esFantasma && <Text style={estilos.sugeridoNota}>{T.sesion.sugeridoNota}</Text>}
 
+      {esTiempo && (
+        <View testID="minutos-de-cardio" style={estilos.minutos} accessibilityLabel={T.sesion.minutosDeCardio}>
+          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.max(1, minutos - 5))} accessibilityLabel="−5">
+            <Text style={estilos.minutosPasoTexto}>−</Text>
+          </Pressable>
+          <Text style={estilos.minutosTexto}>{T.rutina.minutos(minutos)}</Text>
+          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(minutos + 5)} accessibilityLabel="+5">
+            <Text style={estilos.minutosPasoTexto}>+</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {!esTiempo && (
       <View style={estilos.metas} accessibilityLabel={T.sesion.cuantasVasAHacer}>
         {METAS.map((m) => (
           <Pressable
@@ -205,6 +238,7 @@ export default function Bloque({
           </Pressable>
         ))}
       </View>
+      )}
 
       {anotarPeso && admitePeso && (
         <View style={[estilos.peso, esFantasma && estilos.fantasmaPeso]}>
@@ -277,6 +311,8 @@ export default function Bloque({
           perdido series. El total va chico al lado; el "1 de 3" queda para
           el lector de pantalla. */}
       <View style={estilos.cuenta} accessibilityLiveRegion="polite">
+        {/* El cardio no tiene meta de series: sin circulitos. */}
+        {!esTiempo && (
         <View
           style={estilos.puntos}
           accessible
@@ -290,6 +326,7 @@ export default function Bloque({
             />
           ))}
         </View>
+        )}
         <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
       </View>
 
@@ -340,12 +377,12 @@ export default function Bloque({
             <Text style={[estilos.masTexto, estado.hechas === 0 && estilos.apagadoTexto]}>−</Text>
           </Pressable>
           <Pressable
-            style={[estilos.mas, estilos.masAncho]}
-            onPress={alSumar}
-            accessibilityLabel={T.inicio.sumarSerie}
+            style={[estilos.mas, estilos.masAncho, esTiempo && estilos.masCerrar]}
+            onPress={sumar}
+            accessibilityLabel={esTiempo ? T.sesion.cardioListo : T.inicio.sumarSerie}
             accessibilityRole="button"
           >
-            <Text style={estilos.masTexto}>+</Text>
+            <Text style={esTiempo ? estilos.cerrarTexto : estilos.masTexto}>{esTiempo ? T.sesion.cardioListo : '+'}</Text>
           </Pressable>
         </View>
       )}
@@ -368,8 +405,9 @@ export default function Bloque({
         </Pressable>
       )}
 
-      {cumplida && (
-        <Pressable style={estilos.texto} onPress={alSumar}>
+      {/* Una segunda vuelta de cardio en el mismo bloque no suma minutos: se corrigen arriba. */}
+      {cumplida && !esTiempo && (
+        <Pressable style={estilos.texto} onPress={sumar}>
           <Text style={estilos.textoBoton}>{T.sesion.sumarOtra}</Text>
         </Pressable>
       )}
@@ -436,6 +474,10 @@ const estilos = StyleSheet.create({
   metaTexto: { color: C.apagado, fontSize: 14 },
   metaTextoPrendido: { color: C.tinta },
   peso: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, marginTop: 12 },
+  minutos: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
+  minutosPaso: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
+  minutosPasoTexto: { color: C.tinta, fontSize: 22, fontWeight: '300' },
+  minutosTexto: { color: C.tinta, fontSize: 22, fontVariant: ['tabular-nums'], minWidth: 90, textAlign: 'center' },
   total: { width: '100%', color: C.apagado, fontSize: 12, marginTop: -2, paddingLeft: 44 },
   pregunta: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 2, padding: 12, marginTop: 12 },
   preguntaTexto: { color: C.sub, fontSize: 13, marginBottom: 10 },

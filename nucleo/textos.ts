@@ -186,6 +186,25 @@ export const T = {
     superior: 'Tren superior',
     inferior: 'Tren inferior',
     core: 'Core',
+    cardio: 'Cardio',
+    buscar: 'Buscar ejercicio',
+    parecidos: 'Entrenan lo mismo',
+    nadaConEseNombre: 'Ninguno con ese nombre.',
+    agregarPropio: (nombre: string) => `+ Agregar «${nombre}»`,
+    nuevoPropio: '+ Ejercicio propio',
+    nombreDelPropio: 'Nombre del ejercicio',
+    queMusculo: '¿Qué entrena?',
+    crear: 'Agregar',
+    seMideEnMinutos: 'Se anota en minutos.',
+    grupos: {
+      pecho: 'Pecho',
+      espalda: 'Espalda',
+      hombros: 'Hombros',
+      brazos: 'Brazos',
+      piernas: 'Piernas',
+      core: 'Core',
+      cardio: 'Cardio',
+    } as Record<string, string>,
   },
 
   general: {
@@ -1115,6 +1134,9 @@ export const T = {
     // Antes acá decía "Siguiente", que no dice de qué es siguiente y encima
     // vivía en un botón de texto que no se veía.
     terminarSerie: 'Terminar serie',
+    // El cardio (14/10): una vuelta se anota con los minutos, sin descanso después.
+    cardioListo: 'Listo',
+    minutosDeCardio: 'Minutos',
     // Y sumar otra sigue estando, en el lugar secundario: pasarse de la
     // meta es normal y la app no puede dejar de permitirlo solo porque el
     // botón grande cambió de trabajo.

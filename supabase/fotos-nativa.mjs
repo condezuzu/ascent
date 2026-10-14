@@ -96,8 +96,84 @@ async function irAStatsEntrenamiento(page) {
   await page.waitForTimeout(1500);
 }
 
+// EL CATÁLOGO DE LA MIGRACIÓN 76 antes de pegarla: el de la base, más el cardio y un propio.
+const CARDIO_76 = [
+  ['cinta', 'Cinta'], ['correr', 'Correr'], ['caminar', 'Caminar'], ['bicicleta_fija', 'Bicicleta fija'], ['eliptica', 'Elíptica'],
+  ['remo_ergometro', 'Remo ergómetro'], ['escaladora', 'Escaladora'], ['soga', 'Saltar la soga'], ['natacion', 'Natación'],
+].map(([id, nombre], i) => ({ id, nombre, grupo: 'cardio', cuenta_dots: false, admite_peso: false, orden: 900 + i, carga: 'total', mide: 'tiempo', creado_por: null }));
+async function conCatalogo76(page, propios = []) {
+  await page.route('**/rest/v1/ejercicios*', async (r) => {
+    const real = await r.fetch();
+    const filas = await real.json().catch(() => null);
+    if (!Array.isArray(filas)) return r.fulfill({ response: real });
+    const mas = [...CARDIO_76, ...propios].filter((x) => !filas.some((f) => f.id === x.id));
+    r.fulfill({ response: real, body: JSON.stringify([...filas.map((f) => ({ mide: 'series', ...f })), ...mas]) });
+  });
+  console.log('  (muestra) catálogo con cardio y propios');
+}
+async function sesionConSelector(page) {
+  await page.getByText('Iniciar entrenamiento', { exact: true }).first().click({ timeout: 90000 });
+  await page.getByLabel('Sumar una serie').first().waitFor({ timeout: 90000 });
+  await page.getByText('Cualquier cosa', { exact: true }).first().click({ timeout: 60000 });
+  await page.waitForTimeout(1200);
+}
+
 // ── LAS RECETAS ──
 const RECETAS = {
+  async 'ejercicios-buscar'(nav, gente) {
+    const A = gente.a;
+    const propio = { id: 'propio_000000000001', nombre: 'Hip thrust en máquina', grupo: 'piernas', cuenta_dots: false, admite_peso: true, orden: 9000, carga: 'total', mide: 'series', creado_por: A.id };
+    const { page } = await abrir(nav, A, { version_del_esquema: 76, crear_ejercicio: 'propio_000000000002' });
+    await conCatalogo76(page, [propio]);
+    await sesionConSelector(page);
+    await foto(page, 'ejercicios-selector');
+    await page.getByTestId('buscar-ejercicio').first().fill('press');
+    await page.waitForTimeout(600);
+    await foto(page, 'ejercicios-buscar-press');
+    await page.getByTestId('buscar-ejercicio').first().fill('hip');
+    await page.waitForTimeout(600);
+    await foto(page, 'ejercicios-buscar-propio');
+    await page.getByTestId('buscar-ejercicio').first().fill('empuje de trineo');
+    await page.waitForTimeout(600);
+    await foto(page, 'ejercicios-buscar-nada');
+    await page.getByText('+ Agregar «empuje de trineo»', { exact: true }).first().click({ timeout: 20000 });
+    await page.waitForTimeout(400);
+    await page.getByText('Piernas', { exact: true }).last().click({ timeout: 20000 });
+    await page.waitForTimeout(400);
+    await foto(page, 'ejercicios-crear');
+    return page;
+  },
+  async 'rutina-cardio'(nav, gente) {
+    const A = gente.a;
+    const dias = await semanaDeMuestra(A.s);
+    dias[2] = { descanso: false, ejercicios: [...dias[2].ejercicios, { ejercicio: 'cinta', series: 0, minutos: 25 }] };
+    const rutinas = [{ id: '00000000-0000-4000-8000-000000000003', nombre: 'Entrenamiento 1', activa: true, dias }];
+    const { page } = await abrir(nav, A, { version_del_esquema: 76, mis_rutinas: rutinas, rutina_activa_de: rutinas[0] });
+    await conCatalogo76(page);
+    await irAStatsEntrenamiento(page);
+    await verTestId(page, 'mi-rutina');
+    await tocar(page, 'rutina-dia-2');
+    await page.waitForTimeout(500);
+    await foto(page, 'rutina-con-cardio');
+    return page;
+  },
+  async cardio(nav, gente) {
+    // La otra cuenta: la de la receta de arriba ya tiene una sesión corriendo.
+    const A = gente.b;
+    const { page } = await abrir(nav, A, { version_del_esquema: 76 });
+    await conCatalogo76(page);
+    await sesionConSelector(page);
+    await page.getByTestId('buscar-ejercicio').first().fill('cinta');
+    await page.waitForTimeout(600);
+    await foto(page, 'cardio-buscar');
+    await page.getByText('Cinta', { exact: true }).first().click({ timeout: 20000 });
+    await page.waitForTimeout(1500);
+    await foto(page, 'cardio-bloque');
+    await page.getByText('Listo', { exact: true }).first().click({ timeout: 20000 });
+    await page.waitForTimeout(1500);
+    await foto(page, 'cardio-hecho');
+    return page;
+  },
   async 'rutina-stats'(nav, gente) {
     const A = gente.a;
     const dias = await semanaDeMuestra(A.s);
