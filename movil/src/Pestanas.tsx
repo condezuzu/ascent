@@ -14,6 +14,7 @@ import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
 import { ponerDesenfoque } from './desenfoqueDelFondo';
 import { eventos } from '@compartido/eventos';
+import { SOCIAL_CAMBIO } from '@compartido/ranking';
 import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
@@ -237,6 +238,8 @@ export default function Pestanas({
   useEffect(() => {
     contarSolicitudes();
   }, [contarSolicitudes, pestana]);
+  // Y al contestar una desde el cartel de arriba, sin cambiar de pestaña.
+  useEffect(() => eventos.escuchar(SOCIAL_CAMBIO, () => void contarSolicitudes()), [contarSolicitudes]);
 
   // AL VOLVER A UNA PESTAÑA, QUE PIDA SUS DATOS DE NUEVO. Antes lo hacía
   // sola porque se remontaba entera —que era el titileo—; ahora que se

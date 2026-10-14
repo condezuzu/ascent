@@ -17772,7 +17772,8 @@ console.log('\n220. El cartel que baja de arriba, y el token del aparato');
     };
     return {
       rpc: async (n) => (n === 'version_del_esquema' ? { data: version, error: null } : n === 'mis_uniones' ? { data: uniones, error: null } : { data: null, error: null }),
-      from: (t) => cadena(t === 'friendships' ? (fallaAmistad ? { data: null, error: { message: 'sin red' } } : { data: amistades, error: null }) : { data: gente, error: null }),
+      // Como la base: los perfiles de otros solo se leen por la vista pública; `profiles` da solo el propio.
+      from: (t) => cadena(t === 'friendships' ? (fallaAmistad ? { data: null, error: { message: 'sin red' } } : { data: amistades, error: null }) : t === 'usuarios_publicos' ? { data: gente, error: null } : { data: [], error: null }),
     };
   };
   // Vencida contesta lo viejo y pregunta por atrás: se espera a que llegue lo nuevo.

@@ -146,9 +146,14 @@ const RECETAS = {
   async cartel(nav, gente) {
     // Datos de verdad: A le manda solicitud a B, y B abre la app.
     const { a: A, b: B } = gente;
-    await A.s.from('friendships').insert({ solicitante: A.id, destinatario: B.id });
-    const { page } = await abrir(nav, B);
-    await page.getByTestId('cartel-de-arriba').first().waitFor({ state: 'visible', timeout: 60000 });
+    const { error: eAmistad } = await A.s.from('friendships').insert({ solicitante: A.id, destinatario: B.id });
+    if (eAmistad) console.log('  no se pudo pedir amistad: ' + eAmistad.message);
+    const { page, errores } = await abrir(nav, B);
+    await page.getByTestId('cartel-de-arriba').first().waitFor({ state: 'visible', timeout: 60000 }).catch(async (e) => {
+      await foto(page, 'cartel-fallo');
+      console.log('  errores: ' + JSON.stringify(errores));
+      throw e;
+    });
     await page.waitForTimeout(900);
     await foto(page, 'cartel-amistad');
     await tocar(page, 'cartel-aceptar');

@@ -15,7 +15,7 @@ export async function traerNovedades(supabase: Cliente, uid: string): Promise<No
   if (error) return null;
   const ids = (pedidos ?? []).map((p) => p.solicitante as string);
   const { data: gente, error: eGente } = ids.length
-    ? await supabase.from('profiles').select('id, username, avatar_url').in('id', ids)
+    ? await supabase.from('usuarios_publicos').select('id, username, avatar_url').in('id', ids)
     : { data: [], error: null };
   if (eGente) return null;
   const quien = new Map((gente ?? []).map((g) => [g.id as string, g as Novedad['otro']]));

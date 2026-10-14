@@ -12,7 +12,7 @@ import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { alLlegarAvisoRemoto } from './plataforma/avisos';
 import Avatar from './Avatar';
-import { C, conAlfa } from './colores';
+import { C } from './colores';
 
 /** Cada cuánto se pregunta con la app adelante. El aviso push lo adelanta. */
 const CADA_MS = 30_000;
@@ -131,7 +131,8 @@ const estilos = StyleSheet.create({
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    backgroundColor: conAlfa(C.hoja, 0.98),
+    // Opaco: encima de Inicio se transparentaba el botón de atrás.
+    backgroundColor: C.hoja,
     shadowColor: '#000',
     shadowOpacity: 0.4,
     shadowRadius: 18,
