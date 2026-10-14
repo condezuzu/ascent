@@ -22,6 +22,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { pasarLaEntrada, pasarLaEntradaNativa, limiteDeSonda } from './utiles.mjs';
+import { T } from '../nucleo/textos.ts';
 
 // Ninguna sonda corre sin limite (ver utiles.mjs).
 limiteDeSonda(20);
@@ -161,7 +162,8 @@ async function correr(app) {
   if (app === 'web') {
     await paso('recorrido: marcar el gimnasio', async () => {
       await page.waitForURL((u) => u.pathname === '/ajustes', { timeout: 90000 });
-      await page.getByRole('button', { name: 'Marcar el punto' }).click({ timeout: 90000 });
+      // El texto sale de textos.ts: cambiarlo ahí no puede romper la batería en silencio.
+      await page.getByRole('button', { name: T.ajustes.gimnasioMarcar }).click({ timeout: 90000 });
       await page.getByText(/precisión/i).first().waitFor({ timeout: 60000 });
     });
     await paso('recorrido: hasta el final', async () => {
