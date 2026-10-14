@@ -80,7 +80,7 @@ import {
   type DescansoVivo,
 } from '@compartido/descanso';
 import { marcarComoUsada } from '@nucleo/llegada';
-import { cuantasPendientes, encolar, estaPendiente, vaciar } from '@compartido/cola';
+import { cuantasPendientes, encolar, estaPendiente, quedaDeLaSesion, vaciar } from '@compartido/cola';
 import { leerCargasElegidas, recordarCarga } from '@compartido/cargas';
 import {
   leerRecordados,
@@ -347,7 +347,16 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // subsuelo sin señal—, la cierra con datos viejos en medio de un
     // entrenamiento.
     await vaciar(supabase);
+    // Y SI NO SUBIÓ TODO, NO SE PREGUNTA (13/10). `vaciar` puede volver sin
+    // haber subido nada (señal a medias, o una pasada anterior todavía colgada)
+    // y `mi_sesion` entrar igual: la base cerraba la sesión con la actividad
+    // vieja. Ver `quedaDeLaSesion`.
+    if (await quedaDeLaSesion(idVisto.current ?? (await leerSesionCache())?.id)) return;
     const { data, error } = await supabase.rpc('mi_sesion');
+    // Lo mismo si el teléfono ya la había olvidado (su copia vence a la media hora)
+    // y la base la devuelve viva: con series de ESA sesión todavía en la cola, lo
+    // que contestó es viejo y no se adopta.
+    if (!error && (await quedaDeLaSesion((data as { id?: string } | null)?.id))) return;
     const s = data as
       | (SesionViva & {
           series?: number;
@@ -448,6 +457,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       if (g.id) idVisto.current = g.id;
     } else {
       borrarSesionCache(yo);
+      // El descanso es de la sesión: si quedaba, la siguiente arrancaba con el
+      // de ayer en "Listo" y horas "de más".
+      borrarDescanso();
+      setDescanso(null);
       bloquesSonDe(null);
       setInicio(null);
       setSeries(0);
@@ -569,7 +582,21 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     setAviso('');
     let data: unknown, error: unknown;
     try {
-      ({ data, error } = await iniciar(supabase, opciones));
+      // Primero lo pendiente, igual que al preguntar y al terminar: `iniciar_sesion`
+      // también hace que la base juzgue la sesión anterior.
+      await vaciar(supabase);
+      // Si de la sesión que este teléfono conoce quedan cosas sin subir, no se
+      // inicia: la base cerraría esa sesión con datos viejos para abrir otra.
+      if (await quedaDeLaSesion(idVisto.current ?? (await leerSesionCache())?.id)) {
+        ({ data, error } = { data: null, error: { message: 'quedan escrituras de la sesión en la cola' } });
+      } else {
+        ({ data, error } = await iniciar(supabase, opciones));
+        // Y si el teléfono ya la había olvidado (la copia vence a la media hora)
+        // pero la base la devuelve viva, con series de ella todavía en la cola: su
+        // conteo es viejo, y adoptarlo haría que el primer toque pise lo que esperaba.
+        const yaEstaba = (data as { id?: string; yaEstaba?: boolean } | null)?.yaEstaba ? (data as { id?: string }).id : null;
+        if (!error && (await quedaDeLaSesion(yaEstaba))) error = { message: 'quedan escrituras de la sesión en la cola' };
+      }
     } finally {
       operandoSesion.current = false;
     }
@@ -702,6 +729,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     const eraPorUbicacion = porUbicacion;
     const desfase = desfasaje;
     const bloquesHechos = paraGuardar(bloques);
+    // LA HORA ES LA DEL PRIMER TOQUE (13/10). Si un "Terminar" anterior no salió
+    // —sin señal—, este reintento cierra a esa hora y no a la de ahora.
+    const hasta = opciones?.hasta ?? (await leerSesionCache())?.quisoTerminar ?? undefined;
     // PRIMERO LO PENDIENTE (bug del 15/9). La base decide el cierre con lo que
     // TIENE: si las series y la actividad de la sesión siguen en la cola —se
     // entrenó sin señal y la red volvió justo al tocar Terminar—, ve una sesión
@@ -714,15 +744,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     let data: unknown, error: unknown;
     try {
       await vaciar(supabase);
-      const idQueTermina = idSesion;
-      const esperando =
-        !!idQueTermina &&
-        ((await estaPendiente('fijar_series', idQueTermina)) ||
-          (await estaPendiente('fijar_bloques', idQueTermina)) ||
-          (await estaPendiente('marcar_actividad', idQueTermina)));
-      ({ data, error } = esperando
+      ({ data, error } = (await quedaDeLaSesion(idSesion))
         ? { data: null, error: { message: 'quedan escrituras de la sesión en la cola' } }
-        : await cerrar(supabase, opciones));
+        : await cerrar(supabase, { hasta }));
     } finally {
       operandoSesion.current = false;
     }
@@ -731,7 +755,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // volver a intentarlo con la hora de salida correcta.
     if (error) {
       // A mano se dice; el cierre por ubicación reintenta solo.
-      if (opciones?.hasta === undefined) setAviso(T.sesion.noTermino);
+      if (opciones?.hasta === undefined) {
+        setAviso(T.sesion.noTermino);
+        if (hasta === undefined) await actualizarSesionCache({ quisoTerminar: Date.now() }, yo);
+      }
       return null;
     }
     borrarSesionCache(yo);
@@ -768,7 +795,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // metería el desfasaje de reloj adentro de la duración. Por eso se lleva
     // el fin a hora de servidor antes de restar, igual que hace `transcurrido`
     // para el cronómetro que se ve en pantalla.
-    const finServidor = (opciones?.hasta ?? Date.now()) - desfase;
+    const finServidor = (hasta ?? Date.now()) - desfase;
     // LOS PASOS DE LA SESIÓN (3.3): mucha gente mete cardio en el entrenamiento.
     // Se piden a Health entre el inicio y el fin, en hora del APARATO (el inicio
     // es de servidor: se le suma el desfasaje para volverlo a reloj local). `null`
@@ -777,7 +804,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     let pasos: number | null = null;
     if (arranco && !deshizoElDia) {
       const inicioAparato = new Date(Date.parse(arranco) + desfase);
-      const finAparato = new Date(opciones?.hasta ?? Date.now());
+      const finAparato = new Date(hasta ?? Date.now());
       pasos = await plataforma.salud.pasosEntre(inicioAparato, finAparato).catch(() => null);
     }
     return {
@@ -823,12 +850,17 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // tocó la caché durante estos awaits, `marcar` lo revertía —el mismo pisón que
     // los refs matan en el estado, pero en la caché—. `actualizarSesionCache`
     // relee y mezcla solo esta clave.
-    await actualizarSesionCache({ ultimaActividad: nueva }, yo);
+    await actualizarSesionCache({ ultimaActividad: nueva, quisoTerminar: null }, yo);
     if (!disponible('cierrePorInactividad', await versionDelEsquema(supabase))) return;
     await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: iso } });
   }
 
   async function serieHecha() {
+    // SIN SESIÓN EN EL TELÉFONO NO SE CUENTA (13/10). La pantalla del descanso
+    // queda abierta con su "+ Serie hecha" aunque la sesión se haya cerrado sola:
+    // ese toque encolaba series y bloques contra una sesión que ya no existe, y
+    // pisaba los de la base o se perdía.
+    if (!inicioRef.current) return;
     // EL CONTEO SE MUEVE PRIMERO, JUNTO Y DESDE LOS REFS. Las dos cuentas —el
     // total y la lista— salen de la misma función (`sumarSerie`) sobre el mismo
     // objeto, leído de refs siempre-al-día y NO del render: así dos toques

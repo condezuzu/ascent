@@ -12,7 +12,20 @@ export const servidor = {
   ultimoEjercicio: null,
   // rpc -> función que corre con la respuesta ya calculada y todavía en viaje
   antesDeResponder: {},
+  // Con un número, la base cierra SOLA la sesión que lleva ese rato sin actividad
+  // cuando algo le pregunta (`cerrar_sesiones_vencidas`), y la fecha en la última
+  // actividad que LE LLEGÓ. Sin número no cierra nada, como hasta ahora.
+  ventanaMs: null,
 };
+
+function cerrarVencidas() {
+  if (servidor.ventanaMs === null) return;
+  for (const s of servidor.sesiones) {
+    if (s.estado === 'corriendo' && Date.now() - Date.parse(s.ultima_actividad) >= servidor.ventanaMs) {
+      Object.assign(s, { estado: 'terminada', cerro_sola: true, fin: s.ultima_actividad });
+    }
+  }
+}
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const viva = () => servidor.sesiones.find((s) => s.estado === 'corriendo') ?? null;
@@ -25,6 +38,7 @@ function procesar(rpc, a) {
     case 'version_del_esquema':
       return 53;
     case 'iniciar_sesion': {
+      cerrarVencidas();
       const s = viva();
       if (s) return { bloqueado: false, id: s.id, inicio: s.inicio, origen: s.origen, series: s.series, ahora, yaEstaba: true, registro: null };
       const nueva = {
@@ -44,10 +58,11 @@ function procesar(rpc, a) {
       const s = viva();
       if (!s) return { termino: false };
       s.estado = 'terminada';
-      s.fin = ahora;
+      s.fin = a?.p_hasta ?? ahora;
       return { termino: true, deshizo_el_dia: false };
     }
     case 'mi_sesion': {
+      cerrarVencidas();
       const s = viva();
       if (s) return { corriendo: true, id: s.id, inicio: s.inicio, origen: s.origen, ahora, series: s.series, ultima_actividad: s.ultima_actividad };
       const sola = [...servidor.sesiones].reverse().find((x) => x.cerro_sola);

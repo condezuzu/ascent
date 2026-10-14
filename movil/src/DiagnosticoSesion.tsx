@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { leerSesionCache } from '@compartido/sesionCache';
@@ -68,6 +69,8 @@ export default function DiagnosticoSesion() {
       // La base, en dos viajes: `mi_sesion` trae la sesión y el total, pero no
       // los bloques —por eso la app los va a buscar aparte— y sin ellos esta
       // pantalla no contestaría lo único que vino a contestar.
+      // Mirar no puede cerrar la sesión: con cosas sin subir, no se pregunta.
+      if (!(await subioLoDeLaSesion(supabase))) throw new Error('quedan series sin subir: no pregunto');
       const { data, error } = await supabase.rpc('mi_sesion');
       const s = (Array.isArray(data) ? data[0] : data) as { id?: string; series?: number } | null;
       if (error) throw error;

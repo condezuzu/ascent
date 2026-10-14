@@ -73,6 +73,13 @@ export type SesionCacheada = {
    */
   ultimaActividad?: string | null;
   /**
+   * CUÁNDO SE TOCÓ "TERMINAR" Y NO SALIÓ, en hora del teléfono (13/10). Sin
+   * señal el cierre falla y se reintenta más tarde: sin esto, la sesión se
+   * cerraba a la hora del reintento y la duración salía inflada. Se borra si
+   * después hubo actividad: siguió entrenando.
+   */
+  quisoTerminar?: number | null;
+  /**
    * Los bloques de la base todavía no se trajeron (ver `unirConGuardados`):
    * los `bloques` de acá son solo lo contado en este teléfono y no se pueden
    * subir tal cual. Sobrevive a cerrar la app a propósito: sin señal, la

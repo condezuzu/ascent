@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { hoyISO } from '@nucleo/fechas';
 import { numeroDeRango } from '@nucleo/rangos';
@@ -103,8 +104,11 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
       .maybeSingle();
     setDia(log);
     setSinDia(!log);
-    const { data: s } = await supabase.rpc('mi_sesion');
-    setSesion(s);
+    // Mirar no puede cerrar la sesión: con cosas sin subir, no se pregunta.
+    if (await subioLoDeLaSesion(supabase)) {
+      const { data: s } = await supabase.rpc('mi_sesion');
+      setSesion(s);
+    }
     setVisita(await leerVigilancia());
     setLineas(comoTexto(await leerBitacora()));
     setPendientes(await cuantasPendientes());

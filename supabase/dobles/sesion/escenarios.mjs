@@ -426,8 +426,120 @@ async function turno(cual, nTxt = '4') {
   };
 }
 
+/**
+ * SEÑAL MALA (cacería del 13/10). En todos, la base juzga la sesión con lo que
+ * le llegó, y el teléfono tiene cosas sin subir.
+ *  - `pregunta`: se entrena 47 min en una zona sin señal y al desbloquear entra
+ *    `mi_sesion` pero no la cola. La base no puede cerrar la sesión en el minuto 3.
+ *  - `iniciar`: con series de la sesión sin subir no se inicia otra (la base
+ *    cerraría esta con datos viejos). `iniciar-olvidada`: el teléfono ya la
+ *    olvidó y la base la devuelve viva, con el conteo viejo: no se adopta.
+ *  - `terminar` / `terminar-siguio`: "Terminar" sin señal y el reintento más
+ *    tarde. Cierra a la hora del PRIMER toque, salvo que después se haya seguido.
+ *  - `sin-sesion`: "+ Serie hecha" con la sesión ya cerrada sola.
+ */
+async function senal(cual) {
+  const COLA = ['fijar_series', 'fijar_bloques', 'marcar_actividad'];
+  const cortar = (si) => COLA.forEach((rpc) => (servidor.falla[rpc] = si));
+  const llegaron = (rpc) => servidor.registro.filter((x) => x.rpc === rpc).length;
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirPeso(60);
+  await inicio.r.serieHecha();
+  await inicio.r.serieHecha();
+  await asentar();
+  const s = servidor.sesiones[0];
+  const pantalla = () => ({ corriendo: inicio.r.estado.corriendo, series: inicio.r.estado.series });
+
+  if (cual === 'pregunta' || cual === 'iniciar' || cual === 'iniciar-olvidada') {
+    cortar(true);
+    for (let i = 0; i < 4; i++) await inicio.r.serieHecha();
+    await dormir(80);
+    // Para la base pasaron 47 minutos y lo último que supo fue hace 44.
+    s.inicio = new Date(Date.now() - 47 * 60000).toISOString();
+    s.ultima_actividad = new Date(Date.now() - 44 * 60000).toISOString();
+    servidor.ventanaMs = 30 * 60000;
+    const antes = llegaron('mi_sesion');
+    if (cual === 'iniciar' || cual === 'iniciar-olvidada') {
+      let quien = inicio;
+      if (cual === 'iniciar-olvidada') {
+        // El teléfono olvidó la sesión (su copia vence a la media hora y la app
+        // arrancó de nuevo), pero para la base sigue viva: devuelve la misma.
+        servidor.ventanaMs = null;
+        datos.delete('ascent:sesion');
+        quien = montar(() => useSesion());
+        await dormir(60);
+      }
+      const salio = await quien.r.empezar();
+      await dormir(120);
+      return {
+        salio,
+        series: quien.r.estado.series,
+        enCola: cola().filter((p) => p.rpc === 'fijar_series').map((p) => p.args.p_series),
+        base: [s.estado, s.series],
+        sesionesEnLaBase: servidor.sesiones.length,
+      };
+    }
+    await bloquearYDesbloquear();
+    await dormir(150);
+    const sinSubir = { ...pantalla(), preguntas: llegaron('mi_sesion') - antes, base: s.estado };
+    // Vuelve la señal de verdad.
+    cortar(false);
+    await bloquearYDesbloquear();
+    await asentar();
+    return { sinSubir, alVolver: { ...pantalla(), preguntas: llegaron('mi_sesion') - antes > 0, base: [s.estado, s.series, s.cerro_sola] } };
+  }
+
+  if (cual === 'terminar' || cual === 'terminar-siguio') {
+    servidor.falla.terminar_sesion = true;
+    const toque = Date.now();
+    const primero = await inicio.r.terminar();
+    await dormir(400);
+    if (cual === 'terminar-siguio') {
+      await inicio.r.serieHecha();
+      await asentar();
+    }
+    servidor.falla.terminar_sesion = false;
+    const segundo = await inicio.r.terminar();
+    const mandado = servidor.registro.filter((x) => x.rpc === 'terminar_sesion').pop()?.args?.p_hasta ?? null;
+    return {
+      primero: primero === null ? 'no salió' : 'salió',
+      segundo: segundo === null ? 'no salió' : 'salió',
+      // Cuánto se aleja la hora mandada del primer toque, y del reintento.
+      delPrimerToque: mandado ? Math.abs(Date.parse(mandado) - toque) < 150 : null,
+      atrasoMs: mandado ? Date.now() - Date.parse(mandado) >= 300 : null,
+      conHora: mandado !== null,
+      base: s.estado,
+    };
+  }
+
+  if (cual === 'sin-sesion') {
+    // La base la cerró sola y el teléfono ya se enteró: no hay sesión en pantalla.
+    Object.assign(s, { estado: 'terminada', cerro_sola: true, fin: new Date().toISOString() });
+    await bloquearYDesbloquear();
+    await asentar();
+    const enBase = [s.series, JSON.stringify(s.bloques)];
+    servidor.registro.length = 0;
+    const antes = pantalla();
+    await inicio.r.serieHecha();
+    await inicio.r.serieHecha();
+    await asentar();
+    return {
+      antes,
+      despues: pantalla(),
+      escrituras: servidor.registro.filter((x) => COLA.includes(x.rpc)).length,
+      enCola: cola().length,
+      laBaseQuedoIgual: enBase[0] === s.series && enBase[1] === JSON.stringify(s.bloques),
+      descanso: inicio.r.estado.descanso ?? null,
+    };
+  }
+  return { fallo: 'no conozco ' + cual };
+}
+
 const [escenario, ...argumentos] = process.argv.slice(2);
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

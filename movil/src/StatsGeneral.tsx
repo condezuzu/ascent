@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { supabase } from './supabase';
 import { T } from '@nucleo/textos';
@@ -257,6 +258,8 @@ function Sesiones() {
   const [dias, setDias] = useState<DiaConSesiones[]>([]);
 
   const cargar = useCallback(async () => {
+    // Con series de la sesión sin subir no se pregunta: queda lo que había.
+    if (!(await subioLoDeLaSesion(supabase))) return;
     const { data, error } = await supabase.rpc('resumen_sesiones');
     // Si no se pudo preguntar queda lo que había: una recarga sin señal no
     // vacía la sección.

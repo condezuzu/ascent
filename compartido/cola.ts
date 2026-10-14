@@ -275,6 +275,23 @@ export async function cuantasPendientes(): Promise<number> {
  * respuesta de la base algo que este teléfono eligió después y todavía no
  * llegó.
  */
+/**
+ * ¿QUEDA ALGO DE ESTA SESIÓN SIN SUBIR? (13/10/2026)
+ *
+ * LA REGLA QUE ESTO SOSTIENE: mientras haya escrituras de una sesión en la
+ * cola, NO SE LE PREGUNTA NADA A LA BASE QUE LA HAGA JUZGAR ESA SESIÓN. La base
+ * decide con lo que tiene —cuándo fue la última serie, cuántas hay— y con la
+ * cola a medio subir tiene datos viejos: cierra en el minuto 3 un entrenamiento
+ * de 47, o devuelve un conteo que el toque siguiente da por bueno y pisa lo que
+ * esperaba. Era el mismo agujero en tres lugares (preguntar si sigue viva,
+ * iniciar, terminar): ahora los tres preguntan acá.
+ */
+export async function quedaDeLaSesion(id: string | null | undefined): Promise<boolean> {
+  if (!id) return false;
+  const pendientes = await leer();
+  return (['fijar_series', 'fijar_bloques', 'marcar_actividad'] as const).some((rpc) => pendientes.some((p) => p.id === `${rpc}:${id}`));
+}
+
 export async function estaPendiente(rpc: Encolable['rpc'], clave: string): Promise<boolean> {
   return (await leer()).some((p) => p.id === `${rpc}:${clave}`);
 }

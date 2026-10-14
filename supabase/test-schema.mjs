@@ -7171,7 +7171,7 @@ console.log('\n101. La caza del 15/9: lo que perdia datos o dejaba afuera');
   const iCerrar = cuerpo.indexOf('cerrar(supabase');
   chequear('terminar vacia la cola', iVaciar > -1, true);
   chequear('y la vacia ANTES de cerrar', iVaciar > -1 && iCerrar > iVaciar, true);
-  chequear('si quedan series de esa sesion esperando, no cierra', /estaPendiente\('fijar_series'/.test(cuerpo), true);
+  chequear('si quedan series de esa sesion esperando, no cierra', /await quedaDeLaSesion\(idSesion\)\)\s*\? \{ data: null, error:/.test(cuerpo), true);
   chequear('empezar sin senal lo dice', /setAviso\(T\.sesion\.noEmpezo\)/.test(ses), true);
   chequear('terminar sin senal lo dice', /setAviso\(T\.sesion\.noTermino\)/.test(cuerpo), true);
 
@@ -13769,7 +13769,10 @@ console.log('\n179. La sesión con el hook de verdad: los bloques de otra sesió
       trasElSiguiente: { pantalla: [van + 1, van + 1], base: [van + 1, van + 1] },
       // La respuesta vieja se descarta y se vuelve a pedir UNA vez por instancia
       // del hook: lo que traía no era solo el conteo.
-      preguntas: t[3] === 'vigilante' ? 4 : 2,
+      // (13/10) Salvo cuando el toque cae ANTES de que salga la segunda pregunta y
+      // todavía está en la cola: con series sin subir ya no se pregunta, así que
+      // esa segunda no sale. Lo que queda en los tres lados es lo mismo.
+      preguntas: t[3] === 'vigilante' ? 4 : t[0] === 'antes' && (t[1] === '6' || t[1] === 'una') ? 1 : 2,
       // Ni por un instante: si la app se cerrara ahí, eso es lo que quedaría.
       cacheRetrocedio: false,
     });
@@ -16935,6 +16938,56 @@ console.log('\n207. Cacería del 13/10: los que seguían vivos');
     /const resultado = data as ResultadoRegistro;\s*eventos\.emitir\(DIA_CAMBIO\);/.test(de207('movil', 'src', 'RegistrarDia.tsx')),
     /eventos\.escuchar\(DIA_CAMBIO, marcar\)/.test(de207('movil', 'src', 'Album.tsx')),
   ], [true, true, true]);
+}
+
+// ============================================================================
+// 208. SEÑAL MALA: lo que rompía datos (cacería del 13/10), con el hook de verdad
+// ============================================================================
+console.log('\n208. Señal mala: la base no juzga una sesión que tiene cosas sin subir');
+{
+  // CADA UNO CORRE `useSesion` Y `cola.ts` DE VERDAD (ver `dobles/sesion/escenarios.mjs`,
+  // `senal`). Es un sustituto del teléfono: prueba el orden de las operaciones.
+  const s208 = async (cual) => escenarioDeSesion('senal', cual);
+
+  // 47 minutos entrenando en una zona sin señal; al desbloquear entra `mi_sesion`
+  // pero la cola no subió. Antes: "La sesión se cerró sola… duró 3 min".
+  chequear('con series sin subir no se le pregunta a la base si la sesión sigue viva: no la cierra en el minuto 3; cuando sube, sigue corriendo con las 6', await s208('pregunta'), {
+    sinSubir: { corriendo: true, series: 6, preguntas: 0, base: 'corriendo' },
+    alVolver: { corriendo: true, series: 6, preguntas: true, base: ['corriendo', 6, false] },
+  });
+  chequear('ni se inicia otra sesión encima: la base cerraría esta con datos viejos', await s208('iniciar'), { salio: false, series: 6, enCola: [6], base: ['corriendo', 2], sesionesEnLaBase: 1 });
+  chequear('y si el teléfono ya la había olvidado y la base la devuelve viva, no adopta su conteo viejo (el primer toque pisaría las 6 que esperan)', await s208('iniciar-olvidada'), { salio: false, series: 0, enCola: [6], base: ['corriendo', 2], sesionesEnLaBase: 1 });
+
+  // NADIE LE PREGUNTA A LA BASE POR LA SESIÓN SIN MIRAR LA COLA. Stats y las dos
+  // pantallas de diagnóstico lo hacían: abrir Stats en el subsuelo cerraba la sesión.
+  {
+    const { readFileSync: leer208, readdirSync: dir208 } = await import('node:fs');
+    const RAIZ208 = join(dirname(fileURLToPath(import.meta.url)), '..');
+    const fuentes = [
+      ...dir208(join(RAIZ208, 'compartido')).filter((x) => x.endsWith('.ts')).map((x) => join('compartido', x)),
+      ...dir208(join(RAIZ208, 'movil', 'src'), { recursive: true }).filter((x) => /\.tsx?$/.test(String(x))).map((x) => join('movil', 'src', String(x))),
+    ];
+    const sinGuarda = [];
+    let preguntas = 0;
+    for (const ruta of fuentes) {
+      const lineas = leer208(join(RAIZ208, ruta), 'utf8').split(/\r?\n/);
+      lineas.forEach((l, i) => {
+        if (!/rpc\('(mi_sesion|resumen_sesiones)'\)/.test(l)) return;
+        preguntas++;
+        if (!/quedaDeLaSesion\(|subioLoDeLaSesion\(/.test(lineas.slice(Math.max(0, i - 10), i).join('\n'))) sinGuarda.push(ruta.replace(/\\/g, '/') + ':' + (i + 1));
+      });
+    }
+    chequear('cada lugar de la app que le pregunta a la base por la sesión mira antes si quedó algo sin subir', [preguntas >= 4, sinGuarda], [true, []]);
+  }
+
+  // "Terminar" sin señal, y el reintento cuando vuelve.
+  chequear('Terminar que no salió y se reintenta más tarde cierra a la hora del PRIMER toque, no a la del reintento', await s208('terminar'), { primero: 'no salió', segundo: 'salió', delPrimerToque: true, atrasoMs: true, conHora: true, base: 'terminada' });
+  chequear('salvo que después del toque fallido se haya seguido entrenando: ahí cierra a la hora de ahora', await s208('terminar-siguio'), { primero: 'no salió', segundo: 'salió', delPrimerToque: null, atrasoMs: null, conHora: false, base: 'terminada' });
+
+  // "+ Serie hecha" en la pantalla del descanso, con la sesión ya cerrada sola.
+  chequear('sin sesión en el teléfono, "Serie hecha" no cuenta, no encola y no toca la base; y el descanso de esa sesión se fue con ella', await s208('sin-sesion'), {
+    antes: { corriendo: false, series: 0 }, despues: { corriendo: false, series: 0 }, escrituras: 0, enCola: 0, laBaseQuedoIgual: true, descanso: null,
+  });
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
