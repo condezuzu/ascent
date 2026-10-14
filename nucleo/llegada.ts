@@ -109,7 +109,13 @@ export function decidir(
 
     // Ya hay una corriendo, o ya disparamos en esta visita: solo se anota que
     // sigue acá, para poder cerrarla con la hora correcta cuando se vaya.
-    if (sesion.corriendo || v.arranco) return { hacer: 'nada', vigilancia: v };
+    //
+    // UNA SESIÓN CORRIENDO GASTA LA VISITA, LA HAYA ARRANCADO QUIEN LA HAYA
+    // ARRANCADO (13/10). La que se iniciaba a mano no la gastaba: si después se
+    // cerraba sola por inactividad, al abrir la app el vigilante arrancaba OTRA,
+    // fechada en la llegada (hasta 45 minutos atrás), encima de la primera.
+    if (sesion.corriendo) return { hacer: 'nada', vigilancia: { ...v, arranco: true } };
+    if (v.arranco) return { hacer: 'nada', vigilancia: v };
 
     if (ahora - v.desde < ESPERA_LLEGADA_MS) return { hacer: 'nada', vigilancia: v };
 
@@ -129,6 +135,18 @@ export function decidir(
  * Marca la visita como ya disparada, para que parar el cronómetro a mano no se
  * deshaga solo mientras seguís en el gimnasio.
  */
+/**
+ * LO QUE SE GUARDA NO DESMARCA UNA VISITA YA USADA (13/10). La mirada del
+ * vigilante lee la visita, espera al GPS (segundos) y recién después guarda: si
+ * en el medio se tocó "Terminar" —que la marca como usada— el guardado la pisaba
+ * con la foto vieja y la sesión se volvía a prender sola. `enDisco` es lo que
+ * hay guardado AHORA, leído justo antes de guardar; "la misma visita" es el
+ * mismo `desde`.
+ */
+export function sinDesmarcar(nueva: Vigilancia | null, enDisco: Vigilancia | null): Vigilancia | null {
+  return nueva && enDisco && enDisco.arranco && enDisco.desde === nueva.desde ? { ...nueva, arranco: true } : nueva;
+}
+
 export function marcarComoUsada(v: Vigilancia | null): Vigilancia | null {
   return v ? { ...v, arranco: true } : v;
 }

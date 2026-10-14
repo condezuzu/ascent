@@ -42,6 +42,7 @@ export default function HojaDelDia({
   alCerrar: () => void;
 }) {
   const [resumen, setResumen] = useState<ResumenDelDia | null>(null);
+  const [noCargo, setNoCargo] = useState(false);
   const [foto, setFoto] = useState<string | null>(null);
   const [cuantasSesiones, setCuantasSesiones] = useState(0);
   const [porConfirmar, setPorConfirmar] = useState<Destino | null>(null);
@@ -62,6 +63,9 @@ export default function HojaDelDia({
     if (!uid) return;
     const d = await cargarDia(supabase, uid, fecha, esFuturo);
     if (id !== cargaId.current) return;
+    // No se pudo leer: ni resumen ni botones de corregir. Ver `cargarDia`.
+    setNoCargo(!d);
+    if (!d) return setResumen(null);
     setUnidad(d.unidad);
     setCuantasSesiones(d.cuantasSesiones);
     setResumen(d.resumen);
@@ -113,7 +117,7 @@ export default function HojaDelDia({
 
       {/* Mientras carga, el lugar ya está: la hoja no crece de a saltos. */}
       {!resumen ? (
-        <Text style={estilos.sub}>…</Text>
+        <Text style={noCargo ? estilos.nota : estilos.sub}>{noCargo ? T.resumen.noCargo : '…'}</Text>
       ) : (
         <>
           <Text

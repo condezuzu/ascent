@@ -6,7 +6,7 @@ import {
   registrarPorSenal,
   SUBIO_RANGO,
 } from '@compartido/gimnasio';
-import { decidir } from '@nucleo/llegada';
+import { decidir, sinDesmarcar } from '@nucleo/llegada';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
 import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
 import { useSesion } from '@compartido/useSesion';
@@ -149,14 +149,18 @@ function Mirando({ perfil }: { perfil: Perfil }) {
       }
     }
 
-    const decision = decidir(adentro, medidoEn, Date.now(), vigilancia, {
-      corriendo: s.estado.corriendo,
-      porUbicacion: s.estado.porUbicacion,
+    // SE DECIDE CON LO DE AHORA, no con la foto de antes del GPS (13/10): entre
+    // aquella lectura y esta línea pasan segundos, y "Terminar" pudo caer en el medio.
+    const ahoraS = sesionRef.current;
+    const visita = await leerVigilancia();
+    const decision = decidir(adentro, medidoEn, Date.now(), visita, {
+      corriendo: ahoraS.estado.corriendo,
+      porUbicacion: ahoraS.estado.porUbicacion,
     });
 
     if (decision.hacer === 'arrancar') {
       await anotar('arranco la sesión', { llegada: new Date(decision.desde).toLocaleTimeString() });
-      const salio = await s.empezar({ desde: decision.desde, origen: 'ubicacion' });
+      const salio = await ahoraS.empezar({ desde: decision.desde, origen: 'ubicacion' });
       // La visita se da por usada SOLO si el arranque llegó. Muchos gimnasios
       // son un subsuelo sin señal: si se marcara igual, un fallo de red de un
       // segundo dejaría a ese día sin sesión para siempre.
@@ -165,15 +169,15 @@ function Mirando({ perfil }: { perfil: Perfil }) {
       else eventos.emitir(DIA_CAMBIO);
     } else if (decision.hacer === 'terminar') {
       await anotar('cierro la sesión', { salida: new Date(decision.hasta).toLocaleTimeString() });
-      const cerro = await s.terminar({ hasta: decision.hasta });
+      const cerro = await ahoraS.terminar({ hasta: decision.hasta });
       if (cerro && !cerro.deshizoElDia) eventos.emitir(CERRO_SOLA, cerro);
       // La visita se borra SOLO si el cierre llegó: `ultimoAdentro` tiene la
       // hora de salida, que es lo único que sabe cuándo se fue de verdad.
-      await guardarVigilancia(cerro ? null : vigilancia);
+      await guardarVigilancia(cerro ? null : visita);
       if (!cerro) await anotar('no pude cerrar, reintento', {});
       else eventos.emitir(DIA_CAMBIO);
     } else {
-      await guardarVigilancia(decision.vigilancia);
+      await guardarVigilancia(sinDesmarcar(decision.vigilancia, await leerVigilancia()));
     }
 
     if (decision.hacer === 'nada' && decision.vigilancia && !decision.vigilancia.arranco) {

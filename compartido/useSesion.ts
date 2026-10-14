@@ -761,6 +761,12 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       }
       return null;
     }
+    // Si la parás a mano estando todavía en el gimnasio, la visita queda
+    // marcada como usada: sin esto se volvería a encender sola a los dos
+    // minutos. VA ANTES de borrar la sesión del teléfono y se espera (13/10):
+    // después y sin esperar, el vigilante podía mirar justo en el instante
+    // "sin sesión y sin marca" y arrancar otra.
+    await guardarVigilancia(marcarComoUsada(await leerVigilancia()));
     borrarSesionCache(yo);
     borrarDescanso();
     // Lo de hoy pasa a ser historial: el último peso de cada modo queda en la
@@ -784,10 +790,6 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     if ((data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia) {
       setAviso(T.inicio.diaDeshecho);
     }
-    // Si la parás a mano estando todavía en el gimnasio, la visita queda
-    // marcada como usada: sin esto se volvería a encender sola a los dos
-    // minutos, que es la clase de cosa que hace que alguien apague la función.
-    guardarVigilancia(marcarComoUsada(await leerVigilancia()));
     alCambiarElDia?.(null);
 
     const deshizoElDia = !!(data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia;

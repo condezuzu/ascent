@@ -27,14 +27,22 @@ export type DatosDelDia = {
   unidad: Unidad;
 };
 
-export async function cargarDia(supabase: Cliente, uid: string, fecha: string, esFuturo: boolean): Promise<DatosDelDia> {
-  const [{ data: log }, { data: catalogo }, { data: cfgs }, { data: perfil }] = await Promise.all([
+/**
+ * `null` SI NO SE PUDO LEER (13/10). Sin señal, la lectura del día volvía vacía
+ * y se tomaba por "no hay día": la hoja decía "Sin registrar" en un día
+ * entrenado, y el botón para "arreglarlo" BORRABA el día de verdad con su
+ * sesión. No saber no es lo mismo que no haber: sin lectura no hay resumen, y
+ * sin resumen no hay botones de corregir.
+ */
+export async function cargarDia(supabase: Cliente, uid: string, fecha: string, esFuturo: boolean): Promise<DatosDelDia | null> {
+  const [{ data: log, error: eLog }, { data: catalogo }, { data: cfgs }, { data: perfil }] = await Promise.all([
     supabase.from('logs').select('id, es_descanso, origen').eq('user_id', uid).eq('fecha', fecha).maybeSingle(),
     supabase.from('ejercicios').select('id, nombre, grupo'),
     supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
     supabase.from('profiles').select('unidad_peso').eq('id', uid).maybeSingle(),
   ]);
-  const [{ data: sesiones }, { data: fotos }] = log
+  if (eLog) return null;
+  const [{ data: sesiones, error: eSesiones }, { data: fotos }]: [{ data: unknown; error?: unknown }, { data: unknown }] = log
     ? await Promise.all([
         supabase.from('sesiones').select('id, inicio, fin, estado, series, bloques').eq('log_id', log.id),
         // LA MÁS NUEVA, SIEMPRE LA MISMA (4/10). Sin orden, con dos fotos en el
@@ -43,6 +51,8 @@ export async function cargarDia(supabase: Cliente, uid: string, fecha: string, e
         supabase.from('photos').select('storage_path').eq('log_id', log.id).order('creado', { ascending: false }).limit(1),
       ])
     : [{ data: [] }, { data: [] }];
+  // Con el día leído y las sesiones no: mostraría "Fuiste" sin nada adentro.
+  if (eSesiones) return null;
 
   const resumen = resumenDelDia({
     log,
@@ -62,7 +72,7 @@ export async function cargarDia(supabase: Cliente, uid: string, fecha: string, e
   }
   return {
     resumen,
-    cuantasSesiones: (sesiones ?? []).length,
+    cuantasSesiones: ((sesiones ?? []) as unknown[]).length,
     foto,
     unidad: perfil?.unidad_peso === 'lb' ? 'lb' : 'kg',
   };

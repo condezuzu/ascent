@@ -16990,6 +16990,86 @@ console.log('\n208. Señal mala: la base no juzga una sesión que tiene cosas si
   });
 }
 
+console.log('\n209. Señal mala: no saber no es lo mismo que no haber');
+{
+  // ---- LA HOJA DE UN DÍA, SIN SEÑAL ----
+  // La lectura fallaba, volvía vacía, y la hoja decía "Sin registrar" en un día
+  // entrenado; tocar "Fui" para arreglarlo borraba el día y su sesión.
+  const D209 = await import('../compartido/dia.ts');
+  const TABLAS = {
+    logs: [{ id: 'l1', es_descanso: false, origen: 'manual' }],
+    sesiones: [{ id: 's1', inicio: '2026-10-10T10:00:00Z', fin: '2026-10-10T11:00:00Z', estado: 'terminada', series: 3, bloques: [] }],
+    ejercicios: [], descansos: [], photos: [], profiles: [{ unidad_peso: 'kg' }],
+  };
+  const baseQue = (fallan) => ({
+    from: (tabla) => {
+      const r = () => (fallan.includes(tabla) ? { data: null, error: { message: 'Network request failed' } } : { data: TABLAS[tabla], error: null });
+      const q = {
+        select: () => q, eq: () => q, order: () => q, limit: () => q,
+        maybeSingle: async () => { const x = r(); return { ...x, data: Array.isArray(x.data) ? x.data[0] ?? null : x.data }; },
+        then: (a, b) => Promise.resolve(r()).then(a, b),
+      };
+      return q;
+    },
+    storage: { from: () => ({ createSignedUrl: async () => ({ data: null }) }) },
+  });
+  const dia209 = async (fallan) => { const d = await D209.cargarDia(baseQue(fallan), 'uid', '2026-10-10', false); return d ? [d.resumen.estado, d.cuantasSesiones] : null; };
+  chequear('con señal, el día entrenado se lee entrenado', await dia209([]), ['entrenado', 1]);
+  chequear('si la lectura del día FALLA no se lo da por "sin registrar": no hay resumen', await dia209(['logs']), null);
+  chequear('y si lo que falla es la lectura de sus sesiones, tampoco se arma uno a medias', await dia209(['sesiones']), null);
+  chequear('sin resumen no hay con qué corregir: el destino actual es desconocido', D209.destinoActual(null), null);
+  const { readFileSync: leer209 } = await import('node:fs');
+  const hoja209 = leer209(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'HojaDelDia.tsx'), 'utf8').replace(/\r\n/g, '\n');
+  chequear('la hoja, sin lectura, no deja resumen puesto, lo dice, y no corrige nada', [
+    /setNoCargo\(!d\);\s*if \(!d\) return setResumen\(null\);/.test(hoja209),
+    /noCargo \? T\.resumen\.noCargo : '…'/.test(hoja209),
+    /if \(!resumen \|\| ocupado\) return;/.test(hoja209),
+  ], [true, true, true]);
+}
+
+console.log('\n210. El vigilante no prende una sesión que nadie pidió');
+{
+  const LL = await import('../nucleo/llegada.ts');
+  const T0 = 1_800_000_000_000;
+  const MIN = 60_000;
+  const libre210 = { corriendo: false, porUbicacion: false };
+  // Llegó, tocó Iniciar a mano antes de los siete minutos, entrenó, y la sesión se
+  // cerró sola por inactividad. Al abrir la app sigue adentro del gimnasio.
+  const llego = LL.decidir(true, T0, T0, null, libre210).vigilancia;
+  const entrenando = LL.decidir(true, T0 + 20 * MIN, T0 + 20 * MIN, llego, { corriendo: true, porUbicacion: false });
+  const alReabrir = LL.decidir(true, T0 + 50 * MIN, T0 + 50 * MIN, entrenando.vigilancia, libre210);
+  chequear('una sesión iniciada A MANO gasta la visita: si se cierra sola, el vigilante no arranca otra fechada en la llegada', [llego.arranco, entrenando.hacer, entrenando.vigilancia.arranco, alReabrir.hacer], [false, 'nada', true, 'nada']);
+  chequear('y sin ninguna sesión en el medio, a los siete minutos sí arranca sola: eso sigue andando', LL.decidir(true, T0 + 8 * MIN, T0 + 8 * MIN, llego, libre210).hacer, 'arrancar');
+  chequear('una visita NUEVA (horas después) vuelve a poder arrancar', LL.decidir(true, T0 + 9 * 60 * MIN, T0 + 9 * 60 * MIN, entrenando.vigilancia, libre210).vigilancia, { desde: T0 + 9 * 60 * MIN, ultimoAdentro: T0 + 9 * 60 * MIN, arranco: false });
+
+  // La mirada lee la visita, espera al GPS y guarda. "Terminar" cae en el medio.
+  const foto = { desde: T0, ultimoAdentro: T0 + 30 * MIN, arranco: false };
+  const trasTerminar = LL.marcarComoUsada(foto);
+  const loQueIbaAGuardar = LL.decidir(true, T0 + 31 * MIN, T0 + 31 * MIN, foto, { corriendo: true, porUbicacion: false }).vigilancia;
+  chequear('guardar la mirada no desmarca la visita que "Terminar" acaba de marcar', [
+    LL.sinDesmarcar({ ...loQueIbaAGuardar, arranco: false }, trasTerminar).arranco,
+    LL.sinDesmarcar({ ...foto, ultimoAdentro: T0 + 31 * MIN }, trasTerminar),
+    LL.sinDesmarcar({ desde: T0 + 9 * 60 * MIN, ultimoAdentro: T0 + 9 * 60 * MIN, arranco: false }, trasTerminar).arranco, // otra visita: no hereda
+    LL.sinDesmarcar(null, trasTerminar), LL.sinDesmarcar(foto, null).arranco,
+  ], [true, { desde: T0, ultimoAdentro: T0 + 31 * MIN, arranco: true }, false, null, false]);
+
+  const { readFileSync: leer210 } = await import('node:fs');
+  const RAIZ210 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const vig210 = leer210(join(RAIZ210, 'movil', 'src', 'VigilanteDeGimnasio.tsx'), 'utf8').replace(/\r\n/g, '\n');
+  const ses210 = leer210(join(RAIZ210, 'compartido', 'useSesion.ts'), 'utf8').replace(/\r\n/g, '\n');
+  const term210 = ses210.slice(ses210.indexOf('async function terminar('), ses210.indexOf('async function marcar('));
+  chequear('el vigilante decide con la sesión y la visita de AHORA (después del GPS), y guarda sin desmarcar', [
+    /const ahoraS = sesionRef\.current;\s*const visita = await leerVigilancia\(\);\s*const decision = decidir\(adentro, medidoEn, Date\.now\(\), visita, \{\s*corriendo: ahoraS\.estado\.corriendo,/.test(vig210),
+    /await guardarVigilancia\(sinDesmarcar\(decision\.vigilancia, await leerVigilancia\(\)\)\);/.test(vig210),
+    /decidir\([^)]*vigilancia, \{\s*corriendo: s\.estado/.test(vig210),
+  ], [true, true, false]);
+  chequear('"Terminar" marca la visita como usada ANTES de borrar la sesión del teléfono, y lo espera', [
+    term210.indexOf('await guardarVigilancia(marcarComoUsada(await leerVigilancia()));') > 0,
+    term210.indexOf('await guardarVigilancia(marcarComoUsada(await leerVigilancia()));') < term210.indexOf('borrarSesionCache(yo);'),
+    (term210.match(/guardarVigilancia\(/g) ?? []).length,
+  ], [true, true, 1]);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');

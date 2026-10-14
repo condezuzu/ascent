@@ -146,6 +146,7 @@ export const T = {
     fuiste: 'Fuiste',
     descanso: 'Descanso',
     sinRegistrar: 'Sin registrar',
+    noCargo: 'No se pudo cargar este día. Revisa la conexión y vuelve a abrirlo.',
     series: (n: number) => (n === 1 ? '1 serie' : `${n} series`),
     // Series que se contaron sin decir en qué. Existen y suman; solo no se
     // sabe de qué fueron.
