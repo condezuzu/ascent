@@ -1322,6 +1322,37 @@ export const T = {
   },
 
   // ---------------------------------------------------------------
+  // LA RUTINA COMO ALGO PROPIO (14/10): varias guardadas, una activa, plegada por día.
+  rutina: {
+    titulo: 'Tu rutina',
+    descanso: 'Descanso',
+    sinCargar: 'Sin cargar',
+    series: (n: number) => (n === 1 ? '1 serie' : `${n} series`),
+    minutos: (n: number) => `${n} min`,
+    activa: 'Activa',
+    usarEsta: 'Usar esta',
+    nueva: '+ Nueva',
+    nombreBase: 'Entrenamiento',
+    editar: 'Editar',
+    listo: 'Listo',
+    borrar: 'Borrar rutina',
+    borrarPregunta: (nombre: string) => `¿Borrar ${nombre}? No se puede deshacer.`,
+    cancelar: 'Cancelar',
+    agregarEjercicio: '+ Ejercicio',
+    diaDeDescanso: 'Día de descanso',
+    copiarA: 'Copiar a…',
+    yaTieneEjercicios: (dia: string) => `${dia} ya tiene ejercicios.`,
+    reemplazar: 'Reemplazar',
+    agregarAlFinal: 'Agregar al final',
+    deducida: 'Armada con lo que entrenaste las últimas cuatro semanas.',
+    guardarDeducida: 'Guardarla como rutina',
+    armarNueva: 'Armar una de cero',
+    copiar: 'Copiar esta rutina',
+    copiada: 'Copiada: ya es tu rutina. La cambias en Stats.',
+    deAlguien: (nombre: string) => `Rutina de ${nombre}`,
+    vacia: 'Todavía no hay rutina: entrena unos días o arma una.',
+  },
+
   social: {
     titulo: 'Ranking',
     amigos: 'Amigos',
@@ -1358,7 +1389,6 @@ export const T = {
     enlacePaso2: 'Crea tu cuenta.',
     enlacePaso3: (nombre: string) => `Vuelve a este mismo enlace y toca "Abrir en Ascent": ahí se agrega a ${nombre}.`,
     enlaceOjo: 'Sin ese último paso la solicitud no se manda.',
-    seriesDeRutina: (n: number) => (n === 1 ? '1 serie' : `${n} series`),
     cerrarFoto: 'Cerrar',
     verFoto: (nombre: string) => `Ver la foto de ${nombre}`,
     // La página de la web a la que lleva el link de amigo.

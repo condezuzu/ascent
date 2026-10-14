@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import RutinaDe from './RutinaDe';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -224,6 +225,9 @@ export default function PerfilPropio() {
         <Text style={estilos.seccion}>{T.yo.fotosTitulo}</Text>
         <FotosQueVen fotos={fotos} />
         <Text style={estilos.nota}>{fotos.length > 0 ? T.yo.fotosPie : T.yo.sinFotos}</Text>
+
+        {/* TU RUTINA (14/10): hasta acá no se veía en ningún lado. */}
+        <RutinaDe quien={perfil.id} esYo />
 
         <Text style={estilos.seccion}>
           {T.yo.amigos} {amigos.length > 0 ? amigos.length : ''}

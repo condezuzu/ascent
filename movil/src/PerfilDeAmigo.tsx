@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { cargarPerfilDeAmigo, cargarSuRutina, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
+import { cargarPerfilDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
 import FotoGrande from './FotoGrande';
-import type { DiaDeRutina } from '@nucleo/rutina';
+import RutinaDe from './RutinaDe';
 import Medallas from './Medallas';
 import { aceptarAmistad, pedirAmistad } from '@compartido/ranking';
 import { useEnVuelo } from '@compartido/useEnVuelo';
@@ -52,9 +52,6 @@ export default function PerfilDeAmigo() {
   const [noCargo, setNoCargo] = useState(false);
   const [accion, setAccion] = useState(false);
   const [fotoGrande, setFotoGrande] = useState(false);
-  const [rutina, setRutina] = useState<DiaDeRutina[]>([]);
-  // No la escondió, pero no hay nada que mostrar: se dice, en vez de no dibujar nada.
-  const [rutinaSinDatos, setRutinaSinDatos] = useState(false);
 
   const cargar = useCallback(async () => {
     setError('');
@@ -87,14 +84,6 @@ export default function PerfilDeAmigo() {
     // gateada a amigos aceptados (self + amigos): un no-amigo no aparece ahí, y
     // solo lo pedimos si esta persona ES amiga. Nunca expone su peso corporal,
     // solo el número, que los amigos ya ven en el ranking (§16.7).
-    // SU RUTINA (8/10): solo de un amigo, y solo si no la escondió. Si falla o
-    // viene vacía, la sección no aparece.
-    const ponerRutina = (r: { dias: DiaDeRutina[]; sinDatos: boolean }) => {
-      setRutina(r.dias);
-      setRutinaSinDatos(r.sinDatos);
-    };
-    if (d?.esAmigo) cargarSuRutina(supabase, id).then(ponerRutina, () => ponerRutina({ dias: [], sinDatos: false }));
-    else ponerRutina({ dias: [], sinDatos: false });
     if (d?.esAmigo) {
       supabase.rpc('ranking_fuerza').then(({ data }) => {
         const fila = (data as { id: string; dots: number }[] | null)?.find((f) => f.id === id);
@@ -239,23 +228,8 @@ export default function PerfilDeAmigo() {
               ))}
             </View>
             <FotosQueVen fotos={fotos} />
-            {(rutina.length > 0 || rutinaSinDatos) && (
-              <View testID="rutina-de-amigo" style={estilos.rutina}>
-                <Text style={estilos.rotulo}>{T.social.suRutina}</Text>
-                {rutina.length === 0 && <Text style={estilos.rutinaEjercicios}>{T.social.rutinaVacia}</Text>}
-                {rutina.map((d) => (
-                  <View key={d.dia} style={estilos.rutinaDia}>
-                    <Text style={estilos.rutinaNombre}>{T.fechas.diasLargos[d.dia]}</Text>
-                    {d.ejercicios.map((e) => (
-                      <View key={e.ejercicio} style={estilos.rutinaFila}>
-                        <Text style={estilos.rutinaEjercicios}>{e.ejercicio}</Text>
-                        {e.series > 0 && <Text style={estilos.rutinaSeries}>{T.social.seriesDeRutina(e.series)}</Text>}
-                      </View>
-                    ))}
-                  </View>
-                ))}
-              </View>
-            )}
+            {/* SU RUTINA: solo de un amigo, plegada por día, y se puede copiar (14/10). */}
+            {datos.esAmigo && <RutinaDe quien={usuario.id} nombre={usuario.username} />}
           </>
         ) : (
           <>
@@ -317,13 +291,7 @@ const estilos = StyleSheet.create({
   vacio: { borderWidth: 1, borderColor: '#2a3040' },
   puntoHoy: { borderWidth: 1, borderColor: C.claro },
   letra: { color: '#4a5163', fontSize: 11 },
-  rutina: { marginTop: 26 },
   rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
-  rutinaDia: { paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
-  rutinaNombre: { color: C.tinta, fontSize: 14, marginBottom: 3 },
-  rutinaFila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  rutinaEjercicios: { color: C.sub, fontSize: 13, lineHeight: 21, flexShrink: 1 },
-  rutinaSeries: { color: C.apagado, fontSize: 12, lineHeight: 21, fontVariant: ['tabular-nums'] },
   solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   boton: {

@@ -8,6 +8,8 @@ import { crearCliente } from '@cliente';
 import { plataforma } from '@plataforma';
 import { T } from '@nucleo/textos';
 import { eventos } from '@compartido/eventos';
+import { ejerciciosDeHoy } from '@nucleo/rutinas';
+import { cargarMisRutinas, rutinaActivaDelTelefono } from '@compartido/rutinas';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
 import {
   desfasajeDelReloj,
@@ -663,7 +665,12 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       // el primer ejercicio. Sin historial, `rutinaParaHoy` da vacío y todo
       // queda como estaba (cae al `ultimo_ejercicio` de siempre).
       await cargarHistorialRutina();
-      rutinaRef.current = rutinaParaHoy(sesionesRutinaRef.current, hoyISO());
+      // PRIMERO LA RUTINA ACTIVA GUARDADA (14/10), la del teléfono: anda sin señal.
+      // Un día de descanso o sin nada cargado cae a la deducida, como antes.
+      const deLaGuardada = ejerciciosDeHoy(await rutinaActivaDelTelefono(), new Date().getDay());
+      rutinaRef.current = deLaGuardada.length > 0 ? deLaGuardada : rutinaParaHoy(sesionesRutinaRef.current, hoyISO());
+      // Y se pone al día para la próxima, sin esperar.
+      void cargarMisRutinas(supabase).catch(() => null);
 
       // YA ESTABA CORRIENDO (se empezó en otro lado): lo que se hizo está en la
       // base, y eso va antes que cualquier semilla.

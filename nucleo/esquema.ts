@@ -52,6 +52,8 @@ export const REQUIERE = {
   avisoDeEntrenoPrendido: 68,
   /** Corregir un día en una sola transacción, en vez de borrar y volver a poner. */
   corregirDiaDeUna: 74,
+  /** Las rutinas guardadas: varias por cuenta, una activa. */
+  rutinas: 75,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

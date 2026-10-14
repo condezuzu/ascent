@@ -15885,8 +15885,8 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   ], [true, true, true]);
   // Desde el 12/10 "vacía" tiene dos casos: escondida (nada) y sin datos (se explica). Sección 201.
   chequear('la rutina se pide solo de un amigo, y vacía no se dibuja', [
-    /if \(d\?\.esAmigo\) cargarSuRutina\(supabase, id\)/.test(amigo197),
-    /\{\(rutina\.length > 0 \|\| rutinaSinDatos\) && \(/.test(amigo197),
+    /\{datos\.esAmigo && <RutinaDe quien=\{usuario\.id\} nombre=\{usuario\.username\} \/>\}/.test(amigo197),
+    /if \(!rutina \|\| rutina\.escondida\) return null;/.test(de197('movil', 'src', 'RutinaDe.tsx')),
     /rpc\('fijar_comparte_rutina', \{ p_valor: v \}\)/.test(de197('movil', 'src', 'Ajustes.tsx')),
     /value=\{perfil\.comparte_rutina !== false\}/.test(de197('movil', 'src', 'Ajustes.tsx')),
   ], [true, true, true, true]);
@@ -16438,8 +16438,8 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   chequear('sin datos y la escondió: nada, como siempre', (await rutinaCon([], false))[0], { dias: [], sinDatos: false });
   const amigo201 = de201('movil', 'src', 'PerfilDeAmigo.tsx');
   chequear('el perfil dibuja la sección también cuando está vacía sin estar escondida, con su línea', [
-    /\{\(rutina\.length > 0 \|\| rutinaSinDatos\) && \(/.test(amigo201),
-    /\{rutina\.length === 0 && <Text style=\{estilos\.rutinaEjercicios\}>\{T\.social\.rutinaVacia\}<\/Text>\}/.test(amigo201),
+    /\{datos\.esAmigo && <RutinaDe /.test(amigo201),
+    /\{!hay \? \(\s*<Text style=\{estilos\.nota\}>\{esYo \? T\.rutina\.vacia : T\.social\.rutinaVacia\}<\/Text>/.test(de201('movil', 'src', 'RutinaDe.tsx')),
   ], [true, true]);
 
   // ---- LA MEDALLA DEL PERFIL Y EL INTERRUPTOR ----
@@ -17282,6 +17282,165 @@ console.log('\n212. Migración 74: corregir un día de una, y los ejercicios sin
   chequear('los kilos que llegan pegados a un ejercicio sin peso no se guardan; los del que sí lleva, sí', [
     'pesos' in guardado[0], guardado[0].series, guardado[1].pesos.map(Number),
   ], [false, 2, [60, 62.5]]);
+}
+
+console.log('\n213. Las rutinas guardadas (migración 75)');
+{
+  const R = await import('../nucleo/rutinas.ts');
+  const yo = await nuevoUsuario();
+  const amiga = await nuevoUsuario();
+  const extrana = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [yo, amiga]);
+  const como = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const lunes = (ejercicios) => { const s = R.semanaVacia(); s[1] = { descanso: false, ejercicios }; return s; };
+
+  // ---- GUARDAR, VARIAS, UNA ACTIVA ----
+  const a = (await como(yo, 'select guardar_rutina(null, $1, $2::jsonb) as id', ['Entrenamiento 1', JSON.stringify(lunes([{ ejercicio: 'press_banca', series: 4 }]))]))[0].id;
+  const b = (await como(yo, 'select guardar_rutina(null, $1, $2::jsonb) as id', ['Entrenamiento 2', JSON.stringify(lunes([{ ejercicio: 'sentadilla', series: 5 }]))]))[0].id;
+  const mias = async () => (await como(yo, 'select mis_rutinas() as v'))[0].v.map((r) => [r.nombre, r.activa]);
+  chequear('la primera que se guarda queda activa; la segunda no', await mias(), [['Entrenamiento 1', true], ['Entrenamiento 2', false]]);
+  await como(yo, 'select activar_rutina($1)', [b]);
+  chequear('activar otra deja una sola activa', await mias(), [['Entrenamiento 1', false], ['Entrenamiento 2', true]]);
+  const cambiada = (await como(yo, 'select guardar_rutina($1, $2, $3::jsonb) as id', [a, '  Pecho y espalda  ', JSON.stringify(lunes([{ ejercicio: 'remo', series: 3 }]))]))[0].id;
+  chequear('cambiar una con su id la pisa (y el nombre llega sin espacios de más)', [cambiada === a, (await como(yo, 'select mis_rutinas() as v'))[0].v[0].nombre, (await como(yo, 'select mis_rutinas() as v'))[0].v[0].dias[1].ejercicios[0].ejercicio], [true, 'Pecho y espalda', 'remo']);
+
+  // ---- LO DE OTRO NO SE TOCA ----
+  await como(extrana, 'select activar_rutina($1)', [a]);
+  await como(extrana, 'select borrar_rutina($1)', [b]);
+  const ajena = (await como(extrana, 'select guardar_rutina($1, $2, $3::jsonb) as id', [b, 'mía ahora', '[]']))[0].id;
+  chequear('otra cuenta no activa, no borra ni pisa mis rutinas, y no las ve', [await mias(), ajena, (await como(extrana, 'select mis_rutinas() as v'))[0].v], [[['Pecho y espalda', false], ['Entrenamiento 2', true]], null, []]);
+
+  // ---- QUIÉN VE MI RUTINA ACTIVA ----
+  const ve = async (quien) => (await como(quien, 'select rutina_activa_de($1) as v', [yo]))[0].v?.nombre ?? null;
+  const conAmiga = await ve(amiga);
+  await db.query('update profiles set comparte_rutina = false where id = $1', [yo]);
+  chequear('mi activa la veo yo y una amiga, no una extraña ni nadie sin sesión; si la escondo, la amiga tampoco', [await ve(yo), conAmiga, await ve(extrana), await ve(null), await ve(amiga)], ['Entrenamiento 2', 'Entrenamiento 2', null, null, null]);
+  await db.query('update profiles set comparte_rutina = true where id = $1', [yo]);
+
+  // ---- BORRAR, Y EL TOPE ----
+  await como(yo, 'select borrar_rutina($1)', [a]);
+  for (let i = 0; i < 9; i++) await como(yo, 'select guardar_rutina(null, $1, $2::jsonb)', ['r' + i, '[]']);
+  const once = await como(yo, 'select guardar_rutina(null, $1, $2::jsonb)', ['la once', '[]']).then(() => 'entró', (e) => String(e.message));
+  chequear('borrar se la lleva; y no hay más de diez por cuenta', [(await como(yo, 'select mis_rutinas() as v'))[0].v.length, once], [R.MAX_RUTINAS, 'ya hay diez rutinas']);
+
+  // ---- LO QUE LLEGA DEL TELÉFONO SE LIMPIA IGUAL EN LA BASE Y EN EL TELÉFONO ----
+  const muchos = Array.from({ length: 35 }, (_, i) => ({ ejercicio: 'e' + i, series: 1 }));
+  const CASOS = [
+    'basura',
+    null,
+    [],
+    [{}, { descanso: true, ejercicios: [{ ejercicio: 'press_banca', series: 3 }] }, { ejercicios: [{ ejercicio: 'press_banca', series: 150 }, { ejercicio: 'remo', series: -3 }, { ejercicio: 'curl', series: '3' }, { ejercicio: '', series: 2 }, 7, null, { ejercicio: 'cinta', series: 0, minutos: 25 }, { ejercicio: 'bici', minutos: 900 }] }],
+    [{ ejercicios: muchos }, { descanso: 'sí' }, { ejercicios: 'no' }],
+  ];
+  const enLaBase = [];
+  for (const c of CASOS) enLaBase.push((await db.query('select rutina_dias_limpios($1::jsonb) as v', [JSON.stringify(c)])).rows[0].v);
+  // La base ordena las claves de cada objeto: se comparan con las claves en orden.
+  const enOrden = (x) => JSON.parse(JSON.stringify(x, (_, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v)));
+  chequear('la base y el teléfono limpian lo mismo: siete días, el descanso sin ejercicios, topes, y lo que no se entiende afuera', enOrden(enLaBase), enOrden(CASOS.map((c) => R.diasLimpios(c))));
+  chequear('y los topes son los que dice el teléfono', [enLaBase[3][2].ejercicios.map((e) => [e.ejercicio, e.series, e.minutos ?? null]), enLaBase[4][0].ejercicios.length], [
+    [['press_banca', 99, null], ['remo', 0, null], ['curl', 0, null], ['cinta', 0, 25], ['bici', 0, 600]], R.MAX_EJERCICIOS_POR_DIA,
+  ]);
+
+  // ---- LAS REGLAS DE LA PANTALLA ----
+  const grupo = (id) => ({ press_banca: 'pecho', press_militar: 'hombros', curl: 'brazos', remo: 'espalda', cinta: 'cardio' })[id] ?? null;
+  const dia = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
+  chequear('el título del día sale de los grupos de sus ejercicios, en orden y sin repetir', [
+    R.tituloDelDia(dia(['press_banca', 'press_militar', 'curl', 'press_banca']), grupo, 'Descanso'),
+    R.tituloDelDia(dia(['remo']), grupo, 'Descanso'),
+    R.tituloDelDia(dia(['remo', 'cinta']), grupo, 'Descanso'),
+    R.tituloDelDia({ descanso: true, ejercicios: [] }, grupo, 'Descanso'),
+    R.tituloDelDia(dia(['no_existe']), grupo, 'Descanso'),
+  ], ['Pecho, hombro y brazo', 'Espalda', 'Espalda y cardio', 'Descanso', '']);
+  const s0 = R.semanaVacia();
+  s0[1] = dia(['press_banca', 'remo']);
+  s0[4] = dia(['sentadilla']);
+  chequear('copiar el lunes a un día vacío lo deja igual; a un día con cosas, reemplaza o agrega al final sin repetir', [
+    R.copiarDia(s0, 1, 3, 'reemplazar')[3].ejercicios.map((e) => e.ejercicio),
+    R.hayQuePreguntarAlCopiar(s0, 3), R.hayQuePreguntarAlCopiar(s0, 4),
+    R.copiarDia(s0, 1, 4, 'reemplazar')[4].ejercicios.map((e) => e.ejercicio),
+    R.copiarDia(s0, 1, 4, 'agregar')[4].ejercicios.map((e) => e.ejercicio),
+    R.copiarDia(R.copiarDia(s0, 1, 4, 'agregar'), 1, 4, 'agregar')[4].ejercicios.length,
+    s0[4].ejercicios.length,
+  ], [['press_banca', 'remo'], false, true, ['press_banca', 'remo'], ['sentadilla', 'press_banca', 'remo'], 3, 1]);
+  chequear('editar no toca la semana que recibe, y las series no bajan de 1', [
+    R.quitarEjercicio(s0, 1, 0)[1].ejercicios.map((e) => e.ejercicio), s0[1].ejercicios.length,
+    R.cambiarCantidad(R.cambiarCantidad(s0, 1, 0, -1), 1, 0, -1)[1].ejercicios[0].series,
+    R.cambiarCantidad(s0, 1, 0, 1)[1].ejercicios[0].series,
+    R.subirEjercicio(s0, 1, 1)[1].ejercicios.map((e) => e.ejercicio),
+    R.marcarDescanso(s0, 1, true)[1], R.agregarEjercicio(s0, 2, 'cinta', true)[2].ejercicios[0],
+  ], [['remo'], 2, 1, 4, ['remo', 'press_banca'], { descanso: true, ejercicios: [] }, { ejercicio: 'cinta', series: 0, minutos: 20 }]);
+  chequear('la sesión arranca con los ejercicios del día de la rutina activa; un descanso no propone nada', [
+    R.ejerciciosDeHoy({ dias: s0 }, 1), R.ejerciciosDeHoy({ dias: R.marcarDescanso(s0, 1, true) }, 1), R.ejerciciosDeHoy(null, 1), R.ejerciciosDeHoy({ dias: s0 }, 0),
+  ], [['press_banca', 'remo'], [], [], []]);
+  chequear('el nombre nuevo es el primer número libre', [R.nombreNuevo([], 'Entrenamiento'), R.nombreNuevo(['Entrenamiento 1', 'Entrenamiento 3'], 'Entrenamiento')], ['Entrenamiento 1', 'Entrenamiento 2']);
+  chequear('la deducida (solo los días con sesiones) se vuelve una semana entera', R.semanaDeLaDeducida([{ dia: 3, ejercicios: [{ ejercicio: 'remo', series: 4 }] }]).map((d) => d.ejercicios.length), [0, 0, 0, 1, 0, 0, 0]);
+}
+
+console.log('\n214. La rutina en el teléfono: qué se muestra, y con qué arranca la sesión');
+{
+  const E214 = await import('../compartido/esquema.ts');
+  const RU = await import('../compartido/rutinas.ts');
+  const { guardarPerfilCache: guardarPerfil214 } = await import('../compartido/cache.ts');
+  const { memoria: mem214 } = await import('./dobles/plataforma.mjs');
+  let reloj214 = Date.now() + E214.VIGENCIA_MS * 9000;
+  const semana = (dia, ejercicios) => { const s = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] })); s[dia] = { descanso: false, ejercicios }; return s; };
+  const base214 = async (version, respuestas) => {
+    const llamadas = [];
+    const b = {
+      llamadas,
+      rpc: async (nombre) => {
+        if (nombre === 'version_del_esquema') return { data: version, error: null };
+        llamadas.push(nombre);
+        return respuestas[nombre] ?? { data: null, error: null };
+      },
+      from: () => { const q = { select: () => q, eq: () => q, then: (a, c) => Promise.resolve({ data: [], error: null }).then(a, c) }; return q; },
+    };
+    reloj214 += E214.VIGENCIA_MS * 3;
+    await E214.versionDelEsquema(b, reloj214);
+    await new Promise((r) => setTimeout(r, 20));
+    llamadas.length = 0;
+    return b;
+  };
+  const vista = (r) => (r ? [r.nombre, r.deducida, r.escondida, r.dias.map((d) => d.ejercicios.length).join('')] : null);
+  const historial = [{ fecha: '2026-10-05', bloques: [{ ejercicio: 'remo', series: 3 }] }];
+
+  const conGuardada = await base214(75, { rutina_activa_de: { data: { nombre: 'Entrenamiento 2', dias: semana(1, [{ ejercicio: 'press_banca', series: 4 }]) }, error: null } });
+  chequear('con una activa guardada se muestra esa, y no se pide la deducida', [vista(await RU.cargarRutinaParaVer(conGuardada, 'x', false)), conGuardada.llamadas], [['Entrenamiento 2', false, false, '0100000'], ['rutina_activa_de']]);
+  const sinGuardada = await base214(75, { rutina_activa_de: { data: null, error: null }, rutina_de_amigo: { data: historial, error: null } });
+  chequear('sin guardada, la deducida de sus últimas cuatro semanas', vista(await RU.cargarRutinaParaVer(sinGuardada, 'x', false)), [null, true, false, '0100000']);
+  const escondida = await base214(75, { rutina_activa_de: { data: null, error: null }, rutina_de_amigo: { data: [], error: null }, me_muestra_su_rutina: { data: false, error: null } });
+  const vaciaNoEscondida = await base214(75, { rutina_activa_de: { data: null, error: null }, rutina_de_amigo: { data: [], error: null }, me_muestra_su_rutina: { data: true, error: null } });
+  const miaVacia = await base214(75, { rutina_activa_de: { data: null, error: null }, rutina_de_amigo: { data: [], error: null } });
+  chequear('vacía: la de un amigo que la escondió no se dibuja; la que no tiene datos se explica; la mía vacía se explica sin preguntar nada', [
+    (await RU.cargarRutinaParaVer(escondida, 'x', false)).escondida,
+    (await RU.cargarRutinaParaVer(vaciaNoEscondida, 'x', false)).escondida,
+    [(await RU.cargarRutinaParaVer(miaVacia, 'yo', true)).escondida, miaVacia.llamadas.includes('me_muestra_su_rutina')],
+  ], [true, false, [false, false]]);
+  const vieja = await base214(74, { rutina_de_amigo: { data: historial, error: null } });
+  chequear('con una base anterior a la 75 no se pregunta por guardadas', [vista(await RU.cargarRutinaParaVer(vieja, 'x', false)), vieja.llamadas], [[null, true, false, '0100000'], ['rutina_de_amigo']]);
+  const falla = await base214(75, { rutina_activa_de: { data: null, error: { message: 'Network request failed' } } });
+  chequear('si no se pudo preguntar es null, no "vacía"', await RU.cargarRutinaParaVer(falla, 'x', false), null);
+
+  // LA ACTIVA QUEDA EN EL TELÉFONO, y es de UNA cuenta.
+  await guardarPerfil214({ id: 'cuenta-rutina', username: 'r' });
+  const mias = await base214(75, { mis_rutinas: { data: [
+    { id: 'r1', nombre: 'Entrenamiento 1', activa: false, dias: semana(1, [{ ejercicio: 'remo', series: 3 }]) },
+    { id: 'r2', nombre: 'Entrenamiento 2', activa: true, dias: semana(1, [{ ejercicio: 'press_banca', series: 4 }]) },
+  ], error: null } });
+  const cargadas = await RU.cargarMisRutinas(mias);
+  const enElTelefono = await RU.rutinaActivaDelTelefono();
+  await guardarPerfil214({ id: 'otra-cuenta', username: 'o' });
+  chequear('al cargar mis rutinas, la activa queda guardada en el teléfono; otra cuenta en el mismo teléfono no la lee', [
+    cargadas.map((r) => [r.nombre, r.activa]), enElTelefono?.dias[1].ejercicios[0].ejercicio, await RU.rutinaActivaDelTelefono(),
+  ], [[['Entrenamiento 1', false], ['Entrenamiento 2', true]], 'press_banca', null]);
+  mem214.delete('ascent:rutina-activa');
+
+  const { readFileSync: leer214 } = await import('node:fs');
+  const ses214 = leer214(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'useSesion.ts'), 'utf8').replace(/\r\n/g, '\n');
+  chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(await rutinaActivaDelTelefono\(\), new Date\(\)\.getDay\(\)\);\s*rutinaRef\.current = deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
