@@ -193,7 +193,37 @@ export async function cargarMedallasDeMuchos(
   return salida;
 }
 
+/**
+ * LOS AMIGOS DE UN AMIGO (migración 78), para su perfil. `null` = no se pudo o
+ * la base no la tiene: la sección no se dibuja.
+ */
+export async function cargarAmigosDe(supabase: Cliente, quien: string): Promise<UsuarioPublico[] | null> {
+  if (!disponible('amigosDeAmigos', await versionDelEsquema(supabase).catch(() => null))) return null;
+  const { data: ids, error } = await supabase.rpc('amigos_de', { p_quien: quien });
+  if (error || !Array.isArray(ids)) return null;
+  if (ids.length === 0) return [];
+  const { data, error: e2 } = await supabase.from('usuarios_publicos').select('*').in('id', ids as string[]);
+  if (e2) return null;
+  return ((data ?? []) as UsuarioPublico[]).sort((a, b) => b.racha_actual - a.racha_actual || a.username.localeCompare(b.username));
+}
+
+// LO ÚLTIMO QUE SE VIO DE TU PERFIL, para abrirlo al instante la próxima vez
+// (14/10): esperar dos idas a la base con una ruedita era el "lag" de tocar tu foto.
+let miPerfilEnMemoria: DatosDePerfil | null = null;
+export function ultimoMiPerfil(): DatosDePerfil | null {
+  return miPerfilEnMemoria;
+}
+export function olvidarMiPerfil(): void {
+  miPerfilEnMemoria = null;
+}
+
 export async function cargarMiPerfil(supabase: Cliente, uid: string): Promise<DatosDePerfil | null> {
+  const d = await traerMiPerfil(supabase, uid);
+  if (d) miPerfilEnMemoria = d;
+  return d;
+}
+
+async function traerMiPerfil(supabase: Cliente, uid: string): Promise<DatosDePerfil | null> {
   const [{ data: p }, { data: fs }, { data: rel }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', uid).single(),
     supabase

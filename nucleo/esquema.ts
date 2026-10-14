@@ -58,6 +58,8 @@ export const REQUIERE = {
   ejerciciosPropios: 76,
   /** Avisos push: te quieren agregar, quieren unirse a tu entrenamiento. */
   avisosRemotos: 77,
+  /** Los amigos de un amigo, en su perfil. */
+  amigosDeAmigos: 78,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { cargarPerfilDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
+import { cargarAmigosDe, cargarPerfilDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
+import type { UsuarioPublico } from '@nucleo/tipos';
 import FotoGrande from './FotoGrande';
 import RutinaDe from './RutinaDe';
 import Medallas from './Medallas';
@@ -47,6 +48,9 @@ export default function PerfilDeAmigo() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [datos, setDatos] = useState<Datos | null>(null);
   const [dots, setDots] = useState<number | null>(null);
+  // Sus amigos (migración 78): null = no se dibuja la sección.
+  const [amigosDe, setAmigosDe] = useState<UsuarioPublico[] | null>(null);
+  const [yoId, setYoId] = useState('');
   const [cargado, setCargado] = useState(false);
   const [error, setError] = useState('');
   const [noCargo, setNoCargo] = useState(false);
@@ -68,6 +72,7 @@ export default function PerfilDeAmigo() {
       return setCargado(true);
     }
     const yo = quien.uid;
+    setYoId(yo);
     // Tu propio perfil tiene su pantalla: entrar al tuyo por acá mostraría una
     // versión recortada de vos mismo.
     if (yo === id) return router.replace('/yo');
@@ -85,6 +90,7 @@ export default function PerfilDeAmigo() {
     // solo lo pedimos si esta persona ES amiga. Nunca expone su peso corporal,
     // solo el número, que los amigos ya ven en el ranking (§16.7).
     if (d?.esAmigo) {
+      void cargarAmigosDe(supabase, id).then(setAmigosDe).catch(() => undefined);
       supabase.rpc('ranking_fuerza').then(({ data }) => {
         const fila = (data as { id: string; dots: number }[] | null)?.find((f) => f.id === id);
         setDots(fila && typeof fila.dots === 'number' ? fila.dots : null);
@@ -230,6 +236,28 @@ export default function PerfilDeAmigo() {
             <FotosQueVen fotos={fotos} />
             {/* SU RUTINA: solo de un amigo, plegada por día, y se puede copiar (14/10). */}
             {datos.esAmigo && <RutinaDe quien={usuario.id} nombre={usuario.username} />}
+            {/* SUS AMIGOS (14/10): se toca para entrar al perfil de cada uno. */}
+            {datos.esAmigo && amigosDe && amigosDe.length > 0 && (
+              <View testID="amigos-de-amigo" style={estilos.amigos}>
+                <Text style={estilos.rotulo}>
+                  {T.social.amigos} {amigosDe.length}
+                </Text>
+                {amigosDe.map((a) => (
+                  <Pressable
+                    key={a.id}
+                    style={estilos.amigo}
+                    onPress={() => router.push(a.id === yoId ? '/yo' : `/perfil/${a.id}`)}
+                    accessibilityRole="button"
+                  >
+                    <Avatar url={a.avatar_url} nombre={a.username} />
+                    <Text style={estilos.amigoNombre} numberOfLines={1}>
+                      {a.username}
+                    </Text>
+                    <Text style={estilos.amigoRacha}>{a.racha_actual}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </>
         ) : (
           <>
@@ -308,4 +336,8 @@ const estilos = StyleSheet.create({
   error: { color: C.error, fontSize: 13, marginTop: 10 },
   reportar: { marginTop: 40, alignItems: 'center', paddingVertical: 8 },
   reportarTexto: { color: C.apagado, fontSize: 13 },
+  amigos: { marginTop: 28 },
+  amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
+  amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },
+  amigoRacha: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
 });

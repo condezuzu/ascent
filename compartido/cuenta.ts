@@ -10,6 +10,7 @@ import { borrarDescanso } from '@compartido/descanso';
 import { borrarPerfilCache } from '@compartido/cache';
 import { borrarSesionCache } from '@compartido/sesionCache';
 import { olvidarAvisosRemotos } from '@compartido/avisosRemotos';
+import { olvidarMiPerfil } from '@compartido/perfil';
 
 /**
  * SALIR DE LA CUENTA, Y QUE NO QUEDE NADA PARA LA QUE ENTRE (4/10).
@@ -77,6 +78,7 @@ export async function limpiarAlSalir() {
   await borrarDescanso();
   await Promise.all(DE_LA_SESION.map((clave) => plataforma.almacenamiento.borrar(clave)));
   await borrarPerfilCache();
+  olvidarMiPerfil();
 }
 
 /**

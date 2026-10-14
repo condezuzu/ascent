@@ -21,7 +21,7 @@ import { CURVA } from '@nucleo/deslizar';
 import Surgir from './Surgir';
 import { T } from '@nucleo/textos';
 import { fechaCorta, fechaLinda } from '@nucleo/fechas';
-import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type DatosDeAlbum } from '@compartido/album';
+import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type Celda, type DatosDeAlbum } from '@compartido/album';
 import { primeraYUltima, resumenDelMes } from '@nucleo/album';
 import { paletaDe } from '@nucleo/paletas';
 import FondoEspacial from './FondoEspacial';
@@ -34,6 +34,7 @@ import { eventos } from '@compartido/eventos';
 import { FOTOS_CAMBIO } from '@compartido/foto';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
 import { completarMiniaturas } from './miniaturas';
+import { useFotoLocal } from './fotoLocal';
 
 /**
  * ÁLBUM — tanda 4.
@@ -319,9 +320,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       onPress={() => setAbierta(celdas.findIndex((x) => x.id === c.id))}
                       accessibilityLabel={fechaLinda(c.fecha)}
                     >
-                      {!!(c.miniatura || c.url) && (
-                        <Image source={{ uri: c.miniatura || c.url }} style={estilos.mitadFoto} resizeMode="cover" />
-                      )}
+                      {!!(c.miniatura || c.url) && <FotoMitad celda={c} />}
                       <Text style={estilos.mitadCuando}>
                         {i === 0 ? T.album.laPrimera : T.album.laUltima} · {fechaCorta(c.fecha)}
                       </Text>
@@ -352,7 +351,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       {/* LA MINIATURA, no la entera (8/10): la celda mide un
                           tercio de pantalla y bajaba la foto de 1600 px. La
                           entera queda de respaldo para la que todavía no tiene. */}
-                      {!!(c.miniatura || c.url) && <Foto url={c.miniatura || c.url} lado={lado} />}
+                      {!!(c.miniatura || c.url) && <Foto celda={c} lado={lado} />}
                       {/* Un punto y nada más: quién ve la foto, de un vistazo. */}
                       {c.visibilidad === 'amigos' && <View style={estilos.punto} />}
                     </Pressable>
@@ -498,8 +497,18 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
  * junto con la celda y se lee como un solo movimiento; la primera vez entra
  * cuando puede, que es lo único honesto con una imagen que viaja.
  */
-function Foto({ url, lado }: { url: string; lado: number }) {
+// Por la ruta, que no cambia: la miniatura y la entera son archivos distintos.
+const claveDe = (c: Celda) => (c.miniatura ? 'mini-' : 'entera-') + c.ruta;
+
+function FotoMitad({ celda }: { celda: Celda }) {
+  const uri = useFotoLocal(claveDe(celda), celda.miniatura || celda.url);
+  return uri ? <Image source={{ uri }} style={estilos.mitadFoto} resizeMode="cover" /> : <View style={estilos.mitadFoto} />;
+}
+
+function Foto({ celda, lado }: { celda: Celda; lado: number }) {
   const opacidad = useRef(new Animated.Value(0)).current;
+  const url = useFotoLocal(claveDe(celda), celda.miniatura || celda.url);
+  if (!url) return null;
   return (
     <Animated.Image
       source={{ uri: url }}

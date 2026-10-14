@@ -3,7 +3,8 @@ import RutinaDe from './RutinaDe';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { cargarMiPerfil, type DatosDePerfil } from '@compartido/perfil';
+import { cargarMiPerfil, ultimoMiPerfil, type DatosDePerfil } from '@compartido/perfil';
+import FotoGrande from './FotoGrande';
 import { subirAvatar } from '@compartido/avatar';
 import { conComa } from '@nucleo/peso';
 import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
@@ -47,9 +48,10 @@ import InvitarConLink from './InvitarConLink';
  */
 export default function PerfilPropio() {
   const router = useRouter();
-  const [datos, setDatos] = useState<DatosDePerfil | null>(null);
+  const [datos, setDatos] = useState<DatosDePerfil | null>(() => ultimoMiPerfil());
   const [dots, setDots] = useState<number | null>(null);
-  const [cargado, setCargado] = useState(false);
+  const [cargado, setCargado] = useState(() => ultimoMiPerfil() !== null);
+  const [fotoGrande, setFotoGrande] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const [porQuitar, setPorQuitar] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -181,7 +183,8 @@ export default function PerfilPropio() {
         </Pressable>
 
         <View style={estilos.cabecera}>
-          <Pressable onPress={cambiarFoto} disabled={subiendo} accessibilityLabel={T.yo.cambiarFoto}>
+          {/* Con foto, primero se ve en grande; sin foto, no hay nada que mirar. */}
+          <Pressable onPress={() => (perfil.avatar_url ? setFotoGrande(true) : void cambiarFoto())} disabled={subiendo} accessibilityLabel={T.yo.cambiarFoto}>
             <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={76} />
           </Pressable>
           <View style={estilos.identidad}>
@@ -237,8 +240,10 @@ export default function PerfilPropio() {
         {amigos.map((a, i) => (
           <Surgir key={a.id} indice={i}>
             <View style={estilos.amigo}>
-              <Avatar url={a.avatar_url} nombre={a.username} />
-              <Text style={estilos.amigoNombre}>{a.username}</Text>
+              <Pressable style={estilos.amigoTocable} onPress={() => router.push(`/perfil/${a.id}`)} accessibilityRole="button">
+                <Avatar url={a.avatar_url} nombre={a.username} />
+                <Text style={estilos.amigoNombre}>{a.username}</Text>
+              </Pressable>
               {porQuitar === a.id ? (
                 <>
                   <Pressable onPress={() => quitarAmigo(a.id)} hitSlop={8}>
@@ -257,6 +262,7 @@ export default function PerfilPropio() {
           </Surgir>
         ))}
       </ScrollView>
+      <FotoGrande url={fotoGrande ? perfil.avatar_url : null} onCerrar={() => setFotoGrande(false)} alCambiar={() => void cambiarFoto()} />
     </View>
   );
 }
@@ -280,6 +286,7 @@ const estilos = StyleSheet.create({
   dotsNumero: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 34, marginBottom: 10 },
   amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  amigoTocable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 10 },
   enlace: { color: C.sub, fontSize: 15 },

@@ -15606,11 +15606,12 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
 
   // ---- CABLEADO DEL ÁLBUM NATIVO: son componentes ----
   const alb196 = de196('movil/src/Album.tsx');
-  chequear('las celdas y el par del mes usan la miniatura, con la entera de respaldo', [
-    /<Foto url=\{c\.miniatura \|\| c\.url\} lado=\{lado\} \/>/.test(alb196),
-    /<Image source=\{\{ uri: c\.miniatura \|\| c\.url \}\} style=\{estilos\.mitadFoto\}/.test(alb196),
+  // Desde el 14/10 pasan por `useFotoLocal` (guardadas en el teléfono por su ruta), con la misma elección.
+  chequear('las celdas y el par del mes usan la miniatura, con la entera de respaldo, guardada en el teléfono', [
+    (alb196.match(/useFotoLocal\(claveDe\(celda\), celda\.miniatura \|\| celda\.url\)/g) ?? []).length,
+    /<Foto celda=\{c\} lado=\{lado\} \/>/.test(alb196) && /<FotoMitad celda=\{c\} \/>/.test(alb196),
     /<Foto url=\{c\.url\}/.test(alb196),
-  ], [true, true, false]);
+  ], [2, true, false]);
   // LA TIRA: el lugar y el dedo se suman, y al pasar cambian JUNTOS, antes de avisarle a React.
   chequear('el visor es una tira: al pasar, lugar y dedo cambian en el mismo instante', [
     /Animated\.add\(base, desliz\)/.test(alb196),
@@ -17831,6 +17832,83 @@ console.log('\n220. El cartel que baja de arriba, y el token del aparato');
   const cuenta220 = leer220(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'cuenta.ts'), 'utf8');
   chequear('cerrar sesión olvida el token ANTES de soltar la sesión (después la base ya no deja borrar lo propio)',
     /await olvidarAvisosRemotos\(supabase\)[\s\S]{0,120}supabase\.auth\.signOut/.test(cuenta220), true);
+}
+
+console.log('\n221. Perfiles: los amigos de un amigo (migración 78), y tu perfil al instante');
+{
+  const P221 = await import('../compartido/perfil.ts');
+  const E221 = await import('../compartido/esquema.ts');
+  const CU221 = await import('../compartido/cuenta.ts');
+  let reloj221 = Date.now() + E221.VIGENCIA_MS * 15000;
+  const yo = await nuevoUsuario();
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  const caro = await nuevoUsuario();
+  const extrana = await nuevoUsuario();
+  const amistad = (a, b, estado = 'aceptada') => db.query('insert into friendships (solicitante, destinatario, estado) values ($1, $2, $3)', [a, b, estado]);
+  await amistad(yo, ana);
+  await amistad(ana, beto);
+  await amistad(caro, ana, 'pendiente');
+  const de = async (quien, p) => {
+    await comoUsuario(quien);
+    return (await db.query('select amigos_de($1) as id', [p])).rows.map((r) => r.id).sort();
+  };
+  chequear('los amigos de una amiga los veo (sin los pedidos pendientes); los de una extraña no; los míos sí; sin sesión nada', [
+    await de(yo, ana), await de(extrana, ana), await de(yo, yo), await de(null, ana),
+    (await db.query(`select has_function_privilege('anon', 'public.amigos_de(uuid)', 'execute') as p`)).rows[0].p,
+  ], [[yo, beto].sort(), [], [ana], [], false]);
+  await db.query('insert into bloqueos (bloqueador, bloqueado) values ($1, $2)', [beto, yo]);
+  await comoUsuario(yo);
+  await db.exec('set role authenticated');
+  const visibles = (await db.query('select id from usuarios_publicos where id = any($1)', [await de(yo, ana)])).rows.map((r) => r.id);
+  await db.exec('reset role');
+  chequear('quien me bloqueó sale en los ids pero no en la vista pública, que es de donde el teléfono saca el nombre', visibles, [yo]);
+
+  // ---- EN EL TELÉFONO ----
+  const anotado = [];
+  const base = (version) => ({
+    rpc: async (n, a) => {
+      if (n === 'version_del_esquema') return { data: version, error: null };
+      anotado.push([n, a]);
+      return { data: ['u1', 'u2'], error: null };
+    },
+    from: (t) => {
+      const q = { select: () => q, in: () => q, then: (ok) => Promise.resolve(t === 'usuarios_publicos'
+        ? { data: [{ id: 'u1', username: 'zoe', avatar_url: null, racha_actual: 3 }, { id: 'u2', username: 'ana', avatar_url: null, racha_actual: 9 }], error: null }
+        : { data: [], error: null }).then(ok) };
+      return q;
+    },
+  });
+  const conVersion = async (v) => {
+    const b = base(v);
+    reloj221 += E221.VIGENCIA_MS * 3;
+    await E221.versionDelEsquema(b, reloj221);
+    await new Promise((r) => setTimeout(r, 20));
+    return b;
+  };
+  const b77 = await conVersion(77);
+  const sin = await P221.cargarAmigosDe(b77, 'x');
+  const b78 = await conVersion(78);
+  const con = await P221.cargarAmigosDe(b78, 'x');
+  chequear('con la 78 se piden los amigos y se ordenan por racha; sin la 78 ni se pregunta', [sin, anotado, con?.map((u) => u.username)], [
+    null, [['amigos_de', { p_quien: 'x' }]], ['ana', 'zoe'],
+  ]);
+
+  // ---- TU PERFIL AL INSTANTE, y al salir se olvida ----
+  const { readFileSync: leer221 } = await import('node:fs');
+  const propio = leer221(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'PerfilPropio.tsx'), 'utf8');
+  P221.olvidarMiPerfil();
+  chequear('tu perfil arranca con lo último que se vio (sin ruedita), la foto se ve en grande antes de cambiarla, y los amigos se tocan', [
+    /useState<DatosDePerfil \| null>\(\(\) => ultimoMiPerfil\(\)\)/.test(propio),
+    /useState\(\(\) => ultimoMiPerfil\(\) !== null\)/.test(propio),
+    /perfil\.avatar_url \? setFotoGrande\(true\) : void cambiarFoto\(\)/.test(propio),
+    /<FotoGrande url=\{fotoGrande \? perfil\.avatar_url : null\}[\s\S]{0,120}alCambiar=/.test(propio),
+    /router\.push\(`\/perfil\/\$\{a\.id\}`\)/.test(propio),
+    P221.ultimoMiPerfil(),
+  ], [true, true, true, true, true, null]);
+  const cuenta221 = leer221(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'cuenta.ts'), 'utf8');
+  chequear('al salir de la cuenta se olvida el perfil de memoria (otra cuenta no lo ve)', /export async function limpiarAlSalir\(\) \{[\s\S]{0,400}olvidarMiPerfil\(\);/.test(cuenta221), true);
+  void CU221;
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

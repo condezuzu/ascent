@@ -169,6 +169,31 @@ const RECETAS = {
     await foto(page, 'cartel-union');
     return page;
   },
+  async perfiles(nav, gente) {
+    const { a: A, b: B } = gente;
+    const { data: pedido } = await A.s.from('friendships').insert({ solicitante: A.id, destinatario: B.id }).select('id').single();
+    if (pedido) await B.s.from('friendships').update({ estado: 'aceptada' }).eq('id', pedido.id);
+    // Una foto de perfil cualquiera, para ver la foto en grande.
+    const { error: eFoto } = await A.s.from('profiles').update({ avatar_url: 'https://picsum.photos/id/1011/600/600' }).eq('id', A.id);
+    if (eFoto) console.log(`  sin foto de perfil: ${eFoto.message}`);
+    // Los amigos de B (la 78 todavía no está): A mismo.
+    const { page } = await abrir(nav, A, { version_del_esquema: 78, amigos_de: [A.id] });
+    await page.goto(`${NATIVA}/yo`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3500);
+    await page.getByText(B.nombre, { exact: true }).first().scrollIntoViewIfNeeded({ timeout: 30000 });
+    await foto(page, 'perfil-propio-amigos');
+    await page.getByLabel('Cambiar la foto de perfil').first().scrollIntoViewIfNeeded();
+    await page.getByLabel('Cambiar la foto de perfil').first().click({ timeout: 20000 });
+    await page.waitForTimeout(1500);
+    await foto(page, 'perfil-foto-grande');
+    await page.getByText('Cerrar', { exact: true }).last().click({ timeout: 20000 });
+    await page.waitForTimeout(600);
+    await page.getByText(B.nombre, { exact: true }).first().click({ timeout: 20000 });
+    await page.waitForTimeout(3500);
+    await verTestId(page, 'amigos-de-amigo');
+    await foto(page, 'perfil-amigos-de-amigo');
+    return page;
+  },
   async 'rutina-cardio'(nav, gente) {
     const A = gente.a;
     const dias = await semanaDeMuestra(A.s);

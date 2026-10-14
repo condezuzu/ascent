@@ -4174,8 +4174,28 @@ $$;
 revoke execute on function public.avisos_push_listos() from public;
 grant execute on function public.avisos_push_listos() to anon, authenticated;
 
+-- -------------------------------------------------------------
+-- LOS AMIGOS DE UN AMIGO (migración 78)
+-- -------------------------------------------------------------
+-- En el perfil de un amigo se ven sus amigos, y se toca para entrar al perfil
+-- de cada uno (pedido del 14/10). Devuelve solo los ids: quién es cada uno lo
+-- dice `usuarios_publicos`, que ya saca a los bloqueados en los dos sentidos.
+-- De un extraño no se ve nada: la amistad de dos personas que no conocés no es
+-- asunto tuyo (por eso `son_amigos` solo contesta sobre una amistad propia).
+create or replace function public.amigos_de(p_quien uuid)
+returns setof uuid language sql stable security definer set search_path = public as $$
+  select case when f.solicitante = p_quien then f.destinatario else f.solicitante end
+    from friendships f
+   where auth.uid() is not null
+     and (p_quien = auth.uid() or public.son_amigos(auth.uid(), p_quien))
+     and f.estado = 'aceptada'
+     and p_quien in (f.solicitante, f.destinatario);
+$$;
+revoke execute on function public.amigos_de(uuid) from public, anon;
+grant execute on function public.amigos_de(uuid) to authenticated;
+
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 77; $$;
+returns int language sql immutable as $$ select 78; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

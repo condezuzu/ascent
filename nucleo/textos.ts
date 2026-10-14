@@ -1515,6 +1515,8 @@ export const T = {
     // que el título no puede decir: dónde se elige.
     globo: 'Se elige en el Álbum.',
     cambiarFoto: 'Cambiar la foto de perfil',
+    // Debajo de la foto en grande (14/10).
+    cambiarFotoCorto: 'Cambiar foto',
     subiendoFoto: 'subiendo la foto…',
     deRacha: (n: number) => `${n} de racha`,
     // La medalla de Saturno (item 5): el texto del globo al tocarla.
