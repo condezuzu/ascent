@@ -110,16 +110,32 @@ async function avisarAlTerminar(d: DescansoVivo | null) {
   void enVivoAlTerminar(d);
 
   if (!plataforma.avisos.conPantallaBloqueada()) return;
+  if (relojDelFin) clearTimeout(relojDelFin);
+  relojDelFin = null;
   const faltan = d ? restante(d.fin) : 0;
   // UNA SOLA NOTIFICACIÓN (12/10). Los dos avisos de más que programaba la
   // versión anterior se cancelan siempre, por si quedó alguno esperando.
   await Promise.all(ecosViejos(AVISO).map((id) => plataforma.avisos.cancelar(id)));
   if (faltan <= 0 || !d) return plataforma.avisos.cancelar(AVISO);
   const fin = d.fin;
-  // SI LLEGA CON LA APP ABIERTA, VIBRA DESDE ACÁ: la pantalla grande del
-  // descanso puede no estar a la vista (lo normal después del `+` es la
-  // píldora), y ahí no vibraba nadie. `avisarFin` cuida que no sean dos.
-  await plataforma.avisos.programar(AVISO, faltan, () => void avisarFin(fin), { sonido: await leerSonido() });
+  // EN CERO JUSTO (14/10). Con la app adelante suena la app, en el milisegundo
+  // del fin, esté a la vista la pantalla grande o la píldora. La notificación
+  // llegaba tarde: se programaba con segundos redondeados para arriba y después
+  // de varias esperas. Con la app atrás este reloj no corre y suena la notificación.
+  relojDelFin = setTimeout(() => void sonarFin(fin), Math.max(0, fin - Date.now()));
+  // La notificación, con los segundos exactos que faltan (no `restante`, que redondea para arriba).
+  await plataforma.avisos.programar(AVISO, (fin - Date.now()) / 1000, () => void sonarFin(fin), { sonido: await leerSonido() });
+}
+
+let relojDelFin: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Avisar el fin con la app abierta: vibra y suena, una sola vez por descanso
+ * (lo que llegue primero entre el reloj y la notificación).
+ */
+export async function sonarFin(fin: number): Promise<void> {
+  if (!avisarFin(fin)) return;
+  if (await leerSonido()) await plataforma.audio.avisar();
 }
 
 // De qué descanso ya se avisó, para que la pantalla y la notificación no vibren las dos.

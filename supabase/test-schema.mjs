@@ -11504,6 +11504,7 @@ console.log('\n157. La pantalla de bloqueo: el timer que se caia y la campana');
   chequear('sin cartel con la app abierta', /shouldShowBanner: false/.test(avi157), true);
   // Desde el 8/10 los ecos del aviso largo no suenan con la app abierta; el primero sí (sección 197).
   // Desde el 12/10 suena salvo que la persona haya apagado "Sonido al terminar" (sección 197).
+  // Desde el 14/10 no suena: con la app adelante suena la app, en el cero (sección 217).
   chequear('pero con sonido', /shouldPlaySound: sonidoAlFrente/.test(avi157), true);
 
   // ---- 8. LA CAMPANA SE ESCUCHA ----
@@ -15781,9 +15782,10 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     [AV197.GOLPES, AV197.PAUSA_MS],
   ], [true, true, [3, 600]]);
   const avisos197 = de197('movil', 'src', 'plataforma', 'avisos.ts');
-  chequear('la notificación sale callada si se apagó el sonido, también con la app abierta', [
+  // Desde el 14/10, con la app adelante la notificación no suena nunca: suena la app en el cero (sección 217).
+  chequear('la notificación sale callada si se apagó el sonido, y con la app abierta no suena (suena la app)', [
     /sound: conSonido \? 'campana\.wav' : false/.test(avisos197),
-    /sonidoAlFrente = conSonido;/.test(avisos197) && /shouldPlaySound: sonidoAlFrente/.test(avisos197),
+    /const sonidoAlFrente = false;/.test(avisos197) && /shouldPlaySound: sonidoAlFrente/.test(avisos197),
   ], [true, true]);
   const pant197 = de197('movil', 'src', 'Descanso.tsx');
   chequear('la pantalla del descanso avisa por avisarFin, y solo hace sonar la campana si avisó', [
@@ -17599,6 +17601,39 @@ console.log('\n216. Ejercicios propios, la lupa y el cardio (migración 76)');
   chequear('una vuelta de cardio sube con sus minutos y sin descanso; corregir los minutos llega a la base; una serie común sí descansa', await escenarioDeSesion('cardio'), {
     tras: { series: 1, minutos: [25], descanso: false }, corregido: [30], comun: true,
   });
+}
+
+console.log('\n217. El fin del descanso suena en el cero, una sola vez');
+{
+  const { plataforma: plat217 } = await import('./dobles/plataforma.mjs');
+  const D217 = await import('../compartido/descanso.ts');
+  const guardados = { avisos: plat217.avisos, haptica: plat217.haptica, audio: plat217.audio };
+  const anotado = [];
+  let notificacion = null;
+  let segundos = null;
+  plat217.avisos = { conPantallaBloqueada: () => true, cancelar: async () => {}, programar: async (id, en, alSonar) => { notificacion = alSonar; segundos = en; } };
+  plat217.haptica = { disponible: () => true, pulso: () => true, aviso: () => (anotado.push('vibra'), true) };
+  plat217.audio = { ...guardados.audio, avisar: async () => void anotado.push('suena') };
+  await D217.guardarSonido(true);
+  // El reloj de verdad corre: se adelanta el de la app para que al descanso le falten 60 ms.
+  const ahoraDeVerdad = Date.now;
+  D217.guardarDescanso(90);
+  Date.now = () => ahoraDeVerdad() + 90_000 - 60;
+  try {
+    await new Promise((r) => setTimeout(r, 15));
+    const antes = [...anotado];
+    await new Promise((r) => setTimeout(r, 150));
+    const enElCero = [...anotado];
+    notificacion?.();
+    await new Promise((r) => setTimeout(r, 20));
+    chequear('con la app abierta, en el cero vibra y suena la app, sin esperar a la notificación; la que llega después no repite', [antes, enElCero, [...anotado]], [[], ['vibra', 'suena'], ['vibra', 'suena']]);
+    chequear('y la notificación se programa con los segundos exactos que faltan, no redondeados para arriba', segundos !== null && segundos > 0 && segundos < 0.1, true);
+  } finally {
+    Date.now = ahoraDeVerdad;
+    D217.borrarDescanso();
+    await new Promise((r) => setTimeout(r, 20));
+    Object.assign(plat217, guardados);
+  }
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

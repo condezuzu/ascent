@@ -79,10 +79,10 @@ export default function Descanso({
     };
   }, [visible]);
 
-  // UNA VEZ Y A TIEMPO (12/10): `avisarFin` no vibra si ya avisó la
-  // notificación que llegó con la app abierta, ni si el descanso terminó hace
-  // rato y recién ahora se lo mira (volver a la app a los cinco minutos vibraba
-  // tres veces por nada).
+  // UNA VEZ Y A TIEMPO (12/10): `avisarFin` no vibra si ya avisó el reloj
+  // del fin o la notificación, ni si el descanso terminó hace rato y recién
+  // ahora se lo mira (volver a la app a los cinco minutos vibraba tres veces
+  // por nada). Desde el 14/10 lo normal es que ya haya sonado `sonarFin`.
   const avisar = useCallback((fin: number) => {
     if (!avisarFin(fin)) return;
     if (sonido.current) plataforma.audio.avisar();

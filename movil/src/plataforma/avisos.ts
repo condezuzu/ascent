@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import type { Avisos } from '@nucleo/plataforma';
 
 
@@ -38,7 +39,11 @@ import type { Avisos } from '@nucleo/plataforma';
 //
 // CON "SONIDO AL TERMINAR" APAGADO NO SUENA (12/10): antes la campana del
 // aviso sonaba igual, con la app abierta y con el teléfono bloqueado.
-let sonidoAlFrente = true;
+//
+// Y CON LA APP ADELANTE LA NOTIFICACIÓN NO SUENA (14/10): suena la app misma,
+// en el cero exacto (`sonarFin` en compartido/descanso.ts). La notificación
+// llega un poco después y sonaba una segunda vez, tarde.
+const sonidoAlFrente = false;
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: sonidoAlFrente,
@@ -142,7 +147,8 @@ export const avisosNativos: Avisos = {
 
   async programar(id, enSegundos, cuandoSuene, opciones) {
     const conSonido = opciones?.sonido !== false;
-    sonidoAlFrente = conSonido;
+    // El fin se fija acá: lo que tardan cancelar y el permiso no lo corre.
+    const hasta = Date.now() + enSegundos * 1000;
     await this.cancelar(id);
     if (!(await this.permiso())) return;
     try {
@@ -175,7 +181,8 @@ export const avisosNativos: Avisos = {
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: Math.max(1, Math.round(enSegundos)),
+          // iOS acepta fracciones de segundo; Android las trunca y sonaría antes de tiempo.
+          seconds: Platform.OS === 'ios' ? Math.max(0.1, (hasta - Date.now()) / 1000) : Math.max(1, Math.ceil((hasta - Date.now()) / 1000)),
           repeats: false,
         },
       });

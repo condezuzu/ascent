@@ -13,6 +13,7 @@ export const plataforma = {
   avisos: { conPantallaBloqueada: () => false, cancelar: async () => {}, programar: async () => {} },
   enVivo: { disponible: () => false, esconder: async () => {}, mostrarDescanso: async () => {} },
   haptica: { pulso: () => false, aviso: () => false, disponible: () => false },
+  audio: { preparar: async () => {}, avisar: async () => {}, soltar: async () => {}, respetaLaMusica: () => true },
   efimero: {
     leer: async (clave) => (efimera.has(clave) ? efimera.get(clave) : null),
     guardar: async (clave, valor) => {

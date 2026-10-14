@@ -186,6 +186,9 @@ una sola cosa:
 - la tarjeta de la pantalla bloqueada: que muestre "Serie 0" / el ejercicio
   recién elegido con su meta (hoy el widget esconde la serie 0), y los pasos
   si se decide mostrarlos ahí;
+- **la tarjeta de la pantalla bloqueada muestra al compañero** (pedido del
+  humano, 14/10): entrenando con otro, su ejercicio y su serie, o al menos
+  cuánto le falta de descanso. Es Swift (el widget): va en esta build;
 - **el enlace de amigo tiene que sobrevivir a la instalación.** Hoy el
   invitado sin la app la baja, crea la cuenta y tiene que VOLVER a tocar el
   enlace (la página lo dice en tres pasos numerados): se pierde la mitad de la
@@ -363,6 +366,11 @@ Los agentes buscan y reportan; qué se arregla y cómo se decide después, con e
 humano.
 
 ## Después (lo que aparezca, anotado y sin tocar)
+
+- **El cardio con mapa, estilo Strava** (idea del humano, 14/10/2026). Hoy el
+  cardio es un ejercicio que se anota en minutos (migración 76). Un recorrido
+  con mapa pide la ubicación en segundo plano durante la sesión, guardar la
+  traza y dibujarla: es otra cosa, y no se hace ahora.
 
 - **Series por músculo → los ejercicios de esa semana** (15/9/2026). Tocar una
   fila de la pantalla de series y ver qué ejercicios de ese músculo se hicieron
