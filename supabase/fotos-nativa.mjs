@@ -13,7 +13,7 @@
 //
 //   node --env-file=.env.local supabase/fotos-nativa.mjs [receta ...]
 //
-// Sin recetas, saca todas. Deja los PNG en `capturas/nativa/`. Borra las cuentas al final.
+// Sin recetas, saca todas. Deja los PNG en `capturas-nativa/`. Borra las cuentas al final.
 import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import { mkdirSync } from 'node:fs';
@@ -26,7 +26,8 @@ limiteDeSonda(12);
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const NATIVA = process.env.NATIVA_URL ?? 'http://localhost:8090';
-const CARPETA = join(dirname(fileURLToPath(import.meta.url)), '..', 'capturas', 'nativa');
+// Afuera de `capturas/`: `npm run capturas` borra esa carpeta entera.
+const CARPETA = join(dirname(fileURLToPath(import.meta.url)), '..', 'capturas-nativa');
 mkdirSync(CARPETA, { recursive: true });
 const sello = String(Date.now()).slice(-7);
 
@@ -84,7 +85,7 @@ async function abrir(nav, quien, respuestas) {
 const foto = async (page, nombre) => {
   const ruta = join(CARPETA, `${nombre}.png`);
   await page.screenshot({ path: ruta });
-  console.log(`  foto: capturas/nativa/${nombre}.png`);
+  console.log(`  foto: capturas-nativa/${nombre}.png`);
 };
 const tocar = (page, testID) => page.getByTestId(testID).first().click({ timeout: 20000 });
 const verTestId = (page, testID) => page.getByTestId(testID).first().scrollIntoViewIfNeeded({ timeout: 30000 });
