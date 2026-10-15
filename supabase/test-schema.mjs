@@ -143,6 +143,23 @@ function chequear(nombre, real, esperado) {
   }
 }
 
+// UN ROJO CONOCIDO (15/10): un caso escrito ANTES de su arreglo, como pide el
+// refactor del dueño único. Mientras salga mal se anota aparte y no rompe la
+// corrida; el día que sale bien es una FALLA: hay que pasarlo a `chequear`,
+// así no queda escrito como pendiente algo que ya anda.
+const rojos = [];
+function rojoConocido(nombre, real, esperado) {
+  const a = JSON.stringify(real);
+  const b = JSON.stringify(esperado);
+  if (a === b) {
+    fallos.push(`${nombre}: YA PASA. Pasalo de rojoConocido a chequear.`);
+    console.log(`  FALLA ${nombre}: ya pasa (pasalo a chequear)`);
+  } else {
+    rojos.push(nombre);
+    console.log(`  ROJO  ${nombre}: esperado ${b}, hoy ${a}`);
+  }
+}
+
 const db = new PGlite();
 
 // ---- stubs de lo que pone Supabase ----
@@ -18124,7 +18141,20 @@ console.log('\n225. Copiar la rutina de un amigo avisa cuál quedó activa y dej
   ], [true, true, true]);
 }
 
+console.log('\n226. El refactor del dueño único: las dos respuestas viejas, escritas antes del arreglo');
+{
+  // spec/alcance.md, "Un solo dueño del estado de la sesión": primero estos dos
+  // casos, en rojo; después se toca el hook. Corren el hook de verdad.
+  rojoConocido('la respuesta vieja de "no hay sesión" que llega después de Iniciar no saca la sesión de la pantalla', await escenarioDeSesion('viejas', 'no-hay'), {
+    tocado: true, pantallaCorre: true, baseCorre: true,
+  });
+  rojoConocido('la respuesta vieja de "está corriendo" que llega después de Terminar no la vuelve a poner', await escenarioDeSesion('viejas', 'corre'), {
+    tocado: true, pantallaCorre: false, baseCorre: false,
+  });
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
+if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
   console.log('\nFALLAS:');
   fallos.forEach((f) => console.log(' - ' + f));

@@ -582,8 +582,56 @@ async function yaCorria() {
   return { ok, corre: inicio.r.estado.corriendo ?? null, vivas: servidor.sesiones.filter((s) => s.estado === 'corriendo').length, aviso: inicio.r.estado.aviso };
 }
 
+/**
+ * `viejas`: LAS DOS RESPUESTAS VIEJAS que siguen abiertas (spec/alcance.md, "Un
+ * solo dueño"). Una pregunta a la base sale, y mientras viaja se toca un botón:
+ *  - `no-hay`: la respuesta "no hay sesión" sale ANTES de Iniciar y llega DESPUÉS.
+ *  - `corre`: la respuesta "está corriendo" sale ANTES de Terminar y llega DESPUÉS.
+ * Devuelve lo que muestra la pantalla al final y lo que dice la base. Son el
+ * punto de partida del refactor: hoy salen mal, y el refactor los tiene que dejar bien.
+ */
+async function viejas(caso) {
+  // Sin sesión, la pregunta que hay es la del arranque: el toque cae mientras viaja.
+  let inicio = null;
+  if (caso === 'no-hay') {
+    let tocadoAlArrancar = false;
+    servidor.antesDeResponder.mi_sesion = async () => {
+      if (tocadoAlArrancar || !inicio) return;
+      tocadoAlArrancar = true;
+      await inicio.r.empezar();
+    };
+    inicio = montar(() => useSesion());
+    await asentar();
+    await dormir(200);
+    await asentar();
+    const viva = servidor.sesiones.find((s) => s.estado === 'corriendo');
+    return { tocado: tocadoAlArrancar, pantallaCorre: inicio.r.estado.corriendo, baseCorre: !!viva };
+  }
+  inicio = montar(() => useSesion());
+  await asentar();
+  if (caso === 'corre') {
+    await inicio.r.empezar();
+    await asentar();
+    await inicio.r.serieHecha();
+    await asentar();
+  }
+  let tocado = false;
+  servidor.antesDeResponder.mi_sesion = async () => {
+    if (tocado) return;
+    tocado = true;
+    if (caso === 'no-hay') await inicio.r.empezar();
+    else await inicio.r.terminar();
+  };
+  await bloquearYDesbloquear();
+  await asentar();
+  await dormir(200);
+  await asentar();
+  const viva = servidor.sesiones.find((s) => s.estado === 'corriendo');
+  return { tocado, pantallaCorre: inicio.r.estado.corriendo, baseCorre: !!viva };
+}
+
 const [escenario, ...argumentos] = process.argv.slice(2);
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

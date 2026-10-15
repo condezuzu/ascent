@@ -467,3 +467,8 @@ humano.
   *Antes de empezar:* la red son los escenarios de `supabase/dobles/sesion/`
   (sección 179 de `test:db`), que corren el hook de verdad. Primero se escriben
   ahí los dos casos de arriba, en rojo, y recién después se toca el hook.
+  **Hecho el 15/10:** los dos casos están escritos (escenario `viejas`, sección
+  226) y salen en rojo, como se esperaba: después de Iniciar, la respuesta vieja
+  del arranque deja la pantalla sin sesión; después de Terminar, la vuelve a
+  mostrar corriendo. Van con `rojoConocido`: no rompen la corrida, y el día que
+  salgan bien `test:db` falla hasta pasarlos a `chequear`.
