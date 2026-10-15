@@ -12,7 +12,8 @@
  *
  * LAS REGLAS, tal como se cerraron:
  *  - Por día de la semana: lo que hiciste ese mismo día en las últimas ~4
- *    semanas (la más reciente). Lo que hago los domingos.
+ *    semanas (la más reciente). Lo que hago los domingos. Pero un día suelto
+ *    no la reescribe (ver `sinSueltos`, 15/10).
  *  - Si ese día no tiene historia reciente: la rutina que SIGUE por rotación a
  *    la última que hiciste.
  *  - Si cambiás el primer ejercicio: la cadena se re-engancha a la rutina que
@@ -67,9 +68,29 @@ const porFechaAsc = (a: SesionRutina, b: SesionRutina) => a.fecha.localeCompare(
 const firma = (ejercicios: string[]) => ejercicios.join('>');
 
 /**
+ * LO QUE HACÉS ESE DÍA, SIN QUE UN DÍA SUELTO LO REESCRIBA (15/10). `mismoDia`
+ * va de la más vieja a la más nueva. La base es la más reciente —la última
+ * rutina que hiciste—, pero lo que aparece en ella por PRIMERA VEZ ese día de la
+ * semana no entra hasta que se repita: la sentadilla en Smith de una vez no pasa
+ * a ser lo primero de todos los lunes. Y si lo nuevo es la mayoría, el día
+ * entero fue suelto y vale el anterior (evaluado igual contra los suyos).
+ */
+export function sinSueltos<S extends { ejercicios: string[] }>(mismoDia: S[]): { base: S; ejercicios: string[] } | null {
+  for (let i = mismoDia.length - 1; i >= 0; i--) {
+    const base = mismoDia[i];
+    if (i === 0) return { base, ejercicios: base.ejercicios };
+    const vistos = new Set(mismoDia.slice(0, i).flatMap((x) => x.ejercicios));
+    const conocidos = base.ejercicios.filter((e) => vistos.has(e));
+    if (conocidos.length * 2 >= base.ejercicios.length) return { base, ejercicios: conocidos };
+  }
+  return null;
+}
+
+/**
  * LA RUTINA QUE SE PROPONE HOY. Vacío = no hay nada que proponer (queda como hoy).
  *
- * 1. El mismo día de la semana, en las últimas 4 semanas → la más reciente.
+ * 1. El mismo día de la semana, en las últimas 4 semanas → la más reciente, sin
+ *    lo suelto (`sinSueltos`).
  * 2. Si no hay, la que sigue por rotación a la última hecha.
  */
 export function rutinaParaHoy(sesiones: SesionRutina[], hoyISO: string): string[] {
@@ -84,7 +105,7 @@ export function rutinaParaHoy(sesiones: SesionRutina[], hoyISO: string): string[
       return dd > 0 && dd <= DIAS_VENTANA && diaDeSemana(s.fecha) === dow;
     })
     .sort(porFechaAsc);
-  if (mismoDia.length > 0) return mismoDia[mismoDia.length - 1].ejercicios;
+  if (mismoDia.length > 0) return sinSueltos(mismoDia)?.ejercicios ?? [];
 
   // (2) ROTACIÓN: la que vino después de la última hecha, la última vez que la hice.
   return rotacion(conE);
@@ -122,8 +143,9 @@ export function siguienteEnRutina(rutina: string[], yaHechos: string[]): string 
  */
 /**
  * LA RUTINA DE LA SEMANA, para mostrársela a un amigo (8/10/2026): por cada día
- * de la semana, lo último que se hizo ese día. Lunes primero; el día sin
- * sesiones no aparece. `dia` es 0=domingo, como `Date.getDay()`.
+ * de la semana, lo último que se hizo ese día —de las últimas cuatro veces, sin
+ * lo suelto (`sinSueltos`)—. Lunes primero; el día sin sesiones no aparece.
+ * `dia` es 0=domingo, como `Date.getDay()`.
  */
 export type EjercicioDeRutina = { ejercicio: string; series: number; minutos?: number };
 export type DiaDeRutina = { dia: number; ejercicios: EjercicioDeRutina[] };
@@ -146,17 +168,25 @@ function ejerciciosConSeries(bloques: SesionVista['bloques']): EjercicioDeRutina
 }
 
 export function rutinaPorDia(sesiones: SesionVista[]): DiaDeRutina[] {
-  const porDia = new Map<number, { fecha: string; ejercicios: EjercicioDeRutina[] }>();
+  type Vista = { fecha: string; conSeries: EjercicioDeRutina[]; ejercicios: string[] };
+  const porDia = new Map<number, Vista[]>();
   for (const s of sesiones) {
-    const ejercicios = ejerciciosConSeries(s.bloques);
-    if (ejercicios.length === 0) continue;
+    const conSeries = ejerciciosConSeries(s.bloques);
+    if (conSeries.length === 0) continue;
     const dia = diaDeSemana(s.fecha);
-    const ya = porDia.get(dia);
-    // Con dos sesiones el mismo día queda la primera que llega: la base las
-    // manda de la más nueva a la más vieja.
-    if (!ya || s.fecha > ya.fecha) porDia.set(dia, { fecha: s.fecha, ejercicios });
+    porDia.set(dia, [...(porDia.get(dia) ?? []), { fecha: s.fecha, conSeries, ejercicios: conSeries.map((e) => e.ejercicio) }]);
   }
-  return [1, 2, 3, 4, 5, 6, 0].filter((d) => porDia.has(d)).map((d) => ({ dia: d, ejercicios: porDia.get(d)!.ejercicios }));
+  const deDia = (d: number): EjercicioDeRutina[] => {
+    // Con dos sesiones el mismo día queda la primera que llega: la base las
+    // manda de la más nueva a la más vieja (el orden estable lo respeta).
+    const vistas = [...(porDia.get(d) ?? [])].sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const unaPorFecha = vistas.filter((v, i) => i === 0 || vistas[i - 1].fecha !== v.fecha);
+    const r = sinSueltos(unaPorFecha.slice(-SEMANAS_VENTANA));
+    if (!r) return [];
+    const quedan = new Set(r.ejercicios);
+    return r.base.conSeries.filter((e) => quedan.has(e.ejercicio));
+  };
+  return [1, 2, 3, 4, 5, 6, 0].filter((d) => porDia.has(d)).map((d) => ({ dia: d, ejercicios: deDia(d) }));
 }
 
 export function reengancharDesde(sesiones: SesionRutina[], primerEjercicio: string): string[] {

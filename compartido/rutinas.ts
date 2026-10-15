@@ -5,6 +5,7 @@ import { rutinaPorDia } from '@nucleo/rutina';
 import { diasLimpios, hayAlgo, semanaDeLaDeducida, type DiaDeSemana, type Rutina } from '@nucleo/rutinas';
 import { versionDelEsquema } from '@compartido/esquema';
 import { leerPerfilCache } from '@compartido/cache';
+import { eventos, RUTINA_CAMBIO } from '@compartido/eventos';
 
 /**
  * LAS RUTINAS, del lado del teléfono (14/10). Las reglas viven en
@@ -75,12 +76,16 @@ export async function cargarMisRutinas(supabase: Cliente): Promise<Rutina[] | nu
 export async function guardarRutina(supabase: Cliente, r: { id: string | null; nombre: string; dias: DiaDeSemana[] }): Promise<string | null> {
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return null;
   const { data, error } = await supabase.rpc('guardar_rutina', { p_id: r.id, p_nombre: r.nombre, p_dias: r.dias });
-  return error || typeof data !== 'string' ? null : data;
+  if (error || typeof data !== 'string') return null;
+  eventos.emitir(RUTINA_CAMBIO);
+  return data;
 }
 
 export async function activarRutina(supabase: Cliente, id: string): Promise<boolean> {
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return false;
-  return !(await supabase.rpc('activar_rutina', { p_id: id })).error;
+  const ok = !(await supabase.rpc('activar_rutina', { p_id: id })).error;
+  if (ok) eventos.emitir(RUTINA_CAMBIO);
+  return ok;
 }
 
 /**
@@ -101,7 +106,9 @@ export async function copiarRutina(
 
 export async function borrarRutina(supabase: Cliente, id: string): Promise<boolean> {
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return false;
-  return !(await supabase.rpc('borrar_rutina', { p_id: id })).error;
+  const ok = !(await supabase.rpc('borrar_rutina', { p_id: id })).error;
+  if (ok) eventos.emitir(RUTINA_CAMBIO);
+  return ok;
 }
 
 /**

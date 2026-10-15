@@ -24,6 +24,9 @@ export type Eventos = {
 /** Se agregó un ejercicio propio: quien tenga el catálogo cargado, lo vuelve a pedir. */
 export const EJERCICIOS_CAMBIO = 'ascent:ejercicios-cambio';
 
+/** Se guardó, activó o borró una rutina: el renglón de Inicio ("Hoy: …") se vuelve a armar. */
+export const RUTINA_CAMBIO = 'ascent:rutina-cambio';
+
 export const eventos: Eventos = {
   emitir(nombre, dato) {
     // La garantía es: **los que estaban escuchando cuando se emitió reciben el

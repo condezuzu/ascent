@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
-import MiRutina from './MiRutina';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
@@ -294,8 +293,6 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
 
       {pestana === 'entrenamiento' && (
         <>
-          {/* TU RUTINA, arriba de todo: armarla o cambiarla antes de ir al gimnasio (14/10). */}
-          <MiRutina visible={pestana === 'entrenamiento'} />
           {/* Una fila por músculo, una barra por semana, en series: la misma
               pantalla que la web, con las mismas funciones del núcleo. */}
           <Text style={estilos.seccion}>{T.volumen.titulo}</Text>

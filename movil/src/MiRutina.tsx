@@ -13,7 +13,7 @@ import {
   nombreNuevo,
   quitarEjercicio,
   semanaVacia,
-  subirEjercicio,
+  moverEjercicio,
   type DiaDeSemana,
   type Rutina,
 } from '@nucleo/rutinas';
@@ -30,6 +30,7 @@ import {
 } from '@compartido/rutinas';
 import { supabase } from './supabase';
 import RutinaPlegada from './RutinaPlegada';
+import FilasArrastrables from './FilasArrastrables';
 import SelectorEjercicio from './SelectorEjercicio';
 import { C } from './colores';
 
@@ -43,7 +44,16 @@ import { C } from './colores';
  * CADA CAMBIO SE GUARDA EN EL ACTO y, si la base no contesta, se vuelve atrás y
  * se dice: es una pantalla para planificar, no para el subsuelo.
  */
-export default function MiRutina({ visible }: { visible: boolean }) {
+export default function MiRutina({
+  visible,
+  alArrastrar,
+  abrirHoy = false,
+}: {
+  visible: boolean;
+  /** Para que la pantalla apague su scroll mientras se arrastra un ejercicio. */
+  alArrastrar?: (si: boolean) => void;
+  abrirHoy?: boolean;
+}) {
   const [guardadas, setGuardadas] = useState<boolean | null>(null);
   const [rutinas, setRutinas] = useState<Rutina[]>([]);
   const [deducida, setDeducida] = useState<DiaDeSemana[] | null>(null);
@@ -132,8 +142,16 @@ export default function MiRutina({ visible }: { visible: boolean }) {
     const con = (dias: DiaDeSemana[]) => void cambiar({ ...actual, dias });
     return (
       <View style={estilos.editor}>
-        {dia.ejercicios.map((e, i) => (
-          <View key={`${e.ejercicio}-${i}`} style={estilos.filaEditable}>
+        {dia.ejercicios.length > 1 && <Text style={estilos.nota}>{T.rutina.arrastrarPista}</Text>}
+        <FilasArrastrables
+          testID={`rutina-filas-${d}`}
+          filas={dia.ejercicios}
+          llave={(e, i) => `${e.ejercicio}-${i}`}
+          alto={ALTO_FILA}
+          alMover={(desde, hasta) => con(moverEjercicio(actual.dias, d, desde, hasta))}
+          alArrastrar={alArrastrar}
+          dibujar={(e, i) => (
+          <View style={estilos.filaEditable}>
             <Text style={estilos.ejercicio} numberOfLines={1}>
               {catalogo.get(e.ejercicio)?.nombre ?? e.ejercicio}
             </Text>
@@ -144,14 +162,12 @@ export default function MiRutina({ visible }: { visible: boolean }) {
             <Pressable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, 1))} accessibilityLabel="más">
               <Text style={estilos.paso}>+</Text>
             </Pressable>
-            <Pressable hitSlop={8} onPress={() => con(subirEjercicio(actual.dias, d, i))} disabled={i === 0} accessibilityLabel="subir">
-              <Text style={[estilos.paso, i === 0 && estilos.apagado]}>↑</Text>
-            </Pressable>
             <Pressable hitSlop={8} onPress={() => con(quitarEjercicio(actual.dias, d, i))} accessibilityLabel="quitar">
               <Text style={estilos.quitar}>✕</Text>
             </Pressable>
           </View>
-        ))}
+          )}
+        />
         <View style={estilos.acciones}>
           {!dia.descanso && (
             <Pressable testID={`rutina-agregar-${d}`} style={estilos.chico} onPress={() => setEligiendoPara(d)}>
@@ -257,7 +273,13 @@ export default function MiRutina({ visible }: { visible: boolean }) {
               <Text style={estilos.chicoTexto}>{editando ? T.rutina.listo : T.rutina.editar}</Text>
             </Pressable>
           </View>
-          <RutinaPlegada dias={actual.dias} catalogo={catalogo} abajoDelDia={editando ? editorDelDia : undefined} testID="rutina-guardada" />
+          <RutinaPlegada
+            dias={actual.dias}
+            catalogo={catalogo}
+            abajoDelDia={editando ? editorDelDia : undefined}
+            abiertoAlEmpezar={abrirHoy ? new Date().getDay() : undefined}
+            testID="rutina-guardada"
+          />
           {editando && (
             <View style={estilos.pregunta}>
               {preguntaBorrar ? (
@@ -283,7 +305,7 @@ export default function MiRutina({ visible }: { visible: boolean }) {
       ) : deducida && hayAlgo(deducida) ? (
         <>
           <Text style={estilos.nota}>{T.rutina.deducida}</Text>
-          <RutinaPlegada dias={deducida} catalogo={catalogo} soloConAlgo testID="rutina-deducida" />
+          <RutinaPlegada dias={deducida} catalogo={catalogo} soloConAlgo abiertoAlEmpezar={abrirHoy ? new Date().getDay() : undefined} testID="rutina-deducida" />
           {guardadas && (
             <View style={estilos.acciones}>
               <Pressable testID="rutina-guardar-deducida" style={estilos.chico} onPress={() => void crear(deducida)}>
@@ -325,6 +347,9 @@ export default function MiRutina({ visible }: { visible: boolean }) {
   );
 }
 
+// Todas las filas del editor miden lo mismo: así el arrastre sabe sobre cuál está el dedo.
+const ALTO_FILA = 44;
+
 const estilos = StyleSheet.create({
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 34, marginBottom: 10 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 8 },
@@ -342,11 +367,10 @@ const estilos = StyleSheet.create({
   chicoActivo: { borderColor: C.tinta },
   chicoTexto: { color: C.tinta, fontSize: 13 },
   editor: { paddingBottom: 12 },
-  filaEditable: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  filaEditable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   ejercicio: { flex: 1, color: C.sub, fontSize: 14 },
   cantidad: { color: C.tinta, fontSize: 13, minWidth: 58, textAlign: 'center', fontVariant: ['tabular-nums'] },
   paso: { color: C.tinta, fontSize: 18, width: 20, textAlign: 'center' },
-  apagado: { color: C.apagado },
   quitar: { color: C.apagado, fontSize: 14, width: 20, textAlign: 'center' },
   pregunta: { marginTop: 8 },
   borrar: { color: C.apagado, fontSize: 13, marginTop: 10 },

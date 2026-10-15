@@ -10903,12 +10903,19 @@ console.log('\n149c. La rutina que se propone sola');
   // (1) MISMO DIA DE LA SEMANA: 7 y 14 dias atras son el mismo dia; gana el mas
   // reciente (7). El de 3 dias es otro dia de la semana y no cuenta para esto.
   const sesiones = [
-    { fecha: restarDias(hoy, 14), ejercicios: ['sentadilla', 'prensa'] },
+    { fecha: restarDias(hoy, 14), ejercicios: ['remo', 'banca', 'curl'] },
     { fecha: restarDias(hoy, 7), ejercicios: ['banca', 'remo', 'curl'] },
     { fecha: restarDias(hoy, 3), ejercicios: ['peso-muerto'] },
   ];
   chequear('propone lo del mismo dia, lo mas reciente',
     RU.rutinaParaHoy(sesiones, hoy), ['banca', 'remo', 'curl']);
+  // UN DÍA SUELTO (15/10): "hice sentadilla en Smith una vez" no reescribe la rutina ni la pone primera.
+  const lunes = (...dias) => dias.map(([hace, ejercicios]) => ({ fecha: restarDias(hoy, hace), ejercicios }));
+  chequear('un ejercicio suelto no entra ni va primero; un día entero suelto deja el de antes; repetido, entra donde va', [
+    RU.rutinaParaHoy(lunes([21, ['banca', 'remo', 'curl']], [14, ['banca', 'remo', 'curl']], [7, ['smith', 'banca', 'remo', 'curl']]), hoy),
+    RU.rutinaParaHoy(lunes([14, ['banca', 'remo', 'curl']], [7, ['smith', 'estocadas']]), hoy),
+    RU.rutinaParaHoy(lunes([21, ['banca', 'remo']], [14, ['smith', 'banca', 'remo']], [7, ['smith', 'banca', 'remo']]), hoy),
+  ], [['banca', 'remo', 'curl'], ['banca', 'remo', 'curl'], ['smith', 'banca', 'remo']]);
 
   // El mismo dia pero de hace 5 semanas (35) queda fuera de la ventana de 4.
   const viejo = [
@@ -15713,9 +15720,19 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   chequear('por día de la semana queda lo último, lunes primero, el mismo ejercicio se suma, y el día vacío no aparece', RU197.rutinaPorDia([
     { fecha: '2026-10-04', bloques: [b197('dominadas', 4)] }, // domingo
     { fecha: '2026-10-05', bloques: [b197('sentadilla', 3), b197('prensa', 2), b197('sentadilla', 2), b197(null, 5)] }, // lunes, el más nuevo
-    { fecha: '2026-09-28', bloques: [b197('peso_muerto', 3)] }, // lunes anterior
+    { fecha: '2026-09-28', bloques: [b197('prensa', 3), b197('sentadilla', 3)] }, // lunes anterior, en otro orden
     { fecha: '2026-10-07', bloques: [] }, // miércoles sin nada anotado
   ]), [{ dia: 1, ejercicios: [b197('sentadilla', 5), b197('prensa', 2)] }, { dia: 0, ejercicios: [b197('dominadas', 4)] }]);
+  chequear('la semana que ve un amigo tampoco toma el día suelto: ni el ejercicio de una vez, ni el lunes entero distinto', [
+    RU197.rutinaPorDia([
+      { fecha: '2026-10-12', bloques: [b197('smith', 4), b197('sentadilla', 3), b197('prensa', 2)] },
+      { fecha: '2026-10-05', bloques: [b197('sentadilla', 3), b197('prensa', 2)] },
+    ]),
+    RU197.rutinaPorDia([
+      { fecha: '2026-10-12', bloques: [b197('smith', 4), b197('estocadas', 3)] },
+      { fecha: '2026-10-05', bloques: [b197('sentadilla', 3), b197('prensa', 2)] },
+    ]),
+  ], [[{ dia: 1, ejercicios: [b197('sentadilla', 3), b197('prensa', 2)] }], [{ dia: 1, ejercicios: [b197('sentadilla', 3), b197('prensa', 2)] }]]);
 
   // Por el camino de la app: la función que llama el perfil, con un cliente que contesta lo que contestó la base.
   const P197 = await import('../compartido/perfil.ts');
@@ -17403,6 +17420,14 @@ console.log('\n213. Las rutinas guardadas (migración 75)');
     R.subirEjercicio(s0, 1, 1)[1].ejercicios.map((e) => e.ejercicio),
     R.marcarDescanso(s0, 1, true)[1], R.agregarEjercicio(s0, 2, 'cinta', true)[2].ejercicios[0],
   ], [['remo'], 2, 1, 4, ['remo', 'press_banca'], { descanso: true, ejercicios: [] }, { ejercicio: 'cinta', series: 0, minutos: 20 }]);
+  {
+    // ARRASTRAR (15/10): de cualquier lugar a cualquier lugar, y los del medio se corren.
+    const tres = R.agregarEjercicio(s0, 1, 'curl');
+    const nombres = (dias) => dias[1].ejercicios.map((e) => e.ejercicio);
+    chequear('arrastrar un ejercicio lo deja donde se soltó y corre los del medio, sin tocar la semana que recibe', [
+      nombres(R.moverEjercicio(tres, 1, 0, 2)), nombres(R.moverEjercicio(tres, 1, 2, 0)), nombres(R.moverEjercicio(tres, 1, 1, 1)), nombres(tres),
+    ], [['remo', 'curl', 'press_banca'], ['curl', 'press_banca', 'remo'], ['press_banca', 'remo', 'curl'], ['press_banca', 'remo', 'curl']]);
+  }
   chequear('la sesión arranca con los ejercicios del día de la rutina activa; un descanso no propone nada', [
     R.ejerciciosDeHoy({ dias: s0 }, 1), R.ejerciciosDeHoy({ dias: R.marcarDescanso(s0, 1, true) }, 1), R.ejerciciosDeHoy(null, 1), R.ejerciciosDeHoy({ dias: s0 }, 0),
   ], [['press_banca', 'remo'], [], [], []]);
@@ -18123,7 +18148,7 @@ console.log('\n225. Copiar la rutina de un amigo avisa cuál quedó activa y dej
   chequear('si no tenía ninguna, no hay a cuál volver', primera.anterior, null);
   const { T: T225 } = await import('../nucleo/textos.ts');
   chequear('y en pantalla dice cuál quedó activa y a cuál se vuelve', [T225.rutina.copiada('Rutina de ana'), T225.rutina.volverA('Entrenamiento 1')], [
-    'Copiada y activa: «Rutina de ana». La cambias en Stats.', 'Volver a «Entrenamiento 1»',
+    'Copiada y activa: «Rutina de ana». La cambias en Tu rutina, en Inicio.', 'Volver a «Entrenamiento 1»',
   ]);
 
   // ---- EL CARTEL Y LA TARJETA ----
@@ -18296,6 +18321,33 @@ console.log('\n228. El dueño único de la sesión: el dato vive una vez por apa
     desdeElVigilante: { corriendo: true, series: 3, bloques: [[null, 3]] },
     base: 3,
   });
+}
+console.log('\n229. La rutina: en Inicio, en su pantalla, y se ordena arrastrando (15/10)');
+{
+  const { readFileSync: leer229, existsSync: hay229 } = await import('node:fs');
+  const R229 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de229 = (...p) => leer229(join(R229, ...p), 'utf8').replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const inicio = de229('movil', 'src', 'Inicio.tsx');
+  const fila = de229('movil', 'src', 'FilaRutina.tsx');
+  chequear('Tu rutina está en Inicio (no mientras se entrena), abre su pantalla, y ya no está en Stats', [
+    /\{!sesion\.estado\.corriendo && <FilaRutina \/>\}/.test(inicio),
+    /router\.push\('\/rutina'\)/.test(fila),
+    hay229(join(R229, 'movil', 'app', 'rutina.tsx')),
+    /<MiRutina/.test(de229('movil', 'src', 'Stats.tsx')),
+  ], [true, true, true, false]);
+  chequear('el renglón se rearma cuando se guarda, activa o borra una rutina', [
+    /eventos\.escuchar\(RUTINA_CAMBIO/.test(fila),
+    (de229('compartido', 'rutinas.ts').match(/eventos\.emitir\(RUTINA_CAMBIO\)/g) ?? []).length,
+  ], [true, 3]);
+  const arr = de229('movil', 'src', 'FilasArrastrables.tsx');
+  chequear('arrastrar: el PanResponder nace una vez y lee las funciones de AHORA (si no, movería sobre la rutina vieja)', [
+    /onPanResponderRelease: \(\) => ultimo\.current\.soltar\(true\)/.test(arr),
+    /ultimo\.current = \{ soltar, correrLasOtras, alto, n: filas\.length \}/.test(arr),
+  ], [true, true]);
+  chequear('mientras se arrastra, la pantalla de la rutina no hace scroll; y el editor mueve con moverEjercicio', [
+    /scrollEnabled=\{!arrastrando\}/.test(de229('movil', 'src', 'PantallaRutina.tsx')),
+    /alMover=\{\(desde, hasta\) => con\(moverEjercicio\(actual\.dias, d, desde, hasta\)\)\}/.test(de229('movil', 'src', 'MiRutina.tsx')),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

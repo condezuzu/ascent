@@ -19,15 +19,18 @@ export default function RutinaPlegada({
   catalogo,
   soloConAlgo = false,
   abajoDelDia,
+  abiertoAlEmpezar,
   testID,
 }: {
   dias: DiaDeSemana[];
   catalogo: CatalogoDeRutina;
   soloConAlgo?: boolean;
   abajoDelDia?: (dia: number) => ReactNode;
+  /** El día que arranca abierto (en la pantalla de la rutina, el de hoy). */
+  abiertoAlEmpezar?: number;
   testID?: string;
 }) {
-  const [abierto, setAbierto] = useState<number | null>(null);
+  const [abierto, setAbierto] = useState<number | null>(abiertoAlEmpezar ?? null);
   const grupoDe = (id: string) => catalogo.get(id)?.grupo ?? null;
   const visibles = ORDEN_SEMANA.filter((d) => !soloConAlgo || dias[d].descanso || dias[d].ejercicios.length > 0);
 

@@ -1369,7 +1369,7 @@ const ES = {
     armarNueva: 'Armar una de cero',
     copiar: 'Copiar esta rutina',
     // Dice cuál quedó activa, y se puede volver a la de antes con un toque (15/10).
-    copiada: (nombre: string) => `Copiada y activa: «${nombre}». La cambias en Stats.`,
+    copiada: (nombre: string) => `Copiada y activa: «${nombre}». La cambias en Tu rutina, en Inicio.`,
     volverA: (nombre: string) => `Volver a «${nombre}»`,
     otraVezActiva: (nombre: string) => `Activa otra vez: «${nombre}».`,
     deAlguien: (nombre: string) => `Rutina de ${nombre}`,
@@ -1377,6 +1377,14 @@ const ES = {
     // El título del día ("Pecho, hombro y brazo"): el músculo en singular y la "y" del final.
     musculos: { pecho: 'pecho', espalda: 'espalda', hombros: 'hombro', brazos: 'brazo', piernas: 'pierna', core: 'core', cardio: 'cardio' } as Record<string, string>,
     y: 'y',
+    // ARRASTRAR (15/10): lo que dice el lector de pantalla; con el dedo, se aprieta largo.
+    arrastrarAyuda: 'Mantén apretado y arrastra para cambiar el orden.',
+    arrastrarPista: 'Mantén apretado un ejercicio para moverlo.',
+    subir: 'Subir',
+    bajar: 'Bajar',
+    // EN INICIO (15/10): el renglón que abre la rutina.
+    hoy: (titulo: string) => `Hoy: ${titulo}`,
+    armarSemana: 'Arma tu semana',
   },
 
   social: {

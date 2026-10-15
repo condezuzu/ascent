@@ -143,6 +143,18 @@ export function subirEjercicio(dias: DiaDeSemana[], dia: number, indice: number)
   });
 }
 
+/** Arrastrar (15/10): el de `desde` pasa a quedar en `hasta` y los del medio se corren uno. */
+export function moverEjercicio(dias: DiaDeSemana[], dia: number, desde: number, hasta: number): DiaDeSemana[] {
+  const n = dias[dia]?.ejercicios.length ?? 0;
+  if (desde === hasta || desde < 0 || desde >= n) return dias;
+  return conDia(dias, dia, (d) => {
+    const e = [...d.ejercicios];
+    const [movido] = e.splice(desde, 1);
+    e.splice(Math.max(0, Math.min(hasta, e.length)), 0, movido);
+    return { ...d, ejercicios: e };
+  });
+}
+
 /** Día de descanso: prenderlo vacía el día (un descanso no tiene ejercicios); apagarlo lo deja vacío para cargar. */
 export function marcarDescanso(dias: DiaDeSemana[], dia: number, descanso: boolean): DiaDeSemana[] {
   return conDia(dias, dia, () => ({ descanso, ejercicios: [] }));

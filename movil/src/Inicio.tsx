@@ -46,6 +46,7 @@ import { diaDeLaSesion } from '@nucleo/subir';
 import { dejarDeEntrenar } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
+import FilaRutina from './FilaRutina';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -710,6 +711,9 @@ export default function Inicio({
           ))}
         </View>
       )}
+
+      {/* TU RUTINA (15/10): lo que toca hoy, a un toque. Mientras se entrena, no. */}
+      {!sesion.estado.corriendo && <FilaRutina />}
 
       {/* LOS ESTADOS DE BORDE (24/9), que faltaban enteros en el telefono.
           Los cuatro son de una linea y en voz baja: ninguno pide hacer nada,

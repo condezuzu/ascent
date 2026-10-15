@@ -351,6 +351,50 @@ const RECETAS = {
     await foto(page, 'stats-kilos');
     return page;
   },
+  // TU RUTINA DESDE INICIO, Y ARRASTRAR (15/10): apretar largo el primero de hoy y
+  // soltarlo dos filas más abajo, como lo hace el dedo. Lo que vale es lo que se GUARDA.
+  async 'rutina-inicio'(nav, gente) {
+    const A = gente.a;
+    const dias = await semanaDeMuestra(A.s);
+    const hoy = new Date().getDay();
+    dias[hoy] = dias[1];
+    const rutina = { id: '00000000-0000-4000-8000-000000000001', nombre: 'Entrenamiento 1', activa: true, dias };
+    const { page } = await abrir(nav, A, { version_del_esquema: 79, mis_rutinas: [rutina], rutina_activa_de: rutina, guardar_rutina: rutina.id });
+    const guardadas = [];
+    page.on('request', (q) => {
+      if (q.url().includes('/rpc/guardar_rutina')) guardadas.push(JSON.parse(q.postData() ?? 'null'));
+    });
+    await verTestId(page, 'inicio-rutina');
+    await page.waitForTimeout(800);
+    await foto(page, 'rutina-inicio');
+    await tocar(page, 'inicio-rutina');
+    await page.waitForTimeout(1500);
+    await foto(page, 'rutina-pantalla');
+    await tocar(page, 'rutina-editar');
+    await page.waitForTimeout(600);
+    const filas = page.getByTestId(`rutina-filas-${hoy}`).locator(':scope > div');
+    const caja = await filas.nth(0).boundingBox();
+    if (!caja) throw new Error('no está la primera fila de hoy');
+    const x = caja.x + caja.width * 0.3;
+    const y = caja.y + caja.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.waitForTimeout(700);
+    await page.mouse.move(x, y + caja.height * 2 + 4, { steps: 12 });
+    await page.waitForTimeout(300);
+    await foto(page, 'rutina-arrastrando');
+    await page.mouse.up();
+    await page.waitForTimeout(1200);
+    await foto(page, 'rutina-arrastrada');
+    const antes = dias[hoy].ejercicios.map((e) => e.ejercicio);
+    const esperado = [antes[1], antes[2], antes[0], ...antes.slice(3)];
+    const ultima = guardadas.at(-1)?.p_dias?.[hoy]?.ejercicios?.map((e) => e.ejercicio) ?? null;
+    if (JSON.stringify(ultima) !== JSON.stringify(esperado)) {
+      throw new Error(`arrastrar guardó ${JSON.stringify(ultima)}, se esperaba ${JSON.stringify(esperado)}`);
+    }
+    console.log('  arrastrar: guardó el orden nuevo');
+    return page;
+  },
   async 'rutina-stats'(nav, gente) {
     const A = gente.a;
     const dias = await semanaDeMuestra(A.s);
