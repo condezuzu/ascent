@@ -7,7 +7,17 @@ const PROPUESTAS = [
   {
     ruta: '/galeria/propuestas/bienvenida',
     titulo: 'La bienvenida nueva',
-    queEs: 'Tres pantallas con lo que la app hace de verdad, sobre el mismo cielo, y en vez del recorrido, avisos de una línea en el momento.',
+    queEs: 'Cuatro pantallas sobre el cielo de la app, la última el ranking que lleva a crear la cuenta; y los seis globitos de adentro, sobre capturas reales.',
+  },
+  {
+    ruta: '/galeria/propuestas/animaciones',
+    titulo: 'Animaciones: sí o no',
+    queEs: 'El + de la serie, el planeta que late al registrar el día, los días de la semana, el destello de las medallas y subir de rango pulido.',
+  },
+  {
+    ruta: '/galeria/propuestas/ubicacion',
+    titulo: 'La ubicación: textos y botones',
+    queEs: '«Marcar gimnasio» con su pin, «Borrar ubicación», y los botones de Mi gimnasio con la forma de los controles nuevos de Ajustes.',
   },
   {
     ruta: '/galeria/propuestas/descanso',

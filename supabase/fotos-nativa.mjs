@@ -660,6 +660,165 @@ const RECETAS = {
   },
 };
 
+// LAS CAPTURAS DE FONDO DE LAS PROPUESTAS (15/10). Regla: en una propuesta visual el
+// fondo es la pantalla REAL y lo único dibujado es lo que se propone cambiar. Van a
+// `public/galeria-propuestas/` (las sirve la web) y, al lado, dónde quedó cada cosa
+// en la pantalla (`cajas.json`), para que la galería dibuje encima en su lugar exacto.
+const DE_PROPUESTAS = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'galeria-propuestas');
+RECETAS['propuestas'] = async function (nav, gente) {
+  const { a: A, b: B } = gente;
+  const { readFileSync, writeFileSync } = await import('node:fs');
+  mkdirSync(DE_PROPUESTAS, { recursive: true });
+  const rutaCajas = join(DE_PROPUESTAS, 'cajas.json');
+  let cajas = {};
+  try {
+    cajas = JSON.parse(readFileSync(rutaCajas, 'utf8'));
+  } catch {}
+  const caja = async (loc) => {
+    const b = await loc.first().boundingBox({ timeout: 15000 }).catch(() => null);
+    return b && { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) };
+  };
+  const sinGlobos = async (page) => {
+    for (const g of await page.locator('[data-testid^="globo-"], [data-testid="globito-subir"]').all()) await g.click().catch(() => {});
+    await page.waitForTimeout(400);
+  };
+  const sacar = async (page, nombre, medir = {}) => {
+    await sinGlobos(page);
+    await page.screenshot({ path: join(DE_PROPUESTAS, `${nombre}.jpg`), type: 'jpeg', quality: 86 });
+    cajas[nombre] = {};
+    for (const [k, loc] of Object.entries(medir)) cajas[nombre][k] = await caja(loc);
+    writeFileSync(rutaCajas, JSON.stringify(cajas, null, 1));
+    console.log(`  foto: public/galeria-propuestas/${nombre}.jpg ${JSON.stringify(cajas[nombre])}`);
+  };
+  const texto = (page, t) => page.getByText(t, { exact: true });
+  const dias = (page) => Object.fromEntries(['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => [d, texto(page, d).last()]));
+  const tx = TEXTOS_ES;
+
+  const { page } = await abrir(nav, A);
+  // 1. Inicio, la cuenta vacía: la semana y el cuerpo.
+  await texto(page, tx.inicio.registrarPrimerDia).first().waitFor({ timeout: 90000 });
+  await page.waitForTimeout(2500);
+  await sacar(page, 'inicio', { ...dias(page), registrar: texto(page, tx.inicio.registrarPrimerDia) });
+
+  // 2. Las pestañas, sin nada todavía: donde irían los globitos de la primera vez.
+  await texto(page, tx.nav.social).last().click({ timeout: 30000 });
+  await page.waitForTimeout(2500);
+  await sacar(page, 'ranking-vacio', { buscar: page.getByTestId('buscar-gente'), titulo: page.getByText('Ranking', { exact: true }) });
+  await texto(page, tx.nav.album).last().click({ timeout: 30000 });
+  await page.waitForTimeout(2500);
+  await sacar(page, 'album-vacio', { titulo: texto(page, tx.album.titulo) });
+  // La rutina ya no está en Stats: se edita en su pantalla, desde "HOY" en Inicio.
+  await texto(page, tx.nav.inicio).last().click({ timeout: 30000 });
+  await page.waitForTimeout(1200);
+  await tocar(page, 'inicio-rutina');
+  await page.waitForTimeout(1800);
+  await sacar(page, 'rutina', { rutina: page.getByTestId('mi-rutina') });
+  await page.goBack();
+  await page.waitForTimeout(1500);
+  await texto(page, tx.nav.album).last().click({ timeout: 30000 });
+  await page.waitForTimeout(800);
+
+  // 3. Mi gimnasio en Ajustes, sin marcar.
+  await texto(page, tx.nav.ajustes).last().click({ timeout: 30000 });
+  await page.waitForTimeout(1500);
+  const seccion = texto(page, tx.ajustes.gimnasio).first();
+  if (!(await seccion.isVisible().catch(() => false))) await texto(page, tx.ajustes.avanzados).first().click().catch(() => {});
+  await seccion.scrollIntoViewIfNeeded({ timeout: 20000 });
+  await page.evaluate(() => window.scrollBy(0, -200));
+  await page.waitForTimeout(800);
+  await sacar(page, 'gimnasio-sin-marcar', { titulo: seccion, marcar: texto(page, tx.ajustes.gimnasioMarcar) });
+
+  // 4. Registrar el día a mano: el día registrado y la insistencia de marcar el gimnasio.
+  await texto(page, tx.nav.inicio).last().click({ timeout: 30000 });
+  await page.waitForTimeout(1500);
+  await texto(page, tx.inicio.registrarPrimerDia).first().click({ timeout: 30000 });
+  await page.waitForTimeout(1200);
+  await sacar(page, 'registrar-hoja', { guardar: texto(page, tx.inicio.registrarDia).last() });
+  await texto(page, tx.inicio.registrarDia).last().click({ timeout: 30000 });
+  await page.waitForTimeout(3500);
+  await sacar(page, 'dia-registrado', dias(page));
+  // La insistencia sale con los días ya releídos: se recarga Inicio.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await texto(page, tx.inicio.insistirGimnasioAccion).first().waitFor({ timeout: 60000 }).catch(() => {});
+  await texto(page, tx.social.avisoRutinaEntendido).first().click({ timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  await sacar(page, 'insistir', { accion: texto(page, tx.inicio.insistirGimnasioAccion), titulo: texto(page, tx.inicio.insistirGimnasioTitulo) });
+
+  // 5. La sesión: el selector, el bloque con el + y el descanso.
+  await texto(page, 'Iniciar entrenamiento').first().click({ timeout: 90000 });
+  await page.getByLabel('Sumar una serie').first().waitFor({ timeout: 90000 });
+  await page.waitForTimeout(1200);
+  await sacar(page, 'sesion-sin-ejercicio', { mas: page.getByLabel('Sumar una serie'), chip: texto(page, tx.sesion.sinEjercicio) });
+  await texto(page, tx.sesion.sinEjercicio).first().click({ timeout: 60000 });
+  await page.waitForTimeout(1500);
+  await sacar(page, 'elegir', { buscar: page.getByTestId('buscar-ejercicio') });
+  await texto(page, 'Press de banca').first().click({ timeout: 60000 });
+  await page.waitForTimeout(1800);
+  await sacar(page, 'serie', { mas: page.getByLabel('Sumar una serie'), ejercicio: page.getByText(/Press de banca/).first() });
+  await page.getByLabel('Sumar una serie').first().click({ timeout: 30000 });
+  await page.waitForTimeout(1800);
+  // El descanso es el relojito de arriba a la derecha (el que cuenta para atrás).
+  await sacar(page, 'descanso', { reloj: page.getByText(/^[0-9]:[0-9]{2}$/).last(), sesion: page.getByText(/^[0-9]:[0-9]{2}$/).first() });
+  await page.context().close();
+
+  // 6. Mi gimnasio ya marcado (el punto lo pone la base, no un GPS).
+  await A.s.from('profiles').update({ gimnasio_lat: -34.9, gimnasio_lon: -56.16 }).eq('id', A.id);
+  const { page: p2 } = await abrir(nav, A);
+  await texto(p2, tx.nav.ajustes).last().click({ timeout: 30000 });
+  await p2.waitForTimeout(1500);
+  const sec2 = texto(p2, tx.ajustes.gimnasio).first();
+  if (!(await sec2.isVisible().catch(() => false))) await texto(p2, tx.ajustes.avanzados).first().click().catch(() => {});
+  await sec2.scrollIntoViewIfNeeded({ timeout: 20000 });
+  await p2.evaluate(() => window.scrollBy(0, -200));
+  await p2.waitForTimeout(800);
+  await sacar(p2, 'gimnasio-marcado', { titulo: sec2, remarcar: texto(p2, tx.ajustes.gimnasioRemarcar), borrar: texto(p2, tx.ajustes.gimnasioBorrar) });
+  await p2.context().close();
+
+  // 7. Las medallas, en Ranking con un amigo (los mismos datos de muestra que `ranking`).
+  const { data: pedido } = await A.s.from('friendships').insert({ solicitante: A.id, destinatario: B.id }).select('id').single();
+  if (pedido) await B.s.from('friendships').update({ estado: 'aceptada' }).eq('id', pedido.id);
+  const { page: p3 } = await abrir(nav, A, {
+    medallas_de_muchos: [
+      { user_id: B.id, ejercicio: 'press_banca', percentil: 92 },
+      { user_id: B.id, ejercicio: 'sentadilla', percentil: 70 },
+    ],
+  });
+  await p3.route('**/rest/v1/usuarios_publicos*', async (r) => {
+    const real = await r.fetch();
+    const filas = await real.json().catch(() => null);
+    if (!Array.isArray(filas)) return r.fulfill({ response: real });
+    r.fulfill({ response: real, body: JSON.stringify(filas.map((f) => (f.id === B.id ? { ...f, racha_actual: 12, mejor_racha: 58 } : { ...f, racha_actual: 3, mejor_racha: 21 }))) });
+  });
+  await texto(p3, tx.nav.social).last().click({ timeout: 30000 });
+  await p3.waitForTimeout(3500);
+  await sacar(p3, 'medallas', { fila: p3.getByText(B.nombre, { exact: true }) });
+  return p3;
+};
+
+// Tu rutina, editándola: donde va el globito de la rutina.
+RECETAS['propuestas-rutina'] = async function (nav, gente) {
+  const A = gente.a;
+  const { readFileSync, writeFileSync } = await import('node:fs');
+  const dias = await semanaDeMuestra(A.s);
+  const hoy = new Date().getDay();
+  dias[hoy] = dias[1];
+  const rutina = { id: '00000000-0000-4000-8000-000000000001', nombre: 'Entrenamiento 1', activa: true, dias };
+  const { page } = await abrir(nav, A, { mis_rutinas: [rutina], rutina_activa_de: rutina });
+  await verTestId(page, 'inicio-rutina');
+  await tocar(page, 'inicio-rutina');
+  await page.waitForTimeout(1500);
+  await tocar(page, 'rutina-editar');
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: join(DE_PROPUESTAS, 'rutina-editando.jpg'), type: 'jpeg', quality: 86 });
+  const rutaCajas = join(DE_PROPUESTAS, 'cajas.json');
+  const cajas = JSON.parse(readFileSync(rutaCajas, 'utf8'));
+  const b = await page.getByTestId(`rutina-filas-${hoy}`).first().boundingBox().catch(() => null);
+  cajas['rutina-editando'] = { filasDeHoy: b && { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) } };
+  writeFileSync(rutaCajas, JSON.stringify(cajas, null, 1));
+  console.log(`  foto: public/galeria-propuestas/rutina-editando.jpg ${JSON.stringify(cajas['rutina-editando'])}`);
+  return page;
+};
+
 const pedidas = process.argv.slice(2).filter((x) => !x.startsWith('-'));
 const correr = pedidas.length ? pedidas : Object.keys(RECETAS);
 const gente = { a: await cuenta('a'), b: await cuenta('b') };
