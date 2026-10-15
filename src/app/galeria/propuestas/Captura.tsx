@@ -123,6 +123,75 @@ export function GlobitoApp({ texto, arriba, izquierda = 24, derecha = 24 }: { te
   );
 }
 
+/**
+ * EL GLOBO DE CÓMIC (15/10, segunda vuelta): el mismo globito de la app, del ancho de
+ * su texto, debajo del elemento del que habla y con una colita que sale de él. `colaX`
+ * es dónde está ese elemento (en x de la pantalla); `alinear` decide hacia dónde crece.
+ */
+export function GloboComic({
+  texto,
+  arriba,
+  colaX,
+  alinear = 'centro',
+  margen = 24,
+  compacto = false,
+}: {
+  texto: string;
+  arriba: number;
+  colaX: number;
+  alinear?: 'centro' | 'izquierda' | 'derecha';
+  margen?: number;
+  /** Más bajo, para un hueco angosto (el del + y Terminar). */
+  compacto?: boolean;
+}) {
+  const borde = `0.5px solid ${C.lineaFuerte}`;
+  const posicion: CSSProperties =
+    alinear === 'izquierda' ? { left: margen } : alinear === 'derecha' ? { right: margen } : { left: colaX, transform: 'translateX(-50%)' };
+  return (
+    <>
+      <div
+        style={{
+          position: 'absolute',
+          top: arriba,
+          ...posicion,
+          maxWidth: ANCHO - margen * 2,
+          borderRadius: 12,
+          border: borde,
+          background: C.hoja,
+          boxShadow: '0 4px 12px rgba(0,0,0,.45)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: compacto ? '7px 12px' : '10px 14px',
+          fontFamily: FUENTE,
+          zIndex: 2,
+        }}
+      >
+        <span style={{ color: C.tinta, fontSize: 13, whiteSpace: 'nowrap' }}>{texto}</span>
+        <span style={{ position: 'relative', width: 12, height: 12, flex: 'none' }}>
+          <span style={{ position: 'absolute', left: 0, top: 5.3, width: 12, height: 1.4, borderRadius: 1, background: C.apagado, transform: 'rotate(45deg)' }} />
+          <span style={{ position: 'absolute', left: 0, top: 5.3, width: 12, height: 1.4, borderRadius: 1, background: C.apagado, transform: 'rotate(-45deg)' }} />
+        </span>
+      </div>
+      {/* La cola: un cuadrado girado con el borde en los dos lados de afuera, encima del borde del globo. */}
+      <span
+        style={{
+          position: 'absolute',
+          left: colaX - 6,
+          top: arriba - 5.5,
+          width: 12,
+          height: 12,
+          background: C.hoja,
+          borderTop: borde,
+          borderLeft: borde,
+          transform: 'rotate(45deg)',
+          zIndex: 3,
+        }}
+      />
+    </>
+  );
+}
+
 /** El pin del gimnasio: una gota hueca con su punto, a trazo, del color del texto. */
 export function PinGimnasio({ tam = 16, color = 'currentColor' }: { tam?: number; color?: string }) {
   return (

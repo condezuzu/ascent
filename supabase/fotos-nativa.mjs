@@ -19,7 +19,7 @@ import { createClient } from '@supabase/supabase-js';
 import { mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { limiteDeSonda, pasarLaEntradaNativa } from './utiles.mjs';
+import { limiteDeSonda, pasarLaEntradaNativa, borrarCuentaDePrueba } from './utiles.mjs';
 import { TEXTOS_ES } from '../nucleo/textos.ts';
 import { EN } from '../nucleo/textos-en.ts';
 
@@ -825,6 +825,35 @@ RECETAS['ubicacion-hecha'] = async function (nav, gente) {
   return page;
 };
 
+// EL ÁLBUM CON FOTOS (15/10): el globito del álbum apunta a las fotos, así que hacen
+// falta fotos. Tres imágenes lisas de colores distintos, subidas como las sube la app.
+RECETAS['propuestas-album'] = async function (nav, gente) {
+  const A = gente.a;
+  const { readFileSync, writeFileSync } = await import('node:fs');
+  const lienzo = await (await nav.newContext({ viewport: { width: 600, height: 750 } })).newPage();
+  const hoy = new Date().toISOString().slice(0, 10);
+  for (const [i, color] of ['#3d4a66', '#6a5a7e', '#4f6b5c'].entries()) {
+    await lienzo.setContent(`<body style="margin:0;background:radial-gradient(circle at 40% 35%, #c9c4b8, ${color} 60%, #111 100%)"></body>`);
+    const jpg = await lienzo.screenshot({ type: 'jpeg', quality: 80 });
+    const ruta = `${A.id}/${hoy}-${900 + i}.jpg`;
+    await A.s.storage.from('fotos').upload(ruta, jpg, { contentType: 'image/jpeg' });
+    await A.s.from('photos').insert({ user_id: A.id, storage_path: ruta, visibilidad: 'privada' });
+  }
+  await lienzo.context().close();
+  const { page } = await abrir(nav, A);
+  await page.getByText(TEXTOS_ES.nav.album, { exact: true }).last().click({ timeout: 30000 });
+  await page.waitForTimeout(4000);
+  for (const g of await page.locator('[data-testid^="globo-"]').all()) await g.click().catch(() => {});
+  await page.screenshot({ path: join(DE_PROPUESTAS, 'album-fotos.jpg'), type: 'jpeg', quality: 86 });
+  const rutaCajas = join(DE_PROPUESTAS, 'cajas.json');
+  const cajas = JSON.parse(readFileSync(rutaCajas, 'utf8'));
+  const img = await page.locator('img').first().boundingBox().catch(() => null);
+  cajas['album-fotos'] = { foto: img && { x: Math.round(img.x), y: Math.round(img.y), w: Math.round(img.width), h: Math.round(img.height) } };
+  writeFileSync(rutaCajas, JSON.stringify(cajas, null, 1));
+  console.log(`  foto: public/galeria-propuestas/album-fotos.jpg ${JSON.stringify(cajas['album-fotos'])}`);
+  return page;
+};
+
 // Tu rutina, editándola: donde va el globito de la rutina.
 RECETAS['propuestas-rutina'] = async function (nav, gente) {
   const A = gente.a;
@@ -872,7 +901,7 @@ try {
 } finally {
   await nav.close();
   for (const x of Object.values(gente)) {
-    const { error } = await x.s.rpc('eliminar_cuenta');
+    const { error } = await borrarCuentaDePrueba(x.s);
     if (error) console.log(`  no se borró la cuenta ${x.nombre}: ${error.message}`);
   }
 }

@@ -401,7 +401,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                 return (
                   <View key={c.id} style={[estilos.capaGesto, { position: 'absolute', top: 0, bottom: 0, left: j * width, width }]}>
                     <View style={[estilos.marco, { borderColor: conAlfa(acentoRango, 0.45) }]}>
-                      <Image source={{ uri: c.url }} style={{ width: width - 32, height: width - 32 }} resizeMode="contain" />
+                      <FotoEntera celda={c} lado={width - 32} />
                     </View>
                   </View>
                 );
@@ -505,6 +505,12 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
  */
 // Por la ruta, que no cambia: la miniatura y la entera son archivos distintos.
 const claveDe = (c: Celda) => (c.miniatura ? 'mini-' : 'entera-') + c.ruta;
+
+/** LA ENTERA, ABIERTA: también del disco del teléfono, por su ruta (15/10). Antes se bajaba en cada apertura. */
+function FotoEntera({ celda, lado }: { celda: Celda; lado: number }) {
+  const uri = useFotoLocal('entera-' + celda.ruta, celda.url);
+  return uri ? <Image source={{ uri }} style={{ width: lado, height: lado }} resizeMode="contain" /> : null;
+}
 
 function FotoMitad({ celda }: { celda: Celda }) {
   const uri = useFotoLocal(claveDe(celda), celda.miniatura || celda.url);

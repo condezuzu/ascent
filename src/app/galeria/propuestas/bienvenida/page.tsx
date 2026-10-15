@@ -22,7 +22,7 @@ import Insignia from '@/components/Insignia';
 import Objetos from '@/components/bienvenida/Objetos';
 import { numeroDeRango } from '@nucleo/rangos';
 import { Banco } from '../Banco';
-import { Captura, C, Fila, FUENTE, GlobitoApp, Marco, Titulito, cajas } from '../Captura';
+import { Captura, C, Fila, FUENTE, GloboComic, Marco, Titulito, cajas } from '../Captura';
 
 const CARGA_MS = 1500;
 const PANTALLAS = ['pesos', 'llegar', 'amigo', 'ranking'] as const;
@@ -353,19 +353,20 @@ function Pantalla({ inicial }: { inicial: Clave }) {
 
 // ── LOS GLOBITOS DE ADENTRO ──
 
-type GloboReal = { captura: string; rotulo: string; texto: string; arriba: number; izquierda?: number; derecha?: number; nota: string };
+// GLOBOS DE CÓMIC (15/10, segunda vuelta): cada uno debajo del elemento del que habla,
+// con la colita saliendo de él. Las posiciones salen de `cajas.json` (dónde quedó cada
+// cosa en la captura); los números de respaldo son los de esas mismas capturas.
+type GloboReal = { captura: string; rotulo: string; texto: string; arriba: number; colaX: number; alinear: 'centro' | 'izquierda' | 'derecha'; margen?: number; compacto?: boolean; nota: string };
 const caj = (c: string, k: string) => cajas[c]?.[k] ?? null;
-const debajo = (c: string, k: string, sino: number) => {
-  const b = caj(c, k);
-  return b ? b.y + b.h + 8 : sino;
-};
+const masSerie = caj('serie', 'mas') ?? { x: 117, y: 545, w: 250, h: 75 };
+const fotoAlbum = caj('album-fotos', 'foto') ?? { x: 24, y: 137, w: 111, h: 111 };
 const GLOBOS: GloboReal[] = [
-  { captura: 'elegir', rotulo: '1 · Donde eliges el ejercicio', texto: 'Busca el ejercicio o elígelo de la lista.', arriba: debajo('elegir', 'buscar', 268), izquierda: 22, derecha: 22, nota: 'La primera vez que se abre la lista. Es donde se trabaron tres personas.' },
-  { captura: 'serie', rotulo: '2 · El + que suma la serie', texto: 'Toca + al terminar cada serie.', arriba: (caj('serie', 'ejercicio')?.y ?? 349) - 12, nota: 'Este ya existe y queda igual: mismo texto, mismo lugar, se va con el primer +.' },
-  { captura: 'descanso', rotulo: '3 · El descanso', texto: 'Tu descanso. Tócalo para cambiarlo.', arriba: 108, nota: 'El descanso ya no es una pantalla: es el reloj de arriba a la derecha. La primera vez que aparece.' },
-  { captura: 'ranking-vacio', rotulo: '4 · Ranking', texto: 'Agrega amigos para seguir su progreso.', arriba: 154, nota: 'La primera vez que se abre, con la lista vacía.' },
-  { captura: 'album-vacio', rotulo: '5 · Álbum', texto: 'Aquí se ven las fotos de tu progreso.', arriba: debajo('album-vacio', 'titulo', 102), nota: 'La primera vez que se abre.' },
-  { captura: 'rutina-editando', rotulo: '6 · Donde se edita la rutina', texto: 'Toca un día para armarlo.', arriba: 196, izquierda: 20, derecha: 20, nota: 'La rutina ya no está en Stats: desde el 15/10 se edita en su pantalla, entrando por «HOY» en Inicio. El globito va ahí, la primera vez que se toca «Editar».' },
+  { captura: 'elegir', rotulo: '1 · Donde eliges el ejercicio', texto: 'Busca el ejercicio o elígelo de la lista.', arriba: 273, colaX: 90, alinear: 'izquierda', margen: 22, nota: 'Igual que antes, ahora saliendo del buscador.' },
+  { captura: 'serie', rotulo: '2 · El + que suma la serie', texto: 'Toca + al terminar cada serie.', arriba: masSerie.y + masSerie.h + 7, colaX: masSerie.x + masSerie.w / 2, alinear: 'centro', compacto: true, nota: 'Sale del +, por debajo: ya no tapa el ejercicio. Se va con el primer +.' },
+  { captura: 'descanso', rotulo: '3 · El descanso', texto: 'Tu descanso. Tócalo para cambiarlo.', arriba: 112, colaX: 341, alinear: 'derecha', nota: 'Sale del reloj del descanso, arriba a la derecha. La primera vez que aparece.' },
+  { captura: 'ranking-vacio', rotulo: '4 · Agregar amigos', texto: 'Agrega amigos para seguir su progreso.', arriba: 155, colaX: 90, alinear: 'izquierda', nota: 'Sale del buscador de gente, que es donde se agregan. La primera vez que se abre Ranking.' },
+  { captura: 'album-fotos', rotulo: '5 · Álbum', texto: 'Aquí se ven las fotos de tu progreso.', arriba: fotoAlbum.y + fotoAlbum.h + 14, colaX: 195, alinear: 'centro', nota: 'En el medio y apuntando a las fotos. La primera vez que se abre el Álbum con alguna foto.' },
+  { captura: 'rutina-editando', rotulo: '6 · Donde se edita la rutina', texto: 'Crea tu rutina', arriba: 194, colaX: 240, alinear: 'centro', margen: 20, nota: 'Sale del nombre del entrenamiento («Entrenamiento 1» por defecto). La primera vez que se toca «Editar».' },
 ];
 
 export default function PropuestaBienvenida() {
@@ -415,13 +416,13 @@ export default function PropuestaBienvenida() {
 
       <Titulito>Los globitos de adentro: estos seis y ninguno más</Titulito>
       <p className="nota-privada" style={{ margin: '-4px 0 16px', lineHeight: 1.5, maxWidth: 760 }}>
-        Fondo: capturas de la app nativa corriendo en el navegador, con una cuenta recién creada (el mismo código que el teléfono, no el iPhone). Lo único dibujado es el globito, con las medidas del de la app. Cada uno sale una vez y se va con un toque.
+        Fondo: capturas de la app nativa corriendo en el navegador, con una cuenta recién creada (el mismo código que el teléfono, no el iPhone). Lo único dibujado es el globo: el de la app, del ancho de su texto, con una colita que sale de lo que explica. Cada uno sale una vez y se va con un toque.
       </p>
       <Fila>
         {GLOBOS.map((g) => (
           <Marco key={g.captura} rotulo={g.rotulo} nota={g.nota}>
             <Captura nombre={g.captura}>
-              <GlobitoApp texto={g.texto} arriba={g.arriba} izquierda={g.izquierda} derecha={g.derecha} />
+              <GloboComic texto={g.texto} arriba={g.arriba} colaX={g.colaX} alinear={g.alinear} margen={g.margen} compacto={g.compacto} />
             </Captura>
           </Marco>
         ))}

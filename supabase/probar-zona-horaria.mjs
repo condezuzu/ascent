@@ -24,6 +24,7 @@
 //   node --env-file=.env.local supabase/probar-zona-horaria.mjs
 
 import { createClient } from '@supabase/supabase-js';
+import { borrarCuentaDePrueba } from './utiles.mjs';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -93,7 +94,7 @@ try {
     filas.push({ etiqueta, zona, servidor: hoy, esperado, ok });
   }
 } finally {
-  const { error: eBorrar } = await u.rpc('eliminar_cuenta');
+  const { error: eBorrar } = await borrarCuentaDePrueba(u);
   if (eBorrar) console.error('  (aviso: no se pudo borrar la cuenta de prueba:', eBorrar.message, ')');
 }
 

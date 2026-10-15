@@ -141,6 +141,19 @@ de `select` amplia no es lo que hace que las imágenes se vean — solo habilita
 → **Regla:** acotar el `select` a la carpeta propia. Las imágenes se siguen
 viendo. Verificarlo con un cliente anónimo antes de asumirlo.
 
+**`eliminar_cuenta()` no borra el storage: lo borra la app antes** (15/10). Los
+scripts de prueba la llamaban directo y el bucket `fotos` juntó treinta archivos
+sin dueño (e2e-*.png, *-priv.jpg, un .bin de 8 MB, un .sh).
+→ **Regla:** en un script, borrar una cuenta es `borrarCuentaDePrueba(cliente)`
+(`supabase/utiles.mjs`), nunca el `rpc` pelado. Y los buckets tienen tope desde
+la migración 89: 3 MB y solo JPG/PNG.
+
+**Un enlace firmado nuevo es una dirección nueva para el CDN** (medido el 15/10:
+530–860 ms hasta el primer byte con cualquier peso; el mismo enlace otra vez,
+40–60 ms). Firmar en cada apertura hacía lentas todas las fotos.
+→ **Regla:** las fotos se firman con `firmarFotos` (`compartido/firmas.ts`), que
+guarda el enlace un día y lo reusa. Nunca `createSignedUrl(s)` suelto.
+
 **Las políticas de `storage.objects` se evalúan TODAS en cada consulta**, sin
 importar el bucket. Si una falla, tumba la consulta entera — un bucket puede
 quedar "protegido" por un error ajeno en vez de por su propia política.

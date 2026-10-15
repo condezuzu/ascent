@@ -35,7 +35,7 @@ import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { limiteDeSonda, pasarLaEntradaNativa } from './utiles.mjs';
+import { limiteDeSonda, pasarLaEntradaNativa, borrarCuentaDePrueba } from './utiles.mjs';
 
 // Lo que espera para siempre no falla: desaparece. Ver la seccion 123.
 limiteDeSonda(15);
@@ -391,7 +391,7 @@ const s = nuevoCliente();
 const { error: eIn } = await s.auth.signInWithPassword({ email: correo, password: clave });
 if (eIn) console.log(`\n(no se pudo entrar a borrar la cuenta: ${eIn.message})`);
 else {
-  const { error: eBorrar } = await s.rpc('eliminar_cuenta');
+  const { error: eBorrar } = await borrarCuentaDePrueba(s);
   if (eBorrar) console.log(`\n(no se borró la cuenta: ${eBorrar.message})`);
 }
 

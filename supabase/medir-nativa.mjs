@@ -9,7 +9,7 @@
 // Una cuenta descartable, que se borra al final.
 import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
-import { limiteDeSonda, pasarLaEntradaNativa } from './utiles.mjs';
+import { limiteDeSonda, pasarLaEntradaNativa, borrarCuentaDePrueba } from './utiles.mjs';
 import { TEXTOS_ES as T } from '../nucleo/textos.ts';
 
 limiteDeSonda(12);
@@ -141,7 +141,7 @@ try {
   for (let i = 0; i < CORRIDAS; i++) corridas.push(await unaCorrida(nav));
 } finally {
   await nav.close();
-  await s.rpc('eliminar_cuenta');
+  await borrarCuentaDePrueba(s);
 }
 const claves = Object.keys(corridas[0]).filter((k) => typeof corridas[0][k] === 'number');
 const resumen = Object.fromEntries(claves.map((k) => [k, mediana(corridas.map((c) => c[k]))]));

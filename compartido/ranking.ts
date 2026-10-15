@@ -5,6 +5,7 @@ import type { UsuarioPublico } from '@nucleo/tipos';
 import { eventos } from '@compartido/eventos';
 import { miniaturas } from '@compartido/album';
 import { tablaDeLogsDeAmigos } from '@compartido/esquema';
+import { firmarFotos } from '@compartido/firmas';
 
 /**
  * LO SOCIAL CAMBIÓ por algo que se hizo en OTRA pantalla (4/10).
@@ -113,7 +114,7 @@ export async function cargarRanking(supabase: Cliente, uid: string): Promise<Dat
       const chicas = await miniaturas(supabase, rutas);
       const sinChica = rutas.filter((_, i) => !chicas[i]);
       const { data: enteras } = sinChica.length
-        ? await supabase.storage.from('fotos').createSignedUrls(sinChica, 3600)
+        ? { data: await firmarFotos(supabase, sinChica).then((us) => us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' }))) }
         : { data: [] as { signedUrl: string }[] };
       const deEntera = new Map(sinChica.map((r, i) => [r, enteras?.[i]?.signedUrl ?? '']));
       fotosPorLog = new Map(fs.map((f, i) => [f.log_id as string, chicas[i] ?? deEntera.get(rutas[i]) ?? '']));

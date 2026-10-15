@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { crearCliente } from '@/lib/supabase/client';
-import { prepararFoto } from '@/lib/foto';
+import { prepararFoto, prepararMiniatura } from '@/lib/foto';
+import { CACHE_DE_FOTO } from '@compartido/firmas';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { hoyISO } from '@nucleo/fechas';
 import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
@@ -28,7 +29,8 @@ import type { Medalla } from '@nucleo/medallas';
 import Medallas from '@/components/Medallas';
 import { conComa } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
-import { rutaDeFoto, selloAlAzar } from '@nucleo/foto';
+import { rutaDeFoto, rutaDeMiniatura, selloAlAzar } from '@nucleo/foto';
+import { firmarFotos } from '@compartido/firmas';
 
 /**
  * Mi perfil (§9): el único lugar donde se junta todo lo que es mío. Cambiar
@@ -85,7 +87,7 @@ export default function Yo() {
     const ids = (rel ?? []).map((r) => (r.solicitante === user.id ? r.destinatario : r.solicitante));
     const [logsFotos, firmadas, chicas, us, misMedallas] = await Promise.all([
       logIds.length ? supabase.from('logs').select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
-      rutas.length ? supabase.storage.from('fotos').createSignedUrls(rutas, 3600).then((r) => r.data ?? []) : [],
+      rutas.length ? firmarFotos(supabase, rutas).then((us) => us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' }))) : [],
       miniaturas(supabase, rutas),
       ids.length ? supabase.from('usuarios_publicos').select('*').in('id', ids).then((r) => (r.data ?? []) as UsuarioPublico[]) : [],
       // Van en la SEGUNDA tanda porque necesitan el sexo, que viene en el
@@ -187,10 +189,18 @@ export default function Yo() {
     const ruta = rutaDeFoto(perfil.id, hoy, selloAlAzar());
     const { error: errSubida } = await supabase.storage
       .from('fotos')
-      .upload(ruta, lista.blob, { contentType: lista.tipo });
+      .upload(ruta, lista.blob, { contentType: lista.tipo, cacheControl: CACHE_DE_FOTO });
     if (errSubida) {
       setSumandoFoto(false);
       return setError(T.yo.noSeSumoLaFoto);
+    }
+    // La miniatura no frena la foto: si no sale, el álbum la completa después.
+    const chica = await prepararMiniatura(lista.blob);
+    if (chica) {
+      await supabase.storage
+        .from('fotos')
+        .upload(rutaDeMiniatura(ruta), chica, { contentType: 'image/jpeg', upsert: true, cacheControl: CACHE_DE_FOTO })
+        .catch(() => null);
     }
     const { error: errFila } = await supabase.from('photos').insert({
       user_id: perfil.id,

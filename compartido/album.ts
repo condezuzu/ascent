@@ -5,6 +5,7 @@ import { disponible } from '@nucleo/esquema';
 import { versionDelEsquema } from '@compartido/esquema';
 import { T } from '@nucleo/textos';
 import { rutaDeMiniatura } from '@nucleo/foto';
+import { firmarFotos } from '@compartido/firmas';
 
 /**
  * LO QUE MUESTRA EL ÁLBUM, pedido una sola vez para las dos apps.
@@ -50,12 +51,8 @@ export type DatosDeAlbum = { celdas: Celda[]; miRango: number; miPlaneta: string
  */
 export async function miniaturas(supabase: Cliente, rutas: string[]): Promise<(string | null)[]> {
   if (rutas.length === 0) return [];
-  try {
-    const { data } = await supabase.storage.from('fotos').createSignedUrls(rutas.map(rutaDeMiniatura), 3600);
-    return rutas.map((_, i) => (data?.[i] && !data[i].error && data[i].signedUrl ? data[i].signedUrl : null));
-  } catch {
-    return rutas.map(() => null);
-  }
+  // Firmadas una vez y reusadas: ver `compartido/firmas.ts`.
+  return firmarFotos(supabase, rutas.map(rutaDeMiniatura));
 }
 
 export async function cargarAlbum(supabase: Cliente, uid: string): Promise<DatosDeAlbum | null> {
@@ -86,7 +83,7 @@ export async function cargarAlbum(supabase: Cliente, uid: string): Promise<Datos
     logIds.length
       ? supabase.from('logs').select(colsLog).in('id', logIds)
       : Promise.resolve({ data: [] as { id: string; fecha: string; planeta_del_dia: string | null; racha_del_dia: number | null }[] }),
-    supabase.storage.from('fotos').createSignedUrls(rutas, 3600),
+    firmarFotos(supabase, rutas).then((us) => ({ data: us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' })) })),
     miniaturas(supabase, rutas),
   ]);
   // El cast: `select(colsLog)` con una columna variable le saca el tipo a

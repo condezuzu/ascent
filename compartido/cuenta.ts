@@ -12,6 +12,7 @@ import { borrarSesionCache } from '@compartido/sesionCache';
 import { olvidarViva } from '@compartido/sesionViva';
 import { olvidarAvisosRemotos } from '@compartido/avisosRemotos';
 import { olvidarMiPerfil } from '@compartido/perfil';
+import { olvidarFirmas } from '@compartido/firmas';
 
 /**
  * SALIR DE LA CUENTA, Y QUE NO QUEDE NADA PARA LA QUE ENTRE (4/10).
@@ -97,6 +98,8 @@ export async function cerrarSesion(supabase: Cliente): Promise<boolean> {
   await olvidarAvisosRemotos(supabase).catch(() => undefined);
   const { error } = await supabase.auth.signOut({ scope: 'local' });
   if (error) return false;
+  // Los enlaces de las fotos de esta cuenta no le sirven a la próxima.
+  await olvidarFirmas();
   await limpiarAlSalir();
   return true;
 }

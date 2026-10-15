@@ -10,6 +10,7 @@
 //
 //   node --env-file=.env.local supabase/probar-privacidad.mjs
 import { createClient } from '@supabase/supabase-js';
+import { borrarCuentaDePrueba } from './utiles.mjs';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -156,6 +157,14 @@ try {
   chequear('B no puede pedir un enlace firmado de la foto ya privada', !!eFirma || !firmada, true);
   chequear('una foto que se vuelve privada deja de bajarse', tras.bajaAmigos, false);
 
+  // EL TOPE DEL STORAGE (migración 89): un .sh o un archivo de 3,5 MB no entran.
+  const { data: version } = await A.s.rpc('version_del_esquema');
+  if (version >= 89) {
+    const sh = await A.s.storage.from('fotos').upload(`${A.id}/x.sh`, new TextEncoder().encode('echo hola'), { contentType: 'text/x-sh' });
+    const pesado = await A.s.storage.from('fotos').upload(`${A.id}/pesada.jpg`, new Uint8Array(3.5 * 1024 * 1024), { contentType: 'image/jpeg' });
+    chequear('el storage no acepta un .sh ni una foto de 3,5 MB', [!!sh.error, !!pesado.error], [true, true]);
+  } else console.log(`  --   la base está en ${version}: el tope del storage (migración 89) no se probó`);
+
   console.log('\nA la elimina');
   await A.s.rpc('eliminar_amigo', { p_otro: B.id });
   const despues = await loQueVe(B);
@@ -168,7 +177,7 @@ try {
   for (const X of [A, B, C]) {
     const { data: objs } = await X.s.storage.from('fotos').list(X.id);
     if (objs?.length) await X.s.storage.from('fotos').remove(objs.map((o) => `${X.id}/${o.name}`));
-    const { error } = await X.s.rpc('eliminar_cuenta');
+    const { error } = await borrarCuentaDePrueba(X.s);
     chequear('cuenta borrada', error?.message ?? 'ok', 'ok');
   }
   console.log(`\n${fallos === 0 ? 'todo ok' : fallos + ' fallaron'}`);

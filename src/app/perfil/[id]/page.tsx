@@ -29,6 +29,7 @@ import ComoMeVen, {
   FOTOS_VISIBLES,
   type FotoVisible,
 } from '@/components/ComoMeVen';
+import { firmarFotos } from '@compartido/firmas';
 
 type FotoPerfil = FotoVisible;
 
@@ -138,7 +139,7 @@ export default function Perfil() {
         const mapa = new Map((logsFotos ?? []).map((l) => [l.id, l.fecha]));
         // Las URL enteras y las miniaturas a la vez: la grilla usa la chica.
         const [{ data: firmadas }, chicas] = await Promise.all([
-          supabase.storage.from('fotos').createSignedUrls(fs.map((f) => f.storage_path), 3600),
+          firmarFotos(supabase, fs.map((f) => f.storage_path as string)).then((us) => ({ data: us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' })) })),
           miniaturas(supabase, fs.map((f) => f.storage_path as string)),
         ]);
         setFotos(

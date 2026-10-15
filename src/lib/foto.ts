@@ -1,4 +1,4 @@
-import { CALIDAD_FOTO, medidasParaSubir } from '@nucleo/foto';
+import { CALIDAD_FOTO, CALIDAD_MINIATURA, medidasDeMiniatura, medidasParaSubir } from '@nucleo/foto';
 /**
  * PREPARAR UNA FOTO ANTES DE SUBIRLA.
  *
@@ -92,5 +92,29 @@ export async function prepararFoto(archivo: File): Promise<FotoLista> {
     return { ok: true, blob, tipo: 'image/jpeg' };
   } catch {
     return { ok: false };
+  }
+}
+
+/**
+ * LA MINIATURA, EN LA WEB (15/10). La web subía solo la entera: de las diez fotos de
+ * personas, a la única que le faltaba miniatura era una subida desde acá. Los mismos
+ * números que la nativa (`medidasDeMiniatura`, `CALIDAD_MINIATURA`). `null` si no se
+ * pudo: la foto sube igual y la miniatura se completa al abrir el álbum.
+ */
+export async function prepararMiniatura(fuenteOriginal: Blob): Promise<Blob | null> {
+  try {
+    const fuente = await decodificar(fuenteOriginal as File);
+    const { ancho, alto } = medidasDeMiniatura(fuente.width, fuente.height);
+    const lienzo = document.createElement('canvas');
+    lienzo.width = ancho;
+    lienzo.height = alto;
+    const ctx = lienzo.getContext('2d');
+    if (!ctx) return null;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(fuente, 0, 0, ancho, alto);
+    if ('close' in fuente && typeof fuente.close === 'function') fuente.close();
+    return await new Promise<Blob | null>((listo) => lienzo.toBlob(listo, 'image/jpeg', CALIDAD_MINIATURA));
+  } catch {
+    return null;
   }
 }

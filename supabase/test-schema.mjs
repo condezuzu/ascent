@@ -10719,7 +10719,8 @@ console.log('\n148. El barrido de la app nativa, y lo que encontro');
   chequear('escucha las excepciones', /page\.on\('pageerror'/.test(bar148), true);
   chequear('y los errores de la base', /r\.status\(\) < 400/.test(bar148), true);
   // NO BORRA NADA QUE NO HAYA CREADO: hace su cuenta y se la lleva.
-  chequear('y borra la cuenta que crea', /eliminar_cuenta/.test(bar148), true);
+  // Desde el 15/10, con sus archivos: `borrarCuentaDePrueba` (utiles.mjs) vacía el storage y llama a eliminar_cuenta.
+  chequear('y borra la cuenta que crea', /borrarCuentaDePrueba\(s\)/.test(bar148), true);
 
   // ---- LO PRIMERO QUE ENCONTRO: INICIO NO RECARGABA AL VOLVER ----
   //
@@ -15063,7 +15064,7 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   };
   const baseDelDia = {
     from: consulta,
-    storage: { from: () => ({ createSignedUrl: async (ruta) => ({ data: { signedUrl: 'firmada:' + ruta } }) }) },
+    storage: { from: () => ({ createSignedUrls: async (rutas) => ({ data: rutas.map((ruta) => ({ signedUrl: 'firmada:' + ruta })) }) }) },
   };
   const D195 = await import('../compartido/dia.ts');
   const delDia = await D195.cargarDia(baseDelDia, 'yo', '2026-10-04', false);
@@ -15446,7 +15447,10 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
   const A196 = await import('../compartido/album.ts');
   const trescientas = Array.from({ length: 300 }, (_, i) => `uid-1/foto-${i}.jpg`);
   const chicas = await A196.miniaturas(almacen((r) => !r.includes('foto-7.')), trescientas);
-  chequear('300 miniaturas son UN pedido, y la que no existe vuelve vacía', [pedidos, chicas[0], chicas[7], chicas.filter(Boolean).length], [[['firmar', 300, 3600]], 'firmada:uid-1/foto-0.mini.jpg', null, 299]);
+  // Firmadas por un día y reusadas (15/10, `compartido/firmas.ts`): la segunda vez no se pide nada.
+  const otraVez196 = await A196.miniaturas(almacen((r) => !r.includes('foto-7.')), trescientas);
+  chequear('300 miniaturas son UN pedido, y la que no existe vuelve vacía', [pedidos.slice(0, 1), chicas[0], chicas[7], chicas.filter(Boolean).length], [[['firmar', 300, 86400]], 'firmada:uid-1/foto-0.mini.jpg', null, 299]);
+  chequear('y abrir de nuevo reusa los enlaces: solo se vuelve a pedir la que no existe', [pedidos.slice(1), otraVez196[0]], [[['firmar', 1, 86400]], 'firmada:uid-1/foto-0.mini.jpg']);
   const album196 = de196('compartido/album.ts');
   chequear('nada depende ya de achicar en el servidor', [/transform/.test(album196), /transform/.test(de196('compartido/perfil.ts'))], [false, false]);
 
@@ -15635,7 +15639,7 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
   ], [true, true, true]);
   chequear('y las miniaturas que faltan las completa el teléfono, sin transformar en el servidor', [
     /void completarMiniaturas\(d\.celdas\)/.test(alb196),
-    /upload\(rutaDeMiniatura\(c\.ruta\), datos, \{ contentType: 'image\/jpeg', upsert: true \}\)/.test(de196('movil/src/miniaturas.ts')),
+    /upload\(rutaDeMiniatura\(c\.ruta\), datos, \{ contentType: 'image\/jpeg', upsert: true, cacheControl: CACHE_DE_FOTO \}\)/.test(de196('movil/src/miniaturas.ts')),
     /prepararMiniatura\(foto\.uri, foto\.ancho, foto\.alto\)/.test(de196('movil/src/RegistrarDia.tsx')),
   ], [true, true, true]);
 }
@@ -16818,7 +16822,7 @@ console.log('\n204. Ocho arreglos de la cacería del 12/10, y la guarda de las m
   chequear('la actividad de Ranking pide la miniatura, y la entera solo para la que no tiene', [
     /const chicas = await miniaturas\(supabase, rutas\);/.test(rk204),
     /const sinChica = rutas\.filter\(\(_, i\) => !chicas\[i\]\);/.test(rk204),
-    /createSignedUrls\(sinChica, 3600\)/.test(rk204),
+    /firmarFotos\(supabase, sinChica\)/.test(rk204),
     /createSignedUrls\(\s*fs\.map\(/.test(rk204),
   ], [true, true, true, false]);
   const hook204 = de204('compartido', 'useSesion.ts');
@@ -19026,6 +19030,17 @@ console.log('\n247. Entrenar en grupo, del lado de la app: la lista, el link, el
     /'\/grupo\/\*'/.test(de247('src', 'app', '.well-known', 'apple-app-site-association', 'route.ts')),
     /'\/grupo'/.test(de247('src', 'lib', 'supabase', 'middleware.ts')),
   ], [true, true, true]);
+}
+
+console.log('\n248. El storage con tope: 3 MB y solo JPG y PNG (migración 89)');
+{
+  const { readFileSync: leer248 } = await import('node:fs');
+  const raiz248 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const tope = /update storage\.buckets\s+set file_size_limit = 3145728,\s+allowed_mime_types = array\['image\/jpeg', 'image\/png'\]\s+where id in \('fotos', 'avatares'\)/;
+  chequear('schema.sql y la migración 89 le ponen tope a los dos buckets', [
+    tope.test(leer248(join(raiz248, 'supabase', 'schema.sql'), 'utf8').replace(/\r\n/g, '\n')),
+    tope.test(leer248(join(raiz248, 'supabase', 'migracion-89-tope-del-storage.sql'), 'utf8').replace(/\r\n/g, '\n')),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

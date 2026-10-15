@@ -4029,6 +4029,12 @@ insert into storage.buckets (id, name, public) values ('fotos', 'fotos', false)
   on conflict (id) do nothing;
 insert into storage.buckets (id, name, public) values ('avatares', 'avatares', true)
   on conflict (id) do nothing;
+-- Tope (migración 89): 3 MB por archivo y solo JPG y PNG. Sin esto aceptaban
+-- cualquier cosa de cualquier tamaño.
+update storage.buckets
+set file_size_limit = 3145728,
+    allowed_mime_types = array['image/jpeg', 'image/png']
+where id in ('fotos', 'avatares');
 
 create policy "fotos storage: dueño" on storage.objects for all
   using (bucket_id = 'fotos' and (storage.foldername(name))[1] = auth.uid()::text)
@@ -4554,7 +4560,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 88; $$;
+returns int language sql immutable as $$ select 89; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

@@ -2,6 +2,7 @@ import type { Cliente } from '@cliente';
 import { miId } from '@compartido/quienSoy';
 import { rutaDeFoto, rutaDeMiniatura, selloAlAzar } from '@nucleo/foto';
 import { eventos } from '@compartido/eventos';
+import { CACHE_DE_FOTO } from '@compartido/firmas';
 
 /** Se sumó, se quitó o cambió una foto: el álbum que esté montado tiene que volver a pedir. */
 export const FOTOS_CAMBIO = 'ascent:fotos-cambio';
@@ -50,14 +51,14 @@ export async function subirFotoDelDia(
   if (!uid) return 'sin-sesion';
   const ruta = rutaDeFoto(uid, dia, sello ?? selloAlAzar());
   // `upsert`: el reintento pisa el archivo del intento anterior en vez de chocar con él.
-  const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, datos, { contentType: 'image/jpeg', upsert: true });
+  const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, datos, { contentType: 'image/jpeg', upsert: true, cacheControl: CACHE_DE_FOTO });
   if (errSubida) return 'no-subio';
   // LA MINIATURA NO FRENA LA FOTO: si no sube, el álbum la genera la primera
   // vez que la muestra (`completarMiniaturas`).
   if (miniatura) {
     await supabase.storage
       .from('fotos')
-      .upload(rutaDeMiniatura(ruta), miniatura, { contentType: 'image/jpeg', upsert: true })
+      .upload(rutaDeMiniatura(ruta), miniatura, { contentType: 'image/jpeg', upsert: true, cacheControl: CACHE_DE_FOTO })
       .catch(() => null);
   }
   // ¿La fila ya entró en un intento anterior? Entonces ya está: no se anota dos veces.

@@ -21,7 +21,7 @@ import { createClient } from '@supabase/supabase-js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { pasarLaEntrada, pasarLaEntradaNativa, limiteDeSonda } from './utiles.mjs';
+import { pasarLaEntrada, pasarLaEntradaNativa, limiteDeSonda, borrarCuentaDePrueba } from './utiles.mjs';
 import { T } from '../nucleo/textos.ts';
 
 // Ninguna sonda corre sin limite (ver utiles.mjs).
@@ -481,7 +481,7 @@ async function correr(app) {
     // limpieza
     const rutas = (gim.data ?? []).map((o) => `${uid}/${o.name}`);
     if (rutas.length) await s.storage.from('fotos').remove(rutas);
-    const { error: eBorrar } = await s.rpc('eliminar_cuenta');
+    const { error: eBorrar } = await borrarCuentaDePrueba(s);
     if (eBorrar) problemas.push('no se borró la cuenta: ' + eBorrar.message);
   }
   return { app, correo, pasos, problemas, base: base_, stats };

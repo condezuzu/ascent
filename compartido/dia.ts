@@ -8,6 +8,7 @@ import { revisarPerdidaAntes } from '@compartido/anotarDia';
 import { versionDelEsquema } from '@compartido/esquema';
 import type { Unidad } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
+import { firmarFotos } from '@compartido/firmas';
 
 /**
  * UN DÍA, ABIERTO: lo que se pide para mostrarlo y lo que se hace para
@@ -68,8 +69,7 @@ export async function cargarDia(supabase: Cliente, uid: string, fecha: string, e
   const ruta = (fotos as { storage_path: string }[] | null)?.[0]?.storage_path;
   let foto: string | null = null;
   if (ruta) {
-    const { data: firmada } = await supabase.storage.from('fotos').createSignedUrl(ruta, 3600);
-    foto = firmada?.signedUrl ?? null;
+    foto = (await firmarFotos(supabase, [ruta]))[0];
   }
   return {
     resumen,

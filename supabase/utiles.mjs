@@ -347,3 +347,24 @@ export function limiteDeSonda(minutos, alCortar) {
 
 /** El `timeout` de cada `next build` de una sonda: compila en 2-4 min. */
 export const LIMITE_DE_COMPILACION_MS = 10 * 60_000;
+
+/**
+ * BORRAR UNA CUENTA DE PRUEBA CON SUS ARCHIVOS (15/10). `eliminar_cuenta()` borra
+ * las filas pero no el storage —eso lo hace la app antes de llamarla
+ * (`compartido/cuenta.ts`)—, y los scripts la llamaban directo: el bucket de fotos
+ * juntó treinta archivos de prueba sin dueño. Devuelve lo mismo que el `rpc`.
+ */
+export async function borrarCuentaDePrueba(cliente) {
+  const { data } = await cliente.auth.getSession();
+  const uid = data.session?.user.id;
+  if (uid) {
+    for (const bucket of ['fotos', 'avatares']) {
+      for (let vuelta = 0; vuelta < 20; vuelta++) {
+        const { data: archivos } = await cliente.storage.from(bucket).list(uid, { limit: 1000 });
+        if (!archivos?.length) break;
+        await cliente.storage.from(bucket).remove(archivos.map((a) => `${uid}/${a.name}`));
+      }
+    }
+  }
+  return cliente.rpc('eliminar_cuenta');
+}

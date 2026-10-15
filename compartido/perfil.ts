@@ -13,6 +13,7 @@ import { disponible } from '@nucleo/esquema';
 import { rutinaPorDia, type DiaDeRutina } from '@nucleo/rutina';
 import { tablaDeLogsDeAmigos, versionDelEsquema } from '@compartido/esquema';
 import type { MiFuerza } from '@nucleo/tipos';
+import { firmarFotos } from '@compartido/firmas';
 
 /**
  * LO QUE DIBUJA TU PERFIL, en dos tandas.
@@ -248,7 +249,7 @@ async function traerMiPerfil(supabase: Cliente, uid: string): Promise<DatosDePer
 
   const [logsFotos, firmadas, chicas, us, medallas] = await Promise.all([
     logIds.length ? supabase.from('logs').select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
-    rutas.length ? supabase.storage.from('fotos').createSignedUrls(rutas, 3600).then((r) => r.data ?? []) : [],
+    rutas.length ? firmarFotos(supabase, rutas).then((us) => us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' }))) : [],
     miniaturas(supabase, rutas),
     ids.length
       ? supabase.from('usuarios_publicos').select('*').in('id', ids).then((r) => (r.data ?? []) as UsuarioPublico[])
@@ -396,7 +397,7 @@ export async function cargarPerfilDeAmigo(
   const rutas = lista.map((f) => f.storage_path);
   const [logsFotos, firmadas, chicas] = await Promise.all([
     logIds.length ? supabase.from(deAmigos).select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
-    rutas.length ? supabase.storage.from('fotos').createSignedUrls(rutas, 3600).then((r) => r.data ?? []) : [],
+    rutas.length ? firmarFotos(supabase, rutas).then((us) => us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' }))) : [],
     miniaturas(supabase, rutas),
   ]);
   const cuando = new Map((logsFotos as { id: string; fecha: string }[]).map((l) => [l.id, l.fecha]));

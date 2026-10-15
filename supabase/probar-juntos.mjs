@@ -14,7 +14,7 @@
 //   node --env-file=.env.local supabase/probar-juntos.mjs [api]
 import { TEXTOS_ES } from '../nucleo/textos.ts';
 import { createClient } from '@supabase/supabase-js';
-import { limiteDeSonda, pasarLaEntradaNativa } from './utiles.mjs';
+import { limiteDeSonda, pasarLaEntradaNativa, borrarCuentaDePrueba } from './utiles.mjs';
 
 // Dos navegadores esperando a que el otro haga algo: si uno no llega, esto no
 // puede quedar colgado para siempre. Ver la sección 123 de `test:db`.
@@ -228,7 +228,7 @@ try {
   fallos++;
 } finally {
   for (const X of [A, B, C]) {
-    const { error } = await X.s.rpc('eliminar_cuenta');
+    const { error } = await borrarCuentaDePrueba(X.s);
     if (error) console.log(`  no se borró la cuenta ${X.nombre}: ${error.message}`);
   }
   console.log(fallos ? `\n${fallos} FALLA(s) en entrenar con otro.` : '\nEntrenar con otro: todo bien.');

@@ -63,7 +63,7 @@ import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync } from 'node:fs';
-import { limiteDeSonda, pasarLaEntrada } from './utiles.mjs';
+import { limiteDeSonda, pasarLaEntrada, borrarCuentaDePrueba } from './utiles.mjs';
 
 limiteDeSonda(25);
 
@@ -342,7 +342,7 @@ try {
   await nav.close();
   console.log('\n  borrando las cuentas de la sesión de fotos…');
   for (const c of cuentas) {
-    const { error } = await c.s.rpc('eliminar_cuenta');
+    const { error } = await borrarCuentaDePrueba(c.s);
     if (error) console.log(`  aviso: ${c.usuario} no se borró — ${error.message}`);
   }
   console.log(`  ${cuentas.length} borradas.`);

@@ -52,13 +52,21 @@ function Serie() {
 // terminan, el que se acaba de registrar pega un saltito y toma un color que se note.
 // Fondo: la captura real con el día ya registrado. Las columnas son los píxeles de la
 // captura; lo único dibujado es el círculo nuevo del día de hoy.
-const PALETA_1 = { principal: '#6E6A82', claro: '#9E9BB0' };
-const OPCIONES_DE_COLOR = {
-  claro: { relleno: PALETA_1.claro, halo: PALETA_1.principal, nombre: 'el claro del rango, con un halo de su principal' },
-  tinta: { relleno: '#e8ecf6', halo: PALETA_1.claro, nombre: 'casi blanco (la tinta), con un halo del claro del rango' },
-} as const;
+// LA ELEGIDA (15/10): la B —casi blanca, la que brilla— con el tinte del rango: la tinta
+// con un 30 % del claro del rango, y el halo del claro. El agujero negro, más oscuro:
+// su claro con un cuarto de negro, y el halo de su naranja.
+function mezclar(a: string, b: string, cuanto: number) {
+  const h = (x: string) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16));
+  const [ca, cb] = [h(a), h(b)];
+  return '#' + ca.map((v, i) => Math.round(v * (1 - cuanto) + cb[i] * cuanto).toString(16).padStart(2, '0')).join('');
+}
+function colorDelDia(rango: number) {
+  const p = paletaDe(rango);
+  if (rango === 7) return { relleno: mezclar(p.claro, '#05050A', 0.25), halo: p.principal };
+  return { relleno: mezclar('#e8ecf6', p.claro, 0.3), halo: p.claro };
+}
 
-function DiaQueSalta({ color }: { color: keyof typeof OPCIONES_DE_COLOR }) {
+function DiaQueSalta({ rango }: { rango: number }) {
   const [n, otra] = useVuelta(4200);
   const d = cajas.inicio ?? {};
   const letras = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -70,7 +78,7 @@ function DiaQueSalta({ color }: { color: keyof typeof OPCIONES_DE_COLOR }) {
   const arriba = (d.L?.y ?? 328) - 42;
   const alto = 62;
   const cy = (d.L?.y ?? 328) - 20.5;
-  const op = OPCIONES_DE_COLOR[color];
+  const op = colorDelDia(rango);
   // La entrada termina con el último día: 120 ms de espera + 6 × 45 + 320.
   const finDeLaEntrada = 120 + 6 * 45 + 320;
   return (
@@ -103,15 +111,15 @@ function DiaQueSalta({ color }: { color: keyof typeof OPCIONES_DE_COLOR }) {
 }
 
 function Muestrario() {
-  const rangos = [1, 2, 3, 5, 6, 7];
+  const rangos = [1, 2, 3, 4, 5, 6, 7];
   return (
     <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', margin: '-16px 0 34px', alignItems: 'center' }}>
-      <span style={{ color: 'var(--sub)', fontSize: 12, width: 160 }}>Con «el claro del rango», el día de hoy en cada rango:</span>
+      <span style={{ color: 'var(--sub)', fontSize: 12, width: 160 }}>La B con el tinte de cada rango:</span>
       {rangos.map((r) => {
-        const p = paletaDe(r);
+        const c = colorDelDia(r);
         return (
           <span key={r} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--sub)', fontSize: 11 }}>
-            <span style={{ width: 26, height: 26, borderRadius: 13, background: p.claro, boxShadow: `0 0 12px ${p.principal}` }} />
+            <span style={{ width: 26, height: 26, borderRadius: 13, background: c.relleno, boxShadow: `0 0 12px ${c.halo}` }} />
             {RANGOS.find((x) => x.n === r)?.nombre}
           </span>
         );
@@ -253,13 +261,10 @@ export default function PropuestaAnimaciones() {
         @keyframes toma-color { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
         @keyframes destello { from { left: -14px; } to { left: 26px; } }
       `}</style>
-      <Titulito>Nueva: 2 y 3 juntas, para decidir el color</Titulito>
+      <Titulito>2 y 3 juntas: la B, con el tinte del rango</Titulito>
       <Fila>
-        <Tarjeta n={3} titulo="Días al abrir + el registrado · opción A" nota={<>Entran de a uno (45 ms entre cada uno) y, al terminar, el día de hoy pega un saltito (7 px, 0,42 s) y toma el color nuevo. <b>A:</b> {OPCIONES_DE_COLOR.claro.nombre}. En polvo queda lila; abajo, cómo queda en cada rango.</>}>
-          <DiaQueSalta color="claro" />
-        </Tarjeta>
-        <Tarjeta n={3} titulo="Días al abrir + el registrado · opción B" nota={<>Lo mismo con <b>B:</b> {OPCIONES_DE_COLOR.tinta.nombre}. Se nota más en cualquier rango, pero deja de decir de qué rango sos.</>}>
-          <DiaQueSalta color="tinta" />
+        <Tarjeta n={3} titulo="Días al abrir + el registrado · la B" nota="Entran de a uno (45 ms entre cada uno) y, al terminar, el día de hoy pega un saltito (7 px, 0,42 s) y toma el color nuevo: casi blanco, con un 30 % del claro del rango y su halo. Acá, polvo (la captura es de una cuenta nueva). Abajo, cómo queda en cada rango.">
+          <DiaQueSalta rango={1} />
         </Tarjeta>
       </Fila>
       <Muestrario />

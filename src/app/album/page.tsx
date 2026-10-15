@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
 import { miUsuario } from '@/lib/supabase/quienSoy';
 import { fechaLinda } from '@nucleo/fechas';
+import { completarMiniaturas } from '@/lib/miniaturas';
 import { cambiarVisibilidad, cargadasEnOrden, cargarAlbum, porMes, quitarFoto, type Celda } from '@compartido/album';
 import { avisarFallo } from '@compartido/cola';
 import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
@@ -45,6 +46,8 @@ export default function Album() {
     setMiPlaneta(d.miPlaneta);
     setCeldas(d.celdas);
     setCargado(true);
+    // Las que no tienen miniatura se hacen ahora; se ven en la apertura siguiente.
+    void completarMiniaturas(supabase, d.celdas);
   }, [supabase]);
 
   // Las URL firmadas de las fotos vencen a la hora: se vuelven a pedir antes de
