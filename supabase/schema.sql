@@ -3433,6 +3433,113 @@ create unique index if not exists entrenos_par_unico on public.entrenos_comparti
   (least(solicitante, destinatario), greatest(solicitante, destinatario));
 alter table public.entrenos_compartidos enable row level security;
 
+-- ENTRENAR EN GRUPO (migración 88): el par de antes pasó a ser un grupo de hasta 10.
+create table if not exists public.grupos_entreno (
+  id uuid primary key default gen_random_uuid(),
+  -- Para el link de invitación: corto, sin significado y sin la hora.
+  codigo text not null unique default substr(md5(random()::text || clock_timestamp()::text), 1, 12),
+  creado timestamptz not null default now()
+);
+alter table public.grupos_entreno enable row level security;
+
+create table if not exists public.grupo_miembros (
+  -- Una fila por persona: nadie está en dos grupos.
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  grupo_id uuid not null references public.grupos_entreno(id) on delete cascade,
+  entro timestamptz not null default clock_timestamp(),
+  -- Desempata a los que entraron en el mismo instante: el orden de llegada.
+  n bigint generated always as identity
+);
+create index if not exists grupo_miembros_grupo on public.grupo_miembros (grupo_id);
+alter table public.grupo_miembros enable row level security;
+
+create or replace function public.tope_grupo()
+returns int language sql immutable as $$ select 10; $$;
+
+-- ¿Sigue entrenando? Lo mismo que mira "Entrenando ahora": una sesión viva.
+create or replace function public.entrena_ahora(p_user uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from sesiones s
+     where s.user_id = p_user and s.estado = 'corriendo'
+       and public.sesion_sigue_viva(s.inicio, s.ultima_actividad)
+  );
+$$;
+
+-- ¿Sigue en el grupo? Como el par de antes (vinculo_vivo): tres horas desde que entró, o
+-- más si sigue entrenando; y nunca si dejó una sesión que la base ya no da por viva.
+-- Quien todavía no empezó y solo mira, cuenta.
+create or replace function public.miembro_vivo(p_user uuid, p_entro timestamptz)
+returns boolean language sql stable security definer set search_path = public as $$
+  select (p_entro > now() - interval '3 hours' or public.entrena_ahora(p_user))
+     and not exists (
+       select 1 from sesiones s
+        where s.user_id = p_user and s.estado = 'corriendo'
+          and not public.sesion_sigue_viva(s.inicio, s.ultima_actividad)
+     );
+$$;
+
+-- Saca a los que ya no entrenan y borra los grupos vacíos. Se llama al entrar a
+-- cualquier función de grupo: no hace falta un trabajo nocturno.
+create or replace function public.limpiar_grupos()
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  delete from grupo_miembros m where not public.miembro_vivo(m.user_id, m.entro);
+  delete from grupos_entreno g where not exists (select 1 from grupo_miembros m where m.grupo_id = g.id);
+  -- Los pedidos de quien ya no entrena tampoco sirven.
+  delete from entrenos_compartidos e where e.estado = 'pendiente' and e.hasta < now();
+end;
+$$;
+
+create or replace function public.grupo_de(p_user uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select grupo_id from grupo_miembros where user_id = p_user;
+$$;
+
+-- ¿Está en un grupo DE VERDAD? Uno de uno (el que armó el link y nadie entró, o el
+-- que quedó solo) no cuenta: no le impide unirse a otro.
+create or replace function public.en_grupo(p_user uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select (select count(*) from grupo_miembros where grupo_id = public.grupo_de(p_user)) >= 2;
+$$;
+
+-- ¿Son amigos? Sin mirar quién pregunta: un pedido lo ve todo el grupo.
+create or replace function public.amigos_entre(a uuid, b uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select not public.hay_bloqueo(a, b)
+     and exists (select 1 from friendships where estado = 'aceptada'
+                  and least(solicitante, destinatario) = least(a, b) and greatest(solicitante, destinatario) = greatest(a, b));
+$$;
+
+-- Quien armó el grupo: el que lleva más tiempo adentro.
+create or replace function public.lider_de(p_grupo uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select user_id from grupo_miembros where grupo_id = p_grupo order by entro, n limit 1;
+$$;
+
+-- Mete a alguien en el grupo de `p_con` (o arma uno con los dos). Devuelve el resultado.
+create or replace function public.entrar_al_grupo(p_quien uuid, p_con uuid)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  g uuid := public.grupo_de(p_con);
+begin
+  if public.en_grupo(p_quien) then return 'ya-unido'; end if;
+  -- El que estaba solo deja su grupo de uno.
+  delete from grupo_miembros where user_id = p_quien;
+  delete from grupos_entreno x where not exists (select 1 from grupo_miembros m where m.grupo_id = x.id);
+  if g is null then
+    insert into grupos_entreno default values returning id into g;
+    insert into grupo_miembros (user_id, grupo_id) values (p_con, g);
+  elsif (select count(*) from grupo_miembros where grupo_id = g) >= public.tope_grupo() then
+    return 'ocupado';
+  end if;
+  insert into grupo_miembros (user_id, grupo_id) values (p_quien, g);
+  delete from entrenos_compartidos where estado = 'pendiente' and solicitante = p_quien;
+  return 'ok';
+end;
+$$;
+
+
 -- ¿ESTE VÍNCULO SIGUE VIVO? (migración 73). No alcanza con que no haya vencido:
 -- quien se va sin tocar "Terminar" deja la sesión `corriendo` en la base hasta
 -- que vuelva a abrir la app, y el disparador que corta el vínculo no dispara.
@@ -3460,12 +3567,8 @@ revoke execute on function public.vinculo_vivo(uuid, uuid, timestamptz) from pub
 create or replace function public.entrena_con_otro(p_quien uuid, p_salvo uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
-    select 1
-      from entrenos_compartidos c
-     where c.estado = 'aceptada'
-       and p_quien in (c.solicitante, c.destinatario)
-       and p_salvo not in (c.solicitante, c.destinatario)
-       and public.vinculo_vivo(c.solicitante, c.destinatario, c.hasta)
+    select 1 from grupo_miembros a join grupo_miembros b on b.grupo_id = a.grupo_id
+     where a.user_id = p_quien and b.user_id <> p_quien and b.user_id <> p_salvo
   );
 $$;
 revoke execute on function public.entrena_con_otro(uuid, uuid) from public, anon, authenticated;
@@ -3483,24 +3586,19 @@ declare
 begin
   if uid is null then raise exception 'sin sesión'; end if;
   if p_a is null or p_a = uid or not public.son_amigos(uid, p_a) then return 'no-entrena'; end if;
-  delete from entrenos_compartidos
-   where least(solicitante, destinatario) = least(uid, p_a)
-     and greatest(solicitante, destinatario) = greatest(uid, p_a)
-     and not public.vinculo_vivo(solicitante, destinatario, hasta);
-  if public.entrena_con_otro(uid, p_a) then return 'ya-unido'; end if;
-  if public.entrena_con_otro(p_a, uid) then return 'ocupado'; end if;
-  -- Él me lo había pedido a mí (y sigue vivo: lo de arriba borró lo que no).
-  if exists (select 1 from entrenos_compartidos where solicitante = p_a and destinatario = uid) then
-    update entrenos_compartidos set estado = 'aceptada', hasta = now() + interval '3 hours'
-     where solicitante = p_a and destinatario = uid;
-    delete from entrenos_compartidos
-     where estado = 'pendiente' and (uid in (solicitante, destinatario) or p_a in (solicitante, destinatario));
-    return 'ok';
+  perform public.limpiar_grupos();
+  if public.en_grupo(uid) then return 'ya-unido'; end if;
+  if public.grupo_de(p_a) is not null
+     and (select count(*) from grupo_miembros where grupo_id = public.grupo_de(p_a)) >= public.tope_grupo() then
+    return 'ocupado';
+  end if;
+  -- Él me lo había pedido a mí: con pedirlo de vuelta alcanza para estar juntos.
+  if exists (select 1 from entrenos_compartidos where estado = 'pendiente' and solicitante = p_a and destinatario = uid) then
+    delete from entrenos_compartidos where estado = 'pendiente' and solicitante = p_a and destinatario = uid;
+    return public.entrar_al_grupo(p_a, uid);
   end if;
   if not exists (
-       select 1
-         from sesiones s
-         join profiles p on p.id = s.user_id and p.comparte_gimnasio
+       select 1 from sesiones s join profiles p on p.id = s.user_id and p.comparte_gimnasio
         where s.user_id = p_a and s.estado = 'corriendo'
           and public.sesion_sigue_viva(s.inicio, s.ultima_actividad)) then
     return 'no-entrena';
@@ -3525,21 +3623,18 @@ declare
   c entrenos_compartidos;
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  if not coalesce(p_acepta, false) then
-    delete from entrenos_compartidos where id = p_id and destinatario = uid and estado = 'pendiente';
-    return;
-  end if;
-  select * into c from entrenos_compartidos where id = p_id and destinatario = uid and estado = 'pendiente';
+  perform public.limpiar_grupos();
+  select * into c from entrenos_compartidos
+   where id = p_id and estado = 'pendiente'
+     and (destinatario = uid or (public.grupo_de(uid) is not null and public.grupo_de(destinatario) = public.grupo_de(uid)));
   if c.id is null then return; end if;
-  if not public.vinculo_vivo(c.solicitante, c.destinatario, c.hasta)
-     or public.entrena_con_otro(uid, c.solicitante)
-     or public.entrena_con_otro(c.solicitante, uid) then
-    delete from entrenos_compartidos where id = c.id;
+  delete from entrenos_compartidos where id = c.id;
+  if not coalesce(p_acepta, false) then return; end if;
+  if not public.miembro_vivo(c.solicitante, now()) or not public.miembro_vivo(c.destinatario, now())
+     or not public.miembro_vivo(uid, now()) then
     return;
   end if;
-  update entrenos_compartidos set estado = 'aceptada', hasta = now() + interval '3 hours' where id = c.id;
-  delete from entrenos_compartidos
-   where estado = 'pendiente' and (uid in (solicitante, destinatario) or c.solicitante in (solicitante, destinatario));
+  perform public.entrar_al_grupo(c.solicitante, c.destinatario);
 end;
 $$;
 
@@ -3552,6 +3647,9 @@ begin
   if uid is null or p_otro is null then return; end if;
   delete from entrenos_compartidos
    where (solicitante = uid and destinatario = p_otro) or (solicitante = p_otro and destinatario = uid);
+  if public.grupo_de(uid) is not null and public.grupo_de(uid) = public.grupo_de(p_otro) then
+    perform public.salir_del_grupo();
+  end if;
 end;
 $$;
 
@@ -3588,6 +3686,8 @@ begin
   if uid is null then return; end if;
   delete from en_vivo where user_id = uid;
   delete from entrenos_compartidos where solicitante = uid or destinatario = uid;
+  delete from grupo_miembros where user_id = uid;
+  delete from grupos_entreno g where not exists (select 1 from grupo_miembros m where m.grupo_id = g.id);
 end;
 $$;
 
@@ -3597,24 +3697,54 @@ $$;
 -- depender del suyo.
 create or replace function public.mis_uniones()
 returns jsonb language sql stable security definer set search_path = public as $$
-  select coalesce(jsonb_agg(jsonb_build_object(
-           'id', c.id,
-           'estado', c.estado,
-           'la_pedi_yo', c.solicitante = auth.uid(),
-           'otro', jsonb_build_object('id', u.id, 'username', u.username, 'avatar_url', u.avatar_url),
-           'ahora', now(),
-           'en_vivo', case when c.estado = 'aceptada' then (
-             select jsonb_build_object(
-                      'ejercicio', v.ejercicio, 'serie', v.serie, 'meta', v.meta,
-                      'descanso_fin', v.descanso_fin, 'actualizado', v.actualizado)
-               from en_vivo v where v.user_id = u.id and v.actualizado >= c.creado) end
-         ) order by c.creado), '[]'::jsonb)
-    from entrenos_compartidos c
-    join usuarios_publicos u
-      on u.id = case when c.solicitante = auth.uid() then c.destinatario else c.solicitante end
-   where auth.uid() in (c.solicitante, c.destinatario)
-     and public.vinculo_vivo(c.solicitante, c.destinatario, c.hasta)
-     and public.son_amigos(c.solicitante, c.destinatario);
+  with g as (
+    select m.grupo_id as id from grupo_miembros m
+     where m.user_id = auth.uid() and public.miembro_vivo(m.user_id, m.entro)
+  ),
+  lider as (select public.lider_de((select id from g)) as id),
+  companeros as (
+    select jsonb_build_object(
+             'id', m.grupo_id,
+             'estado', 'aceptada',
+             -- Para la app de la tienda: "la pedí yo" = entré después que él.
+             'la_pedi_yo', (select x.n from grupo_miembros x where x.user_id = auth.uid()) > m.n,
+             'grupo', m.grupo_id,
+             'lider', m.user_id = (select id from lider),
+             'yo_lider', auth.uid() = (select id from lider),
+             'otro', jsonb_build_object('id', u.id, 'username', u.username, 'avatar_url', u.avatar_url),
+             'ahora', now(),
+             'en_vivo', (
+               select jsonb_build_object(
+                        'ejercicio', v.ejercicio, 'serie', v.serie, 'meta', v.meta,
+                        'descanso_fin', v.descanso_fin, 'actualizado', v.actualizado)
+                 from en_vivo v where v.user_id = m.user_id and v.actualizado >= m.entro - interval '1 minute')
+           ) as j, 0 as tipo, m.entro as orden
+      from grupo_miembros m
+      join usuarios_publicos u on u.id = m.user_id
+     where m.grupo_id = (select id from g) and m.user_id <> auth.uid()
+       and public.miembro_vivo(m.user_id, m.entro)
+  ),
+  pedidos as (
+    select jsonb_build_object(
+             'id', c.id,
+             'estado', 'pendiente',
+             'la_pedi_yo', c.solicitante = auth.uid(),
+             'grupo', null,
+             'lider', false,
+             'yo_lider', auth.uid() = (select id from lider),
+             'otro', jsonb_build_object('id', u.id, 'username', u.username, 'avatar_url', u.avatar_url),
+             'ahora', now(),
+             'en_vivo', null
+           ) as j, 1 as tipo, c.creado as orden
+      from entrenos_compartidos c
+      join usuarios_publicos u on u.id = case when c.solicitante = auth.uid() then c.destinatario else c.solicitante end
+     where c.estado = 'pendiente' and c.hasta > now()
+       and public.amigos_entre(c.solicitante, c.destinatario)
+       and (c.solicitante = auth.uid() or c.destinatario = auth.uid()
+            or ((select id from g) is not null and public.grupo_de(c.destinatario) = (select id from g)))
+  )
+  -- Primero los compañeros, después los pedidos.
+  select coalesce((select jsonb_agg(j order by tipo, orden) from (select * from companeros union all select * from pedidos) t), '[]'::jsonb);
 $$;
 
 -- ¿ESTA PERSONA ME MUESTRA SU RUTINA? Para que el perfil de un amigo pueda
@@ -3626,6 +3756,73 @@ returns boolean language sql stable security definer set search_path = public as
     select p.comparte_rutina from profiles p
      where p.id = p_quien and (p_quien = auth.uid() or public.son_amigos(auth.uid(), p_quien))
   ), false);
+$$;
+
+create or replace function public.salir_del_grupo()
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then return; end if;
+  delete from grupo_miembros where user_id = uid;
+  delete from grupos_entreno g where not exists (select 1 from grupo_miembros m where m.grupo_id = g.id);
+end;
+$$;
+
+create or replace function public.echar_del_grupo(p_quien uuid)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  g uuid := public.grupo_de(auth.uid());
+begin
+  if uid is null or g is null or p_quien is null or p_quien = uid then return false; end if;
+  if public.lider_de(g) <> uid or public.grupo_de(p_quien) is distinct from g then return false; end if;
+  delete from grupo_miembros where user_id = p_quien;
+  return true;
+end;
+$$;
+
+create or replace function public.link_del_grupo()
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  g uuid;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  perform public.limpiar_grupos();
+  if not public.entrena_ahora(uid) then return null; end if;
+  g := public.grupo_de(uid);
+  if g is null then
+    insert into grupos_entreno default values returning id into g;
+    insert into grupo_miembros (user_id, grupo_id) values (uid, g);
+  end if;
+  return (select codigo from grupos_entreno where id = g);
+end;
+$$;
+
+create or replace function public.unirse_por_link(p_codigo text)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  g uuid;
+  lider uuid;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  perform public.limpiar_grupos();
+  select id into g from grupos_entreno where codigo = p_codigo;
+  if g is null then return 'no-existe'; end if;
+  lider := public.lider_de(g);
+  if lider is null or lider = uid then return case when lider = uid then 'ya-unido' else 'no-existe' end; end if;
+  if public.hay_bloqueo(uid, lider) then return 'no-existe'; end if;
+  -- Amigos en el acto: el link lo compartió quien armó el grupo.
+  update friendships set estado = 'aceptada'
+   where least(solicitante, destinatario) = least(uid, lider) and greatest(solicitante, destinatario) = greatest(uid, lider);
+  if not found then
+    insert into friendships (solicitante, destinatario, estado) values (lider, uid, 'aceptada');
+  end if;
+  if public.grupo_de(uid) = g then return 'ya-unido'; end if;
+  return public.entrar_al_grupo(uid, lider);
+end;
 $$;
 
 revoke execute on function public.pedir_unirse(uuid), public.responder_union(uuid, boolean), public.salir_de_union(uuid),
@@ -3652,12 +3849,58 @@ begin
   begin
     delete from en_vivo where user_id = old.user_id;
     delete from entrenos_compartidos where solicitante = old.user_id or destinatario = old.user_id;
+    delete from grupo_miembros where user_id = old.user_id;
+    delete from grupos_entreno g where not exists (select 1 from grupo_miembros m where m.grupo_id = g.id);
   exception when others then
     null;
   end;
   return null;
 end;
 $$;
+
+-- TIEMPO REAL: los del grupo leen lo del grupo, y nada más. Las políticas corren con
+-- los permisos de quien lee: por eso dos funciones que solo hablan de MI grupo (con
+-- grupo_de abierto, cualquiera podría preguntar en qué grupo está otro).
+create or replace function public.mi_grupo()
+returns uuid language sql stable security definer set search_path = public as $$
+  select public.grupo_de(auth.uid());
+$$;
+create or replace function public.en_mi_grupo(p_otro uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.grupo_de(auth.uid()) is not null and public.grupo_de(p_otro) = public.grupo_de(auth.uid());
+$$;
+revoke execute on function public.mi_grupo(), public.en_mi_grupo(uuid) from public, anon;
+grant execute on function public.mi_grupo(), public.en_mi_grupo(uuid) to authenticated;
+
+drop policy if exists "en vivo: mi grupo" on public.en_vivo;
+create policy "en vivo: mi grupo" on public.en_vivo for select
+  using (user_id = auth.uid() or public.en_mi_grupo(user_id));
+drop policy if exists "grupo: los del grupo" on public.grupo_miembros;
+create policy "grupo: los del grupo" on public.grupo_miembros for select
+  using (grupo_id = public.mi_grupo());
+grant select on public.en_vivo to authenticated;
+grant select on public.grupo_miembros to authenticated;
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    begin
+      alter publication supabase_realtime add table public.en_vivo;
+    exception when duplicate_object then null;
+    end;
+    begin
+      alter publication supabase_realtime add table public.grupo_miembros;
+    exception when duplicate_object then null;
+    end;
+  end if;
+end $$;
+
+revoke execute on function public.tope_grupo(), public.entrena_ahora(uuid), public.miembro_vivo(uuid, timestamptz), public.limpiar_grupos(), public.grupo_de(uuid), public.en_grupo(uuid), public.amigos_entre(uuid, uuid),
+  public.lider_de(uuid), public.entrar_al_grupo(uuid, uuid), public.entrena_con_otro(uuid, uuid) from public, anon, authenticated;
+revoke execute on function public.salir_del_grupo(), public.echar_del_grupo(uuid), public.link_del_grupo(), public.unirse_por_link(text) from public, anon;
+grant execute on function public.salir_del_grupo(), public.echar_del_grupo(uuid), public.link_del_grupo(), public.unirse_por_link(text) to authenticated;
+-- Las de siempre ya tenían sus permisos; `create or replace` no los cambia.
+
 revoke execute on function public.sesion_cerrada_corta_el_entreno() from public, anon, authenticated;
 
 drop trigger if exists sesiones_al_cerrar_corta on public.sesiones;
@@ -4311,7 +4554,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 87; $$;
+returns int language sql immutable as $$ select 88; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

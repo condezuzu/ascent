@@ -78,6 +78,8 @@ export const REQUIERE = {
   logsDeAmigos: 86,
   /** Las marcas se leen sin la hora (la app no depende de esto). */
   marcasSinHora: 87,
+  /** Entrenar en grupo: hasta 10, el link del grupo, echar y el tiempo real. */
+  grupos: 88,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

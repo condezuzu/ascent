@@ -16336,12 +16336,13 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
   await db.query('delete from friendships where (solicitante = $1 and destinatario = $2)', [a, b]);
   chequear('si dejan de ser amigos, deja de verse', [(await uniones(a)).length, (await uniones(b)).length], [0, 0]);
 
-  chequear('las dos tablas no se leen ni se escriben directo, y sin sesión no se llama a nada', [
+  // Desde la 88, `en_vivo` se lee por Realtime, y solo lo de tu grupo (su política). Los pedidos siguen sin leerse directo.
+  chequear('los pedidos no se leen directo; lo publicado, solo lo de mi grupo; y sin sesión no se llama a nada', [
     (await db.query(`select tablename, rowsecurity from pg_tables where tablename in ('en_vivo', 'entrenos_compartidos') order by 1`)).rows.map((t) => [t.tablename, t.rowsecurity]),
-    (await db.query(`select count(*)::int as n from pg_policies where tablename in ('en_vivo', 'entrenos_compartidos')`)).rows[0].n,
+    (await db.query(`select tablename, policyname from pg_policies where tablename in ('en_vivo', 'entrenos_compartidos') order by 1`)).rows.map((p) => [p.tablename, p.policyname]),
     (await db.query(`select has_table_privilege('authenticated', 'public.en_vivo', 'select') as a, has_table_privilege('authenticated', 'public.entrenos_compartidos', 'select') as b`)).rows[0],
     (await db.query(`select bool_or(has_function_privilege('anon', p.oid, 'execute')) as alguna from pg_proc p where p.proname in ('pedir_unirse', 'responder_union', 'salir_de_union', 'publicar_en_vivo', 'dejar_de_entrenar', 'mis_uniones', 'me_muestra_su_rutina')`)).rows[0].alguna,
-  ], [[['en_vivo', true], ['entrenos_compartidos', true]], 0, { a: false, b: false }, false]);
+  ], [[['en_vivo', true], ['entrenos_compartidos', true]], [['en_vivo', 'en vivo: mi grupo']], { a: true, b: false }, false]);
 
   // ---- "SU RUTINA": la escondió, o no hay datos ----
   chequear('una amiga que comparte: sí; una extraña: no (aunque comparta)', [
@@ -16600,16 +16601,18 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
     chequear('terminó, sigue adentro del gimnasio y un teléfono sin actualizar lo "marca": no aparece', await veA(), 0);
   }
 
-  // ---- EL VÍNCULO SIGUE A LA SESIÓN, Y ES DE A DOS (migración 73, cacería del 13/10) ----
+  // ---- EL VÍNCULO SIGUE A LA SESIÓN (migración 73, cacería del 13/10); DESDE LA 88, EN GRUPO ----
   {
     const c = await nuevoUsuario();
     await db.query(`update profiles set username = 'tres_' || substr(id::text, 1, 6) where id = $1`, [c]);
     await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada'), ($1, $3, 'aceptada')`, [c, a, b]);
     const filas = async () => (await db.query('select count(*)::int as n from entrenos_compartidos')).rows[0].n;
+    const enElGrupo = async () => (await db.query('select count(*)::int as n from grupo_miembros')).rows[0].n;
     const pedir = async (quien, aQuien) => (await como(quien, 'select pedir_unirse($1) as v', [aQuien]))[0].v;
     const limpiar = async () => {
       await db.query('delete from sesiones where user_id in ($1, $2, $3)', [a, b, c]);
       await db.query('delete from entrenos_compartidos');
+      await db.query('delete from grupos_entreno');
     };
     // La última serie fue hace N minutos y NADIE le pregunta nada a la base: el
     // teléfono está guardado. No se llama a cerrar_sesiones_vencidas, que es
@@ -16623,10 +16626,10 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
     await seFueHace(b, 10);
     const vivo = await cuantas(a);
     await seFueHace(b, 45);
-    chequear('B se fue sin tocar Terminar: a los 45 min A ya no lo ve unido, con la sesión de B todavía "corriendo" y el vínculo todavía en la tabla', [
+    chequear('B se fue sin tocar Terminar: a los 45 min A ya no lo ve unido, con la sesión de B todavía "corriendo" y los dos todavía en la tabla del grupo', [
       vivo, await cuantas(a), await cuantas(b),
-      (await db.query(`select estado from sesiones where user_id = $1`, [b])).rows[0].estado, await filas(),
-    ], [1, 0, 0, 'corriendo', 1]);
+      (await db.query(`select estado from sesiones where user_id = $1`, [b])).rows[0].estado, await enElGrupo(),
+    ], [1, 0, 0, 'corriendo', 2]);
     chequear('y deja de estar en las dos listas a la vez: tampoco figura entrenando', (await como(a, 'select id from entrenando_ahora()')).length, 0);
 
     // UN FANTASMA NO OCUPA: A sigue entrenando y C se le puede unir.
@@ -16655,22 +16658,26 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
     await como(b, 'select responder_union($1, true)', [pendiente73]);
     chequear('aceptar un pedido cuando ya no se está entrenando no une a nadie: el pedido se va', [await filas(), await cuantas(a)], [0, 0]);
 
-    // DE A DOS: B ya entrena con A; C no puede sumarse, y se le dice por qué.
+    // EN GRUPO (la 88): B ya entrena con A; C se puede sumar, y lo acepta cualquiera de los dos.
     await limpiar();
     await unir();
     await como(c, 'select iniciar_sesion()');
-    chequear('quien ya entrena con alguien no recibe otro pedido: al que pide se le contesta "ocupado"', [await pedir(c, b), await filas()], ['ocupado', 1]);
-    chequear('y quien ya entrena con alguien tampoco puede pedirle a otro', [await pedir(a, c), await filas()], ['ya-unido', 1]);
-    chequear('repetirle el pedido al compañero que ya tengo sigue sin hacer nada', [await pedir(a, b), await cuantas(a)], ['ok', 1]);
+    chequear('a quien ya entrena con alguien le puede pedir un tercero: queda el pedido', [await pedir(c, b), await filas()], ['ok', 1]);
+    chequear('quien ya está en un grupo no le pide a otro: tiene que salir primero', [await pedir(a, c), await filas()], ['ya-unido', 1]);
+    chequear('repetirle el pedido al compañero que ya tengo no hace nada: dice que ya están juntos', [await pedir(a, b), await cuantas(a)], ['ya-unido', 2]);
 
-    // LA CARRERA: dos le piden a B antes de que conteste. Al aceptar a uno, el otro pedido se va.
+    // DOS PIDEN A LA VEZ (la 88): aceptar a uno deja el otro pedido, y lo puede aceptar cualquiera del grupo.
     await limpiar();
     await como(b, 'select iniciar_sesion()');
     await pedir(a, b);
     await pedir(c, b);
     const pedidos = (await como(b, 'select mis_uniones() as v'))[0].v;
     await como(b, 'select responder_union($1, true)', [pedidos.find((u) => u.otro.id === a).id]);
-    chequear('con dos pedidos esperando, aceptar uno borra el otro: no queda la estrella', [pedidos.length, await filas(), await cuantas(c), (await como(b, 'select mis_uniones() as v'))[0].v.map((u) => [u.estado, u.otro.id])], [2, 1, 0, [['aceptada', a]]]);
+    chequear('con dos pedidos esperando, aceptar uno deja el otro esperando, y A (ya adentro) también lo ve', [
+      pedidos.length, await filas(), await cuantas(c),
+      (await como(b, 'select mis_uniones() as v'))[0].v.map((u) => [u.estado, u.otro.id]),
+      (await como(a, 'select mis_uniones() as v'))[0].v.map((u) => [u.estado, u.otro.id]),
+    ], [2, 1, 1, [['aceptada', a], ['pendiente', c]], [['aceptada', b], ['pendiente', c]]]);
 
     // Y "ENTRENANDO AHORA" NO DICE DESDE CUÁNDO.
     chequear('"Entrenando ahora" entrega nombre y foto, y nada con lo que calcular cuánto lleva', Object.keys((await como(a, 'select * from entrenando_ahora()'))[0]).sort(), ['avatar_url', 'id', 'username']);
@@ -18952,6 +18959,90 @@ console.log('\n245. La hora de entrenar por las marcas y el nombre de las fotos 
   const FO245 = await import('../nucleo/foto.ts');
   const sello = FO245.selloAlAzar();
   chequear('el nombre de una foto nueva no lleva la hora', [Number.isInteger(sello), Math.abs(sello - Date.now()) > 86400000], [true, true]);
+}
+console.log('\n246. Entrenar en grupo (la 88): hasta 10, acepta cualquiera, echa quien armó, el link y quién lee qué');
+{
+  const gente = [];
+  for (let i = 0; i < 13; i++) gente.push(await nuevoUsuario());
+  const [a, b, c, d, x] = gente;
+  // Todos amigos de A; B y C amigos entre sí; D y X no son amigos de nadie (X ni siquiera lo será).
+  for (const u of gente.slice(1)) if (u !== d && u !== x) await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [a, u]);
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [b, c]);
+  const como = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const uniones = async (u) => (await como(u, 'select mis_uniones() as v'))[0].v;
+  const pedir = async (quien, aQuien) => (await como(quien, 'select pedir_unirse($1) as v', [aQuien]))[0].v;
+  for (const u of gente) await como(u, 'select iniciar_sesion()');
+
+  // A arma con B; C le pide a B, y lo acepta A (que ya está adentro).
+  await pedir(b, a);
+  await como(a, 'select responder_union($1, true)', [(await uniones(a))[0].id]);
+  await pedir(c, b);
+  const pedidoDeC = (await uniones(a)).find((u) => u.estado === 'pendiente').id;
+  await como(a, 'select responder_union($1, true)', [pedidoDeC]);
+  const deC = await uniones(c);
+  chequear('el tercero entra aunque lo acepte otro del grupo, y ve a los dos, con A como quien armó', [
+    deC.map((u) => [u.estado, u.otro.id, u.lider]).sort((p, q) => (p[1] < q[1] ? -1 : 1)),
+    deC[0].yo_lider,
+  ], [[['aceptada', a, true], ['aceptada', b, false]].sort((p, q) => (p[1] < q[1] ? -1 : 1)), false]);
+
+  // Echar: solo quien armó.
+  const bEcha = (await como(b, 'select echar_del_grupo($1) as v', [c]))[0].v;
+  const aEcha = (await como(a, 'select echar_del_grupo($1) as v', [c]))[0].v;
+  chequear('echa solo quien armó el grupo', [bEcha, aEcha, (await uniones(c)).length, (await uniones(b)).length], [false, true, 0, 1]);
+
+  // Si se va quien armó, el poder pasa al que lleva más tiempo.
+  await pedir(c, b);
+  await como(b, 'select responder_union($1, true)', [(await uniones(b)).find((u) => u.estado === 'pendiente').id]);
+  await como(a, 'select salir_del_grupo()');
+  const deB = await uniones(b);
+  chequear('si se va quien armó, pasa al que lleva más tiempo (B), y A deja de ver el grupo', [deB[0].yo_lider, (await uniones(a)).length, deB.map((u) => u.otro.id)], [true, 0, [c]]);
+
+  // EL TOPE: diez. A vuelve a armar con los amigos que quedan.
+  await como(b, 'select salir_del_grupo()');
+  await como(c, 'select salir_del_grupo()');
+  const amigos = gente.filter((u) => u !== a && u !== d && u !== x);
+  for (const u of amigos.slice(0, 9)) {
+    await pedir(u, a);
+    const p = (await uniones(a)).find((z) => z.estado === 'pendiente' && z.otro.id === u);
+    await como(a, 'select responder_union($1, true)', [p.id]);
+  }
+  const ultimo = amigos[9];
+  chequear('el grupo llega a diez y el undécimo recibe "ocupado"', [(await uniones(a)).filter((u) => u.estado === 'aceptada').length + 1, await pedir(ultimo, a)], [10, 'ocupado']);
+
+  // EL LINK: D no es amigo de nadie; entra por el link de A y quedan amigos.
+  await como(b, 'select salir_del_grupo()');
+  const codigo = (await como(a, 'select link_del_grupo() as v'))[0].v;
+  const entra = (await como(d, 'select unirse_por_link($1) as v', [codigo]))[0].v;
+  chequear('el link agrega como amigo al que entra y lo une al grupo', [
+    entra,
+    (await db.query(`select count(*)::int n from friendships where estado = 'aceptada' and least(solicitante, destinatario) = least($1::uuid, $2::uuid) and greatest(solicitante, destinatario) = greatest($1::uuid, $2::uuid)`, [a, d])).rows[0].n,
+    (await uniones(d)).some((u) => u.otro.id === a),
+    (await como(d, 'select unirse_por_link($1) as v', ['no-existe']))[0].v,
+  ], ['ok', 1, true, 'no-existe']);
+
+  // TIEMPO REAL: lo publicado y la lista del grupo se leen solo desde adentro.
+  await como(a, 'select publicar_en_vivo($1, $2, $3, $4)', ['press_banca', 2, 4, null]);
+  const lee = async (u, sql) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    const n = (await db.query(sql, [a])).rows.length;
+    await db.exec('reset role');
+    return n;
+  };
+  chequear('un compañero lee lo que A publicó y la lista del grupo; alguien de afuera, nada', [
+    await lee(d, 'select ejercicio from en_vivo where user_id = $1'),
+    await lee(x, 'select ejercicio from en_vivo where user_id = $1'),
+    await lee(d, 'select user_id from grupo_miembros where user_id = $1'),
+    await lee(x, 'select user_id from grupo_miembros where user_id = $1'),
+  ], [1, 0, 1, 0]);
+
+  // La sesión que se cierra saca del grupo.
+  await db.query(`update sesiones set inicio = now() - interval '20 minutes', series = 3 where user_id = $1 and estado = 'corriendo'`, [d]);
+  await como(d, 'select terminar_sesion()');
+  chequear('terminar saca del grupo', (await db.query('select count(*)::int n from grupo_miembros where user_id = $1', [d])).rows[0].n, 0);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
