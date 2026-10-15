@@ -3672,9 +3672,9 @@ create policy "feedback: insertar" on public.feedback for insert with check (aut
 create policy "errores: insertar" on public.errores_js for insert with check (true);
 
 -- ejercicios: catálogo de solo lectura, igual para todos
--- Los propios (migración 76): los ve quien los creó y sus amigos.
+-- Los propios (migración 76): los ve SOLO quien los creó (migración 80; antes también sus amigos).
 create policy "ejercicios: catálogo con sesión" on public.ejercicios for select
-  using (auth.uid() is not null and (creado_por is null or creado_por = auth.uid() or public.son_amigos(auth.uid(), creado_por)));
+  using (auth.uid() is not null and (creado_por is null or creado_por = auth.uid()));
 
 -- prs: las marcas se ven igual que los logs — el dueño todo, los amigos
 -- aceptados leen. El peso CORPORAL sigue afuera, siempre (§16.6).
@@ -4220,7 +4220,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 79; $$;
+returns int language sql immutable as $$ select 80; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

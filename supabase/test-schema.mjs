@@ -17569,9 +17569,10 @@ console.log('\n216. Ejercicios propios, la lupa y el cardio (migración 76)');
       await db.exec('reset role');
     }
   };
-  chequear('los míos los veo yo y mis amigos; una extraña no; el catálogo común lo ven todos', [
+  // SOLO YO desde la 80 (15/10): antes también los veían los amigos.
+  chequear('los míos los veo solo yo: ni una amiga ni una extraña; el catálogo común lo ven todos', [
     await veo(yo), await veo(amiga), await veo(extrana), (await catalogoComun(extrana)) === (await catalogoComun(yo)),
-  ], [[hip, tenis].sort(), [hip, tenis].sort(), [], true]);
+  ], [[hip, tenis].sort(), [], [], true]);
 
   // ---- EL TOPE ----
   for (let i = (await db.query('select count(*) as n from ejercicios where creado_por = $1', [yo])).rows[0].n; i < 100; i++)
@@ -18368,6 +18369,57 @@ console.log('\n230. Cardio con cronómetro, y el descanso a mano hasta una hora 
     primera: { minutos: [12], descanso: false, corre: false, subioElCronometro: false },
     segunda: { minutos: [17], series: 2 },
   });
+}
+console.log('\n231. Ejercicios propios: solo los ve quien los creó (migración 80), y "ya está" antes de crear uno igual');
+{
+  const YE231 = await import('../nucleo/yaEsta.ts');
+  const PR231 = await import('../nucleo/propios.ts');
+  const RU231 = await import('../compartido/rutinas.ts');
+  const E231 = await import('../compartido/esquema.ts');
+  // EL CATÁLOGO DE LA BASE, el mismo que trae la app al selector.
+  const catalogo = (await db.query('select id, nombre from ejercicios where creado_por is null order by orden')).rows;
+  const busca = (n) => YE231.yaEsta(n, catalogo)?.id ?? null;
+  chequear('"ya está": el mismo ejercicio con otro nombre (sinónimo, plural, inglés, una letra mal) se encuentra', [
+    'press plano', 'Bench press', 'sentadillas', 'squat', 'fondos', 'curl', 'remo', 'deadlift', 'estocadas', 'vuelos laterales', 'polea al pecho', 'Press de vanca', 'Curl con mancuerna',
+  ].map(busca), ['press_banca', 'press_banca', 'sentadilla', 'sentadilla', 'fondos', 'curl_barra', 'remo_barra', 'peso_muerto', 'zancadas', 'elevaciones_laterales', 'jalon', 'press_banca', 'curl_mancuernas']);
+  chequear('y uno distinto no se confunde: contener la palabra no alcanza', ['press', 'jalón', 'press de banca con mancuernas raras', 'curl femoral sentado', 'Tenis'].map(busca), [null, null, null, null, null]);
+  chequear('el propio de otra persona se ve como "Ejercicio propio", nunca con su id ni con puntos para siempre', [
+    PR231.nombreVisible('propio_abc123', undefined), PR231.nombreVisible('propio_abc123', undefined, '…'), PR231.nombreVisible('press_banca', 'Press de banca'), PR231.nombreVisible('press_banca', undefined, '…'),
+  ], ['Ejercicio propio', 'Ejercicio propio', 'Press de banca', '…']);
+  // Por el camino de la app: una amiga crea uno propio y otra cuenta copia su rutina.
+  const clienteDe = (quien) => ({
+    rpc: async (nombre, args = {}) => {
+      await comoUsuario(quien);
+      const claves = Object.keys(args);
+      const valores = claves.map((k) => (args[k] !== null && typeof args[k] === 'object' ? JSON.stringify(args[k]) : args[k]));
+      try {
+        const r = await db.query(`select public.${nombre}(${claves.map((k, i) => `${k} => $${i + 1}`).join(', ')}) as r`, valores);
+        return { data: r.rows[0].r, error: null };
+      } catch (e) {
+        return { data: null, error: { message: String(e.message) } };
+      }
+    },
+  });
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [ana, beto]);
+  const suyo = (await clienteDe(ana).rpc('crear_ejercicio', { p_nombre: 'Remo en anillas', p_grupo: 'espalda', p_mide: 'series' })).data;
+  await comoUsuario(beto);
+  await db.exec('set role authenticated');
+  const betoVe = (await db.query('select id from ejercicios where id = $1', [suyo])).rows.length;
+  await db.exec('reset role');
+  const cli = clienteDe(beto);
+  await E231.versionDelEsquema(cli, Date.now() + E231.VIGENCIA_MS * 40000);
+  await new Promise((r) => setTimeout(r, 20));
+  const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: suyo, series: 3 }, { ejercicio: 'press_banca', series: 4 }] };
+  await RU231.copiarRutina(cli, 'Rutina de ana', dias);
+  const copiada = (await RU231.cargarMisRutinas(cli)).find((r) => r.activa);
+  chequear('un amigo no ve mis propios; copiar mi rutina no se lleva el propio (quedaría sin nombre)', [betoVe, copiada?.dias[1].ejercicios.map((e) => e.ejercicio)], [0, ['press_banca']]);
+  const { readFileSync: leer231 } = await import('node:fs');
+  const de231 = (...p) => leer231(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  chequear('la rutina de un amigo y el compañero en vivo nombran con nombreVisible', ['RutinaPlegada.tsx', 'CompaneroEnDescanso.tsx', 'Juntos.tsx'].map((f) => /nombreVisible\(/.test(de231('movil', 'src', f))), [true, true, true]);
+  chequear('el selector avisa "ya está" y ofrece usar ese antes de crear', /const parecido = creando && creando\.nombre\.trim\(\)\.length >= 2 \? yaEsta\(creando\.nombre, ejercicios\) : null;/.test(de231('movil', 'src', 'SelectorEjercicio.tsx')), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

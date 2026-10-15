@@ -6,6 +6,7 @@ import { diasLimpios, hayAlgo, semanaDeLaDeducida, type DiaDeSemana, type Rutina
 import { versionDelEsquema } from '@compartido/esquema';
 import { leerPerfilCache } from '@compartido/cache';
 import { eventos, RUTINA_CAMBIO } from '@compartido/eventos';
+import { esPropio } from '@nucleo/propios';
 
 /**
  * LAS RUTINAS, del lado del teléfono (14/10). Las reglas viven en
@@ -98,7 +99,9 @@ export async function copiarRutina(
   dias: DiaDeSemana[]
 ): Promise<{ nueva: string; anterior: { id: string; nombre: string } | null } | null> {
   const antes = (await cargarMisRutinas(supabase))?.find((r) => r.activa) ?? null;
-  const nueva = await guardarRutina(supabase, { id: null, nombre, dias });
+  // Sus ejercicios propios no viajan: son solo suyos y acá quedarían sin nombre (migración 80).
+  const sinAjenos = dias.map((d) => ({ ...d, ejercicios: d.ejercicios.filter((e) => !esPropio(e.ejercicio)) }));
+  const nueva = await guardarRutina(supabase, { id: null, nombre, dias: sinAjenos });
   if (!nueva || !(await activarRutina(supabase, nueva))) return null;
   await cargarMisRutinas(supabase);
   return { nueva, anterior: antes ? { id: antes.id, nombre: antes.nombre } : null };

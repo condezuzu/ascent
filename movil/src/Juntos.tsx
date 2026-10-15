@@ -4,6 +4,7 @@ import { responderUnion, salirDeUnion } from '@compartido/enVivo';
 import { cuentaAtras } from '@compartido/descanso';
 import { renglonDe, type Union } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
+import { nombreVisible } from '@nucleo/propios';
 import { supabase } from './supabase';
 import { useNombresDeEjercicios } from './useNombresDeEjercicios';
 import Avatar from './Avatar';
@@ -61,7 +62,7 @@ export default function Juntos({ uniones, recibidoEn, recargar }: { uniones: Uni
           );
         }
         const r = renglonDe(u, ahora - recibidoEn);
-        const ejercicio = r.ejercicio ? (nombres[r.ejercicio] ?? '…') : T.sesion.sinEjercicio;
+        const ejercicio = r.ejercicio ? nombreVisible(r.ejercicio, nombres[r.ejercicio], '…') : T.sesion.sinEjercicio;
         return (
           <View key={u.id} testID="juntos-en-vivo" style={estilos.fila}>
             <Avatar url={u.otro.avatar_url} nombre={u.otro.username} tam={28} />

@@ -5,6 +5,7 @@ import { GRUPOS_PROPIOS, ORDEN_ZONAS, buscarEjercicios, gruposDeZona, nombreDeGr
 import { disponible } from '@nucleo/esquema';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { crearEjercicio } from '@compartido/ejerciciosPropios';
+import { yaEsta } from '@nucleo/yaEsta';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
@@ -100,6 +101,10 @@ function SelectorEjercicio({
     alCerrar();
   }
 
+  // ¿YA ESTÁ? (15/10): el que significa lo mismo aunque se llame distinto. Se avisa
+  // y se ofrece; si igual se quiere crear, "Crear igual".
+  const parecido = creando && creando.nombre.trim().length >= 2 ? yaEsta(creando.nombre, ejercicios) : null;
+
   async function crear() {
     if (!creando?.grupo || creando.nombre.trim().length < 2) return;
     setCreandoError('');
@@ -178,13 +183,21 @@ function SelectorEjercicio({
           </View>
           {creando.grupo === 'cardio' && <Text style={estilos.nota}>{T.ejercicios.seMideEnMinutos}</Text>}
           {!!creandoError && <Text style={estilos.nota}>{creandoError}</Text>}
+          {parecido && (
+            <View testID="ya-esta">
+              <Text style={estilos.yaEsta}>{T.ejercicios.yaEsta(parecido.nombre)}</Text>
+              <Pressable testID="ya-esta-usar" style={estilos.crear} onPress={() => elegir(parecido.id)}>
+                <Text style={estilos.crearTexto}>{T.ejercicios.usarEse}</Text>
+              </Pressable>
+            </View>
+          )}
           <Pressable
             testID="crear-ejercicio-listo"
-            style={[estilos.crear, (!creando.grupo || creando.nombre.trim().length < 2) && estilos.apagado]}
+            style={[parecido ? estilos.crearIgual : estilos.crear, (!creando.grupo || creando.nombre.trim().length < 2) && estilos.apagado]}
             onPress={() => void crear()}
             disabled={!creando.grupo || creando.nombre.trim().length < 2}
           >
-            <Text style={estilos.crearTexto}>{T.ejercicios.crear}</Text>
+            <Text style={parecido ? estilos.crearIgualTexto : estilos.crearTexto}>{parecido ? T.ejercicios.crearIgual : T.ejercicios.crear}</Text>
           </Pressable>
         </View>
       )}
@@ -285,6 +298,9 @@ const estilos = StyleSheet.create({
   chipTexto: { color: C.sub, fontSize: 14 },
   crear: { alignSelf: 'flex-start', borderWidth: StyleSheet.hairlineWidth, borderColor: C.tinta, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18, marginTop: 12 },
   crearTexto: { color: C.tinta, fontSize: 15 },
+  yaEsta: { color: C.tinta, fontSize: 14, marginTop: 14 },
+  crearIgual: { alignSelf: 'flex-start', paddingVertical: 10, marginTop: 6 },
+  crearIgualTexto: { color: C.sub, fontSize: 14 },
   apagado: { opacity: 0.4 },
   cancelarTexto: { color: C.sub, fontSize: 14 },
 });

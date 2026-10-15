@@ -62,6 +62,8 @@ export const REQUIERE = {
   amigosDeAmigos: 78,
   /** Las vidas vuelven todas juntas al cerrarse el ciclo de 30 días. */
   vidasDeUna: 79,
+  /** Los ejercicios propios los ve solo quien los creó (la app no depende de esto). */
+  propiosSoloMios: 80,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

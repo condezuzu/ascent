@@ -145,6 +145,14 @@ const RECETAS = {
     await page.getByText('Piernas', { exact: true }).last().click({ timeout: 20000 });
     await page.waitForTimeout(400);
     await foto(page, 'ejercicios-crear');
+    // ¿YA ESTÁ? (15/10): "press plano" es Press de banca; se avisa y se ofrece usar ese.
+    await page.getByTestId('crear-ejercicio').locator('input').first().fill('press plano');
+    await page.waitForTimeout(500);
+    await page.getByTestId('ya-esta').first().waitFor({ state: 'visible', timeout: 10000 });
+    await foto(page, 'ejercicios-ya-esta');
+    const aviso = await page.getByTestId('ya-esta').first().innerText();
+    if (!aviso.includes('Press de banca')) throw new Error(`el aviso dice "${aviso}"`);
+    console.log('  ya está: avisó Press de banca');
     return page;
   },
   async cartel(nav, gente) {

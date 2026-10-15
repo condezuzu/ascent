@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ORDEN_SEMANA, tituloDelDia, type DiaDeSemana } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
+import { nombreVisible } from '@nucleo/propios';
 import type { CatalogoDeRutina } from '@compartido/rutinas';
 import { C } from './colores';
 
@@ -67,7 +68,7 @@ export default function RutinaPlegada({
                   {dia.ejercicios.map((e, i) => (
                     <View key={`${e.ejercicio}-${i}`} style={estilos.fila}>
                       <Text style={estilos.ejercicio} numberOfLines={1}>
-                        {catalogo.get(e.ejercicio)?.nombre ?? e.ejercicio}
+                        {nombreVisible(e.ejercicio, catalogo.get(e.ejercicio)?.nombre)}
                       </Text>
                       <Text style={estilos.cantidad}>
                         {e.minutos !== undefined ? T.rutina.minutos(e.minutos) : e.series > 0 ? T.rutina.series(e.series) : ''}

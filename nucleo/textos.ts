@@ -204,6 +204,12 @@ const ES = {
     agregarPropio: (nombre: string) => `+ Agregar «${nombre}»`,
     nuevoPropio: '+ Ejercicio propio',
     nombreDelPropio: 'Nombre del ejercicio',
+    // LOS PROPIOS SON DE QUIEN LOS CREÓ (15/10): el de otra persona se ve así, sin nombre.
+    propioAjeno: 'Ejercicio propio',
+    // ¿YA ESTÁ? Antes de crear uno que significa lo mismo que otro ("press plano" y Press de banca).
+    yaEsta: (nombre: string) => `Ya está: «${nombre}».`,
+    usarEse: 'Usar ese',
+    crearIgual: 'Crear igual',
     queMusculo: '¿Qué entrena?',
     crear: 'Agregar',
     seMideEnMinutos: 'Se anota en minutos.',
