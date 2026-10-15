@@ -3419,7 +3419,8 @@ console.log('\n48. El bloque: qué estás haciendo y cuántas te propusiste');
     b = sumar(sumar(sumar(b)));
     b = cambiarMeta(b, 2);
     chequear('la meta se puede bajar por debajo de lo ya hecho', [b.meta, b.hechas], [2, 3]);
-    chequear('una meta absurda cae en la de omision', cambiarMeta(b, 99).meta, 3);
+    // Desde el 15/10 la meta es la que diga la rutina, hasta 99: absurdo es 0 o 100.
+    chequear('una meta absurda cae en la de omision', [cambiarMeta(b, 0).meta, cambiarMeta(b, 100).meta, cambiarMeta(b, 6).meta], [3, 3, 6]);
   }
 
   // Restar corrige de menos y nunca toca lo cerrado.
@@ -17231,7 +17232,7 @@ console.log('\n211. Señal mala: la respuesta que se pierde no duplica, y lo que
   ], ['no-subio', 'ok', 1, 1, true]);
   const reg211 = de211('movil', 'src', 'RegistrarDia.tsx');
   chequear('la hoja fija el sello al ELEGIR la foto y manda el mismo en cada intento', [
-    /selloDeFoto\.current = Date\.now\(\);\s*setFoto\(/.test(reg211),
+    /selloDeFoto\.current = selloAlAzar\(\);\s*setFoto\(/.test(reg211),
     /subioRango, sello: selloDeFoto\.current \|\| undefined \}\)/.test(reg211),
   ], [true, true]);
 
@@ -18904,7 +18905,8 @@ console.log('\n244. Lo que quedó por OTA (15/10): las cantidades de la rutina; 
 {
   chequear('la rutina guardada pone la meta (4 series) y los minutos de la cinta (30) en lo que propone', await escenarioDeSesion('cantidades'), { semilla: ['press_banca', 4], propuesta: ['cinta', 30, true] });
   const RU244 = await import('../nucleo/rutinas.ts');
-  chequear('la meta de la rutina se acota a lo que la sesión deja elegir (2 a 5)', [RU244.metaDeRutina(1), RU244.metaDeRutina(4), RU244.metaDeRutina(8)], [2, 4, 5]);
+  const BL244 = await import('../nucleo/bloques.ts');
+  chequear('la meta es la que dice la rutina (seis series son seis), y la fila de píldoras la muestra aunque no sea ×2 a ×5', [RU244.metaDeRutina(1), RU244.metaDeRutina(6), RU244.metaDeRutina(150), BL244.pildorasDeMeta(6), BL244.pildorasDeMeta(3)], [1, 6, 99, [2, 3, 4, 5, 6], [2, 3, 4, 5]]);
   const { readFileSync: leer244 } = await import('node:fs');
   const de244 = (...p) => leer244(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
   // Proxies: estos tres se probaron montando las pantallas en la cacería; acá se pinean.
@@ -18915,6 +18917,41 @@ console.log('\n244. Lo que quedó por OTA (15/10): las cantidades de la rutina; 
   const { T: T244 } = await import('../nucleo/textos.ts');
   const { EN: EN244 } = await import('../nucleo/textos-en.ts');
   chequear('la nota de la meta de pasos dice que mueve la barra de Inicio', [/Inicio/.test(T244.ajustes.metaPasosNota), /Home/.test(EN244.ajustes.metaPasosNota)], [true, true]);
+}
+console.log('\n245. La hora de entrenar por las marcas y el nombre de las fotos (la 87)');
+{
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [ana, beto]);
+  await comoUsuario(ana);
+  await db.exec('set role authenticated');
+  // Lo que hace la app: la marca sin pedir la fila de vuelta, y la medalla con upsert.
+  await db.query(`insert into prs (user_id, ejercicio, peso, reps, fecha) values ($1, 'press_banca', 80, 5, current_date)`, [ana]);
+  await db.query(
+    `insert into medallas (user_id, ejercicio, percentil, actualizado) values ($1, 'press_banca', 70, now())
+       on conflict (user_id, ejercicio) do update set percentil = excluded.percentil, actualizado = excluded.actualizado`,
+    [ana]
+  );
+  const propias = (await db.query('select ejercicio, peso, reps, es_real, fecha from prs where user_id = $1', [ana])).rows.length;
+  await comoUsuario(beto);
+  const intento = async (sql) => {
+    try {
+      await db.query(sql, [ana]);
+      return 'leyó';
+    } catch (e) {
+      return /permission denied/i.test(e.message) ? 'no' : e.message;
+    }
+  };
+  const vistas = [
+    await intento('select peso, fecha from prs where user_id = $1'),
+    await intento('select creado from prs where user_id = $1'),
+    await intento('select percentil from medallas where user_id = $1'),
+  ];
+  await db.exec('reset role');
+  chequear('la marca y la medalla se anotan como siempre; un amigo lee el peso y el percentil pero no la hora de la marca (prs.creado)', [propias, vistas], [1, ['leyó', 'no', 'leyó']]);
+  const FO245 = await import('../nucleo/foto.ts');
+  const sello = FO245.selloAlAzar();
+  chequear('el nombre de una foto nueva no lleva la hora', [Number.isInteger(sello), Math.abs(sello - Date.now()) > 86400000], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

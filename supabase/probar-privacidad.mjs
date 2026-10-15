@@ -60,8 +60,11 @@ try {
 
   async function loQueVe(quien) {
     const c = quien.s;
-    const [logs, fotos, prs, pesos, ses, desc, vidas] = await Promise.all([
-      c.from('logs').select('fecha').eq('user_id', A.id),
+    // Los días de otro se leen por la vista sin la hora (migración 86), como las apps;
+    // la tabla tiene que dar cero aunque sean amigas.
+    const [logs, logsTabla, fotos, prs, pesos, ses, desc, vidas] = await Promise.all([
+      c.from('logs_de_amigos').select('fecha').eq('user_id', A.id),
+      c.from('logs').select('fecha, creado').eq('user_id', A.id),
       c.from('photos').select('storage_path').eq('user_id', A.id),
       c.from('prs').select('peso').eq('user_id', A.id),
       c.from('weights').select('valor').eq('user_id', A.id),
@@ -78,6 +81,7 @@ try {
     };
     return {
       logs: logs.data?.length ?? 0,
+      logsTabla: logsTabla.data?.length ?? 0,
       fotos: fotos.data?.length ?? 0,
       marcas: prs.data?.length ?? 0,
       pesos: pesos.data?.length ?? 0,
@@ -91,7 +95,7 @@ try {
 
   console.log('\nB no es amiga');
   chequear('no ve NADA de A por las tablas', await loQueVe(B), {
-    logs: 0, fotos: 0, marcas: 0, pesos: 0, sesiones: 0, descansos: 0, vidas: 0, bajaPrivada: false, bajaAmigos: false,
+    logs: 0, logsTabla: 0, fotos: 0, marcas: 0, pesos: 0, sesiones: 0, descansos: 0, vidas: 0, bajaPrivada: false, bajaAmigos: false,
   });
 
   // Las funciones que reciben el id de otro. Si alguna contesta, filtra por
@@ -139,7 +143,7 @@ try {
   const antesFirma = await B.s.storage.from('fotos').createSignedUrl(rutaAmigos, 60);
   console.log('  --   siendo amiga, enlace firmado de la foto de amigos:', antesFirma.error ? 'no' : 'sí');
   chequear('siendo amiga ve días, la foto de amigos y marcas; nunca peso, sesiones, descansos ni la foto privada', await loQueVe(B), {
-    logs: 8, fotos: 1, marcas: 1, pesos: 0, sesiones: 0, descansos: 0, vidas: 0, bajaPrivada: false, bajaAmigos: true,
+    logs: 8, logsTabla: 0, fotos: 1, marcas: 1, pesos: 0, sesiones: 0, descansos: 0, vidas: 0, bajaPrivada: false, bajaAmigos: true,
   });
 
   // A la vuelve privada: tiene que dejar de bajarse al instante.

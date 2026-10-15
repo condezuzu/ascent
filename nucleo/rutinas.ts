@@ -18,6 +18,7 @@
  */
 import type { DiaDeRutina } from './rutina.ts';
 import { T } from './textos.ts';
+import { META_MAXIMA } from './bloques.ts';
 
 export type EjercicioDelDia = { ejercicio: string; series: number; minutos?: number };
 export type DiaDeSemana = { descanso: boolean; ejercicios: EjercicioDelDia[] };
@@ -121,9 +122,9 @@ export function cantidadesDeHoy(
   return out;
 }
 
-/** La meta de la sesión va de 2 a 5 (`METAS`): lo de la rutina se acota a ese rango. */
+/** La meta de la sesión es la que dice la rutina (de 1 a `META_MAXIMA`). */
 export function metaDeRutina(series: number): number {
-  return Math.min(5, Math.max(2, Math.round(series)));
+  return Math.min(META_MAXIMA, Math.max(1, Math.round(series)));
 }
 
 // ── EDITAR: cada función devuelve una semana NUEVA, sin tocar la que recibe ──

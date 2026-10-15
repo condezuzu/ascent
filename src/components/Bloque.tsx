@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
+import { metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import ListaDeBloques from '@/components/ListaDeBloques';
@@ -181,7 +181,7 @@ export default function Bloque({
         </button>
 
         <div className="bloque-metas" role="group" aria-label={T.sesion.cuantasVasAHacer}>
-          {METAS.map((m) => (
+          {pildorasDeMeta(estado.meta).map((m) => (
             <button
               key={m}
               className={`pastilla ${estado.meta === m ? 'prendida' : ''}`}

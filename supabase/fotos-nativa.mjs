@@ -532,6 +532,21 @@ const RECETAS = {
     await foto(page, 'rutina-amigo-copiada');
     return page;
   },
+  // LA META DE LA RUTINA (15/10): hoy press de banca con 6 series. La fila de píldoras
+  // suma la ×6, prendida.
+  async 'meta-de-rutina'(nav, gente) {
+    const A = gente.a;
+    const dias = await semanaDeMuestra(A.s);
+    const hoy = new Date().getDay();
+    dias[hoy] = { descanso: false, ejercicios: [{ ejercicio: dias[1].ejercicios[0].ejercicio, series: 6 }, ...dias[1].ejercicios.slice(1)] };
+    const rutina = { id: '00000000-0000-4000-8000-000000000001', nombre: 'Entrenamiento 1', activa: true, dias };
+    const { page } = await abrir(nav, A, { version_del_esquema: 86, mis_rutinas: [rutina], rutina_activa_de: rutina });
+    await page.evaluate(([de, d]) => localStorage.setItem('ascent:rutina-activa', JSON.stringify({ de, id: '00000000-0000-4000-8000-000000000001', dias: d })), [A.id, dias]);
+    await page.getByText(TEXTOS_ES.inicio.iniciarEntrenamiento, { exact: true }).first().click({ timeout: 30000 });
+    await page.waitForTimeout(3500);
+    await foto(page, 'meta-de-rutina');
+    return page;
+  },
   // LA ZONA SEGURA (15/10): el navegador no tiene isla ni hora, así que se le dice a
   // Chrome que la zona de arriba mide 59 (un iPhone con isla) y se pinta esa franja.
   async 'zona-segura'(nav, gente) {

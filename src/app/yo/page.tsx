@@ -28,6 +28,7 @@ import type { Medalla } from '@nucleo/medallas';
 import Medallas from '@/components/Medallas';
 import { conComa } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
+import { rutaDeFoto, selloAlAzar } from '@nucleo/foto';
 
 /**
  * Mi perfil (§9): el único lugar donde se junta todo lo que es mío. Cambiar
@@ -183,7 +184,7 @@ export default function Yo() {
       setSumandoFoto(false);
       return setError(T.general.falloFotoPreparar);
     }
-    const ruta = `${perfil.id}/${hoy}-${Date.now()}.jpg`;
+    const ruta = rutaDeFoto(perfil.id, hoy, selloAlAzar());
     const { error: errSubida } = await supabase.storage
       .from('fotos')
       .upload(ruta, lista.blob, { contentType: lista.tipo });

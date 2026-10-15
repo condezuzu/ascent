@@ -244,9 +244,12 @@ function sinCarga<T extends { carga?: Carga }>(obj: T): Omit<T, 'carga'> {
   return resto;
 }
 
-// Dos, tres, cuatro o cinco. Más que eso ya no se elige de una fila de
-// píldoras, y menos de dos no es un bloque.
+// Las que se eligen de la fila de píldoras: dos, tres, cuatro o cinco.
 export const METAS = [2, 3, 4, 5] as const;
+// Las que se ACEPTAN (15/10): la que diga la rutina, como las series de la rutina
+// (`MAX_SERIES`). Seis series de un básico es de lo más común; recortarlas a cinco
+// era un límite de la fila de píldoras, no una decisión.
+export const META_MAXIMA = 99;
 export const META_POR_OMISION = 3;
 // Lo mismo que acota la base en `fijar_bloques`: una sesión con más de cuarenta
 // cambios de ejercicio no es una sesión.
@@ -258,7 +261,12 @@ export function bloquesVacios(ejercicio: string | null = null, meta = META_POR_O
 
 export function metaValida(meta: number): number {
   const n = Math.round(meta);
-  return METAS.includes(n as (typeof METAS)[number]) ? n : META_POR_OMISION;
+  return Number.isFinite(n) && n >= 1 && n <= META_MAXIMA ? n : META_POR_OMISION;
+}
+
+/** Las píldoras a mostrar: las de siempre, y la meta de ahora si no es una de ellas. */
+export function pildorasDeMeta(meta: number): number[] {
+  return (METAS as readonly number[]).includes(meta) ? [...METAS] : [...METAS, meta].sort((a, b) => a - b);
 }
 
 /**

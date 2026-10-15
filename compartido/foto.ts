@@ -1,6 +1,6 @@
 import type { Cliente } from '@cliente';
 import { miId } from '@compartido/quienSoy';
-import { rutaDeFoto, rutaDeMiniatura } from '@nucleo/foto';
+import { rutaDeFoto, rutaDeMiniatura, selloAlAzar } from '@nucleo/foto';
 import { eventos } from '@compartido/eventos';
 
 /** Se sumó, se quitó o cambió una foto: el álbum que esté montado tiene que volver a pedir. */
@@ -48,7 +48,7 @@ export async function subirFotoDelDia(
   // intentar nada.
   const uid = await miId(supabase);
   if (!uid) return 'sin-sesion';
-  const ruta = rutaDeFoto(uid, dia, sello ?? Date.now());
+  const ruta = rutaDeFoto(uid, dia, sello ?? selloAlAzar());
   // `upsert`: el reintento pisa el archivo del intento anterior en vez de chocar con él.
   const { error: errSubida } = await supabase.storage.from('fotos').upload(ruta, datos, { contentType: 'image/jpeg', upsert: true });
   if (errSubida) return 'no-subio';

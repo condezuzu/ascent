@@ -3870,7 +3870,9 @@ grant select                 on public.usuarios_publicos to authenticated;
 grant select                 on public.ejercicios   to authenticated;
 -- prs sin update: una marca mal cargada se borra y se vuelve a cargar, igual
 -- que un día de racha. Editarla en el lugar dejaría el historial sin rastro.
-grant select, insert, delete on public.prs          to authenticated;
+grant insert, delete         on public.prs          to authenticated;
+-- Sin `creado` (migración 87): dice a qué hora se guardó la marca, y los amigos la leían.
+grant select (id, user_id, ejercicio, peso, reps, es_real, fecha) on public.prs to authenticated;
 -- sesiones de solo lectura: empezar y terminar son RPC, para que nadie se
 -- escriba el `inicio` que quiera ni resucite una sesión abandonada
 grant select                 on public.sesiones     to authenticated;
@@ -4309,7 +4311,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 86; $$;
+returns int language sql immutable as $$ select 87; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

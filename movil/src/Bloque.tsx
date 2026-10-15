@@ -3,7 +3,7 @@ import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
-import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
+import { metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { OPCIONES_DE_LA_PREGUNTA, cargaVigente, hayQuePreguntar, kilosMovidos, llevaNumero, muestraTotal, type Carga } from '@nucleo/carga';
@@ -295,7 +295,7 @@ export default function Bloque({
 
       {!esTiempo && (
       <View style={estilos.metas} accessibilityLabel={T.sesion.cuantasVasAHacer}>
-        {METAS.map((m) => (
+        {pildorasDeMeta(estado.meta).map((m) => (
           <Pressable
             key={m}
             style={[estilos.meta, estado.meta === m && estilos.metaPrendida]}

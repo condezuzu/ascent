@@ -76,6 +76,8 @@ export const REQUIERE = {
   vidaDevueltaConHoy: 85,
   /** Los días de un amigo se leen sin la hora ni el origen (vista `logs_de_amigos`). */
   logsDeAmigos: 86,
+  /** Las marcas se leen sin la hora (la app no depende de esto). */
+  marcasSinHora: 87,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

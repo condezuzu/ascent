@@ -6,7 +6,7 @@ import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import type { ResultadoRegistro, Visibilidad } from '@nucleo/tipos';
 import { subidaDeRango } from '@nucleo/rangos';
-import { fotoCompartida } from '@nucleo/foto';
+import { fotoCompartida, selloAlAzar } from '@nucleo/foto';
 import { miId } from '@compartido/quienSoy';
 import { T } from '@nucleo/textos';
 import { subirFotoDelDia } from '@compartido/foto';
@@ -83,7 +83,7 @@ function RegistrarDia({
       const r = desde === 'camara' ? await ImagePicker.launchCameraAsync(opciones) : await ImagePicker.launchImageLibraryAsync(opciones);
       const a = r.canceled ? null : r.assets?.[0];
       if (a) {
-        selloDeFoto.current = Date.now();
+        selloDeFoto.current = selloAlAzar();
         setFoto({ uri: a.uri, ancho: a.width, alto: a.height });
       }
     } catch {
