@@ -1,3 +1,4 @@
+import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -8,6 +9,8 @@ import { aKilos, conComa, deKilos, limites, type Unidad } from '@nucleo/peso';
 import { RANGOS, rangoDeRacha } from '@nucleo/rangos';
 import { paletaDe } from '@nucleo/paletas';
 import { duracionLinda, type ResumenSesiones } from '@nucleo/sesiones';
+import { disponible } from '@nucleo/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
 import { agruparPorDia, etiquetaDeDia, type DiaConSesiones } from '@nucleo/dias';
 import type { Log } from '@nucleo/tipos';
 import { plataforma } from '@plataforma';
@@ -48,6 +51,9 @@ export type Vidas = { quedan: number; total: number; vuelve: string | null; falt
 export type PesoAnotado = { fecha: string; valor: number };
 
 export function LineaDeVidas({ vidas }: { vidas: Vidas }) {
+  // Con la 79 vuelven todas juntas; antes, de a una (y el texto dice cada cosa).
+  const juntas = disponible('vidasDeUna', useVersionDelEsquema());
+  const usadas = Math.max(0, vidas.total - vidas.quedan);
   return (
     <View style={estilos.vidas}>
       <Text style={estilos.et}>{T.impulso.titulo}</Text>
@@ -57,8 +63,8 @@ export function LineaDeVidas({ vidas }: { vidas: Vidas }) {
         ))}
       </View>
       <Text style={estilos.nota}>
-        {T.impulso.nota}
-        {vidas.vuelve ? ' ' + T.impulso.vuelve(fechaLinda(vidas.vuelve)) : ''}
+        {juntas ? T.impulso.notaJuntas : T.impulso.nota}
+        {vidas.vuelve ? ' ' + (juntas ? T.impulso.vuelvenJuntas(fechaLinda(vidas.vuelve), usadas) : T.impulso.vuelve(fechaLinda(vidas.vuelve))) : ''}
         {vidas.falta !== null && vidas.falta > 0 ? ' ' + T.impulso.seGanaEn(vidas.falta) : ''}
       </Text>
     </View>
@@ -74,6 +80,7 @@ export default function StatsGeneral({
   pesos,
   sexo,
   alCambiar,
+  calendario,
 }: {
   logs: Log[];
   racha: number;
@@ -83,7 +90,10 @@ export default function StatsGeneral({
   sexo: string | null;
   pesos: PesoAnotado[];
   alCambiar: () => void;
+  /** El calendario del mes, para corregir días: se abre con el botón de debajo del año. */
+  calendario?: React.ReactNode;
 }) {
+  const [calendarioAbierto, setCalendarioAbierto] = useState(false);
   const hoy = hoyISO();
   const pal = paletaDe(rango, planeta);
 
@@ -178,6 +188,16 @@ export default function StatsGeneral({
           </View>
         ))}
       </View>
+
+      {/* CORREGIR DÍAS (15/10): un botón que se ve como botón y abre el calendario del mes acá mismo. */}
+      {calendario && (
+        <>
+          <Pressable testID="corregir-dias" style={estilos.botonCorregir} onPress={() => setCalendarioAbierto((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: calendarioAbierto }}>
+            <Text style={estilos.botonCorregirTexto}>{T.calendario.corregirDias}</Text>
+          </Pressable>
+          {calendarioAbierto && calendario}
+        </>
+      )}
 
       <Sesiones />
 
@@ -322,6 +342,8 @@ function Sesiones() {
 }
 
 const estilos = StyleSheet.create({
+  botonCorregir: { alignSelf: 'flex-start', borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18, marginTop: 12 },
+  botonCorregirTexto: { color: C.tinta, fontSize: 14 },
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },
   tarjeta: {
     backgroundColor: 'rgba(11,13,19,0.72)',

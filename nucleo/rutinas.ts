@@ -17,6 +17,7 @@
  * NO IMPORTA NADA del teléfono: se prueba con node pelado.
  */
 import type { DiaDeRutina } from './rutina.ts';
+import { T } from './textos.ts';
 
 export type EjercicioDelDia = { ejercicio: string; series: number; minutos?: number };
 export type DiaDeSemana = { descanso: boolean; ejercicios: EjercicioDelDia[] };
@@ -71,24 +72,10 @@ export function hayAlgo(dias: DiaDeSemana[]): boolean {
   return dias.some((d) => d.descanso || d.ejercicios.length > 0);
 }
 
-/**
- * EL MÚSCULO EN SINGULAR, para el título del día: "Pecho, hombro y brazo".
- * Lo que no está acá (un grupo nuevo) se escribe como venga.
- */
-const MUSCULO: Record<string, string> = {
-  pecho: 'pecho',
-  espalda: 'espalda',
-  hombros: 'hombro',
-  brazos: 'brazo',
-  piernas: 'pierna',
-  core: 'core',
-  cardio: 'cardio',
-};
-
-/** "a", "a y b", "a, b y c". */
+/** "a", "a y b", "a, b y c" (o "a and b" en inglés). */
 export function enumerar(partes: string[]): string {
   if (partes.length <= 1) return partes[0] ?? '';
-  return `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}`;
+  return `${partes.slice(0, -1).join(', ')} ${T.rutina.y} ${partes[partes.length - 1]}`;
 }
 
 /**
@@ -102,7 +89,8 @@ export function tituloDelDia(dia: DiaDeSemana, grupoDe: (ejercicio: string) => s
   for (const e of dia.ejercicios) {
     const g = grupoDe(e.ejercicio);
     if (!g) continue;
-    const nombre = MUSCULO[g] ?? g;
+    // El músculo en el idioma de la app (15/10): en inglés salía "Monday — pecho".
+    const nombre = T.rutina.musculos[g] ?? g;
     if (!grupos.includes(nombre)) grupos.push(nombre);
   }
   const t = enumerar(grupos);

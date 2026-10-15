@@ -116,6 +116,8 @@ export default function CalendarioDias({
                   estilos.dia,
                   c.estado === 'hecho' && { backgroundColor: paleta.principal },
                   c.estado === 'vacio' && { borderColor: aro },
+                  // CUBIERTO POR UNA VIDA: aro punteado con el color del rango (15/10).
+                  c.estado === 'vacio' && mes.vidas?.has(c.fecha) && [estilos.conVida, { borderColor: paleta.claro }],
                   esHoy && { borderColor: conAlfa(paleta.claro, 0.6) },
                   pressed && { transform: [{ scale: 0.88 }] },
                 ]}
@@ -157,6 +159,12 @@ export default function CalendarioDias({
           </View>
           <Text style={estilos.referenciaTexto}>{T.calendario.leyendaDescanso}</Text>
         </View>
+        {(mes.vidas?.size ?? 0) > 0 && (
+          <View style={estilos.referencia}>
+            <View style={[estilos.muestra, estilos.conVida, { borderColor: paleta.claro }]} />
+            <Text style={estilos.referenciaTexto}>{T.calendario.leyendaVida}</Text>
+          </View>
+        )}
         {porRevisar.size > 0 && (
           <View style={estilos.referencia}>
             <View style={[estilos.marca, { position: 'relative', bottom: 0, backgroundColor: paleta.claro }]} />
@@ -192,6 +200,7 @@ export default function CalendarioDias({
 }
 
 const estilos = StyleSheet.create({
+  conVida: { borderWidth: 1.5, borderStyle: 'dashed' },
   calendario: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingTop: 20, paddingBottom: 6 },
   cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },
   // 44 pt: el mínimo con el que un pulgar acierta.

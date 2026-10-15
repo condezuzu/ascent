@@ -67,6 +67,9 @@ const ES = {
     // Cuántas hay y cuándo se gana la tercera ya lo dicen los puntos y la
     // línea de al lado: la nota solo dice para qué sirven.
     nota: 'Si faltas un día se usa una y la racha sigue. Cada una vuelve a los 30 días.',
+    // Desde la migración 79 (15/10) vuelven todas juntas al cerrarse el ciclo.
+    notaJuntas: 'Si faltas un día se usa una y la racha sigue. A los 30 días vuelven todas juntas.',
+    vuelvenJuntas: (dia: string, n: number) => (n <= 1 ? `Vuelve el ${dia}.` : `Vuelven las ${n} juntas el ${dia}.`),
 
     // ---- la ventana del día siguiente ----
     //
@@ -126,6 +129,10 @@ const ES = {
     leyendaHecho: 'Fuiste',
     leyendaVacio: 'No fuiste',
     leyendaDescanso: 'Descanso',
+    // Un día que faltaste y cubrió una vida (15/10): que se note en el calendario.
+    leyendaVida: 'Vida usada',
+    // El botón que abre el calendario del mes, debajo del año (15/10).
+    corregirDias: 'Corregir días',
     noSeSaco: 'Ese día sigue puesto.',
     noSeAgrego: 'Ese día no se agregó.',
     // La corrección NO recalcula sola: la racha la recalcula la base y hacerlo
@@ -586,6 +593,8 @@ const ES = {
     descansoEntreSeries: 'Descanso entre series',
     descansoNota: 'Mientras descansas lo puedes cambiar ahí mismo.',
     sonidoPrendido: 'Sonido al terminar ✓',
+    // Al lado de un interruptor (15/10): el estado lo dice el interruptor.
+    sonidoAlTerminar: 'Sonido al terminar',
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cierras, no avisa.',
     noVibra: 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.',
@@ -671,7 +680,6 @@ const ES = {
 
     // El idioma (14/10). Los nombres de los idiomas van en su idioma, como en todos lados.
     idioma: 'Idioma',
-    idiomaAuto: 'El del teléfono',
     idiomaEs: 'Español',
     idiomaEn: 'English',
 
@@ -1186,6 +1194,8 @@ const ES = {
     inicio: 'Inicio',
     // "Ranking" y no "Leaderboard": más corto y en español, como el resto.
     ranking: 'Ranking',
+    // En la barra de abajo (15/10): la pestaña es más que la tabla. Arriba sigue diciendo Ranking.
+    social: 'Social',
     album: 'Álbum',
     stats: 'Stats',
     ajustes: 'Ajustes',
@@ -1362,6 +1372,9 @@ const ES = {
     otraVezActiva: (nombre: string) => `Activa otra vez: «${nombre}».`,
     deAlguien: (nombre: string) => `Rutina de ${nombre}`,
     vacia: 'Todavía no hay rutina: entrena unos días o arma una.',
+    // El título del día ("Pecho, hombro y brazo"): el músculo en singular y la "y" del final.
+    musculos: { pecho: 'pecho', espalda: 'espalda', hombros: 'hombro', brazos: 'brazo', piernas: 'pierna', core: 'core', cardio: 'cardio' } as Record<string, string>,
+    y: 'y',
   },
 
   social: {

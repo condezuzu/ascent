@@ -337,6 +337,9 @@ export default function Layout() {
               // el planeta quedaría tapado por la propia pantalla.
               contentStyle: { backgroundColor: 'transparent' },
               animation: 'slide_from_right',
+              // VOLVER DESLIZANDO desde cualquier punto (15/10), no solo desde el borde ni tocando "Volver".
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
             }}
           >
             <Stack.Screen name="index" initialParams={{}} />

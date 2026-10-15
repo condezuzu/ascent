@@ -60,6 +60,8 @@ export const REQUIERE = {
   avisosRemotos: 77,
   /** Los amigos de un amigo, en su perfil. */
   amigosDeAmigos: 78,
+  /** Las vidas vuelven todas juntas al cerrarse el ciclo de 30 días. */
+  vidasDeUna: 79,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

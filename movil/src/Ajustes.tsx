@@ -9,7 +9,8 @@ import { useVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { guardarSonido, leerSonido } from '@compartido/descanso';
-import { fijarPreferenciaIdioma, leerPreferenciaIdioma, type PreferenciaIdioma } from '@compartido/idioma';
+import Segmentado from './Segmentado';
+import { fijarPreferenciaIdioma, idiomaElegido, leerPreferenciaIdioma, type Idioma } from '@compartido/idioma';
 import { escritorEnFila } from '@compartido/enFila';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
@@ -78,11 +79,12 @@ export default function Ajustes({
   // vista; el resto entra acá adentro para que Ajustes no sea una lista larga y
   // plana donde "cuentas bloqueadas" aparecía de la nada.
   const [avanzado, setAvanzado] = useState(false);
-  // El idioma, también de este teléfono (14/10).
-  const [idioma, setIdioma] = useState<PreferenciaIdioma>('auto');
+  // El idioma, también de este teléfono (14/10). Dos opciones y la que rige ya
+  // marcada (15/10): "el del teléfono" terminaba siendo una de las dos igual.
+  const [idioma, setIdioma] = useState<Idioma>(T.idioma === 'en' ? 'en' : 'es');
   useEffect(() => {
     leerSonido().then(setSonido);
-    void leerPreferenciaIdioma().then(setIdioma);
+    void leerPreferenciaIdioma().then((p) => setIdioma(idiomaElegido(p)));
   }, []);
 
   /** Pinta el cambio, guarda, y vuelve atrás si la base dice que no. */
@@ -231,43 +233,27 @@ export default function Ajustes({
       </View>
 
       <Text style={estilos.seccion}>{T.ajustes.peso}</Text>
-      <View style={estilos.fila}>
-        {(['kg', 'lb'] as UnidadPeso[]).map((u) => (
-          <Pressable
-            key={u}
-            onPress={() => guardar({ unidad_peso: u }, T.general.falloPreferencia)}
-            style={[estilos.ancha, (perfil.unidad_peso ?? 'kg') === u && estilos.prendida]}
-          >
-            <Text
-              style={[
-                estilos.textoPastilla,
-                (perfil.unidad_peso ?? 'kg') === u && estilos.textoPrendido,
-              ]}
-            >
-              {u === 'kg' ? T.ajustes.kilos : T.ajustes.libras}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Segmentado
+        opciones={[
+          { valor: 'kg' as UnidadPeso, texto: T.ajustes.kilos },
+          { valor: 'lb' as UnidadPeso, texto: T.ajustes.libras },
+        ]}
+        valor={(perfil.unidad_peso ?? 'kg') as UnidadPeso}
+        alElegir={(u) => guardar({ unidad_peso: u }, T.general.falloPreferencia)}
+      />
 
       <Text style={estilos.seccion}>{T.ajustes.idioma}</Text>
-      <View style={estilos.fila}>
-        {(['auto', 'es', 'en'] as PreferenciaIdioma[]).map((p) => (
-          <Pressable
-            key={p}
-            testID={'idioma-' + p}
-            onPress={() => {
-              setIdioma(p);
-              void fijarPreferenciaIdioma(p);
-            }}
-            style={[estilos.ancha, idioma === p && estilos.prendida]}
-          >
-            <Text style={[estilos.textoPastilla, idioma === p && estilos.textoPrendido]} numberOfLines={1}>
-              {p === 'auto' ? T.ajustes.idiomaAuto : p === 'es' ? T.ajustes.idiomaEs : T.ajustes.idiomaEn}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Segmentado
+        opciones={[
+          { valor: 'es' as Idioma, texto: T.ajustes.idiomaEs, testID: 'idioma-es' },
+          { valor: 'en' as Idioma, texto: T.ajustes.idiomaEn, testID: 'idioma-en' },
+        ]}
+        valor={idioma}
+        alElegir={(p) => {
+          setIdioma(p);
+          void fijarPreferenciaIdioma(p);
+        }}
+      />
 
       {/* LOS CINCO PRESETS DE DURACIÓN SE FUERON (23/9, "Ajustes tiene
           demasiados botones"). No se perdió nada: la duración ya se elige
@@ -279,49 +265,38 @@ export default function Ajustes({
           teléfono, no de la cuenta, y no tiene otra casa — entró en N4
           justamente porque arrancaba apagado y no había dónde prenderlo. */}
       <Text style={estilos.seccion}>{T.ajustes.avisoDelDescanso}</Text>
-      <Pressable
-        onPress={() => {
-          const nuevo = !sonido;
-          setSonido(nuevo);
-          void guardarSonido(nuevo);
-        }}
-        style={{ paddingVertical: 10 }}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: sonido }}
-      >
-        <Text style={estilos.enlace}>{sonido ? T.ajustes.sonidoPrendido : T.ajustes.sonidoApagado}</Text>
-      </Pressable>
+      {/* UN INTERRUPTOR COMO LOS DE ARRIBA (15/10), no un texto con una tilde. */}
+      <View style={estilos.filaOpcion}>
+        <View style={estilos.textoOpcion}>
+          <Text style={estilos.opcion}>{T.ajustes.sonidoAlTerminar}</Text>
+        </View>
+        <Interruptor
+          value={sonido}
+          accessibilityLabel={T.ajustes.sonidoAlTerminar}
+          onValueChange={(nuevo) => {
+            setSonido(nuevo);
+            void guardarSonido(nuevo);
+          }}
+        />
+      </View>
 
       <Text style={estilos.seccion}>{T.ajustes.estancamiento}</Text>
-      <View style={estilos.fila}>
-        {[true, false].map((v) => (
-          <Pressable
-            key={String(v)}
-            onPress={() => guardar({ avisos_estancamiento: v }, T.general.falloPreferencia)}
-            style={[estilos.ancha, avisos === v && estilos.prendida]}
-          >
-            <Text style={[estilos.textoPastilla, avisos === v && estilos.textoPrendido]}>
-              {v ? T.ajustes.estancamientoSi : T.ajustes.estancamientoNo}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Segmentado
+        opciones={[
+          { valor: true, texto: T.ajustes.estancamientoSi },
+          { valor: false, texto: T.ajustes.estancamientoNo },
+        ]}
+        valor={avisos}
+        alElegir={(v) => guardar({ avisos_estancamiento: v }, T.general.falloPreferencia)}
+      />
       {avisos && (
-        <>
-          <View style={[estilos.fila, { marginTop: 10 }]}>
-            {umbralesDisponibles(version).map((u: Umbral) => (
-              <Pressable
-                key={u}
-                onPress={() => guardar({ umbral_estancamiento: u }, T.general.falloPreferencia)}
-                style={[estilos.ancha, estilos.umbral, u === umbral && estilos.prendida]}
-              >
-                <Text style={[estilos.textoPastilla, u === umbral && estilos.textoPrendido]}>
-                  {T.ajustes.semanas(u)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </>
+        <View style={{ marginTop: 10 }}>
+          <Segmentado
+            opciones={umbralesDisponibles(version).map((u: Umbral) => ({ valor: u, texto: T.ajustes.semanas(u) }))}
+            valor={umbral}
+            alElegir={(u) => guardar({ umbral_estancamiento: u }, T.general.falloPreferencia)}
+          />
+        </View>
       )}
 
       {fallo !== '' && <Text style={estilos.error}>{fallo}</Text>}

@@ -12,6 +12,7 @@
 //      serie y A la ve; B termina y A deja de verlo. Y lo de B queda intacto.
 //
 //   node --env-file=.env.local supabase/probar-juntos.mjs [api]
+import { TEXTOS_ES } from '../nucleo/textos.ts';
 import { createClient } from '@supabase/supabase-js';
 import { limiteDeSonda, pasarLaEntradaNativa } from './utiles.mjs';
 
@@ -161,7 +162,7 @@ try {
 
       // B inicia a mano, sin gimnasio marcado: tiene que aparecer igual.
       await pb.getByText('Iniciar entrenamiento', { exact: true }).last().click({ timeout: 30000 });
-      await pa.getByText('Ranking', { exact: true }).last().click();
+      await pa.getByText(TEXTOS_ES.nav.social, { exact: true }).last().click();
       await esperar('B toca "Iniciar" (sin gimnasio marcado) y A lo ve entrenando en Ranking', pa.getByText(`${B.nombre} está entrenando`, { exact: true }).first());
       const unirse = pa.getByTestId('unirse').first();
       if (await esperar('y al lado tiene "Unirse"', unirse, 15000)) await unirse.click();

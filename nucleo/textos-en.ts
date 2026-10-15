@@ -18,6 +18,8 @@ export const EN: Textos = {
     seGanaEn: (dias: number) => (dias === 1 ? 'You earn the third one tomorrow.' : `You earn the third one in ${dias} days.`),
     titulo: 'Lives',
     nota: 'Miss a day and one is used, and the streak goes on. Each one comes back after 30 days.',
+    notaJuntas: 'Miss a day and one is used, and the streak goes on. After 30 days they all come back.',
+    vuelvenJuntas: (dia: string, n: number) => (n <= 1 ? `It comes back on ${dia}.` : `All ${n} come back on ${dia}.`),
     salvada: {
       titulo: 'The streak goes on',
       precio: (n: number, racha: number) =>
@@ -49,6 +51,8 @@ export const EN: Textos = {
     leyendaHecho: 'Went',
     leyendaVacio: "Didn't go",
     leyendaDescanso: 'Rest',
+    leyendaVida: 'Life used',
+    corregirDias: 'Fix days',
     noSeSaco: 'That day is still marked.',
     noSeAgrego: "That day wasn't added.",
     recalcularNota: 'You fixed some days: recalculate the streak so it counts them as they are now.',
@@ -306,6 +310,7 @@ export const EN: Textos = {
     descansoEntreSeries: 'Rest between sets',
     descansoNota: 'While resting you can change it right there.',
     sonidoPrendido: 'Sound when it ends ✓',
+    sonidoAlTerminar: 'Sound when it ends',
     sonidoApagado: 'Sound when it ends — off',
     vibra: 'Vibrates when it ends, with the app open. If you close it, no alert.',
     noVibra: "Your phone doesn't vibrate from the web: the alert is visual, with the app open.",
@@ -358,7 +363,6 @@ export const EN: Textos = {
     kilos: 'Kilograms',
     libras: 'Pounds',
     idioma: 'Language',
-    idiomaAuto: "Phone's",
     idiomaEs: 'Español',
     idiomaEn: 'English',
     sexo: 'Sex — only for DOTS',
@@ -654,6 +658,7 @@ export const EN: Textos = {
   nav: {
     inicio: 'Home',
     ranking: 'Ranking',
+    social: 'Social',
     album: 'Album',
     stats: 'Stats',
     ajustes: 'Settings',
@@ -782,6 +787,8 @@ export const EN: Textos = {
     otraVezActiva: (nombre: string) => `Active again: “${nombre}”.`,
     deAlguien: (nombre: string) => `${nombre}'s routine`,
     vacia: 'No routine yet: train a few days or build one.',
+    musculos: { pecho: 'chest', espalda: 'back', hombros: 'shoulders', brazos: 'arms', piernas: 'legs', core: 'core', cardio: 'cardio' },
+    y: 'and',
   },
   social: {
     titulo: 'Ranking',

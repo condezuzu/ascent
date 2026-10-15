@@ -67,6 +67,9 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   }, []);
   // Cuántas actividades se ven antes de "ver más".
   const ACTIVIDAD_TOPE = 8;
+  // Cuántos del ranking se ven antes de "Ver más" (15/10).
+  const RANKING_TOPE = 10;
+  const [verTodos, setVerTodos] = useState(false);
   const [miId, setMiId] = useState('');
   const [datos, setDatos] = useState<DatosDeRanking | null>(null);
   const [noCargo, setNoCargo] = useState(false);
@@ -237,6 +240,57 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
       <ScrollView contentContainerStyle={estilos.pantalla} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <Text style={estilos.titulo}>{T.social.titulo}</Text>
 
+        {/* BUSCAR GENTE, ARRIBA Y EN UN RENGLÓN FINITO (15/10): no tapa nada y
+            está donde se lo busca. Los resultados caen justo debajo. */}
+        <View style={estilos.buscador}>
+          <Text style={estilos.lupa}>⌕</Text>
+          <CampoTexto
+            testID="buscar-gente"
+            style={estilos.campo}
+            placeholder={T.social.buscarGente}
+            placeholderTextColor={C.apagado}
+            value={busqueda}
+            onChangeText={buscar}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+        {resultados.map((u) => {
+          const accion = accionDeBusqueda(u.id, datos?.amigos ?? [], datos?.solicitudes ?? [], mandados);
+          return (
+          <View style={estilos.fila} key={u.id}>
+            <Avatar url={u.avatar_url} nombre={u.username} />
+            {/* Su rango al lado, como en el ranking: de un desconocido, lo
+                primero que dice algo es en qué anda. El nombre lleva al perfil
+                y "Agregar" queda aparte: mirar antes que agregar. */}
+            <Insignia rango={numeroDeRango(u.racha_actual)} tam={26} />
+            <Pressable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
+              <Text style={estilos.nombre}>{u.username}</Text>
+            </Pressable>
+            {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
+                silencio contra el suyo: acá se acepta. Y si ya es tu amiga
+                —la acabás de aceptar— no se ofrece nada: ver `accionDeBusqueda`. */}
+            {accion.que === 'aceptar' ? (
+              <Pressable onPress={() => aceptar(accion.pedido)} hitSlop={8}>
+                <Text style={estilos.accion}>{T.social.aceptar}</Text>
+              </Pressable>
+            ) : accion.que === 'enviado' ? (
+              <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>
+            ) : accion.que === 'agregar' ? (
+              <Pressable onPress={() => agregar(u.id)} hitSlop={8}>
+                <Text style={estilos.accion}>{T.social.agregar}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          );
+        })}
+        {/* "No encontramos a nadie": solo cuando se buscó algo de verdad y no
+            hubo con qué. Antes un nombre inexistente no decía nada y parecía
+            que la búsqueda no andaba. */}
+        {busqueda.trim().length >= 2 && resultados.length === 0 && (
+          <Text style={estilos.sinResultado}>{T.social.sinResultado}</Text>
+        )}
+
         {/* EL AVISO DE LA ACTIVIDAD EN VIVO, la primera vez y solo si ya marcaste
             tu gimnasio: antes de eso explicaría algo que no podés usar. Aparece
             una vez y no vuelve (misma memoria que el resto de la guía). */}
@@ -264,7 +318,8 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           // sobre el velo de `FondoEspacial`, que ya está detrás.
           <View style={estilos.lista}>
             {/* ESCALONADAS Y NO TODAS DE GOLPE, igual que en la web. Ver `Surgir`. */}
-            {amigos.map((a, i) => (
+            {/* SE VEN DIEZ (15/10) y el resto detrás de "Ver más". */}
+            {(verTodos ? amigos : amigos.slice(0, RANKING_TOPE)).map((a, i) => (
               <Surgir indice={i} key={a.id}>
                 {/* LA FILA LLEVA AL PERFIL, como en la web. Tu propia fila va a
                     tu perfil, que es otra pantalla. */}
@@ -298,6 +353,13 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 </Pressable>
               </Surgir>
             ))}
+            {amigos.length > RANKING_TOPE && (
+              <Pressable testID="ranking-ver-mas" onPress={() => setVerTodos((v) => !v)} hitSlop={8} style={estilos.verMas}>
+                <Text style={estilos.verMasTexto}>
+                  {verTodos ? T.social.actividadMenos : T.social.actividadMas(amigos.length - RANKING_TOPE)}
+                </Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           cargado &&
@@ -355,6 +417,35 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           </View>
         )}
 
+        {/* LAS SOLICITUDES RECIBIDAS, al final: es "algo que te llegó", no la
+            tabla, así que no tiene por qué empujar el ranking hacia abajo.
+            (El aviso de que HAY una, estando en otra pestaña, es aparte.) */}
+        {(datos?.solicitudes ?? []).length > 0 && (
+          <View style={estilos.seccion}>
+            <Text style={estilos.rotulo}>{T.social.solicitudes}</Text>
+            <View style={estilos.tarjeta}>
+              {datos!.solicitudes.map((s) => (
+                <View style={estilos.fila} key={s.id}>
+                  <Avatar url={s.de.avatar_url} nombre={s.de.username} />
+                  <Text style={estilos.nombre}>{s.de.username}</Text>
+                  <Pressable onPress={() => aceptar(s.id)} hitSlop={8}>
+                    <Text style={estilos.accion}>{T.social.aceptar}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => rechazar(s.id)} hitSlop={8}>
+                    <Text style={[estilos.accion, { color: C.apagado }]}>{T.social.no}</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Invitar: al final de lo tuyo, antes de lo que hacen los demás. */}
+        <View style={estilos.seccion}>
+          <InvitarConLink usuario={datos?.amigos.find((a) => a.id === miId)?.username} />
+        </View>
+
+        {/* LA ACTIVIDAD, ABAJO DE TODO (15/10): es lo menos importante de la pantalla. */}
         {(datos?.actividad ?? []).length > 0 && (
           <View style={estilos.seccion}>
             <Text style={estilos.rotulo}>{T.social.actividad}</Text>
@@ -382,78 +473,6 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           </View>
         )}
 
-        {/* LAS SOLICITUDES RECIBIDAS, al final: es "algo que te llegó", no la
-            tabla, así que no tiene por qué empujar el ranking hacia abajo.
-            (El aviso de que HAY una, estando en otra pestaña, es aparte.) */}
-        {(datos?.solicitudes ?? []).length > 0 && (
-          <View style={estilos.seccion}>
-            <Text style={estilos.rotulo}>{T.social.solicitudes}</Text>
-            <View style={estilos.tarjeta}>
-              {datos!.solicitudes.map((s) => (
-                <View style={estilos.fila} key={s.id}>
-                  <Avatar url={s.de.avatar_url} nombre={s.de.username} />
-                  <Text style={estilos.nombre}>{s.de.username}</Text>
-                  <Pressable onPress={() => aceptar(s.id)} hitSlop={8}>
-                    <Text style={estilos.accion}>{T.social.aceptar}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => rechazar(s.id)} hitSlop={8}>
-                    <Text style={[estilos.accion, { color: C.apagado }]}>{T.social.no}</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        <View style={estilos.seccion}>
-          <Text style={estilos.rotulo}>{T.social.buscarGente}</Text>
-          <Text style={estilos.pieBusqueda}>{T.social.buscarPie}</Text>
-          <InvitarConLink usuario={datos?.amigos.find((a) => a.id === miId)?.username} />
-          <CampoTexto
-            style={estilos.campo}
-            placeholder={T.ajustes.nombrePlaceholder}
-            placeholderTextColor={C.apagado}
-            value={busqueda}
-            onChangeText={buscar}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {resultados.map((u) => {
-            const accion = accionDeBusqueda(u.id, datos?.amigos ?? [], datos?.solicitudes ?? [], mandados);
-            return (
-            <View style={estilos.fila} key={u.id}>
-              <Avatar url={u.avatar_url} nombre={u.username} />
-              {/* Su rango al lado, como en el ranking: de un desconocido, lo
-                  primero que dice algo es en qué anda. El nombre lleva al perfil
-                  y "Agregar" queda aparte: mirar antes que agregar. */}
-              <Insignia rango={numeroDeRango(u.racha_actual)} tam={26} />
-              <Pressable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
-                <Text style={estilos.nombre}>{u.username}</Text>
-              </Pressable>
-              {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
-                  silencio contra el suyo: acá se acepta. Y si ya es tu amiga
-                  —la acabás de aceptar— no se ofrece nada: ver `accionDeBusqueda`. */}
-              {accion.que === 'aceptar' ? (
-                <Pressable onPress={() => aceptar(accion.pedido)} hitSlop={8}>
-                  <Text style={estilos.accion}>{T.social.aceptar}</Text>
-                </Pressable>
-              ) : accion.que === 'enviado' ? (
-                <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>
-              ) : accion.que === 'agregar' ? (
-                <Pressable onPress={() => agregar(u.id)} hitSlop={8}>
-                  <Text style={estilos.accion}>{T.social.agregar}</Text>
-                </Pressable>
-              ) : null}
-            </View>
-            );
-          })}
-          {/* "No encontramos a nadie": solo cuando se buscó algo de verdad y no
-              hubo con qué. Antes un nombre inexistente no decía nada y parecía
-              que la búsqueda no andaba. */}
-          {busqueda.trim().length >= 2 && resultados.length === 0 && (
-            <Text style={estilos.sinResultado}>{T.social.sinResultado}</Text>
-          )}
-        </View>
       </ScrollView>
 
       <AccionesDeUsuario
@@ -518,7 +537,6 @@ const estilos = StyleSheet.create({
   rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
   verMas: { paddingVertical: 10, alignItems: 'center' },
   verMasTexto: { color: C.sub, fontSize: 13 },
-  pieBusqueda: { color: C.apagado, fontSize: 12, marginBottom: 8 },
   // El punto verde de "en vivo", al lado de quien está entrenando ahora.
   puntoVivo: { width: 8, height: 8, borderRadius: 999, backgroundColor: '#5fd08a' },
   sinResultado: { color: C.apagado, fontSize: 13, paddingVertical: 12 },
@@ -529,15 +547,16 @@ const estilos = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
   },
-  campo: {
+  buscador: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
+    borderColor: C.linea,
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    color: C.tinta,
-    fontSize: 15,
-    marginTop: 4,
-    marginBottom: 6,
+    paddingHorizontal: 12,
+    marginBottom: 14,
   },
+  lupa: { color: C.apagado, fontSize: 15 },
+  campo: { flex: 1, color: C.tinta, fontSize: 14, paddingVertical: 6 },
 });

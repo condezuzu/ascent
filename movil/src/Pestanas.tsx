@@ -574,10 +574,10 @@ export default function Pestanas({
               accessibilityState={{ selected: pestana === p }}
               // SIEMPRE CON SU NOMBRE: el rótulo está dos veces —apagado y
               // encendido— y sin esto se leería dos veces en voz alta.
-              accessibilityLabel={avisa ? `${T.nav[p]} — ${T.social.tePidieron(solicitudes)}` : T.nav[p]}
+              accessibilityLabel={avisa ? `${rotuloDe(p)} — ${T.social.tePidieron(solicitudes)}` : rotuloDe(p)}
             >
               <View>
-                <Text style={estilos.texto}>{T.nav[p]}</Text>
+                <Text style={estilos.texto}>{rotuloDe(p)}</Text>
                 {/* LA LUZ: el mismo rótulo, encendido, encima del apagado. Lo
                     que cambia es su opacidad, y sale de la tira (`luces`), no
                     de `pestana`. */}
@@ -587,7 +587,7 @@ export default function Pestanas({
                   accessibilityElementsHidden
                   importantForAccessibility="no"
                 >
-                  {T.nav[p]}
+                  {rotuloDe(p)}
                 </Animated.Text>
                 {avisa && <View style={estilos.punto} />}
               </View>
@@ -601,6 +601,9 @@ export default function Pestanas({
     </View>
   );
 }
+
+// La pestaña de Ranking dice "Social" en la barra (15/10).
+const rotuloDe = (p: keyof typeof T.nav) => (p === 'ranking' ? T.nav.social : T.nav[p]);
 
 const estilos = StyleSheet.create({
   // SIN FONDO PROPIO: el motor vive en la raíz del router, detrás de todo, y

@@ -287,6 +287,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           pesos={datos.pesajes}
           sexo={datos.sexo}
           alCambiar={cargar}
+          calendario={<CalendarioDias paleta={pal} alCambiar={cargar} porRevisar={porRevisar} alRevisar={cargar} />}
         />
       )}
 
@@ -444,10 +445,6 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             </>
           )}
 
-          {/* El calendario, abajo del volumen: primero qué venís haciendo,
-              después cada día. */}
-          <Text style={estilos.seccion}>{T.calendario.titulo}</Text>
-          <CalendarioDias paleta={pal} alCambiar={cargar} porRevisar={porRevisar} alRevisar={cargar} />
         </>
       )}
     </ScrollView>

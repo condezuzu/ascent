@@ -781,21 +781,50 @@ returns int language sql stable security definer set search_path = public as $$
   );
 $$;
 
-/**
- * Los que están disponibles hoy: los ganados menos los que todavía están en
- * los treinta días que tardan en volver.
- */
+-- -------------------------------------------------------------
+-- LAS VIDAS VUELVEN TODAS JUNTAS (migración 79)
+-- -------------------------------------------------------------
+-- Hasta la 78 cada vida volvía treinta días después de usarla, de a una. Desde
+-- el 15/10 (pedido del humano) vuelven TODAS JUNTAS: la primera vida que se usa
+-- abre un ciclo de treinta días, y al cerrarse vuelven todas las que se usaron
+-- en ese ciclo. La próxima que se use abre otro.
+--
+-- Cuántas se tienen no cambia (dos, y la tercera con racha de 20: ver
+-- `impulsos_ganados`). Las devueltas no cuentan, como antes.
+
+-- El día en que empezó el ciclo vigente el día `p_dia`, o null si no hay uno
+-- abierto. Mira solo las vidas usadas hasta ese día: un día pasado se juzga con
+-- lo que había entonces.
+create or replace function public.inicio_ciclo_vidas(p_user uuid, p_dia date)
+returns date language plpgsql stable security definer set search_path = public as $$
+declare
+  inicio date := null;
+  f date;
+begin
+  for f in
+    select fecha from vidas_usadas
+     where user_id = p_user and not devuelta and fecha <= p_dia
+     order by fecha
+  loop
+    if inicio is null or f >= inicio + 30 then inicio := f; end if;
+  end loop;
+  if inicio is not null and p_dia >= inicio + 30 then return null; end if;
+  return inicio;
+end;
+$$;
+revoke execute on function public.inicio_ciclo_vidas(uuid, date) from public, anon, authenticated;
+
 create or replace function public.impulsos_disponibles(p_user uuid, p_dia date)
 returns int language sql stable security definer set search_path = public as $$
-  select greatest(0, impulsos_ganados(p_user) - (
+  select greatest(0, impulsos_ganados(p_user) - coalesce((
     select count(*)::int from vidas_usadas
      where user_id = p_user
        and not devuelta
-       and fecha > p_dia - 30
-  ));
+       and fecha >= inicio_ciclo_vidas(p_user, p_dia)
+       and fecha <= p_dia
+  ), 0));
 $$;
 
-/** Lo que necesita la interfaz: cuántas quedan y cuáles se usaron este mes. */
 create or replace function public.mis_impulsos()
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
@@ -807,19 +836,16 @@ returns jsonb language sql stable security definer set search_path = public as $
       when impulsos_ganados(auth.uid()) >= impulsos_tope() then null
       else greatest(0, 20 - coalesce((select racha_actual from profiles where id = auth.uid()), 0))
     end,
+    -- Las usadas en el ciclo abierto, y el día en que vuelven todas.
     'vigentes', coalesce((
       select jsonb_agg(fecha order by fecha)
         from vidas_usadas
        where user_id = auth.uid()
          and not devuelta
-         and fecha > mi_hoy() - 30
+         and fecha >= inicio_ciclo_vidas(auth.uid(), mi_hoy())
+         and fecha <= mi_hoy()
     ), '[]'::jsonb),
-    'vuelve', (
-      select min(fecha) + 30 from vidas_usadas
-       where user_id = auth.uid() and not devuelta and fecha > mi_hoy() - 30
-    ),
-    -- Las últimas cinco, para el aviso. Ver la migración 33: el aviso sale del
-    -- ESTADO y no del reporte de una llamada.
+    'vuelve', inicio_ciclo_vidas(auth.uid(), mi_hoy()) + 30,
     'ultimas', coalesce((
       select jsonb_agg(fecha order by fecha desc)
         from (
@@ -833,7 +859,6 @@ returns jsonb language sql stable security definer set search_path = public as $
     )
   );
 $$;
-
 revoke execute on function public.mis_impulsos() from public, anon;
 grant execute on function public.mis_impulsos() to authenticated;
 
@@ -4195,7 +4220,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 78; $$;
+returns int language sql immutable as $$ select 79; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

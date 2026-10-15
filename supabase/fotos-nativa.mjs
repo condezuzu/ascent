@@ -173,6 +173,31 @@ const RECETAS = {
     await foto(page, 'cartel-union');
     return page;
   },
+  async 'stats-vidas'(nav, gente) {
+    const A = gente.a;
+    const hoy = new Date();
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const haceDias = (n) => iso(new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - n));
+    const vuelve = iso(new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + 26));
+    const { page } = await abrir(nav, A, {
+      version_del_esquema: 79,
+      mis_impulsos: { total: 2, tope: 3, quedan: 0, falta_para_ganar: 20, vigentes: [haceDias(4), haceDias(2)], vuelve, ultimas: [haceDias(2), haceDias(4)], ultima: haceDias(2) },
+    });
+    // Dos días de este mes cubiertos por una vida (la base de prueba no los tiene).
+    await page.route('**/rest/v1/vidas_usadas*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ fecha: haceDias(4) }, { fecha: haceDias(2) }]) }));
+    await page.getByText(TEXTOS_ES.nav.stats, { exact: true }).last().click({ timeout: 30000 });
+    await page.waitForTimeout(2500);
+    await foto(page, 'stats-vidas');
+    await verTestId(page, 'corregir-dias');
+    await foto(page, 'stats-corregir-boton');
+    await tocar(page, 'corregir-dias');
+    await page.waitForTimeout(1500);
+    await page.mouse.move(195, 500);
+    await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(700);
+    await foto(page, 'stats-calendario-vidas');
+    return page;
+  },
   async ajustes(nav, gente) {
     const sufijo = process.env.FOTOS_SUFIJO ?? '';
     const { page } = await abrir(nav, gente.a);
@@ -240,7 +265,7 @@ const RECETAS = {
       r.fulfill({ response: real, body: JSON.stringify(filas.map((f) => (f.id === B.id ? { ...f, racha_actual: 12, mejor_racha: 58 } : { ...f, racha_actual: 3, mejor_racha: 21 }))) });
     });
     console.log('  (muestra) rachas de usuarios_publicos');
-    await page.getByText('Ranking', { exact: true }).last().click({ timeout: 30000 });
+    await page.getByText(TEXTOS_ES.nav.social, { exact: true }).last().click({ timeout: 30000 });
     await page.waitForTimeout(3500);
     await foto(page, 'ranking-medallas');
     await page.screenshot({ path: join(CARPETA, 'ranking-fila.png'), clip: { x: 0, y: 120, width: 390, height: 100 } });

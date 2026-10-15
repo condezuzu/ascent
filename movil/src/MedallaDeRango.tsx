@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import Insignia from './Insignia';
+import { coloresDeInsignia } from '@compartido/insignias';
 import { C } from './colores';
 
 /**
@@ -13,13 +14,15 @@ import { C } from './colores';
  */
 export default function MedallaDeRango({ rango, tam = 20 }: { rango: number; tam?: number }) {
   const cinta = Math.round(tam * 0.55);
+  // LOS COLORES DE ESE RANGO (15/10), no grises: la cinta y el borde dicen cuál es.
+  const pal = coloresDeInsignia(rango);
   return (
     // EL DISCO MIDE LO MISMO QUE LAS OTRAS MEDALLAS (15/10): la caja es del alto del
     // disco y la cinta sobresale por arriba. Con la cinta adentro, el disco quedaba más abajo.
     <View style={{ width: tam, height: tam, alignItems: 'center', overflow: 'visible' }} pointerEvents="none">
       <Svg width={tam} height={cinta} viewBox="0 0 20 10" style={{ position: 'absolute', top: -cinta * 0.6 }}>
-        <Path d="M3 0 L9 0 L11.5 10 L6.5 10 Z" fill={C.claro} />
-        <Path d="M11 0 L17 0 L13.5 10 L8.5 10 Z" fill={C.sub} />
+        <Path d="M3 0 L9 0 L11.5 10 L6.5 10 Z" fill={pal.principal} />
+        <Path d="M11 0 L17 0 L13.5 10 L8.5 10 Z" fill={pal.apagado} />
       </Svg>
       <View
         style={{
@@ -27,7 +30,7 @@ export default function MedallaDeRango({ rango, tam = 20 }: { rango: number; tam
           height: tam,
           borderRadius: tam / 2,
           borderWidth: Math.max(1, tam / 14),
-          borderColor: C.claro,
+          borderColor: pal.trazo,
           backgroundColor: C.hoja,
           alignItems: 'center',
           justifyContent: 'center',

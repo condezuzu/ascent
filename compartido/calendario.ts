@@ -21,20 +21,24 @@ export type DatosDelMes = {
   /** Los días marcados a mano como descanso: filas de `logs` con `es_descanso`. */
   descansoAMano: Set<string>;
   configs: ConfigDescanso[];
+  /** Los días que cubrió una vida (no devuelta): se marcan en el calendario (15/10). */
+  vidas?: Set<string>;
 };
 
 export async function cargarMes(supabase: Cliente, uid: string, anio: number, mes: number): Promise<DatosDelMes> {
   const diasEnMes = new Date(anio, mes + 1, 0).getDate();
   const desde = aISO(new Date(anio, mes, 1));
   const hasta = aISO(new Date(anio, mes, diasEnMes));
-  const [{ data }, { data: cfgs }] = await Promise.all([
+  const [{ data }, { data: cfgs }, { data: vidas }] = await Promise.all([
     supabase.from('logs').select('fecha, es_descanso').eq('user_id', uid).gte('fecha', desde).lte('fecha', hasta),
     supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
+    supabase.from('vidas_usadas').select('fecha').eq('user_id', uid).eq('devuelta', false).gte('fecha', desde).lte('fecha', hasta),
   ]);
   return {
     conLog: new Set((data ?? []).filter((l) => !l.es_descanso).map((l) => l.fecha as string)),
     descansoAMano: new Set((data ?? []).filter((l) => l.es_descanso).map((l) => l.fecha as string)),
     configs: (cfgs ?? []) as ConfigDescanso[],
+    vidas: new Set((vidas ?? []).map((v) => v.fecha as string)),
   };
 }
 

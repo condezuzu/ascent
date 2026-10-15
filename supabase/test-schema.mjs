@@ -4249,14 +4249,16 @@ console.log('\n58. Las vidas');
       );
       return (await db.query('select impulsos_disponibles($1, mi_hoy()) as v', [u])).rows[0].v;
     };
+    // DESDE LA 79 VUELVEN TODAS JUNTAS (15/10): la primera usada abre un ciclo
+    // de 30 días y al cerrarse vuelven todas las de ese ciclo.
     chequear('uno de hace 31 dias ya volvio', await gastadoHace(31), 3);
-    chequear('uno de hace 29 todavia no', await gastadoHace(29), 2);
-    chequear('y uno de ayer tampoco', await gastadoHace(1), 1);
-    // El de hace 29 vuelve pasado manana. Se mira el dia, no el mes.
-    const en2 = (
-      await db.query('select impulsos_disponibles($1, mi_hoy() + 2) as v', [u])
-    ).rows[0].v;
-    chequear('pasado manana vuelve el de 29', en2, 2);
+    chequear('uno de hace 29, del mismo ciclo que el de 31, volvió con él', await gastadoHace(29), 3);
+    chequear('uno de ayer abre otro ciclo', await gastadoHace(1), 2);
+    chequear('otro de hoy cae en ese mismo ciclo', await gastadoHace(0), 1);
+    const dia = async (d) => (await db.query('select impulsos_disponibles($1, mi_hoy() + $2::int) as v', [u, d])).rows[0].v;
+    // El ciclo empezó ayer: vuelven las dos juntas dentro de 29 días, no de a una.
+    chequear('vuelven las dos juntas cuando se cierra el ciclo, no de a una', [await dia(28), await dia(29)], [1, 3]);
+    chequear('y lo dice el día en que vuelven', (await db.query(`select inicio_ciclo_vidas($1, mi_hoy()) + 30 - mi_hoy() as faltan`, [u])).rows[0].faltan, 29);
   }
 
   // ---- se ganan: dos, y el tercero a los 20 dias ----
@@ -12776,7 +12778,8 @@ console.log('\n169. La luz de la barra sale de la posicion de la tira');
     'accessibilityRole="tablist"> <Text style={[estilos.texto, pestana === p && estilos.activo]}>{T.nav[p]}</Text> const estilos = StyleSheet.create('
   ), { laLuzEsUnaOpacidadDeLaTira: false, noSaleDeLaPestanaActiva: false });
   // EL ROTULO ESTA DOS VECES (apagado y encendido): que no se lea dos veces.
-  chequear('cada pestaña lleva su nombre para el lector de pantalla', /: T\.nav\[p\]\}/.test(pes169), true);
+  // Desde el 15/10 el rótulo pasa por `rotuloDe` (Ranking dice "Social" en la barra).
+  chequear('cada pestaña lleva su nombre para el lector de pantalla', /: rotuloDe\(p\)\}/.test(pes169), true);
 }
 
 console.log('\n170. El día de racha que guarda cada log (migración 57)');
@@ -15620,7 +15623,7 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
     /eventos\.escuchar\(CALIDAD_CAMBIO, \(\) => recuperar\(\)\)/.test(fondoRaiz),
     /if \(listo\) void vigilarCalidad\(\);/.test(fondoRaiz),
     /nivel: \(\) => nivelDelMotor\(calidadAhora\(\)\)/.test(de196('movil/src/motorNativo.ts')),
-    /void fijarCalidad\(valor\);/.test(de196('movil/src/ajustes/Fondo.tsx')),
+    /void fijarCalidad\((valor|v)\);/.test(de196('movil/src/ajustes/Fondo.tsx')),
   ], [true, true, true, true, true]);
 
   // ---- CABLEADO DEL ÁLBUM NATIVO: son componentes ----
@@ -18151,6 +18154,83 @@ console.log('\n226. El refactor del dueño único: las dos respuestas viejas, es
   rojoConocido('la respuesta vieja de "está corriendo" que llega después de Terminar no la vuelve a poner', await escenarioDeSesion('viejas', 'corre'), {
     tocado: true, pantallaCorre: false, baseCorre: false,
   });
+}
+
+console.log('\n227. Rutina en inglés, idioma de a dos, Social, Ranking ordenado, vidas en el calendario');
+{
+  const RU227 = await import('../nucleo/rutinas.ts');
+  const ID227 = await import('../compartido/idioma.ts');
+  const CAL227 = await import('../compartido/calendario.ts');
+  const { readFileSync: leer227 } = await import('node:fs');
+  const de227 = (...p) => leer227(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const grupo = (id) => ({ press_banca: 'pecho', press_militar: 'hombros', curl: 'brazos' })[id] ?? null;
+  const dia = { descanso: false, ejercicios: ['press_banca', 'press_militar', 'curl'].map((e) => ({ ejercicio: e, series: 3 })) };
+  const es = RU227.tituloDelDia(dia, grupo, 'Descanso');
+  ID227.aplicarIdioma('en');
+  const en = RU227.tituloDelDia(dia, grupo, 'Rest');
+  ID227.aplicarIdioma('es');
+  chequear('el título del día de la rutina sale en el idioma de la app (antes "Monday — pecho, hombro y brazo")', [es, en], ['Pecho, hombro y brazo', 'Chest, shoulders and arms']);
+
+  const aj = de227('movil', 'src', 'Ajustes.tsx');
+  chequear('el idioma en Ajustes: dos opciones, con la que rige ya marcada', [
+    /\{ valor: 'es' as Idioma[\s\S]{0,140}\{ valor: 'en' as Idioma/.test(aj), /idiomaAuto/.test(aj), /setIdioma\(idiomaElegido\(p\)\)/.test(aj),
+  ], [true, false, true]);
+
+  const pes = de227('movil', 'src', 'Pestanas.tsx');
+  const { T: T227 } = await import('../nucleo/textos.ts');
+  chequear('la pestaña de Ranking dice "Social" en la barra; arriba sigue diciendo Ranking', [
+    /const rotuloDe = \(p: keyof typeof T\.nav\) => \(p === 'ranking' \? T\.nav\.social : T\.nav\[p\]\);/.test(pes), T227.nav.social, T227.social.titulo,
+  ], [true, 'Social', 'Ranking']);
+
+  const rk = de227('movil', 'src', 'Ranking.tsx');
+  const pos = (s) => rk.indexOf(s);
+  chequear('Ranking: buscar arriba en un renglón, el ranking con diez y "Ver más", y la actividad al final', [
+    pos('testID="buscar-gente"') > 0 && pos('testID="buscar-gente"') < pos('<View style={estilos.lista}>'),
+    pos('<View style={estilos.lista}>') < pos('{T.social.actividad}'),
+    pos('{T.social.actividad}') > pos('{T.social.solicitudes}'),
+    /const RANKING_TOPE = 10;/.test(rk), /amigos\.slice\(0, RANKING_TOPE\)/.test(rk), /testID="ranking-ver-mas"/.test(rk),
+    /buscarPie/.test(rk),
+  ], [true, true, true, true, true, true, false]);
+
+  const med = de227('movil', 'src', 'MedallaDeRango.tsx');
+  chequear('la medalla del rango lleva los colores de ese rango, no grises', [/const pal = coloresDeInsignia\(rango\);/.test(med), /fill=\{pal\.principal\}/.test(med), /borderColor: pal\.trazo/.test(med)], [true, true, true]);
+
+  const raiz = de227('movil', 'app', '_layout.tsx');
+  const fotos = de227('movil', 'src', 'FotosQueVen.tsx');
+  chequear('volver deslizando desde cualquier punto, y las fotos del perfil se abren en grande', [
+    /gestureEnabled: true,\s*fullScreenGestureEnabled: true,/.test(raiz), /onPress=\{\(\) => setGrande\(/.test(fotos), /<FotoGrande url=\{grande\}/.test(fotos),
+  ], [true, true, true]);
+
+  // El calendario lee las vidas usadas del mes (no las devueltas) y las marca.
+  const pedido = [];
+  const cliente = {
+    from: (tabla) => {
+      const q = { filtros: [] };
+      const cadena = {
+        select: () => cadena,
+        eq: (c, v) => (q.filtros.push(['eq', c, v]), cadena),
+        gte: () => cadena,
+        lte: () => cadena,
+        order: () => cadena,
+        then: (ok) => {
+          pedido.push([tabla, q.filtros]);
+          const datos = tabla === 'vidas_usadas' ? [{ fecha: '2026-10-03' }] : [];
+          return Promise.resolve({ data: datos, error: null }).then(ok);
+        },
+      };
+      return cadena;
+    },
+  };
+  const mes = await CAL227.cargarMes(cliente, 'yo', 2026, 9);
+  chequear('el mes trae las vidas usadas (sin las devueltas), para marcarlas', [
+    [...(mes.vidas ?? [])], pedido.find((p) => p[0] === 'vidas_usadas')?.[1],
+  ], [['2026-10-03'], [['eq', 'user_id', 'yo'], ['eq', 'devuelta', false]]]);
+  const cal = de227('movil', 'src', 'CalendarioDias.tsx');
+  const sg = de227('movil', 'src', 'StatsGeneral.tsx');
+  chequear('el calendario las marca con un aro punteado y lo explica en la leyenda; "Corregir días" es un botón que lo abre', [
+    /mes\.vidas\?\.has\(c\.fecha\) && \[estilos\.conVida/.test(cal), /T\.calendario\.leyendaVida/.test(cal),
+    /testID="corregir-dias"/.test(sg), /\{calendarioAbierto && calendario\}/.test(sg),
+  ], [true, true, true, true]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
