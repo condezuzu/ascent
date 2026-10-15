@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { eventos } from '@compartido/eventos';
+import { DIA_CAMBIO } from '@compartido/gimnasio';
+import { supabase } from './supabase';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { C } from './colores';
@@ -23,13 +27,39 @@ export default function DiaListo({
   alaFoto,
   alPeso,
   minutos,
+  logId,
 }: {
   alaFoto: () => void;
   alPeso: () => void;
   /** Cuánto duró el entrenamiento de hoy, si hubo. */
   minutos?: number | null;
+  /** El día de hoy: para saber si ya tiene foto. */
+  logId?: string | null;
 }) {
+  // EL EMPUJÓN A LA FOTO (15/10): el Álbum casi no se usaba. Mientras hoy no
+  // tenga foto, la pastilla resalta y abajo va el porqué, en una línea.
+  const [sinFoto, setSinFoto] = useState(false);
+  useEffect(() => {
+    if (!logId) return;
+    let vivo = true;
+    const mirar = () =>
+      void supabase
+        .from('photos')
+        .select('id')
+        .eq('log_id', logId)
+        .limit(1)
+        .then(({ data, error }) => {
+          if (vivo && !error) setSinFoto((data ?? []).length === 0);
+        });
+    mirar();
+    const dejar = eventos.escuchar(DIA_CAMBIO, mirar);
+    return () => {
+      vivo = false;
+      dejar();
+    };
+  }, [logId]);
   return (
+    <View>
     <View style={estilos.fila}>
       {/* CUÁNTO DURÓ, DEBAJO DEL RÓTULO (25/9). *"Me gustaba que apareciera el
           tiempo."* Se había perdido al mover el resumen: el cartel quedó solo
@@ -44,7 +74,7 @@ export default function DiaListo({
         {!!minutos && <Text style={estilos.minutos}>{T.inicio.minutosDeHoy(minutos)}</Text>}
       </View>
       <View style={estilos.acciones}>
-        <Accion rotulo={T.registrar.foto} alTocar={alaFoto}>
+        <Accion rotulo={T.registrar.foto} alTocar={alaFoto} resalta={sinFoto}>
           <IconoFoto />
         </Accion>
         <Accion rotulo={T.registrar.peso} alTocar={alPeso}>
@@ -52,15 +82,32 @@ export default function DiaListo({
         </Accion>
       </View>
     </View>
+    {sinFoto && (
+      <Text testID="foto-empuje" style={estilos.empuje}>
+        {T.inicio.fotoEmpuje}
+      </Text>
+    )}
+    </View>
   );
 }
 
-function Accion({ rotulo, alTocar, children }: { rotulo: string; alTocar: () => void; children: React.ReactNode }) {
+function Accion({
+  rotulo,
+  alTocar,
+  children,
+  resalta = false,
+}: {
+  rotulo: string;
+  alTocar: () => void;
+  children: React.ReactNode;
+  resalta?: boolean;
+}) {
   return (
     <Pressable
+      testID={resalta ? 'foto-resaltada' : undefined}
       // El hundido al tocar es el de la web (`transform: scale(0.96)`): dice
       // que el toque entró sin esperar a que abra nada.
-      style={({ pressed }) => [estilos.pildora, pressed && estilos.hundida]}
+      style={({ pressed }) => [estilos.pildora, resalta && estilos.resaltada, pressed && estilos.hundida]}
       onPress={alTocar}
       accessibilityRole="button"
       accessibilityLabel={rotulo}
@@ -108,6 +155,8 @@ const estilos = StyleSheet.create({
     borderRadius: 999,
   },
   hundida: { transform: [{ scale: 0.96 }], borderColor: C.lineaFuerte },
+  resaltada: { borderColor: C.claro },
+  empuje: { color: C.sub, fontSize: 12, marginTop: 6 },
   redondo: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 1.6, textTransform: 'uppercase' },
 });

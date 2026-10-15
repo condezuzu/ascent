@@ -149,6 +149,9 @@ export const EN: Textos = {
     pasosUnidad: 'steps',
     pasosMetaChica: (meta: string) => `goal ${meta}`,
     pasosMetaLlego: '✓ goal',
+    fotoEmpuje: "Today's photo: in a month you'll compare it with this one.",
+    pasosFestejo: 'Step goal!',
+    pasosCambiarMeta: 'Change the step goal',
     verResumen: 'See what you did today',
     diaPendiente: "Today is noted and adds up on its own. You didn't lose it.",
     sumarSerie: 'Add a set',
@@ -754,6 +757,7 @@ export const EN: Textos = {
   album: {
     titulo: 'Album',
     vacioTitulo: 'No photos yet.',
+    unaMas: "One more photo this month and you'll see the before and after.",
     vacioPie: "When you log a day you can add one: it stays attached to that day's planet.",
     cuentaDelMes: (fotos: number, dias: number) => `${fotos === 1 ? '1 photo' : `${fotos} photos`} · ${dias === 1 ? '1 day' : `${dias} days`}`,
     laPrimera: 'First of the month',

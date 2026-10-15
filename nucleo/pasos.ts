@@ -17,6 +17,14 @@ export const CLAVE_META_PASOS = 'ascent:meta-pasos';
 
 export const META_PASOS_POR_OMISION = 10000;
 
+/** El día en que ya se festejó la meta (15/10): una vez por día, no en cada visita. */
+export const CLAVE_FESTEJO_PASOS = 'ascent:pasos-festejo';
+
+/** Si hay que festejar: llegó, y hoy todavía no se festejó. */
+export function hayQueFestejar(pasos: number, meta: number, festejadoEl: string | null, hoy: string): boolean {
+  return meta > 0 && pasos >= meta && festejadoEl !== hoy;
+}
+
 /** Los bordes de lo que se puede escribir. Mil es una cuadra; cien mil, nadie. */
 export const META_PASOS_MIN = 1000;
 export const META_PASOS_MAX = 100000;

@@ -867,6 +867,7 @@ export default function Inicio({
             alaFoto={() => setRegistrarAbierto(true)}
             alPeso={() => setPesoAbierto(true)}
             minutos={minutosDeHoy}
+            logId={logs.find((l) => l.fecha === hoy)?.id ?? null}
           />
           <View style={estilos.resumen}>
             <View style={estilos.resumenCabe}>
@@ -918,6 +919,7 @@ export default function Inicio({
             alaFoto={() => setRegistrarAbierto(true)}
             alPeso={() => setPesoAbierto(true)}
             minutos={minutosDeHoy}
+            logId={logs.find((l) => l.fecha === hoy)?.id ?? null}
           />
           {/* VER LO DE HOY, A UN TOQUE (1.2/5.4). El resumen ya no se borra solo;
               y si lo cerraste con la equis —o recargaste—, esto lo vuelve a

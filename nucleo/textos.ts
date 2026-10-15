@@ -290,6 +290,11 @@ const ES = {
     pasosUnidad: 'pasos',
     pasosMetaChica: (meta: string) => `meta ${meta}`,
     pasosMetaLlego: '✓ meta',
+    // EL EMPUJÓN A LA FOTO (15/10): el porqué, en una línea, mientras hoy no tenga foto.
+    fotoEmpuje: 'La foto de hoy: en un mes la comparas con esta.',
+    // EL FESTEJO (15/10): la primera vez del día que Inicio la ve cumplida.
+    pasosFestejo: '¡Meta de pasos!',
+    pasosCambiarMeta: 'Cambiar la meta de pasos',
     // El resumen de hoy queda a un toque, después de registrar el día: ya no se
     // borra solo al tocarlo, y si lo cerraste podés volver a abrirlo (1.2/5.4).
     verResumen: 'Ver lo que hiciste hoy',
@@ -1332,6 +1337,8 @@ const ES = {
   album: {
     titulo: 'Álbum',
     vacioTitulo: 'Ninguna foto todavía.',
+    // Un mes con una sola foto (15/10): la comparación aparece con la segunda.
+    unaMas: 'Con otra foto este mes ves el antes y el después.',
     vacioPie: 'Al registrar un día puedes sumar una: queda pegada al planeta de ese día.',
     // Para una foto el verbo es QUITAR, nunca borrar ni sacar (regla 4 de
     // spec/idioma.md). Decía "Borrar" hasta el 18/9; §54 lo mira ahora.

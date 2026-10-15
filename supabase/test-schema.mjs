@@ -18452,6 +18452,29 @@ console.log('\n232. Los globitos: flotan, un renglón, y "ya puedes subir el pes
   const cortos = (t) => [t.inicio.globoSeries, t.social.avisoActividad, t.yo.globo, t.sesion.yaPuedesSubir].map((x) => x.length <= 42);
   chequear('los textos de los globitos entran en un renglón, en los dos idiomas', [cortos(ES232), cortos(EN232)], [[true, true, true, true], [true, true, true, true]]);
 }
+console.log('\n233. La meta de pasos se festeja una vez por día, y el empujón a la foto (15/10)');
+{
+  const PA233 = await import('../nucleo/pasos.ts');
+  chequear('festejar: llegó y hoy todavía no; ayer festejado vuelve a festejar; sin llegar, no', [
+    PA233.hayQueFestejar(12000, 10000, null, '2026-10-15'),
+    PA233.hayQueFestejar(12000, 10000, '2026-10-15', '2026-10-15'),
+    PA233.hayQueFestejar(12000, 10000, '2026-10-14', '2026-10-15'),
+    PA233.hayQueFestejar(9000, 10000, null, '2026-10-15'),
+    PA233.hayQueFestejar(10000, 10000, null, '2026-10-15'),
+  ], [true, false, true, false, true]);
+  const { readFileSync: leer233 } = await import('node:fs');
+  const de233 = (...p) => leer233(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const pasos = de233('movil', 'src', 'PasosInicio.tsx');
+  chequear('Inicio festeja aunque se haya llegado con la app cerrada (lo anotado es el día), y tocar los pasos lleva a cambiar la meta', [
+    /if \(!vivo \|\| !hayQueFestejar\(pasos, meta, ya, hoy\)\) return;\n      void plataforma\.almacenamiento\.guardar\(CLAVE_FESTEJO_PASOS, hoy\)/.test(pasos),
+    /onPress=\{compacto \? undefined : \(\) => irAPestana\('ajustes'\)\}/.test(pasos),
+  ], [true, true]);
+  chequear('el día sin foto resalta la foto y dice el porqué; el mes con una sola foto dice qué trae la segunda', [
+    /if \(vivo && !error\) setSinFoto\(\(data \?\? \[\]\)\.length === 0\);/.test(de233('movil', 'src', 'DiaListo.tsx')),
+    (de233('movil', 'src', 'Inicio.tsx').match(/logId=\{logs\.find\(\(l\) => l\.fecha === hoy\)\?\.id \?\? null\}\n          \/>/g) ?? []).length,
+    /\{!par && m\.fotos\.length === 1 && <Text testID="album-una-mas"/.test(de233('movil', 'src', 'Album.tsx')),
+  ], [true, 2, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
