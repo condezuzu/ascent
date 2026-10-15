@@ -18,6 +18,7 @@ import {
   type Rutina,
 } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
+import { nombreVisible } from '@nucleo/propios';
 import { miId } from '@compartido/quienSoy';
 import {
   activarRutina,
@@ -153,7 +154,7 @@ export default function MiRutina({
           dibujar={(e, i) => (
           <View style={estilos.filaEditable}>
             <Text style={estilos.ejercicio} numberOfLines={1}>
-              {catalogo.get(e.ejercicio)?.nombre ?? e.ejercicio}
+              {nombreVisible(e.ejercicio, catalogo.get(e.ejercicio)?.nombre)}
             </Text>
             <Pressable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, -1))} accessibilityLabel="menos">
               <Text style={estilos.paso}>−</Text>
@@ -335,11 +336,12 @@ export default function MiRutina({
         visible={eligiendoPara !== null}
         ejercicios={lista}
         valor={null}
-        alElegir={(id) => {
+        alElegir={(id, mide) => {
           const d = eligiendoPara;
           setEligiendoPara(null);
           if (!id || d === null || !actual) return;
-          void cambiar({ ...actual, dias: agregarEjercicio(actual.dias, d, id, catalogo.get(id)?.mide === 'tiempo') });
+          // El catálogo primero; uno recién creado todavía no está y trae cómo se mide.
+          void cambiar({ ...actual, dias: agregarEjercicio(actual.dias, d, id, (catalogo.get(id)?.mide ?? mide) === 'tiempo') });
         }}
         alCerrar={() => setEligiendoPara(null)}
       />

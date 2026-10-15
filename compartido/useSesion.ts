@@ -232,6 +232,12 @@ const inicioRef = refDe('inicio');
 const ultimaRef = refDe('ultimaActividad');
 const desfasajeRef = refDe('desfasaje');
 const sinServidor = () => INICIAL;
+// EL CARDIO CUENTA COMO ACTIVIDAD (cacería del 15/10). Con el cronómetro andando
+// nadie toca nada, y a la media hora la sesión se cerraba sola en plena cinta.
+// La marca se adelanta (la base la acota a lo que acepta) y se renueva cada
+// tanto con la app adelante, como hace el descanso con su fin.
+const MARCA_DEL_CARDIO_MS = 60 * 60000;
+const RENOVAR_CARDIO_MS = 5 * 60000;
 
 export function useSesion(
   alCambiarElDia?: (r: ResultadoRegistro | null) => void,
@@ -271,6 +277,10 @@ export function useSesion(
   // `iniciar_sesion`/`terminar_sesion`. Una sola para las dos: no tiene sentido
   // arrancar y cerrar a la vez, y así un toque en cada botón tampoco se pisa.
   const operandoSesion = useRef(false);
+  // Para el reloj de cada segundo, que se armó con el `marcar` de otro render.
+  const marcarRef = useRef(marcar);
+  marcarRef.current = marcar;
+  const cardioRenovadoEl = useRef(0);
 
   // LOS BLOQUES SON DE UNA SESIÓN (4/10). Vivían en memoria sin saber de cuál:
   // el único que los vaciaba era `terminar`, y solo en la instancia que
@@ -530,6 +540,13 @@ export function useSesion(
       if (plataforma.ciclo.visible()) {
         id = setInterval(() => {
           if (repintarCadaSegundo) repintar((n) => n + 1);
+          // La cinta andando, o un descanso largo (el + a mano llega a una hora): la marca se renueva.
+          const fin = descansoRef.current?.fin ?? 0;
+          const hasta = Math.max(bloquesRef.current.cardioDesde !== undefined ? Date.now() + MARCA_DEL_CARDIO_MS : 0, fin);
+          if (hasta > Date.now() && Date.now() - cardioRenovadoEl.current > RENOVAR_CARDIO_MS) {
+            cardioRenovadoEl.current = Date.now();
+            void marcarRef.current(hasta);
+          }
           // Con la app ADELANTE también se cierra sola: si la dejaste abierta
           // en el banco y te fuiste, a la media hora la pantalla no puede
           // seguir contando. `confirmar` no se pisa consigo mismo.
@@ -734,13 +751,17 @@ export function useSesion(
     operandoSesion.current = true;
     setOcupado(true);
     setAviso('');
+    // LA VUELTA DE CARDIO EN CURSO SE CIERRA ANTES (cacería del 15/10): si no, esos
+    // minutos no quedaban ni en la sesión ni en el resumen.
+    if (bloquesRef.current.cardioDesde !== undefined) await cerrarVueltaDelCardio();
     // Se anota lo que había ANTES de cerrar: abajo se pone todo en cero y el
-    // resumen se quedaría sin datos que mostrar.
+    // resumen se quedaría sin datos que mostrar. De los refs: la vuelta de arriba
+    // cambió el conteo después de este render.
     const arranco = inicio;
-    const seriesHechas = series;
+    const seriesHechas = seriesRef.current;
     const eraPorUbicacion = porUbicacion;
     const desfase = desfasaje;
-    const bloquesHechos = paraGuardar(bloques);
+    const bloquesHechos = paraGuardar(bloquesRef.current);
     // LA HORA ES LA DEL PRIMER TOQUE (13/10). Si un "Terminar" anterior no salió
     // —sin señal—, este reintento cierra a esa hora y no a la de ahora.
     const hasta = opciones?.hasta ?? (await leerSesionCache())?.quisoTerminar ?? undefined;
@@ -984,6 +1005,7 @@ export function useSesion(
 
   /** Cerrar el bloque y arrancar otro con el mismo ejercicio y la misma meta. */
   async function bloqueSiguiente() {
+    if (bloquesRef.current.cardioDesde !== undefined) await cerrarVueltaDelCardio();
     // Desde el ref y no del closure, y `subir` con el total del ref: si justo
     // se contó una serie, esta operación no puede pisarla con datos viejos.
     const previo = bloquesRef.current;
@@ -1037,6 +1059,8 @@ export function useSesion(
   }
 
   async function elegirEjercicio(id: string | null) {
+    // Otro ejercicio con la cinta andando: primero se anota esa vuelta.
+    if (id !== bloquesRef.current.ejercicio && bloquesRef.current.cardioDesde !== undefined) await cerrarVueltaDelCardio();
     const previo = bloquesRef.current;
     const b = cambiarEjercicio(previo, id);
     if (b === previo) return marcar();
@@ -1340,7 +1364,8 @@ export function useSesion(
     bloquesRef.current = b;
     setBloques(b);
     await actualizarSesionCache({ bloques: b }, yo);
-    await marcar();
+    cardioRenovadoEl.current = Date.now();
+    await marcar(Date.now() + MARCA_DEL_CARDIO_MS);
   }
 
   /** "Listo": lo que corrió se anota en minutos y la vuelta cuenta, sin descanso automático. */

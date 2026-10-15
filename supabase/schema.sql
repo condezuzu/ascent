@@ -814,14 +814,19 @@ end;
 $$;
 revoke execute on function public.inicio_ciclo_vidas(uuid, date) from public, anon, authenticated;
 
+-- TODAS LAS DEL CICLO, TAMBIÉN LAS DE DESPUÉS DE p_dia (cacería del 15/10): la pérdida
+-- recorre las faltas del día más nuevo al más viejo, y cada día tiene que contar las
+-- vidas que acaba de poner en los siguientes. Si no, con dos vidas se cubrían tres.
+-- El INICIO del ciclo sí sale solo de lo anterior; sin ciclo abierto, p_dia lo abre.
 create or replace function public.impulsos_disponibles(p_user uuid, p_dia date)
 returns int language sql stable security definer set search_path = public as $$
+  with c as (select coalesce(inicio_ciclo_vidas(p_user, p_dia), p_dia) as ini)
   select greatest(0, impulsos_ganados(p_user) - coalesce((
-    select count(*)::int from vidas_usadas
+    select count(*)::int from vidas_usadas, c
      where user_id = p_user
        and not devuelta
-       and fecha >= inicio_ciclo_vidas(p_user, p_dia)
-       and fecha <= p_dia
+       and fecha >= c.ini
+       and fecha < c.ini + 30
   ), 0));
 $$;
 
@@ -1962,7 +1967,8 @@ begin
   select * into s from sesiones where id = p_sesion and user_id = uid;
   if s.id is null then return; end if;
 
-  t := least(greatest(coalesce(p_hasta, now()), s.inicio), now() + interval '15 minutes');
+  -- Hasta una hora adelante (migración 81): el descanso a mano y la cinta pueden durar eso.
+  t := least(greatest(coalesce(p_hasta, now()), s.inicio), now() + interval '60 minutes');
 
   if s.estado = 'corriendo' then
     update sesiones set ultima_actividad = greatest(ultima_actividad, t) where id = s.id;
@@ -3673,8 +3679,27 @@ create policy "errores: insertar" on public.errores_js for insert with check (tr
 
 -- ejercicios: catálogo de solo lectura, igual para todos
 -- Los propios (migración 76): los ve SOLO quien los creó (migración 80; antes también sus amigos).
+-- EL PROPIO AJENO QUE YA USO (cacería del 15/10). Antes de la 80 se podía elegir el
+-- propio de un amigo y ponerlo en la rutina o en una sesión. Ese se sigue viendo:
+-- si no, la rutina y el historial quedan con un id sin nombre. No reescribe filas.
+create or replace function public.ejercicio_que_uso(p_id text)
+returns boolean language sql stable security definer set search_path = public as $f$
+  select exists (
+           select 1 from rutinas r
+            where r.user_id = auth.uid()
+              and jsonb_path_exists(r.dias, '$[*].ejercicios[*] ? (@.ejercicio == $id)', jsonb_build_object('id', p_id))
+         )
+      or exists (
+           select 1 from sesiones s
+            where s.user_id = auth.uid()
+              and s.bloques @> jsonb_build_array(jsonb_build_object('ejercicio', p_id))
+         );
+$f$;
+revoke execute on function public.ejercicio_que_uso(text) from public, anon;
+grant execute on function public.ejercicio_que_uso(text) to authenticated;
+
 create policy "ejercicios: catálogo con sesión" on public.ejercicios for select
-  using (auth.uid() is not null and (creado_por is null or creado_por = auth.uid()));
+  using (auth.uid() is not null and (creado_por is null or creado_por = auth.uid() or public.ejercicio_que_uso(id)));
 
 -- prs: las marcas se ven igual que los logs — el dueño todo, los amigos
 -- aceptados leen. El peso CORPORAL sigue afuera, siempre (§16.6).
@@ -4220,7 +4245,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 80; $$;
+returns int language sql immutable as $$ select 81; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

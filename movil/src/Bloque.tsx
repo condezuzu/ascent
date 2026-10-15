@@ -23,6 +23,7 @@ const SUBIR_VISTOS = new Set<string>();
 const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Globito from './Globito';
+import { esPropio, nombreVisible } from '@nucleo/propios';
 import { C } from './colores';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
@@ -139,7 +140,7 @@ export default function Bloque({
   // vistazo: si se viera igual, un toque de más registraría una serie no hecha.
   const esFantasma = !!sugerido && estado.hechas === 0 && !!estado.ejercicio;
   const actual = ejercicios.find((e) => e.id === estado.ejercicio) ?? null;
-  const nombreDe = (id: string | null) => (id ? (ejercicios.find((e) => e.id === id)?.nombre ?? id) : T.sesion.sinEjercicio);
+  const nombreDe = (id: string | null) => (id ? nombreVisible(id, ejercicios.find((e) => e.id === id)?.nombre) : T.sesion.sinEjercicio);
   // EL CARDIO (14/10): se anota en minutos. Una vuelta ya es "cumplida": no hay
   // meta de series, y no arranca un descanso.
   const esTiempo = actual?.mide === 'tiempo';
@@ -247,7 +248,11 @@ export default function Bloque({
             style={[estilos.ejercicioTexto, !estado.ejercicio && estilos.apagadoTexto, esFantasma && estilos.fantasmaTexto]}
             numberOfLines={1}
           >
-            {actual ? `${actual.nombre} · ${nombreDeGrupo(actual.grupo).toLowerCase()}` : T.sesion.sinEjercicio}
+            {actual
+              ? `${actual.nombre} · ${nombreDeGrupo(actual.grupo).toLowerCase()}`
+              : estado.ejercicio && esPropio(estado.ejercicio)
+                ? T.ejercicios.propioAjeno
+                : T.sesion.sinEjercicio}
           </Text>
         </Pressable>
         {esFantasma && <Text style={estilos.badgeSugerido}>{T.sesion.sugerido}</Text>}

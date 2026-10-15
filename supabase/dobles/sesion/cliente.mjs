@@ -81,7 +81,12 @@ function procesar(rpc, a) {
     }
     case 'marcar_actividad': {
       const s = porId(a.p_sesion);
-      if (s && s.estado === 'corriendo') s.ultima_actividad = a.p_hasta;
+      // Como la de verdad (schema.sql, marcar_actividad): no antes del inicio, no más de 15 min
+      // adelante, y nunca para atrás. Pisarla sin más dejaba pasar lo que la base no acepta.
+      if (s && s.estado === 'corriendo') {
+        const t = Math.min(Math.max(Date.parse(a.p_hasta ?? new Date(Date.now()).toISOString()), Date.parse(s.inicio)), Date.now() + 15 * 60000);
+        if (!s.ultima_actividad || t > Date.parse(s.ultima_actividad)) s.ultima_actividad = new Date(t).toISOString();
+      }
       return null;
     }
     case 'ultimo_ejercicio':

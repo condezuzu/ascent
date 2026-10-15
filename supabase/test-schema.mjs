@@ -4217,6 +4217,19 @@ console.log('\n58. Las vidas');
     chequear('la racha bajo 10', (await perfil(u)).racha_actual, 10);
   }
 
+  // ---- con DOS vidas, tres faltas juntas cortan (cacería del 15/10) ----
+  // El bucle de la pérdida va del día más nuevo al más viejo: cada día tiene que
+  // contar las vidas que el mismo bucle acaba de poner en los días siguientes. Con
+  // la cuota igual al tope (3) no se veía: el tope frenaba antes.
+  {
+    await cuotaDeVidas(2);
+    const u = await nuevoUsuario();
+    await rachaDe(u, 16, 4); // faltaron los últimos tres días
+    const r = await perder(u);
+    chequear('con dos vidas, tres faltas juntas cortan: se gastan las dos, no tres', [r.perdida, (r.vidas_usadas ?? []).length, (await perfil(u)).racha_actual], [true, 2, 6]);
+    await cuotaDeVidas(3);
+  }
+
   // ---- una vida gastada NO se devuelve ----
   {
     const u = await nuevoUsuario();
@@ -5828,10 +5841,10 @@ console.log('\n78. La sesion se cierra sola cuando se deja de entrenar');
     await marcar(id, '-35 minutes');
     await marcar(id, '2 minutes');
     chequear('un descanso corriendo la mantiene viva', (await miSesion()).corriendo, true);
-    // Y el telefono no puede fabricar actividad a futuro: se acota a 15 minutos.
+    // Y el telefono no puede fabricar actividad a futuro: se acota a una hora (migración 81; antes 15 minutos).
     await marcar(id, '5 hours');
     const t = (await db.query(`select round(extract(epoch from (ultima_actividad - now())) / 60)::int m from sesiones where id = $1`, [id])).rows[0].m;
-    chequear('la actividad a futuro se acota', t, 15);
+    chequear('la actividad a futuro se acota', t, 60);
   }
 
   // ---- TOCAR TERMINAR TARDE no suma el tiempo muerto ----
@@ -18416,6 +18429,26 @@ console.log('\n231. Ejercicios propios: solo los ve quien los creó (migración 
   await RU231.copiarRutina(cli, 'Rutina de ana', dias);
   const copiada = (await RU231.cargarMisRutinas(cli)).find((r) => r.activa);
   chequear('un amigo no ve mis propios; copiar mi rutina no se lleva el propio (quedaría sin nombre)', [betoVe, copiada?.dias[1].ejercicios.map((e) => e.ejercicio)], [0, ['press_banca']]);
+  // EL QUE YA LO USABA (cacería del 15/10): antes de la 80 un amigo podía elegir mi
+  // propio y ponerlo en su rutina. Ese lo sigue viendo —si no, su rutina y su
+  // historial quedan con un id sin nombre—; los demás míos, no.
+  const otro = (await clienteDe(ana).rpc('crear_ejercicio', { p_nombre: 'Dominadas en anillas', p_grupo: 'espalda', p_mide: 'series' })).data;
+  const conElDeAna = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  conElDeAna[2] = { descanso: false, ejercicios: [{ ejercicio: otro, series: 3 }] };
+  await clienteDe(beto).rpc('guardar_rutina', { p_id: null, p_nombre: 'Con lo de Ana', p_dias: conElDeAna });
+  const extrana231 = await nuevoUsuario();
+  const quienVe = async (u, id) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    try {
+      return (await db.query('select id from ejercicios where id = $1', [id])).rows.length;
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  chequear('el propio ajeno que ya está en mi rutina lo sigo viendo; el otro que nunca usé, no; una extraña, ninguno', [
+    await quienVe(beto, otro), await quienVe(beto, suyo), await quienVe(extrana231, otro),
+  ], [1, 0, 0]);
   const { readFileSync: leer231 } = await import('node:fs');
   const de231 = (...p) => leer231(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
   chequear('la rutina de un amigo y el compañero en vivo nombran con nombreVisible', ['RutinaPlegada.tsx', 'CompaneroEnDescanso.tsx', 'Juntos.tsx'].map((f) => /nombreVisible\(/.test(de231('movil', 'src', f))), [true, true, true]);
@@ -18505,6 +18538,35 @@ console.log('\n234. La pasada de lentitud: el fondo se pausa tapado, los relojes
     /repintarCadaSegundo/.test(de234('src', 'app', 'page.tsx')),
   ], [true, true, 2, true, false]);
   chequear('cambiar de pestaña no vuelve a crear las cinco pantallas', /\{pantallas\[cual\]\}/.test(de234('movil', 'src', 'Pestanas.tsx')), true);
+}
+console.log('\n235. Cacería del 15/10, vuelta 1: la cinta larga, el descanso largo, la cinta que se corta, el cardio propio desde la rutina');
+{
+  chequear('35 y 50 min de cinta con la app adelante: la sesión sigue y la vuelta se anota entera', [
+    await escenarioDeSesion('cardioLargo', '35'),
+    await escenarioDeSesion('cardioLargo', '50'),
+  ], [
+    { alMirar: { corriendo: true, base: 'corriendo' }, base: [['cinta', 35]] },
+    { alMirar: { corriendo: true, base: 'corriendo' }, base: [['cinta', 50]] },
+  ]);
+  chequear('Terminar, o elegir otro ejercicio, con la cinta andando: primero se anota esa vuelta', [
+    await escenarioDeSesion('cardioLargo', 'terminar'),
+    await escenarioDeSesion('cardioLargo', 'cambiar'),
+  ], [
+    { base: [['cinta', 12]], resumen: [['cinta', 12]], series: 1 },
+    { base: [['cinta', 12]], resumen: null, series: 1 },
+  ]);
+  chequear('un descanso de 50 min (el + a mano llega a una hora) no cierra la sesión', await escenarioDeSesion('descansoLargo'), { corriendo: true, base: 'corriendo' });
+  const { readFileSync: leer235 } = await import('node:fs');
+  const de235 = (...p) => leer235(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  chequear('un id sin nombre en lo propio (el bloque, la lista, el editor) se ve como "Ejercicio propio", nunca crudo', [
+    /nombreVisible\(id, ejercicios\.find\(\(e\) => e\.id === id\)\?\.nombre\)/.test(de235('movil', 'src', 'Bloque.tsx')),
+    /nombreVisible\(id, del\(id\)\?\.nombre\)/.test(de235('movil', 'src', 'ListaDeBloques.tsx')),
+    /nombreVisible\(e\.ejercicio, catalogo\.get\(e\.ejercicio\)\?\.nombre\)/.test(de235('movil', 'src', 'MiRutina.tsx')),
+  ], [true, true, true]);
+  chequear('un cardio propio creado desde la rutina entra en minutos: el selector dice cómo se mide el recién creado', [
+    /elegir\(id, creando\.grupo === 'cardio' \? 'tiempo' : 'series'\);/.test(de235('movil', 'src', 'SelectorEjercicio.tsx')),
+    /\(catalogo\.get\(id\)\?\.mide \?\? mide\) === 'tiempo'/.test(de235('movil', 'src', 'MiRutina.tsx')),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

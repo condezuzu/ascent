@@ -64,6 +64,8 @@ export const REQUIERE = {
   vidasDeUna: 79,
   /** Los ejercicios propios los ve solo quien los creó (la app no depende de esto). */
   propiosSoloMios: 80,
+  /** La marca de actividad acepta hasta una hora adelante (descanso a mano, cinta larga). */
+  marcaDeUnaHora: 81,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

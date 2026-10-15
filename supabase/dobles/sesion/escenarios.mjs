@@ -609,6 +609,87 @@ async function cronometro() {
   return { corre, enCache, primera, segunda: { minutos: (viva()?.bloques ?? []).map((b) => b.minutos ?? null), series: viva()?.series ?? null } };
 }
 
+/**
+ * `cardioLargo` (cacería del 15/10): la cinta con el cronómetro andando.
+ *  - `35` / `50`: tantos minutos de cinta con la app adelante y sin tocar nada;
+ *    después se desbloquea (la base contesta) y se toca Listo. La base cierra
+ *    por inactividad a la media hora de su última marca, con marcas que acepta
+ *    hasta 15 min adelante.
+ *  - `terminar` / `cambiar`: a los 12 min de cinta se toca Terminar, o se elige
+ *    otro ejercicio. La vuelta no se puede perder.
+ */
+async function cardioLargo(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.ventanaMs = 30 * 60000;
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirEjercicio('cinta');
+  await inicio.r.arrancarCardio();
+  await asentar();
+  const viva = () => servidor.sesiones[0];
+  const minutos = () => (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.minutos ?? null]);
+  if (caso === 'terminar' || caso === 'cambiar') {
+    adelanto = 12 * 60000;
+    let cierre = null;
+    if (caso === 'terminar') cierre = await inicio.r.terminar();
+    else await inicio.r.elegirEjercicio('press_banca');
+    await asentar();
+    return {
+      base: minutos(),
+      resumen: cierre ? cierre.bloques.map((b) => [b.ejercicio, b.minutos ?? null]) : null,
+      series: viva()?.series ?? null,
+    };
+  }
+  // Con la app adelante: el reloj de la sesión hace su vuelta de cada segundo.
+  for (let m = 5; m <= Number(caso); m += 5) {
+    adelanto = m * 60000;
+    await dormir(1300);
+  }
+  await asentar();
+  await bloquearYDesbloquear();
+  await dormir(300);
+  await asentar();
+  const alMirar = { corriendo: inicio.r.estado.corriendo, base: viva()?.estado ?? null };
+  await inicio.r.cerrarVueltaDeCardio();
+  await asentar();
+  return { alMirar, base: minutos() };
+}
+
+/**
+ * `descansoLargo` (cacería del 15/10): el + del descanso deja ponerlo a mano hasta una
+ * hora. Un descanso de 50 min con la app adelante no puede cerrar la sesión.
+ */
+async function descansoLargo() {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.ventanaMs = 30 * 60000;
+  const { cambiarDuracion } = await import('@compartido/descanso');
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirEjercicio('press_banca');
+  await inicio.r.serieHecha();
+  await asentar();
+  const d = inicio.r.estado.descanso;
+  if (d) inicio.r.reiniciarDescanso(cambiarDuracion(d, 50 * 60));
+  await asentar();
+  for (let m = 5; m <= 50; m += 5) {
+    adelanto = m * 60000;
+    await dormir(1300);
+  }
+  await asentar();
+  await bloquearYDesbloquear();
+  await dormir(300);
+  await asentar();
+  return { corriendo: inicio.r.estado.corriendo, base: servidor.sesiones[0]?.estado ?? null };
+}
+
 /** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
 async function yaCorria() {
   const inicio = montar(() => useSesion());
@@ -786,7 +867,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

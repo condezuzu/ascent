@@ -48,7 +48,8 @@ function SelectorEjercicio({
   visible: boolean;
   ejercicios: Ejercicio[];
   valor: string | null;
-  alElegir: (id: string | null) => void;
+  /** `mide` viaja solo con uno recién creado: el catálogo de quien abrió esto todavía no lo tiene. */
+  alElegir: (id: string | null, mide?: 'series' | 'tiempo') => void;
   alCerrar: () => void;
 }) {
   const actual = ejercicios.find((e) => e.id === valor) ?? null;
@@ -94,10 +95,10 @@ function SelectorEjercicio({
   const grupos = [...new Set(ejercicios.map((e) => e.grupo))];
   const delDots = ejercicios.filter((e) => e.cuenta_dots);
 
-  function elegir(id: string | null) {
+  function elegir(id: string | null, mide?: 'series' | 'tiempo') {
     setBusqueda('');
     setCreando(null);
-    alElegir(id);
+    alElegir(id, mide);
     alCerrar();
   }
 
@@ -110,7 +111,8 @@ function SelectorEjercicio({
     setCreandoError('');
     const id = await crearEjercicio(supabase, creando.nombre.trim(), creando.grupo);
     if (!id) return setCreandoError(T.general.noSePudo);
-    elegir(id);
+    // La misma regla que la base (crear_ejercicio): el cardio se mide en minutos.
+    elegir(id, creando.grupo === 'cardio' ? 'tiempo' : 'series');
   }
 
   const hallados = buscarEjercicios(ejercicios, busqueda, 12, (g) => T.ejercicios.grupos[g] ?? g);

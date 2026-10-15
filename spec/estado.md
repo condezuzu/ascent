@@ -12,8 +12,13 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Aplicadas hasta la 44.** Lo dice la base misma: `version_del_esquema()`
-contestó 44 el 18/9 (esta línea decía "falta correr la 44").
+**Aplicadas hasta la 78** (15/10/2026: `version_del_esquema()` contestó 78).
+**Escritas y sin aplicar: la 79** (las vidas vuelven todas juntas) **y la 80**
+(los ejercicios propios los ve solo quien los creó). La app anda igual sin
+ellas: la 79 se mira con `disponible('vidasDeUna')`, y la 80 es solo una
+política de lectura de la base.
+
+> Hasta el 15/10 esto decía "aplicadas hasta la 44", del 18/9.
 
 > Este párrafo decía "las 22 primeras están aplicadas; la 23 falta correr"
 > hasta el 17/9/2026, con veinte migraciones ya corridas encima. Se actualiza

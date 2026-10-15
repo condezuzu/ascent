@@ -6,6 +6,7 @@ import type { Unidad } from '@nucleo/peso';
 import { cargaVigente, llevaNumero, type Carga } from '@nucleo/carga';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
+import { nombreVisible } from '@nucleo/propios';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import CampoPeso from './CampoPeso';
@@ -85,7 +86,7 @@ function ListaDeBloques({
   // El bloque cuyo ejercicio se está corrigiendo: abre el selector.
   const [cambiando, setCambiando] = useState<number | null>(null);
   const del = (id: string | null) => ejercicios.find((e) => e.id === id);
-  const nombre = (id: string | null) => (id ? (del(id)?.nombre ?? id) : T.sesion.sinEjercicio);
+  const nombre = (id: string | null) => (id ? nombreVisible(id, del(id)?.nombre) : T.sesion.sinEjercicio);
   const admitePeso = (id: string | null) => id !== null && del(id)?.admite_peso !== false;
   const nada = estado.cerrados.length === 0 && estado.hechas === 0;
 

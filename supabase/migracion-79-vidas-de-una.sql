@@ -58,14 +58,19 @@ end;
 $$;
 revoke execute on function public.inicio_ciclo_vidas(uuid, date) from public, anon, authenticated;
 
+-- TODAS LAS DEL CICLO, TAMBIÉN LAS DE DESPUÉS DE p_dia (cacería del 15/10): la pérdida
+-- recorre las faltas del día más nuevo al más viejo, y cada día tiene que contar las
+-- vidas que acaba de poner en los siguientes. Si no, con dos vidas se cubrían tres.
+-- El INICIO del ciclo sí sale solo de lo anterior; sin ciclo abierto, p_dia lo abre.
 create or replace function public.impulsos_disponibles(p_user uuid, p_dia date)
 returns int language sql stable security definer set search_path = public as $$
+  with c as (select coalesce(inicio_ciclo_vidas(p_user, p_dia), p_dia) as ini)
   select greatest(0, impulsos_ganados(p_user) - coalesce((
-    select count(*)::int from vidas_usadas
+    select count(*)::int from vidas_usadas, c
      where user_id = p_user
        and not devuelta
-       and fecha >= inicio_ciclo_vidas(p_user, p_dia)
-       and fecha <= p_dia
+       and fecha >= c.ini
+       and fecha < c.ini + 30
   ), 0));
 $$;
 
