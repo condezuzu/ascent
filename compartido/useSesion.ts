@@ -572,15 +572,14 @@ export function useSesion(
    * Trae los bloques que la base tiene guardados para la sesión y los junta
    * con lo que haya acá (`unirConGuardados`). Sin señal no pasa nada: queda
    * marcado y se vuelve a intentar en el próximo toque.
-   *
-   * `actual` es el estado recién calculado por quien llama, si lo hay: el
-   * render que actualiza `bloquesRef` puede no haber pasado todavía.
    */
-  async function recuperarBloques(id: string, actual?: EstadoBloques) {
+  async function recuperarBloques(id: string) {
     if (faltanBloques.current !== id) return;
     const { data, error } = await supabase.from('sesiones').select('bloques').eq('id', id).maybeSingle();
     if (error || faltanBloques.current !== id) return;
-    const antes = actual ?? bloquesRef.current;
+    // Lo de AHORA y no `actual` (cacería del 15/10): un + que cayó mientras viajaba
+    // el pedido quedaba afuera de la unión, y la pantalla volvía al ejercicio de antes.
+    const antes = bloquesRef.current;
     const unidos = unirConGuardados((data as { bloques?: unknown } | null)?.bloques, antes);
     faltanBloques.current = null;
     bloquesRef.current = unidos;
@@ -661,6 +660,11 @@ export function useSesion(
     cambioDeSesion();
     if (r.id) idVisto.current = r.id;
     bloquesSonDe(r.id ?? null);
+    // LA SESIÓN DE OTRO APARATO: lo de allá falta acá, y se marca YA (cacería del
+    // 15/10). Antes se marcaba después de esperar el historial por la red, y un
+    // toque en ese hueco subía la lista de acá —vacía— y borraba lo de allá.
+    const faltan = !!(r.yaEstaba && r.id && sinNadaContado(bloquesRef.current));
+    if (faltan) faltanBloques.current = r.id;
     // La caché lleva TODO lo que hace falta para decidir, no solo para pintar:
     // la otra instancia del hook —la del vigilante— se entera por acá.
     guardarSesionCache({
@@ -669,6 +673,7 @@ export function useSesion(
       porUbicacion: porUbi,
       series: r.series ?? 0,
       id: r.id ?? null,
+      ...(faltan ? { faltanBloques: true } : {}),
     }, yo);
     setInicio(r.inicio);
     setDesfasaje(desfasajeDelReloj(r.ahora));
@@ -701,9 +706,7 @@ export function useSesion(
 
       // YA ESTABA CORRIENDO (se empezó en otro lado): lo que se hizo está en la
       // base, y eso va antes que cualquier semilla.
-      if (r.yaEstaba && r.id && sinNadaContado(bloquesRef.current)) {
-        faltanBloques.current = r.id;
-        await actualizarSesionCache({ faltanBloques: true }, yo);
+      if (faltan && r.id) {
         await recuperarBloques(r.id);
         if (!sinNadaContado(bloquesRef.current)) return;
       }
@@ -914,6 +917,13 @@ export function useSesion(
     // CON LA CINTA ANDANDO, "+ SERIE HECHA" ES "LISTO" (cacería del 15/10): el botón
     // del descanso contaba una vuelta de cardio que no existía.
     if (bloquesRef.current.cardioDesde !== undefined && !opciones?.sinDescanso) return cerrarVueltaDelCardio();
+    // Con la cinta ya parada tampoco: una vuelta de cero minutos y un descanso que el
+    // cardio no lleva. Un bloque con minutos solo puede ser cardio: es "Seguir".
+    if (bloquesRef.current.minutos !== undefined && !opciones?.sinDescanso) {
+      borrarDescanso();
+      setDescanso(null);
+      return;
+    }
     // EL CONTEO SE MUEVE PRIMERO, JUNTO Y DESDE LOS REFS. Las dos cuentas —el
     // total y la lista— salen de la misma función (`sumarSerie`) sobre el mismo
     // objeto, leído de refs siempre-al-día y NO del render: así dos toques
@@ -947,7 +957,8 @@ export function useSesion(
     // `subir` va ADENTRO de `actualizarSesionCache`, que lo corre antes de tocar
     // la caché: el orden es el mismo, y el toque queda anotado en el reloj desde
     // ahora y no desde que le llega el turno a la caché (4/10).
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques, sugerido: false }, yo, () =>
+    // `bloques` se lee en el turno, DESPUÉS de `antes`: si ahí se unió con la base, va lo unido.
+    await actualizarSesionCache({ series: nc.series, get bloques() { return bloquesRef.current; }, sugerido: false }, yo, () =>
       subir(nc.series, nc.bloques)
     );
     if (opciones?.sinDescanso === true) {
@@ -1005,7 +1016,7 @@ export function useSesion(
     // incompleta y subirla los borraría. Se intenta traerlos; si se pudo,
     // `recuperarBloques` ya subió la lista junta.
     if (faltanBloques.current === idSesion) {
-      await recuperarBloques(idSesion, b);
+      await recuperarBloques(idSesion);
       return;
     }
     await encolar(supabase, {

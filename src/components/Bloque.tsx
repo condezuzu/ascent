@@ -347,7 +347,9 @@ export default function Bloque({
           alElegir={(id) => {
             // La misma regla de antes: con series sin cerrar, se pregunta de
             // cuál eran en vez de decidir por el usuario.
-            if (estado.hechas > 0 && id !== estado.ejercicio) setADonde(id);
+            // Entre un cardio y uno de fuerza no se pregunta (cacería del 15/10).
+            const esCardio = (x: string | null) => ejercicios.find((e) => e.id === x)?.mide === 'tiempo';
+            if (estado.hechas > 0 && id !== estado.ejercicio && esCardio(id) === esCardio(estado.ejercicio)) setADonde(id);
             else alElegirEjercicio(id);
           }}
           alCerrar={() => setAbriendo(false)}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
@@ -70,31 +70,50 @@ export default function MiRutina({
   const [preguntaDescanso, setPreguntaDescanso] = useState<number | null>(null);
   const [error, setError] = useState('');
 
-  const cargar = useCallback(async () => {
-    const [hay, { data: ejercicios }] = await Promise.all([hayRutinasGuardadas(supabase), supabase.from('ejercicios').select('*')]);
+  // EL CATÁLOGO, APARTE (cacería del 15/10): un ejercicio propio nuevo solo necesita
+  // su nombre. Volver a traer las rutinas por eso pisaba lo que se acababa de tocar.
+  const cargarCatalogo = useCallback(async () => {
+    const { data: ejercicios } = await supabase.from('ejercicios').select('*');
     const filas = (ejercicios ?? []) as (Ejercicio & { mide?: string | null })[];
     setLista(filas);
     setCatalogo(new Map(filas.map((e) => [e.id, { nombre: e.nombre, grupo: e.grupo ?? null, mide: e.mide === 'tiempo' ? 'tiempo' : 'series' }])));
+  }, []);
+  // Cuántos cambios se hicieron: una lectura que salió antes de un toque no lo pisa al llegar.
+  const ediciones = useRef(0);
+
+  const cargar = useCallback(async () => {
+    const [hay] = await Promise.all([hayRutinasGuardadas(supabase), cargarCatalogo()]);
     setGuardadas(hay);
     const yo = await miId(supabase);
+    const n = ediciones.current;
     const [mias, vista] = await Promise.all([hay ? cargarMisRutinas(supabase) : Promise.resolve(null), yo ? cargarRutinaParaVer(supabase, yo, true) : Promise.resolve(null)]);
-    if (mias) {
+    if (mias && ediciones.current === n) {
       setRutinas(mias);
       setSel((s) => (s && mias.some((r) => r.id === s) ? s : (mias.find((r) => r.activa) ?? mias[0])?.id ?? null));
     }
     if (vista?.deducida) setDeducida(vista.dias);
-  }, []);
+  }, [cargarCatalogo]);
 
   useEffect(() => {
     if (visible) void cargar();
   }, [visible, cargar]);
   // Un ejercicio propio recién agregado tiene que verse con su nombre.
-  useEffect(() => eventos.escuchar(EJERCICIOS_CAMBIO, () => void cargar()), [cargar]);
+  useEffect(() => eventos.escuchar(EJERCICIOS_CAMBIO, () => void cargarCatalogo()), [cargarCatalogo]);
 
   const actual = rutinas.find((r) => r.id === sel) ?? null;
 
+  // EL NOMBRE SE GUARDA TAMBIÉN CON "LISTO" (cacería del 15/10): con el teclado abierto,
+  // el campo se desmontaba sin su fin de edición y el nombre nuevo se perdía.
+  const nombreTipeado = useRef<string | null>(null);
+  function guardarNombre() {
+    const n = nombreTipeado.current?.trim();
+    nombreTipeado.current = null;
+    if (actual && n && n !== actual.nombre) void cambiar({ ...actual, nombre: n });
+  }
+
   /** Cambia la rutina en pantalla y la guarda; si no se guardó, vuelve atrás. */
   async function cambiar(nueva: Rutina) {
+    ediciones.current++;
     const antes = rutinas;
     setRutinas((rs) => rs.map((r) => (r.id === nueva.id ? nueva : r)));
     setError('');
@@ -283,10 +302,8 @@ export default function MiRutina({
                 style={estilos.nombre}
                 defaultValue={actual.nombre}
                 maxLength={40}
-                onEndEditing={(ev) => {
-                  const n = ev.nativeEvent.text.trim();
-                  if (n && n !== actual.nombre) void cambiar({ ...actual, nombre: n });
-                }}
+                onChangeText={(t) => (nombreTipeado.current = t)}
+                onEndEditing={guardarNombre}
               />
             ) : (
               <Text style={estilos.estado}>{actual.activa ? T.rutina.activa : ''}</Text>
@@ -296,7 +313,14 @@ export default function MiRutina({
                 <Text style={estilos.chicoTexto}>{T.rutina.usarEsta}</Text>
               </Pressable>
             )}
-            <Pressable testID="rutina-editar" style={estilos.chico} onPress={() => setEditando(!editando)}>
+            <Pressable
+              testID="rutina-editar"
+              style={estilos.chico}
+              onPress={() => {
+                if (editando) guardarNombre();
+                setEditando(!editando);
+              }}
+            >
               <Text style={estilos.chicoTexto}>{editando ? T.rutina.listo : T.rutina.editar}</Text>
             </Pressable>
           </View>

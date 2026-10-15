@@ -127,7 +127,8 @@ function consulta(tabla) {
     then: (a, b) => ejecutar(false).then(a, b),
   };
   async function ejecutar(uno) {
-    await espera(5);
+    // `ida.historial` / `ida.bloquesDeSesion`: la señal lenta de las dos lecturas que hace la sesión.
+    await espera(uno ? (servidor.ida.bloquesDeSesion ?? 5) : (servidor.ida.historial ?? 5));
     const s = tabla === 'sesiones' && uno ? porId(filtro.id) : null;
     const data = uno ? (s ? { bloques: copia(s.bloques) } : null) : tabla === 'sesiones' ? copia(servidor.historial) : [];
     await espera(5);

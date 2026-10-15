@@ -569,6 +569,8 @@ async function cardio() {
   await inicio.r.elegirMinutos(30);
   await asentar();
   const corregido = (s?.bloques ?? []).map((b) => b.minutos ?? null);
+  // Una serie común es de fuerza: sobre la cinta, "+ Serie hecha" ya no cuenta (cacería del 15/10).
+  await inicio.r.elegirEjercicio('press_banca');
   await inicio.r.serieHecha();
   await asentar();
   return { tras, corregido, comun: inicio.r.estado.descanso !== null };
@@ -887,6 +889,59 @@ async function vueltaTres(caso) {
   return { cercaDeListo: Math.abs(ultima - listo) < 2 * 60000 };
 }
 
+/**
+ * `vueltaCuatro` (cacería del 15/10, vuelta 4): la sesión que ya había empezado otro
+ * aparato (2 × 60 de press anotadas allá), con señal lenta.
+ *  - `elige`: se toca Iniciar, y mientras llega el historial se elige remo.
+ *  - `mas`: lo mismo, y además un + en remo.
+ *  - `llega`: el historial es rápido pero los bloques de la base tardan; se elige
+ *    remo antes de que lleguen. Remo sigue siendo el de ahora.
+ *  - `cintaParada`: la cinta ya cerrada con Listo y se toca "+ Serie hecha" en el
+ *    descanso: ni vuelta de cero minutos ni descanso.
+ */
+async function vueltaCuatro(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  const viva = () => servidor.sesiones[0];
+  const lista = () => (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.series]);
+  if (caso === 'cintaParada') {
+    const inicio = montar(() => useSesion());
+    await asentar();
+    await inicio.r.empezar();
+    await asentar();
+    await inicio.r.elegirEjercicio('press_banca');
+    await inicio.r.serieHecha();
+    await asentar();
+    void inicio.r.elegirEjercicio('cinta');
+    await inicio.r.arrancarCardio();
+    await asentar();
+    adelanto = 10 * 60000;
+    await inicio.r.cerrarVueltaDeCardio();
+    await asentar();
+    await inicio.r.serieHecha();
+    await asentar();
+    return { series: viva()?.series ?? null, bloques: (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.series, b.minutos ?? null]), descanso: inicio.r.estado.descanso !== null };
+  }
+  // El teléfono tiene Inicio abierto desde antes (sin sesión); la sesión la empieza otro aparato.
+  const inicio = montar(() => useSesion());
+  await asentar();
+  const ahora = new Date(Date.now()).toISOString();
+  servidor.sesiones.push({
+    id: 'sesion-web', inicio: ahora, series: 2, estado: 'corriendo', origen: 'manual', ultima_actividad: ahora, cerro_sola: false,
+    bloques: [{ ejercicio: 'press_banca', series: 2, pesos: [60, 60] }],
+  });
+  if (caso === 'llega') servidor.ida.bloquesDeSesion = 600;
+  else servidor.ida.historial = 800;
+  await inicio.r.empezar();
+  await dormir(50);
+  await inicio.r.elegirEjercicio('remo_barra');
+  if (caso === 'mas') await inicio.r.serieHecha({ sinDescanso: true });
+  await dormir(1500);
+  await asentar();
+  return { base: lista(), series: viva()?.series ?? null, enCurso: inicio.r.estado.bloques.ejercicio };
+}
+
 /** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
 async function yaCorria() {
   const inicio = montar(() => useSesion());
@@ -1064,7 +1119,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

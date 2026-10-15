@@ -364,6 +364,8 @@ export default function Inicio({
     // rango: es el camino mas comun de los tres en un gimnasio.
     if (r) setSubida(subidaDeRango(rachaVista.current, r.racha));
   }, { repintarCadaSegundo: false });
+  // Un bloque con cronómetro o con minutos solo puede ser cardio.
+  const esCardioEnCurso = sesion.estado.bloques.cardioDesde !== undefined || sesion.estado.bloques.minutos !== undefined;
 
   // EL DÍA QUE ENTRÓ SOLO AL LLEGAR AL GIMNASIO (24/9). Ese camino no pasa
   // por `useSesion` —lo registra el vigilante, o el sistema con la app
@@ -767,8 +769,9 @@ export default function Inicio({
       <EnVivoDeInicio
         corriendo={sesion.estado.corriendo}
         ejercicio={sesion.estado.bloques.ejercicio}
-        hechas={sesion.estado.bloques.hechas}
-        meta={sesion.estado.bloques.meta}
+        // El cardio no son series: al compañero le llega solo el nombre (cacería del 15/10).
+        hechas={esCardioEnCurso ? 0 : sesion.estado.bloques.hechas}
+        meta={esCardioEnCurso ? 0 : sesion.estado.bloques.meta}
         descansoFin={sesion.estado.descanso?.fin ?? null}
       />
 

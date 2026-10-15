@@ -163,9 +163,10 @@ export default function Bloque({
   const segundosDeCardio = corriendoCardio ? Math.max(0, Math.floor((Date.now() - (estado.cardioDesde ?? 0)) / 1000)) : 0;
   // Elegir un cardio de la lista YA arranca el cronómetro: es lo que se va a hacer.
   // Después de que el cambio de ejercicio terminó: si no, su marca de "ahora" pisaba en la cola la de la cinta.
-  const elegir = async (id: string | null) => {
+  // `mide` viene solo con uno recién creado, que el catálogo de acá todavía no tiene.
+  const elegir = async (id: string | null, mide?: 'series' | 'tiempo') => {
     await alElegirEjercicio(id);
-    if (id && ejercicios.find((e) => e.id === id)?.mide === 'tiempo') alArrancarCardio?.();
+    if (id && (ejercicios.find((e) => e.id === id)?.mide ?? mide) === 'tiempo') alArrancarCardio?.();
   };
   const principalDeCardio = corriendoCardio
     ? { texto: T.sesion.cardioListo, accion: () => alCerrarVueltaDeCardio?.() }
@@ -505,9 +506,12 @@ export default function Bloque({
         visible={eligiendo}
         ejercicios={ejercicios}
         valor={estado.ejercicio}
-        alElegir={(id) => {
-          if (estado.hechas > 0 && id !== estado.ejercicio) setADonde(id);
-          else elegir(id);
+        alElegir={(id, mide) => {
+          // Entre un cardio y uno de fuerza no se pregunta "¿de cuál eran?": la cinta no
+          // son series de press (cacería del 15/10). Se cierra el bloque y se sigue.
+          const esCardio = (x: string | null) => ejercicios.find((e) => e.id === x)?.mide === 'tiempo';
+          if (estado.hechas > 0 && id !== estado.ejercicio && (esCardio(id) || mide === 'tiempo') === esCardio(estado.ejercicio)) setADonde(id);
+          else void elegir(id, mide);
         }}
         alCerrar={() => setEligiendo(false)}
       />

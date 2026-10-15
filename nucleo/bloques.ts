@@ -104,6 +104,11 @@ export type EstadoBloques = {
    */
   pesoPropuesto?: true;
   /**
+   * El ejercicio lo puso la app al arrancar (`sembrar`) y nadie lo eligió ni contó:
+   * los bloques que lleguen de la base lo reemplazan. Uno elegido, no (cacería del 15/10).
+   */
+  sembrado?: true;
+  /**
    * EL CRONÓMETRO DEL CARDIO (15/10): cuándo arrancó la vuelta en curso, en ms
    * del reloj del teléfono. Sin llave = no corre. No se sube a la base (no está
    * en `paraGuardar`): lo que se guarda son los minutos al cerrar la vuelta.
@@ -367,7 +372,9 @@ export function cambiarEjercicio(e: EstadoBloques, id: string | null): EstadoBlo
   // El peso NO pasa al ejercicio nuevo: los 100 de sentadilla no son un peso
   // de press de banca, y arrastrarlos anotaría series con un número falso. El
   // modo tampoco: las zancadas con mancuernas no dicen nada del press.
-  return { ...(sinCardio(sinMinutos(sinCarga(sinPeso(siguiente(e))))) as EstadoBloques), ejercicio: id };
+  // Elegido por la persona: ya no es lo sembrado.
+  const { sembrado: _s, ...elegido } = sinCardio(sinMinutos(sinCarga(sinPeso(siguiente(e))))) as EstadoBloques;
+  return { ...elegido, ejercicio: id };
 }
 
 /**
@@ -443,7 +450,10 @@ export function paraGuardar(e: EstadoBloques): Bloque[] {
   const todos = e.hechas > 0 ? [...e.cerrados, actual] : e.cerrados;
   return todos
     .filter((b) => b.ejercicio !== null && b.series > 0)
-    .map((b) => cerrado(b.ejercicio, b.series, pesosDe(b.pesos, b.series), b.carga, undefined, b.minutos));
+    .map((b) => cerrado(b.ejercicio, b.series, pesosDe(b.pesos, b.series), b.carga, undefined, b.minutos))
+    // Por la misma punta que recorta el teléfono (cacería del 15/10): la base se queda
+    // con los primeros 40, y en un circuito largo el bloque en curso no entraba nunca.
+    .slice(-TOPE_BLOQUES);
 }
 
 /**
@@ -470,7 +480,8 @@ export function sembrar(
   // Ni uno ya ELEGIDO (cacería del 15/10): con señal lenta la semilla llegaba
   // después de que la persona eligió la cinta, y se la pisaba con cronómetro y todo.
   if (actual.hechas > 0 || actual.cerrados.length > 0 || actual.ejercicio !== null) return actual;
-  return bloquesVacios(ejercicio, meta ?? actual.meta);
+  const b = bloquesVacios(ejercicio, meta ?? actual.meta);
+  return ejercicio ? { ...b, sembrado: true } : b;
 }
 
 /**
@@ -505,7 +516,9 @@ export function unirConGuardados(guardados: unknown, actual: EstadoBloques): Est
     // que se los pueda quitar por identidad como a cualquier otro.
     .map((b) => cerrado(b.ejercicio, Math.min(999, b.series), pesosDe(b.pesos, b.series), b.carga, b.id ?? nuevoIdBloque(), b.minutos));
   if (lista.length === 0) return actual;
-  if (actual.hechas > 0 || actual.cerrados.length > 0) {
+  // Un ejercicio ELEGIDO, aunque sin series, también es de acá (cacería del 15/10):
+  // lo guardado entra antes, como cerrados, y el elegido sigue en curso.
+  if (actual.hechas > 0 || actual.cerrados.length > 0 || (actual.ejercicio !== null && !actual.sembrado)) {
     return { ...actual, cerrados: [...lista, ...actual.cerrados].slice(-TOPE_BLOQUES) };
   }
   const ultimo = lista[lista.length - 1];

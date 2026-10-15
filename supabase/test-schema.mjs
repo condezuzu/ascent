@@ -9050,7 +9050,7 @@ console.log('\n127. Los bloques de la base vuelven al telefono');
   chequear('subir: mira si faltan los bloques de la base', guarda > 0, true);
   chequear('subir: y lo mira ANTES de mandar la lista', guarda < subir.indexOf("rpc: 'fijar_bloques'"), true);
   chequear('confirmar: si no vinieron, los trae', /faltan && g\.id[\s\S]{0,120}recuperarBloques\(g\.id\)/.test(hook), true);
-  chequear('empezar: si ya estaba corriendo, los trae antes de sembrar', /r\.yaEstaba[\s\S]{0,400}recuperarBloques\(r\.id\)[\s\S]{0,800}sembrar\(/.test(hook), true);
+  chequear('empezar: si ya estaba corriendo, los trae antes de sembrar', /const faltan = !!\(r\.yaEstaba[\s\S]{0,3000}recuperarBloques\(r\.id\)[\s\S]{0,800}sembrar\(/.test(hook), true);
   chequear('confirmar: si conto otro lado, trae los de la base', /previo\.series !== g\.series[\s\S]{0,300}from\('sesiones'\)\.select\('bloques'\)/.test(hook), true);
 }
 
@@ -13875,7 +13875,8 @@ console.log('\n179. La sesión con el hook de verdad: los bloques de otra sesió
   const hook179 = sinComentarios(leer179(join(aca179, '../compartido/useSesion.ts'), 'utf8'));
   const cableado179 = (texto) => ({
     colaSueltaAntesDeLaCache: /await subir\([^;]*\);\s*await actualizarSesionCache\(/.test(texto),
-    conLaColaAdentro: (texto.match(/await actualizarSesionCache\([^;]*?,\s*yo,\s*\(\) =>\s*subir\(/g) ?? []).length,
+    // `(?:[^;]|;(?=\s*\}))`: el getter de los bloques (cacería del 15/10) lleva un `;` adentro.
+    conLaColaAdentro: (texto.match(/await actualizarSesionCache\((?:[^;]|;(?=\s*\}))*?,\s*yo,\s*\(\) =>\s*subir\(/g) ?? []).length,
   });
   chequear('los cuatro cambios del conteo guardan la cola adentro del toque', cableado179(hook179), {
     colaSueltaAntesDeLaCache: false,
@@ -16431,7 +16432,7 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   ].filter((ruta) => queEscribe.test(de201(...ruta))).map((r) => r.join('/')), []);
   const inicio201 = de201('movil', 'src', 'Inicio.tsx');
   chequear('Inicio le pasa lo que muestra, y solo CORTA el botón Terminar cuando terminó de verdad', [
-    /<EnVivoDeInicio\s+corriendo=\{sesion\.estado\.corriendo\}\s+ejercicio=\{sesion\.estado\.bloques\.ejercicio\}\s+hechas=\{sesion\.estado\.bloques\.hechas\}\s+meta=\{sesion\.estado\.bloques\.meta\}\s+descansoFin=\{sesion\.estado\.descanso\?\.fin \?\? null\}/.test(inicio201),
+    /<EnVivoDeInicio\s+corriendo=\{sesion\.estado\.corriendo\}\s+ejercicio=\{sesion\.estado\.bloques\.ejercicio\}\s+(?:\/\/[^\n]*\s+)?hechas=\{esCardioEnCurso \? 0 : sesion\.estado\.bloques\.hechas\}\s+meta=\{esCardioEnCurso \? 0 : sesion\.estado\.bloques\.meta\}\s+descansoFin=\{sesion\.estado\.descanso\?\.fin \?\? null\}/.test(inicio201),
     /const c = await sesion\.terminar\(\);\s*setTerminando\(false\);\s*if \(c\) void dejarDeEntrenar\(supabase\)/.test(inicio201),
     (inicio201.match(/dejarDeEntrenar\(/g) ?? []).length,
     /dejarDeEntrenar/.test(de201('movil', 'src', 'EnVivoDeInicio.tsx')),
@@ -18641,6 +18642,51 @@ console.log('\n237. Cacería del 15/10, vuelta 3: Seguir con la cinta, la semill
     /vivo = false;\n[^\n]*\n      setFestejando\(false\);/.test(de237('movil', 'src', 'PasosInicio.tsx')),
     /m\.clave === mesDeHoy/.test(de237('movil', 'src', 'Album.tsx')),
   ], [true, true]);
+}
+console.log('\n238. Cacería del 15/10, vuelta 4: la sesión de otro aparato con señal lenta, la cinta parada, los 40 bloques, dos sesiones el mismo día, la rutina y el compañero');
+{
+  const v4 = async (c) => escenarioDeSesion('vueltaCuatro', c);
+  chequear('la sesión que empezó otro aparato: elegir remo mientras llega el historial no borra lo de allá; un + en remo se suma', [await v4('elige'), await v4('mas')], [
+    { base: [['press_banca', 2]], series: 2, enCurso: 'remo_barra' },
+    { base: [['press_banca', 2], ['remo_barra', 1]], series: 3, enCurso: 'remo_barra' },
+  ]);
+  chequear('si los bloques de la base llegan después de elegir remo, remo sigue siendo el de ahora', await v4('llega'), { base: [['press_banca', 2]], series: 2, enCurso: 'remo_barra' });
+  chequear('"+ Serie hecha" del descanso con la cinta ya parada: ni vuelta de cero minutos ni descanso', await v4('cintaParada'), { series: 2, bloques: [['press_banca', 1, null], ['cinta', 1, 10]], descanso: false });
+  const B238 = await import('../nucleo/bloques.ts');
+  let e = B238.bloquesVacios();
+  for (let i = 0; i < 45; i++) {
+    e = B238.cambiarEjercicio(e, i % 2 ? 'remo_barra' : 'press_banca');
+    e = B238.sumar(e);
+  }
+  const guardados = B238.paraGuardar(e);
+  chequear('en un circuito de 45 bloques viajan los últimos 40: el que está en curso siempre entra', [guardados.length, guardados.at(-1).ejercicio], [40, 'press_banca']);
+  const RU238 = await import('../nucleo/rutina.ts');
+  const { restarDias } = await import('../nucleo/fechas.ts');
+  const hoy = '2026-10-19';
+  const dosPorLunes = [21, 14, 7].flatMap((hace) => [
+    { fecha: restarDias(hoy, hace), ejercicios: ['sentadilla', 'prensa', 'curl_femoral'] },
+    { fecha: restarDias(hoy, hace), ejercicios: ['cinta'] },
+  ]);
+  chequear('pesas a la mañana y cinta a la tarde, tres lunes: se propone el lunes entero, no solo la cinta', RU238.rutinaParaHoy(dosPorLunes, hoy), ['sentadilla', 'prensa', 'curl_femoral', 'cinta']);
+  const b238 = (ejercicio, series) => ({ ejercicio, series });
+  chequear('la semana que se muestra junta también las dos sesiones del día (la base las manda de la más nueva a la más vieja)', RU238.rutinaPorDia([
+    { fecha: '2026-10-12', bloques: [b238('cinta', 1)] },
+    { fecha: '2026-10-12', bloques: [b238('sentadilla', 3)] },
+  ]), [{ dia: 1, ejercicios: [b238('sentadilla', 3), b238('cinta', 1)] }]);
+  const { readFileSync: leer238 } = await import('node:fs');
+  const de238 = (...p) => leer238(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  chequear('entre cardio y fuerza no se pregunta "¿de cuál eran?" (las dos apps); un cardio recién creado arranca el cronómetro; al compañero el cardio le llega sin series', [
+    /\(esCardio\(id\) \|\| mide === 'tiempo'\) === esCardio\(estado\.ejercicio\)\) setADonde\(id\)/.test(de238('movil', 'src', 'Bloque.tsx')),
+    /esCardio\(id\) === esCardio\(estado\.ejercicio\)\) setADonde\(id\)/.test(de238('src', 'components', 'Bloque.tsx')),
+    /\(ejercicios\.find\(\(e\) => e\.id === id\)\?\.mide \?\? mide\) === 'tiempo'\) alArrancarCardio/.test(de238('movil', 'src', 'Bloque.tsx')),
+    /hechas=\{esCardioEnCurso \? 0 : sesion\.estado\.bloques\.hechas\}/.test(de238('movil', 'src', 'Inicio.tsx')),
+  ], [true, true, true, true]);
+  const mi = de238('movil', 'src', 'MiRutina.tsx');
+  chequear('Tu rutina: "Listo" guarda el nombre; un ejercicio propio nuevo trae solo el catálogo; una lectura vieja no pisa un toque', [
+    /if \(editando\) guardarNombre\(\);/.test(mi),
+    /eventos\.escuchar\(EJERCICIOS_CAMBIO, \(\) => void cargarCatalogo\(\)\)/.test(mi),
+    /if \(mias && ediciones\.current === n\) \{/.test(mi),
+  ], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

@@ -68,6 +68,21 @@ const porFechaAsc = (a: SesionRutina, b: SesionRutina) => a.fecha.localeCompare(
 const firma = (ejercicios: string[]) => ejercicios.join('>');
 
 /**
+ * LAS SESIONES DE UNA MISMA FECHA SON UN SOLO DÍA (cacería del 15/10): pesas a la mañana
+ * y cinta a la tarde, o una que se cerró sola y se volvió a arrancar. Separadas, la
+ * de la tarde pasaba por "el lunes" y se proponía sola. Llegan en orden de inicio.
+ */
+function unaPorFecha(ss: SesionRutina[]): SesionRutina[] {
+  const out: SesionRutina[] = [];
+  for (const s of [...ss].sort(porFechaAsc)) {
+    const ult = out[out.length - 1];
+    if (ult && ult.fecha === s.fecha) out[out.length - 1] = { fecha: s.fecha, ejercicios: ejerciciosEnOrden([...ult.ejercicios, ...s.ejercicios]) };
+    else out.push(s);
+  }
+  return out;
+}
+
+/**
  * LO QUE HACÉS ESE DÍA, SIN QUE UN DÍA SUELTO LO REESCRIBA (15/10). `mismoDia`
  * va de la más vieja a la más nueva. La base es la más reciente —la última
  * rutina que hiciste—, pero lo que aparece en ella por PRIMERA VEZ ese día de la
@@ -94,7 +109,7 @@ export function sinSueltos<S extends { ejercicios: string[] }>(mismoDia: S[]): {
  * 2. Si no hay, la que sigue por rotación a la última hecha.
  */
 export function rutinaParaHoy(sesiones: SesionRutina[], hoyISO: string): string[] {
-  const conE = sesiones.filter(conEjercicios);
+  const conE = unaPorFecha(sesiones.filter(conEjercicios));
   if (conE.length === 0) return [];
 
   // (1) MISMO DÍA DE LA SEMANA, últimas 4 semanas, la más reciente.
@@ -177,11 +192,17 @@ export function rutinaPorDia(sesiones: SesionVista[]): DiaDeRutina[] {
     porDia.set(dia, [...(porDia.get(dia) ?? []), { fecha: s.fecha, conSeries, ejercicios: conSeries.map((e) => e.ejercicio) }]);
   }
   const deDia = (d: number): EjercicioDeRutina[] => {
-    // Con dos sesiones el mismo día queda la primera que llega: la base las
-    // manda de la más nueva a la más vieja (el orden estable lo respeta).
-    const vistas = [...(porDia.get(d) ?? [])].sort((a, b) => a.fecha.localeCompare(b.fecha));
-    const unaPorFecha = vistas.filter((v, i) => i === 0 || vistas[i - 1].fecha !== v.fecha);
-    const r = sinSueltos(unaPorFecha.slice(-SEMANAS_VENTANA));
+    // Las de una misma fecha son un solo día (ver `unaPorFecha`). La base las manda de
+    // la más nueva a la más vieja: se juntan al revés, en el orden en que se hicieron.
+    const porFecha = new Map<string, Vista[]>();
+    for (const v of porDia.get(d) ?? []) porFecha.set(v.fecha, [v, ...(porFecha.get(v.fecha) ?? [])]);
+    const juntas = [...porFecha.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([fecha, vs]) => {
+        const conSeries = ejerciciosConSeries(vs.flatMap((v) => v.conSeries));
+        return { fecha, conSeries, ejercicios: conSeries.map((e) => e.ejercicio) };
+      });
+    const r = sinSueltos(juntas.slice(-SEMANAS_VENTANA));
     if (!r) return [];
     const quedan = new Set(r.ejercicios);
     return r.base.conSeries.filter((e) => quedan.has(e.ejercicio));
