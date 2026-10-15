@@ -5,6 +5,11 @@ import Link from 'next/link';
 
 const PROPUESTAS = [
   {
+    ruta: '/galeria/propuestas/bienvenida',
+    titulo: 'La bienvenida nueva',
+    queEs: 'Tres pantallas con lo que la app hace de verdad, sobre el mismo cielo, y en vez del recorrido, avisos de una línea en el momento.',
+  },
+  {
     ruta: '/galeria/propuestas/descanso',
     titulo: 'La pantalla del descanso',
     queEs: 'Qué estabas haciendo, un arco con el color del rango, cuánto te pasaste al terminar, y el compañero abajo cuando entrenas con otro.',

@@ -125,6 +125,22 @@ nombre. La que era "H" es el refactor del estado del entrenamiento.
 **Cómo se publica cada tanda:** migración primero (si hay), después UNA OTA a
 `telefono`, la prueba el humano en el iPhone, y recién después `store`.
 
+### Límite aceptado: la hora de entrenar por las fotos y las medallas (15/10/2026)
+
+Con "Avisar cuando entreno" apagado, un amigo ya no ve a qué hora entrenaste por
+los días (migración 86), por las marcas (87) ni por el nombre de una foto nueva.
+**Queda a la vista, y se decidió dejarlo así:**
+- la hora de subida de una foto compartida con amigos (`photos.creado` y el
+  `created_at` del archivo): el amigo necesita poder bajar el archivo, y la regla
+  del storage que se lo permite lee la tabla `photos`;
+- el nombre de las fotos subidas antes del 15/10, que lleva la hora en milisegundos;
+- `medallas.actualizado`, que dice cuándo abriste tu perfil (no cuándo entrenaste).
+
+**El motivo:** taparlo pide firmar los enlaces de las fotos desde el servidor y
+cambiar cómo la app guarda las medallas (un upsert necesita leer todas las
+columnas). Es mucho trabajo para tapar la hora de subida de una foto que la persona
+eligió compartir. Si algún día molesta, se revisa.
+
 ### Hecho el 8/10 (sale en la próxima OTA)
 
 - El álbum: miniaturas hechas por el teléfono (no la transformación de
