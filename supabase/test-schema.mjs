@@ -16866,32 +16866,15 @@ console.log('\n204. Ocho arreglos de la cacería del 12/10, y la guarda de las m
   ], [3, true, true]);
 }
 
-console.log('\n205. Las propuestas de diseño están en la web, pero las ve solo quien está en la lista');
+console.log('\n205. Las propuestas de diseño están en la web y se abren sin sesión, como la galería (15/10)');
 {
-  const V205 = await import('../nucleo/veredicto.ts');
-  chequear('qué rutas son de propuestas: esa y lo que cuelga de ella, no el resto de la galería', [
-    V205.esDePropuestas('/galeria/propuestas'), V205.esDePropuestas('/galeria/propuestas/descanso'),
-    V205.esDePropuestas('/galeria'), V205.esDePropuestas('/galeria/bienvenida'), V205.esDePropuestas('/galeria/propuestas-viejas'),
-  ], [true, true, false, false, false]);
-  chequear('las ve solo la cuenta de la lista; otra cuenta, o no saber cuál es, no', [
-    V205.puedeVerPropuestas('agusconde20@gmail.com'), V205.puedeVerPropuestas(' AgusConde20@Gmail.com '),
-    V205.puedeVerPropuestas('otra@gmail.com'), V205.puedeVerPropuestas(''), V205.puedeVerPropuestas(null), V205.puedeVerPropuestas(undefined),
-  ], [true, true, false, false, false, false]);
-  // LA DECISIÓN ENTERA, que es lo que el middleware le pregunta: con el veredicto
-  // de siempre ("seguir" o "a-login") y el correo de quien entró.
-  chequear('una propuesta: sin sesión va a entrar; con la cuenta de la lista pasa; con otra, o sin saber quién es, no existe', [
-    V205.decidirPropuesta('a-login', null),
-    V205.decidirPropuesta('seguir', 'agusconde20@gmail.com'),
-    V205.decidirPropuesta('seguir', 'otra@gmail.com'),
-    // El hipo de red: el resto de la web deja pasar sin usuario; acá la duda cierra.
-    V205.decidirPropuesta('seguir', undefined),
-  ], ['a-login', 'seguir', 'no-existe', 'no-existe']);
   const { readFileSync: leer205 } = await import('node:fs');
   const medio205 = sinComentarios(leer205(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'lib', 'supabase', 'middleware.ts'), 'utf8')).replace(/\r\n/g, '\n');
-  chequear('con sesión de una cuenta que no está en la lista, la propuesta no existe (404)', [
-    /if \(propuesta && decidirPropuesta\(veredicto, data\.user\?\.email\) === 'no-existe'\) \{\s*return llevarCookies\(new NextResponse\('No encontrado', \{ status: 404 \}\), respuesta\);/.test(medio205),
-    /esPublica: !propuesta && RUTAS_PUBLICAS\.some/.test(medio205),
-  ], [true, true]);
+  chequear('las propuestas no tienen regla aparte: cuelgan de /galeria, que es pública', [
+    /RUTAS_PUBLICAS = \[[^\]]*'\/galeria'/.test(medio205),
+    /propuesta/i.test(medio205),
+    /esPublica: RUTAS_PUBLICAS\.some/.test(medio205),
+  ], [true, false, true]);
 }
 
 console.log('\n206. La pantalla del descanso: qué se estaba haciendo, el arco, cuánto te pasaste, y el compañero abajo');
