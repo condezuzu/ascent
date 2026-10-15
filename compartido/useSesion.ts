@@ -765,6 +765,9 @@ export function useSesion(
     // LA VUELTA DE CARDIO EN CURSO SE CIERRA ANTES (cacería del 15/10), y a la misma
     // hora que la sesión: con la salida del gimnasio, la cinta no sigue hasta casa.
     if (bloquesRef.current.cardioDesde !== undefined) await dejarElCardio(hasta ?? Date.now());
+    // LO DE ALLÁ, ANTES DE CERRAR (cacería del 15/10): con los bloques del otro aparato
+    // sin traer, lo anotado acá no subía nunca (subir espera a tenerlos).
+    if (idSesion && faltanBloques.current === idSesion) await recuperarBloques(idSesion);
     // Se anota lo que había ANTES de cerrar: abajo se pone todo en cero y el
     // resumen se quedaría sin datos que mostrar. De los refs: la vuelta de arriba
     // cambió el conteo después de este render.
@@ -995,7 +998,8 @@ export function useSesion(
     setBloques(nc.bloques);
     refrescarTarjeta();
     // Guardar primero (ver `serieHecha`): la cola antes que la caché y que `marcar`.
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo, () => subir(nc.series, nc.bloques));
+    // Los bloques se leen en el turno, después de `antes`: si ahí se unió con la base, va lo unido.
+    await actualizarSesionCache({ series: nc.series, get bloques() { return bloquesRef.current; } }, yo, () => subir(nc.series, nc.bloques));
     await marcar();
   }
 
@@ -1042,7 +1046,8 @@ export function useSesion(
     // que toca la red. Apagar la pantalla justo después no puede perderlo.
     // sugerido:false por defecto; si hay un siguiente en la cadena,
     // `proponerEjercicioSugerido` lo vuelve a poner en true al toque.
-    await actualizarSesionCache({ bloques: b, sugerido: false }, yo, () => subir(seriesRef.current, b));
+    // Los bloques se leen en el turno, después de `antes` (ver el +).
+    await actualizarSesionCache({ get bloques() { return bloquesRef.current; }, sugerido: false }, yo, () => subir(seriesRef.current, b));
     // LA CADENA: proponer el siguiente de la rutina como sugerencia (fantasma).
     // Los ya hechos salen de los bloques cerrados; si queda uno por proponer, va
     // con su peso. Si no hay rutina o ya se hicieron todos, el bloque queda en
@@ -1485,7 +1490,8 @@ export function useSesion(
     setSeries(nc.series);
     setBloques(nc.bloques);
     // Guardar primero (ver `serieHecha`): la cola antes que la caché y que `marcar`.
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo, () => subir(nc.series, nc.bloques));
+    // Los bloques se leen en el turno, después de `antes`: si ahí se unió con la base, va lo unido.
+    await actualizarSesionCache({ series: nc.series, get bloques() { return bloquesRef.current; } }, yo, () => subir(nc.series, nc.bloques));
     await marcar();
   }
 

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { hayAlgo } from '@nucleo/rutinas';
+import { hayAlgo, type DiaDeSemana } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import {
   activarRutina,
@@ -30,7 +30,7 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
   const [sePuedeCopiar, setSePuedeCopiar] = useState(false);
   const [aviso, setAviso] = useState('');
   // La que estaba activa antes de copiar: "Volver a «…»" la reactiva con un toque.
-  const [anterior, setAnterior] = useState<{ id: string; nombre: string } | null>(null);
+  const [anterior, setAnterior] = useState<{ id: string; nombre: string; dias: DiaDeSemana[] } | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -45,7 +45,20 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
     };
   }, [quien, esYo]);
 
+  const copiando = useRef(false);
+
   async function copiar() {
+    // De a un toque (cacería del 15/10): con señal lenta, el segundo creaba otra copia.
+    if (!rutina || copiando.current) return;
+    copiando.current = true;
+    try {
+      await copiarUnaVez();
+    } finally {
+      copiando.current = false;
+    }
+  }
+
+  async function copiarUnaVez() {
     if (!rutina) return;
     setAviso('');
     const nombreNuevo = T.rutina.deAlguien(nombre ?? '');
@@ -58,7 +71,7 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
 
   async function volver() {
     if (!anterior) return;
-    if (!(await activarRutina(supabase, anterior.id))) return setAviso(T.general.noSePudo);
+    if (!(await activarRutina(supabase, anterior.id, anterior.dias))) return setAviso(T.general.noSePudo);
     void cargarMisRutinas(supabase);
     setAviso(T.rutina.otraVezActiva(anterior.nombre));
     setAnterior(null);

@@ -366,6 +366,14 @@ export default function Inicio({
   }, { repintarCadaSegundo: false });
   // Un bloque con cronómetro o con minutos solo puede ser cardio.
   const esCardioEnCurso = sesion.estado.bloques.cardioDesde !== undefined || sesion.estado.bloques.minutos !== undefined;
+  // LA SESIÓN SE CERRÓ POR FUERA (sola, la salida, otro aparato) con algo abierto: era de
+  // esa sesión. Si no, el primer + de la siguiente abría solo el descanso (cacería del 15/10).
+  useEffect(() => {
+    if (!sesion.estado.descanso) setDescansoAbierto(false);
+  }, [sesion.estado.descanso]);
+  useEffect(() => {
+    if (!sesion.estado.corriendo) setTerminando(false);
+  }, [sesion.estado.corriendo]);
 
   // EL DÍA QUE ENTRÓ SOLO AL LLEGAR AL GIMNASIO (24/9). Ese camino no pasa
   // por `useSesion` —lo registra el vigilante, o el sistema con la app

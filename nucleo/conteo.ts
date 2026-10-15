@@ -24,6 +24,7 @@
 
 import {
   corregirBloque,
+  descartarCardio,
   quitarBloque,
   restar,
   sumar,
@@ -56,6 +57,9 @@ export function seriesAlReleer(enPantalla: number, cacheada: number | undefined,
 
 /** Una serie menos en el bloque en curso: baja el total (nunca de cero). */
 export function restarSerie(c: Conteo): Conteo {
+  // CON LA CINTA ANDANDO, el − cancela la vuelta en curso (cacería del 15/10): restaba
+  // una ya hecha y se llevaba sus minutos.
+  if (c.bloques.cardioDesde !== undefined) return { series: c.series, bloques: descartarCardio(c.bloques) };
   return { series: Math.max(0, c.series - 1), bloques: restar(c.bloques) };
 }
 

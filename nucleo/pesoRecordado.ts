@@ -151,6 +151,19 @@ export function listosParaSubir(sesiones: unknown, catalogo: ModosDelCatalogo): 
   return r;
 }
 
+/**
+ * Al terminar una sesión, sin esperar a la base (cacería del 15/10): la vez anterior de
+ * cada ejercicio es lo más pesado de la copia (`maximosDeAntes`). Lo que esta sesión hizo
+ * con peso se decide de nuevo; lo demás queda como estaba.
+ */
+export function paraSubirTrasLaSesion(antes: MaximosDeLaUltima, maximosDeAntes: MaximosDeLaUltima, bloques: unknown, catalogo: ModosDelCatalogo): MaximosDeLaUltima {
+  const previa = Object.entries(maximosDeAntes).map(([ejercicio, m]) => ({ ejercicio, pesos: [m.peso], carga: m.carga }));
+  const nuevos = listosParaSubir([{ bloques: previa }, { bloques }], catalogo);
+  const r = { ...antes };
+  for (const ej of Object.keys(maximosDeBloques(bloques, catalogo))) delete r[ej];
+  return { ...r, ...nuevos };
+}
+
 export function maximosDelHistorial(sesiones: unknown, catalogo: ModosDelCatalogo): MaximosDeLaUltima {
   if (!Array.isArray(sesiones)) return {};
   return sesiones.reduce<MaximosDeLaUltima>(

@@ -42,7 +42,16 @@ async function guardarActiva(rutinas: Rutina[]) {
   const de = (await leerPerfilCache())?.id;
   if (!de) return;
   const activa = rutinas.find((r) => r.activa) ?? null;
-  await plataforma.almacenamiento.guardar(CLAVE_ACTIVA, JSON.stringify({ de, dias: activa?.dias ?? null })).catch(() => undefined);
+  await plataforma.almacenamiento.guardar(CLAVE_ACTIVA, JSON.stringify({ de, id: activa?.id ?? null, dias: activa?.dias ?? null })).catch(() => undefined);
+}
+
+async function idDeLaActiva(): Promise<string | null> {
+  try {
+    const g = JSON.parse((await plataforma.almacenamiento.leer(CLAVE_ACTIVA)) ?? 'null') as { id?: unknown } | null;
+    return typeof g?.id === 'string' ? g.id : null;
+  } catch {
+    return null;
+  }
 }
 
 /** La rutina activa que el teléfono tiene guardada, o `null`. Sin red. */
@@ -85,9 +94,12 @@ export async function guardarRutina(supabase: Cliente, r: { id: string | null; n
   return data;
 }
 
-export async function activarRutina(supabase: Cliente, id: string): Promise<boolean> {
+// `dias`: los de la que se activa. La copia del teléfono se escribe con ellos y no depende
+// de la lectura de después, que sin señal fallaba (cacería del 15/10).
+export async function activarRutina(supabase: Cliente, id: string, dias?: DiaDeSemana[]): Promise<boolean> {
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return false;
   const ok = !(await supabase.rpc('activar_rutina', { p_id: id })).error;
+  if (ok && dias) await guardarActiva([{ id, nombre: '', activa: true, dias }]);
   if (ok) eventos.emitir(RUTINA_CAMBIO);
   return ok;
 }
@@ -100,19 +112,21 @@ export async function copiarRutina(
   supabase: Cliente,
   nombre: string,
   dias: DiaDeSemana[]
-): Promise<{ nueva: string; anterior: { id: string; nombre: string } | null } | null> {
+): Promise<{ nueva: string; anterior: { id: string; nombre: string; dias: DiaDeSemana[] } | null } | null> {
   const antes = (await cargarMisRutinas(supabase))?.find((r) => r.activa) ?? null;
   // Sus ejercicios propios no viajan: son solo suyos y acá quedarían sin nombre (migración 80).
   const sinAjenos = dias.map((d) => ({ ...d, ejercicios: d.ejercicios.filter((e) => !esPropio(e.ejercicio)) }));
   const nueva = await guardarRutina(supabase, { id: null, nombre, dias: sinAjenos });
-  if (!nueva || !(await activarRutina(supabase, nueva))) return null;
+  if (!nueva || !(await activarRutina(supabase, nueva, sinAjenos))) return null;
   await cargarMisRutinas(supabase);
-  return { nueva, anterior: antes ? { id: antes.id, nombre: antes.nombre } : null };
+  return { nueva, anterior: antes ? { id: antes.id, nombre: antes.nombre, dias: antes.dias } : null };
 }
 
 export async function borrarRutina(supabase: Cliente, id: string): Promise<boolean> {
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return false;
   const ok = !(await supabase.rpc('borrar_rutina', { p_id: id })).error;
+  // Si era la activa, la sesión ya no la puede proponer.
+  if (ok && (await idDeLaActiva()) === id) await guardarActiva([]);
   if (ok) eventos.emitir(RUTINA_CAMBIO);
   return ok;
 }

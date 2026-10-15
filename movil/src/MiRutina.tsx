@@ -66,6 +66,7 @@ export default function MiRutina({
   const [copiandoDesde, setCopiandoDesde] = useState<number | null>(null);
   const [preguntaCopia, setPreguntaCopia] = useState<{ desde: number; hasta: number } | null>(null);
   const [preguntaBorrar, setPreguntaBorrar] = useState(false);
+  const [noCargo, setNoCargo] = useState(false);
   // El día con ejercicios que se va a pasar a descanso: se pregunta antes de sacarlos.
   const [preguntaDescanso, setPreguntaDescanso] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -83,7 +84,6 @@ export default function MiRutina({
 
   const cargar = useCallback(async () => {
     const [hay] = await Promise.all([hayRutinasGuardadas(supabase), cargarCatalogo()]);
-    setGuardadas(hay);
     const yo = await miId(supabase);
     const n = ediciones.current;
     const [mias, vista] = await Promise.all([hay ? cargarMisRutinas(supabase) : Promise.resolve(null), yo ? cargarRutinaParaVer(supabase, yo, true) : Promise.resolve(null)]);
@@ -92,6 +92,10 @@ export default function MiRutina({
       setSel((s) => (s && mias.some((r) => r.id === s) ? s : (mias.find((r) => r.activa) ?? mias[0])?.id ?? null));
     }
     if (vista?.deducida) setDeducida(vista.dias);
+    // RECIÉN AHORA (cacería del 15/10): antes de traer la lista se mostraba "Todavía no hay
+    // rutina" con "Armar una de cero" a quien sí tenía, y sin señal quedaba así.
+    setNoCargo(hay && !mias);
+    setGuardadas(hay);
   }, [cargarCatalogo]);
 
   useEffect(() => {
@@ -104,11 +108,14 @@ export default function MiRutina({
 
   // EL NOMBRE SE GUARDA TAMBIÉN CON "LISTO" (cacería del 15/10): con el teclado abierto,
   // el campo se desmontaba sin su fin de edición y el nombre nuevo se perdía.
-  const nombreTipeado = useRef<string | null>(null);
+  // Con el id de SU rutina: tocar otra, o crear una, le ponía este nombre a esa (cacería del 15/10).
+  const nombreTipeado = useRef<{ id: string; texto: string } | null>(null);
   function guardarNombre() {
-    const n = nombreTipeado.current?.trim();
+    const t = nombreTipeado.current;
     nombreTipeado.current = null;
-    if (actual && n && n !== actual.nombre) void cambiar({ ...actual, nombre: n });
+    const r = t ? rutinas.find((x) => x.id === t.id) : undefined;
+    const n = t?.texto.trim();
+    if (r && n && n !== r.nombre) void cambiar({ ...r, nombre: n });
   }
 
   /** Cambia la rutina en pantalla y la guarda; si no se guardó, vuelve atrás. */
@@ -136,7 +143,7 @@ export default function MiRutina({
 
   async function activar(id: string) {
     setError('');
-    if (!(await activarRutina(supabase, id))) return setError(T.general.noSePudo);
+    if (!(await activarRutina(supabase, id, rutinas.find((r) => r.id === id)?.dias))) return setError(T.general.noSePudo);
     setRutinas((rs) => rs.map((r) => ({ ...r, activa: r.id === id })));
     void cargarMisRutinas(supabase);
   }
@@ -264,6 +271,17 @@ export default function MiRutina({
   }
 
   if (guardadas === null) return null;
+  if (noCargo) {
+    return (
+      <View testID="mi-rutina">
+        <Text style={estilos.seccion}>{T.rutina.titulo}</Text>
+        <Text style={estilos.nota}>{T.inicio.noCargo}</Text>
+        <Pressable testID="rutina-reintentar" style={estilos.chico} onPress={() => void cargar()}>
+          <Text style={estilos.chicoTexto}>{T.inicio.reintentar}</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View testID="mi-rutina">
@@ -302,7 +320,7 @@ export default function MiRutina({
                 style={estilos.nombre}
                 defaultValue={actual.nombre}
                 maxLength={40}
-                onChangeText={(t) => (nombreTipeado.current = t)}
+                onChangeText={(texto) => (nombreTipeado.current = { id: actual.id, texto })}
                 onEndEditing={guardarNombre}
               />
             ) : (

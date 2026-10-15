@@ -18155,7 +18155,7 @@ console.log('\n225. Copiar la rutina de un amigo avisa cuál quedó activa y dej
   const vuelve = await RU225.activarRutina(cli, copia.anterior.id);
   const activaAlFinal = (await RU225.cargarMisRutinas(cli)).find((r) => r.activa)?.nombre;
   chequear('copiar deja activa la copia y devuelve la que estaba activa; volver la reactiva', [
-    copia.anterior, activaTras, vuelve, activaAlFinal,
+    { id: copia.anterior.id, nombre: copia.anterior.nombre }, activaTras, vuelve, activaAlFinal,
   ], [{ id: mia, nombre: 'Entrenamiento 1' }, 'Rutina de ana', true, 'Entrenamiento 1']);
   const otro = await nuevoUsuario();
   const cliOtro = clienteDe(otro);
@@ -18447,9 +18447,11 @@ console.log('\n231. Ejercicios propios: solo los ve quien los creó (migración 
       await db.exec('reset role');
     }
   };
-  chequear('el propio ajeno que ya está en mi rutina lo sigo viendo; el otro que nunca usé, no; una extraña, ninguno', [
+  // ESTRICTA (vuelta 5 de la cacería): la excepción para el que ya lo usaba se esquivaba
+  // guardando el id en una rutina, y hacía lento el catálogo. Lo anotado queda, sin el nombre.
+  chequear('nadie más ve mis propios, ni el amigo que ya tenía uno en su rutina (lo ve como «Ejercicio propio»); una extraña tampoco', [
     await quienVe(beto, otro), await quienVe(beto, suyo), await quienVe(extrana231, otro),
-  ], [1, 0, 0]);
+  ], [0, 0, 0]);
   const { readFileSync: leer231 } = await import('node:fs');
   const de231 = (...p) => leer231(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
   chequear('la rutina de un amigo y el compañero en vivo nombran con nombreVisible', ['RutinaPlegada.tsx', 'CompaneroEnDescanso.tsx', 'Juntos.tsx'].map((f) => /nombreVisible\(/.test(de231('movil', 'src', f))), [true, true, true]);
@@ -18687,6 +18689,51 @@ console.log('\n238. Cacería del 15/10, vuelta 4: la sesión de otro aparato con
     /eventos\.escuchar\(EJERCICIOS_CAMBIO, \(\) => void cargarCatalogo\(\)\)/.test(mi),
     /if \(mias && ediciones\.current === n\) \{/.test(mi),
   ], [true, true, true]);
+}
+console.log('\n239. Cacería del 15/10, vuelta 5: lo de otro aparato con −, Terminar serie y Terminar; el − de la cinta; ya puedes subir al terminar; la baja de cuenta; las rutinas');
+{
+  const v5 = async (c) => escenarioDeSesion('vueltaCinco', c);
+  chequear('con lo de otro aparato sin traer, −  o Terminar serie al volver la señal, y bloquear: lo de allá no se borra de la base', [await v5('deshacer'), await v5('siguiente')], [{ conservaLoDeAlla: true }, { conservaLoDeAlla: true }]);
+  chequear('Terminar con lo de otro aparato sin traer: primero se trae, y lo de acá sube', await v5('terminar'), { base: [['press_banca', 2], ['remo_barra', 2]], estado: 'terminada' });
+  chequear('el − en la segunda vuelta de cinta cancela esa vuelta; los 30 minutos de la primera quedan', await v5('menos'), { base: [['cinta', 1, 30]], series: 1, cronometro: false });
+  const PR239 = await import('../nucleo/pesoRecordado.ts');
+  const b239 = (pesos) => [{ ejercicio: 'press_banca', series: pesos.length, pesos, carga: 'total' }];
+  const antes = { press_banca: { peso: 60, carga: 'total' } };
+  chequear('"ya puedes subir" se recalcula al terminar: aparece tras dos veces enteras, y se va si la de hoy falló', [
+    PR239.paraSubirTrasLaSesion({}, antes, b239([60, 60, 60]), {}).press_banca ?? null,
+    PR239.paraSubirTrasLaSesion({ press_banca: { peso: 60, carga: 'total' } }, antes, b239([60, 60, 55]), {}).press_banca ?? null,
+  ], [{ peso: 60, carga: 'total' }, null]);
+  // LA BAJA CON UN AMIGO QUE USÓ UN PROPIO MÍO (la 83), con la base de verdad.
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  await comoUsuario(ana);
+  const mio = (await db.query(`select crear_ejercicio('Remo en anillas', 'espalda', 'series') as id`)).rows[0].id;
+  await db.exec('reset role');
+  await db.query(`insert into prs (user_id, ejercicio, peso, reps, fecha) values ($1, $2, 50, 5, current_date)`, [beto, mio]);
+  await comoUsuario(ana);
+  let error239 = null;
+  try {
+    await db.query('select eliminar_cuenta()');
+  } catch (e) {
+    error239 = String(e.message);
+  }
+  await db.exec('reset role');
+  const quedaAna = (await db.query('select count(*)::int n from profiles where id = $1', [ana])).rows[0].n;
+  chequear('darse de baja anda aunque un amigo haya anotado una marca en un propio mío (la 83)', [error239, quedaAna], [null, 0]);
+  const { readFileSync: leer239 } = await import('node:fs');
+  const de239 = (...p) => leer239(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const mi = de239('movil', 'src', 'MiRutina.tsx');
+  chequear('Tu rutina: el nombre va a SU rutina; no dice "no hay rutina" antes de saber; copiar es de a un toque; activar y borrar escriben la copia del teléfono', [
+    /onChangeText=\{\(texto\) => \(nombreTipeado\.current = \{ id: actual\.id, texto \}\)\}/.test(mi),
+    /setNoCargo\(hay && !mias\);\n    setGuardadas\(hay\);/.test(mi),
+    /if \(!rutina \|\| copiando\.current\) return;/.test(de239('movil', 'src', 'RutinaDe.tsx')),
+    /if \(ok && dias\) await guardarActiva\(/.test(de239('compartido', 'rutinas.ts')),
+    /if \(ok && \(await idDeLaActiva\(\)\) === id\) await guardarActiva\(\[\]\);/.test(de239('compartido', 'rutinas.ts')),
+  ], [true, true, true, true, true]);
+  chequear('Inicio: si la sesión se cerró por fuera, el descanso y la pregunta de Terminar no quedan abiertos para la siguiente', [
+    /if \(!sesion\.estado\.descanso\) setDescansoAbierto\(false\);/.test(de239('movil', 'src', 'Inicio.tsx')),
+    /if \(!sesion\.estado\.corriendo\) setTerminando\(false\);/.test(de239('movil', 'src', 'Inicio.tsx')),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

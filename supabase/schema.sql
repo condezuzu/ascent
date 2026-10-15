@@ -1539,6 +1539,10 @@ begin
   -- challenges.ganador apunta a profiles SIN cascade: si esta cuenta ganó un
   -- reto ya cerrado, esa fila bloquearía el borrado. Se van primero, a mano.
   delete from challenges where retador = uid or rival = uid or ganador = uid;
+  -- Lo que OTRAS cuentas anotaron sobre los ejercicios propios de esta (migración 83).
+  delete from cargas_elegidas  where ejercicio in (select id from ejercicios where creado_por = uid);
+  delete from subidas_marcadas where ejercicio in (select id from ejercicios where creado_por = uid);
+  delete from prs              where ejercicio in (select id from ejercicios where creado_por = uid);
   delete from auth.users where id = uid;
 end;
 $$;
@@ -3685,27 +3689,9 @@ create policy "errores: insertar" on public.errores_js for insert with check (tr
 
 -- ejercicios: catálogo de solo lectura, igual para todos
 -- Los propios (migración 76): los ve SOLO quien los creó (migración 80; antes también sus amigos).
--- EL PROPIO AJENO QUE YA USO (cacería del 15/10). Antes de la 80 se podía elegir el
--- propio de un amigo y ponerlo en la rutina o en una sesión. Ese se sigue viendo:
--- si no, la rutina y el historial quedan con un id sin nombre. No reescribe filas.
-create or replace function public.ejercicio_que_uso(p_id text)
-returns boolean language sql stable security definer set search_path = public as $f$
-  select exists (
-           select 1 from rutinas r
-            where r.user_id = auth.uid()
-              and jsonb_path_exists(r.dias, '$[*].ejercicios[*] ? (@.ejercicio == $id)', jsonb_build_object('id', p_id))
-         )
-      or exists (
-           select 1 from sesiones s
-            where s.user_id = auth.uid()
-              and s.bloques @> jsonb_build_array(jsonb_build_object('ejercicio', p_id))
-         );
-$f$;
-revoke execute on function public.ejercicio_que_uso(text) from public, anon;
-grant execute on function public.ejercicio_que_uso(text) to authenticated;
 
 create policy "ejercicios: catálogo con sesión" on public.ejercicios for select
-  using (auth.uid() is not null and (creado_por is null or creado_por = auth.uid() or public.ejercicio_que_uso(id)));
+  using (auth.uid() is not null and (creado_por is null or creado_por = auth.uid()));
 
 -- prs: las marcas se ven igual que los logs — el dueño todo, los amigos
 -- aceptados leen. El peso CORPORAL sigue afuera, siempre (§16.6).
@@ -4251,7 +4237,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 82; $$;
+returns int language sql immutable as $$ select 83; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

@@ -129,6 +129,8 @@ function consulta(tabla) {
   async function ejecutar(uno) {
     // `ida.historial` / `ida.bloquesDeSesion`: la señal lenta de las dos lecturas que hace la sesión.
     await espera(uno ? (servidor.ida.bloquesDeSesion ?? 5) : (servidor.ida.historial ?? 5));
+    // `falla.lecturas`: sin señal para leer tablas (las rpc van por su cuenta).
+    if (servidor.falla.lecturas) return { data: null, error: { message: 'sin señal' } };
     const s = tabla === 'sesiones' && uno ? porId(filtro.id) : null;
     const data = uno ? (s ? { bloques: copia(s.bloques) } : null) : tabla === 'sesiones' ? copia(servidor.historial) : [];
     await espera(5);

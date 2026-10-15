@@ -68,6 +68,8 @@ export const REQUIERE = {
   marcaDeUnaHora: 81,
   /** La marca de actividad se puede achicar ("Listo" en la cinta, el descanso cortado). */
   bajarMarca: 82,
+  /** Darse de baja aunque un amigo haya usado tus ejercicios propios (la app no depende de esto). */
+  bajaConPropios: 83,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

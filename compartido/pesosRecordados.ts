@@ -16,6 +16,7 @@ import {
   maximosDeBloques,
   maximosDelHistorial,
   listosParaSubir,
+  paraSubirTrasLaSesion,
   type MaximosDeLaUltima,
   type ModosDelCatalogo,
   type PesosPorModo,
@@ -211,8 +212,7 @@ export async function sumarSesionARecordados(bloques: unknown, dia: string = hoy
       // El día es el de la SESIÓN: terminar pasada la medianoche no puede
       // gastar las marcas que se pusieron en ella.
       subidas: subidasTrasLaSesion(antes.subidas, bloques, dia, antes.catalogo),
-      // Sin el historial no se puede recalcular: queda el de antes hasta que conteste la base.
-      paraSubir: antes.paraSubir,
+      paraSubir: paraSubirTrasLaSesion(antes.paraSubir, antes.maximos, bloques, antes.catalogo),
     });
   } catch {
     // Es una conveniencia: no puede frenar el cierre de la sesión.
