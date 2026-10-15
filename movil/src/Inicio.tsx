@@ -264,6 +264,12 @@ export default function Inicio({
       }
       // Cuenta nueva sin nombre: a elegirlo, no Inicio a medias.
       if (!d.perfil.username) return alFaltarNombre();
+      // Cuando el servidor ya tiene el día, lo optimista sobra (vuelta 8): borrar hoy
+      // desde el calendario dejaba "Día registrado" y el resumen hasta medianoche. Si
+      // todavía no lo tiene (sin señal), lo optimista se queda.
+      const tieneHoy = d.logs.some((l) => l.fecha === hoyISO());
+      if (tieneHoy) setMarcadoOptimista(null);
+      else setCierreGuardado(null);
 
       setEstado({
         tipo: 'listo',

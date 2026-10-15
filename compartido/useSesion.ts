@@ -8,7 +8,7 @@ import { crearCliente } from '@cliente';
 import { plataforma } from '@plataforma';
 import { T } from '@nucleo/textos';
 import { eventos } from '@compartido/eventos';
-import { ejerciciosDeHoy } from '@nucleo/rutinas';
+import { cantidadesDeHoy, ejerciciosDeHoy, metaDeRutina } from '@nucleo/rutinas';
 import { cargarMisRutinas, rutinaActivaDelTelefono } from '@compartido/rutinas';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
 import {
@@ -790,19 +790,23 @@ export function useSesion(
       // La semilla sale de la rutina del día; si no hay rutina, del último
       // ejercicio de siempre (regla 2 de la migración 27).
       const deRutina = rutinaRef.current[0] ?? null;
-      const [{ data: ultimo }, meta] = await Promise.all([
+      const [{ data: ultimo }, metaPreferida, cuanto] = await Promise.all([
         deRutina ? Promise.resolve({ data: deRutina }) : supabase.rpc('ultimo_ejercicio'),
         leerMetaPreferida(),
+        deRutina ? cantidadEnLaRutina(deRutina) : Promise.resolve(undefined),
       ]);
+      const meta = cuanto ? metaDeRutina(cuanto.series) : metaPreferida;
       // `sembrar` y NO `bloquesVacios`: en un gimnasio con mala señal esta
       // respuesta llega cuando ya tocaste el + dos veces, y pisar el bloque
       // con uno vacío ponía la cuenta del bloque en cero mientras el total
       // seguía subiendo. Los dos números de la pantalla se contradecían.
-      const sembrado = sembrar(
+      const semilla = sembrar(
         bloquesRef.current,
         typeof ultimo === 'string' && seVe(ultimo) ? ultimo : null,
         meta ?? undefined
       );
+      // Los minutos de la rutina (la cinta de 30) van con la semilla, si es de la rutina.
+      const sembrado = semilla !== bloquesRef.current && cuanto?.minutos !== undefined && semilla.ejercicio === deRutina ? cambiarMinutos(semilla, cuanto.minutos) : semilla;
       // Si ya había algo contado, `sembrar` devuelve lo mismo que entró y acá
       // no hay nada que escribir.
       if (sembrado === bloquesRef.current) return;
@@ -1231,13 +1235,24 @@ export function useSesion(
 
   // PONER UN EJERCICIO COMO SUGERENCIA (fantasma): lo deja en el bloque actual con
   // su peso, marcado como sugerido hasta que se cuente una serie.
+  // Las series y minutos de un ejercicio en la rutina GUARDADA de hoy (la del teléfono:
+  // anda sin señal y después de que iOS mate la app). La deducida no tiene cantidades.
+  async function cantidadEnLaRutina(id: string) {
+    if (!rutinaEsGuardada.current) return undefined;
+    return cantidadesDeHoy(await rutinaActivaDelTelefono(), new Date().getDay())[id];
+  }
+
   async function proponerEjercicioSugerido(id: string) {
     // SOLO SOBRE EL BLOQUE EN BLANCO, como `sembrar` y `proponerPeso`: si ya se
     // contó una serie o se eligió algo, la sugerencia llegó tarde. Ponerla igual
     // cerraba un bloque sin ejercicio con esa serie adentro, que no se guarda.
+    const cuanto = await cantidadEnLaRutina(id);
     const actual = bloquesRef.current;
     if (actual.ejercicio || actual.hechas > 0) return;
-    const b = cambiarEjercicio(actual, id);
+    // Con las series y los minutos que dice la rutina, no los de siempre (vuelta 7).
+    const elegido = cambiarEjercicio(actual, id);
+    const conMeta = cuanto ? cambiarMeta(elegido, metaDeRutina(cuanto.series)) : elegido;
+    const b = cuanto?.minutos !== undefined ? cambiarMinutos(conMeta, cuanto.minutos) : conMeta;
     bloquesRef.current = b;
     setBloques(b);
     setSugerido(true);

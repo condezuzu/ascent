@@ -345,7 +345,7 @@ export const EN: Textos = {
     saludSinDatos: "Nothing's coming in. If you didn't grant permission, it's in Health → Ascent.",
     saludNoHay: "This phone doesn't have Health.",
     metaPasosTitulo: 'Step goal',
-    metaPasosNota: "Only for the Stats chart. It doesn't affect your streak and nobody sees it.",
+    metaPasosNota: "It moves the bar on Home and the Stats chart. It doesn't affect your streak and nobody sees it.",
     metaPasosFuera: 'Between 1,000 and 100,000.',
     saludPasos: (pasos: string) => `${pasos} steps today.`,
     fondo: 'The space background',

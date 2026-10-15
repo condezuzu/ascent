@@ -656,7 +656,7 @@ const ES = {
       'No llega nada. Si no le diste permiso, está en Salud → Ascent.',
     saludNoHay: 'Este teléfono no tiene Salud.',
     metaPasosTitulo: 'Meta de pasos',
-    metaPasosNota: 'Solo para el gráfico de Stats. No entra en tu racha ni la ve nadie.',
+    metaPasosNota: 'Mueve la barra de Inicio y el gráfico de Stats. No entra en tu racha ni la ve nadie.',
     metaPasosFuera: 'Entre 1.000 y 100.000.',
     saludPasos: (pasos: string) => `Hoy llevas ${pasos} pasos.`,
 

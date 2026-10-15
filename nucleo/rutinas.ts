@@ -105,6 +105,27 @@ export function ejerciciosDeHoy(rutina: Pick<Rutina, 'dias'> | null | undefined,
   return d.ejercicios.map((e) => e.ejercicio).filter((e) => (vistos.has(e) ? false : (vistos.add(e), true)));
 }
 
+/**
+ * LAS CANTIDADES DE HOY (vuelta 7 de la cacería): la sesión tomaba de la rutina solo
+ * el orden, y la cinta proponía 20 minutos aunque la rutina dijera 30. La primera vez
+ * de cada ejercicio, con sus series y sus minutos.
+ */
+export function cantidadesDeHoy(
+  rutina: Pick<Rutina, 'dias'> | null | undefined,
+  diaDeLaSemana: number
+): Record<string, { series: number; minutos?: number }> {
+  const d = rutina?.dias?.[diaDeLaSemana];
+  const out: Record<string, { series: number; minutos?: number }> = {};
+  if (!d || d.descanso) return out;
+  for (const e of d.ejercicios) if (!out[e.ejercicio]) out[e.ejercicio] = { series: e.series, ...(e.minutos !== undefined && { minutos: e.minutos }) };
+  return out;
+}
+
+/** La meta de la sesión va de 2 a 5 (`METAS`): lo de la rutina se acota a ese rango. */
+export function metaDeRutina(series: number): number {
+  return Math.min(5, Math.max(2, Math.round(series)));
+}
+
 // ── EDITAR: cada función devuelve una semana NUEVA, sin tocar la que recibe ──
 
 const conDia = (dias: DiaDeSemana[], i: number, cambio: (d: DiaDeSemana) => DiaDeSemana) =>

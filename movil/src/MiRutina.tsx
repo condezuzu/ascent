@@ -118,6 +118,11 @@ export default function MiRutina({
     const n = t?.texto.trim();
     if (r && n && n !== r.nombre) void cambiar({ ...r, nombre: n });
   }
+  // Y AL SALIR (vuelta 8): Volver o deslizar con el teclado abierto desmonta el campo sin
+  // su fin de edición, y lo tipeado se perdía. La última versión, con las rutinas de ahora.
+  const guardarAlSalir = useRef(guardarNombre);
+  guardarAlSalir.current = guardarNombre;
+  useEffect(() => () => guardarAlSalir.current(), []);
 
   /** Cambia la rutina en pantalla y la guarda; si no se guardó, vuelve atrás. */
   async function cambiar(nueva: Rutina) {
@@ -303,6 +308,7 @@ export default function MiRutina({
               testID="rutina-elegir"
               style={[estilos.chip, r.id === sel && estilos.chipElegido]}
               onPress={() => {
+                if (editando) guardarNombre();
                 setSel(r.id);
                 setEditando(false);
               }}
@@ -313,7 +319,14 @@ export default function MiRutina({
             </Pressable>
           ))}
           {rutinas.length < 10 && (
-            <Pressable testID="rutina-nueva" style={estilos.chip} onPress={() => void crear(semanaVacia())}>
+            <Pressable
+              testID="rutina-nueva"
+              style={estilos.chip}
+              onPress={() => {
+                if (editando) guardarNombre();
+                void crear(semanaVacia());
+              }}
+            >
               <Text style={estilos.chipTexto}>{T.rutina.nueva}</Text>
             </Pressable>
           )}

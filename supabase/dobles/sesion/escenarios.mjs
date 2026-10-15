@@ -1299,6 +1299,27 @@ async function serieEnCinta(caso) {
   return { enCurso: [tel.r.estado.bloques.ejercicio, tel.r.estado.bloques.hechas], series: s.series, base: s.bloques.map((b) => [b.ejercicio, b.series]) };
 }
 
+/**
+ * `cantidades` (vuelta 7, de la lista de OTA): la rutina guardada de hoy dice press
+ * de banca 4 series y cinta 30 min. La semilla trae la meta 4 y la cinta propuesta, 30.
+ */
+async function cantidades() {
+  datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+  const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  dias[new Date(Date.now()).getDay()] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }, { ejercicio: 'cinta', series: 1, minutos: 30 }] };
+  datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', dias }));
+  const tel = montar(() => useSesion());
+  await asentar();
+  await tel.r.empezar();
+  await dormir(400);
+  await asentar();
+  const semilla = [tel.r.estado.bloques.ejercicio, tel.r.estado.bloques.meta];
+  for (let i = 0; i < 4; i++) await tel.r.serieHecha({ sinDescanso: true });
+  await tel.r.bloqueSiguiente();
+  await asentar();
+  return { semilla, propuesta: [tel.r.estado.bloques.ejercicio, tel.r.estado.bloques.minutos ?? null, tel.r.estado.sugerido] };
+}
+
 /** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
 async function yaCorria() {
   const inicio = montar(() => useSesion());
@@ -1476,7 +1497,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

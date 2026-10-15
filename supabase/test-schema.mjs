@@ -18900,6 +18900,22 @@ console.log('\n243. Cacería del 15/10, vuelta 8: "+ Serie hecha" con la cinta s
   // Proxy: se probó montando MiRutina y el selector; acá se pinea la guarda.
   chequear('crear un propio con la hoja ya cerrada no elige nada', /const id = await crearEjercicio\(.*\);[\s\S]{0,300}if \(!abierta\.current\) return;/.test(de243('movil', 'src', 'SelectorEjercicio.tsx')), true);
 }
+console.log('\n244. Lo que quedó por OTA (15/10): las cantidades de la rutina; borrar hoy desde el calendario; el nombre de la rutina al salir; la nota de la meta de pasos');
+{
+  chequear('la rutina guardada pone la meta (4 series) y los minutos de la cinta (30) en lo que propone', await escenarioDeSesion('cantidades'), { semilla: ['press_banca', 4], propuesta: ['cinta', 30, true] });
+  const RU244 = await import('../nucleo/rutinas.ts');
+  chequear('la meta de la rutina se acota a lo que la sesión deja elegir (2 a 5)', [RU244.metaDeRutina(1), RU244.metaDeRutina(4), RU244.metaDeRutina(8)], [2, 4, 5]);
+  const { readFileSync: leer244 } = await import('node:fs');
+  const de244 = (...p) => leer244(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  // Proxies: estos tres se probaron montando las pantallas en la cacería; acá se pinean.
+  const ini = de244('movil', 'src', 'Inicio.tsx');
+  chequear('con el día ya en el servidor se suelta lo optimista, y sin el día se va el resumen (borrar hoy desde el calendario)', /const tieneHoy = d\.logs\.some\(\(l\) => l\.fecha === hoyISO\(\)\);\n      if \(tieneHoy\) setMarcadoOptimista\(null\);\n      else setCierreGuardado\(null\);/.test(ini), true);
+  const mr = de244('movil', 'src', 'MiRutina.tsx');
+  chequear('el nombre nuevo de una rutina se guarda al salir sin Listo, y al cambiar de rutina', [/useEffect\(\(\) => \(\) => guardarAlSalir\.current\(\), \[\]\);/.test(mr), (mr.match(/if \(editando\) guardarNombre\(\);/g) ?? []).length >= 3], [true, true]);
+  const { T: T244 } = await import('../nucleo/textos.ts');
+  const { EN: EN244 } = await import('../nucleo/textos-en.ts');
+  chequear('la nota de la meta de pasos dice que mueve la barra de Inicio', [/Inicio/.test(T244.ajustes.metaPasosNota), /Home/.test(EN244.ajustes.metaPasosNota)], [true, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
