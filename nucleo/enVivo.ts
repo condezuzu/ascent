@@ -69,6 +69,12 @@ export type Union = {
   estado: 'pendiente' | 'aceptada';
   laPediYo: boolean;
   otro: { id: string; username: string; avatar_url: string | null };
+  /** El grupo (migración 88): `null` en un pedido o con la base de antes. */
+  grupo: string | null;
+  /** Este compañero armó el grupo (es el que lleva más tiempo). */
+  lider: boolean;
+  /** Lo armé yo: puedo sacar a otros. */
+  yoLider: boolean;
   /** El reloj de la base cuando contestó, en ms. */
   ahora: number;
   enVivo: { ejercicio: string | null; serie: number; meta: number; descansoFin: number | null; actualizado: number } | null;
@@ -94,6 +100,9 @@ export function leerUniones(crudo: unknown): Union[] {
       estado: x.estado,
       laPediYo: x.la_pedi_yo === true,
       otro: { id: otro.id, username: typeof otro.username === 'string' ? otro.username : '', avatar_url: typeof otro.avatar_url === 'string' ? otro.avatar_url : null },
+      grupo: typeof x.grupo === 'string' ? x.grupo : null,
+      lider: x.lider === true,
+      yoLider: x.yo_lider === true,
       ahora,
       enVivo:
         x.estado === 'aceptada' && v

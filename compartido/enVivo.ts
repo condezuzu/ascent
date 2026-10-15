@@ -62,3 +62,54 @@ export async function dejarDeEntrenar(supabase: Cliente): Promise<void> {
   if (!disponible('entrenarConOtro', await version(supabase))) return;
   await supabase.rpc('dejar_de_entrenar');
 }
+
+// ── EL GRUPO (migración 88) ──
+
+export type RespuestaDelLink = 'ok' | 'ya-unido' | 'ocupado' | 'no-existe' | 'fallo';
+
+/** Me voy del grupo entero. Si lo había armado yo, pasa al que lleva más tiempo. */
+export async function salirDelGrupo(supabase: Cliente): Promise<boolean> {
+  if (!disponible('grupos', await version(supabase))) return false;
+  return !(await supabase.rpc('salir_del_grupo')).error;
+}
+
+/** Saca a alguien del grupo. Solo anda si lo armé yo. */
+export async function echarDelGrupo(supabase: Cliente, quien: string): Promise<boolean> {
+  if (!disponible('grupos', await version(supabase))) return false;
+  const { data, error } = await supabase.rpc('echar_del_grupo', { p_quien: quien });
+  return !error && data === true;
+}
+
+/** El código del link del grupo (si no tengo grupo, se arma uno). `null` = no se pudo o no estoy entrenando. */
+export async function linkDelGrupo(supabase: Cliente): Promise<string | null> {
+  if (!disponible('grupos', await version(supabase))) return null;
+  const { data, error } = await supabase.rpc('link_del_grupo');
+  return !error && typeof data === 'string' && data ? data : null;
+}
+
+/** Entrar por el link: quedamos amigos con quien armó el grupo, y entro. */
+export async function unirsePorLink(supabase: Cliente, codigo: string): Promise<RespuestaDelLink> {
+  if (!disponible('grupos', await version(supabase))) return 'fallo';
+  const { data, error } = await supabase.rpc('unirse_por_link', { p_codigo: codigo });
+  if (error) return 'fallo';
+  return data === 'ya-unido' || data === 'ocupado' || data === 'no-existe' ? data : 'ok';
+}
+
+/**
+ * EN TIEMPO REAL (migración 88): avisa apenas cambia lo que publicó alguien del
+ * grupo o quién está adentro. No trae los datos: quien escucha vuelve a pedir
+ * `mis_uniones`, que es la única que sabe armar la lista (y la que mira los
+ * permisos). La base deja leer solo lo del propio grupo. Devuelve con qué dejar
+ * de escuchar.
+ */
+export function escucharGrupo(supabase: Cliente, grupo: string, companeros: string[], alCambiar: () => void): () => void {
+  const canal = supabase.channel(`grupo:${grupo}:${Math.random().toString(36).slice(2, 8)}`);
+  canal.on('postgres_changes', { event: '*', schema: 'public', table: 'grupo_miembros', filter: `grupo_id=eq.${grupo}` }, () => alCambiar());
+  if (companeros.length > 0) {
+    canal.on('postgres_changes', { event: '*', schema: 'public', table: 'en_vivo', filter: `user_id=in.(${companeros.join(',')})` }, () => alCambiar());
+  }
+  canal.subscribe();
+  return () => {
+    void supabase.removeChannel(canal);
+  };
+}

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { leerViva, suscribirViva } from '@compartido/sesionViva';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
@@ -103,6 +104,8 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const [activa, setActiva] = useState(false);
   useEffect(() => eventos.escuchar(PESTANA_ACTIVA, (cual) => setActiva(cual === 'ranking')), []);
   const juntos = useUniones(activa);
+  // Si estoy entrenando: el link del grupo se ofrece aunque todavía no haya nadie.
+  const yoEntreno = useSyncExternalStore(suscribirViva, () => leerViva().inicio !== null, () => false);
   // Por qué no se pudo pedir unirse, al lado de quién. Se va al salir de la pestaña.
   const [noSePudo, setNoSePudo] = useState<{ id: string; texto: string } | null>(null);
   useEffect(() => {
@@ -375,7 +378,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
 
         {/* ENTRENANDO AHORA (en vivo): arriba del historial, porque es lo que
             está pasando. Solo dice que están entrenando, nunca dónde. */}
-        <Juntos uniones={juntos.uniones} recibidoEn={juntos.recibidoEn} recargar={juntos.recargar} />
+        <Juntos uniones={juntos.uniones} recibidoEn={juntos.recibidoEn} recargar={juntos.recargar} entrenando={yoEntreno} />
 
         {entrenando.length > 0 && (
           <View style={estilos.seccion}>

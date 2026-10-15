@@ -5,6 +5,7 @@ import { firmaDe, loQueSePublica } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { useUniones } from './useUniones';
+import TiraDelGrupo from './TiraDelGrupo';
 import { useCartelVisible } from './cartelVisible';
 import { tarjetasDeInicio } from '@nucleo/novedades';
 import { C, conAlfa } from './colores';
@@ -30,7 +31,7 @@ type Visto = { corriendo: boolean; ejercicio: string | null; hechas: number; met
 const LATIDO_MS = 45_000;
 
 function EnVivoDeInicio(visto: Visto) {
-  const { uniones, recargar } = useUniones(visto.corriendo, true);
+  const { uniones, recibidoEn, recargar } = useUniones(visto.corriendo, true);
   const enCartel = useCartelVisible();
 
   // Lo último que se vio, para que el latido publique lo de AHORA y no lo de cuando se armó.
@@ -58,10 +59,12 @@ function EnVivoDeInicio(visto: Visto) {
   // SOLO MIENTRAS ENTRENO (12/10): terminada la sesión el pedido ya no tiene a
   // qué unirse, y la tarjeta quedaba en Inicio hasta volver a entrenar.
   const pedidos = tarjetasDeInicio(visto.corriendo ? uniones.filter((u) => u.estado === 'pendiente' && !u.laPediYo) : [], enCartel);
-  if (pedidos.length === 0) return null;
+  const conGrupo = visto.corriendo && uniones.some((u) => u.estado === 'aceptada');
+  if (pedidos.length === 0 && !conGrupo) return null;
 
   return (
     <>
+      {conGrupo && <TiraDelGrupo uniones={uniones} recibidoEn={recibidoEn} />}
       {pedidos.map((u) => (
         <View key={u.id} testID="pedido-de-union" style={estilos.tarjeta} accessibilityRole="alert">
           <Text style={estilos.texto}>{T.social.quiereUnirse(u.otro.username)}</Text>

@@ -16452,7 +16452,8 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
     /setActiva\(cual === 'ranking'\)/.test(rk201) && /const juntos = useUniones\(activa\);/.test(rk201),
     /\{conJuntos && !union && \(/.test(rk201),
     /onPress=\{\(\) => void unirseA\(e\)\}/.test(rk201) && /const r = await pedirUnirse\(supabase, e\.id\);[\s\S]*?juntos\.recargar\(\);/.test(rk201),
-    /<Juntos uniones=\{juntos\.uniones\} recibidoEn=\{juntos\.recibidoEn\} recargar=\{juntos\.recargar\} \/>/.test(rk201),
+    // Desde la 88 también sabe si estoy entrenando: el link del grupo se ofrece sin nadie todavía.
+    /<Juntos uniones=\{juntos\.uniones\} recibidoEn=\{juntos\.recibidoEn\} recargar=\{juntos\.recargar\} entrenando=\{yoEntreno\} \/>/.test(rk201),
     /if \(!error\) setEntrenando\(/.test(rk201),
     [EV.CADA_CUANTO_MS, EV.SIN_SENAL_S],
   ], [true, true, true, true, true, [10_000, 120]]);
@@ -19043,6 +19044,46 @@ console.log('\n246. Entrenar en grupo (la 88): hasta 10, acepta cualquiera, echa
   await db.query(`update sesiones set inicio = now() - interval '20 minutes', series = 3 where user_id = $1 and estado = 'corriendo'`, [d]);
   await como(d, 'select terminar_sesion()');
   chequear('terminar saca del grupo', (await db.query('select count(*)::int n from grupo_miembros where user_id = $1', [d])).rows[0].n, 0);
+}
+console.log('\n247. Entrenar en grupo, del lado de la app: la lista, el link, el tiempo real y quién saca a quién');
+{
+  const EV247 = await import('../nucleo/enVivo.ts');
+  const ahora = new Date().toISOString();
+  const lista = EV247.leerUniones([
+    { id: 'g1', estado: 'aceptada', la_pedi_yo: false, grupo: 'g1', lider: true, yo_lider: false, otro: { id: 'u1', username: 'ana', avatar_url: null }, ahora, en_vivo: null },
+    { id: 'p1', estado: 'pendiente', la_pedi_yo: false, grupo: null, lider: false, yo_lider: false, otro: { id: 'u2', username: 'beto', avatar_url: null }, ahora, en_vivo: null },
+    // La base de antes no manda nada del grupo: se lee igual.
+    { id: 'v1', estado: 'aceptada', la_pedi_yo: true, otro: { id: 'u3', username: 'caro', avatar_url: null }, ahora, en_vivo: null },
+  ]);
+  chequear('la lista entiende el grupo, quién lo armó y si lo armé yo, y sigue leyendo la de antes', lista.map((u) => [u.grupo, u.lider, u.yoLider]), [['g1', true, false], [null, false, false], [null, false, false]]);
+  const EN247 = await import('../nucleo/enlace.ts');
+  chequear('el link del grupo se reconoce en la web y en la app, y nada más', [
+    EN247.codigoDeGrupo(EN247.enlaceDeGrupo('0123456789ab')),
+    EN247.codigoDeGrupo('ascent://grupo/0123456789ab'),
+    EN247.codigoDeGrupo('ascent://grupo/no-sirve'),
+    EN247.codigoDeGrupo(EN247.enlaceDeAmigo('ana_1')),
+  ], ['0123456789ab', '0123456789ab', null, null]);
+  const { readFileSync: leer247 } = await import('node:fs');
+  const de247 = (...p) => sinComentarios(leer247(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n'));
+  const uu = de247('movil', 'src', 'useUniones.ts');
+  chequear('con grupo, la lista llega en tiempo real (y la pregunta de cada diez segundos queda de respaldo)', [
+    /escucharGrupo\(supabase, grupo, /.test(uu),
+    /setTimeout\(\(\) => void recargar\(\), 250\)/.test(uu),
+    /setInterval\(\(\) => \{\s*if \(plataforma\.ciclo\.visible\(\)\) void recargar\(\);\s*\}, CADA_CUANTO_MS\)/.test(uu),
+  ], [true, true, true]);
+  const ju = de247('movil', 'src', 'Juntos.tsx');
+  chequear('en el grupo: sacar solo si lo armé yo, salir es uno solo, y el link se ofrece aunque no haya nadie', [
+    /\) : yoArmo \? \(\s*<Pressable testID="juntos-sacar"/.test(ju),
+    /testID="juntos-salir-grupo"/.test(ju) && /void salirDelGrupo\(supabase\)/.test(ju),
+    /if \(uniones\.length === 0 && !\(conGrupos && entrenando\)\) return null;/.test(ju),
+    /Share\.share\(\{ message: T\.social\.mensajeDeInvitacion\(enlaceDeGrupo\(codigo\)\) \}\)/.test(ju),
+  ], [true, true, true, true]);
+  chequear('la tira del grupo sale en Inicio mientras se entrena con otros', /\{conGrupo && <TiraDelGrupo uniones=\{uniones\} recibidoEn=\{recibidoEn\} \/>\}/.test(de247('movil', 'src', 'EnVivoDeInicio.tsx')), true);
+  chequear('el link del grupo abre la app (ruta y archivo de dominios asociados) y su página es pública', [
+    /<GrupoPorEnlace \/>/.test(de247('movil', 'app', 'grupo', '[codigo].tsx')),
+    /'\/grupo\/\*'/.test(de247('src', 'app', '.well-known', 'apple-app-site-association', 'route.ts')),
+    /'\/grupo'/.test(de247('src', 'lib', 'supabase', 'middleware.ts')),
+  ], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

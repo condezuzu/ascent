@@ -1430,12 +1430,32 @@ const ES = {
     juntos: 'Entrenando contigo',
     unirse: 'Unirse',
     // Lo que contesta la base cuando no se pudo (migración 73). Es de a dos.
-    unirseOcupado: (nombre: string) => `${nombre} ya está entrenando con alguien.`,
+    // Desde los grupos (migración 88), "ocupado" es que el grupo llegó a diez.
+    unirseOcupado: (nombre: string) => `El grupo de ${nombre} ya está lleno.`,
     unirseYaUnido: 'Ya estás entrenando con alguien. Sal de ese entrenamiento para unirte a otro.',
     unirseNoEntrena: (nombre: string) => `${nombre} ya no está entrenando.`,
     quiereUnirse: (nombre: string) => `${nombre} quiere unirse a tu entrenamiento`,
     esperandoA: (nombre: string) => `Esperando a ${nombre}`,
     salirDeUnion: 'Salir',
+    // EL GRUPO (migración 88).
+    invitarAlGrupo: 'Invitar al grupo',
+    tiraSerie: (serie: number, meta: number) => `serie ${serie}/${meta}`,
+    mensajeDeInvitacion: (url: string) => `Entrena conmigo en Ascent: ${url}`,
+    sacarDelGrupo: 'Sacar',
+    salirDelGrupo: 'Salir del grupo',
+    armoElGrupo: 'armó el grupo',
+    grupoEntraste: 'Entraste al grupo. Ya eres amigo de quien lo armó.',
+    grupoVer: 'Ver el grupo',
+    grupoYaEstas: 'Ya estás en ese grupo.',
+    grupoLleno: 'Ese grupo ya está lleno.',
+    grupoNoExiste: 'Ese link ya no sirve: el grupo terminó.',
+    grupoUniendo: 'Entrando al grupo…',
+    // La página de la web a la que cae el link del grupo.
+    grupoEnlaceTitulo: 'Te invitan a entrenar juntos en Ascent',
+    grupoEnlacePie: 'Ábrelo en la app: entras al grupo y quedas amigo de quien lo armó.',
+    grupoEnlacePaso3: 'Vuelve a este mismo enlace y toca "Abrir en Ascent": ahí entras al grupo.',
+    grupoEnlaceOjo: 'Sin ese último paso no entras.',
+    grupoEnlaceMalo: 'Este enlace no lleva a ningún grupo.',
     enVivoSerie: (ejercicio: string, serie: number, meta: number) =>
       serie < 1 ? ejercicio : meta >= serie ? `${ejercicio} · serie ${serie} de ${meta}` : `${ejercicio} · serie ${serie}`,
     enVivoSinDatos: 'Todavía no empezó',

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { responderUnion, salirDeUnion } from '@compartido/enVivo';
+import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { echarDelGrupo, linkDelGrupo, responderUnion, salirDelGrupo, salirDeUnion } from '@compartido/enVivo';
+import { useVersionDelEsquema } from '@compartido/esquema';
+import { disponible } from '@nucleo/esquema';
+import { enlaceDeGrupo } from '@nucleo/enlace';
 import { cuentaAtras } from '@compartido/descanso';
 import { renglonDe, type Union } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
@@ -19,8 +22,27 @@ import { C } from './colores';
  * reloj propio, de un segundo, solo para que la cuenta del descanso baje entre
  * una pregunta y la otra.
  */
-export default function Juntos({ uniones, recibidoEn, recargar }: { uniones: Union[]; recibidoEn: number; recargar: () => Promise<void> }) {
+export default function Juntos({
+  uniones,
+  recibidoEn,
+  recargar,
+  entrenando = false,
+}: {
+  uniones: Union[];
+  recibidoEn: number;
+  recargar: () => Promise<void>;
+  /** Para ofrecer el link aunque todavía no haya nadie (migración 88). */
+  entrenando?: boolean;
+}) {
   const [ahora, setAhora] = useState(Date.now());
+  const conGrupos = disponible('grupos', useVersionDelEsquema());
+  const enGrupo = uniones.some((u) => u.grupo);
+  const yoArmo = uniones.some((u) => u.yoLider);
+  // EL LINK DEL GRUPO: si no hay grupo, pedirlo arma uno con quien lo comparte.
+  async function invitar() {
+    const codigo = await linkDelGrupo(supabase);
+    if (codigo) void Share.share({ message: T.social.mensajeDeInvitacion(enlaceDeGrupo(codigo)) }).catch(() => undefined);
+  }
   const hayAceptada = uniones.some((u) => u.estado === 'aceptada');
   const nombres = useNombresDeEjercicios(hayAceptada, recibidoEn);
 
@@ -31,7 +53,7 @@ export default function Juntos({ uniones, recibidoEn, recargar }: { uniones: Uni
   }, [hayAceptada]);
 
 
-  if (uniones.length === 0) return null;
+  if (uniones.length === 0 && !(conGrupos && entrenando)) return null;
 
   return (
     <View testID="juntos" style={estilos.seccion}>
@@ -73,6 +95,8 @@ export default function Juntos({ uniones, recibidoEn, recargar }: { uniones: Uni
               <View style={estilos.cabecera}>
                 <Text style={estilos.nombreVivo} numberOfLines={1}>
                   {u.otro.username}
+                  {/* Quién puede sacar a otros: el que lo armó (el que lleva más tiempo). */}
+                  {u.lider && <Text style={estilos.apagada}>{` · ${T.social.armoElGrupo}`}</Text>}
                 </Text>
                 {/* EL DESCANSO GANA A "SIN SEÑAL" (12/10). Con el teléfono del
                     otro bloqueado no llegan novedades, pero la cuenta no las
@@ -93,12 +117,31 @@ export default function Juntos({ uniones, recibidoEn, recargar }: { uniones: Uni
                 {r.sinDatos ? T.social.enVivoSinDatos : T.social.enVivoSerie(ejercicio, r.serie, r.meta)}
               </Text>
             </View>
-            <Pressable testID="juntos-salir" hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>
-              <Text style={estilos.apagada}>{T.social.salirDeUnion}</Text>
-            </Pressable>
+            {/* En grupo, salir es uno solo, abajo; sacar, solo quien lo armó. */}
+            {!u.grupo ? (
+              <Pressable testID="juntos-salir" hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>
+                <Text style={estilos.apagada}>{T.social.salirDeUnion}</Text>
+              </Pressable>
+            ) : yoArmo ? (
+              <Pressable testID="juntos-sacar" hitSlop={8} onPress={() => void echarDelGrupo(supabase, u.otro.id).then(recargar)}>
+                <Text style={estilos.apagada}>{T.social.sacarDelGrupo}</Text>
+              </Pressable>
+            ) : null}
           </View>
         );
       })}
+      {conGrupos && (entrenando || enGrupo) && (
+        <View style={estilos.pie}>
+          <Pressable testID="juntos-invitar" hitSlop={8} onPress={() => void invitar()}>
+            <Text style={estilos.accion}>{T.social.invitarAlGrupo}</Text>
+          </Pressable>
+          {enGrupo && (
+            <Pressable testID="juntos-salir-grupo" hitSlop={8} onPress={() => void salirDelGrupo(supabase).then(recargar)}>
+              <Text style={estilos.apagada}>{T.social.salirDelGrupo}</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -118,4 +161,5 @@ const estilos = StyleSheet.create({
   pildoraLista: { borderColor: C.sub },
   pildoraTexto: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
   pildoraTextoLista: { color: C.tinta },
+  pie: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 },
 });

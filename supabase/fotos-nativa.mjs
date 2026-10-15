@@ -547,6 +547,30 @@ const RECETAS = {
     await foto(page, 'meta-de-rutina');
     return page;
   },
+  // ENTRENAR EN GRUPO (15/10): la tira en Inicio y la lista de Ranking, con un grupo de
+  // tres (A armó; B descansa; C hace su serie) y un pedido de D. La respuesta de la
+  // base es de mentira (la migración 88 todavía no está en producción).
+  async grupo(nav, gente) {
+    const A = gente.a;
+    const ahora = new Date();
+    const en = (s) => new Date(ahora.getTime() + s * 1000).toISOString();
+    const otro = (id, username) => ({ id, username, avatar_url: null });
+    const uniones = [
+      { id: 'g', estado: 'aceptada', la_pedi_yo: false, grupo: 'g', lider: false, yo_lider: true, otro: otro('00000000-0000-4000-8000-0000000000b1', 'lucia'), ahora: ahora.toISOString(), en_vivo: { ejercicio: 'sentadilla', serie: 2, meta: 4, descanso_fin: en(74), actualizado: ahora.toISOString() } },
+      { id: 'g', estado: 'aceptada', la_pedi_yo: false, grupo: 'g', lider: false, yo_lider: true, otro: otro('00000000-0000-4000-8000-0000000000c1', 'mateo'), ahora: ahora.toISOString(), en_vivo: { ejercicio: 'remo_barra', serie: 1, meta: 3, descanso_fin: null, actualizado: ahora.toISOString() } },
+      { id: 'p', estado: 'pendiente', la_pedi_yo: false, grupo: null, lider: false, yo_lider: true, otro: otro('00000000-0000-4000-8000-0000000000d1', 'sofi'), ahora: ahora.toISOString(), en_vivo: null },
+    ];
+    const { page } = await abrir(nav, A, { version_del_esquema: 88, mis_uniones: uniones });
+    await page.getByText(TEXTOS_ES.inicio.iniciarEntrenamiento, { exact: true }).first().click({ timeout: 30000 });
+    await page.getByTestId('tira-del-grupo').first().waitFor({ state: 'visible', timeout: 30000 });
+    await page.waitForTimeout(1500);
+    await foto(page, 'grupo-tira');
+    await page.getByText('Social', { exact: true }).last().click({ timeout: 30000 });
+    await page.getByTestId('juntos').first().scrollIntoViewIfNeeded({ timeout: 30000 });
+    await page.waitForTimeout(1200);
+    await foto(page, 'grupo-ranking');
+    return page;
+  },
   // LA ZONA SEGURA (15/10): el navegador no tiene isla ni hora, así que se le dice a
   // Chrome que la zona de arriba mide 59 (un iPhone con isla) y se pinta esa franja.
   async 'zona-segura'(nav, gente) {

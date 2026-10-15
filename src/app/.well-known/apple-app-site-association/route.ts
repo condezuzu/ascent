@@ -1,7 +1,7 @@
 /**
  * EL ARCHIVO QUE LE DICE A iOS QUÉ LINKS ABRE LA APP (15/10/2026). Con esto y el
  * permiso de dominios asociados de la build 8, un link https de amigo
- * (`/amigo/<nombre>`) abre la app directo en vez de la web. Sin la build 8 no
+ * (`/amigo/<nombre>`, `/grupo/<código>`) abre la app directo en vez de la web. Sin la build 8 no
  * cambia nada: el link sigue abriendo la web.
  *
  * Apple lo baja desde su propia red y lo cachea: tiene que estar publicado antes
@@ -17,8 +17,8 @@ export function GET() {
     applinks: {
       details: [
         // `appIDs` + `components` es la forma de iOS 13 en adelante; `appID` + `paths`, la de antes.
-        { appIDs: [APP], components: [{ '/': '/amigo/*', comment: 'Link de amigo' }] },
-        { appID: APP, paths: ['/amigo/*'] },
+        { appIDs: [APP], components: [{ '/': '/amigo/*', comment: 'Link de amigo' }, { '/': '/grupo/*', comment: 'Link de grupo' }] },
+        { appID: APP, paths: ['/amigo/*', '/grupo/*'] },
       ],
     },
   });
