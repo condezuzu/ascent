@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { RANGOS } from '@nucleo/rangos';
+import { paletaDe } from '@nucleo/paletas';
 import { Banco } from '../Banco';
 import { C, Captura, Fila, FUENTE, Marco, Parche, Recorte, Titulito, cajas, type Caja } from '../Captura';
 
@@ -47,44 +48,79 @@ function Serie() {
   );
 }
 
-// 2. Día registrado: el planeta late una vez, chiquito.
-function Planeta() {
-  const [n, otra] = useVuelta(3200);
-  const centro = { x: 352, y: 725 };
-  const lado = 220;
-  return (
-    <Captura nombre="dia-registrado">
-      <Recorte
-        key={n}
-        nombre="dia-registrado"
-        caja={{ x: centro.x - lado / 2, y: centro.y - lado / 2, w: lado, h: lado }}
-        className="late-planeta"
-        estilo={{ maskImage: 'radial-gradient(circle, #000 45%, transparent 70%)', WebkitMaskImage: 'radial-gradient(circle, #000 45%, transparent 70%)' }}
-      />
-      <Repetir alTocar={otra} />
-    </Captura>
-  );
-}
+// 2 + 3 (15/10, segunda vuelta). Los días entran escalonados al abrir Inicio y, cuando
+// terminan, el que se acaba de registrar pega un saltito y toma un color que se note.
+// Fondo: la captura real con el día ya registrado. Las columnas son los píxeles de la
+// captura; lo único dibujado es el círculo nuevo del día de hoy.
+const PALETA_1 = { principal: '#6E6A82', claro: '#9E9BB0' };
+const OPCIONES_DE_COLOR = {
+  claro: { relleno: PALETA_1.claro, halo: PALETA_1.principal, nombre: 'el claro del rango, con un halo de su principal' },
+  tinta: { relleno: '#e8ecf6', halo: PALETA_1.claro, nombre: 'casi blanco (la tinta), con un halo del claro del rango' },
+} as const;
 
-// 3. Los días de la semana, escalonados, una sola vez al abrir Inicio.
-function Semana() {
-  const [n, otra] = useVuelta(3400);
+function DiaQueSalta({ color }: { color: keyof typeof OPCIONES_DE_COLOR }) {
+  const [n, otra] = useVuelta(4200);
   const d = cajas.inicio ?? {};
   const letras = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+  const hoy = 3;
   const centros = letras.map((l) => {
     const b = d[l];
     return b ? b.x + b.w / 2 : 0;
   });
   const arriba = (d.L?.y ?? 328) - 42;
   const alto = 62;
+  const cy = (d.L?.y ?? 328) - 20.5;
+  const op = OPCIONES_DE_COLOR[color];
+  // La entrada termina con el último día: 120 ms de espera + 6 × 45 + 320.
+  const finDeLaEntrada = 120 + 6 * 45 + 320;
   return (
-    <Captura nombre="inicio">
-      <Parche nombre="inicio" caja={{ x: 18, y: arriba, w: 354, h: alto }} />
+    <Captura nombre="dia-registrado">
+      <Parche nombre="dia-registrado" caja={{ x: 18, y: arriba, w: 354, h: alto }} />
       {centros.map((cx, i) => (
-        <Recorte key={`${n}-${i}`} nombre="inicio" caja={{ x: Math.round(cx - 26), y: arriba, w: 52, h: alto }} className="entra-dia" estilo={{ animationDelay: `${120 + i * 45}ms` }} />
+        <div key={`${n}-${i}`} className={i === hoy ? 'entra-dia salta-dia' : 'entra-dia'} style={{ position: 'absolute', left: Math.round(cx - 26), top: arriba, width: 52, height: alto, animationDelay: i === hoy ? `${120 + i * 45}ms, ${finDeLaEntrada + 80}ms` : `${120 + i * 45}ms` }}>
+          <Recorte nombre="dia-registrado" caja={{ x: Math.round(cx - 26), y: arriba, w: 52, h: alto }} estilo={{ left: 0, top: 0 }} />
+          {i === hoy && (
+            <span
+              className="toma-color"
+              style={{
+                position: 'absolute',
+                left: 26 - 13,
+                top: cy - arriba - 13,
+                width: 26,
+                height: 26,
+                borderRadius: 13,
+                background: op.relleno,
+                boxShadow: `0 0 12px ${op.halo}`,
+                animationDelay: `${finDeLaEntrada + 80}ms`,
+              }}
+            />
+          )}
+        </div>
       ))}
       <Repetir alTocar={otra} />
     </Captura>
+  );
+}
+
+function Muestrario() {
+  const rangos = [1, 2, 3, 5, 6, 7];
+  return (
+    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', margin: '-16px 0 34px', alignItems: 'center' }}>
+      <span style={{ color: 'var(--sub)', fontSize: 12, width: 160 }}>Con «el claro del rango», el día de hoy en cada rango:</span>
+      {rangos.map((r) => {
+        const p = paletaDe(r);
+        return (
+          <span key={r} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--sub)', fontSize: 11 }}>
+            <span style={{ width: 26, height: 26, borderRadius: 13, background: p.claro, boxShadow: `0 0 12px ${p.principal}` }} />
+            {RANGOS.find((x) => x.n === r)?.nombre}
+          </span>
+        );
+      })}
+      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--sub)', fontSize: 11 }}>
+        <span style={{ width: 26, height: 26, borderRadius: 13, background: '#7e8ca8' }} />
+        el de hoy
+      </span>
+    </div>
   );
 }
 
@@ -211,27 +247,34 @@ export default function PropuestaAnimaciones() {
         .entra-dia { animation: entra-dia .32s cubic-bezier(.2,.7,.2,1) both; }
         @keyframes entra-dia { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
         .destello { animation: destello .75s ease-in-out .3s both; }
+        .salta-dia { animation-name: entra-dia, salta-dia; animation-duration: .32s, .42s; animation-timing-function: cubic-bezier(.2,.7,.2,1), cubic-bezier(.3,.6,.3,1); animation-fill-mode: both, none; }
+        @keyframes salta-dia { 0% { transform: none; } 40% { transform: translateY(-7px) scale(1.12); } 100% { transform: none; } }
+        .toma-color { animation: toma-color .42s ease both; }
+        @keyframes toma-color { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
         @keyframes destello { from { left: -14px; } to { left: 26px; } }
       `}</style>
+      <Titulito>Nueva: 2 y 3 juntas, para decidir el color</Titulito>
       <Fila>
-        <Tarjeta n={1} titulo="El + al terminar una serie" nota="Al tocar: el + se hunde un poco y se ilumina (0,3 s) y el punto de la serie se llena desde el centro (0,26 s). Nada más.">
+        <Tarjeta n={3} titulo="Días al abrir + el registrado · opción A" nota={<>Entran de a uno (45 ms entre cada uno) y, al terminar, el día de hoy pega un saltito (7 px, 0,42 s) y toma el color nuevo. <b>A:</b> {OPCIONES_DE_COLOR.claro.nombre}. En polvo queda lila; abajo, cómo queda en cada rango.</>}>
+          <DiaQueSalta color="claro" />
+        </Tarjeta>
+        <Tarjeta n={3} titulo="Días al abrir + el registrado · opción B" nota={<>Lo mismo con <b>B:</b> {OPCIONES_DE_COLOR.tinta.nombre}. Se nota más en cualquier rango, pero deja de decir de qué rango sos.</>}>
+          <DiaQueSalta color="tinta" />
+        </Tarjeta>
+      </Fila>
+      <Muestrario />
+
+      <Titulito>Aprobadas: ya están en la app, sin publicar</Titulito>
+      <Fila>
+        <Tarjeta n={1} titulo="El + al terminar una serie · sí" nota="Al tocar: el + se hunde un poco y se ilumina (0,3 s) y el punto de la serie se llena desde el centro (0,26 s). Nada más.">
           <Serie />
         </Tarjeta>
-        <Tarjeta n={2} titulo="Día registrado" nota="Tu planeta late una vez: crece un 8 % y vuelve, en 0,7 s, sin tapar nada. Como el fuego de Duolingo pero quieto.">
-          <Planeta />
-        </Tarjeta>
-        <Tarjeta n={3} titulo="Los días de la semana en Inicio" nota="Entran de a uno, 45 ms entre cada uno, la primera vez que se abre Inicio en el día. Volver a la pestaña no los anima de nuevo.">
-          <Semana />
+        <Tarjeta n={4} titulo="Las medallas · sí" nota="Un destello que cruza una medalla por vez. Acá pasa cada 2,4 s para verlo; en la app, uno cada 8 a 12 s, y solo con la pantalla quieta.">
+          <Medallas />
         </Tarjeta>
       </Fila>
       <Fila>
-        <Tarjeta n={4} titulo="Las medallas" nota="Un destello que cruza una medalla por vez. Acá pasa cada 2,4 s para verlo; en la app, uno cada 8 a 12 s, y solo con la pantalla quieta.">
-          <Medallas />
-        </Tarjeta>
-        <Tarjeta n={5} titulo="Subir de rango · hoy" nota="La de hoy, tal cual: las partículas del objeto viejo se dispersan y forman el nuevo, y aparece el nombre. Toca para adelantarla.">
-          <iframe title="subida de hoy" src="/galeria/propuestas/animaciones?marco=subida-hoy" style={{ width: 390, height: 844, border: 0, display: 'block' }} />
-        </Tarjeta>
-        <Tarjeta n={5} titulo="Subir de rango · pulida" nota="Las mismas partículas. Lo nuevo: el fondo se cierra un poco mientras se deshace el viejo y se abre al formarse el nuevo; un anillo de luz sale una vez del objeto; el objeto respira (2,5 %); el nombre entra apretando el espaciado y enfocándose, y «Toca para seguir» espera dos segundos.">
+        <Tarjeta n={5} titulo="Subir de rango · la pulida, sí" nota="Las mismas partículas. Lo nuevo: el fondo se cierra un poco mientras se deshace el viejo y se abre al formarse el nuevo; un anillo de luz sale una vez del objeto; el objeto respira (2,5 %); el nombre entra apretando el espaciado y enfocándose, y «Toca para seguir» espera dos segundos.">
           <iframe title="subida pulida" src="/galeria/propuestas/animaciones?marco=subida-pulida" style={{ width: 390, height: 844, border: 0, display: 'block' }} />
         </Tarjeta>
       </Fila>

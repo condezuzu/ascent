@@ -2799,108 +2799,72 @@ console.log('\n39. Dos personas no pueden llamarse igual');
 }
 
 // =====================================================================
-console.log('\n40. Llegar al gimnasio: cuando arranca la sesion y cuando se cierra');
+console.log('\n40. Llegar al gimnasio: la sesion NO arranca sola (15/10); la que arranco antes se cierra al salir');
 {
-  // `decidir` es pura, asi que esto prueba la logica DE VERDAD y no un espejo
-  // de si misma: no hay GPS, ni reloj, ni base. Es la unica parte del
-  // automatico que se puede probar sin caminar hasta un gimnasio, y por eso
-  // esta separada del resto.
+  // `decidir` es pura, asi que esto prueba la logica DE VERDAD: no hay GPS, ni
+  // reloj, ni base.
   const T0 = 1_000_000_000_000;
   const ESPERA = ESPERA_LLEGADA_MS;
   const libre = { corriendo: false, porUbicacion: false };
   const corriendoSola = { corriendo: true, porUbicacion: true };
   const corriendoAMano = { corriendo: true, porUbicacion: false };
 
+  // ---- llegar no arranca nada, ni a los siete minutos ni a las tres horas ----
+  {
+    let v = null;
+    const vistas = [];
+    for (const t of [0, ESPERA - 1, ESPERA, ESPERA * 3, 3 * 3600_000]) {
+      const d = decidir(true, T0 + t, T0 + t, v, libre);
+      vistas.push(d.hacer);
+      v = d.vigilancia;
+    }
+    chequear('llegar y quedarse no arranca la sesion nunca', vistas, ['nada', 'nada', 'nada', 'nada', 'nada']);
+    // Sin visita guardada el vigilante mira cada cinco minutos, no cada cinco segundos.
+    chequear('y no guarda visita: no hay nada que seguir', v, null);
+    const viejaSinDisparar = decidir(true, T0 + ESPERA, T0 + ESPERA, { desde: T0, ultimoAdentro: T0, arranco: false }, libre);
+    chequear('una visita guardada de antes del cambio tampoco arranca', viejaSinDisparar.hacer, 'nada');
+  }
+
   // ---- no saber no es estar afuera ----
   {
-    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
+    const v = { desde: T0, ultimoAdentro: T0, arranco: true };
     const d = decidir(null, T0 + 1000, T0 + 1000, v, corriendoSola);
     chequear('sin senal no pasa nada', d.hacer, 'nada');
-    // Lo importante: NO borra la vigilancia ni cierra la sesion. Un GPS que se
-    // pierde en un subsuelo apagaria el cronometro de alguien que entrena.
+    // Un GPS que se pierde en un subsuelo no puede cerrar la sesion de nadie.
     chequear('sin senal la visita sigue viva', d.vigilancia?.desde, T0);
   }
 
-  // ---- llegar y esperar ----
+  // ---- la que arranco sola antes del cambio: se sigue y se cierra al salir ----
   {
-    const d = decidir(true, T0, T0, null, libre);
-    chequear('la primera vez adentro solo anota la llegada', d.hacer, 'nada');
-    chequear('y la llegada es cuando se MIDIO el punto', d.vigilancia?.desde, T0);
-  }
-  {
-    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
-    const d = decidir(true, T0 + ESPERA - 1, T0 + ESPERA - 1, v, libre);
-    chequear('un segundo antes de la espera todavia no arranca', d.hacer, 'nada');
-  }
-  {
-    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
-    const d = decidir(true, T0 + ESPERA, T0 + ESPERA, v, libre);
-    chequear('cumplida la espera, arranca', d.hacer, 'arrancar');
-    // EL PUNTO DE TODO: arranca ahora pero la sesion dice que empezo cuando
-    // llego. Si dijera la hora del disparo, la duracion saldria corta siempre.
-    chequear('y arranca desde la LLEGADA, no desde el disparo', d.desde, T0);
-    chequear('la visita queda marcada como usada', d.vigilancia?.arranco, true);
-  }
-
-  // ---- no dispara dos veces ----
-  {
-    const v = { desde: T0, ultimoAdentro: T0, arranco: true };
-    const d = decidir(true, T0 + ESPERA * 3, T0 + ESPERA * 3, v, libre);
-    // Si volviera a arrancar, parar el cronometro a mano estando todavia en el
-    // gimnasio lo encenderia de nuevo a los dos minutos.
-    chequear('si ya arranco en esta visita, no vuelve a arrancar', d.hacer, 'nada');
-  }
-  {
-    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
-    const d = decidir(true, T0 + ESPERA, T0 + ESPERA, v, corriendoAMano);
-    chequear('con una sesion ya corriendo no arranca otra', d.hacer, 'nada');
-  }
-
-  // ---- el reloj de la salida ----
-  {
-    const v = { desde: T0, ultimoAdentro: T0 + 1000, arranco: false };
+    const v = { desde: T0, ultimoAdentro: T0 + 1000, arranco: true };
     const d = decidir(true, T0 + 500, T0 + 2000, v, corriendoSola);
     // Un arreglo de GPS viejo no puede ATRASAR la ultima vez que se lo vio.
     chequear('un punto viejo no atrasa el ultimo visto', d.vigilancia?.ultimoAdentro, T0 + 1000);
   }
-
-  // ---- irse ----
   {
     const v = { desde: T0, ultimoAdentro: T0 + 3600_000, arranco: true };
     const d = decidir(false, T0 + 7200_000, T0 + 7200_000, v, corriendoSola);
     chequear('salir cierra la que arranco sola', d.hacer, 'terminar');
-    // No se cierra con AHORA: si la app estuvo cerrada nos enteramos tarde, y
-    // cerrar con ahora daria una sesion de dos horas.
+    // No se cierra con AHORA: si la app estuvo cerrada nos enteramos tarde.
     chequear('y se cierra con la ultima vez que se lo vio', d.hasta, T0 + 3600_000);
     chequear('la visita se termina', d.vigilancia, null);
   }
   {
-    const v = { desde: T0, ultimoAdentro: T0 + 1000, arranco: false };
+    const v = { desde: T0, ultimoAdentro: T0 + 1000, arranco: true };
     const d = decidir(false, T0 + 2000, T0 + 2000, v, corriendoAMano);
     // Quiza salio a correr afuera. Apagarsela seria peor que dejarla.
     chequear('salir NO cierra la que empezaste vos', d.hacer, 'nada');
-    chequear('pero la visita igual se termina', d.vigilancia, null);
+    chequear('adentro con una sesion a mano tampoco se sigue nada', decidir(true, T0, T0, null, corriendoAMano).vigilancia, null);
   }
   {
     const d = decidir(false, T0, T0, null, libre);
     chequear('afuera y sin sesion no hace nada', d.hacer, 'nada');
   }
+  // Las dos apps ya no tienen la rama que arrancaba.
+  const { readFileSync: leer40 } = await import('node:fs');
+  const de40 = (...p) => leer40(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8');
+  chequear('ni la web ni la nativa arrancan la sesion al llegar', [de40('src', 'components', 'VigilanteDeGimnasio.tsx'), de40('movil', 'src', 'VigilanteDeGimnasio.tsx')].map((t) => /origen: 'ubicacion'/.test(t)), [false, false]);
 
-  // ---- la vuelta completa: llego, entreno, me voy ----
-  {
-    let v = null;
-    let d = decidir(true, T0, T0, v, libre);
-    v = d.vigilancia;
-    d = decidir(true, T0 + ESPERA, T0 + ESPERA, v, libre);
-    chequear('la vuelta completa arranca', d.hacer, 'arrancar');
-    v = d.vigilancia;
-    const fin = T0 + ESPERA + 3600_000;
-    d = decidir(true, fin, fin, v, corriendoSola);
-    v = d.vigilancia;
-    d = decidir(false, fin + 120_000, fin + 120_000, v, corriendoSola);
-    chequear('y cierra al salir', d.hacer, 'terminar');
-    chequear('con una hora de sesion desde la llegada', (d.hasta - T0) / 60000, 67);
-  }
 }
 
 // =====================================================================
@@ -7232,21 +7196,15 @@ console.log('\n101. La caza del 15/9: lo que perdia datos o dejaba afuera');
 
   // ---- 4. Una visita de ayer no es la de hoy ----
   const { decidir, VISITA_VENCIDA_MS } = await import('../nucleo/llegada.ts');
-  const { ESPERA_LLEGADA_MS: ESPERA } = await import('../nucleo/reglas.ts');
   const libre = { corriendo: false, porUbicacion: false };
   const AYER = 1_000_000_000_000;
   const HOY = AYER + 20 * 3600 * 1000;
   // Ayer arranco sola y la app no lo vio salir: la visita quedo con `arranco`.
   const vieja = { desde: AYER, ultimoAdentro: AYER + 3600 * 1000, arranco: true };
   const llega = decidir(true, HOY, HOY, vieja, libre);
-  chequear('llegar hoy con la visita de ayer guardada es una llegada nueva', [llega.hacer, llega.vigilancia?.desde, llega.vigilancia?.arranco], ['nada', HOY, false]);
-  const arranca = decidir(true, HOY + ESPERA, HOY + ESPERA, llega.vigilancia, libre);
-  chequear('y a la espera arranca, desde la llegada de HOY', [arranca.hacer, arranca.desde], ['arrancar', HOY]);
-  // La que no llego a disparar tampoco puede arrancar al instante con la hora de ayer.
-  const sinDisparar = decidir(true, HOY, HOY, { ...vieja, arranco: false }, libre);
-  chequear('una visita vieja sin disparar no arranca al instante', sinDisparar.hacer, 'nada');
+  chequear('llegar hoy con la visita de ayer guardada no arranca ni sigue nada', [llega.hacer, llega.vigilancia], ['nada', null]);
   // Dentro del mismo entrenamiento sigue siendo la misma visita.
-  const misma = decidir(true, AYER + 90 * 60 * 1000, AYER + 90 * 60 * 1000, { desde: AYER, ultimoAdentro: AYER, arranco: true }, libre);
+  const misma = decidir(true, AYER + 90 * 60 * 1000, AYER + 90 * 60 * 1000, { desde: AYER, ultimoAdentro: AYER, arranco: true }, { corriendo: true, porUbicacion: true });
   chequear('noventa minutos sin mirar sigue siendo la misma visita', [misma.hacer, misma.vigilancia?.desde], ['nada', AYER]);
   chequear('el vencimiento es mas largo que una sesion entera', VISITA_VENCIDA_MS > (2 * 3600 + 30 * 60) * 1000, true);
 }
@@ -9583,11 +9541,9 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
 
   const fondo137 = de137('movil', 'src', 'llegadaDeFondo.ts');
   chequear('al llegar se registra el dia', /registrarPorSenal\(supabase, 'ubicacion'\)/.test(fondo137), true);
-  // LA HORA DE LLEGADA SE GUARDA aunque la sesion no arranque: §13 dice que el
-  // cronometro arranca a los siete minutos, y un despertar en segundo plano
-  // dura treinta segundos. Sin guardarla, la sesion diria la hora en que
-  // sacaste el telefono del bolsillo y la duracion saldria corta siempre.
-  chequear('y queda anotada la hora de llegada', /guardarVigilancia\(/.test(fondo137), true);
+  // DESDE EL 15/10 NO SE GUARDA LA HORA DE LLEGADA: servia para arrancar la sesion
+  // fechada en la llegada, y llegar ya no arranca nada.
+  chequear('y ya no se guarda la visita para arrancar despues', /guardarVigilancia\(/.test(fondo137), false);
   // SIN SESION NO SE PREGUNTA NADA: la zona sigue registrada despues de
   // cerrar sesion hasta que alguien la suelte, y ese despertar sin usuario es
   // normal, no un error.
@@ -10393,8 +10349,15 @@ console.log('\n144. El boton de volumen, y la insistencia con el punto del gimna
   // se calla.
   chequear('el globo quieto se calla cuando habla la tarjeta',
     /!perfil\.gimnasio_lat && !sesion\.estado\.corriendo && !insistirGimnasio/.test(ini144), true);
-  chequear('el texto dice que el dia lo anotaste vos',
-    /anotaste/i.test(T144.inicio.insistirGimnasioTitulo), true);
+  // 15/10: un renglon corto que lleva a Ajustes Y resalta el boton de marcar, para encontrarlo.
+  const gim144 = sinComentarios144(de144('movil', 'src', 'ajustes', 'Gimnasio.tsx'));
+  chequear('el renglon corto lleva a Ajustes y resalta el boton de marcar el gimnasio', [
+    T144.inicio.insistirGimnasio,
+    /<InsistirGimnasio\s+alMarcar=\{\(\) => \{\s*irAPestana\('ajustes'\);\s*pedirResaltarGimnasio\(\);/.test(ini144),
+    // Ajustes se monta recién la primera vez que se abre: el pedido queda anotado y se lee al montar.
+    /if \(Date\.now\(\) - pedidoEn < 3000\) resaltar\(\);\s*return eventos\.escuchar\(RESALTAR_GIMNASIO, resaltar\);/.test(gim144),
+    /<Text style=\{estilos\.estandoAhi\}>\{T\.ajustes\.gimnasioEstandoAhi\}<\/Text>/.test(gim144),
+  ], ['Deja que se marque solo', true, true, true]);
 }
 
 console.log('\n145. Las medallas por marca');
@@ -17099,19 +17062,15 @@ console.log('\n210. El vigilante no prende una sesión que nadie pidió');
   const T0 = 1_800_000_000_000;
   const MIN = 60_000;
   const libre210 = { corriendo: false, porUbicacion: false };
-  // Llegó, tocó Iniciar a mano antes de los siete minutos, entrenó, y la sesión se
-  // cerró sola por inactividad. Al abrir la app sigue adentro del gimnasio.
-  const llego = LL.decidir(true, T0, T0, null, libre210).vigilancia;
-  const entrenando = LL.decidir(true, T0 + 20 * MIN, T0 + 20 * MIN, llego, { corriendo: true, porUbicacion: false });
-  const alReabrir = LL.decidir(true, T0 + 50 * MIN, T0 + 50 * MIN, entrenando.vigilancia, libre210);
-  chequear('una sesión iniciada A MANO gasta la visita: si se cierra sola, el vigilante no arranca otra fechada en la llegada', [llego.arranco, entrenando.hacer, entrenando.vigilancia.arranco, alReabrir.hacer], [false, 'nada', true, 'nada']);
-  chequear('y sin ninguna sesión en el medio, a los siete minutos sí arranca sola: eso sigue andando', LL.decidir(true, T0 + 8 * MIN, T0 + 8 * MIN, llego, libre210).hacer, 'arrancar');
-  chequear('una visita NUEVA (horas después) vuelve a poder arrancar', LL.decidir(true, T0 + 9 * 60 * MIN, T0 + 9 * 60 * MIN, entrenando.vigilancia, libre210).vigilancia, { desde: T0 + 9 * 60 * MIN, ultimoAdentro: T0 + 9 * 60 * MIN, arranco: false });
+  // Llegó, tocó Iniciar, entrenó, la sesión se cerró sola por inactividad, y al
+  // abrir la app sigue adentro: no se prende nada (desde el 15/10, nunca).
+  const alReabrir = LL.decidir(true, T0 + 50 * MIN, T0 + 50 * MIN, { desde: T0, ultimoAdentro: T0 + 20 * MIN, arranco: true }, libre210);
+  chequear('al reabrir adentro del gimnasio no se prende ninguna sesión', alReabrir.hacer, 'nada');
 
   // La mirada lee la visita, espera al GPS y guarda. "Terminar" cae en el medio.
   const foto = { desde: T0, ultimoAdentro: T0 + 30 * MIN, arranco: false };
   const trasTerminar = LL.marcarComoUsada(foto);
-  const loQueIbaAGuardar = LL.decidir(true, T0 + 31 * MIN, T0 + 31 * MIN, foto, { corriendo: true, porUbicacion: false }).vigilancia;
+  const loQueIbaAGuardar = LL.decidir(true, T0 + 31 * MIN, T0 + 31 * MIN, foto, { corriendo: true, porUbicacion: true }).vigilancia;
   chequear('guardar la mirada no desmarca la visita que "Terminar" acaba de marcar', [
     LL.sinDesmarcar({ ...loQueIbaAGuardar, arranco: false }, trasTerminar).arranco,
     LL.sinDesmarcar({ ...foto, ultimoAdentro: T0 + 31 * MIN }, trasTerminar),
@@ -17248,9 +17207,9 @@ console.log('\n211. Señal mala: la respuesta que se pierde no duplica, y lo que
   chequear('y si el día ya había entrado por otro lado, el pendiente se va sin festejar nada', [await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13'), mem211.get(CLAVE211) ?? null], ['nada', null]);
   const fondo211 = de211('movil', 'src', 'llegadaDeFondo.ts');
   const vig211 = de211('movil', 'src', 'VigilanteDeGimnasio.tsx');
-  chequear('el despertar distingue "sin sesión" de "no pude saber", guarda la visita ANTES de los viajes y deja el pendiente si el día no entró', [
+  chequear('el despertar distingue "sin sesión" de "no pude saber", ya no guarda visita (15/10: llegar no arranca nada) y deja el pendiente si el día no entró', [
     /const yo = await quienSoy\(supabase\);\s*if \(yo\.estado === 'sin'\) return;/.test(fondo211),
-    fondo211.indexOf('await guardarVigilancia(') > 0 && fondo211.indexOf('await guardarVigilancia(') < fondo211.indexOf("await registrarPorSenal(supabase, 'ubicacion')"),
+    !fondo211.includes('guardarVigilancia('),
     /if \(!entro\) await anotarLlegadaPendiente\(dia\);/.test(fondo211),
     /await miId\(supabase\)/.test(fondo211),
   ], [true, true, true, false]);

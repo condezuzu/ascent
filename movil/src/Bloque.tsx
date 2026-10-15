@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
@@ -24,7 +24,7 @@ const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Globito from './Globito';
 import { esPropio, nombreVisible } from '@nucleo/propios';
-import { C } from './colores';
+import { C, conAlfa } from './colores';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
@@ -388,10 +388,7 @@ export default function Bloque({
           accessibilityLabel={T.sesion.deMeta(estado.hechas, estado.meta)}
         >
           {Array.from({ length: puntos }).map((_, i) => (
-            <View
-              key={i}
-              style={[estilos.punto, i < estado.hechas && estilos.puntoLleno, i >= estado.meta && estilos.puntoExtra]}
-            />
+            <PuntoDeSerie key={i} lleno={i < estado.hechas} extra={i >= estado.meta} />
           ))}
         </View>
         )}
@@ -445,15 +442,15 @@ export default function Bloque({
           >
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Pressable>
-          <Pressable
+          <MasQuePulsa
             testID={esTiempo ? 'cardio-principal' : undefined}
             style={[estilos.mas, estilos.masAncho, esTiempo && estilos.masCerrar]}
+            pulsa={!esTiempo}
             onPress={esTiempo ? principalDeCardio.accion : sumar}
             accessibilityLabel={esTiempo ? principalDeCardio.texto : T.inicio.sumarSerie}
-            accessibilityRole="button"
           >
             <Text style={esTiempo ? estilos.cerrarTexto : estilos.masTexto}>{esTiempo ? principalDeCardio.texto : '+'}</Text>
-          </Pressable>
+          </MasQuePulsa>
         </View>
       )}
 
@@ -535,6 +532,72 @@ export default function Bloque({
   );
 }
 
+const CURVA_SALE = Easing.bezier(0.2, 0.8, 0.3, 1);
+
+/**
+ * EL PUNTO DE UNA SERIE (15/10, aprobada en la galería): el que se acaba de llenar
+ * se llena desde el centro en 0,26 s. Los que ya estaban llenos al montar, no: es
+ * la serie que se suma, no la pantalla que aparece.
+ */
+function PuntoDeSerie({ lleno, extra }: { lleno: boolean; extra: boolean }) {
+  const relleno = useRef(new Animated.Value(lleno ? 1 : 0)).current;
+  const antes = useRef(lleno);
+  useEffect(() => {
+    if (lleno === antes.current) return;
+    antes.current = lleno;
+    if (!lleno) return relleno.setValue(0);
+    Animated.timing(relleno, { toValue: 1, duration: 260, easing: CURVA_SALE, useNativeDriver: true }).start();
+  }, [lleno, relleno]);
+  return (
+    <View style={[estilos.punto, lleno && estilos.puntoBorde, extra && estilos.puntoExtra]}>
+      <Animated.View style={[estilos.puntoRelleno, { transform: [{ scale: relleno }] }]} />
+    </View>
+  );
+}
+
+const PressableAnimado = Animated.createAnimatedComponent(Pressable);
+
+/** EL + QUE SE HUNDE Y SE ILUMINA al tocarlo (15/10): 0,3 s, nada más. */
+function MasQuePulsa({
+  pulsa,
+  onPress,
+  style,
+  children,
+  testID,
+  accessibilityLabel,
+}: {
+  pulsa: boolean;
+  onPress: () => void;
+  style: React.ComponentProps<typeof Pressable>['style'];
+  children: ReactNode;
+  testID?: string;
+  accessibilityLabel: string;
+}) {
+  const pulso = useRef(new Animated.Value(0)).current;
+  const escala = pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 0.965] });
+  return (
+    <PressableAnimado
+      testID={testID}
+      style={[style as object, { transform: [{ scale: escala }] }]}
+      onPress={() => {
+        if (pulsa) {
+          pulso.setValue(0);
+          Animated.sequence([
+            Animated.timing(pulso, { toValue: 1, duration: 100, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(pulso, { toValue: 0, duration: 220, easing: CURVA_SALE, useNativeDriver: true }),
+          ]).start();
+        }
+        onPress();
+      }}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+    >
+      {pulsa && <Animated.View pointerEvents="none" style={[estilos.luzDelMas, { opacity: pulso }]} />}
+      {children}
+    </PressableAnimado>
+  );
+}
+
 const estilos = StyleSheet.create({
   bloque: { marginTop: 22 },
   fila: { flexDirection: 'row', alignItems: 'center' },
@@ -589,7 +652,9 @@ const estilos = StyleSheet.create({
   nota: { color: C.apagado, fontSize: 12, marginTop: 8 },
   puntos: { flexDirection: 'row', justifyContent: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 1 },
   punto: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: C.sub },
-  puntoLleno: { backgroundColor: C.claro, borderColor: C.claro },
+  puntoBorde: { borderColor: C.claro },
+  puntoRelleno: { ...StyleSheet.absoluteFillObject, borderRadius: 8, backgroundColor: C.claro },
+  luzDelMas: { ...StyleSheet.absoluteFillObject, backgroundColor: conAlfa(C.claro, 0.14) },
   puntoExtra: { width: 11, height: 11, borderRadius: 6, marginTop: 2.5 },
   cuenta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 22 },
   cuentaTotal: { color: C.apagado, fontSize: 12, letterSpacing: 1 },

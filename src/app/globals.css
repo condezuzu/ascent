@@ -1106,13 +1106,41 @@ body.ya-entro .pantalla.aparece {
   width: 100%;
   height: 100%;
 }
+/* LA PULIDA (15/10, elegida en la galería): el fondo se cierra mientras se deshace
+   el viejo y se abre al formarse el nuevo, un anillo de luz sale una vez, el objeto
+   respira, y el texto entra de a uno. */
+.subida-vineta {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 35%, color-mix(in srgb, var(--fondo) 85%, transparent) 100%);
+  animation: vineta-cierra 1.6s ease both;
+}
+.subida-vineta.afloja { animation: vineta-afloja 1.4s ease both; }
+@keyframes vineta-cierra { from { opacity: 0; } to { opacity: 1; } }
+@keyframes vineta-afloja { from { opacity: 1; } to { opacity: 0.25; } }
+.subida canvas.respira { animation: respira 0.9s cubic-bezier(0.3, 0.6, 0.3, 1) both; }
+@keyframes respira { 0% { transform: scale(1); } 40% { transform: scale(1.025); } 100% { transform: scale(1); } }
+.subida-anillo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 240px;
+  height: 240px;
+  margin: -120px 0 0 -120px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(circle, transparent 58%, color-mix(in srgb, var(--tinta) 28%, transparent) 64%, transparent 72%);
+  animation: anillo-sale 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes anillo-sale { from { opacity: 1; transform: scale(0.55); } to { opacity: 0; transform: scale(1.7); } }
 /* el nombre del rango aparece último, cuando el objeto ya está formado */
 .subida-nombre {
   position: relative;
   z-index: 2;
   text-align: center;
-  opacity: 0;
-  animation: nombre-rango 1.4s ease 0.2s forwards;
 }
 .subida-nombre .chico {
   font-size: 12px;
@@ -1120,18 +1148,24 @@ body.ya-entro .pantalla.aparece {
   text-transform: uppercase;
   color: var(--sub);
   margin-bottom: 10px;
+  animation: nombre-rango 0.7s ease 0.15s both;
 }
 .subida-nombre .grande {
   font-size: 34px;
   font-weight: 300;
   letter-spacing: 0.12em;
+  animation: nombre-enfoca 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both;
+}
+@keyframes nombre-enfoca {
+  from { opacity: 0; letter-spacing: 0.34em; filter: blur(6px); }
+  to { opacity: 1; letter-spacing: 0.12em; filter: blur(0); }
 }
 .subida-nombre .dias {
   margin-top: 4px;
   font-size: 13px;
   color: var(--apagado);
   font-variant-numeric: tabular-nums;
-  animation: nombre-rango 1.2s ease 1.35s both;
+  animation: nombre-rango 0.8s ease 1.2s both;
 }
 .subida-nombre .seguir {
   margin-top: 26px;
@@ -1139,7 +1173,7 @@ body.ya-entro .pantalla.aparece {
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--apagado);
-  animation: nombre-rango 1.6s ease 2.2s both;
+  animation: nombre-rango 1s ease 2.4s both;
 }
 @keyframes nombre-rango {
   from { opacity: 0; transform: translateY(8px); }
@@ -5088,6 +5122,9 @@ body.con-franja.con-accion .pantalla {
 }
 .bienv-objetos .obj.flota {
   animation: bienv-flota 16s ease-in-out infinite alternate;
+  /* En su propia capa: sin esto el corrimiento (un píxel por segundo) se redondea
+     a píxeles enteros y se ve a saltos, como a tres cuadros por segundo. */
+  will-change: transform;
 }
 
 /* Cada uno con su forma: ocho bolas iguales dirían que no se gana nada. */

@@ -1,4 +1,8 @@
-import { useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
+import { Animated, Easing, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { plataforma } from '@plataforma';
+import { C, conAlfa } from './colores';
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, Line, Path } from 'react-native-svg';
 import { CAJA, LADO_ILUMINADO, MATERIALES, trazosDeMedalla, type Trazo } from '@compartido/medallas';
 import type { ClaveMaterial, ZonaMedalla } from '@nucleo/medallas';
@@ -24,7 +28,9 @@ export default function Medalla({
   const mat = MATERIALES[material];
   const { base, cielo, borde } = trazosDeMedalla(zona, mat, tam);
 
+  const destello = useDestello();
   return (
+    <View style={{ width: tam, height: tam }} pointerEvents="none">
     <Svg width={tam} height={tam} viewBox={`0 0 ${CAJA} ${CAJA}`} pointerEvents="none">
       <Defs>
         <ClipPath id={recorte}>
@@ -38,6 +44,8 @@ export default function Medalla({
       <G clipPath={`url(#${recorte})`}>{cielo.map(pintar)}</G>
       <Circle cx="12" cy="12" r="11" fill="none" stroke={borde.color} strokeWidth="0.6" opacity={borde.op} />
     </Svg>
+      <Destello tam={tam} avance={destello} />
+    </View>
   );
 }
 
@@ -72,5 +80,62 @@ function pintar(t: Trazo, i: number) {
       strokeLinecap="round"
       opacity={t.op}
     />
+  );
+}
+
+// ── EL DESTELLO (15/10, aprobado en la galería) ──
+//
+// Una franja de luz que cruza UNA medalla por vez, cada 8 a 12 s, con la app a la
+// vista. Las medallas montadas se anotan acá y el reloj elige una al azar: muchas
+// medallas destellando juntas serían una vidriera, no un premio.
+const montadas = new Set<() => void>();
+let reloj: ReturnType<typeof setTimeout> | null = null;
+
+function programar() {
+  if (reloj || montadas.size === 0) return;
+  reloj = setTimeout(() => {
+    reloj = null;
+    const todas = [...montadas];
+    if (todas.length && plataforma.ciclo.visible()) todas[Math.floor(Math.random() * todas.length)]();
+    programar();
+  }, 8000 + Math.random() * 4000);
+}
+
+function useDestello(): Animated.Value {
+  const avance = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const pasar = () => {
+      avance.setValue(0);
+      Animated.timing(avance, { toValue: 1, duration: 750, easing: Easing.inOut(Easing.quad), useNativeDriver: true }).start();
+    };
+    montadas.add(pasar);
+    programar();
+    return () => {
+      montadas.delete(pasar);
+      if (montadas.size === 0 && reloj) {
+        clearTimeout(reloj);
+        reloj = null;
+      }
+    };
+  }, [avance]);
+  return avance;
+}
+
+function Destello({ tam, avance }: { tam: number; avance: Animated.Value }) {
+  // El disco de la medalla es el círculo de radio 11 en una caja de 24.
+  const lado = (tam * 22) / 24;
+  const ancho = lado * 0.42;
+  const x = avance.interpolate({ inputRange: [0, 1], outputRange: [-ancho * 1.4, lado + ancho * 0.4] });
+  return (
+    <View style={{ position: 'absolute', left: tam / 24, top: tam / 24, width: lado, height: lado, borderRadius: lado / 2, overflow: 'hidden' }}>
+      <Animated.View style={{ position: 'absolute', top: -lado * 0.2, width: ancho, height: lado * 1.4, transform: [{ translateX: x }, { rotate: '20deg' }] }}>
+        <LinearGradient
+          colors={['transparent', conAlfa(C.tinta, 0.75), 'transparent']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={{ flex: 1 }}
+        />
+      </Animated.View>
+    </View>
   );
 }

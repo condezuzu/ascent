@@ -7,9 +7,9 @@
 // la más fuerte: termina en crear la cuenta. No hay "Saltar": un circulito carga un
 // segundo y medio y recién ahí deja pasar.
 //
-// EL FONDO ES EL DE INICIO: el motor con el polvo del rango 1 abajo a la derecha, sus
-// estrellas y sus fugaces, y el velo de la app nativa (0,5). Solo estrellas quedaba casi
-// negro: lo que ilumina Inicio es la nube del polvo. Como el motor es uno por página, cada pantalla va en su propio iframe
+// EL FONDO ES EL ESPACIO DE LA APP: el motor con `soloEstrellas` —las estrellas y las
+// fugaces de verdad, sin el polvo, que ensucia (veredicto del 15/10)— y el velo de la
+// app nativa (0,5). Como el motor es uno por página, cada pantalla va en su propio iframe
 // (`?marco=<clave>`), que es la pantalla sola a 390 × 844.
 //
 // Los globitos de adentro van sobre capturas REALES de la app; lo único dibujado es el
@@ -193,7 +193,7 @@ function PantallaRanking({ t, alCrear }: { t: number; alCrear?: () => void }) {
             { x: 18, y: 72 },
             { x: 58, y: 79 },
           ][i];
-          const tam = 30 + (g.racha / 63) * 44;
+          const tam = 16 + (g.racha / 63) * 22;
           return (
             <span key={g.n} className="flota-insignia" style={{ position: 'absolute', left: `${pos.x}%`, top: `${pos.y}%`, transform: 'translate(-50%,-50%)', animationDelay: `${i * -1.3}s`, filter: `drop-shadow(0 0 ${8 + tam / 6}px rgba(196,194,186,.35))` }}>
               <Insignia rango={numeroDeRango(g.racha)} tam={tam} />
@@ -308,8 +308,8 @@ function Pantalla({ inicial }: { inicial: Clave }) {
   const texto = TEXTO[clave];
   return (
     <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', fontFamily: FUENTE, overflow: 'hidden' }}>
-      <FondoEspacial rango={1} esquina="abajo-derecha" velo={0.5} />
-      {clave === 'amigo' && <Objetos />}
+      <FondoEspacial rango={1} soloEstrellas velo={0.5} />
+      {clave === 'amigo' && <Objetos escala={0.6} />}
       {ultima ? (
         <PantallaRanking key={vuelta} t={t} alCrear={() => setClave(inicial)} />
       ) : (
@@ -342,8 +342,8 @@ function Pantalla({ inicial }: { inicial: Clave }) {
         @keyframes aparece { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
         .latido-vivo { animation: latido 1.8s ease-out infinite; }
         @keyframes latido { from { opacity: .7; transform: scale(.6); } to { opacity: 0; transform: scale(1.5); } }
-        .flota-insignia { animation: flota 7s ease-in-out infinite; }
-        @keyframes flota { 0%,100% { margin-top: 0; } 50% { margin-top: -8px; } }
+        .flota-insignia { animation: flota 7s ease-in-out infinite; will-change: transform; }
+        @keyframes flota { 0%,100% { transform: translate(-50%,-50%) translate3d(0,0,0); } 50% { transform: translate(-50%,-50%) translate3d(0,-8px,0); } }
         .luz-baja { animation: baja 1s cubic-bezier(.5,0,.3,1) forwards; }
         @keyframes baja { 0% { opacity: 0; height: 0; } 30% { opacity: .9; } 100% { opacity: 0; height: 21%; } }
       `}</style>
@@ -400,7 +400,7 @@ export default function PropuestaBienvenida() {
     >
       <div style={{ maxWidth: 760, color: 'var(--sub)', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
         <p style={{ margin: '0 0 10px' }}>
-          <b style={{ color: 'var(--tinta)' }}>Cambios de esta vuelta:</b> los textos que pediste (en tú, como el resto de la app: «Anota», «Entrena», «Mira»), una cuarta pantalla del ranking que termina en crear la cuenta, sin «Saltar» —un circulito que carga 1,5 s—, y de fondo el cielo de Inicio —el motor con el polvo abajo a la derecha, sus estrellas y sus fugaces—, en vez del cielo plano. La animación de los ocho objetos ya no va: el final es el ranking.
+          <b style={{ color: 'var(--tinta)' }}>Cambios de esta vuelta:</b> los textos que pediste (en tú, como el resto de la app: «Anota», «Entrena», «Mira»), una cuarta pantalla del ranking que termina en crear la cuenta, sin «Saltar» —un circulito que carga 1,5 s—, y de fondo el espacio de la app —el motor con sus estrellas y sus fugaces, sin el polvo—, en vez del cielo plano. Los objetos de atrás, más chicos y en su propia capa para que se muevan sin saltos. La animación de los ocho objetos ya no va: el final es el ranking.
         </p>
       </div>
 

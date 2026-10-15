@@ -11,7 +11,6 @@ import { decidir, sinDesmarcar } from '@nucleo/llegada';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
 import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
 import { useSesion } from '@compartido/useSesion';
-import { ESPERA_LLEGADA_MS } from '@nucleo/reglas';
 import { anotar } from '@compartido/bitacora';
 import { hoyISO } from '@nucleo/fechas';
 import { eventos } from '@compartido/eventos';
@@ -44,12 +43,9 @@ export const CERRO_SOLA = 'ascent:sesion-cerro-sola';
  * LOS DOS SE NECESITAN, y no es redundancia:
  *  - El de fondo registra **el día** y anota **la hora de llegada**. Es lo que
  *    arregla "fui al gimnasio y el día no entró".
- *  - Este arranca y cierra **la sesión**, que necesita los siete minutos de
- *    espera de §13 y mirar si seguís adentro — dos cosas que no entran en los
- *    treinta segundos que da un despertar en segundo plano.
- * Cuando la app se abre después de un despertar, este lee la visita que dejó
- * el otro y arranca la sesión **fechada en la llegada**, no en el momento en
- * que sacaste el teléfono.
+ *  - Este registra el día si la app está abierta al llegar, y cierra al salir
+ *    una sesión que haya arrancado sola antes del 15/10. Desde entonces llegar
+ *    ya no arranca la sesión: la arranca la persona (ver `nucleo/llegada.ts`).
  *
  * NO DIBUJA NADA. En la web este componente muestra el resumen del final;
  * acá el resumen ya lo dibuja Inicio con su propio estado, así que en vez de
@@ -173,16 +169,7 @@ function Mirando({ perfil }: { perfil: Perfil }) {
       porUbicacion: ahoraS.estado.porUbicacion,
     });
 
-    if (decision.hacer === 'arrancar') {
-      await anotar('arranco la sesión', { llegada: new Date(decision.desde).toLocaleTimeString() });
-      const salio = await ahoraS.empezar({ desde: decision.desde, origen: 'ubicacion' });
-      // La visita se da por usada SOLO si el arranque llegó. Muchos gimnasios
-      // son un subsuelo sin señal: si se marcara igual, un fallo de red de un
-      // segundo dejaría a ese día sin sesión para siempre.
-      await guardarVigilancia(salio ? decision.vigilancia : { ...decision.vigilancia, arranco: false });
-      if (!salio) await anotar('no pude arrancar, reintento', {});
-      else eventos.emitir(DIA_CAMBIO);
-    } else if (decision.hacer === 'terminar') {
+    if (decision.hacer === 'terminar') {
       await anotar('cierro la sesión', { salida: new Date(decision.hasta).toLocaleTimeString() });
       const cerro = await ahoraS.terminar({ hasta: decision.hasta });
       if (cerro && !cerro.deshizoElDia) eventos.emitir(CERRO_SOLA, cerro);
@@ -194,14 +181,6 @@ function Mirando({ perfil }: { perfil: Perfil }) {
     } else {
       await guardarVigilancia(sinDesmarcar(decision.vigilancia, await leerVigilancia()));
     }
-
-    if (decision.hacer === 'nada' && decision.vigilancia && !decision.vigilancia.arranco) {
-      const faltan = Math.max(
-        0,
-        Math.round((ESPERA_LLEGADA_MS - (Date.now() - decision.vigilancia.desde)) / 1000)
-      );
-      await anotar('esperando', { faltanSegundos: faltan });
-    }
   }, []);
 
   const vigilar = useCallback(async () => {
@@ -210,8 +189,8 @@ function Mirando({ perfil }: { perfil: Perfil }) {
 
     // UNA SOLA MIRADA A LA VEZ. El intervalo es de dos minutos pero leer el
     // GPS puede tardar segundos, y volver a la pantalla dispara otra mirada al
-    // instante. Dos en paralelo pueden decidir las dos "arrancar", y la
-    // segunda `iniciar_sesion` se comería a la primera.
+    // instante. Dos en paralelo pueden registrar o cerrar dos veces, y la
+    // segunda pisaría lo que hizo la primera.
     if (mirando.current) return;
     mirando.current = true;
     try {

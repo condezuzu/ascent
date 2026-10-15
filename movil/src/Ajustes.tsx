@@ -14,7 +14,8 @@ import { fijarPreferenciaIdioma, idiomaElegido, leerPreferenciaIdioma, type Idio
 import { escritorEnFila } from '@compartido/enFila';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
-import Gimnasio from './ajustes/Gimnasio';
+import Gimnasio, { RESALTAR_GIMNASIO } from './ajustes/Gimnasio';
+import { eventos } from '@compartido/eventos';
 import Salud from './ajustes/Salud';
 import Identidad from './ajustes/Identidad';
 import Fondo from './ajustes/Fondo';
@@ -104,6 +105,10 @@ export default function Ajustes({
     }
   }
 
+  // "Deja que se marque solo" trae acá: Mi gimnasio está arriba, así que alcanza con volver arriba.
+  const desplazable = useRef<ScrollView>(null);
+  useEffect(() => eventos.escuchar(RESALTAR_GIMNASIO, () => desplazable.current?.scrollTo({ y: 0, animated: true })), []);
+
   // LOS DÍAS DE DESCANSO VAN EN FILA: ver `escritorEnFila`. `alCambiar` llega
   // nuevo en cada dibujo, y la fila vive más que un dibujo: se llama al último.
   const pintarDias = useRef(alCambiar);
@@ -147,7 +152,7 @@ export default function Ajustes({
         ciegas (28/9). iOS ahora insetea el scroll y lleva el campo enfocado a la
         vista. Cubre también el nombre de usuario y la meta de pasos, que viven
         en esta misma pantalla. */}
-    <ScrollView style={estilos.scroll} contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
+    <ScrollView ref={desplazable} style={estilos.scroll} contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>
 

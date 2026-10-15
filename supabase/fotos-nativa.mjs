@@ -739,10 +739,10 @@ RECETAS['propuestas'] = async function (nav, gente) {
   await sacar(page, 'dia-registrado', dias(page));
   // La insistencia sale con los días ya releídos: se recarga Inicio.
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await texto(page, tx.inicio.insistirGimnasioAccion).first().waitFor({ timeout: 60000 }).catch(() => {});
+  await texto(page, tx.inicio.insistirGimnasio).first().waitFor({ timeout: 60000 }).catch(() => {});
   await texto(page, tx.social.avisoRutinaEntendido).first().click({ timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(1500);
-  await sacar(page, 'insistir', { accion: texto(page, tx.inicio.insistirGimnasioAccion), titulo: texto(page, tx.inicio.insistirGimnasioTitulo) });
+  await sacar(page, 'insistir', { accion: texto(page, tx.inicio.insistirGimnasio) });
 
   // 5. La sesión: el selector, el bloque con el + y el descanso.
   await texto(page, 'Iniciar entrenamiento').first().click({ timeout: 90000 });
@@ -793,6 +793,36 @@ RECETAS['propuestas'] = async function (nav, gente) {
   await p3.waitForTimeout(3500);
   await sacar(p3, 'medallas', { fila: p3.getByText(B.nombre, { exact: true }) });
   return p3;
+};
+
+// LA UBICACIÓN YA HECHA (15/10): la línea de Inicio, el salto a Ajustes con el botón
+// resaltado, y Mi gimnasio marcado. Van a `capturas-nativa/`, no a la galería.
+RECETAS['ubicacion-hecha'] = async function (nav, gente) {
+  const A = gente.a;
+  const tx = TEXTOS_ES;
+  const { page } = await abrir(nav, A);
+  await page.getByText(tx.inicio.registrarPrimerDia, { exact: true }).first().click({ timeout: 60000 });
+  await page.waitForTimeout(1200);
+  await page.getByText(tx.inicio.registrarDia, { exact: true }).last().click({ timeout: 30000 });
+  await page.waitForTimeout(2500);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByTestId('insistir-gimnasio').first().waitFor({ timeout: 60000 });
+  await page.getByText(tx.social.avisoRutinaEntendido, { exact: true }).first().click({ timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  await foto(page, 'ubicacion-inicio');
+  await tocar(page, 'insistir-gimnasio');
+  // El resaltado pasa dos veces en un segundo y medio: la foto, en el pico.
+  await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-testid="gimnasio-luz"]') ?? document.body).opacity) > 0.6 && !!document.querySelector('[data-testid="gimnasio-luz"]'), null, { timeout: 5000, polling: 16 }).catch(() => {});
+  // RECONSTRUCCIÓN DEL PICO: en el navegador dura menos que una foto. Se fija la luz al máximo solo para sacarla.
+  await page.waitForTimeout(2500);
+  await page.evaluate(() => { const e = document.querySelector('[data-testid="gimnasio-luz"]'); if (e) e.style.opacity = '1'; });
+  await foto(page, 'ubicacion-resaltado');
+  await A.s.from('profiles').update({ gimnasio_lat: -34.9, gimnasio_lon: -56.16 }).eq('id', A.id);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByText(tx.nav.ajustes, { exact: true }).last().click({ timeout: 60000 });
+  await page.waitForTimeout(1500);
+  await foto(page, 'ubicacion-marcado');
+  return page;
 };
 
 // Tu rutina, editándola: donde va el globito de la rutina.

@@ -94,9 +94,16 @@ try {
   chequear('y cuánto le falta de descanso, contra el reloj de la base', faltan >= 86 && faltan <= 90, true);
   chequear('nada de pesos ni de duración', Object.keys(deA?.en_vivo ?? {}).sort(), ['actualizado', 'descanso_fin', 'ejercicio', 'meta', 'serie']);
   chequear('una extraña no ve nada', await uniones(C), []);
-  const directo = await A.s.from('en_vivo').select('*');
+  const directo = await A.s.from('en_vivo').select('user_id');
   const directo2 = await A.s.from('entrenos_compartidos').select('*');
-  chequear('las tablas no se leen directo, ni por una amiga', [directo.data ?? [], directo2.data ?? []], [[], []]);
+  const directoC = await C.s.from('en_vivo').select('user_id');
+  if (version >= 88) {
+    // MIGRACIÓN 88: el tiempo real escucha `en_vivo`, así que el del grupo lo lee
+    // directo, pero solo lo del grupo. Una extraña, nada; los pedidos, nadie.
+    chequear('en_vivo se lee directo solo desde el grupo; los pedidos, por nadie', [(directo.data ?? []).map((f) => f.user_id), directoC.data ?? [], directo2.data ?? []], [[B.id], [], []]);
+  } else {
+    chequear('las tablas no se leen directo, ni por una amiga', [directo.data ?? [], directo2.data ?? []], [[], []]);
+  }
 
   // ---- "su rutina" y la mejor racha ----
   chequear('B le muestra su rutina a su amiga, y a una extraña no', [(await A.s.rpc('me_muestra_su_rutina', { p_quien: B.id })).data, (await C.s.rpc('me_muestra_su_rutina', { p_quien: B.id })).data], [true, false]);

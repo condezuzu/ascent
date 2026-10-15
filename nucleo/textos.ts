@@ -324,9 +324,8 @@ const ES = {
     // LA INSISTENCIA, justo después de registrar el día a mano. Dice lo que
     // acaba de pasar y lo que podría pasar la próxima; no promete nada que la
     // app no haga ya, y no reta a nadie por no haberlo marcado antes.
-    insistirGimnasioTitulo: 'Este día lo anotaste tú.',
-    insistirGimnasioNota: 'Con tu gimnasio marcado, el día entra solo al llegar. Sin abrir la app.',
-    insistirGimnasioAccion: 'Marcar el punto',
+    // Un renglón que lleva a Ajustes y resalta el botón de marcar (15/10).
+    insistirGimnasio: 'Deja que se marque solo',
     // Y acá sí se insiste, porque es el único momento en que es probable que
     // la persona esté parada en el gimnasio. NUNCA al empezar la sesión:
     // ahí casi nunca está ahí todavía.
@@ -618,10 +617,12 @@ const ES = {
     sonidoCorta: 'En este teléfono el sonido puede taparse si tienes música fuerte.',
 
     gimnasio: 'Mi gimnasio',
-    gimnasioMarcar: 'Marcar mi gimnasio, estando ahí',
-    gimnasioRemarcar: 'Volver a marcar el punto',
+    gimnasioMarcar: 'Marcar gimnasio',
+    // Debajo del botón: el punto se marca parado en el gimnasio (§13).
+    gimnasioEstandoAhi: 'Hay que estar en el gimnasio para marcarlo.',
+    gimnasioRemarcar: 'Volver a marcar el gimnasio',
     gimnasioBuscando: 'Buscando…',
-    gimnasioBorrar: 'Borrar el punto',
+    gimnasioBorrar: 'Borrar ubicación',
     gimnasioComo: 'Márcalo parado en la puerta de tu gimnasio.',
     gimnasioParaQue: 'Después, abrir la app estando ahí registra el día sin que aprietes nada.',
     gimnasioTecho: 'Por ahora hay que abrir la app. En la del teléfono va a entrar solo.',

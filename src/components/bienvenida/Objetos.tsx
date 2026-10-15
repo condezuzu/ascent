@@ -44,7 +44,8 @@ const TIPOS: Record<number, string> = {
   7: 'agujero',
 };
 
-export default function Objetos({ quieto = false }: { quieto?: boolean }) {
+/** `escala` achica los objetos sin moverlos de lugar (la propuesta de la galería los quiere más chicos). */
+export default function Objetos({ quieto = false, escala = 1 }: { quieto?: boolean; escala?: number }) {
   return (
     <div className="bienv-objetos" aria-hidden>
       {RANGOS_DE_LA_ENTRADA.map((r, i) => {
@@ -58,8 +59,8 @@ export default function Objetos({ quieto = false }: { quieto?: boolean }) {
               {
                 left: `${l.x}%`,
                 top: `${l.y}%`,
-                width: l.tam,
-                height: l.tam,
+                width: l.tam * escala,
+                height: l.tam * escala,
                 animationDuration: `${l.s}s`,
                 animationDelay: `${-i * 1.7}s`,
                 '--claro': p.claro,

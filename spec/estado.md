@@ -68,9 +68,10 @@ schema de la base real. El flujo es: escribir la migración → probarla con
     despierta al entrar en la zona y `movil/src/llegadaDeFondo.ts` **registra
     el día** y **anota la hora de llegada**; ese despertar dura unos segundos y
     no dibuja nada, así que va en el cuerpo de un módulo, no en un componente.
-    Con la app abierta, `movil/src/VigilanteDeGimnasio.tsx` arranca y cierra la
-    **sesión**, que necesita los siete minutos de espera de §13.
-  - **La sesión queda fechada en la llegada, no en el momento en que sacaste el
+    Con la app abierta, `movil/src/VigilanteDeGimnasio.tsx` también registra el
+    día. **Desde el 15/10 llegar no arranca la sesión** (a pedido): la arranca
+    la persona. El despertar ya no anota la hora de llegada.
+  - (Hasta el 15/10) **La sesión quedaba fechada en la llegada, no en el momento en que sacaste el
     teléfono del bolsillo**: esa es la hora que dejó anotada el despertar.
   - Las reglas no se reescribieron: `decidir()` sigue siendo el de
     `nucleo/llegada.ts`, el mismo que usa la web.

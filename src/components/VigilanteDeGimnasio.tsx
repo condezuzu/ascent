@@ -8,7 +8,6 @@ import { decidir } from '@nucleo/llegada';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
 import { perfilVivo } from '@compartido/perfilVivo';
 import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
-import { ESPERA_LLEGADA_MS } from '@nucleo/reglas';
 import { anotar } from '@compartido/bitacora';
 import { hoyISO } from '@nucleo/fechas';
 import { eventos } from '@compartido/eventos';
@@ -152,21 +151,7 @@ function Mirando({ supabase, perfil }: { supabase: SupabaseClient; perfil: Perfi
         porUbicacion: s.estado.porUbicacion,
       });
 
-      if (decision.hacer === 'arrancar') {
-        await anotar('arranco la sesión', {
-          llegada: new Date(decision.desde).toLocaleTimeString(),
-        });
-        const salio = await s.empezar({ desde: decision.desde, origen: 'ubicacion' });
-        // La visita se da por usada SOLO si el arranque llegó. Muchos
-        // gimnasios son un subsuelo sin señal: si se marcara igual, un fallo
-        // de red de un segundo dejaría a ese día sin sesión para siempre,
-        // porque no vuelve a intentar hasta la próxima visita.
-        await guardarVigilancia(
-          salio ? decision.vigilancia : { ...decision.vigilancia, arranco: false }
-        );
-        if (!salio) await anotar('no pude arrancar, reintento', {});
-        else eventos.emitir(DIA_CAMBIO);
-      } else if (decision.hacer === 'terminar') {
+      if (decision.hacer === 'terminar') {
         await anotar('cierro la sesión', {
           salida: new Date(decision.hasta).toLocaleTimeString(),
         });
@@ -180,14 +165,6 @@ function Mirando({ supabase, perfil }: { supabase: SupabaseClient; perfil: Perfi
       } else {
         await guardarVigilancia(decision.vigilancia);
       }
-
-      if (decision.hacer === 'nada' && decision.vigilancia && !decision.vigilancia.arranco) {
-        const faltan = Math.max(
-          0,
-          Math.round((ESPERA_LLEGADA_MS - (Date.now() - decision.vigilancia.desde)) / 1000)
-        );
-        await anotar('esperando', { faltanSegundos: faltan });
-      }
     },
     [supabase]
   );
@@ -198,8 +175,8 @@ function Mirando({ supabase, perfil }: { supabase: SupabaseClient; perfil: Perfi
 
     // UNA SOLA MIRADA A LA VEZ. El intervalo es de dos minutos pero leer el
     // GPS puede tardar segundos, y volver a la pantalla dispara otra mirada al
-    // instante. Dos en paralelo pueden decidir las dos "arrancar", y la
-    // segunda `iniciar_sesion` se comería a la primera.
+    // instante. Dos en paralelo pueden registrar o cerrar dos veces, y la
+    // segunda pisaría lo que hizo la primera.
     if (mirando.current) return;
     mirando.current = true;
     try {

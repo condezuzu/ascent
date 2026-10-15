@@ -38,6 +38,7 @@ import { mostrando } from './loVisible';
 import Avatar from './Avatar';
 import DiaListo from './DiaListo';
 import InsistirGimnasio, { useInsistirGimnasio } from './InsistirGimnasio';
+import { pedirResaltarGimnasio } from './ajustes/Gimnasio';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import RachaConRotulo from './RachaConRotulo';
 import PasosInicio from './PasosInicio';
@@ -775,7 +776,13 @@ export default function Inicio({
           sobre lo mismo en la misma pantalla no son el doble de insistencia:
           son ruido. */}
       {!perfil.gimnasio_lat && !sesion.estado.corriendo && !insistirGimnasio && (
-        <Pressable style={estilos.globoQuieto} onPress={() => irAPestana('ajustes')}>
+        <Pressable
+          style={estilos.globoQuieto}
+          onPress={() => {
+            irAPestana('ajustes');
+            pedirResaltarGimnasio();
+          }}
+        >
           <Text style={estilos.globoTexto}>{T.inicio.gimnasioRecordatorioNativo}</Text>
         </Pressable>
       )}
@@ -986,7 +993,14 @@ export default function Inicio({
               acaba de anotar a mano, que es el único momento en que la oferta
               se puede demostrar en vez de explicar. Tres veces como mucho, una
               por día; la regla está en `nucleo/insistirGimnasio.ts`. */}
-          {insistirGimnasio && <InsistirGimnasio alMarcar={() => irAPestana('ajustes')} />}
+          {insistirGimnasio && (
+            <InsistirGimnasio
+              alMarcar={() => {
+                irAPestana('ajustes');
+                pedirResaltarGimnasio();
+              }}
+            />
+          )}
         </>
       ) : (
         <>
