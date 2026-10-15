@@ -375,6 +375,10 @@ humano.
 
 ## Después (lo que aparezca, anotado y sin tocar)
 
+- **Reportar o esconder un ejercicio propio de un amigo** (decisión del humano,
+  15/10/2026). Hoy los ejercicios propios los ven tus amigos (migración 76) y
+  quedan así; cuando haya más gente va a hacer falta poder reportar uno con un
+  nombre fuera de lugar, o esconderlo de tu lista.
 - **El cardio con mapa, estilo Strava** (idea del humano, 14/10/2026). Hoy el
   cardio es un ejercicio que se anota en minutos (migración 76). Un recorrido
   con mapa pide la ubicación en segundo plano durante la sesión, guardar la

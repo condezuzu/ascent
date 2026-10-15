@@ -219,10 +219,9 @@ export default function MiRutina({ visible }: { visible: boolean }) {
                 setEditando(false);
               }}
             >
-              <Text style={[estilos.chipTexto, r.id === sel && estilos.chipTextoElegido]}>
-                {r.nombre}
-                {r.activa ? ' ·' : ''}
-              </Text>
+              {/* LA ACTIVA LLEVA UN PUNTO ADELANTE (15/10): el " ·" pegado atrás del nombre se leía como un error. */}
+              {r.activa && <View testID="rutina-activa-punto" style={estilos.puntoActiva} />}
+              <Text style={[estilos.chipTexto, r.id === sel && estilos.chipTextoElegido]}>{r.nombre}</Text>
             </Pressable>
           ))}
           {rutinas.length < 10 && (
@@ -331,7 +330,8 @@ const estilos = StyleSheet.create({
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
   acciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 6 },
-  chip: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  puntoActiva: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.claro },
   chipElegido: { borderColor: C.tinta },
   chipTexto: { color: C.sub, fontSize: 13 },
   chipTextoElegido: { color: C.tinta },

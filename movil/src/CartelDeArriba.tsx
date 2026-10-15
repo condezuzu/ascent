@@ -12,6 +12,7 @@ import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { alLlegarAvisoRemoto } from './plataforma/avisos';
 import Avatar from './Avatar';
+import { fijarCartel } from './cartelVisible';
 import { C } from './colores';
 
 /** Cada cuánto se pregunta con la app adelante. El aviso push lo adelanta. */
@@ -41,6 +42,7 @@ export default function CartelDeArriba() {
     if (!toca || mostrando.current) return;
     mostrando.current = true;
     setCartel({ uid: yo, novedad: toca });
+    fijarCartel({ tipo: toca.tipo, id: toca.id });
   }, []);
 
   useEffect(() => {
@@ -65,6 +67,7 @@ export default function CartelDeArriba() {
     Animated.timing(bajada, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
       setCartel(null);
       mostrando.current = false;
+      fijarCartel(null);
     });
     const crudo = await plataforma.almacenamiento.leer(CLAVE_NOVEDADES).catch(() => null);
     await plataforma.almacenamiento.guardar(CLAVE_NOVEDADES, conVista(crudo, uid, novedad)).catch(() => undefined);

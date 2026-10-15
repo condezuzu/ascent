@@ -12,6 +12,11 @@ export type Novedad = {
 };
 
 export const CLAVE_NOVEDADES = 'ascent:novedades-vistas';
+
+/** Los pedidos de unirse que Inicio dibuja como tarjeta: el que está en el cartel de arriba, no (15/10). */
+export function tarjetasDeInicio<P extends { id: string }>(pedidos: P[], enCartel: { tipo: string; id: string } | null): P[] {
+  return enCartel?.tipo === 'union' ? pedidos.filter((p) => p.id !== enCartel.id) : pedidos;
+}
 /** Con cuántos pedidos vistos se queda: los más viejos ya no vuelven. */
 const TOPE = 200;
 

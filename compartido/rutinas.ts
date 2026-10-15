@@ -83,6 +83,22 @@ export async function activarRutina(supabase: Cliente, id: string): Promise<bool
   return !(await supabase.rpc('activar_rutina', { p_id: id })).error;
 }
 
+/**
+ * COPIAR LA RUTINA DE UN AMIGO (15/10): queda guardada como tuya y activa, y se
+ * devuelve cuál estaba activa antes, para poder volver con un toque.
+ */
+export async function copiarRutina(
+  supabase: Cliente,
+  nombre: string,
+  dias: DiaDeSemana[]
+): Promise<{ nueva: string; anterior: { id: string; nombre: string } | null } | null> {
+  const antes = (await cargarMisRutinas(supabase))?.find((r) => r.activa) ?? null;
+  const nueva = await guardarRutina(supabase, { id: null, nombre, dias });
+  if (!nueva || !(await activarRutina(supabase, nueva))) return null;
+  await cargarMisRutinas(supabase);
+  return { nueva, anterior: antes ? { id: antes.id, nombre: antes.nombre } : null };
+}
+
 export async function borrarRutina(supabase: Cliente, id: string): Promise<boolean> {
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return false;
   return !(await supabase.rpc('borrar_rutina', { p_id: id })).error;

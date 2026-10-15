@@ -1356,7 +1356,10 @@ const ES = {
     guardarDeducida: 'Guardarla como rutina',
     armarNueva: 'Armar una de cero',
     copiar: 'Copiar esta rutina',
-    copiada: 'Copiada: ya es tu rutina. La cambias en Stats.',
+    // Dice cuál quedó activa, y se puede volver a la de antes con un toque (15/10).
+    copiada: (nombre: string) => `Copiada y activa: «${nombre}». La cambias en Stats.`,
+    volverA: (nombre: string) => `Volver a «${nombre}»`,
+    otraVezActiva: (nombre: string) => `Activa otra vez: «${nombre}».`,
     deAlguien: (nombre: string) => `Rutina de ${nombre}`,
     vacia: 'Todavía no hay rutina: entrena unos días o arma una.',
   },

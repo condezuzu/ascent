@@ -16785,7 +16785,8 @@ console.log('\n204. Ocho arreglos de la cacería del 12/10, y la guarda de las m
   // ---- LO QUE SE LEE: componentes y consultas largas ----
   const vivo204 = de204('movil', 'src', 'EnVivoDeInicio.tsx');
   chequear('la tarjeta "quiere unirse" se va al terminar: solo se dibuja entrenando, y la lista se olvida', [
-    /const pedidos = visto\.corriendo \? uniones\.filter\(/.test(vivo204),
+    // Desde el 15/10 pasa además por `tarjetasDeInicio` (el del cartel de arriba no se dibuja).
+    /const pedidos = tarjetasDeInicio\(visto\.corriendo \? uniones\.filter\(/.test(vivo204),
     /useUniones\(visto\.corriendo, true\)/.test(vivo204),
     /if \(olvidarAlApagar\) setDatos\(\{ uniones: \[\], recibidoEn: Date\.now\(\) \}\);/.test(de204('movil', 'src', 'useUniones.ts')),
   ], [true, true, true]);
@@ -18060,6 +18061,67 @@ console.log('\n224. La consulta de emergencia que apaga los avisos push (spec/tr
     true, ['entró', 0], ['entró', 1], [['entrenos_avisar', 'O'], ['friendships_avisar', 'O']],
   ]);
   await db.exec('drop schema net cascade');
+}
+
+console.log('\n225. Copiar la rutina de un amigo avisa cuál quedó activa y deja volver; el cartel tapa la tarjeta');
+{
+  const RU225 = await import('../compartido/rutinas.ts');
+  const E225 = await import('../compartido/esquema.ts');
+  const NV225 = await import('../nucleo/novedades.ts');
+  const { semanaVacia } = await import('../nucleo/rutinas.ts');
+  // UN CLIENTE QUE LLAMA A LAS FUNCIONES DE VERDAD, como la cuenta de \`quien\`.
+  const clienteDe = (quien) => ({
+    rpc: async (nombre, args = {}) => {
+      await comoUsuario(quien);
+      const claves = Object.keys(args);
+      const valores = claves.map((k) => (args[k] !== null && typeof args[k] === 'object' ? JSON.stringify(args[k]) : args[k]));
+      try {
+        const r = await db.query(`select public.${nombre}(${claves.map((k, i) => `${k} => $${i + 1}`).join(', ')}) as r`, valores);
+        return { data: r.rows[0].r, error: null };
+      } catch (e) {
+        return { data: null, error: { message: String(e.message) } };
+      }
+    },
+  });
+  const yo = await nuevoUsuario();
+  const cli = clienteDe(yo);
+  await E225.versionDelEsquema(cli, Date.now() + E225.VIGENCIA_MS * 20000);
+  await new Promise((r) => setTimeout(r, 20));
+  const lunes = semanaVacia();
+  lunes[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }] };
+  const mia = await RU225.guardarRutina(cli, { id: null, nombre: 'Entrenamiento 1', dias: lunes });
+  const copia = await RU225.copiarRutina(cli, 'Rutina de ana', lunes);
+  const activaTras = (await RU225.cargarMisRutinas(cli)).find((r) => r.activa)?.nombre;
+  const vuelve = await RU225.activarRutina(cli, copia.anterior.id);
+  const activaAlFinal = (await RU225.cargarMisRutinas(cli)).find((r) => r.activa)?.nombre;
+  chequear('copiar deja activa la copia y devuelve la que estaba activa; volver la reactiva', [
+    copia.anterior, activaTras, vuelve, activaAlFinal,
+  ], [{ id: mia, nombre: 'Entrenamiento 1' }, 'Rutina de ana', true, 'Entrenamiento 1']);
+  const otro = await nuevoUsuario();
+  const cliOtro = clienteDe(otro);
+  const primera = await RU225.copiarRutina(cliOtro, 'Rutina de beto', lunes);
+  chequear('si no tenía ninguna, no hay a cuál volver', primera.anterior, null);
+  const { T: T225 } = await import('../nucleo/textos.ts');
+  chequear('y en pantalla dice cuál quedó activa y a cuál se vuelve', [T225.rutina.copiada('Rutina de ana'), T225.rutina.volverA('Entrenamiento 1')], [
+    'Copiada y activa: «Rutina de ana». La cambias en Stats.', 'Volver a «Entrenamiento 1»',
+  ]);
+
+  // ---- EL CARTEL Y LA TARJETA ----
+  const pedidos = [{ id: 'u1' }, { id: 'u2' }];
+  chequear('con el cartel mostrando un pedido de unirse, Inicio no dibuja la tarjeta de ese pedido; con uno de amistad o sin cartel, todas', [
+    NV225.tarjetasDeInicio(pedidos, { tipo: 'union', id: 'u1' }).map((p) => p.id),
+    NV225.tarjetasDeInicio(pedidos, { tipo: 'amistad', id: 'u1' }).map((p) => p.id),
+    NV225.tarjetasDeInicio(pedidos, null).map((p) => p.id),
+  ], [['u2'], ['u1', 'u2'], ['u1', 'u2']]);
+  const { readFileSync: leer225 } = await import('node:fs');
+  const de225 = (...p) => leer225(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8');
+  const cartel225 = de225('movil', 'src', 'CartelDeArriba.tsx');
+  const inicio225 = de225('movil', 'src', 'EnVivoDeInicio.tsx');
+  chequear('el cartel avisa qué muestra (y cuándo se va), e Inicio lo usa', [
+    /setCartel\(\{ uid: yo, novedad: toca \}\);\s*fijarCartel\(\{ tipo: toca\.tipo, id: toca\.id \}\);/.test(cartel225),
+    /mostrando\.current = false;\s*fijarCartel\(null\);/.test(cartel225),
+    /tarjetasDeInicio\([\s\S]{0,140}, enCartel\)/.test(inicio225),
+  ], [true, true, true]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

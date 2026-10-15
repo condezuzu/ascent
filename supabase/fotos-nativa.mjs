@@ -355,6 +355,8 @@ const RECETAS = {
     const { data: pedido } = await A.s.from('friendships').insert({ solicitante: A.id, destinatario: B.id }).select('id').single();
     await B.s.from('friendships').update({ estado: 'aceptada' }).eq('id', pedido.id);
     const dias = await semanaDeMuestra(A.s);
+    // Una rutina propia activa de verdad, para que copiar tenga a cuál volver.
+    await A.s.rpc('guardar_rutina', { p_id: null, p_nombre: 'Entrenamiento 1', p_dias: dias });
     const { page } = await abrir(nav, A, { version_del_esquema: 75, rutina_activa_de: { id: 'y', nombre: 'Push pull legs', dias } });
     await page.goto(`${NATIVA}/perfil/${B.id}`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(3500);
@@ -362,6 +364,11 @@ const RECETAS = {
     await tocar(page, 'rutina-dia-2');
     await page.waitForTimeout(400);
     await foto(page, 'rutina-amigo');
+    // Copiarla (15/10): dice cuál quedó activa y ofrece volver a la de antes.
+    await tocar(page, 'rutina-copiar');
+    await page.getByTestId('rutina-volver').first().scrollIntoViewIfNeeded({ timeout: 30000 });
+    await page.waitForTimeout(500);
+    await foto(page, 'rutina-amigo-copiada');
     return page;
   },
 };
