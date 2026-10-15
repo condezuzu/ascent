@@ -47,6 +47,8 @@ import {
   terminarBloque,
   arrancarCardio,
   cerrarVueltaDeCardio,
+  descartarCardio,
+  VUELTA_MINIMA_MS,
   type EstadoBloques,
 } from '@nucleo/bloques';
 import { sumarSerie, restarSerie, corregirEnLista, seriesAlReleer } from '@nucleo/conteo';
@@ -84,6 +86,7 @@ import {
   leerViva,
   refDe,
   rutinaRef,
+  rutinaEsGuardada,
   sesionesRutinaRef,
   setterDe,
   suscribirViva,
@@ -692,6 +695,7 @@ export function useSesion(
       // Un día de descanso o sin nada cargado cae a la deducida, como antes.
       const deLaGuardada = ejerciciosDeHoy(await rutinaActivaDelTelefono(), new Date().getDay());
       rutinaRef.current = deLaGuardada.length > 0 ? deLaGuardada : rutinaParaHoy(sesionesRutinaRef.current, hoyISO());
+      rutinaEsGuardada.current = deLaGuardada.length > 0;
       // Y se pone al día para la próxima, sin esperar.
       void cargarMisRutinas(supabase).catch(() => null);
 
@@ -757,7 +761,7 @@ export function useSesion(
     const hasta = opciones?.hasta ?? (await leerSesionCache())?.quisoTerminar ?? undefined;
     // LA VUELTA DE CARDIO EN CURSO SE CIERRA ANTES (cacería del 15/10), y a la misma
     // hora que la sesión: con la salida del gimnasio, la cinta no sigue hasta casa.
-    if (bloquesRef.current.cardioDesde !== undefined) await cerrarVueltaDelCardio(hasta ?? Date.now());
+    if (bloquesRef.current.cardioDesde !== undefined) await dejarElCardio(hasta ?? Date.now());
     // Se anota lo que había ANTES de cerrar: abajo se pone todo en cero y el
     // resumen se quedaría sin datos que mostrar. De los refs: la vuelta de arriba
     // cambió el conteo después de este render.
@@ -1012,7 +1016,7 @@ export function useSesion(
 
   /** Cerrar el bloque y arrancar otro con el mismo ejercicio y la misma meta. */
   async function bloqueSiguiente() {
-    if (bloquesRef.current.cardioDesde !== undefined) await cerrarVueltaDelCardio();
+    if (bloquesRef.current.cardioDesde !== undefined) await dejarElCardio();
     // Desde el ref y no del closure, y `subir` con el total del ref: si justo
     // se contó una serie, esta operación no puede pisarla con datos viejos.
     const previo = bloquesRef.current;
@@ -1067,7 +1071,7 @@ export function useSesion(
 
   async function elegirEjercicio(id: string | null) {
     // Otro ejercicio con la cinta andando: primero se anota esa vuelta.
-    if (id !== bloquesRef.current.ejercicio && bloquesRef.current.cardioDesde !== undefined) await cerrarVueltaDelCardio();
+    if (id !== bloquesRef.current.ejercicio && bloquesRef.current.cardioDesde !== undefined) await dejarElCardio();
     const previo = bloquesRef.current;
     const b = cambiarEjercicio(previo, id);
     if (b === previo) return marcar();
@@ -1077,7 +1081,8 @@ export function useSesion(
     // Lo eligió la persona: ya no es una sugerencia. Y LA CADENA SE RE-ENGANCHA a
     // la rutina de ESE ejercicio —lo que suele venir después de él—.
     setSugerido(false);
-    if (id) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
+    // La cadena de la rutina GUARDADA no se re-engancha: elegir otro ejercicio de ese día no la abandona.
+    if (id && !rutinaEsGuardada.current) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
     await actualizarSesionCache({ bloques: b, sugerido: false }, yo);
     // Lo de AHORA y no `b`: si un `+` cayó mientras se guardaba la caché, `b` ya
     // es viejo, y subirlo detrás del `+` le sacaba esa serie a la lista de la base.
@@ -1387,14 +1392,30 @@ export function useSesion(
   }
 
   /**
+   * SE DEJA LA CINTA SIN TOCAR "LISTO" (otro ejercicio, Terminar): la vuelta se
+   * anota, salvo que no llegue a un minuto —la cinta tocada por error, que dejaba
+   * una vuelta de un minuto y una serie de más sin forma de sacarlas—.
+   */
+  async function dejarElCardio(fin: number = Date.now()) {
+    const desde = bloquesRef.current.cardioDesde;
+    if (desde === undefined) return;
+    if (fin - desde >= VUELTA_MINIMA_MS) return cerrarVueltaDelCardio(fin);
+    const b = descartarCardio(bloquesRef.current);
+    bloquesRef.current = b;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
+    await bajarMarca();
+  }
+
+  /**
    * LA MARCA ADELANTADA SE ACHICA (cacería del 15/10, migración 82). La cinta y el
    * descanso largo prometen actividad hasta una hora adelante; si después de
    * "Listo" la persona se va sin tocar Terminar, la sesión se cerraba sola con
    * esa hora de más. Sin la 82 la base no sabe achicarla: queda como antes.
    */
-  async function bajarMarca() {
+  async function bajarMarca(hastaTelefonoMs: number = Date.now()) {
     if (!idSesion) return;
-    const iso = new Date(Date.now() - desfasaje).toISOString();
+    const iso = new Date(Math.max(hastaTelefonoMs, Date.now()) - desfasaje).toISOString();
     setUltimaActividad(iso);
     await actualizarSesionCache({ ultimaActividad: iso }, yo);
     if (!disponible('bajarMarca', await versionDelEsquema(supabase))) return;
@@ -1429,7 +1450,8 @@ export function useSesion(
     // Corregir el ejercicio también re-engancha la cadena, igual que
     // `elegirEjercicio`: si no, el próximo sugerido saldría de la rutina del
     // ejercicio equivocado. (29/9)
-    if (id) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
+    // La cadena de la rutina GUARDADA no se re-engancha: elegir otro ejercicio de ese día no la abandona.
+    if (id && !rutinaEsGuardada.current) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
     await actualizarSesionCache({ bloques: b }, yo);
     await subir(seriesRef.current, bloquesRef.current);
     await marcar();
@@ -1514,12 +1536,17 @@ export function useSesion(
     cerrarDescanso: () => {
       borrarDescanso();
       setDescanso(null);
-      void bajarMarca();
+      // Con la cinta andando la marca es la de la cinta, no la del descanso: no se toca.
+      if (bloquesRef.current.cardioDesde === undefined) void bajarMarca();
     },
     reiniciarDescanso: (d: DescansoVivo) => {
+      const antes = descansoRef.current?.fin ?? 0;
       setDescanso(d);
       guardarDuracionDeSesion(d.duracion);
-      void marcar(d.fin);
+      // ACORTARLO BAJA LA MARCA (cacería del 15/10): de una hora a 90 s, la promesa
+      // de una hora quedaba y la sesión dejada sin Terminar se guardaba con ella.
+      if (d.fin < antes && bloquesRef.current.cardioDesde === undefined) void bajarMarca(d.fin);
+      else void marcar(d.fin);
     },
   };
 }

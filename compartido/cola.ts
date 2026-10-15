@@ -142,8 +142,14 @@ export async function encolar(supabase: Cliente, tarea: Encolable) {
         : tarea.args.p_ejercicio;
   const id = `${tarea.rpc}:${de}`;
   await enTurno(async () => {
-    const lista = (await leer()).filter((p) => p.id !== id);
-    lista.push({ ...tarea, id });
+    const antes = await leer();
+    const lista = antes.filter((p) => p.id !== id);
+    // UNA BAJADA DE LA MARCA NO SE PIERDE (cacería del 15/10): si la marca que se
+    // reemplaza bajaba la promesa ("Listo" sin señal), la nueva también baja. Es
+    // segura: su hora ya sale de la caché, que la bajada dejó en la hora de Listo.
+    const bajaba = antes.some((p) => p.id === id && p.rpc === 'marcar_actividad' && p.args.p_bajar === true);
+    const nueva = bajaba && tarea.rpc === 'marcar_actividad' ? { ...tarea, args: { ...tarea.args, p_bajar: true } } : tarea;
+    lista.push({ ...nueva, id });
     await guardar(lista);
   });
   void vaciar(supabase);

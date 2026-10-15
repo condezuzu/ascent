@@ -105,6 +105,8 @@ export const faltanBloques: { current: string | null } = { current: null };
 export const bloquesDe: { current: string | null } = { current: null };
 /** La cadena propuesta para hoy (ver `nucleo/rutina.ts`). */
 export const rutinaRef: { current: string[] } = { current: [] };
+/** Si la cadena salió de la rutina GUARDADA: esa no se re-engancha con el historial. */
+export const rutinaEsGuardada: { current: boolean } = { current: false };
 /** El historial reciente, para re-enganchar la cadena. */
 export const sesionesRutinaRef: { current: SesionRutina[] } = { current: [] };
 
@@ -122,6 +124,7 @@ export function olvidarViva(): void {
   faltanBloques.current = null;
   bloquesDe.current = null;
   rutinaRef.current = [];
+  rutinaEsGuardada.current = false;
   sesionesRutinaRef.current = [];
   cambiarViva({ ...INICIAL, bloques: bloquesVacios() });
 }

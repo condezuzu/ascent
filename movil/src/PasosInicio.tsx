@@ -84,6 +84,8 @@ function PasosInicio({
     })();
     return () => {
       vivo = false;
+      // Si la sesión arranca a mitad del festejo, el temporizador ya no lo baja: se baja acá.
+      setFestejando(false);
     };
     // Una vez por llegada: no se rearma con cada paso nuevo.
     // eslint-disable-next-line react-hooks/exhaustive-deps

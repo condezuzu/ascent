@@ -88,7 +88,7 @@ function procesar(rpc, a) {
       if (s && s.estado === 'corriendo') {
         const t = Math.min(Math.max(Date.parse(a.p_hasta ?? new Date(Date.now()).toISOString()), Date.parse(s.inicio)), Date.now() + ((servidor.version ?? 53) >= 81 ? 60 : 15) * 60000);
         // Con p_bajar (la 82) una promesa a futuro baja a ahora.
-        if (a.p_bajar && s.ultima_actividad && Date.parse(s.ultima_actividad) > Date.now()) s.ultima_actividad = new Date(Math.max(t, Date.now())).toISOString();
+        if (a.p_bajar && s.ultima_actividad && Date.parse(s.ultima_actividad) > Date.now()) s.ultima_actividad = new Date(Math.min(t, Date.parse(s.ultima_actividad))).toISOString();
         else if (!s.ultima_actividad || t > Date.parse(s.ultima_actividad)) s.ultima_actividad = new Date(t).toISOString();
       }
       return null;

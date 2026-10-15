@@ -779,6 +779,114 @@ async function vueltaDos(caso) {
   return { corriendo: inicio.r.estado.corriendo, base: viva()?.estado ?? null };
 }
 
+/**
+ * `vueltaTres` (cacería del 15/10, vuelta 3), con la 82 en la base:
+ *  - `seguir`: con la cinta andando se toca "Seguir" en un descanso ya terminado y
+ *    el teléfono va al bolsillo 35 min. La marca de la cinta no puede bajar.
+ *  - `semilla`: la semilla del primer bloque llega tarde (señal lenta) y la persona
+ *    ya eligió la cinta: no se la puede pisar.
+ *  - `porError`: la cinta se toca por error y a los 20 s se elige otro: no queda
+ *    una vuelta de un minuto ni una serie de más.
+ *  - `acortar`: un descanso de una hora se corrige a 90 s: la marca baja a su fin.
+ *  - `pisada`: "Listo" sin señal y después una serie: la bajada no se pierde en la cola.
+ *  - `tarde`: "Listo" sin señal; la señal vuelve 20 min después: la marca queda en
+ *    la hora de Listo, no en la de la vuelta de la señal.
+ *  - `guardada`: con la rutina guardada, se elige otro ejercicio de ese día: al
+ *    terminarlo, se propone el siguiente de la rutina, no uno del historial.
+ */
+async function vueltaTres(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.ventanaMs = 30 * 60000;
+  servidor.version = 82;
+  const { cambiarDuracion } = await import('@compartido/descanso');
+  const SIN_RED = ['fijar_series', 'fijar_bloques', 'marcar_actividad', 'mi_sesion'];
+  if (caso === 'guardada') {
+    datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+    const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+    dias[new Date(Date.now()).getDay()] = { descanso: false, ejercicios: ['press_banca', 'press_inclinado', 'aperturas'].map((ejercicio) => ({ ejercicio, series: 3 })) };
+    datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', dias }));
+  }
+  if (caso === 'semilla') servidor.ida.ultimo_ejercicio = 500;
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  const viva = () => servidor.sesiones[0];
+  const adelante = () => Math.round((Date.parse(viva()?.ultima_actividad ?? '') - Date.now()) / 60000);
+  if (caso === 'semilla') {
+    void inicio.r.elegirEjercicio('cinta');
+    await inicio.r.arrancarCardio();
+    await dormir(900);
+    await asentar();
+    return { ejercicio: inicio.r.estado.bloques.ejercicio, cronometro: inicio.r.estado.bloques.cardioDesde !== undefined };
+  }
+  await asentar();
+  if (caso === 'guardada') {
+    await dormir(300);
+    await inicio.r.elegirEjercicio('press_inclinado');
+    await inicio.r.serieHecha({ sinDescanso: true });
+    await inicio.r.bloqueSiguiente();
+    await asentar();
+    return { propone: inicio.r.estado.bloques.ejercicio };
+  }
+  if (caso === 'acortar') {
+    await inicio.r.elegirEjercicio('press_banca');
+    await inicio.r.serieHecha();
+    await asentar();
+    inicio.r.reiniciarDescanso(cambiarDuracion(inicio.r.estado.descanso, 60 * 60));
+    await asentar();
+    const conHora = adelante();
+    inicio.r.reiniciarDescanso(cambiarDuracion(inicio.r.estado.descanso, 90));
+    await asentar();
+    return { conHora, corregido: adelante() <= 2 };
+  }
+  if (caso === 'seguir') {
+    await inicio.r.elegirEjercicio('press_banca');
+    await inicio.r.serieHecha();
+    await asentar();
+    void inicio.r.elegirEjercicio('cinta');
+    await inicio.r.arrancarCardio();
+    await asentar();
+    adelanto = 4 * 60000;
+    inicio.r.cerrarDescanso();
+    await asentar();
+    cambiarVisible(false);
+    await asentar();
+    adelanto = 39 * 60000;
+    cambiarVisible(true);
+    await dormir(400);
+    await asentar();
+    return { corriendo: inicio.r.estado.corriendo, cronometro: inicio.r.estado.bloques.cardioDesde !== undefined };
+  }
+  void inicio.r.elegirEjercicio('cinta');
+  await inicio.r.arrancarCardio();
+  await asentar();
+  if (caso === 'porError') {
+    adelanto = 20000;
+    await inicio.r.elegirEjercicio('press_banca');
+    await asentar();
+    return { series: viva()?.series ?? null, bloques: (viva()?.bloques ?? []).map((b) => b.ejercicio) };
+  }
+  // pisada / tarde
+  adelanto = 15 * 60000;
+  SIN_RED.forEach((r) => (servidor.falla[r] = true));
+  await inicio.r.cerrarVueltaDeCardio();
+  const listo = Date.now();
+  if (caso === 'pisada') {
+    await inicio.r.elegirEjercicio('press_banca');
+    await inicio.r.serieHecha({ sinDescanso: true });
+  }
+  await dormir(200);
+  adelanto = 35 * 60000;
+  SIN_RED.forEach((r) => (servidor.falla[r] = false));
+  await bloquearYDesbloquear();
+  await dormir(300);
+  await asentar();
+  const ultima = Date.parse(viva()?.ultima_actividad ?? '');
+  return { cercaDeListo: Math.abs(ultima - listo) < 2 * 60000 };
+}
+
 /** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
 async function yaCorria() {
   const inicio = montar(() => useSesion());
@@ -956,7 +1064,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

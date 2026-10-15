@@ -18505,7 +18505,7 @@ console.log('\n233. La meta de pasos se festeja una vez por día, y el empujón 
   chequear('el día sin foto resalta la foto y dice el porqué; el mes con una sola foto dice qué trae la segunda', [
     /if \(vivo && !error\) setSinFoto\(\(data \?\? \[\]\)\.length === 0\);/.test(de233('movil', 'src', 'DiaListo.tsx')),
     (de233('movil', 'src', 'Inicio.tsx').match(/logId=\{logs\.find\(\(l\) => l\.fecha === hoy\)\?\.id \?\? null\}\n          \/>/g) ?? []).length,
-    /\{!par && m\.fotos\.length === 1 && <Text testID="album-una-mas"/.test(de233('movil', 'src', 'Album.tsx')),
+    /\{!par && m\.fotos\.length === 1 && m\.clave === mesDeHoy && <Text testID="album-una-mas"/.test(de233('movil', 'src', 'Album.tsx')),
   ], [true, 2, true]);
 }
 console.log('\n234. La pasada de lentitud: el fondo se pausa tapado, los relojes se tickean solos, las pestañas no se redibujan todas (15/10)');
@@ -18622,6 +18622,25 @@ console.log('\n236. Cacería del 15/10, vuelta 2: la cinta por el camino de la p
   const { readFileSync: leer236 } = await import('node:fs');
   const mi = leer236(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'MiRutina.tsx'), 'utf8').replace(/\r\n/g, '\n');
   chequear('"Día de descanso" en un día con ejercicios pregunta antes de sacarlos', /onPress=\{\(\) => \(!dia\.descanso && dia\.ejercicios\.length > 0 \? setPreguntaDescanso\(d\) : con\(marcarDescanso\(actual\.dias, d, !dia\.descanso\)\)\)\}/.test(mi), true);
+}
+console.log('\n237. Cacería del 15/10, vuelta 3: Seguir con la cinta, la semilla tarde, la cinta por error, el descanso que se acorta, la bajada sin señal, la rutina guardada');
+{
+  const v3 = async (c) => escenarioDeSesion('vueltaTres', c);
+  chequear('"Seguir" en un descanso terminado con la cinta andando no baja la marca de la cinta: 35 min de bolsillo y sigue', await v3('seguir'), { corriendo: true, cronometro: true });
+  chequear('con señal lenta, la semilla del primer bloque no pisa la cinta que ya se eligió', await v3('semilla'), { ejercicio: 'cinta', cronometro: true });
+  chequear('la cinta tocada por error y dejada a los 20 s no anota vuelta ni serie', await v3('porError'), { series: 0, bloques: [] });
+  chequear('un descanso de una hora corregido a 90 s baja la marca a su fin', await v3('acortar'), { conHora: 60, corregido: true });
+  chequear('"Listo" sin señal: la bajada no se pierde en la cola, ni llega estirada a la hora en que volvió la señal', [await v3('pisada'), await v3('tarde')], [{ cercaDeListo: true }, { cercaDeListo: true }]);
+  chequear('con la rutina guardada, elegir otro ejercicio de ese día no la abandona: después propone el que falta de la rutina', await v3('guardada'), { propone: 'press_banca' });
+  const B237 = await import('../nucleo/bloques.ts');
+  const elegido = B237.cambiarEjercicio(B237.bloquesVacios(), 'cinta');
+  chequear('sembrar no pisa un ejercicio ya elegido (y sigue sembrando un bloque vacío)', [B237.sembrar(elegido, 'press_banca').ejercicio, B237.sembrar(B237.bloquesVacios(), 'press_banca').ejercicio], ['cinta', 'press_banca']);
+  const { readFileSync: leer237 } = await import('node:fs');
+  const de237 = (...p) => leer237(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  chequear('el festejo de los pasos se baja si el efecto se corta (la sesión arrancó a mitad); el Álbum pide otra foto solo este mes', [
+    /vivo = false;\n[^\n]*\n      setFestejando\(false\);/.test(de237('movil', 'src', 'PasosInicio.tsx')),
+    /m\.clave === mesDeHoy/.test(de237('movil', 'src', 'Album.tsx')),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

@@ -1971,8 +1971,11 @@ begin
   t := least(greatest(coalesce(p_hasta, now()), s.inicio), now() + interval '60 minutes');
 
   if s.estado = 'corriendo' and p_bajar then
-    -- Una promesa a futuro baja a ahora; una marca vieja sube a ahora, como siempre.
-    update sesiones set ultima_actividad = greatest(least(ultima_actividad, greatest(t, now())), t) where id = s.id;
+    -- Una promesa a futuro baja a la hora que dice el teléfono —aunque llegue tarde,
+    -- sin señal—; una marca vieja sube, como siempre.
+    update sesiones
+       set ultima_actividad = case when ultima_actividad > now() then least(ultima_actividad, t) else greatest(ultima_actividad, t) end
+     where id = s.id;
   elsif s.estado = 'corriendo' then
     update sesiones set ultima_actividad = greatest(ultima_actividad, t) where id = s.id;
   elsif s.estado = 'terminada' and s.cerro_sola and t > s.fin and t <= s.fin + ventana_inactividad() then

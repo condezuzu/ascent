@@ -208,6 +208,14 @@ function sinCardio<T extends { cardioDesde?: number }>(obj: T): Omit<T, 'cardioD
   return resto;
 }
 
+/** Menos que esto y la vuelta se dejó sin querer (la cinta tocada por error). */
+export const VUELTA_MINIMA_MS = 60_000;
+
+/** El cronómetro se apaga sin anotar nada: la vuelta no llegó a un minuto. */
+export function descartarCardio(e: EstadoBloques): EstadoBloques {
+  return e.cardioDesde === undefined ? e : (sinCardio(e) as EstadoBloques);
+}
+
 /** Arranca el cronómetro del cardio. Si ya corre, lo deja como está. */
 export function arrancarCardio(e: EstadoBloques, ahora: number): EstadoBloques {
   if (e.cardioDesde !== undefined) return e;
@@ -459,7 +467,9 @@ export function sembrar(
   ejercicio: string | null,
   meta?: number
 ): EstadoBloques {
-  if (actual.hechas > 0 || actual.cerrados.length > 0) return actual;
+  // Ni uno ya ELEGIDO (cacería del 15/10): con señal lenta la semilla llegaba
+  // después de que la persona eligió la cinta, y se la pisaba con cronómetro y todo.
+  if (actual.hechas > 0 || actual.cerrados.length > 0 || actual.ejercicio !== null) return actual;
   return bloquesVacios(ejercicio, meta ?? actual.meta);
 }
 
