@@ -23,7 +23,10 @@ end $guarda$;
 -- reescribe por una decisión de otra persona. El otro lo sigue viendo como
 -- "Ejercicio propio", igual que con la 80: un huérfano no entra al catálogo de
 -- nadie. Los propios que nadie más usó se borran, como antes.
--- No toca ninguna fila hasta que alguien se da de baja.
+--
+-- Y desde acá nadie anota sobre un propio que no ve: después de la 80 un amigo
+-- lo seguía usando sin saberlo, y esas filas nuevas también trababan la baja.
+-- No toca ninguna fila: cambia funciones, una política y suma una columna.
 
 do $$
 begin
@@ -71,6 +74,56 @@ begin
   delete from auth.users where id = uid;
 end;
 $$;
+
+-- NADIE ANOTA SOBRE UN PROPIO QUE NO VE (vuelta 7 de la cacería). La 80 solo cerró la
+-- lectura: un amigo que ya había usado un propio tuyo lo seguía anotando (su historial
+-- se lo propone), porque estas dos funciones son security definer y no pasan por la
+-- RLS, y la marca entraba por la FK. Esas filas son las que trababan la baja.
+create or replace function public.elegir_carga(p_ejercicio text, p_carga text)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre', 'corporal') then return; end if;
+  -- Solo sobre un ejercicio que se ve (migración 83): un propio ajeno o huérfano no.
+  if not exists (select 1 from ejercicios where id = p_ejercicio and ((creado_por is null and not huerfano) or creado_por = uid)) then return; end if;
+  insert into cargas_elegidas (user_id, ejercicio, carga)
+       values (uid, p_ejercicio, p_carga)
+  on conflict (user_id, ejercicio) do update set carga = excluded.carga, elegida = now();
+end;
+$$;
+
+create or replace function public.marcar_subida(p_ejercicio text, p_carga text, p_peso numeric, p_series int, p_dia date)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if p_ejercicio is null then return; end if;
+  if p_peso is null then
+    -- Con el modo, saca la de ESE modo; sin modo (la app de antes), todas las del ejercicio.
+    delete from subidas_marcadas
+     where user_id = uid and ejercicio = p_ejercicio and (p_carga is null or carga = p_carga);
+    return;
+  end if;
+  if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre') then return; end if;
+  if p_peso <= 0 or p_peso > 1000 or p_series is null or p_series < 1 or p_series > 99 then return; end if;
+  -- Ni del futuro ni de hace un mes: es la marca de una sesión reciente.
+  if p_dia is null or p_dia > mi_hoy() + 1 or p_dia < mi_hoy() - 14 then return; end if;
+  -- Solo sobre un ejercicio que se ve (migración 83): un propio ajeno o huérfano no.
+  if not exists (select 1 from ejercicios where id = p_ejercicio and ((creado_por is null and not huerfano) or creado_por = uid)) then return; end if;
+  insert into subidas_marcadas (user_id, ejercicio, carga, peso, series, dia)
+       values (uid, p_ejercicio, p_carga, p_peso, p_series, p_dia)
+  on conflict (user_id, ejercicio, carga) do update
+     set peso = excluded.peso, series = excluded.series, dia = excluded.dia, marcada = now();
+end;
+$$;
+
+drop policy if exists "marcas: dueño" on public.prs;
+create policy "marcas: dueño" on public.prs for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id and exists (select 1 from public.ejercicios e where e.id = ejercicio));
 
 do $$
 begin

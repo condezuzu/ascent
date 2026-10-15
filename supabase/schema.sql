@@ -2376,7 +2376,8 @@ declare
 begin
   if uid is null then raise exception 'sin sesión'; end if;
   if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre', 'corporal') then return; end if;
-  if not exists (select 1 from ejercicios where id = p_ejercicio) then return; end if;
+  -- Solo sobre un ejercicio que se ve (migración 83): un propio ajeno o huérfano no.
+  if not exists (select 1 from ejercicios where id = p_ejercicio and ((creado_por is null and not huerfano) or creado_por = uid)) then return; end if;
   insert into cargas_elegidas (user_id, ejercicio, carga)
        values (uid, p_ejercicio, p_carga)
   on conflict (user_id, ejercicio) do update set carga = excluded.carga, elegida = now();
@@ -2556,7 +2557,8 @@ begin
   if p_peso <= 0 or p_peso > 1000 or p_series is null or p_series < 1 or p_series > 99 then return; end if;
   -- Ni del futuro ni de hace un mes: es la marca de una sesión reciente.
   if p_dia is null or p_dia > mi_hoy() + 1 or p_dia < mi_hoy() - 14 then return; end if;
-  if not exists (select 1 from ejercicios where id = p_ejercicio) then return; end if;
+  -- Solo sobre un ejercicio que se ve (migración 83): un propio ajeno o huérfano no.
+  if not exists (select 1 from ejercicios where id = p_ejercicio and ((creado_por is null and not huerfano) or creado_por = uid)) then return; end if;
   insert into subidas_marcadas (user_id, ejercicio, carga, peso, series, dia)
        values (uid, p_ejercicio, p_carga, p_peso, p_series, p_dia)
   on conflict (user_id, ejercicio, carga) do update
@@ -3729,8 +3731,11 @@ create policy "ejercicios: catálogo con sesión" on public.ejercicios for selec
 
 -- prs: las marcas se ven igual que los logs — el dueño todo, los amigos
 -- aceptados leen. El peso CORPORAL sigue afuera, siempre (§16.6).
+-- Una marca nueva, solo sobre un ejercicio que se ve (migración 83): el `exists` pasa
+-- por la RLS de ejercicios, así que un propio ajeno o huérfano no entra.
 create policy "marcas: dueño" on public.prs for all
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id and exists (select 1 from public.ejercicios e where e.id = ejercicio));
 create policy "marcas: amigos leen" on public.prs for select
   using (public.son_amigos(auth.uid(), user_id));
 

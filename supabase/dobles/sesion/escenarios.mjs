@@ -1139,6 +1139,121 @@ async function vueltaSeis(caso) {
   return { base: lista(), series: viva().series };
 }
 
+/**
+ * `vueltaSiete` (cacería del 16/10, vuelta 7):
+ *  - `menosCinta`: la cinta arranca sola, a los 3 min se apaga con el − y nadie toca
+ *    Terminar: la base cierra sola, y el fin tiene que ser a los 3 min, no a los 60.
+ *  - `otroSinLeer`: el otro aparato suma remo; al desbloquear no se pueden leer los
+ *    bloques; vuelve la señal y se toca +: el remo sigue en la base.
+ *  - `propioAjeno`: el historial y el último ejercicio traen un propio de un amigo que
+ *    ya no se ve (la 80): no sale como rutina ni como semilla.
+ */
+async function vueltaSiete(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.version = 82;
+  if (caso === 'propioAjeno') {
+    const { hoyISO, restarDias } = await import('@nucleo/fechas');
+    servidor.visibles = ['press_banca', 'remo_barra', 'sentadilla'];
+    servidor.ultimoEjercicio = 'propio_ajeno';
+    servidor.historial = [{ bloques: [{ ejercicio: 'propio_ajeno' }, { ejercicio: 'remo_barra' }], logs: { fecha: restarDias(hoyISO(), 7) } }];
+  }
+  const tel = montar(() => useSesion());
+  await asentar();
+  await tel.r.empezar();
+  await asentar();
+  const s = servidor.sesiones[0];
+  if (caso === 'propioAjeno') {
+    await dormir(400);
+    await asentar();
+    return { semilla: tel.r.estado.bloques.ejercicio };
+  }
+  if (caso === 'menosCinta') {
+    const { crearCliente } = await import('./cliente.mjs');
+    await tel.r.elegirEjercicio('cinta');
+    await tel.r.arrancarCardio();
+    await asentar();
+    adelanto = 3 * 60000;
+    await tel.r.deshacerSerie();
+    await asentar();
+    servidor.ventanaMs = 30 * 60000;
+    adelanto = 120 * 60000;
+    await crearCliente().rpc('mi_sesion');
+    return { estado: s.estado, finMin: s.fin ? Math.round((Date.parse(s.fin) - Date.parse(s.inicio)) / 60000) : null };
+  }
+  // otroSinLeer
+  await tel.r.elegirEjercicio('press_banca');
+  await tel.r.serieHecha({ sinDescanso: true });
+  await tel.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  s.bloques = [...s.bloques, { ejercicio: 'remo_barra', series: 1 }];
+  s.series = 3;
+  servidor.falla.lecturas = true;
+  await bloquearYDesbloquear();
+  await dormir(400);
+  await asentar();
+  servidor.falla.lecturas = false;
+  await tel.r.serieHecha({ sinDescanso: true });
+  await dormir(300);
+  await asentar();
+  return { base: s.bloques.map((b) => [b.ejercicio, b.series]), series: s.series };
+}
+
+/**
+ * `vueltaOcho` (cacería del 16/10, vuelta 8), con otro aparato que anota:
+ *  - `dupla`: acá press 2; allá remo 1 y no se puede leer; allá sentadilla 1 y vuelve
+ *    la señal. Nadie toca nada acá: la base no duplica.
+ *  - `peso`: press 2 con 60; allá remo 1; sin poder leer, el + siguiente lleva los 60.
+ *  - `cinta`: la cinta andando; allá remo 1; sin poder leer, Listo a los 20 anota la cinta.
+ */
+async function vueltaOcho(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.version = 82;
+  const tel = montar(() => useSesion());
+  await asentar();
+  await tel.r.empezar();
+  await asentar();
+  const s = servidor.sesiones[0];
+  const base = () => s.bloques.map((b) => [b.ejercicio, b.series, b.pesos?.[0] ?? b.minutos ?? null]);
+  if (caso === 'cinta') {
+    await tel.r.elegirEjercicio('cinta');
+    await tel.r.arrancarCardio();
+  } else {
+    await tel.r.elegirEjercicio('press_banca');
+    if (caso === 'peso') await tel.r.elegirPeso(60);
+    await tel.r.serieHecha({ sinDescanso: true });
+    await tel.r.serieHecha({ sinDescanso: true });
+  }
+  await asentar();
+  s.bloques = [...s.bloques, { ejercicio: 'remo_barra', series: 1 }];
+  s.series += 1;
+  servidor.falla.lecturas = true;
+  await bloquearYDesbloquear();
+  await dormir(400);
+  await asentar();
+  if (caso === 'dupla') {
+    s.bloques = [...s.bloques, { ejercicio: 'sentadilla', series: 1 }];
+    s.series += 1;
+    servidor.falla.lecturas = false;
+    await bloquearYDesbloquear();
+    await dormir(400);
+    await asentar();
+    return { base: base(), series: s.series };
+  }
+  servidor.falla.lecturas = false;
+  if (caso === 'peso') await tel.r.serieHecha({ sinDescanso: true });
+  else {
+    adelanto = 20 * 60000;
+    await tel.r.cerrarVueltaDeCardio();
+  }
+  await dormir(300);
+  await asentar();
+  return { base: base(), series: s.series };
+}
+
 /** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
 async function yaCorria() {
   const inicio = montar(() => useSesion());
@@ -1316,7 +1431,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

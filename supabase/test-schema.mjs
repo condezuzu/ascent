@@ -9052,7 +9052,7 @@ console.log('\n127. Los bloques de la base vuelven al telefono');
   chequear('subir: y lo mira ANTES de mandar la lista', guarda < subir.indexOf("rpc: 'fijar_bloques'"), true);
   chequear('confirmar: si no vinieron, los trae', /faltan && g\.id[\s\S]{0,120}recuperarBloques\(g\.id\)/.test(hook), true);
   chequear('empezar: si ya estaba corriendo, los trae antes de sembrar', /const faltan = !!\(r\.yaEstaba[\s\S]{0,3000}recuperarBloques\(r\.id\)[\s\S]{0,800}sembrar\(/.test(hook), true);
-  chequear('confirmar: si conto otro lado, trae los de la base', /previo\.series !== g\.series[\s\S]{0,300}from\('sesiones'\)\.select\('bloques'\)/.test(hook), true);
+  chequear('confirmar: si conto otro lado, trae los de la base', /previo\.series !== g\.series[\s\S]{0,1500}from\('sesiones'\)\.select\('bloques'\)/.test(hook), true);
 }
 
 console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
@@ -17511,7 +17511,7 @@ console.log('\n214. La rutina en el teléfono: qué se muestra, y con qué arran
 
   const { readFileSync: leer214 } = await import('node:fs');
   const ses214 = leer214(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'useSesion.ts'), 'utf8').replace(/\r\n/g, '\n');
-  chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(await rutinaActivaDelTelefono\(\), new Date\(\)\.getDay\(\)\);\s*rutinaRef\.current = deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
+  chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(await rutinaActivaDelTelefono\(\), new Date\(\)\.getDay\(\)\);\s*rutinaRef\.current = \(deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
 }
 
 console.log('\n215. El día que se entrena sin abrir la app, y el vigilante al abrir de cero');
@@ -18504,7 +18504,8 @@ console.log('\n233. La meta de pasos se festeja una vez por día, y el empujón 
   const pasos = de233('movil', 'src', 'PasosInicio.tsx');
   chequear('Inicio festeja aunque se haya llegado con la app cerrada (lo anotado es el día), y tocar los pasos lleva a cambiar la meta', [
     /if \(!vivo \|\| !hayQueFestejar\(pasos, meta, ya, hoy\)\) return;\n      void plataforma\.almacenamiento\.guardar\(CLAVE_FESTEJO_PASOS, hoy\)/.test(pasos),
-    /onPress=\{compacto \? undefined : \(\) => irAPestana\('ajustes'\)\}/.test(pasos),
+    // La meta se cambia ahí mismo (vuelta 7): mandaba a Ajustes, donde no estaba.
+    /onPress=\{compacto \? undefined : \(\) => setCambiandoMeta\(true\)\}/.test(pasos) && /<HojaDeMeta visible=\{cambiandoMeta\}/.test(pasos),
   ], [true, true]);
   chequear('el día sin foto resalta la foto y dice el porqué; el mes con una sola foto dice qué trae la segunda', [
     /if \(vivo && !error\) setSinFoto\(\(data \?\? \[\]\)\.length === 0\);/.test(de233('movil', 'src', 'DiaListo.tsx')),
@@ -18827,6 +18828,51 @@ console.log('\n240. Cacería del 15/10, vuelta 6: la marca de faltan al reabrir;
     0,
     ['ubicacion'],
   ]);
+}
+console.log('\n241. Cacería del 16/10, vuelta 7: el − de la cinta baja la marca; otro aparato sin poder leer; un propio ajeno no se siembra ni se anota; dos toques en "Nueva"');
+{
+  const v7 = async (c) => escenarioDeSesion('vueltaSiete', c);
+  chequear('la cinta apagada con el − y la sesión dejada sin Terminar cierra a los 3 min, no a los 60', await v7('menosCinta'), { estado: 'terminada', finMin: 3 });
+  chequear('lo que anotó otro aparato, sin poder leerlo al desbloquear: el + siguiente no lo borra de la base', await v7('otroSinLeer'), { base: [['press_banca', 2], ['remo_barra', 1], ['press_banca', 1]], series: 4 });
+  chequear('un propio de un amigo que ya no se ve no sale como rutina ni como semilla', await v7('propioAjeno'), { semilla: 'remo_barra' });
+
+  // NADIE ANOTA SOBRE UN PROPIO QUE NO VE (la 83), con la base de verdad.
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [ana, beto]);
+  await comoUsuario(ana);
+  const mio = (await db.query(`select crear_ejercicio('Press en máquina Hammer', 'pecho', 'series') as id`)).rows[0].id;
+  const intentar = async (uid) => {
+    await comoUsuario(uid);
+    await db.query(`select elegir_carga($1, 'una')`, [mio]);
+    await db.query(`select marcar_subida($1, 'total', 50, 3, mi_hoy())`, [mio]);
+    await db.exec('set role authenticated');
+    let marca = 'entró';
+    try {
+      await db.query(`insert into prs (user_id, ejercicio, peso, reps, fecha) values ($1, $2, 50, 5, current_date)`, [uid, mio]);
+    } catch (e) {
+      marca = /row-level|policy/i.test(e.message) ? 'rechazada' : e.message;
+    }
+    await db.exec('reset role');
+    const n = async (t) => (await db.query(`select count(*)::int n from ${t} where user_id = $1 and ejercicio = $2`, [uid, mio])).rows[0].n;
+    return { carga: await n('cargas_elegidas'), subida: await n('subidas_marcadas'), marca };
+  };
+  chequear('un amigo no anota carga, "la próxima, más" ni marcas sobre un propio mío que no ve; yo sí', [await intentar(beto), await intentar(ana)], [
+    { carga: 0, subida: 0, marca: 'rechazada' },
+    { carga: 1, subida: 1, marca: 'entró' },
+  ]);
+
+  const { readFileSync: leer241 } = await import('node:fs');
+  const de241 = (...p) => leer241(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  // Proxy: el doble toque se reprodujo contra la base; acá se pinea la traba.
+  chequear('"Nueva", "Guardar esta" y "Armar una de cero" no crean dos rutinas con dos toques', /if \(creando\.current\) return;\n    creando\.current = true;/.test(de241('movil', 'src', 'MiRutina.tsx')), true);
+}
+console.log('\n242. Cacería del 16/10, vuelta 8: con otro aparato que anota y sin poder leer, la base no duplica y no se pierden el peso ni la cinta');
+{
+  const v8 = async (c) => escenarioDeSesion('vueltaOcho', c);
+  chequear('dos aparatos, la lectura cae y vuelve: la base no duplica los bloques', await v8('dupla'), { base: [['press_banca', 2, null], ['remo_barra', 1, null], ['sentadilla', 1, null]], series: 4 });
+  chequear('sin poder leer lo de allá, la serie siguiente lleva el peso escrito', await v8('peso'), { base: [['press_banca', 2, 60], ['remo_barra', 1, null], ['press_banca', 1, 60]], series: 4 });
+  chequear('sin poder leer lo de allá, la cinta andando sigue y Listo anota sus minutos', await v8('cinta'), { base: [['remo_barra', 1, null], ['cinta', 1, 20]], series: 2 });
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

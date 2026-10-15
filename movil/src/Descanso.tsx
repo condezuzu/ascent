@@ -74,7 +74,13 @@ export default function Descanso({
     const listo = restante(vivo.fin) === 0;
     yaAviso.current = listo;
     setTerminado(listo);
+    // El campo del + es de este descanso: no vuelve abierto en el siguiente (vuelta 7).
+    setAMano(null);
   }, [vivo.fin]);
+  // Ni al cerrar la pantalla sin usarlo.
+  useEffect(() => {
+    if (!visible) setAMano(null);
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;

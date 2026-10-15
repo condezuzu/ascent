@@ -4,7 +4,7 @@ import { T } from '@nucleo/textos';
 import { CLAVE_FESTEJO_PASOS, hayQueFestejar } from '@nucleo/pasos';
 import { hoyISO } from '@nucleo/fechas';
 import { plataforma } from '@plataforma';
-import { irAPestana } from './irAPestana';
+import { HojaDeMeta } from './GraficoPasos';
 import { C, conAlfa } from './colores';
 
 /**
@@ -25,13 +25,16 @@ function PasosInicio({
   meta,
   acento,
   compacto = false,
+  alCambiarMeta,
 }: {
   pasos: number;
   meta: number;
   acento: string;
   /** Mientras se entrena (8/10): el renglón solo, sin la barra, para no empujar el bloque. */
   compacto?: boolean;
+  alCambiarMeta?: (meta: number) => void;
 }) {
+  const [cambiandoMeta, setCambiandoMeta] = useState(false);
   const llego = meta > 0 && pasos >= meta;
   const pct = meta > 0 ? Math.min(1, pasos / meta) : 0;
 
@@ -96,11 +99,12 @@ function PasosInicio({
   const escalaNumero = crece.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] });
 
   return (
+    <>
     <Pressable
       testID={compacto ? 'pasos-en-sesion' : 'pasos-de-hoy'}
       style={[estilos.raiz, compacto && estilos.raizCompacta]}
-      // La meta se cambia en Ajustes: tocar los pasos lleva ahí.
-      onPress={compacto ? undefined : () => irAPestana('ajustes')}
+      // La meta se cambia acá mismo (vuelta 7): mandaba a Ajustes, donde no estaba.
+      onPress={compacto ? undefined : () => setCambiandoMeta(true)}
       accessibilityHint={compacto ? undefined : T.inicio.pasosCambiarMeta}
     >
       <View style={estilos.fila}>
@@ -126,6 +130,8 @@ function PasosInicio({
       </View>
       )}
     </Pressable>
+    <HojaDeMeta visible={cambiandoMeta} alCerrar={() => setCambiandoMeta(false)} alCambiar={alCambiarMeta} />
+    </>
   );
 }
 

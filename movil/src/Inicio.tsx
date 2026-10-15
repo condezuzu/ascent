@@ -286,11 +286,14 @@ export default function Inicio({
       // Las dos puntas son del SERVIDOR: restarlas no mete el desfasaje de reloj.
       const minutos = d.deHoy.reduce((t, s) => (s.fin ? t + (Date.parse(s.fin) - Date.parse(s.inicio)) / 60000 : t), 0);
       setMinutosDeHoy(minutos >= 1 ? Math.round(minutos) : null);
-      // Los bloques de la ultima sesion de hoy que tenga: es lo que reabre el
-      // resumen. Si hoy no se entreno (dia a mano), no hay y el resumen no se
-      // ofrece —no habria nada que mostrar—.
-      const conBloques = d.deHoy.filter((s) => Array.isArray(s.bloques) && s.bloques.length > 0);
-      setBloquesDeHoy(conBloques.length ? (conBloques[conBloques.length - 1].bloques ?? null) : null);
+      // Los bloques de TODAS las sesiones de hoy, en orden: es lo que reabre el
+      // resumen, y los minutos ya suman todas (vuelta 7: mostraba una sola). Si hoy
+      // no se entreno (dia a mano), no hay y el resumen no se ofrece.
+      const todos = d.deHoy
+        .filter((s) => Array.isArray(s.bloques) && s.bloques.length > 0)
+        .sort((a, b) => Date.parse(a.inicio) - Date.parse(b.inicio))
+        .flatMap((s) => s.bloques ?? []);
+      setBloquesDeHoy(todos.length ? todos : null);
       setVueltas((v) => v + 1);
       const ultimas = Array.isArray(d.impulsos?.ultimas) ? (d.impulsos!.ultimas as string[]) : [];
       const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
@@ -700,6 +703,7 @@ export default function Inicio({
           meta={metaPasos}
           acento={paletaDe(numeroDeRango(racha), null).principal}
           compacto={sesion.estado.corriendo}
+          alCambiarMeta={setMetaPasos}
         />
       )}
 

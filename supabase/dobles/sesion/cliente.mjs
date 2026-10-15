@@ -10,6 +10,7 @@ export const servidor = {
   historial: [], // lo que devuelve la lista de sesiones terminadas (la rutina)
   registro: [], // lo que LLEGÓ a la base, en orden
   ultimoEjercicio: null,
+  visibles: null, // ids del catálogo que ve la cuenta; null = el doble no lo sabe
   // rpc -> función que corre con la respuesta ya calculada y todavía en viaje
   antesDeResponder: {},
   // Con un número, la base cierra SOLA la sesión que lleva ese rato sin actividad
@@ -131,6 +132,11 @@ function consulta(tabla) {
     await espera(uno ? (servidor.ida.bloquesDeSesion ?? 5) : (servidor.ida.historial ?? 5));
     // `falla.lecturas`: sin señal para leer tablas (las rpc van por su cuenta).
     if (servidor.falla.lecturas) return { data: null, error: { message: 'sin señal' } };
+    // El catálogo que ve la cuenta (la RLS de la 80/83): `servidor.visibles`. Sin eso el
+    // doble no sabe el catálogo y contesta como "no se supo", que no filtra nada.
+    if (tabla === 'ejercicios') {
+      return servidor.visibles ? { data: servidor.visibles.map((id) => ({ id })), error: null } : { data: null, error: { message: 'sin catálogo en el doble' } };
+    }
     const s = tabla === 'sesiones' && uno ? porId(filtro.id) : null;
     const data = uno ? (s ? { bloques: copia(s.bloques) } : null) : tabla === 'sesiones' ? copia(servidor.historial) : [];
     await espera(5);

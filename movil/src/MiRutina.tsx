@@ -81,6 +81,7 @@ export default function MiRutina({
   }, []);
   // Cuántos cambios se hicieron: una lectura que salió antes de un toque no lo pisa al llegar.
   const ediciones = useRef(0);
+  const creando = useRef(false);
 
   const cargar = useCallback(async () => {
     const [hay] = await Promise.all([hayRutinasGuardadas(supabase), cargarCatalogo()]);
@@ -132,13 +133,20 @@ export default function MiRutina({
   }
 
   async function crear(dias: DiaDeSemana[]) {
-    setError('');
-    const nombre = nombreNuevo(rutinas.map((r) => r.nombre), T.rutina.nombreBase);
-    const id = await guardarRutina(supabase, { id: null, nombre, dias });
-    if (!id) return setError(T.general.noSePudo);
-    await cargar();
-    setSel(id);
-    setEditando(true);
+    // Un segundo toque con la base sin contestar creaba otra igual (vuelta 7 de la cacería).
+    if (creando.current) return;
+    creando.current = true;
+    try {
+      setError('');
+      const nombre = nombreNuevo(rutinas.map((r) => r.nombre), T.rutina.nombreBase);
+      const id = await guardarRutina(supabase, { id: null, nombre, dias });
+      if (!id) return setError(T.general.noSePudo);
+      await cargar();
+      setSel(id);
+      setEditando(true);
+    } finally {
+      creando.current = false;
+    }
   }
 
   async function activar(id: string) {

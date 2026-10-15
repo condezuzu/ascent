@@ -235,6 +235,11 @@ const descansoRef = refDe('descanso');
 const inicioRef = refDe('inicio');
 const ultimaRef = refDe('ultimaActividad');
 const desfasajeRef = refDe('desfasaje');
+// LOS EJERCICIOS QUE SE VEN (vuelta 7 de la cacería): un propio de un amigo que ya no
+// se ve (la 80) seguía saliendo del historial como rutina o semilla. Null es "no se
+// supo" (sin señal): ahí no se filtra.
+let visibles: Set<string> | null = null;
+const seVe = (id: string) => !visibles || visibles.has(id);
 const sinServidor = () => INICIAL;
 // EL CARDIO CUENTA COMO ACTIVIDAD (cacería del 15/10). Con el cronómetro andando
 // nadie toca nada, y a la media hora la sesión se cerraba sola en plena cinta.
@@ -453,16 +458,42 @@ export function useSesion(
       // nada de acá esperando en la cola. Los bloques de la caché quedaron
       // viejos —la otra pantalla sumó series— y el próximo toque de acá los
       // subiría pisando los de allá. Se traen los de la base (19/9).
+      let noSeTrajeron = false;
       if (
         g.bloques &&
         g.id &&
         typeof previo?.series === 'number' &&
         previo.series !== g.series &&
+        // Si ya faltaban, la única unión la hace `recuperarBloques` (vuelta 8): traerlos
+        // acá también los dejaba dos veces y tiraba lo contado acá sin subir.
+        previo.faltanBloques !== true &&
         (await cuantasPendientes()) === 0
       ) {
+        // Lo que solo vive en el teléfono (el peso escrito, la cinta andando) no está en
+        // la base: se conserva en las dos ramas (vuelta 8).
+        const deAca = g.bloques;
+        const soloAca = {
+          ...(deAca.peso !== undefined && { peso: deAca.peso }),
+          ...(deAca.carga && { carga: deAca.carga }),
+          ...(deAca.minutos !== undefined && { minutos: deAca.minutos }),
+          ...(deAca.cardioDesde !== undefined && { cardioDesde: deAca.cardioDesde }),
+        };
+        const corre = deAca.cardioDesde !== undefined;
         const { data: fila, error: eFila } = await supabase.from('sesiones').select('bloques').eq('id', g.id).maybeSingle();
         if (!eFila && fila) {
-          g.bloques = unirConGuardados((fila as { bloques?: unknown }).bloques, bloquesVacios(null, g.bloques.meta));
+          // Con la cinta andando, lo de la base entra como cerrado y la cinta sigue en curso.
+          g.bloques = unirConGuardados(
+            (fila as { bloques?: unknown }).bloques,
+            corre ? { ...bloquesVacios(deAca.ejercicio, deAca.meta), ...soloAca } : bloquesVacios(null, deAca.meta)
+          );
+        } else {
+          // SIN PODER TRAERLOS (vuelta 7): la lista de acá ya subió entera (la cola está
+          // vacía) y le falta lo de allá. Queda vacía y marcada: el próximo + los trae y
+          // les suma lo nuevo. Seguir con la vieja borraba lo de allá. El ejercicio en
+          // curso queda como semilla (si la cinta anda, como elegido: si no, la unión la
+          // reemplazaba por el último de la base).
+          g.bloques = { ...bloquesVacios(deAca.ejercicio, deAca.meta), ...soloAca, ...(!corre && { sembrado: true }) };
+          noSeTrajeron = true;
         }
       }
       // INVARIANTE: el refresco no puede escribir un conteo más viejo que la cola.
@@ -477,7 +508,7 @@ export function useSesion(
       g.series = seriesGuardado;
       // Faltan si no vinieron, o si ya faltaban y no se pudieron traer (sin
       // señal): lo que la caché tenga en ese caso es solo lo de acá.
-      const faltan = !!g.id && (!g.bloques || (previo?.id === g.id && previo.faltanBloques === true));
+      const faltan = !!g.id && (!g.bloques || noSeTrajeron || (previo?.id === g.id && previo.faltanBloques === true));
       // EL REFRESCO NO PISA UN TOQUE (4/10). Si mientras se preguntaba se tocó
       // algo, todo lo de arriba se calculó sin ese toque: no se escribe ni en la
       // caché ni en la pantalla, y `confirmar` vuelve a preguntar. Se mira dos
@@ -728,7 +759,7 @@ export function useSesion(
       // PRIMERO LA RUTINA ACTIVA GUARDADA (14/10), la del teléfono: anda sin señal.
       // Un día de descanso o sin nada cargado cae a la deducida, como antes.
       const deLaGuardada = ejerciciosDeHoy(await rutinaActivaDelTelefono(), new Date().getDay());
-      rutinaRef.current = deLaGuardada.length > 0 ? deLaGuardada : rutinaParaHoy(sesionesRutinaRef.current, hoyISO());
+      rutinaRef.current = (deLaGuardada.length > 0 ? deLaGuardada : rutinaParaHoy(sesionesRutinaRef.current, hoyISO())).filter(seVe);
       rutinaEsGuardada.current = deLaGuardada.length > 0;
       await actualizarSesionCache({ rutina: rutinaRef.current, rutinaGuardada: rutinaEsGuardada.current }, yo);
       // Y se pone al día para la próxima, sin esperar.
@@ -753,7 +784,7 @@ export function useSesion(
       // seguía subiendo. Los dos números de la pantalla se contradecían.
       const sembrado = sembrar(
         bloquesRef.current,
-        typeof ultimo === 'string' ? ultimo : null,
+        typeof ultimo === 'string' && seVe(ultimo) ? ultimo : null,
         meta ?? undefined
       );
       // Si ya había algo contado, `sembrar` devuelve lo mismo que entró y acá
@@ -1022,6 +1053,7 @@ export function useSesion(
   async function deshacerSerie() {
     // Igual que `serieHecha`: las dos cuentas juntas y desde los refs, antes de
     // cualquier `await`, para que no se pisen con un toque simultáneo.
+    const corria = bloquesRef.current.cardioDesde !== undefined;
     const nc = restarSerie({ series: seriesRef.current, bloques: bloquesRef.current });
     if (nc.bloques === bloquesRef.current && nc.series === seriesRef.current) return;
     seriesRef.current = nc.series;
@@ -1032,7 +1064,10 @@ export function useSesion(
     // Guardar primero (ver `serieHecha`): la cola antes que la caché y que `marcar`.
     // Los bloques se leen en el turno, después de `antes`: si ahí se unió con la base, va lo unido.
     await actualizarSesionCache({ series: nc.series, get bloques() { return bloquesRef.current; } }, yo, () => subir(nc.series, nc.bloques));
-    await marcar();
+    // La cinta apagada con el − deja de prometer la hora de adelante (vuelta 7 de la
+    // cacería): con `marcar` la marca de +60 seguía viva y la sesión cerraba inflada.
+    if (corria) await bajarMarca();
+    else await marcar();
   }
 
   /**
@@ -1153,18 +1188,23 @@ export function useSesion(
   async function cargarHistorialRutina() {
     try {
       const desde = restarDias(hoyISO(), 56);
-      const { data } = await supabase
-        .from('sesiones')
-        .select('bloques, logs!inner(fecha)')
-        .eq('estado', 'terminada')
-        .gte('logs.fecha', desde)
-        .order('inicio');
+      const [{ data }, { data: ves, error: errVes }] = await Promise.all([
+        supabase
+          .from('sesiones')
+          .select('bloques, logs!inner(fecha)')
+          .eq('estado', 'terminada')
+          .gte('logs.fecha', desde)
+          .order('inicio'),
+        supabase.from('ejercicios').select('id'),
+      ]);
+      visibles = errVes || !ves ? null : new Set((ves as { id: string }[]).map((e) => e.id));
       const filas = (data ?? []) as { bloques?: unknown; logs?: unknown }[];
       sesionesRutinaRef.current = filas
         .map((s) => {
           const bloques = Array.isArray(s.bloques) ? (s.bloques as { ejercicio?: string | null }[]) : [];
           const log = Array.isArray(s.logs) ? (s.logs[0] as { fecha?: string }) : (s.logs as { fecha?: string } | null);
-          return { fecha: log?.fecha ?? '', ejercicios: ejerciciosEnOrden(bloques.map((b) => b?.ejercicio ?? null)) };
+          const ids = bloques.map((b) => b?.ejercicio ?? null).filter((id) => !id || seVe(id));
+          return { fecha: log?.fecha ?? '', ejercicios: ejerciciosEnOrden(ids) };
         })
         .filter((s) => s.fecha);
     } catch {

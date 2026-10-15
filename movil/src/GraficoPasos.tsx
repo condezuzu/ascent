@@ -375,7 +375,7 @@ function PieDeMeta({
   );
 }
 
-function HojaDeMeta({
+export function HojaDeMeta({
   visible,
   alCerrar,
   alCambiar,
