@@ -29,6 +29,7 @@ import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './Stat
 import FondoEspacial from './FondoEspacial';
 import Estancamiento from './Estancamiento';
 import CalendarioDias from './CalendarioDias';
+import KilosPorSemana from './KilosPorSemana';
 import { useRecargarAlVolver } from './irAPestana';
 import { paletaDe } from '@nucleo/paletas';
 
@@ -373,6 +374,15 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
               })}
               <Text style={estilos.nota}>{T.volumen.notaRango}</Text>
               <Text style={estilos.nota}>{T.volumen.notaRangoPorque}</Text>
+              {/* EL PESO TOTAL POR SEMANA (15/10): uno solo, y elige la misma semana que las filas. */}
+              <KilosPorSemana
+                semanas={totales}
+                elegida={indice}
+                alElegir={setTocada}
+                color={pal.principal}
+                enUnidad={kilosLindos}
+                unidad={unidad}
+              />
             </>
           )}
 

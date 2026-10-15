@@ -545,6 +545,7 @@ export const EN: Textos = {
     verLosOtros: (n: number) => `See the other ${n}`,
     ocultarLosOtros: "Hide the ones you haven't done",
     porMusculo: 'Per muscle',
+    kilosPorSemana: 'Total weight per week',
     revisarAviso: (n: number) =>
       `${n === 1 ? 'One day has' : `${n} days have`} weights from before the label. If you added up both dumbbells, check them.`,
     revisarEntendido: 'Got it',

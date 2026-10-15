@@ -18144,16 +18144,32 @@ console.log('\n225. Copiar la rutina de un amigo avisa cuál quedó activa y dej
   ], [true, true, true]);
 }
 
-console.log('\n226. El refactor del dueño único: las dos respuestas viejas, escritas antes del arreglo');
+console.log('\n226. El refactor del dueño único: las respuestas viejas ya no pisan (la época, 15/10)');
 {
   // spec/alcance.md, "Un solo dueño del estado de la sesión": primero estos dos
   // casos, en rojo; después se toca el hook. Corren el hook de verdad.
-  rojoConocido('la respuesta vieja de "no hay sesión" que llega después de Iniciar no saca la sesión de la pantalla', await escenarioDeSesion('viejas', 'no-hay'), {
-    tocado: true, pantallaCorre: true, baseCorre: true,
-  });
-  rojoConocido('la respuesta vieja de "está corriendo" que llega después de Terminar no la vuelve a poner', await escenarioDeSesion('viejas', 'corre'), {
-    tocado: true, pantallaCorre: false, baseCorre: false,
-  });
+  // EL RELOJ: empezar o terminar una sesión invalida la foto que tomó una pregunta antes.
+  const SC226 = await import('../compartido/sesionCache.ts');
+  const foto = SC226.fotoDeLaCache(SC226.relojDeToques());
+  const antes = foto();
+  SC226.cambioDeSesion();
+  chequear('una foto tomada antes de empezar o terminar una sesión deja de valer después', [antes, foto()], [true, false]);
+  // Con una sola instancia y con dos (el vigilante primero: su pregunta es la vieja).
+  const ESPERA = {
+    'no-hay': { tocado: true, pantallaCorre: true, baseCorre: true, cacheId: 'sesion-1', pantallaSeries: 1, baseSeries: 1 },
+    corre: { tocado: true, pantallaCorre: false, baseCorre: false, cacheId: null },
+  };
+  for (const variante of ['sola', 'vigilante']) {
+    for (const caso of ['no-hay', 'corre']) {
+      const esperado = variante === 'vigilante'
+        ? { ...Object.fromEntries(Object.entries(ESPERA[caso]).slice(0, 4)), vigilanteCorre: ESPERA[caso].pantallaCorre, ...Object.fromEntries(Object.entries(ESPERA[caso]).slice(4)) }
+        : ESPERA[caso];
+      const nombre = caso === 'no-hay'
+        ? `${variante}: la respuesta vieja de "no hay sesión" que llega después de Iniciar no saca la sesión, y la serie siguiente llega a la base`
+        : `${variante}: la respuesta vieja de "está corriendo" que llega después de Terminar no la vuelve a poner ni resucita la caché`;
+      chequear(nombre, await escenarioDeSesion('viejas', caso, variante), esperado);
+    }
+  }
 }
 
 console.log('\n227. Rutina en inglés, idioma de a dos, Social, Ranking ordenado, vidas en el calendario');

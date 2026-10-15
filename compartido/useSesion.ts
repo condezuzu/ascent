@@ -56,7 +56,7 @@ import {
   ejerciciosEnOrden,
   type SesionRutina,
 } from '@nucleo/rutina';
-import {
+import { cambioDeSesion,
   AVISO,
   esMio,
   borrarSesionCache,
@@ -465,6 +465,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       setUltimaActividad(g.ultimaActividad ?? null);
       if (g.id) idVisto.current = g.id;
     } else {
+      // "No hay sesión" también se mira contra la foto: si hubo un Iniciar en el medio, es vieja.
+      if (!alDia()) return 'vieja';
       borrarSesionCache(yo);
       // El descanso es de la sesión: si quedaba, la siguiente arrancaba con el
       // de ayer en "Listo" y horas "de más".
@@ -641,6 +643,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     if (r.registro && !porUbi) eventos.emitir(DIA_CAMBIO);
     // UNA SESIÓN NUEVA NO HEREDA BLOQUES (ver `bloquesSonDe`). Va antes de la
     // semilla de abajo, que no siembra si encuentra algo contado.
+    // LA ÉPOCA: una respuesta que salió antes de esto ya no vale (ver `cambioDeSesion`).
+    cambioDeSesion();
+    if (r.id) idVisto.current = r.id;
     bloquesSonDe(r.id ?? null);
     // La caché lleva TODO lo que hace falta para decidir, no solo para pintar:
     // la otra instancia del hook —la del vigilante— se entera por acá.
@@ -774,6 +779,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       }
       return null;
     }
+    // LA ÉPOCA, ANTES DE CUALQUIER ESPERA: un "está corriendo" en viaje ya no vale.
+    cambioDeSesion();
     // Si la parás a mano estando todavía en el gimnasio, la visita queda
     // marcada como usada: sin esto se volvería a encender sola a los dos
     // minutos. VA ANTES de borrar la sesión del teléfono y se espera (13/10):

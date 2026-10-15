@@ -586,48 +586,60 @@ async function yaCorria() {
  * `viejas`: LAS DOS RESPUESTAS VIEJAS que siguen abiertas (spec/alcance.md, "Un
  * solo dueño"). Una pregunta a la base sale, y mientras viaja se toca un botón:
  *  - `no-hay`: la respuesta "no hay sesión" sale ANTES de Iniciar y llega DESPUÉS.
+ *    Después se suma una serie: tiene que llegar a la base.
  *  - `corre`: la respuesta "está corriendo" sale ANTES de Terminar y llega DESPUÉS.
- * Devuelve lo que muestra la pantalla al final y lo que dice la base. Son el
- * punto de partida del refactor: hoy salen mal, y el refactor los tiene que dejar bien.
+ * Con `vigilante`, hay dos instancias montadas (el vigilante primero): la
+ * pregunta vieja es la del vigilante y el toque es en Inicio.
+ * Devuelve lo que muestra cada pantalla, lo que queda en la caché y lo que dice la base.
  */
-async function viejas(caso) {
-  // Sin sesión, la pregunta que hay es la del arranque: el toque cae mientras viaja.
+async function viejas(caso, variante) {
+  const conVigilante = variante === 'vigilante';
   let inicio = null;
+  let vigilante = null;
+  const resultado = (tocado) => {
+    const viva = servidor.sesiones.find((s) => s.estado === 'corriendo');
+    const r = { tocado, pantallaCorre: inicio.r.estado.corriendo, baseCorre: !!viva, cacheId: cache()?.id ?? null };
+    if (conVigilante) r.vigilanteCorre = vigilante.r.estado.corriendo;
+    if (caso === 'no-hay') Object.assign(r, { pantallaSeries: inicio.r.estado.series, baseSeries: viva?.series ?? null });
+    return r;
+  };
   if (caso === 'no-hay') {
-    let tocadoAlArrancar = false;
+    // Sin sesión, la pregunta que hay es la del arranque: el toque cae mientras viaja.
+    let tocado = false;
     servidor.antesDeResponder.mi_sesion = async () => {
-      if (tocadoAlArrancar || !inicio) return;
-      tocadoAlArrancar = true;
+      if (tocado || !inicio) return;
+      tocado = true;
       await inicio.r.empezar();
     };
+    if (conVigilante) vigilante = montar(() => useSesion());
     inicio = montar(() => useSesion());
     await asentar();
     await dormir(200);
     await asentar();
-    const viva = servidor.sesiones.find((s) => s.estado === 'corriendo');
-    return { tocado: tocadoAlArrancar, pantallaCorre: inicio.r.estado.corriendo, baseCorre: !!viva };
+    await inicio.r.serieHecha({ sinDescanso: true });
+    await asentar();
+    await dormir(100);
+    await asentar();
+    return resultado(tocado);
   }
+  if (conVigilante) vigilante = montar(() => useSesion());
   inicio = montar(() => useSesion());
   await asentar();
-  if (caso === 'corre') {
-    await inicio.r.empezar();
-    await asentar();
-    await inicio.r.serieHecha();
-    await asentar();
-  }
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await asentar();
   let tocado = false;
   servidor.antesDeResponder.mi_sesion = async () => {
     if (tocado) return;
     tocado = true;
-    if (caso === 'no-hay') await inicio.r.empezar();
-    else await inicio.r.terminar();
+    await inicio.r.terminar();
   };
   await bloquearYDesbloquear();
   await asentar();
   await dormir(200);
   await asentar();
-  const viva = servidor.sesiones.find((s) => s.estado === 'corriendo');
-  return { tocado, pantallaCorre: inicio.r.estado.corriendo, baseCorre: !!viva };
+  return resultado(tocado);
 }
 
 const [escenario, ...argumentos] = process.argv.slice(2);

@@ -982,6 +982,8 @@ const ES = {
 
     // En el resumen de un día.
     porMusculo: 'Por músculo',
+    // El gráfico de abajo (15/10): los kilos de todas las series de cada semana.
+    kilosPorSemana: 'Peso total por semana',
 
     // LOS PESOS DE ANTES DE LOS MODOS (migración 39). Una vez, con lo que hay
     // que hacer; después quedan marcados en el calendario.

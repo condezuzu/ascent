@@ -152,6 +152,17 @@ let enVuelo = 0; // de esos, los que todavía no terminaron de escribirse en la 
 // del bloque. Es la misma fila que usa la cola (`enTurno`, en `cola.ts`).
 let turno: Promise<unknown> = Promise.resolve();
 
+/**
+ * LA ÉPOCA DE LA SESIÓN (15/10): empezar o terminar una sesión también invalida
+ * lo que una pregunta a la base trajo antes. Sin esto, un "no hay sesión" que
+ * salió antes de Iniciar borraba la nueva al llegar, y un "está corriendo" que
+ * salió antes de Terminar la resucitaba. Mueve el mismo reloj que los toques,
+ * así hay uno solo; no toca `enVuelo` (no queda nada a medio guardar).
+ */
+export function cambioDeSesion(): void {
+  toques++;
+}
+
 /** Cuántos cambios locales van. Se anota al EMPEZAR a preguntarle a la base. */
 export function relojDeToques(): number {
   return toques;
