@@ -532,6 +532,93 @@ const RECETAS = {
     await foto(page, 'rutina-amigo-copiada');
     return page;
   },
+  // LA ZONA SEGURA (16/10): el navegador no tiene isla ni hora, así que se le dice a
+  // Chrome que la zona de arriba mide 59 (un iPhone con isla) y se pinta esa franja.
+  async 'zona-segura'(nav, gente) {
+    const A = gente.a;
+    const dias = await semanaDeMuestra(A.s);
+    const rutina = { id: '00000000-0000-4000-8000-000000000001', nombre: 'Entrenamiento 1', activa: true, dias };
+    const { page } = await abrir(nav, A, { version_del_esquema: 79, mis_rutinas: [rutina], rutina_activa_de: rutina });
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 59, topMax: 59, bottom: 34, bottomMax: 34, left: 0, leftMax: 0, right: 0, rightMax: 0 } });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    const franja = () =>
+      page.evaluate(() => {
+        const d = document.createElement('div');
+        d.style.cssText = 'position:fixed;left:0;top:0;width:100%;height:59px;background:rgba(232,112,95,.35);z-index:99999;pointer-events:none;font:12px sans-serif;color:#fff;padding:4px 8px;box-sizing:border-box';
+        d.textContent = 'zona de la hora y la isla (59)';
+        document.body.appendChild(d);
+      });
+    await verTestId(page, 'inicio-rutina');
+    await page.waitForTimeout(1200);
+    await franja();
+    await foto(page, 'zona-inicio');
+    await tocar(page, 'inicio-rutina');
+    await page.waitForTimeout(1500);
+    await foto(page, 'zona-rutina');
+    return page;
+  },
+  // VOLVER DESLIZANDO, RECONSTRUIDO (16/10): en el navegador no hay gesto nativo. Se
+  // sacan Inicio y Tu rutina por separado (Tu rutina sin el fondo) y se arma el cuadro
+  // del gesto a mitad de camino: hoy (las dos encimadas) y la propuesta (lo de atrás
+  // borroso bajo la pantalla que se va, aclarándose con el avance).
+  async 'volver-deslizando'(nav, gente) {
+    const A = gente.a;
+    const dias = await semanaDeMuestra(A.s);
+    dias[new Date().getDay()] = dias[1];
+    const rutina = { id: '00000000-0000-4000-8000-000000000001', nombre: 'Entrenamiento 1', activa: true, dias };
+    const { page } = await abrir(nav, A, { version_del_esquema: 79, mis_rutinas: [rutina], rutina_activa_de: rutina });
+    await verTestId(page, 'inicio-rutina');
+    await page.waitForTimeout(1500);
+    const inicio = (await page.screenshot()).toString('base64');
+    await tocar(page, 'inicio-rutina');
+    await page.waitForTimeout(1800);
+    // Sin el motor ni los fondos llenos: queda solo lo que dibuja la pantalla.
+    await page.evaluate(() => {
+      for (const el of document.querySelectorAll('canvas')) el.style.visibility = 'hidden';
+      for (const el of document.querySelectorAll('div')) {
+        const r = el.getBoundingClientRect();
+        if (r.width >= innerWidth && r.height >= innerHeight * 0.9) {
+          el.style.backgroundColor = 'transparent';
+          el.style.backdropFilter = 'none';
+          el.style.webkitBackdropFilter = 'none';
+        }
+      }
+      document.documentElement.style.background = 'transparent';
+      document.body.style.background = 'transparent';
+    });
+    await page.waitForTimeout(300);
+    const arriba = (await page.screenshot({ omitBackground: true })).toString('base64');
+    const cuadro = (p, borroso) => `
+      <div class="cuadro">
+        <img class="base" src="data:image/png;base64,${inicio}">
+        <div class="carta" style="left:${p * 390}px">
+          ${borroso ? `<div class="velo" style="backdrop-filter:blur(${Math.round((1 - p) * 14)}px) brightness(${1 - (1 - p) * 0.35})"></div>` : ''}
+          <img src="data:image/png;base64,${arriba}">
+        </div>
+        <div class="pie">${Math.round(p * 100)} % del gesto</div>
+      </div>`;
+    const html = `<style>
+      body{margin:0;background:#111;font:15px sans-serif;color:#ccc;padding:16px}
+      h2{font-weight:500;font-size:16px;margin:8px 0}
+      .fila{display:flex;gap:16px;margin-bottom:24px}
+      .cuadro{position:relative;width:390px;height:844px;overflow:hidden;border-radius:18px}
+      .base{position:absolute;inset:0;width:390px}
+      .carta{position:absolute;top:0;width:390px;height:844px;box-shadow:-12px 0 24px rgba(0,0,0,.35)}
+      .carta img{position:absolute;inset:0;width:390px}
+      .velo{position:absolute;inset:0}
+      .pie{position:absolute;bottom:8px;left:12px;background:#000a;padding:2px 8px;border-radius:6px;font-size:13px}
+    </style>
+    <h2>Hoy: las dos pantallas encimadas</h2><div class="fila">${[0.2, 0.5, 0.8].map((p) => cuadro(p, false)).join('')}</div>
+    <h2>Propuesta: lo de atrás borroso, que se aclara con el avance</h2><div class="fila">${[0.2, 0.5, 0.8].map((p) => cuadro(p, true)).join('')}</div>`;
+    const lienzo = await (await nav.newContext({ viewport: { width: 1250, height: 1850 }, deviceScaleFactor: 1 })).newPage();
+    await lienzo.setContent(html);
+    await lienzo.waitForTimeout(500);
+    await lienzo.screenshot({ path: join(CARPETA, 'volver-deslizando.png'), fullPage: true });
+    console.log('  foto: capturas-nativa/volver-deslizando.png (reconstrucción)');
+    await lienzo.context().close();
+    return page;
+  },
 };
 
 const pedidas = process.argv.slice(2).filter((x) => !x.startsWith('-'));

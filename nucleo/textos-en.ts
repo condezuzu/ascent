@@ -815,6 +815,7 @@ export const EN: Textos = {
     bajar: 'Move down',
     hoy: (titulo: string) => `Today: ${titulo}`,
     armarSemana: 'Plan your week',
+    hoyRotulo: 'Today',
   },
   social: {
     titulo: 'Ranking',

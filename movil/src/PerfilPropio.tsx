@@ -26,6 +26,7 @@ import Surgir from './Surgir';
 import { C } from './colores';
 import { volverOInicio } from './volver';
 import InvitarConLink from './InvitarConLink';
+import { useArriba } from './zonaSegura';
 
 /**
  * TU PERFIL: quién sos acá adentro, cómo te ven tus amigos, y quiénes son.
@@ -48,6 +49,7 @@ import InvitarConLink from './InvitarConLink';
  */
 export default function PerfilPropio() {
   const router = useRouter();
+  const arriba = useArriba(60);
   const [datos, setDatos] = useState<DatosDePerfil | null>(() => ultimoMiPerfil());
   const [dots, setDots] = useState<number | null>(null);
   const [cargado, setCargado] = useState(() => ultimoMiPerfil() !== null);
@@ -137,7 +139,7 @@ export default function PerfilPropio() {
    * llegado.
    */
   const salida = (
-    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volverSuelto}>
+    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
       <Text style={estilos.enlace}>{T.general.volver}</Text>
     </Pressable>
   );
@@ -177,7 +179,7 @@ export default function PerfilPropio() {
         esquina="abajo-derecha"
         velo={0.72}
       />
-      <ScrollView contentContainerStyle={estilos.pantalla}>
+      <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
         <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
           <Text style={estilos.enlace}>{T.general.volver}</Text>
         </Pressable>

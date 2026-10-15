@@ -11,14 +11,19 @@ begin
   end if;
 end $guarda$;
 
--- MIGRACIÓN 83 — DAR DE BAJA LA CUENTA AUNQUE UN AMIGO HAYA USADO TUS EJERCICIOS PROPIOS
+-- MIGRACIÓN 83 — DARSE DE BAJA SIN BORRAR EL HISTORIAL DE OTROS
 --
 -- Entre la 76 y la 80 los amigos veían tus ejercicios propios y podían anotar
 -- marcas, cargas elegidas o "la próxima, más" sobre ellos. Esas filas apuntan al
 -- ejercicio sin cascada: al darte de baja, el borrado chocaba con ellas y se
--- revertía entero (después de que la app ya había borrado tus fotos). Ahora se
--- borran primero. Sin el ejercicio, esas filas no sirven: es lo que se decidió.
--- Solo cambia la función: no toca ninguna fila hasta que alguien se da de baja.
+-- revertía entero (después de que la app ya había borrado tus fotos).
+--
+-- Ahora, al darte de baja, un propio tuyo que otra cuenta usó QUEDA HUÉRFANO: sin
+-- dueño, con su nombre guardado, y las marcas del otro sobreviven. El pasado no se
+-- reescribe por una decisión de otra persona. El otro lo sigue viendo como
+-- "Ejercicio propio", igual que con la 80: un huérfano no entra al catálogo de
+-- nadie. Los propios que nadie más usó se borran, como antes.
+-- No toca ninguna fila hasta que alguien se da de baja.
 
 do $$
 begin
@@ -26,6 +31,19 @@ begin
     raise exception 'La migración 83 va después de la 82 (la base está en %).', public.version_del_esquema();
   end if;
 end $$;
+
+alter table public.ejercicios add column if not exists huerfano boolean not null default false;
+
+-- Sin dueño en vez de borrado: el que borra los propios que no son huérfanos es
+-- `eliminar_cuenta`, antes de borrar la cuenta.
+alter table public.ejercicios drop constraint if exists ejercicios_creado_por_fkey;
+alter table public.ejercicios add constraint ejercicios_creado_por_fkey
+  foreign key (creado_por) references public.profiles(id) on delete set null;
+
+-- Sin dueño no es catálogo: un huérfano no lo ve nadie.
+drop policy if exists "ejercicios: catálogo con sesión" on public.ejercicios;
+create policy "ejercicios: catálogo con sesión" on public.ejercicios for select
+  using (auth.uid() is not null and ((creado_por is null and not huerfano) or creado_por = auth.uid()));
 
 create or replace function public.eliminar_cuenta()
 returns void language plpgsql security definer set search_path = public as $$
@@ -38,10 +56,18 @@ begin
   -- challenges.ganador apunta a profiles SIN cascade: si esta cuenta ganó un
   -- reto ya cerrado, esa fila bloquearía el borrado. Se van primero, a mano.
   delete from challenges where retador = uid or rival = uid or ganador = uid;
-  -- Lo que OTRAS cuentas anotaron sobre los ejercicios propios de esta (migración 83).
-  delete from cargas_elegidas  where ejercicio in (select id from ejercicios where creado_por = uid);
-  delete from subidas_marcadas where ejercicio in (select id from ejercicios where creado_por = uid);
-  delete from prs              where ejercicio in (select id from ejercicios where creado_por = uid);
+  -- Los propios que OTRA cuenta usó quedan huérfanos (migración 83): su historial
+  -- no se borra. Al borrarse la cuenta pierden el dueño y nadie más los ve.
+  update ejercicios e set huerfano = true
+   where e.creado_por = uid
+     and (exists (select 1 from prs p where p.ejercicio = e.id and p.user_id <> uid)
+       or exists (select 1 from cargas_elegidas c where c.ejercicio = e.id and c.user_id <> uid)
+       or exists (select 1 from subidas_marcadas s where s.ejercicio = e.id and s.user_id <> uid));
+  -- Los demás se borran, y antes lo propio que apunta a ellos (no tiene cascada).
+  delete from cargas_elegidas  where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
+  delete from subidas_marcadas where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
+  delete from prs              where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
+  delete from ejercicios where creado_por = uid and not huerfano;
   delete from auth.users where id = uid;
 end;
 $$;

@@ -1,4 +1,5 @@
 import PerfilDeAmigo from '../../src/PerfilDeAmigo';
+import DesenfoqueDeVuelta from '../../src/DesenfoqueDeVuelta';
 
 /**
  * `/perfil/[id]` — el perfil de otra persona.
@@ -9,5 +10,9 @@ import PerfilDeAmigo from '../../src/PerfilDeAmigo';
  * la misma URL sirve en los dos lados.
  */
 export default function Pantalla() {
-  return <PerfilDeAmigo />;
+  return (
+    <DesenfoqueDeVuelta>
+      <PerfilDeAmigo />
+    </DesenfoqueDeVuelta>
+  );
 }

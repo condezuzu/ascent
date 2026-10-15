@@ -31,6 +31,7 @@ import CalendarioDias from './CalendarioDias';
 import KilosPorSemana from './KilosPorSemana';
 import { useRecargarAlVolver } from './irAPestana';
 import { paletaDe } from '@nucleo/paletas';
+import { useArriba } from './zonaSegura';
 
 const SEMANAS = 8;
 
@@ -85,6 +86,7 @@ function celdaProximaVida(vidas: Vidas | null): { v: string; e: string; acento?:
 }
 
 export default function Stats({ alSalir }: { alSalir: () => void }) {
+  const arriba = useArriba(64);
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState('');
   const [pestana, setPestana] = useState<'general' | 'entrenamiento'>('general');
@@ -228,7 +230,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     <View style={estilos.raiz}>
       {/* El fondo de Stats en la web: tu cuerpo arriba a la derecha, velo 0,72. */}
       <FondoEspacial rango={datos.rango} planeta={datos.planeta} velo={0.72} />
-    <ScrollView contentContainerStyle={estilos.pantalla}>
+    <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
       <Text style={estilos.titulo}>{T.stats.titulo}</Text>
 
       <View style={estilos.selector}>

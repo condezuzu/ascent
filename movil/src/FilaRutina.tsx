@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { hayAlgo, tituloDelDia, type DiaDeSemana } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
@@ -11,7 +11,7 @@ import { supabase } from './supabase';
 import { C } from './colores';
 
 /**
- * TU RUTINA, EN INICIO (15/10). Un renglón —"Hoy: pecho, hombro y brazo"— que
+ * TU RUTINA, EN INICIO (15/10). Un renglón —"HOY  Pecho, hombro y brazo"— que
  * abre la rutina entera. Estaba al fondo de Stats y no la encontraba nadie; acá
  * está donde se mira antes de salir para el gimnasio. No sale mientras se
  * entrena: ahí la rutina ya está proponiendo el ejercicio siguiente.
@@ -43,42 +43,32 @@ function FilaRutina() {
   if (!dias) return null;
   const hoy = dias[new Date().getDay()];
   const titulo = hoy ? tituloDelDia(hoy, (id) => catalogo.get(id)?.grupo ?? null, T.rutina.descanso) : '';
-  const texto = !hayAlgo(dias) ? T.rutina.armarSemana : T.rutina.hoy(titulo || T.rutina.sinCargar);
+  const texto = !hayAlgo(dias) ? T.rutina.armarSemana : hoy?.descanso ? T.rutina.descanso : titulo || T.rutina.sinCargar;
 
+  // UNA LÍNEA SIN CAJA (16/10, la A de tres): la caja le competía al botón de empezar.
   return (
     <Pressable
       testID="inicio-rutina"
       style={({ pressed }) => [estilos.fila, pressed && estilos.tocada]}
       onPress={() => router.push('/rutina')}
       accessibilityRole="button"
+      accessibilityLabel={`${T.rutina.titulo}: ${texto}`}
     >
-      <View style={estilos.textos}>
-        <Text style={estilos.rotulo}>{T.rutina.titulo}</Text>
-        <Text style={estilos.hoy} numberOfLines={1}>
-          {texto}
-        </Text>
-      </View>
+      <Text style={estilos.rotulo}>{T.rutina.hoyRotulo}</Text>
+      <Text style={estilos.texto} numberOfLines={1}>
+        {texto}
+      </Text>
       <Text style={estilos.flecha}>›</Text>
     </Pressable>
   );
 }
 
 const estilos = StyleSheet.create({
-  fila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginTop: 14,
-  },
-  tocada: { borderColor: C.sub },
-  textos: { flex: 1, gap: 3 },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, marginTop: 6 },
+  tocada: { opacity: 0.6 },
   rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
-  hoy: { color: C.tinta, fontSize: 15 },
-  flecha: { color: C.sub, fontSize: 22, marginLeft: 12 },
+  texto: { flex: 1, color: C.tinta, fontSize: 15 },
+  flecha: { color: C.sub, fontSize: 22 },
 });
 
 // Con los mismos props no se redibuja: el + de la sesión redibuja Inicio y esto no cambió (15/10).

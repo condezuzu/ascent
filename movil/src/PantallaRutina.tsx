@@ -8,6 +8,7 @@ import FondoEspacial from './FondoEspacial';
 import MiRutina from './MiRutina';
 import { C } from './colores';
 import { volverOInicio } from './volver';
+import { useArriba } from './zonaSegura';
 
 /**
  * `/rutina` — TU RUTINA, EN SU PROPIA PANTALLA (15/10). Vivía al fondo de Stats
@@ -18,6 +19,7 @@ import { volverOInicio } from './volver';
  */
 export default function PantallaRutina() {
   const router = useRouter();
+  const arriba = useArriba(16);
   const [racha, setRacha] = useState(0);
   // Mientras se arrastra un ejercicio la pantalla no se mueve: si no, el dedo
   // que lleva el ejercicio también hace scroll.
@@ -30,7 +32,7 @@ export default function PantallaRutina() {
   return (
     <View style={estilos.todo}>
       <FondoEspacial rango={numeroDeRango(racha)} planeta={planetaDeDia(racha)} esquina="arriba-derecha" velo={0.74} />
-      <ScrollView contentContainerStyle={estilos.contenido} scrollEnabled={!arrastrando} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[estilos.contenido, { paddingTop: arriba }]} scrollEnabled={!arrastrando} keyboardShouldPersistTaps="handled">
         <Pressable onPress={() => volverOInicio(router)} hitSlop={10}>
           <Text style={estilos.volver}>{T.general.volver}</Text>
         </Pressable>

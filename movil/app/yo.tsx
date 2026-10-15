@@ -1,4 +1,5 @@
 import PerfilPropio from '../src/PerfilPropio';
+import DesenfoqueDeVuelta from '../src/DesenfoqueDeVuelta';
 
 /**
  * `/yo` — tu perfil, apilado encima de las pestañas.
@@ -8,5 +9,9 @@ import PerfilPropio from '../src/PerfilPropio';
  * cambiar la dirección, y eso tiene que poder hacerse sin tocar la pantalla.
  */
 export default function Pantalla() {
-  return <PerfilPropio />;
+  return (
+    <DesenfoqueDeVuelta>
+      <PerfilPropio />
+    </DesenfoqueDeVuelta>
+  );
 }

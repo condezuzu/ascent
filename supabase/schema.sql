@@ -280,9 +280,14 @@ create table public.ejercicios (
   -- El nombre no dice con qué se hace ("Zancadas"): se pregunta una vez.
   carga_ambigua boolean not null default false,
   -- QUIÉN LO AGREGÓ (migración 76): null es el catálogo de todos; con un id, es
-  -- un ejercicio propio de esa cuenta. Lo ven ella y sus amigos (para leer su
-  -- rutina y su entrenamiento con nombre); nadie más.
-  creado_por uuid references public.profiles(id) on delete cascade,
+  -- un ejercicio propio de esa cuenta. Desde la 80 lo ve solo ella.
+  -- Al darse de baja queda sin dueño (`on delete set null`) si otra cuenta lo usó:
+  -- ver `huerfano` y `eliminar_cuenta` (migración 83).
+  creado_por uuid references public.profiles(id) on delete set null,
+  -- HUÉRFANO (migración 83): era propio de una cuenta que se dio de baja y otra lo
+  -- había usado. Queda con su nombre para que el historial del otro sobreviva, pero
+  -- sin dueño no es catálogo: no lo ve nadie.
+  huerfano boolean not null default false,
   -- QUÉ SE ANOTA (migración 76): 'series' (series y peso, lo de siempre) o
   -- 'tiempo' (minutos: el cardio). El cardio es un ejercicio más del catálogo,
   -- no un modo aparte: entra en la rutina, el historial y el día igual que todos.
@@ -1549,10 +1554,18 @@ begin
   -- challenges.ganador apunta a profiles SIN cascade: si esta cuenta ganó un
   -- reto ya cerrado, esa fila bloquearía el borrado. Se van primero, a mano.
   delete from challenges where retador = uid or rival = uid or ganador = uid;
-  -- Lo que OTRAS cuentas anotaron sobre los ejercicios propios de esta (migración 83).
-  delete from cargas_elegidas  where ejercicio in (select id from ejercicios where creado_por = uid);
-  delete from subidas_marcadas where ejercicio in (select id from ejercicios where creado_por = uid);
-  delete from prs              where ejercicio in (select id from ejercicios where creado_por = uid);
+  -- Los propios que OTRA cuenta usó quedan huérfanos (migración 83): su historial
+  -- no se borra. Al borrarse la cuenta pierden el dueño y nadie más los ve.
+  update ejercicios e set huerfano = true
+   where e.creado_por = uid
+     and (exists (select 1 from prs p where p.ejercicio = e.id and p.user_id <> uid)
+       or exists (select 1 from cargas_elegidas c where c.ejercicio = e.id and c.user_id <> uid)
+       or exists (select 1 from subidas_marcadas s where s.ejercicio = e.id and s.user_id <> uid));
+  -- Los demás se borran, y antes lo propio que apunta a ellos (no tiene cascada).
+  delete from cargas_elegidas  where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
+  delete from subidas_marcadas where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
+  delete from prs              where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
+  delete from ejercicios where creado_por = uid and not huerfano;
   delete from auth.users where id = uid;
 end;
 $$;
@@ -3709,9 +3722,10 @@ create policy "errores: insertar" on public.errores_js for insert with check (tr
 
 -- ejercicios: catálogo de solo lectura, igual para todos
 -- Los propios (migración 76): los ve SOLO quien los creó (migración 80; antes también sus amigos).
+-- Un huérfano (migración 83) no tiene dueño y no es catálogo: no lo ve nadie.
 
 create policy "ejercicios: catálogo con sesión" on public.ejercicios for select
-  using (auth.uid() is not null and (creado_por is null or creado_por = auth.uid()));
+  using (auth.uid() is not null and ((creado_por is null and not huerfano) or creado_por = auth.uid()));
 
 -- prs: las marcas se ven igual que los logs — el dueño todo, los amigos
 -- aceptados leen. El peso CORPORAL sigue afuera, siempre (§16.6).

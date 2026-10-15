@@ -18,6 +18,7 @@ import {
 } from '@compartido/descanso';
 import { C } from './colores';
 import { taparElFondo } from './desenfoqueDelFondo';
+import { useArriba } from './zonaSegura';
 
 /**
  * EL DESCANSO ENTRE SERIES, en nativo (§18). La misma pantalla que la web:
@@ -53,6 +54,7 @@ export default function Descanso({
   /** Sumar la serie sin salir: suma y vuelve a arrancar el descanso. */
   alSumar: () => void;
 }) {
+  const arriba = useArriba(56);
   const [, repintar] = useState(0);
   // Opaca y a pantalla completa: mientras se ve, el fondo 3D no tiene por qué dibujar.
   useEffect(() => {
@@ -143,7 +145,7 @@ export default function Descanso({
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={alOcultar} statusBarTranslucent>
-      <View style={[estilos.pantalla, terminado && estilos.listo]}>
+      <View style={[estilos.pantalla, { paddingTop: arriba }, terminado && estilos.listo]}>
         <Pressable style={estilos.cerrar} onPress={alOcultar} accessibilityLabel={T.descanso.cerrar}>
           <Text style={estilos.cerrarTexto}>✕</Text>
         </Pressable>

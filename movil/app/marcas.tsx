@@ -1,4 +1,5 @@
 import MisMarcas from '../src/MisMarcas';
+import DesenfoqueDeVuelta from '../src/DesenfoqueDeVuelta';
 
 /**
  * `/marcas` — mis marcas de fuerza, apilada encima de las pestañas.
@@ -8,5 +9,9 @@ import MisMarcas from '../src/MisMarcas';
  * se usa una vez por mes.
  */
 export default function Pantalla() {
-  return <MisMarcas />;
+  return (
+    <DesenfoqueDeVuelta>
+      <MisMarcas />
+    </DesenfoqueDeVuelta>
+  );
 }

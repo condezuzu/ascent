@@ -43,6 +43,7 @@ import { pedirUnirse } from '@compartido/enVivo';
 import { CADA_CUANTO_MS, unionCon } from '@nucleo/enVivo';
 import { disponible } from '@nucleo/esquema';
 import { useVersionDelEsquema } from '@compartido/esquema';
+import { useArriba } from './zonaSegura';
 
 /**
  * RANKING — tanda 4.
@@ -60,6 +61,7 @@ import { useVersionDelEsquema } from '@compartido/esquema';
  */
 export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const router = useRouter();
+  const arriba = useArriba(64);
   // LA PRIMERA VEZ QUE SE ENTRA A RANKING se pide dejar avisar (si nunca se pidió):
   // es donde se entiende para qué —que te avisen cuando te quieren agregar.
   useEffect(() => {
@@ -237,7 +239,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
       {datos && (
         <FondoEspacial rango={datos.miRango} planeta={datos.miPlaneta} velo={0.68} />
       )}
-      <ScrollView contentContainerStyle={estilos.pantalla} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <Text style={estilos.titulo}>{T.social.titulo}</Text>
 
         {/* BUSCAR GENTE, ARRIBA Y EN UN RENGLÓN FINITO (15/10): no tapa nada y

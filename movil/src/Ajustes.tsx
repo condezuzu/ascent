@@ -25,6 +25,7 @@ import Cuenta from './ajustes/Cuenta';
 import Bloqueados from './ajustes/Bloqueados';
 import Diagnostico from './ajustes/Diagnostico';
 import Interruptor from './Interruptor';
+import { useArriba } from './zonaSegura';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -70,6 +71,7 @@ export default function Ajustes({
   alSalir: () => void;
 }) {
   const router = useRouter();
+  const arriba = useArriba(60);
   const [fallo, setFallo] = useState('');
   // El sonido del descanso es de ESTE teléfono, igual que en la web: se guarda
   // en el aparato y no en la cuenta.
@@ -145,7 +147,7 @@ export default function Ajustes({
         ciegas (28/9). iOS ahora insetea el scroll y lleva el campo enfocado a la
         vista. Cubre también el nombre de usuario y la meta de pasos, que viven
         en esta misma pantalla. */}
-    <ScrollView style={estilos.scroll} contentContainerStyle={estilos.pantalla} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
+    <ScrollView style={estilos.scroll} contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>
 

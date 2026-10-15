@@ -35,6 +35,7 @@ import { FOTOS_CAMBIO } from '@compartido/foto';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
 import { completarMiniaturas } from './miniaturas';
 import { useFotoLocal } from './fotoLocal';
+import { useArriba } from './zonaSegura';
 
 /**
  * ÁLBUM — tanda 4.
@@ -54,6 +55,7 @@ import { useFotoLocal } from './fotoLocal';
  * el camino.
  */
 export default function Album({ alSalir }: { alSalir: () => void }) {
+  const arriba = useArriba(64);
   const [datos, setDatos] = useState<DatosDeAlbum | null>(null);
   const [cargado, setCargado] = useState(false);
   const [noCargo, setNoCargo] = useState(false);
@@ -283,7 +285,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
   return (
     <View style={estilos.raiz}>
       {datos && <FondoEspacial rango={datos.miRango} planeta={datos.miPlaneta} velo={0.72} />}
-      <ScrollView contentContainerStyle={estilos.pantalla}>
+      <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
         <Text style={estilos.titulo}>{T.album.titulo}</Text>
         {!!error && <Text style={estilos.error}>{error}</Text>}
         {!cargado && <ActivityIndicator color={C.sub} style={{ marginTop: 24 }} />}

@@ -12,11 +12,9 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Aplicadas hasta la 78** (15/10/2026: `version_del_esquema()` contestó 78).
-**Escritas y sin aplicar, en este orden: 79** (las vidas vuelven todas juntas),
-**80** (los ejercicios propios los ve solo quien los creó), **81** (la marca de
-actividad acepta hasta una hora adelante), **82** (la marca se puede achicar),
-**83** (darse de baja aunque un amigo haya usado un propio tuyo), **84** (marcar
+**Aplicadas hasta la 82** (16/10/2026: `version_del_esquema()` contestó 82).
+**Escritas y sin aplicar, en este orden: 83** (darse de baja: un propio tuyo que
+otra cuenta usó queda huérfano, con su nombre y el historial del otro), **84** (marcar
 "Fui" en un día que cubrió una vida la devuelve) y **85** (un amigo no ve a qué
 hora entrenaste: sus días se leen por `logs_de_amigos`). La app anda igual sin
 ellas: cada una se mira con `disponible(...)` o es solo de la base.
@@ -200,6 +198,11 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   la persona esté parada ahí. **Nunca al empezar la sesión.**
 
 ## A medias
+
+- **Para probar en el iPhone (16/10)**: al volver deslizando desde una pantalla
+  apilada, ¿el desenfoque de atrás se aclara mientras arrastrás, o recién al
+  soltar? Depende de si iOS manda el avance de la transición durante el gesto
+  (`DesenfoqueDeVuelta`); en el navegador no se puede ver.
 
 - **La app nativa, contra la web**: el inventario pantalla por pantalla está en
   la bitácora del 22/9. Ajustes ya está (falta "ver la guía", que no puede

@@ -1413,6 +1413,7 @@ const ES = {
     // EN INICIO (15/10): el renglón que abre la rutina.
     hoy: (titulo: string) => `Hoy: ${titulo}`,
     armarSemana: 'Arma tu semana',
+    hoyRotulo: 'Hoy',
   },
 
   social: {

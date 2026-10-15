@@ -18709,7 +18709,9 @@ console.log('\n239. Cacería del 15/10, vuelta 5: lo de otro aparato con −, Te
   const beto = await nuevoUsuario();
   await comoUsuario(ana);
   const mio = (await db.query(`select crear_ejercicio('Remo en anillas', 'espalda', 'series') as id`)).rows[0].id;
+  const soloMio = (await db.query(`select crear_ejercicio('Curl en polea baja', 'brazos', 'series') as id`)).rows[0].id;
   await db.exec('reset role');
+  await db.query(`insert into prs (user_id, ejercicio, peso, reps, fecha) values ($1, $2, 20, 8, current_date)`, [ana, soloMio]);
   await db.query(`insert into prs (user_id, ejercicio, peso, reps, fecha) values ($1, $2, 50, 5, current_date)`, [beto, mio]);
   await comoUsuario(ana);
   let error239 = null;
@@ -18721,6 +18723,14 @@ console.log('\n239. Cacería del 15/10, vuelta 5: lo de otro aparato con −, Te
   await db.exec('reset role');
   const quedaAna = (await db.query('select count(*)::int n from profiles where id = $1', [ana])).rows[0].n;
   chequear('darse de baja anda aunque un amigo haya anotado una marca en un propio mío (la 83)', [error239, quedaAna], [null, 0]);
+  const huerfano = (await db.query('select nombre, creado_por, huerfano from ejercicios where id = $1', [mio])).rows[0] ?? null;
+  const marcaDeBeto = (await db.query('select count(*)::int n from prs where user_id = $1 and ejercicio = $2', [beto, mio])).rows[0].n;
+  const quedaSoloMio = (await db.query('select count(*)::int n from ejercicios where id = $1', [soloMio])).rows[0].n;
+  await comoUsuario(beto);
+  await db.exec('set role authenticated');
+  const betoLoVe = (await db.query('select count(*)::int n from ejercicios where id = $1', [mio])).rows[0].n;
+  await db.exec('reset role');
+  chequear('el propio que otro usó queda huérfano con su nombre y la marca del otro sobrevive; nadie lo ve en el catálogo; el que nadie usó se borra', [huerfano, marcaDeBeto, betoLoVe, quedaSoloMio], [{ nombre: 'Remo en anillas', creado_por: null, huerfano: true }, 1, 0, 0]);
   const { readFileSync: leer239 } = await import('node:fs');
   const de239 = (...p) => leer239(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
   const mi = de239('movil', 'src', 'MiRutina.tsx');

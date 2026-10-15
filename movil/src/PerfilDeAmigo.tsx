@@ -23,6 +23,7 @@ import FotosQueVen from './FotosQueVen';
 import Insignia from './Insignia';
 import { C } from './colores';
 import { volverOInicio } from './volver';
+import { useArriba } from './zonaSegura';
 
 /**
  * EL PERFIL DE OTRO: su racha, su semana y lo que comparte.
@@ -45,6 +46,7 @@ import { volverOInicio } from './volver';
  */
 export default function PerfilDeAmigo() {
   const router = useRouter();
+  const arriba = useArriba(60);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [datos, setDatos] = useState<Datos | null>(null);
   const [dots, setDots] = useState<number | null>(null);
@@ -129,7 +131,7 @@ export default function PerfilDeAmigo() {
   // falla — con mala señal, tardar mucho es lo normal. Lo encontró el barrido
   // del 25/9 en el perfil propio, y esta pantalla tenía la mitad del problema.
   const salida = (
-    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volverSuelto}>
+    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
       <Text style={estilos.enlace}>{T.general.volver}</Text>
     </Pressable>
   );
@@ -183,7 +185,7 @@ export default function PerfilDeAmigo() {
         // `ponerEstadoDelCuerpo` en `pedidoDeFondo.ts`.
         ajeno
       />
-      <ScrollView contentContainerStyle={estilos.pantalla}>
+      <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
         <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
           <Text style={estilos.enlace}>{T.general.volver}</Text>
         </Pressable>

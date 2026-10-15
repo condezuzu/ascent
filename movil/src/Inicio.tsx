@@ -48,6 +48,7 @@ import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 import FilaRutina from './FilaRutina';
 import CadaSegundo from './CadaSegundo';
+import { useArriba } from './zonaSegura';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -100,6 +101,7 @@ export default function Inicio({
   alFaltarNombre: () => void;
 }) {
   const router = useRouter();
+  const arriba = useArriba(64);
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
   // LA RACHA QUE SE ESTÁ VIENDO, para saber si un registro sube de rango: se
   // compara con la que devuelve la base (ver `subidaDeRango`). En una ref
@@ -565,7 +567,7 @@ export default function Inicio({
       />
     <ScrollView
       ref={scroll}
-      contentContainerStyle={estilos.pantalla}
+      contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}
       // QUIETA CUANDO EL CONTENIDO ENTRA (3/10). iOS rebota una lista vertical
       // aunque no haya nada que desplazar, y en reposo Inicio entra entera: se
       // movía sin ir a ningún lado. Así solo se desplaza cuando hace falta
