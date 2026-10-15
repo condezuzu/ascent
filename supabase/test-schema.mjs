@@ -18568,6 +18568,61 @@ console.log('\n235. Cacería del 15/10, vuelta 1: la cinta larga, el descanso la
     /\(catalogo\.get\(id\)\?\.mide \?\? mide\) === 'tiempo'/.test(de235('movil', 'src', 'MiRutina.tsx')),
   ], [true, true]);
 }
+console.log('\n236. Cacería del 15/10, vuelta 2: la cinta por el camino de la pantalla, la marca que baja (82), la rutina activa, el descanso que pregunta');
+{
+  const v2 = async (c) => escenarioDeSesion('vueltaDos', c);
+  chequear('la cinta elegida como lo hace la pantalla (sin esperar) y el teléfono en el bolsillo 35 min: la sesión sigue', await v2('bolsillo'), { corriendo: true, base: 'corriendo' });
+  chequear('terminar con la hora de salida del gimnasio: la cinta queda con esos minutos, no hasta que se abrió la app', await v2('salida'), { bloques: [['cinta', 10]] });
+  chequear('Terminar sin señal con un descanso largo andando: la renovación no borra la hora del toque', await v2('sinSenal'), { estado: 'terminada', finEnElToque: true });
+  chequear('"+ Serie hecha" con la cinta andando cierra esa vuelta (con sus minutos), no cuenta otra', await v2('serieEnCinta'), { series: 1, bloques: [['cinta', 1, 7]] });
+  chequear('"Listo" y se va sin Terminar: la sesión se cierra a la hora de Listo, no una hora después (con la 82)', await v2('listo'), { estado: 'terminada', minutosDeMas: 0 });
+  // LA 82 CON LA BASE DE VERDAD.
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  await db.query('select iniciar_sesion()');
+  const id = (await db.query('select id from sesiones where user_id = $1', [u])).rows[0].id;
+  const adelante = async () => (await db.query(`select round(extract(epoch from (ultima_actividad - now())) / 60)::int m from sesiones where id = $1`, [id])).rows[0].m;
+  await db.query(`select marcar_actividad($1, now() + interval '50 minutes')`, [id]);
+  const conPromesa = await adelante();
+  await db.query(`select marcar_actividad(p_sesion => $1, p_hasta => now(), p_bajar => true)`, [id]);
+  const bajada = await adelante();
+  await db.query(`select marcar_actividad(p_sesion => $1, p_hasta => now() + interval '3 minutes')`, [id]);
+  const conDosParametros = await adelante();
+  chequear('marcar_actividad: la promesa de la cinta baja a ahora con p_bajar, y la llamada vieja (dos parámetros) sigue andando', [conPromesa, bajada, conDosParametros], [50, 0, 3]);
+  await db.exec('reset role');
+  // LA COPIA ACTIVA: con el cliente que llama a las funciones de verdad.
+  const RU236 = await import('../compartido/rutinas.ts');
+  const E236 = await import('../compartido/esquema.ts');
+  const { moverEjercicio } = await import('../nucleo/rutinas.ts');
+  const clienteDe = (quien) => ({
+    rpc: async (nombre, args = {}) => {
+      await comoUsuario(quien);
+      const claves = Object.keys(args);
+      const valores = claves.map((k) => (args[k] !== null && typeof args[k] === 'object' ? JSON.stringify(args[k]) : args[k]));
+      try {
+        const r = await db.query(`select public.${nombre}(${claves.map((k, i) => `${k} => $${i + 1}`).join(', ')}) as r`, valores);
+        return { data: r.rows[0].r, error: null };
+      } catch (e) {
+        return { data: null, error: { message: String(e.message) } };
+      }
+    },
+  });
+  const quien = await nuevoUsuario();
+  const cli = clienteDe(quien);
+  await E236.versionDelEsquema(cli, Date.now() + E236.VIGENCIA_MS * 60000);
+  await new Promise((r) => setTimeout(r, 20));
+  const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }, { ejercicio: 'sentadilla', series: 3 }] };
+  const idR = await RU236.guardarRutina(cli, { id: null, nombre: 'La mía', dias });
+  await RU236.activarRutina(cli, idR);
+  const activa = (await RU236.cargarMisRutinas(cli)).find((r) => r.activa);
+  await RU236.guardarRutina(cli, { ...activa, dias: moverEjercicio(activa.dias, 1, 1, 0) });
+  const copia = await RU236.rutinaActivaDelTelefono();
+  chequear('editar la rutina activa actualiza la copia del teléfono, que es con la que arranca la sesión', copia?.dias[1].ejercicios.map((e) => e.ejercicio), ['sentadilla', 'press_banca']);
+  const { readFileSync: leer236 } = await import('node:fs');
+  const mi = leer236(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'MiRutina.tsx'), 'utf8').replace(/\r\n/g, '\n');
+  chequear('"Día de descanso" en un día con ejercicios pregunta antes de sacarlos', /onPress=\{\(\) => \(!dia\.descanso && dia\.ejercicios\.length > 0 \? setPreguntaDescanso\(d\) : con\(marcarDescanso\(actual\.dias, d, !dia\.descanso\)\)\)\}/.test(mi), true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

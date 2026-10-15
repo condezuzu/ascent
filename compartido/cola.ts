@@ -66,7 +66,7 @@ type Encolable =
   //   en que pasó. Justo para eso existe la hora: una marca que sube media
   //   hora tarde desde el subsuelo tiene que decir cuándo fue el toque, no
   //   cuándo volvió la señal.
-  | { rpc: 'marcar_actividad'; args: { p_sesion: string; p_hasta: string } }
+  | { rpc: 'marcar_actividad'; args: { p_sesion: string; p_hasta: string; p_bajar?: boolean } }
   // `elegir_carga` (migración 38): con qué se hace un ejercicio.
   //
   // - *Idempotente*: guarda EL modo, no "cambialo". Repetirla deja lo mismo.

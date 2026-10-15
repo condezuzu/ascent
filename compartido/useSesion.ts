@@ -545,7 +545,7 @@ export function useSesion(
           const hasta = Math.max(bloquesRef.current.cardioDesde !== undefined ? Date.now() + MARCA_DEL_CARDIO_MS : 0, fin);
           if (hasta > Date.now() && Date.now() - cardioRenovadoEl.current > RENOVAR_CARDIO_MS) {
             cardioRenovadoEl.current = Date.now();
-            void marcarRef.current(hasta);
+            void marcarRef.current(hasta, { renovacion: true });
           }
           // Con la app ADELANTE también se cierra sola: si la dejaste abierta
           // en el banco y te fuiste, a la media hora la pantalla no puede
@@ -751,9 +751,13 @@ export function useSesion(
     operandoSesion.current = true;
     setOcupado(true);
     setAviso('');
-    // LA VUELTA DE CARDIO EN CURSO SE CIERRA ANTES (cacería del 15/10): si no, esos
-    // minutos no quedaban ni en la sesión ni en el resumen.
-    if (bloquesRef.current.cardioDesde !== undefined) await cerrarVueltaDelCardio();
+    // LA HORA ES LA DEL PRIMER TOQUE (13/10). Si un "Terminar" anterior no salió
+    // —sin señal—, este reintento cierra a esa hora y no a la de ahora. Se lee
+    // antes de cerrar la vuelta de cardio, que marca actividad.
+    const hasta = opciones?.hasta ?? (await leerSesionCache())?.quisoTerminar ?? undefined;
+    // LA VUELTA DE CARDIO EN CURSO SE CIERRA ANTES (cacería del 15/10), y a la misma
+    // hora que la sesión: con la salida del gimnasio, la cinta no sigue hasta casa.
+    if (bloquesRef.current.cardioDesde !== undefined) await cerrarVueltaDelCardio(hasta ?? Date.now());
     // Se anota lo que había ANTES de cerrar: abajo se pone todo en cero y el
     // resumen se quedaría sin datos que mostrar. De los refs: la vuelta de arriba
     // cambió el conteo después de este render.
@@ -762,9 +766,6 @@ export function useSesion(
     const eraPorUbicacion = porUbicacion;
     const desfase = desfasaje;
     const bloquesHechos = paraGuardar(bloquesRef.current);
-    // LA HORA ES LA DEL PRIMER TOQUE (13/10). Si un "Terminar" anterior no salió
-    // —sin señal—, este reintento cierra a esa hora y no a la de ahora.
-    const hasta = opciones?.hasta ?? (await leerSesionCache())?.quisoTerminar ?? undefined;
     // PRIMERO LO PENDIENTE (bug del 15/9). La base decide el cierre con lo que
     // TIENE: si las series y la actividad de la sesión siguen en la cola —se
     // entrenó sin señal y la red volvió justo al tocar Terminar—, ve una sesión
@@ -876,7 +877,8 @@ export function useSesion(
    * Si la base todavía no tiene la migración, se guarda solo en el teléfono:
    * mandar una función que no existe trabaría la cola (ver `lib/cola.ts`).
    */
-  async function marcar(hastaTelefonoMs: number = Date.now()) {
+  // `renovacion`: la del reloj, que no es "siguió entrenando" y no borra la hora del Terminar que no salió.
+  async function marcar(hastaTelefonoMs: number = Date.now(), opciones?: { renovacion?: boolean }) {
     if (!idSesion) return;
     const iso = new Date(hastaTelefonoMs - desfasaje).toISOString();
     const c = await leerSesionCache();
@@ -887,9 +889,11 @@ export function useSesion(
     // tocó la caché durante estos awaits, `marcar` lo revertía —el mismo pisón que
     // los refs matan en el estado, pero en la caché—. `actualizarSesionCache`
     // relee y mezcla solo esta clave.
-    await actualizarSesionCache({ ultimaActividad: nueva, quisoTerminar: null }, yo);
+    await actualizarSesionCache(opciones?.renovacion ? { ultimaActividad: nueva } : { ultimaActividad: nueva, quisoTerminar: null }, yo);
     if (!disponible('cierrePorInactividad', await versionDelEsquema(supabase))) return;
-    await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: iso } });
+    // `nueva` y no `iso` (cacería del 15/10): la cola guarda UNA marca por sesión, y
+    // una de "ahora" que llegaba después pisaba la de la cinta (una hora adelante).
+    await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: nueva ?? iso } });
   }
 
   /**
@@ -903,6 +907,9 @@ export function useSesion(
     // ese toque encolaba series y bloques contra una sesión que ya no existe, y
     // pisaba los de la base o se perdía.
     if (!inicioRef.current) return;
+    // CON LA CINTA ANDANDO, "+ SERIE HECHA" ES "LISTO" (cacería del 15/10): el botón
+    // del descanso contaba una vuelta de cardio que no existía.
+    if (bloquesRef.current.cardioDesde !== undefined && !opciones?.sinDescanso) return cerrarVueltaDelCardio();
     // EL CONTEO SE MUEVE PRIMERO, JUNTO Y DESDE LOS REFS. Las dos cuentas —el
     // total y la lista— salen de la misma función (`sumarSerie`) sobre el mismo
     // objeto, leído de refs siempre-al-día y NO del render: así dos toques
@@ -1369,12 +1376,29 @@ export function useSesion(
   }
 
   /** "Listo": lo que corrió se anota en minutos y la vuelta cuenta, sin descanso automático. */
-  async function cerrarVueltaDelCardio() {
-    const b = cerrarVueltaDeCardio(bloquesRef.current, Date.now());
+  async function cerrarVueltaDelCardio(fin: number = Date.now()) {
+    const b = cerrarVueltaDeCardio(bloquesRef.current, fin);
     if (b === bloquesRef.current) return;
     bloquesRef.current = b;
     setBloques(b);
     await serieHecha({ sinDescanso: true });
+    // La cinta ya no corre: la marca adelantada de una hora se achica a ahora.
+    await bajarMarca();
+  }
+
+  /**
+   * LA MARCA ADELANTADA SE ACHICA (cacería del 15/10, migración 82). La cinta y el
+   * descanso largo prometen actividad hasta una hora adelante; si después de
+   * "Listo" la persona se va sin tocar Terminar, la sesión se cerraba sola con
+   * esa hora de más. Sin la 82 la base no sabe achicarla: queda como antes.
+   */
+  async function bajarMarca() {
+    if (!idSesion) return;
+    const iso = new Date(Date.now() - desfasaje).toISOString();
+    setUltimaActividad(iso);
+    await actualizarSesionCache({ ultimaActividad: iso }, yo);
+    if (!disponible('bajarMarca', await versionDelEsquema(supabase))) return;
+    await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: iso, p_bajar: true } });
   }
 
   /** El peso de una serie ya hecha, desde la lista. `indice` -1 es el bloque en curso. */
@@ -1490,6 +1514,7 @@ export function useSesion(
     cerrarDescanso: () => {
       borrarDescanso();
       setDescanso(null);
+      void bajarMarca();
     },
     reiniciarDescanso: (d: DescansoVivo) => {
       setDescanso(d);

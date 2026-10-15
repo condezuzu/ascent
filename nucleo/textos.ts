@@ -1386,6 +1386,8 @@ const ES = {
     cancelar: 'Cancelar',
     agregarEjercicio: '+ Ejercicio',
     diaDeDescanso: 'Día de descanso',
+    // Prenderlo saca los ejercicios del día: se pregunta (cacería del 15/10).
+    descansoPregunta: (dia: string) => `¿${dia} de descanso? Se sacan sus ejercicios.`,
     copiarA: 'Copiar a…',
     yaTieneEjercicios: (dia: string) => `${dia} ya tiene ejercicios.`,
     reemplazar: 'Reemplazar',

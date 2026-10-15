@@ -74,10 +74,13 @@ export async function cargarMisRutinas(supabase: Cliente): Promise<Rutina[] | nu
 }
 
 /** Sin `id` crea una nueva. Devuelve el id, o `null` si no se guardó. */
-export async function guardarRutina(supabase: Cliente, r: { id: string | null; nombre: string; dias: DiaDeSemana[] }): Promise<string | null> {
+export async function guardarRutina(supabase: Cliente, r: { id: string | null; nombre: string; dias: DiaDeSemana[]; activa?: boolean }): Promise<string | null> {
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return null;
   const { data, error } = await supabase.rpc('guardar_rutina', { p_id: r.id, p_nombre: r.nombre, p_dias: r.dias });
   if (error || typeof data !== 'string') return null;
+  // LA SESIÓN ARRANCA CON LA COPIA DEL TELÉFONO (cacería del 15/10): editar la activa
+  // sin pisarla acá hacía que el primer entrenamiento propusiera la de antes.
+  if (r.activa) await guardarActiva([{ id: data, nombre: r.nombre, activa: true, dias: r.dias }]);
   eventos.emitir(RUTINA_CAMBIO);
   return data;
 }

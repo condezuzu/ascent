@@ -33,10 +33,12 @@ const porId = (id) => servidor.sesiones.find((s) => s.id === id) ?? null;
 const copia = (x) => (x === undefined ? null : JSON.parse(JSON.stringify(x)));
 
 function procesar(rpc, a) {
-  const ahora = new Date().toISOString();
+  // Del mismo reloj que adelantan los escenarios (Date.now), no de otro.
+  const ahora = new Date(Date.now()).toISOString();
   switch (rpc) {
     case 'version_del_esquema':
-      return 53;
+      // Un escenario que necesita una función nueva sube la versión (servidor.version).
+      return servidor.version ?? 53;
     case 'iniciar_sesion': {
       cerrarVencidas();
       const s = viva();
@@ -82,10 +84,12 @@ function procesar(rpc, a) {
     case 'marcar_actividad': {
       const s = porId(a.p_sesion);
       // Como la de verdad (schema.sql, marcar_actividad): no antes del inicio, no más de 15 min
-      // adelante, y nunca para atrás. Pisarla sin más dejaba pasar lo que la base no acepta.
+      // adelante (60 desde la 81), y nunca para atrás. Pisarla sin más dejaba pasar lo que la base no acepta.
       if (s && s.estado === 'corriendo') {
-        const t = Math.min(Math.max(Date.parse(a.p_hasta ?? new Date(Date.now()).toISOString()), Date.parse(s.inicio)), Date.now() + 15 * 60000);
-        if (!s.ultima_actividad || t > Date.parse(s.ultima_actividad)) s.ultima_actividad = new Date(t).toISOString();
+        const t = Math.min(Math.max(Date.parse(a.p_hasta ?? new Date(Date.now()).toISOString()), Date.parse(s.inicio)), Date.now() + ((servidor.version ?? 53) >= 81 ? 60 : 15) * 60000);
+        // Con p_bajar (la 82) una promesa a futuro baja a ahora.
+        if (a.p_bajar && s.ultima_actividad && Date.parse(s.ultima_actividad) > Date.now()) s.ultima_actividad = new Date(Math.max(t, Date.now())).toISOString();
+        else if (!s.ultima_actividad || t > Date.parse(s.ultima_actividad)) s.ultima_actividad = new Date(t).toISOString();
       }
       return null;
     }

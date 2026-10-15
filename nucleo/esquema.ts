@@ -66,6 +66,8 @@ export const REQUIERE = {
   propiosSoloMios: 80,
   /** La marca de actividad acepta hasta una hora adelante (descanso a mano, cinta larga). */
   marcaDeUnaHora: 81,
+  /** La marca de actividad se puede achicar ("Listo" en la cinta, el descanso cortado). */
+  bajarMarca: 82,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

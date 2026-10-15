@@ -1956,7 +1956,8 @@ returns void language sql security definer set search_path = public as $$
      and now() - inicio >= tope_sesion();
 $$;
 
-create or replace function public.marcar_actividad(p_sesion uuid, p_hasta timestamptz)
+-- Con p_bajar (migración 82) la promesa a futuro se achica a ahora.
+create or replace function public.marcar_actividad(p_sesion uuid, p_hasta timestamptz, p_bajar boolean default false)
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -1967,10 +1968,12 @@ begin
   select * into s from sesiones where id = p_sesion and user_id = uid;
   if s.id is null then return; end if;
 
-  -- Hasta una hora adelante (migración 81): el descanso a mano y la cinta pueden durar eso.
   t := least(greatest(coalesce(p_hasta, now()), s.inicio), now() + interval '60 minutes');
 
-  if s.estado = 'corriendo' then
+  if s.estado = 'corriendo' and p_bajar then
+    -- Una promesa a futuro baja a ahora; una marca vieja sube a ahora, como siempre.
+    update sesiones set ultima_actividad = greatest(least(ultima_actividad, greatest(t, now())), t) where id = s.id;
+  elsif s.estado = 'corriendo' then
     update sesiones set ultima_actividad = greatest(ultima_actividad, t) where id = s.id;
   elsif s.estado = 'terminada' and s.cerro_sola and t > s.fin and t <= s.fin + ventana_inactividad() then
     update sesiones
@@ -1981,8 +1984,8 @@ begin
 end;
 $$;
 
-revoke execute on function public.marcar_actividad(uuid, timestamptz) from public, anon;
-grant execute on function public.marcar_actividad(uuid, timestamptz) to authenticated;
+revoke execute on function public.marcar_actividad(uuid, timestamptz, boolean) from public, anon;
+grant execute on function public.marcar_actividad(uuid, timestamptz, boolean) to authenticated;
 
 -- -------------------------------------------------------------
 -- Empezar
@@ -4245,7 +4248,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 81; $$;
+returns int language sql immutable as $$ select 82; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

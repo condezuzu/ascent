@@ -793,6 +793,7 @@ export const EN: Textos = {
     cancelar: 'Cancel',
     agregarEjercicio: '+ Exercise',
     diaDeDescanso: 'Rest day',
+    descansoPregunta: (dia: string) => `Make ${dia} a rest day? Its exercises are removed.`,
     copiarA: 'Copy to…',
     yaTieneEjercicios: (dia: string) => `${dia} already has exercises.`,
     reemplazar: 'Replace',

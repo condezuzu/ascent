@@ -690,6 +690,95 @@ async function descansoLargo() {
   return { corriendo: inicio.r.estado.corriendo, base: servidor.sesiones[0]?.estado ?? null };
 }
 
+/**
+ * `vueltaDos` (cacería del 15/10, vuelta 2): la cinta y las marcas, por el camino de la pantalla.
+ *  - `bolsillo`: se elige la cinta como lo hace Bloque —sin esperar— y arranca el
+ *    cronómetro; el teléfono se bloquea 35 min. La sesión no puede cerrarse.
+ *  - `salida`: la cinta anda y la sesión se termina con la hora de salida del
+ *    gimnasio (10 min después de arrancar); se abre la app a los 50. La cinta son 10.
+ *  - `sinSenal`: Terminar sin señal con un descanso andando; la renovación de la
+ *    marca no puede borrar la hora del toque, y el reintento cierra a esa hora.
+ *  - `listo`: 15 min de cinta, "Listo", y la persona se va sin tocar Terminar: la
+ *    sesión se cierra sola a la hora de Listo, no una hora después (con la 82).
+ *  - `serieEnCinta`: con la cinta andando se toca "+ Serie hecha" en el descanso:
+ *    es la misma vuelta, no una más.
+ */
+async function vueltaDos(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.ventanaMs = 30 * 60000;
+  // `listo` necesita la 82 (la marca que baja).
+  if (caso === 'listo') servidor.version = 82;
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  const viva = () => servidor.sesiones[0];
+  if (caso === 'sinSenal') {
+    const { cambiarDuracion } = await import('@compartido/descanso');
+    await inicio.r.elegirEjercicio('press_banca');
+    await inicio.r.serieHecha();
+    await asentar();
+    // Un descanso largo andando cuando se toca Terminar: la renovación cae adentro.
+    const d = inicio.r.estado.descanso;
+    if (d) inicio.r.reiniciarDescanso(cambiarDuracion(d, 30 * 60));
+    await dormir(1300);
+    await asentar();
+    const toque = Date.now();
+    ['terminar_sesion', 'fijar_series', 'fijar_bloques', 'marcar_actividad', 'mi_sesion'].forEach((r) => (servidor.falla[r] = true));
+    await inicio.r.terminar();
+    await dormir(300);
+    adelanto = 6 * 60000;
+    await dormir(1300);
+    adelanto = 20 * 60000;
+    await dormir(1300);
+    ['terminar_sesion', 'fijar_series', 'fijar_bloques', 'marcar_actividad', 'mi_sesion'].forEach((r) => (servidor.falla[r] = false));
+    await inicio.r.terminar();
+    await asentar();
+    const fin = Date.parse(viva()?.fin ?? '') || null;
+    return { estado: viva()?.estado ?? null, finEnElToque: fin !== null && Math.abs(fin - toque) < 60000 };
+  }
+  void inicio.r.elegirEjercicio('cinta');
+  await inicio.r.arrancarCardio();
+  await asentar();
+  if (caso === 'serieEnCinta') {
+    adelanto = 7 * 60000;
+    await inicio.r.serieHecha();
+    await asentar();
+    return { series: viva()?.series ?? null, bloques: (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.series, b.minutos ?? null]) };
+  }
+  if (caso === 'listo') {
+    adelanto = 15 * 60000;
+    await inicio.r.cerrarVueltaDeCardio();
+    await asentar();
+    const listo = Date.now();
+    cambiarVisible(false);
+    await asentar();
+    adelanto = 15 * 60000 + 50 * 60000;
+    cambiarVisible(true);
+    await dormir(400);
+    await asentar();
+    const fin = Date.parse(viva()?.fin ?? '') || null;
+    return { estado: viva()?.estado ?? null, minutosDeMas: fin === null ? null : Math.round((fin - listo) / 60000) };
+  }
+  if (caso === 'salida') {
+    const arranco = Date.now();
+    adelanto = 50 * 60000;
+    await inicio.r.terminar({ hasta: arranco + 10 * 60000 });
+    await asentar();
+    return { bloques: (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.minutos ?? null]) };
+  }
+  // bolsillo
+  cambiarVisible(false);
+  await asentar();
+  adelanto = 35 * 60000;
+  cambiarVisible(true);
+  await dormir(400);
+  await asentar();
+  return { corriendo: inicio.r.estado.corriendo, base: viva()?.estado ?? null };
+}
+
 /** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
 async function yaCorria() {
   const inicio = montar(() => useSesion());
@@ -867,7 +956,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

@@ -86,7 +86,7 @@ export default function Bloque({
   debajoDelMas?: ReactNode;
   alRestar: () => void;
   alSiguiente: () => void;
-  alElegirEjercicio: (id: string | null) => void;
+  alElegirEjercicio: (id: string | null) => void | Promise<void>;
   alMudarSeries: (id: string | null, cargaQueSeVeia?: Carga) => void;
   alElegirMeta: (meta: number) => void;
   alTocarBloque: (indice: number, delta: number | 'quitar') => void;
@@ -162,8 +162,9 @@ export default function Bloque({
   }, [corriendoCardio]);
   const segundosDeCardio = corriendoCardio ? Math.max(0, Math.floor((Date.now() - (estado.cardioDesde ?? 0)) / 1000)) : 0;
   // Elegir un cardio de la lista YA arranca el cronómetro: es lo que se va a hacer.
-  const elegir = (id: string | null) => {
-    alElegirEjercicio(id);
+  // Después de que el cambio de ejercicio terminó: si no, su marca de "ahora" pisaba en la cola la de la cinta.
+  const elegir = async (id: string | null) => {
+    await alElegirEjercicio(id);
     if (id && ejercicios.find((e) => e.id === id)?.mide === 'tiempo') alArrancarCardio?.();
   };
   const principalDeCardio = corriendoCardio

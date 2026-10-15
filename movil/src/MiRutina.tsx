@@ -66,6 +66,8 @@ export default function MiRutina({
   const [copiandoDesde, setCopiandoDesde] = useState<number | null>(null);
   const [preguntaCopia, setPreguntaCopia] = useState<{ desde: number; hasta: number } | null>(null);
   const [preguntaBorrar, setPreguntaBorrar] = useState(false);
+  // El día con ejercicios que se va a pasar a descanso: se pregunta antes de sacarlos.
+  const [preguntaDescanso, setPreguntaDescanso] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   const cargar = useCallback(async () => {
@@ -175,7 +177,11 @@ export default function MiRutina({
               <Text style={estilos.chicoTexto}>{T.rutina.agregarEjercicio}</Text>
             </Pressable>
           )}
-          <Pressable style={[estilos.chico, dia.descanso && estilos.chicoActivo]} onPress={() => con(marcarDescanso(actual.dias, d, !dia.descanso))}>
+          <Pressable
+            testID={`rutina-descanso-${d}`}
+            style={[estilos.chico, dia.descanso && estilos.chicoActivo]}
+            onPress={() => (!dia.descanso && dia.ejercicios.length > 0 ? setPreguntaDescanso(d) : con(marcarDescanso(actual.dias, d, !dia.descanso)))}
+          >
             <Text style={estilos.chicoTexto}>{T.rutina.diaDeDescanso}</Text>
           </Pressable>
           {(dia.ejercicios.length > 0 || dia.descanso) && (
@@ -196,6 +202,26 @@ export default function MiRutina({
                 <Text style={estilos.chicoTexto}>{T.fechas.diasLargos[h].slice(0, 3)}</Text>
               </Pressable>
             ))}
+          </View>
+        )}
+        {preguntaDescanso === d && (
+          <View style={estilos.pregunta}>
+            <Text style={estilos.nota}>{T.rutina.descansoPregunta(T.fechas.diasLargos[d])}</Text>
+            <View style={estilos.acciones}>
+              <Pressable
+                testID={`rutina-descanso-si-${d}`}
+                style={estilos.chico}
+                onPress={() => {
+                  setPreguntaDescanso(null);
+                  con(marcarDescanso(actual.dias, d, true));
+                }}
+              >
+                <Text style={estilos.chicoTexto}>{T.rutina.diaDeDescanso}</Text>
+              </Pressable>
+              <Pressable style={estilos.chico} onPress={() => setPreguntaDescanso(null)}>
+                <Text style={estilos.chicoTexto}>{T.rutina.cancelar}</Text>
+              </Pressable>
+            </View>
           </View>
         )}
         {preguntaCopia?.desde === d && (
