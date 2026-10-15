@@ -9,6 +9,7 @@ import { soltarCola, vaciar } from '@compartido/cola';
 import { borrarDescanso } from '@compartido/descanso';
 import { borrarPerfilCache } from '@compartido/cache';
 import { borrarSesionCache } from '@compartido/sesionCache';
+import { olvidarViva } from '@compartido/sesionViva';
 import { olvidarAvisosRemotos } from '@compartido/avisosRemotos';
 import { olvidarMiPerfil } from '@compartido/perfil';
 
@@ -75,6 +76,8 @@ async function subirAntesDeSalir(supabase: Cliente) {
 export async function limpiarAlSalir() {
   await soltarCola();
   await borrarSesionCache();
+  // Y la de memoria: el dueño único vive mientras viva la app, no la cuenta.
+  olvidarViva();
   await borrarDescanso();
   await Promise.all(DE_LA_SESION.map((clave) => plataforma.almacenamiento.borrar(clave)));
   await borrarPerfilCache();

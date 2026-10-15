@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 // El tipo del cliente lo pone cada app: la web y la nativa traen cada una su
 // copia de supabase-js, y para TypeScript son dos clases distintas.
 import type { Cliente } from '@cliente';
@@ -73,6 +73,19 @@ import { cambioDeSesion,
   fotoDeLaCache,
   relojDeToques,
 } from '@compartido/sesionCache';
+import {
+  INICIAL,
+  YO,
+  bloquesDe,
+  faltanBloques,
+  idVisto,
+  leerViva,
+  refDe,
+  rutinaRef,
+  sesionesRutinaRef,
+  setterDe,
+  suscribirViva,
+} from '@compartido/sesionViva';
 import {
   actualizarLoQueSeHace,
   borrarDescanso,
@@ -195,37 +208,36 @@ export type CierreDeSesion = {
   pasos?: number | null;
 };
 
+// EL DATO ES DEL DUEÑO (`sesionViva.ts`), no de cada instancia: estos setters y
+// refs son ventanas al mismo lugar, y por eso viven afuera del hook. Lo que
+// escribe la pantalla lo ve el vigilante en el acto, sin pasar por la caché.
+const setInicio = setterDe('inicio');
+const setDesfasaje = setterDe('desfasaje');
+const setSeries = setterDe('series');
+const setPorUbicacion = setterDe('porUbicacion');
+const setCacheLeida = setterDe('cacheLeida');
+const setBloques = setterDe('bloques');
+const setSugerido = setterDe('sugerido');
+const setIdSesion = setterDe('idSesion');
+const setDescanso = setterDe('descanso');
+const setUltimaActividad = setterDe('ultimaActividad');
+// "Lo de ahora" para las funciones async que siguen después de que el render
+// que las creó pasó. Antes eran copias que había que mantener al día a mano.
+const bloquesRef = refDe('bloques');
+const seriesRef = refDe('series');
+const descansoRef = refDe('descanso');
+const inicioRef = refDe('inicio');
+const ultimaRef = refDe('ultimaActividad');
+const desfasajeRef = refDe('desfasaje');
+const sinServidor = () => INICIAL;
+
 export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void) {
   const [supabase] = useState(() => crearCliente());
-  // Quién es ESTA instancia, para no releer sus propias escrituras (ver
-  // `esMio` en `sesionCache.ts`).
-  const [yo] = useState(() => Symbol('sesion'));
-  const [inicio, setInicio] = useState<string | null>(null);
-  const [desfasaje, setDesfasaje] = useState(0);
-  const [series, setSeries] = useState(0);
-  const [porUbicacion, setPorUbicacion] = useState(false);
-  // Si ya se leyó la copia de la sesión que guarda el teléfono (14/10). Antes de
-  // eso `corriendo` es el valor de arranque, `false`, aunque haya una sesión:
-  // quien decide algo con eso —el vigilante, al abrir la app de cero— arrancaba
-  // otra encima de la que ya estaba.
-  const [cacheLeida, setCacheLeida] = useState(false);
-  // El bloque en curso: en qué estás, cuántas te propusiste, cuántas van.
-  // Ver `lib/bloques.ts` — el total de la sesión sigue siendo `series` y esto
-  // es una anotación encima, no un reemplazo.
-  const [bloques, setBloques] = useState<EstadoBloques>(() => bloquesVacios());
-  // El valor de AHORA, para las funciones async que corren después de que el
-  // render que las creó ya pasó. Sin esto, la semilla del bloque decidía sobre
-  // el estado viejo y podía pisar toques que llegaron mientras esperaba.
-  const bloquesRef = useRef(bloques);
-  bloquesRef.current = bloques;
-  // LO MISMO PARA EL TOTAL. Dos toques rápidos, sin re-render en el medio,
-  // tienen que ver cada uno el número del anterior y no el del render. Antes el
-  // conteo se leía del closure y, con un `await` en el medio, el segundo toque
-  // arrancaba del número viejo y pisaba al primero: el total quedaba una serie
-  // atrás mientras la lista llegaba entera (bug del gimnasio, 27/9). Ahora las
-  // dos cuentas se mueven juntas desde estos refs. Ver `nucleo/conteo.ts`.
-  const seriesRef = useRef(series);
-  seriesRef.current = series;
+  // La firma de la caché es UNA por aparato (ver `YO`): lo que escribe otra
+  // instancia ya está en el dueño y releerlo solo podía traer algo más viejo.
+  const yo = YO;
+  const { inicio, desfasaje, series, porUbicacion, cacheLeida, bloques, sugerido, idSesion, descanso, ultimaActividad } =
+    useSyncExternalStore(suscribirViva, leerViva, sinServidor);
   // El ejercicio del que ya se sabe con qué se hace —la base contestó, o no
   // hay señal y se decidió con lo que había—. Hasta entonces la pregunta de la
   // primera vez no se muestra: a quien la contestó en otro teléfono se le
@@ -237,32 +249,11 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // LA RUTINA QUE SE PROPONE SOLA (ver `nucleo/rutina.ts`). `sugerido` dice si el
   // ejercicio y el peso del bloque actual son una SUGERENCIA que todavía no se
   // confirmó (contando una serie): la UI la muestra distinta —"fantasma"— para
-  // que nadie cuente una serie que no hizo. `rutinaRef` es la cadena propuesta
-  // para hoy; `sesionesRutinaRef` es el historial reciente, para re-enganchar la
-  // cadena si se cambia el primer ejercicio. Todo del lado del cliente.
-  const [sugerido, setSugerido] = useState(false);
-  const rutinaRef = useRef<string[]>([]);
-  const sesionesRutinaRef = useRef<SesionRutina[]>([]);
-  const [idSesion, setIdSesion] = useState<string | null>(null);
-  const [descanso, setDescanso] = useState<DescansoVivo | null>(null);
-  // Para quien cambia algo a mitad del descanso (`refrescarTarjeta`).
-  const descansoRef = useRef(descanso);
-  descansoRef.current = descanso;
+  // que nadie cuente una serie que no hizo. `rutinaRef` y `sesionesRutinaRef`
+  // viven en el dueño.
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState('');
   const [, repintar] = useState(0);
-  // La última actividad, en hora de servidor. Con esto el teléfono sabe, sin
-  // preguntarle a nadie, si la sesión ya se cerró sola (ver `cierreSolo`).
-  const [ultimaActividad, setUltimaActividad] = useState<string | null>(null);
-  // La sesión que ESTE aparato tenía abierta. Hace falta porque cuando se
-  // cierra sola la caché se borra, y el aviso "se cerró sola" tiene que saber
-  // que era la nuestra y no una de otro aparato.
-  const idVisto = useRef<string | null>(null);
-  // LA SESIÓN CUYOS BLOQUES HAY QUE TRAER DE LA BASE (19/9): se abrió sin
-  // ellos en la caché —otro lado, caché borrada—. Mientras esté puesto, la
-  // lista NO se sube: subir la de acá, incompleta, borraba en la base los
-  // bloques de antes. Ver `unirConGuardados`.
-  const faltanBloques = useRef<string | null>(null);
   const confirmando = useRef(false);
   // TRABA SÍNCRONA CONTRA EL DOBLE-TAP en empezar/terminar (la misma idea que
   // `compartido/useEnVuelo.ts`, pero acá adentro: estas dos ya devuelven un
@@ -272,13 +263,6 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // `iniciar_sesion`/`terminar_sesion`. Una sola para las dos: no tiene sentido
   // arrancar y cerrar a la vez, y así un toque en cada botón tampoco se pisa.
   const operandoSesion = useRef(false);
-  // Lo de AHORA para el intervalo, que se creó con los valores de otro render.
-  const inicioRef = useRef(inicio);
-  inicioRef.current = inicio;
-  const ultimaRef = useRef(ultimaActividad);
-  ultimaRef.current = ultimaActividad;
-  const desfasajeRef = useRef(desfasaje);
-  desfasajeRef.current = desfasaje;
 
   // LOS BLOQUES SON DE UNA SESIÓN (4/10). Vivían en memoria sin saber de cuál:
   // el único que los vaciaba era `terminar`, y solo en la instancia que
@@ -287,7 +271,6 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // frente se subían a la base: los kilos de ese día quedaban anotados dos veces.
   // Acá se anota de qué sesión son, y cuando la sesión es otra —o ninguna— se
   // tiran. Con una base sin ids (`null`) queda como antes.
-  const bloquesDe = useRef<string | null>(null);
   const bloquesSonDe = useCallback((id: string | null) => {
     const deOtra = bloquesDe.current !== null && bloquesDe.current !== id;
     bloquesDe.current = id;
@@ -306,32 +289,35 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // el conteo no se toca. Ver "el reloj de los toques" en `sesionCache`.
     const alDia = fotoDeLaCache();
     const c = await leerSesionCache();
-    setInicio(c?.inicio ?? null);
-    setDesfasaje(c?.desfasaje ?? 0);
-    bloquesSonDe(c?.id ?? null);
-    // También lo que hace falta para DECIDIR, no solo para pintar: si la
-    // sesión arrancó sola hay que poder cerrarla al salir, y eso lo mira el
-    // vigilante, que es otra instancia de este mismo hook.
-    if (c) {
-      setPorUbicacion(c.porUbicacion ?? false);
-      setIdSesion(c.id ?? null);
-      if (c.id) idVisto.current = c.id;
-      setUltimaActividad(c.ultimaActividad ?? null);
-      if (alDia()) {
+    // TODO O NADA (15/10): antes la sesión misma —inicio, id— se aplicaba sin
+    // mirar la foto, y una lectura vacía que llegaba después de Iniciar sacaba
+    // la sesión de la pantalla. Lo que hay en el dueño ya es más nuevo.
+    if (alDia()) {
+      setInicio(c?.inicio ?? null);
+      setDesfasaje(c?.desfasaje ?? 0);
+      bloquesSonDe(c?.id ?? null);
+      // También lo que hace falta para DECIDIR, no solo para pintar: si la
+      // sesión arrancó sola hay que poder cerrarla al salir, y eso lo mira el
+      // vigilante, que es otra instancia de este mismo hook.
+      if (c) {
+        setPorUbicacion(c.porUbicacion ?? false);
+        setIdSesion(c.id ?? null);
+        if (c.id) idVisto.current = c.id;
+        setUltimaActividad(c.ultimaActividad ?? null);
         if (c.bloques) setBloques(c.bloques);
         // El fantasma sobrevive a que iOS mate la app: si el bloque en curso era
         // una sugerencia sin confirmar, al reabrir sigue viéndose como sugerencia
         // y no como algo ya elegido (ver `SesionCacheada.sugerido`).
         setSugerido(!!c.sugerido);
+        // EL TOTAL AL REABRIR (bug "3 de 3 · 0 en total", 29/9). Antes: con cola
+        // pendiente se descartaba la caché y quedaba el total EN PANTALLA —que tras
+        // un cierre de iOS es el 0 inicial—, mientras los puntos se restauraban del
+        // bloque. Ahora `seriesAlReleer` toma el máximo entre pantalla y caché
+        // cuando hay pendientes (respeta toques nuevos sin perder lo guardado), y la
+        // caché cuando no hay. Se lee del ref, no del closure viejo. Ver conteo.ts.
+        const hayPendientes = (await cuantasPendientes()) > 0;
+        if (alDia()) setSeries(seriesAlReleer(seriesRef.current, c.series, hayPendientes));
       }
-      // EL TOTAL AL REABRIR (bug "3 de 3 · 0 en total", 29/9). Antes: con cola
-      // pendiente se descartaba la caché y quedaba el total EN PANTALLA —que tras
-      // un cierre de iOS es el 0 inicial—, mientras los puntos se restauraban del
-      // bloque. Ahora `seriesAlReleer` toma el máximo entre pantalla y caché
-      // cuando hay pendientes (respeta toques nuevos sin perder lo guardado), y la
-      // caché cuando no hay. Se lee del ref, no del closure viejo. Ver conteo.ts.
-      const hayPendientes = (await cuantasPendientes()) > 0;
-      if (alDia()) setSeries(seriesAlReleer(seriesRef.current, c.series, hayPendientes));
     }
     setDescanso(await leerDescanso());
     setCacheLeida(true);

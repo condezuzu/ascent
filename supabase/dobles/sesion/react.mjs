@@ -90,3 +90,23 @@ export function useEffect(fn, deps) {
     lugar.limpiar = typeof l === 'function' ? l : undefined;
   });
 }
+
+/**
+ * UNA TIENDA DE AFUERA (el dueño único de la sesión, 15/10). Se suscribe una vez
+ * por instancia y, como el `useState` de acá, un cambio se ve en el render
+ * siguiente —o se redibuja antes de mostrar si cambió DURANTE el render—.
+ */
+export function useSyncExternalStore(suscribir, leer) {
+  const i = instancia;
+  const k = i.idx++;
+  if (!i.ganchos[k]) {
+    const g = {};
+    g.avisar = () => {
+      if (instancia === i) i.sucio = true;
+      else programar(i);
+    };
+    g.dejar = suscribir(g.avisar);
+    i.ganchos[k] = g;
+  }
+  return leer();
+}

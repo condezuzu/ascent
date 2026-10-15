@@ -99,7 +99,9 @@ export type SesionCacheada = {
  * que es todo lo que hace falta para contar (§17.5).
  */
 export async function guardarSesionCache(s: SesionCacheada, dueno?: symbol) {
-  await plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(s));
+  // En la fila de `actualizarSesionCache`: si no, un actualizar que ya había leído
+  // la sesión anterior la guardaba encima de esta.
+  await enFila(() => plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(s)));
   avisar(dueno);
 }
 
@@ -118,7 +120,8 @@ export async function leerSesionCache(): Promise<SesionCacheada | null> {
     // se tocó nada. Sin esto el teléfono mostraría corriendo, sin señal, una
     // sesión que la base ya cerró.
     if (!Number.isFinite(Date.parse(s.inicio)) || cierreSolo(s, Date.now() - s.desfasaje)) {
-      await borrarSesionCache();
+      // Sin la fila: esto corre ADENTRO de un paso de ella (el leer de `actualizar`).
+      await borrarSinFila();
       return null;
     }
     return s;
@@ -151,6 +154,12 @@ let enVuelo = 0; // de esos, los que todavía no terminaron de escribirse en la 
 // actividad (y media hora después daba la sesión por cerrada), o sin el modo
 // del bloque. Es la misma fila que usa la cola (`enTurno`, en `cola.ts`).
 let turno: Promise<unknown> = Promise.resolve();
+
+function enFila<R>(fn: () => Promise<R>): Promise<R> {
+  const paso = turno.then(fn);
+  turno = paso.catch(() => undefined);
+  return paso;
+}
 
 /**
  * LA ÉPOCA DE LA SESIÓN (15/10): empezar o terminar una sesión también invalida
@@ -226,9 +235,15 @@ export async function actualizarSesionCache(
   if (guardado) avisar(dueno);
 }
 
-export async function borrarSesionCache(dueno?: symbol) {
+async function borrarSinFila() {
   await plataforma.almacenamiento.borrar(CLAVE);
   await plataforma.efimero.borrar(CLAVE_DURACION);
+}
+
+export async function borrarSesionCache(dueno?: symbol) {
+  // En la fila: un actualizar que leyó antes de esto guardaba la sesión terminada
+  // de nuevo, y volvía a aparecer en el teléfono.
+  await enFila(borrarSinFila);
   avisar(dueno);
 }
 

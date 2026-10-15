@@ -15,6 +15,8 @@ import { cambiarVisible, cfg, datos, servidas } from './plataforma.mjs';
 import { servidor } from './cliente.mjs';
 
 const { useSesion } = await import('@compartido/useSesion');
+// El dueño único vive en el módulo: "la app arrancó de nuevo" es olvidarlo a mano.
+const { olvidarViva } = await import('@compartido/sesionViva');
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 const cache = () => JSON.parse(datos.get('ascent:sesion') ?? 'null');
@@ -469,6 +471,7 @@ async function senal(cual) {
         // arrancó de nuevo), pero para la base sigue viva: devuelve la misma.
         servidor.ventanaMs = null;
         datos.delete('ascent:sesion');
+        olvidarViva();
         quien = montar(() => useSesion());
         await dormir(60);
       }
@@ -643,7 +646,112 @@ async function viejas(caso, variante) {
 }
 
 const [escenario, ...argumentos] = process.argv.slice(2);
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas }[escenario](...argumentos);
+/**
+ * `dueno`: EL DATO ES UNO (el dueño único, 15/10). Con el vigilante y la
+ * pantalla montados, lo que toca la pantalla lo ve el vigilante en el render
+ * siguiente, sin esperar a la caché —que tarda una vuelta del bucle de eventos—.
+ * Con una copia por instancia, el vigilante iba atrás hasta releerla. Después se
+ * toca desde el vigilante y se mira la pantalla: tiene que valer para los dos lados.
+ */
+async function dueno() {
+  const vigilante = montar(() => useSesion());
+  const inicio = montar(() => useSesion());
+  await asentar();
+  const soloRender = async () => {
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+  };
+  const ver = (x) => ({ corriendo: x.r.estado.corriendo, series: x.r.estado.series, bloques: corto(x.r.estado.bloques) });
+  await inicio.r.empezar();
+  await soloRender();
+  const alEmpezar = ver(vigilante);
+  await inicio.r.elegirPeso(60);
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await soloRender();
+  const trasDos = { pantalla: ver(inicio), vigilante: ver(vigilante) };
+  await vigilante.r.serieHecha({ sinDescanso: true });
+  await soloRender();
+  const desdeElVigilante = ver(inicio);
+  await asentar();
+  return { alEmpezar, trasDos, desdeElVigilante, base: servidor.sesiones[0]?.series ?? null };
+}
+
+/**
+ * `cruce`: BORRAR Y GUARDAR LA CACHÉ, EN LA MISMA FILA QUE ACTUALIZAR (15/10).
+ * Un `actualizar` lee la caché; justo ahí se termina la sesión y se borra; el
+ * `actualizar` guarda lo que había leído y la sesión terminada volvía a aparecer
+ * en el teléfono. `guardar`: lo mismo con una sesión nueva que se guarda en el medio.
+ */
+async function cruce(cual) {
+  const SC = await import('@compartido/sesionCache');
+  const vieja = { inicio: new Date().toISOString(), desfasaje: 0, series: 1, id: 'sesion-1' };
+  await SC.guardarSesionCache(vieja);
+  const n0 = servidas.n;
+  let enElMedio = null;
+  servidas.alServir = (n) => {
+    if (n !== n0 + 1 || enElMedio) return;
+    enElMedio = cual === 'guardar'
+      ? SC.guardarSesionCache({ ...vieja, id: 'sesion-2', series: 0 })
+      : SC.borrarSesionCache();
+  };
+  await SC.actualizarSesionCache({ series: 2 });
+  await enElMedio;
+  servidas.alServir = null;
+  const c = cache();
+  return { cache: c ? [c.id, c.series] : null };
+}
+
+/**
+ * `releerVieja` (paso 5 del refactor, 15/10): al desbloquear se relee la caché
+ * —"no hay sesión"—, se toca Iniciar, y la lectura vacía llega DESPUÉS. No
+ * puede sacar de la pantalla la sesión que acaba de empezar.
+ */
+async function releerVieja() {
+  const inicio = montar(() => useSesion());
+  await asentar();
+  cambiarVisible(false);
+  await asentar();
+  cfg.demoraLeer = { 'ascent:sesion': 150 };
+  cambiarVisible(true);
+  cfg.demoraLeer = {};
+  await inicio.r.empezar();
+  await dormir(250);
+  await asentar();
+  const viva = servidor.sesiones.find((s) => s.estado === 'corriendo');
+  return { pantallaCorre: inicio.r.estado.corriendo, baseCorre: !!viva, cacheId: cache()?.id ?? null };
+}
+
+/**
+ * `fantasma` (paso 5 del refactor, 15/10): con el bloque siguiente propuesto
+ * por la rutina —"fantasma"—, se desbloquea y se le pregunta a la base. La
+ * respuesta es de la misma sesión: no le puede sacar el fantasma a la caché.
+ */
+async function fantasma() {
+  servidor.ida.version_del_esquema = 300;
+  servidor.falla.version_del_esquema = true;
+  servidor.ultimoEjercicio = 'press_banca';
+  const { hoyISO, restarDias } = await import('@nucleo/fechas');
+  servidor.historial = [
+    { bloques: [{ ejercicio: 'press_banca' }, { ejercicio: 'remo' }], logs: { fecha: restarDias(hoyISO(), 7) } },
+  ];
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await dormir(700);
+  await asentar();
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  await inicio.r.bloqueSiguiente();
+  await dormir(120);
+  await asentar();
+  const antes = [inicio.r.estado.sugerido, cache()?.sugerido ?? null];
+  await bloquearYDesbloquear();
+  await dormir(200);
+  await asentar();
+  return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
+}
+
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

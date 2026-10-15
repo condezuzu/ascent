@@ -79,6 +79,8 @@ export type CacheDeSesion = {
   series?: number;
   id?: string | null;
   bloques?: unknown;
+  sugerido?: boolean;
+  quisoTerminar?: number | null;
 };
 
 export type QueHacerConLaCache =
@@ -124,12 +126,16 @@ export function cacheTrasConfirmar(
   // es otra y arrastrarlos sería mostrar las series de la de ayer.
   const mismaSesion =
     previo != null && previo.id != null && delServidor.id != null && previo.id === delServidor.id;
-  return {
-    accion: 'guardar',
-    cache: mismaSesion && previo.bloques !== undefined
-      ? { ...delServidor, bloques: previo.bloques }
-      : delServidor,
-  };
+  if (!mismaSesion) return { accion: 'guardar', cache: delServidor };
+  // Lo que es SOLO del teléfono —los bloques, el fantasma de la sugerencia, la
+  // hora del primer "Terminar" sin señal— el servidor no lo manda: se conserva.
+  // Antes se conservaban solo los bloques, y desbloquear le sacaba el fantasma a
+  // la caché: si iOS mataba la app, la sugerencia volvía como algo ya elegido.
+  const cache: CacheDeSesion = { ...delServidor };
+  if (previo.bloques !== undefined) cache.bloques = previo.bloques;
+  if (previo.sugerido !== undefined) cache.sugerido = previo.sugerido;
+  if (previo.quisoTerminar !== undefined) cache.quisoTerminar = previo.quisoTerminar;
+  return { accion: 'guardar', cache };
 }
 
 /**

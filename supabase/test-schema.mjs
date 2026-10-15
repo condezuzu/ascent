@@ -18249,6 +18249,54 @@ console.log('\n227. Rutina en inglés, idioma de a dos, Social, Ranking ordenado
   ], [true, true, true, true]);
 }
 
+console.log('\n228. El dueño único de la sesión: el dato vive una vez por aparato (15/10)');
+{
+  const SV228 = await import('../compartido/sesionViva.ts');
+  const { readFileSync: leer228 } = await import('node:fs');
+  const de228 = (...p) => leer228(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  let avisos = 0;
+  const dejar = SV228.suscribirViva(() => avisos++);
+  const a = SV228.leerViva();
+  SV228.cambiarViva({ series: 0, inicio: null });
+  const sinCambio = [SV228.leerViva() === a, avisos];
+  SV228.cambiarViva({ series: 2 });
+  const conCambio = [SV228.leerViva() === a, SV228.leerViva().series, avisos];
+  const ref = SV228.refDe('series');
+  ref.current = 5;
+  const porRef = [SV228.leerViva().series, avisos];
+  SV228.olvidarViva();
+  const olvidado = [SV228.leerViva().series, SV228.leerViva().cacheLeida];
+  dejar();
+  chequear('leer devuelve el mismo objeto mientras nada cambia, y avisa solo cuando algo cambia de verdad (por setter o por ref)', { sinCambio, conCambio, porRef, olvidado }, {
+    sinCambio: [true, 0],
+    conCambio: [false, 2, 1],
+    porRef: [5, 2],
+    olvidado: [0, false],
+  });
+  const hook = de228('compartido', 'useSesion.ts');
+  chequear('useSesion lee del dueño y ya no guarda la sesión en su propio estado', [
+    /useSyncExternalStore\(suscribirViva, leerViva, sinServidor\)/.test(hook),
+    /const \[(series|bloques|inicio|desfasaje|descanso|idSesion|sugerido|porUbicacion|cacheLeida|ultimaActividad), set[A-Za-z]+\] = useState/.test(hook),
+    /const yo = YO;/.test(hook),
+  ], [true, false, true]);
+  chequear('borrar la caché en medio de un actualizar no deja reaparecer la sesión terminada; guardar una nueva no queda pisado por la vieja', [
+    await escenarioDeSesion('cruce', 'borrar'),
+    await escenarioDeSesion('cruce', 'guardar'),
+  ], [{ cache: null }, { cache: ['sesion-2', 0] }]);
+  chequear('una lectura vacía de la caché que llega después de Iniciar no saca la sesión de la pantalla', await escenarioDeSesion('releerVieja'), {
+    pantallaCorre: true, baseCorre: true, cacheId: 'sesion-1',
+  });
+  chequear('desbloquear y preguntarle a la base no le saca el fantasma de la sugerencia a la caché', await escenarioDeSesion('fantasma'), {
+    antes: [true, true], despues: [true, true],
+  });
+  chequear('al cerrar sesión se olvida también la de memoria', /await borrarSesionCache\(\);\s*olvidarViva\(\);/.test(de228('compartido', 'cuenta.ts')), true);
+  chequear('con la pantalla y el vigilante montados, lo que toca uno lo ve el otro en el render siguiente, sin esperar a la caché', await escenarioDeSesion('dueno'), {
+    alEmpezar: { corriendo: true, series: 0, bloques: [[null, 0]] },
+    trasDos: { pantalla: { corriendo: true, series: 2, bloques: [[null, 2]] }, vigilante: { corriendo: true, series: 2, bloques: [[null, 2]] } },
+    desdeElVigilante: { corriendo: true, series: 3, bloques: [[null, 3]] },
+    base: 3,
+  });
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
