@@ -322,10 +322,40 @@ const RECETAS = {
     await foto(page, 'cardio-buscar');
     await page.getByText('Cinta', { exact: true }).first().click({ timeout: 20000 });
     await page.waitForTimeout(1500);
-    await foto(page, 'cardio-bloque');
-    await page.getByText('Listo', { exact: true }).first().click({ timeout: 20000 });
+    // EL CRONÓMETRO (15/10): elegir la cinta ya lo arranca.
+    await page.getByTestId('cronometro-cardio').first().waitFor({ state: 'visible', timeout: 20000 });
+    await page.waitForTimeout(2200);
+    await foto(page, 'cardio-cronometro');
+    await tocar(page, 'cardio-principal');
     await page.waitForTimeout(1500);
     await foto(page, 'cardio-hecho');
+    const principal = await page.getByTestId('cardio-principal').first().innerText();
+    if (principal.trim() !== TEXTOS_ES.sesion.cardioOtraVuelta) throw new Error(`después de Listo el botón dice "${principal}"`);
+    if (await page.getByTestId('cronometro-cardio').count()) throw new Error('el cronómetro sigue corriendo después de Listo');
+    console.log('  cardio: arrancó al elegirlo, Listo lo cerró y ofrece otra vuelta');
+    return page;
+  },
+  // EL "+" DEL DESCANSO (15/10): cuatro minutos a mano, como lo escribe el dedo.
+  async 'descanso-a-mano'(nav, gente) {
+    const A = gente.a;
+    const { page } = await abrir(nav, A, { version_del_esquema: 79 });
+    await sesionConSelector(page);
+    await page.getByText('Press de banca', { exact: true }).first().click({ timeout: 20000 });
+    await page.waitForTimeout(1200);
+    await page.getByLabel(TEXTOS_ES.inicio.sumarSerie, { exact: true }).first().click({ timeout: 20000 });
+    await page.waitForTimeout(1000);
+    await tocar(page, 'pildora-descanso');
+    await page.getByTestId('descanso-a-mano').first().waitFor({ state: 'visible', timeout: 20000 });
+    await tocar(page, 'descanso-a-mano');
+    await page.getByTestId('descanso-a-mano-campo').first().fill('4');
+    await page.waitForTimeout(300);
+    await foto(page, 'descanso-a-mano-escribiendo');
+    await tocar(page, 'descanso-a-mano-usar');
+    await page.waitForTimeout(1200);
+    await foto(page, 'descanso-a-mano');
+    const texto = await page.locator('body').innerText();
+    if (!/\b3:5\d\b|\b4:00\b/.test(texto)) throw new Error('la cuenta atrás no quedó en cuatro minutos');
+    console.log('  descanso: quedó en cuatro minutos');
     return page;
   },
   async 'stats-kilos'(nav, gente) {

@@ -1007,6 +1007,11 @@ const ES = {
     // El + sin salir del descanso. Dice lo que pasó, no lo que hace el
     // botón: "hice la serie" es lo que la persona acaba de vivir.
     serieHecha: '+ Serie hecha',
+    // EL TIEMPO A MANO (15/10), hasta una hora: "4" son cuatro minutos y "1:30", uno y medio.
+    aMano: 'Poner el tiempo a mano',
+    aManoEjemplo: 'Minutos (4 o 1:30)',
+    aManoUsar: 'Usar',
+    aManoMal: 'Hasta una hora: 4 o 1:30.',
     listoPie: 'Listo. Cuando quieras, la que sigue.',
     seguir: 'Seguir',
     // La pantalla nueva del descanso (12/10): qué se estaba haciendo, arriba.
@@ -1133,6 +1138,12 @@ const ES = {
     // El cardio (14/10): una vuelta se anota con los minutos, sin descanso después.
     cardioListo: 'Listo',
     minutosDeCardio: 'Minutos',
+    // EL CRONÓMETRO DEL CARDIO (15/10): arranca al elegirlo; "Listo" anota lo que corrió.
+    cardioArrancar: 'Arrancar',
+    cardioOtraVuelta: 'Otra vuelta',
+    cardioTerminar: 'Terminar cardio',
+    cardioCorriendo: 'Cardio en curso',
+    cardioSinCronometro: 'Anotar estos minutos sin cronómetro',
     // Y sumar otra sigue estando, en el lugar secundario: pasarse de la
     // meta es normal y la app no puede dejar de permitirlo solo porque el
     // botón grande cambió de trabajo.

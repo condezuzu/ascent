@@ -574,6 +574,41 @@ async function cardio() {
   return { tras, corregido, comun: inicio.r.estado.descanso !== null };
 }
 
+/**
+ * `cronometro`: EL CRONÓMETRO DEL CARDIO (15/10). Se elige cinta y arranca; a
+ * los 12 minutos "Listo" anota 12 y la vuelta cuenta, SIN descanso; "Otra
+ * vuelta" arranca de nuevo y a los 5 suma 17. El reloj se adelanta a mano.
+ */
+async function cronometro() {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirEjercicio('cinta');
+  await inicio.r.arrancarCardio();
+  await asentar();
+  const corre = inicio.r.estado.bloques.cardioDesde !== undefined;
+  const enCache = cache()?.bloques?.cardioDesde !== undefined;
+  const viva = () => servidor.sesiones.find((x) => x.estado === 'corriendo');
+  adelanto = 12 * 60000 + 20000;
+  await inicio.r.cerrarVueltaDeCardio();
+  await asentar();
+  const primera = {
+    minutos: (viva()?.bloques ?? []).map((b) => b.minutos ?? null),
+    descanso: inicio.r.estado.descanso !== null,
+    corre: inicio.r.estado.bloques.cardioDesde !== undefined,
+    subioElCronometro: JSON.stringify(viva()?.bloques ?? []).includes('cardioDesde'),
+  };
+  await inicio.r.arrancarCardio();
+  adelanto += 5 * 60000;
+  await inicio.r.cerrarVueltaDeCardio();
+  await asentar();
+  return { corre, enCache, primera, segunda: { minutos: (viva()?.bloques ?? []).map((b) => b.minutos ?? null), series: viva()?.series ?? null } };
+}
+
 /** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
 async function yaCorria() {
   const inicio = montar(() => useSesion());
@@ -751,7 +786,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

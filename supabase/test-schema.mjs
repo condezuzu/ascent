@@ -18349,6 +18349,26 @@ console.log('\n229. La rutina: en Inicio, en su pantalla, y se ordena arrastrand
     /alMover=\{\(desde, hasta\) => con\(moverEjercicio\(actual\.dias, d, desde, hasta\)\)\}/.test(de229('movil', 'src', 'MiRutina.tsx')),
   ], [true, true]);
 }
+console.log('\n230. Cardio con cronómetro, y el descanso a mano hasta una hora (15/10)');
+{
+  const RG230 = await import('../nucleo/reglas.ts');
+  chequear('el "+" del descanso lee minutos o m:ss, sube lo muy corto a 15 s y no pasa de una hora', ['4', '1:30', '0:10', '60', '2,5', '61', '1:75', 'abc', ''].map(RG230.descansoAMano), [240, 90, 15, 3600, 150, null, null, null, null]);
+  const B230 = await import('../nucleo/bloques.ts');
+  const t0 = 1_000_000;
+  const conCinta = B230.cambiarEjercicio(B230.bloquesVacios(), 'cinta');
+  const corriendo = B230.arrancarCardio(conCinta, t0);
+  const cerrado = B230.cerrarVueltaDeCardio(corriendo, t0 + 12.4 * 60000);
+  chequear('la vuelta de cardio anota lo que corrió (al menos un minuto) y apaga el cronómetro; no pasa a otro ejercicio ni al bloque siguiente', [
+    corriendo.cardioDesde, B230.arrancarCardio(corriendo, t0 + 5).cardioDesde, cerrado.minutos, 'cardioDesde' in cerrado,
+    B230.cerrarVueltaDeCardio(B230.arrancarCardio(conCinta, t0), t0 + 10000).minutos,
+    'cardioDesde' in B230.cambiarEjercicio(corriendo, 'remo'), 'cardioDesde' in B230.siguiente({ ...corriendo, hechas: 1 }),
+  ], [t0, t0, 12, false, 1, false, false]);
+  chequear('con el hook de verdad: arranca, "Listo" a los 12 min anota 12 sin descanso, y otra vuelta de 5 suma 17', await escenarioDeSesion('cronometro'), {
+    corre: true, enCache: true,
+    primera: { minutos: [12], descanso: false, corre: false, subioElCronometro: false },
+    segunda: { minutos: [17], series: 2 },
+  });
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

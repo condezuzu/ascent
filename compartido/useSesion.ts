@@ -45,6 +45,8 @@ import {
   sinNadaContado,
   unirConGuardados,
   terminarBloque,
+  arrancarCardio,
+  cerrarVueltaDeCardio,
   type EstadoBloques,
 } from '@nucleo/bloques';
 import { sumarSerie, restarSerie, corregirEnLista, seriesAlReleer } from '@nucleo/conteo';
@@ -1325,6 +1327,25 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     await marcar();
   }
 
+  /** EL CRONÓMETRO DEL CARDIO (15/10): arranca al elegir un cardio, o con "Otra vuelta". */
+  async function arrancarElCardio() {
+    const b = arrancarCardio(bloquesRef.current, Date.now());
+    if (b === bloquesRef.current) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
+    await marcar();
+  }
+
+  /** "Listo": lo que corrió se anota en minutos y la vuelta cuenta, sin descanso automático. */
+  async function cerrarVueltaDelCardio() {
+    const b = cerrarVueltaDeCardio(bloquesRef.current, Date.now());
+    if (b === bloquesRef.current) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    await serieHecha({ sinDescanso: true });
+  }
+
   /** El peso de una serie ya hecha, desde la lista. `indice` -1 es el bloque en curso. */
   async function corregirPesoDeSerie(indice: number, serie: number, kg: number | null) {
     const previo = bloquesRef.current;
@@ -1428,6 +1449,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     elegirMeta,
     elegirPeso,
     elegirMinutos,
+    arrancarCardio: arrancarElCardio,
+    cerrarVueltaDeCardio: cerrarVueltaDelCardio,
     corregirPesoDeSerie,
     elegirCarga,
     corregirCargaDeBloque,

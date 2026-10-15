@@ -607,6 +607,7 @@ export default function Inicio({
                 andando muestra lo que falta y abre la pantalla grande. */}
             {sesion.estado.descanso ? (
               <Pressable
+                testID="pildora-descanso"
                 style={[estilos.chip, restante(sesion.estado.descanso.fin) === 0 && estilos.chipListo]}
                 onPress={() => setDescansoAbierto(true)}
                 accessibilityRole="button"
@@ -785,6 +786,8 @@ export default function Inicio({
             alTocarBloque={sesion.tocarBloque}
             alElegirPeso={sesion.elegirPeso}
             alElegirMinutos={sesion.elegirMinutos}
+            alArrancarCardio={sesion.arrancarCardio}
+            alCerrarVueltaDeCardio={sesion.cerrarVueltaDeCardio}
             alCorregirPeso={sesion.corregirPesoDeSerie}
             alElegirCarga={sesion.elegirCarga}
             alCorregirCarga={sesion.corregirCargaDeBloque}

@@ -166,3 +166,27 @@ export const DESCANSO_MAXIMO = 600;
  * Son constantes del cliente y no filas: cinco números iguales para todos.
  */
 export const PRESETS_DESCANSO = [60, 90, 120, 180, 300];
+
+/**
+ * EL DESCANSO A MANO (15/10): el "+" de la pantalla del descanso, hasta una hora.
+ * Vale para la sesión, no para el perfil —la columna acepta hasta diez minutos—,
+ * así que no lo acota `DESCANSO_MAXIMO`.
+ */
+export const DESCANSO_A_MANO_MAXIMO = 3600;
+
+/**
+ * Lo que se escribe en el "+": "4" son cuatro minutos y "1:30", uno y medio.
+ * Fuera de rango o ilegible, `null`; lo de menos de 15 segundos sube a 15.
+ */
+export function descansoAMano(texto: string): number | null {
+  const t = texto.trim().replace(',', '.');
+  const conSegundos = /^(\d{1,2}):(\d{1,2})$/.exec(t);
+  const seg = conSegundos
+    ? Number(conSegundos[1]) * 60 + Number(conSegundos[2])
+    : /^\d{1,2}(\.\d+)?$/.test(t)
+      ? Math.round(Number(t) * 60)
+      : NaN;
+  if (!Number.isFinite(seg) || seg <= 0 || seg > DESCANSO_A_MANO_MAXIMO) return null;
+  if (conSegundos && Number(conSegundos[2]) > 59) return null;
+  return Math.max(DESCANSO_MINIMO, seg);
+}

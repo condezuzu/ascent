@@ -103,6 +103,12 @@ export type EstadoBloques = {
    * de antes de esto traen pesos sin marca y caen del lado seguro.
    */
   pesoPropuesto?: true;
+  /**
+   * EL CRONÓMETRO DEL CARDIO (15/10): cuándo arrancó la vuelta en curso, en ms
+   * del reloj del teléfono. Sin llave = no corre. No se sube a la base (no está
+   * en `paraGuardar`): lo que se guarda son los minutos al cerrar la vuelta.
+   */
+  cardioDesde?: number;
 };
 
 /** El peso más alto que se acepta, en kilos. Lo mismo acota la base. */
@@ -195,6 +201,29 @@ export function cambiarMinutos(e: EstadoBloques, m: unknown): EstadoBloques {
 function sinMinutos<T extends { minutos?: number }>(obj: T): Omit<T, 'minutos'> {
   const { minutos: _m, ...resto } = obj;
   return resto;
+}
+
+function sinCardio<T extends { cardioDesde?: number }>(obj: T): Omit<T, 'cardioDesde'> {
+  const { cardioDesde: _c, ...resto } = obj;
+  return resto;
+}
+
+/** Arranca el cronómetro del cardio. Si ya corre, lo deja como está. */
+export function arrancarCardio(e: EstadoBloques, ahora: number): EstadoBloques {
+  if (e.cardioDesde !== undefined) return e;
+  return { ...e, cardioDesde: ahora };
+}
+
+/**
+ * CIERRA LA VUELTA DE CARDIO: lo que corrió el cronómetro —al menos un minuto—
+ * se suma a los minutos del bloque, y se apaga. La primera vuelta reemplaza los
+ * minutos que hubiera (los de arranque, que nadie corrió).
+ */
+export function cerrarVueltaDeCardio(e: EstadoBloques, ahora: number): EstadoBloques {
+  if (e.cardioDesde === undefined) return e;
+  const corrio = Math.max(1, Math.round((ahora - e.cardioDesde) / 60000));
+  const antes = e.hechas > 0 ? (e.minutos ?? 0) : 0;
+  return { ...sinCardio(e), minutos: Math.min(MINUTOS_MAXIMOS, antes + corrio) };
 }
 
 function sinCarga<T extends { carga?: Carga }>(obj: T): Omit<T, 'carga'> {
@@ -294,8 +323,9 @@ export function siguiente(e: EstadoBloques): EstadoBloques {
   // El peso vigente SE QUEDA, y el modo también: el bloque que sigue es del
   // mismo ejercicio, y lo más probable después de tres series con 60 son otras
   // tres con 60, con lo mismo en la mano.
+  // Un cronómetro de cardio no pasa al bloque que sigue: esa vuelta ya se cerró.
   return conPesos(
-    { ...e, cerrados: [...e.cerrados, b].slice(-TOPE_BLOQUES), hechas: 0 },
+    { ...(sinCardio(e) as EstadoBloques), cerrados: [...e.cerrados, b].slice(-TOPE_BLOQUES), hechas: 0 },
     []
   );
 }
@@ -316,7 +346,7 @@ export function siguiente(e: EstadoBloques): EstadoBloques {
 export function terminarBloque(e: EstadoBloques): EstadoBloques {
   const cerradoB = siguiente(e);
   if (cerradoB === e) return e; // nada hecho: no se cierra un bloque vacío
-  return { ...(sinMinutos(sinCarga(sinPeso(cerradoB))) as EstadoBloques), ejercicio: null };
+  return { ...(sinCardio(sinMinutos(sinCarga(sinPeso(cerradoB)))) as EstadoBloques), ejercicio: null };
 }
 
 /**
@@ -329,7 +359,7 @@ export function cambiarEjercicio(e: EstadoBloques, id: string | null): EstadoBlo
   // El peso NO pasa al ejercicio nuevo: los 100 de sentadilla no son un peso
   // de press de banca, y arrastrarlos anotaría series con un número falso. El
   // modo tampoco: las zancadas con mancuernas no dicen nada del press.
-  return { ...(sinMinutos(sinCarga(sinPeso(siguiente(e)))) as EstadoBloques), ejercicio: id };
+  return { ...(sinCardio(sinMinutos(sinCarga(sinPeso(siguiente(e))))) as EstadoBloques), ejercicio: id };
 }
 
 /**
