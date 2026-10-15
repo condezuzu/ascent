@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
+import { FOTOS_CAMBIO } from '@compartido/foto';
 import { supabase } from './supabase';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
@@ -52,10 +53,13 @@ export default function DiaListo({
           if (vivo && !error) setSinFoto((data ?? []).length === 0);
         });
     mirar();
-    const dejar = eventos.escuchar(DIA_CAMBIO, mirar);
+    // FOTOS_CAMBIO y no solo DIA_CAMBIO: el del día sale ANTES de que la foto termine de subir.
+    const dejarDia = eventos.escuchar(DIA_CAMBIO, mirar);
+    const dejarFotos = eventos.escuchar(FOTOS_CAMBIO, mirar);
     return () => {
       vivo = false;
-      dejar();
+      dejarDia();
+      dejarFotos();
     };
   }, [logId]);
   return (
