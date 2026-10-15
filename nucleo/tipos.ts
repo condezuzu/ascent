@@ -113,7 +113,7 @@ export type Log = {
   origen: OrigenDia;
 };
 
-/** El día de un amigo: sin `origen` (ni la hora), que dicen cuándo entrenó (migración 85). */
+/** El día de un amigo: sin `origen` (ni la hora), que dicen cuándo entrenó (migración 86). */
 export type LogDeAmigo = Omit<Log, 'origen'>;
 
 export type Foto = {

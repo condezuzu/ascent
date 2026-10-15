@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import { GRUPOS_PROPIOS, ORDEN_ZONAS, buscarEjercicios, gruposDeZona, nombreDeGrupo, sinAcentos, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
@@ -59,6 +59,15 @@ function SelectorEjercicio({
   const [busqueda, setBusqueda] = useState('');
   const [creando, setCreando] = useState<{ nombre: string; grupo: string | null } | null>(null);
   const [creandoError, setCreandoError] = useState('');
+  // Si la hoja sigue abierta cuando contesta `crearEjercicio` (ver `crear`).
+  const abierta = useRef(visible);
+  abierta.current = visible;
+  useEffect(
+    () => () => {
+      abierta.current = false;
+    },
+    []
+  );
   const conPropios = disponible('ejerciciosPropios', useVersionDelEsquema());
 
   // LO MÁS PESADO DE LA ÚLTIMA VEZ, al lado de cada nombre (10/10). Primero lo
@@ -110,6 +119,9 @@ function SelectorEjercicio({
     if (!creando?.grupo || creando.nombre.trim().length < 2) return;
     setCreandoError('');
     const id = await crearEjercicio(supabase, creando.nombre.trim(), creando.grupo);
+    // Con la hoja ya cerrada no se elige nada (vuelta 8): el alElegir viejo guardaba la
+    // rutina como estaba al tocar Crear y borraba lo editado después. El propio queda creado.
+    if (!abierta.current) return;
     if (!id) return setCreandoError(T.general.noSePudo);
     // La misma regla que la base (crear_ejercicio): el cardio se mide en minutos.
     elegir(id, creando.grupo === 'cardio' ? 'tiempo' : 'series');

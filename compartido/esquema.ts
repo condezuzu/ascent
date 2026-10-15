@@ -97,8 +97,8 @@ export async function versionDelEsquema(supabase: Cliente, ahora: number = Date.
 
 /** La versión para una pantalla. `null` mientras se averigua. */
 /**
- * DE DÓNDE SE LEEN LOS DÍAS DE UN AMIGO (migración 85): la vista sin la hora ni el
- * origen. Antes de la 85 la vista no existe y la tabla todavía los deja ver.
+ * DE DÓNDE SE LEEN LOS DÍAS DE UN AMIGO (migración 86): la vista sin la hora ni el
+ * origen. Antes de la 86 la vista no existe y la tabla todavía los deja ver.
  */
 export async function tablaDeLogsDeAmigos(supabase: Cliente): Promise<'logs' | 'logs_de_amigos'> {
   return disponible('logsDeAmigos', await versionDelEsquema(supabase).catch(() => null)) ? 'logs_de_amigos' : 'logs';

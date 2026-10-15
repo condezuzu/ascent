@@ -72,8 +72,10 @@ export const REQUIERE = {
   bajaConPropios: 83,
   /** Marcar "Fui" en un día que cubrió una vida la devuelve (la app no depende de esto). */
   vidaDeUnDiaQueFuiste: 84,
+  /** Marcar "Guardarla para después" con el día de hoy ya anotado corta la racha (la app no depende de esto). */
+  vidaDevueltaConHoy: 85,
   /** Los días de un amigo se leen sin la hora ni el origen (vista `logs_de_amigos`). */
-  logsDeAmigos: 85,
+  logsDeAmigos: 86,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

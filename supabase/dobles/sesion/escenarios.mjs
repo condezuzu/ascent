@@ -1254,6 +1254,51 @@ async function vueltaOcho(caso) {
   return { base: base(), series: s.series };
 }
 
+/**
+ * `serieEnCinta` (vuelta 8): "+ Serie hecha" del descanso con una cinta que todavía
+ * no arrancó. `sugerida`: la propone la rutina; `menos`: se arrancó y se apagó con el −.
+ * No cuenta una serie ni guarda una vuelta sin minutos.
+ */
+async function serieEnCinta(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.version = 82;
+  servidor.visibles = ['press_banca', 'cinta', 'remo_barra'];
+  servidor.porTiempo = ['cinta'];
+  if (caso === 'sugerida') {
+    const { hoyISO, restarDias } = await import('@nucleo/fechas');
+    servidor.ultimoEjercicio = 'press_banca';
+    servidor.historial = [{ bloques: [{ ejercicio: 'press_banca' }, { ejercicio: 'cinta' }], logs: { fecha: restarDias(hoyISO(), 7) } }];
+  }
+  const tel = montar(() => useSesion());
+  await asentar();
+  await tel.r.empezar();
+  await asentar();
+  await dormir(400);
+  await asentar();
+  if (tel.r.estado.bloques.ejercicio !== 'press_banca') await tel.r.elegirEjercicio('press_banca');
+  await tel.r.serieHecha();
+  await asentar();
+  tel.r.cerrarDescanso();
+  await tel.r.bloqueSiguiente();
+  await asentar();
+  if (caso !== 'sugerida') await tel.r.elegirEjercicio('cinta');
+  if (caso === 'menos') {
+    await tel.r.arrancarCardio();
+    adelanto = 20000;
+    await tel.r.deshacerSerie();
+  }
+  await asentar();
+  if (!tel.r.estado.descanso) await tel.r.descansarSuelto();
+  await asentar();
+  adelanto += 30000;
+  await tel.r.serieHecha();
+  await asentar();
+  const s = servidor.sesiones[0];
+  return { enCurso: [tel.r.estado.bloques.ejercicio, tel.r.estado.bloques.hechas], series: s.series, base: s.bloques.map((b) => [b.ejercicio, b.series]) };
+}
+
 /** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
 async function yaCorria() {
   const inicio = montar(() => useSesion());
@@ -1431,7 +1476,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

@@ -6,12 +6,12 @@ declare v int;
 begin
   if to_regprocedure('public.version_del_esquema()') is null then return; end if;
   execute 'select public.version_del_esquema()' into v;
-  if v > 85 then
-    raise exception 'Esta es la migración 85 y la base ya está en la %: no se vuelve a correr.', v;
+  if v > 86 then
+    raise exception 'Esta es la migración 86 y la base ya está en la %: no se vuelve a correr.', v;
   end if;
 end $guarda$;
 
--- MIGRACIÓN 85 — UN AMIGO NO VE A QUÉ HORA ENTRENASTE
+-- MIGRACIÓN 86 — UN AMIGO NO VE A QUÉ HORA ENTRENASTE
 --
 -- Con "Avisar cuando entreno" apagado, un amigo igual leía `logs.creado` (la hora
 -- en que empezó la sesión que creó el día) y `logs.origen` ('ubicacion' = llegó al
@@ -20,13 +20,13 @@ end $guarda$;
 -- el dueño.
 --
 -- VA DESPUÉS DE PUBLICAR LA APP: la app nueva lee la vista solo cuando la base ya
--- está en la 85; una app vieja, con esta migración puesta, ve vacía la semana y la
+-- está en la 86; una app vieja, con esta migración puesta, ve vacía la semana y la
 -- actividad de los amigos (sin errores). Solo cambia permisos: ninguna fila se toca.
 
 do $$
 begin
-  if public.version_del_esquema() < 84 then
-    raise exception 'La migración 85 va después de la 84 (la base está en %).', public.version_del_esquema();
+  if public.version_del_esquema() < 85 then
+    raise exception 'La migración 86 va después de la 85 (la base está en %).', public.version_del_esquema();
   end if;
 end $$;
 
@@ -44,9 +44,9 @@ drop policy if exists "logs: amigos leen" on public.logs;
 
 do $$
 begin
-  if public.version_del_esquema() < 85 then
+  if public.version_del_esquema() < 86 then
     create or replace function public.version_del_esquema()
-    returns int language sql immutable as $fn$ select 85; $fn$;
+    returns int language sql immutable as $fn$ select 86; $fn$;
   end if;
 end $$;
 revoke execute on function public.version_del_esquema() from public;

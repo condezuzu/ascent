@@ -692,7 +692,7 @@ console.log('\n13. Seguridad: el peso de otro no se lee, ni con amistad');
   await db.exec('set role authenticated');
   const pesos = await db.query('select * from weights where user_id = $1', [a]);
   chequear('peso del amigo invisible', pesos.rows.length, 0);
-  // Por la vista sin la hora (migración 85): la tabla ya no se abre a los amigos.
+  // Por la vista sin la hora (migración 86): la tabla ya no se abre a los amigos.
   const logs = await db.query('select * from logs_de_amigos where user_id = $1', [a]);
   chequear('logs del amigo sí visibles', logs.rows.length, 1);
   await db.exec('reset role');
@@ -18807,7 +18807,7 @@ console.log('\n240. Cacería del 15/10, vuelta 6: la marca de faltan al reabrir;
   await db.query(`select corregir_dia(mi_hoy() - 11, 'descanso')`);
   chequear('pasarlo a descanso no la devuelve', (await db.query('select mis_impulsos() as m')).rows[0].m.quedan, 1);
 
-  // LA HORA DE LOS AMIGOS (la 85): los días de un amigo, sin `creado` ni `origen`.
+  // LA HORA DE LOS AMIGOS (la 86): los días de un amigo, sin `creado` ni `origen`.
   const ana = await nuevoUsuario();
   const beto = await nuevoUsuario();
   const dani = await nuevoUsuario();
@@ -18873,6 +18873,32 @@ console.log('\n242. Cacería del 16/10, vuelta 8: con otro aparato que anota y s
   chequear('dos aparatos, la lectura cae y vuelve: la base no duplica los bloques', await v8('dupla'), { base: [['press_banca', 2, null], ['remo_barra', 1, null], ['sentadilla', 1, null]], series: 4 });
   chequear('sin poder leer lo de allá, la serie siguiente lleva el peso escrito', await v8('peso'), { base: [['press_banca', 2, 60], ['remo_barra', 1, null], ['press_banca', 1, 60]], series: 4 });
   chequear('sin poder leer lo de allá, la cinta andando sigue y Listo anota sus minutos', await v8('cinta'), { base: [['remo_barra', 1, null], ['cinta', 1, 20]], series: 2 });
+}
+console.log('\n243. Cacería del 16/10, vuelta 8: "+ Serie hecha" con la cinta sin arrancar; guardar la vida con hoy ya anotado; crear un propio con la hoja cerrada');
+{
+  const enCinta = async (c) => escenarioDeSesion('serieEnCinta', c);
+  chequear('"+ Serie hecha" del descanso con la cinta sin arrancar (sugerida o apagada con el −) no cuenta una serie ni guarda una vuelta sin minutos', [await enCinta('sugerida'), await enCinta('menos')], [
+    { enCurso: ['cinta', 0], series: 1, base: [['press_banca', 1]] },
+    { enCurso: ['cinta', 0], series: 1, base: [['press_banca', 1]] },
+  ]);
+
+  // "GUARDARLA PARA DESPUÉS" CON HOY YA ANOTADO (la 85), por el camino de verdad:
+  // 40 días, falta ayer, hoy entra (la vida cubre ayer), y se devuelve.
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  for (let h = 41; h >= 2; h--) await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, h]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy())`, [u]);
+  const racha = async () => (await db.query('select racha_actual from profiles where id = $1', [u])).rows[0].racha_actual;
+  const antes = await racha();
+  const r = (await db.query(`select devolver_impulsos(array[(mi_hoy() - 1)::date]) as r`)).rows[0].r;
+  const tras = await racha();
+  await db.query(`select corregir_dia(mi_hoy() - 10, 'descanso')`);
+  chequear('guardar la vida con hoy ya anotado corta la racha como promete (41 → 31) y una corrección después no la tira a 1', [antes, r.perdida?.perdida ?? null, tras, await racha()], [41, true, 31, 31]);
+
+  const { readFileSync: leer243 } = await import('node:fs');
+  const de243 = (...p) => leer243(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  // Proxy: se probó montando MiRutina y el selector; acá se pinea la guarda.
+  chequear('crear un propio con la hoja ya cerrada no elige nada', /const id = await crearEjercicio\(.*\);[\s\S]{0,300}if \(!abierta\.current\) return;/.test(de243('movil', 'src', 'SelectorEjercicio.tsx')), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

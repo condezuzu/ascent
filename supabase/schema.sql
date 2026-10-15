@@ -899,6 +899,13 @@ returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
   cuantas int;
+  d date;
+  hoy_descanso boolean;
+  perfil profiles;
+  previa int;
+  viva int;
+  nueva int;
+  racha int;
 begin
   if uid is null then return null; end if;
 
@@ -912,6 +919,32 @@ begin
 
   if cuantas = 0 then
     return jsonb_build_object('devueltas', 0);
+  end if;
+
+  -- CON EL DÍA DE HOY YA ANOTADO (migración 85): es el caso normal —la vida se gasta
+  -- cuando entra hoy al llegar al gimnasio, y la pregunta sale al terminar—, y
+  -- `aplicar_perdida_al` se va sin cobrar nada si hoy tiene log. La racha seguía
+  -- entera con un día sin cubrir debajo, y la primera corrección la tiraba a 1. Se
+  -- cobra acá: la racha de antes de hoy menos 10, y hoy encima.
+  d := mi_hoy();
+  select es_descanso into hoy_descanso from logs where user_id = uid and fecha = d;
+  if found then
+    select * into perfil from profiles where id = uid;
+    previa := perfil.racha_actual - case when hoy_descanso then 0 else 1 end;
+    viva := perfil.racha_base + calcular_racha(uid, d - 1);
+    if viva >= previa then
+      return jsonb_build_object('devueltas', cuantas, 'perdida', jsonb_build_object('perdida', false));
+    end if;
+    nueva := greatest(0, previa - 10);
+    update profiles set racha_base = nueva, perdida_fecha = d - 1 where id = uid;
+    racha := nueva + calcular_racha(uid, d);
+    update profiles set racha_actual = racha, rango_actual = rango_de_racha(racha) where id = uid;
+    -- El día de hoy lleva el número nuevo (es una etiqueta: no vuelve a contar nada).
+    update logs set racha_del_dia = racha, planeta_del_dia = planeta_de_dia(racha)
+     where user_id = uid and fecha = d and not es_descanso;
+    return jsonb_build_object('devueltas', cuantas, 'perdida', jsonb_build_object(
+      'perdida', true, 'rango_anterior', perfil.rango_actual, 'rango_nuevo', rango_de_racha(racha),
+      'racha', racha, 'vidas_quedan', impulsos_disponibles(uid, d)));
   end if;
 
   return jsonb_build_object('devueltas', cuantas, 'perdida', verificar_perdida());
@@ -3651,7 +3684,7 @@ create policy "descansos: leer los propios" on public.descansos for select using
 
 -- logs: dueño todo; amigos aceptados leen
 create policy "logs: dueño" on public.logs for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
--- Los días de un amigo NO se leen de la tabla (migración 85): la política abría
+-- Los días de un amigo NO se leen de la tabla (migración 86): la política abría
 -- todas las columnas, y `creado` y `origen` dicen a qué hora entrenó y si llegó al
 -- gimnasio, aunque tenga "Avisar cuando entreno" apagado. Van por esta vista, que
 -- corre como su dueño (como `usuarios_publicos`) y filtra en el where.
@@ -4276,7 +4309,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 85; $$;
+returns int language sql immutable as $$ select 86; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

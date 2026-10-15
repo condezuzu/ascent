@@ -240,6 +240,20 @@ const desfasajeRef = refDe('desfasaje');
 // supo" (sin señal): ahí no se filtra.
 let visibles: Set<string> | null = null;
 const seVe = (id: string) => !visibles || visibles.has(id);
+// Y LOS QUE SE MIDEN EN MINUTOS (vuelta 8): una cinta que todavía no arrancó no tiene
+// cronómetro ni minutos, y el "+ Serie hecha" del descanso la contaba como serie.
+let porTiempo: Set<string> | null = null;
+async function cargarCatalogoVisible(supabase: Cliente) {
+  const { data, error } = await supabase.from('ejercicios').select('id, mide');
+  if (error || !data) {
+    visibles = null;
+    porTiempo = null;
+    return;
+  }
+  const filas = data as { id: string; mide?: string | null }[];
+  visibles = new Set(filas.map((e) => e.id));
+  porTiempo = new Set(filas.filter((e) => e.mide === 'tiempo').map((e) => e.id));
+}
 const sinServidor = () => INICIAL;
 // EL CARDIO CUENTA COMO ACTIVIDAD (cacería del 15/10). Con el cronómetro andando
 // nadie toca nada, y a la media hora la sesión se cerraba sola en plena cinta.
@@ -339,6 +353,8 @@ export function useSesion(
         // una sugerencia sin confirmar, al reabrir sigue viéndose como sugerencia
         // y no como algo ya elegido (ver `SesionCacheada.sugerido`).
         setSugerido(!!c.sugerido);
+        // Al reabrir con la sesión corriendo, el catálogo visible no está en memoria.
+        if (c.id && porTiempo === null) void cargarCatalogoVisible(supabase);
         if (c.rutina) {
           rutinaRef.current = c.rutina;
           rutinaEsGuardada.current = !!c.rutinaGuardada;
@@ -983,8 +999,10 @@ export function useSesion(
     // del descanso contaba una vuelta de cardio que no existía.
     if (bloquesRef.current.cardioDesde !== undefined && !opciones?.sinDescanso) return cerrarVueltaDelCardio();
     // Con la cinta ya parada tampoco: una vuelta de cero minutos y un descanso que el
-    // cardio no lleva. Un bloque con minutos solo puede ser cardio: es "Seguir".
-    if (bloquesRef.current.minutos !== undefined && !opciones?.sinDescanso) {
+    // cardio no lleva. Un bloque con minutos solo puede ser cardio: es "Seguir". Y
+    // una cinta todavía sin arrancar, que no tiene ni minutos (vuelta 8).
+    const ej = bloquesRef.current.ejercicio;
+    if ((bloquesRef.current.minutos !== undefined || (!!ej && !!porTiempo?.has(ej))) && !opciones?.sinDescanso) {
       borrarDescanso();
       setDescanso(null);
       return;
@@ -1188,16 +1206,15 @@ export function useSesion(
   async function cargarHistorialRutina() {
     try {
       const desde = restarDias(hoyISO(), 56);
-      const [{ data }, { data: ves, error: errVes }] = await Promise.all([
+      const [{ data }] = await Promise.all([
         supabase
           .from('sesiones')
           .select('bloques, logs!inner(fecha)')
           .eq('estado', 'terminada')
           .gte('logs.fecha', desde)
           .order('inicio'),
-        supabase.from('ejercicios').select('id'),
+        cargarCatalogoVisible(supabase),
       ]);
-      visibles = errVes || !ves ? null : new Set((ves as { id: string }[]).map((e) => e.id));
       const filas = (data ?? []) as { bloques?: unknown; logs?: unknown }[];
       sesionesRutinaRef.current = filas
         .map((s) => {
