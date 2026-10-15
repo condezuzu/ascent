@@ -1265,11 +1265,26 @@ arreglo y lo cazó la revisión de los commits, no las pruebas.
 → **Regla:** un leer-mezclar-guardar va en fila (`turno`, en
 `compartido/sesionCache`), igual que la cola.
 
-**Quedan, de la misma familia y sin tocar** (los dos existen desde antes y se
-reproducen con esos dobles): una respuesta vieja de "no hay sesión" que llega
-después de Iniciar saca la sesión de la pantalla, y una de "está corriendo" que
-llega después de Terminar la vuelve a mostrar. Están anotados en
-`spec/alcance.md`, con el dueño único del estado de la sesión.
+**Los dos que quedaban se cerraron con el dueño único (15/10).** La respuesta
+vieja de "no hay sesión" después de Iniciar y la de "está corriendo" después de
+Terminar: empezar y terminar mueven el mismo reloj (`cambioDeSesion`, "la
+época"), y la rama "no hay sesión" también pregunta si la foto sigue valiendo.
+Y el estado salió de React: vive UNA vez por aparato en
+`compartido/sesionViva.ts`, y la pantalla y el vigilante se suscriben
+(`useSyncExternalStore`). Los setters y los "refs" de `useSesion` son ventanas
+a ese lugar; la caché quedó para sobrevivir a que se cierre la app, no para
+hablar entre pantallas.
+→ **Reglas:**
+- **Nada de la sesión en un `useState` de `useSesion`.** Lo pinea la 228. Lo
+  que es de una pantalla —`ocupado`, `aviso`, `cargaConsultada`, `subida`— sí.
+- **Todo lo que escribe la caché va en la fila**, también guardar y borrar: un
+  actualizar que había leído antes resucitaba la sesión terminada.
+- **Releer es todo o nada contra la foto**, la sesión misma incluida.
+- **Lo que es solo del teléfono** (bloques, fantasma, primer "Terminar" sin
+  señal) se conserva cuando la base confirma la misma sesión
+  (`cacheTrasConfirmar`).
+- En los dobles, "la app arrancó de nuevo" es `olvidarViva()`: montar otra
+  instancia ya no alcanza, porque comparte el dueño.
 
 ## Tests / proceso
 

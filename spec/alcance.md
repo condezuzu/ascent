@@ -472,3 +472,10 @@ humano.
   del arranque deja la pantalla sin sesión; después de Terminar, la vuelve a
   mostrar corriendo. Van con `rojoConocido`: no rompen la corrida, y el día que
   salgan bien `test:db` falla hasta pasarlos a `chequear`.
+  **HECHO el 15/10, de noche** (pasos 1 a 5 del plan): los dos casos en verde y
+  pasados a `chequear` (226), y el estado de la sesión vive una vez por aparato
+  en `compartido/sesionViva.ts` (228). Ver `spec/trampas.md`, "Un refresco
+  decide con una foto". Quedó así por decisión propia: la traba de
+  empezar/terminar, `ocupado`, `aviso` y `confirmando` siguen siendo de cada
+  pantalla (llevarlos al dueño cambia qué pantalla muestra "se cerró sola"), y
+  las reglas viejas del hook siguen puestas aunque ahora en parte sobran.
