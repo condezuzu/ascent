@@ -59,3 +59,30 @@ export function escucharDesenfoque(fn: (n: number) => void): () => void {
     oyentes.delete(fn);
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// LO QUE TAPA TODO (15/10)
+//
+// Una pantalla opaca encima —el descanso, la subida de rango— no deja ver el
+// fondo, y el motor seguía dibujando detrás: medido en el sustituto del
+// teléfono, era casi todo el trabajo de la app durante un descanso. Mientras
+// alguna esté abierta, el fondo se pausa. Cada una se anota con su propio
+// símbolo: dos encima no se pisan al cerrarse.
+const tapan = new Set<symbol>();
+const oyentesDeTapa = new Set<(si: boolean) => void>();
+
+export function taparElFondo(quien: symbol, si: boolean) {
+  const antes = tapan.size > 0;
+  if (si) tapan.add(quien);
+  else tapan.delete(quien);
+  const ahora = tapan.size > 0;
+  if (ahora !== antes) for (const fn of [...oyentesDeTapa]) fn(ahora);
+}
+
+export function escucharTapa(fn: (si: boolean) => void): () => void {
+  oyentesDeTapa.add(fn);
+  fn(tapan.size > 0);
+  return () => {
+    oyentesDeTapa.delete(fn);
+  };
+}

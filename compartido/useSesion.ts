@@ -233,7 +233,13 @@ const ultimaRef = refDe('ultimaActividad');
 const desfasajeRef = refDe('desfasaje');
 const sinServidor = () => INICIAL;
 
-export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void) {
+export function useSesion(
+  alCambiarElDia?: (r: ResultadoRegistro | null) => void,
+  // EL REDIBUJO DE CADA SEGUNDO es para quien muestra el reloj con el estado del
+  // hook (la web). La nativa tiene relojes que se tickean solos (`CadaSegundo`) y
+  // se ahorra redibujar la pantalla entera por segundo (15/10).
+  { repintarCadaSegundo = true }: { repintarCadaSegundo?: boolean } = {}
+) {
   const [supabase] = useState(() => crearCliente());
   // La firma de la caché es UNA por aparato (ver `YO`): lo que escribe otra
   // instancia ya está en el dueño y releerlo solo podía traer algo más viejo.
@@ -523,7 +529,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       clearInterval(id);
       if (plataforma.ciclo.visible()) {
         id = setInterval(() => {
-          repintar((n) => n + 1);
+          if (repintarCadaSegundo) repintar((n) => n + 1);
           // Con la app ADELANTE también se cierra sola: si la dejaste abierta
           // en el banco y te fuiste, a la media hora la pantalla no puede
           // seguir contando. `confirmar` no se pisa consigo mismo.

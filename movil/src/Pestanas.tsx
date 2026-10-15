@@ -482,6 +482,18 @@ export default function Pestanas({
     );
   };
 
+  // LAS PANTALLAS, UNA VEZ (15/10). Cambiar de pestaña volvía a crear las cinco,
+  // y React redibujaba la app entera en cada cambio: medido con la CPU frenada
+  // como un teléfono, era casi todo el costo del cambio. Con el mismo elemento,
+  // React no las vuelve a dibujar; lo que sí cambia —cuál se ve— llega por
+  // `ContextoVisible`, que redibuja solo a quien lo lee.
+  const pantallas = useMemo(
+    () => Object.fromEntries(ORDEN.map((cual) => [cual, dibujar(cual)])) as Record<Pestana, React.ReactNode>,
+    // `dibujar` cambia con cada render; lo que de verdad usa es esto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [alSalir, alFaltarNombre, perfil, perfilNoCargo, cargarPerfil]
+  );
+
   return (
     // CADA TOQUE DESPIERTA AL MOTOR. En la web lo escucha el `window`; acá no
     // hay `window`, y los toques los ve la vista que los recibe. `onTouchStart`
@@ -543,7 +555,7 @@ export default function Pestanas({
                   la que asoma: el fondo es uno solo detrás de las dos, y
                   cambiarlo a mitad del gesto se vería como un salto. */}
               <ContextoVisible.Provider value={cual === pestana}>
-                {dibujar(cual)}
+                {pantallas[cual]}
               </ContextoVisible.Provider>
             </Animated.View>
           );

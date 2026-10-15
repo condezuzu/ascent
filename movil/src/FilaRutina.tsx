@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { hayAlgo, tituloDelDia, type DiaDeSemana } from '@nucleo/rutinas';
@@ -16,7 +16,7 @@ import { C } from './colores';
  * está donde se mira antes de salir para el gimnasio. No sale mientras se
  * entrena: ahí la rutina ya está proponiendo el ejercicio siguiente.
  */
-export default function FilaRutina() {
+function FilaRutina() {
   const router = useRouter();
   const [dias, setDias] = useState<DiaDeSemana[] | null>(null);
   const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(new Map());
@@ -80,3 +80,6 @@ const estilos = StyleSheet.create({
   hoy: { color: C.tinta, fontSize: 15 },
   flecha: { color: C.sub, fontSize: 22, marginLeft: 12 },
 });
+
+// Con los mismos props no se redibuja: el + de la sesión redibuja Inicio y esto no cambió (15/10).
+export default memo(FilaRutina);

@@ -47,6 +47,7 @@ import { dejarDeEntrenar } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 import FilaRutina from './FilaRutina';
+import CadaSegundo from './CadaSegundo';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -356,12 +357,13 @@ export default function Inicio({
 
   // Iniciar una sesión registra el día: cuando la base avisa, se recarga la
   // racha y la semana. Va antes de cualquier `return`: es un hook.
+  // Sin el redibujo de cada segundo: los relojes de arriba se tickean solos (`CadaSegundo`).
   const sesion = useSesion((r) => {
     cargar();
     // EMPEZAR LA SESION REGISTRA EL DIA, asi que tambien puede subirte de
     // rango: es el camino mas comun de los tres en un gimnasio.
     if (r) setSubida(subidaDeRango(rachaVista.current, r.racha));
-  });
+  }, { repintarCadaSegundo: false });
 
   // EL DÍA QUE ENTRÓ SOLO AL LLEGAR AL GIMNASIO (24/9). Ese camino no pasa
   // por `useSesion` —lo registra el vigilante, o el sistema con la app
@@ -599,23 +601,34 @@ export default function Inicio({
           <View style={estilos.sesionViva}>
             <View style={estilos.chip}>
               <View style={estilos.latido} />
-              <Text style={estilos.chipTexto}>
-                {cronoLindo(transcurrido(sesion.estado.inicio, sesion.estado.desfasaje))}
-              </Text>
+              <CadaSegundo>
+                {() => (
+                  <Text style={estilos.chipTexto}>
+                    {cronoLindo(transcurrido(sesion.estado.inicio ?? new Date().toISOString(), sesion.estado.desfasaje))}
+                  </Text>
+                )}
+              </CadaSegundo>
             </View>
             {/* LA PÍLDORA DEL DESCANSO: sin descanso lo arranca; con uno
                 andando muestra lo que falta y abre la pantalla grande. */}
             {sesion.estado.descanso ? (
-              <Pressable
-                testID="pildora-descanso"
-                style={[estilos.chip, restante(sesion.estado.descanso.fin) === 0 && estilos.chipListo]}
-                onPress={() => setDescansoAbierto(true)}
-                accessibilityRole="button"
-              >
-                <Text style={[estilos.chipTexto, restante(sesion.estado.descanso.fin) === 0 && estilos.chipTextoListo]}>
-                  {restante(sesion.estado.descanso.fin) === 0 ? T.sesion.listo : cuentaAtras(restante(sesion.estado.descanso.fin))}
-                </Text>
-              </Pressable>
+              <CadaSegundo>
+                {() => {
+                  const fin = sesion.estado.descanso?.fin ?? 0;
+                  return (
+                    <Pressable
+                      testID="pildora-descanso"
+                      style={[estilos.chip, restante(fin) === 0 && estilos.chipListo]}
+                      onPress={() => setDescansoAbierto(true)}
+                      accessibilityRole="button"
+                    >
+                      <Text style={[estilos.chipTexto, restante(fin) === 0 && estilos.chipTextoListo]}>
+                        {restante(fin) === 0 ? T.sesion.listo : cuentaAtras(restante(fin))}
+                      </Text>
+                    </Pressable>
+                  );
+                }}
+              </CadaSegundo>
             ) : (
               <Pressable
                 style={estilos.chip}

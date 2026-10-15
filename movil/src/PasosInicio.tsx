@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, memo } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { CLAVE_FESTEJO_PASOS, hayQueFestejar } from '@nucleo/pasos';
@@ -20,7 +20,7 @@ import { C, conAlfa } from './colores';
  * El color de acento sale del rango (lo pasa Inicio): el logro se siente parte
  * del mismo mundo que el planeta del fondo, no un verde de sistema.
  */
-export default function PasosInicio({
+function PasosInicio({
   pasos,
   meta,
   acento,
@@ -139,3 +139,6 @@ const estilos = StyleSheet.create({
   relleno: { height: '100%', borderRadius: 999 },
   brillo: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },
 });
+
+// Con los mismos props no se redibuja: el + de la sesión redibuja Inicio y esto no cambió (15/10).
+export default memo(PasosInicio);

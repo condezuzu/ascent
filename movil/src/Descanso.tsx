@@ -17,6 +17,7 @@ import {
   type DescansoVivo,
 } from '@compartido/descanso';
 import { C } from './colores';
+import { taparElFondo } from './desenfoqueDelFondo';
 
 /**
  * EL DESCANSO ENTRE SERIES, en nativo (§18). La misma pantalla que la web:
@@ -53,6 +54,13 @@ export default function Descanso({
   alSumar: () => void;
 }) {
   const [, repintar] = useState(0);
+  // Opaca y a pantalla completa: mientras se ve, el fondo 3D no tiene por qué dibujar.
+  useEffect(() => {
+    if (!visible) return;
+    const yo = Symbol('descanso');
+    taparElFondo(yo, true);
+    return () => taparElFondo(yo, false);
+  }, [visible]);
   // El "+": `null` cerrado; si no, lo que se va escribiendo.
   const [aMano, setAMano] = useState<string | null>(null);
   const [terminado, setTerminado] = useState(() => restante(vivo.fin) === 0);

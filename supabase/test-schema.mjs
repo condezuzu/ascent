@@ -18475,6 +18475,37 @@ console.log('\n233. La meta de pasos se festeja una vez por día, y el empujón 
     /\{!par && m\.fotos\.length === 1 && <Text testID="album-una-mas"/.test(de233('movil', 'src', 'Album.tsx')),
   ], [true, 2, true]);
 }
+console.log('\n234. La pasada de lentitud: el fondo se pausa tapado, los relojes se tickean solos, las pestañas no se redibujan todas (15/10)');
+{
+  const DF234 = await import('../movil/src/desenfoqueDelFondo.ts');
+  const vistos = [];
+  const dejar = DF234.escucharTapa((si) => vistos.push(si));
+  const a = Symbol('a');
+  const b = Symbol('b');
+  DF234.taparElFondo(a, true);
+  DF234.taparElFondo(b, true);
+  DF234.taparElFondo(a, false);
+  const conUna = vistos.at(-1);
+  DF234.taparElFondo(b, false);
+  dejar();
+  chequear('con dos pantallas que tapan, cerrar una deja el fondo tapado; cerrar las dos lo destapa (y avisa solo al cambiar)', [vistos, conUna], [[false, true, false], true]);
+  const { readFileSync: leer234 } = await import('node:fs');
+  const de234 = (...p) => leer234(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  chequear('el descanso y la subida de rango tapan el fondo; el fondo tapado se pausa', [
+    /taparElFondo\(yo, true\);\n    return \(\) => taparElFondo\(yo, false\);\n  \}, \[visible\]\);/.test(de234('movil', 'src', 'Descanso.tsx')),
+    /taparElFondo\(yo, true\);/.test(de234('movil', 'src', 'SubidaRango.tsx')),
+    /if \(tapadoDelTodo && escena\.current\) \{\n[^\n]*\n      escena\.current\.montaje\.pausar\(true\);/.test(de234('movil', 'src', 'FondoRaiz.tsx')),
+  ], [true, true, true]);
+  const inicio = de234('movil', 'src', 'Inicio.tsx');
+  chequear('la nativa no redibuja la pantalla entera cada segundo: los dos relojes se tickean solos; la web sigue como estaba', [
+    /\}, \{ repintarCadaSegundo: false \}\);/.test(inicio),
+    /useSesion\(undefined, \{ repintarCadaSegundo: false \}\)/.test(de234('movil', 'src', 'VigilanteDeGimnasio.tsx')),
+    (inicio.match(/<CadaSegundo>/g) ?? []).length,
+    /if \(repintarCadaSegundo\) repintar\(\(n\) => n \+ 1\);/.test(de234('compartido', 'useSesion.ts')),
+    /repintarCadaSegundo/.test(de234('src', 'app', 'page.tsx')),
+  ], [true, true, 2, true, false]);
+  chequear('cambiar de pestaña no vuelve a crear las cinco pantallas', /\{pantallas\[cual\]\}/.test(de234('movil', 'src', 'Pestanas.tsx')), true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

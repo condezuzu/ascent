@@ -92,7 +92,8 @@ export default function VigilanteDeGimnasio() {
 }
 
 function Mirando({ perfil }: { perfil: Perfil }) {
-  const sesion = useSesion();
+  // No muestra ningún reloj: sin el redibujo de cada segundo.
+  const sesion = useSesion(undefined, { repintarCadaSegundo: false });
   const sesionRef = useRef(sesion);
   sesionRef.current = sesion;
   const perfilRef = useRef(perfil);

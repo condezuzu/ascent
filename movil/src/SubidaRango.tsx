@@ -5,6 +5,7 @@ import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import LienzoSubida from './LienzoSubida';
 import { C } from './colores';
+import { taparElFondo } from './desenfoqueDelFondo';
 
 /**
  * SUBISTE DE RANGO. El premio de la app, que en el teléfono no existía.
@@ -63,6 +64,12 @@ export default function SubidaRango({
   const [formado, setFormado] = useState(false);
   const aparecer = useRef(new Animated.Value(0)).current;
   const saltar = useRef<(() => void) | null>(null);
+  // Tiene su propio motor a pantalla completa: el del fondo, detrás, se pausa (15/10).
+  useEffect(() => {
+    const yo = Symbol('subida');
+    taparElFondo(yo, true);
+    return () => taparElFondo(yo, false);
+  }, []);
 
   // EL NOMBRE APARECE ÚLTIMO, cuando el objeto ya está formado: si entrara
   // junto con él, se leería el nombre y no se miraría la forma, que es lo que
