@@ -108,6 +108,49 @@ export function maximosDeBloques(bloques: unknown, catalogo: ModosDelCatalogo, s
   return { ...sobre, ...deEsta };
 }
 
+/**
+ * YA PUEDES SUBIR EL PESO (15/10): el ejercicio que en su última sesión se hizo
+ * con TODAS las series al mismo peso (dos o más), y ese peso fue también el más
+ * pesado de la vez anterior, en el mismo modo. Dos veces seguidas igual y
+ * entero: está para subir. Las sesiones, de la más vieja a la más nueva.
+ */
+export function listosParaSubir(sesiones: unknown, catalogo: ModosDelCatalogo): MaximosDeLaUltima {
+  if (!Array.isArray(sesiones)) return {};
+  type Vez = { iguales: number | null; maximo: number; carga: Carga };
+  const veces: Record<string, Vez[]> = {};
+  for (const s of sesiones) {
+    const bloques = (s as { bloques?: unknown } | null)?.bloques;
+    if (!Array.isArray(bloques)) continue;
+    // Dos bloques del mismo ejercicio en una sesión cuentan juntos.
+    const deEsta: Record<string, { pesos: (number | null)[]; carga: Carga; mezcla: boolean }> = {};
+    for (const b of bloques) {
+      if (!b || typeof b !== 'object') continue;
+      const x = b as { ejercicio?: unknown; pesos?: unknown; carga?: unknown };
+      if (typeof x.ejercicio !== 'string' || !Array.isArray(x.pesos)) continue;
+      const modo = modoDeBloque(x.ejercicio, x.carga, catalogo);
+      if (modo === null || modo === 'corporal') continue;
+      const ya = deEsta[x.ejercicio];
+      const pesos = x.pesos.map(pesoValido);
+      deEsta[x.ejercicio] = ya ? { pesos: [...ya.pesos, ...pesos], carga: ya.carga, mezcla: ya.mezcla || ya.carga !== modo } : { pesos, carga: modo, mezcla: false };
+    }
+    for (const [ejercicio, d] of Object.entries(deEsta)) {
+      const validos = d.pesos.filter((p): p is number => p !== null);
+      if (validos.length === 0) continue;
+      const enteras = !d.mezcla && d.pesos.length >= 2 && validos.length === d.pesos.length && validos.every((p) => p === validos[0]);
+      (veces[ejercicio] ??= []).push({ iguales: enteras ? validos[0] : null, maximo: Math.max(...validos), carga: d.carga });
+    }
+  }
+  const r: MaximosDeLaUltima = {};
+  for (const [ejercicio, v] of Object.entries(veces)) {
+    const ultima = v[v.length - 1];
+    const antes = v[v.length - 2];
+    if (antes && ultima.iguales !== null && antes.carga === ultima.carga && antes.maximo === ultima.iguales) {
+      r[ejercicio] = { peso: ultima.iguales, carga: ultima.carga };
+    }
+  }
+  return r;
+}
+
 export function maximosDelHistorial(sesiones: unknown, catalogo: ModosDelCatalogo): MaximosDeLaUltima {
   if (!Array.isArray(sesiones)) return {};
   return sesiones.reduce<MaximosDeLaUltima>(

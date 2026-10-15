@@ -1,22 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
 import { faltaElGlobo, marcarGloboVisto, type Globo } from '@compartido/guia';
-import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
-import { C, conAlfa } from './colores';
+import Globito from './Globito';
 
 /**
- * UNA LÍNEA EXPLICANDO LA PANTALLA, la primera vez y nunca más (§10).
+ * UNA LÍNEA SOBRE LA PANTALLA, la primera vez y nunca más (§10). Se dibuja con
+ * el globito de siempre (`Globito`): flota, no empuja nada, y un toque lo saca.
  *
- * QUEDAN DOS Y NO CINCO, y el porqué es el recorrido: Stats, Álbum, Ranking y
- * Ajustes ya los presenta él, una línea por pantalla. Estos dos explican algo
- * que el recorrido no puede mostrar porque no está ahí cuando pasa: contar
- * series adentro de una sesión, y que las fotos del perfil son privadas.
+ * QUEDAN TRES: contar series adentro de una sesión, que las fotos del perfil
+ * son privadas, y quién está entrenando. El resto lo presenta el recorrido.
  *
- * ARRANCA ESCONDIDO y aparece recién cuando se confirmó que falta verlo.
- * Mostrarlo mientras se consulta haría que el que ya lo cerró lo viera
- * parpadear en cada visita, que es peor que no tenerlo.
+ * ARRANCA ESCONDIDO y aparece recién cuando se confirmó que falta verlo: si no,
+ * el que ya lo cerró lo vería parpadear en cada visita.
  *
  * SE CIERRA Y NO VUELVE, salvo "ver la guía de nuevo" desde Ajustes.
  */
@@ -27,16 +23,11 @@ export default function GloboPrimeraVez({
 }: {
   cual: Globo;
   children: string;
-  /**
-   * Se cierra solo —y queda visto— cuando esto pasa a `true`: la cosa que
-   * explica ya se usó. El de las series se va con el primer `+` (19/9).
-   */
+  /** Se cierra solo —y queda visto— cuando la cosa que explica ya se usó (el de las series, con el primer `+`). */
   cerrarCuando?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
   const [uid, setUid] = useState('');
-  const opacidad = useRef(new Animated.Value(0)).current;
-  const cerrando = useRef(false);
 
   useEffect(() => {
     let vivo = true;
@@ -44,74 +35,24 @@ export default function GloboPrimeraVez({
       const u = await miId(supabase);
       if (!vivo || !u) return;
       setUid(u);
-      if (await faltaElGlobo(u, cual)) {
-        if (!vivo) return;
-        setVisible(true);
-        Animated.timing(opacidad, { toValue: 1, duration: 260, useNativeDriver: true }).start();
-      }
+      if ((await faltaElGlobo(u, cual)) && vivo) setVisible(true);
     })();
     return () => {
       vivo = false;
     };
-  }, [cual, opacidad]);
+  }, [cual]);
+
+  const cerrar = () => {
+    // No se espera a que se guarde: el globo se va ya, y que quede anotado es asunto de después.
+    if (uid) void marcarGloboVisto(uid, cual);
+    setVisible(false);
+  };
 
   useEffect(() => {
-    if (!cerrarCuando || !visible || cerrando.current) return;
-    cerrando.current = true;
-    // No se espera a que se guarde para cerrar: el globo se va ya, y que
-    // quede anotado es asunto de después.
-    if (uid) void marcarGloboVisto(uid, cual);
-    Animated.timing(opacidad, { toValue: 0, duration: 220, useNativeDriver: true }).start(() =>
-      setVisible(false)
-    );
-  }, [cerrarCuando, visible, uid, cual, opacidad]);
+    if (cerrarCuando && visible) cerrar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cerrarCuando, visible]);
 
   if (!visible) return null;
-
-  function cerrar() {
-    if (cerrando.current) return;
-    cerrando.current = true;
-    if (uid) void marcarGloboVisto(uid, cual);
-    Animated.timing(opacidad, { toValue: 0, duration: 220, useNativeDriver: true }).start(() =>
-      setVisible(false)
-    );
-  }
-
-  return (
-    <Animated.View style={[estilos.globo, { opacity: opacidad }]}>
-      <View style={estilos.renglones}>
-        <Text style={estilos.texto}>{children}</Text>
-      </View>
-      <Pressable onPress={cerrar} hitSlop={12} accessibilityLabel={T.general.entendido}>
-        {/* Una cruz de dos rayas, sin SVG: son dos vistas rotadas y se dibuja
-            igual, sin sumarle un paquete a la app por seis píxeles. */}
-        <View style={estilos.cruz}>
-          <View style={[estilos.raya, { transform: [{ rotate: '45deg' }] }]} />
-          <View style={[estilos.raya, { transform: [{ rotate: '-45deg' }] }]} />
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
+  return <Globito texto={children} alCerrar={cerrar} testID={`globo-${cual}`} />;
 }
-
-const estilos = StyleSheet.create({
-  globo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    backgroundColor: conAlfa(C.hoja, 0.92),
-  },
-  // El `flex: 1` se mudó al contenedor: con dos renglones adentro, el que
-  // tiene que ocupar el ancho es el grupo y no cada uno.
-  renglones: { flex: 1, gap: 6 },
-  texto: { color: C.sub, fontSize: 13, lineHeight: 18 },
-  // Más apagado: es un extra, no la explicación.
-  cruz: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
-  raya: { position: 'absolute', width: 14, height: 1.6, borderRadius: 1, backgroundColor: C.apagado },
-});

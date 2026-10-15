@@ -16,9 +16,13 @@ import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
 import CampoPeso from './CampoPeso';
 
+// Los globitos de "ya puedes subir" que ya se cerraron, por ejercicio y día: no vuelven en la misma corrida.
+const SUBIR_VISTOS = new Set<string>();
+
 // Con lo que arranca una vuelta de cardio si no se tocaron los minutos.
 const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
+import Globito from './Globito';
 import { C } from './colores';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
@@ -182,13 +186,19 @@ export default function Bloque({
   const conSubir = conCarga && disponible('subirPeso', version);
   const oferta = conSubir && admitePeso ? loQueSePuedeSubir(estado, cargaVista) : null;
   const [marca, setMarca] = useState<Subida | null>(null);
+  // YA PUEDES SUBIR (15/10): el peso con el que se hizo entero dos veces seguidas.
+  const [listoParaSubir, setListoParaSubir] = useState<number | null>(null);
   useEffect(() => {
     let vivo = true;
     setMarca(null);
+    setListoParaSubir(null);
     if (estado.ejercicio) {
       const id = estado.ejercicio;
       void leerRecordados().then((r) => {
-        if (vivo) setMarca(r.subidas[claveDeSubida(id, cargaVista)] ?? null);
+        if (!vivo) return;
+        setMarca(r.subidas[claveDeSubida(id, cargaVista)] ?? null);
+        const l = r.paraSubir[id];
+        setListoParaSubir(l && l.carga === cargaVista ? l.peso : null);
       });
     }
     return () => {
@@ -196,6 +206,10 @@ export default function Bloque({
     };
   }, [estado.ejercicio, cargaVista]);
   const dia = diaDeSesion ?? hoyISO();
+  // Al volver a ese ejercicio, antes de la primera serie, y si el peso de hoy no subió ya.
+  const [, repintarGlobito] = useState(0);
+  const globitoSubir =
+    listoParaSubir !== null && estado.hechas === 0 && !!estado.ejercicio && (estado.peso ?? 0) <= listoParaSubir && !SUBIR_VISTOS.has(`${estado.ejercicio}:${dia}`);
   const marcada = !!oferta && !!marca && marca.dia === dia && marca.peso === oferta.peso && marca.carga === cargaVista;
   function ponerMarca(s: Subida | null) {
     if (!estado.ejercicio) return;
@@ -239,6 +253,16 @@ export default function Bloque({
         {esFantasma && <Text style={estilos.badgeSugerido}>{T.sesion.sugerido}</Text>}
       </View>
       {esFantasma && <Text style={estilos.sugeridoNota}>{T.sesion.sugeridoNota}</Text>}
+      {globitoSubir && (
+        <Globito
+          testID="globito-subir"
+          texto={T.sesion.yaPuedesSubir}
+          alCerrar={() => {
+            SUBIR_VISTOS.add(`${estado.ejercicio}:${dia}`);
+            repintarGlobito((n) => n + 1);
+          }}
+        />
+      )}
 
       {corriendoCardio && (
         <View testID="cronometro-cardio" style={estilos.cardio}>

@@ -298,8 +298,8 @@ const ES = {
     // La nota de arriba está debajo del contador y se lee tarde: la primera
     // vez, el + aparece sin ninguna explicación y parece un botón de confirmar.
     // Esto se dice una sola vez, arriba, donde se está mirando.
-    globoSeries:
-      'Elige el ejercicio y cuántas series. Cada + suma una y arranca el descanso.',
+    // UN RENGLÓN (15/10): el globito flota y da calidad, no explica.
+    globoSeries: 'Toca + al terminar cada serie.',
     // El atajo de las teclas, como SEGUNDO renglón del mismo globo. Aparte y
     // no metido en la frase de arriba: esa ya explicaba el +, y sumarle el
     // atajo adentro la volvía un párrafo. Un globo aparte sería un segundo
@@ -1143,6 +1143,8 @@ const ES = {
     terminarSerie: 'Terminar serie',
     // El cardio (14/10): una vuelta se anota con los minutos, sin descanso después.
     cardioListo: 'Listo',
+    // EL GLOBITO DE SUBIR (15/10): todas las series al mismo peso, dos sesiones seguidas.
+    yaPuedesSubir: 'Ya puedes subir el peso',
     minutosDeCardio: 'Minutos',
     // EL CRONÓMETRO DEL CARDIO (15/10): arranca al elegirlo; "Listo" anota lo que corrió.
     cardioArrancar: 'Arrancar',
@@ -1464,8 +1466,7 @@ const ES = {
     estaEntrenando: (nombre: string) => `${nombre} está entrenando`,
     // El aviso de la actividad en vivo, la primera vez en Ranking ya con el
     // gimnasio marcado. Explica la función y apunta al opt-in de Ajustes.
-    avisoActividad:
-      'Aquí ves quién está entrenando. Para que te vean, activa «Avisar cuando entreno» en Ajustes.',
+    avisoActividad: 'Aquí ves quién está entrenando ahora.',
     no: 'No',
     // "tú" para tu propia fila en el ranking de fuerza (SeccionFuerza).
     vos: 'tú',

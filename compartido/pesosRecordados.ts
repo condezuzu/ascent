@@ -15,6 +15,7 @@ import {
   leerMaximos,
   maximosDeBloques,
   maximosDelHistorial,
+  listosParaSubir,
   type MaximosDeLaUltima,
   type ModosDelCatalogo,
   type PesosPorModo,
@@ -46,9 +47,10 @@ const DIAS = 90;
 // lista. Sale de las mismas sesiones y viaja en la misma copia.
 // `subidas` (10/10): las marcas de "la próxima, más". La verdad está en la base
 // (migración 65); esta copia es para proponer el peso sin señal.
-export type Recordados = { pesos: PesosPorModo; catalogo: ModosDelCatalogo; maximos: MaximosDeLaUltima; subidas: Subidas };
+// `paraSubir` (15/10): los ejercicios listos para subir de peso (`listosParaSubir`), para el globito.
+export type Recordados = { pesos: PesosPorModo; catalogo: ModosDelCatalogo; maximos: MaximosDeLaUltima; subidas: Subidas; paraSubir: MaximosDeLaUltima };
 
-const NADA: Recordados = { pesos: {}, catalogo: {}, maximos: {}, subidas: {} };
+const NADA: Recordados = { pesos: {}, catalogo: {}, maximos: {}, subidas: {}, paraSubir: {} };
 
 // En memoria y fuera del hook: `useSesion` tiene dos instancias (Inicio y el
 // vigilante) y las dos tienen que ver lo mismo sin pedirlo dos veces.
@@ -70,7 +72,7 @@ export async function leerRecordados(): Promise<Recordados> {
     if (memo?.de === yo) return memo.datos;
     const crudo = await plataforma.almacenamiento.leer(CLAVE);
     const g = crudo
-      ? (JSON.parse(crudo) as { de?: unknown; pesos?: unknown; catalogo?: unknown; maximos?: unknown; subidas?: unknown })
+      ? (JSON.parse(crudo) as { de?: unknown; pesos?: unknown; catalogo?: unknown; maximos?: unknown; subidas?: unknown; paraSubir?: unknown })
       : null;
     const datos =
       g?.de === yo
@@ -79,6 +81,7 @@ export async function leerRecordados(): Promise<Recordados> {
             catalogo: leerModosDelCatalogo(g.catalogo),
             maximos: leerMaximos(g.maximos),
             subidas: leerSubidas(g.subidas),
+            paraSubir: leerMaximos(g.paraSubir),
           }
         : NADA;
     memo = { de: yo, datos };
@@ -138,6 +141,7 @@ export function traerRecordados(supabase: Cliente): Promise<Recordados> {
         catalogo,
         maximos: maximosDelHistorial(sesiones.data ?? [], catalogo),
         subidas,
+        paraSubir: listosParaSubir(sesiones.data ?? [], catalogo),
       };
       await guardar(yo, datos);
       alDiaDe = yo;
@@ -207,6 +211,8 @@ export async function sumarSesionARecordados(bloques: unknown, dia: string = hoy
       // El día es el de la SESIÓN: terminar pasada la medianoche no puede
       // gastar las marcas que se pusieron en ella.
       subidas: subidasTrasLaSesion(antes.subidas, bloques, dia, antes.catalogo),
+      // Sin el historial no se puede recalcular: queda el de antes hasta que conteste la base.
+      paraSubir: antes.paraSubir,
     });
   } catch {
     // Es una conveniencia: no puede frenar el cierre de la sesión.

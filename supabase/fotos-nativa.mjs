@@ -366,6 +366,37 @@ const RECETAS = {
     console.log('  descanso: quedó en cuatro minutos');
     return page;
   },
+  // LOS GLOBITOS (15/10): flotan sin correr nada, y el nuevo de "ya puedes subir".
+  async globitos(nav, gente) {
+    const A = gente.a;
+    // Dos sesiones de press de banca con 60 en las tres series: listo para subir.
+    const vez = { bloques: [{ ejercicio: 'press_banca', series: 3, pesos: [60, 60, 60], carga: 'total' }] };
+    const { page } = await abrir(nav, A, { version_del_esquema: 79 });
+    await page.route('**/rest/v1/sesiones?select=bloques&estado=neq*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([vez, vez]) }));
+    await page.getByText('Iniciar entrenamiento', { exact: true }).first().click({ timeout: 90000 });
+    const mas = page.getByLabel('Sumar una serie').first();
+    await mas.waitFor({ timeout: 90000 });
+    const globo = page.getByTestId('globo-series').first();
+    await globo.waitFor({ state: 'visible', timeout: 20000 });
+    await page.waitForTimeout(600);
+    const yCon = (await mas.boundingBox())?.y ?? -1;
+    await foto(page, 'globito-series');
+    await globo.click();
+    await page.waitForTimeout(600);
+    const ySin = (await mas.boundingBox())?.y ?? -1;
+    if (Math.abs(yCon - ySin) > 1) throw new Error(`el globito corrió el contenido ${Math.round(yCon - ySin)} px`);
+    console.log('  globito: flota, el + no se movió');
+    await page.getByText('Cualquier cosa', { exact: true }).first().click({ timeout: 60000 });
+    await page.getByText('Press de banca', { exact: true }).first().click({ timeout: 20000 });
+    await page.getByTestId('globito-subir').first().waitFor({ state: 'visible', timeout: 20000 });
+    await page.waitForTimeout(400);
+    await foto(page, 'globito-subir');
+    await tocar(page, 'globito-subir');
+    await page.waitForTimeout(600);
+    if (await page.getByTestId('globito-subir').count()) throw new Error('el globito de subir no se fue con el toque');
+    console.log('  ya puedes subir: apareció al volver al press y se fue con un toque');
+    return page;
+  },
   async 'stats-kilos'(nav, gente) {
     const A = gente.a;
     const hoy = new Date();

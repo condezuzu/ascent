@@ -13460,7 +13460,7 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
   // ---- COMO ESTABA EL TELÉFONO: nadie guardó la copia ----
   memoria.clear();
   chequear('sin la copia del perfil no hay de quién sea el historial: no propone nada',
-    [await R.traerRecordados(base), pedidos], [{ pesos: {}, catalogo: {}, maximos: {}, subidas: {} }, 0]);
+    [await R.traerRecordados(base), pedidos], [{ pesos: {}, catalogo: {}, maximos: {}, subidas: {}, paraSubir: {} }, 0]);
 
   // ---- COMO QUEDA DESPUÉS DE CARGAR INICIO, que ahora la guarda ----
   await guardarPerfilCache(perfilDe('cuenta-a'));
@@ -13471,7 +13471,7 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
 
   // ---- Y NO SE CRUZA DE CUENTA ----
   await guardarPerfilCache(perfilDe('cuenta-b'));
-  chequear('otra cuenta en el mismo teléfono no ve los pesos de la anterior', await R.leerRecordados(), { pesos: {}, catalogo: {}, maximos: {}, subidas: {} });
+  chequear('otra cuenta en el mismo teléfono no ve los pesos de la anterior', await R.leerRecordados(), { pesos: {}, catalogo: {}, maximos: {}, subidas: {}, paraSubir: {} });
 
   // ---- LO MÁS PESADO DE LA ÚLTIMA VEZ, para la lista de ejercicios (10/10) ----
   // Por el mismo camino: lo que trae la base, lo que queda en el aparato, y lo
@@ -18420,6 +18420,37 @@ console.log('\n231. Ejercicios propios: solo los ve quien los creó (migración 
   const de231 = (...p) => leer231(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
   chequear('la rutina de un amigo y el compañero en vivo nombran con nombreVisible', ['RutinaPlegada.tsx', 'CompaneroEnDescanso.tsx', 'Juntos.tsx'].map((f) => /nombreVisible\(/.test(de231('movil', 'src', f))), [true, true, true]);
   chequear('el selector avisa "ya está" y ofrece usar ese antes de crear', /const parecido = creando && creando\.nombre\.trim\(\)\.length >= 2 \? yaEsta\(creando\.nombre, ejercicios\) : null;/.test(de231('movil', 'src', 'SelectorEjercicio.tsx')), true);
+}
+console.log('\n232. Los globitos: flotan, un renglón, y "ya puedes subir el peso" (15/10)');
+{
+  const PR232 = await import('../nucleo/pesoRecordado.ts');
+  const b232 = (ejercicio, pesos, carga = 'total') => ({ ejercicio, series: pesos.length, pesos, carga });
+  const s232 = (...bloques) => ({ bloques });
+  const listo = (...sesiones) => PR232.listosParaSubir(sesiones, {}).press_banca ?? null;
+  chequear('listo para subir: todas las series al mismo peso, y el mismo que lo más pesado de la vez anterior, en el mismo modo', [
+    listo(s232(b232('press_banca', [60, 60, 60])), s232(b232('press_banca', [60, 60, 60]))),
+    listo(s232(b232('press_banca', [55, 60])), s232(b232('press_banca', [60, 60]), b232('press_banca', [60]))),
+    listo(s232(b232('press_banca', [60, 60])), s232(b232('press_banca', [60, 60, 62.5]))),
+    listo(s232(b232('press_banca', [57.5, 57.5])), s232(b232('press_banca', [60, 60]))),
+    listo(s232(b232('press_banca', [60, 60]))),
+    listo(s232(b232('press_banca', [60])), s232(b232('press_banca', [60]))),
+    listo(s232(b232('press_banca', [30, 30], 'par')), s232(b232('press_banca', [30, 30]))),
+    listo(s232(b232('press_banca', [60, 60])), s232(b232('press_banca', [60, null]))),
+  ], [{ peso: 60, carga: 'total' }, { peso: 60, carga: 'total' }, null, null, null, null, null, null]);
+  const { readFileSync: leer232 } = await import('node:fs');
+  const de232 = (...p) => leer232(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const globito = de232('movil', 'src', 'Globito.tsx');
+  chequear('el globito no ocupa lugar (ancla de alto cero, globo encima), es de un renglón y lo usan los de primera vez y el de subir', [
+    /ancla: \{ height: 0, zIndex: 30, elevation: 30 \}/.test(globito),
+    /globo: \{\n    position: 'absolute',/.test(globito),
+    /numberOfLines=\{1\}/.test(globito),
+    /return <Globito texto=\{children\} alCerrar=\{cerrar\}/.test(de232('movil', 'src', 'GloboPrimeraVez.tsx')),
+    /<Globito\n          testID="globito-subir"/.test(de232('movil', 'src', 'Bloque.tsx')),
+  ], [true, true, true, true, true]);
+  const { TEXTOS_ES: ES232 } = await import('../nucleo/textos.ts');
+  const { EN: EN232 } = await import('../nucleo/textos-en.ts');
+  const cortos = (t) => [t.inicio.globoSeries, t.social.avisoActividad, t.yo.globo, t.sesion.yaPuedesSubir].map((x) => x.length <= 42);
+  chequear('los textos de los globitos entran en un renglón, en los dos idiomas', [cortos(ES232), cortos(EN232)], [[true, true, true, true], [true, true, true, true]]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
