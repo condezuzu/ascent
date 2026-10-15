@@ -13,10 +13,11 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 ## Migraciones
 
 **Aplicadas hasta la 78** (15/10/2026: `version_del_esquema()` contestó 78).
-**Escritas y sin aplicar: la 79** (las vidas vuelven todas juntas) **y la 80**
-(los ejercicios propios los ve solo quien los creó). La app anda igual sin
-ellas: la 79 se mira con `disponible('vidasDeUna')`, y la 80 es solo una
-política de lectura de la base.
+**Escritas y sin aplicar, en este orden: 79** (las vidas vuelven todas juntas),
+**80** (los ejercicios propios los ve solo quien los creó), **81** (la marca de
+actividad acepta hasta una hora adelante), **82** (la marca se puede achicar) y
+**83** (darse de baja aunque un amigo haya usado un propio tuyo). La app anda
+igual sin ellas: cada una se mira con `disponible(...)` o es solo de la base.
 
 > Hasta el 15/10 esto decía "aplicadas hasta la 44", del 18/9.
 

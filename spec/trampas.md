@@ -1286,6 +1286,35 @@ hablar entre pantallas.
 - En los dobles, "la app arrancó de nuevo" es `olvidarViva()`: montar otra
   instancia ya no alcanza, porque comparte el dueño.
 
+## La marca de actividad a futuro (cacería del 15/10/2026)
+
+El cronómetro de cardio y el descanso a mano de hasta una hora hicieron que la
+app prometa actividad A FUTURO: nadie toca nada y la sesión tiene que seguir
+viva. Seis vueltas de cacería encontraron quince formas de romperlo, casi todas
+de la misma familia: una promesa que no llega, que llega pisada, que no se
+puede achicar, o que se achica cuando no era la suya.
+→ **Reglas:**
+- **Una promesa se renueva** mientras dure (cada 5 min con la app adelante), y la
+  base acepta hasta una hora (la 81). Con el teléfono bloqueado no hay JS: el tope
+  de la base es lo que manda.
+- **Una promesa se tiene que poder achicar** ("Listo", cortar o acortar el
+  descanso): `bajarMarca` con `p_bajar` (la 82). Sin eso, la sesión dejada sin
+  Terminar se guardaba con una hora de más.
+- **La cola guarda UNA marca por sesión**: la que se encola es la más alta conocida
+  (`nueva`, no `iso`), y una bajada pendiente se hereda.
+- **Solo se achica la promesa propia**: "Seguir" en un descanso no toca la de la cinta.
+- **La renovación no es actividad**: no borra la hora de un Terminar que no salió.
+
+## El doble del servidor tiene que mentir como la base (cacería del 15/10/2026)
+
+Dos bugs de la cacería no se veían porque el servidor de mentira
+(`supabase/dobles/sesion/cliente.mjs`) era más amable que la base: pisaba
+`ultima_actividad` sin tope ni `greatest`, y fechaba con `new Date()` mientras
+los escenarios adelantaban `Date.now()`.
+→ **Regla:** cada regla de la base que un escenario necesita (topes, `greatest`,
+la versión del esquema) va también en el doble, con el mismo reloj que usan los
+escenarios. Un escenario que pasa contra un doble más amable no prueba nada.
+
 ## Tests / proceso
 
 **La consulta que se le pasa al humano se corre antes de pasarla.** El 7/10 se
