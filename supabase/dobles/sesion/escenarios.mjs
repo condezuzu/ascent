@@ -1140,7 +1140,7 @@ async function vueltaSeis(caso) {
 }
 
 /**
- * `vueltaSiete` (cacería del 16/10, vuelta 7):
+ * `vueltaSiete` (cacería del 15/10, vuelta 7):
  *  - `menosCinta`: la cinta arranca sola, a los 3 min se apaga con el − y nadie toca
  *    Terminar: la base cierra sola, y el fin tiene que ser a los 3 min, no a los 60.
  *  - `otroSinLeer`: el otro aparato suma remo; al desbloquear no se pueden leer los
@@ -1201,7 +1201,7 @@ async function vueltaSiete(caso) {
 }
 
 /**
- * `vueltaOcho` (cacería del 16/10, vuelta 8), con otro aparato que anota:
+ * `vueltaOcho` (cacería del 15/10, vuelta 8), con otro aparato que anota:
  *  - `dupla`: acá press 2; allá remo 1 y no se puede leer; allá sentadilla 1 y vuelve
  *    la señal. Nadie toca nada acá: la base no duplica.
  *  - `peso`: press 2 con 60; allá remo 1; sin poder leer, el + siguiente lleva los 60.

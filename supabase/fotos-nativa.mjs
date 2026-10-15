@@ -532,7 +532,7 @@ const RECETAS = {
     await foto(page, 'rutina-amigo-copiada');
     return page;
   },
-  // LA ZONA SEGURA (16/10): el navegador no tiene isla ni hora, así que se le dice a
+  // LA ZONA SEGURA (15/10): el navegador no tiene isla ni hora, así que se le dice a
   // Chrome que la zona de arriba mide 59 (un iPhone con isla) y se pinta esa franja.
   async 'zona-segura'(nav, gente) {
     const A = gente.a;
@@ -558,7 +558,7 @@ const RECETAS = {
     await foto(page, 'zona-rutina');
     return page;
   },
-  // VOLVER DESLIZANDO, RECONSTRUIDO (16/10): en el navegador no hay gesto nativo. Se
+  // VOLVER DESLIZANDO, RECONSTRUIDO (15/10): en el navegador no hay gesto nativo. Se
   // sacan Inicio y Tu rutina por separado (Tu rutina sin el fondo) y se arma el cuadro
   // del gesto a mitad de camino: hoy (las dos encimadas) y la propuesta (lo de atrás
   // borroso bajo la pantalla que se va, aclarándose con el avance).

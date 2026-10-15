@@ -4,7 +4,7 @@ import { BlurView } from 'expo-blur';
 import { useTransitionProgress } from 'react-native-screens';
 
 /**
- * LA PANTALLA DE ATRÁS, BORROSA MIENTRAS SE VUELVE DESLIZANDO (16/10).
+ * LA PANTALLA DE ATRÁS, BORROSA MIENTRAS SE VUELVE DESLIZANDO (15/10).
  * *"La pantalla en la que estoy queda sobrepuesta encima de la que viene atrás.
  * Quiero que la de atrás se vea borrosa y se vaya aclarando a medida que arrastro."*
  *

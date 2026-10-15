@@ -18829,7 +18829,7 @@ console.log('\n240. Cacería del 15/10, vuelta 6: la marca de faltan al reabrir;
     ['ubicacion'],
   ]);
 }
-console.log('\n241. Cacería del 16/10, vuelta 7: el − de la cinta baja la marca; otro aparato sin poder leer; un propio ajeno no se siembra ni se anota; dos toques en "Nueva"');
+console.log('\n241. Cacería del 15/10, vuelta 7: el − de la cinta baja la marca; otro aparato sin poder leer; un propio ajeno no se siembra ni se anota; dos toques en "Nueva"');
 {
   const v7 = async (c) => escenarioDeSesion('vueltaSiete', c);
   chequear('la cinta apagada con el − y la sesión dejada sin Terminar cierra a los 3 min, no a los 60', await v7('menosCinta'), { estado: 'terminada', finMin: 3 });
@@ -18867,14 +18867,14 @@ console.log('\n241. Cacería del 16/10, vuelta 7: el − de la cinta baja la mar
   // Proxy: el doble toque se reprodujo contra la base; acá se pinea la traba.
   chequear('"Nueva", "Guardar esta" y "Armar una de cero" no crean dos rutinas con dos toques', /if \(creando\.current\) return;\n    creando\.current = true;/.test(de241('movil', 'src', 'MiRutina.tsx')), true);
 }
-console.log('\n242. Cacería del 16/10, vuelta 8: con otro aparato que anota y sin poder leer, la base no duplica y no se pierden el peso ni la cinta');
+console.log('\n242. Cacería del 15/10, vuelta 8: con otro aparato que anota y sin poder leer, la base no duplica y no se pierden el peso ni la cinta');
 {
   const v8 = async (c) => escenarioDeSesion('vueltaOcho', c);
   chequear('dos aparatos, la lectura cae y vuelve: la base no duplica los bloques', await v8('dupla'), { base: [['press_banca', 2, null], ['remo_barra', 1, null], ['sentadilla', 1, null]], series: 4 });
   chequear('sin poder leer lo de allá, la serie siguiente lleva el peso escrito', await v8('peso'), { base: [['press_banca', 2, 60], ['remo_barra', 1, null], ['press_banca', 1, 60]], series: 4 });
   chequear('sin poder leer lo de allá, la cinta andando sigue y Listo anota sus minutos', await v8('cinta'), { base: [['remo_barra', 1, null], ['cinta', 1, 20]], series: 2 });
 }
-console.log('\n243. Cacería del 16/10, vuelta 8: "+ Serie hecha" con la cinta sin arrancar; guardar la vida con hoy ya anotado; crear un propio con la hoja cerrada');
+console.log('\n243. Cacería del 15/10, vuelta 8: "+ Serie hecha" con la cinta sin arrancar; guardar la vida con hoy ya anotado; crear un propio con la hoja cerrada');
 {
   const enCinta = async (c) => escenarioDeSesion('serieEnCinta', c);
   chequear('"+ Serie hecha" del descanso con la cinta sin arrancar (sugerida o apagada con el −) no cuenta una serie ni guarda una vuelta sin minutos', [await enCinta('sugerida'), await enCinta('menos')], [

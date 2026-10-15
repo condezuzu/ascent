@@ -45,7 +45,7 @@ function FilaRutina() {
   const titulo = hoy ? tituloDelDia(hoy, (id) => catalogo.get(id)?.grupo ?? null, T.rutina.descanso) : '';
   const texto = !hayAlgo(dias) ? T.rutina.armarSemana : hoy?.descanso ? T.rutina.descanso : titulo || T.rutina.sinCargar;
 
-  // UNA LÍNEA SIN CAJA (16/10, la A de tres): la caja le competía al botón de empezar.
+  // UNA LÍNEA SIN CAJA (15/10, la A de tres): la caja le competía al botón de empezar.
   return (
     <Pressable
       testID="inicio-rutina"
