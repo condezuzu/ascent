@@ -13,7 +13,8 @@
 // quedó anotado cuando tres personas se trabaron al elegir ejercicio: "en el
 // momento, con el mínimo texto, nada de guía obligatoria".
 //
-// SE MIRA DESDE EL TELÉFONO: cada pantalla se abre a tamaño real con `?ver=`.
+// SE MIRA DESDE LA COMPUTADORA (15/10): los marcos van a tamaño real, uno al lado del
+// otro, y `?ver=` abre una sola en un marco de teléfono centrado.
 // Lo que se dibuja adentro son reconstrucciones con las medidas de la app, no
 // capturas del iPhone.
 
@@ -223,13 +224,11 @@ function Momento({ clave }: { clave: string }) {
 
 function Marco({ href, rotulo, nota, children }: { href: string; rotulo: string; nota: string; children: ReactNode }) {
   return (
-    <section style={{ width: 195 }}>
+    <section style={{ width: 390 }}>
       <Link href={href} style={{ display: 'block', color: 'inherit' }}>
         <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--sub)', marginBottom: 8, minHeight: 26 }}>{rotulo}</div>
-        {/* La pantalla real (390 de ancho) achicada a la mitad. */}
-        <div style={{ width: 195, height: 422, overflow: 'hidden', borderRadius: 16, border: `1px solid ${C.linea}` }}>
-          <div style={{ width: 390, height: 844, transform: 'scale(0.5)', transformOrigin: 'top left' }}>{children}</div>
-        </div>
+        {/* La pantalla real: 390 × 844, como un iPhone. */}
+        <div style={{ width: 390, height: 844, overflow: 'hidden', borderRadius: 28, border: `1px solid ${C.linea}` }}>{children}</div>
       </Link>
       <p className="nota-privada" style={{ marginTop: 8, lineHeight: 1.5 }}>{nota}</p>
     </section>
@@ -249,11 +248,13 @@ export default function PropuestaBienvenida() {
   const sola = [...ENTRADA, ...MOMENTO].find((p) => p.clave === ver);
   if (sola) {
     return (
-      <div data-telefono={sola.rotulo} style={{ position: 'fixed', inset: 0, zIndex: 2147483000, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', background: C.fondo }}>
-        <Link href="/galeria/propuestas/bienvenida" style={{ position: 'absolute', zIndex: 2, top: 'max(14px, env(safe-area-inset-top))', left: 16, color: C.sub, fontSize: 13 }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 2147483000, background: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+        <Link href="/galeria/propuestas/bienvenida" style={{ color: C.sub, fontSize: 13 }}>
           ← {sola.rotulo}
         </Link>
-        {ENTRADA.includes(sola) ? <Entrada clave={sola.clave} t={t} /> : <Momento clave={sola.clave} />}
+        <div data-telefono={sola.rotulo} style={{ width: 390, height: 844, maxHeight: 'calc(100vh - 60px)', overflow: 'hidden', borderRadius: 28, border: `1px solid ${C.lineaFuerte}`, background: C.fondo }}>
+          {ENTRADA.includes(sola) ? <Entrada clave={sola.clave} t={t} /> : <Momento clave={sola.clave} />}
+        </div>
       </div>
     );
   }
@@ -261,7 +262,7 @@ export default function PropuestaBienvenida() {
   return (
     <Banco
       titulo="La bienvenida nueva"
-      queEs="Toca una para verla a pantalla completa, al tamaño de la app. Son reconstrucciones con las medidas de la app, no capturas del iPhone. La de hoy, entera y de verdad, está en /galeria/bienvenida."
+      queEs="A tamaño real (390 × 844, un iPhone). Toca una para verla sola. Son reconstrucciones con las medidas de la app, no capturas del iPhone. La de hoy, entera y de verdad, está en /galeria/bienvenida."
     >
       <div style={{ maxWidth: 720, color: 'var(--sub)', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
         <p style={{ margin: '0 0 10px' }}>
@@ -274,7 +275,7 @@ export default function PropuestaBienvenida() {
       </div>
 
       <div style={{ fontSize: 11, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--sub)', margin: '6px 0 12px' }}>Antes de la cuenta</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, marginBottom: 34 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, marginBottom: 34, width: 'min(1300px, 94vw)' }}>
         {ENTRADA.map((p) => (
           <Marco key={p.clave} href={`/galeria/propuestas/bienvenida?ver=${p.clave}`} rotulo={p.rotulo} nota={p.nota}>
             <Entrada clave={p.clave} t={t} chico />
@@ -287,7 +288,7 @@ export default function PropuestaBienvenida() {
       </p>
 
       <div style={{ fontSize: 11, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--sub)', margin: '6px 0 12px' }}>Después del nombre, en el momento</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, width: 'min(1300px, 94vw)' }}>
         {MOMENTO.map((p) => (
           <Marco key={p.clave} href={`/galeria/propuestas/bienvenida?ver=${p.clave}`} rotulo={p.rotulo} nota={p.nota}>
             <Momento clave={p.clave} />
