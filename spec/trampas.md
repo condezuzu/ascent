@@ -901,6 +901,38 @@ previo no pudo hacer lo suyo, que **devuelva el problema**, no `undefined`.
 
 ---
 
+## El publicador no se llama sin orden (14/10/2026)
+
+**Regla:** `supabase/publicar-ota.mjs` no se ejecuta nunca sin una orden
+explícita del humano para ESA publicación: ni en simulacro (`--simular`), ni
+"de prueba", ni para mirar qué contesta.
+
+Por qué: el 14/10, para revisar una salida, se escribió un comando que volvía a
+llamarlo con el mensaje "x" contra `telefono`. Se cortó antes de subir y EAS
+confirmó que no salió nada, pero salió de pura suerte: el corte llegó antes que
+la subida. Una OTA a `store` llega a todas las cuentas en minutos.
+
+## Apagar los avisos push sin tocar nada más (migración 77)
+
+El aviso de "te quieren agregar" lo manda un disparador en la tabla de
+amistades, o sea en el camino de crear una solicitud. Está protegido (si el
+aviso falla, la solicitud se crea igual, y hay test), pero si alguien no puede
+agregar a un amigo, esto lo descarta en un minuto. Se pega en el SQL Editor.
+Apaga los dos avisos (amistad y unirse) y no cambia nada más: ni datos, ni
+funciones, ni tokens. La sección 224 de `test:db` corre exactamente estas líneas.
+
+```sql
+-- APAGAR LOS AVISOS PUSH
+alter table public.friendships disable trigger friendships_avisar;
+alter table public.entrenos_compartidos disable trigger entrenos_avisar;
+```
+
+```sql
+-- PRENDERLOS DE NUEVO
+alter table public.friendships enable trigger friendships_avisar;
+alter table public.entrenos_compartidos enable trigger entrenos_avisar;
+```
+
 ## Build y entorno
 
 **Las `NEXT_PUBLIC_*` se incrustan al COMPILAR.** Cambiarlas en Vercel no

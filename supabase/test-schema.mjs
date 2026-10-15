@@ -18019,6 +18019,49 @@ console.log('\n223. El músculo se lee en el idioma de la app');
   chequear('el músculo sale de los textos (y uno desconocido, con mayúscula)', [es, en], [['Pecho', 'Cardio', 'Inventado'], ['Chest', 'Cardio', 'Inventado']]);
 }
 
+console.log('\n224. La consulta de emergencia que apaga los avisos push (spec/trampas.md)');
+{
+  const yo = await nuevoUsuario();
+  const otra = await nuevoUsuario();
+  const otraMas = await nuevoUsuario();
+  await comoUsuario(yo);
+  await db.query('select guardar_token_push($1, $2)', ['ExponentPushToken[emergencia]', 'es']);
+  await db.exec(`
+    create schema if not exists net;
+    create table if not exists net.pedidos (n serial, url text, body jsonb, headers jsonb);
+    create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}',
+      headers jsonb default '{}', timeout_milliseconds integer default 5000) returns bigint
+    language sql as $$ insert into net.pedidos (url, body, headers) values (url, body, headers); select 1::bigint; $$;
+  `);
+  const pedidos = async () => Number((await db.query('select count(*) as n from net.pedidos')).rows[0].n);
+  const amistad = async (de) => {
+    await comoUsuario(de);
+    await db.exec('set role authenticated');
+    try {
+      await db.query('insert into friendships (solicitante, destinatario) values ($1, $2)', [de, yo]);
+      return 'entró';
+    } catch (e) {
+      return String(e.message);
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  // EXACTAMENTE lo que está escrito en spec/trampas.md.
+  const { readFileSync: leer224 } = await import('node:fs');
+  const trampas = leer224(join(dirname(fileURLToPath(import.meta.url)), '..', 'spec', 'trampas.md'), 'utf8').replace(/\r\n/g, '\n');
+  const apagar = trampas.match(/-- APAGAR LOS AVISOS PUSH\n([\s\S]*?)\n```/)?.[1] ?? '';
+  const prender = trampas.match(/-- PRENDERLOS DE NUEVO\n([\s\S]*?)\n```/)?.[1] ?? '';
+  await db.exec(apagar);
+  const conApagado = [await amistad(otra), await pedidos()];
+  await db.exec(prender);
+  const conPrendido = [await amistad(otraMas), await pedidos()];
+  const disparadores = (await db.query(`select tgname, tgenabled from pg_trigger where tgname in ('friendships_avisar', 'entrenos_avisar') order by 1`)).rows.map((r) => [r.tgname, r.tgenabled]);
+  chequear('la consulta de trampas.md apaga los dos avisos sin tocar la solicitud, y la otra los vuelve a prender', [apagar !== '' && prender !== '', conApagado, conPrendido, disparadores], [
+    true, ['entró', 0], ['entró', 1], [['entrenos_avisar', 'O'], ['friendships_avisar', 'O']],
+  ]);
+  await db.exec('drop schema net cascade');
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (fallos.length) {
   console.log('\nFALLAS:');
