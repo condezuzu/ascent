@@ -328,6 +328,29 @@ const RECETAS = {
     await foto(page, 'cardio-hecho');
     return page;
   },
+  async 'stats-kilos'(nav, gente) {
+    const A = gente.a;
+    const hoy = new Date();
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    // Seis semanas de muestra, una sesión por semana, cada una un poco más pesada.
+    const sesiones = Array.from({ length: 6 }, (_, i) => {
+      const extra = i * 2.5;
+      return {
+        id: `00000000-0000-4000-8000-0000000001${String(i).padStart(2, '0')}`,
+        logs: { fecha: iso(new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - (5 - i) * 7)) },
+        bloques: [
+          { ejercicio: 'press_banca', series: 4, pesos: [60 + extra, 60 + extra, 60 + extra, 60 + extra] },
+          { ejercicio: 'sentadilla', series: 3, pesos: [80 + extra, 80 + extra, 80 + extra] },
+        ],
+      };
+    });
+    const { page } = await abrir(nav, A, { version_del_esquema: 79 });
+    await page.route('**/rest/v1/sesiones?select=id%2Cbloques%2Clogs*', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(sesiones) }));
+    await irAStatsEntrenamiento(page);
+    await verTestId(page, 'kilos-por-semana');
+    await foto(page, 'stats-kilos');
+    return page;
+  },
   async 'rutina-stats'(nav, gente) {
     const A = gente.a;
     const dias = await semanaDeMuestra(A.s);
