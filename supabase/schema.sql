@@ -792,6 +792,10 @@ $$;
 -- Cuántas se tienen no cambia (dos, y la tercera con racha de 20: ver
 -- `impulsos_ganados`). Las devueltas no cuentan, como antes.
 
+-- UNA VIDA DE UN DÍA QUE AL FINAL FUISTE NO CUENTA (migración 84): marcarlo "Fui"
+-- después arreglaba la racha y dejaba la vida gastada todo el ciclo. Se decide al
+-- leer: si el día vuelve a "Sin registrar", la vida vuelve a contar.
+--
 -- El día en que empezó el ciclo vigente el día `p_dia`, o null si no hay uno
 -- abierto. Mira solo las vidas usadas hasta ese día: un día pasado se juzga con
 -- lo que había entonces.
@@ -802,9 +806,10 @@ declare
   f date;
 begin
   for f in
-    select fecha from vidas_usadas
-     where user_id = p_user and not devuelta and fecha <= p_dia
-     order by fecha
+    select v.fecha from vidas_usadas v
+     where v.user_id = p_user and not v.devuelta and v.fecha <= p_dia
+       and not exists (select 1 from logs l where l.user_id = p_user and l.fecha = v.fecha and not l.es_descanso)
+     order by v.fecha
   loop
     if inicio is null or f >= inicio + 30 then inicio := f; end if;
   end loop;
@@ -822,11 +827,12 @@ create or replace function public.impulsos_disponibles(p_user uuid, p_dia date)
 returns int language sql stable security definer set search_path = public as $$
   with c as (select coalesce(inicio_ciclo_vidas(p_user, p_dia), p_dia) as ini)
   select greatest(0, impulsos_ganados(p_user) - coalesce((
-    select count(*)::int from vidas_usadas, c
-     where user_id = p_user
-       and not devuelta
-       and fecha >= c.ini
-       and fecha < c.ini + 30
+    select count(*)::int from vidas_usadas v, c
+     where v.user_id = p_user
+       and not v.devuelta
+       and v.fecha >= c.ini
+       and v.fecha < c.ini + 30
+       and not exists (select 1 from logs l where l.user_id = p_user and l.fecha = v.fecha and not l.es_descanso)
   ), 0));
 $$;
 
@@ -843,24 +849,28 @@ returns jsonb language sql stable security definer set search_path = public as $
     end,
     -- Las usadas en el ciclo abierto, y el día en que vuelven todas.
     'vigentes', coalesce((
-      select jsonb_agg(fecha order by fecha)
-        from vidas_usadas
-       where user_id = auth.uid()
-         and not devuelta
-         and fecha >= inicio_ciclo_vidas(auth.uid(), mi_hoy())
-         and fecha <= mi_hoy()
+      select jsonb_agg(v.fecha order by v.fecha)
+        from vidas_usadas v
+       where v.user_id = auth.uid()
+         and not v.devuelta
+         and v.fecha >= inicio_ciclo_vidas(auth.uid(), mi_hoy())
+         and v.fecha <= mi_hoy()
+         and not exists (select 1 from logs l where l.user_id = v.user_id and l.fecha = v.fecha and not l.es_descanso)
     ), '[]'::jsonb),
     'vuelve', inicio_ciclo_vidas(auth.uid(), mi_hoy()) + 30,
     'ultimas', coalesce((
       select jsonb_agg(fecha order by fecha desc)
         from (
-          select fecha from vidas_usadas
-           where user_id = auth.uid() and not devuelta
-           order by fecha desc limit 5
+          select v.fecha from vidas_usadas v
+           where v.user_id = auth.uid() and not v.devuelta
+             and not exists (select 1 from logs l where l.user_id = v.user_id and l.fecha = v.fecha and not l.es_descanso)
+           order by v.fecha desc limit 5
         ) x
     ), '[]'::jsonb),
     'ultima', (
-      select max(fecha) from vidas_usadas where user_id = auth.uid() and not devuelta
+      select max(v.fecha) from vidas_usadas v
+       where v.user_id = auth.uid() and not v.devuelta
+         and not exists (select 1 from logs l where l.user_id = v.user_id and l.fecha = v.fecha and not l.es_descanso)
     )
   );
 $$;
@@ -3626,7 +3636,17 @@ create policy "descansos: leer los propios" on public.descansos for select using
 
 -- logs: dueño todo; amigos aceptados leen
 create policy "logs: dueño" on public.logs for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "logs: amigos leen" on public.logs for select using (public.son_amigos(auth.uid(), user_id));
+-- Los días de un amigo NO se leen de la tabla (migración 85): la política abría
+-- todas las columnas, y `creado` y `origen` dicen a qué hora entrenó y si llegó al
+-- gimnasio, aunque tenga "Avisar cuando entreno" apagado. Van por esta vista, que
+-- corre como su dueño (como `usuarios_publicos`) y filtra en el where.
+create view public.logs_de_amigos
+with (security_invoker = off) as
+  select id, user_id, fecha, es_descanso, planeta_del_dia, racha_del_dia
+    from public.logs
+   where public.son_amigos(auth.uid(), user_id);
+revoke all on public.logs_de_amigos from public, anon;
+grant select on public.logs_de_amigos to authenticated;
 
 -- photos: dueño todo; amigos leen solo las visibles
 -- LA RUTA Y EL DÍA TIENEN QUE SER DE QUIEN ANOTA LA FOTO (migración 60). Con
@@ -4237,7 +4257,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 83; $$;
+returns int language sql immutable as $$ select 85; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

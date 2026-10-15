@@ -81,6 +81,8 @@ export type CacheDeSesion = {
   bloques?: unknown;
   sugerido?: boolean;
   quisoTerminar?: number | null;
+  rutina?: string[];
+  rutinaGuardada?: boolean;
 };
 
 export type QueHacerConLaCache =
@@ -135,6 +137,8 @@ export function cacheTrasConfirmar(
   if (previo.bloques !== undefined) cache.bloques = previo.bloques;
   if (previo.sugerido !== undefined) cache.sugerido = previo.sugerido;
   if (previo.quisoTerminar !== undefined) cache.quisoTerminar = previo.quisoTerminar;
+  if (previo.rutina !== undefined) cache.rutina = previo.rutina;
+  if (previo.rutinaGuardada !== undefined) cache.rutinaGuardada = previo.rutinaGuardada;
   return { accion: 'guardar', cache };
 }
 

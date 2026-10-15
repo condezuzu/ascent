@@ -60,6 +60,10 @@ export function restarSerie(c: Conteo): Conteo {
   // CON LA CINTA ANDANDO, el − cancela la vuelta en curso (cacería del 15/10): restaba
   // una ya hecha y se llevaba sus minutos.
   if (c.bloques.cardioDesde !== undefined) return { series: c.series, bloques: descartarCardio(c.bloques) };
+  // CON LA CINTA PARADA no hace nada (cacería del 15/10, vuelta 6): el bloque guarda
+  // solo el total de minutos, no los de cada vuelta. Sacaba la vuelta y dejaba los
+  // minutos, y con la última borraba la cinta de la base. Se corrige con −5/+5.
+  if (c.bloques.minutos !== undefined) return c;
   return { series: Math.max(0, c.series - 1), bloques: restar(c.bloques) };
 }
 

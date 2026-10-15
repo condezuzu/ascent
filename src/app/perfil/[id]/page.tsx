@@ -7,7 +7,7 @@ import { miUsuario } from '@/lib/supabase/quienSoy';
 import { enDias, hoyISO, restarDias } from '@nucleo/fechas';
 import { conComa } from '@nucleo/peso';
 import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
-import type { Log, UsuarioPublico } from '@nucleo/tipos';
+import type { LogDeAmigo, UsuarioPublico } from '@nucleo/tipos';
 import FondoEspacial from '@/components/FondoEspacial';
 import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
@@ -15,6 +15,7 @@ import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
 import { miniaturas } from '@compartido/album';
 import { aceptarAmistad } from '@compartido/ranking';
+import { tablaDeLogsDeAmigos } from '@compartido/esquema';
 import { olvidarPendientes } from '@/lib/avisos';
 import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 import { plataforma } from '@/plataforma';
@@ -45,7 +46,7 @@ export default function Perfil() {
   const [pedidoRecibido, setPedidoRecibido] = useState<string | null>(null);
   // No se pudo preguntar (la red): no es "no existe".
   const [noCargo, setNoCargo] = useState(false);
-  const [logs, setLogs] = useState<Log[]>([]);
+  const [logs, setLogs] = useState<LogDeAmigo[]>([]);
   const [fotos, setFotos] = useState<FotoPerfil[]>([]);
   const [medallas, setMedallas] = useState<Medalla[]>([]);
   const [dots, setDots] = useState<number | null>(null);
@@ -114,9 +115,10 @@ export default function Perfil() {
       });
       // La RLS permite leer logs y fotos visibles de amigos aceptados.
       const desde = restarDias(hoyISO(), DIAS_VISIBLES - 1);
+      const deAmigos = await tablaDeLogsDeAmigos(supabase);
       const { data: ls } = await supabase
-        .from('logs')
-        .select('*')
+        .from(deAmigos)
+        .select('id, user_id, fecha, es_descanso, planeta_del_dia, racha_del_dia')
         .eq('user_id', params.id)
         .gte('fecha', desde)
         .order('fecha');
@@ -131,7 +133,7 @@ export default function Perfil() {
       if (fs && fs.length > 0) {
         const logIds = fs.map((f) => f.log_id).filter(Boolean) as string[];
         const { data: logsFotos } = logIds.length
-          ? await supabase.from('logs').select('id, fecha').in('id', logIds)
+          ? await supabase.from(deAmigos).select('id, fecha').in('id', logIds)
           : { data: [] };
         const mapa = new Map((logsFotos ?? []).map((l) => [l.id, l.fecha]));
         // Las URL enteras y las miniaturas a la vez: la grilla usa la chica.

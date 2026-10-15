@@ -154,6 +154,9 @@ export default function Bloque({
   // EL CRONÓMETRO DEL CARDIO (15/10): mientras corre, el tiempo sale de restar
   // contra cuándo arrancó (como el de la sesión), y esto solo repinta.
   const corriendoCardio = esTiempo && estado.cardioDesde !== undefined;
+  // El − con la cinta andando la apaga sin anotar (la cinta elegida arranca sola y
+  // no había otra forma); parada no hace nada (ver `restarSerie`).
+  const menosApagado = corriendoCardio ? false : estado.hechas === 0 || (esTiempo && estado.minutos !== undefined);
   const [, repintarCardio] = useState(0);
   useEffect(() => {
     if (!corriendoCardio) return;
@@ -280,11 +283,11 @@ export default function Bloque({
 
       {esTiempo && !corriendoCardio && (
         <View testID="minutos-de-cardio" style={estilos.minutos} accessibilityLabel={T.sesion.minutosDeCardio}>
-          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.max(1, minutos - 5))} accessibilityLabel="−5">
+          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.max(1, Math.ceil(minutos / 5) * 5 - 5))} accessibilityLabel="−5">
             <Text style={estilos.minutosPasoTexto}>−</Text>
           </Pressable>
           <Text style={estilos.minutosTexto}>{T.rutina.minutos(minutos)}</Text>
-          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(minutos + 5)} accessibilityLabel="+5">
+          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.floor(minutos / 5) * 5 + 5)} accessibilityLabel="+5">
             <Text style={estilos.minutosPasoTexto}>+</Text>
           </Pressable>
         </View>
@@ -413,13 +416,13 @@ export default function Bloque({
       {cumplida && !esTiempo ? (
         <View style={estilos.filaBotones}>
           <Pressable
-            style={[estilos.mas, estilos.menos, estado.hechas === 0 && estilos.menosApagado]}
+            style={[estilos.mas, estilos.menos, menosApagado && estilos.menosApagado]}
             onPress={alRestar}
-            disabled={estado.hechas === 0}
+            disabled={menosApagado}
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
-            <Text style={[estilos.masTexto, estado.hechas === 0 && estilos.apagadoTexto]}>−</Text>
+            <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Pressable>
           <Pressable
             style={[estilos.mas, estilos.masCerrar]}
@@ -434,13 +437,13 @@ export default function Bloque({
       ) : (
         <View style={estilos.filaBotones}>
           <Pressable
-            style={[estilos.mas, estilos.menos, estado.hechas === 0 && estilos.menosApagado]}
+            style={[estilos.mas, estilos.menos, menosApagado && estilos.menosApagado]}
             onPress={alRestar}
-            disabled={estado.hechas === 0}
+            disabled={menosApagado}
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
-            <Text style={[estilos.masTexto, estado.hechas === 0 && estilos.apagadoTexto]}>−</Text>
+            <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Pressable>
           <Pressable
             testID={esTiempo ? 'cardio-principal' : undefined}

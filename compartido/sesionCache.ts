@@ -86,6 +86,13 @@ export type SesionCacheada = {
    * próxima apertura tiene que volver a intentarlo, no dar la caché por buena.
    */
   faltanBloques?: boolean;
+  /**
+   * La cadena de la rutina del día, calculada al iniciar (cacería del 15/10): vivía
+   * solo en memoria y, si iOS mataba la app, la rutina dejaba de proponer. No se
+   * recalcula al reabrir: pasada la medianoche daría la rutina de otro día.
+   */
+  rutina?: string[];
+  rutinaGuardada?: boolean;
 };
 
 /**

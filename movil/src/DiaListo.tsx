@@ -4,6 +4,7 @@ import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
 import { FOTOS_CAMBIO } from '@compartido/foto';
 import { supabase } from './supabase';
+import { PESTANA_ACTIVA } from './irAPestana';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { C } from './colores';
@@ -56,10 +57,14 @@ export default function DiaListo({
     // FOTOS_CAMBIO y no solo DIA_CAMBIO: el del día sale ANTES de que la foto termine de subir.
     const dejarDia = eventos.escuchar(DIA_CAMBIO, mirar);
     const dejarFotos = eventos.escuchar(FOTOS_CAMBIO, mirar);
+    // Y al volver a Inicio (cacería del 15/10): quitar la foto en el Álbum, o desde
+    // otro aparato, no avisa. Avisar con FOTOS_CAMBIO recargaría el Álbum entero.
+    const dejarPestana = eventos.escuchar(PESTANA_ACTIVA, (cual) => cual === 'inicio' && mirar());
     return () => {
       vivo = false;
       dejarDia();
       dejarFotos();
+      dejarPestana();
     };
   }, [logId]);
   return (

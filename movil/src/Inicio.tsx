@@ -788,9 +788,12 @@ export default function Inicio({
           {/* SE CIERRA SOLO CON EL PRIMER `+`: para entonces ya se entendió qué
               hace, y la pregunta de marca —que sale después de un `+`— nunca lo
               encuentra abierto. */}
-          <GloboPrimeraVez cual="series" cerrarCuando={sesion.estado.series > 0}>
-            {T.inicio.globoSeries}
-          </GloboPrimeraVez>
+          {/* El cardio no tiene + (vuelta 6 de la cacería): el globito espera a la fuerza. */}
+          {!esCardioEnCurso && (
+            <GloboPrimeraVez cual="series" cerrarCuando={sesion.estado.series > 0}>
+              {T.inicio.globoSeries}
+            </GloboPrimeraVez>
+          )}
           {/* El reloj ya está arriba, en el chip: acá manda el bloque, que es
               lo que se toca doce veces por sesión. */}
           <Bloque

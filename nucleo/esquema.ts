@@ -70,6 +70,10 @@ export const REQUIERE = {
   bajarMarca: 82,
   /** Darse de baja aunque un amigo haya usado tus ejercicios propios (la app no depende de esto). */
   bajaConPropios: 83,
+  /** Marcar "Fui" en un día que cubrió una vida la devuelve (la app no depende de esto). */
+  vidaDeUnDiaQueFuiste: 84,
+  /** Los días de un amigo se leen sin la hora ni el origen (vista `logs_de_amigos`). */
+  logsDeAmigos: 85,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

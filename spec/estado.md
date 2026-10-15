@@ -15,9 +15,14 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 **Aplicadas hasta la 78** (15/10/2026: `version_del_esquema()` contestó 78).
 **Escritas y sin aplicar, en este orden: 79** (las vidas vuelven todas juntas),
 **80** (los ejercicios propios los ve solo quien los creó), **81** (la marca de
-actividad acepta hasta una hora adelante), **82** (la marca se puede achicar) y
-**83** (darse de baja aunque un amigo haya usado un propio tuyo). La app anda
-igual sin ellas: cada una se mira con `disponible(...)` o es solo de la base.
+actividad acepta hasta una hora adelante), **82** (la marca se puede achicar),
+**83** (darse de baja aunque un amigo haya usado un propio tuyo), **84** (marcar
+"Fui" en un día que cubrió una vida la devuelve) y **85** (un amigo no ve a qué
+hora entrenaste: sus días se leen por `logs_de_amigos`). La app anda igual sin
+ellas: cada una se mira con `disponible(...)` o es solo de la base.
+**La 85 va con orden invertido**: primero la app publicada en store y la web
+desplegada (`verificar:deploy`), después la migración. Una app vieja con la 85
+puesta ve vacía la semana de los amigos, sin errores.
 
 > Hasta el 15/10 esto decía "aplicadas hasta la 44", del 18/9.
 

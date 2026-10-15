@@ -76,6 +76,7 @@ import { cambioDeSesion,
   guardarVigilancia,
   fotoDeLaCache,
   relojDeToques,
+  type SesionCacheada,
 } from '@compartido/sesionCache';
 import {
   INICIAL,
@@ -324,12 +325,21 @@ export function useSesion(
         setPorUbicacion(c.porUbicacion ?? false);
         setIdSesion(c.id ?? null);
         if (c.id) idVisto.current = c.id;
+        // La marca de "faltan los de allá" vuelve con la caché (cacería del 15/10):
+        // solo en memoria, iOS la mataba y el primer + subía la lista de acá sola.
+        if (c.faltanBloques && c.id) faltanBloques.current = c.id;
         setUltimaActividad(c.ultimaActividad ?? null);
         if (c.bloques) setBloques(c.bloques);
         // El fantasma sobrevive a que iOS mate la app: si el bloque en curso era
         // una sugerencia sin confirmar, al reabrir sigue viéndose como sugerencia
         // y no como algo ya elegido (ver `SesionCacheada.sugerido`).
         setSugerido(!!c.sugerido);
+        if (c.rutina) {
+          rutinaRef.current = c.rutina;
+          rutinaEsGuardada.current = !!c.rutinaGuardada;
+          // La deducida re-engancha desde el historial, que también vivía en memoria.
+          if (!c.rutinaGuardada && sesionesRutinaRef.current.length === 0) void cargarHistorialRutina();
+        }
         // EL TOTAL AL REABRIR (bug "3 de 3 · 0 en total", 29/9). Antes: con cola
         // pendiente se descartaba la caché y quedaba el total EN PANTALLA —que tras
         // un cierre de iOS es el 0 inicial—, mientras los puntos se restauraban del
@@ -382,7 +392,26 @@ export function useSesion(
         })
       | null;
     const alDia = fotoDeLaCache(reloj);
-    const previo = await leerSesionCache();
+    // LA COPIA VENCIDA ACÁ Y LA SESIÓN VIVA ALLÁ (cacería del 15/10): quieto más de
+    // media hora, la caché de este aparato vence aunque el otro siga anotando. Lo
+    // que hay en memoria es de esa sesión y ya subió (la cola no tiene nada de
+    // ella): vale como la caché. Sin esto, faltaban bloques y se unían los de la
+    // base con los mismos de memoria, duplicados.
+    const enMemoria = leerViva();
+    const previo: SesionCacheada | null =
+      (await leerSesionCache()) ??
+      (s?.corriendo && s.id && s.inicio && enMemoria.inicio && bloquesDe.current === s.id && faltanBloques.current !== s.id
+        ? {
+            id: s.id,
+            inicio: enMemoria.inicio,
+            desfasaje: enMemoria.desfasaje,
+            series: enMemoria.series,
+            bloques: enMemoria.bloques,
+            sugerido: enMemoria.sugerido,
+            rutina: rutinaRef.current,
+            rutinaGuardada: rutinaEsGuardada.current,
+          }
+        : null);
     const viva = s?.corriendo && s.inicio
       ? {
           inicio: s.inicio,
@@ -701,6 +730,7 @@ export function useSesion(
       const deLaGuardada = ejerciciosDeHoy(await rutinaActivaDelTelefono(), new Date().getDay());
       rutinaRef.current = deLaGuardada.length > 0 ? deLaGuardada : rutinaParaHoy(sesionesRutinaRef.current, hoyISO());
       rutinaEsGuardada.current = deLaGuardada.length > 0;
+      await actualizarSesionCache({ rutina: rutinaRef.current, rutinaGuardada: rutinaEsGuardada.current }, yo);
       // Y se pone al día para la próxima, sin esperar.
       void cargarMisRutinas(supabase).catch(() => null);
 
@@ -788,7 +818,8 @@ export function useSesion(
     let data: unknown, error: unknown;
     try {
       await vaciar(supabase);
-      ({ data, error } = (await quedaDeLaSesion(idSesion))
+      // Sin poder traer lo de allá tampoco se cierra: lo de acá nunca se subió.
+      ({ data, error } = (!!idSesion && faltanBloques.current === idSesion) || (await quedaDeLaSesion(idSesion))
         ? { data: null, error: { message: 'quedan escrituras de la sesión en la cola' } }
         : await cerrar(supabase, { hasta }));
     } finally {
@@ -992,6 +1023,7 @@ export function useSesion(
     // Igual que `serieHecha`: las dos cuentas juntas y desde los refs, antes de
     // cualquier `await`, para que no se pisen con un toque simultáneo.
     const nc = restarSerie({ series: seriesRef.current, bloques: bloquesRef.current });
+    if (nc.bloques === bloquesRef.current && nc.series === seriesRef.current) return;
     seriesRef.current = nc.series;
     bloquesRef.current = nc.bloques;
     setSeries(nc.series);
@@ -1090,7 +1122,14 @@ export function useSesion(
     if (id !== bloquesRef.current.ejercicio && bloquesRef.current.cardioDesde !== undefined) await dejarElCardio();
     const previo = bloquesRef.current;
     const b = cambiarEjercicio(previo, id);
-    if (b === previo) return marcar();
+    if (b === previo) {
+      // Elegir de la lista el mismo que estaba propuesto también lo confirma.
+      if (id && leerViva().sugerido) {
+        setSugerido(false);
+        await actualizarSesionCache({ sugerido: false }, yo);
+      }
+      return marcar();
+    }
     bloquesRef.current = b;
     setBloques(b);
     refrescarTarjeta();
@@ -1099,7 +1138,7 @@ export function useSesion(
     setSugerido(false);
     // La cadena de la rutina GUARDADA no se re-engancha: elegir otro ejercicio de ese día no la abandona.
     if (id && !rutinaEsGuardada.current) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
-    await actualizarSesionCache({ bloques: b, sugerido: false }, yo);
+    await actualizarSesionCache({ bloques: b, sugerido: false, rutina: rutinaRef.current }, yo);
     // Lo de AHORA y no `b`: si un `+` cayó mientras se guardaba la caché, `b` ya
     // es viejo, y subirlo detrás del `+` le sacaba esa serie a la lista de la base.
     await subir(seriesRef.current, bloquesRef.current);
@@ -1391,7 +1430,9 @@ export function useSesion(
     if (b === bloquesRef.current) return;
     bloquesRef.current = b;
     setBloques(b);
-    await actualizarSesionCache({ bloques: b }, yo);
+    // Arrancar la cinta propuesta es confirmarla: deja de ser sugerencia.
+    setSugerido(false);
+    await actualizarSesionCache({ bloques: b, sugerido: false }, yo);
     cardioRenovadoEl.current = Date.now();
     await marcar(Date.now() + MARCA_DEL_CARDIO_MS);
   }
@@ -1468,7 +1509,7 @@ export function useSesion(
     // ejercicio equivocado. (29/9)
     // La cadena de la rutina GUARDADA no se re-engancha: elegir otro ejercicio de ese día no la abandona.
     if (id && !rutinaEsGuardada.current) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
-    await actualizarSesionCache({ bloques: b }, yo);
+    await actualizarSesionCache({ bloques: b, rutina: rutinaRef.current }, yo);
     await subir(seriesRef.current, bloquesRef.current);
     await marcar();
   }

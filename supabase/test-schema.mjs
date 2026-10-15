@@ -692,7 +692,8 @@ console.log('\n13. Seguridad: el peso de otro no se lee, ni con amistad');
   await db.exec('set role authenticated');
   const pesos = await db.query('select * from weights where user_id = $1', [a]);
   chequear('peso del amigo invisible', pesos.rows.length, 0);
-  const logs = await db.query('select * from logs where user_id = $1', [a]);
+  // Por la vista sin la hora (migración 85): la tabla ya no se abre a los amigos.
+  const logs = await db.query('select * from logs_de_amigos where user_id = $1', [a]);
   chequear('logs del amigo sí visibles', logs.rows.length, 1);
   await db.exec('reset role');
 }
@@ -706,7 +707,7 @@ console.log('\n14. Seguridad: sin amistad no se ve nada del otro');
   await db.query(`select anotar_peso(75), registrar_dia()`);
   await comoUsuario(b);
   await db.exec('set role authenticated');
-  const logs = await db.query('select * from logs where user_id = $1', [a]);
+  const logs = await db.query('select id from logs where user_id = $1 union all select id from logs_de_amigos where user_id = $1', [a]);
   chequear('logs de un extraño invisibles', logs.rows.length, 0);
   const perfiles = await db.query('select * from profiles where id = $1', [a]);
   chequear('perfil de un extraño invisible', perfiles.rows.length, 0);
@@ -7298,7 +7299,7 @@ console.log('\n164. Bloquear y denunciar (migración 53)');
 
   // b ve el log y la foto de a mientras son amigos
   await comoUsuario(b); await db.exec('set role authenticated');
-  chequear('antes del bloqueo b ve el log de a', (await db.query('select 1 from logs where user_id=$1', [a])).rows.length, 1);
+  chequear('antes del bloqueo b ve el log de a', (await db.query('select 1 from logs_de_amigos where user_id=$1', [a])).rows.length, 1);
   chequear('antes del bloqueo b ve la foto de a', (await db.query('select 1 from photos where user_id=$1', [a])).rows.length, 1);
   await db.exec('reset role');
 
@@ -7315,7 +7316,7 @@ console.log('\n164. Bloquear y denunciar (migración 53)');
 
   // el contenido deja de verse (por son_amigos, a nivel RLS)
   await comoUsuario(b); await db.exec('set role authenticated');
-  chequear('tras el bloqueo b no ve el log de a', (await db.query('select 1 from logs where user_id=$1', [a])).rows.length, 0);
+  chequear('tras el bloqueo b no ve el log de a', (await db.query('select 1 from logs_de_amigos where user_id=$1', [a])).rows.length, 0);
   chequear('tras el bloqueo b no ve la foto de a', (await db.query('select 1 from photos where user_id=$1', [a])).rows.length, 0);
   await db.exec('reset role');
 
@@ -18734,6 +18735,88 @@ console.log('\n239. Cacería del 15/10, vuelta 5: lo de otro aparato con −, Te
     /if \(!sesion\.estado\.descanso\) setDescansoAbierto\(false\);/.test(de239('movil', 'src', 'Inicio.tsx')),
     /if \(!sesion\.estado\.corriendo\) setTerminando\(false\);/.test(de239('movil', 'src', 'Inicio.tsx')),
   ], [true, true]);
+}
+console.log('\n240. Cacería del 15/10, vuelta 6: la marca de faltan al reabrir; el aparato quieto; la cinta sugerida, parada y sin cronómetro; la cadena de la rutina; el + de la web; la vida de un día que fuiste; la hora de los amigos');
+{
+  const v6 = async (c) => escenarioDeSesion('vueltaSeis', c);
+  chequear('lo de otro aparato sin traer, iOS mata la app y el primer + es sin señal: la base conserva lo de allá y no duplica', await v6('reabrir'), { base: [['press_banca', 2], ['remo_barra', 1]] });
+  chequear('Terminar sin poder traer lo de allá no cierra; con señal, cierra con todo', await v6('terminarSinLeer'), {
+    primero: { cerro: false, estado: 'corriendo' },
+    segundo: { cerro: true, estado: 'terminada', base: [['press_banca', 2], ['remo_barra', 1]] },
+  });
+  chequear('un aparato quieto 31 min mientras el otro anota: no duplica sus bloques en la base', await v6('quieto'), { base: [['press_banca', 2], ['remo_barra', 1]], estado: 'corriendo' });
+  chequear('la cinta que propone la rutina deja de ser sugerencia al arrancarla (pantalla y caché)', await v6('cintaSugerida'), { propuesta: ['cinta', true], alArrancar: [false, false] });
+  chequear('la cadena de la rutina sobrevive a desbloquear y a que iOS mate la app', await v6('cadena'), { propone: ['aperturas', true] });
+  chequear('el − con la cinta parada no saca vueltas ni borra la cinta de la base', await v6('cintaParada'), { base: [['cinta', 2, 50]], series: 2 });
+
+  const { readFileSync: leer240 } = await import('node:fs');
+  const de240 = (...p) => leer240(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  // Las expresiones de verdad de Bloque.tsx, evaluadas: no su texto.
+  const bn = de240('movil', 'src', 'Bloque.tsx');
+  const menos = new Function('corriendoCardio', 'estado', 'esTiempo', `return ${bn.match(/const menosApagado = (.+);/)[1]};`);
+  chequear('el − de la nativa: prendido con la cinta andando (aun sin vueltas), apagado con la cinta parada, como siempre en la fuerza', [
+    menos(true, { hechas: 0, minutos: undefined }, true),
+    menos(false, { hechas: 2, minutos: 50 }, true),
+    menos(false, { hechas: 2 }, false),
+    menos(false, { hechas: 0 }, false),
+  ], [false, true, false, true]);
+  const paso = (etiqueta) => new Function('minutos', `return ${bn.match(new RegExp(`onPress=\\{\\(\\) => alElegirMinutos\\?\\.\\((.+?)\\)\\} accessibilityLabel="${etiqueta}"`))[1]};`);
+  const [menos5, mas5] = [paso('−5'), paso('\\+5')];
+  const alcanzables = new Set([1]);
+  for (let i = 0; i < 12; i++) for (const m of [...alcanzables]) [menos5(m), mas5(m)].forEach((x) => x <= 60 && alcanzables.add(x));
+  chequear('los ±5 de la cinta vuelven a la grilla de 5: desde el minuto de un Listo apurado se llega a 30, y 31 baja a 30', [alcanzables.has(30), menos5(31), mas5(1)], [true, 30, 5]);
+  const bw = de240('src', 'components', 'Bloque.tsx');
+  const llamadas = [];
+  const sumarWeb = new Function('esTiempo', 'alSumar', `return ${bw.match(/const sumar = (\(\) => .+);/)[1]};`);
+  sumarWeb(true, (o) => llamadas.push(o ?? null))();
+  sumarWeb(false, (o) => llamadas.push(o ?? null))();
+  chequear('el + de la web sobre un cardio cuenta la vuelta sin descanso (y ningún botón le pasa el clic a serieHecha)', [llamadas, (bw.match(/onClick=\{alSumar\}/g) ?? []).length], [[{ sinDescanso: true }, null], 0]);
+  // Proxy: DiaListo se probó montado en la cacería; acá solo se pinea el oyente.
+  chequear('volver a Inicio vuelve a mirar si hoy tiene foto (quitarla en el Álbum no avisa)', /eventos\.escuchar\(PESTANA_ACTIVA, \(cual\) => cual === 'inicio' && mirar\(\)\)/.test(de240('movil', 'src', 'DiaListo.tsx')), true);
+
+  // LA VIDA DE UN DÍA QUE AL FINAL FUISTE (la 84), por el mismo camino que la persona.
+  async function vida240(aTiempo) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    const dia = (hace) => db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, hace]);
+    for (let h = 25; h >= 12; h--) await dia(h);
+    if (aTiempo) await dia(11);
+    await dia(10);
+    if (!aTiempo) await db.query(`select corregir_dia(mi_hoy() - 11, 'fui')`);
+    await dia(9);
+    const quedan = (await db.query('select mis_impulsos() as m')).rows[0].m.quedan;
+    const r = (await db.query(`select aplicar_perdida_al($1, mi_hoy() - 6) as r`, [u])).rows[0].r;
+    return { quedan, perdida: r.perdida };
+  }
+  chequear('marcar "Fui" en un día que cubrió una vida la devuelve: dos faltas después se cubren igual que si hubiera entrado a tiempo', [await vida240(false), await vida240(true)], [{ quedan: 2, perdida: false }, { quedan: 2, perdida: false }]);
+  const u240 = await nuevoUsuario();
+  await comoUsuario(u240);
+  for (let h = 25; h >= 12; h--) await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u240, h]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 10)`, [u240]);
+  await db.query(`select corregir_dia(mi_hoy() - 11, 'descanso')`);
+  chequear('pasarlo a descanso no la devuelve', (await db.query('select mis_impulsos() as m')).rows[0].m.quedan, 1);
+
+  // LA HORA DE LOS AMIGOS (la 85): los días de un amigo, sin `creado` ni `origen`.
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  const dani = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [ana, beto]);
+  await db.query(`insert into logs (user_id, fecha, origen) values ($1, mi_hoy(), 'ubicacion')`, [ana]);
+  await comoUsuario(beto);
+  await db.exec('set role authenticated');
+  const deLaTabla = (await db.query('select creado, origen from logs where user_id = $1', [ana])).rows.length;
+  const columnas = Object.keys((await db.query('select * from logs_de_amigos where user_id = $1', [ana])).rows[0] ?? {}).sort();
+  await comoUsuario(dani);
+  const noAmigo = (await db.query('select * from logs_de_amigos where user_id = $1', [ana])).rows.length;
+  await comoUsuario(ana);
+  const elDueno = (await db.query('select origen from logs where user_id = $1', [ana])).rows.map((r) => r.origen);
+  await db.exec('reset role');
+  chequear('un amigo no lee la tabla de logs; la vista le da el día sin la hora ni el origen; un no amigo no ve nada; el dueño sí', [deLaTabla, columnas, noAmigo, elDueno], [
+    0,
+    ['es_descanso', 'fecha', 'id', 'planeta_del_dia', 'racha_del_dia', 'user_id'],
+    0,
+    ['ubicacion'],
+  ]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

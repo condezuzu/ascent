@@ -1001,6 +1001,144 @@ async function vueltaCinco(caso) {
   return { conservaLoDeAlla: lista().some(([e, n]) => e === 'press_banca' && n === 2) };
 }
 
+/**
+ * `vueltaSeis` (cacería del 15/10, vuelta 6):
+ *  - `reabrir`: sesión de otro aparato (press 2) sin poder traer sus bloques; acá
+ *    remo. iOS mata la app, se reabre sin señal y se toca +. Vuelve la señal.
+ *  - `terminarSinLeer`: lo mismo sin cerrar la app, y Terminar sin poder leer.
+ *  - `quieto`: press 2 acá; este aparato queda quieto 31 min mientras el otro anota remo 1.
+ *  - `cintaSugerida`: la rutina propone la cinta; Arrancar la confirma.
+ *  - `cadena`: rutina guardada; iOS mata la app tras la primera; se desbloquea y sigue.
+ *  - `cintaParada`: 30 + 20 min de cinta, −, − y otro ejercicio.
+ */
+async function vueltaSeis(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  const viva = () => servidor.sesiones[servidor.sesiones.length - 1];
+  const lista = () => (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.series, b.minutos ?? null]);
+  const TODO = ['mi_sesion', 'fijar_series', 'fijar_bloques', 'marcar_actividad', 'iniciar_sesion', 'terminar_sesion'];
+  const sinSenal = (si) => {
+    for (const r of TODO) servidor.falla[r] = si;
+    servidor.falla.lecturas = si;
+  };
+  const deOtroAparato = () => {
+    const ahora = new Date(Date.now()).toISOString();
+    servidor.sesiones.push({
+      id: 'sesion-web', inicio: ahora, series: 2, estado: 'corriendo', origen: 'manual', ultima_actividad: ahora, cerro_sola: false,
+      bloques: [{ ejercicio: 'press_banca', series: 2, pesos: [60, 60] }],
+    });
+  };
+  if (caso === 'cadena') {
+    datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+    const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+    dias[new Date(Date.now()).getDay()] = { descanso: false, ejercicios: ['press_banca', 'press_inclinado', 'aperturas'].map((ejercicio) => ({ ejercicio, series: 3 })) };
+    datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', dias }));
+  }
+  if (caso === 'cintaSugerida') {
+    const { hoyISO, restarDias } = await import('@nucleo/fechas');
+    servidor.ultimoEjercicio = 'press_banca';
+    servidor.historial = [{ bloques: [{ ejercicio: 'press_banca' }, { ejercicio: 'cinta' }], logs: { fecha: restarDias(hoyISO(), 7) } }];
+  }
+  let tel = montar(() => useSesion());
+  await asentar();
+  if (caso === 'reabrir' || caso === 'terminarSinLeer') {
+    deOtroAparato();
+    servidor.falla.lecturas = true;
+    await tel.r.empezar();
+    await dormir(300);
+    await tel.r.elegirEjercicio('remo_barra');
+    await dormir(300);
+    if (caso === 'terminarSinLeer') {
+      await tel.r.serieHecha({ sinDescanso: true });
+      await dormir(200);
+      const cierre = await tel.r.terminar();
+      await dormir(300);
+      const primero = { cerro: !!cierre, estado: viva().estado };
+      servidor.falla.lecturas = false;
+      const segundo = await tel.r.terminar();
+      await asentar();
+      return { primero, segundo: { cerro: !!segundo, estado: viva().estado, base: lista().map(([e, n]) => [e, n]) } };
+    }
+    sinSenal(true);
+    olvidarViva();
+    tel = montar(() => useSesion());
+    await dormir(400);
+    await tel.r.serieHecha({ sinDescanso: true });
+    await dormir(200);
+    sinSenal(false);
+    await bloquearYDesbloquear();
+    await dormir(1200);
+    await asentar();
+    return { base: lista().map(([e, n]) => [e, n]) };
+  }
+  await tel.r.empezar();
+  await asentar();
+  if (caso === 'quieto') {
+    servidor.ventanaMs = 30 * 60000;
+    await tel.r.elegirEjercicio('press_banca');
+    await tel.r.serieHecha({ sinDescanso: true });
+    await tel.r.serieHecha({ sinDescanso: true });
+    await asentar();
+    adelanto = 31 * 60000;
+    const s = viva();
+    s.bloques = [...s.bloques, { ejercicio: 'remo_barra', series: 1 }];
+    s.series = 3;
+    s.ultima_actividad = new Date(Date.now()).toISOString();
+    await dormir(3000);
+    await asentar();
+    return { base: lista().map(([e, n]) => [e, n]), estado: viva().estado };
+  }
+  if (caso === 'cintaSugerida') {
+    await dormir(400);
+    await asentar();
+    await tel.r.serieHecha({ sinDescanso: true });
+    await asentar();
+    await tel.r.bloqueSiguiente();
+    await asentar();
+    const propuesta = [tel.r.estado.bloques.ejercicio, tel.r.estado.sugerido];
+    await tel.r.arrancarCardio();
+    await asentar();
+    return { propuesta, alArrancar: [tel.r.estado.sugerido, cache()?.sugerido ?? null] };
+  }
+  if (caso === 'cadena') {
+    await dormir(300);
+    await asentar();
+    await tel.r.serieHecha({ sinDescanso: true });
+    await tel.r.bloqueSiguiente();
+    await asentar();
+    // Desbloquear pregunta a la base: la cadena tiene que sobrevivir a esa escritura de la caché.
+    await bloquearYDesbloquear();
+    await dormir(300);
+    await asentar();
+    olvidarViva();
+    tel = montar(() => useSesion());
+    await dormir(300);
+    await asentar();
+    await tel.r.serieHecha({ sinDescanso: true });
+    await tel.r.bloqueSiguiente();
+    await asentar();
+    return { propone: [tel.r.estado.bloques.ejercicio, tel.r.estado.sugerido] };
+  }
+  // cintaParada
+  const vuelta = async (min) => {
+    await tel.r.arrancarCardio();
+    adelanto += min * 60000;
+    await tel.r.cerrarVueltaDeCardio();
+    await asentar();
+  };
+  await tel.r.elegirEjercicio('cinta');
+  await vuelta(30);
+  await vuelta(20);
+  await tel.r.deshacerSerie();
+  await asentar();
+  await tel.r.deshacerSerie();
+  await asentar();
+  await tel.r.elegirEjercicio('press_banca');
+  await asentar();
+  return { base: lista(), series: viva().series };
+}
+
 /** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
 async function yaCorria() {
   const inicio = montar(() => useSesion());
@@ -1178,7 +1316,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

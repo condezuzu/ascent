@@ -1286,6 +1286,19 @@ hablar entre pantallas.
 - En los dobles, "la app arrancó de nuevo" es `olvidarViva()`: montar otra
   instancia ya no alcanza, porque comparte el dueño.
 
+## Lo que decide una escritura vuelve de la caché al reabrir (cacería del 15/10/2026)
+
+Desde el dueño único, varias cosas viven solo en memoria. Si además deciden qué
+se escribe en la base, iOS matando la app las borra y la próxima escritura sale
+mal: la marca de "faltan los bloques de allá" (el primer + subía la lista de acá
+sola y borraba lo del otro aparato) y la cadena de la rutina del día (dejaba de
+proponer).
+→ **Regla:** lo que decide una escritura va en la caché de la sesión, se
+restaura en `releerCache` dentro de la foto, y `cacheTrasConfirmar` lo conserva
+(si no, el primer desbloqueo lo borra de la caché antes del cierre). Y al revés:
+si la caché venció pero la base devuelve viva la misma sesión, lo que hay en
+memoria ya subió y vale como caché (si no, se une con la base y se duplica).
+
 ## La marca de actividad a futuro (cacería del 15/10/2026)
 
 El cronómetro de cardio y el descanso a mano de hasta una hora hicieron que la
