@@ -48,6 +48,7 @@ export default function Bloque({
   total,
   alSumar,
   debajoDelMas,
+  globoDelMas,
   alRestar,
   alSiguiente,
   alElegirEjercicio,
@@ -71,6 +72,8 @@ export default function Bloque({
    * "Terminar" y había que bajar para contestarla (visto el 18/9).
    */
   debajoDelMas?: ReactNode;
+  /** El globito de la primera vez, que sale del + (15/10). */
+  globoDelMas?: ReactNode;
   alRestar: () => void;
   alSiguiente: () => void;
   alElegirEjercicio: (id: string | null) => void;
@@ -307,9 +310,12 @@ export default function Bloque({
           <span>{T.sesion.terminarSerie}</span>
         </button>
       ) : (
-        <button className="bloque-mas" onClick={sumar} aria-label={T.inicio.sumarSerie}>
-          <span>+</span>
-        </button>
+        <>
+          <button className="bloque-mas" onClick={sumar} aria-label={T.inicio.sumarSerie}>
+            <span>+</span>
+          </button>
+          {globoDelMas}
+        </>
       )}
 
       {debajoDelMas}

@@ -29,6 +29,7 @@ import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 import { plataforma } from '@/plataforma';
 import { T } from '@nucleo/textos';
 import { olvidarPendientes } from '@/lib/avisos';
+import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 
 
 export default function Social() {
@@ -301,6 +302,10 @@ export default function Social() {
               autoCapitalize="off"
             />
           </div>
+          {/* EL GLOBITO DE AGREGAR AMIGOS (15/10), saliendo de la lupa: es donde se agregan. */}
+          <GloboPrimeraVez cual="amigos" apuntaA=".campo-busqueda svg" vistoAlMostrar cerrarCuando={busqueda.length > 0}>
+            {T.globos.amigos}
+          </GloboPrimeraVez>
           {resultados.map((u) => {
             const accion = accionDeBusqueda(u.id, amigos, solicitudes, pedidosMandados);
             return (

@@ -591,6 +591,11 @@ export default function Principal() {
             alAbrirDescanso={() => setDescansoAbierto(true)}
           />
         </div>
+        {sesion.estado.corriendo && !!sesion.estado.descanso && (
+          <GloboPrimeraVez cual="descanso" apuntaA=".pastilla-descanso" alinear="derecha" vistoAlMostrar>
+            {T.globos.descanso}
+          </GloboPrimeraVez>
+        )}
 
         {/* MIENTRAS ENTRENÁS, INICIO ES EL ENTRENAMIENTO (19/9, decisión del
             humano). La racha no cambia en medio de una sesión —el día ya
@@ -641,12 +646,6 @@ export default function Principal() {
                 cuántas van de CADA ejercicio había que llevarlo de memoria.
                 El + sigue siendo el mismo gesto de siempre: suma la serie y
                 arranca el descanso (§20.3). Ver `lib/bloques.ts`. */}
-            {/* Se cierra solo con el primer +: para entonces ya se entendió
-                qué hace, y la pregunta de marca —que sale después de un +—
-                nunca lo encuentra abierto. */}
-            <GloboPrimeraVez cual="series" cerrarCuando={sesion.estado.series > 0}>
-              {T.inicio.globoSeries}
-            </GloboPrimeraVez>
             <Bloque
               estado={sesion.estado.bloques}
               total={sesion.estado.series}
@@ -664,6 +663,13 @@ export default function Principal() {
               alElegirCarga={sesion.elegirCarga}
               alCorregirCarga={sesion.corregirCargaDeBloque}
               alCorregirEjercicio={sesion.corregirEjercicioDeBloque}
+              // Sale del +, por debajo, y se cierra solo con el primer +: para
+              // entonces ya se entendió, y la pregunta de marca nunca lo encuentra abierto.
+              globoDelMas={
+                <GloboPrimeraVez cual="series" apuntaA=".bloque-mas" alinear="centro" cerrarCuando={sesion.estado.series > 0}>
+                  {T.inicio.globoSeries}
+                </GloboPrimeraVez>
+              }
               debajoDelMas={
                 // "¿Lo guardo como marca?", en el momento de la serie.
                 <MarcaEnElMomento
@@ -674,7 +680,7 @@ export default function Principal() {
               }
             />
             {/* "Cada + suma la serie y arranca el descanso" lo dice el globo
-                de la primera vez, tres renglones más arriba. Repetirlo abajo
+                de la primera vez, que sale del +. Repetirlo abajo
                 era decir dos veces lo mismo y ocupar la altura que hace que
                 Inicio no entre. Lo que SÍ se dice siempre es que el día entró
                 solo, porque eso no lo sabe nadie si no se dice. */}

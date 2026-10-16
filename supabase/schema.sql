@@ -3517,21 +3517,47 @@ returns uuid language sql stable security definer set search_path = public as $$
   select user_id from grupo_miembros where grupo_id = p_grupo order by entro, n limit 1;
 $$;
 
+-- ¿Hay un bloqueo entre estos dos? (migración 90) Sin mirar quién pregunta
+-- (`hay_bloqueo` solo contesta si uno de los dos es quien llama, y a un pedido lo
+-- acepta cualquiera del grupo). Interna: abierta, cualquiera podría preguntar
+-- quién bloqueó a quién.
+create or replace function public.bloqueo_entre(a uuid, b uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from bloqueos
+     where (bloqueador = a and bloqueado = b) or (bloqueador = b and bloqueado = a)
+  );
+$$;
+
+create or replace function public.bloqueo_con_el_grupo(p_quien uuid, p_grupo uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from grupo_miembros m
+     where m.grupo_id = p_grupo and public.bloqueo_entre(p_quien, m.user_id)
+  );
+$$;
+
 -- Mete a alguien en el grupo de `p_con` (o arma uno con los dos). Devuelve el resultado.
+-- Lleno o con alguien bloqueado (migración 90): "ocupado", que no delata el bloqueo,
+-- y ANTES de sacarlo de su grupo de uno.
 create or replace function public.entrar_al_grupo(p_quien uuid, p_con uuid)
 returns text language plpgsql security definer set search_path = public as $$
 declare
   g uuid := public.grupo_de(p_con);
 begin
   if public.en_grupo(p_quien) then return 'ya-unido'; end if;
+  if g is null then
+    if public.bloqueo_entre(p_quien, p_con) then return 'ocupado'; end if;
+  elsif (select count(*) from grupo_miembros where grupo_id = g) >= public.tope_grupo()
+        or public.bloqueo_con_el_grupo(p_quien, g) then
+    return 'ocupado';
+  end if;
   -- El que estaba solo deja su grupo de uno.
   delete from grupo_miembros where user_id = p_quien;
   delete from grupos_entreno x where not exists (select 1 from grupo_miembros m where m.grupo_id = x.id);
   if g is null then
     insert into grupos_entreno default values returning id into g;
     insert into grupo_miembros (user_id, grupo_id) values (p_con, g);
-  elsif (select count(*) from grupo_miembros where grupo_id = g) >= public.tope_grupo() then
-    return 'ocupado';
   end if;
   insert into grupo_miembros (user_id, grupo_id) values (p_quien, g);
   delete from entrenos_compartidos where estado = 'pendiente' and solicitante = p_quien;
@@ -3578,7 +3604,8 @@ revoke execute on function public.entrena_con_otro(uuid, uuid) from public, anon
 -- esté ya con otro. Si el otro ya me lo había pedido a mí, pedir es aceptar.
 -- Repetirlo no hace nada: se puede reintentar. Contesta qué pasó, para que el
 -- teléfono pueda decirlo: 'ok', 'no-entrena', 'ocupado' (el otro ya entrena con
--- alguien) o 'ya-unido' (yo ya entreno con alguien).
+-- alguien) o 'ya-unido' (yo ya entreno con alguien). "Ocupado" también si en el
+-- grupo del otro hay alguien bloqueado (migración 90).
 create or replace function public.pedir_unirse(p_a uuid)
 returns text language plpgsql security definer set search_path = public as $$
 declare
@@ -3589,7 +3616,8 @@ begin
   perform public.limpiar_grupos();
   if public.en_grupo(uid) then return 'ya-unido'; end if;
   if public.grupo_de(p_a) is not null
-     and (select count(*) from grupo_miembros where grupo_id = public.grupo_de(p_a)) >= public.tope_grupo() then
+     and ((select count(*) from grupo_miembros where grupo_id = public.grupo_de(p_a)) >= public.tope_grupo()
+          or public.bloqueo_con_el_grupo(uid, public.grupo_de(p_a))) then
     return 'ocupado';
   end if;
   -- Él me lo había pedido a mí: con pedirlo de vuelta alcanza para estar juntos.
@@ -3865,9 +3893,12 @@ create or replace function public.mi_grupo()
 returns uuid language sql stable security definer set search_path = public as $$
   select public.grupo_de(auth.uid());
 $$;
+-- Dos que se bloquearon no se leen aunque estén en el mismo grupo: el bloqueo pudo
+-- llegar con los dos adentro (migración 90). La fila propia también pasa por acá.
 create or replace function public.en_mi_grupo(p_otro uuid)
 returns boolean language sql stable security definer set search_path = public as $$
-  select public.grupo_de(auth.uid()) is not null and public.grupo_de(p_otro) = public.grupo_de(auth.uid());
+  select public.grupo_de(auth.uid()) is not null and public.grupo_de(p_otro) = public.grupo_de(auth.uid())
+     and not public.bloqueo_entre(auth.uid(), p_otro);
 $$;
 revoke execute on function public.mi_grupo(), public.en_mi_grupo(uuid) from public, anon;
 grant execute on function public.mi_grupo(), public.en_mi_grupo(uuid) to authenticated;
@@ -3877,7 +3908,7 @@ create policy "en vivo: mi grupo" on public.en_vivo for select
   using (user_id = auth.uid() or public.en_mi_grupo(user_id));
 drop policy if exists "grupo: los del grupo" on public.grupo_miembros;
 create policy "grupo: los del grupo" on public.grupo_miembros for select
-  using (grupo_id = public.mi_grupo());
+  using (public.en_mi_grupo(user_id));
 grant select on public.en_vivo to authenticated;
 grant select on public.grupo_miembros to authenticated;
 
@@ -3896,7 +3927,8 @@ begin
 end $$;
 
 revoke execute on function public.tope_grupo(), public.entrena_ahora(uuid), public.miembro_vivo(uuid, timestamptz), public.limpiar_grupos(), public.grupo_de(uuid), public.en_grupo(uuid), public.amigos_entre(uuid, uuid),
-  public.lider_de(uuid), public.entrar_al_grupo(uuid, uuid), public.entrena_con_otro(uuid, uuid) from public, anon, authenticated;
+  public.lider_de(uuid), public.entrar_al_grupo(uuid, uuid), public.entrena_con_otro(uuid, uuid),
+  public.bloqueo_entre(uuid, uuid), public.bloqueo_con_el_grupo(uuid, uuid) from public, anon, authenticated;
 revoke execute on function public.salir_del_grupo(), public.echar_del_grupo(uuid), public.link_del_grupo(), public.unirse_por_link(text) from public, anon;
 grant execute on function public.salir_del_grupo(), public.echar_del_grupo(uuid), public.link_del_grupo(), public.unirse_por_link(text) to authenticated;
 -- Las de siempre ya tenían sus permisos; `create or replace` no los cambia.
@@ -4560,7 +4592,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 89; $$;
+returns int language sql immutable as $$ select 90; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;
