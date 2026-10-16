@@ -79,6 +79,8 @@
      la cuenta tiene que verse igual de grave en polvo que en agujero negro.
      Sigue estando acá y no suelto en un componente. */
   --peligro: #e8705f;
+  /* El punto de "en vivo": quien está entrenando ahora. El mismo de la nativa (`C.vivo`). */
+  --vivo: #5fd08a;
 }
 
 * {
@@ -5411,4 +5413,30 @@ body.con-franja.con-accion .pantalla {
   flex: none;
   padding: 4px 2px;
   font-size: 13px;
+}
+
+/* ---------- LA ENTRADA (15/10): cuatro pantallas y el circulito ---------- */
+.entrada {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--tinta);
+}
+.entrada-carga { animation: entrada-carga linear both; }
+@keyframes entrada-carga { from { stroke-dashoffset: var(--largo); } to { stroke-dashoffset: 0; } }
+.entrada-pantalla { animation: entrada-pantalla 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes entrada-pantalla { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+.entrada-aparece { animation: entrada-aparece 0.45s ease both; }
+@keyframes entrada-aparece { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.entrada-latido { animation: entrada-latido 1.8s ease-out infinite; }
+@keyframes entrada-latido { from { opacity: 0.7; transform: scale(0.6); } to { opacity: 0; transform: scale(1.5); } }
+.entrada-flota { animation: entrada-flota 7s ease-in-out infinite; will-change: transform; }
+@keyframes entrada-flota { 0%, 100% { transform: translate(-50%, -50%) translate3d(0, 0, 0); } 50% { transform: translate(-50%, -50%) translate3d(0, -8px, 0); } }
+.entrada-luz { animation: entrada-luz 1s cubic-bezier(0.5, 0, 0.3, 1) forwards; }
+@keyframes entrada-luz { 0% { opacity: 0; height: 0; } 30% { opacity: 0.9; } 100% { opacity: 0; height: 21%; } }
+@media (prefers-reduced-motion: reduce) {
+  .entrada-flota, .entrada-latido { animation: none; }
 }

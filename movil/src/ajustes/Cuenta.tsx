@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { reiniciarGuia } from '@compartido/guia';
+import { GUIA_DE_NUEVO, verLaGuiaDeNuevo as volverAVerLaGuia } from '@compartido/guia';
 import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
-import { GUIA_DE_NUEVO } from '../Recorrido';
 import { cerrarSesion, eliminarCuenta, limpiarAlSalir } from '@compartido/cuenta';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import type { Perfil } from '@nucleo/tipos';
@@ -43,7 +42,7 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
   // con traba contra el doble-tap: sin ella, dos toques mandaban dos correos de
   // reseteo, dos bajas de cuenta, o dos salidas encimadas.
   const verLaGuiaDeNuevo = useEnVuelo(async () => {
-    await reiniciarGuia(perfil.id);
+    await volverAVerLaGuia(perfil.id);
     eventos.emitir(GUIA_DE_NUEVO);
   });
 

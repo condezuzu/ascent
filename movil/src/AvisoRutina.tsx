@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { plataforma } from '@plataforma';
-import { leerPasoDelRecorrido } from '@compartido/guia';
+import { GUIA_DE_NUEVO } from '@compartido/guia';
 import { miId } from '@compartido/quienSoy';
 import { versionDelEsquema } from '@compartido/esquema';
 import { disponible, type Funcion } from '@nucleo/esquema';
@@ -9,7 +9,6 @@ import { CLAVE_AVISO_ENTRENO, CLAVE_AVISO_RUTINA, conEsteVisto, quienesLoVieron,
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { eventos } from '@compartido/eventos';
-import { GUIA_DE_NUEVO } from './Recorrido';
 import { irAPestana } from './irAPestana';
 import { C, conAlfa } from './colores';
 
@@ -45,7 +44,8 @@ export default function AvisoRutina() {
     const version = await versionDelEsquema(supabase).catch(() => null);
     const { data, error } = await supabase.from('profiles').select('comparte_rutina, comparte_gimnasio').eq('id', yo).maybeSingle();
     const perfil = error || !data ? null : (data as Record<Novedad['columna'], boolean>);
-    const recorridoAndando = (await leerPasoDelRecorrido(yo)) !== null;
+    // Sin recorrido desde el 15/10: nada que esperar.
+    const recorridoAndando = false;
     const toca = NOVEDADES.find(
       (n, i) =>
         disponible(n.requiere, version) &&

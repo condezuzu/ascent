@@ -221,9 +221,6 @@ export default function PerfilPropio() {
             que sea literalmente el mismo dibujo. Con dos copias, la del dueño
             se mejora un día y la promesa pasa a ser falsa sin que nadie lo
             note. Lo cazó §135. */}
-        {/* Lo único que el título de abajo no puede decir: dónde se elige.
-            Que son las que ven tus amigos ya lo dice él, en dos palabras. */}
-        <GloboPrimeraVez cual="perfil">{T.yo.globo}</GloboPrimeraVez>
         {/* EL TITULO DICE QUE ES Y QUIEN LO VE, en dos palabras. Antes el pie
             cargaba con todo —"son las que ven tus amigos, cuales compartes se
             eligen en el album"— y nadie habla asi. */}

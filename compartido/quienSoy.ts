@@ -43,3 +43,17 @@ export async function miId(supabase: Cliente): Promise<string | null> {
   const yo = await quienSoy(supabase);
   return yo.estado === 'con' ? yo.uid : null;
 }
+
+/**
+ * CUÁNDO SE CREÓ LA CUENTA de la sesión guardada, sin viaje. Los globitos de la
+ * primera vez no se le muestran a una cuenta de antes de que existieran (15/10).
+ * `null` si no hay sesión o no se sabe.
+ */
+export async function cuandoSeCreo(supabase: Cliente): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.created_at ?? null;
+  } catch {
+    return null;
+  }
+}

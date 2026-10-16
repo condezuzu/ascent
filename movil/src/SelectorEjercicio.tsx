@@ -15,6 +15,7 @@ import { leerRecordados, recordadosAlDia, type Recordados } from '@compartido/pe
 import { leerPerfilCache } from '@compartido/cache';
 import { claveDeEtiqueta } from '@nucleo/carga';
 import { pesoEnLaLista } from '@nucleo/peso';
+import GloboPrimeraVez from './GloboPrimeraVez';
 
 /**
  * ELEGIR ENTRE CIEN EJERCICIOS, NAVEGANDO. El mismo árbol que la web
@@ -173,6 +174,13 @@ function SelectorEjercicio({
             returnKeyType="search"
           />
         </View>
+      )}
+      {/* EL GLOBITO DE LA PRIMERA VEZ, saliendo del buscador (15/10): acá es donde se
+          trabaron tres personas. Se da por visto apenas aparece: se va con la hoja. */}
+      {visible && !zona && !creando && (
+        <GloboPrimeraVez cual="elegir" colaX={68} subir={6} vistoAlMostrar cerrarCuando={busqueda.length > 0}>
+          {T.globos.elegir}
+        </GloboPrimeraVez>
       )}
 
       {creando && (

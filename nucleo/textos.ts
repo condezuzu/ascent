@@ -354,21 +354,43 @@ const ES = {
   //
   // Y NINGÚN RANGO SE NOMBRA (§7): se ven los objetos, no sus nombres.
   bienvenida: {
-    saludoTitulo: 'Empiezas desde el polvo',
-    saludoBajada: 'Cada día que entrenas te acerca a algo más grande.',
-    registroTitulo: 'Se anota todo',
-    registroBajada: 'Los días, las series y los pesos. Lo que hiciste queda, no se recuerda.',
-    genteTitulo: 'Alguien más está entrenando ahora mismo',
-    genteBajada: 'Mide tu racha contra la de tus amigos, o contra la de todo el universo.',
-    // Sobre el cielo que vuelve después del trago. No repite el polvo: eso ya
-    // lo dijo la primera pantalla, y decirlo dos veces lo gasta.
-    cierre: 'Tu viaje empieza ahora mismo',
+    // LA ENTRADA NUEVA (15/10): cuatro pantallas, una cosa real de la app cada una.
+    // Los rangos se ven en el fondo y no se explican (§7).
+    pesosTitulo: 'Ya no adivines los pesos',
+    pesosBajada: 'Anota cada serie y su peso, y la próxima vez ya está puesto.',
+    llegarTitulo: 'El día se anota solo al llegar al gimnasio',
+    llegarBajada: 'Por la ubicación, aunque no abras la app.',
+    amigoTitulo: 'Entrena con un amigo y mira lo que hace, en vivo',
+    amigoBajada: 'Su ejercicio, su serie y cuánto le queda de descanso.',
+    rankingTitulo: 'Mira quién llega más lejos',
     crear: 'Crear cuenta',
     entrar: 'Ya tengo cuenta',
+    // El circulito que carga y deja pasar: no tiene texto, esto es para el lector de pantalla.
     siguiente: 'Siguiente',
-    saltar: 'Saltar',
-    // La racha que sube en la cuarta pantalla.
-    racha: 'Racha',
+    // Lo que se ve arriba de cada texto: un pedazo de la app, con datos de muestra.
+    muestraEjercicio: 'Press de banca · pecho',
+    muestraLaUltimaVez: 'la última vez',
+    muestraDeCamino: 'De camino al gimnasio',
+    muestraLlegaste: 'Llegaste al gimnasio · día anotado',
+    muestraEntrenandoContigo: 'Entrenando contigo',
+    muestraSentadilla: 'Sentadilla',
+    muestraRemo: 'Remo con barra',
+    muestraSerie: (ejercicio: string, n: number, de: number) => `${ejercicio} · serie ${n} de ${de}`,
+    muestraDescanso: 'descanso',
+    muestraHaciendoLaSerie: 'haciendo la serie',
+    muestraDescansa: 'descansa',
+    muestraAhora: 'ahora',
+  },
+
+  // ---------------------------------------------------------------
+  // LOS GLOBITOS DE LA PRIMERA VEZ (15/10): uno por cosa, saliendo de lo que
+  // explican. El del + es `inicio.globoSeries`.
+  globos: {
+    elegir: 'Busca el ejercicio o elígelo de la lista.',
+    descanso: 'Tu descanso. Tócalo para cambiarlo.',
+    amigos: 'Agrega amigos para seguir su progreso.',
+    album: 'Aquí se ven las fotos de tu progreso.',
+    rutina: 'Crea tu rutina',
   },
 
   // ---------------------------------------------------------------

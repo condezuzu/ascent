@@ -1,126 +1,100 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { PASOS_DE_LA_ENTRADA } from '@nucleo/bienvenida';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
-import Cielo from './bienvenida/Cielo';
-import Registro from './bienvenida/Registro';
+import Espacio from './bienvenida/Espacio';
 import Objetos from './bienvenida/Objetos';
-import Cuarta from './bienvenida/Cuarta';
+import Circulito from './bienvenida/Circulito';
+import RankingDeEntrada from './bienvenida/RankingDeEntrada';
+import { MiniAmigo, MiniBloque, MiniSemana } from './bienvenida/Muestras';
 import { C } from './colores';
 
 /**
- * LA PANTALLA DE ENTRADA EN NATIVO — las mismas cuatro pantallas que la web
- * (`src/components/bienvenida/Bienvenida.tsx`): el polvo, lo que se anota, la
- * gente, y el objeto pasando por los ocho rangos hasta que el agujero negro se
- * traga todo y aparece la entrada.
+ * LA ENTRADA (15/10, aprobada en la galería): cuatro pantallas, una cosa real de la
+ * app cada una —los pesos, el día que entra solo, el amigo en vivo y el ranking—,
+ * sobre el espacio de la app. No hay "Saltar": el circulito carga un segundo y
+ * medio y recién ahí deja pasar. La última, la del ranking, termina en "Crear
+ * cuenta" / "Ya tengo cuenta". Los rangos se ven y no se explican (§7).
  *
- * Se avanza con "Siguiente"; la cuarta se salta tocando (no hay más nada que
- * tocar). Se muestra CADA vez que se llega al login, no solo la primera: el
- * padre (`EntradaYLogin`) la monta de nuevo en cada logout, sin guardar nada.
- *
- * Las cuatro están completas y con sus capas, iguales que la web: el cielo en
- * GPU (`Cielo`, con titileo por-estrella y paralaje por capa), la lista de
- * ejercicios acelerando de la 2 (`Registro`), los objetos de otras rachas
- * flotando de la 3 (`Objetos`) y el motor con el agujero negro de la 4
- * (`Cuarta`).
+ * La misma pantalla que la web (`src/components/bienvenida/Bienvenida.tsx`). Solo
+ * la ve un aparato que nunca la vio y nunca tuvo sesión: ver `EntradaYLogin` y
+ * `compartido/entradaVista.ts`.
  */
-export default function Bienvenida({
-  alSalir,
-  quieta,
-}: {
-  alSalir: (destino: 'crear' | 'entrar') => void;
-  quieta?: boolean;
-}) {
-  const [paso, setPaso] = useState(0);
-  const [terminada, setTerminada] = useState(false);
-  const ultima = paso === PASOS_DE_LA_ENTRADA.length - 1;
-  const textos = [
-    { titulo: T.bienvenida.saludoTitulo, bajada: T.bienvenida.saludoBajada },
-    { titulo: T.bienvenida.registroTitulo, bajada: T.bienvenida.registroBajada },
-    { titulo: T.bienvenida.genteTitulo, bajada: T.bienvenida.genteBajada },
-    { titulo: '', bajada: '' },
-  ][paso];
+const PANTALLAS = ['pesos', 'llegar', 'amigo', 'ranking'] as const;
+type Clave = (typeof PANTALLAS)[number];
+
+/** Segundos desde que apareció la pantalla, para lo que se mueve arriba del texto. */
+function useReloj(clave: string) {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    setT(0);
+    const t0 = Date.now();
+    const id = setInterval(() => setT((Date.now() - t0) / 1000), 100);
+    return () => clearInterval(id);
+  }, [clave]);
+  return t;
+}
+
+export default function Bienvenida({ alSalir }: { alSalir: (destino: 'crear' | 'entrar') => void }) {
+  const [clave, setClave] = useState<Clave>('pesos');
+  const t = useReloj(clave);
+  const entra = useRef(new Animated.Value(0)).current;
+  const indice = PANTALLAS.indexOf(clave);
+
+  useEffect(() => {
+    entra.setValue(0);
+    Animated.timing(entra, { toValue: 1, duration: 500, easing: Easing.bezier(0.2, 0.7, 0.2, 1), useNativeDriver: true }).start();
+  }, [clave, entra]);
+
+  const texto = {
+    pesos: { titulo: T.bienvenida.pesosTitulo, bajada: T.bienvenida.pesosBajada },
+    llegar: { titulo: T.bienvenida.llegarTitulo, bajada: T.bienvenida.llegarBajada },
+    amigo: { titulo: T.bienvenida.amigoTitulo, bajada: T.bienvenida.amigoBajada },
+    ranking: { titulo: '', bajada: '' },
+  }[clave];
 
   return (
-    <View style={estilos.raiz}>
-      {/* El cielo: en las tres primeras, y de nuevo cuando el agujero se lo tragó
-          y el espacio vuelve a existir (sobre él van los botones). */}
-      {(!ultima || terminada) && <Cielo paso={ultima ? 3 : paso} />}
-
-      {/* La segunda suma la lista de ejercicios acelerando; la tercera, los
-          objetos de otras rachas flotando. Van sobre el cielo, iguales que la
-          web (`src/components/bienvenida/Bienvenida.tsx`). */}
-      {paso === 1 && <Registro quieto={quieta} />}
-      {paso === 2 && <Objetos quieto={quieta} />}
-
-      {/* La cuarta ANIMA: el motor con el objeto y el agujero negro. */}
-      {ultima && !terminada && <Cuarta quieta={quieta} alTerminar={() => setTerminada(true)} />}
-
-      {/* En la cuarta se salta TOCANDO: un botón compitiendo con la animación es
-          ruido. */}
-      {ultima && !terminada && (
-        <Pressable style={StyleSheet.absoluteFill} onPress={() => setTerminada(true)} accessibilityLabel={T.bienvenida.saltar} />
-      )}
-
-      {!ultima && (
-        <View style={estilos.texto}>
-          <Text style={estilos.titulo}>{textos.titulo}</Text>
-          <Text style={estilos.bajada}>{textos.bajada}</Text>
-        </View>
-      )}
-
-      {/* EL FINAL: una decisión sobre el cielo que volvió. */}
-      {terminada && (
-        <View style={estilos.fin}>
-          <Text style={estilos.cierre}>{T.bienvenida.cierre}</Text>
-          <Pressable style={estilos.solido} onPress={() => alSalir('crear')}>
-            <Text style={estilos.solidoTexto}>{T.bienvenida.crear}</Text>
-          </Pressable>
-          <Pressable style={estilos.textoBoton} onPress={() => alSalir('entrar')}>
-            <Text style={estilos.enlace}>{T.bienvenida.entrar}</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {/* El pie: los puntos, "Siguiente" y "Saltar". No se rearma entre pantallas. */}
-      {!terminada && (
-        <View style={estilos.pie}>
-          <View style={estilos.puntos}>
-            {PASOS_DE_LA_ENTRADA.map((p, i) => (
-              <View key={p} style={[estilos.punto, i === paso && estilos.puntoVivo]} />
-            ))}
+    <View style={estilos.raiz} testID="bienvenida">
+      <Espacio />
+      {clave === 'amigo' && <Objetos escala={0.6} />}
+      {clave === 'ranking' ? (
+        <RankingDeEntrada alSalir={alSalir} />
+      ) : (
+        <>
+          <Animated.View
+            style={[
+              estilos.contenido,
+              { opacity: entra, transform: [{ translateX: entra.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] },
+            ]}
+          >
+            {clave === 'pesos' && <MiniBloque t={t} />}
+            {clave === 'llegar' && <MiniSemana t={t} />}
+            {clave === 'amigo' && <MiniAmigo t={t} />}
+            <View>
+              <Text style={estilos.titulo}>{texto.titulo}</Text>
+              <Text style={estilos.bajada}>{texto.bajada}</Text>
+            </View>
+          </Animated.View>
+          <View style={estilos.pie}>
+            <View style={estilos.puntos}>
+              {PANTALLAS.map((p, i) => (
+                <View key={p} style={[estilos.punto, i === indice && estilos.puntoVivo]} />
+              ))}
+            </View>
+            <Circulito clave={clave} alPasar={() => setClave(PANTALLAS[indice + 1])} />
           </View>
-          {!ultima && (
-            <Pressable style={estilos.solido} onPress={() => setPaso(paso + 1)}>
-              <Text style={estilos.solidoTexto}>{T.bienvenida.siguiente}</Text>
-            </Pressable>
-          )}
-          {/* Saltar: chico, gris, no en la primera; en la cuarta se salta tocando. */}
-          {paso > 0 && !ultima && (
-            <Pressable style={estilos.textoBoton} onPress={() => setPaso(PASOS_DE_LA_ENTRADA.length - 1)}>
-              <Text style={estilos.saltar}>{T.bienvenida.saltar}</Text>
-            </Pressable>
-          )}
-        </View>
+        </>
       )}
     </View>
   );
 }
 
 const estilos = StyleSheet.create({
-  raiz: { ...StyleSheet.absoluteFillObject, backgroundColor: '#05060a' },
-  texto: { position: 'absolute', top: '42%', left: 32, right: 32 },
-  titulo: { color: C.tinta, fontSize: 26, fontWeight: '600', lineHeight: 32 },
-  bajada: { color: C.sub, fontSize: 16, lineHeight: 23, marginTop: 10 },
-  fin: { position: 'absolute', left: 24, right: 24, bottom: 90, alignItems: 'stretch' },
-  cierre: { color: C.tinta, fontSize: 20, fontWeight: '500', textAlign: 'center', marginBottom: 20 },
-  pie: { position: 'absolute', left: 24, right: 24, bottom: 70 },
-  puntos: { flexDirection: 'row', gap: 7, justifyContent: 'center', marginBottom: 18 },
-  punto: { width: 7, height: 7, borderRadius: 999, backgroundColor: C.lineaFuerte },
-  puntoVivo: { width: 22, backgroundColor: C.claro },
-  solido: { backgroundColor: C.claro, borderRadius: 10, paddingVertical: 15, alignItems: 'center' },
-  solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
-  textoBoton: { paddingVertical: 12, alignItems: 'center' },
-  enlace: { color: C.sub, fontSize: 14 },
-  saltar: { color: C.apagado, fontSize: 14 },
+  raiz: { ...StyleSheet.absoluteFillObject, backgroundColor: C.fondo },
+  contenido: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, gap: 34 },
+  titulo: { color: C.tinta, fontSize: 30, lineHeight: 36, fontWeight: '500', marginBottom: 12 },
+  bajada: { color: C.sub, fontSize: 17, lineHeight: 25 },
+  pie: { alignItems: 'center', gap: 18, paddingBottom: 50, minHeight: 140, justifyContent: 'flex-end' },
+  puntos: { flexDirection: 'row', gap: 8 },
+  punto: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.apagado },
+  puntoVivo: { backgroundColor: C.tinta },
 });

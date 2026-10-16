@@ -150,10 +150,8 @@ try {
       await page.locator('input[type=email], input[inputmode=email]').first().fill(quien.correo, { timeout: 90000 });
       await page.locator('input[type=password]').first().fill(quien.clave);
       await page.getByText('Entrar', { exact: true }).last().click({ timeout: 60000 });
-      // La guía arranca sola en un navegador limpio y tapa la mitad de abajo.
-      const saltar = page.getByTestId('recorrido-saltar');
-      await saltar.waitFor({ state: 'visible', timeout: 60000 });
-      await saltar.click();
+      // Sin recorrido desde el 15/10: se espera a que Inicio esté.
+      await page.getByText('Iniciar entrenamiento', { exact: true }).first().waitFor({ state: 'visible', timeout: 90000 });
       await page.waitForTimeout(800);
       return page;
     };

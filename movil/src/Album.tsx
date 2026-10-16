@@ -36,6 +36,7 @@ import { DIA_CAMBIO } from '@compartido/gimnasio';
 import { completarMiniaturas } from './miniaturas';
 import { useFotoLocal } from './fotoLocal';
 import { useArriba } from './zonaSegura';
+import GloboPrimeraVez from './GloboPrimeraVez';
 
 /**
  * ÁLBUM — tanda 4.
@@ -364,6 +365,12 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                   </Surgir>
                 ))}
               </View>
+              {/* EL GLOBITO DEL ÁLBUM (15/10): en el medio y apuntando a las fotos, debajo del primer mes. */}
+              {m.clave === meses[0]?.clave && (
+                <GloboPrimeraVez cual="album" colaX={(width - 48) / 2} alinear="centro" vistoAlMostrar>
+                  {T.globos.album}
+                </GloboPrimeraVez>
+              )}
             </View>
             );
           })

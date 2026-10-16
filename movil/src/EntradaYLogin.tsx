@@ -1,25 +1,38 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { anotarEntradaVista, vioLaEntrada } from '@compartido/entradaVista';
 import Bienvenida from './Bienvenida';
 import Login from './Login';
 
 /**
- * LA ENTRADA: primero las diapositivas de bienvenida, después el login.
+ * LA ENTRADA: primero la bienvenida, después el login.
  *
- * Se muestran CADA vez que se llega al login, no solo la primera —requisito del
- * humano—: no se guarda ningún "ya las viste". Como `_layout` monta esto cuando
- * `sesion === 'sin'` y eso pasa de nuevo en cada logout, este componente se
- * vuelve a montar y las diapositivas se repiten solas, sin estado persistido.
+ * DESDE EL 15/10 SOLO LA PRIMERA VEZ en este aparato, igual que la web: se anota al
+ * terminarla, y también cuando hay una sesión (`app/_layout.tsx`), así que las
+ * cuentas que ya existían no la ven al salir. Hasta el 15/10 se mostraba en cada
+ * login.
  *
  * Lo que se eligió al final (crear vs entrar) abre el formulario en ese modo.
  */
 export default function EntradaYLogin({ alEntrar }: { alEntrar: () => void }) {
-  const [verSlides, setVerSlides] = useState(true);
+  // `null` mientras se averigua: con `true` de entrada, quien ya la vio la vería parpadear.
+  const [verSlides, setVerSlides] = useState<boolean | null>(null);
   const [modo, setModo] = useState<'entrar' | 'crear'>('entrar');
 
+  useEffect(() => {
+    let vivo = true;
+    void vioLaEntrada().then((vista) => vivo && setVerSlides(!vista));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  if (verSlides === null) return null;
   if (verSlides) {
     return (
       <Bienvenida
         alSalir={(destino) => {
+          // Se anota al SALIR: si cierra la app a la mitad, la próxima vez la ve entera.
+          void anotarEntradaVista();
           setModo(destino);
           setVerSlides(false);
         }}

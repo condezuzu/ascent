@@ -103,6 +103,9 @@ export default function Inicio({
 }) {
   const router = useRouter();
   const arriba = useArriba(64);
+  // Dónde está la píldora del descanso, para que su globito salga de ella.
+  const [anchoCabecera, setAnchoCabecera] = useState(0);
+  const [anchoPildora, setAnchoPildora] = useState(0);
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
   // LA RACHA QUE SE ESTÁ VIENDO, para saber si un registro sube de rango: se
   // compara con la que devuelve la base (ver `subidaDeRango`). En una ref
@@ -588,7 +591,7 @@ export default function Inicio({
       scrollEventThrottle={32}
       onScroll={(e) => (desplazado.current = e.nativeEvent.contentOffset.y)}
     >
-      <View style={estilos.cabecera}>
+      <View style={estilos.cabecera} onLayout={(e) => setAnchoCabecera(e.nativeEvent.layout.width)}>
         {/* LA CABECERA ES LA PUERTA AL PERFIL, igual que en la web: el avatar
             y el nombre juntos y tocables. Antes el nombre era un texto y no
             llevaba a ningún lado — no porque se hubiera decidido así, sino
@@ -640,6 +643,7 @@ export default function Inicio({
                   return (
                     <Pressable
                       testID="pildora-descanso"
+                      onLayout={(e) => setAnchoPildora(e.nativeEvent.layout.width)}
                       style={[estilos.chip, restante(fin) === 0 && estilos.chipListo]}
                       onPress={() => setDescansoAbierto(true)}
                       accessibilityRole="button"
@@ -675,6 +679,13 @@ export default function Inicio({
           </Pressable>
         )}
       </View>
+      {/* EL GLOBITO DEL DESCANSO (15/10), saliendo de la píldora de arriba a la
+          derecha, la primera vez que hay uno andando. Se va con el descanso. */}
+      {sesion.estado.corriendo && !!sesion.estado.descanso && anchoCabecera > 0 && anchoPildora > 0 && (
+        <GloboPrimeraVez cual="descanso" colaX={anchoCabecera - anchoPildora / 2} alinear="derecha" vistoAlMostrar>
+          {T.globos.descanso}
+        </GloboPrimeraVez>
+      )}
 
       {/* EL NÚMERO ESTÁ SIEMPRE (25/9). Estuvo escondido durante la sesión
           con el argumento de que "mientras entrenás, Inicio es el
@@ -804,15 +815,6 @@ export default function Inicio({
 
       {sesion.estado.corriendo && sesion.estado.inicio ? (
         <View style={estilos.sesion}>
-          {/* SE CIERRA SOLO CON EL PRIMER `+`: para entonces ya se entendió qué
-              hace, y la pregunta de marca —que sale después de un `+`— nunca lo
-              encuentra abierto. */}
-          {/* El cardio no tiene + (vuelta 6 de la cacería): el globito espera a la fuerza. */}
-          {!esCardioEnCurso && (
-            <GloboPrimeraVez cual="series" cerrarCuando={sesion.estado.series > 0}>
-              {T.inicio.globoSeries}
-            </GloboPrimeraVez>
-          )}
           {/* El reloj ya está arriba, en el chip: acá manda el bloque, que es
               lo que se toca doce veces por sesión. */}
           <Bloque
@@ -838,6 +840,15 @@ export default function Inicio({
             alElegirCarga={sesion.elegirCarga}
             alCorregirCarga={sesion.corregirCargaDeBloque}
             alCorregirEjercicio={sesion.corregirEjercicioDeBloque}
+            // EL GLOBITO DEL +, saliendo del + (15/10): antes flotaba arriba y tapaba
+            // el ejercicio. Se cierra solo con el primer +; para entonces ya se
+            // entendió, y la pregunta de marca —que sale después de un + — nunca lo
+            // encuentra abierto. El cardio no tiene +: el globito espera a la fuerza.
+            globoDelMas={(colaX) => (
+              <GloboPrimeraVez cual="series" colaX={colaX} alinear="centro" cerrarCuando={sesion.estado.series > 0}>
+                {T.inicio.globoSeries}
+              </GloboPrimeraVez>
+            )}
             debajoDelMas={
               // "¿Lo guardo como marca?", en el momento de la serie.
               <MarcaEnElMomento

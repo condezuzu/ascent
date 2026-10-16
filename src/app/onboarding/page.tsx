@@ -44,10 +44,10 @@ export default function Onboarding() {
         return setError(T.entrar.nombreFormato);
       return setError(error.message);
     }
-    // El recorrido empieza en Ajustes, con el punto del gimnasio a la vista.
-    // Se ENCIENDE acá, a propósito: no sale solo en un aparato nuevo.
+    // LA GUÍA ARRANCA DE CERO acá (los globitos, cada uno en su momento) y se va a
+    // Inicio. Hasta el 15/10 se iba a Ajustes, donde empezaba el recorrido.
     await reiniciarGuia(yo.uid);
-    router.push('/ajustes');
+    router.push('/');
     router.refresh();
   }
 

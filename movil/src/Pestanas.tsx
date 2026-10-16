@@ -18,7 +18,6 @@ import { SOCIAL_CAMBIO } from '@compartido/ranking';
 import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
-import Recorrido from './Recorrido';
 import AvisoRutina from './AvisoRutina';
 import CartelDeArriba from './CartelDeArriba';
 
@@ -562,13 +561,9 @@ export default function Pestanas({
         })}
       </View>
 
-      {/* EL RECORRIDO DE LA PRIMERA VEZ (§10), encima de la barra. Va acá y no
-          adentro de cada pantalla porque la barra está en las cinco del
-          recorrido: puesto una vez, aparece donde tiene que aparecer. No
-          dibuja nada si no hay recorrido andando. */}
-      <Recorrido pestana={pestana} />
-      {/* El aviso de una vez de que la rutina se ve (8/10). Espera a que el
-          recorrido no esté: nunca se ven los dos juntos. */}
+      {/* El aviso de una vez de que la rutina se ve (8/10). El recorrido de la
+          primera vez se sacó el 15/10: lo reemplazan los globitos, cada uno en su
+          pantalla. */}
       <AvisoRutina />
 
       <View style={estilos.barra} accessibilityRole="tablist">

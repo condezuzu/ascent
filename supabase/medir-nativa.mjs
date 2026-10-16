@@ -56,8 +56,6 @@ async function unaCorrida(nav) {
   await page.getByText(T.entrar.entrar, { exact: true }).last().click();
   await page.getByText('Iniciar entrenamiento', { exact: true }).first().waitFor({ timeout: 90000 });
   r.entrar = Date.now() - t;
-  const saltar = page.getByTestId('recorrido-saltar');
-  await saltar.waitFor({ state: 'visible', timeout: 15000 }).then(() => saltar.click(), () => {});
   await page.waitForTimeout(5000);
   contar = false;
   r.pedidos = pedidos.length;

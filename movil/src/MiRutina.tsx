@@ -34,6 +34,7 @@ import RutinaPlegada from './RutinaPlegada';
 import FilasArrastrables from './FilasArrastrables';
 import SelectorEjercicio from './SelectorEjercicio';
 import { C } from './colores';
+import GloboPrimeraVez from './GloboPrimeraVez';
 
 /**
  * TU RUTINA, EN STATS (14/10). Se mira, se edita, se copia y se pega antes de ir
@@ -55,6 +56,8 @@ export default function MiRutina({
   alArrastrar?: (si: boolean) => void;
   abrirHoy?: boolean;
 }) {
+  // Dónde está el nombre del entrenamiento, para que el globito de la rutina salga de él.
+  const [nombreEn, setNombreEn] = useState({ x: 0, ancho: 0 });
   const [guardadas, setGuardadas] = useState<boolean | null>(null);
   const [rutinas, setRutinas] = useState<Rutina[]>([]);
   const [deducida, setDeducida] = useState<DiaDeSemana[] | null>(null);
@@ -339,6 +342,7 @@ export default function MiRutina({
             {editando ? (
               <TextInput
                 style={estilos.nombre}
+                onLayout={(e) => setNombreEn({ x: e.nativeEvent.layout.x, ancho: e.nativeEvent.layout.width })}
                 defaultValue={actual.nombre}
                 maxLength={40}
                 onChangeText={(texto) => (nombreTipeado.current = { id: actual.id, texto })}
@@ -363,6 +367,13 @@ export default function MiRutina({
               <Text style={estilos.chicoTexto}>{editando ? T.rutina.listo : T.rutina.editar}</Text>
             </Pressable>
           </View>
+          {/* EL GLOBITO DE LA RUTINA (15/10), saliendo del nombre del entrenamiento
+              ("Entrenamiento 1" por defecto), la primera vez que se edita. */}
+          {editando && nombreEn.ancho > 0 && (
+            <GloboPrimeraVez cual="rutina" colaX={nombreEn.x + nombreEn.ancho * 0.75} alinear="centro" vistoAlMostrar>
+              {T.globos.rutina}
+            </GloboPrimeraVez>
+          )}
           <RutinaPlegada
             dias={actual.dias}
             catalogo={catalogo}

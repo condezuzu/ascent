@@ -17,7 +17,6 @@ import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import RecorteCircular from '@/components/RecorteCircular';
-import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import NoCargo from '@/components/NoCargo';
 import { FOTOS_VISIBLES, FotosQueVen, type FotoVisible } from '@/components/ComoMeVen';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
@@ -252,8 +251,6 @@ export default function Yo() {
         >
           {T.general.volver}
         </button>
-
-        <GloboPrimeraVez cual="perfil">{T.yo.globo}</GloboPrimeraVez>
 
         <div className="yo-cabecera">
           <button

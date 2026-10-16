@@ -39,7 +39,7 @@ export default function GloboPrimeraVez({
       const user = await miUsuario(supabase);
       if (!vivo || !user) return;
       setUid(user.id);
-      if (await faltaElGlobo(user.id, cual)) setVisible(true);
+      if (await faltaElGlobo(user.id, cual, user.created_at)) setVisible(true);
     })();
     return () => {
       vivo = false;

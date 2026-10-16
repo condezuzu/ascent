@@ -161,7 +161,7 @@ function Forma({ tipo, pal }: { tipo: string; pal: ReturnType<typeof paletaDe> }
 }
 
 /** Un objeto: la forma dentro de una caja que respira (flota). */
-function Objeto({ rango, lugar, quieto }: { rango: number; lugar: (typeof LUGARES)[number]; quieto: boolean }) {
+function Objeto({ rango, lugar, quieto, escala }: { rango: number; lugar: (typeof LUGARES)[number]; quieto: boolean; escala: number }) {
   const { width, height } = useWindowDimensions();
   const t = useRef(new Animated.Value(0)).current;
   const pal = paletaDe(rango);
@@ -169,7 +169,7 @@ function Objeto({ rango, lugar, quieto }: { rango: number; lugar: (typeof LUGARE
   // La caja es más grande que el cuerpo: el anillo de Saturno y la corona del
   // sol se salen del diámetro. El cuerpo ocupa la mitad del viewBox, así que a
   // 2x la caja el cuerpo queda del tamaño pedido.
-  const caja = lugar.tam * 2;
+  const caja = lugar.tam * 2 * escala;
 
   useEffect(() => {
     if (quieto) return;
@@ -205,7 +205,8 @@ function Objeto({ rango, lugar, quieto }: { rango: number; lugar: (typeof LUGARE
   );
 }
 
-export default function Objetos({ quieto = false }: { quieto?: boolean }) {
+/** `escala` los achica sin moverlos de lugar: la entrada del 15/10 los quiere más chicos (0,6). */
+export default function Objetos({ quieto = false, escala = 1 }: { quieto?: boolean; escala?: number }) {
   const { width } = useWindowDimensions();
   const objetos = useMemo(
     () => RANGOS_DE_LA_ENTRADA.map((r, i) => ({ r, l: LUGARES[i] })),
@@ -215,7 +216,7 @@ export default function Objetos({ quieto = false }: { quieto?: boolean }) {
     <View style={estilos.raiz} pointerEvents="none">
       <View style={estilos.capa}>
         {objetos.map(({ r, l }) => (
-          <Objeto key={r} rango={r} lugar={l} quieto={quieto} />
+          <Objeto key={r} rango={r} lugar={l} quieto={quieto} escala={escala} />
         ))}
       </View>
       {/* EL VELO: apaga la banda del medio, donde va el texto (en la web es un

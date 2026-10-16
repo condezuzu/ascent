@@ -95,59 +95,48 @@ export function retrocesosEnTemplate(codigo) {
 /**
  * CRUZAR LA ENTRADA EN LA NATIVA (Expo web, :8090).
  *
- * Desde la tanda 9 las cuatro diapositivas de bienvenida van ANTES del login y
- * se muestran en CADA entrada —no se guarda ningún "ya las viste"—, así que las
- * sondas de la nativa tienen que pasarlas para llegar al formulario. Sin esto,
+ * Desde la tanda 9 la bienvenida va ANTES del login. Desde el 15/10 se muestra
+ * una sola vez por aparato (y nunca a uno con sesión), pero cada sonda abre un
+ * navegador limpio, así que las sondas de la nativa la tienen que pasar para
+ * llegar al formulario. Sin esto,
  * `barrido-nativa`, `barrido-estados` y la rama móvil de `bateria-dos-apps` se
  * quedaban esperando un login que no aparecía y morían recién en el tope de 15
  * min de la sonda (exit 0, pero sin recorrer nada).
  *
- * La web tiene su propia `pasarLaEntrada`, que mira `.bienv`/`.bienv-tocar`
- * —clases del DOM que react-native-web NO emite—. Acá se va por TEXTO y TOQUE,
- * que es lo único que expone la nativa: se toca "Siguiente" en las tres
- * primeras, se salta la cuarta tocando la pantalla (un `Pressable` a pantalla
- * completa, sin botón) y se cae en "Ya tengo cuenta", que abre el login en modo
- * ENTRAR —que es donde las sondas esperan caer: de ahí salen "Entrar" y el
- * enlace "¿Primera vez? Crear cuenta"—.
+ * La web tiene su propia `pasarLaEntrada`, que mira `.bienv` —una clase que
+ * react-native-web NO emite—. Acá se va por testID.
  */
-// `textos`: los de la app en el idioma en que se abrió (14/10): en inglés los botones dicen otra cosa.
+// `textos`: los de la app en el idioma en que se abrió (14/10). Desde el 15/10 la entrada
+// se pasa por testID (el circulito no tiene texto), así que solo se usa para esperar.
+//
+// LA ENTRADA DEL 15/10: cuatro pantallas. Las tres primeras se pasan con el
+// circulito, que deja pasar recién cargado (1,5 s); la cuarta, la del ranking,
+// termina en "Crear cuenta" / "Ya tengo cuenta" a los ~6 s. Se cae en "Ya tengo
+// cuenta", que abre el login en modo ENTRAR, donde las sondas esperan caer.
 export async function pasarLaEntradaNativa(page, espera = 60000, textos = TEXTOS_ES) {
-  const { siguiente, entrar: yaTengo, saltar: saltarTexto } = textos.bienvenida;
-  const hayLogin = () =>
-    page.locator('input[type=email]').first().isVisible().catch(() => false);
+  void textos;
+  const hayLogin = () => page.locator('input[type=email]').first().isVisible().catch(() => false);
 
-  // Montó algo: o el login (por si algún día no hay entrada) o la bienvenida.
+  // Montó algo: o el login (aparato que ya la vio) o la bienvenida.
   await page
-    .waitForFunction(
-      ([a, b]) => {
-        const t = document.body.innerText || '';
-        return !!document.querySelector('input[type=email]') || t.includes(a) || t.includes(b);
-      },
-      [siguiente, yaTengo],
-      { timeout: espera }
-    )
+    .waitForFunction(() => !!document.querySelector('input[type=email]') || !!document.querySelector('[data-testid="bienvenida"]'), null, { timeout: espera })
     .catch(() => {});
   if (await hayLogin()) return false;
 
-  // Las tres primeras: "Siguiente" avanza y desaparece en la cuarta.
-  for (let i = 0; i < 4; i++) {
-    const sig = page.getByText(siguiente, { exact: true }).first();
+  // Las tres primeras: el circulito, cuando terminó de cargar.
+  for (let i = 0; i < 3; i++) {
+    const sig = page.getByTestId('bienvenida-siguiente').first();
     if (!(await sig.isVisible().catch(() => false))) break;
+    await page.waitForTimeout(1700);
     await sig.click({ timeout: 10000 }).catch(() => {});
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(400);
   }
 
-  // La cuarta se salta TOCANDO (Pressable a pantalla completa, aria-label
-  // "Saltar"; sin botón visible). Se toca hasta que aparece el final.
-  for (let i = 0; i < 40; i++) {
-    if (await page.getByText(yaTengo, { exact: true }).isVisible().catch(() => false)) break;
-    const saltar = page.getByLabel(saltarTexto, { exact: true }).first();
-    if (await saltar.isVisible().catch(() => false)) await saltar.click({ timeout: 5000 }).catch(() => {});
-    else await page.mouse.click(30, 120).catch(() => {});
-    await page.waitForTimeout(600);
+  // La del ranking: "Ya tengo cuenta" aparece a los ~6 s. Se insiste hasta que esté el login.
+  for (let i = 0; i < 20 && !(await hayLogin()); i++) {
+    await page.waitForTimeout(700);
+    await page.getByTestId('bienvenida-entrar').first().click({ timeout: 2000 }).catch(() => {});
   }
-
-  await page.getByText(yaTengo, { exact: true }).click({ timeout: 20000 }).catch(() => {});
   await page.locator('input[type=email]').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
   return true;
 }
@@ -187,15 +176,19 @@ export async function pasarLaEntrada(page, espera = 20000) {
 
     const entrada = page.locator('.bienv');
     if (await entrada.count()) {
+      // LA ENTRADA DEL 15/10: el circulito tres veces, recién cargado, y en la del
+      // ranking "Ya tengo cuenta" cuando aparece (~6 s).
       for (let i = 0; i < 3; i++) {
-        const siguiente = page.getByRole('button', { name: 'Siguiente' });
+        const siguiente = page.locator('[data-testid="bienvenida-siguiente"]');
         if (!(await siguiente.count())) break;
+        await page.waitForTimeout(1700);
         await siguiente.click({ timeout: 10000 }).catch(() => {});
-        await page.waitForTimeout(700);
+        await page.waitForTimeout(400);
       }
-      // En la cuarta se salta tocando: el botón de saltar no existe ahí.
-      await page.locator('.bienv-tocar').click({ timeout: 20000 }).catch(() => {});
-      await page.getByRole('button', { name: 'Ya tengo cuenta' }).click({ timeout: 20000 }).catch(() => {});
+      for (let i = 0; i < 20 && (await entrada.count()); i++) {
+        await page.waitForTimeout(700);
+        await page.locator('[data-testid="bienvenida-entrar"]').click({ timeout: 2000 }).catch(() => {});
+      }
       await entrada.waitFor({ state: 'detached', timeout: 20000 }).catch(() => {});
     }
 

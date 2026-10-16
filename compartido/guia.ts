@@ -9,19 +9,23 @@ import { pasoAlAbrir } from '@nucleo/recorrido';
 
 const CLAVE = 'ascent:guia';
 
-// Cada globo se muestra UNA vez y no vuelve. Agregar uno acá no rompe nada:
-// el que ya usó la app lo va a ver la próxima vez que pase por esa pantalla,
-// que es justo lo que se quiere para una parte nueva.
-//
-// Stats, Álbum, Ranking y Ajustes ya no tienen globo: los presenta el recorrido,
-// una línea por pantalla. Quedan los que explican algo que el recorrido no
-// muestra: contar series adentro de una sesión, las fotos privadas del perfil,
-// y la actividad en vivo del ranking —que solo tiene sentido una vez que marcaste
-// tu gimnasio, así que su globo no lo presenta el recorrido sino el Ranking, y
-// solo cuando el gimnasio ya está puesto—.
-export type Globo = 'series' | 'perfil' | 'actividad';
+/**
+ * LOS GLOBITOS DE LA PRIMERA VEZ (15/10): seis, cada uno saliendo de lo que explica,
+ * y ninguno más. Reemplazan al recorrido de seis pasos, que se sacó con la entrada
+ * nueva. `series` es el del + de siempre (mismo nombre: quien ya lo cerró no lo ve
+ * de nuevo).
+ */
+export type Globo = 'elegir' | 'series' | 'descanso' | 'amigos' | 'album' | 'rutina';
 
-type Guia = { uid: string; recorrido: boolean; paso?: number; globos: Globo[] };
+/**
+ * LAS CUENTAS DE ANTES NO VEN LOS GLOBITOS NUEVOS: ya conocen la app. Se decide por
+ * la fecha de alta de la cuenta, que es la misma en cualquier aparato (un globo
+ * visto se guarda en el teléfono; una cuenta vieja en un teléfono nuevo los vería
+ * todos). "Volver a ver la guía" los muestra igual (`deNuevo`).
+ */
+export const GLOBOS_DESDE = '2026-10-15T00:00:00Z';
+
+type Guia = { uid: string; recorrido: boolean; paso?: number; globos: string[]; deNuevo?: boolean };
 
 // UNA CLAVE POR CUENTA (13/10). Era una sola con un dueño: en un teléfono con
 // dos cuentas que se alternan, cada una pisaba lo de la otra y a quien ya la
@@ -34,7 +38,7 @@ async function leer(uid: string): Promise<Guia> {
   if (crudo) {
     try {
       const g = JSON.parse(crudo) as Guia;
-      if (g.uid === uid) return { uid, recorrido: !!g.recorrido, paso: g.paso, globos: g.globos ?? [] };
+      if (g.uid === uid) return { uid, recorrido: !!g.recorrido, paso: g.paso, globos: g.globos ?? [], deNuevo: !!g.deNuevo };
     } catch {
       // basura de otra versión: se muestra la guía, que es el estado seguro
     }
@@ -49,16 +53,16 @@ export async function leerPasoDelRecorrido(uid: string): Promise<number | null> 
   return pasoAlAbrir(await leer(uid));
 }
 
-export async function guardarPasoDelRecorrido(uid: string, paso: number) {
-  await escribir({ ...(await leer(uid)), paso });
-}
-
-export async function marcarRecorridoVisto(uid: string) {
-  await escribir({ ...(await leer(uid)), recorrido: true, paso: 0 });
-}
-
-export async function faltaElGlobo(uid: string, cual: Globo): Promise<boolean> {
-  return !(await leer(uid)).globos.includes(cual);
+/**
+ * ¿Falta mostrar este globo? `creadaEl` es la fecha de alta de la cuenta (la de la
+ * sesión): una cuenta de antes de `GLOBOS_DESDE` no los ve, salvo que haya pedido
+ * ver la guía de nuevo.
+ */
+export async function faltaElGlobo(uid: string, cual: Globo, creadaEl?: string | null): Promise<boolean> {
+  const g = await leer(uid);
+  if (g.globos.includes(cual)) return false;
+  if (g.deNuevo) return true;
+  return !creadaEl || creadaEl >= GLOBOS_DESDE;
 }
 
 export async function marcarGloboVisto(uid: string, cual: Globo) {
@@ -67,7 +71,13 @@ export async function marcarGloboVisto(uid: string, cual: Globo) {
   await escribir({ ...g, globos: [...g.globos, cual] });
 }
 
-/** Desde Ajustes: vuelve a mostrar el recorrido y todos los globos. */
+/** Al elegir el nombre: la guía empieza de cero (los seis globitos, cada uno en su momento). */
 export async function reiniciarGuia(uid: string) {
-  await escribir({ uid, recorrido: false, paso: 0, globos: [] });
+  await escribir({ uid, recorrido: true, paso: 0, globos: [] });
+}
+
+/** Desde Ajustes, "Volver a ver la guía": los globitos vuelven, también para una cuenta de antes. */
+export const GUIA_DE_NUEVO = 'ascent:guia-de-nuevo';
+export async function verLaGuiaDeNuevo(uid: string) {
+  await escribir({ uid, recorrido: true, paso: 0, globos: [], deNuevo: true });
 }

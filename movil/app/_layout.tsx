@@ -35,6 +35,7 @@ import { anotar, marcarListo, registrarError } from '../src/cajaNegra';
 import { SELLOS } from '../src/sello';
 import { reportarMedicionA } from '@compartido/medir';
 import { trasElAviso, trasMirar } from '@nucleo/veredicto';
+import { anotarEntradaVista } from '@compartido/entradaVista';
 
 /**
  * LA RAÍZ DE LA APP, y desde el 22/9 también la raíz del router.
@@ -173,6 +174,12 @@ export default function Layout() {
     // nuevo cada vez que el token se renueva.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sesion === 'con']);
+
+  // UN APARATO CON SESIÓN YA NO VE LA ENTRADA (15/10): si sale de la cuenta, va
+  // derecho al login. Ver `compartido/entradaVista.ts`.
+  useEffect(() => {
+    if (sesion === 'con') void anotarEntradaVista();
+  }, [sesion]);
 
   // EL ENLACE DEL CORREO. Se mira de las dos formas y hacen falta las dos: la
   // app puede estar CERRADA cuando se toca el enlace —ahí llega como URL

@@ -76,9 +76,8 @@ async function abrir(nav, quien, respuestas, ingles = false) {
   await page.locator('input[type=email], input[inputmode=email]').first().fill(quien.correo, { timeout: 90000 });
   await page.locator('input[type=password]').first().fill(quien.clave);
   await page.getByText(tx.entrar.entrar, { exact: true }).last().click({ timeout: 60000 });
-  const saltar = page.getByTestId('recorrido-saltar');
-  await saltar.waitFor({ state: 'visible', timeout: 60000 }).catch(() => {});
-  await saltar.click().catch(() => {});
+  // Sin recorrido desde el 15/10: se espera a que Inicio esté.
+  await page.getByText(tx.inicio.iniciarEntrenamiento, { exact: true }).first().waitFor({ state: 'visible', timeout: 90000 }).catch(() => {});
   // El aviso de una vez de la cuenta nueva tapa la mitad de abajo: se cierra.
   const deAcuerdo = page.getByText(tx.social.avisoRutinaEntendido, { exact: true }).first();
   await deAcuerdo.waitFor({ state: 'visible', timeout: 8000 }).then(() => deAcuerdo.click(), () => {});
@@ -852,6 +851,87 @@ RECETAS['propuestas-album'] = async function (nav, gente) {
   writeFileSync(rutaCajas, JSON.stringify(cajas, null, 1));
   console.log(`  foto: public/galeria-propuestas/album-fotos.jpg ${JSON.stringify(cajas['album-fotos'])}`);
   return page;
+};
+
+// LA ENTRADA NUEVA Y LOS SEIS GLOBITOS (15/10), en la app de verdad: las cuatro
+// pantallas en sus momentos, y cada globito con una cuenta recién creada.
+RECETAS['entrada-y-globitos'] = async function (nav, gente) {
+  const A = gente.a;
+  const tx = TEXTOS_ES;
+  // 1. La entrada, en un navegador limpio.
+  const limpio = await (await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'es-UY' })).newPage();
+  await limpio.goto(NATIVA, { waitUntil: 'domcontentloaded', timeout: 180000 });
+  await limpio.getByTestId('bienvenida').first().waitFor({ timeout: 90000 });
+  for (const p of ['pesos', 'llegar', 'amigo']) {
+    await limpio.waitForTimeout(2600);
+    await foto(limpio, `entrada-${p}`);
+    await limpio.getByTestId('bienvenida-siguiente').first().click({ timeout: 10000 });
+  }
+  const t0 = Date.now();
+  for (const [nombre, s] of [['lista', 1.6], ['sofi-pasa', 3.8], ['luz', 5.0], ['boton', 7.2]]) {
+    const falta = s * 1000 - (Date.now() - t0);
+    if (falta > 0) await limpio.waitForTimeout(falta);
+    await foto(limpio, `entrada-ranking-${nombre}`);
+  }
+  await limpio.getByTestId('bienvenida-entrar').first().click({ timeout: 10000 });
+  await limpio.locator('input[type=email], input[inputmode=email]').first().waitFor({ timeout: 30000 });
+  await foto(limpio, 'entrada-login');
+  await limpio.context().close();
+
+  // 2. Los globitos, con la cuenta recién creada (nace después del 15/10: los ve).
+  const { page } = await abrir(nav, A);
+  await page.getByText('Iniciar entrenamiento', { exact: true }).first().click({ timeout: 90000 });
+  await page.getByLabel('Sumar una serie').first().waitFor({ timeout: 90000 });
+  await page.getByTestId('globo-series').first().waitFor({ timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(900);
+  await foto(page, 'globito-series');
+  await page.getByText(tx.sesion.sinEjercicio, { exact: true }).first().click({ timeout: 60000 });
+  await page.getByTestId('globo-elegir').first().waitFor({ timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(900);
+  await foto(page, 'globito-elegir');
+  await page.getByText('Press de banca', { exact: true }).first().click({ timeout: 60000 });
+  await page.waitForTimeout(1500);
+  await page.getByLabel('Sumar una serie').first().click({ timeout: 30000 });
+  await page.getByTestId('globo-descanso').first().waitFor({ timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(900);
+  await foto(page, 'globito-descanso');
+  await page.getByText(tx.nav.social, { exact: true }).last().click({ timeout: 30000 });
+  await page.getByTestId('globo-amigos').first().waitFor({ timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(900);
+  await foto(page, 'globito-amigos');
+  // Fotos para el álbum: tres imágenes lisas, subidas como las sube la app.
+  const lienzo = await (await nav.newContext({ viewport: { width: 600, height: 750 } })).newPage();
+  const hoy = new Date().toISOString().slice(0, 10);
+  for (const [i, color] of ['#3d4a66', '#6a5a7e', '#4f6b5c'].entries()) {
+    await lienzo.setContent(`<body style="margin:0;background:radial-gradient(circle at 40% 35%, #c9c4b8, ${color} 60%, #111 100%)"></body>`);
+    const jpg = await lienzo.screenshot({ type: 'jpeg', quality: 80 });
+    const ruta = `${A.id}/${hoy}-${800 + i}.jpg`;
+    await A.s.storage.from('fotos').upload(ruta, jpg, { contentType: 'image/jpeg' });
+    await A.s.from('photos').insert({ user_id: A.id, storage_path: ruta, visibilidad: 'privada' });
+  }
+  await lienzo.context().close();
+  await page.getByText(tx.nav.album, { exact: true }).last().click({ timeout: 30000 });
+  await page.getByTestId('globo-album').first().waitFor({ timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  await foto(page, 'globito-album');
+  await page.getByText(tx.nav.inicio, { exact: true }).last().click({ timeout: 30000 });
+  await page.waitForTimeout(800);
+  await page.context().close();
+
+  // 3. La rutina: con una de muestra, editándola. Con la otra cuenta: esta quedó con
+  // la sesión abierta, y con sesión Inicio no muestra "HOY".
+  const B = gente.b;
+  const dias = await semanaDeMuestra(B.s);
+  const rutina = { id: '00000000-0000-4000-8000-000000000001', nombre: 'Entrenamiento 1', activa: true, dias };
+  const { page: p2 } = await abrir(nav, B, { mis_rutinas: [rutina], rutina_activa_de: rutina });
+  await verTestId(p2, 'inicio-rutina');
+  await tocar(p2, 'inicio-rutina');
+  await p2.waitForTimeout(1500);
+  await tocar(p2, 'rutina-editar');
+  await p2.getByTestId('globo-rutina').first().waitFor({ timeout: 20000 }).catch(() => {});
+  await p2.waitForTimeout(900);
+  await foto(p2, 'globito-rutina');
+  return p2;
 };
 
 // Tu rutina, editándola: donde va el globito de la rutina.

@@ -7703,23 +7703,40 @@ console.log('\n108. La entrada se ve UNA vez, y donde termina empieza el formula
   // "Entrar" despues de tocar crear es hacerle tocar dos veces lo mismo.
   chequear('lo que eligio decide el modo del formulario', login.includes("destino === 'crear' ? 'crear' : 'entrar'"), true);
 
-  // ANTE LA DUDA NO SE MUESTRA: repetirle once segundos a quien solo quiere
-  // entrar es peor que no mostrarsela a alguien nuevo.
-  const vista = archivo('src', 'lib', 'entradaVista.ts');
+  // ANTE LA DUDA NO SE MUESTRA: repetirle la entrada a quien solo quiere entrar
+  // es peor que no mostrársela a alguien nuevo. Desde el 15/10 la comparten las dos apps.
+  const vista = archivo('compartido', 'entradaVista.ts');
   chequear('si el almacenamiento falla, se da por vista', /catch \{\s*return true;/.test(vista), true);
+
+  // UN APARATO CON SESIÓN YA NO LA VE (15/10): las cuentas de antes no la ven al salir.
+  const entradaNativa = archivo('movil', 'src', 'EntradaYLogin.tsx');
+  chequear('la nativa también la muestra una sola vez, y se anota con sesión', [
+    /void vioLaEntrada\(\)\.then\(\(vista\) => vivo && setVerSlides\(!vista\)\)/.test(entradaNativa),
+    /if \(verSlides === null\) return null;/.test(entradaNativa),
+    /if \(sesion === 'con'\) void anotarEntradaVista\(\);/.test(archivo('movil', 'app', '_layout.tsx')),
+    /void anotarEntradaVista\(\);/.test(archivo('src', 'components', 'Nav.tsx')),
+  ], [true, true, true, true]);
 
   // El banco monta la pantalla DE VERDAD: una copia se iria separando.
   const banco = archivo('src', 'app', 'galeria', 'bienvenida', 'page.tsx');
   chequear('el banco monta la pantalla de verdad', banco.includes("from '@/components/bienvenida/Bienvenida'"), true);
 
-  // Los textos viven en el diccionario, como todo el resto de la app.
+  // Los textos viven en el diccionario, como todo el resto de la app, en las dos.
   const T = (await import('../nucleo/textos.ts')).T;
-  chequear('los textos de la entrada estan en textos.ts', [T.bienvenida.saludoTitulo, T.bienvenida.cierre], ['Empiezas desde el polvo', 'Tu viaje empieza ahora mismo']);
+  chequear('los textos de la entrada estan en textos.ts', [T.bienvenida.pesosTitulo, T.bienvenida.rankingTitulo], ['Ya no adivines los pesos', 'Mira quién llega más lejos']);
   const comp = archivo('src', 'components', 'bienvenida', 'Bienvenida.tsx');
-  chequear('y la pantalla no tiene texto suelto', /T\.bienvenida\.saludoTitulo/.test(comp) && !/Empiezas desde/.test(comp), true);
+  const compNativa = archivo('movil', 'src', 'Bienvenida.tsx');
+  chequear('y ninguna de las dos pantallas tiene texto suelto', [
+    /T\.bienvenida\.pesosTitulo/.test(comp) && !/adivines/.test(comp),
+    /T\.bienvenida\.pesosTitulo/.test(compNativa) && !/adivines/.test(compNativa),
+  ], [true, true]);
 
-  // El motor se pide en la PRIMERA pantalla, no en la cuarta: tarda ~3 s.
-  chequear('la cuarta no espera al motor: tiene version sin el', archivo('src', 'components', 'bienvenida', 'Cuarta.tsx').includes('setConMotor(false)'), true);
+  // EL CIRCULITO EN VEZ DE "SALTAR" (15/10): carga un segundo y medio y recién deja pasar.
+  chequear('no hay "Saltar": el circulito deja pasar recién cargado', [
+    /setTimeout\(\(\) => setListo\(true\), CARGA_MS\)/.test(comp),
+    /const listo = avance >= 1;/.test(archivo('movil', 'src', 'bienvenida', 'Circulito.tsx')) && /onPress=\{\(\) => listo && alPasar\(\)\}/.test(archivo('movil', 'src', 'bienvenida', 'Circulito.tsx')),
+    /saltar/i.test(comp + compNativa),
+  ], [true, true, false]);
 }
 
 console.log('\n109. Una sola pasada da lo mismo que seis');
@@ -9631,6 +9648,7 @@ console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
   const { fileURLToPath: aRuta138 } = await import('node:url');
   const R138 = unir138(dir138(aRuta138(import.meta.url)), '..');
   const de138 = (...p) => leer138(unir138(R138, ...p), 'utf8');
+  const fs138 = await import('node:fs');
 
   // ---- EL RECORRIDO ES UNA SOLA LISTA PARA LAS DOS APPS ----
   const REC = await import('../nucleo/recorrido.ts');
@@ -9655,22 +9673,18 @@ console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
   chequear('el primero es Inicio', REC.PASOS_DEL_RECORRIDO[0].pestana, 'inicio');
   chequear('el gimnasio sigue estando', REC.PASOS_DEL_RECORRIDO.some((p) => p.ancla === 'gimnasio'), true);
 
-  const rec = de138('movil', 'src', 'Recorrido.tsx');
-  // ARRANCA SOLO en un aparato nuevo (seccion 93). Elegir el nombre y "ver la
-  // guia" lo REINICIAN: vuelven los globos y el primer paso.
-  chequear('saltar es un boton con borde, no un texto gris', /testID="recorrido-saltar" style=\{estilos\.borde\}/.test(rec), true);
-  chequear('el recorrido lo reinicia elegir el nombre',
+  // EL RECORRIDO SE SACÓ EL 15/10: lo reemplazan los seis globitos, cada uno saliendo
+  // de lo que explica. Elegir el nombre arranca la guía de cero, y "ver la guía de
+  // nuevo" desde Ajustes trae los globitos otra vez (también a una cuenta de antes).
+  chequear('no queda el recorrido: ni el archivo ni su lugar encima de la barra', [
+    fs138.existsSync(unir138(R138, 'movil', 'src', 'Recorrido.tsx')),
+    fs138.existsSync(unir138(R138, 'src', 'components', 'Recorrido.tsx')),
+    /<Recorrido[ />]/.test(de138('movil', 'src', 'Pestanas.tsx') + de138('src', 'components', 'Nav.tsx')),
+  ], [false, false, false]);
+  chequear('la guía la reinicia elegir el nombre',
     /reiniciarGuia\(yo\.uid\)/.test(de138('movil', 'src', 'Onboarding.tsx')), true);
-  chequear('y "ver la guia" desde Ajustes',
-    /reiniciarGuia\(perfil\.id\)/.test(de138('movil', 'src', 'ajustes', 'Cuenta.tsx')), true);
-  // SI TE VAS POR TU CUENTA NO TE PERSIGUE: dice el paso y ofrece llevarte.
-  // Un recorrido que arrastra de vuelta cada vez que tocas otra cosa es una
-  // trampa, y lo primero que hace cualquiera con una guia es tocar otra cosa.
-  chequear('si estas en otra pantalla, ofrece llevarte', /T\.recorrido\.ir/.test(rec), true);
-  // VIVE ENCIMA DE LA BARRA y no adentro de cada pantalla: la barra esta en
-  // las cinco del recorrido.
-  chequear('la tarjeta vive encima de la barra',
-    /<Recorrido pestana=\{pestana\} \/>/.test(de138('movil', 'src', 'Pestanas.tsx')), true);
+  chequear('y "ver la guía" desde Ajustes trae los globitos',
+    /volverAVerLaGuia\(perfil\.id\)/.test(de138('movil', 'src', 'ajustes', 'Cuenta.tsx')), true);
 
   // ---- LA PANTALLA DE MARCAS ----
   const mar = de138('movil', 'src', 'MisMarcas.tsx');
@@ -15579,7 +15593,8 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
   }
   const sesion196 = de196('compartido/useSesion.ts');
   chequear('elegir ejercicio, mudarlo, cambiar la meta y deshacer una serie refrescan la tarjeta', (sesion196.match(/setBloques\(\w+(\.bloques)?\);\s*refrescarTarjeta\(\);/g) ?? []).length, 4);
-  chequear('la lista de la bienvenida no se desenfoca en el teléfono', /\.\.\.\(CON_DESENFOQUE \? \{ filter: `blur\(\$\{desenfoque\}px\)` \} : null\)/.test(de196('movil/src/bienvenida/Registro.tsx')), true);
+  // La lista que se desenfocaba se fue con la entrada vieja (15/10): la nueva no desenfoca nada.
+  chequear('la entrada del teléfono no desenfoca nada', /blur/i.test(de196('movil/src/Bienvenida.tsx') + de196('movil/src/bienvenida/Muestras.tsx') + de196('movil/src/bienvenida/RankingDeEntrada.tsx')), false);
 
   // ---- LA CALIDAD DEL FONDO: baja sola si el teléfono no da ----
   const Q196 = await import('../nucleo/calidad.ts');
@@ -15888,7 +15903,8 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     /if \(irAAjustes\) irAPestana\('ajustes'\)/.test(aviso197),
     /guardar\(novedad\.clave, conEsteVisto\(crudo, yo\)\)/.test(aviso197),
     /onPress=\{\(\) => void visto\(false\)\}/.test(aviso197) && /onPress=\{\(\) => void visto\(true\)\}/.test(aviso197),
-    /\(await leerPasoDelRecorrido\(yo\)\) !== null/.test(aviso197),
+    // Sin recorrido desde el 15/10: el aviso no espera a nada.
+    /const recorridoAndando = false;/.test(aviso197),
   ], [true, true, true, true, true]);
   chequear('la página del link numera los pasos del que no tiene la app, y el último dice que hay que volver', [
     /<ol>[\s\S]*enlacePaso1[\s\S]*enlacePaso2[\s\S]*enlacePaso3\(nombre\)[\s\S]*<\/ol>/.test(pagina197),
@@ -16931,16 +16947,18 @@ console.log('\n207. Cacería del 13/10: los que seguían vivos');
   const { memoria: mem207 } = await import('./dobles/plataforma.mjs');
   const G207 = await import('../compartido/guia.ts');
   mem207.delete('ascent:guia');
-  await G207.marcarRecorridoVisto('cuenta-a');
+  // Una cuenta nueva (después del 15/10) y una de antes.
+  const nueva207 = '2026-10-16T12:00:00Z';
+  const vieja207 = '2026-09-01T00:00:00Z';
   await G207.marcarGloboVisto('cuenta-a', 'series');
-  const antesDeB = await G207.leerPasoDelRecorrido('cuenta-b');
-  await G207.guardarPasoDelRecorrido('cuenta-b', 2);
-  await G207.marcarRecorridoVisto('cuenta-b');
-  chequear('A terminó la guía, entró B y la terminó: a B le arrancó, y a A no le vuelve a arrancar ni le vuelven los globos', [
-    antesDeB, await G207.leerPasoDelRecorrido('cuenta-a'), await G207.faltaElGlobo('cuenta-a', 'series'), await G207.leerPasoDelRecorrido('cuenta-b'),
-  ], [0, null, false, null]);
-  mem207.set('ascent:guia', JSON.stringify({ uid: 'cuenta-vieja', recorrido: true, globos: ['perfil'] }));
-  chequear('quien la había visto con la clave vieja (una sola para el teléfono) no la vuelve a ver', [await G207.leerPasoDelRecorrido('cuenta-vieja'), await G207.faltaElGlobo('cuenta-vieja', 'perfil')], [null, false]);
+  chequear('A cerró el del +; entró B en el mismo teléfono: a B le falta, a A no le vuelve', [
+    await G207.faltaElGlobo('cuenta-b', 'series', nueva207), await G207.faltaElGlobo('cuenta-a', 'series', nueva207),
+  ], [true, false]);
+  const antesDePedir = await G207.faltaElGlobo('cuenta-c', 'album', vieja207);
+  await G207.verLaGuiaDeNuevo('cuenta-c');
+  chequear('una cuenta de antes del 15/10 no ve los globitos nuevos, salvo que pida ver la guía de nuevo', [antesDePedir, await G207.faltaElGlobo('cuenta-c', 'album', vieja207)], [false, true]);
+  mem207.set('ascent:guia', JSON.stringify({ uid: 'cuenta-vieja', recorrido: true, globos: ['series'] }));
+  chequear('quien lo había cerrado con la clave vieja (una sola para el teléfono) no lo vuelve a ver', await G207.faltaElGlobo('cuenta-vieja', 'series', nueva207), false);
 
   // ---- PEDIR UNIRSE CONTESTA QUÉ PASÓ (migración 73) ----
   const EV207 = await import('../nucleo/enVivo.ts');
@@ -18436,13 +18454,14 @@ console.log('\n232. Los globitos: flotan, un renglón, y "ya puedes subir el pes
     /ancla: \{ height: 0, zIndex: 30, elevation: 30 \}/.test(globito),
     /globo: \{\n    position: 'absolute',/.test(globito),
     /numberOfLines=\{1\}/.test(globito),
-    /return <Globito texto=\{children\} alCerrar=\{cerrar\}/.test(de232('movil', 'src', 'GloboPrimeraVez.tsx')),
+    // Los de primera vez, desde el 15/10, son el globo de cómic con su cola (ver la 249).
+    /return <GloboComic texto=\{children\} alCerrar=\{cerrar\}/.test(de232('movil', 'src', 'GloboPrimeraVez.tsx')),
     /<Globito\n          testID="globito-subir"/.test(de232('movil', 'src', 'Bloque.tsx')),
   ], [true, true, true, true, true]);
   const { TEXTOS_ES: ES232 } = await import('../nucleo/textos.ts');
   const { EN: EN232 } = await import('../nucleo/textos-en.ts');
-  const cortos = (t) => [t.inicio.globoSeries, t.social.avisoActividad, t.yo.globo, t.sesion.yaPuedesSubir].map((x) => x.length <= 42);
-  chequear('los textos de los globitos entran en un renglón, en los dos idiomas', [cortos(ES232), cortos(EN232)], [[true, true, true, true], [true, true, true, true]]);
+  const cortos = (t) => [t.inicio.globoSeries, t.globos.elegir, t.globos.descanso, t.globos.amigos, t.globos.album, t.globos.rutina, t.sesion.yaPuedesSubir].map((x) => x.length <= 52);
+  chequear('los textos de los globitos entran en un renglón, en los dos idiomas', [cortos(ES232), cortos(EN232)], [[true, true, true, true, true, true, true], [true, true, true, true, true, true, true]]);
 }
 console.log('\n233. La meta de pasos se festeja una vez por día, y el empujón a la foto (15/10)');
 {
@@ -19041,6 +19060,33 @@ console.log('\n248. El storage con tope: 3 MB y solo JPG y PNG (migración 89)')
     tope.test(leer248(join(raiz248, 'supabase', 'schema.sql'), 'utf8').replace(/\r\n/g, '\n')),
     tope.test(leer248(join(raiz248, 'supabase', 'migracion-89-tope-del-storage.sql'), 'utf8').replace(/\r\n/g, '\n')),
   ], [true, true]);
+}
+
+console.log('\n249. Los seis globitos de la primera vez salen de lo que explican (15/10)');
+{
+  const { readFileSync: leer249 } = await import('node:fs');
+  const de249 = (...p) => sinComentarios(leer249(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n'));
+  const comic = de249('movil', 'src', 'GloboComic.tsx');
+  chequear('el globo de cómic tiene su cola, en el x de lo que explica', [
+    /<View pointerEvents="none" style=\{\[estilos\.cola, \{ left: colaX - 6 \}\]\} \/>/.test(comic),
+    /cola: \{\s*position: 'absolute',\s*top: -5\.5,/.test(comic),
+  ], [true, true]);
+  chequear('cada uno en su lugar: el buscador, el +, la píldora del descanso, el buscador de gente, las fotos y el nombre de la rutina', [
+    /<GloboPrimeraVez cual="elegir"/.test(de249('movil', 'src', 'SelectorEjercicio.tsx')),
+    /globoDelMas=\{\(colaX\) => \(\s*<GloboPrimeraVez cual="series" colaX=\{colaX\}/.test(de249('movil', 'src', 'Inicio.tsx')),
+    /globoDelMas\(\(anchoBotones - 8\) \/ 4 \+ 8 \+ \(\(anchoBotones - 8\) \* 3\) \/ 8\)/.test(de249('movil', 'src', 'Bloque.tsx')),
+    /<GloboPrimeraVez cual="descanso" colaX=\{anchoCabecera - anchoPildora \/ 2\}/.test(de249('movil', 'src', 'Inicio.tsx')),
+    /<GloboPrimeraVez cual="amigos"/.test(de249('movil', 'src', 'Ranking.tsx')),
+    /<GloboPrimeraVez cual="album"/.test(de249('movil', 'src', 'Album.tsx')),
+    /<GloboPrimeraVez cual="rutina" colaX=\{nombreEn\.x \+ nombreEn\.ancho \* 0\.75\}/.test(de249('movil', 'src', 'MiRutina.tsx')),
+  ], [true, true, true, true, true, true, true]);
+  const primera = de249('movil', 'src', 'GloboPrimeraVez.tsx');
+  chequear('solo en la pestaña que se ve, y las cuentas de antes no los ven', [
+    /if \(!enPantalla\) return;/.test(primera),
+    /faltaElGlobo\(u, cual, await cuandoSeCreo\(supabase\)\)/.test(primera),
+  ], [true, true]);
+  // Los que salieron con el recorrido no vuelven: el del perfil y el de quién está entrenando.
+  chequear('no quedan los globos del perfil ni el de la actividad', /cual="(perfil|actividad)"/.test(de249('movil', 'src', 'PerfilPropio.tsx') + de249('movil', 'src', 'Ranking.tsx')), false);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

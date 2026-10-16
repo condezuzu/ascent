@@ -158,30 +158,19 @@ async function correr(app) {
     await texto('Elige tu nombre').waitFor({ state: 'detached', timeout: 90000 });
   });
 
-  // ---- 3. web: recorrido con el gimnasio primero ----
+  // ---- 3. web: el gimnasio, en Ajustes (el recorrido se sacó el 15/10) ----
   if (app === 'web') {
-    await paso('recorrido: marcar el gimnasio', async () => {
-      await page.waitForURL((u) => u.pathname === '/ajustes', { timeout: 90000 });
+    await paso('el alta deja en Inicio, y el gimnasio se marca en Ajustes', async () => {
+      await page.waitForURL((u) => u.pathname === '/', { timeout: 90000 });
+      await page.goto(`${base}/ajustes`, { waitUntil: 'domcontentloaded' });
       // El texto sale de textos.ts: cambiarlo ahí no puede romper la batería en silencio.
       await page.getByRole('button', { name: T.ajustes.gimnasioMarcar }).click({ timeout: 90000 });
       await page.getByText(/precisión/i).first().waitFor({ timeout: 60000 });
     });
-    await paso('recorrido: hasta el final', async () => {
+    await paso('de vuelta en Inicio, lejos del gimnasio', async () => {
       // Lejos del gimnasio: si no, el día entra solo por ubicación y la web
-      // haría otro guion que la nativa (que todavía no tiene el automático).
+      // haría otro guion que la nativa.
       await ctx.setGeolocation({ latitude: -34.8, longitude: -56.0, accuracy: 25 });
-      // El recorrido cambia de pantalla en cada paso: se sigue hasta que no esté.
-      // "Ir" TAMBIÉN (4/10): desde que el recorrido arranca en Inicio, en
-      // Ajustes —a donde manda el alta— el primer paso ofrece "Ir" y no
-      // "Siguiente". Sin eso este lazo no tocaba nada, el recorrido quedaba
-      // abierto toda la batería y tapaba "Terminar".
-      for (let i = 0; i < 12; i++) {
-        const b = page.locator('.recorrido').getByRole('button', { name: /^(Siguiente|Listo|Ir)$/ });
-        const hay = await b.first().waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
-        if (!hay) break;
-        await b.first().click();
-        await page.waitForTimeout(2500);
-      }
       await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
     });
   }
@@ -402,15 +391,13 @@ async function correr(app) {
   //
   // Antes esto no existia: la nativa mostraba el objeto nuevo ya formado.
   if (app === 'movil') {
-    // EL RECORRIDO, QUE ANTES SE SALTABA "SI ESTABA" (8/10). Tiene que estar:
-    // es una cuenta recién nacida en un navegador limpio. Y "Saltar" tiene que
-    // sacarlo. Reemplaza a `herramientas/probar-recorrido-nativa.mjs`, que no
-    // corría en ninguna rutina y estuvo semanas rota sin que nadie se enterara.
-    await paso('el recorrido está, y Saltar lo saca', async () => {
-      const saltar = page.getByTestId('recorrido-saltar');
-      await saltar.waitFor({ state: 'visible', timeout: 15000 });
-      await saltar.click();
-      await page.getByTestId('recorrido-avanzar').waitFor({ state: 'detached', timeout: 10000 });
+    // EL RECORRIDO SE SACÓ EL 15/10: lo reemplazan los globitos, cada uno en su
+    // pantalla. Una cuenta recién nacida no tiene que ver ninguna tarjeta encima
+    // de la barra.
+    await paso('sin recorrido: nada tapa la barra', async () => {
+      await page.waitForTimeout(1500);
+      const quedan = await page.getByTestId('recorrido-saltar').count();
+      if (quedan) throw new Error('apareció el recorrido');
     });
     await paso('la subida de rango, con su coreografia', async () => {
       await texto('Ajustes').click();

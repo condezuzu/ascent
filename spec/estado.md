@@ -12,17 +12,25 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Aplicadas hasta la 82** (15/10/2026: `version_del_esquema()` contestó 82).
-**Escritas y sin aplicar, en este orden: 83** (darse de baja: un propio tuyo que
-otra cuenta usó queda huérfano, con su nombre y el historial del otro; y nadie
-anota sobre un propio que no ve), **84** (marcar "Fui" en un día que cubrió una
-vida la devuelve), **85** ("Guardarla para después" con el día de hoy ya anotado
-corta la racha) y **86** (un amigo no ve a qué hora entrenaste: sus días se leen
-por `logs_de_amigos`). La app anda igual sin ellas: cada una se mira con
-`disponible(...)` o es solo de la base.
-**La 86 va con orden invertido**: primero la app publicada en store y la web
-desplegada (`verificar:deploy`), después la migración. Una app vieja con la 86
-puesta ve vacía la semana de los amigos, sin errores. (Hasta el 15/10 era la 85.)
+**Aplicadas hasta la 89** (15/10/2026, de noche: `version_del_esquema()` contestó
+89 y `test:conexion` dio 81 sin fallas). La 88 son los grupos (multijugador) y la
+89 el tope del storage (3 MB, solo JPG/PNG). Nada escrito sin aplicar.
+
+## Lo que cambió el 15/10 (OTA a `telefono` esa noche)
+
+- **La entrada nueva** en las dos apps: cuatro pantallas (los pesos, el día que
+  entra solo, el amigo en vivo, el ranking que termina en crear la cuenta), el
+  circulito en vez de "Saltar", y de fondo el motor con `soloEstrellas`. **Se ve una
+  sola vez por aparato** (`compartido/entradaVista.ts`) y nunca en uno que tuvo
+  sesión: las cuentas que ya existían no la ven. La de los ocho objetos se borró.
+- **El recorrido de seis pasos se sacó**; lo reemplazan seis globitos de cómic con
+  colita (elegir ejercicio, el +, el descanso, agregar amigos, el álbum, la
+  rutina). Las cuentas creadas antes del 15/10 no los ven (`GLOBOS_DESDE` en
+  `compartido/guia.ts`), salvo "Volver a ver la guía". El alta ahora deja en
+  Inicio (antes, en Ajustes, donde empezaba el recorrido).
+- Llegar al gimnasio registra el día y **ya no arranca la sesión**.
+- Las fotos se firman una vez por día y se reusan (`compartido/firmas.ts`); la web
+  hace la miniatura.
 
 > Hasta el 15/10 esto decía "aplicadas hasta la 44", del 18/9.
 

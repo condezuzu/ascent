@@ -260,6 +260,10 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
             autoCorrect={false}
           />
         </View>
+        {/* EL GLOBITO DE AGREGAR AMIGOS (15/10), saliendo del buscador: es donde se agregan. */}
+        <GloboPrimeraVez cual="amigos" colaX={66} subir={12} vistoAlMostrar cerrarCuando={busqueda.length > 0}>
+          {T.globos.amigos}
+        </GloboPrimeraVez>
         {resultados.map((u) => {
           const accion = accionDeBusqueda(u.id, datos?.amigos ?? [], datos?.solicitudes ?? [], mandados);
           return (
@@ -296,12 +300,6 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           <Text style={estilos.sinResultado}>{T.social.sinResultado}</Text>
         )}
 
-        {/* EL AVISO DE LA ACTIVIDAD EN VIVO, la primera vez y solo si ya marcaste
-            tu gimnasio: antes de eso explicaría algo que no podés usar. Aparece
-            una vez y no vuelve (misma memoria que el resto de la guía). */}
-        {gimnasioMarcado && (
-          <GloboPrimeraVez cual="actividad">{T.social.avisoActividad}</GloboPrimeraVez>
-        )}
 
         {!cargado && <ActivityIndicator color={C.sub} style={{ marginTop: 24 }} />}
 
@@ -543,7 +541,7 @@ const estilos = StyleSheet.create({
   verMas: { paddingVertical: 10, alignItems: 'center' },
   verMasTexto: { color: C.sub, fontSize: 13 },
   // El punto verde de "en vivo", al lado de quien está entrenando ahora.
-  puntoVivo: { width: 8, height: 8, borderRadius: 999, backgroundColor: '#5fd08a' },
+  puntoVivo: { width: 8, height: 8, borderRadius: 999, backgroundColor: C.vivo },
   sinResultado: { color: C.apagado, fontSize: 13, paddingVertical: 12 },
   miniatura: {
     width: 38,

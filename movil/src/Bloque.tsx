@@ -56,6 +56,7 @@ export default function Bloque({
   diaDeSesion,
   alSumar,
   debajoDelMas,
+  globoDelMas,
   alRestar,
   alSiguiente,
   alElegirEjercicio,
@@ -84,6 +85,8 @@ export default function Bloque({
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
+  /** El globito de la primera vez, saliendo del + (15/10): recibe dónde está el centro del +. */
+  globoDelMas?: (colaX: number) => ReactNode;
   alRestar: () => void;
   alSiguiente: () => void;
   alElegirEjercicio: (id: string | null) => void | Promise<void>;
@@ -101,6 +104,7 @@ export default function Bloque({
   alCorregirCarga: (indice: number, c: Carga) => void;
   alCorregirEjercicio: (indice: number, id: string, cargaQueSeVeia?: Carga) => void;
 }) {
+  const [anchoBotones, setAnchoBotones] = useState(0);
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [eligiendo, setEligiendo] = useState(false);
   const [lista, setLista] = useState(false);
@@ -432,7 +436,7 @@ export default function Bloque({
           </Pressable>
         </View>
       ) : (
-        <View style={estilos.filaBotones}>
+        <View style={estilos.filaBotones} onLayout={(e) => setAnchoBotones(e.nativeEvent.layout.width)}>
           <Pressable
             style={[estilos.mas, estilos.menos, menosApagado && estilos.menosApagado]}
             onPress={alRestar}
@@ -453,6 +457,9 @@ export default function Bloque({
           </MasQuePulsa>
         </View>
       )}
+
+      {/* El − se lleva un cuarto y el + tres, con 8 de hueco: el centro del + sale de ahí. */}
+      {!cumplida && !esTiempo && globoDelMas && anchoBotones > 0 && globoDelMas((anchoBotones - 8) / 4 + 8 + ((anchoBotones - 8) * 3) / 8)}
 
       {debajoDelMas}
 
@@ -599,7 +606,9 @@ function MasQuePulsa({
 }
 
 const estilos = StyleSheet.create({
-  bloque: { marginTop: 22 },
+  // Una capa más arriba que lo que viene después ("Terminar"): el globito del + flota
+  // debajo del + y tiene que quedar encima, no tapado.
+  bloque: { marginTop: 22, zIndex: 2, elevation: 2 },
   fila: { flexDirection: 'row', alignItems: 'center' },
   ejercicio: { flex: 1, borderBottomWidth: 1, borderBottomColor: C.lineaFuerte, paddingVertical: 10 },
   ejercicioTexto: { color: C.tinta, fontSize: 17 },
