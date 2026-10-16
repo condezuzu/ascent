@@ -2876,12 +2876,15 @@ language sql stable security definer set search_path = public as $$
   -- La única rama que devuelve FILAS de una tabla, aunque sea un catálogo fijo
   -- y público. Va entera en un solo hash: no hay motivo para que el retrato
   -- sepa recitar datos.
+  -- SOLO EL CATÁLOGO (migración 91): los ejercicios propios son de cada usuario,
+  -- y el 16/10 siete propios nuevos hacían fallar la comparación con el repo.
   select 'catálogo de ejercicios',
          count(*) || ' ejercicios ' ||
          huella(string_agg(id || ' ' || nombre || ' ' || grupo || ' ' ||
                            cuenta_dots || ' ' || admite_peso || ' ' || orden || ' ' ||
                            carga || ' ' || carga_ambigua, '|' order by id))
     from ejercicios
+   where creado_por is null and not huerfano
 $$;
 
 revoke execute on function public.retrato_del_schema() from public;
@@ -4592,7 +4595,7 @@ revoke execute on function public.amigos_de(uuid) from public, anon;
 grant execute on function public.amigos_de(uuid) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 90; $$;
+returns int language sql immutable as $$ select 91; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;
