@@ -357,3 +357,21 @@ a salir de `main` como siempre.
 
 **Hasta entonces, `main` no se toca con nada nativo**: es lo que mantiene vivo
 el canal de la build que está en el teléfono hoy.
+
+## Los links https que abren la app: falta UN paso en Apple (15/10)
+
+Todo lo demás está: el archivo de dominios asociados se sirve desde la web
+(`/.well-known/apple-app-site-association`, con `/amigo/*` y `/grupo/*` para
+`XF9N8X9KJG.uy.ascent.app`) y las rutas de la app ya existen. Lo que falta es la
+capacidad **Associated Domains** en el App ID `uy.ascent.app` y un perfil de
+aprovisionamiento que la incluya. La build del 15/10 de noche
+(`afc6c2de`) lo probó: falló con *"Provisioning profile doesn't support the
+Associated Domains capability"*. Arreglarlo pide entrar a Apple, que es del
+humano:
+
+1. Una corrida **interactiva** de `npx --yes eas-cli@24.10.0 build -p ios --profile telefono`
+   (EAS pide el login de Apple y sincroniza la capacidad solo), o habilitar
+   "Associated Domains" a mano en el portal de desarrollador y dejar que EAS
+   regenere el perfil.
+2. Volver a poner en `app.json`, adentro de `ios`:
+   `"associatedDomains": ["applinks:ascent-blush-seven.vercel.app"]`.
