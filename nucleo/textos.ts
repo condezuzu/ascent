@@ -1503,8 +1503,9 @@ const ES = {
     avisoRutinaAjustes: 'Ir a Ajustes',
     enlacePaso1: 'Descárgala en el App Store',
     enlacePaso2: 'Crea tu cuenta.',
-    enlacePaso3: (nombre: string) => `Vuelve a este mismo enlace y toca "Abrir en Ascent": ahí se agrega a ${nombre}.`,
-    enlaceOjo: 'Sin ese último paso la solicitud no se manda.',
+    // EL LINK NO SOBREVIVE A LA INSTALACIÓN (15/10): se dice el nombre para buscarlo a mano.
+    enlacePaso3: (nombre: string) => `En la app, entra a Social y busca a ${nombre}.`,
+    enlaceOjo: 'Su nombre en Ascent, para copiarlo:',
     cerrarFoto: 'Cerrar',
     verFoto: (nombre: string) => `Ver la foto de ${nombre}`,
     // La página de la web a la que lleva el link de amigo.

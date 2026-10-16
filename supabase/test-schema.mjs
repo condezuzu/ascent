@@ -15944,9 +15944,10 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     // Sin recorrido desde el 15/10: el aviso no espera a nada.
     /const recorridoAndando = false;/.test(aviso197),
   ], [true, true, true, true, true]);
-  chequear('la página del link numera los pasos del que no tiene la app, y el último dice que hay que volver', [
+  // Desde el 15/10 el último paso es buscarlo a mano, con el nombre a la vista para copiarlo.
+  chequear('la página del link numera los pasos del que no tiene la app, y el último es buscarlo por su nombre, que queda a la vista', [
     /<ol>[\s\S]*enlacePaso1[\s\S]*enlacePaso2[\s\S]*enlacePaso3\(nombre\)[\s\S]*<\/ol>/.test(pagina197),
-    /Vuelve a este mismo enlace/.test(T197.social.enlacePaso3('ana')),
+    /busca a ana/.test(T197.social.enlacePaso3('ana')) && /<p className="nombre-para-buscar">\{nombre\}<\/p>/.test(pagina197),
   ], [true, true]);
 
   // ---- C y D, y el interruptor de G: son componentes, se leen ----
