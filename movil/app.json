@@ -19,7 +19,10 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true
       },
-      "buildNumber": "8"
+      "buildNumber": "8",
+      "associatedDomains": [
+        "applinks:ascent-blush-seven.vercel.app"
+      ]
     },
     "android": {
       "package": "uy.ascent.app",
