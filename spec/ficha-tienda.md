@@ -142,7 +142,7 @@ derecha) y manda esa foto: ahí está qué dice la pantalla, qué guardó el
 teléfono y qué tiene el servidor.
 ```
 
-## Notas para App Review (App Store Connect → "Notes")
+## Notas para App Review (App Store Connect → "Notes") — 1.1.0
 
 **EN INGLÉS, y no es un descuido.** Es lo único de toda la ficha que no lee un
 usuario: lo lee un revisor de Apple, que puede estar en cualquier lado. La app
@@ -180,55 +180,45 @@ la app esté publicada sin tocar la casilla de nadie.
 > `DEMO_PASSWORD`), que no se commitea. La contraseña que estuvo acá antes se
 > rotó el 26/9 y ya no sirve.
 
+**LA 1.1.0 (16/10).** Esta es la que se pega. 3510 caracteres de 4000. Cambió
+el idioma (español e inglés), y suma lo nuevo que el revisor puede tocar: entrenar con
+amigos en vivo, la Live Activity entera, los links que abren la app y la cámara y el
+micrófono en los permisos. Las credenciales van en "Sign-In Information", no acá.
+
 ```
-DEMO ACCOUNT (required — the app is sign-in only)
-  Email:    (en .env.local → DEMO_EMAIL — pegar en App Store Connect)
-  Password: (en .env.local → DEMO_PASSWORD — pegar en App Store Connect)
-The account already has content on every screen: a 45-day streak (rank 5 of 8),
-50 days of history, a ranking with six friends, two workouts with sets and
-weights, personal records feeding a DOTS score, a body-weight entry and three
-photos in the album.
+DEMO ACCOUNT (required: the app is sign-in only)
+Use the account in the Sign-In Information fields. It already has content on every screen: an active streak with about six weeks of history, a ranking with friends, workouts with sets and weights, personal records feeding a DOTS score, a body-weight entry and photos in the album.
 
 WHAT THE APP DOES
-Ascent counts the days you train. One tap per day keeps a streak alive. It also
-times your rest between sets, records sets and weights, and shows progress.
+Ascent counts the days you train. One tap per day keeps a streak alive. During a workout it counts sets and weights, times the rest between sets, and shows progress over time.
 
-ABOUT THE PERMISSIONS — all three are optional and the app works without them.
-- Location ("Always"): only used to auto-log the day when you arrive at the gym
-  you marked yourself, in Settings. Nothing is sent anywhere; the gym point is
-  stored in the user's own row. Tapping the button in Settings while standing
-  at the gym is how it is set.
-- Notifications: only the end-of-rest alert, scheduled locally. No marketing,
-  no remote push.
-- Health (steps and workouts, READ-ONLY): steps are displayed in Stats, and a
-  workout recorded by the phone can log the day. The app never writes to Health
-  and never requests write access. The NSHealthUpdateUsageDescription string is
-  present only because the HealthKit library links its write APIs; the app does
-  not use them (verified: it requests `toRead` only, never `toShare`).
-
-USER-GENERATED CONTENT — REPORT AND BLOCK (Guideline 1.2)
-Usernames, avatars and (only between accepted friends) photos are visible to
-other users, so the app has both required controls:
-- Report: on any user's profile, and by long-pressing a row in the Ranking →
-  "Denunciar", picking a reason from a fixed list. Reports are stored server-side
-  and reviewed.
-- Block: on any user's profile → "Bloquear". Blocking removes the friendship,
-  hides the two users from each other in search and in the ranking, and prevents
-  any new friend request in either direction. This is enforced by row-level
-  security in the database, not just hidden in the UI. Blocked accounts are
-  listed and can be unblocked under Ajustes → "Cuentas bloqueadas".
-There is no public content, no comments and no likes: anything from another
-person is only visible inside a mutually-accepted friend relationship.
+NEW IN 1.1.0
+- Training with friends, live: during a workout you see what your accepted friends are doing (exercise, set, rest time left), in groups of up to 10. This needs a second account training at the same time.
+- Live Activity: after starting a workout and picking an exercise, the Lock Screen shows the current set and the session clock, then the rest countdown, today's steps and a training partner's rest.
+- Invite links (https://ascent-blush-seven.vercel.app/amigo/... and /grupo/...) open the app through Associated Domains.
+- The app is now available in English.
 
 HOW TO SEE THE MAIN LOOP IN TWO MINUTES
 1. Sign in. The number on Home is the streak.
-2. "Iniciar entrenamiento" (top right) starts a workout.
-3. Pick an exercise, tap the big + to count a set. A rest timer starts and also
-   appears on the Lock Screen as a Live Activity.
+2. Tap "Iniciar entrenamiento" (top right) to start a workout.
+3. Pick an exercise and tap the big + to count a set. A rest timer starts and the Live Activity appears on the Lock Screen.
 4. "Terminar" ends the workout and logs the day.
 
-The interface is in Spanish (Latin America); that is the app's only language in
-this version.
+ABOUT THE PERMISSIONS (all optional; the app works without them)
+- Location ("Always"): only used to log the day when you arrive at the gym you marked yourself, in Settings. The gym point is stored in the user's own row; no location history is kept or sent anywhere.
+- Notifications: only the end-of-rest alert, scheduled locally. No marketing, no remote push.
+- Health (steps and workouts, READ-ONLY): steps are shown on Home and in Stats, and a workout recorded by the phone can log the day. The app never writes to Health and only requests read access; the NSHealthUpdateUsageDescription string is present because the HealthKit library links its write APIs.
+- Camera and Photos: only to add a progress photo to a day. Photos are private by default; the user chooses which ones friends can see.
+- Microphone: the app has no recording feature and never requests microphone access. The string is present because the audio library that plays the end-of-rest sound links recording APIs.
+
+USER-GENERATED CONTENT: REPORT AND BLOCK (Guideline 1.2)
+Usernames, avatars and (only between accepted friends) photos and live workout status are visible to other users, so the app has both required controls:
+- Report: on any user's profile, and by long-pressing a row in the Ranking, "Denunciar", picking a reason from a fixed list. Reports are stored server-side and reviewed.
+- Block: on any user's profile, "Bloquear". Blocking removes the friendship, hides the two users from each other in search, in the ranking and in live training groups, and prevents any new friend request in either direction. This is enforced by row-level security in the database, not just hidden in the UI. Blocked accounts are listed and can be unblocked in Ajustes (Settings), "Cuentas bloqueadas".
+There is no public content, no comments and no likes: anything from another person is only visible inside a mutually accepted friend relationship.
+
+LANGUAGE
+The interface is available in Spanish (Latin America) and English. It follows the device language and can be changed in Ajustes (Settings), "Idioma" (Language).
 ```
 
 ---

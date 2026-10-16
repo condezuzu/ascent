@@ -19271,6 +19271,63 @@ console.log('\n259. La vida usada se anota al mostrarse, y reemplazar el día de
     /\{ text: T\.rutina\.crearRutinaNueva, onPress: \(\) => void guardar\('nueva'\) \}/.test(pr),
   ], [true, true]);
 }
+
+console.log('\n260. Antes de mandar a Apple: lee el perfil adentro del .ipa y nunca manda nada (16/10)');
+{
+  const AE260 = await import('./antes-de-enviar.mjs');
+  const { deflateRawSync } = await import('node:zlib');
+  // Un .ipa de mentira: un zip con el perfil del widget (sin la capacidad) y el de la app.
+  const zipDe = (entradas) => {
+    const locales = [];
+    const centrales = [];
+    let off = 0;
+    for (const e of entradas) {
+      const nombre = Buffer.from(e.nombre, 'utf8');
+      const datos = e.comprimir ? deflateRawSync(e.datos) : e.datos;
+      const loc = Buffer.alloc(30);
+      loc.writeUInt32LE(0x04034b50, 0);
+      loc.writeUInt16LE(e.comprimir ? 8 : 0, 8);
+      loc.writeUInt32LE(datos.length, 18);
+      loc.writeUInt32LE(e.datos.length, 22);
+      loc.writeUInt16LE(nombre.length, 26);
+      const cen = Buffer.alloc(46);
+      cen.writeUInt32LE(0x02014b50, 0);
+      cen.writeUInt16LE(e.comprimir ? 8 : 0, 10);
+      cen.writeUInt32LE(datos.length, 20);
+      cen.writeUInt32LE(e.datos.length, 24);
+      cen.writeUInt16LE(nombre.length, 28);
+      cen.writeUInt32LE(off, 42);
+      locales.push(loc, nombre, datos);
+      centrales.push(cen, nombre);
+      off += 30 + nombre.length + datos.length;
+    }
+    const central = Buffer.concat(centrales);
+    const fin = Buffer.alloc(22);
+    fin.writeUInt32LE(0x06054b50, 0);
+    fin.writeUInt16LE(entradas.length, 8);
+    fin.writeUInt16LE(entradas.length, 10);
+    fin.writeUInt32LE(central.length, 12);
+    fin.writeUInt32LE(off, 16);
+    return Buffer.concat([...locales, central, fin]);
+  };
+  const plist = (dominios) =>
+    `<?xml version="1.0"?><plist><dict><key>Name</key><string>*[expo] uy.ascent.app AppStore</string><key>Entitlements</key><dict>${
+      dominios ? '<key>com.apple.developer.associated-domains</key><array><string>applinks:ascent-blush-seven.vercel.app</string></array>' : ''
+    }</dict></dict></plist>`;
+  const perfil = (dominios) => Buffer.concat([Buffer.from([0x30, 0x82, 0x01]), Buffer.from(plist(dominios), 'latin1'), Buffer.from([0xa0, 0x00])]);
+  const ipa = zipDe([
+    { nombre: 'Payload/Ascent.app/PlugIns/descanso.appex/embedded.mobileprovision', datos: perfil(false) },
+    { nombre: 'Payload/Ascent.app/embedded.mobileprovision', datos: perfil(true), comprimir: true },
+  ]);
+  const sinDominios = zipDe([{ nombre: 'Payload/Ascent.app/embedded.mobileprovision', datos: perfil(false) }]);
+  const p = AE260.perfilDeLaApp(ipa);
+  chequear('mira el perfil de la app y no el del widget, comprimido o no, y ve si trae el dominio', [
+    p.conDominios, p.conElDominio, p.nombre, AE260.perfilDeLaApp(sinDominios).conDominios, AE260.perfilDeLaApp(zipDe([])).hay,
+  ], [true, true, '*[expo] uy.ascent.app AppStore', false, false]);
+  const { sinComentarios: sc260 } = await import('./utiles.mjs');
+  const fuente = sc260((await import('node:fs')).readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'antes-de-enviar.mjs'), 'utf8'));
+  chequear('no llama a eas submit en ningún caso, ni habla con Apple', [/submit/i.test(fuente), /appstoreconnect|apple\.com|asc /i.test(fuente)], [false, false]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
