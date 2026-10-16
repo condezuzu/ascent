@@ -358,20 +358,25 @@ a salir de `main` como siempre.
 **Hasta entonces, `main` no se toca con nada nativo**: es lo que mantiene vivo
 el canal de la build que está en el teléfono hoy.
 
-## Los links https que abren la app: falta UN paso en Apple (15/10)
+## Los links https que abren la app: falta regenerar el perfil (16/10)
 
-Todo lo demás está: el archivo de dominios asociados se sirve desde la web
+El archivo de dominios asociados se sirve desde la web
 (`/.well-known/apple-app-site-association`, con `/amigo/*` y `/grupo/*` para
-`XF9N8X9KJG.uy.ascent.app`) y las rutas de la app ya existen. Lo que falta es la
-capacidad **Associated Domains** en el App ID `uy.ascent.app` y un perfil de
-aprovisionamiento que la incluya. La build del 15/10 de noche
-(`afc6c2de`) lo probó: falló con *"Provisioning profile doesn't support the
-Associated Domains capability"*. Arreglarlo pide entrar a Apple, que es del
-humano:
+`XF9N8X9KJG.uy.ascent.app`), las rutas de la app existen, `app.json` lleva
+`associatedDomains` y el 16/10 Agustín habilitó **Associated Domains** en el App ID
+`uy.ascent.app` (el del widget no la necesita).
 
-1. Una corrida **interactiva** de `npx --yes eas-cli@24.10.0 build -p ios --profile telefono`
-   (EAS pide el login de Apple y sincroniza la capacidad solo), o habilitar
-   "Associated Domains" a mano en el portal de desarrollador y dejar que EAS
-   regenere el perfil.
-2. Volver a poner en `app.json`, adentro de `ios`:
-   `"associatedDomains": ["applinks:ascent-blush-seven.vercel.app"]`.
+Lo que falta es el **perfil de aprovisionamiento**: el que guarda EAS
+(`*[expo] uy.ascent.app AdHoc 1789775312698`) es de antes de la capacidad. Sin
+login de Apple, EAS no lo regenera ("Skipping Provisioning Profile validation on
+Apple Servers because we aren't authenticated") y Xcode lo rechaza: así fallaron
+`afc6c2de` (15/10) y `73f0ab19` (16/10). Se arregla con UNA corrida interactiva,
+con el login de Apple, desde `movil/` en esta rama:
+
+    npx --yes eas-cli@24.10.0 build -p ios --profile telefono
+
+EAS ve que el perfil no coincide, sincroniza la capacidad, genera uno nuevo y lo
+guarda: las builds siguientes ya salen sin login.
+
+OJO: con `associatedDomains` en `app.json` la huella de la rama ya no es la de la
+build `670e14af`. Una OTA para esa build desde acá la frena `publicar-ota`.
