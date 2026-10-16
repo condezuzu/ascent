@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { T } from '@nucleo/textos';
-import Recorrido from '@/components/Recorrido';
 import { crearCliente } from '@/lib/supabase/client';
 import { plataforma } from '@/plataforma';
 import { eventos } from '@compartido/eventos';
 import { contarPendientes, AVISO_SOCIAL } from '@/lib/avisos';
+import { anotarEntradaVista } from '@compartido/entradaVista';
 
 const ITEMS = [
   {
@@ -77,6 +77,12 @@ export default function Nav() {
   // sin entrar a buscarla.
   const [pendientes, setPendientes] = useState(0);
 
+  // La barra solo está con sesión: un aparato con cuenta ya no ve la entrada al
+  // salir (15/10). Ver `compartido/entradaVista.ts`.
+  useEffect(() => {
+    void anotarEntradaVista();
+  }, []);
+
   useEffect(() => {
     const supabase = crearCliente();
     let vivo = true;
@@ -100,7 +106,6 @@ export default function Nav() {
 
   return (
     <>
-    <Recorrido />
     <nav className="nav">
       {ITEMS.map((it) => (
         <Link key={it.href} href={it.href} className={ruta === it.href ? 'activo' : ''}>

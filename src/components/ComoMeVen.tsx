@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { fechaLinda, enDias } from '@nucleo/fechas';
-import type { Log, UsuarioPublico } from '@nucleo/tipos';
+import type { LogDeAmigo, UsuarioPublico } from '@nucleo/tipos';
 import TiraSemanal from '@/components/TiraSemanal';
 import Insignia from '@/components/Insignia';
 import { numeroDeRango } from '@nucleo/rangos';
@@ -45,7 +45,7 @@ export default function ComoMeVen({
   children,
 }: {
   usuario: UsuarioPublico;
-  logs: Log[];
+  logs: LogDeAmigo[];
   fotos: FotoVisible[];
   /** Sus medallas por marca y su DOTS, cuando es el perfil de un amigo. */
   medallas?: Medalla[];

@@ -279,7 +279,21 @@ create table public.ejercicios (
   carga text not null default 'total',
   -- El nombre no dice con qué se hace ("Zancadas"): se pregunta una vez.
   carga_ambigua boolean not null default false,
-  constraint ejercicios_carga_valida check (carga in ('total', 'par', 'una', 'lastre', 'corporal'))
+  -- QUIÉN LO AGREGÓ (migración 76): null es el catálogo de todos; con un id, es
+  -- un ejercicio propio de esa cuenta. Desde la 80 lo ve solo ella.
+  -- Al darse de baja queda sin dueño (`on delete set null`) si otra cuenta lo usó:
+  -- ver `huerfano` y `eliminar_cuenta` (migración 83).
+  creado_por uuid references public.profiles(id) on delete set null,
+  -- HUÉRFANO (migración 83): era propio de una cuenta que se dio de baja y otra lo
+  -- había usado. Queda con su nombre para que el historial del otro sobreviva, pero
+  -- sin dueño no es catálogo: no lo ve nadie.
+  huerfano boolean not null default false,
+  -- QUÉ SE ANOTA (migración 76): 'series' (series y peso, lo de siempre) o
+  -- 'tiempo' (minutos: el cardio). El cardio es un ejercicio más del catálogo,
+  -- no un modo aparte: entra en la rutina, el historial y el día igual que todos.
+  mide text not null default 'series',
+  constraint ejercicios_carga_valida check (carga in ('total', 'par', 'una', 'lastre', 'corporal')),
+  constraint ejercicios_mide_valido check (mide in ('series', 'tiempo'))
 );
 
 -- Las marcas. Se guarda lo que el usuario LEVANTÓ (peso y repeticiones), no
@@ -461,6 +475,21 @@ update public.ejercicios set carga_ambigua = true where id in (
   'aperturas', 'pajaros', 'elevaciones_frontales', 'encogimientos',
   'rotacion_externa', 'press_frances', 'curl_predicador', 'patada_triceps'
 );
+
+-- EL CARDIO (migración 76): ejercicios que se miden en minutos. Sin peso, fuera
+-- del DOTS, con su propio grupo.
+insert into public.ejercicios (id, nombre, grupo, cuenta_dots, admite_peso, orden, carga, mide) values
+  ('cinta',           'Cinta',             'cardio', false, false, 900, 'total', 'tiempo'),
+  ('correr',          'Correr afuera',     'cardio', false, false, 901, 'total', 'tiempo'),
+  ('caminar',         'Caminar',           'cardio', false, false, 902, 'total', 'tiempo'),
+  ('bicicleta_fija',  'Bicicleta fija',    'cardio', false, false, 903, 'total', 'tiempo'),
+  ('eliptica',        'Elíptica',          'cardio', false, false, 904, 'total', 'tiempo'),
+  ('remo_ergometro',  'Remo ergómetro',    'cardio', false, false, 905, 'total', 'tiempo'),
+  ('escaladora',      'Escaladora',        'cardio', false, false, 906, 'total', 'tiempo'),
+  ('soga',            'Saltar la soga',    'cardio', false, false, 907, 'total', 'tiempo'),
+  ('natacion',        'Natación',          'cardio', false, false, 908, 'total', 'tiempo')
+on conflict (id) do nothing;
+
 
 -- -------------------------------------------------------------
 -- Las sesiones
@@ -757,21 +786,61 @@ returns int language sql stable security definer set search_path = public as $$
   );
 $$;
 
-/**
- * Los que están disponibles hoy: los ganados menos los que todavía están en
- * los treinta días que tardan en volver.
- */
+-- -------------------------------------------------------------
+-- LAS VIDAS VUELVEN TODAS JUNTAS (migración 79)
+-- -------------------------------------------------------------
+-- Hasta la 78 cada vida volvía treinta días después de usarla, de a una. Desde
+-- el 15/10 (pedido del humano) vuelven TODAS JUNTAS: la primera vida que se usa
+-- abre un ciclo de treinta días, y al cerrarse vuelven todas las que se usaron
+-- en ese ciclo. La próxima que se use abre otro.
+--
+-- Cuántas se tienen no cambia (dos, y la tercera con racha de 20: ver
+-- `impulsos_ganados`). Las devueltas no cuentan, como antes.
+
+-- UNA VIDA DE UN DÍA QUE AL FINAL FUISTE NO CUENTA (migración 84): marcarlo "Fui"
+-- después arreglaba la racha y dejaba la vida gastada todo el ciclo. Se decide al
+-- leer: si el día vuelve a "Sin registrar", la vida vuelve a contar.
+--
+-- El día en que empezó el ciclo vigente el día `p_dia`, o null si no hay uno
+-- abierto. Mira solo las vidas usadas hasta ese día: un día pasado se juzga con
+-- lo que había entonces.
+create or replace function public.inicio_ciclo_vidas(p_user uuid, p_dia date)
+returns date language plpgsql stable security definer set search_path = public as $$
+declare
+  inicio date := null;
+  f date;
+begin
+  for f in
+    select v.fecha from vidas_usadas v
+     where v.user_id = p_user and not v.devuelta and v.fecha <= p_dia
+       and not exists (select 1 from logs l where l.user_id = p_user and l.fecha = v.fecha and not l.es_descanso)
+     order by v.fecha
+  loop
+    if inicio is null or f >= inicio + 30 then inicio := f; end if;
+  end loop;
+  if inicio is not null and p_dia >= inicio + 30 then return null; end if;
+  return inicio;
+end;
+$$;
+revoke execute on function public.inicio_ciclo_vidas(uuid, date) from public, anon, authenticated;
+
+-- TODAS LAS DEL CICLO, TAMBIÉN LAS DE DESPUÉS DE p_dia (cacería del 15/10): la pérdida
+-- recorre las faltas del día más nuevo al más viejo, y cada día tiene que contar las
+-- vidas que acaba de poner en los siguientes. Si no, con dos vidas se cubrían tres.
+-- El INICIO del ciclo sí sale solo de lo anterior; sin ciclo abierto, p_dia lo abre.
 create or replace function public.impulsos_disponibles(p_user uuid, p_dia date)
 returns int language sql stable security definer set search_path = public as $$
-  select greatest(0, impulsos_ganados(p_user) - (
-    select count(*)::int from vidas_usadas
-     where user_id = p_user
-       and not devuelta
-       and fecha > p_dia - 30
-  ));
+  with c as (select coalesce(inicio_ciclo_vidas(p_user, p_dia), p_dia) as ini)
+  select greatest(0, impulsos_ganados(p_user) - coalesce((
+    select count(*)::int from vidas_usadas v, c
+     where v.user_id = p_user
+       and not v.devuelta
+       and v.fecha >= c.ini
+       and v.fecha < c.ini + 30
+       and not exists (select 1 from logs l where l.user_id = p_user and l.fecha = v.fecha and not l.es_descanso)
+  ), 0));
 $$;
 
-/** Lo que necesita la interfaz: cuántas quedan y cuáles se usaron este mes. */
 create or replace function public.mis_impulsos()
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
@@ -783,33 +852,33 @@ returns jsonb language sql stable security definer set search_path = public as $
       when impulsos_ganados(auth.uid()) >= impulsos_tope() then null
       else greatest(0, 20 - coalesce((select racha_actual from profiles where id = auth.uid()), 0))
     end,
+    -- Las usadas en el ciclo abierto, y el día en que vuelven todas.
     'vigentes', coalesce((
-      select jsonb_agg(fecha order by fecha)
-        from vidas_usadas
-       where user_id = auth.uid()
-         and not devuelta
-         and fecha > mi_hoy() - 30
+      select jsonb_agg(v.fecha order by v.fecha)
+        from vidas_usadas v
+       where v.user_id = auth.uid()
+         and not v.devuelta
+         and v.fecha >= inicio_ciclo_vidas(auth.uid(), mi_hoy())
+         and v.fecha <= mi_hoy()
+         and not exists (select 1 from logs l where l.user_id = v.user_id and l.fecha = v.fecha and not l.es_descanso)
     ), '[]'::jsonb),
-    'vuelve', (
-      select min(fecha) + 30 from vidas_usadas
-       where user_id = auth.uid() and not devuelta and fecha > mi_hoy() - 30
-    ),
-    -- Las últimas cinco, para el aviso. Ver la migración 33: el aviso sale del
-    -- ESTADO y no del reporte de una llamada.
+    'vuelve', inicio_ciclo_vidas(auth.uid(), mi_hoy()) + 30,
     'ultimas', coalesce((
       select jsonb_agg(fecha order by fecha desc)
         from (
-          select fecha from vidas_usadas
-           where user_id = auth.uid() and not devuelta
-           order by fecha desc limit 5
+          select v.fecha from vidas_usadas v
+           where v.user_id = auth.uid() and not v.devuelta
+             and not exists (select 1 from logs l where l.user_id = v.user_id and l.fecha = v.fecha and not l.es_descanso)
+           order by v.fecha desc limit 5
         ) x
     ), '[]'::jsonb),
     'ultima', (
-      select max(fecha) from vidas_usadas where user_id = auth.uid() and not devuelta
+      select max(v.fecha) from vidas_usadas v
+       where v.user_id = auth.uid() and not v.devuelta
+         and not exists (select 1 from logs l where l.user_id = v.user_id and l.fecha = v.fecha and not l.es_descanso)
     )
   );
 $$;
-
 revoke execute on function public.mis_impulsos() from public, anon;
 grant execute on function public.mis_impulsos() to authenticated;
 
@@ -830,6 +899,13 @@ returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
   cuantas int;
+  d date;
+  hoy_descanso boolean;
+  perfil profiles;
+  previa int;
+  viva int;
+  nueva int;
+  racha int;
 begin
   if uid is null then return null; end if;
 
@@ -843,6 +919,32 @@ begin
 
   if cuantas = 0 then
     return jsonb_build_object('devueltas', 0);
+  end if;
+
+  -- CON EL DÍA DE HOY YA ANOTADO (migración 85): es el caso normal —la vida se gasta
+  -- cuando entra hoy al llegar al gimnasio, y la pregunta sale al terminar—, y
+  -- `aplicar_perdida_al` se va sin cobrar nada si hoy tiene log. La racha seguía
+  -- entera con un día sin cubrir debajo, y la primera corrección la tiraba a 1. Se
+  -- cobra acá: la racha de antes de hoy menos 10, y hoy encima.
+  d := mi_hoy();
+  select es_descanso into hoy_descanso from logs where user_id = uid and fecha = d;
+  if found then
+    select * into perfil from profiles where id = uid;
+    previa := perfil.racha_actual - case when hoy_descanso then 0 else 1 end;
+    viva := perfil.racha_base + calcular_racha(uid, d - 1);
+    if viva >= previa then
+      return jsonb_build_object('devueltas', cuantas, 'perdida', jsonb_build_object('perdida', false));
+    end if;
+    nueva := greatest(0, previa - 10);
+    update profiles set racha_base = nueva, perdida_fecha = d - 1 where id = uid;
+    racha := nueva + calcular_racha(uid, d);
+    update profiles set racha_actual = racha, rango_actual = rango_de_racha(racha) where id = uid;
+    -- El día de hoy lleva el número nuevo (es una etiqueta: no vuelve a contar nada).
+    update logs set racha_del_dia = racha, planeta_del_dia = planeta_de_dia(racha)
+     where user_id = uid and fecha = d and not es_descanso;
+    return jsonb_build_object('devueltas', cuantas, 'perdida', jsonb_build_object(
+      'perdida', true, 'rango_anterior', perfil.rango_actual, 'rango_nuevo', rango_de_racha(racha),
+      'racha', racha, 'vidas_quedan', impulsos_disponibles(uid, d)));
   end if;
 
   return jsonb_build_object('devueltas', cuantas, 'perdida', verificar_perdida());
@@ -1485,6 +1587,18 @@ begin
   -- challenges.ganador apunta a profiles SIN cascade: si esta cuenta ganó un
   -- reto ya cerrado, esa fila bloquearía el borrado. Se van primero, a mano.
   delete from challenges where retador = uid or rival = uid or ganador = uid;
+  -- Los propios que OTRA cuenta usó quedan huérfanos (migración 83): su historial
+  -- no se borra. Al borrarse la cuenta pierden el dueño y nadie más los ve.
+  update ejercicios e set huerfano = true
+   where e.creado_por = uid
+     and (exists (select 1 from prs p where p.ejercicio = e.id and p.user_id <> uid)
+       or exists (select 1 from cargas_elegidas c where c.ejercicio = e.id and c.user_id <> uid)
+       or exists (select 1 from subidas_marcadas s where s.ejercicio = e.id and s.user_id <> uid));
+  -- Los demás se borran, y antes lo propio que apunta a ellos (no tiene cascada).
+  delete from cargas_elegidas  where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
+  delete from subidas_marcadas where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
+  delete from prs              where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
+  delete from ejercicios where creado_por = uid and not huerfano;
   delete from auth.users where id = uid;
 end;
 $$;
@@ -1902,7 +2016,8 @@ returns void language sql security definer set search_path = public as $$
      and now() - inicio >= tope_sesion();
 $$;
 
-create or replace function public.marcar_actividad(p_sesion uuid, p_hasta timestamptz)
+-- Con p_bajar (migración 82) la promesa a futuro se achica a ahora.
+create or replace function public.marcar_actividad(p_sesion uuid, p_hasta timestamptz, p_bajar boolean default false)
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
@@ -1913,9 +2028,15 @@ begin
   select * into s from sesiones where id = p_sesion and user_id = uid;
   if s.id is null then return; end if;
 
-  t := least(greatest(coalesce(p_hasta, now()), s.inicio), now() + interval '15 minutes');
+  t := least(greatest(coalesce(p_hasta, now()), s.inicio), now() + interval '60 minutes');
 
-  if s.estado = 'corriendo' then
+  if s.estado = 'corriendo' and p_bajar then
+    -- Una promesa a futuro baja a la hora que dice el teléfono —aunque llegue tarde,
+    -- sin señal—; una marca vieja sube, como siempre.
+    update sesiones
+       set ultima_actividad = case when ultima_actividad > now() then least(ultima_actividad, t) else greatest(ultima_actividad, t) end
+     where id = s.id;
+  elsif s.estado = 'corriendo' then
     update sesiones set ultima_actividad = greatest(ultima_actividad, t) where id = s.id;
   elsif s.estado = 'terminada' and s.cerro_sola and t > s.fin and t <= s.fin + ventana_inactividad() then
     update sesiones
@@ -1926,8 +2047,8 @@ begin
 end;
 $$;
 
-revoke execute on function public.marcar_actividad(uuid, timestamptz) from public, anon;
-grant execute on function public.marcar_actividad(uuid, timestamptz) to authenticated;
+revoke execute on function public.marcar_actividad(uuid, timestamptz, boolean) from public, anon;
+grant execute on function public.marcar_actividad(uuid, timestamptz, boolean) to authenticated;
 
 -- -------------------------------------------------------------
 -- Empezar
@@ -2132,21 +2253,36 @@ begin
            case when p is null
                 then jsonb_build_object('ejercicio', e, 'series', s)
                 else jsonb_build_object('ejercicio', e, 'series', s, 'pesos', p, 'carga', c)
-           end order by i), '[]'::jsonb)
+           end
+           -- LOS MINUTOS (migración 76): solo de un ejercicio que se mide en tiempo.
+           || case when m is null then '{}'::jsonb else jsonb_build_object('minutos', m) end
+           order by i), '[]'::jsonb)
     into limpio
   from (
     select
       f.e, f.s, f.i,
-      pesos_limpios(f.pesos, f.s) as p,
+      -- UN EJERCICIO QUE NO LLEVA PESO NO GUARDA PESOS (migración 74). La plancha
+      -- no muestra el campo, pero el bloque podía llegar con los kilos del
+      -- ejercicio anterior: quedaban guardados sin verse, la app los volvía a
+      -- proponer y el "+" los anotaba en cada serie, sesión tras sesión.
+      case when (select x.admite_peso from ejercicios x where x.id = f.e) is false then null
+           else pesos_limpios(f.pesos, f.s)
+      end as p,
       case when f.carga in ('total', 'par', 'una', 'lastre', 'corporal') then f.carga
            else (select carga from ejercicios where id = f.e)
-      end as c
+      end as c,
+      -- Igual que el teléfono (minutosValidos): menos de 1 no es un dato, más de 600 se topa.
+      case when (select x.mide from ejercicios x where x.id = f.e) = 'tiempo' and jsonb_typeof(f.minutos) = 'number'
+                and (f.minutos #>> '{}')::numeric >= 1
+           then least(round((f.minutos #>> '{}')::numeric), 600)::int
+      end as m
     from (
       select
         b.valor->>'ejercicio' as e,
         greatest(0, least((b.valor->>'series')::int, 999)) as s,
         b.valor->'pesos' as pesos,
         b.valor->>'carga' as carga,
+        b.valor->'minutos' as minutos,
         b.orden as i
       from jsonb_array_elements(p_bloques) with ordinality as b(valor, orden)
       where b.valor->>'ejercicio' in (select id from ejercicios)
@@ -2162,6 +2298,36 @@ begin
   return jsonb_build_object('bloques', coalesce(guardado, '[]'::jsonb), 'total_series', total);
 end;
 $$;
+
+-- UN EJERCICIO PROPIO (migración 76). Hay muchos que no están y no se van a
+-- poner todos los del mundo: cada cuenta agrega los suyos con un "+". Un nombre
+-- que ya tiene (sin importar mayúsculas) devuelve ese mismo: tocar dos veces no
+-- crea dos. Hasta cien por cuenta. Devuelve el id.
+create or replace function public.crear_ejercicio(p_nombre text, p_grupo text, p_mide text)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  limpio text := left(regexp_replace(btrim(coalesce(p_nombre, '')), '\s+', ' ', 'g'), 40);
+  mide text := case when p_mide = 'tiempo' or p_grupo = 'cardio' then 'tiempo' else 'series' end;
+  ya text;
+  v_id text;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if char_length(limpio) < 2 then raise exception 'el nombre es muy corto'; end if;
+  if p_grupo is null or p_grupo not in ('pecho', 'espalda', 'hombros', 'brazos', 'piernas', 'core', 'cardio') then
+    raise exception 'grupo desconocido';
+  end if;
+  select id into ya from ejercicios where creado_por = uid and lower(nombre) = lower(limpio) limit 1;
+  if ya is not null then return ya; end if;
+  if (select count(*) from ejercicios where creado_por = uid) >= 100 then raise exception 'ya hay cien ejercicios propios'; end if;
+  v_id := 'propio_' || substr(md5(uid::text || clock_timestamp()::text || random()::text), 1, 12);
+  insert into ejercicios (id, nombre, grupo, cuenta_dots, admite_peso, orden, carga, mide, creado_por)
+       values (v_id, limpio, p_grupo, false, mide = 'series', 9000, 'total', mide, uid);
+  return v_id;
+end;
+$$;
+revoke execute on function public.crear_ejercicio(text, text, text) from public, anon;
+grant execute on function public.crear_ejercicio(text, text, text) to authenticated;
 
 -- En qué terminaste la última vez, para que la app abra ahí. Si entrenás
 -- siempre parecido, cambiar de ejercicio es la excepción; elegirlo cada día
@@ -2243,7 +2409,8 @@ declare
 begin
   if uid is null then raise exception 'sin sesión'; end if;
   if p_carga is null or p_carga not in ('total', 'par', 'una', 'lastre', 'corporal') then return; end if;
-  if not exists (select 1 from ejercicios where id = p_ejercicio) then return; end if;
+  -- Solo sobre un ejercicio que se ve (migración 83): un propio ajeno o huérfano no.
+  if not exists (select 1 from ejercicios where id = p_ejercicio and ((creado_por is null and not huerfano) or creado_por = uid)) then return; end if;
   insert into cargas_elegidas (user_id, ejercicio, carga)
        values (uid, p_ejercicio, p_carga)
   on conflict (user_id, ejercicio) do update set carga = excluded.carga, elegida = now();
@@ -2252,6 +2419,32 @@ $$;
 
 revoke execute on function public.elegir_carga(text, text) from public, anon;
 grant execute on function public.elegir_carga(text, text) to authenticated;
+
+-- CORREGIR UN DÍA, DE UNA (migración 74). El teléfono lo hacía en dos pedidos
+-- sueltos —borrar el día y volver a ponerlo—: si el primero entraba y el
+-- segundo no (la señal del gimnasio), el día quedaba BORRADO, con su sesión, y
+-- la racha caía en seco. Acá las dos cosas van en una transacción: o entran las
+-- dos, o no pasa nada.
+--
+-- `security invoker` A PROPÓSITO: corre con los permisos de quien llama, así
+-- que valen las mismas reglas y disparadores que cuando lo hacía a mano.
+create or replace function public.corregir_dia(p_fecha date, p_destino text)
+returns void language plpgsql security invoker set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if p_fecha is null or p_destino is null or p_destino not in ('fui', 'descanso', 'nada') then
+    raise exception 'no sé qué hacer con ese día';
+  end if;
+  delete from logs where user_id = uid and fecha = p_fecha;
+  if p_destino <> 'nada' then
+    insert into logs (user_id, fecha, es_descanso) values (uid, p_fecha, p_destino = 'descanso');
+  end if;
+end;
+$$;
+revoke execute on function public.corregir_dia(date, text) from public, anon;
+grant execute on function public.corregir_dia(date, text) to authenticated;
 
 -- -------------------------------------------------------------
 -- CÓMO ARRANCA EL BLOQUE (migración 38): el modo y el último peso EN ESE MODO
@@ -2263,12 +2456,25 @@ grant execute on function public.elegir_carga(text, text) to authenticated;
 --
 -- `elegida` dice si el modo lo dijo la persona o es el del catálogo: con eso el
 -- teléfono sabe si tiene que preguntar.
+-- EL PESO QUE SE PROPONE. ES LA MISMA REGLA que `nucleo/pesoRecordado.ts`, que
+-- es quien propone en el teléfono; esto es su respaldo, y dos reglas para el
+-- mismo número ya costaron tres veces. En este orden:
+--   1. LO DE HOY (migración 71): la última serie de la sesión que está
+--      corriendo. Quien reabre un ejercicio a los veinte minutos sigue desde
+--      donde quedó. La 70 la había dejado afuera, y un teléfono recién
+--      instalado que retoma una sesión abierta —sin sus bloques todavía y sin
+--      historial— recibía de acá el tope de otro día.
+--   2. Si hoy no se hizo: LO MÁS PESADO DE LA ÚLTIMA SESIÓN CERRADA
+--      (migración 70), no su última serie: casi todos arrancan con el peso
+--      más alto y bajan al cansarse. De los últimos 90 días.
+-- El bloque que no dice su modo usa el del catálogo.
 create or replace function public.como_arranca(p_ejercicio text)
 returns jsonb language sql stable security definer set search_path = public as $$
   with modo as (
     select e.carga_ambigua as ambigua,
            c.carga as elegida,
-           coalesce(c.carga, e.carga) as carga
+           coalesce(c.carga, e.carga) as carga,
+           e.carga as catalogo
       from ejercicios e
       left join cargas_elegidas c on c.ejercicio = e.id and c.user_id = auth.uid()
      where e.id = p_ejercicio
@@ -2277,20 +2483,49 @@ returns jsonb language sql stable security definer set search_path = public as $
            'carga', m.carga,
            'elegida', m.elegida is not null,
            'ambigua', m.ambigua,
-           'peso', (
-             select x.v::numeric
-               from sesiones s,
-                    jsonb_array_elements(s.bloques) with ordinality as b(bloque, ob),
-                    jsonb_array_elements_text(
-                      case when jsonb_typeof(b.bloque->'pesos') = 'array' then b.bloque->'pesos' else '[]'::jsonb end
-                    ) with ordinality as x(v, ox)
-              where s.user_id = auth.uid()
-                and b.bloque->>'ejercicio' = p_ejercicio
-                and coalesce(b.bloque->>'carga', 'total') = m.carga
-                and x.v is not null
-                and s.inicio > now() - interval '90 days'
-              order by s.inicio desc, b.ob desc, x.ox desc
-              limit 1
+           'peso', coalesce(
+             (
+               select x.v::numeric
+                 from sesiones s,
+                      jsonb_array_elements(s.bloques) with ordinality as b(bloque, ob),
+                      jsonb_array_elements_text(
+                        case when jsonb_typeof(b.bloque->'pesos') = 'array' then b.bloque->'pesos' else '[]'::jsonb end
+                      ) with ordinality as x(v, ox)
+                where s.user_id = auth.uid()
+                  and s.estado = 'corriendo'
+                  and b.bloque->>'ejercicio' = p_ejercicio
+                  and coalesce(b.bloque->>'carga', m.catalogo) = m.carga
+                  and x.v is not null
+                order by s.inicio desc, b.ob desc, x.ox desc
+                limit 1
+             ),
+             (
+               select max(x.v::numeric)
+                 from sesiones s,
+                      jsonb_array_elements(s.bloques) as b(bloque),
+                      jsonb_array_elements_text(
+                        case when jsonb_typeof(b.bloque->'pesos') = 'array' then b.bloque->'pesos' else '[]'::jsonb end
+                      ) as x(v)
+                where s.id = (
+                        select s2.id
+                          from sesiones s2,
+                               jsonb_array_elements(s2.bloques) as b2(bloque),
+                               jsonb_array_elements_text(
+                                 case when jsonb_typeof(b2.bloque->'pesos') = 'array' then b2.bloque->'pesos' else '[]'::jsonb end
+                               ) as y(v)
+                         where s2.user_id = auth.uid()
+                           and s2.estado <> 'corriendo'
+                           and s2.inicio > now() - interval '90 days'
+                           and b2.bloque->>'ejercicio' = p_ejercicio
+                           and coalesce(b2.bloque->>'carga', m.catalogo) = m.carga
+                           and y.v is not null
+                         order by s2.inicio desc
+                         limit 1
+                      )
+                  and b.bloque->>'ejercicio' = p_ejercicio
+                  and coalesce(b.bloque->>'carga', m.catalogo) = m.carga
+                  and x.v is not null
+             )
            )
          )
     from modo m;
@@ -2355,7 +2590,8 @@ begin
   if p_peso <= 0 or p_peso > 1000 or p_series is null or p_series < 1 or p_series > 99 then return; end if;
   -- Ni del futuro ni de hace un mes: es la marca de una sesión reciente.
   if p_dia is null or p_dia > mi_hoy() + 1 or p_dia < mi_hoy() - 14 then return; end if;
-  if not exists (select 1 from ejercicios where id = p_ejercicio) then return; end if;
+  -- Solo sobre un ejercicio que se ve (migración 83): un propio ajeno o huérfano no.
+  if not exists (select 1 from ejercicios where id = p_ejercicio and ((creado_por is null and not huerfano) or creado_por = uid)) then return; end if;
   insert into subidas_marcadas (user_id, ejercicio, carga, peso, series, dia)
        values (uid, p_ejercicio, p_carga, p_peso, p_series, p_dia)
   on conflict (user_id, ejercicio, carga) do update
@@ -2918,56 +3154,69 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 -- -------------------------------------------------------------
--- ACTIVIDAD EN VIVO — "fulano está en el gimnasio ahora" (migración 51)
+-- QUIÉN ESTÁ ENTRENANDO AHORA (migración 51; UNA SOLA FUENTE desde la 72)
 --
--- Al llegar al gimnasio, el vigilante marca "hasta = now()+2h"; las lecturas
--- filtran `hasta > now()`, así CADUCA SOLA sin cron ni detectar la salida.
--- OPT-IN (`profiles.comparte_gimnasio`): el vigilante solo publica si está
--- prendido. NUNCA dice dónde: `entrenando_ahora` devuelve nombre, avatar y
--- desde cuándo, jamás el gimnasio ni la distancia.
+-- Está entrenando quien tiene UNA SESIÓN CORRIENDO QUE LA BASE TODAVÍA DA POR
+-- VIVA, y tiene prendido "Avisar cuando entreno" (`profiles.comparte_gimnasio`).
+-- Nada más: sale de `sesiones`, la misma tabla que dice cuándo empezó y cuándo
+-- terminó el entrenamiento.
+--
+-- Hasta la 72 salía de una tabla aparte, `en_el_gimnasio`, con una marca de dos
+-- horas que ponía también el vigilante con solo estar adentro del radio del
+-- gimnasio. Eran dos fuentes para lo mismo: aparecía entrenando quien había
+-- terminado hacía dos horas y quien vivía al lado. La tabla se fue.
+--
+-- CON EL TELÉFONO BLOQUEADO NO SALE NADA (iOS congela la app, y la tarjeta de
+-- la pantalla bloqueada no tiene botones): no hay "sigo acá" posible. Por eso
+-- no se pide una señal aparte y se usa la regla con la que la base YA cierra
+-- las sesiones: media hora sin series, o dos horas si nunca hubo una.
+-- NUNCA dice dónde ni desde cuándo: nombre y avatar. La hora de inicio de la
+-- sesión dejaría calcular cuánto dura, y la duración no se muestra a nadie.
 -- -------------------------------------------------------------
-create table public.en_el_gimnasio (
-  user_id uuid primary key references public.profiles(id) on delete cascade,
-  desde timestamptz not null default now(),
-  hasta timestamptz not null
-);
--- RLS acá y no en el bloque de arriba: esa lista corre antes de que esta tabla
--- exista. Sin acceso directo del cliente; se entra y se lee por las funciones.
-alter table public.en_el_gimnasio enable row level security;
+
+-- ¿LA BASE TODAVÍA DA POR VIVA ESTA SESIÓN? Es la regla de
+-- `cerrar_sesiones_vencidas`, dicha al revés; `test:db` comprueba que las dos
+-- coinciden en el borde, para que no se separen.
+create or replace function public.sesion_sigue_viva(p_inicio timestamptz, p_ultima_actividad timestamptz)
+returns boolean language sql stable set search_path = public as $$
+  select case
+           when p_ultima_actividad > p_inicio then now() < p_ultima_actividad + public.ventana_inactividad()
+           else now() - p_inicio < public.tope_sesion()
+         end;
+$$;
+revoke execute on function public.sesion_sigue_viva(timestamptz, timestamptz) from public, anon, authenticated;
 
 create or replace function public.fijar_comparte_gimnasio(p_valor boolean)
 returns void language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid();
 begin
   if uid is null then return; end if;
+  -- Al apagarlo deja de aparecer YA: `entrenando_ahora` lo lee de acá.
   update profiles set comparte_gimnasio = coalesce(p_valor, false) where id = uid;
-  -- Al apagarlo deja de aparecer YA: se borra la marca vigente.
-  if not coalesce(p_valor, false) then delete from en_el_gimnasio where user_id = uid; end if;
 end;
 $$;
 
+-- YA NO HACE NADA (migración 72). Queda porque los teléfonos sin actualizar la
+-- siguen llamando: al llegar al gimnasio y al iniciar una sesión.
 create or replace function public.marcar_en_gimnasio()
 returns void language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid();
 begin
-  if uid is null then return; end if;
-  if not exists (select 1 from profiles where id = uid and comparte_gimnasio) then return; end if;
-  insert into en_el_gimnasio (user_id, desde, hasta)
-    values (uid, now(), now() + interval '2 hours')
-    on conflict (user_id) do update set hasta = now() + interval '2 hours';
+  return;
 end;
 $$;
 
 create or replace function public.entrenando_ahora()
-returns table (id uuid, username text, avatar_url text, desde timestamptz)
+returns table (id uuid, username text, avatar_url text)
 language sql stable security definer set search_path = public as $$
-  select u.id, u.username, u.avatar_url, g.desde
-    from en_el_gimnasio g
-    join usuarios_publicos u on u.id = g.user_id
-   where g.hasta > now()
-     and g.user_id <> auth.uid()
-     and public.son_amigos(auth.uid(), g.user_id)
-   order by g.desde desc;
+  select u.id, u.username, u.avatar_url
+    from sesiones s
+    join profiles p on p.id = s.user_id and p.comparte_gimnasio
+    join usuarios_publicos u on u.id = s.user_id
+   where s.estado = 'corriendo'
+     and public.sesion_sigue_viva(s.inicio, s.ultima_actividad)
+     and s.user_id <> auth.uid()
+     and public.son_amigos(auth.uid(), s.user_id)
+   order by s.inicio desc;
 $$;
 
 revoke execute on function public.fijar_comparte_gimnasio(boolean), public.marcar_en_gimnasio(), public.entrenando_ahora() from public, anon;
@@ -2994,7 +3243,9 @@ language sql stable security definer set search_path = public as $$
   select l.fecha,
          -- Se arma de nuevo con SOLO esas dos claves: el bloque guardado lleva
          -- además los pesos, y esos no salen de acá.
-         (select jsonb_agg(jsonb_build_object('ejercicio', b.value ->> 'ejercicio', 'series', b.value -> 'series') order by b.ordinality)
+         (select jsonb_agg(jsonb_build_object('ejercicio', b.value ->> 'ejercicio', 'series', b.value -> 'series')
+                           || case when jsonb_typeof(b.value -> 'minutos') = 'number' then jsonb_build_object('minutos', b.value -> 'minutos') else '{}'::jsonb end
+                           order by b.ordinality)
             from jsonb_array_elements(s.bloques) with ordinality b
            where coalesce(b.value ->> 'ejercicio', '') <> '')
     from sesiones s
@@ -3010,6 +3261,140 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke execute on function public.fijar_comparte_rutina(boolean), public.rutina_de_amigo(uuid) from public, anon;
 grant execute on function public.fijar_comparte_rutina(boolean), public.rutina_de_amigo(uuid) to authenticated;
+
+-- -------------------------------------------------------------
+-- LAS RUTINAS GUARDADAS (migración 75)
+-- -------------------------------------------------------------
+-- Hasta acá la rutina se deducía de las sesiones (`rutina_de_amigo`). Ahora
+-- también se guarda: VARIAS por cuenta ("Entrenamiento 1", "Entrenamiento 2"),
+-- cada una con su semana entera —días de descanso incluidos— y UNA activa.
+--
+-- `dias` es una lista de 7, en el orden de `Date.getDay()` (0 = domingo):
+-- [{ descanso, ejercicios: [{ ejercicio, series, minutos? }] }]. NUNCA PESOS.
+-- Lo que llega del teléfono pasa por `rutina_dias_limpios`, que le pone esa
+-- forma y los topes: lo que no se entienda se tira, no revienta.
+--
+-- Sin acceso directo: se lee y se escribe por las funciones, como el resto de
+-- las tablas nuevas. Copiar la rutina de un amigo es leerla (por las funciones
+-- de siempre, que miran la amistad y "mostrar mi rutina") y guardarla como
+-- una propia: una copia libre, sin atadura con la de él.
+create table if not exists public.rutinas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  nombre text not null,
+  activa boolean not null default false,
+  dias jsonb not null,
+  creada timestamptz not null default now(),
+  actualizada timestamptz not null default now(),
+  constraint rutinas_nombre_valido check (char_length(nombre) between 1 and 40)
+);
+create unique index if not exists rutinas_una_activa on public.rutinas (user_id) where activa;
+create index if not exists rutinas_de on public.rutinas (user_id);
+alter table public.rutinas enable row level security;
+
+create or replace function public.rutina_dias_limpios(p_dias jsonb)
+returns jsonb language sql immutable set search_path = public as $$
+  select jsonb_agg(
+           jsonb_build_object(
+             'descanso', coalesce(jsonb_typeof(d.valor -> 'descanso') = 'boolean' and (d.valor ->> 'descanso')::boolean, false),
+             'ejercicios', case
+               when coalesce(jsonb_typeof(d.valor -> 'descanso') = 'boolean' and (d.valor ->> 'descanso')::boolean, false) then '[]'::jsonb
+               else coalesce((
+                 select jsonb_agg(
+                          jsonb_build_object(
+                            'ejercicio', left(e.valor ->> 'ejercicio', 80),
+                            'series', case when jsonb_typeof(e.valor -> 'series') = 'number'
+                                           then greatest(0, least(round((e.valor ->> 'series')::numeric), 99)) else 0 end
+                          ) || case when jsonb_typeof(e.valor -> 'minutos') = 'number'
+                                    then jsonb_build_object('minutos', greatest(0, least(round((e.valor ->> 'minutos')::numeric), 600)))
+                                    else '{}'::jsonb end
+                          order by e.i)
+                   from jsonb_array_elements(case when jsonb_typeof(d.valor -> 'ejercicios') = 'array' then d.valor -> 'ejercicios' else '[]'::jsonb end)
+                        with ordinality as e(valor, i)
+                  where jsonb_typeof(e.valor) = 'object'
+                    and coalesce(e.valor ->> 'ejercicio', '') <> ''
+                    and e.i <= 30
+               ), '[]'::jsonb)
+             end
+           ) order by g.n)
+    from generate_series(0, 6) as g(n)
+    cross join lateral (select case when jsonb_typeof(p_dias) = 'array' then p_dias -> g.n end as valor) as d;
+$$;
+revoke execute on function public.rutina_dias_limpios(jsonb) from public, anon, authenticated;
+
+-- MIS RUTINAS, de la más vieja a la más nueva.
+create or replace function public.mis_rutinas()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'nombre', r.nombre, 'activa', r.activa, 'dias', r.dias) order by r.creada, r.id), '[]'::jsonb)
+    from rutinas r
+   where r.user_id = auth.uid();
+$$;
+
+-- GUARDAR: sin id crea una (activa si es la primera); con id cambia la mía.
+-- Devuelve el id, o null si el id no era mío. Hasta diez por cuenta.
+create or replace function public.guardar_rutina(p_id uuid, p_nombre text, p_dias jsonb)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  limpio text := left(btrim(coalesce(p_nombre, '')), 40);
+  v_id uuid;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if limpio = '' then limpio := 'Entrenamiento'; end if;
+  if p_id is null then
+    if (select count(*) from rutinas where user_id = uid) >= 10 then raise exception 'ya hay diez rutinas'; end if;
+    insert into rutinas (user_id, nombre, dias, activa)
+         values (uid, limpio, rutina_dias_limpios(p_dias), not exists (select 1 from rutinas where user_id = uid and activa))
+      returning id into v_id;
+  else
+    update rutinas set nombre = limpio, dias = rutina_dias_limpios(p_dias), actualizada = now()
+     where id = p_id and user_id = uid
+     returning id into v_id;
+  end if;
+  return v_id;
+end;
+$$;
+
+-- ACTIVAR una mía: queda esa sola. En dos pasos, para que el índice de "una
+-- activa" no vea dos por un instante.
+create or replace function public.activar_rutina(p_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if not exists (select 1 from rutinas where id = p_id and user_id = uid) then return; end if;
+  update rutinas set activa = false where user_id = uid and activa and id <> p_id;
+  update rutinas set activa = true where id = p_id;
+end;
+$$;
+
+create or replace function public.borrar_rutina(p_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'sin sesión'; end if;
+  delete from rutinas where id = p_id and user_id = auth.uid();
+end;
+$$;
+
+-- LA RUTINA ACTIVA DE ALGUIEN: la mía, o la de un amigo que la muestra (la
+-- misma regla que `rutina_de_amigo`). Null si no tiene ninguna guardada.
+create or replace function public.rutina_activa_de(p_quien uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('id', r.id, 'nombre', r.nombre, 'dias', r.dias)
+    from rutinas r
+    join profiles p on p.id = r.user_id
+   where r.user_id = p_quien
+     and r.activa
+     and auth.uid() is not null
+     and (p_quien = auth.uid() or (p.comparte_rutina and public.son_amigos(auth.uid(), p_quien)));
+$$;
+
+revoke execute on function public.mis_rutinas(), public.guardar_rutina(uuid, text, jsonb), public.activar_rutina(uuid),
+  public.borrar_rutina(uuid), public.rutina_activa_de(uuid) from public, anon;
+grant execute on function public.mis_rutinas(), public.guardar_rutina(uuid, text, jsonb), public.activar_rutina(uuid),
+  public.borrar_rutina(uuid), public.rutina_activa_de(uuid) to authenticated;
+
 
 -- -------------------------------------------------------------
 -- ENTRENAR CON OTRO (migración 67) — la versión chica, de a dos
@@ -3048,41 +3433,208 @@ create unique index if not exists entrenos_par_unico on public.entrenos_comparti
   (least(solicitante, destinatario), greatest(solicitante, destinatario));
 alter table public.entrenos_compartidos enable row level security;
 
--- PEDIR UNIRSE. Solo a un amigo. Si el otro ya me lo había pedido a mí, pedir
--- es aceptar. Repetirlo no hace nada: se puede reintentar.
-create or replace function public.pedir_unirse(p_a uuid)
+-- ENTRENAR EN GRUPO (migración 88): el par de antes pasó a ser un grupo de hasta 10.
+create table if not exists public.grupos_entreno (
+  id uuid primary key default gen_random_uuid(),
+  -- Para el link de invitación: corto, sin significado y sin la hora.
+  codigo text not null unique default substr(md5(random()::text || clock_timestamp()::text), 1, 12),
+  creado timestamptz not null default now()
+);
+alter table public.grupos_entreno enable row level security;
+
+create table if not exists public.grupo_miembros (
+  -- Una fila por persona: nadie está en dos grupos.
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  grupo_id uuid not null references public.grupos_entreno(id) on delete cascade,
+  entro timestamptz not null default clock_timestamp(),
+  -- Desempata a los que entraron en el mismo instante: el orden de llegada.
+  n bigint generated always as identity
+);
+create index if not exists grupo_miembros_grupo on public.grupo_miembros (grupo_id);
+alter table public.grupo_miembros enable row level security;
+
+create or replace function public.tope_grupo()
+returns int language sql immutable as $$ select 10; $$;
+
+-- ¿Sigue entrenando? Lo mismo que mira "Entrenando ahora": una sesión viva.
+create or replace function public.entrena_ahora(p_user uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from sesiones s
+     where s.user_id = p_user and s.estado = 'corriendo'
+       and public.sesion_sigue_viva(s.inicio, s.ultima_actividad)
+  );
+$$;
+
+-- ¿Sigue en el grupo? Como el par de antes (vinculo_vivo): tres horas desde que entró, o
+-- más si sigue entrenando; y nunca si dejó una sesión que la base ya no da por viva.
+-- Quien todavía no empezó y solo mira, cuenta.
+create or replace function public.miembro_vivo(p_user uuid, p_entro timestamptz)
+returns boolean language sql stable security definer set search_path = public as $$
+  select (p_entro > now() - interval '3 hours' or public.entrena_ahora(p_user))
+     and not exists (
+       select 1 from sesiones s
+        where s.user_id = p_user and s.estado = 'corriendo'
+          and not public.sesion_sigue_viva(s.inicio, s.ultima_actividad)
+     );
+$$;
+
+-- Saca a los que ya no entrenan y borra los grupos vacíos. Se llama al entrar a
+-- cualquier función de grupo: no hace falta un trabajo nocturno.
+create or replace function public.limpiar_grupos()
 returns void language plpgsql security definer set search_path = public as $$
+begin
+  delete from grupo_miembros m where not public.miembro_vivo(m.user_id, m.entro);
+  delete from grupos_entreno g where not exists (select 1 from grupo_miembros m where m.grupo_id = g.id);
+  -- Los pedidos de quien ya no entrena tampoco sirven.
+  delete from entrenos_compartidos e where e.estado = 'pendiente' and e.hasta < now();
+end;
+$$;
+
+create or replace function public.grupo_de(p_user uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select grupo_id from grupo_miembros where user_id = p_user;
+$$;
+
+-- ¿Está en un grupo DE VERDAD? Uno de uno (el que armó el link y nadie entró, o el
+-- que quedó solo) no cuenta: no le impide unirse a otro.
+create or replace function public.en_grupo(p_user uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select (select count(*) from grupo_miembros where grupo_id = public.grupo_de(p_user)) >= 2;
+$$;
+
+-- ¿Son amigos? Sin mirar quién pregunta: un pedido lo ve todo el grupo.
+create or replace function public.amigos_entre(a uuid, b uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select not public.hay_bloqueo(a, b)
+     and exists (select 1 from friendships where estado = 'aceptada'
+                  and least(solicitante, destinatario) = least(a, b) and greatest(solicitante, destinatario) = greatest(a, b));
+$$;
+
+-- Quien armó el grupo: el que lleva más tiempo adentro.
+create or replace function public.lider_de(p_grupo uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select user_id from grupo_miembros where grupo_id = p_grupo order by entro, n limit 1;
+$$;
+
+-- Mete a alguien en el grupo de `p_con` (o arma uno con los dos). Devuelve el resultado.
+create or replace function public.entrar_al_grupo(p_quien uuid, p_con uuid)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  g uuid := public.grupo_de(p_con);
+begin
+  if public.en_grupo(p_quien) then return 'ya-unido'; end if;
+  -- El que estaba solo deja su grupo de uno.
+  delete from grupo_miembros where user_id = p_quien;
+  delete from grupos_entreno x where not exists (select 1 from grupo_miembros m where m.grupo_id = x.id);
+  if g is null then
+    insert into grupos_entreno default values returning id into g;
+    insert into grupo_miembros (user_id, grupo_id) values (p_con, g);
+  elsif (select count(*) from grupo_miembros where grupo_id = g) >= public.tope_grupo() then
+    return 'ocupado';
+  end if;
+  insert into grupo_miembros (user_id, grupo_id) values (p_quien, g);
+  delete from entrenos_compartidos where estado = 'pendiente' and solicitante = p_quien;
+  return 'ok';
+end;
+$$;
+
+
+-- ¿ESTE VÍNCULO SIGUE VIVO? (migración 73). No alcanza con que no haya vencido:
+-- quien se va sin tocar "Terminar" deja la sesión `corriendo` en la base hasta
+-- que vuelva a abrir la app, y el disparador que corta el vínculo no dispara.
+-- El otro lo seguía viendo en "Entrenando contigo" hasta tres horas, mientras
+-- "Entrenando ahora" ya lo había sacado. Una sola regla para las dos listas: si
+-- alguno de los dos tiene una sesión que la base ya no da por viva, no hay
+-- vínculo. Quien no tiene sesión y solo mira no cuenta.
+create or replace function public.vinculo_vivo(p_solicitante uuid, p_destinatario uuid, p_hasta timestamptz)
+returns boolean language sql stable security definer set search_path = public as $$
+  select p_hasta > now()
+     and not exists (
+           select 1
+             from sesiones s
+            where s.user_id in (p_solicitante, p_destinatario)
+              and s.estado = 'corriendo'
+              and not public.sesion_sigue_viva(s.inicio, s.ultima_actividad)
+         );
+$$;
+revoke execute on function public.vinculo_vivo(uuid, uuid, timestamptz) from public, anon, authenticated;
+
+-- ¿YA ENTRENA CON ALGUIEN? DE A DOS, DE VERDAD (migración 73). El índice es por
+-- par, no por persona: quien ya estaba unido podía aceptar a un segundo y
+-- quedaba una estrella donde los otros dos no se veían entre sí. Los grupos de
+-- verdad llegan con el multijugador completo; hasta entonces, uno solo.
+create or replace function public.entrena_con_otro(p_quien uuid, p_salvo uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from grupo_miembros a join grupo_miembros b on b.grupo_id = a.grupo_id
+     where a.user_id = p_quien and b.user_id <> p_quien and b.user_id <> p_salvo
+  );
+$$;
+revoke execute on function public.entrena_con_otro(uuid, uuid) from public, anon, authenticated;
+
+-- PEDIR UNIRSE. Solo a un amigo QUE ESTÉ ENTRENANDO AHORA (la misma regla que
+-- `entrenando_ahora`: la lista del teléfono puede ser de hace un rato) y que no
+-- esté ya con otro. Si el otro ya me lo había pedido a mí, pedir es aceptar.
+-- Repetirlo no hace nada: se puede reintentar. Contesta qué pasó, para que el
+-- teléfono pueda decirlo: 'ok', 'no-entrena', 'ocupado' (el otro ya entrena con
+-- alguien) o 'ya-unido' (yo ya entreno con alguien).
+create or replace function public.pedir_unirse(p_a uuid)
+returns text language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  if p_a is null or p_a = uid or not public.son_amigos(uid, p_a) then return; end if;
-  delete from entrenos_compartidos
-   where least(solicitante, destinatario) = least(uid, p_a)
-     and greatest(solicitante, destinatario) = greatest(uid, p_a)
-     and hasta <= now();
-  update entrenos_compartidos set estado = 'aceptada', hasta = now() + interval '3 hours'
-   where solicitante = p_a and destinatario = uid;
-  if found then return; end if;
+  if p_a is null or p_a = uid or not public.son_amigos(uid, p_a) then return 'no-entrena'; end if;
+  perform public.limpiar_grupos();
+  if public.en_grupo(uid) then return 'ya-unido'; end if;
+  if public.grupo_de(p_a) is not null
+     and (select count(*) from grupo_miembros where grupo_id = public.grupo_de(p_a)) >= public.tope_grupo() then
+    return 'ocupado';
+  end if;
+  -- Él me lo había pedido a mí: con pedirlo de vuelta alcanza para estar juntos.
+  if exists (select 1 from entrenos_compartidos where estado = 'pendiente' and solicitante = p_a and destinatario = uid) then
+    delete from entrenos_compartidos where estado = 'pendiente' and solicitante = p_a and destinatario = uid;
+    return public.entrar_al_grupo(p_a, uid);
+  end if;
+  if not exists (
+       select 1 from sesiones s join profiles p on p.id = s.user_id and p.comparte_gimnasio
+        where s.user_id = p_a and s.estado = 'corriendo'
+          and public.sesion_sigue_viva(s.inicio, s.ultima_actividad)) then
+    return 'no-entrena';
+  end if;
   insert into entrenos_compartidos (solicitante, destinatario, hasta)
        values (uid, p_a, now() + interval '3 hours')
   on conflict do nothing;
+  return 'ok';
 end;
 $$;
 
--- CONTESTAR. Solo quien la recibió. Decir que no la borra: el otro puede volver a pedir.
+-- CONTESTAR. Solo quien la recibió. Decir que no la borra: el otro puede volver
+-- a pedir. Aceptar pide que el vínculo siga vivo y que ninguno de los dos esté
+-- ya con otro (migración 73); si no se puede, el pedido se borra: ya no sirve.
+-- Al aceptar se van los demás pedidos pendientes de los dos. No hace falta
+-- mirar si quien acepta entrena: si cerró su sesión, el disparador ya se llevó
+-- el pedido, y si la dejó abierta y se fue, el vínculo no está vivo.
 create or replace function public.responder_union(p_id uuid, p_acepta boolean)
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
+  c entrenos_compartidos;
 begin
   if uid is null then raise exception 'sin sesión'; end if;
-  if coalesce(p_acepta, false) then
-    update entrenos_compartidos set estado = 'aceptada', hasta = now() + interval '3 hours'
-     where id = p_id and destinatario = uid and estado = 'pendiente' and hasta > now();
-  else
-    delete from entrenos_compartidos where id = p_id and destinatario = uid and estado = 'pendiente';
+  perform public.limpiar_grupos();
+  select * into c from entrenos_compartidos
+   where id = p_id and estado = 'pendiente'
+     and (destinatario = uid or (public.grupo_de(uid) is not null and public.grupo_de(destinatario) = public.grupo_de(uid)));
+  if c.id is null then return; end if;
+  delete from entrenos_compartidos where id = c.id;
+  if not coalesce(p_acepta, false) then return; end if;
+  if not public.miembro_vivo(c.solicitante, now()) or not public.miembro_vivo(c.destinatario, now())
+     or not public.miembro_vivo(uid, now()) then
+    return;
   end if;
+  perform public.entrar_al_grupo(c.solicitante, c.destinatario);
 end;
 $$;
 
@@ -3095,6 +3647,9 @@ begin
   if uid is null or p_otro is null then return; end if;
   delete from entrenos_compartidos
    where (solicitante = uid and destinatario = p_otro) or (solicitante = p_otro and destinatario = uid);
+  if public.grupo_de(uid) is not null and public.grupo_de(uid) = public.grupo_de(p_otro) then
+    perform public.salir_del_grupo();
+  end if;
 end;
 $$;
 
@@ -3131,7 +3686,8 @@ begin
   if uid is null then return; end if;
   delete from en_vivo where user_id = uid;
   delete from entrenos_compartidos where solicitante = uid or destinatario = uid;
-  delete from en_el_gimnasio where user_id = uid;
+  delete from grupo_miembros where user_id = uid;
+  delete from grupos_entreno g where not exists (select 1 from grupo_miembros m where m.grupo_id = g.id);
 end;
 $$;
 
@@ -3141,24 +3697,54 @@ $$;
 -- depender del suyo.
 create or replace function public.mis_uniones()
 returns jsonb language sql stable security definer set search_path = public as $$
-  select coalesce(jsonb_agg(jsonb_build_object(
-           'id', c.id,
-           'estado', c.estado,
-           'la_pedi_yo', c.solicitante = auth.uid(),
-           'otro', jsonb_build_object('id', u.id, 'username', u.username, 'avatar_url', u.avatar_url),
-           'ahora', now(),
-           'en_vivo', case when c.estado = 'aceptada' then (
-             select jsonb_build_object(
-                      'ejercicio', v.ejercicio, 'serie', v.serie, 'meta', v.meta,
-                      'descanso_fin', v.descanso_fin, 'actualizado', v.actualizado)
-               from en_vivo v where v.user_id = u.id and v.actualizado >= c.creado) end
-         ) order by c.creado), '[]'::jsonb)
-    from entrenos_compartidos c
-    join usuarios_publicos u
-      on u.id = case when c.solicitante = auth.uid() then c.destinatario else c.solicitante end
-   where auth.uid() in (c.solicitante, c.destinatario)
-     and c.hasta > now()
-     and public.son_amigos(c.solicitante, c.destinatario);
+  with g as (
+    select m.grupo_id as id from grupo_miembros m
+     where m.user_id = auth.uid() and public.miembro_vivo(m.user_id, m.entro)
+  ),
+  lider as (select public.lider_de((select id from g)) as id),
+  companeros as (
+    select jsonb_build_object(
+             'id', m.grupo_id,
+             'estado', 'aceptada',
+             -- Para la app de la tienda: "la pedí yo" = entré después que él.
+             'la_pedi_yo', (select x.n from grupo_miembros x where x.user_id = auth.uid()) > m.n,
+             'grupo', m.grupo_id,
+             'lider', m.user_id = (select id from lider),
+             'yo_lider', auth.uid() = (select id from lider),
+             'otro', jsonb_build_object('id', u.id, 'username', u.username, 'avatar_url', u.avatar_url),
+             'ahora', now(),
+             'en_vivo', (
+               select jsonb_build_object(
+                        'ejercicio', v.ejercicio, 'serie', v.serie, 'meta', v.meta,
+                        'descanso_fin', v.descanso_fin, 'actualizado', v.actualizado)
+                 from en_vivo v where v.user_id = m.user_id and v.actualizado >= m.entro - interval '1 minute')
+           ) as j, 0 as tipo, m.entro as orden
+      from grupo_miembros m
+      join usuarios_publicos u on u.id = m.user_id
+     where m.grupo_id = (select id from g) and m.user_id <> auth.uid()
+       and public.miembro_vivo(m.user_id, m.entro)
+  ),
+  pedidos as (
+    select jsonb_build_object(
+             'id', c.id,
+             'estado', 'pendiente',
+             'la_pedi_yo', c.solicitante = auth.uid(),
+             'grupo', null,
+             'lider', false,
+             'yo_lider', auth.uid() = (select id from lider),
+             'otro', jsonb_build_object('id', u.id, 'username', u.username, 'avatar_url', u.avatar_url),
+             'ahora', now(),
+             'en_vivo', null
+           ) as j, 1 as tipo, c.creado as orden
+      from entrenos_compartidos c
+      join usuarios_publicos u on u.id = case when c.solicitante = auth.uid() then c.destinatario else c.solicitante end
+     where c.estado = 'pendiente' and c.hasta > now()
+       and public.amigos_entre(c.solicitante, c.destinatario)
+       and (c.solicitante = auth.uid() or c.destinatario = auth.uid()
+            or ((select id from g) is not null and public.grupo_de(c.destinatario) = (select id from g)))
+  )
+  -- Primero los compañeros, después los pedidos.
+  select coalesce((select jsonb_agg(j order by tipo, orden) from (select * from companeros union all select * from pedidos) t), '[]'::jsonb);
 $$;
 
 -- ¿ESTA PERSONA ME MUESTRA SU RUTINA? Para que el perfil de un amigo pueda
@@ -3170,6 +3756,73 @@ returns boolean language sql stable security definer set search_path = public as
     select p.comparte_rutina from profiles p
      where p.id = p_quien and (p_quien = auth.uid() or public.son_amigos(auth.uid(), p_quien))
   ), false);
+$$;
+
+create or replace function public.salir_del_grupo()
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then return; end if;
+  delete from grupo_miembros where user_id = uid;
+  delete from grupos_entreno g where not exists (select 1 from grupo_miembros m where m.grupo_id = g.id);
+end;
+$$;
+
+create or replace function public.echar_del_grupo(p_quien uuid)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  g uuid := public.grupo_de(auth.uid());
+begin
+  if uid is null or g is null or p_quien is null or p_quien = uid then return false; end if;
+  if public.lider_de(g) <> uid or public.grupo_de(p_quien) is distinct from g then return false; end if;
+  delete from grupo_miembros where user_id = p_quien;
+  return true;
+end;
+$$;
+
+create or replace function public.link_del_grupo()
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  g uuid;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  perform public.limpiar_grupos();
+  if not public.entrena_ahora(uid) then return null; end if;
+  g := public.grupo_de(uid);
+  if g is null then
+    insert into grupos_entreno default values returning id into g;
+    insert into grupo_miembros (user_id, grupo_id) values (uid, g);
+  end if;
+  return (select codigo from grupos_entreno where id = g);
+end;
+$$;
+
+create or replace function public.unirse_por_link(p_codigo text)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  g uuid;
+  lider uuid;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  perform public.limpiar_grupos();
+  select id into g from grupos_entreno where codigo = p_codigo;
+  if g is null then return 'no-existe'; end if;
+  lider := public.lider_de(g);
+  if lider is null or lider = uid then return case when lider = uid then 'ya-unido' else 'no-existe' end; end if;
+  if public.hay_bloqueo(uid, lider) then return 'no-existe'; end if;
+  -- Amigos en el acto: el link lo compartió quien armó el grupo.
+  update friendships set estado = 'aceptada'
+   where least(solicitante, destinatario) = least(uid, lider) and greatest(solicitante, destinatario) = greatest(uid, lider);
+  if not found then
+    insert into friendships (solicitante, destinatario, estado) values (lider, uid, 'aceptada');
+  end if;
+  if public.grupo_de(uid) = g then return 'ya-unido'; end if;
+  return public.entrar_al_grupo(uid, lider);
+end;
 $$;
 
 revoke execute on function public.pedir_unirse(uuid), public.responder_union(uuid, boolean), public.salir_de_union(uuid),
@@ -3196,13 +3849,58 @@ begin
   begin
     delete from en_vivo where user_id = old.user_id;
     delete from entrenos_compartidos where solicitante = old.user_id or destinatario = old.user_id;
-    delete from en_el_gimnasio where user_id = old.user_id;
+    delete from grupo_miembros where user_id = old.user_id;
+    delete from grupos_entreno g where not exists (select 1 from grupo_miembros m where m.grupo_id = g.id);
   exception when others then
     null;
   end;
   return null;
 end;
 $$;
+
+-- TIEMPO REAL: los del grupo leen lo del grupo, y nada más. Las políticas corren con
+-- los permisos de quien lee: por eso dos funciones que solo hablan de MI grupo (con
+-- grupo_de abierto, cualquiera podría preguntar en qué grupo está otro).
+create or replace function public.mi_grupo()
+returns uuid language sql stable security definer set search_path = public as $$
+  select public.grupo_de(auth.uid());
+$$;
+create or replace function public.en_mi_grupo(p_otro uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.grupo_de(auth.uid()) is not null and public.grupo_de(p_otro) = public.grupo_de(auth.uid());
+$$;
+revoke execute on function public.mi_grupo(), public.en_mi_grupo(uuid) from public, anon;
+grant execute on function public.mi_grupo(), public.en_mi_grupo(uuid) to authenticated;
+
+drop policy if exists "en vivo: mi grupo" on public.en_vivo;
+create policy "en vivo: mi grupo" on public.en_vivo for select
+  using (user_id = auth.uid() or public.en_mi_grupo(user_id));
+drop policy if exists "grupo: los del grupo" on public.grupo_miembros;
+create policy "grupo: los del grupo" on public.grupo_miembros for select
+  using (grupo_id = public.mi_grupo());
+grant select on public.en_vivo to authenticated;
+grant select on public.grupo_miembros to authenticated;
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    begin
+      alter publication supabase_realtime add table public.en_vivo;
+    exception when duplicate_object then null;
+    end;
+    begin
+      alter publication supabase_realtime add table public.grupo_miembros;
+    exception when duplicate_object then null;
+    end;
+  end if;
+end $$;
+
+revoke execute on function public.tope_grupo(), public.entrena_ahora(uuid), public.miembro_vivo(uuid, timestamptz), public.limpiar_grupos(), public.grupo_de(uuid), public.en_grupo(uuid), public.amigos_entre(uuid, uuid),
+  public.lider_de(uuid), public.entrar_al_grupo(uuid, uuid), public.entrena_con_otro(uuid, uuid) from public, anon, authenticated;
+revoke execute on function public.salir_del_grupo(), public.echar_del_grupo(uuid), public.link_del_grupo(), public.unirse_por_link(text) from public, anon;
+grant execute on function public.salir_del_grupo(), public.echar_del_grupo(uuid), public.link_del_grupo(), public.unirse_por_link(text) to authenticated;
+-- Las de siempre ya tenían sus permisos; `create or replace` no los cambia.
+
 revoke execute on function public.sesion_cerrada_corta_el_entreno() from public, anon, authenticated;
 
 drop trigger if exists sesiones_al_cerrar_corta on public.sesiones;
@@ -3229,7 +3927,17 @@ create policy "descansos: leer los propios" on public.descansos for select using
 
 -- logs: dueño todo; amigos aceptados leen
 create policy "logs: dueño" on public.logs for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "logs: amigos leen" on public.logs for select using (public.son_amigos(auth.uid(), user_id));
+-- Los días de un amigo NO se leen de la tabla (migración 86): la política abría
+-- todas las columnas, y `creado` y `origen` dicen a qué hora entrenó y si llegó al
+-- gimnasio, aunque tenga "Avisar cuando entreno" apagado. Van por esta vista, que
+-- corre como su dueño (como `usuarios_publicos`) y filtra en el where.
+create view public.logs_de_amigos
+with (security_invoker = off) as
+  select id, user_id, fecha, es_descanso, planeta_del_dia, racha_del_dia
+    from public.logs
+   where public.son_amigos(auth.uid(), user_id);
+revoke all on public.logs_de_amigos from public, anon;
+grant select on public.logs_de_amigos to authenticated;
 
 -- photos: dueño todo; amigos leen solo las visibles
 -- LA RUTA Y EL DÍA TIENEN QUE SER DE QUIEN ANOTA LA FOTO (migración 60). Con
@@ -3291,13 +3999,19 @@ create policy "feedback: insertar" on public.feedback for insert with check (aut
 create policy "errores: insertar" on public.errores_js for insert with check (true);
 
 -- ejercicios: catálogo de solo lectura, igual para todos
+-- Los propios (migración 76): los ve SOLO quien los creó (migración 80; antes también sus amigos).
+-- Un huérfano (migración 83) no tiene dueño y no es catálogo: no lo ve nadie.
+
 create policy "ejercicios: catálogo con sesión" on public.ejercicios for select
-  using (auth.uid() is not null);
+  using (auth.uid() is not null and ((creado_por is null and not huerfano) or creado_por = auth.uid()));
 
 -- prs: las marcas se ven igual que los logs — el dueño todo, los amigos
 -- aceptados leen. El peso CORPORAL sigue afuera, siempre (§16.6).
+-- Una marca nueva, solo sobre un ejercicio que se ve (migración 83): el `exists` pasa
+-- por la RLS de ejercicios, así que un propio ajeno o huérfano no entra.
 create policy "marcas: dueño" on public.prs for all
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id and exists (select 1 from public.ejercicios e where e.id = ejercicio));
 create policy "marcas: amigos leen" on public.prs for select
   using (public.son_amigos(auth.uid(), user_id));
 
@@ -3315,6 +4029,12 @@ insert into storage.buckets (id, name, public) values ('fotos', 'fotos', false)
   on conflict (id) do nothing;
 insert into storage.buckets (id, name, public) values ('avatares', 'avatares', true)
   on conflict (id) do nothing;
+-- Tope (migración 89): 3 MB por archivo y solo JPG y PNG. Sin esto aceptaban
+-- cualquier cosa de cualquier tamaño.
+update storage.buckets
+set file_size_limit = 3145728,
+    allowed_mime_types = array['image/jpeg', 'image/png']
+where id in ('fotos', 'avatares');
 
 create policy "fotos storage: dueño" on storage.objects for all
   using (bucket_id = 'fotos' and (storage.foldername(name))[1] = auth.uid()::text)
@@ -3377,7 +4097,7 @@ revoke all on table
   public.profiles, public.logs, public.photos, public.weights,
   public.friendships, public.challenges, public.feedback, public.descansos,
   public.ejercicios, public.prs, public.sesiones, public.errores_js,
-  public.en_el_gimnasio, public.bloqueos, public.reportes
+  public.bloqueos, public.reportes, public.rutinas
   from anon, authenticated;
 
 -- lectura y escritura mínimas, siempre acotadas después por la RLS
@@ -3399,7 +4119,9 @@ grant select                 on public.usuarios_publicos to authenticated;
 grant select                 on public.ejercicios   to authenticated;
 -- prs sin update: una marca mal cargada se borra y se vuelve a cargar, igual
 -- que un día de racha. Editarla en el lugar dejaría el historial sin rastro.
-grant select, insert, delete on public.prs          to authenticated;
+grant insert, delete         on public.prs          to authenticated;
+-- Sin `creado` (migración 87): dice a qué hora se guardó la marca, y los amigos la leían.
+grant select (id, user_id, ejercicio, peso, reps, es_real, fecha) on public.prs to authenticated;
 -- sesiones de solo lectura: empezar y terminar son RPC, para que nadie se
 -- escriba el `inicio` que quiera ni resucite una sesión abandonada
 grant select                 on public.sesiones     to authenticated;
@@ -3689,8 +4411,156 @@ $$;
 
 grant execute on function public.medallas_de_muchos(uuid[]) to authenticated;
 
+-- -------------------------------------------------------------
+-- AVISOS PUSH DE LA APP (migración 77): enterarse afuera de la app
+-- -------------------------------------------------------------
+-- Cuando alguien te quiere agregar o quiere unirse a tu entrenamiento, el
+-- teléfono avisa aunque la app esté cerrada. El aviso lo manda la BASE, al
+-- crearse el pedido, a través de Expo: no hay servidor en el medio.
+--
+-- Un token por APARATO (el de Expo). Si el teléfono pasa a otra cuenta, el token
+-- se muda: los avisos de la anterior dejan de llegar ahí.
+
+-- `pg_net` es lo que deja a Postgres hacer un pedido HTTP. Si no se puede
+-- prender, la migración sigue: los pedidos se crean igual y el aviso no sale.
+do $pgnet$
+begin
+  create extension if not exists pg_net;
+exception when others then
+  raise notice 'Sin pg_net: los avisos push no van a salir (%).', sqlerrm;
+end $pgnet$;
+
+create table if not exists public.tokens_push (
+  token text primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  -- En qué idioma se le escribe (el del teléfono, o el que eligió en Ajustes).
+  idioma text not null default 'es',
+  actualizado timestamptz not null default now(),
+  constraint tokens_push_forma check (token like 'ExponentPushToken[%]' and length(token) < 200),
+  constraint tokens_push_idioma check (idioma in ('es', 'en'))
+);
+create index if not exists tokens_push_de on public.tokens_push (user_id);
+alter table public.tokens_push enable row level security;
+revoke all on table public.tokens_push from anon, authenticated;
+
+create or replace function public.guardar_token_push(p_token text, p_idioma text)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  insert into tokens_push (token, user_id, idioma)
+       values (p_token, uid, case when p_idioma = 'en' then 'en' else 'es' end)
+  on conflict (token) do update
+     set user_id = excluded.user_id, idioma = excluded.idioma, actualizado = now();
+  -- Diez aparatos por cuenta alcanzan; los más viejos se olvidan.
+  delete from tokens_push
+   where user_id = uid
+     and token not in (select token from tokens_push where user_id = uid order by actualizado desc limit 10);
+end;
+$$;
+
+-- Al cerrar sesión. Solo borra lo propio.
+create or replace function public.borrar_token_push(p_token text)
+returns void language sql security definer set search_path = public as $$
+  delete from tokens_push where token = p_token and user_id = auth.uid();
+$$;
+
+revoke execute on function public.guardar_token_push(text, text), public.borrar_token_push(text) from public, anon;
+grant execute on function public.guardar_token_push(text, text), public.borrar_token_push(text) to authenticated;
+
+-- MANDAR. Nunca frena lo que lo disparó: un aviso que no sale no puede
+-- impedir que se cree una solicitud.
+create or replace function public.mandar_push(p_a uuid, p_es text, p_en text, p_datos jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  mensajes jsonb;
+begin
+  if to_regprocedure('net.http_post(text,jsonb,jsonb,jsonb,integer)') is null then return; end if;
+  select jsonb_agg(jsonb_build_object(
+           'to', t.token, 'title', 'Ascent', 'body', case when t.idioma = 'en' then p_en else p_es end,
+           'data', p_datos, 'sound', 'default'))
+    into mensajes
+    from tokens_push t
+   where t.user_id = p_a;
+  if mensajes is null then return; end if;
+  execute 'select net.http_post(url := $1, body := $2, headers := $3)'
+    using 'https://exp.host/--/api/v2/push/send', mensajes,
+          '{"Content-Type": "application/json", "Accept": "application/json"}'::jsonb;
+exception when others then
+  raise warning 'aviso push: %', sqlerrm;
+end;
+$$;
+revoke execute on function public.mandar_push(uuid, text, text, jsonb) from public, anon, authenticated;
+
+create or replace function public.avisar_pedido_de_amistad()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  quien text;
+begin
+  if new.estado <> 'pendiente' then return new; end if;
+  select username into quien from profiles where id = new.solicitante;
+  perform mandar_push(new.destinatario,
+    coalesce(quien, 'Alguien') || ' te quiere agregar.',
+    coalesce(quien, 'Someone') || ' wants to add you.',
+    jsonb_build_object('aviso', 'amistad'));
+  return new;
+end;
+$$;
+drop trigger if exists friendships_avisar on public.friendships;
+create trigger friendships_avisar after insert on public.friendships
+  for each row execute function public.avisar_pedido_de_amistad();
+
+create or replace function public.avisar_pedido_de_union()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  quien text;
+begin
+  if new.estado <> 'pendiente' then return new; end if;
+  select username into quien from profiles where id = new.solicitante;
+  perform mandar_push(new.destinatario,
+    coalesce(quien, 'Alguien') || ' quiere unirse a tu entrenamiento.',
+    coalesce(quien, 'Someone') || ' wants to join your workout.',
+    jsonb_build_object('aviso', 'union'));
+  return new;
+end;
+$$;
+drop trigger if exists entrenos_avisar on public.entrenos_compartidos;
+create trigger entrenos_avisar after insert on public.entrenos_compartidos
+  for each row execute function public.avisar_pedido_de_union();
+
+revoke execute on function public.avisar_pedido_de_amistad(), public.avisar_pedido_de_union() from public, anon, authenticated;
+
+-- ¿Salen los avisos? Para comprobarlo después de pegar esta migración, sin mirar nada más.
+create or replace function public.avisos_push_listos()
+returns boolean language sql stable security definer set search_path = public as $$
+  select to_regprocedure('net.http_post(text,jsonb,jsonb,jsonb,integer)') is not null;
+$$;
+revoke execute on function public.avisos_push_listos() from public;
+grant execute on function public.avisos_push_listos() to anon, authenticated;
+
+-- -------------------------------------------------------------
+-- LOS AMIGOS DE UN AMIGO (migración 78)
+-- -------------------------------------------------------------
+-- En el perfil de un amigo se ven sus amigos, y se toca para entrar al perfil
+-- de cada uno (pedido del 14/10). Devuelve solo los ids: quién es cada uno lo
+-- dice `usuarios_publicos`, que ya saca a los bloqueados en los dos sentidos.
+-- De un extraño no se ve nada: la amistad de dos personas que no conocés no es
+-- asunto tuyo (por eso `son_amigos` solo contesta sobre una amistad propia).
+create or replace function public.amigos_de(p_quien uuid)
+returns setof uuid language sql stable security definer set search_path = public as $$
+  select case when f.solicitante = p_quien then f.destinatario else f.solicitante end
+    from friendships f
+   where auth.uid() is not null
+     and (p_quien = auth.uid() or public.son_amigos(auth.uid(), p_quien))
+     and f.estado = 'aceptada'
+     and p_quien in (f.solicitante, f.destinatario);
+$$;
+revoke execute on function public.amigos_de(uuid) from public, anon;
+grant execute on function public.amigos_de(uuid) to authenticated;
+
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 69; $$;
+returns int language sql immutable as $$ select 89; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

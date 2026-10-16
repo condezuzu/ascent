@@ -1,5 +1,5 @@
 import type { Cliente } from '@cliente';
-import type { Log, Perfil, UsuarioPublico } from '@nucleo/tipos';
+import type { Log, LogDeAmigo, Perfil, UsuarioPublico } from '@nucleo/tipos';
 import { hoyISO, restarDias } from '@nucleo/fechas';
 import { miniaturas } from '@compartido/album';
 import {
@@ -11,8 +11,9 @@ import {
 } from '@nucleo/medallas';
 import { disponible } from '@nucleo/esquema';
 import { rutinaPorDia, type DiaDeRutina } from '@nucleo/rutina';
-import { versionDelEsquema } from '@compartido/esquema';
+import { tablaDeLogsDeAmigos, versionDelEsquema } from '@compartido/esquema';
 import type { MiFuerza } from '@nucleo/tipos';
+import { firmarFotos } from '@compartido/firmas';
 
 /**
  * LO QUE DIBUJA TU PERFIL, en dos tandas.
@@ -193,7 +194,37 @@ export async function cargarMedallasDeMuchos(
   return salida;
 }
 
+/**
+ * LOS AMIGOS DE UN AMIGO (migración 78), para su perfil. `null` = no se pudo o
+ * la base no la tiene: la sección no se dibuja.
+ */
+export async function cargarAmigosDe(supabase: Cliente, quien: string): Promise<UsuarioPublico[] | null> {
+  if (!disponible('amigosDeAmigos', await versionDelEsquema(supabase).catch(() => null))) return null;
+  const { data: ids, error } = await supabase.rpc('amigos_de', { p_quien: quien });
+  if (error || !Array.isArray(ids)) return null;
+  if (ids.length === 0) return [];
+  const { data, error: e2 } = await supabase.from('usuarios_publicos').select('*').in('id', ids as string[]);
+  if (e2) return null;
+  return ((data ?? []) as UsuarioPublico[]).sort((a, b) => b.racha_actual - a.racha_actual || a.username.localeCompare(b.username));
+}
+
+// LO ÚLTIMO QUE SE VIO DE TU PERFIL, para abrirlo al instante la próxima vez
+// (14/10): esperar dos idas a la base con una ruedita era el "lag" de tocar tu foto.
+let miPerfilEnMemoria: DatosDePerfil | null = null;
+export function ultimoMiPerfil(): DatosDePerfil | null {
+  return miPerfilEnMemoria;
+}
+export function olvidarMiPerfil(): void {
+  miPerfilEnMemoria = null;
+}
+
 export async function cargarMiPerfil(supabase: Cliente, uid: string): Promise<DatosDePerfil | null> {
+  const d = await traerMiPerfil(supabase, uid);
+  if (d) miPerfilEnMemoria = d;
+  return d;
+}
+
+async function traerMiPerfil(supabase: Cliente, uid: string): Promise<DatosDePerfil | null> {
   const [{ data: p }, { data: fs }, { data: rel }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', uid).single(),
     supabase
@@ -218,7 +249,7 @@ export async function cargarMiPerfil(supabase: Cliente, uid: string): Promise<Da
 
   const [logsFotos, firmadas, chicas, us, medallas] = await Promise.all([
     logIds.length ? supabase.from('logs').select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
-    rutas.length ? supabase.storage.from('fotos').createSignedUrls(rutas, 3600).then((r) => r.data ?? []) : [],
+    rutas.length ? firmarFotos(supabase, rutas).then((us) => us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' }))) : [],
     miniaturas(supabase, rutas),
     ids.length
       ? supabase.from('usuarios_publicos').select('*').in('id', ids).then((r) => (r.data ?? []) as UsuarioPublico[])
@@ -255,7 +286,7 @@ export type PerfilDeAmigo = {
   /** El que me mandó ÉL: el id de la fila, que es con lo que se acepta. */
   pedidoRecibido: string | null;
   /** Su última semana. Vacío si no es amigo. */
-  logs: Log[];
+  logs: LogDeAmigo[];
   fotos: FotoDePerfil[];
   /** Sus medallas por marca. Vacío si no es amigo, o si falta la migración 46. */
   medallas: Medalla[];
@@ -340,15 +371,16 @@ export async function cargarPerfilDeAmigo(
     // cómo aceptarlo desde ahí.
     pedidoPendiente: rel?.estado === 'pendiente' && rel.solicitante === yo,
     pedidoRecibido: rel?.estado === 'pendiente' && rel.solicitante === otro ? (rel.id as string) : null,
-    logs: [] as Log[],
+    logs: [] as LogDeAmigo[],
     fotos: [] as FotoDePerfil[],
     medallas: [] as Medalla[],
   };
   if (!esAmigo) return base;
 
   const desde = restarDias(hoyISO(), DIAS_VISIBLES - 1);
+  const deAmigos = await tablaDeLogsDeAmigos(supabase);
   const [{ data: ls }, { data: fs }, medallas] = await Promise.all([
-    supabase.from('logs').select('*').eq('user_id', otro).gte('fecha', desde).order('fecha'),
+    supabase.from(deAmigos).select('id, user_id, fecha, es_descanso, planeta_del_dia, racha_del_dia').eq('user_id', otro).gte('fecha', desde).order('fecha'),
     supabase
       .from('photos')
       .select('id, storage_path, log_id, creado')
@@ -364,8 +396,8 @@ export async function cargarPerfilDeAmigo(
   const logIds = lista.map((f) => f.log_id).filter(Boolean) as string[];
   const rutas = lista.map((f) => f.storage_path);
   const [logsFotos, firmadas, chicas] = await Promise.all([
-    logIds.length ? supabase.from('logs').select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
-    rutas.length ? supabase.storage.from('fotos').createSignedUrls(rutas, 3600).then((r) => r.data ?? []) : [],
+    logIds.length ? supabase.from(deAmigos).select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
+    rutas.length ? firmarFotos(supabase, rutas).then((us) => us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' }))) : [],
     miniaturas(supabase, rutas),
   ]);
   const cuando = new Map((logsFotos as { id: string; fecha: string }[]).map((l) => [l.id, l.fecha]));
@@ -373,7 +405,7 @@ export async function cargarPerfilDeAmigo(
   return {
     ...base,
     medallas,
-    logs: (ls ?? []) as Log[],
+    logs: (ls ?? []) as LogDeAmigo[],
     fotos: lista.map((f, i) => ({
       id: f.id,
       url: (firmadas as { signedUrl: string }[])[i]?.signedUrl ?? '',

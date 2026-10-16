@@ -12,8 +12,9 @@
 //      serie y A la ve; B termina y A deja de verlo. Y lo de B queda intacto.
 //
 //   node --env-file=.env.local supabase/probar-juntos.mjs [api]
+import { TEXTOS_ES } from '../nucleo/textos.ts';
 import { createClient } from '@supabase/supabase-js';
-import { limiteDeSonda, pasarLaEntradaNativa } from './utiles.mjs';
+import { limiteDeSonda, pasarLaEntradaNativa, borrarCuentaDePrueba } from './utiles.mjs';
 
 // Dos navegadores esperando a que el otro haga algo: si uno no llega, esto no
 // puede quedar colgado para siempre. Ver la sección 123 de `test:db`.
@@ -62,6 +63,12 @@ try {
   console.log('\n1. Por la API');
   // ---- aparecer entrenando: solo con el aviso prendido, y solo para amigos ----
   // Desde la migración 68 nace prendido: se apaga a mano para probar que respeta el interruptor.
+  // Desde la migración 72 la marca sola no alcanza: hace falta una sesión corriendo.
+  await B.s.rpc('fijar_comparte_gimnasio', { p_valor: true });
+  await B.s.rpc('marcar_en_gimnasio');
+  if (version >= 72) chequear('marcado pero SIN sesión (adentro del gimnasio, sin entrenar), B no aparece', await entrenando(A), []);
+  else nota(`la base está en ${version}: que la marca sin sesión no alcance (migración 72) no se probó`);
+  await B.s.rpc('iniciar_sesion');
   await B.s.rpc('fijar_comparte_gimnasio', { p_valor: false });
   await B.s.rpc('marcar_en_gimnasio');
   chequear('sin "Avisar cuando entreno", B no aparece entrenando', await entrenando(A), []);
@@ -87,9 +94,16 @@ try {
   chequear('y cuánto le falta de descanso, contra el reloj de la base', faltan >= 86 && faltan <= 90, true);
   chequear('nada de pesos ni de duración', Object.keys(deA?.en_vivo ?? {}).sort(), ['actualizado', 'descanso_fin', 'ejercicio', 'meta', 'serie']);
   chequear('una extraña no ve nada', await uniones(C), []);
-  const directo = await A.s.from('en_vivo').select('*');
+  const directo = await A.s.from('en_vivo').select('user_id');
   const directo2 = await A.s.from('entrenos_compartidos').select('*');
-  chequear('las tablas no se leen directo, ni por una amiga', [directo.data ?? [], directo2.data ?? []], [[], []]);
+  const directoC = await C.s.from('en_vivo').select('user_id');
+  if (version >= 88) {
+    // MIGRACIÓN 88: el tiempo real escucha `en_vivo`, así que el del grupo lo lee
+    // directo, pero solo lo del grupo. Una extraña, nada; los pedidos, nadie.
+    chequear('en_vivo se lee directo solo desde el grupo; los pedidos, por nadie', [(directo.data ?? []).map((f) => f.user_id), directoC.data ?? [], directo2.data ?? []], [[B.id], [], []]);
+  } else {
+    chequear('las tablas no se leen directo, ni por una amiga', [directo.data ?? [], directo2.data ?? []], [[], []]);
+  }
 
   // ---- "su rutina" y la mejor racha ----
   chequear('B le muestra su rutina a su amiga, y a una extraña no', [(await A.s.rpc('me_muestra_su_rutina', { p_quien: B.id })).data, (await C.s.rpc('me_muestra_su_rutina', { p_quien: B.id })).data], [true, false]);
@@ -100,6 +114,9 @@ try {
   chequear('la vista pública trae la mejor racha', 'mejor_racha' in publico, true);
 
   // ---- terminar corta ----
+  // Como en el teléfono: "Terminar" cierra la sesión y después corta lo demás.
+  // Desde la 72, lo que saca de "Entrenando ahora" es que la sesión se cierre.
+  await B.s.rpc('terminar_sesion');
   await B.s.rpc('dejar_de_entrenar');
   chequear('B termina: A deja de verlo unido y entrenando', [await uniones(A), await entrenando(A)], [[], []]);
 
@@ -113,6 +130,10 @@ try {
     chequear('unidos de nuevo, con una sesión de verdad', [(await uniones(A))[0]?.en_vivo?.ejercicio, await entrenando(A)], ['sentadilla', [B.id]]);
     await B.s.rpc('terminar_sesion');
     chequear('la sesión se cierra por la base (sin "dejar de entrenar") y A deja de verlo igual', [await uniones(A), await entrenando(A)], [[], []]);
+    if (version >= 72) {
+      await B.s.rpc('marcar_en_gimnasio');
+      chequear('terminó y un teléfono sin actualizar lo vuelve a marcar por seguir adentro: no aparece', await entrenando(A), []);
+    }
   } else nota(`la base está en ${version}: el corte al cerrarse la sesión (migración 68) no se probó`);
 
   if (soloApi) nota('sin navegador (api): la parte de la pantalla no se corrió');
@@ -122,17 +143,15 @@ try {
     const nav = await chromium.launch();
     const errores = [];
     const entrar = async (quien) => {
-      const page = await (await nav.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+      const page = await (await nav.newContext({ viewport: { width: 390, height: 844 }, locale: 'es-UY' })).newPage();
       page.on('pageerror', (e) => errores.push(`${quien.nombre}: ${String(e).slice(0, 140)}`));
       await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 180000 });
       await pasarLaEntradaNativa(page);
       await page.locator('input[type=email], input[inputmode=email]').first().fill(quien.correo, { timeout: 90000 });
       await page.locator('input[type=password]').first().fill(quien.clave);
       await page.getByText('Entrar', { exact: true }).last().click({ timeout: 60000 });
-      // La guía arranca sola en un navegador limpio y tapa la mitad de abajo.
-      const saltar = page.getByTestId('recorrido-saltar');
-      await saltar.waitFor({ state: 'visible', timeout: 60000 });
-      await saltar.click();
+      // Sin recorrido desde el 15/10: se espera a que Inicio esté.
+      await page.getByText('Iniciar entrenamiento', { exact: true }).first().waitFor({ state: 'visible', timeout: 90000 });
       await page.waitForTimeout(800);
       return page;
     };
@@ -148,7 +167,7 @@ try {
 
       // B inicia a mano, sin gimnasio marcado: tiene que aparecer igual.
       await pb.getByText('Iniciar entrenamiento', { exact: true }).last().click({ timeout: 30000 });
-      await pa.getByText('Ranking', { exact: true }).last().click();
+      await pa.getByText(TEXTOS_ES.nav.social, { exact: true }).last().click();
       await esperar('B toca "Iniciar" (sin gimnasio marcado) y A lo ve entrenando en Ranking', pa.getByText(`${B.nombre} está entrenando`, { exact: true }).first());
       const unirse = pa.getByTestId('unirse').first();
       if (await esperar('y al lado tiene "Unirse"', unirse, 15000)) await unirse.click();
@@ -207,7 +226,7 @@ try {
   fallos++;
 } finally {
   for (const X of [A, B, C]) {
-    const { error } = await X.s.rpc('eliminar_cuenta');
+    const { error } = await borrarCuentaDePrueba(X.s);
     if (error) console.log(`  no se borró la cuenta ${X.nombre}: ${error.message}`);
   }
   console.log(fallos ? `\n${fallos} FALLA(s) en entrenar con otro.` : '\nEntrenar con otro: todo bien.');

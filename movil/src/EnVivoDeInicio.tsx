@@ -1,11 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { avisarQueEntreno, publicarEnVivo, responderUnion } from '@compartido/enVivo';
-import { AVISO_DE_ENTRENO_CAMBIO, firmaDe, loQueSePublica } from '@nucleo/enVivo';
-import { eventos } from '@compartido/eventos';
+import { publicarEnVivo, responderUnion } from '@compartido/enVivo';
+import { firmaDe, loQueSePublica } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { useUniones } from './useUniones';
+import TiraDelGrupo from './TiraDelGrupo';
+import { useCartelVisible } from './cartelVisible';
+import { tarjetasDeInicio } from '@nucleo/novedades';
 import { C, conAlfa } from './colores';
 
 /**
@@ -25,34 +27,17 @@ import { C, conAlfa } from './colores';
  */
 type Visto = { corriendo: boolean; ejercicio: string | null; hechas: number; meta: number; descansoFin: number | null };
 
-const CADA_CUANTO_AVISO_MS = 20 * 60_000;
 /** Aunque no cambie nada, cada tanto se vuelve a publicar: es lo que dice "sigo acá". */
 const LATIDO_MS = 45_000;
 
-export default function EnVivoDeInicio(visto: Visto) {
-  const { uniones, recargar } = useUniones(visto.corriendo, true);
-
-  useEffect(() => {
-    if (!visto.corriendo) return;
-    void avisarQueEntreno(supabase).catch(() => undefined);
-    const t = setInterval(() => void avisarQueEntreno(supabase).catch(() => undefined), CADA_CUANTO_AVISO_MS);
-    return () => clearInterval(t);
-  }, [visto.corriendo]);
+function EnVivoDeInicio(visto: Visto) {
+  const { uniones, recibidoEn, recargar } = useUniones(visto.corriendo, true);
+  const enCartel = useCartelVisible();
 
   // Lo último que se vio, para que el latido publique lo de AHORA y no lo de cuando se armó.
   const ultimo = useRef(visto);
   ultimo.current = visto;
 
-  // PRENDER "AVISAR CUANDO ENTRENO" A MITAD DE SESIÓN SURTE EFECTO YA (12/10).
-  // La marca se ponía solo al iniciar: quien lo prendía después no aparecía
-  // hasta veinte minutos más tarde, o hasta terminar y volver a iniciar.
-  useEffect(
-    () =>
-      eventos.escuchar(AVISO_DE_ENTRENO_CAMBIO, () => {
-        if (ultimo.current.corriendo) void avisarQueEntreno(supabase).catch(() => undefined);
-      }),
-    []
-  );
   const hayAlguien = uniones.length > 0;
   const firma = firmaDe(visto);
   useEffect(() => {
@@ -73,11 +58,13 @@ export default function EnVivoDeInicio(visto: Visto) {
 
   // SOLO MIENTRAS ENTRENO (12/10): terminada la sesión el pedido ya no tiene a
   // qué unirse, y la tarjeta quedaba en Inicio hasta volver a entrenar.
-  const pedidos = visto.corriendo ? uniones.filter((u) => u.estado === 'pendiente' && !u.laPediYo) : [];
-  if (pedidos.length === 0) return null;
+  const pedidos = tarjetasDeInicio(visto.corriendo ? uniones.filter((u) => u.estado === 'pendiente' && !u.laPediYo) : [], enCartel);
+  const conGrupo = visto.corriendo && uniones.some((u) => u.estado === 'aceptada');
+  if (pedidos.length === 0 && !conGrupo) return null;
 
   return (
     <>
+      {conGrupo && <TiraDelGrupo uniones={uniones} recibidoEn={recibidoEn} />}
       {pedidos.map((u) => (
         <View key={u.id} testID="pedido-de-union" style={estilos.tarjeta} accessibilityRole="alert">
           <Text style={estilos.texto}>{T.social.quiereUnirse(u.otro.username)}</Text>
@@ -121,3 +108,6 @@ const estilos = StyleSheet.create({
   solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
   solidoTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
 });
+
+// Con los mismos props no se redibuja: el + de la sesión redibuja Inicio y esto no cambió (15/10).
+export default memo(EnVivoDeInicio);

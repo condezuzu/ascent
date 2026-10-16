@@ -38,6 +38,7 @@ import { mostrando } from './loVisible';
 import Avatar from './Avatar';
 import DiaListo from './DiaListo';
 import InsistirGimnasio, { useInsistirGimnasio } from './InsistirGimnasio';
+import { pedirResaltarGimnasio } from './ajustes/Gimnasio';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import RachaConRotulo from './RachaConRotulo';
 import PasosInicio from './PasosInicio';
@@ -46,6 +47,9 @@ import { diaDeLaSesion } from '@nucleo/subir';
 import { dejarDeEntrenar } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
+import FilaRutina from './FilaRutina';
+import CadaSegundo from './CadaSegundo';
+import { useArriba } from './zonaSegura';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -98,6 +102,10 @@ export default function Inicio({
   alFaltarNombre: () => void;
 }) {
   const router = useRouter();
+  const arriba = useArriba(64);
+  // Dónde está la píldora del descanso, para que su globito salga de ella.
+  const [anchoCabecera, setAnchoCabecera] = useState(0);
+  const [anchoPildora, setAnchoPildora] = useState(0);
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
   // LA RACHA QUE SE ESTÁ VIENDO, para saber si un registro sube de rango: se
   // compara con la que devuelve la base (ver `subidaDeRango`). En una ref
@@ -260,6 +268,12 @@ export default function Inicio({
       }
       // Cuenta nueva sin nombre: a elegirlo, no Inicio a medias.
       if (!d.perfil.username) return alFaltarNombre();
+      // Cuando el servidor ya tiene el día, lo optimista sobra (vuelta 8): borrar hoy
+      // desde el calendario dejaba "Día registrado" y el resumen hasta medianoche. Si
+      // todavía no lo tiene (sin señal), lo optimista se queda.
+      const tieneHoy = d.logs.some((l) => l.fecha === hoyISO());
+      if (tieneHoy) setMarcadoOptimista(null);
+      else setCierreGuardado(null);
 
       setEstado({
         tipo: 'listo',
@@ -282,11 +296,14 @@ export default function Inicio({
       // Las dos puntas son del SERVIDOR: restarlas no mete el desfasaje de reloj.
       const minutos = d.deHoy.reduce((t, s) => (s.fin ? t + (Date.parse(s.fin) - Date.parse(s.inicio)) / 60000 : t), 0);
       setMinutosDeHoy(minutos >= 1 ? Math.round(minutos) : null);
-      // Los bloques de la ultima sesion de hoy que tenga: es lo que reabre el
-      // resumen. Si hoy no se entreno (dia a mano), no hay y el resumen no se
-      // ofrece —no habria nada que mostrar—.
-      const conBloques = d.deHoy.filter((s) => Array.isArray(s.bloques) && s.bloques.length > 0);
-      setBloquesDeHoy(conBloques.length ? (conBloques[conBloques.length - 1].bloques ?? null) : null);
+      // Los bloques de TODAS las sesiones de hoy, en orden: es lo que reabre el
+      // resumen, y los minutos ya suman todas (vuelta 7: mostraba una sola). Si hoy
+      // no se entreno (dia a mano), no hay y el resumen no se ofrece.
+      const todos = d.deHoy
+        .filter((s) => Array.isArray(s.bloques) && s.bloques.length > 0)
+        .sort((a, b) => Date.parse(a.inicio) - Date.parse(b.inicio))
+        .flatMap((s) => s.bloques ?? []);
+      setBloquesDeHoy(todos.length ? todos : null);
       setVueltas((v) => v + 1);
       const ultimas = Array.isArray(d.impulsos?.ultimas) ? (d.impulsos!.ultimas as string[]) : [];
       const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
@@ -355,12 +372,23 @@ export default function Inicio({
 
   // Iniciar una sesión registra el día: cuando la base avisa, se recarga la
   // racha y la semana. Va antes de cualquier `return`: es un hook.
+  // Sin el redibujo de cada segundo: los relojes de arriba se tickean solos (`CadaSegundo`).
   const sesion = useSesion((r) => {
     cargar();
     // EMPEZAR LA SESION REGISTRA EL DIA, asi que tambien puede subirte de
     // rango: es el camino mas comun de los tres en un gimnasio.
     if (r) setSubida(subidaDeRango(rachaVista.current, r.racha));
-  });
+  }, { repintarCadaSegundo: false });
+  // Un bloque con cronómetro o con minutos solo puede ser cardio.
+  const esCardioEnCurso = sesion.estado.bloques.cardioDesde !== undefined || sesion.estado.bloques.minutos !== undefined;
+  // LA SESIÓN SE CERRÓ POR FUERA (sola, la salida, otro aparato) con algo abierto: era de
+  // esa sesión. Si no, el primer + de la siguiente abría solo el descanso (cacería del 15/10).
+  useEffect(() => {
+    if (!sesion.estado.descanso) setDescansoAbierto(false);
+  }, [sesion.estado.descanso]);
+  useEffect(() => {
+    if (!sesion.estado.corriendo) setTerminando(false);
+  }, [sesion.estado.corriendo]);
 
   // EL DÍA QUE ENTRÓ SOLO AL LLEGAR AL GIMNASIO (24/9). Ese camino no pasa
   // por `useSesion` —lo registra el vigilante, o el sistema con la app
@@ -552,7 +580,7 @@ export default function Inicio({
       />
     <ScrollView
       ref={scroll}
-      contentContainerStyle={estilos.pantalla}
+      contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}
       // QUIETA CUANDO EL CONTENIDO ENTRA (3/10). iOS rebota una lista vertical
       // aunque no haya nada que desplazar, y en reposo Inicio entra entera: se
       // movía sin ir a ningún lado. Así solo se desplaza cuando hace falta
@@ -563,7 +591,7 @@ export default function Inicio({
       scrollEventThrottle={32}
       onScroll={(e) => (desplazado.current = e.nativeEvent.contentOffset.y)}
     >
-      <View style={estilos.cabecera}>
+      <View style={estilos.cabecera} onLayout={(e) => setAnchoCabecera(e.nativeEvent.layout.width)}>
         {/* LA CABECERA ES LA PUERTA AL PERFIL, igual que en la web: el avatar
             y el nombre juntos y tocables. Antes el nombre era un texto y no
             llevaba a ningún lado — no porque se hubiera decidido así, sino
@@ -598,22 +626,35 @@ export default function Inicio({
           <View style={estilos.sesionViva}>
             <View style={estilos.chip}>
               <View style={estilos.latido} />
-              <Text style={estilos.chipTexto}>
-                {cronoLindo(transcurrido(sesion.estado.inicio, sesion.estado.desfasaje))}
-              </Text>
+              <CadaSegundo>
+                {() => (
+                  <Text style={estilos.chipTexto}>
+                    {cronoLindo(transcurrido(sesion.estado.inicio ?? new Date().toISOString(), sesion.estado.desfasaje))}
+                  </Text>
+                )}
+              </CadaSegundo>
             </View>
             {/* LA PÍLDORA DEL DESCANSO: sin descanso lo arranca; con uno
                 andando muestra lo que falta y abre la pantalla grande. */}
             {sesion.estado.descanso ? (
-              <Pressable
-                style={[estilos.chip, restante(sesion.estado.descanso.fin) === 0 && estilos.chipListo]}
-                onPress={() => setDescansoAbierto(true)}
-                accessibilityRole="button"
-              >
-                <Text style={[estilos.chipTexto, restante(sesion.estado.descanso.fin) === 0 && estilos.chipTextoListo]}>
-                  {restante(sesion.estado.descanso.fin) === 0 ? T.sesion.listo : cuentaAtras(restante(sesion.estado.descanso.fin))}
-                </Text>
-              </Pressable>
+              <CadaSegundo>
+                {() => {
+                  const fin = sesion.estado.descanso?.fin ?? 0;
+                  return (
+                    <Pressable
+                      testID="pildora-descanso"
+                      onLayout={(e) => setAnchoPildora(e.nativeEvent.layout.width)}
+                      style={[estilos.chip, restante(fin) === 0 && estilos.chipListo]}
+                      onPress={() => setDescansoAbierto(true)}
+                      accessibilityRole="button"
+                    >
+                      <Text style={[estilos.chipTexto, restante(fin) === 0 && estilos.chipTextoListo]}>
+                        {restante(fin) === 0 ? T.sesion.listo : cuentaAtras(restante(fin))}
+                      </Text>
+                    </Pressable>
+                  );
+                }}
+              </CadaSegundo>
             ) : (
               <Pressable
                 style={estilos.chip}
@@ -638,6 +679,13 @@ export default function Inicio({
           </Pressable>
         )}
       </View>
+      {/* EL GLOBITO DEL DESCANSO (15/10), saliendo de la píldora de arriba a la
+          derecha, la primera vez que hay uno andando. Se va con el descanso. */}
+      {sesion.estado.corriendo && !!sesion.estado.descanso && anchoCabecera > 0 && anchoPildora > 0 && (
+        <GloboPrimeraVez cual="descanso" colaX={anchoCabecera - anchoPildora / 2} alinear="derecha" vistoAlMostrar>
+          {T.globos.descanso}
+        </GloboPrimeraVez>
+      )}
 
       {/* EL NÚMERO ESTÁ SIEMPRE (25/9). Estuvo escondido durante la sesión
           con el argumento de que "mientras entrenás, Inicio es el
@@ -673,6 +721,7 @@ export default function Inicio({
           meta={metaPasos}
           acento={paletaDe(numeroDeRango(racha), null).principal}
           compacto={sesion.estado.corriendo}
+          alCambiarMeta={setMetaPasos}
         />
       )}
 
@@ -711,6 +760,9 @@ export default function Inicio({
         </View>
       )}
 
+      {/* TU RUTINA (15/10): lo que toca hoy, a un toque. Mientras se entrena, no. */}
+      {!sesion.estado.corriendo && <FilaRutina />}
+
       {/* LOS ESTADOS DE BORDE (24/9), que faltaban enteros en el telefono.
           Los cuatro son de una linea y en voz baja: ninguno pide hacer nada,
           los cuatro dicen QUE ES CIERTO AHORA. */}
@@ -735,7 +787,13 @@ export default function Inicio({
           sobre lo mismo en la misma pantalla no son el doble de insistencia:
           son ruido. */}
       {!perfil.gimnasio_lat && !sesion.estado.corriendo && !insistirGimnasio && (
-        <Pressable style={estilos.globoQuieto} onPress={() => irAPestana('ajustes')}>
+        <Pressable
+          style={estilos.globoQuieto}
+          onPress={() => {
+            irAPestana('ajustes');
+            pedirResaltarGimnasio();
+          }}
+        >
           <Text style={estilos.globoTexto}>{T.inicio.gimnasioRecordatorioNativo}</Text>
         </Pressable>
       )}
@@ -749,19 +807,14 @@ export default function Inicio({
       <EnVivoDeInicio
         corriendo={sesion.estado.corriendo}
         ejercicio={sesion.estado.bloques.ejercicio}
-        hechas={sesion.estado.bloques.hechas}
-        meta={sesion.estado.bloques.meta}
+        // El cardio no son series: al compañero le llega solo el nombre (cacería del 15/10).
+        hechas={esCardioEnCurso ? 0 : sesion.estado.bloques.hechas}
+        meta={esCardioEnCurso ? 0 : sesion.estado.bloques.meta}
         descansoFin={sesion.estado.descanso?.fin ?? null}
       />
 
       {sesion.estado.corriendo && sesion.estado.inicio ? (
         <View style={estilos.sesion}>
-          {/* SE CIERRA SOLO CON EL PRIMER `+`: para entonces ya se entendió qué
-              hace, y la pregunta de marca —que sale después de un `+`— nunca lo
-              encuentra abierto. */}
-          <GloboPrimeraVez cual="series" cerrarCuando={sesion.estado.series > 0}>
-            {T.inicio.globoSeries}
-          </GloboPrimeraVez>
           {/* El reloj ya está arriba, en el chip: acá manda el bloque, que es
               lo que se toca doce veces por sesión. */}
           <Bloque
@@ -780,10 +833,22 @@ export default function Inicio({
             alElegirMeta={sesion.elegirMeta}
             alTocarBloque={sesion.tocarBloque}
             alElegirPeso={sesion.elegirPeso}
+            alElegirMinutos={sesion.elegirMinutos}
+            alArrancarCardio={sesion.arrancarCardio}
+            alCerrarVueltaDeCardio={sesion.cerrarVueltaDeCardio}
             alCorregirPeso={sesion.corregirPesoDeSerie}
             alElegirCarga={sesion.elegirCarga}
             alCorregirCarga={sesion.corregirCargaDeBloque}
             alCorregirEjercicio={sesion.corregirEjercicioDeBloque}
+            // EL GLOBITO DEL +, saliendo del + (15/10): antes flotaba arriba y tapaba
+            // el ejercicio. Se cierra solo con el primer +; para entonces ya se
+            // entendió, y la pregunta de marca —que sale después de un + — nunca lo
+            // encuentra abierto. El cardio no tiene +: el globito espera a la fuerza.
+            globoDelMas={(colaX) => (
+              <GloboPrimeraVez cual="series" colaX={colaX} alinear="centro" cerrarCuando={sesion.estado.series > 0}>
+                {T.inicio.globoSeries}
+              </GloboPrimeraVez>
+            )}
             debajoDelMas={
               // "¿Lo guardo como marca?", en el momento de la serie.
               <MarcaEnElMomento
@@ -859,6 +924,7 @@ export default function Inicio({
             alaFoto={() => setRegistrarAbierto(true)}
             alPeso={() => setPesoAbierto(true)}
             minutos={minutosDeHoy}
+            logId={logs.find((l) => l.fecha === hoy)?.id ?? null}
           />
           <View style={estilos.resumen}>
             <View style={estilos.resumenCabe}>
@@ -892,7 +958,7 @@ export default function Inicio({
                   Solo si Health lo sabe y hubo pasos —0 o "no sé" no se muestran. */}
               {cierre.pasos != null && cierre.pasos > 0 && (
                 <View style={estilos.cifra}>
-                  <Text style={estilos.cifraNumero}>{cierre.pasos.toLocaleString('es-UY')}</Text>
+                  <Text style={estilos.cifraNumero}>{cierre.pasos.toLocaleString(T.general.locale)}</Text>
                   <Text style={estilos.etiqueta}>{T.sesion.resumenPasos}</Text>
                 </View>
               )}
@@ -910,6 +976,7 @@ export default function Inicio({
             alaFoto={() => setRegistrarAbierto(true)}
             alPeso={() => setPesoAbierto(true)}
             minutos={minutosDeHoy}
+            logId={logs.find((l) => l.fecha === hoy)?.id ?? null}
           />
           {/* VER LO DE HOY, A UN TOQUE (1.2/5.4). El resumen ya no se borra solo;
               y si lo cerraste con la equis —o recargaste—, esto lo vuelve a
@@ -937,7 +1004,14 @@ export default function Inicio({
               acaba de anotar a mano, que es el único momento en que la oferta
               se puede demostrar en vez de explicar. Tres veces como mucho, una
               por día; la regla está en `nucleo/insistirGimnasio.ts`. */}
-          {insistirGimnasio && <InsistirGimnasio alMarcar={() => irAPestana('ajustes')} />}
+          {insistirGimnasio && (
+            <InsistirGimnasio
+              alMarcar={() => {
+                irAPestana('ajustes');
+                pedirResaltarGimnasio();
+              }}
+            />
+          )}
         </>
       ) : (
         <>

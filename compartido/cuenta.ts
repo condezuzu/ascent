@@ -9,6 +9,10 @@ import { soltarCola, vaciar } from '@compartido/cola';
 import { borrarDescanso } from '@compartido/descanso';
 import { borrarPerfilCache } from '@compartido/cache';
 import { borrarSesionCache } from '@compartido/sesionCache';
+import { olvidarViva } from '@compartido/sesionViva';
+import { olvidarAvisosRemotos } from '@compartido/avisosRemotos';
+import { olvidarMiPerfil } from '@compartido/perfil';
+import { olvidarFirmas } from '@compartido/firmas';
 
 /**
  * SALIR DE LA CUENTA, Y QUE NO QUEDE NADA PARA LA QUE ENTRE (4/10).
@@ -73,9 +77,12 @@ async function subirAntesDeSalir(supabase: Cliente) {
 export async function limpiarAlSalir() {
   await soltarCola();
   await borrarSesionCache();
+  // Y la de memoria: el dueño único vive mientras viva la app, no la cuenta.
+  olvidarViva();
   await borrarDescanso();
   await Promise.all(DE_LA_SESION.map((clave) => plataforma.almacenamiento.borrar(clave)));
   await borrarPerfilCache();
+  olvidarMiPerfil();
 }
 
 /**
@@ -87,8 +94,12 @@ export async function limpiarAlSalir() {
  */
 export async function cerrarSesion(supabase: Cliente): Promise<boolean> {
   await subirAntesDeSalir(supabase);
+  // Con la sesión todavía puesta: después ya no se puede borrar lo propio.
+  await olvidarAvisosRemotos(supabase).catch(() => undefined);
   const { error } = await supabase.auth.signOut({ scope: 'local' });
   if (error) return false;
+  // Los enlaces de las fotos de esta cuenta no le sirven a la próxima.
+  await olvidarFirmas();
   await limpiarAlSalir();
   return true;
 }

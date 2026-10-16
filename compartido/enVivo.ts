@@ -1,7 +1,6 @@
 import type { Cliente } from '@cliente';
 import { disponible } from '@nucleo/esquema';
-import { CLAVE_NO_AVISAR_HASTA, PAUSA_TRAS_TERMINAR_MS, leerUniones, puedeMarcarPresencia, type LoPublicado, type Union } from '@nucleo/enVivo';
-import { plataforma } from '@plataforma';
+import { leerRespuestaDeUnirse, leerUniones, type LoPublicado, type RespuestaDeUnirse, type Union } from '@nucleo/enVivo';
 import { versionDelEsquema } from '@compartido/esquema';
 
 /**
@@ -27,9 +26,10 @@ export async function traerUniones(supabase: Cliente): Promise<Uniones | null> {
   return { uniones: leerUniones(data), recibidoEn: Date.now() };
 }
 
-export async function pedirUnirse(supabase: Cliente, aQuien: string): Promise<boolean> {
-  if (!disponible('entrenarConOtro', await version(supabase))) return false;
-  return !(await supabase.rpc('pedir_unirse', { p_a: aQuien })).error;
+export async function pedirUnirse(supabase: Cliente, aQuien: string): Promise<RespuestaDeUnirse> {
+  if (!disponible('entrenarConOtro', await version(supabase))) return 'fallo';
+  const { data, error } = await supabase.rpc('pedir_unirse', { p_a: aQuien });
+  return error ? 'fallo' : leerRespuestaDeUnirse(data);
 }
 
 export async function responderUnion(supabase: Cliente, id: string, acepta: boolean): Promise<boolean> {
@@ -54,31 +54,62 @@ export async function publicarEnVivo(supabase: Cliente, p: LoPublicado): Promise
 }
 
 /**
- * "ESTOY ENTRENANDO", al iniciar una sesión en cualquier lado (12/10). Es la
- * misma marca que pone el vigilante al llegar al gimnasio, y respeta lo mismo:
- * solo aparece quien tiene prendido "Avisar cuando entreno". Vence sola.
- *
- * La función es vieja (migración 51); lo nuevo es llamarla al iniciar, y eso
- * sale junto con "entrenar con otro".
+ * Terminé: se va lo que publiqué y se cortan mis vínculos. De "Entrenando
+ * ahora" me saca que la sesión se cierre: desde la migración 72 eso sale de la
+ * sesión y de ningún otro lado, así que acá no hay nada que marcar ni desmarcar.
  */
-export async function avisarQueEntreno(supabase: Cliente): Promise<void> {
-  // Una sesión nueva levanta la pausa que dejó el "Terminar" anterior.
-  await plataforma.almacenamiento.borrar(CLAVE_NO_AVISAR_HASTA).catch(() => undefined);
-  if (!disponible('entrenarConOtro', await version(supabase))) return;
-  await supabase.rpc('marcar_en_gimnasio');
-}
-
-/** Lo que mira el vigilante del gimnasio antes de marcar que estás entrenando. Ver `puedeMarcarPresencia`. */
-export async function sePuedeMarcarPresencia(): Promise<boolean> {
-  return puedeMarcarPresencia(await plataforma.almacenamiento.leer(CLAVE_NO_AVISAR_HASTA).catch(() => null), Date.now());
-}
-
-/** Terminé: dejo de aparecer y se cortan mis vínculos. */
 export async function dejarDeEntrenar(supabase: Cliente): Promise<void> {
-  // Antes que nada, y aunque la base no conteste: el vigilante lo mira en el teléfono.
-  await plataforma.almacenamiento
-    .guardar(CLAVE_NO_AVISAR_HASTA, String(Date.now() + PAUSA_TRAS_TERMINAR_MS))
-    .catch(() => undefined);
   if (!disponible('entrenarConOtro', await version(supabase))) return;
   await supabase.rpc('dejar_de_entrenar');
+}
+
+// ── EL GRUPO (migración 88) ──
+
+export type RespuestaDelLink = 'ok' | 'ya-unido' | 'ocupado' | 'no-existe' | 'fallo';
+
+/** Me voy del grupo entero. Si lo había armado yo, pasa al que lleva más tiempo. */
+export async function salirDelGrupo(supabase: Cliente): Promise<boolean> {
+  if (!disponible('grupos', await version(supabase))) return false;
+  return !(await supabase.rpc('salir_del_grupo')).error;
+}
+
+/** Saca a alguien del grupo. Solo anda si lo armé yo. */
+export async function echarDelGrupo(supabase: Cliente, quien: string): Promise<boolean> {
+  if (!disponible('grupos', await version(supabase))) return false;
+  const { data, error } = await supabase.rpc('echar_del_grupo', { p_quien: quien });
+  return !error && data === true;
+}
+
+/** El código del link del grupo (si no tengo grupo, se arma uno). `null` = no se pudo o no estoy entrenando. */
+export async function linkDelGrupo(supabase: Cliente): Promise<string | null> {
+  if (!disponible('grupos', await version(supabase))) return null;
+  const { data, error } = await supabase.rpc('link_del_grupo');
+  return !error && typeof data === 'string' && data ? data : null;
+}
+
+/** Entrar por el link: quedamos amigos con quien armó el grupo, y entro. */
+export async function unirsePorLink(supabase: Cliente, codigo: string): Promise<RespuestaDelLink> {
+  if (!disponible('grupos', await version(supabase))) return 'fallo';
+  const { data, error } = await supabase.rpc('unirse_por_link', { p_codigo: codigo });
+  if (error) return 'fallo';
+  return data === 'ya-unido' || data === 'ocupado' || data === 'no-existe' ? data : 'ok';
+}
+
+/**
+ * EN TIEMPO REAL (migración 88): avisa apenas cambia lo que publicó alguien del
+ * grupo o quién está adentro. No trae los datos: quien escucha vuelve a pedir
+ * `mis_uniones`, que es la única que sabe armar la lista (y la que mira los
+ * permisos). La base deja leer solo lo del propio grupo. Devuelve con qué dejar
+ * de escuchar.
+ */
+export function escucharGrupo(supabase: Cliente, grupo: string, companeros: string[], alCambiar: () => void): () => void {
+  const canal = supabase.channel(`grupo:${grupo}:${Math.random().toString(36).slice(2, 8)}`);
+  canal.on('postgres_changes', { event: '*', schema: 'public', table: 'grupo_miembros', filter: `grupo_id=eq.${grupo}` }, () => alCambiar());
+  if (companeros.length > 0) {
+    canal.on('postgres_changes', { event: '*', schema: 'public', table: 'en_vivo', filter: `user_id=in.(${companeros.join(',')})` }, () => alCambiar());
+  }
+  canal.subscribe();
+  return () => {
+    void supabase.removeChannel(canal);
+  };
 }

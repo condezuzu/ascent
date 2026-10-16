@@ -1,10 +1,9 @@
-import { registrarPorSenal } from '@compartido/gimnasio';
+import { anotarLlegadaPendiente, registrarPorSenal, reintentarLlegadaPendiente } from '@compartido/gimnasio';
 import { anotar } from '@compartido/bitacora';
-import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
-import { VISITA_VENCIDA_MS } from '@nucleo/llegada';
 import { supabase } from './supabase';
-import { miId } from '@compartido/quienSoy';
-import { alLlegarDeFondo } from './plataforma/ubicacion';
+import { quienSoy } from '@compartido/quienSoy';
+import { aISO } from '@nucleo/fechas';
+import { alLlegarDeFondo, alSalirDeFondo } from './plataforma/ubicacion';
 
 /**
  * LLEGASTE AL GIMNASIO CON LA APP CERRADA (§13). Lo que en web no se podía.
@@ -26,14 +25,9 @@ import { alLlegarDeFondo } from './plataforma/ubicacion';
  *
  * - **Registra el día.** Es lo único que no puede esperar: es para lo que
  *   existe la función.
- * - **NO arranca la sesión.** §13 dice que el cronómetro arranca recién a los
- *   siete minutos de haber llegado —uno se cambia, saluda, no empieza a
- *   entrenar en la puerta— y acá hay treinta segundos de vida, no siete
- *   minutos. Lo que sí hace es **dejar anotada la hora de llegada**: cuando
- *   abras la app, el vigilante lee esa hora y arranca la sesión FECHADA EN LA
- *   LLEGADA, no en el momento en que la abriste. El resultado es el que se
- *   quería: la sesión dice que llegaste 10:00 aunque hayas sacado el teléfono
- *   del bolsillo a las 10:40.
+ * - **NO arranca la sesión**, ni ahora ni después (15/10): llegar registra el
+ *   día y el cronómetro lo arranca la persona. Hasta el 15/10 dejaba anotada la
+ *   hora de llegada para que el vigilante arrancara la sesión fechada ahí.
  *
  * La hora de llegada la da el despertar, que es lo más cerca de la puerta que
  * se puede estar. Por eso no se mide el GPS acá: ya lo midió el sistema, y
@@ -47,24 +41,25 @@ async function llegue() {
     // cerrar sesión hasta que alguien lo suelte, así que este despertar puede
     // caer sin usuario: pedir el RPC ahí es un 401 y una línea de error en la
     // caja negra por algo que es normal.
-    if (!(await miId(supabase))) return;
+    //
+    // "SIN SESIÓN" Y "NO PUDE SABER" NO SON LO MISMO (13/10). Con el token
+    // vencido y sin datos, preguntar quién soy falla; antes eso se tomaba por
+    // "no hay nadie" y se salía sin dejar rastro: ni día, ni visita, ni una
+    // línea en la bitácora.
+    const yo = await quienSoy(supabase);
+    if (yo.estado === 'sin') return;
 
-    const r = await registrarPorSenal(supabase, 'ubicacion');
+    // EL DÍA. Si no entró —sin datos en la puerta— queda pendiente y lo
+    // reintenta el vigilante la próxima vez que la app esté abierta.
+    const dia = aISO(new Date(ahora));
+    const r = yo.estado === 'con' ? await registrarPorSenal(supabase, 'ubicacion') : { registrado: false, yaEstaba: false };
+    const entro = r.registrado || r.yaEstaba;
+    if (!entro) await anotarLlegadaPendiente(dia);
     await anotar('llegué (app cerrada): registré el día', {
       entró: r.registrado,
       yaEstaba: r.yaEstaba,
+      quedóPendiente: !entro,
     });
-
-    // LA VISITA, para que la sesión pueda arrancar fechada en la llegada.
-    // Una visita de hace horas es otra visita (el bug del 15/9, en
-    // `nucleo/llegada.ts`): si la guardada está vencida se empieza de cero.
-    const v = await leerVigilancia();
-    const sigueSiendoEsta = v && ahora - v.ultimoAdentro <= VISITA_VENCIDA_MS;
-    await guardarVigilancia(
-      sigueSiendoEsta
-        ? { ...v, ultimoAdentro: ahora }
-        : { desde: ahora, ultimoAdentro: ahora, arranco: false }
-    );
   } catch (e) {
     // NO PUEDE TIRAR. Lo que esto devuelve es lo que iOS usa para saber que
     // puede dormir a la app; una promesa rechazada acá es una tarea en segundo
@@ -77,3 +72,20 @@ async function llegue() {
 // que hace es dejar la función a mano, así que importar esto no cuesta nada ni
 // enciende ninguna antena.
 alLlegarDeFondo(llegue);
+
+/**
+ * TE FUISTE DEL GIMNASIO CON LA APP CERRADA (14/10): si el día quedó pendiente
+ * al llegar —sin datos en la puerta—, se reintenta ahora, que afuera suele haber
+ * señal. Si ya es otro día, `reintentarLlegadaPendiente` lo tira sin escribir.
+ */
+async function meFui() {
+  try {
+    if ((await quienSoy(supabase)).estado !== 'con') return;
+    const r = await reintentarLlegadaPendiente(supabase, aISO(new Date()));
+    if (r !== 'nada') await anotar('me fui (app cerrada): llegada pendiente', { resultado: r });
+  } catch (e) {
+    await anotar('me fui (app cerrada): falló', { por: String((e as Error)?.message ?? e) });
+  }
+}
+
+alSalirDeFondo(meFui);

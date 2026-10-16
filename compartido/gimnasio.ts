@@ -65,6 +65,37 @@ export async function registrarPorSenal(
 }
 
 /**
+ * LA LLEGADA QUE NO SE PUDO REGISTRAR (13/10/2026).
+ *
+ * Con la app cerrada, el sistema avisa UNA vez que llegaste y da unos segundos.
+ * Si en esos segundos no hay datos —la puerta de un subsuelo—, el día no
+ * entraba y nadie volvía a intentarlo: quien no abría la app adentro del
+ * gimnasio perdía el día sin enterarse. Ahora se deja anotado QUÉ DÍA fue, y
+ * se reintenta la próxima vez que la app esté abierta, en cualquier lado.
+ *
+ * SOLO SI SIGUE SIENDO ESE DÍA. Si ya es otro, se tira: nunca se registra hoy
+ * por una llegada de ayer (ver trampas.md, "nunca escribir sobre otro día").
+ */
+export const CLAVE_LLEGADA_PENDIENTE = 'ascent:llegada-pendiente';
+
+export async function anotarLlegadaPendiente(dia: string): Promise<void> {
+  await plataforma.almacenamiento.guardar(CLAVE_LLEGADA_PENDIENTE, dia).catch(() => undefined);
+}
+
+export async function reintentarLlegadaPendiente(supabase: Cliente, hoy: string): Promise<'nada' | 'entro' | 'sigue' | 'vencio'> {
+  const dia = await plataforma.almacenamiento.leer(CLAVE_LLEGADA_PENDIENTE).catch(() => null);
+  if (!dia) return 'nada';
+  if (dia !== hoy) {
+    await plataforma.almacenamiento.borrar(CLAVE_LLEGADA_PENDIENTE).catch(() => undefined);
+    return 'vencio';
+  }
+  const r = await registrarPorSenal(supabase, 'ubicacion');
+  if (!r.registrado && !r.yaEstaba) return 'sigue';
+  await plataforma.almacenamiento.borrar(CLAVE_LLEGADA_PENDIENTE).catch(() => undefined);
+  return r.registrado ? 'entro' : 'nada';
+}
+
+/**
  * Marcar el punto del gimnasio: se lee el GPS y se guarda dónde estás AHORA.
  *
  * Vive acá y no adentro de la pantalla de Ajustes porque se marca desde dos

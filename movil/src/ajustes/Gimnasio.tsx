@@ -1,12 +1,28 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { marcarPunto, PUNTO_CAMBIO } from '@compartido/gimnasio';
 import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
-import { C } from '../colores';
+import { C, conAlfa } from '../colores';
+import PinGimnasio from '../PinGimnasio';
+
+/**
+ * LLEVAR A MARCAR EL GIMNASIO (15/10): "Deja que se marque solo" en Inicio cambia
+ * de pestaña y emite esto; la caja de los botones se ilumina dos veces para que se
+ * encuentre. Ajustes, de paso, vuelve arriba.
+ */
+export const RESALTAR_GIMNASIO = 'ascent:resaltar-gimnasio';
+
+// Ajustes se monta recién la primera vez que se abre: un aviso emitido antes se
+// perdería. Queda anotado y Mi gimnasio lo lee al montarse.
+let pedidoEn = 0;
+export function pedirResaltarGimnasio() {
+  pedidoEn = Date.now();
+  eventos.emitir(RESALTAR_GIMNASIO);
+}
 
 /**
  * EL PUNTO DEL GIMNASIO, para que el día se registre solo (§13). La misma
@@ -46,6 +62,20 @@ export default function Gimnasio({
   const [detalle, setDetalle] = useState('');
 
   const puesto = perfil.gimnasio_lat !== null && perfil.gimnasio_lat !== undefined;
+  const luz = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const resaltar = () => {
+      pedidoEn = 0;
+      luz.setValue(0);
+      // Con una pausa: que se vea DESPUÉS de cambiar de pestaña, no durante.
+      const subir = Animated.timing(luz, { toValue: 1, duration: 260, useNativeDriver: true });
+      const bajar = Animated.timing(luz, { toValue: 0, duration: 420, useNativeDriver: true });
+      Animated.sequence([Animated.delay(320), subir, bajar, subir, bajar]).start();
+    };
+    if (Date.now() - pedidoEn < 3000) resaltar();
+    return eventos.escuchar(RESALTAR_GIMNASIO, resaltar);
+  }, [luz]);
 
   async function marcar() {
     setEstado('buscando');
@@ -72,7 +102,7 @@ export default function Gimnasio({
     setEstado('listo');
     // La precisión se muestra porque cambia lo que se puede esperar: con 200
     // metros de error el atajo va a fallar, y es mejor saberlo ahora.
-    setDetalle(T.ajustes.gimnasioListo(Math.round(r.precision)));
+    setDetalle(T.ajustes.gimnasioListoNativo(Math.round(r.precision)));
   }
 
   async function borrar() {
@@ -95,27 +125,27 @@ export default function Gimnasio({
     <View style={estilos.seccion}>
       <Text style={estilos.titulo}>{T.ajustes.gimnasio}</Text>
 
-      <Pressable style={estilos.boton} onPress={marcar} disabled={estado === 'buscando'}>
-        <Text style={estilos.botonTexto}>
-          {estado === 'buscando' ? T.ajustes.gimnasioBuscando : puesto ? T.ajustes.gimnasioRemarcar : T.ajustes.gimnasioMarcar}
-        </Text>
-      </Pressable>
-
-      <Text style={estilos.nota}>
-        <Text style={estilos.fuerte}>{T.ajustes.gimnasioComo}</Text> {T.ajustes.gimnasioParaQueNativo}
-      </Text>
-      <Text style={estilos.nota}>{T.ajustes.gimnasioTechoNativo}</Text>
-
-      {detalle !== '' && <Text style={[estilos.nota, estado === 'error' && estilos.error]}>{detalle}</Text>}
-
-      {puesto && (
-        <>
-          <Text style={estilos.nota}>{T.ajustes.gimnasioPuesto}</Text>
-          <Pressable style={estilos.boton} onPress={borrar}>
+      {/* UNA SOLA CAJA, como los controles de Ajustes (Kilos | Libras): radio 12,
+          borde fino, y el borrar debajo del marcar con un separador (15/10). */}
+      <View style={estilos.caja}>
+        <Pressable testID="gimnasio-marcar" style={estilos.renglon} onPress={marcar} disabled={estado === 'buscando'}>
+          <PinGimnasio tam={16} color={C.tinta} />
+          <Text style={estilos.botonTexto}>
+            {estado === 'buscando' ? T.ajustes.gimnasioBuscando : puesto ? T.ajustes.gimnasioRemarcar : T.ajustes.gimnasioMarcar}
+          </Text>
+        </Pressable>
+        {puesto && (
+          <Pressable style={[estilos.renglon, estilos.separado]} onPress={borrar}>
             <Text style={estilos.botonTexto}>{T.ajustes.gimnasioBorrar}</Text>
           </Pressable>
-        </>
-      )}
+        )}
+        <Animated.View testID="gimnasio-luz" pointerEvents="none" style={[estilos.luz, { opacity: luz }]} />
+      </View>
+      {/* Que se sepa que hay que estar AHÍ: un punto marcado desde casa registra días que no ocurrieron. */}
+      <Text style={estilos.estandoAhi}>{T.ajustes.gimnasioEstandoAhi}</Text>
+
+
+      {detalle !== '' && <Text style={[estilos.nota, estado === 'error' && estilos.error]}>{detalle}</Text>}
     </View>
   );
 }
@@ -126,16 +156,12 @@ const estilos = StyleSheet.create({
   // Estas secciones nacieron con título grande y quedaban como pegadas de otra
   // pantalla — dos estilos de título en una lista se leen como un error.
   titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
-  boton: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    borderRadius: 10,
-    paddingVertical: 13,
-    alignItems: 'center',
-    marginTop: 10,
-  },
+  caja: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 12, overflow: 'hidden', marginTop: 10 },
+  renglon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, paddingVertical: 11, paddingHorizontal: 6 },
+  separado: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineaFuerte },
+  luz: { ...StyleSheet.absoluteFillObject, borderRadius: 12, borderWidth: 1, borderColor: C.claro, backgroundColor: conAlfa(C.claro, 0.08) },
   botonTexto: { color: C.tinta, fontSize: 14 },
+  estandoAhi: { color: C.apagado, fontSize: 12, marginTop: 6 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
-  fuerte: { color: C.sub },
   error: { color: C.error },
 });

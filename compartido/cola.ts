@@ -66,7 +66,7 @@ type Encolable =
   //   en que pasó. Justo para eso existe la hora: una marca que sube media
   //   hora tarde desde el subsuelo tiene que decir cuándo fue el toque, no
   //   cuándo volvió la señal.
-  | { rpc: 'marcar_actividad'; args: { p_sesion: string; p_hasta: string } }
+  | { rpc: 'marcar_actividad'; args: { p_sesion: string; p_hasta: string; p_bajar?: boolean } }
   // `elegir_carga` (migración 38): con qué se hace un ejercicio.
   //
   // - *Idempotente*: guarda EL modo, no "cambialo". Repetirla deja lo mismo.
@@ -142,8 +142,14 @@ export async function encolar(supabase: Cliente, tarea: Encolable) {
         : tarea.args.p_ejercicio;
   const id = `${tarea.rpc}:${de}`;
   await enTurno(async () => {
-    const lista = (await leer()).filter((p) => p.id !== id);
-    lista.push({ ...tarea, id });
+    const antes = await leer();
+    const lista = antes.filter((p) => p.id !== id);
+    // UNA BAJADA DE LA MARCA NO SE PIERDE (cacería del 15/10): si la marca que se
+    // reemplaza bajaba la promesa ("Listo" sin señal), la nueva también baja. Es
+    // segura: su hora ya sale de la caché, que la bajada dejó en la hora de Listo.
+    const bajaba = antes.some((p) => p.id === id && p.rpc === 'marcar_actividad' && p.args.p_bajar === true);
+    const nueva = bajaba && tarea.rpc === 'marcar_actividad' ? { ...tarea, args: { ...tarea.args, p_bajar: true } } : tarea;
+    lista.push({ ...nueva, id });
     await guardar(lista);
   });
   void vaciar(supabase);
@@ -275,6 +281,23 @@ export async function cuantasPendientes(): Promise<number> {
  * respuesta de la base algo que este teléfono eligió después y todavía no
  * llegó.
  */
+/**
+ * ¿QUEDA ALGO DE ESTA SESIÓN SIN SUBIR? (13/10/2026)
+ *
+ * LA REGLA QUE ESTO SOSTIENE: mientras haya escrituras de una sesión en la
+ * cola, NO SE LE PREGUNTA NADA A LA BASE QUE LA HAGA JUZGAR ESA SESIÓN. La base
+ * decide con lo que tiene —cuándo fue la última serie, cuántas hay— y con la
+ * cola a medio subir tiene datos viejos: cierra en el minuto 3 un entrenamiento
+ * de 47, o devuelve un conteo que el toque siguiente da por bueno y pisa lo que
+ * esperaba. Era el mismo agujero en tres lugares (preguntar si sigue viva,
+ * iniciar, terminar): ahora los tres preguntan acá.
+ */
+export async function quedaDeLaSesion(id: string | null | undefined): Promise<boolean> {
+  if (!id) return false;
+  const pendientes = await leer();
+  return (['fijar_series', 'fijar_bloques', 'marcar_actividad'] as const).some((rpc) => pendientes.some((p) => p.id === `${rpc}:${id}`));
+}
+
 export async function estaPendiente(rpc: Encolable['rpc'], clave: string): Promise<boolean> {
   return (await leer()).some((p) => p.id === `${rpc}:${clave}`);
 }

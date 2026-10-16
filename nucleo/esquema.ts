@@ -50,6 +50,36 @@ export const REQUIERE = {
   entrenarConOtro: 67,
   /** "Avisar cuando entreno" nace prendido: recién ahí tiene sentido avisarlo. */
   avisoDeEntrenoPrendido: 68,
+  /** Corregir un día en una sola transacción, en vez de borrar y volver a poner. */
+  corregirDiaDeUna: 74,
+  /** Las rutinas guardadas: varias por cuenta, una activa. */
+  rutinas: 75,
+  /** Ejercicios propios y cardio (se mide en minutos). */
+  ejerciciosPropios: 76,
+  /** Avisos push: te quieren agregar, quieren unirse a tu entrenamiento. */
+  avisosRemotos: 77,
+  /** Los amigos de un amigo, en su perfil. */
+  amigosDeAmigos: 78,
+  /** Las vidas vuelven todas juntas al cerrarse el ciclo de 30 días. */
+  vidasDeUna: 79,
+  /** Los ejercicios propios los ve solo quien los creó (la app no depende de esto). */
+  propiosSoloMios: 80,
+  /** La marca de actividad acepta hasta una hora adelante (descanso a mano, cinta larga). */
+  marcaDeUnaHora: 81,
+  /** La marca de actividad se puede achicar ("Listo" en la cinta, el descanso cortado). */
+  bajarMarca: 82,
+  /** Darse de baja aunque un amigo haya usado tus ejercicios propios (la app no depende de esto). */
+  bajaConPropios: 83,
+  /** Marcar "Fui" en un día que cubrió una vida la devuelve (la app no depende de esto). */
+  vidaDeUnDiaQueFuiste: 84,
+  /** Marcar "Guardarla para después" con el día de hoy ya anotado corta la racha (la app no depende de esto). */
+  vidaDevueltaConHoy: 85,
+  /** Los días de un amigo se leen sin la hora ni el origen (vista `logs_de_amigos`). */
+  logsDeAmigos: 86,
+  /** Las marcas se leen sin la hora (la app no depende de esto). */
+  marcasSinHora: 87,
+  /** Entrenar en grupo: hasta 10, el link del grupo, echar y el tiempo real. */
+  grupos: 88,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

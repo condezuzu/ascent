@@ -77,8 +77,69 @@ La 1.0 está en la tienda. Esto es lo que sigue, EN ESTE ORDEN. La regla del
 alcance congelado sigue valiendo adentro de cada tanda: lo que aparezca en el
 camino se anota abajo, en "Después", y no se mete.
 
+### EL ORDEN, desde el 13/10/2026 (reemplaza al orden de las tandas de abajo)
+
+Decidido por el humano el 13/10, después de la cacería de ese día. **La regla
+que lo ordena: antes de agregar nada nuevo, la app no puede perder lo que la
+gente ya hizo.** En una app de racha, perder un día es lo peor que puede pasar.
+
+1. **Cerrar la cacería del 13/10.** Regla: no se arregla nada que no esté
+   reproducido. Hecho: los que seguían vivos de la anterior, la migración 73
+   (el vínculo sigue a la sesión y es de a dos) y **los 13 que rompían datos**
+   (casi todos de señal mala; migración 74). Detalle local:
+   `spec/caza-2026-10-13-detalle.md`. Quedan sin tocar los "se ve feo" y los
+   teóricos no verificados.
+2. **La rutina como algo propio** (decidido el 13/10, hacerla tal cual):
+   - una tabla propia: por cuenta y por día de la semana, los ejercicios con
+     sus series. Nunca pesos;
+   - paso 1, SIN migración: mirarla, plegada por día ("Lunes — Pecho, hombro y
+     brazo"; los grupos salen del catálogo), en Stats → Entrenamiento, en el
+     perfil propio y en el de un amigo. Mientras no se edite, se llena con lo
+     deducido del historial. Arregla que hoy nadie ve su propia rutina (la
+     función la devuelve; `PerfilPropio` nunca la pide);
+   - paso 2: editarla desde Stats (con migración);
+   - paso 3: copiar y pegar un día propio a otro, y la rutina de un amigo. Si
+     el destino ya tiene ejercicios, PREGUNTA "reemplazar" o "agregar al
+     final". La copiada de otro es una copia libre, sin atadura;
+   - paso 4: que la sesión arranque desde la rutina del día.
+3. **El aviso fuera de la app** cuando alguien quiere unirse. Va por OTA
+   (comprobado en `telefono` y en la build 7 de tienda): falta pedir el token,
+   la tabla de tokens, y algo que mande.
+4. **El refactor del estado del entrenamiento** —un solo dueño del dato—.
+   **Al arrancar este punto, recordarle al humano el dominio** (ver punto 7).
+5. **El multijugador completo**: grupos de verdad, tiempo real, sin el parpadeo.
+6. **El selector de ejercicio y la guía corta** (ver "tres personas se trabaron").
+7. **La build 8, al final de todo.** Primero se publica todo por OTA y recién
+   ahí se compila, con todo lo nativo junto: una sola revisión de Apple y una
+   actualización completa. La rama `build-8-nativo` queda como está y no se
+   compila. **El widget de la pantalla bloqueada SÍ entra** (decidido el
+   13/10): se prepara en la rama cuando llegue el momento, no antes.
+   **El dominio es lo único que no puede esperar al final:** queda compilado
+   adentro de la build, así que se decide antes.
+
+**Las medallas por pasos NO se hacen** (decidido el 13/10): ver abajo.
+
+Las letras del plan viejo (de la A a la I) ya no se usan: cada cosa va con su
+nombre. La que era "H" es el refactor del estado del entrenamiento.
+
 **Cómo se publica cada tanda:** migración primero (si hay), después UNA OTA a
 `telefono`, la prueba el humano en el iPhone, y recién después `store`.
+
+### Límite aceptado: la hora de entrenar por las fotos y las medallas (15/10/2026)
+
+Con "Avisar cuando entreno" apagado, un amigo ya no ve a qué hora entrenaste por
+los días (migración 86), por las marcas (87) ni por el nombre de una foto nueva.
+**Queda a la vista, y se decidió dejarlo así:**
+- la hora de subida de una foto compartida con amigos (`photos.creado` y el
+  `created_at` del archivo): el amigo necesita poder bajar el archivo, y la regla
+  del storage que se lo permite lee la tabla `photos`;
+- el nombre de las fotos subidas antes del 15/10, que lleva la hora en milisegundos;
+- `medallas.actualizado`, que dice cuándo abriste tu perfil (no cuándo entrenaste).
+
+**El motivo:** taparlo pide firmar los enlaces de las fotos desde el servidor y
+cambiar cómo la app guarda las medallas (un upsert necesita leer todas las
+columnas). Es mucho trabajo para tapar la hora de subida de una foto que la persona
+eligió compartir. Si algún día molesta, se revisa.
 
 ### Hecho el 8/10 (sale en la próxima OTA)
 
@@ -92,23 +153,23 @@ camino se anota abajo, en "Después", y no se mete.
 
 ### Tanda 1 — entender la app y que ande en cualquier teléfono (hecha el 8/10)
 
-- **A) La guía de primera vez.** Ya existía (cinco pantallas, una línea cada
+- **La guía de primera vez.** Ya existía (cinco pantallas, una línea cada
   una, con "Saltar"). Le faltaba decir cómo se entrena: se sumó ese paso.
   **Desde el 7/10 arranca sola** en un aparato que no la vio (antes solo al
   elegir el nombre), y "Saltar" es un botón con borde. Consecuencia sabida: con
   esa OTA la ve una vez todo el que no la había terminado en ese teléfono.
-- **B) Calidad del fondo.** La app mide los cuadros por segundo y baja sola la
+- **Calidad del fondo.** La app mide los cuadros por segundo y baja sola la
   calidad si el teléfono no da; en Ajustes se puede fijar a mano.
 
 ### Tanda 2 — barato y se nota (hecha el 8/10, sin probar en el teléfono)
 
-- **C) Ver los pasos durante el entrenamiento.** Hecho dentro de la app: el
+- **Ver los pasos durante el entrenamiento.** Hecho dentro de la app: el
   renglón de pasos se queda durante la sesión, sin la barra, y se vuelve a
   pedir cada minuto. Los pasos ya se leían de Salud (HealthKit está en la
   build 7). Verlos en la tarjeta de la pantalla bloqueada queda para la build.
-- **D) Abrir la foto de perfil de un amigo** para verla grande. Hecho, sin
+- **Abrir la foto de perfil de un amigo** para verla grande. Hecho, sin
   migración: el bucket `avatares` es público desde siempre.
-- **E) La vibración del descanso, más larga y marcada.** Hecho. iOS no deja
+- **La vibración del descanso, más larga y marcada.** Hecho. iOS no deja
   elegir cuánto dura una vibración, así que son varias: con la app abierta,
   tres encadenadas; bloqueado, tres avisos separados por un segundo (los dos
   de más no suenan con la app abierta). **Solo verificable en el teléfono.**
@@ -116,14 +177,14 @@ camino se anota abajo, en "Después", y no se mete.
 
 ### Tanda 3 — crecimiento (hecha el 8/10, sin probar en el teléfono)
 
-- **F) Amigos por enlace.** Hecho: `https://…/amigo/<nombre>` es una página
+- **Amigos por enlace.** Hecho: `https://…/amigo/<nombre>` es una página
   pública de la web con un botón que abre `ascent://amigo/<nombre>`; la app
   manda el pedido sola y muestra el perfil. **No sobrevive a la instalación**:
   quien no tiene la app la baja, crea la cuenta y vuelve a tocar el enlace
   (la página lo dice). Eso pide capa nativa y va a la build única. El pedido
   no los hace amigos: quien invitó acepta, porque el enlace lleva solo un
   nombre y cualquiera puede armar uno.
-- **G) Ver la rutina de un amigo desde su perfil.** Hecho (migración 64):
+- **Ver la rutina de un amigo desde su perfil.** Hecho (migración 64):
   debajo de las fotos, por día de la semana, los ejercicios y cuántas series,
   de las últimas cuatro semanas. Nunca pesos ni duración (§17.8 sigue: la
   tabla de sesiones no se abre). Prendido por omisión; se esconde en Ajustes.
@@ -141,6 +202,17 @@ una sola cosa:
 - la tarjeta de la pantalla bloqueada: que muestre "Serie 0" / el ejercicio
   recién elegido con su meta (hoy el widget esconde la serie 0), y los pasos
   si se decide mostrarlos ahí;
+- **la tarjeta de la pantalla bloqueada muestra al compañero** (pedido del
+  humano, 14/10): entrenando con otro, su ejercicio y su serie, o al menos
+  cuánto le falta de descanso. Es Swift (el widget): va en esta build;
+- **el inglés de lo que vive en la build** (14/10): la app ya cambia de idioma
+  por OTA, pero los carteles de permisos de iOS (ubicación, cámara, Salud,
+  avisos: `infoPlist` de `app.json`) y la tarjeta Swift ("DESCANSO"/"LISTO")
+  siguen en español. Van con `InfoPlist.strings` en inglés y el texto del widget
+  según el idioma;
+- **que el aviso del descanso suene con el teléfono en silencio y la app cerrada**
+  pide el permiso de alertas críticas de Apple, que ya se decidió no pedir (ver
+  arriba). Con la app abierta ya suena en silencio (categoría de audio Playback);
 - **el enlace de amigo tiene que sobrevivir a la instalación.** Hoy el
   invitado sin la app la baja, crea la cuenta y tiene que VOLVER a tocar el
   enlace (la página lo dice en tres pasos numerados): se pierde la mitad de la
@@ -152,7 +224,8 @@ una sola cosa:
   notificación —las tres del 8/10 llenaban el centro de notificaciones—, y la
   tarjeta con la cuenta corriendo ya existe desde la build 7. Lo que la build
   agrega, y está preparado en la rama `build-8-nativo` (NO en `main`): un
-  sonido propio más fuerte y más largo, y un archivo de silencio para que, con
+  sonido propio (el "corte 1", elegido el 13/10: ver
+  `spec/sonido-del-aviso.md`), y un archivo de silencio para que, con
   "Sonido al terminar" apagado, el aviso vibre sin sonar. Sonar con el teléfono
   en silencio pide un permiso de Apple que no se va a pedir. Que la tarjeta
   SUENE sola al terminar, sin notificación, pide un servidor que la empuje
@@ -161,12 +234,28 @@ una sola cosa:
   archivos nativos cambia la huella de la app, y el guardián deja de publicar
   OTAs a las builds que ya están en la calle. La rama se junta con `main`
   recién cuando la build nueva existe;
-- lo que NO se pudo preparar desde esta PC: los cambios al widget (Swift). Acá
-  no se compila Swift, y un error ahí se ve recién en la build;
-- Diagnóstico sin depender de una variable de compilación (ya anotado abajo);
+- los cambios al widget (Swift): entran en la build 8, y se preparan en la
+  rama cuando llegue el momento. Acá no se compila Swift, y un error ahí se ve
+  recién en la build: se prueba primero con una build `telefono`;
+- ~~Diagnóstico sin depender de una variable de compilación~~: **NO es de la
+  build** (revisado el 13/10). La variable se mete en el JavaScript al
+  exportar, y decidirlo por `Updates.channel` es código que viaja por OTA;
+- **el aviso fuera de la app** (alguien quiere unirse) **NO pide build: va
+  por OTA. Comprobado el 13/10/2026**, de dos formas:
+  - en la build de `telefono`, Diagnóstico → "Probar avisos remotos": Apple
+    dio un token (264 caracteres) y Expo otro (`ExponentPushToken…`);
+  - en la build 7 DE TIENDA, bajada de EAS (`bd30a91b`): el perfil de
+    aprovisionamiento y la firma del ejecutable traen
+    `aps-environment = production`.
+  Falta hacerlo: pedir y guardar el token (OTA y una migración), y algo que
+  mande cuando se crea un pedido de unión. **Sin armar todavía**;
+- **si alguna vez se quiere que la tarjeta suene sola** (APNs sobre la Live
+  Activity), el módulo Swift tiene que pedirla con `pushType: .token` (hoy
+  `nil`): eso SÍ es build. No está en el alcance; si no entra en la 8, es
+  otra build;
 - lo que quede pendiente de capa nativa al llegar ese día.
 
-### Tanda 4 — lo grande (la versión chica de la I, hecha el 12/10 SIN el dueño único)
+### Tanda 4 — lo grande (la versión chica del entrenamiento compartido, hecha el 12/10 SIN el dueño único)
 
 - **Hecho el 12/10: "entrenar con otro", de a dos** (migración 67), para
   probarlo en el gimnasio. En "Entrenando ahora" hay un "Unirse"; al otro le
@@ -199,22 +288,24 @@ una sola cosa:
   - *"Avisar cuando entreno" nace PRENDIDO* (decidido el 12/10, migración 68):
     apagado no arrancaba nunca. Se avisa una vez, igual que la rutina.
   - *De a dos por ahora* (decidido el 12/10). Grupos, después del dueño único.
-- **Lo que falta de la I**, y sigue esperando al dueño único: grupos de más de
+- **Lo que falta del entrenamiento compartido**, y sigue esperando al refactor
+  del estado del entrenamiento: grupos de más de
   dos, tiempo real, la tira en Inicio, echar, invitar por link, y el aviso
   fuera de la app (este último va a la build única).
-- **Propuesto, sin hacer (12/10):** rediseñar la pantalla del descanso, y que
-  cuando se entrena con otro muestre abajo, en chico, el ejercicio, la serie y
-  la cuenta del otro.
+- **Hecho el 13/10, en `telefono`:** la pantalla del descanso nueva, que
+  cuando se entrena con otro muestra abajo, en chico, el ejercicio, la serie y
+  la cuenta del otro. El arco va con el color del rango; el celeste queda
+  pendiente de decisión (es una línea).
 
-- **I) Entrenamiento compartido:** ver a alguien "entrenando ahora" y unirse, y
+- **Entrenamiento compartido:** ver a alguien "entrenando ahora" y unirse, y
   en Ranking ver en vivo su descanso, su serie y qué está haciendo. Entre 5 y
   10 personas. No es solo diversión: sirve para organizarse mientras se
   descansa, y si entrenás con alguien que no tiene la app, verla funcionar es
   el mejor anuncio que hay.
-  - **Paso 1 de la I (antes era la "H"): un solo dueño del estado del
-    entrenamiento.** Es el refactor que ya estaba anotado más abajo ("Un solo
-    dueño del estado de la sesión de entrenamiento"). No es una tarea aparte:
-    la I no se empieza hasta que esté.
+  - **Primer paso: el refactor del estado del entrenamiento** (un solo dueño
+    del dato). Es el que ya estaba anotado más abajo ("Un solo dueño del
+    estado de la sesión de entrenamiento"). No es una tarea aparte: el
+    multijugador completo no se empieza hasta que esté.
 
 ### Del gimnasio, 10/10/2026 (después de dos días de uso)
 
@@ -247,12 +338,14 @@ una sola cosa:
     revisa, la pregunta no es "¿anotamos repeticiones?" sino "¿hay forma de
     anotarlas sin agregar un toque obligatorio?" (por ejemplo, una sola vez
     por bloque y optativa).
-- **Anotado, ÚLTIMO en prioridad: un logro por llegar a los pasos varios días
-  seguidos.** Los pasos se leen de Salud en el teléfono y no están en la base.
-  - *Solo para uno* (una racha de pasos en Inicio o en Stats, calculada en el
-    teléfono con el historial de Salud): chico a medio, solo OTA.
-  - *Que la vean los amigos*, como las medallas: medio, con migración, y es
-    subir a la base un dato de salud que hoy no sale del teléfono.
+- **LOS PASOS NO SALEN DEL TELÉFONO (decidido por el humano el 13/10/2026).**
+  No se hacen medallas por pasos que vean los amigos: subir pasos a la base es
+  subir un dato de salud de 46 personas, con lo que eso implica con Apple y con
+  la privacidad de la gente. **Si alguna vez se hace algo con pasos, se
+  calcula en el teléfono y no sale de ahí.**
+  - Lo único que sigue siendo posible, sin prioridad: *solo para uno* (una
+    racha de pasos en Inicio o en Stats, calculada en el teléfono con el
+    historial de Salud): chico a medio, solo OTA.
   - A decidir antes: si cambiar la meta reescribe los días ya cumplidos
     (regla 3 del proyecto: el pasado no se reescribe).
 - **Anotado: dominio propio para el link de invitación** (hoy
@@ -297,6 +390,15 @@ Los agentes buscan y reportan; qué se arregla y cómo se decide después, con e
 humano.
 
 ## Después (lo que aparezca, anotado y sin tocar)
+
+- **Reportar o esconder un ejercicio propio de un amigo** (decisión del humano,
+  15/10/2026). Hoy los ejercicios propios los ven tus amigos (migración 76) y
+  quedan así; cuando haya más gente va a hacer falta poder reportar uno con un
+  nombre fuera de lugar, o esconderlo de tu lista.
+- **El cardio con mapa, estilo Strava** (idea del humano, 14/10/2026). Hoy el
+  cardio es un ejercicio que se anota en minutos (migración 76). Un recorrido
+  con mapa pide la ubicación en segundo plano durante la sesión, guardar la
+  traza y dibujarla: es otra cosa, y no se hace ahora.
 
 - **Series por músculo → los ejercicios de esa semana** (15/9/2026). Tocar una
   fila de la pantalla de series y ver qué ejercicios de ese músculo se hicieron
@@ -381,3 +483,15 @@ humano.
   *Antes de empezar:* la red son los escenarios de `supabase/dobles/sesion/`
   (sección 179 de `test:db`), que corren el hook de verdad. Primero se escriben
   ahí los dos casos de arriba, en rojo, y recién después se toca el hook.
+  **Hecho el 15/10:** los dos casos están escritos (escenario `viejas`, sección
+  226) y salen en rojo, como se esperaba: después de Iniciar, la respuesta vieja
+  del arranque deja la pantalla sin sesión; después de Terminar, la vuelve a
+  mostrar corriendo. Van con `rojoConocido`: no rompen la corrida, y el día que
+  salgan bien `test:db` falla hasta pasarlos a `chequear`.
+  **HECHO el 15/10, de noche** (pasos 1 a 5 del plan): los dos casos en verde y
+  pasados a `chequear` (226), y el estado de la sesión vive una vez por aparato
+  en `compartido/sesionViva.ts` (228). Ver `spec/trampas.md`, "Un refresco
+  decide con una foto". Quedó así por decisión propia: la traba de
+  empezar/terminar, `ocupado`, `aviso` y `confirmando` siguen siendo de cada
+  pantalla (llevarlos al dueño cambia qué pantalla muestra "se cerró sola"), y
+  las reglas viejas del hook siguen puestas aunque ahora en parte sobran.

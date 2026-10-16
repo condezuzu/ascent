@@ -14,11 +14,12 @@ import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
 import { ponerDesenfoque } from './desenfoqueDelFondo';
 import { eventos } from '@compartido/eventos';
+import { SOCIAL_CAMBIO } from '@compartido/ranking';
 import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
-import Recorrido from './Recorrido';
 import AvisoRutina from './AvisoRutina';
+import CartelDeArriba from './CartelDeArriba';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -236,6 +237,8 @@ export default function Pestanas({
   useEffect(() => {
     contarSolicitudes();
   }, [contarSolicitudes, pestana]);
+  // Y al contestar una desde el cartel de arriba, sin cambiar de pestaña.
+  useEffect(() => eventos.escuchar(SOCIAL_CAMBIO, () => void contarSolicitudes()), [contarSolicitudes]);
 
   // AL VOLVER A UNA PESTAÑA, QUE PIDA SUS DATOS DE NUEVO. Antes lo hacía
   // sola porque se remontaba entera —que era el titileo—; ahora que se
@@ -478,6 +481,18 @@ export default function Pestanas({
     );
   };
 
+  // LAS PANTALLAS, UNA VEZ (15/10). Cambiar de pestaña volvía a crear las cinco,
+  // y React redibujaba la app entera en cada cambio: medido con la CPU frenada
+  // como un teléfono, era casi todo el costo del cambio. Con el mismo elemento,
+  // React no las vuelve a dibujar; lo que sí cambia —cuál se ve— llega por
+  // `ContextoVisible`, que redibuja solo a quien lo lee.
+  const pantallas = useMemo(
+    () => Object.fromEntries(ORDEN.map((cual) => [cual, dibujar(cual)])) as Record<Pestana, React.ReactNode>,
+    // `dibujar` cambia con cada render; lo que de verdad usa es esto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [alSalir, alFaltarNombre, perfil, perfilNoCargo, cargarPerfil]
+  );
+
   return (
     // CADA TOQUE DESPIERTA AL MOTOR. En la web lo escucha el `window`; acá no
     // hay `window`, y los toques los ve la vista que los recibe. `onTouchStart`
@@ -539,20 +554,16 @@ export default function Pestanas({
                   la que asoma: el fondo es uno solo detrás de las dos, y
                   cambiarlo a mitad del gesto se vería como un salto. */}
               <ContextoVisible.Provider value={cual === pestana}>
-                {dibujar(cual)}
+                {pantallas[cual]}
               </ContextoVisible.Provider>
             </Animated.View>
           );
         })}
       </View>
 
-      {/* EL RECORRIDO DE LA PRIMERA VEZ (§10), encima de la barra. Va acá y no
-          adentro de cada pantalla porque la barra está en las cinco del
-          recorrido: puesto una vez, aparece donde tiene que aparecer. No
-          dibuja nada si no hay recorrido andando. */}
-      <Recorrido pestana={pestana} />
-      {/* El aviso de una vez de que la rutina se ve (8/10). Espera a que el
-          recorrido no esté: nunca se ven los dos juntos. */}
+      {/* El aviso de una vez de que la rutina se ve (8/10). El recorrido de la
+          primera vez se sacó el 15/10: lo reemplazan los globitos, cada uno en su
+          pantalla. */}
       <AvisoRutina />
 
       <View style={estilos.barra} accessibilityRole="tablist">
@@ -570,10 +581,10 @@ export default function Pestanas({
               accessibilityState={{ selected: pestana === p }}
               // SIEMPRE CON SU NOMBRE: el rótulo está dos veces —apagado y
               // encendido— y sin esto se leería dos veces en voz alta.
-              accessibilityLabel={avisa ? `${T.nav[p]} — ${T.social.tePidieron(solicitudes)}` : T.nav[p]}
+              accessibilityLabel={avisa ? `${rotuloDe(p)} — ${T.social.tePidieron(solicitudes)}` : rotuloDe(p)}
             >
               <View>
-                <Text style={estilos.texto}>{T.nav[p]}</Text>
+                <Text style={estilos.texto}>{rotuloDe(p)}</Text>
                 {/* LA LUZ: el mismo rótulo, encendido, encima del apagado. Lo
                     que cambia es su opacidad, y sale de la tira (`luces`), no
                     de `pestana`. */}
@@ -583,7 +594,7 @@ export default function Pestanas({
                   accessibilityElementsHidden
                   importantForAccessibility="no"
                 >
-                  {T.nav[p]}
+                  {rotuloDe(p)}
                 </Animated.Text>
                 {avisa && <View style={estilos.punto} />}
               </View>
@@ -591,9 +602,15 @@ export default function Pestanas({
           );
         })}
       </View>
+
+      {/* Te quieren agregar / quieren unirse: encima de todo (14/10). */}
+      <CartelDeArriba />
     </View>
   );
 }
+
+// La pestaña de Ranking dice "Social" en la barra (15/10).
+const rotuloDe = (p: keyof typeof T.nav) => (p === 'ranking' ? T.nav.social : T.nav[p]);
 
 const estilos = StyleSheet.create({
   // SIN FONDO PROPIO: el motor vive en la raíz del router, detrás de todo, y

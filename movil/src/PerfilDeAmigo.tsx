@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { cargarPerfilDeAmigo, cargarSuRutina, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
+import { cargarAmigosDe, cargarPerfilDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
+import type { UsuarioPublico } from '@nucleo/tipos';
 import FotoGrande from './FotoGrande';
-import type { DiaDeRutina } from '@nucleo/rutina';
+import RutinaDe from './RutinaDe';
 import Medallas from './Medallas';
 import { aceptarAmistad, pedirAmistad } from '@compartido/ranking';
 import { useEnVuelo } from '@compartido/useEnVuelo';
@@ -22,6 +23,7 @@ import FotosQueVen from './FotosQueVen';
 import Insignia from './Insignia';
 import { C } from './colores';
 import { volverOInicio } from './volver';
+import { useArriba } from './zonaSegura';
 
 /**
  * EL PERFIL DE OTRO: su racha, su semana y lo que comparte.
@@ -44,17 +46,18 @@ import { volverOInicio } from './volver';
  */
 export default function PerfilDeAmigo() {
   const router = useRouter();
+  const arriba = useArriba(60);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [datos, setDatos] = useState<Datos | null>(null);
   const [dots, setDots] = useState<number | null>(null);
+  // Sus amigos (migración 78): null = no se dibuja la sección.
+  const [amigosDe, setAmigosDe] = useState<UsuarioPublico[] | null>(null);
+  const [yoId, setYoId] = useState('');
   const [cargado, setCargado] = useState(false);
   const [error, setError] = useState('');
   const [noCargo, setNoCargo] = useState(false);
   const [accion, setAccion] = useState(false);
   const [fotoGrande, setFotoGrande] = useState(false);
-  const [rutina, setRutina] = useState<DiaDeRutina[]>([]);
-  // No la escondió, pero no hay nada que mostrar: se dice, en vez de no dibujar nada.
-  const [rutinaSinDatos, setRutinaSinDatos] = useState(false);
 
   const cargar = useCallback(async () => {
     setError('');
@@ -71,6 +74,7 @@ export default function PerfilDeAmigo() {
       return setCargado(true);
     }
     const yo = quien.uid;
+    setYoId(yo);
     // Tu propio perfil tiene su pantalla: entrar al tuyo por acá mostraría una
     // versión recortada de vos mismo.
     if (yo === id) return router.replace('/yo');
@@ -87,15 +91,8 @@ export default function PerfilDeAmigo() {
     // gateada a amigos aceptados (self + amigos): un no-amigo no aparece ahí, y
     // solo lo pedimos si esta persona ES amiga. Nunca expone su peso corporal,
     // solo el número, que los amigos ya ven en el ranking (§16.7).
-    // SU RUTINA (8/10): solo de un amigo, y solo si no la escondió. Si falla o
-    // viene vacía, la sección no aparece.
-    const ponerRutina = (r: { dias: DiaDeRutina[]; sinDatos: boolean }) => {
-      setRutina(r.dias);
-      setRutinaSinDatos(r.sinDatos);
-    };
-    if (d?.esAmigo) cargarSuRutina(supabase, id).then(ponerRutina, () => ponerRutina({ dias: [], sinDatos: false }));
-    else ponerRutina({ dias: [], sinDatos: false });
     if (d?.esAmigo) {
+      void cargarAmigosDe(supabase, id).then(setAmigosDe).catch(() => undefined);
       supabase.rpc('ranking_fuerza').then(({ data }) => {
         const fila = (data as { id: string; dots: number }[] | null)?.find((f) => f.id === id);
         setDots(fila && typeof fila.dots === 'number' ? fila.dots : null);
@@ -134,7 +131,7 @@ export default function PerfilDeAmigo() {
   // falla — con mala señal, tardar mucho es lo normal. Lo encontró el barrido
   // del 25/9 en el perfil propio, y esta pantalla tenía la mitad del problema.
   const salida = (
-    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volverSuelto}>
+    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
       <Text style={estilos.enlace}>{T.general.volver}</Text>
     </Pressable>
   );
@@ -188,7 +185,7 @@ export default function PerfilDeAmigo() {
         // `ponerEstadoDelCuerpo` en `pedidoDeFondo.ts`.
         ajeno
       />
-      <ScrollView contentContainerStyle={estilos.pantalla}>
+      <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
         <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
           <Text style={estilos.enlace}>{T.general.volver}</Text>
         </Pressable>
@@ -239,20 +236,27 @@ export default function PerfilDeAmigo() {
               ))}
             </View>
             <FotosQueVen fotos={fotos} />
-            {(rutina.length > 0 || rutinaSinDatos) && (
-              <View testID="rutina-de-amigo" style={estilos.rutina}>
-                <Text style={estilos.rotulo}>{T.social.suRutina}</Text>
-                {rutina.length === 0 && <Text style={estilos.rutinaEjercicios}>{T.social.rutinaVacia}</Text>}
-                {rutina.map((d) => (
-                  <View key={d.dia} style={estilos.rutinaDia}>
-                    <Text style={estilos.rutinaNombre}>{T.fechas.diasLargos[d.dia]}</Text>
-                    {d.ejercicios.map((e) => (
-                      <View key={e.ejercicio} style={estilos.rutinaFila}>
-                        <Text style={estilos.rutinaEjercicios}>{e.ejercicio}</Text>
-                        {e.series > 0 && <Text style={estilos.rutinaSeries}>{T.social.seriesDeRutina(e.series)}</Text>}
-                      </View>
-                    ))}
-                  </View>
+            {/* SU RUTINA: solo de un amigo, plegada por día, y se puede copiar (14/10). */}
+            {datos.esAmigo && <RutinaDe quien={usuario.id} nombre={usuario.username} />}
+            {/* SUS AMIGOS (14/10): se toca para entrar al perfil de cada uno. */}
+            {datos.esAmigo && amigosDe && amigosDe.length > 0 && (
+              <View testID="amigos-de-amigo" style={estilos.amigos}>
+                <Text style={estilos.rotulo}>
+                  {T.social.amigos} {amigosDe.length}
+                </Text>
+                {amigosDe.map((a) => (
+                  <Pressable
+                    key={a.id}
+                    style={estilos.amigo}
+                    onPress={() => router.push(a.id === yoId ? '/yo' : `/perfil/${a.id}`)}
+                    accessibilityRole="button"
+                  >
+                    <Avatar url={a.avatar_url} nombre={a.username} />
+                    <Text style={estilos.amigoNombre} numberOfLines={1}>
+                      {a.username}
+                    </Text>
+                    <Text style={estilos.amigoRacha}>{a.racha_actual}</Text>
+                  </Pressable>
                 ))}
               </View>
             )}
@@ -317,13 +321,7 @@ const estilos = StyleSheet.create({
   vacio: { borderWidth: 1, borderColor: '#2a3040' },
   puntoHoy: { borderWidth: 1, borderColor: C.claro },
   letra: { color: '#4a5163', fontSize: 11 },
-  rutina: { marginTop: 26 },
   rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
-  rutinaDia: { paddingVertical: 9, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
-  rutinaNombre: { color: C.tinta, fontSize: 14, marginBottom: 3 },
-  rutinaFila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  rutinaEjercicios: { color: C.sub, fontSize: 13, lineHeight: 21, flexShrink: 1 },
-  rutinaSeries: { color: C.apagado, fontSize: 12, lineHeight: 21, fontVariant: ['tabular-nums'] },
   solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   boton: {
@@ -340,4 +338,8 @@ const estilos = StyleSheet.create({
   error: { color: C.error, fontSize: 13, marginTop: 10 },
   reportar: { marginTop: 40, alignItems: 'center', paddingVertical: 8 },
   reportarTexto: { color: C.apagado, fontSize: 13 },
+  amigos: { marginTop: 28 },
+  amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
+  amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },
+  amigoRacha: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
 });

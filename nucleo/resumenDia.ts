@@ -49,6 +49,8 @@ export type EjercicioDelDia = {
    * el día que se hizo. Solo existe si existe `pesos`.
    */
   cargas?: Carga[];
+  /** Los minutos, si es cardio (migración 76): se muestran en lugar de las series. */
+  minutos?: number;
 };
 
 export type ResumenDelDia = {
@@ -128,7 +130,7 @@ export function resumenDelDia({
   let conFin = 0;
   let series = 0;
   let enCurso = false;
-  const porEjercicio = new Map<string, { series: number; pesos: (number | null)[]; cargas: Carga[] }>();
+  const porEjercicio = new Map<string, { series: number; pesos: (number | null)[]; cargas: Carga[]; minutos: number }>();
   const todos: ReturnType<typeof leerBloques> = [];
   const porRevisar: BloquePorRevisar[] = [];
 
@@ -157,11 +159,12 @@ export function resumenDelDia({
       // Un Map conserva el orden de la PRIMERA vez que aparece la clave, que
       // es justo lo que se quiere: press de banca, sentadilla, y si volviste
       // a banca al final, suma a la fila de banca y no crea otra.
-      const previo = porEjercicio.get(b.ejercicio) ?? { series: 0, pesos: [], cargas: [] };
+      const previo = porEjercicio.get(b.ejercicio) ?? { series: 0, pesos: [], cargas: [], minutos: 0 };
       porEjercicio.set(b.ejercicio, {
         series: previo.series + b.series,
         pesos: [...previo.pesos, ...b.pesos],
         cargas: [...previo.cargas, ...b.pesos.map(() => b.carga)],
+        minutos: previo.minutos + (b.minutos ?? 0),
       });
     }
   }
@@ -172,6 +175,7 @@ export function resumenDelDia({
       e.pesos = x.pesos;
       e.cargas = x.cargas;
     }
+    if (x.minutos > 0) e.minutos = x.minutos;
     return e;
   });
   const anotadas = ejercicios.reduce((t, e) => t + e.series, 0);

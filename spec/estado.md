@@ -12,8 +12,27 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Aplicadas hasta la 44.** Lo dice la base misma: `version_del_esquema()`
-contestó 44 el 18/9 (esta línea decía "falta correr la 44").
+**Aplicadas hasta la 89** (15/10/2026, de noche: `version_del_esquema()` contestó
+89 y `test:conexion` dio 81 sin fallas). La 88 son los grupos (multijugador) y la
+89 el tope del storage (3 MB, solo JPG/PNG). Nada escrito sin aplicar.
+
+## Lo que cambió el 15/10 (OTA a `telefono` esa noche)
+
+- **La entrada nueva** en las dos apps: cuatro pantallas (los pesos, el día que
+  entra solo, el amigo en vivo, el ranking que termina en crear la cuenta), el
+  circulito en vez de "Saltar", y de fondo el motor con `soloEstrellas`. **Se ve una
+  sola vez por aparato** (`compartido/entradaVista.ts`) y nunca en uno que tuvo
+  sesión: las cuentas que ya existían no la ven. La de los ocho objetos se borró.
+- **El recorrido de seis pasos se sacó**; lo reemplazan seis globitos de cómic con
+  colita (elegir ejercicio, el +, el descanso, agregar amigos, el álbum, la
+  rutina). Las cuentas creadas antes del 15/10 no los ven (`GLOBOS_DESDE` en
+  `compartido/guia.ts`), salvo "Volver a ver la guía". El alta ahora deja en
+  Inicio (antes, en Ajustes, donde empezaba el recorrido).
+- Llegar al gimnasio registra el día y **ya no arranca la sesión**.
+- Las fotos se firman una vez por día y se reusan (`compartido/firmas.ts`); la web
+  hace la miniatura.
+
+> Hasta el 15/10 esto decía "aplicadas hasta la 44", del 18/9.
 
 > Este párrafo decía "las 22 primeras están aplicadas; la 23 falta correr"
 > hasta el 17/9/2026, con veinte migraciones ya corridas encima. Se actualiza
@@ -57,9 +76,10 @@ schema de la base real. El flujo es: escribir la migración → probarla con
     despierta al entrar en la zona y `movil/src/llegadaDeFondo.ts` **registra
     el día** y **anota la hora de llegada**; ese despertar dura unos segundos y
     no dibuja nada, así que va en el cuerpo de un módulo, no en un componente.
-    Con la app abierta, `movil/src/VigilanteDeGimnasio.tsx` arranca y cierra la
-    **sesión**, que necesita los siete minutos de espera de §13.
-  - **La sesión queda fechada en la llegada, no en el momento en que sacaste el
+    Con la app abierta, `movil/src/VigilanteDeGimnasio.tsx` también registra el
+    día. **Desde el 15/10 llegar no arranca la sesión** (a pedido): la arranca
+    la persona. El despertar ya no anota la hora de llegada.
+  - (Hasta el 15/10) **La sesión quedaba fechada en la llegada, no en el momento en que sacaste el
     teléfono del bolsillo**: esa es la hora que dejó anotada el despertar.
   - Las reglas no se reescribieron: `decidir()` sigue siendo el de
     `nucleo/llegada.ts`, el mismo que usa la web.
@@ -189,6 +209,11 @@ schema de la base real. El flujo es: escribir la migración → probarla con
   la persona esté parada ahí. **Nunca al empezar la sesión.**
 
 ## A medias
+
+- **Para probar en el iPhone (15/10)**: al volver deslizando desde una pantalla
+  apilada, ¿el desenfoque de atrás se aclara mientras arrastrás, o recién al
+  soltar? Depende de si iOS manda el avance de la transición durante el gesto
+  (`DesenfoqueDeVuelta`); en el navegador no se puede ver.
 
 - **La app nativa, contra la web**: el inventario pantalla por pantalla está en
   la bitácora del 22/9. Ajustes ya está (falta "ver la guía", que no puede

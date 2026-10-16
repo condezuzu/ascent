@@ -143,6 +143,23 @@ function chequear(nombre, real, esperado) {
   }
 }
 
+// UN ROJO CONOCIDO (15/10): un caso escrito ANTES de su arreglo, como pide el
+// refactor del dueño único. Mientras salga mal se anota aparte y no rompe la
+// corrida; el día que sale bien es una FALLA: hay que pasarlo a `chequear`,
+// así no queda escrito como pendiente algo que ya anda.
+const rojos = [];
+function rojoConocido(nombre, real, esperado) {
+  const a = JSON.stringify(real);
+  const b = JSON.stringify(esperado);
+  if (a === b) {
+    fallos.push(`${nombre}: YA PASA. Pasalo de rojoConocido a chequear.`);
+    console.log(`  FALLA ${nombre}: ya pasa (pasalo a chequear)`);
+  } else {
+    rojos.push(nombre);
+    console.log(`  ROJO  ${nombre}: esperado ${b}, hoy ${a}`);
+  }
+}
+
 const db = new PGlite();
 
 // ---- stubs de lo que pone Supabase ----
@@ -675,7 +692,8 @@ console.log('\n13. Seguridad: el peso de otro no se lee, ni con amistad');
   await db.exec('set role authenticated');
   const pesos = await db.query('select * from weights where user_id = $1', [a]);
   chequear('peso del amigo invisible', pesos.rows.length, 0);
-  const logs = await db.query('select * from logs where user_id = $1', [a]);
+  // Por la vista sin la hora (migración 86): la tabla ya no se abre a los amigos.
+  const logs = await db.query('select * from logs_de_amigos where user_id = $1', [a]);
   chequear('logs del amigo sí visibles', logs.rows.length, 1);
   await db.exec('reset role');
 }
@@ -689,7 +707,7 @@ console.log('\n14. Seguridad: sin amistad no se ve nada del otro');
   await db.query(`select anotar_peso(75), registrar_dia()`);
   await comoUsuario(b);
   await db.exec('set role authenticated');
-  const logs = await db.query('select * from logs where user_id = $1', [a]);
+  const logs = await db.query('select id from logs where user_id = $1 union all select id from logs_de_amigos where user_id = $1', [a]);
   chequear('logs de un extraño invisibles', logs.rows.length, 0);
   const perfiles = await db.query('select * from profiles where id = $1', [a]);
   chequear('perfil de un extraño invisible', perfiles.rows.length, 0);
@@ -2431,12 +2449,13 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
   // seguiria saliendo, mas alto y sin significado.
   const cat = (await db.query(`select grupo, count(*)::int n from ejercicios group by 1`)).rows;
   const cuantos = (await db.query(`select count(*)::int n from ejercicios`)).rows[0].n;
-  chequear('el catalogo tiene 101 ejercicios', cuantos, 101);
+  // 101 de fuerza y 9 de cardio (migración 76).
+  chequear('el catalogo tiene 110 ejercicios', cuantos, 110);
   chequear('y solo 3 mueven el DOTS', delDots.length, 3);
   chequear(
-    'los grupos son los seis de siempre',
+    'los grupos son los seis de siempre, y el cardio',
     cat.map((f) => f.grupo).sort(),
-    ['brazos', 'core', 'espalda', 'hombros', 'pecho', 'piernas'].sort()
+    ['brazos', 'cardio', 'core', 'espalda', 'hombros', 'pecho', 'piernas'].sort()
   );
   // El `orden` es lo que AGRUPA en el selector: la lista se ordena por el, sin
   // ordenar por grupo. Si dos grupos se entreveran en la numeracion, la lista
@@ -2455,7 +2474,7 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
       select distinct grupo from x where ant is not null and ant <> grupo
     `)
   ).rows.length;
-  chequear('cada grupo ocupa un tramo seguido de `orden`', arranques, 5);
+  chequear('cada grupo ocupa un tramo seguido de `orden`', arranques, 6);
 
   // Los literales sueltos de los módulos que no pueden importar nada, pineados
   // igual: son los que ningún tipo protege.
@@ -2780,108 +2799,72 @@ console.log('\n39. Dos personas no pueden llamarse igual');
 }
 
 // =====================================================================
-console.log('\n40. Llegar al gimnasio: cuando arranca la sesion y cuando se cierra');
+console.log('\n40. Llegar al gimnasio: la sesion NO arranca sola (15/10); la que arranco antes se cierra al salir');
 {
-  // `decidir` es pura, asi que esto prueba la logica DE VERDAD y no un espejo
-  // de si misma: no hay GPS, ni reloj, ni base. Es la unica parte del
-  // automatico que se puede probar sin caminar hasta un gimnasio, y por eso
-  // esta separada del resto.
+  // `decidir` es pura, asi que esto prueba la logica DE VERDAD: no hay GPS, ni
+  // reloj, ni base.
   const T0 = 1_000_000_000_000;
   const ESPERA = ESPERA_LLEGADA_MS;
   const libre = { corriendo: false, porUbicacion: false };
   const corriendoSola = { corriendo: true, porUbicacion: true };
   const corriendoAMano = { corriendo: true, porUbicacion: false };
 
+  // ---- llegar no arranca nada, ni a los siete minutos ni a las tres horas ----
+  {
+    let v = null;
+    const vistas = [];
+    for (const t of [0, ESPERA - 1, ESPERA, ESPERA * 3, 3 * 3600_000]) {
+      const d = decidir(true, T0 + t, T0 + t, v, libre);
+      vistas.push(d.hacer);
+      v = d.vigilancia;
+    }
+    chequear('llegar y quedarse no arranca la sesion nunca', vistas, ['nada', 'nada', 'nada', 'nada', 'nada']);
+    // Sin visita guardada el vigilante mira cada cinco minutos, no cada cinco segundos.
+    chequear('y no guarda visita: no hay nada que seguir', v, null);
+    const viejaSinDisparar = decidir(true, T0 + ESPERA, T0 + ESPERA, { desde: T0, ultimoAdentro: T0, arranco: false }, libre);
+    chequear('una visita guardada de antes del cambio tampoco arranca', viejaSinDisparar.hacer, 'nada');
+  }
+
   // ---- no saber no es estar afuera ----
   {
-    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
+    const v = { desde: T0, ultimoAdentro: T0, arranco: true };
     const d = decidir(null, T0 + 1000, T0 + 1000, v, corriendoSola);
     chequear('sin senal no pasa nada', d.hacer, 'nada');
-    // Lo importante: NO borra la vigilancia ni cierra la sesion. Un GPS que se
-    // pierde en un subsuelo apagaria el cronometro de alguien que entrena.
+    // Un GPS que se pierde en un subsuelo no puede cerrar la sesion de nadie.
     chequear('sin senal la visita sigue viva', d.vigilancia?.desde, T0);
   }
 
-  // ---- llegar y esperar ----
+  // ---- la que arranco sola antes del cambio: se sigue y se cierra al salir ----
   {
-    const d = decidir(true, T0, T0, null, libre);
-    chequear('la primera vez adentro solo anota la llegada', d.hacer, 'nada');
-    chequear('y la llegada es cuando se MIDIO el punto', d.vigilancia?.desde, T0);
-  }
-  {
-    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
-    const d = decidir(true, T0 + ESPERA - 1, T0 + ESPERA - 1, v, libre);
-    chequear('un segundo antes de la espera todavia no arranca', d.hacer, 'nada');
-  }
-  {
-    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
-    const d = decidir(true, T0 + ESPERA, T0 + ESPERA, v, libre);
-    chequear('cumplida la espera, arranca', d.hacer, 'arrancar');
-    // EL PUNTO DE TODO: arranca ahora pero la sesion dice que empezo cuando
-    // llego. Si dijera la hora del disparo, la duracion saldria corta siempre.
-    chequear('y arranca desde la LLEGADA, no desde el disparo', d.desde, T0);
-    chequear('la visita queda marcada como usada', d.vigilancia?.arranco, true);
-  }
-
-  // ---- no dispara dos veces ----
-  {
-    const v = { desde: T0, ultimoAdentro: T0, arranco: true };
-    const d = decidir(true, T0 + ESPERA * 3, T0 + ESPERA * 3, v, libre);
-    // Si volviera a arrancar, parar el cronometro a mano estando todavia en el
-    // gimnasio lo encenderia de nuevo a los dos minutos.
-    chequear('si ya arranco en esta visita, no vuelve a arrancar', d.hacer, 'nada');
-  }
-  {
-    const v = { desde: T0, ultimoAdentro: T0, arranco: false };
-    const d = decidir(true, T0 + ESPERA, T0 + ESPERA, v, corriendoAMano);
-    chequear('con una sesion ya corriendo no arranca otra', d.hacer, 'nada');
-  }
-
-  // ---- el reloj de la salida ----
-  {
-    const v = { desde: T0, ultimoAdentro: T0 + 1000, arranco: false };
+    const v = { desde: T0, ultimoAdentro: T0 + 1000, arranco: true };
     const d = decidir(true, T0 + 500, T0 + 2000, v, corriendoSola);
     // Un arreglo de GPS viejo no puede ATRASAR la ultima vez que se lo vio.
     chequear('un punto viejo no atrasa el ultimo visto', d.vigilancia?.ultimoAdentro, T0 + 1000);
   }
-
-  // ---- irse ----
   {
     const v = { desde: T0, ultimoAdentro: T0 + 3600_000, arranco: true };
     const d = decidir(false, T0 + 7200_000, T0 + 7200_000, v, corriendoSola);
     chequear('salir cierra la que arranco sola', d.hacer, 'terminar');
-    // No se cierra con AHORA: si la app estuvo cerrada nos enteramos tarde, y
-    // cerrar con ahora daria una sesion de dos horas.
+    // No se cierra con AHORA: si la app estuvo cerrada nos enteramos tarde.
     chequear('y se cierra con la ultima vez que se lo vio', d.hasta, T0 + 3600_000);
     chequear('la visita se termina', d.vigilancia, null);
   }
   {
-    const v = { desde: T0, ultimoAdentro: T0 + 1000, arranco: false };
+    const v = { desde: T0, ultimoAdentro: T0 + 1000, arranco: true };
     const d = decidir(false, T0 + 2000, T0 + 2000, v, corriendoAMano);
     // Quiza salio a correr afuera. Apagarsela seria peor que dejarla.
     chequear('salir NO cierra la que empezaste vos', d.hacer, 'nada');
-    chequear('pero la visita igual se termina', d.vigilancia, null);
+    chequear('adentro con una sesion a mano tampoco se sigue nada', decidir(true, T0, T0, null, corriendoAMano).vigilancia, null);
   }
   {
     const d = decidir(false, T0, T0, null, libre);
     chequear('afuera y sin sesion no hace nada', d.hacer, 'nada');
   }
+  // Las dos apps ya no tienen la rama que arrancaba.
+  const { readFileSync: leer40 } = await import('node:fs');
+  const de40 = (...p) => leer40(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8');
+  chequear('ni la web ni la nativa arrancan la sesion al llegar', [de40('src', 'components', 'VigilanteDeGimnasio.tsx'), de40('movil', 'src', 'VigilanteDeGimnasio.tsx')].map((t) => /origen: 'ubicacion'/.test(t)), [false, false]);
 
-  // ---- la vuelta completa: llego, entreno, me voy ----
-  {
-    let v = null;
-    let d = decidir(true, T0, T0, v, libre);
-    v = d.vigilancia;
-    d = decidir(true, T0 + ESPERA, T0 + ESPERA, v, libre);
-    chequear('la vuelta completa arranca', d.hacer, 'arrancar');
-    v = d.vigilancia;
-    const fin = T0 + ESPERA + 3600_000;
-    d = decidir(true, fin, fin, v, corriendoSola);
-    v = d.vigilancia;
-    d = decidir(false, fin + 120_000, fin + 120_000, v, corriendoSola);
-    chequear('y cierra al salir', d.hacer, 'terminar');
-    chequear('con una hora de sesion desde la llegada', (d.hasta - T0) / 60000, 67);
-  }
 }
 
 // =====================================================================
@@ -3400,7 +3383,8 @@ console.log('\n48. El bloque: qué estás haciendo y cuántas te propusiste');
     b = sumar(sumar(sumar(b)));
     b = cambiarMeta(b, 2);
     chequear('la meta se puede bajar por debajo de lo ya hecho', [b.meta, b.hechas], [2, 3]);
-    chequear('una meta absurda cae en la de omision', cambiarMeta(b, 99).meta, 3);
+    // Desde el 15/10 la meta es la que diga la rutina, hasta 99: absurdo es 0 o 100.
+    chequear('una meta absurda cae en la de omision', [cambiarMeta(b, 0).meta, cambiarMeta(b, 100).meta, cambiarMeta(b, 6).meta], [3, 3, 6]);
   }
 
   // Restar corrige de menos y nunca toca lo cerrado.
@@ -3830,7 +3814,8 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
       if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
       const r = join(dir, e.name);
       if (e.isDirectory()) recorrer(r);
-      else if (/\.tsx?$/.test(e.name)) fuentes.push(r);
+      // Los textos en inglés (14/10) no son español: "Chest" no es un "che".
+      else if (/\.tsx?$/.test(e.name) && !/^(textos-en|ejerciciosEn)\.ts$/.test(e.name)) fuentes.push(r);
     }
   };
   recorrer(join(RAIZ, 'src'));
@@ -3975,7 +3960,7 @@ console.log('\n56. El arbol del selector llega a los 100');
       llegan += porGrupo.find((f) => f.grupo === g)?.n ?? 0;
     }
   }
-  chequear('se llega a los 101 ejercicios', llegan, 101);
+  chequear('se llega a los 110 ejercicios', llegan, 110);
 
   // QUE ADMITEN PESO (migracion 31). Una marca es peso por repeticiones, asi
   // que la pantalla de marcas filtra por esta columna. Se fija la lista de
@@ -3984,7 +3969,7 @@ console.log('\n56. El arbol del selector llega a los 100');
   const sinPeso = (
     await db.query('select id from ejercicios where not admite_peso order by id')
   ).rows.map((f) => f.id);
-  chequear('los que no admiten peso son los isometricos', sinPeso, ['dead_bug', 'plancha', 'plancha_lateral']);
+  chequear('los que no admiten peso son los isometricos y el cardio', sinPeso, ['bicicleta_fija', 'caminar', 'cinta', 'correr', 'dead_bug', 'eliptica', 'escaladora', 'natacion', 'plancha', 'plancha_lateral', 'remo_ergometro', 'soga']);
   const dotsConPeso = (
     await db.query('select count(*)::int n from ejercicios where cuenta_dots and admite_peso')
   ).rows[0].n;
@@ -4198,6 +4183,19 @@ console.log('\n58. Las vidas');
     chequear('la racha bajo 10', (await perfil(u)).racha_actual, 10);
   }
 
+  // ---- con DOS vidas, tres faltas juntas cortan (cacería del 15/10) ----
+  // El bucle de la pérdida va del día más nuevo al más viejo: cada día tiene que
+  // contar las vidas que el mismo bucle acaba de poner en los días siguientes. Con
+  // la cuota igual al tope (3) no se veía: el tope frenaba antes.
+  {
+    await cuotaDeVidas(2);
+    const u = await nuevoUsuario();
+    await rachaDe(u, 16, 4); // faltaron los últimos tres días
+    const r = await perder(u);
+    chequear('con dos vidas, tres faltas juntas cortan: se gastan las dos, no tres', [r.perdida, (r.vidas_usadas ?? []).length, (await perfil(u)).racha_actual], [true, 2, 6]);
+    await cuotaDeVidas(3);
+  }
+
   // ---- una vida gastada NO se devuelve ----
   {
     const u = await nuevoUsuario();
@@ -4230,14 +4228,16 @@ console.log('\n58. Las vidas');
       );
       return (await db.query('select impulsos_disponibles($1, mi_hoy()) as v', [u])).rows[0].v;
     };
+    // DESDE LA 79 VUELVEN TODAS JUNTAS (15/10): la primera usada abre un ciclo
+    // de 30 días y al cerrarse vuelven todas las de ese ciclo.
     chequear('uno de hace 31 dias ya volvio', await gastadoHace(31), 3);
-    chequear('uno de hace 29 todavia no', await gastadoHace(29), 2);
-    chequear('y uno de ayer tampoco', await gastadoHace(1), 1);
-    // El de hace 29 vuelve pasado manana. Se mira el dia, no el mes.
-    const en2 = (
-      await db.query('select impulsos_disponibles($1, mi_hoy() + 2) as v', [u])
-    ).rows[0].v;
-    chequear('pasado manana vuelve el de 29', en2, 2);
+    chequear('uno de hace 29, del mismo ciclo que el de 31, volvió con él', await gastadoHace(29), 3);
+    chequear('uno de ayer abre otro ciclo', await gastadoHace(1), 2);
+    chequear('otro de hoy cae en ese mismo ciclo', await gastadoHace(0), 1);
+    const dia = async (d) => (await db.query('select impulsos_disponibles($1, mi_hoy() + $2::int) as v', [u, d])).rows[0].v;
+    // El ciclo empezó ayer: vuelven las dos juntas dentro de 29 días, no de a una.
+    chequear('vuelven las dos juntas cuando se cierra el ciclo, no de a una', [await dia(28), await dia(29)], [1, 3]);
+    chequear('y lo dice el día en que vuelven', (await db.query(`select inicio_ciclo_vidas($1, mi_hoy()) + 30 - mi_hoy() as faltan`, [u])).rows[0].faltan, 29);
   }
 
   // ---- se ganan: dos, y el tercero a los 20 dias ----
@@ -5807,10 +5807,10 @@ console.log('\n78. La sesion se cierra sola cuando se deja de entrenar');
     await marcar(id, '-35 minutes');
     await marcar(id, '2 minutes');
     chequear('un descanso corriendo la mantiene viva', (await miSesion()).corriendo, true);
-    // Y el telefono no puede fabricar actividad a futuro: se acota a 15 minutos.
+    // Y el telefono no puede fabricar actividad a futuro: se acota a una hora (migración 81; antes 15 minutos).
     await marcar(id, '5 hours');
     const t = (await db.query(`select round(extract(epoch from (ultima_actividad - now())) / 60)::int m from sesiones where id = $1`, [id])).rows[0].m;
-    chequear('la actividad a futuro se acota', t, 15);
+    chequear('la actividad a futuro se acota', t, 60);
   }
 
   // ---- TOCAR TERMINAR TARDE no suma el tiempo muerto ----
@@ -6114,18 +6114,60 @@ console.log('\n82. Que significa el numero del peso: la base');
     const antes = await arranca('curl_martillo_no_existe');
     chequear('un ejercicio que no existe no devuelve nada', antes, null);
 
-    await fijar([
-      { ejercicio: 'zancadas', series: 2, pesos: [60, 60], carga: 'total' },
-      { ejercicio: 'zancadas', series: 2, pesos: [20, 22], carga: 'par' },
-    ]);
+    // LO MÁS PESADO DE LA ÚLTIMA SESIÓN CERRADA (migración 70). Los pesos BAJAN
+    // dentro de cada sesión, como en el gimnasio: si subieran, "la última serie"
+    // y "la más pesada" darían lo mismo y esto no probaría nada.
+    const pasada = (haceDias, bloques) =>
+      db.query(
+        `insert into sesiones (user_id, log_id, inicio, fin, estado, bloques)
+         select user_id, log_id, now() - make_interval(days => $2), now() - make_interval(days => $2) + interval '1 hour', 'terminada', $3::jsonb
+           from sesiones where id = $1`,
+        [id, haceDias, JSON.stringify(bloques)]
+      );
+    const historia70 = [
+      [100, [{ ejercicio: 'sentadilla', series: 1, pesos: [100], carga: 'total' }]],
+      [5, [
+        { ejercicio: 'zancadas', series: 2, pesos: [80, 75], carga: 'total' },
+        { ejercicio: 'zancadas', series: 1, pesos: [30], carga: 'par' },
+      ]],
+      [2, [
+        { ejercicio: 'zancadas', series: 3, pesos: [60, 55, 50], carga: 'total' },
+        { ejercicio: 'zancadas', series: 3, pesos: [22, 20, 18], carga: 'par' },
+        { ejercicio: 'zancadas', series: 2, pesos: [57.5, 45], carga: 'total' },
+      ]],
+    ];
+    for (const [dias, bloques] of historia70) await pasada(dias, bloques);
     const sinElegir = await arranca('zancadas');
     chequear('sin elegir: el del catalogo, y hay que preguntar', [sinElegir.carga, sinElegir.elegida, sinElegir.ambigua], ['par', false, true]);
-    chequear('el peso propuesto es el ultimo EN ESE MODO', Number(sinElegir.peso), 22);
+    chequear('el peso propuesto es el MÁS PESADO de la última sesión cerrada, EN ESE MODO: ni su última serie, ni el tope de otra', Number(sinElegir.peso), 22);
+    chequear('y pasados los 90 días no se propone', (await arranca('sentadilla')).peso, null);
+    // LA MISMA REGLA QUE EL TELÉFONO, con las mismas sesiones: son dos lugares que calculan un mismo número.
+    const P70 = await import('../nucleo/pesoRecordado.ts');
+    const enElTelefono70 = P70.pesosDelHistorial(historia70.slice(1).map(([, bloques]) => ({ bloques })), { zancadas: 'par' }).zancadas;
+    chequear('el teléfono, con esas mismas sesiones, propone lo mismo que la base', [enElTelefono70.par, enElTelefono70.total], [Number(sinElegir.peso), 60]);
+
+    // CON UNA SESIÓN ABIERTA ENCIMA (migración 71): lo de hoy va primero, y es
+    // la ÚLTIMA serie, no la más pesada. Dos bloques con mancuernas, bajando; con
+    // barra hoy no se hizo nada, así que ese modo sigue saliendo del historial.
+    const hoy71 = [
+      { ejercicio: 'zancadas', series: 2, pesos: [16, 14], carga: 'par' },
+      { ejercicio: 'sentadilla', series: 1, pesos: [90], carga: 'total' },
+      { ejercicio: 'zancadas', series: 2, pesos: [12, 10], carga: 'par' },
+    ];
+    await fijar(hoy71);
+    const B71 = await import('../nucleo/bloques.ts');
+    const estadoHoy71 = B71.unirConGuardados(hoy71, B71.bloquesVacios());
+    const copia71 = P70.pesosDelHistorial(historia70.slice(1).map(([, bloques]) => ({ bloques })), { zancadas: 'par', sentadilla: 'total' });
+    const telefono71 = (e, modo) => P70.ultimoPesoEnModo(estadoHoy71, copia71, e, modo, { zancadas: 'par', sentadilla: 'total' });
+    const base71 = async (e) => Number((await arranca(e)).peso);
+    chequear('con una sesión abierta, la base propone la ÚLTIMA serie de hoy: ni el tope de hoy ni el de otro día', await base71('zancadas'), 10);
+    chequear('y el teléfono, con esa misma sesión abierta, lo mismo', [telefono71('zancadas', 'par'), telefono71('sentadilla', 'total')], [await base71('zancadas'), await base71('sentadilla')]);
+    chequear('lo que hoy no se hizo en ese modo sigue saliendo del historial, en los dos', [telefono71('zancadas', 'total')], [60]);
 
     await db.query("select elegir_carga('zancadas', 'total')");
     const conBarra = await arranca('zancadas');
     chequear('elegida: se recuerda', [conBarra.carga, conBarra.elegida], ['total', true]);
-    chequear('y el peso es el de la barra, no el de las mancuernas', Number(conBarra.peso), 60);
+    chequear('y el peso es el de la barra, no el de las mancuernas: lo más pesado entre los dos bloques de esa sesión', Number(conBarra.peso), 60);
 
     await db.query("select elegir_carga('zancadas', 'total')");
     chequear(
@@ -6508,7 +6550,8 @@ console.log('\n86. El volumen');
   // Los grupos del volumen son los del selector.
   {
     const { ZONAS } = await import('../nucleo/ejercicios.ts');
-    chequear('el orden de grupos cubre todas las zonas', [...V.ORDEN_GRUPOS].sort(), Object.values(ZONAS).flat().sort());
+    // Todas menos el cardio, que se mide en minutos y no entra en las series por músculo (14/10).
+    chequear('el orden de grupos cubre todas las zonas de fuerza', [...V.ORDEN_GRUPOS].sort(), Object.entries(ZONAS).filter(([z]) => z !== 'cardio').flatMap(([, g]) => g).sort());
   }
 }
 console.log('\n87. Lo que leen igual la web y la app nativa');
@@ -7129,7 +7172,7 @@ console.log('\n101. La caza del 15/9: lo que perdia datos o dejaba afuera');
   const iCerrar = cuerpo.indexOf('cerrar(supabase');
   chequear('terminar vacia la cola', iVaciar > -1, true);
   chequear('y la vacia ANTES de cerrar', iVaciar > -1 && iCerrar > iVaciar, true);
-  chequear('si quedan series de esa sesion esperando, no cierra', /estaPendiente\('fijar_series'/.test(cuerpo), true);
+  chequear('si quedan series de esa sesion esperando, no cierra', /await quedaDeLaSesion\(idSesion\)\)\s*\? \{ data: null, error:/.test(cuerpo), true);
   chequear('empezar sin senal lo dice', /setAviso\(T\.sesion\.noEmpezo\)/.test(ses), true);
   chequear('terminar sin senal lo dice', /setAviso\(T\.sesion\.noTermino\)/.test(cuerpo), true);
 
@@ -7153,21 +7196,15 @@ console.log('\n101. La caza del 15/9: lo que perdia datos o dejaba afuera');
 
   // ---- 4. Una visita de ayer no es la de hoy ----
   const { decidir, VISITA_VENCIDA_MS } = await import('../nucleo/llegada.ts');
-  const { ESPERA_LLEGADA_MS: ESPERA } = await import('../nucleo/reglas.ts');
   const libre = { corriendo: false, porUbicacion: false };
   const AYER = 1_000_000_000_000;
   const HOY = AYER + 20 * 3600 * 1000;
   // Ayer arranco sola y la app no lo vio salir: la visita quedo con `arranco`.
   const vieja = { desde: AYER, ultimoAdentro: AYER + 3600 * 1000, arranco: true };
   const llega = decidir(true, HOY, HOY, vieja, libre);
-  chequear('llegar hoy con la visita de ayer guardada es una llegada nueva', [llega.hacer, llega.vigilancia?.desde, llega.vigilancia?.arranco], ['nada', HOY, false]);
-  const arranca = decidir(true, HOY + ESPERA, HOY + ESPERA, llega.vigilancia, libre);
-  chequear('y a la espera arranca, desde la llegada de HOY', [arranca.hacer, arranca.desde], ['arrancar', HOY]);
-  // La que no llego a disparar tampoco puede arrancar al instante con la hora de ayer.
-  const sinDisparar = decidir(true, HOY, HOY, { ...vieja, arranco: false }, libre);
-  chequear('una visita vieja sin disparar no arranca al instante', sinDisparar.hacer, 'nada');
+  chequear('llegar hoy con la visita de ayer guardada no arranca ni sigue nada', [llega.hacer, llega.vigilancia], ['nada', null]);
   // Dentro del mismo entrenamiento sigue siendo la misma visita.
-  const misma = decidir(true, AYER + 90 * 60 * 1000, AYER + 90 * 60 * 1000, { desde: AYER, ultimoAdentro: AYER, arranco: true }, libre);
+  const misma = decidir(true, AYER + 90 * 60 * 1000, AYER + 90 * 60 * 1000, { desde: AYER, ultimoAdentro: AYER, arranco: true }, { corriendo: true, porUbicacion: true });
   chequear('noventa minutos sin mirar sigue siendo la misma visita', [misma.hacer, misma.vigilancia?.desde], ['nada', AYER]);
   chequear('el vencimiento es mas largo que una sesion entera', VISITA_VENCIDA_MS > (2 * 3600 + 30 * 60) * 1000, true);
 }
@@ -7221,7 +7258,7 @@ console.log('\n164. Bloquear y denunciar (migración 53)');
 
   // b ve el log y la foto de a mientras son amigos
   await comoUsuario(b); await db.exec('set role authenticated');
-  chequear('antes del bloqueo b ve el log de a', (await db.query('select 1 from logs where user_id=$1', [a])).rows.length, 1);
+  chequear('antes del bloqueo b ve el log de a', (await db.query('select 1 from logs_de_amigos where user_id=$1', [a])).rows.length, 1);
   chequear('antes del bloqueo b ve la foto de a', (await db.query('select 1 from photos where user_id=$1', [a])).rows.length, 1);
   await db.exec('reset role');
 
@@ -7238,7 +7275,7 @@ console.log('\n164. Bloquear y denunciar (migración 53)');
 
   // el contenido deja de verse (por son_amigos, a nivel RLS)
   await comoUsuario(b); await db.exec('set role authenticated');
-  chequear('tras el bloqueo b no ve el log de a', (await db.query('select 1 from logs where user_id=$1', [a])).rows.length, 0);
+  chequear('tras el bloqueo b no ve el log de a', (await db.query('select 1 from logs_de_amigos where user_id=$1', [a])).rows.length, 0);
   chequear('tras el bloqueo b no ve la foto de a', (await db.query('select 1 from photos where user_id=$1', [a])).rows.length, 0);
   await db.exec('reset role');
 
@@ -7666,23 +7703,40 @@ console.log('\n108. La entrada se ve UNA vez, y donde termina empieza el formula
   // "Entrar" despues de tocar crear es hacerle tocar dos veces lo mismo.
   chequear('lo que eligio decide el modo del formulario', login.includes("destino === 'crear' ? 'crear' : 'entrar'"), true);
 
-  // ANTE LA DUDA NO SE MUESTRA: repetirle once segundos a quien solo quiere
-  // entrar es peor que no mostrarsela a alguien nuevo.
-  const vista = archivo('src', 'lib', 'entradaVista.ts');
+  // ANTE LA DUDA NO SE MUESTRA: repetirle la entrada a quien solo quiere entrar
+  // es peor que no mostrársela a alguien nuevo. Desde el 15/10 la comparten las dos apps.
+  const vista = archivo('compartido', 'entradaVista.ts');
   chequear('si el almacenamiento falla, se da por vista', /catch \{\s*return true;/.test(vista), true);
+
+  // UN APARATO CON SESIÓN YA NO LA VE (15/10): las cuentas de antes no la ven al salir.
+  const entradaNativa = archivo('movil', 'src', 'EntradaYLogin.tsx');
+  chequear('la nativa también la muestra una sola vez, y se anota con sesión', [
+    /void vioLaEntrada\(\)\.then\(\(vista\) => vivo && setVerSlides\(!vista\)\)/.test(entradaNativa),
+    /if \(verSlides === null\) return null;/.test(entradaNativa),
+    /if \(sesion === 'con'\) void anotarEntradaVista\(\);/.test(archivo('movil', 'app', '_layout.tsx')),
+    /void anotarEntradaVista\(\);/.test(archivo('src', 'components', 'Nav.tsx')),
+  ], [true, true, true, true]);
 
   // El banco monta la pantalla DE VERDAD: una copia se iria separando.
   const banco = archivo('src', 'app', 'galeria', 'bienvenida', 'page.tsx');
   chequear('el banco monta la pantalla de verdad', banco.includes("from '@/components/bienvenida/Bienvenida'"), true);
 
-  // Los textos viven en el diccionario, como todo el resto de la app.
+  // Los textos viven en el diccionario, como todo el resto de la app, en las dos.
   const T = (await import('../nucleo/textos.ts')).T;
-  chequear('los textos de la entrada estan en textos.ts', [T.bienvenida.saludoTitulo, T.bienvenida.cierre], ['Empiezas desde el polvo', 'Tu viaje empieza ahora mismo']);
+  chequear('los textos de la entrada estan en textos.ts', [T.bienvenida.pesosTitulo, T.bienvenida.rankingTitulo], ['Ya no adivines los pesos', 'Mira quién llega más lejos']);
   const comp = archivo('src', 'components', 'bienvenida', 'Bienvenida.tsx');
-  chequear('y la pantalla no tiene texto suelto', /T\.bienvenida\.saludoTitulo/.test(comp) && !/Empiezas desde/.test(comp), true);
+  const compNativa = archivo('movil', 'src', 'Bienvenida.tsx');
+  chequear('y ninguna de las dos pantallas tiene texto suelto', [
+    /T\.bienvenida\.pesosTitulo/.test(comp) && !/adivines/.test(comp),
+    /T\.bienvenida\.pesosTitulo/.test(compNativa) && !/adivines/.test(compNativa),
+  ], [true, true]);
 
-  // El motor se pide en la PRIMERA pantalla, no en la cuarta: tarda ~3 s.
-  chequear('la cuarta no espera al motor: tiene version sin el', archivo('src', 'components', 'bienvenida', 'Cuarta.tsx').includes('setConMotor(false)'), true);
+  // EL CIRCULITO EN VEZ DE "SALTAR" (15/10): carga un segundo y medio y recién deja pasar.
+  chequear('no hay "Saltar": el circulito deja pasar recién cargado', [
+    /setTimeout\(\(\) => setListo\(true\), CARGA_MS\)/.test(comp),
+    /const listo = avance >= 1;/.test(archivo('movil', 'src', 'bienvenida', 'Circulito.tsx')) && /onPress=\{\(\) => listo && alPasar\(\)\}/.test(archivo('movil', 'src', 'bienvenida', 'Circulito.tsx')),
+    /saltar/i.test(comp + compNativa),
+  ], [true, true, false]);
 }
 
 console.log('\n109. Una sola pasada da lo mismo que seis');
@@ -8973,8 +9027,8 @@ console.log('\n127. Los bloques de la base vuelven al telefono');
   chequear('subir: mira si faltan los bloques de la base', guarda > 0, true);
   chequear('subir: y lo mira ANTES de mandar la lista', guarda < subir.indexOf("rpc: 'fijar_bloques'"), true);
   chequear('confirmar: si no vinieron, los trae', /faltan && g\.id[\s\S]{0,120}recuperarBloques\(g\.id\)/.test(hook), true);
-  chequear('empezar: si ya estaba corriendo, los trae antes de sembrar', /r\.yaEstaba[\s\S]{0,400}recuperarBloques\(r\.id\)[\s\S]{0,800}sembrar\(/.test(hook), true);
-  chequear('confirmar: si conto otro lado, trae los de la base', /previo\.series !== g\.series[\s\S]{0,300}from\('sesiones'\)\.select\('bloques'\)/.test(hook), true);
+  chequear('empezar: si ya estaba corriendo, los trae antes de sembrar', /const faltan = !!\(r\.yaEstaba[\s\S]{0,3000}recuperarBloques\(r\.id\)[\s\S]{0,800}sembrar\(/.test(hook), true);
+  chequear('confirmar: si conto otro lado, trae los de la base', /previo\.series !== g\.series[\s\S]{0,1500}from\('sesiones'\)\.select\('bloques'\)/.test(hook), true);
 }
 
 console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
@@ -9317,8 +9371,8 @@ console.log('\n134. Ajustes nativo: lo que la app necesita para existir en la ti
   // LOS TEXTOS DEL TELEFONO NO SON LOS DE LA WEB donde dicen algo distinto.
   // "Vibra con la app abierta" y "en la del telefono va a entrar solo" son
   // verdad en la web y mentira en el telefono.
-  chequear('el aviso del descanso se elige por el puerto', /conPantallaBloqueada\(\)/.test(aj), true);
-  chequear('y el techo del gimnasio lo dice desde adentro del telefono', /gimnasioTechoNativo/.test(gim), true);
+  // Desde el 14/10 Ajustes no lleva notas debajo de cada opción: lo que importa es que no use las de la web.
+  chequear('el teléfono no usa los textos de la web que ahí serían mentira', [/T\.ajustes\.vibra\b/.test(aj), /gimnasioParaQue\b/.test(gim)], [false, false]);
 }
 
 console.log('\n135. El perfil, en las dos apps y con las mismas reglas');
@@ -9504,15 +9558,13 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
 
   const fondo137 = de137('movil', 'src', 'llegadaDeFondo.ts');
   chequear('al llegar se registra el dia', /registrarPorSenal\(supabase, 'ubicacion'\)/.test(fondo137), true);
-  // LA HORA DE LLEGADA SE GUARDA aunque la sesion no arranque: §13 dice que el
-  // cronometro arranca a los siete minutos, y un despertar en segundo plano
-  // dura treinta segundos. Sin guardarla, la sesion diria la hora en que
-  // sacaste el telefono del bolsillo y la duracion saldria corta siempre.
-  chequear('y queda anotada la hora de llegada', /guardarVigilancia\(/.test(fondo137), true);
+  // DESDE EL 15/10 NO SE GUARDA LA HORA DE LLEGADA: servia para arrancar la sesion
+  // fechada en la llegada, y llegar ya no arranca nada.
+  chequear('y ya no se guarda la visita para arrancar despues', /guardarVigilancia\(/.test(fondo137), false);
   // SIN SESION NO SE PREGUNTA NADA: la zona sigue registrada despues de
   // cerrar sesion hasta que alguien la suelte, y ese despertar sin usuario es
   // normal, no un error.
-  chequear('sin cuenta abierta no se pide nada', /if \(!\(await miId\(supabase\)\)\) return;/.test(fondo137), true);
+  chequear('sin cuenta abierta no se pide nada', /const yo = await quienSoy\(supabase\);\s*if \(yo\.estado === 'sin'\) return;/.test(fondo137), true);
   // EN EL CUERPO DEL MODULO Y NO EN UN EFECTO: en ese despertar no se dibuja
   // nada, asi que lo unico que corre seguro es la evaluacion del bundle.
   chequear('el gancho se pone al importar, no al montar', /^alLlegarDeFondo\(llegue\);$/m.test(fondo137), true);
@@ -9557,10 +9609,11 @@ console.log('\n137. El gimnasio con la app cerrada, y la salud del telefono');
   const T137 = (await import('../nucleo/textos.ts')).T;
   // EL TEXTO DECIA QUE NO SE PODIA. Mientras fue cierto estaba bien; ahora
   // seria mentir al reves, y el que lee Ajustes decide si marca el punto.
-  chequear('ya no promete que falta', /pronto|todavia|todavía/i.test(T137.ajustes.gimnasioTechoNativo), false);
+  // Desde el 14/10 no hay nota fija debajo del botón: lo dice el renglón que aparece al marcar.
+  chequear('ya no promete que falta', /pronto|todavia|todavía/i.test(T137.ajustes.gimnasioListoNativo(20)), false);
   // PERO TAMPOCO PROMETE DE MAS: sin el permiso de "siempre" esto vuelve a ser
   // lo de la web, y callarlo haria que "no me entro el dia" pareciera un bug.
-  chequear('y avisa del permiso que hace falta', /siempre/i.test(T137.ajustes.gimnasioTechoNativo), true);
+  chequear('y avisa del permiso que hace falta', /siempre/i.test(T137.ajustes.gimnasioListoNativo(20)), true);
 
   // ---- APPLE HEALTH ----
   const sal = de137('movil', 'src', 'plataforma', 'salud.ts');
@@ -9595,6 +9648,7 @@ console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
   const { fileURLToPath: aRuta138 } = await import('node:url');
   const R138 = unir138(dir138(aRuta138(import.meta.url)), '..');
   const de138 = (...p) => leer138(unir138(R138, ...p), 'utf8');
+  const fs138 = await import('node:fs');
 
   // ---- EL RECORRIDO ES UNA SOLA LISTA PARA LAS DOS APPS ----
   const REC = await import('../nucleo/recorrido.ts');
@@ -9619,22 +9673,18 @@ console.log('\n138. El recorrido, las marcas y las formas que faltaban portar');
   chequear('el primero es Inicio', REC.PASOS_DEL_RECORRIDO[0].pestana, 'inicio');
   chequear('el gimnasio sigue estando', REC.PASOS_DEL_RECORRIDO.some((p) => p.ancla === 'gimnasio'), true);
 
-  const rec = de138('movil', 'src', 'Recorrido.tsx');
-  // ARRANCA SOLO en un aparato nuevo (seccion 93). Elegir el nombre y "ver la
-  // guia" lo REINICIAN: vuelven los globos y el primer paso.
-  chequear('saltar es un boton con borde, no un texto gris', /testID="recorrido-saltar" style=\{estilos\.borde\}/.test(rec), true);
-  chequear('el recorrido lo reinicia elegir el nombre',
+  // EL RECORRIDO SE SACÓ EL 15/10: lo reemplazan los seis globitos, cada uno saliendo
+  // de lo que explica. Elegir el nombre arranca la guía de cero, y "ver la guía de
+  // nuevo" desde Ajustes trae los globitos otra vez (también a una cuenta de antes).
+  chequear('no queda el recorrido: ni el archivo ni su lugar encima de la barra', [
+    fs138.existsSync(unir138(R138, 'movil', 'src', 'Recorrido.tsx')),
+    fs138.existsSync(unir138(R138, 'src', 'components', 'Recorrido.tsx')),
+    /<Recorrido[ />]/.test(de138('movil', 'src', 'Pestanas.tsx') + de138('src', 'components', 'Nav.tsx')),
+  ], [false, false, false]);
+  chequear('la guía la reinicia elegir el nombre',
     /reiniciarGuia\(yo\.uid\)/.test(de138('movil', 'src', 'Onboarding.tsx')), true);
-  chequear('y "ver la guia" desde Ajustes',
-    /reiniciarGuia\(perfil\.id\)/.test(de138('movil', 'src', 'ajustes', 'Cuenta.tsx')), true);
-  // SI TE VAS POR TU CUENTA NO TE PERSIGUE: dice el paso y ofrece llevarte.
-  // Un recorrido que arrastra de vuelta cada vez que tocas otra cosa es una
-  // trampa, y lo primero que hace cualquiera con una guia es tocar otra cosa.
-  chequear('si estas en otra pantalla, ofrece llevarte', /T\.recorrido\.ir/.test(rec), true);
-  // VIVE ENCIMA DE LA BARRA y no adentro de cada pantalla: la barra esta en
-  // las cinco del recorrido.
-  chequear('la tarjeta vive encima de la barra',
-    /<Recorrido pestana=\{pestana\} \/>/.test(de138('movil', 'src', 'Pestanas.tsx')), true);
+  chequear('y "ver la guía" desde Ajustes trae los globitos',
+    /volverAVerLaGuia\(perfil\.id\)/.test(de138('movil', 'src', 'ajustes', 'Cuenta.tsx')), true);
 
   // ---- LA PANTALLA DE MARCAS ----
   const mar = de138('movil', 'src', 'MisMarcas.tsx');
@@ -10313,8 +10363,15 @@ console.log('\n144. El boton de volumen, y la insistencia con el punto del gimna
   // se calla.
   chequear('el globo quieto se calla cuando habla la tarjeta',
     /!perfil\.gimnasio_lat && !sesion\.estado\.corriendo && !insistirGimnasio/.test(ini144), true);
-  chequear('el texto dice que el dia lo anotaste vos',
-    /anotaste/i.test(T144.inicio.insistirGimnasioTitulo), true);
+  // 15/10: un renglon corto que lleva a Ajustes Y resalta el boton de marcar, para encontrarlo.
+  const gim144 = sinComentarios144(de144('movil', 'src', 'ajustes', 'Gimnasio.tsx'));
+  chequear('el renglon corto lleva a Ajustes y resalta el boton de marcar el gimnasio', [
+    T144.inicio.insistirGimnasio,
+    /<InsistirGimnasio\s+alMarcar=\{\(\) => \{\s*irAPestana\('ajustes'\);\s*pedirResaltarGimnasio\(\);/.test(ini144),
+    // Ajustes se monta recién la primera vez que se abre: el pedido queda anotado y se lee al montar.
+    /if \(Date\.now\(\) - pedidoEn < 3000\) resaltar\(\);\s*return eventos\.escuchar\(RESALTAR_GIMNASIO, resaltar\);/.test(gim144),
+    /<Text style=\{estilos\.estandoAhi\}>\{T\.ajustes\.gimnasioEstandoAhi\}<\/Text>/.test(gim144),
+  ], ['Deja que se marque solo', true, true, true]);
 }
 
 console.log('\n145. Las medallas por marca');
@@ -10676,7 +10733,8 @@ console.log('\n148. El barrido de la app nativa, y lo que encontro');
   chequear('escucha las excepciones', /page\.on\('pageerror'/.test(bar148), true);
   chequear('y los errores de la base', /r\.status\(\) < 400/.test(bar148), true);
   // NO BORRA NADA QUE NO HAYA CREADO: hace su cuenta y se la lleva.
-  chequear('y borra la cuenta que crea', /eliminar_cuenta/.test(bar148), true);
+  // Desde el 15/10, con sus archivos: `borrarCuentaDePrueba` (utiles.mjs) vacía el storage y llama a eliminar_cuenta.
+  chequear('y borra la cuenta que crea', /borrarCuentaDePrueba\(s\)/.test(bar148), true);
 
   // ---- LO PRIMERO QUE ENCONTRO: INICIO NO RECARGABA AL VOLVER ----
   //
@@ -10838,12 +10896,19 @@ console.log('\n149c. La rutina que se propone sola');
   // (1) MISMO DIA DE LA SEMANA: 7 y 14 dias atras son el mismo dia; gana el mas
   // reciente (7). El de 3 dias es otro dia de la semana y no cuenta para esto.
   const sesiones = [
-    { fecha: restarDias(hoy, 14), ejercicios: ['sentadilla', 'prensa'] },
+    { fecha: restarDias(hoy, 14), ejercicios: ['remo', 'banca', 'curl'] },
     { fecha: restarDias(hoy, 7), ejercicios: ['banca', 'remo', 'curl'] },
     { fecha: restarDias(hoy, 3), ejercicios: ['peso-muerto'] },
   ];
   chequear('propone lo del mismo dia, lo mas reciente',
     RU.rutinaParaHoy(sesiones, hoy), ['banca', 'remo', 'curl']);
+  // UN DÍA SUELTO (15/10): "hice sentadilla en Smith una vez" no reescribe la rutina ni la pone primera.
+  const lunes = (...dias) => dias.map(([hace, ejercicios]) => ({ fecha: restarDias(hoy, hace), ejercicios }));
+  chequear('un ejercicio suelto no entra ni va primero; un día entero suelto deja el de antes; repetido, entra donde va', [
+    RU.rutinaParaHoy(lunes([21, ['banca', 'remo', 'curl']], [14, ['banca', 'remo', 'curl']], [7, ['smith', 'banca', 'remo', 'curl']]), hoy),
+    RU.rutinaParaHoy(lunes([14, ['banca', 'remo', 'curl']], [7, ['smith', 'estocadas']]), hoy),
+    RU.rutinaParaHoy(lunes([21, ['banca', 'remo']], [14, ['smith', 'banca', 'remo']], [7, ['smith', 'banca', 'remo']]), hoy),
+  ], [['banca', 'remo', 'curl'], ['banca', 'remo', 'curl'], ['smith', 'banca', 'remo']]);
 
   // El mismo dia pero de hace 5 semanas (35) queda fuera de la ventana de 4.
   const viejo = [
@@ -11460,6 +11525,7 @@ console.log('\n157. La pantalla de bloqueo: el timer que se caia y la campana');
   chequear('sin cartel con la app abierta', /shouldShowBanner: false/.test(avi157), true);
   // Desde el 8/10 los ecos del aviso largo no suenan con la app abierta; el primero sí (sección 197).
   // Desde el 12/10 suena salvo que la persona haya apagado "Sonido al terminar" (sección 197).
+  // Desde el 14/10 no suena: con la app adelante suena la app, en el cero (sección 217).
   chequear('pero con sonido', /shouldPlaySound: sonidoAlFrente/.test(avi157), true);
 
   // ---- 8. LA CAMPANA SE ESCUCHA ----
@@ -12220,9 +12286,9 @@ console.log('\n166. El peso se recuerda por ejercicio Y por modo');
 
   // ---- UN BLOQUE SIN MODO USA EL DEL CATALOGO, NO 'total' ----
   //
-  // No se puede arreglar en la base sin una migracion, y no hace falta: desde
-  // la 38 todo bloque con pesos lleva su modo. Pero la regla queda escrita del
-  // lado que propone, y se ve contra la base con el MISMO bloque.
+  // Desde la 38 todo bloque con pesos lleva su modo, así que casi no pasa. Hasta
+  // la migración 70 la base lo leía como 'total' y el teléfono con el del
+  // catálogo; ahora los dos igual, y se ve con el MISMO bloque.
   {
     const u = await nuevoUsuario();
     await comoUsuario(u);
@@ -12231,8 +12297,10 @@ console.log('\n166. El peso se recuerda por ejercicio Y por modo');
     // Directo a la tabla, como en la 82: fijar_bloques le pondria el modo.
     await db.query('update sesiones set bloques = $2::jsonb where id = $1',
       [id, JSON.stringify([{ ejercicio: 'zancadas', series: 2, pesos: [18, 18] }])]);
+    // Cerrada: la que está corriendo no entra en lo que propone la base.
+    await db.query("update sesiones set estado = 'terminada', fin = now() where id = $1", [id]);
     const enLaBase = (await db.query("select como_arranca('zancadas') as v")).rows[0].v;
-    chequear('la base lo lee como total: busca en par y no lo encuentra', [enLaBase.carga, enLaBase.peso], ['par', null]);
+    chequear('la base lo lee con el modo del catálogo', [enLaBase.carga, Number(enLaBase.peso)], ['par', 18]);
     const filas = (await db.query('select bloques from sesiones where user_id = $1 order by inicio', [u])).rows;
     chequear('el telefono lee ESE MISMO bloque con el modo del catalogo',
       P.pesosDelHistorial(filas, cat166).zancadas, { par: 18 });
@@ -12295,6 +12363,24 @@ console.log('\n166. El peso se recuerda por ejercicio Y por modo');
   hoy166 = B.terminarBloque(B.sumar(B.sumar(hoy166)));
   chequear('lo que se hizo hoy gana sobre la copia', P.ultimoPesoEnModo(hoy166, copia166, REMO, 'par', cat166), 24);
   chequear('y no contamina el otro modo', P.ultimoPesoEnModo(hoy166, copia166, REMO, 'total', cat166), 50);
+  // ---- DE LA ÚLTIMA SESIÓN, LO MÁS PESADO (13/10) ----
+  // Los pesos BAJAN dentro de la sesión, que es lo que pasa en el gimnasio: con
+  // pesos que suben, "la última serie" y "la más pesada" dan lo mismo y no se prueba nada.
+  const baja166 = [
+    { bloques: [{ ejercicio: REMO, series: 3, pesos: [70, 70, 65], carga: 'total' }] },
+    { bloques: [
+      { ejercicio: REMO, series: 3, pesos: [60, 55, 50], carga: 'total' },
+      { ejercicio: 'press_banca', series: 1, pesos: [40], carga: 'total' },
+      { ejercicio: REMO, series: 2, pesos: [45, 45], carga: 'total' },
+    ] },
+  ];
+  const copiaBaja166 = P.pesosDelHistorial(baja166, cat166);
+  chequear('del historial se propone lo más pesado de la ÚLTIMA sesión: ni su última serie, ni el tope de otra sesión', copiaBaja166[REMO], { total: 60 });
+  chequear('y es el mismo número que la lista muestra al lado del ejercicio', P.maximosDelHistorial(baja166, cat166)[REMO], { peso: copiaBaja166[REMO].total, carga: 'total' });
+  chequear('con el bloque vacío, eso es lo que va al campo', P.ultimoPesoEnModo(vacio166, copiaBaja166, REMO, 'total', cat166), 60);
+  let bajaHoy166 = B.cambiarCarga(B.cambiarPeso(vacio166, 60), 'total');
+  bajaHoy166 = B.terminarBloque(B.sumar(B.cambiarPeso(B.sumar(bajaHoy166), 50)));
+  chequear('DENTRO de la sesión de hoy se sigue desde la última serie, no desde el tope', [bajaHoy166.cerrados[0].pesos, P.ultimoPesoEnModo(bajaHoy166, copiaBaja166, REMO, 'total', cat166)], [[60, 50], 50]);
   // "Esas no eran por mancuerna": se corrige la etiqueta del bloque cerrado, y
   // el recuerdo se corrige solo, porque sale de los bloques y no de una copia
   // que se fue sumando serie a serie.
@@ -12692,7 +12778,8 @@ console.log('\n169. La luz de la barra sale de la posicion de la tira');
     'accessibilityRole="tablist"> <Text style={[estilos.texto, pestana === p && estilos.activo]}>{T.nav[p]}</Text> const estilos = StyleSheet.create('
   ), { laLuzEsUnaOpacidadDeLaTira: false, noSaleDeLaPestanaActiva: false });
   // EL ROTULO ESTA DOS VECES (apagado y encendido): que no se lea dos veces.
-  chequear('cada pestaña lleva su nombre para el lector de pantalla', /: T\.nav\[p\]\}/.test(pes169), true);
+  // Desde el 15/10 el rótulo pasa por `rotuloDe` (Ranking dice "Social" en la barra).
+  chequear('cada pestaña lleva su nombre para el lector de pantalla', /: rotuloDe\(p\)\}/.test(pes169), true);
 }
 
 console.log('\n170. El día de racha que guarda cada log (migración 57)');
@@ -13366,7 +13453,7 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
   // ---- COMO ESTABA EL TELÉFONO: nadie guardó la copia ----
   memoria.clear();
   chequear('sin la copia del perfil no hay de quién sea el historial: no propone nada',
-    [await R.traerRecordados(base), pedidos], [{ pesos: {}, catalogo: {}, maximos: {}, subidas: {} }, 0]);
+    [await R.traerRecordados(base), pedidos], [{ pesos: {}, catalogo: {}, maximos: {}, subidas: {}, paraSubir: {} }, 0]);
 
   // ---- COMO QUEDA DESPUÉS DE CARGAR INICIO, que ahora la guarda ----
   await guardarPerfilCache(perfilDe('cuenta-a'));
@@ -13377,7 +13464,7 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
 
   // ---- Y NO SE CRUZA DE CUENTA ----
   await guardarPerfilCache(perfilDe('cuenta-b'));
-  chequear('otra cuenta en el mismo teléfono no ve los pesos de la anterior', await R.leerRecordados(), { pesos: {}, catalogo: {}, maximos: {}, subidas: {} });
+  chequear('otra cuenta en el mismo teléfono no ve los pesos de la anterior', await R.leerRecordados(), { pesos: {}, catalogo: {}, maximos: {}, subidas: {}, paraSubir: {} });
 
   // ---- LO MÁS PESADO DE LA ÚLTIMA VEZ, para la lista de ejercicios (10/10) ----
   // Por el mismo camino: lo que trae la base, lo que queda en el aparato, y lo
@@ -13415,9 +13502,9 @@ console.log('\n175. El peso por modo en el teléfono: la copia del perfil tiene 
   const sel197 = sinComentarios(leerSel(new URL('../movil/src/SelectorEjercicio.tsx', import.meta.url), 'utf8'));
   chequear('la lista de ejercicios lo muestra al lado de cada nombre, en la unidad de la persona', [
     (sel197.match(/extra=\{ultimos\[e\.id\]\}/g) ?? []).length,
-    /pesoLindo\(m\.peso, unidad\), claveDeEtiqueta\(m\.carga, id\)/.test(sel197),
+    /pesoEnLaLista\(m\.peso, unidad\), claveDeEtiqueta\(m\.carga, id\)/.test(sel197),
     /leerRecordados\(\)\.then\(poner\)\.then\(\(\) => recordadosAlDia\(supabase\)\)\.then\(poner\)/.test(sel197),
-  ], [2, true, true]);
+  ], [4, true, true]);
 
   // ---- EL CABLEADO: las DOS apps guardan la copia donde cargan el perfil ----
   // `compartido/` la lee desde las dos; si una sola la escribe, en la otra todo
@@ -13707,7 +13794,10 @@ console.log('\n179. La sesión con el hook de verdad: los bloques de otra sesió
       trasElSiguiente: { pantalla: [van + 1, van + 1], base: [van + 1, van + 1] },
       // La respuesta vieja se descarta y se vuelve a pedir UNA vez por instancia
       // del hook: lo que traía no era solo el conteo.
-      preguntas: t[3] === 'vigilante' ? 4 : 2,
+      // (13/10) Salvo cuando el toque cae ANTES de que salga la segunda pregunta y
+      // todavía está en la cola: con series sin subir ya no se pregunta, así que
+      // esa segunda no sale. Lo que queda en los tres lados es lo mismo.
+      preguntas: t[3] === 'vigilante' ? 4 : t[0] === 'antes' && (t[1] === '6' || t[1] === 'una') ? 1 : 2,
       // Ni por un instante: si la app se cerrara ahí, eso es lo que quedaría.
       cacheRetrocedio: false,
     });
@@ -13765,7 +13855,8 @@ console.log('\n179. La sesión con el hook de verdad: los bloques de otra sesió
   const hook179 = sinComentarios(leer179(join(aca179, '../compartido/useSesion.ts'), 'utf8'));
   const cableado179 = (texto) => ({
     colaSueltaAntesDeLaCache: /await subir\([^;]*\);\s*await actualizarSesionCache\(/.test(texto),
-    conLaColaAdentro: (texto.match(/await actualizarSesionCache\([^;]*?,\s*yo,\s*\(\) =>\s*subir\(/g) ?? []).length,
+    // `(?:[^;]|;(?=\s*\}))`: el getter de los bloques (cacería del 15/10) lleva un `;` adentro.
+    conLaColaAdentro: (texto.match(/await actualizarSesionCache\((?:[^;]|;(?=\s*\}))*?,\s*yo,\s*\(\) =>\s*subir\(/g) ?? []).length,
   });
   chequear('los cuatro cambios del conteo guardan la cola adentro del toque', cableado179(hook179), {
     colaSueltaAntesDeLaCache: false,
@@ -14149,7 +14240,10 @@ console.log('\n185. Web: una foto que no subió no cierra la hoja como si hubier
       }),
     },
     storage: { from: () => ({ upload: async () => ({ error: errorSubida }) }) },
-    from: () => ({ insert: async () => ({ error: errorFila }) }),
+    from: () => {
+      const q = { select: () => q, eq: () => q, limit: () => q, insert: async () => ({ error: errorFila }), then: (a, b) => Promise.resolve({ data: [], error: null }).then(a, b) };
+      return q;
+    },
   });
   const subir185 = (base) => FO.subirFotoDelDia(base, { datos: new Uint8Array(4), dia: '2026-10-04', logId: 'l1', visible: false, subioRango: false });
   chequear('lo que devuelve la subida: bien, sin conexión, archivo que no sube, fila que no entra', [
@@ -14984,7 +15078,7 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   };
   const baseDelDia = {
     from: consulta,
-    storage: { from: () => ({ createSignedUrl: async (ruta) => ({ data: { signedUrl: 'firmada:' + ruta } }) }) },
+    storage: { from: () => ({ createSignedUrls: async (rutas) => ({ data: rutas.map((ruta) => ({ signedUrl: 'firmada:' + ruta })) }) }) },
   };
   const D195 = await import('../compartido/dia.ts');
   const delDia = await D195.cargarDia(baseDelDia, 'yo', '2026-10-04', false);
@@ -15347,19 +15441,30 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
       }),
     },
     auth: { getSession: async () => ({ data: { session: { user: { id: 'uid-1' } } }, error: null }) },
-    from: () => ({
-      insert: async (fila) => {
-        pedidos.push(['fila', fila.storage_path]);
-        return { error: null };
-      },
-      delete: () => ({ eq: async () => ({ error: null }) }),
-    }),
+    from: () => {
+      // Leer `photos` no cuenta como pedido: la subida mira si la fila ya está antes de anotarla.
+      const q = {
+        select: () => q,
+        eq: () => q,
+        limit: () => q,
+        then: (a, b) => Promise.resolve({ data: [], error: null }).then(a, b),
+        insert: async (fila) => {
+          pedidos.push(['fila', fila.storage_path]);
+          return { error: null };
+        },
+        delete: () => ({ eq: async () => ({ error: null }) }),
+      };
+      return q;
+    },
   });
   let fallaLaMiniatura = false;
   const A196 = await import('../compartido/album.ts');
   const trescientas = Array.from({ length: 300 }, (_, i) => `uid-1/foto-${i}.jpg`);
   const chicas = await A196.miniaturas(almacen((r) => !r.includes('foto-7.')), trescientas);
-  chequear('300 miniaturas son UN pedido, y la que no existe vuelve vacía', [pedidos, chicas[0], chicas[7], chicas.filter(Boolean).length], [[['firmar', 300, 3600]], 'firmada:uid-1/foto-0.mini.jpg', null, 299]);
+  // Firmadas por un día y reusadas (15/10, `compartido/firmas.ts`): la segunda vez no se pide nada.
+  const otraVez196 = await A196.miniaturas(almacen((r) => !r.includes('foto-7.')), trescientas);
+  chequear('300 miniaturas son UN pedido, y la que no existe vuelve vacía', [pedidos.slice(0, 1), chicas[0], chicas[7], chicas.filter(Boolean).length], [[['firmar', 300, 86400]], 'firmada:uid-1/foto-0.mini.jpg', null, 299]);
+  chequear('y abrir de nuevo reusa los enlaces: solo se vuelve a pedir la que no existe', [pedidos.slice(1), otraVez196[0]], [[['firmar', 1, 86400]], 'firmada:uid-1/foto-0.mini.jpg']);
   const album196 = de196('compartido/album.ts');
   chequear('nada depende ya de achicar en el servidor', [/transform/.test(album196), /transform/.test(de196('compartido/perfil.ts'))], [false, false]);
 
@@ -15438,7 +15543,7 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
   const cuantas = (await db.query(`select coalesce(version_vista, 'sin dato') as v, count(*)::int as n from profiles where id in ($1, $2) group by 1 order by 1`, [conApp, sinNada])).rows;
   chequear('la consulta del reparto de versiones', cuantas, [{ v: 'sin dato', n: 2 }]);
   const cliente196 = de196('movil/src/supabase.ts');
-  chequear('la app manda su versión en cada pedido', /global: \{ headers: \{ 'X-Client-Info': encabezadoDeVersion\(\) \} \}/.test(cliente196), true);
+  chequear('la app manda su versión en cada pedido', /global: \{ headers: \{ 'X-Client-Info': encabezadoDeVersion\(\) \}/.test(cliente196), true);
 
   // ---- LA TARJETA DE LA PANTALLA BLOQUEADA ----
   const B196 = await import('../nucleo/bloques.ts');
@@ -15488,7 +15593,8 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
   }
   const sesion196 = de196('compartido/useSesion.ts');
   chequear('elegir ejercicio, mudarlo, cambiar la meta y deshacer una serie refrescan la tarjeta', (sesion196.match(/setBloques\(\w+(\.bloques)?\);\s*refrescarTarjeta\(\);/g) ?? []).length, 4);
-  chequear('la lista de la bienvenida no se desenfoca en el teléfono', /\.\.\.\(CON_DESENFOQUE \? \{ filter: `blur\(\$\{desenfoque\}px\)` \} : null\)/.test(de196('movil/src/bienvenida/Registro.tsx')), true);
+  // La lista que se desenfocaba se fue con la entrada vieja (15/10): la nueva no desenfoca nada.
+  chequear('la entrada del teléfono no desenfoca nada', /blur/i.test(de196('movil/src/Bienvenida.tsx') + de196('movil/src/bienvenida/Muestras.tsx') + de196('movil/src/bienvenida/RankingDeEntrada.tsx')), false);
 
   // ---- LA CALIDAD DEL FONDO: baja sola si el teléfono no da ----
   const Q196 = await import('../nucleo/calidad.ts');
@@ -15522,16 +15628,17 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
     /eventos\.escuchar\(CALIDAD_CAMBIO, \(\) => recuperar\(\)\)/.test(fondoRaiz),
     /if \(listo\) void vigilarCalidad\(\);/.test(fondoRaiz),
     /nivel: \(\) => nivelDelMotor\(calidadAhora\(\)\)/.test(de196('movil/src/motorNativo.ts')),
-    /void fijarCalidad\(valor\);/.test(de196('movil/src/ajustes/Fondo.tsx')),
+    /void fijarCalidad\((valor|v)\);/.test(de196('movil/src/ajustes/Fondo.tsx')),
   ], [true, true, true, true, true]);
 
   // ---- CABLEADO DEL ÁLBUM NATIVO: son componentes ----
   const alb196 = de196('movil/src/Album.tsx');
-  chequear('las celdas y el par del mes usan la miniatura, con la entera de respaldo', [
-    /<Foto url=\{c\.miniatura \|\| c\.url\} lado=\{lado\} \/>/.test(alb196),
-    /<Image source=\{\{ uri: c\.miniatura \|\| c\.url \}\} style=\{estilos\.mitadFoto\}/.test(alb196),
+  // Desde el 14/10 pasan por `useFotoLocal` (guardadas en el teléfono por su ruta), con la misma elección.
+  chequear('las celdas y el par del mes usan la miniatura, con la entera de respaldo, guardada en el teléfono', [
+    (alb196.match(/useFotoLocal\(claveDe\(celda\), celda\.miniatura \|\| celda\.url\)/g) ?? []).length,
+    /<Foto celda=\{c\} lado=\{lado\} \/>/.test(alb196) && /<FotoMitad celda=\{c\} \/>/.test(alb196),
     /<Foto url=\{c\.url\}/.test(alb196),
-  ], [true, true, false]);
+  ], [2, true, false]);
   // LA TIRA: el lugar y el dedo se suman, y al pasar cambian JUNTOS, antes de avisarle a React.
   chequear('el visor es una tira: al pasar, lugar y dedo cambian en el mismo instante', [
     /Animated\.add\(base, desliz\)/.test(alb196),
@@ -15547,7 +15654,7 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
   ], [true, true, true]);
   chequear('y las miniaturas que faltan las completa el teléfono, sin transformar en el servidor', [
     /void completarMiniaturas\(d\.celdas\)/.test(alb196),
-    /upload\(rutaDeMiniatura\(c\.ruta\), datos, \{ contentType: 'image\/jpeg', upsert: true \}\)/.test(de196('movil/src/miniaturas.ts')),
+    /upload\(rutaDeMiniatura\(c\.ruta\), datos, \{ contentType: 'image\/jpeg', upsert: true, cacheControl: CACHE_DE_FOTO \}\)/.test(de196('movil/src/miniaturas.ts')),
     /prepararMiniatura\(foto\.uri, foto\.ancho, foto\.alto\)/.test(de196('movil/src/RegistrarDia.tsx')),
   ], [true, true, true]);
 }
@@ -15611,9 +15718,19 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   chequear('por día de la semana queda lo último, lunes primero, el mismo ejercicio se suma, y el día vacío no aparece', RU197.rutinaPorDia([
     { fecha: '2026-10-04', bloques: [b197('dominadas', 4)] }, // domingo
     { fecha: '2026-10-05', bloques: [b197('sentadilla', 3), b197('prensa', 2), b197('sentadilla', 2), b197(null, 5)] }, // lunes, el más nuevo
-    { fecha: '2026-09-28', bloques: [b197('peso_muerto', 3)] }, // lunes anterior
+    { fecha: '2026-09-28', bloques: [b197('prensa', 3), b197('sentadilla', 3)] }, // lunes anterior, en otro orden
     { fecha: '2026-10-07', bloques: [] }, // miércoles sin nada anotado
   ]), [{ dia: 1, ejercicios: [b197('sentadilla', 5), b197('prensa', 2)] }, { dia: 0, ejercicios: [b197('dominadas', 4)] }]);
+  chequear('la semana que ve un amigo tampoco toma el día suelto: ni el ejercicio de una vez, ni el lunes entero distinto', [
+    RU197.rutinaPorDia([
+      { fecha: '2026-10-12', bloques: [b197('smith', 4), b197('sentadilla', 3), b197('prensa', 2)] },
+      { fecha: '2026-10-05', bloques: [b197('sentadilla', 3), b197('prensa', 2)] },
+    ]),
+    RU197.rutinaPorDia([
+      { fecha: '2026-10-12', bloques: [b197('smith', 4), b197('estocadas', 3)] },
+      { fecha: '2026-10-05', bloques: [b197('sentadilla', 3), b197('prensa', 2)] },
+    ]),
+  ], [[{ dia: 1, ejercicios: [b197('sentadilla', 3), b197('prensa', 2)] }], [{ dia: 1, ejercicios: [b197('sentadilla', 3), b197('prensa', 2)] }]]);
 
   // Por el camino de la app: la función que llama el perfil, con un cliente que contesta lo que contestó la base.
   const P197 = await import('../compartido/perfil.ts');
@@ -15703,9 +15820,11 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     [AV197.GOLPES, AV197.PAUSA_MS],
   ], [true, true, [3, 600]]);
   const avisos197 = de197('movil', 'src', 'plataforma', 'avisos.ts');
-  chequear('la notificación sale callada si se apagó el sonido, también con la app abierta', [
+  // Desde el 14/10, con la app adelante la notificación no suena nunca: suena la app en el
+  // cero (sección 217). Y en la build 8, el sonido es el propio (o el silencio para vibrar).
+  chequear('la notificación sale callada si se apagó el sonido, y con la app abierta no suena (suena la app)', [
     /sound: conSonido \? 'aviso-descanso\.wav' : 'silencio\.wav'/.test(avisos197),
-    /sonidoAlFrente = conSonido;/.test(avisos197) && /shouldPlaySound: sonidoAlFrente/.test(avisos197),
+    /const sonidoAlFrente = false;/.test(avisos197) && /shouldPlaySound: sonidoAlFrente/.test(avisos197),
   ], [true, true]);
   // LA BUILD 8: los sonidos que nombra el código tienen que estar en el paquete
   // (declarados en app.json y en disco). Uno que falte no da error: el aviso
@@ -15820,7 +15939,8 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
     /if \(irAAjustes\) irAPestana\('ajustes'\)/.test(aviso197),
     /guardar\(novedad\.clave, conEsteVisto\(crudo, yo\)\)/.test(aviso197),
     /onPress=\{\(\) => void visto\(false\)\}/.test(aviso197) && /onPress=\{\(\) => void visto\(true\)\}/.test(aviso197),
-    /\(await leerPasoDelRecorrido\(yo\)\) !== null/.test(aviso197),
+    // Sin recorrido desde el 15/10: el aviso no espera a nada.
+    /const recorridoAndando = false;/.test(aviso197),
   ], [true, true, true, true, true]);
   chequear('la página del link numera los pasos del que no tiene la app, y el último dice que hay que volver', [
     /<ol>[\s\S]*enlacePaso1[\s\S]*enlacePaso2[\s\S]*enlacePaso3\(nombre\)[\s\S]*<\/ol>/.test(pagina197),
@@ -15844,8 +15964,8 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   ], [true, true, true]);
   // Desde el 12/10 "vacía" tiene dos casos: escondida (nada) y sin datos (se explica). Sección 201.
   chequear('la rutina se pide solo de un amigo, y vacía no se dibuja', [
-    /if \(d\?\.esAmigo\) cargarSuRutina\(supabase, id\)/.test(amigo197),
-    /\{\(rutina\.length > 0 \|\| rutinaSinDatos\) && \(/.test(amigo197),
+    /\{datos\.esAmigo && <RutinaDe quien=\{usuario\.id\} nombre=\{usuario\.username\} \/>\}/.test(amigo197),
+    /if \(!rutina \|\| rutina\.escondida\) return null;/.test(de197('movil', 'src', 'RutinaDe.tsx')),
     /rpc\('fijar_comparte_rutina', \{ p_valor: v \}\)/.test(de197('movil', 'src', 'Ajustes.tsx')),
     /value=\{perfil\.comparte_rutina !== false\}/.test(de197('movil', 'src', 'Ajustes.tsx')),
   ], [true, true, true, true]);
@@ -15927,7 +16047,9 @@ console.log('\n198. "La próxima, más": marcar que un peso quedó chico, y que 
     SU.pesoConSubida(m198, 'total', 55, '2026-10-10', 'kg'), // después se hizo otra cosa
     SU.pesoConSubida(m198, 'total', null, '2026-10-10', 'kg'),
     SU.pesoConSubida(undefined, 'total', 60, '2026-10-10', 'kg'),
-  ], [62.5, null, null, null, null, null]);
+    // LA MARCA GANA (13/10): lo recordado es lo más pesado de la sesión, y ese día hubo una serie de 65.
+    SU.pesoConSubida(m198, 'total', 65, '2026-10-10', 'kg'),
+  ], [62.5, null, null, null, null, null, 62.5]);
   const { pasoDelCampo: paso198 } = await import('../nucleo/campoPeso.ts');
   chequear('en libras el disco es el de libras, el mismo del + del campo', SU.pesoConSubida(m198, 'total', 60, '2026-10-10', 'lb'), paso198(60, 'lb', 1));
   // LA MARCA SE USA UNA VEZ POR SESIÓN (12/10). El caso: no me animé al disco de
@@ -16128,7 +16250,8 @@ console.log('\n199. Ranking: la cara de cada uno y la medalla del rango más alt
   const rk199 = de199('movil', 'src', 'Ranking.tsx');
   chequear('la fila del ranking muestra la cara y la medalla del rango más alto', [
     /<Avatar url=\{a\.avatar_url\} nombre=\{a\.username\} tam=\{38\} \/>/.test(rk199),
-    /<Insignia rango=\{mejorRangoDe\(a\)\} tam=\{22\} \/>/.test(rk199),
+    // Desde el 14/10 va al lado del nombre, con forma de medalla, y la racha de hoy queda sola.
+    /mejorRacha=\{Math\.max\(a\.racha_actual, a\.mejor_racha \?\? 0\)\}/.test(rk199) && /<MedallaDeRango rango=\{numeroDeRango\(mejorRacha \?\? 0\)\}/.test(de199('movil', 'src', 'Medallas.tsx')),
     /<Insignia rango=\{numeroDeRango\(a\.racha_actual\)\} tam=\{38\} \/>/.test(rk199),
   ], [true, true, false]);
 }
@@ -16163,6 +16286,14 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
   // otro día, por ejemplo) no se le muestra a quien se une después: migración 68.
   await como(a, 'select publicar_en_vivo($1, $2, $3, $4)', ['sentadilla', 9, 9, null]);
   await db.query(`update en_vivo set actualizado = now() - interval '1 day' where user_id = $1`, [a]);
+  // Desde la migración 73 solo se le pide unirse a quien ESTÁ entrenando: A inicia.
+  chequear('a quien no está entrenando no se le puede pedir, y el pedido no queda guardado', [
+    (await como(b, 'select pedir_unirse($1) as v', [a]))[0].v,
+    (await db.query('select count(*)::int as n from entrenos_compartidos')).rows[0].n,
+  ], ['no-entrena', 0]);
+  await como(a, 'select marcar_en_gimnasio()');
+  chequear('con el aviso prendido pero SIN sesión, A no aparece: estar adentro del gimnasio no es entrenar (migración 72)', (await como(b, 'select id from entrenando_ahora()')).length, 0);
+  await como(a, 'select iniciar_sesion()');
   await como(b, 'select pedir_unirse($1)', [a]);
   await como(b, 'select pedir_unirse($1)', [a]);
   chequear('el pedido le aparece a los dos, una sola vez, y todavía no muestra nada', [resumen(await uniones(a)), resumen(await uniones(b))], [
@@ -16194,9 +16325,10 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
 
   // CORTAR: terminar la sesión me saca de todo y deja de mostrarme.
   await como(c, 'select pedir_unirse($1)', [a]);
-  await db.query('update profiles set comparte_gimnasio = true where id = $1', [a]);
-  await como(a, 'select marcar_en_gimnasio()');
   chequear('con el aviso prendido, A aparece entrenando para sus amigos', (await como(b, 'select id from entrenando_ahora()')).map((r) => r.id), [a]);
+  // Como en el teléfono: "Terminar" cierra la sesión y después corta lo demás.
+  await db.query(`update sesiones set inicio = now() - interval '20 minutes', series = 3 where user_id = $1 and estado = 'corriendo'`, [a]);
+  await como(a, 'select terminar_sesion()');
   await como(a, 'select dejar_de_entrenar()');
   chequear('A termina: se van sus vínculos, lo que publicó y su "entrenando ahora"', [
     (await uniones(a)).length, (await uniones(b)).length, (await uniones(c)).length,
@@ -16204,7 +16336,9 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
     (await como(b, 'select id from entrenando_ahora()')).length,
   ], [0, 0, 0, 0, 0]);
 
-  // Pedirse los dos a la vez: el segundo pedido es aceptar.
+  // Pedirse los dos a la vez: el segundo pedido es aceptar. Los dos entrenando (migración 73).
+  await como(a, 'select iniciar_sesion()');
+  await como(b, 'select iniciar_sesion()');
   await como(a, 'select pedir_unirse($1)', [b]);
   await como(b, 'select pedir_unirse($1)', [a]);
   chequear('si los dos se piden, quedan unidos sin que nadie conteste', [(await uniones(a))[0].estado, (await uniones(a)).length], ['aceptada', 1]);
@@ -16221,12 +16355,13 @@ console.log('\n200. Entrenar con otro: pedir, aceptar, verse en vivo sin pesos, 
   await db.query('delete from friendships where (solicitante = $1 and destinatario = $2)', [a, b]);
   chequear('si dejan de ser amigos, deja de verse', [(await uniones(a)).length, (await uniones(b)).length], [0, 0]);
 
-  chequear('las dos tablas no se leen ni se escriben directo, y sin sesión no se llama a nada', [
+  // Desde la 88, `en_vivo` se lee por Realtime, y solo lo de tu grupo (su política). Los pedidos siguen sin leerse directo.
+  chequear('los pedidos no se leen directo; lo publicado, solo lo de mi grupo; y sin sesión no se llama a nada', [
     (await db.query(`select tablename, rowsecurity from pg_tables where tablename in ('en_vivo', 'entrenos_compartidos') order by 1`)).rows.map((t) => [t.tablename, t.rowsecurity]),
-    (await db.query(`select count(*)::int as n from pg_policies where tablename in ('en_vivo', 'entrenos_compartidos')`)).rows[0].n,
+    (await db.query(`select tablename, policyname from pg_policies where tablename in ('en_vivo', 'entrenos_compartidos') order by 1`)).rows.map((p) => [p.tablename, p.policyname]),
     (await db.query(`select has_table_privilege('authenticated', 'public.en_vivo', 'select') as a, has_table_privilege('authenticated', 'public.entrenos_compartidos', 'select') as b`)).rows[0],
     (await db.query(`select bool_or(has_function_privilege('anon', p.oid, 'execute')) as alguna from pg_proc p where p.proname in ('pedir_unirse', 'responder_union', 'salir_de_union', 'publicar_en_vivo', 'dejar_de_entrenar', 'mis_uniones', 'me_muestra_su_rutina')`)).rows[0].alguna,
-  ], [[['en_vivo', true], ['entrenos_compartidos', true]], 0, { a: false, b: false }, false]);
+  ], [[['en_vivo', true], ['entrenos_compartidos', true]], [['en_vivo', 'en vivo: mi grupo']], { a: true, b: false }, false]);
 
   // ---- "SU RUTINA": la escondió, o no hay datos ----
   chequear('una amiga que comparte: sí; una extraña: no (aunque comparta)', [
@@ -16273,6 +16408,9 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   const q = await nuevoUsuario();
   await db.query(`update profiles set username = 'vivo_' || substr(id::text, 1, 6) where id in ($1, $2)`, [p, q]);
   await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [p, q]);
+  // P entrena: desde la migración 73 solo se le pide unirse a quien está entrenando.
+  await comoUsuario(p);
+  await db.query('select iniciar_sesion()');
   await comoUsuario(q);
   await db.query('select pedir_unirse($1)', [p]);
   await comoUsuario(p);
@@ -16316,25 +16454,25 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   ].filter((ruta) => queEscribe.test(de201(...ruta))).map((r) => r.join('/')), []);
   const inicio201 = de201('movil', 'src', 'Inicio.tsx');
   chequear('Inicio le pasa lo que muestra, y solo CORTA el botón Terminar cuando terminó de verdad', [
-    /<EnVivoDeInicio\s+corriendo=\{sesion\.estado\.corriendo\}\s+ejercicio=\{sesion\.estado\.bloques\.ejercicio\}\s+hechas=\{sesion\.estado\.bloques\.hechas\}\s+meta=\{sesion\.estado\.bloques\.meta\}\s+descansoFin=\{sesion\.estado\.descanso\?\.fin \?\? null\}/.test(inicio201),
+    /<EnVivoDeInicio\s+corriendo=\{sesion\.estado\.corriendo\}\s+ejercicio=\{sesion\.estado\.bloques\.ejercicio\}\s+(?:\/\/[^\n]*\s+)?hechas=\{esCardioEnCurso \? 0 : sesion\.estado\.bloques\.hechas\}\s+meta=\{esCardioEnCurso \? 0 : sesion\.estado\.bloques\.meta\}\s+descansoFin=\{sesion\.estado\.descanso\?\.fin \?\? null\}/.test(inicio201),
     /const c = await sesion\.terminar\(\);\s*setTerminando\(false\);\s*if \(c\) void dejarDeEntrenar\(supabase\)/.test(inicio201),
     (inicio201.match(/dejarDeEntrenar\(/g) ?? []).length,
     /dejarDeEntrenar/.test(de201('movil', 'src', 'EnVivoDeInicio.tsx')),
   ], [true, true, 1, false]);
   const vivo201 = de201('movil', 'src', 'EnVivoDeInicio.tsx');
-  chequear('al iniciar avisa que entreno; publica solo si hay alguien, con un respiro y un latido', [
-    /if \(!visto\.corriendo\) return;\s*void avisarQueEntreno\(supabase\)/.test(vivo201),
+  chequear('publica solo si hay alguien, con un respiro y un latido', [
     /if \(!visto\.corriendo \|\| !hayAlguien\) return;/.test(vivo201),
     /const p = loQueSePublica\(ultimo\.current, Date\.now\(\)\);\s*if \(p\) void publicarEnVivo\(supabase, p\)/.test(vivo201),
     /setTimeout\(publicar, 700\)/.test(vivo201) && /setInterval\(publicar, LATIDO_MS\)/.test(vivo201),
     /u\.estado === 'pendiente' && !u\.laPediYo/.test(vivo201),
-  ], [true, true, true, true, true]);
+  ], [true, true, true, true]);
   const rk201 = de201('movil', 'src', 'Ranking.tsx');
   chequear('Ranking pregunta cada diez segundos solo con la pestaña a la vista, y ofrece Unirse a quien no tengo', [
     /setActiva\(cual === 'ranking'\)/.test(rk201) && /const juntos = useUniones\(activa\);/.test(rk201),
     /\{conJuntos && !union && \(/.test(rk201),
-    /void pedirUnirse\(supabase, e\.id\)\.then\(juntos\.recargar\)/.test(rk201),
-    /<Juntos uniones=\{juntos\.uniones\} recibidoEn=\{juntos\.recibidoEn\} recargar=\{juntos\.recargar\} \/>/.test(rk201),
+    /onPress=\{\(\) => void unirseA\(e\)\}/.test(rk201) && /const r = await pedirUnirse\(supabase, e\.id\);[\s\S]*?juntos\.recargar\(\);/.test(rk201),
+    // Desde la 88 también sabe si estoy entrenando: el link del grupo se ofrece sin nadie todavía.
+    /<Juntos uniones=\{juntos\.uniones\} recibidoEn=\{juntos\.recibidoEn\} recargar=\{juntos\.recargar\} entrenando=\{yoEntreno\} \/>/.test(rk201),
     /if \(!error\) setEntrenando\(/.test(rk201),
     [EV.CADA_CUANTO_MS, EV.SIN_SENAL_S],
   ], [true, true, true, true, true, [10_000, 120]]);
@@ -16361,15 +16499,13 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
     return cliente201(v, respuestas);
   };
   const vieja = await conVersion201(66);
-  await C201.avisarQueEntreno(vieja);
   await C201.publicarEnVivo(vieja, { ejercicio: null, serie: 0, meta: 0, descansoFaltan: null });
   await C201.dejarDeEntrenar(vieja);
-  chequear('con la base sin la 67 no se llama a nada, y la lista viene vacía', [(await C201.traerUniones(vieja)).uniones, await C201.pedirUnirse(vieja, 'x'), llamadas201], [[], false, []]);
+  chequear('con la base sin la 67 no se llama a nada, y la lista viene vacía', [(await C201.traerUniones(vieja)).uniones, await C201.pedirUnirse(vieja, 'x'), llamadas201], [[], 'fallo', []]);
   const nueva = await conVersion201(67, { mis_uniones: { data: null, error: { message: 'Network request failed' } } });
   chequear('si la lista no se pudo pedir se dice (null): la pantalla se queda con lo que tenía', await C201.traerUniones(nueva), null);
-  await C201.avisarQueEntreno(nueva);
   await C201.publicarEnVivo(nueva, { ejercicio: 'press_banca', serie: 1, meta: 3, descansoFaltan: 60 });
-  chequear('con la 67, iniciar avisa con la marca de siempre y se publica', llamadas201, ['mis_uniones', 'marcar_en_gimnasio', 'publicar_en_vivo']);
+  chequear('con la 67 se publica, y nada marca "entrenando": eso sale de la sesión', llamadas201, ['mis_uniones', 'publicar_en_vivo']);
 
   // ---- "SU RUTINA": la escondió, o no hay datos ----
   const P201 = await import('../compartido/perfil.ts');
@@ -16384,14 +16520,15 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   chequear('sin datos y la escondió: nada, como siempre', (await rutinaCon([], false))[0], { dias: [], sinDatos: false });
   const amigo201 = de201('movil', 'src', 'PerfilDeAmigo.tsx');
   chequear('el perfil dibuja la sección también cuando está vacía sin estar escondida, con su línea', [
-    /\{\(rutina\.length > 0 \|\| rutinaSinDatos\) && \(/.test(amigo201),
-    /\{rutina\.length === 0 && <Text style=\{estilos\.rutinaEjercicios\}>\{T\.social\.rutinaVacia\}<\/Text>\}/.test(amigo201),
+    /\{datos\.esAmigo && <RutinaDe /.test(amigo201),
+    /\{!hay \? \(\s*<Text style=\{estilos\.nota\}>\{esYo \? T\.rutina\.vacia : T\.social\.rutinaVacia\}<\/Text>/.test(de201('movil', 'src', 'RutinaDe.tsx')),
   ], [true, true]);
 
   // ---- LA MEDALLA DEL PERFIL Y EL INTERRUPTOR ----
   const med201 = de201('movil', 'src', 'Medallas.tsx');
   chequear('en el perfil, la medalla es la del rango más alto y no un Saturno fijo', [
-    /<Insignia rango=\{numeroDeRango\(mejorRacha \?\? 0\)\} tam=\{tam\} \/>/.test(med201),
+    // Desde el 14/10 con forma de medalla (cinta y disco), la misma insignia adentro.
+    /<MedallaDeRango rango=\{numeroDeRango\(mejorRacha \?\? 0\)\} tam=\{tam\} \/>/.test(med201),
     /Saturno/.test(med201.replace(/conSaturno|saturnoAbierto/g, '')),
     existe201(join(RAIZ201, 'movil', 'src', 'MedallaRacha.tsx')),
   ], [true, false, false]);
@@ -16434,6 +16571,139 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
   chequear('la sesión se cerró sola por inactividad', (await db.query(`select estado, cerro_sola from sesiones where user_id = $1 order by inicio desc limit 1`, [b])).rows[0], { estado: 'terminada', cerro_sola: true });
   chequear('y con eso se cortó todo: el vínculo, lo publicado y el "entrenando ahora"', await loQueQueda(), [0, 0, 0]);
 
+  // ---- "ENTRENANDO AHORA" SALE DE LA SESIÓN, Y DE NINGÚN OTRO LADO (migración 72) ----
+  // El bug del 12/10: alguien seguía entrenando dos horas después de terminar, y
+  // otro aparecía a las diez de la noche. Salía de una tabla aparte con una marca
+  // de dos horas, que ponía también el vigilante por estar adentro del gimnasio.
+  {
+    const veA = async () => (await como(a, 'select id from entrenando_ahora()')).length;
+    const estadoDeB = async () => (await db.query('select estado from sesiones where user_id = $1 order by inicio desc limit 1', [b])).rows[0]?.estado;
+    const nueva = async () => {
+      await db.query('delete from sesiones where user_id = $1', [b]);
+      await como(b, 'select iniciar_sesion()');
+    };
+    chequear('la tabla aparte ya no existe, y la función que la escribía quedó para los teléfonos viejos sin hacer nada', [
+      (await db.query("select to_regclass('public.en_el_gimnasio') as t")).rows[0].t,
+      await como(b, 'select marcar_en_gimnasio() as v').then(() => 'no rompe', (e) => String(e.message)),
+    ], [null, 'no rompe']);
+
+    // LOS DOS BORDES, Y QUE COINCIDAN CON LA REGLA QUE CIERRA LAS SESIONES. Con el
+    // teléfono bloqueado no sale ningún "sigo acá": lo único que hay es la sesión.
+    const casos = [
+      ['con series, la última hace 29 min', "ultima_actividad = now() - interval '29 minutes'", 1],
+      ['con series, la última hace 31 min', "ultima_actividad = now() - interval '31 minutes'", 0],
+      ['sin ninguna serie, iniciada hace 119 min', "inicio = now() - interval '119 minutes', ultima_actividad = now() - interval '119 minutes'", 1],
+      ['sin ninguna serie, iniciada hace 121 min', "inicio = now() - interval '121 minutes', ultima_actividad = now() - interval '121 minutes'", 0],
+    ];
+    const visto = [];
+    for (const [que, cambio] of casos) {
+      await nueva();
+      await db.query(`update sesiones set inicio = now() - interval '3 hours' where user_id = $1 and estado = 'corriendo'`, [b]);
+      await db.query(`update sesiones set ${cambio} where user_id = $1 and estado = 'corriendo'`, [b]);
+      const antes = [await veA(), await estadoDeB()];
+      await db.query('select cerrar_sesiones_vencidas($1)', [b]);
+      // Aparece si y solo si la base NO la cierra: una sola regla, dicha dos veces.
+      visto.push([que, antes[0], antes[1], (await estadoDeB()) === 'corriendo' ? 1 : 0]);
+    }
+    chequear('aparece entrenando mientras la base da la sesión por viva (30 min sin series, o 2 h sin ninguna), con la sesión todavía abierta', visto.map((v) => [v[0], v[1], v[2]]), casos.map((c) => [c[0], c[2], 'corriendo']));
+    chequear('y es la MISMA regla con la que la base cierra la sesión: aparece si y solo si no la cierra', visto.map((v) => v[1] === v[3]), [true, true, true, true]);
+
+    // Estar adentro del gimnasio no es entrenar: el teléfono viejo sigue "marcando".
+    await nueva();
+    await db.query(`update sesiones set inicio = now() - interval '20 minutes', ultima_actividad = now(), series = 3 where user_id = $1 and estado = 'corriendo'`, [b]);
+    chequear('entrenando de verdad, aparece', await veA(), 1);
+    await como(b, 'select fijar_comparte_gimnasio(false)');
+    const apagado = await veA();
+    await como(b, 'select fijar_comparte_gimnasio(true)');
+    chequear('apagar "Avisar cuando entreno" a mitad de sesión lo saca en el acto, y prenderlo lo vuelve a mostrar', [apagado, await veA()], [0, 1]);
+    await como(b, 'select terminar_sesion()');
+    await como(b, 'select marcar_en_gimnasio()');
+    chequear('terminó, sigue adentro del gimnasio y un teléfono sin actualizar lo "marca": no aparece', await veA(), 0);
+  }
+
+  // ---- EL VÍNCULO SIGUE A LA SESIÓN (migración 73, cacería del 13/10); DESDE LA 88, EN GRUPO ----
+  {
+    const c = await nuevoUsuario();
+    await db.query(`update profiles set username = 'tres_' || substr(id::text, 1, 6) where id = $1`, [c]);
+    await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada'), ($1, $3, 'aceptada')`, [c, a, b]);
+    const filas = async () => (await db.query('select count(*)::int as n from entrenos_compartidos')).rows[0].n;
+    const enElGrupo = async () => (await db.query('select count(*)::int as n from grupo_miembros')).rows[0].n;
+    const pedir = async (quien, aQuien) => (await como(quien, 'select pedir_unirse($1) as v', [aQuien]))[0].v;
+    const limpiar = async () => {
+      await db.query('delete from sesiones where user_id in ($1, $2, $3)', [a, b, c]);
+      await db.query('delete from entrenos_compartidos');
+      await db.query('delete from grupos_entreno');
+    };
+    // La última serie fue hace N minutos y NADIE le pregunta nada a la base: el
+    // teléfono está guardado. No se llama a cerrar_sesiones_vencidas, que es
+    // justo lo que no pasa en la calle.
+    const seFueHace = (quien, min) =>
+      db.query(`update sesiones set inicio = now() - interval '3 hours', ultima_actividad = now() - make_interval(mins => $2) where user_id = $1 and estado = 'corriendo'`, [quien, min]);
+
+    // EL COMPAÑERO FANTASMA: B se va sin tocar Terminar. A mira sin sesión propia.
+    await limpiar();
+    await unir();
+    await seFueHace(b, 10);
+    const vivo = await cuantas(a);
+    await seFueHace(b, 45);
+    chequear('B se fue sin tocar Terminar: a los 45 min A ya no lo ve unido, con la sesión de B todavía "corriendo" y los dos todavía en la tabla del grupo', [
+      vivo, await cuantas(a), await cuantas(b),
+      (await db.query(`select estado from sesiones where user_id = $1`, [b])).rows[0].estado, await enElGrupo(),
+    ], [1, 0, 0, 'corriendo', 2]);
+    chequear('y deja de estar en las dos listas a la vez: tampoco figura entrenando', (await como(a, 'select id from entrenando_ahora()')).length, 0);
+
+    // UN FANTASMA NO OCUPA: A sigue entrenando y C se le puede unir.
+    await como(a, 'select iniciar_sesion()');
+    chequear('el que quedó con un compañero fantasma no figura "ya con alguien": otro le puede pedir', await pedir(c, a), 'ok');
+
+    // PEDIR SOLO A QUIEN ENTRENA AHORA.
+    await limpiar();
+    chequear('a quien no entrena no se le pide, y no queda nada guardado', [await pedir(a, b), await filas()], ['no-entrena', 0]);
+    await como(b, 'select iniciar_sesion()');
+    await db.query('update profiles set comparte_gimnasio = false where id = $1', [b]);
+    chequear('ni a quien apagó "Avisar cuando entreno", aunque esté entrenando', [await pedir(a, b), await filas()], ['no-entrena', 0]);
+    await db.query('update profiles set comparte_gimnasio = true where id = $1', [b]);
+    await seFueHace(b, 45);
+    chequear('ni a quien dejó la sesión abierta y se fue', [await pedir(a, b), await filas()], ['no-entrena', 0]);
+    await db.query(`update sesiones set inicio = now() - interval '20 minutes', ultima_actividad = now(), series = 3 where user_id = $1 and estado = 'corriendo'`, [b]);
+    await como(b, 'select terminar_sesion()');
+    chequear('ni a quien terminó hace un minuto (la lista de Ranking todavía lo muestra)', [await pedir(a, b), await filas()], ['no-entrena', 0]);
+
+    // ACEPTAR PIDE ESTAR ENTRENANDO.
+    await limpiar();
+    await como(b, 'select iniciar_sesion()');
+    await pedir(a, b);
+    const pendiente73 = (await como(b, 'select mis_uniones() as v'))[0].v[0].id;
+    await seFueHace(b, 45);
+    await como(b, 'select responder_union($1, true)', [pendiente73]);
+    chequear('aceptar un pedido cuando ya no se está entrenando no une a nadie: el pedido se va', [await filas(), await cuantas(a)], [0, 0]);
+
+    // EN GRUPO (la 88): B ya entrena con A; C se puede sumar, y lo acepta cualquiera de los dos.
+    await limpiar();
+    await unir();
+    await como(c, 'select iniciar_sesion()');
+    chequear('a quien ya entrena con alguien le puede pedir un tercero: queda el pedido', [await pedir(c, b), await filas()], ['ok', 1]);
+    chequear('quien ya está en un grupo no le pide a otro: tiene que salir primero', [await pedir(a, c), await filas()], ['ya-unido', 1]);
+    chequear('repetirle el pedido al compañero que ya tengo no hace nada: dice que ya están juntos', [await pedir(a, b), await cuantas(a)], ['ya-unido', 2]);
+
+    // DOS PIDEN A LA VEZ (la 88): aceptar a uno deja el otro pedido, y lo puede aceptar cualquiera del grupo.
+    await limpiar();
+    await como(b, 'select iniciar_sesion()');
+    await pedir(a, b);
+    await pedir(c, b);
+    const pedidos = (await como(b, 'select mis_uniones() as v'))[0].v;
+    await como(b, 'select responder_union($1, true)', [pedidos.find((u) => u.otro.id === a).id]);
+    chequear('con dos pedidos esperando, aceptar uno deja el otro esperando, y A (ya adentro) también lo ve', [
+      pedidos.length, await filas(), await cuantas(c),
+      (await como(b, 'select mis_uniones() as v'))[0].v.map((u) => [u.estado, u.otro.id]),
+      (await como(a, 'select mis_uniones() as v'))[0].v.map((u) => [u.estado, u.otro.id]),
+    ], [2, 1, 1, [['aceptada', a], ['pendiente', c]], [['aceptada', b], ['pendiente', c]]]);
+
+    // Y "ENTRENANDO AHORA" NO DICE DESDE CUÁNDO.
+    chequear('"Entrenando ahora" entrega nombre y foto, y nada con lo que calcular cuánto lleva', Object.keys((await como(a, 'select * from entrenando_ahora()'))[0]).sort(), ['avatar_url', 'id', 'username']);
+    await limpiar();
+  }
+
   // 2. LA TERMINA LA BASE POR OTRO CAMINO (el vigilante llama a terminar_sesion, no al botón).
   await db.query('delete from sesiones where user_id = $1', [b]);
   await unir();
@@ -16462,16 +16732,13 @@ console.log('\n203. El vínculo se corta cuando la sesión se cierra, la cierre 
     /\{r\.sinSenal \? \([\s\S]*?\) : r\.descanso !== null \? \(/.test(juntos203),
   ], [true, false]);
   const vivo203 = de203('movil', 'src', 'EnVivoDeInicio.tsx');
-  chequear('prender "Avisar cuando entreno" con la sesión corriendo surte efecto en el acto', [
-    /else eventos\.emitir\(AVISO_DE_ENTRENO_CAMBIO\);/.test(de203('movil', 'src', 'Ajustes.tsx')),
-    /eventos\.escuchar\(AVISO_DE_ENTRENO_CAMBIO, \(\) => \{\s*if \(ultimo\.current\.corriendo\) void avisarQueEntreno\(supabase\)/.test(vivo203),
-  ], [true, true]);
   const nov203 = de203('movil', 'src', 'AvisoRutina.tsx');
   const { REQUIERE: REQ203 } = await import('../nucleo/esquema.ts');
   const { T: T203 } = await import('../nucleo/textos.ts');
   chequear('que tus amigos vean cuando entrenas se avisa una vez, recién con la 68, y con su propia marca de "visto"', [
-    /\{ clave: CLAVE_AVISO_ENTRENO, columna: 'comparte_gimnasio', requiere: 'avisoDeEntrenoPrendido', texto: T\.social\.avisoEntreno \}/.test(nov203),
-    /\{ clave: CLAVE_AVISO_RUTINA, columna: 'comparte_rutina', requiere: 'rutinaDeAmigo', texto: T\.social\.avisoRutina \}/.test(nov203),
+    // Desde el 14/10 el texto se lee al usarlo (getter): cambia con el idioma.
+    /\{ clave: CLAVE_AVISO_ENTRENO, columna: 'comparte_gimnasio', requiere: 'avisoDeEntrenoPrendido', get texto\(\) \{ return T\.social\.avisoEntreno; \} \}/.test(nov203),
+    /\{ clave: CLAVE_AVISO_RUTINA, columna: 'comparte_rutina', requiere: 'rutinaDeAmigo', get texto\(\) \{ return T\.social\.avisoRutina; \} \}/.test(nov203),
     REQ203.avisoDeEntrenoPrendido,
     /nunca dónde/.test(T203.social.avisoEntreno) && /Ajustes/.test(T203.social.avisoEntreno),
     (await import('../nucleo/avisoRutina.ts')).CLAVE_AVISO_ENTRENO !== (await import('../nucleo/avisoRutina.ts')).CLAVE_AVISO_RUTINA,
@@ -16580,25 +16847,26 @@ console.log('\n204. Ocho arreglos de la cacería del 12/10, y la guarda de las m
   const pegado = almacen(5, { noBorra: true });
   chequear('si algo se lista y no se va nunca, se corta con la cuenta viva (y no queda dando vueltas)', ['error' in (await CU204.eliminarCuenta(pegado, 'uid')), pegado.hecho.some((h) => h[0] === 'rpc'), pegado.hecho.length <= 101], [true, false, true]);
 
-  // ---- TERMINAR DENTRO DEL GIMNASIO NO TE VUELVE A MARCAR ENTRENANDO ----
-  const EV204 = await import('../nucleo/enVivo.ts');
-  chequear('después de "Terminar" hay una pausa; vencida, o sin ella, se marca como siempre', [
-    EV204.puedeMarcarPresencia(String(1000 + 5), 1000), EV204.puedeMarcarPresencia(String(999), 1000),
-    EV204.puedeMarcarPresencia(null, 1000), EV204.puedeMarcarPresencia('basura', 1000),
-  ], [false, true, true, true]);
-  // Por el camino de la app: terminar deja la pausa en el teléfono; iniciar otra sesión la levanta.
-  const C204 = await import('../compartido/enVivo.ts');
-  const callado = { rpc: async () => ({ data: 0, error: null }) };
-  await C204.dejarDeEntrenar(callado);
-  const trasTerminar = await C204.sePuedeMarcarPresencia();
-  await C204.avisarQueEntreno(callado);
-  chequear('terminar a mano frena al vigilante; iniciar otra sesión lo suelta', [trasTerminar, await C204.sePuedeMarcarPresencia()], [false, true]);
-  chequear('el vigilante lo mira antes de marcar', /if \(!\(await sePuedeMarcarPresencia\(\)\)\) return;\s*await supabase\.rpc\('marcar_en_gimnasio'\);/.test(de204('movil', 'src', 'VigilanteDeGimnasio.tsx')), true);
+
+  // ---- "ENTRENANDO" NO SE MARCA DESDE LA APP (migración 72) ----
+  // Sale de la sesión. Lo que marcaba aparte —al iniciar, cada veinte minutos y el
+  // vigilante con solo estar adentro del gimnasio— era una segunda fuente: se fue.
+  {
+    const { readdirSync: dir72 } = await import('node:fs');
+    const fuentes = [
+      ...['nucleo', 'compartido'].flatMap((c) => dir72(join(AQUI204, '..', c)).filter((f) => f.endsWith('.ts')).map((f) => [c, f])),
+      ...dir72(join(AQUI204, '..', 'movil', 'src'), { recursive: true }).filter((f) => /\.tsx?$/.test(String(f))).map((f) => ['movil', 'src', String(f)]),
+    ];
+    const nombran = fuentes.filter((p) => /marcar_en_gimnasio|avisarQueEntreno|sePuedeMarcarPresencia|no-avisar-hasta/.test(de204(...p))).map((p) => p.join('/'));
+    chequear('ningún archivo de la app llama a la función vacía ni guarda la pausa de "no volver a marcar"', [fuentes.length > 60, nombran], [true, []]);
+    chequear('el vigilante sigue registrando el día al llegar: eso no era código muerto', /if \(adentro && diaRegistrado\.current !== hoyISO\(\)\) \{\s*const r = await registrarPorSenal\(supabase, 'ubicacion'\);/.test(de204('movil', 'src', 'VigilanteDeGimnasio.tsx')), true);
+  }
 
   // ---- LO QUE SE LEE: componentes y consultas largas ----
   const vivo204 = de204('movil', 'src', 'EnVivoDeInicio.tsx');
   chequear('la tarjeta "quiere unirse" se va al terminar: solo se dibuja entrenando, y la lista se olvida', [
-    /const pedidos = visto\.corriendo \? uniones\.filter\(/.test(vivo204),
+    // Desde el 15/10 pasa además por `tarjetasDeInicio` (el del cartel de arriba no se dibuja).
+    /const pedidos = tarjetasDeInicio\(visto\.corriendo \? uniones\.filter\(/.test(vivo204),
     /useUniones\(visto\.corriendo, true\)/.test(vivo204),
     /if \(olvidarAlApagar\) setDatos\(\{ uniones: \[\], recibidoEn: Date\.now\(\) \}\);/.test(de204('movil', 'src', 'useUniones.ts')),
   ], [true, true, true]);
@@ -16606,7 +16874,7 @@ console.log('\n204. Ocho arreglos de la cacería del 12/10, y la guarda de las m
   chequear('la actividad de Ranking pide la miniatura, y la entera solo para la que no tiene', [
     /const chicas = await miniaturas\(supabase, rutas\);/.test(rk204),
     /const sinChica = rutas\.filter\(\(_, i\) => !chicas\[i\]\);/.test(rk204),
-    /createSignedUrls\(sinChica, 3600\)/.test(rk204),
+    /firmarFotos\(supabase, sinChica\)/.test(rk204),
     /createSignedUrls\(\s*fs\.map\(/.test(rk204),
   ], [true, true, true, false]);
   const hook204 = de204('compartido', 'useSesion.ts');
@@ -16617,32 +16885,15 @@ console.log('\n204. Ocho arreglos de la cacería del 12/10, y la guarda de las m
   ], [3, true, true]);
 }
 
-console.log('\n205. Las propuestas de diseño están en la web, pero las ve solo quien está en la lista');
+console.log('\n205. Las propuestas de diseño están en la web y se abren sin sesión, como la galería (15/10)');
 {
-  const V205 = await import('../nucleo/veredicto.ts');
-  chequear('qué rutas son de propuestas: esa y lo que cuelga de ella, no el resto de la galería', [
-    V205.esDePropuestas('/galeria/propuestas'), V205.esDePropuestas('/galeria/propuestas/descanso'),
-    V205.esDePropuestas('/galeria'), V205.esDePropuestas('/galeria/bienvenida'), V205.esDePropuestas('/galeria/propuestas-viejas'),
-  ], [true, true, false, false, false]);
-  chequear('las ve solo la cuenta de la lista; otra cuenta, o no saber cuál es, no', [
-    V205.puedeVerPropuestas('agusconde20@gmail.com'), V205.puedeVerPropuestas(' AgusConde20@Gmail.com '),
-    V205.puedeVerPropuestas('otra@gmail.com'), V205.puedeVerPropuestas(''), V205.puedeVerPropuestas(null), V205.puedeVerPropuestas(undefined),
-  ], [true, true, false, false, false, false]);
-  // LA DECISIÓN ENTERA, que es lo que el middleware le pregunta: con el veredicto
-  // de siempre ("seguir" o "a-login") y el correo de quien entró.
-  chequear('una propuesta: sin sesión va a entrar; con la cuenta de la lista pasa; con otra, o sin saber quién es, no existe', [
-    V205.decidirPropuesta('a-login', null),
-    V205.decidirPropuesta('seguir', 'agusconde20@gmail.com'),
-    V205.decidirPropuesta('seguir', 'otra@gmail.com'),
-    // El hipo de red: el resto de la web deja pasar sin usuario; acá la duda cierra.
-    V205.decidirPropuesta('seguir', undefined),
-  ], ['a-login', 'seguir', 'no-existe', 'no-existe']);
   const { readFileSync: leer205 } = await import('node:fs');
   const medio205 = sinComentarios(leer205(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'lib', 'supabase', 'middleware.ts'), 'utf8')).replace(/\r\n/g, '\n');
-  chequear('con sesión de una cuenta que no está en la lista, la propuesta no existe (404)', [
-    /if \(propuesta && decidirPropuesta\(veredicto, data\.user\?\.email\) === 'no-existe'\) \{\s*return llevarCookies\(new NextResponse\('No encontrado', \{ status: 404 \}\), respuesta\);/.test(medio205),
-    /esPublica: !propuesta && RUTAS_PUBLICAS\.some/.test(medio205),
-  ], [true, true]);
+  chequear('las propuestas no tienen regla aparte: cuelgan de /galeria, que es pública', [
+    /RUTAS_PUBLICAS = \[[^\]]*'\/galeria'/.test(medio205),
+    /propuesta/i.test(medio205),
+    /esPublica: RUTAS_PUBLICAS\.some/.test(medio205),
+  ], [true, false, true]);
 }
 
 console.log('\n206. La pantalla del descanso: qué se estaba haciendo, el arco, cuánto te pasaste, y el compañero abajo');
@@ -16710,7 +16961,2171 @@ console.log('\n202. "Volver" anda siempre, también cuando la app arrancó por u
   ], [true, true, true, true]);
 }
 
+// ============================================================================
+// 207. CACERÍA DEL 13/10: lo que seguía vivo de la anterior, y el aviso de "ocupado"
+// ============================================================================
+console.log('\n207. Cacería del 13/10: los que seguían vivos');
+{
+  const { readFileSync: leer207 } = await import('node:fs');
+  const AQUI207 = dirname(fileURLToPath(import.meta.url));
+  const de207 = (...p) => leer207(join(AQUI207, '..', ...p), 'utf8').replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  // ---- EL PESO DE LA LISTA SE ESCRIBE COMO EL DEL CAMPO ----
+  const PE207 = await import('../nucleo/peso.ts');
+  chequear('en la lista, 61,25 kg se lee 61,25 y no 61,3; y en libras, la misma media libra que muestra el campo', [
+    PE207.pesoEnLaLista(61.25, 'kg'), PE207.pesoEnLaLista(60, 'kg'),
+    PE207.pesoEnLaLista(60, 'lb') === PE207.pesoCorto(60, 'lb') + ' lb', PE207.pesoEnLaLista(60, 'lb'),
+  ], ['61,25 kg', '60 kg', true, '132,5 lb']);
+  const sel207 = de207('movil', 'src', 'SelectorEjercicio.tsx');
+  chequear('y la lista de ejercicios usa esa función, no la de las marcas (que redondea a un decimal)', [/pesoEnLista\(pesoEnLaLista\(m\.peso, unidad\)/.test(sel207), /pesoLindo/.test(sel207)], [true, false]);
+
+  // ---- LA GUÍA ES POR CUENTA: dos cuentas alternándose en el mismo teléfono ----
+  const { memoria: mem207 } = await import('./dobles/plataforma.mjs');
+  const G207 = await import('../compartido/guia.ts');
+  mem207.delete('ascent:guia');
+  // Una cuenta nueva (después del 15/10) y una de antes.
+  const nueva207 = '2026-10-16T12:00:00Z';
+  const vieja207 = '2026-09-01T00:00:00Z';
+  await G207.marcarGloboVisto('cuenta-a', 'series');
+  chequear('A cerró el del +; entró B en el mismo teléfono: a B le falta, a A no le vuelve', [
+    await G207.faltaElGlobo('cuenta-b', 'series', nueva207), await G207.faltaElGlobo('cuenta-a', 'series', nueva207),
+  ], [true, false]);
+  const antesDePedir = await G207.faltaElGlobo('cuenta-c', 'album', vieja207);
+  await G207.verLaGuiaDeNuevo('cuenta-c');
+  chequear('una cuenta de antes del 15/10 no ve los globitos nuevos, salvo que pida ver la guía de nuevo', [antesDePedir, await G207.faltaElGlobo('cuenta-c', 'album', vieja207)], [false, true]);
+  mem207.set('ascent:guia', JSON.stringify({ uid: 'cuenta-vieja', recorrido: true, globos: ['series'] }));
+  chequear('quien lo había cerrado con la clave vieja (una sola para el teléfono) no lo vuelve a ver', await G207.faltaElGlobo('cuenta-vieja', 'series', nueva207), false);
+
+  // ---- PEDIR UNIRSE CONTESTA QUÉ PASÓ (migración 73) ----
+  const EV207 = await import('../nucleo/enVivo.ts');
+  chequear('la respuesta de pedir unirse: una base sin la 73 no contesta nada y eso es "salió"', [
+    EV207.leerRespuestaDeUnirse(null), EV207.leerRespuestaDeUnirse(undefined), EV207.leerRespuestaDeUnirse('ok'),
+    EV207.leerRespuestaDeUnirse('ocupado'), EV207.leerRespuestaDeUnirse('ya-unido'), EV207.leerRespuestaDeUnirse('no-entrena'), EV207.leerRespuestaDeUnirse('cualquier cosa'),
+  ], ['ok', 'ok', 'ok', 'ocupado', 'ya-unido', 'no-entrena', 'ok']);
+  const rk207 = de207('movil', 'src', 'Ranking.tsx');
+  chequear('Ranking le dice al que pide por qué no se pudo, en un renglón propio', [
+    /r === 'ocupado' \? T\.social\.unirseOcupado\(e\.username\)/.test(rk207),
+    /r === 'ya-unido' \? T\.social\.unirseYaUnido/.test(rk207),
+    /r === 'no-entrena' \? T\.social\.unirseNoEntrena\(e\.username\)/.test(rk207),
+    /noSePudo\?\.id === e\.id && \(\s*<Text testID="unirse-no-se-pudo"/.test(rk207),
+  ], [true, true, true, true]);
+
+  // ---- LO QUE SOLO SE PUEDE FIJAR LEYENDO: efectos de pantalla ----
+  const nom207 = de207('movil', 'src', 'useNombresDeEjercicios.ts');
+  chequear('los nombres de los ejercicios del compañero miran el error y se vuelven a pedir en cada latido mientras falten', [
+    /if \(error \|\| !data\) return null;/.test(nom207),
+    /if \(!hacenFalta \|\| tengo\) return;/.test(nom207) && /\}, \[hacenFalta, tengo, latido\]\);/.test(nom207),
+    /useNombresDeEjercicios\(hayAceptada, recibidoEn\)/.test(de207('movil', 'src', 'Juntos.tsx')),
+    /useNombresDeEjercicios\(hay, recibidoEn\)/.test(de207('movil', 'src', 'CompaneroEnDescanso.tsx')),
+    /from\('ejercicios'\)/.test(de207('movil', 'src', 'Juntos.tsx')) || /from\('ejercicios'\)/.test(de207('movil', 'src', 'CompaneroEnDescanso.tsx')),
+  ], [true, true, true, true, false]);
+  chequear('"Ver la guía de nuevo" esconde el aviso de novedad: no quedan las dos tarjetas', /eventos\.escuchar\(GUIA_DE_NUEVO, \(\) => setAviso\(null\)\)/.test(de207('movil', 'src', 'AvisoRutina.tsx')), true);
+  chequear('registrar el día sin foto, o iniciando la sesión a mano, le avisa al Álbum', [
+    /if \(r\.registro && !porUbi\) eventos\.emitir\(DIA_CAMBIO\);/.test(de207('compartido', 'useSesion.ts')),
+    /const resultado = data as ResultadoRegistro;\s*eventos\.emitir\(DIA_CAMBIO\);/.test(de207('movil', 'src', 'RegistrarDia.tsx')),
+    /eventos\.escuchar\(DIA_CAMBIO, marcar\)/.test(de207('movil', 'src', 'Album.tsx')),
+  ], [true, true, true]);
+}
+
+// ============================================================================
+// 208. SEÑAL MALA: lo que rompía datos (cacería del 13/10), con el hook de verdad
+// ============================================================================
+console.log('\n208. Señal mala: la base no juzga una sesión que tiene cosas sin subir');
+{
+  // CADA UNO CORRE `useSesion` Y `cola.ts` DE VERDAD (ver `dobles/sesion/escenarios.mjs`,
+  // `senal`). Es un sustituto del teléfono: prueba el orden de las operaciones.
+  const s208 = async (cual) => escenarioDeSesion('senal', cual);
+
+  // 47 minutos entrenando en una zona sin señal; al desbloquear entra `mi_sesion`
+  // pero la cola no subió. Antes: "La sesión se cerró sola… duró 3 min".
+  chequear('con series sin subir no se le pregunta a la base si la sesión sigue viva: no la cierra en el minuto 3; cuando sube, sigue corriendo con las 6', await s208('pregunta'), {
+    sinSubir: { corriendo: true, series: 6, preguntas: 0, base: 'corriendo' },
+    alVolver: { corriendo: true, series: 6, preguntas: true, base: ['corriendo', 6, false] },
+  });
+  chequear('ni se inicia otra sesión encima: la base cerraría esta con datos viejos', await s208('iniciar'), { salio: false, series: 6, enCola: [6], base: ['corriendo', 2], sesionesEnLaBase: 1 });
+  chequear('y si el teléfono ya la había olvidado y la base la devuelve viva, no adopta su conteo viejo (el primer toque pisaría las 6 que esperan)', await s208('iniciar-olvidada'), { salio: false, series: 0, enCola: [6], base: ['corriendo', 2], sesionesEnLaBase: 1 });
+
+  // NADIE LE PREGUNTA A LA BASE POR LA SESIÓN SIN MIRAR LA COLA. Stats y las dos
+  // pantallas de diagnóstico lo hacían: abrir Stats en el subsuelo cerraba la sesión.
+  {
+    const { readFileSync: leer208, readdirSync: dir208 } = await import('node:fs');
+    const RAIZ208 = join(dirname(fileURLToPath(import.meta.url)), '..');
+    const fuentes = [
+      ...dir208(join(RAIZ208, 'compartido')).filter((x) => x.endsWith('.ts')).map((x) => join('compartido', x)),
+      ...dir208(join(RAIZ208, 'movil', 'src'), { recursive: true }).filter((x) => /\.tsx?$/.test(String(x))).map((x) => join('movil', 'src', String(x))),
+    ];
+    const sinGuarda = [];
+    let preguntas = 0;
+    for (const ruta of fuentes) {
+      const lineas = leer208(join(RAIZ208, ruta), 'utf8').split(/\r?\n/);
+      lineas.forEach((l, i) => {
+        if (!/rpc\('(mi_sesion|resumen_sesiones)'\)/.test(l)) return;
+        preguntas++;
+        if (!/quedaDeLaSesion\(|subioLoDeLaSesion\(/.test(lineas.slice(Math.max(0, i - 10), i).join('\n'))) sinGuarda.push(ruta.replace(/\\/g, '/') + ':' + (i + 1));
+      });
+    }
+    chequear('cada lugar de la app que le pregunta a la base por la sesión mira antes si quedó algo sin subir', [preguntas >= 4, sinGuarda], [true, []]);
+  }
+
+  // "Terminar" sin señal, y el reintento cuando vuelve.
+  chequear('Terminar que no salió y se reintenta más tarde cierra a la hora del PRIMER toque, no a la del reintento', await s208('terminar'), { primero: 'no salió', segundo: 'salió', delPrimerToque: true, atrasoMs: true, conHora: true, base: 'terminada' });
+  chequear('salvo que después del toque fallido se haya seguido entrenando: ahí cierra a la hora de ahora', await s208('terminar-siguio'), { primero: 'no salió', segundo: 'salió', delPrimerToque: null, atrasoMs: null, conHora: false, base: 'terminada' });
+
+  // "+ Serie hecha" en la pantalla del descanso, con la sesión ya cerrada sola.
+  chequear('sin sesión en el teléfono, "Serie hecha" no cuenta, no encola y no toca la base; y el descanso de esa sesión se fue con ella', await s208('sin-sesion'), {
+    antes: { corriendo: false, series: 0 }, despues: { corriendo: false, series: 0 }, escrituras: 0, enCola: 0, laBaseQuedoIgual: true, descanso: null,
+  });
+}
+
+console.log('\n209. Señal mala: no saber no es lo mismo que no haber');
+{
+  // ---- LA HOJA DE UN DÍA, SIN SEÑAL ----
+  // La lectura fallaba, volvía vacía, y la hoja decía "Sin registrar" en un día
+  // entrenado; tocar "Fui" para arreglarlo borraba el día y su sesión.
+  const D209 = await import('../compartido/dia.ts');
+  const TABLAS = {
+    logs: [{ id: 'l1', es_descanso: false, origen: 'manual' }],
+    sesiones: [{ id: 's1', inicio: '2026-10-10T10:00:00Z', fin: '2026-10-10T11:00:00Z', estado: 'terminada', series: 3, bloques: [] }],
+    ejercicios: [], descansos: [], photos: [], profiles: [{ unidad_peso: 'kg' }],
+  };
+  const baseQue = (fallan) => ({
+    from: (tabla) => {
+      const r = () => (fallan.includes(tabla) ? { data: null, error: { message: 'Network request failed' } } : { data: TABLAS[tabla], error: null });
+      const q = {
+        select: () => q, eq: () => q, order: () => q, limit: () => q,
+        maybeSingle: async () => { const x = r(); return { ...x, data: Array.isArray(x.data) ? x.data[0] ?? null : x.data }; },
+        then: (a, b) => Promise.resolve(r()).then(a, b),
+      };
+      return q;
+    },
+    storage: { from: () => ({ createSignedUrl: async () => ({ data: null }) }) },
+  });
+  const dia209 = async (fallan) => { const d = await D209.cargarDia(baseQue(fallan), 'uid', '2026-10-10', false); return d ? [d.resumen.estado, d.cuantasSesiones] : null; };
+  chequear('con señal, el día entrenado se lee entrenado', await dia209([]), ['entrenado', 1]);
+  chequear('si la lectura del día FALLA no se lo da por "sin registrar": no hay resumen', await dia209(['logs']), null);
+  chequear('y si lo que falla es la lectura de sus sesiones, tampoco se arma uno a medias', await dia209(['sesiones']), null);
+  chequear('sin resumen no hay con qué corregir: el destino actual es desconocido', D209.destinoActual(null), null);
+  const { readFileSync: leer209 } = await import('node:fs');
+  const hoja209 = leer209(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'HojaDelDia.tsx'), 'utf8').replace(/\r\n/g, '\n');
+  chequear('la hoja, sin lectura, no deja resumen puesto, lo dice, y no corrige nada', [
+    /setNoCargo\(!d\);\s*if \(!d\) return setResumen\(null\);/.test(hoja209),
+    /noCargo \? T\.resumen\.noCargo : '…'/.test(hoja209),
+    /if \(!resumen \|\| ocupado\) return;/.test(hoja209),
+  ], [true, true, true]);
+}
+
+console.log('\n210. El vigilante no prende una sesión que nadie pidió');
+{
+  const LL = await import('../nucleo/llegada.ts');
+  const T0 = 1_800_000_000_000;
+  const MIN = 60_000;
+  const libre210 = { corriendo: false, porUbicacion: false };
+  // Llegó, tocó Iniciar, entrenó, la sesión se cerró sola por inactividad, y al
+  // abrir la app sigue adentro: no se prende nada (desde el 15/10, nunca).
+  const alReabrir = LL.decidir(true, T0 + 50 * MIN, T0 + 50 * MIN, { desde: T0, ultimoAdentro: T0 + 20 * MIN, arranco: true }, libre210);
+  chequear('al reabrir adentro del gimnasio no se prende ninguna sesión', alReabrir.hacer, 'nada');
+
+  // La mirada lee la visita, espera al GPS y guarda. "Terminar" cae en el medio.
+  const foto = { desde: T0, ultimoAdentro: T0 + 30 * MIN, arranco: false };
+  const trasTerminar = LL.marcarComoUsada(foto);
+  const loQueIbaAGuardar = LL.decidir(true, T0 + 31 * MIN, T0 + 31 * MIN, foto, { corriendo: true, porUbicacion: true }).vigilancia;
+  chequear('guardar la mirada no desmarca la visita que "Terminar" acaba de marcar', [
+    LL.sinDesmarcar({ ...loQueIbaAGuardar, arranco: false }, trasTerminar).arranco,
+    LL.sinDesmarcar({ ...foto, ultimoAdentro: T0 + 31 * MIN }, trasTerminar),
+    LL.sinDesmarcar({ desde: T0 + 9 * 60 * MIN, ultimoAdentro: T0 + 9 * 60 * MIN, arranco: false }, trasTerminar).arranco, // otra visita: no hereda
+    LL.sinDesmarcar(null, trasTerminar), LL.sinDesmarcar(foto, null).arranco,
+  ], [true, { desde: T0, ultimoAdentro: T0 + 31 * MIN, arranco: true }, false, null, false]);
+
+  const { readFileSync: leer210 } = await import('node:fs');
+  const RAIZ210 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const vig210 = leer210(join(RAIZ210, 'movil', 'src', 'VigilanteDeGimnasio.tsx'), 'utf8').replace(/\r\n/g, '\n');
+  const ses210 = leer210(join(RAIZ210, 'compartido', 'useSesion.ts'), 'utf8').replace(/\r\n/g, '\n');
+  const term210 = ses210.slice(ses210.indexOf('async function terminar('), ses210.indexOf('async function marcar('));
+  chequear('el vigilante decide con la sesión y la visita de AHORA (después del GPS), y guarda sin desmarcar', [
+    /const ahoraS = sesionRef\.current;[\s\S]{0,400}?const visita = await leerVigilancia\(\);\s*const decision = decidir\(adentro, medidoEn, Date\.now\(\), visita, \{\s*corriendo: ahoraS\.estado\.corriendo,/.test(vig210),
+    /await guardarVigilancia\(sinDesmarcar\(decision\.vigilancia, await leerVigilancia\(\)\)\);/.test(vig210),
+    /decidir\([^)]*vigilancia, \{\s*corriendo: s\.estado/.test(vig210),
+  ], [true, true, false]);
+  chequear('"Terminar" marca la visita como usada ANTES de borrar la sesión del teléfono, y lo espera', [
+    term210.indexOf('await guardarVigilancia(marcarComoUsada(await leerVigilancia()));') > 0,
+    term210.indexOf('await guardarVigilancia(marcarComoUsada(await leerVigilancia()));') < term210.indexOf('borrarSesionCache(yo);'),
+    (term210.match(/guardarVigilancia\(/g) ?? []).length,
+  ], [true, true, 1]);
+}
+
+console.log('\n211. Señal mala: la respuesta que se pierde no duplica, y lo que no entró se reintenta');
+{
+  const { readFileSync: leer211 } = await import('node:fs');
+  const RAIZ211 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de211 = (...p) => leer211(join(RAIZ211, ...p), 'utf8').replace(/\r\n/g, '\n');
+  const { memoria: mem211 } = await import('./dobles/plataforma.mjs');
+
+  // UNA BASE DE MENTIRA DONDE LA ESCRITURA PUEDE LLEGAR Y LA RESPUESTA PERDERSE,
+  // que es lo que pasa en un subsuelo: `pierde` es la lista de respuestas que no vuelven.
+  const baseConPerdidas = (uid) => {
+    const b = { filas: { prs: [], photos: [] }, archivos: [], llamadas: [], pierde: [], falla: [] };
+    const red = { message: 'Network request failed' };
+    b.cliente = {
+      auth: { getSession: async () => ({ data: { session: { user: { id: uid } } }, error: null }) },
+      rpc: async (nombre, args) => {
+        b.llamadas.push([nombre, args ?? null]);
+        if (b.falla.includes(nombre)) return { data: null, error: red };
+        if (nombre === 'registrar_dia') return b.yaEstaElDia ? { data: null, error: { code: '23505', message: 'ya estaba' } } : { data: { bloqueado: false }, error: null };
+        return { data: null, error: null };
+      },
+      from: (tabla) => {
+        const filtros = {};
+        const q = {
+          select: () => q,
+          eq: (c, v) => { filtros[c] = v; return q; },
+          limit: () => q,
+          insert: async (fila) => {
+            if (b.falla.includes(tabla)) return { error: red };
+            b.filas[tabla].push(fila);
+            if (b.pierde.includes(tabla)) { b.pierde.splice(b.pierde.indexOf(tabla), 1); return { error: red }; }
+            return { error: null };
+          },
+          then: (a, c) => Promise.resolve(b.falla.includes('leer:' + tabla) ? { data: null, error: red } : { data: b.filas[tabla].filter((x) => Object.entries(filtros).every(([k, v]) => x[k] === v)), error: null }).then(a, c),
+        };
+        return q;
+      },
+      storage: { from: () => ({ upload: async (ruta, _datos, opciones) => { b.archivos.push([ruta, !!opciones?.upsert]); return { error: null }; } }) },
+    };
+    return b;
+  };
+
+  // ---- LA MARCA DE FUERZA: reintentar no la deja dos veces ----
+  const GM = await import('../compartido/guardarMarca.ts');
+  const fila211 = { ejercicio: 'press_banca', peso: 100, reps: 3, es_real: false, fecha: '2026-10-13' };
+  const m = baseConPerdidas('yo');
+  m.pierde.push('prs');
+  const primero = await GM.guardarMarcaUnaVez(m.cliente, 'yo', fila211);
+  const segundo = await GM.guardarMarcaUnaVez(m.cliente, 'yo', fila211);
+  chequear('la marca entró pero la respuesta se perdió ("no se guardó"); al reintentar da por buena la que ya está: queda UNA', [primero, segundo, m.filas.prs.length], [false, true, 1]);
+  m.falla.push('leer:prs');
+  chequear('y si no se puede mirar, no se inserta a ciegas', [await GM.guardarMarcaUnaVez(m.cliente, 'yo', { ...fila211, peso: 105 }), m.filas.prs.length], [false, 1]);
+  const cargar211 = de211('movil', 'src', 'CargarMarca.tsx');
+  chequear('anotar una marca a mano pasa por la misma función, sin insertar por su cuenta', [/await guardarMarcaUnaVez\(supabase, uid, \{/.test(cargar211), /from\('prs'\)\.insert/.test(cargar211)], [true, false]);
+
+  // ---- "¿LO GUARDO COMO MARCA?" QUE NO SE GUARDÓ SE VUELVE A OFRECER ----
+  GM.preguntadasDe('sesion-211');
+  const antes211 = GM.anotarPreguntada('press_banca', 100);
+  const preguntada = GM.yaSePregunto('press_banca', 100);
+  GM.deshacerPreguntada('press_banca', antes211);
+  GM.anotarPreguntada('sentadilla', 80);
+  const antesDeLos100 = GM.anotarPreguntada('sentadilla', 100);
+  GM.deshacerPreguntada('sentadilla', antesDeLos100);
+  chequear('lo preguntado que no se pudo guardar vuelve a estar SIN preguntar (el resumen del final lo ofrece); lo de antes sigue preguntado', [
+    preguntada, GM.yaSePregunto('press_banca', 100), GM.yaSePregunto('sentadilla', 100), GM.yaSePregunto('sentadilla', 80),
+  ], [true, false, false, true]);
+  GM.preguntadasDe('sesion-212');
+  chequear('y otra sesión arranca sin nada preguntado', GM.yaSePregunto('sentadilla', 80), false);
+  const ms211 = de211('compartido', 'marcaSugerida.ts');
+  chequear('el hook lo deshace cuando guardar falla, y un segundo toque no guarda dos veces', [
+    /if \(!ok\) deshacerPreguntada\(actual\.ejercicio, antesDePreguntar\.current\);/.test(ms211),
+    /if \(!actual \|\| guardando\.current\) return;\s*guardando\.current = true;/.test(ms211),
+    /if \(enVuelo\.current\.has\(s\.ejercicio\)\) return;\s*enVuelo\.current\.add\(s\.ejercicio\);/.test(ms211),
+    /\.filter\(\(s\) => !yaSePregunto\(s\.ejercicio, s\.peso\)\)/.test(ms211),
+  ], [true, true, true, true]);
+
+  // ---- LA FOTO DEL DÍA: reintentar sube LA MISMA, no otra ----
+  const FO = await import('../compartido/foto.ts');
+  const p = baseConPerdidas('yo');
+  p.pierde.push('photos');
+  const foto211 = { datos: new Uint8Array([1, 2, 3]), dia: '2026-10-13', logId: 'log-1', visible: false, subioRango: false, sello: 1_800_000_000_000 };
+  const subida1 = await FO.subirFotoDelDia(p.cliente, foto211);
+  const subida2 = await FO.subirFotoDelDia(p.cliente, foto211);
+  chequear('la foto entró y la respuesta se perdió; al tocar Guardar de nuevo queda UNA foto, en el mismo archivo', [
+    subida1, subida2, p.filas.photos.length, [...new Set(p.archivos.map((a) => a[0]))].length, p.archivos.every((a) => a[1]),
+  ], ['no-subio', 'ok', 1, 1, true]);
+  const reg211 = de211('movil', 'src', 'RegistrarDia.tsx');
+  chequear('la hoja fija el sello al ELEGIR la foto y manda el mismo en cada intento', [
+    /selloDeFoto\.current = selloAlAzar\(\);\s*setFoto\(/.test(reg211),
+    /subioRango, sello: selloDeFoto\.current \|\| undefined \}\)/.test(reg211),
+  ], [true, true]);
+
+  // ---- LLEGAR CON LA APP CERRADA Y SIN DATOS: queda pendiente y se reintenta ----
+  const GI = await import('../compartido/gimnasio.ts');
+  const CLAVE211 = GI.CLAVE_LLEGADA_PENDIENTE;
+  mem211.delete(CLAVE211);
+  const g = baseConPerdidas('yo');
+  const nada = await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13');
+  await GI.anotarLlegadaPendiente('2026-10-13');
+  g.falla.push('verificar_perdida');
+  const sinSenal = [await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13'), mem211.get(CLAVE211) ?? null];
+  g.falla.length = 0;
+  g.llamadas.length = 0;
+  const conSenal = [await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13'), mem211.get(CLAVE211) ?? null, g.llamadas.filter((l) => l[0] === 'registrar_dia').map((l) => l[1].p_origen)];
+  chequear('sin pendiente no se llama a nada; con pendiente y sin señal sigue pendiente; con señal el día entra (por ubicación) y el pendiente se va', [nada, sinSenal, conSenal], ['nada', ['sigue', '2026-10-13'], ['entro', null, ['ubicacion']]]);
+  await GI.anotarLlegadaPendiente('2026-10-12');
+  g.llamadas.length = 0;
+  chequear('una llegada de AYER no registra el día de hoy: se tira sin llamar a la base', [await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13'), mem211.get(CLAVE211) ?? null, g.llamadas.length], ['vencio', null, 0]);
+  await GI.anotarLlegadaPendiente('2026-10-13');
+  g.yaEstaElDia = true;
+  chequear('y si el día ya había entrado por otro lado, el pendiente se va sin festejar nada', [await GI.reintentarLlegadaPendiente(g.cliente, '2026-10-13'), mem211.get(CLAVE211) ?? null], ['nada', null]);
+  const fondo211 = de211('movil', 'src', 'llegadaDeFondo.ts');
+  const vig211 = de211('movil', 'src', 'VigilanteDeGimnasio.tsx');
+  chequear('el despertar distingue "sin sesión" de "no pude saber", ya no guarda visita (15/10: llegar no arranca nada) y deja el pendiente si el día no entró', [
+    /const yo = await quienSoy\(supabase\);\s*if \(yo\.estado === 'sin'\) return;/.test(fondo211),
+    !fondo211.includes('guardarVigilancia('),
+    /if \(!entro\) await anotarLlegadaPendiente\(dia\);/.test(fondo211),
+    /await miId\(supabase\)/.test(fondo211),
+  ], [true, true, true, false]);
+  chequear('y el vigilante lo reintenta en cada mirada, esté donde esté', /const mirarYActuar = useCallback\(async \(perfilAhora: Perfil\) => \{[\s\S]{0,400}?await reintentarLlegadaPendiente\(supabase, hoyISO\(\)\)/.test(vig211), true);
+}
+
+console.log('\n212. Migración 74: corregir un día de una, y los ejercicios sin peso no guardan pesos');
+{
+  // ---- CORREGIR UN DÍA: O ENTRAN LAS DOS COSAS, O NO PASA NADA ----
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const log = (await db.query('insert into logs (user_id, fecha) values ($1, mi_hoy() - 2) returning id, fecha', [u])).rows[0];
+  await db.query(`insert into sesiones (user_id, log_id, inicio, fin, estado, series) values ($1, $2, now() - interval '2 days', now() - interval '2 days' + interval '1 hour', 'terminada', 9)`, [u, log.id]);
+  const loQueHay = async () => {
+    const l = (await db.query('select es_descanso from logs where user_id = $1 and fecha = $2', [u, log.fecha])).rows;
+    const s = (await db.query('select count(*)::int as n from sesiones where user_id = $1', [u])).rows[0].n;
+    return [l.length ? (l[0].es_descanso ? 'descanso' : 'fui') : 'nada', s];
+  };
+  // LA SEÑAL SE CORTA EN EL MEDIO: el día se borró y volver a ponerlo falla.
+  await db.exec(`
+    create function public.prueba_se_corta() returns trigger language plpgsql as $f$ begin raise exception 'se cortó la señal'; end $f$;
+    create trigger prueba_se_corta before insert on public.logs for each row execute function public.prueba_se_corta();
+  `);
+  const cortado = await db.query("select corregir_dia($1, 'descanso')", [log.fecha]).then(() => 'entró', (e) => String(e.message));
+  await db.exec('drop trigger prueba_se_corta on public.logs; drop function public.prueba_se_corta();');
+  chequear('si volver a poner el día falla, el día NO queda borrado: sigue entrenado, con su sesión', [cortado, await loQueHay()], ['se cortó la señal', ['fui', 1]]);
+  await db.query("select corregir_dia($1, 'descanso')", [log.fecha]);
+  const comoDescanso = await loQueHay();
+  await db.query("select corregir_dia($1, 'nada')", [log.fecha]);
+  chequear('con señal: pasa a descanso (la sesión se va, como siempre que se saca el "fui"), y después a nada', [comoDescanso, await loQueHay()], [['descanso', 0], ['nada', 0]]);
+  chequear('un destino que no existe no borra nada', [
+    await db.query("select corregir_dia($1, 'fui')", [log.fecha]).then(() => 'ok'),
+    await db.query("select corregir_dia($1, 'cualquiera')", [log.fecha]).then(() => 'entró', () => 'se niega'),
+    await loQueHay(),
+  ], ['ok', 'se niega', ['fui', 0]]);
+  chequear('corre con los permisos de quien llama (las mismas reglas que a mano) y no la puede llamar un anónimo', (await db.query(`
+    select p.prosecdef as definer, has_function_privilege('anon', p.oid, 'execute') as anon, has_function_privilege('authenticated', p.oid, 'execute') as entra
+      from pg_proc p where p.proname = 'corregir_dia'`)).rows[0], { definer: false, anon: false, entra: true });
+
+  // ---- EL TELÉFONO LA USA SI LA BASE LA TIENE ----
+  const E212 = await import('../compartido/esquema.ts');
+  const D212 = await import('../compartido/dia.ts');
+  let reloj212 = Date.now() + E212.VIGENCIA_MS * 5000;
+  const baseEn = async (version, fallaLaFuncion = false) => {
+    const hecho = [];
+    const b = {
+      hecho,
+      rpc: async (nombre, args) => {
+        if (nombre === 'version_del_esquema') return { data: version, error: null };
+        hecho.push([nombre, args?.p_destino ?? null]);
+        return { data: null, error: nombre === 'corregir_dia' && fallaLaFuncion ? { message: 'Network request failed' } : null };
+      },
+      from: (tabla) => {
+        const q = { eq: () => q, then: (a, c) => Promise.resolve({ error: null }).then(a, c) };
+        return { delete: () => { hecho.push(['borrar ' + tabla]); return q; }, insert: async () => { hecho.push(['poner ' + tabla]); return { error: null }; } };
+      },
+    };
+    reloj212 += E212.VIGENCIA_MS * 3;
+    await E212.versionDelEsquema(b, reloj212);
+    await new Promise((r) => setTimeout(r, 20));
+    hecho.length = 0;
+    return b;
+  };
+  const b74 = await baseEn(74);
+  const r74 = await D212.corregirDia(b74, 'uid', '2020-01-01', 'descanso');
+  const bCae = await baseEn(74, true);
+  const rCae = await D212.corregirDia(bCae, 'uid', '2020-01-01', 'descanso');
+  const b73 = await baseEn(73);
+  await D212.corregirDia(b73, 'uid', '2020-01-01', 'descanso');
+  chequear('con la base en 74, corregir es UN pedido; si falla no cambió nada; con una base anterior siguen siendo los dos de antes', [
+    [r74.cambio, b74.hecho], [rCae.cambio, rCae.error !== null, bCae.hecho], b73.hecho,
+  ], [[true, [['corregir_dia', 'descanso']]], [false, true, [['corregir_dia', 'descanso']]], [['borrar logs'], ['poner logs']]]);
+
+  // ---- UN EJERCICIO QUE NO LLEVA PESO NO GUARDA PESOS ----
+  const sinPeso = (await db.query('select id from ejercicios where not admite_peso order by id limit 1')).rows[0].id;
+  const v = await nuevoUsuario();
+  await comoUsuario(v);
+  const ses = (await db.query('select iniciar_sesion() as s')).rows[0].s;
+  await db.query('select fijar_series($1, 4)', [ses.id]);
+  const guardado = (await db.query('select fijar_bloques($1, $2::jsonb) as b', [ses.id, JSON.stringify([
+    { ejercicio: sinPeso, series: 2, pesos: [20, 20], carga: 'total' },
+    { ejercicio: 'press_banca', series: 2, pesos: [60, 62.5], carga: 'total' },
+  ])])).rows[0].b.bloques;
+  chequear('los kilos que llegan pegados a un ejercicio sin peso no se guardan; los del que sí lleva, sí', [
+    'pesos' in guardado[0], guardado[0].series, guardado[1].pesos.map(Number),
+  ], [false, 2, [60, 62.5]]);
+}
+
+console.log('\n213. Las rutinas guardadas (migración 75)');
+{
+  const R = await import('../nucleo/rutinas.ts');
+  const yo = await nuevoUsuario();
+  const amiga = await nuevoUsuario();
+  const extrana = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [yo, amiga]);
+  const como = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const lunes = (ejercicios) => { const s = R.semanaVacia(); s[1] = { descanso: false, ejercicios }; return s; };
+
+  // ---- GUARDAR, VARIAS, UNA ACTIVA ----
+  const a = (await como(yo, 'select guardar_rutina(null, $1, $2::jsonb) as id', ['Entrenamiento 1', JSON.stringify(lunes([{ ejercicio: 'press_banca', series: 4 }]))]))[0].id;
+  const b = (await como(yo, 'select guardar_rutina(null, $1, $2::jsonb) as id', ['Entrenamiento 2', JSON.stringify(lunes([{ ejercicio: 'sentadilla', series: 5 }]))]))[0].id;
+  const mias = async () => (await como(yo, 'select mis_rutinas() as v'))[0].v.map((r) => [r.nombre, r.activa]);
+  chequear('la primera que se guarda queda activa; la segunda no', await mias(), [['Entrenamiento 1', true], ['Entrenamiento 2', false]]);
+  await como(yo, 'select activar_rutina($1)', [b]);
+  chequear('activar otra deja una sola activa', await mias(), [['Entrenamiento 1', false], ['Entrenamiento 2', true]]);
+  const cambiada = (await como(yo, 'select guardar_rutina($1, $2, $3::jsonb) as id', [a, '  Pecho y espalda  ', JSON.stringify(lunes([{ ejercicio: 'remo', series: 3 }]))]))[0].id;
+  chequear('cambiar una con su id la pisa (y el nombre llega sin espacios de más)', [cambiada === a, (await como(yo, 'select mis_rutinas() as v'))[0].v[0].nombre, (await como(yo, 'select mis_rutinas() as v'))[0].v[0].dias[1].ejercicios[0].ejercicio], [true, 'Pecho y espalda', 'remo']);
+
+  // ---- LO DE OTRO NO SE TOCA ----
+  await como(extrana, 'select activar_rutina($1)', [a]);
+  await como(extrana, 'select borrar_rutina($1)', [b]);
+  const ajena = (await como(extrana, 'select guardar_rutina($1, $2, $3::jsonb) as id', [b, 'mía ahora', '[]']))[0].id;
+  chequear('otra cuenta no activa, no borra ni pisa mis rutinas, y no las ve', [await mias(), ajena, (await como(extrana, 'select mis_rutinas() as v'))[0].v], [[['Pecho y espalda', false], ['Entrenamiento 2', true]], null, []]);
+
+  // ---- QUIÉN VE MI RUTINA ACTIVA ----
+  const ve = async (quien) => (await como(quien, 'select rutina_activa_de($1) as v', [yo]))[0].v?.nombre ?? null;
+  const conAmiga = await ve(amiga);
+  await db.query('update profiles set comparte_rutina = false where id = $1', [yo]);
+  chequear('mi activa la veo yo y una amiga, no una extraña ni nadie sin sesión; si la escondo, la amiga tampoco', [await ve(yo), conAmiga, await ve(extrana), await ve(null), await ve(amiga)], ['Entrenamiento 2', 'Entrenamiento 2', null, null, null]);
+  await db.query('update profiles set comparte_rutina = true where id = $1', [yo]);
+
+  // ---- BORRAR, Y EL TOPE ----
+  await como(yo, 'select borrar_rutina($1)', [a]);
+  for (let i = 0; i < 9; i++) await como(yo, 'select guardar_rutina(null, $1, $2::jsonb)', ['r' + i, '[]']);
+  const once = await como(yo, 'select guardar_rutina(null, $1, $2::jsonb)', ['la once', '[]']).then(() => 'entró', (e) => String(e.message));
+  chequear('borrar se la lleva; y no hay más de diez por cuenta', [(await como(yo, 'select mis_rutinas() as v'))[0].v.length, once], [R.MAX_RUTINAS, 'ya hay diez rutinas']);
+
+  // ---- LO QUE LLEGA DEL TELÉFONO SE LIMPIA IGUAL EN LA BASE Y EN EL TELÉFONO ----
+  const muchos = Array.from({ length: 35 }, (_, i) => ({ ejercicio: 'e' + i, series: 1 }));
+  const CASOS = [
+    'basura',
+    null,
+    [],
+    [{}, { descanso: true, ejercicios: [{ ejercicio: 'press_banca', series: 3 }] }, { ejercicios: [{ ejercicio: 'press_banca', series: 150 }, { ejercicio: 'remo', series: -3 }, { ejercicio: 'curl', series: '3' }, { ejercicio: '', series: 2 }, 7, null, { ejercicio: 'cinta', series: 0, minutos: 25 }, { ejercicio: 'bici', minutos: 900 }] }],
+    [{ ejercicios: muchos }, { descanso: 'sí' }, { ejercicios: 'no' }],
+  ];
+  const enLaBase = [];
+  for (const c of CASOS) enLaBase.push((await db.query('select rutina_dias_limpios($1::jsonb) as v', [JSON.stringify(c)])).rows[0].v);
+  // La base ordena las claves de cada objeto: se comparan con las claves en orden.
+  const enOrden = (x) => JSON.parse(JSON.stringify(x, (_, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v)));
+  chequear('la base y el teléfono limpian lo mismo: siete días, el descanso sin ejercicios, topes, y lo que no se entiende afuera', enOrden(enLaBase), enOrden(CASOS.map((c) => R.diasLimpios(c))));
+  chequear('y los topes son los que dice el teléfono', [enLaBase[3][2].ejercicios.map((e) => [e.ejercicio, e.series, e.minutos ?? null]), enLaBase[4][0].ejercicios.length], [
+    [['press_banca', 99, null], ['remo', 0, null], ['curl', 0, null], ['cinta', 0, 25], ['bici', 0, 600]], R.MAX_EJERCICIOS_POR_DIA,
+  ]);
+
+  // ---- LAS REGLAS DE LA PANTALLA ----
+  const grupo = (id) => ({ press_banca: 'pecho', press_militar: 'hombros', curl: 'brazos', remo: 'espalda', cinta: 'cardio' })[id] ?? null;
+  const dia = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
+  chequear('el título del día sale de los grupos de sus ejercicios, en orden y sin repetir', [
+    R.tituloDelDia(dia(['press_banca', 'press_militar', 'curl', 'press_banca']), grupo, 'Descanso'),
+    R.tituloDelDia(dia(['remo']), grupo, 'Descanso'),
+    R.tituloDelDia(dia(['remo', 'cinta']), grupo, 'Descanso'),
+    R.tituloDelDia({ descanso: true, ejercicios: [] }, grupo, 'Descanso'),
+    R.tituloDelDia(dia(['no_existe']), grupo, 'Descanso'),
+  ], ['Pecho, hombro y brazo', 'Espalda', 'Espalda y cardio', 'Descanso', '']);
+  const s0 = R.semanaVacia();
+  s0[1] = dia(['press_banca', 'remo']);
+  s0[4] = dia(['sentadilla']);
+  chequear('copiar el lunes a un día vacío lo deja igual; a un día con cosas, reemplaza o agrega al final sin repetir', [
+    R.copiarDia(s0, 1, 3, 'reemplazar')[3].ejercicios.map((e) => e.ejercicio),
+    R.hayQuePreguntarAlCopiar(s0, 3), R.hayQuePreguntarAlCopiar(s0, 4),
+    R.copiarDia(s0, 1, 4, 'reemplazar')[4].ejercicios.map((e) => e.ejercicio),
+    R.copiarDia(s0, 1, 4, 'agregar')[4].ejercicios.map((e) => e.ejercicio),
+    R.copiarDia(R.copiarDia(s0, 1, 4, 'agregar'), 1, 4, 'agregar')[4].ejercicios.length,
+    s0[4].ejercicios.length,
+  ], [['press_banca', 'remo'], false, true, ['press_banca', 'remo'], ['sentadilla', 'press_banca', 'remo'], 3, 1]);
+  chequear('editar no toca la semana que recibe, y las series no bajan de 1', [
+    R.quitarEjercicio(s0, 1, 0)[1].ejercicios.map((e) => e.ejercicio), s0[1].ejercicios.length,
+    R.cambiarCantidad(R.cambiarCantidad(s0, 1, 0, -1), 1, 0, -1)[1].ejercicios[0].series,
+    R.cambiarCantidad(s0, 1, 0, 1)[1].ejercicios[0].series,
+    R.subirEjercicio(s0, 1, 1)[1].ejercicios.map((e) => e.ejercicio),
+    R.marcarDescanso(s0, 1, true)[1], R.agregarEjercicio(s0, 2, 'cinta', true)[2].ejercicios[0],
+  ], [['remo'], 2, 1, 4, ['remo', 'press_banca'], { descanso: true, ejercicios: [] }, { ejercicio: 'cinta', series: 0, minutos: 20 }]);
+  {
+    // ARRASTRAR (15/10): de cualquier lugar a cualquier lugar, y los del medio se corren.
+    const tres = R.agregarEjercicio(s0, 1, 'curl');
+    const nombres = (dias) => dias[1].ejercicios.map((e) => e.ejercicio);
+    chequear('arrastrar un ejercicio lo deja donde se soltó y corre los del medio, sin tocar la semana que recibe', [
+      nombres(R.moverEjercicio(tres, 1, 0, 2)), nombres(R.moverEjercicio(tres, 1, 2, 0)), nombres(R.moverEjercicio(tres, 1, 1, 1)), nombres(tres),
+    ], [['remo', 'curl', 'press_banca'], ['curl', 'press_banca', 'remo'], ['press_banca', 'remo', 'curl'], ['press_banca', 'remo', 'curl']]);
+  }
+  chequear('la sesión arranca con los ejercicios del día de la rutina activa; un descanso no propone nada', [
+    R.ejerciciosDeHoy({ dias: s0 }, 1), R.ejerciciosDeHoy({ dias: R.marcarDescanso(s0, 1, true) }, 1), R.ejerciciosDeHoy(null, 1), R.ejerciciosDeHoy({ dias: s0 }, 0),
+  ], [['press_banca', 'remo'], [], [], []]);
+  chequear('el nombre nuevo es el primer número libre', [R.nombreNuevo([], 'Entrenamiento'), R.nombreNuevo(['Entrenamiento 1', 'Entrenamiento 3'], 'Entrenamiento')], ['Entrenamiento 1', 'Entrenamiento 2']);
+  chequear('la deducida (solo los días con sesiones) se vuelve una semana entera', R.semanaDeLaDeducida([{ dia: 3, ejercicios: [{ ejercicio: 'remo', series: 4 }] }]).map((d) => d.ejercicios.length), [0, 0, 0, 1, 0, 0, 0]);
+}
+
+console.log('\n214. La rutina en el teléfono: qué se muestra, y con qué arranca la sesión');
+{
+  const E214 = await import('../compartido/esquema.ts');
+  const RU = await import('../compartido/rutinas.ts');
+  const { guardarPerfilCache: guardarPerfil214 } = await import('../compartido/cache.ts');
+  const { memoria: mem214 } = await import('./dobles/plataforma.mjs');
+  let reloj214 = Date.now() + E214.VIGENCIA_MS * 9000;
+  const semana = (dia, ejercicios) => { const s = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] })); s[dia] = { descanso: false, ejercicios }; return s; };
+  const base214 = async (version, respuestas) => {
+    const llamadas = [];
+    const b = {
+      llamadas,
+      rpc: async (nombre) => {
+        if (nombre === 'version_del_esquema') return { data: version, error: null };
+        llamadas.push(nombre);
+        return respuestas[nombre] ?? { data: null, error: null };
+      },
+      from: () => { const q = { select: () => q, eq: () => q, then: (a, c) => Promise.resolve({ data: [], error: null }).then(a, c) }; return q; },
+    };
+    reloj214 += E214.VIGENCIA_MS * 3;
+    await E214.versionDelEsquema(b, reloj214);
+    await new Promise((r) => setTimeout(r, 20));
+    llamadas.length = 0;
+    return b;
+  };
+  const vista = (r) => (r ? [r.nombre, r.deducida, r.escondida, r.dias.map((d) => d.ejercicios.length).join('')] : null);
+  const historial = [{ fecha: '2026-10-05', bloques: [{ ejercicio: 'remo', series: 3 }] }];
+
+  const conGuardada = await base214(75, { rutina_activa_de: { data: { nombre: 'Entrenamiento 2', dias: semana(1, [{ ejercicio: 'press_banca', series: 4 }]) }, error: null } });
+  chequear('con una activa guardada se muestra esa, y no se pide la deducida', [vista(await RU.cargarRutinaParaVer(conGuardada, 'x', false)), conGuardada.llamadas], [['Entrenamiento 2', false, false, '0100000'], ['rutina_activa_de']]);
+  const sinGuardada = await base214(75, { rutina_activa_de: { data: null, error: null }, rutina_de_amigo: { data: historial, error: null } });
+  chequear('sin guardada, la deducida de sus últimas cuatro semanas', vista(await RU.cargarRutinaParaVer(sinGuardada, 'x', false)), [null, true, false, '0100000']);
+  const escondida = await base214(75, { rutina_activa_de: { data: null, error: null }, rutina_de_amigo: { data: [], error: null }, me_muestra_su_rutina: { data: false, error: null } });
+  const vaciaNoEscondida = await base214(75, { rutina_activa_de: { data: null, error: null }, rutina_de_amigo: { data: [], error: null }, me_muestra_su_rutina: { data: true, error: null } });
+  const miaVacia = await base214(75, { rutina_activa_de: { data: null, error: null }, rutina_de_amigo: { data: [], error: null } });
+  chequear('vacía: la de un amigo que la escondió no se dibuja; la que no tiene datos se explica; la mía vacía se explica sin preguntar nada', [
+    (await RU.cargarRutinaParaVer(escondida, 'x', false)).escondida,
+    (await RU.cargarRutinaParaVer(vaciaNoEscondida, 'x', false)).escondida,
+    [(await RU.cargarRutinaParaVer(miaVacia, 'yo', true)).escondida, miaVacia.llamadas.includes('me_muestra_su_rutina')],
+  ], [true, false, [false, false]]);
+  const vieja = await base214(74, { rutina_de_amigo: { data: historial, error: null } });
+  chequear('con una base anterior a la 75 no se pregunta por guardadas', [vista(await RU.cargarRutinaParaVer(vieja, 'x', false)), vieja.llamadas], [[null, true, false, '0100000'], ['rutina_de_amigo']]);
+  const falla = await base214(75, { rutina_activa_de: { data: null, error: { message: 'Network request failed' } } });
+  chequear('si no se pudo preguntar es null, no "vacía"', await RU.cargarRutinaParaVer(falla, 'x', false), null);
+
+  // LA ACTIVA QUEDA EN EL TELÉFONO, y es de UNA cuenta.
+  await guardarPerfil214({ id: 'cuenta-rutina', username: 'r' });
+  const mias = await base214(75, { mis_rutinas: { data: [
+    { id: 'r1', nombre: 'Entrenamiento 1', activa: false, dias: semana(1, [{ ejercicio: 'remo', series: 3 }]) },
+    { id: 'r2', nombre: 'Entrenamiento 2', activa: true, dias: semana(1, [{ ejercicio: 'press_banca', series: 4 }]) },
+  ], error: null } });
+  const cargadas = await RU.cargarMisRutinas(mias);
+  const enElTelefono = await RU.rutinaActivaDelTelefono();
+  await guardarPerfil214({ id: 'otra-cuenta', username: 'o' });
+  chequear('al cargar mis rutinas, la activa queda guardada en el teléfono; otra cuenta en el mismo teléfono no la lee', [
+    cargadas.map((r) => [r.nombre, r.activa]), enElTelefono?.dias[1].ejercicios[0].ejercicio, await RU.rutinaActivaDelTelefono(),
+  ], [[['Entrenamiento 1', false], ['Entrenamiento 2', true]], 'press_banca', null]);
+  mem214.delete('ascent:rutina-activa');
+
+  const { readFileSync: leer214 } = await import('node:fs');
+  const ses214 = leer214(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'useSesion.ts'), 'utf8').replace(/\r\n/g, '\n');
+  chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(await rutinaActivaDelTelefono\(\), new Date\(\)\.getDay\(\)\);\s*rutinaRef\.current = \(deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
+}
+
+console.log('\n215. El día que se entrena sin abrir la app, y el vigilante al abrir de cero');
+{
+  const { readFileSync: leer215 } = await import('node:fs');
+  const RAIZ215 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de215 = (...p) => leer215(join(RAIZ215, ...p), 'utf8').replace(/\r\n/g, '\n');
+  const ubi = de215('movil', 'src', 'plataforma', 'ubicacion.ts');
+  const fondo = de215('movil', 'src', 'llegadaDeFondo.ts');
+  chequear('el sistema avisa también la salida, y ahí se reintenta el día pendiente (sin tocar la sesión)', [
+    /notifyOnEnter: true,[\s\S]{0,400}notifyOnExit: true,/.test(ubi),
+    /if \(evento === Location\.GeofencingEventType\.Exit\) \{\s*await alSalirDeFondoFn\?\.\(\);\s*return;\s*\}/.test(ubi),
+    /async function meFui\(\) \{[\s\S]{0,300}await reintentarLlegadaPendiente\(supabase, aISO\(new Date\(\)\)\)/.test(fondo),
+    /alSalirDeFondo\(meFui\);/.test(fondo),
+    /async function meFui\(\) \{[\s\S]{0,600}?(terminar|empezar)\(/.test(fondo),
+  ], [true, true, true, true, false]);
+  chequear('al montar, la sesión no dice "no corre" hasta haber leído lo que guarda el teléfono', await escenarioDeSesion('copia'), { alMontar: false, despues: true });
+  const vig215 = de215('movil', 'src', 'VigilanteDeGimnasio.tsx');
+  chequear('y el vigilante no decide nada antes de eso', /const ahoraS = sesionRef\.current;[\s\S]{0,400}if \(!ahoraS\.estado\.cacheLeida\) \{[\s\S]{0,80}return;\s*\}\s*const visita = await leerVigilancia\(\);/.test(vig215), true);
+}
+
+console.log('\n216. Ejercicios propios, la lupa y el cardio (migración 76)');
+{
+  const EJ = await import('../nucleo/ejercicios.ts');
+  const BL = await import('../nucleo/bloques.ts');
+  const RD = await import('../nucleo/resumenDia.ts');
+  const VO = await import('../nucleo/volumen.ts');
+  const yo = await nuevoUsuario();
+  const amiga = await nuevoUsuario();
+  const extrana = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [yo, amiga]);
+  const como = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const error = (p) => p.then(() => 'entró', (e) => String(e.message));
+
+  // ---- CREAR ----
+  const hip = (await como(yo, 'select crear_ejercicio($1, $2, $3) as id', ['  Hip   thrust en máquina ', 'piernas', 'series']))[0].id;
+  const otraVez = (await como(yo, 'select crear_ejercicio($1, $2, $3) as id', ['HIP THRUST EN MÁQUINA', 'piernas', 'series']))[0].id;
+  const tenis = (await como(yo, 'select crear_ejercicio($1, $2, $3) as id', ['Tenis', 'cardio', 'series']))[0].id;
+  const fila = async (id) => (await db.query('select nombre, grupo, admite_peso, mide, creado_por, cuenta_dots from ejercicios where id = $1', [id])).rows[0];
+  chequear('crear uno lo deja con mi nombre, sin espacios de más, con peso y sin entrar al ranking; el mismo nombre otra vez es el mismo', [
+    /^propio_[0-9a-f]{12}$/.test(hip), otraVez === hip, await fila(hip),
+  ], [true, true, { nombre: 'Hip thrust en máquina', grupo: 'piernas', admite_peso: true, mide: 'series', creado_por: yo, cuenta_dots: false }]);
+  chequear('uno de cardio se mide en minutos y no lleva peso, aunque pidan series', [(await fila(tenis)).mide, (await fila(tenis)).admite_peso], ['tiempo', false]);
+  chequear('nombre de una letra, músculo inventado o sin sesión: no entra', [
+    await error(como(yo, 'select crear_ejercicio($1, $2, $3)', [' x ', 'pecho', 'series'])),
+    await error(como(yo, 'select crear_ejercicio($1, $2, $3)', ['Algo', 'gluteos', 'series'])),
+    await error(como(null, 'select crear_ejercicio($1, $2, $3)', ['Algo', 'pecho', 'series'])),
+    (await db.query(`select has_function_privilege('anon', 'public.crear_ejercicio(text, text, text)', 'execute') as p`)).rows[0].p,
+  ], ['el nombre es muy corto', 'grupo desconocido', 'sin sesión', false]);
+
+  // ---- QUIÉN LOS VE: por la regla de la tabla, como lo pide el teléfono ----
+  const veo = async (u) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    try {
+      return (await db.query('select id from ejercicios where id = any($1)', [[hip, tenis]])).rows.map((r) => r.id).sort();
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  const catalogoComun = async (u) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    try {
+      return Number((await db.query('select count(*) as n from ejercicios where creado_por is null')).rows[0].n);
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  // SOLO YO desde la 80 (15/10): antes también los veían los amigos.
+  chequear('los míos los veo solo yo: ni una amiga ni una extraña; el catálogo común lo ven todos', [
+    await veo(yo), await veo(amiga), await veo(extrana), (await catalogoComun(extrana)) === (await catalogoComun(yo)),
+  ], [[hip, tenis].sort(), [], [], true]);
+
+  // ---- EL TOPE ----
+  for (let i = (await db.query('select count(*) as n from ejercicios where creado_por = $1', [yo])).rows[0].n; i < 100; i++)
+    await como(yo, 'select crear_ejercicio($1, $2, $3)', ['Propio ' + i, 'core', 'series']);
+  chequear('no más de cien por cuenta', await error(como(yo, 'select crear_ejercicio($1, $2, $3)', ['El ciento uno', 'core', 'series'])), 'ya hay cien ejercicios propios');
+
+  // ---- EL CARDIO DEL CATÁLOGO ----
+  chequear('el catálogo trae cardio que se mide en minutos y sin peso', (await db.query(`select bool_and(mide = 'tiempo' and not admite_peso) as todos, count(*) as n from ejercicios where grupo = 'cardio' and creado_por is null`)).rows[0], { todos: true, n: 9 });
+
+  // ---- LOS MINUTOS SE GUARDAN SOLO DONDE VAN ----
+  await comoUsuario(amiga);
+  const ses = (await db.query('select iniciar_sesion() as s')).rows[0].s;
+  await db.query('select fijar_series($1, 5)', [ses.id]);
+  const guardado = (await db.query('select fijar_bloques($1, $2::jsonb) as b', [ses.id, JSON.stringify([
+    { ejercicio: 'cinta', series: 1, minutos: 25.4 },
+    { ejercicio: 'press_banca', series: 2, pesos: [60, 60], carga: 'total', minutos: 30 },
+    { ejercicio: 'eliptica', series: 1, minutos: 900 },
+    { ejercicio: 'remo_ergometro', series: 1, minutos: 0 },
+  ])])).rows[0].b.bloques;
+  chequear('los minutos quedan en el cardio (redondeados), no en el press; más de 600 se topa y menos de 1 no se guarda, igual que en el teléfono', [guardado.map((b) => b.minutos ?? null), [25.4, 30, 900, 0].map(BL.minutosValidos)], [[25, null, 600, null], [25, 30, 600, null]]);
+  await db.query('select terminar_sesion()');
+  const deAmiga = (await como(yo, 'select * from rutina_de_amigo($1)', [amiga])).flatMap((f) => f.bloques.map((b) => [b.ejercicio, b.minutos ?? null]));
+  chequear('y la rutina de una amiga muestra los minutos de su cardio', deAmiga, [['cinta', 25], ['press_banca', null], ['eliptica', 600], ['remo_ergometro', null]]);
+
+  // ---- EN EL TELÉFONO: el bloque lleva sus minutos de punta a punta ----
+  let e = BL.cambiarMinutos(BL.bloquesVacios('cinta'), 25);
+  e = BL.sumar(e);
+  const guardar = BL.paraGuardar(e);
+  const sigue = BL.siguiente(e);
+  const otro = BL.cambiarEjercicio(e, 'press_banca');
+  const vuelve = BL.unirConGuardados([{ ejercicio: 'cinta', series: 1, minutos: 25 }], BL.bloquesVacios());
+  chequear('los minutos viajan a la base, quedan en el bloque cerrado, se van al cambiar de ejercicio y vuelven desde la base', [
+    guardar.map((b) => b.minutos), sigue.cerrados[0].minutos, otro.cerrados[0].minutos, 'minutos' in otro, vuelve.minutos,
+  ], [[25], 25, 25, false, 25]);
+  chequear('minutos que no son un número desde 1 se sacan, más de 600 se topa, y repetir el mismo no cambia nada', [
+    'minutos' in BL.cambiarMinutos(e, 0), 'minutos' in BL.cambiarMinutos(e, 'veinte'), BL.cambiarMinutos(e, 601).minutos, BL.cambiarMinutos(e, 25) === e, BL.minutosValidos(30.6),
+  ], [false, false, 600, true, 31]);
+
+  // ---- EL DÍA Y EL VOLUMEN ----
+  const dia = RD.resumenDelDia({
+    log: { es_descanso: false }, esFuturo: false, esDescansoConfigurado: false, ejercicioSinNombre: '?',
+    catalogo: new Map([['cinta', 'Cinta'], ['press_banca', 'Press de banca']]),
+    sesiones: [
+      { inicio: '2026-10-14T10:00:00Z', fin: '2026-10-14T11:00:00Z', estado: 'terminada', series: 3, bloques: [{ ejercicio: 'cinta', series: 1, minutos: 20 }, { ejercicio: 'press_banca', series: 2, pesos: [60, 60], carga: 'total' }] },
+      { inicio: '2026-10-14T18:00:00Z', fin: '2026-10-14T18:30:00Z', estado: 'terminada', series: 1, bloques: [{ ejercicio: 'cinta', series: 1, minutos: 15 }] },
+    ],
+  });
+  chequear('en el día, el cardio suma sus minutos de las dos sesiones y el press no tiene minutos', dia.ejercicios.map((x) => [x.id, x.minutos ?? null]), [['cinta', 35], ['press_banca', null]]);
+  chequear('el volumen por músculo no cuenta el cardio (son minutos, no series de fuerza)', VO.ORDEN_GRUPOS.includes('cardio'), false);
+
+  // ---- LA LUPA ----
+  const lista = [
+    { id: 'press_banca', nombre: 'Press de banca', grupo: 'pecho' },
+    { id: 'aperturas', nombre: 'Aperturas', grupo: 'pecho' },
+    { id: 'press_militar', nombre: 'Press militar', grupo: 'hombros' },
+    { id: 'eliptica', nombre: 'Elíptica', grupo: 'cardio' },
+    { id: 'cinta', nombre: 'Cinta', grupo: 'cardio' },
+    { id: 'sentadilla', nombre: 'Sentadilla', grupo: 'piernas' },
+  ];
+  const ids = (r) => [r.coinciden.map((x) => x.id), r.parecidos.map((x) => x.id)];
+  const nombreGrupo = (g) => ({ pecho: 'Pecho', hombros: 'Hombros', cardio: 'Cardio', piernas: 'Piernas' })[g] ?? g;
+  chequear('la lupa: sin acentos ni mayúsculas, todas las palabras en cualquier orden, y los parecidos son del mismo músculo', [
+    ids(EJ.buscarEjercicios(lista, 'ELIPTICA')),
+    ids(EJ.buscarEjercicios(lista, 'banca press')),
+    ids(EJ.buscarEjercicios(lista, 'press')),
+    ids(EJ.buscarEjercicios(lista, '   ')),
+    ids(EJ.buscarEjercicios(lista, 'pecho', 12, nombreGrupo)),
+    ids(EJ.buscarEjercicios(lista, 'pecho')),
+  ], [
+    [['eliptica'], ['cinta']],
+    [['press_banca'], ['aperturas']],
+    [['press_banca', 'press_militar'], ['aperturas']],
+    [[], []],
+    [['press_banca', 'aperturas'], []],
+    [[], []],
+  ]);
+
+  // ---- LA SESIÓN: la vuelta de cardio no arranca un descanso ----
+  chequear('una vuelta de cardio sube con sus minutos y sin descanso; corregir los minutos llega a la base; una serie común sí descansa', await escenarioDeSesion('cardio'), {
+    tras: { series: 1, minutos: [25], descanso: false }, corregido: [30], comun: true,
+  });
+}
+
+console.log('\n217. El fin del descanso suena en el cero, una sola vez');
+{
+  const { plataforma: plat217 } = await import('./dobles/plataforma.mjs');
+  const D217 = await import('../compartido/descanso.ts');
+  const guardados = { avisos: plat217.avisos, haptica: plat217.haptica, audio: plat217.audio };
+  const anotado = [];
+  let notificacion = null;
+  let segundos = null;
+  plat217.avisos = { conPantallaBloqueada: () => true, cancelar: async () => {}, programar: async (id, en, alSonar) => { notificacion = alSonar; segundos = en; } };
+  plat217.haptica = { disponible: () => true, pulso: () => true, aviso: () => (anotado.push('vibra'), true) };
+  plat217.audio = { ...guardados.audio, avisar: async () => void anotado.push('suena') };
+  await D217.guardarSonido(true);
+  // El reloj de verdad corre: se adelanta el de la app para que al descanso le falten 60 ms.
+  const ahoraDeVerdad = Date.now;
+  D217.guardarDescanso(90);
+  Date.now = () => ahoraDeVerdad() + 90_000 - 60;
+  try {
+    await new Promise((r) => setTimeout(r, 15));
+    const antes = [...anotado];
+    await new Promise((r) => setTimeout(r, 150));
+    const enElCero = [...anotado];
+    notificacion?.();
+    await new Promise((r) => setTimeout(r, 20));
+    chequear('con la app abierta, en el cero vibra y suena la app, sin esperar a la notificación; la que llega después no repite', [antes, enElCero, [...anotado]], [[], ['vibra', 'suena'], ['vibra', 'suena']]);
+    chequear('y la notificación se programa con los segundos exactos que faltan, no redondeados para arriba', segundos !== null && segundos > 0 && segundos < 0.1, true);
+  } finally {
+    Date.now = ahoraDeVerdad;
+    D217.borrarDescanso();
+    await new Promise((r) => setTimeout(r, 20));
+    Object.assign(plat217, guardados);
+  }
+}
+
+console.log('\n218. Empezar con una sesión que ya corría no deja cartel');
+{
+  chequear('se sigue con la que corría (no se crea otra) y no aparece "Ya tenías una corriendo", que quedaba toda la sesión', await escenarioDeSesion('yaCorria'), { ok: true, corre: true, vivas: 1, aviso: '' });
+}
+
+console.log('\n219. Avisos push: te quieren agregar, quieren unirse (migración 77)');
+{
+  const yo = await nuevoUsuario();
+  const otra = await nuevoUsuario();
+  const tercera = await nuevoUsuario();
+  const nombre = async (u) => (await db.query('select username from profiles where id = $1', [u])).rows[0].username;
+  const TOKEN = (n) => `ExponentPushToken[prueba-${n}]`;
+  const error = (p) => p.then(() => 'entró', (e) => String(e.message));
+  // Como lo hace el teléfono: con su sesión y por la regla de la tabla.
+  const comoApp = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    try {
+      return (await db.query(sql, args)).rows;
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  const pedirAmistad = (de, a) => comoApp(de, 'insert into friendships (solicitante, destinatario) values ($1, $2) returning id', [de, a]);
+
+  // ---- SIN pg_net: el pedido se crea igual y nada explota ----
+  const listosSin = (await db.query('select avisos_push_listos() as v')).rows[0].v;
+  await comoApp(yo, 'select guardar_token_push($1, $2)', [TOKEN('yo'), 'es']);
+  const sinNet = await error(pedirAmistad(tercera, yo));
+  chequear('sin pg_net los avisos no están listos, y una solicitud se crea igual', [listosSin, sinNet], [false, 'entró']);
+
+  // ---- UN pg_net DE PRUEBA, con la firma del de verdad, que anota lo que se le pide ----
+  await db.exec(`
+    create schema if not exists net;
+    create table if not exists net.pedidos (n serial, url text, body jsonb, headers jsonb);
+    create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}',
+      headers jsonb default '{}', timeout_milliseconds integer default 5000) returns bigint
+    language sql as $$ insert into net.pedidos (url, body, headers) values (url, body, headers); select 1::bigint; $$;
+  `);
+  const pedidos = async () => (await db.query('select url, body from net.pedidos order by n')).rows;
+  const vaciar = () => db.exec('delete from net.pedidos');
+  chequear('con pg_net, los avisos están listos', (await db.query('select avisos_push_listos() as v')).rows[0].v, true);
+
+  // ---- LOS TOKENS ----
+  chequear('guardar un token pide sesión y uno con forma de token; la tabla no se lee directo', [
+    await error(comoApp(null, 'select guardar_token_push($1, $2)', [TOKEN('x'), 'es'])),
+    /tokens_push_forma/.test(await error(comoApp(yo, 'select guardar_token_push($1, $2)', ['https://algo', 'es']))),
+    /permission denied/.test(await error(comoApp(yo, 'select * from tokens_push'))),
+  ], ['sin sesión', true, true]);
+  await comoApp(yo, 'select guardar_token_push($1, $2)', [TOKEN('yo-en'), 'en']);
+  await comoApp(tercera, 'select guardar_token_push($1, $2)', [TOKEN('prestado'), 'es']);
+  await comoApp(yo, 'select guardar_token_push($1, $2)', [TOKEN('prestado'), 'es']);
+  await comoApp(tercera, 'select borrar_token_push($1)', [TOKEN('yo')]);
+  const tokens = async (u) => (await db.query('select token, idioma from tokens_push where user_id = $1', [u])).rows.map((r) => [r.token, r.idioma]).sort();
+  chequear('el teléfono que pasa a otra cuenta se lleva el token; borrar solo borra lo propio', [await tokens(yo), await tokens(tercera)], [
+    [[TOKEN('prestado'), 'es'], [TOKEN('yo'), 'es'], [TOKEN('yo-en'), 'en']].sort(), [],
+  ]);
+  await comoApp(yo, 'select borrar_token_push($1)', [TOKEN('prestado')]);
+
+  // ---- TE QUIEREN AGREGAR ----
+  await vaciar();
+  await pedirAmistad(otra, yo);
+  const deOtra = await nombre(otra);
+  const p1 = await pedidos();
+  chequear('una solicitud de amistad avisa a quien la recibe, en su idioma, a cada aparato', [
+    p1.length, p1[0]?.url,
+    (p1[0]?.body ?? []).map((m) => [m.to, m.title, m.body, m.data]).sort(),
+  ], [1, 'https://exp.host/--/api/v2/push/send', [
+    [TOKEN('yo'), 'Ascent', `${deOtra} te quiere agregar.`, { aviso: 'amistad' }],
+    [TOKEN('yo-en'), 'Ascent', `${deOtra} wants to add you.`, { aviso: 'amistad' }],
+  ].sort()]);
+  await vaciar();
+  await pedirAmistad(yo, await nuevoUsuario());
+  await comoApp(yo, `update friendships set estado = 'aceptada' where solicitante = $1 and destinatario = $2`, [otra, yo]);
+  chequear('a quien no tiene aparato no se le manda nada, y aceptar no avisa', (await pedidos()).length, 0);
+
+  // ---- QUIEREN UNIRSE A TU ENTRENAMIENTO ----
+  await comoUsuario(yo);
+  await db.query('select iniciar_sesion()');
+  await vaciar();
+  const union = (await comoApp(otra, 'select pedir_unirse($1) as r', [yo]))[0].r;
+  const p2 = await pedidos();
+  chequear('pedir unirse a quien entrena le avisa', [union, (p2[0]?.body ?? []).map((m) => [m.to, m.body, m.data]).sort()], ['ok', [
+    [TOKEN('yo'), `${deOtra} quiere unirse a tu entrenamiento.`, { aviso: 'union' }],
+    [TOKEN('yo-en'), `${deOtra} wants to join your workout.`, { aviso: 'union' }],
+  ].sort()]);
+  await comoUsuario(yo);
+  await db.query('select terminar_sesion()');
+
+  // ---- SI MANDAR FALLA, EL PEDIDO SE CREA IGUAL ----
+  await db.exec(`create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}',
+      headers jsonb default '{}', timeout_milliseconds integer default 5000) returns bigint
+    language plpgsql as $$ begin raise exception 'se cayó la red'; end $$;`);
+  const otraMas = await nuevoUsuario();
+  chequear('si el aviso no se puede mandar, la solicitud se crea igual', await error(pedirAmistad(otraMas, yo)), 'entró');
+
+  // ---- TOPE: diez aparatos por cuenta ----
+  for (let i = 0; i < 12; i++) await comoApp(tercera, 'select guardar_token_push($1, $2)', [TOKEN('t' + i), 'es']);
+  const quedan = (await tokens(tercera)).map((t) => t[0]);
+  chequear('no más de diez aparatos por cuenta: se olvidan los más viejos', [quedan.length, quedan.includes(TOKEN('t11')), quedan.includes(TOKEN('t0'))], [10, true, false]);
+  await db.exec('drop schema net cascade');
+}
+
+console.log('\n220. El cartel que baja de arriba, y el token del aparato');
+{
+  const NV = await import('../nucleo/novedades.ts');
+  const CN = await import('../compartido/novedades.ts');
+  const AR = await import('../compartido/avisosRemotos.ts');
+  const E220 = await import('../compartido/esquema.ts');
+  const { plataforma: plat220, memoria: mem220 } = await import('./dobles/plataforma.mjs');
+  let reloj220 = Date.now() + E220.VIGENCIA_MS * 12000;
+
+  // ---- QUÉ SE MUESTRA: cada pedido una vez, por cuenta ----
+  const ana = { tipo: 'amistad', id: 'f1', otro: { id: 'a', username: 'ana', avatar_url: null } };
+  const beto = { tipo: 'union', id: 'u1', otro: { id: 'b', username: 'beto', avatar_url: null } };
+  const visto1 = NV.conVista(null, 'yo', beto);
+  const visto2 = NV.conVista(visto1, 'yo', ana);
+  let lleno = null;
+  for (let i = 0; i < 205; i++) lleno = NV.conVista(lleno, 'yo', { ...ana, id: 'f' + (100 + i) });
+  chequear('el cartel muestra el primero que no se vio; visto, no vuelve; lo que vio otra cuenta en el teléfono no cuenta; guarda los últimos 200', [
+    NV.cualMostrar([beto, ana], null, 'yo')?.id,
+    NV.cualMostrar([beto, ana], visto1, 'yo')?.id,
+    NV.cualMostrar([beto, ana], visto2, 'yo'),
+    NV.cualMostrar([beto, ana], visto2, 'otra')?.id,
+    NV.cualMostrar([ana], 'basura', 'yo')?.id,
+    JSON.parse(lleno).ids.length,
+  ], ['u1', 'f1', null, 'u1', 'f1', 200]);
+
+  // ---- DE DÓNDE SALEN: las solicitudes que me mandaron y los pedidos de unirse que me hicieron ----
+  const baseDe = (version, { amistades = [], gente = [], uniones = [], fallaAmistad = false } = {}) => {
+    const cadena = (resultado) => {
+      const q = { select: () => q, eq: () => q, in: () => q, then: (ok, no) => Promise.resolve(resultado).then(ok, no) };
+      return q;
+    };
+    return {
+      rpc: async (n) => (n === 'version_del_esquema' ? { data: version, error: null } : n === 'mis_uniones' ? { data: uniones, error: null } : { data: null, error: null }),
+      // Como la base: los perfiles de otros solo se leen por la vista pública; `profiles` da solo el propio.
+      from: (t) => cadena(t === 'friendships' ? (fallaAmistad ? { data: null, error: { message: 'sin red' } } : { data: amistades, error: null }) : t === 'usuarios_publicos' ? { data: gente, error: null } : { data: [], error: null }),
+    };
+  };
+  // Vencida contesta lo viejo y pregunta por atrás: se espera a que llegue lo nuevo.
+  const aVersion = async (b) => {
+    reloj220 += E220.VIGENCIA_MS * 3;
+    await E220.versionDelEsquema(b, reloj220);
+    await new Promise((r) => setTimeout(r, 20));
+  };
+  const ahora = new Date().toISOString();
+  const b1 = baseDe(77, {
+    amistades: [{ id: 'f1', solicitante: 'a' }],
+    gente: [{ id: 'a', username: 'ana', avatar_url: null }],
+    uniones: [
+      { id: 'u1', estado: 'pendiente', la_pedi_yo: false, otro: { id: 'b', username: 'beto', avatar_url: null }, ahora },
+      { id: 'u2', estado: 'pendiente', la_pedi_yo: true, otro: { id: 'c', username: 'caro', avatar_url: null }, ahora },
+      { id: 'u3', estado: 'aceptada', la_pedi_yo: false, otro: { id: 'd', username: 'dani', avatar_url: null }, ahora },
+    ],
+  });
+  await aVersion(b1);
+  const traidas = await CN.traerNovedades(b1, 'yo');
+  const bFalla = baseDe(77, { fallaAmistad: true });
+  await aVersion(bFalla);
+  chequear('primero quien quiere unirse (los míos y los aceptados no), después las solicitudes; si no se pudo preguntar, null', [
+    traidas?.map((n) => [n.tipo, n.id, n.otro.username]), await CN.traerNovedades(bFalla, 'yo'),
+  ], [[['union', 'u1', 'beto'], ['amistad', 'f1', 'ana']], null]);
+
+  // ---- EL TOKEN: se guarda con la 77, y se olvida al salir ----
+  const anotado = [];
+  const conRpc = (version) => ({
+    rpc: async (n, a) => {
+      if (n === 'version_del_esquema') return { data: version, error: null };
+      anotado.push([n, a]);
+      return { data: null, error: null };
+    },
+  });
+  const avisosAntes = plat220.avisos;
+  const pedidos = [];
+  plat220.avisos = { ...avisosAntes, tokenRemoto: async (pedir) => (pedidos.push(pedir), 'ExponentPushToken[telefono]') };
+  try {
+    const b76 = conRpc(76);
+    await aVersion(b76);
+    await AR.registrarAvisosRemotos(b76, true);
+    const b77 = conRpc(77);
+    await aVersion(b77);
+    await AR.registrarAvisosRemotos(b77, false);
+    const guardado = mem220.get('ascent:token-push');
+    await AR.olvidarAvisosRemotos(b77);
+    chequear('con la 77 se guarda el token del aparato (sin la 77 ni se le pide al teléfono), y al salir se borra de la base y del teléfono', [
+      pedidos, anotado, guardado, mem220.has('ascent:token-push'),
+    ], [[false], [['guardar_token_push', { p_token: 'ExponentPushToken[telefono]', p_idioma: 'es' }], ['borrar_token_push', { p_token: 'ExponentPushToken[telefono]' }]], 'ExponentPushToken[telefono]', false]);
+  } finally {
+    plat220.avisos = avisosAntes;
+  }
+  const { readFileSync: leer220 } = await import('node:fs');
+  const cuenta220 = leer220(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'cuenta.ts'), 'utf8');
+  chequear('cerrar sesión olvida el token ANTES de soltar la sesión (después la base ya no deja borrar lo propio)',
+    /await olvidarAvisosRemotos\(supabase\)[\s\S]{0,120}supabase\.auth\.signOut/.test(cuenta220), true);
+}
+
+console.log('\n221. Perfiles: los amigos de un amigo (migración 78), y tu perfil al instante');
+{
+  const P221 = await import('../compartido/perfil.ts');
+  const E221 = await import('../compartido/esquema.ts');
+  const CU221 = await import('../compartido/cuenta.ts');
+  let reloj221 = Date.now() + E221.VIGENCIA_MS * 15000;
+  const yo = await nuevoUsuario();
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  const caro = await nuevoUsuario();
+  const extrana = await nuevoUsuario();
+  const amistad = (a, b, estado = 'aceptada') => db.query('insert into friendships (solicitante, destinatario, estado) values ($1, $2, $3)', [a, b, estado]);
+  await amistad(yo, ana);
+  await amistad(ana, beto);
+  await amistad(caro, ana, 'pendiente');
+  const de = async (quien, p) => {
+    await comoUsuario(quien);
+    return (await db.query('select amigos_de($1) as id', [p])).rows.map((r) => r.id).sort();
+  };
+  chequear('los amigos de una amiga los veo (sin los pedidos pendientes); los de una extraña no; los míos sí; sin sesión nada', [
+    await de(yo, ana), await de(extrana, ana), await de(yo, yo), await de(null, ana),
+    (await db.query(`select has_function_privilege('anon', 'public.amigos_de(uuid)', 'execute') as p`)).rows[0].p,
+  ], [[yo, beto].sort(), [], [ana], [], false]);
+  await db.query('insert into bloqueos (bloqueador, bloqueado) values ($1, $2)', [beto, yo]);
+  await comoUsuario(yo);
+  await db.exec('set role authenticated');
+  const visibles = (await db.query('select id from usuarios_publicos where id = any($1)', [await de(yo, ana)])).rows.map((r) => r.id);
+  await db.exec('reset role');
+  chequear('quien me bloqueó sale en los ids pero no en la vista pública, que es de donde el teléfono saca el nombre', visibles, [yo]);
+
+  // ---- EN EL TELÉFONO ----
+  const anotado = [];
+  const base = (version) => ({
+    rpc: async (n, a) => {
+      if (n === 'version_del_esquema') return { data: version, error: null };
+      anotado.push([n, a]);
+      return { data: ['u1', 'u2'], error: null };
+    },
+    from: (t) => {
+      const q = { select: () => q, in: () => q, then: (ok) => Promise.resolve(t === 'usuarios_publicos'
+        ? { data: [{ id: 'u1', username: 'zoe', avatar_url: null, racha_actual: 3 }, { id: 'u2', username: 'ana', avatar_url: null, racha_actual: 9 }], error: null }
+        : { data: [], error: null }).then(ok) };
+      return q;
+    },
+  });
+  const conVersion = async (v) => {
+    const b = base(v);
+    reloj221 += E221.VIGENCIA_MS * 3;
+    await E221.versionDelEsquema(b, reloj221);
+    await new Promise((r) => setTimeout(r, 20));
+    return b;
+  };
+  const b77 = await conVersion(77);
+  const sin = await P221.cargarAmigosDe(b77, 'x');
+  const b78 = await conVersion(78);
+  const con = await P221.cargarAmigosDe(b78, 'x');
+  chequear('con la 78 se piden los amigos y se ordenan por racha; sin la 78 ni se pregunta', [sin, anotado, con?.map((u) => u.username)], [
+    null, [['amigos_de', { p_quien: 'x' }]], ['ana', 'zoe'],
+  ]);
+
+  // ---- TU PERFIL AL INSTANTE, y al salir se olvida ----
+  const { readFileSync: leer221 } = await import('node:fs');
+  const propio = leer221(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'PerfilPropio.tsx'), 'utf8');
+  P221.olvidarMiPerfil();
+  chequear('tu perfil arranca con lo último que se vio (sin ruedita), la foto se ve en grande antes de cambiarla, y los amigos se tocan', [
+    /useState<DatosDePerfil \| null>\(\(\) => ultimoMiPerfil\(\)\)/.test(propio),
+    /useState\(\(\) => ultimoMiPerfil\(\) !== null\)/.test(propio),
+    /perfil\.avatar_url \? setFotoGrande\(true\) : void cambiarFoto\(\)/.test(propio),
+    /<FotoGrande url=\{fotoGrande \? perfil\.avatar_url : null\}[\s\S]{0,120}alCambiar=/.test(propio),
+    /router\.push\(`\/perfil\/\$\{a\.id\}`\)/.test(propio),
+    P221.ultimoMiPerfil(),
+  ], [true, true, true, true, true, null]);
+  const cuenta221 = leer221(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'cuenta.ts'), 'utf8');
+  chequear('al salir de la cuenta se olvida el perfil de memoria (otra cuenta no lo ve)', /export async function limpiarAlSalir\(\) \{[\s\S]{0,400}olvidarMiPerfil\(\);/.test(cuenta221), true);
+  void CU221;
+}
+
+console.log('\n222. El idioma: español o inglés según el teléfono, y a mano en Ajustes');
+{
+  const TX = await import('../nucleo/textos.ts');
+  const { EN } = await import('../nucleo/textos-en.ts');
+  const ID = await import('../compartido/idioma.ts');
+  const FE = await import('../nucleo/fechas.ts');
+  const RG = await import('../nucleo/rangos.ts');
+  const ES222 = await import('../nucleo/estandares.ts');
+  const RC = await import('../nucleo/recorrido.ts');
+  const EJ = await import('../nucleo/ejerciciosEn.ts');
+  const { eventos: ev222 } = await import('../compartido/eventos.ts');
+  const { memoria: mem222 } = await import('./dobles/plataforma.mjs');
+
+  // ---- EL INGLÉS ESTÁ COMPLETO Y NO TIENE HUECOS ----
+  const llaves = (o, pre = '') => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' && !Array.isArray(v) ? llaves(v, pre + k + '.') : [pre + k]));
+  const muestra = (f) => f(3, 4, 5).toString ? f(3, 4, 5) : '';
+  const vacias = [];
+  const recorrer = (o, pre = '') => {
+    for (const [k, v] of Object.entries(o)) {
+      if (typeof v === 'string' && v.trim() === '') vacias.push(pre + k);
+      else if (typeof v === 'function') {
+        // Sin tipos acá: se prueba con textos, con números y mezclado, y vale el primero que contesta.
+        const intentos = [Array(v.length).fill('Press'), Array(v.length).fill(3), Array.from({ length: v.length }, (_, i) => (i === 0 ? 'Press' : 3))];
+        let r = null;
+        for (const a of intentos) { try { r = v(...a); break; } catch { r = null; } }
+        // Si el español contesta igual de raro con estos datos de prueba, es el dato, no la traducción.
+        const enEs = (pre + k).split('.').reduce((o, c) => o?.[c], TX.TEXTOS_ES);
+        let rEs = null;
+        for (const a of intentos) { try { rEs = enEs(...a); break; } catch { rEs = null; } }
+        const raro = (x) => typeof x !== 'string' || x.trim() === '' || /undefined|NaN|\[object/.test(x);
+        if (raro(r) && !raro(rEs)) vacias.push(pre + k);
+      } else if (Array.isArray(v) && v.some((x) => typeof x !== 'string' || x === '')) vacias.push(pre + k);
+      else if (v && typeof v === 'object' && !Array.isArray(v)) recorrer(v, pre + k + '.');
+    }
+  };
+  recorrer(EN);
+  void muestra;
+  chequear('el inglés tiene las mismas claves que el español, y ninguna vacía ni con huecos', [llaves(EN).sort().join() === llaves(TX.TEXTOS_ES).sort().join(), vacias], [true, []]);
+  const largos = [];
+  const medir = (o, pre = '') => { for (const [k, v] of Object.entries(o)) { if (typeof v === 'string' && v.length > 110) largos.push(pre + k); else if (v && typeof v === 'object' && !Array.isArray(v)) medir(v, pre + k + '.'); } };
+  medir(EN);
+  chequear('los textos en inglés entran en dos renglones (110 caracteres)', largos, []);
+
+  // ---- QUÉ IDIOMA ----
+  chequear('teléfono en español (cualquier variante) → español; en cualquier otro → inglés', ['es-UY', 'es', 'ES-ar', 'en-US', 'pt-BR', 'fr', ''].map((l) => ID.idiomaDelAparato(l)), ['es', 'es', 'es', 'en', 'en', 'en', 'en']);
+  chequear('lo elegido a mano gana; "del teléfono" usa el del teléfono', [ID.idiomaElegido('auto', 'en'), ID.idiomaElegido('es', 'en'), ID.idiomaElegido('en', 'es')], ['en', 'es', 'en']);
+
+  // ---- CAMBIAR EN SU LUGAR: lo que guardó una referencia se entera ----
+  const diasAntes = FE.DIAS_SEMANA_LARGO;
+  ID.aplicarIdioma('en');
+  const enIngles = [TX.T.idioma, TX.T.nav.ajustes, FE.DIAS_SEMANA_LARGO[1], diasAntes === FE.DIAS_SEMANA_LARGO, RG.RANGOS[0].nombre, ES222.CATEGORIAS[0].nombre, RC.PASOS_DEL_RECORRIDO[0].texto.slice(0, 11), TX.T.fuerza.faltaPara('5 kg')];
+  ID.aplicarIdioma('es');
+  const deVuelta = [TX.T.idioma, TX.T.nav.ajustes, FE.DIAS_SEMANA_LARGO[1], RG.RANGOS[0].nombre, ES222.CATEGORIAS[0].nombre];
+  chequear('el cambio pisa los textos en su lugar: los días, los rangos, las categorías y el recorrido cambian; y vuelve', [enIngles, deVuelta], [
+    ['en', 'Settings', 'Monday', true, 'Dust', 'Beginner', 'Your streak', '5 kg to go for beginner'],
+    ['es', 'Ajustes', 'Lunes', 'Polvo', 'Principiante'],
+  ]);
+
+  // ---- A MANO, EN AJUSTES: se guarda en el teléfono y se avisa a la raíz ----
+  let avisos = 0;
+  const dejar = ev222.escuchar(ID.IDIOMA_CAMBIO, () => avisos++);
+  await ID.fijarPreferenciaIdioma('en');
+  const guardado = mem222.get('ascent:idioma');
+  const tras = TX.T.idioma;
+  await ID.fijarPreferenciaIdioma('en');
+  await ID.fijarPreferenciaIdioma('es');
+  dejar();
+  chequear('elegir inglés lo guarda, cambia los textos y avisa una vez; repetirlo no avisa de nuevo', [guardado, tras, avisos, TX.T.idioma], ['en', 'en', 2, 'es']);
+  mem222.delete('ascent:idioma');
+
+  // ---- LOS NOMBRES DEL CATÁLOGO ----
+  const filas = [
+    { id: 'press_banca', nombre: 'Press de banca', creado_por: null },
+    { id: 'cinta', nombre: 'Cinta' },
+    { id: 'propio_x', nombre: 'Mi ejercicio', creado_por: 'u1' },
+    { id: 'id_nuevo', nombre: 'Uno nuevo', creado_por: null },
+  ];
+  chequear('en inglés el catálogo usa su nombre en inglés; los propios y los que no están en la lista quedan como vinieron', EJ.conNombresEn(filas).map((f) => f.nombre), ['Bench press', 'Treadmill', 'Mi ejercicio', 'Uno nuevo']);
+  const { readFileSync: leer222 } = await import('node:fs');
+  const catalogo222 = leer222(join(dirname(fileURLToPath(import.meta.url)), 'schema.sql'), 'utf8');
+  const ids222 = [...catalogo222.matchAll(/\(\s*'([a-z_0-9]+)',\s*'[^']+',\s*'(?:pecho|espalda|hombros|brazos|piernas|core|cardio)'/g)].map((m) => m[1]).filter((id) => !['pecho'].includes(id));
+  chequear('todo el catálogo de la base tiene nombre en inglés', ids222.filter((id) => !EJ.NOMBRES_EN[id]), []);
+  const sb222 = leer222(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'supabase.ts'), 'utf8');
+  chequear('y se traduce al llegar, en el cliente de la app, solo la tabla de ejercicios y solo en inglés', [
+    /fetch: conElIdioma/.test(sb222), /if \(T\.idioma !== 'en' \|\| !r\.ok\) return r;/.test(sb222), /\\\/rest\\\/v1\\\/ejercicios/.test(sb222),
+  ], [true, true, true]);
+  const raiz222 = leer222(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'app', '_layout.tsx'), 'utf8');
+  chequear('el idioma del teléfono se aplica antes que cualquier otra cosa, y la raíz redibuja al cambiar', [
+    raiz222.split('\n')[0].trim(), /eventos\.escuchar\(IDIOMA_CAMBIO/.test(raiz222), /<View key=\{versionIdioma\}/.test(raiz222),
+  ], ["import '../src/idiomaAlArrancar';", true, true]);
+}
+
+console.log('\n223. El músculo se lee en el idioma de la app');
+{
+  const EJ223 = await import('../nucleo/ejercicios.ts');
+  const ID223 = await import('../compartido/idioma.ts');
+  const es = ['pecho', 'cardio', 'inventado'].map(EJ223.nombreDeGrupo);
+  ID223.aplicarIdioma('en');
+  const en = ['pecho', 'cardio', 'inventado'].map(EJ223.nombreDeGrupo);
+  ID223.aplicarIdioma('es');
+  chequear('el músculo sale de los textos (y uno desconocido, con mayúscula)', [es, en], [['Pecho', 'Cardio', 'Inventado'], ['Chest', 'Cardio', 'Inventado']]);
+}
+
+console.log('\n224. La consulta de emergencia que apaga los avisos push (spec/trampas.md)');
+{
+  const yo = await nuevoUsuario();
+  const otra = await nuevoUsuario();
+  const otraMas = await nuevoUsuario();
+  await comoUsuario(yo);
+  await db.query('select guardar_token_push($1, $2)', ['ExponentPushToken[emergencia]', 'es']);
+  await db.exec(`
+    create schema if not exists net;
+    create table if not exists net.pedidos (n serial, url text, body jsonb, headers jsonb);
+    create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}',
+      headers jsonb default '{}', timeout_milliseconds integer default 5000) returns bigint
+    language sql as $$ insert into net.pedidos (url, body, headers) values (url, body, headers); select 1::bigint; $$;
+  `);
+  const pedidos = async () => Number((await db.query('select count(*) as n from net.pedidos')).rows[0].n);
+  const amistad = async (de) => {
+    await comoUsuario(de);
+    await db.exec('set role authenticated');
+    try {
+      await db.query('insert into friendships (solicitante, destinatario) values ($1, $2)', [de, yo]);
+      return 'entró';
+    } catch (e) {
+      return String(e.message);
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  // EXACTAMENTE lo que está escrito en spec/trampas.md.
+  const { readFileSync: leer224 } = await import('node:fs');
+  const trampas = leer224(join(dirname(fileURLToPath(import.meta.url)), '..', 'spec', 'trampas.md'), 'utf8').replace(/\r\n/g, '\n');
+  const apagar = trampas.match(/-- APAGAR LOS AVISOS PUSH\n([\s\S]*?)\n```/)?.[1] ?? '';
+  const prender = trampas.match(/-- PRENDERLOS DE NUEVO\n([\s\S]*?)\n```/)?.[1] ?? '';
+  await db.exec(apagar);
+  const conApagado = [await amistad(otra), await pedidos()];
+  await db.exec(prender);
+  const conPrendido = [await amistad(otraMas), await pedidos()];
+  const disparadores = (await db.query(`select tgname, tgenabled from pg_trigger where tgname in ('friendships_avisar', 'entrenos_avisar') order by 1`)).rows.map((r) => [r.tgname, r.tgenabled]);
+  chequear('la consulta de trampas.md apaga los dos avisos sin tocar la solicitud, y la otra los vuelve a prender', [apagar !== '' && prender !== '', conApagado, conPrendido, disparadores], [
+    true, ['entró', 0], ['entró', 1], [['entrenos_avisar', 'O'], ['friendships_avisar', 'O']],
+  ]);
+  await db.exec('drop schema net cascade');
+}
+
+console.log('\n225. Copiar la rutina de un amigo avisa cuál quedó activa y deja volver; el cartel tapa la tarjeta');
+{
+  const RU225 = await import('../compartido/rutinas.ts');
+  const E225 = await import('../compartido/esquema.ts');
+  const NV225 = await import('../nucleo/novedades.ts');
+  const { semanaVacia } = await import('../nucleo/rutinas.ts');
+  // UN CLIENTE QUE LLAMA A LAS FUNCIONES DE VERDAD, como la cuenta de \`quien\`.
+  const clienteDe = (quien) => ({
+    rpc: async (nombre, args = {}) => {
+      await comoUsuario(quien);
+      const claves = Object.keys(args);
+      const valores = claves.map((k) => (args[k] !== null && typeof args[k] === 'object' ? JSON.stringify(args[k]) : args[k]));
+      try {
+        const r = await db.query(`select public.${nombre}(${claves.map((k, i) => `${k} => $${i + 1}`).join(', ')}) as r`, valores);
+        return { data: r.rows[0].r, error: null };
+      } catch (e) {
+        return { data: null, error: { message: String(e.message) } };
+      }
+    },
+  });
+  const yo = await nuevoUsuario();
+  const cli = clienteDe(yo);
+  await E225.versionDelEsquema(cli, Date.now() + E225.VIGENCIA_MS * 20000);
+  await new Promise((r) => setTimeout(r, 20));
+  const lunes = semanaVacia();
+  lunes[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }] };
+  const mia = await RU225.guardarRutina(cli, { id: null, nombre: 'Entrenamiento 1', dias: lunes });
+  const copia = await RU225.copiarRutina(cli, 'Rutina de ana', lunes);
+  const activaTras = (await RU225.cargarMisRutinas(cli)).find((r) => r.activa)?.nombre;
+  const vuelve = await RU225.activarRutina(cli, copia.anterior.id);
+  const activaAlFinal = (await RU225.cargarMisRutinas(cli)).find((r) => r.activa)?.nombre;
+  chequear('copiar deja activa la copia y devuelve la que estaba activa; volver la reactiva', [
+    { id: copia.anterior.id, nombre: copia.anterior.nombre }, activaTras, vuelve, activaAlFinal,
+  ], [{ id: mia, nombre: 'Entrenamiento 1' }, 'Rutina de ana', true, 'Entrenamiento 1']);
+  const otro = await nuevoUsuario();
+  const cliOtro = clienteDe(otro);
+  const primera = await RU225.copiarRutina(cliOtro, 'Rutina de beto', lunes);
+  chequear('si no tenía ninguna, no hay a cuál volver', primera.anterior, null);
+  const { T: T225 } = await import('../nucleo/textos.ts');
+  chequear('y en pantalla dice cuál quedó activa y a cuál se vuelve', [T225.rutina.copiada('Rutina de ana'), T225.rutina.volverA('Entrenamiento 1')], [
+    'Copiada y activa: «Rutina de ana». La cambias en Tu rutina, en Inicio.', 'Volver a «Entrenamiento 1»',
+  ]);
+
+  // ---- EL CARTEL Y LA TARJETA ----
+  const pedidos = [{ id: 'u1' }, { id: 'u2' }];
+  chequear('con el cartel mostrando un pedido de unirse, Inicio no dibuja la tarjeta de ese pedido; con uno de amistad o sin cartel, todas', [
+    NV225.tarjetasDeInicio(pedidos, { tipo: 'union', id: 'u1' }).map((p) => p.id),
+    NV225.tarjetasDeInicio(pedidos, { tipo: 'amistad', id: 'u1' }).map((p) => p.id),
+    NV225.tarjetasDeInicio(pedidos, null).map((p) => p.id),
+  ], [['u2'], ['u1', 'u2'], ['u1', 'u2']]);
+  const { readFileSync: leer225 } = await import('node:fs');
+  const de225 = (...p) => leer225(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8');
+  const cartel225 = de225('movil', 'src', 'CartelDeArriba.tsx');
+  const inicio225 = de225('movil', 'src', 'EnVivoDeInicio.tsx');
+  chequear('el cartel avisa qué muestra (y cuándo se va), e Inicio lo usa', [
+    /setCartel\(\{ uid: yo, novedad: toca \}\);\s*fijarCartel\(\{ tipo: toca\.tipo, id: toca\.id \}\);/.test(cartel225),
+    /mostrando\.current = false;\s*fijarCartel\(null\);/.test(cartel225),
+    /tarjetasDeInicio\([\s\S]{0,140}, enCartel\)/.test(inicio225),
+  ], [true, true, true]);
+}
+
+console.log('\n226. El refactor del dueño único: las respuestas viejas ya no pisan (la época, 15/10)');
+{
+  // spec/alcance.md, "Un solo dueño del estado de la sesión": primero estos dos
+  // casos, en rojo; después se toca el hook. Corren el hook de verdad.
+  // EL RELOJ: empezar o terminar una sesión invalida la foto que tomó una pregunta antes.
+  const SC226 = await import('../compartido/sesionCache.ts');
+  const foto = SC226.fotoDeLaCache(SC226.relojDeToques());
+  const antes = foto();
+  SC226.cambioDeSesion();
+  chequear('una foto tomada antes de empezar o terminar una sesión deja de valer después', [antes, foto()], [true, false]);
+  // Con una sola instancia y con dos (el vigilante primero: su pregunta es la vieja).
+  const ESPERA = {
+    'no-hay': { tocado: true, pantallaCorre: true, baseCorre: true, cacheId: 'sesion-1', pantallaSeries: 1, baseSeries: 1 },
+    corre: { tocado: true, pantallaCorre: false, baseCorre: false, cacheId: null },
+  };
+  for (const variante of ['sola', 'vigilante']) {
+    for (const caso of ['no-hay', 'corre']) {
+      const esperado = variante === 'vigilante'
+        ? { ...Object.fromEntries(Object.entries(ESPERA[caso]).slice(0, 4)), vigilanteCorre: ESPERA[caso].pantallaCorre, ...Object.fromEntries(Object.entries(ESPERA[caso]).slice(4)) }
+        : ESPERA[caso];
+      const nombre = caso === 'no-hay'
+        ? `${variante}: la respuesta vieja de "no hay sesión" que llega después de Iniciar no saca la sesión, y la serie siguiente llega a la base`
+        : `${variante}: la respuesta vieja de "está corriendo" que llega después de Terminar no la vuelve a poner ni resucita la caché`;
+      chequear(nombre, await escenarioDeSesion('viejas', caso, variante), esperado);
+    }
+  }
+}
+
+console.log('\n227. Rutina en inglés, idioma de a dos, Social, Ranking ordenado, vidas en el calendario');
+{
+  const RU227 = await import('../nucleo/rutinas.ts');
+  const ID227 = await import('../compartido/idioma.ts');
+  const CAL227 = await import('../compartido/calendario.ts');
+  const { readFileSync: leer227 } = await import('node:fs');
+  const de227 = (...p) => leer227(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const grupo = (id) => ({ press_banca: 'pecho', press_militar: 'hombros', curl: 'brazos' })[id] ?? null;
+  const dia = { descanso: false, ejercicios: ['press_banca', 'press_militar', 'curl'].map((e) => ({ ejercicio: e, series: 3 })) };
+  const es = RU227.tituloDelDia(dia, grupo, 'Descanso');
+  ID227.aplicarIdioma('en');
+  const en = RU227.tituloDelDia(dia, grupo, 'Rest');
+  ID227.aplicarIdioma('es');
+  chequear('el título del día de la rutina sale en el idioma de la app (antes "Monday — pecho, hombro y brazo")', [es, en], ['Pecho, hombro y brazo', 'Chest, shoulders and arms']);
+
+  const aj = de227('movil', 'src', 'Ajustes.tsx');
+  chequear('el idioma en Ajustes: dos opciones, con la que rige ya marcada', [
+    /\{ valor: 'es' as Idioma[\s\S]{0,140}\{ valor: 'en' as Idioma/.test(aj), /idiomaAuto/.test(aj), /setIdioma\(idiomaElegido\(p\)\)/.test(aj),
+  ], [true, false, true]);
+
+  const pes = de227('movil', 'src', 'Pestanas.tsx');
+  const { T: T227 } = await import('../nucleo/textos.ts');
+  chequear('la pestaña de Ranking dice "Social" en la barra; arriba sigue diciendo Ranking', [
+    /const rotuloDe = \(p: keyof typeof T\.nav\) => \(p === 'ranking' \? T\.nav\.social : T\.nav\[p\]\);/.test(pes), T227.nav.social, T227.social.titulo,
+  ], [true, 'Social', 'Ranking']);
+
+  const rk = de227('movil', 'src', 'Ranking.tsx');
+  const pos = (s) => rk.indexOf(s);
+  chequear('Ranking: buscar arriba en un renglón, el ranking con diez y "Ver más", y la actividad al final', [
+    pos('testID="buscar-gente"') > 0 && pos('testID="buscar-gente"') < pos('<View style={estilos.lista}>'),
+    pos('<View style={estilos.lista}>') < pos('{T.social.actividad}'),
+    pos('{T.social.actividad}') > pos('{T.social.solicitudes}'),
+    /const RANKING_TOPE = 10;/.test(rk), /amigos\.slice\(0, RANKING_TOPE\)/.test(rk), /testID="ranking-ver-mas"/.test(rk),
+    /buscarPie/.test(rk),
+  ], [true, true, true, true, true, true, false]);
+
+  const med = de227('movil', 'src', 'MedallaDeRango.tsx');
+  chequear('la medalla del rango lleva los colores de ese rango, no grises', [/const pal = coloresDeInsignia\(rango\);/.test(med), /fill=\{pal\.principal\}/.test(med), /borderColor: pal\.trazo/.test(med)], [true, true, true]);
+
+  const raiz = de227('movil', 'app', '_layout.tsx');
+  const fotos = de227('movil', 'src', 'FotosQueVen.tsx');
+  chequear('volver deslizando desde cualquier punto, y las fotos del perfil se abren en grande', [
+    /gestureEnabled: true,\s*fullScreenGestureEnabled: true,/.test(raiz), /onPress=\{\(\) => setGrande\(/.test(fotos), /<FotoGrande url=\{grande\}/.test(fotos),
+  ], [true, true, true]);
+
+  // El calendario lee las vidas usadas del mes (no las devueltas) y las marca.
+  const pedido = [];
+  const cliente = {
+    from: (tabla) => {
+      const q = { filtros: [] };
+      const cadena = {
+        select: () => cadena,
+        eq: (c, v) => (q.filtros.push(['eq', c, v]), cadena),
+        gte: () => cadena,
+        lte: () => cadena,
+        order: () => cadena,
+        then: (ok) => {
+          pedido.push([tabla, q.filtros]);
+          const datos = tabla === 'vidas_usadas' ? [{ fecha: '2026-10-03' }] : [];
+          return Promise.resolve({ data: datos, error: null }).then(ok);
+        },
+      };
+      return cadena;
+    },
+  };
+  const mes = await CAL227.cargarMes(cliente, 'yo', 2026, 9);
+  chequear('el mes trae las vidas usadas (sin las devueltas), para marcarlas', [
+    [...(mes.vidas ?? [])], pedido.find((p) => p[0] === 'vidas_usadas')?.[1],
+  ], [['2026-10-03'], [['eq', 'user_id', 'yo'], ['eq', 'devuelta', false]]]);
+  const cal = de227('movil', 'src', 'CalendarioDias.tsx');
+  const sg = de227('movil', 'src', 'StatsGeneral.tsx');
+  chequear('el calendario las marca con un aro punteado y lo explica en la leyenda; "Corregir días" es un botón que lo abre', [
+    /mes\.vidas\?\.has\(c\.fecha\) && \[estilos\.conVida/.test(cal), /T\.calendario\.leyendaVida/.test(cal),
+    /testID="corregir-dias"/.test(sg), /\{calendarioAbierto && calendario\}/.test(sg),
+  ], [true, true, true, true]);
+}
+
+console.log('\n228. El dueño único de la sesión: el dato vive una vez por aparato (15/10)');
+{
+  const SV228 = await import('../compartido/sesionViva.ts');
+  const { readFileSync: leer228 } = await import('node:fs');
+  const de228 = (...p) => leer228(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  let avisos = 0;
+  const dejar = SV228.suscribirViva(() => avisos++);
+  const a = SV228.leerViva();
+  SV228.cambiarViva({ series: 0, inicio: null });
+  const sinCambio = [SV228.leerViva() === a, avisos];
+  SV228.cambiarViva({ series: 2 });
+  const conCambio = [SV228.leerViva() === a, SV228.leerViva().series, avisos];
+  const ref = SV228.refDe('series');
+  ref.current = 5;
+  const porRef = [SV228.leerViva().series, avisos];
+  SV228.olvidarViva();
+  const olvidado = [SV228.leerViva().series, SV228.leerViva().cacheLeida];
+  dejar();
+  chequear('leer devuelve el mismo objeto mientras nada cambia, y avisa solo cuando algo cambia de verdad (por setter o por ref)', { sinCambio, conCambio, porRef, olvidado }, {
+    sinCambio: [true, 0],
+    conCambio: [false, 2, 1],
+    porRef: [5, 2],
+    olvidado: [0, false],
+  });
+  const hook = de228('compartido', 'useSesion.ts');
+  chequear('useSesion lee del dueño y ya no guarda la sesión en su propio estado', [
+    /useSyncExternalStore\(suscribirViva, leerViva, sinServidor\)/.test(hook),
+    /const \[(series|bloques|inicio|desfasaje|descanso|idSesion|sugerido|porUbicacion|cacheLeida|ultimaActividad), set[A-Za-z]+\] = useState/.test(hook),
+    /const yo = YO;/.test(hook),
+  ], [true, false, true]);
+  chequear('borrar la caché en medio de un actualizar no deja reaparecer la sesión terminada; guardar una nueva no queda pisado por la vieja', [
+    await escenarioDeSesion('cruce', 'borrar'),
+    await escenarioDeSesion('cruce', 'guardar'),
+  ], [{ cache: null }, { cache: ['sesion-2', 0] }]);
+  chequear('una lectura vacía de la caché que llega después de Iniciar no saca la sesión de la pantalla', await escenarioDeSesion('releerVieja'), {
+    pantallaCorre: true, baseCorre: true, cacheId: 'sesion-1',
+  });
+  chequear('desbloquear y preguntarle a la base no le saca el fantasma de la sugerencia a la caché', await escenarioDeSesion('fantasma'), {
+    antes: [true, true], despues: [true, true],
+  });
+  chequear('al cerrar sesión se olvida también la de memoria', /await borrarSesionCache\(\);\s*olvidarViva\(\);/.test(de228('compartido', 'cuenta.ts')), true);
+  chequear('con la pantalla y el vigilante montados, lo que toca uno lo ve el otro en el render siguiente, sin esperar a la caché', await escenarioDeSesion('dueno'), {
+    alEmpezar: { corriendo: true, series: 0, bloques: [[null, 0]] },
+    trasDos: { pantalla: { corriendo: true, series: 2, bloques: [[null, 2]] }, vigilante: { corriendo: true, series: 2, bloques: [[null, 2]] } },
+    desdeElVigilante: { corriendo: true, series: 3, bloques: [[null, 3]] },
+    base: 3,
+  });
+}
+console.log('\n229. La rutina: en Inicio, en su pantalla, y se ordena arrastrando (15/10)');
+{
+  const { readFileSync: leer229, existsSync: hay229 } = await import('node:fs');
+  const R229 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de229 = (...p) => leer229(join(R229, ...p), 'utf8').replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const inicio = de229('movil', 'src', 'Inicio.tsx');
+  const fila = de229('movil', 'src', 'FilaRutina.tsx');
+  chequear('Tu rutina está en Inicio (no mientras se entrena), abre su pantalla, y ya no está en Stats', [
+    /\{!sesion\.estado\.corriendo && <FilaRutina \/>\}/.test(inicio),
+    /router\.push\('\/rutina'\)/.test(fila),
+    hay229(join(R229, 'movil', 'app', 'rutina.tsx')),
+    /<MiRutina/.test(de229('movil', 'src', 'Stats.tsx')),
+  ], [true, true, true, false]);
+  chequear('el renglón se rearma cuando se guarda, activa o borra una rutina', [
+    /eventos\.escuchar\(RUTINA_CAMBIO/.test(fila),
+    (de229('compartido', 'rutinas.ts').match(/eventos\.emitir\(RUTINA_CAMBIO\)/g) ?? []).length,
+  ], [true, 3]);
+  const arr = de229('movil', 'src', 'FilasArrastrables.tsx');
+  chequear('arrastrar: el PanResponder nace una vez y lee las funciones de AHORA (si no, movería sobre la rutina vieja)', [
+    /onPanResponderRelease: \(\) => ultimo\.current\.soltar\(true\)/.test(arr),
+    /ultimo\.current = \{ soltar, correrLasOtras, alto, n: filas\.length \}/.test(arr),
+  ], [true, true]);
+  chequear('mientras se arrastra, la pantalla de la rutina no hace scroll; y el editor mueve con moverEjercicio', [
+    /scrollEnabled=\{!arrastrando\}/.test(de229('movil', 'src', 'PantallaRutina.tsx')),
+    /alMover=\{\(desde, hasta\) => con\(moverEjercicio\(actual\.dias, d, desde, hasta\)\)\}/.test(de229('movil', 'src', 'MiRutina.tsx')),
+  ], [true, true]);
+}
+console.log('\n230. Cardio con cronómetro, y el descanso a mano hasta una hora (15/10)');
+{
+  const RG230 = await import('../nucleo/reglas.ts');
+  chequear('el "+" del descanso lee minutos o m:ss, sube lo muy corto a 15 s y no pasa de una hora', ['4', '1:30', '0:10', '60', '2,5', '61', '1:75', 'abc', ''].map(RG230.descansoAMano), [240, 90, 15, 3600, 150, null, null, null, null]);
+  const B230 = await import('../nucleo/bloques.ts');
+  const t0 = 1_000_000;
+  const conCinta = B230.cambiarEjercicio(B230.bloquesVacios(), 'cinta');
+  const corriendo = B230.arrancarCardio(conCinta, t0);
+  const cerrado = B230.cerrarVueltaDeCardio(corriendo, t0 + 12.4 * 60000);
+  chequear('la vuelta de cardio anota lo que corrió (al menos un minuto) y apaga el cronómetro; no pasa a otro ejercicio ni al bloque siguiente', [
+    corriendo.cardioDesde, B230.arrancarCardio(corriendo, t0 + 5).cardioDesde, cerrado.minutos, 'cardioDesde' in cerrado,
+    B230.cerrarVueltaDeCardio(B230.arrancarCardio(conCinta, t0), t0 + 10000).minutos,
+    'cardioDesde' in B230.cambiarEjercicio(corriendo, 'remo'), 'cardioDesde' in B230.siguiente({ ...corriendo, hechas: 1 }),
+  ], [t0, t0, 12, false, 1, false, false]);
+  chequear('con el hook de verdad: arranca, "Listo" a los 12 min anota 12 sin descanso, y otra vuelta de 5 suma 17', await escenarioDeSesion('cronometro'), {
+    corre: true, enCache: true,
+    primera: { minutos: [12], descanso: false, corre: false, subioElCronometro: false },
+    segunda: { minutos: [17], series: 2 },
+  });
+}
+console.log('\n231. Ejercicios propios: solo los ve quien los creó (migración 80), y "ya está" antes de crear uno igual');
+{
+  const YE231 = await import('../nucleo/yaEsta.ts');
+  const PR231 = await import('../nucleo/propios.ts');
+  const RU231 = await import('../compartido/rutinas.ts');
+  const E231 = await import('../compartido/esquema.ts');
+  // EL CATÁLOGO DE LA BASE, el mismo que trae la app al selector.
+  const catalogo = (await db.query('select id, nombre from ejercicios where creado_por is null order by orden')).rows;
+  const busca = (n) => YE231.yaEsta(n, catalogo)?.id ?? null;
+  chequear('"ya está": el mismo ejercicio con otro nombre (sinónimo, plural, inglés, una letra mal) se encuentra', [
+    'press plano', 'Bench press', 'sentadillas', 'squat', 'fondos', 'curl', 'remo', 'deadlift', 'estocadas', 'vuelos laterales', 'polea al pecho', 'Press de vanca', 'Curl con mancuerna',
+  ].map(busca), ['press_banca', 'press_banca', 'sentadilla', 'sentadilla', 'fondos', 'curl_barra', 'remo_barra', 'peso_muerto', 'zancadas', 'elevaciones_laterales', 'jalon', 'press_banca', 'curl_mancuernas']);
+  chequear('y uno distinto no se confunde: contener la palabra no alcanza', ['press', 'jalón', 'press de banca con mancuernas raras', 'curl femoral sentado', 'Tenis'].map(busca), [null, null, null, null, null]);
+  chequear('el propio de otra persona se ve como "Ejercicio propio", nunca con su id ni con puntos para siempre', [
+    PR231.nombreVisible('propio_abc123', undefined), PR231.nombreVisible('propio_abc123', undefined, '…'), PR231.nombreVisible('press_banca', 'Press de banca'), PR231.nombreVisible('press_banca', undefined, '…'),
+  ], ['Ejercicio propio', 'Ejercicio propio', 'Press de banca', '…']);
+  // Por el camino de la app: una amiga crea uno propio y otra cuenta copia su rutina.
+  const clienteDe = (quien) => ({
+    rpc: async (nombre, args = {}) => {
+      await comoUsuario(quien);
+      const claves = Object.keys(args);
+      const valores = claves.map((k) => (args[k] !== null && typeof args[k] === 'object' ? JSON.stringify(args[k]) : args[k]));
+      try {
+        const r = await db.query(`select public.${nombre}(${claves.map((k, i) => `${k} => $${i + 1}`).join(', ')}) as r`, valores);
+        return { data: r.rows[0].r, error: null };
+      } catch (e) {
+        return { data: null, error: { message: String(e.message) } };
+      }
+    },
+  });
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [ana, beto]);
+  const suyo = (await clienteDe(ana).rpc('crear_ejercicio', { p_nombre: 'Remo en anillas', p_grupo: 'espalda', p_mide: 'series' })).data;
+  await comoUsuario(beto);
+  await db.exec('set role authenticated');
+  const betoVe = (await db.query('select id from ejercicios where id = $1', [suyo])).rows.length;
+  await db.exec('reset role');
+  const cli = clienteDe(beto);
+  await E231.versionDelEsquema(cli, Date.now() + E231.VIGENCIA_MS * 40000);
+  await new Promise((r) => setTimeout(r, 20));
+  const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: suyo, series: 3 }, { ejercicio: 'press_banca', series: 4 }] };
+  await RU231.copiarRutina(cli, 'Rutina de ana', dias);
+  const copiada = (await RU231.cargarMisRutinas(cli)).find((r) => r.activa);
+  chequear('un amigo no ve mis propios; copiar mi rutina no se lleva el propio (quedaría sin nombre)', [betoVe, copiada?.dias[1].ejercicios.map((e) => e.ejercicio)], [0, ['press_banca']]);
+  // EL QUE YA LO USABA (cacería del 15/10): antes de la 80 un amigo podía elegir mi
+  // propio y ponerlo en su rutina. Ese lo sigue viendo —si no, su rutina y su
+  // historial quedan con un id sin nombre—; los demás míos, no.
+  const otro = (await clienteDe(ana).rpc('crear_ejercicio', { p_nombre: 'Dominadas en anillas', p_grupo: 'espalda', p_mide: 'series' })).data;
+  const conElDeAna = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  conElDeAna[2] = { descanso: false, ejercicios: [{ ejercicio: otro, series: 3 }] };
+  await clienteDe(beto).rpc('guardar_rutina', { p_id: null, p_nombre: 'Con lo de Ana', p_dias: conElDeAna });
+  const extrana231 = await nuevoUsuario();
+  const quienVe = async (u, id) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    try {
+      return (await db.query('select id from ejercicios where id = $1', [id])).rows.length;
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  // ESTRICTA (vuelta 5 de la cacería): la excepción para el que ya lo usaba se esquivaba
+  // guardando el id en una rutina, y hacía lento el catálogo. Lo anotado queda, sin el nombre.
+  chequear('nadie más ve mis propios, ni el amigo que ya tenía uno en su rutina (lo ve como «Ejercicio propio»); una extraña tampoco', [
+    await quienVe(beto, otro), await quienVe(beto, suyo), await quienVe(extrana231, otro),
+  ], [0, 0, 0]);
+  const { readFileSync: leer231 } = await import('node:fs');
+  const de231 = (...p) => leer231(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  chequear('la rutina de un amigo y el compañero en vivo nombran con nombreVisible', ['RutinaPlegada.tsx', 'CompaneroEnDescanso.tsx', 'Juntos.tsx'].map((f) => /nombreVisible\(/.test(de231('movil', 'src', f))), [true, true, true]);
+  chequear('el selector avisa "ya está" y ofrece usar ese antes de crear', /const parecido = creando && creando\.nombre\.trim\(\)\.length >= 2 \? yaEsta\(creando\.nombre, ejercicios\) : null;/.test(de231('movil', 'src', 'SelectorEjercicio.tsx')), true);
+}
+console.log('\n232. Los globitos: flotan, un renglón, y "ya puedes subir el peso" (15/10)');
+{
+  const PR232 = await import('../nucleo/pesoRecordado.ts');
+  const b232 = (ejercicio, pesos, carga = 'total') => ({ ejercicio, series: pesos.length, pesos, carga });
+  const s232 = (...bloques) => ({ bloques });
+  const listo = (...sesiones) => PR232.listosParaSubir(sesiones, {}).press_banca ?? null;
+  chequear('listo para subir: todas las series al mismo peso, y el mismo que lo más pesado de la vez anterior, en el mismo modo', [
+    listo(s232(b232('press_banca', [60, 60, 60])), s232(b232('press_banca', [60, 60, 60]))),
+    listo(s232(b232('press_banca', [55, 60])), s232(b232('press_banca', [60, 60]), b232('press_banca', [60]))),
+    listo(s232(b232('press_banca', [60, 60])), s232(b232('press_banca', [60, 60, 62.5]))),
+    listo(s232(b232('press_banca', [57.5, 57.5])), s232(b232('press_banca', [60, 60]))),
+    listo(s232(b232('press_banca', [60, 60]))),
+    listo(s232(b232('press_banca', [60])), s232(b232('press_banca', [60]))),
+    listo(s232(b232('press_banca', [30, 30], 'par')), s232(b232('press_banca', [30, 30]))),
+    listo(s232(b232('press_banca', [60, 60])), s232(b232('press_banca', [60, null]))),
+  ], [{ peso: 60, carga: 'total' }, { peso: 60, carga: 'total' }, null, null, null, null, null, null]);
+  const { readFileSync: leer232 } = await import('node:fs');
+  const de232 = (...p) => leer232(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const globito = de232('movil', 'src', 'Globito.tsx');
+  chequear('el globito no ocupa lugar (ancla de alto cero, globo encima), es de un renglón y lo usan los de primera vez y el de subir', [
+    /ancla: \{ height: 0, zIndex: 30, elevation: 30 \}/.test(globito),
+    /globo: \{\n    position: 'absolute',/.test(globito),
+    /numberOfLines=\{1\}/.test(globito),
+    // Los de primera vez, desde el 15/10, son el globo de cómic con su cola (ver la 249).
+    /return <GloboComic texto=\{children\} alCerrar=\{cerrar\}/.test(de232('movil', 'src', 'GloboPrimeraVez.tsx')),
+    /<Globito\n          testID="globito-subir"/.test(de232('movil', 'src', 'Bloque.tsx')),
+  ], [true, true, true, true, true]);
+  const { TEXTOS_ES: ES232 } = await import('../nucleo/textos.ts');
+  const { EN: EN232 } = await import('../nucleo/textos-en.ts');
+  const cortos = (t) => [t.inicio.globoSeries, t.globos.elegir, t.globos.descanso, t.globos.amigos, t.globos.album, t.globos.rutina, t.sesion.yaPuedesSubir].map((x) => x.length <= 52);
+  chequear('los textos de los globitos entran en un renglón, en los dos idiomas', [cortos(ES232), cortos(EN232)], [[true, true, true, true, true, true, true], [true, true, true, true, true, true, true]]);
+}
+console.log('\n233. La meta de pasos se festeja una vez por día, y el empujón a la foto (15/10)');
+{
+  const PA233 = await import('../nucleo/pasos.ts');
+  chequear('festejar: llegó y hoy todavía no; ayer festejado vuelve a festejar; sin llegar, no', [
+    PA233.hayQueFestejar(12000, 10000, null, '2026-10-15'),
+    PA233.hayQueFestejar(12000, 10000, '2026-10-15', '2026-10-15'),
+    PA233.hayQueFestejar(12000, 10000, '2026-10-14', '2026-10-15'),
+    PA233.hayQueFestejar(9000, 10000, null, '2026-10-15'),
+    PA233.hayQueFestejar(10000, 10000, null, '2026-10-15'),
+  ], [true, false, true, false, true]);
+  const { readFileSync: leer233 } = await import('node:fs');
+  const de233 = (...p) => leer233(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const pasos = de233('movil', 'src', 'PasosInicio.tsx');
+  chequear('Inicio festeja aunque se haya llegado con la app cerrada (lo anotado es el día), y tocar los pasos lleva a cambiar la meta', [
+    /if \(!vivo \|\| !hayQueFestejar\(pasos, meta, ya, hoy\)\) return;\n      void plataforma\.almacenamiento\.guardar\(CLAVE_FESTEJO_PASOS, hoy\)/.test(pasos),
+    // La meta se cambia ahí mismo (vuelta 7): mandaba a Ajustes, donde no estaba.
+    /onPress=\{compacto \? undefined : \(\) => setCambiandoMeta\(true\)\}/.test(pasos) && /<HojaDeMeta visible=\{cambiandoMeta\}/.test(pasos),
+  ], [true, true]);
+  chequear('el día sin foto resalta la foto y dice el porqué; el mes con una sola foto dice qué trae la segunda', [
+    /if \(vivo && !error\) setSinFoto\(\(data \?\? \[\]\)\.length === 0\);/.test(de233('movil', 'src', 'DiaListo.tsx')),
+    (de233('movil', 'src', 'Inicio.tsx').match(/logId=\{logs\.find\(\(l\) => l\.fecha === hoy\)\?\.id \?\? null\}\n          \/>/g) ?? []).length,
+    /\{!par && m\.fotos\.length === 1 && m\.clave === mesDeHoy && <Text testID="album-una-mas"/.test(de233('movil', 'src', 'Album.tsx')),
+  ], [true, 2, true]);
+}
+console.log('\n234. La pasada de lentitud: el fondo se pausa tapado, los relojes se tickean solos, las pestañas no se redibujan todas (15/10)');
+{
+  const DF234 = await import('../movil/src/desenfoqueDelFondo.ts');
+  const vistos = [];
+  const dejar = DF234.escucharTapa((si) => vistos.push(si));
+  const a = Symbol('a');
+  const b = Symbol('b');
+  DF234.taparElFondo(a, true);
+  DF234.taparElFondo(b, true);
+  DF234.taparElFondo(a, false);
+  const conUna = vistos.at(-1);
+  DF234.taparElFondo(b, false);
+  dejar();
+  chequear('con dos pantallas que tapan, cerrar una deja el fondo tapado; cerrar las dos lo destapa (y avisa solo al cambiar)', [vistos, conUna], [[false, true, false], true]);
+  const { readFileSync: leer234 } = await import('node:fs');
+  const de234 = (...p) => leer234(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  chequear('el descanso y la subida de rango tapan el fondo; el fondo tapado se pausa', [
+    /taparElFondo\(yo, true\);\n    return \(\) => taparElFondo\(yo, false\);\n  \}, \[visible\]\);/.test(de234('movil', 'src', 'Descanso.tsx')),
+    /taparElFondo\(yo, true\);/.test(de234('movil', 'src', 'SubidaRango.tsx')),
+    /if \(tapadoDelTodo && escena\.current\) \{\n[^\n]*\n      escena\.current\.montaje\.pausar\(true\);/.test(de234('movil', 'src', 'FondoRaiz.tsx')),
+  ], [true, true, true]);
+  const inicio = de234('movil', 'src', 'Inicio.tsx');
+  chequear('la nativa no redibuja la pantalla entera cada segundo: los dos relojes se tickean solos; la web sigue como estaba', [
+    /\}, \{ repintarCadaSegundo: false \}\);/.test(inicio),
+    /useSesion\(undefined, \{ repintarCadaSegundo: false \}\)/.test(de234('movil', 'src', 'VigilanteDeGimnasio.tsx')),
+    (inicio.match(/<CadaSegundo>/g) ?? []).length,
+    /if \(repintarCadaSegundo\) repintar\(\(n\) => n \+ 1\);/.test(de234('compartido', 'useSesion.ts')),
+    /repintarCadaSegundo/.test(de234('src', 'app', 'page.tsx')),
+  ], [true, true, 2, true, false]);
+  chequear('cambiar de pestaña no vuelve a crear las cinco pantallas', /\{pantallas\[cual\]\}/.test(de234('movil', 'src', 'Pestanas.tsx')), true);
+}
+console.log('\n235. Cacería del 15/10, vuelta 1: la cinta larga, el descanso largo, la cinta que se corta, el cardio propio desde la rutina');
+{
+  chequear('35 y 50 min de cinta con la app adelante: la sesión sigue y la vuelta se anota entera', [
+    await escenarioDeSesion('cardioLargo', '35'),
+    await escenarioDeSesion('cardioLargo', '50'),
+  ], [
+    { alMirar: { corriendo: true, base: 'corriendo' }, base: [['cinta', 35]] },
+    { alMirar: { corriendo: true, base: 'corriendo' }, base: [['cinta', 50]] },
+  ]);
+  chequear('Terminar, o elegir otro ejercicio, con la cinta andando: primero se anota esa vuelta', [
+    await escenarioDeSesion('cardioLargo', 'terminar'),
+    await escenarioDeSesion('cardioLargo', 'cambiar'),
+  ], [
+    { base: [['cinta', 12]], resumen: [['cinta', 12]], series: 1 },
+    { base: [['cinta', 12]], resumen: null, series: 1 },
+  ]);
+  chequear('un descanso de 50 min (el + a mano llega a una hora) no cierra la sesión', await escenarioDeSesion('descansoLargo'), { corriendo: true, base: 'corriendo' });
+  const { readFileSync: leer235 } = await import('node:fs');
+  const de235 = (...p) => leer235(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  chequear('un id sin nombre en lo propio (el bloque, la lista, el editor) se ve como "Ejercicio propio", nunca crudo', [
+    /nombreVisible\(id, ejercicios\.find\(\(e\) => e\.id === id\)\?\.nombre\)/.test(de235('movil', 'src', 'Bloque.tsx')),
+    /nombreVisible\(id, del\(id\)\?\.nombre\)/.test(de235('movil', 'src', 'ListaDeBloques.tsx')),
+    /nombreVisible\(e\.ejercicio, catalogo\.get\(e\.ejercicio\)\?\.nombre\)/.test(de235('movil', 'src', 'MiRutina.tsx')),
+  ], [true, true, true]);
+  chequear('un cardio propio creado desde la rutina entra en minutos: el selector dice cómo se mide el recién creado', [
+    /elegir\(id, creando\.grupo === 'cardio' \? 'tiempo' : 'series'\);/.test(de235('movil', 'src', 'SelectorEjercicio.tsx')),
+    /\(catalogo\.get\(id\)\?\.mide \?\? mide\) === 'tiempo'/.test(de235('movil', 'src', 'MiRutina.tsx')),
+  ], [true, true]);
+}
+console.log('\n236. Cacería del 15/10, vuelta 2: la cinta por el camino de la pantalla, la marca que baja (82), la rutina activa, el descanso que pregunta');
+{
+  const v2 = async (c) => escenarioDeSesion('vueltaDos', c);
+  chequear('la cinta elegida como lo hace la pantalla (sin esperar) y el teléfono en el bolsillo 35 min: la sesión sigue', await v2('bolsillo'), { corriendo: true, base: 'corriendo' });
+  chequear('terminar con la hora de salida del gimnasio: la cinta queda con esos minutos, no hasta que se abrió la app', await v2('salida'), { bloques: [['cinta', 10]] });
+  chequear('Terminar sin señal con un descanso largo andando: la renovación no borra la hora del toque', await v2('sinSenal'), { estado: 'terminada', finEnElToque: true });
+  chequear('"+ Serie hecha" con la cinta andando cierra esa vuelta (con sus minutos), no cuenta otra', await v2('serieEnCinta'), { series: 1, bloques: [['cinta', 1, 7]] });
+  chequear('"Listo" y se va sin Terminar: la sesión se cierra a la hora de Listo, no una hora después (con la 82)', await v2('listo'), { estado: 'terminada', minutosDeMas: 0 });
+  // LA 82 CON LA BASE DE VERDAD.
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  await db.query('select iniciar_sesion()');
+  const id = (await db.query('select id from sesiones where user_id = $1', [u])).rows[0].id;
+  const adelante = async () => (await db.query(`select round(extract(epoch from (ultima_actividad - now())) / 60)::int m from sesiones where id = $1`, [id])).rows[0].m;
+  await db.query(`select marcar_actividad($1, now() + interval '50 minutes')`, [id]);
+  const conPromesa = await adelante();
+  await db.query(`select marcar_actividad(p_sesion => $1, p_hasta => now(), p_bajar => true)`, [id]);
+  const bajada = await adelante();
+  await db.query(`select marcar_actividad(p_sesion => $1, p_hasta => now() + interval '3 minutes')`, [id]);
+  const conDosParametros = await adelante();
+  chequear('marcar_actividad: la promesa de la cinta baja a ahora con p_bajar, y la llamada vieja (dos parámetros) sigue andando', [conPromesa, bajada, conDosParametros], [50, 0, 3]);
+  await db.exec('reset role');
+  // LA COPIA ACTIVA: con el cliente que llama a las funciones de verdad.
+  const RU236 = await import('../compartido/rutinas.ts');
+  const E236 = await import('../compartido/esquema.ts');
+  const { moverEjercicio } = await import('../nucleo/rutinas.ts');
+  const clienteDe = (quien) => ({
+    rpc: async (nombre, args = {}) => {
+      await comoUsuario(quien);
+      const claves = Object.keys(args);
+      const valores = claves.map((k) => (args[k] !== null && typeof args[k] === 'object' ? JSON.stringify(args[k]) : args[k]));
+      try {
+        const r = await db.query(`select public.${nombre}(${claves.map((k, i) => `${k} => $${i + 1}`).join(', ')}) as r`, valores);
+        return { data: r.rows[0].r, error: null };
+      } catch (e) {
+        return { data: null, error: { message: String(e.message) } };
+      }
+    },
+  });
+  const quien = await nuevoUsuario();
+  const cli = clienteDe(quien);
+  await E236.versionDelEsquema(cli, Date.now() + E236.VIGENCIA_MS * 60000);
+  await new Promise((r) => setTimeout(r, 20));
+  const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }, { ejercicio: 'sentadilla', series: 3 }] };
+  const idR = await RU236.guardarRutina(cli, { id: null, nombre: 'La mía', dias });
+  await RU236.activarRutina(cli, idR);
+  const activa = (await RU236.cargarMisRutinas(cli)).find((r) => r.activa);
+  await RU236.guardarRutina(cli, { ...activa, dias: moverEjercicio(activa.dias, 1, 1, 0) });
+  const copia = await RU236.rutinaActivaDelTelefono();
+  chequear('editar la rutina activa actualiza la copia del teléfono, que es con la que arranca la sesión', copia?.dias[1].ejercicios.map((e) => e.ejercicio), ['sentadilla', 'press_banca']);
+  const { readFileSync: leer236 } = await import('node:fs');
+  const mi = leer236(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'MiRutina.tsx'), 'utf8').replace(/\r\n/g, '\n');
+  chequear('"Día de descanso" en un día con ejercicios pregunta antes de sacarlos', /onPress=\{\(\) => \(!dia\.descanso && dia\.ejercicios\.length > 0 \? setPreguntaDescanso\(d\) : con\(marcarDescanso\(actual\.dias, d, !dia\.descanso\)\)\)\}/.test(mi), true);
+}
+console.log('\n237. Cacería del 15/10, vuelta 3: Seguir con la cinta, la semilla tarde, la cinta por error, el descanso que se acorta, la bajada sin señal, la rutina guardada');
+{
+  const v3 = async (c) => escenarioDeSesion('vueltaTres', c);
+  chequear('"Seguir" en un descanso terminado con la cinta andando no baja la marca de la cinta: 35 min de bolsillo y sigue', await v3('seguir'), { corriendo: true, cronometro: true });
+  chequear('con señal lenta, la semilla del primer bloque no pisa la cinta que ya se eligió', await v3('semilla'), { ejercicio: 'cinta', cronometro: true });
+  chequear('la cinta tocada por error y dejada a los 20 s no anota vuelta ni serie', await v3('porError'), { series: 0, bloques: [] });
+  chequear('un descanso de una hora corregido a 90 s baja la marca a su fin', await v3('acortar'), { conHora: 60, corregido: true });
+  chequear('"Listo" sin señal: la bajada no se pierde en la cola, ni llega estirada a la hora en que volvió la señal', [await v3('pisada'), await v3('tarde')], [{ cercaDeListo: true }, { cercaDeListo: true }]);
+  chequear('con la rutina guardada, elegir otro ejercicio de ese día no la abandona: después propone el que falta de la rutina', await v3('guardada'), { propone: 'press_banca' });
+  const B237 = await import('../nucleo/bloques.ts');
+  const elegido = B237.cambiarEjercicio(B237.bloquesVacios(), 'cinta');
+  chequear('sembrar no pisa un ejercicio ya elegido (y sigue sembrando un bloque vacío)', [B237.sembrar(elegido, 'press_banca').ejercicio, B237.sembrar(B237.bloquesVacios(), 'press_banca').ejercicio], ['cinta', 'press_banca']);
+  const { readFileSync: leer237 } = await import('node:fs');
+  const de237 = (...p) => leer237(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  chequear('el festejo de los pasos se baja si el efecto se corta (la sesión arrancó a mitad); el Álbum pide otra foto solo este mes', [
+    /vivo = false;\n[^\n]*\n      setFestejando\(false\);/.test(de237('movil', 'src', 'PasosInicio.tsx')),
+    /m\.clave === mesDeHoy/.test(de237('movil', 'src', 'Album.tsx')),
+  ], [true, true]);
+}
+console.log('\n238. Cacería del 15/10, vuelta 4: la sesión de otro aparato con señal lenta, la cinta parada, los 40 bloques, dos sesiones el mismo día, la rutina y el compañero');
+{
+  const v4 = async (c) => escenarioDeSesion('vueltaCuatro', c);
+  chequear('la sesión que empezó otro aparato: elegir remo mientras llega el historial no borra lo de allá; un + en remo se suma', [await v4('elige'), await v4('mas')], [
+    { base: [['press_banca', 2]], series: 2, enCurso: 'remo_barra' },
+    { base: [['press_banca', 2], ['remo_barra', 1]], series: 3, enCurso: 'remo_barra' },
+  ]);
+  chequear('si los bloques de la base llegan después de elegir remo, remo sigue siendo el de ahora', await v4('llega'), { base: [['press_banca', 2]], series: 2, enCurso: 'remo_barra' });
+  chequear('"+ Serie hecha" del descanso con la cinta ya parada: ni vuelta de cero minutos ni descanso', await v4('cintaParada'), { series: 2, bloques: [['press_banca', 1, null], ['cinta', 1, 10]], descanso: false });
+  const B238 = await import('../nucleo/bloques.ts');
+  let e = B238.bloquesVacios();
+  for (let i = 0; i < 45; i++) {
+    e = B238.cambiarEjercicio(e, i % 2 ? 'remo_barra' : 'press_banca');
+    e = B238.sumar(e);
+  }
+  const guardados = B238.paraGuardar(e);
+  chequear('en un circuito de 45 bloques viajan los últimos 40: el que está en curso siempre entra', [guardados.length, guardados.at(-1).ejercicio], [40, 'press_banca']);
+  const RU238 = await import('../nucleo/rutina.ts');
+  const { restarDias } = await import('../nucleo/fechas.ts');
+  const hoy = '2026-10-19';
+  const dosPorLunes = [21, 14, 7].flatMap((hace) => [
+    { fecha: restarDias(hoy, hace), ejercicios: ['sentadilla', 'prensa', 'curl_femoral'] },
+    { fecha: restarDias(hoy, hace), ejercicios: ['cinta'] },
+  ]);
+  chequear('pesas a la mañana y cinta a la tarde, tres lunes: se propone el lunes entero, no solo la cinta', RU238.rutinaParaHoy(dosPorLunes, hoy), ['sentadilla', 'prensa', 'curl_femoral', 'cinta']);
+  const b238 = (ejercicio, series) => ({ ejercicio, series });
+  chequear('la semana que se muestra junta también las dos sesiones del día (la base las manda de la más nueva a la más vieja)', RU238.rutinaPorDia([
+    { fecha: '2026-10-12', bloques: [b238('cinta', 1)] },
+    { fecha: '2026-10-12', bloques: [b238('sentadilla', 3)] },
+  ]), [{ dia: 1, ejercicios: [b238('sentadilla', 3), b238('cinta', 1)] }]);
+  const { readFileSync: leer238 } = await import('node:fs');
+  const de238 = (...p) => leer238(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  chequear('entre cardio y fuerza no se pregunta "¿de cuál eran?" (las dos apps); un cardio recién creado arranca el cronómetro; al compañero el cardio le llega sin series', [
+    /\(esCardio\(id\) \|\| mide === 'tiempo'\) === esCardio\(estado\.ejercicio\)\) setADonde\(id\)/.test(de238('movil', 'src', 'Bloque.tsx')),
+    /esCardio\(id\) === esCardio\(estado\.ejercicio\)\) setADonde\(id\)/.test(de238('src', 'components', 'Bloque.tsx')),
+    /\(ejercicios\.find\(\(e\) => e\.id === id\)\?\.mide \?\? mide\) === 'tiempo'\) alArrancarCardio/.test(de238('movil', 'src', 'Bloque.tsx')),
+    /hechas=\{esCardioEnCurso \? 0 : sesion\.estado\.bloques\.hechas\}/.test(de238('movil', 'src', 'Inicio.tsx')),
+  ], [true, true, true, true]);
+  const mi = de238('movil', 'src', 'MiRutina.tsx');
+  chequear('Tu rutina: "Listo" guarda el nombre; un ejercicio propio nuevo trae solo el catálogo; una lectura vieja no pisa un toque', [
+    /if \(editando\) guardarNombre\(\);/.test(mi),
+    /eventos\.escuchar\(EJERCICIOS_CAMBIO, \(\) => void cargarCatalogo\(\)\)/.test(mi),
+    /if \(mias && ediciones\.current === n\) \{/.test(mi),
+  ], [true, true, true]);
+}
+console.log('\n239. Cacería del 15/10, vuelta 5: lo de otro aparato con −, Terminar serie y Terminar; el − de la cinta; ya puedes subir al terminar; la baja de cuenta; las rutinas');
+{
+  const v5 = async (c) => escenarioDeSesion('vueltaCinco', c);
+  chequear('con lo de otro aparato sin traer, −  o Terminar serie al volver la señal, y bloquear: lo de allá no se borra de la base', [await v5('deshacer'), await v5('siguiente')], [{ conservaLoDeAlla: true }, { conservaLoDeAlla: true }]);
+  chequear('Terminar con lo de otro aparato sin traer: primero se trae, y lo de acá sube', await v5('terminar'), { base: [['press_banca', 2], ['remo_barra', 2]], estado: 'terminada' });
+  chequear('el − en la segunda vuelta de cinta cancela esa vuelta; los 30 minutos de la primera quedan', await v5('menos'), { base: [['cinta', 1, 30]], series: 1, cronometro: false });
+  const PR239 = await import('../nucleo/pesoRecordado.ts');
+  const b239 = (pesos) => [{ ejercicio: 'press_banca', series: pesos.length, pesos, carga: 'total' }];
+  const antes = { press_banca: { peso: 60, carga: 'total' } };
+  chequear('"ya puedes subir" se recalcula al terminar: aparece tras dos veces enteras, y se va si la de hoy falló', [
+    PR239.paraSubirTrasLaSesion({}, antes, b239([60, 60, 60]), {}).press_banca ?? null,
+    PR239.paraSubirTrasLaSesion({ press_banca: { peso: 60, carga: 'total' } }, antes, b239([60, 60, 55]), {}).press_banca ?? null,
+  ], [{ peso: 60, carga: 'total' }, null]);
+  // LA BAJA CON UN AMIGO QUE USÓ UN PROPIO MÍO (la 83), con la base de verdad.
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  await comoUsuario(ana);
+  const mio = (await db.query(`select crear_ejercicio('Remo en anillas', 'espalda', 'series') as id`)).rows[0].id;
+  const soloMio = (await db.query(`select crear_ejercicio('Curl en polea baja', 'brazos', 'series') as id`)).rows[0].id;
+  await db.exec('reset role');
+  await db.query(`insert into prs (user_id, ejercicio, peso, reps, fecha) values ($1, $2, 20, 8, current_date)`, [ana, soloMio]);
+  await db.query(`insert into prs (user_id, ejercicio, peso, reps, fecha) values ($1, $2, 50, 5, current_date)`, [beto, mio]);
+  await comoUsuario(ana);
+  let error239 = null;
+  try {
+    await db.query('select eliminar_cuenta()');
+  } catch (e) {
+    error239 = String(e.message);
+  }
+  await db.exec('reset role');
+  const quedaAna = (await db.query('select count(*)::int n from profiles where id = $1', [ana])).rows[0].n;
+  chequear('darse de baja anda aunque un amigo haya anotado una marca en un propio mío (la 83)', [error239, quedaAna], [null, 0]);
+  const huerfano = (await db.query('select nombre, creado_por, huerfano from ejercicios where id = $1', [mio])).rows[0] ?? null;
+  const marcaDeBeto = (await db.query('select count(*)::int n from prs where user_id = $1 and ejercicio = $2', [beto, mio])).rows[0].n;
+  const quedaSoloMio = (await db.query('select count(*)::int n from ejercicios where id = $1', [soloMio])).rows[0].n;
+  await comoUsuario(beto);
+  await db.exec('set role authenticated');
+  const betoLoVe = (await db.query('select count(*)::int n from ejercicios where id = $1', [mio])).rows[0].n;
+  await db.exec('reset role');
+  chequear('el propio que otro usó queda huérfano con su nombre y la marca del otro sobrevive; nadie lo ve en el catálogo; el que nadie usó se borra', [huerfano, marcaDeBeto, betoLoVe, quedaSoloMio], [{ nombre: 'Remo en anillas', creado_por: null, huerfano: true }, 1, 0, 0]);
+  const { readFileSync: leer239 } = await import('node:fs');
+  const de239 = (...p) => leer239(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const mi = de239('movil', 'src', 'MiRutina.tsx');
+  chequear('Tu rutina: el nombre va a SU rutina; no dice "no hay rutina" antes de saber; copiar es de a un toque; activar y borrar escriben la copia del teléfono', [
+    /onChangeText=\{\(texto\) => \(nombreTipeado\.current = \{ id: actual\.id, texto \}\)\}/.test(mi),
+    /setNoCargo\(hay && !mias\);\n    setGuardadas\(hay\);/.test(mi),
+    /if \(!rutina \|\| copiando\.current\) return;/.test(de239('movil', 'src', 'RutinaDe.tsx')),
+    /if \(ok && dias\) await guardarActiva\(/.test(de239('compartido', 'rutinas.ts')),
+    /if \(ok && \(await idDeLaActiva\(\)\) === id\) await guardarActiva\(\[\]\);/.test(de239('compartido', 'rutinas.ts')),
+  ], [true, true, true, true, true]);
+  chequear('Inicio: si la sesión se cerró por fuera, el descanso y la pregunta de Terminar no quedan abiertos para la siguiente', [
+    /if \(!sesion\.estado\.descanso\) setDescansoAbierto\(false\);/.test(de239('movil', 'src', 'Inicio.tsx')),
+    /if \(!sesion\.estado\.corriendo\) setTerminando\(false\);/.test(de239('movil', 'src', 'Inicio.tsx')),
+  ], [true, true]);
+}
+console.log('\n240. Cacería del 15/10, vuelta 6: la marca de faltan al reabrir; el aparato quieto; la cinta sugerida, parada y sin cronómetro; la cadena de la rutina; el + de la web; la vida de un día que fuiste; la hora de los amigos');
+{
+  const v6 = async (c) => escenarioDeSesion('vueltaSeis', c);
+  chequear('lo de otro aparato sin traer, iOS mata la app y el primer + es sin señal: la base conserva lo de allá y no duplica', await v6('reabrir'), { base: [['press_banca', 2], ['remo_barra', 1]] });
+  chequear('Terminar sin poder traer lo de allá no cierra; con señal, cierra con todo', await v6('terminarSinLeer'), {
+    primero: { cerro: false, estado: 'corriendo' },
+    segundo: { cerro: true, estado: 'terminada', base: [['press_banca', 2], ['remo_barra', 1]] },
+  });
+  chequear('un aparato quieto 31 min mientras el otro anota: no duplica sus bloques en la base', await v6('quieto'), { base: [['press_banca', 2], ['remo_barra', 1]], estado: 'corriendo' });
+  chequear('la cinta que propone la rutina deja de ser sugerencia al arrancarla (pantalla y caché)', await v6('cintaSugerida'), { propuesta: ['cinta', true], alArrancar: [false, false] });
+  chequear('la cadena de la rutina sobrevive a desbloquear y a que iOS mate la app', await v6('cadena'), { propone: ['aperturas', true] });
+  chequear('el − con la cinta parada no saca vueltas ni borra la cinta de la base', await v6('cintaParada'), { base: [['cinta', 2, 50]], series: 2 });
+
+  const { readFileSync: leer240 } = await import('node:fs');
+  const de240 = (...p) => leer240(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  // Las expresiones de verdad de Bloque.tsx, evaluadas: no su texto.
+  const bn = de240('movil', 'src', 'Bloque.tsx');
+  const menos = new Function('corriendoCardio', 'estado', 'esTiempo', `return ${bn.match(/const menosApagado = (.+);/)[1]};`);
+  chequear('el − de la nativa: prendido con la cinta andando (aun sin vueltas), apagado con la cinta parada, como siempre en la fuerza', [
+    menos(true, { hechas: 0, minutos: undefined }, true),
+    menos(false, { hechas: 2, minutos: 50 }, true),
+    menos(false, { hechas: 2 }, false),
+    menos(false, { hechas: 0 }, false),
+  ], [false, true, false, true]);
+  const paso = (etiqueta) => new Function('minutos', `return ${bn.match(new RegExp(`onPress=\\{\\(\\) => alElegirMinutos\\?\\.\\((.+?)\\)\\} accessibilityLabel="${etiqueta}"`))[1]};`);
+  const [menos5, mas5] = [paso('−5'), paso('\\+5')];
+  const alcanzables = new Set([1]);
+  for (let i = 0; i < 12; i++) for (const m of [...alcanzables]) [menos5(m), mas5(m)].forEach((x) => x <= 60 && alcanzables.add(x));
+  chequear('los ±5 de la cinta vuelven a la grilla de 5: desde el minuto de un Listo apurado se llega a 30, y 31 baja a 30', [alcanzables.has(30), menos5(31), mas5(1)], [true, 30, 5]);
+  const bw = de240('src', 'components', 'Bloque.tsx');
+  const llamadas = [];
+  const sumarWeb = new Function('esTiempo', 'alSumar', `return ${bw.match(/const sumar = (\(\) => .+);/)[1]};`);
+  sumarWeb(true, (o) => llamadas.push(o ?? null))();
+  sumarWeb(false, (o) => llamadas.push(o ?? null))();
+  chequear('el + de la web sobre un cardio cuenta la vuelta sin descanso (y ningún botón le pasa el clic a serieHecha)', [llamadas, (bw.match(/onClick=\{alSumar\}/g) ?? []).length], [[{ sinDescanso: true }, null], 0]);
+  // Proxy: DiaListo se probó montado en la cacería; acá solo se pinea el oyente.
+  chequear('volver a Inicio vuelve a mirar si hoy tiene foto (quitarla en el Álbum no avisa)', /eventos\.escuchar\(PESTANA_ACTIVA, \(cual\) => cual === 'inicio' && mirar\(\)\)/.test(de240('movil', 'src', 'DiaListo.tsx')), true);
+
+  // LA VIDA DE UN DÍA QUE AL FINAL FUISTE (la 84), por el mismo camino que la persona.
+  async function vida240(aTiempo) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    const dia = (hace) => db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, hace]);
+    for (let h = 25; h >= 12; h--) await dia(h);
+    if (aTiempo) await dia(11);
+    await dia(10);
+    if (!aTiempo) await db.query(`select corregir_dia(mi_hoy() - 11, 'fui')`);
+    await dia(9);
+    const quedan = (await db.query('select mis_impulsos() as m')).rows[0].m.quedan;
+    const r = (await db.query(`select aplicar_perdida_al($1, mi_hoy() - 6) as r`, [u])).rows[0].r;
+    return { quedan, perdida: r.perdida };
+  }
+  chequear('marcar "Fui" en un día que cubrió una vida la devuelve: dos faltas después se cubren igual que si hubiera entrado a tiempo', [await vida240(false), await vida240(true)], [{ quedan: 2, perdida: false }, { quedan: 2, perdida: false }]);
+  const u240 = await nuevoUsuario();
+  await comoUsuario(u240);
+  for (let h = 25; h >= 12; h--) await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u240, h]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - 10)`, [u240]);
+  await db.query(`select corregir_dia(mi_hoy() - 11, 'descanso')`);
+  chequear('pasarlo a descanso no la devuelve', (await db.query('select mis_impulsos() as m')).rows[0].m.quedan, 1);
+
+  // LA HORA DE LOS AMIGOS (la 86): los días de un amigo, sin `creado` ni `origen`.
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  const dani = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [ana, beto]);
+  await db.query(`insert into logs (user_id, fecha, origen) values ($1, mi_hoy(), 'ubicacion')`, [ana]);
+  await comoUsuario(beto);
+  await db.exec('set role authenticated');
+  const deLaTabla = (await db.query('select creado, origen from logs where user_id = $1', [ana])).rows.length;
+  const columnas = Object.keys((await db.query('select * from logs_de_amigos where user_id = $1', [ana])).rows[0] ?? {}).sort();
+  await comoUsuario(dani);
+  const noAmigo = (await db.query('select * from logs_de_amigos where user_id = $1', [ana])).rows.length;
+  await comoUsuario(ana);
+  const elDueno = (await db.query('select origen from logs where user_id = $1', [ana])).rows.map((r) => r.origen);
+  await db.exec('reset role');
+  chequear('un amigo no lee la tabla de logs; la vista le da el día sin la hora ni el origen; un no amigo no ve nada; el dueño sí', [deLaTabla, columnas, noAmigo, elDueno], [
+    0,
+    ['es_descanso', 'fecha', 'id', 'planeta_del_dia', 'racha_del_dia', 'user_id'],
+    0,
+    ['ubicacion'],
+  ]);
+}
+console.log('\n241. Cacería del 15/10, vuelta 7: el − de la cinta baja la marca; otro aparato sin poder leer; un propio ajeno no se siembra ni se anota; dos toques en "Nueva"');
+{
+  const v7 = async (c) => escenarioDeSesion('vueltaSiete', c);
+  chequear('la cinta apagada con el − y la sesión dejada sin Terminar cierra a los 3 min, no a los 60', await v7('menosCinta'), { estado: 'terminada', finMin: 3 });
+  chequear('lo que anotó otro aparato, sin poder leerlo al desbloquear: el + siguiente no lo borra de la base', await v7('otroSinLeer'), { base: [['press_banca', 2], ['remo_barra', 1], ['press_banca', 1]], series: 4 });
+  chequear('un propio de un amigo que ya no se ve no sale como rutina ni como semilla', await v7('propioAjeno'), { semilla: 'remo_barra' });
+
+  // NADIE ANOTA SOBRE UN PROPIO QUE NO VE (la 83), con la base de verdad.
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [ana, beto]);
+  await comoUsuario(ana);
+  const mio = (await db.query(`select crear_ejercicio('Press en máquina Hammer', 'pecho', 'series') as id`)).rows[0].id;
+  const intentar = async (uid) => {
+    await comoUsuario(uid);
+    await db.query(`select elegir_carga($1, 'una')`, [mio]);
+    await db.query(`select marcar_subida($1, 'total', 50, 3, mi_hoy())`, [mio]);
+    await db.exec('set role authenticated');
+    let marca = 'entró';
+    try {
+      await db.query(`insert into prs (user_id, ejercicio, peso, reps, fecha) values ($1, $2, 50, 5, current_date)`, [uid, mio]);
+    } catch (e) {
+      marca = /row-level|policy/i.test(e.message) ? 'rechazada' : e.message;
+    }
+    await db.exec('reset role');
+    const n = async (t) => (await db.query(`select count(*)::int n from ${t} where user_id = $1 and ejercicio = $2`, [uid, mio])).rows[0].n;
+    return { carga: await n('cargas_elegidas'), subida: await n('subidas_marcadas'), marca };
+  };
+  chequear('un amigo no anota carga, "la próxima, más" ni marcas sobre un propio mío que no ve; yo sí', [await intentar(beto), await intentar(ana)], [
+    { carga: 0, subida: 0, marca: 'rechazada' },
+    { carga: 1, subida: 1, marca: 'entró' },
+  ]);
+
+  const { readFileSync: leer241 } = await import('node:fs');
+  const de241 = (...p) => leer241(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  // Proxy: el doble toque se reprodujo contra la base; acá se pinea la traba.
+  chequear('"Nueva", "Guardar esta" y "Armar una de cero" no crean dos rutinas con dos toques', /if \(creando\.current\) return;\n    creando\.current = true;/.test(de241('movil', 'src', 'MiRutina.tsx')), true);
+}
+console.log('\n242. Cacería del 15/10, vuelta 8: con otro aparato que anota y sin poder leer, la base no duplica y no se pierden el peso ni la cinta');
+{
+  const v8 = async (c) => escenarioDeSesion('vueltaOcho', c);
+  chequear('dos aparatos, la lectura cae y vuelve: la base no duplica los bloques', await v8('dupla'), { base: [['press_banca', 2, null], ['remo_barra', 1, null], ['sentadilla', 1, null]], series: 4 });
+  chequear('sin poder leer lo de allá, la serie siguiente lleva el peso escrito', await v8('peso'), { base: [['press_banca', 2, 60], ['remo_barra', 1, null], ['press_banca', 1, 60]], series: 4 });
+  chequear('sin poder leer lo de allá, la cinta andando sigue y Listo anota sus minutos', await v8('cinta'), { base: [['remo_barra', 1, null], ['cinta', 1, 20]], series: 2 });
+}
+console.log('\n243. Cacería del 15/10, vuelta 8: "+ Serie hecha" con la cinta sin arrancar; guardar la vida con hoy ya anotado; crear un propio con la hoja cerrada');
+{
+  const enCinta = async (c) => escenarioDeSesion('serieEnCinta', c);
+  chequear('"+ Serie hecha" del descanso con la cinta sin arrancar (sugerida o apagada con el −) no cuenta una serie ni guarda una vuelta sin minutos', [await enCinta('sugerida'), await enCinta('menos')], [
+    { enCurso: ['cinta', 0], series: 1, base: [['press_banca', 1]] },
+    { enCurso: ['cinta', 0], series: 1, base: [['press_banca', 1]] },
+  ]);
+
+  // "GUARDARLA PARA DESPUÉS" CON HOY YA ANOTADO (la 85), por el camino de verdad:
+  // 40 días, falta ayer, hoy entra (la vida cubre ayer), y se devuelve.
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  for (let h = 41; h >= 2; h--) await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, h]);
+  await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy())`, [u]);
+  const racha = async () => (await db.query('select racha_actual from profiles where id = $1', [u])).rows[0].racha_actual;
+  const antes = await racha();
+  const r = (await db.query(`select devolver_impulsos(array[(mi_hoy() - 1)::date]) as r`)).rows[0].r;
+  const tras = await racha();
+  await db.query(`select corregir_dia(mi_hoy() - 10, 'descanso')`);
+  chequear('guardar la vida con hoy ya anotado corta la racha como promete (41 → 31) y una corrección después no la tira a 1', [antes, r.perdida?.perdida ?? null, tras, await racha()], [41, true, 31, 31]);
+
+  const { readFileSync: leer243 } = await import('node:fs');
+  const de243 = (...p) => leer243(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  // Proxy: se probó montando MiRutina y el selector; acá se pinea la guarda.
+  chequear('crear un propio con la hoja ya cerrada no elige nada', /const id = await crearEjercicio\(.*\);[\s\S]{0,300}if \(!abierta\.current\) return;/.test(de243('movil', 'src', 'SelectorEjercicio.tsx')), true);
+}
+console.log('\n244. Lo que quedó por OTA (15/10): las cantidades de la rutina; borrar hoy desde el calendario; el nombre de la rutina al salir; la nota de la meta de pasos');
+{
+  chequear('la rutina guardada pone la meta (4 series) y los minutos de la cinta (30) en lo que propone', await escenarioDeSesion('cantidades'), { semilla: ['press_banca', 4], propuesta: ['cinta', 30, true] });
+  const RU244 = await import('../nucleo/rutinas.ts');
+  const BL244 = await import('../nucleo/bloques.ts');
+  chequear('la meta es la que dice la rutina (seis series son seis), y la fila de píldoras la muestra aunque no sea ×2 a ×5', [RU244.metaDeRutina(1), RU244.metaDeRutina(6), RU244.metaDeRutina(150), BL244.pildorasDeMeta(6), BL244.pildorasDeMeta(3)], [1, 6, 99, [2, 3, 4, 5, 6], [2, 3, 4, 5]]);
+  const { readFileSync: leer244 } = await import('node:fs');
+  const de244 = (...p) => leer244(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  // Proxies: estos tres se probaron montando las pantallas en la cacería; acá se pinean.
+  const ini = de244('movil', 'src', 'Inicio.tsx');
+  chequear('con el día ya en el servidor se suelta lo optimista, y sin el día se va el resumen (borrar hoy desde el calendario)', /const tieneHoy = d\.logs\.some\(\(l\) => l\.fecha === hoyISO\(\)\);\n      if \(tieneHoy\) setMarcadoOptimista\(null\);\n      else setCierreGuardado\(null\);/.test(ini), true);
+  const mr = de244('movil', 'src', 'MiRutina.tsx');
+  chequear('el nombre nuevo de una rutina se guarda al salir sin Listo, y al cambiar de rutina', [/useEffect\(\(\) => \(\) => guardarAlSalir\.current\(\), \[\]\);/.test(mr), (mr.match(/if \(editando\) guardarNombre\(\);/g) ?? []).length >= 3], [true, true]);
+  const { T: T244 } = await import('../nucleo/textos.ts');
+  const { EN: EN244 } = await import('../nucleo/textos-en.ts');
+  chequear('la nota de la meta de pasos dice que mueve la barra de Inicio', [/Inicio/.test(T244.ajustes.metaPasosNota), /Home/.test(EN244.ajustes.metaPasosNota)], [true, true]);
+}
+console.log('\n245. La hora de entrenar por las marcas y el nombre de las fotos (la 87)');
+{
+  const ana = await nuevoUsuario();
+  const beto = await nuevoUsuario();
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [ana, beto]);
+  await comoUsuario(ana);
+  await db.exec('set role authenticated');
+  // Lo que hace la app: la marca sin pedir la fila de vuelta, y la medalla con upsert.
+  await db.query(`insert into prs (user_id, ejercicio, peso, reps, fecha) values ($1, 'press_banca', 80, 5, current_date)`, [ana]);
+  await db.query(
+    `insert into medallas (user_id, ejercicio, percentil, actualizado) values ($1, 'press_banca', 70, now())
+       on conflict (user_id, ejercicio) do update set percentil = excluded.percentil, actualizado = excluded.actualizado`,
+    [ana]
+  );
+  const propias = (await db.query('select ejercicio, peso, reps, es_real, fecha from prs where user_id = $1', [ana])).rows.length;
+  await comoUsuario(beto);
+  const intento = async (sql) => {
+    try {
+      await db.query(sql, [ana]);
+      return 'leyó';
+    } catch (e) {
+      return /permission denied/i.test(e.message) ? 'no' : e.message;
+    }
+  };
+  const vistas = [
+    await intento('select peso, fecha from prs where user_id = $1'),
+    await intento('select creado from prs where user_id = $1'),
+    await intento('select percentil from medallas where user_id = $1'),
+  ];
+  await db.exec('reset role');
+  chequear('la marca y la medalla se anotan como siempre; un amigo lee el peso y el percentil pero no la hora de la marca (prs.creado)', [propias, vistas], [1, ['leyó', 'no', 'leyó']]);
+  const FO245 = await import('../nucleo/foto.ts');
+  const sello = FO245.selloAlAzar();
+  chequear('el nombre de una foto nueva no lleva la hora', [Number.isInteger(sello), Math.abs(sello - Date.now()) > 86400000], [true, true]);
+}
+console.log('\n246. Entrenar en grupo (la 88): hasta 10, acepta cualquiera, echa quien armó, el link y quién lee qué');
+{
+  const gente = [];
+  for (let i = 0; i < 13; i++) gente.push(await nuevoUsuario());
+  const [a, b, c, d, x] = gente;
+  // Todos amigos de A; B y C amigos entre sí; D y X no son amigos de nadie (X ni siquiera lo será).
+  for (const u of gente.slice(1)) if (u !== d && u !== x) await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [a, u]);
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [b, c]);
+  const como = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const uniones = async (u) => (await como(u, 'select mis_uniones() as v'))[0].v;
+  const pedir = async (quien, aQuien) => (await como(quien, 'select pedir_unirse($1) as v', [aQuien]))[0].v;
+  for (const u of gente) await como(u, 'select iniciar_sesion()');
+
+  // A arma con B; C le pide a B, y lo acepta A (que ya está adentro).
+  await pedir(b, a);
+  await como(a, 'select responder_union($1, true)', [(await uniones(a))[0].id]);
+  await pedir(c, b);
+  const pedidoDeC = (await uniones(a)).find((u) => u.estado === 'pendiente').id;
+  await como(a, 'select responder_union($1, true)', [pedidoDeC]);
+  const deC = await uniones(c);
+  chequear('el tercero entra aunque lo acepte otro del grupo, y ve a los dos, con A como quien armó', [
+    deC.map((u) => [u.estado, u.otro.id, u.lider]).sort((p, q) => (p[1] < q[1] ? -1 : 1)),
+    deC[0].yo_lider,
+  ], [[['aceptada', a, true], ['aceptada', b, false]].sort((p, q) => (p[1] < q[1] ? -1 : 1)), false]);
+
+  // Echar: solo quien armó.
+  const bEcha = (await como(b, 'select echar_del_grupo($1) as v', [c]))[0].v;
+  const aEcha = (await como(a, 'select echar_del_grupo($1) as v', [c]))[0].v;
+  chequear('echa solo quien armó el grupo', [bEcha, aEcha, (await uniones(c)).length, (await uniones(b)).length], [false, true, 0, 1]);
+
+  // Si se va quien armó, el poder pasa al que lleva más tiempo.
+  await pedir(c, b);
+  await como(b, 'select responder_union($1, true)', [(await uniones(b)).find((u) => u.estado === 'pendiente').id]);
+  await como(a, 'select salir_del_grupo()');
+  const deB = await uniones(b);
+  chequear('si se va quien armó, pasa al que lleva más tiempo (B), y A deja de ver el grupo', [deB[0].yo_lider, (await uniones(a)).length, deB.map((u) => u.otro.id)], [true, 0, [c]]);
+
+  // EL TOPE: diez. A vuelve a armar con los amigos que quedan.
+  await como(b, 'select salir_del_grupo()');
+  await como(c, 'select salir_del_grupo()');
+  const amigos = gente.filter((u) => u !== a && u !== d && u !== x);
+  for (const u of amigos.slice(0, 9)) {
+    await pedir(u, a);
+    const p = (await uniones(a)).find((z) => z.estado === 'pendiente' && z.otro.id === u);
+    await como(a, 'select responder_union($1, true)', [p.id]);
+  }
+  const ultimo = amigos[9];
+  chequear('el grupo llega a diez y el undécimo recibe "ocupado"', [(await uniones(a)).filter((u) => u.estado === 'aceptada').length + 1, await pedir(ultimo, a)], [10, 'ocupado']);
+
+  // EL LINK: D no es amigo de nadie; entra por el link de A y quedan amigos.
+  await como(b, 'select salir_del_grupo()');
+  const codigo = (await como(a, 'select link_del_grupo() as v'))[0].v;
+  const entra = (await como(d, 'select unirse_por_link($1) as v', [codigo]))[0].v;
+  chequear('el link agrega como amigo al que entra y lo une al grupo', [
+    entra,
+    (await db.query(`select count(*)::int n from friendships where estado = 'aceptada' and least(solicitante, destinatario) = least($1::uuid, $2::uuid) and greatest(solicitante, destinatario) = greatest($1::uuid, $2::uuid)`, [a, d])).rows[0].n,
+    (await uniones(d)).some((u) => u.otro.id === a),
+    (await como(d, 'select unirse_por_link($1) as v', ['no-existe']))[0].v,
+  ], ['ok', 1, true, 'no-existe']);
+
+  // TIEMPO REAL: lo publicado y la lista del grupo se leen solo desde adentro.
+  await como(a, 'select publicar_en_vivo($1, $2, $3, $4)', ['press_banca', 2, 4, null]);
+  const lee = async (u, sql) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    const n = (await db.query(sql, [a])).rows.length;
+    await db.exec('reset role');
+    return n;
+  };
+  chequear('un compañero lee lo que A publicó y la lista del grupo; alguien de afuera, nada', [
+    await lee(d, 'select ejercicio from en_vivo where user_id = $1'),
+    await lee(x, 'select ejercicio from en_vivo where user_id = $1'),
+    await lee(d, 'select user_id from grupo_miembros where user_id = $1'),
+    await lee(x, 'select user_id from grupo_miembros where user_id = $1'),
+  ], [1, 0, 1, 0]);
+
+  // La sesión que se cierra saca del grupo.
+  await db.query(`update sesiones set inicio = now() - interval '20 minutes', series = 3 where user_id = $1 and estado = 'corriendo'`, [d]);
+  await como(d, 'select terminar_sesion()');
+  chequear('terminar saca del grupo', (await db.query('select count(*)::int n from grupo_miembros where user_id = $1', [d])).rows[0].n, 0);
+}
+console.log('\n247. Entrenar en grupo, del lado de la app: la lista, el link, el tiempo real y quién saca a quién');
+{
+  const EV247 = await import('../nucleo/enVivo.ts');
+  const ahora = new Date().toISOString();
+  const lista = EV247.leerUniones([
+    { id: 'g1', estado: 'aceptada', la_pedi_yo: false, grupo: 'g1', lider: true, yo_lider: false, otro: { id: 'u1', username: 'ana', avatar_url: null }, ahora, en_vivo: null },
+    { id: 'p1', estado: 'pendiente', la_pedi_yo: false, grupo: null, lider: false, yo_lider: false, otro: { id: 'u2', username: 'beto', avatar_url: null }, ahora, en_vivo: null },
+    // La base de antes no manda nada del grupo: se lee igual.
+    { id: 'v1', estado: 'aceptada', la_pedi_yo: true, otro: { id: 'u3', username: 'caro', avatar_url: null }, ahora, en_vivo: null },
+  ]);
+  chequear('la lista entiende el grupo, quién lo armó y si lo armé yo, y sigue leyendo la de antes', lista.map((u) => [u.grupo, u.lider, u.yoLider]), [['g1', true, false], [null, false, false], [null, false, false]]);
+  const EN247 = await import('../nucleo/enlace.ts');
+  chequear('el link del grupo se reconoce en la web y en la app, y nada más', [
+    EN247.codigoDeGrupo(EN247.enlaceDeGrupo('0123456789ab')),
+    EN247.codigoDeGrupo('ascent://grupo/0123456789ab'),
+    EN247.codigoDeGrupo('ascent://grupo/no-sirve'),
+    EN247.codigoDeGrupo(EN247.enlaceDeAmigo('ana_1')),
+  ], ['0123456789ab', '0123456789ab', null, null]);
+  const { readFileSync: leer247 } = await import('node:fs');
+  const de247 = (...p) => sinComentarios(leer247(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n'));
+  const uu = de247('movil', 'src', 'useUniones.ts');
+  chequear('con grupo, la lista llega en tiempo real (y la pregunta de cada diez segundos queda de respaldo)', [
+    /escucharGrupo\(supabase, grupo, /.test(uu),
+    /setTimeout\(\(\) => void recargar\(\), 250\)/.test(uu),
+    /setInterval\(\(\) => \{\s*if \(plataforma\.ciclo\.visible\(\)\) void recargar\(\);\s*\}, CADA_CUANTO_MS\)/.test(uu),
+  ], [true, true, true]);
+  const ju = de247('movil', 'src', 'Juntos.tsx');
+  chequear('en el grupo: sacar solo si lo armé yo, salir es uno solo, y el link se ofrece aunque no haya nadie', [
+    /\) : yoArmo \? \(\s*<Pressable testID="juntos-sacar"/.test(ju),
+    /testID="juntos-salir-grupo"/.test(ju) && /void salirDelGrupo\(supabase\)/.test(ju),
+    /if \(uniones\.length === 0 && !\(conGrupos && entrenando\)\) return null;/.test(ju),
+    /Share\.share\(\{ message: T\.social\.mensajeDeInvitacion\(enlaceDeGrupo\(codigo\)\) \}\)/.test(ju),
+  ], [true, true, true, true]);
+  chequear('la tira del grupo sale en Inicio mientras se entrena con otros', /\{conGrupo && <TiraDelGrupo uniones=\{uniones\} recibidoEn=\{recibidoEn\} \/>\}/.test(de247('movil', 'src', 'EnVivoDeInicio.tsx')), true);
+  chequear('el link del grupo abre la app (ruta y archivo de dominios asociados) y su página es pública', [
+    /<GrupoPorEnlace \/>/.test(de247('movil', 'app', 'grupo', '[codigo].tsx')),
+    /'\/grupo\/\*'/.test(de247('src', 'app', '.well-known', 'apple-app-site-association', 'route.ts')),
+    /'\/grupo'/.test(de247('src', 'lib', 'supabase', 'middleware.ts')),
+  ], [true, true, true]);
+}
+
+console.log('\n248. El storage con tope: 3 MB y solo JPG y PNG (migración 89)');
+{
+  const { readFileSync: leer248 } = await import('node:fs');
+  const raiz248 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const tope = /update storage\.buckets\s+set file_size_limit = 3145728,\s+allowed_mime_types = array\['image\/jpeg', 'image\/png'\]\s+where id in \('fotos', 'avatares'\)/;
+  chequear('schema.sql y la migración 89 le ponen tope a los dos buckets', [
+    tope.test(leer248(join(raiz248, 'supabase', 'schema.sql'), 'utf8').replace(/\r\n/g, '\n')),
+    tope.test(leer248(join(raiz248, 'supabase', 'migracion-89-tope-del-storage.sql'), 'utf8').replace(/\r\n/g, '\n')),
+  ], [true, true]);
+}
+
+console.log('\n249. Los seis globitos de la primera vez salen de lo que explican (15/10)');
+{
+  const { readFileSync: leer249 } = await import('node:fs');
+  const de249 = (...p) => sinComentarios(leer249(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n'));
+  const comic = de249('movil', 'src', 'GloboComic.tsx');
+  chequear('el globo de cómic tiene su cola, en el x de lo que explica', [
+    /<View pointerEvents="none" style=\{\[estilos\.cola, \{ left: colaX - 6 \}\]\} \/>/.test(comic),
+    /cola: \{\s*position: 'absolute',\s*top: -5\.5,/.test(comic),
+  ], [true, true]);
+  chequear('cada uno en su lugar: el buscador, el +, la píldora del descanso, el buscador de gente, las fotos y el nombre de la rutina', [
+    /<GloboPrimeraVez cual="elegir"/.test(de249('movil', 'src', 'SelectorEjercicio.tsx')),
+    /globoDelMas=\{\(colaX\) => \(\s*<GloboPrimeraVez cual="series" colaX=\{colaX\}/.test(de249('movil', 'src', 'Inicio.tsx')),
+    /globoDelMas\(\(anchoBotones - 8\) \/ 4 \+ 8 \+ \(\(anchoBotones - 8\) \* 3\) \/ 8\)/.test(de249('movil', 'src', 'Bloque.tsx')),
+    /<GloboPrimeraVez cual="descanso" colaX=\{anchoCabecera - anchoPildora \/ 2\}/.test(de249('movil', 'src', 'Inicio.tsx')),
+    /<GloboPrimeraVez cual="amigos"/.test(de249('movil', 'src', 'Ranking.tsx')),
+    /<GloboPrimeraVez cual="album"/.test(de249('movil', 'src', 'Album.tsx')),
+    /<GloboPrimeraVez cual="rutina" colaX=\{nombreEn\.x \+ nombreEn\.ancho \* 0\.75\}/.test(de249('movil', 'src', 'MiRutina.tsx')),
+  ], [true, true, true, true, true, true, true]);
+  const primera = de249('movil', 'src', 'GloboPrimeraVez.tsx');
+  chequear('solo en la pestaña que se ve, y las cuentas de antes no los ven', [
+    /if \(!enPantalla\) return;/.test(primera),
+    /faltaElGlobo\(u, cual, await cuandoSeCreo\(supabase\)\)/.test(primera),
+  ], [true, true]);
+  // Los que salieron con el recorrido no vuelven: el del perfil y el de quién está entrenando.
+  chequear('no quedan los globos del perfil ni el de la actividad', /cual="(perfil|actividad)"/.test(de249('movil', 'src', 'PerfilPropio.tsx') + de249('movil', 'src', 'Ranking.tsx')), false);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
+if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
   console.log('\nFALLAS:');
   fallos.forEach((f) => console.log(' - ' + f));

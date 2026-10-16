@@ -24,7 +24,7 @@ import { CAMBIO_FONDO, cargarElMotor, esPreferenciaFondo, type PreferenciaFondo 
 import { plataforma } from '@plataforma';
 import { conAlfa } from './colores';
 import { escucharFondo, type Pedido } from './pedidoDeFondo';
-import { escucharDesenfoque } from './desenfoqueDelFondo';
+import { escucharDesenfoque, escucharTapa } from './desenfoqueDelFondo';
 import { ponerEstadoDelMotor } from './estadoDelMotor';
 import { CALIDAD_CAMBIO, densidadTope } from '@nucleo/calidad';
 import { calidadAhora, leerCalidad, vigilarCalidad } from './calidad';
@@ -320,6 +320,9 @@ export default function FondoRaiz() {
    */
   const [desenfoque, setDesenfoque] = useState(0);
   useEffect(() => escucharDesenfoque(setDesenfoque), []);
+  // Una pantalla opaca encima (el descanso, la subida de rango): el fondo no se ve, y se pausa.
+  const [tapadoDelTodo, setTapadoDelTodo] = useState(false);
+  useEffect(() => escucharTapa(setTapadoDelTodo), []);
 
   /**
    * Y LO QUE ESTÁ TAPADO SE DIBUJA MENOS (25/9).
@@ -440,6 +443,11 @@ export default function FondoRaiz() {
     if (pedido) ultimoPedido.current = pedido;
     const actual = escena.current;
 
+    if (tapadoDelTodo && escena.current) {
+      // Tapado del todo: se pausa y nada más. La opacidad queda: al destaparse no hay fundido.
+      escena.current.montaje.pausar(true);
+      return;
+    }
     if (!pedido || !listo || !renderer.current || !gl.current) {
       // Nadie pide fondo, o el motor todavía no está: se guarda lo que haya.
       actual?.montaje.pausar(true);
@@ -514,7 +522,7 @@ export default function FondoRaiz() {
         Animated.timing(opacidad, { toValue: 1, duration: ENTRADA_MS, useNativeDriver: true }).start();
       });
     }
-  }, [pedido, listo, reducir, opacidad]);
+  }, [pedido, listo, reducir, opacidad, tapadoDelTodo]);
 
   const alCrearContexto = async (contexto: ExpoWebGLRenderingContext) => {
     // EL MOTOR ESPERA A QUE LA PANTALLA ESTÉ QUIETA: es el equivalente del

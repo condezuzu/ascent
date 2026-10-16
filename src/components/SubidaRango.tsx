@@ -57,7 +57,9 @@ export default function SubidaRango({
 
   return (
     <div className="subida" onClick={tocar}>
-      <canvas ref={canvasRef} />
+      <div aria-hidden className={mostrarNombre ? 'subida-vineta afloja' : 'subida-vineta'} />
+      <canvas ref={canvasRef} className={mostrarNombre ? 'respira' : undefined} />
+      {mostrarNombre && <div aria-hidden className="subida-anillo" />}
       {mostrarNombre && (
         <div className="subida-nombre">
           <div className="chico">{T.sesion.nuevoRango}</div>

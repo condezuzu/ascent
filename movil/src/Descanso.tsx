@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { pasadoDe } from '@nucleo/avisoDescanso';
 import CompaneroEnDescanso from './CompaneroEnDescanso';
-import { PRESETS_DESCANSO } from '@nucleo/reglas';
+import { PRESETS_DESCANSO, descansoAMano } from '@nucleo/reglas';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import {
@@ -17,6 +17,8 @@ import {
   type DescansoVivo,
 } from '@compartido/descanso';
 import { C } from './colores';
+import { taparElFondo } from './desenfoqueDelFondo';
+import { useArriba } from './zonaSegura';
 
 /**
  * EL DESCANSO ENTRE SERIES, en nativo (§18). La misma pantalla que la web:
@@ -52,7 +54,17 @@ export default function Descanso({
   /** Sumar la serie sin salir: suma y vuelve a arrancar el descanso. */
   alSumar: () => void;
 }) {
+  const arriba = useArriba(56);
   const [, repintar] = useState(0);
+  // Opaca y a pantalla completa: mientras se ve, el fondo 3D no tiene por qué dibujar.
+  useEffect(() => {
+    if (!visible) return;
+    const yo = Symbol('descanso');
+    taparElFondo(yo, true);
+    return () => taparElFondo(yo, false);
+  }, [visible]);
+  // El "+": `null` cerrado; si no, lo que se va escribiendo.
+  const [aMano, setAMano] = useState<string | null>(null);
   const [terminado, setTerminado] = useState(() => restante(vivo.fin) === 0);
   const yaAviso = useRef(terminado);
   const sonido = useRef(false);
@@ -62,7 +74,13 @@ export default function Descanso({
     const listo = restante(vivo.fin) === 0;
     yaAviso.current = listo;
     setTerminado(listo);
+    // El campo del + es de este descanso: no vuelve abierto en el siguiente (vuelta 7).
+    setAMano(null);
   }, [vivo.fin]);
+  // Ni al cerrar la pantalla sin usarlo.
+  useEffect(() => {
+    if (!visible) setAMano(null);
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -79,10 +97,10 @@ export default function Descanso({
     };
   }, [visible]);
 
-  // UNA VEZ Y A TIEMPO (12/10): `avisarFin` no vibra si ya avisó la
-  // notificación que llegó con la app abierta, ni si el descanso terminó hace
-  // rato y recién ahora se lo mira (volver a la app a los cinco minutos vibraba
-  // tres veces por nada).
+  // UNA VEZ Y A TIEMPO (12/10): `avisarFin` no vibra si ya avisó el reloj
+  // del fin o la notificación, ni si el descanso terminó hace rato y recién
+  // ahora se lo mira (volver a la app a los cinco minutos vibraba tres veces
+  // por nada). Desde el 14/10 lo normal es que ya haya sonado `sonarFin`.
   const avisar = useCallback((fin: number) => {
     if (!avisarFin(fin)) return;
     if (sonido.current) plataforma.audio.avisar();
@@ -133,7 +151,7 @@ export default function Descanso({
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={alOcultar} statusBarTranslucent>
-      <View style={[estilos.pantalla, terminado && estilos.listo]}>
+      <View style={[estilos.pantalla, { paddingTop: arriba }, terminado && estilos.listo]}>
         <Pressable style={estilos.cerrar} onPress={alOcultar} accessibilityLabel={T.descanso.cerrar}>
           <Text style={estilos.cerrarTexto}>✕</Text>
         </Pressable>
@@ -203,7 +221,60 @@ export default function Descanso({
                   <Text style={[estilos.presetTexto, p === vivo.duracion && estilos.presetTextoActivo]}>{duracionCorta(p)}</Text>
                 </Pressable>
               ))}
+              {/* Lo puesto a mano también se ve elegido, junto al resto. */}
+              {!PRESETS_DESCANSO.includes(vivo.duracion) && (
+                <View style={[estilos.preset, estilos.presetActivo]}>
+                  <Text style={[estilos.presetTexto, estilos.presetTextoActivo]}>{duracionCorta(vivo.duracion)}</Text>
+                </View>
+              )}
+              <Pressable
+                testID="descanso-a-mano"
+                style={[estilos.preset, aMano !== null && estilos.presetActivo]}
+                onPress={() => setAMano(aMano === null ? '' : null)}
+                accessibilityLabel={T.descanso.aMano}
+                accessibilityRole="button"
+              >
+                <Text style={[estilos.presetTexto, aMano !== null && estilos.presetTextoActivo]}>+</Text>
+              </Pressable>
             </View>
+            {aMano !== null && (
+              <View style={estilos.aMano}>
+                <TextInput
+                  testID="descanso-a-mano-campo"
+                  style={estilos.aManoCampo}
+                  value={aMano}
+                  onChangeText={setAMano}
+                  placeholder={T.descanso.aManoEjemplo}
+                  placeholderTextColor={C.apagado}
+                  keyboardType="numbers-and-punctuation"
+                  autoFocus
+                  maxLength={5}
+                  onSubmitEditing={() => {
+                    const s = descansoAMano(aMano);
+                    if (s !== null) {
+                      usarPreset(s);
+                      setAMano(null);
+                    }
+                  }}
+                />
+                <Pressable
+                  testID="descanso-a-mano-usar"
+                  style={[estilos.preset, estilos.presetActivo]}
+                  disabled={descansoAMano(aMano) === null}
+                  onPress={() => {
+                    const s = descansoAMano(aMano);
+                    if (s === null) return;
+                    usarPreset(s);
+                    setAMano(null);
+                  }}
+                >
+                  <Text style={[estilos.presetTexto, estilos.presetTextoActivo, descansoAMano(aMano) === null && { color: C.apagado }]}>
+                    {T.descanso.aManoUsar}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+            {aMano !== null && aMano.trim() !== '' && descansoAMano(aMano) === null && <Text style={estilos.aManoMal}>{T.descanso.aManoMal}</Text>}
             <Pressable style={estilos.texto} onPress={alOcultar}>
               <Text style={estilos.textoBoton}>{T.descanso.saltar}</Text>
             </Pressable>
@@ -244,6 +315,9 @@ const estilos = StyleSheet.create({
   borde: { borderWidth: 1, borderColor: C.sub, borderRadius: 4, paddingVertical: 16, alignItems: 'center' },
   bordeTexto: { color: C.tinta, fontSize: 16 },
   presets: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
+  aMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
+  aManoCampo: { color: C.tinta, fontSize: 16, minWidth: 170, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  aManoMal: { color: C.sub, fontSize: 12, textAlign: 'center', marginTop: 6 },
   preset: { borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 11 },
   presetActivo: { borderColor: C.sub },
   presetTexto: { color: C.apagado, fontSize: 12 },

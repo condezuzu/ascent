@@ -8,14 +8,14 @@ import { umbralesDisponibles, umbralValido, type Umbral } from '@nucleo/estancam
 import { useVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
-import { plataforma } from '@plataforma';
-import { guardarSonido, leerSonido, puedeVibrar } from '@compartido/descanso';
+import { guardarSonido, leerSonido } from '@compartido/descanso';
+import Segmentado from './Segmentado';
+import { fijarPreferenciaIdioma, idiomaElegido, leerPreferenciaIdioma, type Idioma } from '@compartido/idioma';
 import { escritorEnFila } from '@compartido/enFila';
-import { eventos } from '@compartido/eventos';
-import { AVISO_DE_ENTRENO_CAMBIO } from '@nucleo/enVivo';
 import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
-import Gimnasio from './ajustes/Gimnasio';
+import Gimnasio, { RESALTAR_GIMNASIO } from './ajustes/Gimnasio';
+import { eventos } from '@compartido/eventos';
 import Salud from './ajustes/Salud';
 import Identidad from './ajustes/Identidad';
 import Fondo from './ajustes/Fondo';
@@ -26,6 +26,7 @@ import Cuenta from './ajustes/Cuenta';
 import Bloqueados from './ajustes/Bloqueados';
 import Diagnostico from './ajustes/Diagnostico';
 import Interruptor from './Interruptor';
+import { useArriba } from './zonaSegura';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -71,6 +72,7 @@ export default function Ajustes({
   alSalir: () => void;
 }) {
   const router = useRouter();
+  const arriba = useArriba(60);
   const [fallo, setFallo] = useState('');
   // El sonido del descanso es de ESTE teléfono, igual que en la web: se guarda
   // en el aparato y no en la cuenta.
@@ -80,8 +82,12 @@ export default function Ajustes({
   // vista; el resto entra acá adentro para que Ajustes no sea una lista larga y
   // plana donde "cuentas bloqueadas" aparecía de la nada.
   const [avanzado, setAvanzado] = useState(false);
+  // El idioma, también de este teléfono (14/10). Dos opciones y la que rige ya
+  // marcada (15/10): "el del teléfono" terminaba siendo una de las dos igual.
+  const [idioma, setIdioma] = useState<Idioma>(T.idioma === 'en' ? 'en' : 'es');
   useEffect(() => {
     leerSonido().then(setSonido);
+    void leerPreferenciaIdioma().then((p) => setIdioma(idiomaElegido(p)));
   }, []);
 
   /** Pinta el cambio, guarda, y vuelve atrás si la base dice que no. */
@@ -98,6 +104,10 @@ export default function Ajustes({
       setFallo(aviso);
     }
   }
+
+  // "Deja que se marque solo" trae acá: Mi gimnasio está arriba, así que alcanza con volver arriba.
+  const desplazable = useRef<ScrollView>(null);
+  useEffect(() => eventos.escuchar(RESALTAR_GIMNASIO, () => desplazable.current?.scrollTo({ y: 0, animated: true })), []);
 
   // LOS DÍAS DE DESCANSO VAN EN FILA: ver `escritorEnFila`. `alCambiar` llega
   // nuevo en cada dibujo, y la fila vive más que un dibujo: se llama al último.
@@ -142,7 +152,7 @@ export default function Ajustes({
         ciegas (28/9). iOS ahora insetea el scroll y lleva el campo enfocado a la
         vista. Cubre también el nombre de usuario y la meta de pasos, que viven
         en esta misma pantalla. */}
-    <ScrollView style={estilos.scroll} contentContainerStyle={estilos.pantalla} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
+    <ScrollView ref={desplazable} style={estilos.scroll} contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled">
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>
 
@@ -152,7 +162,6 @@ export default function Ajustes({
         <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={40} />
         <View style={{ flex: 1 }}>
           <Text style={estilos.tuNombre}>{perfil.username}</Text>
-          <Text style={estilos.tuPie}>{T.ajustes.tuPerfil}</Text>
         </View>
       </Pressable>
 
@@ -171,7 +180,6 @@ export default function Ajustes({
       <View style={estilos.filaOpcion}>
           <View style={estilos.textoOpcion}>
             <Text style={estilos.opcion}>{T.ajustes.comparteGimnasio}</Text>
-            <Text style={estilos.nota}>{T.ajustes.comparteGimnasioNota}</Text>
           </View>
           <Interruptor
             value={perfil.comparte_gimnasio === true}
@@ -179,9 +187,8 @@ export default function Ajustes({
             onValueChange={async (v) => {
               alCambiar({ comparte_gimnasio: v } as Partial<Perfil>);
               const { error } = await supabase.rpc('fijar_comparte_gimnasio', { p_valor: v });
+              // Con una sesión corriendo surte efecto en el acto: la base lo lee del perfil.
               if (error) alCambiar({ comparte_gimnasio: !v } as Partial<Perfil>);
-              // Si hay una sesión corriendo, que aparezca (o deje de aparecer) ya.
-              else eventos.emitir(AVISO_DE_ENTRENO_CAMBIO);
             }}
           />
       </View>
@@ -191,7 +198,6 @@ export default function Ajustes({
       <View style={estilos.filaOpcion}>
         <View style={estilos.textoOpcion}>
           <Text style={estilos.opcion}>{T.ajustes.comparteRutina}</Text>
-          <Text style={estilos.nota}>{T.ajustes.comparteRutinaNota}</Text>
         </View>
         <Interruptor
           value={perfil.comparte_rutina !== false}
@@ -232,27 +238,29 @@ export default function Ajustes({
           </Pressable>
         ))}
       </View>
-      <Text style={estilos.nota}>{T.ajustes.diasDescansoNota}</Text>
 
       <Text style={estilos.seccion}>{T.ajustes.peso}</Text>
-      <View style={estilos.fila}>
-        {(['kg', 'lb'] as UnidadPeso[]).map((u) => (
-          <Pressable
-            key={u}
-            onPress={() => guardar({ unidad_peso: u }, T.general.falloPreferencia)}
-            style={[estilos.ancha, (perfil.unidad_peso ?? 'kg') === u && estilos.prendida]}
-          >
-            <Text
-              style={[
-                estilos.textoPastilla,
-                (perfil.unidad_peso ?? 'kg') === u && estilos.textoPrendido,
-              ]}
-            >
-              {u === 'kg' ? T.ajustes.kilos : T.ajustes.libras}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Segmentado
+        opciones={[
+          { valor: 'kg' as UnidadPeso, texto: T.ajustes.kilos },
+          { valor: 'lb' as UnidadPeso, texto: T.ajustes.libras },
+        ]}
+        valor={(perfil.unidad_peso ?? 'kg') as UnidadPeso}
+        alElegir={(u) => guardar({ unidad_peso: u }, T.general.falloPreferencia)}
+      />
+
+      <Text style={estilos.seccion}>{T.ajustes.idioma}</Text>
+      <Segmentado
+        opciones={[
+          { valor: 'es' as Idioma, texto: T.ajustes.idiomaEs, testID: 'idioma-es' },
+          { valor: 'en' as Idioma, texto: T.ajustes.idiomaEn, testID: 'idioma-en' },
+        ]}
+        valor={idioma}
+        alElegir={(p) => {
+          setIdioma(p);
+          void fijarPreferenciaIdioma(p);
+        }}
+      />
 
       {/* LOS CINCO PRESETS DE DURACIÓN SE FUERON (23/9, "Ajustes tiene
           demasiados botones"). No se perdió nada: la duración ya se elige
@@ -264,65 +272,38 @@ export default function Ajustes({
           teléfono, no de la cuenta, y no tiene otra casa — entró en N4
           justamente porque arrancaba apagado y no había dónde prenderlo. */}
       <Text style={estilos.seccion}>{T.ajustes.avisoDelDescanso}</Text>
-      <Pressable
-        onPress={() => {
-          const nuevo = !sonido;
-          setSonido(nuevo);
-          void guardarSonido(nuevo);
-        }}
-        style={{ paddingVertical: 10 }}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: sonido }}
-      >
-        <Text style={estilos.enlace}>{sonido ? T.ajustes.sonidoPrendido : T.ajustes.sonidoApagado}</Text>
-      </Pressable>
-      {/* TRES TEXTOS Y NO DOS: en el teléfono el aviso es una notificación del
-          sistema y llega con la pantalla bloqueada, así que decir "con la app
-          abierta" sería mentir. Lo decide el puerto. */}
-      <Text style={estilos.nota}>
-        {plataforma.avisos.conPantallaBloqueada()
-          ? T.ajustes.vibraBloqueada
-          : puedeVibrar()
-            ? T.ajustes.vibra
-            : T.ajustes.noVibra}
-      </Text>
-      {sonido && (
-        <Text style={estilos.nota}>
-          {plataforma.audio.respetaLaMusica() ? T.ajustes.sonidoRespeta : T.ajustes.sonidoCorta}
-        </Text>
-      )}
+      {/* UN INTERRUPTOR COMO LOS DE ARRIBA (15/10), no un texto con una tilde. */}
+      <View style={estilos.filaOpcion}>
+        <View style={estilos.textoOpcion}>
+          <Text style={estilos.opcion}>{T.ajustes.sonidoAlTerminar}</Text>
+        </View>
+        <Interruptor
+          value={sonido}
+          accessibilityLabel={T.ajustes.sonidoAlTerminar}
+          onValueChange={(nuevo) => {
+            setSonido(nuevo);
+            void guardarSonido(nuevo);
+          }}
+        />
+      </View>
 
       <Text style={estilos.seccion}>{T.ajustes.estancamiento}</Text>
-      <View style={estilos.fila}>
-        {[true, false].map((v) => (
-          <Pressable
-            key={String(v)}
-            onPress={() => guardar({ avisos_estancamiento: v }, T.general.falloPreferencia)}
-            style={[estilos.ancha, avisos === v && estilos.prendida]}
-          >
-            <Text style={[estilos.textoPastilla, avisos === v && estilos.textoPrendido]}>
-              {v ? T.ajustes.estancamientoSi : T.ajustes.estancamientoNo}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Segmentado
+        opciones={[
+          { valor: true, texto: T.ajustes.estancamientoSi },
+          { valor: false, texto: T.ajustes.estancamientoNo },
+        ]}
+        valor={avisos}
+        alElegir={(v) => guardar({ avisos_estancamiento: v }, T.general.falloPreferencia)}
+      />
       {avisos && (
-        <>
-          <View style={[estilos.fila, { marginTop: 10 }]}>
-            {umbralesDisponibles(version).map((u: Umbral) => (
-              <Pressable
-                key={u}
-                onPress={() => guardar({ umbral_estancamiento: u }, T.general.falloPreferencia)}
-                style={[estilos.ancha, estilos.umbral, u === umbral && estilos.prendida]}
-              >
-                <Text style={[estilos.textoPastilla, u === umbral && estilos.textoPrendido]}>
-                  {T.ajustes.semanas(u)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={estilos.nota}>{T.ajustes.estancamientoNota(umbral)}</Text>
-        </>
+        <View style={{ marginTop: 10 }}>
+          <Segmentado
+            opciones={umbralesDisponibles(version).map((u: Umbral) => ({ valor: u, texto: T.ajustes.semanas(u) }))}
+            valor={umbral}
+            alElegir={(u) => guardar({ umbral_estancamiento: u }, T.general.falloPreferencia)}
+          />
+        </View>
       )}
 
       {fallo !== '' && <Text style={estilos.error}>{fallo}</Text>}
@@ -373,7 +354,6 @@ export default function Ajustes({
 const estilos = StyleSheet.create({
   tuPerfil: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, marginBottom: 4 },
   tuNombre: { color: '#e8ecf6', fontSize: 17 },
-  tuPie: { color: '#8a93a8', fontSize: 12, marginTop: 2 },
   // EL FONDO VA EN EL SCROLLVIEW, NO SOLO EN EL CONTENIDO (29/9). El
   // `contentContainerStyle` pinta el ALTO DEL CONTENIDO; con Ajustes corto (todo
   // plegado en avanzados) el rebote de iOS tiraba de más y dejaba ver el motor

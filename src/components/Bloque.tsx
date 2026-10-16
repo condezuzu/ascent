@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { crearCliente } from '@/lib/supabase/client';
-import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
+import { metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import ListaDeBloques from '@/components/ListaDeBloques';
@@ -64,7 +64,7 @@ export default function Bloque({
 }: {
   estado: EstadoBloques;
   total: number;
-  alSumar: () => void;
+  alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /**
    * Lo que va pegado al `+`: la pregunta "¿lo guardo como marca?" de la serie
    * que se acaba de confirmar. Debajo de la lista quedaba tapada por
@@ -148,6 +148,10 @@ export default function Bloque({
   //    de servir, que es lo contrario de lo que uno supone.
   const conGrupo = (e: Ejercicio | null) => (e ? `${e.nombre} · ${e.grupo}` : '');
   const actual = ejercicios.find((e) => e.id === estado.ejercicio) ?? null;
+  // La web no tiene cronómetro de cardio: su + cuenta una vuelta como el Listo de la
+  // nativa, sin descanso. Sin opciones caía en la guarda del "Seguir" y no contaba.
+  const esTiempo = actual?.mide === 'tiempo';
+  const sumar = () => (esTiempo ? alSumar({ sinDescanso: true }) : alSumar());
   const nombreDe = (id: string | null) =>
     id ? (ejercicios.find((e) => e.id === id)?.nombre ?? id) : T.sesion.sinEjercicio;
   const delDots = ejercicios.filter((e) => e.cuenta_dots);
@@ -177,7 +181,7 @@ export default function Bloque({
         </button>
 
         <div className="bloque-metas" role="group" aria-label={T.sesion.cuantasVasAHacer}>
-          {METAS.map((m) => (
+          {pildorasDeMeta(estado.meta).map((m) => (
             <button
               key={m}
               className={`pastilla ${estado.meta === m ? 'prendida' : ''}`}
@@ -303,7 +307,7 @@ export default function Bloque({
           <span>{T.sesion.terminarSerie}</span>
         </button>
       ) : (
-        <button className="bloque-mas" onClick={alSumar} aria-label={T.inicio.sumarSerie}>
+        <button className="bloque-mas" onClick={sumar} aria-label={T.inicio.sumarSerie}>
           <span>+</span>
         </button>
       )}
@@ -311,7 +315,7 @@ export default function Bloque({
       {debajoDelMas}
 
       {cumplida && (
-        <button className="boton-texto bloque-otra" onClick={alSumar}>
+        <button className="boton-texto bloque-otra" onClick={sumar}>
           {T.sesion.sumarOtra}
         </button>
       )}
@@ -324,7 +328,7 @@ export default function Bloque({
         <button
           className="boton-texto bloque-menos"
           onClick={alRestar}
-          disabled={estado.hechas === 0}
+          disabled={estado.hechas === 0 || (esTiempo && estado.minutos !== undefined)}
         >
           {T.inicio.sacarSerie}
         </button>
@@ -347,7 +351,9 @@ export default function Bloque({
           alElegir={(id) => {
             // La misma regla de antes: con series sin cerrar, se pregunta de
             // cuál eran en vez de decidir por el usuario.
-            if (estado.hechas > 0 && id !== estado.ejercicio) setADonde(id);
+            // Entre un cardio y uno de fuerza no se pregunta (cacería del 15/10).
+            const esCardio = (x: string | null) => ejercicios.find((e) => e.id === x)?.mide === 'tiempo';
+            if (estado.hechas > 0 && id !== estado.ejercicio && esCardio(id) === esCardio(estado.ejercicio)) setADonde(id);
             else alElegirEjercicio(id);
           }}
           alCerrar={() => setAbriendo(false)}

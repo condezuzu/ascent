@@ -1,6 +1,6 @@
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
-import type { Log } from '@nucleo/tipos';
+import type { LogDeAmigo } from '@nucleo/tipos';
 
 // La semana, alineada al calendario y arrancando en lunes.
 //
@@ -20,7 +20,7 @@ export default function TiraSemanal({
   descansos,
   cubiertos = [],
 }: {
-  logs: Log[];
+  logs: LogDeAmigo[];
   descansos: ConfigDescanso[];
   /** Días que una vida cubrió: ni entrenados ni perdidos. */
   cubiertos?: string[];

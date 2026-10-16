@@ -13,6 +13,7 @@
 //     Con la confirmación apagada NO se envía ningún correo al crear cuentas.
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'node:crypto';
+import { borrarCuentaDePrueba } from './utiles.mjs';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -419,7 +420,7 @@ console.log('\n17. Limpieza');
     if (files?.length) {
       await cliente.storage.from('fotos').remove(files.map((f) => `${uid}/${f.name}`));
     }
-    const { error } = await cliente.rpc('eliminar_cuenta');
+    const { error } = await borrarCuentaDePrueba(cliente);
     return error;
   };
 

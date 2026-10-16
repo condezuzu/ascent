@@ -33,6 +33,7 @@
 //   node --env-file=.env.local supabase/cuenta-de-revision.mjs [--de-cero]
 import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
+import { borrarCuentaDePrueba } from './utiles.mjs';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -140,7 +141,7 @@ async function entrarOReparar(client, correo, clave, clavesViejas) {
     const rv = await client.auth.signInWithPassword({ email: correo, password: vieja });
     if (!rv.error) {
       await borrarArchivos(client, rv.data.user.id);
-      await client.rpc('eliminar_cuenta');
+      await borrarCuentaDePrueba(client);
       await client.auth.signOut();
       const s = await client.auth.signUp({ email: correo, password: clave });
       if (s.error || !s.data?.user?.id) {
@@ -171,7 +172,7 @@ if (DE_CERO) {
     const e = await entrarConAlguna(suyo, correo, [CLAVE, ...CLAVES_RETIRADAS]);
     if (!e) continue;
     await borrarArchivos(suyo, e.uid);
-    await suyo.rpc('eliminar_cuenta');
+    await borrarCuentaDePrueba(suyo);
     await suyo.auth.signOut();
     borradas++;
   }
@@ -192,7 +193,7 @@ if (DE_CERO) {
     const e = await entrarConAlguna(c, correo, [CLAVE, ...CLAVES_RETIRADAS]);
     if (!e) continue; // ya no existe (o clave desconocida: no hay forma por anon)
     await borrarArchivos(c, e.uid);
-    const { error } = await c.rpc('eliminar_cuenta');
+    const { error } = await borrarCuentaDePrueba(c);
     if (error) console.log(`  aviso: no se pudo borrar la retirada ${etiqueta(correo)} — ${error.message}`);
     else {
       limpiadas++;

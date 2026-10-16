@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { RANGOS } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import LienzoSubida from './LienzoSubida';
-import { C } from './colores';
+import { C, conAlfa } from './colores';
+import { taparElFondo } from './desenfoqueDelFondo';
 
 /**
  * SUBISTE DE RANGO. El premio de la app, que en el teléfono no existía.
@@ -61,8 +63,26 @@ export default function SubidaRango({
   alCerrar: () => void;
 }) {
   const [formado, setFormado] = useState(false);
-  const aparecer = useRef(new Animated.Value(0)).current;
+  // LA PULIDA (15/10, elegida en la galería): el fondo se cierra mientras se deshace
+  // el viejo y se abre al formarse el nuevo, un anillo de luz sale una vez, el objeto
+  // respira, y el texto entra de a uno. Las partículas son las mismas.
+  const vineta = useRef(new Animated.Value(0)).current;
+  const pulso = useRef(new Animated.Value(0)).current;
+  const anillo = useRef(new Animated.Value(0)).current;
+  const rotulo = useRef(new Animated.Value(0)).current;
+  const nombreEntra = useRef(new Animated.Value(0)).current;
+  const dia = useRef(new Animated.Value(0)).current;
+  const seguir = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(vineta, { toValue: 1, duration: 1600, useNativeDriver: true }).start();
+  }, [vineta]);
   const saltar = useRef<(() => void) | null>(null);
+  // Tiene su propio motor a pantalla completa: el del fondo, detrás, se pausa (15/10).
+  useEffect(() => {
+    const yo = Symbol('subida');
+    taparElFondo(yo, true);
+    return () => taparElFondo(yo, false);
+  }, []);
 
   // EL NOMBRE APARECE ÚLTIMO, cuando el objeto ya está formado: si entrara
   // junto con él, se leería el nombre y no se miraría la forma, que es lo que
@@ -75,8 +95,23 @@ export default function SubidaRango({
   const alTerminar = useCallback(() => {
     setFormado(true);
     plataforma.haptica.pulso();
-    Animated.timing(aparecer, { toValue: 1, duration: 700, useNativeDriver: true }).start();
-  }, [aparecer]);
+    const sale = Easing.bezier(0.2, 0.7, 0.2, 1);
+    const sube = (v: Animated.Value, demora: number, dura: number, nativo = true) =>
+      Animated.timing(v, { toValue: 1, delay: demora, duration: dura, easing: sale, useNativeDriver: nativo });
+    Animated.parallel([
+      Animated.timing(vineta, { toValue: 0.25, duration: 1400, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.timing(pulso, { toValue: 1, duration: 360, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulso, { toValue: 0, duration: 540, easing: sale, useNativeDriver: true }),
+      ]),
+      sube(anillo, 0, 1200),
+      sube(rotulo, 150, 700),
+      // El espaciado no se anima en el hilo nativo: este va por JS.
+      sube(nombreEntra, 350, 1100, false),
+      sube(dia, 1200, 800),
+      sube(seguir, 2400, 1000),
+    ]).start();
+  }, [vineta, pulso, anillo, rotulo, nombreEntra, dia, seguir]);
 
   /**
    * LA RED DE SEGURIDAD, y tapa un agujero que dejé yo el 23/9.
@@ -119,15 +154,42 @@ export default function SubidaRango({
       >
         {/* LA TRANSFORMACIÓN, centrada y sin velo: acá es la protagonista, no
             el fondo de una pantalla con datos encima. */}
-        <LienzoSubida
-          rangoAntes={rangoAntes}
-          rangoDespues={rangoDespues}
-          planeta={planeta}
-          alArrancar={(fn) => {
-            saltar.current = fn;
-          }}
-          alTerminar={alTerminar}
-        />
+        <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ scale: pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 1.025] }) }] }]}>
+          <LienzoSubida
+            rangoAntes={rangoAntes}
+            rangoDespues={rangoDespues}
+            planeta={planeta}
+            alArrancar={(fn) => {
+              saltar.current = fn;
+            }}
+            alTerminar={alTerminar}
+          />
+        </Animated.View>
+        {/* Los bordes que se oscurecen: la atención va al centro mientras cambia. */}
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: vineta }]}>
+          <Svg width="100%" height="100%">
+            <Defs>
+              <RadialGradient id="vineta" cx="50%" cy="50%" rx="70%" ry="60%">
+                <Stop offset="0.45" stopColor={C.fondo} stopOpacity={0} />
+                <Stop offset="1" stopColor={C.fondo} stopOpacity={0.85} />
+              </RadialGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#vineta)" />
+          </Svg>
+        </Animated.View>
+        {formado && (
+          <View pointerEvents="none" style={estilos.centro}>
+            <Animated.View
+              style={[
+                estilos.anillo,
+                {
+                  opacity: anillo.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+                  transform: [{ scale: anillo.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1.7] }) }],
+                },
+              ]}
+            />
+          </View>
+        )}
 
         <View style={estilos.texto}>
           {/* SOLO EXISTE UNA VEZ FORMADO, y no puesto con opacidad 0: así un
@@ -135,17 +197,28 @@ export default function SubidaRango({
               prueba que busca el nombre no se puede dar por satisfecha con la
               animación sin correr. Es lo que hace la web. */}
           {formado && (
-            <Animated.View style={{ opacity: aparecer }}>
-              <Text style={estilos.rotulo}>{T.sesion.nuevoRango}</Text>
-              <Text style={estilos.nombre}>{nombre}</Text>
+            <View>
+              <Animated.Text style={[estilos.rotulo, aparece(rotulo)]}>{T.sesion.nuevoRango}</Animated.Text>
+              {/* El nombre entra apretando el espaciado, como si se enfocara. */}
+              <Animated.Text
+                style={[
+                  estilos.nombre,
+                  {
+                    opacity: nombreEntra,
+                    letterSpacing: nombreEntra.interpolate({ inputRange: [0, 1], outputRange: [7, -0.4] }),
+                  },
+                ]}
+              >
+                {nombre}
+              </Animated.Text>
               {/* DE DÓNDE VENÍAS NO SE DICE (sacado el 23/9, a pedido). El
                   momento es el rango nuevo; nombrar el viejo al lado le
                   reparte la atención a lo que se acaba de dejar. */}
               {typeof racha === 'number' && racha > 0 && (
-                <Text style={estilos.dia}>{T.sesion.rangoDia(racha)}</Text>
+                <Animated.Text style={[estilos.dia, aparece(dia)]}>{T.sesion.rangoDia(racha)}</Animated.Text>
               )}
-              <Text style={estilos.seguir}>{T.sesion.rangoSeguir}</Text>
-            </Animated.View>
+              <Animated.Text style={[estilos.seguir, aparece(seguir)]}>{T.sesion.rangoSeguir}</Animated.Text>
+            </View>
           )}
         </View>
       </Pressable>
@@ -153,7 +226,14 @@ export default function SubidaRango({
   );
 }
 
+/** Aparecer subiendo cuatro puntos. */
+function aparece(v: Animated.Value) {
+  return { opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }] };
+}
+
 const estilos = StyleSheet.create({
+  centro: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  anillo: { width: 240, height: 240, borderRadius: 120, borderWidth: 6, borderColor: conAlfa(C.tinta, 0.22) },
   todo: { flex: 1, backgroundColor: C.fondo },
   // El texto abajo y el objeto en el medio: la forma se mira primero.
   texto: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 28, paddingBottom: 64 },

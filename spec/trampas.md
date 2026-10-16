@@ -141,6 +141,19 @@ de `select` amplia no es lo que hace que las imágenes se vean — solo habilita
 → **Regla:** acotar el `select` a la carpeta propia. Las imágenes se siguen
 viendo. Verificarlo con un cliente anónimo antes de asumirlo.
 
+**`eliminar_cuenta()` no borra el storage: lo borra la app antes** (15/10). Los
+scripts de prueba la llamaban directo y el bucket `fotos` juntó treinta archivos
+sin dueño (e2e-*.png, *-priv.jpg, un .bin de 8 MB, un .sh).
+→ **Regla:** en un script, borrar una cuenta es `borrarCuentaDePrueba(cliente)`
+(`supabase/utiles.mjs`), nunca el `rpc` pelado. Y los buckets tienen tope desde
+la migración 89: 3 MB y solo JPG/PNG.
+
+**Un enlace firmado nuevo es una dirección nueva para el CDN** (medido el 15/10:
+530–860 ms hasta el primer byte con cualquier peso; el mismo enlace otra vez,
+40–60 ms). Firmar en cada apertura hacía lentas todas las fotos.
+→ **Regla:** las fotos se firman con `firmarFotos` (`compartido/firmas.ts`), que
+guarda el enlace un día y lo reusa. Nunca `createSignedUrl(s)` suelto.
+
 **Las políticas de `storage.objects` se evalúan TODAS en cada consulta**, sin
 importar el bucket. Si una falla, tumba la consulta entera — un bucket puede
 quedar "protegido" por un error ajeno en vez de por su propia política.
@@ -693,8 +706,15 @@ ENTORNO y no solo por el código, así que "distinto a mi build local" no
 significa "viejo"; y buscar `localStorage` en el bundle da lo mismo antes y
 después del puerto de almacenamiento, porque el módulo de plataforma queda
 empaquetado ahí igual.
-→ **Regla:** `npm run verificar:deploy` entra con un navegador real y mira una
-MARCA. Hay dos clases y no siempre sirve la misma: algo que el cliente viejo
+→ **Regla, desde el 13/10/2026:** `npm run verificar:deploy` le pregunta al
+deploy qué commit es (`/version`, que lee lo que Vercel pone en el entorno) y
+lo compara con `HEAD`. Da DESPLEGADO, TODAVÍA VIEJO o NO SUPE MIRAR, y nunca
+"no concluyente". **Una verificación que depende de acordarse de prepararla en
+cada tanda termina sin verificar nada:** la versión anterior, la de abajo, dio
+"no concluyente" tres veces seguidas porque casi ninguna tanda dejaba marca.
+
+*La versión anterior (hasta el 13/10):* entraba con un navegador real y miraba
+una MARCA. Hay dos clases y no siempre sirve la misma: algo que el cliente viejo
 mandaba en un RPC —solo si ese RPC sale al abrir la app— o un texto que solo
 existe en el cliente nuevo. La 23 necesitó la segunda: agrega un parámetro a
 `registrar_dia`, que se llama recién cuando alguien registra un día. La sonda
@@ -739,6 +759,62 @@ una de las dos copias se toca sola.
 que Node pueda cargarlo, y la sección 26 de `test:db` corre las dos contra los
 mismos valores. Si le agregás un import a ese archivo, el test deja de poder
 cargarlo y la red se cae sin hacer ruido.
+
+**Un mismo hecho guardado en dos tablas: "está entrenando" (12 y 13/10/2026).**
+La sesión ya decía cuándo empieza y cuándo termina un entrenamiento, pero
+"Entrenando ahora" salía de otra tabla, `en_el_gimnasio`, con una marca de dos
+horas que ponía también el vigilante con solo estar adentro del radio del
+gimnasio. Las dos se separaron solas: aparecía entrenando quien había terminado
+hacía dos horas y quien vivía al lado. Es la misma forma que el planeta, el
+rango y el peso propuesto.
+
+*La evidencia, de la base real (consultas del humano, 13/10/2026, antes de
+aplicar la 72):* sesiones corriendo en toda la base, **cero**. Filas en
+`en_el_gimnasio`, **tres, las tres sin sesión**:
+- `valentinossj100`: marcada por primera vez el 7/10, última marca el 13/10 a
+  las 15:50, **vigente** — figuraba entrenando en ese momento, sin sesión;
+- `jererossano`: última marca el 12/10 a las 21:25 — es el amigo que el humano
+  vio "entrenando" a las 21;
+- `marrconndee`: última marca el 9/10 a las 19:19.
+Ninguna de las tres personas estaba entrenando. No es una explicación
+probable: es lo que había en la tabla.
+→ **Regla:** un hecho, una tabla. Desde la migración 72 `entrenando_ahora` lee
+`sesiones` y la otra tabla no existe. Y **no se inventa una señal que el
+teléfono no puede dar**: con la pantalla bloqueada iOS congela la app, así que
+no hay "sigo acá" posible; lo único que hay es la última serie. La primera
+versión de la 72 pedía esa señal y habría borrado de la lista a quien entrena
+con el teléfono en el bolsillo; la frenó el humano antes de pegarla.
+
+**La base juzga la sesión con lo que le llegó, y el teléfono le preguntaba con
+cosas sin subir (13/10/2026).** Cuatro bugs de señal mala eran el mismo:
+preguntar si la sesión sigue viva (`mi_sesion`), abrir Stats
+(`resumen_sesiones`), iniciar otra o adoptar la que devuelve la base, todo con
+series de esa sesión todavía en la cola. La base cerraba en el minuto 3 un
+entrenamiento de 47, o devolvía un conteo viejo que el toque siguiente daba por
+bueno. `terminar` ya lo miraba desde el 15/9; los demás no.
+→ **Regla:** mientras `quedaDeLaSesion(id)` (`compartido/cola.ts`) diga que hay
+escrituras de una sesión sin subir, no se le pregunta a la base nada que la
+haga juzgar esa sesión, ni se adopta lo que conteste de ella. `test:db` (208)
+corre el hook de verdad en cada caso, y falla si algún archivo de la app llama
+a `mi_sesion` o `resumen_sesiones` sin esa guarda al lado.
+
+**No saber no es lo mismo que no haber (13/10/2026).** Una lectura que falla
+por la señal volvía vacía y se tomaba por "no hay": la hoja de un día entrenado
+decía "Sin registrar" y ofrecía el botón que lo borraba de verdad; el despertar
+al llegar al gimnasio tomaba "no pude saber quién soy" por "no hay sesión" y no
+dejaba ni rastro.
+→ **Regla:** de cada lectura que decide algo se mira el `error`. Si falló, no
+hay respuesta: no se arma un resumen, no se ofrece corregir, y lo que había
+que hacer queda pendiente para reintentarlo (`reintentarLlegadaPendiente`).
+
+**La respuesta que se pierde no es un "no entró" (13/10/2026).** Sin señal una
+escritura puede llegar y su respuesta no: la app dice "no se guardó", se toca
+de nuevo, y quedaban dos marcas de fuerza iguales o dos fotos del mismo día.
+→ **Regla:** toda escritura que se puede reintentar tiene que poder repetirse
+sin duplicar: o es idempotente (un nombre de archivo que no cambia entre
+intentos, `upsert`), o mira antes si ya está (`guardarMarcaUnaVez`). Y lo que
+son dos pedidos que tienen que entrar juntos va en UNA función de la base
+(`corregir_dia`), no en dos viajes.
 
 ---
 
@@ -837,6 +913,38 @@ previo no pudo hacer lo suyo, que **devuelva el problema**, no `undefined`.
 ---
 
 ---
+
+## El publicador no se llama sin orden (14/10/2026)
+
+**Regla:** `supabase/publicar-ota.mjs` no se ejecuta nunca sin una orden
+explícita del humano para ESA publicación: ni en simulacro (`--simular`), ni
+"de prueba", ni para mirar qué contesta.
+
+Por qué: el 14/10, para revisar una salida, se escribió un comando que volvía a
+llamarlo con el mensaje "x" contra `telefono`. Se cortó antes de subir y EAS
+confirmó que no salió nada, pero salió de pura suerte: el corte llegó antes que
+la subida. Una OTA a `store` llega a todas las cuentas en minutos.
+
+## Apagar los avisos push sin tocar nada más (migración 77)
+
+El aviso de "te quieren agregar" lo manda un disparador en la tabla de
+amistades, o sea en el camino de crear una solicitud. Está protegido (si el
+aviso falla, la solicitud se crea igual, y hay test), pero si alguien no puede
+agregar a un amigo, esto lo descarta en un minuto. Se pega en el SQL Editor.
+Apaga los dos avisos (amistad y unirse) y no cambia nada más: ni datos, ni
+funciones, ni tokens. La sección 224 de `test:db` corre exactamente estas líneas.
+
+```sql
+-- APAGAR LOS AVISOS PUSH
+alter table public.friendships disable trigger friendships_avisar;
+alter table public.entrenos_compartidos disable trigger entrenos_avisar;
+```
+
+```sql
+-- PRENDERLOS DE NUEVO
+alter table public.friendships enable trigger friendships_avisar;
+alter table public.entrenos_compartidos enable trigger entrenos_avisar;
+```
 
 ## Build y entorno
 
@@ -1170,11 +1278,68 @@ arreglo y lo cazó la revisión de los commits, no las pruebas.
 → **Regla:** un leer-mezclar-guardar va en fila (`turno`, en
 `compartido/sesionCache`), igual que la cola.
 
-**Quedan, de la misma familia y sin tocar** (los dos existen desde antes y se
-reproducen con esos dobles): una respuesta vieja de "no hay sesión" que llega
-después de Iniciar saca la sesión de la pantalla, y una de "está corriendo" que
-llega después de Terminar la vuelve a mostrar. Están anotados en
-`spec/alcance.md`, con el dueño único del estado de la sesión.
+**Los dos que quedaban se cerraron con el dueño único (15/10).** La respuesta
+vieja de "no hay sesión" después de Iniciar y la de "está corriendo" después de
+Terminar: empezar y terminar mueven el mismo reloj (`cambioDeSesion`, "la
+época"), y la rama "no hay sesión" también pregunta si la foto sigue valiendo.
+Y el estado salió de React: vive UNA vez por aparato en
+`compartido/sesionViva.ts`, y la pantalla y el vigilante se suscriben
+(`useSyncExternalStore`). Los setters y los "refs" de `useSesion` son ventanas
+a ese lugar; la caché quedó para sobrevivir a que se cierre la app, no para
+hablar entre pantallas.
+→ **Reglas:**
+- **Nada de la sesión en un `useState` de `useSesion`.** Lo pinea la 228. Lo
+  que es de una pantalla —`ocupado`, `aviso`, `cargaConsultada`, `subida`— sí.
+- **Todo lo que escribe la caché va en la fila**, también guardar y borrar: un
+  actualizar que había leído antes resucitaba la sesión terminada.
+- **Releer es todo o nada contra la foto**, la sesión misma incluida.
+- **Lo que es solo del teléfono** (bloques, fantasma, primer "Terminar" sin
+  señal) se conserva cuando la base confirma la misma sesión
+  (`cacheTrasConfirmar`).
+- En los dobles, "la app arrancó de nuevo" es `olvidarViva()`: montar otra
+  instancia ya no alcanza, porque comparte el dueño.
+
+## Lo que decide una escritura vuelve de la caché al reabrir (cacería del 15/10/2026)
+
+Desde el dueño único, varias cosas viven solo en memoria. Si además deciden qué
+se escribe en la base, iOS matando la app las borra y la próxima escritura sale
+mal: la marca de "faltan los bloques de allá" (el primer + subía la lista de acá
+sola y borraba lo del otro aparato) y la cadena de la rutina del día (dejaba de
+proponer).
+→ **Regla:** lo que decide una escritura va en la caché de la sesión, se
+restaura en `releerCache` dentro de la foto, y `cacheTrasConfirmar` lo conserva
+(si no, el primer desbloqueo lo borra de la caché antes del cierre). Y al revés:
+si la caché venció pero la base devuelve viva la misma sesión, lo que hay en
+memoria ya subió y vale como caché (si no, se une con la base y se duplica).
+
+## La marca de actividad a futuro (cacería del 15/10/2026)
+
+El cronómetro de cardio y el descanso a mano de hasta una hora hicieron que la
+app prometa actividad A FUTURO: nadie toca nada y la sesión tiene que seguir
+viva. Seis vueltas de cacería encontraron quince formas de romperlo, casi todas
+de la misma familia: una promesa que no llega, que llega pisada, que no se
+puede achicar, o que se achica cuando no era la suya.
+→ **Reglas:**
+- **Una promesa se renueva** mientras dure (cada 5 min con la app adelante), y la
+  base acepta hasta una hora (la 81). Con el teléfono bloqueado no hay JS: el tope
+  de la base es lo que manda.
+- **Una promesa se tiene que poder achicar** ("Listo", cortar o acortar el
+  descanso): `bajarMarca` con `p_bajar` (la 82). Sin eso, la sesión dejada sin
+  Terminar se guardaba con una hora de más.
+- **La cola guarda UNA marca por sesión**: la que se encola es la más alta conocida
+  (`nueva`, no `iso`), y una bajada pendiente se hereda.
+- **Solo se achica la promesa propia**: "Seguir" en un descanso no toca la de la cinta.
+- **La renovación no es actividad**: no borra la hora de un Terminar que no salió.
+
+## El doble del servidor tiene que mentir como la base (cacería del 15/10/2026)
+
+Dos bugs de la cacería no se veían porque el servidor de mentira
+(`supabase/dobles/sesion/cliente.mjs`) era más amable que la base: pisaba
+`ultima_actividad` sin tope ni `greatest`, y fechaba con `new Date()` mientras
+los escenarios adelantaban `Date.now()`.
+→ **Regla:** cada regla de la base que un escenario necesita (topes, `greatest`,
+la versión del esquema) va también en el doble, con el mismo reloj que usan los
+escenarios. Un escenario que pasa contra un doble más amable no prueba nada.
 
 ## Tests / proceso
 
@@ -1283,6 +1448,28 @@ en `eas.json` sin su sello hace fallar `test:db`. Y no va en `movil/.env`, que
 lo leen los dos canales. En general: una prueba que termina en "el comando
 recibió lo correcto" no probó nada de lo que salió.
 
+**LÍMITE CONOCIDO DE LA REGLA DEL ARTEFACTO (13/10/2026): el paquete publicado
+no se puede bajar desde la PC.** Al publicar a `store` se intentó bajar lo que
+quedó servido para leerle los sellos, y el servidor de archivos de EAS
+(`assets.eascdn.net`) contestó 403 "Unauthorized asset request" tres veces, de
+dos formas (node y curl, con las cabeceras de la app). Lo que se comprueba es
+esto, y no más:
+- **SÍ, antes de subir:** el guardián lee el paquete exportado y se niega si
+  no trae los sellos del perfil del canal.
+- **SÍ, después de subir:** se le pide el manifiesto al servidor de
+  actualizaciones COMO LO PIDE LA APP (canal, plataforma y la huella de la
+  build) y se mira qué grupo entrega y el `hash` de su paquete. Ese hash se
+  compara con el del paquete local que revisó el guardián (`movil/dist`).
+- **NO:** leer los sellos en los bytes que baja el teléfono. Que sean los
+  mismos se apoya en que EAS entregue el archivo cuyo hash declara. La app sí
+  lo verifica al bajarlo: `expo-updates` descarta un paquete que no coincide
+  con el hash del manifiesto.
+- **Tampoco** dice que un teléfono ya la recibió: eso es Diagnóstico o
+  `version_app` en una sugerencia (ver `dia-de-aprobacion.md`).
+→ **Regla:** decir "comprobado por hash contra el manifiesto", nunca "bajé el
+paquete publicado". Y `movil/dist` se compara ANTES de volver a exportar: la
+siguiente publicación lo pisa.
+
 **Un guion que quedó atrás de la pantalla falla por el motivo equivocado.** La
 batería de `test:real` esperaba el recorrido en el orden viejo: no lo
 terminaba, la tarjeta quedaba abierta todo el guion y tapaba "Terminar". Fallaba
@@ -1304,3 +1491,12 @@ versión solo si es menor (nunca la baja). Las 32 que ya existían la recibieron
 el 12/10. `test:db` (sección 204) falla si una migración no la tiene, si el
 número no es el suyo o si no está al principio, y prueba que la 66 se frena
 sobre la base de hoy. Repetir la MISMA migración sigue pudiéndose.
+
+**Caso real, 13/10/2026: la guarda frenó una.** Con la 70 recién aplicada, el
+humano abrió sin querer una pestaña vieja del SQL Editor que tenía la 69 y le
+dio Run. La guarda la cortó con su mensaje ("Esta es la migración 69 y la base
+ya está en la 70") y la versión no se movió. Es la SEGUNDA vez que una pestaña
+o un portapapeles viejo casi baja el esquema (la primera, el 12/10, es la de
+arriba, y ahí no había guarda): dejó de ser un riesgo teórico.
+→ **Y de paso:** cerrar la pestaña del SQL Editor después de correr cada
+migración. La guarda es la red, no el plan.

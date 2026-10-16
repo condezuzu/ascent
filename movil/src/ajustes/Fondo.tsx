@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Segmentado from '../Segmentado';
+import { StyleSheet, Text, View } from 'react-native';
 import { CAMBIO_FONDO, esPreferenciaFondo, type PreferenciaFondo } from '@nucleo/fondo';
 import { eventos } from '@compartido/eventos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import { C } from '../colores';
 import { CALIDAD_CAMBIO, type PreferenciaDeCalidad } from '@nucleo/calidad';
-import { bajoSola, fijarCalidad, leerCalidad, preferenciaAhora } from '../calidad';
+import { fijarCalidad, leerCalidad, preferenciaAhora } from '../calidad';
 
 /**
  * EL FONDO: automático, siempre, o nunca.
@@ -44,12 +45,8 @@ export default function Fondo() {
   // LA CALIDAD (8/10): un punto medio entre "siempre" y "nunca". Por omisión la
   // decide la app midiendo; acá se la puede fijar a mano.
   const [calidad, setCalidad] = useState<PreferenciaDeCalidad | null>(null);
-  const [laBajo, setLaBajo] = useState(false);
   useEffect(() => {
-    const leer = () => {
-      setCalidad(preferenciaAhora());
-      setLaBajo(bajoSola());
-    };
+    const leer = () => setCalidad(preferenciaAhora());
     void leerCalidad().then(leer);
     return eventos.escuchar(CALIDAD_CAMBIO, leer);
   }, []);
@@ -70,55 +67,30 @@ export default function Fondo() {
           tocaría el botón equivocado. Mientras no se sabe, ninguno queda
           marcado — mostrar "automático" y corregirlo un cuadro después es
           decir algo falso. */}
-      <View style={estilos.selector}>
-        {(
-          [
-            ['auto', T.ajustes.fondoAuto],
-            ['siempre', T.ajustes.fondoSiempre],
-            ['nunca', T.ajustes.fondoNunca],
-          ] as [PreferenciaFondo, string][]
-        ).map(([valor, texto]) => (
-          <Pressable
-            key={valor}
-            style={[estilos.opcion, pref === valor && estilos.opcionActiva]}
-            onPress={() => elegir(valor)}
-          >
-            <Text style={[estilos.opcionTexto, pref === valor && estilos.opcionTextoActivo]}>{texto}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={estilos.nota}>{pref === 'auto' ? T.ajustes.fondoAutoNoSe : T.ajustes.fondoNota}</Text>
+      <Segmentado<PreferenciaFondo | null>
+        opciones={[
+          { valor: 'auto', texto: T.ajustes.fondoAuto },
+          { valor: 'siempre', texto: T.ajustes.fondoSiempre },
+          { valor: 'nunca', texto: T.ajustes.fondoNunca },
+        ]}
+        valor={pref}
+        alElegir={(v) => v && void elegir(v)}
+      />
 
       <Text style={[estilos.titulo, { marginTop: 22 }]}>{T.ajustes.calidad}</Text>
-      <View style={estilos.selector}>
-        {(
-          [
-            ['auto', T.ajustes.calidadAuto],
-            ['alta', T.ajustes.calidadAlta],
-            ['baja', T.ajustes.calidadBaja],
-          ] as [PreferenciaDeCalidad, string][]
-        ).map(([valor, texto]) => (
-          <Pressable
-            key={valor}
-            style={[estilos.opcion, calidad === valor && estilos.opcionActiva]}
-            onPress={() => {
-              setCalidad(valor);
-              void fijarCalidad(valor);
-            }}
-          >
-            <Text style={[estilos.opcionTexto, calidad === valor && estilos.opcionTextoActivo]}>{texto}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={estilos.nota}>
-        {calidad === 'alta'
-          ? T.ajustes.calidadNotaAlta
-          : calidad === 'baja'
-            ? T.ajustes.calidadNotaBaja
-            : laBajo
-              ? T.ajustes.calidadNotaBajoSola
-              : T.ajustes.calidadNotaAuto}
-      </Text>
+      <Segmentado<PreferenciaDeCalidad | null>
+        opciones={[
+          { valor: 'auto', texto: T.ajustes.calidadAuto },
+          { valor: 'alta', texto: T.ajustes.calidadAlta },
+          { valor: 'baja', texto: T.ajustes.calidadBaja },
+        ]}
+        valor={calidad}
+        alElegir={(v) => {
+          if (!v) return;
+          setCalidad(v);
+          void fijarCalidad(v);
+        }}
+      />
     </View>
   );
 }
@@ -126,17 +98,5 @@ export default function Fondo() {
 const estilos = StyleSheet.create({
   seccion: { marginTop: 30 },
   titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
-  selector: { flexDirection: 'row', gap: 6 },
-  opcion: {
-    flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  opcionActiva: { borderColor: C.lineaFuerte, backgroundColor: 'rgba(255,255,255,0.04)' },
-  opcionTexto: { color: C.apagado, fontSize: 13 },
-  opcionTextoActivo: { color: C.tinta },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
 });

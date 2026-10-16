@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { reiniciarGuia } from '@compartido/guia';
+import { GUIA_DE_NUEVO, verLaGuiaDeNuevo as volverAVerLaGuia } from '@compartido/guia';
 import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
-import { GUIA_DE_NUEVO } from '../Recorrido';
 import { cerrarSesion, eliminarCuenta, limpiarAlSalir } from '@compartido/cuenta';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import type { Perfil } from '@nucleo/tipos';
@@ -43,7 +42,7 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
   // con traba contra el doble-tap: sin ella, dos toques mandaban dos correos de
   // reseteo, dos bajas de cuenta, o dos salidas encimadas.
   const verLaGuiaDeNuevo = useEnVuelo(async () => {
-    await reiniciarGuia(perfil.id);
+    await volverAVerLaGuia(perfil.id);
     eventos.emitir(GUIA_DE_NUEVO);
   });
 
@@ -94,21 +93,28 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
     <View style={estilos.seccion}>
       {/* VER LA GUÍA DE NUEVO (§10). Faltaba en el teléfono: no podía existir
           hasta que existiera el recorrido, y ahora existe. */}
-      <Pressable style={estilos.texto} onPress={() => verLaGuiaDeNuevo()}>
-        <Text style={estilos.enlace}>{T.ajustes.verGuia}</Text>
-      </Pressable>
-      <Pressable style={estilos.texto} onPress={() => cambiarClave()}>
-        <Text style={estilos.enlace}>{T.ajustes.cambiarClave}</Text>
-      </Pressable>
-      <Pressable style={estilos.texto} onPress={() => salir()}>
-        <Text style={estilos.enlace}>{T.ajustes.cerrarSesion}</Text>
-      </Pressable>
-
-      {!abierta ? (
-        <Pressable style={estilos.texto} onPress={() => setAbierta(true)}>
-          <Text style={estilos.peligro}>{T.ajustes.eliminarCuenta}</Text>
+      {/* UNA TARJETA CON FILAS (15/10): eran cuatro renglones de texto sueltos que no parecían tocables. */}
+      <View style={estilos.tarjeta}>
+        <Pressable style={estilos.filaCuenta} onPress={() => verLaGuiaDeNuevo()} accessibilityRole="button">
+          <Text style={estilos.enlace}>{T.ajustes.verGuia}</Text>
+          <Text style={estilos.flecha}>›</Text>
         </Pressable>
-      ) : (
+        <Pressable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => cambiarClave()} accessibilityRole="button">
+          <Text style={estilos.enlace}>{T.ajustes.cambiarClave}</Text>
+          <Text style={estilos.flecha}>›</Text>
+        </Pressable>
+        <Pressable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => salir()} accessibilityRole="button">
+          <Text style={estilos.enlace}>{T.ajustes.cerrarSesion}</Text>
+          <Text style={estilos.flecha}>›</Text>
+        </Pressable>
+        {!abierta && (
+          <Pressable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => setAbierta(true)} accessibilityRole="button">
+            <Text style={estilos.peligro}>{T.ajustes.eliminarCuenta}</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {!abierta ? null : (
         <View style={estilos.caja}>
           <Text style={estilos.titulo}>{T.ajustes.eliminarCuenta}</Text>
           <Text style={estilos.que}>{T.ajustes.bajaQueSeElimina(perfil.racha_actual)}</Text>
@@ -156,6 +162,10 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
 const estilos = StyleSheet.create({
   seccion: { marginTop: 34 },
   texto: { paddingVertical: 12 },
+  tarjeta: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 14, overflow: 'hidden' },
+  filaCuenta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16 },
+  conLinea: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
+  flecha: { color: C.apagado, fontSize: 18 },
   enlace: { color: C.sub, fontSize: 15 },
   peligro: { color: C.error, fontSize: 15 },
   caja: {

@@ -54,7 +54,7 @@ const RANGOS: { dias: number; etiqueta: () => string }[] = [
 ];
 
 /** Con punto cada tres cifras: 12.480 se lee de un vistazo y 12480 no. */
-const conMiles = (n: number) => Math.round(n).toLocaleString('es-UY');
+const conMiles = (n: number) => Math.round(n).toLocaleString(T.general.locale);
 
 export default function GraficoPasos({
   pasos,
@@ -375,7 +375,7 @@ function PieDeMeta({
   );
 }
 
-function HojaDeMeta({
+export function HojaDeMeta({
   visible,
   alCerrar,
   alCambiar,

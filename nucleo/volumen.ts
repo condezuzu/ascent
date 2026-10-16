@@ -38,13 +38,15 @@ export type BloqueLeido = {
   supuesta: boolean;
   /** Posición en la lista guardada, desde 1: la que usa `revisar_carga`. */
   orden: number;
+  /** Los minutos, si es cardio (migración 76). */
+  minutos?: number;
 };
 
 export function leerBloques(crudo: unknown): BloqueLeido[] {
   if (!Array.isArray(crudo)) return [];
   return crudo.flatMap((b, i) => {
     if (!b || typeof b !== 'object') return [];
-    const x = b as { ejercicio?: unknown; series?: unknown; pesos?: unknown; carga?: unknown; carga_supuesta?: unknown };
+    const x = b as { ejercicio?: unknown; series?: unknown; pesos?: unknown; carga?: unknown; carga_supuesta?: unknown; minutos?: unknown };
     const s = Number(x.series);
     if (typeof x.ejercicio !== 'string' || !Number.isFinite(s) || s <= 0) return [];
     const n = Math.floor(s);
@@ -62,6 +64,8 @@ export function leerBloques(crudo: unknown): BloqueLeido[] {
         carga: cargaValida(x.carga) ?? 'total',
         supuesta: x.carga_supuesta === true && pesos.some((p) => p !== null),
         orden: i + 1,
+        // El cardio (migración 76): los minutos del bloque, aparte de los pesos.
+        ...(typeof x.minutos === 'number' && x.minutos > 0 ? { minutos: Math.round(x.minutos) } : {}),
       },
     ];
   });
@@ -76,7 +80,8 @@ export function kilosDelBloque(b: Pick<BloqueLeido, 'pesos' | 'carga'>): number 
 export type Catalogo = Map<string, { nombre: string; grupo: string }>;
 
 /** Los grupos en el orden de la interfaz (el mismo del selector), no alfabético. */
-export const ORDEN_GRUPOS: string[] = ORDEN_ZONAS.flatMap((z) => ZONAS[z]);
+// El cardio queda afuera (14/10): se mide en minutos, no son series por músculo.
+export const ORDEN_GRUPOS: string[] = ORDEN_ZONAS.filter((z) => z !== 'cardio').flatMap((z) => ZONAS[z]);
 
 function ordenDeGrupo(g: string): number {
   const i = ORDEN_GRUPOS.indexOf(g);

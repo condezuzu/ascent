@@ -1,4 +1,7 @@
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+import { T } from '@nucleo/textos';
 import type { Avisos } from '@nucleo/plataforma';
 
 
@@ -37,7 +40,11 @@ import type { Avisos } from '@nucleo/plataforma';
 //
 // CON "SONIDO AL TERMINAR" APAGADO NO SUENA (12/10): antes la campana del
 // aviso sonaba igual, con la app abierta y con el teléfono bloqueado.
-let sonidoAlFrente = true;
+//
+// Y CON LA APP ADELANTE LA NOTIFICACIÓN NO SUENA (14/10): suena la app misma,
+// en el cero exacto (`sonarFin` en compartido/descanso.ts). La notificación
+// llega un poco después y sonaba una segunda vez, tarde.
+const sonidoAlFrente = false;
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: sonidoAlFrente,
@@ -59,8 +66,18 @@ const delSistema = (id: string) => `ascent-${id}`;
 // hacía el `setTimeout` de la web.
 const alSonar = new Map<string, () => void>();
 
+// LOS AVISOS PUSH (migración 77) que llegan con la app adelante: no muestran
+// cartel del sistema (ver arriba); el cartel lo pone la app, que se entera acá.
+const alLlegarRemoto = new Set<(tipo: string) => void>();
+export function alLlegarAvisoRemoto(fn: (tipo: string) => void): () => void {
+  alLlegarRemoto.add(fn);
+  return () => void alLlegarRemoto.delete(fn);
+}
+
 Notifications.addNotificationReceivedListener((n) => {
-  const id = (n.request.content.data as { ascent?: string } | null)?.ascent;
+  const datos = n.request.content.data as { ascent?: string; aviso?: string } | null;
+  if (datos?.aviso) alLlegarRemoto.forEach((fn) => fn(datos.aviso as string));
+  const id = datos?.ascent;
   if (!id) return;
   alSonar.get(id)?.();
 });
@@ -92,6 +109,34 @@ export async function comoEstanLosAvisos(): Promise<'si' | 'no' | 'sin-decidir' 
   }
 }
 
+/**
+ * ¿ESTA BUILD PUEDE RECIBIR AVISOS REMOTOS? (13/10/2026) — solo Diagnóstico.
+ *
+ * Para saber si "alguien quiere unirse" puede avisar con la app cerrada sin
+ * una build nueva, no alcanza con leer que el plugin pone el permiso: hay que
+ * pedirle el token a Apple desde una build de verdad. Sin el permiso
+ * compilado, Apple contesta con un error que lo dice.
+ *
+ * Pide dos cosas y no manda nada: el token del APARATO (Apple: prueba el
+ * permiso) y el de EXPO (prueba el camino por el que se mandaría). No abre el
+ * diálogo de permisos. Del token se muestra el largo y el principio: entero
+ * sirve para mandarle avisos a este teléfono.
+ */
+export async function probarAvisoRemoto(): Promise<{ aparato: string; expo: string }> {
+  const conLimite = <T,>(p: Promise<T>): Promise<T> =>
+    // Sin el permiso, o en un simulador, Apple puede no contestar nunca.
+    Promise.race([p, new Promise<T>((_, no) => setTimeout(() => no(new Error('no contestó en 20 s')), 20000))]);
+  const decir = (token: unknown) => {
+    const t = typeof token === 'string' ? token : JSON.stringify(token);
+    return `SÍ: ${t.length} caracteres, empieza ${t.slice(0, 8)}…`;
+  };
+  const fallo = (e: unknown) => `NO: ${String((e as { message?: unknown } | null)?.message ?? e).slice(0, 160)}`;
+  const aparato = await conLimite(Notifications.getDevicePushTokenAsync()).then((t) => decir(t.data), fallo);
+  const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+  const expo = await conLimite(Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).then((t) => decir(t.data), fallo);
+  return { aparato, expo };
+}
+
 export const avisosNativos: Avisos = {
   conPantallaBloqueada() {
     return true;
@@ -113,7 +158,8 @@ export const avisosNativos: Avisos = {
 
   async programar(id, enSegundos, cuandoSuene, opciones) {
     const conSonido = opciones?.sonido !== false;
-    sonidoAlFrente = conSonido;
+    // El fin se fija acá: lo que tardan cancelar y el permiso no lo corre.
+    const hasta = Date.now() + enSegundos * 1000;
     await this.cancelar(id);
     if (!(await this.permiso())) return;
     try {
@@ -125,7 +171,8 @@ export const avisosNativos: Avisos = {
           // único de la app que se lee FUERA de la app, en la pantalla
           // bloqueada, y no comparte contexto con ninguna pantalla.
           title: 'Ascent',
-          body: 'Se terminó el descanso.',
+          // En el idioma de la app (14/10): el de la pantalla bloqueada también cambia.
+          body: T.idioma === 'en' ? 'Rest is over.' : 'Se terminó el descanso.',
           // LA CAMPANA NUESTRA Y NO LA DEL SISTEMA (25/9). *"La campana se
           // escucha poco. Con música puesta no la escuché."* El sonido de
           // fábrica de iOS es corto y discreto a propósito —está pensado para
@@ -151,12 +198,25 @@ export const avisosNativos: Avisos = {
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: Math.max(1, Math.round(enSegundos)),
+          // iOS acepta fracciones de segundo; Android las trunca y sonaría antes de tiempo.
+          seconds: Platform.OS === 'ios' ? Math.max(0.1, (hasta - Date.now()) / 1000) : Math.max(1, Math.ceil((hasta - Date.now()) / 1000)),
           repeats: false,
         },
       });
     } catch {
       /* si no se pudo programar, la cuenta de la pantalla sigue igual */
+    }
+  },
+
+  async tokenRemoto(pedir) {
+    try {
+      const actual = await Notifications.getPermissionsAsync();
+      const deja = actual.granted || (pedir && actual.canAskAgain && (await Notifications.requestPermissionsAsync()).granted);
+      if (!deja) return null;
+      const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+      return (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
+    } catch {
+      return null;
     }
   },
 

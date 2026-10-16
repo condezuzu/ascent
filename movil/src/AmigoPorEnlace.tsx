@@ -8,6 +8,7 @@ import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { C } from './colores';
 import { volverOInicio } from './volver';
+import { useArriba } from './zonaSegura';
 
 /**
  * A DÓNDE CAE UN LINK DE AMIGO (`ascent://amigo/<nombre>`, 8/10/2026).
@@ -27,6 +28,7 @@ import { volverOInicio } from './volver';
  */
 export default function AmigoPorEnlace() {
   const router = useRouter();
+  const arriba = useArriba(60);
   const { usuario } = useLocalSearchParams<{ usuario: string }>();
   const [estado, setEstado] = useState<'buscando' | 'no-existe' | 'no-se-pudo'>('buscando');
 
@@ -70,7 +72,7 @@ export default function AmigoPorEnlace() {
 
   return (
     <View style={estilos.raiz}>
-      <Pressable onPress={irse} hitSlop={8} style={estilos.volver}>
+      <Pressable onPress={irse} hitSlop={8} style={[estilos.volver, { paddingTop: arriba }]}>
         <Text style={estilos.enlace}>{T.general.volver}</Text>
       </Pressable>
       <View style={estilos.centrado}>

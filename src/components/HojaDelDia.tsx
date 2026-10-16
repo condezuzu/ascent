@@ -69,6 +69,8 @@ export default function HojaDelDia({
     if (!uid) return;
     const d = await cargarDia(supabase, uid, fecha, esFuturo);
     if (id !== cargaId.current) return;
+    // No se pudo leer: queda sin resumen, y sin resumen no hay botones de corregir.
+    if (!d) return setResumen(null);
     setUnidad(d.unidad);
     setCuantasSesiones(d.cuantasSesiones);
     setResumen(d.resumen);

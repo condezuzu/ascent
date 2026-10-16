@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from './supabase';
@@ -6,12 +6,14 @@ import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 import type { ResultadoRegistro, Visibilidad } from '@nucleo/tipos';
 import { subidaDeRango } from '@nucleo/rangos';
-import { fotoCompartida } from '@nucleo/foto';
+import { fotoCompartida, selloAlAzar } from '@nucleo/foto';
 import { miId } from '@compartido/quienSoy';
 import { T } from '@nucleo/textos';
 import { subirFotoDelDia } from '@compartido/foto';
 import { anotarElDia } from '@compartido/anotarDia';
 import { useEnVuelo } from '@compartido/useEnVuelo';
+import { eventos } from '@compartido/eventos';
+import { DIA_CAMBIO } from '@compartido/gimnasio';
 import { prepararFoto, prepararMiniatura } from './foto';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
@@ -52,6 +54,8 @@ function RegistrarDia({
   alConfirmar: (r: ResultadoRegistro | null) => void;
 }) {
   const [foto, setFoto] = useState<Elegida | null>(null);
+  // Cuándo se eligió ESTA foto: le da nombre al archivo, y es el mismo en cada intento de subirla.
+  const selloDeFoto = useRef(0);
   // Lo que se tocó en ESTA apertura. Mientras no se toque, sigue a Ajustes.
   const [tocado, setTocado] = useState<boolean | null>(null);
   const compartida = fotoCompartida(tocado, visibilidadDefault);
@@ -78,7 +82,10 @@ function RegistrarDia({
       }
       const r = desde === 'camara' ? await ImagePicker.launchCameraAsync(opciones) : await ImagePicker.launchImageLibraryAsync(opciones);
       const a = r.canceled ? null : r.assets?.[0];
-      if (a) setFoto({ uri: a.uri, ancho: a.width, alto: a.height });
+      if (a) {
+        selloDeFoto.current = selloAlAzar();
+        setFoto({ uri: a.uri, ancho: a.width, alto: a.height });
+      }
     } catch {
       setError(T.general.falloFotoPreparar);
     }
@@ -95,7 +102,7 @@ function RegistrarDia({
     // La miniatura para la grilla del álbum, de la misma imagen. Si no sale, la
     // foto sube igual.
     const miniatura = await prepararMiniatura(foto.uri, foto.ancho, foto.alto);
-    const r = await subirFotoDelDia(supabase, { datos: lista.datos, miniatura, dia, logId: idDelLog, visible: compartida, subioRango });
+    const r = await subirFotoDelDia(supabase, { datos: lista.datos, miniatura, dia, logId: idDelLog, visible: compartida, subioRango, sello: selloDeFoto.current || undefined });
     if (r !== 'ok') {
       setError(T.general.falloFoto);
       return false;
@@ -147,6 +154,8 @@ function RegistrarDia({
       return setAviso(textoDeBloqueo(data.hasta));
     }
     const resultado = data as ResultadoRegistro;
+    // Sin foto no sale FOTOS_CAMBIO: el Álbum se entera por acá de que el día entró.
+    eventos.emitir(DIA_CAMBIO);
     // `racha` es la que se veía al abrir la hoja: la de antes de registrar.
     const subio = subidaDeRango(racha, resultado.racha) !== null;
     setSubioAca(subio);

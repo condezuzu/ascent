@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
@@ -27,8 +28,10 @@ import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './Stat
 import FondoEspacial from './FondoEspacial';
 import Estancamiento from './Estancamiento';
 import CalendarioDias from './CalendarioDias';
+import KilosPorSemana from './KilosPorSemana';
 import { useRecargarAlVolver } from './irAPestana';
 import { paletaDe } from '@nucleo/paletas';
+import { useArriba } from './zonaSegura';
 
 const SEMANAS = 8;
 
@@ -83,6 +86,7 @@ function celdaProximaVida(vidas: Vidas | null): { v: string; e: string; acento?:
 }
 
 export default function Stats({ alSalir }: { alSalir: () => void }) {
+  const arriba = useArriba(64);
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState('');
   const [pestana, setPestana] = useState<'general' | 'entrenamiento'>('general');
@@ -219,14 +223,14 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const enCurso = totales.length - 1;
   const leidaTotal = totales[indice];
   const kilosLindos = (kg: number) => Math.round(deKilos(kg, unidad)).toLocaleString(T.general.locale);
-  const mayuscula = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
+  const mayuscula = nombreDeGrupo;
   const pal = paletaDe(datos.rango, datos.planeta);
 
   return (
     <View style={estilos.raiz}>
       {/* El fondo de Stats en la web: tu cuerpo arriba a la derecha, velo 0,72. */}
       <FondoEspacial rango={datos.rango} planeta={datos.planeta} velo={0.72} />
-    <ScrollView contentContainerStyle={estilos.pantalla}>
+    <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
       <Text style={estilos.titulo}>{T.stats.titulo}</Text>
 
       <View style={estilos.selector}>
@@ -285,6 +289,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           pesos={datos.pesajes}
           sexo={datos.sexo}
           alCambiar={cargar}
+          calendario={<CalendarioDias paleta={pal} alCambiar={cargar} porRevisar={porRevisar} alRevisar={cargar} />}
         />
       )}
 
@@ -368,6 +373,15 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
               })}
               <Text style={estilos.nota}>{T.volumen.notaRango}</Text>
               <Text style={estilos.nota}>{T.volumen.notaRangoPorque}</Text>
+              {/* EL PESO TOTAL POR SEMANA (15/10): uno solo, y elige la misma semana que las filas. */}
+              <KilosPorSemana
+                semanas={totales}
+                elegida={indice}
+                alElegir={setTocada}
+                color={pal.principal}
+                enUnidad={kilosLindos}
+                unidad={unidad}
+              />
             </>
           )}
 
@@ -440,10 +454,6 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             </>
           )}
 
-          {/* El calendario, abajo del volumen: primero qué venís haciendo,
-              después cada día. */}
-          <Text style={estilos.seccion}>{T.calendario.titulo}</Text>
-          <CalendarioDias paleta={pal} alCambiar={cargar} porRevisar={porRevisar} alRevisar={cargar} />
         </>
       )}
     </ScrollView>

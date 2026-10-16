@@ -32,6 +32,11 @@ export const avisosWeb: Avisos = {
     );
   },
 
+  // La web no recibe avisos push (se sacaron el 22/9).
+  async tokenRemoto() {
+    return null;
+  },
+
   async cancelar(id) {
     const t = pendientes.get(id);
     if (t === undefined) return;

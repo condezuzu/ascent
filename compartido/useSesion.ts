@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 // El tipo del cliente lo pone cada app: la web y la nativa traen cada una su
 // copia de supabase-js, y para TypeScript son dos clases distintas.
 import type { Cliente } from '@cliente';
@@ -8,6 +8,9 @@ import { crearCliente } from '@cliente';
 import { plataforma } from '@plataforma';
 import { T } from '@nucleo/textos';
 import { eventos } from '@compartido/eventos';
+import { cantidadesDeHoy, ejerciciosDeHoy, metaDeRutina } from '@nucleo/rutinas';
+import { cargarMisRutinas, rutinaActivaDelTelefono } from '@compartido/rutinas';
+import { DIA_CAMBIO } from '@compartido/gimnasio';
 import {
   desfasajeDelReloj,
   cacheTrasConfirmar,
@@ -28,6 +31,7 @@ import {
   cambiarEjercicio,
   corregirCarga,
   corregirEjercicio,
+  cambiarMinutos,
   cambiarPeso,
   corregirPeso,
   mudarEjercicio,
@@ -41,6 +45,10 @@ import {
   sinNadaContado,
   unirConGuardados,
   terminarBloque,
+  arrancarCardio,
+  cerrarVueltaDeCardio,
+  descartarCardio,
+  VUELTA_MINIMA_MS,
   type EstadoBloques,
 } from '@nucleo/bloques';
 import { sumarSerie, restarSerie, corregirEnLista, seriesAlReleer } from '@nucleo/conteo';
@@ -52,7 +60,7 @@ import {
   ejerciciosEnOrden,
   type SesionRutina,
 } from '@nucleo/rutina';
-import {
+import { cambioDeSesion,
   AVISO,
   esMio,
   borrarSesionCache,
@@ -68,7 +76,22 @@ import {
   guardarVigilancia,
   fotoDeLaCache,
   relojDeToques,
+  type SesionCacheada,
 } from '@compartido/sesionCache';
+import {
+  INICIAL,
+  YO,
+  bloquesDe,
+  faltanBloques,
+  idVisto,
+  leerViva,
+  refDe,
+  rutinaRef,
+  rutinaEsGuardada,
+  sesionesRutinaRef,
+  setterDe,
+  suscribirViva,
+} from '@compartido/sesionViva';
 import {
   actualizarLoQueSeHace,
   borrarDescanso,
@@ -79,7 +102,7 @@ import {
   type DescansoVivo,
 } from '@compartido/descanso';
 import { marcarComoUsada } from '@nucleo/llegada';
-import { cuantasPendientes, encolar, estaPendiente, vaciar } from '@compartido/cola';
+import { cuantasPendientes, encolar, estaPendiente, quedaDeLaSesion, vaciar } from '@compartido/cola';
 import { leerCargasElegidas, recordarCarga } from '@compartido/cargas';
 import {
   leerRecordados,
@@ -191,32 +214,67 @@ export type CierreDeSesion = {
   pasos?: number | null;
 };
 
-export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void) {
+// EL DATO ES DEL DUEÑO (`sesionViva.ts`), no de cada instancia: estos setters y
+// refs son ventanas al mismo lugar, y por eso viven afuera del hook. Lo que
+// escribe la pantalla lo ve el vigilante en el acto, sin pasar por la caché.
+const setInicio = setterDe('inicio');
+const setDesfasaje = setterDe('desfasaje');
+const setSeries = setterDe('series');
+const setPorUbicacion = setterDe('porUbicacion');
+const setCacheLeida = setterDe('cacheLeida');
+const setBloques = setterDe('bloques');
+const setSugerido = setterDe('sugerido');
+const setIdSesion = setterDe('idSesion');
+const setDescanso = setterDe('descanso');
+const setUltimaActividad = setterDe('ultimaActividad');
+// "Lo de ahora" para las funciones async que siguen después de que el render
+// que las creó pasó. Antes eran copias que había que mantener al día a mano.
+const bloquesRef = refDe('bloques');
+const seriesRef = refDe('series');
+const descansoRef = refDe('descanso');
+const inicioRef = refDe('inicio');
+const ultimaRef = refDe('ultimaActividad');
+const desfasajeRef = refDe('desfasaje');
+// LOS EJERCICIOS QUE SE VEN (vuelta 7 de la cacería): un propio de un amigo que ya no
+// se ve (la 80) seguía saliendo del historial como rutina o semilla. Null es "no se
+// supo" (sin señal): ahí no se filtra.
+let visibles: Set<string> | null = null;
+const seVe = (id: string) => !visibles || visibles.has(id);
+// Y LOS QUE SE MIDEN EN MINUTOS (vuelta 8): una cinta que todavía no arrancó no tiene
+// cronómetro ni minutos, y el "+ Serie hecha" del descanso la contaba como serie.
+let porTiempo: Set<string> | null = null;
+async function cargarCatalogoVisible(supabase: Cliente) {
+  const { data, error } = await supabase.from('ejercicios').select('id, mide');
+  if (error || !data) {
+    visibles = null;
+    porTiempo = null;
+    return;
+  }
+  const filas = data as { id: string; mide?: string | null }[];
+  visibles = new Set(filas.map((e) => e.id));
+  porTiempo = new Set(filas.filter((e) => e.mide === 'tiempo').map((e) => e.id));
+}
+const sinServidor = () => INICIAL;
+// EL CARDIO CUENTA COMO ACTIVIDAD (cacería del 15/10). Con el cronómetro andando
+// nadie toca nada, y a la media hora la sesión se cerraba sola en plena cinta.
+// La marca se adelanta (la base la acota a lo que acepta) y se renueva cada
+// tanto con la app adelante, como hace el descanso con su fin.
+const MARCA_DEL_CARDIO_MS = 60 * 60000;
+const RENOVAR_CARDIO_MS = 5 * 60000;
+
+export function useSesion(
+  alCambiarElDia?: (r: ResultadoRegistro | null) => void,
+  // EL REDIBUJO DE CADA SEGUNDO es para quien muestra el reloj con el estado del
+  // hook (la web). La nativa tiene relojes que se tickean solos (`CadaSegundo`) y
+  // se ahorra redibujar la pantalla entera por segundo (15/10).
+  { repintarCadaSegundo = true }: { repintarCadaSegundo?: boolean } = {}
+) {
   const [supabase] = useState(() => crearCliente());
-  // Quién es ESTA instancia, para no releer sus propias escrituras (ver
-  // `esMio` en `sesionCache.ts`).
-  const [yo] = useState(() => Symbol('sesion'));
-  const [inicio, setInicio] = useState<string | null>(null);
-  const [desfasaje, setDesfasaje] = useState(0);
-  const [series, setSeries] = useState(0);
-  const [porUbicacion, setPorUbicacion] = useState(false);
-  // El bloque en curso: en qué estás, cuántas te propusiste, cuántas van.
-  // Ver `lib/bloques.ts` — el total de la sesión sigue siendo `series` y esto
-  // es una anotación encima, no un reemplazo.
-  const [bloques, setBloques] = useState<EstadoBloques>(() => bloquesVacios());
-  // El valor de AHORA, para las funciones async que corren después de que el
-  // render que las creó ya pasó. Sin esto, la semilla del bloque decidía sobre
-  // el estado viejo y podía pisar toques que llegaron mientras esperaba.
-  const bloquesRef = useRef(bloques);
-  bloquesRef.current = bloques;
-  // LO MISMO PARA EL TOTAL. Dos toques rápidos, sin re-render en el medio,
-  // tienen que ver cada uno el número del anterior y no el del render. Antes el
-  // conteo se leía del closure y, con un `await` en el medio, el segundo toque
-  // arrancaba del número viejo y pisaba al primero: el total quedaba una serie
-  // atrás mientras la lista llegaba entera (bug del gimnasio, 27/9). Ahora las
-  // dos cuentas se mueven juntas desde estos refs. Ver `nucleo/conteo.ts`.
-  const seriesRef = useRef(series);
-  seriesRef.current = series;
+  // La firma de la caché es UNA por aparato (ver `YO`): lo que escribe otra
+  // instancia ya está en el dueño y releerlo solo podía traer algo más viejo.
+  const yo = YO;
+  const { inicio, desfasaje, series, porUbicacion, cacheLeida, bloques, sugerido, idSesion, descanso, ultimaActividad } =
+    useSyncExternalStore(suscribirViva, leerViva, sinServidor);
   // El ejercicio del que ya se sabe con qué se hace —la base contestó, o no
   // hay señal y se decidió con lo que había—. Hasta entonces la pregunta de la
   // primera vez no se muestra: a quien la contestó en otro teléfono se le
@@ -228,32 +286,11 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // LA RUTINA QUE SE PROPONE SOLA (ver `nucleo/rutina.ts`). `sugerido` dice si el
   // ejercicio y el peso del bloque actual son una SUGERENCIA que todavía no se
   // confirmó (contando una serie): la UI la muestra distinta —"fantasma"— para
-  // que nadie cuente una serie que no hizo. `rutinaRef` es la cadena propuesta
-  // para hoy; `sesionesRutinaRef` es el historial reciente, para re-enganchar la
-  // cadena si se cambia el primer ejercicio. Todo del lado del cliente.
-  const [sugerido, setSugerido] = useState(false);
-  const rutinaRef = useRef<string[]>([]);
-  const sesionesRutinaRef = useRef<SesionRutina[]>([]);
-  const [idSesion, setIdSesion] = useState<string | null>(null);
-  const [descanso, setDescanso] = useState<DescansoVivo | null>(null);
-  // Para quien cambia algo a mitad del descanso (`refrescarTarjeta`).
-  const descansoRef = useRef(descanso);
-  descansoRef.current = descanso;
+  // que nadie cuente una serie que no hizo. `rutinaRef` y `sesionesRutinaRef`
+  // viven en el dueño.
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState('');
   const [, repintar] = useState(0);
-  // La última actividad, en hora de servidor. Con esto el teléfono sabe, sin
-  // preguntarle a nadie, si la sesión ya se cerró sola (ver `cierreSolo`).
-  const [ultimaActividad, setUltimaActividad] = useState<string | null>(null);
-  // La sesión que ESTE aparato tenía abierta. Hace falta porque cuando se
-  // cierra sola la caché se borra, y el aviso "se cerró sola" tiene que saber
-  // que era la nuestra y no una de otro aparato.
-  const idVisto = useRef<string | null>(null);
-  // LA SESIÓN CUYOS BLOQUES HAY QUE TRAER DE LA BASE (19/9): se abrió sin
-  // ellos en la caché —otro lado, caché borrada—. Mientras esté puesto, la
-  // lista NO se sube: subir la de acá, incompleta, borraba en la base los
-  // bloques de antes. Ver `unirConGuardados`.
-  const faltanBloques = useRef<string | null>(null);
   const confirmando = useRef(false);
   // TRABA SÍNCRONA CONTRA EL DOBLE-TAP en empezar/terminar (la misma idea que
   // `compartido/useEnVuelo.ts`, pero acá adentro: estas dos ya devuelven un
@@ -263,13 +300,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // `iniciar_sesion`/`terminar_sesion`. Una sola para las dos: no tiene sentido
   // arrancar y cerrar a la vez, y así un toque en cada botón tampoco se pisa.
   const operandoSesion = useRef(false);
-  // Lo de AHORA para el intervalo, que se creó con los valores de otro render.
-  const inicioRef = useRef(inicio);
-  inicioRef.current = inicio;
-  const ultimaRef = useRef(ultimaActividad);
-  ultimaRef.current = ultimaActividad;
-  const desfasajeRef = useRef(desfasaje);
-  desfasajeRef.current = desfasaje;
+  // Para el reloj de cada segundo, que se armó con el `marcar` de otro render.
+  const marcarRef = useRef(marcar);
+  marcarRef.current = marcar;
+  const cardioRenovadoEl = useRef(0);
 
   // LOS BLOQUES SON DE UNA SESIÓN (4/10). Vivían en memoria sin saber de cuál:
   // el único que los vaciaba era `terminar`, y solo en la instancia que
@@ -278,7 +312,6 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   // frente se subían a la base: los kilos de ese día quedaban anotados dos veces.
   // Acá se anota de qué sesión son, y cuando la sesión es otra —o ninguna— se
   // tiran. Con una base sin ids (`null`) queda como antes.
-  const bloquesDe = useRef<string | null>(null);
   const bloquesSonDe = useCallback((id: string | null) => {
     const deOtra = bloquesDe.current !== null && bloquesDe.current !== id;
     bloquesDe.current = id;
@@ -297,34 +330,49 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // el conteo no se toca. Ver "el reloj de los toques" en `sesionCache`.
     const alDia = fotoDeLaCache();
     const c = await leerSesionCache();
-    setInicio(c?.inicio ?? null);
-    setDesfasaje(c?.desfasaje ?? 0);
-    bloquesSonDe(c?.id ?? null);
-    // También lo que hace falta para DECIDIR, no solo para pintar: si la
-    // sesión arrancó sola hay que poder cerrarla al salir, y eso lo mira el
-    // vigilante, que es otra instancia de este mismo hook.
-    if (c) {
-      setPorUbicacion(c.porUbicacion ?? false);
-      setIdSesion(c.id ?? null);
-      if (c.id) idVisto.current = c.id;
-      setUltimaActividad(c.ultimaActividad ?? null);
-      if (alDia()) {
+    // TODO O NADA (15/10): antes la sesión misma —inicio, id— se aplicaba sin
+    // mirar la foto, y una lectura vacía que llegaba después de Iniciar sacaba
+    // la sesión de la pantalla. Lo que hay en el dueño ya es más nuevo.
+    if (alDia()) {
+      setInicio(c?.inicio ?? null);
+      setDesfasaje(c?.desfasaje ?? 0);
+      bloquesSonDe(c?.id ?? null);
+      // También lo que hace falta para DECIDIR, no solo para pintar: si la
+      // sesión arrancó sola hay que poder cerrarla al salir, y eso lo mira el
+      // vigilante, que es otra instancia de este mismo hook.
+      if (c) {
+        setPorUbicacion(c.porUbicacion ?? false);
+        setIdSesion(c.id ?? null);
+        if (c.id) idVisto.current = c.id;
+        // La marca de "faltan los de allá" vuelve con la caché (cacería del 15/10):
+        // solo en memoria, iOS la mataba y el primer + subía la lista de acá sola.
+        if (c.faltanBloques && c.id) faltanBloques.current = c.id;
+        setUltimaActividad(c.ultimaActividad ?? null);
         if (c.bloques) setBloques(c.bloques);
         // El fantasma sobrevive a que iOS mate la app: si el bloque en curso era
         // una sugerencia sin confirmar, al reabrir sigue viéndose como sugerencia
         // y no como algo ya elegido (ver `SesionCacheada.sugerido`).
         setSugerido(!!c.sugerido);
+        // Al reabrir con la sesión corriendo, el catálogo visible no está en memoria.
+        if (c.id && porTiempo === null) void cargarCatalogoVisible(supabase);
+        if (c.rutina) {
+          rutinaRef.current = c.rutina;
+          rutinaEsGuardada.current = !!c.rutinaGuardada;
+          // La deducida re-engancha desde el historial, que también vivía en memoria.
+          if (!c.rutinaGuardada && sesionesRutinaRef.current.length === 0) void cargarHistorialRutina();
+        }
+        // EL TOTAL AL REABRIR (bug "3 de 3 · 0 en total", 29/9). Antes: con cola
+        // pendiente se descartaba la caché y quedaba el total EN PANTALLA —que tras
+        // un cierre de iOS es el 0 inicial—, mientras los puntos se restauraban del
+        // bloque. Ahora `seriesAlReleer` toma el máximo entre pantalla y caché
+        // cuando hay pendientes (respeta toques nuevos sin perder lo guardado), y la
+        // caché cuando no hay. Se lee del ref, no del closure viejo. Ver conteo.ts.
+        const hayPendientes = (await cuantasPendientes()) > 0;
+        if (alDia()) setSeries(seriesAlReleer(seriesRef.current, c.series, hayPendientes));
       }
-      // EL TOTAL AL REABRIR (bug "3 de 3 · 0 en total", 29/9). Antes: con cola
-      // pendiente se descartaba la caché y quedaba el total EN PANTALLA —que tras
-      // un cierre de iOS es el 0 inicial—, mientras los puntos se restauraban del
-      // bloque. Ahora `seriesAlReleer` toma el máximo entre pantalla y caché
-      // cuando hay pendientes (respeta toques nuevos sin perder lo guardado), y la
-      // caché cuando no hay. Se lee del ref, no del closure viejo. Ver conteo.ts.
-      const hayPendientes = (await cuantasPendientes()) > 0;
-      if (alDia()) setSeries(seriesAlReleer(seriesRef.current, c.series, hayPendientes));
     }
     setDescanso(await leerDescanso());
+    setCacheLeida(true);
   }, [bloquesSonDe]);
 
   // La consulta de verdad. La caché pinta al instante, esto la corrige.
@@ -346,7 +394,16 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // subsuelo sin señal—, la cierra con datos viejos en medio de un
     // entrenamiento.
     await vaciar(supabase);
+    // Y SI NO SUBIÓ TODO, NO SE PREGUNTA (13/10). `vaciar` puede volver sin
+    // haber subido nada (señal a medias, o una pasada anterior todavía colgada)
+    // y `mi_sesion` entrar igual: la base cerraba la sesión con la actividad
+    // vieja. Ver `quedaDeLaSesion`.
+    if (await quedaDeLaSesion(idVisto.current ?? (await leerSesionCache())?.id)) return;
     const { data, error } = await supabase.rpc('mi_sesion');
+    // Lo mismo si el teléfono ya la había olvidado (su copia vence a la media hora)
+    // y la base la devuelve viva: con series de ESA sesión todavía en la cola, lo
+    // que contestó es viejo y no se adopta.
+    if (!error && (await quedaDeLaSesion((data as { id?: string } | null)?.id))) return;
     const s = data as
       | (SesionViva & {
           series?: number;
@@ -356,7 +413,26 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
         })
       | null;
     const alDia = fotoDeLaCache(reloj);
-    const previo = await leerSesionCache();
+    // LA COPIA VENCIDA ACÁ Y LA SESIÓN VIVA ALLÁ (cacería del 15/10): quieto más de
+    // media hora, la caché de este aparato vence aunque el otro siga anotando. Lo
+    // que hay en memoria es de esa sesión y ya subió (la cola no tiene nada de
+    // ella): vale como la caché. Sin esto, faltaban bloques y se unían los de la
+    // base con los mismos de memoria, duplicados.
+    const enMemoria = leerViva();
+    const previo: SesionCacheada | null =
+      (await leerSesionCache()) ??
+      (s?.corriendo && s.id && s.inicio && enMemoria.inicio && bloquesDe.current === s.id && faltanBloques.current !== s.id
+        ? {
+            id: s.id,
+            inicio: enMemoria.inicio,
+            desfasaje: enMemoria.desfasaje,
+            series: enMemoria.series,
+            bloques: enMemoria.bloques,
+            sugerido: enMemoria.sugerido,
+            rutina: rutinaRef.current,
+            rutinaGuardada: rutinaEsGuardada.current,
+          }
+        : null);
     const viva = s?.corriendo && s.inicio
       ? {
           inicio: s.inicio,
@@ -398,16 +474,42 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       // nada de acá esperando en la cola. Los bloques de la caché quedaron
       // viejos —la otra pantalla sumó series— y el próximo toque de acá los
       // subiría pisando los de allá. Se traen los de la base (19/9).
+      let noSeTrajeron = false;
       if (
         g.bloques &&
         g.id &&
         typeof previo?.series === 'number' &&
         previo.series !== g.series &&
+        // Si ya faltaban, la única unión la hace `recuperarBloques` (vuelta 8): traerlos
+        // acá también los dejaba dos veces y tiraba lo contado acá sin subir.
+        previo.faltanBloques !== true &&
         (await cuantasPendientes()) === 0
       ) {
+        // Lo que solo vive en el teléfono (el peso escrito, la cinta andando) no está en
+        // la base: se conserva en las dos ramas (vuelta 8).
+        const deAca = g.bloques;
+        const soloAca = {
+          ...(deAca.peso !== undefined && { peso: deAca.peso }),
+          ...(deAca.carga && { carga: deAca.carga }),
+          ...(deAca.minutos !== undefined && { minutos: deAca.minutos }),
+          ...(deAca.cardioDesde !== undefined && { cardioDesde: deAca.cardioDesde }),
+        };
+        const corre = deAca.cardioDesde !== undefined;
         const { data: fila, error: eFila } = await supabase.from('sesiones').select('bloques').eq('id', g.id).maybeSingle();
         if (!eFila && fila) {
-          g.bloques = unirConGuardados((fila as { bloques?: unknown }).bloques, bloquesVacios(null, g.bloques.meta));
+          // Con la cinta andando, lo de la base entra como cerrado y la cinta sigue en curso.
+          g.bloques = unirConGuardados(
+            (fila as { bloques?: unknown }).bloques,
+            corre ? { ...bloquesVacios(deAca.ejercicio, deAca.meta), ...soloAca } : bloquesVacios(null, deAca.meta)
+          );
+        } else {
+          // SIN PODER TRAERLOS (vuelta 7): la lista de acá ya subió entera (la cola está
+          // vacía) y le falta lo de allá. Queda vacía y marcada: el próximo + los trae y
+          // les suma lo nuevo. Seguir con la vieja borraba lo de allá. El ejercicio en
+          // curso queda como semilla (si la cinta anda, como elegido: si no, la unión la
+          // reemplazaba por el último de la base).
+          g.bloques = { ...bloquesVacios(deAca.ejercicio, deAca.meta), ...soloAca, ...(!corre && { sembrado: true }) };
+          noSeTrajeron = true;
         }
       }
       // INVARIANTE: el refresco no puede escribir un conteo más viejo que la cola.
@@ -422,7 +524,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       g.series = seriesGuardado;
       // Faltan si no vinieron, o si ya faltaban y no se pudieron traer (sin
       // señal): lo que la caché tenga en ese caso es solo lo de acá.
-      const faltan = !!g.id && (!g.bloques || (previo?.id === g.id && previo.faltanBloques === true));
+      const faltan = !!g.id && (!g.bloques || noSeTrajeron || (previo?.id === g.id && previo.faltanBloques === true));
       // EL REFRESCO NO PISA UN TOQUE (4/10). Si mientras se preguntaba se tocó
       // algo, todo lo de arriba se calculó sin ese toque: no se escribe ni en la
       // caché ni en la pantalla, y `confirmar` vuelve a preguntar. Se mira dos
@@ -446,7 +548,13 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       setUltimaActividad(g.ultimaActividad ?? null);
       if (g.id) idVisto.current = g.id;
     } else {
+      // "No hay sesión" también se mira contra la foto: si hubo un Iniciar en el medio, es vieja.
+      if (!alDia()) return 'vieja';
       borrarSesionCache(yo);
+      // El descanso es de la sesión: si quedaba, la siguiente arrancaba con el
+      // de ayer en "Listo" y horas "de más".
+      borrarDescanso();
+      setDescanso(null);
       bloquesSonDe(null);
       setInicio(null);
       setSeries(0);
@@ -510,7 +618,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       clearInterval(id);
       if (plataforma.ciclo.visible()) {
         id = setInterval(() => {
-          repintar((n) => n + 1);
+          if (repintarCadaSegundo) repintar((n) => n + 1);
+          // La cinta andando, o un descanso largo (el + a mano llega a una hora): la marca se renueva.
+          const fin = descansoRef.current?.fin ?? 0;
+          const hasta = Math.max(bloquesRef.current.cardioDesde !== undefined ? Date.now() + MARCA_DEL_CARDIO_MS : 0, fin);
+          if (hasta > Date.now() && Date.now() - cardioRenovadoEl.current > RENOVAR_CARDIO_MS) {
+            cardioRenovadoEl.current = Date.now();
+            void marcarRef.current(hasta, { renovacion: true });
+          }
           // Con la app ADELANTE también se cierra sola: si la dejaste abierta
           // en el banco y te fuiste, a la media hora la pantalla no puede
           // seguir contando. `confirmar` no se pisa consigo mismo.
@@ -533,15 +648,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * Trae los bloques que la base tiene guardados para la sesión y los junta
    * con lo que haya acá (`unirConGuardados`). Sin señal no pasa nada: queda
    * marcado y se vuelve a intentar en el próximo toque.
-   *
-   * `actual` es el estado recién calculado por quien llama, si lo hay: el
-   * render que actualiza `bloquesRef` puede no haber pasado todavía.
    */
-  async function recuperarBloques(id: string, actual?: EstadoBloques) {
+  async function recuperarBloques(id: string) {
     if (faltanBloques.current !== id) return;
     const { data, error } = await supabase.from('sesiones').select('bloques').eq('id', id).maybeSingle();
     if (error || faltanBloques.current !== id) return;
-    const antes = actual ?? bloquesRef.current;
+    // Lo de AHORA y no `actual` (cacería del 15/10): un + que cayó mientras viajaba
+    // el pedido quedaba afuera de la unión, y la pantalla volvía al ejercicio de antes.
+    const antes = bloquesRef.current;
     const unidos = unirConGuardados((data as { bloques?: unknown } | null)?.bloques, antes);
     faltanBloques.current = null;
     bloquesRef.current = unidos;
@@ -568,7 +682,21 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     setAviso('');
     let data: unknown, error: unknown;
     try {
-      ({ data, error } = await iniciar(supabase, opciones));
+      // Primero lo pendiente, igual que al preguntar y al terminar: `iniciar_sesion`
+      // también hace que la base juzgue la sesión anterior.
+      await vaciar(supabase);
+      // Si de la sesión que este teléfono conoce quedan cosas sin subir, no se
+      // inicia: la base cerraría esa sesión con datos viejos para abrir otra.
+      if (await quedaDeLaSesion(idVisto.current ?? (await leerSesionCache())?.id)) {
+        ({ data, error } = { data: null, error: { message: 'quedan escrituras de la sesión en la cola' } });
+      } else {
+        ({ data, error } = await iniciar(supabase, opciones));
+        // Y si el teléfono ya la había olvidado (la copia vence a la media hora)
+        // pero la base la devuelve viva, con series de ella todavía en la cola: su
+        // conteo es viejo, y adoptarlo haría que el primer toque pise lo que esperaba.
+        const yaEstaba = (data as { id?: string; yaEstaba?: boolean } | null)?.yaEstaba ? (data as { id?: string }).id : null;
+        if (!error && (await quedaDeLaSesion(yaEstaba))) error = { message: 'quedan escrituras de la sesión en la cola' };
+      }
     } finally {
       operandoSesion.current = false;
     }
@@ -598,9 +726,21 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       registro: ResultadoRegistro | null;
     };
     const porUbi = (r.origen ?? opciones?.origen) === 'ubicacion';
+    // Iniciar registra el día y con eso puede cambiar el rango: el Álbum, que no
+    // recarga solo, se quedaba con el cuerpo y el color de ayer. El arranque por
+    // ubicación ya lo avisa el vigilante.
+    if (r.registro && !porUbi) eventos.emitir(DIA_CAMBIO);
     // UNA SESIÓN NUEVA NO HEREDA BLOQUES (ver `bloquesSonDe`). Va antes de la
     // semilla de abajo, que no siembra si encuentra algo contado.
+    // LA ÉPOCA: una respuesta que salió antes de esto ya no vale (ver `cambioDeSesion`).
+    cambioDeSesion();
+    if (r.id) idVisto.current = r.id;
     bloquesSonDe(r.id ?? null);
+    // LA SESIÓN DE OTRO APARATO: lo de allá falta acá, y se marca YA (cacería del
+    // 15/10). Antes se marcaba después de esperar el historial por la red, y un
+    // toque en ese hueco subía la lista de acá —vacía— y borraba lo de allá.
+    const faltan = !!(r.yaEstaba && r.id && sinNadaContado(bloquesRef.current));
+    if (faltan) faltanBloques.current = r.id;
     // La caché lleva TODO lo que hace falta para decidir, no solo para pintar:
     // la otra instancia del hook —la del vigilante— se entera por acá.
     guardarSesionCache({
@@ -609,6 +749,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       porUbicacion: porUbi,
       series: r.series ?? 0,
       id: r.id ?? null,
+      ...(faltan ? { faltanBloques: true } : {}),
     }, yo);
     setInicio(r.inicio);
     setDesfasaje(desfasajeDelReloj(r.ahora));
@@ -631,32 +772,41 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       // el primer ejercicio. Sin historial, `rutinaParaHoy` da vacío y todo
       // queda como estaba (cae al `ultimo_ejercicio` de siempre).
       await cargarHistorialRutina();
-      rutinaRef.current = rutinaParaHoy(sesionesRutinaRef.current, hoyISO());
+      // PRIMERO LA RUTINA ACTIVA GUARDADA (14/10), la del teléfono: anda sin señal.
+      // Un día de descanso o sin nada cargado cae a la deducida, como antes.
+      const deLaGuardada = ejerciciosDeHoy(await rutinaActivaDelTelefono(), new Date().getDay());
+      rutinaRef.current = (deLaGuardada.length > 0 ? deLaGuardada : rutinaParaHoy(sesionesRutinaRef.current, hoyISO())).filter(seVe);
+      rutinaEsGuardada.current = deLaGuardada.length > 0;
+      await actualizarSesionCache({ rutina: rutinaRef.current, rutinaGuardada: rutinaEsGuardada.current }, yo);
+      // Y se pone al día para la próxima, sin esperar.
+      void cargarMisRutinas(supabase).catch(() => null);
 
       // YA ESTABA CORRIENDO (se empezó en otro lado): lo que se hizo está en la
       // base, y eso va antes que cualquier semilla.
-      if (r.yaEstaba && r.id && sinNadaContado(bloquesRef.current)) {
-        faltanBloques.current = r.id;
-        await actualizarSesionCache({ faltanBloques: true }, yo);
+      if (faltan && r.id) {
         await recuperarBloques(r.id);
         if (!sinNadaContado(bloquesRef.current)) return;
       }
       // La semilla sale de la rutina del día; si no hay rutina, del último
       // ejercicio de siempre (regla 2 de la migración 27).
       const deRutina = rutinaRef.current[0] ?? null;
-      const [{ data: ultimo }, meta] = await Promise.all([
+      const [{ data: ultimo }, metaPreferida, cuanto] = await Promise.all([
         deRutina ? Promise.resolve({ data: deRutina }) : supabase.rpc('ultimo_ejercicio'),
         leerMetaPreferida(),
+        deRutina ? cantidadEnLaRutina(deRutina) : Promise.resolve(undefined),
       ]);
+      const meta = cuanto ? metaDeRutina(cuanto.series) : metaPreferida;
       // `sembrar` y NO `bloquesVacios`: en un gimnasio con mala señal esta
       // respuesta llega cuando ya tocaste el + dos veces, y pisar el bloque
       // con uno vacío ponía la cuenta del bloque en cero mientras el total
       // seguía subiendo. Los dos números de la pantalla se contradecían.
-      const sembrado = sembrar(
+      const semilla = sembrar(
         bloquesRef.current,
-        typeof ultimo === 'string' ? ultimo : null,
+        typeof ultimo === 'string' && seVe(ultimo) ? ultimo : null,
         meta ?? undefined
       );
+      // Los minutos de la rutina (la cinta de 30) van con la semilla, si es de la rutina.
+      const sembrado = semilla !== bloquesRef.current && cuanto?.minutos !== undefined && semilla.ejercicio === deRutina ? cambiarMinutos(semilla, cuanto.minutos) : semilla;
       // Si ya había algo contado, `sembrar` devuelve lo mismo que entró y acá
       // no hay nada que escribir.
       if (sembrado === bloquesRef.current) return;
@@ -674,7 +824,6 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // espera a esta misma respuesta (ver `compartido/pesosRecordados.ts`).
     void traerRecordados(supabase);
 
-    if (r.yaEstaba) setAviso(T.inicio.yaHabiaSesion);
     alCambiarElDia?.(r.registro);
     return true;
   }
@@ -690,13 +839,24 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     operandoSesion.current = true;
     setOcupado(true);
     setAviso('');
+    // LA HORA ES LA DEL PRIMER TOQUE (13/10). Si un "Terminar" anterior no salió
+    // —sin señal—, este reintento cierra a esa hora y no a la de ahora. Se lee
+    // antes de cerrar la vuelta de cardio, que marca actividad.
+    const hasta = opciones?.hasta ?? (await leerSesionCache())?.quisoTerminar ?? undefined;
+    // LA VUELTA DE CARDIO EN CURSO SE CIERRA ANTES (cacería del 15/10), y a la misma
+    // hora que la sesión: con la salida del gimnasio, la cinta no sigue hasta casa.
+    if (bloquesRef.current.cardioDesde !== undefined) await dejarElCardio(hasta ?? Date.now());
+    // LO DE ALLÁ, ANTES DE CERRAR (cacería del 15/10): con los bloques del otro aparato
+    // sin traer, lo anotado acá no subía nunca (subir espera a tenerlos).
+    if (idSesion && faltanBloques.current === idSesion) await recuperarBloques(idSesion);
     // Se anota lo que había ANTES de cerrar: abajo se pone todo en cero y el
-    // resumen se quedaría sin datos que mostrar.
+    // resumen se quedaría sin datos que mostrar. De los refs: la vuelta de arriba
+    // cambió el conteo después de este render.
     const arranco = inicio;
-    const seriesHechas = series;
+    const seriesHechas = seriesRef.current;
     const eraPorUbicacion = porUbicacion;
     const desfase = desfasaje;
-    const bloquesHechos = paraGuardar(bloques);
+    const bloquesHechos = paraGuardar(bloquesRef.current);
     // PRIMERO LO PENDIENTE (bug del 15/9). La base decide el cierre con lo que
     // TIENE: si las series y la actividad de la sesión siguen en la cola —se
     // entrenó sin señal y la red volvió justo al tocar Terminar—, ve una sesión
@@ -709,15 +869,10 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     let data: unknown, error: unknown;
     try {
       await vaciar(supabase);
-      const idQueTermina = idSesion;
-      const esperando =
-        !!idQueTermina &&
-        ((await estaPendiente('fijar_series', idQueTermina)) ||
-          (await estaPendiente('fijar_bloques', idQueTermina)) ||
-          (await estaPendiente('marcar_actividad', idQueTermina)));
-      ({ data, error } = esperando
+      // Sin poder traer lo de allá tampoco se cierra: lo de acá nunca se subió.
+      ({ data, error } = (!!idSesion && faltanBloques.current === idSesion) || (await quedaDeLaSesion(idSesion))
         ? { data: null, error: { message: 'quedan escrituras de la sesión en la cola' } }
-        : await cerrar(supabase, opciones));
+        : await cerrar(supabase, { hasta }));
     } finally {
       operandoSesion.current = false;
     }
@@ -726,9 +881,20 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // volver a intentarlo con la hora de salida correcta.
     if (error) {
       // A mano se dice; el cierre por ubicación reintenta solo.
-      if (opciones?.hasta === undefined) setAviso(T.sesion.noTermino);
+      if (opciones?.hasta === undefined) {
+        setAviso(T.sesion.noTermino);
+        if (hasta === undefined) await actualizarSesionCache({ quisoTerminar: Date.now() }, yo);
+      }
       return null;
     }
+    // LA ÉPOCA, ANTES DE CUALQUIER ESPERA: un "está corriendo" en viaje ya no vale.
+    cambioDeSesion();
+    // Si la parás a mano estando todavía en el gimnasio, la visita queda
+    // marcada como usada: sin esto se volvería a encender sola a los dos
+    // minutos. VA ANTES de borrar la sesión del teléfono y se espera (13/10):
+    // después y sin esperar, el vigilante podía mirar justo en el instante
+    // "sin sesión y sin marca" y arrancar otra.
+    await guardarVigilancia(marcarComoUsada(await leerVigilancia()));
     borrarSesionCache(yo);
     borrarDescanso();
     // Lo de hoy pasa a ser historial: el último peso de cada modo queda en la
@@ -752,10 +918,6 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     if ((data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia) {
       setAviso(T.inicio.diaDeshecho);
     }
-    // Si la parás a mano estando todavía en el gimnasio, la visita queda
-    // marcada como usada: sin esto se volvería a encender sola a los dos
-    // minutos, que es la clase de cosa que hace que alguien apague la función.
-    guardarVigilancia(marcarComoUsada(await leerVigilancia()));
     alCambiarElDia?.(null);
 
     const deshizoElDia = !!(data as { deshizo_el_dia?: boolean } | null)?.deshizo_el_dia;
@@ -763,7 +925,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // metería el desfasaje de reloj adentro de la duración. Por eso se lleva
     // el fin a hora de servidor antes de restar, igual que hace `transcurrido`
     // para el cronómetro que se ve en pantalla.
-    const finServidor = (opciones?.hasta ?? Date.now()) - desfase;
+    const finServidor = (hasta ?? Date.now()) - desfase;
     // LOS PASOS DE LA SESIÓN (3.3): mucha gente mete cardio en el entrenamiento.
     // Se piden a Health entre el inicio y el fin, en hora del APARATO (el inicio
     // es de servidor: se le suma el desfasaje para volverlo a reloj local). `null`
@@ -772,7 +934,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     let pasos: number | null = null;
     if (arranco && !deshizoElDia) {
       const inicioAparato = new Date(Date.parse(arranco) + desfase);
-      const finAparato = new Date(opciones?.hasta ?? Date.now());
+      const finAparato = new Date(hasta ?? Date.now());
       pasos = await plataforma.salud.pasosEntre(inicioAparato, finAparato).catch(() => null);
     }
     return {
@@ -807,7 +969,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
    * Si la base todavía no tiene la migración, se guarda solo en el teléfono:
    * mandar una función que no existe trabaría la cola (ver `lib/cola.ts`).
    */
-  async function marcar(hastaTelefonoMs: number = Date.now()) {
+  // `renovacion`: la del reloj, que no es "siguió entrenando" y no borra la hora del Terminar que no salió.
+  async function marcar(hastaTelefonoMs: number = Date.now(), opciones?: { renovacion?: boolean }) {
     if (!idSesion) return;
     const iso = new Date(hastaTelefonoMs - desfasaje).toISOString();
     const c = await leerSesionCache();
@@ -818,12 +981,36 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // tocó la caché durante estos awaits, `marcar` lo revertía —el mismo pisón que
     // los refs matan en el estado, pero en la caché—. `actualizarSesionCache`
     // relee y mezcla solo esta clave.
-    await actualizarSesionCache({ ultimaActividad: nueva }, yo);
+    await actualizarSesionCache(opciones?.renovacion ? { ultimaActividad: nueva } : { ultimaActividad: nueva, quisoTerminar: null }, yo);
     if (!disponible('cierrePorInactividad', await versionDelEsquema(supabase))) return;
-    await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: iso } });
+    // `nueva` y no `iso` (cacería del 15/10): la cola guarda UNA marca por sesión, y
+    // una de "ahora" que llegaba después pisaba la de la cinta (una hora adelante).
+    await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: nueva ?? iso } });
   }
 
-  async function serieHecha() {
+  /**
+   * `sinDescanso`: el cardio (14/10). Se anota igual que una serie —cuenta, sube,
+   * queda en el día— pero no arranca un descanso: después de veinte minutos de
+   * cinta no se espera noventa segundos para la próxima vuelta.
+   */
+  async function serieHecha(opciones?: { sinDescanso?: boolean }) {
+    // SIN SESIÓN EN EL TELÉFONO NO SE CUENTA (13/10). La pantalla del descanso
+    // queda abierta con su "+ Serie hecha" aunque la sesión se haya cerrado sola:
+    // ese toque encolaba series y bloques contra una sesión que ya no existe, y
+    // pisaba los de la base o se perdía.
+    if (!inicioRef.current) return;
+    // CON LA CINTA ANDANDO, "+ SERIE HECHA" ES "LISTO" (cacería del 15/10): el botón
+    // del descanso contaba una vuelta de cardio que no existía.
+    if (bloquesRef.current.cardioDesde !== undefined && !opciones?.sinDescanso) return cerrarVueltaDelCardio();
+    // Con la cinta ya parada tampoco: una vuelta de cero minutos y un descanso que el
+    // cardio no lleva. Un bloque con minutos solo puede ser cardio: es "Seguir". Y
+    // una cinta todavía sin arrancar, que no tiene ni minutos (vuelta 8).
+    const ej = bloquesRef.current.ejercicio;
+    if ((bloquesRef.current.minutos !== undefined || (!!ej && !!porTiempo?.has(ej))) && !opciones?.sinDescanso) {
+      borrarDescanso();
+      setDescanso(null);
+      return;
+    }
     // EL CONTEO SE MUEVE PRIMERO, JUNTO Y DESDE LOS REFS. Las dos cuentas —el
     // total y la lista— salen de la misma función (`sumarSerie`) sobre el mismo
     // objeto, leído de refs siempre-al-día y NO del render: así dos toques
@@ -857,9 +1044,14 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // `subir` va ADENTRO de `actualizarSesionCache`, que lo corre antes de tocar
     // la caché: el orden es el mismo, y el toque queda anotado en el reloj desde
     // ahora y no desde que le llega el turno a la caché (4/10).
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques, sugerido: false }, yo, () =>
+    // `bloques` se lee en el turno, DESPUÉS de `antes`: si ahí se unió con la base, va lo unido.
+    await actualizarSesionCache({ series: nc.series, get bloques() { return bloquesRef.current; }, sugerido: false }, yo, () =>
       subir(nc.series, nc.bloques)
     );
+    if (opciones?.sinDescanso === true) {
+      await marcar();
+      return;
+    }
     // Recién ahora el descanso, que necesita leer la duración.
     const seg =
       (await leerDuracionDeSesion()) ??
@@ -883,15 +1075,21 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   async function deshacerSerie() {
     // Igual que `serieHecha`: las dos cuentas juntas y desde los refs, antes de
     // cualquier `await`, para que no se pisen con un toque simultáneo.
+    const corria = bloquesRef.current.cardioDesde !== undefined;
     const nc = restarSerie({ series: seriesRef.current, bloques: bloquesRef.current });
+    if (nc.bloques === bloquesRef.current && nc.series === seriesRef.current) return;
     seriesRef.current = nc.series;
     bloquesRef.current = nc.bloques;
     setSeries(nc.series);
     setBloques(nc.bloques);
     refrescarTarjeta();
     // Guardar primero (ver `serieHecha`): la cola antes que la caché y que `marcar`.
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo, () => subir(nc.series, nc.bloques));
-    await marcar();
+    // Los bloques se leen en el turno, después de `antes`: si ahí se unió con la base, va lo unido.
+    await actualizarSesionCache({ series: nc.series, get bloques() { return bloquesRef.current; } }, yo, () => subir(nc.series, nc.bloques));
+    // La cinta apagada con el − deja de prometer la hora de adelante (vuelta 7 de la
+    // cacería): con `marcar` la marca de +60 seguía viva y la sesión cerraba inflada.
+    if (corria) await bajarMarca();
+    else await marcar();
   }
 
   /**
@@ -911,7 +1109,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // incompleta y subirla los borraría. Se intenta traerlos; si se pudo,
     // `recuperarBloques` ya subió la lista junta.
     if (faltanBloques.current === idSesion) {
-      await recuperarBloques(idSesion, b);
+      await recuperarBloques(idSesion);
       return;
     }
     await encolar(supabase, {
@@ -922,6 +1120,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
 
   /** Cerrar el bloque y arrancar otro con el mismo ejercicio y la misma meta. */
   async function bloqueSiguiente() {
+    if (bloquesRef.current.cardioDesde !== undefined) await dejarElCardio();
     // Desde el ref y no del closure, y `subir` con el total del ref: si justo
     // se contó una serie, esta operación no puede pisarla con datos viejos.
     const previo = bloquesRef.current;
@@ -936,7 +1135,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // que toca la red. Apagar la pantalla justo después no puede perderlo.
     // sugerido:false por defecto; si hay un siguiente en la cadena,
     // `proponerEjercicioSugerido` lo vuelve a poner en true al toque.
-    await actualizarSesionCache({ bloques: b, sugerido: false }, yo, () => subir(seriesRef.current, b));
+    // Los bloques se leen en el turno, después de `antes` (ver el +).
+    await actualizarSesionCache({ get bloques() { return bloquesRef.current; }, sugerido: false }, yo, () => subir(seriesRef.current, b));
     // LA CADENA: proponer el siguiente de la rutina como sugerencia (fantasma).
     // Los ya hechos salen de los bloques cerrados; si queda uno por proponer, va
     // con su peso. Si no hay rutina o ya se hicieron todos, el bloque queda en
@@ -975,17 +1175,27 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   }
 
   async function elegirEjercicio(id: string | null) {
+    // Otro ejercicio con la cinta andando: primero se anota esa vuelta.
+    if (id !== bloquesRef.current.ejercicio && bloquesRef.current.cardioDesde !== undefined) await dejarElCardio();
     const previo = bloquesRef.current;
     const b = cambiarEjercicio(previo, id);
-    if (b === previo) return marcar();
+    if (b === previo) {
+      // Elegir de la lista el mismo que estaba propuesto también lo confirma.
+      if (id && leerViva().sugerido) {
+        setSugerido(false);
+        await actualizarSesionCache({ sugerido: false }, yo);
+      }
+      return marcar();
+    }
     bloquesRef.current = b;
     setBloques(b);
     refrescarTarjeta();
     // Lo eligió la persona: ya no es una sugerencia. Y LA CADENA SE RE-ENGANCHA a
     // la rutina de ESE ejercicio —lo que suele venir después de él—.
     setSugerido(false);
-    if (id) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
-    await actualizarSesionCache({ bloques: b, sugerido: false }, yo);
+    // La cadena de la rutina GUARDADA no se re-engancha: elegir otro ejercicio de ese día no la abandona.
+    if (id && !rutinaEsGuardada.current) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
+    await actualizarSesionCache({ bloques: b, sugerido: false, rutina: rutinaRef.current }, yo);
     // Lo de AHORA y no `b`: si un `+` cayó mientras se guardaba la caché, `b` ya
     // es viejo, y subirlo detrás del `+` le sacaba esa serie a la lista de la base.
     await subir(seriesRef.current, bloquesRef.current);
@@ -1000,18 +1210,22 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
   async function cargarHistorialRutina() {
     try {
       const desde = restarDias(hoyISO(), 56);
-      const { data } = await supabase
-        .from('sesiones')
-        .select('bloques, logs!inner(fecha)')
-        .eq('estado', 'terminada')
-        .gte('logs.fecha', desde)
-        .order('inicio');
+      const [{ data }] = await Promise.all([
+        supabase
+          .from('sesiones')
+          .select('bloques, logs!inner(fecha)')
+          .eq('estado', 'terminada')
+          .gte('logs.fecha', desde)
+          .order('inicio'),
+        cargarCatalogoVisible(supabase),
+      ]);
       const filas = (data ?? []) as { bloques?: unknown; logs?: unknown }[];
       sesionesRutinaRef.current = filas
         .map((s) => {
           const bloques = Array.isArray(s.bloques) ? (s.bloques as { ejercicio?: string | null }[]) : [];
           const log = Array.isArray(s.logs) ? (s.logs[0] as { fecha?: string }) : (s.logs as { fecha?: string } | null);
-          return { fecha: log?.fecha ?? '', ejercicios: ejerciciosEnOrden(bloques.map((b) => b?.ejercicio ?? null)) };
+          const ids = bloques.map((b) => b?.ejercicio ?? null).filter((id) => !id || seVe(id));
+          return { fecha: log?.fecha ?? '', ejercicios: ejerciciosEnOrden(ids) };
         })
         .filter((s) => s.fecha);
     } catch {
@@ -1021,13 +1235,24 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
 
   // PONER UN EJERCICIO COMO SUGERENCIA (fantasma): lo deja en el bloque actual con
   // su peso, marcado como sugerido hasta que se cuente una serie.
+  // Las series y minutos de un ejercicio en la rutina GUARDADA de hoy (la del teléfono:
+  // anda sin señal y después de que iOS mate la app). La deducida no tiene cantidades.
+  async function cantidadEnLaRutina(id: string) {
+    if (!rutinaEsGuardada.current) return undefined;
+    return cantidadesDeHoy(await rutinaActivaDelTelefono(), new Date().getDay())[id];
+  }
+
   async function proponerEjercicioSugerido(id: string) {
     // SOLO SOBRE EL BLOQUE EN BLANCO, como `sembrar` y `proponerPeso`: si ya se
     // contó una serie o se eligió algo, la sugerencia llegó tarde. Ponerla igual
     // cerraba un bloque sin ejercicio con esa serie adentro, que no se guarda.
+    const cuanto = await cantidadEnLaRutina(id);
     const actual = bloquesRef.current;
     if (actual.ejercicio || actual.hechas > 0) return;
-    const b = cambiarEjercicio(actual, id);
+    // Con las series y los minutos que dice la rutina, no los de siempre (vuelta 7).
+    const elegido = cambiarEjercicio(actual, id);
+    const conMeta = cuanto ? cambiarMeta(elegido, metaDeRutina(cuanto.series)) : elegido;
+    const b = cuanto?.minutos !== undefined ? cambiarMinutos(conMeta, cuanto.minutos) : conMeta;
     bloquesRef.current = b;
     setBloques(b);
     setSugerido(true);
@@ -1257,6 +1482,75 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     await marcar();
   }
 
+  /**
+   * LOS MINUTOS DEL CARDIO (14/10). Con la vuelta ya contada se suben en el acto:
+   * corregir "eran 25, no 20" tiene que llegar a la base.
+   */
+  async function elegirMinutos(m: number | null) {
+    const b = cambiarMinutos(bloquesRef.current, m);
+    if (b === bloquesRef.current) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
+    if (bloquesRef.current.hechas > 0) await subir(seriesRef.current, bloquesRef.current);
+    await marcar();
+  }
+
+  /** EL CRONÓMETRO DEL CARDIO (15/10): arranca al elegir un cardio, o con "Otra vuelta". */
+  async function arrancarElCardio() {
+    const b = arrancarCardio(bloquesRef.current, Date.now());
+    if (b === bloquesRef.current) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    // Arrancar la cinta propuesta es confirmarla: deja de ser sugerencia.
+    setSugerido(false);
+    await actualizarSesionCache({ bloques: b, sugerido: false }, yo);
+    cardioRenovadoEl.current = Date.now();
+    await marcar(Date.now() + MARCA_DEL_CARDIO_MS);
+  }
+
+  /** "Listo": lo que corrió se anota en minutos y la vuelta cuenta, sin descanso automático. */
+  async function cerrarVueltaDelCardio(fin: number = Date.now()) {
+    const b = cerrarVueltaDeCardio(bloquesRef.current, fin);
+    if (b === bloquesRef.current) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    await serieHecha({ sinDescanso: true });
+    // La cinta ya no corre: la marca adelantada de una hora se achica a ahora.
+    await bajarMarca();
+  }
+
+  /**
+   * SE DEJA LA CINTA SIN TOCAR "LISTO" (otro ejercicio, Terminar): la vuelta se
+   * anota, salvo que no llegue a un minuto —la cinta tocada por error, que dejaba
+   * una vuelta de un minuto y una serie de más sin forma de sacarlas—.
+   */
+  async function dejarElCardio(fin: number = Date.now()) {
+    const desde = bloquesRef.current.cardioDesde;
+    if (desde === undefined) return;
+    if (fin - desde >= VUELTA_MINIMA_MS) return cerrarVueltaDelCardio(fin);
+    const b = descartarCardio(bloquesRef.current);
+    bloquesRef.current = b;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
+    await bajarMarca();
+  }
+
+  /**
+   * LA MARCA ADELANTADA SE ACHICA (cacería del 15/10, migración 82). La cinta y el
+   * descanso largo prometen actividad hasta una hora adelante; si después de
+   * "Listo" la persona se va sin tocar Terminar, la sesión se cerraba sola con
+   * esa hora de más. Sin la 82 la base no sabe achicarla: queda como antes.
+   */
+  async function bajarMarca(hastaTelefonoMs: number = Date.now()) {
+    if (!idSesion) return;
+    const iso = new Date(Math.max(hastaTelefonoMs, Date.now()) - desfasaje).toISOString();
+    setUltimaActividad(iso);
+    await actualizarSesionCache({ ultimaActividad: iso }, yo);
+    if (!disponible('bajarMarca', await versionDelEsquema(supabase))) return;
+    await encolar(supabase, { rpc: 'marcar_actividad', args: { p_sesion: idSesion, p_hasta: iso, p_bajar: true } });
+  }
+
   /** El peso de una serie ya hecha, desde la lista. `indice` -1 es el bloque en curso. */
   async function corregirPesoDeSerie(indice: number, serie: number, kg: number | null) {
     const previo = bloquesRef.current;
@@ -1285,8 +1579,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     // Corregir el ejercicio también re-engancha la cadena, igual que
     // `elegirEjercicio`: si no, el próximo sugerido saldría de la rutina del
     // ejercicio equivocado. (29/9)
-    if (id) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
-    await actualizarSesionCache({ bloques: b }, yo);
+    // La cadena de la rutina GUARDADA no se re-engancha: elegir otro ejercicio de ese día no la abandona.
+    if (id && !rutinaEsGuardada.current) rutinaRef.current = reengancharDesde(sesionesRutinaRef.current, id);
+    await actualizarSesionCache({ bloques: b, rutina: rutinaRef.current }, yo);
     await subir(seriesRef.current, bloquesRef.current);
     await marcar();
   }
@@ -1308,7 +1603,8 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     setSeries(nc.series);
     setBloques(nc.bloques);
     // Guardar primero (ver `serieHecha`): la cola antes que la caché y que `marcar`.
-    await actualizarSesionCache({ series: nc.series, bloques: nc.bloques }, yo, () => subir(nc.series, nc.bloques));
+    // Los bloques se leen en el turno, después de `antes`: si ahí se unió con la base, va lo unido.
+    await actualizarSesionCache({ series: nc.series, get bloques() { return bloquesRef.current; } }, yo, () => subir(nc.series, nc.bloques));
     await marcar();
   }
 
@@ -1344,6 +1640,7 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
       porUbicacion,
       bloques,
       ultimaActividad,
+      cacheLeida,
       cargaConsultada,
       sugerido,
       subida,
@@ -1358,6 +1655,9 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     mudarSeries,
     elegirMeta,
     elegirPeso,
+    elegirMinutos,
+    arrancarCardio: arrancarElCardio,
+    cerrarVueltaDeCardio: cerrarVueltaDelCardio,
     corregirPesoDeSerie,
     elegirCarga,
     corregirCargaDeBloque,
@@ -1366,11 +1666,17 @@ export function useSesion(alCambiarElDia?: (r: ResultadoRegistro | null) => void
     cerrarDescanso: () => {
       borrarDescanso();
       setDescanso(null);
+      // Con la cinta andando la marca es la de la cinta, no la del descanso: no se toca.
+      if (bloquesRef.current.cardioDesde === undefined) void bajarMarca();
     },
     reiniciarDescanso: (d: DescansoVivo) => {
+      const antes = descansoRef.current?.fin ?? 0;
       setDescanso(d);
       guardarDuracionDeSesion(d.duracion);
-      void marcar(d.fin);
+      // ACORTARLO BAJA LA MARCA (cacería del 15/10): de una hora a 90 s, la promesa
+      // de una hora quedaba y la sesión dejada sin Terminar se guardaba con ella.
+      if (d.fin < antes && bloquesRef.current.cardioDesde === undefined) void bajarMarca(d.fin);
+      else void marcar(d.fin);
     },
   };
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Segmentado from '../Segmentado';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { borrarPerfilCache } from '@compartido/cache';
 import type { Perfil, Sexo as SexoValor } from '@nucleo/tipos';
@@ -96,50 +97,42 @@ export default function Identidad({
             <Text style={estilos.botonTexto}>{guardando ? '…' : T.general.guardar}</Text>
           </Pressable>
         </View>
-        <Text style={estilos.nota}>{T.ajustes.nombreNota}</Text>
         {aviso !== '' && <Text style={estilos.ok}>{aviso}</Text>}
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
       </View>
 
       <View style={estilos.seccion}>
         <Text style={estilos.titulo}>{T.ajustes.fotosNuevas}</Text>
-        <View style={estilos.selector}>
-          {/* `!== 'amigos'` y no `=== 'privada'`: si algún día aparece un
-              tercer valor, el botón seguro es el que menos comparte. */}
-          <Opcion
-            texto={T.ajustes.soloYo}
-            activa={perfil.visibilidad_default !== 'amigos'}
-            alTocar={() => guardar('visibilidad_default', 'privada')}
-          />
-          <Opcion
-            texto={T.ajustes.amigos}
-            activa={perfil.visibilidad_default === 'amigos'}
-            alTocar={() => guardar('visibilidad_default', 'amigos')}
-          />
-        </View>
+        {/* `!== 'amigos'` y no `=== 'privada'`: si algún día aparece un
+            tercer valor, el botón seguro es el que menos comparte. */}
+        <Segmentado<'privada' | 'amigos'>
+          opciones={[
+            { valor: 'privada', texto: T.ajustes.soloYo },
+            { valor: 'amigos', texto: T.ajustes.amigos },
+          ]}
+          valor={perfil.visibilidad_default === 'amigos' ? 'amigos' : 'privada'}
+          alElegir={(v) => guardar('visibilidad_default', v)}
+        />
       </View>
 
       <View style={estilos.seccion}>
         <Text style={estilos.titulo}>{T.ajustes.sexo}</Text>
-        <View style={estilos.selector}>
-          <Opcion texto={T.ajustes.sinCargar} activa={sexo === null} alTocar={() => guardar('sexo', null as SexoValor)} />
-          <Opcion texto={T.ajustes.mujer} activa={sexo === 'f'} alTocar={() => guardar('sexo', 'f' as SexoValor)} />
-          <Opcion texto={T.ajustes.hombre} activa={sexo === 'm'} alTocar={() => guardar('sexo', 'm' as SexoValor)} />
-        </View>
-        <Text style={estilos.nota}>{T.ajustes.sexoNota}</Text>
+        <Segmentado<SexoValor>
+          opciones={[
+            { valor: null as SexoValor, texto: T.ajustes.sinCargar },
+            { valor: 'f' as SexoValor, texto: T.ajustes.mujer },
+            { valor: 'm' as SexoValor, texto: T.ajustes.hombre },
+          ]}
+          valor={sexo as SexoValor}
+          alElegir={(v) => guardar('sexo', v)}
+        />
+        {/* §16.7c: este aviso no se saca (activar el DOTS deja deducir el peso). */}
         <Text style={estilos.nota}>{T.ajustes.sexoAviso}</Text>
       </View>
     </>
   );
 }
 
-function Opcion({ texto, activa, alTocar }: { texto: string; activa: boolean; alTocar: () => void }) {
-  return (
-    <Pressable style={[estilos.opcion, activa && estilos.opcionActiva]} onPress={alTocar}>
-      <Text style={[estilos.opcionTexto, activa && estilos.opcionTextoActivo]}>{texto}</Text>
-    </Pressable>
-  );
-}
 
 const estilos = StyleSheet.create({
   seccion: { marginTop: 30 },
@@ -167,18 +160,6 @@ const estilos = StyleSheet.create({
   },
   apagado: { opacity: 0.45 },
   botonTexto: { color: C.tinta, fontSize: 14 },
-  selector: { flexDirection: 'row', gap: 6 },
-  opcion: {
-    flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  opcionActiva: { borderColor: C.lineaFuerte, backgroundColor: 'rgba(255,255,255,0.04)' },
-  opcionTexto: { color: C.apagado, fontSize: 13 },
-  opcionTextoActivo: { color: C.tinta },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
   ok: { color: C.sub, fontSize: 13, marginTop: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },

@@ -55,7 +55,6 @@ export default function MisDatos({ perfil }: { perfil: Perfil }) {
       <Pressable style={[estilos.boton, exportando && estilos.apagado]} onPress={exportar} disabled={exportando}>
         <Text style={estilos.botonTexto}>{exportando ? T.ajustes.exportando : T.ajustes.exportar}</Text>
       </Pressable>
-      <Text style={estilos.nota}>{T.ajustes.exportarNota}</Text>
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
     </View>
   );

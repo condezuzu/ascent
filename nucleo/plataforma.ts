@@ -150,6 +150,11 @@ export type Avisos = {
   /** `sonido: false` = la persona apagó "Sonido al terminar": el aviso llega callado. */
   programar(id: string, enSegundos: number, alSonar: () => void, opciones?: { sonido?: boolean }): Promise<void>;
   cancelar(id: string): Promise<void>;
+  /**
+   * La dirección de ESTE aparato para los avisos push (migración 77), o null si
+   * no hay o no dejó avisar. `pedir`: si nunca se le preguntó, preguntarle ahora.
+   */
+  tokenRemoto(pedir: boolean): Promise<string | null>;
 };
 
 /**

@@ -59,7 +59,6 @@ export default function AnotarPeso({ unidad, alGuardar }: { unidad: Unidad; alGu
           <Text style={estilos.textoBoton}>{guardando ? '…' : T.peso.anotar}</Text>
         </Pressable>
       </View>
-      <Text style={estilos.nota}>{T.peso.privado}</Text>
       {!!error && <Text style={estilos.error}>{error}</Text>}
     </View>
   );

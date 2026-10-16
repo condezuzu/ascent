@@ -14,6 +14,7 @@
 // Correr con:  npm run test:bloqueo   (necesita la migración 53 en producción)
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'node:crypto';
+import { borrarCuentaDePrueba } from './utiles.mjs';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -114,7 +115,7 @@ try {
   // limpieza: borrar las dos cuentas (el botón de la app)
   for (const x of [A, B]) {
     if (!x) continue;
-    const e = await x.c.rpc('eliminar_cuenta');
+    const e = await borrarCuentaDePrueba(x.c);
     if (e.error) console.log(`  aviso: no se borró ${x.email}: ${e.error.message}`);
   }
 }

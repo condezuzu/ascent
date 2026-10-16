@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
@@ -42,6 +43,7 @@ export default function HojaDelDia({
   alCerrar: () => void;
 }) {
   const [resumen, setResumen] = useState<ResumenDelDia | null>(null);
+  const [noCargo, setNoCargo] = useState(false);
   const [foto, setFoto] = useState<string | null>(null);
   const [cuantasSesiones, setCuantasSesiones] = useState(0);
   const [porConfirmar, setPorConfirmar] = useState<Destino | null>(null);
@@ -62,6 +64,9 @@ export default function HojaDelDia({
     if (!uid) return;
     const d = await cargarDia(supabase, uid, fecha, esFuturo);
     if (id !== cargaId.current) return;
+    // No se pudo leer: ni resumen ni botones de corregir. Ver `cargarDia`.
+    setNoCargo(!d);
+    if (!d) return setResumen(null);
     setUnidad(d.unidad);
     setCuantasSesiones(d.cuantasSesiones);
     setResumen(d.resumen);
@@ -113,7 +118,7 @@ export default function HojaDelDia({
 
       {/* Mientras carga, el lugar ya está: la hoja no crece de a saltos. */}
       {!resumen ? (
-        <Text style={estilos.sub}>…</Text>
+        <Text style={noCargo ? estilos.nota : estilos.sub}>{noCargo ? T.resumen.noCargo : '…'}</Text>
       ) : (
         <>
           <Text
@@ -161,7 +166,7 @@ export default function HojaDelDia({
                       </Text>
                     )}
                   </View>
-                  <Text style={estilos.cuantas}>{T.resumen.series(e.series)}</Text>
+                  <Text style={estilos.cuantas}>{e.minutos ? T.rutina.minutos(e.minutos) : T.resumen.series(e.series)}</Text>
                 </View>
               ))}
               {resumen.sinEjercicio > 0 && (
@@ -180,7 +185,7 @@ export default function HojaDelDia({
               <Text style={estilos.rotulo}>{T.volumen.porMusculo}</Text>
               {resumen.volumen.map((v) => (
                 <View style={estilos.filaMusculo} key={v.grupo}>
-                  <Text style={[estilos.nombre, estilos.musculo]}>{v.grupo}</Text>
+                  <Text style={[estilos.nombre, estilos.musculo]}>{nombreDeGrupo(v.grupo)}</Text>
                   <View style={estilos.barra}>
                     <View
                       style={{
@@ -194,7 +199,7 @@ export default function HojaDelDia({
                   </View>
                   <Text style={estilos.cuantas}>
                     {v.kilos > 0
-                      ? T.volumen.kilosYSeries(Math.round(deKilos(v.kilos, unidad)).toLocaleString('es-UY'), unidad, v.series)
+                      ? T.volumen.kilosYSeries(Math.round(deKilos(v.kilos, unidad)).toLocaleString(T.general.locale), unidad, v.series)
                       : T.volumen.soloSeries(v.series)}
                   </Text>
                 </View>

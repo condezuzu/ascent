@@ -18,22 +18,17 @@
  * NO IMPORTA NADA del teléfono: se prueba con node pelado.
  */
 
-/** Se prendió o apagó "Avisar cuando entreno": si hay una sesión corriendo, tiene que surtir efecto YA. */
-export const AVISO_DE_ENTRENO_CAMBIO = 'ascent:aviso-de-entreno-cambio';
-
 /**
- * DESPUÉS DE "TERMINAR", NO SE VUELVE A MARCAR "ENTRENANDO" (12/10). Se termina
- * estando todavía en el gimnasio, y el vigilante —que marca la presencia al
- * verte adentro— te volvía a poner en "Entrenando ahora" a los dos minutos, con
- * su botón "Unirse" y sin nadie del otro lado para contestar. La pausa dura lo
- * que dura la marca; iniciar otra sesión la levanta.
+ * LO QUE CONTESTA LA BASE AL PEDIR UNIRSE (migración 73). Antes no contestaba
+ * nada: una base sin la 73 devuelve `null`, y eso es "salió".
+ * - `no-entrena`: ya no está entrenando (la lista del teléfono era de hace un rato);
+ * - `ocupado`: ya entrena con otro —es de a dos—;
+ * - `ya-unido`: el que ya entrena con otro soy yo.
  */
-export const CLAVE_NO_AVISAR_HASTA = 'ascent:no-avisar-hasta';
-export const PAUSA_TRAS_TERMINAR_MS = 2 * 60 * 60 * 1000;
+export type RespuestaDeUnirse = 'ok' | 'no-entrena' | 'ocupado' | 'ya-unido' | 'fallo';
 
-export function puedeMarcarPresencia(noAvisarHasta: string | null | undefined, ahora: number): boolean {
-  const hasta = Number(noAvisarHasta);
-  return !(Number.isFinite(hasta) && hasta > ahora);
+export function leerRespuestaDeUnirse(crudo: unknown): RespuestaDeUnirse {
+  return crudo === 'no-entrena' || crudo === 'ocupado' || crudo === 'ya-unido' ? crudo : 'ok';
 }
 
 /** Cada cuánto se vuelve a preguntar. */
@@ -74,6 +69,12 @@ export type Union = {
   estado: 'pendiente' | 'aceptada';
   laPediYo: boolean;
   otro: { id: string; username: string; avatar_url: string | null };
+  /** El grupo (migración 88): `null` en un pedido o con la base de antes. */
+  grupo: string | null;
+  /** Este compañero armó el grupo (es el que lleva más tiempo). */
+  lider: boolean;
+  /** Lo armé yo: puedo sacar a otros. */
+  yoLider: boolean;
   /** El reloj de la base cuando contestó, en ms. */
   ahora: number;
   enVivo: { ejercicio: string | null; serie: number; meta: number; descansoFin: number | null; actualizado: number } | null;
@@ -99,6 +100,9 @@ export function leerUniones(crudo: unknown): Union[] {
       estado: x.estado,
       laPediYo: x.la_pedi_yo === true,
       otro: { id: otro.id, username: typeof otro.username === 'string' ? otro.username : '', avatar_url: typeof otro.avatar_url === 'string' ? otro.avatar_url : null },
+      grupo: typeof x.grupo === 'string' ? x.grupo : null,
+      lider: x.lider === true,
+      yoLider: x.yo_lider === true,
       ahora,
       enVivo:
         x.estado === 'aceptada' && v

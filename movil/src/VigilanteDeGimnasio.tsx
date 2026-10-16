@@ -4,20 +4,19 @@ import {
   mirarElGimnasio,
   PUNTO_CAMBIO,
   registrarPorSenal,
+  reintentarLlegadaPendiente,
   SUBIO_RANGO,
 } from '@compartido/gimnasio';
-import { decidir } from '@nucleo/llegada';
+import { decidir, sinDesmarcar } from '@nucleo/llegada';
 import { guardarVigilancia, leerVigilancia } from '@compartido/sesionCache';
 import { perfilFresco, perfilVivo } from '@compartido/perfilVivo';
 import { useSesion } from '@compartido/useSesion';
-import { ESPERA_LLEGADA_MS } from '@nucleo/reglas';
 import { anotar } from '@compartido/bitacora';
 import { hoyISO } from '@nucleo/fechas';
 import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
 import type { Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import { supabase } from './supabase';
-import { sePuedeMarcarPresencia } from '@compartido/enVivo';
 import { miId } from '@compartido/quienSoy';
 
 /**
@@ -44,12 +43,9 @@ export const CERRO_SOLA = 'ascent:sesion-cerro-sola';
  * LOS DOS SE NECESITAN, y no es redundancia:
  *  - El de fondo registra **el día** y anota **la hora de llegada**. Es lo que
  *    arregla "fui al gimnasio y el día no entró".
- *  - Este arranca y cierra **la sesión**, que necesita los siete minutos de
- *    espera de §13 y mirar si seguís adentro — dos cosas que no entran en los
- *    treinta segundos que da un despertar en segundo plano.
- * Cuando la app se abre después de un despertar, este lee la visita que dejó
- * el otro y arranca la sesión **fechada en la llegada**, no en el momento en
- * que sacaste el teléfono.
+ *  - Este registra el día si la app está abierta al llegar, y cierra al salir
+ *    una sesión que haya arrancado sola antes del 15/10. Desde entonces llegar
+ *    ya no arranca la sesión: la arranca la persona (ver `nucleo/llegada.ts`).
  *
  * NO DIBUJA NADA. En la web este componente muestra el resumen del final;
  * acá el resumen ya lo dibuja Inicio con su propio estado, así que en vez de
@@ -92,7 +88,8 @@ export default function VigilanteDeGimnasio() {
 }
 
 function Mirando({ perfil }: { perfil: Perfil }) {
-  const sesion = useSesion();
+  // No muestra ningún reloj: sin el redibujo de cada segundo.
+  const sesion = useSesion(undefined, { repintarCadaSegundo: false });
   const sesionRef = useRef(sesion);
   sesionRef.current = sesion;
   const perfilRef = useRef(perfil);
@@ -103,6 +100,12 @@ function Mirando({ perfil }: { perfil: Perfil }) {
   const diaRegistrado = useRef<string | null>(null);
 
   const mirarYActuar = useCallback(async (perfilAhora: Perfil) => {
+    // UNA LLEGADA QUE NO SE PUDO REGISTRAR con la app cerrada se reintenta acá,
+    // estés donde estés: ver `reintentarLlegadaPendiente`. Sin pendiente es una
+    // lectura del teléfono y nada más.
+    const pendiente = await reintentarLlegadaPendiente(supabase, hoyISO()).catch(() => 'nada' as const);
+    if (pendiente !== 'nada') await anotar('llegada pendiente', { resultado: pendiente });
+    if (pendiente === 'entro') eventos.emitir(DIA_CAMBIO);
     const s = sesionRef.current;
     const vigilancia = await leerVigilancia();
 
@@ -134,23 +137,6 @@ function Mirando({ perfil }: { perfil: Perfil }) {
       edadDelPunto: Math.round((Date.now() - medidoEn) / 1000) + 's',
     });
 
-    // ACTIVIDAD EN VIVO: si estás adentro, se publica "en el gimnasio ahora"
-    // para tus amigos (caduca sola en 2 h). El RPC no hace nada si el opt-in
-    // está apagado, así que llamarlo siempre-que-adentro es seguro. Dispara y
-    // se olvida; si la migración de actividad no corrió, PGRST202 y nada. Ver
-    // `supabase/actividad-en-vivo.sql`.
-    if (adentro) {
-      void (async () => {
-        try {
-          // Recién terminaste a mano y seguís adentro: no se te vuelve a marcar.
-          if (!(await sePuedeMarcarPresencia())) return;
-          await supabase.rpc('marcar_en_gimnasio');
-        } catch {
-          /* opt-in apagado o migración sin correr: nada que hacer */
-        }
-      })();
-    }
-
     if (adentro && diaRegistrado.current !== hoyISO()) {
       const r = await registrarPorSenal(supabase, 'ubicacion');
       await anotar('registré el día', { entró: r.registrado, yaEstaba: r.yaEstaba });
@@ -167,39 +153,33 @@ function Mirando({ perfil }: { perfil: Perfil }) {
       }
     }
 
-    const decision = decidir(adentro, medidoEn, Date.now(), vigilancia, {
-      corriendo: s.estado.corriendo,
-      porUbicacion: s.estado.porUbicacion,
+    // SE DECIDE CON LO DE AHORA, no con la foto de antes del GPS (13/10): entre
+    // aquella lectura y esta línea pasan segundos, y "Terminar" pudo caer en el medio.
+    const ahoraS = sesionRef.current;
+    // AL ABRIR DE CERO, todavía sin leer la sesión guardada: no se decide nada.
+    // Con eso `corriendo` sería el `false` de arranque y se arrancaría otra. La
+    // mirada siguiente ya la tiene.
+    if (!ahoraS.estado.cacheLeida) {
+      ultimaMirada.current = 0;
+      return;
+    }
+    const visita = await leerVigilancia();
+    const decision = decidir(adentro, medidoEn, Date.now(), visita, {
+      corriendo: ahoraS.estado.corriendo,
+      porUbicacion: ahoraS.estado.porUbicacion,
     });
 
-    if (decision.hacer === 'arrancar') {
-      await anotar('arranco la sesión', { llegada: new Date(decision.desde).toLocaleTimeString() });
-      const salio = await s.empezar({ desde: decision.desde, origen: 'ubicacion' });
-      // La visita se da por usada SOLO si el arranque llegó. Muchos gimnasios
-      // son un subsuelo sin señal: si se marcara igual, un fallo de red de un
-      // segundo dejaría a ese día sin sesión para siempre.
-      await guardarVigilancia(salio ? decision.vigilancia : { ...decision.vigilancia, arranco: false });
-      if (!salio) await anotar('no pude arrancar, reintento', {});
-      else eventos.emitir(DIA_CAMBIO);
-    } else if (decision.hacer === 'terminar') {
+    if (decision.hacer === 'terminar') {
       await anotar('cierro la sesión', { salida: new Date(decision.hasta).toLocaleTimeString() });
-      const cerro = await s.terminar({ hasta: decision.hasta });
+      const cerro = await ahoraS.terminar({ hasta: decision.hasta });
       if (cerro && !cerro.deshizoElDia) eventos.emitir(CERRO_SOLA, cerro);
       // La visita se borra SOLO si el cierre llegó: `ultimoAdentro` tiene la
       // hora de salida, que es lo único que sabe cuándo se fue de verdad.
-      await guardarVigilancia(cerro ? null : vigilancia);
+      await guardarVigilancia(cerro ? null : visita);
       if (!cerro) await anotar('no pude cerrar, reintento', {});
       else eventos.emitir(DIA_CAMBIO);
     } else {
-      await guardarVigilancia(decision.vigilancia);
-    }
-
-    if (decision.hacer === 'nada' && decision.vigilancia && !decision.vigilancia.arranco) {
-      const faltan = Math.max(
-        0,
-        Math.round((ESPERA_LLEGADA_MS - (Date.now() - decision.vigilancia.desde)) / 1000)
-      );
-      await anotar('esperando', { faltanSegundos: faltan });
+      await guardarVigilancia(sinDesmarcar(decision.vigilancia, await leerVigilancia()));
     }
   }, []);
 
@@ -209,8 +189,8 @@ function Mirando({ perfil }: { perfil: Perfil }) {
 
     // UNA SOLA MIRADA A LA VEZ. El intervalo es de dos minutos pero leer el
     // GPS puede tardar segundos, y volver a la pantalla dispara otra mirada al
-    // instante. Dos en paralelo pueden decidir las dos "arrancar", y la
-    // segunda `iniciar_sesion` se comería a la primera.
+    // instante. Dos en paralelo pueden registrar o cerrar dos veces, y la
+    // segunda pisaría lo que hizo la primera.
     if (mirando.current) return;
     mirando.current = true;
     try {

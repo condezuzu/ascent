@@ -5,8 +5,10 @@ import type { Carga } from '@nucleo/carga';
 import { disponible } from '@nucleo/esquema';
 import { hoyISO } from '@nucleo/fechas';
 import { revisarPerdidaAntes } from '@compartido/anotarDia';
+import { versionDelEsquema } from '@compartido/esquema';
 import type { Unidad } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
+import { firmarFotos } from '@compartido/firmas';
 
 /**
  * UN DÍA, ABIERTO: lo que se pide para mostrarlo y lo que se hace para
@@ -27,14 +29,22 @@ export type DatosDelDia = {
   unidad: Unidad;
 };
 
-export async function cargarDia(supabase: Cliente, uid: string, fecha: string, esFuturo: boolean): Promise<DatosDelDia> {
-  const [{ data: log }, { data: catalogo }, { data: cfgs }, { data: perfil }] = await Promise.all([
+/**
+ * `null` SI NO SE PUDO LEER (13/10). Sin señal, la lectura del día volvía vacía
+ * y se tomaba por "no hay día": la hoja decía "Sin registrar" en un día
+ * entrenado, y el botón para "arreglarlo" BORRABA el día de verdad con su
+ * sesión. No saber no es lo mismo que no haber: sin lectura no hay resumen, y
+ * sin resumen no hay botones de corregir.
+ */
+export async function cargarDia(supabase: Cliente, uid: string, fecha: string, esFuturo: boolean): Promise<DatosDelDia | null> {
+  const [{ data: log, error: eLog }, { data: catalogo }, { data: cfgs }, { data: perfil }] = await Promise.all([
     supabase.from('logs').select('id, es_descanso, origen').eq('user_id', uid).eq('fecha', fecha).maybeSingle(),
     supabase.from('ejercicios').select('id, nombre, grupo'),
     supabase.from('descansos').select('desde, dias').order('desde', { ascending: false }),
     supabase.from('profiles').select('unidad_peso').eq('id', uid).maybeSingle(),
   ]);
-  const [{ data: sesiones }, { data: fotos }] = log
+  if (eLog) return null;
+  const [{ data: sesiones, error: eSesiones }, { data: fotos }]: [{ data: unknown; error?: unknown }, { data: unknown }] = log
     ? await Promise.all([
         supabase.from('sesiones').select('id, inicio, fin, estado, series, bloques').eq('log_id', log.id),
         // LA MÁS NUEVA, SIEMPRE LA MISMA (4/10). Sin orden, con dos fotos en el
@@ -43,6 +53,8 @@ export async function cargarDia(supabase: Cliente, uid: string, fecha: string, e
         supabase.from('photos').select('storage_path').eq('log_id', log.id).order('creado', { ascending: false }).limit(1),
       ])
     : [{ data: [] }, { data: [] }];
+  // Con el día leído y las sesiones no: mostraría "Fuiste" sin nada adentro.
+  if (eSesiones) return null;
 
   const resumen = resumenDelDia({
     log,
@@ -57,12 +69,11 @@ export async function cargarDia(supabase: Cliente, uid: string, fecha: string, e
   const ruta = (fotos as { storage_path: string }[] | null)?.[0]?.storage_path;
   let foto: string | null = null;
   if (ruta) {
-    const { data: firmada } = await supabase.storage.from('fotos').createSignedUrl(ruta, 3600);
-    foto = firmada?.signedUrl ?? null;
+    foto = (await firmarFotos(supabase, [ruta]))[0];
   }
   return {
     resumen,
-    cuantasSesiones: (sesiones ?? []).length,
+    cuantasSesiones: ((sesiones ?? []) as unknown[]).length,
     foto,
     unidad: perfil?.unidad_peso === 'lb' ? 'lb' : 'kg',
   };
@@ -92,6 +103,14 @@ export async function corregirDia(supabase: Cliente, uid: string, fecha: string,
   // no se pudo revisar, el día queda como estaba.
   if (destino !== 'nada' && fecha === hoyISO() && !(await revisarPerdidaAntes(supabase))) {
     return { error: T.calendario.noSeAgrego, cambio: false };
+  }
+  // DE UNA (migración 74): borrar y volver a poner en la misma transacción. En
+  // dos pedidos, si entraba el primero y el segundo no, el día quedaba borrado
+  // con su sesión. Lo de abajo queda solo para una base que todavía no la tiene.
+  if (disponible('corregirDiaDeUna', await versionDelEsquema(supabase).catch(() => null))) {
+    const { error } = await supabase.rpc('corregir_dia', { p_fecha: fecha, p_destino: destino });
+    if (error) return { error: destino === 'nada' ? T.calendario.noSeSaco : T.calendario.noSeAgrego, cambio: false };
+    return { error: null, cambio: true };
   }
   const { error: eBorrar } = await supabase.from('logs').delete().eq('user_id', uid).eq('fecha', fecha);
   if (eBorrar) return { error: T.calendario.noSeSaco, cambio: false };

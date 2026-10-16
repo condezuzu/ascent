@@ -35,7 +35,7 @@ import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { limiteDeSonda, pasarLaEntradaNativa } from './utiles.mjs';
+import { limiteDeSonda, pasarLaEntradaNativa, borrarCuentaDePrueba } from './utiles.mjs';
 
 limiteDeSonda(25);
 
@@ -108,7 +108,7 @@ async function limpiarLoQueQuedo() {
       });
       // La mayoría no va a existir: cada corrida crea las que llegó a crear.
       if (error) continue;
-      if (!(await c.rpc('eliminar_cuenta')).error) ok++;
+      if (!(await borrarCuentaDePrueba(c)).error) ok++;
     }
     tacharSello(s);
   }
@@ -411,7 +411,7 @@ try {
   let borradas = 0;
   for (const c of cuentas) {
     try {
-      await c.s.rpc('eliminar_cuenta');
+      await borrarCuentaDePrueba(c.s);
       borradas++;
     } catch {
       /* se informa abajo */

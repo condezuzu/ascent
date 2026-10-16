@@ -26,6 +26,7 @@
 //
 //   node --env-file=.env.local supabase/simular-cuatro-semanas.mjs
 import { createClient } from '@supabase/supabase-js';
+import { borrarCuentaDePrueba } from './utiles.mjs';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -414,7 +415,7 @@ try {
     const { error } = await supabase.storage.from('fotos').remove(rutas);
     chequear('se borran los archivos del bucket', error?.message ?? 'ok', 'ok');
   }
-  const { error } = await supabase.rpc('eliminar_cuenta');
+  const { error } = await borrarCuentaDePrueba(supabase);
   chequear('la cuenta se borra', error?.message ?? 'ok', 'ok');
   await supabase.auth.signOut();
   console.log(`\n${fallos === 0 ? 'todo ok' : fallos + ' fallaron'}`);

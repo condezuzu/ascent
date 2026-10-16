@@ -28,7 +28,6 @@ export default function PesoHoja({
   return (
     <Hoja visible={visible} alCerrar={alCerrar}>
       <Text style={estilos.titulo}>{T.peso.titulo}</Text>
-      <Text style={estilos.sub}>{T.peso.sub}</Text>
       <AnotarPeso
         unidad={unidad}
         alGuardar={() => {

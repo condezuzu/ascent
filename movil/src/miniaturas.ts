@@ -4,6 +4,7 @@ import type { Celda } from '@compartido/album';
 import { anotar } from './cajaNegra';
 import { prepararMiniatura } from './foto';
 import { supabase } from './supabase';
+import { CACHE_DE_FOTO } from '@compartido/firmas';
 
 /**
  * LAS MINIATURAS QUE FALTAN, hechas por el teléfono del dueño (8/10).
@@ -52,7 +53,7 @@ export async function completarMiniaturas(celdas: Celda[]): Promise<number> {
         if (!datos) continue;
         const { error } = await supabase.storage
           .from('fotos')
-          .upload(rutaDeMiniatura(c.ruta), datos, { contentType: 'image/jpeg', upsert: true });
+          .upload(rutaDeMiniatura(c.ruta), datos, { contentType: 'image/jpeg', upsert: true, cacheControl: CACHE_DE_FOTO });
         if (!error) hechas++;
       } catch {
         // Esta no salió: queda para la próxima apertura.

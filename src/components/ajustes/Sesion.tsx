@@ -7,17 +7,16 @@ import { cerrarSesion } from '@compartido/cuenta';
 import { avisarFallo } from '@compartido/cola';
 import { olvidarPendientes } from '@/lib/avisos';
 import { borrarTema } from '@/plataforma/web/tema';
-import { reiniciarGuia } from '@compartido/guia';
+import { verLaGuiaDeNuevo as volverAVerLaGuia } from '@compartido/guia';
 import { T } from '@nucleo/textos';
 
 export default function Sesion({ userId }: { userId: string }) {
   const router = useRouter();
   const [supabase] = useState(() => crearCliente());
 
-  // Reinicia el recorrido Y los tres globos: si solo volviera el recorrido,
-  // el que quiere repasar de qué va cada pestaña no lo conseguiría.
+  // Vuelven los globitos, cada uno en su pantalla (el recorrido se sacó el 15/10).
   async function verLaGuiaDeNuevo() {
-    await reiniciarGuia(userId);
+    await volverAVerLaGuia(userId);
     router.push('/ajustes');
   }
 

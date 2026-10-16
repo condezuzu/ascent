@@ -8,10 +8,12 @@
 // autocompleta y una clave mal escrita no compila. Con `t()` y claves de texto
 // suelto, un error de tipeo se descubre en pantalla.
 //
-// Para el inglés (después de migrar a nativo): esto pasa a ser `es` y se
-// agrega `en` con la misma forma; el tipo de uno obliga al otro a estar
-// completo, así que no se puede olvidar una clave. No hace falta nada más:
-// ningún componente cambia.
+// EL INGLÉS (14/10/2026): esto es `ES`, y `textos-en.ts` tiene la misma forma
+// (`Textos`): el tipo obliga al otro a estar completo, así que no se puede
+// olvidar una clave. `T` es el que se usa; `usarTextos` lo pisa EN SU LUGAR
+// —los objetos y los arreglos son los mismos, cambia lo de adentro—, así que
+// ningún componente cambia y lo que guardó una referencia (`DIAS_SEMANA`) se
+// entera solo.
 //
 // Las que llevan datos adentro son funciones, no plantillas: `faltaPara(8)` en
 // vez de pegar el número al string. Cuando haya inglés, el orden de las
@@ -35,7 +37,9 @@
 /** "Press de banca" → "press de banca", para meterlo en medio de una frase. */
 const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
-export const T = {
+const ES = {
+  // En qué idioma están estos textos: se lo dice a la base para los avisos push (migración 77).
+  idioma: 'es' as 'es' | 'en',
   // ---------------------------------------------------------------
   // LAS VIDAS. Se llamaron "impulsos" un tiempo, por elegancia, y el humano lo
   // probó en el gimnasio: no se entendía, ni él lo entendía. "Vidas" es más
@@ -63,6 +67,9 @@ export const T = {
     // Cuántas hay y cuándo se gana la tercera ya lo dicen los puntos y la
     // línea de al lado: la nota solo dice para qué sirven.
     nota: 'Si faltas un día se usa una y la racha sigue. Cada una vuelve a los 30 días.',
+    // Desde la migración 79 (15/10) vuelven todas juntas al cerrarse el ciclo.
+    notaJuntas: 'Si faltas un día se usa una y la racha sigue. A los 30 días vuelven todas juntas.',
+    vuelvenJuntas: (dia: string, n: number) => (n <= 1 ? `Vuelve el ${dia}.` : `Vuelven las ${n} juntas el ${dia}.`),
 
     // ---- la ventana del día siguiente ----
     //
@@ -122,6 +129,10 @@ export const T = {
     leyendaHecho: 'Fuiste',
     leyendaVacio: 'No fuiste',
     leyendaDescanso: 'Descanso',
+    // Un día que faltaste y cubrió una vida (15/10): que se note en el calendario.
+    leyendaVida: 'Vida usada',
+    // El botón que abre el calendario del mes, debajo del año (15/10).
+    corregirDias: 'Corregir días',
     noSeSaco: 'Ese día sigue puesto.',
     noSeAgrego: 'Ese día no se agregó.',
     // La corrección NO recalcula sola: la racha la recalcula la base y hacerlo
@@ -146,6 +157,7 @@ export const T = {
     fuiste: 'Fuiste',
     descanso: 'Descanso',
     sinRegistrar: 'Sin registrar',
+    noCargo: 'No se pudo cargar este día. Revisa la conexión y vuelve a abrirlo.',
     series: (n: number) => (n === 1 ? '1 serie' : `${n} series`),
     // Series que se contaron sin decir en qué. Existen y suman; solo no se
     // sabe de qué fueron.
@@ -185,6 +197,31 @@ export const T = {
     superior: 'Tren superior',
     inferior: 'Tren inferior',
     core: 'Core',
+    cardio: 'Cardio',
+    buscar: 'Buscar ejercicio',
+    parecidos: 'Entrenan lo mismo',
+    nadaConEseNombre: 'Ninguno con ese nombre.',
+    agregarPropio: (nombre: string) => `+ Agregar «${nombre}»`,
+    nuevoPropio: '+ Ejercicio propio',
+    nombreDelPropio: 'Nombre del ejercicio',
+    // LOS PROPIOS SON DE QUIEN LOS CREÓ (15/10): el de otra persona se ve así, sin nombre.
+    propioAjeno: 'Ejercicio propio',
+    // ¿YA ESTÁ? Antes de crear uno que significa lo mismo que otro ("press plano" y Press de banca).
+    yaEsta: (nombre: string) => `Ya está: «${nombre}».`,
+    usarEse: 'Usar ese',
+    crearIgual: 'Crear igual',
+    queMusculo: '¿Qué entrena?',
+    crear: 'Agregar',
+    seMideEnMinutos: 'Se anota en minutos.',
+    grupos: {
+      pecho: 'Pecho',
+      espalda: 'Espalda',
+      hombros: 'Hombros',
+      brazos: 'Brazos',
+      piernas: 'Piernas',
+      core: 'Core',
+      cardio: 'Cardio',
+    } as Record<string, string>,
   },
 
   general: {
@@ -253,6 +290,11 @@ export const T = {
     pasosUnidad: 'pasos',
     pasosMetaChica: (meta: string) => `meta ${meta}`,
     pasosMetaLlego: '✓ meta',
+    // EL EMPUJÓN A LA FOTO (15/10): el porqué, en una línea, mientras hoy no tenga foto.
+    fotoEmpuje: 'La foto de hoy: en un mes la comparas con esta.',
+    // EL FESTEJO (15/10): la primera vez del día que Inicio la ve cumplida.
+    pasosFestejo: '¡Meta de pasos!',
+    pasosCambiarMeta: 'Cambiar la meta de pasos',
     // El resumen de hoy queda a un toque, después de registrar el día: ya no se
     // borra solo al tocarlo, y si lo cerraste podés volver a abrirlo (1.2/5.4).
     verResumen: 'Ver lo que hiciste hoy',
@@ -261,8 +303,8 @@ export const T = {
     // La nota de arriba está debajo del contador y se lee tarde: la primera
     // vez, el + aparece sin ninguna explicación y parece un botón de confirmar.
     // Esto se dice una sola vez, arriba, donde se está mirando.
-    globoSeries:
-      'Elige el ejercicio y cuántas series. Cada + suma una y arranca el descanso.',
+    // UN RENGLÓN (15/10): el globito flota y da calidad, no explica.
+    globoSeries: 'Toca + al terminar cada serie.',
     // El atajo de las teclas, como SEGUNDO renglón del mismo globo. Aparte y
     // no metido en la frase de arriba: esa ya explicaba el +, y sumarle el
     // atajo adentro la volvía un párrafo. Un globo aparte sería un segundo
@@ -270,7 +312,6 @@ export const T = {
     // Un cronómetro que aparece andando sin que lo hayas tocado se lee como un
     // error de la app. Con una línea deja de serlo.
     sesionSola: 'Arrancó sola cuando llegaste. Se corta al irte, o cuando quieras.',
-    yaHabiaSesion: 'Ya tenías una corriendo. Seguimos con esa.',
     diaDeshecho: 'Muy corta para contar como día. Se deshizo.',
     sacarSerie: 'Sacar una serie',
     // Discreto y permanente mientras no haya punto: es el diferencial de la
@@ -283,9 +324,8 @@ export const T = {
     // LA INSISTENCIA, justo después de registrar el día a mano. Dice lo que
     // acaba de pasar y lo que podría pasar la próxima; no promete nada que la
     // app no haga ya, y no reta a nadie por no haberlo marcado antes.
-    insistirGimnasioTitulo: 'Este día lo anotaste tú.',
-    insistirGimnasioNota: 'Con tu gimnasio marcado, el día entra solo al llegar. Sin abrir la app.',
-    insistirGimnasioAccion: 'Marcar el punto',
+    // Un renglón que lleva a Ajustes y resalta el botón de marcar (15/10).
+    insistirGimnasio: 'Deja que se marque solo',
     // Y acá sí se insiste, porque es el único momento en que es probable que
     // la persona esté parada en el gimnasio. NUNCA al empezar la sesión:
     // ahí casi nunca está ahí todavía.
@@ -314,21 +354,43 @@ export const T = {
   //
   // Y NINGÚN RANGO SE NOMBRA (§7): se ven los objetos, no sus nombres.
   bienvenida: {
-    saludoTitulo: 'Empiezas desde el polvo',
-    saludoBajada: 'Cada día que entrenas te acerca a algo más grande.',
-    registroTitulo: 'Se anota todo',
-    registroBajada: 'Los días, las series y los pesos. Lo que hiciste queda, no se recuerda.',
-    genteTitulo: 'Alguien más está entrenando ahora mismo',
-    genteBajada: 'Mide tu racha contra la de tus amigos, o contra la de todo el universo.',
-    // Sobre el cielo que vuelve después del trago. No repite el polvo: eso ya
-    // lo dijo la primera pantalla, y decirlo dos veces lo gasta.
-    cierre: 'Tu viaje empieza ahora mismo',
+    // LA ENTRADA NUEVA (15/10): cuatro pantallas, una cosa real de la app cada una.
+    // Los rangos se ven en el fondo y no se explican (§7).
+    pesosTitulo: 'Ya no adivines los pesos',
+    pesosBajada: 'Anota cada serie y su peso, y la próxima vez ya está puesto.',
+    llegarTitulo: 'El día se anota solo al llegar al gimnasio',
+    llegarBajada: 'Por la ubicación, aunque no abras la app.',
+    amigoTitulo: 'Entrena con un amigo y mira lo que hace, en vivo',
+    amigoBajada: 'Su ejercicio, su serie y cuánto le queda de descanso.',
+    rankingTitulo: 'Mira quién llega más lejos',
     crear: 'Crear cuenta',
     entrar: 'Ya tengo cuenta',
+    // El circulito que carga y deja pasar: no tiene texto, esto es para el lector de pantalla.
     siguiente: 'Siguiente',
-    saltar: 'Saltar',
-    // La racha que sube en la cuarta pantalla.
-    racha: 'Racha',
+    // Lo que se ve arriba de cada texto: un pedazo de la app, con datos de muestra.
+    muestraEjercicio: 'Press de banca · pecho',
+    muestraLaUltimaVez: 'la última vez',
+    muestraDeCamino: 'De camino al gimnasio',
+    muestraLlegaste: 'Llegaste al gimnasio · día anotado',
+    muestraEntrenandoContigo: 'Entrenando contigo',
+    muestraSentadilla: 'Sentadilla',
+    muestraRemo: 'Remo con barra',
+    muestraSerie: (ejercicio: string, n: number, de: number) => `${ejercicio} · serie ${n} de ${de}`,
+    muestraDescanso: 'descanso',
+    muestraHaciendoLaSerie: 'haciendo la serie',
+    muestraDescansa: 'descansa',
+    muestraAhora: 'ahora',
+  },
+
+  // ---------------------------------------------------------------
+  // LOS GLOBITOS DE LA PRIMERA VEZ (15/10): uno por cosa, saliendo de lo que
+  // explican. El del + es `inicio.globoSeries`.
+  globos: {
+    elegir: 'Busca el ejercicio o elígelo de la lista.',
+    descanso: 'Tu descanso. Tócalo para cambiarlo.',
+    amigos: 'Agrega amigos para seguir su progreso.',
+    album: 'Aquí se ven las fotos de tu progreso.',
+    rutina: 'Crea tu rutina',
   },
 
   // ---------------------------------------------------------------
@@ -552,9 +614,7 @@ export const T = {
     // no se las nombra una vez.
 
     comparteGimnasio: 'Avisar cuando entreno',
-    comparteGimnasioNota: 'Tus amigos ven que estás entrenando, nunca dónde. Hace falta para entrenar con otro.',
     comparteRutina: 'Mostrar mi rutina',
-    comparteRutinaNota: 'Tus amigos ven qué ejercicios haces cada día y cuántas series. Nunca los pesos ni cuánto dura.',
     diasDescanso: 'Días de descanso',
     diasDescansoNota: 'Esos días puedes faltar sin perder la racha.',
 
@@ -565,14 +625,11 @@ export const T = {
     descansoEntreSeries: 'Descanso entre series',
     descansoNota: 'Mientras descansas lo puedes cambiar ahí mismo.',
     sonidoPrendido: 'Sonido al terminar ✓',
+    // Al lado de un interruptor (15/10): el estado lo dice el interruptor.
+    sonidoAlTerminar: 'Sonido al terminar',
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cierras, no avisa.',
     noVibra: 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.',
-    // EN LA APP DEL TELÉFONO EL AVISO ES OTRA COSA y decir lo de arriba seria
-    // mentir: es una notificación del sistema, así que llega con la pantalla
-    // bloqueada y con la app cerrada. Cuál de los tres se muestra lo decide el
-    // puerto, no la pantalla.
-    vibraBloqueada: 'Vibra y avisa al terminar, aunque guardes el teléfono.',
     // Las dos frases decían lo contrario de lo que ahora hace la app: el
     // aviso CORTA la música a propósito, porque con auriculares no se escucha
     // de ninguna otra forma.
@@ -582,22 +639,18 @@ export const T = {
     sonidoCorta: 'En este teléfono el sonido puede taparse si tienes música fuerte.',
 
     gimnasio: 'Mi gimnasio',
-    gimnasioMarcar: 'Marcar el punto',
-    gimnasioRemarcar: 'Volver a marcar el punto',
+    gimnasioMarcar: 'Marcar gimnasio',
+    // Debajo del botón: el punto se marca parado en el gimnasio (§13).
+    gimnasioEstandoAhi: 'Hay que estar en el gimnasio para marcarlo.',
+    gimnasioRemarcar: 'Volver a marcar el gimnasio',
     gimnasioBuscando: 'Buscando…',
-    gimnasioBorrar: 'Borrar el punto',
+    gimnasioBorrar: 'Borrar ubicación',
     gimnasioComo: 'Márcalo parado en la puerta de tu gimnasio.',
     gimnasioParaQue: 'Después, abrir la app estando ahí registra el día sin que aprietes nada.',
     gimnasioTecho: 'Por ahora hay que abrir la app. En la del teléfono va a entrar solo.',
-    // LO QUE LA APP DEL TELÉFONO SÍ HACE desde el 24/9, y que la web no puede:
-    // el día entra con la app cerrada. Es la promesa de §13 y por fin es
-    // cierta, así que se dice sin rodeos.
-    gimnasioParaQueNativo: 'Después, el día entra solo al llegar, aunque no abras la app.',
-    // EL TECHO QUE QUEDA, dicho antes de que se note: el permiso de "siempre"
-    // se pide aparte y se puede negar, y ahí esto vuelve a ser lo de la web.
-    // Callarlo haría que "no me entró el día" pareciera un error de la app.
-    gimnasioTechoNativo: 'Necesita el permiso de ubicación siempre. Sin él, entra al abrir la app estando ahí.',
     gimnasioListo: (metros: number) => `Listo, con ${metros} m de precisión.`,
+    // En el teléfono, al marcar (14/10): sin nota fija debajo, el permiso se dice acá.
+    gimnasioListoNativo: (metros: number) => `Listo, con ${metros} m de precisión. Para que entre solo: ubicación «Siempre».`,
     gimnasioPuesto: 'Ya está marcado. Nadie más lo ve: no se comparte con tus amigos.',
     gimnasioSinGps: 'Este teléfono no da la ubicación.',
     gimnasioSinPermiso:
@@ -613,9 +666,6 @@ export const T = {
     salud: 'Salud del teléfono',
     saludConectar: 'Conectar con Salud',
     saludConectando: 'Abriendo…',
-    // QUÉ GANA QUIEN LO PRENDE, en una línea. No se promete que registre el
-    // día solo: promete que un día que el teléfono ya sabe no se pierda.
-    saludPara: 'Si tu reloj ya registra el entrenamiento, ese día no se pierde.',
     // NUNCA SE DICE "conectado y listo": iOS no cuenta qué concediste al
     // leer, así que afirmarlo sería inventar. Se manda a donde se ve.
     saludListo: 'Listo. En Salud → Ascent puedes ver y cambiar qué lee.',
@@ -629,12 +679,9 @@ export const T = {
       'No llega nada. Si no le diste permiso, está en Salud → Ascent.',
     saludNoHay: 'Este teléfono no tiene Salud.',
     metaPasosTitulo: 'Meta de pasos',
-    metaPasosNota: 'Solo para el gráfico de Stats. No entra en tu racha ni la ve nadie.',
+    metaPasosNota: 'Mueve la barra de Inicio y el gráfico de Stats. No entra en tu racha ni la ve nadie.',
     metaPasosFuera: 'Entre 1.000 y 100.000.',
     saludPasos: (pasos: string) => `Hoy llevas ${pasos} pasos.`,
-    // LOS PASOS NO SON ENTRENAR, y hay que decirlo donde se muestran: un día
-    // de caminata tiene más pasos que uno de fuerza. Se ven, no deciden.
-    saludPasosNota: 'Los pasos se muestran, no registran el día: caminar no es entrenar.',
 
     // EL FONDO. El motor cuesta tres segundos de arranque, medidos: se puede
     // apagar. No dice "gráficos" ni "calidad": dice qué es y qué cuesta.
@@ -643,10 +690,6 @@ export const T = {
     calidadAuto: 'Automática',
     calidadAlta: 'Alta',
     calidadBaja: 'Baja',
-    calidadNotaAuto: 'La app mide cómo va y la baja sola si este teléfono no da.',
-    calidadNotaBajoSola: 'En este teléfono la bajó sola: iba a los saltos. Elige Alta si quieres probarla igual.',
-    calidadNotaAlta: 'El fondo con todo el detalle.',
-    calidadNotaBaja: 'El fondo con menos detalle: la app va más fluida y gasta menos batería.',
     fondoAuto: 'Automático',
     fondoSiempre: 'Siempre',
     fondoNunca: 'Nunca',
@@ -668,6 +711,11 @@ export const T = {
     peso: 'Peso',
     kilos: 'Kilos',
     libras: 'Libras',
+
+    // El idioma (14/10). Los nombres de los idiomas van en su idioma, como en todos lados.
+    idioma: 'Idioma',
+    idiomaEs: 'Español',
+    idiomaEn: 'English',
 
     sexo: 'Sexo — solo para el DOTS',
     sinCargar: 'Sin cargar',
@@ -775,6 +823,11 @@ export const T = {
     diagZonaSi: 'registrada en el sistema',
     diagZonaNo: 'no quedó: falta el permiso siempre',
     diagRevisarZona: 'Revisar la zona (diagnóstico)',
+    diagRemoto: 'Probar avisos remotos',
+    diagRemotoPidiendo: 'Pidiendo el token…',
+    diagRemotoNota: 'Le pide un token a Apple y a Expo. No manda ningún aviso ni pide permiso.',
+    diagRemotoAparato: 'Apple (el aparato)',
+    diagRemotoExpo: 'Expo',
     diagZonaNota:
       'Comprueba que el teléfono vaya a despertar a la app al llegar.',
     // COMPARTIR Y NO COPIAR: en un teléfono, seleccionar doce líneas con el
@@ -963,6 +1016,8 @@ export const T = {
 
     // En el resumen de un día.
     porMusculo: 'Por músculo',
+    // El gráfico de abajo (15/10): los kilos de todas las series de cada semana.
+    kilosPorSemana: 'Peso total por semana',
 
     // LOS PESOS DE ANTES DE LOS MODOS (migración 39). Una vez, con lo que hay
     // que hacer; después quedan marcados en el calendario.
@@ -986,6 +1041,11 @@ export const T = {
     // El + sin salir del descanso. Dice lo que pasó, no lo que hace el
     // botón: "hice la serie" es lo que la persona acaba de vivir.
     serieHecha: '+ Serie hecha',
+    // EL TIEMPO A MANO (15/10), hasta una hora: "4" son cuatro minutos y "1:30", uno y medio.
+    aMano: 'Poner el tiempo a mano',
+    aManoEjemplo: 'Minutos (4 o 1:30)',
+    aManoUsar: 'Usar',
+    aManoMal: 'Hasta una hora: 4 o 1:30.',
     listoPie: 'Listo. Cuando quieras, la que sigue.',
     seguir: 'Seguir',
     // La pantalla nueva del descanso (12/10): qué se estaba haciendo, arriba.
@@ -1109,6 +1169,17 @@ export const T = {
     // Antes acá decía "Siguiente", que no dice de qué es siguiente y encima
     // vivía en un botón de texto que no se veía.
     terminarSerie: 'Terminar serie',
+    // El cardio (14/10): una vuelta se anota con los minutos, sin descanso después.
+    cardioListo: 'Listo',
+    // EL GLOBITO DE SUBIR (15/10): todas las series al mismo peso, dos sesiones seguidas.
+    yaPuedesSubir: 'Ya puedes subir el peso',
+    minutosDeCardio: 'Minutos',
+    // EL CRONÓMETRO DEL CARDIO (15/10): arranca al elegirlo; "Listo" anota lo que corrió.
+    cardioArrancar: 'Arrancar',
+    cardioOtraVuelta: 'Otra vuelta',
+    cardioTerminar: 'Terminar cardio',
+    cardioCorriendo: 'Cardio en curso',
+    cardioSinCronometro: 'Anotar estos minutos sin cronómetro',
     // Y sumar otra sigue estando, en el lugar secundario: pasarse de la
     // meta es normal y la app no puede dejar de permitirlo solo porque el
     // botón grande cambió de trabajo.
@@ -1172,6 +1243,8 @@ export const T = {
     inicio: 'Inicio',
     // "Ranking" y no "Leaderboard": más corto y en español, como el resto.
     ranking: 'Ranking',
+    // En la barra de abajo (15/10): la pestaña es más que la tabla. Arriba sigue diciendo Ranking.
+    social: 'Social',
     album: 'Álbum',
     stats: 'Stats',
     ajustes: 'Ajustes',
@@ -1287,6 +1360,8 @@ export const T = {
   album: {
     titulo: 'Álbum',
     vacioTitulo: 'Ninguna foto todavía.',
+    // Un mes con una sola foto (15/10): la comparación aparece con la segunda.
+    unaMas: 'Con otra foto este mes ves el antes y el después.',
     vacioPie: 'Al registrar un día puedes sumar una: queda pegada al planeta de ese día.',
     // Para una foto el verbo es QUITAR, nunca borrar ni sacar (regla 4 de
     // spec/idioma.md). Decía "Borrar" hasta el 18/9; §54 lo mira ahora.
@@ -1316,6 +1391,54 @@ export const T = {
   },
 
   // ---------------------------------------------------------------
+  // LA RUTINA COMO ALGO PROPIO (14/10): varias guardadas, una activa, plegada por día.
+  rutina: {
+    titulo: 'Tu rutina',
+    descanso: 'Descanso',
+    sinCargar: 'Sin cargar',
+    series: (n: number) => (n === 1 ? '1 serie' : `${n} series`),
+    minutos: (n: number) => `${n} min`,
+    activa: 'Activa',
+    usarEsta: 'Usar esta',
+    nueva: '+ Nueva',
+    nombreBase: 'Entrenamiento',
+    editar: 'Editar',
+    listo: 'Listo',
+    borrar: 'Borrar rutina',
+    borrarPregunta: (nombre: string) => `¿Borrar ${nombre}? No se puede deshacer.`,
+    cancelar: 'Cancelar',
+    agregarEjercicio: '+ Ejercicio',
+    diaDeDescanso: 'Día de descanso',
+    // Prenderlo saca los ejercicios del día: se pregunta (cacería del 15/10).
+    descansoPregunta: (dia: string) => `¿${dia} de descanso? Se sacan sus ejercicios.`,
+    copiarA: 'Copiar a…',
+    yaTieneEjercicios: (dia: string) => `${dia} ya tiene ejercicios.`,
+    reemplazar: 'Reemplazar',
+    agregarAlFinal: 'Agregar al final',
+    deducida: 'Armada con lo que entrenaste las últimas cuatro semanas.',
+    guardarDeducida: 'Guardarla como rutina',
+    armarNueva: 'Armar una de cero',
+    copiar: 'Copiar esta rutina',
+    // Dice cuál quedó activa, y se puede volver a la de antes con un toque (15/10).
+    copiada: (nombre: string) => `Copiada y activa: «${nombre}». La cambias en Tu rutina, en Inicio.`,
+    volverA: (nombre: string) => `Volver a «${nombre}»`,
+    otraVezActiva: (nombre: string) => `Activa otra vez: «${nombre}».`,
+    deAlguien: (nombre: string) => `Rutina de ${nombre}`,
+    vacia: 'Todavía no hay rutina: entrena unos días o arma una.',
+    // El título del día ("Pecho, hombro y brazo"): el músculo en singular y la "y" del final.
+    musculos: { pecho: 'pecho', espalda: 'espalda', hombros: 'hombro', brazos: 'brazo', piernas: 'pierna', core: 'core', cardio: 'cardio' } as Record<string, string>,
+    y: 'y',
+    // ARRASTRAR (15/10): lo que dice el lector de pantalla; con el dedo, se aprieta largo.
+    arrastrarAyuda: 'Mantén apretado y arrastra para cambiar el orden.',
+    arrastrarPista: 'Mantén apretado un ejercicio para moverlo.',
+    subir: 'Subir',
+    bajar: 'Bajar',
+    // EN INICIO (15/10): el renglón que abre la rutina.
+    hoy: (titulo: string) => `Hoy: ${titulo}`,
+    armarSemana: 'Arma tu semana',
+    hoyRotulo: 'Hoy',
+  },
+
   social: {
     titulo: 'Ranking',
     amigos: 'Amigos',
@@ -1329,16 +1452,39 @@ export const T = {
     // ENTRENAR CON OTRO (12/10), de a dos: ejercicio, serie y descanso.
     juntos: 'Entrenando contigo',
     unirse: 'Unirse',
+    // Lo que contesta la base cuando no se pudo (migración 73). Es de a dos.
+    // Desde los grupos (migración 88), "ocupado" es que el grupo llegó a diez.
+    unirseOcupado: (nombre: string) => `El grupo de ${nombre} ya está lleno.`,
+    unirseYaUnido: 'Ya estás entrenando con alguien. Sal de ese entrenamiento para unirte a otro.',
+    unirseNoEntrena: (nombre: string) => `${nombre} ya no está entrenando.`,
     quiereUnirse: (nombre: string) => `${nombre} quiere unirse a tu entrenamiento`,
     esperandoA: (nombre: string) => `Esperando a ${nombre}`,
     salirDeUnion: 'Salir',
+    // EL GRUPO (migración 88).
+    invitarAlGrupo: 'Invitar al grupo',
+    tiraSerie: (serie: number, meta: number) => `serie ${serie}/${meta}`,
+    mensajeDeInvitacion: (url: string) => `Entrena conmigo en Ascent: ${url}`,
+    sacarDelGrupo: 'Sacar',
+    salirDelGrupo: 'Salir del grupo',
+    armoElGrupo: 'armó el grupo',
+    grupoEntraste: 'Entraste al grupo. Ya eres amigo de quien lo armó.',
+    grupoVer: 'Ver el grupo',
+    grupoYaEstas: 'Ya estás en ese grupo.',
+    grupoLleno: 'Ese grupo ya está lleno.',
+    grupoNoExiste: 'Ese link ya no sirve: el grupo terminó.',
+    grupoUniendo: 'Entrando al grupo…',
+    // La página de la web a la que cae el link del grupo.
+    grupoEnlaceTitulo: 'Te invitan a entrenar juntos en Ascent',
+    grupoEnlacePie: 'Ábrelo en la app: entras al grupo y quedas amigo de quien lo armó.',
+    grupoEnlacePaso3: 'Vuelve a este mismo enlace y toca "Abrir en Ascent": ahí entras al grupo.',
+    grupoEnlaceOjo: 'Sin ese último paso no entras.',
+    grupoEnlaceMalo: 'Este enlace no lleva a ningún grupo.',
     enVivoSerie: (ejercicio: string, serie: number, meta: number) =>
       serie < 1 ? ejercicio : meta >= serie ? `${ejercicio} · serie ${serie} de ${meta}` : `${ejercicio} · serie ${serie}`,
     enVivoSinDatos: 'Todavía no empezó',
     enVivoDescansa: (falta: string) => `descansa ${falta}`,
     enVivoListo: 'listo',
     enVivoSinSenal: 'sin señal',
-    mejorRango: 'El rango más alto que alcanzó',
     avisoRutina: 'Novedad: tus amigos ahora ven tu rutina, ejercicios y series. Se apaga en Ajustes.',
     // No 'Entendido': así se llama el botón de la ventana de las vidas, y las sondas la cierran por ese texto.
     avisoEntreno: 'Novedad: tus amigos ven cuando estás entrenando, nunca dónde. Se apaga en Ajustes.',
@@ -1348,7 +1494,6 @@ export const T = {
     enlacePaso2: 'Crea tu cuenta.',
     enlacePaso3: (nombre: string) => `Vuelve a este mismo enlace y toca "Abrir en Ascent": ahí se agrega a ${nombre}.`,
     enlaceOjo: 'Sin ese último paso la solicitud no se manda.',
-    seriesDeRutina: (n: number) => (n === 1 ? '1 serie' : `${n} series`),
     cerrarFoto: 'Cerrar',
     verFoto: (nombre: string) => `Ver la foto de ${nombre}`,
     // La página de la web a la que lleva el link de amigo.
@@ -1367,12 +1512,14 @@ export const T = {
       n === 1 ? 'Tienes 1 cosa sin responder' : `Tienes ${n} cosas sin responder`,
     aceptar: 'Aceptar',
     solicitudes: 'Te quieren agregar',
+    // El cartel que baja de arriba (14/10): el nombre va en el renglón de arriba.
+    cartelAmistad: 'Te quiere agregar',
+    cartelUnion: 'Quiere unirse a tu entrenamiento',
     entrenandoAhora: 'Entrenando ahora',
     estaEntrenando: (nombre: string) => `${nombre} está entrenando`,
     // El aviso de la actividad en vivo, la primera vez en Ranking ya con el
     // gimnasio marcado. Explica la función y apunta al opt-in de Ajustes.
-    avisoActividad:
-      'Aquí ves quién está entrenando. Para que te vean, activa «Avisar cuando entreno» en Ajustes.',
+    avisoActividad: 'Aquí ves quién está entrenando ahora.',
     no: 'No',
     // "tú" para tu propia fila en el ranking de fuerza (SeccionFuerza).
     vos: 'tú',
@@ -1449,10 +1596,13 @@ export const T = {
     // que el título no puede decir: dónde se elige.
     globo: 'Se elige en el Álbum.',
     cambiarFoto: 'Cambiar la foto de perfil',
+    // Debajo de la foto en grande (14/10).
+    cambiarFotoCorto: 'Cambiar foto',
     subiendoFoto: 'subiendo la foto…',
     deRacha: (n: number) => `${n} de racha`,
     // La medalla de Saturno (item 5): el texto del globo al tocarla.
-    rachaMasLargaLarga: (n: number) => `Tu racha más larga fue de ${n} ${n === 1 ? 'día' : 'días'}`,
+    // Sin "Tu": el mismo globo sale en el perfil de un amigo y en Ranking (14/10).
+    rachaMasLargaLarga: (n: number) => `Racha más larga: ${n} ${n === 1 ? 'día' : 'días'}`,
     fotoActualizada: 'Foto actualizada.',
     noSePudoEliminar: 'No se eliminó. Prueba de nuevo.',
     // EL ROTULO Y EL PIE, cortos (25/9). Decian "Son las que ven tus amigos.
@@ -1525,3 +1675,37 @@ export const T = {
     sinNovedad: 'Ya tienes la última.',
   },
 } as const;
+
+/** La forma de los textos con cualquier texto en cada lugar: la que tiene que tener otro idioma. */
+type Ancho<X> = X extends string
+  ? string
+  : X extends (...a: infer A) => infer R
+    ? (...a: A) => Ancho<R>
+    : X extends readonly (infer U)[]
+      ? readonly Ancho<U>[]
+      : X extends object
+        ? { readonly [K in keyof X]: Ancho<X[K]> }
+        : X;
+export type Textos = Ancho<typeof ES>;
+export const TEXTOS_ES: Textos = ES;
+
+function copiar<X>(x: X): X {
+  if (Array.isArray(x)) return x.map(copiar) as X;
+  if (x && typeof x === 'object') return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, copiar(v)])) as X;
+  return x;
+}
+function pisar(destino: Record<string, unknown>, desde: Record<string, unknown>) {
+  for (const [k, v] of Object.entries(desde)) {
+    const d = destino[k];
+    if (Array.isArray(v) && Array.isArray(d)) d.splice(0, d.length, ...v);
+    else if (v && typeof v === 'object' && d && typeof d === 'object') pisar(d as Record<string, unknown>, v as Record<string, unknown>);
+    else destino[k] = v;
+  }
+}
+
+export const T: Textos = copiar(ES);
+
+/** Cambia el idioma de `T` en su lugar. Lo que ya se dibujó se vuelve a dibujar aparte. */
+export function usarTextos(textos: Textos): void {
+  pisar(T as unknown as Record<string, unknown>, textos as unknown as Record<string, unknown>);
+}

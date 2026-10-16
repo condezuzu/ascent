@@ -57,6 +57,15 @@ export function medidasDeMiniatura(ancho: number, alto: number): { ancho: number
 }
 
 /** Dónde queda en el storage: la carpeta del usuario es lo que mira la política. */
-export function rutaDeFoto(uid: string, dia: string, ahora: number): string {
-  return `${uid}/${dia}-${ahora}.jpg`;
+export function rutaDeFoto(uid: string, dia: string, sello: number): string {
+  return `${uid}/${dia}-${sello}.jpg`;
+}
+
+/**
+ * EL SELLO DEL NOMBRE, AL AZAR (15/10): era la hora en milisegundos, y un amigo que
+ * ve la foto leía en la ruta a qué hora la elegiste aunque tuvieras "Avisar cuando
+ * entreno" apagado. Las fotos ya subidas siguen diciéndola.
+ */
+export function selloAlAzar(): number {
+  return Math.floor(Math.random() * 2 ** 48);
 }

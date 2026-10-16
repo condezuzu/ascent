@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import RutinaDe from './RutinaDe';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { cargarMiPerfil, type DatosDePerfil } from '@compartido/perfil';
+import { cargarMiPerfil, ultimoMiPerfil, type DatosDePerfil } from '@compartido/perfil';
+import FotoGrande from './FotoGrande';
 import { subirAvatar } from '@compartido/avatar';
 import { conComa } from '@nucleo/peso';
 import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
@@ -24,6 +26,7 @@ import Surgir from './Surgir';
 import { C } from './colores';
 import { volverOInicio } from './volver';
 import InvitarConLink from './InvitarConLink';
+import { useArriba } from './zonaSegura';
 
 /**
  * TU PERFIL: quién sos acá adentro, cómo te ven tus amigos, y quiénes son.
@@ -46,9 +49,11 @@ import InvitarConLink from './InvitarConLink';
  */
 export default function PerfilPropio() {
   const router = useRouter();
-  const [datos, setDatos] = useState<DatosDePerfil | null>(null);
+  const arriba = useArriba(60);
+  const [datos, setDatos] = useState<DatosDePerfil | null>(() => ultimoMiPerfil());
   const [dots, setDots] = useState<number | null>(null);
-  const [cargado, setCargado] = useState(false);
+  const [cargado, setCargado] = useState(() => ultimoMiPerfil() !== null);
+  const [fotoGrande, setFotoGrande] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const [porQuitar, setPorQuitar] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -134,7 +139,7 @@ export default function PerfilPropio() {
    * llegado.
    */
   const salida = (
-    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volverSuelto}>
+    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
       <Text style={estilos.enlace}>{T.general.volver}</Text>
     </Pressable>
   );
@@ -174,13 +179,14 @@ export default function PerfilPropio() {
         esquina="abajo-derecha"
         velo={0.72}
       />
-      <ScrollView contentContainerStyle={estilos.pantalla}>
+      <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
         <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
           <Text style={estilos.enlace}>{T.general.volver}</Text>
         </Pressable>
 
         <View style={estilos.cabecera}>
-          <Pressable onPress={cambiarFoto} disabled={subiendo} accessibilityLabel={T.yo.cambiarFoto}>
+          {/* Con foto, primero se ve en grande; sin foto, no hay nada que mirar. */}
+          <Pressable onPress={() => (perfil.avatar_url ? setFotoGrande(true) : void cambiarFoto())} disabled={subiendo} accessibilityLabel={T.yo.cambiarFoto}>
             <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={76} />
           </Pressable>
           <View style={estilos.identidad}>
@@ -215,15 +221,15 @@ export default function PerfilPropio() {
             que sea literalmente el mismo dibujo. Con dos copias, la del dueño
             se mejora un día y la promesa pasa a ser falsa sin que nadie lo
             note. Lo cazó §135. */}
-        {/* Lo único que el título de abajo no puede decir: dónde se elige.
-            Que son las que ven tus amigos ya lo dice él, en dos palabras. */}
-        <GloboPrimeraVez cual="perfil">{T.yo.globo}</GloboPrimeraVez>
         {/* EL TITULO DICE QUE ES Y QUIEN LO VE, en dos palabras. Antes el pie
             cargaba con todo —"son las que ven tus amigos, cuales compartes se
             eligen en el album"— y nadie habla asi. */}
         <Text style={estilos.seccion}>{T.yo.fotosTitulo}</Text>
         <FotosQueVen fotos={fotos} />
         <Text style={estilos.nota}>{fotos.length > 0 ? T.yo.fotosPie : T.yo.sinFotos}</Text>
+
+        {/* TU RUTINA (14/10): hasta acá no se veía en ningún lado. */}
+        <RutinaDe quien={perfil.id} esYo />
 
         <Text style={estilos.seccion}>
           {T.yo.amigos} {amigos.length > 0 ? amigos.length : ''}
@@ -233,8 +239,10 @@ export default function PerfilPropio() {
         {amigos.map((a, i) => (
           <Surgir key={a.id} indice={i}>
             <View style={estilos.amigo}>
-              <Avatar url={a.avatar_url} nombre={a.username} />
-              <Text style={estilos.amigoNombre}>{a.username}</Text>
+              <Pressable style={estilos.amigoTocable} onPress={() => router.push(`/perfil/${a.id}`)} accessibilityRole="button">
+                <Avatar url={a.avatar_url} nombre={a.username} />
+                <Text style={estilos.amigoNombre}>{a.username}</Text>
+              </Pressable>
               {porQuitar === a.id ? (
                 <>
                   <Pressable onPress={() => quitarAmigo(a.id)} hitSlop={8}>
@@ -253,6 +261,7 @@ export default function PerfilPropio() {
           </Surgir>
         ))}
       </ScrollView>
+      <FotoGrande url={fotoGrande ? perfil.avatar_url : null} onCerrar={() => setFotoGrande(false)} alCambiar={() => void cambiarFoto()} />
     </View>
   );
 }
@@ -276,6 +285,7 @@ const estilos = StyleSheet.create({
   dotsNumero: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 34, marginBottom: 10 },
   amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  amigoTocable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 10 },
   enlace: { color: C.sub, fontSize: 15 },

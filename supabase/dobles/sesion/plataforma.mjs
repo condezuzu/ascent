@@ -3,7 +3,8 @@
 // vuelta del bucle de eventos. Es lo que deja que un toque caiga EN EL MEDIO de
 // un refresco: en la web (`cfg.comoLaWeb`) todo resuelve en el mismo tick y ese
 // hueco no existe.
-export const cfg = { comoLaWeb: false };
+// `demoraLeer`: clave -> ms que tarda en VOLVER una lectura ya hecha (sin frenar la fila).
+export const cfg = { comoLaWeb: false, demoraLeer: {} };
 export const datos = new Map();
 // Cuántas operaciones se atendieron, para que un escenario pueda soltar un toque
 // "N operaciones después de tal cosa" y dé siempre lo mismo.
@@ -27,7 +28,11 @@ function operacion(fn) {
 }
 
 const almacenamiento = {
-  leer: (clave) => operacion(() => (datos.has(clave) ? datos.get(clave) : null)),
+  leer: (clave) => {
+    const tarda = cfg.demoraLeer[clave];
+    const r = operacion(() => (datos.has(clave) ? datos.get(clave) : null));
+    return tarda ? r.then((v) => new Promise((listo) => setTimeout(() => listo(v), tarda))) : r;
+  },
   guardar: (clave, valor) => operacion(() => void datos.set(clave, valor)),
   borrar: (clave) => operacion(() => void datos.delete(clave)),
 };

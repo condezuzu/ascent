@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId } from 'react';
+import { useContext, useEffect, useId, memo } from 'react';
 import { ContextoVisible, pedirFondo, soltarFondo, type Pedido } from './pedidoDeFondo';
 
 /**
@@ -15,7 +15,7 @@ import { ContextoVisible, pedirFondo, soltarFondo, type Pedido } from './pedidoD
  * quedaba el `soloEstrellas` de Ranking, o sea el espacio sin el cuerpo.
  * `ContextoVisible` lo dice y acá se suelta mientras no toque.
  */
-export default function FondoEspacial(op: Pedido) {
+function FondoEspacial(op: Pedido) {
   // UNA IDENTIDAD POR PANTALLA, para la pila de `pedidoDeFondo`. `useId` da una
   // por instancia y estable entre dibujados, que es exactamente lo que hace
   // falta: dos pantallas distintas no se pisan y la misma se actualiza en su
@@ -57,3 +57,6 @@ export default function FondoEspacial(op: Pedido) {
 
   return null;
 }
+
+// Con los mismos props no se redibuja: el + de la sesión redibuja Inicio y esto no cambió (15/10).
+export default memo(FondoEspacial);

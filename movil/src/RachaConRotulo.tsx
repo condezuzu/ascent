@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { numeroDeRango, progresoEnRango, siguienteRango } from '@nucleo/rangos';
 import { paletaDe } from '@nucleo/paletas';
@@ -41,7 +42,7 @@ import { conAlfa } from './colores';
  * rango, y los rangos no se nombran nunca (§7): descubrir en qué te vas a
  * convertir es la recompensa.
  */
-export default function RachaConRotulo({
+function RachaConRotulo({
   racha,
 }: {
   racha: number;
@@ -105,3 +106,6 @@ const estilos = StyleSheet.create({
   barra: { height: 3, width: '62%', borderRadius: 2, overflow: 'hidden', marginTop: 20, marginBottom: 8 },
   llena: { height: '100%', borderRadius: 2 },
 });
+
+// Con los mismos props no se redibuja: el + de la sesión redibuja Inicio y esto no cambió (15/10).
+export default memo(RachaConRotulo);

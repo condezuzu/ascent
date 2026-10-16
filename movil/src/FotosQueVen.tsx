@@ -1,11 +1,15 @@
-import { Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import FotoGrande from './FotoGrande';
 import { fechaCorta } from '@nucleo/fechas';
 import type { FotoDePerfil } from '@compartido/perfil';
 import Surgir from './Surgir';
 import { C } from './colores';
+import { useFotoLocal } from './fotoLocal';
 
 /**
- * LAS FOTOS COMO LAS VE UN AMIGO, y nada más: sin tocar, sin administrar.
+ * LAS FOTOS COMO LAS VE UN AMIGO, y nada más: sin administrar. Tocar una la
+ * abre en grande (15/10), como la foto de perfil.
  *
  * ES EL MISMO COMPONENTE EN LOS DOS PERFILES a propósito, igual que en la web
  * (`ComoMeVen.tsx`). El perfil propio promete "así te ven", y la única forma de
@@ -20,6 +24,7 @@ export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
   const { width } = useWindowDimensions();
   // Tres por fila, con el margen de la pantalla y el mismo hueco que el Álbum.
   const lado = (width - 24 * 2 - 6 * 2) / 3;
+  const [grande, setGrande] = useState<string | null>(null);
 
   if (fotos.length === 0) return null;
 
@@ -27,20 +32,23 @@ export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
     <View style={estilos.grilla}>
       {fotos.map((f, i) => (
         <Surgir key={f.id} indice={i}>
-          <View style={{ width: lado }}>
-            <Image
-              source={{ uri: f.miniatura || f.url }}
-              style={{ width: lado, height: lado, backgroundColor: C.linea }}
-              accessibilityIgnoresInvertColors
-            />
+          <Pressable testID="foto-de-perfil" style={{ width: lado }} onPress={() => setGrande(f.url || f.miniatura || null)} accessibilityRole="imagebutton">
+            <Cuadrito foto={f} lado={lado} />
             {/* La fecha solo si la foto cuelga de un día: una suelta no tiene
                 cuándo, y poner uno inventado sería peor que no poner nada. */}
             {!!f.fecha && <Text style={estilos.cuando}>{fechaCorta(f.fecha)}</Text>}
-          </View>
+          </Pressable>
         </Surgir>
       ))}
+      <FotoGrande url={grande} onCerrar={() => setGrande(null)} />
     </View>
   );
+}
+
+/** Del disco del teléfono si ya se bajó (15/10): la clave es la foto, que no cambia aunque cambie el enlace. */
+function Cuadrito({ foto, lado }: { foto: FotoDePerfil; lado: number }) {
+  const uri = useFotoLocal((foto.miniatura ? 'mini-foto-' : 'entera-foto-') + foto.id, foto.miniatura || foto.url);
+  return <Image source={uri ? { uri } : undefined} style={{ width: lado, height: lado, backgroundColor: C.linea }} accessibilityIgnoresInvertColors />;
 }
 
 const estilos = StyleSheet.create({

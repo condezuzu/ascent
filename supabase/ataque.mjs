@@ -22,6 +22,7 @@ import { createClient } from '@supabase/supabase-js';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { borrarCuentaDePrueba } from './utiles.mjs';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -75,7 +76,7 @@ async function limpiarViejas() {
         password: `Atk-${s}-Xy9`,
       });
       if (error) continue;
-      if (!(await c.rpc('eliminar_cuenta')).error) n++;
+      if (!(await borrarCuentaDePrueba(c)).error) n++;
     }
     tacharPend(s);
   }
@@ -338,7 +339,7 @@ try {
   // sello anotado.
   for (const q of [A, V, F]) {
     try {
-      await q.c.rpc('eliminar_cuenta');
+      await borrarCuentaDePrueba(q.c);
     } catch {
       /* la limpieza del arranque la agarra */
     }

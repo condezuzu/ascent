@@ -15,6 +15,8 @@ import { cambiarVisible, cfg, datos, servidas } from './plataforma.mjs';
 import { servidor } from './cliente.mjs';
 
 const { useSesion } = await import('@compartido/useSesion');
+// El dueño único vive en el módulo: "la app arrancó de nuevo" es olvidarlo a mano.
+const { olvidarViva } = await import('@compartido/sesionViva');
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 const cache = () => JSON.parse(datos.get('ascent:sesion') ?? 'null');
@@ -426,8 +428,1076 @@ async function turno(cual, nTxt = '4') {
   };
 }
 
+/**
+ * SEÑAL MALA (cacería del 13/10). En todos, la base juzga la sesión con lo que
+ * le llegó, y el teléfono tiene cosas sin subir.
+ *  - `pregunta`: se entrena 47 min en una zona sin señal y al desbloquear entra
+ *    `mi_sesion` pero no la cola. La base no puede cerrar la sesión en el minuto 3.
+ *  - `iniciar`: con series de la sesión sin subir no se inicia otra (la base
+ *    cerraría esta con datos viejos). `iniciar-olvidada`: el teléfono ya la
+ *    olvidó y la base la devuelve viva, con el conteo viejo: no se adopta.
+ *  - `terminar` / `terminar-siguio`: "Terminar" sin señal y el reintento más
+ *    tarde. Cierra a la hora del PRIMER toque, salvo que después se haya seguido.
+ *  - `sin-sesion`: "+ Serie hecha" con la sesión ya cerrada sola.
+ */
+async function senal(cual) {
+  const COLA = ['fijar_series', 'fijar_bloques', 'marcar_actividad'];
+  const cortar = (si) => COLA.forEach((rpc) => (servidor.falla[rpc] = si));
+  const llegaron = (rpc) => servidor.registro.filter((x) => x.rpc === rpc).length;
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirPeso(60);
+  await inicio.r.serieHecha();
+  await inicio.r.serieHecha();
+  await asentar();
+  const s = servidor.sesiones[0];
+  const pantalla = () => ({ corriendo: inicio.r.estado.corriendo, series: inicio.r.estado.series });
+
+  if (cual === 'pregunta' || cual === 'iniciar' || cual === 'iniciar-olvidada') {
+    cortar(true);
+    for (let i = 0; i < 4; i++) await inicio.r.serieHecha();
+    await dormir(80);
+    // Para la base pasaron 47 minutos y lo último que supo fue hace 44.
+    s.inicio = new Date(Date.now() - 47 * 60000).toISOString();
+    s.ultima_actividad = new Date(Date.now() - 44 * 60000).toISOString();
+    servidor.ventanaMs = 30 * 60000;
+    const antes = llegaron('mi_sesion');
+    if (cual === 'iniciar' || cual === 'iniciar-olvidada') {
+      let quien = inicio;
+      if (cual === 'iniciar-olvidada') {
+        // El teléfono olvidó la sesión (su copia vence a la media hora y la app
+        // arrancó de nuevo), pero para la base sigue viva: devuelve la misma.
+        servidor.ventanaMs = null;
+        datos.delete('ascent:sesion');
+        olvidarViva();
+        quien = montar(() => useSesion());
+        await dormir(60);
+      }
+      const salio = await quien.r.empezar();
+      await dormir(120);
+      return {
+        salio,
+        series: quien.r.estado.series,
+        enCola: cola().filter((p) => p.rpc === 'fijar_series').map((p) => p.args.p_series),
+        base: [s.estado, s.series],
+        sesionesEnLaBase: servidor.sesiones.length,
+      };
+    }
+    await bloquearYDesbloquear();
+    await dormir(150);
+    const sinSubir = { ...pantalla(), preguntas: llegaron('mi_sesion') - antes, base: s.estado };
+    // Vuelve la señal de verdad.
+    cortar(false);
+    await bloquearYDesbloquear();
+    await asentar();
+    return { sinSubir, alVolver: { ...pantalla(), preguntas: llegaron('mi_sesion') - antes > 0, base: [s.estado, s.series, s.cerro_sola] } };
+  }
+
+  if (cual === 'terminar' || cual === 'terminar-siguio') {
+    servidor.falla.terminar_sesion = true;
+    const toque = Date.now();
+    const primero = await inicio.r.terminar();
+    await dormir(400);
+    if (cual === 'terminar-siguio') {
+      await inicio.r.serieHecha();
+      await asentar();
+    }
+    servidor.falla.terminar_sesion = false;
+    const segundo = await inicio.r.terminar();
+    const mandado = servidor.registro.filter((x) => x.rpc === 'terminar_sesion').pop()?.args?.p_hasta ?? null;
+    return {
+      primero: primero === null ? 'no salió' : 'salió',
+      segundo: segundo === null ? 'no salió' : 'salió',
+      // Cuánto se aleja la hora mandada del primer toque, y del reintento.
+      delPrimerToque: mandado ? Math.abs(Date.parse(mandado) - toque) < 150 : null,
+      atrasoMs: mandado ? Date.now() - Date.parse(mandado) >= 300 : null,
+      conHora: mandado !== null,
+      base: s.estado,
+    };
+  }
+
+  if (cual === 'sin-sesion') {
+    // La base la cerró sola y el teléfono ya se enteró: no hay sesión en pantalla.
+    Object.assign(s, { estado: 'terminada', cerro_sola: true, fin: new Date().toISOString() });
+    await bloquearYDesbloquear();
+    await asentar();
+    const enBase = [s.series, JSON.stringify(s.bloques)];
+    servidor.registro.length = 0;
+    const antes = pantalla();
+    await inicio.r.serieHecha();
+    await inicio.r.serieHecha();
+    await asentar();
+    return {
+      antes,
+      despues: pantalla(),
+      escrituras: servidor.registro.filter((x) => COLA.includes(x.rpc)).length,
+      enCola: cola().length,
+      laBaseQuedoIgual: enBase[0] === s.series && enBase[1] === JSON.stringify(s.bloques),
+      descanso: inicio.r.estado.descanso ?? null,
+    };
+  }
+  return { fallo: 'no conozco ' + cual };
+}
+
+/** `copia`: `cacheLeida` al montar es false, y pasa a true recién cuando se leyó la copia de la sesión. */
+async function copia() {
+  const inicio = montar(() => useSesion());
+  const alMontar = inicio.r.estado.cacheLeida;
+  await asentar();
+  return { alMontar, despues: inicio.r.estado.cacheLeida };
+}
+
+/**
+ * `cardio`: una vuelta con minutos se anota y sube como una serie, sin descanso
+ * después; corregir los minutos con la vuelta contada llega a la base. Y una serie
+ * común, en el mismo hook, sí arranca el descanso (que el escenario no pase en
+ * verde porque los descansos estén apagados).
+ */
+async function cardio() {
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirEjercicio('cinta');
+  await inicio.r.elegirMinutos(25);
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  const s = servidor.sesiones.find((x) => x.estado === 'corriendo');
+  const tras = { series: s?.series ?? null, minutos: (s?.bloques ?? []).map((b) => b.minutos ?? null), descanso: inicio.r.estado.descanso !== null };
+  await inicio.r.elegirMinutos(30);
+  await asentar();
+  const corregido = (s?.bloques ?? []).map((b) => b.minutos ?? null);
+  // Una serie común es de fuerza: sobre la cinta, "+ Serie hecha" ya no cuenta (cacería del 15/10).
+  await inicio.r.elegirEjercicio('press_banca');
+  await inicio.r.serieHecha();
+  await asentar();
+  return { tras, corregido, comun: inicio.r.estado.descanso !== null };
+}
+
+/**
+ * `cronometro`: EL CRONÓMETRO DEL CARDIO (15/10). Se elige cinta y arranca; a
+ * los 12 minutos "Listo" anota 12 y la vuelta cuenta, SIN descanso; "Otra
+ * vuelta" arranca de nuevo y a los 5 suma 17. El reloj se adelanta a mano.
+ */
+async function cronometro() {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirEjercicio('cinta');
+  await inicio.r.arrancarCardio();
+  await asentar();
+  const corre = inicio.r.estado.bloques.cardioDesde !== undefined;
+  const enCache = cache()?.bloques?.cardioDesde !== undefined;
+  const viva = () => servidor.sesiones.find((x) => x.estado === 'corriendo');
+  adelanto = 12 * 60000 + 20000;
+  await inicio.r.cerrarVueltaDeCardio();
+  await asentar();
+  const primera = {
+    minutos: (viva()?.bloques ?? []).map((b) => b.minutos ?? null),
+    descanso: inicio.r.estado.descanso !== null,
+    corre: inicio.r.estado.bloques.cardioDesde !== undefined,
+    subioElCronometro: JSON.stringify(viva()?.bloques ?? []).includes('cardioDesde'),
+  };
+  await inicio.r.arrancarCardio();
+  adelanto += 5 * 60000;
+  await inicio.r.cerrarVueltaDeCardio();
+  await asentar();
+  return { corre, enCache, primera, segunda: { minutos: (viva()?.bloques ?? []).map((b) => b.minutos ?? null), series: viva()?.series ?? null } };
+}
+
+/**
+ * `cardioLargo` (cacería del 15/10): la cinta con el cronómetro andando.
+ *  - `35` / `50`: tantos minutos de cinta con la app adelante y sin tocar nada;
+ *    después se desbloquea (la base contesta) y se toca Listo. La base cierra
+ *    por inactividad a la media hora de su última marca, con marcas que acepta
+ *    hasta 15 min adelante.
+ *  - `terminar` / `cambiar`: a los 12 min de cinta se toca Terminar, o se elige
+ *    otro ejercicio. La vuelta no se puede perder.
+ */
+async function cardioLargo(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.ventanaMs = 30 * 60000;
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirEjercicio('cinta');
+  await inicio.r.arrancarCardio();
+  await asentar();
+  const viva = () => servidor.sesiones[0];
+  const minutos = () => (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.minutos ?? null]);
+  if (caso === 'terminar' || caso === 'cambiar') {
+    adelanto = 12 * 60000;
+    let cierre = null;
+    if (caso === 'terminar') cierre = await inicio.r.terminar();
+    else await inicio.r.elegirEjercicio('press_banca');
+    await asentar();
+    return {
+      base: minutos(),
+      resumen: cierre ? cierre.bloques.map((b) => [b.ejercicio, b.minutos ?? null]) : null,
+      series: viva()?.series ?? null,
+    };
+  }
+  // Con la app adelante: el reloj de la sesión hace su vuelta de cada segundo.
+  for (let m = 5; m <= Number(caso); m += 5) {
+    adelanto = m * 60000;
+    await dormir(1300);
+  }
+  await asentar();
+  await bloquearYDesbloquear();
+  await dormir(300);
+  await asentar();
+  const alMirar = { corriendo: inicio.r.estado.corriendo, base: viva()?.estado ?? null };
+  await inicio.r.cerrarVueltaDeCardio();
+  await asentar();
+  return { alMirar, base: minutos() };
+}
+
+/**
+ * `descansoLargo` (cacería del 15/10): el + del descanso deja ponerlo a mano hasta una
+ * hora. Un descanso de 50 min con la app adelante no puede cerrar la sesión.
+ */
+async function descansoLargo() {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.ventanaMs = 30 * 60000;
+  const { cambiarDuracion } = await import('@compartido/descanso');
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirEjercicio('press_banca');
+  await inicio.r.serieHecha();
+  await asentar();
+  const d = inicio.r.estado.descanso;
+  if (d) inicio.r.reiniciarDescanso(cambiarDuracion(d, 50 * 60));
+  await asentar();
+  for (let m = 5; m <= 50; m += 5) {
+    adelanto = m * 60000;
+    await dormir(1300);
+  }
+  await asentar();
+  await bloquearYDesbloquear();
+  await dormir(300);
+  await asentar();
+  return { corriendo: inicio.r.estado.corriendo, base: servidor.sesiones[0]?.estado ?? null };
+}
+
+/**
+ * `vueltaDos` (cacería del 15/10, vuelta 2): la cinta y las marcas, por el camino de la pantalla.
+ *  - `bolsillo`: se elige la cinta como lo hace Bloque —sin esperar— y arranca el
+ *    cronómetro; el teléfono se bloquea 35 min. La sesión no puede cerrarse.
+ *  - `salida`: la cinta anda y la sesión se termina con la hora de salida del
+ *    gimnasio (10 min después de arrancar); se abre la app a los 50. La cinta son 10.
+ *  - `sinSenal`: Terminar sin señal con un descanso andando; la renovación de la
+ *    marca no puede borrar la hora del toque, y el reintento cierra a esa hora.
+ *  - `listo`: 15 min de cinta, "Listo", y la persona se va sin tocar Terminar: la
+ *    sesión se cierra sola a la hora de Listo, no una hora después (con la 82).
+ *  - `serieEnCinta`: con la cinta andando se toca "+ Serie hecha" en el descanso:
+ *    es la misma vuelta, no una más.
+ */
+async function vueltaDos(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.ventanaMs = 30 * 60000;
+  // `listo` necesita la 82 (la marca que baja).
+  if (caso === 'listo') servidor.version = 82;
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  const viva = () => servidor.sesiones[0];
+  if (caso === 'sinSenal') {
+    const { cambiarDuracion } = await import('@compartido/descanso');
+    await inicio.r.elegirEjercicio('press_banca');
+    await inicio.r.serieHecha();
+    await asentar();
+    // Un descanso largo andando cuando se toca Terminar: la renovación cae adentro.
+    const d = inicio.r.estado.descanso;
+    if (d) inicio.r.reiniciarDescanso(cambiarDuracion(d, 30 * 60));
+    await dormir(1300);
+    await asentar();
+    const toque = Date.now();
+    ['terminar_sesion', 'fijar_series', 'fijar_bloques', 'marcar_actividad', 'mi_sesion'].forEach((r) => (servidor.falla[r] = true));
+    await inicio.r.terminar();
+    await dormir(300);
+    adelanto = 6 * 60000;
+    await dormir(1300);
+    adelanto = 20 * 60000;
+    await dormir(1300);
+    ['terminar_sesion', 'fijar_series', 'fijar_bloques', 'marcar_actividad', 'mi_sesion'].forEach((r) => (servidor.falla[r] = false));
+    await inicio.r.terminar();
+    await asentar();
+    const fin = Date.parse(viva()?.fin ?? '') || null;
+    return { estado: viva()?.estado ?? null, finEnElToque: fin !== null && Math.abs(fin - toque) < 60000 };
+  }
+  void inicio.r.elegirEjercicio('cinta');
+  await inicio.r.arrancarCardio();
+  await asentar();
+  if (caso === 'serieEnCinta') {
+    adelanto = 7 * 60000;
+    await inicio.r.serieHecha();
+    await asentar();
+    return { series: viva()?.series ?? null, bloques: (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.series, b.minutos ?? null]) };
+  }
+  if (caso === 'listo') {
+    adelanto = 15 * 60000;
+    await inicio.r.cerrarVueltaDeCardio();
+    await asentar();
+    const listo = Date.now();
+    cambiarVisible(false);
+    await asentar();
+    adelanto = 15 * 60000 + 50 * 60000;
+    cambiarVisible(true);
+    await dormir(400);
+    await asentar();
+    const fin = Date.parse(viva()?.fin ?? '') || null;
+    return { estado: viva()?.estado ?? null, minutosDeMas: fin === null ? null : Math.round((fin - listo) / 60000) };
+  }
+  if (caso === 'salida') {
+    const arranco = Date.now();
+    adelanto = 50 * 60000;
+    await inicio.r.terminar({ hasta: arranco + 10 * 60000 });
+    await asentar();
+    return { bloques: (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.minutos ?? null]) };
+  }
+  // bolsillo
+  cambiarVisible(false);
+  await asentar();
+  adelanto = 35 * 60000;
+  cambiarVisible(true);
+  await dormir(400);
+  await asentar();
+  return { corriendo: inicio.r.estado.corriendo, base: viva()?.estado ?? null };
+}
+
+/**
+ * `vueltaTres` (cacería del 15/10, vuelta 3), con la 82 en la base:
+ *  - `seguir`: con la cinta andando se toca "Seguir" en un descanso ya terminado y
+ *    el teléfono va al bolsillo 35 min. La marca de la cinta no puede bajar.
+ *  - `semilla`: la semilla del primer bloque llega tarde (señal lenta) y la persona
+ *    ya eligió la cinta: no se la puede pisar.
+ *  - `porError`: la cinta se toca por error y a los 20 s se elige otro: no queda
+ *    una vuelta de un minuto ni una serie de más.
+ *  - `acortar`: un descanso de una hora se corrige a 90 s: la marca baja a su fin.
+ *  - `pisada`: "Listo" sin señal y después una serie: la bajada no se pierde en la cola.
+ *  - `tarde`: "Listo" sin señal; la señal vuelve 20 min después: la marca queda en
+ *    la hora de Listo, no en la de la vuelta de la señal.
+ *  - `guardada`: con la rutina guardada, se elige otro ejercicio de ese día: al
+ *    terminarlo, se propone el siguiente de la rutina, no uno del historial.
+ */
+async function vueltaTres(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.ventanaMs = 30 * 60000;
+  servidor.version = 82;
+  const { cambiarDuracion } = await import('@compartido/descanso');
+  const SIN_RED = ['fijar_series', 'fijar_bloques', 'marcar_actividad', 'mi_sesion'];
+  if (caso === 'guardada') {
+    datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+    const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+    dias[new Date(Date.now()).getDay()] = { descanso: false, ejercicios: ['press_banca', 'press_inclinado', 'aperturas'].map((ejercicio) => ({ ejercicio, series: 3 })) };
+    datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', dias }));
+  }
+  if (caso === 'semilla') servidor.ida.ultimo_ejercicio = 500;
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  const viva = () => servidor.sesiones[0];
+  const adelante = () => Math.round((Date.parse(viva()?.ultima_actividad ?? '') - Date.now()) / 60000);
+  if (caso === 'semilla') {
+    void inicio.r.elegirEjercicio('cinta');
+    await inicio.r.arrancarCardio();
+    await dormir(900);
+    await asentar();
+    return { ejercicio: inicio.r.estado.bloques.ejercicio, cronometro: inicio.r.estado.bloques.cardioDesde !== undefined };
+  }
+  await asentar();
+  if (caso === 'guardada') {
+    await dormir(300);
+    await inicio.r.elegirEjercicio('press_inclinado');
+    await inicio.r.serieHecha({ sinDescanso: true });
+    await inicio.r.bloqueSiguiente();
+    await asentar();
+    return { propone: inicio.r.estado.bloques.ejercicio };
+  }
+  if (caso === 'acortar') {
+    await inicio.r.elegirEjercicio('press_banca');
+    await inicio.r.serieHecha();
+    await asentar();
+    inicio.r.reiniciarDescanso(cambiarDuracion(inicio.r.estado.descanso, 60 * 60));
+    await asentar();
+    const conHora = adelante();
+    inicio.r.reiniciarDescanso(cambiarDuracion(inicio.r.estado.descanso, 90));
+    await asentar();
+    return { conHora, corregido: adelante() <= 2 };
+  }
+  if (caso === 'seguir') {
+    await inicio.r.elegirEjercicio('press_banca');
+    await inicio.r.serieHecha();
+    await asentar();
+    void inicio.r.elegirEjercicio('cinta');
+    await inicio.r.arrancarCardio();
+    await asentar();
+    adelanto = 4 * 60000;
+    inicio.r.cerrarDescanso();
+    await asentar();
+    cambiarVisible(false);
+    await asentar();
+    adelanto = 39 * 60000;
+    cambiarVisible(true);
+    await dormir(400);
+    await asentar();
+    return { corriendo: inicio.r.estado.corriendo, cronometro: inicio.r.estado.bloques.cardioDesde !== undefined };
+  }
+  void inicio.r.elegirEjercicio('cinta');
+  await inicio.r.arrancarCardio();
+  await asentar();
+  if (caso === 'porError') {
+    adelanto = 20000;
+    await inicio.r.elegirEjercicio('press_banca');
+    await asentar();
+    return { series: viva()?.series ?? null, bloques: (viva()?.bloques ?? []).map((b) => b.ejercicio) };
+  }
+  // pisada / tarde
+  adelanto = 15 * 60000;
+  SIN_RED.forEach((r) => (servidor.falla[r] = true));
+  await inicio.r.cerrarVueltaDeCardio();
+  const listo = Date.now();
+  if (caso === 'pisada') {
+    await inicio.r.elegirEjercicio('press_banca');
+    await inicio.r.serieHecha({ sinDescanso: true });
+  }
+  await dormir(200);
+  adelanto = 35 * 60000;
+  SIN_RED.forEach((r) => (servidor.falla[r] = false));
+  await bloquearYDesbloquear();
+  await dormir(300);
+  await asentar();
+  const ultima = Date.parse(viva()?.ultima_actividad ?? '');
+  return { cercaDeListo: Math.abs(ultima - listo) < 2 * 60000 };
+}
+
+/**
+ * `vueltaCuatro` (cacería del 15/10, vuelta 4): la sesión que ya había empezado otro
+ * aparato (2 × 60 de press anotadas allá), con señal lenta.
+ *  - `elige`: se toca Iniciar, y mientras llega el historial se elige remo.
+ *  - `mas`: lo mismo, y además un + en remo.
+ *  - `llega`: el historial es rápido pero los bloques de la base tardan; se elige
+ *    remo antes de que lleguen. Remo sigue siendo el de ahora.
+ *  - `cintaParada`: la cinta ya cerrada con Listo y se toca "+ Serie hecha" en el
+ *    descanso: ni vuelta de cero minutos ni descanso.
+ */
+async function vueltaCuatro(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  const viva = () => servidor.sesiones[0];
+  const lista = () => (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.series]);
+  if (caso === 'cintaParada') {
+    const inicio = montar(() => useSesion());
+    await asentar();
+    await inicio.r.empezar();
+    await asentar();
+    await inicio.r.elegirEjercicio('press_banca');
+    await inicio.r.serieHecha();
+    await asentar();
+    void inicio.r.elegirEjercicio('cinta');
+    await inicio.r.arrancarCardio();
+    await asentar();
+    adelanto = 10 * 60000;
+    await inicio.r.cerrarVueltaDeCardio();
+    await asentar();
+    await inicio.r.serieHecha();
+    await asentar();
+    return { series: viva()?.series ?? null, bloques: (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.series, b.minutos ?? null]), descanso: inicio.r.estado.descanso !== null };
+  }
+  // El teléfono tiene Inicio abierto desde antes (sin sesión); la sesión la empieza otro aparato.
+  const inicio = montar(() => useSesion());
+  await asentar();
+  const ahora = new Date(Date.now()).toISOString();
+  servidor.sesiones.push({
+    id: 'sesion-web', inicio: ahora, series: 2, estado: 'corriendo', origen: 'manual', ultima_actividad: ahora, cerro_sola: false,
+    bloques: [{ ejercicio: 'press_banca', series: 2, pesos: [60, 60] }],
+  });
+  if (caso === 'llega') servidor.ida.bloquesDeSesion = 600;
+  else servidor.ida.historial = 800;
+  await inicio.r.empezar();
+  await dormir(50);
+  await inicio.r.elegirEjercicio('remo_barra');
+  if (caso === 'mas') await inicio.r.serieHecha({ sinDescanso: true });
+  await dormir(1500);
+  await asentar();
+  return { base: lista(), series: viva()?.series ?? null, enCurso: inicio.r.estado.bloques.ejercicio };
+}
+
+/**
+ * `vueltaCinco` (cacería del 15/10, vuelta 5):
+ *  - `deshacer` / `siguiente`: la sesión de otro aparato (press 2 × 60) sin poder
+ *    traer sus bloques; acá remo 2. Vuelve la señal y se toca − (o Terminar serie);
+ *    se bloquea y desbloquea, y se suma sentadilla. Lo de allá no se borra.
+ *  - `terminar`: lo mismo, pero se toca Terminar al volver la señal: lo de acá sube.
+ *  - `menos`: 30 min de cinta, Listo, otra vuelta, y a los 2 min el −: los 30 quedan.
+ */
+async function vueltaCinco(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  const viva = () => servidor.sesiones[0];
+  const lista = () => (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.series, b.minutos ?? null]);
+  const inicio = montar(() => useSesion());
+  await asentar();
+  if (caso === 'menos') {
+    await inicio.r.empezar();
+    await asentar();
+    void inicio.r.elegirEjercicio('cinta');
+    await inicio.r.arrancarCardio();
+    adelanto = 30 * 60000;
+    await inicio.r.cerrarVueltaDeCardio();
+    await inicio.r.arrancarCardio();
+    adelanto = 32 * 60000;
+    await inicio.r.deshacerSerie();
+    await asentar();
+    return { base: lista(), series: viva()?.series ?? null, cronometro: inicio.r.estado.bloques.cardioDesde !== undefined };
+  }
+  const ahora = new Date(Date.now()).toISOString();
+  servidor.sesiones.push({
+    id: 'sesion-web', inicio: ahora, series: 2, estado: 'corriendo', origen: 'manual', ultima_actividad: ahora, cerro_sola: false,
+    bloques: [{ ejercicio: 'press_banca', series: 2, pesos: [60, 60] }],
+  });
+  servidor.falla.lecturas = true;
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.elegirEjercicio('remo_barra');
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  servidor.falla.lecturas = false;
+  if (caso === 'terminar') {
+    await inicio.r.terminar();
+    await asentar();
+    return { base: lista().map(([e, n]) => [e, n]), estado: viva()?.estado ?? null };
+  }
+  if (caso === 'siguiente') await inicio.r.bloqueSiguiente();
+  else await inicio.r.deshacerSerie();
+  await asentar();
+  await bloquearYDesbloquear();
+  await dormir(200);
+  await asentar();
+  await inicio.r.elegirEjercicio('sentadilla');
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  return { conservaLoDeAlla: lista().some(([e, n]) => e === 'press_banca' && n === 2) };
+}
+
+/**
+ * `vueltaSeis` (cacería del 15/10, vuelta 6):
+ *  - `reabrir`: sesión de otro aparato (press 2) sin poder traer sus bloques; acá
+ *    remo. iOS mata la app, se reabre sin señal y se toca +. Vuelve la señal.
+ *  - `terminarSinLeer`: lo mismo sin cerrar la app, y Terminar sin poder leer.
+ *  - `quieto`: press 2 acá; este aparato queda quieto 31 min mientras el otro anota remo 1.
+ *  - `cintaSugerida`: la rutina propone la cinta; Arrancar la confirma.
+ *  - `cadena`: rutina guardada; iOS mata la app tras la primera; se desbloquea y sigue.
+ *  - `cintaParada`: 30 + 20 min de cinta, −, − y otro ejercicio.
+ */
+async function vueltaSeis(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  const viva = () => servidor.sesiones[servidor.sesiones.length - 1];
+  const lista = () => (viva()?.bloques ?? []).map((b) => [b.ejercicio, b.series, b.minutos ?? null]);
+  const TODO = ['mi_sesion', 'fijar_series', 'fijar_bloques', 'marcar_actividad', 'iniciar_sesion', 'terminar_sesion'];
+  const sinSenal = (si) => {
+    for (const r of TODO) servidor.falla[r] = si;
+    servidor.falla.lecturas = si;
+  };
+  const deOtroAparato = () => {
+    const ahora = new Date(Date.now()).toISOString();
+    servidor.sesiones.push({
+      id: 'sesion-web', inicio: ahora, series: 2, estado: 'corriendo', origen: 'manual', ultima_actividad: ahora, cerro_sola: false,
+      bloques: [{ ejercicio: 'press_banca', series: 2, pesos: [60, 60] }],
+    });
+  };
+  if (caso === 'cadena') {
+    datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+    const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+    dias[new Date(Date.now()).getDay()] = { descanso: false, ejercicios: ['press_banca', 'press_inclinado', 'aperturas'].map((ejercicio) => ({ ejercicio, series: 3 })) };
+    datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', dias }));
+  }
+  if (caso === 'cintaSugerida') {
+    const { hoyISO, restarDias } = await import('@nucleo/fechas');
+    servidor.ultimoEjercicio = 'press_banca';
+    servidor.historial = [{ bloques: [{ ejercicio: 'press_banca' }, { ejercicio: 'cinta' }], logs: { fecha: restarDias(hoyISO(), 7) } }];
+  }
+  let tel = montar(() => useSesion());
+  await asentar();
+  if (caso === 'reabrir' || caso === 'terminarSinLeer') {
+    deOtroAparato();
+    servidor.falla.lecturas = true;
+    await tel.r.empezar();
+    await dormir(300);
+    await tel.r.elegirEjercicio('remo_barra');
+    await dormir(300);
+    if (caso === 'terminarSinLeer') {
+      await tel.r.serieHecha({ sinDescanso: true });
+      await dormir(200);
+      const cierre = await tel.r.terminar();
+      await dormir(300);
+      const primero = { cerro: !!cierre, estado: viva().estado };
+      servidor.falla.lecturas = false;
+      const segundo = await tel.r.terminar();
+      await asentar();
+      return { primero, segundo: { cerro: !!segundo, estado: viva().estado, base: lista().map(([e, n]) => [e, n]) } };
+    }
+    sinSenal(true);
+    olvidarViva();
+    tel = montar(() => useSesion());
+    await dormir(400);
+    await tel.r.serieHecha({ sinDescanso: true });
+    await dormir(200);
+    sinSenal(false);
+    await bloquearYDesbloquear();
+    await dormir(1200);
+    await asentar();
+    return { base: lista().map(([e, n]) => [e, n]) };
+  }
+  await tel.r.empezar();
+  await asentar();
+  if (caso === 'quieto') {
+    servidor.ventanaMs = 30 * 60000;
+    await tel.r.elegirEjercicio('press_banca');
+    await tel.r.serieHecha({ sinDescanso: true });
+    await tel.r.serieHecha({ sinDescanso: true });
+    await asentar();
+    adelanto = 31 * 60000;
+    const s = viva();
+    s.bloques = [...s.bloques, { ejercicio: 'remo_barra', series: 1 }];
+    s.series = 3;
+    s.ultima_actividad = new Date(Date.now()).toISOString();
+    await dormir(3000);
+    await asentar();
+    return { base: lista().map(([e, n]) => [e, n]), estado: viva().estado };
+  }
+  if (caso === 'cintaSugerida') {
+    await dormir(400);
+    await asentar();
+    await tel.r.serieHecha({ sinDescanso: true });
+    await asentar();
+    await tel.r.bloqueSiguiente();
+    await asentar();
+    const propuesta = [tel.r.estado.bloques.ejercicio, tel.r.estado.sugerido];
+    await tel.r.arrancarCardio();
+    await asentar();
+    return { propuesta, alArrancar: [tel.r.estado.sugerido, cache()?.sugerido ?? null] };
+  }
+  if (caso === 'cadena') {
+    await dormir(300);
+    await asentar();
+    await tel.r.serieHecha({ sinDescanso: true });
+    await tel.r.bloqueSiguiente();
+    await asentar();
+    // Desbloquear pregunta a la base: la cadena tiene que sobrevivir a esa escritura de la caché.
+    await bloquearYDesbloquear();
+    await dormir(300);
+    await asentar();
+    olvidarViva();
+    tel = montar(() => useSesion());
+    await dormir(300);
+    await asentar();
+    await tel.r.serieHecha({ sinDescanso: true });
+    await tel.r.bloqueSiguiente();
+    await asentar();
+    return { propone: [tel.r.estado.bloques.ejercicio, tel.r.estado.sugerido] };
+  }
+  // cintaParada
+  const vuelta = async (min) => {
+    await tel.r.arrancarCardio();
+    adelanto += min * 60000;
+    await tel.r.cerrarVueltaDeCardio();
+    await asentar();
+  };
+  await tel.r.elegirEjercicio('cinta');
+  await vuelta(30);
+  await vuelta(20);
+  await tel.r.deshacerSerie();
+  await asentar();
+  await tel.r.deshacerSerie();
+  await asentar();
+  await tel.r.elegirEjercicio('press_banca');
+  await asentar();
+  return { base: lista(), series: viva().series };
+}
+
+/**
+ * `vueltaSiete` (cacería del 15/10, vuelta 7):
+ *  - `menosCinta`: la cinta arranca sola, a los 3 min se apaga con el − y nadie toca
+ *    Terminar: la base cierra sola, y el fin tiene que ser a los 3 min, no a los 60.
+ *  - `otroSinLeer`: el otro aparato suma remo; al desbloquear no se pueden leer los
+ *    bloques; vuelve la señal y se toca +: el remo sigue en la base.
+ *  - `propioAjeno`: el historial y el último ejercicio traen un propio de un amigo que
+ *    ya no se ve (la 80): no sale como rutina ni como semilla.
+ */
+async function vueltaSiete(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.version = 82;
+  if (caso === 'propioAjeno') {
+    const { hoyISO, restarDias } = await import('@nucleo/fechas');
+    servidor.visibles = ['press_banca', 'remo_barra', 'sentadilla'];
+    servidor.ultimoEjercicio = 'propio_ajeno';
+    servidor.historial = [{ bloques: [{ ejercicio: 'propio_ajeno' }, { ejercicio: 'remo_barra' }], logs: { fecha: restarDias(hoyISO(), 7) } }];
+  }
+  const tel = montar(() => useSesion());
+  await asentar();
+  await tel.r.empezar();
+  await asentar();
+  const s = servidor.sesiones[0];
+  if (caso === 'propioAjeno') {
+    await dormir(400);
+    await asentar();
+    return { semilla: tel.r.estado.bloques.ejercicio };
+  }
+  if (caso === 'menosCinta') {
+    const { crearCliente } = await import('./cliente.mjs');
+    await tel.r.elegirEjercicio('cinta');
+    await tel.r.arrancarCardio();
+    await asentar();
+    adelanto = 3 * 60000;
+    await tel.r.deshacerSerie();
+    await asentar();
+    servidor.ventanaMs = 30 * 60000;
+    adelanto = 120 * 60000;
+    await crearCliente().rpc('mi_sesion');
+    return { estado: s.estado, finMin: s.fin ? Math.round((Date.parse(s.fin) - Date.parse(s.inicio)) / 60000) : null };
+  }
+  // otroSinLeer
+  await tel.r.elegirEjercicio('press_banca');
+  await tel.r.serieHecha({ sinDescanso: true });
+  await tel.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  s.bloques = [...s.bloques, { ejercicio: 'remo_barra', series: 1 }];
+  s.series = 3;
+  servidor.falla.lecturas = true;
+  await bloquearYDesbloquear();
+  await dormir(400);
+  await asentar();
+  servidor.falla.lecturas = false;
+  await tel.r.serieHecha({ sinDescanso: true });
+  await dormir(300);
+  await asentar();
+  return { base: s.bloques.map((b) => [b.ejercicio, b.series]), series: s.series };
+}
+
+/**
+ * `vueltaOcho` (cacería del 15/10, vuelta 8), con otro aparato que anota:
+ *  - `dupla`: acá press 2; allá remo 1 y no se puede leer; allá sentadilla 1 y vuelve
+ *    la señal. Nadie toca nada acá: la base no duplica.
+ *  - `peso`: press 2 con 60; allá remo 1; sin poder leer, el + siguiente lleva los 60.
+ *  - `cinta`: la cinta andando; allá remo 1; sin poder leer, Listo a los 20 anota la cinta.
+ */
+async function vueltaOcho(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.version = 82;
+  const tel = montar(() => useSesion());
+  await asentar();
+  await tel.r.empezar();
+  await asentar();
+  const s = servidor.sesiones[0];
+  const base = () => s.bloques.map((b) => [b.ejercicio, b.series, b.pesos?.[0] ?? b.minutos ?? null]);
+  if (caso === 'cinta') {
+    await tel.r.elegirEjercicio('cinta');
+    await tel.r.arrancarCardio();
+  } else {
+    await tel.r.elegirEjercicio('press_banca');
+    if (caso === 'peso') await tel.r.elegirPeso(60);
+    await tel.r.serieHecha({ sinDescanso: true });
+    await tel.r.serieHecha({ sinDescanso: true });
+  }
+  await asentar();
+  s.bloques = [...s.bloques, { ejercicio: 'remo_barra', series: 1 }];
+  s.series += 1;
+  servidor.falla.lecturas = true;
+  await bloquearYDesbloquear();
+  await dormir(400);
+  await asentar();
+  if (caso === 'dupla') {
+    s.bloques = [...s.bloques, { ejercicio: 'sentadilla', series: 1 }];
+    s.series += 1;
+    servidor.falla.lecturas = false;
+    await bloquearYDesbloquear();
+    await dormir(400);
+    await asentar();
+    return { base: base(), series: s.series };
+  }
+  servidor.falla.lecturas = false;
+  if (caso === 'peso') await tel.r.serieHecha({ sinDescanso: true });
+  else {
+    adelanto = 20 * 60000;
+    await tel.r.cerrarVueltaDeCardio();
+  }
+  await dormir(300);
+  await asentar();
+  return { base: base(), series: s.series };
+}
+
+/**
+ * `serieEnCinta` (vuelta 8): "+ Serie hecha" del descanso con una cinta que todavía
+ * no arrancó. `sugerida`: la propone la rutina; `menos`: se arrancó y se apagó con el −.
+ * No cuenta una serie ni guarda una vuelta sin minutos.
+ */
+async function serieEnCinta(caso) {
+  const real = Date.now;
+  let adelanto = 0;
+  Date.now = () => real() + adelanto;
+  servidor.version = 82;
+  servidor.visibles = ['press_banca', 'cinta', 'remo_barra'];
+  servidor.porTiempo = ['cinta'];
+  if (caso === 'sugerida') {
+    const { hoyISO, restarDias } = await import('@nucleo/fechas');
+    servidor.ultimoEjercicio = 'press_banca';
+    servidor.historial = [{ bloques: [{ ejercicio: 'press_banca' }, { ejercicio: 'cinta' }], logs: { fecha: restarDias(hoyISO(), 7) } }];
+  }
+  const tel = montar(() => useSesion());
+  await asentar();
+  await tel.r.empezar();
+  await asentar();
+  await dormir(400);
+  await asentar();
+  if (tel.r.estado.bloques.ejercicio !== 'press_banca') await tel.r.elegirEjercicio('press_banca');
+  await tel.r.serieHecha();
+  await asentar();
+  tel.r.cerrarDescanso();
+  await tel.r.bloqueSiguiente();
+  await asentar();
+  if (caso !== 'sugerida') await tel.r.elegirEjercicio('cinta');
+  if (caso === 'menos') {
+    await tel.r.arrancarCardio();
+    adelanto = 20000;
+    await tel.r.deshacerSerie();
+  }
+  await asentar();
+  if (!tel.r.estado.descanso) await tel.r.descansarSuelto();
+  await asentar();
+  adelanto += 30000;
+  await tel.r.serieHecha();
+  await asentar();
+  const s = servidor.sesiones[0];
+  return { enCurso: [tel.r.estado.bloques.ejercicio, tel.r.estado.bloques.hechas], series: s.series, base: s.bloques.map((b) => [b.ejercicio, b.series]) };
+}
+
+/**
+ * `cantidades` (vuelta 7, de la lista de OTA): la rutina guardada de hoy dice press
+ * de banca 4 series y cinta 30 min. La semilla trae la meta 4 y la cinta propuesta, 30.
+ */
+async function cantidades() {
+  datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+  const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  dias[new Date(Date.now()).getDay()] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }, { ejercicio: 'cinta', series: 1, minutos: 30 }] };
+  datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', dias }));
+  const tel = montar(() => useSesion());
+  await asentar();
+  await tel.r.empezar();
+  await dormir(400);
+  await asentar();
+  const semilla = [tel.r.estado.bloques.ejercicio, tel.r.estado.bloques.meta];
+  for (let i = 0; i < 4; i++) await tel.r.serieHecha({ sinDescanso: true });
+  await tel.r.bloqueSiguiente();
+  await asentar();
+  return { semilla, propuesta: [tel.r.estado.bloques.ejercicio, tel.r.estado.bloques.minutos ?? null, tel.r.estado.sugerido] };
+}
+
+/** `yaCorria`: la sesión ya corría (empezada en otro lado) y se toca Empezar: se sigue con esa, sin cartel. */
+async function yaCorria() {
+  const inicio = montar(() => useSesion());
+  await asentar();
+  const ahora = new Date().toISOString();
+  servidor.sesiones.push({ id: 'sesion-de-otro-lado', inicio: ahora, series: 2, bloques: [], estado: 'corriendo', ultima_actividad: ahora, origen: 'manual', cerro_sola: false });
+  const ok = await inicio.r.empezar();
+  await asentar();
+  return { ok, corre: inicio.r.estado.corriendo ?? null, vivas: servidor.sesiones.filter((s) => s.estado === 'corriendo').length, aviso: inicio.r.estado.aviso };
+}
+
+/**
+ * `viejas`: LAS DOS RESPUESTAS VIEJAS que siguen abiertas (spec/alcance.md, "Un
+ * solo dueño"). Una pregunta a la base sale, y mientras viaja se toca un botón:
+ *  - `no-hay`: la respuesta "no hay sesión" sale ANTES de Iniciar y llega DESPUÉS.
+ *    Después se suma una serie: tiene que llegar a la base.
+ *  - `corre`: la respuesta "está corriendo" sale ANTES de Terminar y llega DESPUÉS.
+ * Con `vigilante`, hay dos instancias montadas (el vigilante primero): la
+ * pregunta vieja es la del vigilante y el toque es en Inicio.
+ * Devuelve lo que muestra cada pantalla, lo que queda en la caché y lo que dice la base.
+ */
+async function viejas(caso, variante) {
+  const conVigilante = variante === 'vigilante';
+  let inicio = null;
+  let vigilante = null;
+  const resultado = (tocado) => {
+    const viva = servidor.sesiones.find((s) => s.estado === 'corriendo');
+    const r = { tocado, pantallaCorre: inicio.r.estado.corriendo, baseCorre: !!viva, cacheId: cache()?.id ?? null };
+    if (conVigilante) r.vigilanteCorre = vigilante.r.estado.corriendo;
+    if (caso === 'no-hay') Object.assign(r, { pantallaSeries: inicio.r.estado.series, baseSeries: viva?.series ?? null });
+    return r;
+  };
+  if (caso === 'no-hay') {
+    // Sin sesión, la pregunta que hay es la del arranque: el toque cae mientras viaja.
+    let tocado = false;
+    servidor.antesDeResponder.mi_sesion = async () => {
+      if (tocado || !inicio) return;
+      tocado = true;
+      await inicio.r.empezar();
+    };
+    if (conVigilante) vigilante = montar(() => useSesion());
+    inicio = montar(() => useSesion());
+    await asentar();
+    await dormir(200);
+    await asentar();
+    await inicio.r.serieHecha({ sinDescanso: true });
+    await asentar();
+    await dormir(100);
+    await asentar();
+    return resultado(tocado);
+  }
+  if (conVigilante) vigilante = montar(() => useSesion());
+  inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await asentar();
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  let tocado = false;
+  servidor.antesDeResponder.mi_sesion = async () => {
+    if (tocado) return;
+    tocado = true;
+    await inicio.r.terminar();
+  };
+  await bloquearYDesbloquear();
+  await asentar();
+  await dormir(200);
+  await asentar();
+  return resultado(tocado);
+}
+
 const [escenario, ...argumentos] = process.argv.slice(2);
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno }[escenario](...argumentos);
+/**
+ * `dueno`: EL DATO ES UNO (el dueño único, 15/10). Con el vigilante y la
+ * pantalla montados, lo que toca la pantalla lo ve el vigilante en el render
+ * siguiente, sin esperar a la caché —que tarda una vuelta del bucle de eventos—.
+ * Con una copia por instancia, el vigilante iba atrás hasta releerla. Después se
+ * toca desde el vigilante y se mira la pantalla: tiene que valer para los dos lados.
+ */
+async function dueno() {
+  const vigilante = montar(() => useSesion());
+  const inicio = montar(() => useSesion());
+  await asentar();
+  const soloRender = async () => {
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+  };
+  const ver = (x) => ({ corriendo: x.r.estado.corriendo, series: x.r.estado.series, bloques: corto(x.r.estado.bloques) });
+  await inicio.r.empezar();
+  await soloRender();
+  const alEmpezar = ver(vigilante);
+  await inicio.r.elegirPeso(60);
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await soloRender();
+  const trasDos = { pantalla: ver(inicio), vigilante: ver(vigilante) };
+  await vigilante.r.serieHecha({ sinDescanso: true });
+  await soloRender();
+  const desdeElVigilante = ver(inicio);
+  await asentar();
+  return { alEmpezar, trasDos, desdeElVigilante, base: servidor.sesiones[0]?.series ?? null };
+}
+
+/**
+ * `cruce`: BORRAR Y GUARDAR LA CACHÉ, EN LA MISMA FILA QUE ACTUALIZAR (15/10).
+ * Un `actualizar` lee la caché; justo ahí se termina la sesión y se borra; el
+ * `actualizar` guarda lo que había leído y la sesión terminada volvía a aparecer
+ * en el teléfono. `guardar`: lo mismo con una sesión nueva que se guarda en el medio.
+ */
+async function cruce(cual) {
+  const SC = await import('@compartido/sesionCache');
+  const vieja = { inicio: new Date().toISOString(), desfasaje: 0, series: 1, id: 'sesion-1' };
+  await SC.guardarSesionCache(vieja);
+  const n0 = servidas.n;
+  let enElMedio = null;
+  servidas.alServir = (n) => {
+    if (n !== n0 + 1 || enElMedio) return;
+    enElMedio = cual === 'guardar'
+      ? SC.guardarSesionCache({ ...vieja, id: 'sesion-2', series: 0 })
+      : SC.borrarSesionCache();
+  };
+  await SC.actualizarSesionCache({ series: 2 });
+  await enElMedio;
+  servidas.alServir = null;
+  const c = cache();
+  return { cache: c ? [c.id, c.series] : null };
+}
+
+/**
+ * `releerVieja` (paso 5 del refactor, 15/10): al desbloquear se relee la caché
+ * —"no hay sesión"—, se toca Iniciar, y la lectura vacía llega DESPUÉS. No
+ * puede sacar de la pantalla la sesión que acaba de empezar.
+ */
+async function releerVieja() {
+  const inicio = montar(() => useSesion());
+  await asentar();
+  cambiarVisible(false);
+  await asentar();
+  cfg.demoraLeer = { 'ascent:sesion': 150 };
+  cambiarVisible(true);
+  cfg.demoraLeer = {};
+  await inicio.r.empezar();
+  await dormir(250);
+  await asentar();
+  const viva = servidor.sesiones.find((s) => s.estado === 'corriendo');
+  return { pantallaCorre: inicio.r.estado.corriendo, baseCorre: !!viva, cacheId: cache()?.id ?? null };
+}
+
+/**
+ * `fantasma` (paso 5 del refactor, 15/10): con el bloque siguiente propuesto
+ * por la rutina —"fantasma"—, se desbloquea y se le pregunta a la base. La
+ * respuesta es de la misma sesión: no le puede sacar el fantasma a la caché.
+ */
+async function fantasma() {
+  servidor.ida.version_del_esquema = 300;
+  servidor.falla.version_del_esquema = true;
+  servidor.ultimoEjercicio = 'press_banca';
+  const { hoyISO, restarDias } = await import('@nucleo/fechas');
+  servidor.historial = [
+    { bloques: [{ ejercicio: 'press_banca' }, { ejercicio: 'remo' }], logs: { fecha: restarDias(hoyISO(), 7) } },
+  ];
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await dormir(700);
+  await asentar();
+  await inicio.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  await inicio.r.bloqueSiguiente();
+  await dormir(120);
+  await asentar();
+  const antes = [inicio.r.estado.sugerido, cache()?.sugerido ?? null];
+  await bloquearYDesbloquear();
+  await dormir(200);
+  await asentar();
+  return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
+}
+
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

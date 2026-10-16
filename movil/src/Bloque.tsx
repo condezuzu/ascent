@@ -1,7 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { nombreDeGrupo } from '@nucleo/ejercicios';
+import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from './supabase';
-import { METAS, metaCumplida, type EstadoBloques } from '@nucleo/bloques';
+import { metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { OPCIONES_DE_LA_PREGUNTA, cargaVigente, hayQuePreguntar, kilosMovidos, llevaNumero, muestraTotal, type Carga } from '@nucleo/carga';
@@ -13,12 +15,21 @@ import { useVersionDelEsquema } from '@compartido/esquema';
 import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
 import CampoPeso from './CampoPeso';
+
+// Los globitos de "ya puedes subir" que ya se cerraron, por ejercicio y día: no vuelven en la misma corrida.
+const SUBIR_VISTOS = new Set<string>();
+
+// Con lo que arranca una vuelta de cardio si no se tocaron los minutos.
+const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
-import { C } from './colores';
+import Globito from './Globito';
+import { esPropio, nombreVisible } from '@nucleo/propios';
+import { C, conAlfa } from './colores';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
 import { hoyISO } from '@nucleo/fechas';
+import { cronoLindo } from '@nucleo/sesiones';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN — en nativo.
@@ -45,6 +56,7 @@ export default function Bloque({
   diaDeSesion,
   alSumar,
   debajoDelMas,
+  globoDelMas,
   alRestar,
   alSiguiente,
   alElegirEjercicio,
@@ -52,6 +64,9 @@ export default function Bloque({
   alElegirMeta,
   alTocarBloque,
   alElegirPeso,
+  alElegirMinutos,
+  alArrancarCardio,
+  alCerrarVueltaDeCardio,
   alCorregirPeso,
   alElegirCarga,
   alCorregirCarga,
@@ -67,21 +82,29 @@ export default function Bloque({
   subida?: { ejercicio: string; series: number; antes: number; ahora: number } | null;
   /** El día de la sesión (no el del reloj): es el día de las marcas. Ver `diaDeLaSesion`. */
   diaDeSesion?: string;
-  alSumar: () => void;
+  alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
+  /** El globito de la primera vez, saliendo del + (15/10): recibe dónde está el centro del +. */
+  globoDelMas?: (colaX: number) => ReactNode;
   alRestar: () => void;
   alSiguiente: () => void;
-  alElegirEjercicio: (id: string | null) => void;
+  alElegirEjercicio: (id: string | null) => void | Promise<void>;
   alMudarSeries: (id: string | null, cargaQueSeVeia?: Carga) => void;
   alElegirMeta: (meta: number) => void;
   alTocarBloque: (indice: number, delta: number | 'quitar') => void;
   alElegirPeso: (kg: number | null) => void;
+  /** Los minutos del cardio (14/10). */
+  alElegirMinutos?: (m: number | null) => void;
+  /** El cronómetro del cardio (15/10): arrancarlo, y cerrar la vuelta con lo que corrió. */
+  alArrancarCardio?: () => void;
+  alCerrarVueltaDeCardio?: () => void;
   alCorregirPeso: (indice: number, serie: number, kg: number | null) => void;
   alElegirCarga: (c: Carga) => void;
   alCorregirCarga: (indice: number, c: Carga) => void;
   alCorregirEjercicio: (indice: number, id: string, cargaQueSeVeia?: Carga) => void;
 }) {
+  const [anchoBotones, setAnchoBotones] = useState(0);
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [eligiendo, setEligiendo] = useState(false);
   const [lista, setLista] = useState(false);
@@ -97,6 +120,10 @@ export default function Bloque({
 
   // El catálogo se pide una vez y no bloquea nada: sin él el contador anda
   // igual, con "sin ejercicio".
+  // Y SE VUELVE A PEDIR al agregar un ejercicio propio: si no, el recién creado
+  // se vería con su id en lugar del nombre.
+  const [versionCatalogo, setVersionCatalogo] = useState(0);
+  useEffect(() => eventos.escuchar(EJERCICIOS_CAMBIO, () => setVersionCatalogo((v) => v + 1)), []);
   useEffect(() => {
     let vivo = true;
     supabase
@@ -109,7 +136,7 @@ export default function Bloque({
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [versionCatalogo]);
 
   // FANTASMA: el ejercicio/peso vienen sugeridos por la rutina y todavía no se
   // confirmaron (nadie contó una serie). Se muestra distinto —tenue, punteado y
@@ -117,8 +144,42 @@ export default function Bloque({
   // vistazo: si se viera igual, un toque de más registraría una serie no hecha.
   const esFantasma = !!sugerido && estado.hechas === 0 && !!estado.ejercicio;
   const actual = ejercicios.find((e) => e.id === estado.ejercicio) ?? null;
-  const nombreDe = (id: string | null) => (id ? (ejercicios.find((e) => e.id === id)?.nombre ?? id) : T.sesion.sinEjercicio);
-  const cumplida = metaCumplida(estado);
+  const nombreDe = (id: string | null) => (id ? nombreVisible(id, ejercicios.find((e) => e.id === id)?.nombre) : T.sesion.sinEjercicio);
+  // EL CARDIO (14/10): se anota en minutos. Una vuelta ya es "cumplida": no hay
+  // meta de series, y no arranca un descanso.
+  const esTiempo = actual?.mide === 'tiempo';
+  const minutos = estado.minutos ?? MINUTOS_DE_ARRANQUE;
+  const cumplida = esTiempo ? estado.hechas >= 1 : metaCumplida(estado);
+  const sumar = () => {
+    if (!esTiempo) return alSumar();
+    if (estado.minutos === undefined) alElegirMinutos?.(minutos);
+    alSumar({ sinDescanso: true });
+  };
+  // EL CRONÓMETRO DEL CARDIO (15/10): mientras corre, el tiempo sale de restar
+  // contra cuándo arrancó (como el de la sesión), y esto solo repinta.
+  const corriendoCardio = esTiempo && estado.cardioDesde !== undefined;
+  // El − con la cinta andando la apaga sin anotar (la cinta elegida arranca sola y
+  // no había otra forma); parada no hace nada (ver `restarSerie`).
+  const menosApagado = corriendoCardio ? false : estado.hechas === 0 || (esTiempo && estado.minutos !== undefined);
+  const [, repintarCardio] = useState(0);
+  useEffect(() => {
+    if (!corriendoCardio) return;
+    const t = setInterval(() => repintarCardio((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [corriendoCardio]);
+  const segundosDeCardio = corriendoCardio ? Math.max(0, Math.floor((Date.now() - (estado.cardioDesde ?? 0)) / 1000)) : 0;
+  // Elegir un cardio de la lista YA arranca el cronómetro: es lo que se va a hacer.
+  // Después de que el cambio de ejercicio terminó: si no, su marca de "ahora" pisaba en la cola la de la cinta.
+  // `mide` viene solo con uno recién creado, que el catálogo de acá todavía no tiene.
+  const elegir = async (id: string | null, mide?: 'series' | 'tiempo') => {
+    await alElegirEjercicio(id);
+    if (id && (ejercicios.find((e) => e.id === id)?.mide ?? mide) === 'tiempo') alArrancarCardio?.();
+  };
+  const principalDeCardio = corriendoCardio
+    ? { texto: T.sesion.cardioListo, accion: () => alCerrarVueltaDeCardio?.() }
+    : estado.hechas > 0
+      ? { texto: T.sesion.cardioOtraVuelta, accion: () => alArrancarCardio?.() }
+      : { texto: T.sesion.cardioArrancar, accion: () => alArrancarCardio?.() };
   const puntos = Math.max(estado.meta, estado.hechas);
   const cargaVista = cargaVigente(estado.carga, actual?.carga);
   const esCorporal = !llevaNumero(cargaVista);
@@ -135,13 +196,19 @@ export default function Bloque({
   const conSubir = conCarga && disponible('subirPeso', version);
   const oferta = conSubir && admitePeso ? loQueSePuedeSubir(estado, cargaVista) : null;
   const [marca, setMarca] = useState<Subida | null>(null);
+  // YA PUEDES SUBIR (15/10): el peso con el que se hizo entero dos veces seguidas.
+  const [listoParaSubir, setListoParaSubir] = useState<number | null>(null);
   useEffect(() => {
     let vivo = true;
     setMarca(null);
+    setListoParaSubir(null);
     if (estado.ejercicio) {
       const id = estado.ejercicio;
       void leerRecordados().then((r) => {
-        if (vivo) setMarca(r.subidas[claveDeSubida(id, cargaVista)] ?? null);
+        if (!vivo) return;
+        setMarca(r.subidas[claveDeSubida(id, cargaVista)] ?? null);
+        const l = r.paraSubir[id];
+        setListoParaSubir(l && l.carga === cargaVista ? l.peso : null);
       });
     }
     return () => {
@@ -149,6 +216,10 @@ export default function Bloque({
     };
   }, [estado.ejercicio, cargaVista]);
   const dia = diaDeSesion ?? hoyISO();
+  // Al volver a ese ejercicio, antes de la primera serie, y si el peso de hoy no subió ya.
+  const [, repintarGlobito] = useState(0);
+  const globitoSubir =
+    listoParaSubir !== null && estado.hechas === 0 && !!estado.ejercicio && (estado.peso ?? 0) <= listoParaSubir && !SUBIR_VISTOS.has(`${estado.ejercicio}:${dia}`);
   const marcada = !!oferta && !!marca && marca.dia === dia && marca.peso === oferta.peso && marca.carga === cargaVista;
   function ponerMarca(s: Subida | null) {
     if (!estado.ejercicio) return;
@@ -186,15 +257,49 @@ export default function Bloque({
             style={[estilos.ejercicioTexto, !estado.ejercicio && estilos.apagadoTexto, esFantasma && estilos.fantasmaTexto]}
             numberOfLines={1}
           >
-            {actual ? `${actual.nombre} · ${actual.grupo}` : T.sesion.sinEjercicio}
+            {actual
+              ? `${actual.nombre} · ${nombreDeGrupo(actual.grupo).toLowerCase()}`
+              : estado.ejercicio && esPropio(estado.ejercicio)
+                ? T.ejercicios.propioAjeno
+                : T.sesion.sinEjercicio}
           </Text>
         </Pressable>
         {esFantasma && <Text style={estilos.badgeSugerido}>{T.sesion.sugerido}</Text>}
       </View>
       {esFantasma && <Text style={estilos.sugeridoNota}>{T.sesion.sugeridoNota}</Text>}
+      {globitoSubir && (
+        <Globito
+          testID="globito-subir"
+          texto={T.sesion.yaPuedesSubir}
+          alCerrar={() => {
+            SUBIR_VISTOS.add(`${estado.ejercicio}:${dia}`);
+            repintarGlobito((n) => n + 1);
+          }}
+        />
+      )}
 
+      {corriendoCardio && (
+        <View testID="cronometro-cardio" style={estilos.cardio}>
+          <Text style={estilos.cardioReloj}>{cronoLindo(segundosDeCardio)}</Text>
+          <Text style={estilos.cardioNota}>{T.sesion.cardioCorriendo}</Text>
+        </View>
+      )}
+
+      {esTiempo && !corriendoCardio && (
+        <View testID="minutos-de-cardio" style={estilos.minutos} accessibilityLabel={T.sesion.minutosDeCardio}>
+          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.max(1, Math.ceil(minutos / 5) * 5 - 5))} accessibilityLabel="−5">
+            <Text style={estilos.minutosPasoTexto}>−</Text>
+          </Pressable>
+          <Text style={estilos.minutosTexto}>{T.rutina.minutos(minutos)}</Text>
+          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.floor(minutos / 5) * 5 + 5)} accessibilityLabel="+5">
+            <Text style={estilos.minutosPasoTexto}>+</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {!esTiempo && (
       <View style={estilos.metas} accessibilityLabel={T.sesion.cuantasVasAHacer}>
-        {METAS.map((m) => (
+        {pildorasDeMeta(estado.meta).map((m) => (
           <Pressable
             key={m}
             style={[estilos.meta, estado.meta === m && estilos.metaPrendida]}
@@ -205,6 +310,7 @@ export default function Bloque({
           </Pressable>
         ))}
       </View>
+      )}
 
       {anotarPeso && admitePeso && (
         <View style={[estilos.peso, esFantasma && estilos.fantasmaPeso]}>
@@ -252,7 +358,7 @@ export default function Bloque({
             <Pressable
               style={estilos.opcion}
               onPress={() => {
-                alElegirEjercicio(aDonde);
+                elegir(aDonde);
                 setADonde(undefined);
               }}
             >
@@ -277,6 +383,8 @@ export default function Bloque({
           perdido series. El total va chico al lado; el "1 de 3" queda para
           el lector de pantalla. */}
       <View style={estilos.cuenta} accessibilityLiveRegion="polite">
+        {/* El cardio no tiene meta de series: sin circulitos. */}
+        {!esTiempo && (
         <View
           style={estilos.puntos}
           accessible
@@ -284,12 +392,10 @@ export default function Bloque({
           accessibilityLabel={T.sesion.deMeta(estado.hechas, estado.meta)}
         >
           {Array.from({ length: puntos }).map((_, i) => (
-            <View
-              key={i}
-              style={[estilos.punto, i < estado.hechas && estilos.puntoLleno, i >= estado.meta && estilos.puntoExtra]}
-            />
+            <PuntoDeSerie key={i} lleno={i < estado.hechas} extra={i >= estado.meta} />
           ))}
         </View>
+        )}
         <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
       </View>
 
@@ -307,16 +413,17 @@ export default function Bloque({
 
           Y EL − SE APAGA EN CERO en vez de desaparecer: un botón que aparece y
           se va mueve el + de lugar justo cuando se está tocando. */}
-      {cumplida ? (
+      {/* El cardio no tiene meta: su botón es el del cronómetro (Arrancar, Listo, Otra vuelta). */}
+      {cumplida && !esTiempo ? (
         <View style={estilos.filaBotones}>
           <Pressable
-            style={[estilos.mas, estilos.menos, estado.hechas === 0 && estilos.menosApagado]}
+            style={[estilos.mas, estilos.menos, menosApagado && estilos.menosApagado]}
             onPress={alRestar}
-            disabled={estado.hechas === 0}
+            disabled={menosApagado}
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
-            <Text style={[estilos.masTexto, estado.hechas === 0 && estilos.apagadoTexto]}>−</Text>
+            <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Pressable>
           <Pressable
             style={[estilos.mas, estilos.masCerrar]}
@@ -329,26 +436,30 @@ export default function Bloque({
           </Pressable>
         </View>
       ) : (
-        <View style={estilos.filaBotones}>
+        <View style={estilos.filaBotones} onLayout={(e) => setAnchoBotones(e.nativeEvent.layout.width)}>
           <Pressable
-            style={[estilos.mas, estilos.menos, estado.hechas === 0 && estilos.menosApagado]}
+            style={[estilos.mas, estilos.menos, menosApagado && estilos.menosApagado]}
             onPress={alRestar}
-            disabled={estado.hechas === 0}
+            disabled={menosApagado}
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
-            <Text style={[estilos.masTexto, estado.hechas === 0 && estilos.apagadoTexto]}>−</Text>
+            <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Pressable>
-          <Pressable
-            style={[estilos.mas, estilos.masAncho]}
-            onPress={alSumar}
-            accessibilityLabel={T.inicio.sumarSerie}
-            accessibilityRole="button"
+          <MasQuePulsa
+            testID={esTiempo ? 'cardio-principal' : undefined}
+            style={[estilos.mas, estilos.masAncho, esTiempo && estilos.masCerrar]}
+            pulsa={!esTiempo}
+            onPress={esTiempo ? principalDeCardio.accion : sumar}
+            accessibilityLabel={esTiempo ? principalDeCardio.texto : T.inicio.sumarSerie}
           >
-            <Text style={estilos.masTexto}>+</Text>
-          </Pressable>
+            <Text style={esTiempo ? estilos.cerrarTexto : estilos.masTexto}>{esTiempo ? principalDeCardio.texto : '+'}</Text>
+          </MasQuePulsa>
         </View>
       )}
+
+      {/* El − se lleva un cuarto y el + tres, con 8 de hueco: el centro del + sale de ahí. */}
+      {!cumplida && !esTiempo && globoDelMas && anchoBotones > 0 && globoDelMas((anchoBotones - 8) / 4 + 8 + ((anchoBotones - 8) * 3) / 8)}
 
       {debajoDelMas}
 
@@ -368,8 +479,27 @@ export default function Bloque({
         </Pressable>
       )}
 
-      {cumplida && (
-        <Pressable style={estilos.texto} onPress={alSumar}>
+      {esTiempo && !corriendoCardio && estado.hechas > 0 && (
+        <Pressable
+          testID="cardio-terminar"
+          style={estilos.texto}
+          onPress={() => {
+            alSiguiente();
+            setLista(true);
+          }}
+        >
+          <Text style={estilos.textoBoton}>{T.sesion.cardioTerminar}</Text>
+        </Pressable>
+      )}
+      {/* Quien se olvidó del cronómetro anota los minutos a mano. */}
+      {esTiempo && !corriendoCardio && estado.hechas === 0 && (
+        <Pressable testID="cardio-sin-cronometro" style={estilos.texto} onPress={sumar}>
+          <Text style={estilos.textoBoton}>{T.sesion.cardioSinCronometro}</Text>
+        </Pressable>
+      )}
+      {/* Una segunda vuelta de cardio en el mismo bloque no suma minutos: se corrigen arriba. */}
+      {cumplida && !esTiempo && (
+        <Pressable style={estilos.texto} onPress={sumar}>
           <Text style={estilos.textoBoton}>{T.sesion.sumarOtra}</Text>
         </Pressable>
       )}
@@ -383,9 +513,12 @@ export default function Bloque({
         visible={eligiendo}
         ejercicios={ejercicios}
         valor={estado.ejercicio}
-        alElegir={(id) => {
-          if (estado.hechas > 0 && id !== estado.ejercicio) setADonde(id);
-          else alElegirEjercicio(id);
+        alElegir={(id, mide) => {
+          // Entre un cardio y uno de fuerza no se pregunta "¿de cuál eran?": la cinta no
+          // son series de press (cacería del 15/10). Se cierra el bloque y se sigue.
+          const esCardio = (x: string | null) => ejercicios.find((e) => e.id === x)?.mide === 'tiempo';
+          if (estado.hechas > 0 && id !== estado.ejercicio && (esCardio(id) || mide === 'tiempo') === esCardio(estado.ejercicio)) setADonde(id);
+          else void elegir(id, mide);
         }}
         alCerrar={() => setEligiendo(false)}
       />
@@ -406,8 +539,76 @@ export default function Bloque({
   );
 }
 
+const CURVA_SALE = Easing.bezier(0.2, 0.8, 0.3, 1);
+
+/**
+ * EL PUNTO DE UNA SERIE (15/10, aprobada en la galería): el que se acaba de llenar
+ * se llena desde el centro en 0,26 s. Los que ya estaban llenos al montar, no: es
+ * la serie que se suma, no la pantalla que aparece.
+ */
+function PuntoDeSerie({ lleno, extra }: { lleno: boolean; extra: boolean }) {
+  const relleno = useRef(new Animated.Value(lleno ? 1 : 0)).current;
+  const antes = useRef(lleno);
+  useEffect(() => {
+    if (lleno === antes.current) return;
+    antes.current = lleno;
+    if (!lleno) return relleno.setValue(0);
+    Animated.timing(relleno, { toValue: 1, duration: 260, easing: CURVA_SALE, useNativeDriver: true }).start();
+  }, [lleno, relleno]);
+  return (
+    <View style={[estilos.punto, lleno && estilos.puntoBorde, extra && estilos.puntoExtra]}>
+      <Animated.View style={[estilos.puntoRelleno, { transform: [{ scale: relleno }] }]} />
+    </View>
+  );
+}
+
+const PressableAnimado = Animated.createAnimatedComponent(Pressable);
+
+/** EL + QUE SE HUNDE Y SE ILUMINA al tocarlo (15/10): 0,3 s, nada más. */
+function MasQuePulsa({
+  pulsa,
+  onPress,
+  style,
+  children,
+  testID,
+  accessibilityLabel,
+}: {
+  pulsa: boolean;
+  onPress: () => void;
+  style: React.ComponentProps<typeof Pressable>['style'];
+  children: ReactNode;
+  testID?: string;
+  accessibilityLabel: string;
+}) {
+  const pulso = useRef(new Animated.Value(0)).current;
+  const escala = pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 0.965] });
+  return (
+    <PressableAnimado
+      testID={testID}
+      style={[style as object, { transform: [{ scale: escala }] }]}
+      onPress={() => {
+        if (pulsa) {
+          pulso.setValue(0);
+          Animated.sequence([
+            Animated.timing(pulso, { toValue: 1, duration: 100, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(pulso, { toValue: 0, duration: 220, easing: CURVA_SALE, useNativeDriver: true }),
+          ]).start();
+        }
+        onPress();
+      }}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+    >
+      {pulsa && <Animated.View pointerEvents="none" style={[estilos.luzDelMas, { opacity: pulso }]} />}
+      {children}
+    </PressableAnimado>
+  );
+}
+
 const estilos = StyleSheet.create({
-  bloque: { marginTop: 22 },
+  // Una capa más arriba que lo que viene después ("Terminar"): el globito del + flota
+  // debajo del + y tiene que quedar encima, no tapado.
+  bloque: { marginTop: 22, zIndex: 2, elevation: 2 },
   fila: { flexDirection: 'row', alignItems: 'center' },
   ejercicio: { flex: 1, borderBottomWidth: 1, borderBottomColor: C.lineaFuerte, paddingVertical: 10 },
   ejercicioTexto: { color: C.tinta, fontSize: 17 },
@@ -436,6 +637,13 @@ const estilos = StyleSheet.create({
   metaTexto: { color: C.apagado, fontSize: 14 },
   metaTextoPrendido: { color: C.tinta },
   peso: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, marginTop: 12 },
+  minutos: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
+  cardio: { alignItems: 'center', marginTop: 14, gap: 4 },
+  cardioReloj: { color: C.tinta, fontSize: 56, fontWeight: '200', fontVariant: ['tabular-nums'] },
+  cardioNota: { color: C.sub, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase' },
+  minutosPaso: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
+  minutosPasoTexto: { color: C.tinta, fontSize: 22, fontWeight: '300' },
+  minutosTexto: { color: C.tinta, fontSize: 22, fontVariant: ['tabular-nums'], minWidth: 90, textAlign: 'center' },
   total: { width: '100%', color: C.apagado, fontSize: 12, marginTop: -2, paddingLeft: 44 },
   pregunta: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 2, padding: 12, marginTop: 12 },
   preguntaTexto: { color: C.sub, fontSize: 13, marginBottom: 10 },
@@ -453,7 +661,9 @@ const estilos = StyleSheet.create({
   nota: { color: C.apagado, fontSize: 12, marginTop: 8 },
   puntos: { flexDirection: 'row', justifyContent: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 1 },
   punto: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: C.sub },
-  puntoLleno: { backgroundColor: C.claro, borderColor: C.claro },
+  puntoBorde: { borderColor: C.claro },
+  puntoRelleno: { ...StyleSheet.absoluteFillObject, borderRadius: 8, backgroundColor: C.claro },
+  luzDelMas: { ...StyleSheet.absoluteFillObject, backgroundColor: conAlfa(C.claro, 0.14) },
   puntoExtra: { width: 11, height: 11, borderRadius: 6, marginTop: 2.5 },
   cuenta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 22 },
   cuentaTotal: { color: C.apagado, fontSize: 12, letterSpacing: 1 },

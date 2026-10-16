@@ -582,7 +582,12 @@ Implementado el 27/8/2026 hasta donde la web llega. **La lógica entera está
 hecha y probada** (`src/lib/llegada.ts`, secciones 40 y 41 de `test:db`); lo
 único que falta en nativo es **quién mira**.
 
-Lo que hace:
+**DESDE EL 15/10 LA SESIÓN NO ARRANCA SOLA** (a pedido): llegar registra el
+día y nada más; el cronómetro lo arranca la persona con "Iniciar
+entrenamiento". Lo de abajo es cómo andaba hasta entonces; de eso queda solo
+el cierre al salir de una sesión que haya arrancado sola antes del cambio.
+
+Lo que hacía:
 
 - Si te quedás **7 minutos** en la zona (`ESPERA_LLEGADA_MS`), la sesión
   arranca sola. La espera es lo que filtra al que pasa caminando por la puerta,

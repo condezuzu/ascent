@@ -1,5 +1,12 @@
 /**
- * EL ÚLTIMO PESO, POR EJERCICIO Y POR MODO.
+ * EL PESO QUE SE PROPONE, POR EJERCICIO Y POR MODO.
+ *
+ * DESDE EL 13/10/2026 ES EL MÁS PESADO DE LA ÚLTIMA SESIÓN, no su última serie.
+ * Casi todos arrancan con el peso más alto y bajan a medida que se cansan:
+ * proponer la última serie era proponer la más liviana, y así no se sabe si se
+ * está subiendo. Es también lo que la lista muestra al lado del ejercicio.
+ * DENTRO de la sesión de hoy sigue siendo la última serie: quien reabre un
+ * ejercicio a los veinte minutos sigue desde donde quedó, no desde el tope.
  *
  * EL PROBLEMA (1/10, del gimnasio): el remo se hace un día con mancuernas a 20
  * y otro en la máquina a 50. Al elegir el ejercicio la app ya proponía el
@@ -17,10 +24,13 @@
  *   2. la copia del historial que guarda el teléfono (`compartido/pesosRecordados`),
  *      que es lo que anda en el subsuelo sin señal.
  *
- * UN BLOQUE SIN MODO USA EL DEL CATÁLOGO, no `total`. `como_arranca` en la base
- * lo lee como `total`; hoy no cambia nada —desde la migración 38 todo bloque con
- * pesos lleva su modo— pero un remo con mancuernas sin etiqueta no fue "en
- * total". Acá no se adivina: sin modo y sin catálogo, el bloque no dice nada.
+ * UN BLOQUE SIN MODO USA EL DEL CATÁLOGO, no `total`: un remo con mancuernas sin
+ * etiqueta no fue "en total". Acá no se adivina: sin modo y sin catálogo, el
+ * bloque no dice nada.
+ *
+ * `como_arranca` EN LA BASE ES LA MISMA REGLA (migraciones 70 y 71) y es solo el
+ * respaldo de un teléfono sin historial. Quien cambie una cambia la otra:
+ * `test:db` les pasa las mismas sesiones a las dos y compara.
  *
  * Solo importa de `./`, igual que el resto de `nucleo`: `test:db` lo carga con
  * node pelado.
@@ -29,7 +39,7 @@
 import { cargaValida, type Carga } from './carga.ts';
 import { paraGuardar, pesoValido, type EstadoBloques } from './bloques.ts';
 
-/** ejercicio → modo → el último peso anotado, en kilos. */
+/** ejercicio → modo → el peso a proponer, en kilos. */
 export type PesosPorModo = Record<string, Partial<Record<Carga, number>>>;
 
 /** El modo por omisión de cada ejercicio, como lo dice el catálogo. */
@@ -41,12 +51,13 @@ export function modoDeBloque(ejercicio: string, carga: unknown, catalogo: ModosD
 }
 
 /**
- * Suma una lista de bloques, EN ORDEN, a lo que ya se sabía: el que viene
- * después gana. De cada bloque cuenta su última serie con peso.
+ * Los bloques de UNA SESIÓN, sumados a lo que ya se sabía: lo de esta sesión
+ * pisa lo anterior. `cual` dice qué serie se queda de cada ejercicio y modo:
+ * la más pesada (el historial) o la última (lo de hoy).
  */
-export function pesosDeBloques(bloques: unknown, catalogo: ModosDelCatalogo, sobre: PesosPorModo = {}): PesosPorModo {
+function deUnaSesion(bloques: unknown, catalogo: ModosDelCatalogo, sobre: PesosPorModo, cual: 'pesada' | 'ultima'): PesosPorModo {
   if (!Array.isArray(bloques)) return sobre;
-  let r = sobre;
+  const deEsta: PesosPorModo = {};
   for (const b of bloques) {
     if (!b || typeof b !== 'object') continue;
     const x = b as { ejercicio?: unknown; pesos?: unknown; carga?: unknown };
@@ -54,20 +65,28 @@ export function pesosDeBloques(bloques: unknown, catalogo: ModosDelCatalogo, sob
     const modo = modoDeBloque(x.ejercicio, x.carga, catalogo);
     // Con peso corporal el número no existe: no hay nada que recordar.
     if (modo === null || modo === 'corporal') continue;
-    const ultimo = [...x.pesos].reverse().map(pesoValido).find((p) => p !== null);
-    if (ultimo === undefined || ultimo === null) continue;
-    r = { ...r, [x.ejercicio]: { ...r[x.ejercicio], [modo]: ultimo } };
+    const validos = x.pesos.map(pesoValido).filter((p): p is number => p !== null);
+    if (validos.length === 0) continue;
+    const ya = deEsta[x.ejercicio]?.[modo];
+    const peso = cual === 'ultima' ? validos[validos.length - 1] : Math.max(ya ?? 0, ...validos);
+    deEsta[x.ejercicio] = { ...deEsta[x.ejercicio], [modo]: peso };
   }
+  const r = { ...sobre };
+  for (const [ejercicio, modos] of Object.entries(deEsta)) r[ejercicio] = { ...r[ejercicio], ...modos };
   return r;
+}
+
+/** Una sesión TERMINADA: de cada ejercicio y modo, su serie más pesada. */
+export function pesosDeBloques(bloques: unknown, catalogo: ModosDelCatalogo, sobre: PesosPorModo = {}): PesosPorModo {
+  return deUnaSesion(bloques, catalogo, sobre, 'pesada');
 }
 
 /**
  * LO MÁS PESADO DE LA ÚLTIMA VEZ (10/10/2026), para la lista de ejercicios.
  *
- * No es lo mismo que `PesosPorModo`: aquel guarda la ÚLTIMA serie de cada modo,
- * para proponer con qué arrancar. Este guarda la serie MÁS PESADA de la última
- * sesión en que se hizo el ejercicio, con el modo en que se anotó: es lo que
- * uno quiere leer al lado del nombre para acordarse de dónde estaba.
+ * La serie MÁS PESADA de la última sesión en que se hizo el ejercicio, con el
+ * modo en que se anotó. `PesosPorModo` guarda lo mismo pero POR MODO, para el
+ * campo: los dos números coinciden salvo que esa sesión haya mezclado modos.
  */
 export type MaximosDeLaUltima = Record<string, { peso: number; carga: Carga }>;
 
@@ -87,6 +106,62 @@ export function maximosDeBloques(bloques: unknown, catalogo: ModosDelCatalogo, s
     }
   }
   return { ...sobre, ...deEsta };
+}
+
+/**
+ * YA PUEDES SUBIR EL PESO (15/10): el ejercicio que en su última sesión se hizo
+ * con TODAS las series al mismo peso (dos o más), y ese peso fue también el más
+ * pesado de la vez anterior, en el mismo modo. Dos veces seguidas igual y
+ * entero: está para subir. Las sesiones, de la más vieja a la más nueva.
+ */
+export function listosParaSubir(sesiones: unknown, catalogo: ModosDelCatalogo): MaximosDeLaUltima {
+  if (!Array.isArray(sesiones)) return {};
+  type Vez = { iguales: number | null; maximo: number; carga: Carga };
+  const veces: Record<string, Vez[]> = {};
+  for (const s of sesiones) {
+    const bloques = (s as { bloques?: unknown } | null)?.bloques;
+    if (!Array.isArray(bloques)) continue;
+    // Dos bloques del mismo ejercicio en una sesión cuentan juntos.
+    const deEsta: Record<string, { pesos: (number | null)[]; carga: Carga; mezcla: boolean }> = {};
+    for (const b of bloques) {
+      if (!b || typeof b !== 'object') continue;
+      const x = b as { ejercicio?: unknown; pesos?: unknown; carga?: unknown };
+      if (typeof x.ejercicio !== 'string' || !Array.isArray(x.pesos)) continue;
+      const modo = modoDeBloque(x.ejercicio, x.carga, catalogo);
+      if (modo === null || modo === 'corporal') continue;
+      const ya = deEsta[x.ejercicio];
+      const pesos = x.pesos.map(pesoValido);
+      deEsta[x.ejercicio] = ya ? { pesos: [...ya.pesos, ...pesos], carga: ya.carga, mezcla: ya.mezcla || ya.carga !== modo } : { pesos, carga: modo, mezcla: false };
+    }
+    for (const [ejercicio, d] of Object.entries(deEsta)) {
+      const validos = d.pesos.filter((p): p is number => p !== null);
+      if (validos.length === 0) continue;
+      const enteras = !d.mezcla && d.pesos.length >= 2 && validos.length === d.pesos.length && validos.every((p) => p === validos[0]);
+      (veces[ejercicio] ??= []).push({ iguales: enteras ? validos[0] : null, maximo: Math.max(...validos), carga: d.carga });
+    }
+  }
+  const r: MaximosDeLaUltima = {};
+  for (const [ejercicio, v] of Object.entries(veces)) {
+    const ultima = v[v.length - 1];
+    const antes = v[v.length - 2];
+    if (antes && ultima.iguales !== null && antes.carga === ultima.carga && antes.maximo === ultima.iguales) {
+      r[ejercicio] = { peso: ultima.iguales, carga: ultima.carga };
+    }
+  }
+  return r;
+}
+
+/**
+ * Al terminar una sesión, sin esperar a la base (cacería del 15/10): la vez anterior de
+ * cada ejercicio es lo más pesado de la copia (`maximosDeAntes`). Lo que esta sesión hizo
+ * con peso se decide de nuevo; lo demás queda como estaba.
+ */
+export function paraSubirTrasLaSesion(antes: MaximosDeLaUltima, maximosDeAntes: MaximosDeLaUltima, bloques: unknown, catalogo: ModosDelCatalogo): MaximosDeLaUltima {
+  const previa = Object.entries(maximosDeAntes).map(([ejercicio, m]) => ({ ejercicio, pesos: [m.peso], carga: m.carga }));
+  const nuevos = listosParaSubir([{ bloques: previa }, { bloques }], catalogo);
+  const r = { ...antes };
+  for (const ej of Object.keys(maximosDeBloques(bloques, catalogo))) delete r[ej];
+  return { ...r, ...nuevos };
 }
 
 export function maximosDelHistorial(sesiones: unknown, catalogo: ModosDelCatalogo): MaximosDeLaUltima {
@@ -118,8 +193,9 @@ export function pesosDelHistorial(sesiones: unknown, catalogo: ModosDelCatalogo)
 }
 
 /**
- * EL PESO A PROPONER: el último de ese ejercicio en ese modo. Primero lo de
- * hoy —el bloque en curso y los cerrados—, después la copia del historial.
+ * EL PESO A PROPONER para ese ejercicio en ese modo. Primero lo de hoy —la
+ * última serie del bloque en curso y de los cerrados—, después la copia del
+ * historial, que trae lo más pesado de la última sesión.
  */
 export function ultimoPesoEnModo(
   enCurso: EstadoBloques,
@@ -129,7 +205,7 @@ export function ultimoPesoEnModo(
   catalogo: ModosDelCatalogo
 ): number | null {
   if (modo === 'corporal') return null;
-  const deHoy = pesosDeBloques(paraGuardar(enCurso), catalogo);
+  const deHoy = deUnaSesion(paraGuardar(enCurso), catalogo, {}, 'ultima');
   return deHoy[ejercicio]?.[modo] ?? copia[ejercicio]?.[modo] ?? null;
 }
 

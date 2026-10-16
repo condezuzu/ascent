@@ -10,9 +10,24 @@ export const servidor = {
   historial: [], // lo que devuelve la lista de sesiones terminadas (la rutina)
   registro: [], // lo que LLEGÓ a la base, en orden
   ultimoEjercicio: null,
+  visibles: null, // ids del catálogo que ve la cuenta; null = el doble no lo sabe
+  porTiempo: null, // de esos, los que se miden en minutos
   // rpc -> función que corre con la respuesta ya calculada y todavía en viaje
   antesDeResponder: {},
+  // Con un número, la base cierra SOLA la sesión que lleva ese rato sin actividad
+  // cuando algo le pregunta (`cerrar_sesiones_vencidas`), y la fecha en la última
+  // actividad que LE LLEGÓ. Sin número no cierra nada, como hasta ahora.
+  ventanaMs: null,
 };
+
+function cerrarVencidas() {
+  if (servidor.ventanaMs === null) return;
+  for (const s of servidor.sesiones) {
+    if (s.estado === 'corriendo' && Date.now() - Date.parse(s.ultima_actividad) >= servidor.ventanaMs) {
+      Object.assign(s, { estado: 'terminada', cerro_sola: true, fin: s.ultima_actividad });
+    }
+  }
+}
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const viva = () => servidor.sesiones.find((s) => s.estado === 'corriendo') ?? null;
@@ -20,11 +35,14 @@ const porId = (id) => servidor.sesiones.find((s) => s.id === id) ?? null;
 const copia = (x) => (x === undefined ? null : JSON.parse(JSON.stringify(x)));
 
 function procesar(rpc, a) {
-  const ahora = new Date().toISOString();
+  // Del mismo reloj que adelantan los escenarios (Date.now), no de otro.
+  const ahora = new Date(Date.now()).toISOString();
   switch (rpc) {
     case 'version_del_esquema':
-      return 53;
+      // Un escenario que necesita una función nueva sube la versión (servidor.version).
+      return servidor.version ?? 53;
     case 'iniciar_sesion': {
+      cerrarVencidas();
       const s = viva();
       if (s) return { bloqueado: false, id: s.id, inicio: s.inicio, origen: s.origen, series: s.series, ahora, yaEstaba: true, registro: null };
       const nueva = {
@@ -44,10 +62,11 @@ function procesar(rpc, a) {
       const s = viva();
       if (!s) return { termino: false };
       s.estado = 'terminada';
-      s.fin = ahora;
+      s.fin = a?.p_hasta ?? ahora;
       return { termino: true, deshizo_el_dia: false };
     }
     case 'mi_sesion': {
+      cerrarVencidas();
       const s = viva();
       if (s) return { corriendo: true, id: s.id, inicio: s.inicio, origen: s.origen, ahora, series: s.series, ultima_actividad: s.ultima_actividad };
       const sola = [...servidor.sesiones].reverse().find((x) => x.cerro_sola);
@@ -66,7 +85,14 @@ function procesar(rpc, a) {
     }
     case 'marcar_actividad': {
       const s = porId(a.p_sesion);
-      if (s && s.estado === 'corriendo') s.ultima_actividad = a.p_hasta;
+      // Como la de verdad (schema.sql, marcar_actividad): no antes del inicio, no más de 15 min
+      // adelante (60 desde la 81), y nunca para atrás. Pisarla sin más dejaba pasar lo que la base no acepta.
+      if (s && s.estado === 'corriendo') {
+        const t = Math.min(Math.max(Date.parse(a.p_hasta ?? new Date(Date.now()).toISOString()), Date.parse(s.inicio)), Date.now() + ((servidor.version ?? 53) >= 81 ? 60 : 15) * 60000);
+        // Con p_bajar (la 82) una promesa a futuro baja a ahora.
+        if (a.p_bajar && s.ultima_actividad && Date.parse(s.ultima_actividad) > Date.now()) s.ultima_actividad = new Date(Math.min(t, Date.parse(s.ultima_actividad))).toISOString();
+        else if (!s.ultima_actividad || t > Date.parse(s.ultima_actividad)) s.ultima_actividad = new Date(t).toISOString();
+      }
       return null;
     }
     case 'ultimo_ejercicio':
@@ -103,7 +129,15 @@ function consulta(tabla) {
     then: (a, b) => ejecutar(false).then(a, b),
   };
   async function ejecutar(uno) {
-    await espera(5);
+    // `ida.historial` / `ida.bloquesDeSesion`: la señal lenta de las dos lecturas que hace la sesión.
+    await espera(uno ? (servidor.ida.bloquesDeSesion ?? 5) : (servidor.ida.historial ?? 5));
+    // `falla.lecturas`: sin señal para leer tablas (las rpc van por su cuenta).
+    if (servidor.falla.lecturas) return { data: null, error: { message: 'sin señal' } };
+    // El catálogo que ve la cuenta (la RLS de la 80/83): `servidor.visibles`. Sin eso el
+    // doble no sabe el catálogo y contesta como "no se supo", que no filtra nada.
+    if (tabla === 'ejercicios') {
+      return servidor.visibles ? { data: servidor.visibles.map((id) => ({ id, mide: servidor.porTiempo?.includes(id) ? 'tiempo' : 'series' })), error: null } : { data: null, error: { message: 'sin catálogo en el doble' } };
+    }
     const s = tabla === 'sesiones' && uno ? porId(filtro.id) : null;
     const data = uno ? (s ? { bloques: copia(s.bloques) } : null) : tabla === 'sesiones' ? copia(servidor.historial) : [];
     await espera(5);

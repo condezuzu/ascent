@@ -20,8 +20,8 @@ import { SURGIR_MS } from '@nucleo/animacion';
 import { CURVA } from '@nucleo/deslizar';
 import Surgir from './Surgir';
 import { T } from '@nucleo/textos';
-import { fechaCorta, fechaLinda } from '@nucleo/fechas';
-import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type DatosDeAlbum } from '@compartido/album';
+import { fechaCorta, fechaLinda, hoyISO } from '@nucleo/fechas';
+import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type Celda, type DatosDeAlbum } from '@compartido/album';
 import { primeraYUltima, resumenDelMes } from '@nucleo/album';
 import { paletaDe } from '@nucleo/paletas';
 import FondoEspacial from './FondoEspacial';
@@ -34,6 +34,9 @@ import { eventos } from '@compartido/eventos';
 import { FOTOS_CAMBIO } from '@compartido/foto';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
 import { completarMiniaturas } from './miniaturas';
+import { useFotoLocal } from './fotoLocal';
+import { useArriba } from './zonaSegura';
+import GloboPrimeraVez from './GloboPrimeraVez';
 
 /**
  * ÁLBUM — tanda 4.
@@ -53,6 +56,7 @@ import { completarMiniaturas } from './miniaturas';
  * el camino.
  */
 export default function Album({ alSalir }: { alSalir: () => void }) {
+  const arriba = useArriba(64);
   const [datos, setDatos] = useState<DatosDeAlbum | null>(null);
   const [cargado, setCargado] = useState(false);
   const [noCargo, setNoCargo] = useState(false);
@@ -234,6 +238,8 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
 
   const celdas = datos?.celdas ?? [];
   const meses = porMes(celdas);
+  // Las fotos se suman solo al día de hoy: pedir otra solo tiene sentido este mes.
+  const mesDeHoy = hoyISO().slice(0, 7);
   // Tres por fila, todas del mismo tamaño: el criterio de la web (una grilla
   // pareja, no un mosaico que con una sola foto la vuelve gigante).
   const HUECO = 4;
@@ -280,7 +286,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
   return (
     <View style={estilos.raiz}>
       {datos && <FondoEspacial rango={datos.miRango} planeta={datos.miPlaneta} velo={0.72} />}
-      <ScrollView contentContainerStyle={estilos.pantalla}>
+      <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
         <Text style={estilos.titulo}>{T.album.titulo}</Text>
         {!!error && <Text style={estilos.error}>{error}</Text>}
         {!cargado && <ActivityIndicator color={C.sub} style={{ marginTop: 24 }} />}
@@ -310,6 +316,8 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                   Es lo que uno hace a mano con las fotos de gimnasio, y es lo
                   único que una grilla no puede mostrar. Solo si hay dos de días
                   DISTINTOS: comparar una foto con sí misma no es comparar. */}
+              {/* UNA SOLA FOTO EN EL MES (15/10): se dice qué trae la segunda. */}
+              {!par && m.fotos.length === 1 && m.clave === mesDeHoy && <Text testID="album-una-mas" style={estilos.unaMas}>{T.album.unaMas}</Text>}
               {par && (
                 <View style={estilos.comparar}>
                   {([par.primera, par.ultima] as const).map((c, i) => (
@@ -319,9 +327,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       onPress={() => setAbierta(celdas.findIndex((x) => x.id === c.id))}
                       accessibilityLabel={fechaLinda(c.fecha)}
                     >
-                      {!!(c.miniatura || c.url) && (
-                        <Image source={{ uri: c.miniatura || c.url }} style={estilos.mitadFoto} resizeMode="cover" />
-                      )}
+                      {!!(c.miniatura || c.url) && <FotoMitad celda={c} />}
                       <Text style={estilos.mitadCuando}>
                         {i === 0 ? T.album.laPrimera : T.album.laUltima} · {fechaCorta(c.fecha)}
                       </Text>
@@ -352,13 +358,19 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       {/* LA MINIATURA, no la entera (8/10): la celda mide un
                           tercio de pantalla y bajaba la foto de 1600 px. La
                           entera queda de respaldo para la que todavía no tiene. */}
-                      {!!(c.miniatura || c.url) && <Foto url={c.miniatura || c.url} lado={lado} />}
+                      {!!(c.miniatura || c.url) && <Foto celda={c} lado={lado} />}
                       {/* Un punto y nada más: quién ve la foto, de un vistazo. */}
                       {c.visibilidad === 'amigos' && <View style={estilos.punto} />}
                     </Pressable>
                   </Surgir>
                 ))}
               </View>
+              {/* EL GLOBITO DEL ÁLBUM (15/10): en el medio y apuntando a las fotos, debajo del primer mes. */}
+              {m.clave === meses[0]?.clave && (
+                <GloboPrimeraVez cual="album" colaX={(width - 48) / 2} alinear="centro" vistoAlMostrar>
+                  {T.globos.album}
+                </GloboPrimeraVez>
+              )}
             </View>
             );
           })
@@ -396,7 +408,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                 return (
                   <View key={c.id} style={[estilos.capaGesto, { position: 'absolute', top: 0, bottom: 0, left: j * width, width }]}>
                     <View style={[estilos.marco, { borderColor: conAlfa(acentoRango, 0.45) }]}>
-                      <Image source={{ uri: c.url }} style={{ width: width - 32, height: width - 32 }} resizeMode="contain" />
+                      <FotoEntera celda={c} lado={width - 32} />
                     </View>
                   </View>
                 );
@@ -498,8 +510,24 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
  * junto con la celda y se lee como un solo movimiento; la primera vez entra
  * cuando puede, que es lo único honesto con una imagen que viaja.
  */
-function Foto({ url, lado }: { url: string; lado: number }) {
+// Por la ruta, que no cambia: la miniatura y la entera son archivos distintos.
+const claveDe = (c: Celda) => (c.miniatura ? 'mini-' : 'entera-') + c.ruta;
+
+/** LA ENTERA, ABIERTA: también del disco del teléfono, por su ruta (15/10). Antes se bajaba en cada apertura. */
+function FotoEntera({ celda, lado }: { celda: Celda; lado: number }) {
+  const uri = useFotoLocal('entera-' + celda.ruta, celda.url);
+  return uri ? <Image source={{ uri }} style={{ width: lado, height: lado }} resizeMode="contain" /> : null;
+}
+
+function FotoMitad({ celda }: { celda: Celda }) {
+  const uri = useFotoLocal(claveDe(celda), celda.miniatura || celda.url);
+  return uri ? <Image source={{ uri }} style={estilos.mitadFoto} resizeMode="cover" /> : <View style={estilos.mitadFoto} />;
+}
+
+function Foto({ celda, lado }: { celda: Celda; lado: number }) {
   const opacidad = useRef(new Animated.Value(0)).current;
+  const url = useFotoLocal(claveDe(celda), celda.miniatura || celda.url);
+  if (!url) return null;
   return (
     <Animated.Image
       source={{ uri: url }}
@@ -603,6 +631,7 @@ const estilos = StyleSheet.create({
   pie: { position: 'absolute', left: 24, right: 24, bottom: 48 },
   cuando: { flexDirection: 'row', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' },
   fecha: { color: C.tinta, fontSize: 16 },
+  unaMas: { color: C.sub, fontSize: 12, marginBottom: 10 },
   // "día 41": el registro, en el claro de la app para que se lea como un logro.
   diaDeRacha: { color: C.claro, fontSize: 13, fontVariant: ['tabular-nums'] },
   planeta: { color: C.sub, fontSize: 13 },

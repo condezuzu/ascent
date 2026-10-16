@@ -20,6 +20,8 @@ export const C = {
   principal: '#7e8ca8',
   claro: '#c4c2ba',
   error: '#e8705f',
+  // El punto de "en vivo": quien está entrenando ahora (Ranking, la entrada).
+  vivo: '#5fd08a',
 };
 
 /**

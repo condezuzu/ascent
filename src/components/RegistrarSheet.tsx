@@ -6,7 +6,7 @@ import { crearCliente } from '@/lib/supabase/client';
 import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
 
-import { prepararFoto } from '@/lib/foto';
+import { prepararFoto, prepararMiniatura } from '@/lib/foto';
 import { subirFotoDelDia } from '@compartido/foto';
 import { anotarElDia } from '@compartido/anotarDia';
 import { subidaDeRango } from '@nucleo/rangos';
@@ -101,6 +101,7 @@ export default function RegistrarSheet({
     // (`compartido/foto.ts`).
     const r = await subirFotoDelDia(supabase, {
       datos: lista.blob,
+      miniatura: await prepararMiniatura(lista.blob),
       dia,
       logId: idDelLog,
       visible: fotoVisible,

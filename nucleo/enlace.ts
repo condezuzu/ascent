@@ -36,6 +36,17 @@ export function enlaceALaApp(usuario: string): string {
   return `ascent://amigo/${usuario}`;
 }
 
+/** EL LINK DEL GRUPO (migración 88): entrar a entrenar juntos, y quedar amigos. */
+export function enlaceDeGrupo(codigo: string): string {
+  return `${SITIO}/grupo/${codigo}`;
+}
+
+/** El código de un link de grupo, sea el de la web o el de la app. `null` si no es uno. */
+export function codigoDeGrupo(url: string | null | undefined): string | null {
+  const m = /(?:^ascent:\/\/|\/)grupo\/([a-f0-9]{12})(?:[/?#]|$)/.exec(url ?? '');
+  return m ? m[1] : null;
+}
+
 /** El nombre de usuario de un link de amigo, sea el de la web o el de la app. `null` si no es uno. */
 export function usuarioDeEnlace(url: string | null | undefined): string | null {
   const m = /^(?:https?:\/\/[^/]+|ascent:\/\/)\/?amigo\/([^/?#]+)\/?(?:[?#].*)?$/.exec((url ?? '').trim());

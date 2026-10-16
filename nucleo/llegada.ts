@@ -1,33 +1,15 @@
-import { ESPERA_LLEGADA_MS } from './reglas.ts';
 
 /**
- * Que la sesión arranque al llegar al gimnasio, y termine al irse (§13).
+ * Qué hacer con la sesión según dónde estás (§13).
+ *
+ * HASTA EL 15/10 LA SESIÓN ARRANCABA SOLA a los siete minutos de llegar, fechada
+ * en la llegada, y se cerraba al salir. Se sacó a pedido: llegar registra el día
+ * y el cronómetro lo arranca la persona. Queda el cierre al salir, solo para una
+ * sesión que haya arrancado sola antes del cambio.
  *
  * LA DECISIÓN ESTÁ SEPARADA DE TODO LO DEMÁS, a propósito. `decidir()` no sabe
  * de Supabase, ni de GPS, ni de React, ni de qué hora es: recibe lo que se vio
- * y devuelve qué hay que hacer. Es lo único de esta función que se puede
- * probar de verdad — la parte que la envuelve no se puede probar sin un
- * teléfono caminando hasta un gimnasio, y por eso tiene que ser lo más fina
- * posible.
- *
- * POR QUÉ HAY UNA ESPERA. Uno llega, se cambia, saluda: no empieza a entrenar
- * apenas cruza la puerta. Arrancar al instante daría siempre unos minutos de
- * más. Y de paso resuelve solo el falso positivo del que pasa caminando por la
- * puerta camino a otro lado: si no se queda, no dispara nada.
- *
- * POR QUÉ EL INICIO VA HACIA ATRÁS. El cronómetro arranca a los siete minutos,
- * pero la sesión dice la hora en que llegaste. Llegaste 10:00, arranca 10:07,
- * la sesión dice 10:00. Si dijera 10:07 la duración saldría corta siempre, que
- * es peor que no tener el automático: un número equivocado se cree.
- *
- * POR QUÉ SE CIERRA AL SALIR. El que usa el automático es justo el que no se
- * va a acordar de parar el cronómetro. Sin cierre por salida se come el
- * vencimiento de las 4 horas y la sesión queda sin duración.
- *
- * EN WEB ESTO SOLO PASA CON LA APP ABIERTA. No es una limitación que se pueda
- * tapar: el navegador no despierta a nadie. El automático de verdad —que el
- * teléfono despierte a la app al llegar— es geofencing del sistema operativo y
- * está en spec/etapa-nativa.md §13.
+ * y devuelve qué hay que hacer.
  *
  * NO IMPORTA NADA salvo las reglas, igual que `reglas.ts` y `estandares.ts`:
  * así `test:db` la puede cargar con node pelado y probar la decisión de
@@ -68,7 +50,6 @@ export const VISITA_VENCIDA_MS = 3 * 60 * 60 * 1000;
 
 export type Decision =
   | { hacer: 'nada'; vigilancia: Vigilancia | null }
-  | { hacer: 'arrancar'; desde: number; vigilancia: Vigilancia }
   | { hacer: 'terminar'; hasta: number; vigilancia: Vigilancia | null };
 
 export type EstadoParaDecidir = {
@@ -80,14 +61,20 @@ export type EstadoParaDecidir = {
 /**
  * Qué hacer con lo que se vio. Pura: mismos argumentos, misma respuesta.
  *
+ * LLEGAR YA NO ARRANCA LA SESIÓN (15/10, a pedido): llegar registra el día y nada
+ * más —eso lo hace el vigilante aparte, con `registrarPorSenal`—, y el cronómetro
+ * lo arranca la persona con "Iniciar entrenamiento". Lo único que queda acá es
+ * cerrar al salir una sesión que haya arrancado sola ANTES del cambio: una que
+ * estaba corriendo cuando llegó la actualización.
+ *
  * `adentro` en `null` significa NO SÉ —sin permiso, sin señal, sin punto
  * cargado— y nunca se trata como "no estás". Confundirlos apagaría la sesión
  * de alguien que sigue entrenando, cada vez que el GPS se pierde adentro de un
  * subsuelo.
  *
  * `medidoEn` es cuándo se midió el punto, no cuándo lo miramos: un arreglo del
- * GPS puede venir de hace un rato, y esa hora está más cerca de la llegada
- * real que `ahora`.
+ * GPS puede venir de hace un rato, y esa hora está más cerca de la salida real
+ * que `ahora`.
  */
 export function decidir(
   adentro: boolean | null,
@@ -101,27 +88,21 @@ export function decidir(
   // Una visita de hace horas es otra visita. Se compara contra lo MEDIDO, que
   // es del mismo reloj que `ultimoAdentro`.
   if (vigilancia && medidoEn - vigilancia.ultimoAdentro > VISITA_VENCIDA_MS) vigilancia = null;
+  const sola = sesion.corriendo && sesion.porUbicacion;
 
   if (adentro) {
+    // Sin una sesión que arrancó sola no hay nada que seguir: sin visita guardada,
+    // el vigilante vuelve a mirar cada cinco minutos y no cada cinco segundos.
+    if (!sola) return { hacer: 'nada', vigilancia: null };
+    // Se anota que sigue acá, para cerrarla con la hora correcta cuando se vaya.
     const v: Vigilancia = vigilancia
       ? { ...vigilancia, ultimoAdentro: Math.max(vigilancia.ultimoAdentro, medidoEn) }
-      : { desde: medidoEn, ultimoAdentro: medidoEn, arranco: false };
-
-    // Ya hay una corriendo, o ya disparamos en esta visita: solo se anota que
-    // sigue acá, para poder cerrarla con la hora correcta cuando se vaya.
-    if (sesion.corriendo || v.arranco) return { hacer: 'nada', vigilancia: v };
-
-    if (ahora - v.desde < ESPERA_LLEGADA_MS) return { hacer: 'nada', vigilancia: v };
-
-    return { hacer: 'arrancar', desde: v.desde, vigilancia: { ...v, arranco: true } };
+      : { desde: medidoEn, ultimoAdentro: medidoEn, arranco: true };
+    return { hacer: 'nada', vigilancia: v };
   }
 
-  // Se fue. La visita termina acá en cualquier caso: la próxima vez que
-  // aparezca es una llegada nueva, con su propia espera.
-  if (sesion.corriendo && sesion.porUbicacion) {
-    // Se cierra con la última vez que se lo vio adentro, no con ahora.
-    return { hacer: 'terminar', hasta: vigilancia?.ultimoAdentro ?? ahora, vigilancia: null };
-  }
+  // Se fue: se cierra con la última vez que se lo vio adentro, no con ahora.
+  if (sola) return { hacer: 'terminar', hasta: vigilancia?.ultimoAdentro ?? ahora, vigilancia: null };
   return { hacer: 'nada', vigilancia: null };
 }
 
@@ -129,6 +110,18 @@ export function decidir(
  * Marca la visita como ya disparada, para que parar el cronómetro a mano no se
  * deshaga solo mientras seguís en el gimnasio.
  */
+/**
+ * LO QUE SE GUARDA NO DESMARCA UNA VISITA YA USADA (13/10). La mirada del
+ * vigilante lee la visita, espera al GPS (segundos) y recién después guarda: si
+ * en el medio se tocó "Terminar" —que la marca como usada— el guardado la pisaba
+ * con la foto vieja y la sesión se volvía a prender sola. `enDisco` es lo que
+ * hay guardado AHORA, leído justo antes de guardar; "la misma visita" es el
+ * mismo `desde`.
+ */
+export function sinDesmarcar(nueva: Vigilancia | null, enDisco: Vigilancia | null): Vigilancia | null {
+  return nueva && enDisco && enDisco.arranco && enDisco.desde === nueva.desde ? { ...nueva, arranco: true } : nueva;
+}
+
 export function marcarComoUsada(v: Vigilancia | null): Vigilancia | null {
   return v ? { ...v, arranco: true } : v;
 }
