@@ -31,9 +31,11 @@ export default function Espacio() {
   const montaje = useRef<Montaje | null>(null);
   const renderer = useRef<WebGLRenderer | null>(null);
   const opacidad = useRef(new Animated.Value(0)).current;
+  const vivo = useRef(true);
 
   useEffect(
     () => () => {
+      vivo.current = false;
       montaje.current?.soltar();
       renderer.current?.dispose();
       montaje.current = null;
@@ -53,6 +55,8 @@ export default function Espacio() {
   const alCrear = useCallback(
     async (gl: ExpoWebGLRenderingContext) => {
       const { crearRenderer, montarEscenaEnGL } = await import('../motorNativo');
+      // Si la entrada ya se fue mientras llegaba el motor, no se monta: quedaría dibujando sin dueño.
+      if (!vivo.current) return;
       const r = crearRenderer(gl);
       if (!r) return;
       renderer.current = r;
