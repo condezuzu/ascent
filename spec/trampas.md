@@ -1341,6 +1341,18 @@ los escenarios adelantaban `Date.now()`.
 la versión del esquema) va también en el doble, con el mismo reloj que usan los
 escenarios. Un escenario que pasa contra un doble más amable no prueba nada.
 
+## `hay_bloqueo` solo contesta por quien llama (cacería del 16/10/2026)
+
+`hay_bloqueo(a, b)` da `false` si quien llama no es `a` ni `b`. En una función que
+puede correr un tercero —a un pedido de grupo lo acepta cualquiera del grupo— el
+bloqueo no se ve. Y la 88 miraba el bloqueo contra una sola persona (quien armó, o a
+quién se pedía) cuando entrar a un grupo junta con todos. La lista no lo mostraba
+porque `usuarios_publicos` esconde a los bloqueados, pero `en_vivo` y
+`grupo_miembros` se leían igual.
+
+**Regla:** adentro de funciones que juntan gente, `bloqueo_entre` (interna, sin
+mirar quién llama) contra cada uno de los que quedan juntos.
+
 ## Tests / proceso
 
 **La consulta que se le pasa al humano se corre antes de pasarla.** El 7/10 se
