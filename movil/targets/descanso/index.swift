@@ -54,44 +54,52 @@ import WidgetKit
  * hay nadie que pueda pedir la alerta. Queda preguntado.
  */
 
+/*
+ * ─────────────────────────────────────────────────────────────────────
+ * LA BUILD 8 (15/10): TAMBIÉN MIENTRAS SE HACE LA SERIE
+ *
+ * La tarjeta aparece apenas se elige el ejercicio —"Serie 0 de 3", con el reloj de
+ * la sesión— y entre serie y serie es la cuenta del descanso de siempre. Abajo, los
+ * pasos de hoy y el compañero, con su descanso si está descansando. Los textos los
+ * manda la app ya traducidos (`nucleo/textos.ts`): la tarjeta habla el idioma de la
+ * app. Una actividad encendida por la versión de antes llega sin textos: para eso
+ * están los valores de respaldo.
+ */
+
 @available(iOS 16.2, *)
 struct DescansoLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: AtributosDelDescanso.self) { context in
-      // LA PANTALLA BLOQUEADA. Es lo que se ve sin desbloquear nada, y es el
-      // caso que hay que ganar: el teléfono boca arriba en el banco.
       VStack(alignment: .leading, spacing: 12) {
         HStack(alignment: .firstTextBaseline, spacing: 14) {
           VStack(alignment: .leading, spacing: 4) {
-            // EL RÓTULO EN VERSALITAS Y ESPACIADO, que es como la app titula
-            // todas sus secciones: chico, apagado, y nunca compitiendo con el
-            // número. Ver `estilos.seccion` en cualquier pantalla.
-            Text(termino(context) ? "LISTO" : "DESCANSO")
+            Text(rotuloDe(context))
               .font(.system(size: 11, weight: .medium))
               .tracking(2.4)
               .foregroundStyle(termino(context) ? Color("claro") : Color("sub"))
-            // QUÉ ESTABAS HACIENDO, que es lo único que se mira entre serie y
-            // serie. Si no se sabe, queda la duración: la tarjeta nunca se
-            // queda sin su segunda línea.
-            Text(queHacias(context) ?? deLargo(context.attributes.duracion))
+            Text(queHacias(context) ?? (esDescanso(context) ? deLargo(context.attributes.duracion) : ""))
               .font(.system(size: 17, weight: .regular))
               .foregroundStyle(Color("tinta"))
               .lineLimit(1)
-            if let s = porCual(context) {
+            if let s = detalleDe(context) {
               Text(s)
                 .font(.system(size: 13))
                 .foregroundStyle(Color("sub"))
             }
           }
           Spacer(minLength: 0)
-          cuenta(hasta: context.state.fin, tamano: 46, termino: termino(context))
+          if esDescanso(context) {
+            cuenta(hasta: context.state.fin, tamano: 46, termino: termino(context))
+          } else {
+            reloj(desde: context.state.desde, tamano: 34)
+          }
         }
 
-        // LA BARRA SE VACÍA, NO SE LLENA, y es la misma decisión que la
-        // pantalla del descanso adentro de la app: algo se está gastando. La
-        // dibuja el sistema con el mismo rango de tiempo que el número, así
-        // que no hay dos relojes que puedan decir cosas distintas.
-        barra(context)
+        if esDescanso(context) {
+          barra(context)
+        }
+
+        abajo(context)
       }
       .padding(.horizontal, 20)
       .padding(.vertical, 16)
@@ -100,16 +108,15 @@ struct DescansoLiveActivity: Widget {
 
     } dynamicIsland: { context in
       DynamicIsland {
-        // ABIERTA: cuando se mantiene apretada la isla.
         DynamicIslandExpandedRegion(.leading) {
-          Text(termino(context) ? "LISTO" : "DESCANSO")
+          Text(rotuloDe(context))
             .font(.system(size: 11, weight: .medium))
             .tracking(2)
             .foregroundStyle(Color("sub"))
             .padding(.leading, 4)
         }
         DynamicIslandExpandedRegion(.trailing) {
-          Text(porCual(context) ?? deLargo(context.attributes.duracion))
+          Text(detalleDe(context) ?? (esDescanso(context) ? deLargo(context.attributes.duracion) : ""))
             .font(.system(size: 13))
             .foregroundStyle(Color("sub"))
             .padding(.trailing, 4)
@@ -123,37 +130,37 @@ struct DescansoLiveActivity: Widget {
           }
         }
         DynamicIslandExpandedRegion(.bottom) {
-          cuenta(hasta: context.state.fin, tamano: 40, termino: termino(context))
+          if esDescanso(context) {
+            cuenta(hasta: context.state.fin, tamano: 40, termino: termino(context))
+          } else {
+            reloj(desde: context.state.desde, tamano: 30)
+          }
         }
       } compactLeading: {
-        // CERRADA, a la izquierda: un punto y nada más. El espacio es de
-        // milímetros y el número es lo único que hace falta.
         Circle()
           .fill(Color("tinta"))
           .frame(width: 7, height: 7)
       } compactTrailing: {
-        cuenta(hasta: context.state.fin, tamano: 14, termino: termino(context))
-          // ANCHO FIJO: sin esto la isla se agranda y se achica sola cuando el
-          // número pasa de 1:00 a 0:59, y el movimiento se ve como un error.
-          .frame(width: 42)
+        Group {
+          if esDescanso(context) {
+            cuenta(hasta: context.state.fin, tamano: 14, termino: termino(context))
+          } else {
+            reloj(desde: context.state.desde, tamano: 14)
+          }
+        }
+        .frame(width: 42)
       } minimal: {
-        cuenta(hasta: context.state.fin, tamano: 12, termino: termino(context))
+        if esDescanso(context) {
+          cuenta(hasta: context.state.fin, tamano: 12, termino: termino(context))
+        } else {
+          reloj(desde: context.state.desde, tamano: 12)
+        }
       }
       .keylineTint(Color("tinta"))
     }
   }
 }
 
-/// LA BARRA QUE SE VACÍA.
-///
-/// `ProgressView(timerInterval:)` la anima el sistema sola, igual que el
-/// número: recibe el rango y se encarga. Sin eso habría que empujar una
-/// actualización por segundo, que es justo lo que ActivityKit no permite.
-///
-/// TERMINADA, LA BARRA QUEDA LLENA Y CLARA en vez de vacía: vacía se lee como
-/// "no hiciste nada", y lo que pasó es lo contrario. Y ahí tampoco puede ir el
-/// rango —con el fin en el pasado es inválido, lo mismo que tumbaba el widget
-/// entero— así que es una barra dibujada a mano.
 @available(iOS 16.2, *)
 private func barra(_ context: ActivityViewContext<AtributosDelDescanso>) -> some View {
   Group {
@@ -163,7 +170,7 @@ private func barra(_ context: ActivityViewContext<AtributosDelDescanso>) -> some
         .frame(height: 3)
     } else {
       ProgressView(
-        timerInterval: Date.now...context.state.fin,
+        timerInterval: Date.now...max(Date.now, context.state.fin),
         countsDown: true,
         label: { EmptyView() },
         currentValueLabel: { EmptyView() }
@@ -175,41 +182,76 @@ private func barra(_ context: ActivityViewContext<AtributosDelDescanso>) -> some
   }
 }
 
-/// EL EJERCICIO, si se sabe. Cadena vacía = no se eligió ninguno, y entonces no
-/// hay nada que decir: la tarjeta vuelve a su segunda línea de siempre.
+/// LOS PASOS Y EL COMPAÑERO (build 8), en un renglón. Si no hay ninguno de los dos,
+/// no ocupa lugar.
+@available(iOS 16.2, *)
+@ViewBuilder
+private func abajo(_ context: ActivityViewContext<AtributosDelDescanso>) -> some View {
+  let pasos = context.state.textoPasos.trimmingCharacters(in: .whitespaces)
+  let companero = context.state.companero.trimmingCharacters(in: .whitespaces)
+  if !pasos.isEmpty || !companero.isEmpty {
+    HStack(spacing: 8) {
+      if !pasos.isEmpty {
+        Text(pasos)
+          .font(.system(size: 12))
+          .foregroundStyle(Color("sub"))
+      }
+      Spacer(minLength: 0)
+      if !companero.isEmpty {
+        Text(companero)
+          .font(.system(size: 12))
+          .foregroundStyle(Color("tinta"))
+          .lineLimit(1)
+        // Su descanso, contado por iOS como el nuestro. Un rango con el fin en el
+        // pasado tumba el widget (ver arriba): solo si todavía falta.
+        if context.state.finCompanero > Date() {
+          Text(timerInterval: Date.now...context.state.finCompanero, countsDown: true)
+            .font(.system(size: 12, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(Color("sub"))
+            .frame(width: 40, alignment: .trailing)
+        }
+      }
+    }
+  }
+}
+
+@available(iOS 16.2, *)
+private func esDescanso(_ context: ActivityViewContext<AtributosDelDescanso>) -> Bool {
+  context.state.modo != "serie"
+}
+
+@available(iOS 16.2, *)
+private func rotuloDe(_ context: ActivityViewContext<AtributosDelDescanso>) -> String {
+  if termino(context) {
+    return context.state.rotuloListo.isEmpty ? "LISTO" : context.state.rotuloListo
+  }
+  return context.state.rotulo.isEmpty ? "DESCANSO" : context.state.rotulo
+}
+
 @available(iOS 16.2, *)
 private func queHacias(_ context: ActivityViewContext<AtributosDelDescanso>) -> String? {
   let e = context.state.ejercicio.trimmingCharacters(in: .whitespaces)
   return e.isEmpty ? nil : e
 }
 
-/// "Serie 3 de 4", o "Serie 3" si no se sabe la meta. Cero = no se sabe nada.
+/// "Serie 2 de 4": el texto que manda la app, o el armado acá para una actividad
+/// encendida por la versión de antes.
 @available(iOS 16.2, *)
-private func porCual(_ context: ActivityViewContext<AtributosDelDescanso>) -> String? {
+private func detalleDe(_ context: ActivityViewContext<AtributosDelDescanso>) -> String? {
+  let d = context.state.detalle.trimmingCharacters(in: .whitespaces)
+  if !d.isEmpty { return d }
   let s = context.state.serie
   guard s > 0 else { return nil }
   let m = context.state.meta
   return m > 0 ? "Serie \(s) de \(m)" : "Serie \(s)"
 }
 
-/// ¿YA TERMINÓ?
-///
-/// Dos preguntas y no una. `isStale` es lo que el sistema sabe sin que la app
-/// esté viva —le dijimos que a partir de `fin` lo que muestra está vencido— y
-/// la comparación contra el reloj cubre el caso en que la tarjeta se dibuja
-/// justo después, antes de que el sistema la marque.
 @available(iOS 16.2, *)
 private func termino<T>(_ context: ActivityViewContext<T>) -> Bool where T == AtributosDelDescanso {
-  context.isStale || context.state.fin <= Date()
+  esDescanso(context) && (context.isStale || context.state.fin <= Date())
 }
 
-/// La cuenta atrás, que la dibuja el sistema. Monoespaciada para que los
-/// dígitos no bailen: con la fuente normal, el 1 es más angosto que el 8 y el
-/// número entero se mueve a cada segundo.
-///
-/// CON EL DESCANSO TERMINADO NO HAY CUENTA, y no es una decisión de diseño: el
-/// rango `Date.now...fin` con `fin` en el pasado es inválido y tumba el widget
-/// entero. Ver la cabecera.
 @available(iOS 16.2, *)
 private func cuenta(hasta fin: Date, tamano: CGFloat, termino: Bool) -> some View {
   Group {
@@ -219,7 +261,7 @@ private func cuenta(hasta fin: Date, tamano: CGFloat, termino: Bool) -> some Vie
         .monospacedDigit()
         .foregroundStyle(Color("claro"))
     } else {
-      Text(timerInterval: Date.now...fin, countsDown: true)
+      Text(timerInterval: Date.now...max(Date.now, fin), countsDown: true)
         .font(.system(size: tamano, weight: .light, design: .rounded))
         .monospacedDigit()
         .foregroundStyle(Color("tinta"))
@@ -228,9 +270,17 @@ private func cuenta(hasta fin: Date, tamano: CGFloat, termino: Bool) -> some Vie
   .multilineTextAlignment(.trailing)
 }
 
-/// "3 min" / "1:30 min". Lo mismo que `duracionCorta` en TypeScript, que es de
-/// donde salió: el rótulo de abajo dice de cuánto era el descanso, para que el
-/// número grande no sea el único dato.
+/// EL RELOJ DE LA SESIÓN (build 8), contando para arriba desde que empezó. Lo
+/// dibuja iOS, igual que la cuenta del descanso.
+@available(iOS 16.2, *)
+private func reloj(desde: Date, tamano: CGFloat) -> some View {
+  Text(desde, style: .timer)
+    .font(.system(size: tamano, weight: .light, design: .rounded))
+    .monospacedDigit()
+    .foregroundStyle(Color("tinta"))
+    .multilineTextAlignment(.trailing)
+}
+
 private func deLargo(_ segundos: Int) -> String {
   let m = segundos / 60
   let s = segundos % 60

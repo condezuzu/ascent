@@ -1,0 +1,12 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "Ascent uses your location to log your day only when you get to the gym.",
+    "NSLocationAlwaysAndWhenInUseUsageDescription": "With Always, your day logs itself when you get to the gym, even if you don't open the app.",
+    "NSLocationAlwaysUsageDescription": "With Always, your day logs itself when you get to the gym, even if you don't open the app.",
+    "NSMicrophoneUsageDescription": "Ascent doesn't record audio. It only plays the end-of-rest alert.",
+    "NSHealthShareUsageDescription": "Ascent reads your steps and workouts so it doesn't miss a day your phone already knows you trained.",
+    "NSHealthUpdateUsageDescription": "Ascent only reads your steps and workouts from Health; it doesn't save or change anything in Health.",
+    "NSPhotoLibraryUsageDescription": "Ascent uses your photos to add today's photo to your log.",
+    "NSCameraUsageDescription": "Ascent uses the camera to take today's photo."
+  }
+}

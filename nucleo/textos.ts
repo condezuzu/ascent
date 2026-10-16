@@ -383,6 +383,17 @@ const ES = {
   },
 
   // ---------------------------------------------------------------
+  // LA TARJETA DE LA PANTALLA BLOQUEADA (build 8, 15/10): la manda la app ya
+  // armada, en su idioma. Los rótulos van en mayúsculas, como en la app.
+  tarjeta: {
+    descanso: 'DESCANSO',
+    listo: 'LISTO',
+    entrenando: 'ENTRENANDO',
+    serie: (n: number, de: number) => (de > 0 ? `Serie ${n} de ${de}` : `Serie ${n}`),
+    pasos: (n: number) => `${n.toLocaleString('es')} pasos`,
+  },
+
+  // ---------------------------------------------------------------
   // LOS GLOBITOS DE LA PRIMERA VEZ (15/10): uno por cosa, saliendo de lo que
   // explican. El del + es `inicio.globoSeries`.
   globos: {

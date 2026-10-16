@@ -46,6 +46,32 @@ struct AtributosDelDescanso: ActivityAttributes {
     var serie: Int
     /// Cuántas se propuso en este bloque. Cero = no se sabe.
     var meta: Int
+
+    // ── LA BUILD 8 (15/10) ──
+    //
+    // La tarjeta ya no es solo el descanso: aparece apenas se elige el ejercicio
+    // ("Serie 0 de 3") y entre serie y serie muestra la cuenta. Abajo, los pasos y
+    // el compañero. Los textos los manda la app ya traducidos (`nucleo/textos.ts`):
+    // así la tarjeta habla el idioma de la app y no hay un diccionario más acá.
+
+    /// "descanso" (la cuenta atrás hasta `fin`) o "serie" (el reloj de la sesión desde `desde`).
+    var modo: String
+    /// Cuándo empezó la sesión: en modo serie, el reloj cuenta desde acá.
+    var desde: Date
+    /// Los pasos de hoy. -1 = no se sabe (no se muestra).
+    var pasos: Int
+    /// Con quién se entrena. Cadena vacía = solo.
+    var companero: String
+    /// Cuándo termina el descanso del compañero. En el pasado = no está descansando.
+    var finCompanero: Date
+    /// "DESCANSO" / "ENTRENANDO", en el idioma de la app.
+    var rotulo: String
+    /// "LISTO", en el idioma de la app.
+    var rotuloListo: String
+    /// "Serie 2 de 4", ya armado y traducido. Cadena vacía = no se muestra.
+    var detalle: String
+    /// "3.214 pasos", ya armado y traducido. Cadena vacía = no se muestra.
+    var textoPasos: String
   }
 
   /// Cuánto duraba el descanso al empezar, en segundos. Va en los atributos y

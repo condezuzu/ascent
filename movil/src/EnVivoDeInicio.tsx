@@ -9,6 +9,7 @@ import TiraDelGrupo from './TiraDelGrupo';
 import { useCartelVisible } from './cartelVisible';
 import { tarjetasDeInicio } from '@nucleo/novedades';
 import { C, conAlfa } from './colores';
+import { fijarExtras } from '@compartido/tarjeta';
 
 /**
  * LA MITAD DE "ENTRENAR CON OTRO" QUE VIVE EN INICIO (12/10/2026).
@@ -55,6 +56,15 @@ function EnVivoDeInicio(visto: Visto) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firma, hayAlguien]);
+
+  // EL COMPAÑERO EN LA TARJETA DE LA PANTALLA BLOQUEADA (build 8): con quién entreno y,
+  // si está descansando, cuándo termina —en el reloj del teléfono: la base lo da en el
+  // suyo, y `ahora` es la hora de la base cuando llegó la lista—.
+  const companero = visto.corriendo ? uniones.find((u) => u.estado === 'aceptada') ?? null : null;
+  const finDelCompanero = companero?.enVivo?.descansoFin ? companero.enVivo.descansoFin - companero.ahora + recibidoEn : 0;
+  useEffect(() => {
+    fijarExtras({ companero: companero?.otro.username ?? '', finCompanero: finDelCompanero });
+  }, [companero?.otro.username, finDelCompanero]);
 
   // SOLO MIENTRAS ENTRENO (12/10): terminada la sesión el pedido ya no tiene a
   // qué unirse, y la tarjeta quedaba en Inicio hasta volver a entrenar.

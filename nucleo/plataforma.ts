@@ -193,10 +193,43 @@ export type ContextoDelDescanso = {
   meta: number;
 };
 
+/**
+ * LA TARJETA ENTERA DE LA PANTALLA BLOQUEADA (build 8, 15/10). En modo "descanso"
+ * es la cuenta hasta `fin`; en modo "serie", el reloj de la sesión desde `desde`
+ * con el ejercicio y "Serie 0 de 3". Las fechas en milisegundos del reloj del
+ * teléfono. Los textos van armados y traducidos (`compartido/tarjeta.ts`).
+ */
+export type TarjetaEnVivo = {
+  modo: 'descanso' | 'serie';
+  fin: number;
+  duracion: number;
+  desde: number;
+  ejercicio: string;
+  serie: number;
+  meta: number;
+  /** -1 = no se sabe. */
+  pasos: number;
+  /** '' = solo. */
+  companero: string;
+  /** 0 = no está descansando. */
+  finCompanero: number;
+  rotulo: string;
+  rotuloListo: string;
+  detalle: string;
+  textoPasos: string;
+};
+
 export type EnVivo = {
   disponible(): boolean;
   /** `fin` en milisegundos del reloj del teléfono; `duracion` en segundos. */
   mostrarDescanso(fin: number, duracion: number, ctx?: ContextoDelDescanso | null): Promise<void>;
+  /**
+   * LA TARJETA ENTERA (build 8). `false` si este binario no la sabe dibujar (una build
+   * anterior, o la web): ahí sigue mandando `mostrarDescanso`.
+   */
+  mostrarTarjeta(t: TarjetaEnVivo): Promise<boolean>;
+  /** Si este binario sabe dibujar la tarjeta entera. */
+  sabeLaTarjeta(): boolean;
   esconder(): Promise<void>;
 };
 

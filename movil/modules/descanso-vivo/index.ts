@@ -19,6 +19,8 @@ type Nativo = {
    */
   mostrar(finEnMs: number, duracion: number, ejercicio: string, serie: number, meta: number): Promise<void>;
   esconder(): Promise<void>;
+  /** La tarjeta entera, en JSON (build 8). No existe en las builds anteriores. */
+  mostrarTarjeta?(json: string): Promise<void>;
 };
 
 export const descansoVivoNativo = requireOptionalNativeModule<Nativo>('DescansoVivo');

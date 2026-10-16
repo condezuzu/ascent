@@ -193,6 +193,13 @@ export const EN: Textos = {
     muestraDescansa: 'resting',
     muestraAhora: 'now',
   },
+  tarjeta: {
+    descanso: 'REST',
+    listo: 'DONE',
+    entrenando: 'TRAINING',
+    serie: (n: number, de: number) => (de > 0 ? `Set ${n} of ${de}` : `Set ${n}`),
+    pasos: (n: number) => `${n.toLocaleString('en')} steps`,
+  },
   globos: {
     elegir: 'Search or pick an exercise from the list.',
     descanso: 'Your rest. Tap it to change it.',

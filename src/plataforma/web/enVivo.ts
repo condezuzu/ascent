@@ -13,5 +13,11 @@ export const enVivoWeb: EnVivo = {
     return false;
   },
   async mostrarDescanso() {},
+  async mostrarTarjeta() {
+    return false;
+  },
+  sabeLaTarjeta() {
+    return false;
+  },
   async esconder() {},
 };

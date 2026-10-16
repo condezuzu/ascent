@@ -1,0 +1,12 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "Ascent usa tu ubicación para registrar el día solo cuando llegas al gimnasio.",
+    "NSLocationAlwaysAndWhenInUseUsageDescription": "Con el permiso siempre, el día se registra al llegar al gimnasio aunque no abras la app.",
+    "NSLocationAlwaysUsageDescription": "Con el permiso siempre, el día se registra al llegar al gimnasio aunque no abras la app.",
+    "NSMicrophoneUsageDescription": "Ascent no graba audio. Solo reproduce el aviso de fin del descanso.",
+    "NSHealthShareUsageDescription": "Ascent lee tus pasos y tus entrenamientos para no perder un día que el teléfono ya sabe que entrenaste.",
+    "NSHealthUpdateUsageDescription": "Ascent solo lee tus pasos y entrenamientos de Salud; no guarda ni modifica nada en Salud.",
+    "NSPhotoLibraryUsageDescription": "Ascent usa tus fotos para sumar la del día a tu registro.",
+    "NSCameraUsageDescription": "Ascent usa la cámara para sacar la foto del día."
+  }
+}

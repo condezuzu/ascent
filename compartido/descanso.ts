@@ -155,6 +155,9 @@ export function avisarFin(fin: number): boolean {
 
 async function enVivoAlTerminar(d: DescansoVivo | null) {
   if (!plataforma.enVivo.disponible()) return;
+  // CON LA BUILD 8 LA TARJETA LA DECIDE `compartido/tarjeta.ts`, mirando la sesión
+  // entera (también la serie, no solo el descanso). Esto queda para las anteriores.
+  if (plataforma.enVivo.sabeLaTarjeta()) return;
   // Un descanso ya terminado se apaga igual que uno saltado: pasa al bajar la
   // duración por debajo de lo que ya descansaste.
   if (!d || restante(d.fin) <= 0) return plataforma.enVivo.esconder();

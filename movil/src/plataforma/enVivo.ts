@@ -58,6 +58,26 @@ export const enVivoNativo: EnVivo = {
     }
   },
 
+  sabeLaTarjeta() {
+    try {
+      return typeof descansoVivoNativo?.mostrarTarjeta === 'function';
+    } catch {
+      return false;
+    }
+  },
+
+  // LA TARJETA ENTERA (build 8). En una build anterior la función no existe y se
+  // contesta `false`: ahí la tarjeta sigue siendo la del descanso (`mostrarDescanso`).
+  async mostrarTarjeta(t) {
+    try {
+      if (typeof descansoVivoNativo?.mostrarTarjeta !== 'function') return false;
+      await descansoVivoNativo.mostrarTarjeta(JSON.stringify(t));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   async esconder() {
     try {
       await descansoVivoNativo?.esconder();

@@ -36,6 +36,7 @@ import { SELLOS } from '../src/sello';
 import { reportarMedicionA } from '@compartido/medir';
 import { trasElAviso, trasMirar } from '@nucleo/veredicto';
 import { anotarEntradaVista } from '@compartido/entradaVista';
+import { encenderTarjeta } from '@compartido/tarjeta';
 
 /**
  * LA RAÍZ DE LA APP, y desde el 22/9 también la raíz del router.
@@ -180,6 +181,14 @@ export default function Layout() {
   useEffect(() => {
     if (sesion === 'con') void anotarEntradaVista();
   }, [sesion]);
+
+  // LA TARJETA DE LA PANTALLA BLOQUEADA SIGUE A LA SESIÓN (build 8): con la cuenta
+  // abierta se enciende el que la decide. Ver `compartido/tarjeta.ts`.
+  useEffect(() => {
+    if (sesion !== 'con') return;
+    return encenderTarjeta();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesion === 'con']);
 
   // EL ENLACE DEL CORREO. Se mira de las dos formas y hacen falta las dos: la
   // app puede estar CERRADA cuando se toca el enlace —ahí llega como URL

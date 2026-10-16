@@ -50,6 +50,7 @@ import PesoHoja from './PesoHoja';
 import FilaRutina from './FilaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
+import { fijarExtras } from '@compartido/tarjeta';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -473,6 +474,8 @@ export default function Inicio({
       ]);
       if (!vivo) return;
       setPasosHoy(n);
+      // Y a la tarjeta de la pantalla bloqueada (build 8).
+      fijarExtras({ pasos: n ?? -1 });
       setMetaPasos(leerMeta(crudo));
     })();
     return () => {

@@ -11509,15 +11509,17 @@ console.log('\n157. La pantalla de bloqueo: el timer que se caia y la campana');
   chequear('la cuenta solo se dibuja si falta tiempo',
     /if termino \{[\s\S]*?Text\("0:00"\)/.test(wid157), true);
   chequear('y el rango vive en la rama de "todavia no"',
-    /\} else \{[\s\S]*?Text\(timerInterval: Date\.now\.\.\.fin/.test(wid157), true);
+    // Desde la build 8 el rango se arma con max(): un fin en el pasado no puede tumbarlo.
+    /\} else \{[\s\S]*?Text\(timerInterval: Date\.now\.\.\.max\(Date\.now, fin\)/.test(wid157), true);
   // DOS PREGUNTAS Y NO UNA: `isStale` es lo que el sistema sabe sin la app
   // viva; la comparacion contra el reloj cubre el dibujo de justo despues.
   chequear('termino se decide con isStale y con el reloj',
     /context\.isStale \|\| context\.state\.fin <= Date\(\)/.test(wid157), true);
 
   // ---- 7. EL FINAL SE AVISA EN LA MISMA TARJETA ----
-  chequear('la tarjeta dice LISTO al terminar', /"LISTO" : "DESCANSO"/.test(wid157), true);
-  chequear('y lo dice tambien en la isla', (wid157.match(/"LISTO" : "DESCANSO"/g) ?? []).length >= 2, true);
+  // Desde la build 8 los rótulos los manda la app traducidos; LISTO y DESCANSO quedan de respaldo.
+  chequear('la tarjeta dice LISTO al terminar', /if termino\(context\) \{\s*return context\.state\.rotuloListo\.isEmpty \? "LISTO" : context\.state\.rotuloListo/.test(wid157), true);
+  chequear('y lo dice tambien en la isla', (wid157.match(/Text\(rotuloDe\(context\)\)/g) ?? []).length >= 2, true);
   // Y CON LA APP ADELANTE NO HAY CARTEL DEL SISTEMA: la pantalla del descanso
   // ya avisa —cambia de color, vibra y suena— y el cartel encima era la otra
   // mitad de "una sola cosa, no dos".
@@ -11653,7 +11655,7 @@ console.log('\n158. Los nombres de verdad, el rango por musculo y la tarjeta');
   chequear('y por cual serie vas', /"Serie \\\(s\) de \\\(m\)"/.test(wid158), true);
   // SIN DATO, LA TARJETA DE SIEMPRE: nunca se queda sin su segunda linea.
   chequear('sin ejercicio queda la duracion',
-    /queHacias\(context\) \?\? deLargo\(context\.attributes\.duracion\)/.test(wid158), true);
+    /queHacias\(context\) \?\? \(esDescanso\(context\) \? deLargo\(context\.attributes\.duracion\) : ""\)/.test(wid158), true);
   // VA EN ContentState Y NO EN LOS ATRIBUTOS: los atributos no se pueden tocar
   // una vez encendida la actividad, y la actividad se REUSA entre series.
   const at158 = de158('movil', 'targets', 'descanso', 'AtributosDelDescanso.swift');
@@ -15575,7 +15577,7 @@ console.log('\n196. El álbum: miniaturas de verdad, la tira del visor, y qué v
     EC196.ponerNombres([{ id: 'press_banca', nombre: 'Press de banca' }, { id: 'sentadilla', nombre: 'Sentadilla' }]);
     const tarjetas = [];
     const deAntes = plat.enVivo;
-    plat.enVivo = { disponible: () => true, mostrarDescanso: async (fin, duracion, ctx) => void tarjetas.push(ctx), esconder: async () => void tarjetas.push('escondida') };
+    plat.enVivo = { disponible: () => true, sabeLaTarjeta: () => false, mostrarTarjeta: async () => false, mostrarDescanso: async (fin, duracion, ctx) => void tarjetas.push(ctx), esconder: async () => void tarjetas.push('escondida') };
     const asentar = () => new Promise((r) => setTimeout(r, 5));
     const vivo = D196.guardarDescanso(120, B196.serieDelDescanso(cuatroDeCuatro));
     await asentar();
@@ -19123,6 +19125,42 @@ console.log('\n249. Los seis globitos de la primera vez salen de lo que explican
   ], [true, true]);
   // Los que salieron con el recorrido no vuelven: el del perfil y el de quién está entrenando.
   chequear('no quedan los globos del perfil ni el de la actividad', /cual="(perfil|actividad)"/.test(de249('movil', 'src', 'PerfilPropio.tsx') + de249('movil', 'src', 'Ranking.tsx')), false);
+}
+console.log('\n250. La tarjeta de la pantalla bloqueada sigue a la sesión (build 8)');
+{
+  const TJ = await import('../compartido/tarjeta.ts');
+  const EC250 = await import('../compartido/enCurso.ts');
+  EC250.ponerNombres([{ id: 'press_banca', nombre: 'Press de banca' }]);
+  const ahora = Date.parse('2026-10-16T12:00:00Z');
+  const base = { inicio: '2026-10-16T11:30:00Z', desfasaje: 0, series: 0, porUbicacion: false, cacheLeida: true, sugerido: false, idSesion: 's1', ultimaActividad: null };
+  const bloques = (ejercicio, hechas, meta) => ({ cerrados: [], ejercicio, hechas, meta });
+  const recienElegido = TJ.tarjetaDeAhora({ ...base, bloques: bloques('press_banca', 0, 3), descanso: null }, ahora);
+  chequear('recién elegido el ejercicio: "Serie 0 de 3", con el reloj de la sesión', [recienElegido.modo, recienElegido.ejercicio, recienElegido.detalle, recienElegido.desde], ['serie', 'Press de banca', 'Serie 0 de 3', Date.parse('2026-10-16T11:30:00Z')]);
+  const descansando = TJ.tarjetaDeAhora({ ...base, bloques: bloques('press_banca', 1, 3), descanso: { fin: ahora + 90000, duracion: 120, ejercicio: 'Press de banca', serie: 1, meta: 3 } }, ahora, { pasos: 3214, companero: 'lucia', finCompanero: ahora + 30000 });
+  chequear('descansando: la cuenta, la serie que se terminó, los pasos y el compañero', [descansando.modo, descansando.fin, descansando.detalle, descansando.textoPasos, descansando.companero, descansando.finCompanero], ['descanso', ahora + 90000, 'Serie 1 de 3', `${(3214).toLocaleString('es')} pasos`, 'lucia', ahora + 30000]);
+  chequear('el descanso recién terminado se deja diciendo LISTO un rato, y después vuelve a la serie', [
+    TJ.tarjetaDeAhora({ ...base, bloques: bloques('press_banca', 1, 3), descanso: { fin: ahora - 1000, duracion: 120 } }, ahora),
+    TJ.tarjetaDeAhora({ ...base, bloques: bloques('press_banca', 1, 3), descanso: { fin: ahora - TJ.LISTO_MS - 1000, duracion: 120 } }, ahora).detalle,
+  ], ['dejar', 'Serie 1 de 3']);
+  chequear('sin sesión, apagada; un compañero que ya no descansa no lleva cuenta', [
+    TJ.tarjetaDeAhora({ ...base, inicio: null, bloques: bloques(null, 0, 3), descanso: null }, ahora),
+    TJ.tarjetaDeAhora({ ...base, bloques: bloques(null, 0, 3), descanso: null }, ahora, { pasos: -1, companero: 'mateo', finCompanero: ahora - 5000 }).finCompanero,
+  ], [null, 0]);
+  const { readFileSync: leer250 } = await import('node:fs');
+  const de250 = (...p) => leer250(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const at = de250('movil', 'targets', 'descanso', 'AtributosDelDescanso.swift');
+  chequear('los atributos traen los campos de la build 8', ['var modo: String', 'var desde: Date', 'var pasos: Int', 'var companero: String', 'var finCompanero: Date', 'var rotulo: String', 'var detalle: String', 'var textoPasos: String'].map((c) => at.includes(c)), [true, true, true, true, true, true, true, true]);
+  const wid = de250('movil', 'targets', 'descanso', 'index.swift');
+  chequear('el widget no arma un rango con el fin en el pasado: ni el del compañero ni el del descanso', [
+    /if context\.state\.finCompanero > Date\(\) \{\s*Text\(timerInterval: Date\.now\.\.\.context\.state\.finCompanero/.test(wid),
+    /Date\.now\.\.\.max\(Date\.now, context\.state\.fin\)/.test(wid),
+  ], [true, true]);
+  const mod = de250('movil', 'modules', 'descanso-vivo', 'ios', 'DescansoVivoModule.swift');
+  chequear('el módulo sabe la tarjeta entera, y en el modo serie no la apaga por un fin en el pasado', [
+    /AsyncFunction\("mostrarTarjeta"\) \{ \(json: String\) in/.test(mod),
+    /if descanso && fin <= Date\(\) \{/.test(mod),
+  ], [true, true]);
+  chequear('las builds de antes siguen con la del descanso: sin la función nueva, la tarjeta no se mete', /if \(plataforma\.enVivo\.sabeLaTarjeta\(\)\) return;/.test(de250('compartido', 'descanso.ts')), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
