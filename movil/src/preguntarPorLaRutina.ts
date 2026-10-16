@@ -9,21 +9,24 @@ type BloqueGuardado = { ejercicio?: string | null; series?: number | null; minut
 
 /**
  * AL TERMINAR, SI SE HIZO OTRO DÍA QUE EL DE LA RUTINA GUARDADA (16/10, a pedido): una
- * alerta del sistema, como la de batería baja, con dos salidas. Cambiar el día de la
- * rutina activa, o crear una rutina nueva —copia de la activa— con este día puesto, sin
- * tocar la que estaba. Sin rutina guardada, o con los mismos ejercicios, no sale nada.
+ * alerta del sistema, como la de batería baja. Reemplazar el día de la rutina que se está
+ * usando —con un "¿Estás seguro?", porque pisa lo que había— o crear una rutina nueva
+ * —copia de la activa con este día puesto, sin tocar la que estaba—, que se crea directo.
+ * Sin rutina guardada, sin señal, o con los mismos ejercicios, no sale nada.
  */
 export async function preguntarPorLaRutina(bloques: BloqueGuardado[]) {
   const dia = new Date().getDay();
   const hecho = diaDeLaSesion(bloques);
-  // La copia del teléfono: anda sin señal, que es como suele terminar un entrenamiento.
+  // Primero la copia del teléfono, que no gasta red: casi siempre no hay nada que preguntar.
   const activa = await rutinaActivaDelTelefono();
   if (!activa || !hayQuePreguntarPorLaRutina(activa.dias[dia], hecho)) return;
+  // El nombre va en la pregunta, y guardar pide señal: sin ella no se pregunta.
+  const rutinas = await cargarMisRutinas(supabase);
+  const actual = rutinas?.find((r) => r.activa);
+  if (!rutinas || !actual || !hayQuePreguntarPorLaRutina(actual.dias[dia], hecho)) return;
 
   async function guardar(como: 'esta' | 'nueva') {
-    const rutinas = await cargarMisRutinas(supabase);
-    const actual = rutinas?.find((r) => r.activa);
-    if (!rutinas || !actual) return Alert.alert(T.general.noSePudo);
+    if (!rutinas || !actual) return;
     const dias = actual.dias.map((d, i) => (i === dia ? hecho : d));
     const id =
       como === 'esta'
@@ -33,11 +36,18 @@ export async function preguntarPorLaRutina(bloques: BloqueGuardado[]) {
   }
 
   Alert.alert(
-    T.rutina.cambiarDiaTitulo,
+    T.rutina.reemplazarDiaTitulo(actual.nombre),
     T.rutina.cambiarDiaTexto,
     [
-      { text: T.rutina.cambiarEsteDia, onPress: () => void guardar('esta') },
-      { text: T.rutina.crearConEsteDia, onPress: () => void guardar('nueva') },
+      {
+        text: T.rutina.reemplazar,
+        onPress: () =>
+          Alert.alert(T.rutina.estasSeguro, undefined, [
+            { text: T.rutina.no, style: 'cancel' },
+            { text: T.rutina.si, style: 'destructive', onPress: () => void guardar('esta') },
+          ]),
+      },
+      { text: T.rutina.crearRutinaNueva, onPress: () => void guardar('nueva') },
     ],
     { cancelable: true }
   );

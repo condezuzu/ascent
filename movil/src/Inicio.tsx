@@ -391,6 +391,15 @@ export default function Inicio({
   useEffect(() => {
     if (!sesion.estado.corriendo) setTerminando(false);
   }, [sesion.estado.corriendo]);
+  // EL AVISO DE LA VIDA, YA MOSTRADO, NO VUELVE AL TERMINAR (16/10): si un entrenamiento lo
+  // tapa después de verse, se suelta. Antes quedaba cargado y reaparecía al cerrar la sesión.
+  const vidaMostrada = useRef(false);
+  useEffect(() => {
+    if (sesion.estado.corriendo && vidaMostrada.current) {
+      vidaMostrada.current = false;
+      setVidaUsada(null);
+    }
+  }, [sesion.estado.corriendo]);
 
   // EL DÍA QUE ENTRÓ SOLO AL LLEGAR AL GIMNASIO (24/9). Ese camino no pasa
   // por `useSesion` —lo registra el vigilante, o el sistema con la app
@@ -1088,12 +1097,19 @@ export default function Inicio({
             await cargar();
             return true;
           }}
-          alCerrar={async () => {
-            // Cerrar es lo que ANOTA: hasta que no se cierra, el aviso vuelve.
+          // MOSTRARLA ES LO QUE ANOTA (16/10, a pedido): antes anotaba "Entendido", y
+          // escondida por un entrenamiento en marcha volvía al terminar.
+          alMostrar={() => {
+            vidaMostrada.current = true;
             const dias = vidaUsada.dias;
+            void (async () => {
+              const hasta = hastaDondeVisto(dias, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
+              if (hasta) await plataforma.almacenamiento.guardar(CLAVE_VIDA_VISTA, hasta);
+            })();
+          }}
+          alCerrar={() => {
+            vidaMostrada.current = false;
             setVidaUsada(null);
-            const hasta = hastaDondeVisto(dias, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
-            if (hasta) await plataforma.almacenamiento.guardar(CLAVE_VIDA_VISTA, hasta);
           }}
         />
       )}

@@ -190,7 +190,14 @@ export function marcarDescanso(dias: DiaDeSemana[], dia: number, descanso: boole
  */
 export function copiarDia(dias: DiaDeSemana[], desde: number, hasta: number, modo: 'reemplazar' | 'agregar'): DiaDeSemana[] {
   if (desde === hasta) return dias;
-  const origen = dias[desde];
+  return pegarDia(dias, hasta, dias[desde], modo);
+}
+
+/**
+ * PEGAR UN DÍA COPIADO (16/10): el día puede venir de esta rutina, de otra tuya o de la de
+ * un amigo. Reemplaza el día de destino o se agrega al final, sin repetir ejercicios.
+ */
+export function pegarDia(dias: DiaDeSemana[], hasta: number, origen: DiaDeSemana, modo: 'reemplazar' | 'agregar'): DiaDeSemana[] {
   return conDia(dias, hasta, (d) => {
     if (modo === 'reemplazar' || d.descanso) return { descanso: origen.descanso, ejercicios: origen.ejercicios.map((e) => ({ ...e })) };
     const ya = new Set(d.ejercicios.map((e) => e.ejercicio));

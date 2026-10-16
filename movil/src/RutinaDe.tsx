@@ -12,6 +12,7 @@ import {
 } from '@compartido/rutinas';
 import { supabase } from './supabase';
 import RutinaPlegada from './RutinaPlegada';
+import { copiarDiaAlPortapapeles } from './portapapelesDeDia';
 import { C } from './colores';
 
 /**
@@ -27,6 +28,8 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
   const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(new Map());
   const [sePuedeCopiar, setSePuedeCopiar] = useState(false);
   const [aviso, setAviso] = useState('');
+  // El día copiado de esta rutina, para decir que ya está (16/10).
+  const [copiadoDia, setCopiadoDia] = useState<number | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -75,7 +78,29 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
       ) : (
         <>
           {rutina.nombre && <Text style={estilos.nombre}>{rutina.nombre}</Text>}
-          <RutinaPlegada dias={rutina.dias} catalogo={catalogo} soloConAlgo={rutina.deducida} />
+          <RutinaPlegada
+            dias={rutina.dias}
+            catalogo={catalogo}
+            soloConAlgo={rutina.deducida}
+            // COPIAR SOLO UN DÍA (16/10), para pegarlo en una rutina tuya, en Stats → Entrenamiento.
+            abajoDelDia={(d) =>
+              esYo ? null : (
+                <View>
+                  <Pressable
+                    testID={`rutina-amigo-copiar-dia-${d}`}
+                    style={estilos.boton}
+                    onPress={() => {
+                      copiarDiaAlPortapapeles(rutina.dias[d], T.rutina.origenDia(T.fechas.diasLargos[d], rutina.nombre ?? T.rutina.deAlguien(nombre ?? '')), true);
+                      setCopiadoDia(d);
+                    }}
+                  >
+                    <Text style={estilos.botonTexto}>{T.rutina.copiarEsteDia}</Text>
+                  </Pressable>
+                  {copiadoDia === d && <Text style={estilos.nota}>{T.rutina.diaCopiadoDeAmigo}</Text>}
+                </View>
+              )
+            }
+          />
           {sePuedeCopiar && (
             <Pressable testID="rutina-copiar" style={estilos.boton} onPress={() => void copiar()}>
               <Text style={estilos.botonTexto}>{T.rutina.copiar}</Text>
