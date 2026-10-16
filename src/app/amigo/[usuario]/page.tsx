@@ -43,10 +43,10 @@ export default async function Amigo({ params }: Props) {
       ) : (
         <p>{T.social.enlaceMalo}</p>
       )}
-      {/* LOS TRES PASOS DEL QUE NO TIENE LA APP, numerados (8/10): el enlace
-          no sobrevive a la instalación, así que hay que volver a tocarlo. Si
-          eso no queda dicho, el invitado instala, no pasa nada y nadie sabe
-          por qué. */}
+      {/* LOS TRES PASOS DEL QUE NO TIENE LA APP, numerados (8/10): el enlace no
+          sobrevive a la instalación. Desde el 15/10 el último paso es buscarlo a
+          mano, y el nombre queda acá, grande y para copiar: antes había que volver
+          a este enlace, y el que no volvía se quedaba sin la solicitud. */}
       {nombre ? (
         <>
           <h2>{T.social.enlaceSinApp}</h2>
@@ -60,6 +60,7 @@ export default async function Amigo({ params }: Props) {
             </li>
           </ol>
           <p>{T.social.enlaceOjo}</p>
+          <p className="nombre-para-buscar">{nombre}</p>
         </>
       ) : (
         <p>

@@ -5440,3 +5440,16 @@ body.con-franja.con-accion .pantalla {
 @media (prefers-reduced-motion: reduce) {
   .entrada-flota, .entrada-latido { animation: none; }
 }
+
+/* El nombre del amigo en la página del link (15/10): grande y fácil de seleccionar. */
+.nombre-para-buscar {
+  font-size: 24px;
+  letter-spacing: 0.02em;
+  color: var(--tinta);
+  border: 1px solid var(--linea);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: inline-block;
+  user-select: all;
+  -webkit-user-select: all;
+}
