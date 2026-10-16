@@ -81,9 +81,23 @@ let ultima = '';
 let prendida = false;
 let reloj: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Lo nuevo sobre lo que había. EL FIN DEL DESCANSO DEL COMPAÑERO se recalcula en cada
+ * consulta (cada 10 s) y la latencia lo corre unos milisegundos: sin esto, iOS recibía
+ * una tarjeta "nueva" cada 10 s sin que cambiara nada (ronda 10, 16/10).
+ */
+export function extrasNuevos(antes: Extras, p: Partial<Extras>): Extras {
+  const x = { ...antes, ...p };
+  const fin = p.finCompanero;
+  if (fin && antes.finCompanero && x.companero === antes.companero && Math.abs(fin - antes.finCompanero) < 2000) {
+    x.finCompanero = antes.finCompanero;
+  }
+  return x;
+}
+
 /** Los pasos de hoy y el compañero: los avisa quien los sabe. Solo se reenvía si cambió. */
 export function fijarExtras(p: Partial<Extras>) {
-  extras = { ...extras, ...p };
+  extras = extrasNuevos(extras, p);
   void mandar();
 }
 

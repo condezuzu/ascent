@@ -19248,6 +19248,20 @@ console.log('\n253. El fondo de la entrada es el de la app (16/10, negro en el i
     /deLaEntrada \? 'entrada-pantalla'/.test(de253('src', 'app', 'login', 'page.tsx')),
   ], [true, true]);
 }
+
+console.log('\n254. Cacería ronda 10: la tarjeta no se reenvía por milisegundos del compañero');
+{
+  // Cada consulta de 10 s recalcula el fin del descanso del compañero con la latencia de la red.
+  const TJ254 = await import('../compartido/tarjeta.ts');
+  const antes = { pasos: 10, companero: 'lucia', finCompanero: 100000 };
+  chequear('un fin que se mueve por la latencia queda como estaba; uno que cambia de verdad, o de compañero, entra', [
+    TJ254.extrasNuevos(antes, { companero: 'lucia', finCompanero: 100040 }).finCompanero,
+    TJ254.extrasNuevos(antes, { companero: 'lucia', finCompanero: 160000 }).finCompanero,
+    TJ254.extrasNuevos(antes, { companero: 'mateo', finCompanero: 100040 }).finCompanero,
+    TJ254.extrasNuevos(antes, { companero: 'lucia', finCompanero: 0 }).finCompanero,
+    TJ254.extrasNuevos(antes, { pasos: 20 }).pasos,
+  ], [100000, 160000, 100040, 0, 20]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
