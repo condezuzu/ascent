@@ -481,11 +481,13 @@ const RECETAS = {
     await page.waitForTimeout(500);
     await verTestId(page, 'rutina-agregar-1');
     await foto(page, 'rutina-stats-editando');
-    await page.getByText('Copiar a…', { exact: true }).first().click({ timeout: 20000 });
+    // Copiar un día y pegarlo en otro (16/10).
+    await tocar(page, 'rutina-copiar-dia-1');
     await page.waitForTimeout(400);
-    await tocar(page, 'rutina-copiar-a-5');
+    await tocar(page, 'rutina-dia-5');
+    await page.waitForTimeout(400);
+    await tocar(page, 'rutina-pegar-5');
     await page.waitForTimeout(500);
-    await page.getByText('Agregar al final', { exact: true }).first().scrollIntoViewIfNeeded({ timeout: 20000 });
     await foto(page, 'rutina-stats-copiar-pregunta');
     return page;
   },

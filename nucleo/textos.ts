@@ -91,6 +91,11 @@ const ES = {
         n === 1 ? 'La vida quedó para después.' : `Las ${n} vidas quedaron para después.`,
       // Sin señal no se devolvió nada: se dice lo que sigue siendo cierto.
       noSeGuardo: 'Sin señal no se guardó: la racha sigue como estaba. Prueba de nuevo.',
+      // LA PREGUNTA DESPUÉS DE LA ANIMACIÓN (16/10): usarla ahora o guardarla, con el precio a la vista.
+      preguntaUsar: (n: number) => (n === 1 ? '¿Usar la vida ahora?' : '¿Usar las vidas ahora?'),
+      precioGuardar: (n: number, racha: number) => `Guardar${n === 1 ? 'la' : 'las'} deja la racha en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
+      usarAhora: (n: number) => (n === 1 ? 'Usar la vida ahora' : 'Usar las vidas ahora'),
+      guardarParaOtraVez: (n: number) => (n === 1 ? 'Guardarla para otra vez' : 'Guardarlas para otra vez'),
     },
   },
 
@@ -1416,10 +1421,12 @@ const ES = {
     nueva: '+ Nueva',
     nombreBase: 'Entrenamiento',
     // AL TERMINAR, SI SE HIZO OTRO DÍA QUE EL DE LA RUTINA (16/10): la alerta del sistema.
-    cambiarDiaTitulo: '¿Cambiar el día de la rutina?',
+    reemplazarDiaTitulo: (rutina: string) => `¿Reemplazar el día de la rutina «${rutina}»?`,
     cambiarDiaTexto: 'Lo que hiciste hoy no es lo que tu rutina tiene para este día.',
-    cambiarEsteDia: 'Cambiar el día de esta rutina',
-    crearConEsteDia: 'Crear una rutina nueva con este día',
+    crearRutinaNueva: 'Crear una rutina nueva',
+    estasSeguro: '¿Estás seguro?',
+    si: 'Sí',
+    no: 'No',
     editar: 'Editar',
     listo: 'Listo',
     borrar: 'Borrar rutina',
@@ -1429,7 +1436,12 @@ const ES = {
     diaDeDescanso: 'Día de descanso',
     // Prenderlo saca los ejercicios del día: se pregunta (cacería del 15/10).
     descansoPregunta: (dia: string) => `¿${dia} de descanso? Se sacan sus ejercicios.`,
-    copiarA: 'Copiar a…',
+    // COPIAR UN DÍA (16/10): a otro día de esta rutina o de otra.
+    copiarEsteDia: 'Copiar este día',
+    pegarDia: (origen: string) => `Pegar ${origen}`,
+    origenDia: (dia: string, rutina: string) => `el ${dia.toLowerCase()} de «${rutina}»`,
+    diaCopiado: 'Copiado. Abre otro día —de esta rutina o de otra— y toca Pegar.',
+    diaCopiadoDeAmigo: 'Copiado. Pégalo en un día de tu rutina, en Stats → Entrenamiento.',
     yaTieneEjercicios: (dia: string) => `${dia} ya tiene ejercicios.`,
     reemplazar: 'Reemplazar',
     agregarAlFinal: 'Agregar al final',

@@ -3,13 +3,11 @@ import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import {
-  ORDEN_SEMANA,
   agregarEjercicio,
   cambiarCantidad,
-  copiarDia,
   hayAlgo,
-  hayQuePreguntarAlCopiar,
   marcarDescanso,
+  pegarDia,
   nombreNuevo,
   quitarEjercicio,
   semanaVacia,
@@ -35,6 +33,7 @@ import FilasArrastrables from './FilasArrastrables';
 import SelectorEjercicio from './SelectorEjercicio';
 import { C } from './colores';
 import GloboPrimeraVez from './GloboPrimeraVez';
+import { copiarDiaAlPortapapeles, useDiaCopiado } from './portapapelesDeDia';
 
 /**
  * TU RUTINA, EN STATS (14/10). Se mira, se edita, se copia y se pega antes de ir
@@ -66,8 +65,10 @@ export default function MiRutina({
   const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(new Map());
   const [lista, setLista] = useState<Ejercicio[]>([]);
   const [eligiendoPara, setEligiendoPara] = useState<number | null>(null);
-  const [copiandoDesde, setCopiandoDesde] = useState<number | null>(null);
-  const [preguntaCopia, setPreguntaCopia] = useState<{ desde: number; hasta: number } | null>(null);
+  // COPIAR UN DÍA (16/10): se copia y se pega en otro, de esta rutina o de otra (ver `portapapelesDeDia`).
+  const copiado = useDiaCopiado();
+  const [recienCopiado, setRecienCopiado] = useState<{ rutina: string; dia: number } | null>(null);
+  const [preguntaPegar, setPreguntaPegar] = useState<number | null>(null);
   const [preguntaBorrar, setPreguntaBorrar] = useState(false);
   const [noCargo, setNoCargo] = useState(false);
   // El día con ejercicios que se va a pasar a descanso: se pregunta antes de sacarlos.
@@ -173,11 +174,65 @@ export default function MiRutina({
     await cargar();
   }
 
-  function copiar(desde: number, hasta: number, modo: 'reemplazar' | 'agregar') {
-    if (!actual) return;
-    setPreguntaCopia(null);
-    setCopiandoDesde(null);
-    void cambiar({ ...actual, dias: copiarDia(actual.dias, desde, hasta, modo) });
+  function pegar(hasta: number, modo: 'reemplazar' | 'agregar') {
+    if (!actual || !copiado) return;
+    setPreguntaPegar(null);
+    setRecienCopiado(null);
+    void cambiar({ ...actual, dias: pegarDia(actual.dias, hasta, copiado.dia, modo) });
+  }
+
+  // Al abrir un día, con o sin editar: copiarlo, y pegar acá lo copiado.
+  function accionesDeCopia(d: number) {
+    if (!actual) return null;
+    const dia = actual.dias[d];
+    const esteRecien = recienCopiado?.rutina === actual.id && recienCopiado.dia === d;
+    return (
+      <View>
+        <View style={estilos.acciones}>
+          {(dia.ejercicios.length > 0 || dia.descanso) && (
+            <Pressable
+              testID={`rutina-copiar-dia-${d}`}
+              style={[estilos.chico, esteRecien && estilos.chicoActivo]}
+              onPress={() => {
+                copiarDiaAlPortapapeles(dia, T.rutina.origenDia(T.fechas.diasLargos[d], actual.nombre));
+                setRecienCopiado({ rutina: actual.id, dia: d });
+                setPreguntaPegar(null);
+              }}
+            >
+              <Text style={estilos.chicoTexto}>{T.rutina.copiarEsteDia}</Text>
+            </Pressable>
+          )}
+          {copiado && !esteRecien && (
+            <Pressable
+              testID={`rutina-pegar-${d}`}
+              style={estilos.chico}
+              onPress={() => (dia.ejercicios.length > 0 ? setPreguntaPegar(d) : pegar(d, 'reemplazar'))}
+            >
+              <Text style={estilos.chicoTexto} numberOfLines={1}>
+                {T.rutina.pegarDia(copiado.origen)}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+        {esteRecien && <Text style={estilos.nota}>{T.rutina.diaCopiado}</Text>}
+        {preguntaPegar === d && (
+          <View style={estilos.pregunta}>
+            <Text style={estilos.nota}>{T.rutina.yaTieneEjercicios(T.fechas.diasLargos[d])}</Text>
+            <View style={estilos.acciones}>
+              <Pressable testID={`rutina-pegar-reemplazar-${d}`} style={estilos.chico} onPress={() => pegar(d, 'reemplazar')}>
+                <Text style={estilos.chicoTexto}>{T.rutina.reemplazar}</Text>
+              </Pressable>
+              <Pressable style={estilos.chico} onPress={() => pegar(d, 'agregar')}>
+                <Text style={estilos.chicoTexto}>{T.rutina.agregarAlFinal}</Text>
+              </Pressable>
+              <Pressable style={estilos.chico} onPress={() => setPreguntaPegar(null)}>
+                <Text style={estilos.chicoTexto}>{T.rutina.cancelar}</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+      </View>
+    );
   }
 
   // Lo que va adentro de un día abierto mientras se edita.
@@ -226,26 +281,8 @@ export default function MiRutina({
           >
             <Text style={estilos.chicoTexto}>{T.rutina.diaDeDescanso}</Text>
           </Pressable>
-          {(dia.ejercicios.length > 0 || dia.descanso) && (
-            <Pressable style={[estilos.chico, copiandoDesde === d && estilos.chicoActivo]} onPress={() => setCopiandoDesde(copiandoDesde === d ? null : d)}>
-              <Text style={estilos.chicoTexto}>{T.rutina.copiarA}</Text>
-            </Pressable>
-          )}
         </View>
-        {copiandoDesde === d && (
-          <View style={estilos.acciones}>
-            {ORDEN_SEMANA.filter((h) => h !== d).map((h) => (
-              <Pressable
-                key={h}
-                testID={`rutina-copiar-a-${h}`}
-                style={estilos.chico}
-                onPress={() => (hayQuePreguntarAlCopiar(actual.dias, h) ? setPreguntaCopia({ desde: d, hasta: h }) : copiar(d, h, 'reemplazar'))}
-              >
-                <Text style={estilos.chicoTexto}>{T.fechas.diasLargos[h].slice(0, 3)}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
+        {accionesDeCopia(d)}
         {preguntaDescanso === d && (
           <View style={estilos.pregunta}>
             <Text style={estilos.nota}>{T.rutina.descansoPregunta(T.fechas.diasLargos[d])}</Text>
@@ -261,22 +298,6 @@ export default function MiRutina({
                 <Text style={estilos.chicoTexto}>{T.rutina.diaDeDescanso}</Text>
               </Pressable>
               <Pressable style={estilos.chico} onPress={() => setPreguntaDescanso(null)}>
-                <Text style={estilos.chicoTexto}>{T.rutina.cancelar}</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
-        {preguntaCopia?.desde === d && (
-          <View style={estilos.pregunta}>
-            <Text style={estilos.nota}>{T.rutina.yaTieneEjercicios(T.fechas.diasLargos[preguntaCopia.hasta])}</Text>
-            <View style={estilos.acciones}>
-              <Pressable style={estilos.chico} onPress={() => copiar(preguntaCopia.desde, preguntaCopia.hasta, 'reemplazar')}>
-                <Text style={estilos.chicoTexto}>{T.rutina.reemplazar}</Text>
-              </Pressable>
-              <Pressable style={estilos.chico} onPress={() => copiar(preguntaCopia.desde, preguntaCopia.hasta, 'agregar')}>
-                <Text style={estilos.chicoTexto}>{T.rutina.agregarAlFinal}</Text>
-              </Pressable>
-              <Pressable style={estilos.chico} onPress={() => setPreguntaCopia(null)}>
                 <Text style={estilos.chicoTexto}>{T.rutina.cancelar}</Text>
               </Pressable>
             </View>
@@ -377,7 +398,7 @@ export default function MiRutina({
           <RutinaPlegada
             dias={actual.dias}
             catalogo={catalogo}
-            abajoDelDia={editando ? editorDelDia : undefined}
+            abajoDelDia={editando ? editorDelDia : accionesDeCopia}
             abiertoAlEmpezar={abrirHoy ? new Date().getDay() : undefined}
             testID="rutina-guardada"
           />

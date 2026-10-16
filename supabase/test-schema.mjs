@@ -7183,7 +7183,8 @@ console.log('\n101. La caza del 15/9: lo que perdia datos o dejaba afuera');
   ]) {
     const v = archivo(...ventana);
     chequear(`${app}: la ventana espera un si o un no`, v.includes('Promise<boolean>'), true);
-    chequear(`${app}: y solo pasa a "guardada" con un si`, /setPaso\(ok \? 'guardada' : 'confirmar'\)/.test(v), true);
+    // La nativa vuelve a la pregunta (16/10: sin paso de confirmación); la web, a confirmar.
+    chequear(`${app}: y solo pasa a "guardada" con un si`, /setPaso\(ok \? 'guardada' : '(confirmar|pregunta)'\)/.test(v), true);
     const p = archivo(...pantalla);
     const i = p.indexOf("rpc('devolver_impulsos'");
     chequear(`${app}: devolver mira el error`, /if \(error \|\| !data\) return false/.test(p.slice(i, i + 300)), true);
@@ -19321,6 +19322,42 @@ console.log('\n257. Al terminar, si hiciste otro día que el de la rutina guarda
   ], [false, true, true, true, false]);
   const ini257 = (await import('node:fs')).readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'Inicio.tsx'), 'utf8');
   chequear('Inicio pregunta después de Terminar, con los bloques que se guardaron', /if \(c && !c\.deshizoElDia\) \{[\s\S]{0,200}void preguntarPorLaRutina\(c\.bloques\);/.test(ini257), true);
+}
+
+console.log('\n258. Copiar un día y pegarlo en otro, de la misma rutina o de otra (16/10)');
+{
+  const R258 = await import('../nucleo/rutinas.ts');
+  const otra = R258.semanaVacia();
+  otra[2] = { descanso: false, ejercicios: [{ ejercicio: 'sentadilla', series: 5 }] };
+  const copiado = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }, { ejercicio: 'remo_barra', series: 3 }] };
+  const reemplazado = R258.pegarDia(otra, 2, copiado, 'reemplazar');
+  const agregado = R258.pegarDia(otra, 2, copiado, 'agregar');
+  chequear('pegado en otra rutina: reemplaza o agrega al final, sin tocar el resto ni el copiado', [
+    reemplazado[2].ejercicios.map((e) => e.ejercicio), agregado[2].ejercicios.map((e) => e.ejercicio), otra[2].ejercicios.length, reemplazado[3].ejercicios.length,
+  ], [['press_banca', 'remo_barra'], ['sentadilla', 'press_banca', 'remo_barra'], 1, 0]);
+  reemplazado[2].ejercicios[0].series = 99;
+  chequear('lo pegado es una copia: cambiarlo después no cambia el día copiado', copiado.ejercicios[0].series, 4);
+  chequear('un día de descanso se pega como descanso', R258.pegarDia(otra, 4, { descanso: true, ejercicios: [] }, 'reemplazar')[4].descanso, true);
+}
+
+console.log('\n259. La vida usada se anota al mostrarse, y reemplazar el día de la rutina pide confirmación (16/10)');
+{
+  // Proxies: la ventana y la alerta se probaron montadas en la vista web; acá se pinea el camino.
+  const { readFileSync: leer259 } = await import('node:fs');
+  const de259 = (...p) => leer259(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const ini = de259('movil', 'src', 'Inicio.tsx');
+  const ventana = de259('movil', 'src', 'RachaSalvada.tsx');
+  chequear('la ventana avisa al aparecer, Inicio anota ahí, y si después arranca un entrenamiento la suelta', [
+    /useEffect\(\(\) => \{\s*alMostrar\(\);/.test(ventana),
+    /alMostrar=\{\(\) => \{\s*vidaMostrada\.current = true;[\s\S]{0,300}guardar\(CLAVE_VIDA_VISTA, hasta\)/.test(ini),
+    /if \(sesion\.estado\.corriendo && vidaMostrada\.current\) \{\s*vidaMostrada\.current = false;\s*setVidaUsada\(null\);/.test(ini),
+    /alCerrar=\{async \(\) => \{\s*\/\/ Cerrar es lo que ANOTA/.test(ini),
+  ], [true, true, true, false]);
+  const pr = de259('movil', 'src', 'preguntarPorLaRutina.ts');
+  chequear('reemplazar el día pide "¿Estás seguro?" con Sí y No; crear una rutina nueva va directo', [
+    /text: T\.rutina\.reemplazar,\s*onPress: \(\) =>\s*Alert\.alert\(T\.rutina\.estasSeguro, undefined, \[\s*\{ text: T\.rutina\.no, style: 'cancel' \},\s*\{ text: T\.rutina\.si, style: 'destructive', onPress: \(\) => void guardar\('esta'\) \}/.test(pr),
+    /\{ text: T\.rutina\.crearRutinaNueva, onPress: \(\) => void guardar\('nueva'\) \}/.test(pr),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
