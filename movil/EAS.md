@@ -358,25 +358,39 @@ a salir de `main` como siempre.
 **Hasta entonces, `main` no se toca con nada nativo**: es lo que mantiene vivo
 el canal de la build que está en el teléfono hoy.
 
-## Los links https que abren la app: falta regenerar el perfil (16/10)
+## Los links https que abren la app (16/10): andan desde la build ff2b55a6
 
 El archivo de dominios asociados se sirve desde la web
 (`/.well-known/apple-app-site-association`, con `/amigo/*` y `/grupo/*` para
-`XF9N8X9KJG.uy.ascent.app`), las rutas de la app existen, `app.json` lleva
-`associatedDomains` y el 16/10 Agustín habilitó **Associated Domains** en el App ID
-`uy.ascent.app` (el del widget no la necesita).
+`XF9N8X9KJG.uy.ascent.app`), `app.json` lleva `associatedDomains`, el App ID
+`uy.ascent.app` tiene **Associated Domains** (el del widget no la necesita) y los
+dos perfiles se regeneraron con la capacidad: el Ad Hoc en la corrida interactiva de
+Agustín (`ff2b55a6`) y el de App Store solo, con la llave de App Store Connect que
+guarda EAS (`3N6ZVD7KD8`, build `417afba9`). Si Apple contesta con error interno al
+validar, EAS sigue con el perfil guardado sin regenerarlo: así fallaron `afc6c2de`,
+`73f0ab19` y `1cda85b8`.
 
-Lo que falta es el **perfil de aprovisionamiento**: el que guarda EAS
-(`*[expo] uy.ascent.app AdHoc 1789775312698`) es de antes de la capacidad. Sin
-login de Apple, EAS no lo regenera ("Skipping Provisioning Profile validation on
-Apple Servers because we aren't authenticated") y Xcode lo rechaza: así fallaron
-`afc6c2de` (15/10) y `73f0ab19` (16/10). Se arregla con UNA corrida interactiva,
-con el login de Apple, desde `movil/` en esta rama:
+## Dos builds de la 1.1.0, dos huellas: la OTA a cada una (16/10)
 
-    npx --yes eas-cli@24.10.0 build -p ios --profile telefono
+Las dos son la 1.1.0 y salen de `build-8-nativo`, pero no tienen la misma huella: la
+de store se compiló con `ios.buildNumber` en 9 (el `autoIncrement` del perfil) y la
+de teléfono con 8. La huella mira el CONTENIDO de `app.json`, no sus finales de línea
+(medido: 9 con CRLF y con LF dan lo mismo).
 
-EAS ve que el perfil no coincide, sincroniza la capacidad, genera uno nuevo y lo
-guarda: las builds siguientes ya salen sin login.
+| Build | Canal | `buildNumber` | Huella |
+|---|---|---|---|
+| `ff2b55a6` (teléfono de Agustín) | `telefono` | 8 | `66ebdfa2…` |
+| `417afba9` (la que va a Apple) | `store` | 9 | `f3c9f1b6…` |
 
-OJO: con `associatedDomains` en `app.json` la huella de la rama ya no es la de la
-build `670e14af`. Una OTA para esa build desde acá la frena `publicar-ota`.
+La rama queda en 9, o sea con la huella de la de store. **Una OTA para la ff2b55a6**,
+con el arreglo ya commiteado en la rama:
+
+1. En `movil/app.json`, `ios.buildNumber` de vuelta a `"8"` (ese renglón solo, sin
+   commitearlo).
+2. `node --env-file=.env.local supabase/publicar-ota.mjs telefono "<qué arregla>"`. El
+   publicador frena solo si la huella no es la de una build del canal: con 8 tiene que
+   dar `66ebdfa2…`.
+3. Verificar por hash: `artefacto.mjs telefono 66ebdfa2b123cc7e72bc415a86884de4982e4fb1`.
+4. `git checkout -- movil/app.json` (vuelve a 9). Nunca se commitea el 8.
+
+Para la de store es la rama tal cual, al canal `store`, cuando Agustín lo diga.
