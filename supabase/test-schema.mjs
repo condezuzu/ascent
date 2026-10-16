@@ -7723,7 +7723,7 @@ console.log('\n108. La entrada se ve UNA vez, y donde termina empieza el formula
 
   // Los textos viven en el diccionario, como todo el resto de la app, en las dos.
   const T = (await import('../nucleo/textos.ts')).T;
-  chequear('los textos de la entrada estan en textos.ts', [T.bienvenida.pesosTitulo, T.bienvenida.rankingTitulo], ['Ya no adivines los pesos', 'Mira quién llega más lejos']);
+  chequear('los textos de la entrada estan en textos.ts', [T.bienvenida.pesosTitulo, T.bienvenida.rankingTitulo], ['Ya no adivines los pesos', 'Demuestra que eres el mejor de tus amigos']);
   const comp = archivo('src', 'components', 'bienvenida', 'Bienvenida.tsx');
   const compNativa = archivo('movil', 'src', 'Bienvenida.tsx');
   chequear('y ninguna de las dos pantallas tiene texto suelto', [
@@ -19229,6 +19229,24 @@ console.log('\n252. Cacería ronda 9: el grupo no junta a dos que se bloquearon 
     (await uniones(l)).filter((u) => u.estado === 'aceptada').map((u) => u.otro.id).sort(),
     await lee(l, 'select ejercicio from en_vivo where user_id = $1', x),
   ], [false, false, 0, 0, [x, y].sort(), 1]);
+}
+
+console.log('\n253. El fondo de la entrada es el de la app (16/10, negro en el iPhone)');
+{
+  // Proxies: el GL del iPhone no se puede montar acá; se pinea lo que lo diferenciaba de `FondoRaiz`.
+  const { readFileSync: leer253 } = await import('node:fs');
+  const de253 = (...p) => leer253(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const esp = de253('movil', 'src', 'bienvenida', 'Espacio.tsx');
+  chequear('la capa fija de estrellas debajo del motor, y el GLView recién con la medida y el tope de densidad', [
+    /<ElipsesDeLuz elipses=\{ELIPSES_BASE\}[^>]*estrellas/.test(esp),
+    /\{vistaGL && \(\s*<Animated\.View[^>]*>\s*<GLView style=\{vistaGL\}/.test(esp),
+    /width: medida\.w \* f,/.test(esp),
+  ], [true, true, true]);
+  chequear('afuera de las pestañas, los toques de la entrada despiertan al motor', /testID="bienvenida" onTouchStart=\{despertarMotor\}/.test(de253('movil', 'src', 'Bienvenida.tsx')), true);
+  chequear('el formulario entra con transición, en las dos apps', [
+    /setVerSlides\(false\);\s*Animated\.timing\(entra/.test(de253('movil', 'src', 'EntradaYLogin.tsx')),
+    /deLaEntrada \? 'entrada-pantalla'/.test(de253('src', 'app', 'login', 'page.tsx')),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

@@ -16,9 +16,13 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 89 y `test:conexion` dio 81 sin fallas). La 88 son los grupos (multijugador) y la
 89 el tope del storage (3 MB, solo JPG/PNG).
 
-**La 90 está escrita y sin aplicar** (16/10, cacería ronda 9): el grupo no junta a
-dos que se bloquearon. Solo funciones y una política; la app no depende de ella, se
-pega cuando sea. Hasta entonces `test:conexion` marca a producción una atrás.
+La 90 (16/10, cacería ronda 9: el grupo no junta a dos que se bloquearon) está
+aplicada desde la mañana del 16/10.
+
+**La 91 está escrita y sin aplicar** (16/10): el retrato de `test:conexion` mira
+solo el catálogo fijo, no los ejercicios propios de los usuarios (con siete propios
+nuevos daba una falla falsa). No toca datos ni la app; hasta pegarla, `test:conexion`
+marca a producción una atrás.
 
 ## Lo que cambió el 15/10 (OTA a `telefono` esa noche)
 

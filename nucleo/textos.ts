@@ -357,12 +357,12 @@ const ES = {
     // LA ENTRADA NUEVA (15/10): cuatro pantallas, una cosa real de la app cada una.
     // Los rangos se ven en el fondo y no se explican (§7).
     pesosTitulo: 'Ya no adivines los pesos',
-    pesosBajada: 'Anota cada serie y su peso, y la próxima vez ya está puesto.',
-    llegarTitulo: 'El día se anota solo al llegar al gimnasio',
-    llegarBajada: 'Por la ubicación, aunque no abras la app.',
+    pesosBajada: 'Anota cada serie para la próxima vez que entrenes.',
+    llegarTitulo: 'El día se anota solo al llegar',
+    llegarBajada: 'Anota la ubicación del gimnasio para que se anote automático.',
     amigoTitulo: 'Entrena con un amigo y mira lo que hace, en vivo',
     amigoBajada: 'Su ejercicio, su serie y cuánto le queda de descanso.',
-    rankingTitulo: 'Mira quién llega más lejos',
+    rankingTitulo: 'Demuestra que eres el mejor de tus amigos',
     crear: 'Crear cuenta',
     entrar: 'Ya tengo cuenta',
     // El circulito que carga y deja pasar: no tiene texto, esto es para el lector de pantalla.

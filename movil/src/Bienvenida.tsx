@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import Espacio from './bienvenida/Espacio';
+import { despertarMotor } from './despertarMotor';
 import Objetos from './bienvenida/Objetos';
 import Circulito from './bienvenida/Circulito';
 import RankingDeEntrada from './bienvenida/RankingDeEntrada';
@@ -53,7 +54,8 @@ export default function Bienvenida({ alSalir }: { alSalir: (destino: 'crear' | '
   }[clave];
 
   return (
-    <View style={estilos.raiz} testID="bienvenida">
+    // Afuera de `Pestanas` nadie despierta al motor: sin esto, al minuto quieto deja de dibujar y se van las fugaces.
+    <View style={estilos.raiz} testID="bienvenida" onTouchStart={despertarMotor}>
       <Espacio />
       {clave === 'amigo' && <Objetos escala={0.6} />}
       {clave === 'ranking' ? (

@@ -87,7 +87,7 @@ const CLAVE_FONDO = 'ascent:fondo';
 // EL TOPE BAJA A 1X CON LA CALIDAD EN "BAJA" (8/10): un cuarto de los píxeles
 // de 2x, que es lo que más pesa. Lo decide `calidad.ts` —la persona en Ajustes,
 // o la app sola si mide que el teléfono no da—.
-function factorDeTope() {
+export function factorDeTope() {
   return Math.min(1, densidadTope(calidadAhora()) / PixelRatio.get());
 }
 
