@@ -14,7 +14,7 @@ import { useVersionDelEsquema } from '@compartido/esquema';
 import { agruparPorDia, etiquetaDeDia, type DiaConSesiones } from '@nucleo/dias';
 import type { Log } from '@nucleo/tipos';
 import { plataforma } from '@plataforma';
-import { CLAVE_META_PASOS, leerMeta } from '@nucleo/pasos';
+import { CLAVE_META_PASOS, contraLaMeta, leerMeta, promedioDeLaSemana } from '@nucleo/pasos';
 import { CLAVE_OBJETIVO_PESO, leerObjetivo } from '@nucleo/pesoObjetivo';
 import { C } from './colores';
 import GraficoPeso from './GraficoPeso';
@@ -236,6 +236,7 @@ export default function StatsGeneral({
       {pasos && pasos.length >= 2 && (
         <>
           <Text style={estilos.seccion}>{T.stats.pasosTendencia}</Text>
+          <PromedioDePasos pasos={pasos} meta={metaPasos} />
           <GraficoPasos pasos={pasos} claro={pal.claro} meta={metaPasos} alCambiarMeta={setMetaPasos} />
         </>
       )}
@@ -341,7 +342,31 @@ function Sesiones() {
   );
 }
 
+/** EL PROMEDIO DIARIO DE LA SEMANA, bien a la vista y contra la meta (16/10, a pedido). */
+function PromedioDePasos({ pasos, meta }: { pasos: { fecha: string; valor: number }[]; meta: number }) {
+  const promedio = promedioDeLaSemana(pasos, hoyISO());
+  if (promedio === null) return null;
+  const miles = (n: number) => n.toLocaleString(T.general.locale);
+  const c = contraLaMeta(promedio, meta);
+  const frente =
+    c.que === 'igual' ? T.stats.pasosEnMeta(miles(meta)) : c.que === 'arriba' ? T.stats.pasosSobreMeta(miles(c.diferencia), miles(meta)) : T.stats.pasosBajoMeta(miles(c.diferencia), miles(meta));
+  return (
+    <View testID="pasos-promedio" style={estilos.promedioPasos}>
+      <Text style={estilos.promedioRotulo}>{T.stats.pasosPromedioRotulo}</Text>
+      <Text style={estilos.promedioNumero}>{miles(promedio)}</Text>
+      <Text style={[estilos.promedioFrente, c.que !== 'abajo' && estilos.promedioLlega]}>{frente}</Text>
+      <Text style={estilos.promedioCuando}>{T.stats.pasosPromedioCuando}</Text>
+    </View>
+  );
+}
+
 const estilos = StyleSheet.create({
+  promedioPasos: { marginBottom: 14 },
+  promedioRotulo: { color: C.tinta, fontSize: 15 },
+  promedioNumero: { color: C.tinta, fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 2 },
+  promedioFrente: { color: C.sub, fontSize: 14, marginTop: 2 },
+  promedioLlega: { color: C.claro },
+  promedioCuando: { color: C.apagado, fontSize: 12, marginTop: 4 },
   botonCorregir: { alignSelf: 'flex-start', borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18, marginTop: 12 },
   botonCorregirTexto: { color: C.tinta, fontSize: 14 },
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },

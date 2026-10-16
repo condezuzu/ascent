@@ -1,10 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { hayAlgo, type DiaDeSemana } from '@nucleo/rutinas';
+import { hayAlgo } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import {
-  activarRutina,
-  cargarMisRutinas,
   cargarRutinaParaVer,
   catalogoDeRutina,
   copiarRutina,
@@ -29,8 +27,6 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
   const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(new Map());
   const [sePuedeCopiar, setSePuedeCopiar] = useState(false);
   const [aviso, setAviso] = useState('');
-  // La que estaba activa antes de copiar: "Volver a «…»" la reactiva con un toque.
-  const [anterior, setAnterior] = useState<{ id: string; nombre: string; dias: DiaDeSemana[] } | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -62,19 +58,10 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
     if (!rutina) return;
     setAviso('');
     const nombreNuevo = T.rutina.deAlguien(nombre ?? '');
-    // Copiar es para seguir la semana con esa: queda activa.
+    // Una rutina más: la tuya sigue activa (ver `copiarRutina`).
     const r = await copiarRutina(supabase, nombreNuevo, rutina.dias);
     if (!r) return setAviso(T.general.noSePudo);
-    setAnterior(r.anterior);
-    setAviso(T.rutina.copiada(nombreNuevo));
-  }
-
-  async function volver() {
-    if (!anterior) return;
-    if (!(await activarRutina(supabase, anterior.id, anterior.dias))) return setAviso(T.general.noSePudo);
-    void cargarMisRutinas(supabase);
-    setAviso(T.rutina.otraVezActiva(anterior.nombre));
-    setAnterior(null);
+    setAviso(r.activa ? T.rutina.copiadaActiva(nombreNuevo) : T.rutina.copiada(nombreNuevo));
   }
 
   if (!rutina || rutina.escondida) return null;
@@ -97,11 +84,6 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
         </>
       )}
       {!!aviso && <Text style={estilos.nota}>{aviso}</Text>}
-      {anterior && (
-        <Pressable testID="rutina-volver" style={estilos.boton} onPress={() => void volver()}>
-          <Text style={estilos.botonTexto}>{T.rutina.volverA(anterior.nombre)}</Text>
-        </Pressable>
-      )}
     </View>
   );
 }

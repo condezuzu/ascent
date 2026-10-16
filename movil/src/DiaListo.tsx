@@ -1,10 +1,4 @@
-import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { eventos } from '@compartido/eventos';
-import { DIA_CAMBIO } from '@compartido/gimnasio';
-import { FOTOS_CAMBIO } from '@compartido/foto';
-import { supabase } from './supabase';
-import { PESTANA_ACTIVA } from './irAPestana';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { C } from './colores';
@@ -29,44 +23,13 @@ export default function DiaListo({
   alaFoto,
   alPeso,
   minutos,
-  logId,
 }: {
   alaFoto: () => void;
   alPeso: () => void;
   /** Cuánto duró el entrenamiento de hoy, si hubo. */
   minutos?: number | null;
-  /** El día de hoy: para saber si ya tiene foto. */
-  logId?: string | null;
 }) {
-  // EL EMPUJÓN A LA FOTO (15/10): el Álbum casi no se usaba. Mientras hoy no
-  // tenga foto, la pastilla resalta y abajo va el porqué, en una línea.
-  const [sinFoto, setSinFoto] = useState(false);
-  useEffect(() => {
-    if (!logId) return;
-    let vivo = true;
-    const mirar = () =>
-      void supabase
-        .from('photos')
-        .select('id')
-        .eq('log_id', logId)
-        .limit(1)
-        .then(({ data, error }) => {
-          if (vivo && !error) setSinFoto((data ?? []).length === 0);
-        });
-    mirar();
-    // FOTOS_CAMBIO y no solo DIA_CAMBIO: el del día sale ANTES de que la foto termine de subir.
-    const dejarDia = eventos.escuchar(DIA_CAMBIO, mirar);
-    const dejarFotos = eventos.escuchar(FOTOS_CAMBIO, mirar);
-    // Y al volver a Inicio (cacería del 15/10): quitar la foto en el Álbum, o desde
-    // otro aparato, no avisa. Avisar con FOTOS_CAMBIO recargaría el Álbum entero.
-    const dejarPestana = eventos.escuchar(PESTANA_ACTIVA, (cual) => cual === 'inicio' && mirar());
-    return () => {
-      vivo = false;
-      dejarDia();
-      dejarFotos();
-      dejarPestana();
-    };
-  }, [logId]);
+  // SIN EMPUJÓN A LA FOTO (16/10, a pedido): ni la frase ni la pastilla resaltada.
   return (
     <View>
     <View style={estilos.fila}>
@@ -83,7 +46,7 @@ export default function DiaListo({
         {!!minutos && <Text style={estilos.minutos}>{T.inicio.minutosDeHoy(minutos)}</Text>}
       </View>
       <View style={estilos.acciones}>
-        <Accion rotulo={T.registrar.foto} alTocar={alaFoto} resalta={sinFoto}>
+        <Accion rotulo={T.registrar.foto} alTocar={alaFoto}>
           <IconoFoto />
         </Accion>
         <Accion rotulo={T.registrar.peso} alTocar={alPeso}>
@@ -91,11 +54,6 @@ export default function DiaListo({
         </Accion>
       </View>
     </View>
-    {sinFoto && (
-      <Text testID="foto-empuje" style={estilos.empuje}>
-        {T.inicio.fotoEmpuje}
-      </Text>
-    )}
     </View>
   );
 }
@@ -104,19 +62,16 @@ function Accion({
   rotulo,
   alTocar,
   children,
-  resalta = false,
 }: {
   rotulo: string;
   alTocar: () => void;
   children: React.ReactNode;
-  resalta?: boolean;
 }) {
   return (
     <Pressable
-      testID={resalta ? 'foto-resaltada' : undefined}
       // El hundido al tocar es el de la web (`transform: scale(0.96)`): dice
       // que el toque entró sin esperar a que abra nada.
-      style={({ pressed }) => [estilos.pildora, resalta && estilos.resaltada, pressed && estilos.hundida]}
+      style={({ pressed }) => [estilos.pildora, pressed && estilos.hundida]}
       onPress={alTocar}
       accessibilityRole="button"
       accessibilityLabel={rotulo}
@@ -164,8 +119,6 @@ const estilos = StyleSheet.create({
     borderRadius: 999,
   },
   hundida: { transform: [{ scale: 0.96 }], borderColor: C.lineaFuerte },
-  resaltada: { borderColor: C.claro },
-  empuje: { color: C.sub, fontSize: 12, marginTop: 6 },
   redondo: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 1.6, textTransform: 'uppercase' },
 });

@@ -347,8 +347,6 @@ async function correr(app) {
       await page.locator('.hoja').getByRole('button', { name: 'Guardar' }).click();
       await page.locator('.hoja').waitFor({ state: 'detached', timeout: 60000 });
     } else {
-      // EL EMPUJÓN A LA FOTO (15/10): el día sin foto lo dice; con la foto, se va.
-      await page.getByTestId('foto-empuje').first().waitFor({ state: 'visible', timeout: 30000 });
       // "Agregar foto" hasta el 22/9. Ahora la nativa dice "Foto", igual que la
       // web: era un renglon de texto que no parecia un boton, y eran dos
       // nombres para lo mismo.
@@ -358,8 +356,8 @@ async function correr(app) {
       await page.waitForTimeout(2000);
       await texto('Guardar').click();
       await texto('Sumar al día').waitFor({ state: 'detached', timeout: 60000 });
-      await page.getByTestId('foto-empuje').first().waitFor({ state: 'detached', timeout: 30000 });
-      nota('el empujón a la foto estaba y se fue con la foto');
+      // Sin empujón a la foto desde el 16/10: ni frase ni pastilla resaltada.
+      if ((await page.getByText(T.registrar.foto, { exact: true }).count()) === 0) throw new Error('falta la pastilla de la foto');
     }
     await page.waitForTimeout(3000);
   });

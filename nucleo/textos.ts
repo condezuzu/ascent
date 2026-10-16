@@ -290,8 +290,6 @@ const ES = {
     pasosUnidad: 'pasos',
     pasosMetaChica: (meta: string) => `meta ${meta}`,
     pasosMetaLlego: '✓ meta',
-    // EL EMPUJÓN A LA FOTO (15/10): el porqué, en una línea, mientras hoy no tenga foto.
-    fotoEmpuje: 'La foto de hoy: en un mes la comparas con esta.',
     // EL FESTEJO (15/10): la primera vez del día que Inicio la ve cumplida.
     pasosFestejo: '¡Meta de pasos!',
     pasosCambiarMeta: 'Cambiar la meta de pasos',
@@ -949,8 +947,12 @@ const ES = {
     pasosSemana: 'Semana',
     pasosMes: 'Mes',
     pasosAno: 'Año',
-    // Debajo de las barras, el promedio de los dias que tienen dato.
-    pasosPorDiaSemana: (n: string) => `${n} por día`,
+    // EL PROMEDIO DE LA SEMANA, arriba y grande (16/10): antes era un renglón chico debajo de las barras.
+    pasosPromedioRotulo: 'Promedio diario de pasos',
+    pasosPromedioCuando: 'Los últimos 7 días, sin contar hoy',
+    pasosSobreMeta: (n: string, meta: string) => `${n} más que tu meta de ${meta}`,
+    pasosBajoMeta: (n: string, meta: string) => `${n} menos que tu meta de ${meta}`,
+    pasosEnMeta: (meta: string) => `Justo en tu meta de ${meta}`,
     pasosFaltan: (n: string) => `Te faltan ${n}`,
     pasosLlegaste: 'Llegaste a tu meta de hoy.',
     sinDuracion_: (n: number) => `${n} sin duración`,
@@ -1402,6 +1404,11 @@ const ES = {
     usarEsta: 'Usar esta',
     nueva: '+ Nueva',
     nombreBase: 'Entrenamiento',
+    // AL TERMINAR, SI SE HIZO OTRO DÍA QUE EL DE LA RUTINA (16/10): la alerta del sistema.
+    cambiarDiaTitulo: '¿Cambiar el día de la rutina?',
+    cambiarDiaTexto: 'Lo que hiciste hoy no es lo que tu rutina tiene para este día.',
+    cambiarEsteDia: 'Cambiar el día de esta rutina',
+    crearConEsteDia: 'Crear una rutina nueva con este día',
     editar: 'Editar',
     listo: 'Listo',
     borrar: 'Borrar rutina',
@@ -1420,9 +1427,8 @@ const ES = {
     armarNueva: 'Armar una de cero',
     copiar: 'Copiar esta rutina',
     // Dice cuál quedó activa, y se puede volver a la de antes con un toque (15/10).
-    copiada: (nombre: string) => `Copiada y activa: «${nombre}». La cambias en Tu rutina, en Inicio.`,
-    volverA: (nombre: string) => `Volver a «${nombre}»`,
-    otraVezActiva: (nombre: string) => `Activa otra vez: «${nombre}».`,
+    copiada: (nombre: string) => `Copiada como «${nombre}», junto a las tuyas. La eliges en Stats, en Entrenamiento.`,
+    copiadaActiva: (nombre: string) => `Copiada y activa: «${nombre}». La cambias en Stats, en Entrenamiento.`,
     deAlguien: (nombre: string) => `Rutina de ${nombre}`,
     vacia: 'Todavía no hay rutina: entrena unos días o arma una.',
     // El título del día ("Pecho, hombro y brazo"): el músculo en singular y la "y" del final.
