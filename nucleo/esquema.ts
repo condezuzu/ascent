@@ -80,6 +80,8 @@ export const REQUIERE = {
   marcasSinHora: 87,
   /** Entrenar en grupo: hasta 10, el link del grupo, echar y el tiempo real. */
   grupos: 88,
+  /** El grupo no junta a dos que se bloquearon (la app no depende de esto). */
+  gruposSinBloqueados: 90,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

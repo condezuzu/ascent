@@ -65,19 +65,31 @@ export async function faltaElGlobo(uid: string, cual: Globo, creadaEl?: string |
   return !creadaEl || creadaEl >= GLOBOS_DESDE;
 }
 
-export async function marcarGloboVisto(uid: string, cual: Globo) {
-  const g = await leer(uid);
-  if (g.globos.includes(cual)) return;
-  await escribir({ ...g, globos: [...g.globos, cual] });
+// DE A UNA (ronda 9, 16/10): el primer + cierra el del + y el descanso que arranca
+// se da por visto en el mismo instante. Las dos leían la guía antes de que la otra
+// guardara, y la segunda pisaba a la primera: el del + volvía en la sesión siguiente.
+let enCola: Promise<unknown> = Promise.resolve();
+function deAUna<T>(hacer: () => Promise<T>): Promise<T> {
+  const paso = enCola.then(hacer);
+  enCola = paso.catch(() => undefined);
+  return paso;
+}
+
+export function marcarGloboVisto(uid: string, cual: Globo) {
+  return deAUna(async () => {
+    const g = await leer(uid);
+    if (g.globos.includes(cual)) return;
+    await escribir({ ...g, globos: [...g.globos, cual] });
+  });
 }
 
 /** Al elegir el nombre: la guía empieza de cero (los seis globitos, cada uno en su momento). */
-export async function reiniciarGuia(uid: string) {
-  await escribir({ uid, recorrido: true, paso: 0, globos: [] });
+export function reiniciarGuia(uid: string) {
+  return deAUna(() => escribir({ uid, recorrido: true, paso: 0, globos: [] }));
 }
 
 /** Desde Ajustes, "Volver a ver la guía": los globitos vuelven, también para una cuenta de antes. */
 export const GUIA_DE_NUEVO = 'ascent:guia-de-nuevo';
-export async function verLaGuiaDeNuevo(uid: string) {
-  await escribir({ uid, recorrido: true, paso: 0, globos: [], deNuevo: true });
+export function verLaGuiaDeNuevo(uid: string) {
+  return deAUna(() => escribir({ uid, recorrido: true, paso: 0, globos: [], deNuevo: true }));
 }

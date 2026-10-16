@@ -19089,6 +19089,73 @@ console.log('\n249. Los seis globitos de la primera vez salen de lo que explican
   // Los que salieron con el recorrido no vuelven: el del perfil y el de quién está entrenando.
   chequear('no quedan los globos del perfil ni el de la actividad', /cual="(perfil|actividad)"/.test(de249('movil', 'src', 'PerfilPropio.tsx') + de249('movil', 'src', 'Ranking.tsx')), false);
 }
+
+console.log('\n251. Cacería ronda 9 (16/10): dos globitos que se dan por vistos a la vez');
+{
+  // El primer + cierra el del + y arranca el descanso, que aparece y se da por visto
+  // en el mismo instante: las dos escrituras leían la guía antes de que la otra guardara.
+  const { memoria: mem251 } = await import('./dobles/plataforma.mjs');
+  const G251 = await import('../compartido/guia.ts');
+  mem251.delete('ascent:guia:cuenta-251');
+  await Promise.all([G251.marcarGloboVisto('cuenta-251', 'series'), G251.marcarGloboVisto('cuenta-251', 'descanso')]);
+  const nueva251 = '2026-10-16T12:00:00Z';
+  chequear('los dos quedan vistos: ninguno vuelve a aparecer', [
+    await G251.faltaElGlobo('cuenta-251', 'series', nueva251), await G251.faltaElGlobo('cuenta-251', 'descanso', nueva251),
+  ], [false, false]);
+}
+
+console.log('\n252. Cacería ronda 9: el grupo no junta a dos que se bloquearon (la 90)');
+{
+  const [l, s, x, y, z] = [await nuevoUsuario(), await nuevoUsuario(), await nuevoUsuario(), await nuevoUsuario(), await nuevoUsuario()];
+  // L es amigo de todos; nadie más es amigo de nadie.
+  for (const u of [s, x, y, z]) await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [l, u]);
+  const como = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const uniones = async (u) => (await como(u, 'select mis_uniones() as v'))[0].v;
+  const pedir = async (quien, aQuien) => (await como(quien, 'select pedir_unirse($1) as v', [aQuien]))[0].v;
+  const pedidoDe = async (u, de) => (await uniones(u)).find((p) => p.estado === 'pendiente' && p.otro.id === de)?.id;
+  const lee = async (u, sql, quien) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    const n = (await db.query(sql, [quien])).rows.length;
+    await db.exec('reset role');
+    return n;
+  };
+  for (const u of [l, s, x, y, z]) await como(u, 'select iniciar_sesion()');
+
+  // X entra al grupo de L. S, que bloqueó a X, quiere entrar.
+  await como(s, 'select bloquear($1)', [x]);
+  await pedir(x, l);
+  await como(l, 'select responder_union($1, true)', [await pedidoDe(l, x)]);
+  const pide = await pedir(s, l);
+  const codigo = (await como(l, 'select link_del_grupo() as v'))[0].v;
+  const porLink = (await como(s, 'select unirse_por_link($1) as v', [codigo]))[0].v;
+  chequear('quien bloqueó a alguien del grupo no entra, ni pidiendo ni por el link: se le dice "ocupado"', [pide, porLink, (await uniones(s)).filter((u) => u.estado === 'aceptada').length], ['ocupado', 'ocupado', 0]);
+
+  // Un pedido de antes del bloqueo: X no lo ve, y si lo acepta igual, Z no entra.
+  await pedir(z, l);
+  await como(x, 'select bloquear($1)', [z]);
+  const deZ = await pedidoDe(l, z);
+  const loVeX = (await uniones(x)).some((p) => p.otro.id === z);
+  await como(x, 'select responder_union($1, true)', [deZ]);
+  chequear('el pedido de alguien bloqueado no le aparece a X, y aceptarlo igual no lo une', [loVeX, (await uniones(z)).filter((u) => u.estado === 'aceptada').length], [false, 0]);
+
+  // Ya juntos, y recién ahí el bloqueo: dejan de verse, sin echar a nadie.
+  await pedir(y, l);
+  await como(l, 'select responder_union($1, true)', [await pedidoDe(l, y)]);
+  await como(y, 'select bloquear($1)', [x]);
+  await como(x, 'select publicar_en_vivo($1, $2, $3, $4)', ['press_banca', 1, 3, null]);
+  chequear('si se bloquean estando en el grupo, dejan de verse (la lista, lo publicado, la fila del grupo) y L los sigue viendo a los dos', [
+    (await uniones(y)).some((u) => u.otro.id === x),
+    (await uniones(x)).some((u) => u.otro.id === y),
+    await lee(y, 'select ejercicio from en_vivo where user_id = $1', x),
+    await lee(y, 'select user_id from grupo_miembros where user_id = $1', x),
+    (await uniones(l)).filter((u) => u.estado === 'aceptada').map((u) => u.otro.id).sort(),
+    await lee(l, 'select ejercicio from en_vivo where user_id = $1', x),
+  ], [false, false, 0, 0, [x, y].sort(), 1]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
