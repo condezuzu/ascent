@@ -5,26 +5,24 @@
 // densidad 3. App Store Connect achica solo para los demás iPhone, y la app no es
 // para iPad (`supportsTablet: false`), así que no hacen falta otras.
 //
-// Muestran lo nuevo de la 1.1.0: la racha, entrenar con amigos en vivo, el ranking,
-// el álbum y la tarjeta de la pantalla bloqueada. Siete cuentas descartables con
-// datos que se ven bien, todas borradas al final.
+// CUATRO, en el orden de subida (16/10): la racha, entrenando con el grupo, la tarjeta
+// de la pantalla bloqueada y Social. El álbum se sacó: fotos de progreso de verdad
+// quedarían públicas, y de banco de imágenes no van en una pantalla que dice "tu
+// progreso". Seis cuentas descartables con datos que se ven bien, borradas al final.
 //
 // LA TARJETA DE LA PANTALLA BLOQUEADA ES UNA RECREACIÓN, no una captura: la dibuja
 // iOS y acá no hay iPhone. Está hecha con los colores, tamaños y textos de
 // `movil/targets/descanso/index.swift`, pero la letra no es la de iOS. La buena es
 // la que se saca del teléfono con la tarjeta en pantalla.
 //
-// LAS FOTOS DEL ÁLBUM SON DE RELLENO (degradados) salvo que se le pase una carpeta
-// con fotos de verdad: `--fotos <carpeta>` sube las .jpg de ahí, en orden.
-//
 // NECESITA LA NATIVA EN :8090 y la web en :3020 (la web solo presta la letra).
 //
-//   node --env-file=.env.local supabase/capturas-tienda-11.mjs [--fotos <carpeta>]
+//   node --env-file=.env.local supabase/capturas-tienda-11.mjs [--solo-tarjeta]
 import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { limiteDeSonda, pasarLaEntradaNativa, borrarCuentaDePrueba } from './utiles.mjs';
 import { TEXTOS_ES as T } from '../nucleo/textos.ts';
 
@@ -45,8 +43,6 @@ if (!url || !anon) {
   console.log('Faltan NEXT_PUBLIC_SUPABASE_* en .env.local.');
   process.exit(1);
 }
-const iFotos = process.argv.indexOf('--fotos');
-const CARPETA_FOTOS = iFotos > 0 ? process.argv[iFotos + 1] : null;
 const SOLO_TARJETA = process.argv.includes('--solo-tarjeta');
 
 const sello = Date.now().toString(36);
@@ -112,30 +108,16 @@ try {
     await hacerseAmigos(yo, c);
   }
 
-  // Las fotos del álbum, en los dos últimos meses, como las sube la app.
+  // La foto de hoy, de relleno y colgada del día: sin ella Inicio la pide con un renglón de más.
   const HOY = (await yo.s.rpc('mi_hoy')).data;
-  const reales = CARPETA_FOTOS ? readdirSync(CARPETA_FOTOS).filter((f) => /\.jpe?g$/i.test(f)).sort() : [];
   const lienzo = await (await nav.newContext({ viewport: { width: 900, height: 1200 } })).newPage();
-  const tonos = ['#3d4a66', '#6a5a7e', '#4f6b5c', '#7a5c4a', '#4a5f7a', '#5c4f6e', '#6b6b4f', '#4f5f6b', '#6e4f58'];
-  const cuantas = reales.length || tonos.length;
-  // De la más vieja a la de hoy, cada una en su día: el álbum ordena por subida y fecha por el día.
-  for (let i = cuantas - 1; i >= 0; i--) {
-    const d = new Date(HOY + 'T12:00:00Z');
-    d.setUTCDate(d.getUTCDate() - i * 7);
-    const fecha = d.toISOString().slice(0, 10);
-    let jpg;
-    if (reales.length) jpg = readFileSync(join(CARPETA_FOTOS, reales[i]));
-    else {
-      await lienzo.setContent(`<body style="margin:0;background:radial-gradient(circle at 40% 35%, #c9c4b8, ${tonos[i]} 60%, #111 100%)"></body>`);
-      jpg = await lienzo.screenshot({ type: 'jpeg', quality: 82 });
-    }
-    const ruta = `${yo.uid}/${fecha}-${900 + i}.jpg`;
-    await yo.s.storage.from('fotos').upload(ruta, jpg, { contentType: 'image/jpeg' });
-    // Colgada de su día: de ahí saca la fecha el álbum, y la de hoy deja de pedirse en Inicio.
-    const logId = (await yo.s.from('logs').select('id').eq('user_id', yo.uid).eq('fecha', fecha).maybeSingle()).data?.id ?? null;
-    await yo.s.from('photos').insert({ user_id: yo.uid, storage_path: ruta, visibilidad: 'amigos', log_id: logId });
-  }
+  await lienzo.setContent('<body style="margin:0;background:radial-gradient(circle at 40% 35%, #c9c4b8, #4a5f7a 60%, #111 100%)"></body>');
+  const jpg = await lienzo.screenshot({ type: 'jpeg', quality: 82 });
   await lienzo.context().close();
+  const ruta = `${yo.uid}/${HOY}-900.jpg`;
+  await yo.s.storage.from('fotos').upload(ruta, jpg, { contentType: 'image/jpeg' });
+  const logDeHoy = (await yo.s.from('logs').select('id').eq('user_id', yo.uid).eq('fecha', HOY).maybeSingle()).data?.id ?? null;
+  await yo.s.from('photos').insert({ user_id: yo.uid, storage_path: ruta, visibilidad: 'privada', log_id: logDeHoy });
 
   // Entrar a la nativa sin globitos: la guía de esta cuenta, ya vista.
   await page.goto(NATIVA, { waitUntil: 'domcontentloaded', timeout: 240000 });
@@ -150,14 +132,6 @@ try {
   await page.waitForFunction(() => !!document.querySelector('canvas'), null, { timeout: 120000 });
   await page.waitForTimeout(9000);
   await foto('1-racha', 'Inicio, racha 65: la galaxia');
-
-  await page.getByText(T.nav.social, { exact: true }).last().click({ timeout: 60000 });
-  await page.waitForTimeout(7000);
-  await foto('4-ranking', 'seis en la tabla, de 9 a 112');
-
-  await page.getByText(T.nav.album, { exact: true }).last().click({ timeout: 60000 });
-  await page.waitForTimeout(9000);
-  await foto('5-album', CARPETA_FOTOS ? 'fotos de verdad' : 'fotos de RELLENO (degradados)');
 
   // ENTRENAR JUNTOS: arranco, elijo el ejercicio y sumo una serie (arranca el descanso);
   // Lucía y Juanma entrenan y se unen, cada uno en lo suyo.
@@ -180,10 +154,10 @@ try {
   await amigos.lucia_g.s.rpc('publicar_en_vivo', { p_ejercicio: 'sentadilla', p_serie: 2, p_meta: 4, p_descanso_faltan: 75 });
   await amigos.juanma_r.s.rpc('publicar_en_vivo', { p_ejercicio: 'remo_barra', p_serie: 1, p_meta: 3, p_descanso_faltan: null });
   await page.waitForTimeout(14000);
-  await foto('2a-juntos-inicio', 'Inicio entrenando, con el grupo arriba');
+  await foto('2-entrenando-con-el-grupo', 'Inicio entrenando, con el grupo arriba');
   await page.getByText(T.nav.social, { exact: true }).last().click({ timeout: 60000 });
   await page.waitForTimeout(6000);
-  await foto('2b-juntos-ranking', 'Entrenando contigo: Lucía descansando, Juanma en su serie');
+  await foto('4-social', 'el ranking y, debajo, el grupo: Lucía descansando, Juanma en su serie');
 
   }
 

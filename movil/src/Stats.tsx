@@ -30,6 +30,9 @@ import Estancamiento from './Estancamiento';
 import CalendarioDias from './CalendarioDias';
 import KilosPorSemana from './KilosPorSemana';
 import { useRecargarAlVolver } from './irAPestana';
+import MiRutina from './MiRutina';
+import { eventos } from '@compartido/eventos';
+import { ABRIR_ENTRENAMIENTO, seAcabaDePedir } from './abrirEntrenamiento';
 import { paletaDe } from '@nucleo/paletas';
 import { useArriba } from './zonaSegura';
 
@@ -89,7 +92,14 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const arriba = useArriba(64);
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState('');
-  const [pestana, setPestana] = useState<'general' | 'entrenamiento'>('general');
+  const [pestana, setPestana] = useState<'general' | 'entrenamiento'>(() => (seAcabaDePedir() ? 'entrenamiento' : 'general'));
+  // La fila "Hoy" de Inicio trae acá, a la rutina (16/10).
+  useEffect(() => eventos.escuchar(ABRIR_ENTRENAMIENTO, () => {
+    seAcabaDePedir();
+    setPestana('entrenamiento');
+  }), []);
+  // Mientras se arrastra un ejercicio de la rutina, la pantalla no se mueve.
+  const [arrastrando, setArrastrando] = useState(false);
   const [tocada, setTocada] = useState<number | null>(null);
   // Los grupos de máximos tocados a mano; el resto, abierto si tiene algo.
   const [plegados, setPlegados] = useState<Record<string, boolean>>({});
@@ -230,7 +240,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     <View style={estilos.raiz}>
       {/* El fondo de Stats en la web: tu cuerpo arriba a la derecha, velo 0,72. */}
       <FondoEspacial rango={datos.rango} planeta={datos.planeta} velo={0.72} />
-    <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
+    <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]} scrollEnabled={!arrastrando} keyboardShouldPersistTaps="handled">
       <Text style={estilos.titulo}>{T.stats.titulo}</Text>
 
       <View style={estilos.selector}>
@@ -295,6 +305,9 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
 
       {pestana === 'entrenamiento' && (
         <>
+          {/* TU RUTINA, ARRIBA DE TODO, otra vez (16/10, a pedido): vuelve a Entrenamiento,
+              donde estaba. En Inicio queda la fila de lo que toca hoy, que trae acá. */}
+          <MiRutina visible={pestana === 'entrenamiento'} abrirHoy alArrastrar={setArrastrando} />
           {/* Una fila por músculo, una barra por semana, en series: la misma
               pantalla que la web, con las mismas funciones del núcleo. */}
           <Text style={estilos.seccion}>{T.volumen.titulo}</Text>

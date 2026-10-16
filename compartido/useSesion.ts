@@ -56,6 +56,7 @@ import { hoyISO, restarDias } from '@nucleo/fechas';
 import {
   rutinaParaHoy,
   siguienteEnRutina,
+  despuesDe,
   reengancharDesde,
   ejerciciosEnOrden,
   type SesionRutina,
@@ -1142,7 +1143,20 @@ export function useSesion(
     // con su peso. Si no hay rutina o ya se hicieron todos, el bloque queda en
     // blanco, como siempre.
     const hechos = ejerciciosEnOrden(b.cerrados.map((x) => x.ejercicio));
-    const siguiente = siguienteEnRutina(rutinaRef.current, hechos);
+    // LA RUTINA GUARDADA SE RELEE ACÁ (16/10): si se cambió en medio del entrenamiento,
+    // la sugerencia la sigue desde el bloque que viene.
+    const guardadaAhora = ejerciciosDeHoy(await rutinaActivaDelTelefono(), new Date().getDay()).filter(seVe);
+    if (guardadaAhora.length > 0) {
+      rutinaRef.current = guardadaAhora;
+      rutinaEsGuardada.current = true;
+    }
+    // Sin rutina guardada, lo que SUELE VENIR DESPUÉS del último hecho, en la última
+    // semana (curl de bíceps → martillo); si no hay, la cadena de siempre.
+    const ultimo = hechos[hechos.length - 1];
+    const siguiente =
+      (rutinaEsGuardada.current ? siguienteEnRutina(rutinaRef.current, hechos) : null) ??
+      (ultimo ? despuesDe(sesionesRutinaRef.current, ultimo, hechos, hoyISO()) : null) ??
+      siguienteEnRutina(rutinaRef.current, hechos);
     if (siguiente) await proponerEjercicioSugerido(siguiente);
     else setSugerido(false);
     // `marcar` al final (ver `elegirEjercicio`): con la red colgada, la

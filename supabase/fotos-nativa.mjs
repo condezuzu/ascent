@@ -524,10 +524,9 @@ const RECETAS = {
     await tocar(page, 'rutina-dia-2');
     await page.waitForTimeout(400);
     await foto(page, 'rutina-amigo');
-    // Copiarla (15/10): dice cuál quedó activa y ofrece volver a la de antes.
+    // Copiarla (16/10): una rutina más, y la tuya sigue activa.
     await tocar(page, 'rutina-copiar');
-    await page.getByTestId('rutina-volver').first().scrollIntoViewIfNeeded({ timeout: 30000 });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(2500);
     await foto(page, 'rutina-amigo-copiada');
     return page;
   },

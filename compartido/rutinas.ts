@@ -108,18 +108,18 @@ export async function activarRutina(supabase: Cliente, id: string, dias?: DiaDeS
  * COPIAR LA RUTINA DE UN AMIGO (15/10): queda guardada como tuya y activa, y se
  * devuelve cuál estaba activa antes, para poder volver con un toque.
  */
-export async function copiarRutina(
-  supabase: Cliente,
-  nombre: string,
-  dias: DiaDeSemana[]
-): Promise<{ nueva: string; anterior: { id: string; nombre: string; dias: DiaDeSemana[] } | null } | null> {
+// UNA RUTINA MÁS, NUNCA EN LUGAR DE LA TUYA (16/10, a pedido): la copia queda en la lista
+// y la activa sigue siendo la que era. Activarla parecía reemplazarla. Solo queda activa
+// si no tenías ninguna: ahí no hay nada que reemplazar.
+export async function copiarRutina(supabase: Cliente, nombre: string, dias: DiaDeSemana[]): Promise<{ nueva: string; activa: boolean } | null> {
   const antes = (await cargarMisRutinas(supabase))?.find((r) => r.activa) ?? null;
   // Sus ejercicios propios no viajan: son solo suyos y acá quedarían sin nombre (migración 80).
   const sinAjenos = dias.map((d) => ({ ...d, ejercicios: d.ejercicios.filter((e) => !esPropio(e.ejercicio)) }));
   const nueva = await guardarRutina(supabase, { id: null, nombre, dias: sinAjenos });
-  if (!nueva || !(await activarRutina(supabase, nueva, sinAjenos))) return null;
+  if (!nueva) return null;
+  if (!antes && !(await activarRutina(supabase, nueva, sinAjenos))) return null;
   await cargarMisRutinas(supabase);
-  return { nueva, anterior: antes ? { id: antes.id, nombre: antes.nombre, dias: antes.dias } : null };
+  return { nueva, activa: !antes };
 }
 
 export async function borrarRutina(supabase: Cliente, id: string): Promise<boolean> {

@@ -236,10 +236,11 @@ this version.
 ## La 1.1.0 (16/10/2026)
 
 **Capturas:** `capturas-tienda/1.1.0/`, 1320 × 2868 (6,9"), de
-`supabase/capturas-tienda-11.mjs`. Orden de subida: racha → entrenar juntos (Inicio)
-→ tarjeta de la pantalla bloqueada → Social con el grupo → álbum. La tarjeta del
-script es una RECREACIÓN (la dibuja iOS): va la captura del iPhone. El álbum necesita
-fotos de verdad (`--fotos <carpeta>`); con los degradados de relleno no se sube.
+`supabase/capturas-tienda-11.mjs`. CUATRO, en este orden: racha → entrenando con el
+grupo (Inicio) → tarjeta de la pantalla bloqueada → Social. La tarjeta del script es
+una RECREACIÓN (la dibuja iOS): va la captura del iPhone. **El álbum no va** (decisión
+del 16/10): fotos de progreso de verdad quedan públicas para siempre, y de banco de
+imágenes no van en una pantalla que dice "tu progreso".
 
 ### Qué hay de nuevo (español)
 
@@ -254,12 +255,15 @@ Las fotos cargan más rápido, y el álbum te muestra la primera y la última de
 ### Palabras clave (español): 96 de 100
 
 ```
-gym,rutina,entrenamiento,ejercicios,pesas,musculacion,fuerza,series,pesos,progreso,amigos,acento
+gym,rutina,entrenamiento,ejercicios,pesas,musculacion,fuerza,series,pesos,progreso,amigos,cardio
 ```
 
 Fuera: `racha` y `gimnasio` (están en el subtítulo), `rango` (decidido; además el
 rango no se nombra), `constancia` y `habitos` (las que menos traen gente que busca
-gimnasio; no entraban con las nuevas). `fuerzas` pasó a `fuerza`.
+gimnasio; no entraban con las nuevas). `fuerzas` pasó a `fuerza`. `acento` salió (era
+un error de dictado) y entró `cardio`: la app cuenta la cinta y el tiempo. `streak` y
+`strength` no van en ninguna lista: están en el nombre, que es el mismo en los dos
+idiomas.
 
 ### La ficha en inglés (English U.S.)
 

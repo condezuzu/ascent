@@ -175,11 +175,7 @@ export default function GraficoPasos({
           </Text>
         </View>
         <Ventanas rango={rango} claro={claro} alElegir={(d) => { setRango(d); setTocado(null); }} />
-        <PieDeMeta
-          meta={meta}
-          promedio={promedioDe(semana.map((d) => d.valor).filter((v): v is number => v !== undefined))}
-          alTocar={() => setCambiandoMeta(true)}
-        />
+        <PieDeMeta meta={meta} alTocar={() => setCambiandoMeta(true)} />
         <HojaDeMeta
           visible={cambiandoMeta}
           alCerrar={() => setCambiandoMeta(false)}
@@ -305,11 +301,6 @@ export default function GraficoPasos({
   );
 }
 
-/** El promedio de los días QUE TIENEN dato. Sin ninguno, cero. */
-function promedioDe(valores: number[]): number {
-  return valores.length ? valores.reduce((a, v) => a + v, 0) / valores.length : 0;
-}
-
 /** Las tres ventanas, iguales en los dos dibujos. */
 function Ventanas({
   rango,
@@ -352,20 +343,10 @@ function Ventanas({
  * SE QUEDA TAMBIÉN EN AJUSTES: es la misma pieza, montada en dos lados. Quien
  * la busque donde van las preferencias también la va a encontrar.
  */
-function PieDeMeta({
-  meta,
-  promedio,
-  alTocar,
-}: {
-  meta: number;
-  promedio?: number;
-  alTocar: () => void;
-}) {
+// El promedio de la semana ya no va acá: está arriba del gráfico, grande (16/10).
+function PieDeMeta({ meta, alTocar }: { meta: number; alTocar: () => void }) {
   return (
     <>
-      {promedio !== undefined && (
-        <Text style={estilos.nota}>{T.stats.pasosPorDiaSemana(conMiles(promedio))}</Text>
-      )}
       {/* Un botón de verdad, no un texto subrayado que parecía un link (28/9):
           píldora con borde, del mismo lenguaje que el resto de la app. */}
       <Pressable onPress={alTocar} hitSlop={8} accessibilityRole="button" style={estilos.metaBoton}>

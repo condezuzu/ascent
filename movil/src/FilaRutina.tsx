@@ -1,23 +1,21 @@
 import { useCallback, useEffect, useState, memo } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { useRouter } from 'expo-router';
 import { hayAlgo, tituloDelDia, type DiaDeSemana } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import { eventos, EJERCICIOS_CAMBIO, RUTINA_CAMBIO } from '@compartido/eventos';
 import { miId } from '@compartido/quienSoy';
-import { cargarRutinaParaVer, catalogoDeRutina, type CatalogoDeRutina } from '@compartido/rutinas';
-import { useRecargarAlVolver } from './irAPestana';
+import { cargarRutinaParaVer, catalogoDeRutina, rutinaActivaDelTelefono, type CatalogoDeRutina } from '@compartido/rutinas';
+import { irAPestana, useRecargarAlVolver } from './irAPestana';
+import { pedirEntrenamiento } from './abrirEntrenamiento';
 import { supabase } from './supabase';
 import { C } from './colores';
 
 /**
- * TU RUTINA, EN INICIO (15/10). Un renglón —"HOY  Pecho, hombro y brazo"— que
- * abre la rutina entera. Estaba al fondo de Stats y no la encontraba nadie; acá
- * está donde se mira antes de salir para el gimnasio. No sale mientras se
- * entrena: ahí la rutina ya está proponiendo el ejercicio siguiente.
+ * LO QUE TOCA HOY, EN INICIO (15/10). Un renglón —"HOY  Pecho, hombro y brazo"— que
+ * lleva a la rutina entera, en Stats → Entrenamiento (16/10: la rutina volvió ahí).
+ * No sale mientras se entrena: ahí la rutina ya está proponiendo el ejercicio siguiente.
  */
 function FilaRutina() {
-  const router = useRouter();
   const [dias, setDias] = useState<DiaDeSemana[] | null>(null);
   const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(new Map());
 
@@ -25,7 +23,10 @@ function FilaRutina() {
     const yo = await miId(supabase);
     if (!yo) return;
     const [vista, cat] = await Promise.all([cargarRutinaParaVer(supabase, yo, true), catalogoDeRutina(supabase)]);
-    if (vista) setDias(vista.dias);
+    // SIN SEÑAL AL ABRIR (16/10) la fila desaparecía hasta la próxima recarga —en el
+    // gimnasio, recién al terminar—: cae a la rutina guardada que tiene el teléfono.
+    const dias = vista?.dias ?? (await rutinaActivaDelTelefono())?.dias ?? null;
+    if (dias) setDias(dias);
     setCatalogo(cat);
   }, []);
 
@@ -50,7 +51,10 @@ function FilaRutina() {
     <Pressable
       testID="inicio-rutina"
       style={({ pressed }) => [estilos.fila, pressed && estilos.tocada]}
-      onPress={() => router.push('/rutina')}
+      onPress={() => {
+        irAPestana('stats');
+        pedirEntrenamiento();
+      }}
       accessibilityRole="button"
       accessibilityLabel={`${T.rutina.titulo}: ${texto}`}
     >

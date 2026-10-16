@@ -48,6 +48,8 @@ import { dejarDeEntrenar } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 import FilaRutina from './FilaRutina';
+import DiaDeLaTira from './DiaDeLaTira';
+import { preguntarPorLaRutina } from './preguntarPorLaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
 import { fijarExtras } from '@compartido/tarjeta';
@@ -730,8 +732,15 @@ export default function Inicio({
 
       {!sesion.estado.corriendo && (
       <View style={estilos.tira}>
-        {semana.map((d) => (
-          <View key={d.fecha} style={estilos.tiraDia}>
+        {semana.map((d, i) => (
+          <DiaDeLaTira
+            key={d.fecha}
+            indice={i}
+            hoyRegistrado={d.esHoy && d.estadoDia === 'lleno'}
+            rango={numeroDeRango(racha)}
+            letra={DIAS_SEMANA[deISO(d.fecha).getDay()]}
+            estiloLetra={estilos.letra}
+          >
             <View
               style={[
                 estilos.punto,
@@ -748,8 +757,7 @@ export default function Inicio({
               {d.estadoDia === 'descanso' && <View style={estilos.guion} />}
               {d.estadoDia === 'cubierto' && <View style={estilos.cubierto} />}
             </View>
-            <Text style={estilos.letra}>{DIAS_SEMANA[deISO(d.fecha).getDay()]}</Text>
-          </View>
+          </DiaDeLaTira>
         ))}
       </View>
       )}
@@ -895,6 +903,8 @@ export default function Inicio({
                   if (c && !c.deshizoElDia) {
                     setCierre(c);
                     setMinutosDeHoy(c.minutos);
+                    // ¿Otro día que el de la rutina guardada? Se pregunta (16/10).
+                    void preguntarPorLaRutina(c.bloques);
                   }
                   cargar();
                 }}
@@ -927,7 +937,6 @@ export default function Inicio({
             alaFoto={() => setRegistrarAbierto(true)}
             alPeso={() => setPesoAbierto(true)}
             minutos={minutosDeHoy}
-            logId={logs.find((l) => l.fecha === hoy)?.id ?? null}
           />
           <View style={estilos.resumen}>
             <View style={estilos.resumenCabe}>
@@ -979,7 +988,6 @@ export default function Inicio({
             alaFoto={() => setRegistrarAbierto(true)}
             alPeso={() => setPesoAbierto(true)}
             minutos={minutosDeHoy}
-            logId={logs.find((l) => l.fecha === hoy)?.id ?? null}
           />
           {/* VER LO DE HOY, A UN TOQUE (1.2/5.4). El resumen ya no se borra solo;
               y si lo cerraste con la equis —o recargaste—, esto lo vuelve a
@@ -1138,7 +1146,6 @@ const estilos = StyleSheet.create({
   pasos: { color: '#6a7286', fontSize: 13, marginTop: 14, fontVariant: ['tabular-nums'] },
 
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 34 },
-  tiraDia: { alignItems: 'center', gap: 7 },
   punto: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   lleno: { backgroundColor: '#7e8ca8' },
   vacio: { borderWidth: 1, borderColor: '#2a3040' },

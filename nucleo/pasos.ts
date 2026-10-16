@@ -75,3 +75,22 @@ export function porcentajeDeMeta(hoy: number, meta: number): number {
   if (!(meta > 0)) return 0;
   return Math.min(1, Math.max(0, hoy / meta));
 }
+
+/**
+ * EL PROMEDIO DIARIO DE LA SEMANA (16/10), para Stats: los 7 días ANTES de hoy, solo los
+ * que tienen dato. Hoy no entra: a la mañana, a medias, bajaba el promedio de todos.
+ */
+export function promedioDeLaSemana(pasos: { fecha: string; valor: number }[], hoy: string): number | null {
+  const d = new Date(hoy + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 7);
+  const desde = d.toISOString().slice(0, 10);
+  const de = pasos.filter((p) => p.fecha >= desde && p.fecha < hoy);
+  if (de.length === 0) return null;
+  return Math.round(de.reduce((t, p) => t + p.valor, 0) / de.length);
+}
+
+/** El promedio contra la meta: cuánto por arriba o por abajo. */
+export function contraLaMeta(promedio: number, meta: number): { que: 'arriba' | 'abajo' | 'igual'; diferencia: number } {
+  const diferencia = Math.round(promedio - meta);
+  return diferencia === 0 ? { que: 'igual', diferencia: 0 } : diferencia > 0 ? { que: 'arriba', diferencia } : { que: 'abajo', diferencia: -diferencia };
+}

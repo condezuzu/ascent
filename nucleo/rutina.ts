@@ -141,6 +141,32 @@ function rotacion(conE: SesionRutina[]): string[] {
   return ultima.ejercicios;
 }
 
+/** La sugerencia del siguiente mira solo la última semana (16/10, a pedido: eran cuatro). */
+export const DIAS_DE_LA_SUGERENCIA = 7;
+
+/**
+ * LO QUE SUELE VENIR DESPUÉS DE `ultimo` (16/10): en la sesión más reciente de la
+ * última semana que lo tiene, el primero que le sigue y que hoy no se hizo. Curl de
+ * bíceps → curl martillo. `null` si en la semana no aparece o no le siguió nada.
+ */
+export function despuesDe(sesiones: SesionRutina[], ultimo: string, yaHechos: string[], hoyISO: string): string | null {
+  const hechos = new Set(yaHechos);
+  const recientes = sesiones
+    .filter((s) => {
+      const dd = diasEntre(hoyISO, s.fecha);
+      return dd >= 0 && dd <= DIAS_DE_LA_SUGERENCIA;
+    })
+    .sort(porFechaAsc)
+    .reverse();
+  for (const s of recientes) {
+    const i = s.ejercicios.indexOf(ultimo);
+    if (i < 0) continue;
+    const sigue = s.ejercicios.slice(i + 1).find((e) => !hechos.has(e));
+    if (sigue) return sigue;
+  }
+  return null;
+}
+
 /**
  * EL SIGUIENTE EN LA CADENA: el primero de la rutina que todavía no se hizo.
  * `null` cuando ya se hicieron todos —la rutina propuesta terminó—.
@@ -217,4 +243,27 @@ export function reengancharDesde(sesiones: SesionRutina[], primerEjercicio: stri
     if (i >= 0) return s.ejercicios.slice(i);
   }
   return [primerEjercicio];
+}
+
+/**
+ * EL DÍA QUE SE HIZO, con la forma de un día de rutina (16/10): cada ejercicio una vez,
+ * en el orden en que apareció, con sus series sumadas y los minutos del cardio.
+ */
+export function diaDeLaSesion(bloques: SesionVista['bloques']): { descanso: false; ejercicios: EjercicioDeRutina[] } {
+  return { descanso: false, ejercicios: ejerciciosConSeries(bloques) };
+}
+
+/**
+ * ¿SE PREGUNTA SI CAMBIA EL DÍA DE LA RUTINA? (16/10) Solo si se entrenó algo y no son
+ * los mismos ejercicios que tiene ese día: el orden y las series no cuentan, otro
+ * ejercicio sí. Un día de descanso o vacío en la rutina, con algo hecho, también.
+ */
+export function hayQuePreguntarPorLaRutina(
+  delDia: { descanso: boolean; ejercicios: { ejercicio: string }[] } | undefined,
+  hecho: { ejercicios: { ejercicio: string }[] }
+): boolean {
+  if (hecho.ejercicios.length === 0) return false;
+  const tiene = new Set(delDia && !delDia.descanso ? delDia.ejercicios.map((e) => e.ejercicio) : []);
+  const hizo = new Set(hecho.ejercicios.map((e) => e.ejercicio));
+  return tiene.size !== hizo.size || [...hizo].some((e) => !tiene.has(e));
 }

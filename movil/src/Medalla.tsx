@@ -1,8 +1,9 @@
-import { useEffect, useId, useRef } from 'react';
+import { useContext, useEffect, useId, useRef } from 'react';
 import { Animated, Easing, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { plataforma } from '@plataforma';
 import { C, conAlfa } from './colores';
+import { ContextoVisible } from './pedidoDeFondo';
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, Line, Path } from 'react-native-svg';
 import { CAJA, LADO_ILUMINADO, MATERIALES, trazosDeMedalla, type Trazo } from '@compartido/medallas';
 import type { ClaveMaterial, ZonaMedalla } from '@nucleo/medallas';
@@ -85,9 +86,11 @@ function pintar(t: Trazo, i: number) {
 
 // ── EL DESTELLO (15/10, aprobado en la galería) ──
 //
-// Una franja de luz que cruza UNA medalla por vez, cada 8 a 12 s, con la app a la
-// vista. Las medallas montadas se anotan acá y el reloj elige una al azar: muchas
-// medallas destellando juntas serían una vidriera, no un premio.
+// Una franja de luz que cruza UNA medalla por vez, cada 5 a 7 s (16/10, a pedido: eran
+// 8 a 12), con la app a la vista. Las medallas de la pestaña que se ve se anotan acá y
+// el reloj elige una al azar: muchas destellando juntas serían una vidriera, no un premio.
+// SOLO LAS QUE SE VEN: las pestañas quedan montadas, y sin esto el sorteo caía seguido en
+// una medalla escondida (la cabecera de Inicio) y en el ranking pasaban 12 s sin nada.
 const montadas = new Set<() => void>();
 let reloj: ReturnType<typeof setTimeout> | null = null;
 
@@ -98,12 +101,14 @@ function programar() {
     const todas = [...montadas];
     if (todas.length && plataforma.ciclo.visible()) todas[Math.floor(Math.random() * todas.length)]();
     programar();
-  }, 8000 + Math.random() * 4000);
+  }, 5000 + Math.random() * 2000);
 }
 
 function useDestello(): Animated.Value {
   const avance = useRef(new Animated.Value(0)).current;
+  const seVe = useContext(ContextoVisible);
   useEffect(() => {
+    if (!seVe) return;
     const pasar = () => {
       avance.setValue(0);
       Animated.timing(avance, { toValue: 1, duration: 750, easing: Easing.inOut(Easing.quad), useNativeDriver: true }).start();
@@ -117,7 +122,7 @@ function useDestello(): Animated.Value {
         reloj = null;
       }
     };
-  }, [avance]);
+  }, [avance, seVe]);
   return avance;
 }
 

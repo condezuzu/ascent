@@ -18164,19 +18164,17 @@ console.log('\n225. Copiar la rutina de un amigo avisa cuál quedó activa y dej
   lunes[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }] };
   const mia = await RU225.guardarRutina(cli, { id: null, nombre: 'Entrenamiento 1', dias: lunes });
   const copia = await RU225.copiarRutina(cli, 'Rutina de ana', lunes);
-  const activaTras = (await RU225.cargarMisRutinas(cli)).find((r) => r.activa)?.nombre;
-  const vuelve = await RU225.activarRutina(cli, copia.anterior.id);
-  const activaAlFinal = (await RU225.cargarMisRutinas(cli)).find((r) => r.activa)?.nombre;
-  chequear('copiar deja activa la copia y devuelve la que estaba activa; volver la reactiva', [
-    { id: copia.anterior.id, nombre: copia.anterior.nombre }, activaTras, vuelve, activaAlFinal,
-  ], [{ id: mia, nombre: 'Entrenamiento 1' }, 'Rutina de ana', true, 'Entrenamiento 1']);
+  const tras = await RU225.cargarMisRutinas(cli);
+  chequear('copiar crea una rutina más, «Rutina de ana»: la tuya sigue activa y entera (16/10)', [
+    tras.map((r) => r.nombre).sort(), tras.find((r) => r.activa)?.nombre, copia.activa, tras.find((r) => r.id === mia)?.dias[1].ejercicios.length,
+  ], [['Entrenamiento 1', 'Rutina de ana'], 'Entrenamiento 1', false, 1]);
   const otro = await nuevoUsuario();
   const cliOtro = clienteDe(otro);
   const primera = await RU225.copiarRutina(cliOtro, 'Rutina de beto', lunes);
-  chequear('si no tenía ninguna, no hay a cuál volver', primera.anterior, null);
+  chequear('si no tenía ninguna, la copia queda activa', [primera.activa, (await RU225.cargarMisRutinas(cliOtro)).find((r) => r.activa)?.nombre], [true, 'Rutina de beto']);
   const { T: T225 } = await import('../nucleo/textos.ts');
-  chequear('y en pantalla dice cuál quedó activa y a cuál se vuelve', [T225.rutina.copiada('Rutina de ana'), T225.rutina.volverA('Entrenamiento 1')], [
-    'Copiada y activa: «Rutina de ana». La cambias en Tu rutina, en Inicio.', 'Volver a «Entrenamiento 1»',
+  chequear('y en pantalla dice dónde quedó', [T225.rutina.copiada('Rutina de ana'), T225.rutina.copiadaActiva('Rutina de beto')], [
+    'Copiada como «Rutina de ana», junto a las tuyas. La eliges en Stats, en Entrenamiento.', 'Copiada y activa: «Rutina de beto». La cambias en Stats, en Entrenamiento.',
   ]);
 
   // ---- EL CARTEL Y LA TARJETA ----
@@ -18357,12 +18355,13 @@ console.log('\n229. La rutina: en Inicio, en su pantalla, y se ordena arrastrand
   const de229 = (...p) => leer229(join(R229, ...p), 'utf8').replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const inicio = de229('movil', 'src', 'Inicio.tsx');
   const fila = de229('movil', 'src', 'FilaRutina.tsx');
-  chequear('Tu rutina está en Inicio (no mientras se entrena), abre su pantalla, y ya no está en Stats', [
+  // 16/10, a pedido: la rutina vuelve a Stats → Entrenamiento; en Inicio queda lo que toca hoy, que trae ahí.
+  chequear('lo que toca hoy está en Inicio (no mientras se entrena) y lleva a la rutina, que volvió a Stats → Entrenamiento', [
     /\{!sesion\.estado\.corriendo && <FilaRutina \/>\}/.test(inicio),
-    /router\.push\('\/rutina'\)/.test(fila),
+    /irAPestana\('stats'\);\s*pedirEntrenamiento\(\);/.test(fila),
     hay229(join(R229, 'movil', 'app', 'rutina.tsx')),
-    /<MiRutina/.test(de229('movil', 'src', 'Stats.tsx')),
-  ], [true, true, true, false]);
+    /<MiRutina visible=\{pestana === 'entrenamiento'\}/.test(de229('movil', 'src', 'Stats.tsx')),
+  ], [true, true, false, true]);
   chequear('el renglón se rearma cuando se guarda, activa o borra una rutina', [
     /eventos\.escuchar\(RUTINA_CAMBIO/.test(fila),
     (de229('compartido', 'rutinas.ts').match(/eventos\.emitir\(RUTINA_CAMBIO\)/g) ?? []).length,
@@ -18372,8 +18371,8 @@ console.log('\n229. La rutina: en Inicio, en su pantalla, y se ordena arrastrand
     /onPanResponderRelease: \(\) => ultimo\.current\.soltar\(true\)/.test(arr),
     /ultimo\.current = \{ soltar, correrLasOtras, alto, n: filas\.length \}/.test(arr),
   ], [true, true]);
-  chequear('mientras se arrastra, la pantalla de la rutina no hace scroll; y el editor mueve con moverEjercicio', [
-    /scrollEnabled=\{!arrastrando\}/.test(de229('movil', 'src', 'PantallaRutina.tsx')),
+  chequear('mientras se arrastra, Stats (donde volvió la rutina, 16/10) no hace scroll; y el editor mueve con moverEjercicio', [
+    /scrollEnabled=\{!arrastrando\}/.test(de229('movil', 'src', 'Stats.tsx')) && /<MiRutina visible=\{pestana === 'entrenamiento'\} abrirHoy alArrastrar=\{setArrastrando\} \/>/.test(de229('movil', 'src', 'Stats.tsx')),
     /alMover=\{\(desde, hasta\) => con\(moverEjercicio\(actual\.dias, d, desde, hasta\)\)\}/.test(de229('movil', 'src', 'MiRutina.tsx')),
   ], [true, true]);
 }
@@ -18520,11 +18519,14 @@ console.log('\n233. La meta de pasos se festeja una vez por día, y el empujón 
     // La meta se cambia ahí mismo (vuelta 7): mandaba a Ajustes, donde no estaba.
     /onPress=\{compacto \? undefined : \(\) => setCambiandoMeta\(true\)\}/.test(pasos) && /<HojaDeMeta visible=\{cambiandoMeta\}/.test(pasos),
   ], [true, true]);
-  chequear('el día sin foto resalta la foto y dice el porqué; el mes con una sola foto dice qué trae la segunda', [
-    /if \(vivo && !error\) setSinFoto\(\(data \?\? \[\]\)\.length === 0\);/.test(de233('movil', 'src', 'DiaListo.tsx')),
-    (de233('movil', 'src', 'Inicio.tsx').match(/logId=\{logs\.find\(\(l\) => l\.fecha === hoy\)\?\.id \?\? null\}\n          \/>/g) ?? []).length,
+  // 16/10, a pedido: sin empujón a la foto (ni la frase ni la pastilla resaltada).
+  const { TEXTOS_ES: T233 } = await import('../nucleo/textos.ts');
+  const { EN: EN233 } = await import('../nucleo/textos-en.ts');
+  chequear('el día sin foto ya no empuja a sacarla, en ningún idioma; el mes con una sola foto sigue diciendo qué trae la segunda', [
+    /setSinFoto|foto-empuje|resalta[=?]/.test(de233('movil', 'src', 'DiaListo.tsx')),
+    'fotoEmpuje' in T233.inicio || 'fotoEmpuje' in EN233.inicio,
     /\{!par && m\.fotos\.length === 1 && m\.clave === mesDeHoy && <Text testID="album-una-mas"/.test(de233('movil', 'src', 'Album.tsx')),
-  ], [true, 2, true]);
+  ], [false, false, true]);
 }
 console.log('\n234. La pasada de lentitud: el fondo se pausa tapado, los relojes se tickean solos, las pestañas no se redibujan todas (15/10)');
 {
@@ -18795,8 +18797,6 @@ console.log('\n240. Cacería del 15/10, vuelta 6: la marca de faltan al reabrir;
   sumarWeb(true, (o) => llamadas.push(o ?? null))();
   sumarWeb(false, (o) => llamadas.push(o ?? null))();
   chequear('el + de la web sobre un cardio cuenta la vuelta sin descanso (y ningún botón le pasa el clic a serieHecha)', [llamadas, (bw.match(/onClick=\{alSumar\}/g) ?? []).length], [[{ sinDescanso: true }, null], 0]);
-  // Proxy: DiaListo se probó montado en la cacería; acá solo se pinea el oyente.
-  chequear('volver a Inicio vuelve a mirar si hoy tiene foto (quitarla en el Álbum no avisa)', /eventos\.escuchar\(PESTANA_ACTIVA, \(cual\) => cual === 'inicio' && mirar\(\)\)/.test(de240('movil', 'src', 'DiaListo.tsx')), true);
 
   // LA VIDA DE UN DÍA QUE AL FINAL FUISTE (la 84), por el mismo camino que la persona.
   async function vida240(aTiempo) {
@@ -19261,6 +19261,66 @@ console.log('\n254. Cacería ronda 10: la tarjeta no se reenvía por milisegundo
     TJ254.extrasNuevos(antes, { companero: 'lucia', finCompanero: 0 }).finCompanero,
     TJ254.extrasNuevos(antes, { pasos: 20 }).pasos,
   ], [100000, 160000, 100040, 0, 20]);
+}
+
+console.log('\n255. La sugerencia del siguiente sale de lo que hiciste después de ese ejercicio la semana pasada (16/10)');
+{
+  const RU255 = await import('../nucleo/rutina.ts');
+  const { restarDias } = await import('../nucleo/fechas.ts');
+  const hoy = '2026-10-16';
+  const s = (hace, ejercicios) => ({ fecha: restarDias(hoy, hace), ejercicios });
+  // Hace 3 días: curl de bíceps → martillo. Hace 20: curl → predicador (fuera de la semana).
+  const historia = [s(20, ['banca', 'curl_biceps', 'curl_predicador']), s(3, ['remo', 'curl_biceps', 'curl_martillo', 'frances'])];
+  chequear('después del curl de bíceps, el martillo (lo de la semana pasada); lo ya hecho se salta; lo de hace 20 días no cuenta', [
+    RU255.despuesDe(historia, 'curl_biceps', ['curl_biceps'], hoy),
+    RU255.despuesDe(historia, 'curl_biceps', ['curl_biceps', 'curl_martillo'], hoy),
+    RU255.despuesDe(historia, 'banca', ['banca'], hoy),
+    RU255.despuesDe(historia, 'frances', ['frances'], hoy),
+  ], ['curl_martillo', 'frances', null, null]);
+  chequear('si la semana pasada cambió el orden, manda la más reciente', RU255.despuesDe([s(6, ['curl_biceps', 'curl_predicador']), s(2, ['curl_biceps', 'curl_martillo'])], 'curl_biceps', ['curl_biceps'], hoy), 'curl_martillo');
+  const ses = (await import('node:fs')).readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'useSesion.ts'), 'utf8');
+  chequear('la sesión la usa al cerrar cada bloque, y relee la rutina guardada (si cambió, la sugerencia la sigue)', [
+    /despuesDe\(sesionesRutinaRef\.current, ultimo, hechos, hoyISO\(\)\)/.test(ses),
+    /const guardadaAhora = ejerciciosDeHoy\(await rutinaActivaDelTelefono\(\), new Date\(\)\.getDay\(\)\)/.test(ses),
+  ], [true, true]);
+}
+
+console.log('\n256. El promedio diario de pasos de la semana, en Stats y contra la meta (16/10)');
+{
+  const PA256 = await import('../nucleo/pasos.ts');
+  const hoy = '2026-10-16';
+  // Hoy (a medias) no entra; lo de hace 8 días tampoco; los días sin dato no bajan el promedio.
+  const pasos = [
+    { fecha: '2026-10-08', valor: 30000 },
+    { fecha: '2026-10-10', valor: 6000 },
+    { fecha: '2026-10-12', valor: 9000 },
+    { fecha: '2026-10-15', valor: 12000 },
+    { fecha: '2026-10-16', valor: 800 },
+  ];
+  chequear('el promedio de los 7 días antes de hoy, solo con los que tienen dato', [PA256.promedioDeLaSemana(pasos, hoy), PA256.promedioDeLaSemana([], hoy), PA256.promedioDeLaSemana([{ fecha: hoy, valor: 5000 }], hoy)], [9000, null, null]);
+  chequear('y contra la meta: arriba, abajo o justo', [PA256.contraLaMeta(9000, 8000), PA256.contraLaMeta(7400, 8000), PA256.contraLaMeta(8000, 8000)], [
+    { que: 'arriba', diferencia: 1000 }, { que: 'abajo', diferencia: 600 }, { que: 'igual', diferencia: 0 },
+  ]);
+}
+
+console.log('\n257. Al terminar, si hiciste otro día que el de la rutina guardada, se pregunta (16/10)');
+{
+  const RU257 = await import('../nucleo/rutina.ts');
+  const b = (ejercicio, series, minutos) => (minutos ? { ejercicio, series, minutos } : { ejercicio, series });
+  const hecho = RU257.diaDeLaSesion([b('press_banca', 3), b('remo_barra', 4), b('press_banca', 1), b('cinta', 1, 20)]);
+  chequear('el día de la sesión: cada ejercicio una vez, en orden, con sus series y los minutos del cardio', hecho, {
+    descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }, { ejercicio: 'remo_barra', series: 4 }, { ejercicio: 'cinta', series: 1, minutos: 20 }],
+  });
+  const dia = (ids) => ({ descanso: false, ejercicios: ids.map((id) => ({ ejercicio: id, series: 3 })) });
+  chequear('mismos ejercicios (aunque cambien el orden o las series) no pregunta; otros, un día de descanso o uno vacío, sí', [
+    RU257.hayQuePreguntarPorLaRutina(dia(['remo_barra', 'press_banca', 'cinta']), hecho),
+    RU257.hayQuePreguntarPorLaRutina(dia(['press_banca', 'sentadilla']), hecho),
+    RU257.hayQuePreguntarPorLaRutina({ descanso: true, ejercicios: [] }, hecho),
+    RU257.hayQuePreguntarPorLaRutina(dia([]), hecho),
+    RU257.hayQuePreguntarPorLaRutina(dia(['press_banca']), { descanso: false, ejercicios: [] }),
+  ], [false, true, true, true, false]);
+  const ini257 = (await import('node:fs')).readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'Inicio.tsx'), 'utf8');
+  chequear('Inicio pregunta después de Terminar, con los bloques que se guardaron', /if \(c && !c\.deshizoElDia\) \{[\s\S]{0,200}void preguntarPorLaRutina\(c\.bloques\);/.test(ini257), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
