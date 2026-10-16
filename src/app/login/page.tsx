@@ -17,6 +17,8 @@ export default function Login() {
   const router = useRouter();
   const supabase = crearCliente();
   const [modo, setModo] = useState<Modo>('entrar');
+  // Viniendo de la entrada, el formulario entra como entra cada pantalla de ella (16/10): antes aparecía de golpe.
+  const [deLaEntrada, setDeLaEntrada] = useState(false);
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');
@@ -121,6 +123,7 @@ export default function Login() {
           // próxima vez la ve entera, que es lo que corresponde.
           void anotarEntradaVista();
           setModo(destino === 'crear' ? 'crear' : 'entrar');
+          setDeLaEntrada(true);
           setEntrada(false);
         }}
       />
@@ -130,7 +133,7 @@ export default function Login() {
   return (
     <>
       <FondoEspacial rango={1} vacio esquina="centro" velo={0.55} />
-      <div className="centrado">
+      <div className={`centrado ${deLaEntrada ? 'entrada-pantalla' : ''}`}>
         <div className="marca-app">{T.entrar.marca}</div>
 
         {/* Si faltan o están cortadas las variables de entorno, no tiene
