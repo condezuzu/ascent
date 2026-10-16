@@ -9077,7 +9077,7 @@ console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
   const antesDeLaRacha = ini128.slice(0, ini128.indexOf('<RachaConRotulo'));
   chequear('y no cuelga de que no haya sesion',
     /\{!sesion\.estado\.corriendo && \(\s*<>\s*$/.test(antesDeLaRacha), false);
-  chequear('el globo de las series se cierra con el primer +', /cual="series" cerrarCuando=\{sesion\.estado\.series > 0\}/.test(inicio), true);
+  chequear('el globo de las series sale del + y se cierra con el primer +', /globoDelMas=\{\s*<GloboPrimeraVez cual="series" apuntaA="\.bloque-mas"[^>]*cerrarCuando=\{sesion\.estado\.series > 0\}/.test(inicio), true);
   chequear('sin la linea social en Inicio (esta en Ranking)', /linea-social|sigueSubiendo/.test(inicio), false);
   const accion = de128('src', 'components', 'AccionPrincipal.tsx');
   chequear('el hueco de abajo lo mide la accion anclada', /setProperty\('--alto-accion'/.test(accion) && /new ResizeObserver\(publicar\)/.test(accion), true);

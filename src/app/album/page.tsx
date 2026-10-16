@@ -14,6 +14,7 @@ import Nav from '@/components/Nav';
 import PantallaDeslizable, { useEsperar } from '@/components/PantallaDeslizable';
 import VisorFoto from '@/components/VisorFoto';
 import NoCargo from '@/components/NoCargo';
+import GloboPrimeraVez from '@/components/GloboPrimeraVez';
 import { T } from '@nucleo/textos';
 
 export default function Album() {
@@ -178,7 +179,7 @@ function Grilla({ meses, alAbrir }: { meses: ReturnType<typeof porMes>; alAbrir:
 
   return (
     <>
-      {meses.map((m) => (
+      {meses.map((m, k) => (
         <div className="album-mes" key={m.clave}>
           <h3>{m.titulo}</h3>
           <div className="album-grilla en-orden">
@@ -194,7 +195,7 @@ function Grilla({ meses, alAbrir }: { meses: ReturnType<typeof porMes>; alAbrir:
                   style={{ '--i': i } as React.CSSProperties}
                 >
                   {src && (
-                    // <img> y no next/image: son URLs firmadas de Supabase que vencen en una hora, y el optimizador las cachearia vencidas.
+                    // <img> y no next/image: son URLs firmadas de Supabase que vencen en un día, y el optimizador las cachearia vencidas.
                     <img
                       src={src}
                       alt=""
@@ -215,6 +216,12 @@ function Grilla({ meses, alAbrir }: { meses: ReturnType<typeof porMes>; alAbrir:
               );
             })}
           </div>
+          {/* EL GLOBITO DEL ÁLBUM (15/10): en el medio y apuntando a las fotos, debajo del primer mes. */}
+          {k === 0 && (
+            <GloboPrimeraVez cual="album" apuntaA=".album-grilla" alinear="centro" vistoAlMostrar>
+              {T.globos.album}
+            </GloboPrimeraVez>
+          )}
         </div>
       ))}
     </>
