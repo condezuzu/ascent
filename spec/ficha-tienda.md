@@ -231,6 +231,93 @@ The interface is in Spanish (Latin America); that is the app's only language in
 this version.
 ```
 
+---
+
+## La 1.1.0 (16/10/2026)
+
+**Capturas:** `capturas-tienda/1.1.0/`, 1320 × 2868 (6,9"), de
+`supabase/capturas-tienda-11.mjs`. Orden de subida: racha → entrenar juntos (Inicio)
+→ tarjeta de la pantalla bloqueada → Social con el grupo → álbum. La tarjeta del
+script es una RECREACIÓN (la dibuja iOS): va la captura del iPhone. El álbum necesita
+fotos de verdad (`--fotos <carpeta>`); con los degradados de relleno no se sube.
+
+### Qué hay de nuevo (español)
+
+```
+Entrena con tus amigos en vivo: ves su ejercicio, su serie y cuánto le queda de descanso. En grupos de hasta 10, y se suman con un link.
+
+La tarjeta de la pantalla bloqueada te acompaña todo el entrenamiento: la serie, el descanso, tus pasos y el descanso de tu compañero.
+
+Las fotos cargan más rápido, y el álbum te muestra la primera y la última de cada mes.
+```
+
+### Palabras clave (español): 96 de 100
+
+```
+gym,rutina,entrenamiento,ejercicios,pesas,musculacion,fuerza,series,pesos,progreso,amigos,acento
+```
+
+Fuera: `racha` y `gimnasio` (están en el subtítulo), `rango` (decidido; además el
+rango no se nombra), `constancia` y `habitos` (las que menos traen gente que busca
+gimnasio; no entraban con las nuevas). `fuerzas` pasó a `fuerza`.
+
+### La ficha en inglés (English U.S.)
+
+Nombre `Ascent — Streak & Strength` (26) · subtítulo `Gym habit tracker with friends`
+(30) · palabras clave (97):
+
+```
+workout,weightlifting,sets,reps,routine,training,progress,fitness,bodybuilding,powerlifting,timer
+```
+
+What's New:
+
+```
+Train with your friends, live: see their exercise, their set and how much rest they have left. Groups of up to 10 — send a link and they're in.
+
+The Lock Screen card now stays with you for the whole workout: your set, your rest, your steps and your partner's rest.
+
+Photos load faster, and your album shows the first and last photo of every month.
+
+Ascent now speaks English.
+```
+
+Description:
+
+```
+Ascent counts the days you train. One tap a day keeps your streak alive — and now your friends can train right alongside you.
+
+TRAIN TOGETHER, LIVE
+Start a workout and see what your friends are doing in real time: their exercise, their set, and how much rest they have left. Train in groups of up to 10. Send a link and they join your group.
+
+YOUR WORKOUT ON THE LOCK SCREEN
+Pick an exercise and your Lock Screen shows the set you're on and the session clock. Between sets it counts down your rest, with your steps and your partner's rest underneath. No unlocking, no opening the app.
+
+A STREAK THAT DOESN'T RESET TO ZERO
+Missing a day doesn't erase three months. Your streak drops back a little and keeps going, because a number that can be wiped out completely is the kind that makes you quit on Thursday and not come back on Friday.
+
+REST DAYS ARE YOURS
+Choose the days of the week you rest, and those days never break anything. Changing your routine never rewrites the past: the days you've earned stay earned.
+
+THE DAY LOGS ITSELF
+Mark your gym once, standing at the door. After that, getting there logs the day for you.
+
+COUNT YOUR SETS AS YOU GO
+Tap one big button after each set, easy to hit one-handed with your phone on the bench. Add the weight if you want, and next time it's already filled in. The rest timer alerts you even with your phone in your pocket.
+
+YOUR STRENGTH, IN ONE NUMBER
+Log your squat, bench press and deadlift, and Ascent works out your DOTS score, which compares strength across different body weights. It's optional: everything else works without it.
+
+FRIENDS, WITHOUT THE NOISE
+A ranking with the people you add, and nothing else. No comments, no likes, no strangers. Every strength record earns a medal that shows up next to your name.
+
+YOUR PROGRESS IN PHOTOS
+Add a photo to the day and watch your album fill up, month by month. Photos are private by default: you choose, one by one, which ones your friends can see.
+
+WHAT YOU WON'T FIND
+No ads. No tracking. Nothing is sold or shared. Your body weight is visible only to you, and so is your gym's location: it's a point you picked, not a history of where you've been.
+```
+
 ## Lo demás de la ficha
 
 - **URL de privacidad:** `https://ascent-blush-seven.vercel.app/privacidad`
