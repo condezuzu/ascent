@@ -1,7 +1,7 @@
 # La prueba en el gimnasio (16/10/2026)
 
 Dos guiones. El primero es para la app de **telefono** (la build `ff2b55a6`, 1.1.0 (8),
-con la OTA del 16/10 a la noche). El segundo es para probar **entrenar con un amigo en
+con la OTA del 18/10). El segundo es para probar **entrenar con un amigo en
 vivo** con la app de la **App Store** en los dos teléfonos.
 
 Cada paso dice qué hacer, qué tiene que pasar y qué hacer si no pasa. Cuando algo falla:
@@ -16,7 +16,7 @@ se encuentra casi todo sin volver a probar.
 1. **Que la OTA esté puesta.** Abrí la app, cerrala del todo (deslizar hacia arriba en el
    selector de apps) y abrila otra vez. La actualización se baja en la primera apertura y
    se aplica en la segunda.
-   - **Qué esperar:** en Diagnóstico, «actualización 01a146ca».
+   - **Qué esperar:** en Diagnóstico, «actualización 01a14fa0».
    - **Si no:** repetí cerrar y abrir con señal. Si después de dos veces sigue otra,
      anotá lo que dice y mandámelo: el resto de la prueba no sirve con otra versión.
 2. **Las Actividades en vivo prendidas.** Ajustes del iPhone → Ascent → Actividades en vivo.
