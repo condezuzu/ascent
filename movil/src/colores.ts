@@ -22,6 +22,9 @@ export const C = {
   error: '#e8705f',
   // El punto de "en vivo": quien está entrenando ahora (Ranking, la entrada).
   vivo: '#5fd08a',
+  // Solo para el texto del botón «Fui, corregí el día» sobre los fondos oscuros del rango
+  // (18/10): con `tinta` no llegaba a 4,5:1 en los rangos 1 y 2 ni con Neptuno.
+  blanco: '#ffffff',
 };
 
 /**

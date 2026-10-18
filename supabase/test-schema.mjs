@@ -19424,6 +19424,34 @@ console.log('\n261. El cuadro de la vida: Sí la usa, No la guarda, y «Fui, cor
     false,
   ]);
 }
+console.log('\n262. El texto de «Fui, corregí el día»: blanco u oscuro según el fondo, y 4,5:1 en todas las paletas (18/10)');
+{
+  // Sin la vista: la regla y los colores son los mismos que usa el botón (se pinea abajo).
+  const { readFileSync: leer262 } = await import('node:fs');
+  const P262 = await import('../nucleo/paletas.ts');
+  const { contraste, textoSobre } = await import('../nucleo/contraste.ts');
+  const { C: C262 } = await import('../movil/src/colores.ts');
+  const boton = leer262(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'RachaSalvada.tsx'), 'utf8');
+  chequear('el botón: fondo del principal del rango, texto elegido entre el blanco y C.fondo; C.tinta sin tocar', [
+    /backgroundColor: pal\.principal/.test(boton),
+    /color: textoSobre\(pal\.principal, \[C\.blanco, C\.fondo\]\)/.test(boton),
+    [C262.blanco, C262.fondo, C262.tinta],
+  ], [true, true, ['#ffffff', '#05060a', '#e8ecf6']]);
+  const fondos = [
+    ...[1, 2, 3, 4, 5, 6, 7].map((r) => [`rango ${r}`, P262.PALETAS_RANGO[r].principal]),
+    ...Object.entries(P262.PALETAS_PLANETA).map(([k, p]) => [`rango 4 / ${k}`, p.principal]),
+  ];
+  const opciones = [C262.blanco, C262.fondo];
+  const elegido = (f) => textoSobre(f, opciones);
+  chequear(`recorre los 7 rangos y los ${Object.keys(P262.PALETAS_PLANETA).length} planetas del 4`, fondos.length >= 17, true);
+  chequear('en cada fondo el texto elegido es el de más contraste',
+    fondos.filter(([, f]) => opciones.some((o) => contraste(o, f) > contraste(elegido(f), f))).map(([n]) => n), []);
+  chequear('ninguna combinación queda por debajo de 4,5:1',
+    fondos.map(([n, f]) => [n, Math.round(contraste(elegido(f), f) * 100) / 100]).filter(([, c]) => c < 4.5), []);
+  chequear('rango 1 y rango 2 con blanco, rango 4 con Marte con el oscuro', [
+    elegido(P262.PALETAS_RANGO[1].principal), elegido(P262.PALETAS_RANGO[2].principal), elegido(P262.PALETAS_PLANETA.Marte.principal),
+  ], ['#ffffff', '#ffffff', '#05060a']);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

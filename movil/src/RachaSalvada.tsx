@@ -4,6 +4,7 @@ import { DIAS_SEMANA, deISO, fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import { paletaDe } from '@nucleo/paletas';
+import { textoSobre } from '@nucleo/contraste';
 import { C } from './colores';
 import DiaDeLaTira from './DiaDeLaTira';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
@@ -189,7 +190,7 @@ export default function RachaSalvada({
                   disabled={ocupado}
                   accessibilityRole="button"
                 >
-                  <Text style={estilos.corregirTexto}>
+                  <Text style={[estilos.corregirTexto, { color: textoSobre(pal.principal, [C.blanco, C.fondo]) }]}>
                     {paso === 'corrigiendo' ? T.sesion.guardando : T.impulso.salvada.fuiCorregi}
                   </Text>
                 </Pressable>
@@ -249,9 +250,10 @@ const estilos = StyleSheet.create({
   solidoTexto: { color: C.fondo, fontSize: 16, fontWeight: '600' },
   borde: { borderWidth: 1, borderColor: C.lineaFuerte },
   bordeTexto: { color: C.tinta, fontSize: 16 },
-  // Chico, relleno con el principal del rango y texto claro (opción B, 18/10): la tercera
-  // salida. El claro no sirve: en rango 3 es el mismo color que «Sí» (C.claro).
+  // Chico, relleno con el principal del rango (opción B, 18/10): la tercera salida. El claro
+  // no sirve: en rango 3 es el mismo color que «Sí» (C.claro). El texto, blanco u oscuro
+  // según cuál contraste más con ese fondo: va del violeta oscuro al amarillo.
   corregir: { marginTop: 12, borderRadius: 2, borderWidth: 1, paddingVertical: 10, alignItems: 'center' },
-  corregirTexto: { fontSize: 14, fontWeight: '600', color: C.tinta },
+  corregirTexto: { fontSize: 14, fontWeight: '600' },
   peligro: { color: C.error },
 });
