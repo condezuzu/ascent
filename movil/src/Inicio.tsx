@@ -50,7 +50,7 @@ import PesoHoja from './PesoHoja';
 import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
-import { pedirDia } from './abrirDia';
+import { corregirDia } from '@compartido/dia';
 import { preguntarPorLaRutina } from './preguntarPorLaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
@@ -1084,12 +1084,17 @@ export default function Inicio({
           rachaSiGuarda={rachaSiSeDevuelve(perfil.racha_actual)}
           semana={semanaDe(vidaUsada.dias[vidaUsada.dias.length - 1])}
           rango={numeroDeRango(racha)}
-          // "Sí fui": al calendario de Stats con ese día abierto, que es donde se corrige.
-          alCorregir={(fecha) => {
-            vidaMostrada.current = false;
-            setVidaUsada(null);
-            pedirDia(fecha);
-            irAPestana('stats');
+          planeta={planeta}
+          // "FUI, CORREGÍ EL DÍA" (18/10): el mismo registro que "Fui" en Corregir días, para
+          // cada día del aviso. La vida no se devuelve aparte: un día con "Fui" ya no la
+          // cuenta como usada (migración 84), y devolverla además sería sumar una de más.
+          alCorregir={async () => {
+            for (const fecha of vidaUsada.dias) {
+              const r = await corregirDia(supabase, perfil.id, fecha, 'fui');
+              if (r.error) return false;
+            }
+            await cargar();
+            return true;
           }}
           alGuardar={async () => {
             // Devolver y volver a evaluar la pérdida van juntos en la base.

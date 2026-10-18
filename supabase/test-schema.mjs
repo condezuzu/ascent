@@ -3776,6 +3776,11 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
   // ahí deja de proteger de nada. Más vale una lista incompleta que una que se
   // ignora.
   const MODISMOS = ['acá', 'al toque', 'che', 'laburo', 'pileta', 'ojo:', 'ojo,'];
+  // LA ÚNICA EXCEPCIÓN (18/10, a pedido): el cuadro del aviso de la vida dice «Faltaste acá».
+  // Pasan esas dos cadenas enteras y nada más; cualquier otro «acá» sigue fallando.
+  const ACA_PERMITIDO = new Set(['faltaste acá. ¿usar la vida?', 'faltaste acá. ¿usar las vidas?']);
+  // Y la del voseo, igual de angosta (18/10, a pedido): el botón «Fui, corregí el día».
+  const CORREGI_PERMITIDO = new Set(['fui, corregí el día']);
 
   const fallas = [];
   const revisar = (donde, s) => {
@@ -3784,6 +3789,7 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
     // pasaba (15/9). Se cambian las secuencias de escape por un espacio.
     const bajo = s.replace(/\\[nrt]/g, ' ').toLowerCase();
     for (const v of VOSEO) {
+      if (v === 'corregí' && CORREGI_PERMITIDO.has(bajo)) continue;
       if (new RegExp(`(^|[^a-záéíóúñ])${v}([^a-záéíóúñ]|$)`, 'i').test(bajo)) {
         fallas.push(`${donde} -> voseo "${v}"`);
       }
@@ -3792,6 +3798,7 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
       fallas.push(`${donde} -> regla 4: para una foto el verbo es "quitar"`);
     }
     for (const m of MODISMOS) {
+      if (m === 'acá' && ACA_PERMITIDO.has(bajo)) continue;
       // Con frontera de palabra, igual que el voseo: buscado por substring,
       // "ojo," pegaba adentro de "[flojo, setFlojo]".
       const esc = m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -19342,33 +19349,80 @@ console.log('\n260. Antes de mandar a Apple: lee el perfil adentro del .ipa y nu
   chequear('no llama a eas submit en ningún caso, ni habla con Apple', [/submit/i.test(fuente), /appstoreconnect|apple\.com|asc /i.test(fuente)], [false, false]);
 }
 
-console.log('\n261. El cuadro de la vida: Sí la usa, No la guarda, y "Sí fui" solo con un entreno en Salud (18/10)');
+console.log('\n261. El cuadro de la vida: Sí la usa, No la guarda, y «Fui, corregí el día» marca el día sin gastarla (18/10)');
 {
-  // Proxies del código: el cuadro se probó montado en la vista web (sin Salud, sin el link).
-  const { readFileSync: leer261 } = await import('node:fs');
-  const de261 = (...p) => leer261(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  // El código, por sus caminos (la ventana se probó montada en la vista web).
+  const { readFileSync: leer261, existsSync: existe261 } = await import('node:fs');
+  const raiz261 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de261 = (...p) => leer261(join(raiz261, ...p), 'utf8').replace(/\r\n/g, '\n');
   const v = de261('movil', 'src', 'RachaSalvada.tsx');
   const ini = de261('movil', 'src', 'Inicio.tsx');
-  const stats = de261('movil', 'src', 'Stats.tsx');
-  const cal = de261('movil', 'src', 'CalendarioDias.tsx');
-  chequear('Sí cierra (la vida queda usada), No la devuelve, y el link sale solo con un true de Salud', [
+  chequear('Sí cierra (la vida queda usada), No la devuelve, y el botón nuevo corrige con uno o varios días, sin Salud ni Stats', [
     /testID="vida-si"[^>]*onPress=\{alCerrar\}/.test(v),
     /testID="vida-no"[^>]*onPress=\{\(\) => void guardar\(\)\}/.test(v),
-    /entrenoEse\(d\)\.catch\(\(\) => null\)[\s\S]{0,120}r\.lastIndexOf\(true\)/.test(v),
-    /\{diaEntrenado && \(\s*<Pressable testID="vida-corregir"/.test(v),
+    /testID="vida-corregir"[\s\S]{0,200}onPress=\{\(\) => void corregir\(\)\}/.test(v),
+    /\{uno && \(\s*<Pressable testID="vida-corregir"/.test(v),
+    /setPaso\(ok \? 'corregida' : 'pregunta'\)/.test(v),
+    /salud|entrenoEse|Promise\.resolve\(true|alCorregir\(dias/.test(v),
     /Alert\./.test(v),
-  ], [true, true, true, true, false]);
-  chequear('"Sí fui" va al calendario de Stats con ese día abierto', [
-    /alCorregir=\{\(fecha\) => \{[\s\S]{0,140}pedirDia\(fecha\);\s*irAPestana\('stats'\);/.test(ini),
-    /escuchar\(ABRIR_DIA, \(f\) => \{[\s\S]{0,80}setPestana\('general'\)/.test(stats),
-    /setAncla\(\{ anio: d\.getFullYear\(\), mes: d\.getMonth\(\) \}\);\s*setAbierto\(abrirDia\.fecha\);/.test(cal),
-  ], [true, true, true]);
+  ], [true, true, true, false, true, false, false]);
+  const statsYCalendario = ['Stats.tsx', 'CalendarioDias.tsx', 'StatsGeneral.tsx'].map((a) => de261('movil', 'src', a)).join('\n');
+  chequear('Inicio: "Fui" con corregirDia en cada día del aviso, sin devolver la vida aparte; el camino a Stats ya no está', [
+    /alCorregir=\{async \(\) => \{\s*for \(const fecha of vidaUsada\.dias\) \{\s*const r = await corregirDia\(supabase, perfil\.id, fecha, 'fui'\);/.test(ini),
+    /alCorregir=\{async \(\) => \{(?:(?!alGuardar)[\s\S])*devolver_impulsos/.test(ini),
+    /pedirDia|abrirDia|ABRIR_DIA/.test(ini + statsYCalendario),
+    existe261(join(raiz261, 'movil', 'src', 'abrirDia.ts')),
+  ], [true, false, false, false]);
+
+  // POR LA BASE, el camino de la persona: faltó, la vida se usa al abrir (verificar_perdida),
+  // toca el botón (corregir_dia 'fui' en cada día del aviso) y se mira cuántas le quedan.
+  // Con la regla de verdad: dos vidas y la tercera con racha de 20. Las secciones de arriba
+  // fijan la cuota con `cuotaDeVidas`; acá se fija en 3 (la que da una racha de 24) y se
+  // vuelve a dejar en 2, como estaba.
+  async function botonFui261(faltas) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await rachaDe(u, 24, faltas + 1);
+    const vidas = async () => (await db.query('select mis_impulsos() as m')).rows[0].m;
+    const antes = await vidas();
+    await db.query('select verificar_perdida()');
+    const usada = await vidas();
+    const dias = [...usada.ultimas].sort();
+    for (const d of dias) await db.query("select corregir_dia($1, 'fui')", [d]);
+    const despues = await vidas();
+    const racha = (await db.query('select racha_actual from profiles where id = $1', [u])).rows[0].racha_actual;
+    const devueltas = (await db.query('select count(*)::int as n from vidas_usadas where user_id = $1 and devuelta', [u])).rows[0].n;
+    return {
+      total: despues.total,
+      antes: antes.quedan,
+      conLaFalta: usada.quedan,
+      dias: dias.length,
+      despues: despues.quedan,
+      avisoQueda: despues.ultimas.length + despues.vigentes.length,
+      devueltas,
+      racha,
+    };
+  }
+  await cuotaDeVidas(3);
+  chequear('un día: la vida se usa, el botón la deja sin gastar (las mismas que antes, ni una más) y la racha suma el día', await botonFui261(1),
+    { total: 3, antes: 3, conLaFalta: 2, dias: 1, despues: 3, avisoQueda: 0, devueltas: 0, racha: 25 });
+  chequear('dos días: corrige los dos, sin gastar ninguna y sin acreditar de más', await botonFui261(2),
+    { total: 3, antes: 3, conLaFalta: 1, dias: 2, despues: 3, avisoQueda: 0, devueltas: 0, racha: 26 });
+  await cuotaDeVidas(2);
+
   const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
   const { EN } = await import('../nucleo/textos-en.ts');
+  const sv = ES.impulso.salvada;
+  const en = EN.impulso.salvada;
   chequear('los textos, en los dos idiomas', [
-    ES.impulso.salvada.cuadro(1), ES.impulso.salvada.si, ES.impulso.salvada.no, ES.impulso.salvada.siFui,
-    EN.impulso.salvada.cuadro(1), EN.impulso.salvada.siFui,
-  ], ['Faltaste aquí. ¿Usar la vida?', 'Sí', 'No', 'Sí fui, corregir día', 'You missed here. Use the life?', 'I did go, fix the day']);
+    sv.cuadro(1), sv.si, sv.no, sv.fuiCorregi, sv.corregidaTitulo, sv.corregidaDetalle(1), sv.listo, sv.precioGuardar(1, 14),
+    en.cuadro(1), en.fuiCorregi, en.corregidaTitulo, en.corregidaDetalle(1), en.listo,
+    'siFui' in sv,
+  ], [
+    'Faltaste acá. ¿Usar la vida?', 'Sí', 'No', 'Fui, corregí el día', 'Fuiste.', 'Día corregido, no se gastó ninguna vida.', 'Listo', 'Guardarla deja la racha en 14 días.',
+    'You missed this day. Use the life?', 'I went, fix the day', 'You went.', 'Day fixed, no life was used.', 'Done',
+    false,
+  ]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

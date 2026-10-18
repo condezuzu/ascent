@@ -3,6 +3,7 @@ import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'reac
 import { DIAS_SEMANA, deISO, fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
+import { paletaDe } from '@nucleo/paletas';
 import { C } from './colores';
 import DiaDeLaTira from './DiaDeLaTira';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
@@ -12,12 +13,13 @@ import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
  *
  * Primero una animación corta —las vidas que se usaron se apagan, una por una— y después
  * (18/10, a pedido) la semana de ese día con un cuadro que apunta al día que faltaste:
- * «Faltaste aquí. ¿Usar la vida?», Sí o No. "No" la guarda para otra vez (vuelve la vida y
+ * «Faltaste acá. ¿Usar la vida?», Sí o No. "No" la guarda para otra vez (vuelve la vida y
  * la racha queda diez días abajo); el precio va chico en el mismo cuadro.
  *
- * "SÍ FUI, CORREGIR DÍA" sale solo si Salud tiene un entrenamiento de fuerza ese día: es
- * lo único que la app sabe de que entrenaste. Lleva al calendario de Stats con el día
- * abierto, que es el flujo de corregir de siempre.
+ * "FUI, CORREGÍ EL DÍA" (18/10, a pedido), debajo, chico y con el tinte del rango: marca
+ * como "Fui" todos los días del aviso, con el mismo registro que Corregir días, y la ventana
+ * pasa a «Fuiste. Día corregido, no se gastó ninguna vida.» con «Listo». No lleva a ningún
+ * lado. La vida queda sin gastar porque un día con "Fui" no la cuenta (migración 84).
  *
  * SALE UNA SOLA VEZ POR CADA VIDA: quien la monta la anota como vista al mostrarse
  * (`alMostrar`), no al tocar un botón. Antes, escondida por un entrenamiento en
@@ -39,6 +41,7 @@ export default function RachaSalvada({
   rachaSiGuarda,
   semana,
   rango,
+  planeta,
   alMostrar,
   alGuardar,
   alCorregir,
@@ -51,16 +54,17 @@ export default function RachaSalvada({
   /** La semana (de lunes a domingo) del último día que se cubrió. */
   semana: DiaDeLaSemana[];
   rango: number;
+  planeta: string | null;
   /** Se llama una vez, al aparecer: ahí queda vista. */
   alMostrar: () => void;
   alGuardar: () => Promise<boolean>;
-  alCorregir: (fecha: string) => void;
+  /** Marca "Fui" en todos los días del aviso. `false` si no se pudo. */
+  alCorregir: () => Promise<boolean>;
   alCerrar: () => void;
 }) {
-  const [paso, setPaso] = useState<'animando' | 'pregunta' | 'guardando' | 'guardada'>('animando');
-  const [fallo, setFallo] = useState(false);
+  const [paso, setPaso] = useState<'animando' | 'pregunta' | 'guardando' | 'guardada' | 'corrigiendo' | 'corregida'>('animando');
+  const [fallo, setFallo] = useState<'guardar' | 'corregir' | null>(null);
   const [ancho, setAncho] = useState(0);
-  const [diaEntrenado, setDiaEntrenado] = useState<string | null>(null);
   const usadas = Math.min(dias.length, Math.max(0, total - quedan));
   // Una por vida que se usó: arranca prendida y se apaga.
   const apagan = useRef(Array.from({ length: usadas }, () => new Animated.Value(1))).current;
@@ -79,27 +83,29 @@ export default function RachaSalvada({
       setPaso((p) => (p === 'animando' ? 'pregunta' : p));
       Animated.timing(cuadro, { toValue: 1, duration: 320, delay: CUADRO_DESPUES_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
     });
-    // `null` es "no sé" (sin permiso, sin Health): solo un `true` muestra el link.
-    let vivo = true;
-    void Promise.all(dias.map((d) => plataforma.salud.entrenoEse(d).catch(() => null))).then((r) => {
-      const i = r.lastIndexOf(true);
-      if (vivo && i >= 0) setDiaEntrenado(dias[i]);
-    });
-    return () => {
-      vivo = false;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function guardar() {
     setPaso('guardando');
-    setFallo(false);
+    setFallo(null);
     const ok = await alGuardar();
-    setFallo(!ok);
+    setFallo(ok ? null : 'guardar');
     setPaso(ok ? 'guardada' : 'pregunta');
   }
 
+  async function corregir() {
+    setPaso('corrigiendo');
+    setFallo(null);
+    const ok = await alCorregir();
+    setFallo(ok ? null : 'corregir');
+    setPaso(ok ? 'corregida' : 'pregunta');
+  }
+
   const uno = dias.length === 1;
+  const ocupado = paso === 'guardando' || paso === 'corrigiendo';
+  const cerrada = paso === 'guardada' || paso === 'corregida';
+  const pal = paletaDe(rango, planeta);
   // Las que quedan, prendidas; las que se usaron, apagándose; el resto, vacías.
   const puntos = Array.from({ length: total }, (_, i) => (i < quedan ? 'viva' : i < quedan + usadas ? 'apaga' : 'vacia'));
   // La cola sale del centro del día: la tira es de punta a punta y los días van repartidos.
@@ -115,6 +121,11 @@ export default function RachaSalvada({
               <Text style={estilos.titulo}>{T.impulso.salvada.guardada(dias.length)}</Text>
               <Text style={estilos.detalle}>{T.inicio.perdida}</Text>
             </>
+          ) : paso === 'corregida' ? (
+            <View testID="vida-corregida">
+              <Text style={estilos.titulo}>{T.impulso.salvada.corregidaTitulo}</Text>
+              <Text style={estilos.detalle}>{T.impulso.salvada.corregidaDetalle(dias.length)}</Text>
+            </View>
           ) : (
             <>
               <Text style={estilos.detalle}>
@@ -144,7 +155,7 @@ export default function RachaSalvada({
             </>
           )}
 
-          {paso !== 'animando' && paso !== 'guardada' && (
+          {paso !== 'animando' && !cerrada && (
             <View style={estilos.semana}>
               <View style={estilos.tira} onLayout={(e) => setAncho(e.nativeEvent.layout.width)}>
                 {semana.map((d, i) => (
@@ -157,29 +168,39 @@ export default function RachaSalvada({
               <Animated.View style={[estilos.cuadro, { opacity: cuadro }]} testID="vida-cuadro">
                 {ancho > 0 && <View pointerEvents="none" style={[estilos.cola, { left: colaX - 6 - StyleSheet.hairlineWidth }]} />}
                 <Text style={estilos.pregunta}>{T.impulso.salvada.cuadro(dias.length)}</Text>
-                <Text style={estilos.precio}>{T.impulso.salvada.precioNo(rachaSiGuarda)}</Text>
-                {fallo && <Text style={[estilos.precio, estilos.peligro]}>{T.impulso.salvada.noSeGuardo}</Text>}
+                <Text style={estilos.precio}>{T.impulso.salvada.precioGuardar(dias.length, rachaSiGuarda)}</Text>
+                {fallo && (
+                  <Text style={[estilos.precio, estilos.peligro]}>
+                    {fallo === 'guardar' ? T.impulso.salvada.noSeGuardo : T.impulso.salvada.noSeCorrigio}
+                  </Text>
+                )}
                 <View style={estilos.botones}>
-                  <Pressable testID="vida-si" style={[estilos.boton, estilos.enFila, estilos.solido]} onPress={alCerrar} disabled={paso === 'guardando'} accessibilityRole="button">
+                  <Pressable testID="vida-si" style={[estilos.boton, estilos.enFila, estilos.solido]} onPress={alCerrar} disabled={ocupado} accessibilityRole="button">
                     <Text style={estilos.solidoTexto}>{T.impulso.salvada.si}</Text>
                   </Pressable>
-                  <Pressable testID="vida-no" style={[estilos.boton, estilos.enFila, estilos.borde]} onPress={() => void guardar()} disabled={paso === 'guardando'} accessibilityRole="button">
+                  <Pressable testID="vida-no" style={[estilos.boton, estilos.enFila, estilos.borde]} onPress={() => void guardar()} disabled={ocupado} accessibilityRole="button">
                     <Text style={estilos.bordeTexto}>{paso === 'guardando' ? T.sesion.guardando : T.impulso.salvada.no}</Text>
                   </Pressable>
                 </View>
-                {diaEntrenado && (
-                  <Pressable testID="vida-corregir" style={estilos.link} onPress={() => alCorregir(diaEntrenado)} disabled={paso === 'guardando'} hitSlop={8} accessibilityRole="link">
-                    <Text style={estilos.linkTexto}>{T.impulso.salvada.siFui}</Text>
-                  </Pressable>
-                )}
+                <Pressable
+                  testID="vida-corregir"
+                  style={[estilos.corregir, { borderColor: pal.principal, backgroundColor: pal.principal }]}
+                  onPress={() => void corregir()}
+                  disabled={ocupado}
+                  accessibilityRole="button"
+                >
+                  <Text style={estilos.corregirTexto}>
+                    {paso === 'corrigiendo' ? T.sesion.guardando : T.impulso.salvada.fuiCorregi}
+                  </Text>
+                </Pressable>
               </Animated.View>
             </View>
           )}
         </View>
 
-        {paso === 'guardada' && (
-          <Pressable style={[estilos.boton, estilos.solido]} onPress={alCerrar}>
-            <Text style={estilos.solidoTexto}>{T.general.entendido}</Text>
+        {cerrada && (
+          <Pressable testID="vida-listo" style={[estilos.boton, estilos.solido]} onPress={alCerrar} accessibilityRole="button">
+            <Text style={estilos.solidoTexto}>{paso === 'corregida' ? T.impulso.salvada.listo : T.general.entendido}</Text>
           </Pressable>
         )}
       </View>
@@ -228,7 +249,9 @@ const estilos = StyleSheet.create({
   solidoTexto: { color: C.fondo, fontSize: 16, fontWeight: '600' },
   borde: { borderWidth: 1, borderColor: C.lineaFuerte },
   bordeTexto: { color: C.tinta, fontSize: 16 },
-  link: { alignSelf: 'flex-start', marginTop: 16 },
-  linkTexto: { color: C.sub, fontSize: 13, textDecorationLine: 'underline' },
+  // Chico, relleno con el principal del rango y texto claro (opción B, 18/10): la tercera
+  // salida. El claro no sirve: en rango 3 es el mismo color que «Sí» (C.claro).
+  corregir: { marginTop: 12, borderRadius: 2, borderWidth: 1, paddingVertical: 10, alignItems: 'center' },
+  corregirTexto: { fontSize: 14, fontWeight: '600', color: C.tinta },
   peligro: { color: C.error },
 });

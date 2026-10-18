@@ -81,7 +81,6 @@ export default function StatsGeneral({
   sexo,
   alCambiar,
   calendario,
-  abrirCalendario,
 }: {
   logs: Log[];
   racha: number;
@@ -93,13 +92,8 @@ export default function StatsGeneral({
   alCambiar: () => void;
   /** El calendario del mes, para corregir días: se abre con el botón de debajo del año. */
   calendario?: React.ReactNode;
-  /** Cambia cada vez que alguien pide un día del calendario: lo abre. */
-  abrirCalendario?: number;
 }) {
-  const [calendarioAbierto, setCalendarioAbierto] = useState(!!abrirCalendario);
-  useEffect(() => {
-    if (abrirCalendario) setCalendarioAbierto(true);
-  }, [abrirCalendario]);
+  const [calendarioAbierto, setCalendarioAbierto] = useState(false);
   const hoy = hoyISO();
   const pal = paletaDe(rango, planeta);
 

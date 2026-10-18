@@ -93,12 +93,19 @@ const ES = {
       noSeGuardo: 'Sin señal no se guardó: la racha sigue como estaba. Prueba de nuevo.',
       // EL CUADRO DESPUÉS DE LA ANIMACIÓN (18/10, a pedido): apunta al día en la semana.
       // "No" la guarda para otra vez; el precio va chico debajo, porque no tiene vuelta.
-      cuadro: (n: number) => (n === 1 ? 'Faltaste aquí. ¿Usar la vida?' : 'Faltaste aquí. ¿Usar las vidas?'),
+      // "Acá" a pedido (18/10): es la única excepción a la regla de modismos de test:db.
+      cuadro: (n: number) => (n === 1 ? 'Faltaste acá. ¿Usar la vida?' : 'Faltaste acá. ¿Usar las vidas?'),
       si: 'Sí',
       no: 'No',
-      precioNo: (racha: number) => `Con «No» queda para otra vez y la racha en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
-      // Solo si Salud tiene un entrenamiento de fuerza ese día: lleva al calendario de Stats.
-      siFui: 'Sí fui, corregir día',
+      precioGuardar: (n: number, racha: number) => `Guardar${n === 1 ? 'la' : 'las'} deja la racha en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
+      // LA TERCERA SALIDA (18/10, a pedido): "Fui" en los días del aviso, sin gastar la vida.
+      // «Corregí» a pedido: es la única excepción a la regla del voseo de test:db.
+      fuiCorregi: 'Fui, corregí el día',
+      corregidaTitulo: 'Fuiste.',
+      corregidaDetalle: (n: number) =>
+        n === 1 ? 'Día corregido, no se gastó ninguna vida.' : 'Días corregidos, no se gastó ninguna vida.',
+      listo: 'Listo',
+      noSeCorrigio: 'Sin señal no se corrigió: la vida sigue usada. Prueba de nuevo.',
     },
   },
 
