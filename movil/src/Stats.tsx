@@ -33,6 +33,7 @@ import { useRecargarAlVolver } from './irAPestana';
 import MiRutina from './MiRutina';
 import { eventos } from '@compartido/eventos';
 import { ABRIR_ENTRENAMIENTO, seAcabaDePedir } from './abrirEntrenamiento';
+import { ABRIR_DIA, diaRecienPedido } from './abrirDia';
 import { paletaDe } from '@nucleo/paletas';
 import { useArriba } from './zonaSegura';
 
@@ -98,6 +99,17 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     seAcabaDePedir();
     setPestana('entrenamiento');
   }), []);
+  // Y el aviso de la vida, a corregir un día (18/10): General, con el calendario en ese día.
+  const [diaPedido, setDiaPedido] = useState<{ fecha: string; vez: number } | null>(() => {
+    const f = diaRecienPedido();
+    return f ? { fecha: f, vez: 1 } : null;
+  });
+  useEffect(() => eventos.escuchar(ABRIR_DIA, (f) => {
+    diaRecienPedido();
+    setPestana('general');
+    setDiaPedido((d) => ({ fecha: String(f), vez: (d?.vez ?? 0) + 1 }));
+  }), []);
+  const soltarDia = useCallback(() => setDiaPedido(null), []);
   // Mientras se arrastra un ejercicio de la rutina, la pantalla no se mueve.
   const [arrastrando, setArrastrando] = useState(false);
   const [tocada, setTocada] = useState<number | null>(null);
@@ -299,7 +311,8 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           pesos={datos.pesajes}
           sexo={datos.sexo}
           alCambiar={cargar}
-          calendario={<CalendarioDias paleta={pal} alCambiar={cargar} porRevisar={porRevisar} alRevisar={cargar} />}
+          abrirCalendario={diaPedido?.vez}
+          calendario={<CalendarioDias paleta={pal} alCambiar={cargar} porRevisar={porRevisar} alRevisar={cargar} abrirDia={diaPedido} alAbrirDia={soltarDia} />}
         />
       )}
 

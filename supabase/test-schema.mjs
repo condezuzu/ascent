@@ -19328,6 +19328,35 @@ console.log('\n260. Antes de mandar a Apple: lee el perfil adentro del .ipa y nu
   const fuente = sc260((await import('node:fs')).readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'antes-de-enviar.mjs'), 'utf8'));
   chequear('no llama a eas submit en ningún caso, ni habla con Apple', [/submit/i.test(fuente), /appstoreconnect|apple\.com|asc /i.test(fuente)], [false, false]);
 }
+
+console.log('\n261. El cuadro de la vida: Sí la usa, No la guarda, y "Sí fui" solo con un entreno en Salud (18/10)');
+{
+  // Proxies del código: el cuadro se probó montado en la vista web (sin Salud, sin el link).
+  const { readFileSync: leer261 } = await import('node:fs');
+  const de261 = (...p) => leer261(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const v = de261('movil', 'src', 'RachaSalvada.tsx');
+  const ini = de261('movil', 'src', 'Inicio.tsx');
+  const stats = de261('movil', 'src', 'Stats.tsx');
+  const cal = de261('movil', 'src', 'CalendarioDias.tsx');
+  chequear('Sí cierra (la vida queda usada), No la devuelve, y el link sale solo con un true de Salud', [
+    /testID="vida-si"[^>]*onPress=\{alCerrar\}/.test(v),
+    /testID="vida-no"[^>]*onPress=\{\(\) => void guardar\(\)\}/.test(v),
+    /entrenoEse\(d\)\.catch\(\(\) => null\)[\s\S]{0,120}r\.lastIndexOf\(true\)/.test(v),
+    /\{diaEntrenado && \(\s*<Pressable testID="vida-corregir"/.test(v),
+    /Alert\./.test(v),
+  ], [true, true, true, true, false]);
+  chequear('"Sí fui" va al calendario de Stats con ese día abierto', [
+    /alCorregir=\{\(fecha\) => \{[\s\S]{0,140}pedirDia\(fecha\);\s*irAPestana\('stats'\);/.test(ini),
+    /escuchar\(ABRIR_DIA, \(f\) => \{[\s\S]{0,80}setPestana\('general'\)/.test(stats),
+    /setAncla\(\{ anio: d\.getFullYear\(\), mes: d\.getMonth\(\) \}\);\s*setAbierto\(abrirDia\.fecha\);/.test(cal),
+  ], [true, true, true]);
+  const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
+  const { EN } = await import('../nucleo/textos-en.ts');
+  chequear('los textos, en los dos idiomas', [
+    ES.impulso.salvada.cuadro(1), ES.impulso.salvada.si, ES.impulso.salvada.no, ES.impulso.salvada.siFui,
+    EN.impulso.salvada.cuadro(1), EN.impulso.salvada.siFui,
+  ], ['Faltaste aquí. ¿Usar la vida?', 'Sí', 'No', 'Sí fui, corregir día', 'You missed here. Use the life?', 'I did go, fix the day']);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

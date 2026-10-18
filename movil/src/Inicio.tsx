@@ -49,6 +49,8 @@ import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
+import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
+import { pedirDia } from './abrirDia';
 import { preguntarPorLaRutina } from './preguntarPorLaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
@@ -562,18 +564,23 @@ export default function Inicio({
   // La semana arranca el LUNES y se alinea al calendario, igual que en web:
   // "los últimos siete días" es más exacto y se ve mal, porque las letras
   // salen corridas y eso se lee como un error.
-  const diaDeSemana = (deISO(hoy).getDay() + 6) % 7;
-  const lunes = restarDias(hoy, diaDeSemana);
-  const semana = Array.from({ length: 7 }, (_, i) => {
-    const fecha = restarDias(lunes, -i);
-    const log = logs.find((l) => l.fecha === fecha);
-    let estadoDia: 'lleno' | 'vacio' | 'descanso' | 'futuro' | 'cubierto' = 'vacio';
-    if (fecha > hoy) estadoDia = 'futuro';
-    else if (log && !log.es_descanso) estadoDia = 'lleno';
-    else if ((log && log.es_descanso) || esDiaDeDescanso(descansos, fecha)) estadoDia = 'descanso';
-    else if (cubiertos.includes(fecha)) estadoDia = 'cubierto';
-    return { fecha, estadoDia, esHoy: fecha === hoy };
-  });
+  // La misma cuenta arma la semana del aviso de la vida, que puede ser la anterior: lo que
+  // no trae la pantalla (los logs son de los últimos siete días) queda `sinDato`.
+  const semanaDe = (dia: string) => {
+    const lunes = restarDias(dia, (deISO(dia).getDay() + 6) % 7);
+    return Array.from({ length: 7 }, (_, i) => {
+      const fecha = restarDias(lunes, -i);
+      const log = logs.find((l) => l.fecha === fecha);
+      let estadoDia: EstadoDelDia = 'vacio';
+      if (fecha > hoy) estadoDia = 'futuro';
+      else if (log && !log.es_descanso) estadoDia = 'lleno';
+      else if ((log && log.es_descanso) || esDiaDeDescanso(descansos, fecha)) estadoDia = 'descanso';
+      else if (cubiertos.includes(fecha) || vidaUsada?.dias.includes(fecha)) estadoDia = 'cubierto';
+      else if (fecha < restarDias(hoy, 6)) estadoDia = 'sinDato';
+      return { fecha, estadoDia, esHoy: fecha === hoy };
+    });
+  };
+  const semana = semanaDe(hoy);
 
   return (
     <View style={estilos.raiz}>
@@ -747,22 +754,7 @@ export default function Inicio({
             letra={DIAS_SEMANA[deISO(d.fecha).getDay()]}
             estiloLetra={estilos.letra}
           >
-            <View
-              style={[
-                estilos.punto,
-                d.estadoDia === 'lleno' && estilos.lleno,
-                d.estadoDia === 'vacio' && estilos.vacio,
-                d.estadoDia === 'futuro' && estilos.futuro,
-                (d.estadoDia === 'descanso' || d.estadoDia === 'cubierto') && estilos.vacio,
-                d.esHoy && estilos.puntoHoy,
-              ]}
-            >
-              {/* El descanso es un guioncito y el cubierto un punto adentro:
-                  ninguno de los dos puede parecer un día perdido, y el
-                  cubierto tampoco puede parecer entrenado. */}
-              {d.estadoDia === 'descanso' && <View style={estilos.guion} />}
-              {d.estadoDia === 'cubierto' && <View style={estilos.cubierto} />}
-            </View>
+            <PuntoDelDia estado={d.estadoDia} esHoy={d.esHoy} />
           </DiaDeLaTira>
         ))}
       </View>
@@ -1090,6 +1082,15 @@ export default function Inicio({
           quedan={vidaUsada.quedan}
           total={vidaUsada.total}
           rachaSiGuarda={rachaSiSeDevuelve(perfil.racha_actual)}
+          semana={semanaDe(vidaUsada.dias[vidaUsada.dias.length - 1])}
+          rango={numeroDeRango(racha)}
+          // "Sí fui": al calendario de Stats con ese día abierto, que es donde se corrige.
+          alCorregir={(fecha) => {
+            vidaMostrada.current = false;
+            setVidaUsada(null);
+            pedirDia(fecha);
+            irAPestana('stats');
+          }}
           alGuardar={async () => {
             // Devolver y volver a evaluar la pérdida van juntos en la base.
             const { data, error } = await supabase.rpc('devolver_impulsos', { p_fechas: vidaUsada.dias });
@@ -1159,13 +1160,6 @@ const estilos = StyleSheet.create({
   pasos: { color: '#6a7286', fontSize: 13, marginTop: 14, fontVariant: ['tabular-nums'] },
 
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 34 },
-  punto: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  lleno: { backgroundColor: '#7e8ca8' },
-  vacio: { borderWidth: 1, borderColor: '#2a3040' },
-  futuro: { borderWidth: 1, borderColor: '#171c26' },
-  puntoHoy: { borderWidth: 1, borderColor: '#c4c2ba' },
-  guion: { width: 10, height: 2, borderRadius: 1, backgroundColor: '#4a5163' },
-  cubierto: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#6b7488' },
   letra: { color: '#4a5163', fontSize: 11 },
 
   impulsos: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 26 },
