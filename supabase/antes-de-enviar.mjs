@@ -6,8 +6,8 @@
 // Lo que mira, de la build de store que se va a mandar (por omisión, la última terminada):
 //   1. el número de build es el que se espera (`--numero`, o el de `movil/app.json`);
 //   2. la versión es la que se espera (`--version`, por omisión 1.1.0);
-//   3. Associated Domains: en el `app.json` con que se compiló, y en el perfil que quedó
-//      ADENTRO del .ipa (lo baja de EAS, unos 30 MB; `--sin-ipa` lo saltea);
+//   3. Associated Domains: en el `app.json` con que se compiló, y en el perfil y la firma que quedaron
+//      ADENTRO del .ipa (lo baja de EAS, unos 20 MB; `--sin-ipa` lo saltea);
 //   4. el runtime de la build es el que da este proyecto ahora: si no, una OTA hecha
 //      desde acá no le llega a esa build (correrlo en la rama de donde salió);
 //   5. que no haya nada en revisión: lo confirma el humano, mirando App Store Connect.
@@ -55,18 +55,36 @@ export function archivoDelZip(zip, quiere) {
   return null;
 }
 
-/** El perfil de la APP (no el del widget, que está en PlugIns): ¿trae Associated Domains con el dominio? */
+// El valor de la capacidad en un plist: un `<string>` suelto o un `<array>` de ellos.
+function dominiosDe(plist) {
+  const m = plist.match(/<key>com\.apple\.developer\.associated-domains<\/key>\s*(<string>[^<]*<\/string>|<array>[\s\S]*?<\/array>)/);
+  return m ? [...m[1].matchAll(/<string>([^<]*)<\/string>/g)].map((x) => x[1]) : null;
+}
+
+/**
+ * Associated Domains en la APP (no en el widget, que está en PlugIns), en los dos lugares:
+ * el PERFIL tiene que permitirlo y la FIRMA del ejecutable tiene que pedirlo. Apple pone `*`
+ * en el perfil, no el dominio (18/10: la primera versión buscaba el dominio en el perfil y
+ * daba MAL con una build buena); el dominio va en los entitlements firmados del ejecutable.
+ */
 export function perfilDeLaApp(ipa) {
   const e = archivoDelZip(ipa, (n) => /^Payload\/[^/]+\.app\/embedded\.mobileprovision$/.test(n));
-  if (!e) return { hay: false, conDominios: false, conElDominio: false };
+  if (!e) return { hay: false, conDominios: false, permiteElDominio: false, pideElDominio: false };
   // El perfil es un CMS firmado, pero el plist va adentro en texto plano.
   const texto = e.datos.toString('latin1');
   const plist = texto.slice(texto.indexOf('<?xml'), texto.indexOf('</plist>') + 8);
+  const permitidos = dominiosDe(plist);
+  // Los entitlements firmados van en el ejecutable (Payload/X.app/X), también en texto plano.
+  const ej = archivoDelZip(ipa, (n) => /^Payload\/([^/]+)\.app\/\1$/.test(n));
+  const pedidos = ej ? dominiosDe(ej.datos.toString('latin1')) : null;
   return {
     hay: true,
-    conDominios: plist.includes('<key>com.apple.developer.associated-domains</key>'),
-    conElDominio: plist.includes(DOMINIO),
+    conDominios: permitidos !== null,
+    permiteElDominio: !!permitidos && (permitidos.includes('*') || permitidos.includes(DOMINIO)),
+    pideElDominio: !!pedidos && pedidos.includes(DOMINIO),
     nombre: (plist.match(/<key>Name<\/key>\s*<string>([^<]*)<\/string>/) ?? [])[1] ?? '?',
+    permitidos: permitidos ?? [],
+    pedidos: pedidos ?? [],
   };
 }
 
@@ -136,8 +154,10 @@ async function principal() {
       const p = perfilDeLaApp(Buffer.from(await r.arrayBuffer()));
       anotar(
         'perfil del .ipa con Associated Domains',
-        p.hay && p.conDominios && p.conElDominio,
-        !p.hay ? 'el .ipa no tiene perfil' : `perfil «${p.nombre}»: ${p.conDominios ? 'con' : 'SIN'} la capacidad, ${p.conElDominio ? 'con' : 'SIN'} ${DOMINIO}`
+        p.hay && p.permiteElDominio && p.pideElDominio,
+        !p.hay
+          ? 'el .ipa no tiene perfil'
+          : `perfil «${p.nombre}» permite ${p.permitidos.join(', ') || 'NADA'}; la firma de la app pide ${p.pedidos.join(', ') || 'NADA'}`
       );
     }
   }
