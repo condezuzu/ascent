@@ -19398,20 +19398,33 @@ console.log('\n260. Antes de mandar a Apple: lee el perfil adentro del .ipa y nu
     fin.writeUInt32LE(off, 16);
     return Buffer.concat([...locales, central, fin]);
   };
-  const plist = (dominios) =>
+  // LA FORMA DE UN .ipa DE VERDAD (18/10, la de la build 417afba9): el perfil trae la
+  // capacidad con `*` —Apple no pone el dominio ahí— y el dominio va en los entitlements
+  // firmados del ejecutable. La primera versión del test ponía el dominio en el perfil y
+  // coincidía con el error del script: con la build buena, el script daba MAL.
+  const capacidad = (valor) => `<key>com.apple.developer.associated-domains</key>${valor}`;
+  const plist = (valor) =>
     `<?xml version="1.0"?><plist><dict><key>Name</key><string>*[expo] uy.ascent.app AppStore</string><key>Entitlements</key><dict>${
-      dominios ? '<key>com.apple.developer.associated-domains</key><array><string>applinks:ascent-blush-seven.vercel.app</string></array>' : ''
+      valor ? capacidad(valor) : ''
     }</dict></dict></plist>`;
-  const perfil = (dominios) => Buffer.concat([Buffer.from([0x30, 0x82, 0x01]), Buffer.from(plist(dominios), 'latin1'), Buffer.from([0xa0, 0x00])]);
-  const ipa = zipDe([
-    { nombre: 'Payload/Ascent.app/PlugIns/descanso.appex/embedded.mobileprovision', datos: perfil(false) },
-    { nombre: 'Payload/Ascent.app/embedded.mobileprovision', datos: perfil(true), comprimir: true },
-  ]);
-  const sinDominios = zipDe([{ nombre: 'Payload/Ascent.app/embedded.mobileprovision', datos: perfil(false) }]);
-  const p = AE260.perfilDeLaApp(ipa);
-  chequear('mira el perfil de la app y no el del widget, comprimido o no, y ve si trae el dominio', [
-    p.conDominios, p.conElDominio, p.nombre, AE260.perfilDeLaApp(sinDominios).conDominios, AE260.perfilDeLaApp(zipDe([])).hay,
-  ], [true, true, '*[expo] uy.ascent.app AppStore', false, false]);
+  const perfil = (valor) => Buffer.concat([Buffer.from([0x30, 0x82, 0x01]), Buffer.from(plist(valor), 'latin1'), Buffer.from([0xa0, 0x00])]);
+  const ejecutable = (dominio) =>
+    Buffer.concat([Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 0, 0]), Buffer.from(`<plist><dict>${capacidad(`<array><string>${dominio}</string></array>`)}</dict></plist>`, 'latin1')]);
+  const comodin = '<string>*</string>';
+  const DOM = 'applinks:ascent-blush-seven.vercel.app';
+  const ipaCon = (valorPerfil, dominioFirma) =>
+    zipDe([
+      { nombre: 'Payload/Ascent.app/PlugIns/descanso.appex/embedded.mobileprovision', datos: perfil(null) },
+      { nombre: 'Payload/Ascent.app/embedded.mobileprovision', datos: perfil(valorPerfil), comprimir: true },
+      { nombre: 'Payload/Ascent.app/Ascent', datos: ejecutable(dominioFirma), comprimir: true },
+    ]);
+  const p = AE260.perfilDeLaApp(ipaCon(comodin, DOM));
+  const sinCapacidad = AE260.perfilDeLaApp(ipaCon(null, DOM));
+  const otraFirma = AE260.perfilDeLaApp(ipaCon(comodin, 'applinks:otro.example'));
+  chequear('perfil con * y la firma con el dominio (como la 417afba9) da bien; sin la capacidad o sin el dominio firmado, mal', [
+    p.conDominios, p.permiteElDominio, p.pideElDominio, p.nombre,
+    sinCapacidad.permiteElDominio, otraFirma.pideElDominio, AE260.perfilDeLaApp(zipDe([])).hay,
+  ], [true, true, true, '*[expo] uy.ascent.app AppStore', false, false, false]);
   const { sinComentarios: sc260 } = await import('./utiles.mjs');
   const fuente = sc260((await import('node:fs')).readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'antes-de-enviar.mjs'), 'utf8'));
   chequear('no llama a eas submit en ningún caso, ni habla con Apple', [/submit/i.test(fuente), /appstoreconnect|apple\.com|asc /i.test(fuente)], [false, false]);
