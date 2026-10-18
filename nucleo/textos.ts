@@ -91,11 +91,14 @@ const ES = {
         n === 1 ? 'La vida quedó para después.' : `Las ${n} vidas quedaron para después.`,
       // Sin señal no se devolvió nada: se dice lo que sigue siendo cierto.
       noSeGuardo: 'Sin señal no se guardó: la racha sigue como estaba. Prueba de nuevo.',
-      // LA PREGUNTA DESPUÉS DE LA ANIMACIÓN (16/10): usarla ahora o guardarla, con el precio a la vista.
-      preguntaUsar: (n: number) => (n === 1 ? '¿Usar la vida ahora?' : '¿Usar las vidas ahora?'),
-      precioGuardar: (n: number, racha: number) => `Guardar${n === 1 ? 'la' : 'las'} deja la racha en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
-      usarAhora: (n: number) => (n === 1 ? 'Usar la vida ahora' : 'Usar las vidas ahora'),
-      guardarParaOtraVez: (n: number) => (n === 1 ? 'Guardarla para otra vez' : 'Guardarlas para otra vez'),
+      // EL CUADRO DESPUÉS DE LA ANIMACIÓN (18/10, a pedido): apunta al día en la semana.
+      // "No" la guarda para otra vez; el precio va chico debajo, porque no tiene vuelta.
+      cuadro: (n: number) => (n === 1 ? 'Faltaste aquí. ¿Usar la vida?' : 'Faltaste aquí. ¿Usar las vidas?'),
+      si: 'Sí',
+      no: 'No',
+      precioNo: (racha: number) => `Con «No» queda para otra vez y la racha en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
+      // Solo si Salud tiene un entrenamiento de fuerza ese día: lleva al calendario de Stats.
+      siFui: 'Sí fui, corregir día',
     },
   },
 

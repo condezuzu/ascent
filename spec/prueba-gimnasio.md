@@ -55,11 +55,12 @@ para verlo sin perder días tuyos, pedime una cuenta de prueba con dos días per
 
 | # | Qué hacer | Qué esperar | Si no pasa |
 |---|---|---|---|
-| 2.1 | Abrir la app el día después de faltar | Una ventana: «Faltaste N días. Se usaron N vidas.», y las vidas usadas **se apagan una por una** | Si la pregunta aparece de entrada, sin la animación: captura |
-| 2.2 | Esperar un segundo | Abajo, «¿Usar la vida ahora?», el precio («Guardarla deja la racha en X días») y dos botones | — |
-| 2.3 | «Usar la vida ahora» | Se cierra; la racha sigue igual | — |
+| 2.1 | Abrir la app el día después de faltar | Una ventana: «Faltaste el … Se usó una vida.», y las vidas usadas **se apagan una por una** | Si el cuadro aparece de entrada, sin la animación: captura |
+| 2.2 | Esperar un segundo | Entra la semana de ese día (L a D) y debajo un cuadro con una colita que apunta al día que faltaste: «Faltaste aquí. ¿Usar la vida?», chico el precio («Con «No» queda para otra vez y la racha en X días») y **Sí** / **No** | Si la colita apunta a otro día, captura |
+| 2.3 | «Sí» | Se cierra; la racha sigue igual | — |
 | 2.4 | Cerrar y abrir la app, y también entrenar y terminar | **No vuelve a salir** | Si vuelve, la hora y en qué momento (al abrir o al terminar) |
-| 2.5 | (Otra vez, otra vida) «Guardarla para otra vez» | «La vida quedó para después», y la racha queda en el número que decía el precio | Sin señal: «Sin señal no se guardó…» y la racha sigue igual; probá con señal |
+| 2.5 | (Otra vez, otra vida) «No» | «La vida quedó para después», y la racha queda en el número que decía el precio | Sin señal: «Sin señal no se guardó…» y la racha sigue igual; probá con señal |
+| 2.6 | Solo si ese día hay un entrenamiento de fuerza en Salud (Apple Watch u otra app) | Abajo en el cuadro, «Sí fui, corregir día»; al tocarlo, Stats con la hoja de ese día abierta en «Corregir» → «Fui» | Sin entreno de fuerza en Salud no aparece, a propósito |
 
 ---
 
