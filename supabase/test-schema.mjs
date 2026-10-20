@@ -20073,13 +20073,15 @@ console.log('\n289. Las repeticiones de la última vez: de la marca de la últim
     repsDeLaSesion([m('2026-10-09', 3)], 'press_banca', '2026-10-10'),
     repsDeLaSesion([m('2026-10-10', 8)], 'sentadilla', '2026-10-10'),
   ], [6, null, null]);
-  const ru = sinComentarios(deBug('compartido', 'repsUltimaVez.ts'));
+  // Desde el pedido 4 (20/10) el ajuste es «Mostrar la última vez», y manda sobre toda la línea.
+  const ru = sinComentarios(deBug('compartido', 'mostrarUltimaVez.ts'));
   const bl = sinComentarios(deBug('movil', 'src', 'Bloque.tsx'));
-  chequear('apagado de fábrica, en Ajustes, y el bloque lo muestra solo prendido', [
-    /=== 'si';/.test(ru),
-    /<Text style=\{estilos\.opcion\}>\{T\.ajustes\.repsUltimaVez\}<\/Text>/.test(sinComentarios(deBug('movil', 'src', 'Ajustes.tsx'))),
-    /\{verReps && !!estado\.ejercicio && !!repsUltimaVez && \(/.test(bl),
-  ], [true, true, true]);
+  chequear('apagado de fábrica, en Ajustes, y el bloque muestra la última vez solo prendido', [
+    /\) === 'si';/.test(ru),
+    /<Text style=\{estilos\.opcion\}>\{T\.ajustes\.mostrarUltimaVez\}<\/Text>/.test(sinComentarios(deBug('movil', 'src', 'Ajustes.tsx'))),
+    /\{verUltimaVez && !!estado\.ejercicio && !!ultimaVez && ultimaVez\.series > 0 && \(/.test(bl),
+    (bl.match(/\{verUltimaVez && /g) ?? []).length === (bl.match(/testID="(ultima-vez|reps-ultima-vez)"/g) ?? []).length,
+  ], [true, true, true, true]);
 }
 console.log('\n290. Con todos los días abiertos, la rutina no muestra flechitas ni se pliega (20/10, revisión)');
 {

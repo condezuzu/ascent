@@ -644,8 +644,8 @@ const ES = {
     // Al lado de un interruptor (15/10): el estado lo dice el interruptor.
     sonidoAlTerminar: 'Sonido al terminar',
     // Al entrenar, debajo del ejercicio (20/10). Apagado de fábrica.
-    repsUltimaVez: 'Repeticiones de la última vez',
-    repsUltimaVezNota: 'Salen debajo del ejercicio, de tu última marca: las series no guardan repeticiones.',
+    mostrarUltimaVez: 'Mostrar la última vez',
+    mostrarUltimaVezNota: 'Al entrenar, debajo del ejercicio: lo que hiciste la última vez.',
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cierras, no avisa.',
     noVibra: 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.',

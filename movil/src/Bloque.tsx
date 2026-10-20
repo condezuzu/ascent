@@ -10,7 +10,7 @@ import { OPCIONES_DE_LA_PREGUNTA, cargaVigente, hayQuePreguntar, kilosMovidos, l
 import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
 import { leerAnotarPeso } from '@compartido/anotarPeso';
-import { leerRepsUltimaVez, REPS_ULTIMA_VEZ_CAMBIO } from '@compartido/repsUltimaVez';
+import { leerMostrarUltimaVez, MOSTRAR_ULTIMA_VEZ_CAMBIO } from '@compartido/mostrarUltimaVez';
 import type { MarcaConReps } from '@nucleo/rutina';
 import { ponerNombres } from '@compartido/enCurso';
 import { useVersionDelEsquema } from '@compartido/esquema';
@@ -128,10 +128,10 @@ export default function Bloque({
   const [pausa, setPausa] = useState(false);
   const [aDonde, setADonde] = useState<string | null | undefined>(undefined);
   const [prefierePeso, setPrefierePeso] = useState(true);
-  const [verReps, setVerReps] = useState(false);
+  const [verUltimaVez, setVerUltimaVez] = useState(false);
   useEffect(() => {
-    void leerRepsUltimaVez().then(setVerReps);
-    return eventos.escuchar(REPS_ULTIMA_VEZ_CAMBIO, (si) => setVerReps(si === true));
+    void leerMostrarUltimaVez().then(setVerUltimaVez);
+    return eventos.escuchar(MOSTRAR_ULTIMA_VEZ_CAMBIO, (si) => setVerUltimaVez(si === true));
   }, []);
   const version = useVersionDelEsquema();
   const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
@@ -292,13 +292,14 @@ export default function Bloque({
       </View>
       {esFantasma && <Text style={estilos.sugeridoNota}>{T.sesion.sugeridoNota}</Text>}
       {/* LA ÚLTIMA VEZ (19/10, bug del gimnasio): series, pesos y el modo (un lado por vez,
-          por mancuerna…); la máquina ya la dice el nombre. Las repeticiones no se anotan. */}
-      {!!estado.ejercicio && !!ultimaVez && ultimaVez.series > 0 && (
+          por mancuerna…); la máquina ya la dice el nombre. Desde el 20/10, solo con «Mostrar
+          la última vez» prendido en Ajustes: sale al entrar a entrenar y al elegir otro. */}
+      {verUltimaVez && !!estado.ejercicio && !!ultimaVez && ultimaVez.series > 0 && (
         <Text style={estilos.sugeridoNota} testID="ultima-vez">
           {T.sesion.ultimaVez(fechaLinda(ultimaVez.fecha), detalleDeLaUltimaVez(ultimaVez, unidad))}
         </Text>
       )}
-      {verReps && !!estado.ejercicio && !!repsUltimaVez && (
+      {verUltimaVez && !!estado.ejercicio && !!repsUltimaVez && (
         <Text style={estilos.sugeridoNota} testID="reps-ultima-vez">
           {T.sesion.repsUltimaVez(fechaLinda(repsUltimaVez.fecha), repsUltimaVez.reps, `${pesoCorto(repsUltimaVez.peso, unidad)} ${unidad}`)}
         </Text>

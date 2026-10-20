@@ -9,7 +9,7 @@ import { useVersionDelEsquema } from '@compartido/esquema';
 import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { guardarSonido, leerSonido } from '@compartido/descanso';
-import { guardarRepsUltimaVez, leerRepsUltimaVez } from '@compartido/repsUltimaVez';
+import { guardarMostrarUltimaVez, leerMostrarUltimaVez } from '@compartido/mostrarUltimaVez';
 import Segmentado from './Segmentado';
 import { fijarPreferenciaIdioma, idiomaElegido, leerPreferenciaIdioma, type Idioma } from '@compartido/idioma';
 import { escritorEnFila } from '@compartido/enFila';
@@ -78,7 +78,7 @@ export default function Ajustes({
   // El sonido del descanso es de ESTE teléfono, igual que en la web: se guarda
   // en el aparato y no en la cuenta.
   const [sonido, setSonido] = useState(false);
-  const [repsUltimaVez, setRepsUltimaVez] = useState(false);
+  const [ultimaVez, setUltimaVez] = useState(false);
   // LO QUE NO SE USA TODOS LOS DÍAS, plegado (item estructura). Lo frecuente
   // —gimnasio, salud, descanso, peso, avisos, quién sos— queda arriba y a la
   // vista; el resto entra acá adentro para que Ajustes no sea una lista larga y
@@ -89,7 +89,7 @@ export default function Ajustes({
   const [idioma, setIdioma] = useState<Idioma>(T.idioma === 'en' ? 'en' : 'es');
   useEffect(() => {
     leerSonido().then(setSonido);
-    leerRepsUltimaVez().then(setRepsUltimaVez);
+    leerMostrarUltimaVez().then(setUltimaVez);
     void leerPreferenciaIdioma().then((p) => setIdioma(idiomaElegido(p)));
   }, []);
 
@@ -290,21 +290,21 @@ export default function Ajustes({
         />
       </View>
 
-      {/* LAS REPETICIONES DE LA ÚLTIMA VEZ (20/10): apagado de fábrica. */}
+      {/* LA ÚLTIMA VEZ, AL ENTRENAR (20/10): apagado de fábrica. */}
       <View style={estilos.filaOpcion}>
         <View style={estilos.textoOpcion}>
-          <Text style={estilos.opcion}>{T.ajustes.repsUltimaVez}</Text>
+          <Text style={estilos.opcion}>{T.ajustes.mostrarUltimaVez}</Text>
         </View>
         <Interruptor
-          value={repsUltimaVez}
-          accessibilityLabel={T.ajustes.repsUltimaVez}
+          value={ultimaVez}
+          accessibilityLabel={T.ajustes.mostrarUltimaVez}
           onValueChange={(nuevo) => {
-            setRepsUltimaVez(nuevo);
-            void guardarRepsUltimaVez(nuevo);
+            setUltimaVez(nuevo);
+            void guardarMostrarUltimaVez(nuevo);
           }}
         />
       </View>
-      <Text style={estilos.nota}>{T.ajustes.repsUltimaVezNota}</Text>
+      <Text style={estilos.nota}>{T.ajustes.mostrarUltimaVezNota}</Text>
 
       <Text style={estilos.seccion}>{T.ajustes.estancamiento}</Text>
       <Segmentado

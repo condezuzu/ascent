@@ -32,8 +32,8 @@
 //      abre y la cierra (20/10), en la nativa, con seis cuentas.
 //  10. probar-olvidar-dia — «Olvidar este día» en la ventana de reemplazo no toca la
 //      rutina y ese día no vuelve a preguntar (20/10), en la nativa.
-//  11. probar-reps-ultima-vez — con el ajuste prendido (viene apagado), al entrenar sale
-//      la última marca del ejercicio con sus repeticiones (20/10), en la nativa.
+//  11. probar-ultima-vez — con «Mostrar la última vez» prendido (viene apagado), al entrar
+//      a entrenar sale debajo del ejercicio lo de la última sesión que lo tuvo (20/10).
 //  12. probar-timbre-descanso — la píldora del descanso se sacude como un despertador
 //      al llegar a 0:00 (20/10), en la nativa, con el reloj de Playwright.
 //
@@ -67,7 +67,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'peso y fotos', archivo: 'probar-peso-y-fotos.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la lista de amigos', archivo: 'probar-lista-de-amigos.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'olvidar este día', archivo: 'probar-olvidar-dia.mjs', args: [], navegador: true }]),
-  ...(soloApi ? [] : [{ nombre: 'repeticiones de la última vez', archivo: 'probar-reps-ultima-vez.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'mostrar la última vez', archivo: 'probar-ultima-vez.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el timbre del descanso', archivo: 'probar-timbre-descanso.mjs', args: [], navegador: true }]),
 ];
 
