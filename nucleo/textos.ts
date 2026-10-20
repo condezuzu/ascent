@@ -1534,6 +1534,10 @@ const ES = {
     enlacePaso3: (nombre: string) => `En la app, entra a Social y busca a ${nombre}.`,
     enlaceOjo: 'Su nombre en Ascent, para copiarlo:',
     cerrarFoto: 'Cerrar',
+    // El corazón de la foto abierta (19/10): sin corazones no hay número.
+    meGusta: 'Me gusta',
+    quitarMeGusta: 'Quitar me gusta',
+    cuantosMeGusta: (n: number) => (n === 1 ? '1 me gusta' : `${n} me gusta`),
     verFoto: (nombre: string) => `Ver la foto de ${nombre}`,
     // La página de la web a la que lleva el link de amigo.
     enlaceTitulo: (nombre: string) => `${nombre} te invita a Ascent`,

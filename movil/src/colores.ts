@@ -29,6 +29,8 @@ export const C = {
   bordeBoton: '#626b80',
   // El frío del día congelado.
   hielo: '#8fc4f0',
+  // El corazón dado, en la foto abierta: el número va en `fondo` encima, a más de 4,5:1.
+  corazon: '#ef6f7f',
 };
 
 /**
