@@ -225,7 +225,7 @@ export default function PerfilPropio() {
             cargaba con todo —"son las que ven tus amigos, cuales compartes se
             eligen en el album"— y nadie habla asi. */}
         <Text style={estilos.seccion}>{T.yo.fotosTitulo}</Text>
-        <FotosQueVen fotos={fotos} propias />
+        <FotosQueVen fotos={fotos} />
         <Text style={estilos.nota}>{fotos.length > 0 ? T.yo.fotosPie : T.yo.sinFotos}</Text>
 
         {/* TU RUTINA (14/10): hasta acá no se veía en ningún lado. */}

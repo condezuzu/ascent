@@ -9,26 +9,26 @@ import { useFotoLocal } from './fotoLocal';
 
 /**
  * LAS FOTOS COMO LAS VE UN AMIGO, y nada más: sin administrar. Tocar una la
- * abre en grande (15/10), como la foto de perfil, con su corazón (19/10).
+ * abre en grande (15/10), como la foto de perfil. Sin "me gusta" (20/10).
  *
  * ES EL MISMO COMPONENTE EN LOS DOS PERFILES a propósito, igual que en la web
  * (`ComoMeVen.tsx`). El perfil propio promete "así te ven", y la única forma de
  * que esa promesa no se rompa es que sea literalmente el mismo dibujo que ve el
  * otro. Con dos copias, la del dueño se mejora un día y la promesa pasa a ser
- * falsa sin que nadie lo note. Lo único distinto: en las propias el corazón no se toca.
+ * falsa sin que nadie lo note.
  *
  * ENTRAN ESCALONADAS (`Surgir`): nueve cuadrados apareciendo de golpe se leen
  * como un parpadeo.
  */
 const HUECO = 8;
 
-export default function FotosQueVen({ fotos, propias = false }: { fotos: FotoDePerfil[]; propias?: boolean }) {
+export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
   const { width } = useWindowDimensions();
   // Tres por fila del ancho que de verdad tiene la grilla (19/10): calcularlo desde la
   // pantalla suponía el margen de quien la monta.
   const [ancho, setAncho] = useState(0);
   const lado = Math.floor(((ancho || width - 48) - HUECO * 2) / 3);
-  const [grande, setGrande] = useState<FotoDePerfil | null>(null);
+  const [grande, setGrande] = useState<string | null>(null);
 
   if (fotos.length === 0) return null;
 
@@ -36,7 +36,7 @@ export default function FotosQueVen({ fotos, propias = false }: { fotos: FotoDeP
     <View style={estilos.grilla} onLayout={(e) => setAncho(e.nativeEvent.layout.width)}>
       {fotos.map((f, i) => (
         <Surgir key={f.id} indice={i}>
-          <Pressable testID="foto-de-perfil" style={{ width: lado }} onPress={() => setGrande(f.url || f.miniatura ? f : null)} accessibilityRole="imagebutton">
+          <Pressable testID="foto-de-perfil" style={{ width: lado }} onPress={() => setGrande(f.url || f.miniatura || null)} accessibilityRole="imagebutton">
             <Cuadrito foto={f} lado={lado} />
             {/* La fecha solo si la foto cuelga de un día: una suelta no tiene
                 cuándo, y poner uno inventado sería peor que no poner nada. */}
@@ -44,7 +44,7 @@ export default function FotosQueVen({ fotos, propias = false }: { fotos: FotoDeP
           </Pressable>
         </Surgir>
       ))}
-      <FotoGrande url={grande ? grande.url || grande.miniatura || null : null} fotoId={grande?.id ?? null} propia={propias} onCerrar={() => setGrande(null)} />
+      <FotoGrande url={grande} onCerrar={() => setGrande(null)} />
     </View>
   );
 }

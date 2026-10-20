@@ -14072,9 +14072,9 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
   const clases182 = Object.entries(nativa182).map(([ruta, t]) => [ruta, clasificar182(ruta, t)]);
   chequear('ninguna hoja con estado propio queda sin decidir', clases182.filter(([, c]) => c === 'SIN DECIDIR').map(([ruta]) => ruta), []);
   chequear(
-    'las seis que se abren con una prop nacen de nuevo en cada apertura (FotoGrande desde el corazón, 19/10)',
+    'las cinco que se abren con una prop nacen de nuevo en cada apertura',
     clases182.filter(([, c]) => c === 'nace-al-abrir').map(([ruta]) => ruta.split('/').pop()).sort(),
-    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'FotoGrande.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx']
+    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx']
   );
   // Lo anotado a mano se comprueba: si alguien pasa a dibujar siempre una de
   // las que "se montan al abrir", vuelve a ser una hoja montada con estado viejo.
@@ -18229,7 +18229,7 @@ console.log('\n227. Rutina en inglés, idioma de a dos, Social, Ranking ordenado
   const raiz = de227('movil', 'app', '_layout.tsx');
   const fotos = de227('movil', 'src', 'FotosQueVen.tsx');
   chequear('volver deslizando desde cualquier punto, y las fotos del perfil se abren en grande', [
-    /gestureEnabled: true,\s*fullScreenGestureEnabled: true,/.test(raiz), /onPress=\{\(\) => setGrande\(/.test(fotos), /<FotoGrande url=\{grande \? grande\.url \|\| grande\.miniatura \|\| null : null\}/.test(fotos),
+    /gestureEnabled: true,\s*fullScreenGestureEnabled: true,/.test(raiz), /onPress=\{\(\) => setGrande\(/.test(fotos), /<FotoGrande url=\{grande\}/.test(fotos),
   ], [true, true, true]);
 
   // El calendario lee las vidas usadas del mes (no las devueltas) y las marca.
@@ -19603,78 +19603,23 @@ console.log('\n270. El aviso de la vida rehecho: textos, vidas arriba, la secuen
     /h\.dia < hoyISO\(\)\) \{\s*void plataforma\.almacenamiento\.borrar\(CLAVE_VIDA_HELADA\)/.test(ini),
   ], [true, true, true]);
 }
-console.log('\n271. El corazón de las fotos del perfil: uno por persona, sin saber quién, solo en fotos que se ven (migración 92, 19/10)');
+console.log('\n271. Las fotos del perfil no llevan "me gusta"; la grilla queda de tres por fila, redondeada y con sombra (20/10)');
 {
-  const como271 = async (u, sql, params = []) => {
-    await comoUsuario(u);
-    await db.exec('set role authenticated');
-    try {
-      return (await db.query(sql, params)).rows;
-    } catch (e) {
-      return { error: e.code ?? String(e.message).slice(0, 60) };
-    } finally {
-      await db.exec('reset role');
-    }
-  };
-  const a = await nuevoUsuario();
-  const b = await nuevoUsuario();
-  const c = await nuevoUsuario();
-  const d = await nuevoUsuario();
-  for (const x of [b, d]) await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [a, x]);
-  const foto = (await db.query(`insert into photos (user_id, storage_path, visibilidad) values ($1, $2, 'amigos') returning id`, [a, a + '/v.jpg'])).rows[0].id;
-  const privada = (await db.query(`insert into photos (user_id, storage_path) values ($1, $2) returning id`, [a, a + '/p.jpg'])).rows[0].id;
-  const cuenta = (u, f = foto) => como271(u, 'select foto_id, cantidad, mio from me_gusta_de_fotos($1::uuid[])', [[f]]);
-  const marcar = (u, mio, f = foto) => como271(u, 'select cantidad, mio from marcar_me_gusta($1, $2)', [f, mio]);
-
-  chequear('un amigo ve la foto sin corazones', await cuenta(b), [{ foto_id: foto, cantidad: 0, mio: false }]);
-  chequear('lo da: uno, y es suyo', await marcar(b, true), [{ cantidad: 1, mio: true }]);
-  chequear('dos toques con el mismo pedido dejan uno (no se cancelan)', await marcar(b, true), [{ cantidad: 1, mio: true }]);
-  chequear('otro amigo suma el suyo', await marcar(d, true), [{ cantidad: 2, mio: true }]);
-  chequear('el dueño ve cuántos, sin ninguno suyo', await cuenta(a), [{ foto_id: foto, cantidad: 2, mio: false }]);
-  chequear('a la foto propia no se le da corazón', await marcar(a, true), { error: '42501' });
-  chequear('un desconocido no ve nada ni puede dar', [await cuenta(c), await marcar(c, true)], [[], { error: '42501' }]);
-  chequear('una foto privada tampoco, ni para un amigo', [await cuenta(b, privada), await marcar(b, true, privada)], [[], { error: '42501' }]);
-  chequear('quién lo dio no se lee: la tabla está cerrada a la app', [
-    await como271(b, 'select user_id from me_gusta_fotos'),
-    await como271(b, 'insert into me_gusta_fotos (foto_id, user_id) values ($1, $2)', [privada, b]),
-  ], [{ error: '42501' }, { error: '42501' }]);
-  chequear('sacarlo resta el suyo', await marcar(b, false), [{ cantidad: 1, mio: false }]);
-  await db.query('delete from profiles where id = $1', [d]);
-  chequear('borrar la cuenta se lleva sus corazones', await cuenta(a), [{ foto_id: foto, cantidad: 0, mio: false }]);
-  await marcar(b, true);
-  await comoUsuario(a);
-  await db.query('select bloquear($1)', [b]);
-  chequear('con el bloqueo, deja de ver la foto y su corazón', [await cuenta(b), await marcar(b, false)], [[], { error: '42501' }]);
-
-  // La pantalla, por sus caminos.
-  const { contraste } = await import('../nucleo/contraste.ts');
-  const { C: C271 } = await import('../movil/src/colores.ts');
-  const cor = deBug('movil', 'src', 'Corazon.tsx');
-  const fg = deBug('movil', 'src', 'FotoGrande.tsx');
-  const fq = deBug('movil', 'src', 'FotosQueVen.tsx');
-  const mg = deBug('compartido', 'meGusta.ts');
-  chequear('sin corazones no hay número; con corazones, el número va adentro', [/\{cantidad > 0 && <Text style=\{\[estilos\.numero/.test(cor), /<Svg [^>]*style=\{StyleSheet\.absoluteFill\}/.test(cor)], [true, true]);
-  chequear('la foto abierta lo pone abajo a la derecha de la foto, y la propia no se toca', [
-    /\{gusta && marco && \(\s*<View style=\{\[estilos\.corazon, \{ right: sobraX \+ 12, bottom: sobraY \+ 12 \}\]\}>/.test(fg),
-    /alTocar=\{propia \? undefined : /.test(fg),
-    // Lo que cierra va detrás, sin envolver: envolviendo, el corazón era un botón adentro de otro.
-    /<Pressable testID="foto-grande" style=\{StyleSheet\.absoluteFill\} [^>]*\/>/.test(fg),
-    /<FotosQueVen fotos=\{fotos\} propias \/>/.test(deBug('movil', 'src', 'PerfilPropio.tsx')),
-    /<FotosQueVen fotos=\{fotos\} \/>/.test(deBug('movil', 'src', 'PerfilDeAmigo.tsx')),
-  ], [true, true, true, true, true]);
-  chequear('se pide con el pedido explícito (marcar, no alternar) y sin la migración no hay corazón', [/marcarMeGusta\(supabase, fotoId, quiero\)/.test(fg), /rpc\('marcar_me_gusta', \{ p_foto: foto, p_mio: mio \}\)/.test(mg), /alternar/.test(mg + fg)], [true, true, false]);
-  // En el código, no en los comentarios (el del corazón cuenta que vino a reemplazarlo).
-  const fuego = ['FotoGrande.tsx', 'FotosQueVen.tsx', 'Corazon.tsx', 'Album.tsx', 'PerfilDeAmigo.tsx'].filter((f) => /🔥|fueg/i.test(sinComentarios(deBug('movil', 'src', f))));
-  chequear('sin fueguito', fuego, []);
+  const fg = sinComentarios(deBug('movil', 'src', 'FotoGrande.tsx'));
+  const fq = sinComentarios(deBug('movil', 'src', 'FotosQueVen.tsx'));
+  const am = sinComentarios(deBug('movil', 'src', 'Album.tsx'));
+  const { existsSync: existe271 } = await import('node:fs');
+  chequear('sin corazón, sin número y sin contador en la foto abierta ni en las miniaturas', [
+    /Corazon|meGusta|me_gusta|cantidad/.test(fg + fq + am),
+    /🔥|fueg/i.test(fg + fq + am),
+    existe271(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'meGusta.ts')),
+  ], [false, false, false]);
   chequear('las fotos: tres por fila del ancho medido, redondeadas y con sombra', [
     /onLayout=\{\(e\) => setAncho\(e\.nativeEvent\.layout\.width\)\}/.test(fq),
     /const lado = Math\.floor\(\(\(ancho \|\| width - 48\) - HUECO \* 2\) \/ 3\)/.test(fq),
     /sombra: \{ borderRadius: 14,[^}]*shadowOpacity/.test(fq),
     /cuadrito: \{ borderRadius: 14, overflow: 'hidden' \}/.test(fq),
   ], [true, true, true, true]);
-  // El número sobre el corazón sin dar: el fondo a 72% encima de la foto más clara posible.
-  const sobreBlanco = '#' + [5, 6, 10].map((x) => Math.round(x * 0.72 + 255 * 0.28).toString(16).padStart(2, '0')).join('');
-  chequear('el número llega a 4,5:1 dado y sin dar, aun sobre una foto blanca', [contraste(C271.fondo, C271.corazon) >= 4.5, contraste(C271.tinta, sobreBlanco) >= 4.5], [true, true]);
 }
 console.log('\n272. El descanso al terminar: el reloj grande queda en 0:00 y lo de más va chico abajo a la derecha, sin cambiar de pantalla (19/10)');
 {
