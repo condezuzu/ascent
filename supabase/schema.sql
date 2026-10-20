@@ -914,7 +914,11 @@ begin
    where user_id = uid
      and fecha = any(p_fechas)
      and not devuelta
-     and fecha >= mi_hoy() - 7;
+     and fecha >= mi_hoy() - 7
+     -- LAS DE UN CORTE QUE IGUAL PASÓ NO VUELVEN (migración 93). Si las vidas no alcanzaron,
+     -- `aplicar_perdida_al` cortó la racha y fijó `perdida_fecha`; esas vidas quedan gastadas
+     -- (devolverlas premia la falta larga) y «Guardar» las devolvía.
+     and fecha > coalesce((select perdida_fecha from profiles where id = uid), '-infinity'::date);
   get diagnostics cuantas = row_count;
 
   if cuantas = 0 then
@@ -4654,7 +4658,7 @@ revoke execute on function public.marcar_me_gusta_rutina(uuid, boolean) from pub
 grant execute on function public.marcar_me_gusta_rutina(uuid, boolean) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 92; $$;
+returns int language sql immutable as $$ select 93; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

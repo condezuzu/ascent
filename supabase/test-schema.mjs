@@ -19890,6 +19890,31 @@ console.log('\n280. Cambiar el primer ejercicio de la rutina en la sesión cambi
   ], [['x', 'b', 'c'], ['x', 'b', 'c'], ['a', 'b', 'c', 'x'], ['x', 'y', 'z'], ['x', 'y']]);
   chequear('sin nada nuevo (solo se saltó algo) no se pregunta: no habría qué cambiar', hayQuePreguntarPorLaRutina(d(['a', 'b', 'c']), d(['b'])), false);
 }
+console.log('\n281. «Guardar vida» no devuelve las vidas de un corte que igual pasó (migración 93, 20/10)');
+{
+  // El caso real: racha de 24 y `faltas` días sin registrar. Si las vidas no alcanzan, la
+  // base corta igual y esas vidas quedan gastadas (`aplicar_perdida_al`); «Guardar» las
+  // devolvía. Si sí salvaron la racha, «Guardar» las devuelve, como siempre.
+  async function guardar281(faltas) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await rachaDe(u, 24, faltas + 1);
+    const vidas = async () => (await db.query('select mis_impulsos() as m')).rows[0].m;
+    await db.query('select verificar_perdida()');
+    const v = await vidas();
+    const r = (await db.query('select devolver_impulsos($1::date[]) as r', [v.ultimas])).rows[0].r;
+    const despues = await vidas();
+    const devueltas = (await db.query('select count(*)::int as n from vidas_usadas where user_id = $1 and devuelta', [u])).rows[0].n;
+    const racha = (await db.query('select racha_actual from profiles where id = $1', [u])).rows[0].racha_actual;
+    return { gastadas: v.ultimas.length, quedabanAntes: v.quedan, devueltas: r.devueltas, enLaTabla: devueltas, quedanDespues: despues.quedan, racha };
+  }
+  await cuotaDeVidas(3);
+  chequear('el caso real: corte con 3 vidas gastadas; «Guardar» no devuelve ninguna y la racha sigue en 14', await guardar281(24),
+    { gastadas: 3, quedabanAntes: 0, devueltas: 0, enLaTabla: 0, quedanDespues: 0, racha: 14 });
+  chequear('si las vidas salvaron la racha, «Guardar» las devuelve y corta (24 → 14)', await guardar281(2),
+    { gastadas: 2, quedabanAntes: 1, devueltas: 2, enLaTabla: 2, quedanDespues: 3, racha: 14 });
+  await cuotaDeVidas(2);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
