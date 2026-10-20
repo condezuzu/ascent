@@ -46,3 +46,13 @@ export function demoraDeEntrada(i: number): number {
  * parte de la pantalla que se está yendo.
  */
 export const VIAJE_DE_ESQUINA_MS = 620;
+
+/**
+ * LA ENTRADA DE LA APP (20/10, la «rápida» de la galería): el aro del logo se dibuja,
+ * destella el puntito y la cámara entra al centro. El contenido se monta recién al
+ * empezar el zoom: montar el motor mientras el aro se dibuja lo trabaría.
+ */
+export const ENTRADA = { aro: 600, destello: 160, zoom: 360 } as const;
+
+/** Si la sesión no contestó cuando terminó el destello, se espera esto y se abre igual. */
+export const ENTRADA_ESPERA_MAX_MS = 2500;

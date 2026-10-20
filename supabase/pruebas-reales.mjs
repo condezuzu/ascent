@@ -23,6 +23,8 @@
 //      suman una serie de más (19/10), en la nativa.
 //   6. probar-rutina-en-perfil — tu perfil muestra los ejercicios de tu rutina al
 //      abrir, sin tocar ningún día (20/10), en la nativa.
+//   7. probar-entrada-logo — el aro del logo se dibuja y la app se monta recién con
+//      el zoom (20/10), en la nativa y sin cuenta.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -50,6 +52,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'sin salto al irse la marca', archivo: 'probar-salto-marca.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'doble toque en el +', archivo: 'probar-doble-toque.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la rutina en tu perfil', archivo: 'probar-rutina-en-perfil.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la entrada del logo', archivo: 'probar-entrada-logo.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

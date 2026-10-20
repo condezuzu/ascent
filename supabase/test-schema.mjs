@@ -15377,7 +15377,7 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   chequear('en el teléfono, el enlace de cambiar la contraseña termina eligiéndola', [
     /if \(error\) return false;\s*return esDeRecuperacion\(url\) \? 'clave-nueva' : 'entro';/.test(enlaceNativo),
     /if \(entro === 'clave-nueva'\) setClaveNueva\(true\);\s*mirar\(\);/.test(capa),
-    /\{claveNueva && \(sesion === 'con' \|\| sesion === 'sin-nombre'\) && <ClaveNueva alTerminar=\{\(\) => setClaveNueva\(false\)\} \/>\}/.test(capa),
+    /\{abierta && claveNueva && \(sesion === 'con' \|\| sesion === 'sin-nombre'\) && <ClaveNueva alTerminar=\{\(\) => setClaveNueva\(false\)\} \/>\}/.test(capa),
     /const mal = claveNuevaInvalida\(clave, repetida\);\s*if \(mal\) return setError\(mal\);/.test(claveNueva),
     /supabase\.auth\.updateUser\(\{ password: clave \}\)/.test(claveNueva),
     /setAviso\(T\.clave\.correoEnviado\)/.test(de195('movil/src/ajustes/Cuenta.tsx')),
@@ -19970,6 +19970,28 @@ console.log('\n283. «Olvidar este día» en la ventana del final: descarta el c
     /if \(\(await plataforma\.almacenamiento\.leer\(CLAVE_DIA_OLVIDADO\)\.catch\(\(\) => null\)\) === hoyISO\(\)\) return null;/.test(pr),
   ], [true, true, true]);
   chequear('el botón todavía no está en la pantalla: espera la galería', /olvidar|Olvidar/.test(deBug('movil', 'src', 'VentanaRutina.tsx')), false);
+}
+console.log('\n284. La entrada de la app: el aro del logo, el destello y el zoom antes de montar nada (20/10)');
+{
+  const { arcoDelLogo, puntoDelLogo, LOGO } = await import('../nucleo/logo.ts');
+  const arco = arcoDelLogo();
+  const [ax, ay, bx, by] = arco.d.match(/^M(\S+) (\S+) A\S+ \S+ 0 \d \d (\S+) (\S+)$/).slice(1).map(Number);
+  const radio = (x, y) => Math.round(Math.hypot(x, y) * 10) / 10;
+  const p = puntoDelLogo();
+  chequear('el aro arranca y termina sobre su radio, y el puntito también', [radio(ax, ay), radio(bx, by), radio(p.x, p.y)], [LOGO.radio, LOGO.radio, LOGO.radio]);
+  chequear('lo que mide el aro es lo que se dibuja de a poco', Math.round(arco.largo), Math.round((LOGO.radio * (LOGO.hasta - LOGO.desde) * Math.PI) / 180));
+  const lay = sinComentarios(deBug('movil', 'app', '_layout.tsx'));
+  chequear('en la raíz, nada de la app se dibuja antes de que la entrada abra', [
+    (lay.match(/\{sesion === '/g) ?? []).length,
+    (lay.match(/\{abierta && (claveNueva && )?\(?sesion === '/g) ?? []).length >= 4,
+    /\{entrada !== 'fin' && <EntradaDeLaApp lista=\{sesion !== 'mirando'\}/.test(lay),
+  ], [0, true, true]);
+  const en = sinComentarios(deBug('movil', 'src', 'EntradaDeLaApp.tsx'));
+  chequear('la entrada abre la app al empezar el zoom, y el zoom no depende del hilo de JS', [
+    /setFase\('abriendo'\);\s*alAbrir\(\);\s*Animated\.timing\(zoom,/.test(en),
+    /Animated\.timing\(zoom, \{[^}]*useNativeDriver: true,/.test(en),
+    /if \(fase !== 'esperando' \|\| !\(lista \|\| vencida\)\) return;/.test(en),
+  ], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
