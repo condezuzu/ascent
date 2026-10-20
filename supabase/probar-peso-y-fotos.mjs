@@ -102,6 +102,12 @@ try {
   await page.waitForTimeout(2000);
   const [{ data: logs }, { data: fotos }] = await Promise.all([s.from('logs').select('id').eq('user_id', uid), s.from('photos').select('log_id').eq('user_id', uid)]);
   chequear('la base tiene el día y la foto colgada de ese día', [(logs ?? []).length, (fotos ?? []).length, fotos?.[0]?.log_id === logs?.[0]?.id], [1, 1, true]);
+
+  // Y EN EL ÁLBUM, con una sola foto este mes, ya no empuja a la segunda (20/10).
+  await page.getByText('Álbum', { exact: true }).last().click({ timeout: 30000 });
+  await page.waitForTimeout(4000);
+  const album = await page.locator('body').innerText();
+  chequear('el álbum con una sola foto en el mes no dice «el antes y el después»', [/antes y el después/.test(album), await page.getByTestId('album-una-mas').count()], [false, 0]);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));

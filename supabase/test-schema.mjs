@@ -18487,11 +18487,13 @@ console.log('\n233. La meta de pasos se festeja una vez por día, y el empujón 
   // 16/10, a pedido: sin empujón a la foto (ni la frase ni la pastilla resaltada).
   const { TEXTOS_ES: T233 } = await import('../nucleo/textos.ts');
   const { EN: EN233 } = await import('../nucleo/textos-en.ts');
-  chequear('el día sin foto ya no empuja a sacarla, en ningún idioma; el mes con una sola foto sigue diciendo qué trae la segunda', [
+  // 20/10, a pedido: el mes con una sola foto tampoco empuja («con otra foto ves el antes y el después»).
+  chequear('el día sin foto ya no empuja a sacarla, en ningún idioma; el mes con una sola foto tampoco', [
     /setSinFoto|foto-empuje|resalta[=?]/.test(de233('movil', 'src', 'DiaListo.tsx')),
     'fotoEmpuje' in T233.inicio || 'fotoEmpuje' in EN233.inicio,
-    /\{!par && m\.fotos\.length === 1 && m\.clave === mesDeHoy && <Text testID="album-una-mas"/.test(de233('movil', 'src', 'Album.tsx')),
-  ], [false, false, true]);
+    /album-una-mas/.test(de233('movil', 'src', 'Album.tsx')),
+    'unaMas' in T233.album || 'unaMas' in EN233.album,
+  ], [false, false, false, false]);
 }
 console.log('\n234. La pasada de lentitud: el fondo se pausa tapado, los relojes se tickean solos, las pestañas no se redibujan todas (15/10)');
 {

@@ -1391,8 +1391,6 @@ const ES = {
   album: {
     titulo: 'Álbum',
     vacioTitulo: 'Ninguna foto todavía.',
-    // Un mes con una sola foto (15/10): la comparación aparece con la segunda.
-    unaMas: 'Con otra foto este mes ves el antes y el después.',
     vacioPie: 'Al registrar un día puedes sumar una: queda pegada al planeta de ese día.',
     // Para una foto el verbo es QUITAR, nunca borrar ni sacar (regla 4 de
     // spec/idioma.md). Decía "Borrar" hasta el 18/9; §54 lo mira ahora.
