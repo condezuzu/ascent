@@ -20044,7 +20044,7 @@ console.log('\n287. La rutina de Stats → Entrenamiento muestra sus ejercicios 
 console.log('\n288. «Olvidar este día», aparte y al final de la ventana de reemplazo (20/10)');
 {
   const { T: T288 } = await import('../nucleo/textos.ts');
-  const { T: T288en } = await import('../nucleo/textos-en.ts');
+  const { EN: T288en } = await import('../nucleo/textos-en.ts');
   const vr = sinComentarios(deBug('movil', 'src', 'VentanaRutina.tsx'));
   const pos = (x) => vr.indexOf(x);
   chequear('el botón va después de los otros dos, solo en la pregunta (no en «¿Estás seguro?»), y olvida', [
@@ -20054,6 +20054,27 @@ console.log('\n288. «Olvidar este día», aparte y al final de la ventana de re
     /<Text style=\{estilos\.tenueTexto\}>\{T\.rutina\.olvidarDia\}<\/Text>/.test(vr),
   ], [true, true, true, true]);
   chequear('el texto no dice borrar', [T288.rutina.olvidarDia, /borr/i.test(T288.rutina.olvidarDia), /delet/i.test(T288en.rutina.olvidarDia)], ['Olvidar este día', false, false]);
+}
+console.log('\n289. Las repeticiones de la última vez: de la última marca propia antes de hoy, con un ajuste apagado (20/10)');
+{
+  // Con el hook de verdad: la base devuelve marcas propias y de un amigo (la RLS deja leer
+  // las de los amigos), una de hoy y otra de otro ejercicio.
+  const r = await escenarioDeSesion('repsUltimaVez');
+  chequear('la sesión da la última marca propia de cada ejercicio, antes de hoy', r.fallo ?? [r.press, r.sentadilla, r.remo], [[62.5, 5], [90, 6], null]);
+  const { repsDeLaUltimaVez } = await import('../nucleo/rutina.ts');
+  const m = (fecha, reps) => ({ ejercicio: 'press_banca', peso: 60, reps, fecha });
+  chequear('la regla: del mismo día, la que vino última; nada de hoy ni de otro ejercicio', [
+    repsDeLaUltimaVez([m('2026-10-10', 8), m('2026-10-10', 6)], 'press_banca', '2026-10-20')?.reps,
+    repsDeLaUltimaVez([m('2026-10-20', 3)], 'press_banca', '2026-10-20'),
+    repsDeLaUltimaVez([m('2026-10-10', 8)], 'sentadilla', '2026-10-20'),
+  ], [6, null, null]);
+  const ru = sinComentarios(deBug('compartido', 'repsUltimaVez.ts'));
+  const bl = sinComentarios(deBug('movil', 'src', 'Bloque.tsx'));
+  chequear('apagado de fábrica, en Ajustes, y el bloque lo muestra solo prendido', [
+    /=== 'si';/.test(ru),
+    /<Text style=\{estilos\.opcion\}>\{T\.ajustes\.repsUltimaVez\}<\/Text>/.test(sinComentarios(deBug('movil', 'src', 'Ajustes.tsx'))),
+    /\{verReps && !!estado\.ejercicio && !!repsUltimaVez && \(/.test(bl),
+  ], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

@@ -53,6 +53,7 @@ import {
 } from '@nucleo/bloques';
 import { sumarSerie, restarSerie, corregirEnLista, seriesAlReleer } from '@nucleo/conteo';
 import { hoyISO, restarDias } from '@nucleo/fechas';
+import { miId } from '@compartido/quienSoy';
 import {
   rutinaParaHoy,
   siguienteEnRutina,
@@ -60,6 +61,8 @@ import {
   reengancharDesde,
   ejerciciosEnOrden,
   ultimaVezDe,
+  repsDeLaUltimaVez,
+  type MarcaConReps,
   type SesionConPesos,
   type SesionRutina,
 } from '@nucleo/rutina';
@@ -93,6 +96,7 @@ import {
   rutinaEsGuardada,
   sesionesRutinaRef,
   historialConPesosRef,
+  marcasConRepsRef,
   setterDe,
   suscribirViva,
 } from '@compartido/sesionViva';
@@ -1227,6 +1231,19 @@ export function useSesion(
     await marcar();
   }
 
+  // LAS MARCAS CON SUS REPETICIONES (20/10), para el ajuste de «las repeticiones de la
+  // última vez». Solo las propias: los amigos también pueden leer las marcas.
+  async function cargarMarcasConReps() {
+    try {
+      const yo = await miId(supabase);
+      if (!yo) return;
+      const { data } = await supabase.from('prs').select('ejercicio, peso, reps, fecha').eq('user_id', yo).order('fecha');
+      marcasConRepsRef.current = ((data ?? []) as MarcaConReps[]).map((m) => ({ ejercicio: m.ejercicio, peso: Number(m.peso), reps: Number(m.reps), fecha: m.fecha }));
+    } catch {
+      marcasConRepsRef.current = [];
+    }
+  }
+
   // EL HISTORIAL RECIENTE PARA LA RUTINA: sesiones terminadas de las últimas 8
   // semanas, cada una reducida a sus ejercicios en orden. Del lado del cliente
   // (la RLS deja ver solo las propias). Sin bloquear ni romper: si falla, queda
@@ -1258,6 +1275,7 @@ export function useSesion(
           return { fecha: log?.fecha ?? '', bloques: Array.isArray(s.bloques) ? (s.bloques as SesionConPesos['bloques']) : [] };
         })
         .filter((s) => s.fecha);
+      void cargarMarcasConReps();
     } catch {
       sesionesRutinaRef.current = [];
       historialConPesosRef.current = [];
@@ -1683,6 +1701,8 @@ export function useSesion(
     bloqueSiguiente,
     /** La última vez que se hizo ese ejercicio, antes de hoy (ver `ultimaVezDe`). */
     ultimaVezDe: (id: string) => ultimaVezDe(historialConPesosRef.current, id, hoyISO()),
+    /** Las repeticiones de la última marca de ese ejercicio, antes de hoy (ver `repsDeLaUltimaVez`). */
+    repsDeLaUltimaVezDe: (id: string) => repsDeLaUltimaVez(marcasConRepsRef.current, id, hoyISO()),
     tocarBloque,
     elegirEjercicio,
     mudarSeries,

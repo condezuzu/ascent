@@ -1,5 +1,5 @@
 import { bloquesVacios, type EstadoBloques } from '@nucleo/bloques';
-import type { SesionConPesos, SesionRutina } from '@nucleo/rutina';
+import type { MarcaConReps, SesionConPesos, SesionRutina } from '@nucleo/rutina';
 import type { DescansoVivo } from '@compartido/descanso';
 import { cambioDeSesion } from '@compartido/sesionCache';
 
@@ -111,6 +111,8 @@ export const rutinaEsGuardada: { current: boolean } = { current: false };
 export const sesionesRutinaRef: { current: SesionRutina[] } = { current: [] };
 /** El mismo historial con los pesos de cada bloque: para «la última vez» de un ejercicio. */
 export const historialConPesosRef: { current: SesionConPesos[] } = { current: [] };
+/** Las marcas de la cuenta con sus repeticiones: para «las repeticiones de la última vez». */
+export const marcasConRepsRef: { current: MarcaConReps[] } = { current: [] };
 
 /**
  * La firma de la caché, UNA por aparato: lo que escribe cualquier instancia ya

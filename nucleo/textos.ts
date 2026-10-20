@@ -643,6 +643,9 @@ const ES = {
     sonidoPrendido: 'Sonido al terminar ✓',
     // Al lado de un interruptor (15/10): el estado lo dice el interruptor.
     sonidoAlTerminar: 'Sonido al terminar',
+    // Al entrenar, debajo del ejercicio (20/10). Apagado de fábrica.
+    repsUltimaVez: 'Repeticiones de la última vez',
+    repsUltimaVezNota: 'Salen debajo del ejercicio, de tu última marca: las series no guardan repeticiones.',
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cierras, no avisa.',
     noVibra: 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.',
@@ -1127,6 +1130,7 @@ const ES = {
     sugeridoNota: 'De tu rutina. Cuenta la primera serie para confirmarlo.',
     // Debajo del ejercicio (19/10): la última sesión que lo tuvo. El detalle viene armado.
     ultimaVez: (fecha: string, detalle: string) => `La última vez, ${fecha}: ${detalle}`,
+    repsUltimaVez: (fecha: string, reps: number, peso: string) => `Repeticiones la última vez, ${fecha}: ${reps} con ${peso}`,
 
     // CAMBIÉ DE EJERCICIO / ME EQUIVOQUÉ DE EJERCICIO. Son dos cosas
     // distintas y la app no puede adivinar cuál fue: si ya hay series

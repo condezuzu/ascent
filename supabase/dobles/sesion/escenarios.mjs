@@ -1515,6 +1515,35 @@ async function primerEjercicio(modo, ventana, copia = 'conCopia') {
  * Con una copia por instancia, el vigilante iba atrás hasta releerla. Después se
  * toca desde el vigilante y se mira la pantalla: tiene que valer para los dos lados.
  */
+/**
+ * `repsUltimaVez` (20/10): las repeticiones de la última vez salen de la última marca de ese
+ * ejercicio antes de hoy, y solo de las propias (la base también deja leer las de los amigos).
+ */
+async function repsUltimaVez() {
+  servidor.version = 82;
+  datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+  const { hoyISO, restarDias } = await import('@nucleo/fechas');
+  const hoy = hoyISO();
+  servidor.historial = [{ bloques: [{ ejercicio: 'press_banca', series: 3 }], logs: { fecha: restarDias(hoy, 3) } }];
+  servidor.marcas = [
+    { user_id: 'yo', ejercicio: 'press_banca', peso: 60, reps: 8, fecha: restarDias(hoy, 10) },
+    { user_id: 'yo', ejercicio: 'press_banca', peso: 62.5, reps: 5, fecha: restarDias(hoy, 3) },
+    { user_id: 'amigo', ejercicio: 'press_banca', peso: 100, reps: 3, fecha: restarDias(hoy, 1) },
+    { user_id: 'yo', ejercicio: 'press_banca', peso: 70, reps: 2, fecha: hoy },
+    { user_id: 'yo', ejercicio: 'sentadilla', peso: 90, reps: 6, fecha: restarDias(hoy, 2) },
+  ];
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await dormir(500);
+  await asentar();
+  const r = (id) => {
+    const m = inicio.r.repsDeLaUltimaVezDe(id);
+    return m ? [m.peso, m.reps] : null;
+  };
+  return { press: r('press_banca'), sentadilla: r('sentadilla'), remo: r('remo') };
+}
+
 async function dueno() {
   const vigilante = montar(() => useSesion());
   const inicio = montar(() => useSesion());
@@ -1613,7 +1642,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia, primerEjercicio }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia, primerEjercicio, repsUltimaVez }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);
