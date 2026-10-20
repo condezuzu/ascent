@@ -19608,11 +19608,12 @@ console.log('\n271. Las fotos del perfil no llevan "me gusta"; la grilla queda d
   const fg = sinComentarios(deBug('movil', 'src', 'FotoGrande.tsx'));
   const fq = sinComentarios(deBug('movil', 'src', 'FotosQueVen.tsx'));
   const am = sinComentarios(deBug('movil', 'src', 'Album.tsx'));
-  const { existsSync: existe271 } = await import('node:fs');
+  // El corazón que queda es el de las rutinas (sección 275): ni la base ni la app lo cuelgan de una foto.
+  const mg271 = sinComentarios(deBug('compartido', 'meGusta.ts'));
   chequear('sin corazón, sin número y sin contador en la foto abierta ni en las miniaturas', [
     /Corazon|meGusta|me_gusta|cantidad/.test(fg + fq + am),
     /🔥|fueg/i.test(fg + fq + am),
-    existe271(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'meGusta.ts')),
+    /foto/i.test(mg271) || /me_gusta_fotos/.test(deBug('supabase', 'schema.sql')),
   ], [false, false, false]);
   chequear('las fotos: tres por fila del ancho medido, redondeadas y con sombra', [
     /onLayout=\{\(e\) => setAncho\(e\.nativeEvent\.layout\.width\)\}/.test(fq),
@@ -19694,6 +19695,74 @@ console.log('\n274. La rutina carga en escalones: las series son bloques que ent
   const seriesAntes = cuenta ? new Function('dia', 'i', `return ${cuenta};`) : () => null;
   const dia = { descanso: false, ejercicios: [{ ejercicio: 'a', series: 4 }, { ejercicio: 'cinta', series: 1, minutos: 20 }, { ejercicio: 'b', series: 3 }, { ejercicio: 'c', series: 2 }] };
   chequear('cada fila sigue donde terminó la anterior (el cardio no suma bloques)', [0, 1, 2, 3].map((i) => seriesAntes(dia, i)), [0, 4, 4, 7]);
+}
+console.log('\n275. El corazón de las rutinas: uno por persona, tocar de nuevo lo quita, no a la propia, la cuenta es pública y quién lo dio no (migración 92, 20/10)');
+{
+  const como275 = async (u, sql, params = []) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    try {
+      return (await db.query(sql, params)).rows;
+    } catch (e) {
+      return { error: e.code ?? String(e.message).slice(0, 60) };
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  const a = await nuevoUsuario();
+  const b = await nuevoUsuario();
+  const c = await nuevoUsuario();
+  const d = await nuevoUsuario();
+  for (const x of [b, d]) await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [a, x]);
+  const semana = JSON.stringify(Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }] })));
+  const rutina = (await como275(a, 'select guardar_rutina(null, $1, $2::jsonb) as id', ['Fuerza', semana]))[0].id;
+  const cuenta = (u) => como275(u, 'select cantidad, mio from me_gusta_de_rutina($1)', [rutina]);
+  const marcar = (u, mio) => como275(u, 'select cantidad, mio from marcar_me_gusta_rutina($1, $2)', [rutina, mio]);
+
+  chequear('un amigo ve la rutina sin corazones', await cuenta(b), [{ cantidad: 0, mio: false }]);
+  chequear('lo da: uno, y es suyo', await marcar(b, true), [{ cantidad: 1, mio: true }]);
+  chequear('uno por persona: dos toques con el mismo pedido dejan uno', await marcar(b, true), [{ cantidad: 1, mio: true }]);
+  chequear('tocar de nuevo lo quita', await marcar(b, false), [{ cantidad: 0, mio: false }]);
+  await marcar(b, true);
+  chequear('otro amigo suma el suyo', await marcar(d, true), [{ cantidad: 2, mio: true }]);
+  chequear('a la rutina propia no se le da', await marcar(a, true), { error: '42501' });
+  chequear('la cuenta es pública: el dueño y un desconocido la ven, sin ninguno suyo', [await cuenta(a), await cuenta(c)], [[{ cantidad: 2, mio: false }], [{ cantidad: 2, mio: false }]]);
+  chequear('un desconocido no puede darlo', await marcar(c, true), { error: '42501' });
+  chequear('quién lo dio no se lee: la tabla está cerrada a la app', [
+    await como275(a, 'select user_id from me_gusta_rutinas'),
+    await como275(b, 'insert into me_gusta_rutinas (rutina_id, user_id) values ($1, $2)', [rutina, c]),
+    (await db.query(`select pg_get_function_result('public.me_gusta_de_rutina(uuid)'::regprocedure) as r`)).rows[0].r,
+  ], [{ error: '42501' }, { error: '42501' }, 'TABLE(cantidad integer, mio boolean)']);
+  await como275(a, 'select fijar_comparte_rutina(false)');
+  chequear('si la esconde, ya no se puede dar (la cuenta sigue)', [await marcar(c, true), await como275(b, 'select cantidad from marcar_me_gusta_rutina($1, false)', [rutina]), await cuenta(c)], [{ error: '42501' }, { error: '42501' }, [{ cantidad: 2, mio: false }]]);
+  await como275(a, 'select fijar_comparte_rutina(true)');
+  await db.query('delete from profiles where id = $1', [d]);
+  chequear('borrar la cuenta se lleva sus corazones', await cuenta(b), [{ cantidad: 1, mio: true }]);
+  await como275(a, 'select borrar_rutina($1)', [rutina]);
+  chequear('borrar la rutina se lleva los suyos', (await db.query('select count(*)::int as n from me_gusta_rutinas where rutina_id = $1', [rutina])).rows[0].n, 0);
+
+  // La pantalla, por sus caminos.
+  const cor = deBug('movil', 'src', 'Corazon.tsx');
+  const rd = deBug('movil', 'src', 'RutinaDe.tsx');
+  const mg = deBug('compartido', 'meGusta.ts');
+  chequear('en la rutina de otra persona, solo si es una guardada (con id) y la base contesta', [
+    /if \(esYo \|\| !idRutina\) return;/.test(rd),
+    /\{gusta && <Corazon cantidad=\{gusta\.cantidad\} mio=\{gusta\.mio\} alTocar=\{\(\) => void tocarCorazon\(\)\} \/>\}/.test(rd),
+    /const quiero = !gusta\.mio;[\s\S]{0,200}marcarMeGustaRutina\(supabase, idRutina, quiero\)/.test(rd),
+    /rpc\('marcar_me_gusta_rutina', \{ p_rutina: rutina, p_mio: mio \}\)/.test(mg),
+  ], [true, true, true, true]);
+  chequear('sin corazones no hay número; con corazones va adentro', /\{cantidad > 0 && <Text style=\{\[estilos\.numero/.test(cor), true);
+  chequear('estalla al darlo (anillo y seis chispas, 450 ms), no al sacarlo, y no con "reducir movimiento"', [
+    /const ESTALLIDO_MS = 450;/.test(cor),
+    /Array\.from\(\{ length: 6 \}/.test(cor),
+    /if \(!loDa \|\| \(await AccessibilityInfo\.isReduceMotionEnabled\(\)/.test(cor),
+    /estilos\.anillo/.test(cor) && /estilos\.chispa/.test(cor),
+    // Arrancada en el mismo toque, antes de montar la capa, terminaba sola en un cuadro.
+    /useEffect\(\(\) => \{\s*if \(estallidos === 0\) return;/.test(cor) && /setEstallando\(true\);\s*setEstallidos\(\(n\) => n \+ 1\);/.test(cor),
+  ], [true, true, true, true, true]);
+  const { contraste } = await import('../nucleo/contraste.ts');
+  const { C: C275 } = await import('../movil/src/colores.ts');
+  chequear('el número se lee: dado, en fondo sobre el corazón', contraste(C275.fondo, C275.corazon) >= 4.5, true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

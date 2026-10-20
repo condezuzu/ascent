@@ -4,8 +4,11 @@ import { hayAlgo, ORDEN_SEMANA, soloLosDias } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import { nombreVisible } from '@nucleo/propios';
 import { cargarRutinaParaVer, catalogoDeRutina, copiarRutina, type CatalogoDeRutina, type RutinaParaVer } from '@compartido/rutinas';
+import { marcarMeGustaRutina, meGustaDeRutina, type MeGusta } from '@compartido/meGusta';
+import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
 import RutinaPlegada from './RutinaPlegada';
+import Corazon from './Corazon';
 import { C } from './colores';
 
 /**
@@ -20,6 +23,9 @@ import { C } from './colores';
  * —la lista completa, no un botón por día en lugar de la lista— y «Copiar esta rutina» está
  * siempre, no solo si ya tenías rutinas guardadas. Copiar abre la elección por días: un
  * círculo por día, y se copian los marcados.
+ *
+ * EL CORAZÓN (20/10): en la rutina guardada de otra persona, al lado de su nombre. Uno por
+ * persona; tocarlo de nuevo lo quita. Sin la migración 92 no aparece.
  */
 export default function RutinaDe({ quien, esYo = false, nombre }: { quien: string; esYo?: boolean; nombre?: string }) {
   const [rutina, setRutina] = useState<RutinaParaVer | null>(null);
@@ -39,6 +45,31 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
       vivo = false;
     };
   }, [quien, esYo]);
+
+  const [gusta, setGusta] = useState<MeGusta | null>(null);
+  const enVuelo = useRef(false);
+  const idRutina = rutina?.id ?? null;
+  useEffect(() => {
+    setGusta(null);
+    if (esYo || !idRutina) return;
+    let vivo = true;
+    void meGustaDeRutina(supabase, idRutina).then((g) => vivo && setGusta(g));
+    return () => {
+      vivo = false;
+    };
+  }, [esYo, idRutina]);
+
+  async function tocarCorazon() {
+    if (!gusta || !idRutina || enVuelo.current) return;
+    enVuelo.current = true;
+    const antes = gusta;
+    const quiero = !gusta.mio;
+    setGusta({ mio: quiero, cantidad: Math.max(0, gusta.cantidad + (quiero ? 1 : -1)) });
+    plataforma.haptica.pulso();
+    const r = await marcarMeGustaRutina(supabase, idRutina, quiero);
+    setGusta(r ?? antes);
+    enVuelo.current = false;
+  }
 
   const copiando = useRef(false);
 
@@ -126,7 +157,12 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
         </View>
       ) : (
         <>
-          {rutina.nombre && <Text style={estilos.nombre}>{rutina.nombre}</Text>}
+          {(rutina.nombre || gusta) && (
+            <View style={estilos.filaNombre}>
+              <Text style={estilos.nombre}>{rutina.nombre ?? ''}</Text>
+              {gusta && <Corazon cantidad={gusta.cantidad} mio={gusta.mio} alTocar={() => void tocarCorazon()} />}
+            </View>
+          )}
           <RutinaPlegada dias={rutina.dias} catalogo={catalogo} soloConAlgo={rutina.deducida} abiertos={!esYo} />
           {!esYo && (
             <Pressable testID="rutina-copiar" style={[estilos.pildora, estilos.pildoraBorde, estilos.copiar]} onPress={() => setEligiendo(true)} accessibilityRole="button">
@@ -144,6 +180,7 @@ const estilos = StyleSheet.create({
   caja: { marginTop: 8 },
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 26, marginBottom: 10 },
   nombre: { color: C.apagado, fontSize: 12, marginBottom: 4 },
+  filaNombre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 6 },
   indicacion: { color: C.sub, fontSize: 13, marginBottom: 6 },
   diaElegible: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },

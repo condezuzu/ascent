@@ -139,17 +139,24 @@ export async function borrarRutina(supabase: Cliente, id: string): Promise<boole
  * - `escondida`: es de un amigo que la escondió (no se dibuja nada).
  * - `null`: no se pudo preguntar.
  */
-export type RutinaParaVer = { nombre: string | null; dias: DiaDeSemana[]; deducida: boolean; escondida: boolean };
+export type RutinaParaVer = {
+  /** La guardada tiene id (es lo que lleva el corazón, migración 92); la deducida, no. */
+  id: string | null;
+  nombre: string | null;
+  dias: DiaDeSemana[];
+  deducida: boolean;
+  escondida: boolean;
+};
 
 export async function cargarRutinaParaVer(supabase: Cliente, quien: string, esYo: boolean): Promise<RutinaParaVer | null> {
   const version = await versionDelEsquema(supabase).catch(() => null);
   if (disponible('rutinas', version)) {
     const { data, error } = await supabase.rpc('rutina_activa_de', { p_quien: quien });
     if (error) return null;
-    const g = data as { nombre?: string; dias?: unknown } | null;
-    if (g?.dias) return { nombre: g.nombre ?? null, dias: diasLimpios(g.dias), deducida: false, escondida: false };
+    const g = data as { id?: string; nombre?: string; dias?: unknown } | null;
+    if (g?.dias) return { id: g.id ?? null, nombre: g.nombre ?? null, dias: diasLimpios(g.dias), deducida: false, escondida: false };
   }
-  if (!disponible('rutinaDeAmigo', version)) return { nombre: null, dias: diasLimpios(null), deducida: true, escondida: !esYo };
+  if (!disponible('rutinaDeAmigo', version)) return { id: null, nombre: null, dias: diasLimpios(null), deducida: true, escondida: !esYo };
   const { data: filas, error } = await supabase.rpc('rutina_de_amigo', { p_quien: quien });
   if (error) return null;
   const sesiones = ((filas ?? []) as { fecha: string; bloques: { ejercicio: string; series: number | null }[] | null }[]).map((f) => ({
@@ -157,9 +164,9 @@ export async function cargarRutinaParaVer(supabase: Cliente, quien: string, esYo
     bloques: f.bloques ?? [],
   }));
   const dias = semanaDeLaDeducida(rutinaPorDia(sesiones));
-  if (esYo || hayAlgo(dias)) return { nombre: null, dias, deducida: true, escondida: false };
+  if (esYo || hayAlgo(dias)) return { id: null, nombre: null, dias, deducida: true, escondida: false };
   // Vacía: ¿la escondió, o no tiene datos? Solo contesta que sí a un amigo que la muestra.
-  if (!disponible('entrenarConOtro', version)) return { nombre: null, dias, deducida: true, escondida: true };
+  if (!disponible('entrenarConOtro', version)) return { id: null, nombre: null, dias, deducida: true, escondida: true };
   const { data: muestra, error: eMuestra } = await supabase.rpc('me_muestra_su_rutina', { p_quien: quien });
-  return { nombre: null, dias, deducida: true, escondida: eMuestra ? true : muestra !== true };
+  return { id: null, nombre: null, dias, deducida: true, escondida: eMuestra ? true : muestra !== true };
 }
