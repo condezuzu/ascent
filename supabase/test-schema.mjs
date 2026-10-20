@@ -18624,10 +18624,11 @@ console.log('\n237. Cacería del 15/10, vuelta 3: Seguir con la cinta, la semill
   chequear('sembrar no pisa un ejercicio ya elegido (y sigue sembrando un bloque vacío)', [B237.sembrar(elegido, 'press_banca').ejercicio, B237.sembrar(B237.bloquesVacios(), 'press_banca').ejercicio], ['cinta', 'press_banca']);
   const { readFileSync: leer237 } = await import('node:fs');
   const de237 = (...p) => leer237(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
-  chequear('el festejo de los pasos se baja si el efecto se corta (la sesión arrancó a mitad); el Álbum pide otra foto solo este mes', [
+  // El Álbum ya no pide otra foto (20/10, ver la 233).
+  chequear('el festejo de los pasos se baja si el efecto se corta (la sesión arrancó a mitad); el Álbum ya no pide otra foto', [
     /vivo = false;\n[^\n]*\n      setFestejando\(false\);/.test(de237('movil', 'src', 'PasosInicio.tsx')),
-    /m\.clave === mesDeHoy/.test(de237('movil', 'src', 'Album.tsx')),
-  ], [true, true]);
+    /mesDeHoy/.test(de237('movil', 'src', 'Album.tsx')),
+  ], [true, false]);
 }
 console.log('\n238. Cacería del 15/10, vuelta 4: la sesión de otro aparato con señal lenta, la cinta parada, los 40 bloques, dos sesiones el mismo día, la rutina y el compañero');
 {
