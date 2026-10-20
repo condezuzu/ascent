@@ -841,6 +841,8 @@ export const EN: Textos = {
     guardarDeducida: 'Save it as a routine',
     armarNueva: 'Build one from scratch',
     copiar: 'Copy this routine',
+    eligeDias: 'Pick the days you want to copy.',
+    copiarDias: (n: number) => (n === 0 ? 'Copy' : n === 1 ? 'Copy 1 day' : `Copy ${n} days`),
     copiada: (nombre: string) => `Copied as “${nombre}”, next to yours. Pick it in Stats, under Training.`,
     copiadaActiva: (nombre: string) => `Copied and active: “${nombre}”. Change it in Stats, under Training.`,
     deAlguien: (nombre: string) => `${nombre}'s routine`,

@@ -21,6 +21,7 @@ export default function RutinaPlegada({
   soloConAlgo = false,
   abajoDelDia,
   abiertoAlEmpezar,
+  abiertos = false,
   testID,
 }: {
   dias: DiaDeSemana[];
@@ -29,6 +30,8 @@ export default function RutinaPlegada({
   abajoDelDia?: (dia: number) => ReactNode;
   /** El día que arranca abierto (en la pantalla de la rutina, el de hoy). */
   abiertoAlEmpezar?: number;
+  /** Todos los días abiertos, con su lista (la rutina de otra persona, 19/10). */
+  abiertos?: boolean;
   testID?: string;
 }) {
   const [abierto, setAbierto] = useState<number | null>(abiertoAlEmpezar ?? null);
@@ -41,7 +44,7 @@ export default function RutinaPlegada({
         const dia = dias[d];
         const titulo = tituloDelDia(dia, grupoDe, T.rutina.descanso);
         const vacio = !dia.descanso && dia.ejercicios.length === 0;
-        const esAbierto = abierto === d;
+        const esAbierto = abiertos || abierto === d;
         return (
           <View key={d} style={estilos.dia}>
             <Pressable

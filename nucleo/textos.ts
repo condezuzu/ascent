@@ -1451,6 +1451,9 @@ const ES = {
     guardarDeducida: 'Guardarla como rutina',
     armarNueva: 'Armar una de cero',
     copiar: 'Copiar esta rutina',
+    // Copiar por días (19/10): un círculo por día, y se copian los marcados.
+    eligeDias: 'Elige los días que quieres copiar.',
+    copiarDias: (n: number) => (n === 0 ? 'Copiar' : n === 1 ? 'Copiar 1 día' : `Copiar ${n} días`),
     // Dice cuál quedó activa, y se puede volver a la de antes con un toque (15/10).
     copiada: (nombre: string) => `Copiada como «${nombre}», junto a las tuyas. La eliges en Stats, en Entrenamiento.`,
     copiadaActiva: (nombre: string) => `Copiada y activa: «${nombre}». La cambias en Stats, en Entrenamiento.`,

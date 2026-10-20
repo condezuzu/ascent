@@ -73,6 +73,11 @@ export function hayAlgo(dias: DiaDeSemana[]): boolean {
   return dias.some((d) => d.descanso || d.ejercicios.length > 0);
 }
 
+/** Copiar la rutina de alguien por días (19/10): los elegidos tal cual, el resto vacío. */
+export function soloLosDias(dias: DiaDeSemana[], elegidos: number[]): DiaDeSemana[] {
+  return dias.map((d, i) => (elegidos.includes(i) ? d : { descanso: false, ejercicios: [] }));
+}
+
 /** "a", "a y b", "a, b y c" (o "a and b" en inglés). */
 export function enumerar(partes: string[]): string {
   if (partes.length <= 1) return partes[0] ?? '';

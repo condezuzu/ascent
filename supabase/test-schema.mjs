@@ -18723,7 +18723,7 @@ console.log('\n239. Cacería del 15/10, vuelta 5: lo de otro aparato con −, Te
   chequear('Tu rutina: el nombre va a SU rutina; no dice "no hay rutina" antes de saber; copiar es de a un toque; activar y borrar escriben la copia del teléfono', [
     /onChangeText=\{\(texto\) => \(nombreTipeado\.current = \{ id: actual\.id, texto \}\)\}/.test(mi),
     /setNoCargo\(hay && !mias\);\n    setGuardadas\(hay\);/.test(mi),
-    /if \(!rutina \|\| copiando\.current\) return;/.test(de239('movil', 'src', 'RutinaDe.tsx')),
+    /if \(!rutina \|\| copiando\.current( \|\| elegidos\.length === 0)?\) return;/.test(de239('movil', 'src', 'RutinaDe.tsx')),
     /if \(ok && dias\) await guardarActiva\(/.test(de239('compartido', 'rutinas.ts')),
     /if \(ok && \(await idDeLaActiva\(\)\) === id\) await guardarActiva\(\[\]\);/.test(de239('compartido', 'rutinas.ts')),
   ], [true, true, true, true, true]);
@@ -19546,6 +19546,31 @@ console.log('\n268. «Fui, corregí el día» con dos días dice «días» (19/1
   const { EN } = await import('../nucleo/textos-en.ts');
   const f = (t, n) => (typeof t === 'function' ? t(n) : t);
   chequear('uno y varios, en los dos idiomas', [f(ES.impulso.salvada.fuiCorregi, 1), f(ES.impulso.salvada.fuiCorregi, 2), f(EN.impulso.salvada.fuiCorregi, 2)], ['Fui, corregí el día', 'Fui, corregí los días', 'I went, fix the days']);
+}
+console.log('\n269. Rutinas: la lista fuera de editar, la de otra persona entera, y copiar por días (19/10)');
+{
+  const mi = deBug('movil', 'src', 'MiRutina.tsx');
+  const de = deBug('movil', 'src', 'RutinaDe.tsx');
+  const pl = deBug('movil', 'src', 'RutinaPlegada.tsx');
+  const RU = await import('../nucleo/rutinas.ts');
+  chequear('tu rutina fuera de editar: la lista del día, sin «Copiar este día»', /abajoDelDia=\{editando \? editorDelDia : undefined\}/.test(mi), true);
+  chequear('la de otra persona: todos los días abiertos con su lista, sin botón por día, y «Copiar esta rutina» siempre', [
+    /<RutinaPlegada [^>]*abiertos=\{!esYo\}/.test(de),
+    /abajoDelDia=/.test(de),
+    /hayRutinasGuardadas/.test(de),
+    /\{!esYo && \(\s*<Pressable testID="rutina-copiar"/.test(de),
+    /const esAbierto = abiertos \|\| abierto === d;/.test(pl),
+  ], [true, false, false, true, true]);
+  const dias = RU.semanaVacia();
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }] };
+  dias[3] = { descanso: false, ejercicios: [{ ejercicio: 'remo_barra', series: 3 }] };
+  dias[5] = { descanso: true, ejercicios: [] };
+  const copia = RU.soloLosDias(dias, [1, 5]);
+  chequear('copiar por días: los marcados tal cual, el resto vacío', [copia[1].ejercicios.length, copia[3].ejercicios.length, copia[5].descanso, copia[0].ejercicios.length], [1, 0, true, 0]);
+  chequear('«Copiar esta rutina» abre la elección, y se copian los elegidos', [
+    /onPress=\{\(\) => setEligiendo\(true\)\}/.test(de),
+    /copiarRutina\(supabase, nombreNuevo, soloLosDias\(rutina\.dias, elegidos\)\)/.test(de),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
