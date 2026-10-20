@@ -1392,6 +1392,57 @@ async function viejas(caso, variante) {
 }
 
 const [escenario, ...argumentos] = process.argv.slice(2);
+
+/** El reloj de este proceso pasa a ser el del lunes de esta semana, a la misma hora (`new Date()` y `Date.now`). */
+function relojDeLunes() {
+  const Real = Date;
+  const lunes = new Real();
+  lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7));
+  const corrimiento = lunes.getTime() - Real.now();
+  globalThis.Date = class extends Real {
+    constructor(...a) {
+      if (a.length === 0) super(Real.now() + corrimiento);
+      else super(...a);
+    }
+    static now() {
+      return Real.now() + corrimiento;
+    }
+  };
+}
+
+// Una rutina de dos días: lunes A y sentadilla; martes remo y dominadas (0 = domingo, como getDay).
+function rutinaDeDosDias(primero = 'press_banca') {
+  const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: primero, series: 3 }, { ejercicio: 'sentadilla', series: 3 }] };
+  dias[2] = { descanso: false, ejercicios: [{ ejercicio: 'remo', series: 3 }, { ejercicio: 'dominadas', series: 3 }] };
+  return dias;
+}
+
+/**
+ * `rutinaDelDia` (20/10, bug del gimnasio: "hoy es lunes y la sesión arrancó la rutina del
+ * martes"). Con el reloj de un lunes y una rutina guardada de lunes y martes, se empieza la
+ * sesión y se mira qué propone. El martes pasado se entrenó la del martes.
+ *  - `conCopia`: el teléfono tiene la copia de la rutina activa.
+ *  - `sinCopia`: no la tiene (recién entró, o nunca abrió la rutina en este aparato); la
+ *    base sí la tiene.
+ */
+async function rutinaDelDia(variante) {
+  relojDeLunes();
+  servidor.version = 82;
+  datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+  const dias = rutinaDeDosDias();
+  servidor.rutinas = [{ id: 'r1', nombre: 'Entrenamiento 1', activa: true, dias }];
+  if (variante === 'conCopia') datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', id: 'r1', dias }));
+  const { hoyISO, restarDias } = await import('@nucleo/fechas');
+  servidor.historial = [{ bloques: [{ ejercicio: 'remo', series: 3 }, { ejercicio: 'dominadas', series: 3 }], logs: { fecha: restarDias(hoyISO(), 6) } }];
+  const inicio = montar(() => useSesion());
+  await asentar();
+  await inicio.r.empezar();
+  await dormir(500);
+  await asentar();
+  return { dia: new Date().getDay(), propone: inicio.r.estado.bloques.ejercicio, sugerido: inicio.r.estado.sugerido };
+}
+
 /**
  * `dueno`: EL DATO ES UNO (el dueño único, 15/10). Con el vigilante y la
  * pantalla montados, lo que toca la pantalla lo ve el vigilante en el render
@@ -1497,7 +1548,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

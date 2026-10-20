@@ -17487,7 +17487,8 @@ console.log('\n214. La rutina en el teléfono: qué se muestra, y con qué arran
 
   const { readFileSync: leer214 } = await import('node:fs');
   const ses214 = leer214(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'useSesion.ts'), 'utf8').replace(/\r\n/g, '\n');
-  chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(await rutinaActivaDelTelefono\(\), new Date\(\)\.getDay\(\)\);\s*rutinaRef\.current = \(deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
+  // Desde el 20/10, sin la copia del teléfono la pide a la base (ver la 279).
+  chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(guardada, new Date\(\)\.getDay\(\)\);\s*rutinaRef\.current = \(deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
 }
 
 console.log('\n215. El día que se entrena sin abrir la app, y el vigilante al abrir de cero');
@@ -19849,6 +19850,16 @@ console.log('\n278. Las fotos: la entera y la miniatura se firman en un solo ped
     (web.match(/firmarConMiniaturas\(/g) ?? []).length,
   ], [true, 2, false, 2]);
   chequear('el perfil de un amigo pide quién es, si son amigos y de dónde leer sus días a la vez', /await Promise\.all\(\[\s*supabase\.from\('usuarios_publicos'\)[\s\S]{0,400}\.from\('friendships'\)[\s\S]{0,300}tablaDeLogsDeAmigos\(supabase\),\s*\]\);/.test(pe), true);
+}
+console.log('\n279. Un lunes, la sesión arranca la rutina del lunes aunque el teléfono no tenga la copia (20/10, bug del gimnasio)');
+{
+  // Con el hook de verdad y el reloj de un lunes: rutina guardada de lunes (press de banca,
+  // sentadilla) y martes (remo, dominadas); el martes pasado se entrenó la del martes. Sin la
+  // copia del teléfono se caía a la deducida, que por rotación proponía remo.
+  const conCopia = await escenarioDeSesion('rutinaDelDia', 'conCopia');
+  const sinCopia = await escenarioDeSesion('rutinaDelDia', 'sinCopia');
+  chequear('con la copia del teléfono: la del lunes', conCopia.fallo ?? conCopia, { dia: 1, propone: 'press_banca', sugerido: true });
+  chequear('sin la copia: también la del lunes (la pide a la base), no la del martes', sinCopia.fallo ?? sinCopia, { dia: 1, propone: 'press_banca', sugerido: true });
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

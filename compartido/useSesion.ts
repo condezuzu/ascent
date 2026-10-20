@@ -779,12 +779,18 @@ export function useSesion(
       await cargarHistorialRutina();
       // PRIMERO LA RUTINA ACTIVA GUARDADA (14/10), la del teléfono: anda sin señal.
       // Un día de descanso o sin nada cargado cae a la deducida, como antes.
-      const deLaGuardada = ejerciciosDeHoy(await rutinaActivaDelTelefono(), new Date().getDay());
+      // SIN LA COPIA DEL TELÉFONO, LA DE LA BASE (20/10, bug del gimnasio: "hoy es lunes y
+      // arrancó la del martes"). Recién entrado, o sin haber abierto nunca la rutina en este
+      // aparato, no había copia y se caía a la deducida, que por rotación repite la última
+      // sesión: el lunes proponía la del martes. Pedirla también deja la copia escrita.
+      const copia = await rutinaActivaDelTelefono();
+      const guardada = copia ?? (await cargarMisRutinas(supabase).catch(() => null))?.find((r) => r.activa) ?? null;
+      const deLaGuardada = ejerciciosDeHoy(guardada, new Date().getDay());
       rutinaRef.current = (deLaGuardada.length > 0 ? deLaGuardada : rutinaParaHoy(sesionesRutinaRef.current, hoyISO())).filter(seVe);
       rutinaEsGuardada.current = deLaGuardada.length > 0;
       await actualizarSesionCache({ rutina: rutinaRef.current, rutinaGuardada: rutinaEsGuardada.current }, yo);
       // Y se pone al día para la próxima, sin esperar.
-      void cargarMisRutinas(supabase).catch(() => null);
+      if (copia) void cargarMisRutinas(supabase).catch(() => null);
 
       // YA ESTABA CORRIENDO (se empezó en otro lado): lo que se hizo está en la
       // base, y eso va antes que cualquier semilla.
