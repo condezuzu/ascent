@@ -19969,7 +19969,7 @@ console.log('\n283. «Olvidar este día» en la ventana del final: descarta el c
     /if \(!dias\) \{\s*await plataforma\.almacenamiento\.guardar\(CLAVE_DIA_OLVIDADO, hoyISO\(\)\)[^\n]*\n\s*return true;\s*\}/.test(pr),
     /if \(\(await plataforma\.almacenamiento\.leer\(CLAVE_DIA_OLVIDADO\)\.catch\(\(\) => null\)\) === hoyISO\(\)\) return null;/.test(pr),
   ], [true, true, true]);
-  chequear('el botón todavía no está en la pantalla: espera la galería', /olvidar|Olvidar/.test(deBug('movil', 'src', 'VentanaRutina.tsx')), false);
+  // El botón llegó el 20/10 (la tercera píldora de la galería): ver la 288.
 }
 console.log('\n284. La entrada de la app: el aro del logo, el destello y el zoom antes de montar nada (20/10)');
 {
@@ -20040,6 +20040,20 @@ console.log('\n287. La rutina de Stats → Entrenamiento muestra sus ejercicios 
     /testID="rutina-guardada"/.test(mr) && /abiertos=\{!editando\}/.test(mr),
     /<RutinaPlegada dias=\{deducida\} catalogo=\{catalogo\} soloConAlgo abiertos testID="rutina-deducida" \/>/.test(mr),
   ], [true, true]);
+}
+console.log('\n288. «Olvidar este día», aparte y al final de la ventana de reemplazo (20/10)');
+{
+  const { T: T288 } = await import('../nucleo/textos.ts');
+  const { T: T288en } = await import('../nucleo/textos-en.ts');
+  const vr = sinComentarios(deBug('movil', 'src', 'VentanaRutina.tsx'));
+  const pos = (x) => vr.indexOf(x);
+  chequear('el botón va después de los otros dos, solo en la pregunta (no en «¿Estás seguro?»), y olvida', [
+    pos('testID="ventana-rutina-olvidar"') > pos("testID={seguro ? 'ventana-rutina-no' : 'ventana-rutina-nueva'}"),
+    /\{!seguro && \(\s*<Pressable\s+testID="ventana-rutina-olvidar"/.test(vr),
+    /onPress=\{\(\) => void guardar\('olvidar'\)\}/.test(vr),
+    /<Text style=\{estilos\.tenueTexto\}>\{T\.rutina\.olvidarDia\}<\/Text>/.test(vr),
+  ], [true, true, true, true]);
+  chequear('el texto no dice borrar', [T288.rutina.olvidarDia, /borr/i.test(T288.rutina.olvidarDia), /delet/i.test(T288en.rutina.olvidarDia)], ['Olvidar este día', false, false]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

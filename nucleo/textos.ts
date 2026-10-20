@@ -1435,6 +1435,8 @@ const ES = {
     cambiarDiaTexto: 'Hoy hiciste distintos ejercicios a los de tu rutina de este día.',
     cambiarDiaPregunta: '¿Quieres reemplazarla o crear otra rutina con este entrenamiento?',
     crearRutinaNueva: 'Crear rutina nueva',
+    // AL FINAL DE LA VENTANA, APARTE (20/10): no cambia la rutina y ese día no vuelve a preguntar.
+    olvidarDia: 'Olvidar este día',
     estasSeguro: '¿Estás seguro?',
     si: 'Sí',
     no: 'No',

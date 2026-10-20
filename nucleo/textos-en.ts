@@ -824,6 +824,7 @@ export const EN: Textos = {
     cambiarDiaTexto: 'Today you did different exercises from the ones in your routine for this day.',
     cambiarDiaPregunta: 'Do you want to replace it or create another routine with this workout?',
     crearRutinaNueva: 'Create new routine',
+    olvidarDia: 'Forget this day',
     estasSeguro: 'Are you sure?',
     si: 'Yes',
     no: 'No',
