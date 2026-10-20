@@ -100,7 +100,8 @@ const ES = {
       precioGuardar: (n: number, racha: number) => `Guardar${n === 1 ? 'la' : 'las'} deja la racha en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
       // LA TERCERA SALIDA (18/10, a pedido): "Fui" en los días del aviso, sin gastar la vida.
       // «Corregí» a pedido: es la única excepción a la regla del voseo de test:db.
-      fuiCorregi: 'Fui, corregí el día',
+      // Con varios días, en plural (19/10).
+      fuiCorregi: (n: number) => (n === 1 ? 'Fui, corregí el día' : 'Fui, corregí los días'),
       corregidaTitulo: 'Fuiste.',
       corregidaDetalle: (n: number) =>
         n === 1 ? 'Día corregido, no se gastó ninguna vida.' : 'Días corregidos, no se gastó ninguna vida.',

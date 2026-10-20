@@ -33,7 +33,7 @@ export const EN: Textos = {
       si: 'Yes',
       no: 'No',
       precioGuardar: (n: number, racha: number) => `Saving ${n === 1 ? 'it' : 'them'} drops your streak to ${racha} ${racha === 1 ? 'day' : 'days'}.`,
-      fuiCorregi: 'I went, fix the day',
+      fuiCorregi: (n: number) => (n === 1 ? 'I went, fix the day' : 'I went, fix the days'),
       corregidaTitulo: 'You went.',
       corregidaDetalle: (n: number) => (n === 1 ? 'Day fixed, no life was used.' : 'Days fixed, no life was used.'),
       listo: 'Done',

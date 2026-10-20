@@ -3780,7 +3780,7 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
   // Pasan esas dos cadenas enteras y nada más; cualquier otro «acá» sigue fallando.
   const ACA_PERMITIDO = new Set(['faltaste acá. ¿usar la vida?', 'faltaste acá. ¿usar las vidas?']);
   // Y la del voseo, igual de angosta (18/10, a pedido): el botón «Fui, corregí el día».
-  const CORREGI_PERMITIDO = new Set(['fui, corregí el día']);
+  const CORREGI_PERMITIDO = new Set(['fui, corregí el día', 'fui, corregí los días']);
 
   const fallas = [];
   const revisar = (donde, s) => {
@@ -19416,8 +19416,8 @@ console.log('\n261. El cuadro de la vida: Sí la usa, No la guarda, y «Fui, cor
   const sv = ES.impulso.salvada;
   const en = EN.impulso.salvada;
   chequear('los textos, en los dos idiomas', [
-    sv.cuadro(1), sv.si, sv.no, sv.fuiCorregi, sv.corregidaTitulo, sv.corregidaDetalle(1), sv.listo, sv.precioGuardar(1, 14),
-    en.cuadro(1), en.fuiCorregi, en.corregidaTitulo, en.corregidaDetalle(1), en.listo,
+    sv.cuadro(1), sv.si, sv.no, sv.fuiCorregi(1), sv.corregidaTitulo, sv.corregidaDetalle(1), sv.listo, sv.precioGuardar(1, 14),
+    en.cuadro(1), en.fuiCorregi(1), en.corregidaTitulo, en.corregidaDetalle(1), en.listo,
     'siFui' in sv,
   ], [
     'Faltaste acá. ¿Usar la vida?', 'Sí', 'No', 'Fui, corregí el día', 'Fuiste.', 'Día corregido, no se gastó ninguna vida.', 'Listo', 'Guardarla deja la racha en 14 días.',
@@ -19540,6 +19540,13 @@ console.log('\n267. La última vez de un ejercicio: series, pesos y el modo de c
   chequear('el bloque la muestra al elegir el ejercicio', /T\.sesion\.ultimaVez\(/.test(blo), true);
 }
 
+console.log('\n268. «Fui, corregí el día» con dos días dice «días» (19/10)');
+{
+  const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
+  const { EN } = await import('../nucleo/textos-en.ts');
+  const f = (t, n) => (typeof t === 'function' ? t(n) : t);
+  chequear('uno y varios, en los dos idiomas', [f(ES.impulso.salvada.fuiCorregi, 1), f(ES.impulso.salvada.fuiCorregi, 2), f(EN.impulso.salvada.fuiCorregi, 2)], ['Fui, corregí el día', 'Fui, corregí los días', 'I went, fix the days']);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

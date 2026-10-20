@@ -191,7 +191,7 @@ export default function RachaSalvada({
                   accessibilityRole="button"
                 >
                   <Text style={[estilos.corregirTexto, { color: textoSobre(pal.principal, [C.blanco, C.fondo]) }]}>
-                    {paso === 'corrigiendo' ? T.sesion.guardando : T.impulso.salvada.fuiCorregi}
+                    {paso === 'corrigiendo' ? T.sesion.guardando : T.impulso.salvada.fuiCorregi(dias.length)}
                   </Text>
                 </Pressable>
               </Animated.View>
