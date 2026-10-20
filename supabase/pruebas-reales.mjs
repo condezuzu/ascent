@@ -32,7 +32,7 @@
 //      abre y la cierra (20/10), en la nativa, con seis cuentas.
 //  10. probar-olvidar-dia — «Olvidar este día» en la ventana de reemplazo no toca la
 //      rutina y ese día no vuelve a preguntar (20/10), en la nativa.
-//  11. probar-ultima-vez — con «Mostrar la última vez» prendido (viene apagado), al entrar
+//  11. probar-ultima-vez — con «Mostrar la última vez» prendido (viene apagado), al entrar o al elegir
 //      a entrenar sale debajo del ejercicio lo de la última sesión que lo tuvo (20/10).
 //  12. probar-timbre-descanso — la píldora del descanso se sacude como un despertador
 //      al llegar a 0:00 (20/10), en la nativa, con el reloj de Playwright.

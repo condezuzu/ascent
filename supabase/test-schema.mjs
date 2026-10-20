@@ -20117,6 +20117,18 @@ console.log('\n291. El fin del descanso con la app abierta vibra como un despert
     /isReduceMotionEnabled\(\)/.test(tim),
   ], [true, true, true]);
 }
+console.log('\n292. La última vez, en una línea: las series de esa sesión, el peso de la primera y las repeticiones de su marca (20/10)');
+{
+  // La prueba de verdad es la de test:real (probar-ultima-vez): esto pinea la línea y los textos.
+  const { T: T292 } = await import('../nucleo/textos.ts');
+  const bl = sinComentarios(deBug('movil', 'src', 'Bloque.tsx'));
+  chequear('el peso es el de la primera serie, y las repeticiones van en la misma línea, con su peso', [
+    /const primera = u\.pesos\[0\];/.test(bl),
+    /detalleDeLaUltimaVez\(ultimaVez, unidad, repsUltimaVez\)/.test(bl),
+    /testID="reps-ultima-vez"/.test(bl),
+    T292.resumen.series(3) + T292.sesion.laPrimeraCon('60 kg') + T292.sesion.conRepeticiones(5, '62,5 kg'),
+  ], [true, true, false, '3 series, la primera con 60 kg · 5 repeticiones con 62,5 kg']);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

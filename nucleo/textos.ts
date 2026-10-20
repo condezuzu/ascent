@@ -1130,7 +1130,10 @@ const ES = {
     sugeridoNota: 'De tu rutina. Cuenta la primera serie para confirmarlo.',
     // Debajo del ejercicio (19/10): la última sesión que lo tuvo. El detalle viene armado.
     ultimaVez: (fecha: string, detalle: string) => `La última vez, ${fecha}: ${detalle}`,
-    repsUltimaVez: (fecha: string, reps: number, peso: string) => `Repeticiones la última vez, ${fecha}: ${reps} con ${peso}`,
+    // Al elegir el ejercicio (20/10): las series de esa sesión, el peso de la primera y, si esa
+    // sesión tuvo marca, sus repeticiones con su peso.
+    laPrimeraCon: (peso: string) => `, la primera con ${peso}`,
+    conRepeticiones: (n: number, peso: string) => ` · ${n === 1 ? '1 repetición' : `${n} repeticiones`} con ${peso}`,
 
     // CAMBIÉ DE EJERCICIO / ME EQUIVOQUÉ DE EJERCICIO. Son dos cosas
     // distintas y la app no puede adivinar cuál fue: si ya hay series

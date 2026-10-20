@@ -50,11 +50,17 @@ import { cierraElBloque, cuentaLaSerie, TOQUE_REPETIDO_MS } from './toques';
  * - Sin la migración de cada cosa (peso 36, modo 38), el campo no aparece.
  */
 /** «3 series · 12, 12, 14 kg, un lado por vez», con las palabras del resumen del día. */
-function detalleDeLaUltimaVez(u: { series: number; pesos: (number | null)[]; carga?: string }, unidad: Unidad) {
-  const conPeso = u.pesos.filter((p): p is number => typeof p === 'number' && p > 0);
-  if (conPeso.length === 0) return T.resumen.series(u.series);
+/**
+ * LA ÚLTIMA VEZ, EN UNA LÍNEA (20/10): cuántas series hubo en esa sesión, el peso de la primera
+ * (si se anotó) y, si esa sesión tuvo marca, sus repeticiones con su peso.
+ */
+function detalleDeLaUltimaVez(u: { series: number; pesos: (number | null)[]; carga?: string }, unidad: Unidad, reps?: MarcaConReps | null) {
   const carga = (u.carga ?? 'total') as Parameters<typeof T.resumen.pesosDeSeries>[2];
-  return T.resumen.series(u.series) + ' · ' + T.resumen.pesosDeSeries(conPeso.map((p) => pesoCorto(p, unidad)).join(', '), unidad, carga);
+  const primera = u.pesos[0];
+  let t = T.resumen.series(u.series);
+  if (typeof primera === 'number' && primera > 0) t += T.sesion.laPrimeraCon(T.resumen.pesosDeSeries(pesoCorto(primera, unidad), unidad, carga));
+  if (reps) t += T.sesion.conRepeticiones(reps.reps, `${pesoCorto(reps.peso, unidad)} ${unidad}`);
+  return t;
 }
 
 export default function Bloque({
@@ -97,7 +103,7 @@ export default function Bloque({
   diaDeSesion?: string;
   /** La última vez que se hizo este ejercicio (19/10): se muestra debajo del nombre. */
   ultimaVez?: { fecha: string; series: number; pesos: (number | null)[]; carga?: string } | null;
-  /** La última marca de este ejercicio, con sus repeticiones (20/10): solo con el ajuste prendido. */
+  /** La marca guardada en la última sesión de este ejercicio, con sus repeticiones (20/10). */
   repsUltimaVez?: MarcaConReps | null;
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
@@ -296,12 +302,7 @@ export default function Bloque({
           la última vez» prendido en Ajustes: sale al entrar a entrenar y al elegir otro. */}
       {verUltimaVez && !!estado.ejercicio && !!ultimaVez && ultimaVez.series > 0 && (
         <Text style={estilos.sugeridoNota} testID="ultima-vez">
-          {T.sesion.ultimaVez(fechaLinda(ultimaVez.fecha), detalleDeLaUltimaVez(ultimaVez, unidad))}
-        </Text>
-      )}
-      {verUltimaVez && !!estado.ejercicio && !!repsUltimaVez && (
-        <Text style={estilos.sugeridoNota} testID="reps-ultima-vez">
-          {T.sesion.repsUltimaVez(fechaLinda(repsUltimaVez.fecha), repsUltimaVez.reps, `${pesoCorto(repsUltimaVez.peso, unidad)} ${unidad}`)}
+          {T.sesion.ultimaVez(fechaLinda(ultimaVez.fecha), detalleDeLaUltimaVez(ultimaVez, unidad, repsUltimaVez))}
         </Text>
       )}
       {globitoSubir && (
