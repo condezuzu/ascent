@@ -20031,6 +20031,16 @@ console.log('\n286. Registrar el día con foto: el mismo estilo que anotar el pe
     /texto\('Elegir de la galería', false\)/.test(deBug('supabase', 'bateria-dos-apps.mjs')),
   ], [true, true, true]);
 }
+console.log('\n287. La rutina de Stats → Entrenamiento muestra sus ejercicios sin tocar nada (20/10)');
+{
+  // Solo se abría hoy: un día sin nada dejaba la rutina sin un ejercicio a la vista. La
+  // prueba de verdad es la de test:real (probar-rutina-en-perfil); esto pinea la línea.
+  const mr = sinComentarios(deBug('movil', 'src', 'MiRutina.tsx'));
+  chequear('fuera de editar, todos los días abiertos; la deducida también', [
+    /testID="rutina-guardada"/.test(mr) && /abiertos=\{!editando\}/.test(mr),
+    /<RutinaPlegada dias=\{deducida\} catalogo=\{catalogo\} soloConAlgo abiertos testID="rutina-deducida" \/>/.test(mr),
+  ], [true, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

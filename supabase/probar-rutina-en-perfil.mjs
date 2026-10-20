@@ -58,6 +58,17 @@ try {
   await page.getByTestId('mi-rutina-en-perfil').first().scrollIntoViewIfNeeded();
   await page.screenshot({ path: join(SALIDA, 'perfil.png') });
   chequear('sin tocar nada, los ejercicios del lunes y del martes', ['Press de banca', 'Sentadilla', 'Remo con barra'].filter((n) => texto.includes(n)), ['Press de banca', 'Sentadilla', 'Remo con barra']);
+
+  // Y EN STATS → ENTRENAMIENTO (20/10): ahí solo se abría hoy, y un día sin nada dejaba la
+  // rutina sin un ejercicio a la vista. Se entra como el usuario, por la fila «HOY» de Inicio.
+  console.log('La rutina de Stats → Entrenamiento muestra sus ejercicios al abrir');
+  await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.getByTestId('inicio-rutina').first().click({ timeout: 90000 });
+  await page.getByTestId('rutina-guardada').first().waitFor({ timeout: 60000 });
+  await page.waitForTimeout(2000);
+  const enStats = (await page.getByTestId('rutina-guardada').first().innerText()).replace(/\n+/g, ' | ');
+  await page.screenshot({ path: join(SALIDA, 'stats.png') });
+  chequear('sin tocar nada, los ejercicios de todos los días', ['Press de banca', 'Sentadilla', 'Remo con barra'].filter((n) => enStats.includes(n)), ['Press de banca', 'Sentadilla', 'Remo con barra']);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));

@@ -21,7 +21,7 @@
 //      cuadro de «¿La guardo como marca?» (18/10), en la nativa.
 //   5. probar-doble-toque — dos toques seguidos en el «+» o en «Terminar serie» no
 //      suman una serie de más (19/10), en la nativa.
-//   6. probar-rutina-en-perfil — tu perfil muestra los ejercicios de tu rutina al
+//   6. probar-rutina-en-perfil — tu perfil y Stats → Entrenamiento muestran los ejercicios de tu rutina al
 //      abrir, sin tocar ningún día (20/10), en la nativa.
 //   7. probar-entrada-logo — el aro del logo se dibuja y la app se monta recién con
 //      el zoom (20/10), en la nativa y sin cuenta.
