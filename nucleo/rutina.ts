@@ -180,6 +180,29 @@ export function despuesDe(sesiones: SesionRutina[], ultimo: string, yaHechos: st
  * último de la rutina que se hizo, y nunca antes de tantos como ya se hicieron (cambiar
  * uno por otro también es avanzar uno). Al llegar al final, vuelve a lo que faltó.
  */
+/**
+ * LO QUE QUEDA DE LA RUTINA HOY (20/10, bug: la segunda sesión del día volvía a proponer el
+ * primero). Lo hecho en las sesiones anteriores de hoy cubre su lugar; lo que no estaba en el
+ * día ocupa, en orden, el lugar de uno que no se hizo (la misma regla que «Reemplazar»). Si no
+ * queda nada, el día entero, como antes.
+ */
+export function pendientesDeHoy(dia: string[], hechosHoy: string[]): string[] {
+  const cubierto = dia.map(() => false);
+  const ajenos: string[] = [];
+  for (const h of new Set(hechosHoy)) {
+    const i = dia.findIndex((e, k) => e === h && !cubierto[k]);
+    if (i >= 0) cubierto[i] = true;
+    else ajenos.push(h);
+  }
+  for (let n = 0; n < ajenos.length; n++) {
+    const libre = cubierto.indexOf(false);
+    if (libre < 0) break;
+    cubierto[libre] = true;
+  }
+  const quedan = dia.filter((_, k) => !cubierto[k]);
+  return quedan.length > 0 ? quedan : dia;
+}
+
 export function siguienteEnRutina(rutina: string[], yaHechos: string[]): string | null {
   const hechos = new Set(yaHechos);
   const ultimo = Math.max(-1, ...yaHechos.map((e) => rutina.indexOf(e)));

@@ -36,6 +36,8 @@
 //      a entrenar sale debajo del ejercicio lo de la última sesión que lo tuvo (20/10).
 //  12. probar-timbre-descanso — la píldora del descanso se sacude como un despertador
 //      al llegar a 0:00 (20/10), en la nativa, con el reloj de Playwright.
+//  13. probar-sesion-siguiente — rutina A, B y C; una sesión cambiando A por X; la
+//      siguiente del mismo día propone B (20/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -69,6 +71,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'olvidar este día', archivo: 'probar-olvidar-dia.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'mostrar la última vez', archivo: 'probar-ultima-vez.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el timbre del descanso', archivo: 'probar-timbre-descanso.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la sesión siguiente del día', archivo: 'probar-sesion-siguiente.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

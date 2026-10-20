@@ -61,6 +61,7 @@ import {
   reengancharDesde,
   ejerciciosEnOrden,
   ultimaVezDe,
+  pendientesDeHoy,
   repsDeLaSesion,
   type MarcaConReps,
   type SesionConPesos,
@@ -790,7 +791,9 @@ export function useSesion(
       const copia = await rutinaActivaDelTelefono();
       const guardada = copia ?? (await cargarMisRutinas(supabase).catch(() => null))?.find((r) => r.activa) ?? null;
       const deLaGuardada = ejerciciosDeHoy(guardada, new Date().getDay());
-      rutinaRef.current = (deLaGuardada.length > 0 ? deLaGuardada : rutinaParaHoy(sesionesRutinaRef.current, hoyISO())).filter(seVe);
+      // LO QUE QUEDA HOY (20/10, bug: "cambié A por X y la sesión siguiente volvió a proponer
+      // A"): lo hecho en las sesiones anteriores de hoy ya no se propone.
+      rutinaRef.current = pendientesDeHoy((deLaGuardada.length > 0 ? deLaGuardada : rutinaParaHoy(sesionesRutinaRef.current, hoyISO())).filter(seVe), hechoAntesHoy());
       rutinaEsGuardada.current = deLaGuardada.length > 0;
       await actualizarSesionCache({ rutina: rutinaRef.current, rutinaGuardada: rutinaEsGuardada.current }, yo);
       // Y se pone al día para la próxima, sin esperar.
@@ -1161,7 +1164,7 @@ export function useSesion(
     // la sugerencia la sigue desde el bloque que viene.
     const guardadaAhora = ejerciciosDeHoy(await rutinaActivaDelTelefono(), new Date().getDay()).filter(seVe);
     if (guardadaAhora.length > 0) {
-      rutinaRef.current = guardadaAhora;
+      rutinaRef.current = pendientesDeHoy(guardadaAhora, hechoAntesHoy());
       rutinaEsGuardada.current = true;
     }
     // Sin rutina guardada, lo que SUELE VENIR DESPUÉS del último hecho, en la última
@@ -1229,6 +1232,12 @@ export function useSesion(
     await subir(seriesRef.current, bloquesRef.current);
     if (id) proponerArranque(id);
     await marcar();
+  }
+
+  /** Lo que se hizo en las sesiones ya terminadas de hoy, en orden (el historial las trae). */
+  function hechoAntesHoy(): string[] {
+    const hoy = hoyISO();
+    return sesionesRutinaRef.current.filter((x) => x.fecha === hoy).flatMap((x) => x.ejercicios);
   }
 
   // LAS MARCAS CON SUS REPETICIONES (20/10), para el ajuste de «las repeticiones de la

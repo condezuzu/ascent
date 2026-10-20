@@ -1493,10 +1493,19 @@ async function primerEjercicio(modo, ventana, copia = 'conCopia') {
     datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', id: 'r1', dias: diasDespues }));
   }
   if (tras && ventana === 'nueva') servidor.rutinas = [...servidor.rutinas, { id: 'r2', nombre: 'Entrenamiento 2', activa: false, dias: tras }];
+  // Como la base (20/10): la sesión que se terminó ya está en el historial de hoy.
+  servidor.historial = [...servidor.historial, { bloques: cierre?.bloques ?? [], logs: { fecha: hoyISO() } }];
   const otra = montar(() => useSesion());
   await asentar();
   await otra.r.empezar();
   await dormir(500);
+  await asentar();
+  const laOtraPropone = otra.r.estado.bloques.ejercicio;
+  // Y en esa segunda sesión, después del que propuso, lo que sigue.
+  await otra.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  await otra.r.bloqueSiguiente();
+  await dormir(200);
   await asentar();
   return {
     sugeridoAlEmpezar,
@@ -1504,7 +1513,8 @@ async function primerEjercicio(modo, ventana, copia = 'conCopia') {
     pregunta,
     diaDespues: diasDespues[dia].ejercicios.map((e) => e.ejercicio),
     martesDespues: diasDespues[2].ejercicios.map((e) => e.ejercicio),
-    laOtraPropone: otra.r.estado.bloques.ejercicio,
+    laOtraPropone,
+    despuesDeEse: otra.r.estado.sugerido ? otra.r.estado.bloques.ejercicio : null,
   };
 }
 
