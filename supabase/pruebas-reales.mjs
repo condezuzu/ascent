@@ -21,6 +21,19 @@
 //      cuadro de «¿La guardo como marca?» (18/10), en la nativa.
 //   5. probar-doble-toque — dos toques seguidos en el «+» o en «Terminar serie» no
 //      suman una serie de más (19/10), en la nativa.
+//   6. probar-rutina-en-perfil — tu perfil y Stats → Entrenamiento muestran los ejercicios de tu rutina al
+//      abrir, sin tocar ningún día (20/10), en la nativa.
+//   7. probar-entrada-logo — el aro del logo se dibuja y la app se monta recién con
+//      el zoom (20/10), en la nativa y sin cuenta.
+//   8. probar-peso-y-fotos — anotar el peso con el número grande, − y + y la regla
+//      guarda lo que dice el número, y la hoja nueva de la foto registra el día con
+//      la foto colgada (20/10), en la nativa.
+//   9. probar-lista-de-amigos — la lista de amigos muestra cinco y la flechita la
+//      abre y la cierra (20/10), en la nativa, con seis cuentas.
+//  10. probar-olvidar-dia — «Olvidar este día» en la ventana de reemplazo no toca la
+//      rutina y ese día no vuelve a preguntar (20/10), en la nativa.
+//  11. probar-reps-ultima-vez — con el ajuste prendido (viene apagado), al entrenar sale
+//      la última marca del ejercicio con sus repeticiones (20/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -47,6 +60,12 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'web y nativa', archivo: 'bateria-dos-apps.mjs', args: ['ambas'], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'sin salto al irse la marca', archivo: 'probar-salto-marca.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'doble toque en el +', archivo: 'probar-doble-toque.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la rutina en tu perfil', archivo: 'probar-rutina-en-perfil.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la entrada del logo', archivo: 'probar-entrada-logo.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'peso y fotos', archivo: 'probar-peso-y-fotos.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la lista de amigos', archivo: 'probar-lista-de-amigos.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'olvidar este día', archivo: 'probar-olvidar-dia.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'repeticiones de la última vez', archivo: 'probar-reps-ultima-vez.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

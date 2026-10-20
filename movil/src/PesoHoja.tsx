@@ -43,7 +43,7 @@ export default function PesoHoja({
 }
 
 const estilos = StyleSheet.create({
-  titulo: { color: C.tinta, fontSize: 22, fontWeight: '500' },
+  titulo: { color: C.tinta, fontSize: 15, fontWeight: '600', textAlign: 'center' },
   sub: { color: C.sub, fontSize: 14, marginTop: 2 },
   cancelar: { paddingVertical: 12, alignItems: 'center', marginTop: 8 },
   cancelarTexto: { color: C.sub, fontSize: 14 },

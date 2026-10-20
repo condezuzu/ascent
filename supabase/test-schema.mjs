@@ -15379,7 +15379,7 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   chequear('en el teléfono, el enlace de cambiar la contraseña termina eligiéndola', [
     /if \(error\) return false;\s*return esDeRecuperacion\(url\) \? 'clave-nueva' : 'entro';/.test(enlaceNativo),
     /if \(entro === 'clave-nueva'\) setClaveNueva\(true\);\s*mirar\(\);/.test(capa),
-    /\{claveNueva && \(sesion === 'con' \|\| sesion === 'sin-nombre'\) && <ClaveNueva alTerminar=\{\(\) => setClaveNueva\(false\)\} \/>\}/.test(capa),
+    /\{abierta && claveNueva && \(sesion === 'con' \|\| sesion === 'sin-nombre'\) && <ClaveNueva alTerminar=\{\(\) => setClaveNueva\(false\)\} \/>\}/.test(capa),
     /const mal = claveNuevaInvalida\(clave, repetida\);\s*if \(mal\) return setError\(mal\);/.test(claveNueva),
     /supabase\.auth\.updateUser\(\{ password: clave \}\)/.test(claveNueva),
     /setAviso\(T\.clave\.correoEnviado\)/.test(de195('movil/src/ajustes/Cuenta.tsx')),
@@ -18254,11 +18254,11 @@ console.log('\n227. Rutina en inglés, idioma de a dos, Social, Ranking ordenado
 
   const rk = de227('movil', 'src', 'Ranking.tsx');
   const pos = (s) => rk.indexOf(s);
-  chequear('Ranking: buscar arriba en un renglón, el ranking con diez y "Ver más", y la actividad al final', [
+  chequear('Ranking: buscar arriba en un renglón, el ranking con cinco y la flechita (20/10), y la actividad al final', [
     pos('testID="buscar-gente"') > 0 && pos('testID="buscar-gente"') < pos('<View style={estilos.lista}>'),
     pos('<View style={estilos.lista}>') < pos('{T.social.actividad}'),
     pos('{T.social.actividad}') > pos('{T.social.solicitudes}'),
-    /const RANKING_TOPE = 10;/.test(rk), /amigos\.slice\(0, RANKING_TOPE\)/.test(rk), /testID="ranking-ver-mas"/.test(rk),
+    /const RANKING_TOPE = 5;/.test(rk), /amigos\.slice\(0, RANKING_TOPE\)/.test(rk), /testID="ranking-ver-mas"/.test(rk),
     /buscarPie/.test(rk),
   ], [true, true, true, true, true, true, false]);
 
@@ -18525,11 +18525,13 @@ console.log('\n233. La meta de pasos se festeja una vez por día, y el empujón 
   // 16/10, a pedido: sin empujón a la foto (ni la frase ni la pastilla resaltada).
   const { TEXTOS_ES: T233 } = await import('../nucleo/textos.ts');
   const { EN: EN233 } = await import('../nucleo/textos-en.ts');
-  chequear('el día sin foto ya no empuja a sacarla, en ningún idioma; el mes con una sola foto sigue diciendo qué trae la segunda', [
+  // 20/10, a pedido: el mes con una sola foto tampoco empuja («con otra foto ves el antes y el después»).
+  chequear('el día sin foto ya no empuja a sacarla, en ningún idioma; el mes con una sola foto tampoco', [
     /setSinFoto|foto-empuje|resalta[=?]/.test(de233('movil', 'src', 'DiaListo.tsx')),
     'fotoEmpuje' in T233.inicio || 'fotoEmpuje' in EN233.inicio,
-    /\{!par && m\.fotos\.length === 1 && m\.clave === mesDeHoy && <Text testID="album-una-mas"/.test(de233('movil', 'src', 'Album.tsx')),
-  ], [false, false, true]);
+    /album-una-mas/.test(de233('movil', 'src', 'Album.tsx')),
+    'unaMas' in T233.album || 'unaMas' in EN233.album,
+  ], [false, false, false, false]);
 }
 console.log('\n234. La pasada de lentitud: el fondo se pausa tapado, los relojes se tickean solos, las pestañas no se redibujan todas (15/10)');
 {
@@ -18660,10 +18662,11 @@ console.log('\n237. Cacería del 15/10, vuelta 3: Seguir con la cinta, la semill
   chequear('sembrar no pisa un ejercicio ya elegido (y sigue sembrando un bloque vacío)', [B237.sembrar(elegido, 'press_banca').ejercicio, B237.sembrar(B237.bloquesVacios(), 'press_banca').ejercicio], ['cinta', 'press_banca']);
   const { readFileSync: leer237 } = await import('node:fs');
   const de237 = (...p) => leer237(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
-  chequear('el festejo de los pasos se baja si el efecto se corta (la sesión arrancó a mitad); el Álbum pide otra foto solo este mes', [
+  // El Álbum ya no pide otra foto (20/10, ver la 233).
+  chequear('el festejo de los pasos se baja si el efecto se corta (la sesión arrancó a mitad); el Álbum ya no pide otra foto', [
     /vivo = false;\n[^\n]*\n      setFestejando\(false\);/.test(de237('movil', 'src', 'PasosInicio.tsx')),
-    /m\.clave === mesDeHoy/.test(de237('movil', 'src', 'Album.tsx')),
-  ], [true, true]);
+    /mesDeHoy/.test(de237('movil', 'src', 'Album.tsx')),
+  ], [true, false]);
 }
 console.log('\n238. Cacería del 15/10, vuelta 4: la sesión de otro aparato con señal lenta, la cinta parada, los 40 bloques, dos sesiones el mismo día, la rutina y el compañero');
 {
@@ -19672,7 +19675,7 @@ console.log('\n266. Reemplazar el día: queda igual a lo entrenado, sin duplicar
     filas[0].dias[0].ejercicios.length,
   ], [1, [['press_banca', 4], ['sentadilla', 3]], 0]);
   const pr = deBug('movil', 'src', 'preguntarPorLaRutina.ts');
-  chequear('la ventana usa ese mismo camino', [/const hecho = diaDeLaSesion\(bloques\);/.test(pr), /rutinaConLoHecho\(actual\.dias, dia, hecho\)/.test(pr)], [true, true]);
+  chequear('la ventana usa ese mismo camino', [/const hecho = diaDeLaSesion\(bloques\);/.test(pr), /rutinaTrasLaVentana\(actual\.dias, dia, hecho, /.test(pr)], [true, true]);
 }
 
 console.log('\n267. La última vez de un ejercicio: series, pesos y el modo de carga (19/10)');
@@ -19706,7 +19709,8 @@ console.log('\n269. Rutinas: la lista fuera de editar, la de otra persona entera
   const RU = await import('../nucleo/rutinas.ts');
   chequear('tu rutina fuera de editar: la lista del día, sin «Copiar este día»', /abajoDelDia=\{editando \? editorDelDia : undefined\}/.test(mi), true);
   chequear('la de otra persona: todos los días abiertos con su lista, sin botón por día, y «Copiar esta rutina» siempre', [
-    /<RutinaPlegada [^>]*abiertos=\{!esYo\}/.test(de),
+    // Desde el 20/10 la tuya también sale abierta (ver probar-rutina-en-perfil en test:real).
+    /<RutinaPlegada [^>]*abiertos \/>/.test(de),
     /abajoDelDia=/.test(de),
     /hayRutinasGuardadas/.test(de),
     /\{!esYo && \(\s*<Pressable testID="rutina-copiar"/.test(de),
@@ -20126,6 +20130,141 @@ console.log('\n282. Con la racha ya perdida no sale el aviso «Usa la vida para 
     (web282.match(/leerImpulsos\([^)]*perdida_fecha\)/g) ?? []).length,
     /impulsosSinVer\(/.test(ini282 + web282),
   ], [true, true, 3, false]);
+}
+console.log('\n283. «Olvidar este día» en la ventana del final: descarta el cambio y no toca la rutina (20/10, solo la lógica)');
+{
+  // Con el hook de verdad: se cambia el primer ejercicio, se termina y se elige olvidar.
+  const olvidar = await escenarioDeSesion('primerEjercicio', 'antes', 'olvidar');
+  chequear('la rutina queda como estaba y la sesión siguiente propone la de siempre', olvidar.fallo ?? [olvidar.pregunta, olvidar.diaDespues, olvidar.martesDespues, olvidar.laOtraPropone], [true, ['press_banca', 'sentadilla'], ['remo', 'dominadas'], 'press_banca']);
+  const { rutinaTrasLaVentana, rutinaConLoHecho } = await import('../nucleo/rutina.ts');
+  const d = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
+  const dias = [d([]), d(['a', 'b'])];
+  chequear('la regla: olvidar no deja nada que guardar; reemplazar y nueva, el día con lo que cambió', [
+    rutinaTrasLaVentana(dias, 1, d(['x']), 'olvidar'),
+    JSON.stringify(rutinaTrasLaVentana(dias, 1, d(['x']), 'reemplazar')) === JSON.stringify(rutinaConLoHecho(dias, 1, d(['x']))),
+    JSON.stringify(rutinaTrasLaVentana(dias, 1, d(['x']), 'nueva')) === JSON.stringify(rutinaConLoHecho(dias, 1, d(['x']))),
+  ], [null, true, true]);
+  const pr = sinComentarios(deBug('movil', 'src', 'preguntarPorLaRutina.ts'));
+  chequear('la app: olvidar no guarda la rutina, anota el día, y ese día la ventana no vuelve a preguntar', [
+    /como: 'esta' \| 'nueva' \| 'olvidar'/.test(pr),
+    /if \(!dias\) \{\s*await plataforma\.almacenamiento\.guardar\(CLAVE_DIA_OLVIDADO, hoyISO\(\)\)[^\n]*\n\s*return true;\s*\}/.test(pr),
+    /if \(\(await plataforma\.almacenamiento\.leer\(CLAVE_DIA_OLVIDADO\)\.catch\(\(\) => null\)\) === hoyISO\(\)\) return null;/.test(pr),
+  ], [true, true, true]);
+  // El botón llegó el 20/10 (la tercera píldora de la galería): ver la 288.
+}
+console.log('\n284. La entrada de la app: el aro del logo, el destello y el zoom antes de montar nada (20/10)');
+{
+  const { arcoDelLogo, puntoDelLogo, LOGO } = await import('../nucleo/logo.ts');
+  const arco = arcoDelLogo();
+  const [ax, ay, bx, by] = arco.d.match(/^M(\S+) (\S+) A\S+ \S+ 0 \d \d (\S+) (\S+)$/).slice(1).map(Number);
+  const radio = (x, y) => Math.round(Math.hypot(x, y) * 10) / 10;
+  const p = puntoDelLogo();
+  chequear('el aro arranca y termina sobre su radio, y el puntito también', [radio(ax, ay), radio(bx, by), radio(p.x, p.y)], [LOGO.radio, LOGO.radio, LOGO.radio]);
+  chequear('lo que mide el aro es lo que se dibuja de a poco', Math.round(arco.largo), Math.round((LOGO.radio * (LOGO.hasta - LOGO.desde) * Math.PI) / 180));
+  const lay = sinComentarios(deBug('movil', 'app', '_layout.tsx'));
+  chequear('en la raíz, nada de la app se dibuja antes de que la entrada abra', [
+    (lay.match(/\{sesion === '/g) ?? []).length,
+    (lay.match(/\{abierta && (claveNueva && )?\(?sesion === '/g) ?? []).length >= 4,
+    /\{entrada !== 'fin' && <EntradaDeLaApp lista=\{sesion !== 'mirando'\}/.test(lay),
+  ], [0, true, true]);
+  const en = sinComentarios(deBug('movil', 'src', 'EntradaDeLaApp.tsx'));
+  chequear('la entrada abre la app al empezar el zoom, y el zoom no depende del hilo de JS', [
+    /setFase\('abriendo'\);\s*alAbrir\(\);\s*Animated\.timing\(zoom,/.test(en),
+    /Animated\.timing\(zoom, \{[^}]*useNativeDriver: true,/.test(en),
+    /if \(fase !== 'esperando' \|\| !\(lista \|\| vencida\)\) return;/.test(en),
+  ], [true, true, true]);
+}
+console.log('\n285. Anotar el peso: el número grande, − y + y la regla (20/10, la B de la galería)');
+{
+  const RP = await import('../nucleo/reglaDePeso.ts');
+  const { limites } = await import('../nucleo/peso.ts');
+  const lb = limites('lb');
+  chequear('los límites de la base, en décimas y hacia adentro (en libras no caen justo)', [
+    RP.pesoAcotado(10, 'kg'), RP.pesoAcotado(999, 'kg'), RP.pesoAcotado(10, 'lb') >= lb.min, RP.pesoAcotado(9999, 'lb') <= lb.max, RP.pesoAcotado(70.04999, 'kg'),
+  ], [20, 400, true, true, 70]);
+  chequear('arranca en el último anotado, en la unidad de la persona; sin ninguno, en un número redondo', [
+    RP.pesoInicial(81.84, 'kg'), RP.pesoInicial(null, 'kg'), RP.pesoInicial(null, 'lb'), RP.pesoInicial(100, 'lb'),
+  ], [81.8, 70, 150, 220.5]);
+  chequear('la regla: a la izquierda sube, una décima cada tantos píxeles', [
+    RP.pesoArrastrado(70, -RP.PX_POR_DECIMA * 10, 'kg'), RP.pesoArrastrado(70, RP.PX_POR_DECIMA * 3, 'kg'),
+  ], [71, 69.7]);
+  const marcas = RP.marcasDeRegla(71.3, 200);
+  const entera = marcas.find((m) => m.etiqueta === '71');
+  chequear('las rayitas: la del 71 cae tres décimas a la izquierda de la aguja', [Math.round((100 - entera.x) / RP.PX_POR_DECIMA), entera.alto, marcas.every((m) => m.x > -RP.PX_POR_DECIMA * 2 && m.x < 200 + RP.PX_POR_DECIMA * 2)], [3, 'entero', true]);
+  const ap = sinComentarios(deBug('movil', 'src', 'AnotarPeso.tsx'));
+  chequear('la pantalla: sin teclado, colores fijos, y los botones con onPress (onPressIn se pierde en un toque corto en la web)', [
+    /TextInput/.test(ap), /from '\.\/colores'|usePaleta/.test(ap), /onPressIn/.test(ap), /onPress=\{\(\) => alMover\(paso\)\}/.test(ap), /delayLongPress=\{APRETADO_MS\}/.test(ap),
+  ], [false, false, false, true, true]);
+  chequear('Stats y Mis marcas abren la misma hoja que Inicio', ['StatsGeneral.tsx', 'MisMarcas.tsx'].map((f) => {
+    const t = sinComentarios(deBug('movil', 'src', f));
+    return /<PesoHoja visible=\{pesoAbierto\}/.test(t) && !/<AnotarPeso /.test(t);
+  }), [true, true]);
+}
+console.log('\n286. Registrar el día con foto: el mismo estilo que anotar el peso (20/10)');
+{
+  const rd = sinComentarios(deBug('movil', 'src', 'RegistrarDia.tsx'));
+  chequear('colores fijos, la foto en una tarjeta redondeada y los botones redondos de la hoja del peso', [
+    /from '\.\/colores'|usePaleta/.test(rd), /from '\.\/coloresFijos'/.test(rd), /tarjeta: \{[^}]*borderRadius: 22/.test(rd), /redondo: \{[^}]*borderRadius: 29/.test(rd), /solido: \{[^}]*borderRadius: 999/.test(rd),
+  ], [false, true, true, true, true]);
+  chequear('las dos puertas siguen siendo cámara y galería, con los textos de siempre (la batería toca «Elegir de la galería»)', [
+    /<Puerta icono="camara" texto=\{T\.registrar\.sacarFoto\} alTocar=\{\(\) => elegir\('camara'\)\} \/>/.test(rd),
+    /<Puerta icono="galeria" texto=\{T\.registrar\.elegirFoto\} alTocar=\{\(\) => elegir\('galeria'\)\} \/>/.test(rd),
+    /texto\('Elegir de la galería', false\)/.test(deBug('supabase', 'bateria-dos-apps.mjs')),
+  ], [true, true, true]);
+}
+console.log('\n287. La rutina de Stats → Entrenamiento muestra sus ejercicios sin tocar nada (20/10)');
+{
+  // Solo se abría hoy: un día sin nada dejaba la rutina sin un ejercicio a la vista. La
+  // prueba de verdad es la de test:real (probar-rutina-en-perfil); esto pinea la línea.
+  const mr = sinComentarios(deBug('movil', 'src', 'MiRutina.tsx'));
+  chequear('fuera de editar, todos los días abiertos; la deducida también', [
+    /testID="rutina-guardada"/.test(mr) && /abiertos=\{!editando\}/.test(mr),
+    /<RutinaPlegada dias=\{deducida\} catalogo=\{catalogo\} soloConAlgo abiertos testID="rutina-deducida" \/>/.test(mr),
+  ], [true, true]);
+}
+console.log('\n288. «Olvidar este día», aparte y al final de la ventana de reemplazo (20/10)');
+{
+  const { T: T288 } = await import('../nucleo/textos.ts');
+  const { EN: T288en } = await import('../nucleo/textos-en.ts');
+  const vr = sinComentarios(deBug('movil', 'src', 'VentanaRutina.tsx'));
+  const pos = (x) => vr.indexOf(x);
+  chequear('el botón va después de los otros dos, solo en la pregunta (no en «¿Estás seguro?»), y olvida', [
+    pos('testID="ventana-rutina-olvidar"') > pos("testID={seguro ? 'ventana-rutina-no' : 'ventana-rutina-nueva'}"),
+    /\{!seguro && \(\s*<Pressable\s+testID="ventana-rutina-olvidar"/.test(vr),
+    /onPress=\{\(\) => void guardar\('olvidar'\)\}/.test(vr),
+    /<Text style=\{estilos\.tenueTexto\}>\{T\.rutina\.olvidarDia\}<\/Text>/.test(vr),
+  ], [true, true, true, true]);
+  chequear('el texto no dice borrar', [T288.rutina.olvidarDia, /borr/i.test(T288.rutina.olvidarDia), /delet/i.test(T288en.rutina.olvidarDia)], ['Olvidar este día', false, false]);
+}
+console.log('\n289. Las repeticiones de la última vez: de la última marca propia antes de hoy, con un ajuste apagado (20/10)');
+{
+  // Con el hook de verdad: la base devuelve marcas propias y de un amigo (la RLS deja leer
+  // las de los amigos), una de hoy y otra de otro ejercicio.
+  const r = await escenarioDeSesion('repsUltimaVez');
+  chequear('la sesión da la última marca propia de cada ejercicio, antes de hoy', r.fallo ?? [r.press, r.sentadilla, r.remo], [[62.5, 5], [90, 6], null]);
+  const { repsDeLaUltimaVez } = await import('../nucleo/rutina.ts');
+  const m = (fecha, reps) => ({ ejercicio: 'press_banca', peso: 60, reps, fecha });
+  chequear('la regla: del mismo día, la que vino última; nada de hoy ni de otro ejercicio', [
+    repsDeLaUltimaVez([m('2026-10-10', 8), m('2026-10-10', 6)], 'press_banca', '2026-10-20')?.reps,
+    repsDeLaUltimaVez([m('2026-10-20', 3)], 'press_banca', '2026-10-20'),
+    repsDeLaUltimaVez([m('2026-10-10', 8)], 'sentadilla', '2026-10-20'),
+  ], [6, null, null]);
+  const ru = sinComentarios(deBug('compartido', 'repsUltimaVez.ts'));
+  const bl = sinComentarios(deBug('movil', 'src', 'Bloque.tsx'));
+  chequear('apagado de fábrica, en Ajustes, y el bloque lo muestra solo prendido', [
+    /=== 'si';/.test(ru),
+    /<Text style=\{estilos\.opcion\}>\{T\.ajustes\.repsUltimaVez\}<\/Text>/.test(sinComentarios(deBug('movil', 'src', 'Ajustes.tsx'))),
+    /\{verReps && !!estado\.ejercicio && !!repsUltimaVez && \(/.test(bl),
+  ], [true, true, true]);
+}
+console.log('\n290. Con todos los días abiertos, la rutina no muestra flechitas ni se pliega (20/10, revisión)');
+{
+  // La prueba de verdad es la de test:real (probar-rutina-en-perfil, «sin flechitas»).
+  const rp = sinComentarios(deBug('movil', 'src', 'RutinaPlegada.tsx'));
+  chequear('la flechita y el toque, solo cuando se puede plegar', [
+    /disabled=\{abiertos\}/.test(rp),
+    /\{!abiertos && <Text style=\{estilos\.flecha\}>/.test(rp),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

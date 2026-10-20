@@ -284,6 +284,20 @@ export function ultimaVezDe(sesiones: SesionConPesos[], ejercicio: string, hoyIS
   return { fecha: s.fecha, series, pesos: suyos.flatMap((b) => b.pesos ?? []), ...(carga ? { carga } : {}) };
 }
 
+/** Una marca con sus repeticiones, como la guarda `prs` (sin la hora: no es de las columnas que se leen). */
+export type MarcaConReps = { ejercicio: string; peso: number; reps: number; fecha: string };
+
+/**
+ * LAS REPETICIONES DE LA ÚLTIMA VEZ (20/10, un ajuste apagado de fábrica). Las series no
+ * guardan repeticiones: las únicas que hay son las de las marcas. Es la marca más reciente
+ * de ese ejercicio antes de hoy; del mismo día, la que vino última.
+ */
+export function repsDeLaUltimaVez(marcas: MarcaConReps[], ejercicio: string, hoyISO: string): MarcaConReps | null {
+  let m: MarcaConReps | null = null;
+  for (const x of marcas) if (x.ejercicio === ejercicio && x.fecha < hoyISO && (!m || x.fecha >= m.fecha)) m = x;
+  return m;
+}
+
 /** Los días de la rutina con ese día cambiado por lo que se hizo: el resto, sin tocar (19/10). */
 export function conDiaReemplazado<D>(dias: D[], dia: number, hecho: D): D[] {
   return dias.map((d, i) => (i === dia ? hecho : d));
@@ -307,6 +321,18 @@ export function rutinaConLoHecho<D extends DiaConEjercicios>(dias: D[], dia: num
   let usados = 0;
   const ejercicios = antes.map((e) => (!hechos.has(e.ejercicio) && usados < nuevos.length ? nuevos[usados++] : e));
   return conDiaReemplazado(dias, dia, { ...hecho, descanso: false, ejercicios: [...ejercicios, ...nuevos.slice(usados)] });
+}
+
+/** Lo que se elige en la ventana del final. */
+export type EleccionDeLaVentana = 'reemplazar' | 'nueva' | 'olvidar';
+
+/**
+ * CÓMO QUEDAN LOS DÍAS SEGÚN LO QUE SE ELIGE (20/10). «Reemplazar» y «Crear rutina nueva»
+ * guardan el día con lo que cambió (`rutinaConLoHecho`; la nueva, aparte). «Olvidar este
+ * día» no guarda nada: el cambio de ese día se descarta y la rutina queda como estaba.
+ */
+export function rutinaTrasLaVentana<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D, eleccion: EleccionDeLaVentana): D[] | null {
+  return eleccion === 'olvidar' ? null : rutinaConLoHecho(dias, dia, hecho);
 }
 
 /**

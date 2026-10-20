@@ -860,6 +860,7 @@ export default function Inicio({
             subida={sesion.estado.subida}
             diaDeSesion={diaDeLaSesion(sesion.estado.inicio)}
             ultimaVez={sesion.estado.bloques.ejercicio ? sesion.ultimaVezDe(sesion.estado.bloques.ejercicio) : null}
+            repsUltimaVez={sesion.estado.bloques.ejercicio ? sesion.repsDeLaUltimaVezDe(sesion.estado.bloques.ejercicio) : null}
             alSumar={sesion.serieHecha}
             alRestar={sesion.deshacerSerie}
             alSiguiente={sesion.bloqueSiguiente}

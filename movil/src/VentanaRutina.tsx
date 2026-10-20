@@ -9,14 +9,15 @@ import { guardarDiaDeRutina, type PreguntaDeRutina } from './preguntarPorLaRutin
  * LA VENTANA AL TERMINAR (19/10, aprobada en la galería): con el estilo de la app, en
  * lugar de la alerta del sistema. «Reemplazar» pasa por un «¿Estás seguro?» en la misma
  * ventana, porque pisa lo que había (lo pedido el 16/10); «Crear rutina nueva» va directo.
- * Tocar afuera la cierra sin guardar nada. Se monta solo mientras está abierta.
+ * «Olvidar este día» (20/10), aparte y más apagado, no toca la rutina y ese día no vuelve a
+ * preguntar. Tocar afuera la cierra sin guardar nada. Se monta solo mientras está abierta.
  */
 export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: PreguntaDeRutina; alCerrar: () => void }) {
   const [paso, setPaso] = useState<'pregunta' | 'seguro'>('pregunta');
   const [guardando, setGuardando] = useState(false);
   const [fallo, setFallo] = useState(false);
 
-  async function guardar(como: 'esta' | 'nueva') {
+  async function guardar(como: 'esta' | 'nueva' | 'olvidar') {
     if (guardando) return;
     setGuardando(true);
     setFallo(false);
@@ -67,6 +68,17 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
             >
               <Text style={estilos.bordeTexto}>{guardando && !seguro ? T.sesion.guardando : seguro ? T.rutina.no : T.rutina.crearRutinaNueva}</Text>
             </Pressable>
+            {!seguro && (
+              <Pressable
+                testID="ventana-rutina-olvidar"
+                style={[estilos.pildora, estilos.tenue]}
+                disabled={guardando}
+                onPress={() => void guardar('olvidar')}
+                accessibilityRole="button"
+              >
+                <Text style={estilos.tenueTexto}>{T.rutina.olvidarDia}</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       </View>
@@ -102,4 +114,6 @@ const estilos = StyleSheet.create({
   cremaTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
   borde: { borderWidth: 1, borderColor: C.bordeBoton },
   bordeTexto: { color: C.tinta, fontSize: 14 },
+  tenue: { borderWidth: 1, borderColor: C.lineaFuerte },
+  tenueTexto: { color: C.sub, fontSize: 14 },
 });

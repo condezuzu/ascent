@@ -18,6 +18,9 @@ export const servidor = {
   // cuando algo le pregunta (`cerrar_sesiones_vencidas`), y la fecha en la última
   // actividad que LE LLEGÓ. Sin número no cierra nada, como hasta ahora.
   ventanaMs: null,
+  // Las marcas con sus repeticiones (`prs`), de la cuenta y de sus amigos: la RLS deja leer
+  // las de los amigos, así que el doble las devuelve todas salvo que se filtre por user_id.
+  marcas: [],
 };
 
 function cerrarVencidas() {
@@ -141,6 +144,7 @@ function consulta(tabla) {
     if (tabla === 'ejercicios') {
       return servidor.visibles ? { data: servidor.visibles.map((id) => ({ id, mide: servidor.porTiempo?.includes(id) ? 'tiempo' : 'series' })), error: null } : { data: null, error: { message: 'sin catálogo en el doble' } };
     }
+    if (tabla === 'prs') return { data: copia(servidor.marcas.filter((m) => !filtro.user_id || m.user_id === filtro.user_id)), error: null };
     const s = tabla === 'sesiones' && uno ? porId(filtro.id) : null;
     const data = uno ? (s ? { bloques: copia(s.bloques) } : null) : tabla === 'sesiones' ? copia(servidor.historial) : [];
     await espera(5);
@@ -149,7 +153,9 @@ function consulta(tabla) {
   return q;
 }
 
-const cliente = { rpc: (nombre, a) => llamar(nombre, a), from: (tabla) => consulta(tabla) };
+// La sesión guardada de quien entra: 'yo', como el perfil de los escenarios.
+const auth = { getSession: async () => ({ data: { session: { user: { id: 'yo' } } }, error: null }) };
+const cliente = { rpc: (nombre, a) => llamar(nombre, a), from: (tabla) => consulta(tabla), auth };
 export function crearCliente() {
   return cliente;
 }

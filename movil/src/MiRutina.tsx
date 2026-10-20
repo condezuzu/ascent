@@ -401,6 +401,9 @@ export default function MiRutina({
             // Fuera de editar, la lista del día sola (19/10): copiar y pegar quedan en Editar.
             abajoDelDia={editando ? editorDelDia : undefined}
             abiertoAlEmpezar={abrirHoy ? new Date().getDay() : undefined}
+            // FUERA DE EDITAR, TODOS ABIERTOS (20/10): con solo hoy abierto, un día sin nada
+            // dejaba la rutina sin un ejercicio a la vista. Igual que la del perfil.
+            abiertos={!editando}
             testID="rutina-guardada"
           />
           {editando && (
@@ -428,7 +431,7 @@ export default function MiRutina({
       ) : deducida && hayAlgo(deducida) ? (
         <>
           <Text style={estilos.nota}>{T.rutina.deducida}</Text>
-          <RutinaPlegada dias={deducida} catalogo={catalogo} soloConAlgo abiertoAlEmpezar={abrirHoy ? new Date().getDay() : undefined} testID="rutina-deducida" />
+          <RutinaPlegada dias={deducida} catalogo={catalogo} soloConAlgo abiertos testID="rutina-deducida" />
           {guardadas && (
             <View style={estilos.acciones}>
               <Pressable testID="rutina-guardar-deducida" style={estilos.chico} onPress={() => void crear(deducida)}>

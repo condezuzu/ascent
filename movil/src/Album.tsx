@@ -20,7 +20,7 @@ import { SURGIR_MS } from '@nucleo/animacion';
 import { CURVA } from '@nucleo/deslizar';
 import Surgir from './Surgir';
 import { T } from '@nucleo/textos';
-import { fechaCorta, fechaLinda, hoyISO } from '@nucleo/fechas';
+import { fechaCorta, fechaLinda } from '@nucleo/fechas';
 import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type Celda, type DatosDeAlbum } from '@compartido/album';
 import { primeraYUltima, resumenDelMes } from '@nucleo/album';
 import { paletaDe } from '@nucleo/paletas';
@@ -238,8 +238,6 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
 
   const celdas = datos?.celdas ?? [];
   const meses = porMes(celdas);
-  // Las fotos se suman solo al día de hoy: pedir otra solo tiene sentido este mes.
-  const mesDeHoy = hoyISO().slice(0, 7);
   // Tres por fila, todas del mismo tamaño: el criterio de la web (una grilla
   // pareja, no un mosaico que con una sola foto la vuelve gigante).
   const HUECO = 4;
@@ -317,7 +315,6 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                   único que una grilla no puede mostrar. Solo si hay dos de días
                   DISTINTOS: comparar una foto con sí misma no es comparar. */}
               {/* UNA SOLA FOTO EN EL MES (15/10): se dice qué trae la segunda. */}
-              {!par && m.fotos.length === 1 && m.clave === mesDeHoy && <Text testID="album-una-mas" style={estilos.unaMas}>{T.album.unaMas}</Text>}
               {par && (
                 <View style={estilos.comparar}>
                   {([par.primera, par.ultima] as const).map((c, i) => (
@@ -631,7 +628,6 @@ const estilos = StyleSheet.create({
   pie: { position: 'absolute', left: 24, right: 24, bottom: 48 },
   cuando: { flexDirection: 'row', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' },
   fecha: { color: C.tinta, fontSize: 16 },
-  unaMas: { color: C.sub, fontSize: 12, marginBottom: 10 },
   // "día 41": el registro, en el claro de la app para que se lea como un logro.
   diaDeRacha: { color: C.claro, fontSize: 13, fontVariant: ['tabular-nums'] },
   planeta: { color: C.sub, fontSize: 13 },

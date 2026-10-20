@@ -17,6 +17,7 @@ import FondoRaiz from '../src/FondoRaiz';
 import Raiz from '../src/Raiz';
 import VigilanteDeGimnasio from '../src/VigilanteDeGimnasio';
 import HudDiagnostico from '../src/HudDiagnostico';
+import EntradaDeLaApp from '../src/EntradaDeLaApp';
 import { olvidarLoLeido } from '../src/plataforma/salud';
 // SOLO POR EL EFECTO DE IMPORTARLO, y tiene que estar acá arriba. Es lo que
 // deja puesto el gancho que corre cuando el teléfono despierta a la app al
@@ -84,6 +85,11 @@ export default function Layout() {
   }, []);
   // Se entró con el enlace de cambiar la contraseña: falta elegirla.
   const [claveNueva, setClaveNueva] = useState(false);
+  // LA ENTRADA DEL LOGO (20/10): nada de la app se monta hasta que empieza el zoom.
+  const [entrada, setEntrada] = useState<'logo' | 'abriendo' | 'fin'>('logo');
+  const abierta = entrada !== 'logo';
+  const abrir = useCallback(() => setEntrada('abriendo'), []);
+  const terminarEntrada = useCallback(() => setEntrada('fin'), []);
 
   // Con marcas para la caja negra: si la app se queda en negro, dice si llegó
   // a preguntar la sesión y si la respuesta volvió.
@@ -303,13 +309,13 @@ export default function Layout() {
       <ProveedorDeSesion valor={{ salir, sinNombre }}>
       <View key={versionIdioma} style={estilos.todo}>
         <StatusBar style="light" />
-        {sesion === 'mirando' && (
+        {abierta && sesion === 'mirando' && (
           <View style={estilos.centrado}>
             <ActivityIndicator color="#8a93a8" />
           </View>
         )}
-        {sesion === 'sin' && <EntradaYLogin alEntrar={mirar} />}
-        {sesion === 'sin-nombre' && <Onboarding alElegir={mirar} />}
+        {abierta && sesion === 'sin' && <EntradaYLogin alEntrar={mirar} />}
+        {abierta && sesion === 'sin-nombre' && <Onboarding alElegir={mirar} />}
         {/* EL STACK SOLO EXISTE CON SESIÓN, y la primera versión lo dejaba
             montado y escondido "para no perder el estado del router". Eso
             estaba mal y se vio en la primera corrida: con el login en pantalla,
@@ -319,7 +325,7 @@ export default function Layout() {
 
             Y el estado que se quería conservar no existe: sin sesión no hay
             adónde navegar. */}
-        {sesion === 'con' && (
+        {abierta && sesion === 'con' && (
         <View style={estilos.todo}>
           {/* EL MOTOR, DETRÁS DE TODO Y UNA SOLA VEZ. Vivía adentro de las
               pestañas, que era su lugar mientras no hubo nada apilado encima;
@@ -364,8 +370,10 @@ export default function Layout() {
         </View>
         )}
         {/* Sobre lo que haya debajo, que sigue montado: ver `ClaveNueva`. */}
-        {claveNueva && (sesion === 'con' || sesion === 'sin-nombre') && <ClaveNueva alTerminar={() => setClaveNueva(false)} />}
+        {abierta && claveNueva && (sesion === 'con' || sesion === 'sin-nombre') && <ClaveNueva alTerminar={() => setClaveNueva(false)} />}
       </View>
+      {/* Fuera de la llave del idioma: cambiarlo en medio no la vuelve a empezar. */}
+      {entrada !== 'fin' && <EntradaDeLaApp lista={sesion !== 'mirando'} alAbrir={abrir} alTerminar={terminarEntrada} />}
       </ProveedorDeSesion>
     </Raiz>
   );

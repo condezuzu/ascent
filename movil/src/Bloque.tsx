@@ -10,6 +10,8 @@ import { OPCIONES_DE_LA_PREGUNTA, cargaVigente, hayQuePreguntar, kilosMovidos, l
 import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
 import { leerAnotarPeso } from '@compartido/anotarPeso';
+import { leerRepsUltimaVez, REPS_ULTIMA_VEZ_CAMBIO } from '@compartido/repsUltimaVez';
+import type { MarcaConReps } from '@nucleo/rutina';
 import { ponerNombres } from '@compartido/enCurso';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import SelectorEjercicio from './SelectorEjercicio';
@@ -64,6 +66,7 @@ export default function Bloque({
   subida,
   diaDeSesion,
   ultimaVez,
+  repsUltimaVez,
   alSumar,
   debajoDelMas,
   globoDelMas,
@@ -94,6 +97,8 @@ export default function Bloque({
   diaDeSesion?: string;
   /** La última vez que se hizo este ejercicio (19/10): se muestra debajo del nombre. */
   ultimaVez?: { fecha: string; series: number; pesos: (number | null)[]; carga?: string } | null;
+  /** La última marca de este ejercicio, con sus repeticiones (20/10): solo con el ajuste prendido. */
+  repsUltimaVez?: MarcaConReps | null;
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
@@ -123,6 +128,11 @@ export default function Bloque({
   const [pausa, setPausa] = useState(false);
   const [aDonde, setADonde] = useState<string | null | undefined>(undefined);
   const [prefierePeso, setPrefierePeso] = useState(true);
+  const [verReps, setVerReps] = useState(false);
+  useEffect(() => {
+    void leerRepsUltimaVez().then(setVerReps);
+    return eventos.escuchar(REPS_ULTIMA_VEZ_CAMBIO, (si) => setVerReps(si === true));
+  }, []);
   const version = useVersionDelEsquema();
   const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
   const conCarga = anotarPeso && disponible('cargaDelPeso', version);
@@ -286,6 +296,11 @@ export default function Bloque({
       {!!estado.ejercicio && !!ultimaVez && ultimaVez.series > 0 && (
         <Text style={estilos.sugeridoNota} testID="ultima-vez">
           {T.sesion.ultimaVez(fechaLinda(ultimaVez.fecha), detalleDeLaUltimaVez(ultimaVez, unidad))}
+        </Text>
+      )}
+      {verReps && !!estado.ejercicio && !!repsUltimaVez && (
+        <Text style={estilos.sugeridoNota} testID="reps-ultima-vez">
+          {T.sesion.repsUltimaVez(fechaLinda(repsUltimaVez.fecha), repsUltimaVez.reps, `${pesoCorto(repsUltimaVez.peso, unidad)} ${unidad}`)}
         </Text>
       )}
       {globitoSubir && (

@@ -657,6 +657,9 @@ const ES = {
     sonidoPrendido: 'Sonido al terminar ✓',
     // Al lado de un interruptor (15/10): el estado lo dice el interruptor.
     sonidoAlTerminar: 'Sonido al terminar',
+    // Al entrenar, debajo del ejercicio (20/10). Apagado de fábrica.
+    repsUltimaVez: 'Repeticiones de la última vez',
+    repsUltimaVezNota: 'Salen debajo del ejercicio, de tu última marca: las series no guardan repeticiones.',
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cierras, no avisa.',
     noVibra: 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.',
@@ -1141,6 +1144,7 @@ const ES = {
     sugeridoNota: 'De tu rutina. Cuenta la primera serie para confirmarlo.',
     // Debajo del ejercicio (19/10): la última sesión que lo tuvo. El detalle viene armado.
     ultimaVez: (fecha: string, detalle: string) => `La última vez, ${fecha}: ${detalle}`,
+    repsUltimaVez: (fecha: string, reps: number, peso: string) => `Repeticiones la última vez, ${fecha}: ${reps} con ${peso}`,
 
     // CAMBIÉ DE EJERCICIO / ME EQUIVOQUÉ DE EJERCICIO. Son dos cosas
     // distintas y la app no puede adivinar cuál fue: si ya hay series
@@ -1298,6 +1302,10 @@ const ES = {
     placeholder: (unidad: string) => `Tu peso en ${unidad}`,
     anotar: 'Anotar',
     noDa: 'Ese peso no da.',
+    // La pantalla nueva (20/10): la última vez y los botones, para quien no ve la pantalla.
+    ultima: (peso: string, unidad: string, fecha: string) => `La última: ${peso} ${unidad} · ${fecha}`,
+    restar: (unidad: string) => `Restar 0,1 ${unidad}`,
+    sumar: (unidad: string) => `Sumar 0,1 ${unidad}`,
     privado: 'Solo lo ves tú. Nunca se comparte ni se muestra.',
     // CORREGIR Y BORRAR (migración 45). Antes un número mal escrito se
     // quedaba para siempre torciendo la tendencia, que es lo único que ese
@@ -1397,8 +1405,6 @@ const ES = {
   album: {
     titulo: 'Álbum',
     vacioTitulo: 'Ninguna foto todavía.',
-    // Un mes con una sola foto (15/10): la comparación aparece con la segunda.
-    unaMas: 'Con otra foto este mes ves el antes y el después.',
     vacioPie: 'Al registrar un día puedes sumar una: queda pegada al planeta de ese día.',
     // Para una foto el verbo es QUITAR, nunca borrar ni sacar (regla 4 de
     // spec/idioma.md). Decía "Borrar" hasta el 18/9; §54 lo mira ahora.
@@ -1445,6 +1451,8 @@ const ES = {
     cambiarDiaTexto: 'Hoy hiciste distintos ejercicios a los de tu rutina de este día.',
     cambiarDiaPregunta: '¿Quieres reemplazarla o crear otra rutina con este entrenamiento?',
     crearRutinaNueva: 'Crear rutina nueva',
+    // AL FINAL DE LA VENTANA, APARTE (20/10): no cambia la rutina y ese día no vuelve a preguntar.
+    olvidarDia: 'Olvidar este día',
     estasSeguro: '¿Estás seguro?',
     si: 'Sí',
     no: 'No',

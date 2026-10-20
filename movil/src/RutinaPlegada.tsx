@@ -47,12 +47,14 @@ export default function RutinaPlegada({
         const esAbierto = abiertos || abierto === d;
         return (
           <View key={d} style={estilos.dia}>
+            {/* CON TODOS ABIERTOS NO SE PLIEGA (20/10): la flechita y el toque no hacían nada. */}
             <Pressable
               testID={`rutina-dia-${d}`}
-              style={({ pressed }) => [estilos.cabecera, pressed && estilos.tocado]}
+              style={({ pressed }) => [estilos.cabecera, pressed && !abiertos && estilos.tocado]}
               onPress={() => setAbierto(esAbierto ? null : d)}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: esAbierto }}
+              disabled={abiertos}
+              accessibilityRole={abiertos ? undefined : 'button'}
+              accessibilityState={abiertos ? undefined : { expanded: esAbierto }}
             >
               <Text style={estilos.nombre} numberOfLines={1}>
                 {T.fechas.diasLargos[d]}
@@ -61,7 +63,7 @@ export default function RutinaPlegada({
                   {vacio ? T.rutina.sinCargar : titulo || T.rutina.sinCargar}
                 </Text>
               </Text>
-              <Text style={estilos.flecha}>{esAbierto ? '⌃' : '⌄'}</Text>
+              {!abiertos && <Text style={estilos.flecha}>{esAbierto ? '⌃' : '⌄'}</Text>}
             </Pressable>
             {esAbierto &&
               (abajoDelDia ? (
