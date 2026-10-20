@@ -37,6 +37,16 @@ export function impulsosSinVer(ultimas: string[], vista: string | null): string[
 }
 
 /**
+ * LAS VIDAS QUE SE AVISAN (20/10): las sin ver, menos las de un corte que igual pasó. Si
+ * las vidas no alcanzaron, la base cortó la racha y fijó `perdida_fecha` en el día antes
+ * del corte: el aviso «Usa la vida para no perder la racha» decía algo falso, y «Guardar»
+ * ofrecía devolver vidas que ya no vuelven. Ahí se ve la pérdida, sin el aviso.
+ */
+export function vidasParaAvisar(ultimas: string[], vista: string | null, perdidaFecha: string | null | undefined): string[] {
+  return impulsosSinVer(ultimas, vista).filter((f) => !perdidaFecha || f > perdidaFecha);
+}
+
+/**
  * Hasta dónde marcar como visto después de mostrar el aviso.
  *
  * Es el máximo de TODO lo que vino, no solo de lo que se anunció: si la base

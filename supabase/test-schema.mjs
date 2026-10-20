@@ -19915,6 +19915,40 @@ console.log('\n281. «Guardar vida» no devuelve las vidas de un corte que igual
     { gastadas: 2, quedabanAntes: 1, devueltas: 2, enLaTabla: 2, quedanDespues: 3, racha: 14 });
   await cuotaDeVidas(2);
 }
+console.log('\n282. Con la racha ya perdida no sale el aviso «Usa la vida para no perder la racha» (20/10)');
+{
+  // Por el mismo camino que la pantalla: lo que devuelve la base al abrir (`mis_impulsos` y
+  // el perfil) y la regla que decide el aviso (`vidasParaAvisar`).
+  const { vidasParaAvisar } = await import('../nucleo/impulsos.ts');
+  async function aviso282(faltas) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await rachaDe(u, 24, faltas + 1);
+    await db.query('select verificar_perdida()');
+    const m = (await db.query('select mis_impulsos() as m')).rows[0].m;
+    const p = (await db.query('select racha_actual, perdida_fecha from profiles where id = $1', [u])).rows[0];
+    const fecha = p.perdida_fecha ? new Date(p.perdida_fecha).toISOString().slice(0, 10) : null;
+    return { racha: p.racha_actual, vidasUsadas: m.ultimas.length, avisa: vidasParaAvisar(m.ultimas, null, fecha).length };
+  }
+  await cuotaDeVidas(3);
+  chequear('el caso real (24 días sin registrar, corte 24 → 14 con 3 vidas gastadas): sin aviso', await aviso282(24), { racha: 14, vidasUsadas: 3, avisa: 0 });
+  chequear('si las vidas salvaron la racha, el aviso sale con sus dos días', await aviso282(2), { racha: 24, vidasUsadas: 2, avisa: 2 });
+  await cuotaDeVidas(2);
+  chequear('la regla: sin corte, o con uno viejo, avisa todo; lo de un corte que igual pasó, no', [
+    vidasParaAvisar(['2026-10-17', '2026-10-18'], null, null),
+    vidasParaAvisar(['2026-10-17', '2026-10-18'], null, '2026-09-30'),
+    vidasParaAvisar(['2026-10-16', '2026-10-17', '2026-10-18'], null, '2026-10-18'),
+    vidasParaAvisar(['2026-10-17', '2026-10-18'], '2026-10-17', null),
+  ], [['2026-10-17', '2026-10-18'], ['2026-10-17', '2026-10-18'], [], ['2026-10-18']]);
+  const ini282 = deBug('movil', 'src', 'Inicio.tsx');
+  const web282 = deBug('src', 'app', 'page.tsx');
+  chequear('Inicio y la web deciden el aviso con esa regla y la fecha del corte', [
+    /const sinVer = vidasParaAvisar\(ultimas, await plataforma\.almacenamiento\.leer\(CLAVE_VIDA_VISTA\), d\.perfil\.perdida_fecha\);/.test(ini282),
+    /const sinVer = vidasParaAvisar\(ultimas, await plataforma\.almacenamiento\.leer\(CLAVE_IMPULSO_VISTO\), perdidaFecha\);/.test(web282),
+    (web282.match(/leerImpulsos\([^)]*perdida_fecha\)/g) ?? []).length,
+    /impulsosSinVer\(/.test(ini282 + web282),
+  ], [true, true, 3, false]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

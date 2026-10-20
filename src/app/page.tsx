@@ -24,7 +24,7 @@ import { plataforma } from '@/plataforma';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO, SUBIO_RANGO } from '@/components/VigilanteDeGimnasio';
 import { lineaDeMarcas } from '@nucleo/fuerza';
-import { impulsosSinVer, hastaDondeVisto, rachaSiSeDevuelve, CLAVE_VIDA_VISTA } from '@nucleo/impulsos';
+import { vidasParaAvisar, hastaDondeVisto, rachaSiSeDevuelve, CLAVE_VIDA_VISTA } from '@nucleo/impulsos';
 import type { Log, MiFuerza, Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import type { CierreDeSesion } from '@compartido/useSesion';
 import FondoEspacial from '@/components/FondoEspacial';
@@ -164,7 +164,7 @@ export default function Principal() {
   // LOS IMPULSOS, que llegan por los dos caminos y se leen igual: los días
   // cubiertos para que la tira no dibuje un agujero donde hubo una vida, y el
   // aviso de los que esta persona todavía no vio.
-  const leerImpulsos = useCallback(async (data: DatosDeInicio['impulsos']) => {
+  const leerImpulsos = useCallback(async (data: DatosDeInicio['impulsos'], perdidaFecha: string | null | undefined) => {
     if (!data) return;
     if (Array.isArray(data.vigentes)) setCubiertos(data.vigentes as string[]);
 
@@ -172,7 +172,8 @@ export default function Principal() {
     // dónde se anunció en ESTE aparato. Lo que quede en el medio es lo que
     // esta persona no vio.
     const ultimas = Array.isArray(data.ultimas) ? (data.ultimas as string[]) : [];
-    const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_IMPULSO_VISTO));
+    // Con la racha ya perdida en ese corte no hay aviso: se ve la pérdida (20/10).
+    const sinVer = vidasParaAvisar(ultimas, await plataforma.almacenamiento.leer(CLAVE_IMPULSO_VISTO), perdidaFecha);
     if (sinVer.length > 0) {
       setImpulsoUsado({
         dias: sinVer,
@@ -247,7 +248,7 @@ export default function Principal() {
         const unidad = p.unidad_peso ?? 'kg';
         const lineaMarcas = d.fuerza ? lineaDeMarcas(d.fuerza.marcas, unidad) : null;
         despues = () => {
-          leerImpulsos(d.impulsos);
+          leerImpulsos(d.impulsos, p!.perdida_fecha);
           if (lineaMarcas) setMarcas(lineaMarcas);
           // Para la próxima apertura: Inicio entero, al instante.
           guardarInicioCache({
@@ -269,7 +270,7 @@ export default function Principal() {
         setDescansos(viejo.descansos);
         despues = () => {
           supabase.rpc('mis_impulsos').then(({ data, error }) => {
-            if (!error) leerImpulsos(data as DatosDeInicio['impulsos']);
+            if (!error) leerImpulsos(data as DatosDeInicio['impulsos'], p?.perdida_fecha);
           });
           supabase.rpc('mi_fuerza').then(({ data }) => {
             const f = data as MiFuerza | null;
@@ -408,7 +409,7 @@ export default function Principal() {
         setLogs(inicioGuardado.logs);
         setDescansos(inicioGuardado.descansos);
         if (inicioGuardado.marcas) setMarcas(inicioGuardado.marcas);
-        leerImpulsos(inicioGuardado.impulsos);
+        leerImpulsos(inicioGuardado.impulsos, cacheado?.perdida_fecha);
         setGimnasioEnCache(inicioGuardado.tieneGimnasio);
         setCacheCompleta(true);
       }

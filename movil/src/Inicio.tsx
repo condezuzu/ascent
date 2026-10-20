@@ -27,7 +27,7 @@ import RachaSalvada from './RachaSalvada';
 import SubidaRango from './SubidaRango';
 import RegistrarDia from './RegistrarDia';
 import { plataforma } from '@plataforma';
-import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDondeVisto, impulsosSinVer, type VidaHelada } from '@nucleo/impulsos';
+import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDondeVisto, vidasParaAvisar, type VidaHelada } from '@nucleo/impulsos';
 import { CLAVE_META_PASOS, META_PASOS_POR_OMISION, leerMeta } from '@nucleo/pasos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import MarcaEnElMomento from './MarcaEnElMomento';
@@ -328,7 +328,8 @@ export default function Inicio({
       setBloquesDeHoy(todos.length ? todos : null);
       setVueltas((v) => v + 1);
       const ultimas = Array.isArray(d.impulsos?.ultimas) ? (d.impulsos!.ultimas as string[]) : [];
-      const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
+      // Con la racha ya perdida en ese corte no hay aviso: se ve la pérdida (20/10).
+      const sinVer = vidasParaAvisar(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA), d.perfil.perdida_fecha);
       if (sinVer.length > 0) {
         setVidaUsada({ dias: sinVer, quedan: Number(d.impulsos?.quedan ?? 0), total: Number(d.impulsos?.total ?? 0) });
       }
