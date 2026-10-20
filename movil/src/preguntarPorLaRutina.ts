@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 import { T } from '@nucleo/textos';
-import { diaDeLaSesion, hayQuePreguntarPorLaRutina } from '@nucleo/rutina';
+import { conDiaReemplazado, diaDeLaSesion, hayQuePreguntarPorLaRutina } from '@nucleo/rutina';
 import { nombreNuevo } from '@nucleo/rutinas';
 import { cargarMisRutinas, guardarRutina, rutinaActivaDelTelefono } from '@compartido/rutinas';
 import { supabase } from './supabase';
@@ -27,7 +27,7 @@ export async function preguntarPorLaRutina(bloques: BloqueGuardado[]) {
 
   async function guardar(como: 'esta' | 'nueva') {
     if (!rutinas || !actual) return;
-    const dias = actual.dias.map((d, i) => (i === dia ? hecho : d));
+    const dias = conDiaReemplazado(actual.dias, dia, hecho);
     const id =
       como === 'esta'
         ? await guardarRutina(supabase, { id: actual.id, nombre: actual.nombre, dias, activa: true })

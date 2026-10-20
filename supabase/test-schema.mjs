@@ -19502,6 +19502,28 @@ console.log('\n265. Un toque repetido en el + no es otra serie, y «Terminar ser
   ], [true, true, 2]);
 }
 
+console.log('\n266. Reemplazar el día: queda igual a lo entrenado, sin duplicar (19/10)');
+{
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const vacio = () => ({ descanso: false, ejercicios: [] });
+  const dias = [0, 1, 2, 3, 4, 5, 6].map(vacio);
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }, { ejercicio: 'fondos', series: 3 }] };
+  const id = (await db.query("select guardar_rutina(null, 'Entrenamiento 1', $1::jsonb) as id", [JSON.stringify(dias)])).rows[0].id;
+  // Lo entrenado: sentadilla, press, y sentadilla otra vez al final (dos tandas del mismo).
+  const hecho = RB.diaDeLaSesion([{ ejercicio: 'sentadilla', series: 2 }, { ejercicio: 'press_banca', series: 3 }, { ejercicio: 'sentadilla', series: 1 }]);
+  const nuevos = typeof RB.conDiaReemplazado === 'function' ? RB.conDiaReemplazado(dias, 1, hecho) : dias.map((d, i) => (i === 1 ? hecho : d));
+  await db.query("select guardar_rutina($1, 'Entrenamiento 1', $2::jsonb)", [id, JSON.stringify(nuevos)]);
+  const filas = (await db.query('select dias from rutinas where user_id = $1', [u])).rows;
+  chequear('una sola rutina, y el lunes con lo entrenado: cada ejercicio una vez, series sumadas, el resto sin tocar', [
+    filas.length,
+    filas[0].dias[1].ejercicios.map((e) => [e.ejercicio, e.series]),
+    filas[0].dias[0].ejercicios.length,
+  ], [1, [['sentadilla', 3], ['press_banca', 3]], 0]);
+  const pr = deBug('movil', 'src', 'preguntarPorLaRutina.ts');
+  chequear('la ventana usa ese mismo camino', [/const hecho = diaDeLaSesion\(bloques\);/.test(pr), /conDiaReemplazado\(actual\.dias, dia, hecho\)/.test(pr)], [true, true]);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

@@ -267,6 +267,11 @@ export function diaDeLaSesion(bloques: SesionVista['bloques']): { descanso: fals
   return { descanso: false, ejercicios: ejerciciosConSeries(bloques) };
 }
 
+/** Los días de la rutina con ese día cambiado por lo que se hizo: el resto, sin tocar (19/10). */
+export function conDiaReemplazado<D>(dias: D[], dia: number, hecho: D): D[] {
+  return dias.map((d, i) => (i === dia ? hecho : d));
+}
+
 /**
  * ¿SE PREGUNTA SI CAMBIA EL DÍA DE LA RUTINA? (16/10) Solo si se entrenó algo y no son
  * los mismos ejercicios que tiene ese día: el orden y las series no cuentan, otro
