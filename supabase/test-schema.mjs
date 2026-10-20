@@ -20058,18 +20058,20 @@ console.log('\n288. «Olvidar este día», aparte y al final de la ventana de re
   ], [true, true, true, true]);
   chequear('el texto no dice borrar', [T288.rutina.olvidarDia, /borr/i.test(T288.rutina.olvidarDia), /delet/i.test(T288en.rutina.olvidarDia)], ['Olvidar este día', false, false]);
 }
-console.log('\n289. Las repeticiones de la última vez: de la última marca propia antes de hoy, con un ajuste apagado (20/10)');
+console.log('\n289. Las repeticiones de la última vez: de la marca de la última sesión de ese ejercicio, con un ajuste apagado (20/10)');
 {
   // Con el hook de verdad: la base devuelve marcas propias y de un amigo (la RLS deja leer
-  // las de los amigos), una de hoy y otra de otro ejercicio.
+  // las de los amigos), una de hoy y otra de otro ejercicio. Desde el 20/10 (pedido 3), solo la
+  // marca del día de la última sesión de ese ejercicio: sentadilla no tiene sesión, y remo tuvo
+  // sesión ayer sin marca (la de hace diez días ya no cuenta).
   const r = await escenarioDeSesion('repsUltimaVez');
-  chequear('la sesión da la última marca propia de cada ejercicio, antes de hoy', r.fallo ?? [r.press, r.sentadilla, r.remo], [[62.5, 5], [90, 6], null]);
-  const { repsDeLaUltimaVez } = await import('../nucleo/rutina.ts');
+  chequear('la sesión da la marca propia de la última sesión de cada ejercicio', r.fallo ?? [r.press, r.sentadilla, r.remo], [[62.5, 5], null, null]);
+  const { repsDeLaSesion } = await import('../nucleo/rutina.ts');
   const m = (fecha, reps) => ({ ejercicio: 'press_banca', peso: 60, reps, fecha });
-  chequear('la regla: del mismo día, la que vino última; nada de hoy ni de otro ejercicio', [
-    repsDeLaUltimaVez([m('2026-10-10', 8), m('2026-10-10', 6)], 'press_banca', '2026-10-20')?.reps,
-    repsDeLaUltimaVez([m('2026-10-20', 3)], 'press_banca', '2026-10-20'),
-    repsDeLaUltimaVez([m('2026-10-10', 8)], 'sentadilla', '2026-10-20'),
+  chequear('la regla: del día de esa sesión, la que vino última; nada de otro día ni de otro ejercicio', [
+    repsDeLaSesion([m('2026-10-10', 8), m('2026-10-10', 6)], 'press_banca', '2026-10-10')?.reps,
+    repsDeLaSesion([m('2026-10-09', 3)], 'press_banca', '2026-10-10'),
+    repsDeLaSesion([m('2026-10-10', 8)], 'sentadilla', '2026-10-10'),
   ], [6, null, null]);
   const ru = sinComentarios(deBug('compartido', 'repsUltimaVez.ts'));
   const bl = sinComentarios(deBug('movil', 'src', 'Bloque.tsx'));

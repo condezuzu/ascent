@@ -1516,16 +1516,21 @@ async function primerEjercicio(modo, ventana, copia = 'conCopia') {
  * toca desde el vigilante y se mira la pantalla: tiene que valer para los dos lados.
  */
 /**
- * `repsUltimaVez` (20/10): las repeticiones de la última vez salen de la última marca de ese
- * ejercicio antes de hoy, y solo de las propias (la base también deja leer las de los amigos).
+ * `repsUltimaVez` (20/10): las repeticiones de la última vez salen de la marca guardada en la
+ * última sesión de ese ejercicio, y solo de las propias (la base también deja leer las de los
+ * amigos). Remo: sesión ayer sin marca, marca de hace diez días → nada.
  */
 async function repsUltimaVez() {
   servidor.version = 82;
   datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
   const { hoyISO, restarDias } = await import('@nucleo/fechas');
   const hoy = hoyISO();
-  servidor.historial = [{ bloques: [{ ejercicio: 'press_banca', series: 3 }], logs: { fecha: restarDias(hoy, 3) } }];
+  servidor.historial = [
+    { bloques: [{ ejercicio: 'press_banca', series: 3 }], logs: { fecha: restarDias(hoy, 3) } },
+    { bloques: [{ ejercicio: 'remo', series: 3 }], logs: { fecha: restarDias(hoy, 1) } },
+  ];
   servidor.marcas = [
+    { user_id: 'yo', ejercicio: 'remo', peso: 80, reps: 6, fecha: restarDias(hoy, 10) },
     { user_id: 'yo', ejercicio: 'press_banca', peso: 60, reps: 8, fecha: restarDias(hoy, 10) },
     { user_id: 'yo', ejercicio: 'press_banca', peso: 62.5, reps: 5, fecha: restarDias(hoy, 3) },
     { user_id: 'amigo', ejercicio: 'press_banca', peso: 100, reps: 3, fecha: restarDias(hoy, 1) },

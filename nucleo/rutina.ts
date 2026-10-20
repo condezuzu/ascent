@@ -288,13 +288,14 @@ export function ultimaVezDe(sesiones: SesionConPesos[], ejercicio: string, hoyIS
 export type MarcaConReps = { ejercicio: string; peso: number; reps: number; fecha: string };
 
 /**
- * LAS REPETICIONES DE LA ÚLTIMA VEZ (20/10, un ajuste apagado de fábrica). Las series no
- * guardan repeticiones: las únicas que hay son las de las marcas. Es la marca más reciente
- * de ese ejercicio antes de hoy; del mismo día, la que vino última.
+ * LAS REPETICIONES DE LA ÚLTIMA VEZ (20/10). Las series no guardan repeticiones: las únicas
+ * que hay son las de las marcas. Son las de la marca de ese ejercicio guardada el día de su
+ * última sesión (`ultimaVezDe`); si esa sesión no tuvo marca, no hay. Antes era la marca más
+ * reciente de cualquier día, y una de hace semanas se leía como la de la última vez.
  */
-export function repsDeLaUltimaVez(marcas: MarcaConReps[], ejercicio: string, hoyISO: string): MarcaConReps | null {
+export function repsDeLaSesion(marcas: MarcaConReps[], ejercicio: string, fecha: string): MarcaConReps | null {
   let m: MarcaConReps | null = null;
-  for (const x of marcas) if (x.ejercicio === ejercicio && x.fecha < hoyISO && (!m || x.fecha >= m.fecha)) m = x;
+  for (const x of marcas) if (x.ejercicio === ejercicio && x.fecha === fecha) m = x;
   return m;
 }
 
