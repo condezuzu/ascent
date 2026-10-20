@@ -100,6 +100,15 @@ try {
     } else quieta++;
   }
   chequear('tres tandas, como los golpes del despertador', tandas, 3);
+  // CUÁNTO SE PASÓ (20/10, pedido 1): después del despertador, «+0:07» y sigue contando.
+  await page.waitForTimeout(2500);
+  const pildora = async () => (await page.getByTestId('pildora-descanso').first().innerText()).trim();
+  const primero = await pildora();
+  await page.waitForTimeout(2200);
+  const segundo = await pildora();
+  await page.screenshot({ path: join(SALIDA, 'pasado.png') });
+  const seg = (t) => (/^\+(\d+):(\d\d)$/.test(t) ? Number(t.slice(1).split(':')[0]) * 60 + Number(t.split(':')[1]) : null);
+  chequear('después del despertador dice cuánto se pasó del cero, y sigue contando', [seg(primero) !== null && seg(primero) >= 5, seg(segundo) !== null && seg(segundo) > seg(primero)], [true, true]);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));

@@ -48,6 +48,7 @@ import { dejarDeEntrenar } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 import TimbreDePildora from './TimbreDePildora';
+import { pasadoDe, queMuestraLaPildora } from '@nucleo/avisoDescanso';
 import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
@@ -690,8 +691,15 @@ export default function Inicio({
                       onPress={() => setDescansoAbierto(true)}
                       accessibilityRole="button"
                     >
-                      <Text style={[estilos.chipTexto, restante(fin) === 0 && estilos.chipTextoListo]}>
-                        {restante(fin) === 0 ? T.sesion.listo : cuentaAtras(restante(fin))}
+                      <Text
+                        style={[estilos.chipTexto, restante(fin) === 0 && estilos.chipTextoListo]}
+                        accessibilityLabel={queMuestraLaPildora(fin, Date.now()) === 'pasado' ? `${cuentaAtras(pasadoDe(fin, Date.now()))} ${T.descanso.deMas}` : undefined}
+                      >
+                        {
+                          { cuenta: cuentaAtras(restante(fin)), listo: T.sesion.listo, pasado: `+${cuentaAtras(pasadoDe(fin, Date.now()))}` }[
+                            queMuestraLaPildora(fin, Date.now())
+                          ]
+                        }
                       </Text>
                     </Pressable>
                     </TimbreDePildora>

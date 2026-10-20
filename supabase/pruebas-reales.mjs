@@ -35,7 +35,7 @@
 //  11. probar-ultima-vez — con «Mostrar la última vez» prendido (viene apagado), al entrar o al elegir
 //      a entrenar sale debajo del ejercicio lo de la última sesión que lo tuvo (20/10).
 //  12. probar-timbre-descanso — la píldora del descanso se sacude como un despertador
-//      al llegar a 0:00 (20/10), en la nativa, con el reloj de Playwright.
+//      al llegar a 0:00 y después dice cuánto se pasó (20/10), en la nativa, con el reloj de Playwright.
 //  13. probar-sesion-siguiente — rutina A, B y C; una sesión cambiando A por X; la
 //      siguiente del mismo día propone B (20/10), en la nativa.
 //

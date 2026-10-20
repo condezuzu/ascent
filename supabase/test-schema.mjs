@@ -20151,6 +20151,20 @@ console.log('\n293. La segunda sesión del día sigue con lo que queda de la rut
     /rutinaRef\.current = pendientesDeHoy\(guardadaAhora, hechoAntesHoy\(\)\);/.test(us),
   ], [true, true]);
 }
+console.log('\n294. La píldora del descanso, después del 0:00, dice cuánto se pasó (20/10, pedido 1)');
+{
+  const AV = await import('../nucleo/avisoDescanso.ts');
+  const fin = 1_000_000;
+  chequear('la cuenta, «Listo» mientras suena el despertador, y después lo que se pasó', [
+    AV.queMuestraLaPildora(fin, fin - 1),
+    AV.queMuestraLaPildora(fin, fin),
+    AV.queMuestraLaPildora(fin, fin + AV.duracionDelDespertador()),
+    AV.queMuestraLaPildora(fin, fin + AV.duracionDelDespertador() + 600),
+    AV.pasadoDe(fin, fin + 65_400),
+  ], ['cuenta', 'listo', 'listo', 'pasado', 65]);
+  const ini = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
+  chequear('la píldora lo usa, con «+» delante', /pasado: `\+\$\{cuentaAtras\(pasadoDe\(fin, Date\.now\(\)\)\)\}`/.test(ini), true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
