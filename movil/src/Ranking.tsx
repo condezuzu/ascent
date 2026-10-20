@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { leerViva, suscribirViva } from '@compartido/sesionViva';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { registrarAvisosRemotos } from '@compartido/avisosRemotos';
@@ -70,8 +71,8 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   }, []);
   // Cuántas actividades se ven antes de "ver más".
   const ACTIVIDAD_TOPE = 8;
-  // Cuántos del ranking se ven antes de "Ver más" (15/10).
-  const RANKING_TOPE = 10;
+  // Cuántos del ranking se ven antes de la flechita (20/10: cinco; eran diez).
+  const RANKING_TOPE = 5;
   const [verTodos, setVerTodos] = useState(false);
   const [miId, setMiId] = useState('');
   const [datos, setDatos] = useState<DatosDeRanking | null>(null);
@@ -321,12 +322,13 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           // sobre el velo de `FondoEspacial`, que ya está detrás.
           <View style={estilos.lista}>
             {/* ESCALONADAS Y NO TODAS DE GOLPE, igual que en la web. Ver `Surgir`. */}
-            {/* SE VEN DIEZ (15/10) y el resto detrás de "Ver más". */}
+            {/* SE VEN CINCO (20/10) y el resto detrás de la flechita. */}
             {(verTodos ? amigos : amigos.slice(0, RANKING_TOPE)).map((a, i) => (
               <Surgir indice={i} key={a.id}>
                 {/* LA FILA LLEVA AL PERFIL, como en la web. Tu propia fila va a
                     tu perfil, que es otra pantalla. */}
                 <Pressable
+                  testID="ranking-fila"
                   style={({ pressed }) => [estilos.fila, pressed && estilos.filaTocada]}
                   onPress={() => router.push(a.id === miId ? '/yo' : `/perfil/${a.id}`)}
                   // Mantener apretado sobre un amigo: denunciar o bloquear, sin
@@ -357,10 +359,19 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               </Surgir>
             ))}
             {amigos.length > RANKING_TOPE && (
-              <Pressable testID="ranking-ver-mas" onPress={() => setVerTodos((v) => !v)} hitSlop={8} style={estilos.verMas}>
-                <Text style={estilos.verMasTexto}>
-                  {verTodos ? T.social.actividadMenos : T.social.actividadMas(amigos.length - RANKING_TOPE)}
-                </Text>
+              <Pressable
+                testID="ranking-ver-mas"
+                onPress={() => setVerTodos((v) => !v)}
+                hitSlop={12}
+                style={estilos.verMas}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: verTodos }}
+                accessibilityLabel={verTodos ? T.social.actividadMenos : T.social.actividadMas(amigos.length - RANKING_TOPE)}
+              >
+                {/* LA FLECHITA (20/10): abajo abre, arriba vuelve a cerrar. */}
+                <Svg width={22} height={22} viewBox="0 0 24 24" style={verTodos ? estilos.flechaArriba : undefined}>
+                  <Path d="M6 9l6 6 6-6" fill="none" stroke={C.sub} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
               </Pressable>
             )}
           </View>
@@ -540,6 +551,7 @@ const estilos = StyleSheet.create({
   rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
   verMas: { paddingVertical: 10, alignItems: 'center' },
   verMasTexto: { color: C.sub, fontSize: 13 },
+  flechaArriba: { transform: [{ rotate: '180deg' }] },
   // El punto verde de "en vivo", al lado de quien está entrenando ahora.
   puntoVivo: { width: 8, height: 8, borderRadius: 999, backgroundColor: C.vivo },
   sinResultado: { color: C.apagado, fontSize: 13, paddingVertical: 12 },

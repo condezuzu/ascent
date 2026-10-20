@@ -28,6 +28,8 @@
 //   8. probar-peso-y-fotos — anotar el peso con el número grande, − y + y la regla
 //      guarda lo que dice el número, y la hoja nueva de la foto registra el día con
 //      la foto colgada (20/10), en la nativa.
+//   9. probar-lista-de-amigos — la lista de amigos muestra cinco y la flechita la
+//      abre y la cierra (20/10), en la nativa, con seis cuentas.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -57,6 +59,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'la rutina en tu perfil', archivo: 'probar-rutina-en-perfil.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la entrada del logo', archivo: 'probar-entrada-logo.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'peso y fotos', archivo: 'probar-peso-y-fotos.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la lista de amigos', archivo: 'probar-lista-de-amigos.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

@@ -18216,11 +18216,11 @@ console.log('\n227. Rutina en inglés, idioma de a dos, Social, Ranking ordenado
 
   const rk = de227('movil', 'src', 'Ranking.tsx');
   const pos = (s) => rk.indexOf(s);
-  chequear('Ranking: buscar arriba en un renglón, el ranking con diez y "Ver más", y la actividad al final', [
+  chequear('Ranking: buscar arriba en un renglón, el ranking con cinco y la flechita (20/10), y la actividad al final', [
     pos('testID="buscar-gente"') > 0 && pos('testID="buscar-gente"') < pos('<View style={estilos.lista}>'),
     pos('<View style={estilos.lista}>') < pos('{T.social.actividad}'),
     pos('{T.social.actividad}') > pos('{T.social.solicitudes}'),
-    /const RANKING_TOPE = 10;/.test(rk), /amigos\.slice\(0, RANKING_TOPE\)/.test(rk), /testID="ranking-ver-mas"/.test(rk),
+    /const RANKING_TOPE = 5;/.test(rk), /amigos\.slice\(0, RANKING_TOPE\)/.test(rk), /testID="ranking-ver-mas"/.test(rk),
     /buscarPie/.test(rk),
   ], [true, true, true, true, true, true, false]);
 
