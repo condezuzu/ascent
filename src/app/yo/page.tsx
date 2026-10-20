@@ -20,7 +20,7 @@ import RecorteCircular from '@/components/RecorteCircular';
 import NoCargo from '@/components/NoCargo';
 import { FOTOS_VISIBLES, FotosQueVen, type FotoVisible } from '@/components/ComoMeVen';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
-import { miniaturas } from '@compartido/album';
+import { firmarConMiniaturas } from '@compartido/album';
 import { useRefrescoDeFirmadas } from '@compartido/useRefrescoDeFirmadas';
 import { plataforma } from '@/plataforma';
 import { cargarMisMedallas } from '@compartido/perfil';
@@ -29,7 +29,6 @@ import Medallas from '@/components/Medallas';
 import { conComa } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
 import { rutaDeFoto, rutaDeMiniatura, selloAlAzar } from '@nucleo/foto';
-import { firmarFotos } from '@compartido/firmas';
 
 /**
  * Mi perfil (§9): el único lugar donde se junta todo lo que es mío. Cambiar
@@ -84,10 +83,9 @@ export default function Yo() {
     const logIds = lista.map((f) => f.log_id).filter(Boolean) as string[];
     const rutas = lista.map((f) => f.storage_path as string);
     const ids = (rel ?? []).map((r) => (r.solicitante === user.id ? r.destinatario : r.solicitante));
-    const [logsFotos, firmadas, chicas, us, misMedallas] = await Promise.all([
+    const [logsFotos, { enteras: firmadas, minis: chicas }, us, misMedallas] = await Promise.all([
       logIds.length ? supabase.from('logs').select('id, fecha').in('id', logIds).then((r) => r.data ?? []) : [],
-      rutas.length ? firmarFotos(supabase, rutas).then((us) => us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' }))) : [],
-      miniaturas(supabase, rutas),
+      firmarConMiniaturas(supabase, rutas),
       ids.length ? supabase.from('usuarios_publicos').select('*').in('id', ids).then((r) => (r.data ?? []) as UsuarioPublico[]) : [],
       // Van en la SEGUNDA tanda porque necesitan el sexo, que viene en el
       // perfil. La regla de qué medalla se gana es compartida con la nativa
@@ -98,7 +96,7 @@ export default function Yo() {
     setFotos(
       lista.map((f, i) => ({
         id: f.id,
-        url: (firmadas as { signedUrl: string }[])[i]?.signedUrl ?? '',
+        url: firmadas[i] ?? '',
         miniatura: chicas[i] ?? undefined,
         // Como la ve un amigo: con fecha solo si cuelga de un día.
         fecha: f.log_id ? (mapa.get(f.log_id) ?? null) : null,

@@ -19824,6 +19824,32 @@ console.log('\n277. La vida del domingo se ve el lunes en la tira de Inicio (20/
     /semana=\{semanaDe\(vidaUsada\.dias\[vidaUsada\.dias\.length - 1\]\)\}/.test(ini),
   ], [true, false, true]);
 }
+console.log('\n278. Las fotos: la entera y la miniatura se firman en un solo pedido, y el perfil de un amigo no espera en fila (20/10)');
+{
+  // Medido contra Supabase (20/10): dos pedidos de firma a la vez dan mediana de 267 ms con
+  // vueltas de 530; uno con las dos listas, 200 a 220. La grilla esperaba al más lento.
+  const { firmarConMiniaturas } = await import('../compartido/album.ts');
+  const pedidos = [];
+  const cliente = {
+    storage: { from: () => ({ createSignedUrls: async (rutas) => { pedidos.push(rutas.length); return { data: rutas.map((r) => ({ signedUrl: 'https://f/' + r, error: null })) }; } }) },
+  };
+  const r = await firmarConMiniaturas(cliente, ['u278/a.jpg', 'u278/b.jpg']);
+  chequear('un solo pedido de firma para las dos listas', pedidos, [4]);
+  chequear('y cada una vuelve en su lugar', r, {
+    enteras: ['https://f/u278/a.jpg', 'https://f/u278/b.jpg'],
+    minis: ['https://f/u278/a.mini.jpg', 'https://f/u278/b.mini.jpg'],
+  });
+  const al = deBug('compartido', 'album.ts');
+  const pe = deBug('compartido', 'perfil.ts');
+  const web = deBug('src', 'app', 'yo', 'page.tsx') + deBug('src', 'app', 'perfil', '[id]', 'page.tsx');
+  chequear('el álbum, los dos perfiles y la web usan esa firma (ya no firmarFotos y miniaturas por separado)', [
+    /firmarConMiniaturas\(supabase, rutas\)/.test(al),
+    (pe.match(/firmarConMiniaturas\(supabase, rutas\)/g) ?? []).length,
+    /miniaturas\(supabase, rutas\)|firmarFotos\(supabase, rutas\)/.test(al.replace(/export async function miniaturas[\s\S]*?\n}\n/, '') + pe + web),
+    (web.match(/firmarConMiniaturas\(/g) ?? []).length,
+  ], [true, 2, false, 2]);
+  chequear('el perfil de un amigo pide quién es, si son amigos y de dónde leer sus días a la vez', /await Promise\.all\(\[\s*supabase\.from\('usuarios_publicos'\)[\s\S]{0,400}\.from\('friendships'\)[\s\S]{0,300}tablaDeLogsDeAmigos\(supabase\),\s*\]\);/.test(pe), true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
