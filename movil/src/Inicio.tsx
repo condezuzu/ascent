@@ -47,6 +47,7 @@ import { diaDeLaSesion } from '@nucleo/subir';
 import { dejarDeEntrenar } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
+import TimbreDePildora from './TimbreDePildora';
 import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
@@ -684,6 +685,7 @@ export default function Inicio({
                 {() => {
                   const fin = sesion.estado.descanso?.fin ?? 0;
                   return (
+                    <TimbreDePildora fin={fin || null}>
                     <Pressable
                       testID="pildora-descanso"
                       onLayout={(e) => setAnchoPildora(e.nativeEvent.layout.width)}
@@ -695,6 +697,7 @@ export default function Inicio({
                         {restante(fin) === 0 ? T.sesion.listo : cuentaAtras(restante(fin))}
                       </Text>
                     </Pressable>
+                    </TimbreDePildora>
                   );
                 }}
               </CadaSegundo>

@@ -61,7 +61,7 @@ import {
   reengancharDesde,
   ejerciciosEnOrden,
   ultimaVezDe,
-  repsDeLaUltimaVez,
+  repsDeLaSesion,
   type MarcaConReps,
   type SesionConPesos,
   type SesionRutina,
@@ -1701,8 +1701,11 @@ export function useSesion(
     bloqueSiguiente,
     /** La última vez que se hizo ese ejercicio, antes de hoy (ver `ultimaVezDe`). */
     ultimaVezDe: (id: string) => ultimaVezDe(historialConPesosRef.current, id, hoyISO()),
-    /** Las repeticiones de la última marca de ese ejercicio, antes de hoy (ver `repsDeLaUltimaVez`). */
-    repsDeLaUltimaVezDe: (id: string) => repsDeLaUltimaVez(marcasConRepsRef.current, id, hoyISO()),
+    /** Las repeticiones de la marca guardada en la última sesión de ese ejercicio (ver `repsDeLaSesion`). */
+    repsDeLaUltimaVezDe: (id: string) => {
+      const u = ultimaVezDe(historialConPesosRef.current, id, hoyISO());
+      return u ? repsDeLaSesion(marcasConRepsRef.current, id, u.fecha) : null;
+    },
     tocarBloque,
     elegirEjercicio,
     mudarSeries,

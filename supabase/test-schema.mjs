@@ -15817,11 +15817,11 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   plat197.avisos = avisosDeVerdad;
   plat197.haptica = hapticaDeVerdad;
   const hap197 = de197('movil', 'src', 'plataforma', 'haptica.ts');
+  // Desde el 20/10 es el patrón del despertador (ver la 291).
   chequear('en el teléfono el aviso es la vibración de verdad, encadenada', [
-    /Vibration\.vibrate\(Platform\.OS === 'ios' \? \[0, \.\.\.esperas\]/.test(hap197),
-    /length: GOLPES - 1 \}, \(\) => PAUSA_MS/.test(hap197),
-    [AV197.GOLPES, AV197.PAUSA_MS],
-  ], [true, true, [3, 600]]);
+    /Vibration\.vibrate\(patronDespertador\(Platform\.OS === 'ios'\)\)/.test(hap197),
+    AV197.patronDespertador(true).length > 3,
+  ], [true, true]);
   const avisos197 = de197('movil', 'src', 'plataforma', 'avisos.ts');
   // Desde el 14/10, con la app adelante la notificación no suena nunca: suena la app en el
   // cero (sección 217). Y en la build 8, el sonido es el propio (o el silencio para vibrar).
@@ -20236,26 +20236,30 @@ console.log('\n288. «Olvidar este día», aparte y al final de la ventana de re
   ], [true, true, true, true]);
   chequear('el texto no dice borrar', [T288.rutina.olvidarDia, /borr/i.test(T288.rutina.olvidarDia), /delet/i.test(T288en.rutina.olvidarDia)], ['Olvidar este día', false, false]);
 }
-console.log('\n289. Las repeticiones de la última vez: de la última marca propia antes de hoy, con un ajuste apagado (20/10)');
+console.log('\n289. Las repeticiones de la última vez: de la marca de la última sesión de ese ejercicio, con un ajuste apagado (20/10)');
 {
   // Con el hook de verdad: la base devuelve marcas propias y de un amigo (la RLS deja leer
-  // las de los amigos), una de hoy y otra de otro ejercicio.
+  // las de los amigos), una de hoy y otra de otro ejercicio. Desde el 20/10 (pedido 3), solo la
+  // marca del día de la última sesión de ese ejercicio: sentadilla no tiene sesión, y remo tuvo
+  // sesión ayer sin marca (la de hace diez días ya no cuenta).
   const r = await escenarioDeSesion('repsUltimaVez');
-  chequear('la sesión da la última marca propia de cada ejercicio, antes de hoy', r.fallo ?? [r.press, r.sentadilla, r.remo], [[62.5, 5], [90, 6], null]);
-  const { repsDeLaUltimaVez } = await import('../nucleo/rutina.ts');
+  chequear('la sesión da la marca propia de la última sesión de cada ejercicio', r.fallo ?? [r.press, r.sentadilla, r.remo], [[62.5, 5], null, null]);
+  const { repsDeLaSesion } = await import('../nucleo/rutina.ts');
   const m = (fecha, reps) => ({ ejercicio: 'press_banca', peso: 60, reps, fecha });
-  chequear('la regla: del mismo día, la que vino última; nada de hoy ni de otro ejercicio', [
-    repsDeLaUltimaVez([m('2026-10-10', 8), m('2026-10-10', 6)], 'press_banca', '2026-10-20')?.reps,
-    repsDeLaUltimaVez([m('2026-10-20', 3)], 'press_banca', '2026-10-20'),
-    repsDeLaUltimaVez([m('2026-10-10', 8)], 'sentadilla', '2026-10-20'),
+  chequear('la regla: del día de esa sesión, la que vino última; nada de otro día ni de otro ejercicio', [
+    repsDeLaSesion([m('2026-10-10', 8), m('2026-10-10', 6)], 'press_banca', '2026-10-10')?.reps,
+    repsDeLaSesion([m('2026-10-09', 3)], 'press_banca', '2026-10-10'),
+    repsDeLaSesion([m('2026-10-10', 8)], 'sentadilla', '2026-10-10'),
   ], [6, null, null]);
-  const ru = sinComentarios(deBug('compartido', 'repsUltimaVez.ts'));
+  // Desde el pedido 4 (20/10) el ajuste es «Mostrar la última vez», y manda sobre toda la línea.
+  const ru = sinComentarios(deBug('compartido', 'mostrarUltimaVez.ts'));
   const bl = sinComentarios(deBug('movil', 'src', 'Bloque.tsx'));
-  chequear('apagado de fábrica, en Ajustes, y el bloque lo muestra solo prendido', [
-    /=== 'si';/.test(ru),
-    /<Text style=\{estilos\.opcion\}>\{T\.ajustes\.repsUltimaVez\}<\/Text>/.test(sinComentarios(deBug('movil', 'src', 'Ajustes.tsx'))),
-    /\{verReps && !!estado\.ejercicio && !!repsUltimaVez && \(/.test(bl),
-  ], [true, true, true]);
+  chequear('apagado de fábrica, en Ajustes, y el bloque muestra la última vez solo prendido', [
+    /\) === 'si';/.test(ru),
+    /<Text style=\{estilos\.opcion\}>\{T\.ajustes\.mostrarUltimaVez\}<\/Text>/.test(sinComentarios(deBug('movil', 'src', 'Ajustes.tsx'))),
+    /\{verUltimaVez && !!estado\.ejercicio && !!ultimaVez && ultimaVez\.series > 0 && \(/.test(bl),
+    (bl.match(/\{verUltimaVez && /g) ?? []).length === (bl.match(/testID="(ultima-vez|reps-ultima-vez)"/g) ?? []).length,
+  ], [true, true, true, true]);
 }
 console.log('\n290. Con todos los días abiertos, la rutina no muestra flechitas ni se pliega (20/10, revisión)');
 {
@@ -20265,6 +20269,43 @@ console.log('\n290. Con todos los días abiertos, la rutina no muestra flechitas
     /disabled=\{abiertos\}/.test(rp),
     /\{!abiertos && <Text style=\{estilos\.flecha\}>/.test(rp),
   ], [true, true]);
+}
+console.log('\n291. El fin del descanso con la app abierta vibra como un despertador, y la píldora se sacude (20/10)');
+{
+  const AV = await import('../nucleo/avisoDescanso.ts');
+  const ios = AV.patronDespertador(true);
+  const android = AV.patronDespertador(false);
+  const golpes = AV.DESPERTADOR.tandas * AV.DESPERTADOR.golpes;
+  chequear('iOS: un golpe por número, con una pausa más larga entre tandas', [
+    ios.length, ios[0], ios.filter((e) => e === AV.DESPERTADOR.entreTandas).length, AV.duracionDelDespertador() >= 4000,
+  ], [golpes, 0, AV.DESPERTADOR.tandas - 1, true]);
+  // En Android alternan espera y duración: misma cantidad de golpes y lo mismo de arranque a arranque.
+  const arranques = [];
+  for (let i = 0, t = 0; i < android.length; i += 2) {
+    t += android[i];
+    arranques.push(t);
+    t += android[i + 1];
+  }
+  chequear('Android: los mismos golpes en los mismos momentos', [arranques.length, JSON.stringify(arranques) === JSON.stringify(ios.map((_, i) => ios.slice(0, i + 1).reduce((a, b) => a + b, 0)))], [golpes, true]);
+  const ini = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
+  const tim = sinComentarios(deBug('movil', 'src', 'TimbreDePildora.tsx'));
+  chequear('la píldora va adentro del timbre, que se sacuda una vez por tanda y respeta «Reducir movimiento»', [
+    /<TimbreDePildora fin=\{fin \|\| null\}>\s*<Pressable\s+testID="pildora-descanso"/.test(ini),
+    /length: DESPERTADOR\.tandas/.test(tim),
+    /isReduceMotionEnabled\(\)/.test(tim),
+  ], [true, true, true]);
+}
+console.log('\n292. La última vez, en una línea: las series de esa sesión, el peso de la primera y las repeticiones de su marca (20/10)');
+{
+  // La prueba de verdad es la de test:real (probar-ultima-vez): esto pinea la línea y los textos.
+  const { T: T292 } = await import('../nucleo/textos.ts');
+  const bl = sinComentarios(deBug('movil', 'src', 'Bloque.tsx'));
+  chequear('el peso es el de la primera serie, y las repeticiones van en la misma línea, con su peso', [
+    /const primera = u\.pesos\[0\];/.test(bl),
+    /detalleDeLaUltimaVez\(ultimaVez, unidad, repsUltimaVez\)/.test(bl),
+    /testID="reps-ultima-vez"/.test(bl),
+    T292.resumen.series(3) + T292.sesion.laPrimeraCon('60 kg') + T292.sesion.conRepeticiones(5, '62,5 kg'),
+  ], [true, true, false, '3 series, la primera con 60 kg · 5 repeticiones con 62,5 kg']);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

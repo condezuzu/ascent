@@ -88,14 +88,19 @@ try {
   // La marca: se contesta, y con la meta en ×2 aparece el botón mientras el cuadro sigue.
   await cuadro.waitFor({ timeout: 20000 });
   await texto('5').click();
-  await texto('×2').click({ timeout: 30000 });
-  await toque.waitFor({ state: 'visible', timeout: 15000 });
   const enGuardada = (t) => page.getByText(t, { exact: true });
   await enGuardada(T.marcaSugerida.guardada)
     .or(enGuardada(T.marcaSugerida.guardadaEsNueva))
     .or(enGuardada(T.marcaSugerida.fallo))
     .first()
     .waitFor({ timeout: 10000 });
+  // EL ×2 CON LA MARCA YA GUARDADA (20/10): tocado mientras el cuadro cambiaba, la mitad de las
+  // veces no tomaba y la meta seguía en ×5. Si no aparece el botón, se vuelve a tocar.
+  for (let i = 0; i < 3 && !(await toque.isVisible().catch(() => false)); i++) {
+    await texto('×2').click({ timeout: 30000 });
+    await toque.waitFor({ state: 'visible', timeout: 4000 }).catch(() => {});
+  }
+  await toque.waitFor({ state: 'visible', timeout: 5000 });
   await page.waitForTimeout(300);
   const conCuadro = await cuadro.isVisible();
   const antes = await arriba();
