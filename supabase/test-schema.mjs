@@ -19731,6 +19731,25 @@ console.log('\n273. La ventana al terminar: los textos pedidos, con el estilo de
     contraste(C273.fondo, C273.claro) >= 4.5,
   ], [true, true, true]);
 }
+console.log('\n274. La rutina carga en escalones: las series son bloques que entran de a uno, y cada fila sigue a la anterior (19/10)');
+{
+  const pl = deBug('movil', 'src', 'RutinaPlegada.tsx');
+  chequear('las series se dibujan como bloques (el cardio sigue en minutos) y el lector de pantalla oye cuántas', [
+    /e\.minutos === undefined && e\.series > 0 \? \(\s*<BloquesDeSeries series=\{e\.series\} desde=\{seriesAntes\(dia, i\)\} \/>/.test(pl),
+    /accessibilityLabel=\{T\.rutina\.series\(series\)\}/.test(pl),
+  ], [true, true]);
+  chequear('de a uno: 220 ms cada bloque, uno cada 70, con tope para una semana entera', [
+    /const ESCALON_MS = 220;/.test(pl),
+    /const ENTRE_ESCALONES_MS = 70;/.test(pl),
+    /delay: 150 \+ Math\.min\(indice, TOPE_DE_ESCALONES\) \* ENTRE_ESCALONES_MS/.test(pl),
+  ], [true, true, true]);
+  chequear('con "reducir movimiento" aparecen puestos', /if \(quieto\) return t\.setValue\(1\);/.test(pl), true);
+  // Cada fila arranca donde terminó la anterior: el escalón. Se corre la misma cuenta que el archivo.
+  const cuenta = pl.match(/const seriesAntes = \(dia: DiaDeSemana, i: number\) => (.+);/)?.[1];
+  const seriesAntes = cuenta ? new Function('dia', 'i', `return ${cuenta};`) : () => null;
+  const dia = { descanso: false, ejercicios: [{ ejercicio: 'a', series: 4 }, { ejercicio: 'cinta', series: 1, minutos: 20 }, { ejercicio: 'b', series: 3 }, { ejercicio: 'c', series: 2 }] };
+  chequear('cada fila sigue donde terminó la anterior (el cardio no suma bloques)', [0, 1, 2, 3].map((i) => seriesAntes(dia, i)), [0, 4, 4, 7]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
