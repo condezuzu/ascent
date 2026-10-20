@@ -101,7 +101,32 @@ export function fijarExtras(p: Partial<Extras>) {
   void mandar();
 }
 
+let enCurso = false;
+let otraVez = false;
+
+/**
+ * EN FILA (20/10): el módulo nativo espera entre "¿hay una?" y encender otra, y dos cambios
+ * seguidos (empezar la serie y arrancar el descanso) entraban los dos por ese hueco: dos
+ * tarjetas en la pantalla bloqueada. Lo que llega mientras tanto se manda después, con lo
+ * último.
+ */
 async function mandar() {
+  if (enCurso) {
+    otraVez = true;
+    return;
+  }
+  enCurso = true;
+  try {
+    do {
+      otraVez = false;
+      await mandarAhora();
+    } while (otraVez);
+  } finally {
+    enCurso = false;
+  }
+}
+
+async function mandarAhora() {
   if (!plataforma.enVivo.sabeLaTarjeta()) return;
   if (reloj) clearTimeout(reloj);
   reloj = null;

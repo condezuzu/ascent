@@ -19266,6 +19266,58 @@ console.log('\n254. Cacería ronda 10: la tarjeta no se reenvía por milisegundo
   ], [100000, 160000, 100040, 0, 20]);
 }
 
+console.log('\n254b. Una sola tarjeta en la pantalla bloqueada aunque lleguen dos cambios a la vez (20/10)');
+{
+  // DOS TARJETAS EN LA PANTALLA BLOQUEADA: `mandar` no iba en fila, y el módulo nativo entre
+  // "¿hay una?" y encender otra espera (DescansoVivoModule.swift: si no hay una de la misma
+  // duración, `apagar()` —que apaga las que existan EN ESE MOMENTO— y después
+  // `Activity.request`). Empezar la serie y arrancar el descanso, seguidos, entraban los dos
+  // por ese hueco y quedaban dos. El doble hace lo mismo que el Swift, con sus esperas.
+  const { plataforma: P254b } = await import('./dobles/plataforma.mjs');
+  const { cambiarViva, olvidarViva } = await import('../compartido/sesionViva.ts');
+  const { bloquesVacios } = await import('../nucleo/bloques.ts');
+  const TJ254b = await import('../compartido/tarjeta.ts');
+  const antes = P254b.enVivo;
+  let vivas = [];
+  let actual = null;
+  const espera = () => new Promise((r) => setTimeout(r, 4));
+  P254b.enVivo = {
+    ...antes,
+    disponible: () => true,
+    sabeLaTarjeta: () => true,
+    async mostrarTarjeta(t) {
+      if (actual && actual.duracion === t.duracion) {
+        await espera();
+        actual.modo = t.modo;
+        return true;
+      }
+      const aApagar = [...vivas];
+      await espera();
+      vivas = vivas.filter((a) => !aApagar.includes(a));
+      actual = null;
+      await espera();
+      actual = { duracion: t.duracion, modo: t.modo };
+      vivas.push(actual);
+      return true;
+    },
+    async esconder() {
+      await espera();
+      vivas = [];
+      actual = null;
+    },
+  };
+  const apagarTarjeta = TJ254b.encenderTarjeta();
+  await new Promise((r) => setTimeout(r, 30));
+  // La serie recién empezada y, enseguida, el descanso: los dos cambios que llegan juntos.
+  cambiarViva({ inicio: new Date(Date.now() - 60000).toISOString(), desfasaje: 0, bloques: { ...bloquesVacios('press_banca', 3), hechas: 1 } });
+  cambiarViva({ descanso: { fin: Date.now() + 90000, duracion: 120, ejercicio: 'Press de banca', serie: 1, meta: 3 } });
+  await new Promise((r) => setTimeout(r, 200));
+  chequear('queda una sola, la del descanso', vivas.map((a) => [a.modo, a.duracion]), [['descanso', 120]]);
+  apagarTarjeta();
+  olvidarViva();
+  P254b.enVivo = antes;
+}
+
 console.log('\n255. La sugerencia del siguiente sale de lo que hiciste después de ese ejercicio la semana pasada (16/10)');
 {
   const RU255 = await import('../nucleo/rutina.ts');
