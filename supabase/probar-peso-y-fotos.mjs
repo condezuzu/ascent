@@ -5,6 +5,9 @@
 // regla 90 px a la izquierda suma 1,0 (71,3); «Anotar» lo guarda, y la base tiene que
 // tener 71,3. Al volver a abrir, arranca en 71,3 y dice cuándo fue la última.
 //
+// Y LA FOTO, con la hoja nueva del mismo estilo: la tarjeta vacía con sacar y elegir, la
+// foto elegida adentro, «Registrar día», y en la base el día con la foto colgada.
+//
 //   node --env-file=.env.local supabase/probar-peso-y-fotos.mjs
 import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
@@ -76,6 +79,29 @@ try {
   await page.waitForTimeout(1500);
   const hoja = await page.getByTestId('anotar-peso').first().innerText();
   chequear('al volver a abrir, arranca en el último y dice cuándo fue', [await valor(), /La última: 71,3 kg · \d+ de \S+/.test(hoja)], ['71,3', true]);
+  await page.getByText('Cancelar', { exact: true }).last().click();
+  await page.getByTestId('anotar-peso').first().waitFor({ state: 'detached', timeout: 20000 }).catch(() => {});
+
+  // LA FOTO, con la hoja nueva: la tarjeta con sacar y elegir, la foto adentro, registrar.
+  console.log('Registrar el día con foto, con la hoja nueva');
+  const fotoReal = join(SALIDA, 'foto-real.jpg');
+  await page.screenshot({ path: fotoReal, type: 'jpeg', quality: 80 });
+  await page.getByText('Registra tu primer día', { exact: true }).first().click({ timeout: 30000 });
+  await page.getByTestId('registrar-foto').first().waitFor({ timeout: 30000 });
+  await page.waitForTimeout(600);
+  chequear('la tarjeta vacía tiene sacar y elegir', [await page.getByTestId('registrar-foto-camara').count(), await page.getByTestId('registrar-foto-galeria').count()], [1, 1]);
+  await page.screenshot({ path: join(SALIDA, 'foto-vacia.png') });
+  const [elegidor] = await Promise.all([page.waitForEvent('filechooser', { timeout: 60000 }), page.getByTestId('registrar-foto-galeria').first().click()]);
+  await elegidor.setFiles(fotoReal);
+  await page.getByTestId('registrar-foto').locator('img').first().waitFor({ timeout: 30000 });
+  await page.waitForTimeout(800);
+  chequear('la foto elegida se ve en la tarjeta, con quién la ve', [await page.getByTestId('registrar-foto').locator('img').count() > 0, await page.getByTestId('registrar-foto-quien').count()], [true, 1]);
+  await page.screenshot({ path: join(SALIDA, 'foto-elegida.png') });
+  await page.getByTestId('registrar-confirmar').first().click();
+  await page.getByTestId('registrar-foto').first().waitFor({ state: 'detached', timeout: 60000 }).catch(() => {});
+  await page.waitForTimeout(2000);
+  const [{ data: logs }, { data: fotos }] = await Promise.all([s.from('logs').select('id').eq('user_id', uid), s.from('photos').select('log_id').eq('user_id', uid)]);
+  chequear('la base tiene el día y la foto colgada de ese día', [(logs ?? []).length, (fotos ?? []).length, fotos?.[0]?.log_id === logs?.[0]?.id], [1, 1, true]);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));
@@ -83,6 +109,9 @@ try {
 }
 await nav.close();
 
+const { data: archivos } = await s.storage.from('fotos').list(uid);
+const rutas = (archivos ?? []).map((o) => `${uid}/${o.name}`);
+if (rutas.length) await s.storage.from('fotos').remove(rutas);
 const { error: eBorrar } = await borrarCuentaDePrueba(s);
 console.log(`  ${eBorrar ? 'FALLA' : 'ok  '} cuenta borrada${eBorrar ? ': ' + eBorrar.message : ''}`);
 if (eBorrar) fallos++;

@@ -26,7 +26,8 @@
 //   7. probar-entrada-logo — el aro del logo se dibuja y la app se monta recién con
 //      el zoom (20/10), en la nativa y sin cuenta.
 //   8. probar-peso-y-fotos — anotar el peso con el número grande, − y + y la regla
-//      guarda lo que dice el número (20/10), en la nativa.
+//      guarda lo que dice el número, y la hoja nueva de la foto registra el día con
+//      la foto colgada (20/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo

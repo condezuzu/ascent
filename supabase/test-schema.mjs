@@ -20019,6 +20019,18 @@ console.log('\n285. Anotar el peso: el número grande, − y + y la regla (20/10
     return /<PesoHoja visible=\{pesoAbierto\}/.test(t) && !/<AnotarPeso /.test(t);
   }), [true, true]);
 }
+console.log('\n286. Registrar el día con foto: el mismo estilo que anotar el peso (20/10)');
+{
+  const rd = sinComentarios(deBug('movil', 'src', 'RegistrarDia.tsx'));
+  chequear('colores fijos, la foto en una tarjeta redondeada y los botones redondos de la hoja del peso', [
+    /from '\.\/colores'|usePaleta/.test(rd), /from '\.\/coloresFijos'/.test(rd), /tarjeta: \{[^}]*borderRadius: 22/.test(rd), /redondo: \{[^}]*borderRadius: 29/.test(rd), /solido: \{[^}]*borderRadius: 999/.test(rd),
+  ], [false, true, true, true, true]);
+  chequear('las dos puertas siguen siendo cámara y galería, con los textos de siempre (la batería toca «Elegir de la galería»)', [
+    /<Puerta icono="camara" texto=\{T\.registrar\.sacarFoto\} alTocar=\{\(\) => elegir\('camara'\)\} \/>/.test(rd),
+    /<Puerta icono="galeria" texto=\{T\.registrar\.elegirFoto\} alTocar=\{\(\) => elegir\('galeria'\)\} \/>/.test(rd),
+    /texto\('Elegir de la galería', false\)/.test(deBug('supabase', 'bateria-dos-apps.mjs')),
+  ], [true, true, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
