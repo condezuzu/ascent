@@ -22,7 +22,7 @@ import { C } from './colores';
  * DESDE EL 19/10 (bugs del gimnasio): la de otra persona se ve con todos los días abiertos
  * —la lista completa, no un botón por día en lugar de la lista— y «Copiar esta rutina» está
  * siempre, no solo si ya tenías rutinas guardadas. Copiar abre la elección por días: un
- * círculo por día, y se copian los marcados.
+ * círculo por día, y se copian los marcados. La tuya, en tu perfil, también abierta (20/10).
  *
  * EL CORAZÓN (20/10): en la rutina guardada de otra persona, al lado de su nombre. Uno por
  * persona; tocarlo de nuevo lo quita. Sin la migración 92 no aparece.
@@ -163,7 +163,8 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
               {gusta && <Corazon cantidad={gusta.cantidad} mio={gusta.mio} alTocar={() => void tocarCorazon()} />}
             </View>
           )}
-          <RutinaPlegada dias={rutina.dias} catalogo={catalogo} soloConAlgo={rutina.deducida} abiertos={!esYo} />
+          {/* La tuya también, abierta (20/10): cerrada, en tu perfil no se veía ningún ejercicio. */}
+          <RutinaPlegada dias={rutina.dias} catalogo={catalogo} soloConAlgo={rutina.deducida} abiertos />
           {!esYo && (
             <Pressable testID="rutina-copiar" style={[estilos.pildora, estilos.pildoraBorde, estilos.copiar]} onPress={() => setEligiendo(true)} accessibilityRole="button">
               <Text style={estilos.pildoraBordeTexto}>{T.rutina.copiar}</Text>

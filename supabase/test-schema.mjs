@@ -19528,7 +19528,8 @@ console.log('\n269. Rutinas: la lista fuera de editar, la de otra persona entera
   const RU = await import('../nucleo/rutinas.ts');
   chequear('tu rutina fuera de editar: la lista del día, sin «Copiar este día»', /abajoDelDia=\{editando \? editorDelDia : undefined\}/.test(mi), true);
   chequear('la de otra persona: todos los días abiertos con su lista, sin botón por día, y «Copiar esta rutina» siempre', [
-    /<RutinaPlegada [^>]*abiertos=\{!esYo\}/.test(de),
+    // Desde el 20/10 la tuya también sale abierta (ver probar-rutina-en-perfil en test:real).
+    /<RutinaPlegada [^>]*abiertos \/>/.test(de),
     /abajoDelDia=/.test(de),
     /hayRutinasGuardadas/.test(de),
     /\{!esYo && \(\s*<Pressable testID="rutina-copiar"/.test(de),
