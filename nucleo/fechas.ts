@@ -40,6 +40,18 @@ export function fechaLinda(iso: string): string {
   return T.fechas.delMes(d.getDate(), MESES[d.getMonth()]);
 }
 
+/**
+ * Varios días, en una línea (19/10, el aviso de la vida): «15, 16 y 17 de octubre» si son
+ * del mismo mes; si no, «30 de septiembre y 1 de octubre».
+ */
+export function fechasLindas(isos: string[]): string {
+  const ds = [...isos].sort().map(deISO);
+  const juntar = (p: string[]) => (p.length <= 1 ? (p[0] ?? '') : `${p.slice(0, -1).join(', ')} ${T.rutina.y} ${p[p.length - 1]}`);
+  const mismoMes = ds.every((d) => d.getMonth() === ds[0]?.getMonth() && d.getFullYear() === ds[0]?.getFullYear());
+  if (ds.length > 0 && mismoMes) return T.fechas.diasDelMes(juntar(ds.map((d) => String(d.getDate()))), MESES[ds[0].getMonth()]);
+  return juntar(ds.map((d) => T.fechas.delMes(d.getDate(), MESES[d.getMonth()])));
+}
+
 // "1 día" / "2 días". La racha arranca en 1 todo el tiempo, así que el
 // singular aparece seguido y un "1 días" canta enseguida.
 export function enDias(n: number): string {

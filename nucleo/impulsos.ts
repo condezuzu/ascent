@@ -72,3 +72,17 @@ export function rachaSiSeDevuelve(racha: number): number {
  * otra ya mostró en el mismo teléfono.
  */
 export const CLAVE_VIDA_VISTA = 'ascent:impulso-visto';
+
+/**
+ * LA VIDA CONGELADA EN EL DÍA (19/10): qué días y cuándo se usó. Ese día la tira de Inicio
+ * los muestra congelados; cualquier día después, se derriten una vez y la clave se borra.
+ */
+export const CLAVE_VIDA_HELADA = 'ascent:vida-helada';
+
+export type VidaHelada = { fechas: string[]; dia: string };
+
+/** Cómo se ve hoy un día cubierto: congelado, derritiéndose, o nada especial. */
+export function frioDelDia(h: VidaHelada | null, fecha: string, hoy: string): 'helado' | 'derrite' | null {
+  if (!h || !h.fechas.includes(fecha)) return null;
+  return h.dia === hoy ? 'helado' : h.dia < hoy ? 'derrite' : null;
+}

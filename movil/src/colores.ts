@@ -22,9 +22,13 @@ export const C = {
   error: '#e8705f',
   // El punto de "en vivo": quien está entrenando ahora (Ranking, la entrada).
   vivo: '#5fd08a',
-  // Solo para el texto del botón «Fui, corregí el día» sobre los fondos oscuros del rango
-  // (18/10): con `tinta` no llegaba a 4,5:1 en los rangos 1 y 2 ni con Neptuno.
-  blanco: '#ffffff',
+  // EL AVISO DE LA VIDA, CON COLORES FIJOS (19/10): no cambian con el rango.
+  // El azul de «Fui. Corregir día»: 8:1 sobre el cuadro.
+  link: '#6aa8ff',
+  // El borde de «Guardar vida»: 3,6:1 sobre el cuadro, para que se lea como botón.
+  bordeBoton: '#626b80',
+  // El frío del día congelado.
+  hielo: '#8fc4f0',
 };
 
 /**

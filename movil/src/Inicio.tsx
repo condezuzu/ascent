@@ -27,7 +27,7 @@ import RachaSalvada from './RachaSalvada';
 import SubidaRango from './SubidaRango';
 import RegistrarDia from './RegistrarDia';
 import { plataforma } from '@plataforma';
-import { CLAVE_VIDA_VISTA, hastaDondeVisto, impulsosSinVer, rachaSiSeDevuelve } from '@nucleo/impulsos';
+import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, frioDelDia, hastaDondeVisto, impulsosSinVer, type VidaHelada } from '@nucleo/impulsos';
 import { CLAVE_META_PASOS, META_PASOS_POR_OMISION, leerMeta } from '@nucleo/pasos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import MarcaEnElMomento from './MarcaEnElMomento';
@@ -185,6 +185,23 @@ export default function Inicio({
   // LA VENTANA DE LAS VIDAS: los días cubiertos que este aparato todavía no
   // anunció. Misma regla y misma marca que la web (`nucleo/impulsos.ts`).
   const [vidaUsada, setVidaUsada] = useState<{ dias: string[]; quedan: number; total: number } | null>(null);
+  // LA VIDA CONGELADA EN EL DÍA (19/10): el día que se usa, congelada en la tira; el
+  // siguiente se derrite una vez. Lo de "una vez" lo cuida borrar la clave al leerla vieja.
+  const [helada, setHelada] = useState<VidaHelada | null>(null);
+  useEffect(() => {
+    void plataforma.almacenamiento.leer(CLAVE_VIDA_HELADA).then((v) => {
+      try {
+        const h = v ? (JSON.parse(v) as VidaHelada) : null;
+        setHelada(h);
+        if (h && h.dia < hoyISO()) {
+          void plataforma.almacenamiento.borrar(CLAVE_VIDA_HELADA);
+          setTimeout(() => setHelada(null), 1500);
+        }
+      } catch {
+        setHelada(null);
+      }
+    });
+  }, []);
   const [aviso, setAviso] = useState('');
 
   // LOS PASOS DE HOY, debajo del número de la racha. No son la racha ni entran
@@ -754,7 +771,7 @@ export default function Inicio({
             letra={DIAS_SEMANA[deISO(d.fecha).getDay()]}
             estiloLetra={estilos.letra}
           >
-            <PuntoDelDia estado={d.estadoDia} esHoy={d.esHoy} />
+            <PuntoDelDia estado={d.estadoDia} esHoy={d.esHoy} frio={d.estadoDia === 'cubierto' ? frioDelDia(helada, d.fecha, hoy) : null} />
           </DiaDeLaTira>
         ))}
       </View>
@@ -1082,10 +1099,13 @@ export default function Inicio({
           dias={vidaUsada.dias}
           quedan={vidaUsada.quedan}
           total={vidaUsada.total}
-          rachaSiGuarda={rachaSiSeDevuelve(perfil.racha_actual)}
           semana={semanaDe(vidaUsada.dias[vidaUsada.dias.length - 1])}
           rango={numeroDeRango(racha)}
-          planeta={planeta}
+          alUsada={() => {
+            const h = { fechas: vidaUsada.dias, dia: hoyISO() };
+            setHelada(h);
+            void plataforma.almacenamiento.guardar(CLAVE_VIDA_HELADA, JSON.stringify(h));
+          }}
           // "FUI, CORREGÍ EL DÍA" (18/10): el mismo registro que "Fui" en Corregir días, para
           // cada día del aviso. La vida no se devuelve aparte: un día con "Fui" ya no la
           // cuenta como usada (migración 84), y devolverla además sería sumar una de más.

@@ -3776,11 +3776,6 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
   // ahí deja de proteger de nada. Más vale una lista incompleta que una que se
   // ignora.
   const MODISMOS = ['acá', 'al toque', 'che', 'laburo', 'pileta', 'ojo:', 'ojo,'];
-  // LA ÚNICA EXCEPCIÓN (18/10, a pedido): el cuadro del aviso de la vida dice «Faltaste acá».
-  // Pasan esas dos cadenas enteras y nada más; cualquier otro «acá» sigue fallando.
-  const ACA_PERMITIDO = new Set(['faltaste acá. ¿usar la vida?', 'faltaste acá. ¿usar las vidas?']);
-  // Y la del voseo, igual de angosta (18/10, a pedido): el botón «Fui, corregí el día».
-  const CORREGI_PERMITIDO = new Set(['fui, corregí el día', 'fui, corregí los días']);
 
   const fallas = [];
   const revisar = (donde, s) => {
@@ -3789,7 +3784,6 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
     // pasaba (15/9). Se cambian las secuencias de escape por un espacio.
     const bajo = s.replace(/\\[nrt]/g, ' ').toLowerCase();
     for (const v of VOSEO) {
-      if (v === 'corregí' && CORREGI_PERMITIDO.has(bajo)) continue;
       if (new RegExp(`(^|[^a-záéíóúñ])${v}([^a-záéíóúñ]|$)`, 'i').test(bajo)) {
         fallas.push(`${donde} -> voseo "${v}"`);
       }
@@ -3798,7 +3792,6 @@ console.log('\n54. Espanol neutro: las reglas de spec/idioma.md');
       fallas.push(`${donde} -> regla 4: para una foto el verbo es "quitar"`);
     }
     for (const m of MODISMOS) {
-      if (m === 'acá' && ACA_PERMITIDO.has(bajo)) continue;
       // Con frontera de palabra, igual que el voseo: buscado por substring,
       // "ojo," pegaba adentro de "[flojo, setFlojo]".
       const esc = m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -7190,8 +7183,8 @@ console.log('\n101. La caza del 15/9: lo que perdia datos o dejaba afuera');
   ]) {
     const v = archivo(...ventana);
     chequear(`${app}: la ventana espera un si o un no`, v.includes('Promise<boolean>'), true);
-    // La nativa vuelve a la pregunta (16/10: sin paso de confirmación); la web, a confirmar.
-    chequear(`${app}: y solo pasa a "guardada" con un si`, /setPaso\(ok \? 'guardada' : '(confirmar|pregunta)'\)/.test(v), true);
+    // La nativa vuelve al aviso (19/10: rehecho, sin paso de confirmación); la web, a confirmar.
+    chequear(`${app}: y solo pasa a "guardada" con un si`, /set(Paso|Fase)\(ok \? 'guardada' : '(confirmar|aviso)'\)/.test(v), true);
     const p = archivo(...pantalla);
     const i = p.indexOf("rpc('devolver_impulsos'");
     chequear(`${app}: devolver mira el error`, /if \(error \|\| !data\) return false/.test(p.slice(i, i + 300)), true);
@@ -19350,23 +19343,22 @@ console.log('\n260. Antes de mandar a Apple: lee el perfil adentro del .ipa y nu
   chequear('no llama a eas submit en ningún caso, ni habla con Apple', [/submit/i.test(fuente), /appstoreconnect|apple\.com|asc /i.test(fuente)], [false, false]);
 }
 
-console.log('\n261. El cuadro de la vida: Sí la usa, No la guarda, y «Fui, corregí el día» marca el día sin gastarla (18/10)');
+console.log('\n261. El aviso de la vida: Usar la usa, Guardar la devuelve, y «Fui. Corregir día» marca el día sin gastarla (19/10)');
 {
-  // El código, por sus caminos (la ventana se probó montada en la vista web).
+  // El código, por sus caminos (el aviso se probó montado en la vista web).
   const { readFileSync: leer261, existsSync: existe261 } = await import('node:fs');
   const raiz261 = join(dirname(fileURLToPath(import.meta.url)), '..');
   const de261 = (...p) => leer261(join(raiz261, ...p), 'utf8').replace(/\r\n/g, '\n');
   const v = de261('movil', 'src', 'RachaSalvada.tsx');
   const ini = de261('movil', 'src', 'Inicio.tsx');
-  chequear('Sí cierra (la vida queda usada), No la devuelve, y el botón nuevo corrige con uno o varios días, sin Salud ni Stats', [
-    /testID="vida-si"[^>]*onPress=\{alCerrar\}/.test(v),
-    /testID="vida-no"[^>]*onPress=\{\(\) => void guardar\(\)\}/.test(v),
+  chequear('Usar vida anima y la deja usada, Guardar la devuelve, el link corrige con uno o varios días, sin Salud ni Stats', [
+    /testID="vida-usar"[^>]*onPress=\{\(\) => void usar\(\)\}/.test(v),
+    /testID="vida-guardar"[^>]*onPress=\{\(\) => void guardar\(\)\}/.test(v),
     /testID="vida-corregir"[\s\S]{0,200}onPress=\{\(\) => void corregir\(\)\}/.test(v),
-    /\{uno && \(\s*<Pressable testID="vida-corregir"/.test(v),
-    /setPaso\(ok \? 'corregida' : 'pregunta'\)/.test(v),
+    /setFase\(ok \? 'corregida' : 'aviso'\)/.test(v),
     /salud|entrenoEse|Promise\.resolve\(true|alCorregir\(dias/.test(v),
     /Alert\./.test(v),
-  ], [true, true, true, false, true, false, false]);
+  ], [true, true, true, true, false, false]);
   const statsYCalendario = ['Stats.tsx', 'CalendarioDias.tsx', 'StatsGeneral.tsx'].map((a) => de261('movil', 'src', a)).join('\n');
   chequear('Inicio: "Fui" con corregirDia en cada día del aviso, sin devolver la vida aparte; el camino a Stats ya no está', [
     /alCorregir=\{async \(\) => \{\s*for \(const fecha of vidaUsada\.dias\) \{\s*const r = await corregirDia\(supabase, perfil\.id, fecha, 'fui'\);/.test(ini),
@@ -19376,7 +19368,7 @@ console.log('\n261. El cuadro de la vida: Sí la usa, No la guarda, y «Fui, cor
   ], [true, false, false, false]);
 
   // POR LA BASE, el camino de la persona: faltó, la vida se usa al abrir (verificar_perdida),
-  // toca el botón (corregir_dia 'fui' en cada día del aviso) y se mira cuántas le quedan.
+  // toca el link (corregir_dia 'fui' en cada día del aviso) y se mira cuántas le quedan.
   // Con la regla de verdad: dos vidas y la tercera con racha de 20. Las secciones de arriba
   // fijan la cuota con `cuotaDeVidas`; acá se fija en 3 (la que da una racha de 24) y se
   // vuelve a dejar en 2, como estaba.
@@ -19405,53 +19397,29 @@ console.log('\n261. El cuadro de la vida: Sí la usa, No la guarda, y «Fui, cor
     };
   }
   await cuotaDeVidas(3);
-  chequear('un día: la vida se usa, el botón la deja sin gastar (las mismas que antes, ni una más) y la racha suma el día', await botonFui261(1),
+  chequear('un día: la vida se usa, el link la deja sin gastar (las mismas que antes, ni una más) y la racha suma el día', await botonFui261(1),
     { total: 3, antes: 3, conLaFalta: 2, dias: 1, despues: 3, avisoQueda: 0, devueltas: 0, racha: 25 });
   chequear('dos días: corrige los dos, sin gastar ninguna y sin acreditar de más', await botonFui261(2),
     { total: 3, antes: 3, conLaFalta: 1, dias: 2, despues: 3, avisoQueda: 0, devueltas: 0, racha: 26 });
   await cuotaDeVidas(2);
-
-  const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
-  const { EN } = await import('../nucleo/textos-en.ts');
-  const sv = ES.impulso.salvada;
-  const en = EN.impulso.salvada;
-  chequear('los textos, en los dos idiomas', [
-    sv.cuadro(1), sv.si, sv.no, sv.fuiCorregi(1), sv.corregidaTitulo, sv.corregidaDetalle(1), sv.listo, sv.precioGuardar(1, 14),
-    en.cuadro(1), en.fuiCorregi(1), en.corregidaTitulo, en.corregidaDetalle(1), en.listo,
-    'siFui' in sv,
-  ], [
-    'Faltaste acá. ¿Usar la vida?', 'Sí', 'No', 'Fui, corregí el día', 'Fuiste.', 'Día corregido, no se gastó ninguna vida.', 'Listo', 'Guardarla deja la racha en 14 días.',
-    'You missed this day. Use the life?', 'I went, fix the day', 'You went.', 'Day fixed, no life was used.', 'Done',
-    false,
-  ]);
 }
-console.log('\n262. El texto de «Fui, corregí el día»: blanco u oscuro según el fondo, y 4,5:1 en todas las paletas (18/10)');
+console.log('\n262. El aviso de la vida: colores fijos, botones redondeados y 4,5:1 en todos los textos (19/10)');
 {
-  // Sin la vista: la regla y los colores son los mismos que usa el botón (se pinea abajo).
   const { readFileSync: leer262 } = await import('node:fs');
-  const P262 = await import('../nucleo/paletas.ts');
-  const { contraste, textoSobre } = await import('../nucleo/contraste.ts');
+  const { contraste } = await import('../nucleo/contraste.ts');
   const { C: C262 } = await import('../movil/src/colores.ts');
-  const boton = leer262(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'RachaSalvada.tsx'), 'utf8');
-  chequear('el botón: fondo del principal del rango, texto elegido entre el blanco y C.fondo; C.tinta sin tocar', [
-    /backgroundColor: pal\.principal/.test(boton),
-    /color: textoSobre\(pal\.principal, \[C\.blanco, C\.fondo\]\)/.test(boton),
-    [C262.blanco, C262.fondo, C262.tinta],
-  ], [true, true, ['#ffffff', '#05060a', '#e8ecf6']]);
-  const fondos = [
-    ...[1, 2, 3, 4, 5, 6, 7].map((r) => [`rango ${r}`, P262.PALETAS_RANGO[r].principal]),
-    ...Object.entries(P262.PALETAS_PLANETA).map(([k, p]) => [`rango 4 / ${k}`, p.principal]),
+  const v = leer262(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'RachaSalvada.tsx'), 'utf8').replace(/\r\n/g, '\n');
+  chequear('los colores son fijos: nada sale de la paleta del rango', [/paletaDe|pal\.principal|textoSobre/.test(v), /usar: \{ backgroundColor: C\.claro \}/.test(v), /guardar: \{ backgroundColor: C\.fondo, borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v), /linkTexto: \{ color: C\.link/.test(v)], [false, true, true, true]);
+  chequear('los botones, redondeados y con sombra', /boton: \{ borderRadius: 999,[^}]*\.\.\.sombra \}/.test(v), true);
+  const pares = [
+    ['Usar vida', C262.fondo, C262.claro],
+    ['Guardar vida', C262.tinta, C262.fondo],
+    ['(la racha baja 10 días)', C262.sub, C262.hoja],
+    ['Fui. Corregir día', C262.link, C262.hoja],
+    ['el texto del cuadro', C262.tinta, C262.hoja],
   ];
-  const opciones = [C262.blanco, C262.fondo];
-  const elegido = (f) => textoSobre(f, opciones);
-  chequear(`recorre los 7 rangos y los ${Object.keys(P262.PALETAS_PLANETA).length} planetas del 4`, fondos.length >= 17, true);
-  chequear('en cada fondo el texto elegido es el de más contraste',
-    fondos.filter(([, f]) => opciones.some((o) => contraste(o, f) > contraste(elegido(f), f))).map(([n]) => n), []);
-  chequear('ninguna combinación queda por debajo de 4,5:1',
-    fondos.map(([n, f]) => [n, Math.round(contraste(elegido(f), f) * 100) / 100]).filter(([, c]) => c < 4.5), []);
-  chequear('rango 1 y rango 2 con blanco, rango 4 con Marte con el oscuro', [
-    elegido(P262.PALETAS_RANGO[1].principal), elegido(P262.PALETAS_RANGO[2].principal), elegido(P262.PALETAS_PLANETA.Marte.principal),
-  ], ['#ffffff', '#ffffff', '#05060a']);
+  chequear('todos los textos del aviso llegan a 4,5:1', pares.map(([n, a, b]) => [n, Math.round(contraste(a, b) * 100) / 100]).filter(([, c]) => c < 4.5), []);
+  chequear('el borde de «Guardar vida» llega a 3:1 sobre el cuadro (se lee como botón)', contraste(C262.bordeBoton, C262.hoja) >= 3, true);
 }
 // ======================= LOS BUGS DEL GIMNASIO (19/10) =======================
 const { readFileSync: leerBug } = await import('node:fs');
@@ -19540,12 +19508,12 @@ console.log('\n267. La última vez de un ejercicio: series, pesos y el modo de c
   chequear('el bloque la muestra al elegir el ejercicio', /T\.sesion\.ultimaVez\(/.test(blo), true);
 }
 
-console.log('\n268. «Fui, corregí el día» con dos días dice «días» (19/10)');
+console.log('\n268. «Fui. Corregir día» con dos días dice «días» (19/10)');
 {
   const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
   const { EN } = await import('../nucleo/textos-en.ts');
   const f = (t, n) => (typeof t === 'function' ? t(n) : t);
-  chequear('uno y varios, en los dos idiomas', [f(ES.impulso.salvada.fuiCorregi, 1), f(ES.impulso.salvada.fuiCorregi, 2), f(EN.impulso.salvada.fuiCorregi, 2)], ['Fui, corregí el día', 'Fui, corregí los días', 'I went, fix the days']);
+  chequear('uno y varios, en los dos idiomas', [f(ES.impulso.salvada.fuiCorregi, 1), f(ES.impulso.salvada.fuiCorregi, 2), f(EN.impulso.salvada.fuiCorregi, 2)], ['Fui. Corregir día', 'Fui. Corregir días', 'I went. Fix days']);
 }
 console.log('\n269. Rutinas: la lista fuera de editar, la de otra persona entera, y copiar por días (19/10)');
 {
@@ -19571,6 +19539,67 @@ console.log('\n269. Rutinas: la lista fuera de editar, la de otra persona entera
     /onPress=\{\(\) => setEligiendo\(true\)\}/.test(de),
     /copiarRutina\(supabase, nombreNuevo, soloLosDias\(rutina\.dias, elegidos\)\)/.test(de),
   ], [true, true]);
+}
+console.log('\n270. El aviso de la vida rehecho: textos, vidas arriba, la secuencia al usarla y el día que se derrite (19/10)');
+{
+  const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
+  const { EN } = await import('../nucleo/textos-en.ts');
+  const F = await import('../nucleo/fechas.ts');
+  const IM = await import('../nucleo/impulsos.ts');
+  const sv = ES.impulso.salvada;
+  const en = EN.impulso.salvada;
+  chequear('los textos pedidos, con las fechas como las arma la app', [
+    sv.textoUno(F.fechaLinda('2026-10-16')),
+    sv.textoVarios(F.fechasLindas(['2026-10-17', '2026-10-15', '2026-10-16'])),
+    sv.vidaGastada,
+    sv.usarVida,
+    sv.guardarVida,
+    sv.bajaDiez,
+  ], [
+    'No registraste el 16 de octubre. Usa la vida para no perder la racha.',
+    'No registraste los días 15, 16 y 17 de octubre. Usa la vida para no perder la racha.',
+    'Salvaste un día, pero pierdes una vida.',
+    'Usar vida',
+    'Guardar vida',
+    '(la racha baja 10 días)',
+  ]);
+  chequear('días de dos meses: cada uno con su mes', F.fechasLindas(['2026-10-01', '2026-09-30']), '30 de setiembre y 1 de octubre');
+  chequear('el inglés, lo mismo', [en.textoUno('October 16'), en.vidaGastada, en.usarVida, en.guardarVida, en.fuiCorregi(1), en.fuiCorregi(3)], [
+    "You didn't log October 16. Use a life to keep your streak.",
+    'You saved a day, but you lose a life.',
+    'Use life',
+    'Save life',
+    'I went. Fix day',
+    'I went. Fix days',
+  ]);
+  const h = { fechas: ['2026-10-16'], dia: '2026-10-18' };
+  // Se derrite la primera vez que se abre después (al día siguiente, o más tarde si ese día no
+  // se abrió): Inicio borra la marca al empezar el deshielo y desde ahí queda la estrella sola.
+  chequear('el día salvado: helado el día que se usó, se derrite después, y no toca otros días', [
+    IM.frioDelDia(h, '2026-10-16', '2026-10-18'),
+    IM.frioDelDia(h, '2026-10-16', '2026-10-19'),
+    IM.frioDelDia(h, '2026-10-16', '2026-10-20'),
+    IM.frioDelDia(h, '2026-10-15', '2026-10-18'),
+    IM.frioDelDia(null, '2026-10-16', '2026-10-18'),
+  ], ['helado', 'derrite', 'derrite', null, null]);
+
+  const v = deBug('movil', 'src', 'RachaSalvada.tsx');
+  const ini = deBug('movil', 'src', 'Inicio.tsx');
+  const orden = ['<VidaQueTitila', 'style={estilos.tira}', 'testID="vida-cuadro"'].map((m) => v.indexOf(m));
+  chequear('las vidas arriba de los días y el cuadro debajo', orden.every((x, i) => x > 0 && (i === 0 || x > orden[i - 1])), true);
+  chequear('sin «te quedan» ni «racha congelada»', [/T\.impulso\.quedan|quedanVidas/.test(v), /congelad/i.test(JSON.stringify(ES.impulso) + JSON.stringify(EN.impulso))], [false, false]);
+  chequear('la estrella va dentro del botón y arriba del cuadro', [
+    /testID="vida-usar"[\s\S]{0,600}<Estrella tam=\{15\} modo="oscura" \/>/.test(v),
+    /<View style=\{estilos\.emblema\}[^>]*>\s*<Estrella /.test(v),
+  ], [true, true]);
+  const pasos = ['Animated.timing(comprime', 'setVuelo({ desde, hasta })', 'setPlantada(true)', 'setHelada(true)', 'alUsada()', "setFase('helada')"].map((m) => v.indexOf(m));
+  chequear('una sola secuencia: comprime, salta, se planta, se congela, y recién ahí se anota y sale el globito', pasos.every((x, i) => x > 0 && (i === 0 || x > pasos[i - 1])), true);
+  chequear('el globito sale en la fase helada', /fase === 'helada' && cola && \(\s*<Animated\.View testID="vida-globito"/.test(v), true);
+  chequear('Inicio: el día cubierto lleva el frío, y al otro día se borra la marca', [
+    /frio=\{d\.estadoDia === 'cubierto' \? frioDelDia\(helada, d\.fecha, hoy\) : null\}/.test(ini),
+    /alUsada=\{\(\) => \{[\s\S]{0,200}plataforma\.almacenamiento\.guardar\(CLAVE_VIDA_HELADA/.test(ini),
+    /h\.dia < hoyISO\(\)\) \{\s*void plataforma\.almacenamiento\.borrar\(CLAVE_VIDA_HELADA\)/.test(ini),
+  ], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

@@ -91,17 +91,19 @@ const ES = {
         n === 1 ? 'La vida quedó para después.' : `Las ${n} vidas quedaron para después.`,
       // Sin señal no se devolvió nada: se dice lo que sigue siendo cierto.
       noSeGuardo: 'Sin señal no se guardó: la racha sigue como estaba. Prueba de nuevo.',
-      // EL CUADRO DESPUÉS DE LA ANIMACIÓN (18/10, a pedido): apunta al día en la semana.
-      // "No" la guarda para otra vez; el precio va chico debajo, porque no tiene vuelta.
-      // "Acá" a pedido (18/10): es la única excepción a la regla de modismos de test:db.
-      cuadro: (n: number) => (n === 1 ? 'Faltaste acá. ¿Usar la vida?' : 'Faltaste acá. ¿Usar las vidas?'),
-      si: 'Sí',
-      no: 'No',
-      precioGuardar: (n: number, racha: number) => `Guardar${n === 1 ? 'la' : 'las'} deja la racha en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
+      // EL AVISO NUEVO (19/10, a pedido): colores fijos, dos botones redondeados y el link.
+      // El día o los días llegan ya escritos («16 de octubre», «15, 16 y 17 de octubre»).
+      textoUno: (dia: string) => `No registraste el ${dia}. Usa la vida para no perder la racha.`,
+      textoVarios: (dias: string) => `No registraste los días ${dias}. Usa la vida para no perder la racha.`,
+      usarVida: 'Usar vida',
+      guardarVida: 'Guardar vida',
+      bajaDiez: '(la racha baja 10 días)',
+      // El globito, cuando la vida ya se plantó en el día.
+      vidaGastada: 'Salvaste un día, pero pierdes una vida.',
       // LA TERCERA SALIDA (18/10, a pedido): "Fui" en los días del aviso, sin gastar la vida.
       // «Corregí» a pedido: es la única excepción a la regla del voseo de test:db.
       // Con varios días, en plural (19/10).
-      fuiCorregi: (n: number) => (n === 1 ? 'Fui, corregí el día' : 'Fui, corregí los días'),
+      fuiCorregi: (n: number) => (n === 1 ? 'Fui. Corregir día' : 'Fui. Corregir días'),
       corregidaTitulo: 'Fuiste.',
       corregidaDetalle: (n: number) =>
         n === 1 ? 'Día corregido, no se gastó ninguna vida.' : 'Días corregidos, no se gastó ninguna vida.',
@@ -1246,6 +1248,8 @@ const ES = {
       'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre',
     ],
     delMes: (dia: number, mes: string) => `${dia} de ${mes}`,
+    // Varios días del mismo mes (19/10): «15, 16 y 17 de octubre». Los días llegan ya juntados.
+    diasDelMes: (dias: string, mes: string) => `${dias} de ${mes}`,
     hoy: 'Hoy',
     ayer: 'Ayer',
     diaYNumero: (dia: string, n: number) => `${dia} ${n}`,
