@@ -19993,6 +19993,32 @@ console.log('\n284. La entrada de la app: el aro del logo, el destello y el zoom
     /if \(fase !== 'esperando' \|\| !\(lista \|\| vencida\)\) return;/.test(en),
   ], [true, true, true]);
 }
+console.log('\n285. Anotar el peso: el número grande, − y + y la regla (20/10, la B de la galería)');
+{
+  const RP = await import('../nucleo/reglaDePeso.ts');
+  const { limites } = await import('../nucleo/peso.ts');
+  const lb = limites('lb');
+  chequear('los límites de la base, en décimas y hacia adentro (en libras no caen justo)', [
+    RP.pesoAcotado(10, 'kg'), RP.pesoAcotado(999, 'kg'), RP.pesoAcotado(10, 'lb') >= lb.min, RP.pesoAcotado(9999, 'lb') <= lb.max, RP.pesoAcotado(70.04999, 'kg'),
+  ], [20, 400, true, true, 70]);
+  chequear('arranca en el último anotado, en la unidad de la persona; sin ninguno, en un número redondo', [
+    RP.pesoInicial(81.84, 'kg'), RP.pesoInicial(null, 'kg'), RP.pesoInicial(null, 'lb'), RP.pesoInicial(100, 'lb'),
+  ], [81.8, 70, 150, 220.5]);
+  chequear('la regla: a la izquierda sube, una décima cada tantos píxeles', [
+    RP.pesoArrastrado(70, -RP.PX_POR_DECIMA * 10, 'kg'), RP.pesoArrastrado(70, RP.PX_POR_DECIMA * 3, 'kg'),
+  ], [71, 69.7]);
+  const marcas = RP.marcasDeRegla(71.3, 200);
+  const entera = marcas.find((m) => m.etiqueta === '71');
+  chequear('las rayitas: la del 71 cae tres décimas a la izquierda de la aguja', [Math.round((100 - entera.x) / RP.PX_POR_DECIMA), entera.alto, marcas.every((m) => m.x > -RP.PX_POR_DECIMA * 2 && m.x < 200 + RP.PX_POR_DECIMA * 2)], [3, 'entero', true]);
+  const ap = sinComentarios(deBug('movil', 'src', 'AnotarPeso.tsx'));
+  chequear('la pantalla: sin teclado, colores fijos, y los botones con onPress (onPressIn se pierde en un toque corto en la web)', [
+    /TextInput/.test(ap), /from '\.\/colores'|usePaleta/.test(ap), /onPressIn/.test(ap), /onPress=\{\(\) => alMover\(paso\)\}/.test(ap), /delayLongPress=\{APRETADO_MS\}/.test(ap),
+  ], [false, false, false, true, true]);
+  chequear('Stats y Mis marcas abren la misma hoja que Inicio', ['StatsGeneral.tsx', 'MisMarcas.tsx'].map((f) => {
+    const t = sinComentarios(deBug('movil', 'src', f));
+    return /<PesoHoja visible=\{pesoAbierto\}/.test(t) && !/<AnotarPeso /.test(t);
+  }), [true, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

@@ -21,7 +21,7 @@ import GraficoPeso from './GraficoPeso';
 import GraficoPasos from './GraficoPasos';
 import Insignia from './Insignia';
 import SeccionFuerza from './SeccionFuerza';
-import AnotarPeso from './AnotarPeso';
+import PesoHoja from './PesoHoja';
 import ListaDePesos from './ListaDePesos';
 import ObjetivoDePeso from './ObjetivoDePeso';
 import { useRecargarAlVolver } from './irAPestana';
@@ -94,6 +94,7 @@ export default function StatsGeneral({
   calendario?: React.ReactNode;
 }) {
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
+  const [pesoAbierto, setPesoAbierto] = useState(false);
   const hoy = hoyISO();
   const pal = paletaDe(rango, planeta);
 
@@ -214,7 +215,11 @@ export default function StatsGeneral({
       )}
       {pesos.length === 1 && <Text style={estilos.nota}>{T.stats.pesoUnoMas}</Text>}
       {pesos.length === 0 && <Text style={estilos.nota}>{T.stats.pesoVacio}</Text>}
-      <AnotarPeso unidad={unidad} alGuardar={alCambiar} />
+      {/* La pantalla de anotar el peso (20/10) es una hoja: la misma que se abre desde Inicio. */}
+      <Pressable style={estilos.botonCorregir} onPress={() => setPesoAbierto(true)} testID="abrir-anotar-peso">
+        <Text style={estilos.botonCorregirTexto}>{T.peso.anotarPeso}</Text>
+      </Pressable>
+      <PesoHoja visible={pesoAbierto} unidad={unidad} alCerrar={() => setPesoAbierto(false)} alGuardar={alCambiar} />
       {/* EL OBJETIVO DE PESO, arriba de la lista: un número al que llegar. De él
           sale el color de cada cambio (acercarse/alejarse) y el momento de haber
           llegado. Solo con al menos un peso anotado —sin peso no hay contra qué

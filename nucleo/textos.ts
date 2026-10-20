@@ -1284,6 +1284,10 @@ const ES = {
     placeholder: (unidad: string) => `Tu peso en ${unidad}`,
     anotar: 'Anotar',
     noDa: 'Ese peso no da.',
+    // La pantalla nueva (20/10): la última vez y los botones, para quien no ve la pantalla.
+    ultima: (peso: string, unidad: string, fecha: string) => `La última: ${peso} ${unidad} · ${fecha}`,
+    restar: (unidad: string) => `Restar 0,1 ${unidad}`,
+    sumar: (unidad: string) => `Sumar 0,1 ${unidad}`,
     privado: 'Solo lo ves tú. Nunca se comparte ni se muestra.',
     // CORREGIR Y BORRAR (migración 45). Antes un número mal escrito se
     // quedaba para siempre torciendo la tendencia, que es lo único que ese

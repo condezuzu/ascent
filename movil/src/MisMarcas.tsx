@@ -11,7 +11,7 @@ import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
 import { irAPestana } from './irAPestana';
 import FondoEspacial from './FondoEspacial';
-import AnotarPeso from './AnotarPeso';
+import PesoHoja from './PesoHoja';
 import CargarMarca from './CargarMarca';
 import Surgir from './Surgir';
 import { C } from './colores';
@@ -40,6 +40,7 @@ export default function MisMarcas() {
   const router = useRouter();
   const arriba = useArriba(16);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [pesoAbierto, setPesoAbierto] = useState(false);
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [fuerza, setFuerza] = useState<MiFuerza | null>(null);
   const [historial, setHistorial] = useState<PR[]>([]);
@@ -264,7 +265,10 @@ export default function MisMarcas() {
                 <Text style={estilos.nota}>
                   {T.fuerza.yaEstanLasTres} {T.fuerza.faltaPeso}
                 </Text>
-                <AnotarPeso unidad={unidad} alGuardar={cargar} />
+                <Pressable style={estilos.botonPeso} onPress={() => setPesoAbierto(true)} testID="abrir-anotar-peso">
+                  <Text style={estilos.botonPesoTexto}>{T.peso.anotarPeso}</Text>
+                </Pressable>
+                <PesoHoja visible={pesoAbierto} unidad={unidad} alCerrar={() => setPesoAbierto(false)} alGuardar={cargar} />
               </>
             )}
 
@@ -331,6 +335,8 @@ const estilos = StyleSheet.create({
   nota: { color: C.apagado, fontSize: 12, lineHeight: 18, marginTop: 10 },
   texto: { paddingVertical: 10 },
   enlace: { color: C.sub, fontSize: 13 },
+  botonPeso: { alignSelf: 'flex-start', borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18, marginTop: 12 },
+  botonPesoTexto: { color: C.tinta, fontSize: 14 },
   vacio: { marginTop: 34, alignItems: 'center', gap: 4 },
   vacioTexto: { color: C.apagado, fontSize: 13, textAlign: 'center', lineHeight: 19 },
 });
