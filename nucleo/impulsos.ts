@@ -1,3 +1,5 @@
+import { deISO, restarDias } from './fechas.ts';
+
 /**
  * QUÉ HAY QUE CONTARLE AL USUARIO SOBRE SUS IMPULSOS.
  *
@@ -32,6 +34,16 @@
  */
 export function impulsosSinVer(ultimas: string[], vista: string | null): string[] {
   return ultimas.filter((f) => !vista || f > vista).sort();
+}
+
+/**
+ * LAS VIDAS QUE SE AVISAN (20/10): las sin ver, menos las de un corte que igual pasó. Si
+ * las vidas no alcanzaron, la base cortó la racha y fijó `perdida_fecha` en el día antes
+ * del corte: el aviso «Usa la vida para no perder la racha» decía algo falso, y «Guardar»
+ * ofrecía devolver vidas que ya no vuelven. Ahí se ve la pérdida, sin el aviso.
+ */
+export function vidasParaAvisar(ultimas: string[], vista: string | null, perdidaFecha: string | null | undefined): string[] {
+  return impulsosSinVer(ultimas, vista).filter((f) => !perdidaFecha || f > perdidaFecha);
 }
 
 /**
@@ -72,3 +84,30 @@ export function rachaSiSeDevuelve(racha: number): number {
  * otra ya mostró en el mismo teléfono.
  */
 export const CLAVE_VIDA_VISTA = 'ascent:impulso-visto';
+
+/**
+ * LA VIDA CONGELADA EN EL DÍA (19/10): qué días y cuándo se usó. Ese día la tira de Inicio
+ * los muestra congelados; cualquier día después, se derriten una vez y la clave se borra.
+ */
+export const CLAVE_VIDA_HELADA = 'ascent:vida-helada';
+
+export type VidaHelada = { fechas: string[]; dia: string };
+
+/** Cómo se ve hoy un día cubierto: congelado, derritiéndose, o nada especial. */
+export function frioDelDia(h: VidaHelada | null, fecha: string, hoy: string): 'helado' | 'derrite' | null {
+  if (!h || !h.fechas.includes(fecha)) return null;
+  return h.dia === hoy ? 'helado' : h.dia < hoy ? 'derrite' : null;
+}
+
+/**
+ * QUÉ DÍAS MUESTRA LA TIRA DE INICIO (20/10). De lunes a domingo, alineada al calendario;
+ * pero si una vida fresca —la del aviso, o la que todavía se ve helada o derritiéndose—
+ * cayó antes del lunes (faltó el domingo y hoy es lunes), los últimos siete días, como
+ * pide la spec (§9): la semana de calendario dejaba ese día afuera.
+ */
+export function diasDeLaTira(hoy: string, frescas: string[]): string[] {
+  const lunes = restarDias(hoy, (deISO(hoy).getDay() + 6) % 7);
+  const hace6 = restarDias(hoy, 6);
+  const desde = frescas.some((f) => f < lunes && f >= hace6) ? hace6 : lunes;
+  return Array.from({ length: 7 }, (_, i) => restarDias(desde, -i));
+}

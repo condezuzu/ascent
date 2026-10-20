@@ -27,7 +27,7 @@ import RachaSalvada from './RachaSalvada';
 import SubidaRango from './SubidaRango';
 import RegistrarDia from './RegistrarDia';
 import { plataforma } from '@plataforma';
-import { CLAVE_VIDA_VISTA, hastaDondeVisto, impulsosSinVer, rachaSiSeDevuelve } from '@nucleo/impulsos';
+import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDondeVisto, vidasParaAvisar, type VidaHelada } from '@nucleo/impulsos';
 import { CLAVE_META_PASOS, META_PASOS_POR_OMISION, leerMeta } from '@nucleo/pasos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import MarcaEnElMomento from './MarcaEnElMomento';
@@ -50,8 +50,9 @@ import PesoHoja from './PesoHoja';
 import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
-import { pedirDia } from './abrirDia';
-import { preguntarPorLaRutina } from './preguntarPorLaRutina';
+import { corregirDia } from '@compartido/dia';
+import { rutinaParaPreguntar, type PreguntaDeRutina } from './preguntarPorLaRutina';
+import VentanaRutina from './VentanaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
 import { fijarExtras } from '@compartido/tarjeta';
@@ -148,6 +149,7 @@ export default function Inicio({
   // `cierre`, más abajo, que es el de hoy o nada.
   const [cierreGuardado, setCierreGuardado] = useState<{ de: string; cierre: CierreDeSesion } | null>(null);
   const setCierre = (c: CierreDeSesion | null) => setCierreGuardado(c ? { de: hoyISO(), cierre: c } : null);
+  const [preguntaRutina, setPreguntaRutina] = useState<PreguntaDeRutina | null>(null);
   /**
    * EL RESUMEN SE CIERRA, LOS MINUTOS SE QUEDAN (25/9).
    *
@@ -186,6 +188,22 @@ export default function Inicio({
   // LA VENTANA DE LAS VIDAS: los días cubiertos que este aparato todavía no
   // anunció. Misma regla y misma marca que la web (`nucleo/impulsos.ts`).
   const [vidaUsada, setVidaUsada] = useState<{ dias: string[]; quedan: number; total: number } | null>(null);
+  // LA VIDA CONGELADA EN EL DÍA (19/10): el día que se usa, congelada en la tira; el
+  // siguiente se derrite una vez. Lo de "una vez" lo cuida borrar la clave al leerla vieja.
+  const [helada, setHelada] = useState<VidaHelada | null>(null);
+  useEffect(() => {
+    void plataforma.almacenamiento.leer(CLAVE_VIDA_HELADA).then((v) => {
+      try {
+        const h = v ? (JSON.parse(v) as VidaHelada) : null;
+        setHelada(h);
+        // Queda en pantalla hasta que se vaya: el deshielo termina en la estrella sola, y
+        // soltarla antes devolvía la tira a la semana de calendario en medio del día (20/10).
+        if (h && h.dia < hoyISO()) void plataforma.almacenamiento.borrar(CLAVE_VIDA_HELADA);
+      } catch {
+        setHelada(null);
+      }
+    });
+  }, []);
   const [aviso, setAviso] = useState('');
 
   // LOS PASOS DE HOY, debajo del número de la racha. No son la racha ni entran
@@ -311,7 +329,8 @@ export default function Inicio({
       setBloquesDeHoy(todos.length ? todos : null);
       setVueltas((v) => v + 1);
       const ultimas = Array.isArray(d.impulsos?.ultimas) ? (d.impulsos!.ultimas as string[]) : [];
-      const sinVer = impulsosSinVer(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA));
+      // Con la racha ya perdida en ese corte no hay aviso: se ve la pérdida (20/10).
+      const sinVer = vidasParaAvisar(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA), d.perfil.perdida_fecha);
       if (sinVer.length > 0) {
         setVidaUsada({ dias: sinVer, quedan: Number(d.impulsos?.quedan ?? 0), total: Number(d.impulsos?.total ?? 0) });
       }
@@ -566,13 +585,12 @@ export default function Inicio({
 
   // La semana arranca el LUNES y se alinea al calendario, igual que en web:
   // "los últimos siete días" es más exacto y se ve mal, porque las letras
-  // salen corridas y eso se lee como un error.
+  // salen corridas y eso se lee como un error. Salvo con una vida fresca de antes del
+  // lunes (ver `diasDeLaTira`): si no, ese día no aparecía.
   // La misma cuenta arma la semana del aviso de la vida, que puede ser la anterior: lo que
   // no trae la pantalla (los logs son de los últimos siete días) queda `sinDato`.
-  const semanaDe = (dia: string) => {
-    const lunes = restarDias(dia, (deISO(dia).getDay() + 6) % 7);
-    return Array.from({ length: 7 }, (_, i) => {
-      const fecha = restarDias(lunes, -i);
+  const conEstado = (fechas: string[]) =>
+    fechas.map((fecha) => {
       const log = logs.find((l) => l.fecha === fecha);
       let estadoDia: EstadoDelDia = 'vacio';
       if (fecha > hoy) estadoDia = 'futuro';
@@ -582,8 +600,12 @@ export default function Inicio({
       else if (fecha < restarDias(hoy, 6)) estadoDia = 'sinDato';
       return { fecha, estadoDia, esHoy: fecha === hoy };
     });
+  const semanaDe = (dia: string) => {
+    const lunes = restarDias(dia, (deISO(dia).getDay() + 6) % 7);
+    return conEstado(Array.from({ length: 7 }, (_, i) => restarDias(lunes, -i)));
   };
-  const semana = semanaDe(hoy);
+  // La tira: la semana de calendario, salvo que una vida fresca haya caído antes del lunes.
+  const semana = conEstado(diasDeLaTira(hoy, [...(vidaUsada?.dias ?? []), ...(helada?.fechas ?? [])]));
 
   return (
     <View style={estilos.raiz}>
@@ -757,7 +779,7 @@ export default function Inicio({
             letra={DIAS_SEMANA[deISO(d.fecha).getDay()]}
             estiloLetra={estilos.letra}
           >
-            <PuntoDelDia estado={d.estadoDia} esHoy={d.esHoy} />
+            <PuntoDelDia estado={d.estadoDia} esHoy={d.esHoy} frio={d.estadoDia === 'cubierto' ? frioDelDia(helada, d.fecha, hoy) : null} />
           </DiaDeLaTira>
         ))}
       </View>
@@ -837,6 +859,7 @@ export default function Inicio({
             cargaConsultada={sesion.estado.cargaConsultada}
             subida={sesion.estado.subida}
             diaDeSesion={diaDeLaSesion(sesion.estado.inicio)}
+            ultimaVez={sesion.estado.bloques.ejercicio ? sesion.ultimaVezDe(sesion.estado.bloques.ejercicio) : null}
             alSumar={sesion.serieHecha}
             alRestar={sesion.deshacerSerie}
             alSiguiente={sesion.bloqueSiguiente}
@@ -905,7 +928,7 @@ export default function Inicio({
                     setCierre(c);
                     setMinutosDeHoy(c.minutos);
                     // ¿Otro día que el de la rutina guardada? Se pregunta (16/10).
-                    void preguntarPorLaRutina(c.bloques);
+                    void rutinaParaPreguntar(c.bloques).then(setPreguntaRutina);
                   }
                   cargar();
                 }}
@@ -1079,20 +1102,30 @@ export default function Inicio({
         />
       )}
 
+      {preguntaRutina && <VentanaRutina pregunta={preguntaRutina} alCerrar={() => setPreguntaRutina(null)} />}
+
       {vidaUsada && !sesion.estado.corriendo && (
         <RachaSalvada
           dias={vidaUsada.dias}
           quedan={vidaUsada.quedan}
           total={vidaUsada.total}
-          rachaSiGuarda={rachaSiSeDevuelve(perfil.racha_actual)}
           semana={semanaDe(vidaUsada.dias[vidaUsada.dias.length - 1])}
           rango={numeroDeRango(racha)}
-          // "Sí fui": al calendario de Stats con ese día abierto, que es donde se corrige.
-          alCorregir={(fecha) => {
-            vidaMostrada.current = false;
-            setVidaUsada(null);
-            pedirDia(fecha);
-            irAPestana('stats');
+          alUsada={() => {
+            const h = { fechas: vidaUsada.dias, dia: hoyISO() };
+            setHelada(h);
+            void plataforma.almacenamiento.guardar(CLAVE_VIDA_HELADA, JSON.stringify(h));
+          }}
+          // "FUI, CORREGÍ EL DÍA" (18/10): el mismo registro que "Fui" en Corregir días, para
+          // cada día del aviso. La vida no se devuelve aparte: un día con "Fui" ya no la
+          // cuenta como usada (migración 84), y devolverla además sería sumar una de más.
+          alCorregir={async () => {
+            for (const fecha of vidaUsada.dias) {
+              const r = await corregirDia(supabase, perfil.id, fecha, 'fui');
+              if (r.error) return false;
+            }
+            await cargar();
+            return true;
           }}
           alGuardar={async () => {
             // Devolver y volver a evaluar la pérdida van juntos en la base.

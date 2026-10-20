@@ -17,6 +17,10 @@
 //      (cuenta → nombre → recorrido y gimnasio → sesión que crea el día →
 //      primera marca → primera foto → Stats). Reemplaza a `primera-vez.mjs`,
 //      que había quedado atrás de la pantalla actual.
+//   4. probar-salto-marca — «La próxima, más» no se mueve cuando se va solo el
+//      cuadro de «¿La guardo como marca?» (18/10), en la nativa.
+//   5. probar-doble-toque — dos toques seguidos en el «+» o en «Terminar serie» no
+//      suman una serie de más (19/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -25,7 +29,7 @@
 // Borra lo que crea. Si una prueba revienta a la mitad, igual intenta borrar
 // su cuenta; lo que no pueda, lo dice.
 //
-//   npm run test:real            (las tres)
+//   npm run test:real            (todas)
 //   npm run test:real -- api     (sin navegador: 1 y 2)
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -41,6 +45,8 @@ const PRUEBAS = [
   // teléfonos que hay acá. Con `api` corre solo la parte de la base.
   { nombre: 'entrenar con otro', archivo: 'probar-juntos.mjs', args: soloApi ? ['api'] : [] },
   ...(soloApi ? [] : [{ nombre: 'web y nativa', archivo: 'bateria-dos-apps.mjs', args: ['ambas'], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'sin salto al irse la marca', archivo: 'probar-salto-marca.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'doble toque en el +', archivo: 'probar-doble-toque.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

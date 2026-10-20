@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ORDEN_SEMANA, tituloDelDia, type DiaDeSemana } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import { nombreVisible } from '@nucleo/propios';
@@ -21,6 +21,7 @@ export default function RutinaPlegada({
   soloConAlgo = false,
   abajoDelDia,
   abiertoAlEmpezar,
+  abiertos = false,
   testID,
 }: {
   dias: DiaDeSemana[];
@@ -29,6 +30,8 @@ export default function RutinaPlegada({
   abajoDelDia?: (dia: number) => ReactNode;
   /** El día que arranca abierto (en la pantalla de la rutina, el de hoy). */
   abiertoAlEmpezar?: number;
+  /** Todos los días abiertos, con su lista (la rutina de otra persona, 19/10). */
+  abiertos?: boolean;
   testID?: string;
 }) {
   const [abierto, setAbierto] = useState<number | null>(abiertoAlEmpezar ?? null);
@@ -41,7 +44,7 @@ export default function RutinaPlegada({
         const dia = dias[d];
         const titulo = tituloDelDia(dia, grupoDe, T.rutina.descanso);
         const vacio = !dia.descanso && dia.ejercicios.length === 0;
-        const esAbierto = abierto === d;
+        const esAbierto = abiertos || abierto === d;
         return (
           <View key={d} style={estilos.dia}>
             <Pressable
@@ -70,9 +73,11 @@ export default function RutinaPlegada({
                       <Text style={estilos.ejercicio} numberOfLines={1}>
                         {nombreVisible(e.ejercicio, catalogo.get(e.ejercicio)?.nombre)}
                       </Text>
-                      <Text style={estilos.cantidad}>
-                        {e.minutos !== undefined ? T.rutina.minutos(e.minutos) : e.series > 0 ? T.rutina.series(e.series) : ''}
-                      </Text>
+                      {e.minutos === undefined && e.series > 0 ? (
+                        <BloquesDeSeries series={e.series} desde={seriesAntes(dia, i)} />
+                      ) : (
+                        <Text style={estilos.cantidad}>{e.minutos !== undefined ? T.rutina.minutos(e.minutos) : ''}</Text>
+                      )}
                     </View>
                   ))}
                 </View>
@@ -82,6 +87,52 @@ export default function RutinaPlegada({
       })}
     </View>
   );
+}
+
+/**
+ * LAS SERIES COMO BLOQUES, QUE ENTRAN DE A UNO (19/10, aprobado en la galería): cada uno
+ * en 220 ms, uno cada 70, y una fila sigue donde terminó la anterior: se arma en
+ * escalones. Con "reducir movimiento" aparecen puestos.
+ */
+const ESCALON_MS = 220;
+const ENTRE_ESCALONES_MS = 70;
+// Una semana de amigo abierta entera no tarda más de dos segundos en armarse.
+const TOPE_DE_ESCALONES = 28;
+
+const seriesAntes = (dia: DiaDeSemana, i: number) => dia.ejercicios.slice(0, i).reduce((n, e) => n + (e.minutos === undefined ? e.series : 0), 0);
+
+function BloquesDeSeries({ series, desde }: { series: number; desde: number }) {
+  return (
+    <View style={estilos.bloques} accessible accessibilityLabel={T.rutina.series(series)}>
+      {Array.from({ length: series }, (_, i) => (
+        <BloqueDeSerie key={i} indice={desde + i} />
+      ))}
+    </View>
+  );
+}
+
+function BloqueDeSerie({ indice }: { indice: number }) {
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    let vivo = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .catch(() => false)
+      .then((quieto) => {
+        if (!vivo) return;
+        if (quieto) return t.setValue(1);
+        Animated.timing(t, {
+          toValue: 1,
+          duration: ESCALON_MS,
+          delay: 150 + Math.min(indice, TOPE_DE_ESCALONES) * ENTRE_ESCALONES_MS,
+          easing: Easing.bezier(0.2, 0.8, 0.3, 1),
+          useNativeDriver: true,
+        }).start();
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [indice, t]);
+  return <Animated.View style={[estilos.bloque, { opacity: t, transform: [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] }]} />;
 }
 
 const estilos = StyleSheet.create({
@@ -96,4 +147,6 @@ const estilos = StyleSheet.create({
   fila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
   ejercicio: { color: C.sub, fontSize: 14, flexShrink: 1 },
   cantidad: { color: C.apagado, fontSize: 13, fontVariant: ['tabular-nums'] },
+  bloques: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4, maxWidth: '55%' },
+  bloque: { width: 16, height: 12, borderRadius: 3, backgroundColor: C.principal },
 });

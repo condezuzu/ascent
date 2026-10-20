@@ -55,6 +55,17 @@ export async function miniaturas(supabase: Cliente, rutas: string[]): Promise<(s
   return firmarFotos(supabase, rutas.map(rutaDeMiniatura));
 }
 
+/**
+ * LA ENTERA Y SU MINIATURA EN UN SOLO PEDIDO (20/10). Eran dos a la vez y la grilla
+ * esperaba al más lento: medido contra Supabase, dos pedidos dan mediana de 267 ms con
+ * vueltas de 530; uno con las dos listas, 200 a 220 siempre (lo mismo que solo las miniaturas).
+ */
+export async function firmarConMiniaturas(supabase: Cliente, rutas: string[]): Promise<{ enteras: (string | null)[]; minis: (string | null)[] }> {
+  if (rutas.length === 0) return { enteras: [], minis: [] };
+  const todas = await firmarFotos(supabase, [...rutas, ...rutas.map(rutaDeMiniatura)]);
+  return { enteras: todas.slice(0, rutas.length), minis: todas.slice(rutas.length) };
+}
+
 export async function cargarAlbum(supabase: Cliente, uid: string): Promise<DatosDeAlbum | null> {
   // El perfil y las fotos A LA VEZ (19/9): uno no depende del otro, y en fila
   // eran dos viajes esperando uno detrás del otro.
@@ -79,12 +90,11 @@ export async function cargarAlbum(supabase: Cliente, uid: string): Promise<Datos
   const conDia = disponible('diaDeRacha', await versionDelEsquema(supabase).catch(() => null));
   const colsLog = conDia ? 'id, fecha, planeta_del_dia, racha_del_dia' : 'id, fecha, planeta_del_dia';
   // Los días, las URL y las miniaturas, también a la vez.
-  const [{ data: logsDatos }, { data: firmadas }, chicas] = await Promise.all([
+  const [{ data: logsDatos }, { enteras, minis: chicas }] = await Promise.all([
     logIds.length
       ? supabase.from('logs').select(colsLog).in('id', logIds)
       : Promise.resolve({ data: [] as { id: string; fecha: string; planeta_del_dia: string | null; racha_del_dia: number | null }[] }),
-    firmarFotos(supabase, rutas).then((us) => ({ data: us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' })) })),
-    miniaturas(supabase, rutas),
+    firmarConMiniaturas(supabase, rutas),
   ]);
   // El cast: `select(colsLog)` con una columna variable le saca el tipo a
   // supabase-js (no puede parsear un string de runtime). Es la misma forma en los
@@ -99,7 +109,7 @@ export async function cargarAlbum(supabase: Cliente, uid: string): Promise<Datos
       const log = f.log_id ? mapa.get(f.log_id) : null;
       return {
         id: f.id as string,
-        url: firmadas?.[i]?.signedUrl ?? '',
+        url: enteras[i] ?? '',
         miniatura: chicas[i] ?? '',
         ruta: f.storage_path as string,
         // Sin log (la foto quedó huérfana al corregir el día: photos.log_id es

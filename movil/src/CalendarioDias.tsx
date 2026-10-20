@@ -25,17 +25,12 @@ export default function CalendarioDias({
   alCambiar,
   porRevisar = new Set(),
   alRevisar,
-  abrirDia,
-  alAbrirDia,
 }: {
   paleta: { principal: string; claro: string };
   alCambiar: () => void;
   /** Días con pesos anotados antes de los modos (migración 39): llevan una marca. */
   porRevisar?: Set<string>;
   alRevisar?: () => void;
-  /** Un día pedido desde afuera (el aviso de la vida): se va a su mes y se abre. `vez` lo repite. */
-  abrirDia?: { fecha: string; vez: number } | null;
-  alAbrirDia?: () => void;
 }) {
   const hoy = hoyISO();
   const base = deISO(hoy);
@@ -57,15 +52,6 @@ export default function CalendarioDias({
   useEffect(() => {
     cargar();
   }, [cargar]);
-
-  useEffect(() => {
-    if (!abrirDia) return;
-    const d = deISO(abrirDia.fecha);
-    setAncla({ anio: d.getFullYear(), mes: d.getMonth() });
-    setAbierto(abrirDia.fecha);
-    // Usado: si después se pliega y se vuelve a abrir el calendario, no reabre ese día.
-    alAbrirDia?.();
-  }, [abrirDia, alAbrirDia]);
 
   const celdas = celdasDelMes(ancla.anio, ancla.mes, hoy, mes);
   const huecos = new Date(ancla.anio, ancla.mes, 1).getDay();

@@ -7183,8 +7183,8 @@ console.log('\n101. La caza del 15/9: lo que perdia datos o dejaba afuera');
   ]) {
     const v = archivo(...ventana);
     chequear(`${app}: la ventana espera un si o un no`, v.includes('Promise<boolean>'), true);
-    // La nativa vuelve a la pregunta (16/10: sin paso de confirmación); la web, a confirmar.
-    chequear(`${app}: y solo pasa a "guardada" con un si`, /setPaso\(ok \? 'guardada' : '(confirmar|pregunta)'\)/.test(v), true);
+    // La nativa vuelve al aviso (19/10: rehecho, sin paso de confirmación); la web, a confirmar.
+    chequear(`${app}: y solo pasa a "guardada" con un si`, /set(Paso|Fase)\(ok \? 'guardada' : '(confirmar|aviso)'\)/.test(v), true);
     const p = archivo(...pantalla);
     const i = p.indexOf("rpc('devolver_impulsos'");
     chequear(`${app}: devolver mira el error`, /if \(error \|\| !data\) return false/.test(p.slice(i, i + 300)), true);
@@ -14056,7 +14056,7 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
     [...tsxDe('movil/src'), ...tsxDe('movil/app')].map((ruta) => [ruta, sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'))])
   );
   // 1. Las que se dibujan SOLO mientras están abiertas: nacen al abrir sin ayuda.
-  const SE_MONTAN_AL_ABRIR = ['HojaDelDia', 'RachaSalvada', 'SubidaRango'];
+  const SE_MONTAN_AL_ABRIR = ['HojaDelDia', 'RachaSalvada', 'SubidaRango', 'VentanaRutina'];
   // 2. Las que no son una hoja que se abre con algo, sino parte de su pantalla.
   const SON_DE_SU_PANTALLA = {
     'movil/src/Hoja.tsx': 'es la hoja base',
@@ -16911,10 +16911,11 @@ console.log('\n206. La pantalla del descanso: qué se estaba haciendo, el arco, 
   const { T: T206 } = await import('../nucleo/textos.ts');
   chequear('la serie se dice como en la tarjeta bloqueada: una de más, sin "de"', [T206.descanso.serieDe(3, 4), T206.descanso.serieDe(4, 4), T206.descanso.serieDe(5, 4)], ['serie 3 de 4', 'serie 4 de 4', 'serie 5']);
   const p206 = de206('movil', 'src', 'Descanso.tsx');
-  chequear('la pantalla dice qué se hacía, dibuja el arco con el color que le pasan, y al terminar cuenta hacia arriba', [
+  // Desde el 19/10 lo de más va chico en la esquina y el reloj grande queda en 0:00 (ver la 272).
+  chequear('la pantalla dice qué se hacía, dibuja el arco con el color que le pasan, y al terminar cuenta lo de más', [
     /\{!!vivo\.ejercicio && \(/.test(p206) && /T\.descanso\.serieDe\(vivo\.serie, vivo\.meta \?\? 0\)/.test(p206),
     /stroke=\{acento\}/.test(p206) && /strokeDashoffset=\{LARGO \* \(1 - proporcion\)\}/.test(p206),
-    /terminado \? '\+' \+ cuentaAtras\(pasadoDe\(vivo\.fin, ahora\)\) : cuentaAtras\(falta\)/.test(p206),
+    /\+\{cuentaAtras\(pasadoDe\(vivo\.fin, ahora\)\)\}/.test(p206),
     /<CompaneroEnDescanso visible=\{visible\} ahora=\{ahora\} \/>/.test(p206),
   ], [true, true, true, true]);
   const c206 = de206('movil', 'src', 'CompaneroEnDescanso.tsx');
@@ -17524,7 +17525,8 @@ console.log('\n214. La rutina en el teléfono: qué se muestra, y con qué arran
 
   const { readFileSync: leer214 } = await import('node:fs');
   const ses214 = leer214(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'useSesion.ts'), 'utf8').replace(/\r\n/g, '\n');
-  chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(await rutinaActivaDelTelefono\(\), new Date\(\)\.getDay\(\)\);\s*rutinaRef\.current = \(deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
+  // Desde el 20/10, sin la copia del teléfono la pide a la base (ver la 279).
+  chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(guardada, new Date\(\)\.getDay\(\)\);\s*rutinaRef\.current = \(deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
 }
 
 console.log('\n215. El día que se entrena sin abrir la app, y el vigilante al abrir de cero');
@@ -18652,7 +18654,7 @@ console.log('\n237. Cacería del 15/10, vuelta 3: Seguir con la cinta, la semill
   chequear('la cinta tocada por error y dejada a los 20 s no anota vuelta ni serie', await v3('porError'), { series: 0, bloques: [] });
   chequear('un descanso de una hora corregido a 90 s baja la marca a su fin', await v3('acortar'), { conHora: 60, corregido: true });
   chequear('"Listo" sin señal: la bajada no se pierde en la cola, ni llega estirada a la hora en que volvió la señal', [await v3('pisada'), await v3('tarde')], [{ cercaDeListo: true }, { cercaDeListo: true }]);
-  chequear('con la rutina guardada, elegir otro ejercicio de ese día no la abandona: después propone el que falta de la rutina', await v3('guardada'), { propone: 'press_banca' });
+  chequear('con la rutina guardada, elegir otro ejercicio de ese día no la abandona: sigue con el de después en la rutina (19/10: ya no vuelve atrás)', await v3('guardada'), { propone: 'aperturas' });
   const B237 = await import('../nucleo/bloques.ts');
   const elegido = B237.cambiarEjercicio(B237.bloquesVacios(), 'cinta');
   chequear('sembrar no pisa un ejercicio ya elegido (y sigue sembrando un bloque vacío)', [B237.sembrar(elegido, 'press_banca').ejercicio, B237.sembrar(B237.bloquesVacios(), 'press_banca').ejercicio], ['cinta', 'press_banca']);
@@ -18754,7 +18756,7 @@ console.log('\n239. Cacería del 15/10, vuelta 5: lo de otro aparato con −, Te
   chequear('Tu rutina: el nombre va a SU rutina; no dice "no hay rutina" antes de saber; copiar es de a un toque; activar y borrar escriben la copia del teléfono', [
     /onChangeText=\{\(texto\) => \(nombreTipeado\.current = \{ id: actual\.id, texto \}\)\}/.test(mi),
     /setNoCargo\(hay && !mias\);\n    setGuardadas\(hay\);/.test(mi),
-    /if \(!rutina \|\| copiando\.current\) return;/.test(de239('movil', 'src', 'RutinaDe.tsx')),
+    /if \(!rutina \|\| copiando\.current( \|\| elegidos\.length === 0)?\) return;/.test(de239('movil', 'src', 'RutinaDe.tsx')),
     /if \(ok && dias\) await guardarActiva\(/.test(de239('compartido', 'rutinas.ts')),
     /if \(ok && \(await idDeLaActiva\(\)\) === id\) await guardarActiva\(\[\]\);/.test(de239('compartido', 'rutinas.ts')),
   ], [true, true, true, true, true]);
@@ -19270,15 +19272,16 @@ console.log('\n255. La sugerencia del siguiente sale de lo que hiciste después 
   const { restarDias } = await import('../nucleo/fechas.ts');
   const hoy = '2026-10-16';
   const s = (hace, ejercicios) => ({ fecha: restarDias(hoy, hace), ejercicios });
-  // Hace 3 días: curl de bíceps → martillo. Hace 20: curl → predicador (fuera de la semana).
-  const historia = [s(20, ['banca', 'curl_biceps', 'curl_predicador']), s(3, ['remo', 'curl_biceps', 'curl_martillo', 'frances'])];
+  // Hace 7 días (el mismo día de la semana, 19/10): curl de bíceps → martillo. Hace 20:
+  // curl → predicador (fuera de la semana).
+  const historia = [s(20, ['banca', 'curl_biceps', 'curl_predicador']), s(7, ['remo', 'curl_biceps', 'curl_martillo', 'frances'])];
   chequear('después del curl de bíceps, el martillo (lo de la semana pasada); lo ya hecho se salta; lo de hace 20 días no cuenta', [
     RU255.despuesDe(historia, 'curl_biceps', ['curl_biceps'], hoy),
     RU255.despuesDe(historia, 'curl_biceps', ['curl_biceps', 'curl_martillo'], hoy),
     RU255.despuesDe(historia, 'banca', ['banca'], hoy),
     RU255.despuesDe(historia, 'frances', ['frances'], hoy),
   ], ['curl_martillo', 'frances', null, null]);
-  chequear('si la semana pasada cambió el orden, manda la más reciente', RU255.despuesDe([s(6, ['curl_biceps', 'curl_predicador']), s(2, ['curl_biceps', 'curl_martillo'])], 'curl_biceps', ['curl_biceps'], hoy), 'curl_martillo');
+  chequear('si cambió el orden, manda la más reciente de ese día (hoy, antes de esta sesión)', RU255.despuesDe([s(7, ['curl_biceps', 'curl_predicador']), s(0, ['curl_biceps', 'curl_martillo'])], 'curl_biceps', ['curl_biceps'], hoy), 'curl_martillo');
   const ses = (await import('node:fs')).readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'useSesion.ts'), 'utf8');
   chequear('la sesión la usa al cerrar cada bloque, y relee la rutina guardada (si cambió, la sugerencia la sigue)', [
     /despuesDe\(sesionesRutinaRef\.current, ultimo, hechos, hoyISO\(\)\)/.test(ses),
@@ -19321,7 +19324,7 @@ console.log('\n257. Al terminar, si hiciste otro día que el de la rutina guarda
     RU257.hayQuePreguntarPorLaRutina(dia(['press_banca']), { descanso: false, ejercicios: [] }),
   ], [false, true, true, true, false]);
   const ini257 = (await import('node:fs')).readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'Inicio.tsx'), 'utf8');
-  chequear('Inicio pregunta después de Terminar, con los bloques que se guardaron', /if \(c && !c\.deshizoElDia\) \{[\s\S]{0,200}void preguntarPorLaRutina\(c\.bloques\);/.test(ini257), true);
+  chequear('Inicio pregunta después de Terminar, con los bloques que se guardaron', /if \(c && !c\.deshizoElDia\) \{[\s\S]{0,200}void rutinaParaPreguntar\(c\.bloques\)\.then\(setPreguntaRutina\);/.test(ini257), true);
 }
 
 console.log('\n258. Copiar un día y pegarlo en otro, de la misma rutina o de otra (16/10)');
@@ -19353,10 +19356,11 @@ console.log('\n259. La vida usada se anota al mostrarse, y reemplazar el día de
     /if \(sesion\.estado\.corriendo && vidaMostrada\.current\) \{\s*vidaMostrada\.current = false;\s*setVidaUsada\(null\);/.test(ini),
     /alCerrar=\{async \(\) => \{\s*\/\/ Cerrar es lo que ANOTA/.test(ini),
   ], [true, true, true, false]);
-  const pr = de259('movil', 'src', 'preguntarPorLaRutina.ts');
+  // Desde el 19/10 es una ventana propia (`VentanaRutina`), con el mismo «¿Estás seguro?».
+  const pr = de259('movil', 'src', 'VentanaRutina.tsx');
   chequear('reemplazar el día pide "¿Estás seguro?" con Sí y No; crear una rutina nueva va directo', [
-    /text: T\.rutina\.reemplazar,\s*onPress: \(\) =>\s*Alert\.alert\(T\.rutina\.estasSeguro, undefined, \[\s*\{ text: T\.rutina\.no, style: 'cancel' \},\s*\{ text: T\.rutina\.si, style: 'destructive', onPress: \(\) => void guardar\('esta'\) \}/.test(pr),
-    /\{ text: T\.rutina\.crearRutinaNueva, onPress: \(\) => void guardar\('nueva'\) \}/.test(pr),
+    /onPress=\{\(\) => \(seguro \? void guardar\('esta'\) : setPaso\('seguro'\)\)\}/.test(pr) && /seguro \? T\.rutina\.estasSeguro : /.test(pr) && /seguro \? T\.rutina\.si : T\.rutina\.reemplazar/.test(pr),
+    /onPress=\{\(\) => \(seguro \? setPaso\('pregunta'\) : void guardar\('nueva'\)\)\}/.test(pr) && /seguro \? T\.rutina\.no : T\.rutina\.crearRutinaNueva/.test(pr),
   ], [true, true]);
 }
 
@@ -19430,33 +19434,608 @@ console.log('\n260. Antes de mandar a Apple: lee el perfil adentro del .ipa y nu
   chequear('no llama a eas submit en ningún caso, ni habla con Apple', [/submit/i.test(fuente), /appstoreconnect|apple\.com|asc /i.test(fuente)], [false, false]);
 }
 
-console.log('\n261. El cuadro de la vida: Sí la usa, No la guarda, y "Sí fui" solo con un entreno en Salud (18/10)');
+console.log('\n261. El aviso de la vida: Usar la usa, Guardar la devuelve, y «Fui. Corregir día» marca el día sin gastarla (19/10)');
 {
-  // Proxies del código: el cuadro se probó montado en la vista web (sin Salud, sin el link).
-  const { readFileSync: leer261 } = await import('node:fs');
-  const de261 = (...p) => leer261(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  // El código, por sus caminos (el aviso se probó montado en la vista web).
+  const { readFileSync: leer261, existsSync: existe261 } = await import('node:fs');
+  const raiz261 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de261 = (...p) => leer261(join(raiz261, ...p), 'utf8').replace(/\r\n/g, '\n');
   const v = de261('movil', 'src', 'RachaSalvada.tsx');
   const ini = de261('movil', 'src', 'Inicio.tsx');
-  const stats = de261('movil', 'src', 'Stats.tsx');
-  const cal = de261('movil', 'src', 'CalendarioDias.tsx');
-  chequear('Sí cierra (la vida queda usada), No la devuelve, y el link sale solo con un true de Salud', [
-    /testID="vida-si"[^>]*onPress=\{alCerrar\}/.test(v),
-    /testID="vida-no"[^>]*onPress=\{\(\) => void guardar\(\)\}/.test(v),
-    /entrenoEse\(d\)\.catch\(\(\) => null\)[\s\S]{0,120}r\.lastIndexOf\(true\)/.test(v),
-    /\{diaEntrenado && \(\s*<Pressable testID="vida-corregir"/.test(v),
+  chequear('Usar vida anima y la deja usada, Guardar la devuelve, el link corrige con uno o varios días, sin Salud ni Stats', [
+    /testID="vida-usar"[^>]*onPress=\{\(\) => void usar\(\)\}/.test(v),
+    /testID="vida-guardar"[^>]*onPress=\{\(\) => void guardar\(\)\}/.test(v),
+    /testID="vida-corregir"[\s\S]{0,200}onPress=\{\(\) => void corregir\(\)\}/.test(v),
+    /setFase\(ok \? 'corregida' : 'aviso'\)/.test(v),
+    /salud|entrenoEse|Promise\.resolve\(true|alCorregir\(dias/.test(v),
     /Alert\./.test(v),
-  ], [true, true, true, true, false]);
-  chequear('"Sí fui" va al calendario de Stats con ese día abierto', [
-    /alCorregir=\{\(fecha\) => \{[\s\S]{0,140}pedirDia\(fecha\);\s*irAPestana\('stats'\);/.test(ini),
-    /escuchar\(ABRIR_DIA, \(f\) => \{[\s\S]{0,80}setPestana\('general'\)/.test(stats),
-    /setAncla\(\{ anio: d\.getFullYear\(\), mes: d\.getMonth\(\) \}\);\s*setAbierto\(abrirDia\.fecha\);/.test(cal),
-  ], [true, true, true]);
+  ], [true, true, true, true, false, false]);
+  const statsYCalendario = ['Stats.tsx', 'CalendarioDias.tsx', 'StatsGeneral.tsx'].map((a) => de261('movil', 'src', a)).join('\n');
+  chequear('Inicio: "Fui" con corregirDia en cada día del aviso, sin devolver la vida aparte; el camino a Stats ya no está', [
+    /alCorregir=\{async \(\) => \{\s*for \(const fecha of vidaUsada\.dias\) \{\s*const r = await corregirDia\(supabase, perfil\.id, fecha, 'fui'\);/.test(ini),
+    /alCorregir=\{async \(\) => \{(?:(?!alGuardar)[\s\S])*devolver_impulsos/.test(ini),
+    /pedirDia|abrirDia|ABRIR_DIA/.test(ini + statsYCalendario),
+    existe261(join(raiz261, 'movil', 'src', 'abrirDia.ts')),
+  ], [true, false, false, false]);
+
+  // POR LA BASE, el camino de la persona: faltó, la vida se usa al abrir (verificar_perdida),
+  // toca el link (corregir_dia 'fui' en cada día del aviso) y se mira cuántas le quedan.
+  // Con la regla de verdad: dos vidas y la tercera con racha de 20. Las secciones de arriba
+  // fijan la cuota con `cuotaDeVidas`; acá se fija en 3 (la que da una racha de 24) y se
+  // vuelve a dejar en 2, como estaba.
+  async function botonFui261(faltas) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await rachaDe(u, 24, faltas + 1);
+    const vidas = async () => (await db.query('select mis_impulsos() as m')).rows[0].m;
+    const antes = await vidas();
+    await db.query('select verificar_perdida()');
+    const usada = await vidas();
+    const dias = [...usada.ultimas].sort();
+    for (const d of dias) await db.query("select corregir_dia($1, 'fui')", [d]);
+    const despues = await vidas();
+    const racha = (await db.query('select racha_actual from profiles where id = $1', [u])).rows[0].racha_actual;
+    const devueltas = (await db.query('select count(*)::int as n from vidas_usadas where user_id = $1 and devuelta', [u])).rows[0].n;
+    return {
+      total: despues.total,
+      antes: antes.quedan,
+      conLaFalta: usada.quedan,
+      dias: dias.length,
+      despues: despues.quedan,
+      avisoQueda: despues.ultimas.length + despues.vigentes.length,
+      devueltas,
+      racha,
+    };
+  }
+  await cuotaDeVidas(3);
+  chequear('un día: la vida se usa, el link la deja sin gastar (las mismas que antes, ni una más) y la racha suma el día', await botonFui261(1),
+    { total: 3, antes: 3, conLaFalta: 2, dias: 1, despues: 3, avisoQueda: 0, devueltas: 0, racha: 25 });
+  chequear('dos días: corrige los dos, sin gastar ninguna y sin acreditar de más', await botonFui261(2),
+    { total: 3, antes: 3, conLaFalta: 1, dias: 2, despues: 3, avisoQueda: 0, devueltas: 0, racha: 26 });
+  await cuotaDeVidas(2);
+}
+console.log('\n262. El aviso de la vida: colores fijos, botones redondeados y 4,5:1 en todos los textos (19/10)');
+{
+  const { readFileSync: leer262 } = await import('node:fs');
+  const { contraste } = await import('../nucleo/contraste.ts');
+  const { C: C262 } = await import('../movil/src/colores.ts');
+  const v = leer262(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'RachaSalvada.tsx'), 'utf8').replace(/\r\n/g, '\n');
+  chequear('los colores son fijos: nada sale de la paleta del rango', [/paletaDe|pal\.principal|textoSobre/.test(v), /usar: \{ backgroundColor: C\.claro \}/.test(v), /guardar: \{ backgroundColor: C\.fondo, borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v), /linkTexto: \{ color: C\.link/.test(v)], [false, true, true, true]);
+  chequear('los botones, redondeados y con sombra', /boton: \{ borderRadius: 999,[^}]*\.\.\.sombra \}/.test(v), true);
+  const pares = [
+    ['Usar vida', C262.fondo, C262.claro],
+    ['Guardar vida', C262.tinta, C262.fondo],
+    ['(la racha baja 10 días)', C262.sub, C262.hoja],
+    ['Fui. Corregir día', C262.link, C262.hoja],
+    ['el texto del cuadro', C262.tinta, C262.hoja],
+  ];
+  chequear('todos los textos del aviso llegan a 4,5:1', pares.map(([n, a, b]) => [n, Math.round(contraste(a, b) * 100) / 100]).filter(([, c]) => c < 4.5), []);
+  chequear('el borde de «Guardar vida» llega a 3:1 sobre el cuadro (se lee como botón)', contraste(C262.bordeBoton, C262.hoja) >= 3, true);
+}
+// ======================= LOS BUGS DEL GIMNASIO (19/10) =======================
+const { readFileSync: leerBug } = await import('node:fs');
+const deBug = (...p) => leerBug(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+const RB = await import('../nucleo/rutina.ts');
+
+console.log('\n263. La sugerencia del siguiente sale del mismo día de la semana (19/10)');
+{
+  // Hoy lunes 19/10. El lunes 12: press → fondos. El martes 13, más reciente: press → aperturas.
+  const ses = [
+    { fecha: '2026-10-12', ejercicios: ['press_banca', 'fondos'] },
+    { fecha: '2026-10-13', ejercicios: ['press_banca', 'aperturas'] },
+  ];
+  chequear('el lunes, después de press sale lo del lunes pasado, no lo del martes', RB.despuesDe(ses, 'press_banca', ['press_banca'], '2026-10-19'), 'fondos');
+  chequear('sin una sesión de ese día de la semana, no sugiere nada', RB.despuesDe([ses[1]], 'press_banca', ['press_banca'], '2026-10-19'), null);
+  chequear('lo de hoy mismo sí cuenta (es el mismo día)', RB.despuesDe([{ fecha: '2026-10-19', ejercicios: ['press_banca', 'remo'] }, ses[1]], 'press_banca', ['press_banca'], '2026-10-19'), 'remo');
+}
+
+console.log('\n264. Cambiar de ejercicio en medio de la sesión: la lista sigue por donde iba (19/10)');
+{
+  const rut = ['a', 'b', 'c', 'd', 'e'];
+  chequear('sigue después de lo hecho; si cambiaste uno por otro, no vuelve atrás; al final, lo que faltó', [
+    RB.siguienteEnRutina(rut, ['a', 'b']),
+    RB.siguienteEnRutina(rut, ['a', 'x']),
+    RB.siguienteEnRutina(rut, ['a', 'd']),
+    RB.siguienteEnRutina(rut, ['a', 'd', 'e']),
+    RB.siguienteEnRutina(rut, []),
+    RB.siguienteEnRutina(rut, rut),
+  ], ['c', 'c', 'e', 'b', 'a', null]);
+}
+
+console.log('\n265. Un toque repetido en el + no es otra serie, y «Terminar serie» apaga el + de después (19/10)');
+{
+  // De punta a punta lo reproduce `supabase/probar-doble-toque.mjs` (test:real): dos toques
+  // seguidos en el + contaban dos series. Acá, la regla y que la usen los tres botones.
+  const TQ = await import('../movil/src/toques.ts');
+  chequear('dentro del segundo, el segundo toque no cuenta; después sí; cerrar el bloque apaga el + ese segundo', [
+    TQ.TOQUE_REPETIDO_MS,
+    TQ.cuentaLaSerie(10000), TQ.cuentaLaSerie(10300), TQ.cuentaLaSerie(11100),
+    TQ.cierraElBloque(20000), TQ.cuentaLaSerie(20400), TQ.cierraElBloque(20500), TQ.cuentaLaSerie(21100), TQ.cierraElBloque(21200),
+  ], [1000, true, false, true, true, false, false, true, true]);
+  const blo = deBug('movil', 'src', 'Bloque.tsx');
+  const des = deBug('movil', 'src', 'Descanso.tsx');
+  chequear('el + del bloque, «Terminar serie» y los dos «Serie hecha» del descanso pasan por la regla', [
+    /const sumar = \(\) => \{\s*if \(!cuentaLaSerie\(\)\) return;/.test(blo),
+    /if \(!cierraElBloque\(\)\) return;\s*alSiguiente\(\);/.test(blo),
+    (des.match(/onPress=\{\(\) => cuentaLaSerie\(\) && alSumar\(\)\}/g) ?? []).length,
+  ], [true, true, 2]);
+}
+
+console.log('\n266. Reemplazar el día: queda igual a lo entrenado, sin duplicar (19/10)');
+{
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const vacio = () => ({ descanso: false, ejercicios: [] });
+  const dias = [0, 1, 2, 3, 4, 5, 6].map(vacio);
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }, { ejercicio: 'fondos', series: 3 }] };
+  const id = (await db.query("select guardar_rutina(null, 'Entrenamiento 1', $1::jsonb) as id", [JSON.stringify(dias)])).rows[0].id;
+  // Lo entrenado: sentadilla, press, y sentadilla otra vez al final (dos tandas del mismo).
+  const hecho = RB.diaDeLaSesion([{ ejercicio: 'sentadilla', series: 2 }, { ejercicio: 'press_banca', series: 3 }, { ejercicio: 'sentadilla', series: 1 }]);
+  // Desde el 20/10 «Reemplazar» cambia solo lo nuevo (ver la 280): la sentadilla ocupa el
+  // lugar de los fondos, que no se hicieron, y el press queda con sus series.
+  const nuevos = RB.rutinaConLoHecho(dias, 1, hecho);
+  await db.query("select guardar_rutina($1, 'Entrenamiento 1', $2::jsonb)", [id, JSON.stringify(nuevos)]);
+  const filas = (await db.query('select dias from rutinas where user_id = $1', [u])).rows;
+  chequear('una sola rutina, y el lunes con lo nuevo en el lugar de lo que no se hizo: cada ejercicio una vez, el resto sin tocar', [
+    filas.length,
+    filas[0].dias[1].ejercicios.map((e) => [e.ejercicio, e.series]),
+    filas[0].dias[0].ejercicios.length,
+  ], [1, [['press_banca', 4], ['sentadilla', 3]], 0]);
+  const pr = deBug('movil', 'src', 'preguntarPorLaRutina.ts');
+  chequear('la ventana usa ese mismo camino', [/const hecho = diaDeLaSesion\(bloques\);/.test(pr), /rutinaConLoHecho\(actual\.dias, dia, hecho\)/.test(pr)], [true, true]);
+}
+
+console.log('\n267. La última vez de un ejercicio: series, pesos y el modo de carga (19/10)');
+{
+  const historial = [
+    { fecha: '2026-10-08', bloques: [{ ejercicio: 'curl_biceps', series: 3, pesos: [10, 10, 10], carga: 'una' }] },
+    { fecha: '2026-10-15', bloques: [{ ejercicio: 'remo_maquina', series: 2, pesos: [50, 55], carga: 'total' }, { ejercicio: 'curl_biceps', series: 2, pesos: [12, 12], carga: 'una' }, { ejercicio: 'curl_biceps', series: 1, pesos: [14], carga: 'una' }] },
+    { fecha: '2026-10-19', bloques: [{ ejercicio: 'curl_biceps', series: 1, pesos: [16], carga: 'una' }] },
+  ];
+  const u = typeof RB.ultimaVezDe === 'function' ? RB.ultimaVezDe : () => 'no existe';
+  chequear('la sesión más reciente antes de hoy, con las tandas de ese ejercicio juntas; sin historia, nada', [
+    u(historial, 'curl_biceps', '2026-10-19'),
+    u(historial, 'sentadilla', '2026-10-19'),
+  ], [{ fecha: '2026-10-15', series: 3, pesos: [12, 12, 14], carga: 'una' }, null]);
+  const blo = deBug('movil', 'src', 'Bloque.tsx');
+  chequear('el bloque la muestra al elegir el ejercicio', /T\.sesion\.ultimaVez\(/.test(blo), true);
+}
+
+console.log('\n268. «Fui. Corregir día» con dos días dice «días» (19/10)');
+{
   const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
   const { EN } = await import('../nucleo/textos-en.ts');
-  chequear('los textos, en los dos idiomas', [
-    ES.impulso.salvada.cuadro(1), ES.impulso.salvada.si, ES.impulso.salvada.no, ES.impulso.salvada.siFui,
-    EN.impulso.salvada.cuadro(1), EN.impulso.salvada.siFui,
-  ], ['Faltaste aquí. ¿Usar la vida?', 'Sí', 'No', 'Sí fui, corregir día', 'You missed here. Use the life?', 'I did go, fix the day']);
+  const f = (t, n) => (typeof t === 'function' ? t(n) : t);
+  chequear('uno y varios, en los dos idiomas', [f(ES.impulso.salvada.fuiCorregi, 1), f(ES.impulso.salvada.fuiCorregi, 2), f(EN.impulso.salvada.fuiCorregi, 2)], ['Fui. Corregir día', 'Fui. Corregir días', 'I went. Fix days']);
+}
+console.log('\n269. Rutinas: la lista fuera de editar, la de otra persona entera, y copiar por días (19/10)');
+{
+  const mi = deBug('movil', 'src', 'MiRutina.tsx');
+  const de = deBug('movil', 'src', 'RutinaDe.tsx');
+  const pl = deBug('movil', 'src', 'RutinaPlegada.tsx');
+  const RU = await import('../nucleo/rutinas.ts');
+  chequear('tu rutina fuera de editar: la lista del día, sin «Copiar este día»', /abajoDelDia=\{editando \? editorDelDia : undefined\}/.test(mi), true);
+  chequear('la de otra persona: todos los días abiertos con su lista, sin botón por día, y «Copiar esta rutina» siempre', [
+    /<RutinaPlegada [^>]*abiertos=\{!esYo\}/.test(de),
+    /abajoDelDia=/.test(de),
+    /hayRutinasGuardadas/.test(de),
+    /\{!esYo && \(\s*<Pressable testID="rutina-copiar"/.test(de),
+    /const esAbierto = abiertos \|\| abierto === d;/.test(pl),
+  ], [true, false, false, true, true]);
+  const dias = RU.semanaVacia();
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }] };
+  dias[3] = { descanso: false, ejercicios: [{ ejercicio: 'remo_barra', series: 3 }] };
+  dias[5] = { descanso: true, ejercicios: [] };
+  const copia = RU.soloLosDias(dias, [1, 5]);
+  chequear('copiar por días: los marcados tal cual, el resto vacío', [copia[1].ejercicios.length, copia[3].ejercicios.length, copia[5].descanso, copia[0].ejercicios.length], [1, 0, true, 0]);
+  chequear('«Copiar esta rutina» abre la elección, y se copian los elegidos', [
+    /onPress=\{\(\) => setEligiendo\(true\)\}/.test(de),
+    /copiarRutina\(supabase, nombreNuevo, soloLosDias\(rutina\.dias, elegidos\)\)/.test(de),
+  ], [true, true]);
+}
+console.log('\n270. El aviso de la vida rehecho: textos, vidas arriba, la secuencia al usarla y el día que se derrite (19/10)');
+{
+  const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
+  const { EN } = await import('../nucleo/textos-en.ts');
+  const F = await import('../nucleo/fechas.ts');
+  const IM = await import('../nucleo/impulsos.ts');
+  const sv = ES.impulso.salvada;
+  const en = EN.impulso.salvada;
+  chequear('los textos pedidos, con las fechas como las arma la app', [
+    sv.textoUno(F.fechaLinda('2026-10-16')),
+    sv.textoVarios(F.fechasLindas(['2026-10-17', '2026-10-15', '2026-10-16'])),
+    sv.vidaGastada,
+    sv.usarVida,
+    sv.guardarVida,
+    sv.bajaDiez,
+  ], [
+    'No registraste el 16 de octubre. Usa la vida para no perder la racha.',
+    'No registraste los días 15, 16 y 17 de octubre. Usa la vida para no perder la racha.',
+    'Salvaste un día, pero pierdes una vida.',
+    'Usar vida',
+    'Guardar vida',
+    '(la racha baja 10 días)',
+  ]);
+  chequear('días de dos meses: cada uno con su mes', F.fechasLindas(['2026-10-01', '2026-09-30']), '30 de setiembre y 1 de octubre');
+  chequear('el inglés, lo mismo', [en.textoUno('October 16'), en.vidaGastada, en.usarVida, en.guardarVida, en.fuiCorregi(1), en.fuiCorregi(3)], [
+    "You didn't log October 16. Use a life to keep your streak.",
+    'You saved a day, but you lose a life.',
+    'Use life',
+    'Save life',
+    'I went. Fix day',
+    'I went. Fix days',
+  ]);
+  const h = { fechas: ['2026-10-16'], dia: '2026-10-18' };
+  // Se derrite la primera vez que se abre después (al día siguiente, o más tarde si ese día no
+  // se abrió): Inicio borra la marca al empezar el deshielo y desde ahí queda la estrella sola.
+  chequear('el día salvado: helado el día que se usó, se derrite después, y no toca otros días', [
+    IM.frioDelDia(h, '2026-10-16', '2026-10-18'),
+    IM.frioDelDia(h, '2026-10-16', '2026-10-19'),
+    IM.frioDelDia(h, '2026-10-16', '2026-10-20'),
+    IM.frioDelDia(h, '2026-10-15', '2026-10-18'),
+    IM.frioDelDia(null, '2026-10-16', '2026-10-18'),
+  ], ['helado', 'derrite', 'derrite', null, null]);
+
+  const v = deBug('movil', 'src', 'RachaSalvada.tsx');
+  const ini = deBug('movil', 'src', 'Inicio.tsx');
+  const orden = ['<VidaQueTitila', 'style={estilos.tira}', 'testID="vida-cuadro"'].map((m) => v.indexOf(m));
+  chequear('las vidas arriba de los días y el cuadro debajo', orden.every((x, i) => x > 0 && (i === 0 || x > orden[i - 1])), true);
+  chequear('sin «te quedan» ni «racha congelada»', [/T\.impulso\.quedan|quedanVidas/.test(v), /congelad/i.test(JSON.stringify(ES.impulso) + JSON.stringify(EN.impulso))], [false, false]);
+  chequear('la estrella va dentro del botón y arriba del cuadro', [
+    /testID="vida-usar"[\s\S]{0,600}<Estrella tam=\{15\} modo="oscura" \/>/.test(v),
+    /<View style=\{estilos\.emblema\}[^>]*>\s*<Estrella /.test(v),
+  ], [true, true]);
+  const pasos = ['Animated.timing(comprime', 'setVuelo({ desde, hasta })', 'setPlantada(true)', 'setHelada(true)', 'alUsada()', "setFase('helada')"].map((m) => v.indexOf(m));
+  chequear('una sola secuencia: comprime, salta, se planta, se congela, y recién ahí se anota y sale el globito', pasos.every((x, i) => x > 0 && (i === 0 || x > pasos[i - 1])), true);
+  chequear('el globito sale en la fase helada', /fase === 'helada' && cola && \(\s*<Animated\.View testID="vida-globito"/.test(v), true);
+  chequear('Inicio: el día cubierto lleva el frío, y al otro día se borra la marca', [
+    /frio=\{d\.estadoDia === 'cubierto' \? frioDelDia\(helada, d\.fecha, hoy\) : null\}/.test(ini),
+    /alUsada=\{\(\) => \{[\s\S]{0,200}plataforma\.almacenamiento\.guardar\(CLAVE_VIDA_HELADA/.test(ini),
+    /h\.dia < hoyISO\(\)\) void plataforma\.almacenamiento\.borrar\(CLAVE_VIDA_HELADA\)/.test(ini),
+  ], [true, true, true]);
+}
+console.log('\n271. Las fotos del perfil no llevan "me gusta"; la grilla queda de tres por fila, redondeada y con sombra (20/10)');
+{
+  const fg = sinComentarios(deBug('movil', 'src', 'FotoGrande.tsx'));
+  const fq = sinComentarios(deBug('movil', 'src', 'FotosQueVen.tsx'));
+  const am = sinComentarios(deBug('movil', 'src', 'Album.tsx'));
+  // El corazón que queda es el de las rutinas (sección 275): ni la base ni la app lo cuelgan de una foto.
+  const mg271 = sinComentarios(deBug('compartido', 'meGusta.ts'));
+  chequear('sin corazón, sin número y sin contador en la foto abierta ni en las miniaturas', [
+    /Corazon|meGusta|me_gusta|cantidad/.test(fg + fq + am),
+    /🔥|fueg/i.test(fg + fq + am),
+    /foto/i.test(mg271) || /me_gusta_fotos/.test(deBug('supabase', 'schema.sql')),
+  ], [false, false, false]);
+  chequear('las fotos: tres por fila del ancho medido, redondeadas y con sombra', [
+    /onLayout=\{\(e\) => setAncho\(e\.nativeEvent\.layout\.width\)\}/.test(fq),
+    /const lado = Math\.floor\(\(\(ancho \|\| width - 48\) - HUECO \* 2\) \/ 3\)/.test(fq),
+    /sombra: \{ borderRadius: 14,[^}]*shadowOpacity/.test(fq),
+    /cuadrito: \{ borderRadius: 14, overflow: 'hidden' \}/.test(fq),
+  ], [true, true, true, true]);
+}
+console.log('\n272. El descanso al terminar: el reloj grande queda en 0:00 y lo de más va chico abajo a la derecha, sin cambiar de pantalla (19/10)');
+{
+  const { cuentaAtras } = await import('../compartido/descanso.ts');
+  const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
+  const { EN } = await import('../nucleo/textos-en.ts');
+  const d = sinComentarios(deBug('movil', 'src', 'Descanso.tsx'));
+  chequear('terminado, el reloj grande dice 0:00 y lo de más se escribe +0:40', [cuentaAtras(0), '+' + cuentaAtras(40)], ['0:00', '+0:40']);
+  chequear('el número grande es siempre la cuenta atrás (en 0 dice 0:00)', /<Text testID="descanso-reloj" style=\{estilos\.numero\}[^>]*>\s*\{cuentaAtras\(falta\)\}\s*<\/Text>/.test(d), true);
+  chequear('lo de más: solo al terminar, chico, abajo a la derecha del arco', [
+    /\{terminado && \(\s*<Text testID="descanso-de-mas" style=\{estilos\.deMas\}/.test(d),
+    /deMas: \{ position: 'absolute', right: 4, bottom: 4, color: C\.sub, fontSize: 15/.test(d),
+  ], [true, true]);
+  chequear('sin cambiar de pantalla: ni fondo nuevo, ni «LISTO», ni número achicado', [
+    /estilos\.listo|numeroPasado|rotuloListo/.test(d),
+    'rotuloListo' in ES.descanso || 'rotuloListo' in EN.descanso,
+  ], [false, false]);
+}
+console.log('\n273. La ventana al terminar: los textos pedidos, con el estilo de la app y no una alerta del sistema (19/10)');
+{
+  const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
+  const { EN } = await import('../nucleo/textos-en.ts');
+  const { contraste } = await import('../nucleo/contraste.ts');
+  const { C: C273 } = await import('../movil/src/colores.ts');
+  // El texto pedido va en dos frases, cada una en su renglón (juntas pasan la regla de la 89).
+  chequear('los textos pedidos', [ES.rutina.reemplazarDiaTitulo('Entrenamiento 1'), `${ES.rutina.cambiarDiaTexto} ${ES.rutina.cambiarDiaPregunta}`, ES.rutina.reemplazar, ES.rutina.crearRutinaNueva], [
+    '¿Reemplazar el día de la rutina «Entrenamiento 1»?',
+    'Hoy hiciste distintos ejercicios a los de tu rutina de este día. ¿Quieres reemplazarla o crear otra rutina con este entrenamiento?',
+    'Reemplazar',
+    'Crear rutina nueva',
+  ]);
+  chequear('y en inglés', [`${EN.rutina.cambiarDiaTexto} ${EN.rutina.cambiarDiaPregunta}`, EN.rutina.crearRutinaNueva], [
+    'Today you did different exercises from the ones in your routine for this day. Do you want to replace it or create another routine with this workout?',
+    'Create new routine',
+  ]);
+  const v = deBug('movil', 'src', 'VentanaRutina.tsx');
+  chequear('las dos frases van juntas en el texto de la ventana, una por renglón', /\{T\.rutina\.cambiarDiaTexto\}\s*\{'\\n'\}\s*\{T\.rutina\.cambiarDiaPregunta\}/.test(v), true);
+  const pr = deBug('movil', 'src', 'preguntarPorLaRutina.ts');
+  const ini = deBug('movil', 'src', 'Inicio.tsx');
+  chequear('una ventana propia: sin Alert, montada solo mientras hay pregunta', [
+    /Alert/.test(sinComentarios(pr) + sinComentarios(v)),
+    /\{preguntaRutina && <VentanaRutina pregunta=\{preguntaRutina\} alCerrar=\{\(\) => setPreguntaRutina\(null\)\} \/>\}/.test(ini),
+  ], [false, true]);
+  chequear('con el estilo de la app: tarjeta redondeada, título, texto y dos píldoras (crema y con borde)', [
+    /caja: \{[^}]*borderRadius: 22,/.test(v),
+    /pildora: \{ borderRadius: 999,/.test(v),
+    /crema: \{ backgroundColor: C\.claro \}/.test(v) && /borde: \{ borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v),
+    v.indexOf('estilos.titulo') < v.indexOf('estilos.texto') && v.indexOf('estilos.texto') < v.indexOf('estilos.acciones'),
+  ], [true, true, true, true]);
+  chequear('si no se guarda lo dice y no cierra', /if \(ok\) return alCerrar\(\);\s*setFallo\(true\);/.test(v), true);
+  chequear('los textos de la ventana llegan a 4,5:1', [
+    contraste(C273.tinta, '#10131c') >= 4.5,
+    contraste(C273.sub, '#10131c') >= 4.5,
+    contraste(C273.fondo, C273.claro) >= 4.5,
+  ], [true, true, true]);
+}
+console.log('\n274. La rutina carga en escalones: las series son bloques que entran de a uno, y cada fila sigue a la anterior (19/10)');
+{
+  const pl = deBug('movil', 'src', 'RutinaPlegada.tsx');
+  chequear('las series se dibujan como bloques (el cardio sigue en minutos) y el lector de pantalla oye cuántas', [
+    /e\.minutos === undefined && e\.series > 0 \? \(\s*<BloquesDeSeries series=\{e\.series\} desde=\{seriesAntes\(dia, i\)\} \/>/.test(pl),
+    /accessibilityLabel=\{T\.rutina\.series\(series\)\}/.test(pl),
+  ], [true, true]);
+  chequear('de a uno: 220 ms cada bloque, uno cada 70, con tope para una semana entera', [
+    /const ESCALON_MS = 220;/.test(pl),
+    /const ENTRE_ESCALONES_MS = 70;/.test(pl),
+    /delay: 150 \+ Math\.min\(indice, TOPE_DE_ESCALONES\) \* ENTRE_ESCALONES_MS/.test(pl),
+  ], [true, true, true]);
+  chequear('con "reducir movimiento" aparecen puestos', /if \(quieto\) return t\.setValue\(1\);/.test(pl), true);
+  // Cada fila arranca donde terminó la anterior: el escalón. Se corre la misma cuenta que el archivo.
+  const cuenta = pl.match(/const seriesAntes = \(dia: DiaDeSemana, i: number\) => (.+);/)?.[1];
+  const seriesAntes = cuenta ? new Function('dia', 'i', `return ${cuenta};`) : () => null;
+  const dia = { descanso: false, ejercicios: [{ ejercicio: 'a', series: 4 }, { ejercicio: 'cinta', series: 1, minutos: 20 }, { ejercicio: 'b', series: 3 }, { ejercicio: 'c', series: 2 }] };
+  chequear('cada fila sigue donde terminó la anterior (el cardio no suma bloques)', [0, 1, 2, 3].map((i) => seriesAntes(dia, i)), [0, 4, 4, 7]);
+}
+console.log('\n275. El corazón de las rutinas: uno por persona, tocar de nuevo lo quita, no a la propia, la cuenta es pública y quién lo dio no (migración 92, 20/10)');
+{
+  const como275 = async (u, sql, params = []) => {
+    await comoUsuario(u);
+    await db.exec('set role authenticated');
+    try {
+      return (await db.query(sql, params)).rows;
+    } catch (e) {
+      return { error: e.code ?? String(e.message).slice(0, 60) };
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  const a = await nuevoUsuario();
+  const b = await nuevoUsuario();
+  const c = await nuevoUsuario();
+  const d = await nuevoUsuario();
+  for (const x of [b, d]) await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [a, x]);
+  const semana = JSON.stringify(Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }] })));
+  const rutina = (await como275(a, 'select guardar_rutina(null, $1, $2::jsonb) as id', ['Fuerza', semana]))[0].id;
+  const cuenta = (u) => como275(u, 'select cantidad, mio from me_gusta_de_rutina($1)', [rutina]);
+  const marcar = (u, mio) => como275(u, 'select cantidad, mio from marcar_me_gusta_rutina($1, $2)', [rutina, mio]);
+
+  chequear('un amigo ve la rutina sin corazones', await cuenta(b), [{ cantidad: 0, mio: false }]);
+  chequear('lo da: uno, y es suyo', await marcar(b, true), [{ cantidad: 1, mio: true }]);
+  chequear('uno por persona: dos toques con el mismo pedido dejan uno', await marcar(b, true), [{ cantidad: 1, mio: true }]);
+  chequear('tocar de nuevo lo quita', await marcar(b, false), [{ cantidad: 0, mio: false }]);
+  await marcar(b, true);
+  chequear('otro amigo suma el suyo', await marcar(d, true), [{ cantidad: 2, mio: true }]);
+  chequear('a la rutina propia no se le da', await marcar(a, true), { error: '42501' });
+  chequear('la cuenta es pública: el dueño y un desconocido la ven, sin ninguno suyo', [await cuenta(a), await cuenta(c)], [[{ cantidad: 2, mio: false }], [{ cantidad: 2, mio: false }]]);
+  chequear('un desconocido no puede darlo', await marcar(c, true), { error: '42501' });
+  chequear('quién lo dio no se lee: la tabla está cerrada a la app', [
+    await como275(a, 'select user_id from me_gusta_rutinas'),
+    await como275(b, 'insert into me_gusta_rutinas (rutina_id, user_id) values ($1, $2)', [rutina, c]),
+    (await db.query(`select pg_get_function_result('public.me_gusta_de_rutina(uuid)'::regprocedure) as r`)).rows[0].r,
+  ], [{ error: '42501' }, { error: '42501' }, 'TABLE(cantidad integer, mio boolean)']);
+  await como275(a, 'select fijar_comparte_rutina(false)');
+  chequear('si la esconde, ya no se puede dar (la cuenta sigue)', [await marcar(c, true), await como275(b, 'select cantidad from marcar_me_gusta_rutina($1, false)', [rutina]), await cuenta(c)], [{ error: '42501' }, { error: '42501' }, [{ cantidad: 2, mio: false }]]);
+  await como275(a, 'select fijar_comparte_rutina(true)');
+  await db.query('delete from profiles where id = $1', [d]);
+  chequear('borrar la cuenta se lleva sus corazones', await cuenta(b), [{ cantidad: 1, mio: true }]);
+  await como275(a, 'select borrar_rutina($1)', [rutina]);
+  chequear('borrar la rutina se lleva los suyos', (await db.query('select count(*)::int as n from me_gusta_rutinas where rutina_id = $1', [rutina])).rows[0].n, 0);
+
+  // La pantalla, por sus caminos.
+  const cor = deBug('movil', 'src', 'Corazon.tsx');
+  const rd = deBug('movil', 'src', 'RutinaDe.tsx');
+  const mg = deBug('compartido', 'meGusta.ts');
+  chequear('en la rutina de otra persona, solo si es una guardada (con id) y la base contesta', [
+    /if \(esYo \|\| !idRutina\) return;/.test(rd),
+    /\{gusta && <Corazon cantidad=\{gusta\.cantidad\} mio=\{gusta\.mio\} alTocar=\{\(\) => void tocarCorazon\(\)\} \/>\}/.test(rd),
+    /const quiero = !gusta\.mio;[\s\S]{0,200}marcarMeGustaRutina\(supabase, idRutina, quiero\)/.test(rd),
+    /rpc\('marcar_me_gusta_rutina', \{ p_rutina: rutina, p_mio: mio \}\)/.test(mg),
+  ], [true, true, true, true]);
+  chequear('sin corazones no hay número; con corazones va adentro', /\{cantidad > 0 && <Text style=\{\[estilos\.numero/.test(cor), true);
+  chequear('estalla al darlo (anillo y seis chispas, 450 ms), no al sacarlo, y no con "reducir movimiento"', [
+    /const ESTALLIDO_MS = 450;/.test(cor),
+    /Array\.from\(\{ length: 6 \}/.test(cor),
+    /if \(!loDa \|\| \(await AccessibilityInfo\.isReduceMotionEnabled\(\)/.test(cor),
+    /estilos\.anillo/.test(cor) && /estilos\.chispa/.test(cor),
+    // Arrancada en el mismo toque, antes de montar la capa, terminaba sola en un cuadro.
+    /useEffect\(\(\) => \{\s*if \(estallidos === 0\) return;/.test(cor) && /setEstallando\(true\);\s*setEstallidos\(\(n\) => n \+ 1\);/.test(cor),
+  ], [true, true, true, true, true]);
+  const { contraste } = await import('../nucleo/contraste.ts');
+  const { C: C275 } = await import('../movil/src/colores.ts');
+  chequear('el número se lee: dado, en fondo sobre el corazón', contraste(C275.fondo, C275.corazon) >= 4.5, true);
+}
+console.log('\n276. «Guardar vida» no resta dos veces: el caso real (24 → 14 con 3 vidas gastadas) y sus vecinos (20/10)');
+{
+  // El caso de la sonda del 19/10: racha de 24 y después `faltas` días sin registrar. Al
+  // abrir, la base gasta las vidas que puede y, si no alcanzan, corta (24 → 14) y fija
+  // `perdida_fecha` en ayer. «Guardar vida» devuelve los días del aviso y vuelve a
+  // evaluar: `calcular_racha` no cuenta nada hasta `perdida_fecha`, así que no hay
+  // otra pérdida que cobrar. Se mira la racha al abrir, después de guardar y al reabrir.
+  async function guardar276(faltas, conHoy) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await rachaDe(u, 24, faltas + 1);
+    const racha = async () => (await db.query('select racha_actual from profiles where id = $1', [u])).rows[0].racha_actual;
+    await db.query('select verificar_perdida()');
+    const alAbrir = await racha();
+    const dias = (await db.query('select mis_impulsos() as m')).rows[0].m.ultimas;
+    if (conHoy) await db.query('insert into logs (user_id, fecha) values ($1, mi_hoy())', [u]);
+    const antesDeGuardar = await racha();
+    await db.query('select devolver_impulsos($1::date[])', [dias]);
+    const despues = await racha();
+    await db.query('select verificar_perdida()');
+    return { vidasGastadas: dias.length, alAbrir, antesDeGuardar, despues, alReabrir: await racha() };
+  }
+  await cuotaDeVidas(3);
+  chequear('el caso real: 24 días sin registrar, la base corta 24 → 14 con 3 vidas gastadas, y «Guardar» no resta otra vez', await guardar276(24, false),
+    { vidasGastadas: 3, alAbrir: 14, antesDeGuardar: 14, despues: 14, alReabrir: 14 });
+  chequear('lo mismo con el día de hoy ya anotado (14 + hoy = 15, y queda 15)', await guardar276(24, true),
+    { vidasGastadas: 3, alAbrir: 14, antesDeGuardar: 15, despues: 15, alReabrir: 15 });
+  chequear('con cinco faltas, igual: un solo corte', await guardar276(5, false),
+    { vidasGastadas: 3, alAbrir: 14, antesDeGuardar: 14, despues: 14, alReabrir: 14 });
+  chequear('si las vidas sí salvaron la racha, «Guardar» resta una vez, la que promete', await guardar276(2, false),
+    { vidasGastadas: 2, alAbrir: 24, antesDeGuardar: 24, despues: 14, alReabrir: 14 });
+  chequear('y con hoy anotado, una vez también', await guardar276(2, true),
+    { vidasGastadas: 2, alAbrir: 24, antesDeGuardar: 25, despues: 15, alReabrir: 15 });
+  await cuotaDeVidas(2);
+
+  // La pantalla devuelve los días del aviso y nada más; no resta por su cuenta.
+  const ini276 = deBug('movil', 'src', 'Inicio.tsx');
+  chequear('la pantalla: «Guardar» es devolver_impulsos con los días del aviso, sin restar en el teléfono', [
+    /alGuardar=\{async \(\) => \{\s*\/\/[^\n]*\n\s*const \{ data, error \} = await supabase\.rpc\('devolver_impulsos', \{ p_fechas: vidaUsada\.dias \}\);/.test(ini276),
+    /racha_actual\s*-\s*10|racha - 10/.test(ini276),
+  ], [true, false]);
+}
+console.log('\n277. La vida del domingo se ve el lunes en la tira de Inicio (20/10)');
+{
+  const { diasDeLaTira } = await import('../nucleo/impulsos.ts');
+  const tira = (hoy, frescas) => { const d = diasDeLaTira(hoy, frescas); return [d[0], d[6]]; };
+  // 2026-10-19 es lunes.
+  chequear('faltó el domingo y hoy es lunes: la tira son los últimos siete días, con el domingo adentro', diasDeLaTira('2026-10-19', ['2026-10-18']).includes('2026-10-18'), true);
+  chequear('y termina hoy', tira('2026-10-19', ['2026-10-18']), ['2026-10-13', '2026-10-19']);
+  chequear('sin vida fresca, la semana de calendario de siempre (lunes a domingo)', tira('2026-10-19', []), ['2026-10-19', '2026-10-25']);
+  chequear('una vida de esta misma semana no cambia nada', tira('2026-10-22', ['2026-10-20']), ['2026-10-19', '2026-10-25']);
+  chequear('un jueves con el domingo anterior todavía fresco: los últimos siete días', tira('2026-10-22', ['2026-10-18']), ['2026-10-16', '2026-10-22']);
+  chequear('una de hace más de una semana no cuenta', tira('2026-10-19', ['2026-10-11']), ['2026-10-19', '2026-10-25']);
+  const ini = deBug('movil', 'src', 'Inicio.tsx');
+  chequear('Inicio arma la tira con la vida del aviso y la helada, y la helada no se suelta a mitad del día', [
+    /const semana = conEstado\(diasDeLaTira\(hoy, \[\.\.\.\(vidaUsada\?\.dias \?\? \[\]\), \.\.\.\(helada\?\.fechas \?\? \[\]\)\]\)\);/.test(ini),
+    /setTimeout\(\(\) => setHelada\(null\)/.test(ini),
+    /semana=\{semanaDe\(vidaUsada\.dias\[vidaUsada\.dias\.length - 1\]\)\}/.test(ini),
+  ], [true, false, true]);
+}
+console.log('\n278. Las fotos: la entera y la miniatura se firman en un solo pedido, y el perfil de un amigo no espera en fila (20/10)');
+{
+  // Medido contra Supabase (20/10): dos pedidos de firma a la vez dan mediana de 267 ms con
+  // vueltas de 530; uno con las dos listas, 200 a 220. La grilla esperaba al más lento.
+  const { firmarConMiniaturas } = await import('../compartido/album.ts');
+  const pedidos = [];
+  const cliente = {
+    storage: { from: () => ({ createSignedUrls: async (rutas) => { pedidos.push(rutas.length); return { data: rutas.map((r) => ({ signedUrl: 'https://f/' + r, error: null })) }; } }) },
+  };
+  const r = await firmarConMiniaturas(cliente, ['u278/a.jpg', 'u278/b.jpg']);
+  chequear('un solo pedido de firma para las dos listas', pedidos, [4]);
+  chequear('y cada una vuelve en su lugar', r, {
+    enteras: ['https://f/u278/a.jpg', 'https://f/u278/b.jpg'],
+    minis: ['https://f/u278/a.mini.jpg', 'https://f/u278/b.mini.jpg'],
+  });
+  const al = deBug('compartido', 'album.ts');
+  const pe = deBug('compartido', 'perfil.ts');
+  const web = deBug('src', 'app', 'yo', 'page.tsx') + deBug('src', 'app', 'perfil', '[id]', 'page.tsx');
+  chequear('el álbum, los dos perfiles y la web usan esa firma (ya no firmarFotos y miniaturas por separado)', [
+    /firmarConMiniaturas\(supabase, rutas\)/.test(al),
+    (pe.match(/firmarConMiniaturas\(supabase, rutas\)/g) ?? []).length,
+    /miniaturas\(supabase, rutas\)|firmarFotos\(supabase, rutas\)/.test(al.replace(/export async function miniaturas[\s\S]*?\n}\n/, '') + pe + web),
+    (web.match(/firmarConMiniaturas\(/g) ?? []).length,
+  ], [true, 2, false, 2]);
+  chequear('el perfil de un amigo pide quién es, si son amigos y de dónde leer sus días a la vez', /await Promise\.all\(\[\s*supabase\.from\('usuarios_publicos'\)[\s\S]{0,400}\.from\('friendships'\)[\s\S]{0,300}tablaDeLogsDeAmigos\(supabase\),\s*\]\);/.test(pe), true);
+}
+console.log('\n279. Un lunes, la sesión arranca la rutina del lunes aunque el teléfono no tenga la copia (20/10, bug del gimnasio)');
+{
+  // Con el hook de verdad y el reloj de un lunes: rutina guardada de lunes (press de banca,
+  // sentadilla) y martes (remo, dominadas); el martes pasado se entrenó la del martes. Sin la
+  // copia del teléfono se caía a la deducida, que por rotación proponía remo.
+  const conCopia = await escenarioDeSesion('rutinaDelDia', 'conCopia');
+  const sinCopia = await escenarioDeSesion('rutinaDelDia', 'sinCopia');
+  chequear('con la copia del teléfono: la del lunes', conCopia.fallo ?? conCopia, { dia: 1, propone: 'press_banca', sugerido: true });
+  chequear('sin la copia: también la del lunes (la pide a la base), no la del martes', sinCopia.fallo ?? sinCopia, { dia: 1, propone: 'press_banca', sugerido: true });
+}
+console.log('\n280. Cambiar el primer ejercicio de la rutina en la sesión cambia ese ejercicio y nada más (20/10, bug del gimnasio)');
+{
+  // Con el hook de verdad y el reloj de un lunes: rutina de lunes press de banca y sentadilla;
+  // en la sesión se cambia press de banca por press inclinado en la primera serie, se termina,
+  // se contesta la ventana y se empieza otra. «Reemplazar» pisaba el día entero con lo
+  // entrenado ("me editó todo"): la sentadilla se perdía.
+  const lunes = { sugeridoAlEmpezar: 'press_banca', hecho: [['press_inclinado', 2]], pregunta: true, diaDespues: ['press_inclinado', 'sentadilla'], martesDespues: ['remo', 'dominadas'], laOtraPropone: 'press_inclinado' };
+  const antes = await escenarioDeSesion('primerEjercicio', 'antes', 'reemplazar');
+  const despues = await escenarioDeSesion('primerEjercicio', 'despues', 'reemplazar');
+  const sinCopia = await escenarioDeSesion('primerEjercicio', 'antes', 'reemplazar', 'sinCopia');
+  chequear('elegido antes de la serie: «Reemplazar» cambia ese ejercicio, deja la sentadilla y la sesión siguiente propone el nuevo', antes.fallo ?? antes, lunes);
+  chequear('o con la serie ya hecha y «Eran de press inclinado»: igual', despues.fallo ?? despues, lunes);
+  chequear('sin la copia del teléfono: igual, y el martes no se toca', sinCopia.fallo ?? sinCopia, lunes);
+  const nada = await escenarioDeSesion('primerEjercicio', 'antes', 'nada');
+  chequear('sin contestar la ventana, la rutina no cambia', nada.fallo ?? [nada.diaDespues, nada.laOtraPropone], [['press_banca', 'sentadilla'], 'press_banca']);
+  const { rutinaConLoHecho, hayQuePreguntarPorLaRutina } = await import('../nucleo/rutina.ts');
+  const d = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
+  const conR = (dia, hecho) => rutinaConLoHecho([d([]), dia], 1, hecho)[1].ejercicios.map((e) => e.ejercicio);
+  chequear('lo nuevo ocupa, en orden, el lugar de lo que no se hizo; lo que sobra va al final; lo demás queda', [
+    conR(d(['a', 'b', 'c']), d(['x'])),
+    conR(d(['a', 'b', 'c']), d(['b', 'c', 'x'])),
+    conR(d(['a', 'b', 'c']), d(['a', 'b', 'c', 'x'])),
+    conR(d(['a', 'b']), d(['x', 'y', 'z'])),
+    conR({ descanso: true, ejercicios: [] }, d(['x', 'y'])),
+  ], [['x', 'b', 'c'], ['x', 'b', 'c'], ['a', 'b', 'c', 'x'], ['x', 'y', 'z'], ['x', 'y']]);
+  chequear('sin nada nuevo (solo se saltó algo) no se pregunta: no habría qué cambiar', hayQuePreguntarPorLaRutina(d(['a', 'b', 'c']), d(['b'])), false);
+}
+console.log('\n281. «Guardar vida» no devuelve las vidas de un corte que igual pasó (migración 93, 20/10)');
+{
+  // El caso real: racha de 24 y `faltas` días sin registrar. Si las vidas no alcanzan, la
+  // base corta igual y esas vidas quedan gastadas (`aplicar_perdida_al`); «Guardar» las
+  // devolvía. Si sí salvaron la racha, «Guardar» las devuelve, como siempre.
+  async function guardar281(faltas) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await rachaDe(u, 24, faltas + 1);
+    const vidas = async () => (await db.query('select mis_impulsos() as m')).rows[0].m;
+    await db.query('select verificar_perdida()');
+    const v = await vidas();
+    const r = (await db.query('select devolver_impulsos($1::date[]) as r', [v.ultimas])).rows[0].r;
+    const despues = await vidas();
+    const devueltas = (await db.query('select count(*)::int as n from vidas_usadas where user_id = $1 and devuelta', [u])).rows[0].n;
+    const racha = (await db.query('select racha_actual from profiles where id = $1', [u])).rows[0].racha_actual;
+    return { gastadas: v.ultimas.length, quedabanAntes: v.quedan, devueltas: r.devueltas, enLaTabla: devueltas, quedanDespues: despues.quedan, racha };
+  }
+  await cuotaDeVidas(3);
+  chequear('el caso real: corte con 3 vidas gastadas; «Guardar» no devuelve ninguna y la racha sigue en 14', await guardar281(24),
+    { gastadas: 3, quedabanAntes: 0, devueltas: 0, enLaTabla: 0, quedanDespues: 0, racha: 14 });
+  chequear('si las vidas salvaron la racha, «Guardar» las devuelve y corta (24 → 14)', await guardar281(2),
+    { gastadas: 2, quedabanAntes: 1, devueltas: 2, enLaTabla: 2, quedanDespues: 3, racha: 14 });
+  await cuotaDeVidas(2);
+}
+console.log('\n282. Con la racha ya perdida no sale el aviso «Usa la vida para no perder la racha» (20/10)');
+{
+  // Por el mismo camino que la pantalla: lo que devuelve la base al abrir (`mis_impulsos` y
+  // el perfil) y la regla que decide el aviso (`vidasParaAvisar`).
+  const { vidasParaAvisar } = await import('../nucleo/impulsos.ts');
+  async function aviso282(faltas) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await rachaDe(u, 24, faltas + 1);
+    await db.query('select verificar_perdida()');
+    const m = (await db.query('select mis_impulsos() as m')).rows[0].m;
+    const p = (await db.query('select racha_actual, perdida_fecha from profiles where id = $1', [u])).rows[0];
+    const fecha = p.perdida_fecha ? new Date(p.perdida_fecha).toISOString().slice(0, 10) : null;
+    return { racha: p.racha_actual, vidasUsadas: m.ultimas.length, avisa: vidasParaAvisar(m.ultimas, null, fecha).length };
+  }
+  await cuotaDeVidas(3);
+  chequear('el caso real (24 días sin registrar, corte 24 → 14 con 3 vidas gastadas): sin aviso', await aviso282(24), { racha: 14, vidasUsadas: 3, avisa: 0 });
+  chequear('si las vidas salvaron la racha, el aviso sale con sus dos días', await aviso282(2), { racha: 24, vidasUsadas: 2, avisa: 2 });
+  await cuotaDeVidas(2);
+  chequear('la regla: sin corte, o con uno viejo, avisa todo; lo de un corte que igual pasó, no', [
+    vidasParaAvisar(['2026-10-17', '2026-10-18'], null, null),
+    vidasParaAvisar(['2026-10-17', '2026-10-18'], null, '2026-09-30'),
+    vidasParaAvisar(['2026-10-16', '2026-10-17', '2026-10-18'], null, '2026-10-18'),
+    vidasParaAvisar(['2026-10-17', '2026-10-18'], '2026-10-17', null),
+  ], [['2026-10-17', '2026-10-18'], ['2026-10-17', '2026-10-18'], [], ['2026-10-18']]);
+  const ini282 = deBug('movil', 'src', 'Inicio.tsx');
+  const web282 = deBug('src', 'app', 'page.tsx');
+  chequear('Inicio y la web deciden el aviso con esa regla y la fecha del corte', [
+    /const sinVer = vidasParaAvisar\(ultimas, await plataforma\.almacenamiento\.leer\(CLAVE_VIDA_VISTA\), d\.perfil\.perdida_fecha\);/.test(ini282),
+    /const sinVer = vidasParaAvisar\(ultimas, await plataforma\.almacenamiento\.leer\(CLAVE_IMPULSO_VISTO\), perdidaFecha\);/.test(web282),
+    (web282.match(/leerImpulsos\([^)]*perdida_fecha\)/g) ?? []).length,
+    /impulsosSinVer\(/.test(ini282 + web282),
+  ], [true, true, 3, false]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

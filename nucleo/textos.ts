@@ -91,14 +91,24 @@ const ES = {
         n === 1 ? 'La vida quedó para después.' : `Las ${n} vidas quedaron para después.`,
       // Sin señal no se devolvió nada: se dice lo que sigue siendo cierto.
       noSeGuardo: 'Sin señal no se guardó: la racha sigue como estaba. Prueba de nuevo.',
-      // EL CUADRO DESPUÉS DE LA ANIMACIÓN (18/10, a pedido): apunta al día en la semana.
-      // "No" la guarda para otra vez; el precio va chico debajo, porque no tiene vuelta.
-      cuadro: (n: number) => (n === 1 ? 'Faltaste aquí. ¿Usar la vida?' : 'Faltaste aquí. ¿Usar las vidas?'),
-      si: 'Sí',
-      no: 'No',
-      precioNo: (racha: number) => `Con «No» queda para otra vez y la racha en ${racha} ${racha === 1 ? 'día' : 'días'}.`,
-      // Solo si Salud tiene un entrenamiento de fuerza ese día: lleva al calendario de Stats.
-      siFui: 'Sí fui, corregir día',
+      // EL AVISO NUEVO (19/10, a pedido): colores fijos, dos botones redondeados y el link.
+      // El día o los días llegan ya escritos («16 de octubre», «15, 16 y 17 de octubre»).
+      textoUno: (dia: string) => `No registraste el ${dia}. Usa la vida para no perder la racha.`,
+      textoVarios: (dias: string) => `No registraste los días ${dias}. Usa la vida para no perder la racha.`,
+      usarVida: 'Usar vida',
+      guardarVida: 'Guardar vida',
+      bajaDiez: '(la racha baja 10 días)',
+      // El globito, cuando la vida ya se plantó en el día.
+      vidaGastada: 'Salvaste un día, pero pierdes una vida.',
+      // LA TERCERA SALIDA (18/10, a pedido): "Fui" en los días del aviso, sin gastar la vida.
+      // «Corregí» a pedido: es la única excepción a la regla del voseo de test:db.
+      // Con varios días, en plural (19/10).
+      fuiCorregi: (n: number) => (n === 1 ? 'Fui. Corregir día' : 'Fui. Corregir días'),
+      corregidaTitulo: 'Fuiste.',
+      corregidaDetalle: (n: number) =>
+        n === 1 ? 'Día corregido, no se gastó ninguna vida.' : 'Días corregidos, no se gastó ninguna vida.',
+      listo: 'Listo',
+      noSeCorrigio: 'Sin señal no se corrigió: la vida sigue usada. Prueba de nuevo.',
     },
   },
 
@@ -1071,7 +1081,6 @@ const ES = {
     seguir: 'Seguir',
     // La pantalla nueva del descanso (12/10): qué se estaba haciendo, arriba.
     rotulo: 'DESCANSO',
-    rotuloListo: 'LISTO',
     serieDe: (serie: number, meta: number) => (meta >= serie ? `serie ${serie} de ${meta}` : `serie ${serie}`),
     deMas: 'de más',
   },
@@ -1127,6 +1136,8 @@ const ES = {
     // LA RUTINA QUE SE PROPONE SOLA: lo sugerido se muestra distinto de lo hecho.
     sugerido: 'Sugerido',
     sugeridoNota: 'De tu rutina. Cuenta la primera serie para confirmarlo.',
+    // Debajo del ejercicio (19/10): la última sesión que lo tuvo. El detalle viene armado.
+    ultimaVez: (fecha: string, detalle: string) => `La última vez, ${fecha}: ${detalle}`,
 
     // CAMBIÉ DE EJERCICIO / ME EQUIVOQUÉ DE EJERCICIO. Son dos cosas
     // distintas y la app no puede adivinar cuál fue: si ya hay series
@@ -1247,6 +1258,8 @@ const ES = {
       'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre',
     ],
     delMes: (dia: number, mes: string) => `${dia} de ${mes}`,
+    // Varios días del mismo mes (19/10): «15, 16 y 17 de octubre». Los días llegan ya juntados.
+    diasDelMes: (dias: string, mes: string) => `${dias} de ${mes}`,
     hoy: 'Hoy',
     ayer: 'Ayer',
     diaYNumero: (dia: string, n: number) => `${dia} ${n}`,
@@ -1423,10 +1436,12 @@ const ES = {
     usarEsta: 'Usar esta',
     nueva: '+ Nueva',
     nombreBase: 'Entrenamiento',
-    // AL TERMINAR, SI SE HIZO OTRO DÍA QUE EL DE LA RUTINA (16/10): la alerta del sistema.
+    // AL TERMINAR, SI SE HIZO OTRO DÍA QUE EL DE LA RUTINA (16/10; ventana propia desde el 19/10).
     reemplazarDiaTitulo: (rutina: string) => `¿Reemplazar el día de la rutina «${rutina}»?`,
-    cambiarDiaTexto: 'Lo que hiciste hoy no es lo que tu rutina tiene para este día.',
-    crearRutinaNueva: 'Crear una rutina nueva',
+    // Dos frases, cada una en su renglón: juntas pasan de dos renglones (la regla de la sección 89).
+    cambiarDiaTexto: 'Hoy hiciste distintos ejercicios a los de tu rutina de este día.',
+    cambiarDiaPregunta: '¿Quieres reemplazarla o crear otra rutina con este entrenamiento?',
+    crearRutinaNueva: 'Crear rutina nueva',
     estasSeguro: '¿Estás seguro?',
     si: 'Sí',
     no: 'No',
@@ -1452,6 +1467,9 @@ const ES = {
     guardarDeducida: 'Guardarla como rutina',
     armarNueva: 'Armar una de cero',
     copiar: 'Copiar esta rutina',
+    // Copiar por días (19/10): un círculo por día, y se copian los marcados.
+    eligeDias: 'Elige los días que quieres copiar.',
+    copiarDias: (n: number) => (n === 0 ? 'Copiar' : n === 1 ? 'Copiar 1 día' : `Copiar ${n} días`),
     // Dice cuál quedó activa, y se puede volver a la de antes con un toque (15/10).
     copiada: (nombre: string) => `Copiada como «${nombre}», junto a las tuyas. La eliges en Stats, en Entrenamiento.`,
     copiadaActiva: (nombre: string) => `Copiada y activa: «${nombre}». La cambias en Stats, en Entrenamiento.`,
@@ -1528,6 +1546,10 @@ const ES = {
     enlacePaso3: (nombre: string) => `En la app, entra a Social y busca a ${nombre}.`,
     enlaceOjo: 'Su nombre en Ascent, para copiarlo:',
     cerrarFoto: 'Cerrar',
+    // El corazón de la foto abierta (19/10): sin corazones no hay número.
+    meGusta: 'Me gusta',
+    quitarMeGusta: 'Quitar me gusta',
+    cuantosMeGusta: (n: number) => (n === 1 ? '1 me gusta' : `${n} me gusta`),
     verFoto: (nombre: string) => `Ver la foto de ${nombre}`,
     // La página de la web a la que lleva el link de amigo.
     enlaceTitulo: (nombre: string) => `${nombre} te invita a Ascent`,

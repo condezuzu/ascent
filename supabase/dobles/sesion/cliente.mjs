@@ -99,6 +99,9 @@ function procesar(rpc, a) {
       return servidor.ultimoEjercicio;
     case 'como_arranca':
       return { carga: 'total', elegida: false, peso: null };
+    // Las rutinas guardadas de la cuenta (`servidor.rutinas`); sin eso, como antes.
+    case 'mis_rutinas':
+      return servidor.rutinas ?? null;
     default:
       return null;
   }

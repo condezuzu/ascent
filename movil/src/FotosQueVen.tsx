@@ -9,7 +9,7 @@ import { useFotoLocal } from './fotoLocal';
 
 /**
  * LAS FOTOS COMO LAS VE UN AMIGO, y nada más: sin administrar. Tocar una la
- * abre en grande (15/10), como la foto de perfil.
+ * abre en grande (15/10), como la foto de perfil. Sin "me gusta" (20/10).
  *
  * ES EL MISMO COMPONENTE EN LOS DOS PERFILES a propósito, igual que en la web
  * (`ComoMeVen.tsx`). El perfil propio promete "así te ven", y la única forma de
@@ -20,16 +20,20 @@ import { useFotoLocal } from './fotoLocal';
  * ENTRAN ESCALONADAS (`Surgir`): nueve cuadrados apareciendo de golpe se leen
  * como un parpadeo.
  */
+const HUECO = 8;
+
 export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
   const { width } = useWindowDimensions();
-  // Tres por fila, con el margen de la pantalla y el mismo hueco que el Álbum.
-  const lado = (width - 24 * 2 - 6 * 2) / 3;
+  // Tres por fila del ancho que de verdad tiene la grilla (19/10): calcularlo desde la
+  // pantalla suponía el margen de quien la monta.
+  const [ancho, setAncho] = useState(0);
+  const lado = Math.floor(((ancho || width - 48) - HUECO * 2) / 3);
   const [grande, setGrande] = useState<string | null>(null);
 
   if (fotos.length === 0) return null;
 
   return (
-    <View style={estilos.grilla}>
+    <View style={estilos.grilla} onLayout={(e) => setAncho(e.nativeEvent.layout.width)}>
       {fotos.map((f, i) => (
         <Surgir key={f.id} indice={i}>
           <Pressable testID="foto-de-perfil" style={{ width: lado }} onPress={() => setGrande(f.url || f.miniatura || null)} accessibilityRole="imagebutton">
@@ -48,10 +52,17 @@ export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
 /** Del disco del teléfono si ya se bajó (15/10): la clave es la foto, que no cambia aunque cambie el enlace. */
 function Cuadrito({ foto, lado }: { foto: FotoDePerfil; lado: number }) {
   const uri = useFotoLocal((foto.miniatura ? 'mini-foto-' : 'entera-foto-') + foto.id, foto.miniatura || foto.url);
-  return <Image source={uri ? { uri } : undefined} style={{ width: lado, height: lado, backgroundColor: C.linea }} accessibilityIgnoresInvertColors />;
+  // La sombra va afuera: con `overflow: hidden` en la misma vista, iOS la recorta.
+  return (
+    <View style={[estilos.sombra, { width: lado, height: lado }]}>
+      <Image source={uri ? { uri } : undefined} style={[estilos.cuadrito, { width: lado, height: lado }]} accessibilityIgnoresInvertColors />
+    </View>
+  );
 }
 
 const estilos = StyleSheet.create({
-  grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: HUECO, marginTop: 6 },
+  sombra: { borderRadius: 14, backgroundColor: C.linea, shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  cuadrito: { borderRadius: 14, overflow: 'hidden' },
   cuando: { color: C.apagado, fontSize: 10, marginTop: 4 },
 });

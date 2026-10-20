@@ -22,6 +22,15 @@ export const C = {
   error: '#e8705f',
   // El punto de "en vivo": quien está entrenando ahora (Ranking, la entrada).
   vivo: '#5fd08a',
+  // EL AVISO DE LA VIDA, CON COLORES FIJOS (19/10): no cambian con el rango.
+  // El azul de «Fui. Corregir día»: 8:1 sobre el cuadro.
+  link: '#6aa8ff',
+  // El borde de «Guardar vida»: 3,6:1 sobre el cuadro, para que se lea como botón.
+  bordeBoton: '#626b80',
+  // El frío del día congelado.
+  hielo: '#8fc4f0',
+  // El corazón dado, en la foto abierta: el número va en `fondo` encima, a más de 4,5:1.
+  corazon: '#ef6f7f',
 };
 
 /**

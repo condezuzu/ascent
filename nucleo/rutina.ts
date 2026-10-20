@@ -148,13 +148,17 @@ export const DIAS_DE_LA_SUGERENCIA = 7;
  * LO QUE SUELE VENIR DESPUÉS DE `ultimo` (16/10): en la sesión más reciente de la
  * última semana que lo tiene, el primero que le sigue y que hoy no se hizo. Curl de
  * bíceps → curl martillo. `null` si en la semana no aparece o no le siguió nada.
+ *
+ * SOLO DEL MISMO DÍA DE LA SEMANA (19/10, bug del gimnasio): miraba todas las sesiones de
+ * la semana, y el lunes podía proponer lo que siguió al press el martes, que es otro día.
  */
 export function despuesDe(sesiones: SesionRutina[], ultimo: string, yaHechos: string[], hoyISO: string): string | null {
   const hechos = new Set(yaHechos);
+  const hoy = diaDeSemana(hoyISO);
   const recientes = sesiones
     .filter((s) => {
       const dd = diasEntre(hoyISO, s.fecha);
-      return dd >= 0 && dd <= DIAS_DE_LA_SUGERENCIA;
+      return dd >= 0 && dd <= DIAS_DE_LA_SUGERENCIA && diaDeSemana(s.fecha) === hoy;
     })
     .sort(porFechaAsc)
     .reverse();
@@ -168,12 +172,22 @@ export function despuesDe(sesiones: SesionRutina[], ultimo: string, yaHechos: st
 }
 
 /**
- * EL SIGUIENTE EN LA CADENA: el primero de la rutina que todavía no se hizo.
- * `null` cuando ya se hicieron todos —la rutina propuesta terminó—.
+ * EL SIGUIENTE EN LA CADENA: el que viene en la rutina después de lo hecho, sin repetir lo
+ * ya hecho. `null` cuando ya se hicieron todos —la rutina propuesta terminó—.
+ *
+ * SIGUE POR DONDE IBA (19/10, bug del gimnasio): proponía el primero no hecho, así que al
+ * cambiar un ejercicio por otro la lista volvía para atrás. Ahora arranca después del
+ * último de la rutina que se hizo, y nunca antes de tantos como ya se hicieron (cambiar
+ * uno por otro también es avanzar uno). Al llegar al final, vuelve a lo que faltó.
  */
 export function siguienteEnRutina(rutina: string[], yaHechos: string[]): string | null {
   const hechos = new Set(yaHechos);
-  for (const e of rutina) if (!hechos.has(e)) return e;
+  const ultimo = Math.max(-1, ...yaHechos.map((e) => rutina.indexOf(e)));
+  const desde = Math.max(ultimo + 1, Math.min(yaHechos.length, rutina.length));
+  for (let i = 0; i < rutina.length; i++) {
+    const e = rutina[(desde + i) % rutina.length];
+    if (!hechos.has(e)) return e;
+  }
   return null;
 }
 
@@ -253,17 +267,58 @@ export function diaDeLaSesion(bloques: SesionVista['bloques']): { descanso: fals
   return { descanso: false, ejercicios: ejerciciosConSeries(bloques) };
 }
 
+/** Una sesión pasada con lo que se anotó en cada bloque: series, pesos y modo de carga. */
+export type SesionConPesos = { fecha: string; bloques: { ejercicio?: string | null; series?: number | null; pesos?: (number | null)[] | null; carga?: string | null }[] };
+
 /**
- * ¿SE PREGUNTA SI CAMBIA EL DÍA DE LA RUTINA? (16/10) Solo si se entrenó algo y no son
- * los mismos ejercicios que tiene ese día: el orden y las series no cuentan, otro
- * ejercicio sí. Un día de descanso o vacío en la rutina, con algo hecho, también.
+ * LA ÚLTIMA VEZ DE UN EJERCICIO (19/10, bug del gimnasio): la sesión más reciente antes de
+ * hoy que lo tiene, con sus tandas juntas. Las repeticiones no están: no se anotan por serie.
+ */
+export function ultimaVezDe(sesiones: SesionConPesos[], ejercicio: string, hoyISO: string): { fecha: string; series: number; pesos: (number | null)[]; carga?: string } | null {
+  let s: SesionConPesos | null = null;
+  for (const x of sesiones) if (x.fecha < hoyISO && (!s || x.fecha > s.fecha) && x.bloques.some((b) => b?.ejercicio === ejercicio)) s = x;
+  if (!s) return null;
+  const suyos = s.bloques.filter((b) => b?.ejercicio === ejercicio);
+  const series = suyos.reduce((t, b) => t + (Number(b.series) > 0 ? Math.round(Number(b.series)) : 0), 0);
+  const carga = suyos.find((b) => b.carga)?.carga ?? undefined;
+  return { fecha: s.fecha, series, pesos: suyos.flatMap((b) => b.pesos ?? []), ...(carga ? { carga } : {}) };
+}
+
+/** Los días de la rutina con ese día cambiado por lo que se hizo: el resto, sin tocar (19/10). */
+export function conDiaReemplazado<D>(dias: D[], dia: number, hecho: D): D[] {
+  return dias.map((d, i) => (i === dia ? hecho : d));
+}
+
+type DiaConEjercicios = { descanso: boolean; ejercicios: EjercicioDeRutina[] };
+
+/**
+ * LO QUE GUARDA «REEMPLAZAR» EN LA VENTANA DEL FINAL: el día con lo que cambió, y nada más
+ * (20/10, bug del gimnasio: "cambié el primer ejercicio y me editó todo"). Pisaba el día
+ * entero con lo entrenado: cambiar el primero y cortar antes borraba el resto. Ahora cada
+ * ejercicio hecho que el día no tenía ocupa, en orden, el lugar de uno del día que no se
+ * hizo; si sobran, van al final. Lo demás queda como estaba, con sus series.
+ */
+export function rutinaConLoHecho<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D): D[] {
+  const delDia = dias[dia];
+  const antes = delDia && !delDia.descanso ? delDia.ejercicios : [];
+  const hechos = new Set(hecho.ejercicios.map((e) => e.ejercicio));
+  const tenia = new Set(antes.map((e) => e.ejercicio));
+  const nuevos = hecho.ejercicios.filter((e) => !tenia.has(e.ejercicio));
+  let usados = 0;
+  const ejercicios = antes.map((e) => (!hechos.has(e.ejercicio) && usados < nuevos.length ? nuevos[usados++] : e));
+  return conDiaReemplazado(dias, dia, { ...hecho, descanso: false, ejercicios: [...ejercicios, ...nuevos.slice(usados)] });
+}
+
+/**
+ * ¿SE PREGUNTA SI CAMBIA EL DÍA DE LA RUTINA? (16/10) Solo si se entrenó algo que ese día
+ * no tiene: el orden y las series no cuentan, otro ejercicio sí. Un día de descanso o vacío
+ * en la rutina, con algo hecho, también. Saltearse uno ya no pregunta (20/10): «Reemplazar»
+ * solo cambia lo nuevo (`rutinaConLoHecho`), así que no habría qué cambiar.
  */
 export function hayQuePreguntarPorLaRutina(
   delDia: { descanso: boolean; ejercicios: { ejercicio: string }[] } | undefined,
   hecho: { ejercicios: { ejercicio: string }[] }
 ): boolean {
-  if (hecho.ejercicios.length === 0) return false;
   const tiene = new Set(delDia && !delDia.descanso ? delDia.ejercicios.map((e) => e.ejercicio) : []);
-  const hizo = new Set(hecho.ejercicios.map((e) => e.ejercicio));
-  return tiene.size !== hizo.size || [...hizo].some((e) => !tiene.has(e));
+  return hecho.ejercicios.some((e) => !tiene.has(e.ejercicio));
 }

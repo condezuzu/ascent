@@ -13,7 +13,7 @@ import Insignia from '@/components/Insignia';
 import Avatar from '@/components/Avatar';
 import Nav from '@/components/Nav';
 import PantallaDeslizable from '@/components/PantallaDeslizable';
-import { miniaturas } from '@compartido/album';
+import { firmarConMiniaturas } from '@compartido/album';
 import { aceptarAmistad } from '@compartido/ranking';
 import { tablaDeLogsDeAmigos } from '@compartido/esquema';
 import { olvidarPendientes } from '@/lib/avisos';
@@ -29,7 +29,6 @@ import ComoMeVen, {
   FOTOS_VISIBLES,
   type FotoVisible,
 } from '@/components/ComoMeVen';
-import { firmarFotos } from '@compartido/firmas';
 
 type FotoPerfil = FotoVisible;
 
@@ -137,15 +136,12 @@ export default function Perfil() {
           ? await supabase.from(deAmigos).select('id, fecha').in('id', logIds)
           : { data: [] };
         const mapa = new Map((logsFotos ?? []).map((l) => [l.id, l.fecha]));
-        // Las URL enteras y las miniaturas a la vez: la grilla usa la chica.
-        const [{ data: firmadas }, chicas] = await Promise.all([
-          firmarFotos(supabase, fs.map((f) => f.storage_path as string)).then((us) => ({ data: us.map((signedUrl) => ({ signedUrl: signedUrl ?? '' })) })),
-          miniaturas(supabase, fs.map((f) => f.storage_path as string)),
-        ]);
+        // Las URL enteras y las miniaturas en un solo pedido: la grilla usa la chica.
+        const { enteras: firmadas, minis: chicas } = await firmarConMiniaturas(supabase, fs.map((f) => f.storage_path as string));
         setFotos(
           fs.map((f, i) => ({
             id: f.id,
-            url: firmadas?.[i]?.signedUrl ?? '',
+            url: firmadas[i] ?? '',
             miniatura: chicas[i] ?? undefined,
             fecha: f.log_id ? (mapa.get(f.log_id) ?? null) : null,
           }))

@@ -398,7 +398,8 @@ export default function MiRutina({
           <RutinaPlegada
             dias={actual.dias}
             catalogo={catalogo}
-            abajoDelDia={editando ? editorDelDia : accionesDeCopia}
+            // Fuera de editar, la lista del día sola (19/10): copiar y pegar quedan en Editar.
+            abajoDelDia={editando ? editorDelDia : undefined}
             abiertoAlEmpezar={abrirHoy ? new Date().getDay() : undefined}
             testID="rutina-guardada"
           />

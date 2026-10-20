@@ -28,8 +28,9 @@ import { C, conAlfa } from './colores';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
-import { hoyISO } from '@nucleo/fechas';
+import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { cronoLindo } from '@nucleo/sesiones';
+import { cierraElBloque, cuentaLaSerie, TOQUE_REPETIDO_MS } from './toques';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN — en nativo.
@@ -46,6 +47,14 @@ import { cronoLindo } from '@nucleo/sesiones';
  * - Cambiar de ejercicio con series sin cerrar pregunta de cuál eran.
  * - Sin la migración de cada cosa (peso 36, modo 38), el campo no aparece.
  */
+/** «3 series · 12, 12, 14 kg, un lado por vez», con las palabras del resumen del día. */
+function detalleDeLaUltimaVez(u: { series: number; pesos: (number | null)[]; carga?: string }, unidad: Unidad) {
+  const conPeso = u.pesos.filter((p): p is number => typeof p === 'number' && p > 0);
+  if (conPeso.length === 0) return T.resumen.series(u.series);
+  const carga = (u.carga ?? 'total') as Parameters<typeof T.resumen.pesosDeSeries>[2];
+  return T.resumen.series(u.series) + ' · ' + T.resumen.pesosDeSeries(conPeso.map((p) => pesoCorto(p, unidad)).join(', '), unidad, carga);
+}
+
 export default function Bloque({
   estado,
   total,
@@ -54,6 +63,7 @@ export default function Bloque({
   cargaConsultada,
   subida,
   diaDeSesion,
+  ultimaVez,
   alSumar,
   debajoDelMas,
   globoDelMas,
@@ -82,6 +92,8 @@ export default function Bloque({
   subida?: { ejercicio: string; series: number; antes: number; ahora: number } | null;
   /** El día de la sesión (no el del reloj): es el día de las marcas. Ver `diaDeLaSesion`. */
   diaDeSesion?: string;
+  /** La última vez que se hizo este ejercicio (19/10): se muestra debajo del nombre. */
+  ultimaVez?: { fecha: string; series: number; pesos: (number | null)[]; carga?: string } | null;
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
@@ -108,6 +120,7 @@ export default function Bloque({
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [eligiendo, setEligiendo] = useState(false);
   const [lista, setLista] = useState(false);
+  const [pausa, setPausa] = useState(false);
   const [aDonde, setADonde] = useState<string | null | undefined>(undefined);
   const [prefierePeso, setPrefierePeso] = useState(true);
   const version = useVersionDelEsquema();
@@ -151,6 +164,7 @@ export default function Bloque({
   const minutos = estado.minutos ?? MINUTOS_DE_ARRANQUE;
   const cumplida = esTiempo ? estado.hechas >= 1 : metaCumplida(estado);
   const sumar = () => {
+    if (!cuentaLaSerie()) return;
     if (!esTiempo) return alSumar();
     if (estado.minutos === undefined) alElegirMinutos?.(minutos);
     alSumar({ sinDescanso: true });
@@ -267,6 +281,13 @@ export default function Bloque({
         {esFantasma && <Text style={estilos.badgeSugerido}>{T.sesion.sugerido}</Text>}
       </View>
       {esFantasma && <Text style={estilos.sugeridoNota}>{T.sesion.sugeridoNota}</Text>}
+      {/* LA ÚLTIMA VEZ (19/10, bug del gimnasio): series, pesos y el modo (un lado por vez,
+          por mancuerna…); la máquina ya la dice el nombre. Las repeticiones no se anotan. */}
+      {!!estado.ejercicio && !!ultimaVez && ultimaVez.series > 0 && (
+        <Text style={estilos.sugeridoNota} testID="ultima-vez">
+          {T.sesion.ultimaVez(fechaLinda(ultimaVez.fecha), detalleDeLaUltimaVez(ultimaVez, unidad))}
+        </Text>
+      )}
       {globitoSubir && (
         <Globito
           testID="globito-subir"
@@ -428,8 +449,12 @@ export default function Bloque({
           <Pressable
             style={[estilos.mas, estilos.masCerrar]}
             onPress={() => {
+              if (!cierraElBloque()) return;
               alSiguiente();
               setLista(true);
+              // El + del bloque que sigue queda apagado ese segundo: es el que cae debajo del dedo.
+              setPausa(true);
+              setTimeout(() => setPausa(false), TOQUE_REPETIDO_MS);
             }}
           >
             <Text style={estilos.cerrarTexto}>{T.sesion.terminarSerie}</Text>
@@ -448,7 +473,7 @@ export default function Bloque({
           </Pressable>
           <MasQuePulsa
             testID={esTiempo ? 'cardio-principal' : undefined}
-            style={[estilos.mas, estilos.masAncho, esTiempo && estilos.masCerrar]}
+            style={[estilos.mas, estilos.masAncho, esTiempo && estilos.masCerrar, pausa && estilos.masEnPausa]}
             pulsa={!esTiempo}
             onPress={esTiempo ? principalDeCardio.accion : sumar}
             accessibilityLabel={esTiempo ? principalDeCardio.texto : T.inicio.sumarSerie}
@@ -693,6 +718,7 @@ const estilos = StyleSheet.create({
   },
   masTexto: { color: C.claro, fontSize: 28, fontWeight: '200' },
   masCerrar: { backgroundColor: C.claro, borderColor: C.claro, flex: 3, marginTop: 0 },
+  masEnPausa: { opacity: 0.35 },
   // Un cuarto del ancho contra tres: doce sumas contra una resta.
   menos: { flex: 1, marginTop: 0 },
   menosApagado: { opacity: 0.35 },

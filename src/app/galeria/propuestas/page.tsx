@@ -49,6 +49,11 @@ const PROPUESTAS = [
     titulo: 'Quitar el punto del gimnasio: preguntar antes',
     queEs: 'El botón se vuelve la pregunta en su lugar, como «Terminar» en Inicio.',
   },
+  {
+    ruta: '/galeria/propuestas/vida',
+    titulo: 'La vida: un destello, y tres maneras de usarla',
+    queEs: 'La vida dibujada como un destello de cuatro puntas, y tres animaciones para elegir: titila, vuela al día que faltaste o congela la racha.',
+  },
 ];
 
 export default function Propuestas() {
