@@ -1425,10 +1425,12 @@ const ES = {
     usarEsta: 'Usar esta',
     nueva: '+ Nueva',
     nombreBase: 'Entrenamiento',
-    // AL TERMINAR, SI SE HIZO OTRO DÍA QUE EL DE LA RUTINA (16/10): la alerta del sistema.
+    // AL TERMINAR, SI SE HIZO OTRO DÍA QUE EL DE LA RUTINA (16/10; ventana propia desde el 19/10).
     reemplazarDiaTitulo: (rutina: string) => `¿Reemplazar el día de la rutina «${rutina}»?`,
-    cambiarDiaTexto: 'Lo que hiciste hoy no es lo que tu rutina tiene para este día.',
-    crearRutinaNueva: 'Crear una rutina nueva',
+    // Dos frases, cada una en su renglón: juntas pasan de dos renglones (la regla de la sección 89).
+    cambiarDiaTexto: 'Hoy hiciste distintos ejercicios a los de tu rutina de este día.',
+    cambiarDiaPregunta: '¿Quieres reemplazarla o crear otra rutina con este entrenamiento?',
+    crearRutinaNueva: 'Crear rutina nueva',
     estasSeguro: '¿Estás seguro?',
     si: 'Sí',
     no: 'No',

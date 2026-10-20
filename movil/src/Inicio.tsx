@@ -51,7 +51,8 @@ import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
 import { corregirDia } from '@compartido/dia';
-import { preguntarPorLaRutina } from './preguntarPorLaRutina';
+import { rutinaParaPreguntar, type PreguntaDeRutina } from './preguntarPorLaRutina';
+import VentanaRutina from './VentanaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
 
@@ -147,6 +148,7 @@ export default function Inicio({
   // `cierre`, más abajo, que es el de hoy o nada.
   const [cierreGuardado, setCierreGuardado] = useState<{ de: string; cierre: CierreDeSesion } | null>(null);
   const setCierre = (c: CierreDeSesion | null) => setCierreGuardado(c ? { de: hoyISO(), cierre: c } : null);
+  const [preguntaRutina, setPreguntaRutina] = useState<PreguntaDeRutina | null>(null);
   /**
    * EL RESUMEN SE CIERRA, LOS MINUTOS SE QUEDAN (25/9).
    *
@@ -920,7 +922,7 @@ export default function Inicio({
                     setCierre(c);
                     setMinutosDeHoy(c.minutos);
                     // ¿Otro día que el de la rutina guardada? Se pregunta (16/10).
-                    void preguntarPorLaRutina(c.bloques);
+                    void rutinaParaPreguntar(c.bloques).then(setPreguntaRutina);
                   }
                   cargar();
                 }}
@@ -1093,6 +1095,8 @@ export default function Inicio({
           alCerrar={() => setSubida(null)}
         />
       )}
+
+      {preguntaRutina && <VentanaRutina pregunta={preguntaRutina} alCerrar={() => setPreguntaRutina(null)} />}
 
       {vidaUsada && !sesion.estado.corriendo && (
         <RachaSalvada

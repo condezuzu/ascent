@@ -14054,7 +14054,7 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
     [...tsxDe('movil/src'), ...tsxDe('movil/app')].map((ruta) => [ruta, sinComentarios(leer179(join(aca179, '..', ruta), 'utf8'))])
   );
   // 1. Las que se dibujan SOLO mientras están abiertas: nacen al abrir sin ayuda.
-  const SE_MONTAN_AL_ABRIR = ['HojaDelDia', 'RachaSalvada', 'SubidaRango'];
+  const SE_MONTAN_AL_ABRIR = ['HojaDelDia', 'RachaSalvada', 'SubidaRango', 'VentanaRutina'];
   // 2. Las que no son una hoja que se abre con algo, sino parte de su pantalla.
   const SON_DE_SU_PANTALLA = {
     'movil/src/Hoja.tsx': 'es la hoja base',
@@ -19235,7 +19235,7 @@ console.log('\n257. Al terminar, si hiciste otro día que el de la rutina guarda
     RU257.hayQuePreguntarPorLaRutina(dia(['press_banca']), { descanso: false, ejercicios: [] }),
   ], [false, true, true, true, false]);
   const ini257 = (await import('node:fs')).readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'Inicio.tsx'), 'utf8');
-  chequear('Inicio pregunta después de Terminar, con los bloques que se guardaron', /if \(c && !c\.deshizoElDia\) \{[\s\S]{0,200}void preguntarPorLaRutina\(c\.bloques\);/.test(ini257), true);
+  chequear('Inicio pregunta después de Terminar, con los bloques que se guardaron', /if \(c && !c\.deshizoElDia\) \{[\s\S]{0,200}void rutinaParaPreguntar\(c\.bloques\)\.then\(setPreguntaRutina\);/.test(ini257), true);
 }
 
 console.log('\n258. Copiar un día y pegarlo en otro, de la misma rutina o de otra (16/10)');
@@ -19267,10 +19267,11 @@ console.log('\n259. La vida usada se anota al mostrarse, y reemplazar el día de
     /if \(sesion\.estado\.corriendo && vidaMostrada\.current\) \{\s*vidaMostrada\.current = false;\s*setVidaUsada\(null\);/.test(ini),
     /alCerrar=\{async \(\) => \{\s*\/\/ Cerrar es lo que ANOTA/.test(ini),
   ], [true, true, true, false]);
-  const pr = de259('movil', 'src', 'preguntarPorLaRutina.ts');
+  // Desde el 19/10 es una ventana propia (`VentanaRutina`), con el mismo «¿Estás seguro?».
+  const pr = de259('movil', 'src', 'VentanaRutina.tsx');
   chequear('reemplazar el día pide "¿Estás seguro?" con Sí y No; crear una rutina nueva va directo', [
-    /text: T\.rutina\.reemplazar,\s*onPress: \(\) =>\s*Alert\.alert\(T\.rutina\.estasSeguro, undefined, \[\s*\{ text: T\.rutina\.no, style: 'cancel' \},\s*\{ text: T\.rutina\.si, style: 'destructive', onPress: \(\) => void guardar\('esta'\) \}/.test(pr),
-    /\{ text: T\.rutina\.crearRutinaNueva, onPress: \(\) => void guardar\('nueva'\) \}/.test(pr),
+    /onPress=\{\(\) => \(seguro \? void guardar\('esta'\) : setPaso\('seguro'\)\)\}/.test(pr) && /seguro \? T\.rutina\.estasSeguro : /.test(pr) && /seguro \? T\.rutina\.si : T\.rutina\.reemplazar/.test(pr),
+    /onPress=\{\(\) => \(seguro \? setPaso\('pregunta'\) : void guardar\('nueva'\)\)\}/.test(pr) && /seguro \? T\.rutina\.no : T\.rutina\.crearRutinaNueva/.test(pr),
   ], [true, true]);
 }
 
@@ -19691,6 +19692,44 @@ console.log('\n272. El descanso al terminar: el reloj grande queda en 0:00 y lo 
     /estilos\.listo|numeroPasado|rotuloListo/.test(d),
     'rotuloListo' in ES.descanso || 'rotuloListo' in EN.descanso,
   ], [false, false]);
+}
+console.log('\n273. La ventana al terminar: los textos pedidos, con el estilo de la app y no una alerta del sistema (19/10)');
+{
+  const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
+  const { EN } = await import('../nucleo/textos-en.ts');
+  const { contraste } = await import('../nucleo/contraste.ts');
+  const { C: C273 } = await import('../movil/src/colores.ts');
+  // El texto pedido va en dos frases, cada una en su renglón (juntas pasan la regla de la 89).
+  chequear('los textos pedidos', [ES.rutina.reemplazarDiaTitulo('Entrenamiento 1'), `${ES.rutina.cambiarDiaTexto} ${ES.rutina.cambiarDiaPregunta}`, ES.rutina.reemplazar, ES.rutina.crearRutinaNueva], [
+    '¿Reemplazar el día de la rutina «Entrenamiento 1»?',
+    'Hoy hiciste distintos ejercicios a los de tu rutina de este día. ¿Quieres reemplazarla o crear otra rutina con este entrenamiento?',
+    'Reemplazar',
+    'Crear rutina nueva',
+  ]);
+  chequear('y en inglés', [`${EN.rutina.cambiarDiaTexto} ${EN.rutina.cambiarDiaPregunta}`, EN.rutina.crearRutinaNueva], [
+    'Today you did different exercises from the ones in your routine for this day. Do you want to replace it or create another routine with this workout?',
+    'Create new routine',
+  ]);
+  const v = deBug('movil', 'src', 'VentanaRutina.tsx');
+  chequear('las dos frases van juntas en el texto de la ventana, una por renglón', /\{T\.rutina\.cambiarDiaTexto\}\s*\{'\\n'\}\s*\{T\.rutina\.cambiarDiaPregunta\}/.test(v), true);
+  const pr = deBug('movil', 'src', 'preguntarPorLaRutina.ts');
+  const ini = deBug('movil', 'src', 'Inicio.tsx');
+  chequear('una ventana propia: sin Alert, montada solo mientras hay pregunta', [
+    /Alert/.test(sinComentarios(pr) + sinComentarios(v)),
+    /\{preguntaRutina && <VentanaRutina pregunta=\{preguntaRutina\} alCerrar=\{\(\) => setPreguntaRutina\(null\)\} \/>\}/.test(ini),
+  ], [false, true]);
+  chequear('con el estilo de la app: tarjeta redondeada, título, texto y dos píldoras (crema y con borde)', [
+    /caja: \{[^}]*borderRadius: 22,/.test(v),
+    /pildora: \{ borderRadius: 999,/.test(v),
+    /crema: \{ backgroundColor: C\.claro \}/.test(v) && /borde: \{ borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v),
+    v.indexOf('estilos.titulo') < v.indexOf('estilos.texto') && v.indexOf('estilos.texto') < v.indexOf('estilos.acciones'),
+  ], [true, true, true, true]);
+  chequear('si no se guarda lo dice y no cierra', /if \(ok\) return alCerrar\(\);\s*setFallo\(true\);/.test(v), true);
+  chequear('los textos de la ventana llegan a 4,5:1', [
+    contraste(C273.tinta, '#10131c') >= 4.5,
+    contraste(C273.sub, '#10131c') >= 4.5,
+    contraste(C273.fondo, C273.claro) >= 4.5,
+  ], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
