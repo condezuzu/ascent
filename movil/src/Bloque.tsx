@@ -28,7 +28,7 @@ import { C, conAlfa } from './colores';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
-import { hoyISO } from '@nucleo/fechas';
+import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { cronoLindo } from '@nucleo/sesiones';
 import { cierraElBloque, cuentaLaSerie, TOQUE_REPETIDO_MS } from './toques';
 
@@ -47,6 +47,14 @@ import { cierraElBloque, cuentaLaSerie, TOQUE_REPETIDO_MS } from './toques';
  * - Cambiar de ejercicio con series sin cerrar pregunta de cuál eran.
  * - Sin la migración de cada cosa (peso 36, modo 38), el campo no aparece.
  */
+/** «3 series · 12, 12, 14 kg, un lado por vez», con las palabras del resumen del día. */
+function detalleDeLaUltimaVez(u: { series: number; pesos: (number | null)[]; carga?: string }, unidad: Unidad) {
+  const conPeso = u.pesos.filter((p): p is number => typeof p === 'number' && p > 0);
+  if (conPeso.length === 0) return T.resumen.series(u.series);
+  const carga = (u.carga ?? 'total') as Parameters<typeof T.resumen.pesosDeSeries>[2];
+  return T.resumen.series(u.series) + ' · ' + T.resumen.pesosDeSeries(conPeso.map((p) => pesoCorto(p, unidad)).join(', '), unidad, carga);
+}
+
 export default function Bloque({
   estado,
   total,
@@ -55,6 +63,7 @@ export default function Bloque({
   cargaConsultada,
   subida,
   diaDeSesion,
+  ultimaVez,
   alSumar,
   debajoDelMas,
   globoDelMas,
@@ -83,6 +92,8 @@ export default function Bloque({
   subida?: { ejercicio: string; series: number; antes: number; ahora: number } | null;
   /** El día de la sesión (no el del reloj): es el día de las marcas. Ver `diaDeLaSesion`. */
   diaDeSesion?: string;
+  /** La última vez que se hizo este ejercicio (19/10): se muestra debajo del nombre. */
+  ultimaVez?: { fecha: string; series: number; pesos: (number | null)[]; carga?: string } | null;
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
@@ -270,6 +281,13 @@ export default function Bloque({
         {esFantasma && <Text style={estilos.badgeSugerido}>{T.sesion.sugerido}</Text>}
       </View>
       {esFantasma && <Text style={estilos.sugeridoNota}>{T.sesion.sugeridoNota}</Text>}
+      {/* LA ÚLTIMA VEZ (19/10, bug del gimnasio): series, pesos y el modo (un lado por vez,
+          por mancuerna…); la máquina ya la dice el nombre. Las repeticiones no se anotan. */}
+      {!!estado.ejercicio && !!ultimaVez && ultimaVez.series > 0 && (
+        <Text style={estilos.sugeridoNota} testID="ultima-vez">
+          {T.sesion.ultimaVez(fechaLinda(ultimaVez.fecha), detalleDeLaUltimaVez(ultimaVez, unidad))}
+        </Text>
+      )}
       {globitoSubir && (
         <Globito
           testID="globito-subir"

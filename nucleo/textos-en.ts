@@ -626,6 +626,7 @@ export const EN: Textos = {
     cuantasVasAHacer: "How many you'll do",
     sugerido: 'Suggested',
     sugeridoNota: 'From your routine. Count the first set to confirm it.',
+    ultimaVez: (fecha: string, detalle: string) => `Last time, ${fecha}: ${detalle}`,
     deCual: (n: number) => `You have ${n} ${n === 1 ? 'set' : 'sets'} open. Which exercise were they?`,
     eranDe: (nombre: string) => `They were ${nombre}`,
     deMeta: (hechas: number, meta: number) => `${hechas} of ${meta}`,

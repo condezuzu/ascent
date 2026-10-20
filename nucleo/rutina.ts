@@ -267,6 +267,23 @@ export function diaDeLaSesion(bloques: SesionVista['bloques']): { descanso: fals
   return { descanso: false, ejercicios: ejerciciosConSeries(bloques) };
 }
 
+/** Una sesión pasada con lo que se anotó en cada bloque: series, pesos y modo de carga. */
+export type SesionConPesos = { fecha: string; bloques: { ejercicio?: string | null; series?: number | null; pesos?: (number | null)[] | null; carga?: string | null }[] };
+
+/**
+ * LA ÚLTIMA VEZ DE UN EJERCICIO (19/10, bug del gimnasio): la sesión más reciente antes de
+ * hoy que lo tiene, con sus tandas juntas. Las repeticiones no están: no se anotan por serie.
+ */
+export function ultimaVezDe(sesiones: SesionConPesos[], ejercicio: string, hoyISO: string): { fecha: string; series: number; pesos: (number | null)[]; carga?: string } | null {
+  let s: SesionConPesos | null = null;
+  for (const x of sesiones) if (x.fecha < hoyISO && (!s || x.fecha > s.fecha) && x.bloques.some((b) => b?.ejercicio === ejercicio)) s = x;
+  if (!s) return null;
+  const suyos = s.bloques.filter((b) => b?.ejercicio === ejercicio);
+  const series = suyos.reduce((t, b) => t + (Number(b.series) > 0 ? Math.round(Number(b.series)) : 0), 0);
+  const carga = suyos.find((b) => b.carga)?.carga ?? undefined;
+  return { fecha: s.fecha, series, pesos: suyos.flatMap((b) => b.pesos ?? []), ...(carga ? { carga } : {}) };
+}
+
 /** Los días de la rutina con ese día cambiado por lo que se hizo: el resto, sin tocar (19/10). */
 export function conDiaReemplazado<D>(dias: D[], dia: number, hecho: D): D[] {
   return dias.map((d, i) => (i === dia ? hecho : d));

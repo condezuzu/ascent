@@ -59,6 +59,8 @@ import {
   despuesDe,
   reengancharDesde,
   ejerciciosEnOrden,
+  ultimaVezDe,
+  type SesionConPesos,
   type SesionRutina,
 } from '@nucleo/rutina';
 import { cambioDeSesion,
@@ -90,6 +92,7 @@ import {
   rutinaRef,
   rutinaEsGuardada,
   sesionesRutinaRef,
+  historialConPesosRef,
   setterDe,
   suscribirViva,
 } from '@compartido/sesionViva';
@@ -360,7 +363,8 @@ export function useSesion(
           rutinaRef.current = c.rutina;
           rutinaEsGuardada.current = !!c.rutinaGuardada;
           // La deducida re-engancha desde el historial, que también vivía en memoria.
-          if (!c.rutinaGuardada && sesionesRutinaRef.current.length === 0) void cargarHistorialRutina();
+          // Y «la última vez» de cada ejercicio lo necesita con o sin rutina guardada (19/10).
+          if (historialConPesosRef.current.length === 0) void cargarHistorialRutina();
         }
         // EL TOTAL AL REABRIR (bug "3 de 3 · 0 en total", 29/9). Antes: con cola
         // pendiente se descartaba la caché y quedaba el total EN PANTALLA —que tras
@@ -1242,8 +1246,15 @@ export function useSesion(
           return { fecha: log?.fecha ?? '', ejercicios: ejerciciosEnOrden(ids) };
         })
         .filter((s) => s.fecha);
+      historialConPesosRef.current = filas
+        .map((s) => {
+          const log = Array.isArray(s.logs) ? (s.logs[0] as { fecha?: string }) : (s.logs as { fecha?: string } | null);
+          return { fecha: log?.fecha ?? '', bloques: Array.isArray(s.bloques) ? (s.bloques as SesionConPesos['bloques']) : [] };
+        })
+        .filter((s) => s.fecha);
     } catch {
       sesionesRutinaRef.current = [];
+      historialConPesosRef.current = [];
     }
   }
 
@@ -1664,6 +1675,8 @@ export function useSesion(
     serieHecha,
     deshacerSerie,
     bloqueSiguiente,
+    /** La última vez que se hizo ese ejercicio, antes de hoy (ver `ultimaVezDe`). */
+    ultimaVezDe: (id: string) => ultimaVezDe(historialConPesosRef.current, id, hoyISO()),
     tocarBloque,
     elegirEjercicio,
     mudarSeries,

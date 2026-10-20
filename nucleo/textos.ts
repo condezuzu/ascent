@@ -1123,6 +1123,8 @@ const ES = {
     // LA RUTINA QUE SE PROPONE SOLA: lo sugerido se muestra distinto de lo hecho.
     sugerido: 'Sugerido',
     sugeridoNota: 'De tu rutina. Cuenta la primera serie para confirmarlo.',
+    // Debajo del ejercicio (19/10): la última sesión que lo tuvo. El detalle viene armado.
+    ultimaVez: (fecha: string, detalle: string) => `La última vez, ${fecha}: ${detalle}`,
 
     // CAMBIÉ DE EJERCICIO / ME EQUIVOQUÉ DE EJERCICIO. Son dos cosas
     // distintas y la app no puede adivinar cuál fue: si ya hay series

@@ -834,6 +834,7 @@ export default function Inicio({
             cargaConsultada={sesion.estado.cargaConsultada}
             subida={sesion.estado.subida}
             diaDeSesion={diaDeLaSesion(sesion.estado.inicio)}
+            ultimaVez={sesion.estado.bloques.ejercicio ? sesion.ultimaVezDe(sesion.estado.bloques.ejercicio) : null}
             alSumar={sesion.serieHecha}
             alRestar={sesion.deshacerSerie}
             alSiguiente={sesion.bloqueSiguiente}

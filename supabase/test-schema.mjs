@@ -19524,6 +19524,22 @@ console.log('\n266. Reemplazar el día: queda igual a lo entrenado, sin duplicar
   chequear('la ventana usa ese mismo camino', [/const hecho = diaDeLaSesion\(bloques\);/.test(pr), /conDiaReemplazado\(actual\.dias, dia, hecho\)/.test(pr)], [true, true]);
 }
 
+console.log('\n267. La última vez de un ejercicio: series, pesos y el modo de carga (19/10)');
+{
+  const historial = [
+    { fecha: '2026-10-08', bloques: [{ ejercicio: 'curl_biceps', series: 3, pesos: [10, 10, 10], carga: 'una' }] },
+    { fecha: '2026-10-15', bloques: [{ ejercicio: 'remo_maquina', series: 2, pesos: [50, 55], carga: 'total' }, { ejercicio: 'curl_biceps', series: 2, pesos: [12, 12], carga: 'una' }, { ejercicio: 'curl_biceps', series: 1, pesos: [14], carga: 'una' }] },
+    { fecha: '2026-10-19', bloques: [{ ejercicio: 'curl_biceps', series: 1, pesos: [16], carga: 'una' }] },
+  ];
+  const u = typeof RB.ultimaVezDe === 'function' ? RB.ultimaVezDe : () => 'no existe';
+  chequear('la sesión más reciente antes de hoy, con las tandas de ese ejercicio juntas; sin historia, nada', [
+    u(historial, 'curl_biceps', '2026-10-19'),
+    u(historial, 'sentadilla', '2026-10-19'),
+  ], [{ fecha: '2026-10-15', series: 3, pesos: [12, 12, 14], carga: 'una' }, null]);
+  const blo = deBug('movil', 'src', 'Bloque.tsx');
+  chequear('el bloque la muestra al elegir el ejercicio', /T\.sesion\.ultimaVez\(/.test(blo), true);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
