@@ -19764,6 +19764,48 @@ console.log('\n275. El corazón de las rutinas: uno por persona, tocar de nuevo 
   const { C: C275 } = await import('../movil/src/colores.ts');
   chequear('el número se lee: dado, en fondo sobre el corazón', contraste(C275.fondo, C275.corazon) >= 4.5, true);
 }
+console.log('\n276. «Guardar vida» no resta dos veces: el caso real (24 → 14 con 3 vidas gastadas) y sus vecinos (20/10)');
+{
+  // El caso de la sonda del 19/10: racha de 24 y después `faltas` días sin registrar. Al
+  // abrir, la base gasta las vidas que puede y, si no alcanzan, corta (24 → 14) y fija
+  // `perdida_fecha` en ayer. «Guardar vida» devuelve los días del aviso y vuelve a
+  // evaluar: `calcular_racha` no cuenta nada hasta `perdida_fecha`, así que no hay
+  // otra pérdida que cobrar. Se mira la racha al abrir, después de guardar y al reabrir.
+  async function guardar276(faltas, conHoy) {
+    const u = await nuevoUsuario();
+    await comoUsuario(u);
+    await rachaDe(u, 24, faltas + 1);
+    const racha = async () => (await db.query('select racha_actual from profiles where id = $1', [u])).rows[0].racha_actual;
+    await db.query('select verificar_perdida()');
+    const alAbrir = await racha();
+    const dias = (await db.query('select mis_impulsos() as m')).rows[0].m.ultimas;
+    if (conHoy) await db.query('insert into logs (user_id, fecha) values ($1, mi_hoy())', [u]);
+    const antesDeGuardar = await racha();
+    await db.query('select devolver_impulsos($1::date[])', [dias]);
+    const despues = await racha();
+    await db.query('select verificar_perdida()');
+    return { vidasGastadas: dias.length, alAbrir, antesDeGuardar, despues, alReabrir: await racha() };
+  }
+  await cuotaDeVidas(3);
+  chequear('el caso real: 24 días sin registrar, la base corta 24 → 14 con 3 vidas gastadas, y «Guardar» no resta otra vez', await guardar276(24, false),
+    { vidasGastadas: 3, alAbrir: 14, antesDeGuardar: 14, despues: 14, alReabrir: 14 });
+  chequear('lo mismo con el día de hoy ya anotado (14 + hoy = 15, y queda 15)', await guardar276(24, true),
+    { vidasGastadas: 3, alAbrir: 14, antesDeGuardar: 15, despues: 15, alReabrir: 15 });
+  chequear('con cinco faltas, igual: un solo corte', await guardar276(5, false),
+    { vidasGastadas: 3, alAbrir: 14, antesDeGuardar: 14, despues: 14, alReabrir: 14 });
+  chequear('si las vidas sí salvaron la racha, «Guardar» resta una vez, la que promete', await guardar276(2, false),
+    { vidasGastadas: 2, alAbrir: 24, antesDeGuardar: 24, despues: 14, alReabrir: 14 });
+  chequear('y con hoy anotado, una vez también', await guardar276(2, true),
+    { vidasGastadas: 2, alAbrir: 24, antesDeGuardar: 25, despues: 15, alReabrir: 15 });
+  await cuotaDeVidas(2);
+
+  // La pantalla devuelve los días del aviso y nada más; no resta por su cuenta.
+  const ini276 = deBug('movil', 'src', 'Inicio.tsx');
+  chequear('la pantalla: «Guardar» es devolver_impulsos con los días del aviso, sin restar en el teléfono', [
+    /alGuardar=\{async \(\) => \{\s*\/\/[^\n]*\n\s*const \{ data, error \} = await supabase\.rpc\('devolver_impulsos', \{ p_fechas: vidaUsada\.dias \}\);/.test(ini276),
+    /racha_actual\s*-\s*10|racha - 10/.test(ini276),
+  ], [true, false]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
