@@ -20078,6 +20078,15 @@ console.log('\n289. Las repeticiones de la última vez: de la última marca prop
     /\{verReps && !!estado\.ejercicio && !!repsUltimaVez && \(/.test(bl),
   ], [true, true, true]);
 }
+console.log('\n290. Con todos los días abiertos, la rutina no muestra flechitas ni se pliega (20/10, revisión)');
+{
+  // La prueba de verdad es la de test:real (probar-rutina-en-perfil, «sin flechitas»).
+  const rp = sinComentarios(deBug('movil', 'src', 'RutinaPlegada.tsx'));
+  chequear('la flechita y el toque, solo cuando se puede plegar', [
+    /disabled=\{abiertos\}/.test(rp),
+    /\{!abiertos && <Text style=\{estilos\.flecha\}>/.test(rp),
+  ], [true, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

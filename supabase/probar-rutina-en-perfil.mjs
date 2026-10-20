@@ -58,6 +58,8 @@ try {
   await page.getByTestId('mi-rutina-en-perfil').first().scrollIntoViewIfNeeded();
   await page.screenshot({ path: join(SALIDA, 'perfil.png') });
   chequear('sin tocar nada, los ejercicios del lunes y del martes', ['Press de banca', 'Sentadilla', 'Remo con barra'].filter((n) => texto.includes(n)), ['Press de banca', 'Sentadilla', 'Remo con barra']);
+  // Con todo abierto, ni flechita ni toque que no hace nada (20/10).
+  chequear('sin flechitas de plegar', /[⌃⌄]/.test(texto), false);
 
   // Y EN STATS → ENTRENAMIENTO (20/10): ahí solo se abría hoy, y un día sin nada dejaba la
   // rutina sin un ejercicio a la vista. Se entra como el usuario, por la fila «HOY» de Inicio.
@@ -69,6 +71,7 @@ try {
   const enStats = (await page.getByTestId('rutina-guardada').first().innerText()).replace(/\n+/g, ' | ');
   await page.screenshot({ path: join(SALIDA, 'stats.png') });
   chequear('sin tocar nada, los ejercicios de todos los días', ['Press de banca', 'Sentadilla', 'Remo con barra'].filter((n) => enStats.includes(n)), ['Press de banca', 'Sentadilla', 'Remo con barra']);
+  chequear('sin flechitas de plegar', /[⌃⌄]/.test(enStats), false);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));
