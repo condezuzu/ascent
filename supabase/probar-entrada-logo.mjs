@@ -22,6 +22,9 @@ const chequear = (que, real, esperado) => {
 console.log('La entrada del logo antes de la app');
 const nav = await chromium.launch();
 const page = await (await nav.newContext({ viewport: { width: 390, height: 844 }, locale: 'es-UY' })).newPage();
+// Los errores de consola de la entrada (20/10: el trazo animado le pasaba `collapsable` al <path>).
+const errores = [];
+page.on('console', (m) => m.type() === 'error' && errores.push(m.text().slice(0, 120)));
 try {
   // Lo anota la propia página desde el primer cuadro, sin depender de la latencia de Playwright.
   await page.addInitScript(() => {
@@ -58,6 +61,7 @@ try {
   chequear('el aro se dibuja: el trazo arranca sin dibujar y termina entero', [trazos.length > 0 && trazos[0] > 100, trazos.length > 0 && Math.min(...trazos) < 1], [true, true]);
   chequear('el logo se va en menos de 4 s', !!hasta && hasta.t - conCapa[0].t < 4000, true);
   chequear('al irse, queda la app', fin.capa === false && fin.fuera > 0, true);
+  chequear('sin errores de consola', errores, []);
   console.log(`  --   logo solo ${sinApp.length ? sinApp[sinApp.length - 1].t - sinApp[0].t : 0} ms; el logo se fue a los ${hasta ? hasta.t - conCapa[0].t : '?'} ms`);
 } catch (e) {
   fallos++;

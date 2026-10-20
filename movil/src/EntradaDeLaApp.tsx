@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState, type ComponentProps } from 'react';
 import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Path, RadialGradient, Stop } from 'react-native-svg';
 import { ENTRADA, ENTRADA_ESPERA_MAX_MS } from '@nucleo/animacion';
 import { LOGO, arcoDelLogo, puntoDelLogo } from '@nucleo/logo';
 
-const PathAnimado = Animated.createAnimatedComponent(Path);
+// Animated le agrega `collapsable={false}`, y en la web llega al <path> del DOM como un
+// atributo que no existe (React lo canta en la consola). Al trazo no le sirve: se descarta.
+const PathSinColapsar = forwardRef<Path, ComponentProps<typeof Path> & { collapsable?: boolean }>(function PathSinColapsar({ collapsable: _c, ...resto }, ref) {
+  return <Path ref={ref} {...resto} />;
+});
+const PathAnimado = Animated.createAnimatedComponent(PathSinColapsar);
 
 // El viewBox va de -60 a 60; con 202 pt el aro queda del tamaño del logo del splash
 // (`imageWidth: 160` en app.json), y el salto del splash a esto casi no se ve.
