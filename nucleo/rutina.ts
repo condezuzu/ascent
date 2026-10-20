@@ -309,6 +309,18 @@ export function rutinaConLoHecho<D extends DiaConEjercicios>(dias: D[], dia: num
   return conDiaReemplazado(dias, dia, { ...hecho, descanso: false, ejercicios: [...ejercicios, ...nuevos.slice(usados)] });
 }
 
+/** Lo que se elige en la ventana del final. */
+export type EleccionDeLaVentana = 'reemplazar' | 'nueva' | 'olvidar';
+
+/**
+ * CÓMO QUEDAN LOS DÍAS SEGÚN LO QUE SE ELIGE (20/10). «Reemplazar» y «Crear rutina nueva»
+ * guardan el día con lo que cambió (`rutinaConLoHecho`; la nueva, aparte). «Olvidar este
+ * día» no guarda nada: el cambio de ese día se descarta y la rutina queda como estaba.
+ */
+export function rutinaTrasLaVentana<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D, eleccion: EleccionDeLaVentana): D[] | null {
+  return eleccion === 'olvidar' ? null : rutinaConLoHecho(dias, dia, hecho);
+}
+
 /**
  * ¿SE PREGUNTA SI CAMBIA EL DÍA DE LA RUTINA? (16/10) Solo si se entrenó algo que ese día
  * no tiene: el orden y las series no cuentan, otro ejercicio sí. Un día de descanso o vacío

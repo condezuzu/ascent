@@ -19494,7 +19494,7 @@ console.log('\n266. Reemplazar el día: queda igual a lo entrenado, sin duplicar
     filas[0].dias[0].ejercicios.length,
   ], [1, [['press_banca', 4], ['sentadilla', 3]], 0]);
   const pr = deBug('movil', 'src', 'preguntarPorLaRutina.ts');
-  chequear('la ventana usa ese mismo camino', [/const hecho = diaDeLaSesion\(bloques\);/.test(pr), /rutinaConLoHecho\(actual\.dias, dia, hecho\)/.test(pr)], [true, true]);
+  chequear('la ventana usa ese mismo camino', [/const hecho = diaDeLaSesion\(bloques\);/.test(pr), /rutinaTrasLaVentana\(actual\.dias, dia, hecho, /.test(pr)], [true, true]);
 }
 
 console.log('\n267. La última vez de un ejercicio: series, pesos y el modo de carga (19/10)');
@@ -19949,6 +19949,27 @@ console.log('\n282. Con la racha ya perdida no sale el aviso «Usa la vida para 
     (web282.match(/leerImpulsos\([^)]*perdida_fecha\)/g) ?? []).length,
     /impulsosSinVer\(/.test(ini282 + web282),
   ], [true, true, 3, false]);
+}
+console.log('\n283. «Olvidar este día» en la ventana del final: descarta el cambio y no toca la rutina (20/10, solo la lógica)');
+{
+  // Con el hook de verdad: se cambia el primer ejercicio, se termina y se elige olvidar.
+  const olvidar = await escenarioDeSesion('primerEjercicio', 'antes', 'olvidar');
+  chequear('la rutina queda como estaba y la sesión siguiente propone la de siempre', olvidar.fallo ?? [olvidar.pregunta, olvidar.diaDespues, olvidar.martesDespues, olvidar.laOtraPropone], [true, ['press_banca', 'sentadilla'], ['remo', 'dominadas'], 'press_banca']);
+  const { rutinaTrasLaVentana, rutinaConLoHecho } = await import('../nucleo/rutina.ts');
+  const d = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
+  const dias = [d([]), d(['a', 'b'])];
+  chequear('la regla: olvidar no deja nada que guardar; reemplazar y nueva, el día con lo que cambió', [
+    rutinaTrasLaVentana(dias, 1, d(['x']), 'olvidar'),
+    JSON.stringify(rutinaTrasLaVentana(dias, 1, d(['x']), 'reemplazar')) === JSON.stringify(rutinaConLoHecho(dias, 1, d(['x']))),
+    JSON.stringify(rutinaTrasLaVentana(dias, 1, d(['x']), 'nueva')) === JSON.stringify(rutinaConLoHecho(dias, 1, d(['x']))),
+  ], [null, true, true]);
+  const pr = sinComentarios(deBug('movil', 'src', 'preguntarPorLaRutina.ts'));
+  chequear('la app: olvidar no guarda la rutina, anota el día, y ese día la ventana no vuelve a preguntar', [
+    /como: 'esta' \| 'nueva' \| 'olvidar'/.test(pr),
+    /if \(!dias\) \{\s*await plataforma\.almacenamiento\.guardar\(CLAVE_DIA_OLVIDADO, hoyISO\(\)\)[^\n]*\n\s*return true;\s*\}/.test(pr),
+    /if \(\(await plataforma\.almacenamiento\.leer\(CLAVE_DIA_OLVIDADO\)\.catch\(\(\) => null\)\) === hoyISO\(\)\) return null;/.test(pr),
+  ], [true, true, true]);
+  chequear('el botón todavía no está en la pantalla: espera la galería', /olvidar|Olvidar/.test(deBug('movil', 'src', 'VentanaRutina.tsx')), false);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
