@@ -148,13 +148,17 @@ export const DIAS_DE_LA_SUGERENCIA = 7;
  * LO QUE SUELE VENIR DESPUÉS DE `ultimo` (16/10): en la sesión más reciente de la
  * última semana que lo tiene, el primero que le sigue y que hoy no se hizo. Curl de
  * bíceps → curl martillo. `null` si en la semana no aparece o no le siguió nada.
+ *
+ * SOLO DEL MISMO DÍA DE LA SEMANA (19/10, bug del gimnasio): miraba todas las sesiones de
+ * la semana, y el lunes podía proponer lo que siguió al press el martes, que es otro día.
  */
 export function despuesDe(sesiones: SesionRutina[], ultimo: string, yaHechos: string[], hoyISO: string): string | null {
   const hechos = new Set(yaHechos);
+  const hoy = diaDeSemana(hoyISO);
   const recientes = sesiones
     .filter((s) => {
       const dd = diasEntre(hoyISO, s.fecha);
-      return dd >= 0 && dd <= DIAS_DE_LA_SUGERENCIA;
+      return dd >= 0 && dd <= DIAS_DE_LA_SUGERENCIA && diaDeSemana(s.fecha) === hoy;
     })
     .sort(porFechaAsc)
     .reverse();

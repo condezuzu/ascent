@@ -19189,15 +19189,16 @@ console.log('\n255. La sugerencia del siguiente sale de lo que hiciste después 
   const { restarDias } = await import('../nucleo/fechas.ts');
   const hoy = '2026-10-16';
   const s = (hace, ejercicios) => ({ fecha: restarDias(hoy, hace), ejercicios });
-  // Hace 3 días: curl de bíceps → martillo. Hace 20: curl → predicador (fuera de la semana).
-  const historia = [s(20, ['banca', 'curl_biceps', 'curl_predicador']), s(3, ['remo', 'curl_biceps', 'curl_martillo', 'frances'])];
+  // Hace 7 días (el mismo día de la semana, 19/10): curl de bíceps → martillo. Hace 20:
+  // curl → predicador (fuera de la semana).
+  const historia = [s(20, ['banca', 'curl_biceps', 'curl_predicador']), s(7, ['remo', 'curl_biceps', 'curl_martillo', 'frances'])];
   chequear('después del curl de bíceps, el martillo (lo de la semana pasada); lo ya hecho se salta; lo de hace 20 días no cuenta', [
     RU255.despuesDe(historia, 'curl_biceps', ['curl_biceps'], hoy),
     RU255.despuesDe(historia, 'curl_biceps', ['curl_biceps', 'curl_martillo'], hoy),
     RU255.despuesDe(historia, 'banca', ['banca'], hoy),
     RU255.despuesDe(historia, 'frances', ['frances'], hoy),
   ], ['curl_martillo', 'frances', null, null]);
-  chequear('si la semana pasada cambió el orden, manda la más reciente', RU255.despuesDe([s(6, ['curl_biceps', 'curl_predicador']), s(2, ['curl_biceps', 'curl_martillo'])], 'curl_biceps', ['curl_biceps'], hoy), 'curl_martillo');
+  chequear('si cambió el orden, manda la más reciente de ese día (hoy, antes de esta sesión)', RU255.despuesDe([s(7, ['curl_biceps', 'curl_predicador']), s(0, ['curl_biceps', 'curl_martillo'])], 'curl_biceps', ['curl_biceps'], hoy), 'curl_martillo');
   const ses = (await import('node:fs')).readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'useSesion.ts'), 'utf8');
   chequear('la sesión la usa al cerrar cada bloque, y relee la rutina guardada (si cambió, la sugerencia la sigue)', [
     /despuesDe\(sesionesRutinaRef\.current, ultimo, hechos, hoyISO\(\)\)/.test(ses),
@@ -19452,6 +19453,23 @@ console.log('\n262. El texto de «Fui, corregí el día»: blanco u oscuro segú
     elegido(P262.PALETAS_RANGO[1].principal), elegido(P262.PALETAS_RANGO[2].principal), elegido(P262.PALETAS_PLANETA.Marte.principal),
   ], ['#ffffff', '#ffffff', '#05060a']);
 }
+// ======================= LOS BUGS DEL GIMNASIO (19/10) =======================
+const { readFileSync: leerBug } = await import('node:fs');
+const deBug = (...p) => leerBug(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+const RB = await import('../nucleo/rutina.ts');
+
+console.log('\n263. La sugerencia del siguiente sale del mismo día de la semana (19/10)');
+{
+  // Hoy lunes 19/10. El lunes 12: press → fondos. El martes 13, más reciente: press → aperturas.
+  const ses = [
+    { fecha: '2026-10-12', ejercicios: ['press_banca', 'fondos'] },
+    { fecha: '2026-10-13', ejercicios: ['press_banca', 'aperturas'] },
+  ];
+  chequear('el lunes, después de press sale lo del lunes pasado, no lo del martes', RB.despuesDe(ses, 'press_banca', ['press_banca'], '2026-10-19'), 'fondos');
+  chequear('sin una sesión de ese día de la semana, no sugiere nada', RB.despuesDe([ses[1]], 'press_banca', ['press_banca'], '2026-10-19'), null);
+  chequear('lo de hoy mismo sí cuenta (es el mismo día)', RB.despuesDe([{ fecha: '2026-10-19', ejercicios: ['press_banca', 'remo'] }, ses[1]], 'press_banca', ['press_banca'], '2026-10-19'), 'remo');
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
