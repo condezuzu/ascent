@@ -19,6 +19,7 @@ import {
 import { C } from './colores';
 import { taparElFondo } from './desenfoqueDelFondo';
 import { useArriba } from './zonaSegura';
+import { cuentaLaSerie } from './toques';
 
 /**
  * EL DESCANSO ENTRE SERIES, en nativo (§18). La misma pantalla que la web:
@@ -195,7 +196,7 @@ export default function Descanso({
 
         {terminado ? (
           <View style={estilos.abajo}>
-            <Pressable style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={alSumar}>
+            <Pressable style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={() => cuentaLaSerie() && alSumar()}>
               <Text style={estilos.solidoTexto}>{T.descanso.serieHecha}</Text>
             </Pressable>
             <Pressable
@@ -212,7 +213,7 @@ export default function Descanso({
           <View style={estilos.abajo}>
             {/* "SERIE HECHA" ES UN BOTÓN, no un enlace: sumar la serie sin salir
                 es lo que más se hace desde acá. */}
-            <Pressable style={estilos.borde} onPress={alSumar}>
+            <Pressable style={estilos.borde} onPress={() => cuentaLaSerie() && alSumar()}>
               <Text style={estilos.bordeTexto}>{T.descanso.serieHecha}</Text>
             </Pressable>
             <View style={estilos.presets}>

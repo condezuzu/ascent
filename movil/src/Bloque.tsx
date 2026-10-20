@@ -30,6 +30,7 @@ import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
 import { hoyISO } from '@nucleo/fechas';
 import { cronoLindo } from '@nucleo/sesiones';
+import { cierraElBloque, cuentaLaSerie, TOQUE_REPETIDO_MS } from './toques';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN — en nativo.
@@ -108,6 +109,7 @@ export default function Bloque({
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [eligiendo, setEligiendo] = useState(false);
   const [lista, setLista] = useState(false);
+  const [pausa, setPausa] = useState(false);
   const [aDonde, setADonde] = useState<string | null | undefined>(undefined);
   const [prefierePeso, setPrefierePeso] = useState(true);
   const version = useVersionDelEsquema();
@@ -151,6 +153,7 @@ export default function Bloque({
   const minutos = estado.minutos ?? MINUTOS_DE_ARRANQUE;
   const cumplida = esTiempo ? estado.hechas >= 1 : metaCumplida(estado);
   const sumar = () => {
+    if (!cuentaLaSerie()) return;
     if (!esTiempo) return alSumar();
     if (estado.minutos === undefined) alElegirMinutos?.(minutos);
     alSumar({ sinDescanso: true });
@@ -428,8 +431,12 @@ export default function Bloque({
           <Pressable
             style={[estilos.mas, estilos.masCerrar]}
             onPress={() => {
+              if (!cierraElBloque()) return;
               alSiguiente();
               setLista(true);
+              // El + del bloque que sigue queda apagado ese segundo: es el que cae debajo del dedo.
+              setPausa(true);
+              setTimeout(() => setPausa(false), TOQUE_REPETIDO_MS);
             }}
           >
             <Text style={estilos.cerrarTexto}>{T.sesion.terminarSerie}</Text>
@@ -448,7 +455,7 @@ export default function Bloque({
           </Pressable>
           <MasQuePulsa
             testID={esTiempo ? 'cardio-principal' : undefined}
-            style={[estilos.mas, estilos.masAncho, esTiempo && estilos.masCerrar]}
+            style={[estilos.mas, estilos.masAncho, esTiempo && estilos.masCerrar, pausa && estilos.masEnPausa]}
             pulsa={!esTiempo}
             onPress={esTiempo ? principalDeCardio.accion : sumar}
             accessibilityLabel={esTiempo ? principalDeCardio.texto : T.inicio.sumarSerie}
@@ -693,6 +700,7 @@ const estilos = StyleSheet.create({
   },
   masTexto: { color: C.claro, fontSize: 28, fontWeight: '200' },
   masCerrar: { backgroundColor: C.claro, borderColor: C.claro, flex: 3, marginTop: 0 },
+  masEnPausa: { opacity: 0.35 },
   // Un cuarto del ancho contra tres: doce sumas contra una resta.
   menos: { flex: 1, marginTop: 0 },
   menosApagado: { opacity: 0.35 },

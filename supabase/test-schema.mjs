@@ -19483,6 +19483,25 @@ console.log('\n264. Cambiar de ejercicio en medio de la sesión: la lista sigue 
   ], ['c', 'c', 'e', 'b', 'a', null]);
 }
 
+console.log('\n265. Un toque repetido en el + no es otra serie, y «Terminar serie» apaga el + de después (19/10)');
+{
+  // De punta a punta lo reproduce `supabase/probar-doble-toque.mjs` (test:real): dos toques
+  // seguidos en el + contaban dos series. Acá, la regla y que la usen los tres botones.
+  const TQ = await import('../movil/src/toques.ts');
+  chequear('dentro del segundo, el segundo toque no cuenta; después sí; cerrar el bloque apaga el + ese segundo', [
+    TQ.TOQUE_REPETIDO_MS,
+    TQ.cuentaLaSerie(10000), TQ.cuentaLaSerie(10300), TQ.cuentaLaSerie(11100),
+    TQ.cierraElBloque(20000), TQ.cuentaLaSerie(20400), TQ.cierraElBloque(20500), TQ.cuentaLaSerie(21100), TQ.cierraElBloque(21200),
+  ], [1000, true, false, true, true, false, false, true, true]);
+  const blo = deBug('movil', 'src', 'Bloque.tsx');
+  const des = deBug('movil', 'src', 'Descanso.tsx');
+  chequear('el + del bloque, «Terminar serie» y los dos «Serie hecha» del descanso pasan por la regla', [
+    /const sumar = \(\) => \{\s*if \(!cuentaLaSerie\(\)\) return;/.test(blo),
+    /if \(!cierraElBloque\(\)\) return;\s*alSiguiente\(\);/.test(blo),
+    (des.match(/onPress=\{\(\) => cuentaLaSerie\(\) && alSumar\(\)\}/g) ?? []).length,
+  ], [true, true, 2]);
+}
+
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
