@@ -7,15 +7,40 @@
  * Con el teléfono bloqueado, cuánto vibra una notificación lo decide iOS; lo
  * que se puede elegir es su sonido, y ese archivo viaja en la build.
  *
- * CON LA APP ABIERTA sí se puede vibrar más: tres golpes encadenados
- * (`GOLPES` / `PAUSA_MS`). iOS no deja elegir cuánto dura cada uno.
+ * CON LA APP ABIERTA sí se puede vibrar más: desde el 20/10, como un despertador
+ * (`DESPERTADOR`). iOS no deja elegir cuánto dura cada golpe.
  *
  * NO IMPORTA NADA del teléfono: se prueba con node pelado.
  */
 
-/** Con la app abierta: cuántos golpes, y cuánto se espera entre el arranque de uno y el del otro. */
-export const GOLPES = 3;
-export const PAUSA_MS = 600;
+/**
+ * CON LA APP ABIERTA, COMO UN DESPERTADOR (20/10, a pedido): tres tandas de tres golpes,
+ * unos cinco segundos. Antes eran tres golpes sueltos, que con el teléfono en el banco se
+ * pierden. Los tiempos van de arranque a arranque: en iOS cada golpe dura ~0,4 s.
+ */
+export const DESPERTADOR = { tandas: 3, golpes: 3, entreGolpes: 450, entreTandas: 1000 } as const;
+/** Lo que dura un golpe donde se puede elegir (Android). */
+export const GOLPE_MS = 300;
+
+/**
+ * El patrón para `Vibration.vibrate`. En iOS los números son esperas entre el arranque de un
+ * golpe y el del siguiente; en Android alternan espera y duración.
+ */
+export function patronDespertador(ios: boolean): number[] {
+  const esperas: number[] = [];
+  for (let t = 0; t < DESPERTADOR.tandas; t++) {
+    for (let g = 0; g < DESPERTADOR.golpes; g++) {
+      if (t === 0 && g === 0) continue;
+      esperas.push(g === 0 ? DESPERTADOR.entreTandas : DESPERTADOR.entreGolpes);
+    }
+  }
+  return ios ? [0, ...esperas] : [0, GOLPE_MS, ...esperas.flatMap((e) => [e - GOLPE_MS, GOLPE_MS])];
+}
+
+/** Lo que dura el despertador entero, hasta el arranque del último golpe. */
+export function duracionDelDespertador(): number {
+  return patronDespertador(true).reduce((a, b) => a + b, 0);
+}
 
 /**
  * Los avisos de más que programaba la versión del 8/10. Ya no se programan,

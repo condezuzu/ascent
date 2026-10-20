@@ -34,6 +34,8 @@
 //      rutina y ese día no vuelve a preguntar (20/10), en la nativa.
 //  11. probar-reps-ultima-vez — con el ajuste prendido (viene apagado), al entrenar sale
 //      la última marca del ejercicio con sus repeticiones (20/10), en la nativa.
+//  12. probar-timbre-descanso — la píldora del descanso se sacude como un despertador
+//      al llegar a 0:00 (20/10), en la nativa, con el reloj de Playwright.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -66,6 +68,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'la lista de amigos', archivo: 'probar-lista-de-amigos.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'olvidar este día', archivo: 'probar-olvidar-dia.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'repeticiones de la última vez', archivo: 'probar-reps-ultima-vez.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'el timbre del descanso', archivo: 'probar-timbre-descanso.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { Platform, Vibration } from 'react-native';
-import { GOLPES, PAUSA_MS } from '@nucleo/avisoDescanso';
+import { patronDespertador } from '@nucleo/avisoDescanso';
 import type { Haptica } from '@nucleo/plataforma';
 
 /**
@@ -41,8 +41,7 @@ export const hapticaNativa: Haptica = {
   aviso() {
     if (!this.disponible()) return false;
     try {
-      const esperas = Array.from({ length: GOLPES - 1 }, () => PAUSA_MS);
-      Vibration.vibrate(Platform.OS === 'ios' ? [0, ...esperas] : [0, 400, ...esperas.flatMap(() => [PAUSA_MS - 400, 400])]);
+      Vibration.vibrate(patronDespertador(Platform.OS === 'ios'));
     } catch {
       return this.pulso();
     }

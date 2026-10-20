@@ -15815,11 +15815,11 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   plat197.avisos = avisosDeVerdad;
   plat197.haptica = hapticaDeVerdad;
   const hap197 = de197('movil', 'src', 'plataforma', 'haptica.ts');
+  // Desde el 20/10 es el patrón del despertador (ver la 291).
   chequear('en el teléfono el aviso es la vibración de verdad, encadenada', [
-    /Vibration\.vibrate\(Platform\.OS === 'ios' \? \[0, \.\.\.esperas\]/.test(hap197),
-    /length: GOLPES - 1 \}, \(\) => PAUSA_MS/.test(hap197),
-    [AV197.GOLPES, AV197.PAUSA_MS],
-  ], [true, true, [3, 600]]);
+    /Vibration\.vibrate\(patronDespertador\(Platform\.OS === 'ios'\)\)/.test(hap197),
+    AV197.patronDespertador(true).length > 3,
+  ], [true, true]);
   const avisos197 = de197('movil', 'src', 'plataforma', 'avisos.ts');
   // Desde el 14/10, con la app adelante la notificación no suena nunca: suena la app en el cero (sección 217).
   chequear('la notificación sale callada si se apagó el sonido, y con la app abierta no suena (suena la app)', [
@@ -20087,6 +20087,31 @@ console.log('\n290. Con todos los días abiertos, la rutina no muestra flechitas
     /disabled=\{abiertos\}/.test(rp),
     /\{!abiertos && <Text style=\{estilos\.flecha\}>/.test(rp),
   ], [true, true]);
+}
+console.log('\n291. El fin del descanso con la app abierta vibra como un despertador, y la píldora se sacude (20/10)');
+{
+  const AV = await import('../nucleo/avisoDescanso.ts');
+  const ios = AV.patronDespertador(true);
+  const android = AV.patronDespertador(false);
+  const golpes = AV.DESPERTADOR.tandas * AV.DESPERTADOR.golpes;
+  chequear('iOS: un golpe por número, con una pausa más larga entre tandas', [
+    ios.length, ios[0], ios.filter((e) => e === AV.DESPERTADOR.entreTandas).length, AV.duracionDelDespertador() >= 4000,
+  ], [golpes, 0, AV.DESPERTADOR.tandas - 1, true]);
+  // En Android alternan espera y duración: misma cantidad de golpes y lo mismo de arranque a arranque.
+  const arranques = [];
+  for (let i = 0, t = 0; i < android.length; i += 2) {
+    t += android[i];
+    arranques.push(t);
+    t += android[i + 1];
+  }
+  chequear('Android: los mismos golpes en los mismos momentos', [arranques.length, JSON.stringify(arranques) === JSON.stringify(ios.map((_, i) => ios.slice(0, i + 1).reduce((a, b) => a + b, 0)))], [golpes, true]);
+  const ini = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
+  const tim = sinComentarios(deBug('movil', 'src', 'TimbreDePildora.tsx'));
+  chequear('la píldora va adentro del timbre, que se sacuda una vez por tanda y respeta «Reducir movimiento»', [
+    /<TimbreDePildora fin=\{fin \|\| null\}>\s*<Pressable\s+testID="pildora-descanso"/.test(ini),
+    /length: DESPERTADOR\.tandas/.test(tim),
+    /isReduceMotionEnabled\(\)/.test(tim),
+  ], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
