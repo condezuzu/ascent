@@ -19600,7 +19600,7 @@ console.log('\n270. El aviso de la vida rehecho: textos, vidas arriba, la secuen
   chequear('Inicio: el día cubierto lleva el frío, y al otro día se borra la marca', [
     /frio=\{d\.estadoDia === 'cubierto' \? frioDelDia\(helada, d\.fecha, hoy\) : null\}/.test(ini),
     /alUsada=\{\(\) => \{[\s\S]{0,200}plataforma\.almacenamiento\.guardar\(CLAVE_VIDA_HELADA/.test(ini),
-    /h\.dia < hoyISO\(\)\) \{\s*void plataforma\.almacenamiento\.borrar\(CLAVE_VIDA_HELADA\)/.test(ini),
+    /h\.dia < hoyISO\(\)\) void plataforma\.almacenamiento\.borrar\(CLAVE_VIDA_HELADA\)/.test(ini),
   ], [true, true, true]);
 }
 console.log('\n271. Las fotos del perfil no llevan "me gusta"; la grilla queda de tres por fila, redondeada y con sombra (20/10)');
@@ -19805,6 +19805,24 @@ console.log('\n276. «Guardar vida» no resta dos veces: el caso real (24 → 14
     /alGuardar=\{async \(\) => \{\s*\/\/[^\n]*\n\s*const \{ data, error \} = await supabase\.rpc\('devolver_impulsos', \{ p_fechas: vidaUsada\.dias \}\);/.test(ini276),
     /racha_actual\s*-\s*10|racha - 10/.test(ini276),
   ], [true, false]);
+}
+console.log('\n277. La vida del domingo se ve el lunes en la tira de Inicio (20/10)');
+{
+  const { diasDeLaTira } = await import('../nucleo/impulsos.ts');
+  const tira = (hoy, frescas) => { const d = diasDeLaTira(hoy, frescas); return [d[0], d[6]]; };
+  // 2026-10-19 es lunes.
+  chequear('faltó el domingo y hoy es lunes: la tira son los últimos siete días, con el domingo adentro', diasDeLaTira('2026-10-19', ['2026-10-18']).includes('2026-10-18'), true);
+  chequear('y termina hoy', tira('2026-10-19', ['2026-10-18']), ['2026-10-13', '2026-10-19']);
+  chequear('sin vida fresca, la semana de calendario de siempre (lunes a domingo)', tira('2026-10-19', []), ['2026-10-19', '2026-10-25']);
+  chequear('una vida de esta misma semana no cambia nada', tira('2026-10-22', ['2026-10-20']), ['2026-10-19', '2026-10-25']);
+  chequear('un jueves con el domingo anterior todavía fresco: los últimos siete días', tira('2026-10-22', ['2026-10-18']), ['2026-10-16', '2026-10-22']);
+  chequear('una de hace más de una semana no cuenta', tira('2026-10-19', ['2026-10-11']), ['2026-10-19', '2026-10-25']);
+  const ini = deBug('movil', 'src', 'Inicio.tsx');
+  chequear('Inicio arma la tira con la vida del aviso y la helada, y la helada no se suelta a mitad del día', [
+    /const semana = conEstado\(diasDeLaTira\(hoy, \[\.\.\.\(vidaUsada\?\.dias \?\? \[\]\), \.\.\.\(helada\?\.fechas \?\? \[\]\)\]\)\);/.test(ini),
+    /setTimeout\(\(\) => setHelada\(null\)/.test(ini),
+    /semana=\{semanaDe\(vidaUsada\.dias\[vidaUsada\.dias\.length - 1\]\)\}/.test(ini),
+  ], [true, false, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

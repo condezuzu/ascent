@@ -27,7 +27,7 @@ import RachaSalvada from './RachaSalvada';
 import SubidaRango from './SubidaRango';
 import RegistrarDia from './RegistrarDia';
 import { plataforma } from '@plataforma';
-import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, frioDelDia, hastaDondeVisto, impulsosSinVer, type VidaHelada } from '@nucleo/impulsos';
+import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDondeVisto, impulsosSinVer, type VidaHelada } from '@nucleo/impulsos';
 import { CLAVE_META_PASOS, META_PASOS_POR_OMISION, leerMeta } from '@nucleo/pasos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import MarcaEnElMomento from './MarcaEnElMomento';
@@ -195,10 +195,9 @@ export default function Inicio({
       try {
         const h = v ? (JSON.parse(v) as VidaHelada) : null;
         setHelada(h);
-        if (h && h.dia < hoyISO()) {
-          void plataforma.almacenamiento.borrar(CLAVE_VIDA_HELADA);
-          setTimeout(() => setHelada(null), 1500);
-        }
+        // Queda en pantalla hasta que se vaya: el deshielo termina en la estrella sola, y
+        // soltarla antes devolvía la tira a la semana de calendario en medio del día (20/10).
+        if (h && h.dia < hoyISO()) void plataforma.almacenamiento.borrar(CLAVE_VIDA_HELADA);
       } catch {
         setHelada(null);
       }
@@ -582,13 +581,12 @@ export default function Inicio({
 
   // La semana arranca el LUNES y se alinea al calendario, igual que en web:
   // "los últimos siete días" es más exacto y se ve mal, porque las letras
-  // salen corridas y eso se lee como un error.
+  // salen corridas y eso se lee como un error. Salvo con una vida fresca de antes del
+  // lunes (ver `diasDeLaTira`): si no, ese día no aparecía.
   // La misma cuenta arma la semana del aviso de la vida, que puede ser la anterior: lo que
   // no trae la pantalla (los logs son de los últimos siete días) queda `sinDato`.
-  const semanaDe = (dia: string) => {
-    const lunes = restarDias(dia, (deISO(dia).getDay() + 6) % 7);
-    return Array.from({ length: 7 }, (_, i) => {
-      const fecha = restarDias(lunes, -i);
+  const conEstado = (fechas: string[]) =>
+    fechas.map((fecha) => {
       const log = logs.find((l) => l.fecha === fecha);
       let estadoDia: EstadoDelDia = 'vacio';
       if (fecha > hoy) estadoDia = 'futuro';
@@ -598,8 +596,12 @@ export default function Inicio({
       else if (fecha < restarDias(hoy, 6)) estadoDia = 'sinDato';
       return { fecha, estadoDia, esHoy: fecha === hoy };
     });
+  const semanaDe = (dia: string) => {
+    const lunes = restarDias(dia, (deISO(dia).getDay() + 6) % 7);
+    return conEstado(Array.from({ length: 7 }, (_, i) => restarDias(lunes, -i)));
   };
-  const semana = semanaDe(hoy);
+  // La tira: la semana de calendario, salvo que una vida fresca haya caído antes del lunes.
+  const semana = conEstado(diasDeLaTira(hoy, [...(vidaUsada?.dias ?? []), ...(helada?.fechas ?? [])]));
 
   return (
     <View style={estilos.raiz}>

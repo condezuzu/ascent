@@ -1,3 +1,5 @@
+import { deISO, restarDias } from './fechas.ts';
+
 /**
  * QUÉ HAY QUE CONTARLE AL USUARIO SOBRE SUS IMPULSOS.
  *
@@ -85,4 +87,17 @@ export type VidaHelada = { fechas: string[]; dia: string };
 export function frioDelDia(h: VidaHelada | null, fecha: string, hoy: string): 'helado' | 'derrite' | null {
   if (!h || !h.fechas.includes(fecha)) return null;
   return h.dia === hoy ? 'helado' : h.dia < hoy ? 'derrite' : null;
+}
+
+/**
+ * QUÉ DÍAS MUESTRA LA TIRA DE INICIO (20/10). De lunes a domingo, alineada al calendario;
+ * pero si una vida fresca —la del aviso, o la que todavía se ve helada o derritiéndose—
+ * cayó antes del lunes (faltó el domingo y hoy es lunes), los últimos siete días, como
+ * pide la spec (§9): la semana de calendario dejaba ese día afuera.
+ */
+export function diasDeLaTira(hoy: string, frescas: string[]): string[] {
+  const lunes = restarDias(hoy, (deISO(hoy).getDay() + 6) % 7);
+  const hace6 = restarDias(hoy, 6);
+  const desde = frescas.some((f) => f < lunes && f >= hace6) ? hace6 : lunes;
+  return Array.from({ length: 7 }, (_, i) => restarDias(desde, -i));
 }
