@@ -172,12 +172,22 @@ export function despuesDe(sesiones: SesionRutina[], ultimo: string, yaHechos: st
 }
 
 /**
- * EL SIGUIENTE EN LA CADENA: el primero de la rutina que todavía no se hizo.
- * `null` cuando ya se hicieron todos —la rutina propuesta terminó—.
+ * EL SIGUIENTE EN LA CADENA: el que viene en la rutina después de lo hecho, sin repetir lo
+ * ya hecho. `null` cuando ya se hicieron todos —la rutina propuesta terminó—.
+ *
+ * SIGUE POR DONDE IBA (19/10, bug del gimnasio): proponía el primero no hecho, así que al
+ * cambiar un ejercicio por otro la lista volvía para atrás. Ahora arranca después del
+ * último de la rutina que se hizo, y nunca antes de tantos como ya se hicieron (cambiar
+ * uno por otro también es avanzar uno). Al llegar al final, vuelve a lo que faltó.
  */
 export function siguienteEnRutina(rutina: string[], yaHechos: string[]): string | null {
   const hechos = new Set(yaHechos);
-  for (const e of rutina) if (!hechos.has(e)) return e;
+  const ultimo = Math.max(-1, ...yaHechos.map((e) => rutina.indexOf(e)));
+  const desde = Math.max(ultimo + 1, Math.min(yaHechos.length, rutina.length));
+  for (let i = 0; i < rutina.length; i++) {
+    const e = rutina[(desde + i) % rutina.length];
+    if (!hechos.has(e)) return e;
+  }
   return null;
 }
 

@@ -18621,7 +18621,7 @@ console.log('\n237. Cacería del 15/10, vuelta 3: Seguir con la cinta, la semill
   chequear('la cinta tocada por error y dejada a los 20 s no anota vuelta ni serie', await v3('porError'), { series: 0, bloques: [] });
   chequear('un descanso de una hora corregido a 90 s baja la marca a su fin', await v3('acortar'), { conHora: 60, corregido: true });
   chequear('"Listo" sin señal: la bajada no se pierde en la cola, ni llega estirada a la hora en que volvió la señal', [await v3('pisada'), await v3('tarde')], [{ cercaDeListo: true }, { cercaDeListo: true }]);
-  chequear('con la rutina guardada, elegir otro ejercicio de ese día no la abandona: después propone el que falta de la rutina', await v3('guardada'), { propone: 'press_banca' });
+  chequear('con la rutina guardada, elegir otro ejercicio de ese día no la abandona: sigue con el de después en la rutina (19/10: ya no vuelve atrás)', await v3('guardada'), { propone: 'aperturas' });
   const B237 = await import('../nucleo/bloques.ts');
   const elegido = B237.cambiarEjercicio(B237.bloquesVacios(), 'cinta');
   chequear('sembrar no pisa un ejercicio ya elegido (y sigue sembrando un bloque vacío)', [B237.sembrar(elegido, 'press_banca').ejercicio, B237.sembrar(B237.bloquesVacios(), 'press_banca').ejercicio], ['cinta', 'press_banca']);
@@ -19468,6 +19468,19 @@ console.log('\n263. La sugerencia del siguiente sale del mismo día de la semana
   chequear('el lunes, después de press sale lo del lunes pasado, no lo del martes', RB.despuesDe(ses, 'press_banca', ['press_banca'], '2026-10-19'), 'fondos');
   chequear('sin una sesión de ese día de la semana, no sugiere nada', RB.despuesDe([ses[1]], 'press_banca', ['press_banca'], '2026-10-19'), null);
   chequear('lo de hoy mismo sí cuenta (es el mismo día)', RB.despuesDe([{ fecha: '2026-10-19', ejercicios: ['press_banca', 'remo'] }, ses[1]], 'press_banca', ['press_banca'], '2026-10-19'), 'remo');
+}
+
+console.log('\n264. Cambiar de ejercicio en medio de la sesión: la lista sigue por donde iba (19/10)');
+{
+  const rut = ['a', 'b', 'c', 'd', 'e'];
+  chequear('sigue después de lo hecho; si cambiaste uno por otro, no vuelve atrás; al final, lo que faltó', [
+    RB.siguienteEnRutina(rut, ['a', 'b']),
+    RB.siguienteEnRutina(rut, ['a', 'x']),
+    RB.siguienteEnRutina(rut, ['a', 'd']),
+    RB.siguienteEnRutina(rut, ['a', 'd', 'e']),
+    RB.siguienteEnRutina(rut, []),
+    RB.siguienteEnRutina(rut, rut),
+  ], ['c', 'c', 'e', 'b', 'a', null]);
 }
 
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
