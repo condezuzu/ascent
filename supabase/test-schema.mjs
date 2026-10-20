@@ -16873,10 +16873,11 @@ console.log('\n206. La pantalla del descanso: qué se estaba haciendo, el arco, 
   const { T: T206 } = await import('../nucleo/textos.ts');
   chequear('la serie se dice como en la tarjeta bloqueada: una de más, sin "de"', [T206.descanso.serieDe(3, 4), T206.descanso.serieDe(4, 4), T206.descanso.serieDe(5, 4)], ['serie 3 de 4', 'serie 4 de 4', 'serie 5']);
   const p206 = de206('movil', 'src', 'Descanso.tsx');
-  chequear('la pantalla dice qué se hacía, dibuja el arco con el color que le pasan, y al terminar cuenta hacia arriba', [
+  // Desde el 19/10 lo de más va chico en la esquina y el reloj grande queda en 0:00 (ver la 272).
+  chequear('la pantalla dice qué se hacía, dibuja el arco con el color que le pasan, y al terminar cuenta lo de más', [
     /\{!!vivo\.ejercicio && \(/.test(p206) && /T\.descanso\.serieDe\(vivo\.serie, vivo\.meta \?\? 0\)/.test(p206),
     /stroke=\{acento\}/.test(p206) && /strokeDashoffset=\{LARGO \* \(1 - proporcion\)\}/.test(p206),
-    /terminado \? '\+' \+ cuentaAtras\(pasadoDe\(vivo\.fin, ahora\)\) : cuentaAtras\(falta\)/.test(p206),
+    /\+\{cuentaAtras\(pasadoDe\(vivo\.fin, ahora\)\)\}/.test(p206),
     /<CompaneroEnDescanso visible=\{visible\} ahora=\{ahora\} \/>/.test(p206),
   ], [true, true, true, true]);
   const c206 = de206('movil', 'src', 'CompaneroEnDescanso.tsx');
@@ -19673,6 +19674,23 @@ console.log('\n271. El corazón de las fotos del perfil: uno por persona, sin sa
   // El número sobre el corazón sin dar: el fondo a 72% encima de la foto más clara posible.
   const sobreBlanco = '#' + [5, 6, 10].map((x) => Math.round(x * 0.72 + 255 * 0.28).toString(16).padStart(2, '0')).join('');
   chequear('el número llega a 4,5:1 dado y sin dar, aun sobre una foto blanca', [contraste(C271.fondo, C271.corazon) >= 4.5, contraste(C271.tinta, sobreBlanco) >= 4.5], [true, true]);
+}
+console.log('\n272. El descanso al terminar: el reloj grande queda en 0:00 y lo de más va chico abajo a la derecha, sin cambiar de pantalla (19/10)');
+{
+  const { cuentaAtras } = await import('../compartido/descanso.ts');
+  const ES = (await import('../nucleo/textos.ts')).TEXTOS_ES;
+  const { EN } = await import('../nucleo/textos-en.ts');
+  const d = sinComentarios(deBug('movil', 'src', 'Descanso.tsx'));
+  chequear('terminado, el reloj grande dice 0:00 y lo de más se escribe +0:40', [cuentaAtras(0), '+' + cuentaAtras(40)], ['0:00', '+0:40']);
+  chequear('el número grande es siempre la cuenta atrás (en 0 dice 0:00)', /<Text testID="descanso-reloj" style=\{estilos\.numero\}[^>]*>\s*\{cuentaAtras\(falta\)\}\s*<\/Text>/.test(d), true);
+  chequear('lo de más: solo al terminar, chico, abajo a la derecha del arco', [
+    /\{terminado && \(\s*<Text testID="descanso-de-mas" style=\{estilos\.deMas\}/.test(d),
+    /deMas: \{ position: 'absolute', right: 4, bottom: 4, color: C\.sub, fontSize: 15/.test(d),
+  ], [true, true]);
+  chequear('sin cambiar de pantalla: ni fondo nuevo, ni «LISTO», ni número achicado', [
+    /estilos\.listo|numeroPasado|rotuloListo/.test(d),
+    'rotuloListo' in ES.descanso || 'rotuloListo' in EN.descanso,
+  ], [false, false]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

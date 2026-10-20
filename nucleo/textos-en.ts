@@ -602,7 +602,6 @@ export const EN: Textos = {
     listoPie: 'Done. Whenever you’re ready, the next one.',
     seguir: 'Continue',
     rotulo: 'REST',
-    rotuloListo: 'DONE',
     serieDe: (serie: number, meta: number) => (meta >= serie ? `set ${serie} of ${meta}` : `set ${serie}`),
     deMas: 'extra',
   },

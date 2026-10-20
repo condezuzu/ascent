@@ -152,7 +152,7 @@ export default function Descanso({
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={alOcultar} statusBarTranslucent>
-      <View style={[estilos.pantalla, { paddingTop: arriba }, terminado && estilos.listo]}>
+      <View style={[estilos.pantalla, { paddingTop: arriba }]}>
         <Pressable style={estilos.cerrar} onPress={alOcultar} accessibilityLabel={T.descanso.cerrar}>
           <Text style={estilos.cerrarTexto}>✕</Text>
         </Pressable>
@@ -160,7 +160,7 @@ export default function Descanso({
         {/* ARRIBA, CHICO: qué estabas haciendo (12/10). Antes la pantalla era un
             número solo: decía cuándo volver y nada sobre a qué. */}
         <View style={estilos.arriba}>
-          <Text style={[estilos.rotulo, terminado && { color: acento }]}>{terminado ? T.descanso.rotuloListo : T.descanso.rotulo}</Text>
+          <Text style={estilos.rotulo}>{T.descanso.rotulo}</Text>
           {!!vivo.ejercicio && (
             <Text style={estilos.ejercicio} numberOfLines={1}>
               {vivo.ejercicio}
@@ -169,8 +169,9 @@ export default function Descanso({
           {serie && <Text style={estilos.serie}>{serie}</Text>}
         </View>
 
-        {/* EL ARCO SE VACÍA, con el color de quien entrena. Al terminar no se
-            queda en 0:00: cuenta cuánto te pasaste. */}
+        {/* EL ARCO SE VACÍA, con el color de quien entrena. Al terminar queda en 0:00
+            sin cambiar de pantalla (19/10, aprobado en la galería), y lo que te pasaste
+            va chico abajo a la derecha. */}
         <View style={estilos.centro}>
           <View style={estilos.arco}>
             <Svg width={LADO} height={LADO} style={estilos.dibujo}>
@@ -187,10 +188,14 @@ export default function Descanso({
                 strokeDashoffset={LARGO * (1 - proporcion)}
               />
             </Svg>
-            <Text style={[estilos.numero, terminado && estilos.numeroPasado]} accessibilityLiveRegion="polite">
-              {terminado ? '+' + cuentaAtras(pasadoDe(vivo.fin, ahora)) : cuentaAtras(falta)}
+            <Text testID="descanso-reloj" style={estilos.numero} accessibilityLiveRegion="polite">
+              {cuentaAtras(falta)}
             </Text>
-            {terminado && <Text style={estilos.deMas}>{T.descanso.deMas}</Text>}
+            {terminado && (
+              <Text testID="descanso-de-mas" style={estilos.deMas} accessibilityLabel={`${cuentaAtras(pasadoDe(vivo.fin, ahora))} ${T.descanso.deMas}`}>
+                +{cuentaAtras(pasadoDe(vivo.fin, ahora))}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -295,8 +300,6 @@ const LARGO = 2 * Math.PI * RADIO;
 
 const estilos = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: C.fondo, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 30 },
-  // Al terminar el fondo cambia de golpe: es el aviso que siempre funciona.
-  listo: { backgroundColor: '#1a1f2b' },
   cerrar: { position: 'absolute', top: 48, right: 16, minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
   cerrarTexto: { color: C.sub, fontSize: 20 },
   arriba: { alignItems: 'center', minHeight: 70 },
@@ -308,8 +311,8 @@ const estilos = StyleSheet.create({
   // Girado un cuarto: el arco arranca arriba, como un reloj.
   dibujo: { position: 'absolute', top: 0, left: 0, transform: [{ rotate: '-90deg' }] },
   numero: { color: C.tinta, fontSize: 84, fontWeight: '200', fontVariant: ['tabular-nums'] },
-  numeroPasado: { fontSize: 72 },
-  deMas: { color: C.sub, fontSize: 13, marginTop: 6 },
+  // En la esquina del cuadrado del arco, afuera del círculo.
+  deMas: { position: 'absolute', right: 4, bottom: 4, color: C.sub, fontSize: 15, fontVariant: ['tabular-nums'] },
   abajo: { alignItems: 'stretch' },
   solido: { borderWidth: 1, borderRadius: 4, paddingVertical: 16, alignItems: 'center' },
   solidoTexto: { color: C.fondo, fontSize: 16, fontWeight: '600' },
