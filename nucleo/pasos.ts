@@ -15,6 +15,16 @@
 
 export const CLAVE_META_PASOS = 'ascent:meta-pasos';
 
+/**
+ * LOS KM DEL CARDIO, DE LOS PASOS (20/10). Un paso promedio caminando son 0,762 m: es una
+ * estimación, como la del propio teléfono en una cinta. Pedirle la distancia a Salud sería
+ * un permiso más en la ventana de Health, por un dato que sale de este.
+ */
+export const METROS_POR_PASO = 0.762;
+export function kmDePasos(pasos: number): string {
+  return (Math.max(0, pasos) * METROS_POR_PASO / 1000).toFixed(1).replace('.', ',');
+}
+
 export const META_PASOS_POR_OMISION = 10000;
 
 /** El día en que ya se festejó la meta (15/10): una vez por día, no en cada visita. */

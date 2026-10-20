@@ -407,6 +407,9 @@ const ES = {
     entrenando: 'ENTRENANDO',
     serie: (n: number, de: number) => (de > 0 ? `Serie ${n} de ${de}` : `Serie ${n}`),
     pasos: (n: number) => `${n.toLocaleString('es')} pasos`,
+    // EL CARDIO (20/10): en vez de la cuenta del descanso, los pasos y los km de esta vuelta.
+    cardio: 'CARDIO',
+    pasosYKm: (n: number, km: string) => `${n.toLocaleString('es')} pasos · ${km} km`,
   },
 
   // ---------------------------------------------------------------

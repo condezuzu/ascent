@@ -19141,7 +19141,8 @@ console.log('\n250. La tarjeta de la pantalla bloqueada sigue a la sesión (buil
   const recienElegido = TJ.tarjetaDeAhora({ ...base, bloques: bloques('press_banca', 0, 3), descanso: null }, ahora);
   chequear('recién elegido el ejercicio: "Serie 0 de 3", con el reloj de la sesión', [recienElegido.modo, recienElegido.ejercicio, recienElegido.detalle, recienElegido.desde], ['serie', 'Press de banca', 'Serie 0 de 3', Date.parse('2026-10-16T11:30:00Z')]);
   const descansando = TJ.tarjetaDeAhora({ ...base, bloques: bloques('press_banca', 1, 3), descanso: { fin: ahora + 90000, duracion: 120, ejercicio: 'Press de banca', serie: 1, meta: 3 } }, ahora, { pasos: 3214, companero: 'lucia', finCompanero: ahora + 30000 });
-  chequear('descansando: la cuenta, la serie que se terminó, los pasos y el compañero', [descansando.modo, descansando.fin, descansando.detalle, descansando.textoPasos, descansando.companero, descansando.finCompanero], ['descanso', ahora + 90000, 'Serie 1 de 3', `${(3214).toLocaleString('es')} pasos`, 'lucia', ahora + 30000]);
+  // Sin los pasos desde el 20/10: sin cardio, no van en el descanso (ver la 254c).
+  chequear('descansando: la cuenta, la serie que se terminó y el compañero (los pasos, no)', [descansando.modo, descansando.fin, descansando.detalle, descansando.textoPasos, descansando.companero, descansando.finCompanero], ['descanso', ahora + 90000, 'Serie 1 de 3', '', 'lucia', ahora + 30000]);
   chequear('el descanso recién terminado se deja diciendo LISTO un rato, y después vuelve a la serie', [
     TJ.tarjetaDeAhora({ ...base, bloques: bloques('press_banca', 1, 3), descanso: { fin: ahora - 1000, duracion: 120 } }, ahora),
     TJ.tarjetaDeAhora({ ...base, bloques: bloques('press_banca', 1, 3), descanso: { fin: ahora - TJ.LISTO_MS - 1000, duracion: 120 } }, ahora).detalle,
@@ -19316,6 +19317,43 @@ console.log('\n254b. Una sola tarjeta en la pantalla bloqueada aunque lleguen do
   apagarTarjeta();
   olvidarViva();
   P254b.enVivo = antes;
+}
+
+console.log('\n254c. El cardio en la tarjeta: pasos y km en vez de la cuenta del descanso; sin cardio, el descanso sin pasos (20/10)');
+{
+  const { plataforma: P254c } = await import('./dobles/plataforma.mjs');
+  const { cambiarViva, olvidarViva } = await import('../compartido/sesionViva.ts');
+  const { bloquesVacios } = await import('../nucleo/bloques.ts');
+  const TJ254c = await import('../compartido/tarjeta.ts');
+  const antes = { enVivo: P254c.enVivo, salud: P254c.salud };
+  const llegaron = [];
+  const preguntas = [];
+  P254c.enVivo = { ...antes.enVivo, disponible: () => true, sabeLaTarjeta: () => true, async mostrarTarjeta(t) { llegaron.push(t); return true; }, async esconder() {} };
+  P254c.salud = { ...antes.salud, async pasosEntre(a, b) { preguntas.push([a.getTime(), b.getTime()]); return 1234; } };
+  const apagar = TJ254c.encenderTarjeta();
+  const inicio = new Date(Date.now() - 600000).toISOString();
+  const desde = Date.now() - 300000;
+  // Una serie de press con el descanso andando, y los pasos de hoy sabidos.
+  TJ254c.fijarExtras({ pasos: 5000 });
+  cambiarViva({ inicio, desfasaje: 0, bloques: { ...bloquesVacios('press_banca', 3), hechas: 1 }, descanso: { fin: Date.now() + 90000, duracion: 120, ejercicio: 'Press de banca', serie: 1, meta: 3 } });
+  await new Promise((r) => setTimeout(r, 60));
+  const enElDescanso = llegaron.at(-1);
+  // Arranca la cinta con el descanso todavía corriendo.
+  cambiarViva({ bloques: { ...bloquesVacios('cinta', 3), cardioDesde: desde } });
+  await new Promise((r) => setTimeout(r, 120));
+  const enElCardio = llegaron.at(-1);
+  chequear('sin cardio, el descanso no lleva los pasos', [enElDescanso?.modo, enElDescanso?.textoPasos], ['descanso', '']);
+  const { T: T254c } = await import('../nucleo/textos.ts');
+  chequear('con la cinta andando: CARDIO con los pasos y los km de esta vuelta, sin la cuenta del descanso', [enElCardio?.modo, enElCardio?.rotulo, enElCardio?.detalle, enElCardio?.textoPasos], ['serie', T254c.tarjeta.cardio, T254c.tarjeta.pasosYKm(1234, '0,9'), '']);
+  chequear('los pasos se piden desde que arrancó la cinta', preguntas.length > 0 && preguntas[0][0] === desde, true);
+  // Termina el cardio: sin cinta, sin pasos del cardio.
+  cambiarViva({ bloques: { ...bloquesVacios('press_banca', 3) }, descanso: null });
+  await new Promise((r) => setTimeout(r, 60));
+  chequear('sin cinta, vuelve a la serie con los pasos de hoy', [llegaron.at(-1)?.rotulo, llegaron.at(-1)?.textoPasos], [T254c.tarjeta.entrenando, T254c.tarjeta.pasos(5000)]);
+  apagar();
+  olvidarViva();
+  P254c.enVivo = antes.enVivo;
+  P254c.salud = antes.salud;
 }
 
 console.log('\n255. La sugerencia del siguiente sale de lo que hiciste después de ese ejercicio la semana pasada (16/10)');

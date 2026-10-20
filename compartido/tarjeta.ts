@@ -3,6 +3,7 @@ import { T } from '@nucleo/textos';
 import type { TarjetaEnVivo } from '@nucleo/plataforma';
 import { leerViva, suscribirViva, type EstadoVivo } from '@compartido/sesionViva';
 import { nombreDe } from '@compartido/enCurso';
+import { kmDePasos } from '@nucleo/pasos';
 
 /**
  * LA TARJETA DE LA PANTALLA BLOQUEADA, ENTERA (build 8, 15/10).
@@ -24,8 +25,9 @@ import { nombreDe } from '@compartido/enCurso';
 /** Cuánto se deja el "LISTO" de un descanso terminado antes de volver a la serie. */
 export const LISTO_MS = 90_000;
 
-export type Extras = { pasos: number; companero: string; finCompanero: number };
-const SIN_EXTRAS: Extras = { pasos: -1, companero: '', finCompanero: 0 };
+/** `pasosCardio`: los de la vuelta de cardio que corre (-1 = no se sabe o no hay cardio). */
+export type Extras = { pasos: number; companero: string; finCompanero: number; pasosCardio: number };
+const SIN_EXTRAS: Extras = { pasos: -1, companero: '', finCompanero: 0, pasosCardio: -1 };
 
 /**
  * Qué tiene que decir la tarjeta ahora. Pura, para poder probarla. \`null\` = apagada;
@@ -43,6 +45,22 @@ export function tarjetaDeAhora(v: EstadoVivo, ahora: number, x: Extras = SIN_EXT
     rotuloListo: T.tarjeta.listo,
     textoPasos: x.pasos >= 0 ? T.tarjeta.pasos(x.pasos) : '',
   };
+  // EL CARDIO (20/10): con la cinta andando no se muestra la cuenta del descanso que haya
+  // quedado de la serie anterior, sino los pasos y los km de esta vuelta.
+  if (v.bloques.cardioDesde !== undefined) {
+    return {
+      ...comun,
+      modo: 'serie',
+      fin: desde,
+      duracion: 0,
+      ejercicio: nombreDe(v.bloques.ejercicio) ?? '',
+      serie: 0,
+      meta: 0,
+      rotulo: T.tarjeta.cardio,
+      detalle: x.pasosCardio >= 0 ? T.tarjeta.pasosYKm(x.pasosCardio, kmDePasos(x.pasosCardio)) : '',
+      textoPasos: '',
+    };
+  }
   const d = v.descanso;
   if (d && d.fin > ahora) {
     const serie = d.serie ?? 0;
@@ -57,6 +75,8 @@ export function tarjetaDeAhora(v: EstadoVivo, ahora: number, x: Extras = SIN_EXT
       meta,
       rotulo: T.tarjeta.descanso,
       detalle: serie > 0 ? T.tarjeta.serie(serie, meta) : '',
+      // SIN CARDIO, LOS PASOS NO VAN EN EL DESCANSO (20/10, a pedido).
+      textoPasos: '',
     };
   }
   if (d && ahora < d.fin + LISTO_MS) return 'dejar';
@@ -158,12 +178,47 @@ async function mandarAhora() {
 
 let apagarOyente: (() => void) | null = null;
 
+/** Cada cuánto se le preguntan a Salud los pasos del cardio, con la app adelante. */
+export const PASOS_DEL_CARDIO_MS = 30_000;
+let pasosDelCardio: ReturnType<typeof setInterval> | null = null;
+let cardioDe: number | null = null;
+
+/**
+ * LOS PASOS DE LA VUELTA DE CARDIO (20/10), desde que arrancó la cinta. Con la app atrás
+ * el reloj no corre: la tarjeta queda con los últimos y se pone al día al volver.
+ */
+function seguirElCardio() {
+  const desde = leerViva().bloques.cardioDesde;
+  if ((desde ?? null) === cardioDe) return;
+  cardioDe = desde ?? null;
+  if (pasosDelCardio) clearInterval(pasosDelCardio);
+  pasosDelCardio = null;
+  if (desde === undefined) {
+    if (extras.pasosCardio !== -1) fijarExtras({ pasosCardio: -1 });
+    return;
+  }
+  const preguntar = async () => {
+    const n = await plataforma.salud.pasosEntre(new Date(desde), new Date()).catch(() => null);
+    if (cardioDe === desde) fijarExtras({ pasosCardio: n ?? -1 });
+  };
+  void preguntar();
+  pasosDelCardio = setInterval(() => void preguntar(), PASOS_DEL_CARDIO_MS);
+}
+
 /** Se enciende una vez, con la sesión de la cuenta abierta (\`app/_layout.tsx\`). */
 export function encenderTarjeta(): () => void {
-  if (!apagarOyente) apagarOyente = suscribirViva(() => void mandar());
+  if (!apagarOyente)
+    apagarOyente = suscribirViva(() => {
+      seguirElCardio();
+      void mandar();
+    });
+  seguirElCardio();
   void mandar();
   return () => {
     apagarOyente?.();
     apagarOyente = null;
+    if (pasosDelCardio) clearInterval(pasosDelCardio);
+    pasosDelCardio = null;
+    cardioDe = null;
   };
 }

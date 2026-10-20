@@ -209,6 +209,8 @@ export const EN: Textos = {
     entrenando: 'TRAINING',
     serie: (n: number, de: number) => (de > 0 ? `Set ${n} of ${de}` : `Set ${n}`),
     pasos: (n: number) => `${n.toLocaleString('en')} steps`,
+    cardio: 'CARDIO',
+    pasosYKm: (n: number, km: string) => `${n.toLocaleString('en')} steps · ${km} km`,
   },
   globos: {
     elegir: 'Search or pick an exercise from the list.',
