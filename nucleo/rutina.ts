@@ -289,17 +289,36 @@ export function conDiaReemplazado<D>(dias: D[], dia: number, hecho: D): D[] {
   return dias.map((d, i) => (i === dia ? hecho : d));
 }
 
+type DiaConEjercicios = { descanso: boolean; ejercicios: EjercicioDeRutina[] };
+
 /**
- * ¿SE PREGUNTA SI CAMBIA EL DÍA DE LA RUTINA? (16/10) Solo si se entrenó algo y no son
- * los mismos ejercicios que tiene ese día: el orden y las series no cuentan, otro
- * ejercicio sí. Un día de descanso o vacío en la rutina, con algo hecho, también.
+ * LO QUE GUARDA «REEMPLAZAR» EN LA VENTANA DEL FINAL: el día con lo que cambió, y nada más
+ * (20/10, bug del gimnasio: "cambié el primer ejercicio y me editó todo"). Pisaba el día
+ * entero con lo entrenado: cambiar el primero y cortar antes borraba el resto. Ahora cada
+ * ejercicio hecho que el día no tenía ocupa, en orden, el lugar de uno del día que no se
+ * hizo; si sobran, van al final. Lo demás queda como estaba, con sus series.
+ */
+export function rutinaConLoHecho<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D): D[] {
+  const delDia = dias[dia];
+  const antes = delDia && !delDia.descanso ? delDia.ejercicios : [];
+  const hechos = new Set(hecho.ejercicios.map((e) => e.ejercicio));
+  const tenia = new Set(antes.map((e) => e.ejercicio));
+  const nuevos = hecho.ejercicios.filter((e) => !tenia.has(e.ejercicio));
+  let usados = 0;
+  const ejercicios = antes.map((e) => (!hechos.has(e.ejercicio) && usados < nuevos.length ? nuevos[usados++] : e));
+  return conDiaReemplazado(dias, dia, { ...hecho, descanso: false, ejercicios: [...ejercicios, ...nuevos.slice(usados)] });
+}
+
+/**
+ * ¿SE PREGUNTA SI CAMBIA EL DÍA DE LA RUTINA? (16/10) Solo si se entrenó algo que ese día
+ * no tiene: el orden y las series no cuentan, otro ejercicio sí. Un día de descanso o vacío
+ * en la rutina, con algo hecho, también. Saltearse uno ya no pregunta (20/10): «Reemplazar»
+ * solo cambia lo nuevo (`rutinaConLoHecho`), así que no habría qué cambiar.
  */
 export function hayQuePreguntarPorLaRutina(
   delDia: { descanso: boolean; ejercicios: { ejercicio: string }[] } | undefined,
   hecho: { ejercicios: { ejercicio: string }[] }
 ): boolean {
-  if (hecho.ejercicios.length === 0) return false;
   const tiene = new Set(delDia && !delDia.descanso ? delDia.ejercicios.map((e) => e.ejercicio) : []);
-  const hizo = new Set(hecho.ejercicios.map((e) => e.ejercicio));
-  return tiene.size !== hizo.size || [...hizo].some((e) => !tiene.has(e));
+  return hecho.ejercicios.some((e) => !tiene.has(e.ejercicio));
 }

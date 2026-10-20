@@ -1,5 +1,5 @@
 import { T } from '@nucleo/textos';
-import { conDiaReemplazado, diaDeLaSesion, hayQuePreguntarPorLaRutina } from '@nucleo/rutina';
+import { diaDeLaSesion, hayQuePreguntarPorLaRutina, rutinaConLoHecho } from '@nucleo/rutina';
 import { nombreNuevo, type Rutina } from '@nucleo/rutinas';
 import { cargarMisRutinas, guardarRutina, rutinaActivaDelTelefono } from '@compartido/rutinas';
 import { supabase } from './supabase';
@@ -31,7 +31,7 @@ export async function rutinaParaPreguntar(bloques: BloqueGuardado[]): Promise<Pr
  * con este día puesto, sin tocar la que estaba—. `false` si no se pudo guardar.
  */
 export async function guardarDiaDeRutina({ rutinas, actual, dia, hecho }: PreguntaDeRutina, como: 'esta' | 'nueva'): Promise<boolean> {
-  const dias = conDiaReemplazado(actual.dias, dia, hecho);
+  const dias = rutinaConLoHecho(actual.dias, dia, hecho);
   const id =
     como === 'esta'
       ? await guardarRutina(supabase, { id: actual.id, nombre: actual.nombre, dias, activa: true })

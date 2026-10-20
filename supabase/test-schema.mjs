@@ -19483,16 +19483,18 @@ console.log('\n266. Reemplazar el día: queda igual a lo entrenado, sin duplicar
   const id = (await db.query("select guardar_rutina(null, 'Entrenamiento 1', $1::jsonb) as id", [JSON.stringify(dias)])).rows[0].id;
   // Lo entrenado: sentadilla, press, y sentadilla otra vez al final (dos tandas del mismo).
   const hecho = RB.diaDeLaSesion([{ ejercicio: 'sentadilla', series: 2 }, { ejercicio: 'press_banca', series: 3 }, { ejercicio: 'sentadilla', series: 1 }]);
-  const nuevos = typeof RB.conDiaReemplazado === 'function' ? RB.conDiaReemplazado(dias, 1, hecho) : dias.map((d, i) => (i === 1 ? hecho : d));
+  // Desde el 20/10 «Reemplazar» cambia solo lo nuevo (ver la 280): la sentadilla ocupa el
+  // lugar de los fondos, que no se hicieron, y el press queda con sus series.
+  const nuevos = RB.rutinaConLoHecho(dias, 1, hecho);
   await db.query("select guardar_rutina($1, 'Entrenamiento 1', $2::jsonb)", [id, JSON.stringify(nuevos)]);
   const filas = (await db.query('select dias from rutinas where user_id = $1', [u])).rows;
-  chequear('una sola rutina, y el lunes con lo entrenado: cada ejercicio una vez, series sumadas, el resto sin tocar', [
+  chequear('una sola rutina, y el lunes con lo nuevo en el lugar de lo que no se hizo: cada ejercicio una vez, el resto sin tocar', [
     filas.length,
     filas[0].dias[1].ejercicios.map((e) => [e.ejercicio, e.series]),
     filas[0].dias[0].ejercicios.length,
-  ], [1, [['sentadilla', 3], ['press_banca', 3]], 0]);
+  ], [1, [['press_banca', 4], ['sentadilla', 3]], 0]);
   const pr = deBug('movil', 'src', 'preguntarPorLaRutina.ts');
-  chequear('la ventana usa ese mismo camino', [/const hecho = diaDeLaSesion\(bloques\);/.test(pr), /conDiaReemplazado\(actual\.dias, dia, hecho\)/.test(pr)], [true, true]);
+  chequear('la ventana usa ese mismo camino', [/const hecho = diaDeLaSesion\(bloques\);/.test(pr), /rutinaConLoHecho\(actual\.dias, dia, hecho\)/.test(pr)], [true, true]);
 }
 
 console.log('\n267. La última vez de un ejercicio: series, pesos y el modo de carga (19/10)');
@@ -19860,6 +19862,33 @@ console.log('\n279. Un lunes, la sesión arranca la rutina del lunes aunque el t
   const sinCopia = await escenarioDeSesion('rutinaDelDia', 'sinCopia');
   chequear('con la copia del teléfono: la del lunes', conCopia.fallo ?? conCopia, { dia: 1, propone: 'press_banca', sugerido: true });
   chequear('sin la copia: también la del lunes (la pide a la base), no la del martes', sinCopia.fallo ?? sinCopia, { dia: 1, propone: 'press_banca', sugerido: true });
+}
+console.log('\n280. Cambiar el primer ejercicio de la rutina en la sesión cambia ese ejercicio y nada más (20/10, bug del gimnasio)');
+{
+  // Con el hook de verdad y el reloj de un lunes: rutina de lunes press de banca y sentadilla;
+  // en la sesión se cambia press de banca por press inclinado en la primera serie, se termina,
+  // se contesta la ventana y se empieza otra. «Reemplazar» pisaba el día entero con lo
+  // entrenado ("me editó todo"): la sentadilla se perdía.
+  const lunes = { sugeridoAlEmpezar: 'press_banca', hecho: [['press_inclinado', 2]], pregunta: true, diaDespues: ['press_inclinado', 'sentadilla'], martesDespues: ['remo', 'dominadas'], laOtraPropone: 'press_inclinado' };
+  const antes = await escenarioDeSesion('primerEjercicio', 'antes', 'reemplazar');
+  const despues = await escenarioDeSesion('primerEjercicio', 'despues', 'reemplazar');
+  const sinCopia = await escenarioDeSesion('primerEjercicio', 'antes', 'reemplazar', 'sinCopia');
+  chequear('elegido antes de la serie: «Reemplazar» cambia ese ejercicio, deja la sentadilla y la sesión siguiente propone el nuevo', antes.fallo ?? antes, lunes);
+  chequear('o con la serie ya hecha y «Eran de press inclinado»: igual', despues.fallo ?? despues, lunes);
+  chequear('sin la copia del teléfono: igual, y el martes no se toca', sinCopia.fallo ?? sinCopia, lunes);
+  const nada = await escenarioDeSesion('primerEjercicio', 'antes', 'nada');
+  chequear('sin contestar la ventana, la rutina no cambia', nada.fallo ?? [nada.diaDespues, nada.laOtraPropone], [['press_banca', 'sentadilla'], 'press_banca']);
+  const { rutinaConLoHecho, hayQuePreguntarPorLaRutina } = await import('../nucleo/rutina.ts');
+  const d = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
+  const conR = (dia, hecho) => rutinaConLoHecho([d([]), dia], 1, hecho)[1].ejercicios.map((e) => e.ejercicio);
+  chequear('lo nuevo ocupa, en orden, el lugar de lo que no se hizo; lo que sobra va al final; lo demás queda', [
+    conR(d(['a', 'b', 'c']), d(['x'])),
+    conR(d(['a', 'b', 'c']), d(['b', 'c', 'x'])),
+    conR(d(['a', 'b', 'c']), d(['a', 'b', 'c', 'x'])),
+    conR(d(['a', 'b']), d(['x', 'y', 'z'])),
+    conR({ descanso: true, ejercicios: [] }, d(['x', 'y'])),
+  ], [['x', 'b', 'c'], ['x', 'b', 'c'], ['a', 'b', 'c', 'x'], ['x', 'y', 'z'], ['x', 'y']]);
+  chequear('sin nada nuevo (solo se saltó algo) no se pregunta: no habría qué cambiar', hayQuePreguntarPorLaRutina(d(['a', 'b', 'c']), d(['b'])), false);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
