@@ -107,7 +107,7 @@ async function avisarAlTerminar(d: DescansoVivo | null) {
   // NO SE ESPERA A QUE TERMINE: encender una Live Activity puede tardar, y lo
   // que no puede tardar es que el descanso arranque. Es un agregado encima, y
   // si falla no se entera nadie más que la pantalla de bloqueo.
-  void enVivoAlTerminar(d);
+  void enVivoEnFila(d);
 
   if (!plataforma.avisos.conPantallaBloqueada()) return;
   if (relojDelFin) clearTimeout(relojDelFin);
@@ -153,6 +153,18 @@ export function avisarFin(fin: number): boolean {
   return true;
 }
 
+let filaEnVivo: Promise<void> = Promise.resolve();
+
+/**
+ * EN FILA (20/10): el módulo nativo espera entre "¿hay una de esta duración?" y encender otra,
+ * y el descanso nuevo seguido de «lo que se hacía» entraban los dos por ese hueco: dos tarjetas
+ * en la pantalla bloqueada (la build 7; desde la 8 la tarjeta va por `compartido/tarjeta.ts`).
+ */
+function enVivoEnFila(d: DescansoVivo | null): Promise<void> {
+  filaEnVivo = filaEnVivo.then(() => enVivoAlTerminar(d)).catch(() => undefined);
+  return filaEnVivo;
+}
+
 async function enVivoAlTerminar(d: DescansoVivo | null) {
   if (!plataforma.enVivo.disponible()) return;
   // Un descanso ya terminado se apaga igual que uno saltado: pasa al bajar la
@@ -195,7 +207,7 @@ export function cambiarDuracion(vivo: DescansoVivo, duracion: number): DescansoV
 export function actualizarLoQueSeHace(vivo: DescansoVivo, hecho: HechoAntesDelDescanso): DescansoVivo {
   const d: DescansoVivo = { ...vivo, ejercicio: nombreDe(hecho.ejercicio), serie: hecho.serie, meta: hecho.meta };
   void plataforma.almacenamiento.guardar(CLAVE, JSON.stringify(d));
-  void enVivoAlTerminar(d);
+  void enVivoEnFila(d);
   return d;
 }
 
