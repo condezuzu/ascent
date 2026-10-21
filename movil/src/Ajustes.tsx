@@ -10,6 +10,8 @@ import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { guardarSonido, leerSonido } from '@compartido/descanso';
 import { guardarMostrarUltimaVez, leerMostrarUltimaVez } from '@compartido/mostrarUltimaVez';
+import { guardarRegistrarReps, leerRegistrarReps } from '@compartido/registrarReps';
+import { disponible } from '@nucleo/esquema';
 import Segmentado from './Segmentado';
 import { fijarPreferenciaIdioma, idiomaElegido, leerPreferenciaIdioma, type Idioma } from '@compartido/idioma';
 import { escritorEnFila } from '@compartido/enFila';
@@ -79,6 +81,7 @@ export default function Ajustes({
   // en el aparato y no en la cuenta.
   const [sonido, setSonido] = useState(false);
   const [ultimaVez, setUltimaVez] = useState(false);
+  const [reps, setReps] = useState(false);
   // LO QUE NO SE USA TODOS LOS DÍAS, plegado (item estructura). Lo frecuente
   // —gimnasio, salud, descanso, peso, avisos, quién sos— queda arriba y a la
   // vista; el resto entra acá adentro para que Ajustes no sea una lista larga y
@@ -90,6 +93,7 @@ export default function Ajustes({
   useEffect(() => {
     leerSonido().then(setSonido);
     leerMostrarUltimaVez().then(setUltimaVez);
+    leerRegistrarReps().then(setReps);
     void leerPreferenciaIdioma().then((p) => setIdioma(idiomaElegido(p)));
   }, []);
 
@@ -108,9 +112,11 @@ export default function Ajustes({
     }
   }
 
-  // "Deja que se marque solo" trae acá: Mi gimnasio está arriba, así que alcanza con volver arriba.
+  // "Deja que se marque solo" trae acá. Desde que Perfil va después de Entrenamiento (21/10),
+  // Mi gimnasio ya no está arriba de todo: se va a donde quedó.
   const desplazable = useRef<ScrollView>(null);
-  useEffect(() => eventos.escuchar(RESALTAR_GIMNASIO, () => desplazable.current?.scrollTo({ y: 0, animated: true })), []);
+  const yGimnasio = useRef(0);
+  useEffect(() => eventos.escuchar(RESALTAR_GIMNASIO, () => desplazable.current?.scrollTo({ y: Math.max(0, yGimnasio.current - 24), animated: true })), []);
 
   // LOS DÍAS DE DESCANSO VAN EN FILA: ver `escritorEnFila`. `alCambiar` llega
   // nuevo en cada dibujo, y la fila vive más que un dibujo: se llama al último.
@@ -159,7 +165,114 @@ export default function Ajustes({
 
       <Text style={estilos.titulo}>{T.ajustes.titulo}</Text>
 
-      {/* TU PERFIL, arriba de todo y como en la web: Ajustes es donde se lo
+      {/* EN TRES GRUPOS (21/10, a pedido): lo de entrenar, lo tuyo y lo general. Cada
+          cosa quedó como estaba; solo cambió de lugar. */}
+      <Text testID="ajustes-entrenamiento" style={[estilos.grupo, estilos.grupoPrimero]}>{T.ajustes.seccionEntrenamiento}</Text>
+
+      {/* LAS REPETICIONES DE CADA SERIE (21/10): apagado de fábrica. Sin la migración 94
+          la base las tiraría, así que hasta entonces no aparece. */}
+      {disponible('repsPorSerie', version) && (
+        <>
+          <View style={estilos.filaOpcion}>
+            <View style={estilos.textoOpcion}>
+              <Text style={estilos.opcion}>{T.ajustes.registrarReps}</Text>
+            </View>
+            <Interruptor
+              value={reps}
+              accessibilityLabel={T.ajustes.registrarReps}
+              onValueChange={(nuevo) => {
+                setReps(nuevo);
+                void guardarRegistrarReps(nuevo);
+              }}
+            />
+          </View>
+          <Text style={estilos.nota}>{T.ajustes.registrarRepsNota}</Text>
+        </>
+      )}
+
+      {/* LA ÚLTIMA VEZ, AL ENTRENAR (20/10): apagado de fábrica. */}
+      <View style={estilos.filaOpcion}>
+        <View style={estilos.textoOpcion}>
+          <Text style={estilos.opcion}>{T.ajustes.mostrarUltimaVez}</Text>
+        </View>
+        <Interruptor
+          value={ultimaVez}
+          accessibilityLabel={T.ajustes.mostrarUltimaVez}
+          onValueChange={(nuevo) => {
+            setUltimaVez(nuevo);
+            void guardarMostrarUltimaVez(nuevo);
+          }}
+        />
+      </View>
+      <Text style={estilos.nota}>{T.ajustes.mostrarUltimaVezNota}</Text>
+
+      {/* LOS CINCO PRESETS DE DURACIÓN SE FUERON (23/9, "Ajustes tiene
+          demasiados botones"). No se perdió nada: la duración ya se elige
+          DENTRO de la pantalla del descanso, que es donde se decide de
+          verdad —mirando el número correr, no dos días antes—, y lo que se
+          elige ahí vale para lo que queda de la sesión (§18.5).
+
+          EL SONIDO SE QUEDA, y es una línea, no cinco botones: es de ESTE
+          teléfono, no de la cuenta, y no tiene otra casa — entró en N4
+          justamente porque arrancaba apagado y no había dónde prenderlo. */}
+      <Text style={estilos.seccion}>{T.ajustes.avisoDelDescanso}</Text>
+      {/* UN INTERRUPTOR COMO LOS DE ARRIBA (15/10), no un texto con una tilde. */}
+      <View style={estilos.filaOpcion}>
+        <View style={estilos.textoOpcion}>
+          <Text style={estilos.opcion}>{T.ajustes.sonidoAlTerminar}</Text>
+        </View>
+        <Interruptor
+          value={sonido}
+          accessibilityLabel={T.ajustes.sonidoAlTerminar}
+          onValueChange={(nuevo) => {
+            setSonido(nuevo);
+            void guardarSonido(nuevo);
+          }}
+        />
+      </View>
+
+      <Text style={estilos.seccion}>{T.ajustes.diasDescanso}</Text>
+      <View style={estilos.fila}>
+        {DIAS_SEMANA.map((d, i) => (
+          <Pressable
+            key={i}
+            onPress={() => alternarDia(i)}
+            style={[estilos.pastilla, perfil.dias_descanso.includes(i) && estilos.prendida]}
+          >
+            <Text
+              style={[
+                estilos.textoPastilla,
+                perfil.dias_descanso.includes(i) && estilos.textoPrendido,
+              ]}
+            >
+              {d}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Text style={estilos.seccion}>{T.ajustes.estancamiento}</Text>
+      <Segmentado
+        opciones={[
+          { valor: true, texto: T.ajustes.estancamientoSi },
+          { valor: false, texto: T.ajustes.estancamientoNo },
+        ]}
+        valor={avisos}
+        alElegir={(v) => guardar({ avisos_estancamiento: v }, T.general.falloPreferencia)}
+      />
+      {avisos && (
+        <View style={{ marginTop: 10 }}>
+          <Segmentado
+            opciones={umbralesDisponibles(version).map((u: Umbral) => ({ valor: u, texto: T.ajustes.semanas(u) }))}
+            valor={umbral}
+            alElegir={(u) => guardar({ umbral_estancamiento: u }, T.general.falloPreferencia)}
+          />
+        </View>
+      )}
+
+      <Text testID="ajustes-perfil" style={estilos.grupo}>{T.ajustes.seccionPerfil}</Text>
+
+      {/* TU PERFIL, arriba de todo en Perfil: Ajustes es donde se lo
           busca cuando no se lo encontró en Inicio. */}
       <Pressable style={estilos.tuPerfil} onPress={() => router.push('/yo')} accessibilityRole="button">
         <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={40} />
@@ -168,9 +281,11 @@ export default function Ajustes({
         </View>
       </Pressable>
 
-      {/* EL GIMNASIO VA PRIMERO, igual que en la web: es lo que diferencia a
+      {/* EL GIMNASIO VA PRIMERO EN PERFIL, igual que en la web: es lo que diferencia a
           la app, y en una lista de interruptores al fondo no lo marca nadie. */}
-      <Gimnasio perfil={perfil} alCambiar={alCambiar} />
+      <View onLayout={(e) => (yGimnasio.current = e.nativeEvent.layout.y)}>
+        <Gimnasio perfil={perfil} alCambiar={alCambiar} />
+      </View>
 
       {/* ACTIVIDAD EN VIVO: opt-in, apagado por defecto (27/9). Cuando el
           vigilante te detecta en el gimnasio, tus amigos ven "estás entrenando
@@ -222,25 +337,9 @@ export default function Ajustes({
           donde se ve para qué sirve. Acá era un campo de texto suelto que
           parecía un enlace azul, y encima a veces abría el editor al entrar. */}
 
-      <Text style={estilos.seccion}>{T.ajustes.diasDescanso}</Text>
-      <View style={estilos.fila}>
-        {DIAS_SEMANA.map((d, i) => (
-          <Pressable
-            key={i}
-            onPress={() => alternarDia(i)}
-            style={[estilos.pastilla, perfil.dias_descanso.includes(i) && estilos.prendida]}
-          >
-            <Text
-              style={[
-                estilos.textoPastilla,
-                perfil.dias_descanso.includes(i) && estilos.textoPrendido,
-              ]}
-            >
-              {d}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Identidad perfil={perfil} alCambiar={alCambiar} />
+
+      <Text testID="ajustes-general" style={estilos.grupo}>{T.ajustes.seccionGeneral}</Text>
 
       <Text style={estilos.seccion}>{T.ajustes.peso}</Text>
       <Segmentado
@@ -265,69 +364,7 @@ export default function Ajustes({
         }}
       />
 
-      {/* LOS CINCO PRESETS DE DURACIÓN SE FUERON (23/9, "Ajustes tiene
-          demasiados botones"). No se perdió nada: la duración ya se elige
-          DENTRO de la pantalla del descanso, que es donde se decide de
-          verdad —mirando el número correr, no dos días antes—, y lo que se
-          elige ahí vale para lo que queda de la sesión (§18.5).
-
-          EL SONIDO SE QUEDA, y es una línea, no cinco botones: es de ESTE
-          teléfono, no de la cuenta, y no tiene otra casa — entró en N4
-          justamente porque arrancaba apagado y no había dónde prenderlo. */}
-      <Text style={estilos.seccion}>{T.ajustes.avisoDelDescanso}</Text>
-      {/* UN INTERRUPTOR COMO LOS DE ARRIBA (15/10), no un texto con una tilde. */}
-      <View style={estilos.filaOpcion}>
-        <View style={estilos.textoOpcion}>
-          <Text style={estilos.opcion}>{T.ajustes.sonidoAlTerminar}</Text>
-        </View>
-        <Interruptor
-          value={sonido}
-          accessibilityLabel={T.ajustes.sonidoAlTerminar}
-          onValueChange={(nuevo) => {
-            setSonido(nuevo);
-            void guardarSonido(nuevo);
-          }}
-        />
-      </View>
-
-      {/* LA ÚLTIMA VEZ, AL ENTRENAR (20/10): apagado de fábrica. */}
-      <View style={estilos.filaOpcion}>
-        <View style={estilos.textoOpcion}>
-          <Text style={estilos.opcion}>{T.ajustes.mostrarUltimaVez}</Text>
-        </View>
-        <Interruptor
-          value={ultimaVez}
-          accessibilityLabel={T.ajustes.mostrarUltimaVez}
-          onValueChange={(nuevo) => {
-            setUltimaVez(nuevo);
-            void guardarMostrarUltimaVez(nuevo);
-          }}
-        />
-      </View>
-      <Text style={estilos.nota}>{T.ajustes.mostrarUltimaVezNota}</Text>
-
-      <Text style={estilos.seccion}>{T.ajustes.estancamiento}</Text>
-      <Segmentado
-        opciones={[
-          { valor: true, texto: T.ajustes.estancamientoSi },
-          { valor: false, texto: T.ajustes.estancamientoNo },
-        ]}
-        valor={avisos}
-        alElegir={(v) => guardar({ avisos_estancamiento: v }, T.general.falloPreferencia)}
-      />
-      {avisos && (
-        <View style={{ marginTop: 10 }}>
-          <Segmentado
-            opciones={umbralesDisponibles(version).map((u: Umbral) => ({ valor: u, texto: T.ajustes.semanas(u) }))}
-            valor={umbral}
-            alElegir={(u) => guardar({ umbral_estancamiento: u }, T.general.falloPreferencia)}
-          />
-        </View>
-      )}
-
       {fallo !== '' && <Text style={estilos.error}>{fallo}</Text>}
-
-      <Identidad perfil={perfil} alCambiar={alCambiar} />
 
       {/* AJUSTES AVANZADOS: todo lo que no se toca seguido, detrás de un solo
           pliegue. Adentro va cada cosa con su propio contexto —incluida cuentas
@@ -396,6 +433,20 @@ const estilos = StyleSheet.create({
     marginTop: 26,
     marginBottom: 10,
   },
+  // Entrenamiento, Perfil y General (21/10): más claros que las secciones de adentro y con
+  // la misma hairline que "Ajustes avanzados", para que se lea dónde empieza cada uno.
+  grupo: {
+    color: '#c4c2ba',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+    marginTop: 40,
+    paddingTop: 18,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#1d2230',
+  },
+  grupoPrimero: { marginTop: 0, paddingTop: 0, borderTopWidth: 0 },
   // El pliegue de "Ajustes avanzados": una línea con su signo, separada arriba
   // por una hairline para que se lea como el corte entre lo de siempre y el resto.
   avanzadoCabe: {

@@ -2239,6 +2239,32 @@ $$;
 
 revoke execute on function public.pesos_limpios(jsonb, int) from public, anon, authenticated;
 
+-- Como `pesos_limpios`: enteros de 1 a 999, como mucho `n`; lo demás es `null`, y una
+-- lista de puros `null` no se guarda.
+create or replace function public.reps_limpias(p jsonb, n int)
+returns jsonb language sql immutable set search_path = public as $$
+  select case
+    when p is null or jsonb_typeof(p) <> 'array' or n <= 0 then null
+    else (
+      select case when bool_or(v is not null) then jsonb_agg(v order by o) else null end
+        from (
+          select o,
+                 case
+                   when jsonb_typeof(x) = 'number'
+                    and (x #>> '{}')::numeric = trunc((x #>> '{}')::numeric)
+                    and (x #>> '{}')::numeric between 1 and 999
+                   then to_jsonb((x #>> '{}')::int)
+                   else null
+                 end as v
+            from jsonb_array_elements(p) with ordinality as t(x, o)
+           where o <= n
+        ) q
+    )
+  end;
+$$;
+
+revoke execute on function public.reps_limpias(jsonb, int) from public, anon, authenticated;
+
 create or replace function public.fijar_bloques(p_sesion uuid, p_bloques jsonb)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
@@ -2260,6 +2286,8 @@ begin
            end
            -- LOS MINUTOS (migración 76): solo de un ejercicio que se mide en tiempo.
            || case when m is null then '{}'::jsonb else jsonb_build_object('minutos', m) end
+           -- LAS REPETICIONES (migración 94): de un ejercicio que se cuenta en series.
+           || case when r is null then '{}'::jsonb else jsonb_build_object('reps', r) end
            order by i), '[]'::jsonb)
     into limpio
   from (
@@ -2279,7 +2307,10 @@ begin
       case when (select x.mide from ejercicios x where x.id = f.e) = 'tiempo' and jsonb_typeof(f.minutos) = 'number'
                 and (f.minutos #>> '{}')::numeric >= 1
            then least(round((f.minutos #>> '{}')::numeric), 600)::int
-      end as m
+      end as m,
+      case when (select x.mide from ejercicios x where x.id = f.e) = 'tiempo' then null
+           else reps_limpias(f.reps, f.s)
+      end as r
     from (
       select
         b.valor->>'ejercicio' as e,
@@ -2287,6 +2318,7 @@ begin
         b.valor->'pesos' as pesos,
         b.valor->>'carga' as carga,
         b.valor->'minutos' as minutos,
+        b.valor->'reps' as reps,
         b.orden as i
       from jsonb_array_elements(p_bloques) with ordinality as b(valor, orden)
       where b.valor->>'ejercicio' in (select id from ejercicios)
@@ -4658,7 +4690,7 @@ revoke execute on function public.marcar_me_gusta_rutina(uuid, boolean) from pub
 grant execute on function public.marcar_me_gusta_rutina(uuid, boolean) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 93; $$;
+returns int language sql immutable as $$ select 94; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

@@ -660,6 +660,13 @@ const ES = {
     // Al entrenar, debajo del ejercicio (20/10). Apagado de fábrica.
     mostrarUltimaVez: 'Mostrar la última vez',
     mostrarUltimaVezNota: 'Al entrenar, debajo del ejercicio: lo que hiciste la última vez.',
+    // Al lado del peso, una por serie (21/10). Apagado de fábrica.
+    registrarReps: 'Registrar repeticiones',
+    registrarRepsNota: 'Al entrenar, al lado del peso: cuántas hiciste en cada serie.',
+    // Las secciones de Ajustes (21/10).
+    seccionEntrenamiento: 'Entrenamiento',
+    seccionPerfil: 'Perfil',
+    seccionGeneral: 'General',
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cierras, no avisa.',
     noVibra: 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.',
@@ -1168,6 +1175,9 @@ const ES = {
     pesoBajar: 'Menos peso',
     pesoDeSerie: (n: number) => `Peso de la serie ${n}`,
     sinPeso: '—',
+    // El cuadradito de repeticiones (21/10): la unidad va al lado, como el kg del peso.
+    repsDeLaSerie: 'Repeticiones de esta serie',
+    reps: 'reps',
     // QUÉ SIGNIFICA EL NÚMERO (migración 38). Va pegado al campo, después de la
     // unidad: "30 kg · por mancuerna". Nunca pide discos ni hace sumar: se
     // escribe lo que está impreso en lo que agarraste.

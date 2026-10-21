@@ -1560,6 +1560,43 @@ async function repsUltimaVez() {
 }
 
 /**
+ * `repsPorSerie` (21/10): con «Registrar repeticiones», las de cada serie. Ayer, press de
+ * banca en dos bloques (10 y 9; después 8). Hoy: la pista de la serie que viene es la de esa
+ * misma serie ayer; lo tecleado se anota con el + y el cuadradito queda vacío; una serie sin
+ * teclear va sin repeticiones. `sin`: nunca se teclea nada, y a la base no llega la llave.
+ */
+async function repsPorSerie(modo = 'con') {
+  servidor.version = 94;
+  const { leerRegistrarReps, guardarRegistrarReps } = await import('@compartido/registrarReps');
+  const ajuste = [await leerRegistrarReps()];
+  await guardarRegistrarReps(true);
+  ajuste.push(await leerRegistrarReps());
+  datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+  const { hoyISO, restarDias } = await import('@nucleo/fechas');
+  servidor.historial = [
+    { bloques: [{ ejercicio: 'press_banca', series: 2, pesos: [60, 60], reps: [10, 9] }, { ejercicio: 'press_banca', series: 1, pesos: [60], reps: [8] }], logs: { fecha: restarDias(hoyISO(), 1) } },
+  ];
+  const una = montar(() => useSesion());
+  await asentar();
+  await una.r.empezar();
+  await dormir(500);
+  await asentar();
+  await una.r.elegirEjercicio('press_banca');
+  await asentar();
+  const pistas = [una.r.pistaDeRepsDe('press_banca')];
+  const cuadradito = [];
+  for (const n of modo === 'sin' ? [null, null, null, null] : [12, null, 7, 6]) {
+    if (n !== null) await una.r.elegirReps(n);
+    await una.r.serieHecha({ sinDescanso: true });
+    await asentar();
+    cuadradito.push(una.r.estado.bloques.repsAhora ?? null);
+    pistas.push(una.r.pistaDeRepsDe('press_banca'));
+  }
+  const s = servidor.sesiones.at(-1);
+  return { ajuste, pistas, cuadradito, enCurso: una.r.estado.bloques.reps ?? null, enLaBase: (s?.bloques ?? []).map((b) => ('reps' in b ? b.reps : 'sin llave')) };
+}
+
+/**
  * `segundaCambia` (20/10, revisión del pedido 7): lunes con press de banca, sentadilla y remo.
  * Primera sesión: press, como propone. Segunda del mismo día: propone sentadilla y se cambia por
  * dominadas; al terminar, «Reemplazar» tiene que poner dominadas en el lugar de la sentadilla,
@@ -1739,7 +1776,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia, primerEjercicio, repsUltimaVez, segundaCambia, segundaRepite }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia, primerEjercicio, repsUltimaVez, segundaCambia, segundaRepite, repsPorSerie }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

@@ -9356,7 +9356,8 @@ console.log('\n134. Ajustes nativo: lo que la app necesita para existir en la ti
   const gim = de134('movil', 'src', 'ajustes', 'Gimnasio.tsx');
   chequear('el punto del gimnasio se marca desde la app', /marcarPunto\(/.test(gim), true);
   chequear('y se puede borrar', /gimnasio_lat: null/.test(gim), true);
-  chequear('Ajustes lo muestra primero', aj.indexOf('<Gimnasio ') < aj.indexOf('diasDescanso'), true);
+  // Primero EN PERFIL desde el 21/10: Entrenamiento va antes (ver la 301).
+  chequear('Ajustes lo muestra primero en Perfil', [aj.indexOf('T.ajustes.seccionPerfil') < aj.indexOf('<Gimnasio '), aj.indexOf('<Gimnasio ') < aj.indexOf('{T.ajustes.comparteGimnasio}')], [true, true]);
   // LA FUNCION ES LA MISMA QUE LA WEB: si cada app tuviera su copia, la regla
   // de "solo se marca estando ahi" se arreglaria en una sola.
   chequear('las dos apps marcan con la misma funcion',
@@ -20466,6 +20467,99 @@ console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entra
     /useEffect\(\(\) => \{\s*if \(!isUpdatePending \|\| !Updates\.isEnabled\) return;\s*aplicarAlSalir\(puedeReiniciar\);/.test(act),
     /if \(!\(await buscarYTraer\(\)\)\) return;\s*aplicarAlSalir\(puedeReiniciar\);/.test(act),
   ], [true, 2, true, true]);
+}
+console.log('\n299. La migración 94: la base guarda las repeticiones de cada serie (21/10)');
+{
+  const v299 = await nuevoUsuario();
+  await comoUsuario(v299);
+  const ses299 = (await db.query('select iniciar_sesion() as s')).rows[0].s;
+  await db.query('select fijar_series($1, 9)', [ses299.id]);
+  const g299 = (await db.query('select fijar_bloques($1, $2::jsonb) as b', [ses299.id, JSON.stringify([
+    { ejercicio: 'press_banca', series: 3, pesos: [60, 60, 60], carga: 'total', reps: [12, null, 8, 7] },
+    { ejercicio: 'sentadilla', series: 3, reps: [0, 8.5, 'x'] },
+    { ejercicio: 'cinta', series: 1, minutos: 20, reps: [5] },
+    { ejercicio: 'remo_barra', series: 2, reps: [1000, 999] },
+  ])])).rows[0].b.bloques;
+  chequear('la base guarda las repeticiones limpias: una por serie como mucho, enteros de 1 a 999; nada si no queda ninguna, ni en el cardio', g299.map((b) => b.reps ?? 'sin llave'), [[12, null, 8], 'sin llave', 'sin llave', [null, 999]]);
+  chequear('y lo de antes sigue igual: pesos, modo y minutos', [g299[0].pesos.map(Number), g299[0].carga, g299[2].minutos], [[60, 60, 60], 'total', 20]);
+  chequear('la base está en la 94', (await db.query('select version_del_esquema() as v')).rows[0].v, 94);
+}
+console.log('\n300. Las repeticiones de cada serie, con «Registrar repeticiones» (21/10)');
+{
+  const B = await import('../nucleo/bloques.ts');
+  const R = await import('../nucleo/rutina.ts');
+  const sinCom300 = (t) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- EL ESTADO DEL BLOQUE ----
+  let e = B.cambiarReps(B.cambiarPeso(B.bloquesVacios('press_banca'), 60), 12);
+  const tecleado = e.repsAhora;
+  e = B.sumar(e);
+  const trasLaPrimera = [e.repsAhora ?? null, e.reps];
+  e = B.sumar(e);
+  e = B.sumar(B.cambiarReps(e, '8'));
+  chequear('lo tecleado se anota con el + y el cuadradito queda vacío; una serie sin teclear va sin repeticiones', [tecleado, trasLaPrimera, e.reps, e.repsAhora ?? null], [12, [null, [12]], [12, null, 8], null]);
+  const cerrado = B.siguiente(B.cambiarReps(e, 5));
+  chequear('el − se lleva las de la última; «Siguiente» las cierra con el bloque y el que sigue arranca vacío', [
+    B.restar(e).reps, cerrado.cerrados[0].reps, cerrado.reps ?? null, cerrado.repsAhora ?? null,
+  ], [[12, null], [12, null, 8], null, null]);
+  chequear('viajan a la base con su bloque', B.paraGuardar(e), [{ ejercicio: 'press_banca', series: 3, pesos: [60, 60, 60], reps: [12, null, 8] }]);
+  const sin = B.siguiente(B.sumar(B.sumar(B.cambiarPeso(B.bloquesVacios('press_banca'), 60))));
+  chequear('sin teclear nunca, ni una llave nueva: el estado y lo que se guarda son los de antes', [
+    'reps' in sin, 'repsAhora' in sin, 'reps' in sin.cerrados[0], B.paraGuardar(sin),
+  ], [false, false, false, [{ ejercicio: 'press_banca', series: 2, pesos: [60, 60] }]]);
+  const vuelta = B.unirConGuardados([{ ejercicio: 'press_banca', series: 2, reps: [10, 9] }, { ejercicio: 'remo', series: 2, pesos: [50, 50], reps: [8, 'x'] }], B.bloquesVacios());
+  chequear('vuelven de la base: las del cerrado y las del que queda en curso', [vuelta.cerrados[0].reps, vuelta.reps, vuelta.hechas], [[10, 9], [8, null], 2]);
+  chequear('una serie agregada desde la lista va sin repeticiones', B.corregirBloque(cerrado, 0, 1).estado.cerrados[0].reps, [12, null, 8, null]);
+  chequear('solo enteros de 1 a 999', [B.repsValidas(0), B.repsValidas(8.5), B.repsValidas(1000), B.repsValidas('12'), B.repsValidas(999), B.repsValidas('')], [null, null, null, 12, 999, null]);
+
+  // ---- LA PISTA: LA ÚLTIMA VEZ, SERIE POR SERIE ----
+  const hist = [{ fecha: '2026-10-20', bloques: [
+    { ejercicio: 'press_banca', series: 2, reps: [10, 9] }, { ejercicio: 'remo', series: 3 }, { ejercicio: 'press_banca', series: 1, pesos: [60], reps: [8] },
+  ] }];
+  const u = R.ultimaVezDe(hist, 'press_banca', '2026-10-21');
+  const uRemo = R.ultimaVezDe(hist, 'remo', '2026-10-21');
+  const hueco = R.ultimaVezDe([{ fecha: '2026-10-20', bloques: [{ ejercicio: 'press_banca', series: 2, reps: [10, 9] }, { ejercicio: 'press_banca', series: 2 }, { ejercicio: 'press_banca', series: 1, reps: [6] }] }], 'press_banca', '2026-10-21');
+  const marca = { ejercicio: 'remo', peso: 80, reps: 6, fecha: '2026-10-20' };
+  chequear('la pista: la de esa misma serie la última vez, si no la última que hubo; sin repeticiones por serie, las de la marca de esa sesión; sin nada, ninguna', [
+    u.reps, [0, 1, 2, 5].map((i) => R.pistaDeReps(u, i)), 'reps' in uRemo, R.pistaDeReps(uRemo, 0, marca), R.pistaDeReps(uRemo, 0, null),
+  ], [[10, 9, 8], [10, 9, 8, 8], false, 6, null]);
+  chequear('alineadas por serie: un bloque sin repeticiones ocupa sus lugares', hueco.reps, [10, 9, null, null, 6]);
+  // ---- CON EL HOOK DE VERDAD ----
+  const h = await escenarioDeSesion('repsPorSerie', 'con');
+  chequear('el ajuste viene apagado; con el hook: la pista serie por serie, el cuadradito vacío después de cada +, y a la base llegan las de cada serie',
+    h.fallo ?? [h.ajuste, h.pistas, h.cuadradito, h.enCurso, h.enLaBase],
+    [[false, true], [10, 9, 8, 8, 8], [null, null, null, null], [12, null, 7, 6], [[12, null, 7, 6]]]);
+  const h0 = await escenarioDeSesion('repsPorSerie', 'sin');
+  chequear('sin teclear nada, a la base no llega la llave', h0.fallo ?? [h0.enCurso, h0.enLaBase], [null, ['sin llave']]);
+
+  // ---- LAS PANTALLAS ----
+  // La prueba de verdad es la de test:real (probar-reps): apagado no hay cuadradito; prendido
+  // está, con la pista, y se vacía con el +.
+  const blo = sinCom300(deBug('movil', 'src', 'Bloque.tsx'));
+  chequear('el cuadradito solo con el ajuste prendido y la base en la 94; muestra lo tecleado y, en gris, la pista', [
+    /const conReps = registrarReps && !!alElegirReps && disponible\('repsPorSerie', version\);/.test(blo),
+    /\{conReps && alElegirReps && <CampoReps reps=\{estado\.repsAhora\} pista=\{pistaDeReps\} alCambiar=\{alElegirReps\} \/>\}/.test(blo),
+  ], [true, true]);
+  const aj = sinCom300(deBug('movil', 'src', 'Ajustes.tsx'));
+  chequear('Ajustes tiene el interruptor, y aparece con la 94', [aj.includes('{T.ajustes.registrarReps}'), /\{disponible\('repsPorSerie', version\) && \(/.test(aj)], [true, true]);
+}
+console.log('\n301. Ajustes en tres grupos: Entrenamiento, Perfil y General (21/10)');
+{
+  const sinCom301 = (t) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const aj = sinCom301(deBug('movil', 'src', 'Ajustes.tsx'));
+  const pos = (t) => aj.indexOf(t);
+  const entre = (t, a, b) => pos(t) > -1 && pos(a) < pos(t) && pos(t) < pos(b);
+  chequear('Ajustes en tres grupos, en este orden: Entrenamiento, Perfil y General; después, los avanzados', [
+    pos('T.ajustes.seccionEntrenamiento') > -1, entre('T.ajustes.seccionPerfil', 'T.ajustes.seccionEntrenamiento', 'T.ajustes.seccionGeneral'), entre('T.ajustes.seccionGeneral', 'T.ajustes.seccionPerfil', 'T.ajustes.avanzados'),
+  ], [true, true, true]);
+  chequear('Entrenamiento: registrar repeticiones (con la 94) y mostrar la última vez', [
+    entre('T.ajustes.registrarReps', 'T.ajustes.seccionEntrenamiento', 'T.ajustes.seccionPerfil'), entre('T.ajustes.mostrarUltimaVez', 'T.ajustes.seccionEntrenamiento', 'T.ajustes.seccionPerfil'),
+    /\{disponible\('repsPorSerie', version\) && \(/.test(aj),
+  ], [true, true, true]);
+  chequear('Perfil: tu perfil, el gimnasio, lo que ven tus amigos, la salud y tu identidad', [
+    "router.push('/yo')", '<Gimnasio ', 'T.ajustes.comparteGimnasio', 'T.ajustes.comparteRutina', '<Salud ', '<Identidad ',
+  ].map((t) => entre(t, 'T.ajustes.seccionPerfil', 'T.ajustes.seccionGeneral')), [true, true, true, true, true, true]);
+  chequear('General: kilos o libras, e idioma', ['T.ajustes.peso}', 'T.ajustes.idioma}'].map((t) => entre(t, 'T.ajustes.seccionGeneral', 'T.ajustes.avanzados')), [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

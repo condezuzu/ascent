@@ -40,6 +40,8 @@
 //      siguiente del mismo día propone B (20/10), en la nativa.
 //  14. probar-arranque — al abrir con sesión, Inicio se monta recién al terminar la entrada,
 //      con sus datos pedidos una sola vez mientras corría (21/10), en la nativa.
+//  15. probar-reps — con «Registrar repeticiones» (viene apagado) hay un cuadradito al lado del
+//      peso, con la pista de la última sesión, que se vacía con el + (21/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -75,6 +77,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'el timbre del descanso', archivo: 'probar-timbre-descanso.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la sesión siguiente del día', archivo: 'probar-sesion-siguiente.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el arranque', archivo: 'probar-arranque.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'registrar repeticiones', archivo: 'probar-reps.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

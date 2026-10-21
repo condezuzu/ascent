@@ -886,6 +886,8 @@ export default function Inicio({
             diaDeSesion={diaDeLaSesion(sesion.estado.inicio)}
             ultimaVez={sesion.estado.bloques.ejercicio ? sesion.ultimaVezDe(sesion.estado.bloques.ejercicio) : null}
             repsUltimaVez={sesion.estado.bloques.ejercicio ? sesion.repsDeLaUltimaVezDe(sesion.estado.bloques.ejercicio) : null}
+            pistaDeReps={sesion.estado.bloques.ejercicio ? sesion.pistaDeRepsDe(sesion.estado.bloques.ejercicio) : null}
+            alElegirReps={sesion.elegirReps}
             alSumar={sesion.serieHecha}
             alRestar={sesion.deshacerSerie}
             alSiguiente={sesion.bloqueSiguiente}

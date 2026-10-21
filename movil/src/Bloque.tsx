@@ -11,12 +11,14 @@ import { disponible } from '@nucleo/esquema';
 import { T } from '@nucleo/textos';
 import { leerAnotarPeso } from '@compartido/anotarPeso';
 import { leerMostrarUltimaVez, MOSTRAR_ULTIMA_VEZ_CAMBIO } from '@compartido/mostrarUltimaVez';
+import { leerRegistrarReps, REGISTRAR_REPS_CAMBIO } from '@compartido/registrarReps';
 import type { MarcaConReps } from '@nucleo/rutina';
 import { ponerNombres } from '@compartido/enCurso';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
 import CampoPeso from './CampoPeso';
+import CampoReps from './CampoReps';
 
 // Los globitos de "ya puedes subir" que ya se cerraron, por ejercicio y día: no vuelven en la misma corrida.
 const SUBIR_VISTOS = new Set<string>();
@@ -73,6 +75,8 @@ export default function Bloque({
   diaDeSesion,
   ultimaVez,
   repsUltimaVez,
+  pistaDeReps,
+  alElegirReps,
   alSumar,
   debajoDelMas,
   globoDelMas,
@@ -105,6 +109,10 @@ export default function Bloque({
   ultimaVez?: { fecha: string; series: number; pesos: (number | null)[]; carga?: string } | null;
   /** La marca guardada en la última sesión de este ejercicio, con sus repeticiones (20/10). */
   repsUltimaVez?: MarcaConReps | null;
+  /** Las repeticiones de la última vez para la serie que viene: la pista del cuadradito (21/10). */
+  pistaDeReps?: number | null;
+  /** Las repeticiones de la próxima serie, a cada tecla. Sin esto no hay cuadradito. */
+  alElegirReps?: (n: number | null) => void;
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
@@ -139,8 +147,15 @@ export default function Bloque({
     void leerMostrarUltimaVez().then(setVerUltimaVez);
     return eventos.escuchar(MOSTRAR_ULTIMA_VEZ_CAMBIO, (si) => setVerUltimaVez(si === true));
   }, []);
+  const [registrarReps, setRegistrarReps] = useState(false);
+  useEffect(() => {
+    void leerRegistrarReps().then(setRegistrarReps);
+    return eventos.escuchar(REGISTRAR_REPS_CAMBIO, (si) => setRegistrarReps(si === true));
+  }, []);
   const version = useVersionDelEsquema();
   const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
+  // Sin la migración 94 la base las tiraría: el cuadradito no aparece.
+  const conReps = registrarReps && !!alElegirReps && disponible('repsPorSerie', version);
   const conCarga = anotarPeso && disponible('cargaDelPeso', version);
 
   useEffect(() => {
@@ -350,12 +365,13 @@ export default function Bloque({
       </View>
       )}
 
-      {anotarPeso && admitePeso && (
+      {(anotarPeso || conReps) && admitePeso && (
         <View style={[estilos.peso, esFantasma && estilos.fantasmaPeso]}>
           {/* PESO CORPORAL (6.2): el peso es tu cuerpo, no hay número que anotar.
               Se esconde el campo pero se DEJA la etiqueta, para poder volver a un
               peso si algún día lo hacés con lastre. */}
-          {!esCorporal && <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} />}
+          {anotarPeso && !esCorporal && <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} />}
+          {conReps && alElegirReps && <CampoReps reps={estado.repsAhora} pista={pistaDeReps} alCambiar={alElegirReps} />}
           {conCarga && !preguntar && (
             <EtiquetaDeCarga carga={cargaVista} ejercicio={estado.ejercicio} alElegir={alElegirCarga} />
           )}
