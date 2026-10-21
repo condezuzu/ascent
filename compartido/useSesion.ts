@@ -1163,15 +1163,20 @@ export function useSesion(
     // LA RUTINA GUARDADA SE RELEE ACÁ (16/10): si se cambió en medio del entrenamiento,
     // la sugerencia la sigue desde el bloque que viene.
     const guardadaAhora = ejerciciosDeHoy(await rutinaActivaDelTelefono(), new Date().getDay()).filter(seVe);
+    // REPETIR ALGO DEL DÍA YA HECHO A LA MAÑANA no ocupa el lugar de otro (20/10, revisión):
+    // si no, después de repetir el press se salteaba la sentadilla, que faltaba.
+    let paraSeguir = hechos;
     if (guardadaAhora.length > 0) {
-      rutinaRef.current = pendientesDeHoy(guardadaAhora, hechoAntesHoy());
+      const antes = hechoAntesHoy();
+      rutinaRef.current = pendientesDeHoy(guardadaAhora, antes);
       rutinaEsGuardada.current = true;
+      paraSeguir = hechos.filter((h) => !(guardadaAhora.includes(h) && antes.includes(h)));
     }
     // Sin rutina guardada, lo que SUELE VENIR DESPUÉS del último hecho, en la última
     // semana (curl de bíceps → martillo); si no hay, la cadena de siempre.
     const ultimo = hechos[hechos.length - 1];
     const siguiente =
-      (rutinaEsGuardada.current ? siguienteEnRutina(rutinaRef.current, hechos) : null) ??
+      (rutinaEsGuardada.current ? siguienteEnRutina(rutinaRef.current, paraSeguir) : null) ??
       (ultimo ? despuesDe(sesionesRutinaRef.current, ultimo, hechos, hoyISO()) : null) ??
       siguienteEnRutina(rutinaRef.current, hechos);
     if (siguiente) await proponerEjercicioSugerido(siguiente);

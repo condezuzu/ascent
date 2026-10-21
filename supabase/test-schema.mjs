@@ -20148,7 +20148,7 @@ console.log('\n293. La segunda sesión del día sigue con lo que queda de la rut
   const us = sinComentarios(deBug('compartido', 'useSesion.ts'));
   chequear('al empezar y al pasar al siguiente, la rutina es lo que queda de hoy', [
     /rutinaRef\.current = pendientesDeHoy\(\(deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(sesionesRutinaRef\.current, hoyISO\(\)\)\)\.filter\(seVe\), hechoAntesHoy\(\)\);/.test(us),
-    /rutinaRef\.current = pendientesDeHoy\(guardadaAhora, hechoAntesHoy\(\)\);/.test(us),
+    /rutinaRef\.current = pendientesDeHoy\(guardadaAhora, antes\);/.test(us),
   ], [true, true]);
 }
 console.log('\n294. La píldora del descanso, después del 0:00, dice cuánto se pasó (20/10, pedido 1)');
@@ -20181,6 +20181,18 @@ console.log('\n295. «Reemplazar» en la segunda sesión del día no pisa lo que
   chequear('la ventana de la nativa le pasa lo de antes hoy', [
     /const antesHoy = sesionesRutinaRef\.current\.filter\(\(x\) => x\.fecha === hoy\)\.flatMap\(\(x\) => x\.ejercicios\);/.test(pr),
     /rutinaTrasLaVentana\(actual\.dias, dia, hecho, como === 'esta' \? 'reemplazar' : como, antesHoy\)/.test(pr),
+  ], [true, true]);
+}
+console.log('\n296. En la segunda sesión del día, repetir algo ya hecho no saltea lo que falta (20/10, revisión)');
+{
+  // Con el hook de verdad: a la mañana press; a la tarde propone sentadilla, se elige press otra
+  // vez y, al pasar al siguiente, antes proponía remo (salteaba la sentadilla).
+  const r = await escenarioDeSesion('segundaRepite');
+  chequear('propone sentadilla, y después de repetir press vuelve a la sentadilla', r.fallo ?? [r.propone, r.despues], ['sentadilla', 'sentadilla']);
+  const us = sinComentarios(deBug('compartido', 'useSesion.ts'));
+  chequear('la cadena sigue con lo hecho en esta sesión, sin lo del día que ya se había hecho hoy', [
+    /paraSeguir = hechos\.filter\(\(h\) => !\(guardadaAhora\.includes\(h\) && antes\.includes\(h\)\)\);/.test(us),
+    /siguienteEnRutina\(rutinaRef\.current, paraSeguir\)/.test(us),
   ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

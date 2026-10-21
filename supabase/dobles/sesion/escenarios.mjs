@@ -1565,6 +1565,44 @@ async function repsUltimaVez() {
  * dominadas; al terminar, «Reemplazar» tiene que poner dominadas en el lugar de la sentadilla,
  * no en el del press, que ya se hizo más temprano.
  */
+/**
+ * `segundaRepite` (20/10, revisión): igual que `segundaCambia`, pero a la tarde se elige otra vez
+ * press (ya hecho a la mañana): lo que sigue tiene que ser la sentadilla, que falta, no el remo.
+ */
+async function segundaRepite() {
+  relojDeLunes();
+  servidor.version = 82;
+  datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+  const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 3 }, { ejercicio: 'sentadilla', series: 3 }, { ejercicio: 'remo', series: 3 }] };
+  servidor.rutinas = [{ id: 'r1', nombre: 'Entrenamiento 1', activa: true, dias }];
+  datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', id: 'r1', dias }));
+  const { hoyISO } = await import('@nucleo/fechas');
+  const una = montar(() => useSesion());
+  await asentar();
+  await una.r.empezar();
+  await dormir(500);
+  await asentar();
+  await una.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  const primera = await una.r.terminar();
+  await asentar();
+  servidor.historial = [...servidor.historial, { bloques: primera?.bloques ?? [], logs: { fecha: hoyISO() } }];
+  const otra = montar(() => useSesion());
+  await asentar();
+  await otra.r.empezar();
+  await dormir(500);
+  await asentar();
+  const propone = otra.r.estado.bloques.ejercicio;
+  await otra.r.elegirEjercicio('press_banca');
+  await otra.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  await otra.r.bloqueSiguiente();
+  await dormir(200);
+  await asentar();
+  return { propone, despues: otra.r.estado.sugerido ? otra.r.estado.bloques.ejercicio : null };
+}
+
 async function segundaCambia() {
   relojDeLunes();
   servidor.version = 82;
@@ -1701,7 +1739,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia, primerEjercicio, repsUltimaVez, segundaCambia }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia, primerEjercicio, repsUltimaVez, segundaCambia, segundaRepite }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);
