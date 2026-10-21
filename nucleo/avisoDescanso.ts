@@ -37,6 +37,16 @@ export function patronDespertador(ios: boolean): number[] {
   return ios ? [0, ...esperas] : [0, GOLPE_MS, ...esperas.flatMap((e) => [e - GOLPE_MS, GOLPE_MS])];
 }
 
+/**
+ * LA PÍLDORA DEL DESCANSO, ARRIBA A LA DERECHA (20/10): la cuenta; en cero «Listo» mientras
+ * suena el despertador; y después, cuánto se pasó (pedido: "cuánto tiempo se perdió después de
+ * 0:00"), igual que la pantalla grande con su «de más».
+ */
+export function queMuestraLaPildora(fin: number, ahora: number): 'cuenta' | 'listo' | 'pasado' {
+  if (ahora < fin) return 'cuenta';
+  return ahora - fin < duracionDelDespertador() + 500 ? 'listo' : 'pasado';
+}
+
 /** Lo que dura el despertador entero, hasta el arranque del último golpe. */
 export function duracionDelDespertador(): number {
   return patronDespertador(true).reduce((a, b) => a + b, 0);

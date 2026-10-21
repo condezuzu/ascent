@@ -180,6 +180,35 @@ export function despuesDe(sesiones: SesionRutina[], ultimo: string, yaHechos: st
  * último de la rutina que se hizo, y nunca antes de tantos como ya se hicieron (cambiar
  * uno por otro también es avanzar uno). Al llegar al final, vuelve a lo que faltó.
  */
+/**
+ * LO QUE QUEDA DE LA RUTINA HOY (20/10, bug: la segunda sesión del día volvía a proponer el
+ * primero). Lo hecho en las sesiones anteriores de hoy cubre su lugar; lo que no estaba en el
+ * día ocupa, en orden, el lugar de uno que no se hizo (la misma regla que «Reemplazar»). Si no
+ * queda nada, el día entero, como antes.
+ */
+export function pendientesDeHoy(dia: string[], hechosHoy: string[]): string[] {
+  const cubierto = cubiertosHoy(dia, hechosHoy);
+  const quedan = dia.filter((_, k) => !cubierto[k]);
+  return quedan.length > 0 ? quedan : dia;
+}
+
+/** Qué lugares del día ya cubrió lo hecho hoy, con la regla de `pendientesDeHoy`. */
+export function cubiertosHoy(dia: string[], hechosHoy: string[]): boolean[] {
+  const cubierto = dia.map(() => false);
+  const ajenos: string[] = [];
+  for (const h of new Set(hechosHoy)) {
+    const i = dia.findIndex((e, k) => e === h && !cubierto[k]);
+    if (i >= 0) cubierto[i] = true;
+    else ajenos.push(h);
+  }
+  for (let n = 0; n < ajenos.length; n++) {
+    const libre = cubierto.indexOf(false);
+    if (libre < 0) break;
+    cubierto[libre] = true;
+  }
+  return cubierto;
+}
+
 export function siguienteEnRutina(rutina: string[], yaHechos: string[]): string | null {
   const hechos = new Set(yaHechos);
   const ultimo = Math.max(-1, ...yaHechos.map((e) => rutina.indexOf(e)));
@@ -313,14 +342,17 @@ type DiaConEjercicios = { descanso: boolean; ejercicios: EjercicioDeRutina[] };
  * ejercicio hecho que el día no tenía ocupa, en orden, el lugar de uno del día que no se
  * hizo; si sobran, van al final. Lo demás queda como estaba, con sus series.
  */
-export function rutinaConLoHecho<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D): D[] {
+export function rutinaConLoHecho<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D, antesHoy: string[] = []): D[] {
   const delDia = dias[dia];
   const antes = delDia && !delDia.descanso ? delDia.ejercicios : [];
   const hechos = new Set(hecho.ejercicios.map((e) => e.ejercicio));
   const tenia = new Set(antes.map((e) => e.ejercicio));
   const nuevos = hecho.ejercicios.filter((e) => !tenia.has(e.ejercicio));
+  // LO DE LAS SESIONES ANTERIORES DE HOY también cuenta como hecho (20/10): si no, en la segunda
+  // sesión del día lo nuevo pisaba el primero, que ya se había hecho a la mañana.
+  const cubierto = cubiertosHoy(antes.map((e) => e.ejercicio), antesHoy);
   let usados = 0;
-  const ejercicios = antes.map((e) => (!hechos.has(e.ejercicio) && usados < nuevos.length ? nuevos[usados++] : e));
+  const ejercicios = antes.map((e, k) => (!hechos.has(e.ejercicio) && !cubierto[k] && usados < nuevos.length ? nuevos[usados++] : e));
   return conDiaReemplazado(dias, dia, { ...hecho, descanso: false, ejercicios: [...ejercicios, ...nuevos.slice(usados)] });
 }
 
@@ -332,8 +364,8 @@ export type EleccionDeLaVentana = 'reemplazar' | 'nueva' | 'olvidar';
  * guardan el día con lo que cambió (`rutinaConLoHecho`; la nueva, aparte). «Olvidar este
  * día» no guarda nada: el cambio de ese día se descarta y la rutina queda como estaba.
  */
-export function rutinaTrasLaVentana<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D, eleccion: EleccionDeLaVentana): D[] | null {
-  return eleccion === 'olvidar' ? null : rutinaConLoHecho(dias, dia, hecho);
+export function rutinaTrasLaVentana<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D, eleccion: EleccionDeLaVentana, antesHoy: string[] = []): D[] | null {
+  return eleccion === 'olvidar' ? null : rutinaConLoHecho(dias, dia, hecho, antesHoy);
 }
 
 /**

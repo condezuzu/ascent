@@ -17526,7 +17526,8 @@ console.log('\n214. La rutina en el teléfono: qué se muestra, y con qué arran
   const { readFileSync: leer214 } = await import('node:fs');
   const ses214 = leer214(join(dirname(fileURLToPath(import.meta.url)), '..', 'compartido', 'useSesion.ts'), 'utf8').replace(/\r\n/g, '\n');
   // Desde el 20/10, sin la copia del teléfono la pide a la base (ver la 279).
-  chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(guardada, new Date\(\)\.getDay\(\)\);\s*rutinaRef\.current = \(deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
+  // Y desde el pedido 7 (20/10), con lo de las sesiones anteriores de hoy afuera (ver la 293).
+  chequear('la sesión arranca con los ejercicios del día de la rutina activa guardada, y si no hay, con la deducida', /const deLaGuardada = ejerciciosDeHoy\(guardada, new Date\(\)\.getDay\(\)\);[\s\S]{0,400}?rutinaRef\.current = pendientesDeHoy\(\(deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(/.test(ses214), true);
 }
 
 console.log('\n215. El día que se entrena sin abrir la app, y el vigilante al abrir de cero');
@@ -20050,16 +20051,17 @@ console.log('\n280. Cambiar el primer ejercicio de la rutina en la sesión cambi
   // Con el hook de verdad y el reloj de un lunes: rutina de lunes press de banca y sentadilla;
   // en la sesión se cambia press de banca por press inclinado en la primera serie, se termina,
   // se contesta la ventana y se empieza otra. «Reemplazar» pisaba el día entero con lo
-  // entrenado ("me editó todo"): la sentadilla se perdía.
-  const lunes = { sugeridoAlEmpezar: 'press_banca', hecho: [['press_inclinado', 2]], pregunta: true, diaDespues: ['press_inclinado', 'sentadilla'], martesDespues: ['remo', 'dominadas'], laOtraPropone: 'press_inclinado' };
+  // entrenado ("me editó todo"): la sentadilla se perdía. Desde el 20/10 (pedido 7) la otra
+  // sesión es del mismo día y propone lo que queda: la sentadilla, y después nada.
+  const lunes = { sugeridoAlEmpezar: 'press_banca', hecho: [['press_inclinado', 2]], pregunta: true, diaDespues: ['press_inclinado', 'sentadilla'], martesDespues: ['remo', 'dominadas'], laOtraPropone: 'sentadilla', despuesDeEse: null };
   const antes = await escenarioDeSesion('primerEjercicio', 'antes', 'reemplazar');
   const despues = await escenarioDeSesion('primerEjercicio', 'despues', 'reemplazar');
   const sinCopia = await escenarioDeSesion('primerEjercicio', 'antes', 'reemplazar', 'sinCopia');
-  chequear('elegido antes de la serie: «Reemplazar» cambia ese ejercicio, deja la sentadilla y la sesión siguiente propone el nuevo', antes.fallo ?? antes, lunes);
+  chequear('elegido antes de la serie: «Reemplazar» cambia ese ejercicio y deja la sentadilla, que es lo que propone la sesión siguiente del día', antes.fallo ?? antes, lunes);
   chequear('o con la serie ya hecha y «Eran de press inclinado»: igual', despues.fallo ?? despues, lunes);
   chequear('sin la copia del teléfono: igual, y el martes no se toca', sinCopia.fallo ?? sinCopia, lunes);
   const nada = await escenarioDeSesion('primerEjercicio', 'antes', 'nada');
-  chequear('sin contestar la ventana, la rutina no cambia', nada.fallo ?? [nada.diaDespues, nada.laOtraPropone], [['press_banca', 'sentadilla'], 'press_banca']);
+  chequear('sin contestar la ventana, la rutina no cambia (y la sesión siguiente del día sigue con la sentadilla)', nada.fallo ?? [nada.diaDespues, nada.laOtraPropone], [['press_banca', 'sentadilla'], 'sentadilla']);
   const { rutinaConLoHecho, hayQuePreguntarPorLaRutina } = await import('../nucleo/rutina.ts');
   const d = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
   const conR = (dia, hecho) => rutinaConLoHecho([d([]), dia], 1, hecho)[1].ejercicios.map((e) => e.ejercicio);
@@ -20135,7 +20137,7 @@ console.log('\n283. «Olvidar este día» en la ventana del final: descarta el c
 {
   // Con el hook de verdad: se cambia el primer ejercicio, se termina y se elige olvidar.
   const olvidar = await escenarioDeSesion('primerEjercicio', 'antes', 'olvidar');
-  chequear('la rutina queda como estaba y la sesión siguiente propone la de siempre', olvidar.fallo ?? [olvidar.pregunta, olvidar.diaDespues, olvidar.martesDespues, olvidar.laOtraPropone], [true, ['press_banca', 'sentadilla'], ['remo', 'dominadas'], 'press_banca']);
+  chequear('la rutina queda como estaba y la sesión siguiente del día sigue con lo que queda', olvidar.fallo ?? [olvidar.pregunta, olvidar.diaDespues, olvidar.martesDespues, olvidar.laOtraPropone], [true, ['press_banca', 'sentadilla'], ['remo', 'dominadas'], 'sentadilla']);
   const { rutinaTrasLaVentana, rutinaConLoHecho } = await import('../nucleo/rutina.ts');
   const d = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
   const dias = [d([]), d(['a', 'b'])];
@@ -20306,6 +20308,70 @@ console.log('\n292. La última vez, en una línea: las series de esa sesión, el
     /testID="reps-ultima-vez"/.test(bl),
     T292.resumen.series(3) + T292.sesion.laPrimeraCon('60 kg') + T292.sesion.conRepeticiones(5, '62,5 kg'),
   ], [true, true, false, '3 series, la primera con 60 kg · 5 repeticiones con 62,5 kg']);
+}
+console.log('\n293. La segunda sesión del día sigue con lo que queda de la rutina (20/10, pedido 7)');
+{
+  // Reproducido en la vista web de la nativa (probar-sesion-siguiente): rutina A, B y C, una
+  // sesión cambiando A por X, y la siguiente del mismo día proponía A. Al empezar se sembraba
+  // siempre el primero de la rutina, sin mirar lo hecho hoy.
+  const { pendientesDeHoy } = await import('../nucleo/rutina.ts');
+  chequear('lo hecho hoy cubre su lugar; lo ajeno, el primero libre; sin nada que quede, el día entero', [
+    pendientesDeHoy(['a', 'b', 'c'], []),
+    pendientesDeHoy(['a', 'b', 'c'], ['x']),
+    pendientesDeHoy(['a', 'b', 'c'], ['b']),
+    pendientesDeHoy(['a', 'b', 'c'], ['x', 'a']),
+    pendientesDeHoy(['a', 'b', 'c'], ['a', 'b', 'c']),
+    pendientesDeHoy(['a', 'b'], ['x', 'y', 'z']),
+  ], [['a', 'b', 'c'], ['b', 'c'], ['a', 'c'], ['c'], ['a', 'b', 'c'], ['a', 'b']]);
+  const us = sinComentarios(deBug('compartido', 'useSesion.ts'));
+  chequear('al empezar y al pasar al siguiente, la rutina es lo que queda de hoy', [
+    /rutinaRef\.current = pendientesDeHoy\(\(deLaGuardada\.length > 0 \? deLaGuardada : rutinaParaHoy\(sesionesRutinaRef\.current, hoyISO\(\)\)\)\.filter\(seVe\), hechoAntesHoy\(\)\);/.test(us),
+    /rutinaRef\.current = pendientesDeHoy\(guardadaAhora, antes\);/.test(us),
+  ], [true, true]);
+}
+console.log('\n294. La píldora del descanso, después del 0:00, dice cuánto se pasó (20/10, pedido 1)');
+{
+  const AV = await import('../nucleo/avisoDescanso.ts');
+  const fin = 1_000_000;
+  chequear('la cuenta, «Listo» mientras suena el despertador, y después lo que se pasó', [
+    AV.queMuestraLaPildora(fin, fin - 1),
+    AV.queMuestraLaPildora(fin, fin),
+    AV.queMuestraLaPildora(fin, fin + AV.duracionDelDespertador()),
+    AV.queMuestraLaPildora(fin, fin + AV.duracionDelDespertador() + 600),
+    AV.pasadoDe(fin, fin + 65_400),
+  ], ['cuenta', 'listo', 'listo', 'pasado', 65]);
+  const ini = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
+  chequear('la píldora lo usa, con «+» delante', /pasado: `\+\$\{cuentaAtras\(pasadoDe\(fin, Date\.now\(\)\)\)\}`/.test(ini), true);
+}
+console.log('\n295. «Reemplazar» en la segunda sesión del día no pisa lo que se hizo a la mañana (20/10, revisión)');
+{
+  // Con el hook de verdad: lunes press, sentadilla y remo; a la mañana press; a la tarde propone
+  // sentadilla y se cambia por dominadas. Antes «Reemplazar» dejaba [dominadas, sentadilla, remo].
+  const r = await escenarioDeSesion('segundaCambia');
+  chequear('propone sentadilla, y «Reemplazar» pone dominadas en su lugar', r.fallo ?? [r.propone, r.antesHoy, r.diaDespues], ['sentadilla', ['press_banca'], ['press_banca', 'dominadas', 'remo']]);
+  const { rutinaConLoHecho } = await import('../nucleo/rutina.ts');
+  const d = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
+  const con = (antesHoy, hecho) => rutinaConLoHecho([d([]), d(['a', 'b', 'c'])], 1, d(hecho), antesHoy)[1].ejercicios.map((e) => e.ejercicio);
+  chequear('la regla: lo de antes hoy (propio o ajeno) cubre su lugar; sin nada de antes, como siempre', [
+    con([], ['y']), con(['a'], ['y']), con(['x'], ['y']), con(['a', 'b'], ['y']),
+  ], [['y', 'b', 'c'], ['a', 'y', 'c'], ['a', 'y', 'c'], ['a', 'b', 'y']]);
+  const pr = sinComentarios(deBug('movil', 'src', 'preguntarPorLaRutina.ts'));
+  chequear('la ventana de la nativa le pasa lo de antes hoy', [
+    /const antesHoy = sesionesRutinaRef\.current\.filter\(\(x\) => x\.fecha === hoy\)\.flatMap\(\(x\) => x\.ejercicios\);/.test(pr),
+    /rutinaTrasLaVentana\(actual\.dias, dia, hecho, como === 'esta' \? 'reemplazar' : como, antesHoy\)/.test(pr),
+  ], [true, true]);
+}
+console.log('\n296. En la segunda sesión del día, repetir algo ya hecho no saltea lo que falta (20/10, revisión)');
+{
+  // Con el hook de verdad: a la mañana press; a la tarde propone sentadilla, se elige press otra
+  // vez y, al pasar al siguiente, antes proponía remo (salteaba la sentadilla).
+  const r = await escenarioDeSesion('segundaRepite');
+  chequear('propone sentadilla, y después de repetir press vuelve a la sentadilla', r.fallo ?? [r.propone, r.despues], ['sentadilla', 'sentadilla']);
+  const us = sinComentarios(deBug('compartido', 'useSesion.ts'));
+  chequear('la cadena sigue con lo hecho en esta sesión, sin lo del día que ya se había hecho hoy', [
+    /paraSeguir = hechos\.filter\(\(h\) => !\(guardadaAhora\.includes\(h\) && antes\.includes\(h\)\)\);/.test(us),
+    /siguienteEnRutina\(rutinaRef\.current, paraSeguir\)/.test(us),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

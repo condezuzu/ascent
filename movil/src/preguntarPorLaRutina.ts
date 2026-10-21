@@ -3,12 +3,14 @@ import { hoyISO } from '@nucleo/fechas';
 import { diaDeLaSesion, hayQuePreguntarPorLaRutina, rutinaTrasLaVentana } from '@nucleo/rutina';
 import { nombreNuevo, type Rutina } from '@nucleo/rutinas';
 import { cargarMisRutinas, guardarRutina, rutinaActivaDelTelefono } from '@compartido/rutinas';
+import { sesionesRutinaRef } from '@compartido/sesionViva';
 import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
 
 type BloqueGuardado = { ejercicio?: string | null; series?: number | null; minutos?: number | null };
 
-export type PreguntaDeRutina = { rutinas: Rutina[]; actual: Rutina; dia: number; hecho: ReturnType<typeof diaDeLaSesion> };
+/** `antesHoy`: lo hecho en las sesiones anteriores de hoy (20/10), para no pisar su lugar. */
+export type PreguntaDeRutina = { rutinas: Rutina[]; actual: Rutina; dia: number; hecho: ReturnType<typeof diaDeLaSesion>; antesHoy: string[] };
 
 /** El día que se eligió «Olvidar este día»: ese día la ventana no vuelve a preguntar. */
 export const CLAVE_DIA_OLVIDADO = 'ascent:rutina-dia-olvidado';
@@ -30,7 +32,10 @@ export async function rutinaParaPreguntar(bloques: BloqueGuardado[]): Promise<Pr
   const rutinas = await cargarMisRutinas(supabase);
   const actual = rutinas?.find((r) => r.activa);
   if (!rutinas || !actual || !hayQuePreguntarPorLaRutina(actual.dias[dia], hecho)) return null;
-  return { rutinas, actual, dia, hecho };
+  // El historial lo trajo la sesión al empezar: son las sesiones ya terminadas de hoy, sin esta.
+  const hoy = hoyISO();
+  const antesHoy = sesionesRutinaRef.current.filter((x) => x.fecha === hoy).flatMap((x) => x.ejercicios);
+  return { rutinas, actual, dia, hecho, antesHoy };
 }
 
 /**
@@ -38,8 +43,8 @@ export async function rutinaParaPreguntar(bloques: BloqueGuardado[]): Promise<Pr
  * con este día puesto, sin tocar la que estaba— u olvidar el día (20/10): no se guarda nada
  * y la ventana no vuelve a preguntar hoy. `false` si no se pudo guardar.
  */
-export async function guardarDiaDeRutina({ rutinas, actual, dia, hecho }: PreguntaDeRutina, como: 'esta' | 'nueva' | 'olvidar'): Promise<boolean> {
-  const dias = rutinaTrasLaVentana(actual.dias, dia, hecho, como === 'esta' ? 'reemplazar' : como);
+export async function guardarDiaDeRutina({ rutinas, actual, dia, hecho, antesHoy }: PreguntaDeRutina, como: 'esta' | 'nueva' | 'olvidar'): Promise<boolean> {
+  const dias = rutinaTrasLaVentana(actual.dias, dia, hecho, como === 'esta' ? 'reemplazar' : como, antesHoy);
   if (!dias) {
     await plataforma.almacenamiento.guardar(CLAVE_DIA_OLVIDADO, hoyISO()).catch(() => undefined);
     return true;
