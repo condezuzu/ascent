@@ -42,6 +42,8 @@
 //      con sus datos pedidos una sola vez mientras corría (21/10), en la nativa.
 //  15. probar-reps — con «Registrar repeticiones» (viene apagado) hay un cuadradito al lado del
 //      peso, con la pista de la última sesión, que se vacía con el + (21/10), en la nativa.
+//  16. probar-estrellas — las vidas son estrellas: en Inicio, arriba de los días; en el aviso,
+//      arriba, en el cuadro y dentro de «Usar vida» (21/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -78,6 +80,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'la sesión siguiente del día', archivo: 'probar-sesion-siguiente.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el arranque', archivo: 'probar-arranque.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'registrar repeticiones', archivo: 'probar-reps.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'las vidas son estrellas', archivo: 'probar-estrellas.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

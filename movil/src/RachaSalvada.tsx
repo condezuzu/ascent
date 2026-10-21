@@ -200,7 +200,7 @@ export default function RachaSalvada({
             </View>
           ) : (
             <>
-              <View style={estilos.vidas}>
+              <View style={estilos.vidas} testID="aviso-vidas">
                 {Array.from({ length: total }, (_, i) => (
                   <VidaQueTitila key={i} viva={i < vivas} indice={i} />
                 ))}
@@ -229,7 +229,7 @@ export default function RachaSalvada({
 
               <Animated.View style={[estilos.caja, { opacity: caja }]} testID="vida-cuadro" pointerEvents={fase === 'aviso' ? 'auto' : 'none'}>
                 {cola && tira && <View pointerEvents="none" style={[estilos.cola, { left: cola.x - tira.x - 7 }]} />}
-                <View style={estilos.emblema} pointerEvents="none">
+                <View style={estilos.emblema} pointerEvents="none" testID="vida-emblema">
                   <Estrella tam={18} />
                 </View>
                 <Text style={estilos.texto}>{texto}</Text>

@@ -11270,7 +11270,8 @@ console.log('\n153. Los bugs del gimnasio: el interbloqueo, la musica y la racha
   // LA TIRA DE LA SEMANA SI SE VA: son siete puntos que no cambian en medio de
   // una sesion y empujan el bloque, que es lo que se toca doce veces.
   chequear('la tira de la semana sigue escondida entrenando',
-    /\{!sesion\.estado\.corriendo && \(\s*<View style=\{estilos\.tira\}>/.test(ini153), true);
+    // Desde el 21/10 la tira lleva también el margen de debajo de las vidas.
+    /\{!sesion\.estado\.corriendo && \(\s*<View style=\{\[estilos\.tira[^>]*testID="tira-inicio">/.test(ini153), true);
 
   // ---- 6. SE PUEDE ENTRAR AL PERFIL ENTRENANDO ----
   //
@@ -20382,6 +20383,25 @@ console.log('\n301. Ajustes en tres grupos: Entrenamiento, Perfil y General (21/
     "router.push('/yo')", '<Gimnasio ', 'T.ajustes.comparteGimnasio', 'T.ajustes.comparteRutina', '<Salud ', '<Identidad ',
   ].map((t) => entre(t, 'T.ajustes.seccionPerfil', 'T.ajustes.seccionGeneral')), [true, true, true, true, true, true]);
   chequear('General: kilos o libras, e idioma', ['T.ajustes.peso}', 'T.ajustes.idioma}'].map((t) => entre(t, 'T.ajustes.seccionGeneral', 'T.ajustes.avanzados')), [true, true]);
+}
+console.log('\n302. Las vidas son estrellas: en Inicio, arriba de los días; en el aviso, arriba y en «Usar vida» (21/10)');
+{
+  // La prueba de verdad es la de test:real (probar-estrellas), que cuenta las estrellas dibujadas.
+  const sinCom302 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const ini = sinCom302(deBug('movil', 'src', 'Inicio.tsx'));
+  chequear('Inicio: una estrella por vida, llena la que queda y en contorno la usada, y ni un punto', [
+    /<Estrella key=\{i\} tam=\{16\} modo=\{i < impulsos\.quedan \? 'luz' : 'apagada'\} \/>/.test(ini),
+    /estilos\.impulsoVivo|impulso: \{ width: 7/.test(ini),
+  ], [true, false]);
+  chequear('y la fila va arriba de los días', [ini.indexOf('testID="vidas-inicio"') > -1, ini.indexOf('testID="vidas-inicio"') < ini.indexOf('testID="tira-inicio"')], [true, true]);
+  const av = sinCom302(deBug('movil', 'src', 'RachaSalvada.tsx'));
+  const enOrden = ['testID="aviso-vidas"', 'style={estilos.tira}', 'testID="vida-cuadro"', 'testID="vida-emblema"', 'testID="vida-usar"'].map((m) => av.indexOf(m));
+  chequear('el aviso: las vidas arriba de la semana, y el cuadro con su estrella arriba y la de «Usar vida»', [
+    enOrden.every((x, i) => x > -1 && (i === 0 || x > enOrden[i - 1])),
+    /testID="aviso-vidas">\s*\{Array\.from\(\{ length: total \}, \(_, i\) => \(\s*<VidaQueTitila/.test(av),
+    /testID="vida-emblema">\s*<Estrella tam=\{18\} \/>/.test(av),
+    /testID="vida-usar"[\s\S]{0,600}<Estrella tam=\{15\} modo="oscura" \/>/.test(av),
+  ], [true, true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

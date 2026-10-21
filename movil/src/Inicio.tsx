@@ -52,6 +52,7 @@ import TimbreDePildora from './TimbreDePildora';
 import { pasadoDe, queMuestraLaPildora } from '@nucleo/avisoDescanso';
 import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
+import Estrella from './Estrella';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
 import { corregirDia } from '@compartido/dia';
 import { rutinaParaPreguntar, type PreguntaDeRutina } from './preguntarPorLaRutina';
@@ -790,8 +791,19 @@ export default function Inicio({
         />
       )}
 
+      {/* LAS VIDAS, ARRIBA DE LOS DÍAS Y COMO ESTRELLAS (21/10, aprobado en la galería): la misma
+          estrella del aviso, llena la que queda y en contorno la usada. Eran puntos, debajo. */}
+      {impulsos && (
+        <View style={estilos.impulsos} testID="vidas-inicio">
+          <Text style={estilos.impulsosEt}>{T.impulso.titulo}</Text>
+          {Array.from({ length: impulsos.total }, (_, i) => (
+            <Estrella key={i} tam={16} modo={i < impulsos.quedan ? 'luz' : 'apagada'} />
+          ))}
+        </View>
+      )}
+
       {!sesion.estado.corriendo && (
-      <View style={estilos.tira}>
+      <View style={[estilos.tira, !!impulsos && estilos.tiraBajoVidas]} testID="tira-inicio">
         {semana.map((d, i) => (
           <DiaDeLaTira
             key={d.fecha}
@@ -805,15 +817,6 @@ export default function Inicio({
           </DiaDeLaTira>
         ))}
       </View>
-      )}
-
-      {impulsos && (
-        <View style={estilos.impulsos}>
-          <Text style={estilos.impulsosEt}>{T.impulso.titulo}</Text>
-          {Array.from({ length: impulsos.total }, (_, i) => (
-            <View key={i} style={[estilos.impulso, i < impulsos.quedan && estilos.impulsoVivo]} />
-          ))}
-        </View>
       )}
 
       {/* TU RUTINA (15/10): lo que toca hoy, a un toque. Mientras se entrena, no. */}
@@ -1221,9 +1224,11 @@ const estilos = StyleSheet.create({
   pasos: { color: '#6a7286', fontSize: 13, marginTop: 14, fontVariant: ['tabular-nums'] },
 
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 34 },
+  // Pegada a las vidas, como en el aviso: se leen juntas.
+  tiraBajoVidas: { marginTop: 18 },
   letra: { color: '#4a5163', fontSize: 11 },
 
-  impulsos: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 26 },
+  impulsos: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 26 },
   impulsosEt: {
     color: '#4a5163',
     fontSize: 10,
@@ -1231,8 +1236,6 @@ const estilos = StyleSheet.create({
     textTransform: 'uppercase',
     marginRight: 4,
   },
-  impulso: { width: 7, height: 7, borderRadius: 4, borderWidth: 1, borderColor: '#3a4152' },
-  impulsoVivo: { backgroundColor: '#c4c2ba', borderColor: '#c4c2ba' },
 
   solido: {
     backgroundColor: '#c4c2ba',
