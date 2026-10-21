@@ -30,7 +30,8 @@ export default function Globito({ texto, alCerrar, testID }: { texto: string; al
     <View style={estilos.ancla} pointerEvents="box-none">
       <Animated.View style={[estilos.globo, { opacity: opacidad }]}>
         <Pressable testID={testID} style={estilos.toque} onPress={cerrar} accessibilityRole="button" accessibilityHint={T.general.entendido}>
-          <Text style={estilos.texto} numberOfLines={1}>
+          {/* Dos renglones (21/10): el aviso de subir el peso dice el rango, y en uno se cortaba. */}
+          <Text style={estilos.texto} numberOfLines={2}>
             {texto}
           </Text>
           {/* Una cruz de dos rayas, sin SVG: son dos vistas rotadas. */}

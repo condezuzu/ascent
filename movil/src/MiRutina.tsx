@@ -12,10 +12,13 @@ import {
   quitarEjercicio,
   semanaVacia,
   moverEjercicio,
+  siguienteObjetivo,
   type DiaDeSemana,
   type Rutina,
 } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
+import { disponible } from '@nucleo/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
 import { nombreVisible } from '@nucleo/propios';
 import { miId } from '@compartido/quienSoy';
 import {
@@ -55,6 +58,8 @@ export default function MiRutina({
   alArrastrar?: (si: boolean) => void;
   abrirHoy?: boolean;
 }) {
+  // El chip de las repeticiones objetivo, con la migración 95.
+  const conObjetivo = disponible('distanciaYObjetivo', useVersionDelEsquema());
   // Dónde está el nombre del entrenamiento, para que el globito de la rutina salga de él.
   const [nombreEn, setNombreEn] = useState({ x: 0, ancho: 0 });
   const [guardadas, setGuardadas] = useState<boolean | null>(null);
@@ -262,6 +267,12 @@ export default function MiRutina({
             <Pressable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, 1))} accessibilityLabel={T.rutina.mas}>
               <Text style={estilos.paso}>+</Text>
             </Pressable>
+            {/* LAS REPETICIONES OBJETIVO (21/10, migración 95): contra esto mira el aviso de subir el peso. */}
+            {e.minutos === undefined && conObjetivo && (
+              <Pressable testID={`rutina-objetivo-${d}-${i}`} hitSlop={6} onPress={() => con(siguienteObjetivo(actual.dias, d, i))} accessibilityLabel={T.rutina.objetivo(e.reps)}>
+                <Text style={[estilos.objetivo, e.reps === undefined && estilos.objetivoVacio]}>{e.reps ? `×${e.reps}` : '×–'}</Text>
+              </Pressable>
+            )}
             <Pressable hitSlop={8} onPress={() => con(quitarEjercicio(actual.dias, d, i))} accessibilityLabel={T.rutina.quitar}>
               <Text style={estilos.quitar}>✕</Text>
             </Pressable>
@@ -497,6 +508,8 @@ const estilos = StyleSheet.create({
   filaEditable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   ejercicio: { flex: 1, color: C.sub, fontSize: 14 },
   cantidad: { color: C.tinta, fontSize: 13, minWidth: 58, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  objetivo: { color: C.tinta, fontSize: 13, minWidth: 30, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  objetivoVacio: { color: C.apagado },
   paso: { color: C.tinta, fontSize: 18, width: 20, textAlign: 'center' },
   quitar: { color: C.apagado, fontSize: 14, width: 20, textAlign: 'center' },
   pregunta: { marginTop: 8 },

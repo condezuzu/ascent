@@ -893,6 +893,7 @@ export default function Inicio({
             pistaDeReps={sesion.estado.bloques.ejercicio ? sesion.pistaDeRepsDe(sesion.estado.bloques.ejercicio) : null}
             alElegirReps={sesion.elegirReps}
             alElegirDistancia={sesion.elegirDistancia}
+            subirPesoDe={sesion.subirPesoDe}
             alSumar={sesion.serieHecha}
             alRestar={sesion.deshacerSerie}
             alSiguiente={sesion.bloqueSiguiente}

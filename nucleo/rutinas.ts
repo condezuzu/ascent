@@ -20,7 +20,8 @@ import type { DiaDeRutina } from './rutina.ts';
 import { T } from './textos.ts';
 import { META_MAXIMA } from './bloques.ts';
 
-export type EjercicioDelDia = { ejercicio: string; series: number; minutos?: number };
+/** `reps` (21/10, migración 95): las repeticiones objetivo, contra las que mira el aviso de subir el peso. */
+export type EjercicioDelDia = { ejercicio: string; series: number; minutos?: number; reps?: number };
 export type DiaDeSemana = { descanso: boolean; ejercicios: EjercicioDelDia[] };
 export type Rutina = { id: string; nombre: string; activa: boolean; dias: DiaDeSemana[] };
 
@@ -50,10 +51,12 @@ export function diasLimpios(crudo: unknown): DiaDeSemana[] {
     const d = lista[i] as { descanso?: unknown; ejercicios?: unknown } | null | undefined;
     const ejercicios = (Array.isArray(d?.ejercicios) ? d.ejercicios : [])
       .slice(0, MAX_EJERCICIOS_POR_DIA)
-      .filter((e): e is { ejercicio: string; series?: unknown; minutos?: unknown } => !!e && typeof e === 'object' && !Array.isArray(e) && typeof (e as { ejercicio?: unknown }).ejercicio === 'string' && (e as { ejercicio: string }).ejercicio !== '')
+      .filter((e): e is { ejercicio: string; series?: unknown; minutos?: unknown; reps?: unknown } => !!e && typeof e === 'object' && !Array.isArray(e) && typeof (e as { ejercicio?: unknown }).ejercicio === 'string' && (e as { ejercicio: string }).ejercicio !== '')
       .map((e) => {
         const x: EjercicioDelDia = { ejercicio: e.ejercicio.slice(0, 80), series: entero(e.series, MAX_SERIES) };
         if (typeof e.minutos === 'number') x.minutos = entero(e.minutos, MAX_MINUTOS);
+        // Como la base: redondeado, y de 1 a 100; si no, no hay objetivo.
+        if (typeof e.reps === 'number' && Math.round(e.reps) >= 1 && Math.round(e.reps) <= 100) x.reps = Math.round(e.reps);
         return x;
       });
     return d?.descanso === true ? { descanso: true, ejercicios: [] } : { descanso: false, ejercicios };
@@ -147,6 +150,30 @@ export function agregarEjercicio(dias: DiaDeSemana[], dia: number, ejercicio: st
 
 export function quitarEjercicio(dias: DiaDeSemana[], dia: number, indice: number): DiaDeSemana[] {
   return conDia(dias, dia, (d) => ({ ...d, ejercicios: d.ejercicios.filter((_, i) => i !== indice) }));
+}
+
+/** Las repeticiones objetivo que se eligen con un toque, en orden; después de la última, ninguna. */
+export const OBJETIVOS_REPS = [5, 6, 8, 10, 12, 15, 20] as const;
+
+/** El objetivo que sigue (21/10): un toque al chip pasa al siguiente, y del último a ninguno. */
+export function siguienteObjetivo(dias: DiaDeSemana[], dia: number, indice: number): DiaDeSemana[] {
+  return conDia(dias, dia, (d) => ({
+    ...d,
+    ejercicios: d.ejercicios.map((e, i) => {
+      if (i !== indice || e.minutos !== undefined) return e;
+      const j = e.reps === undefined ? -1 : (OBJETIVOS_REPS as readonly number[]).indexOf(e.reps);
+      const prox = j === -1 && e.reps !== undefined ? OBJETIVOS_REPS.find((o) => o > (e.reps ?? 0)) : OBJETIVOS_REPS[j + 1];
+      const { reps: _r, ...resto } = e;
+      return prox === undefined ? resto : { ...resto, reps: prox };
+    }),
+  }));
+}
+
+/** Las repeticiones objetivo de cada ejercicio de la rutina: la primera vez que aparece. */
+export function objetivosDeRepeticiones(dias: DiaDeSemana[] | null | undefined): Record<string, number> {
+  const r: Record<string, number> = {};
+  for (const d of dias ?? []) for (const e of d.ejercicios) if (e.reps !== undefined && r[e.ejercicio] === undefined) r[e.ejercicio] = e.reps;
+  return r;
 }
 
 /** Series (o minutos, si el ejercicio se mide en tiempo) más o menos. Nunca baja de 1. */

@@ -48,6 +48,8 @@
 //      distancia de la vuelta (21/10), en la nativa.
 //  18. probar-octogonos — los botones de Inicio y del bloque tienen las esquinas cortadas en
 //      diagonal (21/10), en la nativa.
+//  19. probar-dos-por-dos — el aviso de subir el peso con la regla 2 por 2: avisa con el rango,
+//      y no avisa si la última serie no llegó al objetivo + 2 (21/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -87,6 +89,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'las vidas son estrellas', archivo: 'probar-estrellas.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el cardio', archivo: 'probar-cardio.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'los botones en octágono', archivo: 'probar-octogonos.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'subir el peso, 2 por 2', archivo: 'probar-dos-por-dos.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

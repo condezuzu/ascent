@@ -1213,6 +1213,8 @@ const ES = {
     cardioListo: 'Listo',
     // EL GLOBITO DE SUBIR (15/10): todas las series al mismo peso, dos sesiones seguidas.
     yaPuedesSubir: 'Ya puedes subir el peso',
+    // Con la regla 2 por 2 (21/10): el rango sugerido, ya con la unidad.
+    yaPuedesSubirRango: (desde: string, hasta: string, a: number, b: number) => `Ya puedes subir el peso: de ${desde} a ${hasta} (${a} a ${b} %).`,
     minutosDeCardio: 'Minutos',
     // EL CRONÓMETRO DEL CARDIO (15/10): arranca al elegirlo; "Listo" anota lo que corrió.
     cardioArrancar: 'Arrancar',
@@ -1502,6 +1504,8 @@ const ES = {
     // EN INICIO (15/10): el renglón que abre la rutina.
     hoy: (titulo: string) => `Hoy: ${titulo}`,
     armarSemana: 'Arma tu semana',
+    // El chip de las repeticiones objetivo (21/10): para el lector de pantalla.
+    objetivo: (n?: number) => (n ? `Repeticiones objetivo: ${n}. Toca para cambiarlas` : 'Sin repeticiones objetivo. Toca para poner'),
     // Para el lector de pantalla, en los botones de cada ejercicio (21/10: estaban escritos a mano).
     menos: 'Una serie menos',
     mas: 'Una serie más',

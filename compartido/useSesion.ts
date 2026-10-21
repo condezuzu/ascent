@@ -10,6 +10,8 @@ import { T } from '@nucleo/textos';
 import { eventos } from '@compartido/eventos';
 import { cantidadesDeHoy, ejerciciosDeHoy, metaDeRutina } from '@nucleo/rutinas';
 import { cargarMisRutinas, rutinaActivaDelTelefono } from '@compartido/rutinas';
+import { objetivosDeRepeticiones } from '@nucleo/rutinas';
+import { dosPorDos } from '@nucleo/dosPorDos';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
 import {
   desfasajeDelReloj,
@@ -100,6 +102,7 @@ import {
   rutinaEsGuardada,
   sesionesRutinaRef,
   historialConPesosRef,
+  objetivosRef,
   marcasConRepsRef,
   setterDe,
   suscribirViva,
@@ -793,6 +796,7 @@ export function useSesion(
       // sesión: el lunes proponía la del martes. Pedirla también deja la copia escrita.
       const copia = await rutinaActivaDelTelefono();
       const guardada = copia ?? (await cargarMisRutinas(supabase).catch(() => null))?.find((r) => r.activa) ?? null;
+      objetivosRef.current = objetivosDeRepeticiones(guardada?.dias);
       const deLaGuardada = ejerciciosDeHoy(guardada, new Date().getDay());
       // LO QUE QUEDA HOY (20/10, bug: "cambié A por X y la sesión siguiente volvió a proponer
       // A"): lo hecho en las sesiones anteriores de hoy ya no se propone.
@@ -1286,6 +1290,10 @@ export function useSesion(
           return { fecha: log?.fecha ?? '', ejercicios: ejerciciosEnOrden(ids) };
         })
         .filter((s) => s.fecha);
+      // Los objetivos también al volver a una sesión que ya estaba andando (sin pasar por la propuesta).
+      void rutinaActivaDelTelefono().then((g) => {
+        if (g) objetivosRef.current = objetivosDeRepeticiones(g.dias);
+      });
       historialConPesosRef.current = filas
         .map((s) => {
           const log = Array.isArray(s.logs) ? (s.logs[0] as { fecha?: string }) : (s.logs as { fecha?: string } | null);
@@ -1745,6 +1753,8 @@ export function useSesion(
       const u = ultimaVezDe(historialConPesosRef.current, id, hoyISO());
       return u ? repsDeLaSesion(marcasConRepsRef.current, id, u.fecha) : null;
     },
+    /** El aviso de subir el peso, con la regla 2 por 2 (ver `nucleo/dosPorDos.ts`); `null` si no corresponde. */
+    subirPesoDe: (id: string, grupo: string | null) => dosPorDos(historialConPesosRef.current, id, objetivosRef.current[id], grupo, hoyISO()),
     /** La pista del cuadradito de repeticiones para la serie que viene de ese ejercicio: ver `pistaDeReps`. */
     pistaDeRepsDe: (id: string) => {
       const u = ultimaVezDe(historialConPesosRef.current, id, hoyISO());

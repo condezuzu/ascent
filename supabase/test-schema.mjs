@@ -20564,6 +20564,56 @@ console.log('\n308. Las vidas: se dibujan las tres, también la que falta ganar 
   const av308 = deBug('movil', 'src', 'RachaSalvada.tsx');
   chequear('el aviso también dibuja la que falta ganar', /length: Math\.max\(0, \(tope \?\? total\) - total\)[\s\S]{0,120}modo="porGanar"/.test(av308), true);
 }
+console.log('\n309. Subir el peso con la regla 2 por 2: dos sesiones seguidas con la última serie 2 por encima del objetivo (21/10)');
+{
+  const DD = await import('../nucleo/dosPorDos.ts');
+  const RS = await import('../nucleo/rutinas.ts');
+  const ses = (fecha, reps, pesos = [60, 60, 60]) => ({ fecha, bloques: [{ ejercicio: 'press_banca', series: 3, pesos, reps }] });
+  const hoy = '2026-10-21';
+  const dos = [ses('2026-10-16', [10, 10, 10]), ses('2026-10-19', [10, 9, 10])];
+  const s1 = DD.dosPorDos(dos, 'press_banca', 8, 'pecho', hoy);
+  chequear('avisa: la última serie con 2 o más sobre el objetivo, en las dos últimas sesiones; tren superior, de 2 a 5 %', s1, { peso: 60, desde: 61.2, hasta: 63, porcentaje: [2, 5] });
+  chequear('no avisa si una de las dos quedó por debajo, si no tiene repeticiones anotadas, sin objetivo, con una sola sesión', [
+    DD.dosPorDos([ses('2026-10-16', [10, 10, 10]), ses('2026-10-19', [10, 10, 9])], 'press_banca', 8, 'pecho', hoy),
+    DD.dosPorDos([ses('2026-10-16', [10, 10, 10]), ses('2026-10-19', undefined)], 'press_banca', 8, 'pecho', hoy),
+    DD.dosPorDos(dos, 'press_banca', undefined, 'pecho', hoy),
+    DD.dosPorDos([ses('2026-10-19', [12, 12, 12])], 'press_banca', 8, 'pecho', hoy),
+  ], [null, null, null, null]);
+  chequear('las de hoy no cuentan (es la sesión en curso), y mira las DOS ÚLTIMAS: una vieja que cumplía no alcanza', [
+    DD.dosPorDos([ses('2026-10-19', [10, 10, 10]), ses(hoy, [10, 10, 10])], 'press_banca', 8, 'pecho', hoy),
+    DD.dosPorDos([ses('2026-10-10', [10, 10, 10]), ses('2026-10-16', [8, 8, 8]), ses('2026-10-19', [10, 10, 10])], 'press_banca', 8, 'pecho', hoy),
+  ], [null, null]);
+  chequear('tren inferior de 5 a 10 %; el rango se dice redondeado a lo que se carga, sin salirse', [
+    DD.porcentajesDeSubida('piernas'), DD.porcentajesDeSubida('espalda'),
+    DD.dosPorDos([ses('2026-10-16', [10, 10, 10], [100, 100, 100]), ses('2026-10-19', [10, 10, 10], [100, 100, 100])], 'press_banca', 8, 'piernas', hoy)?.porcentaje,
+    DD.rangoParaMostrar(s1, 'kg'),
+  ], [[5, 10], [2, 5], [5, 10], [61.5, 63]]);
+
+  // ---- EL OBJETIVO EN LA RUTINA ----
+  let dias = RS.semanaVacia();
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }, { ejercicio: 'cinta', series: 0, minutos: 20 }] };
+  const vueltas = [];
+  for (let i = 0; i < 8; i++) {
+    dias = RS.siguienteObjetivo(dias, 1, 0);
+    vueltas.push(dias[1].ejercicios[0].reps ?? null);
+  }
+  chequear('el chip pasa por 5, 6, 8, 10, 12, 15, 20 y vuelve a ninguno; el cardio no tiene', [vueltas, RS.siguienteObjetivo(dias, 1, 1)[1].ejercicios[1].reps ?? null], [[5, 6, 8, 10, 12, 15, 20, null], null]);
+  dias = RS.siguienteObjetivo(RS.siguienteObjetivo(RS.siguienteObjetivo(dias, 1, 0), 1, 0), 1, 0);
+  chequear('los objetivos de la rutina, por ejercicio', RS.objetivosDeRepeticiones(dias), { press_banca: 8 });
+  // El teléfono limpia igual que la base (rutina_dias_limpios, migración 95).
+  const crudo = [{ descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4, reps: 8 }, { ejercicio: 'remo_barra', series: 3, reps: 0 }, { ejercicio: 'sentadilla', series: 3, reps: 12.4 }, { ejercicio: 'curl_biceps', series: 3, reps: 101 }] }];
+  const enLaBase = (await db.query('select rutina_dias_limpios($1::jsonb) as d', [JSON.stringify(crudo)])).rows[0].d[0].ejercicios.map((e) => e.reps ?? null);
+  chequear('las repeticiones objetivo se limpian igual en el teléfono que en la base', [RS.diasLimpios(crudo)[0].ejercicios.map((e) => e.reps ?? null), enLaBase], [[8, null, 12, null], [8, null, 12, null]]);
+
+  // ---- LA PANTALLA ----
+  const blo309 = deBug('movil', 'src', 'Bloque.tsx');
+  chequear('el globito usa la regla nueva y ya no la de "el mismo peso entero dos veces"', [
+    /const subirPeso = estado\.ejercicio && subirPesoDe \? subirPesoDe\(estado\.ejercicio, actual\?\.grupo \?\? null\) : null;/.test(blo309),
+    /r\.paraSubir/.test(blo309),
+  ], [true, false]);
+  const h309 = await escenarioDeSesion('dosPorDos');
+  chequear('con el hook de verdad: el objetivo sale de la rutina activa y el aviso de las dos sesiones anteriores', h309.fallo ?? h309.subir, { peso: 60, desde: 61.2, hasta: 63, porcentaje: [2, 5] });
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

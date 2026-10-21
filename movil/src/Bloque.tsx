@@ -26,6 +26,7 @@ import FondoOctogonal from './FondoOctogonal';
 const FONDO_BOTON = 'rgba(255,255,255,0.03)';
 const CORTE = 12;
 import { unidadDeDistancia } from '@nucleo/distancia';
+import { rangoParaMostrar, type SubirPeso } from '@nucleo/dosPorDos';
 
 // Los globitos de "ya puedes subir" que ya se cerraron, por ejercicio y día: no vuelven en la misma corrida.
 const SUBIR_VISTOS = new Set<string>();
@@ -85,6 +86,7 @@ export default function Bloque({
   pistaDeReps,
   alElegirReps,
   alElegirDistancia,
+  subirPesoDe,
   alSumar,
   debajoDelMas,
   globoDelMas,
@@ -123,6 +125,8 @@ export default function Bloque({
   alElegirReps?: (n: number | null) => void;
   /** Los kilómetros de la vuelta de cardio, a cada tecla (21/10). */
   alElegirDistancia?: (km: number | null) => void;
+  /** El aviso de subir el peso con la regla 2 por 2, para ese ejercicio y su grupo (21/10). */
+  subirPesoDe?: (id: string, grupo: string | null) => SubirPeso | null;
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
@@ -253,19 +257,14 @@ export default function Bloque({
   const conSubir = conCarga && disponible('subirPeso', version);
   const oferta = conSubir && admitePeso ? loQueSePuedeSubir(estado, cargaVista) : null;
   const [marca, setMarca] = useState<Subida | null>(null);
-  // YA PUEDES SUBIR (15/10): el peso con el que se hizo entero dos veces seguidas.
-  const [listoParaSubir, setListoParaSubir] = useState<number | null>(null);
   useEffect(() => {
     let vivo = true;
     setMarca(null);
-    setListoParaSubir(null);
     if (estado.ejercicio) {
       const id = estado.ejercicio;
       void leerRecordados().then((r) => {
         if (!vivo) return;
         setMarca(r.subidas[claveDeSubida(id, cargaVista)] ?? null);
-        const l = r.paraSubir[id];
-        setListoParaSubir(l && l.carga === cargaVista ? l.peso : null);
       });
     }
     return () => {
@@ -275,8 +274,12 @@ export default function Bloque({
   const dia = diaDeSesion ?? hoyISO();
   // Al volver a ese ejercicio, antes de la primera serie, y si el peso de hoy no subió ya.
   const [, repintarGlobito] = useState(0);
+  // YA PUEDES SUBIR, CON LA REGLA 2 POR 2 (21/10): antes era "el mismo peso entero dos veces",
+  // que no sabía de repeticiones. Ver `nucleo/dosPorDos.ts`.
+  const subirPeso = estado.ejercicio && subirPesoDe ? subirPesoDe(estado.ejercicio, actual?.grupo ?? null) : null;
   const globitoSubir =
-    listoParaSubir !== null && estado.hechas === 0 && !!estado.ejercicio && (estado.peso ?? 0) <= listoParaSubir && !SUBIR_VISTOS.has(`${estado.ejercicio}:${dia}`);
+    !!subirPeso && estado.hechas === 0 && !!estado.ejercicio && (estado.peso ?? 0) <= subirPeso.peso && !SUBIR_VISTOS.has(`${estado.ejercicio}:${dia}`);
+  const rangoSubir = subirPeso ? rangoParaMostrar(subirPeso, unidad) : null;
   const marcada = !!oferta && !!marca && marca.dia === dia && marca.peso === oferta.peso && marca.carga === cargaVista;
   function ponerMarca(s: Subida | null) {
     if (!estado.ejercicio) return;
@@ -335,7 +338,7 @@ export default function Bloque({
       {globitoSubir && (
         <Globito
           testID="globito-subir"
-          texto={T.sesion.yaPuedesSubir}
+          texto={rangoSubir && subirPeso ? T.sesion.yaPuedesSubirRango(enUnidad(rangoSubir[0]), enUnidad(rangoSubir[1]), subirPeso.porcentaje[0], subirPeso.porcentaje[1]) : T.sesion.yaPuedesSubir}
           alCerrar={() => {
             SUBIR_VISTOS.add(`${estado.ejercicio}:${dia}`);
             repintarGlobito((n) => n + 1);
