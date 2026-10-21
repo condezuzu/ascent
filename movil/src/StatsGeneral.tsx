@@ -25,6 +25,7 @@ import PesoHoja from './PesoHoja';
 import ListaDePesos from './ListaDePesos';
 import ObjetivoDePeso from './ObjetivoDePeso';
 import { useRecargarAlVolver } from './irAPestana';
+import Estrella from './Estrella';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -57,9 +58,10 @@ export function LineaDeVidas({ vidas }: { vidas: Vidas }) {
   return (
     <View style={estilos.vidas}>
       <Text style={estilos.et}>{T.impulso.titulo}</Text>
-      <View style={estilos.puntos} accessibilityLabel={`${vidas.quedan} de ${vidas.total}`}>
+      {/* La misma estrella que Inicio y el aviso (21/10): llena la que queda, en contorno la usada. */}
+      <View style={estilos.puntos} accessibilityLabel={`${vidas.quedan} de ${vidas.total}`} testID="vidas-stats">
         {Array.from({ length: vidas.total }, (_, i) => (
-          <View key={i} style={[estilos.vida, i < vidas.quedan && estilos.vidaViva]} />
+          <Estrella key={i} tam={16} modo={i < vidas.quedan ? 'luz' : 'apagada'} />
         ))}
       </View>
       <Text style={estilos.nota}>
@@ -387,9 +389,7 @@ const estilos = StyleSheet.create({
   celdaAno: { aspectRatio: 1, borderRadius: 2, backgroundColor: C.linea },
   vidas: { marginBottom: 16, gap: 6 },
   et: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
-  puntos: { flexDirection: 'row', gap: 6 },
-  vida: { width: 9, height: 9, borderRadius: 5, borderWidth: 1, borderColor: C.apagado },
-  vidaViva: { backgroundColor: C.claro, borderColor: C.claro },
+  puntos: { flexDirection: 'row', gap: 8 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 6 },
   dosNumeros: { flexDirection: 'row', gap: 12 },
   numero: { flex: 1 },

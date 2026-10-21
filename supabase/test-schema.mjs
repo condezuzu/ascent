@@ -20403,6 +20403,16 @@ console.log('\n302. Las vidas son estrellas: en Inicio, arriba de los días; en 
     /testID="vida-usar"[\s\S]{0,600}<Estrella tam=\{15\} modo="oscura" \/>/.test(av),
   ], [true, true, true, true]);
 }
+console.log('\n303. En Estadísticas las vidas también son estrellas (21/10)');
+{
+  // La prueba de verdad es la de test:real (probar-estrellas), que las cuenta en pantalla.
+  const sinCom303 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const sg = sinCom303(deBug('movil', 'src', 'StatsGeneral.tsx'));
+  chequear('la misma estrella que Inicio, llena la que queda y en contorno la usada, y ni un punto', [
+    /<Estrella key=\{i\} tam=\{16\} modo=\{i < vidas\.quedan \? 'luz' : 'apagada'\} \/>/.test(sg),
+    /estilos\.vidaViva|vida: \{ width: 9/.test(sg),
+  ], [true, false]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
