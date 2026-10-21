@@ -8,7 +8,8 @@ import { C } from './colores';
  */
 const PUNTAS = 'M0,-48 C3,-15 9,-6 27,0 C9,6 3,15 0,48 C-3,15 -9,6 -27,0 C-9,-6 -3,-15 0,-48 Z';
 
-export type ModoDeEstrella = 'luz' | 'hielo' | 'apagada' | 'oscura';
+/** `porGanar` (21/10): la tercera vida, que se gana con racha de 20; punteada para que no se lea como usada. */
+export type ModoDeEstrella = 'luz' | 'hielo' | 'apagada' | 'oscura' | 'porGanar';
 
 export default function Estrella({ tam, modo = 'luz' }: { tam: number; modo?: ModoDeEstrella }) {
   return (
@@ -26,6 +27,8 @@ export default function Estrella({ tam, modo = 'luz' }: { tam: number; modo?: Mo
       </Defs>
       {modo === 'apagada' ? (
         <Path d={PUNTAS} fill="none" stroke={C.apagado} strokeWidth={4} strokeLinejoin="round" />
+      ) : modo === 'porGanar' ? (
+        <Path d={PUNTAS} fill="none" stroke={C.apagado} strokeWidth={4} strokeLinejoin="round" strokeDasharray="7 9" opacity={0.7} />
       ) : (
         <Path d={PUNTAS} fill={modo === 'oscura' ? C.fondo : modo === 'hielo' ? 'url(#hielo)' : 'url(#luz)'} />
       )}

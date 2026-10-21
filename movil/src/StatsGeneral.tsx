@@ -26,6 +26,7 @@ import ListaDePesos from './ListaDePesos';
 import ObjetivoDePeso from './ObjetivoDePeso';
 import { useRecargarAlVolver } from './irAPestana';
 import Estrella from './Estrella';
+import { modosDeLasVidas } from '@nucleo/impulsos';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -48,7 +49,7 @@ import Estrella from './Estrella';
  * no se muestra un hueco explicando lo que falta.
  */
 
-export type Vidas = { quedan: number; total: number; vuelve: string | null; falta: number | null };
+export type Vidas = { quedan: number; total: number; tope?: number; vuelve: string | null; falta: number | null };
 export type PesoAnotado = { fecha: string; valor: number };
 
 export function LineaDeVidas({ vidas }: { vidas: Vidas }) {
@@ -60,8 +61,8 @@ export function LineaDeVidas({ vidas }: { vidas: Vidas }) {
       <Text style={estilos.et}>{T.impulso.titulo}</Text>
       {/* La misma estrella que Inicio y el aviso (21/10): llena la que queda, en contorno la usada. */}
       <View style={estilos.puntos} accessibilityLabel={`${vidas.quedan} de ${vidas.total}`} testID="vidas-stats">
-        {Array.from({ length: vidas.total }, (_, i) => (
-          <Estrella key={i} tam={16} modo={i < vidas.quedan ? 'luz' : 'apagada'} />
+        {modosDeLasVidas(vidas).map((modo, i) => (
+          <Estrella key={i} tam={16} modo={modo} />
         ))}
       </View>
       <Text style={estilos.nota}>

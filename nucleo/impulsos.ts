@@ -120,6 +120,18 @@ export function diasDeLaTira(hoy: string, frescas: string[]): string[] {
  * 21/10, bug: con dos de dos y la tercera a 20 días, decía «Vidas al máximo» al lado de «La
  * tercera se gana en 20 días». Miraba primero si estaban todas las de ahora.
  */
+/**
+ * LAS VIDAS DE LA FILA, de izquierda a derecha (21/10, bug: "en el teléfono de mis amigos dice
+ * que tiene 2 vidas máximo"). Se dibujaban solo las ganadas: con racha de menos de 20 son dos y
+ * la tercera no aparecía, así que no había forma de saber que existe. Ahora van las tres (el
+ * tope): las que quedan, llenas; las usadas, en contorno; la que falta ganar, punteada.
+ */
+export function modosDeLasVidas(v: { quedan: number; total: number; tope?: number }): ('luz' | 'apagada' | 'porGanar')[] {
+  const total = Math.max(0, v.total);
+  const tope = Math.max(total, v.tope ?? total);
+  return Array.from({ length: tope }, (_, i) => (i < Math.min(v.quedan, total) ? 'luz' : i < total ? 'apagada' : 'porGanar'));
+}
+
 export function celdaDeLaProximaVida(v: { quedan: number; total: number; falta: number | null }): 'llenas' | number | null {
   if (v.falta !== null && v.falta > 0) return v.falta;
   return v.quedan >= v.total ? 'llenas' : null;

@@ -145,6 +145,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           ? {
               quedan: Number(vid.data.quedan),
               total: Number(vid.data.total),
+              tope: Number(vid.data.tope ?? vid.data.total),
               vuelve: (vid.data.vuelve as string | null) ?? null,
               falta: vid.data.falta_para_ganar === null ? null : Number(vid.data.falta_para_ganar),
             }

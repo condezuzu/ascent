@@ -28,7 +28,7 @@ import RachaSalvada from './RachaSalvada';
 import SubidaRango from './SubidaRango';
 import RegistrarDia from './RegistrarDia';
 import { plataforma } from '@plataforma';
-import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDondeVisto, vidasParaAvisar, type VidaHelada } from '@nucleo/impulsos';
+import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDondeVisto, modosDeLasVidas, vidasParaAvisar, type VidaHelada } from '@nucleo/impulsos';
 import { CLAVE_META_PASOS, META_PASOS_POR_OMISION, leerMeta } from '@nucleo/pasos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import MarcaEnElMomento from './MarcaEnElMomento';
@@ -98,7 +98,7 @@ type Estado =
       logs: Log[];
       descansos: ConfigDescanso[];
       cubiertos: string[];
-      impulsos: { quedan: number; total: number } | null;
+      impulsos: { quedan: number; total: number; tope: number } | null;
       /** Si hoy se perdió la racha: el fondo se apaga, igual que en la web. */
       perdida: boolean;
     };
@@ -108,7 +108,7 @@ function estadoListo(d: {
   perfil: Perfil;
   logs: Log[];
   descansos: ConfigDescanso[];
-  impulsos: { vigentes?: string[]; quedan?: number; total?: number } | null;
+  impulsos: { vigentes?: string[]; quedan?: number; total?: number; tope?: number } | null;
   perdida: boolean;
 }): Estado {
   return {
@@ -117,7 +117,10 @@ function estadoListo(d: {
     logs: d.logs,
     descansos: d.descansos,
     cubiertos: Array.isArray(d.impulsos?.vigentes) ? (d.impulsos!.vigentes as string[]) : [],
-    impulsos: d.impulsos && d.impulsos.quedan !== undefined ? { quedan: Number(d.impulsos.quedan), total: Number(d.impulsos.total) } : null,
+    impulsos:
+      d.impulsos && d.impulsos.quedan !== undefined
+        ? { quedan: Number(d.impulsos.quedan), total: Number(d.impulsos.total), tope: Number(d.impulsos.tope ?? d.impulsos.total) }
+        : null,
     perdida: d.perdida,
   };
 }
@@ -221,7 +224,7 @@ export default function Inicio({
   const [descansoAbierto, setDescansoAbierto] = useState(false);
   // LA VENTANA DE LAS VIDAS: los días cubiertos que este aparato todavía no
   // anunció. Misma regla y misma marca que la web (`nucleo/impulsos.ts`).
-  const [vidaUsada, setVidaUsada] = useState<{ dias: string[]; quedan: number; total: number } | null>(null);
+  const [vidaUsada, setVidaUsada] = useState<{ dias: string[]; quedan: number; total: number; tope: number } | null>(null);
   // LA VIDA CONGELADA EN EL DÍA (19/10): el día que se usa, congelada en la tira; el
   // siguiente se derrite una vez. Lo de "una vez" lo cuida borrar la clave al leerla vieja.
   const [helada, setHelada] = useState<VidaHelada | null>(null);
@@ -297,7 +300,7 @@ export default function Inicio({
         perfil: Perfil | null;
         logs: Log[];
         descansos: ConfigDescanso[];
-        impulsos: { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number } | null;
+        impulsos: { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number; tope?: number } | null;
         perdida: boolean;
         deHoy: { inicio: string; fin: string | null; bloques?: CierreDeSesion['bloques'] | null }[];
       }
@@ -345,7 +348,7 @@ export default function Inicio({
       // Con la racha ya perdida en ese corte no hay aviso: se ve la pérdida (20/10).
       const sinVer = vidasParaAvisar(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA), d.perfil.perdida_fecha);
       if (sinVer.length > 0) {
-        setVidaUsada({ dias: sinVer, quedan: Number(d.impulsos?.quedan ?? 0), total: Number(d.impulsos?.total ?? 0) });
+        setVidaUsada({ dias: sinVer, quedan: Number(d.impulsos?.quedan ?? 0), total: Number(d.impulsos?.total ?? 0), tope: Number(d.impulsos?.tope ?? d.impulsos?.total ?? 0) });
       }
     },
     [alSalir, alFaltarNombre, fallo]
@@ -398,7 +401,7 @@ export default function Inicio({
         perfil: (perfil ?? null) as Perfil | null,
         logs: (logs ?? []) as Log[],
         descansos: (descansos ?? []) as ConfigDescanso[],
-        impulsos: (impulsos ?? null) as { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number } | null,
+        impulsos: (impulsos ?? null) as { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number; tope?: number } | null,
         perdida: !!(verificacion as { perdida?: boolean } | null)?.perdida,
         deHoy: dh,
       });
@@ -797,8 +800,8 @@ export default function Inicio({
       {impulsos && (
         <View style={estilos.impulsos} testID="vidas-inicio">
           <Text style={estilos.impulsosEt}>{T.impulso.titulo}</Text>
-          {Array.from({ length: impulsos.total }, (_, i) => (
-            <Estrella key={i} tam={16} modo={i < impulsos.quedan ? 'luz' : 'apagada'} />
+          {modosDeLasVidas(impulsos).map((modo, i) => (
+            <Estrella key={i} tam={16} modo={modo} />
           ))}
         </View>
       )}
@@ -1142,6 +1145,7 @@ export default function Inicio({
           dias={vidaUsada.dias}
           quedan={vidaUsada.quedan}
           total={vidaUsada.total}
+          tope={vidaUsada.tope}
           semana={semanaDe(vidaUsada.dias[vidaUsada.dias.length - 1])}
           rango={numeroDeRango(racha)}
           alUsada={() => {

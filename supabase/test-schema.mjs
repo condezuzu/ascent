@@ -20390,7 +20390,8 @@ console.log('\n302. Las vidas son estrellas: en Inicio, arriba de los días; en 
   const sinCom302 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
   const ini = sinCom302(deBug('movil', 'src', 'Inicio.tsx'));
   chequear('Inicio: una estrella por vida, llena la que queda y en contorno la usada, y ni un punto', [
-    /<Estrella key=\{i\} tam=\{16\} modo=\{i < impulsos\.quedan \? 'luz' : 'apagada'\} \/>/.test(ini),
+    // Desde el 21/10 la fila son las tres, con la que falta ganar punteada (ver la 308).
+    /modosDeLasVidas\(impulsos\)\.map\(\(modo, i\) => \(\s*<Estrella key=\{i\} tam=\{16\} modo=\{modo\} \/>/.test(ini),
     /estilos\.impulsoVivo|impulso: \{ width: 7/.test(ini),
   ], [true, false]);
   chequear('y la fila va arriba de los días', [ini.indexOf('testID="vidas-inicio"') > -1, ini.indexOf('testID="vidas-inicio"') < ini.indexOf('testID="tira-inicio"')], [true, true]);
@@ -20409,7 +20410,7 @@ console.log('\n303. En Estadísticas las vidas también son estrellas (21/10)');
   const sinCom303 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
   const sg = sinCom303(deBug('movil', 'src', 'StatsGeneral.tsx'));
   chequear('la misma estrella que Inicio, llena la que queda y en contorno la usada, y ni un punto', [
-    /<Estrella key=\{i\} tam=\{16\} modo=\{i < vidas\.quedan \? 'luz' : 'apagada'\} \/>/.test(sg),
+    /modosDeLasVidas\(vidas\)\.map\(\(modo, i\) => \(\s*<Estrella key=\{i\} tam=\{16\} modo=\{modo\} \/>/.test(sg),
     /estilos\.vidaViva|vida: \{ width: 9/.test(sg),
   ], [true, false]);
 }
@@ -20542,6 +20543,26 @@ console.log('\n307. El cardio: un cronómetro que cuenta para arriba, y la dista
     /\{cronoLindo\(0\)\}/.test(blo307),
     /esTiempo && !corriendoCardio && estado\.hechas > 0 && \(\s*<View testID="minutos-de-cardio"/.test(blo307),
   ], [true, true, true]);
+}
+console.log('\n308. Las vidas: se dibujan las tres, también la que falta ganar (21/10)');
+{
+  // «En el teléfono de mis amigos dice que tiene 2 vidas máximo»: el número sale de
+  // mis_impulsos (impulsos_ganados: dos, y la tercera con racha de 20) y la fila dibujaba solo
+  // las ganadas. La regla no cambia; ahora se ve que hay una tercera.
+  const IM308 = await import('../nucleo/impulsos.ts');
+  chequear('las tres: las que quedan llenas, las usadas en contorno, la que falta ganar punteada', [
+    IM308.modosDeLasVidas({ quedan: 2, total: 2, tope: 3 }),
+    IM308.modosDeLasVidas({ quedan: 1, total: 2, tope: 3 }),
+    IM308.modosDeLasVidas({ quedan: 3, total: 3, tope: 3 }),
+    IM308.modosDeLasVidas({ quedan: 0, total: 3, tope: 3 }),
+    IM308.modosDeLasVidas({ quedan: 2, total: 2 }),
+  ], [
+    ['luz', 'luz', 'porGanar'], ['luz', 'apagada', 'porGanar'], ['luz', 'luz', 'luz'], ['apagada', 'apagada', 'apagada'], ['luz', 'luz'],
+  ]);
+  const vidas308 = (await db.query(`select pg_get_functiondef('public.mis_impulsos()'::regprocedure) as f`)).rows[0].f;
+  chequear('la base manda el tope junto con las ganadas', /'tope', impulsos_tope\(\)/.test(vidas308), true);
+  const av308 = deBug('movil', 'src', 'RachaSalvada.tsx');
+  chequear('el aviso también dibuja la que falta ganar', /length: Math\.max\(0, \(tope \?\? total\) - total\)[\s\S]{0,120}modo="porGanar"/.test(av308), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
