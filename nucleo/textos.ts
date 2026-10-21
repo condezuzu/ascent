@@ -431,6 +431,8 @@ const ES = {
     crearCuenta: 'Crear cuenta',
     enviarCorreo: 'Enviar correo',
     correo: 'Correo',
+    // El ejemplo dentro del campo (21/10: estaba escrito a mano y salía igual en inglés).
+    correoEjemplo: 'nombre@correo.com',
     contrasena: 'Contraseña',
     primeraVez: '¿Primera vez? Crear cuenta',
     // Una línea de qué es la app, solo en el alta: quien llega frío tiene que
@@ -1510,6 +1512,10 @@ const ES = {
     // EN INICIO (15/10): el renglón que abre la rutina.
     hoy: (titulo: string) => `Hoy: ${titulo}`,
     armarSemana: 'Arma tu semana',
+    // Para el lector de pantalla, en los botones de cada ejercicio (21/10: estaban escritos a mano).
+    menos: 'Una serie menos',
+    mas: 'Una serie más',
+    quitar: 'Quitar el ejercicio',
     hoyRotulo: 'Hoy',
   },
 

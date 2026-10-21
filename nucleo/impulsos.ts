@@ -111,3 +111,16 @@ export function diasDeLaTira(hoy: string, frescas: string[]): string[] {
   const desde = frescas.some((f) => f < lunes && f >= hace6) ? hace6 : lunes;
   return Array.from({ length: 7 }, (_, i) => restarDias(desde, -i));
 }
+
+/**
+ * LA CELDA DE LA PRÓXIMA VIDA, en Stats: los días que faltan para ganar la que sigue; el ✓ de
+ * «al máximo» solo cuando no queda ninguna por ganar y están todas. `null`: no hay nada que
+ * decir (se usaron y vuelven: eso lo dice la línea de las vidas).
+ *
+ * 21/10, bug: con dos de dos y la tercera a 20 días, decía «Vidas al máximo» al lado de «La
+ * tercera se gana en 20 días». Miraba primero si estaban todas las de ahora.
+ */
+export function celdaDeLaProximaVida(v: { quedan: number; total: number; falta: number | null }): 'llenas' | number | null {
+  if (v.falta !== null && v.falta > 0) return v.falta;
+  return v.quedan >= v.total ? 'llenas' : null;
+}

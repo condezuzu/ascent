@@ -255,14 +255,14 @@ export default function MiRutina({
             <Text style={estilos.ejercicio} numberOfLines={1}>
               {nombreVisible(e.ejercicio, catalogo.get(e.ejercicio)?.nombre)}
             </Text>
-            <Pressable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, -1))} accessibilityLabel="menos">
+            <Pressable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, -1))} accessibilityLabel={T.rutina.menos}>
               <Text style={estilos.paso}>−</Text>
             </Pressable>
             <Text style={estilos.cantidad}>{e.minutos !== undefined ? T.rutina.minutos(e.minutos) : T.rutina.series(e.series)}</Text>
-            <Pressable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, 1))} accessibilityLabel="más">
+            <Pressable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, 1))} accessibilityLabel={T.rutina.mas}>
               <Text style={estilos.paso}>+</Text>
             </Pressable>
-            <Pressable hitSlop={8} onPress={() => con(quitarEjercicio(actual.dias, d, i))} accessibilityLabel="quitar">
+            <Pressable hitSlop={8} onPress={() => con(quitarEjercicio(actual.dias, d, i))} accessibilityLabel={T.rutina.quitar}>
               <Text style={estilos.quitar}>✕</Text>
             </Pressable>
           </View>

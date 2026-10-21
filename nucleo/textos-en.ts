@@ -225,6 +225,7 @@ export const EN: Textos = {
     crearCuenta: 'Create account',
     enviarCorreo: 'Send email',
     correo: 'Email',
+    correoEjemplo: 'name@email.com',
     contrasena: 'Password',
     primeraVez: 'First time? Create account',
     queEs: 'Ascent keeps your gym streak: one tap a day and it doesn’t break.',
@@ -881,6 +882,9 @@ export const EN: Textos = {
     bajar: 'Move down',
     hoy: (titulo: string) => `Today: ${titulo}`,
     armarSemana: 'Plan your week',
+    menos: 'One set fewer',
+    mas: 'One more set',
+    quitar: 'Remove the exercise',
     hoyRotulo: 'Today',
   },
   social: {

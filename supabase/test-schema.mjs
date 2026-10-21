@@ -20581,6 +20581,60 @@ console.log('\n302. Las vidas son estrellas: en Inicio, arriba de los días; en 
     /testID="vida-usar"[\s\S]{0,600}<Estrella tam=\{15\} modo="oscura" \/>/.test(av),
   ], [true, true, true, true]);
 }
+console.log('\n303. En Estadísticas las vidas también son estrellas (21/10)');
+{
+  // La prueba de verdad es la de test:real (probar-estrellas), que las cuenta en pantalla.
+  const sinCom303 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const sg = sinCom303(deBug('movil', 'src', 'StatsGeneral.tsx'));
+  chequear('la misma estrella que Inicio, llena la que queda y en contorno la usada, y ni un punto', [
+    /<Estrella key=\{i\} tam=\{16\} modo=\{i < vidas\.quedan \? 'luz' : 'apagada'\} \/>/.test(sg),
+    /estilos\.vidaViva|vida: \{ width: 9/.test(sg),
+  ], [true, false]);
+}
+console.log('\n304. La revisión del 21/10: nada escrito a mano en la nativa, y la celda de la próxima vida');
+{
+  // TEXTO ESCRITO A MANO NO SE TRADUCE: en inglés seguía en español. Salió en la revisión el
+  // ejemplo del campo de correo del login (se ve), y «Cerrar», «menos», «más» y «quitar» del
+  // lector de pantalla. Se mira lo que se ve o se lee —el texto de un <Text> y las etiquetas—
+  // en todo movil/. Quedan afuera los bancos de trabajo, que no son pantallas de la app.
+  const TX304 = await import('../nucleo/textos.ts');
+  const { EN: EN304 } = await import('../nucleo/textos-en.ts');
+  const { readdirSync: dir304, readFileSync: leer304 } = await import('node:fs');
+  const R304 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const sinCom304 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const fuentes304 = [];
+  const recorrer304 = (d) => {
+    for (const e of dir304(d, { withFileTypes: true })) {
+      const r = join(d, e.name);
+      if (e.isDirectory()) recorrer304(r);
+      else if (/\.tsx$/.test(e.name) && !/^(Minimo|Diagnostico|PruebaDePuertos)\.tsx$/.test(e.name)) fuentes304.push(r);
+    }
+  };
+  recorrer304(join(R304, 'movil', 'src'));
+  recorrer304(join(R304, 'movil', 'app'));
+  const aMano = [];
+  for (const f of fuentes304) {
+    const t = sinCom304(leer304(f, 'utf8'));
+    const corto = f.split(/[\\/]/).slice(-2).join('/');
+    for (const m of t.matchAll(/(?:accessibilityLabel|accessibilityHint|placeholder|title)="([^"]*[A-Za-záéíóúñ]{2,}[^"]*)"/g)) aMano.push(`${corto}: ${m[0]}`);
+    // Las unidades (kg, lb) son iguales en los dos idiomas.
+    for (const m of t.matchAll(/<Text[\s>][^>]*>([^<{]*[A-Za-záéíóúñÁÉÍÓÚÑ]{2,}[^<{]*)</g)) if (!/^\s*(kg|lb)\s*$/.test(m[1])) aMano.push(`${corto}: ${m[1].trim()}`);
+  }
+  chequear('en la nativa no hay texto escrito a mano: lo que se ve o se lee sale de los textos, que tienen inglés', aMano, []);
+  chequear('y el ejemplo del correo y las etiquetas nuevas existen en los dos idiomas', [
+    TX304.TEXTOS_ES.entrar.correoEjemplo, EN304.entrar.correoEjemplo, TX304.TEXTOS_ES.rutina.quitar, EN304.rutina.quitar,
+  ], ['nombre@correo.com', 'name@email.com', 'Quitar el ejercicio', 'Remove the exercise']);
+
+  // LA CELDA DE LA PRÓXIMA VIDA: con dos de dos y la tercera a 20 días decía «Vidas al máximo».
+  const IM304 = await import('../nucleo/impulsos.ts');
+  chequear('la celda de la próxima vida: los días que faltan para la que sigue; el ✓ solo con todas y ninguna por ganar', [
+    IM304.celdaDeLaProximaVida({ quedan: 2, total: 2, falta: 20 }),
+    IM304.celdaDeLaProximaVida({ quedan: 1, total: 2, falta: 5 }),
+    IM304.celdaDeLaProximaVida({ quedan: 3, total: 3, falta: null }),
+    IM304.celdaDeLaProximaVida({ quedan: 1, total: 3, falta: null }),
+  ], [20, 5, 'llenas', null]);
+  chequear('y Stats la usa', /const c = celdaDeLaProximaVida\(vidas\);/.test(sinCom304(deBug('movil', 'src', 'Stats.tsx'))), true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

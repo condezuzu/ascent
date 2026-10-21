@@ -24,6 +24,7 @@ import {
 import type { Log } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cuerpoDe } from '@nucleo/rangos';
+import { celdaDeLaProximaVida } from '@nucleo/impulsos';
 import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './StatsGeneral';
 import FondoEspacial from './FondoEspacial';
 import Estancamiento from './Estancamiento';
@@ -81,10 +82,9 @@ type Datos = {
  */
 function celdaProximaVida(vidas: Vidas | null): { v: string; e: string; acento?: boolean }[] {
   if (!vidas) return [];
-  if (vidas.quedan >= vidas.total) return [{ v: '✓', e: T.stats.vidasLlenas, acento: true }];
-  if (vidas.falta !== null && vidas.falta > 0) {
-    return [{ v: String(vidas.falta), e: vidas.falta === 1 ? T.stats.proximaVidaDia : T.stats.proximaVidaDias }];
-  }
+  const c = celdaDeLaProximaVida(vidas);
+  if (c === 'llenas') return [{ v: '✓', e: T.stats.vidasLlenas, acento: true }];
+  if (c !== null) return [{ v: String(c), e: c === 1 ? T.stats.proximaVidaDia : T.stats.proximaVidaDias }];
   return [];
 }
 

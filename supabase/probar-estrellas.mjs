@@ -1,6 +1,6 @@
 // LAS VIDAS SON ESTRELLAS (21/10, aprobado en la galería): en Inicio, arriba de los días, la
 // que queda llena y la usada en contorno; en el aviso de la vida, las vidas arriba, la estrella
-// arriba del cuadro y la estrella dentro de «Usar vida».
+// arriba del cuadro y la estrella dentro de «Usar vida»; y en Estadísticas, la misma estrella.
 //
 // En la vista web de la nativa (:8090), con una cuenta descartable. Una cuenta nueva no tiene
 // vidas usadas, así que la de ayer se inyecta en la respuesta de `pantalla_inicio`, como la
@@ -57,6 +57,16 @@ await page.route(
     await route.fulfill({ response: r, json: d });
   }
 );
+// Estadísticas las pide aparte (`mis_impulsos`): la misma vida usada.
+await page.route(
+  (u) => u.pathname.endsWith('/rest/v1/rpc/mis_impulsos'),
+  async (route) => {
+    const r = await route.fetch();
+    const d = await r.json().catch(() => null);
+    if (d && d.total !== undefined) d.quedan = Math.max(0, Number(d.total) - 1);
+    await route.fulfill({ response: r, json: d });
+  }
+);
 const ESTRELLA = 'path[d^="M0,-48"]';
 const estrellas = async (id) => {
   const zona = page.getByTestId(id).first();
@@ -91,6 +101,13 @@ try {
   // INICIO.
   chequear('en Inicio, una estrella por vida: la que queda llena, la usada en contorno', await estrellas('vidas-inicio'), [total, 1]);
   chequear('y van arriba de los días', (await y('vidas-inicio')) < (await y('tira-inicio')), true);
+
+  // ESTADÍSTICAS.
+  await texto('Stats').click({ timeout: 30000 });
+  await page.getByTestId('vidas-stats').first().waitFor({ timeout: 60000 });
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: join(SALIDA, 'estadisticas.png') });
+  chequear('en Estadísticas, la misma estrella: la que queda llena, la usada en contorno', await estrellas('vidas-stats'), [total, 1]);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));
