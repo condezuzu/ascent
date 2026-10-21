@@ -1,3 +1,5 @@
+import { T } from './textos.ts';
+
 export type Unidad = 'kg' | 'lb';
 
 const LIBRAS_POR_KILO = 2.2046226218;
@@ -34,12 +36,13 @@ export function pesoRedondeado(kg: number, unidad: Unidad): number {
 }
 
 /**
- * UN NÚMERO CON COMA DECIMAL, como se escribe en Uruguay: 62,5 y no 62.5. Sin
- * separador de miles a propósito: un peso no llega a mil, y "1.000" se leería
- * como uno.
+ * UN NÚMERO CON SU SEPARADOR DECIMAL: coma en español (62,5), punto en inglés (62.5; 21/10:
+ * en inglés salía "70,0"). Sin separador de miles a propósito: un peso no llega a mil, y
+ * "1.000" se leería como uno. Lo escrito se lee igual con los dos (`pesoValido`).
  */
 export function conComa(n: number | string): string {
-  return String(n).replace('.', ',');
+  const s = String(n);
+  return T.idioma === 'en' ? s.replace(',', '.') : s.replace('.', ',');
 }
 
 /** El peso de UNA SERIE para mostrar, sin ceros de más: 60, 62,5, 61,25. */

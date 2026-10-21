@@ -20479,6 +20479,27 @@ console.log('\n305. La migración 95: la distancia del cardio y las repeticiones
   chequear('la rutina guarda las repeticiones objetivo de 1 a 100, enteras; 0 no es un objetivo', r305.dias[1].ejercicios.map((e) => e.reps ?? 'sin llave'), [8, 'sin llave', 12, 'sin llave']);
   chequear('la base está en la 95', (await db.query('select version_del_esquema() as v')).rows[0].v, 95);
 }
+console.log('\n306. El separador decimal sigue al idioma: 70,0 en español y 70.0 en inglés; lo escrito se lee igual (21/10)');
+{
+  const TX306 = await import('../nucleo/textos.ts');
+  const { EN: EN306 } = await import('../nucleo/textos-en.ts');
+  const P306 = await import('../nucleo/peso.ts');
+  const C306 = await import('../nucleo/campoPeso.ts');
+  const F306 = await import('../nucleo/fuerza.ts');
+  const ver = () => [
+    P306.conComa((70).toFixed(1)), P306.pesoCorto(61.25, 'kg'), C306.textoDelCampo(62.5, 'kg'), F306.redondear(102.5),
+    C306.pesoEscrito('70.5', 'kg'), C306.pesoEscrito('70,5', 'kg'), C306.confirmarCampo('80.25', null, 'kg').kg, C306.confirmarCampo('80,25', null, 'kg').kg,
+  ];
+  const enEspanol = ver();
+  TX306.usarTextos(EN306);
+  const enIngles = ver();
+  TX306.usarTextos(TX306.TEXTOS_ES);
+  chequear('en español con coma y en inglés con punto, y lo que se escribe con punto o con coma se lee igual en los dos', [enEspanol, enIngles, TX306.T.idioma], [
+    ['70,0', '61,25', '62,5', '102,5', 70.5, 70.5, 80.25, 80.25],
+    ['70.0', '61.25', '62.5', '102.5', 70.5, 70.5, 80.25, 80.25],
+    'es',
+  ]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
