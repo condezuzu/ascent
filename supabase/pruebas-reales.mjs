@@ -46,6 +46,8 @@
 //      arriba, en el cuadro y dentro de «Usar vida» (21/10), en la nativa.
 //  17. probar-cardio — el cardio es un cronómetro (0:00 quieto, cuenta para arriba) y anota la
 //      distancia de la vuelta (21/10), en la nativa.
+//  18. probar-octogonos — los botones de Inicio y del bloque tienen las esquinas cortadas en
+//      diagonal (21/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -84,6 +86,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'registrar repeticiones', archivo: 'probar-reps.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'las vidas son estrellas', archivo: 'probar-estrellas.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el cardio', archivo: 'probar-cardio.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'los botones en octágono', archivo: 'probar-octogonos.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

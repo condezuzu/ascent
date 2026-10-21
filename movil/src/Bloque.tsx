@@ -20,6 +20,11 @@ import ListaDeBloques from './ListaDeBloques';
 import CampoPeso from './CampoPeso';
 import CampoReps from './CampoReps';
 import CampoDistancia from './CampoDistancia';
+import FondoOctogonal from './FondoOctogonal';
+
+// Los botones grandes del bloque: el mismo fondo tenue de siempre, y el corte de las esquinas.
+const FONDO_BOTON = 'rgba(255,255,255,0.03)';
+const CORTE = 12;
 import { unidadDeDistancia } from '@nucleo/distancia';
 
 // Los globitos de "ya puedes subir" que ya se cerraron, por ejercicio y día: no vuelven en la misma corrida.
@@ -501,6 +506,7 @@ export default function Bloque({
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
+            <FondoOctogonal relleno={FONDO_BOTON} borde={C.lineaFuerte} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Pressable>
           <Pressable
@@ -514,6 +520,7 @@ export default function Bloque({
               setTimeout(() => setPausa(false), TOQUE_REPETIDO_MS);
             }}
           >
+            <FondoOctogonal relleno={C.claro} corte={CORTE} />
             <Text style={estilos.cerrarTexto}>{T.sesion.terminarSerie}</Text>
           </Pressable>
         </View>
@@ -526,6 +533,7 @@ export default function Bloque({
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
+            <FondoOctogonal relleno={FONDO_BOTON} borde={C.lineaFuerte} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Pressable>
           <MasQuePulsa
@@ -535,6 +543,7 @@ export default function Bloque({
             onPress={esTiempo ? principalDeCardio.accion : sumar}
             accessibilityLabel={esTiempo ? principalDeCardio.texto : T.inicio.sumarSerie}
           >
+            <FondoOctogonal relleno={esTiempo ? C.claro : FONDO_BOTON} borde={esTiempo ? undefined : C.lineaFuerte} corte={CORTE} />
             <Text style={esTiempo ? estilos.cerrarTexto : estilos.masTexto}>{esTiempo ? principalDeCardio.texto : '+'}</Text>
           </MasQuePulsa>
         </View>
@@ -767,18 +776,15 @@ const estilos = StyleSheet.create({
   // puntos, así que sigue siendo casi el doble. Lo que se pierde es el "sin
   // apuntar", y eso lo compensa el ancho: el + se lleva tres cuartos de la
   // fila, o sea que el blanco real sigue teniendo el tamaño de una mano.
+  // El fondo y el borde los dibuja `FondoOctogonal`: esquinas cortadas en diagonal (21/10).
   mas: {
     marginTop: 18,
     minHeight: 75,
-    borderWidth: 1,
-    borderColor: C.lineaFuerte,
-    borderRadius: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   masTexto: { color: C.claro, fontSize: 28, fontWeight: '200' },
-  masCerrar: { backgroundColor: C.claro, borderColor: C.claro, flex: 3, marginTop: 0 },
+  masCerrar: { flex: 3, marginTop: 0 },
   masEnPausa: { opacity: 0.35 },
   // Un cuarto del ancho contra tres: doce sumas contra una resta.
   menos: { flex: 1, marginTop: 0 },

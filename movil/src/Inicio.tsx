@@ -53,6 +53,7 @@ import { pasadoDe, queMuestraLaPildora } from '@nucleo/avisoDescanso';
 import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
 import Estrella from './Estrella';
+import FondoOctogonal from './FondoOctogonal';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
 import { corregirDia } from '@compartido/dia';
 import { rutinaParaPreguntar, type PreguntaDeRutina } from './preguntarPorLaRutina';
@@ -940,6 +941,7 @@ export default function Inicio({
               {/* "Seguir" se queda con el botón sólido: el que llegó acá sin
                   querer toca donde ya estaba tocando y no pasa nada. */}
               <Pressable style={estilos.solido} onPress={() => setTerminando(false)}>
+                <FondoOctogonal relleno="#c4c2ba" />
                 <Text style={estilos.textoSolido}>{T.sesion.seguir}</Text>
               </Pressable>
               <Pressable
@@ -967,6 +969,7 @@ export default function Inicio({
             </>
           ) : (
             <Pressable style={estilos.solido} onPress={() => setTerminando(true)}>
+              <FondoOctogonal relleno="#c4c2ba" />
               <Text style={estilos.textoSolido}>{T.sesion.terminar}</Text>
             </Pressable>
           )}
@@ -1080,6 +1083,7 @@ export default function Inicio({
       ) : (
         <>
           <Pressable style={estilos.solido} onPress={() => setRegistrarAbierto(true)}>
+            <FondoOctogonal relleno="#c4c2ba" />
             <Text style={estilos.textoSolido}>{sinNada ? T.inicio.registrarPrimerDia : T.inicio.registrarDia}</Text>
           </Pressable>
           {/* PEGADO AL PRINCIPAL, como en la web: el peso NO pasa por registrar
@@ -1238,9 +1242,8 @@ const estilos = StyleSheet.create({
     marginRight: 4,
   },
 
+  // El fondo lo dibuja `FondoOctogonal`, con las esquinas cortadas (21/10).
   solido: {
-    backgroundColor: '#c4c2ba',
-    borderRadius: 2,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 34,
