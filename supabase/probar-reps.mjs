@@ -7,8 +7,8 @@
 // probar-ultima-vez. Lo que se anota se mira en lo que la app MANDA a `fijar_bloques` y, con la
 // base en la 94, también en lo que quedó guardado.
 //
-// SIN LA MIGRACIÓN 94 la app no muestra el ajuste: hasta pegarla, la versión se simula en la
-// respuesta de `version_del_esquema` y se avisa. Lo guardado se mira recién con la 94.
+// LA BASE TIENE QUE ESTAR EN LA 94 (aplicada el 21/10): sin ella la app no muestra el ajuste.
+// Mientras no estaba, la versión se simulaba; ahora una base atrasada es una falla.
 //
 //   node --env-file=.env.local supabase/probar-reps.mjs
 import { chromium } from 'playwright';
@@ -41,11 +41,10 @@ if (eAlta) {
 const uid = (await s.auth.getUser()).data.user.id;
 await s.from('profiles').update({ username: `rp_${sello.slice(-6)}` }).eq('id', uid);
 const { data: version } = await s.rpc('version_del_esquema');
-const simulada = !(typeof version === 'number' && version >= 94);
 const diaAtras = (n) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Montevideo' }).format(new Date(Date.now() - n * 86400000));
 
 console.log('«Registrar repeticiones», con el ajuste');
-if (simulada) console.log(`  --   la base real está en la ${version}: la 94 se simula en la app, y lo guardado no se mira`);
+chequear('la base real está en la 94 o después', typeof version === 'number' && version >= 94, true);
 const nav = await chromium.launch();
 const page = await (await nav.newContext({ viewport: { width: 390, height: 900 }, locale: 'es-UY', timezoneId: 'America/Montevideo' })).newPage();
 const texto = (t) => page.getByText(t, { exact: true }).last();
@@ -59,7 +58,6 @@ await page.route(
     await route.fulfill({ response: r, json: filas });
   }
 );
-if (simulada) await page.route((u) => u.pathname.endsWith('/rest/v1/rpc/version_del_esquema'), (route) => route.fulfill({ json: 94 }));
 // Lo que la app manda a la base con cada serie: los bloques de press, con sus repeticiones.
 const enviados = [];
 page.on('request', (q) => {
@@ -126,12 +124,10 @@ try {
   await sumar();
   chequear('una serie sin teclear va sin repeticiones; la pista sigue con la tercera', [await cuadro(), repsMandadas()], [['', '8'], [[12, null]]]);
 
-  if (!simulada) {
-    await page.waitForTimeout(2000);
-    const { data } = await s.from('sesiones').select('bloques').eq('user_id', uid).eq('estado', 'corriendo');
-    const guardadas = (data?.[0]?.bloques ?? []).filter((b) => b.ejercicio === 'press_banca').map((b) => b.reps ?? 'sin llave');
-    chequear('y la base las guardó, serie por serie', guardadas, [[12, null]]);
-  }
+  await page.waitForTimeout(2000);
+  const { data } = await s.from('sesiones').select('bloques').eq('user_id', uid).eq('estado', 'corriendo');
+  const guardadas = (data?.[0]?.bloques ?? []).filter((b) => b.ejercicio === 'press_banca').map((b) => b.reps ?? 'sin llave');
+  chequear('y la base las guardó, serie por serie', guardadas, [[12, null]]);
 
   await enAjustes();
   chequear('apagado otra vez: no se piden ni se muestran', await cuadradito().count(), 0);
