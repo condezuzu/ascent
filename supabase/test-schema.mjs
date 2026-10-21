@@ -20289,6 +20289,22 @@ console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entra
     /if \(!\(await buscarYTraer\(\)\)\) return;\s*aplicarAlSalir\(puedeReiniciar\);/.test(act),
   ], [true, 2, true, true]);
 }
+console.log('\n299. La migración 94: la base guarda las repeticiones de cada serie (21/10)');
+{
+  const v299 = await nuevoUsuario();
+  await comoUsuario(v299);
+  const ses299 = (await db.query('select iniciar_sesion() as s')).rows[0].s;
+  await db.query('select fijar_series($1, 9)', [ses299.id]);
+  const g299 = (await db.query('select fijar_bloques($1, $2::jsonb) as b', [ses299.id, JSON.stringify([
+    { ejercicio: 'press_banca', series: 3, pesos: [60, 60, 60], carga: 'total', reps: [12, null, 8, 7] },
+    { ejercicio: 'sentadilla', series: 3, reps: [0, 8.5, 'x'] },
+    { ejercicio: 'cinta', series: 1, minutos: 20, reps: [5] },
+    { ejercicio: 'remo_barra', series: 2, reps: [1000, 999] },
+  ])])).rows[0].b.bloques;
+  chequear('la base guarda las repeticiones limpias: una por serie como mucho, enteros de 1 a 999; nada si no queda ninguna, ni en el cardio', g299.map((b) => b.reps ?? 'sin llave'), [[12, null, 8], 'sin llave', 'sin llave', [null, 999]]);
+  chequear('y lo de antes sigue igual: pesos, modo y minutos', [g299[0].pesos.map(Number), g299[0].carga, g299[2].minutos], [[60, 60, 60], 'total', 20]);
+  chequear('la base está en la 94', (await db.query('select version_del_esquema() as v')).rows[0].v, 94);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

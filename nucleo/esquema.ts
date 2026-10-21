@@ -82,6 +82,8 @@ export const REQUIERE = {
   grupos: 88,
   /** El grupo no junta a dos que se bloquearon (la app no depende de esto). */
   gruposSinBloqueados: 90,
+  /** Las repeticiones de cada serie: sin la 94, `fijar_bloques` las tira. */
+  repsPorSerie: 94,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;
