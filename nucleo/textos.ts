@@ -1219,7 +1219,11 @@ const ES = {
     cardioOtraVuelta: 'Otra vuelta',
     cardioTerminar: 'Terminar cardio',
     cardioCorriendo: 'Cardio en curso',
-    cardioSinCronometro: 'Anotar estos minutos sin cronómetro',
+    // Un cronómetro y no un timer (21/10): antes de arrancar, el reloj en 0:00.
+    cardioCuentaArriba: 'Cuenta desde cero',
+    cardioMeta: (min: number) => `Meta: ${min} min`,
+    distancia: 'Distancia',
+    cardioSinCronometro: 'Anotar sin cronómetro',
     // Y sumar otra sigue estando, en el lugar secundario: pasarse de la
     // meta es normal y la app no puede dejar de permitirlo solo porque el
     // botón grande cambió de trabajo.

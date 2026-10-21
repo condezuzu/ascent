@@ -19,6 +19,8 @@ import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
 import CampoPeso from './CampoPeso';
 import CampoReps from './CampoReps';
+import CampoDistancia from './CampoDistancia';
+import { unidadDeDistancia } from '@nucleo/distancia';
 
 // Los globitos de "ya puedes subir" que ya se cerraron, por ejercicio y día: no vuelven en la misma corrida.
 const SUBIR_VISTOS = new Set<string>();
@@ -77,6 +79,7 @@ export default function Bloque({
   repsUltimaVez,
   pistaDeReps,
   alElegirReps,
+  alElegirDistancia,
   alSumar,
   debajoDelMas,
   globoDelMas,
@@ -113,6 +116,8 @@ export default function Bloque({
   pistaDeReps?: number | null;
   /** Las repeticiones de la próxima serie, a cada tecla. Sin esto no hay cuadradito. */
   alElegirReps?: (n: number | null) => void;
+  /** Los kilómetros de la vuelta de cardio, a cada tecla (21/10). */
+  alElegirDistancia?: (km: number | null) => void;
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
@@ -156,6 +161,8 @@ export default function Bloque({
   const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
   // Sin la migración 94 la base las tiraría: el cuadradito no aparece.
   const conReps = registrarReps && !!alElegirReps && disponible('repsPorSerie', version);
+  // Sin la migración 95 la base la tiraría: el campo no aparece.
+  const conDistancia = disponible('distanciaYObjetivo', version);
   const conCarga = anotarPeso && disponible('cargaDelPeso', version);
 
   useEffect(() => {
@@ -338,7 +345,17 @@ export default function Bloque({
         </View>
       )}
 
-      {esTiempo && !corriendoCardio && (
+      {/* UN CRONÓMETRO, NO UN TIMER (21/10, a pedido): antes de arrancar se veía «20 min» con
+          − y +, que se leía como una cuenta para atrás. Ahora el reloj está en 0:00 y los minutos
+          de la rutina, si los hay, son la meta. Se corrigen recién después de la vuelta. */}
+      {esTiempo && !corriendoCardio && estado.hechas === 0 && (
+        <View testID="cronometro-cardio-quieto" style={estilos.cardio}>
+          <Text style={[estilos.cardioReloj, estilos.cardioQuieto]}>{cronoLindo(0)}</Text>
+          <Text style={estilos.cardioNota}>{estado.minutos ? T.sesion.cardioMeta(estado.minutos) : T.sesion.cardioCuentaArriba}</Text>
+        </View>
+      )}
+
+      {esTiempo && !corriendoCardio && estado.hechas > 0 && (
         <View testID="minutos-de-cardio" style={estilos.minutos} accessibilityLabel={T.sesion.minutosDeCardio}>
           <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.max(1, Math.ceil(minutos / 5) * 5 - 5))} accessibilityLabel="−5">
             <Text style={estilos.minutosPasoTexto}>−</Text>
@@ -347,6 +364,13 @@ export default function Bloque({
           <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.floor(minutos / 5) * 5 + 5)} accessibilityLabel="+5">
             <Text style={estilos.minutosPasoTexto}>+</Text>
           </Pressable>
+        </View>
+      )}
+      {/* LA DISTANCIA DE LA VUELTA (21/10), con la migración 95. */}
+      {esTiempo && !corriendoCardio && estado.hechas > 0 && conDistancia && alElegirDistancia && (
+        <View style={estilos.distancia}>
+          <Text style={estilos.distanciaEtiqueta}>{T.sesion.distancia}</Text>
+          <CampoDistancia km={estado.distancia} unidad={unidadDeDistancia(unidad)} alCambiar={alElegirDistancia} />
         </View>
       )}
 
@@ -699,6 +723,10 @@ const estilos = StyleSheet.create({
   cardio: { alignItems: 'center', marginTop: 14, gap: 4 },
   cardioReloj: { color: C.tinta, fontSize: 56, fontWeight: '200', fontVariant: ['tabular-nums'] },
   cardioNota: { color: C.sub, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase' },
+  // Quieto en 0:00 hasta que se arranca: el mismo reloj, más tenue.
+  cardioQuieto: { color: C.sub },
+  distancia: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 10 },
+  distanciaEtiqueta: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
   minutosPaso: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
   minutosPasoTexto: { color: C.tinta, fontSize: 22, fontWeight: '300' },
   minutosTexto: { color: C.tinta, fontSize: 22, fontVariant: ['tabular-nums'], minWidth: 90, textAlign: 'center' },

@@ -40,13 +40,15 @@ export type BloqueLeido = {
   orden: number;
   /** Los minutos, si es cardio (migración 76). */
   minutos?: number;
+  /** Los kilómetros, si es cardio y se anotaron (migración 95). */
+  distancia?: number;
 };
 
 export function leerBloques(crudo: unknown): BloqueLeido[] {
   if (!Array.isArray(crudo)) return [];
   return crudo.flatMap((b, i) => {
     if (!b || typeof b !== 'object') return [];
-    const x = b as { ejercicio?: unknown; series?: unknown; pesos?: unknown; carga?: unknown; carga_supuesta?: unknown; minutos?: unknown };
+    const x = b as { ejercicio?: unknown; series?: unknown; pesos?: unknown; carga?: unknown; carga_supuesta?: unknown; minutos?: unknown; distancia?: unknown };
     const s = Number(x.series);
     if (typeof x.ejercicio !== 'string' || !Number.isFinite(s) || s <= 0) return [];
     const n = Math.floor(s);
@@ -66,6 +68,7 @@ export function leerBloques(crudo: unknown): BloqueLeido[] {
         orden: i + 1,
         // El cardio (migración 76): los minutos del bloque, aparte de los pesos.
         ...(typeof x.minutos === 'number' && x.minutos > 0 ? { minutos: Math.round(x.minutos) } : {}),
+        ...(typeof x.distancia === 'number' && x.distancia > 0 ? { distancia: x.distancia } : {}),
       },
     ];
   });

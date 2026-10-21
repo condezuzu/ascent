@@ -6,6 +6,7 @@ import { miId } from '@compartido/quienSoy';
 import { DIAS_SEMANA_LARGO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { duracionLinda } from '@nucleo/sesiones';
 import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
+import { distanciaCorta, unidadDeDistancia } from '@nucleo/distancia';
 import type { ResumenDelDia } from '@nucleo/resumenDia';
 import { claveDeEtiqueta, gruposDePesos, type Carga } from '@nucleo/carga';
 import { disponible } from '@nucleo/esquema';
@@ -166,7 +167,10 @@ export default function HojaDelDia({
                       </Text>
                     )}
                   </View>
-                  <Text style={estilos.cuantas}>{e.minutos ? T.rutina.minutos(e.minutos) : T.resumen.series(e.series)}</Text>
+                  <Text style={estilos.cuantas}>
+                    {e.minutos ? T.rutina.minutos(e.minutos) : T.resumen.series(e.series)}
+                    {e.distancia ? ` · ${distanciaCorta(e.distancia, unidadDeDistancia(unidad))} ${unidadDeDistancia(unidad)}` : ''}
+                  </Text>
                 </View>
               ))}
               {resumen.sinEjercicio > 0 && (

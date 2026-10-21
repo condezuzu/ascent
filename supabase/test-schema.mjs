@@ -20500,6 +20500,49 @@ console.log('\n306. El separador decimal sigue al idioma: 70,0 en español y 70.
     'es',
   ]);
 }
+console.log('\n307. El cardio: un cronómetro que cuenta para arriba, y la distancia (21/10)');
+{
+  const B307 = await import('../nucleo/bloques.ts');
+  const D307 = await import('../nucleo/distancia.ts');
+  const RD307 = await import('../nucleo/resumenDia.ts');
+  const sinCom307 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- EL ESTADO ----
+  let e = B307.bloquesVacios('cinta');
+  e = B307.cerrarVueltaDeCardio(B307.arrancarCardio(e, 0), 25 * 60000);
+  e = B307.sumar(e);
+  e = B307.cambiarDistancia(e, '4,567');
+  const enCurso = [e.minutos, e.distancia];
+  const cerrado = B307.siguiente(e);
+  chequear('la vuelta se anota con su distancia (en centésimas); al cerrarla, la distancia va con el bloque y el que sigue arranca sin', [
+    enCurso, cerrado.cerrados[0].distancia, cerrado.distancia ?? null, B307.paraGuardar(e)[0],
+  ], [[25, 4.57], 4.57, null, { ejercicio: 'cinta', series: 1, minutos: 25, distancia: 4.57 }]);
+  chequear('cero, vacío o basura no son una distancia, y se topa en 500', [B307.distanciaValida(0), B307.distanciaValida(''), B307.distanciaValida('x'), B307.distanciaValida(900)], [null, null, null, 500]);
+  const vuelta = B307.unirConGuardados([{ ejercicio: 'cinta', series: 1, minutos: 30, distancia: 5 }], B307.bloquesVacios());
+  const otro = B307.cambiarEjercicio(B307.cambiarDistancia(B307.bloquesVacios('cinta'), 3), 'press_banca');
+  chequear('vuelve de la base con su distancia; al cambiar de ejercicio no pasa al nuevo; sin anotarla, ni una llave', [
+    vuelta.distancia, 'distancia' in otro, 'distancia' in B307.paraGuardar(B307.sumar(B307.bloquesVacios('cinta')))[0],
+  ], [5, false, false]);
+
+  // ---- LAS UNIDADES ----
+  chequear('en kilómetros para quien pesa en kilos y en millas para quien pesa en libras; lo escrito se lee con punto o coma', [
+    D307.unidadDeDistancia('kg'), D307.unidadDeDistancia('lb'), D307.kmEscritos('5', 'km'), D307.kmEscritos('3,1', 'mi'), D307.kmEscritos('3.1', 'mi'), D307.distanciaCorta(4.99, 'mi'),
+  ], ['km', 'mi', 5, 4.99, 4.99, '3,1']);
+
+  // ---- EL RESUMEN DEL DÍA ----
+  const res307 = RD307.resumenDelDia({ log: null, sesiones: [{ id: 's', estado: 'terminada', inicio: '2026-10-21T10:00:00Z', fin: '2026-10-21T11:00:00Z', bloques: [{ ejercicio: 'cinta', series: 1, minutos: 20, distancia: 3 }, { ejercicio: 'cinta', series: 1, minutos: 10, distancia: 1.5 }] }], catalogo: new Map([['cinta', 'Cinta']]), esFuturo: false, esDescansoConfigurado: false, ejercicioSinNombre: '?' });
+  chequear('el día suma los minutos y los kilómetros del cardio', [res307.ejercicios[0].minutos, res307.ejercicios[0].distancia], [30, 4.5]);
+
+  // ---- LA PANTALLA ----
+  // La prueba de verdad es la de test:real (probar-cardio): el reloj en 0:00 antes de arrancar,
+  // contando para arriba después, y la distancia que llega a la base.
+  const blo307 = sinCom307(deBug('movil', 'src', 'Bloque.tsx'));
+  chequear('antes de arrancar, el reloj en 0:00 y la meta de la rutina; los minutos se corrigen recién después de la vuelta', [
+    /esTiempo && !corriendoCardio && estado\.hechas === 0 && \(\s*<View testID="cronometro-cardio-quieto"/.test(blo307),
+    /\{cronoLindo\(0\)\}/.test(blo307),
+    /esTiempo && !corriendoCardio && estado\.hechas > 0 && \(\s*<View testID="minutos-de-cardio"/.test(blo307),
+  ], [true, true, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

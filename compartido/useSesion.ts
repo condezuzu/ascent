@@ -32,6 +32,7 @@ import {
   corregirCarga,
   corregirEjercicio,
   cambiarMinutos,
+  cambiarDistancia,
   cambiarPeso,
   cambiarReps,
   corregirPeso,
@@ -1563,6 +1564,16 @@ export function useSesion(
    * LOS MINUTOS DEL CARDIO (14/10). Con la vuelta ya contada se suben en el acto:
    * corregir "eran 25, no 20" tiene que llegar a la base.
    */
+  /** LA DISTANCIA DEL CARDIO (21/10), a cada tecla. Como los minutos: con la vuelta contada, sube. */
+  async function elegirDistancia(km: number | null) {
+    const b = cambiarDistancia(bloquesRef.current, km);
+    if (b === bloquesRef.current) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
+    if (bloquesRef.current.hechas > 0) await subir(seriesRef.current, bloquesRef.current);
+  }
+
   async function elegirMinutos(m: number | null) {
     const b = cambiarMinutos(bloquesRef.current, m);
     if (b === bloquesRef.current) return;
@@ -1749,6 +1760,7 @@ export function useSesion(
     elegirMeta,
     elegirPeso,
     elegirMinutos,
+    elegirDistancia,
     arrancarCardio: arrancarElCardio,
     cerrarVueltaDeCardio: cerrarVueltaDelCardio,
     corregirPesoDeSerie,
