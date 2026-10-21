@@ -38,6 +38,8 @@
 //      al llegar a 0:00 y después dice cuánto se pasó (20/10), en la nativa, con el reloj de Playwright.
 //  13. probar-sesion-siguiente — rutina A, B y C; una sesión cambiando A por X; la
 //      siguiente del mismo día propone B (20/10), en la nativa.
+//  14. probar-arranque — al abrir con sesión, Inicio se monta recién al terminar la entrada,
+//      con sus datos pedidos una sola vez mientras corría (21/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -72,6 +74,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'mostrar la última vez', archivo: 'probar-ultima-vez.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el timbre del descanso', archivo: 'probar-timbre-descanso.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la sesión siguiente del día', archivo: 'probar-sesion-siguiente.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'el arranque', archivo: 'probar-arranque.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {
