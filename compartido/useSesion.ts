@@ -33,6 +33,7 @@ import {
   corregirEjercicio,
   cambiarMinutos,
   cambiarPeso,
+  cambiarReps,
   corregirPeso,
   mudarEjercicio,
   cambiarMeta,
@@ -63,6 +64,7 @@ import {
   ultimaVezDe,
   pendientesDeHoy,
   repsDeLaSesion,
+  pistaDeReps,
   type MarcaConReps,
   type SesionConPesos,
   type SesionRutina,
@@ -1546,6 +1548,18 @@ export function useSesion(
   }
 
   /**
+   * LAS REPETICIONES DE LA PRÓXIMA SERIE (21/10), a cada tecla. Como el peso, no suben solas:
+   * viajan con la serie que las anota.
+   */
+  async function elegirReps(n: number | null) {
+    const b = cambiarReps(bloquesRef.current, n);
+    if (b === bloquesRef.current) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
+  }
+
+  /**
    * LOS MINUTOS DEL CARDIO (14/10). Con la vuelta ya contada se suben en el acto:
    * corregir "eran 25, no 20" tiene que llegar a la base.
    */
@@ -1720,6 +1734,15 @@ export function useSesion(
       const u = ultimaVezDe(historialConPesosRef.current, id, hoyISO());
       return u ? repsDeLaSesion(marcasConRepsRef.current, id, u.fecha) : null;
     },
+    /** La pista del cuadradito de repeticiones para la serie que viene de ese ejercicio: ver `pistaDeReps`. */
+    pistaDeRepsDe: (id: string) => {
+      const u = ultimaVezDe(historialConPesosRef.current, id, hoyISO());
+      // Contando las de sus bloques ya cerrados: la última vez también están juntas.
+      const b = bloquesRef.current;
+      const serie = b.cerrados.filter((x) => x.ejercicio === id).reduce((t, x) => t + x.series, 0) + (b.ejercicio === id ? b.hechas : 0);
+      return u ? pistaDeReps(u, serie, repsDeLaSesion(marcasConRepsRef.current, id, u.fecha)) : null;
+    },
+    elegirReps,
     tocarBloque,
     elegirEjercicio,
     mudarSeries,

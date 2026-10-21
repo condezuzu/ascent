@@ -10,6 +10,8 @@ import type { Perfil, UnidadPeso } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { guardarSonido, leerSonido } from '@compartido/descanso';
 import { guardarMostrarUltimaVez, leerMostrarUltimaVez } from '@compartido/mostrarUltimaVez';
+import { guardarRegistrarReps, leerRegistrarReps } from '@compartido/registrarReps';
+import { disponible } from '@nucleo/esquema';
 import Segmentado from './Segmentado';
 import { fijarPreferenciaIdioma, idiomaElegido, leerPreferenciaIdioma, type Idioma } from '@compartido/idioma';
 import { escritorEnFila } from '@compartido/enFila';
@@ -79,6 +81,7 @@ export default function Ajustes({
   // en el aparato y no en la cuenta.
   const [sonido, setSonido] = useState(false);
   const [ultimaVez, setUltimaVez] = useState(false);
+  const [reps, setReps] = useState(false);
   // LO QUE NO SE USA TODOS LOS DÍAS, plegado (item estructura). Lo frecuente
   // —gimnasio, salud, descanso, peso, avisos, quién sos— queda arriba y a la
   // vista; el resto entra acá adentro para que Ajustes no sea una lista larga y
@@ -90,6 +93,7 @@ export default function Ajustes({
   useEffect(() => {
     leerSonido().then(setSonido);
     leerMostrarUltimaVez().then(setUltimaVez);
+    leerRegistrarReps().then(setReps);
     void leerPreferenciaIdioma().then((p) => setIdioma(idiomaElegido(p)));
   }, []);
 
@@ -289,6 +293,27 @@ export default function Ajustes({
           }}
         />
       </View>
+
+      {/* LAS REPETICIONES DE CADA SERIE (21/10): apagado de fábrica. Sin la migración 94
+          la base las tiraría, así que hasta entonces no aparece. */}
+      {disponible('repsPorSerie', version) && (
+        <>
+          <View style={estilos.filaOpcion}>
+            <View style={estilos.textoOpcion}>
+              <Text style={estilos.opcion}>{T.ajustes.registrarReps}</Text>
+            </View>
+            <Interruptor
+              value={reps}
+              accessibilityLabel={T.ajustes.registrarReps}
+              onValueChange={(nuevo) => {
+                setReps(nuevo);
+                void guardarRegistrarReps(nuevo);
+              }}
+            />
+          </View>
+          <Text style={estilos.nota}>{T.ajustes.registrarRepsNota}</Text>
+        </>
+      )}
 
       {/* LA ÚLTIMA VEZ, AL ENTRENAR (20/10): apagado de fábrica. */}
       <View style={estilos.filaOpcion}>

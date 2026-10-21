@@ -23,6 +23,8 @@
  *  ese ejercicio, y eso ya lo resuelve `como_arranca` en la base.
  */
 
+import { repsDe } from './bloques.ts';
+
 /** Una sesión pasada, reducida a lo que la rutina necesita. */
 export type SesionRutina = {
   /** El día del log (YYYY-MM-DD), en el huso de la persona. */
@@ -297,20 +299,42 @@ export function diaDeLaSesion(bloques: SesionVista['bloques']): { descanso: fals
 }
 
 /** Una sesión pasada con lo que se anotó en cada bloque: series, pesos y modo de carga. */
-export type SesionConPesos = { fecha: string; bloques: { ejercicio?: string | null; series?: number | null; pesos?: (number | null)[] | null; carga?: string | null }[] };
+export type SesionConPesos = { fecha: string; bloques: { ejercicio?: string | null; series?: number | null; pesos?: (number | null)[] | null; carga?: string | null; reps?: (number | null)[] | null }[] };
+
+export type UltimaVez = { fecha: string; series: number; pesos: (number | null)[]; carga?: string; reps?: (number | null)[] };
 
 /**
  * LA ÚLTIMA VEZ DE UN EJERCICIO (19/10, bug del gimnasio): la sesión más reciente antes de
- * hoy que lo tiene, con sus tandas juntas. Las repeticiones no están: no se anotan por serie.
+ * hoy que lo tiene, con sus tandas juntas. Las repeticiones, serie por serie, solo si esa
+ * sesión las anotó (migración 94).
  */
-export function ultimaVezDe(sesiones: SesionConPesos[], ejercicio: string, hoyISO: string): { fecha: string; series: number; pesos: (number | null)[]; carga?: string } | null {
+export function ultimaVezDe(sesiones: SesionConPesos[], ejercicio: string, hoyISO: string): UltimaVez | null {
   let s: SesionConPesos | null = null;
   for (const x of sesiones) if (x.fecha < hoyISO && (!s || x.fecha > s.fecha) && x.bloques.some((b) => b?.ejercicio === ejercicio)) s = x;
   if (!s) return null;
   const suyos = s.bloques.filter((b) => b?.ejercicio === ejercicio);
   const series = suyos.reduce((t, b) => t + (Number(b.series) > 0 ? Math.round(Number(b.series)) : 0), 0);
   const carga = suyos.find((b) => b.carga)?.carga ?? undefined;
-  return { fecha: s.fecha, series, pesos: suyos.flatMap((b) => b.pesos ?? []), ...(carga ? { carga } : {}) };
+  // Alineadas por serie, no como los pesos: un bloque sin repeticiones ocupa sus lugares con null.
+  const reps = suyos.flatMap((b) => repsDe(b.reps, Number(b.series) > 0 ? Math.round(Number(b.series)) : 0));
+  return {
+    fecha: s.fecha, series, pesos: suyos.flatMap((b) => b.pesos ?? []), ...(carga ? { carga } : {}),
+    ...(reps.some((r) => r !== null) ? { reps } : {}),
+  };
+}
+
+/**
+ * LA PISTA DEL CUADRADITO DE REPETICIONES (21/10): las de la misma serie la última vez; si
+ * esa vez hubo menos series, las de la última que tuvo. Sin repeticiones por serie, las de
+ * la marca de esa sesión (`repsDeLaSesion`), que es lo único que había antes.
+ */
+export function pistaDeReps(u: UltimaVez | null | undefined, serie: number, marca?: MarcaConReps | null): number | null {
+  const lista = u?.reps ?? [];
+  const misma = lista[serie];
+  if (typeof misma === 'number') return misma;
+  const ultima = [...lista].reverse().find((r) => typeof r === 'number');
+  if (typeof ultima === 'number') return ultima;
+  return marca && marca.reps > 0 ? marca.reps : null;
 }
 
 /** Una marca con sus repeticiones, como la guarda `prs` (sin la hora: no es de las columnas que se leen). */

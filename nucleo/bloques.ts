@@ -27,8 +27,9 @@
  *    existiera. Los bloques son una anotación encima. Si algún día divergen, el
  *    total gana — y las rachas, las duraciones y el resumen ni se enteran.
  *
- * LO QUE ESTO NO ES: no es Hevy. No hay repeticiones ni una lista planificada
- * de antemano. Es intención para los próximos cinco minutos.
+ * LO QUE ESTO NO ES: no es Hevy. No hay una lista planificada de antemano, y
+ * las repeticiones solo con «Registrar repeticiones» (21/10). Es intención para
+ * los próximos cinco minutos.
  *
  * 4. **EL PESO ES DEL BLOQUE, NO DE LA SERIE.** Hay un peso vigente —el que
  *    está escrito al lado del ejercicio— y cada `+` registra la serie con ese
@@ -73,7 +74,11 @@ import { cargaValida, llevaNumero, type Carga } from './carga.ts';
  * los pesos a propósito: si viajara en `pesos`, los minutos se leerían como
  * kilos en el volumen, las marcas y la conversión a libras.
  */
-export type Bloque = { id?: string; ejercicio: string | null; series: number; pesos?: (number | null)[]; carga?: Carga; minutos?: number };
+/**
+ * `reps` (21/10): las repeticiones de cada serie, con «Registrar repeticiones» prendido
+ * (migración 94). Misma regla que los pesos: sin llave si ninguna serie las tiene.
+ */
+export type Bloque = { id?: string; ejercicio: string | null; series: number; pesos?: (number | null)[]; carga?: Carga; minutos?: number; reps?: (number | null)[] };
 
 export type EstadoBloques = {
   /** Los que ya se cerraron, en orden. */
@@ -90,6 +95,10 @@ export type EstadoBloques = {
   minutos?: number;
   /** El peso de cada serie de ESTE bloque. Misma regla: sin llave si no hay ninguno. */
   pesos?: (number | null)[];
+  /** Las repeticiones de cada serie de ESTE bloque. Misma regla. */
+  reps?: (number | null)[];
+  /** Las repeticiones tecleadas para la PRÓXIMA serie: el + las anota y el cuadradito queda vacío. */
+  repsAhora?: number;
   /**
    * Qué significa el número en ESTE bloque, si se sabe: lo eligió la persona o
    * lo recordaba. Sin llave = el del catálogo, que lo resuelve quien lo muestra
@@ -138,6 +147,39 @@ function pesosDe(lista: (number | null)[] | undefined, n: number): (number | nul
   return Array.from({ length: Math.max(0, n) }, (_, i) => pesoValido(base[i]));
 }
 
+/** Las repeticiones que se aceptan. Lo mismo acota la base (`reps_limpias`). */
+export const REPS_MAXIMAS = 999;
+
+/** Un número de repeticiones que se puede guardar, o `null`: entero, de 1 a 999. */
+export function repsValidas(n: unknown): number | null {
+  const v = typeof n === 'number' ? n : typeof n === 'string' && n.trim() !== '' ? Number(n) : NaN;
+  return Number.isInteger(v) && v >= 1 && v <= REPS_MAXIMAS ? v : null;
+}
+
+/** Las repeticiones de `n` series, como `pesosDe`. */
+export function repsDe(lista: unknown, n: number): (number | null)[] {
+  const base = Array.isArray(lista) ? lista : [];
+  return Array.from({ length: Math.max(0, n) }, (_, i) => repsValidas(base[i]));
+}
+
+/** Pone la lista SOLO si dice algo, como `conPesos`: quien no anota repeticiones no ve una llave nueva. */
+function conReps<T extends object>(obj: T, reps: (number | null)[]): T & { reps?: (number | null)[] } {
+  const { reps: _viejo, ...resto } = obj as T & { reps?: unknown };
+  return reps.some((x) => x !== null) ? { ...(resto as T), reps } : (resto as T);
+}
+
+function sinRepsAhora<T extends { repsAhora?: number }>(obj: T): Omit<T, 'repsAhora'> {
+  const { repsAhora: _r, ...resto } = obj;
+  return resto;
+}
+
+/** Las repeticiones de la próxima serie. Sin un número válido, el cuadradito queda vacío. */
+export function cambiarReps(e: EstadoBloques, n: unknown): EstadoBloques {
+  const v = repsValidas(n);
+  if (v === (e.repsAhora ?? null)) return e;
+  return v === null ? (sinRepsAhora(e) as EstadoBloques) : { ...e, repsAhora: v };
+}
+
 /**
  * Pone la lista SOLO si dice algo. Una lista de puros `null` es lo mismo que no
  * haber anotado nada, y guardarla rompería la regla 4: el estado de alguien que
@@ -177,12 +219,12 @@ function nuevoIdBloque(): string {
 // `id` se agrega SOLO si se pasa: los que nacen (al cerrarse) o vuelven de la
 // base (al hidratarse) llevan uno; `paraGuardar` no lo pasa, así lo que viaja a
 // la base queda igual que siempre (regla 4: sin llaves de más).
-function cerrado(ejercicio: string | null, series: number, pesos: (number | null)[], carga: unknown, id?: string, minutos?: unknown): Bloque {
+function cerrado(ejercicio: string | null, series: number, pesos: (number | null)[], carga: unknown, id?: string, minutos?: unknown, reps?: unknown): Bloque {
   const b = conPesos({ ejercicio, series } as Bloque, pesos);
   const c = cargaValida(carga);
   const conCarga = b.pesos && c ? { ...b, carga: c } : b;
   const m = minutosValidos(minutos);
-  const conMinutos = m !== null ? { ...conCarga, minutos: m } : conCarga;
+  const conMinutos = conReps(m !== null ? { ...conCarga, minutos: m } : conCarga, repsDe(reps, series));
   return id ? { ...conMinutos, id } : conMinutos;
 }
 
@@ -278,14 +320,16 @@ export function sumar(e: EstadoBloques): EstadoBloques {
   // bloque —lo escrito a mano no se pisa al cambiar de modo— y vuelve a valer si
   // se pasa a otro modo, pero mientras tanto no se anota.
   const pesos = [...pesosDe(e.pesos, e.hechas), llevaNumero(e.carga) ? pesoValido(e.peso) : null];
+  // Las repeticiones tecleadas son de ESTA serie: se anotan y el cuadradito queda vacío.
+  const reps = [...repsDe(e.reps, e.hechas), repsValidas(e.repsAhora)];
   // Contar una serie con el peso propuesto lo CONFIRMA: deja de ser propuesto.
-  return conPesos({ ...sinMarca(e), hechas: e.hechas + 1 }, pesos);
+  return conReps(conPesos({ ...(sinRepsAhora(sinMarca(e)) as EstadoBloques), hechas: e.hechas + 1 }, pesos), reps);
 }
 
 /** Corregir de menos. Nunca baja de cero ni toca los bloques ya cerrados. */
 export function restar(e: EstadoBloques): EstadoBloques {
   const hechas = Math.max(0, e.hechas - 1);
-  return conPesos({ ...e, hechas }, pesosDe(e.pesos, hechas));
+  return conReps(conPesos({ ...e, hechas }, pesosDe(e.pesos, hechas)), repsDe(e.reps, hechas));
 }
 
 /**
@@ -340,13 +384,13 @@ export function pesoAlCambiarDeModo(e: EstadoBloques, recordado: number | null):
 export function siguiente(e: EstadoBloques): EstadoBloques {
   if (e.hechas === 0) return e;
   // NACE con id: es un bloque cerrado nuevo, y desde acá se lo toca por identidad.
-  const b = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga, nuevoIdBloque(), e.minutos);
+  const b = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga, nuevoIdBloque(), e.minutos, e.reps);
   // El peso vigente SE QUEDA, y el modo también: el bloque que sigue es del
   // mismo ejercicio, y lo más probable después de tres series con 60 son otras
   // tres con 60, con lo mismo en la mano.
   // Un cronómetro de cardio no pasa al bloque que sigue: esa vuelta ya se cerró.
-  return conPesos(
-    { ...(sinCardio(e) as EstadoBloques), cerrados: [...e.cerrados, b].slice(-TOPE_BLOQUES), hechas: 0 },
+  return conReps(
+    conPesos({ ...(sinRepsAhora(sinCardio(e)) as EstadoBloques), cerrados: [...e.cerrados, b].slice(-TOPE_BLOQUES), hechas: 0 }, []),
     []
   );
 }
@@ -454,11 +498,11 @@ export function cambiarMeta(e: EstadoBloques, meta: number): EstadoBloques {
  * sería mandar ruido a propósito y hacer más difícil leer qué se envió.
  */
 export function paraGuardar(e: EstadoBloques): Bloque[] {
-  const actual = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga, undefined, e.minutos);
+  const actual = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga, undefined, e.minutos, e.reps);
   const todos = e.hechas > 0 ? [...e.cerrados, actual] : e.cerrados;
   return todos
     .filter((b) => b.ejercicio !== null && b.series > 0)
-    .map((b) => cerrado(b.ejercicio, b.series, pesosDe(b.pesos, b.series), b.carga, undefined, b.minutos))
+    .map((b) => cerrado(b.ejercicio, b.series, pesosDe(b.pesos, b.series), b.carga, undefined, b.minutos, b.reps))
     // Por la misma punta que recorta el teléfono (cacería del 15/10): la base se queda
     // con los primeros 40, y en un circuito largo el bloque en curso no entraba nunca.
     .slice(-TOPE_BLOQUES);
@@ -522,7 +566,7 @@ export function unirConGuardados(guardados: unknown, actual: EstadoBloques): Est
     )
     // Vuelven de la base SIN id (nunca viajó): se les asigna uno nuevo acá, para
     // que se los pueda quitar por identidad como a cualquier otro.
-    .map((b) => cerrado(b.ejercicio, Math.min(999, b.series), pesosDe(b.pesos, b.series), b.carga, b.id ?? nuevoIdBloque(), b.minutos));
+    .map((b) => cerrado(b.ejercicio, Math.min(999, b.series), pesosDe(b.pesos, b.series), b.carga, b.id ?? nuevoIdBloque(), b.minutos, b.reps));
   if (lista.length === 0) return actual;
   // Un ejercicio ELEGIDO, aunque sin series, también es de acá (cacería del 15/10):
   // lo guardado entra antes, como cerrados, y el elegido sigue en curso.
@@ -532,9 +576,9 @@ export function unirConGuardados(guardados: unknown, actual: EstadoBloques): Est
   const ultimo = lista[lista.length - 1];
   const pesos = pesosDe(ultimo.pesos, ultimo.series);
   const vigente = [...pesos].reverse().find((x) => x !== null);
-  const enCurso = conPesos(
-    { cerrados: lista.slice(0, -1), ejercicio: ultimo.ejercicio, meta: actual.meta, hechas: ultimo.series } as EstadoBloques,
-    pesos
+  const enCurso = conReps(
+    conPesos({ cerrados: lista.slice(0, -1), ejercicio: ultimo.ejercicio, meta: actual.meta, hechas: ultimo.series } as EstadoBloques, pesos),
+    repsDe(ultimo.reps, ultimo.series)
   );
   const conPeso = vigente !== undefined && vigente !== null ? { ...enCurso, peso: vigente } : enCurso;
   const conMinutos = ultimo.minutos !== undefined ? { ...conPeso, minutos: ultimo.minutos } : conPeso;
@@ -584,7 +628,7 @@ export function corregirPeso(
   pesos[serie] = pesoValido(kg);
   return {
     ...e,
-    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, x.series, pesos, x.carga, x.id, x.minutos) : x)),
+    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, x.series, pesos, x.carga, x.id, x.minutos, x.reps) : x)),
   };
 }
 
@@ -617,7 +661,7 @@ export function corregirEjercicio(
   const carga = cargaValida(b.carga) ?? cargaValida(cargaQueSeVeia);
   return {
     ...e,
-    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(id, x.series, pesosDe(x.pesos, x.series), carga, x.id, x.minutos) : x)),
+    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(id, x.series, pesosDe(x.pesos, x.series), carga, x.id, x.minutos, x.reps) : x)),
   };
 }
 
@@ -651,7 +695,8 @@ export function corregirBloque(e: EstadoBloques, indice: number, delta: number):
   return {
     estado: {
       ...e,
-      cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, nuevas, pesos, x.carga, x.id, x.minutos) : x)),
+      // Una serie agregada a mano va sin repeticiones: no hay de dónde saberlas.
+      cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, nuevas, pesos, x.carga, x.id, x.minutos, x.reps) : x)),
     },
     cambioEnTotal: nuevas - b.series,
   };

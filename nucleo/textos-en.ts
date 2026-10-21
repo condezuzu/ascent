@@ -345,6 +345,8 @@ export const EN: Textos = {
     sonidoAlTerminar: 'Sound when it ends',
     mostrarUltimaVez: 'Show last time',
     mostrarUltimaVezNota: 'While training, under the exercise: what you did last time.',
+    registrarReps: 'Log reps',
+    registrarRepsNota: 'While training, next to the weight: how many you did in each set.',
     sonidoApagado: 'Sound when it ends — off',
     vibra: 'Vibrates when it ends, with the app open. If you close it, no alert.',
     noVibra: "Your phone doesn't vibrate from the web: the alert is visual, with the app open.",
@@ -641,6 +643,8 @@ export const EN: Textos = {
     pesoBajar: 'Less weight',
     pesoDeSerie: (n: number) => `Weight of set ${n}`,
     sinPeso: '—',
+    repsDeLaSerie: 'Reps for this set',
+    reps: 'reps',
     carga: {
       total: 'total',
       par: 'per dumbbell',
