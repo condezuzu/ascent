@@ -222,6 +222,9 @@ export default function Inicio({
   // La pantalla del descanso se abre desde la píldora, igual que en la web: el
   // + arranca el descanso pero no tapa el bloque.
   const [descansoAbierto, setDescansoAbierto] = useState(false);
+  // EL DESCANSO SIN EMPEZAR (21/10): la duración que se ve en la pantalla grande antes de
+  // arrancarlo. `null` = no está abierta así.
+  const [sinEmpezar, setSinEmpezar] = useState<number | null>(null);
   // LA VENTANA DE LAS VIDAS: los días cubiertos que este aparato todavía no
   // anunció. Misma regla y misma marca que la web (`nucleo/impulsos.ts`).
   const [vidaUsada, setVidaUsada] = useState<{ dias: string[]; quedan: number; total: number; tope: number } | null>(null);
@@ -624,6 +627,9 @@ export default function Inicio({
   };
   // La tira: la semana de calendario, salvo que una vida fresca haya caído antes del lunes.
   const semana = conEstado(diasDeLaTira(hoy, [...(vidaUsada?.dias ?? []), ...(helada?.fechas ?? [])]));
+  // EL COLOR DEL ARCO del descanso se decide ACÁ, en una línea: hoy, el del rango. Lo usan las
+  // dos pantallas grandes (la que corre y la de antes de empezar, 21/10).
+  const acentoDelDescanso = paletaDe(numeroDeRango(racha), null).principal;
 
   return (
     <View style={estilos.raiz} testID="pantalla-inicio">
@@ -727,11 +733,10 @@ export default function Inicio({
               </CadaSegundo>
             ) : (
               <Pressable
+                testID="boton-descansar"
                 style={estilos.chip}
-                onPress={() => {
-                  void sesion.descansarSuelto();
-                  setDescansoAbierto(true);
-                }}
+                // Lleva a la pantalla grande SIN ARRANCAR (21/10): ahí se eligen los minutos.
+                onPress={() => void sesion.duracionDelDescansoSuelto().then(setSinEmpezar)}
                 accessibilityRole="button"
               >
                 <Text style={estilos.chipTexto}>{T.sesion.descansar}</Text>
@@ -1189,12 +1194,35 @@ export default function Inicio({
         />
       )}
 
+      {sinEmpezar !== null && !sesion.estado.descanso && (
+        <Descanso
+          visible
+          vivo={{ fin: 0, duracion: sinEmpezar }}
+          acento={acentoDelDescanso}
+          sinEmpezar={{
+            alElegir: setSinEmpezar,
+            alEmpezar: () => {
+              const elegida = sinEmpezar;
+              setSinEmpezar(null);
+              setDescansoAbierto(true);
+              void sesion.descansarSuelto(elegida);
+            },
+          }}
+          alReiniciar={() => {}}
+          alSaltar={() => setSinEmpezar(null)}
+          alOcultar={() => setSinEmpezar(null)}
+          alSumar={() => {
+            setSinEmpezar(null);
+            void sesion.serieHecha();
+          }}
+        />
+      )}
+
       {sesion.estado.descanso && (
         <Descanso
           visible={descansoAbierto}
           vivo={sesion.estado.descanso}
-          // EL COLOR DEL ARCO se decide ACÁ, en una línea: hoy, el del rango.
-          acento={paletaDe(numeroDeRango(racha), null).principal}
+          acento={acentoDelDescanso}
           alReiniciar={sesion.reiniciarDescanso}
           alSaltar={() => {
             setDescansoAbierto(false);

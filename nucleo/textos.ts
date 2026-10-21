@@ -1075,6 +1075,8 @@ const ES = {
     // El + sin salir del descanso. Dice lo que pasó, no lo que hace el
     // botón: "hice la serie" es lo que la persona acaba de vivir.
     serieHecha: '+ Serie hecha',
+    // Desde el botón «Descansar» (21/10): el reloj quieto hasta que se toca esto.
+    empezar: 'Empezar descanso',
     // EL TIEMPO A MANO (15/10), hasta una hora: "4" son cuatro minutos y "1:30", uno y medio.
     aMano: 'Poner el tiempo a mano',
     aManoEjemplo: 'Minutos (4 o 1:30)',

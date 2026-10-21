@@ -604,6 +604,7 @@ export const EN: Textos = {
     saltar: 'OK',
     cerrar: 'Close',
     serieHecha: '+ Set done',
+    empezar: 'Start rest',
     aMano: 'Set the time by hand',
     aManoEjemplo: 'Minutes (4 or 1:30)',
     aManoUsar: 'Use',

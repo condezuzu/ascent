@@ -16893,7 +16893,11 @@ console.log('\n206. La pantalla del descanso: qué se estaba haciendo, el arco, 
     /\{r\.descanso !== null \? \([\s\S]*?\) : r\.sinSenal \? \(/.test(c206),
     /useSesion|sesionCache|@compartido\/cola/.test(c206),
   ], [true, true, true, true, false]);
-  chequear('el color del arco se decide en un solo lugar', (de206('movil', 'src', 'Inicio.tsx').match(/<Descanso[\s\S]{0,200}?acento=\{paletaDe\(numeroDeRango\(racha\), null\)\.principal\}/g) ?? []).length, 1);
+  // Desde el 21/10 son dos pantallas (la que corre y la de antes de empezar): el color, una vez.
+  chequear('el color del arco se decide en un solo lugar', [
+    (de206('movil', 'src', 'Inicio.tsx').match(/const acentoDelDescanso = paletaDe\(numeroDeRango\(racha\), null\)\.principal;/g) ?? []).length,
+    (de206('movil', 'src', 'Inicio.tsx').match(/<Descanso[\s\S]{0,200}?acento=\{acentoDelDescanso\}/g) ?? []).length,
+  ], [1, 2]);
 }
 
 console.log('\n202. "Volver" anda siempre, también cuando la app arrancó por un enlace');

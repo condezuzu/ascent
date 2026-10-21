@@ -1714,10 +1714,15 @@ export function useSesion(
     await guardarMetaPreferida(b.meta);
   }
 
-  async function descansarSuelto() {
-    const seg =
-      (await leerDuracionDeSesion()) ??
-      duracionValida(duracionPredeterminada(await leerPerfilCache()));
+  /** La duración con la que arrancaría un descanso suelto: la elegida en la sesión, o la de siempre. */
+  async function duracionDelDescansoSuelto(): Promise<number> {
+    return (await leerDuracionDeSesion()) ?? duracionValida(duracionPredeterminada(await leerPerfilCache()));
+  }
+
+  /** Un descanso sin sumar serie. Con `elegida` (21/10: desde la pantalla grande, sin empezar), esa. */
+  async function descansarSuelto(elegida?: number) {
+    const seg = elegida ?? (await duracionDelDescansoSuelto());
+    if (elegida !== undefined) guardarDuracionDeSesion(elegida);
     // No suma nada: la tarjeta dice la serie que YA se hizo, no la que viene.
     const d = guardarDescanso(seg, serieDelDescanso(bloquesRef.current));
     setDescanso(d);
@@ -1778,6 +1783,7 @@ export function useSesion(
     corregirCargaDeBloque,
     corregirEjercicioDeBloque,
     descansarSuelto,
+    duracionDelDescansoSuelto,
     cerrarDescanso: () => {
       borrarDescanso();
       setDescanso(null);

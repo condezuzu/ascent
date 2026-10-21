@@ -54,6 +54,8 @@
 //      («90 kg × 5»), con una marca de verdad (21/10), en la nativa.
 //  21. probar-aviso-globo — el aviso de «Novedad» es un globo que no ocupa lugar ni tapa el
 //      botón principal, y entrenando no sale (21/10), en la nativa.
+//  22. probar-descansar — «Descansar» abre el cronómetro grande quieto: se eligen los minutos
+//      y recién «Empezar descanso» lo arranca (21/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -96,6 +98,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'subir el peso, 2 por 2', archivo: 'probar-dos-por-dos.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el máximo con sus repeticiones', archivo: 'probar-maximo-reps.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el aviso como globo', archivo: 'probar-aviso-globo.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'descansar sin arrancar', archivo: 'probar-descansar.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {
