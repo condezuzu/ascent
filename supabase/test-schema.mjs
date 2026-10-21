@@ -9356,7 +9356,8 @@ console.log('\n134. Ajustes nativo: lo que la app necesita para existir en la ti
   const gim = de134('movil', 'src', 'ajustes', 'Gimnasio.tsx');
   chequear('el punto del gimnasio se marca desde la app', /marcarPunto\(/.test(gim), true);
   chequear('y se puede borrar', /gimnasio_lat: null/.test(gim), true);
-  chequear('Ajustes lo muestra primero', aj.indexOf('<Gimnasio ') < aj.indexOf('diasDescanso'), true);
+  // Primero EN PERFIL desde el 21/10: Entrenamiento va antes (ver la 301).
+  chequear('Ajustes lo muestra primero en Perfil', [aj.indexOf('T.ajustes.seccionPerfil') < aj.indexOf('<Gimnasio '), aj.indexOf('<Gimnasio ') < aj.indexOf('{T.ajustes.comparteGimnasio}')], [true, true]);
   // LA FUNCION ES LA MISMA QUE LA WEB: si cada app tuviera su copia, la regla
   // de "solo se marca estando ahi" se arreglaria en una sola.
   chequear('las dos apps marcan con la misma funcion',
@@ -20363,6 +20364,24 @@ console.log('\n300. Las repeticiones de cada serie, con «Registrar repeticiones
   ], [true, true]);
   const aj = sinCom300(deBug('movil', 'src', 'Ajustes.tsx'));
   chequear('Ajustes tiene el interruptor, y aparece con la 94', [aj.includes('{T.ajustes.registrarReps}'), /\{disponible\('repsPorSerie', version\) && \(/.test(aj)], [true, true]);
+}
+console.log('\n301. Ajustes en tres grupos: Entrenamiento, Perfil y General (21/10)');
+{
+  const sinCom301 = (t) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const aj = sinCom301(deBug('movil', 'src', 'Ajustes.tsx'));
+  const pos = (t) => aj.indexOf(t);
+  const entre = (t, a, b) => pos(t) > -1 && pos(a) < pos(t) && pos(t) < pos(b);
+  chequear('Ajustes en tres grupos, en este orden: Entrenamiento, Perfil y General; después, los avanzados', [
+    pos('T.ajustes.seccionEntrenamiento') > -1, entre('T.ajustes.seccionPerfil', 'T.ajustes.seccionEntrenamiento', 'T.ajustes.seccionGeneral'), entre('T.ajustes.seccionGeneral', 'T.ajustes.seccionPerfil', 'T.ajustes.avanzados'),
+  ], [true, true, true]);
+  chequear('Entrenamiento: registrar repeticiones (con la 94) y mostrar la última vez', [
+    entre('T.ajustes.registrarReps', 'T.ajustes.seccionEntrenamiento', 'T.ajustes.seccionPerfil'), entre('T.ajustes.mostrarUltimaVez', 'T.ajustes.seccionEntrenamiento', 'T.ajustes.seccionPerfil'),
+    /\{disponible\('repsPorSerie', version\) && \(/.test(aj),
+  ], [true, true, true]);
+  chequear('Perfil: tu perfil, el gimnasio, lo que ven tus amigos, la salud y tu identidad', [
+    "router.push('/yo')", '<Gimnasio ', 'T.ajustes.comparteGimnasio', 'T.ajustes.comparteRutina', '<Salud ', '<Identidad ',
+  ].map((t) => entre(t, 'T.ajustes.seccionPerfil', 'T.ajustes.seccionGeneral')), [true, true, true, true, true, true]);
+  chequear('General: kilos o libras, e idioma', ['T.ajustes.peso}', 'T.ajustes.idioma}'].map((t) => entre(t, 'T.ajustes.seccionGeneral', 'T.ajustes.avanzados')), [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

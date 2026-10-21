@@ -649,6 +649,10 @@ const ES = {
     // Al lado del peso, una por serie (21/10). Apagado de fábrica.
     registrarReps: 'Registrar repeticiones',
     registrarRepsNota: 'Al entrenar, al lado del peso: cuántas hiciste en cada serie.',
+    // Las secciones de Ajustes (21/10).
+    seccionEntrenamiento: 'Entrenamiento',
+    seccionPerfil: 'Perfil',
+    seccionGeneral: 'General',
     sonidoApagado: 'Sonido al terminar — apagado',
     vibra: 'Vibra al terminar, con la app abierta. Si la cierras, no avisa.',
     noVibra: 'Tu teléfono no vibra desde la web: el aviso es visual, con la app abierta.',
