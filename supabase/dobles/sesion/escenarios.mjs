@@ -1559,6 +1559,50 @@ async function repsUltimaVez() {
   return { press: r('press_banca'), sentadilla: r('sentadilla'), remo: r('remo') };
 }
 
+/**
+ * `segundaCambia` (20/10, revisión del pedido 7): lunes con press de banca, sentadilla y remo.
+ * Primera sesión: press, como propone. Segunda del mismo día: propone sentadilla y se cambia por
+ * dominadas; al terminar, «Reemplazar» tiene que poner dominadas en el lugar de la sentadilla,
+ * no en el del press, que ya se hizo más temprano.
+ */
+async function segundaCambia() {
+  relojDeLunes();
+  servidor.version = 82;
+  datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+  const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 3 }, { ejercicio: 'sentadilla', series: 3 }, { ejercicio: 'remo', series: 3 }] };
+  servidor.rutinas = [{ id: 'r1', nombre: 'Entrenamiento 1', activa: true, dias }];
+  datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', id: 'r1', dias }));
+  const { hoyISO } = await import('@nucleo/fechas');
+  const { diaDeLaSesion, rutinaTrasLaVentana } = await import('@nucleo/rutina');
+  const { sesionesRutinaRef } = await import('@compartido/sesionViva');
+  const una = montar(() => useSesion());
+  await asentar();
+  await una.r.empezar();
+  await dormir(500);
+  await asentar();
+  await una.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  const primera = await una.r.terminar();
+  await asentar();
+  servidor.historial = [...servidor.historial, { bloques: primera?.bloques ?? [], logs: { fecha: hoyISO() } }];
+  const otra = montar(() => useSesion());
+  await asentar();
+  await otra.r.empezar();
+  await dormir(500);
+  await asentar();
+  const propone = otra.r.estado.bloques.ejercicio;
+  await otra.r.elegirEjercicio('dominadas');
+  await otra.r.serieHecha({ sinDescanso: true });
+  await asentar();
+  const segunda = await otra.r.terminar();
+  await asentar();
+  // Lo mismo que hace la ventana de la nativa (`preguntarPorLaRutina`): lo de antes hoy, del historial.
+  const antesHoy = sesionesRutinaRef.current.filter((x) => x.fecha === hoyISO()).flatMap((x) => x.ejercicios);
+  const tras = rutinaTrasLaVentana(dias, 1, diaDeLaSesion(segunda?.bloques ?? []), 'reemplazar', antesHoy);
+  return { propone, antesHoy, diaDespues: tras[1].ejercicios.map((e) => e.ejercicio) };
+}
+
 async function dueno() {
   const vigilante = montar(() => useSesion());
   const inicio = montar(() => useSesion());
@@ -1657,7 +1701,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia, primerEjercicio, repsUltimaVez }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia, primerEjercicio, repsUltimaVez, segundaCambia }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

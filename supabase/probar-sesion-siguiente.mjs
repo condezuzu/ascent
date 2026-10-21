@@ -36,6 +36,8 @@ if (eAlta) {
 }
 const uid = (await s.auth.getUser()).data.user.id;
 await s.from('profiles').update({ username: `sig_${sello.slice(-6)}` }).eq('id', uid);
+// El día de hoy en Montevideo, que es el reloj del navegador de la prueba: «Reemplazar» toca ese.
+const hoy = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'America/Montevideo' }).format(new Date()));
 const delDia = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 3 }, { ejercicio: 'sentadilla', series: 3 }, { ejercicio: 'remo_barra', series: 3 }] };
 const { error: eRutina } = await s.rpc('guardar_rutina', { p_id: null, p_nombre: 'Entrenamiento 1', p_dias: Array.from({ length: 7 }, () => delDia) });
 if (eRutina) console.log('  --   no se guardó la rutina: ' + eRutina.message);
@@ -84,7 +86,26 @@ try {
   await page.screenshot({ path: join(SALIDA, 'segunda.png') });
   chequear('la segunda sesión del mismo día propone B (sentadilla), no A', propone, 'Sentadilla');
   const { data: rutinas } = await s.rpc('mis_rutinas');
-  chequear('sin contestar la ventana, la rutina guardada quedó igual', (rutinas ?? []).map((r) => (r.dias?.[0]?.ejercicios ?? []).map((e) => e.ejercicio)), [['press_banca', 'sentadilla', 'remo_barra']]);
+  chequear('sin contestar la ventana, la rutina guardada quedó igual', (rutinas ?? []).map((r) => (r.dias?.[hoy]?.ejercicios ?? []).map((e) => e.ejercicio)), [['press_banca', 'sentadilla', 'remo_barra']]);
+
+  // Y SI EN ESA SEGUNDA SE CAMBIA B POR OTRO (20/10, revisión): «Reemplazar» lo pone en el lugar
+  // de B. Antes lo ponía en el de A, que ya se había cubierto en la primera.
+  await page.getByText(/^Sentadilla · /).first().click();
+  await page.getByTestId('buscar-ejercicio').first().fill('Dominadas', { timeout: 30000 });
+  await page.waitForTimeout(800);
+  await texto('Dominadas').click({ timeout: 30000 });
+  await page.getByText(/^Dominadas · /).first().waitFor({ timeout: 30000 });
+  await page.getByLabel('Sumar una serie').first().click();
+  await page.waitForTimeout(2000);
+  await texto('Terminar').click({ timeout: 30000 });
+  await texto('Terminar').click({ timeout: 30000 });
+  await page.getByTestId('ventana-rutina').first().waitFor({ timeout: 30000 });
+  await page.getByTestId('ventana-rutina-reemplazar').first().click();
+  await page.getByTestId('ventana-rutina-si').first().click({ timeout: 15000 });
+  await page.getByTestId('ventana-rutina').first().waitFor({ state: 'detached', timeout: 20000 });
+  await page.waitForTimeout(1500);
+  const { data: despues } = await s.rpc('mis_rutinas');
+  chequear('«Reemplazar» en la segunda sesión cambia B, no A', (despues ?? []).map((r) => (r.dias?.[hoy]?.ejercicios ?? []).map((e) => e.ejercicio)), [['press_banca', 'dominadas', 'remo_barra']]);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));

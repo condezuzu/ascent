@@ -20165,6 +20165,24 @@ console.log('\n294. La píldora del descanso, después del 0:00, dice cuánto se
   const ini = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
   chequear('la píldora lo usa, con «+» delante', /pasado: `\+\$\{cuentaAtras\(pasadoDe\(fin, Date\.now\(\)\)\)\}`/.test(ini), true);
 }
+console.log('\n295. «Reemplazar» en la segunda sesión del día no pisa lo que se hizo a la mañana (20/10, revisión)');
+{
+  // Con el hook de verdad: lunes press, sentadilla y remo; a la mañana press; a la tarde propone
+  // sentadilla y se cambia por dominadas. Antes «Reemplazar» dejaba [dominadas, sentadilla, remo].
+  const r = await escenarioDeSesion('segundaCambia');
+  chequear('propone sentadilla, y «Reemplazar» pone dominadas en su lugar', r.fallo ?? [r.propone, r.antesHoy, r.diaDespues], ['sentadilla', ['press_banca'], ['press_banca', 'dominadas', 'remo']]);
+  const { rutinaConLoHecho } = await import('../nucleo/rutina.ts');
+  const d = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
+  const con = (antesHoy, hecho) => rutinaConLoHecho([d([]), d(['a', 'b', 'c'])], 1, d(hecho), antesHoy)[1].ejercicios.map((e) => e.ejercicio);
+  chequear('la regla: lo de antes hoy (propio o ajeno) cubre su lugar; sin nada de antes, como siempre', [
+    con([], ['y']), con(['a'], ['y']), con(['x'], ['y']), con(['a', 'b'], ['y']),
+  ], [['y', 'b', 'c'], ['a', 'y', 'c'], ['a', 'y', 'c'], ['a', 'b', 'y']]);
+  const pr = sinComentarios(deBug('movil', 'src', 'preguntarPorLaRutina.ts'));
+  chequear('la ventana de la nativa le pasa lo de antes hoy', [
+    /const antesHoy = sesionesRutinaRef\.current\.filter\(\(x\) => x\.fecha === hoy\)\.flatMap\(\(x\) => x\.ejercicios\);/.test(pr),
+    /rutinaTrasLaVentana\(actual\.dias, dia, hecho, como === 'esta' \? 'reemplazar' : como, antesHoy\)/.test(pr),
+  ], [true, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
