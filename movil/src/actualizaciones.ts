@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AppState, type NativeEventSubscription } from 'react-native';
 import * as Updates from 'expo-updates';
 import { anotar } from './cajaNegra';
 
@@ -113,8 +114,31 @@ export async function aplicar(): Promise<void> {
  */
 export async function buscarAlArrancar(puedeReiniciar: () => boolean): Promise<void> {
   if (!(await buscarYTraer())) return;
-  if (!puedeReiniciar()) return anotar('actualización: lista, se aplica al cerrar');
-  await aplicar();
+  aplicarAlSalir(puedeReiniciar);
+}
+
+let esperandoSalir: NativeEventSubscription | null = null;
+
+/**
+ * SE APLICA CUANDO NO SE VE (21/10, bug: "Inicio aparece antes de la entrada y después vuelve a
+ * cargar sin datos"). Bajada la actualización con la app abierta, la app se reiniciaba en el
+ * acto, delante de quien la estaba usando: Inicio ya dibujado, la entrada otra vez y Inicio
+ * cargando de cero. Ahora espera a que la app pase al fondo; al volver, arranca con la nueva
+ * desde la entrada. Con un entrenamiento andando, tampoco ahí: queda para el próximo arranque.
+ */
+export function aplicarAlSalir(puedeReiniciar: () => boolean) {
+  if (!Updates.isEnabled || esperandoSalir) return;
+  anotar('actualización: bajada, se aplica al salir de la app');
+  esperandoSalir = AppState.addEventListener('change', (e) => {
+    if (e !== 'background') return;
+    if (!puedeReiniciar()) return anotar('actualización: lista, se aplica al cerrar (entrenamiento andando)');
+    esperandoSalir?.remove();
+    esperandoSalir = null;
+    anotar('actualización: aplicando al salir');
+    void Updates.reloadAsync().catch((err) => {
+      anotar(`actualización: no se pudo aplicar (${String((err as Error)?.message ?? err).slice(0, 60)})`);
+    });
+  });
 }
 
 /**
@@ -146,16 +170,8 @@ export function useAplicarLoQueEsteListo(puedeReiniciar: () => boolean) {
 
   useEffect(() => {
     if (!isUpdatePending || !Updates.isEnabled) return;
-    if (!puedeReiniciar()) {
-      anotar('actualización: bajada, se aplica al cerrar (entrenamiento andando)');
-      return;
-    }
-    anotar('actualización: bajada, aplicando');
-    // Sin `await`: `reloadAsync` no vuelve —la app arranca de nuevo— y
-    // esperarla adentro de un efecto no agrega nada.
-    void Updates.reloadAsync().catch((e) => {
-      anotar(`actualización: no se pudo aplicar (${String((e as Error)?.message ?? e).slice(0, 60)})`);
-    });
+    // Al salir de la app, no delante de quien la usa (21/10): ver `aplicarAlSalir`.
+    aplicarAlSalir(puedeReiniciar);
     // `puedeReiniciar` cambia en cada dibujo y no es lo que dispara esto: lo
     // que dispara es que una actualización pase a estar lista.
     // eslint-disable-next-line react-hooks/exhaustive-deps

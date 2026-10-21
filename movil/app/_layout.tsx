@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/supabase';
 import { quienSoy } from '@compartido/quienSoy';
+import { precargarInicio } from '@compartido/inicioAlArrancar';
 import { aplicarLoElegido, IDIOMA_CAMBIO } from '@compartido/idioma';
 import { eventos } from '@compartido/eventos';
 import { alEntrarCon } from '@compartido/cuenta';
@@ -84,9 +85,12 @@ export default function Layout() {
   }, []);
   // Se entró con el enlace de cambiar la contraseña: falta elegirla.
   const [claveNueva, setClaveNueva] = useState(false);
-  // LA ENTRADA DEL LOGO (20/10): nada de la app se monta hasta que empieza el zoom.
+  // LA ENTRADA DEL LOGO (20/10). DESDE EL 21/10 NADA DE LA APP SE MONTA HASTA QUE TERMINA
+  // (después del zoom): antes se montaba al empezarlo, e Inicio se veía con la ruedita debajo
+  // del logo que se iba. Los datos de Inicio se piden mientras corre (ver más abajo).
   const [entrada, setEntrada] = useState<'logo' | 'abriendo' | 'fin'>('logo');
-  const abierta = entrada !== 'logo';
+  const abierta = entrada === 'fin';
+  const [datosListos, setDatosListos] = useState(false);
   const abrir = useCallback(() => setEntrada('abriendo'), []);
   const terminarEntrada = useCallback(() => setEntrada('fin'), []);
 
@@ -158,6 +162,21 @@ export default function Layout() {
   useAplicarLoQueEsteListo(() => !loVisible()?.corriendo);
 
   const sinNombre = useCallback(() => setSesion('sin-nombre'), []);
+
+  // LOS DATOS DE INICIO, MIENTRAS CORRE LA ENTRADA (21/10): se piden apenas se sabe la sesión y
+  // la entrada espera a que lleguen antes del zoom. Inicio los toma al montarse: una sola carga.
+  const conSesionEnLaEntrada = sesion === 'con' && entrada !== 'fin';
+  useEffect(() => {
+    if (!conSesionEnLaEntrada) return;
+    let vivo = true;
+    void quienSoy(supabase)
+      .then((q) => (q.estado === 'con' ? precargarInicio(supabase, q.uid) : null))
+      .catch(() => null)
+      .then(() => vivo && setDatosListos(true));
+    return () => {
+      vivo = false;
+    };
+  }, [conSesionEnLaEntrada]);
 
   // AL SALIR NO HAY QUE DESAPILAR NADA: el stack entero se desmonta cuando la
   // sesión se va, así que el perfil que estuviera encima se va con él. La
@@ -364,7 +383,9 @@ export default function Layout() {
         {abierta && claveNueva && (sesion === 'con' || sesion === 'sin-nombre') && <ClaveNueva alTerminar={() => setClaveNueva(false)} />}
       </View>
       {/* Fuera de la llave del idioma: cambiarlo en medio no la vuelve a empezar. */}
-      {entrada !== 'fin' && <EntradaDeLaApp lista={sesion !== 'mirando'} alAbrir={abrir} alTerminar={terminarEntrada} />}
+      {entrada !== 'fin' && (
+        <EntradaDeLaApp lista={sesion !== 'mirando' && (sesion !== 'con' || datosListos)} alAbrir={abrir} alTerminar={terminarEntrada} />
+      )}
       </ProveedorDeSesion>
     </Raiz>
   );

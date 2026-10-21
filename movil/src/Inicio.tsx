@@ -10,6 +10,7 @@ import { numeroDeRango, perdidaSinVer, planetaDeDia, rangoDeRacha, subidaDeRango
 import { hayPresagio } from '@nucleo/atmosfera';
 import { laCuentaYaNoExiste, mensajeDeAuth } from '@nucleo/errores';
 import { pedirInicio } from '@compartido/inicio';
+import { pedirSesionesDeHoy, precargaLista, tomarPrecarga } from '@compartido/inicioAlArrancar';
 import type { Log, Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cierreVigente, cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
@@ -100,6 +101,36 @@ type Estado =
       perdida: boolean;
     };
 
+/** El estado de Inicio con sus datos: lo arma `aplicar`, y también el primer dibujo al arrancar. */
+function estadoListo(d: {
+  perfil: Perfil;
+  logs: Log[];
+  descansos: ConfigDescanso[];
+  impulsos: { vigentes?: string[]; quedan?: number; total?: number } | null;
+  perdida: boolean;
+}): Estado {
+  return {
+    tipo: 'listo',
+    perfil: d.perfil,
+    logs: d.logs,
+    descansos: d.descansos,
+    cubiertos: Array.isArray(d.impulsos?.vigentes) ? (d.impulsos!.vigentes as string[]) : [],
+    impulsos: d.impulsos && d.impulsos.quedan !== undefined ? { quedan: Number(d.impulsos.quedan), total: Number(d.impulsos.total) } : null,
+    perdida: d.perdida,
+  };
+}
+
+/**
+ * AL ABRIR LA APP, YA CON LOS DATOS (21/10): la raíz los pidió mientras corría la entrada.
+ * Si ya llegaron, Inicio se dibuja con ellos desde el primer cuadro, sin la ruedita.
+ */
+function estadoAlArrancar(): Estado {
+  const p = precargaLista();
+  if (p?.inicio.tipo !== 'listo' || !p.inicio.datos.perfil?.username) return { tipo: 'cargando' };
+  const x = p.inicio.datos;
+  return estadoListo({ perfil: x.perfil!, logs: x.logs, descansos: x.descansos, impulsos: x.impulsos, perdida: !!x.perdida?.perdida });
+}
+
 export default function Inicio({
   alSalir,
   alFaltarNombre,
@@ -113,7 +144,7 @@ export default function Inicio({
   // Dónde está la píldora del descanso, para que su globito salga de ella.
   const [anchoCabecera, setAnchoCabecera] = useState(0);
   const [anchoPildora, setAnchoPildora] = useState(0);
-  const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' });
+  const [estado, setEstado] = useState<Estado>(estadoAlArrancar);
   // LA RACHA QUE SE ESTÁ VIENDO, para saber si un registro sube de rango: se
   // compara con la que devuelve la base (ver `subidaDeRango`). En una ref
   // porque la leen avisos que llegan de afuera, con la pantalla ya dibujada.
@@ -251,18 +282,8 @@ export default function Inicio({
   // `pantalla_inicio` (que no lo trae) y en paralelo, así no suma otra ida y
   // vuelta. `!inner` y no un select suelto: sin eso PostgREST devuelve TODAS
   // las sesiones y la suma saldría de la semana entera en vez del día.
-  const pedirDeHoy = useCallback(
-    (uid: string) =>
-      supabase
-        .from('sesiones')
-        // `bloques` tambien: es lo que deja volver a ver el resumen de hoy a un
-        // toque, aun despues de recargar (1.2/5.4). Ver `bloquesDeHoy`.
-        .select('inicio, fin, bloques, logs!inner(fecha)')
-        .eq('user_id', uid)
-        .eq('estado', 'terminada')
-        .eq('logs.fecha', hoyISO()),
-    []
-  );
+  // `bloques` también: es lo que deja volver a ver el resumen de hoy a un toque (1.2/5.4).
+  const pedirDeHoy = useCallback((uid: string) => pedirSesionesDeHoy(supabase, uid), []);
 
   // EL POST-PROCESADO, COMPARTIDO por el camino rápido (`pantalla_inicio`) y el
   // viejo (por si la migración 43 no corriera): decide cuenta-borrada /
@@ -299,18 +320,7 @@ export default function Inicio({
       if (tieneHoy) setMarcadoOptimista(null);
       else setCierreGuardado(null);
 
-      setEstado({
-        tipo: 'listo',
-        perfil: d.perfil,
-        logs: d.logs,
-        descansos: d.descansos,
-        cubiertos: Array.isArray(d.impulsos?.vigentes) ? (d.impulsos!.vigentes as string[]) : [],
-        impulsos:
-          d.impulsos && d.impulsos.quedan !== undefined
-            ? { quedan: Number(d.impulsos.quedan), total: Number(d.impulsos.total) }
-            : null,
-        perdida: d.perdida,
-      });
+      setEstado(estadoListo({ perfil: d.perfil, logs: d.logs, descansos: d.descansos, impulsos: d.impulsos, perdida: d.perdida }));
       // LA COPIA DEL PERFIL EN EL TELÉFONO (4/10). La web la guardó siempre; acá
       // no la guardaba nadie, y dos cosas de `compartido/` que la leen quedaban
       // muertas sin dar ningún error: el peso recordado por modo (no sabía de
@@ -352,8 +362,12 @@ export default function Inicio({
       // los minutos de hoy. Antes eran DOS idas y vuelta encadenadas —
       // verificar_perdida y después cinco consultas—; `pantalla_inicio` trae
       // todo en una, con verificar_perdida adentro y en el orden correcto.
-      const [inicio, { data: deHoy }] = await Promise.all([pedirInicio(supabase), pedirDeHoy(uid)]);
-      const dh = (deHoy ?? []) as { inicio: string; fin: string | null; bloques?: CierreDeSesion['bloques'] | null }[];
+      // LA PRIMERA VEZ, LO QUE PIDIÓ LA RAÍZ MIENTRAS CORRÍA LA ENTRADA (21/10): no se pide otra vez.
+      const pre = tomarPrecarga(uid);
+      const [inicio, deHoy] = pre
+        ? await pre.then((p) => [p.inicio, p.deHoy] as const)
+        : await Promise.all([pedirInicio(supabase), pedirDeHoy(uid).then((r) => r.data ?? [])]);
+      const dh = deHoy as { inicio: string; fin: string | null; bloques?: CierreDeSesion['bloques'] | null }[];
 
       if (inicio.tipo === 'listo') {
         const x = inicio.datos;
@@ -531,7 +545,7 @@ export default function Inicio({
 
   if (estado.tipo === 'cargando') {
     return (
-      <View style={estilos.centrado}>
+      <View style={estilos.centrado} testID="pantalla-inicio">
         <ActivityIndicator color="#8a93a8" />
       </View>
     );
@@ -607,7 +621,7 @@ export default function Inicio({
   const semana = conEstado(diasDeLaTira(hoy, [...(vidaUsada?.dias ?? []), ...(helada?.fechas ?? [])]));
 
   return (
-    <View style={estilos.raiz}>
+    <View style={estilos.raiz} testID="pantalla-inicio">
       <FondoEspacial
         rango={numeroDeRango(racha)}
         planeta={planeta}

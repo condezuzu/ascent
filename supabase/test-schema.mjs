@@ -11824,8 +11824,10 @@ console.log('\n160. Barrido: la cuenta que ya no existe, los minutos, y el visor
   // APP. El numero solo existia si esta misma pantalla habia visto terminar la
   // sesion, asi que volver a abrir Ascent a la noche lo dejaba en la nada
   // aunque la sesion estuviera guardada.
+  // Desde el 21/10 la consulta vive en compartido/inicioAlArrancar.ts (la usa también el arranque).
+  const deHoy160 = de160('compartido', 'inicioAlArrancar.ts');
   chequear('los minutos salen de las sesiones terminadas de hoy',
-    /\.select\('inicio, fin, bloques, logs!inner\(fecha\)'\)/.test(ini160), true);
+    /\.select\('inicio, fin, bloques, logs!inner\(fecha\)'\)/.test(deHoy160) && /\.eq\('estado', 'terminada'\)/.test(deHoy160) && /pedirSesionesDeHoy\(supabase, uid\)/.test(ini160), true);
   // Y TAMBIEN LOS BLOQUES (1.2/5.4): es lo que deja volver a ver el resumen de
   // hoy a un toque, aun despues de recargar. El resumen ya no se cierra solo:
   // se cierra con una equis, y 'Ver lo que hiciste hoy' lo reabre.
@@ -11837,7 +11839,7 @@ console.log('\n160. Barrido: la cuenta que ya no existe, los minutos, y el visor
   // sesiones con `logs` en null para las que no casan, y la suma saldria de la
   // semana entera en vez del dia.
   chequear('y se filtran por el dia del log, no por la hora de inicio',
-    /\.eq\('logs\.fecha', hoyISO\(\)\)/.test(ini160), true);
+    /\.eq\('logs\.fecha', hoyISO\(\)\)/.test(deHoy160), true);
   // Cero se guarda como null: "hoy entrenaste 0 minutos" no es un dato.
   chequear('cero minutos no se dice',
     /setMinutosDeHoy\(minutos >= 1 \? Math\.round\(minutos\) : null\)/.test(ini160), true);
@@ -19987,11 +19989,13 @@ console.log('\n284. La entrada de la app: el aro del logo, el destello y el zoom
   chequear('el aro arranca y termina sobre su radio, y el puntito también', [radio(ax, ay), radio(bx, by), radio(p.x, p.y)], [LOGO.radio, LOGO.radio, LOGO.radio]);
   chequear('lo que mide el aro es lo que se dibuja de a poco', Math.round(arco.largo), Math.round((LOGO.radio * (LOGO.hasta - LOGO.desde) * Math.PI) / 180));
   const lay = sinComentarios(deBug('movil', 'app', '_layout.tsx'));
-  chequear('en la raíz, nada de la app se dibuja antes de que la entrada abra', [
+  // Desde el 21/10 la app se monta cuando la entrada TERMINA, no cuando empieza el zoom (ver la 298).
+  chequear('en la raíz, nada de la app se dibuja antes de que la entrada termine', [
     (lay.match(/\{sesion === '/g) ?? []).length,
     (lay.match(/\{abierta && (claveNueva && )?\(?sesion === '/g) ?? []).length >= 4,
-    /\{entrada !== 'fin' && <EntradaDeLaApp lista=\{sesion !== 'mirando'\}/.test(lay),
-  ], [0, true, true]);
+    /const abierta = entrada === 'fin';/.test(lay),
+    /\{entrada !== 'fin' && \(\s*<EntradaDeLaApp lista=\{sesion !== 'mirando' && \(sesion !== 'con' \|\| datosListos\)\}/.test(lay),
+  ], [0, true, true, true]);
   const en = sinComentarios(deBug('movil', 'src', 'EntradaDeLaApp.tsx'));
   chequear('la entrada abre la app al empezar el zoom, y el zoom no depende del hilo de JS', [
     /setFase\('abriendo'\);\s*alAbrir\(\);\s*Animated\.timing\(zoom,/.test(en),
@@ -20240,6 +20244,50 @@ console.log('\n297. La tarjeta del descanso de la build 7: una sola aunque llegu
   await new Promise((r) => setTimeout(r, 100));
   chequear('y saltar el descanso la apaga', vivas.length, 0);
   P297.enVivo = antes;
+}
+console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entrada; Inicio después; la OTA al salir (21/10)');
+{
+  // La prueba de verdad es la de test:real (probar-arranque): con el orden de antes, Inicio se
+  // montaba con el logo todavía encima, pedía sus datos al montarse y se veía la ruedita.
+  const IA = await import('../compartido/inicioAlArrancar.ts');
+  const pedidos = [];
+  const consulta = () => {
+    const q = { select: () => q, eq: () => q, then: (a, b) => Promise.resolve({ data: [{ inicio: 'x', fin: null }], error: null }).then(a, b) };
+    return q;
+  };
+  const cliente = {
+    rpc: async (n) => {
+      pedidos.push(n);
+      await new Promise((r) => setTimeout(r, 5));
+      return { data: { hoy: '2026-10-21', perfil: { id: 'yo', username: 'yo' }, logs: [], descansos: [], impulsos: null, fuerza: null, perdida: null, social: null }, error: null };
+    },
+    from: () => consulta(),
+  };
+  const a = IA.precargarInicio(cliente, 'yo');
+  const b = IA.precargarInicio(cliente, 'yo');
+  const antesDeLlegar = IA.precargaLista();
+  await a;
+  const llegada = IA.precargaLista();
+  const tomada = await IA.tomarPrecarga('yo');
+  chequear('pedida dos veces es un solo pedido; lista cuando llega; Inicio la toma una vez y la siguiente vuelve a pedir', [
+    pedidos.length, a === b, antesDeLlegar, llegada?.inicio.tipo, tomada?.deHoy.length, IA.tomarPrecarga('yo'), IA.precargaLista(),
+  ], [1, true, null, 'listo', 1, null, null]);
+  const lay = sinComentarios(deBug('movil', 'app', '_layout.tsx'));
+  const ini = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
+  chequear('la raíz pide los datos con la sesión y la entrada los espera; Inicio arranca con ellos y no pide otra vez', [
+    /q\.estado === 'con' \? precargarInicio\(supabase, q\.uid\) : null/.test(lay),
+    /useState<Estado>\(estadoAlArrancar\)/.test(ini),
+    /const pre = tomarPrecarga\(uid\);/.test(ini),
+  ], [true, true, true]);
+  const act = sinComentarios(deBug('movil', 'src', 'actualizaciones.ts'));
+  // La OTA bajada se aplica al pasar al fondo: el único reloadAsync automático es el del oyente.
+  const automaticos = (act.match(/Updates\.reloadAsync\(\)/g) ?? []).length;
+  chequear('una OTA bajada no reinicia la app delante de quien la usa: espera a que pase al fondo', [
+    /AppState\.addEventListener\('change', \(e\) => \{\s*if \(e !== 'background'\) return;/.test(act),
+    automaticos,
+    /useEffect\(\(\) => \{\s*if \(!isUpdatePending \|\| !Updates\.isEnabled\) return;\s*aplicarAlSalir\(puedeReiniciar\);/.test(act),
+    /if \(!\(await buscarYTraer\(\)\)\) return;\s*aplicarAlSalir\(puedeReiniciar\);/.test(act),
+  ], [true, 2, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
