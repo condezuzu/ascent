@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { T } from '@nucleo/textos';
 import { C } from './colores';
 
 /**
@@ -16,7 +17,7 @@ export default function Hoja({ visible, alCerrar, children }: { visible: boolean
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={alCerrar}>
       <KeyboardAvoidingView style={estilos.todo} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Pressable style={estilos.fondo} onPress={alCerrar} accessibilityLabel="Cerrar" />
+        <Pressable style={estilos.fondo} onPress={alCerrar} accessibilityLabel={T.general.cerrar} />
         {/* Para el barrido: con las cinco pestañas montadas a la vez, un texto
             suelto puede encontrarse en una pantalla que no está. Esto le da a
             la sonda un lugar concreto donde buscar lo que la hoja pregunta. */}

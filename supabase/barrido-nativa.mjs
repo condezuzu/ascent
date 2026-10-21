@@ -219,12 +219,13 @@ await mirar('elegir nombre', async () => {
 async function recorrerTodo(estado) {
   const con = (n) => `${estado} · ${n}`;
 
-  for (const p of ['Ranking', 'Álbum', 'Stats', 'Ajustes', 'Inicio']) {
+  // La de los amigos se llama Social desde el 15/10: con 'Ranking' no se abría y no se revisaba.
+  for (const p of ['Social', 'Álbum', 'Stats', 'Ajustes', 'Inicio']) {
     await mirar(con(`pestaña ${p}`), () => texto(p).click({ timeout: 20000 }));
   }
   // Y DE NUEVO, que es donde aparecieron los dos bugs del fondo: volver a una
   // pestaña ya visitada no vuelve a montarla.
-  for (const p of ['Ranking', 'Inicio', 'Stats', 'Inicio']) {
+  for (const p of ['Social', 'Inicio', 'Stats', 'Inicio']) {
     await mirar(con(`volver a ${p}`), () => texto(p).click({ timeout: 20000 }));
   }
 

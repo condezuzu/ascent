@@ -126,7 +126,7 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
           keyboardType="email-address"
           textContentType="emailAddress"
           placeholderTextColor="#4a5163"
-          placeholder="nombre@correo.com"
+          placeholder={T.entrar.correoEjemplo}
         />
 
         {modo !== 'recuperar' && (
