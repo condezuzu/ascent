@@ -9841,8 +9841,9 @@ console.log('\n139. La Live Activity del descanso');
   // colgada en la pantalla bloqueada.
   const desc = de139('compartido', 'descanso.ts');
   const avisar139 = desc.slice(desc.indexOf('async function avisarAlTerminar'));
+  // Desde el 20/10, en fila (ver la 297).
   chequear('la cuenta a la vista sale del mismo lugar que el aviso',
-    /enVivoAlTerminar\(d\)/.test(avisar139.slice(0, avisar139.indexOf('\n}'))), true);
+    /enVivoEnFila\(d\)/.test(avisar139.slice(0, avisar139.indexOf('\n}'))), true);
   // Y UN DESCANSO YA TERMINADO SE APAGA: pasa al bajar la duracion por debajo
   // de lo ya descansado.
   chequear('un descanso terminado apaga la actividad',
@@ -20372,6 +20373,51 @@ console.log('\n296. En la segunda sesión del día, repetir algo ya hecho no sal
     /paraSeguir = hechos\.filter\(\(h\) => !\(guardadaAhora\.includes\(h\) && antes\.includes\(h\)\)\);/.test(us),
     /siguienteEnRutina\(rutinaRef\.current, paraSeguir\)/.test(us),
   ], [true, true]);
+}
+console.log('\n297. La tarjeta del descanso de la build 7: una sola aunque lleguen dos cambios a la vez (20/10)');
+{
+  // EL CAMINO VIEJO (el de la build 7 de la tienda; la 8 en adelante usa `compartido/tarjeta.ts`):
+  // `enVivoAlTerminar` se llamaba sin fila, y el módulo nativo entre "¿hay una de esta duración?"
+  // y encender otra espera (DescansoVivoModule.swift `mostrar`: si no hay, `apagar()` y después
+  // `Activity.request`). El descanso nuevo y, enseguida, «lo que se hacía» entraban los dos por
+  // ese hueco. El doble hace lo mismo que el Swift, con sus esperas.
+  const { plataforma: P297 } = await import('./dobles/plataforma.mjs');
+  const D297 = await import('../compartido/descanso.ts');
+  const antes = P297.enVivo;
+  let vivas = [];
+  let actual = null;
+  const espera = () => new Promise((r) => setTimeout(r, 4));
+  P297.enVivo = {
+    ...antes,
+    disponible: () => true,
+    async mostrarDescanso(fin, duracion, ctx) {
+      if (actual && actual.duracion === duracion) {
+        await espera();
+        actual.ctx = ctx;
+        return;
+      }
+      const aApagar = [...vivas];
+      await espera();
+      vivas = vivas.filter((a) => !aApagar.includes(a));
+      actual = null;
+      await espera();
+      actual = { duracion, ctx };
+      vivas.push(actual);
+    },
+    async esconder() {
+      await espera();
+      vivas = [];
+      actual = null;
+    },
+  };
+  const d = D297.guardarDescanso(120, { ejercicio: null, serie: 1, meta: 3 });
+  D297.actualizarLoQueSeHace(d, { ejercicio: null, serie: 2, meta: 3 });
+  await new Promise((r) => setTimeout(r, 200));
+  chequear('queda una sola, con lo último', vivas.map((a) => [a.duracion, a.ctx?.serie ?? null]), [[120, 2]]);
+  D297.borrarDescanso();
+  await new Promise((r) => setTimeout(r, 100));
+  chequear('y saltar el descanso la apaga', vivas.length, 0);
+  P297.enVivo = antes;
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
