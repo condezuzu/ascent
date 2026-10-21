@@ -118,7 +118,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       supabase.from('sesiones').select('id, bloques, logs(fecha)').eq('user_id', uid),
       supabase.from('ejercicios').select('*'),
       // Solo las mías: la RLS también deja leer las de los amigos.
-      supabase.from('prs').select('ejercicio, peso, fecha').eq('user_id', uid),
+      supabase.from('prs').select('ejercicio, peso, reps, fecha').eq('user_id', uid),
       supabase.from('weights').select('fecha, valor').eq('user_id', uid).order('fecha'),
       supabase.rpc('mis_impulsos'),
     ]);
@@ -447,7 +447,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                                   pesoCorto(f.maximo.peso, unidad),
                                   unidad,
                                   claveDeEtiqueta(f.maximo.carga, f.ejercicio)
-                                )
+                                ) + (f.maximo.reps ? T.volumen.conReps(f.maximo.reps) : '')
                               : T.volumen.nada}
                           </Text>
                         </View>

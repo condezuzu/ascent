@@ -578,6 +578,7 @@ export const EN: Textos = {
     kilosYSeries: (kilos: string, unidad: string, series: number) => `${series === 1 ? '1 set' : `${series} sets`} · ${kilos} ${unidad}`,
     soloSeries: (series: number) => (series === 1 ? '1 set' : `${series} sets`),
     nada: '—',
+    conReps: (n: number) => ` × ${n}`,
     nadaDesde: (fecha: string) => `nothing since ${fecha}`,
     semanaAnterior: 'Previous week',
     semanaSiguiente: 'Next week',

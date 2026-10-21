@@ -1019,6 +1019,8 @@ const ES = {
       `${series === 1 ? '1 serie' : `${series} series`} · ${kilos} ${unidad}`,
     soloSeries: (series: number) => (series === 1 ? '1 serie' : `${series} series`),
     nada: '—',
+    // Las repeticiones con el peso máximo (21/10): «60 kg × 8».
+    conReps: (n: number) => ` × ${n}`,
     nadaDesde: (fecha: string) => `nada desde el ${fecha}`,
     // LA NOTA EXPLICA LA FRANJA, que es lo unico de la pantalla que hay que
     // explicar una vez. Dice "referencia" y no "meta" a proposito: la app no

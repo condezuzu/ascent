@@ -18459,10 +18459,11 @@ console.log('\n232. Los globitos: flotan, un renglón, y "ya puedes subir el pes
   const { readFileSync: leer232 } = await import('node:fs');
   const de232 = (...p) => leer232(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
   const globito = de232('movil', 'src', 'Globito.tsx');
-  chequear('el globito no ocupa lugar (ancla de alto cero, globo encima), es de un renglón y lo usan los de primera vez y el de subir', [
+  chequear('el globito no ocupa lugar (ancla de alto cero, globo encima), es de dos renglones como mucho y lo usan los de primera vez y el de subir', [
     /ancla: \{ height: 0, zIndex: 30, elevation: 30 \}/.test(globito),
     /globo: \{\n    position: 'absolute',/.test(globito),
-    /numberOfLines=\{1\}/.test(globito),
+    // Dos desde el 21/10: el aviso de subir el peso dice el rango (la regla 2 por 2).
+    /numberOfLines=\{2\}/.test(globito),
     // Los de primera vez, desde el 15/10, son el globo de cómic con su cola (ver la 249).
     /return <GloboComic texto=\{children\} alCerrar=\{cerrar\}/.test(de232('movil', 'src', 'GloboPrimeraVez.tsx')),
     /<Globito\n          testID="globito-subir"/.test(de232('movil', 'src', 'Bloque.tsx')),
@@ -20613,6 +20614,29 @@ console.log('\n309. Subir el peso con la regla 2 por 2: dos sesiones seguidas co
   ], [true, false]);
   const h309 = await escenarioDeSesion('dosPorDos');
   chequear('con el hook de verdad: el objetivo sale de la rutina activa y el aviso de las dos sesiones anteriores', h309.fallo ?? h309.subir, { peso: 60, desde: 61.2, hasta: 63, porcentaje: [2, 5] });
+}
+console.log('\n310. El peso máximo de cada ejercicio, con las repeticiones con las que se hizo (21/10)');
+{
+  const V310 = await import('../nucleo/volumen.ts');
+  const cat = [
+    { id: 'press_banca', nombre: 'Press de banca', grupo: 'pecho', cuenta_dots: true },
+    { id: 'remo_barra', nombre: 'Remo con barra', grupo: 'espalda' },
+    { id: 'curl_biceps', nombre: 'Curl', grupo: 'brazos' },
+  ];
+  const ses = [
+    { fecha: '2026-10-10', bloques: [{ ejercicio: 'press_banca', series: 3, pesos: [80, 85, 85], reps: [8, 6, 5] }, { ejercicio: 'remo_barra', series: 2, pesos: [60, 70] }] },
+    { fecha: '2026-10-15', bloques: [{ ejercicio: 'press_banca', series: 2, pesos: [85, 80], reps: [7, 9] }, { ejercicio: 'curl_biceps', series: 2, pesos: [20, 20], reps: [10, 12] }] },
+  ];
+  const marcas = [{ ejercicio: 'remo_barra', peso: 70, reps: 4, fecha: '2026-10-20' }];
+  const filas = Object.fromEntries(V310.maximosDelCatalogo(ses, marcas, cat).flatMap((g) => g.filas).map((f) => [f.ejercicio, f.maximo && [f.maximo.peso, f.maximo.reps ?? null, f.maximo.fecha]]));
+  chequear('el máximo con sus repeticiones: con el mismo peso, las más que se hicieron (y la fecha de la primera vez); de una marca, las suyas; sin anotar, ninguna', [
+    filas.press_banca, filas.curl_biceps, filas.remo_barra,
+  ], [[85, 7, '2026-10-10'], [20, 12, '2026-10-15'], [70, 4, '2026-10-10']]);
+  const st310 = deBug('movil', 'src', 'Stats.tsx');
+  chequear('Stats las pide de las marcas y las muestra al lado del peso', [
+    /from\('prs'\)\.select\('ejercicio, peso, reps, fecha'\)/.test(st310),
+    /\+ \(f\.maximo\.reps \? T\.volumen\.conReps\(f\.maximo\.reps\) : ''\)/.test(st310),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
