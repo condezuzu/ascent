@@ -52,6 +52,8 @@
 //      y no avisa si la última serie no llegó al objetivo + 2 (21/10), en la nativa.
 //  20. probar-maximo-reps — en Stats, el peso máximo de cada ejercicio con sus repeticiones
 //      («90 kg × 5»), con una marca de verdad (21/10), en la nativa.
+//  21. probar-aviso-globo — el aviso de «Novedad» es un globo que no ocupa lugar ni tapa el
+//      botón principal, y entrenando no sale (21/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -93,6 +95,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'los botones en octágono', archivo: 'probar-octogonos.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'subir el peso, 2 por 2', archivo: 'probar-dos-por-dos.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el máximo con sus repeticiones', archivo: 'probar-maximo-reps.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'el aviso como globo', archivo: 'probar-aviso-globo.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {
