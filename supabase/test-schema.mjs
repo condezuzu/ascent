@@ -20305,7 +20305,7 @@ console.log('\n299. La migración 94: la base guarda las repeticiones de cada se
   ])])).rows[0].b.bloques;
   chequear('la base guarda las repeticiones limpias: una por serie como mucho, enteros de 1 a 999; nada si no queda ninguna, ni en el cardio', g299.map((b) => b.reps ?? 'sin llave'), [[12, null, 8], 'sin llave', 'sin llave', [null, 999]]);
   chequear('y lo de antes sigue igual: pesos, modo y minutos', [g299[0].pesos.map(Number), g299[0].carga, g299[2].minutos], [[60, 60, 60], 'total', 20]);
-  chequear('la base está en la 94', (await db.query('select version_del_esquema() as v')).rows[0].v, 94);
+  chequear('la base está en la 94 o después', (await db.query('select version_del_esquema() as v')).rows[0].v >= 94, true);
 }
 console.log('\n300. Las repeticiones de cada serie, con «Registrar repeticiones» (21/10)');
 {
@@ -20456,6 +20456,28 @@ console.log('\n304. La revisión del 21/10: nada escrito a mano en la nativa, y 
     IM304.celdaDeLaProximaVida({ quedan: 1, total: 3, falta: null }),
   ], [20, 5, 'llenas', null]);
   chequear('y Stats la usa', /const c = celdaDeLaProximaVida\(vidas\);/.test(sinCom304(deBug('movil', 'src', 'Stats.tsx'))), true);
+}
+console.log('\n305. La migración 95: la distancia del cardio y las repeticiones objetivo de la rutina (21/10)');
+{
+  const u305 = await nuevoUsuario();
+  await comoUsuario(u305);
+  const ses305 = (await db.query('select iniciar_sesion() as s')).rows[0].s;
+  await db.query('select fijar_series($1, 4)', [ses305.id]);
+  const g305 = (await db.query('select fijar_bloques($1, $2::jsonb) as b', [ses305.id, JSON.stringify([
+    { ejercicio: 'cinta', series: 1, minutos: 25, distancia: 4.567 },
+    { ejercicio: 'correr', series: 1, minutos: 30, distancia: 900 },
+    { ejercicio: 'caminar', series: 1, minutos: 20, distancia: 0 },
+    { ejercicio: 'press_banca', series: 2, pesos: [60, 60], distancia: 3 },
+  ])])).rows[0].b.bloques;
+  chequear('la base guarda la distancia del cardio en centésimas, topada en 500 km; cero no es una distancia; un ejercicio con peso no la lleva', g305.map((b) => (b.distancia === undefined ? 'sin llave' : Number(b.distancia))), [4.57, 500, 'sin llave', 'sin llave']);
+  const id305 = (await db.query('select guardar_rutina(null, $1, $2::jsonb) as id', ['Con objetivo', JSON.stringify([
+    { descanso: false, ejercicios: [] },
+    { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4, reps: 8 }, { ejercicio: 'sentadilla', series: 3, reps: 0 }, { ejercicio: 'remo_barra', series: 3, reps: 12.4 }, { ejercicio: 'cinta', series: 1, minutos: 20 }] },
+    { descanso: true, ejercicios: [] }, { descanso: false, ejercicios: [] }, { descanso: false, ejercicios: [] }, { descanso: false, ejercicios: [] }, { descanso: false, ejercicios: [] },
+  ])])).rows[0].id;
+  const r305 = (await db.query('select mis_rutinas() as v')).rows[0].v.find((r) => r.id === id305);
+  chequear('la rutina guarda las repeticiones objetivo de 1 a 100, enteras; 0 no es un objetivo', r305.dias[1].ejercicios.map((e) => e.reps ?? 'sin llave'), [8, 'sin llave', 12, 'sin llave']);
+  chequear('la base está en la 95', (await db.query('select version_del_esquema() as v')).rows[0].v, 95);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

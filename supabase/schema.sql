@@ -2288,6 +2288,8 @@ begin
            || case when m is null then '{}'::jsonb else jsonb_build_object('minutos', m) end
            -- LAS REPETICIONES (migración 94): de un ejercicio que se cuenta en series.
            || case when r is null then '{}'::jsonb else jsonb_build_object('reps', r) end
+           -- LA DISTANCIA (migración 95): en kilómetros, solo de un ejercicio que se mide en tiempo.
+           || case when km is null then '{}'::jsonb else jsonb_build_object('distancia', km) end
            order by i), '[]'::jsonb)
     into limpio
   from (
@@ -2310,7 +2312,12 @@ begin
       end as m,
       case when (select x.mide from ejercicios x where x.id = f.e) = 'tiempo' then null
            else reps_limpias(f.reps, f.s)
-      end as r
+      end as r,
+      -- Igual que el teléfono (distanciaValida): más de 0 y hasta 500 km, en centésimas.
+      case when (select x.mide from ejercicios x where x.id = f.e) = 'tiempo' and jsonb_typeof(f.distancia) = 'number'
+                and (f.distancia #>> '{}')::numeric > 0
+           then least(round((f.distancia #>> '{}')::numeric, 2), 500)
+      end as km
     from (
       select
         b.valor->>'ejercicio' as e,
@@ -2319,6 +2326,7 @@ begin
         b.valor->>'carga' as carga,
         b.valor->'minutos' as minutos,
         b.valor->'reps' as reps,
+        b.valor->'distancia' as distancia,
         b.orden as i
       from jsonb_array_elements(p_bloques) with ordinality as b(valor, orden)
       where b.valor->>'ejercicio' in (select id from ejercicios)
@@ -3346,6 +3354,11 @@ returns jsonb language sql immutable set search_path = public as $$
                                            then greatest(0, least(round((e.valor ->> 'series')::numeric), 99)) else 0 end
                           ) || case when jsonb_typeof(e.valor -> 'minutos') = 'number'
                                     then jsonb_build_object('minutos', greatest(0, least(round((e.valor ->> 'minutos')::numeric), 600)))
+                                    else '{}'::jsonb end
+                            -- LAS REPETICIONES OBJETIVO (migración 95): de 1 a 100, para el aviso de subir el peso.
+                            || case when jsonb_typeof(e.valor -> 'reps') = 'number'
+                                         and round((e.valor ->> 'reps')::numeric) between 1 and 100
+                                    then jsonb_build_object('reps', round((e.valor ->> 'reps')::numeric)::int)
                                     else '{}'::jsonb end
                           order by e.i)
                    from jsonb_array_elements(case when jsonb_typeof(d.valor -> 'ejercicios') = 'array' then d.valor -> 'ejercicios' else '[]'::jsonb end)
@@ -4690,7 +4703,7 @@ revoke execute on function public.marcar_me_gusta_rutina(uuid, boolean) from pub
 grant execute on function public.marcar_me_gusta_rutina(uuid, boolean) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 94; $$;
+returns int language sql immutable as $$ select 95; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

@@ -84,6 +84,8 @@ export const REQUIERE = {
   gruposSinBloqueados: 90,
   /** Las repeticiones de cada serie: sin la 94, `fijar_bloques` las tira. */
   repsPorSerie: 94,
+  /** La distancia del cardio y las repeticiones objetivo de la rutina. */
+  distanciaYObjetivo: 95,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;
