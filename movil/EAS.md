@@ -381,16 +381,19 @@ de teléfono con 8. La huella mira el CONTENIDO de `app.json`, no sus finales de
 |---|---|---|---|
 | `ff2b55a6` (teléfono de Agustín) | `telefono` | 8 | `66ebdfa2…` |
 | `417afba9` (la que va a Apple) | `store` | 9 | `f3c9f1b6…` |
+| `9572537e` (21/10, sin enviar a Apple) | `store` | 10 | `9ce579c6…` |
 
-La rama queda en 9, o sea con la huella de la de store. **Una OTA para la ff2b55a6**,
-con el arreglo ya commiteado en la rama:
+La rama queda en 10 (desde el 21/10), o sea con la huella de la última de store. **Una OTA
+para la ff2b55a6**, con el arreglo ya commiteado en la rama:
 
-1. En `movil/app.json`, `ios.buildNumber` de vuelta a `"8"` (ese renglón solo, sin
-   commitearlo).
-2. `node --env-file=.env.local supabase/publicar-ota.mjs telefono "<qué arregla>"`. El
+1. En `movil/app.json`, `ios.buildNumber` a `"8"` (ese renglón solo, sin commitearlo).
+2. `npx eas-cli fingerprint:compare --build-id ff2b55a6-7ccb-4ff6-a14d-c545680a78ab
+   --non-interactive` desde `movil/`: tiene que decir que coincide.
+3. `node --env-file=.env.local supabase/publicar-ota.mjs telefono "<qué arregla>"`. El
    publicador frena solo si la huella no es la de una build del canal: con 8 tiene que
    dar `66ebdfa2…`.
-3. Verificar por hash: `artefacto.mjs telefono 66ebdfa2b123cc7e72bc415a86884de4982e4fb1`.
-4. `git checkout -- movil/app.json` (vuelve a 9). Nunca se commitea el 8.
+4. Verificar lo publicado: `npx eas-cli update:view <grupo> --json` tiene que decir
+   `runtimeVersion` `66ebdfa2…`. (Acá decía `artefacto.mjs`, que no existe en el repo.)
+5. `ios.buildNumber` de vuelta a `"10"`, y `git status` limpio. Nunca se commitea el 8.
 
 Para la de store es la rama tal cual, al canal `store`, cuando Agustín lo diga.
