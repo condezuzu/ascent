@@ -16396,13 +16396,14 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   const r0 = EV.renglonDe(u201, 0);
   chequear('recién llegado: le faltan unos 90 s y no está "sin señal"', [r0.descanso >= 88 && r0.descanso <= 90, r0.sinSenal, r0.sinDatos, r0.serie, r0.meta], [true, false, false, 3, 4]);
   chequear('treinta segundos después, sin volver a preguntar, la cuenta bajó treinta', r0.descanso - EV.renglonDe(u201, 30_000).descanso, 30);
-  chequear('al terminar dice 0 (listo), y pasado un minuto deja de ser noticia', [EV.renglonDe(u201, 95_000).descanso, EV.renglonDe(u201, 200_000).descanso], [0, null]);
+  // Desde el 21/10, terminado sigue en 0 y cuenta lo que se pasa (ver la 311): ya no se apaga al minuto.
+  chequear('al terminar dice 0, y pasado un minuto sigue: cuenta lo que se pasa', [EV.renglonDe(u201, 95_000).descanso, EV.renglonDe(u201, 200_000).descanso, EV.renglonDe(u201, 200_000).pasado > 60], [0, 0, true]);
   chequear('sin novedades por más de dos minutos: sin señal', [EV.renglonDe(u201, 119_000).sinSenal, EV.renglonDe(u201, 125_000).sinSenal], [false, true]);
   // LA HORA DEL TELÉFONO NO ENTRA EN LA CUENTA: la función no la mira. Todo sale
   // de lo que mandó la base y de cuánto pasó, que se le pasa por parámetro. Así
   // dos teléfonos con la hora distinta ven la misma cuenta.
   chequear('la cuenta no lee el reloj del teléfono', /Date\.now|new Date\(\)/.test(EV.renglonDe.toString()), false);
-  chequear('aceptado y sin publicar todavía: "todavía no empezó", no un renglón vacío', EV.renglonDe({ ...u201, enVivo: null }, 0), { ejercicio: null, serie: 0, meta: 0, descanso: null, sinSenal: false, sinDatos: true });
+  chequear('aceptado y sin publicar todavía: "todavía no empezó", no un renglón vacío', EV.renglonDe({ ...u201, enVivo: null }, 0), { ejercicio: null, serie: 0, meta: 0, descanso: null, pasado: null, sinSenal: false, sinDatos: true });
   chequear('con quién tengo algo, para saber qué botón va', [EV.unionCon([u201], p)?.id, EV.unionCon([u201], q)], [u201.id, null]);
   chequear('basura de la base no rompe la pantalla', [EV.leerUniones(null), EV.leerUniones([{ id: 1 }, null, { id: 'x', estado: 'otra', otro: { id: 'y' }, ahora: '2026-10-12T10:00:00Z' }])], [[], []]);
   // LA SEGUNDA TRABA: aunque la base mandara lo que hace alguien que todavía no
@@ -20641,6 +20642,27 @@ console.log('\n310. El peso máximo de cada ejercicio, con las repeticiones con 
     /from\('prs'\)\.select\('ejercicio, peso, reps, fecha'\)/.test(st310),
     /\+ \(f\.maximo\.reps \? T\.volumen\.conReps\(f\.maximo\.reps\) : ''\)/.test(st310),
   ], [true, true]);
+}
+console.log('\n311. El descanso de otro, terminado: «+0:08» contando, no tres puntitos (21/10)');
+{
+  const EV311 = await import('../nucleo/enVivo.ts');
+  const u = (finEnS, actualizadoHaceS = 200) => ({
+    otro: { id: 'b', username: 'b', avatar_url: null }, estado: 'aceptada', ahora: 1_000_000_000,
+    enVivo: { ejercicio: 'press_banca', serie: 1, meta: 3, descansoFin: finEnS === null ? null : 1_000_000_000 + finEnS * 1000, actualizado: 1_000_000_000 - actualizadoHaceS * 1000 },
+  });
+  const r = (finEnS, pasaron = 0) => {
+    const x = EV311.renglonDe(u(finEnS), pasaron);
+    return [x.descanso, x.pasado];
+  };
+  chequear('descansando: lo que falta; terminado: 0 y lo que se pasa, también después del minuto y aunque esté «sin señal»; pasada la media hora, nada', [
+    r(90), r(0), r(-8), r(-300), r(-31 * 60), r(null), r(5, 9000),
+  ], [[90, null], [0, 0], [0, 8], [0, 300], [null, null], [null, null], [0, 4]]);
+  const tira = deBug('movil', 'src', 'TiraDelGrupo.tsx');
+  chequear('la tira de Inicio, Juntos y el compañero del descanso dicen «+M:SS» en vez de «Listo»', [
+    /\? `\+\$\{cuentaAtras\(r\.pasado \?\? 0\)\}`/.test(tira),
+    /r\.descanso === 0 \? `\+\$\{cuentaAtras\(r\.pasado \?\? 0\)\}`/.test(deBug('movil', 'src', 'Juntos.tsx')),
+    /r\.descanso === 0 \? `\+\$\{cuentaAtras\(r\.pasado \?\? 0\)\}`/.test(deBug('movil', 'src', 'CompaneroEnDescanso.tsx')),
+  ], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

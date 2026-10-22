@@ -26,7 +26,7 @@ export default function TiraDelGrupo({ uniones, recibidoEn }: { uniones: Union[]
               const que =
                 r.descanso !== null
                   ? r.descanso === 0
-                    ? T.social.enVivoListo
+                    ? `+${cuentaAtras(r.pasado ?? 0)}`
                     : T.social.enVivoDescansa(cuentaAtras(r.descanso))
                   : r.sinDatos || r.sinSenal
                     ? '…'
