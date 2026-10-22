@@ -381,7 +381,7 @@ de teléfono con 8. La huella mira el CONTENIDO de `app.json`, no sus finales de
 |---|---|---|---|
 | `ff2b55a6` (teléfono de Agustín) | `telefono` | 8 | `66ebdfa2…` |
 | `417afba9` (la que va a Apple) | `store` | 9 | `f3c9f1b6…` |
-| `9572537e` (21/10, sin enviar a Apple) | `store` | 10 | `9ce579c6…` |
+| `9572537e` (en la tienda desde el 22/10) | `store` | 10 | `9ce579c6…` |
 
 La rama queda en 10 (desde el 21/10), o sea con la huella de la última de store. **Una OTA
 para la ff2b55a6**, con el arreglo ya commiteado en la rama:
@@ -396,4 +396,27 @@ para la ff2b55a6**, con el arreglo ya commiteado en la rama:
    `runtimeVersion` `66ebdfa2…`. (Acá decía `artefacto.mjs`, que no existe en el repo.)
 5. `ios.buildNumber` de vuelta a `"10"`, y `git status` limpio. Nunca se commitea el 8.
 
-Para la de store es la rama tal cual, al canal `store`, cuando Agustín lo diga.
+## La OTA a la 1.1.0 (10) de la tienda (22/10)
+
+Apple aprobó la 1.1.0 (10) el 22/10. Se compiló el 21/10 desde 5fd061e, así que trae el
+JavaScript de ese día: lo que se hizo después le llega solo por OTA. Es la rama tal cual,
+con `ios.buildNumber` en `"10"` (lo que está commiteado), al canal `store`:
+
+1. La rama al día con `main` (`git merge main`), `git status` limpio y `buildNumber` en 10.
+2. `npx eas-cli fingerprint:compare --build-id 9572537e-c659-4a3e-a687-18dce82830a5
+   --non-interactive` desde `movil/`: tiene que decir que coincide (`9ce579c6…`).
+3. `node --env-file=.env.local supabase/publicar-ota.mjs store "<qué trae>" --simular`, y si
+   dice que coincide, lo mismo sin `--simular`. El publicador frena si la huella no es la de
+   una build del canal.
+4. `npx eas-cli update:view <grupo> --json`: el de iOS tiene que decir `runtimeVersion`
+   `9ce579c6…`.
+
+**El canal `store` tiene tres huellas**, y una OTA le llega solo a la build de la suya:
+
+| Build | Versión | De dónde sale la OTA | Huella |
+|---|---|---|---|
+| `bd30a91b` | 1.0.0 (7) | `main` | `1d931263…` |
+| `417afba9` | 1.1.0 (9) | esta rama con `buildNumber` en 9 | `f3c9f1b6…` |
+| `9572537e` | 1.1.0 (10) | esta rama tal cual (10) | `9ce579c6…` |
+
+Publicar a una no cubre a las otras: cada una es una publicación aparte.
