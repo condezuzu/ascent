@@ -204,6 +204,32 @@ try {
       await pb.getByLabel('Cerrar').first().click({ timeout: 15000 });
       await pb.waitForTimeout(800);
 
+      // LO QUE B SE PASA DEL DESCANSO (21/10): terminado, A ve «+0:08» contando, no tres
+      // puntitos. B publica un descanso que termina en un segundo.
+      await B.s.rpc('publicar_en_vivo', { p_ejercicio: 'press_banca', p_serie: 1, p_meta: 3, p_descanso_faltan: 1 });
+      const deMas = async (loc) => {
+        const m = (await loc.innerText().catch(() => '')).match(/\+(\d+):(\d\d)/);
+        return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+      };
+      await pa.waitForTimeout(5000);
+      const enRanking = pa.getByTestId('juntos-en-vivo').first();
+      const r1 = await deMas(enRanking);
+      await pa.waitForTimeout(3000);
+      const r2 = await deMas(enRanking);
+      chequear('terminado el descanso de B, A ve en Ranking cuánto se pasa, contando («+0:0X» que sube)', [r1 !== null, r2 !== null && r1 !== null && r2 > r1], [true, true]);
+      // Y en Inicio, entrenando A: la tira del grupo dice lo mismo.
+      await pa.getByText(TEXTOS_ES.nav.inicio, { exact: true }).last().click();
+      await pa.getByText('Iniciar entrenamiento', { exact: true }).last().click({ timeout: 30000 });
+      const tira = pa.getByTestId('tira-del-grupo').first();
+      if (await esperar('A entrena y ve la tira del grupo en Inicio', tira, 20000)) {
+        const t1 = await deMas(tira);
+        await pa.waitForTimeout(2500);
+        const t2 = await deMas(tira);
+        chequear('y en la tira de Inicio, B con su «+0:0X» contando, no tres puntitos', [t1 !== null, t2 !== null && t1 !== null && t2 > t1, (await tira.innerText()).includes('…')], [true, true, false]);
+        await pa.screenshot({ path: 'capturas/bateria/juntos-a-tira.png' }).catch(() => {});
+      }
+      await pa.getByText(TEXTOS_ES.nav.social, { exact: true }).last().click();
+
       // DE UNA SOLA MANO: lo de B, en la base, es lo que B hizo.
       await pb.waitForTimeout(2500);
       const ses = (await B.s.from('sesiones').select('estado, series, bloques').eq('user_id', B.id)).data ?? [];

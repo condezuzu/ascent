@@ -28,7 +28,7 @@ import RachaSalvada from './RachaSalvada';
 import SubidaRango from './SubidaRango';
 import RegistrarDia from './RegistrarDia';
 import { plataforma } from '@plataforma';
-import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDondeVisto, vidasParaAvisar, type VidaHelada } from '@nucleo/impulsos';
+import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDondeVisto, modosDeLasVidas, vidasParaAvisar, type VidaHelada } from '@nucleo/impulsos';
 import { CLAVE_META_PASOS, META_PASOS_POR_OMISION, leerMeta } from '@nucleo/pasos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import MarcaEnElMomento from './MarcaEnElMomento';
@@ -53,6 +53,7 @@ import { pasadoDe, queMuestraLaPildora } from '@nucleo/avisoDescanso';
 import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
 import Estrella from './Estrella';
+import FondoOctogonal from './FondoOctogonal';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
 import { corregirDia } from '@compartido/dia';
 import { rutinaParaPreguntar, type PreguntaDeRutina } from './preguntarPorLaRutina';
@@ -98,7 +99,7 @@ type Estado =
       logs: Log[];
       descansos: ConfigDescanso[];
       cubiertos: string[];
-      impulsos: { quedan: number; total: number } | null;
+      impulsos: { quedan: number; total: number; tope: number } | null;
       /** Si hoy se perdió la racha: el fondo se apaga, igual que en la web. */
       perdida: boolean;
     };
@@ -108,7 +109,7 @@ function estadoListo(d: {
   perfil: Perfil;
   logs: Log[];
   descansos: ConfigDescanso[];
-  impulsos: { vigentes?: string[]; quedan?: number; total?: number } | null;
+  impulsos: { vigentes?: string[]; quedan?: number; total?: number; tope?: number } | null;
   perdida: boolean;
 }): Estado {
   return {
@@ -117,7 +118,10 @@ function estadoListo(d: {
     logs: d.logs,
     descansos: d.descansos,
     cubiertos: Array.isArray(d.impulsos?.vigentes) ? (d.impulsos!.vigentes as string[]) : [],
-    impulsos: d.impulsos && d.impulsos.quedan !== undefined ? { quedan: Number(d.impulsos.quedan), total: Number(d.impulsos.total) } : null,
+    impulsos:
+      d.impulsos && d.impulsos.quedan !== undefined
+        ? { quedan: Number(d.impulsos.quedan), total: Number(d.impulsos.total), tope: Number(d.impulsos.tope ?? d.impulsos.total) }
+        : null,
     perdida: d.perdida,
   };
 }
@@ -219,9 +223,12 @@ export default function Inicio({
   // La pantalla del descanso se abre desde la píldora, igual que en la web: el
   // + arranca el descanso pero no tapa el bloque.
   const [descansoAbierto, setDescansoAbierto] = useState(false);
+  // EL DESCANSO SIN EMPEZAR (21/10): la duración que se ve en la pantalla grande antes de
+  // arrancarlo. `null` = no está abierta así.
+  const [sinEmpezar, setSinEmpezar] = useState<number | null>(null);
   // LA VENTANA DE LAS VIDAS: los días cubiertos que este aparato todavía no
   // anunció. Misma regla y misma marca que la web (`nucleo/impulsos.ts`).
-  const [vidaUsada, setVidaUsada] = useState<{ dias: string[]; quedan: number; total: number } | null>(null);
+  const [vidaUsada, setVidaUsada] = useState<{ dias: string[]; quedan: number; total: number; tope: number } | null>(null);
   // LA VIDA CONGELADA EN EL DÍA (19/10): el día que se usa, congelada en la tira; el
   // siguiente se derrite una vez. Lo de "una vez" lo cuida borrar la clave al leerla vieja.
   const [helada, setHelada] = useState<VidaHelada | null>(null);
@@ -297,7 +304,7 @@ export default function Inicio({
         perfil: Perfil | null;
         logs: Log[];
         descansos: ConfigDescanso[];
-        impulsos: { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number } | null;
+        impulsos: { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number; tope?: number } | null;
         perdida: boolean;
         deHoy: { inicio: string; fin: string | null; bloques?: CierreDeSesion['bloques'] | null }[];
       }
@@ -345,7 +352,7 @@ export default function Inicio({
       // Con la racha ya perdida en ese corte no hay aviso: se ve la pérdida (20/10).
       const sinVer = vidasParaAvisar(ultimas, await plataforma.almacenamiento.leer(CLAVE_VIDA_VISTA), d.perfil.perdida_fecha);
       if (sinVer.length > 0) {
-        setVidaUsada({ dias: sinVer, quedan: Number(d.impulsos?.quedan ?? 0), total: Number(d.impulsos?.total ?? 0) });
+        setVidaUsada({ dias: sinVer, quedan: Number(d.impulsos?.quedan ?? 0), total: Number(d.impulsos?.total ?? 0), tope: Number(d.impulsos?.tope ?? d.impulsos?.total ?? 0) });
       }
     },
     [alSalir, alFaltarNombre, fallo]
@@ -398,7 +405,7 @@ export default function Inicio({
         perfil: (perfil ?? null) as Perfil | null,
         logs: (logs ?? []) as Log[],
         descansos: (descansos ?? []) as ConfigDescanso[],
-        impulsos: (impulsos ?? null) as { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number } | null,
+        impulsos: (impulsos ?? null) as { vigentes?: string[]; ultimas?: string[]; quedan?: number; total?: number; tope?: number } | null,
         perdida: !!(verificacion as { perdida?: boolean } | null)?.perdida,
         deHoy: dh,
       });
@@ -623,6 +630,9 @@ export default function Inicio({
   };
   // La tira: la semana de calendario, salvo que una vida fresca haya caído antes del lunes.
   const semana = conEstado(diasDeLaTira(hoy, [...(vidaUsada?.dias ?? []), ...(helada?.fechas ?? [])]));
+  // EL COLOR DEL ARCO del descanso se decide ACÁ, en una línea: hoy, el del rango. Lo usan las
+  // dos pantallas grandes (la que corre y la de antes de empezar, 21/10).
+  const acentoDelDescanso = paletaDe(numeroDeRango(racha), null).principal;
 
   return (
     <View style={estilos.raiz} testID="pantalla-inicio">
@@ -726,11 +736,10 @@ export default function Inicio({
               </CadaSegundo>
             ) : (
               <Pressable
+                testID="boton-descansar"
                 style={estilos.chip}
-                onPress={() => {
-                  void sesion.descansarSuelto();
-                  setDescansoAbierto(true);
-                }}
+                // Lleva a la pantalla grande SIN ARRANCAR (21/10): ahí se eligen los minutos.
+                onPress={() => void sesion.duracionDelDescansoSuelto().then(setSinEmpezar)}
                 accessibilityRole="button"
               >
                 <Text style={estilos.chipTexto}>{T.sesion.descansar}</Text>
@@ -799,8 +808,8 @@ export default function Inicio({
       {impulsos && (
         <View style={estilos.impulsos} testID="vidas-inicio">
           <Text style={estilos.impulsosEt}>{T.impulso.titulo}</Text>
-          {Array.from({ length: impulsos.total }, (_, i) => (
-            <Estrella key={i} tam={16} modo={i < impulsos.quedan ? 'luz' : 'apagada'} />
+          {modosDeLasVidas(impulsos).map((modo, i) => (
+            <Estrella key={i} tam={16} modo={modo} />
           ))}
         </View>
       )}
@@ -891,6 +900,8 @@ export default function Inicio({
             repsUltimaVez={sesion.estado.bloques.ejercicio ? sesion.repsDeLaUltimaVezDe(sesion.estado.bloques.ejercicio) : null}
             pistaDeReps={sesion.estado.bloques.ejercicio ? sesion.pistaDeRepsDe(sesion.estado.bloques.ejercicio) : null}
             alElegirReps={sesion.elegirReps}
+            alElegirDistancia={sesion.elegirDistancia}
+            subirPesoDe={sesion.subirPesoDe}
             alSumar={sesion.serieHecha}
             alRestar={sesion.deshacerSerie}
             alSiguiente={sesion.bloqueSiguiente}
@@ -942,6 +953,7 @@ export default function Inicio({
               {/* "Seguir" se queda con el botón sólido: el que llegó acá sin
                   querer toca donde ya estaba tocando y no pasa nada. */}
               <Pressable style={estilos.solido} onPress={() => setTerminando(false)}>
+                <FondoOctogonal relleno="#c4c2ba" />
                 <Text style={estilos.textoSolido}>{T.sesion.seguir}</Text>
               </Pressable>
               <Pressable
@@ -969,6 +981,7 @@ export default function Inicio({
             </>
           ) : (
             <Pressable style={estilos.solido} onPress={() => setTerminando(true)}>
+              <FondoOctogonal relleno="#c4c2ba" />
               <Text style={estilos.textoSolido}>{T.sesion.terminar}</Text>
             </Pressable>
           )}
@@ -1082,6 +1095,7 @@ export default function Inicio({
       ) : (
         <>
           <Pressable style={estilos.solido} onPress={() => setRegistrarAbierto(true)}>
+            <FondoOctogonal relleno="#c4c2ba" />
             <Text style={estilos.textoSolido}>{sinNada ? T.inicio.registrarPrimerDia : T.inicio.registrarDia}</Text>
           </Pressable>
           {/* PEGADO AL PRINCIPAL, como en la web: el peso NO pasa por registrar
@@ -1140,6 +1154,7 @@ export default function Inicio({
           dias={vidaUsada.dias}
           quedan={vidaUsada.quedan}
           total={vidaUsada.total}
+          tope={vidaUsada.tope}
           semana={semanaDe(vidaUsada.dias[vidaUsada.dias.length - 1])}
           rango={numeroDeRango(racha)}
           alUsada={() => {
@@ -1182,12 +1197,35 @@ export default function Inicio({
         />
       )}
 
+      {sinEmpezar !== null && !sesion.estado.descanso && (
+        <Descanso
+          visible
+          vivo={{ fin: 0, duracion: sinEmpezar }}
+          acento={acentoDelDescanso}
+          sinEmpezar={{
+            alElegir: setSinEmpezar,
+            alEmpezar: () => {
+              const elegida = sinEmpezar;
+              setSinEmpezar(null);
+              setDescansoAbierto(true);
+              void sesion.descansarSuelto(elegida);
+            },
+          }}
+          alReiniciar={() => {}}
+          alSaltar={() => setSinEmpezar(null)}
+          alOcultar={() => setSinEmpezar(null)}
+          alSumar={() => {
+            setSinEmpezar(null);
+            void sesion.serieHecha();
+          }}
+        />
+      )}
+
       {sesion.estado.descanso && (
         <Descanso
           visible={descansoAbierto}
           vivo={sesion.estado.descanso}
-          // EL COLOR DEL ARCO se decide ACÁ, en una línea: hoy, el del rango.
-          acento={paletaDe(numeroDeRango(racha), null).principal}
+          acento={acentoDelDescanso}
           alReiniciar={sesion.reiniciarDescanso}
           alSaltar={() => {
             setDescansoAbierto(false);
@@ -1240,9 +1278,8 @@ const estilos = StyleSheet.create({
     marginRight: 4,
   },
 
+  // El fondo lo dibuja `FondoOctogonal`, con las esquinas cortadas (21/10).
   solido: {
-    backgroundColor: '#c4c2ba',
-    borderRadius: 2,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 34,

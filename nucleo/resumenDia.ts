@@ -51,6 +51,8 @@ export type EjercicioDelDia = {
   cargas?: Carga[];
   /** Los minutos, si es cardio (migración 76): se muestran en lugar de las series. */
   minutos?: number;
+  /** Los kilómetros del cardio, sumados, si se anotaron (migración 95). */
+  distancia?: number;
 };
 
 export type ResumenDelDia = {
@@ -130,7 +132,7 @@ export function resumenDelDia({
   let conFin = 0;
   let series = 0;
   let enCurso = false;
-  const porEjercicio = new Map<string, { series: number; pesos: (number | null)[]; cargas: Carga[]; minutos: number }>();
+  const porEjercicio = new Map<string, { series: number; pesos: (number | null)[]; cargas: Carga[]; minutos: number; distancia: number }>();
   const todos: ReturnType<typeof leerBloques> = [];
   const porRevisar: BloquePorRevisar[] = [];
 
@@ -159,12 +161,13 @@ export function resumenDelDia({
       // Un Map conserva el orden de la PRIMERA vez que aparece la clave, que
       // es justo lo que se quiere: press de banca, sentadilla, y si volviste
       // a banca al final, suma a la fila de banca y no crea otra.
-      const previo = porEjercicio.get(b.ejercicio) ?? { series: 0, pesos: [], cargas: [], minutos: 0 };
+      const previo = porEjercicio.get(b.ejercicio) ?? { series: 0, pesos: [], cargas: [], minutos: 0, distancia: 0 };
       porEjercicio.set(b.ejercicio, {
         series: previo.series + b.series,
         pesos: [...previo.pesos, ...b.pesos],
         cargas: [...previo.cargas, ...b.pesos.map(() => b.carga)],
         minutos: previo.minutos + (b.minutos ?? 0),
+        distancia: previo.distancia + (b.distancia ?? 0),
       });
     }
   }
@@ -176,6 +179,7 @@ export function resumenDelDia({
       e.cargas = x.cargas;
     }
     if (x.minutos > 0) e.minutos = x.minutos;
+    if (x.distancia > 0) e.distancia = Math.round(x.distancia * 100) / 100;
     return e;
   });
   const anotadas = ejercicios.reduce((t, e) => t + e.series, 0);

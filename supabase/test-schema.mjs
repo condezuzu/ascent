@@ -16434,13 +16434,14 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
   const r0 = EV.renglonDe(u201, 0);
   chequear('recién llegado: le faltan unos 90 s y no está "sin señal"', [r0.descanso >= 88 && r0.descanso <= 90, r0.sinSenal, r0.sinDatos, r0.serie, r0.meta], [true, false, false, 3, 4]);
   chequear('treinta segundos después, sin volver a preguntar, la cuenta bajó treinta', r0.descanso - EV.renglonDe(u201, 30_000).descanso, 30);
-  chequear('al terminar dice 0 (listo), y pasado un minuto deja de ser noticia', [EV.renglonDe(u201, 95_000).descanso, EV.renglonDe(u201, 200_000).descanso], [0, null]);
+  // Desde el 21/10, terminado sigue en 0 y cuenta lo que se pasa (ver la 311): ya no se apaga al minuto.
+  chequear('al terminar dice 0, y pasado un minuto sigue: cuenta lo que se pasa', [EV.renglonDe(u201, 95_000).descanso, EV.renglonDe(u201, 200_000).descanso, EV.renglonDe(u201, 200_000).pasado > 60], [0, 0, true]);
   chequear('sin novedades por más de dos minutos: sin señal', [EV.renglonDe(u201, 119_000).sinSenal, EV.renglonDe(u201, 125_000).sinSenal], [false, true]);
   // LA HORA DEL TELÉFONO NO ENTRA EN LA CUENTA: la función no la mira. Todo sale
   // de lo que mandó la base y de cuánto pasó, que se le pasa por parámetro. Así
   // dos teléfonos con la hora distinta ven la misma cuenta.
   chequear('la cuenta no lee el reloj del teléfono', /Date\.now|new Date\(\)/.test(EV.renglonDe.toString()), false);
-  chequear('aceptado y sin publicar todavía: "todavía no empezó", no un renglón vacío', EV.renglonDe({ ...u201, enVivo: null }, 0), { ejercicio: null, serie: 0, meta: 0, descanso: null, sinSenal: false, sinDatos: true });
+  chequear('aceptado y sin publicar todavía: "todavía no empezó", no un renglón vacío', EV.renglonDe({ ...u201, enVivo: null }, 0), { ejercicio: null, serie: 0, meta: 0, descanso: null, pasado: null, sinSenal: false, sinDatos: true });
   chequear('con quién tengo algo, para saber qué botón va', [EV.unionCon([u201], p)?.id, EV.unionCon([u201], q)], [u201.id, null]);
   chequear('basura de la base no rompe la pantalla', [EV.leerUniones(null), EV.leerUniones([{ id: 1 }, null, { id: 'x', estado: 'otra', otro: { id: 'y' }, ahora: '2026-10-12T10:00:00Z' }])], [[], []]);
   // LA SEGUNDA TRABA: aunque la base mandara lo que hace alguien que todavía no
@@ -16931,7 +16932,11 @@ console.log('\n206. La pantalla del descanso: qué se estaba haciendo, el arco, 
     /\{r\.descanso !== null \? \([\s\S]*?\) : r\.sinSenal \? \(/.test(c206),
     /useSesion|sesionCache|@compartido\/cola/.test(c206),
   ], [true, true, true, true, false]);
-  chequear('el color del arco se decide en un solo lugar', (de206('movil', 'src', 'Inicio.tsx').match(/<Descanso[\s\S]{0,200}?acento=\{paletaDe\(numeroDeRango\(racha\), null\)\.principal\}/g) ?? []).length, 1);
+  // Desde el 21/10 son dos pantallas (la que corre y la de antes de empezar): el color, una vez.
+  chequear('el color del arco se decide en un solo lugar', [
+    (de206('movil', 'src', 'Inicio.tsx').match(/const acentoDelDescanso = paletaDe\(numeroDeRango\(racha\), null\)\.principal;/g) ?? []).length,
+    (de206('movil', 'src', 'Inicio.tsx').match(/<Descanso[\s\S]{0,200}?acento=\{acentoDelDescanso\}/g) ?? []).length,
+  ], [1, 2]);
 }
 
 console.log('\n202. "Volver" anda siempre, también cuando la app arrancó por un enlace');
@@ -18497,10 +18502,11 @@ console.log('\n232. Los globitos: flotan, un renglón, y "ya puedes subir el pes
   const { readFileSync: leer232 } = await import('node:fs');
   const de232 = (...p) => leer232(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
   const globito = de232('movil', 'src', 'Globito.tsx');
-  chequear('el globito no ocupa lugar (ancla de alto cero, globo encima), es de un renglón y lo usan los de primera vez y el de subir', [
+  chequear('el globito no ocupa lugar (ancla de alto cero, globo encima), es de dos renglones como mucho y lo usan los de primera vez y el de subir', [
     /ancla: \{ height: 0, zIndex: 30, elevation: 30 \}/.test(globito),
     /globo: \{\n    position: 'absolute',/.test(globito),
-    /numberOfLines=\{1\}/.test(globito),
+    // Dos desde el 21/10: el aviso de subir el peso dice el rango (la regla 2 por 2).
+    /numberOfLines=\{2\}/.test(globito),
     // Los de primera vez, desde el 15/10, son el globo de cómic con su cola (ver la 249).
     /return <GloboComic texto=\{children\} alCerrar=\{cerrar\}/.test(de232('movil', 'src', 'GloboPrimeraVez.tsx')),
     /<Globito\n          testID="globito-subir"/.test(de232('movil', 'src', 'Bloque.tsx')),
@@ -18764,7 +18770,8 @@ console.log('\n239. Cacería del 15/10, vuelta 5: lo de otro aparato con −, Te
   const mi = de239('movil', 'src', 'MiRutina.tsx');
   chequear('Tu rutina: el nombre va a SU rutina; no dice "no hay rutina" antes de saber; copiar es de a un toque; activar y borrar escriben la copia del teléfono', [
     /onChangeText=\{\(texto\) => \(nombreTipeado\.current = \{ id: actual\.id, texto \}\)\}/.test(mi),
-    /setNoCargo\(hay && !mias\);\n    setGuardadas\(hay\);/.test(mi),
+    // Desde el 21/10 sale de la precarga de Stats (\`p\`): la misma regla.
+    /setNoCargo\(p\.hay && !mias\);\n    setGuardadas\(p\.hay\);/.test(mi),
     /if \(!rutina \|\| copiando\.current( \|\| elegidos\.length === 0)?\) return;/.test(de239('movil', 'src', 'RutinaDe.tsx')),
     /if \(ok && dias\) await guardarActiva\(/.test(de239('compartido', 'rutinas.ts')),
     /if \(ok && \(await idDeLaActiva\(\)\) === id\) await guardarActiva\(\[\]\);/.test(de239('compartido', 'rutinas.ts')),
@@ -20483,7 +20490,7 @@ console.log('\n299. La migración 94: la base guarda las repeticiones de cada se
   ])])).rows[0].b.bloques;
   chequear('la base guarda las repeticiones limpias: una por serie como mucho, enteros de 1 a 999; nada si no queda ninguna, ni en el cardio', g299.map((b) => b.reps ?? 'sin llave'), [[12, null, 8], 'sin llave', 'sin llave', [null, 999]]);
   chequear('y lo de antes sigue igual: pesos, modo y minutos', [g299[0].pesos.map(Number), g299[0].carga, g299[2].minutos], [[60, 60, 60], 'total', 20]);
-  chequear('la base está en la 94', (await db.query('select version_del_esquema() as v')).rows[0].v, 94);
+  chequear('la base está en la 94 o después', (await db.query('select version_del_esquema() as v')).rows[0].v >= 94, true);
 }
 console.log('\n300. Las repeticiones de cada serie, con «Registrar repeticiones» (21/10)');
 {
@@ -20568,7 +20575,8 @@ console.log('\n302. Las vidas son estrellas: en Inicio, arriba de los días; en 
   const sinCom302 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
   const ini = sinCom302(deBug('movil', 'src', 'Inicio.tsx'));
   chequear('Inicio: una estrella por vida, llena la que queda y en contorno la usada, y ni un punto', [
-    /<Estrella key=\{i\} tam=\{16\} modo=\{i < impulsos\.quedan \? 'luz' : 'apagada'\} \/>/.test(ini),
+    // Desde el 21/10 la fila son las tres, con la que falta ganar punteada (ver la 308).
+    /modosDeLasVidas\(impulsos\)\.map\(\(modo, i\) => \(\s*<Estrella key=\{i\} tam=\{16\} modo=\{modo\} \/>/.test(ini),
     /estilos\.impulsoVivo|impulso: \{ width: 7/.test(ini),
   ], [true, false]);
   chequear('y la fila va arriba de los días', [ini.indexOf('testID="vidas-inicio"') > -1, ini.indexOf('testID="vidas-inicio"') < ini.indexOf('testID="tira-inicio"')], [true, true]);
@@ -20587,7 +20595,7 @@ console.log('\n303. En Estadísticas las vidas también son estrellas (21/10)');
   const sinCom303 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
   const sg = sinCom303(deBug('movil', 'src', 'StatsGeneral.tsx'));
   chequear('la misma estrella que Inicio, llena la que queda y en contorno la usada, y ni un punto', [
-    /<Estrella key=\{i\} tam=\{16\} modo=\{i < vidas\.quedan \? 'luz' : 'apagada'\} \/>/.test(sg),
+    /modosDeLasVidas\(vidas\)\.map\(\(modo, i\) => \(\s*<Estrella key=\{i\} tam=\{16\} modo=\{modo\} \/>/.test(sg),
     /estilos\.vidaViva|vida: \{ width: 9/.test(sg),
   ], [true, false]);
 }
@@ -20634,6 +20642,206 @@ console.log('\n304. La revisión del 21/10: nada escrito a mano en la nativa, y 
     IM304.celdaDeLaProximaVida({ quedan: 1, total: 3, falta: null }),
   ], [20, 5, 'llenas', null]);
   chequear('y Stats la usa', /const c = celdaDeLaProximaVida\(vidas\);/.test(sinCom304(deBug('movil', 'src', 'Stats.tsx'))), true);
+}
+console.log('\n305. La migración 95: la distancia del cardio y las repeticiones objetivo de la rutina (21/10)');
+{
+  const u305 = await nuevoUsuario();
+  await comoUsuario(u305);
+  const ses305 = (await db.query('select iniciar_sesion() as s')).rows[0].s;
+  await db.query('select fijar_series($1, 4)', [ses305.id]);
+  const g305 = (await db.query('select fijar_bloques($1, $2::jsonb) as b', [ses305.id, JSON.stringify([
+    { ejercicio: 'cinta', series: 1, minutos: 25, distancia: 4.567 },
+    { ejercicio: 'correr', series: 1, minutos: 30, distancia: 900 },
+    { ejercicio: 'caminar', series: 1, minutos: 20, distancia: 0 },
+    { ejercicio: 'press_banca', series: 2, pesos: [60, 60], distancia: 3 },
+  ])])).rows[0].b.bloques;
+  chequear('la base guarda la distancia del cardio en centésimas, topada en 500 km; cero no es una distancia; un ejercicio con peso no la lleva', g305.map((b) => (b.distancia === undefined ? 'sin llave' : Number(b.distancia))), [4.57, 500, 'sin llave', 'sin llave']);
+  const id305 = (await db.query('select guardar_rutina(null, $1, $2::jsonb) as id', ['Con objetivo', JSON.stringify([
+    { descanso: false, ejercicios: [] },
+    { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4, reps: 8 }, { ejercicio: 'sentadilla', series: 3, reps: 0 }, { ejercicio: 'remo_barra', series: 3, reps: 12.4 }, { ejercicio: 'cinta', series: 1, minutos: 20 }] },
+    { descanso: true, ejercicios: [] }, { descanso: false, ejercicios: [] }, { descanso: false, ejercicios: [] }, { descanso: false, ejercicios: [] }, { descanso: false, ejercicios: [] },
+  ])])).rows[0].id;
+  const r305 = (await db.query('select mis_rutinas() as v')).rows[0].v.find((r) => r.id === id305);
+  chequear('la rutina guarda las repeticiones objetivo de 1 a 100, enteras; 0 no es un objetivo', r305.dias[1].ejercicios.map((e) => e.reps ?? 'sin llave'), [8, 'sin llave', 12, 'sin llave']);
+  chequear('la base está en la 95', (await db.query('select version_del_esquema() as v')).rows[0].v, 95);
+}
+console.log('\n306. El separador decimal sigue al idioma: 70,0 en español y 70.0 en inglés; lo escrito se lee igual (21/10)');
+{
+  const TX306 = await import('../nucleo/textos.ts');
+  const { EN: EN306 } = await import('../nucleo/textos-en.ts');
+  const P306 = await import('../nucleo/peso.ts');
+  const C306 = await import('../nucleo/campoPeso.ts');
+  const F306 = await import('../nucleo/fuerza.ts');
+  const ver = () => [
+    P306.conComa((70).toFixed(1)), P306.pesoCorto(61.25, 'kg'), C306.textoDelCampo(62.5, 'kg'), F306.redondear(102.5),
+    C306.pesoEscrito('70.5', 'kg'), C306.pesoEscrito('70,5', 'kg'), C306.confirmarCampo('80.25', null, 'kg').kg, C306.confirmarCampo('80,25', null, 'kg').kg,
+  ];
+  const enEspanol = ver();
+  TX306.usarTextos(EN306);
+  const enIngles = ver();
+  TX306.usarTextos(TX306.TEXTOS_ES);
+  chequear('en español con coma y en inglés con punto, y lo que se escribe con punto o con coma se lee igual en los dos', [enEspanol, enIngles, TX306.T.idioma], [
+    ['70,0', '61,25', '62,5', '102,5', 70.5, 70.5, 80.25, 80.25],
+    ['70.0', '61.25', '62.5', '102.5', 70.5, 70.5, 80.25, 80.25],
+    'es',
+  ]);
+}
+console.log('\n307. El cardio: un cronómetro que cuenta para arriba, y la distancia (21/10)');
+{
+  const B307 = await import('../nucleo/bloques.ts');
+  const D307 = await import('../nucleo/distancia.ts');
+  const RD307 = await import('../nucleo/resumenDia.ts');
+  const sinCom307 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  // ---- EL ESTADO ----
+  let e = B307.bloquesVacios('cinta');
+  e = B307.cerrarVueltaDeCardio(B307.arrancarCardio(e, 0), 25 * 60000);
+  e = B307.sumar(e);
+  e = B307.cambiarDistancia(e, '4,567');
+  const enCurso = [e.minutos, e.distancia];
+  const cerrado = B307.siguiente(e);
+  chequear('la vuelta se anota con su distancia (en centésimas); al cerrarla, la distancia va con el bloque y el que sigue arranca sin', [
+    enCurso, cerrado.cerrados[0].distancia, cerrado.distancia ?? null, B307.paraGuardar(e)[0],
+  ], [[25, 4.57], 4.57, null, { ejercicio: 'cinta', series: 1, minutos: 25, distancia: 4.57 }]);
+  chequear('cero, vacío o basura no son una distancia, y se topa en 500', [B307.distanciaValida(0), B307.distanciaValida(''), B307.distanciaValida('x'), B307.distanciaValida(900)], [null, null, null, 500]);
+  const vuelta = B307.unirConGuardados([{ ejercicio: 'cinta', series: 1, minutos: 30, distancia: 5 }], B307.bloquesVacios());
+  const otro = B307.cambiarEjercicio(B307.cambiarDistancia(B307.bloquesVacios('cinta'), 3), 'press_banca');
+  chequear('vuelve de la base con su distancia; al cambiar de ejercicio no pasa al nuevo; sin anotarla, ni una llave', [
+    vuelta.distancia, 'distancia' in otro, 'distancia' in B307.paraGuardar(B307.sumar(B307.bloquesVacios('cinta')))[0],
+  ], [5, false, false]);
+
+  // ---- LAS UNIDADES ----
+  chequear('en kilómetros para quien pesa en kilos y en millas para quien pesa en libras; lo escrito se lee con punto o coma', [
+    D307.unidadDeDistancia('kg'), D307.unidadDeDistancia('lb'), D307.kmEscritos('5', 'km'), D307.kmEscritos('3,1', 'mi'), D307.kmEscritos('3.1', 'mi'), D307.distanciaCorta(4.99, 'mi'),
+  ], ['km', 'mi', 5, 4.99, 4.99, '3,1']);
+
+  // ---- EL RESUMEN DEL DÍA ----
+  const res307 = RD307.resumenDelDia({ log: null, sesiones: [{ id: 's', estado: 'terminada', inicio: '2026-10-21T10:00:00Z', fin: '2026-10-21T11:00:00Z', bloques: [{ ejercicio: 'cinta', series: 1, minutos: 20, distancia: 3 }, { ejercicio: 'cinta', series: 1, minutos: 10, distancia: 1.5 }] }], catalogo: new Map([['cinta', 'Cinta']]), esFuturo: false, esDescansoConfigurado: false, ejercicioSinNombre: '?' });
+  chequear('el día suma los minutos y los kilómetros del cardio', [res307.ejercicios[0].minutos, res307.ejercicios[0].distancia], [30, 4.5]);
+
+  // ---- LA PANTALLA ----
+  // La prueba de verdad es la de test:real (probar-cardio): el reloj en 0:00 antes de arrancar,
+  // contando para arriba después, y la distancia que llega a la base.
+  const blo307 = sinCom307(deBug('movil', 'src', 'Bloque.tsx'));
+  chequear('antes de arrancar, el reloj en 0:00 y la meta de la rutina; los minutos se corrigen recién después de la vuelta', [
+    /esTiempo && !corriendoCardio && estado\.hechas === 0 && \(\s*<View testID="cronometro-cardio-quieto"/.test(blo307),
+    /\{cronoLindo\(0\)\}/.test(blo307),
+    /esTiempo && !corriendoCardio && estado\.hechas > 0 && \(\s*<View testID="minutos-de-cardio"/.test(blo307),
+  ], [true, true, true]);
+}
+console.log('\n308. Las vidas: se dibujan las tres, también la que falta ganar (21/10)');
+{
+  // «En el teléfono de mis amigos dice que tiene 2 vidas máximo»: el número sale de
+  // mis_impulsos (impulsos_ganados: dos, y la tercera con racha de 20) y la fila dibujaba solo
+  // las ganadas. La regla no cambia; ahora se ve que hay una tercera.
+  const IM308 = await import('../nucleo/impulsos.ts');
+  chequear('las tres: las que quedan llenas, las usadas en contorno, la que falta ganar punteada', [
+    IM308.modosDeLasVidas({ quedan: 2, total: 2, tope: 3 }),
+    IM308.modosDeLasVidas({ quedan: 1, total: 2, tope: 3 }),
+    IM308.modosDeLasVidas({ quedan: 3, total: 3, tope: 3 }),
+    IM308.modosDeLasVidas({ quedan: 0, total: 3, tope: 3 }),
+    IM308.modosDeLasVidas({ quedan: 2, total: 2 }),
+  ], [
+    ['luz', 'luz', 'porGanar'], ['luz', 'apagada', 'porGanar'], ['luz', 'luz', 'luz'], ['apagada', 'apagada', 'apagada'], ['luz', 'luz'],
+  ]);
+  const vidas308 = (await db.query(`select pg_get_functiondef('public.mis_impulsos()'::regprocedure) as f`)).rows[0].f;
+  chequear('la base manda el tope junto con las ganadas', /'tope', impulsos_tope\(\)/.test(vidas308), true);
+  const av308 = deBug('movil', 'src', 'RachaSalvada.tsx');
+  chequear('el aviso también dibuja la que falta ganar', /length: Math\.max\(0, \(tope \?\? total\) - total\)[\s\S]{0,120}modo="porGanar"/.test(av308), true);
+}
+console.log('\n309. Subir el peso con la regla 2 por 2: dos sesiones seguidas con la última serie 2 por encima del objetivo (21/10)');
+{
+  const DD = await import('../nucleo/dosPorDos.ts');
+  const RS = await import('../nucleo/rutinas.ts');
+  const ses = (fecha, reps, pesos = [60, 60, 60]) => ({ fecha, bloques: [{ ejercicio: 'press_banca', series: 3, pesos, reps }] });
+  const hoy = '2026-10-21';
+  const dos = [ses('2026-10-16', [10, 10, 10]), ses('2026-10-19', [10, 9, 10])];
+  const s1 = DD.dosPorDos(dos, 'press_banca', 8, 'pecho', hoy);
+  chequear('avisa: la última serie con 2 o más sobre el objetivo, en las dos últimas sesiones; tren superior, de 2 a 5 %', s1, { peso: 60, desde: 61.2, hasta: 63, porcentaje: [2, 5] });
+  chequear('no avisa si una de las dos quedó por debajo, si no tiene repeticiones anotadas, sin objetivo, con una sola sesión', [
+    DD.dosPorDos([ses('2026-10-16', [10, 10, 10]), ses('2026-10-19', [10, 10, 9])], 'press_banca', 8, 'pecho', hoy),
+    DD.dosPorDos([ses('2026-10-16', [10, 10, 10]), ses('2026-10-19', undefined)], 'press_banca', 8, 'pecho', hoy),
+    DD.dosPorDos(dos, 'press_banca', undefined, 'pecho', hoy),
+    DD.dosPorDos([ses('2026-10-19', [12, 12, 12])], 'press_banca', 8, 'pecho', hoy),
+  ], [null, null, null, null]);
+  chequear('las de hoy no cuentan (es la sesión en curso), y mira las DOS ÚLTIMAS: una vieja que cumplía no alcanza', [
+    DD.dosPorDos([ses('2026-10-19', [10, 10, 10]), ses(hoy, [10, 10, 10])], 'press_banca', 8, 'pecho', hoy),
+    DD.dosPorDos([ses('2026-10-10', [10, 10, 10]), ses('2026-10-16', [8, 8, 8]), ses('2026-10-19', [10, 10, 10])], 'press_banca', 8, 'pecho', hoy),
+  ], [null, null]);
+  chequear('tren inferior de 5 a 10 %; el rango se dice redondeado a lo que se carga, sin salirse', [
+    DD.porcentajesDeSubida('piernas'), DD.porcentajesDeSubida('espalda'),
+    DD.dosPorDos([ses('2026-10-16', [10, 10, 10], [100, 100, 100]), ses('2026-10-19', [10, 10, 10], [100, 100, 100])], 'press_banca', 8, 'piernas', hoy)?.porcentaje,
+    DD.rangoParaMostrar(s1, 'kg'),
+  ], [[5, 10], [2, 5], [5, 10], [61.5, 63]]);
+
+  // ---- EL OBJETIVO EN LA RUTINA ----
+  let dias = RS.semanaVacia();
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4 }, { ejercicio: 'cinta', series: 0, minutos: 20 }] };
+  const vueltas = [];
+  for (let i = 0; i < 8; i++) {
+    dias = RS.siguienteObjetivo(dias, 1, 0);
+    vueltas.push(dias[1].ejercicios[0].reps ?? null);
+  }
+  chequear('el chip pasa por 5, 6, 8, 10, 12, 15, 20 y vuelve a ninguno; el cardio no tiene', [vueltas, RS.siguienteObjetivo(dias, 1, 1)[1].ejercicios[1].reps ?? null], [[5, 6, 8, 10, 12, 15, 20, null], null]);
+  dias = RS.siguienteObjetivo(RS.siguienteObjetivo(RS.siguienteObjetivo(dias, 1, 0), 1, 0), 1, 0);
+  chequear('los objetivos de la rutina, por ejercicio', RS.objetivosDeRepeticiones(dias), { press_banca: 8 });
+  // El teléfono limpia igual que la base (rutina_dias_limpios, migración 95).
+  const crudo = [{ descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 4, reps: 8 }, { ejercicio: 'remo_barra', series: 3, reps: 0 }, { ejercicio: 'sentadilla', series: 3, reps: 12.4 }, { ejercicio: 'curl_biceps', series: 3, reps: 101 }] }];
+  const enLaBase = (await db.query('select rutina_dias_limpios($1::jsonb) as d', [JSON.stringify(crudo)])).rows[0].d[0].ejercicios.map((e) => e.reps ?? null);
+  chequear('las repeticiones objetivo se limpian igual en el teléfono que en la base', [RS.diasLimpios(crudo)[0].ejercicios.map((e) => e.reps ?? null), enLaBase], [[8, null, 12, null], [8, null, 12, null]]);
+
+  // ---- LA PANTALLA ----
+  const blo309 = deBug('movil', 'src', 'Bloque.tsx');
+  chequear('el globito usa la regla nueva y ya no la de "el mismo peso entero dos veces"', [
+    /const subirPeso = estado\.ejercicio && subirPesoDe \? subirPesoDe\(estado\.ejercicio, actual\?\.grupo \?\? null\) : null;/.test(blo309),
+    /r\.paraSubir/.test(blo309),
+  ], [true, false]);
+  const h309 = await escenarioDeSesion('dosPorDos');
+  chequear('con el hook de verdad: el objetivo sale de la rutina activa y el aviso de las dos sesiones anteriores', h309.fallo ?? h309.subir, { peso: 60, desde: 61.2, hasta: 63, porcentaje: [2, 5] });
+}
+console.log('\n310. El peso máximo de cada ejercicio, con las repeticiones con las que se hizo (21/10)');
+{
+  const V310 = await import('../nucleo/volumen.ts');
+  const cat = [
+    { id: 'press_banca', nombre: 'Press de banca', grupo: 'pecho', cuenta_dots: true },
+    { id: 'remo_barra', nombre: 'Remo con barra', grupo: 'espalda' },
+    { id: 'curl_biceps', nombre: 'Curl', grupo: 'brazos' },
+  ];
+  const ses = [
+    { fecha: '2026-10-10', bloques: [{ ejercicio: 'press_banca', series: 3, pesos: [80, 85, 85], reps: [8, 6, 5] }, { ejercicio: 'remo_barra', series: 2, pesos: [60, 70] }] },
+    { fecha: '2026-10-15', bloques: [{ ejercicio: 'press_banca', series: 2, pesos: [85, 80], reps: [7, 9] }, { ejercicio: 'curl_biceps', series: 2, pesos: [20, 20], reps: [10, 12] }] },
+  ];
+  const marcas = [{ ejercicio: 'remo_barra', peso: 70, reps: 4, fecha: '2026-10-20' }];
+  const filas = Object.fromEntries(V310.maximosDelCatalogo(ses, marcas, cat).flatMap((g) => g.filas).map((f) => [f.ejercicio, f.maximo && [f.maximo.peso, f.maximo.reps ?? null, f.maximo.fecha]]));
+  chequear('el máximo con sus repeticiones: con el mismo peso, las más que se hicieron (y la fecha de la primera vez); de una marca, las suyas; sin anotar, ninguna', [
+    filas.press_banca, filas.curl_biceps, filas.remo_barra,
+  ], [[85, 7, '2026-10-10'], [20, 12, '2026-10-15'], [70, 4, '2026-10-10']]);
+  const st310 = deBug('movil', 'src', 'Stats.tsx');
+  chequear('Stats las pide de las marcas y las muestra al lado del peso', [
+    /from\('prs'\)\.select\('ejercicio, peso, reps, fecha'\)/.test(st310),
+    /\+ \(f\.maximo\.reps \? T\.volumen\.conReps\(f\.maximo\.reps\) : ''\)/.test(st310),
+  ], [true, true]);
+}
+console.log('\n311. El descanso de otro, terminado: «+0:08» contando, no tres puntitos (21/10)');
+{
+  const EV311 = await import('../nucleo/enVivo.ts');
+  const u = (finEnS, actualizadoHaceS = 200) => ({
+    otro: { id: 'b', username: 'b', avatar_url: null }, estado: 'aceptada', ahora: 1_000_000_000,
+    enVivo: { ejercicio: 'press_banca', serie: 1, meta: 3, descansoFin: finEnS === null ? null : 1_000_000_000 + finEnS * 1000, actualizado: 1_000_000_000 - actualizadoHaceS * 1000 },
+  });
+  const r = (finEnS, pasaron = 0) => {
+    const x = EV311.renglonDe(u(finEnS), pasaron);
+    return [x.descanso, x.pasado];
+  };
+  chequear('descansando: lo que falta; terminado: 0 y lo que se pasa, también después del minuto y aunque esté «sin señal»; pasada la media hora, nada', [
+    r(90), r(0), r(-8), r(-300), r(-31 * 60), r(null), r(5, 9000),
+  ], [[90, null], [0, 0], [0, 8], [0, 300], [null, null], [null, null], [0, 4]]);
+  const tira = deBug('movil', 'src', 'TiraDelGrupo.tsx');
+  chequear('la tira de Inicio, Juntos y el compañero del descanso dicen «+M:SS» en vez de «Listo»', [
+    /\? `\+\$\{cuentaAtras\(r\.pasado \?\? 0\)\}`/.test(tira),
+    /r\.descanso === 0 \? `\+\$\{cuentaAtras\(r\.pasado \?\? 0\)\}`/.test(deBug('movil', 'src', 'Juntos.tsx')),
+    /r\.descanso === 0 \? `\+\$\{cuentaAtras\(r\.pasado \?\? 0\)\}`/.test(deBug('movil', 'src', 'CompaneroEnDescanso.tsx')),
+  ], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

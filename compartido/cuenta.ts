@@ -10,6 +10,7 @@ import { borrarDescanso } from '@compartido/descanso';
 import { borrarPerfilCache } from '@compartido/cache';
 import { borrarSesionCache } from '@compartido/sesionCache';
 import { olvidarViva } from '@compartido/sesionViva';
+import { olvidarRutinaPrecargada } from '@compartido/rutinaPrecargada';
 import { olvidarAvisosRemotos } from '@compartido/avisosRemotos';
 import { olvidarMiPerfil } from '@compartido/perfil';
 import { olvidarFirmas } from '@compartido/firmas';
@@ -83,6 +84,7 @@ export async function limpiarAlSalir() {
   await Promise.all(DE_LA_SESION.map((clave) => plataforma.almacenamiento.borrar(clave)));
   await borrarPerfilCache();
   olvidarMiPerfil();
+  olvidarRutinaPrecargada();
 }
 
 /**

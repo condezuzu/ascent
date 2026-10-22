@@ -32,6 +32,7 @@ import CalendarioDias from './CalendarioDias';
 import KilosPorSemana from './KilosPorSemana';
 import { useRecargarAlVolver } from './irAPestana';
 import MiRutina from './MiRutina';
+import { precargarRutina } from '@compartido/rutinaPrecargada';
 import { eventos } from '@compartido/eventos';
 import { ABRIR_ENTRENAMIENTO, seAcabaDePedir } from './abrirEntrenamiento';
 import { paletaDe } from '@nucleo/paletas';
@@ -112,13 +113,15 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     if (yo.estado === 'sin') return alSalir();
     if (yo.estado === 'no-se') return setError(T.inicio.noCargo);
     const uid = yo.uid;
+    // «Tu rutina» junto con lo demás (21/10): así Entrenamiento no la espera al abrirse.
+    void precargarRutina(supabase);
     const [{ data: perfil }, { data: logs }, { data: ses }, { data: cat }, { data: prs }, { data: ws }, vid] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).single(),
       supabase.from('logs').select('*').eq('user_id', uid).order('fecha'),
       supabase.from('sesiones').select('id, bloques, logs(fecha)').eq('user_id', uid),
       supabase.from('ejercicios').select('*'),
       // Solo las mías: la RLS también deja leer las de los amigos.
-      supabase.from('prs').select('ejercicio, peso, fecha').eq('user_id', uid),
+      supabase.from('prs').select('ejercicio, peso, reps, fecha').eq('user_id', uid),
       supabase.from('weights').select('fecha, valor').eq('user_id', uid).order('fecha'),
       supabase.rpc('mis_impulsos'),
     ]);
@@ -145,6 +148,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           ? {
               quedan: Number(vid.data.quedan),
               total: Number(vid.data.total),
+              tope: Number(vid.data.tope ?? vid.data.total),
               vuelve: (vid.data.vuelve as string | null) ?? null,
               falta: vid.data.falta_para_ganar === null ? null : Number(vid.data.falta_para_ganar),
             }
@@ -446,7 +450,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                                   pesoCorto(f.maximo.peso, unidad),
                                   unidad,
                                   claveDeEtiqueta(f.maximo.carga, f.ejercicio)
-                                )
+                                ) + (f.maximo.reps ? T.volumen.conReps(f.maximo.reps) : '')
                               : T.volumen.nada}
                           </Text>
                         </View>

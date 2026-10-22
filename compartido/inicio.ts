@@ -51,6 +51,8 @@ export type DatosDeInicio = {
     ultimas?: string[];
     quedan?: number;
     total?: number;
+    /** Las que se pueden tener (tres): la que falta ganar también se dibuja (21/10). */
+    tope?: number;
   } | null;
   fuerza: MiFuerza | null;
   perdida: { perdida?: boolean } | null;

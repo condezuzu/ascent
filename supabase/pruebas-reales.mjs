@@ -44,6 +44,20 @@
 //      peso, con la pista de la última sesión, que se vacía con el + (21/10), en la nativa.
 //  16. probar-estrellas — las vidas son estrellas: en Inicio, arriba de los días; en el aviso,
 //      arriba, en el cuadro y dentro de «Usar vida» (21/10), en la nativa.
+//  17. probar-cardio — el cardio es un cronómetro (0:00 quieto, cuenta para arriba) y anota la
+//      distancia de la vuelta (21/10), en la nativa.
+//  18. probar-octogonos — los botones de Inicio y del bloque tienen las esquinas cortadas en
+//      diagonal (21/10), en la nativa.
+//  19. probar-dos-por-dos — el aviso de subir el peso con la regla 2 por 2: avisa con el rango,
+//      y no avisa si la última serie no llegó al objetivo + 2 (21/10), en la nativa.
+//  20. probar-maximo-reps — en Stats, el peso máximo de cada ejercicio con sus repeticiones
+//      («90 kg × 5»), con una marca de verdad (21/10), en la nativa.
+//  21. probar-aviso-globo — el aviso de «Novedad» es un globo que no ocupa lugar ni tapa el
+//      botón principal, y entrenando no sale (21/10), en la nativa.
+//  22. probar-descansar — «Descansar» abre el cronómetro grande quieto: se eligen los minutos
+//      y recién «Empezar descanso» lo arranca (21/10), en la nativa.
+//  23. probar-rutina-stats — «Tu rutina» en Stats está apenas se abre Entrenamiento y no
+//      empuja lo de abajo después (21/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -81,6 +95,13 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'el arranque', archivo: 'probar-arranque.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'registrar repeticiones', archivo: 'probar-reps.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'las vidas son estrellas', archivo: 'probar-estrellas.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'el cardio', archivo: 'probar-cardio.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'los botones en octágono', archivo: 'probar-octogonos.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'subir el peso, 2 por 2', archivo: 'probar-dos-por-dos.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'el máximo con sus repeticiones', archivo: 'probar-maximo-reps.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'el aviso como globo', archivo: 'probar-aviso-globo.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'descansar sin arrancar', archivo: 'probar-descansar.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la rutina en Stats, sin saltar', archivo: 'probar-rutina-stats.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

@@ -12,12 +12,16 @@ import {
   quitarEjercicio,
   semanaVacia,
   moverEjercicio,
+  siguienteObjetivo,
   type DiaDeSemana,
   type Rutina,
 } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
+import { disponible } from '@nucleo/esquema';
+import { useVersionDelEsquema } from '@compartido/esquema';
 import { nombreVisible } from '@nucleo/propios';
 import { miId } from '@compartido/quienSoy';
+import { precargarRutina, rutinaPrecargada } from '@compartido/rutinaPrecargada';
 import {
   activarRutina,
   borrarRutina,
@@ -45,6 +49,11 @@ import { copiarDiaAlPortapapeles, useDiaCopiado } from './portapapelesDeDia';
  * CADA CAMBIO SE GUARDA EN EL ACTO y, si la base no contesta, se vuelve atrás y
  * se dice: es una pantalla para planificar, no para el subsuelo.
  */
+/** Los nombres, grupos y cómo se mide cada ejercicio, para dibujar la rutina. */
+function catalogoDe(filas: Ejercicio[]): CatalogoDeRutina {
+  return new Map((filas as (Ejercicio & { mide?: string | null })[]).map((e) => [e.id, { nombre: e.nombre, grupo: e.grupo ?? null, mide: e.mide === 'tiempo' ? 'tiempo' : 'series' }]));
+}
+
 export default function MiRutina({
   visible,
   alArrastrar,
@@ -55,22 +64,31 @@ export default function MiRutina({
   alArrastrar?: (si: boolean) => void;
   abrirHoy?: boolean;
 }) {
+  // El chip de las repeticiones objetivo, con la migración 95.
+  const conObjetivo = disponible('distanciaYObjetivo', useVersionDelEsquema());
   // Dónde está el nombre del entrenamiento, para que el globito de la rutina salga de él.
   const [nombreEn, setNombreEn] = useState({ x: 0, ancho: 0 });
-  const [guardadas, setGuardadas] = useState<boolean | null>(null);
-  const [rutinas, setRutinas] = useState<Rutina[]>([]);
-  const [deducida, setDeducida] = useState<DiaDeSemana[] | null>(null);
-  const [sel, setSel] = useState<string | null>(null);
+  // CON LO QUE YA PIDIÓ STATS (21/10): se dibuja de una, sin aparecer de golpe después.
+  const [guardadas, setGuardadas] = useState<boolean | null>(() => rutinaPrecargada()?.hay ?? null);
+  const [rutinas, setRutinas] = useState<Rutina[]>(() => rutinaPrecargada()?.mias ?? []);
+  const [deducida, setDeducida] = useState<DiaDeSemana[] | null>(() => rutinaPrecargada()?.deducida ?? null);
+  const [sel, setSel] = useState<string | null>(() => {
+    const mias = rutinaPrecargada()?.mias;
+    return (mias?.find((r) => r.activa) ?? mias?.[0])?.id ?? null;
+  });
   const [editando, setEditando] = useState(false);
-  const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(new Map());
-  const [lista, setLista] = useState<Ejercicio[]>([]);
+  const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(() => catalogoDe(rutinaPrecargada()?.ejercicios ?? []));
+  const [lista, setLista] = useState<Ejercicio[]>(() => rutinaPrecargada()?.ejercicios ?? []);
   const [eligiendoPara, setEligiendoPara] = useState<number | null>(null);
   // COPIAR UN DÍA (16/10): se copia y se pega en otro, de esta rutina o de otra (ver `portapapelesDeDia`).
   const copiado = useDiaCopiado();
   const [recienCopiado, setRecienCopiado] = useState<{ rutina: string; dia: number } | null>(null);
   const [preguntaPegar, setPreguntaPegar] = useState<number | null>(null);
   const [preguntaBorrar, setPreguntaBorrar] = useState(false);
-  const [noCargo, setNoCargo] = useState(false);
+  const [noCargo, setNoCargo] = useState(() => {
+    const p = rutinaPrecargada();
+    return !!p && p.hay && !p.mias;
+  });
   // El día con ejercicios que se va a pasar a descanso: se pregunta antes de sacarlos.
   const [preguntaDescanso, setPreguntaDescanso] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -79,29 +97,32 @@ export default function MiRutina({
   // su nombre. Volver a traer las rutinas por eso pisaba lo que se acababa de tocar.
   const cargarCatalogo = useCallback(async () => {
     const { data: ejercicios } = await supabase.from('ejercicios').select('*');
-    const filas = (ejercicios ?? []) as (Ejercicio & { mide?: string | null })[];
+    const filas = (ejercicios ?? []) as Ejercicio[];
     setLista(filas);
-    setCatalogo(new Map(filas.map((e) => [e.id, { nombre: e.nombre, grupo: e.grupo ?? null, mide: e.mide === 'tiempo' ? 'tiempo' : 'series' }])));
+    setCatalogo(catalogoDe(filas));
   }, []);
   // Cuántos cambios se hicieron: una lectura que salió antes de un toque no lo pisa al llegar.
   const ediciones = useRef(0);
   const creando = useRef(false);
 
+  // Lo mismo que pide Stats antes (`precargarRutina`): si ya está en camino, es ese pedido.
   const cargar = useCallback(async () => {
-    const [hay] = await Promise.all([hayRutinasGuardadas(supabase), cargarCatalogo()]);
-    const yo = await miId(supabase);
     const n = ediciones.current;
-    const [mias, vista] = await Promise.all([hay ? cargarMisRutinas(supabase) : Promise.resolve(null), yo ? cargarRutinaParaVer(supabase, yo, true) : Promise.resolve(null)]);
+    const p = await precargarRutina(supabase);
+    if (!p) return;
+    const mias = p.mias;
     if (mias && ediciones.current === n) {
       setRutinas(mias);
       setSel((s) => (s && mias.some((r) => r.id === s) ? s : (mias.find((r) => r.activa) ?? mias[0])?.id ?? null));
     }
-    if (vista?.deducida) setDeducida(vista.dias);
+    if (p.deducida) setDeducida(p.deducida);
+    setLista(p.ejercicios);
+    setCatalogo(catalogoDe(p.ejercicios));
     // RECIÉN AHORA (cacería del 15/10): antes de traer la lista se mostraba "Todavía no hay
     // rutina" con "Armar una de cero" a quien sí tenía, y sin señal quedaba así.
-    setNoCargo(hay && !mias);
-    setGuardadas(hay);
-  }, [cargarCatalogo]);
+    setNoCargo(p.hay && !mias);
+    setGuardadas(p.hay);
+  }, []);
 
   useEffect(() => {
     if (visible) void cargar();
@@ -262,6 +283,12 @@ export default function MiRutina({
             <Pressable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, 1))} accessibilityLabel={T.rutina.mas}>
               <Text style={estilos.paso}>+</Text>
             </Pressable>
+            {/* LAS REPETICIONES OBJETIVO (21/10, migración 95): contra esto mira el aviso de subir el peso. */}
+            {e.minutos === undefined && conObjetivo && (
+              <Pressable testID={`rutina-objetivo-${d}-${i}`} hitSlop={6} onPress={() => con(siguienteObjetivo(actual.dias, d, i))} accessibilityLabel={T.rutina.objetivo(e.reps)}>
+                <Text style={[estilos.objetivo, e.reps === undefined && estilos.objetivoVacio]}>{e.reps ? `×${e.reps}` : '×–'}</Text>
+              </Pressable>
+            )}
             <Pressable hitSlop={8} onPress={() => con(quitarEjercicio(actual.dias, d, i))} accessibilityLabel={T.rutina.quitar}>
               <Text style={estilos.quitar}>✕</Text>
             </Pressable>
@@ -497,6 +524,8 @@ const estilos = StyleSheet.create({
   filaEditable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   ejercicio: { flex: 1, color: C.sub, fontSize: 14 },
   cantidad: { color: C.tinta, fontSize: 13, minWidth: 58, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  objetivo: { color: C.tinta, fontSize: 13, minWidth: 30, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  objetivoVacio: { color: C.apagado },
   paso: { color: C.tinta, fontSize: 18, width: 20, textAlign: 'center' },
   quitar: { color: C.apagado, fontSize: 14, width: 20, textAlign: 'center' },
   pregunta: { marginTop: 8 },

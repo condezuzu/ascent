@@ -63,6 +63,7 @@ export default function RachaSalvada({
   dias,
   quedan,
   total,
+  tope,
   semana,
   rango,
   alMostrar,
@@ -74,6 +75,8 @@ export default function RachaSalvada({
   dias: string[];
   quedan: number;
   total: number;
+  /** Las que se pueden tener (tres): la que falta ganar va punteada (21/10). */
+  tope?: number;
   /** La semana (de lunes a domingo) del último día que se cubrió. */
   semana: DiaDeLaSemana[];
   rango: number;
@@ -203,6 +206,9 @@ export default function RachaSalvada({
               <View style={estilos.vidas} testID="aviso-vidas">
                 {Array.from({ length: total }, (_, i) => (
                   <VidaQueTitila key={i} viva={i < vivas} indice={i} />
+                ))}
+                {Array.from({ length: Math.max(0, (tope ?? total) - total) }, (_, i) => (
+                  <Estrella key={`g${i}`} tam={22} modo="porGanar" />
                 ))}
               </View>
 

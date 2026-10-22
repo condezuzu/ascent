@@ -43,9 +43,16 @@ export default function Descanso({
   alSaltar,
   alOcultar,
   alSumar,
+  sinEmpezar,
 }: {
   visible: boolean;
   vivo: DescansoVivo;
+  /**
+   * SIN EMPEZAR (21/10, a pedido): el botón «Descansar» de Inicio trae acá con el reloj quieto en
+   * la duración, para elegir los minutos antes de arrancar. Antes arrancaba en el acto, y
+   * cambiar los minutos era cambiar uno que ya corría. `vivo.duracion` es la que se ve.
+   */
+  sinEmpezar?: { alElegir: (segundos: number) => void; alEmpezar: () => void };
   /** El color del arco. Hoy, el del rango de cada uno; se decide en un solo lugar (Inicio). */
   acento: string;
   alReiniciar: (d: DescansoVivo) => void;
@@ -66,13 +73,14 @@ export default function Descanso({
   }, [visible]);
   // El "+": `null` cerrado; si no, lo que se va escribiendo.
   const [aMano, setAMano] = useState<string | null>(null);
-  const [terminado, setTerminado] = useState(() => restante(vivo.fin) === 0);
+  const quieto = !!sinEmpezar;
+  const [terminado, setTerminado] = useState(() => !quieto && restante(vivo.fin) === 0);
   const yaAviso = useRef(terminado);
   const sonido = useRef(false);
 
   // Un descanso nuevo (el + desde acá) vuelve a dejar pendiente el aviso.
   useEffect(() => {
-    const listo = restante(vivo.fin) === 0;
+    const listo = !quieto && restante(vivo.fin) === 0;
     yaAviso.current = listo;
     setTerminado(listo);
     // El campo del + es de este descanso: no vuelve abierto en el siguiente (vuelta 7).
@@ -118,7 +126,8 @@ export default function Descanso({
 
   // El intervalo no cuenta: solo repinta. El valor sale de `restante(fin)`.
   useEffect(() => {
-    if (!visible) return;
+    // Quieto no hay nada que contar ni que avisar.
+    if (!visible || quieto) return;
     const tic = () => {
       if (restante(vivo.fin) === 0 && !yaAviso.current) {
         yaAviso.current = true;
@@ -134,9 +143,10 @@ export default function Descanso({
       clearInterval(id);
       dejarDeMirar();
     };
-  }, [visible, vivo.fin, avisar]);
+  }, [visible, vivo.fin, avisar, quieto]);
 
   function usarPreset(segundos: number) {
+    if (sinEmpezar) return sinEmpezar.alElegir(segundos);
     const nuevo = cambiarDuracion(vivo, segundos);
     const listo = restante(nuevo.fin) === 0;
     yaAviso.current = listo;
@@ -144,7 +154,7 @@ export default function Descanso({
     alReiniciar(nuevo);
   }
 
-  const falta = restante(vivo.fin);
+  const falta = quieto ? vivo.duracion : restante(vivo.fin);
   const proporcion = terminado ? 0 : Math.min(1, falta / vivo.duracion);
   const ahora = Date.now();
   // Lo que se estaba haciendo: lo mismo que dice la tarjeta de la pantalla bloqueada.
@@ -218,9 +228,15 @@ export default function Descanso({
           <View style={estilos.abajo}>
             {/* "SERIE HECHA" ES UN BOTÓN, no un enlace: sumar la serie sin salir
                 es lo que más se hace desde acá. */}
-            <Pressable style={estilos.borde} onPress={() => cuentaLaSerie() && alSumar()}>
-              <Text style={estilos.bordeTexto}>{T.descanso.serieHecha}</Text>
-            </Pressable>
+            {sinEmpezar ? (
+              <Pressable testID="descanso-empezar" style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={sinEmpezar.alEmpezar}>
+                <Text style={estilos.solidoTexto}>{T.descanso.empezar}</Text>
+              </Pressable>
+            ) : (
+              <Pressable style={estilos.borde} onPress={() => cuentaLaSerie() && alSumar()}>
+                <Text style={estilos.bordeTexto}>{T.descanso.serieHecha}</Text>
+              </Pressable>
+            )}
             <View style={estilos.presets}>
               {PRESETS_DESCANSO.map((p) => (
                 <Pressable key={p} style={[estilos.preset, p === vivo.duracion && estilos.presetActivo]} onPress={() => usarPreset(p)}>
@@ -282,7 +298,7 @@ export default function Descanso({
             )}
             {aMano !== null && aMano.trim() !== '' && descansoAMano(aMano) === null && <Text style={estilos.aManoMal}>{T.descanso.aManoMal}</Text>}
             <Pressable style={estilos.texto} onPress={alOcultar}>
-              <Text style={estilos.textoBoton}>{T.descanso.saltar}</Text>
+              <Text style={estilos.textoBoton}>{quieto ? T.general.cancelar : T.descanso.saltar}</Text>
             </Pressable>
           </View>
         )}

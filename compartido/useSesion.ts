@@ -10,6 +10,8 @@ import { T } from '@nucleo/textos';
 import { eventos } from '@compartido/eventos';
 import { cantidadesDeHoy, ejerciciosDeHoy, metaDeRutina } from '@nucleo/rutinas';
 import { cargarMisRutinas, rutinaActivaDelTelefono } from '@compartido/rutinas';
+import { objetivosDeRepeticiones } from '@nucleo/rutinas';
+import { dosPorDos } from '@nucleo/dosPorDos';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
 import {
   desfasajeDelReloj,
@@ -32,6 +34,7 @@ import {
   corregirCarga,
   corregirEjercicio,
   cambiarMinutos,
+  cambiarDistancia,
   cambiarPeso,
   cambiarReps,
   corregirPeso,
@@ -99,6 +102,7 @@ import {
   rutinaEsGuardada,
   sesionesRutinaRef,
   historialConPesosRef,
+  objetivosRef,
   marcasConRepsRef,
   setterDe,
   suscribirViva,
@@ -792,6 +796,7 @@ export function useSesion(
       // sesión: el lunes proponía la del martes. Pedirla también deja la copia escrita.
       const copia = await rutinaActivaDelTelefono();
       const guardada = copia ?? (await cargarMisRutinas(supabase).catch(() => null))?.find((r) => r.activa) ?? null;
+      objetivosRef.current = objetivosDeRepeticiones(guardada?.dias);
       const deLaGuardada = ejerciciosDeHoy(guardada, new Date().getDay());
       // LO QUE QUEDA HOY (20/10, bug: "cambié A por X y la sesión siguiente volvió a proponer
       // A"): lo hecho en las sesiones anteriores de hoy ya no se propone.
@@ -1285,6 +1290,10 @@ export function useSesion(
           return { fecha: log?.fecha ?? '', ejercicios: ejerciciosEnOrden(ids) };
         })
         .filter((s) => s.fecha);
+      // Los objetivos también al volver a una sesión que ya estaba andando (sin pasar por la propuesta).
+      void rutinaActivaDelTelefono().then((g) => {
+        if (g) objetivosRef.current = objetivosDeRepeticiones(g.dias);
+      });
       historialConPesosRef.current = filas
         .map((s) => {
           const log = Array.isArray(s.logs) ? (s.logs[0] as { fecha?: string }) : (s.logs as { fecha?: string } | null);
@@ -1563,6 +1572,16 @@ export function useSesion(
    * LOS MINUTOS DEL CARDIO (14/10). Con la vuelta ya contada se suben en el acto:
    * corregir "eran 25, no 20" tiene que llegar a la base.
    */
+  /** LA DISTANCIA DEL CARDIO (21/10), a cada tecla. Como los minutos: con la vuelta contada, sube. */
+  async function elegirDistancia(km: number | null) {
+    const b = cambiarDistancia(bloquesRef.current, km);
+    if (b === bloquesRef.current) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
+    if (bloquesRef.current.hechas > 0) await subir(seriesRef.current, bloquesRef.current);
+  }
+
   async function elegirMinutos(m: number | null) {
     const b = cambiarMinutos(bloquesRef.current, m);
     if (b === bloquesRef.current) return;
@@ -1695,10 +1714,15 @@ export function useSesion(
     await guardarMetaPreferida(b.meta);
   }
 
-  async function descansarSuelto() {
-    const seg =
-      (await leerDuracionDeSesion()) ??
-      duracionValida(duracionPredeterminada(await leerPerfilCache()));
+  /** La duración con la que arrancaría un descanso suelto: la elegida en la sesión, o la de siempre. */
+  async function duracionDelDescansoSuelto(): Promise<number> {
+    return (await leerDuracionDeSesion()) ?? duracionValida(duracionPredeterminada(await leerPerfilCache()));
+  }
+
+  /** Un descanso sin sumar serie. Con `elegida` (21/10: desde la pantalla grande, sin empezar), esa. */
+  async function descansarSuelto(elegida?: number) {
+    const seg = elegida ?? (await duracionDelDescansoSuelto());
+    if (elegida !== undefined) guardarDuracionDeSesion(elegida);
     // No suma nada: la tarjeta dice la serie que YA se hizo, no la que viene.
     const d = guardarDescanso(seg, serieDelDescanso(bloquesRef.current));
     setDescanso(d);
@@ -1734,6 +1758,8 @@ export function useSesion(
       const u = ultimaVezDe(historialConPesosRef.current, id, hoyISO());
       return u ? repsDeLaSesion(marcasConRepsRef.current, id, u.fecha) : null;
     },
+    /** El aviso de subir el peso, con la regla 2 por 2 (ver `nucleo/dosPorDos.ts`); `null` si no corresponde. */
+    subirPesoDe: (id: string, grupo: string | null) => dosPorDos(historialConPesosRef.current, id, objetivosRef.current[id], grupo, hoyISO()),
     /** La pista del cuadradito de repeticiones para la serie que viene de ese ejercicio: ver `pistaDeReps`. */
     pistaDeRepsDe: (id: string) => {
       const u = ultimaVezDe(historialConPesosRef.current, id, hoyISO());
@@ -1749,6 +1775,7 @@ export function useSesion(
     elegirMeta,
     elegirPeso,
     elegirMinutos,
+    elegirDistancia,
     arrancarCardio: arrancarElCardio,
     cerrarVueltaDeCardio: cerrarVueltaDelCardio,
     corregirPesoDeSerie,
@@ -1756,6 +1783,7 @@ export function useSesion(
     corregirCargaDeBloque,
     corregirEjercicioDeBloque,
     descansarSuelto,
+    duracionDelDescansoSuelto,
     cerrarDescanso: () => {
       borrarDescanso();
       setDescanso(null);

@@ -1033,6 +1033,8 @@ const ES = {
       `${series === 1 ? '1 serie' : `${series} series`} · ${kilos} ${unidad}`,
     soloSeries: (series: number) => (series === 1 ? '1 serie' : `${series} series`),
     nada: '—',
+    // Las repeticiones con el peso máximo (21/10): «60 kg × 8».
+    conReps: (n: number) => ` × ${n}`,
     nadaDesde: (fecha: string) => `nada desde el ${fecha}`,
     // LA NOTA EXPLICA LA FRANJA, que es lo unico de la pantalla que hay que
     // explicar una vez. Dice "referencia" y no "meta" a proposito: la app no
@@ -1087,6 +1089,8 @@ const ES = {
     // El + sin salir del descanso. Dice lo que pasó, no lo que hace el
     // botón: "hice la serie" es lo que la persona acaba de vivir.
     serieHecha: '+ Serie hecha',
+    // Desde el botón «Descansar» (21/10): el reloj quieto hasta que se toca esto.
+    empezar: 'Empezar descanso',
     // EL TIEMPO A MANO (15/10), hasta una hora: "4" son cuatro minutos y "1:30", uno y medio.
     aMano: 'Poner el tiempo a mano',
     aManoEjemplo: 'Minutos (4 o 1:30)',
@@ -1227,13 +1231,19 @@ const ES = {
     cardioListo: 'Listo',
     // EL GLOBITO DE SUBIR (15/10): todas las series al mismo peso, dos sesiones seguidas.
     yaPuedesSubir: 'Ya puedes subir el peso',
+    // Con la regla 2 por 2 (21/10): el rango sugerido, ya con la unidad.
+    yaPuedesSubirRango: (desde: string, hasta: string, a: number, b: number) => `Ya puedes subir el peso: de ${desde} a ${hasta} (${a} a ${b} %).`,
     minutosDeCardio: 'Minutos',
     // EL CRONÓMETRO DEL CARDIO (15/10): arranca al elegirlo; "Listo" anota lo que corrió.
     cardioArrancar: 'Arrancar',
     cardioOtraVuelta: 'Otra vuelta',
     cardioTerminar: 'Terminar cardio',
     cardioCorriendo: 'Cardio en curso',
-    cardioSinCronometro: 'Anotar estos minutos sin cronómetro',
+    // Un cronómetro y no un timer (21/10): antes de arrancar, el reloj en 0:00.
+    cardioCuentaArriba: 'Cuenta desde cero',
+    cardioMeta: (min: number) => `Meta: ${min} min`,
+    distancia: 'Distancia',
+    cardioSinCronometro: 'Anotar sin cronómetro',
     // Y sumar otra sigue estando, en el lugar secundario: pasarse de la
     // meta es normal y la app no puede dejar de permitirlo solo porque el
     // botón grande cambió de trabajo.
@@ -1512,6 +1522,8 @@ const ES = {
     // EN INICIO (15/10): el renglón que abre la rutina.
     hoy: (titulo: string) => `Hoy: ${titulo}`,
     armarSemana: 'Arma tu semana',
+    // El chip de las repeticiones objetivo (21/10): para el lector de pantalla.
+    objetivo: (n?: number) => (n ? `Repeticiones objetivo: ${n}. Toca para cambiarlas` : 'Sin repeticiones objetivo. Toca para poner'),
     // Para el lector de pantalla, en los botones de cada ejercicio (21/10: estaban escritos a mano).
     menos: 'Una serie menos',
     mas: 'Una serie más',

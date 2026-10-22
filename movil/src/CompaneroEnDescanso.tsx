@@ -43,7 +43,7 @@ export default function CompaneroEnDescanso({ visible, ahora }: { visible: boole
                 {r.descanso !== null ? (
                   <View style={[estilos.pildora, r.descanso === 0 && estilos.pildoraLista]}>
                     <Text style={[estilos.pildoraTexto, r.descanso === 0 && estilos.pildoraTextoLista]}>
-                      {r.descanso === 0 ? T.social.enVivoListo : T.social.enVivoDescansa(cuentaAtras(r.descanso))}
+                      {r.descanso === 0 ? `+${cuentaAtras(r.pasado ?? 0)}` : T.social.enVivoDescansa(cuentaAtras(r.descanso))}
                     </Text>
                   </View>
                 ) : r.sinSenal ? (

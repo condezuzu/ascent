@@ -35,6 +35,8 @@ export function leerRespuestaDeUnirse(crudo: unknown): RespuestaDeUnirse {
 export const CADA_CUANTO_MS = 10_000;
 /** Sin novedades por más de esto, el renglón dice "sin señal". */
 export const SIN_SENAL_S = 120;
+/** Hasta cuánto se cuenta lo que se pasó del descanso de otro: media hora. */
+export const TOPE_DE_MAS_S = 30 * 60;
 
 export type LoPublicado = { ejercicio: string | null; serie: number; meta: number; descansoFaltan: number | null };
 
@@ -124,8 +126,10 @@ export type Renglon = {
   ejercicio: string | null;
   serie: number;
   meta: number;
-  /** Segundos que le faltan de descanso; 0 = terminó recién; `null` = no está descansando. */
+  /** Segundos que le faltan de descanso; 0 = ya terminó (ver `pasado`); `null` = no está descansando. */
   descanso: number | null;
+  /** Con el descanso terminado, los segundos que se pasó: lo que está perdiendo (21/10). */
+  pasado: number | null;
   sinSenal: boolean;
   sinDatos: boolean;
 };
@@ -138,15 +142,19 @@ export type Renglon = {
  */
 export function renglonDe(u: Union, pasaronMs: number): Renglon {
   const v = u.enVivo;
-  if (!v) return { ejercicio: null, serie: 0, meta: 0, descanso: null, sinSenal: false, sinDatos: true };
+  if (!v) return { ejercicio: null, serie: 0, meta: 0, descanso: null, pasado: null, sinSenal: false, sinDatos: true };
   const ahoraBase = u.ahora + Math.max(0, pasaronMs);
   const faltan = v.descansoFin === null ? null : Math.ceil((v.descansoFin - ahoraBase) / 1000);
+  // LO QUE SE PASÓ, CONTANDO (21/10, a pedido): al terminar el descanso salían tres puntitos —al
+  // minuto dejaba de ser noticia y, como descansando no publica nada, quedaba "sin señal"—.
+  // Ahora sigue el «+0:08», como en la pantalla propia, hasta media hora: más es que se fue.
+  const terminado = faltan !== null && faltan <= 0 && -faltan <= TOPE_DE_MAS_S;
   return {
     ejercicio: v.ejercicio,
     serie: v.serie,
     meta: v.meta,
-    // Un descanso que terminó hace más de un minuto ya no es noticia.
-    descanso: faltan === null || faltan < -60 ? null : Math.max(0, faltan),
+    descanso: faltan === null || (faltan <= 0 && !terminado) ? null : Math.max(0, faltan),
+    pasado: terminado ? -faltan : null,
     sinSenal: (ahoraBase - v.actualizado) / 1000 > SIN_SENAL_S,
     sinDatos: false,
   };

@@ -78,7 +78,8 @@ import { cargaValida, llevaNumero, type Carga } from './carga.ts';
  * `reps` (21/10): las repeticiones de cada serie, con «Registrar repeticiones» prendido
  * (migración 94). Misma regla que los pesos: sin llave si ninguna serie las tiene.
  */
-export type Bloque = { id?: string; ejercicio: string | null; series: number; pesos?: (number | null)[]; carga?: Carga; minutos?: number; reps?: (number | null)[] };
+/** `distancia` (21/10): los kilómetros del cardio, como `minutos` (migración 95). Sin llave si no se anotó. */
+export type Bloque = { id?: string; ejercicio: string | null; series: number; pesos?: (number | null)[]; carga?: Carga; minutos?: number; reps?: (number | null)[]; distancia?: number };
 
 export type EstadoBloques = {
   /** Los que ya se cerraron, en orden. */
@@ -93,6 +94,8 @@ export type EstadoBloques = {
   peso?: number;
   /** Los minutos de ESTE bloque, si el ejercicio se mide en tiempo. Sin llave = sin minutos. */
   minutos?: number;
+  /** Los kilómetros de ESTE bloque de cardio. Sin llave = sin distancia. */
+  distancia?: number;
   /** El peso de cada serie de ESTE bloque. Misma regla: sin llave si no hay ninguno. */
   pesos?: (number | null)[];
   /** Las repeticiones de cada serie de ESTE bloque. Misma regla. */
@@ -219,13 +222,38 @@ function nuevoIdBloque(): string {
 // `id` se agrega SOLO si se pasa: los que nacen (al cerrarse) o vuelven de la
 // base (al hidratarse) llevan uno; `paraGuardar` no lo pasa, así lo que viaja a
 // la base queda igual que siempre (regla 4: sin llaves de más).
-function cerrado(ejercicio: string | null, series: number, pesos: (number | null)[], carga: unknown, id?: string, minutos?: unknown, reps?: unknown): Bloque {
+function cerrado(ejercicio: string | null, series: number, pesos: (number | null)[], carga: unknown, id?: string, minutos?: unknown, reps?: unknown, distancia?: unknown): Bloque {
   const b = conPesos({ ejercicio, series } as Bloque, pesos);
   const c = cargaValida(carga);
   const conCarga = b.pesos && c ? { ...b, carga: c } : b;
   const m = minutosValidos(minutos);
   const conMinutos = conReps(m !== null ? { ...conCarga, minutos: m } : conCarga, repsDe(reps, series));
-  return id ? { ...conMinutos, id } : conMinutos;
+  const km = distanciaValida(distancia);
+  const conKm = km !== null ? { ...conMinutos, distancia: km } : conMinutos;
+  return id ? { ...conKm, id } : conKm;
+}
+
+/** Los kilómetros que se aceptan: más de 0 y hasta 500, en centésimas. Lo mismo acota la base. */
+export const DISTANCIA_MAXIMA = 500;
+export function distanciaValida(km: unknown): number | null {
+  const n = typeof km === 'number' ? km : typeof km === 'string' && km.trim() !== '' ? Number(km.replace(',', '.')) : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.min(DISTANCIA_MAXIMA, Math.round(n * 100) / 100) : null;
+}
+
+/** La distancia del bloque en curso. Sin un número válido, se saca. */
+export function cambiarDistancia(e: EstadoBloques, km: unknown): EstadoBloques {
+  const v = distanciaValida(km);
+  if (v === (e.distancia ?? null)) return e;
+  if (v === null) {
+    const { distancia: _d, ...resto } = e;
+    return resto;
+  }
+  return { ...e, distancia: v };
+}
+
+function sinDistancia<T extends { distancia?: number }>(obj: T): Omit<T, 'distancia'> {
+  const { distancia: _d, ...resto } = obj;
+  return resto;
 }
 
 /** Minutos entre 1 y 600, enteros; cualquier otra cosa es "sin minutos". Los mismos topes que la base. */
@@ -384,13 +412,14 @@ export function pesoAlCambiarDeModo(e: EstadoBloques, recordado: number | null):
 export function siguiente(e: EstadoBloques): EstadoBloques {
   if (e.hechas === 0) return e;
   // NACE con id: es un bloque cerrado nuevo, y desde acá se lo toca por identidad.
-  const b = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga, nuevoIdBloque(), e.minutos, e.reps);
+  const b = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga, nuevoIdBloque(), e.minutos, e.reps, e.distancia);
   // El peso vigente SE QUEDA, y el modo también: el bloque que sigue es del
   // mismo ejercicio, y lo más probable después de tres series con 60 son otras
   // tres con 60, con lo mismo en la mano.
   // Un cronómetro de cardio no pasa al bloque que sigue: esa vuelta ya se cerró.
   return conReps(
-    conPesos({ ...(sinRepsAhora(sinCardio(e)) as EstadoBloques), cerrados: [...e.cerrados, b].slice(-TOPE_BLOQUES), hechas: 0 }, []),
+    // La distancia es de esa vuelta: el bloque que sigue arranca sin.
+    conPesos({ ...(sinDistancia(sinRepsAhora(sinCardio(e))) as EstadoBloques), cerrados: [...e.cerrados, b].slice(-TOPE_BLOQUES), hechas: 0 }, []),
     []
   );
 }
@@ -411,7 +440,7 @@ export function siguiente(e: EstadoBloques): EstadoBloques {
 export function terminarBloque(e: EstadoBloques): EstadoBloques {
   const cerradoB = siguiente(e);
   if (cerradoB === e) return e; // nada hecho: no se cierra un bloque vacío
-  return { ...(sinCardio(sinMinutos(sinCarga(sinPeso(cerradoB)))) as EstadoBloques), ejercicio: null };
+  return { ...(sinDistancia(sinCardio(sinMinutos(sinCarga(sinPeso(cerradoB))))) as EstadoBloques), ejercicio: null };
 }
 
 /**
@@ -425,7 +454,7 @@ export function cambiarEjercicio(e: EstadoBloques, id: string | null): EstadoBlo
   // de press de banca, y arrastrarlos anotaría series con un número falso. El
   // modo tampoco: las zancadas con mancuernas no dicen nada del press.
   // Elegido por la persona: ya no es lo sembrado.
-  const { sembrado: _s, ...elegido } = sinCardio(sinMinutos(sinCarga(sinPeso(siguiente(e))))) as EstadoBloques;
+  const { sembrado: _s, ...elegido } = sinDistancia(sinCardio(sinMinutos(sinCarga(sinPeso(siguiente(e)))))) as EstadoBloques;
   return { ...elegido, ejercicio: id };
 }
 
@@ -498,11 +527,11 @@ export function cambiarMeta(e: EstadoBloques, meta: number): EstadoBloques {
  * sería mandar ruido a propósito y hacer más difícil leer qué se envió.
  */
 export function paraGuardar(e: EstadoBloques): Bloque[] {
-  const actual = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga, undefined, e.minutos, e.reps);
+  const actual = cerrado(e.ejercicio, e.hechas, pesosDe(e.pesos, e.hechas), e.carga, undefined, e.minutos, e.reps, e.distancia);
   const todos = e.hechas > 0 ? [...e.cerrados, actual] : e.cerrados;
   return todos
     .filter((b) => b.ejercicio !== null && b.series > 0)
-    .map((b) => cerrado(b.ejercicio, b.series, pesosDe(b.pesos, b.series), b.carga, undefined, b.minutos, b.reps))
+    .map((b) => cerrado(b.ejercicio, b.series, pesosDe(b.pesos, b.series), b.carga, undefined, b.minutos, b.reps, b.distancia))
     // Por la misma punta que recorta el teléfono (cacería del 15/10): la base se queda
     // con los primeros 40, y en un circuito largo el bloque en curso no entraba nunca.
     .slice(-TOPE_BLOQUES);
@@ -566,7 +595,7 @@ export function unirConGuardados(guardados: unknown, actual: EstadoBloques): Est
     )
     // Vuelven de la base SIN id (nunca viajó): se les asigna uno nuevo acá, para
     // que se los pueda quitar por identidad como a cualquier otro.
-    .map((b) => cerrado(b.ejercicio, Math.min(999, b.series), pesosDe(b.pesos, b.series), b.carga, b.id ?? nuevoIdBloque(), b.minutos, b.reps));
+    .map((b) => cerrado(b.ejercicio, Math.min(999, b.series), pesosDe(b.pesos, b.series), b.carga, b.id ?? nuevoIdBloque(), b.minutos, b.reps, b.distancia));
   if (lista.length === 0) return actual;
   // Un ejercicio ELEGIDO, aunque sin series, también es de acá (cacería del 15/10):
   // lo guardado entra antes, como cerrados, y el elegido sigue en curso.
@@ -581,7 +610,8 @@ export function unirConGuardados(guardados: unknown, actual: EstadoBloques): Est
     repsDe(ultimo.reps, ultimo.series)
   );
   const conPeso = vigente !== undefined && vigente !== null ? { ...enCurso, peso: vigente } : enCurso;
-  const conMinutos = ultimo.minutos !== undefined ? { ...conPeso, minutos: ultimo.minutos } : conPeso;
+  const conMinutos0 = ultimo.minutos !== undefined ? { ...conPeso, minutos: ultimo.minutos } : conPeso;
+  const conMinutos = ultimo.distancia !== undefined ? { ...conMinutos0, distancia: ultimo.distancia } : conMinutos0;
   return ultimo.carga ? { ...conMinutos, carga: ultimo.carga } : conMinutos;
 }
 
@@ -628,7 +658,7 @@ export function corregirPeso(
   pesos[serie] = pesoValido(kg);
   return {
     ...e,
-    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, x.series, pesos, x.carga, x.id, x.minutos, x.reps) : x)),
+    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, x.series, pesos, x.carga, x.id, x.minutos, x.reps, x.distancia) : x)),
   };
 }
 
@@ -661,7 +691,7 @@ export function corregirEjercicio(
   const carga = cargaValida(b.carga) ?? cargaValida(cargaQueSeVeia);
   return {
     ...e,
-    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(id, x.series, pesosDe(x.pesos, x.series), carga, x.id, x.minutos, x.reps) : x)),
+    cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(id, x.series, pesosDe(x.pesos, x.series), carga, x.id, x.minutos, x.reps, x.distancia) : x)),
   };
 }
 
@@ -696,7 +726,7 @@ export function corregirBloque(e: EstadoBloques, indice: number, delta: number):
     estado: {
       ...e,
       // Una serie agregada a mano va sin repeticiones: no hay de dónde saberlas.
-      cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, nuevas, pesos, x.carga, x.id, x.minutos, x.reps) : x)),
+      cerrados: e.cerrados.map((x, i) => (i === indice ? cerrado(x.ejercicio, nuevas, pesos, x.carga, x.id, x.minutos, x.reps, x.distancia) : x)),
     },
     cambioEnTotal: nuevas - b.series,
   };

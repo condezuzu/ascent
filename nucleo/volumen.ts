@@ -25,6 +25,7 @@
 import { cargaValida, kilosMovidos, llevaNumero, type Carga } from './carga.ts';
 import { deISO, restarDias } from './fechas.ts';
 import { ORDEN_ZONAS, ZONAS } from './ejercicios.ts';
+import { repsDe } from './bloques.ts';
 
 /** Un bloque leído de la base sin confiar en la forma. */
 export type BloqueLeido = {
@@ -32,6 +33,8 @@ export type BloqueLeido = {
   series: number;
   /** Uno por serie, en kilos; `null` las que se hicieron sin anotar. */
   pesos: (number | null)[];
+  /** Las repeticiones de cada serie, alineadas con `pesos`; `null` las que no se anotaron (migración 94). */
+  reps: (number | null)[];
   /** El modo del bloque; `total` si no tiene (antes de la 38). */
   carga: Carga;
   /** Se anotó antes de que existieran los modos y puede estar mal (migración 39). */
@@ -40,13 +43,15 @@ export type BloqueLeido = {
   orden: number;
   /** Los minutos, si es cardio (migración 76). */
   minutos?: number;
+  /** Los kilómetros, si es cardio y se anotaron (migración 95). */
+  distancia?: number;
 };
 
 export function leerBloques(crudo: unknown): BloqueLeido[] {
   if (!Array.isArray(crudo)) return [];
   return crudo.flatMap((b, i) => {
     if (!b || typeof b !== 'object') return [];
-    const x = b as { ejercicio?: unknown; series?: unknown; pesos?: unknown; carga?: unknown; carga_supuesta?: unknown; minutos?: unknown };
+    const x = b as { ejercicio?: unknown; series?: unknown; pesos?: unknown; carga?: unknown; carga_supuesta?: unknown; minutos?: unknown; distancia?: unknown; reps?: unknown };
     const s = Number(x.series);
     if (typeof x.ejercicio !== 'string' || !Number.isFinite(s) || s <= 0) return [];
     const n = Math.floor(s);
@@ -61,11 +66,13 @@ export function leerBloques(crudo: unknown): BloqueLeido[] {
         ejercicio: x.ejercicio,
         series: n,
         pesos,
+        reps: repsDe(x.reps, n),
         carga: cargaValida(x.carga) ?? 'total',
         supuesta: x.carga_supuesta === true && pesos.some((p) => p !== null),
         orden: i + 1,
         // El cardio (migración 76): los minutos del bloque, aparte de los pesos.
         ...(typeof x.minutos === 'number' && x.minutos > 0 ? { minutos: Math.round(x.minutos) } : {}),
+        ...(typeof x.distancia === 'number' && x.distancia > 0 ? { distancia: x.distancia } : {}),
       },
     ];
   });
@@ -162,6 +169,8 @@ export type Maximo = {
   kilos: number;
   /** La PRIMERA vez que se llegó a ese máximo: repetirlo no lo hace más nuevo. */
   fecha: string;
+  /** Las repeticiones con ese peso, si se anotaron: las más que se hicieron con él (21/10). */
+  reps?: number;
   /** La última vez que se hizo el ejercicio, con o sin peso. Ordena la lista. */
   ultimaVez: string;
 };
@@ -185,15 +194,19 @@ export function maximosPorEjercicio(sesiones: SesionConBloques[], catalogo: Cata
       if (previo) previo.ultimaVez = s.fecha;
       // Con peso corporal no hay número que comparar (ver `llevaNumero`).
       if (!llevaNumero(b.carga)) continue;
-      for (const p of b.pesos) {
-        if (p === null) continue;
+      b.pesos.forEach((p, j) => {
+        if (p === null) return;
         const kilos = kilosMovidos(p, b.carga);
         const actual = por.get(b.ejercicio);
+        const reps = b.reps[j];
         // Estrictamente mayor: el mismo máximo otro día no mueve la fecha.
         if (!actual || kilos > actual.kilos) {
-          por.set(b.ejercicio, { ejercicio: b.ejercicio, nombre, peso: p, carga: b.carga, kilos, fecha: s.fecha, ultimaVez: s.fecha });
+          por.set(b.ejercicio, { ejercicio: b.ejercicio, nombre, peso: p, carga: b.carga, kilos, fecha: s.fecha, ultimaVez: s.fecha, ...(reps !== null && { reps }) });
+        } else if (kilos === actual.kilos && reps !== null && reps > (actual.reps ?? 0)) {
+          // Con el mismo peso y más repeticiones: el máximo sigue siendo el de antes, con más veces.
+          actual.reps = reps;
         }
-      }
+      });
     }
   }
   return [...por.values()].sort((a, b) =>
@@ -407,13 +420,15 @@ export type EjercicioDelCatalogo = {
   cuenta_dots?: boolean;
 };
 
-export type MarcaParaMaximo = { ejercicio: string; peso: number; fecha: string };
+export type MarcaParaMaximo = { ejercicio: string; peso: number; fecha: string; reps?: number };
 
 export type MaximoDeLista = {
   peso: number;
   carga: Carga;
   kilos: number;
   fecha: string;
+  /** Las repeticiones con ese peso, si se saben (21/10). */
+  reps?: number;
 };
 
 export type FilaDeMaximo = { ejercicio: string; nombre: string; maximo: MaximoDeLista | null };
@@ -453,16 +468,21 @@ export function maximosDelCatalogo(
   const proponer = (ejercicio: string, m: MaximoDeLista) => {
     const actual = mejor.get(ejercicio);
     if (!actual || m.kilos > actual.kilos || (m.kilos === actual.kilos && m.fecha < actual.fecha)) {
-      mejor.set(ejercicio, m);
+      // Empatados, las repeticiones son las más que se hicieron con ese peso, en cualquiera de los dos.
+      const reps = actual && m.kilos === actual.kilos ? Math.max(m.reps ?? 0, actual.reps ?? 0) || undefined : m.reps;
+      mejor.set(ejercicio, { ...m, ...(reps !== undefined ? { reps } : {}) });
+    } else if (m.kilos === actual.kilos && (m.reps ?? 0) > (actual.reps ?? 0)) {
+      actual.reps = m.reps;
     }
   };
   for (const m of maximosPorEjercicio(sesiones, mapa)) {
-    proponer(m.ejercicio, { peso: m.peso, carga: m.carga, kilos: m.kilos, fecha: m.fecha });
+    proponer(m.ejercicio, { peso: m.peso, carga: m.carga, kilos: m.kilos, fecha: m.fecha, ...(m.reps !== undefined && { reps: m.reps }) });
   }
   for (const m of marcas) {
     const peso = Number(m.peso);
     if (!Number.isFinite(peso) || peso <= 0 || typeof m.fecha !== 'string') continue;
-    proponer(m.ejercicio, { peso, carga: 'total', kilos: peso, fecha: m.fecha });
+    const reps = Number(m.reps);
+    proponer(m.ejercicio, { peso, carga: 'total', kilos: peso, fecha: m.fecha, ...(Number.isInteger(reps) && reps > 0 && { reps }) });
   }
 
   const orden = (a: EjercicioDelCatalogo, b: EjercicioDelCatalogo) =>

@@ -19,6 +19,14 @@ import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
 import CampoPeso from './CampoPeso';
 import CampoReps from './CampoReps';
+import CampoDistancia from './CampoDistancia';
+import FondoOctogonal from './FondoOctogonal';
+
+// Los botones grandes del bloque: el mismo fondo tenue de siempre, y el corte de las esquinas.
+const FONDO_BOTON = 'rgba(255,255,255,0.03)';
+const CORTE = 12;
+import { unidadDeDistancia } from '@nucleo/distancia';
+import { rangoParaMostrar, type SubirPeso } from '@nucleo/dosPorDos';
 
 // Los globitos de "ya puedes subir" que ya se cerraron, por ejercicio y día: no vuelven en la misma corrida.
 const SUBIR_VISTOS = new Set<string>();
@@ -77,6 +85,8 @@ export default function Bloque({
   repsUltimaVez,
   pistaDeReps,
   alElegirReps,
+  alElegirDistancia,
+  subirPesoDe,
   alSumar,
   debajoDelMas,
   globoDelMas,
@@ -113,6 +123,10 @@ export default function Bloque({
   pistaDeReps?: number | null;
   /** Las repeticiones de la próxima serie, a cada tecla. Sin esto no hay cuadradito. */
   alElegirReps?: (n: number | null) => void;
+  /** Los kilómetros de la vuelta de cardio, a cada tecla (21/10). */
+  alElegirDistancia?: (km: number | null) => void;
+  /** El aviso de subir el peso con la regla 2 por 2, para ese ejercicio y su grupo (21/10). */
+  subirPesoDe?: (id: string, grupo: string | null) => SubirPeso | null;
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
@@ -156,6 +170,8 @@ export default function Bloque({
   const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
   // Sin la migración 94 la base las tiraría: el cuadradito no aparece.
   const conReps = registrarReps && !!alElegirReps && disponible('repsPorSerie', version);
+  // Sin la migración 95 la base la tiraría: el campo no aparece.
+  const conDistancia = disponible('distanciaYObjetivo', version);
   const conCarga = anotarPeso && disponible('cargaDelPeso', version);
 
   useEffect(() => {
@@ -241,19 +257,14 @@ export default function Bloque({
   const conSubir = conCarga && disponible('subirPeso', version);
   const oferta = conSubir && admitePeso ? loQueSePuedeSubir(estado, cargaVista) : null;
   const [marca, setMarca] = useState<Subida | null>(null);
-  // YA PUEDES SUBIR (15/10): el peso con el que se hizo entero dos veces seguidas.
-  const [listoParaSubir, setListoParaSubir] = useState<number | null>(null);
   useEffect(() => {
     let vivo = true;
     setMarca(null);
-    setListoParaSubir(null);
     if (estado.ejercicio) {
       const id = estado.ejercicio;
       void leerRecordados().then((r) => {
         if (!vivo) return;
         setMarca(r.subidas[claveDeSubida(id, cargaVista)] ?? null);
-        const l = r.paraSubir[id];
-        setListoParaSubir(l && l.carga === cargaVista ? l.peso : null);
       });
     }
     return () => {
@@ -263,8 +274,12 @@ export default function Bloque({
   const dia = diaDeSesion ?? hoyISO();
   // Al volver a ese ejercicio, antes de la primera serie, y si el peso de hoy no subió ya.
   const [, repintarGlobito] = useState(0);
+  // YA PUEDES SUBIR, CON LA REGLA 2 POR 2 (21/10): antes era "el mismo peso entero dos veces",
+  // que no sabía de repeticiones. Ver `nucleo/dosPorDos.ts`.
+  const subirPeso = estado.ejercicio && subirPesoDe ? subirPesoDe(estado.ejercicio, actual?.grupo ?? null) : null;
   const globitoSubir =
-    listoParaSubir !== null && estado.hechas === 0 && !!estado.ejercicio && (estado.peso ?? 0) <= listoParaSubir && !SUBIR_VISTOS.has(`${estado.ejercicio}:${dia}`);
+    !!subirPeso && estado.hechas === 0 && !!estado.ejercicio && (estado.peso ?? 0) <= subirPeso.peso && !SUBIR_VISTOS.has(`${estado.ejercicio}:${dia}`);
+  const rangoSubir = subirPeso ? rangoParaMostrar(subirPeso, unidad) : null;
   const marcada = !!oferta && !!marca && marca.dia === dia && marca.peso === oferta.peso && marca.carga === cargaVista;
   function ponerMarca(s: Subida | null) {
     if (!estado.ejercicio) return;
@@ -323,7 +338,7 @@ export default function Bloque({
       {globitoSubir && (
         <Globito
           testID="globito-subir"
-          texto={T.sesion.yaPuedesSubir}
+          texto={rangoSubir && subirPeso ? T.sesion.yaPuedesSubirRango(enUnidad(rangoSubir[0]), enUnidad(rangoSubir[1]), subirPeso.porcentaje[0], subirPeso.porcentaje[1]) : T.sesion.yaPuedesSubir}
           alCerrar={() => {
             SUBIR_VISTOS.add(`${estado.ejercicio}:${dia}`);
             repintarGlobito((n) => n + 1);
@@ -338,7 +353,17 @@ export default function Bloque({
         </View>
       )}
 
-      {esTiempo && !corriendoCardio && (
+      {/* UN CRONÓMETRO, NO UN TIMER (21/10, a pedido): antes de arrancar se veía «20 min» con
+          − y +, que se leía como una cuenta para atrás. Ahora el reloj está en 0:00 y los minutos
+          de la rutina, si los hay, son la meta. Se corrigen recién después de la vuelta. */}
+      {esTiempo && !corriendoCardio && estado.hechas === 0 && (
+        <View testID="cronometro-cardio-quieto" style={estilos.cardio}>
+          <Text style={[estilos.cardioReloj, estilos.cardioQuieto]}>{cronoLindo(0)}</Text>
+          <Text style={estilos.cardioNota}>{estado.minutos ? T.sesion.cardioMeta(estado.minutos) : T.sesion.cardioCuentaArriba}</Text>
+        </View>
+      )}
+
+      {esTiempo && !corriendoCardio && estado.hechas > 0 && (
         <View testID="minutos-de-cardio" style={estilos.minutos} accessibilityLabel={T.sesion.minutosDeCardio}>
           <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.max(1, Math.ceil(minutos / 5) * 5 - 5))} accessibilityLabel="−5">
             <Text style={estilos.minutosPasoTexto}>−</Text>
@@ -347,6 +372,13 @@ export default function Bloque({
           <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.floor(minutos / 5) * 5 + 5)} accessibilityLabel="+5">
             <Text style={estilos.minutosPasoTexto}>+</Text>
           </Pressable>
+        </View>
+      )}
+      {/* LA DISTANCIA DE LA VUELTA (21/10), con la migración 95. */}
+      {esTiempo && !corriendoCardio && estado.hechas > 0 && conDistancia && alElegirDistancia && (
+        <View style={estilos.distancia}>
+          <Text style={estilos.distanciaEtiqueta}>{T.sesion.distancia}</Text>
+          <CampoDistancia km={estado.distancia} unidad={unidadDeDistancia(unidad)} alCambiar={alElegirDistancia} />
         </View>
       )}
 
@@ -477,6 +509,7 @@ export default function Bloque({
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
+            <FondoOctogonal relleno={FONDO_BOTON} borde={C.lineaFuerte} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Pressable>
           <Pressable
@@ -490,6 +523,7 @@ export default function Bloque({
               setTimeout(() => setPausa(false), TOQUE_REPETIDO_MS);
             }}
           >
+            <FondoOctogonal relleno={C.claro} corte={CORTE} />
             <Text style={estilos.cerrarTexto}>{T.sesion.terminarSerie}</Text>
           </Pressable>
         </View>
@@ -502,6 +536,7 @@ export default function Bloque({
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
+            <FondoOctogonal relleno={FONDO_BOTON} borde={C.lineaFuerte} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Pressable>
           <MasQuePulsa
@@ -511,6 +546,7 @@ export default function Bloque({
             onPress={esTiempo ? principalDeCardio.accion : sumar}
             accessibilityLabel={esTiempo ? principalDeCardio.texto : T.inicio.sumarSerie}
           >
+            <FondoOctogonal relleno={esTiempo ? C.claro : FONDO_BOTON} borde={esTiempo ? undefined : C.lineaFuerte} corte={CORTE} />
             <Text style={esTiempo ? estilos.cerrarTexto : estilos.masTexto}>{esTiempo ? principalDeCardio.texto : '+'}</Text>
           </MasQuePulsa>
         </View>
@@ -699,6 +735,10 @@ const estilos = StyleSheet.create({
   cardio: { alignItems: 'center', marginTop: 14, gap: 4 },
   cardioReloj: { color: C.tinta, fontSize: 56, fontWeight: '200', fontVariant: ['tabular-nums'] },
   cardioNota: { color: C.sub, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase' },
+  // Quieto en 0:00 hasta que se arranca: el mismo reloj, más tenue.
+  cardioQuieto: { color: C.sub },
+  distancia: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 10 },
+  distanciaEtiqueta: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
   minutosPaso: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
   minutosPasoTexto: { color: C.tinta, fontSize: 22, fontWeight: '300' },
   minutosTexto: { color: C.tinta, fontSize: 22, fontVariant: ['tabular-nums'], minWidth: 90, textAlign: 'center' },
@@ -739,18 +779,15 @@ const estilos = StyleSheet.create({
   // puntos, así que sigue siendo casi el doble. Lo que se pierde es el "sin
   // apuntar", y eso lo compensa el ancho: el + se lleva tres cuartos de la
   // fila, o sea que el blanco real sigue teniendo el tamaño de una mano.
+  // El fondo y el borde los dibuja `FondoOctogonal`: esquinas cortadas en diagonal (21/10).
   mas: {
     marginTop: 18,
     minHeight: 75,
-    borderWidth: 1,
-    borderColor: C.lineaFuerte,
-    borderRadius: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   masTexto: { color: C.claro, fontSize: 28, fontWeight: '200' },
-  masCerrar: { backgroundColor: C.claro, borderColor: C.claro, flex: 3, marginTop: 0 },
+  masCerrar: { flex: 3, marginTop: 0 },
   masEnPausa: { opacity: 0.35 },
   // Un cuarto del ancho contra tres: doce sumas contra una resta.
   menos: { flex: 1, marginTop: 0 },
