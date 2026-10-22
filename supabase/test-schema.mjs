@@ -18732,7 +18732,8 @@ console.log('\n239. Cacería del 15/10, vuelta 5: lo de otro aparato con −, Te
   const mi = de239('movil', 'src', 'MiRutina.tsx');
   chequear('Tu rutina: el nombre va a SU rutina; no dice "no hay rutina" antes de saber; copiar es de a un toque; activar y borrar escriben la copia del teléfono', [
     /onChangeText=\{\(texto\) => \(nombreTipeado\.current = \{ id: actual\.id, texto \}\)\}/.test(mi),
-    /setNoCargo\(hay && !mias\);\n    setGuardadas\(hay\);/.test(mi),
+    // Desde el 21/10 sale de la precarga de Stats (\`p\`): la misma regla.
+    /setNoCargo\(p\.hay && !mias\);\n    setGuardadas\(p\.hay\);/.test(mi),
     /if \(!rutina \|\| copiando\.current( \|\| elegidos\.length === 0)?\) return;/.test(de239('movil', 'src', 'RutinaDe.tsx')),
     /if \(ok && dias\) await guardarActiva\(/.test(de239('compartido', 'rutinas.ts')),
     /if \(ok && \(await idDeLaActiva\(\)\) === id\) await guardarActiva\(\[\]\);/.test(de239('compartido', 'rutinas.ts')),
