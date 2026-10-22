@@ -3,7 +3,8 @@
 // la prueba la sección de test:db).
 //
 // En la vista web de la nativa (:8090), con una cuenta descartable y el reloj de Playwright:
-// se empieza a entrenar, se toca «Descansar», se cierra la pantalla grande (queda la píldora) y
+// se empieza a entrenar, se toca «Descansar» y «Empezar descanso» (desde el 21/10 el botón abre
+// la pantalla quieta), se cierra la pantalla grande (queda la píldora) y
 // se adelanta el reloj hasta el fin del descanso. La píldora tiene que girar a los dos lados
 // en los segundos siguientes, y antes del cero no.
 //
@@ -73,6 +74,7 @@ try {
   await page.getByLabel('Sumar una serie').first().waitFor({ timeout: 90000 });
   await page.waitForTimeout(1500);
   await texto('Descansar').click({ timeout: 30000 });
+  await page.getByTestId('descanso-empezar').first().click({ timeout: 30000 });
   await page.getByTestId('descanso-reloj').first().waitFor({ timeout: 30000 });
   await page.waitForTimeout(800);
   await page.getByLabel('Cerrar').first().click();
