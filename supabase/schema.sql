@@ -374,6 +374,8 @@ insert into public.ejercicios (id, nombre, grupo, cuenta_dots, orden) values
   ('puente_gluteo',         'Puente de glúteos',           'piernas', false, 193),
   ('patada_gluteo',         'Patada de glúteo en polea',   'piernas', false, 194),
   ('press_declinado',       'Press declinado',             'pecho',   false, 211),
+  ('press_plano_smith',     'Press plano en Smith',        'pecho',   false, 212),
+  ('press_inclinado_smith', 'Press inclinado en Smith',    'pecho',   false, 213),
   ('press_inclinado_mancuernas','Press inclinado con mancuernas','pecho', false, 221),
   ('press_pecho_maquina',   'Press de pecho en máquina',   'pecho',   false, 222),
   ('cruce_polea_alta',      'Cruces en polea alta',        'pecho',   false, 231),
@@ -4703,7 +4705,7 @@ revoke execute on function public.marcar_me_gusta_rutina(uuid, boolean) from pub
 grant execute on function public.marcar_me_gusta_rutina(uuid, boolean) to authenticated;
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 95; $$;
+returns int language sql immutable as $$ select 96; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

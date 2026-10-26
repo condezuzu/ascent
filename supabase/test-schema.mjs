@@ -2449,8 +2449,8 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
   // seguiria saliendo, mas alto y sin significado.
   const cat = (await db.query(`select grupo, count(*)::int n from ejercicios group by 1`)).rows;
   const cuantos = (await db.query(`select count(*)::int n from ejercicios`)).rows[0].n;
-  // 101 de fuerza y 9 de cardio (migración 76).
-  chequear('el catalogo tiene 110 ejercicios', cuantos, 110);
+  // 103 de fuerza y 9 de cardio (migración 76; los dos press en Smith, 96).
+  chequear('el catalogo tiene 112 ejercicios', cuantos, 112);
   chequear('y solo 3 mueven el DOTS', delDots.length, 3);
   chequear(
     'los grupos son los seis de siempre, y el cardio',
@@ -3960,7 +3960,7 @@ console.log('\n56. El arbol del selector llega a los 100');
       llegan += porGrupo.find((f) => f.grupo === g)?.n ?? 0;
     }
   }
-  chequear('se llega a los 110 ejercicios', llegan, 110);
+  chequear('se llega a los 112 ejercicios', llegan, 112);
 
   // QUE ADMITEN PESO (migracion 31). Una marca es peso por repeticiones, asi
   // que la pantalla de marcas filtra por esta columna. Se fija la lista de
@@ -20485,7 +20485,7 @@ console.log('\n305. La migración 95: la distancia del cardio y las repeticiones
   ])])).rows[0].id;
   const r305 = (await db.query('select mis_rutinas() as v')).rows[0].v.find((r) => r.id === id305);
   chequear('la rutina guarda las repeticiones objetivo de 1 a 100, enteras; 0 no es un objetivo', r305.dias[1].ejercicios.map((e) => e.reps ?? 'sin llave'), [8, 'sin llave', 12, 'sin llave']);
-  chequear('la base está en la 95', (await db.query('select version_del_esquema() as v')).rows[0].v, 95);
+  chequear('la base está en la 95 o después', (await db.query('select version_del_esquema() as v')).rows[0].v >= 95, true);
 }
 console.log('\n306. El separador decimal sigue al idioma: 70,0 en español y 70.0 en inglés; lo escrito se lee igual (21/10)');
 {
@@ -20676,6 +20676,25 @@ console.log('\n312. Las vidas son estrellas también en la web (26/10)');
     /<i key/.test(imp),
     /\.impulsos svg\.viva/.test(css),
   ], [true, true, true, false, true]);
+}
+console.log('\n313. Press plano y press inclinado en Smith, en el catálogo (26/10)');
+{
+  const fila313 = async (id) => (await db.query('select nombre, grupo, carga, admite_peso, orden, creado_por from ejercicios where id = $1', [id])).rows[0] ?? null;
+  chequear('están, en pecho, con carga de barra y al lado del press declinado', [
+    await fila313('press_plano_smith'), await fila313('press_inclinado_smith'),
+  ], [
+    { nombre: 'Press plano en Smith', grupo: 'pecho', carga: 'total', admite_peso: true, orden: 212, creado_por: null },
+    { nombre: 'Press inclinado en Smith', grupo: 'pecho', carga: 'total', admite_peso: true, orden: 213, creado_por: null },
+  ]);
+  const EN313 = await import('../nucleo/ejerciciosEn.ts');
+  const en313 = EN313.NOMBRES_EN;
+  chequear('y tienen su nombre en inglés', [en313.press_plano_smith, en313.press_inclinado_smith], ['Smith machine bench press', 'Smith machine incline press']);
+  const mig313 = deBug('supabase', 'migracion-96-press-en-smith.sql');
+  chequear('la migración 96 los inserta igual que schema.sql y sube la versión', [
+    mig313.includes("('press_plano_smith',     'Press plano en Smith',        'pecho',   false, 212)"),
+    mig313.includes("('press_inclinado_smith', 'Press inclinado en Smith',    'pecho',   false, 213)"),
+    /select 96; \$\$/.test(mig313),
+  ], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

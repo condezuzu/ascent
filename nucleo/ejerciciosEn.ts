@@ -54,6 +54,8 @@ export const NOMBRES_EN: Readonly<Record<string, string>> = {
   puente_gluteo: 'Glute bridge',
   patada_gluteo: 'Cable glute kickback',
   press_declinado: 'Decline bench press',
+  press_plano_smith: 'Smith machine bench press',
+  press_inclinado_smith: 'Smith machine incline press',
   press_inclinado_mancuernas: 'Incline dumbbell press',
   press_pecho_maquina: 'Machine chest press',
   cruce_polea_alta: 'High cable crossover',
