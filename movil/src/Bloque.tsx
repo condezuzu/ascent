@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { supabase } from './supabase';
-import { metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
+import { metaAMano, metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { OPCIONES_DE_LA_PREGUNTA, cargaVigente, hayQuePreguntar, kilosMovidos, llevaNumero, muestraTotal, type Carga } from '@nucleo/carga';
@@ -242,6 +242,14 @@ export default function Bloque({
       ? { texto: T.sesion.cardioOtraVuelta, accion: () => alArrancarCardio?.() }
       : { texto: T.sesion.cardioArrancar, accion: () => alArrancarCardio?.() };
   const puntos = Math.max(estado.meta, estado.hechas);
+  // Las series a mano: `null` cerrado, texto mientras se escribe.
+  const [metaEscrita, setMetaEscrita] = useState<string | null>(null);
+  const usarMetaEscrita = () => {
+    const n = metaAMano(metaEscrita ?? '');
+    if (n === null) return;
+    alElegirMeta(n);
+    setMetaEscrita(null);
+  };
   const cargaVista = cargaVigente(estado.carga, actual?.carga);
   const esCorporal = !llevaNumero(cargaVista);
   const admitePeso = !!estado.ejercicio && actual?.admite_peso !== false;
@@ -394,7 +402,40 @@ export default function Bloque({
             <Text style={[estilos.metaTexto, estado.meta === m && estilos.metaTextoPrendido]}>×{m}</Text>
           </Pressable>
         ))}
+        <Pressable
+          testID="meta-a-mano"
+          style={[estilos.meta, metaEscrita !== null && estilos.metaPrendida]}
+          onPress={() => setMetaEscrita(metaEscrita === null ? '' : null)}
+          accessibilityLabel={T.sesion.seriesAMano}
+          accessibilityRole="button"
+        >
+          <Text style={[estilos.metaTexto, metaEscrita !== null && estilos.metaTextoPrendido]}>+</Text>
+        </Pressable>
       </View>
+      )}
+      {!esTiempo && metaEscrita !== null && (
+        <View style={estilos.metaAMano}>
+          <TextInput
+            testID="meta-a-mano-campo"
+            style={estilos.metaAManoCampo}
+            value={metaEscrita}
+            onChangeText={setMetaEscrita}
+            placeholder={T.sesion.seriesAManoEjemplo}
+            placeholderTextColor={C.apagado}
+            keyboardType="number-pad"
+            autoFocus
+            maxLength={2}
+            onSubmitEditing={usarMetaEscrita}
+          />
+          <Pressable
+            testID="meta-a-mano-usar"
+            style={[estilos.meta, estilos.metaUsar, metaAMano(metaEscrita) !== null && estilos.metaPrendida]}
+            disabled={metaAMano(metaEscrita) === null}
+            onPress={usarMetaEscrita}
+          >
+            <Text style={[estilos.metaTexto, metaAMano(metaEscrita) !== null && estilos.metaTextoPrendido]}>{T.descanso.aManoUsar}</Text>
+          </Pressable>
+        </View>
       )}
 
       {(anotarPeso || conReps) && admitePeso && (
@@ -730,6 +771,9 @@ const estilos = StyleSheet.create({
   metaPrendida: { borderColor: C.sub },
   metaTexto: { color: C.apagado, fontSize: 14 },
   metaTextoPrendido: { color: C.tinta },
+  metaAMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 10 },
+  metaAManoCampo: { color: C.tinta, fontSize: 16, minWidth: 150, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  metaUsar: { flex: 0, minWidth: 76, paddingHorizontal: 18 },
   peso: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, marginTop: 12 },
   minutos: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
   cardio: { alignItems: 'center', marginTop: 14, gap: 4 },

@@ -1138,6 +1138,9 @@ const ES = {
     // verdad, y las dos palabras suenan a que falta algo.
     sinEjercicio: 'Cualquier cosa',
     cuantasVasAHacer: 'Cuántas vas a hacer',
+    // Las series a mano (26/10): el «+» al lado de ×2…×5, como el del descanso.
+    seriesAMano: 'Escribir cuántas series',
+    seriesAManoEjemplo: 'Series (1 a 99)',
     // LA RUTINA QUE SE PROPONE SOLA: lo sugerido se muestra distinto de lo hecho.
     sugerido: 'Sugerido',
     sugeridoNota: 'De tu rutina. Cuenta la primera serie para confirmarlo.',

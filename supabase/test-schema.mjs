@@ -20696,6 +20696,18 @@ console.log('\n313. Press plano y press inclinado en Smith, en el catálogo (26/
     /select 96; \$\$/.test(mig313),
   ], [true, true, true]);
 }
+console.log('\n314. Las series a mano: además de ×2…×5, cualquier número de 1 a 99 (26/10)');
+{
+  const B314 = await import('../nucleo/bloques.ts');
+  chequear('se acepta un entero de 1 a 99, con espacios alrededor; lo demás no', [
+    '7', ' 12 ', '1', '99', '0', '100', '6.5', '-3', 'x', '',
+  ].map(B314.metaAMano), [7, 12, 1, 99, null, null, null, null, null, null]);
+  const bl314 = deBug('movil', 'src', 'Bloque.tsx');
+  chequear('el «+» está al lado de las píldoras y lo escrito va por alElegirMeta', [
+    /testID="meta-a-mano"/.test(bl314),
+    /const n = metaAMano\(metaEscrita \?\? ''\);\n    if \(n === null\) return;\n    alElegirMeta\(n\);/.test(bl314.replace(/\r\n/g, '\n')),
+  ], [true, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

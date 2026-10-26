@@ -635,6 +635,8 @@ export const EN: Textos = {
     queEstasHaciendo: "What you're doing",
     sinEjercicio: 'Anything',
     cuantasVasAHacer: "How many you'll do",
+    seriesAMano: 'Type how many sets',
+    seriesAManoEjemplo: 'Sets (1 to 99)',
     sugerido: 'Suggested',
     sugeridoNota: 'From your routine. Count the first set to confirm it.',
     ultimaVez: (fecha: string, detalle: string) => `Last time, ${fecha}: ${detalle}`,
