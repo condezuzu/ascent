@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ascent",
     "slug": "ascent",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icono.png",
     "userInterfaceStyle": "dark",
@@ -17,7 +17,16 @@
         ],
         "UIApplicationSupportsShakeToEdit": false,
         "ITSAppUsesNonExemptEncryption": false,
-        "NSSupportsLiveActivities": true
+        "NSSupportsLiveActivities": true,
+        "LSApplicationQueriesSchemes": [
+          "moss"
+        ]
+      },
+      "entitlements": {
+        "keychain-access-groups": [
+          "$(AppIdentifierPrefix)uy.ascent.app",
+          "$(AppIdentifierPrefix)uy.condeag.compartido"
+        ]
       },
       "buildNumber": "10",
       "associatedDomains": [
@@ -106,6 +115,12 @@
         "@bacons/apple-targets",
         {
           "appleTeamId": "XF9N8X9KJG"
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
         }
       ]
     ],

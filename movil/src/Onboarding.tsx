@@ -14,6 +14,7 @@ import { quienSoy } from '@compartido/quienSoy';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
 import { reiniciarGuia } from '@compartido/guia';
+import { sesionCompartida } from './sesionCompartida';
 
 /**
  * ELEGIR EL NOMBRE — lo que falta para que una cuenta nueva sirva.
@@ -75,6 +76,7 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
       if (error.code === '23514') return setError(T.entrar.nombreFormato);
       return setError(T.general.noSePudo);
     }
+    void sesionCompartida.anotarNombre(yo.uid, limpio);
     // LA GUÍA ARRANCA DE CERO ACÁ (§10): los globitos, cada uno en su momento. Y
     // se queda en Inicio; hasta el 15/10 se iba a Ajustes, donde empezaba el recorrido.
     await reiniciarGuia(yo.uid);

@@ -6,6 +6,7 @@ import type { Perfil, Sexo as SexoValor } from '@nucleo/tipos';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
+import { sesionCompartida } from '../sesionCompartida';
 import { C } from '../colores';
 
 /**
@@ -54,6 +55,7 @@ export default function Identidad({
     }
     alCambiar({ username: limpio });
     await borrarPerfilCache(); // la caché tiene el nombre viejo
+    void sesionCompartida.anotarNombre(perfil.id, limpio);
     setAviso(T.ajustes.nombreListo);
     setTimeout(() => setAviso(''), 3000);
   }

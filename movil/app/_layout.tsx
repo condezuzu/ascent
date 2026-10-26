@@ -39,6 +39,7 @@ import { reportarMedicionA } from '@compartido/medir';
 import { trasElAviso, trasMirar } from '@nucleo/veredicto';
 import { anotarEntradaVista } from '@compartido/entradaVista';
 import { encenderTarjeta } from '@compartido/tarjeta';
+import { sesionCompartida } from '../src/sesionCompartida';
 
 /**
  * LA RAÍZ DE LA APP, y desde el 22/9 también la raíz del router.
@@ -266,6 +267,8 @@ export default function Layout() {
     // aviso, por el mismo candado de arriba.
     // ────────────────────────────────────────────────────────────────
     const { data } = supabase.auth.onAuthStateChange((evento, viva) => {
+      // La sesión que lee Moss en el llavero compartido (D27) sigue a esta, sin esperarla.
+      void sesionCompartida.alAviso(evento, viva);
       const que = trasElAviso(evento, !!viva);
       if (que === 'preguntar') setTimeout(() => void mirar(), 0);
       else setSesion(que);

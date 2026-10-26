@@ -5327,6 +5327,9 @@ console.log('\n71. Lo que el codigo nombra, existe');
 
   const textosQueNoEstan = new Set();
   const funcionesQueNoEstan = new Set();
+  // LAS DE MOSS (D27) viven en el esquema `moss`, que arma el repo de Moss: no están en este
+  // schema.sql. Se llaman con `.schema('moss')` y solo las anotadas; una nueva obliga a decidir.
+  const DE_MOSS = ['estado_del_vinculo', 'desvincular'];
   let textos = 0;
   let llamadas = 0;
   for (const a of archivos) {
@@ -5340,7 +5343,8 @@ console.log('\n71. Lo que el codigo nombra, existe');
     }
     for (const m of codigo.matchAll(/\.rpc\(\s*'([a-z_0-9]+)'/g)) {
       llamadas++;
-      if (!new RegExp(`function public\\.${m[1]}\\(`).test(esquema)) {
+      const aMoss = /\.schema\('moss'\)$/.test(codigo.slice(Math.max(0, m.index - 20), m.index));
+      if (aMoss ? !DE_MOSS.includes(m[1]) : !new RegExp(`function public\\.${m[1]}\\(`).test(esquema)) {
         funcionesQueNoEstan.add(`${donde}: ${m[1]}`);
       }
     }
@@ -14079,9 +14083,9 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
   const clases182 = Object.entries(nativa182).map(([ruta, t]) => [ruta, clasificar182(ruta, t)]);
   chequear('ninguna hoja con estado propio queda sin decidir', clases182.filter(([, c]) => c === 'SIN DECIDIR').map(([ruta]) => ruta), []);
   chequear(
-    'las cinco que se abren con una prop nacen de nuevo en cada apertura',
+    'las seis que se abren con una prop nacen de nuevo en cada apertura',
     clases182.filter(([, c]) => c === 'nace-al-abrir').map(([ruta]) => ruta.split('/').pop()).sort(),
-    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx']
+    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'HojaDeMoss.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx']
   );
   // Lo anotado a mano se comprueba: si alguien pasa a dibujar siempre una de
   // las que "se montan al abrir", vuelve a ser una hoja montada con estado viejo.
@@ -14520,6 +14524,169 @@ console.log('\n187. Una sola respuesta a "¿hay sesión?": hay, no hay, o no sé
     /if \(error && !datos\)/.test(codigo187['movil/src/Stats.tsx']),
     /\{noCargo && !datos \? \(/.test(codigo187['movil/src/Album.tsx']),
   ], [true, true]);
+}
+
+console.log('\n187b. Vincular con Moss: la sesión en el llavero compartido sigue a la de Supabase (D27, 26/10)');
+{
+  // EL CONTRATO CON MOSS (D27 de su spec): cada app deja su sesión en el grupo del llavero del
+  // equipo y lee la de la otra. Moss ya lo usa: un campo o una clave distintos y la otra app deja de
+  // ver la sesión, sin ningún error de ningún lado.
+  const V = await import('../nucleo/vinculoConMoss.ts');
+  const AHORA = 1_800_000_000;
+  const sesion = (token, uid = 'u1') => ({ access_token: token, refresh_token: `r-${token}`, expires_at: AHORA + 3600, expires_in: 3600, user: { id: uid } });
+
+  const escrito = V.sesionParaElLlavero(sesion('t1'), ' agus ', AHORA);
+  chequear('Ascent deja v, app, usuario, nombre, token y vence (en segundos), y nunca el token de refresco', [
+    JSON.parse(escrito), escrito.includes('r-t1'),
+  ], [{ v: 1, app: 'ascent', usuario: 'u1', nombre: 'agus', token: 't1', vence: AHORA + 3600 }, false]);
+  chequear('sin token, sin usuario o sin vencimiento no se escribe; sin expires_at, vence sale de expires_in', [
+    V.sesionParaElLlavero({ ...sesion('t1'), access_token: '' }, 'x', AHORA),
+    V.sesionParaElLlavero({ ...sesion('t1'), user: null }, 'x', AHORA),
+    V.sesionParaElLlavero({ access_token: 't1', user: { id: 'u1' } }, 'x', AHORA),
+    JSON.parse(V.sesionParaElLlavero({ access_token: 't1', expires_in: 3600, user: { id: 'u1' } }, null, AHORA)).vence,
+  ], [null, null, null, AHORA + 3600]);
+
+  const deMoss = (cambios = {}) => JSON.stringify({ v: 1, app: 'moss', usuario: 'm1', nombre: 'Agustín', token: 'tm', vence: AHORA + 3600, ...cambios });
+  chequear('la de Moss sirve si es de Moss, versión 1 y con más de un minuto por delante; el nombre puede faltar', [
+    V.sesionDeMoss(deMoss(), AHORA), V.sesionDeMoss(deMoss({ nombre: undefined }), AHORA)?.nombre, V.sesionDeMoss(deMoss({ vence: AHORA + 61 }), AHORA)?.token,
+  ], [{ v: 1, app: 'moss', usuario: 'm1', nombre: 'Agustín', token: 'tm', vence: AHORA + 3600 }, '', 'tm']);
+  chequear('y no sirve vencida, a punto de vencer, la propia de Ascent, de otra versión, sin token, con vence en texto, rota o vacía', [
+    deMoss({ vence: AHORA - 1 }), deMoss({ vence: AHORA + 60 }), deMoss({ app: 'ascent' }), deMoss({ v: 2 }), deMoss({ token: '' }),
+    deMoss({ vence: String(AHORA + 3600) }), '{', null,
+  ].map((crudo) => V.sesionDeMoss(crudo, AHORA)), [null, null, null, null, null, null, null, null]);
+  const conMoss = V.sesionDeMoss(deMoss(), AHORA);
+  chequear('la hoja: con la sesión de Moss, vincular; sin ella, abrir Moss si está instalada, y si no, conseguirla', [
+    V.pasoDeLaHoja(conMoss, true), V.pasoDeLaHoja(conMoss, false), V.pasoDeLaHoja(null, true), V.pasoDeLaHoja(null, false),
+  ], ['vincular', 'vincular', 'abrir-moss', 'conseguir-moss']);
+  chequear('moss-vincular: ok con 200; vencida (la de Moss), sin_sesion (la de Ascent) y sin_ascent por su nombre; lo demás es el servidor, y sin respuesta, la red', [
+    [200, { ok: true, nombre: 'agus' }], [200, 'ok'], [401, { error: 'vencida' }], [401, { error: 'sin_sesion' }], [409, { error: 'sin_ascent' }],
+    [400, { error: 'pedido' }], [500, { error: 'interno' }], [502, null], [null, null],
+  ].map(([estado, cuerpo]) => { const r = V.resultadoDeVincular(estado, cuerpo); return r.ok ? 'ok' : r.motivo; }),
+  ['ok', 'servidor', 'vencida', 'sin_sesion', 'sin_ascent', 'servidor', 'servidor', 'servidor', 'red']);
+  chequear('estado_del_vinculo: vinculada solo con un true de verdad', [
+    { vinculada: true, nombre: 'agus', desde: 'ascent' }, [{ vinculada: true }], { vinculada: 'true' }, { vinculada: false }, null,
+  ].map(V.estaVinculada), [true, true, false, false, false]);
+
+  // LA SESIÓN SIGUE A LA DE SUPABASE, con la copia del perfil DE VERDAD: el nombre sale de
+  // `compartido/cache.ts`, que guarda Inicio, con el almacenamiento como lo deja la app (ver «La
+  // cuenta probada no es la función probada»). El llavero es un Map: el de verdad no corre en node.
+  const cache187b = await import('../compartido/cache.ts');
+  const perfil187b = (id, username) => ({ id, username, avatar_url: null, racha_actual: 0, mejor_racha: 0, racha_base: 0, perdida_fecha: null, dias_descanso: [], duracion_descanso: 90, dia_pendiente: null, unidad_peso: 'kg', gimnasio_lat: null });
+  const llavero187b = new Map();
+  // Una lectura de la copia que tarda (solo la próxima): la suelta la prueba.
+  let demora187b = null;
+  const nueva187b = () => V.crearSesionCompartida({
+    guardar: async (clave, valor) => void llavero187b.set(clave, valor),
+    borrar: async (clave) => void llavero187b.delete(clave),
+    nombreGuardado: async (uid) => {
+      const espera = demora187b;
+      demora187b = null;
+      if (espera) await espera;
+      return (await cache187b.leerPerfilCache(uid))?.username;
+    },
+    ahoraSeg: () => AHORA,
+  });
+  const enLlavero = () => (llavero187b.has(V.LLAVERO_COMPARTIDO.deAscent) ? JSON.parse(llavero187b.get(V.LLAVERO_COMPARTIDO.deAscent)) : null);
+  const tokenYNombre = () => [enLlavero()?.token ?? null, enLlavero()?.nombre ?? null];
+
+  await cache187b.borrarPerfilCache();
+  await cache187b.guardarPerfilCache(perfil187b('u1', 'agus'));
+  const s1 = nueva187b();
+  const pasos187b = [];
+  await s1.alAviso('INITIAL_SESSION', sesion('t1'));
+  pasos187b.push(tokenYNombre());
+  await s1.alAviso('TOKEN_REFRESHED', sesion('t2'));
+  pasos187b.push(tokenYNombre());
+  await s1.anotarNombre('u1', 'agus_nuevo');
+  pasos187b.push(tokenYNombre());
+  await s1.alAviso('SIGNED_OUT', null);
+  pasos187b.push(tokenYNombre());
+  chequear('al abrir deja la sesión con el nombre de la copia del perfil; al renovar, el token nuevo; con otro nombre, se reescribe; al salir, se borra', pasos187b, [
+    ['t1', 'agus'], ['t2', 'agus'], ['t2', 'agus_nuevo'], [null, null],
+  ]);
+
+  // Al salir se borra la copia del perfil (`limpiarAlSalir`): recién entrado no hay nombre.
+  await cache187b.borrarPerfilCache();
+  const s2 = nueva187b();
+  await s2.alAviso('SIGNED_IN', sesion('t3'));
+  const recienEntrado = tokenYNombre();
+  await cache187b.guardarPerfilCache(perfil187b('u1', 'agus'));
+  await s2.anotarNombre('u1', 'agus');
+  const conElPerfil = tokenYNombre();
+  // Identidad borra la copia al cambiar el nombre (tiene el viejo), y el token se renueva antes de que Inicio la rehaga.
+  await s2.anotarNombre('u1', 'otro_nombre');
+  await cache187b.borrarPerfilCache();
+  await s2.alAviso('TOKEN_REFRESHED', sesion('t4'));
+  chequear('recién entrado se deja sin nombre y se completa cuando llega el perfil; un nombre cambiado no se pierde al renovar', [recienEntrado, conElPerfil, tokenYNombre()], [
+    ['t3', ''], ['t3', 'agus'], ['t4', 'otro_nombre'],
+  ]);
+
+  await cache187b.guardarPerfilCache(perfil187b('u1', 'agus'));
+  await nueva187b().alAviso('SIGNED_IN', sesion('t5', 'u2'));
+  chequear('otra cuenta no se lleva el nombre de la copia de la anterior', [enLlavero()?.usuario, enLlavero()?.nombre], ['u2', '']);
+
+  llavero187b.set(V.LLAVERO_COMPARTIDO.deAscent, 'lo que quedó');
+  await nueva187b().alAviso('INITIAL_SESSION', null);
+  chequear('al abrir sin sesión se borra lo que hubiera quedado', llavero187b.has(V.LLAVERO_COMPARTIDO.deAscent), false);
+
+  // LAS CARRERAS: la primera escritura espera la copia del perfil y en el medio llega otra cosa.
+  let soltar187b;
+  demora187b = new Promise((r) => (soltar187b = r));
+  const s3 = nueva187b();
+  const esperando = [s3.alAviso('INITIAL_SESSION', sesion('t6')), s3.alAviso('TOKEN_REFRESHED', sesion('t7'))];
+  soltar187b();
+  await Promise.all(esperando);
+  const trasRenovar = enLlavero()?.token;
+  demora187b = new Promise((r) => (soltar187b = r));
+  const s4 = nueva187b();
+  const saliendo = [s4.alAviso('SIGNED_IN', sesion('t8')), s4.alAviso('SIGNED_OUT', null)];
+  soltar187b();
+  await Promise.all(saliendo);
+  chequear('una renovación que llega mientras se escribía gana, y una escritura que esperaba no deja la sesión después de salir', [
+    trasRenovar, llavero187b.has(V.LLAVERO_COMPARTIDO.deAscent),
+  ], ['t7', false]);
+  await cache187b.borrarPerfilCache();
+
+  // EL CABLEADO, que no corre en node (el llavero y React Native): se lee.
+  const de187b = (...p) => sinComentarios(leer179(join(aca179, '..', ...p), 'utf8').replace(/\r\n/g, '\n'));
+  const lay187b = de187b('movil', 'app', '_layout.tsx');
+  const aviso187b = lay187b.slice(lay187b.indexOf('onAuthStateChange('), lay187b.indexOf('data.subscription.unsubscribe'));
+  const sc187b = de187b('movil', 'src', 'sesionCompartida.ts');
+  chequear('el aviso de auth le pasa su sesión sin esperar, y lo que la escribe no toca el cliente de Supabase (el interbloqueo de la 153)', [
+    /void sesionCompartida\.alAviso\(evento, viva\);/.test(aviso187b),
+    /from '\.\/supabase'|supabase\./.test(sc187b),
+    /nombreGuardado: async \(uid\) => \(await leerPerfilCache\(uid\)\)\?\.username,/.test(sc187b),
+    /guardar: \(clave, valor\) => llavero\.guardar\(clave, valor\),\s*borrar: \(clave\) => llavero\.borrar\(clave\),/.test(sc187b),
+  ], [true, false, true, true]);
+  chequear('el nombre se anota donde llega el perfil (Inicio), donde se elige (Onboarding) y donde se cambia (Identidad)', [
+    /void guardarPerfilCache\(d\.perfil\);\s*void sesionCompartida\.anotarNombre\(d\.perfil\.id, d\.perfil\.username\);/.test(de187b('movil', 'src', 'Inicio.tsx')),
+    /if \(error\) \{[\s\S]{0,400}\}\s*void sesionCompartida\.anotarNombre\(yo\.uid, limpio\);/.test(de187b('movil', 'src', 'Onboarding.tsx')),
+    /alCambiar\(\{ username: limpio \}\);[\s\S]{0,120}void sesionCompartida\.anotarNombre\(perfil\.id, limpio\);/.test(de187b('movil', 'src', 'ajustes', 'Identidad.tsx')),
+  ], [true, true, true]);
+  const ll187b = de187b('movil', 'src', 'plataforma', 'llavero.ts');
+  chequear('el puente guarda como Moss (el servicio y el grupo del contrato, sin migrar de teléfono) y sin el módulo nativo no tira', [
+    /keychainService: LLAVERO_COMPARTIDO\.servicio,\s*accessGroup: LLAVERO_COMPARTIDO\.grupo,\s*keychainAccessible: s\.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,/.test(ll187b),
+    /requireOptionalNativeModule\('ExpoSecureStore'\)/.test(ll187b),
+    /^import (?!type)[^\n]*'expo-secure-store'/m.test(ll187b),
+  ], [true, true, false]);
+  const app187b = JSON.parse(leer179(join(aca179, '..', 'movil', 'app.json'), 'utf8')).expo;
+  const grupos187b = app187b.ios.entitlements?.['keychain-access-groups'] ?? [];
+  chequear('app.json: primero el grupo propio (lo demás del llavero sigue privado), después el del contrato; Moss entre las URL que se preguntan; sin el texto de Face ID', [
+    grupos187b.length, grupos187b[0] === `$(AppIdentifierPrefix)${app187b.ios.bundleIdentifier}`,
+    grupos187b[1]?.replace('$(AppIdentifierPrefix)', `${app187b.ios.appleTeamId}.`) === V.LLAVERO_COMPARTIDO.grupo,
+    (app187b.ios.infoPlist.LSApplicationQueriesSchemes ?? []).includes('moss'),
+    JSON.stringify(app187b.plugins.find((p) => (Array.isArray(p) ? p[0] : p) === 'expo-secure-store')),
+  ], [2, true, true, true, JSON.stringify(['expo-secure-store', { faceIDPermission: false }])]);
+  const aj187b = de187b('movil', 'src', 'Ajustes.tsx');
+  const mo187b = de187b('movil', 'src', 'ajustes', 'Moss.tsx');
+  const hoja187b = de187b('movil', 'src', 'ajustes', 'HojaDeMoss.tsx');
+  chequear('la fila de Moss va entre Salud e Identidad y pregunta y desvincula por el esquema moss; su hoja vincula mandando la de Moss desde Ascent', [
+    aj187b.indexOf('<Salud />') > -1 && aj187b.indexOf('<Salud />') < aj187b.indexOf('<Moss />') && aj187b.indexOf('<Moss />') < aj187b.indexOf('<Identidad '),
+    /supabase\.schema\('moss'\)\.rpc\('estado_del_vinculo'\)/.test(mo187b),
+    /supabase\.schema\('moss'\)\.rpc\('desvincular'\)/.test(mo187b),
+    /functions\.invoke\('moss-vincular', \{\s*body: \{ otra: vigente\.token, desde: 'ascent' \},/.test(hoja187b),
+    /llavero\.leer\(LLAVERO_COMPARTIDO\.deMoss\)/.test(hoja187b),
+  ], [true, true, true, true, true]);
 }
 
 console.log('\n188. La sesión guardada se cambia de a uno: dos que guardan a la vez no se pisan');

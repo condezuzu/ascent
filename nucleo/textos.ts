@@ -492,6 +492,29 @@ const ES = {
   },
 
   // ---------------------------------------------------------------
+  // VINCULAR CON MOSS (D27 de Moss, 26/10): la fila de Ajustes › Perfil y su hoja. Vincular es
+  // dar permiso para que cada app lea lo de la otra, y la hoja lo dice antes del botón.
+  moss: {
+    titulo: 'Moss',
+    vincularConMoss: 'Vincular con Moss',
+    vinculada: 'Vinculada con Moss',
+    desvincular: 'Desvincular',
+    tuMoss: 'Tu Moss en este iPhone',
+    queSeComparte: 'Qué se comparte',
+    mossLee: 'Moss lee de Ascent tus sesiones, tus marcas y tu peso.',
+    ascentLee: 'Ascent lee de Moss tu sueño, tu comida y tu peso.',
+    esPermiso: 'Vincular es dar permiso. Puedes desvincular cuando quieras, desde Ajustes.',
+    vincular: 'Vincular',
+    vinculando: 'Vinculando…',
+    abreMoss: 'Abre Moss y vuelve',
+    conseguirMoss: 'Conseguir Moss',
+    // La sesión que dejó Moss ya no sirve: Moss la renueva al abrirse.
+    vencida: 'La sesión de Moss en este iPhone ya venció. Abre Moss y vuelve.',
+    noSeVinculo: 'No se vinculó. Prueba de nuevo.',
+    sigueVinculada: 'Sigue vinculada con Moss. Prueba de nuevo.',
+  },
+
+  // ---------------------------------------------------------------
   // La guarda de las 20 horas por cambio de zona (§12b). Tiene que decir dos
   // cosas y las dos importan: que el día NO se perdió, y cuándo entra. Un
   // rechazo mudo con la racha en juego se lee como que la app está rota.

@@ -20,6 +20,7 @@ import FondoEspacial from './FondoEspacial';
 import Gimnasio, { RESALTAR_GIMNASIO } from './ajustes/Gimnasio';
 import { eventos } from '@compartido/eventos';
 import Salud from './ajustes/Salud';
+import Moss from './ajustes/Moss';
 import Identidad from './ajustes/Identidad';
 import Fondo from './ajustes/Fondo';
 import ComoSeCompara from './ajustes/ComoSeCompara';
@@ -332,6 +333,8 @@ export default function Ajustes({
           día entre sin que aprietes nada, y leerlas juntas se entiende. La
           web no tiene esta sección porque el navegador no ve nada de esto. */}
       <Salud />
+      {/* Y MOSS JUSTO DEBAJO (D27): las dos son lo que Ascent lee de afuera. */}
+      <Moss />
       {/* LA META DE PASOS YA NO VA ACÁ (27/9). Vive en Stats, al lado del
           gráfico de pasos (`GraficoPasos` → `PieDeMeta`/`HojaDeMeta`), que es
           donde se ve para qué sirve. Acá era un campo de texto suelto que

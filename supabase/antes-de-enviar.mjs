@@ -5,7 +5,7 @@
 //
 // Lo que mira, de la build de store que se va a mandar (por omisión, la última terminada):
 //   1. el número de build es el que se espera (`--numero`, o el de `movil/app.json`);
-//   2. la versión es la que se espera (`--version`, por omisión 1.1.0);
+//   2. la versión es la que se espera (`--version`, o la de `movil/app.json`);
 //   3. Associated Domains: en el `app.json` con que se compiló, y en el perfil y la firma que quedaron
 //      ADENTRO del .ipa (lo baja de EAS, unos 20 MB; `--sin-ipa` lo saltea);
 //   4. el runtime de la build es el que da este proyecto ahora: si no, una OTA hecha
@@ -112,7 +112,7 @@ async function principal() {
   const args = process.argv.slice(2);
   const appJson = JSON.parse(readFileSync(join(RAIZ, 'movil', 'app.json'), 'utf8')).expo;
   const numero = argumento(args, '--numero') ?? appJson.ios?.buildNumber;
-  const version = argumento(args, '--version') ?? '1.1.0';
+  const version = argumento(args, '--version') ?? appJson.version;
   const resultados = [];
   const anotar = (que, ok, detalle) => {
     resultados.push({ que, ok, detalle });

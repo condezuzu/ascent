@@ -18,6 +18,7 @@ import { useSesion, type CierreDeSesion } from '@compartido/useSesion';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO, SUBIO_RANGO } from '@compartido/gimnasio';
 import { guardarPerfilCache } from '@compartido/cache';
+import { sesionCompartida } from './sesionCompartida';
 import { FilaDeMedallas } from './Medallas';
 import { useRecargarAlVolver } from './irAPestana';
 import { useMisMedallas } from '@compartido/misMedallas';
@@ -336,6 +337,8 @@ export default function Inicio({
       // quién era el historial) y el descanso elegido en Ajustes (arrancaba
       // siempre en el de fábrica).
       void guardarPerfilCache(d.perfil);
+      // El nombre que Moss muestra al vincular (D27): recién entrado, la sesión se dejó sin él.
+      void sesionCompartida.anotarNombre(d.perfil.id, d.perfil.username);
       // Las dos puntas son del SERVIDOR: restarlas no mete el desfasaje de reloj.
       const minutos = d.deHoy.reduce((t, s) => (s.fin ? t + (Date.parse(s.fin) - Date.parse(s.inicio)) / 60000 : t), 0);
       setMinutosDeHoy(minutos >= 1 ? Math.round(minutos) : null);
