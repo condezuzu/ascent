@@ -62,6 +62,8 @@
 //      (26/10), en la nativa.
 //  25. probar-series-a-mano — el «+» de las series: se escribe 7 y queda ×7, «0 de 7»
 //      (26/10), en la nativa.
+//  26. probar-reemplazar-confirma — «Reemplazar» lista la rutina entera; «No» no cambia nada
+//      y «Sí» guarda lo que se mostró (26/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -108,6 +110,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'la rutina en Stats, sin saltar', archivo: 'probar-rutina-stats.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'las vidas de Stats, estrellas en pantalla', archivo: 'probar-estrellas-stats.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'las series a mano', archivo: 'probar-series-a-mano.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: '«Reemplazar» confirma con la rutina entera', archivo: 'probar-reemplazar-confirma.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

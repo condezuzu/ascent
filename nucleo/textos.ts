@@ -1468,6 +1468,8 @@ const ES = {
     // AL FINAL DE LA VENTANA, APARTE (20/10): no cambia la rutina y ese día no vuelve a preguntar.
     olvidarDia: 'Olvidar este día',
     estasSeguro: '¿Estás seguro?',
+    // La confirmación de «Reemplazar» (26/10) lista la rutina entera como va a quedar.
+    asiQueda: (rutina: string) => `Así va a quedar «${rutina}»:`,
     si: 'Sí',
     no: 'No',
     editar: 'Editar',

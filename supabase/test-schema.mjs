@@ -20708,6 +20708,17 @@ console.log('\n314. Las series a mano: además de ×2…×5, cualquier número d
     /const n = metaAMano\(metaEscrita \?\? ''\);\n    if \(n === null\) return;\n    alElegirMeta\(n\);/.test(bl314.replace(/\r\n/g, '\n')),
   ], [true, true]);
 }
+console.log('\n315. «Reemplazar» confirma con la rutina entera y guarda la que mostró (26/10)');
+{
+  const vr315 = deBug('movil', 'src', 'VentanaRutina.tsx');
+  const pr315 = deBug('movil', 'src', 'preguntarPorLaRutina.ts');
+  chequear('la lista y el guardado salen de la misma propuesta, calculada una vez', [
+    /const propuesta = useMemo\(\(\) => rutinaReemplazada\(pregunta\), \[pregunta\]\);/.test(vr315),
+    /<RutinaPlegada testID="ventana-rutina-lista" dias=\{propuesta\}/.test(vr315),
+    /guardarDiaDeRutina\(pregunta, como, propuesta \?\? undefined\)/.test(vr315),
+    /const dias = \(como === 'esta' && mostrada\) \|\|/.test(pr315),
+  ], [true, true, true, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

@@ -845,6 +845,7 @@ export const EN: Textos = {
     crearRutinaNueva: 'Create new routine',
     olvidarDia: 'Forget this day',
     estasSeguro: 'Are you sure?',
+    asiQueda: (rutina: string) => `This is how «${rutina}» will look:`,
     si: 'Yes',
     no: 'No',
     editar: 'Edit',
