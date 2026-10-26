@@ -9,6 +9,7 @@ import { irAPestana, useRecargarAlVolver } from './irAPestana';
 import { pedirEntrenamiento } from './abrirEntrenamiento';
 import { supabase } from './supabase';
 import { C } from './colores';
+import Aparece from './Aparece';
 
 /**
  * LO QUE TOCA HOY, EN INICIO (15/10). Un renglón —"HOY  Pecho, hombro y brazo"— que
@@ -48,6 +49,7 @@ function FilaRutina() {
 
   // UNA LÍNEA SIN CAJA (15/10, la A de tres): la caja le competía al botón de empezar.
   return (
+    <Aparece>
     <Pressable
       testID="inicio-rutina"
       style={({ pressed }) => [estilos.fila, pressed && estilos.tocada]}
@@ -64,6 +66,7 @@ function FilaRutina() {
       </Text>
       <Text style={estilos.flecha}>›</Text>
     </Pressable>
+    </Aparece>
   );
 }
 

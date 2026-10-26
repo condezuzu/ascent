@@ -6,6 +6,7 @@ import Avatar from './Avatar';
 import CadaSegundo from './CadaSegundo';
 import { irAPestana } from './irAPestana';
 import { C } from './colores';
+import Aparece from './Aparece';
 
 /**
  * LA TIRA DEL GRUPO EN INICIO (15/10, multijugador completo). Mientras entrenás
@@ -17,6 +18,7 @@ export default function TiraDelGrupo({ uniones, recibidoEn }: { uniones: Union[]
   const companeros = uniones.filter((u) => u.estado === 'aceptada');
   if (companeros.length === 0) return null;
   return (
+    <Aparece>
     <Pressable testID="tira-del-grupo" onPress={() => irAPestana('ranking')} accessibilityRole="button" accessibilityLabel={T.social.juntos}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.fila}>
         <CadaSegundo>
@@ -47,6 +49,7 @@ export default function TiraDelGrupo({ uniones, recibidoEn }: { uniones: Union[]
         </CadaSegundo>
       </ScrollView>
     </Pressable>
+    </Aparece>
   );
 }
 

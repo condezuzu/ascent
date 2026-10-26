@@ -66,6 +66,8 @@
 //      y «Sí» guarda lo que se mostró (26/10), en la nativa.
 //  27. probar-dias-faltados — con las vidas al máximo, Stats dice los días faltados del año
 //      donde estaba el ✓ (26/10), en la nativa. Sin la migración 97 se saltea.
+//  28. probar-sin-saltos — lo que entra crece en vez de empujar de un salto, y los botones se
+//      hunden al tocarlos (26/10), en la nativa y sin el fondo 3D.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -114,6 +116,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'las series a mano', archivo: 'probar-series-a-mano.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: '«Reemplazar» confirma con la rutina entera', archivo: 'probar-reemplazar-confirma.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'los días faltados del año en Stats', archivo: 'probar-dias-faltados.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'lo que entra no salta, los botones se hunden', archivo: 'probar-sin-saltos.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

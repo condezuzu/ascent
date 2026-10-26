@@ -15921,7 +15921,8 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   // ---- C y D, y el interruptor de G: son componentes, se leen ----
   const inicio197 = de197('movil', 'src', 'Inicio.tsx');
   chequear('los pasos se ven también entrenando, compactos, y se vuelven a pedir cada minuto', [
-    /\{pasosHoy !== null && \(\s*<PasosInicio/.test(inicio197),
+    // Desde el 26/10 entran creciendo (<Aparece>).
+    /\{pasosHoy !== null && \(\s*(<Aparece>\s*)?<PasosInicio/.test(inicio197),
     /compacto=\{sesion\.estado\.corriendo\}/.test(inicio197),
     /\{!sesion\.estado\.corriendo && pasosHoy !== null/.test(inicio197),
     /setInterval\(\(\) => setLatidoDePasos\(\(n\) => n \+ 1\), 60_000\)/.test(inicio197) && /\[vueltas, latidoDePasos\]/.test(inicio197),
@@ -20765,6 +20766,19 @@ console.log('\n316. Los días faltados del año: la rutina de cada día, con fec
     /if \(c === 'llenas'\) return faltados === null \? \[\] : \[\{ v: String\(faltados\)/.test(deBug('movil', 'src', 'Stats.tsx')),
     /'✓'/.test(deBug('movil', 'src', 'Stats.tsx')),
   ], [true, false]);
+}
+console.log('\n317. Las microanimaciones: lo que entra crece, los botones se hunden (26/10)');
+{
+  const ap = deBug('movil', 'src', 'Aparece.tsx');
+  chequear('Aparece crece desde alto cero hasta el medido, respeta «reducir movimiento» y al terminar suelta el alto', [
+    /outputRange: \[0, alto\]/.test(ap), /isReduceMotionEnabled/.test(ap), /if \(listo\) return <View testID=\{testID\}>\{children\}<\/View>;/.test(ap),
+  ], [true, true, true]);
+  const usos = (archivo) => (deBug('movil', 'src', archivo).match(/<Aparece[ >]/g) ?? []).length;
+  const toques = (archivo) => (deBug('movil', 'src', archivo).match(/<Tocable[\s>]/g) ?? []).length;
+  chequear('se usa donde algo llega tarde o se abre: Inicio, el bloque, el descanso, el grupo, la rutina', [
+    usos('Inicio.tsx') >= 8, usos('Bloque.tsx') >= 5, usos('Descanso.tsx') >= 2, usos('Juntos.tsx') >= 1, usos('EnVivoDeInicio.tsx') >= 1, usos('TiraDelGrupo.tsx') >= 1, usos('FilaRutina.tsx') >= 1, usos('MiRutina.tsx') >= 3,
+  ], [true, true, true, true, true, true, true, true]);
+  chequear('y los botones principales se hunden al tocarlos', [toques('Inicio.tsx') >= 4, toques('Bloque.tsx') >= 5, toques('Descanso.tsx') >= 3], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
