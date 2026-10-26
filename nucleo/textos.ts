@@ -925,7 +925,9 @@ const ES = {
     // La cuarta celda: la cuenta regresiva de la próxima vida (5.3).
     proximaVidaDias: 'Días · próxima vida',
     proximaVidaDia: 'Día · próxima vida',
-    vidasLlenas: 'Vidas al máximo',
+    // Con las vidas al máximo, en lugar del ✓ (26/10): los días que la rutina decía de entrenar y no se fue.
+    diasFaltados: 'Días faltados · año',
+    diaFaltado: 'Día faltado · año',
     elAno: 'El año',
     sesiones: 'Sesiones',
     promedio: 'Promedio',

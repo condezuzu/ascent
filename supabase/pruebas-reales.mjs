@@ -64,6 +64,8 @@
 //      (26/10), en la nativa.
 //  26. probar-reemplazar-confirma — «Reemplazar» lista la rutina entera; «No» no cambia nada
 //      y «Sí» guarda lo que se mostró (26/10), en la nativa.
+//  27. probar-dias-faltados — con las vidas al máximo, Stats dice los días faltados del año
+//      donde estaba el ✓ (26/10), en la nativa. Sin la migración 97 se saltea.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -111,6 +113,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'las vidas de Stats, estrellas en pantalla', archivo: 'probar-estrellas-stats.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'las series a mano', archivo: 'probar-series-a-mano.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: '«Reemplazar» confirma con la rutina entera', archivo: 'probar-reemplazar-confirma.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'los días faltados del año en Stats', archivo: 'probar-dias-faltados.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

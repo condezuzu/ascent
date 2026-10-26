@@ -20719,6 +20719,53 @@ console.log('\n315. «Reemplazar» confirma con la rutina entera y guarda la que
     /const dias = \(como === 'esta' && mostrada\) \|\|/.test(pr315),
   ], [true, true, true, true]);
 }
+console.log('\n316. Los días faltados del año: la rutina de cada día, con fecha (migración 97, 26/10)');
+{
+  const F316 = await import('../nucleo/faltados.ts');
+  const lmv = [1, 3, 5];
+  chequear('cuentan los días de entrenar sin día registrado, de este año y hasta ayer; los días sin rutina no', [
+    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], new Set(), '2026-01-15'),
+    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], new Set(['2026-01-05', '2026-01-09']), '2026-01-15'),
+    F316.diasFaltados([{ desde: '2026-01-08', entrena: null }, { desde: '2026-01-01', entrena: lmv }], new Set(['2026-01-05']), '2026-01-15'),
+    F316.diasFaltados([{ desde: '2025-12-01', entrena: [0, 1, 2, 3, 4, 5, 6] }], new Set(), '2026-01-03'),
+    F316.diasFaltados([{ desde: '2026-01-10', entrena: lmv }], new Set(), '2026-01-15'),
+    F316.diasFaltados([], new Set(), '2026-10-26'),
+  ], [6, 4, 2, 2, 2, 0]);
+
+  const u316 = await nuevoUsuario();
+  await comoUsuario(u316);
+  const semana = (descansos) => JSON.stringify(Array.from({ length: 7 }, (_, d) => ({ descanso: descansos.includes(d), ejercicios: descansos.includes(d) ? [] : [{ ejercicio: 'press_banca', series: 3 }] })));
+  const filas = async (u = u316) => (await db.query('select desde = hoy_de($1) as hoy, entrena from rutina_semanas where user_id = $1 order by desde', [u])).rows.map((r) => [r.hoy, r.entrena]);
+  const a316 = (await db.query('select guardar_rutina(null, $1, $2::jsonb) as id', ['A', semana([0, 6])])).rows[0].id;
+  const r1 = await filas();
+  await db.query('select guardar_rutina($1, $2, $3::jsonb)', [a316, 'A', semana([0])]);
+  const r2 = await filas();
+  await db.query('select guardar_rutina(null, $1, $2::jsonb)', ['B', semana([])]);
+  const r3 = await filas();
+  await db.query('select borrar_rutina($1)', [a316]);
+  const r4 = await filas();
+  chequear('guardar la primera anota lo que entrena desde hoy; cambiarle el descanso el mismo día lo pisa; otra sin activar no cambia nada; borrar la activa deja «sin rutina»', [r1, r2, r3, r4], [
+    [[true, [1, 2, 3, 4, 5]]], [[true, [1, 2, 3, 4, 5, 6]]], [[true, [1, 2, 3, 4, 5, 6]]], [[true, null]],
+  ]);
+  chequear('se lee solo la propia', (await db.query(`select qual from pg_policies where tablename = 'rutina_semanas'`)).rows.map((r) => r.qual), ['(auth.uid() = user_id)']);
+
+  // Lo de antes de la 97: la activa de hoy, desde la primera rutina.
+  const u316b = await nuevoUsuario();
+  await comoUsuario(u316b);
+  await db.query('select guardar_rutina(null, $1, $2::jsonb)', ['Vieja', semana([0, 3])]);
+  await db.query(`update rutinas set creada = now() - interval '40 days' where user_id = $1`, [u316b]);
+  await db.query('delete from rutina_semanas where user_id = $1', [u316b]);
+  const mig316 = deBug('supabase', 'migracion-97-semanas-de-la-rutina.sql').replace(/\r\n/g, '\n');
+  await db.exec(mig316.slice(mig316.indexOf('insert into public.rutina_semanas'), mig316.indexOf('-- La versión sube a 97.')));
+  chequear('el relleno de la migración anota la activa desde la primera rutina', (await db.query('select hoy_de($1) - desde as hace, entrena from rutina_semanas where user_id = $1', [u316b])).rows.map((r) => [r.hace, r.entrena]), [[40, [1, 2, 4, 5, 6]]]);
+
+  await db.query('delete from auth.users where id = $1', [u316b]);
+  chequear('dar de baja la cuenta no tropieza con el trigger y no deja renglones', (await db.query('select count(*)::int n from rutina_semanas where user_id = $1', [u316b])).rows[0].n, 0);
+  chequear('Stats la pone donde estaba el ✓, con las vidas al máximo', [
+    /if \(c === 'llenas'\) return faltados === null \? \[\] : \[\{ v: String\(faltados\)/.test(deBug('movil', 'src', 'Stats.tsx')),
+    /'✓'/.test(deBug('movil', 'src', 'Stats.tsx')),
+  ], [true, false]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

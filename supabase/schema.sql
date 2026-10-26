@@ -4704,8 +4704,64 @@ $$;
 revoke execute on function public.marcar_me_gusta_rutina(uuid, boolean) from public, anon;
 grant execute on function public.marcar_me_gusta_rutina(uuid, boolean) to authenticated;
 
+-- QUÉ DÍAS ENTRENABA LA RUTINA, CON FECHA (migración 97): para los «días faltados del año»
+-- de Stats. Un renglón cada vez que cambia lo que entrena la rutina activa; null = sin rutina.
+create table if not exists public.rutina_semanas (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  desde date not null,
+  entrena int[],
+  primary key (user_id, desde)
+);
+alter table public.rutina_semanas enable row level security;
+revoke all on public.rutina_semanas from anon, authenticated;
+grant select on public.rutina_semanas to authenticated;
+drop policy if exists "rutina_semanas: leer las propias" on public.rutina_semanas;
+create policy "rutina_semanas: leer las propias" on public.rutina_semanas for select using (auth.uid() = user_id);
+
+-- Los días de la semana que no son de descanso.
+create or replace function public.dias_que_entrena(p_dias jsonb)
+returns int[] language sql immutable set search_path = public as $$
+  select coalesce(array_agg(g.n order by g.n), '{}'::int[])
+    from generate_series(0, 6) as g(n)
+   where not coalesce(jsonb_typeof(p_dias -> g.n -> 'descanso') = 'boolean' and (p_dias -> g.n ->> 'descanso')::boolean, false);
+$$;
+revoke execute on function public.dias_que_entrena(jsonb) from public, anon, authenticated;
+
+-- Después de guardar, activar o borrar una rutina: si cambió lo que entrena la activa, un
+-- renglón desde hoy (el mismo día se pisa). Dar de baja la cuenta borra las rutinas en
+-- cascada: ahí el perfil ya no está y no se anota nada.
+create or replace function public.anotar_semana_de_rutina()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid;
+  hoy date;
+  v int[];
+  ultima record;
+begin
+  uid := case when tg_op = 'DELETE' then old.user_id else new.user_id end;
+  if not exists (select 1 from profiles where id = uid) then return null; end if;
+  hoy := hoy_de(uid);
+  select dias_que_entrena(r.dias) into v from rutinas r where r.user_id = uid and r.activa;
+  select s.desde, s.entrena into ultima from rutina_semanas s where s.user_id = uid order by s.desde desc limit 1;
+  if not found then
+    if v is null then return null; end if;
+  elsif ultima.desde < hoy and ultima.entrena is not distinct from v then
+    return null;
+  end if;
+  insert into rutina_semanas (user_id, desde, entrena) values (uid, hoy, v)
+    on conflict (user_id, desde) do update set entrena = excluded.entrena;
+  return null;
+end;
+$$;
+revoke execute on function public.anotar_semana_de_rutina() from public, anon, authenticated;
+
+drop trigger if exists rutinas_anotar_semana on public.rutinas;
+create trigger rutinas_anotar_semana
+  after insert or update of dias, activa or delete on public.rutinas
+  for each row execute function public.anotar_semana_de_rutina();
+
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 96; $$;
+returns int language sql immutable as $$ select 97; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;
