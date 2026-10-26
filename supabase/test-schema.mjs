@@ -20665,6 +20665,18 @@ console.log('\n311. El descanso de otro, terminado: «+0:08» contando, no tres 
     /r\.descanso === 0 \? `\+\$\{cuentaAtras\(r\.pasado \?\? 0\)\}`/.test(deBug('movil', 'src', 'CompaneroEnDescanso.tsx')),
   ], [true, true, true]);
 }
+console.log('\n312. Las vidas son estrellas también en la web (26/10)');
+{
+  const imp = deBug('src', 'components', 'Impulsos.tsx');
+  const css = deBug('src', 'app', 'globals.css');
+  chequear('Impulsos dibuja la estrella de la nativa, no puntos, y el CSS pinta el trazo', [
+    imp.includes("'M0,-48 C3,-15 9,-6 27,0 C9,6 3,15 0,48 C-3,15 -9,6 -27,0 C-9,-6 -3,-15 0,-48 Z'"),
+    deBug('movil', 'src', 'Estrella.tsx').includes(imp.match(/const PUNTAS = '([^']+)'/)?.[1] ?? '-'),
+    /<path d=\{PUNTAS\} \/>/.test(imp),
+    /<i key/.test(imp),
+    /\.impulsos svg\.viva/.test(css),
+  ], [true, true, true, false, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

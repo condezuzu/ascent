@@ -58,6 +58,8 @@
 //      y recién «Empezar descanso» lo arranca (21/10), en la nativa.
 //  23. probar-rutina-stats — «Tu rutina» en Stats está apenas se abre Entrenamiento y no
 //      empuja lo de abajo después (21/10), en la nativa.
+//  24. probar-estrellas-stats — las vidas de Stats son estrellas en pantalla, no círculos
+//      (26/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -102,6 +104,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'el aviso como globo', archivo: 'probar-aviso-globo.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'descansar sin arrancar', archivo: 'probar-descansar.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la rutina en Stats, sin saltar', archivo: 'probar-rutina-stats.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'las vidas de Stats, estrellas en pantalla', archivo: 'probar-estrellas-stats.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {
