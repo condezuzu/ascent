@@ -1,7 +1,7 @@
 import { T } from '@nucleo/textos';
 import { hoyISO } from '@nucleo/fechas';
 import { diaDeLaSesion, hayQuePreguntarPorLaRutina, rutinaTrasLaVentana } from '@nucleo/rutina';
-import { nombreNuevo, type Rutina } from '@nucleo/rutinas';
+import { nombreNuevo, type DiaDeSemana, type Rutina } from '@nucleo/rutinas';
 import { cargarMisRutinas, guardarRutina, rutinaActivaDelTelefono } from '@compartido/rutinas';
 import { sesionesRutinaRef } from '@compartido/sesionViva';
 import { plataforma } from '@plataforma';
@@ -38,13 +38,23 @@ export async function rutinaParaPreguntar(bloques: BloqueGuardado[]): Promise<Pr
   return { rutinas, actual, dia, hecho, antesHoy };
 }
 
+/** Cómo queda la rutina si se toca «Reemplazar»: lo que lista la confirmación (26/10). */
+export function rutinaReemplazada({ actual, dia, hecho, antesHoy }: PreguntaDeRutina): DiaDeSemana[] | null {
+  return rutinaTrasLaVentana(actual.dias, dia, hecho, 'reemplazar', antesHoy);
+}
+
 /**
  * Reemplazar el día de la rutina que se está usando, crear una nueva —copia de la activa
  * con este día puesto, sin tocar la que estaba— u olvidar el día (20/10): no se guarda nada
  * y la ventana no vuelve a preguntar hoy. `false` si no se pudo guardar.
  */
-export async function guardarDiaDeRutina({ rutinas, actual, dia, hecho, antesHoy }: PreguntaDeRutina, como: 'esta' | 'nueva' | 'olvidar'): Promise<boolean> {
-  const dias = rutinaTrasLaVentana(actual.dias, dia, hecho, como === 'esta' ? 'reemplazar' : como, antesHoy);
+export async function guardarDiaDeRutina(
+  { rutinas, actual, dia, hecho, antesHoy }: PreguntaDeRutina,
+  como: 'esta' | 'nueva' | 'olvidar',
+  // «Reemplazar» guarda la que se mostró en la confirmación (26/10), no una calculada de nuevo.
+  mostrada?: DiaDeSemana[],
+): Promise<boolean> {
+  const dias = (como === 'esta' && mostrada) || rutinaTrasLaVentana(actual.dias, dia, hecho, como === 'esta' ? 'reemplazar' : como, antesHoy);
   if (!dias) {
     await plataforma.almacenamiento.guardar(CLAVE_DIA_OLVIDADO, hoyISO()).catch(() => undefined);
     return true;

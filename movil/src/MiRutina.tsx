@@ -36,6 +36,7 @@ import RutinaPlegada from './RutinaPlegada';
 import FilasArrastrables from './FilasArrastrables';
 import SelectorEjercicio from './SelectorEjercicio';
 import { C } from './colores';
+import Aparece from './Aparece';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import { copiarDiaAlPortapapeles, useDiaCopiado } from './portapapelesDeDia';
 
@@ -235,8 +236,9 @@ export default function MiRutina({
             </Pressable>
           )}
         </View>
-        {esteRecien && <Text style={estilos.nota}>{T.rutina.diaCopiado}</Text>}
+        {esteRecien && <Aparece><Text style={estilos.nota}>{T.rutina.diaCopiado}</Text></Aparece>}
         {preguntaPegar === d && (
+          <Aparece>
           <View style={estilos.pregunta}>
             <Text style={estilos.nota}>{T.rutina.yaTieneEjercicios(T.fechas.diasLargos[d])}</Text>
             <View style={estilos.acciones}>
@@ -251,6 +253,7 @@ export default function MiRutina({
               </Pressable>
             </View>
           </View>
+          </Aparece>
         )}
       </View>
     );
@@ -311,6 +314,7 @@ export default function MiRutina({
         </View>
         {accionesDeCopia(d)}
         {preguntaDescanso === d && (
+          <Aparece>
           <View style={estilos.pregunta}>
             <Text style={estilos.nota}>{T.rutina.descansoPregunta(T.fechas.diasLargos[d])}</Text>
             <View style={estilos.acciones}>
@@ -329,6 +333,7 @@ export default function MiRutina({
               </Pressable>
             </View>
           </View>
+          </Aparece>
         )}
       </View>
     );

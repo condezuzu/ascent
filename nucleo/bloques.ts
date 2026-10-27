@@ -334,6 +334,14 @@ export function metaValida(meta: number): number {
   return Number.isFinite(n) && n >= 1 && n <= META_MAXIMA ? n : META_POR_OMISION;
 }
 
+/** Las series escritas a mano (26/10, el «+» de las píldoras): un entero de 1 a 99, o `null`. */
+export function metaAMano(texto: string): number | null {
+  const t = texto.trim();
+  if (!/^\d{1,2}$/.test(t)) return null;
+  const n = Number(t);
+  return n >= 1 && n <= META_MAXIMA ? n : null;
+}
+
 /** Las píldoras a mostrar: las de siempre, y la meta de ahora si no es una de ellas. */
 export function pildorasDeMeta(meta: number): number[] {
   return (METAS as readonly number[]).includes(meta) ? [...METAS] : [...METAS, meta].sort((a, b) => a - b);

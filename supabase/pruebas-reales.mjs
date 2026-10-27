@@ -58,6 +58,16 @@
 //      y recién «Empezar descanso» lo arranca (21/10), en la nativa.
 //  23. probar-rutina-stats — «Tu rutina» en Stats está apenas se abre Entrenamiento y no
 //      empuja lo de abajo después (21/10), en la nativa.
+//  24. probar-estrellas-stats — las vidas de Stats son estrellas en pantalla, no círculos
+//      (26/10), en la nativa.
+//  25. probar-series-a-mano — el «+» de las series: se escribe 7 y queda ×7, «0 de 7»
+//      (26/10), en la nativa.
+//  26. probar-reemplazar-confirma — «Reemplazar» lista la rutina entera; «No» no cambia nada
+//      y «Sí» guarda lo que se mostró (26/10), en la nativa.
+//  27. probar-dias-faltados — con las vidas al máximo, Stats dice los días faltados del año
+//      donde estaba el ✓ (26/10), en la nativa. Sin la migración 97 se saltea.
+//  28. probar-sin-saltos — lo que entra crece en vez de empujar de un salto, y los botones se
+//      hunden al tocarlos (26/10), en la nativa y sin el fondo 3D.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -102,6 +112,11 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'el aviso como globo', archivo: 'probar-aviso-globo.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'descansar sin arrancar', archivo: 'probar-descansar.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la rutina en Stats, sin saltar', archivo: 'probar-rutina-stats.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'las vidas de Stats, estrellas en pantalla', archivo: 'probar-estrellas-stats.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'las series a mano', archivo: 'probar-series-a-mano.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: '«Reemplazar» confirma con la rutina entera', archivo: 'probar-reemplazar-confirma.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'los días faltados del año en Stats', archivo: 'probar-dias-faltados.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'lo que entra no salta, los botones se hunden', archivo: 'probar-sin-saltos.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

@@ -25,6 +25,9 @@ import type { Log } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cuerpoDe } from '@nucleo/rangos';
 import { celdaDeLaProximaVida } from '@nucleo/impulsos';
+import { diasFaltados, type SemanaDeRutina } from '@nucleo/faltados';
+import { disponible } from '@nucleo/esquema';
+import { versionDelEsquema } from '@compartido/esquema';
 import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './StatsGeneral';
 import FondoEspacial from './FondoEspacial';
 import Estancamiento from './Estancamiento';
@@ -55,6 +58,8 @@ type Datos = {
   // el peso corporal con el mismo nombre se confunde —se confundió un test—.
   pesajes: PesoAnotado[];
   vidas: Vidas | null;
+  /** Los días faltados del año (26/10); null sin la migración 97. */
+  faltados: number | null;
   sexo: string | null;
 };
 
@@ -77,14 +82,14 @@ type Datos = {
  */
 /**
  * LA CUARTA CELDA DE LA GRILLA (5.3): la cuenta regresiva de la próxima vida.
- * Al máximo de vidas no hay cuenta que dar —se celebra con un ✓ encendido—; si
- * falta, muestra los días que faltan. Sin datos de vidas, no ocupa lugar (quedan
- * las tres de siempre). El dato ya viene del server (`vidas.falta` / `quedan`).
+ * Al máximo de vidas no hay cuenta que dar: desde el 26/10 van ahí los días
+ * faltados del año (era un ✓). Sin datos de vidas, no ocupa lugar (quedan las tres
+ * de siempre); sin la migración 97, al máximo tampoco.
  */
-function celdaProximaVida(vidas: Vidas | null): { v: string; e: string; acento?: boolean }[] {
+function celdaProximaVida(vidas: Vidas | null, faltados: number | null): { v: string; e: string }[] {
   if (!vidas) return [];
   const c = celdaDeLaProximaVida(vidas);
-  if (c === 'llenas') return [{ v: '✓', e: T.stats.vidasLlenas, acento: true }];
+  if (c === 'llenas') return faltados === null ? [] : [{ v: String(faltados), e: faltados === 1 ? T.stats.diaFaltado : T.stats.diasFaltados }];
   if (c !== null) return [{ v: String(c), e: c === 1 ? T.stats.proximaVidaDia : T.stats.proximaVidaDias }];
   return [];
 }
@@ -125,6 +130,10 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       supabase.from('weights').select('fecha, valor').eq('user_id', uid).order('fecha'),
       supabase.rpc('mis_impulsos'),
     ]);
+    // Aparte, y solo con la 97: antes la tabla no existe y pedirla es un 404 en cada visita.
+    const { data: sem, error: eSem } = disponible('diasFaltados', await versionDelEsquema(supabase))
+      ? await supabase.from('rutina_semanas').select('desde, entrena').eq('user_id', uid)
+      : { data: null, error: true };
     // DICE QUE NO SE PUDO TRAER, no "no se guardó" (25/9). Usaba
     // `T.general.noSePudo`, que es el texto de una ESCRITURA que falla: sin red,
     // Stats decía "No se guardó. Prueba de nuevo." cuando no se estaba
@@ -154,6 +163,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             }
           : null,
       sexo: (perfil.sexo as string | null) ?? null,
+      faltados: eSem || !sem ? null : diasFaltados(sem as SemanaDeRutina[], new Set((logs ?? []).map((l) => l.fecha as string)), hoyISO()),
     });
   }, [alSalir]);
 
@@ -277,14 +287,14 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             // Se sacaron "Racha actual" (ya está en Inicio) y "Últimos 30 días"
             // (no aportaba). Queda mes y mejor, y se suma el año (28/9). El cuarto
             // lugar —que quedaba vacío— es la cuenta regresiva de la próxima vida
-            // (5.3): faltan N días, y al máximo un ✓ que lo celebra.
+            // (5.3): faltan N días, y al máximo los días faltados del año (26/10).
             { v: String(esteMes), e: T.stats.esteMes },
             { v: String(esteAno), e: T.stats.esteAno },
             { v: String(mejor), e: T.stats.mejorRacha },
-            ...celdaProximaVida(datos.vidas),
+            ...celdaProximaVida(datos.vidas, datos.faltados),
           ].map((c) => (
             <View key={c.e} style={estilos.celda}>
-              <Text style={[estilos.valor, c.acento === true && estilos.valorVivo]}>{c.v}</Text>
+              <Text style={estilos.valor}>{c.v}</Text>
               <Text style={estilos.etiqueta}>{c.e}</Text>
             </View>
           ))}
@@ -501,8 +511,6 @@ const estilos = StyleSheet.create({
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   celda: { width: '47%', paddingVertical: 14 },
   valor: { color: '#c4c2ba', fontSize: 34, fontWeight: '300' },
-  // Vidas al máximo: el ✓ va encendido, para que conseguirlas no pase en silencio.
-  valorVivo: { color: '#7fae86' },
   etiqueta: { color: '#4a5163', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
 
   seccion: {

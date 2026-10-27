@@ -86,6 +86,8 @@ export const REQUIERE = {
   repsPorSerie: 94,
   /** La distancia del cardio y las repeticiones objetivo de la rutina. */
   distanciaYObjetivo: 95,
+  /** Los días faltados del año en Stats: la rutina de cada día, con fecha (`rutina_semanas`). */
+  diasFaltados: 97,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

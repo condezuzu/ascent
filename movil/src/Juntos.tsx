@@ -12,6 +12,7 @@ import { supabase } from './supabase';
 import { useNombresDeEjercicios } from './useNombresDeEjercicios';
 import Avatar from './Avatar';
 import { C } from './colores';
+import Aparece from './Aparece';
 
 /**
  * "ENTRENANDO CONTIGO", en Ranking (12/10/2026): con quién estoy unido y qué
@@ -58,7 +59,9 @@ export default function Juntos({
   return (
     <View testID="juntos" style={estilos.seccion}>
       <Text style={estilos.rotulo}>{T.social.juntos}</Text>
-      {uniones.map((u) => {
+      {uniones.map((u) => (
+        <Aparece key={u.id}>
+        {(() => {
         if (u.estado === 'pendiente') {
           return (
             <View key={u.id} style={estilos.fila}>
@@ -129,7 +132,9 @@ export default function Juntos({
             ) : null}
           </View>
         );
-      })}
+        })()}
+        </Aparece>
+      ))}
       {conGrupos && (entrenando || enGrupo) && (
         <View style={estilos.pie}>
           <Pressable testID="juntos-invitar" hitSlop={8} onPress={() => void invitar()}>

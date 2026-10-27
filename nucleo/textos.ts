@@ -962,7 +962,9 @@ const ES = {
     // La cuarta celda: la cuenta regresiva de la próxima vida (5.3).
     proximaVidaDias: 'Días · próxima vida',
     proximaVidaDia: 'Día · próxima vida',
-    vidasLlenas: 'Vidas al máximo',
+    // Con las vidas al máximo, en lugar del ✓ (26/10): los días que la rutina decía de entrenar y no se fue.
+    diasFaltados: 'Días faltados · año',
+    diaFaltado: 'Día faltado · año',
     elAno: 'El año',
     sesiones: 'Sesiones',
     promedio: 'Promedio',
@@ -1175,6 +1177,9 @@ const ES = {
     // verdad, y las dos palabras suenan a que falta algo.
     sinEjercicio: 'Cualquier cosa',
     cuantasVasAHacer: 'Cuántas vas a hacer',
+    // Las series a mano (26/10): el «+» al lado de ×2…×5, como el del descanso.
+    seriesAMano: 'Escribir cuántas series',
+    seriesAManoEjemplo: 'Series (1 a 99)',
     // LA RUTINA QUE SE PROPONE SOLA: lo sugerido se muestra distinto de lo hecho.
     sugerido: 'Sugerido',
     sugeridoNota: 'De tu rutina. Cuenta la primera serie para confirmarlo.',
@@ -1502,6 +1507,8 @@ const ES = {
     // AL FINAL DE LA VENTANA, APARTE (20/10): no cambia la rutina y ese día no vuelve a preguntar.
     olvidarDia: 'Olvidar este día',
     estasSeguro: '¿Estás seguro?',
+    // La confirmación de «Reemplazar» (26/10) lista la rutina entera como va a quedar.
+    asiQueda: (rutina: string) => `Así va a quedar «${rutina}»:`,
     si: 'Sí',
     no: 'No',
     editar: 'Editar',
