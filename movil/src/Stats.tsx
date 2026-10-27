@@ -26,6 +26,8 @@ import { T } from '@nucleo/textos';
 import { cuerpoDe } from '@nucleo/rangos';
 import { celdaDeLaProximaVida } from '@nucleo/impulsos';
 import { diasFaltados, type SemanaDeRutina } from '@nucleo/faltados';
+import { disponible } from '@nucleo/esquema';
+import { versionDelEsquema } from '@compartido/esquema';
 import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './StatsGeneral';
 import FondoEspacial from './FondoEspacial';
 import Estancamiento from './Estancamiento';
@@ -128,8 +130,10 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       supabase.from('weights').select('fecha, valor').eq('user_id', uid).order('fecha'),
       supabase.rpc('mis_impulsos'),
     ]);
-    // Aparte: sin la migración 97 la tabla no existe y el resto no tiene por qué esperarla.
-    const { data: sem, error: eSem } = await supabase.from('rutina_semanas').select('desde, entrena').eq('user_id', uid);
+    // Aparte, y solo con la 97: antes la tabla no existe y pedirla es un 404 en cada visita.
+    const { data: sem, error: eSem } = disponible('diasFaltados', await versionDelEsquema(supabase))
+      ? await supabase.from('rutina_semanas').select('desde, entrena').eq('user_id', uid)
+      : { data: null, error: true };
     // DICE QUE NO SE PUDO TRAER, no "no se guardó" (25/9). Usaba
     // `T.general.noSePudo`, que es el texto de una ESCRITURA que falla: sin red,
     // Stats decía "No se guardó. Prueba de nuevo." cuando no se estaba

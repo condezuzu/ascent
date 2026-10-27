@@ -20765,7 +20765,9 @@ console.log('\n316. Los días faltados del año: la rutina de cada día, con fec
   chequear('Stats la pone donde estaba el ✓, con las vidas al máximo', [
     /if \(c === 'llenas'\) return faltados === null \? \[\] : \[\{ v: String\(faltados\)/.test(deBug('movil', 'src', 'Stats.tsx')),
     /'✓'/.test(deBug('movil', 'src', 'Stats.tsx')),
-  ], [true, false]);
+    // Sin la 97 no se pide la tabla: era un 404 en cada visita a Stats (lo vio test:real).
+    /disponible\('diasFaltados', await versionDelEsquema\(supabase\)\)\s*\? await supabase\.from\('rutina_semanas'\)/.test(deBug('movil', 'src', 'Stats.tsx')),
+  ], [true, false, true]);
 }
 console.log('\n317. Las microanimaciones: lo que entra crece, los botones se hunden (26/10)');
 {

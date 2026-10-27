@@ -35,7 +35,9 @@ console.log('Los días faltados del año en Stats');
 const { data: version } = await s.rpc('version_del_esquema');
 if ((version ?? 0) < 97) {
   console.log(`  --   la base está en la ${version}: sin la migración 97 no hay días faltados que mirar`);
-  process.exit(0);
+  // Salir en el acto, con el pedido recién cerrado, revienta libuv en Windows (UV_HANDLE_CLOSING).
+  setTimeout(() => process.exit(0), 300);
+  await new Promise(() => {});
 }
 const { error: eAlta } = await s.auth.signUp({ email: correo, password: clave });
 if (eAlta) {
