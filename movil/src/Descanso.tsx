@@ -20,6 +20,8 @@ import { C } from './colores';
 import { taparElFondo } from './desenfoqueDelFondo';
 import { useArriba } from './zonaSegura';
 import { cuentaLaSerie } from './toques';
+import Aparece from './Aparece';
+import Tocable from './Tocable';
 
 /**
  * EL DESCANSO ENTRE SERIES, en nativo (§18). La misma pantalla que la web:
@@ -229,19 +231,19 @@ export default function Descanso({
             {/* "SERIE HECHA" ES UN BOTÓN, no un enlace: sumar la serie sin salir
                 es lo que más se hace desde acá. */}
             {sinEmpezar ? (
-              <Pressable testID="descanso-empezar" style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={sinEmpezar.alEmpezar}>
+              <Tocable testID="descanso-empezar" style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={sinEmpezar.alEmpezar}>
                 <Text style={estilos.solidoTexto}>{T.descanso.empezar}</Text>
-              </Pressable>
+              </Tocable>
             ) : (
-              <Pressable style={estilos.borde} onPress={() => cuentaLaSerie() && alSumar()}>
+              <Tocable style={estilos.borde} onPress={() => cuentaLaSerie() && alSumar()}>
                 <Text style={estilos.bordeTexto}>{T.descanso.serieHecha}</Text>
-              </Pressable>
+              </Tocable>
             )}
             <View style={estilos.presets}>
               {PRESETS_DESCANSO.map((p) => (
-                <Pressable key={p} style={[estilos.preset, p === vivo.duracion && estilos.presetActivo]} onPress={() => usarPreset(p)}>
+                <Tocable key={p} style={[estilos.preset, p === vivo.duracion && estilos.presetActivo]} onPress={() => usarPreset(p)}>
                   <Text style={[estilos.presetTexto, p === vivo.duracion && estilos.presetTextoActivo]}>{duracionCorta(p)}</Text>
-                </Pressable>
+                </Tocable>
               ))}
               {/* Lo puesto a mano también se ve elegido, junto al resto. */}
               {!PRESETS_DESCANSO.includes(vivo.duracion) && (
@@ -260,6 +262,7 @@ export default function Descanso({
               </Pressable>
             </View>
             {aMano !== null && (
+              <Aparece>
               <View style={estilos.aMano}>
                 <TextInput
                   testID="descanso-a-mano-campo"
@@ -295,8 +298,9 @@ export default function Descanso({
                   </Text>
                 </Pressable>
               </View>
+              </Aparece>
             )}
-            {aMano !== null && aMano.trim() !== '' && descansoAMano(aMano) === null && <Text style={estilos.aManoMal}>{T.descanso.aManoMal}</Text>}
+            {aMano !== null && aMano.trim() !== '' && descansoAMano(aMano) === null && <Aparece><Text style={estilos.aManoMal}>{T.descanso.aManoMal}</Text></Aparece>}
             <Pressable style={estilos.texto} onPress={alOcultar}>
               <Text style={estilos.textoBoton}>{quieto ? T.general.cancelar : T.descanso.saltar}</Text>
             </Pressable>

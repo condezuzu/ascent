@@ -53,6 +53,8 @@ import { pasadoDe, queMuestraLaPildora } from '@nucleo/avisoDescanso';
 import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
 import Estrella from './Estrella';
+import Aparece from './Aparece';
+import Tocable from './Tocable';
 import FondoOctogonal from './FondoOctogonal';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
 import { corregirDia } from '@compartido/dia';
@@ -735,7 +737,7 @@ export default function Inicio({
                 }}
               </CadaSegundo>
             ) : (
-              <Pressable
+              <Tocable
                 testID="boton-descansar"
                 style={estilos.chip}
                 // Lleva a la pantalla grande SIN ARRANCAR (21/10): ahí se eligen los minutos.
@@ -743,18 +745,18 @@ export default function Inicio({
                 accessibilityRole="button"
               >
                 <Text style={estilos.chipTexto}>{T.sesion.descansar}</Text>
-              </Pressable>
+              </Tocable>
             )}
           </View>
         ) : (
-          <Pressable
+          <Tocable
             style={[estilos.chip, sesion.estado.ocupado && estilos.apagado]}
             onPress={() => sesion.empezar()}
             disabled={sesion.estado.ocupado}
             accessibilityRole="button"
           >
             <Text style={estilos.chipTexto}>{sesion.estado.ocupado ? '…' : T.inicio.iniciarEntrenamiento}</Text>
-          </Pressable>
+          </Tocable>
         )}
       </View>
       {/* EL GLOBITO DEL DESCANSO (15/10), saliendo de la píldora de arriba a la
@@ -794,24 +796,28 @@ export default function Inicio({
           mucha gente los pasos son parte del entreno, y la barra empujaba el
           bloque —lo que se toca doce veces— más abajo. */}
       {pasosHoy !== null && (
-        <PasosInicio
-          pasos={pasosHoy}
-          meta={metaPasos}
-          acento={paletaDe(numeroDeRango(racha), null).principal}
-          compacto={sesion.estado.corriendo}
-          alCambiarMeta={setMetaPasos}
-        />
+        <Aparece>
+          <PasosInicio
+            pasos={pasosHoy}
+            meta={metaPasos}
+            acento={paletaDe(numeroDeRango(racha), null).principal}
+            compacto={sesion.estado.corriendo}
+            alCambiarMeta={setMetaPasos}
+          />
+        </Aparece>
       )}
 
       {/* LAS VIDAS, ARRIBA DE LOS DÍAS Y COMO ESTRELLAS (21/10, aprobado en la galería): la misma
           estrella del aviso, llena la que queda y en contorno la usada. Eran puntos, debajo. */}
       {impulsos && (
-        <View style={estilos.impulsos} testID="vidas-inicio">
-          <Text style={estilos.impulsosEt}>{T.impulso.titulo}</Text>
-          {modosDeLasVidas(impulsos).map((modo, i) => (
-            <Estrella key={i} tam={16} modo={modo} />
-          ))}
-        </View>
+        <Aparece>
+          <View style={estilos.impulsos} testID="vidas-inicio">
+            <Text style={estilos.impulsosEt}>{T.impulso.titulo}</Text>
+            {modosDeLasVidas(impulsos).map((modo, i) => (
+              <Estrella key={i} tam={16} modo={modo} />
+            ))}
+          </View>
+        </Aparece>
       )}
 
       {!sesion.estado.corriendo && (
@@ -841,13 +847,13 @@ export default function Inicio({
       {/* El aviso de tiempo solo aparece cuando falta poco DE VERDAD, no a
           la mañana, y esta redactado hacia adelante: "ultimo tramo para el
           48", nunca "vas a perder la racha". */}
-      {avisoTiempo && <Text style={estilos.aviso}>{T.inicio.ultimoTramo(perfil.racha_actual + 1)}</Text>}
-      {perdioAyer && <Text style={estilos.aviso}>{T.inicio.perdida}</Text>}
-      {esDescanso && <Text style={estilos.aviso}>{T.inicio.hoyDescansa}</Text>}
+      {avisoTiempo && <Aparece><Text style={estilos.aviso}>{T.inicio.ultimoTramo(perfil.racha_actual + 1)}</Text></Aparece>}
+      {perdioAyer && <Aparece><Text style={estilos.aviso}>{T.inicio.perdida}</Text></Aparece>}
+      {esDescanso && <Aparece><Text style={estilos.aviso}>{T.inicio.hoyDescansa}</Text></Aparece>}
       {/* EL DIA QUE LA GUARDA DEJO ESPERANDO. Se dice aca y no solo en la
           hoja: podes cerrar la app y volver, y lo que no podes es quedarte
           pensando que perdiste el dia (§11). */}
-      {perfil.dia_pendiente && <Text style={estilos.aviso}>{T.inicio.diaPendiente}</Text>}
+      {perfil.dia_pendiente && <Aparece><Text style={estilos.aviso}>{T.inicio.diaPendiente}</Text></Aparece>}
 
       {/* MARCA TU GIMNASIO, mientras no este marcado. Se RECUERDA, no se
           insiste: es un globo quieto que lleva a Ajustes, y no aparece
@@ -858,19 +864,21 @@ export default function Inicio({
           sobre lo mismo en la misma pantalla no son el doble de insistencia:
           son ruido. */}
       {!perfil.gimnasio_lat && !sesion.estado.corriendo && !insistirGimnasio && (
-        <Pressable
-          style={estilos.globoQuieto}
-          onPress={() => {
-            irAPestana('ajustes');
-            pedirResaltarGimnasio();
-          }}
-        >
-          <Text style={estilos.globoTexto}>{T.inicio.gimnasioRecordatorioNativo}</Text>
-        </Pressable>
+        <Aparece>
+          <Pressable
+            style={estilos.globoQuieto}
+            onPress={() => {
+              irAPestana('ajustes');
+              pedirResaltarGimnasio();
+            }}
+          >
+            <Text style={estilos.globoTexto}>{T.inicio.gimnasioRecordatorioNativo}</Text>
+          </Pressable>
+        </Aparece>
       )}
 
-      {aviso !== '' && <Text style={estilos.aviso}>{aviso}</Text>}
-      {sesion.estado.aviso !== '' && <Text style={estilos.aviso}>{sesion.estado.aviso}</Text>}
+      {aviso !== '' && <Aparece><Text style={estilos.aviso}>{aviso}</Text></Aparece>}
+      {sesion.estado.aviso !== '' && <Aparece><Text style={estilos.aviso}>{sesion.estado.aviso}</Text></Aparece>}
 
       {/* ENTRENAR CON OTRO (12/10): avisa que estoy entrenando, publica lo que
           se ve acá y muestra el pedido de quien quiere unirse. De una sola
@@ -980,10 +988,10 @@ export default function Inicio({
               </Pressable>
             </>
           ) : (
-            <Pressable style={estilos.solido} onPress={() => setTerminando(true)}>
+            <Tocable style={estilos.solido} hundir={0.97} onPress={() => setTerminando(true)}>
               <FondoOctogonal relleno="#c4c2ba" />
               <Text style={estilos.textoSolido}>{T.sesion.terminar}</Text>
-            </Pressable>
+            </Tocable>
           )}
         </View>
       ) : cierre ? (
@@ -1094,10 +1102,10 @@ export default function Inicio({
         </>
       ) : (
         <>
-          <Pressable style={estilos.solido} onPress={() => setRegistrarAbierto(true)}>
+          <Tocable style={estilos.solido} hundir={0.97} onPress={() => setRegistrarAbierto(true)}>
             <FondoOctogonal relleno="#c4c2ba" />
             <Text style={estilos.textoSolido}>{sinNada ? T.inicio.registrarPrimerDia : T.inicio.registrarDia}</Text>
-          </Pressable>
+          </Tocable>
           {/* PEGADO AL PRINCIPAL, como en la web: el peso NO pasa por registrar
               el día —pesarse no es haber ido al gimnasio— pero tiene que poder
               anotarse cualquier día, entrenes o no. */}

@@ -1,14 +1,19 @@
-import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { C } from './colores';
-import { guardarDiaDeRutina, type PreguntaDeRutina } from './preguntarPorLaRutina';
+import { catalogoDeRutina, type CatalogoDeRutina } from '@compartido/rutinas';
+import RutinaPlegada from './RutinaPlegada';
+import { supabase } from './supabase';
+import { guardarDiaDeRutina, rutinaReemplazada, type PreguntaDeRutina } from './preguntarPorLaRutina';
 
 /**
  * LA VENTANA AL TERMINAR (19/10, aprobada en la galería): con el estilo de la app, en
  * lugar de la alerta del sistema. «Reemplazar» pasa por un «¿Estás seguro?» en la misma
- * ventana, porque pisa lo que había (lo pedido el 16/10); «Crear rutina nueva» va directo.
+ * ventana, porque pisa lo que había (lo pedido el 16/10), y desde el 26/10 lista la rutina
+ * entera como va a quedar: «Sí» guarda esa misma, «No» vuelve sin tocar nada. «Crear rutina
+ * nueva» va directo.
  * «Olvidar este día» (20/10), aparte y más apagado, no toca la rutina y ese día no vuelve a
  * preguntar. Tocar afuera la cierra sin guardar nada. Se monta solo mientras está abierta.
  */
@@ -16,12 +21,21 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
   const [paso, setPaso] = useState<'pregunta' | 'seguro'>('pregunta');
   const [guardando, setGuardando] = useState(false);
   const [fallo, setFallo] = useState(false);
+  const propuesta = useMemo(() => rutinaReemplazada(pregunta), [pregunta]);
+  const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(new Map());
+  useEffect(() => {
+    let vivo = true;
+    void catalogoDeRutina(supabase).then((c) => vivo && setCatalogo(c)).catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   async function guardar(como: 'esta' | 'nueva' | 'olvidar') {
     if (guardando) return;
     setGuardando(true);
     setFallo(false);
-    const ok = await guardarDiaDeRutina(pregunta, como);
+    const ok = await guardarDiaDeRutina(pregunta, como, propuesta ?? undefined);
     setGuardando(false);
     if (ok) return alCerrar();
     setFallo(true);
@@ -47,6 +61,14 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
               {'\n'}
               {T.rutina.cambiarDiaPregunta}
             </Text>
+          )}
+          {seguro && propuesta && (
+            <>
+              <Text style={estilos.texto}>{T.rutina.asiQueda(pregunta.actual.nombre)}</Text>
+              <ScrollView style={estilos.lista} contentContainerStyle={{ paddingBottom: 4 }}>
+                <RutinaPlegada testID="ventana-rutina-lista" dias={propuesta} catalogo={catalogo} abiertos />
+              </ScrollView>
+            </>
           )}
           {fallo && <Text style={estilos.fallo}>{T.general.noSePudo}</Text>}
           <View style={estilos.acciones}>
@@ -108,6 +130,8 @@ const estilos = StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 17, fontWeight: '600', lineHeight: 22 },
   texto: { color: C.sub, fontSize: 14, lineHeight: 20, marginTop: 8 },
   fallo: { color: C.error, fontSize: 13, marginTop: 8 },
+  // La lista entera puede ser larga: corre adentro y los botones quedan a la vista.
+  lista: { maxHeight: 360, marginTop: 10 },
   acciones: { gap: 8, marginTop: 18 },
   pildora: { borderRadius: 999, paddingVertical: 12, alignItems: 'center' },
   crema: { backgroundColor: C.claro },

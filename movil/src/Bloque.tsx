@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { supabase } from './supabase';
-import { metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
+import { metaAMano, metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { OPCIONES_DE_LA_PREGUNTA, cargaVigente, hayQuePreguntar, kilosMovidos, llevaNumero, muestraTotal, type Carga } from '@nucleo/carga';
@@ -20,6 +20,8 @@ import ListaDeBloques from './ListaDeBloques';
 import CampoPeso from './CampoPeso';
 import CampoReps from './CampoReps';
 import CampoDistancia from './CampoDistancia';
+import Aparece from './Aparece';
+import Tocable from './Tocable';
 import FondoOctogonal from './FondoOctogonal';
 
 // Los botones grandes del bloque: el mismo fondo tenue de siempre, y el corte de las esquinas.
@@ -242,6 +244,14 @@ export default function Bloque({
       ? { texto: T.sesion.cardioOtraVuelta, accion: () => alArrancarCardio?.() }
       : { texto: T.sesion.cardioArrancar, accion: () => alArrancarCardio?.() };
   const puntos = Math.max(estado.meta, estado.hechas);
+  // Las series a mano: `null` cerrado, texto mientras se escribe.
+  const [metaEscrita, setMetaEscrita] = useState<string | null>(null);
+  const usarMetaEscrita = () => {
+    const n = metaAMano(metaEscrita ?? '');
+    if (n === null) return;
+    alElegirMeta(n);
+    setMetaEscrita(null);
+  };
   const cargaVista = cargaVigente(estado.carga, actual?.carga);
   const esCorporal = !llevaNumero(cargaVista);
   const admitePeso = !!estado.ejercicio && actual?.admite_peso !== false;
@@ -331,11 +341,14 @@ export default function Bloque({
           por mancuerna…); la máquina ya la dice el nombre. Desde el 20/10, solo con «Mostrar
           la última vez» prendido en Ajustes: sale al entrar a entrenar y al elegir otro. */}
       {verUltimaVez && !!estado.ejercicio && !!ultimaVez && ultimaVez.series > 0 && (
-        <Text style={estilos.sugeridoNota} testID="ultima-vez">
-          {T.sesion.ultimaVez(fechaLinda(ultimaVez.fecha), detalleDeLaUltimaVez(ultimaVez, unidad, repsUltimaVez))}
-        </Text>
+        <Aparece>
+          <Text style={estilos.sugeridoNota} testID="ultima-vez">
+            {T.sesion.ultimaVez(fechaLinda(ultimaVez.fecha), detalleDeLaUltimaVez(ultimaVez, unidad, repsUltimaVez))}
+          </Text>
+        </Aparece>
       )}
       {globitoSubir && (
+        <Aparece>
         <Globito
           testID="globito-subir"
           texto={rangoSubir && subirPeso ? T.sesion.yaPuedesSubirRango(enUnidad(rangoSubir[0]), enUnidad(rangoSubir[1]), subirPeso.porcentaje[0], subirPeso.porcentaje[1]) : T.sesion.yaPuedesSubir}
@@ -344,6 +357,7 @@ export default function Bloque({
             repintarGlobito((n) => n + 1);
           }}
         />
+        </Aparece>
       )}
 
       {corriendoCardio && (
@@ -376,25 +390,62 @@ export default function Bloque({
       )}
       {/* LA DISTANCIA DE LA VUELTA (21/10), con la migración 95. */}
       {esTiempo && !corriendoCardio && estado.hechas > 0 && conDistancia && alElegirDistancia && (
-        <View style={estilos.distancia}>
-          <Text style={estilos.distanciaEtiqueta}>{T.sesion.distancia}</Text>
-          <CampoDistancia km={estado.distancia} unidad={unidadDeDistancia(unidad)} alCambiar={alElegirDistancia} />
-        </View>
+        <Aparece>
+          <View style={estilos.distancia}>
+            <Text style={estilos.distanciaEtiqueta}>{T.sesion.distancia}</Text>
+            <CampoDistancia km={estado.distancia} unidad={unidadDeDistancia(unidad)} alCambiar={alElegirDistancia} />
+          </View>
+        </Aparece>
       )}
 
       {!esTiempo && (
       <View style={estilos.metas} accessibilityLabel={T.sesion.cuantasVasAHacer}>
         {pildorasDeMeta(estado.meta).map((m) => (
-          <Pressable
+          <Tocable
             key={m}
             style={[estilos.meta, estado.meta === m && estilos.metaPrendida]}
             onPress={() => alElegirMeta(m)}
             accessibilityState={{ selected: estado.meta === m }}
           >
             <Text style={[estilos.metaTexto, estado.meta === m && estilos.metaTextoPrendido]}>×{m}</Text>
-          </Pressable>
+          </Tocable>
         ))}
+        <Tocable
+          testID="meta-a-mano"
+          style={[estilos.meta, metaEscrita !== null && estilos.metaPrendida]}
+          onPress={() => setMetaEscrita(metaEscrita === null ? '' : null)}
+          accessibilityLabel={T.sesion.seriesAMano}
+          accessibilityRole="button"
+        >
+          <Text style={[estilos.metaTexto, metaEscrita !== null && estilos.metaTextoPrendido]}>+</Text>
+        </Tocable>
       </View>
+      )}
+      {!esTiempo && metaEscrita !== null && (
+        <Aparece testID="meta-a-mano-fila">
+        <View style={estilos.metaAMano}>
+          <TextInput
+            testID="meta-a-mano-campo"
+            style={estilos.metaAManoCampo}
+            value={metaEscrita}
+            onChangeText={setMetaEscrita}
+            placeholder={T.sesion.seriesAManoEjemplo}
+            placeholderTextColor={C.apagado}
+            keyboardType="number-pad"
+            autoFocus
+            maxLength={2}
+            onSubmitEditing={usarMetaEscrita}
+          />
+          <Pressable
+            testID="meta-a-mano-usar"
+            style={[estilos.meta, estilos.metaUsar, metaAMano(metaEscrita) !== null && estilos.metaPrendida]}
+            disabled={metaAMano(metaEscrita) === null}
+            onPress={usarMetaEscrita}
+          >
+            <Text style={[estilos.metaTexto, metaAMano(metaEscrita) !== null && estilos.metaTextoPrendido]}>{T.descanso.aManoUsar}</Text>
+          </Pressable>
+        </View>
+        </Aparece>
       )}
 
       {(anotarPeso || conReps) && admitePeso && (
@@ -416,9 +467,11 @@ export default function Bloque({
       )}
 
       {deUnaMarca && subida && (
-        <Text testID="subida-nota" style={estilos.subidaNota}>
-          {T.sesion.subidaNota(subida.series, enUnidad(subida.antes), enUnidad(subida.ahora))}
-        </Text>
+        <Aparece>
+          <Text testID="subida-nota" style={estilos.subidaNota}>
+            {T.sesion.subidaNota(subida.series, enUnidad(subida.antes), enUnidad(subida.ahora))}
+          </Text>
+        </Aparece>
       )}
 
       {/* CON QUÉ LO HACÉS, la primera vez. No bloquea: el + anda igual. */}
@@ -502,7 +555,7 @@ export default function Bloque({
       {/* El cardio no tiene meta: su botón es el del cronómetro (Arrancar, Listo, Otra vuelta). */}
       {cumplida && !esTiempo ? (
         <View style={estilos.filaBotones}>
-          <Pressable
+          <Tocable
             style={[estilos.mas, estilos.menos, menosApagado && estilos.menosApagado]}
             onPress={alRestar}
             disabled={menosApagado}
@@ -511,8 +564,8 @@ export default function Bloque({
           >
             <FondoOctogonal relleno={FONDO_BOTON} borde={C.lineaFuerte} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
-          </Pressable>
-          <Pressable
+          </Tocable>
+          <Tocable
             style={[estilos.mas, estilos.masCerrar]}
             onPress={() => {
               if (!cierraElBloque()) return;
@@ -525,11 +578,11 @@ export default function Bloque({
           >
             <FondoOctogonal relleno={C.claro} corte={CORTE} />
             <Text style={estilos.cerrarTexto}>{T.sesion.terminarSerie}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       ) : (
         <View style={estilos.filaBotones} onLayout={(e) => setAnchoBotones(e.nativeEvent.layout.width)}>
-          <Pressable
+          <Tocable
             style={[estilos.mas, estilos.menos, menosApagado && estilos.menosApagado]}
             onPress={alRestar}
             disabled={menosApagado}
@@ -538,7 +591,7 @@ export default function Bloque({
           >
             <FondoOctogonal relleno={FONDO_BOTON} borde={C.lineaFuerte} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
-          </Pressable>
+          </Tocable>
           <MasQuePulsa
             testID={esTiempo ? 'cardio-principal' : undefined}
             style={[estilos.mas, estilos.masAncho, esTiempo && estilos.masCerrar, pausa && estilos.masEnPausa]}
@@ -730,6 +783,9 @@ const estilos = StyleSheet.create({
   metaPrendida: { borderColor: C.sub },
   metaTexto: { color: C.apagado, fontSize: 14 },
   metaTextoPrendido: { color: C.tinta },
+  metaAMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 10 },
+  metaAManoCampo: { color: C.tinta, fontSize: 16, minWidth: 150, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  metaUsar: { flex: 0, minWidth: 76, paddingHorizontal: 18 },
   peso: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, marginTop: 12 },
   minutos: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
   cardio: { alignItems: 'center', marginTop: 14, gap: 4 },

@@ -2449,8 +2449,8 @@ console.log('\n33. El vocabulario del cliente contra el que acepta la base');
   // seguiria saliendo, mas alto y sin significado.
   const cat = (await db.query(`select grupo, count(*)::int n from ejercicios group by 1`)).rows;
   const cuantos = (await db.query(`select count(*)::int n from ejercicios`)).rows[0].n;
-  // 101 de fuerza y 9 de cardio (migración 76).
-  chequear('el catalogo tiene 110 ejercicios', cuantos, 110);
+  // 103 de fuerza y 9 de cardio (migración 76; los dos press en Smith, 96).
+  chequear('el catalogo tiene 112 ejercicios', cuantos, 112);
   chequear('y solo 3 mueven el DOTS', delDots.length, 3);
   chequear(
     'los grupos son los seis de siempre, y el cardio',
@@ -3960,7 +3960,7 @@ console.log('\n56. El arbol del selector llega a los 100');
       llegan += porGrupo.find((f) => f.grupo === g)?.n ?? 0;
     }
   }
-  chequear('se llega a los 110 ejercicios', llegan, 110);
+  chequear('se llega a los 112 ejercicios', llegan, 112);
 
   // QUE ADMITEN PESO (migracion 31). Una marca es peso por repeticiones, asi
   // que la pantalla de marcas filtra por esta columna. Se fija la lista de
@@ -15959,7 +15959,8 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   // ---- C y D, y el interruptor de G: son componentes, se leen ----
   const inicio197 = de197('movil', 'src', 'Inicio.tsx');
   chequear('los pasos se ven también entrenando, compactos, y se vuelven a pedir cada minuto', [
-    /\{pasosHoy !== null && \(\s*<PasosInicio/.test(inicio197),
+    // Desde el 26/10 entran creciendo (<Aparece>).
+    /\{pasosHoy !== null && \(\s*(<Aparece>\s*)?<PasosInicio/.test(inicio197),
     /compacto=\{sesion\.estado\.corriendo\}/.test(inicio197),
     /\{!sesion\.estado\.corriendo && pasosHoy !== null/.test(inicio197),
     /setInterval\(\(\) => setLatidoDePasos\(\(n\) => n \+ 1\), 60_000\)/.test(inicio197) && /\[vueltas, latidoDePasos\]/.test(inicio197),
@@ -20663,7 +20664,7 @@ console.log('\n305. La migración 95: la distancia del cardio y las repeticiones
   ])])).rows[0].id;
   const r305 = (await db.query('select mis_rutinas() as v')).rows[0].v.find((r) => r.id === id305);
   chequear('la rutina guarda las repeticiones objetivo de 1 a 100, enteras; 0 no es un objetivo', r305.dias[1].ejercicios.map((e) => e.reps ?? 'sin llave'), [8, 'sin llave', 12, 'sin llave']);
-  chequear('la base está en la 95', (await db.query('select version_del_esquema() as v')).rows[0].v, 95);
+  chequear('la base está en la 95 o después', (await db.query('select version_del_esquema() as v')).rows[0].v >= 95, true);
 }
 console.log('\n306. El separador decimal sigue al idioma: 70,0 en español y 70.0 en inglés; lo escrito se lee igual (21/10)');
 {
@@ -20842,6 +20843,122 @@ console.log('\n311. El descanso de otro, terminado: «+0:08» contando, no tres 
     /r\.descanso === 0 \? `\+\$\{cuentaAtras\(r\.pasado \?\? 0\)\}`/.test(deBug('movil', 'src', 'Juntos.tsx')),
     /r\.descanso === 0 \? `\+\$\{cuentaAtras\(r\.pasado \?\? 0\)\}`/.test(deBug('movil', 'src', 'CompaneroEnDescanso.tsx')),
   ], [true, true, true]);
+}
+console.log('\n312. Las vidas son estrellas también en la web (26/10)');
+{
+  const imp = deBug('src', 'components', 'Impulsos.tsx');
+  const css = deBug('src', 'app', 'globals.css');
+  chequear('Impulsos dibuja la estrella de la nativa, no puntos, y el CSS pinta el trazo', [
+    imp.includes("'M0,-48 C3,-15 9,-6 27,0 C9,6 3,15 0,48 C-3,15 -9,6 -27,0 C-9,-6 -3,-15 0,-48 Z'"),
+    deBug('movil', 'src', 'Estrella.tsx').includes(imp.match(/const PUNTAS = '([^']+)'/)?.[1] ?? '-'),
+    /<path d=\{PUNTAS\} \/>/.test(imp),
+    /<i key/.test(imp),
+    /\.impulsos svg\.viva/.test(css),
+  ], [true, true, true, false, true]);
+}
+console.log('\n313. Press plano y press inclinado en Smith, en el catálogo (26/10)');
+{
+  const fila313 = async (id) => (await db.query('select nombre, grupo, carga, admite_peso, orden, creado_por from ejercicios where id = $1', [id])).rows[0] ?? null;
+  chequear('están, en pecho, con carga de barra y al lado del press declinado', [
+    await fila313('press_plano_smith'), await fila313('press_inclinado_smith'),
+  ], [
+    { nombre: 'Press plano en Smith', grupo: 'pecho', carga: 'total', admite_peso: true, orden: 212, creado_por: null },
+    { nombre: 'Press inclinado en Smith', grupo: 'pecho', carga: 'total', admite_peso: true, orden: 213, creado_por: null },
+  ]);
+  const EN313 = await import('../nucleo/ejerciciosEn.ts');
+  const en313 = EN313.NOMBRES_EN;
+  chequear('y tienen su nombre en inglés', [en313.press_plano_smith, en313.press_inclinado_smith], ['Smith machine bench press', 'Smith machine incline press']);
+  const mig313 = deBug('supabase', 'migracion-96-press-en-smith.sql');
+  chequear('la migración 96 los inserta igual que schema.sql y sube la versión', [
+    mig313.includes("('press_plano_smith',     'Press plano en Smith',        'pecho',   false, 212)"),
+    mig313.includes("('press_inclinado_smith', 'Press inclinado en Smith',    'pecho',   false, 213)"),
+    /select 96; \$\$/.test(mig313),
+  ], [true, true, true]);
+}
+console.log('\n314. Las series a mano: además de ×2…×5, cualquier número de 1 a 99 (26/10)');
+{
+  const B314 = await import('../nucleo/bloques.ts');
+  chequear('se acepta un entero de 1 a 99, con espacios alrededor; lo demás no', [
+    '7', ' 12 ', '1', '99', '0', '100', '6.5', '-3', 'x', '',
+  ].map(B314.metaAMano), [7, 12, 1, 99, null, null, null, null, null, null]);
+  const bl314 = deBug('movil', 'src', 'Bloque.tsx');
+  chequear('el «+» está al lado de las píldoras y lo escrito va por alElegirMeta', [
+    /testID="meta-a-mano"/.test(bl314),
+    /const n = metaAMano\(metaEscrita \?\? ''\);\n    if \(n === null\) return;\n    alElegirMeta\(n\);/.test(bl314.replace(/\r\n/g, '\n')),
+  ], [true, true]);
+}
+console.log('\n315. «Reemplazar» confirma con la rutina entera y guarda la que mostró (26/10)');
+{
+  const vr315 = deBug('movil', 'src', 'VentanaRutina.tsx');
+  const pr315 = deBug('movil', 'src', 'preguntarPorLaRutina.ts');
+  chequear('la lista y el guardado salen de la misma propuesta, calculada una vez', [
+    /const propuesta = useMemo\(\(\) => rutinaReemplazada\(pregunta\), \[pregunta\]\);/.test(vr315),
+    /<RutinaPlegada testID="ventana-rutina-lista" dias=\{propuesta\}/.test(vr315),
+    /guardarDiaDeRutina\(pregunta, como, propuesta \?\? undefined\)/.test(vr315),
+    /const dias = \(como === 'esta' && mostrada\) \|\|/.test(pr315),
+  ], [true, true, true, true]);
+}
+console.log('\n316. Los días faltados del año: la rutina de cada día, con fecha (migración 97, 26/10)');
+{
+  const F316 = await import('../nucleo/faltados.ts');
+  const lmv = [1, 3, 5];
+  chequear('cuentan los días de entrenar sin día registrado, de este año y hasta ayer; los días sin rutina no', [
+    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], new Set(), '2026-01-15'),
+    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], new Set(['2026-01-05', '2026-01-09']), '2026-01-15'),
+    F316.diasFaltados([{ desde: '2026-01-08', entrena: null }, { desde: '2026-01-01', entrena: lmv }], new Set(['2026-01-05']), '2026-01-15'),
+    F316.diasFaltados([{ desde: '2025-12-01', entrena: [0, 1, 2, 3, 4, 5, 6] }], new Set(), '2026-01-03'),
+    F316.diasFaltados([{ desde: '2026-01-10', entrena: lmv }], new Set(), '2026-01-15'),
+    F316.diasFaltados([], new Set(), '2026-10-26'),
+  ], [6, 4, 2, 2, 2, 0]);
+
+  const u316 = await nuevoUsuario();
+  await comoUsuario(u316);
+  const semana = (descansos) => JSON.stringify(Array.from({ length: 7 }, (_, d) => ({ descanso: descansos.includes(d), ejercicios: descansos.includes(d) ? [] : [{ ejercicio: 'press_banca', series: 3 }] })));
+  const filas = async (u = u316) => (await db.query('select desde = hoy_de($1) as hoy, entrena from rutina_semanas where user_id = $1 order by desde', [u])).rows.map((r) => [r.hoy, r.entrena]);
+  const a316 = (await db.query('select guardar_rutina(null, $1, $2::jsonb) as id', ['A', semana([0, 6])])).rows[0].id;
+  const r1 = await filas();
+  await db.query('select guardar_rutina($1, $2, $3::jsonb)', [a316, 'A', semana([0])]);
+  const r2 = await filas();
+  await db.query('select guardar_rutina(null, $1, $2::jsonb)', ['B', semana([])]);
+  const r3 = await filas();
+  await db.query('select borrar_rutina($1)', [a316]);
+  const r4 = await filas();
+  chequear('guardar la primera anota lo que entrena desde hoy; cambiarle el descanso el mismo día lo pisa; otra sin activar no cambia nada; borrar la activa deja «sin rutina»', [r1, r2, r3, r4], [
+    [[true, [1, 2, 3, 4, 5]]], [[true, [1, 2, 3, 4, 5, 6]]], [[true, [1, 2, 3, 4, 5, 6]]], [[true, null]],
+  ]);
+  chequear('se lee solo la propia', (await db.query(`select qual from pg_policies where tablename = 'rutina_semanas'`)).rows.map((r) => r.qual), ['(auth.uid() = user_id)']);
+
+  // Lo de antes de la 97: la activa de hoy, desde la primera rutina.
+  const u316b = await nuevoUsuario();
+  await comoUsuario(u316b);
+  await db.query('select guardar_rutina(null, $1, $2::jsonb)', ['Vieja', semana([0, 3])]);
+  await db.query(`update rutinas set creada = now() - interval '40 days' where user_id = $1`, [u316b]);
+  await db.query('delete from rutina_semanas where user_id = $1', [u316b]);
+  const mig316 = deBug('supabase', 'migracion-97-semanas-de-la-rutina.sql').replace(/\r\n/g, '\n');
+  await db.exec(mig316.slice(mig316.indexOf('insert into public.rutina_semanas'), mig316.indexOf('-- La versión sube a 97.')));
+  chequear('el relleno de la migración anota la activa desde la primera rutina', (await db.query('select hoy_de($1) - desde as hace, entrena from rutina_semanas where user_id = $1', [u316b])).rows.map((r) => [r.hace, r.entrena]), [[40, [1, 2, 4, 5, 6]]]);
+
+  await db.query('delete from auth.users where id = $1', [u316b]);
+  chequear('dar de baja la cuenta no tropieza con el trigger y no deja renglones', (await db.query('select count(*)::int n from rutina_semanas where user_id = $1', [u316b])).rows[0].n, 0);
+  chequear('Stats la pone donde estaba el ✓, con las vidas al máximo', [
+    /if \(c === 'llenas'\) return faltados === null \? \[\] : \[\{ v: String\(faltados\)/.test(deBug('movil', 'src', 'Stats.tsx')),
+    /'✓'/.test(deBug('movil', 'src', 'Stats.tsx')),
+    // Sin la 97 no se pide la tabla: era un 404 en cada visita a Stats (lo vio test:real).
+    /disponible\('diasFaltados', await versionDelEsquema\(supabase\)\)\s*\? await supabase\.from\('rutina_semanas'\)/.test(deBug('movil', 'src', 'Stats.tsx')),
+  ], [true, false, true]);
+}
+console.log('\n317. Las microanimaciones: lo que entra crece, los botones se hunden (26/10)');
+{
+  const ap = deBug('movil', 'src', 'Aparece.tsx');
+  chequear('Aparece crece desde alto cero hasta el medido, respeta «reducir movimiento» y al terminar suelta el alto', [
+    /outputRange: \[0, alto\]/.test(ap), /isReduceMotionEnabled/.test(ap), /if \(listo\) return <View testID=\{testID\}>\{children\}<\/View>;/.test(ap),
+  ], [true, true, true]);
+  const usos = (archivo) => (deBug('movil', 'src', archivo).match(/<Aparece[ >]/g) ?? []).length;
+  const toques = (archivo) => (deBug('movil', 'src', archivo).match(/<Tocable[\s>]/g) ?? []).length;
+  chequear('se usa donde algo llega tarde o se abre: Inicio, el bloque, el descanso, el grupo, la rutina', [
+    usos('Inicio.tsx') >= 8, usos('Bloque.tsx') >= 5, usos('Descanso.tsx') >= 2, usos('Juntos.tsx') >= 1, usos('EnVivoDeInicio.tsx') >= 1, usos('TiraDelGrupo.tsx') >= 1, usos('FilaRutina.tsx') >= 1, usos('MiRutina.tsx') >= 3,
+  ], [true, true, true, true, true, true, true, true]);
+  chequear('y los botones principales se hunden al tocarlos', [toques('Inicio.tsx') >= 4, toques('Bloque.tsx') >= 5, toques('Descanso.tsx') >= 3], [true, true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

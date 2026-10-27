@@ -6,6 +6,7 @@ import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { useUniones } from './useUniones';
 import TiraDelGrupo from './TiraDelGrupo';
+import Aparece from './Aparece';
 import { useCartelVisible } from './cartelVisible';
 import { tarjetasDeInicio } from '@nucleo/novedades';
 import { C, conAlfa } from './colores';
@@ -76,7 +77,8 @@ function EnVivoDeInicio(visto: Visto) {
     <>
       {conGrupo && <TiraDelGrupo uniones={uniones} recibidoEn={recibidoEn} />}
       {pedidos.map((u) => (
-        <View key={u.id} testID="pedido-de-union" style={estilos.tarjeta} accessibilityRole="alert">
+        <Aparece key={u.id}>
+        <View testID="pedido-de-union" style={estilos.tarjeta} accessibilityRole="alert">
           <Text style={estilos.texto}>{T.social.quiereUnirse(u.otro.username)}</Text>
           <View style={estilos.botones}>
             <Pressable
@@ -96,6 +98,7 @@ function EnVivoDeInicio(visto: Visto) {
             </Pressable>
           </View>
         </View>
+        </Aparece>
       ))}
     </>
   );
