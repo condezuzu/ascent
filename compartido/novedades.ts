@@ -26,7 +26,7 @@ export async function traerNovedades(supabase: Cliente, uid: string): Promise<No
   const u = await traerUniones(supabase);
   const uniones: Novedad[] = (u?.uniones ?? [])
     .filter((x) => x.estado === 'pendiente' && !x.laPediYo)
-    .map((x) => ({ tipo: 'union' as const, id: x.id, otro: { id: x.otro.id, username: x.otro.username, avatar_url: x.otro.avatar_url } }));
+    .map((x) => ({ tipo: 'union' as const, id: x.id, otro: { id: x.otro.id, username: x.otro.username, avatar_url: x.otro.avatar_url }, invitacion: x.invitacion }));
   // Unirse primero: se contesta mientras se entrena, la amistad puede esperar.
   return [...uniones, ...amistades];
 }

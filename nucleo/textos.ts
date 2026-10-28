@@ -1542,6 +1542,16 @@ const ES = {
     unirseNoEntrena: (nombre: string) => `${nombre} ya no está entrenando.`,
     quiereUnirse: (nombre: string) => `${nombre} quiere unirse a tu entrenamiento`,
     esperandoA: (nombre: string) => `Esperando a ${nombre}`,
+    // LA BURBUJA DE UN AMIGO QUE ENTRENA, en Inicio (migración 98). Sin género: va después del nombre.
+    noEstaEnGrupo: 'no está en un grupo',
+    estaEnGrupoDe: (n: number) => `está en un grupo de ${n} personas`,
+    invitarAGrupo: 'Invitar a un grupo',
+    unirseAlEntrenamiento: 'Unirse al entrenamiento',
+    invitacionEnviada: 'Invitación enviada',
+    // "ocupado" junta varias causas (ya está en un grupo, el tuyo está lleno, un bloqueo) y no dice cuál.
+    invitarOcupado: (nombre: string) => `${nombre} no puede sumarse a tu grupo ahora.`,
+    invitarFallo: 'No se pudo enviar. Prueba de nuevo.',
+    teInvita: (nombre: string) => `${nombre} te invita a su grupo`,
     salirDeUnion: 'Salir',
     // EL GRUPO (migración 88).
     invitarAlGrupo: 'Invitar al grupo',
@@ -1603,6 +1613,7 @@ const ES = {
     // El cartel que baja de arriba (14/10): el nombre va en el renglón de arriba.
     cartelAmistad: 'Te quiere agregar',
     cartelUnion: 'Quiere unirse a tu entrenamiento',
+    cartelInvitacion: 'Te invita a su grupo',
     entrenandoAhora: 'Entrenando ahora',
     estaEntrenando: (nombre: string) => `${nombre} está entrenando`,
     // El aviso de la actividad en vivo, la primera vez en Ranking ya con el

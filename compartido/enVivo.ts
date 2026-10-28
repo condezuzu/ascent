@@ -87,6 +87,34 @@ export async function linkDelGrupo(supabase: Cliente): Promise<string | null> {
   return !error && typeof data === 'string' && data ? data : null;
 }
 
+export type RespuestaDeInvitar = 'ok' | 'no-entreno' | 'no-entrena' | 'ocupado' | 'ya-unido' | 'fallo';
+
+/** Invitar a un amigo que entrena solo a mi grupo (migración 98). Yo tengo que estar entrenando. */
+export async function invitarAlGrupo(supabase: Cliente, aQuien: string): Promise<RespuestaDeInvitar> {
+  if (!disponible('invitarAlGrupo', await version(supabase))) return 'fallo';
+  const { data, error } = await supabase.rpc('invitar_al_grupo', { p_a: aQuien });
+  if (error) return 'fallo';
+  return data === 'no-entreno' || data === 'no-entrena' || data === 'ocupado' || data === 'ya-unido' ? data : 'ok';
+}
+
+export type GrupoDelAmigo = { personas: number; miembros: { id: string; username: string; avatar_url: string | null; racha: number | null }[] };
+
+/** El grupo de un amigo que entrena (migración 98). `null` = no se pudo, o ya no entrena. */
+export async function grupoDelAmigo(supabase: Cliente, amigo: string): Promise<GrupoDelAmigo | null> {
+  if (!disponible('invitarAlGrupo', await version(supabase))) return null;
+  const { data, error } = await supabase.rpc('grupo_del_amigo', { p_amigo: amigo });
+  if (error || !data || typeof data !== 'object') return null;
+  const d = data as { personas?: unknown; miembros?: unknown };
+  const miembros = Array.isArray(d.miembros)
+    ? (d.miembros as Record<string, unknown>[]).flatMap((m) =>
+        m && typeof m.id === 'string'
+          ? [{ id: m.id, username: typeof m.username === 'string' ? m.username : '', avatar_url: typeof m.avatar_url === 'string' ? m.avatar_url : null, racha: typeof m.racha === 'number' ? m.racha : null }]
+          : [],
+      )
+    : [];
+  return { personas: Number(d.personas) || 0, miembros };
+}
+
 /** Entrar por el link: quedamos amigos con quien armó el grupo, y entro. */
 export async function unirsePorLink(supabase: Cliente, codigo: string): Promise<RespuestaDelLink> {
   if (!disponible('grupos', await version(supabase))) return 'fallo';

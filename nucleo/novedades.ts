@@ -9,6 +9,8 @@ export type Novedad = {
   /** El id del pedido (de `friendships` o de `entrenos_compartidos`). */
   id: string;
   otro: { id: string; username: string; avatar_url: string | null };
+  /** Un pedido de unirse al revés: te invitan a su grupo (migración 98). */
+  invitacion?: boolean;
 };
 
 export const CLAVE_NOVEDADES = 'ascent:novedades-vistas';

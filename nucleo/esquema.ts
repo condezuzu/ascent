@@ -88,6 +88,8 @@ export const REQUIERE = {
   distanciaYObjetivo: 95,
   /** Los días faltados del año en Stats: la rutina de cada día, con fecha (`rutina_semanas`). */
   diasFaltados: 97,
+  /** Invitar a un amigo a tu grupo y ver el grupo de un amigo, desde su burbuja en Inicio. */
+  invitarAlGrupo: 98,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

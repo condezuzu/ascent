@@ -425,7 +425,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                       <Text style={estilos.unirseTexto}>{T.social.unirse}</Text>
                     </Tocable>
                   )}
-                  {union?.estado === 'pendiente' && union.laPediYo && <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>}
+                  {union?.estado === 'pendiente' && union.laPediYo && <Text style={estilos.dato}>{union.invitacion ? T.social.invitacionEnviada : T.social.pedidoEnviado}</Text>}
                   {/* Renglón propio y a todo el ancho: al lado del nombre no entra. */}
                   {noSePudo?.id === e.id && (
                     <Text testID="unirse-no-se-pudo" style={estilos.noSePudo}>

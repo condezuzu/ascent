@@ -45,7 +45,7 @@ import RachaConRotulo from './RachaConRotulo';
 import PasosInicio from './PasosInicio';
 import EnVivoDeInicio from './EnVivoDeInicio';
 import { diaDeLaSesion } from '@nucleo/subir';
-import { dejarDeEntrenar, linkDelGrupo } from '@compartido/enVivo';
+import { dejarDeEntrenar, invitarAlGrupo, linkDelGrupo } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 import TimbreDePildora from './TimbreDePildora';
@@ -563,6 +563,13 @@ export default function Inicio({
     if (codigo) void Share.share({ message: T.social.mensajeDeInvitacion(enlaceDeGrupo(codigo)) }).catch(() => undefined);
   }
 
+  // «INVITAR A UN GRUPO» desde la burbuja de un amigo (29/10): el grupo es de quien entrena, así
+  // que primero empieza a entrenar, como «Iniciar grupo».
+  async function invitar(amigo: string) {
+    if (!sesion.estado.corriendo) await sesion.empezar();
+    return invitarAlGrupo(supabase, amigo);
+  }
+
   if (estado.tipo === 'cargando') {
     return (
       <View style={estilos.centrado} testID="pantalla-inicio">
@@ -768,7 +775,7 @@ export default function Inicio({
       </View>
       {/* EL MULTIJUGADOR, ARRIBA DE TODO (28/10): «Iniciar grupo» y quién entrena ahora.
           Entrenando, lo reemplaza la tira del grupo (más abajo). */}
-      {!sesion.estado.corriendo && <BurbujasDelGrupo alIniciarGrupo={() => void iniciarGrupo()} />}
+      <BurbujasDelGrupo visible={!sesion.estado.corriendo} alIniciarGrupo={() => void iniciarGrupo()} alInvitar={invitar} />
       {/* EL GLOBITO DEL DESCANSO (15/10), saliendo de la píldora de arriba a la
           derecha, la primera vez que hay uno andando. Se va con el descanso. */}
       {sesion.estado.corriendo && !!sesion.estado.descanso && anchoCabecera > 0 && anchoPildora > 0 && (

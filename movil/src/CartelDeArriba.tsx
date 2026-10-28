@@ -106,7 +106,7 @@ export default function CartelDeArriba() {
             {novedad.otro.username}
           </Text>
           <Text style={estilos.que} numberOfLines={2}>
-            {novedad.tipo === 'union' ? T.social.cartelUnion : T.social.cartelAmistad}
+            {novedad.tipo === 'union' ? (novedad.invitacion ? T.social.cartelInvitacion : T.social.cartelUnion) : T.social.cartelAmistad}
           </Text>
         </View>
       </View>

@@ -20801,6 +20801,60 @@ console.log('\n318. La entrada, de nuevo: el motor y la fila de la rutina se car
     /useState<number \| null>\(\(\) => pasosPrecargados\(\) \?\? null\)/.test(deBug('movil', 'src', 'Inicio.tsx')),
   ], [true, true]);
 }
+console.log('\n319. Invitar a un amigo al grupo y ver el grupo de un amigo (la 98, 29/10)');
+{
+  const gente = [];
+  for (let i = 0; i < 6; i++) gente.push(await nuevoUsuario());
+  const [a, b, c, d, f, x] = gente;
+  // A amigo de todos menos de X; B y C amigos entre sí. F no entrena.
+  for (const u of [b, c, d, f]) await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [a, u]);
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [b, c]);
+  const como = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const uniones = async (u) => (await como(u, 'select mis_uniones() as v'))[0].v;
+  const invitar = async (quien, aQuien) => (await como(quien, 'select invitar_al_grupo($1) as v', [aQuien]))[0].v;
+  const grupoDe = async (quien, amigo) => (await como(quien, 'select grupo_del_amigo($1) as v', [amigo]))[0].v;
+  for (const u of [a, b, c, d, x]) await como(u, 'select iniciar_sesion()');
+
+  chequear('sin entrenar no se invita; a un extraño, tampoco', [await invitar(f, a), await invitar(x, b)], ['no-entreno', 'no-entrena']);
+  chequear('A invita a B: le llega como invitación y a A le queda como enviada', [
+    await invitar(a, b),
+    (await uniones(b)).map((u) => [u.estado, u.tipo, u.la_pedi_yo, u.otro.id]),
+    (await uniones(a)).map((u) => [u.estado, u.tipo, u.la_pedi_yo, u.otro.id]),
+  ], ['ok', [['pendiente', 'invitacion', false, a]], [['pendiente', 'invitacion', true, b]]]);
+  chequear('antes de aceptar, B entrena sin grupo: el grupo de B, visto por C, es de nadie', (await grupoDe(c, b))?.personas, 0);
+  await como(b, 'select responder_union($1, true)', [(await uniones(b))[0].id]);
+  chequear('aceptar mete a B en el grupo de A, y A es quien lo armó', [
+    (await db.query('select grupo_de($1) = grupo_de($2) as v', [a, b])).rows[0].v,
+    (await uniones(b)).map((u) => [u.estado, u.otro.id, u.lider]),
+  ], [true, [['aceptada', a, true]]]);
+  chequear('C ve el grupo de A: dos personas, A primero', [(await grupoDe(c, a)).personas, (await grupoDe(c, a)).miembros.map((m) => m.id)], [2, [a, b]]);
+  chequear('una extraña no ve nada, ni nadie el grupo de un amigo que no entrena', [await grupoDe(x, a), await grupoDe(a, f)], [null, null]);
+  await db.query('update profiles set comparte_gimnasio = false where id = $1', [b]);
+  chequear('quien no muestra que entrena cuenta, pero no se ve', [(await grupoDe(c, a)).personas, (await grupoDe(c, a)).miembros.map((m) => m.id)], [2, [a]]);
+  await db.query('update profiles set comparte_gimnasio = true where id = $1', [b]);
+  chequear('a quien ya está en un grupo no se lo invita', await invitar(c, b), 'ocupado');
+
+  // D tenía una invitación de A y en vez de contestarla pide unirse: es aceptar.
+  chequear('A invita a D', await invitar(a, d), 'ok');
+  chequear('pedir unirse con una invitación esperando es aceptarla: D entra al grupo de A', [
+    (await como(d, 'select pedir_unirse($1) as v', [a]))[0].v,
+    (await grupoDe(c, a)).personas,
+    (await db.query('select grupo_de($1) = grupo_de($2) as v', [a, d])).rows[0].v,
+  ], ['ok', 3, true]);
+
+  // Decir que no la borra, y un pedido de unirse de antes se reemplaza por la invitación.
+  await como(c, 'select dejar_de_entrenar()');
+  await como(c, 'select iniciar_sesion()');
+  await como(b, 'select salir_del_grupo()');
+  await como(c, 'select pedir_unirse($1)', [b]);
+  chequear('C había pedido unirse a B; C invita a B: queda una sola, la invitación', [await invitar(c, b), (await uniones(b)).map((u) => [u.tipo, u.otro.id])], ['ok', [['invitacion', c]]]);
+  await como(b, 'select responder_union($1, false)', [(await uniones(b))[0].id]);
+  chequear('decir que no la borra', [await uniones(b), await uniones(c)], [[], []]);
+  chequear('la columna solo acepta los dos tipos', await db.query(`insert into entrenos_compartidos (solicitante, destinatario, hasta, tipo) values ($1, $2, now() + interval '1 hour', 'otro')`, [a, f]).then(() => 'entró', () => 'rechazada'), 'rechazada');
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

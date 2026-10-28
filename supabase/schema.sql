@@ -3481,7 +3481,10 @@ create table if not exists public.entrenos_compartidos (
   creado timestamptz not null default now(),
   hasta timestamptz not null,
   constraint entrenos_estado_valido check (estado in ('pendiente', 'aceptada')),
-  constraint entrenos_no_con_uno_mismo check (solicitante <> destinatario)
+  constraint entrenos_no_con_uno_mismo check (solicitante <> destinatario),
+  -- 'invitacion' (migración 98): el pedido al revés, aceptarlo mete al destinatario en el grupo del solicitante.
+  tipo text not null default 'union',
+  constraint entrenos_tipo_valido check (tipo in ('union', 'invitacion'))
 );
 create unique index if not exists entrenos_par_unico on public.entrenos_compartidos
   (least(solicitante, destinatario), greatest(solicitante, destinatario));
@@ -3664,6 +3667,7 @@ create or replace function public.pedir_unirse(p_a uuid)
 returns text language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
+  suyo entrenos_compartidos;
 begin
   if uid is null then raise exception 'sin sesión'; end if;
   if p_a is null or p_a = uid or not public.son_amigos(uid, p_a) then return 'no-entrena'; end if;
@@ -3674,9 +3678,11 @@ begin
           or public.bloqueo_con_el_grupo(uid, public.grupo_de(p_a))) then
     return 'ocupado';
   end if;
-  -- Él me lo había pedido a mí: con pedirlo de vuelta alcanza para estar juntos.
-  if exists (select 1 from entrenos_compartidos where estado = 'pendiente' and solicitante = p_a and destinatario = uid) then
-    delete from entrenos_compartidos where estado = 'pendiente' and solicitante = p_a and destinatario = uid;
+  -- Él me lo había pedido a mí, o me había invitado: con pedirlo de vuelta alcanza.
+  select * into suyo from entrenos_compartidos where estado = 'pendiente' and solicitante = p_a and destinatario = uid;
+  if suyo.id is not null then
+    delete from entrenos_compartidos where id = suyo.id;
+    if suyo.tipo = 'invitacion' then return public.entrar_al_grupo(uid, p_a); end if;
     return public.entrar_al_grupo(p_a, uid);
   end if;
   if not exists (
@@ -3685,6 +3691,7 @@ begin
           and public.sesion_sigue_viva(s.inicio, s.ultima_actividad)) then
     return 'no-entrena';
   end if;
+  delete from entrenos_compartidos where estado = 'pendiente' and solicitante = uid and destinatario = p_a and tipo = 'invitacion';
   insert into entrenos_compartidos (solicitante, destinatario, hasta)
        values (uid, p_a, now() + interval '3 hours')
   on conflict do nothing;
@@ -3716,7 +3723,11 @@ begin
      or not public.miembro_vivo(uid, now()) then
     return;
   end if;
-  perform public.entrar_al_grupo(c.solicitante, c.destinatario);
+  if c.tipo = 'invitacion' then
+    perform public.entrar_al_grupo(c.destinatario, c.solicitante);
+  else
+    perform public.entrar_al_grupo(c.solicitante, c.destinatario);
+  end if;
 end;
 $$;
 
@@ -3810,6 +3821,7 @@ returns jsonb language sql stable security definer set search_path = public as $
     select jsonb_build_object(
              'id', c.id,
              'estado', 'pendiente',
+             'tipo', c.tipo,
              'la_pedi_yo', c.solicitante = auth.uid(),
              'grupo', null,
              'lider', false,
@@ -3913,6 +3925,81 @@ revoke execute on function public.pedir_unirse(uuid), public.responder_union(uui
 grant execute on function public.pedir_unirse(uuid), public.responder_union(uuid, boolean), public.salir_de_union(uuid),
   public.publicar_en_vivo(text, int, int, int), public.dejar_de_entrenar(), public.mis_uniones(),
   public.me_muestra_su_rutina(uuid) to authenticated;
+
+-- INVITAR Y VER EL GRUPO DE UN AMIGO (migración 98).
+-- INVITAR A UN GRUPO. Solo entrenando (el grupo es de quien entrena), solo a un amigo que entrena
+-- y lo muestra, y que no esté ya en un grupo de verdad. Contesta como `pedir_unirse`: 'ok',
+-- 'no-entreno' (yo no estoy entrenando), 'no-entrena', 'ocupado' (ya está en un grupo, mi grupo
+-- está lleno o hay un bloqueo, sin decir cuál) o lo que diga `entrar_al_grupo` si él ya me lo
+-- había pedido.
+create or replace function public.invitar_al_grupo(p_a uuid)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  suyo entrenos_compartidos;
+  g uuid;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if p_a is null or p_a = uid or not public.son_amigos(uid, p_a) then return 'no-entrena'; end if;
+  perform public.limpiar_grupos();
+  if not public.entrena_ahora(uid) then return 'no-entreno'; end if;
+  select * into suyo from entrenos_compartidos where estado = 'pendiente' and solicitante = p_a and destinatario = uid;
+  if suyo.id is not null then
+    delete from entrenos_compartidos where id = suyo.id;
+    if suyo.tipo = 'invitacion' then return public.entrar_al_grupo(uid, p_a); end if;
+    return public.entrar_al_grupo(p_a, uid);
+  end if;
+  if public.en_grupo(p_a) then return 'ocupado'; end if;
+  g := public.grupo_de(uid);
+  if (g is null and public.bloqueo_entre(uid, p_a))
+     or (g is not null and ((select count(*) from grupo_miembros where grupo_id = g) >= public.tope_grupo()
+                            or public.bloqueo_con_el_grupo(p_a, g))) then
+    return 'ocupado';
+  end if;
+  if not exists (
+       select 1 from sesiones s join profiles p on p.id = s.user_id and p.comparte_gimnasio
+        where s.user_id = p_a and s.estado = 'corriendo'
+          and public.sesion_sigue_viva(s.inicio, s.ultima_actividad)) then
+    return 'no-entrena';
+  end if;
+  delete from entrenos_compartidos where estado = 'pendiente' and solicitante = uid and destinatario = p_a and tipo = 'union';
+  insert into entrenos_compartidos (solicitante, destinatario, hasta, tipo)
+       values (uid, p_a, now() + interval '3 hours', 'invitacion')
+  on conflict do nothing;
+  return 'ok';
+end;
+$$;
+
+-- EL GRUPO DE UN AMIGO QUE ENTRENA: cuántos son y las caras que se pueden mostrar. `null` si no
+-- es un amigo que entrena y lo muestra. 'personas' cuenta a todos; 'miembros' trae al amigo
+-- primero y, de los demás, a quien también muestra que entrena (o a mí).
+create or replace function public.grupo_del_amigo(p_amigo uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  with visible as (
+    select 1 from sesiones s join profiles p on p.id = s.user_id and p.comparte_gimnasio
+     where s.user_id = p_amigo and s.estado = 'corriendo'
+       and public.sesion_sigue_viva(s.inicio, s.ultima_actividad)
+       and p_amigo <> auth.uid() and public.son_amigos(auth.uid(), p_amigo)
+  ),
+  miembros as (
+    select m.user_id, m.entro, m.n from grupo_miembros m
+     where m.grupo_id = public.grupo_de(p_amigo) and public.miembro_vivo(m.user_id, m.entro)
+  )
+  select case when exists (select 1 from visible) then jsonb_build_object(
+    'personas', (select count(*) from miembros),
+    'miembros', coalesce((
+      select jsonb_agg(jsonb_build_object('id', u.id, 'username', u.username, 'avatar_url', u.avatar_url, 'racha', u.racha_actual)
+                       order by m.user_id = p_amigo desc, m.entro, m.n)
+        from miembros m
+        join usuarios_publicos u on u.id = m.user_id
+        join profiles p on p.id = m.user_id
+       where m.user_id = p_amigo or m.user_id = auth.uid() or p.comparte_gimnasio), '[]'::jsonb))
+  end;
+$$;
+
+revoke execute on function public.invitar_al_grupo(uuid), public.grupo_del_amigo(uuid) from public, anon;
+grant execute on function public.invitar_al_grupo(uuid), public.grupo_del_amigo(uuid) to authenticated;
+
 
 -- -------------------------------------------------------------
 -- ENTRENAR CON OTRO, DOS ARREGLOS (migración 68)
@@ -4604,6 +4691,13 @@ declare
 begin
   if new.estado <> 'pendiente' then return new; end if;
   select username into quien from profiles where id = new.solicitante;
+  if new.tipo = 'invitacion' then
+    perform mandar_push(new.destinatario,
+      coalesce(quien, 'Alguien') || ' te invita a su grupo.',
+      coalesce(quien, 'Someone') || ' invited you to their group.',
+      jsonb_build_object('aviso', 'union'));
+    return new;
+  end if;
   perform mandar_push(new.destinatario,
     coalesce(quien, 'Alguien') || ' quiere unirse a tu entrenamiento.',
     coalesce(quien, 'Someone') || ' wants to join your workout.',
@@ -4761,7 +4855,7 @@ create trigger rutinas_anotar_semana
   for each row execute function public.anotar_semana_de_rutina();
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 97; $$;
+returns int language sql immutable as $$ select 98; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;
