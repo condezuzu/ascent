@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { leerViva, suscribirViva } from '@compartido/sesionViva';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { plataforma } from '@plataforma';
 import { GUIA_DE_NUEVO } from '@compartido/guia';
 import { miId } from '@compartido/quienSoy';
@@ -27,6 +27,11 @@ import { C, conAlfa } from './colores';
  * tarjeta en el medio de la columna, entre las pantallas y la barra: les sacaba lugar y tapaba
  * «Terminar». Ahora cuelga de un ancla de alto cero —no ocupa lugar, no mueve nada—, chico y
  * apuntando a Ajustes, que es donde se apaga. Mientras se entrena no sale: queda para después.
+ *
+ * EN EL LUGAR QUE SOBRA DE INICIO (29/10, a pedido: "absorbe el toque de «Anotar peso»"). Colgado
+ * sobre la barra tapaba lo último de Inicio, que con las burbujas arriba bajó hasta ahí. Ahora vive
+ * en el hueco que queda entre lo último de Inicio y la barra, y sale solo si entra entero: si no
+ * entra (pantalla chica, letra grande, entrenando), queda para después, como entrenando.
  */
 type Novedad = { clave: string; columna: 'comparte_rutina' | 'comparte_gimnasio'; requiere: Funcion; texto: string };
 const NOVEDADES: Novedad[] = [
@@ -37,7 +42,9 @@ const NOVEDADES: Novedad[] = [
 export default function AvisoRutina() {
   const [aviso, setAviso] = useState<{ uid: string; novedad: Novedad } | null>(null);
   const entrenando = useSyncExternalStore(suscribirViva, leerViva).inicio !== null;
-  const [ancho, setAncho] = useState(0);
+  const [lugar, setLugar] = useState(0);
+  const [alto, setAlto] = useState(0);
+  const anchoPantalla = useWindowDimensions().width;
 
   const mirar = useCallback(async () => {
     const yo = await miId(supabase);
@@ -85,17 +92,27 @@ export default function AvisoRutina() {
   }
 
   // La cola cae sobre el medio de la pestaña de Ajustes: la última de cinco.
-  const cola = ancho > 0 ? ancho / 10 - COLA / 2 - MARGEN : 24;
+  const cola = anchoPantalla / 10 - COLA / 2 - MARGEN;
+  // Se dibuja siempre para medirlo, pero se ve y se toca solo si entra entero en el hueco.
+  const entra = alto > 0 && alto + ABAJO <= lugar;
   return (
-    <View style={estilos.ancla} pointerEvents="box-none" onLayout={(e) => setAncho(e.nativeEvent.layout.width)}>
-      <View testID="aviso-rutina" style={estilos.globo} accessibilityRole="alert">
+    <View style={estilos.hueco} pointerEvents="box-none" onLayout={(e) => setLugar(e.nativeEvent.layout.height)}>
+      <View
+        testID={entra ? 'aviso-rutina' : undefined}
+        style={[estilos.globo, !entra && estilos.escondido]}
+        pointerEvents={entra ? 'auto' : 'none'}
+        accessibilityElementsHidden={!entra}
+        importantForAccessibility={entra ? 'auto' : 'no-hide-descendants'}
+        accessibilityRole="alert"
+        onLayout={(e) => setAlto(e.nativeEvent.layout.height)}
+      >
         <Text style={estilos.texto}>{aviso.novedad.texto}</Text>
         <View style={estilos.botones}>
-          <Pressable testID="aviso-rutina-entendido" onPress={() => void visto(false)} hitSlop={10}>
-            <Text style={estilos.enlace}>{T.social.avisoRutinaEntendido}</Text>
-          </Pressable>
-          <Pressable testID="aviso-rutina-ajustes" style={estilos.solido} onPress={() => void visto(true)} hitSlop={6}>
+          <Pressable testID="aviso-rutina-ajustes" style={estilos.solido} onPress={() => void visto(true)} hitSlop={4}>
             <Text style={estilos.solidoTexto}>{T.social.avisoRutinaAjustes}</Text>
+          </Pressable>
+          <Pressable testID="aviso-rutina-entendido" onPress={() => void visto(false)} hitSlop={6}>
+            <Text style={estilos.enlace}>{T.social.avisoRutinaEntendido}</Text>
           </Pressable>
         </View>
         <View style={[estilos.cola, { right: cola }]} />
@@ -106,15 +123,30 @@ export default function AvisoRutina() {
 
 const COLA = 12;
 const MARGEN = 10;
+// El aire entre el globo y la barra, donde cae la cola.
+const ABAJO = 8;
+// Lo que Inicio deja de margen a los costados y abajo (`estilos.pantalla`): el hueco lo usa.
+const PADDING_DE_INICIO = 24;
 
 const estilos = StyleSheet.create({
-  // Alto cero: el globo cuelga para arriba, sobre las pantallas, sin sacarles lugar.
-  ancla: { height: 0, zIndex: 30, elevation: 30 },
+  // Llena el hueco que sobra en Inicio, y también su margen de abajo y de los costados.
+  hueco: {
+    position: 'absolute',
+    top: 0,
+    left: MARGEN - PADDING_DE_INICIO,
+    right: MARGEN - PADDING_DE_INICIO,
+    bottom: -PADDING_DE_INICIO,
+  },
+  escondido: { opacity: 0 },
+  // ANCHO Y BAJO: el texto al lado de los botones, para que entre en el hueco de un iPhone normal.
   globo: {
     position: 'absolute',
-    right: MARGEN,
-    bottom: 8,
-    maxWidth: 250,
+    right: 0,
+    left: 0,
+    bottom: ABAJO,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
@@ -122,9 +154,9 @@ const estilos = StyleSheet.create({
     borderColor: C.lineaFuerte,
     backgroundColor: conAlfa(C.hoja, 0.97),
   },
-  texto: { color: C.tinta, fontSize: 13, lineHeight: 18 },
-  botones: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 14, marginTop: 8 },
-  enlace: { color: C.sub, fontSize: 13 },
+  texto: { flex: 1, color: C.tinta, fontSize: 13, lineHeight: 17 },
+  botones: { alignItems: 'center', gap: 8 },
+  enlace: { color: C.sub, fontSize: 13, paddingVertical: 2 },
   solido: { backgroundColor: C.tinta, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 12 },
   solidoTexto: { color: C.fondo, fontSize: 13, fontWeight: '600' },
   cola: {

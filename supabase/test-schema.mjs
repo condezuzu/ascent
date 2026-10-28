@@ -15905,7 +15905,8 @@ console.log('\n197. Tandas 2 y 3: pasos en la sesión, foto grande, aviso largo,
   ], [false, ['u1', 'u2'], [], []]);
   const aviso197 = de197('movil', 'src', 'AvisoRutina.tsx');
   chequear('el aviso está montado, lleva a Ajustes y los dos botones lo dan por visto', [
-    /<AvisoRutina \/>/.test(de197('movil', 'src', 'Pestanas.tsx')),
+    // Desde el 29/10 en el hueco que sobra de Inicio, no colgado sobre la barra.
+    /<View style=\{estilos\.sobra\}>\s*<AvisoRutina \/>/.test(de197('movil', 'src', 'Inicio.tsx')) && !/<AvisoRutina/.test(de197('movil', 'src', 'Pestanas.tsx')),
     /if \(irAAjustes\) irAPestana\('ajustes'\)/.test(aviso197),
     /guardar\(novedad\.clave, conEsteVisto\(crudo, yo\)\)/.test(aviso197),
     /onPress=\{\(\) => void visto\(false\)\}/.test(aviso197) && /onPress=\{\(\) => void visto\(true\)\}/.test(aviso197),

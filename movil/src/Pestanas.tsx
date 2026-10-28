@@ -19,7 +19,6 @@ import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
 import IconoDePestana from './IconoDePestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
-import AvisoRutina from './AvisoRutina';
 import CartelDeArriba from './CartelDeArriba';
 
 /**
@@ -561,11 +560,6 @@ export default function Pestanas({
           );
         })}
       </View>
-
-      {/* El aviso de una vez de que la rutina se ve (8/10). El recorrido de la
-          primera vez se sacó el 15/10: lo reemplazan los globitos, cada uno en su
-          pantalla. */}
-      <AvisoRutina />
 
       <View style={estilos.barra} accessibilityRole="tablist">
         {/* El orden de la web: Inicio, Ranking, Álbum, Stats, Ajustes. */}
