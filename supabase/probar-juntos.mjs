@@ -169,6 +169,11 @@ try {
       await pb.getByText('Iniciar entrenamiento', { exact: true }).last().click({ timeout: 30000 });
       await pa.getByText(TEXTOS_ES.nav.social, { exact: true }).last().click();
       await esperar('B toca "Iniciar" (sin gimnasio marcado) y A lo ve entrenando en Ranking', pa.getByText(`${B.nombre} está entrenando`, { exact: true }).first());
+      // SIN EL PUNTO VERDE (29/10): en la fila de «Entrenando ahora» no hay nada pintado del verde de «en vivo».
+      const verdes = await pa.getByText(`${B.nombre} está entrenando`, { exact: true }).first().evaluate((el) =>
+        [...(el.parentElement?.querySelectorAll('div') ?? [])].filter((d) => getComputedStyle(d).backgroundColor === 'rgb(95, 208, 138)').length,
+      );
+      chequear('la fila de «Entrenando ahora» no lleva el punto verde', verdes, 0);
       const unirse = pa.getByTestId('unirse').first();
       if (await esperar('y al lado tiene "Unirse"', unirse, 15000)) await unirse.click();
       await esperar('A queda esperando: "Pedido enviado"', pa.getByText('Pedido enviado', { exact: true }).first(), 15000);

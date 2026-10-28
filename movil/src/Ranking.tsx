@@ -411,7 +411,6 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                     onPress={() => router.push(`/perfil/${e.id}`)}
                     accessibilityRole="button"
                   >
-                    <View style={estilos.puntoVivo} />
                     <Avatar url={e.avatar_url} nombre={e.username} tam={28} />
                     <Text style={[estilos.nombre, { fontSize: 14 }]}>{T.social.estaEntrenando(e.username)}</Text>
                   </Pressable>
@@ -560,8 +559,6 @@ const estilos = StyleSheet.create({
   verMas: { paddingVertical: 10, alignItems: 'center' },
   verMasTexto: { color: C.sub, fontSize: 13 },
   flechaArriba: { transform: [{ rotate: '180deg' }] },
-  // El punto verde de "en vivo", al lado de quien está entrenando ahora.
-  puntoVivo: { width: 8, height: 8, borderRadius: 999, backgroundColor: C.vivo },
   sinResultado: { color: C.apagado, fontSize: 13, paddingVertical: 12 },
   miniatura: {
     width: 38,
