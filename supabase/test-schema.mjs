@@ -16445,7 +16445,8 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
     /\{conJuntos && !union && \(/.test(rk201),
     /onPress=\{\(\) => void unirseA\(e\)\}/.test(rk201) && /const r = await pedirUnirse\(supabase, e\.id\);[\s\S]*?juntos\.recargar\(\);/.test(rk201),
     // Desde la 88 también sabe si estoy entrenando: el link del grupo se ofrece sin nadie todavía.
-    /<Juntos uniones=\{juntos\.uniones\} recibidoEn=\{juntos\.recibidoEn\} recargar=\{juntos\.recargar\} entrenando=\{yoEntreno\} \/>/.test(rk201),
+    // Desde el 28/10, arriba de todo y con la racha de cada uno (el color de su rango).
+    /<Juntos\s+uniones=\{juntos\.uniones\}\s+recibidoEn=\{juntos\.recibidoEn\}\s+recargar=\{juntos\.recargar\}\s+entrenando=\{yoEntreno\}\s+rachas=\{new Map\(amigos\.map\(\(a\) => \[a\.id, a\.racha_actual\]\)\)\}\s*\/>/.test(rk201),
     /if \(!error\) setEntrenando\(/.test(rk201),
     [EV.CADA_CUANTO_MS, EV.SIN_SENAL_S],
   ], [true, true, true, true, true, [10_000, 120]]);

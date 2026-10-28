@@ -303,6 +303,16 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
         )}
 
 
+        {/* ENTRENANDO CONTIGO, ARRIBA DE TODO (28/10, aprobado en la galería): es lo que está
+            pasando. Cada cara con el color de su rango. Nunca dice dónde. */}
+        <Juntos
+          uniones={juntos.uniones}
+          recibidoEn={juntos.recibidoEn}
+          recargar={juntos.recargar}
+          entrenando={yoEntreno}
+          rachas={new Map(amigos.map((a) => [a.id, a.racha_actual]))}
+        />
+
         {!cargado && <ActivityIndicator color={C.sub} style={{ marginTop: 24 }} />}
 
         {noCargo && (
@@ -386,9 +396,6 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           )
         )}
 
-        {/* ENTRENANDO AHORA (en vivo): arriba del historial, porque es lo que
-            está pasando. Solo dice que están entrenando, nunca dónde. */}
-        <Juntos uniones={juntos.uniones} recibidoEn={juntos.recibidoEn} recargar={juntos.recargar} entrenando={yoEntreno} />
 
         {entrenando.length > 0 && (
           <View style={estilos.seccion}>

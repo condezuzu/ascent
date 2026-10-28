@@ -13,6 +13,9 @@ import { useNombresDeEjercicios } from './useNombresDeEjercicios';
 import Avatar from './Avatar';
 import { C } from './colores';
 import Aparece from './Aparece';
+import Tocable from './Tocable';
+import { numeroDeRango } from '@nucleo/rangos';
+import { paletaDe } from '@nucleo/paletas';
 
 /**
  * "ENTRENANDO CONTIGO", en Ranking (12/10/2026): con quién estoy unido y qué
@@ -28,13 +31,20 @@ export default function Juntos({
   recibidoEn,
   recargar,
   entrenando = false,
+  rachas,
 }: {
   uniones: Union[];
   recibidoEn: number;
   recargar: () => Promise<void>;
   /** Para ofrecer el link aunque todavía no haya nadie (migración 88). */
   entrenando?: boolean;
+  /** La racha de cada uno, por id: el aro de su cara lleva el color de su rango (28/10). */
+  rachas?: ReadonlyMap<string, number>;
 }) {
+  const aro = (id: string) => {
+    const r = rachas?.get(id);
+    return { borderColor: r === undefined ? C.lineaFuerte : paletaDe(numeroDeRango(r), null).principal };
+  };
   const [ahora, setAhora] = useState(Date.now());
   const conGrupos = disponible('grupos', useVersionDelEsquema());
   const enGrupo = uniones.some((u) => u.grupo);
@@ -65,7 +75,9 @@ export default function Juntos({
         if (u.estado === 'pendiente') {
           return (
             <View key={u.id} style={estilos.fila}>
-              <Avatar url={u.otro.avatar_url} nombre={u.otro.username} tam={28} />
+              <View style={[estilos.aro, aro(u.otro.id)]}>
+                <Avatar url={u.otro.avatar_url} nombre={u.otro.username} tam={28} />
+              </View>
               <Text style={estilos.nombre} numberOfLines={2}>
                 {u.laPediYo ? T.social.esperandoA(u.otro.username) : T.social.quiereUnirse(u.otro.username)}
               </Text>
@@ -90,7 +102,9 @@ export default function Juntos({
         const ejercicio = r.ejercicio ? nombreVisible(r.ejercicio, nombres[r.ejercicio], '…') : T.sesion.sinEjercicio;
         return (
           <View key={u.id} testID="juntos-en-vivo" style={estilos.fila}>
-            <Avatar url={u.otro.avatar_url} nombre={u.otro.username} tam={28} />
+            <View testID="juntos-aro" style={[estilos.aro, aro(u.otro.id)]}>
+              <Avatar url={u.otro.avatar_url} nombre={u.otro.username} tam={28} />
+            </View>
             {/* LA PÍLDORA VA EN EL RENGLÓN DEL NOMBRE, no al costado: al costado
                 le sacaba ancho al detalle y "Press de banca · serie 1 de 3" se
                 cortaba en "serie 1 d…", que es justo lo que se viene a leer. */}
@@ -137,9 +151,9 @@ export default function Juntos({
       ))}
       {conGrupos && (entrenando || enGrupo) && (
         <View style={estilos.pie}>
-          <Pressable testID="juntos-invitar" hitSlop={8} onPress={() => void invitar()}>
-            <Text style={estilos.accion}>{T.social.invitarAlGrupo}</Text>
-          </Pressable>
+          <Tocable testID="juntos-invitar" style={estilos.invitar} onPress={() => void invitar()}>
+            <Text style={estilos.invitarTexto}>{T.social.invitarAlGrupo}</Text>
+          </Tocable>
           {enGrupo && (
             <Pressable testID="juntos-salir-grupo" hitSlop={8} onPress={() => void salirDelGrupo(supabase).then(recargar)}>
               <Text style={estilos.apagada}>{T.social.salirDelGrupo}</Text>
@@ -152,7 +166,11 @@ export default function Juntos({
 }
 
 const estilos = StyleSheet.create({
-  seccion: { marginTop: 28 },
+  // ARRIBA DE TODO Y EN UNA TARJETA (28/10, aprobado en la galería): es lo que está pasando.
+  seccion: { marginTop: 14, borderWidth: 1, borderColor: '#2e3548', borderRadius: 18, backgroundColor: 'rgba(9,10,16,0.88)', paddingVertical: 12, paddingHorizontal: 14 },
+  aro: { borderWidth: 2, borderRadius: 999, padding: 1 },
+  invitar: { backgroundColor: C.claro, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 16 },
+  invitarTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
   rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   nombre: { flex: 1, color: C.tinta, fontSize: 14 },
