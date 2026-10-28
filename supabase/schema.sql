@@ -1570,8 +1570,11 @@ $$;
 revoke execute on function public.denunciar(uuid, text) from public, anon;
 grant execute on function public.denunciar(uuid, text) to authenticated;
 
--- Eliminar la cuenta. Borra la fila de auth.users; el resto se va en cascada
--- desde profiles (logs, fotos, pesos, descansos, amistades, retos, sugerencias).
+-- Eliminar la cuenta DE ASCENT (migración 99). Moss comparte el proyecto y `auth.users`, y
+-- son dos cuentas aunque a veces sean el mismo usuario de Auth (el Apple ID de Moss con el
+-- correo de Ascent): borrar en Ascent corta el vínculo y borra solo lo de Ascent. Sin nada
+-- de Moss se va la fila de auth.users y el resto en cascada desde profiles (logs, fotos,
+-- pesos, descansos, amistades, retos, sugerencias); con Moss, el usuario queda para Moss.
 --
 -- Los ARCHIVOS del storage NO se borran acá: SQL puede sacar las filas de
 -- storage.objects pero deja los archivos colgados en el bucket. El cliente los
@@ -1586,9 +1589,18 @@ create or replace function public.eliminar_cuenta()
 returns void language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
+  tiene_moss boolean := false;
 begin
   if uid is null then
     raise exception 'sin sesión';
+  end if;
+  -- Moss vive en otro esquema del mismo proyecto y puede no estar: se pregunta por nombre, y por
+  -- `execute` para que esta función compile sin él.
+  if to_regprocedure('moss.desvincular()') is not null then
+    execute 'select moss.desvincular()';
+  end if;
+  if to_regclass('moss.perfiles') is not null then
+    execute 'select exists (select 1 from moss.perfiles where usuario = $1)' into tiene_moss using uid;
   end if;
   -- challenges.ganador apunta a profiles SIN cascade: si esta cuenta ganó un
   -- reto ya cerrado, esa fila bloquearía el borrado. Se van primero, a mano.
@@ -1605,7 +1617,20 @@ begin
   delete from subidas_marcadas where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
   delete from prs              where user_id = uid and ejercicio in (select id from ejercicios where creado_por = uid and not huerfano);
   delete from ejercicios where creado_por = uid and not huerfano;
-  delete from auth.users where id = uid;
+  if not tiene_moss then
+    delete from auth.users where id = uid;
+    return;
+  end if;
+  -- CON MOSS EL USUARIO DE AUTH QUEDA (migración 99): es el mismo con el que Moss entra con Apple.
+  -- Lo de Ascent cuelga de profiles, salvo las medallas, que cuelgan de auth.users.
+  delete from medallas where user_id = uid;
+  delete from profiles where id = uid;
+  -- Queda como cualquier cuenta que nunca usó Ascent: el perfil vacío que deja el alta, sin nombre
+  -- (no aparece en ningún lado). Si un día vuelve a entrar a Ascent, empieza de cero.
+  insert into profiles (id) values (uid);
+  -- Y sin forma de entrar a Ascent: la cuenta de Ascent deja de existir (Apple, 5.1.1(v)).
+  delete from auth.identities where user_id = uid and provider = 'email';
+  update auth.users set encrypted_password = null where id = uid;
 end;
 $$;
 
@@ -4855,7 +4880,7 @@ create trigger rutinas_anotar_semana
   for each row execute function public.anotar_semana_de_rutina();
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 98; $$;
+returns int language sql immutable as $$ select 99; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

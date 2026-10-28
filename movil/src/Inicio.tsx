@@ -319,7 +319,7 @@ export default function Inicio({
         // correcto). Ver `laCuentaYaNoExiste`.
         const { error: eQuien } = await supabase.auth.getUser();
         if (laCuentaYaNoExiste(eQuien)) {
-          await supabase.auth.signOut();
+          await supabase.auth.signOut({ scope: 'local' });
           return alSalir();
         }
         return fallo(T.general.noSePudo);

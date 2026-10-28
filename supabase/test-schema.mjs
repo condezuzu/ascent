@@ -171,7 +171,15 @@ await db.exec(`
   create schema if not exists auth;
   create table auth.users (
     id uuid primary key default gen_random_uuid(),
-    raw_user_meta_data jsonb default '{}'::jsonb
+    raw_user_meta_data jsonb default '{}'::jsonb,
+    email text,
+    encrypted_password text
+  );
+  -- Las formas de entrar de cada usuario: la baja de Ascent con Moss saca la de correo (migración 99).
+  create table auth.identities (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users (id) on delete cascade,
+    provider text not null
   );
   create function auth.uid() returns uuid language sql stable as $fn$
     select nullif(current_setting('test.uid', true), '')::uuid;
@@ -11815,7 +11823,7 @@ console.log('\n160. Barrido: la cuenta que ya no existe, los minutos, y el visor
   // sesion, y el token guardado sigue ahi. Sin esto la raiz lo encuentra otra
   // vez y vuelve a la misma pantalla rota.
   chequear('si la cuenta se fue, se cierra la sesion de verdad',
-    /laCuentaYaNoExiste\(eQuien\)\) \{[\s\S]*?await supabase\.auth\.signOut\(\);[\s\S]*?return alSalir\(\);/.test(ini160), true);
+    /laCuentaYaNoExiste\(eQuien\)\) \{[\s\S]*?await supabase\.auth\.signOut\(\{ scope: 'local' \}\);[\s\S]*?return alSalir\(\);/.test(ini160), true);
 
   // ---- LOS MINUTOS DE HOY, DEL SERVIDOR ----
   //
@@ -12096,11 +12104,11 @@ console.log('\n163. Pantallas sin salida: la de elegir nombre');
   // `mirar`, que vuelve a preguntar si hay sesion. Con la sesion todavia
   // guardada, la respuesta es que si y se vuelve a entrar a lo mismo.
   chequear('cierra la sesion antes de avisar',
-    /await supabase\.auth\.signOut\(\)[\s\S]{0,60}alElegir\(\);/.test(onb), true);
+    /await supabase\.auth\.signOut\(\{ scope: 'local' \}\)[\s\S]{0,60}alElegir\(\);/.test(onb), true);
   // SIN RED TAMBIEN, que es el caso en el que esto hace falta: el signOut
   // contra el servidor falla, pero la sesion local se borra igual, y la local
   // es la que mira la raiz.
-  chequear('y sin red se sale igual', /signOut\(\)\.catch\(\(\) => \{\}\)/.test(onb), true);
+  chequear('y sin red se sale igual', /signOut\(\{ scope: 'local' \}\)\.catch\(\(\) => \{\}\)/.test(onb), true);
   chequear('y esta en pantalla', /onPress=\{salir\}/.test(onb), true);
 
   // ---- Y LAS OTRAS DOS NO SE VUELVEN ATRAS ----
@@ -14066,6 +14074,7 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
     'movil/src/Album.tsx': 'el visor de fotos: su estado es qué foto se mira, y es de la pantalla',
     'movil/src/Descanso.tsx': 'el descanso sigue corriendo con la pantalla escondida: su estado es del temporizador',
     'movil/src/GraficoPasos.tsx': 'el estado es del gráfico; lo de la hoja de la meta vive adentro de la hoja',
+    'movil/src/BurbujasDelGrupo.tsx': 'la fila es de Inicio; el globo del amigo se monta recién al tocar una burbuja ({tocada && <GloboDelAmigo />}) y nace en cada apertura',
   };
   const clasificar182 = (ruta, texto) => {
     // `useState<Tipo>(` también: con solo `useState(` se escapaban dos de las cinco.
@@ -14895,15 +14904,18 @@ console.log('\n193. Salir de la cuenta: nada queda para la que entra después, y
   chequear('los dos botones de salir cierran con la función única, y dicen si no se pudo', [
     /if \(!\(await cerrarSesion\(supabase\)\)\) return setError\(T\.ajustes\.noSeCerro\);/.test(cuentaNativa),
     /if \(!\(await cerrarSesion\(supabase\)\)\) return avisarFallo\(T\.ajustes\.noSeCerro\);/.test(sesionWeb),
-    // Nadie cierra "solo acá" por su cuenta, y nadie borra antes de cerrar.
-    /signOut\(\{ scope: 'local' \}\)/.test(cuentaNativa + sesionWeb),
+    // Nadie cierra "solo acá" por su cuenta, y nadie borra antes de cerrar. La baja, que va
+    // después de `salir`, cierra solo esta sesión a propósito (ver la de abajo).
+    /signOut\(\{ scope: 'local' \}\)/.test(cuentaNativa.slice(0, cuentaNativa.indexOf('const borrar = useEnVuelo')) + sesionWeb),
     /borrarPerfilCache\(\)/.test(cuentaNativa + sesionWeb),
   ], [true, true, false, false]);
   // NO SE PUEDE PROBAR ACÁ que el servidor deje vivas las otras sesiones: es lo
   // que significa `scope: 'local'` en la librería. Se mira que se pida así.
-  chequear('borrar la cuenta limpia sin mirar el cierre, y cierra en todos los aparatos', [
-    /await limpiarAlSalir\(\);\s*await plataforma\.ubicacion\.dejarDeVigilar\(\);\s*await supabase\.auth\.signOut\(\);/.test(cuentaNativa),
-    /await limpiarAlSalir\(\);[\s\S]{0,120}await supabase\.auth\.signOut\(\);/.test(de193('src/components/ajustes/BajaDeCuenta.tsx')),
+  // Cerraba en todos los aparatos hasta la 99 (29/10): con Moss el usuario de Auth sigue, y la
+  // global cerraba también la sesión de Moss. Sin Moss el usuario ya no existe y no queda ninguna.
+  chequear('borrar la cuenta limpia sin mirar el cierre, y cierra solo esta sesión', [
+    /await limpiarAlSalir\(\);\s*await plataforma\.ubicacion\.dejarDeVigilar\(\);\s*await supabase\.auth\.signOut\(\{ scope: 'local' \}\);/.test(cuentaNativa),
+    /await limpiarAlSalir\(\);[\s\S]{0,120}await supabase\.auth\.signOut\(\{ scope: 'local' \}\);/.test(de193('src/components/ajustes/BajaDeCuenta.tsx')),
   ], [true, true]);
   chequear('al entrar, las dos apps preguntan si la cuenta es otra antes de usar nada', [
     /if \(quien\.estado === 'con'\) await alEntrarCon\(quien\.uid\)/.test(de193('movil/app/_layout.tsx')),
@@ -20854,6 +20866,202 @@ console.log('\n319. Invitar a un amigo al grupo y ver el grupo de un amigo (la 9
   await como(b, 'select responder_union($1, false)', [(await uniones(b))[0].id]);
   chequear('decir que no la borra', [await uniones(b), await uniones(c)], [[], []]);
   chequear('la columna solo acepta los dos tipos', await db.query(`insert into entrenos_compartidos (solicitante, destinatario, hasta, tipo) values ($1, $2, now() + interval '1 hour', 'otro')`, [a, f]).then(() => 'entró', () => 'rechazada'), 'rechazada');
+}
+console.log('\n320. Moss y Ascent son dos cuentas: borrar la de Ascent no toca Moss (migración 99, 29/10)');
+{
+  // Las dos apps comparten auth.users. Con el mismo correo en el Apple ID, Supabase une las dos
+  // identidades en UN usuario de Auth, con lo de Ascent en `public` y lo de Moss en `moss`.
+  const como318 = async (uid, sql, p = []) => {
+    await comoUsuario(uid);
+    await db.exec('set role authenticated');
+    try {
+      return (await db.query(sql, p)).rows;
+    } finally {
+      await db.exec('reset role');
+    }
+  };
+  const borrar318 = async (uid) => {
+    try {
+      await como318(uid, 'select eliminar_cuenta()');
+      return null;
+    } catch (e) {
+      return String(e.message);
+    }
+  };
+  const n318 = async (sql, p) => (await db.query(sql, p)).rows[0].n;
+  const existe318 = (uid) => n318('select count(*)::int n from auth.users where id = $1', [uid]);
+  const conCorreo318 = async (uid) => {
+    await db.query(`update auth.users set email = $2, encrypted_password = 'hash' where id = $1`, [uid, `${uid.slice(0, 8)}@x.uy`]);
+    await db.query(`insert into auth.identities (user_id, provider) values ($1, 'email')`, [uid]);
+  };
+  // Lo de Ascent, de cada lado que tiene una regla en la baja: días, peso, medalla (cuelga de
+  // auth.users y no de profiles), un propio con su marca, un reto GANADO y un amigo.
+  const conAscent318 = async (uid, amigo) => {
+    await rachaDe(uid, 3);
+    await db.query(`insert into weights (user_id, fecha, valor) values ($1, mi_hoy(), 80)`, [uid]);
+    await db.query(`insert into medallas (user_id, ejercicio, percentil) values ($1, 'press_banca', 70)`, [uid]);
+    const propio = (await como318(uid, `select crear_ejercicio('Remo en anillas 318', 'espalda', 'series') as id`))[0].id;
+    await db.query(`insert into prs (user_id, ejercicio, peso, reps, fecha) values ($1, $2, 40, 8, current_date)`, [uid, propio]);
+    await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [uid, amigo]);
+    await db.query(
+      `insert into challenges (retador, rival, desde, hasta, estado, ganador) values ($1, $2, mi_hoy() - 7, mi_hoy() - 1, 'terminado', $1)`,
+      [uid, amigo]
+    );
+    return propio;
+  };
+  // Toda columna de `public` que apunta a la cuenta (a profiles o a auth.users), salvo el perfil.
+  const columnas318 = (await db.query(`
+    select c.conrelid::regclass::text as tabla, a.attname as col
+      from pg_constraint c
+      join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
+     where c.contype = 'f' and c.connamespace = 'public'::regnamespace
+       and c.confrelid in ('public.profiles'::regclass, 'auth.users'::regclass)
+       and c.conrelid <> 'public.profiles'::regclass`)).rows;
+  const deAscent318 = async (uid) => {
+    const quedan = [];
+    for (const { tabla, col } of columnas318) {
+      if ((await n318(`select count(*)::int n from ${tabla} where ${col} = $1`, [uid])) > 0) quedan.push(`${tabla}.${col}`);
+    }
+    return quedan;
+  };
+
+  // ---- SIN MOSS EN LA BASE: como siempre ----
+  const solo318 = await nuevoUsuario();
+  const amigo318 = await nuevoUsuario();
+  await conCorreo318(solo318);
+  await conAscent318(solo318, amigo318);
+  chequear('sin el esquema moss, borrar la cuenta de Ascent borra el usuario de Auth', [await borrar318(solo318), await existe318(solo318), await existe318(amigo318)], [null, 0, 1]);
+
+  // ---- Moss de mentira, lo mínimo: perfiles, un dato, el vínculo y sus dos funciones ----
+  await db.exec(`
+    create schema moss;
+    create table moss.perfiles (usuario uuid primary key references auth.users (id) on delete cascade, sexo text);
+    create table moss.habitos (usuario uuid not null references auth.users (id) on delete cascade, nombre text not null);
+    create table moss.vinculo (
+      moss uuid primary key references auth.users (id) on delete cascade,
+      ascent uuid not null unique references auth.users (id) on delete cascade
+    );
+    create function moss.desvincular() returns void language sql security definer set search_path = '' as $f$
+      delete from moss.vinculo v where (select auth.uid()) in (v.moss, v.ascent);
+    $f$;
+    create function moss.estado_del_vinculo() returns jsonb language sql stable security definer set search_path = '' as $f$
+      select coalesce(
+        (select jsonb_build_object('vinculada', true, 'nombre', p.username) from moss.vinculo v
+           left join public.profiles p on p.id = v.ascent
+          where (select auth.uid()) in (v.moss, v.ascent) limit 1),
+        jsonb_build_object('vinculada', false, 'nombre', null));
+    $f$;
+    grant usage on schema moss to authenticated;
+    grant execute on function moss.desvincular(), moss.estado_del_vinculo() to authenticated;
+  `);
+  const conMoss318 = async (uid) => {
+    await db.query(`insert into moss.perfiles (usuario, sexo) values ($1, 'f')`, [uid]);
+    await db.query(`insert into moss.habitos (usuario, nombre) values ($1, 'Leer'), ($1, 'Caminar')`, [uid]);
+    await db.query(`insert into auth.identities (user_id, provider) values ($1, 'apple')`, [uid]);
+  };
+  const vincular318 = (deMoss, deAscent) => db.query('insert into moss.vinculo (moss, ascent) values ($1, $2)', [deMoss, deAscent]);
+  // Vinculada = hay una fila del vínculo con ella (la lectura de la app vive en moss-vinculo).
+  const vinculada318 = async (uid) => (await n318('select count(*)::int n from moss.vinculo where $1 in (moss, ascent)', [uid])) > 0;
+  const habitos318 = (uid) => n318('select count(*)::int n from moss.habitos where usuario = $1', [uid]);
+
+  // ---- VINCULAR CON CORREOS DISTINTOS: dos usuarios de Auth ----
+  const a318 = await nuevoUsuario();
+  const m318 = await nuevoUsuario();
+  await conCorreo318(a318);
+  await conMoss318(m318);
+  await rachaDe(a318, 2);
+  await vincular318(m318, a318);
+  chequear('con correos distintos, las dos cuentas se ven vinculadas desde cada app', [await vinculada318(a318), await vinculada318(m318)], [true, true]);
+  // DESVINCULAR desde Ascent (la fila de Ajustes llama a moss.desvincular): corta para las dos y
+  // cada una queda con lo suyo.
+  await como318(a318, 'select moss.desvincular()');
+  chequear('desvincular desde Ascent corta el vínculo para las dos y cada una queda con lo suyo', [
+    await vinculada318(a318), await vinculada318(m318),
+    await n318('select count(*)::int n from logs where user_id = $1', [a318]), await habitos318(m318),
+  ], [false, false, 2, 2]);
+  // Y BORRAR la de Ascent, vinculada: como no tiene nada de Moss, se va el usuario de Auth; la de
+  // Moss sigue entera y deja de estar vinculada.
+  await vincular318(m318, a318);
+  chequear('con correos distintos, borrar la de Ascent se lleva su usuario y deja la de Moss entera y sin vínculo', [
+    await borrar318(a318), await existe318(a318), await existe318(m318), await habitos318(m318), await vinculada318(m318),
+    await n318('select count(*)::int n from moss.perfiles where usuario = $1', [m318]),
+  ], [null, 0, 1, 2, false, 1]);
+
+  // ---- EL MISMO CORREO: un solo usuario de Auth con las dos ----
+  const u318 = await nuevoUsuario();
+  const amigoU318 = await nuevoUsuario();
+  await conCorreo318(u318);
+  const propioU318 = await conAscent318(u318, amigoU318);
+  await conMoss318(u318);
+  await vincular318(u318, u318);
+  chequear('con el mismo correo, la cuenta se ve vinculada', await vinculada318(u318), true);
+  chequear('con el mismo correo, borrar en Ascent no da error', await borrar318(u318), null);
+  chequear('y el usuario de Auth sigue: Moss entra con él', await existe318(u318), 1);
+  chequear('no queda nada de Ascent que apunte a la cuenta (en ninguna tabla de public)', await deAscent318(u318), []);
+  chequear('las medallas, que cuelgan de auth.users y no del perfil, también se van', await n318('select count(*)::int n from medallas where user_id = $1', [u318]), 0);
+  chequear('el perfil queda vacío, como el de cualquier cuenta que nunca usó Ascent', (await db.query(
+    'select username, racha_actual, mejor_racha, avatar_url from profiles where id = $1', [u318])).rows, [{ username: null, racha_actual: 0, mejor_racha: 0, avatar_url: null }]);
+  chequear('el propio que nadie más usó se borra con el resto', await n318('select count(*)::int n from ejercicios where id = $1', [propioU318]), 0);
+  chequear('el reto ganado no traba la baja y se va', await n318('select count(*)::int n from challenges where retador = $1 or rival = $1 or ganador = $1', [u318]), 0);
+  chequear('sin forma de entrar a Ascent: se va la identidad de correo y queda la de Apple', (await db.query(
+    'select provider from auth.identities where user_id = $1 order by provider', [u318])).rows.map((r) => r.provider), ['apple']);
+  chequear('y sin contraseña', (await db.query('select encrypted_password from auth.users where id = $1', [u318])).rows.map((r) => r.encrypted_password), [null]);
+  chequear('lo de Moss queda intacto', [await n318('select count(*)::int n from moss.perfiles where usuario = $1', [u318]), await habitos318(u318)], [1, 2]);
+  chequear('y el vínculo, cortado', [await vinculada318(u318), await n318('select count(*)::int n from moss.vinculo where $1 in (moss, ascent)', [u318])], [false, 0]);
+  chequear('el amigo sigue en pie y ya no la tiene de amiga', [
+    await existe318(amigoU318),
+    await n318('select count(*)::int n from friendships where solicitante = $1 or destinatario = $1', [amigoU318]),
+  ], [1, 0]);
+
+  // ---- UNA CUENTA SOLO DE MOSS: el alta le da un perfil de Ascent sin nombre ----
+  const mossSolo318 = await (async () => (await db.query('insert into auth.users default values returning id')).rows[0].id)();
+  await conMoss318(mossSolo318);
+  const tomado318 = await nuevoUsuario();
+  chequear('una cuenta solo de Moss tiene el perfil del alta, sin nombre, y no aparece en nada público', [
+    (await db.query('select username from profiles where id = $1', [mossSolo318])).rows[0].username,
+    (await como318(tomado318, 'select count(*)::int n from usuarios_publicos where id = $1', [mossSolo318]))[0].n,
+    (await como318(tomado318, 'select count(*)::int n from ranking_fuerza() where id = $1', [mossSolo318]))[0].n,
+    (await como318(tomado318, 'select count(*)::int n from entrenando_ahora() where id = $1', [mossSolo318]))[0].n,
+  ], [null, 0, 0, 0]);
+  // La de Ascent que se borró con Moss queda igual que esta: tampoco aparece.
+  chequear('la de Ascent borrada con Moss tampoco aparece en nada público', (await como318(tomado318, 'select count(*)::int n from usuarios_publicos where id = $1', [u318]))[0].n, 0);
+  // Y la de Moss sola, borrada en Ascent (sin datos de Ascent): sigue siendo de Moss.
+  chequear('borrar en Ascent una cuenta solo de Moss no la borra', [await borrar318(mossSolo318), await existe318(mossSolo318), await habitos318(mossSolo318)], [null, 1, 2]);
+
+  // ---- MOSS EN LA BASE, LA CUENTA SIN MOSS: como siempre ----
+  const sinMoss318 = await nuevoUsuario();
+  await conCorreo318(sinMoss318);
+  await rachaDe(sinMoss318, 2);
+  chequear('con el esquema moss, una cuenta sin nada de Moss se borra entera, usuario de Auth incluido', [await borrar318(sinMoss318), await existe318(sinMoss318)], [null, 0]);
+
+  await db.exec('drop schema moss cascade');
+
+  // ---- LA MIGRACIÓN ----
+  const mig318 = deBug('supabase', 'migracion-99-borrar-solo-ascent.sql');
+  chequear('la 99 se fija antes de aplicarse que puede borrar la identidad y la contraseña', [
+    /has_table_privilege\('auth\.identities', 'delete'\)/.test(mig318),
+    /has_column_privilege\('auth\.users', 'encrypted_password', 'update'\)/.test(mig318),
+  ], [true, true]);
+
+  // Los textos de la baja con Moss (y la hoja de Moss) llegan con moss-vinculo: no se prueban acá.
+
+  // ---- SALIR DE ASCENT NO SACA DE MOSS ----
+  // `signOut()` a secas es global: con el mismo usuario de Auth revoca también la sesión de Moss.
+  const { readdirSync: dir318, readFileSync: leer318 } = await import('node:fs');
+  const raiz318 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const fuentes318 = (rel) => dir318(join(raiz318, rel), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx?$/.test(e.name) && !e.parentPath.includes('node_modules'))
+    .map((e) => join(e.parentPath, e.name));
+  const globales318 = (texto) => [...sinComentarios(texto).matchAll(/\.signOut\(([^)]*)\)/g)].filter((m) => !/scope: 'local'/.test(m[1])).length;
+  const conGlobal318 = ['src', 'compartido', 'nucleo', 'movil/src', 'movil/app']
+    .flatMap(fuentes318)
+    .filter((r) => globales318(leer318(r, 'utf8')) > 0)
+    .map((r) => r.slice(raiz318.length + 1).replace(/\\/g, '/'));
+  chequear('ninguna salida de Ascent cierra todas las sesiones del usuario', conGlobal318, []);
+  chequear('el detector ve la global y deja pasar la local', [
+    globales318('await supabase.auth.signOut();'), globales318("await supabase.auth.signOut({ scope: 'global' });"),
+    globales318("await supabase.auth.signOut({ scope: 'local' });"),
+  ], [1, 1, 0]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

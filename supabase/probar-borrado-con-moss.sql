@@ -23,7 +23,6 @@ declare
   falla text := '';
   n int;
   j jsonb;
-  como text;
 begin
   if to_regclass('moss.vinculo') is null then
     raise exception 'RESULTADO: no hay esquema moss en esta base';
@@ -72,12 +71,15 @@ begin
   select count(*) into n from moss.marcas where usuario = m2;
   if n = 0 then ok := ok || ' 2c-lo-de-moss-borrado'; else falla := falla || ' 2c-quedo-moss'; end if;
 
-  -- 3. EL MISMO USUARIO DE AUTH PARA LAS DOS (mismo correo, enlazado automático): no es el caso de
-  --    dos cuentas separadas, pero puede pasar. Se mide, no se arregla acá.
+  -- 3. EL MISMO USUARIO DE AUTH PARA LAS DOS (mismo correo, enlazado automático; migración 99):
+  --    borrar en Ascent deja el usuario para Moss, con lo suyo, y sin nada de Ascent.
   perform set_config('request.jwt.claims', json_build_object('sub', x, 'role', 'authenticated')::text, true);
   perform public.eliminar_cuenta();
-  select (select count(*) from moss.perfiles where usuario = x) + (select count(*) from moss.marcas where usuario = x) into n;
-  if n = 0 then como := ' 3-misma-cuenta:borrar-ascent-se-lleva-moss'; else como := ' 3-misma-cuenta:moss-queda:' || n; end if;
+  select (select count(*) from auth.users where id = x) + (select count(*) from moss.perfiles where usuario = x)
+       + (select count(*) from moss.marcas where usuario = x) into n;
+  if n = 3 then ok := ok || ' 3a-misma-cuenta-moss-queda'; else falla := falla || ' 3a-misma-cuenta-moss-perdio:' || n; end if;
+  select (select count(*) from public.logs where user_id = x) + (select count(*) from public.profiles where id = x and username is not null) into n;
+  if n = 0 then ok := ok || ' 3b-misma-cuenta-sin-nada-de-ascent'; else falla := falla || ' 3b-quedo-ascent:' || n; end if;
 
-  raise exception 'RESULTADO ok=[%] falla=[%] medido=[%]', trim(ok), trim(falla), trim(como);
+  raise exception 'RESULTADO ok=[%] falla=[%]', trim(ok), trim(falla);
 end $prueba$;
