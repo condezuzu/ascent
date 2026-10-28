@@ -16483,7 +16483,8 @@ console.log('\n201. Entrenar con otro, del lado de la app: qué se publica, qué
     /\{conJuntos && !union && \(/.test(rk201),
     /onPress=\{\(\) => void unirseA\(e\)\}/.test(rk201) && /const r = await pedirUnirse\(supabase, e\.id\);[\s\S]*?juntos\.recargar\(\);/.test(rk201),
     // Desde la 88 también sabe si estoy entrenando: el link del grupo se ofrece sin nadie todavía.
-    /<Juntos uniones=\{juntos\.uniones\} recibidoEn=\{juntos\.recibidoEn\} recargar=\{juntos\.recargar\} entrenando=\{yoEntreno\} \/>/.test(rk201),
+    // Desde el 28/10, arriba de todo y con la racha de cada uno (el color de su rango).
+    /<Juntos\s+uniones=\{juntos\.uniones\}\s+recibidoEn=\{juntos\.recibidoEn\}\s+recargar=\{juntos\.recargar\}\s+entrenando=\{yoEntreno\}\s+rachas=\{new Map\(amigos\.map\(\(a\) => \[a\.id, a\.racha_actual\]\)\)\}\s*\/>/.test(rk201),
     /if \(!error\) setEntrenando\(/.test(rk201),
     [EV.CADA_CUANTO_MS, EV.SIN_SENAL_S],
   ], [true, true, true, true, true, [10_000, 120]]);
@@ -20178,8 +20179,9 @@ console.log('\n284. La entrada de la app: el aro del logo, el destello y el zoom
   chequear('lo que mide el aro es lo que se dibuja de a poco', Math.round(arco.largo), Math.round((LOGO.radio * (LOGO.hasta - LOGO.desde) * Math.PI) / 180));
   const lay = sinComentarios(deBug('movil', 'app', '_layout.tsx'));
   // Desde el 21/10 la app se monta cuando la entrada TERMINA, no cuando empieza el zoom (ver la 298).
-  chequear('en la raíz, nada de la app se dibuja antes de que la entrada termine', [
-    (lay.match(/\{sesion === '/g) ?? []).length,
+  // Desde el 28/10 el motor sí: arranca debajo del logo (probar-arranque). Es lo único afuera de `abierta`.
+  chequear('en la raíz, nada de la app se dibuja antes de que la entrada termine, salvo el motor', [
+    (lay.match(/\{sesion === '/g) ?? []).length === 1 && /\{sesion === 'con' && \(\s*<View style=\{estilos\.todo\}>\s*(\{\s*\}\s*)*<FondoRaiz \/>\s*(\{\s*\}\s*)*\{abierta && \(/.test(lay) ? 0 : 1,
     (lay.match(/\{abierta && (claveNueva && )?\(?sesion === '/g) ?? []).length >= 4,
     /const abierta = entrada === 'fin';/.test(lay),
     /\{entrada !== 'fin' && \(\s*<EntradaDeLaApp lista=\{sesion !== 'mirando' && \(sesion !== 'con' \|\| datosListos\)\}/.test(lay),
@@ -20458,7 +20460,8 @@ console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entra
   const llegada = IA.precargaLista();
   const tomada = await IA.tomarPrecarga('yo');
   chequear('pedida dos veces es un solo pedido; lista cuando llega; Inicio la toma una vez y la siguiente vuelve a pedir', [
-    pedidos.length, a === b, antesDeLlegar, llegada?.inicio.tipo, tomada?.deHoy.length, IA.tomarPrecarga('yo'), IA.precargaLista(),
+    // Desde el 28/10 la precarga también pide la rutina de la fila «Hoy»: se cuenta pantalla_inicio.
+    pedidos.filter((n) => n === 'pantalla_inicio').length, a === b, antesDeLlegar, llegada?.inicio.tipo, tomada?.deHoy.length, IA.tomarPrecarga('yo'), IA.precargaLista(),
   ], [1, true, null, 'listo', 1, null, null]);
   const lay = sinComentarios(deBug('movil', 'app', '_layout.tsx'));
   const ini = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
@@ -20577,7 +20580,7 @@ console.log('\n302. Las vidas son estrellas: en Inicio, arriba de los días; en 
   const ini = sinCom302(deBug('movil', 'src', 'Inicio.tsx'));
   chequear('Inicio: una estrella por vida, llena la que queda y en contorno la usada, y ni un punto', [
     // Desde el 21/10 la fila son las tres, con la que falta ganar punteada (ver la 308).
-    /modosDeLasVidas\(impulsos\)\.map\(\(modo, i\) => \(\s*<Estrella key=\{i\} tam=\{16\} modo=\{modo\} \/>/.test(ini),
+    /modosDeLasVidas\(impulsos\)\.map\(\(modo, i\) => \(\s*<(Estrella key=\{i\} tam=\{16\}|EstrellaQueTitila key=\{i\} indice=\{i\}) modo=\{modo\} \/>/.test(ini),
     /estilos\.impulsoVivo|impulso: \{ width: 7/.test(ini),
   ], [true, false]);
   chequear('y la fila va arriba de los días', [ini.indexOf('testID="vidas-inicio"') > -1, ini.indexOf('testID="vidas-inicio"') < ini.indexOf('testID="tira-inicio"')], [true, true]);
@@ -20596,7 +20599,7 @@ console.log('\n303. En Estadísticas las vidas también son estrellas (21/10)');
   const sinCom303 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
   const sg = sinCom303(deBug('movil', 'src', 'StatsGeneral.tsx'));
   chequear('la misma estrella que Inicio, llena la que queda y en contorno la usada, y ni un punto', [
-    /modosDeLasVidas\(vidas\)\.map\(\(modo, i\) => \(\s*<Estrella key=\{i\} tam=\{16\} modo=\{modo\} \/>/.test(sg),
+    /modosDeLasVidas\(vidas\)\.map\(\(modo, i\) => \(\s*<(Estrella key=\{i\} tam=\{16\}|EstrellaQueTitila key=\{i\} indice=\{i\}) modo=\{modo\} \/>/.test(sg),
     /estilos\.vidaViva|vida: \{ width: 9/.test(sg),
   ], [true, false]);
 }
@@ -20642,7 +20645,8 @@ console.log('\n304. La revisión del 21/10: nada escrito a mano en la nativa, y 
     IM304.celdaDeLaProximaVida({ quedan: 3, total: 3, falta: null }),
     IM304.celdaDeLaProximaVida({ quedan: 1, total: 3, falta: null }),
   ], [20, 5, 'llenas', null]);
-  chequear('y Stats la usa', /const c = celdaDeLaProximaVida\(vidas\);/.test(sinCom304(deBug('movil', 'src', 'Stats.tsx'))), true);
+  // Desde el 28/10 la cuarta celda de Stats son los días faltados; la cuenta regresiva la dice la nota.
+  chequear('y Stats ya no la usa', /celdaDeLaProximaVida/.test(sinCom304(deBug('movil', 'src', 'Stats.tsx'))), false);
 }
 console.log('\n305. La migración 95: la distancia del cardio y las repeticiones objetivo de la rutina (21/10)');
 {
@@ -20902,14 +20906,16 @@ console.log('\n316. Los días faltados del año: la rutina de cada día, con fec
 {
   const F316 = await import('../nucleo/faltados.ts');
   const lmv = [1, 3, 5];
-  chequear('cuentan los días de entrenar sin día registrado, de este año y hasta ayer; los días sin rutina no', [
-    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], new Set(), '2026-01-15'),
-    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], new Set(['2026-01-05', '2026-01-09']), '2026-01-15'),
-    F316.diasFaltados([{ desde: '2026-01-08', entrena: null }, { desde: '2026-01-01', entrena: lmv }], new Set(['2026-01-05']), '2026-01-15'),
-    F316.diasFaltados([{ desde: '2025-12-01', entrena: [0, 1, 2, 3, 4, 5, 6] }], new Set(), '2026-01-03'),
-    F316.diasFaltados([{ desde: '2026-01-10', entrena: lmv }], new Set(), '2026-01-15'),
-    F316.diasFaltados([], new Set(), '2026-10-26'),
-  ], [6, 4, 2, 2, 2, 0]);
+  // Desde el 28/10: desde el alta (no desde el 1 de enero) y, sin rutina, los descansos de Ajustes.
+  const finde = [{ desde: '2025-01-01', dias: [0, 6] }];
+  chequear('cuentan los días que tocaba entrenar sin día registrado, desde el alta y hasta ayer; sin rutina, manda Ajustes', [
+    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], [], new Set(), '2026-01-01', '2026-01-15'),
+    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], [], new Set(['2026-01-05', '2026-01-09']), '2026-01-01', '2026-01-15'),
+    F316.diasFaltados([{ desde: '2026-01-08', entrena: null }, { desde: '2026-01-01', entrena: lmv }], [], new Set(['2026-01-05']), '2026-01-01', '2026-01-15'),
+    F316.diasFaltados([{ desde: '2025-12-01', entrena: [0, 1, 2, 3, 4, 5, 6] }], [], new Set(), '2025-12-30', '2026-01-03'),
+    F316.diasFaltados([{ desde: '2026-01-10', entrena: lmv }], finde, new Set(), '2026-01-01', '2026-01-15'),
+    F316.diasFaltados([], [], new Set(), '2026-10-26', '2026-10-26'),
+  ], [6, 4, 9, 4, 9, 0]);
 
   const u316 = await nuevoUsuario();
   await comoUsuario(u316);
@@ -20940,8 +20946,8 @@ console.log('\n316. Los días faltados del año: la rutina de cada día, con fec
 
   await db.query('delete from auth.users where id = $1', [u316b]);
   chequear('dar de baja la cuenta no tropieza con el trigger y no deja renglones', (await db.query('select count(*)::int n from rutina_semanas where user_id = $1', [u316b])).rows[0].n, 0);
-  chequear('Stats la pone donde estaba el ✓, con las vidas al máximo', [
-    /if \(c === 'llenas'\) return faltados === null \? \[\] : \[\{ v: String\(faltados\)/.test(deBug('movil', 'src', 'Stats.tsx')),
+  chequear('Stats la muestra siempre, como cuarta celda, contando desde el alta de la cuenta', [
+    /\.\.\.celdaFaltados\(datos\.faltados\)/.test(deBug('movil', 'src', 'Stats.tsx')) && /aISO\(new Date\(alta\)\), hoyISO\(\)\)/.test(deBug('movil', 'src', 'Stats.tsx')),
     /'✓'/.test(deBug('movil', 'src', 'Stats.tsx')),
     // Sin la 97 no se pide la tabla: era un 404 en cada visita a Stats (lo vio test:real).
     /disponible\('diasFaltados', await versionDelEsquema\(supabase\)\)\s*\? await supabase\.from\('rutina_semanas'\)/.test(deBug('movil', 'src', 'Stats.tsx')),
@@ -20959,6 +20965,18 @@ console.log('\n317. Las microanimaciones: lo que entra crece, los botones se hun
     usos('Inicio.tsx') >= 8, usos('Bloque.tsx') >= 5, usos('Descanso.tsx') >= 2, usos('Juntos.tsx') >= 1, usos('EnVivoDeInicio.tsx') >= 1, usos('TiraDelGrupo.tsx') >= 1, usos('FilaRutina.tsx') >= 1, usos('MiRutina.tsx') >= 3,
   ], [true, true, true, true, true, true, true, true]);
   chequear('y los botones principales se hunden al tocarlos', [toques('Inicio.tsx') >= 4, toques('Bloque.tsx') >= 5, toques('Descanso.tsx') >= 3], [true, true, true]);
+}
+console.log('\n318. La entrada, de nuevo: el motor y la fila de la rutina se cargan debajo del logo (28/10)');
+{
+  const lay318 = deBug('movil', 'app', '_layout.tsx');
+  chequear('la raíz pide el fondo con la racha precargada y lo suelta al terminar la entrada', [
+    /pedirFondo\(FONDO_DEL_ARRANQUE, \{ \.\.\.cuerpoDe\(d\.inicio\.datos\.perfil\.racha_actual\)/.test(lay318),
+    /if \(entrada === 'fin'\) soltarFondo\(FONDO_DEL_ARRANQUE\);/.test(lay318),
+  ], [true, true]);
+  chequear('la fila «Hoy» y los pasos nacen con lo precargado', [
+    /useState<DiaDeSemana\[\] \| null>\(\(\) => filaPrecargada\(\)\?\.dias \?\? null\)/.test(deBug('movil', 'src', 'FilaRutina.tsx')),
+    /useState<number \| null>\(\(\) => pasosPrecargados\(\) \?\? null\)/.test(deBug('movil', 'src', 'Inicio.tsx')),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

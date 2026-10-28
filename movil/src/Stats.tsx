@@ -24,8 +24,9 @@ import {
 import type { Log } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cuerpoDe } from '@nucleo/rangos';
-import { celdaDeLaProximaVida } from '@nucleo/impulsos';
 import { diasFaltados, type SemanaDeRutina } from '@nucleo/faltados';
+import type { ConfigDescanso } from '@nucleo/reglas';
+import Tocable from './Tocable';
 import { disponible } from '@nucleo/esquema';
 import { versionDelEsquema } from '@compartido/esquema';
 import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './StatsGeneral';
@@ -58,7 +59,7 @@ type Datos = {
   // el peso corporal con el mismo nombre se confunde —se confundió un test—.
   pesajes: PesoAnotado[];
   vidas: Vidas | null;
-  /** Los días faltados del año (26/10); null sin la migración 97. */
+  /** Los días faltados desde el alta (28/10); null sin la migración 97. */
   faltados: number | null;
   sexo: string | null;
 };
@@ -81,17 +82,12 @@ type Datos = {
  * revisión se hace adentro de cada día, como en la web.
  */
 /**
- * LA CUARTA CELDA DE LA GRILLA (5.3): la cuenta regresiva de la próxima vida.
- * Al máximo de vidas no hay cuenta que dar: desde el 26/10 van ahí los días
- * faltados del año (era un ✓). Sin datos de vidas, no ocupa lugar (quedan las tres
- * de siempre); sin la migración 97, al máximo tampoco.
+ * LA CUARTA CELDA DE LA GRILLA: los días faltados, siempre (28/10). Era la cuenta regresiva
+ * de la próxima vida, que ya dice la nota de las vidas («La tercera se gana en N días»), y al
+ * máximo un ✓. Sin la migración 97 no ocupa lugar (quedan las tres de siempre).
  */
-function celdaProximaVida(vidas: Vidas | null, faltados: number | null): { v: string; e: string }[] {
-  if (!vidas) return [];
-  const c = celdaDeLaProximaVida(vidas);
-  if (c === 'llenas') return faltados === null ? [] : [{ v: String(faltados), e: faltados === 1 ? T.stats.diaFaltado : T.stats.diasFaltados }];
-  if (c !== null) return [{ v: String(c), e: c === 1 ? T.stats.proximaVidaDia : T.stats.proximaVidaDias }];
-  return [];
+function celdaFaltados(faltados: number | null): { v: string; e: string }[] {
+  return faltados === null ? [] : [{ v: String(faltados), e: T.stats.diasFaltados }];
 }
 
 export default function Stats({ alSalir }: { alSalir: () => void }) {
@@ -134,6 +130,10 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     const { data: sem, error: eSem } = disponible('diasFaltados', await versionDelEsquema(supabase))
       ? await supabase.from('rutina_semanas').select('desde, entrena').eq('user_id', uid)
       : { data: null, error: true };
+    // Sin rutina guardada, lo que tocaba lo dicen los días de descanso de Ajustes. Y se cuenta
+    // desde el alta de la cuenta, que el perfil no guarda: la sesión sí (`yo.alta`).
+    const { data: desc } = await supabase.from('descansos').select('desde, dias').eq('user_id', uid);
+    const alta = yo.alta;
     // DICE QUE NO SE PUDO TRAER, no "no se guardó" (25/9). Usaba
     // `T.general.noSePudo`, que es el texto de una ESCRITURA que falla: sin red,
     // Stats decía "No se guardó. Prueba de nuevo." cuando no se estaba
@@ -163,7 +163,10 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             }
           : null,
       sexo: (perfil.sexo as string | null) ?? null,
-      faltados: eSem || !sem ? null : diasFaltados(sem as SemanaDeRutina[], new Set((logs ?? []).map((l) => l.fecha as string)), hoyISO()),
+      faltados:
+        eSem || !sem || !alta
+          ? null
+          : diasFaltados(sem as SemanaDeRutina[], (desc ?? []) as ConfigDescanso[], new Set((logs ?? []).map((l) => l.fecha as string)), aISO(new Date(alta)), hoyISO()),
     });
   }, [alSalir]);
 
@@ -259,7 +262,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
 
       <View style={estilos.selector}>
         {(['general', 'entrenamiento'] as const).map((p) => (
-          <Pressable
+          <Tocable
             key={p}
             style={[estilos.opcion, pestana === p && estilos.opcionActiva]}
             onPress={() => setPestana(p)}
@@ -269,7 +272,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             <Text style={[estilos.opcionTexto, pestana === p && estilos.opcionTextoActivo]}>
               {p === 'general' ? T.stats.pestanaGeneral : T.stats.pestanaEntrenamiento}
             </Text>
-          </Pressable>
+          </Tocable>
         ))}
       </View>
 
@@ -287,11 +290,11 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             // Se sacaron "Racha actual" (ya está en Inicio) y "Últimos 30 días"
             // (no aportaba). Queda mes y mejor, y se suma el año (28/9). El cuarto
             // lugar —que quedaba vacío— es la cuenta regresiva de la próxima vida
-            // (5.3): faltan N días, y al máximo los días faltados del año (26/10).
+            // (5.3); desde el 28/10, los días faltados.
             { v: String(esteMes), e: T.stats.esteMes },
             { v: String(esteAno), e: T.stats.esteAno },
             { v: String(mejor), e: T.stats.mejorRacha },
-            ...celdaProximaVida(datos.vidas, datos.faltados),
+            ...celdaFaltados(datos.faltados),
           ].map((c) => (
             <View key={c.e} style={estilos.celda}>
               <Text style={estilos.valor}>{c.v}</Text>

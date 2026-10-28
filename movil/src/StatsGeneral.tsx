@@ -25,7 +25,7 @@ import PesoHoja from './PesoHoja';
 import ListaDePesos from './ListaDePesos';
 import ObjetivoDePeso from './ObjetivoDePeso';
 import { useRecargarAlVolver } from './irAPestana';
-import Estrella from './Estrella';
+import EstrellaQueTitila from './EstrellaQueTitila';
 import { modosDeLasVidas } from '@nucleo/impulsos';
 
 /**
@@ -62,7 +62,7 @@ export function LineaDeVidas({ vidas }: { vidas: Vidas }) {
       {/* La misma estrella que Inicio y el aviso (21/10): llena la que queda, en contorno la usada. */}
       <View style={estilos.puntos} accessibilityLabel={`${vidas.quedan} de ${vidas.total}`} testID="vidas-stats">
         {modosDeLasVidas(vidas).map((modo, i) => (
-          <Estrella key={i} tam={16} modo={modo} />
+          <EstrellaQueTitila key={i} indice={i} modo={modo} />
         ))}
       </View>
       <Text style={estilos.nota}>
