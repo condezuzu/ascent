@@ -52,7 +52,7 @@ import TimbreDePildora from './TimbreDePildora';
 import { pasadoDe, queMuestraLaPildora } from '@nucleo/avisoDescanso';
 import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
-import Estrella from './Estrella';
+import EstrellaQueTitila from './EstrellaQueTitila';
 import Aparece from './Aparece';
 import Tocable from './Tocable';
 import FondoOctogonal from './FondoOctogonal';
@@ -811,7 +811,7 @@ export default function Inicio({
           <View style={estilos.impulsos} testID="vidas-inicio">
             <Text style={estilos.impulsosEt}>{T.impulso.titulo}</Text>
             {modosDeLasVidas(impulsos).map((modo, i) => (
-              <Estrella key={i} tam={16} modo={modo} />
+              <EstrellaQueTitila key={i} indice={i} modo={modo} />
             ))}
           </View>
         </Aparece>

@@ -46,6 +46,7 @@ import { CADA_CUANTO_MS, unionCon } from '@nucleo/enVivo';
 import { disponible } from '@nucleo/esquema';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { useArriba } from './zonaSegura';
+import Tocable from './Tocable';
 
 /**
  * RANKING — tanda 4.
@@ -408,7 +409,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                     <Text style={[estilos.nombre, { fontSize: 14 }]}>{T.social.estaEntrenando(e.username)}</Text>
                   </Pressable>
                   {conJuntos && !union && (
-                    <Pressable
+                    <Tocable
                       testID="unirse"
                       style={estilos.unirse}
                       hitSlop={8}
@@ -416,7 +417,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                       accessibilityRole="button"
                     >
                       <Text style={estilos.unirseTexto}>{T.social.unirse}</Text>
-                    </Pressable>
+                    </Tocable>
                   )}
                   {union?.estado === 'pendiente' && union.laPediYo && <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>}
                   {/* Renglón propio y a todo el ancho: al lado del nombre no entra. */}

@@ -70,6 +70,8 @@
 //      hunden al tocarlos (26/10), en la nativa y sin el fondo 3D.
 //  29. probar-barra-iconos — la barra de pestañas: icono arriba, palabra abajo, y el de la abierta
 //      encendido (28/10), en la nativa.
+//  30. probar-titilan — las vidas de Inicio y de Stats titilan; la que falta ganar, quieta (28/10),
+//      en la nativa y sin el fondo 3D.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -120,6 +122,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'los días faltados del año en Stats', archivo: 'probar-dias-faltados.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'lo que entra no salta, los botones se hunden', archivo: 'probar-sin-saltos.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la barra con iconos', archivo: 'probar-barra-iconos.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'las vidas titilan', archivo: 'probar-titilan.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

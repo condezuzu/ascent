@@ -26,6 +26,7 @@ import { T } from '@nucleo/textos';
 import { cuerpoDe } from '@nucleo/rangos';
 import { diasFaltados, type SemanaDeRutina } from '@nucleo/faltados';
 import type { ConfigDescanso } from '@nucleo/reglas';
+import Tocable from './Tocable';
 import { disponible } from '@nucleo/esquema';
 import { versionDelEsquema } from '@compartido/esquema';
 import StatsGeneral, { LineaDeVidas, type PesoAnotado, type Vidas } from './StatsGeneral';
@@ -261,7 +262,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
 
       <View style={estilos.selector}>
         {(['general', 'entrenamiento'] as const).map((p) => (
-          <Pressable
+          <Tocable
             key={p}
             style={[estilos.opcion, pestana === p && estilos.opcionActiva]}
             onPress={() => setPestana(p)}
@@ -271,7 +272,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             <Text style={[estilos.opcionTexto, pestana === p && estilos.opcionTextoActivo]}>
               {p === 'general' ? T.stats.pestanaGeneral : T.stats.pestanaEntrenamiento}
             </Text>
-          </Pressable>
+          </Tocable>
         ))}
       </View>
 

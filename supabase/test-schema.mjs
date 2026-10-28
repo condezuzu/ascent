@@ -20401,7 +20401,7 @@ console.log('\n302. Las vidas son estrellas: en Inicio, arriba de los días; en 
   const ini = sinCom302(deBug('movil', 'src', 'Inicio.tsx'));
   chequear('Inicio: una estrella por vida, llena la que queda y en contorno la usada, y ni un punto', [
     // Desde el 21/10 la fila son las tres, con la que falta ganar punteada (ver la 308).
-    /modosDeLasVidas\(impulsos\)\.map\(\(modo, i\) => \(\s*<Estrella key=\{i\} tam=\{16\} modo=\{modo\} \/>/.test(ini),
+    /modosDeLasVidas\(impulsos\)\.map\(\(modo, i\) => \(\s*<(Estrella key=\{i\} tam=\{16\}|EstrellaQueTitila key=\{i\} indice=\{i\}) modo=\{modo\} \/>/.test(ini),
     /estilos\.impulsoVivo|impulso: \{ width: 7/.test(ini),
   ], [true, false]);
   chequear('y la fila va arriba de los días', [ini.indexOf('testID="vidas-inicio"') > -1, ini.indexOf('testID="vidas-inicio"') < ini.indexOf('testID="tira-inicio"')], [true, true]);
@@ -20420,7 +20420,7 @@ console.log('\n303. En Estadísticas las vidas también son estrellas (21/10)');
   const sinCom303 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
   const sg = sinCom303(deBug('movil', 'src', 'StatsGeneral.tsx'));
   chequear('la misma estrella que Inicio, llena la que queda y en contorno la usada, y ni un punto', [
-    /modosDeLasVidas\(vidas\)\.map\(\(modo, i\) => \(\s*<Estrella key=\{i\} tam=\{16\} modo=\{modo\} \/>/.test(sg),
+    /modosDeLasVidas\(vidas\)\.map\(\(modo, i\) => \(\s*<(Estrella key=\{i\} tam=\{16\}|EstrellaQueTitila key=\{i\} indice=\{i\}) modo=\{modo\} \/>/.test(sg),
     /estilos\.vidaViva|vida: \{ width: 9/.test(sg),
   ], [true, false]);
 }
