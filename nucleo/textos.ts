@@ -412,6 +412,9 @@ const ES = {
     // EL CARDIO (20/10): en vez de la cuenta del descanso, los pasos y los km de esta vuelta.
     cardio: 'CARDIO',
     pasosYKm: (n: number, km: string) => `${n.toLocaleString('es')} pasos · ${km} km`,
+    // EL CARDIO CON SU PROPIO LUGAR (29/10): la distancia anotada, o la de los pasos con ≈.
+    distancia: (valor: string, unidad: string) => `${valor} ${unidad}`,
+    distanciaAprox: (valor: string, unidad: string) => `≈ ${valor} ${unidad}`,
   },
 
   // ---------------------------------------------------------------

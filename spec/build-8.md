@@ -23,6 +23,12 @@ que ya están en la calle. Se junta con `main` recién cuando la build exista.
 - `test:db` comprueba que los archivos existen, están declarados, tienen el
   formato que iOS acepta, y que el aviso no recorta y tiene la energía de la
   campana.
+- **El cardio en la pantalla bloqueada (29/10, para la 1.2.0)**: tiempo, distancia y
+  pasos, cada uno en su lugar (`modo: "cardio"` en `targets/descanso/index.swift`).
+  El reloj cuenta desde que arrancó la cinta; la distancia es la anotada o, si no hay,
+  la de los pasos con «≈». Solo se manda a un binario que contesta `sabeElCardio()`;
+  a la build 10 y anteriores les sigue llegando el modo serie de antes. **Sin compilar
+  todavía**: el Swift se revisa recién en la próxima build.
 
 ## Lo que NO está hecho, y por qué
 

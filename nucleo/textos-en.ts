@@ -212,6 +212,8 @@ export const EN: Textos = {
     pasos: (n: number) => `${n.toLocaleString('en')} steps`,
     cardio: 'CARDIO',
     pasosYKm: (n: number, km: string) => `${n.toLocaleString('en')} steps · ${km} km`,
+    distancia: (valor: string, unidad: string) => `${valor} ${unidad}`,
+    distanciaAprox: (valor: string, unidad: string) => `≈ ${valor} ${unidad}`,
   },
   globos: {
     elegir: 'Search or pick an exercise from the list.',

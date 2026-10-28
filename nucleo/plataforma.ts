@@ -200,7 +200,8 @@ export type ContextoDelDescanso = {
  * teléfono. Los textos van armados y traducidos (`compartido/tarjeta.ts`).
  */
 export type TarjetaEnVivo = {
-  modo: 'descanso' | 'serie';
+  /** 'cardio' (29/10): solo a un binario que lo sepa dibujar (`sabeElCardio`). */
+  modo: 'descanso' | 'serie' | 'cardio';
   fin: number;
   duracion: number;
   desde: number;
@@ -230,6 +231,8 @@ export type EnVivo = {
   mostrarTarjeta(t: TarjetaEnVivo): Promise<boolean>;
   /** Si este binario sabe dibujar la tarjeta entera. */
   sabeLaTarjeta(): boolean;
+  /** Si el widget sabe el modo 'cardio': tiempo, distancia y pasos (la build de la 1.2.0). */
+  sabeElCardio(): boolean;
   esconder(): Promise<void>;
 };
 

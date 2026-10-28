@@ -19387,6 +19387,44 @@ console.log('\n254c. El cardio en la tarjeta: pasos y km en vez de la cuenta del
   P254c.salud = antes.salud;
 }
 
+console.log('\n254d. El cardio en la pantalla bloqueada: tiempo, distancia y pasos, cada uno en su lugar (29/10)');
+{
+  const TJ = await import('../compartido/tarjeta.ts');
+  const { T: T254d } = await import('../nucleo/textos.ts');
+  const ahora = Date.parse('2026-10-29T12:00:00Z');
+  const cinta = ahora - 600000;
+  const viva = (distancia) => ({
+    inicio: '2026-10-29T11:30:00Z', desfasaje: 0, series: 0, porUbicacion: false, cacheLeida: true, sugerido: false, idSesion: 's1', ultimaActividad: null, descanso: null,
+    bloques: { cerrados: [], ejercicio: 'cinta', hechas: 0, meta: 3, cardioDesde: cinta, ...(distancia === undefined ? {} : { distancia }) },
+  });
+  const extras = (p) => ({ pasos: 5000, companero: '', finCompanero: 0, pasosCardio: 1234, unidad: 'km', ...p });
+  const anotada = TJ.tarjetaDeAhora(viva(2.5), ahora, extras(), true);
+  chequear('con un widget que lo sabe: modo cardio, el reloj desde que arrancó la cinta, la distancia anotada y los pasos de la vuelta', [
+    anotada.modo, anotada.desde, anotada.rotulo, anotada.detalle, anotada.textoPasos,
+  ], ['cardio', cinta, T254d.tarjeta.cardio, '2,5 km', T254d.tarjeta.pasos(1234)]);
+  chequear('sin distancia anotada, la de los pasos, aproximada; en millas para quien pesa en libras; sin pasos, nada', [
+    TJ.tarjetaDeAhora(viva(), ahora, extras(), true).detalle,
+    TJ.tarjetaDeAhora(viva(2.5), ahora, extras({ unidad: 'mi' }), true).detalle,
+    TJ.tarjetaDeAhora(viva(), ahora, extras({ pasosCardio: -1 }), true).detalle,
+  ], ['≈ 0,94 km', '1,55 mi', '']);
+  chequear('a un widget que no lo sabe le sigue llegando el modo serie de antes', TJ.tarjetaDeAhora(viva(2.5), ahora, extras(), false).modo, 'serie');
+  const { readFileSync: leer254d } = await import('node:fs');
+  const de254d = (...p) => leer254d(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
+  const wid = de254d('movil', 'targets', 'descanso', 'index.swift');
+  chequear('el widget dibuja el cardio aparte, con el reloj, la distancia y los pasos, y no lo toma por un descanso', [
+    /context\.state\.modo != "serie" && context\.state\.modo != "cardio"/.test(wid),
+    /if esCardio\(context\) \{\s*cardio\(context\)/.test(wid),
+    /Text\(context\.state\.desde, style: \.timer\)/.test(wid.slice(wid.indexOf('private func cardio('))),
+    /let distancia = context\.state\.detalle/.test(wid) && /let pasos = context\.state\.textoPasos/.test(wid.slice(wid.indexOf('private func cardio('))),
+    /abajo\(context, conPasos: !esCardio\(context\)\)/.test(wid),
+  ], [true, true, true, true, true]);
+  chequear('el módulo contesta que lo sabe, y la app se lo pregunta antes de mandarlo', [
+    /Function\("sabeElCardio"\) \{ \(\) -> Bool in\s*true\s*\}/.test(de254d('movil', 'modules', 'descanso-vivo', 'ios', 'DescansoVivoModule.swift')),
+    /typeof descansoVivoNativo\?\.sabeElCardio === 'function' && descansoVivoNativo\.sabeElCardio\(\)/.test(de254d('movil', 'src', 'plataforma', 'enVivo.ts')),
+    /tarjetaDeAhora\(v, ahora, extras, plataforma\.enVivo\.sabeElCardio\(\)\)/.test(de254d('compartido', 'tarjeta.ts')),
+  ], [true, true, true]);
+}
+
 console.log('\n255. La sugerencia del siguiente sale de lo que hiciste después de ese ejercicio la semana pasada (16/10)');
 {
   const RU255 = await import('../nucleo/rutina.ts');

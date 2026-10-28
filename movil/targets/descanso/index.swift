@@ -71,35 +71,40 @@ struct DescansoLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: AtributosDelDescanso.self) { context in
       VStack(alignment: .leading, spacing: 12) {
-        HStack(alignment: .firstTextBaseline, spacing: 14) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text(rotuloDe(context))
-              .font(.system(size: 11, weight: .medium))
-              .tracking(2.4)
-              .foregroundStyle(termino(context) ? Color("claro") : Color("sub"))
-            Text(queHacias(context) ?? (esDescanso(context) ? deLargo(context.attributes.duracion) : ""))
-              .font(.system(size: 17, weight: .regular))
-              .foregroundStyle(Color("tinta"))
-              .lineLimit(1)
-            if let s = detalleDe(context) {
-              Text(s)
-                .font(.system(size: 13))
-                .foregroundStyle(Color("sub"))
+        if esCardio(context) {
+          cardio(context)
+        } else {
+          HStack(alignment: .firstTextBaseline, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+              Text(rotuloDe(context))
+                .font(.system(size: 11, weight: .medium))
+                .tracking(2.4)
+                .foregroundStyle(termino(context) ? Color("claro") : Color("sub"))
+              Text(queHacias(context) ?? (esDescanso(context) ? deLargo(context.attributes.duracion) : ""))
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(Color("tinta"))
+                .lineLimit(1)
+              if let s = detalleDe(context) {
+                Text(s)
+                  .font(.system(size: 13))
+                  .foregroundStyle(Color("sub"))
+              }
+            }
+            Spacer(minLength: 0)
+            if esDescanso(context) {
+              cuenta(hasta: context.state.fin, tamano: 46, termino: termino(context))
+            } else {
+              reloj(desde: context.state.desde, tamano: 34)
             }
           }
-          Spacer(minLength: 0)
+
           if esDescanso(context) {
-            cuenta(hasta: context.state.fin, tamano: 46, termino: termino(context))
-          } else {
-            reloj(desde: context.state.desde, tamano: 34)
+            barra(context)
           }
         }
 
-        if esDescanso(context) {
-          barra(context)
-        }
-
-        abajo(context)
+        // En el cardio los pasos ya están arriba, en su lugar.
+        abajo(context, conPasos: !esCardio(context))
       }
       .padding(.horizontal, 20)
       .padding(.vertical, 16)
@@ -186,8 +191,8 @@ private func barra(_ context: ActivityViewContext<AtributosDelDescanso>) -> some
 /// no ocupa lugar.
 @available(iOS 16.2, *)
 @ViewBuilder
-private func abajo(_ context: ActivityViewContext<AtributosDelDescanso>) -> some View {
-  let pasos = context.state.textoPasos.trimmingCharacters(in: .whitespaces)
+private func abajo(_ context: ActivityViewContext<AtributosDelDescanso>, conPasos: Bool = true) -> some View {
+  let pasos = conPasos ? context.state.textoPasos.trimmingCharacters(in: .whitespaces) : ""
   let companero = context.state.companero.trimmingCharacters(in: .whitespaces)
   if !pasos.isEmpty || !companero.isEmpty {
     HStack(spacing: 8) {
@@ -218,7 +223,62 @@ private func abajo(_ context: ActivityViewContext<AtributosDelDescanso>) -> some
 
 @available(iOS 16.2, *)
 private func esDescanso(_ context: ActivityViewContext<AtributosDelDescanso>) -> Bool {
-  context.state.modo != "serie"
+  context.state.modo != "serie" && context.state.modo != "cardio"
+}
+
+@available(iOS 16.2, *)
+private func esCardio(_ context: ActivityViewContext<AtributosDelDescanso>) -> Bool {
+  context.state.modo == "cardio"
+}
+
+/// EL CARDIO EN LA PANTALLA BLOQUEADA (29/10): tiempo, distancia y pasos, cada uno en su
+/// lugar. El reloj cuenta desde que arrancó la cinta (`desde`) y lo dibuja iOS; la
+/// distancia (`detalle`) y los pasos (`textoPasos`) llegan armados y traducidos.
+@available(iOS 16.2, *)
+@ViewBuilder
+private func cardio(_ context: ActivityViewContext<AtributosDelDescanso>) -> some View {
+  let distancia = context.state.detalle.trimmingCharacters(in: .whitespaces)
+  let pasos = context.state.textoPasos.trimmingCharacters(in: .whitespaces)
+  VStack(alignment: .leading, spacing: 8) {
+    HStack(alignment: .firstTextBaseline, spacing: 10) {
+      Text(rotuloDe(context))
+        .font(.system(size: 11, weight: .medium))
+        .tracking(2.4)
+        .foregroundStyle(Color("sub"))
+      if let q = queHacias(context) {
+        Text(q)
+          .font(.system(size: 15))
+          .foregroundStyle(Color("tinta"))
+          .lineLimit(1)
+      }
+      Spacer(minLength: 0)
+    }
+    HStack(alignment: .lastTextBaseline, spacing: 16) {
+      // El reloj de iOS ocupa todo el ancho que le den: se lo alinea a la izquierda y
+      // la distancia y los pasos quedan con su ancho justo.
+      Text(context.state.desde, style: .timer)
+        .font(.system(size: 34, weight: .light, design: .rounded))
+        .monospacedDigit()
+        .foregroundStyle(Color("tinta"))
+        .multilineTextAlignment(.leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+      if !distancia.isEmpty {
+        cifraDelCardio(distancia)
+      }
+      if !pasos.isEmpty {
+        cifraDelCardio(pasos)
+      }
+    }
+  }
+}
+
+private func cifraDelCardio(_ texto: String) -> some View {
+  Text(texto)
+    .font(.system(size: 17, design: .rounded))
+    .monospacedDigit()
+    .foregroundStyle(Color("tinta"))
+    .lineLimit(1)
+    .fixedSize()
 }
 
 @available(iOS 16.2, *)

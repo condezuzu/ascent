@@ -66,6 +66,15 @@ export const enVivoNativo: EnVivo = {
     }
   },
 
+  // EL CARDIO EN LA TARJETA (29/10): solo el binario que lo dibuja trae la función.
+  sabeElCardio() {
+    try {
+      return typeof descansoVivoNativo?.sabeElCardio === 'function' && descansoVivoNativo.sabeElCardio();
+    } catch {
+      return false;
+    }
+  },
+
   // LA TARJETA ENTERA (build 8). En una build anterior la función no existe y se
   // contesta `false`: ahí la tarjeta sigue siendo la del descanso (`mostrarDescanso`).
   async mostrarTarjeta(t) {

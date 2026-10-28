@@ -181,6 +181,12 @@ public class DescansoVivoModule: Module {
       )
     }
 
+    // EL CARDIO (29/10): el widget de este binario sabe el modo "cardio" (tiempo, distancia
+    // y pasos). La app lo pregunta antes de mandarlo: a uno anterior le sigue mandando "serie".
+    Function("sabeElCardio") { () -> Bool in
+      true
+    }
+
     AsyncFunction("esconder") {
       guard #available(iOS 16.2, *) else { return }
       await Self.apagar()

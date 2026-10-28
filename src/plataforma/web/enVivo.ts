@@ -19,5 +19,8 @@ export const enVivoWeb: EnVivo = {
   sabeLaTarjeta() {
     return false;
   },
+  sabeElCardio() {
+    return false;
+  },
   async esconder() {},
 };

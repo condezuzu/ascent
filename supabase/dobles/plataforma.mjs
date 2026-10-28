@@ -11,7 +11,7 @@ export const plataforma = {
   ciclo: { visible: () => true, alCambiar: () => () => {} },
   salud: { pasosEntre: async () => null },
   avisos: { conPantallaBloqueada: () => false, cancelar: async () => {}, programar: async () => {}, tokenRemoto: async () => null },
-  enVivo: { disponible: () => false, esconder: async () => {}, mostrarDescanso: async () => {}, mostrarTarjeta: async () => false, sabeLaTarjeta: () => false },
+  enVivo: { disponible: () => false, esconder: async () => {}, mostrarDescanso: async () => {}, mostrarTarjeta: async () => false, sabeLaTarjeta: () => false, sabeElCardio: () => false },
   haptica: { pulso: () => false, aviso: () => false, disponible: () => false },
   audio: { preparar: async () => {}, avisar: async () => {}, soltar: async () => {}, respetaLaMusica: () => true },
   efimero: {

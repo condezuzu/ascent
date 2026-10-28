@@ -3,7 +3,8 @@ import { T } from '@nucleo/textos';
 import type { TarjetaEnVivo } from '@nucleo/plataforma';
 import { leerViva, suscribirViva, type EstadoVivo } from '@compartido/sesionViva';
 import { nombreDe } from '@compartido/enCurso';
-import { kmDePasos } from '@nucleo/pasos';
+import { kmDePasos, METROS_POR_PASO } from '@nucleo/pasos';
+import { distanciaCorta, type UnidadDistancia } from '@nucleo/distancia';
 
 /**
  * LA TARJETA DE LA PANTALLA BLOQUEADA, ENTERA (build 8, 15/10).
@@ -25,16 +26,26 @@ import { kmDePasos } from '@nucleo/pasos';
 /** Cuánto se deja el "LISTO" de un descanso terminado antes de volver a la serie. */
 export const LISTO_MS = 90_000;
 
-/** `pasosCardio`: los de la vuelta de cardio que corre (-1 = no se sabe o no hay cardio). */
-export type Extras = { pasos: number; companero: string; finCompanero: number; pasosCardio: number };
-const SIN_EXTRAS: Extras = { pasos: -1, companero: '', finCompanero: 0, pasosCardio: -1 };
+/**
+ * `pasosCardio`: los de la vuelta de cardio que corre (-1 = no se sabe o no hay cardio).
+ * `unidad`: la de la distancia del cardio, la de la persona.
+ */
+export type Extras = { pasos: number; companero: string; finCompanero: number; pasosCardio: number; unidad: UnidadDistancia };
+const SIN_EXTRAS: Extras = { pasos: -1, companero: '', finCompanero: 0, pasosCardio: -1, unidad: 'km' };
+
+/** La anotada; si no hay, la que sale de los pasos, marcada como aproximada. '' = ninguna. */
+function distanciaDelCardio(km: number | undefined, x: Extras): string {
+  if (km !== undefined) return T.tarjeta.distancia(distanciaCorta(km, x.unidad), x.unidad);
+  if (x.pasosCardio < 0) return '';
+  return T.tarjeta.distanciaAprox(distanciaCorta((x.pasosCardio * METROS_POR_PASO) / 1000, x.unidad), x.unidad);
+}
 
 /**
  * Qué tiene que decir la tarjeta ahora. Pura, para poder probarla. \`null\` = apagada;
  * \`'dejar'\` = no tocar (el descanso terminó y la tarjeta está diciendo "LISTO": se
  * deja un rato antes de pasar a la serie, y mandarle un descanso vencido la apagaría).
  */
-export function tarjetaDeAhora(v: EstadoVivo, ahora: number, x: Extras = SIN_EXTRAS): TarjetaEnVivo | 'dejar' | null {
+export function tarjetaDeAhora(v: EstadoVivo, ahora: number, x: Extras = SIN_EXTRAS, conCardio = false): TarjetaEnVivo | 'dejar' | null {
   if (!v.inicio) return null;
   const desde = Date.parse(v.inicio) + v.desfasaje;
   const comun = {
@@ -47,7 +58,25 @@ export function tarjetaDeAhora(v: EstadoVivo, ahora: number, x: Extras = SIN_EXT
   };
   // EL CARDIO (20/10): con la cinta andando no se muestra la cuenta del descanso que haya
   // quedado de la serie anterior, sino los pasos y los km de esta vuelta.
-  if (v.bloques.cardioDesde !== undefined) {
+  const cardioDesde = v.bloques.cardioDesde;
+  // EL CARDIO EN LA PANTALLA BLOQUEADA (29/10): tiempo, distancia y pasos, cada uno en su
+  // lugar, con el reloj desde que arrancó la cinta. Solo si el widget sabe dibujarlo.
+  if (cardioDesde !== undefined && conCardio) {
+    return {
+      ...comun,
+      modo: 'cardio',
+      fin: cardioDesde,
+      desde: cardioDesde,
+      duracion: 0,
+      ejercicio: nombreDe(v.bloques.ejercicio) ?? '',
+      serie: 0,
+      meta: 0,
+      rotulo: T.tarjeta.cardio,
+      detalle: distanciaDelCardio(v.bloques.distancia, x),
+      textoPasos: x.pasosCardio >= 0 ? T.tarjeta.pasos(x.pasosCardio) : '',
+    };
+  }
+  if (cardioDesde !== undefined) {
     return {
       ...comun,
       modo: 'serie',
@@ -152,7 +181,7 @@ async function mandarAhora() {
   reloj = null;
   const ahora = Date.now();
   const v = leerViva();
-  const t = tarjetaDeAhora(v, ahora, extras);
+  const t = tarjetaDeAhora(v, ahora, extras, plataforma.enVivo.sabeElCardio());
   if (t === 'dejar') {
     // Se vuelve a mirar cuando termina el "LISTO".
     if (v.descanso) reloj = setTimeout(() => void mandar(), v.descanso.fin + LISTO_MS - ahora + 500);

@@ -21,6 +21,8 @@ type Nativo = {
   esconder(): Promise<void>;
   /** La tarjeta entera, en JSON (build 8). No existe en las builds anteriores. */
   mostrarTarjeta?(json: string): Promise<void>;
+  /** El widget dibuja el modo 'cardio' (29/10). No existe en las builds anteriores. */
+  sabeElCardio?(): boolean;
 };
 
 export const descansoVivoNativo = requireOptionalNativeModule<Nativo>('DescansoVivo');

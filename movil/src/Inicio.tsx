@@ -66,6 +66,7 @@ import VentanaRutina from './VentanaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
 import { fijarExtras } from '@compartido/tarjeta';
+import { unidadDeDistancia } from '@nucleo/distancia';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -543,6 +544,12 @@ export default function Inicio({
       vivo = false;
     };
   }, [vueltas, latidoDePasos]);
+
+  // La distancia del cardio en la tarjeta, en la unidad de la persona (29/10).
+  const unidadPeso = cargado?.perfil.unidad_peso;
+  useEffect(() => {
+    fijarExtras({ unidad: unidadDeDistancia(unidadPeso === 'lb' ? 'lb' : 'kg') });
+  }, [unidadPeso]);
 
   // MIENTRAS SE ENTRENA SE VUELVEN A PEDIR CADA MINUTO (8/10). Ahora el renglón
   // se queda a la vista durante la sesión, y en una hora de gimnasio nadie
