@@ -10,7 +10,7 @@ import { numeroDeRango, perdidaSinVer, planetaDeDia, rangoDeRacha, subidaDeRango
 import { hayPresagio } from '@nucleo/atmosfera';
 import { laCuentaYaNoExiste, mensajeDeAuth } from '@nucleo/errores';
 import { pedirInicio } from '@compartido/inicio';
-import { pedirSesionesDeHoy, precargaLista, tomarPrecarga } from '@compartido/inicioAlArrancar';
+import { pasosPrecargados, pedirSesionesDeHoy, precargaLista, tomarPrecarga } from '@compartido/inicioAlArrancar';
 import type { Log, Perfil, ResultadoRegistro } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { cierreVigente, cronoLindo, duracionLinda, transcurrido } from '@nucleo/sesiones';
@@ -254,7 +254,7 @@ export default function Inicio({
   // conectar, sin permiso, sin dato— y ahí el renglón no aparece: un "0 de
   // 10.000" se leería como que hoy no caminaste, y lo que pasó es que no
   // sabemos. La meta es una preferencia del aparato, la misma que el gráfico.
-  const [pasosHoy, setPasosHoy] = useState<number | null>(null);
+  const [pasosHoy, setPasosHoy] = useState<number | null>(() => pasosPrecargados() ?? null);
   const [metaPasos, setMetaPasos] = useState<number>(META_PASOS_POR_OMISION);
   const [latidoDePasos, setLatidoDePasos] = useState(0);
 

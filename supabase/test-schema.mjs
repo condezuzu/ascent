@@ -20000,8 +20000,9 @@ console.log('\n284. La entrada de la app: el aro del logo, el destello y el zoom
   chequear('lo que mide el aro es lo que se dibuja de a poco', Math.round(arco.largo), Math.round((LOGO.radio * (LOGO.hasta - LOGO.desde) * Math.PI) / 180));
   const lay = sinComentarios(deBug('movil', 'app', '_layout.tsx'));
   // Desde el 21/10 la app se monta cuando la entrada TERMINA, no cuando empieza el zoom (ver la 298).
-  chequear('en la raíz, nada de la app se dibuja antes de que la entrada termine', [
-    (lay.match(/\{sesion === '/g) ?? []).length,
+  // Desde el 28/10 el motor sí: arranca debajo del logo (probar-arranque). Es lo único afuera de `abierta`.
+  chequear('en la raíz, nada de la app se dibuja antes de que la entrada termine, salvo el motor', [
+    (lay.match(/\{sesion === '/g) ?? []).length === 1 && /\{sesion === 'con' && \(\s*<View style=\{estilos\.todo\}>\s*(\{\s*\}\s*)*<FondoRaiz \/>\s*(\{\s*\}\s*)*\{abierta && \(/.test(lay) ? 0 : 1,
     (lay.match(/\{abierta && (claveNueva && )?\(?sesion === '/g) ?? []).length >= 4,
     /const abierta = entrada === 'fin';/.test(lay),
     /\{entrada !== 'fin' && \(\s*<EntradaDeLaApp lista=\{sesion !== 'mirando' && \(sesion !== 'con' \|\| datosListos\)\}/.test(lay),
@@ -20280,7 +20281,8 @@ console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entra
   const llegada = IA.precargaLista();
   const tomada = await IA.tomarPrecarga('yo');
   chequear('pedida dos veces es un solo pedido; lista cuando llega; Inicio la toma una vez y la siguiente vuelve a pedir', [
-    pedidos.length, a === b, antesDeLlegar, llegada?.inicio.tipo, tomada?.deHoy.length, IA.tomarPrecarga('yo'), IA.precargaLista(),
+    // Desde el 28/10 la precarga también pide la rutina de la fila «Hoy»: se cuenta pantalla_inicio.
+    pedidos.filter((n) => n === 'pantalla_inicio').length, a === b, antesDeLlegar, llegada?.inicio.tipo, tomada?.deHoy.length, IA.tomarPrecarga('yo'), IA.precargaLista(),
   ], [1, true, null, 'listo', 1, null, null]);
   const lay = sinComentarios(deBug('movil', 'app', '_layout.tsx'));
   const ini = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
@@ -20781,6 +20783,18 @@ console.log('\n317. Las microanimaciones: lo que entra crece, los botones se hun
     usos('Inicio.tsx') >= 8, usos('Bloque.tsx') >= 5, usos('Descanso.tsx') >= 2, usos('Juntos.tsx') >= 1, usos('EnVivoDeInicio.tsx') >= 1, usos('TiraDelGrupo.tsx') >= 1, usos('FilaRutina.tsx') >= 1, usos('MiRutina.tsx') >= 3,
   ], [true, true, true, true, true, true, true, true]);
   chequear('y los botones principales se hunden al tocarlos', [toques('Inicio.tsx') >= 4, toques('Bloque.tsx') >= 5, toques('Descanso.tsx') >= 3], [true, true, true]);
+}
+console.log('\n318. La entrada, de nuevo: el motor y la fila de la rutina se cargan debajo del logo (28/10)');
+{
+  const lay318 = deBug('movil', 'app', '_layout.tsx');
+  chequear('la raíz pide el fondo con la racha precargada y lo suelta al terminar la entrada', [
+    /pedirFondo\(FONDO_DEL_ARRANQUE, \{ \.\.\.cuerpoDe\(d\.inicio\.datos\.perfil\.racha_actual\)/.test(lay318),
+    /if \(entrada === 'fin'\) soltarFondo\(FONDO_DEL_ARRANQUE\);/.test(lay318),
+  ], [true, true]);
+  chequear('la fila «Hoy» y los pasos nacen con lo precargado', [
+    /useState<DiaDeSemana\[\] \| null>\(\(\) => filaPrecargada\(\)\?\.dias \?\? null\)/.test(deBug('movil', 'src', 'FilaRutina.tsx')),
+    /useState<number \| null>\(\(\) => pasosPrecargados\(\) \?\? null\)/.test(deBug('movil', 'src', 'Inicio.tsx')),
+  ], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

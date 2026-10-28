@@ -10,6 +10,7 @@ import { pedirEntrenamiento } from './abrirEntrenamiento';
 import { supabase } from './supabase';
 import { C } from './colores';
 import Aparece from './Aparece';
+import { filaPrecargada } from '@compartido/inicioAlArrancar';
 
 /**
  * LO QUE TOCA HOY, EN INICIO (15/10). Un renglón —"HOY  Pecho, hombro y brazo"— que
@@ -17,8 +18,9 @@ import Aparece from './Aparece';
  * No sale mientras se entrena: ahí la rutina ya está proponiendo el ejercicio siguiente.
  */
 function FilaRutina() {
-  const [dias, setDias] = useState<DiaDeSemana[] | null>(null);
-  const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(new Map());
+  // Con lo que se pidió debajo del logo, si ya llegó: así nace dibujada (28/10).
+  const [dias, setDias] = useState<DiaDeSemana[] | null>(() => filaPrecargada()?.dias ?? null);
+  const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(() => filaPrecargada()?.catalogo ?? new Map());
 
   const cargar = useCallback(async () => {
     const yo = await miId(supabase);

@@ -38,6 +38,10 @@ import { SELLOS } from '../src/sello';
 import { reportarMedicionA } from '@compartido/medir';
 import { trasElAviso, trasMirar } from '@nucleo/veredicto';
 import { anotarEntradaVista } from '@compartido/entradaVista';
+import { pedirFondo, soltarFondo } from '../src/pedidoDeFondo';
+import { cuerpoDe } from '@nucleo/rangos';
+
+const FONDO_DEL_ARRANQUE = 'arranque';
 
 /**
  * LA RAÍZ DE LA APP, y desde el 22/9 también la raíz del router.
@@ -171,12 +175,23 @@ export default function Layout() {
     let vivo = true;
     void quienSoy(supabase)
       .then((q) => (q.estado === 'con' ? precargarInicio(supabase, q.uid) : null))
+      .then((d) => {
+        // EL PRIMER PEDIDO DEL FONDO, DESDE ACÁ (28/10): el motor no arranca hasta que alguien
+        // pide, y el pedido de Inicio llegaba con Inicio, después del logo. Con la racha precargada
+        // se pide lo mismo debajo del logo; Inicio lo pisa al montarse y este se suelta al final.
+        if (vivo && d?.inicio.tipo === 'listo' && d.inicio.datos.perfil) {
+          pedirFondo(FONDO_DEL_ARRANQUE, { ...cuerpoDe(d.inicio.datos.perfil.racha_actual), esquina: 'abajo-derecha', atmosfera: true });
+        }
+      })
       .catch(() => null)
       .then(() => vivo && setDatosListos(true));
     return () => {
       vivo = false;
     };
   }, [conSesionEnLaEntrada]);
+  useEffect(() => {
+    if (entrada === 'fin') soltarFondo(FONDO_DEL_ARRANQUE);
+  }, [entrada]);
 
   // AL SALIR NO HAY QUE DESAPILAR NADA: el stack entero se desmonta cuando la
   // sesión se va, así que el perfil que estuviera encima se va con él. La
@@ -335,7 +350,7 @@ export default function Layout() {
 
             Y el estado que se quería conservar no existe: sin sesión no hay
             adónde navegar. */}
-        {abierta && sesion === 'con' && (
+        {sesion === 'con' && (
         <View style={estilos.todo}>
           {/* EL MOTOR, DETRÁS DE TODO Y UNA SOLA VEZ. Vivía adentro de las
               pestañas, que era su lugar mientras no hubo nada apilado encima;
@@ -343,6 +358,10 @@ export default function Layout() {
               Acá está detrás del stack entero, así que lo comparten las
               pestañas y lo que se empuje arriba, sin volver a montarse. */}
           <FondoRaiz />
+          {/* EL MOTOR ARRANCA DEBAJO DEL LOGO (28/10): antes se montaba al terminar la entrada
+              y el planeta se armaba a la vista. Lo demás sigue esperando a `abierta`. */}
+          {abierta && (
+          <>
           {/* EL QUE MIRA SI LLEGASTE AL GIMNASIO (§13), fuera del stack y sin
               dibujar nada. Va acá por lo mismo que el motor: llegar al
               gimnasio no es asunto de una pantalla, y montado adentro de
@@ -377,6 +396,8 @@ export default function Layout() {
             <Stack.Screen name="index" initialParams={{}} />
           </Stack>
           </ThemeProvider>
+          </>
+          )}
         </View>
         )}
         {/* Sobre lo que haya debajo, que sigue montado: ver `ClaveNueva`. */}
