@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
@@ -45,7 +45,7 @@ import RachaConRotulo from './RachaConRotulo';
 import PasosInicio from './PasosInicio';
 import EnVivoDeInicio from './EnVivoDeInicio';
 import { diaDeLaSesion } from '@nucleo/subir';
-import { dejarDeEntrenar } from '@compartido/enVivo';
+import { dejarDeEntrenar, linkDelGrupo } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 import TimbreDePildora from './TimbreDePildora';
@@ -54,6 +54,8 @@ import FilaRutina from './FilaRutina';
 import DiaDeLaTira from './DiaDeLaTira';
 import EstrellaQueTitila from './EstrellaQueTitila';
 import Aparece from './Aparece';
+import BurbujasDelGrupo from './BurbujasDelGrupo';
+import { enlaceDeGrupo } from '@nucleo/enlace';
 import Tocable from './Tocable';
 import FondoOctogonal from './FondoOctogonal';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
@@ -553,6 +555,13 @@ export default function Inicio({
   // aparece hasta reiniciar la app.
   const medallas = useMisMedallas(supabase, cargado?.perfil.id, cargado?.perfil.sexo, vueltas);
 
+  // «INICIAR GRUPO» (28/10): empieza a entrenar y comparte el link del grupo, el mismo de Social.
+  async function iniciarGrupo() {
+    if (!sesion.estado.corriendo) await sesion.empezar();
+    const codigo = await linkDelGrupo(supabase);
+    if (codigo) void Share.share({ message: T.social.mensajeDeInvitacion(enlaceDeGrupo(codigo)) }).catch(() => undefined);
+  }
+
   if (estado.tipo === 'cargando') {
     return (
       <View style={estilos.centrado} testID="pantalla-inicio">
@@ -756,6 +765,9 @@ export default function Inicio({
           </Tocable>
         )}
       </View>
+      {/* EL MULTIJUGADOR, ARRIBA DE TODO (28/10): «Iniciar grupo» y quién entrena ahora.
+          Entrenando, lo reemplaza la tira del grupo (más abajo). */}
+      {!sesion.estado.corriendo && <BurbujasDelGrupo alIniciarGrupo={() => void iniciarGrupo()} />}
       {/* EL GLOBITO DEL DESCANSO (15/10), saliendo de la píldora de arriba a la
           derecha, la primera vez que hay uno andando. Se va con el descanso. */}
       {sesion.estado.corriendo && !!sesion.estado.descanso && anchoCabecera > 0 && anchoPildora > 0 && (

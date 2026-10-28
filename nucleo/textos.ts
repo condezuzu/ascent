@@ -295,6 +295,8 @@ const ES = {
     // siempre. Un mensaje que aparece todos los días deja de ser noticia.
     diaSolo: 'Estabas ahí. El día entró solo.',
     iniciarEntrenamiento: 'Iniciar entrenamiento',
+    // La primera burbuja del multijugador, arriba de Inicio (28/10).
+    iniciarGrupo: 'Iniciar grupo',
     // Redacción hacia adelante, nunca hacia la pérdida.
     ultimoTramo: (n: number) => `Último tramo para el ${n}.`,
     perdida: 'Se dispersó un poco de masa. Hoy se recupera.',

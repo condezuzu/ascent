@@ -153,6 +153,7 @@ export const EN: Textos = {
     minutosDeHoy: (n: number) => `${n} minutes today`,
     diaSolo: 'You were there. The day logged itself.',
     iniciarEntrenamiento: 'Start workout',
+    iniciarGrupo: 'Start group',
     ultimoTramo: (n: number) => `Last stretch to ${n}.`,
     perdida: 'Some mass scattered. You get it back today.',
     hoyDescansa: 'Rest day. The streak stays the same.',
