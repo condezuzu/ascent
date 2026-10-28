@@ -31,6 +31,13 @@ export const C = {
   hielo: '#8fc4f0',
   // El corazón dado, en la foto abierta: el número va en `fondo` encima, a más de 4,5:1.
   corazon: '#ef6f7f',
+  // La mecha de la invitación que llega (29/10): se quema de oscuro a claro, con la chispa en la punta.
+  mechaOscura: '#b8562a',
+  mecha: '#e8913a',
+  chispaClara: '#ffd38a',
+  chispa: '#fff3d6',
+  // El reflejo que cruza «Aceptar».
+  brillo: '#ffffff',
 };
 
 /**

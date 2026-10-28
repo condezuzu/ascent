@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { pasarLaEntrada, pasarLaEntradaNativa, limiteDeSonda, borrarCuentaDePrueba } from './utiles.mjs';
 import { T } from '../nucleo/textos.ts';
+import { TOQUE_REPETIDO_MS } from '../movil/src/toques.ts';
 
 // Ninguna sonda corre sin limite (ver utiles.mjs).
 limiteDeSonda(20);
@@ -244,17 +245,33 @@ async function correr(app) {
     return data?.[0]?.series ?? null;
   };
 
+  // DOS TOQUES EN EL +, Y QUE LA PANTALLA LOS CUENTE (29/10). La nativa no cuenta un
+  // segundo toque a menos de TOQUE_REPETIDO_MS (movil/src/toques.ts, 19/10). Con 900 ms
+  // de espera los clics quedaban entre 967 y 1015 ms, y a veces la pantalla contaba uno:
+  // «la base tiene 1, esperaba 2» sin que se perdiera nada. Se espera de más, y si la
+  // pantalla no suma se dice eso, que no es lo mismo que no llegar a la base.
+  const totalEnPantalla = async () => {
+    const patron = new RegExp(T.sesion.totalHoy(0).replace('0', '\\d+'));
+    return Number((await page.getByText(patron).first().innerText()).match(/\d+/)[0]);
+  };
+  const dosToquesEnElMas = async () => {
+    const mas = page.getByLabel('Sumar una serie').first();
+    const antes = await totalEnPantalla();
+    for (let i = 0; i < 2; i++) {
+      await mas.click();
+      await page.waitForTimeout(TOQUE_REPETIDO_MS + 400);
+    }
+    const despues = await totalEnPantalla();
+    if (despues !== antes + 2) throw new Error(`la pantalla contó ${despues - antes} de 2 toques en el +`);
+  };
+
   // SIN RED Y SIN TOCAR NADA DESPUÉS (15/9): la señal vuelve con el teléfono
   // en el banco. Las series tienen que subir solas; antes esperaban al
   // próximo toque, y una sesión sin actividad subida se cierra sin duración.
   await paso('dos series sin red; vuelve la red y suben SOLAS', async () => {
-    const mas = page.getByLabel('Sumar una serie').first();
     await page.waitForTimeout(2500);
     await ctx.setOffline(true);
-    for (let i = 0; i < 2; i++) {
-      await mas.click();
-      await page.waitForTimeout(900);
-    }
+    await dosToquesEnElMas();
     await page.waitForTimeout(1500);
     await ctx.setOffline(false);
     const t0 = Date.now();
@@ -312,12 +329,8 @@ async function correr(app) {
   // Y el cierre con lo último todavía en la cola: Terminar tiene que subirlo
   // antes de cerrar.
   await paso('dos más sin red; vuelve la red y se termina al instante', async () => {
-    const mas = page.getByLabel('Sumar una serie').first();
     await ctx.setOffline(true);
-    for (let i = 0; i < 2; i++) {
-      await mas.click();
-      await page.waitForTimeout(900);
-    }
+    await dosToquesEnElMas();
     await ctx.setOffline(false);
     await tocar('Terminar');
     await tocar('Terminar'); // la confirmación

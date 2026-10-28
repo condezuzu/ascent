@@ -76,6 +76,8 @@
 //      entrena) y Inicio entero sin desplazar a 390×844 (28/10), en la nativa.
 //  32. probar-burbuja-amigo — tocar a un amigo que entrena abre un globo: sin grupo, «Invitar a un
 //      grupo»; en grupo, cuántos son, las caras y «Unirse» (29/10). Cuatro cuentas, en la nativa.
+//  33. probar-invitacion-llega — la invitación que llega cae, se abre en píldora y quema una mecha
+//      de 10 s; al terminar se va y se cancela, sin mover Inicio. Aceptar mete en el grupo (29/10).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -129,6 +131,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'las vidas titilan', archivo: 'probar-titilan.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'las burbujas del multijugador', archivo: 'probar-burbujas.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la burbuja de un amigo', archivo: 'probar-burbuja-amigo.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la invitación que llega', archivo: 'probar-invitacion-llega.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {
