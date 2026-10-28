@@ -493,7 +493,8 @@ const ES = {
 
   // ---------------------------------------------------------------
   // VINCULAR CON MOSS (D27 de Moss, 26/10): la fila de Ajustes › Perfil y su hoja. Vincular es
-  // dar permiso para que cada app lea lo de la otra, y la hoja lo dice antes del botón.
+  // dar permiso para que cada app lea lo de la otra, y la hoja lo dice antes del botón. Son dos
+  // cuentas que se conectan, no una (28/10): pueden tener correos distintos.
   moss: {
     titulo: 'Moss',
     vincularConMoss: 'Vincular con Moss',
@@ -503,6 +504,7 @@ const ES = {
     queSeComparte: 'Qué se comparte',
     mossLee: 'Moss lee de Ascent tus sesiones, tus marcas y tu peso.',
     ascentLee: 'Ascent lee de Moss tu sueño, tu comida y tu peso.',
+    dosCuentas: 'Ascent y Moss son dos cuentas, aunque usen correos distintos. Vincular las conecta, no las une.',
     esPermiso: 'Vincular es dar permiso. Puedes desvincular cuando quieras, desde Ajustes.',
     vincular: 'Vincular',
     vinculando: 'Vinculando…',
@@ -836,8 +838,10 @@ const ES = {
 
     // ELIMINAR, como el botón: la cuenta tenía dos verbos, "se borra" acá y
     // "Eliminar para siempre" abajo (regla 4: un verbo por acción).
+    // Moss es otra cuenta (migración 98): «todo» es todo lo de Ascent, y Moss no se toca.
     bajaQueSeElimina: (dias: number) =>
-      `Se elimina todo: ${dias} días de racha, fotos, pesos, marcas y amigos. No se recupera.`,
+      `De Ascent se elimina todo: ${dias} días de racha, fotos, pesos, marcas, amigos. No se recupera.`,
+    bajaMoss: 'Si vinculaste Moss, Moss sigue intacta y deja de recibir tus datos.',
     // Partido en dos porque en el medio va el nombre en negrita.
     bajaEscribe: 'Si quieres seguir, escribe',
     bajaEscribiFin: 'aquí abajo.',

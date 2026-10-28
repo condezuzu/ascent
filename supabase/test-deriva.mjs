@@ -109,7 +109,15 @@ async function nueva() {
     create schema if not exists auth;
     create table auth.users (
       id uuid primary key default gen_random_uuid(),
-      raw_user_meta_data jsonb default '{}'::jsonb
+      raw_user_meta_data jsonb default '{}'::jsonb,
+      email text,
+      encrypted_password text
+    );
+    -- Las formas de entrar de cada usuario: la baja de Ascent con Moss saca la de correo (migración 98).
+    create table auth.identities (
+      id uuid primary key default gen_random_uuid(),
+      user_id uuid not null references auth.users (id) on delete cascade,
+      provider text not null
     );
     create function auth.uid() returns uuid language sql stable as $fn$
       select nullif(current_setting('test.uid', true), '')::uuid;

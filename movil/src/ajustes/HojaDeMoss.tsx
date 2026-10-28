@@ -97,6 +97,7 @@ function HojaDeMoss({ visible, alCerrar, alVincular }: Props) {
       <Text style={estilos.subtitulo}>{T.moss.queSeComparte}</Text>
       <Text style={estilos.comparte}>{T.moss.mossLee}</Text>
       <Text style={estilos.comparte}>{T.moss.ascentLee}</Text>
+      <Text style={estilos.nota}>{T.moss.dosCuentas}</Text>
       <Text style={estilos.nota}>{T.moss.esPermiso}</Text>
 
       {paso === 'vincular' && (

@@ -31,7 +31,8 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
     await limpiarAlSalir();
     olvidarPendientes();
     borrarTema(); // y el color de esta cuenta, que se pinta antes de todo
-    await supabase.auth.signOut();
+    // Solo esta sesión: con el mismo usuario de Auth, la global cerraba también la de Moss.
+    await supabase.auth.signOut({ scope: 'local' });
     router.push('/login');
     router.refresh();
   }
@@ -47,6 +48,9 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
           <h3 style={{ marginBottom: 8 }}>{T.ajustes.eliminarCuenta}</h3>
           <p style={{ fontSize: 14, lineHeight: 1.5, marginBottom: 12 }}>
             {T.ajustes.bajaQueSeElimina(perfil.racha_actual)}
+          </p>
+          <p className="nota-privada" style={{ marginTop: 0, marginBottom: 12 }}>
+            {T.ajustes.bajaMoss}
           </p>
           <p className="nota-privada" style={{ marginTop: 0, marginBottom: 8 }}>
             {T.ajustes.bajaEscribe} <strong>{perfil.username}</strong> {T.ajustes.bajaEscribiFin}

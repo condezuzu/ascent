@@ -279,6 +279,7 @@ export const EN: Textos = {
     queSeComparte: 'What’s shared',
     mossLee: 'Moss reads your sessions, your records and your weight from Ascent.',
     ascentLee: 'Ascent reads your sleep, your food and your weight from Moss.',
+    dosCuentas: 'Ascent and Moss are two accounts, even with different emails. Linking connects them, it doesn’t merge them.',
     esPermiso: 'Linking is giving permission. You can unlink anytime, in Settings.',
     vincular: 'Link',
     vinculando: 'Linking…',
@@ -469,7 +470,8 @@ export const EN: Textos = {
     nombreTomado: 'That name is taken.',
     tuPerfil: 'Your photo, your shared photos and your friends',
     bajaQueSeElimina: (dias: number) =>
-      `Everything gets deleted: ${dias} days of streak, photos, weights, records and friends. It can’t be recovered.`,
+      `Everything in Ascent gets deleted: ${dias} days of streak, photos, weights, records and friends. It can’t be recovered.`,
+    bajaMoss: 'If you linked Moss, Moss stays intact and stops receiving your data.',
     bajaEscribe: 'If you want to go ahead, type',
     bajaEscribiFin: 'below.',
     bajaEliminando: 'Deleting…',

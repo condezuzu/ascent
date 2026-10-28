@@ -10,7 +10,47 @@ crea el panel y su definición no puede ir a un repo público. Está anotado en
 `SOLO_EN_PRODUCCION`, en `supabase/verificar-conexion.mjs`. Si el correo de
 sugerencias deja de llegar, empezá por mirarlo en el panel.
 
+## Moss: dos cuentas que se vinculan (rama `moss-vinculo`, la 1.2.0)
+
+**Cuando la 1.2.0 esté en la tienda: juntar `moss-vinculo` en `main`, para que quede
+una sola rama.**
+
+**Decisión del 28/10: Moss y Ascent tienen cuentas separadas**, cada una con su
+información, y se pueden vincular aunque usen correos o Apple ID distintos. Vincular
+es conectar dos cuentas para que compartan datos, no fusionarlas. Borrar la cuenta de
+Moss borra todo lo de Moss y corta el vínculo; Ascent sigue intacta y solo deja de
+recibir datos de Moss. Y al revés igual. **El principio: las dos funcionan perfectamente
+solas; ninguna necesita a la otra para nada básico. Vincularlas es un plus.**
+
+Lo que eso pide de este lado, porque las dos comparten `auth.users`:
+
+- **El mismo usuario de Auth puede ser de las dos**: si el Apple ID de Moss tiene el
+  correo de la cuenta de Ascent, Supabase une las identidades. Desde la **migración 98**,
+  `eliminar_cuenta()` corta el vínculo (`moss.desvincular()`, si existe) y, si hay una
+  fila en `moss.perfiles`, no borra el usuario de Auth: borra lo de Ascent, deja el
+  perfil vacío del alta y le saca la identidad de correo y la contraseña. Sin Moss,
+  borra el usuario como siempre.
+- **Toda alta tiene perfil de Ascent** (`on_auth_user_created`), también las de Moss:
+  sin nombre de usuario no aparece en `usuarios_publicos`, el ranking ni «entrenando
+  ahora», y no ocupa ningún nombre. Si esa persona entra después a Ascent, elige nombre
+  como cualquier cuenta nueva.
+- **Ninguna salida de Ascent es global**: todos los `signOut` son `scope: 'local'`.
+  El global revocaba también la sesión de Moss del mismo usuario. Por eso borrar la
+  cuenta ya no cierra los otros aparatos de Ascent (sin Moss no hace falta: el usuario
+  ya no existe; con Moss, esos aparatos quedan en el perfil vacío, que pide nombre).
+- La fila «Moss» de Ajustes, `moss.estado_del_vinculo()` y el llavero son opcionales:
+  sin el esquema expuesto, con error o sin el módulo nativo, la fila queda en «sin
+  vincular» y nada más se entera.
+- Pendiente del lado de Moss (su repo): `moss-borrar-cuenta` borra el usuario de Auth
+  con `auth.admin.deleteUser`, y con el mismo correo eso se lleva el perfil de Ascent
+  en cascada. Necesita la regla espejo de la 98.
+
 ## Migraciones
+
+**Aplicadas hasta la 97** (96 y 97, el 26-27/10). **La 98 está escrita y sin
+aplicar** (28/10): borrar la cuenta de Ascent borra solo lo de Ascent (ver «Moss»,
+arriba). No pide versión ni cambia nada para quien no tiene Moss; va antes de la OTA
+con el aviso nuevo de borrar.
 
 **Aplicadas hasta la 89** (15/10/2026, de noche: `version_del_esquema()` contestó
 89 y `test:conexion` dio 81 sin fallas). La 88 son los grupos (multijugador) y la

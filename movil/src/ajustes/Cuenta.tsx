@@ -85,7 +85,8 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
     // La cuenta ya no existe: se borra sin mirar si el cierre contestó.
     await limpiarAlSalir();
     await plataforma.ubicacion.dejarDeVigilar();
-    await supabase.auth.signOut();
+    // Solo esta sesión: con el mismo usuario de Auth, la global cerraba también la de Moss.
+    await supabase.auth.signOut({ scope: 'local' });
     alSalir();
   });
 
@@ -118,6 +119,7 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
         <View style={estilos.caja}>
           <Text style={estilos.titulo}>{T.ajustes.eliminarCuenta}</Text>
           <Text style={estilos.que}>{T.ajustes.bajaQueSeElimina(perfil.racha_actual)}</Text>
+          <Text style={estilos.nota}>{T.ajustes.bajaMoss}</Text>
           <Text style={estilos.nota}>
             {T.ajustes.bajaEscribe} <Text style={estilos.fuerte}>{perfil.username}</Text> {T.ajustes.bajaEscribiFin}
           </Text>
