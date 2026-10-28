@@ -50,6 +50,8 @@ try {
   await page.locator('input[type=password]').first().fill(clave);
   await page.getByText('Entrar', { exact: true }).last().click({ timeout: 60000 });
   await page.getByText('Iniciar entrenamiento', { exact: true }).first().waitFor({ timeout: 120000 });
+  // Desde el 28/10 las burbujas bajan Inicio y el globo de «Novedad» queda sobre «Anotar peso».
+  await page.getByText('De acuerdo', { exact: true }).last().click({ timeout: 8000 }).catch(() => {});
 
   await page.getByText('Anotar peso', { exact: true }).first().click({ timeout: 30000 });
   await page.getByTestId('anotar-peso').first().waitFor({ timeout: 30000 });

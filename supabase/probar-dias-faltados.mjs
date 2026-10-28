@@ -1,10 +1,9 @@
-// LOS DÍAS FALTADOS DEL AÑO EN STATS (26/10, a pedido): con las vidas al máximo, donde estaba
-// el ✓ de «Vidas al máximo», va cuántos días de este año la rutina decía de entrenar y no se fue.
+// LOS DÍAS FALTADOS EN STATS (26/10; 28/10: siempre a la vista, desde el alta). La cuarta celda:
+// los días que tocaba entrenar y no se fue, desde que se creó la cuenta.
 //
-// En la vista web de la nativa (:8090), con una cuenta descartable: veinticinco días seguidos
-// hasta ayer (las tres vidas) y una rutina guardada hoy. La rutina recién empieza a contar desde
-// hoy, así que la celda dice 0, y no hay ningún ✓. Necesita la migración 97: sin ella, avisa y
-// no prueba nada.
+// En la vista web de la nativa (:8090), con una cuenta descartable creada hoy: una rutina guardada
+// hoy y días entrenados de antes. El alta es hoy, así que no hay nada que contar: la celda dice 0,
+// sin vidas al máximo y sin ningún ✓. Necesita la migración 97: sin ella, avisa y no prueba nada.
 //
 //   node --env-file=.env.local supabase/probar-dias-faltados.mjs
 import { chromium } from 'playwright';
@@ -47,7 +46,7 @@ if (eAlta) {
 const uid = (await s.auth.getUser()).data.user.id;
 await s.from('profiles').update({ username: `df_${sello.slice(-6)}` }).eq('id', uid);
 const dia = (n) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Montevideo' }).format(new Date(Date.now() - n * 86400000));
-for (let n = 25; n >= 1; n--) await s.from('logs').insert({ user_id: uid, fecha: dia(n) });
+for (let n = 3; n >= 1; n--) await s.from('logs').insert({ user_id: uid, fecha: dia(n) });
 const dias = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 3 }] }));
 const { error: eRutina } = await s.rpc('guardar_rutina', { p_id: null, p_nombre: 'Prueba', p_dias: dias });
 if (eRutina) console.log('  --   no se guardó la rutina: ' + eRutina.message);
@@ -69,7 +68,7 @@ try {
   await page.screenshot({ path: join(SALIDA, 'stats.png'), fullPage: true });
   const rotulo = page.getByText(TX.stats.diasFaltados, { exact: true }).filter({ visible: true });
   const valor = (await rotulo.count()) ? await rotulo.first().locator('xpath=preceding-sibling::*[1]').innerText() : null;
-  chequear('con las vidas al máximo, la cuarta celda son los días faltados (0: la rutina cuenta desde hoy) y no hay ✓', [valor, await page.getByText('✓', { exact: true }).filter({ visible: true }).count()], ['0', 0]);
+  chequear('la cuarta celda son los días faltados aunque las vidas no estén al máximo (0: la cuenta es de hoy), y no hay ✓', [valor, await page.getByText('✓', { exact: true }).filter({ visible: true }).count()], ['0', 0]);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));

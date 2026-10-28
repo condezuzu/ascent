@@ -12,9 +12,13 @@ se rediscute; lo marcado PENDIENTE se pregunta antes de asumir.
   antes de dar algo por terminado.
 - **Nunca `npm run build` con el dev server prendido**: comparten `.next` y se
   corrompe.
-- Las migraciones SQL **las aplica el humano** en el SQL Editor de Supabase.
-  Desde acá solo hay anon key. Flujo: escribir la migración → probarla con
-  `test:db` contra PGlite → avisar.
+- Las migraciones SQL **las aplica Claude con la CLI de Supabase** (desde el
+  28/10; antes las pegaba el humano en el SQL Editor). Flujo: escribir
+  `supabase/migracion-NN-nombre.sql` → probarla con `test:db` contra PGlite →
+  `node supabase/migraciones-cli.mjs db push --linked --dry-run` (tiene que
+  listar solo la nueva) → lo mismo sin `--dry-run` → `test:conexion`. El script
+  copia las migraciones a `supabase/migrations/` (generada, en .gitignore),
+  que es lo que lee la CLI. Nunca la llave service_role.
 - **Migración con orden invertido** (primero desplegar, después migrar): el
   deploy se comprueba con `npm run verificar:deploy`, que le pregunta a
   producción qué commit sirve (`/version`) y lo compara con `HEAD`.
@@ -94,6 +98,7 @@ seguro.
 | `npm run capturas` | levanta la app, recorre las pantallas y deja PNG en `capturas/` |
 | `npm run capturas:bienvenida` | fotos de la animación de entrada en segundos fijos (con motor y sin motor) |
 | `npm run test:real` | contra Supabase real, con cuentas descartables: cuatro semanas, privacidad, y web + nativa con el mismo guion (necesita :3020 y :8090 prendidos; `-- api` sin navegador) |
+| `node supabase/migraciones-cli.mjs <args de la CLI>` | la CLI de Supabase con las migraciones en su carpeta: `migration list --linked`, `db push --linked` |
 | `npm run verificar:deploy` | ¿producción ya sirve este commit? Le pregunta el commit a `/version`; con `-- esperar` insiste 10 min |
 | `npm run build` | build de producción — **dev server apagado** |
 

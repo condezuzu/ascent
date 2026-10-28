@@ -180,6 +180,18 @@ try {
         await pb.getByTestId('pedido-de-union-aceptar').first().click();
       }
       await esperar('A pasa a verlo en "Entrenando contigo"', pa.getByTestId('juntos-en-vivo').first());
+      // ARRIBA DE TODO, Y CADA CARA CON EL COLOR DE SU RANGO (28/10).
+      {
+        const { paletaDe } = await import('../nucleo/paletas.ts');
+        const { numeroDeRango } = await import('../nucleo/rangos.ts');
+        const rachaB = (await B.s.from('profiles').select('racha_actual').eq('id', B.id).single()).data?.racha_actual ?? 0;
+        const hex = paletaDe(numeroDeRango(rachaB), null).principal;
+        const rgb = `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`;
+        const tarjeta = await pa.getByTestId('juntos').first().boundingBox();
+        const fila = await pa.getByTestId('ranking-fila').first().boundingBox().catch(() => null);
+        const borde = await pa.getByTestId('juntos-aro').first().evaluate((e) => getComputedStyle(e).borderTopColor);
+        chequear('«Entrenando contigo» va arriba del ranking, y el aro de B tiene el color de su rango', [!!tarjeta && (!fila || tarjeta.y < fila.y), borde], [true, rgb]);
+      }
 
       // B elige ejercicio y cuenta una serie.
       await pb.getByText('Cualquier cosa', { exact: true }).last().click({ timeout: 30000 });

@@ -46,6 +46,7 @@ import { CADA_CUANTO_MS, unionCon } from '@nucleo/enVivo';
 import { disponible } from '@nucleo/esquema';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { useArriba } from './zonaSegura';
+import Tocable from './Tocable';
 
 /**
  * RANKING — tanda 4.
@@ -302,6 +303,16 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
         )}
 
 
+        {/* ENTRENANDO CONTIGO, ARRIBA DE TODO (28/10, aprobado en la galería): es lo que está
+            pasando. Cada cara con el color de su rango. Nunca dice dónde. */}
+        <Juntos
+          uniones={juntos.uniones}
+          recibidoEn={juntos.recibidoEn}
+          recargar={juntos.recargar}
+          entrenando={yoEntreno}
+          rachas={new Map(amigos.map((a) => [a.id, a.racha_actual]))}
+        />
+
         {!cargado && <ActivityIndicator color={C.sub} style={{ marginTop: 24 }} />}
 
         {noCargo && (
@@ -385,9 +396,6 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           )
         )}
 
-        {/* ENTRENANDO AHORA (en vivo): arriba del historial, porque es lo que
-            está pasando. Solo dice que están entrenando, nunca dónde. */}
-        <Juntos uniones={juntos.uniones} recibidoEn={juntos.recibidoEn} recargar={juntos.recargar} entrenando={yoEntreno} />
 
         {entrenando.length > 0 && (
           <View style={estilos.seccion}>
@@ -408,7 +416,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                     <Text style={[estilos.nombre, { fontSize: 14 }]}>{T.social.estaEntrenando(e.username)}</Text>
                   </Pressable>
                   {conJuntos && !union && (
-                    <Pressable
+                    <Tocable
                       testID="unirse"
                       style={estilos.unirse}
                       hitSlop={8}
@@ -416,7 +424,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                       accessibilityRole="button"
                     >
                       <Text style={estilos.unirseTexto}>{T.social.unirse}</Text>
-                    </Pressable>
+                    </Tocable>
                   )}
                   {union?.estado === 'pendiente' && union.laPediYo && <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>}
                   {/* Renglón propio y a todo el ancho: al lado del nombre no entra. */}

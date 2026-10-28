@@ -35,3 +35,7 @@ movil/.claude/
 
 supabase/.ataque-sin-borrar
 capturas-nativa/
+
+# La CLI de Supabase (28/10): su estado local y la carpeta que arma supabase/migraciones-cli.mjs.
+supabase/.temp/
+supabase/migrations/

@@ -33,6 +33,9 @@ if (eAlta) {
 }
 const uid = (await s.auth.getUser()).data.user.id;
 await s.from('profiles').update({ username: `arr_${sello.slice(-6)}` }).eq('id', uid);
+// Una rutina guardada: la fila «Hoy» de Inicio tiene que nacer con ella (28/10).
+const dia = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 3 }] };
+await s.rpc('guardar_rutina', { p_id: null, p_nombre: 'Prueba', p_dias: Array.from({ length: 7 }, () => dia) });
 
 console.log('El arranque con sesión: la entrada primero, Inicio después y con sus datos, una sola carga');
 const nav = await chromium.launch();
@@ -56,7 +59,9 @@ try {
       const opacidad = capa ? Number(getComputedStyle(capa).opacity) : 0;
       const inicio = !!document.querySelector('[data-testid="pantalla-inicio"]');
       const rueda = !!document.querySelector('[role="progressbar"]');
-      linea.push({ t: Math.round(performance.now()), logo: !!capa, opacidad, inicio, rueda });
+      const motor = !!document.querySelector('canvas');
+      const fila = !!document.querySelector('[data-testid="inicio-rutina"]');
+      linea.push({ t: Math.round(performance.now()), logo: !!capa, opacidad, inicio, rueda, motor, fila });
       if (performance.now() - t0 < 9000) requestAnimationFrame(mirar);
     };
     requestAnimationFrame(mirar);
@@ -83,8 +88,16 @@ try {
   );
   chequear('Inicio no se monta ni se pinta mientras está el logo (ni durante el zoom)', [inicioConLogo.length, !!montado && !!finLogo && montado.t >= finLogo.t], [0, true]);
   chequear('los datos de Inicio se piden una sola vez', pedidos.length, 1);
-  chequear('se piden mientras corre la entrada, y ya llegaron cuando empieza el zoom', pedidos.length === 1 && !!zoom && pedidos[0].desde >= conLogo[0].t && pedidos[0].hasta <= zoom.t, true);
+  // Desde el 28/10 el motor arranca debajo del logo y el primer cuadro del logo se mide unos ms
+  // después: el pedido puede salir antes de ese cuadro, y sigue siendo durante la entrada.
+  chequear('se piden mientras corre la entrada, y ya llegaron cuando empieza el zoom', pedidos.length === 1 && !!zoom && pedidos[0].desde < zoom.t && pedidos[0].hasta <= zoom.t, true);
   chequear('al aparecer, Inicio ya tiene sus datos: sin ruedita y sin volver a cargar', [ruedaConInicio.length, idas], [0, 0]);
+  // LO QUE SE VEÍA CARGAR DESPUÉS (28/10): el motor arranca debajo del logo y la fila de la rutina
+  // está en el primer cuadro de Inicio.
+  console.log(`  --   motor desde ${linea.find((m) => m.motor)?.t ?? '?'} ms; fila de la rutina desde ${linea.find((m) => m.fila)?.t ?? '?'} ms`);
+  chequear('el motor ya está dibujando mientras está el logo, y la fila «Hoy» de la rutina llega con Inicio', [
+    linea.some((m) => m.logo && m.motor), !!montado?.fila,
+  ], [true, true]);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));

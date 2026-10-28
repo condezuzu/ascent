@@ -295,6 +295,8 @@ const ES = {
     // siempre. Un mensaje que aparece todos los días deja de ser noticia.
     diaSolo: 'Estabas ahí. El día entró solo.',
     iniciarEntrenamiento: 'Iniciar entrenamiento',
+    // La primera burbuja del multijugador, arriba de Inicio (28/10).
+    iniciarGrupo: 'Iniciar grupo',
     // Redacción hacia adelante, nunca hacia la pérdida.
     ultimoTramo: (n: number) => `Último tramo para el ${n}.`,
     perdida: 'Se dispersó un poco de masa. Hoy se recupera.',
@@ -963,12 +965,8 @@ const ES = {
     ultimos30: 'Últimos 30 días',
     esteMes: 'Este mes',
     esteAno: 'Este año',
-    // La cuarta celda: la cuenta regresiva de la próxima vida (5.3).
-    proximaVidaDias: 'Días · próxima vida',
-    proximaVidaDia: 'Día · próxima vida',
-    // Con las vidas al máximo, en lugar del ✓ (26/10): los días que la rutina decía de entrenar y no se fue.
-    diasFaltados: 'Días faltados · año',
-    diaFaltado: 'Día faltado · año',
+    // La cuarta celda (28/10): los días que tocaba entrenar y no se fue, desde el alta.
+    diasFaltados: 'Días faltados',
     elAno: 'El año',
     sesiones: 'Sesiones',
     promedio: 'Promedio',

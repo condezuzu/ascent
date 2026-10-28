@@ -16,6 +16,7 @@ import { ponerDesenfoque } from './desenfoqueDelFondo';
 import { eventos } from '@compartido/eventos';
 import { SOCIAL_CAMBIO } from '@compartido/ranking';
 import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
+import IconoDePestana from './IconoDePestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
 import AvisoRutina from './AvisoRutina';
@@ -583,6 +584,15 @@ export default function Pestanas({
               // encendido— y sin esto se leería dos veces en voz alta.
               accessibilityLabel={avisa ? `${rotuloDe(p)} — ${T.social.tePidieron(solicitudes)}` : rotuloDe(p)}
             >
+              {/* EL ICONO ARRIBA Y LA PALABRA CHICA ABAJO (28/10). El icono se enciende igual
+                  que el rótulo: uno apagado y otro encendido encima, con la luz de la tira. */}
+              <View style={estilos.icono}>
+                <IconoDePestana cual={p} color="#4a5163" />
+                <Animated.View style={[StyleSheet.absoluteFill, { opacity: luces[i] }]} pointerEvents="none">
+                  <IconoDePestana cual={p} color="#e8ecf6" />
+                </Animated.View>
+                {avisa && <View style={estilos.punto} />}
+              </View>
               <View>
                 <Text style={estilos.texto}>{rotuloDe(p)}</Text>
                 {/* LA LUZ: el mismo rótulo, encendido, encima del apagado. Lo
@@ -596,7 +606,6 @@ export default function Pestanas({
                 >
                   {rotuloDe(p)}
                 </Animated.Text>
-                {avisa && <View style={estilos.punto} />}
               </View>
             </Pressable>
           );
@@ -629,19 +638,20 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#1d2230',
-    paddingBottom: 22,
-    paddingTop: 10,
+    paddingBottom: 20,
+    paddingTop: 6,
     backgroundColor: '#05060a',
   },
-  boton: { flex: 1, alignItems: 'center', paddingVertical: 6, minHeight: 44, justifyContent: 'center' },
-  texto: { color: '#4a5163', fontSize: 12, letterSpacing: 0.5 },
+  boton: { flex: 1, alignItems: 'center', paddingVertical: 4, minHeight: 44, justifyContent: 'center', gap: 3 },
+  icono: { width: 22, height: 22 },
+  texto: { color: '#4a5163', fontSize: 10, letterSpacing: 0.3 },
   // Encima del rótulo apagado, calzado: mismo texto, mismo tamaño, otro color.
   luz: { position: 'absolute', left: 0, top: 0, color: '#e8ecf6' },
-  // El puntito de aviso, arriba a la derecha del rótulo de la pestaña.
+  // El puntito de aviso, arriba a la derecha del icono de la pestaña.
   punto: {
     position: 'absolute',
-    top: -3,
-    right: -9,
+    top: -2,
+    right: -5,
     width: 7,
     height: 7,
     borderRadius: 999,
