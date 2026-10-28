@@ -20466,7 +20466,8 @@ console.log('\n304. La revisión del 21/10: nada escrito a mano en la nativa, y 
     IM304.celdaDeLaProximaVida({ quedan: 3, total: 3, falta: null }),
     IM304.celdaDeLaProximaVida({ quedan: 1, total: 3, falta: null }),
   ], [20, 5, 'llenas', null]);
-  chequear('y Stats la usa', /const c = celdaDeLaProximaVida\(vidas\);/.test(sinCom304(deBug('movil', 'src', 'Stats.tsx'))), true);
+  // Desde el 28/10 la cuarta celda de Stats son los días faltados; la cuenta regresiva la dice la nota.
+  chequear('y Stats ya no la usa', /celdaDeLaProximaVida/.test(sinCom304(deBug('movil', 'src', 'Stats.tsx'))), false);
 }
 console.log('\n305. La migración 95: la distancia del cardio y las repeticiones objetivo de la rutina (21/10)');
 {
@@ -20726,14 +20727,16 @@ console.log('\n316. Los días faltados del año: la rutina de cada día, con fec
 {
   const F316 = await import('../nucleo/faltados.ts');
   const lmv = [1, 3, 5];
-  chequear('cuentan los días de entrenar sin día registrado, de este año y hasta ayer; los días sin rutina no', [
-    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], new Set(), '2026-01-15'),
-    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], new Set(['2026-01-05', '2026-01-09']), '2026-01-15'),
-    F316.diasFaltados([{ desde: '2026-01-08', entrena: null }, { desde: '2026-01-01', entrena: lmv }], new Set(['2026-01-05']), '2026-01-15'),
-    F316.diasFaltados([{ desde: '2025-12-01', entrena: [0, 1, 2, 3, 4, 5, 6] }], new Set(), '2026-01-03'),
-    F316.diasFaltados([{ desde: '2026-01-10', entrena: lmv }], new Set(), '2026-01-15'),
-    F316.diasFaltados([], new Set(), '2026-10-26'),
-  ], [6, 4, 2, 2, 2, 0]);
+  // Desde el 28/10: desde el alta (no desde el 1 de enero) y, sin rutina, los descansos de Ajustes.
+  const finde = [{ desde: '2025-01-01', dias: [0, 6] }];
+  chequear('cuentan los días que tocaba entrenar sin día registrado, desde el alta y hasta ayer; sin rutina, manda Ajustes', [
+    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], [], new Set(), '2026-01-01', '2026-01-15'),
+    F316.diasFaltados([{ desde: '2026-01-01', entrena: lmv }], [], new Set(['2026-01-05', '2026-01-09']), '2026-01-01', '2026-01-15'),
+    F316.diasFaltados([{ desde: '2026-01-08', entrena: null }, { desde: '2026-01-01', entrena: lmv }], [], new Set(['2026-01-05']), '2026-01-01', '2026-01-15'),
+    F316.diasFaltados([{ desde: '2025-12-01', entrena: [0, 1, 2, 3, 4, 5, 6] }], [], new Set(), '2025-12-30', '2026-01-03'),
+    F316.diasFaltados([{ desde: '2026-01-10', entrena: lmv }], finde, new Set(), '2026-01-01', '2026-01-15'),
+    F316.diasFaltados([], [], new Set(), '2026-10-26', '2026-10-26'),
+  ], [6, 4, 9, 4, 9, 0]);
 
   const u316 = await nuevoUsuario();
   await comoUsuario(u316);
@@ -20764,8 +20767,8 @@ console.log('\n316. Los días faltados del año: la rutina de cada día, con fec
 
   await db.query('delete from auth.users where id = $1', [u316b]);
   chequear('dar de baja la cuenta no tropieza con el trigger y no deja renglones', (await db.query('select count(*)::int n from rutina_semanas where user_id = $1', [u316b])).rows[0].n, 0);
-  chequear('Stats la pone donde estaba el ✓, con las vidas al máximo', [
-    /if \(c === 'llenas'\) return faltados === null \? \[\] : \[\{ v: String\(faltados\)/.test(deBug('movil', 'src', 'Stats.tsx')),
+  chequear('Stats la muestra siempre, como cuarta celda, contando desde el alta de la cuenta', [
+    /\.\.\.celdaFaltados\(datos\.faltados\)/.test(deBug('movil', 'src', 'Stats.tsx')) && /aISO\(new Date\(alta\)\), hoyISO\(\)\)/.test(deBug('movil', 'src', 'Stats.tsx')),
     /'✓'/.test(deBug('movil', 'src', 'Stats.tsx')),
     // Sin la 97 no se pide la tabla: era un 404 en cada visita a Stats (lo vio test:real).
     /disponible\('diasFaltados', await versionDelEsquema\(supabase\)\)\s*\? await supabase\.from\('rutina_semanas'\)/.test(deBug('movil', 'src', 'Stats.tsx')),

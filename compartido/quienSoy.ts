@@ -19,13 +19,14 @@ import { sesionSegun } from '@nucleo/veredicto';
  * `auth.getSession()`; lo cuida la sección 187 de `test:db`. La regla que
  * separa 'sin' de 'no-se' está en `nucleo/veredicto` (`sesionSegun`).
  */
-export type QuienSoy = { estado: 'con'; uid: string } | { estado: 'sin' } | { estado: 'no-se' };
+/** `alta`: cuándo se creó la cuenta (28/10, para los días faltados de Stats). */
+export type QuienSoy = { estado: 'con'; uid: string; alta?: string } | { estado: 'sin' } | { estado: 'no-se' };
 
 export async function quienSoy(supabase: Cliente): Promise<QuienSoy> {
   try {
     const { data, error } = await supabase.auth.getSession();
     const uid = data.session?.user?.id;
-    if (uid) return { estado: 'con', uid };
+    if (uid) return { estado: 'con', uid, alta: data.session?.user?.created_at };
     return { estado: sesionSegun(false, error) === 'sin' ? 'sin' : 'no-se' };
   } catch {
     return { estado: 'no-se' };

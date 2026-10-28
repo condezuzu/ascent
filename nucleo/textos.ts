@@ -922,12 +922,8 @@ const ES = {
     ultimos30: 'Últimos 30 días',
     esteMes: 'Este mes',
     esteAno: 'Este año',
-    // La cuarta celda: la cuenta regresiva de la próxima vida (5.3).
-    proximaVidaDias: 'Días · próxima vida',
-    proximaVidaDia: 'Día · próxima vida',
-    // Con las vidas al máximo, en lugar del ✓ (26/10): los días que la rutina decía de entrenar y no se fue.
-    diasFaltados: 'Días faltados · año',
-    diaFaltado: 'Día faltado · año',
+    // La cuarta celda (28/10): los días que tocaba entrenar y no se fue, desde el alta.
+    diasFaltados: 'Días faltados',
     elAno: 'El año',
     sesiones: 'Sesiones',
     promedio: 'Promedio',
