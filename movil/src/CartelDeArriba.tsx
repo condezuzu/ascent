@@ -12,6 +12,7 @@ import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { alLlegarAvisoRemoto } from './plataforma/avisos';
 import Avatar from './Avatar';
+import InvitacionQueLlega from './InvitacionQueLlega';
 import { fijarCartel } from './cartelVisible';
 import { C } from './colores';
 
@@ -61,24 +62,31 @@ export default function CartelDeArriba() {
     };
   }, [mirar]);
 
-  const irse = useCallback(async () => {
-    if (!cartel) return;
-    const { uid, novedad } = cartel;
-    Animated.timing(bajada, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-      setCartel(null);
-      mostrando.current = false;
-      fijarCartel(null);
-    });
-    const crudo = await plataforma.almacenamiento.leer(CLAVE_NOVEDADES).catch(() => null);
-    await plataforma.almacenamiento.guardar(CLAVE_NOVEDADES, conVista(crudo, uid, novedad)).catch(() => undefined);
-  }, [cartel, bajada]);
+  const soltar = useCallback(() => {
+    setCartel(null);
+    mostrando.current = false;
+    fijarCartel(null);
+  }, []);
 
+  const irse = useCallback(
+    async (animar = true) => {
+      if (!cartel) return;
+      const { uid, novedad } = cartel;
+      if (animar) Animated.timing(bajada, { toValue: 0, duration: 220, useNativeDriver: true }).start(soltar);
+      const crudo = await plataforma.almacenamiento.leer(CLAVE_NOVEDADES).catch(() => null);
+      await plataforma.almacenamiento.guardar(CLAVE_NOVEDADES, conVista(crudo, uid, novedad)).catch(() => undefined);
+    },
+    [cartel, bajada, soltar],
+  );
+
+  const esInvitacion = cartel?.novedad.tipo === 'union' && !!cartel.novedad.invitacion;
   useEffect(() => {
-    if (!cartel) return;
+    // La invitación lleva su propia cuenta, de diez segundos.
+    if (!cartel || esInvitacion) return;
     Animated.spring(bajada, { toValue: 1, useNativeDriver: true, bounciness: 4 }).start();
     const solo = setTimeout(() => void irse(), SE_VA_SOLO_MS);
     return () => clearTimeout(solo);
-  }, [cartel, bajada, irse]);
+  }, [cartel, esInvitacion, bajada, irse]);
 
   if (!cartel) return null;
   const { novedad } = cartel;
@@ -88,6 +96,21 @@ export default function CartelDeArriba() {
     if (novedad.tipo === 'union') await responderUnion(supabase, novedad.id, acepta);
     else if (acepta) await aceptarAmistad(supabase, novedad.id);
     else if (await rechazarAmistad(supabase, novedad.id)) eventos.emitir(SOCIAL_CAMBIO);
+  }
+
+  if (esInvitacion) {
+    return (
+      <InvitacionQueLlega
+        key={novedad.id}
+        novedad={novedad}
+        // Quemada la mecha es un «no»: responder_union borra la invitación.
+        alContestar={(acepta) => {
+          void irse(false);
+          void responderUnion(supabase, novedad.id, acepta === true).catch(() => undefined);
+        }}
+        alTerminar={soltar}
+      />
+    );
   }
 
   return (

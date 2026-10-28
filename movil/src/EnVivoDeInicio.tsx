@@ -59,7 +59,8 @@ function EnVivoDeInicio(visto: Visto) {
 
   // SOLO MIENTRAS ENTRENO (12/10): terminada la sesión el pedido ya no tiene a
   // qué unirse, y la tarjeta quedaba en Inicio hasta volver a entrenar.
-  const pedidos = tarjetasDeInicio(visto.corriendo ? uniones.filter((u) => u.estado === 'pendiente' && !u.laPediYo) : [], enCartel);
+  // La invitación no: llega flotando arriba y no mueve Inicio (29/10).
+  const pedidos = tarjetasDeInicio(visto.corriendo ? uniones.filter((u) => u.estado === 'pendiente' && !u.laPediYo && !u.invitacion) : [], enCartel);
   const conGrupo = visto.corriendo && uniones.some((u) => u.estado === 'aceptada');
   if (pedidos.length === 0 && !conGrupo) return null;
 
@@ -69,7 +70,7 @@ function EnVivoDeInicio(visto: Visto) {
       {pedidos.map((u) => (
         <Aparece key={u.id}>
         <View testID="pedido-de-union" style={estilos.tarjeta} accessibilityRole="alert">
-          <Text style={estilos.texto}>{u.invitacion ? T.social.teInvita(u.otro.username) : T.social.quiereUnirse(u.otro.username)}</Text>
+          <Text style={estilos.texto}>{T.social.quiereUnirse(u.otro.username)}</Text>
           <View style={estilos.botones}>
             <Pressable
               testID="pedido-de-union-no"
