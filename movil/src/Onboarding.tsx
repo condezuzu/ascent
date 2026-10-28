@@ -46,7 +46,7 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
   async function salir() {
     // Si el `signOut` no llega al servidor —que es el caso en el que esto hace
     // falta— igual se borra la sesión local, que es lo que mira la raíz.
-    await supabase.auth.signOut().catch(() => {});
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
     alElegir();
   }
 

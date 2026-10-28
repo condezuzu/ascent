@@ -12,7 +12,27 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Aplicadas hasta la 89** (15/10/2026, de noche: `version_del_esquema()` contestó
+**Aplicadas hasta la 99** (29/10, con la CLI: `db push` y después `test:conexion`, 81 sin
+fallas). La 98 es invitar a un amigo al grupo y ver el grupo de un amigo; la 99, borrar
+la cuenta de Ascent con Moss en el mismo usuario de Auth.
+
+**Moss: borrar con el vínculo activo** (verificado el 29/10 contra producción con
+`supabase/probar-borrado-con-moss.sql`, que se deshace solo). Con dos usuarios de Auth
+distintos, `eliminar_cuenta()` ya hace lo pedido sin tocarla: `moss.vinculo` cuelga de
+`auth.users` con `on delete cascade` en las dos columnas, así que borrar cualquiera de las
+dos corta el vínculo; lo que llegó a Moss (las marcas con `origen = 'ascent'`, guardadas en
+la cuenta de Moss) se queda, y `moss.ascent_sesiones` deja de traer. Al revés igual. **El
+caso que no cumple**: el mismo usuario de Auth para las dos apps (entrar a Moss con un
+Apple ID del mismo correo: Supabase las enlaza solo): ahí borrar Ascent se llevaba Moss.
+Lo arregla la 99 (la que en `moss-vinculo` era la 98): con una fila en `moss.perfiles` el
+usuario de Auth queda para Moss, se borra todo lo de Ascent y se le sacan la identidad de
+correo y la contraseña. Las bajas cierran solo esta sesión (`scope: local`), para no sacar
+de Moss. Los textos de la baja que hablan de Moss llegan con `moss-vinculo`.
+
+**Cuando la 1.2.0 esté en la tienda: juntar `moss-vinculo` en `main`**, para que quede una
+sola rama.
+
+Historia: **aplicadas hasta la 89** (15/10/2026, de noche: `version_del_esquema()` contestó
 89 y `test:conexion` dio 81 sin fallas). La 88 son los grupos (multijugador) y la
 89 el tope del storage (3 MB, solo JPG/PNG).
 

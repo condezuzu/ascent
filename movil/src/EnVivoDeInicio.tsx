@@ -79,7 +79,7 @@ function EnVivoDeInicio(visto: Visto) {
       {pedidos.map((u) => (
         <Aparece key={u.id}>
         <View testID="pedido-de-union" style={estilos.tarjeta} accessibilityRole="alert">
-          <Text style={estilos.texto}>{T.social.quiereUnirse(u.otro.username)}</Text>
+          <Text style={estilos.texto}>{u.invitacion ? T.social.teInvita(u.otro.username) : T.social.quiereUnirse(u.otro.username)}</Text>
           <View style={estilos.botones}>
             <Pressable
               testID="pedido-de-union-no"

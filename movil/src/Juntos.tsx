@@ -79,7 +79,7 @@ export default function Juntos({
                 <Avatar url={u.otro.avatar_url} nombre={u.otro.username} tam={28} />
               </View>
               <Text style={estilos.nombre} numberOfLines={2}>
-                {u.laPediYo ? T.social.esperandoA(u.otro.username) : T.social.quiereUnirse(u.otro.username)}
+                {u.laPediYo ? T.social.esperandoA(u.otro.username) : u.invitacion ? T.social.teInvita(u.otro.username) : T.social.quiereUnirse(u.otro.username)}
               </Text>
               {u.laPediYo ? (
                 <Pressable hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>

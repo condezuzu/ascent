@@ -31,7 +31,8 @@ export default function BajaDeCuenta({ perfil }: { perfil: Perfil }) {
     await limpiarAlSalir();
     olvidarPendientes();
     borrarTema(); // y el color de esta cuenta, que se pinta antes de todo
-    await supabase.auth.signOut();
+    // Solo esta sesión: con el mismo usuario de Auth, la global cerraba también la de Moss.
+    await supabase.auth.signOut({ scope: 'local' });
     router.push('/login');
     router.refresh();
   }

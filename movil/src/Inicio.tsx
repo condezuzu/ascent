@@ -45,7 +45,7 @@ import RachaConRotulo from './RachaConRotulo';
 import PasosInicio from './PasosInicio';
 import EnVivoDeInicio from './EnVivoDeInicio';
 import { diaDeLaSesion } from '@nucleo/subir';
-import { dejarDeEntrenar, linkDelGrupo } from '@compartido/enVivo';
+import { dejarDeEntrenar, invitarAlGrupo, linkDelGrupo } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 import TimbreDePildora from './TimbreDePildora';
@@ -55,6 +55,7 @@ import DiaDeLaTira from './DiaDeLaTira';
 import EstrellaQueTitila from './EstrellaQueTitila';
 import Aparece from './Aparece';
 import BurbujasDelGrupo from './BurbujasDelGrupo';
+import AvisoRutina from './AvisoRutina';
 import { enlaceDeGrupo } from '@nucleo/enlace';
 import Tocable from './Tocable';
 import FondoOctogonal from './FondoOctogonal';
@@ -319,7 +320,7 @@ export default function Inicio({
         // correcto). Ver `laCuentaYaNoExiste`.
         const { error: eQuien } = await supabase.auth.getUser();
         if (laCuentaYaNoExiste(eQuien)) {
-          await supabase.auth.signOut();
+          await supabase.auth.signOut({ scope: 'local' });
           return alSalir();
         }
         return fallo(T.general.noSePudo);
@@ -565,6 +566,13 @@ export default function Inicio({
     if (codigo) void Share.share({ message: T.social.mensajeDeInvitacion(enlaceDeGrupo(codigo)) }).catch(() => undefined);
   }
 
+  // «INVITAR A UN GRUPO» desde la burbuja de un amigo (29/10): el grupo es de quien entrena, así
+  // que primero empieza a entrenar, como «Iniciar grupo».
+  async function invitar(amigo: string) {
+    if (!sesion.estado.corriendo) await sesion.empezar();
+    return invitarAlGrupo(supabase, amigo);
+  }
+
   if (estado.tipo === 'cargando') {
     return (
       <View style={estilos.centrado} testID="pantalla-inicio">
@@ -770,7 +778,7 @@ export default function Inicio({
       </View>
       {/* EL MULTIJUGADOR, ARRIBA DE TODO (28/10): «Iniciar grupo» y quién entrena ahora.
           Entrenando, lo reemplaza la tira del grupo (más abajo). */}
-      {!sesion.estado.corriendo && <BurbujasDelGrupo alIniciarGrupo={() => void iniciarGrupo()} />}
+      <BurbujasDelGrupo visible={!sesion.estado.corriendo} alIniciarGrupo={() => void iniciarGrupo()} alInvitar={invitar} />
       {/* EL GLOBITO DEL DESCANSO (15/10), saliendo de la píldora de arriba a la
           derecha, la primera vez que hay uno andando. Se va con el descanso. */}
       {sesion.estado.corriendo && !!sesion.estado.descanso && anchoCabecera > 0 && anchoPildora > 0 && (
@@ -1127,6 +1135,11 @@ export default function Inicio({
         </>
       )}
 
+      {/* EL HUECO QUE SOBRA, abajo de todo (29/10): ahí va el aviso de «Novedad», sin tapar nada. */}
+      <View style={estilos.sobra}>
+        <AvisoRutina />
+      </View>
+
       <PesoHoja
         visible={pesoAbierto}
         unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
@@ -1264,6 +1277,7 @@ const estilos = StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`, detrás de todas las
   // pestañas. Un color acá lo taparía.
   raiz: { flex: 1 },
+  sobra: { flexGrow: 1 },
   // Transparente: detrás está el fondo, que ya pinta el color de base.
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64 },
   centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },

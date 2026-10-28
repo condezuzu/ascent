@@ -4,7 +4,7 @@
 // En la vista web de la nativa (:8090), a 390×844, con una cuenta descartable con una rutina: la
 // respuesta de `entrenando_ahora` se contesta desde acá con una amiga de muestra (una cuenta nueva
 // no tiene amigos entrenando). Se mira que estén «Iniciar grupo» y la burbuja, debajo de la
-// cabecera; que Inicio no se pueda desplazar; y que tocar la burbuja lleve a Social.
+// cabecera; que Inicio no se pueda desplazar; y que tocar la burbuja abra el globo del amigo.
 //
 //   node --env-file=.env.local supabase/probar-burbujas.mjs
 import { chromium } from 'playwright';
@@ -79,7 +79,8 @@ try {
   chequear('Inicio entra entero en la pantalla: no hay nada que desplazar', forma.sobra !== null && forma.sobra <= 1, true);
   await page.getByTestId('burbuja-amigo').first().click();
   await page.waitForTimeout(1500);
-  chequear('tocar la burbuja lleva a Social', await page.getByText(TX.social.titulo, { exact: true }).filter({ visible: true }).count() > 0, true);
+  // Desde el 29/10 abre el globo del amigo encima (lo prueba entero probar-burbuja-amigo).
+  chequear('tocar la burbuja abre el globo encima, sin ir a Social', await page.getByTestId('globo-amigo').count(), 1);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));
