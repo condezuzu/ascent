@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { GUIA_DE_NUEVO, verLaGuiaDeNuevo as volverAVerLaGuia } from '@compartido/guia';
-import { eventos } from '@compartido/eventos';
+import { verLaGuiaDeNuevo as volverAVerLaGuia } from '@compartido/guia';
 import { plataforma } from '@plataforma';
 import { cerrarSesion, eliminarCuenta, limpiarAlSalir } from '@compartido/cuenta';
 import { useEnVuelo } from '@compartido/useEnVuelo';
@@ -36,14 +35,12 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
 
   // REINICIA EL RECORRIDO **Y** LOS GLOBOS. Si solo volviera el recorrido, el
   // que quiere repasar de qué va cada pantalla no lo conseguiría: las dos
-  // cosas son la guía. Y avisa, porque el que la pide está mirando Ajustes y
-  // el recorrido tiene que aparecer ahí mismo, no al reabrir la app.
+  // cosas son la guía.
   // Todas las de acá escriben o disparan un efecto de una sola vez, así que van
   // con traba contra el doble-tap: sin ella, dos toques mandaban dos correos de
   // reseteo, dos bajas de cuenta, o dos salidas encimadas.
   const verLaGuiaDeNuevo = useEnVuelo(async () => {
     await volverAVerLaGuia(perfil.id);
-    eventos.emitir(GUIA_DE_NUEVO);
   });
 
   const cambiarClave = useEnVuelo(async () => {

@@ -188,10 +188,10 @@ eligió compartir. Si algún día molesta, se revisa.
   debajo de las fotos, por día de la semana, los ejercicios y cuántas series,
   de las últimas cuatro semanas. Nunca pesos ni duración (§17.8 sigue: la
   tabla de sesiones no se abre). Prendido por omisión; se esconde en Ajustes.
-  Como ya había 42 cuentas, la app lo AVISA una vez (`nucleo/avisoRutina.ts`)
-  con un botón a Ajustes. "Una vez" es por cuenta y por teléfono: lo visto se
-  guarda en el aparato. **Decidido el 8/10: queda así, por teléfono.** No es
-  un pendiente: no se hace la migración para guardarlo en la base.
+  Hubo un aviso de una vez ("Novedad: tus amigos ahora ven tu rutina…", y el
+  de "ven cuando estás entrenando"). **Sacado el 29/10, a pedido**: empujaba
+  el contenido, tapó «Anotar peso» y de noche no entraba nunca. La app ya no
+  avisa novedades; las dos opciones siguen en Ajustes.
 
 ### UNA sola build para todo lo nativo (decidido el 7/10/2026)
 
