@@ -19,7 +19,7 @@ import {
 import { C } from './colores';
 import { taparElFondo } from './desenfoqueDelFondo';
 import { useArriba } from './zonaSegura';
-import { cuentaLaSerie } from './toques';
+import { cuentaLaSerie, horaDelToque } from './toques';
 import Aparece from './Aparece';
 import Tocable from './Tocable';
 
@@ -213,7 +213,7 @@ export default function Descanso({
 
         {terminado ? (
           <View style={estilos.abajo}>
-            <Pressable style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={() => cuentaLaSerie() && alSumar()}>
+            <Pressable style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
               <Text style={estilos.solidoTexto}>{T.descanso.serieHecha}</Text>
             </Pressable>
             <Pressable
@@ -235,7 +235,7 @@ export default function Descanso({
                 <Text style={estilos.solidoTexto}>{T.descanso.empezar}</Text>
               </Tocable>
             ) : (
-              <Tocable style={estilos.borde} onPress={() => cuentaLaSerie() && alSumar()}>
+              <Tocable style={estilos.borde} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
                 <Text style={estilos.bordeTexto}>{T.descanso.serieHecha}</Text>
               </Tocable>
             )}

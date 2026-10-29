@@ -78,9 +78,6 @@ async function abrir(nav, quien, respuestas, ingles = false) {
   await page.getByText(tx.entrar.entrar, { exact: true }).last().click({ timeout: 60000 });
   // Sin recorrido desde el 15/10: se espera a que Inicio esté.
   await page.getByText(tx.inicio.iniciarEntrenamiento, { exact: true }).first().waitFor({ state: 'visible', timeout: 90000 }).catch(() => {});
-  // El aviso de una vez de la cuenta nueva tapa la mitad de abajo: se cierra.
-  const deAcuerdo = page.getByText(tx.social.avisoRutinaEntendido, { exact: true }).first();
-  await deAcuerdo.waitFor({ state: 'visible', timeout: 8000 }).then(() => deAcuerdo.click(), () => {});
   await page.waitForTimeout(800);
   return { page, errores };
 }
@@ -740,7 +737,6 @@ RECETAS['propuestas'] = async function (nav, gente) {
   // La insistencia sale con los días ya releídos: se recarga Inicio.
   await page.reload({ waitUntil: 'domcontentloaded' });
   await texto(page, tx.inicio.insistirGimnasio).first().waitFor({ timeout: 60000 }).catch(() => {});
-  await texto(page, tx.social.avisoRutinaEntendido).first().click({ timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(1500);
   await sacar(page, 'insistir', { accion: texto(page, tx.inicio.insistirGimnasio) });
 
@@ -807,7 +803,6 @@ RECETAS['ubicacion-hecha'] = async function (nav, gente) {
   await page.waitForTimeout(2500);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByTestId('insistir-gimnasio').first().waitFor({ timeout: 60000 });
-  await page.getByText(tx.social.avisoRutinaEntendido, { exact: true }).first().click({ timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(1200);
   await foto(page, 'ubicacion-inicio');
   await tocar(page, 'insistir-gimnasio');

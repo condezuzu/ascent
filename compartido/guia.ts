@@ -89,7 +89,6 @@ export function reiniciarGuia(uid: string) {
 }
 
 /** Desde Ajustes, "Volver a ver la guía": los globitos vuelven, también para una cuenta de antes. */
-export const GUIA_DE_NUEVO = 'ascent:guia-de-nuevo';
 export function verLaGuiaDeNuevo(uid: string) {
   return deAUna(() => escribir({ uid, recorrido: true, paso: 0, globos: [], deNuevo: true }));
 }

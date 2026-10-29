@@ -1595,11 +1595,6 @@ const ES = {
     enVivoDescansa: (falta: string) => `descansa ${falta}`,
     enVivoListo: 'listo',
     enVivoSinSenal: 'sin señal',
-    avisoRutina: 'Novedad: tus amigos ahora ven tu rutina, ejercicios y series. Se apaga en Ajustes.',
-    // No 'Entendido': así se llama el botón de la ventana de las vidas, y las sondas la cierran por ese texto.
-    avisoEntreno: 'Novedad: tus amigos ven cuando estás entrenando, nunca dónde. Se apaga en Ajustes.',
-    avisoRutinaEntendido: 'De acuerdo',
-    avisoRutinaAjustes: 'Ir a Ajustes',
     enlacePaso1: 'Descárgala en el App Store',
     enlacePaso2: 'Crea tu cuenta.',
     // EL LINK NO SOBREVIVE A LA INSTALACIÓN (15/10): se dice el nombre para buscarlo a mano.
