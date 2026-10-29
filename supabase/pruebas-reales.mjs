@@ -77,6 +77,8 @@
 //      grupo»; en grupo, cuántos son, las caras y «Unirse» (29/10). Cuatro cuentas, en la nativa.
 //  33. probar-invitacion-llega — la invitación que llega cae, se abre en píldora y quema una mecha
 //      de 10 s; al terminar se va y se cancela, sin mover Inicio. Aceptar mete en el grupo (29/10).
+//  34. probar-toque-trabado — con la CPU frenada y la página trabada 2,5 s, dos toques en el + a
+//      1,2 s cuentan dos series (la traba mide desde el dedo); un doble toque sigue contando uno (29/10).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -130,6 +132,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'las burbujas del multijugador', archivo: 'probar-burbujas.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la burbuja de un amigo', archivo: 'probar-burbuja-amigo.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la invitación que llega', archivo: 'probar-invitacion-llega.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'dos toques con el teléfono trabado', archivo: 'probar-toque-trabado.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

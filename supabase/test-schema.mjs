@@ -19461,18 +19461,32 @@ console.log('\n265. Un toque repetido en el + no es otra serie, y «Terminar ser
   // De punta a punta lo reproduce `supabase/probar-doble-toque.mjs` (test:real): dos toques
   // seguidos en el + contaban dos series. Acá, la regla y que la usen los tres botones.
   const TQ = await import('../movil/src/toques.ts');
+  // Sin la hora del toque (`null`), se mira cuándo se atiende, como antes del 29/10.
   chequear('dentro del segundo, el segundo toque no cuenta; después sí; cerrar el bloque apaga el + ese segundo', [
     TQ.TOQUE_REPETIDO_MS,
-    TQ.cuentaLaSerie(10000), TQ.cuentaLaSerie(10300), TQ.cuentaLaSerie(11100),
-    TQ.cierraElBloque(20000), TQ.cuentaLaSerie(20400), TQ.cierraElBloque(20500), TQ.cuentaLaSerie(21100), TQ.cierraElBloque(21200),
+    TQ.cuentaLaSerie(null, 10000), TQ.cuentaLaSerie(null, 10300), TQ.cuentaLaSerie(null, 11100),
+    TQ.cierraElBloque(null, 20000), TQ.cuentaLaSerie(null, 20400), TQ.cierraElBloque(null, 20500), TQ.cuentaLaSerie(null, 21100), TQ.cierraElBloque(null, 21200),
   ], [1000, true, false, true, true, false, false, true, true]);
+  // DESDE EL DEDO (29/10): con el teléfono trabado, dos toques de verdad se atendían juntos y el
+  // segundo no contaba. Con la hora de los dos toques manda lo que pasó entre los dedos.
+  chequear('trabado: dos toques a 1,2 s atendidos a 10 ms cuentan los dos; un doble toque de verdad atendido a 1,5 s no; sin la hora de uno, el reloj', [
+    TQ.cuentaLaSerie(500000, 40000), TQ.cuentaLaSerie(501200, 40010),
+    TQ.cuentaLaSerie(510000, 50000), TQ.cuentaLaSerie(510300, 51500),
+    TQ.cuentaLaSerie(null, 60000), TQ.cuentaLaSerie(520300, 60300),
+    TQ.cierraElBloque(530000, 70000), TQ.cuentaLaSerie(531200, 70005),
+  ], [true, true, true, false, true, false, true, true]);
+  chequear('la hora del toque sale del evento: timestamp en el teléfono, timeStamp en la web; sin hora, null', [
+    TQ.horaDelToque({ nativeEvent: { timestamp: 123.5 } }), TQ.horaDelToque({ nativeEvent: { timeStamp: 77 } }), TQ.horaDelToque({ timeStamp: 9 }),
+    TQ.horaDelToque(undefined), TQ.horaDelToque({ nativeEvent: {} }),
+  ], [123.5, 77, 9, null, null]);
   const blo = deBug('movil', 'src', 'Bloque.tsx');
   const des = deBug('movil', 'src', 'Descanso.tsx');
-  chequear('el + del bloque, «Terminar serie» y los dos «Serie hecha» del descanso pasan por la regla', [
-    /const sumar = \(\) => \{\s*if \(!cuentaLaSerie\(\)\) return;/.test(blo),
-    /if \(!cierraElBloque\(\)\) return;\s*alSiguiente\(\);/.test(blo),
-    (des.match(/onPress=\{\(\) => cuentaLaSerie\(\) && alSumar\(\)\}/g) ?? []).length,
-  ], [true, true, 2]);
+  chequear('el + del bloque, «Terminar serie» y los dos «Serie hecha» del descanso pasan por la regla, con la hora del toque', [
+    /const sumar = \(e\?: GestureResponderEvent\) => \{\s*if \(!cuentaLaSerie\(horaDelToque\(e\)\)\) return;/.test(blo),
+    /if \(!cierraElBloque\(horaDelToque\(e\)\)\) return;\s*alSiguiente\(\);/.test(blo),
+    /onPress=\{\(e\) => \{\s*if \(pulsa\) \{[\s\S]*?onPress\(e\);/.test(blo),
+    (des.match(/onPress=\{\(e\) => cuentaLaSerie\(horaDelToque\(e\)\) && alSumar\(\)\}/g) ?? []).length,
+  ], [true, true, true, 2]);
 }
 
 console.log('\n266. Reemplazar el día: queda igual a lo entrenado, sin duplicar (19/10)');
