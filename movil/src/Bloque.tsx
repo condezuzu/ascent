@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
-import { Animated, Easing, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, TextInput, View, type GestureResponderEvent } from 'react-native';
 import { supabase } from './supabase';
 import { metaAMano, metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
@@ -44,7 +44,7 @@ import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
 import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { cronoLindo } from '@nucleo/sesiones';
-import { cierraElBloque, cuentaLaSerie, TOQUE_REPETIDO_MS } from './toques';
+import { cierraElBloque, cuentaLaSerie, horaDelToque, TOQUE_REPETIDO_MS } from './toques';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN — en nativo.
@@ -212,8 +212,8 @@ export default function Bloque({
   const esTiempo = actual?.mide === 'tiempo';
   const minutos = estado.minutos ?? MINUTOS_DE_ARRANQUE;
   const cumplida = esTiempo ? estado.hechas >= 1 : metaCumplida(estado);
-  const sumar = () => {
-    if (!cuentaLaSerie()) return;
+  const sumar = (e?: GestureResponderEvent) => {
+    if (!cuentaLaSerie(horaDelToque(e))) return;
     if (!esTiempo) return alSumar();
     if (estado.minutos === undefined) alElegirMinutos?.(minutos);
     alSumar({ sinDescanso: true });
@@ -567,8 +567,8 @@ export default function Bloque({
           </Tocable>
           <Tocable
             style={[estilos.mas, estilos.masCerrar]}
-            onPress={() => {
-              if (!cierraElBloque()) return;
+            onPress={(e) => {
+              if (!cierraElBloque(horaDelToque(e))) return;
               alSiguiente();
               setLista(true);
               // El + del bloque que sigue queda apagado ese segundo: es el que cae debajo del dedo.
@@ -721,7 +721,7 @@ function MasQuePulsa({
   accessibilityLabel,
 }: {
   pulsa: boolean;
-  onPress: () => void;
+  onPress: (e: GestureResponderEvent) => void;
   style: React.ComponentProps<typeof Pressable>['style'];
   children: ReactNode;
   testID?: string;
@@ -733,7 +733,7 @@ function MasQuePulsa({
     <PressableAnimado
       testID={testID}
       style={[style as object, { transform: [{ scale: escala }] }]}
-      onPress={() => {
+      onPress={(e) => {
         if (pulsa) {
           pulso.setValue(0);
           Animated.sequence([
@@ -741,7 +741,7 @@ function MasQuePulsa({
             Animated.timing(pulso, { toValue: 0, duration: 220, easing: CURVA_SALE, useNativeDriver: true }),
           ]).start();
         }
-        onPress();
+        onPress(e);
       }}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"

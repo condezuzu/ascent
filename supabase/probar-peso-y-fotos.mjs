@@ -50,9 +50,6 @@ try {
   await page.locator('input[type=password]').first().fill(clave);
   await page.getByText('Entrar', { exact: true }).last().click({ timeout: 60000 });
   await page.getByText('Iniciar entrenamiento', { exact: true }).first().waitFor({ timeout: 120000 });
-  // CON EL GLOBO DE «NOVEDAD» A LA VISTA, como lo ve una cuenta nueva: se tocaba el globo y no el enlace (28/10).
-  const globo = await page.getByTestId('aviso-rutina').first().waitFor({ timeout: 30000 }).then(() => true, () => false);
-  chequear('el globo de «Novedad» está a la vista', globo, true);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: join(SALIDA, 'inicio.png') });
 

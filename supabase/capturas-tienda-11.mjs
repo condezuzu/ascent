@@ -127,8 +127,6 @@ try {
   await page.locator('input[type=password]').first().fill(CLAVE);
   await page.getByText(T.entrar.entrar, { exact: true }).last().click();
   await page.getByText(T.inicio.iniciarEntrenamiento, { exact: true }).first().waitFor({ timeout: 180000 });
-  const deAcuerdo = page.getByText(T.social.avisoRutinaEntendido, { exact: true }).first();
-  await deAcuerdo.waitFor({ state: 'visible', timeout: 8000 }).then(() => deAcuerdo.click(), () => {});
   await page.waitForFunction(() => !!document.querySelector('canvas'), null, { timeout: 120000 });
   await page.waitForTimeout(9000);
   await foto('1-racha', 'Inicio, racha 65: la galaxia');
