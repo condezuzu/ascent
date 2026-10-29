@@ -66,6 +66,16 @@ await page.route(
     await route.fulfill({ response: r, json: filas });
   }
 );
+// LAS MARCAS LLEGAN TARDE A PROPÓSITO (29/10): en test:real llegaron después del último dibujo
+// y la línea quedó sin sus repeticiones, porque cargarlas no redibujaba. Con 4 s de demora el
+// caso pasa siempre, no solo con la máquina cargada.
+await page.route(
+  (u) => u.pathname.endsWith('/rest/v1/prs') && decodeURIComponent(u.search).includes('reps'),
+  async (route) => {
+    await new Promise((r) => setTimeout(r, 4000));
+    await route.continue();
+  }
+);
 // Empieza a entrenar y espera el ejercicio propuesto (press, por la sesión de ayer).
 async function entrar() {
   await texto('Iniciar entrenamiento').click({ timeout: 120000 });
@@ -100,6 +110,8 @@ try {
 
   await llave();
   await entrar();
+  // Hasta 10 s a que se complete sola, sin tocar nada.
+  await page.getByTestId('ultima-vez').filter({ hasText: 'repeticiones' }).first().waitFor({ timeout: 10000 }).catch(() => {});
   const dice = await lineas();
   await page.screenshot({ path: join(SALIDA, 'prendido.png') });
   chequear('prendido: al entrar a entrenar sale la última vez del ejercicio propuesto', dice.length > 0 && /^La última vez, \d+ de \S+: /.test(dice[0]), true);
