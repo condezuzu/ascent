@@ -56,6 +56,8 @@ const tapados = (page) =>
     // Un Pressable sin rol (como «Anotar peso») se dibuja sin role: lo delata el tabindex.
     return [...(raiz?.querySelectorAll('[role="button"], button, [role="link"], [tabindex="0"]') ?? [])]
       .filter((el) => !globo?.contains(el))
+      // El globo que no entra se dibuja igual, invisible y sin toques, para medirse: sus botones no cuentan.
+      .filter((el) => { for (let e = el; e; e = e.parentElement) if (getComputedStyle(e).opacity === '0') return false; return true; })
       .flatMap((el) => {
         const b = el.getBoundingClientRect();
         if (b.width === 0 || b.height === 0 || b.bottom <= 0 || b.top >= innerHeight) return [];
@@ -65,9 +67,16 @@ const tapados = (page) =>
   });
 
 const nav = await chromium.launch();
-async function inicio(c, amiga) {
+// LA HORA LA PONE LA PRUEBA (29/10). Desde las 19, a quien no registró el día Inicio le suma
+// «Último tramo para el N.» (Inicio.tsx, `avisoTiempo`), y en la Inicio llena el globo ya no
+// entra: la prueba pasaba de tarde y fallaba siempre de noche. `hora` en Montevideo, de hoy.
+async function inicio(c, amiga, hora = null, conGlobo = true) {
   const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, locale: 'es-UY', timezoneId: 'America/Montevideo' });
   const page = await ctx.newPage();
+  if (hora !== null) {
+    const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Montevideo' }).format(new Date());
+    await page.clock.install({ time: new Date(`${hoy}T${String(hora).padStart(2, '0')}:00:00-03:00`) });
+  }
   if (amiga) {
     // Una cuenta nueva no tiene amigos entrenando: la respuesta se contesta desde acá.
     await page.route('**/rest/v1/rpc/entrenando_ahora', (r) =>
@@ -79,7 +88,15 @@ async function inicio(c, amiga) {
   await page.locator('input[type=email], input[inputmode=email]').first().fill(c.correo, { timeout: 90000 });
   await page.locator('input[type=password]').first().fill(c.clave);
   await page.getByText('Entrar', { exact: true }).last().click({ timeout: 60000 });
-  await page.getByTestId('aviso-rutina').first().waitFor({ timeout: 120000 });
+  if (conGlobo) {
+    await page.getByTestId('aviso-rutina').first().waitFor({ timeout: 120000 }).catch(async (e) => {
+      await page.screenshot({ path: join(SALIDA, `sin-globo-${amiga ? 'llena' : 'vacia'}.png`) });
+      throw e;
+    });
+  } else {
+    await page.getByText(TX.peso.anotarPeso, { exact: true }).first().waitFor({ timeout: 120000 });
+    await page.waitForTimeout(4000);
+  }
   await page.waitForTimeout(2500);
   return page;
 }
@@ -122,8 +139,8 @@ try {
   chequear('«De acuerdo» lo saca', await page.getByTestId('aviso-rutina').count(), 0);
   await page.context().close();
 
-  console.log('Y en la Inicio más llena: rutina, días y una amiga en las burbujas');
-  const p2 = await inicio(llena, true);
+  console.log('Y en la Inicio más llena: rutina, días y una amiga en las burbujas, a las 15');
+  const p2 = await inicio(llena, true, 15);
   await p2.screenshot({ path: join(SALIDA, 'inicio-llena.png') });
   const barra2 = await caja(p2.getByRole('tablist').first());
   const g2 = await caja(p2.getByTestId('aviso-rutina').first());
@@ -131,6 +148,18 @@ try {
   chequear('el globo queda abajo de «Anotar peso» y arriba de la barra', [g2.y >= peso.y + peso.height, g2.y + g2.height <= barra2.y], [true, true]);
   chequear('no tapa ningún botón', await tapados(p2), []);
   await p2.context().close();
+
+  // A las 20, sin el día registrado, Inicio suma «Último tramo»: el globo no entra y espera.
+  console.log('La misma, a las 20: con «Último tramo» no entra, y espera sin tapar nada');
+  const p3 = await inicio(llena, true, 20, false);
+  await p3.screenshot({ path: join(SALIDA, 'inicio-llena-noche.png') });
+  chequear('está «Último tramo», el globo no sale y no hay nada tapado', [
+    // Tres días seguidos: racha de 3, el tramo es para el 4.
+    await p3.getByText(TX.inicio.ultimoTramo(4), { exact: true }).count() > 0,
+    await p3.getByTestId('aviso-rutina').count(),
+    await tapados(p3),
+  ], [true, 0, []]);
+  await p3.context().close();
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));
