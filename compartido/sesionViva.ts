@@ -61,6 +61,16 @@ export function cambiarViva(p: Partial<EstadoVivo>): void {
   for (const avisar of [...oyentes]) avisar();
 }
 
+/**
+ * Que redibujen todos, sin que cambie nada de acá: para lo que vive en un ref compartido y
+ * se lee al dibujar. Las marcas que llegaban después del último dibujo dejaban la línea de
+ * «la última vez» sin sus repeticiones hasta el próximo toque (29/10).
+ */
+export function redibujarViva(): void {
+  viva = { ...viva };
+  for (const avisar of [...oyentes]) avisar();
+}
+
 export function suscribirViva(fn: () => void): () => void {
   oyentes.add(fn);
   return () => {

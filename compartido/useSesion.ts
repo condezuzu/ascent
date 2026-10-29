@@ -106,6 +106,7 @@ import {
   marcasConRepsRef,
   setterDe,
   suscribirViva,
+  redibujarViva,
 } from '@compartido/sesionViva';
 import {
   actualizarLoQueSeHace,
@@ -1260,6 +1261,7 @@ export function useSesion(
       if (!yo) return;
       const { data } = await supabase.from('prs').select('ejercicio, peso, reps, fecha').eq('user_id', yo).order('fecha');
       marcasConRepsRef.current = ((data ?? []) as MarcaConReps[]).map((m) => ({ ejercicio: m.ejercicio, peso: Number(m.peso), reps: Number(m.reps), fecha: m.fecha }));
+      redibujarViva();
     } catch {
       marcasConRepsRef.current = [];
     }
