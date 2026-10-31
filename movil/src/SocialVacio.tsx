@@ -4,7 +4,7 @@ import Svg, { Line } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { C, conTema, luz } from './colores';
 import Estrella from './Estrella';
-import { LLENA } from './movimiento';
+import { LLENA, sinMovimiento } from './movimiento';
 import { Text } from './Texto';
 import Tocable from './Tocable';
 import { useTema } from './useTema';
@@ -29,8 +29,10 @@ export default function SocialVacio({ alBuscar }: { alBuscar: () => void }) {
 
   const tocar = (i: number) => {
     setPrendidos((p) => (p.includes(i) ? p : [...p, i]));
-    // Por JS: el trazo de un SVG no va por el motor nativo.
-    Animated.timing(trazos[i], { toValue: 1, duration: 520, easing: LLENA, useNativeDriver: false }).start();
+    void sinMovimiento().then((quieto) => {
+      // Por JS: el trazo de un SVG no va por el motor nativo.
+      Animated.timing(trazos[i], { toValue: 1, duration: quieto ? 0 : 520, easing: LLENA, useNativeDriver: false }).start();
+    });
     alBuscar();
   };
 

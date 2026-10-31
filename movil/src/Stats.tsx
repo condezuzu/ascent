@@ -423,6 +423,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                         no significar nada. */}
                     <View style={estilos.pista}>
                       <View
+                        testID={como === 'dentro' ? 'franja-viva' : 'franja'}
                         style={[
                           estilos.franja,
                           como === 'dentro' && estilos.franjaViva,

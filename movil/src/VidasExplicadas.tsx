@@ -159,7 +159,7 @@ export default function VidasExplicadas({
                 </Svg>
               )}
               {i === laQueVuela && aro ? (
-                <Text style={estilos.faltan}>{faltan}</Text>
+                <Text style={estilos.faltan} testID="vidas-contando">{faltan}</Text>
               ) : (
                 i === conDias && dias !== null && dias > 0 && <Text style={estilos.faltan} testID="vidas-faltan">{dias}</Text>
               )}

@@ -880,7 +880,6 @@ export const EN: Textos = {
     musculos: { pecho: 'chest', espalda: 'back', hombros: 'shoulders', brazos: 'arms', piernas: 'legs', core: 'core', cardio: 'cardio' },
     y: 'and',
     arrastrarAyuda: 'Press and hold, then drag to reorder.',
-    arrastrarPista: 'Press and hold an exercise to move it.',
     subir: 'Move up',
     bajar: 'Move down',
     hoy: (titulo: string) => `Today: ${titulo}`,

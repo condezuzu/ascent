@@ -11,6 +11,7 @@ import { useTema } from './useTema';
 
 const ALTO = 190;
 const MARCO = { w: 92, h: 112 };
+const PLANETA = 170;
 
 /**
  * QUÉ ES EL ÁLBUM, SIN LEERLO (propuesta I, aprobada el 31/10). Decía «Al registrar un día puedes
@@ -53,16 +54,19 @@ export default function AlbumVacio() {
         accessibilityLabel={`${T.album.vacioTitulo} ${T.album.vacioPie}`}
         testID="album-vacio"
       >
-        <Svg width={190} height={190} style={estilos.planeta} pointerEvents="none">
-          <Defs>
-            <RadialGradient id="album-planeta" cx="32%" cy="30%" r="72%">
-              <Stop offset="0" stopColor={C.claro} />
-              <Stop offset="0.46" stopColor={C.principal} />
-              <Stop offset="1" stopColor={C.fondo} />
-            </RadialGradient>
-          </Defs>
-          <Circle cx={95} cy={95} r={85} fill="url(#album-planeta)" />
-        </Svg>
+        {/* El halo va en una vista redonda: en el Svg saldría cuadrado. */}
+        <View style={estilos.planeta} pointerEvents="none" testID="album-planeta">
+          <Svg width={PLANETA} height={PLANETA}>
+            <Defs>
+              <RadialGradient id="album-planeta" cx="32%" cy="30%" r="72%">
+                <Stop offset="0" stopColor={C.claro} />
+                <Stop offset="0.46" stopColor={C.principal} />
+                <Stop offset="1" stopColor={C.fondo} />
+              </RadialGradient>
+            </Defs>
+            <Circle cx={PLANETA / 2} cy={PLANETA / 2} r={PLANETA / 2} fill="url(#album-planeta)" />
+          </Svg>
+        </View>
         <Animated.View style={[estilos.marco, { opacity: t.interpolate({ inputRange: [0, 1], outputRange: [1, 0.25] }) }]}>
           <Svg width={MARCO.w} height={MARCO.h} pointerEvents="none">
             <Rect x={0.5} y={0.5} width={MARCO.w - 1} height={MARCO.h - 1} fill="none" stroke={C.lineaFuerte} strokeDasharray="4 5" />
@@ -96,8 +100,9 @@ export default function AlbumVacio() {
 const estilos = conTema(() => StyleSheet.create({
   todo: { paddingVertical: 20, gap: 14 },
   titulo: { color: C.sub, fontSize: 14, textAlign: 'center' },
-  escena: { height: ALTO, overflow: 'hidden' },
-  planeta: { position: 'absolute', right: -40, bottom: -46, ...luz(C.claro, 0.22, 17) },
+  // Sin recortar: el planeta se sale por el borde de la pantalla, no por el de la escena.
+  escena: { height: ALTO },
+  planeta: { position: 'absolute', right: -30, bottom: -20, width: PLANETA, height: PLANETA, borderRadius: PLANETA / 2, ...luz(C.claro, 0.22, 17) },
   marco: { position: 'absolute', left: '12%', top: 14, width: MARCO.w, height: MARCO.h, alignItems: 'center', justifyContent: 'center' },
   mas: { position: 'absolute', color: C.sub, fontSize: 22, fontWeight: '300' },
   foto: { position: 'absolute', left: '12%', top: 14, width: MARCO.w, height: MARCO.h, padding: 5, paddingBottom: 18, backgroundColor: C.tinta, ...luz(C.claro, 0.2, 8) },

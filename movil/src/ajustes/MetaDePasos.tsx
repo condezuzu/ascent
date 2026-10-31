@@ -10,7 +10,7 @@ import {
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import Candado from '../Candado';
-import { C, conTema } from '../colores';
+import { C, conAlfa, conTema } from '../colores';
 import Deslizador from '../Deslizador';
 import { L } from '../fuentes';
 import { R } from '../roles';
@@ -129,7 +129,7 @@ const estilos = conTema(() => StyleSheet.create({
   semana: { height: 66, flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 14 },
   dia: { flex: 1, borderRadius: 1, backgroundColor: C.barraDentro },
   diaLlega: { backgroundColor: C.claro },
-  lineaMeta: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: C.claro, opacity: 0.7 },
+  lineaMeta: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: conAlfa(C.claro, 0.7) },
   boton: { marginTop: 18, paddingVertical: 13, alignItems: 'center' },
   botonTexto: { color: C.fondo, fontSize: 14.5, fontWeight: '600' },
 }));

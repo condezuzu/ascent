@@ -1511,7 +1511,6 @@ const ES = {
     y: 'y',
     // ARRASTRAR (15/10): lo que dice el lector de pantalla; con el dedo, se aprieta largo.
     arrastrarAyuda: 'Mantén apretado y arrastra para cambiar el orden.',
-    arrastrarPista: 'Mantén apretado un ejercicio para moverlo.',
     subir: 'Subir',
     bajar: 'Bajar',
     // EN INICIO (15/10): el renglón que abre la rutina.
