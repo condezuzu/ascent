@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import RutinaDe from './RutinaDe';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { cargarMiPerfil, ultimoMiPerfil, type DatosDePerfil } from '@compartido/perfil';
@@ -27,6 +27,8 @@ import { C } from './colores';
 import { volverOInicio } from './volver';
 import InvitarConLink from './InvitarConLink';
 import { useArriba } from './zonaSegura';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * TU PERFIL: quién sos acá adentro, cómo te ven tus amigos, y quiénes son.
@@ -281,9 +283,9 @@ const estilos = StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 22, fontWeight: '500' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   metaTexto: { color: C.sub, fontSize: 13 },
-  dots: { color: C.sub, fontSize: 12, letterSpacing: 1, marginTop: 4 },
-  dotsNumero: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 34, marginBottom: 10 },
+  dots: { color: C.sub, fontSize: 12, marginTop: 4, fontFamily: L.dato },
+  dotsNumero: { color: C.tinta, fontSize: 15, fontFamily: L.dato },
+  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 34, marginBottom: 10 },
   amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   amigoTocable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },

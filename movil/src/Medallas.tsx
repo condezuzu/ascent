@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { cuantosLevantan, type Medalla as Dato } from '@nucleo/medallas';
 import { CURVA } from '@nucleo/deslizar';
 import { T } from '@nucleo/textos';
@@ -8,6 +8,7 @@ import MedallaDeRango from './MedallaDeRango';
 import { numeroDeRango } from '@nucleo/rangos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * LAS MEDALLAS AL LADO DEL NOMBRE, y el globo al tocar una.

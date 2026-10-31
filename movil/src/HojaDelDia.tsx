@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
 import { DIAS_SEMANA_LARGO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
@@ -19,6 +19,8 @@ import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Hoja from './Hoja';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * UN DÍA, ABIERTO: qué hiciste, y corregirlo si está mal. La misma hoja que la
@@ -299,11 +301,11 @@ const estilos = conTema(() => StyleSheet.create({
   sub: { color: C.sub, fontSize: 13 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 12 },
   bloque: { marginBottom: 14 },
-  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
   nombre: { color: C.tinta, fontSize: 14 },
-  pesos: { color: C.apagado, fontSize: 12, marginTop: 2, fontVariant: ['tabular-nums'] },
-  cuantas: { color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
+  pesos: { color: C.apagado, fontSize: 12, marginTop: 2, fontFamily: L.dato },
+  cuantas: { color: C.sub, fontSize: 13, fontFamily: L.dato },
   filaMusculo: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   musculo: { width: 84, textTransform: 'capitalize' },
   barra: { flex: 1, height: 6 },

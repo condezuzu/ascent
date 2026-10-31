@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
 import type { EstadoBloques } from '@nucleo/bloques';
@@ -7,6 +7,8 @@ import { T } from '@nucleo/textos';
 import { useMarcaEnElMomento } from '@compartido/marcaSugerida';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * "¿LO GUARDO COMO MARCA?", debajo del bloque y al confirmar la serie que puede
@@ -104,7 +106,7 @@ const estilos = conTema(() => StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
-  repTexto: { color: C.tinta, fontSize: 14, fontVariant: ['tabular-nums'] },
+  repTexto: { color: C.tinta, fontSize: 14, fontFamily: L.dato },
   no: { paddingHorizontal: 14 },
   noTexto: { color: C.sub, fontSize: 14 },
 }));

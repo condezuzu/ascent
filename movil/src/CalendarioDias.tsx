@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
 import { DIAS_SEMANA, MESES, deISO, hoyISO } from '@nucleo/fechas';
@@ -8,6 +8,8 @@ import { cargarMes, celdasDelMes, moverMes, recalcularRacha, type DatosDelMes } 
 import HojaDelDia from './HojaDelDia';
 import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL CALENDARIO DE STATS, en la app nativa: uno solo, y se toca para MIRAR.
@@ -208,10 +210,10 @@ const estilos = conTema(() => StyleSheet.create({
   // 44 pt: el mínimo con el que un pulgar acierta.
   flecha: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   flechaTexto: { color: C.sub, fontSize: 20 },
-  mes: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', fontVariant: ['tabular-nums'] },
+  mes: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', fontWeight: '500', fontFamily: L.dato },
   grilla: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 10 },
   casilla: { width: `${100 / 7}%`, alignItems: 'center' },
-  nombreDia: { color: C.apagado, fontSize: 10, letterSpacing: 1, textAlign: 'center' },
+  nombreDia: { color: C.apagado, fontSize: 10, textAlign: 'center', fontFamily: L.dato },
   dia: {
     width: 34,
     height: 34,
@@ -221,7 +223,7 @@ const estilos = conTema(() => StyleSheet.create({
     borderWidth: 1,
     borderColor: 'transparent',
   },
-  numero: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
+  numero: { color: C.sub, fontSize: 12, fontFamily: L.dato },
   guion: { width: 10, height: 2, borderRadius: 1, backgroundColor: C.apagado },
   marca: {
     position: 'absolute',
@@ -235,7 +237,7 @@ const estilos = conTema(() => StyleSheet.create({
   leyenda: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 18, rowGap: 6, marginTop: 22 },
   referencia: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   muestra: { width: 12, height: 12, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  referenciaTexto: { color: C.apagado, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase' },
+  referenciaTexto: { color: C.apagado, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', fontWeight: '500' },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 12 },
   botonTexto: { color: C.claro, fontSize: 14 },
   aviso: { color: C.sub, fontSize: 13, marginTop: 8 },

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Segmentado from '../Segmentado';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { borrarPerfilCache } from '@compartido/cache';
 import type { Perfil, Sexo as SexoValor } from '@nucleo/tipos';
 import { nombreValido } from '@nucleo/usuario';
@@ -8,6 +8,7 @@ import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
 import { C, DESHABILITADO, conTema } from '../colores';
 import { useTema } from '../useTema';
+import { Text, TextInput } from '../Texto';
 
 /**
  * LOS TRES DATOS DE LA CUENTA que faltaban en nativo: el nombre de usuario,
@@ -141,7 +142,7 @@ const estilos = conTema(() => StyleSheet.create({
   // EL MISMO RÓTULO QUE EL RESTO DE AJUSTES: chico, en versalitas y apagado.
   // Estas secciones nacieron con título grande y quedaban como pegadas de otra
   // pantalla — dos estilos de título en una lista se leen como un error.
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
   fila: { flexDirection: 'row', gap: 8 },
   campo: {
     flex: 1,

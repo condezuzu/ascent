@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { leerSesionCache } from '@compartido/sesionCache';
 import { cuantasPendientes } from '@compartido/cola';
@@ -11,6 +11,7 @@ import { loVisible } from './loVisible';
 import { supabase } from './supabase';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * LAS TRES FUENTES DE LA SESIÓN, ADENTRO DEL DIAGNÓSTICO (22/9).

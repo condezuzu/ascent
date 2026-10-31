@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
@@ -13,6 +13,8 @@ import Avatar from './Avatar';
 import { irAPestana, useRecargarAlVolver } from './irAPestana';
 import { C, conTema, conAlfa } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * LA FUERZA DENTRO DE STATS (§16.6), en la app nativa: acá se mira y se
@@ -252,12 +254,12 @@ function DondeEstoy({
 }
 
 const estilos = conTema(() => StyleSheet.create({
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },
+  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 28, marginBottom: 10 },
   sub: { color: C.sub, fontSize: 14, lineHeight: 21 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
   apagado: { color: C.apagado, fontSize: 13 },
   nombre: { color: C.tinta, fontSize: 14 },
-  dato: { color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
+  dato: { color: C.sub, fontSize: 13, fontFamily: L.dato },
   contenida: {
     backgroundColor: C.superficie,
     borderWidth: StyleSheet.hairlineWidth,
@@ -274,8 +276,8 @@ const estilos = conTema(() => StyleSheet.create({
     marginTop: 22,
   },
   puertaTexto: { color: C.tinta, fontSize: 14 },
-  dots: { color: C.tinta, fontSize: 46, fontWeight: '300', letterSpacing: -1.4, fontVariant: ['tabular-nums'] },
-  dotsPie: { color: C.sub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 8 },
+  dots: { color: C.tinta, fontSize: 46, fontWeight: '300', letterSpacing: -1.4, fontFamily: L.dato },
+  dotsPie: { color: C.sub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '500', marginTop: 8 },
   tira: { gap: 2, marginTop: 12 },
   tiraItem: { flexDirection: 'row', alignItems: 'baseline', gap: 10, paddingVertical: 5, paddingHorizontal: 2 },
   tarjeta: {
@@ -289,9 +291,9 @@ const estilos = conTema(() => StyleSheet.create({
   rankCabecera: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12 },
   rankDetalle: { paddingLeft: 50, paddingRight: 12, paddingBottom: 10 },
   donde: { marginTop: 16, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea },
-  dondeTitulo: { color: C.sub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' },
+  dondeTitulo: { color: C.sub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '500' },
   dondeDatos: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 6 },
-  pct: { minWidth: 34, textAlign: 'right', color: C.apagado, fontSize: 12 },
+  pct: { minWidth: 34, textAlign: 'right', color: C.apagado, fontSize: 12, fontFamily: L.dato },
   escala: { height: 3, backgroundColor: conAlfa(C.principal, 0.14), marginTop: 14 },
   marca: { position: 'absolute', top: -3, width: 2, height: 9 },
   falta: { color: C.apagado, fontSize: 12, marginTop: 6 },

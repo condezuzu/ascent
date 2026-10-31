@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { cargarAmigosDe, cargarPerfilDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
 import type { UsuarioPublico } from '@nucleo/tipos';
@@ -25,6 +25,8 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { volverOInicio } from './volver';
 import { useArriba } from './zonaSegura';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL PERFIL DE OTRO: su racha, su semana y lo que comparte.
@@ -314,16 +316,16 @@ const estilos = conTema(() => StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 18, fontWeight: '500' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
   metaTexto: { color: C.sub, fontSize: 13 },
-  dots: { color: C.sub, fontSize: 12, letterSpacing: 1, marginTop: 4 },
-  dotsNumero: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
+  dots: { color: C.sub, fontSize: 12, marginTop: 4, fontFamily: L.dato },
+  dotsNumero: { color: C.tinta, fontSize: 15, fontFamily: L.dato },
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 26 },
   tiraDia: { alignItems: 'center', gap: 7 },
   punto: { width: 26, height: 26, borderRadius: 13 },
   lleno: { backgroundColor: C.diaLleno },
   vacio: { borderWidth: 1, borderColor: C.lineaFuerte },
   puntoHoy: { borderWidth: 1, borderColor: C.claro },
-  letra: { color: C.apagado, fontSize: 11 },
-  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
+  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
   solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   boton: {
@@ -343,5 +345,5 @@ const estilos = conTema(() => StyleSheet.create({
   amigos: { marginTop: 28 },
   amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
   amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },
-  amigoRacha: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
+  amigoRacha: { color: C.sub, fontSize: 14, fontFamily: L.dato },
 }));

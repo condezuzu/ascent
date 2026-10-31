@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
+import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { puntoMasCercano, trazarSerie } from '@nucleo/tendencia';
 import { faltanPasos, pasosDeHoy } from '@nucleo/pasos';
@@ -9,6 +9,8 @@ import Hoja from './Hoja';
 import MetaDePasos from './ajustes/MetaDePasos';
 import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * LOS PASOS, COMO TENDENCIA. El mismo gráfico que el del peso —la misma media
@@ -410,9 +412,9 @@ const estilos = conTema(() => StyleSheet.create({
   },
   aro: { position: 'absolute', width: 13, height: 13, marginLeft: -6.5, marginTop: -6.5, borderRadius: 6.5 },
   pie: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 14, marginTop: 16 },
-  hoy: { color: C.tinta, fontSize: 30, fontWeight: '300', fontVariant: ['tabular-nums'] },
-  cambio: { color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontVariant: ['tabular-nums'] },
-  cuando: { flex: 1, color: C.apagado, fontSize: 12 },
+  hoy: { color: C.tinta, fontSize: 30, fontWeight: '300', fontFamily: L.dato },
+  cambio: { color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontFamily: L.dato },
+  cuando: { flex: 1, color: C.apagado, fontSize: 12, fontFamily: L.dato },
   rangos: { flexDirection: 'row', gap: 14, marginTop: 10 },
   rango: { color: C.apagado, fontSize: 12, paddingVertical: 4 },
   nota: { color: C.apagado, fontSize: 11, marginTop: 12, lineHeight: 16 },
@@ -435,5 +437,5 @@ const estilos = conTema(() => StyleSheet.create({
   // La linea de la meta cruza las siete, como en el trazo.
   metaBarras: { position: 'absolute', left: 0, right: 0, height: 1, opacity: 0.45 },
   letras: { flexDirection: 'row', gap: 6, marginTop: 8 },
-  letra: { flex: 1, textAlign: 'center', color: C.apagado, fontSize: 10 },
+  letra: { flex: 1, textAlign: 'center', color: C.apagado, fontSize: 10, fontFamily: L.dato },
 }));

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { marcarPunto, PUNTO_CAMBIO } from '@compartido/gimnasio';
 import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
@@ -9,6 +9,7 @@ import { supabase } from '../supabase';
 import { C, conAlfa, conTema } from '../colores';
 import { useTema } from '../useTema';
 import PinGimnasio from '../PinGimnasio';
+import { Text } from '../Texto';
 
 /**
  * LLEVAR A MARCAR EL GIMNASIO (15/10): "Deja que se marque solo" en Inicio cambia
@@ -157,7 +158,7 @@ const estilos = conTema(() => StyleSheet.create({
   // EL MISMO RÓTULO QUE EL RESTO DE AJUSTES: chico, en versalitas y apagado.
   // Estas secciones nacieron con título grande y quedaban como pegadas de otra
   // pantalla — dos estilos de título en una lista se leen como un error.
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
   caja: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 12, overflow: 'hidden', marginTop: 10 },
   renglon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, paddingVertical: 11, paddingHorizontal: 6 },
   separado: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineaFuerte },

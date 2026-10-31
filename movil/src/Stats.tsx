@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { aISO, deISO, fechaCorta, fechaLinda, hoyISO } from '@nucleo/fechas';
@@ -43,6 +43,8 @@ import { paletaDe } from '@nucleo/paletas';
 import { useArriba } from './zonaSegura';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 const SEMANAS = 8;
 
@@ -300,7 +302,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             ...celdaFaltados(datos.faltados),
           ].map((c) => (
             <View key={c.e} style={estilos.celda}>
-              <Text style={estilos.valor}>{c.v}</Text>
+              <Text testID="stats-cifra" style={estilos.valor}>{c.v}</Text>
               <Text style={estilos.etiqueta}>{c.e}</Text>
             </View>
           ))}
@@ -499,7 +501,7 @@ const estilos = conTema(() => StyleSheet.create({
   raiz: { flex: 1 },
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
   centrado: { flex: 1, backgroundColor: C.fondo, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 20 },
+  titulo: { color: C.sub, fontSize: 11, letterSpacing: 4, textTransform: 'uppercase', fontWeight: '500', marginBottom: 20 },
 
   selector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   opcion: {
@@ -516,14 +518,15 @@ const estilos = conTema(() => StyleSheet.create({
 
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   celda: { width: '47%', paddingVertical: 14 },
-  valor: { color: C.claro, fontSize: 34, fontWeight: '300' },
-  etiqueta: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
+  valor: { color: C.claro, fontSize: 34, fontWeight: '300', fontFamily: L.dato, letterSpacing: -1.6 },
+  etiqueta: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 4 },
 
   seccion: {
     color: C.sub,
     fontSize: 11,
     letterSpacing: 3,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginTop: 18,
     marginBottom: 12,
   },
@@ -549,7 +552,7 @@ const estilos = conTema(() => StyleSheet.create({
   llenadoPoco: { backgroundColor: C.barraPoco },
   llenadoDentro: { backgroundColor: C.barraDentro },
   llenadoMucho: { backgroundColor: C.claro },
-  valorFila: { width: 58, color: C.tinta, fontSize: 14, textAlign: 'right' },
+  valorFila: { width: 58, color: C.tinta, fontSize: 14, textAlign: 'right', fontFamily: L.dato },
 
   fila: {
     flexDirection: 'row',
@@ -562,8 +565,8 @@ const estilos = conTema(() => StyleSheet.create({
   },
   filaNombre: { flex: 1 },
   nombre: { color: C.tinta, fontSize: 15 },
-  fecha: { color: C.apagado, fontSize: 12, marginTop: 2 },
-  peso: { color: C.sub, fontSize: 13 },
+  fecha: { color: C.apagado, fontSize: 12, marginTop: 2, fontFamily: L.dato },
+  peso: { color: C.sub, fontSize: 13, fontFamily: L.dato },
   filaDeGrupo: { paddingLeft: 12 },
   otros: { paddingLeft: 12, paddingVertical: 10 },
   otrosTexto: { color: C.sub, fontSize: 13 },
@@ -577,7 +580,7 @@ const estilos = conTema(() => StyleSheet.create({
     borderBottomColor: C.lineaFuerte,
   },
   cabezaTexto: { color: C.tinta, fontSize: 14 },
-  cabezaCuenta: { color: C.apagado, fontSize: 12 },
+  cabezaCuenta: { color: C.apagado, fontSize: 12, fontFamily: L.dato },
 
   error: { color: C.error, fontSize: 13, textAlign: 'center' },
   enlace: { color: C.sub, fontSize: 13 },

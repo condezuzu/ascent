@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { hayAlgo, ORDEN_SEMANA, soloLosDias } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import { nombreVisible } from '@nucleo/propios';
@@ -11,6 +11,8 @@ import RutinaPlegada from './RutinaPlegada';
 import Corazon from './Corazon';
 import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * LA RUTINA DE ALGUIEN, PARA MIRARLA (14/10): la tuya en tu perfil, la de un
@@ -181,7 +183,7 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
 
 const estilos = conTema(() => StyleSheet.create({
   caja: { marginTop: 8 },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 26, marginBottom: 10 },
+  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 26, marginBottom: 10 },
   nombre: { color: C.apagado, fontSize: 12, marginBottom: 4 },
   filaNombre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 6 },
@@ -195,7 +197,7 @@ const estilos = conTema(() => StyleSheet.create({
   diaNombre: { color: C.tinta, fontSize: 15, marginBottom: 4 },
   fila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 3 },
   ejercicio: { color: C.sub, fontSize: 14, flexShrink: 1 },
-  cantidad: { color: C.apagado, fontSize: 13, fontVariant: ['tabular-nums'] },
+  cantidad: { color: C.apagado, fontSize: 13, fontFamily: L.dato },
   botones: { flexDirection: 'row', gap: 10, marginTop: 14 },
   pildora: { flex: 1, borderRadius: 999, paddingVertical: 12, alignItems: 'center' },
   pildoraBorde: { borderWidth: 1, borderColor: C.bordeBoton },

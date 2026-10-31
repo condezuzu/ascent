@@ -1,6 +1,7 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * La cara de alguien en una lista: su foto, o la inicial de su nombre.

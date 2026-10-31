@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { C, conTema, conAlfa } from './colores';
@@ -8,6 +8,7 @@ import { catalogoDeRutina, type CatalogoDeRutina } from '@compartido/rutinas';
 import RutinaPlegada from './RutinaPlegada';
 import { supabase } from './supabase';
 import { guardarDiaDeRutina, rutinaReemplazada, type PreguntaDeRutina } from './preguntarPorLaRutina';
+import { Text } from './Texto';
 
 /**
  * LA VENTANA AL TERMINAR (19/10, aprobada en la galería): con el estilo de la app, en

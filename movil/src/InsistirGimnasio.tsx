@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import {
   CLAVE_INSISTIR_GIMNASIO,
   despuesDeMostrar,
@@ -10,6 +10,7 @@ import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import { C } from './colores';
 import PinGimnasio from './PinGimnasio';
+import { Text } from './Texto';
 
 /**
  * "DEJA QUE SE MARQUE SOLO" (15/10; antes una tarjeta, "Este día lo anotaste tú"). El ofrecimiento del punto del gimnasio, en el

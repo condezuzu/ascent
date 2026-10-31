@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { T } from '@nucleo/textos';
 import { disponible } from '@nucleo/esquema';
 import { numeroDeRango } from '@nucleo/rangos';
@@ -13,6 +13,7 @@ import Tocable from './Tocable';
 import { irAPestana, useRecargarAlVolver } from './irAPestana';
 import { C, conTema, conAlfa } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 type Amigo = { id: string; username: string; avatar_url: string | null };
 // Dónde quedó la burbuja tocada, en la ventana: de ahí sale el globo.

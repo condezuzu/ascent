@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
 import type { Senal } from '@nucleo/estancamiento';
@@ -8,6 +8,8 @@ import { T } from '@nucleo/textos';
 import { cargarEstancamiento, descartarSenal } from '@compartido/estancamiento';
 import { C, conAlfa } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL AVISO DE ESTANCAMIENTO, en la app nativa. Uno, o ninguno. El mismo que
@@ -106,7 +108,7 @@ const estilos = StyleSheet.create({
   // Cifras tabulares para que las dos columnas caigan en la misma vertical:
   // si no se alinean, no se comparan.
   fila: { flexDirection: 'row', alignItems: 'baseline', gap: 12, paddingVertical: 5 },
-  cuando: { flex: 1, color: C.apagado, fontSize: 13 },
-  dato: { color: C.sub, fontSize: 14, minWidth: 62, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  cuando: { flex: 1, color: C.apagado, fontSize: 13, fontFamily: L.dato },
+  dato: { color: C.sub, fontSize: 14, minWidth: 62, textAlign: 'right', fontFamily: L.dato },
   descartar: { color: C.apagado, fontSize: 12, paddingTop: 8 },
 });

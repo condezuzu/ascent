@@ -1,7 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import type { Semana } from '@nucleo/volumen';
 import { T } from '@nucleo/textos';
 import { C, conAlfa } from './colores';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 const ALTO = 72;
 
@@ -60,8 +62,8 @@ export default function KilosPorSemana({
 
 const estilos = StyleSheet.create({
   caja: { marginTop: 18 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
-  numero: { color: C.tinta, fontSize: 22, fontVariant: ['tabular-nums'], marginTop: 6, marginBottom: 10 },
+  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
+  numero: { color: C.tinta, fontSize: 22, fontFamily: L.dato, marginTop: 6, marginBottom: 10 },
   unidad: { color: C.sub, fontSize: 13 },
   barras: { flexDirection: 'row', alignItems: 'flex-end', height: ALTO, gap: 4 },
   columna: { flex: 1, height: ALTO, justifyContent: 'flex-end' },

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
 import { cuerpoDe } from '@nucleo/rangos';
@@ -32,6 +32,7 @@ import Interruptor from './Interruptor';
 import { useArriba } from './zonaSegura';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -426,6 +427,7 @@ const estilos = conTema(() => StyleSheet.create({
     fontSize: 11,
     letterSpacing: 4,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginBottom: 26,
   },
   seccion: {
@@ -433,6 +435,7 @@ const estilos = conTema(() => StyleSheet.create({
     fontSize: 11,
     letterSpacing: 2,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginTop: 26,
     marginBottom: 10,
   },
@@ -462,7 +465,7 @@ const estilos = conTema(() => StyleSheet.create({
     borderTopColor: C.linea,
     paddingTop: 18,
   },
-  avanzadoTitulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  avanzadoTitulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
   avanzadoSigno: { color: C.sub, fontSize: 18 },
   fila: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   pastilla: {

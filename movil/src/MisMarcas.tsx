@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import { esUnidad, type Unidad } from '@nucleo/peso';
@@ -18,6 +18,8 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { volverOInicio } from './volver';
 import { useArriba } from './zonaSegura';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * MIS MARCAS (§16): donde se cargan, se miran y se borran.
@@ -316,7 +318,7 @@ const estilos = conTema(() => StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 26, fontWeight: '300', marginTop: 10, marginBottom: 18 },
   solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },
+  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 28, marginBottom: 10 },
   tarjeta: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
@@ -326,11 +328,11 @@ const estilos = conTema(() => StyleSheet.create({
   },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 13 },
   nombre: { flex: 1, color: C.tinta, fontSize: 15 },
-  kilos: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
-  fecha: { color: C.apagado, fontSize: 12, minWidth: 54, textAlign: 'right' },
+  kilos: { color: C.tinta, fontSize: 15, fontFamily: L.dato },
+  fecha: { color: C.apagado, fontSize: 12, minWidth: 54, textAlign: 'right', fontFamily: L.dato },
   historial: { paddingHorizontal: 12, paddingBottom: 12, gap: 8 },
   previa: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  previaPeso: { flex: 1, color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
+  previaPeso: { flex: 1, color: C.sub, fontSize: 13, fontFamily: L.dato },
   apagado: { color: C.apagado, fontSize: 12 },
   peligro: { color: C.error, fontSize: 12 },
   pregunta: { flex: 1, lineHeight: 17 },

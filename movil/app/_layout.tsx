@@ -43,6 +43,7 @@ import { cuerpoDe } from '@nucleo/rangos';
 import { C, conTema } from '../src/colores';
 import { useTema } from '../src/useTema';
 import { seguirElFondo } from '../src/paletaDelFondo';
+import { cargarFuentes } from '../src/fuentes';
 
 // En el módulo y no en un efecto: el primer pedido de fondo sale antes de que se pinte nada.
 seguirElFondo();
@@ -102,6 +103,11 @@ export default function Layout() {
   const [entrada, setEntrada] = useState<'logo' | 'abriendo' | 'fin'>('logo');
   const abierta = entrada === 'fin';
   const [datosListos, setDatosListos] = useState(false);
+  // La entrada espera a las letras: si no, el zoom termina y todo cambia de fuente a la vista.
+  const [letrasListas, setLetrasListas] = useState(false);
+  useEffect(() => {
+    void cargarFuentes().then(() => setLetrasListas(true));
+  }, []);
   const abrir = useCallback(() => setEntrada('abriendo'), []);
   const terminarEntrada = useCallback(() => setEntrada('fin'), []);
 
@@ -412,7 +418,7 @@ export default function Layout() {
       </View>
       {/* Fuera de la llave del idioma: cambiarlo en medio no la vuelve a empezar. */}
       {entrada !== 'fin' && (
-        <EntradaDeLaApp lista={sesion !== 'mirando' && (sesion !== 'con' || datosListos)} alAbrir={abrir} alTerminar={terminarEntrada} />
+        <EntradaDeLaApp lista={letrasListas && sesion !== 'mirando' && (sesion !== 'con' || datosListos)} alAbrir={abrir} alTerminar={terminarEntrada} />
       )}
       </ProveedorDeSesion>
     </Raiz>

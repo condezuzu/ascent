@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import { GRUPOS_PROPIOS, ORDEN_ZONAS, buscarEjercicios, gruposDeZona, nombreDeGrupo, sinAcentos, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
 import { disponible } from '@nucleo/esquema';
@@ -17,6 +17,8 @@ import { leerPerfilCache } from '@compartido/cache';
 import { claveDeEtiqueta } from '@nucleo/carga';
 import { pesoEnLaLista } from '@nucleo/peso';
 import GloboPrimeraVez from './GloboPrimeraVez';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
 
 /**
  * ELEGIR ENTRE CIEN EJERCICIOS, NAVEGANDO. El mismo árbol que la web
@@ -297,7 +299,7 @@ const estilos = conTema(() => StyleSheet.create({
   volver: { minWidth: 36, minHeight: 36, justifyContent: 'center' },
   volverTexto: { color: C.sub, fontSize: 20 },
   titulo: { color: C.tinta, fontSize: 20, fontWeight: '500' },
-  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginTop: 14, marginBottom: 2 },
+  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 14, marginBottom: 2 },
   separa: { height: 14 },
   fila: {
     flexDirection: 'row',
@@ -311,7 +313,7 @@ const estilos = conTema(() => StyleSheet.create({
   filaTexto: { color: C.sub, fontSize: 16, flexShrink: 1, paddingRight: 12 },
   elegido: { color: C.tinta, fontWeight: '600' },
   // Más claro que el nombre: el peso es lo que se viene a leer (10/10).
-  extra: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
+  extra: { color: C.tinta, fontSize: 15, fontFamily: L.dato },
   cancelar: { paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   buscador: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingHorizontal: 12, marginBottom: 8 },
   lupa: { color: C.sub, fontSize: 18 },

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { bloquear, denunciar, MOTIVOS_DENUNCIA, type MotivoDenuncia } from '@compartido/ranking';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
@@ -8,6 +8,7 @@ import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * DENUNCIAR O BLOQUEAR a alguien (migración 53). Una hoja que sube desde abajo,

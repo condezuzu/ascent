@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * UNA ELECCIÓN ENTRE POCAS, EN UNA SOLA PIEZA (15/10/2026). Ajustes eran pastillas

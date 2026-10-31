@@ -1,10 +1,12 @@
 import { memo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { progresoEnRango, siguienteRango } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import NumeroQueCuenta from './NumeroQueCuenta';
 import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL NÚMERO DE RACHA, CON LA PALABRA AL COSTADO Y LA BARRA DEBAJO.
@@ -101,8 +103,8 @@ const estilos = conTema(() => StyleSheet.create({
   rotulo: { paddingBottom: 14, alignItems: 'center' },
   // `lineHeight` chico y `letterSpacing` en cero: acá la separación entre
   // letras es la separación entre FILAS, que es lo que hace el efecto.
-  letra: { color: C.sub, fontSize: 10, lineHeight: 14, textTransform: 'uppercase' },
-  numero: { fontSize: 92, fontWeight: '300', lineHeight: 100 },
+  letra: { color: C.sub, fontSize: 10, lineHeight: 14, textTransform: 'uppercase', fontWeight: '500' },
+  numero: { fontSize: 92, fontWeight: '300', lineHeight: 100, fontFamily: L.racha, letterSpacing: -2 },
   barra: { height: 3, width: '62%', borderRadius: 2, overflow: 'hidden', marginTop: 20, marginBottom: 8 },
   llena: { height: '100%', borderRadius: 2 },
 }));

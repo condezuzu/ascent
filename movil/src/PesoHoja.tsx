@@ -1,9 +1,10 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { T } from '@nucleo/textos';
 import type { Unidad } from '@nucleo/peso';
 import AnotarPeso from './AnotarPeso';
 import Hoja from './Hoja';
 import { C } from './colores';
+import { Text } from './Texto';
 
 /**
  * ANOTAR EL PESO, Y NADA MÁS. La misma hoja que la web (`PesoSheet.tsx`).

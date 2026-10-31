@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { borrarPeso, corregirPeso } from '@compartido/peso';
 import { useVersionDelEsquema } from '@compartido/esquema';
@@ -11,6 +11,8 @@ import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
 
 /**
  * LO QUE ANOTASTE, con forma de arreglarlo. La misma lista que la web
@@ -215,7 +217,7 @@ export default function ListaDePesos({
 
 const estilos = conTema(() => StyleSheet.create({
   lista: { marginTop: 16 },
-  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 },
+  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 6 },
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -227,12 +229,12 @@ const estilos = conTema(() => StyleSheet.create({
   // Cuando se corrige o se pregunta por el borrado, la fila se despega apenas
   // del resto para que se vea qué renglón está en juego.
   filaActiva: { backgroundColor: C.hoja, borderRadius: 10, paddingHorizontal: 10, marginHorizontal: -10 },
-  cuando: { color: C.apagado, fontSize: 12, minWidth: 58, fontVariant: ['tabular-nums'] },
+  cuando: { color: C.apagado, fontSize: 12, minWidth: 58, fontFamily: L.dato },
   // El bloque del dato: el peso manda, el cambio va al lado en voz baja.
   dato: { flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  valor: { color: C.tinta, fontSize: 17, fontWeight: '400', fontVariant: ['tabular-nums'] },
+  valor: { color: C.tinta, fontSize: 17, fontWeight: '400', fontFamily: L.dato },
   unidad: { color: C.apagado, fontSize: 12, fontWeight: '400' },
-  delta: { fontSize: 11, fontVariant: ['tabular-nums'] },
+  delta: { fontSize: 11, fontFamily: L.dato },
   // El color sale del OBJETIVO, no de subir/bajar. Acercarse = verde tenue;
   // alejarse = terracota; ya en el objetivo = el claro de la app; sin objetivo
   // = gris (no se juzga nada hasta que haya un número al que llegar).

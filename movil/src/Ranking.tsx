@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { leerViva, suscribirViva } from '@compartido/sesionViva';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
@@ -48,6 +48,8 @@ import { disponible } from '@nucleo/esquema';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { useArriba } from './zonaSegura';
 import Tocable from './Tocable';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * RANKING — tanda 4.
@@ -535,9 +537,9 @@ const estilos = conTema(() => StyleSheet.create({
   },
   // Sin flex: las medallas van pegadas al nombre (14/10); uno largo las baja de renglón.
   nombre: { flexShrink: 1, color: C.tinta, fontSize: 15 },
-  dato: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
+  dato: { color: C.sub, fontSize: 14, fontFamily: L.dato },
   // La racha de hoy, sola y apartada a la derecha: lo de al lado del nombre son logros.
-  racha: { color: C.tinta, fontSize: 16, minWidth: 34, textAlign: 'right', marginLeft: 14 },
+  racha: { color: C.tinta, fontSize: 16, minWidth: 34, textAlign: 'right', marginLeft: 14, fontFamily: L.dato },
   filaAdentro: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   unirse: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
   unirseTexto: { color: C.tinta, fontSize: 13 },
@@ -557,7 +559,7 @@ const estilos = conTema(() => StyleSheet.create({
   vacio: { alignItems: 'center', paddingVertical: 36, gap: 6 },
   vacioTexto: { color: C.sub, fontSize: 14, textAlign: 'center' },
   seccion: { marginTop: 24 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
+  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 8 },
   verMas: { paddingVertical: 10, alignItems: 'center' },
   verMasTexto: { color: C.sub, fontSize: 13 },
   flechaArriba: { transform: [{ rotate: '180deg' }] },

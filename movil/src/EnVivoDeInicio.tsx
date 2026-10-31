@@ -1,5 +1,5 @@
 import { useEffect, useRef, memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { publicarEnVivo, responderUnion } from '@compartido/enVivo';
 import { firmaDe, loQueSePublica } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
@@ -11,6 +11,7 @@ import { useCartelVisible } from './cartelVisible';
 import { tarjetasDeInicio } from '@nucleo/novedades';
 import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * LA MITAD DE "ENTRENAR CON OTRO" QUE VIVE EN INICIO (12/10/2026).

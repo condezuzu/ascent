@@ -83,6 +83,8 @@
 //      incluido, en los siete rangos y los diez planetas (30/10), en la nativa.
 //  36. probar-rango — el sólido, el chip y la pestaña son el claro de los siete rangos; subir con la app
 //      abierta cambia la paleta sin remontar el motor ni perder la sesión; lo fijo sigue fijo (30/10).
+//  37. probar-letras — nada en la fuente del sistema en Inicio, entrenando, el descanso ni Stats; el número
+//      es Outfit, las cifras y el reloj son Geist Mono, y se dibujan de verdad (30/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -139,6 +141,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'dos toques con el teléfono trabado', archivo: 'probar-toque-trabado.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el piso de contraste en los siete rangos', archivo: 'probar-contraste.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'toda la app sigue al rango', archivo: 'probar-rango.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'las letras de la nativa', archivo: 'probar-letras.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

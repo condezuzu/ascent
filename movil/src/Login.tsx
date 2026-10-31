@@ -1,21 +1,12 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { VUELTA } from './enlace';
 import { mensajeDeAuth } from '@nucleo/errores';
 import { T } from '@nucleo/textos';
 import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
 
 /**
  * ENTRAR — TANDA 2, y la primera pantalla de verdad de la app nativa.
@@ -197,6 +188,7 @@ const estilos = conTema(() => StyleSheet.create({
     fontSize: 13,
     letterSpacing: 6,
     textTransform: 'uppercase',
+    fontWeight: '500',
     textAlign: 'center',
     marginBottom: 44,
   },
@@ -213,6 +205,7 @@ const estilos = conTema(() => StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginBottom: 6,
   },
   campo: {

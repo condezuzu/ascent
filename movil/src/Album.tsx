@@ -1,18 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from 'react';
-import {
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Image,
-  Modal,
-  PanResponder,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { ActivityIndicator, Animated, Easing, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
@@ -38,6 +25,8 @@ import { completarMiniaturas } from './miniaturas';
 import { useFotoLocal } from './fotoLocal';
 import { useArriba } from './zonaSegura';
 import GloboPrimeraVez from './GloboPrimeraVez';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * ÁLBUM — tanda 4.
@@ -553,7 +542,7 @@ const estilos = conTema(() => StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 22, marginBottom: 20 },
   error: { color: C.error, fontSize: 14, marginBottom: 12 },
   cabezaMes: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
   cuentaMes: { color: C.apagado, fontSize: 11 },
   // LA COMPARACION: dos mitades iguales, con la fecha debajo de cada una.
   comparar: { flexDirection: 'row', gap: 4, marginBottom: 4 },
@@ -634,7 +623,7 @@ const estilos = conTema(() => StyleSheet.create({
   cuando: { flexDirection: 'row', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' },
   fecha: { color: C.tinta, fontSize: 16 },
   // "día 41": el registro, en el claro de la app para que se lea como un logro.
-  diaDeRacha: { color: C.claro, fontSize: 13, fontVariant: ['tabular-nums'] },
+  diaDeRacha: { color: C.claro, fontSize: 13, fontFamily: L.dato },
   planeta: { color: C.sub, fontSize: 13 },
   acciones: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pastilla: {

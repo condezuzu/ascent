@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { plataformaNativa } from './plataforma';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * TANDA 1 — que los diez puertos existan y contesten EN EL TELÉFONO.
@@ -127,6 +128,7 @@ const estilos = conTema(() => StyleSheet.create({
     fontSize: 10,
     letterSpacing: 4,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginBottom: 10,
   },
   fila: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },

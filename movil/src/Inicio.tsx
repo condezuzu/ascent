@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
@@ -65,6 +65,8 @@ import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
 import { C, DESHABILITADO, HALO, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -760,7 +762,7 @@ export default function Inicio({
                 onPress={() => void sesion.duracionDelDescansoSuelto().then(setSinEmpezar)}
                 accessibilityRole="button"
               >
-                <Text style={estilos.chipTexto}>{T.sesion.descansar}</Text>
+                <Text style={estilos.chipPalabra}>{T.sesion.descansar}</Text>
               </Tocable>
             )}
           </View>
@@ -771,7 +773,7 @@ export default function Inicio({
             disabled={sesion.estado.ocupado}
             accessibilityRole="button"
           >
-            <Text style={estilos.chipTexto}>{sesion.estado.ocupado ? '…' : T.inicio.iniciarEntrenamiento}</Text>
+            <Text style={estilos.chipPalabra}>{sesion.estado.ocupado ? '…' : T.inicio.iniciarEntrenamiento}</Text>
           </Tocable>
         )}
       </View>
@@ -1283,18 +1285,18 @@ const estilos = conTema(() => StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 30,
   },
-  usuario: { color: C.tinta, fontSize: 16, fontWeight: '600', flexShrink: 1 },
-  etiqueta: { color: C.sub, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase' },
-  racha: { color: C.claro, fontSize: 92, fontWeight: '300', lineHeight: 100 },
+  usuario: { color: C.tinta, fontSize: 16, fontWeight: '600', letterSpacing: -0.1, flexShrink: 1 },
+  etiqueta: { color: C.sub, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase', fontWeight: '500' },
+  racha: { color: C.claro, fontSize: 92, fontWeight: '300', lineHeight: 100, fontFamily: L.racha, letterSpacing: -2 },
 
   // El renglón de pasos: tabular para que el número no baile, tenue y con aire
   // arriba (bajo el número de la racha) y abajo (antes de la semana).
-  pasos: { color: C.apagado, fontSize: 13, marginTop: 14, fontVariant: ['tabular-nums'] },
+  pasos: { color: C.apagado, fontSize: 13, marginTop: 14, fontFamily: L.dato },
 
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 34 },
   // Pegada a las vidas, como en el aviso: se leen juntas.
   tiraBajoVidas: { marginTop: 18 },
-  letra: { color: C.apagado, fontSize: 11 },
+  letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
 
   impulsos: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 26 },
   impulsosEt: {
@@ -1302,6 +1304,7 @@ const estilos = conTema(() => StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginRight: 4,
   },
 
@@ -1342,7 +1345,8 @@ const estilos = conTema(() => StyleSheet.create({
     paddingHorizontal: 12,
     minHeight: 36,
   },
-  chipTexto: { color: C.claro, fontSize: 13, fontVariant: ['tabular-nums'] },
+  chipTexto: { color: C.claro, fontSize: 13, fontFamily: L.dato },
+  chipPalabra: { color: C.claro, fontSize: 13, fontWeight: '500' },
   latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.claro },
   // No se achica: los dos chips son numeros y un numero cortado no se lee.
   sesionViva: { flexDirection: 'row', gap: 8, flexShrink: 0 },
@@ -1350,7 +1354,7 @@ const estilos = conTema(() => StyleSheet.create({
   chipTextoListo: { color: C.fondo },
 
   sesion: { marginTop: 16 },
-  crono: { color: C.tinta, fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 4 },
+  crono: { color: C.tinta, fontSize: 44, fontWeight: '300', fontFamily: L.dato, marginTop: 4 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
   pregunta: { color: C.sub, fontSize: 14, lineHeight: 20, marginTop: 24 },
   preguntaFuerte: { color: C.tinta, fontWeight: '600' },
@@ -1371,7 +1375,7 @@ const estilos = conTema(() => StyleSheet.create({
   resumenCerrar: { color: C.sub, fontSize: 16, paddingHorizontal: 4 },
   cifras: { flexDirection: 'row', gap: 28, marginTop: 8 },
   cifra: { alignItems: 'flex-start' },
-  cifraNumero: { color: C.claro, fontSize: 26, fontWeight: '300', fontVariant: ['tabular-nums'] },
+  cifraNumero: { color: C.claro, fontSize: 26, fontWeight: '300', fontFamily: L.dato, letterSpacing: -1 },
   // "Ver lo que hiciste hoy": tenue, debajo de los botones de foto/peso.
   verResumen: { paddingVertical: 10, marginTop: 2 },
   verResumenTexto: { color: C.sobreMotor, fontSize: 13, ...HALO },

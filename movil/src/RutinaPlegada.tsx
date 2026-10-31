@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { ORDEN_SEMANA, tituloDelDia, type DiaDeSemana } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import { nombreVisible } from '@nucleo/propios';
 import type { CatalogoDeRutina } from '@compartido/rutinas';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * UNA RUTINA PLEGADA POR DÍA (14/10): "Lunes — Pecho, hombro y brazo", y al
@@ -152,7 +154,7 @@ const estilos = conTema(() => StyleSheet.create({
   lista: { paddingBottom: 12 },
   fila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
   ejercicio: { color: C.sub, fontSize: 14, flexShrink: 1 },
-  cantidad: { color: C.apagado, fontSize: 13, fontVariant: ['tabular-nums'] },
+  cantidad: { color: C.apagado, fontSize: 13, fontFamily: L.dato },
   bloques: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4, maxWidth: '55%' },
   bloque: { width: 16, height: 12, borderRadius: 3, backgroundColor: C.cuadro },
 }));

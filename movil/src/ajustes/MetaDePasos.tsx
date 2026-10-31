@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import {
   CLAVE_META_PASOS,
   META_PASOS_POR_OMISION,
@@ -10,6 +10,8 @@ import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import { C, conTema } from '../colores';
 import { useTema } from '../useTema';
+import { Text, TextInput } from '../Texto';
+import { L } from '../fuentes';
 
 /**
  * LA META DE PASOS DEL DÍA.
@@ -89,7 +91,7 @@ export default function MetaDePasos({ alCambiar }: { alCambiar?: (meta: number) 
 
 const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12 },
+  titulo: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', fontWeight: '500', marginBottom: 12 },
   campo: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
@@ -98,7 +100,7 @@ const estilos = conTema(() => StyleSheet.create({
     paddingHorizontal: 14,
     color: C.tinta,
     fontSize: 16,
-    fontVariant: ['tabular-nums'],
+    fontFamily: L.dato,
   },
   boton: {
     marginTop: 10,

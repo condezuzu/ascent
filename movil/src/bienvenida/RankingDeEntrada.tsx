@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import { numeroDeRango } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import Insignia from '../Insignia';
 import { C, conAlfa } from '../colores';
+import { Text, TextoAnimado } from '../Texto';
+import { L } from '../fuentes';
 
 /**
  * LA ÚLTIMA PANTALLA DE LA ENTRADA (15/10): "Mira quién llega más lejos". Las
@@ -184,9 +186,9 @@ export default function RankingDeEntrada({ alSalir }: { alSalir: (destino: 'crea
           ]}
         >
           <Pressable testID="bienvenida-crear" disabled={paso < 4} onPress={() => alSalir('crear')} style={estilos.botonToque} accessibilityRole="button">
-            <Animated.Text numberOfLines={1} style={[estilos.botonTexto, { opacity: textoBoton }]}>
+            <TextoAnimado numberOfLines={1} style={[estilos.botonTexto, { opacity: textoBoton }]}>
               {T.bienvenida.crear}
-            </Animated.Text>
+            </TextoAnimado>
           </Pressable>
         </Animated.View>
         <Animated.View style={{ opacity: yaTengo }}>
@@ -208,7 +210,7 @@ const estilos = StyleSheet.create({
   avatar: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
   inicial: { color: C.tinta, fontSize: 13 },
   nombre: { flex: 1, color: C.tinta, fontSize: 15 },
-  racha: { width: 30, textAlign: 'right', color: C.claro, fontSize: 17, fontVariant: ['tabular-nums'] },
+  racha: { width: 30, textAlign: 'right', color: C.claro, fontSize: 17, fontFamily: L.dato },
   titulo: { color: C.tinta, fontSize: 30, lineHeight: 36, fontWeight: '500' },
   luz: { position: 'absolute', alignSelf: 'center', width: 2, backgroundColor: C.claro },
   pie: { alignItems: 'center', paddingHorizontal: 28, paddingBottom: 50, minHeight: 140, justifyContent: 'flex-end' },

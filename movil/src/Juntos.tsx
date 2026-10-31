@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Share, StyleSheet, View } from 'react-native';
 import { echarDelGrupo, linkDelGrupo, responderUnion, salirDelGrupo, salirDeUnion } from '@compartido/enVivo';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
@@ -17,6 +17,8 @@ import Aparece from './Aparece';
 import Tocable from './Tocable';
 import { numeroDeRango } from '@nucleo/rangos';
 import { paletaDe } from '@nucleo/paletas';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * "ENTRENANDO CONTIGO", en Ranking (12/10/2026): con quién estoy unido y qué
@@ -173,7 +175,7 @@ const estilos = conTema(() => StyleSheet.create({
   aro: { borderWidth: 2, borderRadius: 999, padding: 1 },
   invitar: { backgroundColor: C.claro, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 16 },
   invitarTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 },
+  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 6 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   nombre: { flex: 1, color: C.tinta, fontSize: 14 },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -184,7 +186,7 @@ const estilos = conTema(() => StyleSheet.create({
   apagada: { color: C.apagado, fontSize: 13 },
   pildora: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
   pildoraLista: { borderColor: C.sub },
-  pildoraTexto: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
+  pildoraTexto: { color: C.sub, fontSize: 12, fontFamily: L.dato },
   pildoraTextoLista: { color: C.tinta },
   pie: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 },
 }));

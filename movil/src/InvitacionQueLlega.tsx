@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Novedad } from '@nucleo/novedades';
 import { T } from '@nucleo/textos';
 import Avatar from './Avatar';
 import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /** Lo que dura la mecha. Si se quema entera, la invitación se cancela sola. */
 export const MECHA_MS = 10_000;

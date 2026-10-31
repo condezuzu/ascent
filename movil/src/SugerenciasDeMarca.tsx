@@ -1,10 +1,12 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
 import { T } from '@nucleo/textos';
 import { useSugerenciasDeMarca } from '@compartido/marcaSugerida';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * "¿LO GUARDO COMO MARCA?", en el resumen nativo. Qué se propone lo decide
@@ -65,7 +67,7 @@ const estilos = conTema(() => StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
-  repTexto: { color: C.tinta, fontSize: 14, fontVariant: ['tabular-nums'] },
+  repTexto: { color: C.tinta, fontSize: 14, fontFamily: L.dato },
   no: { paddingHorizontal: 14 },
   noTexto: { color: C.sub, fontSize: 14 },
 }));

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { T } from '@nucleo/textos';
 import { claveNuevaInvalida, porQueNoCambio } from '@nucleo/clave';
 import { useEnVuelo } from '@compartido/useEnVuelo';
@@ -7,6 +7,7 @@ import { supabase } from './supabase';
 import CampoTexto from './CampoTexto';
 import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * ELEGIR LA CONTRASEÑA NUEVA, después de tocar el enlace del correo (4/10).

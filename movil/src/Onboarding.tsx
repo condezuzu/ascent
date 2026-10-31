@@ -1,14 +1,5 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { nombreValido } from '@nucleo/usuario';
@@ -16,6 +7,7 @@ import { T } from '@nucleo/textos';
 import { reiniciarGuia } from '@compartido/guia';
 import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
 
 /**
  * ELEGIR EL NOMBRE — lo que falta para que una cuenta nueva sirva.
@@ -152,6 +144,7 @@ const estilos = conTema(() => StyleSheet.create({
     fontSize: 13,
     letterSpacing: 6,
     textTransform: 'uppercase',
+    fontWeight: '500',
     textAlign: 'center',
     marginBottom: 44,
   },

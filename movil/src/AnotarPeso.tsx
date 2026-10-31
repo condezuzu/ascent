@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { PanResponder, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Line, Text as SvgText } from 'react-native-svg';
 import { aKilos, conComa, type Unidad } from '@nucleo/peso';
 import { APRETADO_MS, REPETIR_MS, marcasDeRegla, pesoAcotado, pesoArrastrado, pesoInicial } from '@nucleo/reglaDePeso';
@@ -8,6 +8,8 @@ import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { FIJO } from './coloresFijos';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * ANOTAR EL PESO (20/10, la B de la galería): el número grande, − y + a los lados de una
@@ -106,7 +108,7 @@ export default function AnotarPeso({ unidad, alGuardar }: { unidad: Unidad; alGu
               {marcasDeRegla(valor, ancho)
                 .filter((m) => m.etiqueta)
                 .map((m) => (
-                  <SvgText key={'e' + m.etiqueta} x={m.x} y={14} fill={FIJO.sub} fontSize={10} textAnchor="middle">
+                  <SvgText key={'e' + m.etiqueta} x={m.x} y={14} fill={FIJO.sub} fontSize={10} fontFamily="GeistMono_400Regular" textAnchor="middle">
                     {m.etiqueta}
                   </SvgText>
                 ))}
@@ -159,7 +161,7 @@ function Apretable({ texto, etiqueta, testID, paso, alMover }: { texto: string; 
 const estilos = StyleSheet.create({
   todo: { alignItems: 'center', gap: 14, marginTop: 10 },
   cifra: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 6 },
-  numero: { color: FIJO.tinta, fontSize: 76, fontWeight: '200', lineHeight: 84, fontVariant: ['tabular-nums'] },
+  numero: { color: FIJO.tinta, fontSize: 64, fontWeight: '200', lineHeight: 84, fontFamily: L.dato, letterSpacing: -3 },
   unidad: { color: FIJO.sub, fontSize: 16 },
   fila: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', gap: 8 },
   regla: { flex: 1, height: 54, borderRadius: 12, backgroundColor: FIJO.regla, borderWidth: 1, borderColor: FIJO.linea, overflow: 'hidden' },
@@ -167,7 +169,7 @@ const estilos = StyleSheet.create({
   redondo: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: FIJO.borde, backgroundColor: FIJO.negro, alignItems: 'center', justifyContent: 'center' },
   redondoApretado: { backgroundColor: FIJO.apretado },
   redondoTexto: { color: FIJO.tinta, fontSize: 20, fontWeight: '300', lineHeight: 24 },
-  ultima: { color: FIJO.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
+  ultima: { color: FIJO.sub, fontSize: 12, fontFamily: L.dato },
   anotar: { alignSelf: 'stretch', backgroundColor: FIJO.crema, borderRadius: 999, paddingVertical: 14, alignItems: 'center' },
   apagado: { opacity: FIJO.deshabilitado },
   anotarTexto: { color: FIJO.negro, fontSize: 15, fontWeight: '600' },

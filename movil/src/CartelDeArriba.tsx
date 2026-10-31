@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { plataforma } from '@plataforma';
 import { miId } from '@compartido/quienSoy';
 import { traerNovedades } from '@compartido/novedades';
@@ -16,6 +16,7 @@ import InvitacionQueLlega from './InvitacionQueLlega';
 import { fijarCartel } from './cartelVisible';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /** Cada cuánto se pregunta con la app adelante. El aviso push lo adelanta. */
 const CADA_MS = 30_000;

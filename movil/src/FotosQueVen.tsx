@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import FotoGrande from './FotoGrande';
 import { fechaCorta } from '@nucleo/fechas';
 import type { FotoDePerfil } from '@compartido/perfil';
@@ -7,6 +7,7 @@ import Surgir from './Surgir';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { useFotoLocal } from './fotoLocal';
+import { Text } from './Texto';
 
 /**
  * LAS FOTOS COMO LAS VE UN AMIGO, y nada más: sin administrar. Tocar una la

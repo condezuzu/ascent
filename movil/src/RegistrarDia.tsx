@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { supabase } from './supabase';
@@ -19,6 +19,7 @@ import { prepararFoto, prepararMiniatura } from './foto';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import { FIJO } from './coloresFijos';
+import { Text } from './Texto';
 
 type Elegida = { uri: string; ancho: number; alto: number };
 

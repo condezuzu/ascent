@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { CLAVE_OBJETIVO_PESO, leerObjetivo, llego, objetivoValido, rumboDelPaso } from '@nucleo/pesoObjetivo';
 import { aKilos, conComa, deKilos, type Unidad } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL OBJETIVO DE PESO: un número al que se quiere llegar. Va arriba de la lista
@@ -160,7 +162,7 @@ const estilos = conTema(() => StyleSheet.create({
   pillTexto: { color: C.sub, fontSize: 13 },
   llegado: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', marginTop: 12, marginBottom: 2 },
   llegadoTexto: { color: C.sub, fontSize: 13 },
-  llegadoNumero: { color: C.claro, fontSize: 15, fontVariant: ['tabular-nums'] },
+  llegadoNumero: { color: C.claro, fontSize: 15, fontFamily: L.dato },
   llegadoMarca: { color: C.claro, fontSize: 14 },
   editor: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 12 },
   campo: {
@@ -172,7 +174,7 @@ const estilos = conTema(() => StyleSheet.create({
     color: C.tinta,
     fontSize: 15,
     minWidth: 96,
-    fontVariant: ['tabular-nums'],
+    fontFamily: L.dato,
   },
   accionBtn: { paddingVertical: 2 },
   accion: { color: C.sub, fontSize: 13 },
@@ -182,7 +184,7 @@ const estilos = conTema(() => StyleSheet.create({
   trend: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 8 },
   trendItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   trendFlecha: { fontSize: 9 },
-  trendValor: { color: C.apagado, fontSize: 12, fontVariant: ['tabular-nums'] },
+  trendValor: { color: C.apagado, fontSize: 12, fontFamily: L.dato },
   trendUltimo: { color: C.sub },
   tBien: { color: C.bien },
   tLejos: { color: C.lejos },

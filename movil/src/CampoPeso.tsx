@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import type { Unidad } from '@nucleo/peso';
 import { confirmarCampo, hayQueAvisar, limpiarTecleo, pasoDelCampo, pesoEscrito, textoDelCampo } from '@nucleo/campoPeso';
 import { T } from '@nucleo/textos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL PESO, escrito una vez. La misma pieza que `src/components/CampoPeso.tsx`:
@@ -146,12 +148,13 @@ const estilos = conTema(() => StyleSheet.create({
   },
   input: {
     color: C.tinta,
-    fontSize: 22,
+    fontSize: 16,
+    letterSpacing: -0.3,
     // Ancho FIJO: en web un campo sin ancho ocupa la fila entera y empuja la
     // etiqueta del modo al renglón de abajo.
     width: 66,
     textAlign: 'right',
-    fontVariant: ['tabular-nums'],
+    fontFamily: L.dato,
     padding: 0,
   },
   inputCompacto: { fontSize: 14, width: 44 },

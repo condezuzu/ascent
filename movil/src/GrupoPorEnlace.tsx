@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { unirsePorLink, type RespuestaDelLink } from '@compartido/enVivo';
 import { codigoDeGrupo } from '@nucleo/enlace';
@@ -10,6 +10,7 @@ import { useTema } from './useTema';
 import { volverOInicio } from './volver';
 import { irAPestana } from './irAPestana';
 import { useArriba } from './zonaSegura';
+import { Text } from './Texto';
 
 /**
  * A DÓNDE CAE UN LINK DE GRUPO (`/grupo/<código>`, migración 88). Entra solo, sin

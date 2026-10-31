@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import {
   agregarEjercicio,
@@ -40,6 +40,8 @@ import { useTema } from './useTema';
 import Aparece from './Aparece';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import { copiarDiaAlPortapapeles, useDiaCopiado } from './portapapelesDeDia';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
 
 /**
  * TU RUTINA, EN STATS (14/10). Se mira, se edita, se copia y se pega antes de ir
@@ -512,7 +514,7 @@ export default function MiRutina({
 const ALTO_FILA = 44;
 
 const estilos = conTema(() => StyleSheet.create({
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 34, marginBottom: 10 },
+  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 34, marginBottom: 10 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
   acciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 6 },
@@ -530,8 +532,8 @@ const estilos = conTema(() => StyleSheet.create({
   editor: { paddingBottom: 12 },
   filaEditable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   ejercicio: { flex: 1, color: C.sub, fontSize: 14 },
-  cantidad: { color: C.tinta, fontSize: 13, minWidth: 58, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  objetivo: { color: C.tinta, fontSize: 13, minWidth: 30, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  cantidad: { color: C.tinta, fontSize: 13, minWidth: 58, textAlign: 'center', fontFamily: L.dato },
+  objetivo: { color: C.tinta, fontSize: 13, minWidth: 30, textAlign: 'center', fontFamily: L.dato },
   objetivoVacio: { color: C.apagado },
   paso: { color: C.tinta, fontSize: 18, width: 20, textAlign: 'center' },
   quitar: { color: C.apagado, fontSize: 14, width: 20, textAlign: 'center' },

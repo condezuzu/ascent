@@ -1,8 +1,9 @@
-import { Pressable, Share, StyleSheet, Text } from 'react-native';
+import { Pressable, Share, StyleSheet } from 'react-native';
 import { enlaceDeAmigo } from '@nucleo/enlace';
 import { T } from '@nucleo/textos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * INVITAR CON TU LINK (8/10/2026). Abre la hoja de compartir del teléfono con

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { verLaGuiaDeNuevo as volverAVerLaGuia } from '@compartido/guia';
 import { plataforma } from '@plataforma';
 import { cerrarSesion, eliminarCuenta, limpiarAlSalir } from '@compartido/cuenta';
@@ -10,6 +10,7 @@ import { supabase } from '../supabase';
 import { VUELTA } from '../enlace';
 import { C, conTema } from '../colores';
 import { useTema } from '../useTema';
+import { Text, TextInput } from '../Texto';
 
 /**
  * LO ÚLTIMO DE AJUSTES: cambiar la clave, salir, y darse de baja.

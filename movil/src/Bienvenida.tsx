@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import Espacio from './bienvenida/Espacio';
 import { despertarMotor } from './despertarMotor';
@@ -9,6 +9,7 @@ import RankingDeEntrada from './bienvenida/RankingDeEntrada';
 import { MiniAmigo, MiniBloque, MiniSemana } from './bienvenida/Muestras';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * LA ENTRADA (15/10, aprobada en la galería): cuatro pantallas, una cosa real de la

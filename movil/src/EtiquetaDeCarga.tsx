@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { cargasOfrecidas, claveDeEtiqueta, type Carga } from '@nucleo/carga';
 import { T } from '@nucleo/textos';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * QUÉ SIGNIFICA EL NÚMERO, pegado al número. La misma pieza que la web: una

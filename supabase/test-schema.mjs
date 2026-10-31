@@ -19652,7 +19652,7 @@ console.log('\n272. El descanso al terminar: el reloj grande queda en 0:00 y lo 
   const { EN } = await import('../nucleo/textos-en.ts');
   const d = sinComentarios(deBug('movil', 'src', 'Descanso.tsx'));
   chequear('terminado, el reloj grande dice 0:00 y lo de más se escribe +0:40', [cuentaAtras(0), '+' + cuentaAtras(40)], ['0:00', '+0:40']);
-  chequear('el número grande es siempre la cuenta atrás (en 0 dice 0:00)', /<Text testID="descanso-reloj" style=\{estilos\.numero\}[^>]*>\s*\{cuentaAtras\(falta\)\}\s*<\/Text>/.test(d), true);
+  chequear('el número grande es siempre la cuenta atrás (en 0 dice 0:00)', /<Text testID="descanso-reloj" style=\{estilos\.numero\}[^>]*>\s*<RelojPartido texto=\{cuentaAtras\(falta\)\} \/>\s*<\/Text>/.test(d), true);
   chequear('lo de más: solo al terminar, chico, abajo a la derecha del arco', [
     /\{terminado && \(\s*<Text testID="descanso-de-mas" style=\{estilos\.deMas\}/.test(d),
     /deMas: \{ position: 'absolute', right: 4, bottom: 4, color: C\.sub, fontSize: 15/.test(d),
@@ -20007,7 +20007,7 @@ console.log('\n284. La entrada de la app: el aro del logo, el destello y el zoom
     (lay.match(/\{sesion === '/g) ?? []).length === 1 && /\{sesion === 'con' && \(\s*<View style=\{estilos\.todo\}>\s*(\{\s*\}\s*)*<FondoRaiz \/>\s*(\{\s*\}\s*)*\{abierta && \(/.test(lay) ? 0 : 1,
     (lay.match(/\{abierta && (claveNueva && )?\(?sesion === '/g) ?? []).length >= 4,
     /const abierta = entrada === 'fin';/.test(lay),
-    /\{entrada !== 'fin' && \(\s*<EntradaDeLaApp lista=\{sesion !== 'mirando' && \(sesion !== 'con' \|\| datosListos\)\}/.test(lay),
+    /\{entrada !== 'fin' && \(\s*<EntradaDeLaApp lista=\{letrasListas && sesion !== 'mirando' && \(sesion !== 'con' \|\| datosListos\)\}/.test(lay),
   ], [0, true, true, true]);
   const en = sinComentarios(deBug('movil', 'src', 'EntradaDeLaApp.tsx'));
   chequear('la entrada abre la app al empezar el zoom, y el zoom no depende del hilo de JS', [
@@ -21205,6 +21205,38 @@ console.log('\n323. Una sola paleta para toda la nativa (30/10)');
   chequear('ningún color escrito a mano en un componente', aMano323, []);
   const layout323 = leer323(join(raiz323, 'movil', 'app', '_layout.tsx'), 'utf8');
   chequear('la paleta sigue al fondo desde antes de pintar nada: en el módulo, no en un efecto', /^seguirElFondo\(\);/m.test(layout323), true);
+}
+console.log('\n324. Las letras de la nativa: Inter, Outfit solo para la racha, Geist Mono para los datos (30/10)');
+{
+  const { readFileSync: leer324, readdirSync: dir324, existsSync: hay324 } = await import('node:fs');
+  const raiz324 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const fuentes324 = ['movil/src', 'movil/app'].flatMap((d) => dir324(join(raiz324, d), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules'))
+    .map((e) => join(e.parentPath, e.name)));
+  // La red de seguridad no depende de nada: si la app se cae, tiene que poder dibujarse igual.
+  const RN324 = /(Minimo\.tsx|Raiz\.tsx|HudDiagnostico\.tsx|Texto\.tsx)$/;
+  const conTextoDeRN = fuentes324.filter((r) => !RN324.test(r) && /import \{[^}]*(?<![\w ]type )(?<![A-Za-z0-9_])Text(Input)?(?![A-Za-z0-9_])[^}]*\} from 'react-native'/.test(leer324(r, 'utf8')));
+  chequear('nadie usa el Text de React Native: pasaría por la fuente del sistema', conTextoDeRN.map((r) => r.slice(raiz324.length + 1)), []);
+  chequear('ni Animated.Text', fuentes324.filter((r) => !RN324.test(r) && /Animated\.Text(?![A-Za-z0-9_])/.test(leer324(r, 'utf8'))).map((r) => r.slice(raiz324.length + 1)), []);
+  const conRacha = fuentes324.filter((r) => /L\.racha/.test(leer324(r, 'utf8'))).map((r) => r.split(/[\\/]/).pop()).sort();
+  chequear('Outfit es solo el número de la racha', conRacha, ['Inicio.tsx', 'RachaConRotulo.tsx']);
+
+  const fu324 = leer324(join(raiz324, 'movil', 'src', 'fuentes.ts'), 'utf8');
+  const archivos324 = [...fu324.matchAll(/require\('\.\.\/assets\/fuentes\/([A-Za-z0-9_]+)\.ttf'\)/g)].map((m) => m[1]);
+  chequear('cada archivo que la app pide está en assets', archivos324.filter((n) => !hay324(join(raiz324, 'movil', 'assets', 'fuentes', n + '.ttf'))), []);
+  const nombrados324 = [...fu324.slice(fu324.indexOf('export function archivoDe')).matchAll(/'((?:Inter|Outfit|GeistMono)_[A-Za-z0-9_]+)'/g)].map((m) => m[1]);
+  chequear('y lo que resuelve un peso es uno de esos archivos', nombrados324.filter((n) => !archivos324.includes(n)), []);
+  chequear('con los licencias de las tres familias', ['Inter', 'Outfit', 'GeistMono'].filter((n) => !hay324(join(raiz324, 'movil', 'assets', 'fuentes', 'LICENCIA-' + n + '.txt'))), []);
+
+  // expo-font ya está en el binario, anidado. Sumarlo a package.json cambiaría la huella: las OTA no llegarían.
+  const pq324 = JSON.parse(leer324(join(raiz324, 'movil', 'package.json'), 'utf8'));
+  chequear('expo-font no se suma a package.json: las OTA no llegarían a las builds de hoy', 'expo-font' in pq324.dependencies, false);
+  chequear('Metro y los tipos lo encuentran adentro de expo', [
+    /'expo-font': path\.resolve\(__dirname, 'node_modules', 'expo', 'node_modules', 'expo-font'\)/.test(leer324(join(raiz324, 'movil', 'metro.config.js'), 'utf8')),
+    /"expo-font": \[\s*"\.\/node_modules\/expo\/node_modules\/expo-font"/.test(leer324(join(raiz324, 'movil', 'tsconfig.json'), 'utf8')),
+  ], [true, true]);
+  const lay324 = leer324(join(raiz324, 'movil', 'app', '_layout.tsx'), 'utf8');
+  chequear('la entrada espera a las letras, y las letras tienen tope', [/lista=\{letrasListas &&/.test(lay324), /Promise\.race\(\[carga,/.test(fu324)], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

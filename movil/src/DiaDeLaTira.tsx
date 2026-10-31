@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated, Easing, StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native';
+import { Animated, Easing, StyleSheet, type StyleProp, type TextStyle } from 'react-native';
 import { paletaDe } from '@nucleo/paletas';
 import { C } from './colores';
+import { Text } from './Texto';
 
 /**
  * UN DÍA DE LA TIRA DE LUNES A DOMINGO, con la animación aprobada en la galería

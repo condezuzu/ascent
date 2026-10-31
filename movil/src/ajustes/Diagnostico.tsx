@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
-import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { hoyISO } from '@nucleo/fechas';
 import { numeroDeRango } from '@nucleo/rangos';
 import { mirarElGimnasio } from '@compartido/gimnasio';
@@ -20,6 +20,7 @@ import { comoEstanLosAvisos, probarAvisoRemoto } from '../plataforma/avisos';
 import { medirCuadros, type Medicion } from '../medirCuadros';
 import { CLAVE_HUD, HUD_CAMBIO } from '../HudDiagnostico';
 import { eventos } from '@compartido/eventos';
+import { Text, TextInput } from '../Texto';
 
 /**
  * QUÉ ESTÁ VIENDO LA APP, Y QUÉ FUE HACIENDO.
@@ -423,7 +424,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
 const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 34 },
   plegable: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
   signo: { color: C.sub, fontSize: 18 },
   fila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
   que: { color: C.apagado, fontSize: 12 },

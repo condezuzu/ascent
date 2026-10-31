@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { C, conTema, conAlfa } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL CORAZÓN DE LA RUTINA DE OTRA PERSONA (20/10). Sin corazones no hay número; con
@@ -99,7 +101,7 @@ export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad
 const estilos = conTema(() => StyleSheet.create({
   // Sin sombra: en la web y en Android se dibuja con la forma de la caja, un cuadrado detrás del corazón.
   caja: { alignItems: 'center', justifyContent: 'center', paddingBottom: 5 },
-  numero: { fontSize: 13, fontWeight: '700' },
+  numero: { fontSize: 13, fontWeight: '500', fontFamily: L.dato },
   anillo: { position: 'absolute', borderWidth: 2, borderColor: C.corazon },
   chispa: { position: 'absolute', width: 5, height: 5, borderRadius: 2.5, backgroundColor: C.corazon },
 }));

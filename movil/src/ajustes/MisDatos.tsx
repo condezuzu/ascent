@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { juntarMisDatos } from '@compartido/cuenta';
@@ -8,6 +8,7 @@ import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
 import { C, DESHABILITADO, conTema } from '../colores';
 import { useTema } from '../useTema';
+import { Text } from '../Texto';
 
 /**
  * LLEVARSE TODO: el historial entero en un archivo.
@@ -64,7 +65,7 @@ export default function MisDatos({ perfil }: { perfil: Perfil }) {
 
 const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
   boton: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,

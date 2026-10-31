@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { cuentaAtras } from '@compartido/descanso';
 import { renglonDe } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
@@ -8,6 +8,8 @@ import { useNombresDeEjercicios } from './useNombresDeEjercicios';
 import Avatar from './Avatar';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL COMPAÑERO, ABAJO DE MI DESCANSO (12/10/2026): su ejercicio, su serie y su
@@ -73,6 +75,6 @@ const estilos = conTema(() => StyleSheet.create({
   apagada: { color: C.apagado, fontSize: 13 },
   pildora: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 11 },
   pildoraLista: { borderColor: C.sub },
-  pildoraTexto: { color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
+  pildoraTexto: { color: C.sub, fontSize: 13, fontFamily: L.dato },
   pildoraTextoLista: { color: C.tinta },
 }));

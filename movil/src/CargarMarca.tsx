@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { guardarMarcaUnaVez } from '@compartido/guardarMarca';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { hoyISO, deISO, MESES } from '@nucleo/fechas';
 import { aKilos, deKilos, type Unidad } from '@nucleo/peso';
 import { redondear, unRM } from '@nucleo/fuerza';
@@ -16,6 +16,7 @@ import SelectorEjercicio from './SelectorEjercicio';
 import CampoPeso from './CampoPeso';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
 
 /**
  * ANOTAR UNA MARCA (§16.4), la hoja del teléfono.
@@ -200,7 +201,7 @@ export default nuevaEnCadaApertura(CargarMarca, (p) => p.visible);
 const estilos = conTema(() => StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 19, marginBottom: 4 },
   sub: { color: C.sub, fontSize: 13, lineHeight: 18, marginBottom: 18 },
-  etiqueta: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 },
+  etiqueta: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 16, marginBottom: 8 },
   selector: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,

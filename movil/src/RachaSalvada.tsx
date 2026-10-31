@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { DIAS_SEMANA, deISO, fechaLinda, fechasLindas } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
@@ -8,6 +8,8 @@ import { FIJO } from './coloresFijos';
 import DiaDeLaTira from './DiaDeLaTira';
 import Estrella from './Estrella';
 import PuntoDelDia, { type EstadoDelDia, type FrioDelDia } from './PuntoDelDia';
+import { Text, TextoAnimado } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL AVISO DE LA VIDA, en nativo (rehecho el 19/10, con lo aprobado en la galería).
@@ -247,9 +249,9 @@ export default function RachaSalvada({
                       <Animated.View ref={estrellaDelBoton} collapsable={false} style={{ transform: [{ scale: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] }) }], opacity: vuelo || plantada ? 0 : 1 }}>
                         <Estrella tam={15} modo="oscura" />
                       </Animated.View>
-                      <Animated.Text style={[estilos.usarTexto, { opacity: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }), transform: [{ translateX: comprime.interpolate({ inputRange: [0, 1], outputRange: [0, -14] }) }, { scaleX: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }] }]}>
+                      <TextoAnimado style={[estilos.usarTexto, { opacity: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }), transform: [{ translateX: comprime.interpolate({ inputRange: [0, 1], outputRange: [0, -14] }) }, { scaleX: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }] }]}>
                         {T.impulso.salvada.usarVida}
-                      </Animated.Text>
+                      </TextoAnimado>
                     </Pressable>
                   </View>
                   <View style={estilos.columna}>
@@ -311,7 +313,7 @@ const estilos = StyleSheet.create({
   detalle: { color: C.sub, fontSize: 16, lineHeight: 23 },
   vidas: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
-  letra: { color: C.apagado, fontSize: 11 },
+  letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
   estallido: { position: 'absolute', left: 0, top: 0, width: PUNTO, height: PUNTO, borderRadius: PUNTO / 2, borderWidth: 2, borderColor: C.crema },
   caja: { marginTop: 30, paddingTop: 24, paddingHorizontal: 16, paddingBottom: 12, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: FIJO.raya, backgroundColor: C.hoja, ...sombra },
   cola: { position: 'absolute', top: -7, width: 13, height: 13, backgroundColor: C.hoja, borderTopWidth: StyleSheet.hairlineWidth, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: FIJO.raya, transform: [{ rotate: '45deg' }] },

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { pasadoDe } from '@nucleo/avisoDescanso';
 import CompaneroEnDescanso from './CompaneroEnDescanso';
@@ -23,6 +23,8 @@ import { useArriba } from './zonaSegura';
 import { cuentaLaSerie, horaDelToque } from './toques';
 import Aparece from './Aparece';
 import Tocable from './Tocable';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL DESCANSO ENTRE SERIES, en nativo (§18). La misma pantalla que la web:
@@ -203,7 +205,7 @@ export default function Descanso({
               />
             </Svg>
             <Text testID="descanso-reloj" style={estilos.numero} accessibilityLiveRegion="polite">
-              {cuentaAtras(falta)}
+              <RelojPartido texto={cuentaAtras(falta)} />
             </Text>
             {terminado && (
               <Text testID="descanso-de-mas" style={estilos.deMas} accessibilityLabel={`${cuentaAtras(pasadoDe(vivo.fin, ahora))} ${T.descanso.deMas}`}>
@@ -320,6 +322,19 @@ const RADIO = 128;
 const LADO = RADIO * 2 + 16;
 const LARGO = 2 * Math.PI * RADIO;
 
+function RelojPartido({ texto }: { texto: string }) {
+  useTema();
+  const dos = texto.indexOf(':');
+  if (dos < 1) return <>{texto}</>;
+  return (
+    <>
+      {texto.slice(0, dos - 1)}
+      <Text style={estilos.juntoALosPuntos}>{texto.slice(dos - 1, dos + 1)}</Text>
+      {texto.slice(dos + 1)}
+    </>
+  );
+}
+
 const estilos = conTema(() => StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: C.fondo, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 30 },
   cerrar: { position: 'absolute', top: 48, right: 16, minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
@@ -332,9 +347,11 @@ const estilos = conTema(() => StyleSheet.create({
   arco: { width: LADO, height: LADO, alignItems: 'center', justifyContent: 'center' },
   // Girado un cuarto: el arco arranca arriba, como un reloj.
   dibujo: { position: 'absolute', top: 0, left: 0, transform: [{ rotate: '-90deg' }] },
-  numero: { color: C.tinta, fontSize: 84, fontWeight: '200', fontVariant: ['tabular-nums'] },
+  numero: { color: C.tinta, fontSize: 78, fontWeight: '200', fontFamily: L.dato, letterSpacing: -4 },
+  // Geist Mono les da a los dos puntos el ancho de un número: a este tamaño quedaban dos huecos.
+  juntoALosPuntos: { letterSpacing: -4 - 12.5 },
   // En la esquina del cuadrado del arco, afuera del círculo.
-  deMas: { position: 'absolute', right: 4, bottom: 4, color: C.sub, fontSize: 15, fontVariant: ['tabular-nums'] },
+  deMas: { position: 'absolute', right: 4, bottom: 4, color: C.sub, fontSize: 15, fontFamily: L.dato },
   abajo: { alignItems: 'stretch' },
   solido: { borderWidth: 1, borderRadius: 4, paddingVertical: 16, alignItems: 'center' },
   solidoTexto: { color: C.fondo, fontSize: 16, fontWeight: '600' },
@@ -342,11 +359,11 @@ const estilos = conTema(() => StyleSheet.create({
   bordeTexto: { color: C.tinta, fontSize: 16 },
   presets: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
   aMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
-  aManoCampo: { color: C.tinta, fontSize: 16, minWidth: 170, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  aManoCampo: { color: C.tinta, fontSize: 16, minWidth: 170, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontFamily: L.dato },
   aManoMal: { color: C.sub, fontSize: 12, textAlign: 'center', marginTop: 6 },
-  preset: { borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 11 },
+  preset: { borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 9 },
   presetActivo: { borderColor: C.sub },
-  presetTexto: { color: C.apagado, fontSize: 12 },
+  presetTexto: { color: C.apagado, fontSize: 11.5, letterSpacing: -0.3, fontFamily: L.dato },
   presetTextoActivo: { color: C.tinta },
   texto: { paddingVertical: 9, alignItems: 'center' },
   textoBoton: { color: C.sub, fontSize: 14 },

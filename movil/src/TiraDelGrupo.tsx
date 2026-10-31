@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { cuentaAtras } from '@compartido/descanso';
 import { renglonDe, type Union } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
@@ -8,6 +8,8 @@ import { irAPestana } from './irAPestana';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import Aparece from './Aparece';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * LA TIRA DEL GRUPO EN INICIO (15/10, multijugador completo). Mientras entrenás
@@ -69,6 +71,6 @@ const estilos = conTema(() => StyleSheet.create({
     paddingRight: 14,
   },
   nombre: { color: C.tinta, fontSize: 13, maxWidth: 110 },
-  que: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
+  que: { color: C.sub, fontSize: 12, fontFamily: L.dato },
   descansa: { color: C.claro },
 }));

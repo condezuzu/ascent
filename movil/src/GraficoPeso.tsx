@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
+import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { conComa, puntoMasCercano, trazarPeso, type Unidad } from '@nucleo/peso';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * LA TENDENCIA DEL PESO, en la app nativa: la misma que la web
@@ -195,10 +197,10 @@ const estilos = conTema(() => StyleSheet.create({
   },
   aro: { position: 'absolute', width: 13, height: 13, marginLeft: -6.5, marginTop: -6.5, borderRadius: 6.5 },
   pie: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 14, marginTop: 16 },
-  hoy: { color: C.tinta, fontSize: 30, fontWeight: '300', fontVariant: ['tabular-nums'] },
+  hoy: { color: C.tinta, fontSize: 30, fontWeight: '300', fontFamily: L.dato },
   unidad: { color: C.sub, fontSize: 13 },
-  cambio: { color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontVariant: ['tabular-nums'] },
-  cuando: { flex: 1, color: C.apagado, fontSize: 12 },
+  cambio: { color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontFamily: L.dato },
+  cuando: { flex: 1, color: C.apagado, fontSize: 12, fontFamily: L.dato },
   rangos: { flexDirection: 'row', gap: 14, marginTop: 10 },
   rango: { color: C.apagado, fontSize: 12, paddingVertical: 4 },
 }));

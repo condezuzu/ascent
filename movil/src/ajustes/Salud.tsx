@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { plataforma } from '@plataforma';
 import { yaSePidio } from '../plataforma/salud';
 import { hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { C, conTema } from '../colores';
 import { useTema } from '../useTema';
+import { Text } from '../Texto';
 
 /**
  * LA SALUD DEL TELÉFONO (§13c). La sección que en la web no puede existir.
@@ -104,7 +105,7 @@ export default function Salud() {
 const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   // El mismo rótulo que el resto de Ajustes: chico, en versalitas y apagado.
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
   boton: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,

@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { DIAS_SEMANA } from '@nucleo/fechas';
 import { C, conAlfa } from '../colores';
+import { Text } from '../Texto';
+import { L } from '../fuentes';
 
 /**
  * LO QUE SE VE ARRIBA DE CADA TEXTO DE LA ENTRADA (15/10): un pedazo de la app con
@@ -163,14 +165,14 @@ const estilos = StyleSheet.create({
   dia: { alignItems: 'center', gap: 8 },
   circulo: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: C.lineaFuerte },
   letra: { color: C.apagado, fontSize: 12 },
-  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2.2, textTransform: 'uppercase', paddingTop: 10, paddingBottom: 2 },
+  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2.2, textTransform: 'uppercase', fontWeight: '500', paddingTop: 10, paddingBottom: 2 },
   persona: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
   avatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
   inicial: { color: C.tinta, fontSize: 14 },
   nombreFila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   nombre: { color: C.tinta, fontSize: 15 },
   que: { color: C.sub, fontSize: 13, marginTop: 2 },
-  reloj: { color: C.tinta, fontSize: 17, fontVariant: ['tabular-nums'] },
+  reloj: { color: C.tinta, fontSize: 17, fontFamily: L.dato },
   relojRotulo: { color: C.sub, fontSize: 11 },
   haciendo: { color: C.claro, fontSize: 13 },
   estado: { color: C.sub, fontSize: 13 },

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { T } from '@nucleo/textos';
 import { deISO, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
@@ -28,6 +28,8 @@ import ObjetivoDePeso from './ObjetivoDePeso';
 import { useRecargarAlVolver } from './irAPestana';
 import EstrellaQueTitila from './EstrellaQueTitila';
 import { modosDeLasVidas } from '@nucleo/impulsos';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -378,13 +380,13 @@ function PromedioDePasos({ pasos, meta }: { pasos: { fecha: string; valor: numbe
 const estilos = conTema(() => StyleSheet.create({
   promedioPasos: { marginBottom: 14 },
   promedioRotulo: { color: C.tinta, fontSize: 15 },
-  promedioNumero: { color: C.tinta, fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 2 },
+  promedioNumero: { color: C.tinta, fontSize: 44, fontWeight: '300', fontFamily: L.dato, marginTop: 2 },
   promedioFrente: { color: C.sub, fontSize: 14, marginTop: 2 },
   promedioLlega: { color: C.claro },
-  promedioCuando: { color: C.apagado, fontSize: 12, marginTop: 4 },
+  promedioCuando: { color: C.apagado, fontSize: 12, marginTop: 4, fontFamily: L.dato },
   botonCorregir: { alignSelf: 'flex-start', borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18, marginTop: 12 },
   botonCorregirTexto: { color: C.tinta, fontSize: 14 },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },
+  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 28, marginBottom: 10 },
   tarjeta: {
     backgroundColor: C.tarjeta,
     borderWidth: StyleSheet.hairlineWidth,
@@ -396,18 +398,18 @@ const estilos = conTema(() => StyleSheet.create({
   columna: { flex: 1, gap: 2 },
   celdaAno: { aspectRatio: 1, borderRadius: 2, backgroundColor: C.celdaVacia },
   vidas: { marginBottom: 16, gap: 6 },
-  et: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  et: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
   puntos: { flexDirection: 'row', gap: 8 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 6 },
   dosNumeros: { flexDirection: 'row', gap: 12 },
   numero: { flex: 1 },
-  valor: { color: C.tinta, fontSize: 24 },
+  valor: { color: C.tinta, fontSize: 24, fontWeight: '300', fontFamily: L.dato, letterSpacing: -0.8 },
   etiqueta: { color: C.sub, fontSize: 12, marginTop: 2 },
   diaSesion: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
-  dato: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
+  dato: { color: C.sub, fontSize: 12, fontFamily: L.dato },
   barra: { flex: 1, height: 6, borderRadius: 3, backgroundColor: C.barraPista, overflow: 'hidden' },
   relleno: { height: 6, borderRadius: 3, backgroundColor: C.barraDentro },
-  pesoSolo: { color: C.tinta, fontSize: 32 },
+  pesoSolo: { color: C.tinta, fontSize: 30, fontWeight: '300', fontFamily: L.dato, letterSpacing: -1.2 },
   unidad: { color: C.sub, fontSize: 15 },
   anotar: { flexDirection: 'row', gap: 8, marginTop: 10 },
   campo: {
@@ -432,5 +434,5 @@ const estilos = conTema(() => StyleSheet.create({
   filaRango: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
   nombreRango: { flex: 1, color: C.tinta, fontSize: 15 },
   actual: { fontSize: 12, letterSpacing: 1 },
-  dias: { color: C.sub, fontSize: 12 },
+  dias: { color: C.sub, fontSize: 12, fontFamily: L.dato },
 }));

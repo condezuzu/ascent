@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, AppState, Easing, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Animated, AppState, Easing, PanResponder, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from './supabase';
 import { miId, quienSoy } from '@compartido/quienSoy';
@@ -22,6 +22,7 @@ import { deslizarPestanasBloqueado } from './gestoDePestanas';
 import CartelDeArriba from './CartelDeArriba';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { Text, TextoAnimado } from './Texto';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -595,14 +596,14 @@ export default function Pestanas({
                 {/* LA LUZ: el mismo rótulo, encendido, encima del apagado. Lo
                     que cambia es su opacidad, y sale de la tira (`luces`), no
                     de `pestana`. */}
-                <Animated.Text
+                <TextoAnimado
                   testID={'luz-' + p}
                   style={[estilos.texto, estilos.luz, { opacity: luces[i] }]}
                   accessibilityElementsHidden
                   importantForAccessibility="no"
                 >
                   {rotuloDe(p)}
-                </Animated.Text>
+                </TextoAnimado>
               </View>
             </Pressable>
           );
@@ -641,7 +642,7 @@ const estilos = conTema(() => StyleSheet.create({
   },
   boton: { flex: 1, alignItems: 'center', paddingVertical: 4, minHeight: 44, justifyContent: 'center', gap: 3 },
   icono: { width: 22, height: 22 },
-  texto: { color: C.apagado, fontSize: 10, letterSpacing: 0.3 },
+  texto: { color: C.apagado, fontSize: 10, fontWeight: '500', letterSpacing: 0.3 },
   // Encima del rótulo apagado, calzado: mismo texto, mismo tamaño, otro color.
   luz: { position: 'absolute', left: 0, top: 0, color: C.claro },
   // El puntito de aviso, arriba a la derecha del icono de la pestaña.

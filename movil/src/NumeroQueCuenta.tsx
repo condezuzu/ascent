@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Text, type StyleProp, type TextStyle } from 'react-native';
+import { AccessibilityInfo, type StyleProp, type TextStyle } from 'react-native';
 import { hayQueContar, valorContado } from '@nucleo/contar';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * UN NÚMERO QUE VIAJA hasta su valor nuevo en vez de reemplazarse. El mismo
@@ -68,7 +70,7 @@ export default function NumeroQueCuenta({
   }, [valor, ms, quieto]);
 
   return (
-    <Text style={[{ fontVariant: ['tabular-nums'] }, style]} allowFontScaling={false}>
+    <Text style={[{ fontFamily: L.dato }, style]} allowFontScaling={false}>
       {mostrado}
     </Text>
   );

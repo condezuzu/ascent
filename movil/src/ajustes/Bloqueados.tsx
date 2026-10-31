@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { cargarBloqueados, desbloquear, type Bloqueado } from '@compartido/ranking';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
 import Avatar from '../Avatar';
 import { C } from '../colores';
+import { Text } from '../Texto';
 
 /**
  * CUENTAS BLOQUEADAS (migración 53). Plegado como "Cómo se compara": el que no
@@ -73,7 +74,7 @@ export default function Bloqueados() {
 const estilos = StyleSheet.create({
   seccion: { marginTop: 30 },
   cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
   signo: { color: C.sub, fontSize: 18 },
   pie: { color: C.apagado, fontSize: 13, lineHeight: 19, marginTop: 8, marginBottom: 6 },
   vacio: { color: C.sub, fontSize: 14, marginTop: 12 },

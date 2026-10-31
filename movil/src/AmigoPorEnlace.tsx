@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { buscarPorNombre, pedirAmistad } from '@compartido/ranking';
 import { miId } from '@compartido/quienSoy';
@@ -9,6 +9,7 @@ import { supabase } from './supabase';
 import { C } from './colores';
 import { volverOInicio } from './volver';
 import { useArriba } from './zonaSegura';
+import { Text } from './Texto';
 
 /**
  * A DÓNDE CAE UN LINK DE AMIGO (`ascent://amigo/<nombre>`, 8/10/2026).
