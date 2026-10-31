@@ -2,18 +2,22 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   CLAVE_META_PASOS,
+  META_DESLIZADOR,
   META_PASOS_POR_OMISION,
   leerMeta,
   metaValida,
 } from '@nucleo/pasos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
+import Candado from '../Candado';
 import { C, conTema } from '../colores';
-import { useTema } from '../useTema';
-import { Text, TextInput } from '../Texto';
+import Deslizador from '../Deslizador';
 import { L } from '../fuentes';
 import { R } from '../roles';
+import { Text } from '../Texto';
 import Tocable from '../Tocable';
+import FondoOctogonal from '../FondoOctogonal';
+import { useTema } from '../useTema';
 
 /**
  * LA META DE PASOS DEL DÍA.
@@ -23,25 +27,35 @@ import Tocable from '../Tocable';
  * en `profiles` habría costado una migración para una preferencia que nadie más
  * va a leer nunca.
  *
- * NO ENTRA EN LA RACHA Y SE DICE EN PANTALLA. Si los pasos contaran para la
- * racha, esta app dejaría de contar días de gimnasio y pasaría a contar otra
- * cosa. La meta es para mirar el gráfico y saber cuánto falta, y nada más.
+ * NO ENTRA EN LA RACHA. Si los pasos contaran para la racha, esta app dejaría de
+ * contar días de gimnasio y pasaría a contar otra cosa. La meta es para mirar el
+ * gráfico y saber cuánto falta, y nada más.
  *
- * SE GUARDA AL SALIR DEL CAMPO y no con cada tecla: guardando por tecla, un
- * "1" a medio escribir sería una meta de mil pasos por un instante, y además
- * escribiría cinco veces para un número de cinco cifras.
+ * SE MUESTRA EN VEZ DE EXPLICARSE (propuesta H, aprobada el 31/10). Decía «Mueve la barra de Inicio
+ * y el gráfico de Stats. No entra en tu racha ni la ve nadie.». Ahora se arrastra, y se mueven acá
+ * mismo la barra de hoy y la línea de la semana con los pasos de verdad. El candado dice que no la
+ * ve nadie. VoiceOver sigue leyendo el texto.
+ *
+ * SE GUARDA CON EL BOTÓN y no con cada píxel del arrastre: guardando al mover, se escribiría decenas
+ * de veces para un número.
  */
-export default function MetaDePasos({ alCambiar }: { alCambiar?: (meta: number) => void } = {}) {
+export default function MetaDePasos({
+  alCambiar,
+  pasos = [],
+}: {
+  alCambiar?: (meta: number) => void;
+  /** Los pasos de verdad, por día, del más viejo al más nuevo. */
+  pasos?: { fecha: string; valor: number }[];
+} = {}) {
   useTema();
-  const [valor, setValor] = useState(String(META_PASOS_POR_OMISION));
-  const [error, setError] = useState('');
+  const [valor, setValor] = useState(META_PASOS_POR_OMISION);
 
   useEffect(() => {
     let vivo = true;
     plataforma.almacenamiento
       .leer(CLAVE_META_PASOS)
       .then((m) => {
-        if (vivo) setValor(String(leerMeta(m)));
+        if (vivo) setValor(leerMeta(m));
       })
       .catch(() => {});
     return () => {
@@ -50,69 +64,72 @@ export default function MetaDePasos({ alCambiar }: { alCambiar?: (meta: number) 
   }, []);
 
   async function guardar() {
-    const n = Number(valor);
-    if (!metaValida(n)) {
-      // NO SE PISA LO ESCRITO: se avisa y se deja el número a la vista para
-      // corregirlo. Devolverlo al valor viejo obliga a escribirlo de nuevo.
-      setError(T.ajustes.metaPasosFuera);
-      return;
-    }
-    setError('');
-    const limpio = String(Math.round(n));
-    setValor(limpio);
+    if (!metaValida(valor)) return;
     // QUIEN LA MUESTRA SE ENTERA EN EL ACTO. Sin esto, cambiar la meta desde el
     // grafico dejaba la linea punteada donde estaba hasta volver a entrar, que
     // es justo lo que hace dudar de si el cambio se guardo.
-    alCambiar?.(Math.round(n));
-    await plataforma.almacenamiento.guardar(CLAVE_META_PASOS, limpio).catch(() => {});
+    alCambiar?.(valor);
+    await plataforma.almacenamiento.guardar(CLAVE_META_PASOS, String(valor)).catch(() => {});
   }
 
+  const lindo = valor.toLocaleString(T.general.locale);
+  const semana = pasos.slice(-7);
+  const hoy = semana[semana.length - 1]?.valor ?? 0;
+  const techo = Math.max(valor, ...semana.map((d) => d.valor), 1);
   return (
-    <View style={estilos.seccion}>
-      <Text style={estilos.titulo}>{T.ajustes.metaPasosTitulo}</Text>
-      <TextInput
-        style={estilos.campo}
-        value={valor}
-        onChangeText={setValor}
-        onBlur={guardar}
-        keyboardType="number-pad"
-        returnKeyType="done"
-        onSubmitEditing={guardar}
-        accessibilityLabel={T.ajustes.metaPasosTitulo}
+    <View style={estilos.seccion} testID="meta-de-pasos" accessible={false} accessibilityHint={T.ajustes.metaPasosNota}>
+      <View style={estilos.cabeza}>
+        <Text style={estilos.titulo}>{T.ajustes.metaPasosTitulo}</Text>
+        <Candado etiqueta={T.ajustes.metaPasosNota} />
+      </View>
+      <Text style={estilos.numero} testID="meta-valor">{lindo}</Text>
+      <Deslizador
+        testID="meta-deslizador"
+        valor={valor}
+        min={META_DESLIZADOR.min}
+        max={META_DESLIZADOR.max}
+        paso={META_DESLIZADOR.paso}
+        alMover={setValor}
+        etiqueta={T.ajustes.metaPasosTitulo}
+        textoDelValor={lindo}
       />
-      {/* Un botón además del `onBlur`: en un teclado numérico de iOS no hay
-          "listo", y tocar afuera para guardar no se le ocurre a nadie. */}
-      <Tocable style={estilos.boton} onPress={guardar}>
+      {/* La barra de Inicio, con los pasos de hoy: se mueve mientras se arrastra. */}
+      <View style={estilos.barra}>
+        <View testID="meta-barra" style={[estilos.barraLlena, { width: `${Math.min(100, (hoy / Math.max(1, valor)) * 100)}%` }]} />
+      </View>
+      <View style={estilos.pie}>
+        <Text style={estilos.pieTexto}>{hoy.toLocaleString(T.general.locale)}</Text>
+        <Text style={estilos.pieTexto}>{lindo}</Text>
+      </View>
+      {semana.length > 0 && (
+        <View style={estilos.semana} testID="meta-semana">
+          {semana.map((d) => (
+            <View key={d.fecha} style={[estilos.dia, { height: `${(d.valor / techo) * 100}%` }, d.valor >= valor && estilos.diaLlega]} />
+          ))}
+          <View testID="meta-linea" style={[estilos.lineaMeta, { bottom: `${(valor / techo) * 100}%` }]} />
+        </View>
+      )}
+      <Tocable style={estilos.boton} onPress={guardar} testID="meta-guardar">
+        <FondoOctogonal relleno={C.claro} luz={C.claro} />
         <Text style={estilos.botonTexto}>{T.general.guardar}</Text>
       </Tocable>
-      {error !== '' && <Text style={estilos.error}>{error}</Text>}
-      <Text style={estilos.nota}>{T.ajustes.metaPasosNota}</Text>
     </View>
   );
 }
 
 const estilos = conTema(() => StyleSheet.create({
-  seccion: { marginTop: 30 },
-  titulo: { ...R.etiqueta, marginBottom: 12  },
-  campo: {
-    borderWidth: 1,
-    borderColor: C.linea,
-    borderRadius: 999,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    color: C.tinta,
-    fontSize: 16,
-    fontFamily: L.dato,
-  },
-  boton: {
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: C.linea,
-    borderRadius: 999,
-    paddingVertical: 11,
-    alignItems: 'center',
-  },
-  botonTexto: { color: C.tinta, fontSize: 14 },
-  error: { color: C.error, fontSize: 12, marginTop: 8 },
-  nota: { color: C.apagado, fontSize: 12, marginTop: 10, lineHeight: 17 },
+  seccion: { marginTop: 8 },
+  cabeza: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  titulo: { ...R.etiqueta },
+  numero: { color: C.claro, fontSize: 30, fontWeight: '300', letterSpacing: -1.2, fontFamily: L.dato },
+  barra: { height: 3, borderRadius: 999, backgroundColor: C.barraPista, overflow: 'hidden', marginTop: 4 },
+  barraLlena: { height: '100%', backgroundColor: C.claro },
+  pie: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 },
+  pieTexto: { color: C.sub, fontSize: 11, fontFamily: L.dato },
+  semana: { height: 66, flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 14 },
+  dia: { flex: 1, borderRadius: 1, backgroundColor: C.barraDentro },
+  diaLlega: { backgroundColor: C.claro },
+  lineaMeta: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: C.claro, opacity: 0.7 },
+  boton: { marginTop: 18, paddingVertical: 13, alignItems: 'center' },
+  botonTexto: { color: C.fondo, fontSize: 14.5, fontWeight: '600' },
 }));

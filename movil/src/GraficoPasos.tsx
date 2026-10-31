@@ -182,6 +182,7 @@ export default function GraficoPasos({
         <Ventanas rango={rango} claro={claro} alElegir={(d) => { setRango(d); setTocado(null); }} />
         <PieDeMeta meta={meta} alTocar={() => setCambiandoMeta(true)} />
         <HojaDeMeta
+          pasos={pasos}
           visible={cambiandoMeta}
           alCerrar={() => setCambiandoMeta(false)}
           alCambiar={alCambiarMeta}
@@ -297,6 +298,7 @@ export default function GraficoPasos({
       </Text>
       <PieDeMeta meta={meta} alTocar={() => setCambiandoMeta(true)} />
       <HojaDeMeta
+        pasos={pasos}
         visible={cambiandoMeta}
         alCerrar={() => setCambiandoMeta(false)}
         alCambiar={alCambiarMeta}
@@ -367,15 +369,18 @@ export function HojaDeMeta({
   visible,
   alCerrar,
   alCambiar,
+  pasos,
 }: {
   visible: boolean;
   alCerrar: () => void;
   alCambiar?: (meta: number) => void;
+  pasos?: { fecha: string; valor: number }[];
 }) {
   useTema();
   return (
     <Hoja visible={visible} alCerrar={alCerrar}>
       <MetaDePasos
+        pasos={pasos}
         alCambiar={(n) => {
           alCambiar?.(n);
           alCerrar();
