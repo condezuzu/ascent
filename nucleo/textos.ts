@@ -601,6 +601,9 @@ const ES = {
     // En Stats no hay cuántas van cargadas a mano, así que ahí va la corta.
     faltanMarcasCorto: 'Faltan marcas: el número sale de las tres, y con dos no se compara con nada.',
     // Partido en dos porque en el medio va el link a Mis marcas.
+    sentadillaCorto: 'Sentadilla',
+    bancaCorto: 'Banca',
+    pesoMuertoCorto: 'Peso muerto',
     faltaPesoEnMarcas: 'Falta tu peso corporal, que se anota en',
     faltaPesoEnMarcasFin: '. Solo lo ves tú.',
     loDemas: 'Lo demás',
