@@ -6,7 +6,8 @@ import { T } from '@nucleo/textos';
 import Medalla from './Medalla';
 import MedallaDeRango from './MedallaDeRango';
 import { numeroDeRango } from '@nucleo/rangos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LAS MEDALLAS AL LADO DEL NOMBRE, y el globo al tocar una.
@@ -62,6 +63,7 @@ export default function Medallas({
   mejorRacha?: number;
   tam?: number;
 }) {
+  useTema();
   const [abierta, setAbierta] = useState<string | null>(null);
   /** Dónde arrancan las medallas dentro de la fila: depende del ancho del nombre. */
   const [desdeX, setDesdeX] = useState(0);
@@ -205,6 +207,7 @@ function frase(m: Dato): string {
  * para saber qué son, se entra al perfil.
  */
 export function FilaDeMedallas({ medallas, tam = 16 }: { medallas: readonly Dato[]; tam?: number }) {
+  useTema();
   if (medallas.length === 0) return null;
   return (
     <View style={estilos.sueltas} pointerEvents="none">
@@ -215,7 +218,7 @@ export function FilaDeMedallas({ medallas, tam = 16 }: { medallas: readonly Dato
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Sin `overflow: hidden` en ningún ancestro de esto, o el globo se corta.
   envoltura: { position: 'relative' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: SEPARACION, flexWrap: 'wrap' },
@@ -255,4 +258,4 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 13,
   },
   texto: { color: C.tinta, fontSize: 13, lineHeight: 18 },
-});
+}));

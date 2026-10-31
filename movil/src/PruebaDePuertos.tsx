@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { plataformaNativa } from './plataforma';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * TANDA 1 — que los diez puertos existan y contesten EN EL TELÉFONO.
@@ -22,6 +23,7 @@ import { C } from './colores';
 type Linea = { que: string; dice: string };
 
 export default function PruebaDePuertos() {
+  useTema();
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [ultimo, setUltimo] = useState('');
 
@@ -118,7 +120,7 @@ export default function PruebaDePuertos() {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   caja: { marginTop: 34, alignSelf: 'stretch' },
   titulo: {
     color: C.sub,
@@ -141,4 +143,4 @@ const estilos = StyleSheet.create({
   },
   textoBoton: { color: C.claro, fontSize: 13 },
   ultimo: { color: C.sub, fontSize: 12, marginTop: 10, textAlign: 'center' },
-});
+}));

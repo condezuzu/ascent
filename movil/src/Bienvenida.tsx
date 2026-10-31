@@ -7,7 +7,8 @@ import Objetos from './bienvenida/Objetos';
 import Circulito from './bienvenida/Circulito';
 import RankingDeEntrada from './bienvenida/RankingDeEntrada';
 import { MiniAmigo, MiniBloque, MiniSemana } from './bienvenida/Muestras';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LA ENTRADA (15/10, aprobada en la galería): cuatro pantallas, una cosa real de la
@@ -36,6 +37,7 @@ function useReloj(clave: string) {
 }
 
 export default function Bienvenida({ alSalir }: { alSalir: (destino: 'crear' | 'entrar') => void }) {
+  useTema();
   const [clave, setClave] = useState<Clave>('pesos');
   const t = useReloj(clave);
   const entra = useRef(new Animated.Value(0)).current;
@@ -90,7 +92,7 @@ export default function Bienvenida({ alSalir }: { alSalir: (destino: 'crear' | '
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   raiz: { ...StyleSheet.absoluteFillObject, backgroundColor: C.fondo },
   contenido: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, gap: 34 },
   titulo: { color: C.tinta, fontSize: 30, lineHeight: 36, fontWeight: '500', marginBottom: 12 },
@@ -99,4 +101,4 @@ const estilos = StyleSheet.create({
   puntos: { flexDirection: 'row', gap: 8 },
   punto: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.apagado },
   puntoVivo: { backgroundColor: C.tinta },
-});
+}));

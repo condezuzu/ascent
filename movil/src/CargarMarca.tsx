@@ -14,7 +14,8 @@ import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import SelectorEjercicio from './SelectorEjercicio';
 import CampoPeso from './CampoPeso';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * ANOTAR UNA MARCA (§16.4), la hoja del teléfono.
@@ -50,6 +51,7 @@ function CargarMarca({
   alCerrar: () => void;
   alGuardar: () => void;
 }) {
+  useTema();
   // SOLO LOS QUE LLEVAN PESO, como en la web: acá se podía anotar "Plancha 40 kg".
   const conPeso = ejercicios.filter((e) => e.admite_peso !== false);
   const [ejercicio, setEjercicio] = useState(inicial ?? conPeso[0]?.id ?? '');
@@ -195,7 +197,7 @@ function CargarMarca({
 
 export default nuevaEnCadaApertura(CargarMarca, (p) => p.visible);
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 19, marginBottom: 4 },
   sub: { color: C.sub, fontSize: 13, lineHeight: 18, marginBottom: 18 },
   etiqueta: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 },
@@ -234,4 +236,4 @@ const estilos = StyleSheet.create({
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   texto: { paddingVertical: 12, alignItems: 'center' },
   enlace: { color: C.sub, fontSize: 14 },
-});
+}));

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * UNA HOJA QUE SUBE DESDE ABAJO, con el fondo oscurecido que la cierra.
@@ -14,6 +15,7 @@ import { C } from './colores';
  * Con el teclado arriba la hoja sube: los pesos de la lista se escriben ahí.
  */
 export default function Hoja({ visible, alCerrar, children }: { visible: boolean; alCerrar: () => void; children: ReactNode }) {
+  useTema();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={alCerrar}>
       <KeyboardAvoidingView style={estilos.todo} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -31,9 +33,9 @@ export default function Hoja({ visible, alCerrar, children }: { visible: boolean
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   todo: { flex: 1, justifyContent: 'flex-end' },
-  fondo: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+  fondo: { ...StyleSheet.absoluteFillObject, backgroundColor: C.veloHoja },
   hoja: {
     maxHeight: '86%',
     backgroundColor: C.hoja,
@@ -43,4 +45,4 @@ const estilos = StyleSheet.create({
     borderColor: C.lineaFuerte,
   },
   contenido: { padding: 22, paddingBottom: 40 },
-});
+}));

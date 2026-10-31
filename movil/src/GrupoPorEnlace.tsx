@@ -5,7 +5,8 @@ import { unirsePorLink, type RespuestaDelLink } from '@compartido/enVivo';
 import { codigoDeGrupo } from '@nucleo/enlace';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import { volverOInicio } from './volver';
 import { irAPestana } from './irAPestana';
 import { useArriba } from './zonaSegura';
@@ -16,6 +17,7 @@ import { useArriba } from './zonaSegura';
  * entrar (decidido por el humano el 15/10).
  */
 export default function GrupoPorEnlace() {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(60);
   const { codigo } = useLocalSearchParams<{ codigo: string }>();
@@ -86,7 +88,7 @@ export default function GrupoPorEnlace() {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   raiz: { flex: 1 },
   volver: { paddingHorizontal: 24, paddingBottom: 10 },
   enlace: { color: C.sub, fontSize: 15 },
@@ -95,4 +97,4 @@ const estilos = StyleSheet.create({
   sub: { color: C.sub, fontSize: 14 },
   boton: { borderWidth: 1, borderColor: C.claro, borderRadius: 999, paddingVertical: 11, paddingHorizontal: 22 },
   botonTexto: { color: C.tinta, fontSize: 15 },
-});
+}));

@@ -6,7 +6,8 @@ import { DIAS_SEMANA, MESES, deISO, hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { cargarMes, celdasDelMes, moverMes, recalcularRacha, type DatosDelMes } from '@compartido/calendario';
 import HojaDelDia from './HojaDelDia';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * EL CALENDARIO DE STATS, en la app nativa: uno solo, y se toca para MIRAR.
@@ -32,6 +33,7 @@ export default function CalendarioDias({
   porRevisar?: Set<string>;
   alRevisar?: () => void;
 }) {
+  useTema();
   const hoy = hoyISO();
   const base = deISO(hoy);
   const [ancla, setAncla] = useState({ anio: base.getFullYear(), mes: base.getMonth() });
@@ -128,7 +130,7 @@ export default function CalendarioDias({
                   <Text
                     style={[
                       estilos.numero,
-                      c.estado === 'hecho' && { color: '#08080c', fontWeight: '600' },
+                      c.estado === 'hecho' && { color: C.fondo, fontWeight: '600' },
                       c.estado === 'futuro' && { color: conAlfa(C.apagado, 0.4) },
                     ]}
                   >
@@ -199,7 +201,7 @@ export default function CalendarioDias({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   conVida: { borderWidth: 1.5, borderStyle: 'dashed' },
   calendario: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingTop: 20, paddingBottom: 6 },
   cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },
@@ -237,4 +239,4 @@ const estilos = StyleSheet.create({
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 12 },
   botonTexto: { color: C.claro, fontSize: 14 },
   aviso: { color: C.sub, fontSize: 13, marginTop: 8 },
-});
+}));

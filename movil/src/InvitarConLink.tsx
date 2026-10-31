@@ -1,7 +1,8 @@
 import { Pressable, Share, StyleSheet, Text } from 'react-native';
 import { enlaceDeAmigo } from '@nucleo/enlace';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * INVITAR CON TU LINK (8/10/2026). Abre la hoja de compartir del teléfono con
@@ -11,6 +12,7 @@ import { C } from './colores';
  * Sin nombre todavía no hay link que dar, y no se dibuja.
  */
 export default function InvitarConLink({ usuario }: { usuario: string | null | undefined }) {
+  useTema();
   if (!usuario) return null;
   return (
     <Pressable
@@ -25,7 +27,7 @@ export default function InvitarConLink({ usuario }: { usuario: string | null | u
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // CHICO Y A LA IZQUIERDA (12/10): a todo el ancho y en blanco competía con
   // el nombre de usuario, que es lo que importa en esa pantalla.
   boton: {
@@ -38,4 +40,4 @@ const estilos = StyleSheet.create({
     marginTop: 12,
   },
   texto: { color: C.sub, fontSize: 13 },
-});
+}));

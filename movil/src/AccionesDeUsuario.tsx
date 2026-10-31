@@ -6,7 +6,8 @@ import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * DENUNCIAR O BLOQUEAR a alguien (migración 53). Una hoja que sube desde abajo,
@@ -28,6 +29,7 @@ function AccionesDeUsuario({
   onCerrar: () => void;
   onBloqueado?: (id: string) => void;
 }) {
+  useTema();
   const [paso, setPaso] = useState<'menu' | 'motivos' | 'bloqueo'>('menu');
   const [ocupado, setOcupado] = useState(false);
   const [enviada, setEnviada] = useState(false);
@@ -123,7 +125,7 @@ function AccionesDeUsuario({
 
 export default nuevaEnCadaApertura(AccionesDeUsuario, (p) => p.usuario !== null);
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   grupo: { gap: 4 },
   titulo: { color: C.tinta, fontSize: 16, marginBottom: 10 },
   que: { color: C.sub, fontSize: 14, lineHeight: 20, marginBottom: 14 },
@@ -136,4 +138,4 @@ const estilos = StyleSheet.create({
   cancelarTexto: { color: C.sub, fontSize: 15 },
   ok: { color: C.tinta, fontSize: 16, lineHeight: 22, paddingVertical: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 10 },
-});
+}));

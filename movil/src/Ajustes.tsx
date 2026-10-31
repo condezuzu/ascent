@@ -30,7 +30,8 @@ import Bloqueados from './ajustes/Bloqueados';
 import Diagnostico from './ajustes/Diagnostico';
 import Interruptor from './Interruptor';
 import { useArriba } from './zonaSegura';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -75,6 +76,7 @@ export default function Ajustes({
   alCambiar: (parcial: Partial<Perfil>) => void;
   alSalir: () => void;
 }) {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(60);
   const [fallo, setFallo] = useState('');
@@ -408,7 +410,7 @@ export default function Ajustes({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   tuPerfil: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, marginBottom: 4 },
   tuNombre: { color: C.tinta, fontSize: 17 },
   // EL FONDO VA EN EL SCROLLVIEW, NO SOLO EN EL CONTENIDO (29/9). El
@@ -492,4 +494,4 @@ const estilos = StyleSheet.create({
   error: { color: C.error, fontSize: 13, marginTop: 18, lineHeight: 19 },
   enlace: { color: C.sub, fontSize: 13 },
   salir: { marginTop: 48, alignItems: 'center' },
-});
+}));

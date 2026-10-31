@@ -32,7 +32,6 @@ import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDon
 import { CLAVE_META_PASOS, META_PASOS_POR_OMISION, leerMeta } from '@nucleo/pasos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import MarcaEnElMomento from './MarcaEnElMomento';
-import { paletaDe } from '@nucleo/paletas';
 import { cuentaAtras, restante } from '@compartido/descanso';
 import FondoEspacial from './FondoEspacial';
 import { mostrando } from './loVisible';
@@ -64,7 +63,8 @@ import { rutinaParaPreguntar, type PreguntaDeRutina } from './preguntarPorLaRuti
 import VentanaRutina from './VentanaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
-import { C, DESHABILITADO, HALO } from './colores';
+import { C, DESHABILITADO, HALO, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -149,6 +149,7 @@ export default function Inicio({
   /** Cuenta nueva sin nombre: la pantalla de elegirlo es de App. */
   alFaltarNombre: () => void;
 }) {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(64);
   // Dónde está la píldora del descanso, para que su globito salga de ella.
@@ -648,7 +649,7 @@ export default function Inicio({
   const semana = conEstado(diasDeLaTira(hoy, [...(vidaUsada?.dias ?? []), ...(helada?.fechas ?? [])]));
   // EL COLOR DEL ARCO del descanso se decide ACÁ, en una línea: hoy, el del rango. Lo usan las
   // dos pantallas grandes (la que corre y la de antes de empezar, 21/10).
-  const acentoDelDescanso = paletaDe(numeroDeRango(racha), null).principal;
+  const acentoDelDescanso = C.principal;
 
   return (
     <View style={estilos.raiz} testID="pantalla-inicio">
@@ -818,7 +819,7 @@ export default function Inicio({
           <PasosInicio
             pasos={pasosHoy}
             meta={metaPasos}
-            acento={paletaDe(numeroDeRango(racha), null).principal}
+            acento={C.principal}
             compacto={sesion.estado.corriendo}
             alCambiarMeta={setMetaPasos}
           />
@@ -958,7 +959,7 @@ export default function Inicio({
                 bloques={sesion.estado.bloques}
                 inicio={sesion.estado.inicio}
                 unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
-                principal={paletaDe(numeroDeRango(racha), null).principal}
+                principal={C.principal}
                 alAparecer={traerALaVista}
               />
             }
@@ -1266,7 +1267,7 @@ export default function Inicio({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`, detrás de todas las
   // pestañas. Un color acá lo taparía.
   raiz: { flex: 1 },
@@ -1335,14 +1336,14 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
     borderWidth: 1,
-    borderColor: C.lineaFuerte,
+    borderColor: C.bordeChip,
     borderRadius: 999,
     paddingVertical: 7,
     paddingHorizontal: 12,
     minHeight: 36,
   },
   chipTexto: { color: C.claro, fontSize: 13, fontVariant: ['tabular-nums'] },
-  latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.principal },
+  latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.claro },
   // No se achica: los dos chips son numeros y un numero cortado no se lee.
   sesionViva: { flexDirection: 'row', gap: 8, flexShrink: 0 },
   chipListo: { backgroundColor: C.claro, borderColor: C.claro },
@@ -1374,4 +1375,4 @@ const estilos = StyleSheet.create({
   // "Ver lo que hiciste hoy": tenue, debajo de los botones de foto/peso.
   verResumen: { paddingVertical: 10, marginTop: 2 },
   verResumenTexto: { color: C.sobreMotor, fontSize: 13, ...HALO },
-});
+}));

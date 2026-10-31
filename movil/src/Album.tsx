@@ -25,7 +25,8 @@ import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type Celda, type D
 import { primeraYUltima, resumenDelMes } from '@nucleo/album';
 import { paletaDe } from '@nucleo/paletas';
 import FondoEspacial from './FondoEspacial';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 import { useRecargarAlVolver } from './irAPestana';
 import { bloquearDeslizarPestanas, desbloquearDeslizarPestanas } from './gestoDePestanas';
 import { useEnVuelo } from '@compartido/useEnVuelo';
@@ -56,6 +57,7 @@ import GloboPrimeraVez from './GloboPrimeraVez';
  * el camino.
  */
 export default function Album({ alSalir }: { alSalir: () => void }) {
+  useTema();
   const arriba = useArriba(64);
   const [datos, setDatos] = useState<DatosDeAlbum | null>(null);
   const [cargado, setCargado] = useState(false);
@@ -512,16 +514,19 @@ const claveDe = (c: Celda) => (c.miniatura ? 'mini-' : 'entera-') + c.ruta;
 
 /** LA ENTERA, ABIERTA: también del disco del teléfono, por su ruta (15/10). Antes se bajaba en cada apertura. */
 function FotoEntera({ celda, lado }: { celda: Celda; lado: number }) {
+  useTema();
   const uri = useFotoLocal('entera-' + celda.ruta, celda.url);
   return uri ? <Image source={{ uri }} style={{ width: lado, height: lado }} resizeMode="contain" /> : null;
 }
 
 function FotoMitad({ celda }: { celda: Celda }) {
+  useTema();
   const uri = useFotoLocal(claveDe(celda), celda.miniatura || celda.url);
   return uri ? <Image source={{ uri }} style={estilos.mitadFoto} resizeMode="cover" /> : <View style={estilos.mitadFoto} />;
 }
 
 function Foto({ celda, lado }: { celda: Celda; lado: number }) {
+  useTema();
   const opacidad = useRef(new Animated.Value(0)).current;
   const url = useFotoLocal(claveDe(celda), celda.miniatura || celda.url);
   if (!url) return null;
@@ -541,7 +546,7 @@ function Foto({ celda, lado }: { celda: Celda; lado: number }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`.
   raiz: { flex: 1 },
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
@@ -567,7 +572,7 @@ const estilos = StyleSheet.create({
     backgroundColor: C.claro,
   },
   tarjeta: {
-    backgroundColor: 'rgba(11,13,19,0.72)',
+    backgroundColor: C.tarjeta,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
     borderRadius: 14,
@@ -644,4 +649,4 @@ const estilos = StyleSheet.create({
   textoRojo: { color: C.error },
   pastillaTexto: { color: C.tinta, fontSize: 14 },
   confirmar: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-});
+}));

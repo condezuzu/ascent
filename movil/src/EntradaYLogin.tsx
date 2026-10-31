@@ -3,7 +3,8 @@ import { Animated, Easing, StyleSheet } from 'react-native';
 import { anotarEntradaVista, vioLaEntrada } from '@compartido/entradaVista';
 import Bienvenida from './Bienvenida';
 import Login from './Login';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LA ENTRADA: primero la bienvenida, después el login.
@@ -21,6 +22,7 @@ import { C } from './colores';
  */
 const CURVA = Easing.bezier(0.2, 0.7, 0.2, 1);
 export default function EntradaYLogin({ alEntrar }: { alEntrar: () => void }) {
+  useTema();
   // `null` mientras se averigua: con `true` de entrada, quien ya la vio la vería parpadear.
   const [verSlides, setVerSlides] = useState<boolean | null>(null);
   const [modo, setModo] = useState<'entrar' | 'crear'>('entrar');
@@ -63,6 +65,6 @@ export default function EntradaYLogin({ alEntrar }: { alEntrar: () => void }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   todo: { flex: 1, backgroundColor: C.fondo },
-});
+}));

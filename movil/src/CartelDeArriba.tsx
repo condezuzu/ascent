@@ -14,7 +14,8 @@ import { alLlegarAvisoRemoto } from './plataforma/avisos';
 import Avatar from './Avatar';
 import InvitacionQueLlega from './InvitacionQueLlega';
 import { fijarCartel } from './cartelVisible';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /** Cada cuánto se pregunta con la app adelante. El aviso push lo adelanta. */
 const CADA_MS = 30_000;
@@ -28,6 +29,7 @@ const SE_VA_SOLO_MS = 20_000;
  * adelante, cada treinta segundos y cuando llega un aviso push.
  */
 export default function CartelDeArriba() {
+  useTema();
   const [cartel, setCartel] = useState<{ uid: string; novedad: Novedad } | null>(null);
   const bajada = useRef(new Animated.Value(0)).current;
   const mostrando = useRef(false);
@@ -146,7 +148,7 @@ export default function CartelDeArriba() {
 }
 
 // La misma tarjeta que el pedido de Inicio y el aviso de la rutina: el mismo lugar visual.
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   cartel: {
     position: 'absolute',
     top: 54,
@@ -174,4 +176,4 @@ const estilos = StyleSheet.create({
   bordeTexto: { color: C.tinta, fontSize: 14 },
   solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
   solidoTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-});
+}));

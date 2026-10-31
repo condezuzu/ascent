@@ -17,7 +17,8 @@ import { cargarDia, corregirDia, destinoActual, queHacer, revisarCarga, type Des
 import { plataforma } from '@plataforma';
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Hoja from './Hoja';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * UN DÍA, ABIERTO: qué hiciste, y corregirlo si está mal. La misma hoja que la
@@ -43,6 +44,7 @@ export default function HojaDelDia({
   alRevisar?: () => void;
   alCerrar: () => void;
 }) {
+  useTema();
   const [resumen, setResumen] = useState<ResumenDelDia | null>(null);
   const [noCargo, setNoCargo] = useState(false);
   const [foto, setFoto] = useState<string | null>(null);
@@ -291,7 +293,7 @@ export default function HojaDelDia({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 20, marginBottom: 14 },
   estado: { color: C.tinta, fontSize: 15, marginBottom: 16 },
   sub: { color: C.sub, fontSize: 13 },
@@ -332,4 +334,4 @@ const estilos = StyleSheet.create({
   confirmar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 8 },
   botonTexto: { color: C.claro, fontSize: 14 },
   error: { color: C.error, fontSize: 13 },
-});
+}));

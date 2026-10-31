@@ -14,7 +14,8 @@ import { quienSoy } from '@compartido/quienSoy';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
 import { reiniciarGuia } from '@compartido/guia';
-import { C, DESHABILITADO } from './colores';
+import { C, DESHABILITADO, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * ELEGIR EL NOMBRE — lo que falta para que una cuenta nueva sirva.
@@ -33,6 +34,7 @@ import { C, DESHABILITADO } from './colores';
  * en el teléfono.
  */
 export default function Onboarding({ alElegir }: { alElegir: () => void }) {
+  useTema();
   const [nombre, setNombre] = useState('');
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
@@ -135,7 +137,7 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   todo: { flex: 1, backgroundColor: C.fondo },
   centro: {
     flexGrow: 1,
@@ -170,4 +172,4 @@ const estilos = StyleSheet.create({
   // Discreta y abajo: es la salida de emergencia, no una de las dos opciones.
   salir: { marginTop: 28, alignItems: 'center', paddingVertical: 10 },
   salirTexto: { color: C.sub, fontSize: 14 },
-});
+}));

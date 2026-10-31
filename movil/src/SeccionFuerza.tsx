@@ -11,7 +11,8 @@ import { T } from '@nucleo/textos';
 import { cargarFuerza, filasDondeEstoy } from '@compartido/fuerza';
 import Avatar from './Avatar';
 import { irAPestana, useRecargarAlVolver } from './irAPestana';
-import { C } from './colores';
+import { C, conTema, conAlfa } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LA FUERZA DENTRO DE STATS (§16.6), en la app nativa: acá se mira y se
@@ -40,6 +41,7 @@ export default function SeccionFuerza({
   /** El `--pal-claro` de la web. */
   claro: string;
 }) {
+  useTema();
   const [mia, setMia] = useState<MiFuerza | null>(null);
   const [ranking, setRanking] = useState<FilaFuerza[]>([]);
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -204,6 +206,7 @@ function DondeEstoy({
   unidad: Unidad;
   claro: string;
 }) {
+  useTema();
   const filas = filasDondeEstoy(sexo, pesoCorporal, marcas);
   if (filas.length === 0) return null;
 
@@ -248,7 +251,7 @@ function DondeEstoy({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },
   sub: { color: C.sub, fontSize: 14, lineHeight: 21 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
@@ -256,7 +259,7 @@ const estilos = StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 14 },
   dato: { color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
   contenida: {
-    backgroundColor: 'rgba(138,147,168,0.06)',
+    backgroundColor: C.superficie,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
     borderRadius: 2,
@@ -276,7 +279,7 @@ const estilos = StyleSheet.create({
   tira: { gap: 2, marginTop: 12 },
   tiraItem: { flexDirection: 'row', alignItems: 'baseline', gap: 10, paddingVertical: 5, paddingHorizontal: 2 },
   tarjeta: {
-    backgroundColor: 'rgba(11,13,19,0.72)',
+    backgroundColor: C.tarjeta,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
     borderRadius: 14,
@@ -289,7 +292,7 @@ const estilos = StyleSheet.create({
   dondeTitulo: { color: C.sub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' },
   dondeDatos: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 6 },
   pct: { minWidth: 34, textAlign: 'right', color: C.apagado, fontSize: 12 },
-  escala: { height: 3, backgroundColor: 'rgba(160,180,220,0.09)', marginTop: 14 },
+  escala: { height: 3, backgroundColor: conAlfa(C.principal, 0.14), marginTop: 14 },
   marca: { position: 'absolute', top: -3, width: 2, height: 9 },
   falta: { color: C.apagado, fontSize: 12, marginTop: 6 },
-});
+}));

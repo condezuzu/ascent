@@ -8,7 +8,8 @@ import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
 import { VUELTA } from '../enlace';
-import { C } from '../colores';
+import { C, conTema } from '../colores';
+import { useTema } from '../useTema';
 
 /**
  * LO ÚLTIMO DE AJUSTES: cambiar la clave, salir, y darse de baja.
@@ -27,6 +28,7 @@ import { C } from '../colores';
  * app por el enlace (`enlace.ts`).
  */
 export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: () => void }) {
+  useTema();
   const [abierta, setAbierta] = useState(false);
   const [confirmacion, setConfirmacion] = useState('');
   const [borrando, setBorrando] = useState(false);
@@ -157,7 +159,7 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 34 },
   texto: { paddingVertical: 12 },
   tarjeta: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 14, overflow: 'hidden' },
@@ -202,4 +204,4 @@ const estilos = StyleSheet.create({
   botonTexto: { color: C.tinta, fontSize: 14 },
   ok: { color: C.sub, fontSize: 13, marginTop: 10 },
   error: { color: C.error, fontSize: 13, marginTop: 10 },
-});
+}));

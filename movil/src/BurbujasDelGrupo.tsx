@@ -11,7 +11,8 @@ import Avatar from './Avatar';
 import Aparece from './Aparece';
 import Tocable from './Tocable';
 import { irAPestana, useRecargarAlVolver } from './irAPestana';
-import { C } from './colores';
+import { C, conTema, conAlfa } from './colores';
+import { useTema } from './useTema';
 
 type Amigo = { id: string; username: string; avatar_url: string | null };
 // Dónde quedó la burbuja tocada, en la ventana: de ahí sale el globo.
@@ -37,6 +38,7 @@ export default function BurbujasDelGrupo({
   alIniciarGrupo: () => void;
   alInvitar: (amigo: string) => Promise<RespuestaDeInvitar>;
 }) {
+  useTema();
   const version = useVersionDelEsquema();
   const [amigos, setAmigos] = useState<Amigo[]>([]);
   const [tocada, setTocada] = useState<Tocada | null>(null);
@@ -102,6 +104,7 @@ export default function BurbujasDelGrupo({
 }
 
 function GloboDelAmigo({ tocada, alInvitar, alCerrar }: { tocada: Tocada; alInvitar: (amigo: string) => Promise<RespuestaDeInvitar>; alCerrar: () => void }) {
+  useTema();
   const { width } = useWindowDimensions();
   const { amigo } = tocada;
   // undefined = preguntando; null = ya no entrena (o no se pudo).
@@ -207,7 +210,7 @@ function GloboDelAmigo({ tocada, alInvitar, alCerrar }: { tocada: Tocada; alInvi
 const TOCADA = 58;
 const MARGEN = 24;
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // COMPACTA (28/10): la propuesta ocupaba casi cien puntos; Inicio entero tiene que entrar sin desplazar.
   fila: { gap: 10, paddingTop: 10, paddingBottom: 2 },
   burbuja: { width: 70, alignItems: 'center', gap: 3 },
@@ -216,7 +219,7 @@ const estilos = StyleSheet.create({
   masTexto: { color: C.tinta, fontSize: 18, lineHeight: 20 },
   aro: { borderWidth: 2, borderColor: C.vivo, borderRadius: 999, padding: 0 },
   nombre: { color: C.sub, fontSize: 10.5, maxWidth: 70 },
-  velo: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3,4,8,0.62)' },
+  velo: { ...StyleSheet.absoluteFillObject, backgroundColor: conAlfa(C.negro, 0.62) },
   tocada: { position: 'absolute', width: TOCADA, height: TOCADA, borderRadius: 999, borderWidth: 2, borderColor: C.vivo, alignItems: 'center', justifyContent: 'center' },
   globo: {
     position: 'absolute',
@@ -255,4 +258,4 @@ const estilos = StyleSheet.create({
   botonTexto: { color: C.fondo, fontWeight: '600', fontSize: 14.5 },
   dijo: { marginTop: 8, color: C.sub, fontSize: 13.5 },
   dijoBien: { color: C.tinta },
-});
+}));

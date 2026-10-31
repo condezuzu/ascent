@@ -9,7 +9,8 @@ import { aKilos, conComa, deKilos, limites, type Unidad } from '@nucleo/peso';
 import { rumboDelPaso } from '@nucleo/pesoObjetivo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LO QUE ANOTASTE, con forma de arreglarlo. La misma lista que la web
@@ -36,6 +37,7 @@ import { C } from './colores';
 const CUANTOS = 6;
 
 function IconoLapiz() {
+  useTema();
   return (
     <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={C.sub} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M4 20l4-1L18.5 8.5l-3-3L5 16z" />
@@ -45,6 +47,7 @@ function IconoLapiz() {
 }
 
 function IconoTacho() {
+  useTema();
   return (
     <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={C.apagado} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M4 7h16" />
@@ -69,6 +72,7 @@ export default function ListaDePesos({
   objetivo?: number | null;
   alCambiar: () => void;
 }) {
+  useTema();
   const version = useVersionDelEsquema();
   const [corrigiendo, setCorrigiendo] = useState<string | null>(null);
   const [borrando, setBorrando] = useState<string | null>(null);
@@ -209,7 +213,7 @@ export default function ListaDePesos({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   lista: { marginTop: 16 },
   rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 },
   fila: {
@@ -232,8 +236,8 @@ const estilos = StyleSheet.create({
   // El color sale del OBJETIVO, no de subir/bajar. Acercarse = verde tenue;
   // alejarse = terracota; ya en el objetivo = el claro de la app; sin objetivo
   // = gris (no se juzga nada hasta que haya un número al que llegar).
-  bien: { color: '#7fae86' },
-  lejos: { color: '#c58f7a' },
+  bien: { color: C.bien },
+  lejos: { color: C.lejos },
   enObjetivo: { color: C.claro },
   neutro: { color: C.apagado },
   pregunta: { color: C.sub, fontSize: 12, flex: 1, lineHeight: 16 },
@@ -262,4 +266,4 @@ const estilos = StyleSheet.create({
   apagada: { color: C.apagado, fontSize: 13 },
   peligro: { color: C.error, fontSize: 13 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
-});
+}));

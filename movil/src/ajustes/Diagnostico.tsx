@@ -12,7 +12,8 @@ import { T } from '@nucleo/textos';
 import type { OrigenSesion, Perfil } from '@nucleo/tipos';
 import { supabase } from '../supabase';
 import SubidaRango from '../SubidaRango';
-import { C } from '../colores';
+import { C, conTema } from '../colores';
+import { useTema } from '../useTema';
 import { comoLeyoLosPasos } from '../plataforma/salud';
 import { comoAnduvoElMotor, type EstadoDelMotor } from '../estadoDelMotor';
 import { comoEstanLosAvisos, probarAvisoRemoto } from '../plataforma/avisos';
@@ -52,6 +53,7 @@ import { eventos } from '@compartido/eventos';
  *    actualizaciones por el aire cortadas, por un botón de copiar.
  */
 export default function Diagnostico({ perfil }: { perfil: Perfil }) {
+  useTema();
   const [abierto, setAbierto] = useState(false);
   const [dia, setDia] = useState<{ origen: string } | null>(null);
   const [sinDia, setSinDia] = useState(false);
@@ -418,7 +420,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 34 },
   plegable: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
   titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
@@ -449,4 +451,4 @@ const estilos = StyleSheet.create({
   bitacora: { color: C.sub, fontSize: 11, lineHeight: 16, padding: 10, fontFamily: 'Courier' },
   acciones: { flexDirection: 'row', gap: 18, marginTop: 12 },
   enlace: { color: C.sub, fontSize: 13 },
-});
+}));

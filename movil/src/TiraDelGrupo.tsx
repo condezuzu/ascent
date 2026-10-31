@@ -5,7 +5,8 @@ import { T } from '@nucleo/textos';
 import Avatar from './Avatar';
 import CadaSegundo from './CadaSegundo';
 import { irAPestana } from './irAPestana';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import Aparece from './Aparece';
 
 /**
@@ -15,6 +16,7 @@ import Aparece from './Aparece';
  * detalle está en Ranking: tocarla lleva ahí. Llega en tiempo real (`useUniones`).
  */
 export default function TiraDelGrupo({ uniones, recibidoEn }: { uniones: Union[]; recibidoEn: number }) {
+  useTema();
   const companeros = uniones.filter((u) => u.estado === 'aceptada');
   if (companeros.length === 0) return null;
   return (
@@ -53,7 +55,7 @@ export default function TiraDelGrupo({ uniones, recibidoEn }: { uniones: Union[]
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   fila: { gap: 10, paddingVertical: 2, marginTop: 14 },
   persona: {
     flexDirection: 'row',
@@ -69,4 +71,4 @@ const estilos = StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 13, maxWidth: 110 },
   que: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
   descansa: { color: C.claro },
-});
+}));

@@ -5,7 +5,8 @@ import { claveNuevaInvalida, porQueNoCambio } from '@nucleo/clave';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { supabase } from './supabase';
 import CampoTexto from './CampoTexto';
-import { C, DESHABILITADO } from './colores';
+import { C, DESHABILITADO, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * ELEGIR LA CONTRASEÑA NUEVA, después de tocar el enlace del correo (4/10).
@@ -22,6 +23,7 @@ import { C, DESHABILITADO } from './colores';
  * enlace se tocó por error, la persona no puede quedar encerrada acá.
  */
 export default function ClaveNueva({ alTerminar }: { alTerminar: () => void }) {
+  useTema();
   const [clave, setClave] = useState('');
   const [repetida, setRepetida] = useState('');
   const [error, setError] = useState('');
@@ -87,7 +89,7 @@ export default function ClaveNueva({ alTerminar }: { alTerminar: () => void }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Opaco y por encima: debajo sigue la app, y no se tiene que ver ni tocar.
   todo: { ...StyleSheet.absoluteFillObject, backgroundColor: C.fondo, zIndex: 50 },
   centro: { flexGrow: 1, justifyContent: 'center', padding: 24, maxWidth: 420, width: '100%', alignSelf: 'center' },
@@ -108,4 +110,4 @@ const estilos = StyleSheet.create({
   aviso: { color: C.tinta, fontSize: 15, textAlign: 'center' },
   despues: { marginTop: 26, alignSelf: 'center' },
   despuesTexto: { color: C.sub, fontSize: 14 },
-});
+}));

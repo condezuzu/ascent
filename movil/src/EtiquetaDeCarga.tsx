@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { cargasOfrecidas, claveDeEtiqueta, type Carga } from '@nucleo/carga';
 import { T } from '@nucleo/textos';
 import { useVersionDelEsquema } from '@compartido/esquema';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * QUÉ SIGNIFICA EL NÚMERO, pegado al número. La misma pieza que la web: una
@@ -25,6 +26,7 @@ export default function EtiquetaDeCarga({
   alElegir: (c: Carga) => void;
   chica?: boolean;
 }) {
+  useTema();
   const [abierta, setAbierta] = useState(false);
   const version = useVersionDelEsquema();
   const clave = claveDeEtiqueta(carga, ejercicio);
@@ -63,7 +65,7 @@ export default function EtiquetaDeCarga({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   etiqueta: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44, paddingHorizontal: 4 },
   etiquetaChica: { minHeight: 30 },
   texto: { color: C.sub, fontSize: 13 },
@@ -80,4 +82,4 @@ const estilos = StyleSheet.create({
   prendida: { borderColor: C.principal },
   opcionTexto: { color: C.sub, fontSize: 13 },
   opcionPrendida: { color: C.tinta },
-});
+}));

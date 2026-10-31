@@ -4,7 +4,8 @@ import FotoGrande from './FotoGrande';
 import { fechaCorta } from '@nucleo/fechas';
 import type { FotoDePerfil } from '@compartido/perfil';
 import Surgir from './Surgir';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import { useFotoLocal } from './fotoLocal';
 
 /**
@@ -23,6 +24,7 @@ import { useFotoLocal } from './fotoLocal';
 const HUECO = 8;
 
 export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
+  useTema();
   const { width } = useWindowDimensions();
   // Tres por fila del ancho que de verdad tiene la grilla (19/10): calcularlo desde la
   // pantalla suponía el margen de quien la monta.
@@ -51,6 +53,7 @@ export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
 
 /** Del disco del teléfono si ya se bajó (15/10): la clave es la foto, que no cambia aunque cambie el enlace. */
 function Cuadrito({ foto, lado }: { foto: FotoDePerfil; lado: number }) {
+  useTema();
   const uri = useFotoLocal((foto.miniatura ? 'mini-foto-' : 'entera-foto-') + foto.id, foto.miniatura || foto.url);
   // La sombra va afuera: con `overflow: hidden` en la misma vista, iOS la recorta.
   return (
@@ -60,9 +63,9 @@ function Cuadrito({ foto, lado }: { foto: FotoDePerfil; lado: number }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: HUECO, marginTop: 6 },
   sombra: { borderRadius: 14, backgroundColor: C.linea, shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   cuadrito: { borderRadius: 14, overflow: 'hidden' },
   cuando: { color: C.apagado, fontSize: 10, marginTop: 4 },
-});
+}));

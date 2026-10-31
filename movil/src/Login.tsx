@@ -14,7 +14,8 @@ import { supabase } from './supabase';
 import { VUELTA } from './enlace';
 import { mensajeDeAuth } from '@nucleo/errores';
 import { T } from '@nucleo/textos';
-import { C, DESHABILITADO } from './colores';
+import { C, DESHABILITADO, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * ENTRAR — TANDA 2, y la primera pantalla de verdad de la app nativa.
@@ -42,6 +43,7 @@ import { C, DESHABILITADO } from './colores';
 type Modo = 'entrar' | 'crear' | 'recuperar';
 
 export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: () => void; modoInicial?: 'entrar' | 'crear' }) {
+  useTema();
   const [modo, setModo] = useState<Modo>(modoInicial);
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
@@ -187,7 +189,7 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
 // Salen a mano porque el sistema de paletas por rango es del motor visual y
 // esa pantalla todavía no existe acá; cuando llegue, esto se va a leer de un
 // solo lado.
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   todo: { flex: 1, backgroundColor: C.fondo },
   centro: { flexGrow: 1, justifyContent: 'center', padding: 24, maxWidth: 420, width: '100%', alignSelf: 'center' },
   marca: {
@@ -234,4 +236,4 @@ const estilos = StyleSheet.create({
   aviso: { color: C.sub, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
   secundarios: { marginTop: 26, gap: 14, alignItems: 'center' },
   enlace: { color: C.sub, fontSize: 13 },
-});
+}));

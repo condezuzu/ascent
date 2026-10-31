@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * UNA ELECCIÓN ENTRE POCAS, EN UNA SOLA PIEZA (15/10/2026). Ajustes eran pastillas
@@ -16,6 +17,7 @@ export default function Segmentado<V>({
   valor: V;
   alElegir: (v: V) => void;
 }) {
+  useTema();
   return (
     <View style={estilos.caja} accessibilityRole="radiogroup">
       {opciones.map((o, i) => {
@@ -39,7 +41,7 @@ export default function Segmentado<V>({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   caja: {
     flexDirection: 'row',
     borderWidth: StyleSheet.hairlineWidth,
@@ -52,4 +54,4 @@ const estilos = StyleSheet.create({
   elegida: { backgroundColor: conAlfa(C.claro, 0.14) },
   texto: { color: C.apagado, fontSize: 14 },
   textoElegido: { color: C.tinta, fontWeight: '600' },
-});
+}));

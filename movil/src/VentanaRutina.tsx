@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema, conAlfa } from './colores';
+import { useTema } from './useTema';
 import { catalogoDeRutina, type CatalogoDeRutina } from '@compartido/rutinas';
 import RutinaPlegada from './RutinaPlegada';
 import { supabase } from './supabase';
@@ -18,6 +19,7 @@ import { guardarDiaDeRutina, rutinaReemplazada, type PreguntaDeRutina } from './
  * preguntar. Tocar afuera la cierra sin guardar nada. Se monta solo mientras está abierta.
  */
 export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: PreguntaDeRutina; alCerrar: () => void }) {
+  useTema();
   const [paso, setPaso] = useState<'pregunta' | 'seguro'>('pregunta');
   const [guardando, setGuardando] = useState(false);
   const [fallo, setFallo] = useState(false);
@@ -108,12 +110,12 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
   );
 }
 
-const estilos = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: 'rgba(5,6,10,0.72)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+const estilos = conTema(() => StyleSheet.create({
+  fondo: { flex: 1, backgroundColor: conAlfa(C.negro, 0.72), alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   caja: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: '#10131c',
+    backgroundColor: C.hoja,
     borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 22,
@@ -126,7 +128,7 @@ const estilos = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 8,
   },
-  marca: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(126,140,168,0.16)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  marca: { width: 38, height: 38, borderRadius: 19, backgroundColor: conAlfa(C.principal, 0.16), alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   titulo: { color: C.tinta, fontSize: 17, fontWeight: '600', lineHeight: 22 },
   texto: { color: C.sub, fontSize: 14, lineHeight: 20, marginTop: 8 },
   fallo: { color: C.error, fontSize: 13, marginTop: 8 },
@@ -140,4 +142,4 @@ const estilos = StyleSheet.create({
   bordeTexto: { color: C.tinta, fontSize: 14 },
   tenue: { borderWidth: 1, borderColor: C.lineaFuerte },
   tenueTexto: { color: C.sub, fontSize: 14 },
-});
+}));

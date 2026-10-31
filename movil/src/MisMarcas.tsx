@@ -14,7 +14,8 @@ import FondoEspacial from './FondoEspacial';
 import PesoHoja from './PesoHoja';
 import CargarMarca from './CargarMarca';
 import Surgir from './Surgir';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import { volverOInicio } from './volver';
 import { useArriba } from './zonaSegura';
 
@@ -37,6 +38,7 @@ import { useArriba } from './zonaSegura';
  * la última pisara a la anterior, anotar un mal día borraría un PR.
  */
 export default function MisMarcas() {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(16);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -303,7 +305,7 @@ export default function MisMarcas() {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   todo: { flex: 1 },
   contenido: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
@@ -339,4 +341,4 @@ const estilos = StyleSheet.create({
   botonPesoTexto: { color: C.tinta, fontSize: 14 },
   vacio: { marginTop: 34, alignItems: 'center', gap: 4 },
   vacioTexto: { color: C.apagado, fontSize: 13, textAlign: 'center', lineHeight: 19 },
-});
+}));

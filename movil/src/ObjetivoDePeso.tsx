@@ -4,7 +4,8 @@ import { CLAVE_OBJETIVO_PESO, leerObjetivo, llego, objetivoValido, rumboDelPaso 
 import { aKilos, conComa, deKilos, type Unidad } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * EL OBJETIVO DE PESO: un número al que se quiere llegar. Va arriba de la lista
@@ -29,6 +30,7 @@ export default function ObjetivoDePeso({
   recientes?: { fecha: string; valor: number }[];
   alCambiar: (kg: number | null) => void;
 }) {
+  useTema();
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState('');
   const [error, setError] = useState('');
@@ -123,6 +125,7 @@ export default function ObjetivoDePeso({
  * lista. Reusa `rumboDelPaso`, la misma regla de color que la lista.
  */
 function MiniTendencia({ recientes, unidad, objetivo }: { recientes: { fecha: string; valor: number }[]; unidad: Unidad; objetivo: number | null }) {
+  useTema();
   const ultimos = [...recientes].sort((a, b) => a.fecha.localeCompare(b.fecha)).slice(-5);
   if (ultimos.length < 2) return null; // con uno no hay tendencia que mostrar
   return (
@@ -152,7 +155,7 @@ function MiniTendencia({ recientes, unidad, objetivo }: { recientes: { fecha: st
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   pill: { alignSelf: 'flex-start', marginTop: 12, marginBottom: 2 },
   pillTexto: { color: C.sub, fontSize: 13 },
   llegado: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', marginTop: 12, marginBottom: 2 },
@@ -181,8 +184,8 @@ const estilos = StyleSheet.create({
   trendFlecha: { fontSize: 9 },
   trendValor: { color: C.apagado, fontSize: 12, fontVariant: ['tabular-nums'] },
   trendUltimo: { color: C.sub },
-  tBien: { color: '#7fae86' },
-  tLejos: { color: '#c58f7a' },
+  tBien: { color: C.bien },
+  tLejos: { color: C.lejos },
   tObj: { color: C.claro },
   tNeutro: { color: C.apagado },
-});
+}));

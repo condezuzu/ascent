@@ -6,7 +6,8 @@ import { nombreVisible } from '@nucleo/propios';
 import { useUniones } from './useUniones';
 import { useNombresDeEjercicios } from './useNombresDeEjercicios';
 import Avatar from './Avatar';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * EL COMPAÑERO, ABAJO DE MI DESCANSO (12/10/2026): su ejercicio, su serie y su
@@ -18,6 +19,7 @@ import { C } from './colores';
  * repinta cuatro veces por segundo: acá no hay un segundo reloj.
  */
 export default function CompaneroEnDescanso({ visible, ahora }: { visible: boolean; ahora: number }) {
+  useTema();
   const { uniones, recibidoEn } = useUniones(visible, true);
   const aceptadas = uniones.filter((u) => u.estado === 'aceptada');
   const hay = aceptadas.length > 0;
@@ -61,7 +63,7 @@ export default function CompaneroEnDescanso({ visible, ahora }: { visible: boole
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   caja: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineaFuerte, marginTop: 8, paddingTop: 6 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
@@ -73,4 +75,4 @@ const estilos = StyleSheet.create({
   pildoraLista: { borderColor: C.sub },
   pildoraTexto: { color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
   pildoraTextoLista: { color: C.tinta },
-});
+}));

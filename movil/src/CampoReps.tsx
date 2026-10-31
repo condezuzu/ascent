@@ -1,6 +1,7 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LAS REPETICIONES DE LA PRÓXIMA SERIE (21/10): la caja de `CampoPeso`, sin los botones.
@@ -18,6 +19,7 @@ export default function CampoReps({
   pista: number | null | undefined;
   alCambiar: (n: number | null) => void;
 }) {
+  useTema();
   return (
     <View style={estilos.caja}>
       <TextInput
@@ -40,7 +42,7 @@ export default function CampoReps({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   caja: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -52,4 +54,4 @@ const estilos = StyleSheet.create({
   // Ancho fijo, por lo mismo que el peso: en web un campo sin ancho ocupa la fila entera.
   input: { color: C.tinta, fontSize: 22, width: 44, textAlign: 'right', fontVariant: ['tabular-nums'], padding: 0 },
   unidad: { color: C.sub, fontSize: 12 },
-});
+}));

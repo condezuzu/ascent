@@ -6,7 +6,8 @@ import type { Perfil, Sexo as SexoValor } from '@nucleo/tipos';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
-import { C, DESHABILITADO } from '../colores';
+import { C, DESHABILITADO, conTema } from '../colores';
+import { useTema } from '../useTema';
 
 /**
  * LOS TRES DATOS DE LA CUENTA que faltaban en nativo: el nombre de usuario,
@@ -31,6 +32,7 @@ export default function Identidad({
   perfil: Perfil;
   alCambiar: (parcial: Partial<Perfil>) => void;
 }) {
+  useTema();
   const [nombre, setNombre] = useState(perfil.username ?? '');
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState('');
@@ -134,7 +136,7 @@ export default function Identidad({
 }
 
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   // EL MISMO RÓTULO QUE EL RESTO DE AJUSTES: chico, en versalitas y apagado.
   // Estas secciones nacieron con título grande y quedaban como pegadas de otra
@@ -163,4 +165,4 @@ const estilos = StyleSheet.create({
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
   ok: { color: C.sub, fontSize: 13, marginTop: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
-});
+}));

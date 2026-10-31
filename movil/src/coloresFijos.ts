@@ -14,5 +14,5 @@ export const FIJO = {
   error: '#e8705f',
   apretado: '#11141d',
   // Un botón que no se puede tocar. Más bajo y su texto pierde el piso de 4,5:1.
-  deshabilitado: 0.7,
+  deshabilitado: 0.85,
 } as const;

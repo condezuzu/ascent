@@ -6,7 +6,8 @@ import { juntarMisDatos } from '@compartido/cuenta';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
-import { C, DESHABILITADO } from '../colores';
+import { C, DESHABILITADO, conTema } from '../colores';
+import { useTema } from '../useTema';
 
 /**
  * LLEVARSE TODO: el historial entero en un archivo.
@@ -27,6 +28,7 @@ import { C, DESHABILITADO } from '../colores';
  * para siempre.
  */
 export default function MisDatos({ perfil }: { perfil: Perfil }) {
+  useTema();
   const [exportando, setExportando] = useState(false);
   const [error, setError] = useState('');
 
@@ -60,7 +62,7 @@ export default function MisDatos({ perfil }: { perfil: Perfil }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
   boton: {
@@ -74,4 +76,4 @@ const estilos = StyleSheet.create({
   botonTexto: { color: C.tinta, fontSize: 14 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
-});
+}));

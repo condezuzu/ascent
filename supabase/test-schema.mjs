@@ -16886,7 +16886,7 @@ console.log('\n206. La pantalla del descanso: qué se estaba haciendo, el arco, 
   ], [true, true, true, true, false]);
   // Desde el 21/10 son dos pantallas (la que corre y la de antes de empezar): el color, una vez.
   chequear('el color del arco se decide en un solo lugar', [
-    (de206('movil', 'src', 'Inicio.tsx').match(/const acentoDelDescanso = paletaDe\(numeroDeRango\(racha\), null\)\.principal;/g) ?? []).length,
+    (de206('movil', 'src', 'Inicio.tsx').match(/const acentoDelDescanso = C\.principal;/g) ?? []).length,
     (de206('movil', 'src', 'Inicio.tsx').match(/<Descanso[\s\S]{0,200}?acento=\{acentoDelDescanso\}/g) ?? []).length,
   ], [1, 2]);
 }
@@ -19417,11 +19417,11 @@ console.log('\n262. El aviso de la vida: colores fijos, botones redondeados y 4,
   const { contraste } = await import('../nucleo/contraste.ts');
   const { C: C262 } = await import('../movil/src/colores.ts');
   const v = leer262(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'RachaSalvada.tsx'), 'utf8').replace(/\r\n/g, '\n');
-  chequear('los colores son fijos: nada sale de la paleta del rango', [/paletaDe|pal\.principal|textoSobre/.test(v), /usar: \{ backgroundColor: C\.claro \}/.test(v), /guardar: \{ backgroundColor: C\.fondo, borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v), /linkTexto: \{ color: C\.link/.test(v)], [false, true, true, true]);
+  chequear('los colores son fijos: nada sale de la paleta del rango', [/paletaDe|pal\.principal|textoSobre/.test(v), /usar: \{ backgroundColor: C\.crema \}/.test(v), /guardar: \{ backgroundColor: C\.negro, borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v), /linkTexto: \{ color: C\.link/.test(v)], [false, true, true, true]);
   chequear('los botones, redondeados y con sombra', /boton: \{ borderRadius: 999,[^}]*\.\.\.sombra \}/.test(v), true);
   const pares = [
-    ['Usar vida', C262.fondo, C262.claro],
-    ['Guardar vida', C262.tinta, C262.fondo],
+    ['Usar vida', C262.negro, C262.crema],
+    ['Guardar vida', C262.tinta, C262.negro],
     ['(la racha baja 10 días)', C262.sub, C262.hoja],
     ['Fui. Corregir día', C262.link, C262.hoja],
     ['el texto del cuadro', C262.tinta, C262.hoja],
@@ -21114,6 +21114,97 @@ console.log('\n322. Un minuto es uno: «1 minutos hoy» (30/10)');
   const { TEXTOS_ES: es322 } = await import('../nucleo/textos.ts');
   const { EN: en322 } = await import('../nucleo/textos-en.ts');
   chequear('el singular y el plural, en los dos idiomas', [es322.inicio.minutosDeHoy(1), es322.inicio.minutosDeHoy(2), en322.inicio.minutosDeHoy(1), en322.inicio.minutosDeHoy(2)], ['1 minuto hoy', '2 minutos hoy', '1 minute today', '2 minutes today']);
+}
+console.log('\n323. Una sola paleta para toda la nativa (30/10)');
+{
+  const { C: C323, fijarPaleta: fijar323, conTema: conTema323, mezclar: mezclar323, versionDePaleta: version323, DESHABILITADO: DES323 } = await import('../movil/src/colores.ts');
+  const { PALETAS_RANGO: PR323, PALETAS_PLANETA: PP323, paletaDe: paletaDe323, FONDO_RANGO_7: F7323 } = await import('../nucleo/paletas.ts');
+  const { contraste: contraste323 } = await import('../nucleo/contraste.ts');
+  const { readFileSync: leer323, readdirSync: dir323 } = await import('node:fs');
+  const ts323 = (await import('typescript')).default;
+  const raiz323 = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+  fijar323(paletaDe323(2), 2);
+  chequear('los teñidos siguen a la paleta: el mismo color-mix que la web', [C323.claro, C323.principal, C323.linea, C323.diaVacio], [
+    PR323[2].claro, PR323[2].principal, mezclar323(PR323[2].principal, '#1d2230', 0.2), mezclar323(PR323[2].principal, '#1d2230', 0.3),
+  ]);
+  chequear('el color-mix: 20 % de uno y el resto del otro', mezclar323('#ffffff', '#000000', 0.2), '#333333');
+  const antes323 = version323();
+  fijar323(paletaDe323(2), 2);
+  chequear('pedir la misma paleta no redibuja nada: cambiar de pestaña pide lo mismo', version323(), antes323);
+  const hoja323 = conTema323(() => ({ x: { color: C323.claro } }));
+  const delDos323 = hoja323.x.color;
+  fijar323(paletaDe323(5), 5);
+  chequear('una hoja con conTema se rearma sola', [delDos323, hoja323.x.color], [PR323[2].claro, PR323[5].claro]);
+  fijar323(paletaDe323(7), 7);
+  chequear('el rango 7 tiene su negro, como en la web', C323.fondo, F7323);
+  chequear('lo que no se tiñe no se tiñe', [C323.crema, C323.negro, C323.tinta], ['#c4c2ba', '#05060a', '#e8ecf6']);
+
+  // El piso, con cada paleta posible: los siete rangos y los diez planetas.
+  const mezclaAlfa323 = (a, fondo, alfa) => mezclar323(a, fondo, alfa);
+  const todas323 = [...[1, 2, 3, 4, 5, 6, 7].map((r) => [String(r), PR323[r], r]), ...Object.entries(PP323).map(([n, p]) => [n, p, 4])];
+  const flojas323 = [];
+  for (const [nombre, p, r] of todas323) {
+    fijar323(p, r);
+    const pares = {
+      'claro sobre el fondo': contraste323(C323.claro, C323.fondo),
+      'el fondo sobre el sólido': contraste323(C323.fondo, C323.claro),
+      'el fondo sobre el sólido deshabilitado': contraste323(C323.fondo, mezclaAlfa323(C323.claro, C323.fondo, DES323)),
+      'claro sobre la meta prendida': contraste323(C323.claro, mezclaAlfa323(C323.claro, C323.fondo, 0.09)),
+    };
+    for (const [que, v] of Object.entries(pares)) if (v < 4.5) flojas323.push(`${nombre}: ${que} ${v.toFixed(2)}`);
+  }
+  chequear('lo que se lee en el color del rango llega a 4,5:1 con todas las paletas', flojas323, []);
+  // Se deja como estaba: las secciones de arriba y de abajo leen `C`.
+  fijar323({ principal: '#7E8CA8', claro: '#C4C2BA' }, 3);
+
+  // Todos los componentes con un color teñido se enteran del cambio, y ningún color queda escrito a mano.
+  const fuentes323 = ['movil/src', 'movil/app'].flatMap((d) => dir323(join(raiz323, d), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx?$/.test(e.name) && !e.parentPath.includes('node_modules'))
+    .map((e) => join(e.parentPath, e.name)));
+  const FUERA323 = /(colores\.ts|coloresFijos\.ts|Minimo\.tsx|Raiz\.tsx|HudDiagnostico\.tsx|useTema\.ts)$|bienvenida[\\/]/;
+  // El logo y la estrella de las vidas son dibujos con sus colores, iguales en todos los rangos.
+  const CON_COLOR323 = /(EntradaDeLaApp\.tsx|Estrella\.tsx)$/;
+  const TENIDO323 = /(?<![A-Za-z0-9_])C\.(fondo|claro|principal|linea|lineaFuerte|diaLleno|diaVacio|bordeChip|bordeMeta|fondoMeta|bordeSerie|bordeOcto|cuadro|celdaVacia|barra[A-Z]\w*)(?![A-Za-z0-9_])/;
+  const sinTema323 = [];
+  const sinConTema323 = [];
+  const aMano323 = [];
+  for (const r of fuentes323) {
+    if (FUERA323.test(r)) continue;
+    const nombre = r.slice(raiz323.length + 1).replace(/\\/g, '/');
+    const texto = leer323(r, 'utf8');
+    if (!CON_COLOR323.test(r)) {
+      texto.split('\n').forEach((l, i) => {
+        if (/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)) return;
+        if (/['"\x60](#[0-9a-fA-F]{3,8}|rgba?\()/.test(l) && !/shadowColor: '#000'/.test(l)) aMano323.push(`${nombre}:${i + 1}`);
+      });
+    }
+    if (!TENIDO323.test(texto)) continue;
+    const sf = ts323.createSourceFile(r, texto, ts323.ScriptTarget.Latest, true, ts323.ScriptKind.TSX);
+    const hayJsx = (n) => { let si = false; const v = (x) => { if (si) return; if (ts323.isJsxElement(x) || ts323.isJsxSelfClosingElement(x) || ts323.isJsxFragment(x)) { si = true; return; } ts323.forEachChild(x, v); }; v(n); return si; };
+    const nombreDe = (n) => {
+      if (ts323.isFunctionDeclaration(n) && n.name) return n.name.text;
+      if (ts323.isFunctionExpression(n) && n.name) return n.name.text;
+      if ((ts323.isArrowFunction(n) || ts323.isFunctionExpression(n)) && ts323.isVariableDeclaration(n.parent) && ts323.isIdentifier(n.parent.name)) return n.parent.name.text;
+      return null;
+    };
+    const visitar = (n, enFuncion) => {
+      if (ts323.isFunctionLike(n) && n.body) {
+        const nom = nombreDe(n);
+        if (nom && /^[A-ZÁÉÍÓÚÑ]/.test(nom) && hayJsx(n) && !(ts323.isBlock(n.body) && n.body.statements[0]?.getText() === 'useTema();')) sinTema323.push(`${nombre}: ${nom}`);
+        ts323.forEachChild(n, (h) => visitar(h, true));
+        return;
+      }
+      if (!enFuncion && ts323.isCallExpression(n) && n.expression.getText() === 'StyleSheet.create' && TENIDO323.test(n.getText())) sinConTema323.push(nombre);
+      ts323.forEachChild(n, (h) => visitar(h, enFuncion));
+    };
+    visitar(sf, false);
+  }
+  chequear('cada componente de un archivo con color teñido llama a useTema', sinTema323, []);
+  chequear('cada hoja con color teñido va en conTema', sinConTema323, []);
+  chequear('ningún color escrito a mano en un componente', aMano323, []);
+  const layout323 = leer323(join(raiz323, 'movil', 'app', '_layout.tsx'), 'utf8');
+  chequear('la paleta sigue al fondo desde antes de pintar nada: en el módulo, no en un efecto', /^seguirElFondo\(\);/m.test(layout323), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

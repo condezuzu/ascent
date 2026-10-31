@@ -81,6 +81,8 @@
 //      1,2 s cuentan dos series (la traba mide desde el dedo); un doble toque sigue contando uno (29/10).
 //  35. probar-contraste — todo el texto visible llega a 4,5:1 contra lo que tiene detrás de verdad, motor
 //      incluido, en los siete rangos y los diez planetas (30/10), en la nativa.
+//  36. probar-rango — el sólido, el chip y la pestaña son el claro de los siete rangos; subir con la app
+//      abierta cambia la paleta sin remontar el motor ni perder la sesión; lo fijo sigue fijo (30/10).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -136,6 +138,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'la invitación que llega', archivo: 'probar-invitacion-llega.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'dos toques con el teléfono trabado', archivo: 'probar-toque-trabado.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el piso de contraste en los siete rangos', archivo: 'probar-contraste.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'toda la app sigue al rango', archivo: 'probar-rango.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

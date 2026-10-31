@@ -8,7 +8,8 @@ import {
 } from '@nucleo/pasos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
-import { C } from '../colores';
+import { C, conTema } from '../colores';
+import { useTema } from '../useTema';
 
 /**
  * LA META DE PASOS DEL DÍA.
@@ -27,6 +28,7 @@ import { C } from '../colores';
  * escribiría cinco veces para un número de cinco cifras.
  */
 export default function MetaDePasos({ alCambiar }: { alCambiar?: (meta: number) => void } = {}) {
+  useTema();
   const [valor, setValor] = useState(String(META_PASOS_POR_OMISION));
   const [error, setError] = useState('');
 
@@ -85,7 +87,7 @@ export default function MetaDePasos({ alCambiar }: { alCambiar?: (meta: number) 
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   titulo: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12 },
   campo: {
@@ -109,4 +111,4 @@ const estilos = StyleSheet.create({
   botonTexto: { color: C.tinta, fontSize: 14 },
   error: { color: C.error, fontSize: 12, marginTop: 8 },
   nota: { color: C.apagado, fontSize: 12, marginTop: 10, lineHeight: 17 },
-});
+}));

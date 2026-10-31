@@ -21,7 +21,8 @@ import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
 import FotosQueVen from './FotosQueVen';
 import Insignia from './Insignia';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import { volverOInicio } from './volver';
 import { useArriba } from './zonaSegura';
 
@@ -45,6 +46,7 @@ import { useArriba } from './zonaSegura';
  * propio perfil, que es donde está la lista.
  */
 export default function PerfilDeAmigo() {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(60);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -298,7 +300,7 @@ export default function PerfilDeAmigo() {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Sin fondo propio: el motor está detrás del stack (ver `app/_layout.tsx`).
   raiz: { flex: 1 },
   pantalla: { padding: 24, paddingTop: 60, paddingBottom: 60 },
@@ -317,7 +319,7 @@ const estilos = StyleSheet.create({
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 26 },
   tiraDia: { alignItems: 'center', gap: 7 },
   punto: { width: 26, height: 26, borderRadius: 13 },
-  lleno: { backgroundColor: C.principal },
+  lleno: { backgroundColor: C.diaLleno },
   vacio: { borderWidth: 1, borderColor: C.lineaFuerte },
   puntoHoy: { borderWidth: 1, borderColor: C.claro },
   letra: { color: C.apagado, fontSize: 11 },
@@ -342,4 +344,4 @@ const estilos = StyleSheet.create({
   amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
   amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },
   amigoRacha: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
-});
+}));

@@ -27,7 +27,7 @@ function mezclar(a: string, b: string, cuanto: number) {
 /** La B: la tinta con un 30 % del claro del rango y el halo del claro; el agujero negro, más oscuro. */
 export function colorDelDiaRegistrado(rango: number) {
   const p = paletaDe(rango);
-  if (rango === 7) return { relleno: mezclar(p.claro, '#05050A', 0.25), halo: p.principal };
+  if (rango === 7) return { relleno: mezclar(p.claro, p.apagado, 0.25), halo: p.principal };
   return { relleno: mezclar(C.tinta, p.claro, 0.3), halo: p.claro };
 }
 

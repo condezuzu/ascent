@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * EL GLOBO DE CÓMIC (15/10, aprobado en la galería): el globito de siempre, del
@@ -28,6 +29,7 @@ export default function GloboComic({
   subir?: number;
   testID?: string;
 }) {
+  useTema();
   const opacidad = useRef(new Animated.Value(0)).current;
   const cerrando = useRef(false);
   const [ancho, setAncho] = useState(0);
@@ -79,7 +81,7 @@ export default function GloboComic({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   ancla: { height: 0, zIndex: 30, elevation: 30 },
   capa: { position: 'absolute', top: 9, left: 0, right: 0 },
   globo: {
@@ -113,4 +115,4 @@ const estilos = StyleSheet.create({
     borderColor: C.lineaFuerte,
     transform: [{ rotate: '45deg' }],
   },
-});
+}));

@@ -9,7 +9,8 @@ import TiraDelGrupo from './TiraDelGrupo';
 import Aparece from './Aparece';
 import { useCartelVisible } from './cartelVisible';
 import { tarjetasDeInicio } from '@nucleo/novedades';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LA MITAD DE "ENTRENAR CON OTRO" QUE VIVE EN INICIO (12/10/2026).
@@ -32,6 +33,7 @@ type Visto = { corriendo: boolean; ejercicio: string | null; hechas: number; met
 const LATIDO_MS = 45_000;
 
 function EnVivoDeInicio(visto: Visto) {
+  useTema();
   const { uniones, recibidoEn, recargar } = useUniones(visto.corriendo, true);
   const enCartel = useCartelVisible();
 
@@ -95,7 +97,7 @@ function EnVivoDeInicio(visto: Visto) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   tarjeta: {
     marginTop: 14,
     paddingHorizontal: 16,
@@ -111,7 +113,7 @@ const estilos = StyleSheet.create({
   bordeTexto: { color: C.tinta, fontSize: 14 },
   solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
   solidoTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-});
+}));
 
 // Con los mismos props no se redibuja: el + de la sesión redibuja Inicio y esto no cambió (15/10).
 export default memo(EnVivoDeInicio);

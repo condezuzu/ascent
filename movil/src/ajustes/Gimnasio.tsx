@@ -6,7 +6,8 @@ import { plataforma } from '@plataforma';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
-import { C, conAlfa } from '../colores';
+import { C, conAlfa, conTema } from '../colores';
+import { useTema } from '../useTema';
 import PinGimnasio from '../PinGimnasio';
 
 /**
@@ -58,6 +59,7 @@ export default function Gimnasio({
   perfil: Perfil;
   alCambiar: (parcial: Partial<Perfil>) => void;
 }) {
+  useTema();
   const [estado, setEstado] = useState<'' | 'buscando' | 'listo' | 'error'>('');
   const [detalle, setDetalle] = useState('');
 
@@ -150,7 +152,7 @@ export default function Gimnasio({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   // EL MISMO RÓTULO QUE EL RESTO DE AJUSTES: chico, en versalitas y apagado.
   // Estas secciones nacieron con título grande y quedaban como pegadas de otra
@@ -164,4 +166,4 @@ const estilos = StyleSheet.create({
   estandoAhi: { color: C.apagado, fontSize: 12, marginTop: 6 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
   error: { color: C.error },
-});
+}));

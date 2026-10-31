@@ -11,7 +11,8 @@ import { nombreVisible } from '@nucleo/propios';
 import { supabase } from './supabase';
 import { useNombresDeEjercicios } from './useNombresDeEjercicios';
 import Avatar from './Avatar';
-import { C } from './colores';
+import { C, conTema, conAlfa } from './colores';
+import { useTema } from './useTema';
 import Aparece from './Aparece';
 import Tocable from './Tocable';
 import { numeroDeRango } from '@nucleo/rangos';
@@ -41,6 +42,7 @@ export default function Juntos({
   /** La racha de cada uno, por id: el aro de su cara lleva el color de su rango (28/10). */
   rachas?: ReadonlyMap<string, number>;
 }) {
+  useTema();
   const aro = (id: string) => {
     const r = rachas?.get(id);
     return { borderColor: r === undefined ? C.lineaFuerte : paletaDe(numeroDeRango(r), null).principal };
@@ -165,9 +167,9 @@ export default function Juntos({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // ARRIBA DE TODO Y EN UNA TARJETA (28/10, aprobado en la galería): es lo que está pasando.
-  seccion: { marginTop: 14, borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 18, backgroundColor: 'rgba(9,10,16,0.88)', paddingVertical: 12, paddingHorizontal: 14 },
+  seccion: { marginTop: 14, borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 18, backgroundColor: conAlfa(C.hoja, 0.88), paddingVertical: 12, paddingHorizontal: 14 },
   aro: { borderWidth: 2, borderRadius: 999, padding: 1 },
   invitar: { backgroundColor: C.claro, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 16 },
   invitarTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
@@ -185,4 +187,4 @@ const estilos = StyleSheet.create({
   pildoraTexto: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
   pildoraTextoLista: { color: C.tinta },
   pie: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 },
-});
+}));

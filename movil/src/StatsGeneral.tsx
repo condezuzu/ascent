@@ -16,7 +16,8 @@ import type { Log } from '@nucleo/tipos';
 import { plataforma } from '@plataforma';
 import { CLAVE_META_PASOS, contraLaMeta, leerMeta, promedioDeLaSemana } from '@nucleo/pasos';
 import { CLAVE_OBJETIVO_PESO, leerObjetivo } from '@nucleo/pesoObjetivo';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import GraficoPeso from './GraficoPeso';
 import GraficoPasos from './GraficoPasos';
 import Insignia from './Insignia';
@@ -53,6 +54,7 @@ export type Vidas = { quedan: number; total: number; tope?: number; vuelve: stri
 export type PesoAnotado = { fecha: string; valor: number };
 
 export function LineaDeVidas({ vidas }: { vidas: Vidas }) {
+  useTema();
   // Con la 79 vuelven todas juntas; antes, de a una (y el texto dice cada cosa).
   const juntas = disponible('vidasDeUna', useVersionDelEsquema());
   const usadas = Math.max(0, vidas.total - vidas.quedan);
@@ -96,6 +98,7 @@ export default function StatsGeneral({
   /** El calendario del mes, para corregir días: se abre con el botón de debajo del año. */
   calendario?: React.ReactNode;
 }) {
+  useTema();
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
   const [pesoAbierto, setPesoAbierto] = useState(false);
   const hoy = hoyISO();
@@ -285,6 +288,7 @@ export default function StatsGeneral({
 
 /** Las duraciones de las sesiones. Pide lo suyo, como `SeccionSesiones` de la web. */
 function Sesiones() {
+  useTema();
   const [r, setR] = useState<ResumenSesiones | null>(null);
   const [dias, setDias] = useState<DiaConSesiones[]>([]);
 
@@ -354,6 +358,7 @@ function Sesiones() {
 
 /** EL PROMEDIO DIARIO DE LA SEMANA, bien a la vista y contra la meta (16/10, a pedido). */
 function PromedioDePasos({ pasos, meta }: { pasos: { fecha: string; valor: number }[]; meta: number }) {
+  useTema();
   const promedio = promedioDeLaSemana(pasos, hoyISO());
   if (promedio === null) return null;
   const miles = (n: number) => n.toLocaleString(T.general.locale);
@@ -370,7 +375,7 @@ function PromedioDePasos({ pasos, meta }: { pasos: { fecha: string; valor: numbe
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   promedioPasos: { marginBottom: 14 },
   promedioRotulo: { color: C.tinta, fontSize: 15 },
   promedioNumero: { color: C.tinta, fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 2 },
@@ -381,7 +386,7 @@ const estilos = StyleSheet.create({
   botonCorregirTexto: { color: C.tinta, fontSize: 14 },
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },
   tarjeta: {
-    backgroundColor: 'rgba(11,13,19,0.72)',
+    backgroundColor: C.tarjeta,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
     borderRadius: 14,
@@ -389,7 +394,7 @@ const estilos = StyleSheet.create({
   },
   mapa: { flexDirection: 'row', gap: 2 },
   columna: { flex: 1, gap: 2 },
-  celdaAno: { aspectRatio: 1, borderRadius: 2, backgroundColor: C.linea },
+  celdaAno: { aspectRatio: 1, borderRadius: 2, backgroundColor: C.celdaVacia },
   vidas: { marginBottom: 16, gap: 6 },
   et: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
   puntos: { flexDirection: 'row', gap: 8 },
@@ -400,8 +405,8 @@ const estilos = StyleSheet.create({
   etiqueta: { color: C.sub, fontSize: 12, marginTop: 2 },
   diaSesion: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
   dato: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
-  barra: { flex: 1, height: 6, borderRadius: 3, backgroundColor: C.linea, overflow: 'hidden' },
-  relleno: { height: 6, borderRadius: 3, backgroundColor: C.principal },
+  barra: { flex: 1, height: 6, borderRadius: 3, backgroundColor: C.barraPista, overflow: 'hidden' },
+  relleno: { height: 6, borderRadius: 3, backgroundColor: C.barraDentro },
   pesoSolo: { color: C.tinta, fontSize: 32 },
   unidad: { color: C.sub, fontSize: 15 },
   anotar: { flexDirection: 'row', gap: 8, marginTop: 10 },
@@ -428,4 +433,4 @@ const estilos = StyleSheet.create({
   nombreRango: { flex: 1, color: C.tinta, fontSize: 15 },
   actual: { fontSize: 12, letterSpacing: 1 },
   dias: { color: C.sub, fontSize: 12 },
-});
+}));

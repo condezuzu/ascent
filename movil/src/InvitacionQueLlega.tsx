@@ -4,7 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { Novedad } from '@nucleo/novedades';
 import { T } from '@nucleo/textos';
 import Avatar from './Avatar';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 
 /** Lo que dura la mecha. Si se quema entera, la invitación se cancela sola. */
 export const MECHA_MS = 10_000;
@@ -28,6 +29,7 @@ export default function InvitacionQueLlega({
   alContestar: (acepta: boolean | null) => void;
   alTerminar: () => void;
 }) {
+  useTema();
   const { width } = useWindowDimensions();
   const ancho = width - MARGEN * 2;
   const caida = useRef(new Animated.Value(0)).current;
@@ -158,7 +160,7 @@ export default function InvitacionQueLlega({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   lugar: { position: 'absolute', top: 54, left: MARGEN, right: MARGEN, alignItems: 'center' },
   sombra: {
     height: ALTO,
@@ -201,4 +203,4 @@ const estilos = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
   },
-});
+}));

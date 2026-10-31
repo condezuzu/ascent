@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CURVA } from '@nucleo/deslizar';
+import { C, conAlfa } from './colores';
 
 /**
  * EL VELO DE LECTURA (30/10). El planeta vive abajo a la derecha y lo que se toca al entrenar
@@ -17,7 +18,7 @@ export default function VeloDeLectura({ entero }: { entero: boolean }) {
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: opacidad }]} testID="velo-de-lectura">
       <LinearGradient
-        colors={['rgba(5, 6, 10, 0)', 'rgba(5, 6, 10, 0.58)', 'rgba(5, 6, 10, 0.8)']}
+        colors={[conAlfa(C.negro, 0), conAlfa(C.negro, 0.58), conAlfa(C.negro, 0.8)]}
         locations={[0.34, 0.54, 1]}
         style={StyleSheet.absoluteFill}
       />

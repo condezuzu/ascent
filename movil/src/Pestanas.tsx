@@ -20,7 +20,8 @@ import IconoDePestana from './IconoDePestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
 import CartelDeArriba from './CartelDeArriba';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -133,6 +134,7 @@ export default function Pestanas({
   alSalir: () => void;
   alFaltarNombre: () => void;
 }) {
+  useTema();
   const [pestana, setPestana] = useState<Pestana>('inicio');
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [perfilNoCargo, setPerfilNoCargo] = useState(false);
@@ -584,7 +586,7 @@ export default function Pestanas({
               <View style={estilos.icono}>
                 <IconoDePestana cual={p} color={C.apagado} />
                 <Animated.View style={[StyleSheet.absoluteFill, { opacity: luces[i] }]} pointerEvents="none">
-                  <IconoDePestana cual={p} color={C.tinta} />
+                  <IconoDePestana cual={p} color={C.claro} />
                 </Animated.View>
                 {avisa && <View style={estilos.punto} />}
               </View>
@@ -616,7 +618,7 @@ export default function Pestanas({
 // La pestaña de Ranking dice "Social" en la barra (15/10).
 const rotuloDe = (p: keyof typeof T.nav) => (p === 'ranking' ? T.nav.social : T.nav[p]);
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // SIN FONDO PROPIO: el motor vive en la raíz del router, detrás de todo, y
   // pintar acá lo taparía. Ver .
   todo: { flex: 1 },
@@ -641,7 +643,7 @@ const estilos = StyleSheet.create({
   icono: { width: 22, height: 22 },
   texto: { color: C.apagado, fontSize: 10, letterSpacing: 0.3 },
   // Encima del rótulo apagado, calzado: mismo texto, mismo tamaño, otro color.
-  luz: { position: 'absolute', left: 0, top: 0, color: C.tinta },
+  luz: { position: 'absolute', left: 0, top: 0, color: C.claro },
   // El puntito de aviso, arriba a la derecha del icono de la pestaña.
   punto: {
     position: 'absolute',
@@ -652,4 +654,4 @@ const estilos = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: C.error,
   },
-});
+}));

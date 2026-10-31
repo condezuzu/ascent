@@ -9,7 +9,8 @@ import { yaEsta } from '@nucleo/yaEsta';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
-import { C, DESHABILITADO } from './colores';
+import { C, DESHABILITADO, conTema } from './colores';
+import { useTema } from './useTema';
 import { supabase } from './supabase';
 import { leerRecordados, recordadosAlDia, type Recordados } from '@compartido/pesosRecordados';
 import { leerPerfilCache } from '@compartido/cache';
@@ -31,6 +32,7 @@ import GloboPrimeraVez from './GloboPrimeraVez';
  * no podía tocar "Press de banca" durante un minuto.
  */
 function Fila({ texto, extra, elegido, onPress }: { texto: string; extra?: string; elegido?: boolean; onPress: () => void }) {
+  useTema();
   return (
     <Pressable style={estilos.fila} onPress={onPress} accessibilityRole="button">
       <Text style={[estilos.filaTexto, elegido && estilos.elegido]} numberOfLines={1}>{texto}</Text>
@@ -53,6 +55,7 @@ function SelectorEjercicio({
   alElegir: (id: string | null, mide?: 'series' | 'tiempo') => void;
   alCerrar: () => void;
 }) {
+  useTema();
   const actual = ejercicios.find((e) => e.id === valor) ?? null;
   const [zona, setZona] = useState<Zona | null>(null);
   const [grupo, setGrupo] = useState<string | null>(null);
@@ -289,7 +292,7 @@ function SelectorEjercicio({
 
 export default nuevaEnCadaApertura(SelectorEjercicio, (p) => p.visible);
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   volver: { minWidth: 36, minHeight: 36, justifyContent: 'center' },
   volverTexto: { color: C.sub, fontSize: 20 },
@@ -325,4 +328,4 @@ const estilos = StyleSheet.create({
   crearIgualTexto: { color: C.sub, fontSize: 14 },
   apagado: { opacity: DESHABILITADO },
   cancelarTexto: { color: C.sub, fontSize: 14 },
-});
+}));

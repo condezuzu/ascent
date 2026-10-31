@@ -5,7 +5,8 @@ import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
 import type { EstadoBloques } from '@nucleo/bloques';
 import { T } from '@nucleo/textos';
 import { useMarcaEnElMomento } from '@compartido/marcaSugerida';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * "¿LO GUARDO COMO MARCA?", debajo del bloque y al confirmar la serie que puede
@@ -32,6 +33,7 @@ export default function MarcaEnElMomento({
    */
   alAparecer?: (vista: View) => void;
 }) {
+  useTema();
   const { actual: s, guardar, descartar } = useMarcaEnElMomento(bloques, inicio);
   const vista = useRef<View>(null);
   // SU LUGAR QUEDA AL IRSE SOLA (18/10). Guardada, se va a los 4,5 s, y lo de abajo —«La
@@ -85,7 +87,7 @@ export default function MarcaEnElMomento({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   todo: { marginTop: 14, paddingVertical: 12, paddingHorizontal: 14, borderLeftWidth: 2 },
   reserva: { marginTop: 14 },
   texto: { color: C.tinta, fontSize: 15, lineHeight: 21, marginBottom: 8 },
@@ -105,4 +107,4 @@ const estilos = StyleSheet.create({
   repTexto: { color: C.tinta, fontSize: 14, fontVariant: ['tabular-nums'] },
   no: { paddingHorizontal: 14 },
   noTexto: { color: C.sub, fontSize: 14 },
-});
+}));

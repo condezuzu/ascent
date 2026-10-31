@@ -1,6 +1,7 @@
 import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LA FOTO DE PERFIL, GRANDE (8/10/2026).
@@ -10,6 +11,7 @@ import { C } from './colores';
  * permiso que pedir ni firma que venza.
  */
 export default function FotoGrande({ url, onCerrar, alCambiar }: { url: string | null; onCerrar: () => void; alCambiar?: () => void }) {
+  useTema();
   return (
     <Modal visible={!!url} transparent animationType="fade" onRequestClose={onCerrar} statusBarTranslucent>
       <Pressable testID="foto-grande" style={estilos.fondo} onPress={onCerrar} accessibilityRole="button" accessibilityLabel={T.social.cerrarFoto}>
@@ -39,8 +41,8 @@ export default function FotoGrande({ url, onCerrar, alCambiar }: { url: string |
   );
 }
 
-const estilos = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)', alignItems: 'center', justifyContent: 'center' },
+const estilos = conTema(() => StyleSheet.create({
+  fondo: { flex: 1, backgroundColor: C.veloFoto, alignItems: 'center', justifyContent: 'center' },
   foto: { width: '100%', height: '78%' },
   cerrar: { color: C.sub, fontSize: 15, marginTop: 18 },
   botones: { flexDirection: 'row', gap: 12, marginTop: 18 },
@@ -48,4 +50,4 @@ const estilos = StyleSheet.create({
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingVertical: 11, paddingHorizontal: 22 },
   bordeTexto: { color: C.tinta, fontSize: 15 },
-});
+}));

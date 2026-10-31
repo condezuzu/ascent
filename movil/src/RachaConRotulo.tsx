@@ -1,10 +1,10 @@
 import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { numeroDeRango, progresoEnRango, siguienteRango } from '@nucleo/rangos';
-import { paletaDe } from '@nucleo/paletas';
+import { progresoEnRango, siguienteRango } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import NumeroQueCuenta from './NumeroQueCuenta';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * EL NÚMERO DE RACHA, CON LA PALABRA AL COSTADO Y LA BARRA DEBAJO.
@@ -47,9 +47,9 @@ function RachaConRotulo({
 }: {
   racha: number;
 }) {
+  useTema();
   // El color sale del rango, y el rango de la misma racha que llena la barra:
   // antes venía aparte, del perfil, y podía ser de otro rango que el relleno.
-  const pal = paletaDe(numeroDeRango(racha), null);
   const prox = siguienteRango(racha);
   const progreso = progresoEnRango(racha);
   // Al revés: la palabra se lee de abajo hacia arriba.
@@ -76,15 +76,15 @@ function RachaConRotulo({
         {/* VIAJA HASTA EL NÚMERO NUEVO en vez de reemplazarse. La primera vez
             no cuenta —abrir la app no es haber subido 47 hoy— y con "reducir
             movimiento" salta. Ver `NumeroQueCuenta.tsx`. */}
-        <NumeroQueCuenta valor={racha} style={[estilos.numero, { color: pal.claro }]} />
+        <NumeroQueCuenta valor={racha} style={[estilos.numero, { color: C.claro }]} />
       </View>
 
       {prox && (
-        <View style={[estilos.barra, { backgroundColor: conAlfa(pal.principal, 0.14) }]}>
+        <View style={[estilos.barra, { backgroundColor: conAlfa(C.principal, 0.14) }]}>
           <View
             style={[
               estilos.llena,
-              { width: `${Math.round(progreso * 100)}%`, backgroundColor: pal.claro },
+              { width: `${Math.round(progreso * 100)}%`, backgroundColor: C.claro },
             ]}
           />
         </View>
@@ -93,7 +93,7 @@ function RachaConRotulo({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // `flex-end`: la palabra se apoya en la base del número, no en su tope.
   fila: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   // El equivalente del `padding-bottom: 12px` de la web: la columna de letras
@@ -105,7 +105,7 @@ const estilos = StyleSheet.create({
   numero: { fontSize: 92, fontWeight: '300', lineHeight: 100 },
   barra: { height: 3, width: '62%', borderRadius: 2, overflow: 'hidden', marginTop: 20, marginBottom: 8 },
   llena: { height: '100%', borderRadius: 2 },
-});
+}));
 
 // Con los mismos props no se redibuja: el + de la sesión redibuja Inicio y esto no cambió (15/10).
 export default memo(RachaConRotulo);

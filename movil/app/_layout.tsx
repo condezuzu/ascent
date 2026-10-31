@@ -40,7 +40,12 @@ import { trasElAviso, trasMirar } from '@nucleo/veredicto';
 import { anotarEntradaVista } from '@compartido/entradaVista';
 import { pedirFondo, soltarFondo } from '../src/pedidoDeFondo';
 import { cuerpoDe } from '@nucleo/rangos';
-import { C } from '../src/colores';
+import { C, conTema } from '../src/colores';
+import { useTema } from '../src/useTema';
+import { seguirElFondo } from '../src/paletaDelFondo';
+
+// En el módulo y no en un efecto: el primer pedido de fondo sale antes de que se pinte nada.
+seguirElFondo();
 
 const FONDO_DEL_ARRANQUE = 'arranque';
 
@@ -79,6 +84,7 @@ type Sesion = 'mirando' | 'con' | 'sin' | 'sin-nombre';
 const CON_DIAGNOSTICO = process.env.EXPO_PUBLIC_DIAGNOSTICO === '1';
 
 export default function Layout() {
+  useTema();
   const [sesion, setSesion] = useState<Sesion>('mirando');
   // OTRO IDIOMA, TODO DE NUEVO (14/10): los textos ya cambiaron en `T`; con la
   // llave nueva se vuelve a dibujar todo lo de abajo. La sesión vive acá arriba y no se pierde.
@@ -413,9 +419,9 @@ export default function Layout() {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   todo: { flex: 1, backgroundColor: C.fondo },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // `display: none` y no desmontar: ver el comentario de arriba.
   escondido: { display: 'none' },
-});
+}));

@@ -4,7 +4,8 @@ import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
 import { versionCompleta } from '../reporteDeErrores';
 import CampoTexto from '../CampoTexto';
-import { C, DESHABILITADO } from '../colores';
+import { C, DESHABILITADO, conTema } from '../colores';
+import { useTema } from '../useTema';
 
 /**
  * DECIR ALGO SIN SALIR DE LA APP.
@@ -18,6 +19,7 @@ import { C, DESHABILITADO } from '../colores';
  * campo que después dice si un problema es de un lado o de los dos.
  */
 export default function Sugerencias({ userId }: { userId: string }) {
+  useTema();
   const [texto, setTexto] = useState('');
   const [enviado, setEnviado] = useState(false);
   const [error, setError] = useState('');
@@ -62,7 +64,7 @@ export default function Sugerencias({ userId }: { userId: string }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   // EL MISMO RÓTULO QUE EL RESTO DE AJUSTES: chico, en versalitas y apagado.
   // Estas secciones nacieron con título grande y quedaban como pegadas de otra
@@ -91,4 +93,4 @@ const estilos = StyleSheet.create({
   botonTexto: { color: C.tinta, fontSize: 14 },
   ok: { color: C.sub, fontSize: 13, marginTop: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
-});
+}));

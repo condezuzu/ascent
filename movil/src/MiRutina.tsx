@@ -35,7 +35,8 @@ import { supabase } from './supabase';
 import RutinaPlegada from './RutinaPlegada';
 import FilasArrastrables from './FilasArrastrables';
 import SelectorEjercicio from './SelectorEjercicio';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import Aparece from './Aparece';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import { copiarDiaAlPortapapeles, useDiaCopiado } from './portapapelesDeDia';
@@ -65,6 +66,7 @@ export default function MiRutina({
   alArrastrar?: (si: boolean) => void;
   abrirHoy?: boolean;
 }) {
+  useTema();
   // El chip de las repeticiones objetivo, con la migración 95.
   const conObjetivo = disponible('distanciaYObjetivo', useVersionDelEsquema());
   // Dónde está el nombre del entrenamiento, para que el globito de la rutina salga de él.
@@ -509,7 +511,7 @@ export default function MiRutina({
 // Todas las filas del editor miden lo mismo: así el arrastre sabe sobre cuál está el dedo.
 const ALTO_FILA = 44;
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 34, marginBottom: 10 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
@@ -535,4 +537,4 @@ const estilos = StyleSheet.create({
   quitar: { color: C.apagado, fontSize: 14, width: 20, textAlign: 'center' },
   pregunta: { marginTop: 8 },
   borrar: { color: C.apagado, fontSize: 13, marginTop: 10 },
-});
+}));

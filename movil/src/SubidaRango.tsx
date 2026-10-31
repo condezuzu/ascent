@@ -5,7 +5,8 @@ import { RANGOS } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import LienzoSubida from './LienzoSubida';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 import { taparElFondo } from './desenfoqueDelFondo';
 
 /**
@@ -62,6 +63,7 @@ export default function SubidaRango({
   planeta?: string | null;
   alCerrar: () => void;
 }) {
+  useTema();
   const [formado, setFormado] = useState(false);
   // LA PULIDA (15/10, elegida en la galería): el fondo se cierra mientras se deshace
   // el viejo y se abre al formarse el nuevo, un anillo de luz sale una vez, el objeto
@@ -231,7 +233,7 @@ function aparece(v: Animated.Value) {
   return { opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }] };
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   centro: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   anillo: { width: 240, height: 240, borderRadius: 120, borderWidth: 6, borderColor: conAlfa(C.tinta, 0.22) },
   todo: { flex: 1, backgroundColor: C.fondo },
@@ -241,4 +243,4 @@ const estilos = StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 32, fontWeight: '300', letterSpacing: -0.4 },
   dia: { color: C.apagado, fontSize: 13, marginTop: 4, fontVariant: ['tabular-nums'] },
   seguir: { color: C.apagado, fontSize: 12, marginTop: 26 },
-});
+}));

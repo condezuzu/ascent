@@ -4,7 +4,8 @@ import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { conComa, puntoMasCercano, trazarPeso, type Unidad } from '@nucleo/peso';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LA TENDENCIA DEL PESO, en la app nativa: la misma que la web
@@ -45,6 +46,7 @@ export default function GraficoPeso({
   /** El `--pal-claro` de la web: la paleta del rango. */
   claro: string;
 }) {
+  useTema();
   const [rango, setRango] = useState<number | null>(null);
   const [tocado, setTocado] = useState<number | null>(null);
   const [ancho, setAncho] = useState(0);
@@ -171,6 +173,7 @@ export default function GraficoPeso({
  * relleno del punto, así que el aro es otra vista, detrás.
  */
 function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro: string }) {
+  useTema();
   return (
     <>
       <View style={[estilos.aro, { left: x, top: y, backgroundColor: aro }]} />
@@ -179,7 +182,7 @@ function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro:
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   grafico: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
   lienzo: { height: ALTO },
   punto: {
@@ -198,4 +201,4 @@ const estilos = StyleSheet.create({
   cuando: { flex: 1, color: C.apagado, fontSize: 12 },
   rangos: { flexDirection: 'row', gap: 14, marginTop: 10 },
   rango: { color: C.apagado, fontSize: 12, paddingVertical: 4 },
-});
+}));

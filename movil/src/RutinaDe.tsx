@@ -9,7 +9,8 @@ import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
 import RutinaPlegada from './RutinaPlegada';
 import Corazon from './Corazon';
-import { C, DESHABILITADO } from './colores';
+import { C, DESHABILITADO, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LA RUTINA DE ALGUIEN, PARA MIRARLA (14/10): la tuya en tu perfil, la de un
@@ -28,6 +29,7 @@ import { C, DESHABILITADO } from './colores';
  * persona; tocarlo de nuevo lo quita. Sin la migración 92 no aparece.
  */
 export default function RutinaDe({ quien, esYo = false, nombre }: { quien: string; esYo?: boolean; nombre?: string }) {
+  useTema();
   const [rutina, setRutina] = useState<RutinaParaVer | null>(null);
   const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(new Map());
   const [aviso, setAviso] = useState('');
@@ -177,7 +179,7 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   caja: { marginTop: 8 },
   seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 26, marginBottom: 10 },
   nombre: { color: C.apagado, fontSize: 12, marginBottom: 4 },
@@ -186,7 +188,7 @@ const estilos = StyleSheet.create({
   indicacion: { color: C.sub, fontSize: 13, marginBottom: 6 },
   diaElegible: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
   tocado: { opacity: 0.6 },
-  circulo: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: '#626b80', alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  circulo: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: C.bordeBoton, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   circuloMarcado: { backgroundColor: C.claro, borderColor: C.claro },
   tilde: { width: 9, height: 5, borderLeftWidth: 2, borderBottomWidth: 2, borderColor: C.fondo, transform: [{ rotate: '-45deg' }, { translateY: -1 }] },
   diaCuerpo: { flex: 1, minWidth: 0 },
@@ -196,10 +198,10 @@ const estilos = StyleSheet.create({
   cantidad: { color: C.apagado, fontSize: 13, fontVariant: ['tabular-nums'] },
   botones: { flexDirection: 'row', gap: 10, marginTop: 14 },
   pildora: { flex: 1, borderRadius: 999, paddingVertical: 12, alignItems: 'center' },
-  pildoraBorde: { borderWidth: 1, borderColor: '#626b80' },
+  pildoraBorde: { borderWidth: 1, borderColor: C.bordeBoton },
   pildoraBordeTexto: { color: C.tinta, fontSize: 14 },
   pildoraCrema: { backgroundColor: C.claro },
   pildoraCremaTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
   apagada: { opacity: DESHABILITADO },
   copiar: { flex: 0, alignSelf: 'stretch', marginTop: 14 },
-});
+}));

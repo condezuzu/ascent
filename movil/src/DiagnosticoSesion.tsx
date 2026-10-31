@@ -9,7 +9,8 @@ import * as Updates from 'expo-updates';
 import { aplicar, buscarYTraer, hayCanal, queEstoyCorriendo } from './actualizaciones';
 import { loVisible } from './loVisible';
 import { supabase } from './supabase';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LAS TRES FUENTES DE LA SESIÓN, ADENTRO DEL DIAGNÓSTICO (22/9).
@@ -36,6 +37,7 @@ type Lectura = { series: number | null; bloque: string | null; detalle: string |
 const VACIA: Lectura = { series: null, bloque: null, detalle: null };
 
 export default function DiagnosticoSesion() {
+  useTema();
   const [cache, setCache] = useState<Lectura | null>(null);
   const [base, setBase] = useState<Lectura | null>(null);
   const [cola, setCola] = useState<number | null>(null);
@@ -174,6 +176,7 @@ export default function DiagnosticoSesion() {
 }
 
 function Fila({ rotulo, valor, detalle }: { rotulo: string; valor: string; detalle: string | null }) {
+  useTema();
   return (
     <View style={estilos.fila}>
       <Text style={estilos.rotulo}>{rotulo}</Text>
@@ -205,7 +208,7 @@ function textoDe(l: Lectura | null): string {
 
 // Los mismos colores escritos a mano que el resto del diagnóstico: vive al
 // lado de la caja negra y no puede depender de la paleta de la app.
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   caja: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, padding: 12, marginBottom: 14 },
   titulo: { color: C.tinta, fontSize: 15, marginBottom: 2 },
   nota: { color: C.sub, fontSize: 12, lineHeight: 17, marginBottom: 10 },
@@ -217,4 +220,4 @@ const estilos = StyleSheet.create({
   cola: { color: C.sub, fontSize: 12, marginTop: 8 },
   releer: { color: C.sub, fontSize: 12, textDecorationLine: 'underline', marginTop: 8 },
   actualizar: { marginTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, paddingTop: 10 },
-});
+}));

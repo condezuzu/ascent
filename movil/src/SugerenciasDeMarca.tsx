@@ -3,13 +3,15 @@ import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
 import { T } from '@nucleo/textos';
 import { useSugerenciasDeMarca } from '@compartido/marcaSugerida';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * "¿LO GUARDO COMO MARCA?", en el resumen nativo. Qué se propone lo decide
  * `nucleo/marcaSugerida.ts` y lo busca y guarda `compartido/`: igual que la web.
  */
 export default function SugerenciasDeMarca({ bloques, unidad }: { bloques: unknown; unidad: Unidad }) {
+  useTema();
   const { lista, guardar, descartar } = useSugerenciasDeMarca(bloques);
   if (lista.length === 0) return null;
   return (
@@ -46,7 +48,7 @@ export default function SugerenciasDeMarca({ bloques, unidad }: { bloques: unkno
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   todo: { marginTop: 22, gap: 18 },
   una: {},
   texto: { color: C.tinta, fontSize: 15, lineHeight: 21, marginBottom: 8 },
@@ -66,4 +68,4 @@ const estilos = StyleSheet.create({
   repTexto: { color: C.tinta, fontSize: 14, fontVariant: ['tabular-nums'] },
   no: { paddingHorizontal: 14 },
   noTexto: { color: C.sub, fontSize: 14 },
-});
+}));

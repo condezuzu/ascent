@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * EL GLOBITO (15/10): un renglón que FLOTA encima de la pantalla y la tapa, sin
@@ -13,6 +14,7 @@ import { C } from './colores';
  * por encima de lo que siga.
  */
 export default function Globito({ texto, alCerrar, testID }: { texto: string; alCerrar: () => void; testID?: string }) {
+  useTema();
   const opacidad = useRef(new Animated.Value(0)).current;
   const cerrando = useRef(false);
 
@@ -45,7 +47,7 @@ export default function Globito({ texto, alCerrar, testID }: { texto: string; al
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   ancla: { height: 0, zIndex: 30, elevation: 30 },
   globo: {
     position: 'absolute',
@@ -65,4 +67,4 @@ const estilos = StyleSheet.create({
   texto: { flex: 1, color: C.tinta, fontSize: 13 },
   cruz: { width: 12, height: 12, alignItems: 'center', justifyContent: 'center' },
   raya: { position: 'absolute', width: 12, height: 1.4, borderRadius: 1, backgroundColor: C.apagado },
-});
+}));

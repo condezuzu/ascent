@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Estrella from './Estrella';
-import { C } from './colores';
+import { C, conTema, conAlfa } from './colores';
+import { useTema } from './useTema';
 
 export type EstadoDelDia = 'lleno' | 'vacio' | 'descanso' | 'futuro' | 'cubierto' | 'sinDato';
 
@@ -25,6 +26,7 @@ const CRISTALES = [
 ];
 
 export default function PuntoDelDia({ estado, esHoy, frio = null }: { estado: EstadoDelDia; esHoy: boolean; frio?: FrioDelDia }) {
+  useTema();
   const titila = useRef(new Animated.Value(0)).current;
   const derrite = useRef(new Animated.Value(frio === 'derrite' ? 0 : 1)).current;
 
@@ -95,16 +97,16 @@ export default function PuntoDelDia({ estado, esHoy, frio = null }: { estado: Es
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   punto: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  lleno: { backgroundColor: C.principal },
-  vacio: { borderWidth: 1, borderColor: C.lineaFuerte },
-  futuro: { borderWidth: 1, borderColor: '#171c26' },
+  lleno: { backgroundColor: C.diaLleno },
+  vacio: { borderWidth: 1, borderColor: C.diaVacio },
+  futuro: { borderWidth: 1, borderColor: C.diaFuturo },
   puntoHoy: { borderWidth: 1, borderColor: C.claro },
   guion: { width: 10, height: 2, borderRadius: 1, backgroundColor: C.tenue },
   cubierto: { borderWidth: 1, borderColor: C.claro },
-  helado: { borderColor: '#bfe0fb', shadowColor: C.hielo, shadowOpacity: 0.8, shadowRadius: 8, shadowOffset: { width: 0, height: 0 } },
+  helado: { borderColor: C.hieloClaro, shadowColor: C.hielo, shadowOpacity: 0.8, shadowRadius: 8, shadowOffset: { width: 0, height: 0 } },
   cristal: { position: 'absolute' },
-  hieloQueSeVa: { borderRadius: 13, borderWidth: 1, borderColor: '#bfe0fb', backgroundColor: 'rgba(143,196,240,0.18)' },
+  hieloQueSeVa: { borderRadius: 13, borderWidth: 1, borderColor: C.hieloClaro, backgroundColor: conAlfa(C.hielo, 0.18) },
   gota: { position: 'absolute', top: 22, width: 4, height: 6, borderRadius: 3, backgroundColor: C.hielo },
-});
+}));

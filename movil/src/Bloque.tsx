@@ -25,7 +25,7 @@ import Tocable from './Tocable';
 import FondoOctogonal from './FondoOctogonal';
 
 // Los botones grandes del bloque: el mismo fondo tenue de siempre, y el corte de las esquinas.
-const FONDO_BOTON = 'rgba(255,255,255,0.03)';
+const FONDO_BOTON = C.superficie;
 const CORTE = 12;
 import { unidadDeDistancia } from '@nucleo/distancia';
 import { rangoParaMostrar, type SubirPeso } from '@nucleo/dosPorDos';
@@ -38,7 +38,8 @@ const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Globito from './Globito';
 import { esPropio, nombreVisible } from '@nucleo/propios';
-import { C, conAlfa, DESHABILITADO, HALO } from './colores';
+import { C, conAlfa, DESHABILITADO, HALO, conTema } from './colores';
+import { useTema } from './useTema';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
@@ -151,6 +152,7 @@ export default function Bloque({
   alCorregirCarga: (indice: number, c: Carga) => void;
   alCorregirEjercicio: (indice: number, id: string, cargaQueSeVeia?: Carga) => void;
 }) {
+  useTema();
   const [anchoBotones, setAnchoBotones] = useState(0);
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [eligiendo, setEligiendo] = useState(false);
@@ -562,7 +564,7 @@ export default function Bloque({
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
-            <FondoOctogonal relleno={FONDO_BOTON} borde={C.lineaFuerte} corte={CORTE} />
+            <FondoOctogonal relleno={FONDO_BOTON} borde={C.bordeOcto} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Tocable>
           <Tocable
@@ -589,7 +591,7 @@ export default function Bloque({
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
-            <FondoOctogonal relleno={FONDO_BOTON} borde={C.lineaFuerte} corte={CORTE} />
+            <FondoOctogonal relleno={FONDO_BOTON} borde={C.bordeOcto} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Tocable>
           <MasQuePulsa
@@ -599,7 +601,7 @@ export default function Bloque({
             onPress={esTiempo ? principalDeCardio.accion : sumar}
             accessibilityLabel={esTiempo ? principalDeCardio.texto : T.inicio.sumarSerie}
           >
-            <FondoOctogonal relleno={esTiempo ? C.claro : FONDO_BOTON} borde={esTiempo ? undefined : C.lineaFuerte} corte={CORTE} />
+            <FondoOctogonal relleno={esTiempo ? C.claro : FONDO_BOTON} borde={esTiempo ? undefined : C.bordeOcto} corte={CORTE} />
             <Text style={esTiempo ? estilos.cerrarTexto : estilos.masTexto}>{esTiempo ? principalDeCardio.texto : '+'}</Text>
           </MasQuePulsa>
         </View>
@@ -694,6 +696,7 @@ const CURVA_SALE = Easing.bezier(0.2, 0.8, 0.3, 1);
  * la serie que se suma, no la pantalla que aparece.
  */
 function PuntoDeSerie({ lleno, extra }: { lleno: boolean; extra: boolean }) {
+  useTema();
   const relleno = useRef(new Animated.Value(lleno ? 1 : 0)).current;
   const antes = useRef(lleno);
   useEffect(() => {
@@ -727,6 +730,7 @@ function MasQuePulsa({
   testID?: string;
   accessibilityLabel: string;
 }) {
+  useTema();
   const pulso = useRef(new Animated.Value(0)).current;
   const escala = pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 0.965] });
   return (
@@ -752,7 +756,7 @@ function MasQuePulsa({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Una capa más arriba que lo que viene después ("Terminar"): el globito del + flota
   // debajo del + y tiene que quedar encima, no tapado.
   bloque: { marginTop: 22, zIndex: 2, elevation: 2 },
@@ -779,10 +783,10 @@ const estilos = StyleSheet.create({
   },
   sugeridoNota: { color: C.apagado, fontSize: 12, lineHeight: 16, marginTop: 6 },
   metas: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  meta: { flex: 1, borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
-  metaPrendida: { borderColor: C.sub },
+  meta: { flex: 1, borderWidth: 1, borderColor: C.bordeMeta, borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
+  metaPrendida: { borderColor: C.claro, backgroundColor: C.fondoMeta },
   metaTexto: { color: C.apagado, fontSize: 14 },
-  metaTextoPrendido: { color: C.tinta },
+  metaTextoPrendido: { color: C.claro },
   metaAMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 10 },
   metaAManoCampo: { color: C.tinta, fontSize: 16, minWidth: 150, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontVariant: ['tabular-nums'] },
   metaUsar: { flex: 0, minWidth: 76, paddingHorizontal: 18 },
@@ -814,7 +818,7 @@ const estilos = StyleSheet.create({
   opcionTexto: { color: C.claro, fontSize: 13 },
   nota: { color: C.apagado, fontSize: 12, marginTop: 8 },
   puntos: { flexDirection: 'row', justifyContent: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 1 },
-  punto: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: C.sub },
+  punto: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: C.bordeSerie },
   puntoBorde: { borderColor: C.claro },
   puntoRelleno: { ...StyleSheet.absoluteFillObject, borderRadius: 8, backgroundColor: C.claro },
   luzDelMas: { ...StyleSheet.absoluteFillObject, backgroundColor: conAlfa(C.claro, 0.14) },
@@ -867,4 +871,4 @@ const estilos = StyleSheet.create({
   subirTexto: { color: C.sub, fontSize: 14 },
   subirTextoPrendido: { color: C.tinta },
   subidaNota: { color: C.sub, fontSize: 13, marginTop: 8 },
-});
+}));

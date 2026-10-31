@@ -41,7 +41,8 @@ import { eventos } from '@compartido/eventos';
 import { ABRIR_ENTRENAMIENTO, seAcabaDePedir } from './abrirEntrenamiento';
 import { paletaDe } from '@nucleo/paletas';
 import { useArriba } from './zonaSegura';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 const SEMANAS = 8;
 
@@ -92,6 +93,7 @@ function celdaFaltados(faltados: number | null): { v: string; e: string }[] {
 }
 
 export default function Stats({ alSalir }: { alSalir: () => void }) {
+  useTema();
   const arriba = useArriba(64);
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState('');
@@ -492,7 +494,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`.
   raiz: { flex: 1 },
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
@@ -508,9 +510,9 @@ const estilos = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  opcionActiva: { borderColor: C.sub },
+  opcionActiva: { borderColor: C.claro, backgroundColor: C.fondoMeta },
   opcionTexto: { color: C.apagado, fontSize: 14 },
-  opcionTextoActivo: { color: C.tinta },
+  opcionTextoActivo: { color: C.claro },
 
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   celda: { width: '47%', paddingVertical: 14 },
@@ -537,15 +539,15 @@ const estilos = StyleSheet.create({
   semana: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginBottom: 14 },
   flecha: { color: C.sub, fontSize: 22, paddingHorizontal: 2 },
   // LA PISTA: fondo, franja de referencia, y el llenado encima.
-  pista: { flex: 1, height: 12, borderRadius: 6, backgroundColor: '#161b26', overflow: 'hidden' },
+  pista: { flex: 1, height: 12, borderRadius: 6, backgroundColor: C.barraPista, overflow: 'hidden' },
   // La franja NO es un borde: es un bloque más claro, para que se lea como una
   // zona y no como dos líneas sueltas.
-  franja: { position: 'absolute', top: 0, bottom: 0, backgroundColor: '#232b3b' },
+  franja: { position: 'absolute', top: 0, bottom: 0, backgroundColor: C.barraFranja },
   llenado: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 6 },
   // POR DEBAJO, APAGADO; DENTRO, EL COLOR DE LA APP; POR ENCIMA, un tono más
   // caliente. Nada de rojo: pasarse no es un error.
-  llenadoPoco: { backgroundColor: C.tenue },
-  llenadoDentro: { backgroundColor: C.principal },
+  llenadoPoco: { backgroundColor: C.barraPoco },
+  llenadoDentro: { backgroundColor: C.barraDentro },
   llenadoMucho: { backgroundColor: C.claro },
   valorFila: { width: 58, color: C.tinta, fontSize: 14, textAlign: 'right' },
 
@@ -579,4 +581,4 @@ const estilos = StyleSheet.create({
 
   error: { color: C.error, fontSize: 13, textAlign: 'center' },
   enlace: { color: C.sub, fontSize: 13 },
-});
+}));

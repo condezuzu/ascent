@@ -2,7 +2,8 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, type GestureResponderEvent } from 'react-native';
 import { plataforma } from '@plataforma';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * ARRASTRAR PARA ORDENAR (15/10). Apretar largo levanta la fila como un globito
@@ -33,6 +34,7 @@ export default function FilasArrastrables<T>({
   alArrastrar?: (si: boolean) => void;
   testID?: string;
 }) {
+  useTema();
   const [levantada, setLevantada] = useState<number | null>(null);
   const desde = useRef<number | null>(null);
   const destino = useRef(0);
@@ -153,7 +155,7 @@ export default function FilasArrastrables<T>({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   fila: { flex: 1, justifyContent: 'center' },
   globo: {
     zIndex: 10,
@@ -169,4 +171,4 @@ const estilos = StyleSheet.create({
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
   },
-});
+}));

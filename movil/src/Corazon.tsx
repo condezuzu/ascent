@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema, conAlfa } from './colores';
+import { useTema } from './useTema';
 
 /**
  * EL CORAZÓN DE LA RUTINA DE OTRA PERSONA (20/10). Sin corazones no hay número; con
@@ -14,6 +15,7 @@ const ESTALLIDO_MS = 450;
 const CHISPAS = Array.from({ length: 6 }, (_, i) => (i / 6) * Math.PI * 2);
 
 export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad: number; mio: boolean; alTocar: () => void; tam?: number }) {
+  useTema();
   const late = useRef(new Animated.Value(1)).current;
   const estallido = useRef(new Animated.Value(0)).current;
   // Cuántas veces estalló: la animación arranca con la capa ya montada (arrancada antes, en
@@ -57,7 +59,7 @@ export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad
     >
       <Animated.View style={[estilos.caja, { width: tam, height: tam, transform: [{ scale: late }] }]}>
         <Svg width={tam} height={tam} viewBox="0 0 100 100" style={StyleSheet.absoluteFill}>
-          <Path d={FORMA} fill={mio ? C.corazon : 'rgba(5,6,10,0.72)'} stroke={mio ? C.corazon : C.tinta} strokeWidth={5} strokeLinejoin="round" />
+          <Path d={FORMA} fill={mio ? C.corazon : conAlfa(C.negro, 0.72)} stroke={mio ? C.corazon : C.tinta} strokeWidth={5} strokeLinejoin="round" />
         </Svg>
         {cantidad > 0 && <Text style={[estilos.numero, { color: mio ? C.fondo : C.tinta }]}>{cantidad > 99 ? '99+' : cantidad}</Text>}
       </Animated.View>
@@ -94,10 +96,10 @@ export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Sin sombra: en la web y en Android se dibuja con la forma de la caja, un cuadrado detrás del corazón.
   caja: { alignItems: 'center', justifyContent: 'center', paddingBottom: 5 },
   numero: { fontSize: 13, fontWeight: '700' },
   anillo: { position: 'absolute', borderWidth: 2, borderColor: C.corazon },
   chispa: { position: 'absolute', width: 5, height: 5, borderRadius: 2.5, backgroundColor: C.corazon },
-});
+}));

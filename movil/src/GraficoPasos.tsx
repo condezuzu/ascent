@@ -7,7 +7,8 @@ import { DIAS_SEMANA, aISO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import MetaDePasos from './ajustes/MetaDePasos';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LOS PASOS, COMO TENDENCIA. El mismo gráfico que el del peso —la misma media
@@ -70,6 +71,7 @@ export default function GraficoPasos({
   /** Se avisa al cambiarla desde acá: la línea punteada se mueve en el acto. */
   alCambiarMeta?: (meta: number) => void;
 }) {
+  useTema();
   // ARRANCA EN LA SEMANA: es la ventana en la que la meta del día significa
   // algo. En un año, "te faltan 2.588" habla de un punto perdido en 365.
   const [rango, setRango] = useState<number>(7);
@@ -311,6 +313,7 @@ function Ventanas({
   claro: string;
   alElegir: (dias: number) => void;
 }) {
+  useTema();
   return (
     <View style={estilos.rangos}>
       {RANGOS.map((r) => {
@@ -345,6 +348,7 @@ function Ventanas({
  */
 // El promedio de la semana ya no va acá: está arriba del gráfico, grande (16/10).
 function PieDeMeta({ meta, alTocar }: { meta: number; alTocar: () => void }) {
+  useTema();
   return (
     <>
       {/* Un botón de verdad, no un texto subrayado que parecía un link (28/9):
@@ -365,6 +369,7 @@ export function HojaDeMeta({
   alCerrar: () => void;
   alCambiar?: (meta: number) => void;
 }) {
+  useTema();
   return (
     <Hoja visible={visible} alCerrar={alCerrar}>
       <MetaDePasos
@@ -383,6 +388,7 @@ export function HojaDeMeta({
  * relleno del punto, así que el aro es otra vista, detrás.
  */
 function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro: string }) {
+  useTema();
   return (
     <>
       <View style={[estilos.aro, { left: x, top: y, backgroundColor: aro }]} />
@@ -391,7 +397,7 @@ function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro:
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   grafico: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
   lienzo: { height: ALTO },
   punto: {
@@ -430,4 +436,4 @@ const estilos = StyleSheet.create({
   metaBarras: { position: 'absolute', left: 0, right: 0, height: 1, opacity: 0.45 },
   letras: { flexDirection: 'row', gap: 6, marginTop: 8 },
   letra: { flex: 1, textAlign: 'center', color: C.apagado, fontSize: 10 },
-});
+}));

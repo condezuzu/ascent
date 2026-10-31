@@ -4,7 +4,8 @@ import { ORDEN_SEMANA, tituloDelDia, type DiaDeSemana } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import { nombreVisible } from '@nucleo/propios';
 import type { CatalogoDeRutina } from '@compartido/rutinas';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * UNA RUTINA PLEGADA POR DÍA (14/10): "Lunes — Pecho, hombro y brazo", y al
@@ -34,6 +35,7 @@ export default function RutinaPlegada({
   abiertos?: boolean;
   testID?: string;
 }) {
+  useTema();
   const [abierto, setAbierto] = useState<number | null>(abiertoAlEmpezar ?? null);
   const grupoDe = (id: string) => catalogo.get(id)?.grupo ?? null;
   const visibles = ORDEN_SEMANA.filter((d) => !soloConAlgo || dias[d].descanso || dias[d].ejercicios.length > 0);
@@ -104,6 +106,7 @@ const TOPE_DE_ESCALONES = 28;
 const seriesAntes = (dia: DiaDeSemana, i: number) => dia.ejercicios.slice(0, i).reduce((n, e) => n + (e.minutos === undefined ? e.series : 0), 0);
 
 function BloquesDeSeries({ series, desde }: { series: number; desde: number }) {
+  useTema();
   return (
     <View style={estilos.bloques} accessible accessibilityLabel={T.rutina.series(series)}>
       {Array.from({ length: series }, (_, i) => (
@@ -114,6 +117,7 @@ function BloquesDeSeries({ series, desde }: { series: number; desde: number }) {
 }
 
 function BloqueDeSerie({ indice }: { indice: number }) {
+  useTema();
   const t = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     let vivo = true;
@@ -137,7 +141,7 @@ function BloqueDeSerie({ indice }: { indice: number }) {
   return <Animated.View style={[estilos.bloque, { opacity: t, transform: [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] }]} />;
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   dia: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 13 },
   tocado: { opacity: 0.6 },
@@ -150,5 +154,5 @@ const estilos = StyleSheet.create({
   ejercicio: { color: C.sub, fontSize: 14, flexShrink: 1 },
   cantidad: { color: C.apagado, fontSize: 13, fontVariant: ['tabular-nums'] },
   bloques: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4, maxWidth: '55%' },
-  bloque: { width: 16, height: 12, borderRadius: 3, backgroundColor: C.principal },
-});
+  bloque: { width: 16, height: 12, borderRadius: 3, backgroundColor: C.cuadro },
+}));

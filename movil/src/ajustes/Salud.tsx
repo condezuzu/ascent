@@ -4,7 +4,8 @@ import { plataforma } from '@plataforma';
 import { yaSePidio } from '../plataforma/salud';
 import { hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
-import { C } from '../colores';
+import { C, conTema } from '../colores';
+import { useTema } from '../useTema';
 
 /**
  * LA SALUD DEL TELÉFONO (§13c). La sección que en la web no puede existir.
@@ -30,6 +31,7 @@ import { C } from '../colores';
  * porque son la única forma de comprobar de un vistazo que esto quedó andando.
  */
 export default function Salud() {
+  useTema();
   const hay = plataforma.salud.disponible();
   const [pidiendo, setPidiendo] = useState(false);
   const [aviso, setAviso] = useState('');
@@ -99,7 +101,7 @@ export default function Salud() {
     </View>
   );
 }
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   // El mismo rótulo que el resto de Ajustes: chico, en versalitas y apagado.
   titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
@@ -114,4 +116,4 @@ const estilos = StyleSheet.create({
   botonTexto: { color: C.tinta, fontSize: 14 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
   conectado: { color: C.sub, fontSize: 14, marginTop: 10 },
-});
+}));

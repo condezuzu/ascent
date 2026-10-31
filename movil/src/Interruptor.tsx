@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet } from 'react-native';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * EL INTERRUPTOR DE LA APP, no el de Apple (item 4).
@@ -20,6 +21,7 @@ export default function Interruptor({
   onValueChange: (v: boolean) => void;
   accessibilityLabel?: string;
 }) {
+  useTema();
   const t = useRef(new Animated.Value(value ? 1 : 0)).current;
   useEffect(() => {
     Animated.timing(t, { toValue: value ? 1 : 0, duration: 160, useNativeDriver: false }).start();
@@ -28,7 +30,7 @@ export default function Interruptor({
   const izq = t.interpolate({ inputRange: [0, 1], outputRange: [3, 23] });
   const fondo = t.interpolate({
     inputRange: [0, 1],
-    outputRange: ['rgba(255,255,255,0.04)', C.claro],
+    outputRange: [C.superficie, C.claro],
   });
   const perilla = t.interpolate({
     inputRange: [0, 1],
@@ -50,7 +52,7 @@ export default function Interruptor({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   via: {
     width: 46,
     height: 26,
@@ -60,4 +62,4 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   perilla: { position: 'absolute', width: 20, height: 20, borderRadius: 999 },
-});
+}));

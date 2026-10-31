@@ -12,7 +12,8 @@ import { nuevaEnCadaApertura } from './hojaNueva';
 import CampoPeso from './CampoPeso';
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import SelectorEjercicio from './SelectorEjercicio';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * LO QUE LLEVÁS HOY, Y CÓMO CORREGIRLO. La misma hoja que la web: cada bloque
@@ -49,6 +50,7 @@ function ListaDeBloques({
   alTocar: (indice: number, delta: number | 'quitar') => void;
   alCerrar: () => void;
 }) {
+  useTema();
   // El bloque que está por quitarse, POR IDENTIDAD (su id) y no por índice: el
   // índice se corre si la lista cambia entre "✕" y "Sí". `i:<n>` es el respaldo
   // para bloques de una caché vieja sin id.
@@ -213,7 +215,7 @@ function ListaDeBloques({
 
 export default nuevaEnCadaApertura(ListaDeBloques, (p) => p.visible);
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Una línea punteada debajo: "esto se toca" sin parecer un enlace.
   tocable: { textDecorationLine: 'underline', textDecorationStyle: 'dotted', textDecorationColor: C.sub },
   titulo: { color: C.tinta, fontSize: 20, fontWeight: '500', marginBottom: 12 },
@@ -233,4 +235,4 @@ const estilos = StyleSheet.create({
   pesos: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14, marginTop: 6 },
   listo: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 14, alignItems: 'center', marginTop: 18 },
   listoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
-});
+}));

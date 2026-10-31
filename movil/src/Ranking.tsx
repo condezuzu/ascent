@@ -35,7 +35,8 @@ import GloboPrimeraVez from './GloboPrimeraVez';
 import { cargarMedallasDeMuchos } from '@compartido/perfil';
 import { leerPerfilCache } from '@compartido/cache';
 import type { Medalla } from '@nucleo/medallas';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import { useRecargarAlVolver } from './irAPestana';
 import InvitarConLink from './InvitarConLink';
 import Juntos from './Juntos';
@@ -63,6 +64,7 @@ import Tocable from './Tocable';
  * sino porque no había adónde ir.
  */
 export default function Ranking({ alSalir }: { alSalir: () => void }) {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(64);
   // LA PRIMERA VEZ QUE SE ENTRA A RANKING se pide dejar avisar (si nunca se pidió):
@@ -505,13 +507,13 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`.
   raiz: { flex: 1 },
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
   titulo: { color: C.tinta, fontSize: 22, marginBottom: 20 },
   tarjeta: {
-    backgroundColor: 'rgba(11,13,19,0.72)',
+    backgroundColor: C.tarjeta,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
     borderRadius: 14,
@@ -579,4 +581,4 @@ const estilos = StyleSheet.create({
   },
   lupa: { color: C.apagado, fontSize: 15 },
   campo: { flex: 1, color: C.tinta, fontSize: 14, paddingVertical: 6 },
-});
+}));

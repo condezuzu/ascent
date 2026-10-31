@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Unidad } from '@nucleo/peso';
 import { confirmarCampo, hayQueAvisar, limpiarTecleo, pasoDelCampo, pesoEscrito, textoDelCampo } from '@nucleo/campoPeso';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 
 /**
  * EL PESO, escrito una vez. La misma pieza que `src/components/CampoPeso.tsx`:
@@ -36,6 +37,7 @@ export default function CampoPeso({
    */
   alTeclear?: (confirmar: (() => void) | null) => void;
 }) {
+  useTema();
   const mostrar = (v: number | null | undefined) => textoDelCampo(v, unidad);
   const [texto, setTexto] = useState(mostrar(kg));
   // HAY ALGO TECLEADO SIN CONFIRMAR. El peso puede cambiar desde afuera —llega
@@ -128,7 +130,7 @@ export default function CampoPeso({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   // Grandes de tocar aunque se vean chicos: se tocan con la mano transpirada.
   paso: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
@@ -155,4 +157,4 @@ const estilos = StyleSheet.create({
   inputCompacto: { fontSize: 14, width: 44 },
   unidad: { color: C.sub, fontSize: 12 },
   unidadCompacta: { fontSize: 10 },
-});
+}));

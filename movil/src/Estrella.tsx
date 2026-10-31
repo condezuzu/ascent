@@ -18,7 +18,7 @@ export default function Estrella({ tam, modo = 'luz' }: { tam: number; modo?: Mo
         <RadialGradient id="luz" cx="50%" cy="50%" r="55%">
           <Stop offset="0" stopColor="#ffffff" />
           <Stop offset="0.4" stopColor="#f1eee6" />
-          <Stop offset="1" stopColor={C.claro} />
+          <Stop offset="1" stopColor={C.crema} />
         </RadialGradient>
         <LinearGradient id="hielo" x1="0" y1="0" x2="1" y2="1">
           <Stop offset="0" stopColor="#ffffff" />
@@ -30,7 +30,7 @@ export default function Estrella({ tam, modo = 'luz' }: { tam: number; modo?: Mo
       ) : modo === 'porGanar' ? (
         <Path d={PUNTAS} fill="none" stroke={C.apagado} strokeWidth={4} strokeLinejoin="round" strokeDasharray="7 9" opacity={0.7} />
       ) : (
-        <Path d={PUNTAS} fill={modo === 'oscura' ? C.fondo : modo === 'hielo' ? 'url(#hielo)' : 'url(#luz)'} />
+        <Path d={PUNTAS} fill={modo === 'oscura' ? C.negro : modo === 'hielo' ? 'url(#hielo)' : 'url(#luz)'} />
       )}
     </Svg>
   );

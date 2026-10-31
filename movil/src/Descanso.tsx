@@ -16,7 +16,8 @@ import {
   avisarFin,
   type DescansoVivo,
 } from '@compartido/descanso';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import { taparElFondo } from './desenfoqueDelFondo';
 import { useArriba } from './zonaSegura';
 import { cuentaLaSerie, horaDelToque } from './toques';
@@ -64,6 +65,7 @@ export default function Descanso({
   /** Sumar la serie sin salir: suma y vuelve a arrancar el descanso. */
   alSumar: () => void;
 }) {
+  useTema();
   const arriba = useArriba(56);
   const [, repintar] = useState(0);
   // Opaca y a pantalla completa: mientras se ve, el fondo 3D no tiene por qué dibujar.
@@ -318,7 +320,7 @@ const RADIO = 128;
 const LADO = RADIO * 2 + 16;
 const LARGO = 2 * Math.PI * RADIO;
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: C.fondo, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 30 },
   cerrar: { position: 'absolute', top: 48, right: 16, minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
   cerrarTexto: { color: C.sub, fontSize: 20 },
@@ -348,4 +350,4 @@ const estilos = StyleSheet.create({
   presetTextoActivo: { color: C.tinta },
   texto: { paddingVertical: 9, alignItems: 'center' },
   textoBoton: { color: C.sub, fontSize: 14 },
-});
+}));
