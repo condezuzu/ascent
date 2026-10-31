@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { unirsePorLink, type RespuestaDelLink } from '@compartido/enVivo';
 import { codigoDeGrupo } from '@nucleo/enlace';
@@ -11,6 +11,7 @@ import { volverOInicio } from './volver';
 import { irAPestana } from './irAPestana';
 import { useArriba } from './zonaSegura';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * A DÓNDE CAE UN LINK DE GRUPO (`/grupo/<código>`, migración 88). Entra solo, sin
@@ -52,9 +53,9 @@ export default function GrupoPorEnlace() {
 
   return (
     <View style={estilos.raiz}>
-      <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volver, { paddingTop: arriba }]}>
+      <Tocable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volver, { paddingTop: arriba }]}>
         <Text style={estilos.enlace}>{T.general.volver}</Text>
-      </Pressable>
+      </Tocable>
       <View style={estilos.centrado}>
         {estado === 'entrando' ? (
           <>
@@ -67,7 +68,7 @@ export default function GrupoPorEnlace() {
               {texto}
             </Text>
             {(estado === 'ok' || estado === 'ya-unido') && (
-              <Pressable
+              <Tocable
                 style={estilos.boton}
                 onPress={() => {
                   volverOInicio(router);
@@ -75,12 +76,12 @@ export default function GrupoPorEnlace() {
                 }}
               >
                 <Text style={estilos.botonTexto}>{T.social.grupoVer}</Text>
-              </Pressable>
+              </Tocable>
             )}
             {estado === 'fallo' && (
-              <Pressable onPress={() => void entrar()} hitSlop={8}>
+              <Tocable onPress={() => void entrar()} hitSlop={8}>
                 <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-              </Pressable>
+              </Tocable>
             )}
           </>
         )}

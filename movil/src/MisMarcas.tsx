@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import { esUnidad, type Unidad } from '@nucleo/peso';
@@ -22,6 +22,7 @@ import { Text } from './Texto';
 import { L } from './fuentes';
 import FondoOctogonal from './FondoOctogonal';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * MIS MARCAS (§16): donde se cargan, se miran y se borran.
@@ -105,9 +106,9 @@ export default function MisMarcas() {
   // "Reintentar", que sin señal no puede hacer nada. Lo encontró el barrido
   // del 25/9 en el perfil propio; acá estaba igual, en las dos ramas.
   const salida = (
-    <Pressable onPress={() => volverOInicio(router)} hitSlop={10} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
+    <Tocable onPress={() => volverOInicio(router)} hitSlop={10} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
       <Text style={estilos.volver}>{T.general.volver}</Text>
-    </Pressable>
+    </Tocable>
   );
 
   if (cargando) {
@@ -127,9 +128,9 @@ export default function MisMarcas() {
         {salida}
         <View style={estilos.centrado}>
           <Text style={estilos.nota}>{T.general.noSePudo}</Text>
-          <Pressable onPress={cargar}>
+          <Tocable onPress={cargar}>
             <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       </View>
     );
@@ -145,7 +146,7 @@ export default function MisMarcas() {
     const desplegado = abierto === m.ejercicio;
     return (
       <Surgir key={m.ejercicio} indice={i}>
-        <Pressable
+        <Tocable
           style={estilos.fila}
           onPress={() => {
             // La pregunta y el aviso son del ejercicio que estaba desplegado.
@@ -163,7 +164,7 @@ export default function MisMarcas() {
               años sigue valiendo, pero quien lo mira tiene derecho a saberlo
               sin tener que desplegar nada. */}
           <Text style={estilos.fecha}>{fechaDeMarca(m.fecha)}</Text>
-        </Pressable>
+        </Tocable>
 
         {desplegado && (
           <View style={estilos.historial}>
@@ -174,12 +175,12 @@ export default function MisMarcas() {
               porBorrar === h.id ? (
                 <View key={h.id} style={estilos.previa}>
                   <Text style={[estilos.apagado, estilos.pregunta]}>{T.fuerza.borrarSeguro}</Text>
-                  <Pressable onPress={() => borrar(h.id)} disabled={borrando === h.id} hitSlop={8}>
+                  <Tocable onPress={() => borrar(h.id)} disabled={borrando === h.id} hitSlop={8}>
                     <Text style={estilos.peligro}>{T.fuerza.borrarSi}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => setPorBorrar(null)} hitSlop={8}>
+                  </Tocable>
+                  <Tocable onPress={() => setPorBorrar(null)} hitSlop={8}>
                     <Text style={estilos.apagado}>{T.general.cancelar}</Text>
-                  </Pressable>
+                  </Tocable>
                 </View>
               ) : (
                 <View key={h.id} style={estilos.previa}>
@@ -191,7 +192,7 @@ export default function MisMarcas() {
                   </Text>
                   <Text style={estilos.apagado}>{origenDeMarca(h)}</Text>
                   <Text style={estilos.apagado}>{fechaDeMarca(h.fecha)}</Text>
-                  <Pressable
+                  <Tocable
                     onPress={() => {
                       setNoSeBorro(false);
                       setPorBorrar(h.id);
@@ -199,17 +200,17 @@ export default function MisMarcas() {
                     hitSlop={8}
                   >
                     <Text style={estilos.peligro}>{T.general.borrar}</Text>
-                  </Pressable>
+                  </Tocable>
                 </View>
               )
             )}
             {noSeBorro && <Text style={estilos.peligro}>{T.fuerza.noSeBorro}</Text>}
-            <Pressable
+            <Tocable
               style={estilos.texto}
               onPress={() => abrirHoja(m.ejercicio)}
             >
               <Text style={estilos.enlace}>{T.fuerza.otraDe(m.nombre.toLowerCase())}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         )}
       </Surgir>
@@ -225,16 +226,16 @@ export default function MisMarcas() {
         velo={0.74}
       />
       <ScrollView contentContainerStyle={[estilos.contenido, { paddingTop: arriba }]}>
-        <Pressable onPress={() => volverOInicio(router)} hitSlop={10}>
+        <Tocable onPress={() => volverOInicio(router)} hitSlop={10}>
           <Text style={estilos.volver}>{T.general.volver}</Text>
-        </Pressable>
+        </Tocable>
 
         <Text style={estilos.titulo}>{T.fuerza.misMarcas}</Text>
 
-        <Pressable style={estilos.solido} onPress={() => abrirHoja()}>
+        <Tocable style={estilos.solido} onPress={() => abrirHoja()}>
           <FondoOctogonal relleno={C.claro} luz={C.claro} />
           <Text style={estilos.solidoTexto}>{T.fuerza.anotarMarca}</Text>
-        </Pressable>
+        </Tocable>
 
         {marcas.length === 0 ? (
           <View style={estilos.vacio}>
@@ -272,9 +273,9 @@ export default function MisMarcas() {
                 <Text style={estilos.nota}>
                   {T.fuerza.yaEstanLasTres} {T.fuerza.faltaPeso}
                 </Text>
-                <Pressable style={estilos.botonPeso} onPress={() => setPesoAbierto(true)} testID="abrir-anotar-peso">
+                <Tocable style={estilos.botonPeso} onPress={() => setPesoAbierto(true)} testID="abrir-anotar-peso">
                   <Text style={estilos.botonPesoTexto}>{T.peso.anotarPeso}</Text>
-                </Pressable>
+                </Tocable>
                 <PesoHoja visible={pesoAbierto} unidad={unidad} alCerrar={() => setPesoAbierto(false)} alGuardar={cargar} />
               </>
             )}

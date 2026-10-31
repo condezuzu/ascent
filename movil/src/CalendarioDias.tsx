@@ -11,6 +11,7 @@ import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * EL CALENDARIO DE STATS, en la app nativa: uno solo, y se toca para MIRAR.
@@ -83,18 +84,18 @@ export default function CalendarioDias({
   return (
     <View style={estilos.calendario}>
       <View style={estilos.cabecera}>
-        <Pressable style={estilos.flecha} onPress={() => mover(-1)} accessibilityLabel={T.calendario.mesAnterior}>
+        <Tocable style={estilos.flecha} onPress={() => mover(-1)} accessibilityLabel={T.calendario.mesAnterior}>
           <Text style={estilos.flechaTexto}>‹</Text>
-        </Pressable>
+        </Tocable>
         <Text style={estilos.mes}>{T.calendario.mesYAnio(MESES[ancla.mes], ancla.anio)}</Text>
-        <Pressable
+        <Tocable
           style={[estilos.flecha, esMesActual && { opacity: 0.25 }]}
           onPress={() => mover(1)}
           disabled={esMesActual}
           accessibilityLabel={T.calendario.mesSiguiente}
         >
           <Text style={estilos.flechaTexto}>›</Text>
-        </Pressable>
+        </Tocable>
       </View>
 
       <View style={[estilos.grilla, { marginBottom: 14 }]}>
@@ -182,9 +183,9 @@ export default function CalendarioDias({
       {/* El botón está siempre; la instrucción aparece recién después de
           corregir, que es cuando se entiende para qué es. */}
       {corrigio && <Text style={estilos.nota}>{T.calendario.recalcularNota}</Text>}
-      <Pressable onPress={recalcular} disabled={recalculando} hitSlop={8} style={{ marginTop: 10 }}>
+      <Tocable onPress={recalcular} disabled={recalculando} hitSlop={8} style={{ marginTop: 10 }}>
         <Text style={estilos.botonTexto}>{recalculando ? T.calendario.recalculando : T.calendario.recalcular}</Text>
-      </Pressable>
+      </Tocable>
       {!!aviso && <Text style={estilos.aviso}>{aviso}</Text>}
 
       {abierto && (

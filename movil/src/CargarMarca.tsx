@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { guardarMarcaUnaVez } from '@compartido/guardarMarca';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { hoyISO, deISO, MESES } from '@nucleo/fechas';
 import { aKilos, deKilos, type Unidad } from '@nucleo/peso';
 import { redondear, unRM } from '@nucleo/fuerza';
@@ -19,6 +19,7 @@ import { useTema } from './useTema';
 import { Text, TextInput } from './Texto';
 import FondoOctogonal from './FondoOctogonal';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * ANOTAR UNA MARCA (§16.4), la hoja del teléfono.
@@ -114,16 +115,16 @@ function CargarMarca({
         <Text style={estilos.sub}>{T.marca.sub}</Text>
 
         <Text style={estilos.etiqueta}>{T.marca.ejercicio}</Text>
-        <Pressable style={estilos.selector} onPress={() => setEligiendo(true)}>
+        <Tocable style={estilos.selector} onPress={() => setEligiendo(true)}>
           <Text style={estilos.selectorTexto}>
             {elegido ? `${elegido.nombre} · ${nombreDeGrupo(elegido.grupo).toLowerCase()}` : ''}
           </Text>
-        </Pressable>
+        </Tocable>
 
         <Text style={estilos.etiqueta}>{T.marca.cuantasVeces}</Text>
         <View style={estilos.pastillas}>
           {[true, false].map((una) => (
-            <Pressable
+            <Tocable
               key={String(una)}
               style={[estilos.pastilla, unaVez === una && estilos.prendida]}
               onPress={() => setUnaVez(una)}
@@ -131,7 +132,7 @@ function CargarMarca({
               <Text style={[estilos.pastillaTexto, unaVez === una && estilos.prendidaTexto]}>
                 {una ? T.marca.deUna : T.marca.variasVeces}
               </Text>
-            </Pressable>
+            </Tocable>
           ))}
         </View>
 
@@ -172,13 +173,13 @@ function CargarMarca({
 
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
 
-        <Pressable style={estilos.solido} onPress={() => guardar()} disabled={guardando}>
+        <Tocable style={estilos.solido} onPress={() => guardar()} disabled={guardando}>
           <FondoOctogonal relleno={C.claro} luz={C.claro} />
           <Text style={estilos.solidoTexto}>{guardando ? T.sesion.guardando : T.marca.anotar}</Text>
-        </Pressable>
-        <Pressable style={estilos.texto} onPress={alCerrar} disabled={guardando}>
+        </Tocable>
+        <Tocable style={estilos.texto} onPress={alCerrar} disabled={guardando}>
           <Text style={estilos.enlace}>{T.general.cancelar}</Text>
-        </Pressable>
+        </Tocable>
 
       {/* EL SELECTOR VA ADENTRO DE LA HOJA (4/10), como en `ListaDeBloques`: en
           iOS un modal solo se presenta encima de otro si está dentro de su

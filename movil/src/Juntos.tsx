@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Share, StyleSheet, View } from 'react-native';
+import { Share, StyleSheet, View } from 'react-native';
 import { echarDelGrupo, linkDelGrupo, responderUnion, salirDelGrupo, salirDeUnion } from '@compartido/enVivo';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
@@ -89,17 +89,17 @@ export default function Juntos({
                 {u.laPediYo ? T.social.esperandoA(u.otro.username) : u.invitacion ? T.social.teInvita(u.otro.username) : T.social.quiereUnirse(u.otro.username)}
               </Text>
               {u.laPediYo ? (
-                <Pressable hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>
+                <Tocable hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>
                   <Text style={estilos.apagada}>{T.general.cancelar}</Text>
-                </Pressable>
+                </Tocable>
               ) : (
                 <>
-                  <Pressable testID="juntos-aceptar" hitSlop={8} onPress={() => void responderUnion(supabase, u.id, true).then(recargar)}>
+                  <Tocable testID="juntos-aceptar" hitSlop={8} onPress={() => void responderUnion(supabase, u.id, true).then(recargar)}>
                     <Text style={estilos.accion}>{T.social.aceptar}</Text>
-                  </Pressable>
-                  <Pressable hitSlop={8} onPress={() => void responderUnion(supabase, u.id, false).then(recargar)}>
+                  </Tocable>
+                  <Tocable hitSlop={8} onPress={() => void responderUnion(supabase, u.id, false).then(recargar)}>
                     <Text style={estilos.apagada}>{T.social.no}</Text>
-                  </Pressable>
+                  </Tocable>
                 </>
               )}
             </View>
@@ -143,13 +143,13 @@ export default function Juntos({
             </View>
             {/* En grupo, salir es uno solo, abajo; sacar, solo quien lo armó. */}
             {!u.grupo ? (
-              <Pressable testID="juntos-salir" hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>
+              <Tocable testID="juntos-salir" hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>
                 <Text style={estilos.apagada}>{T.social.salirDeUnion}</Text>
-              </Pressable>
+              </Tocable>
             ) : yoArmo ? (
-              <Pressable testID="juntos-sacar" hitSlop={8} onPress={() => void echarDelGrupo(supabase, u.otro.id).then(recargar)}>
+              <Tocable testID="juntos-sacar" hitSlop={8} onPress={() => void echarDelGrupo(supabase, u.otro.id).then(recargar)}>
                 <Text style={estilos.apagada}>{T.social.sacarDelGrupo}</Text>
-              </Pressable>
+              </Tocable>
             ) : null}
           </View>
         );
@@ -162,9 +162,9 @@ export default function Juntos({
             <Text style={estilos.invitarTexto}>{T.social.invitarAlGrupo}</Text>
           </Tocable>
           {enGrupo && (
-            <Pressable testID="juntos-salir-grupo" hitSlop={8} onPress={() => void salirDelGrupo(supabase).then(recargar)}>
+            <Tocable testID="juntos-salir-grupo" hitSlop={8} onPress={() => void salirDelGrupo(supabase).then(recargar)}>
               <Text style={estilos.apagada}>{T.social.salirDelGrupo}</Text>
-            </Pressable>
+            </Tocable>
           )}
         </View>
       )}

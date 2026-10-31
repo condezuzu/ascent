@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
 import type { Senal } from '@nucleo/estancamiento';
@@ -10,6 +10,7 @@ import { C, conAlfa } from './colores';
 import { useRecargarAlVolver } from './irAPestana';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * EL AVISO DE ESTANCAMIENTO, en la app nativa. Uno, o ninguno. El mismo que
@@ -93,9 +94,9 @@ export default function Estancamiento({
             : T.estancamiento.ejercicioDejado(nombre(senal.ejercicio), senal.semanas)}
         </Text>
       )}
-      <Pressable onPress={descartar} hitSlop={8}>
+      <Tocable onPress={descartar} hitSlop={8}>
         <Text style={estilos.descartar}>{T.estancamiento.descartar}</Text>
-      </Pressable>
+      </Tocable>
     </View>
   );
 }

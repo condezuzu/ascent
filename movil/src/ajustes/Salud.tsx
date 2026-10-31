@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { plataforma } from '@plataforma';
 import { yaSePidio } from '../plataforma/salud';
 import { hoyISO } from '@nucleo/fechas';
@@ -8,6 +8,7 @@ import { C, conTema } from '../colores';
 import { useTema } from '../useTema';
 import { Text } from '../Texto';
 import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * LA SALUD DEL TELÉFONO (§13c). La sección que en la web no puede existir.
@@ -79,11 +80,11 @@ export default function Salud() {
           la ventana una vez contestada, asi que dejarlo despues es un boton
           que no hace nada — que es como se reporto el 23/9. */}
       {conectado === false && (
-        <Pressable style={estilos.boton} onPress={conectar} disabled={pidiendo}>
+        <Tocable style={estilos.boton} onPress={conectar} disabled={pidiendo}>
           <Text style={estilos.botonTexto}>
             {pidiendo ? T.ajustes.saludConectando : T.ajustes.saludConectar}
           </Text>
-        </Pressable>
+        </Tocable>
       )}
 
       {conectado === true && <Text style={estilos.conectado}>{T.ajustes.saludConectado}</Text>}

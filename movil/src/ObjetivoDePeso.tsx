@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { CLAVE_OBJETIVO_PESO, leerObjetivo, llego, objetivoValido, rumboDelPaso } from '@nucleo/pesoObjetivo';
 import { aKilos, conComa, deKilos, type Unidad } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
@@ -8,6 +8,7 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * EL OBJETIVO DE PESO: un número al que se quiere llegar. Va arriba de la lista
@@ -67,16 +68,16 @@ export default function ObjetivoDePeso({
           placeholderTextColor={C.apagado}
           onSubmitEditing={guardar}
         />
-        <Pressable onPress={guardar} hitSlop={8} style={estilos.accionBtn}>
+        <Tocable onPress={guardar} hitSlop={8} style={estilos.accionBtn}>
           <Text style={estilos.accion}>{T.general.guardar}</Text>
-        </Pressable>
-        <Pressable onPress={() => setEditando(false)} hitSlop={8} style={estilos.accionBtn}>
+        </Tocable>
+        <Tocable onPress={() => setEditando(false)} hitSlop={8} style={estilos.accionBtn}>
           <Text style={estilos.apagada}>{T.general.cancelar}</Text>
-        </Pressable>
+        </Tocable>
         {objetivo !== null && (
-          <Pressable onPress={borrar} hitSlop={8} style={estilos.accionBtn}>
+          <Tocable onPress={borrar} hitSlop={8} style={estilos.accionBtn}>
             <Text style={estilos.apagada}>{T.stats.objetivoQuitar}</Text>
-          </Pressable>
+          </Tocable>
         )}
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
       </View>
@@ -86,9 +87,9 @@ export default function ObjetivoDePeso({
   // Sin objetivo: una invitación tenue.
   if (objetivo === null) {
     return (
-      <Pressable onPress={() => { setValor(''); setEditando(true); }} hitSlop={8} style={estilos.pill}>
+      <Tocable onPress={() => { setValor(''); setEditando(true); }} hitSlop={8} style={estilos.pill}>
         <Text style={estilos.pillTexto}>{T.stats.objetivoPoner}</Text>
-      </Pressable>
+      </Tocable>
     );
   }
 
@@ -100,11 +101,11 @@ export default function ObjetivoDePeso({
   if (enObjetivo) {
     return (
       <View>
-        <Pressable onPress={() => { setValor(objLindo); setEditando(true); }} hitSlop={8} style={estilos.llegado}>
+        <Tocable onPress={() => { setValor(objLindo); setEditando(true); }} hitSlop={8} style={estilos.llegado}>
           <Text style={estilos.llegadoTexto}>{T.stats.objetivoLlegado} </Text>
           <Text style={estilos.llegadoNumero}>{objLindo} {unidad}</Text>
           <Text style={estilos.llegadoMarca}> ✓</Text>
-        </Pressable>
+        </Tocable>
         <MiniTendencia recientes={recientes} unidad={unidad} objetivo={objetivo} />
       </View>
     );
@@ -112,9 +113,9 @@ export default function ObjetivoDePeso({
 
   return (
     <View>
-      <Pressable onPress={() => { setValor(objLindo); setEditando(true); }} hitSlop={8} style={estilos.pill}>
+      <Tocable onPress={() => { setValor(objLindo); setEditando(true); }} hitSlop={8} style={estilos.pill}>
         <Text style={estilos.pillTexto}>{T.stats.objetivoEs(objLindo, unidad)}</Text>
-      </Pressable>
+      </Tocable>
       <MiniTendencia recientes={recientes} unidad={unidad} objetivo={objetivo} />
     </View>
   );

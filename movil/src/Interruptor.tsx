@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import Tocable from './Tocable';
 
 /**
  * EL INTERRUPTOR DE LA APP, no el de Apple (item 4).
@@ -38,7 +39,7 @@ export default function Interruptor({
   });
 
   return (
-    <Pressable
+    <Tocable
       onPress={() => onValueChange(!value)}
       hitSlop={10}
       accessibilityRole="switch"
@@ -48,7 +49,7 @@ export default function Interruptor({
       <Animated.View style={[estilos.via, { backgroundColor: fondo }]}>
         <Animated.View style={[estilos.perilla, { left: izq, backgroundColor: perilla }]} />
       </Animated.View>
-    </Pressable>
+    </Tocable>
   );
 }
 

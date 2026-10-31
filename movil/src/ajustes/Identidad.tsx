@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Segmentado from '../Segmentado';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { borrarPerfilCache } from '@compartido/cache';
 import type { Perfil, Sexo as SexoValor } from '@nucleo/tipos';
 import { nombreValido } from '@nucleo/usuario';
@@ -10,6 +10,7 @@ import { C, DESHABILITADO, conTema } from '../colores';
 import { useTema } from '../useTema';
 import { Text, TextInput } from '../Texto';
 import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * LOS TRES DATOS DE LA CUENTA que faltaban en nativo: el nombre de usuario,
@@ -93,13 +94,13 @@ export default function Identidad({
             autoCorrect={false}
             maxLength={20}
           />
-          <Pressable
+          <Tocable
             style={[estilos.boton, nombre.trim() === perfil.username && estilos.apagado]}
             onPress={guardarNombre}
             disabled={guardando || nombre.trim() === perfil.username}
           >
             <Text style={estilos.botonTexto}>{guardando ? '…' : T.general.guardar}</Text>
-          </Pressable>
+          </Tocable>
         </View>
         {aviso !== '' && <Text style={estilos.ok}>{aviso}</Text>}
         {error !== '' && <Text style={estilos.error}>{error}</Text>}

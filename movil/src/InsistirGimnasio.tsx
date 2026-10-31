@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import {
   CLAVE_INSISTIR_GIMNASIO,
   despuesDeMostrar,
@@ -11,6 +11,7 @@ import { plataforma } from '@plataforma';
 import { C } from './colores';
 import PinGimnasio from './PinGimnasio';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * "DEJA QUE SE MARQUE SOLO" (15/10; antes una tarjeta, "Este día lo anotaste tú"). El ofrecimiento del punto del gimnasio, en el
@@ -26,11 +27,11 @@ import { Text } from './Texto';
  */
 export default function InsistirGimnasio({ alMarcar }: { alMarcar: () => void }) {
   return (
-    <Pressable testID="insistir-gimnasio" style={estilos.renglon} onPress={alMarcar} accessibilityRole="button" hitSlop={8}>
+    <Tocable testID="insistir-gimnasio" style={estilos.renglon} onPress={alMarcar} accessibilityRole="button" hitSlop={8}>
       <PinGimnasio tam={14} color={C.sub} />
       <Text style={estilos.texto}>{T.inicio.insistirGimnasio}</Text>
       <Text style={estilos.flecha}>›</Text>
-    </Pressable>
+    </Tocable>
   );
 }
 

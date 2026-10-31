@@ -10,6 +10,7 @@ import { supabase } from './supabase';
 import { guardarDiaDeRutina, rutinaReemplazada, type PreguntaDeRutina } from './preguntarPorLaRutina';
 import { Text } from './Texto';
 import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 
 /**
  * LA VENTANA AL TERMINAR (19/10, aprobada en la galería): con el estilo de la app, en
@@ -77,7 +78,7 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
           )}
           {fallo && <Text style={estilos.fallo}>{T.general.noSePudo}</Text>}
           <View style={estilos.acciones}>
-            <Pressable
+            <Tocable
               testID={seguro ? 'ventana-rutina-si' : 'ventana-rutina-reemplazar'}
               style={[estilos.pildora, estilos.crema]}
               disabled={guardando}
@@ -85,8 +86,8 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
               accessibilityRole="button"
             >
               <Text style={estilos.cremaTexto}>{guardando && seguro ? T.sesion.guardando : seguro ? T.rutina.si : T.rutina.reemplazar}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               testID={seguro ? 'ventana-rutina-no' : 'ventana-rutina-nueva'}
               style={[estilos.pildora, estilos.borde]}
               disabled={guardando}
@@ -94,9 +95,9 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
               accessibilityRole="button"
             >
               <Text style={estilos.bordeTexto}>{guardando && !seguro ? T.sesion.guardando : seguro ? T.rutina.no : T.rutina.crearRutinaNueva}</Text>
-            </Pressable>
+            </Tocable>
             {!seguro && (
-              <Pressable
+              <Tocable
                 testID="ventana-rutina-olvidar"
                 style={[estilos.pildora, estilos.tenue]}
                 disabled={guardando}
@@ -104,7 +105,7 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
                 accessibilityRole="button"
               >
                 <Text style={estilos.tenueTexto}>{T.rutina.olvidarDia}</Text>
-              </Pressable>
+              </Tocable>
             )}
           </View>
         </View>

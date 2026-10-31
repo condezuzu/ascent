@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { COMO_SE_COMPARA, type Parte } from '@nucleo/comoSeCompara';
 import { T } from '@nucleo/textos';
 import { C } from '../colores';
 import { Text } from '../Texto';
 import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * CÓMO SE CALCULA EL RANKING DE FUERZA, abajo de todo en Ajustes.
@@ -26,7 +27,7 @@ export default function ComoSeCompara() {
 
   return (
     <View style={estilos.seccion}>
-      <Pressable
+      <Tocable
         style={estilos.cabecera}
         onPress={() => setAbierto(!abierto)}
         accessibilityRole="button"
@@ -34,7 +35,7 @@ export default function ComoSeCompara() {
       >
         <Text style={estilos.titulo}>{T.ajustes.comoSeCompara}</Text>
         <Text style={estilos.signo}>{abierto ? '−' : '+'}</Text>
-      </Pressable>
+      </Tocable>
 
       {abierto &&
         COMO_SE_COMPARA.map((b, i) =>

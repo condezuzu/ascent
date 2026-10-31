@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { juntarMisDatos } from '@compartido/cuenta';
@@ -10,6 +10,7 @@ import { C, DESHABILITADO, conTema } from '../colores';
 import { useTema } from '../useTema';
 import { Text } from '../Texto';
 import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * LLEVARSE TODO: el historial entero en un archivo.
@@ -56,9 +57,9 @@ export default function MisDatos({ perfil }: { perfil: Perfil }) {
   return (
     <View style={estilos.seccion}>
       <Text style={estilos.titulo}>{T.ajustes.misDatos}</Text>
-      <Pressable style={[estilos.boton, exportando && estilos.apagado]} onPress={exportar} disabled={exportando}>
+      <Tocable style={[estilos.boton, exportando && estilos.apagado]} onPress={exportar} disabled={exportando}>
         <Text style={estilos.botonTexto}>{exportando ? T.ajustes.exportando : T.ajustes.exportar}</Text>
-      </Pressable>
+      </Tocable>
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
     </View>
   );

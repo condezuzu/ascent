@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Image, StyleSheet, View, useWindowDimensions } from 'react-native';
 import FotoGrande from './FotoGrande';
 import { fechaCorta } from '@nucleo/fechas';
 import type { FotoDePerfil } from '@compartido/perfil';
@@ -8,6 +8,7 @@ import { C, conTema, luz } from './colores';
 import { useTema } from './useTema';
 import { useFotoLocal } from './fotoLocal';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * LAS FOTOS COMO LAS VE UN AMIGO, y nada más: sin administrar. Tocar una la
@@ -39,12 +40,12 @@ export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
     <View style={estilos.grilla} onLayout={(e) => setAncho(e.nativeEvent.layout.width)}>
       {fotos.map((f, i) => (
         <Surgir key={f.id} indice={i}>
-          <Pressable testID="foto-de-perfil" style={{ width: lado }} onPress={() => setGrande(f.url || f.miniatura || null)} accessibilityRole="imagebutton">
+          <Tocable testID="foto-de-perfil" style={{ width: lado }} onPress={() => setGrande(f.url || f.miniatura || null)} accessibilityRole="imagebutton">
             <Cuadrito foto={f} lado={lado} />
             {/* La fecha solo si la foto cuelga de un día: una suelta no tiene
                 cuándo, y poner uno inventado sería peor que no poner nada. */}
             {!!f.fecha && <Text style={estilos.cuando}>{fechaCorta(f.fecha)}</Text>}
-          </Pressable>
+          </Tocable>
         </Surgir>
       ))}
       <FotoGrande url={grande} onCerrar={() => setGrande(null)} />

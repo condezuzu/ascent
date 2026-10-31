@@ -3,6 +3,7 @@ import { AccessibilityInfo, type StyleProp, type TextStyle } from 'react-native'
 import { hayQueContar, valorContado } from '@nucleo/contar';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { MS } from './movimiento';
 
 /**
  * UN NÚMERO QUE VIAJA hasta su valor nuevo en vez de reemplazarse. El mismo
@@ -26,14 +27,19 @@ import { L } from './fuentes';
  */
 export default function NumeroQueCuenta({
   valor,
-  ms = 700,
+  ms = MS.cuenta,
   style,
+  desdeCero,
+  testID,
 }: {
   valor: number;
   ms?: number;
   style?: StyleProp<TextStyle>;
+  /** Al aparecer cuenta desde cero, en vez de arrancar puesto: una pantalla que entra, no un número que cambia. */
+  desdeCero?: boolean;
+  testID?: string;
 }) {
-  const [mostrado, setMostrado] = useState(valor);
+  const [mostrado, setMostrado] = useState(desdeCero ? 0 : valor);
   const [quieto, setQuieto] = useState(false);
   // Lo que está EN PANTALLA, que no siempre es el valor anterior: si el número
   // cambia de nuevo a mitad de una cuenta —47 y enseguida 48—, la cuenta nueva
@@ -70,7 +76,7 @@ export default function NumeroQueCuenta({
   }, [valor, ms, quieto]);
 
   return (
-    <Text style={[{ fontFamily: L.dato }, style]} allowFontScaling={false}>
+    <Text testID={testID} style={[{ fontFamily: L.dato }, style]} allowFontScaling={false}>
       {mostrado}
     </Text>
   );

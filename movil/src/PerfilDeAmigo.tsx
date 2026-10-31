@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { cargarAmigosDe, cargarPerfilDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
 import type { UsuarioPublico } from '@nucleo/tipos';
@@ -28,6 +28,7 @@ import { useArriba } from './zonaSegura';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * EL PERFIL DE OTRO: su racha, su semana y lo que comparte.
@@ -136,9 +137,9 @@ export default function PerfilDeAmigo() {
   // falla — con mala señal, tardar mucho es lo normal. Lo encontró el barrido
   // del 25/9 en el perfil propio, y esta pantalla tenía la mitad del problema.
   const salida = (
-    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
+    <Tocable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
       <Text style={estilos.enlace}>{T.general.volver}</Text>
-    </Pressable>
+    </Tocable>
   );
 
   if (!cargado) {
@@ -162,9 +163,9 @@ export default function PerfilDeAmigo() {
               que se mueve según lo que haya pasado. */}
           <Text style={estilos.error}>{noCargo ? T.inicio.noCargo : error || T.social.noExiste}</Text>
           {noCargo && (
-            <Pressable onPress={cargar} hitSlop={8} style={{ marginTop: 14 }}>
+            <Tocable onPress={cargar} hitSlop={8} style={{ marginTop: 14 }}>
               <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-            </Pressable>
+            </Tocable>
           )}
         </View>
       </View>
@@ -191,14 +192,14 @@ export default function PerfilDeAmigo() {
         ajeno
       />
       <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
-        <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
+        <Tocable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
           <Text style={estilos.enlace}>{T.general.volver}</Text>
-        </Pressable>
+        </Tocable>
 
         <View style={estilos.cabecera}>
           {/* LA FOTO SE ABRE GRANDE (8/10). Sin foto no hay nada que abrir: la
               inicial no es un botón. */}
-          <Pressable
+          <Tocable
             testID="abrir-foto-de-perfil"
             disabled={!usuario.avatar_url}
             onPress={() => setFotoGrande(true)}
@@ -206,7 +207,7 @@ export default function PerfilDeAmigo() {
             accessibilityLabel={T.social.verFoto(usuario.username ?? '')}
           >
             <Avatar url={usuario.avatar_url} nombre={usuario.username} tam={52} />
-          </Pressable>
+          </Tocable>
           <View style={{ flex: 1 }}>
             {/* SUS MEDALLAS, al lado de su nombre y del mismo alto, igual que
                 en tu perfil. Se pueden tocar: es la única forma de saber qué
@@ -250,7 +251,7 @@ export default function PerfilDeAmigo() {
                   {T.social.amigos} {amigosDe.length}
                 </Text>
                 {amigosDe.map((a) => (
-                  <Pressable
+                  <Tocable
                     key={a.id}
                     style={estilos.amigo}
                     onPress={() => router.push(a.id === yoId ? '/yo' : `/perfil/${a.id}`)}
@@ -261,7 +262,7 @@ export default function PerfilDeAmigo() {
                       {a.username}
                     </Text>
                     <Text style={estilos.amigoRacha}>{a.racha_actual}</Text>
-                  </Pressable>
+                  </Tocable>
                 ))}
               </View>
             )}
@@ -269,17 +270,17 @@ export default function PerfilDeAmigo() {
         ) : (
           <>
             {pedidoRecibido ? (
-              <Pressable style={estilos.solido} onPress={() => aceptarPedido()}>
+              <Tocable style={estilos.solido} onPress={() => aceptarPedido()}>
                 <Text style={estilos.solidoTexto}>{T.social.aceptar}</Text>
-              </Pressable>
+              </Tocable>
             ) : pedidoPendiente ? (
               <View style={estilos.boton}>
                 <Text style={estilos.botonTexto}>{T.social.pedidoDeAmistad}</Text>
               </View>
             ) : (
-              <Pressable style={estilos.solido} onPress={() => mandarPedido()}>
+              <Tocable style={estilos.solido} onPress={() => mandarPedido()}>
                 <Text style={estilos.solidoTexto}>{T.social.agregar}</Text>
-              </Pressable>
+              </Tocable>
             )}
             <Text style={estilos.nota}>{T.social.cuandoSeanAmigos}</Text>
           </>
@@ -288,9 +289,9 @@ export default function PerfilDeAmigo() {
         {/* Denunciar o bloquear: al alcance en el perfil de cualquiera, sea
             amigo o no. Bloquear también sirve para frenar a alguien que todavía
             no es amigo pero insiste con solicitudes. */}
-        <Pressable onPress={() => setAccion(true)} hitSlop={8} style={estilos.reportar}>
+        <Tocable onPress={() => setAccion(true)} hitSlop={8} style={estilos.reportar}>
           <Text style={estilos.reportarTexto}>{T.social.denunciarOBloquear}</Text>
-        </Pressable>
+        </Tocable>
       </ScrollView>
 
       <AccionesDeUsuario

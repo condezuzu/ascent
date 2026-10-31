@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Unidad } from '@nucleo/peso';
 import { confirmarCampo, hayQueAvisar, limpiarTecleo, pasoDelCampo, pesoEscrito, textoDelCampo } from '@nucleo/campoPeso';
 import { T } from '@nucleo/textos';
@@ -7,6 +7,7 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * EL PESO, escrito una vez. La misma pieza que `src/components/CampoPeso.tsx`:
@@ -97,9 +98,9 @@ export default function CampoPeso({
   return (
     <View style={estilos.fila}>
       {!compacto && (
-        <Pressable style={estilos.paso} onPress={() => paso(-1)} disabled={!kg} accessibilityLabel={T.sesion.pesoBajar}>
+        <Tocable style={estilos.paso} onPress={() => paso(-1)} disabled={!kg} accessibilityLabel={T.sesion.pesoBajar}>
           <Text style={[estilos.pasoTexto, !kg && estilos.apagado]}>−</Text>
-        </Pressable>
+        </Tocable>
       )}
       <View style={estilos.caja}>
         <TextInput
@@ -124,9 +125,9 @@ export default function CampoPeso({
         <Text style={[estilos.unidad, compacto && estilos.unidadCompacta]}>{unidad}</Text>
       </View>
       {!compacto && (
-        <Pressable style={estilos.paso} onPress={() => paso(1)} disabled={!kg} accessibilityLabel={T.sesion.pesoSubir}>
+        <Tocable style={estilos.paso} onPress={() => paso(1)} disabled={!kg} accessibilityLabel={T.sesion.pesoSubir}>
           <Text style={[estilos.pasoTexto, !kg && estilos.apagado]}>+</Text>
-        </Pressable>
+        </Tocable>
       )}
     </View>
   );

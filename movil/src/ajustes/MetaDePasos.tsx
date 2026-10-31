@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import {
   CLAVE_META_PASOS,
   META_PASOS_POR_OMISION,
@@ -13,6 +13,7 @@ import { useTema } from '../useTema';
 import { Text, TextInput } from '../Texto';
 import { L } from '../fuentes';
 import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * LA META DE PASOS DEL DÍA.
@@ -81,9 +82,9 @@ export default function MetaDePasos({ alCambiar }: { alCambiar?: (meta: number) 
       />
       {/* Un botón además del `onBlur`: en un teclado numérico de iOS no hay
           "listo", y tocar afuera para guardar no se le ocurre a nadie. */}
-      <Pressable style={estilos.boton} onPress={guardar}>
+      <Tocable style={estilos.boton} onPress={guardar}>
         <Text style={estilos.botonTexto}>{T.general.guardar}</Text>
-      </Pressable>
+      </Tocable>
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
       <Text style={estilos.nota}>{T.ajustes.metaPasosNota}</Text>
     </View>

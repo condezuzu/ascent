@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import RutinaDe from './RutinaDe';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { cargarMiPerfil, ultimoMiPerfil, type DatosDePerfil } from '@compartido/perfil';
@@ -30,6 +30,7 @@ import { useArriba } from './zonaSegura';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * TU PERFIL: quién sos acá adentro, cómo te ven tus amigos, y quiénes son.
@@ -142,9 +143,9 @@ export default function PerfilPropio() {
    * llegado.
    */
   const salida = (
-    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
+    <Tocable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
       <Text style={estilos.enlace}>{T.general.volver}</Text>
-    </Pressable>
+    </Tocable>
   );
 
   if (!cargado) {
@@ -164,9 +165,9 @@ export default function PerfilPropio() {
         {salida}
         <View style={estilos.centrado}>
           <Text style={estilos.error}>{error || T.inicio.noCargo}</Text>
-          <Pressable onPress={cargar}>
+          <Tocable onPress={cargar}>
             <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       </View>
     );
@@ -183,15 +184,15 @@ export default function PerfilPropio() {
         velo={0.72}
       />
       <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
-        <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
+        <Tocable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
           <Text style={estilos.enlace}>{T.general.volver}</Text>
-        </Pressable>
+        </Tocable>
 
         <View style={estilos.cabecera}>
           {/* Con foto, primero se ve en grande; sin foto, no hay nada que mirar. */}
-          <Pressable onPress={() => (perfil.avatar_url ? setFotoGrande(true) : void cambiarFoto())} disabled={subiendo} accessibilityLabel={T.yo.cambiarFoto}>
+          <Tocable onPress={() => (perfil.avatar_url ? setFotoGrande(true) : void cambiarFoto())} disabled={subiendo} accessibilityLabel={T.yo.cambiarFoto}>
             <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={76} />
-          </Pressable>
+          </Tocable>
           <View style={estilos.identidad}>
             {/* LAS MEDALLAS VAN EN LA MISMA FILA QUE EL NOMBRE y del alto del
                 nombre. Estuvieron debajo y chicas un rato, por miedo a que un
@@ -242,23 +243,23 @@ export default function PerfilPropio() {
         {amigos.map((a, i) => (
           <Surgir key={a.id} indice={i}>
             <View style={estilos.amigo}>
-              <Pressable style={estilos.amigoTocable} onPress={() => router.push(`/perfil/${a.id}`)} accessibilityRole="button">
+              <Tocable style={estilos.amigoTocable} onPress={() => router.push(`/perfil/${a.id}`)} accessibilityRole="button">
                 <Avatar url={a.avatar_url} nombre={a.username} />
                 <Text style={estilos.amigoNombre}>{a.username}</Text>
-              </Pressable>
+              </Tocable>
               {porQuitar === a.id ? (
                 <>
-                  <Pressable onPress={() => quitarAmigo(a.id)} hitSlop={8}>
+                  <Tocable onPress={() => quitarAmigo(a.id)} hitSlop={8}>
                     <Text style={estilos.peligro}>{T.yo.eliminar}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => setPorQuitar(null)} hitSlop={8}>
+                  </Tocable>
+                  <Tocable onPress={() => setPorQuitar(null)} hitSlop={8}>
                     <Text style={estilos.apagada}>{T.yo.no}</Text>
-                  </Pressable>
+                  </Tocable>
                 </>
               ) : (
-                <Pressable onPress={() => setPorQuitar(a.id)} hitSlop={8}>
+                <Tocable onPress={() => setPorQuitar(a.id)} hitSlop={8}>
                   <Text style={estilos.apagada}>{T.yo.quitar}</Text>
-                </Pressable>
+                </Tocable>
               )}
             </View>
           </Surgir>

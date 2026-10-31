@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { cuantosLevantan, type Medalla as Dato } from '@nucleo/medallas';
 import { CURVA } from '@nucleo/deslizar';
 import { T } from '@nucleo/textos';
@@ -10,6 +10,8 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import FondoOctogonal from './FondoOctogonal';
+import { LLEGA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * LAS MEDALLAS AL LADO DEL NOMBRE, y el globo al tocar una.
@@ -108,14 +110,14 @@ export default function Medallas({
       Animated.timing(opacidad, {
         toValue: 1,
         duration: ENTRA_MS,
-        easing: Easing.bezier(...CURVA),
+        easing: LLEGA,
         useNativeDriver: true,
       }),
       Animated.delay(QUIETO_MS),
       Animated.timing(opacidad, {
         toValue: 0,
         duration: SALE_MS,
-        easing: Easing.bezier(...CURVA),
+        easing: LLEGA,
         useNativeDriver: true,
       }),
     ]);
@@ -131,7 +133,7 @@ export default function Medallas({
         {nombre}
         <View style={estilos.medallas} onLayout={(e) => setDesdeX(e.nativeEvent.layout.x)}>
           {medallas.map((m) => (
-            <Pressable
+            <Tocable
               key={m.zona}
               onPress={() => setAbierta(abierta === m.zona ? null : m.zona)}
               hitSlop={6}
@@ -139,10 +141,10 @@ export default function Medallas({
               accessibilityLabel={frase(m)}
             >
               <Medalla zona={m.zona} material={m.material} tam={tam} />
-            </Pressable>
+            </Tocable>
           ))}
           {conSaturno && (
-            <Pressable
+            <Tocable
               onPress={() => setAbierta(saturnoAbierto ? null : 'racha')}
               hitSlop={6}
               accessibilityRole="button"
@@ -153,7 +155,7 @@ export default function Medallas({
                   se leía como "llegué a Saturno". Es la misma que muestra
                   Ranking, y sale de la misma escalera que el rango de hoy. */}
               <MedallaDeRango rango={numeroDeRango(mejorRacha ?? 0)} tam={tam} />
-            </Pressable>
+            </Tocable>
           )}
         </View>
       </View>

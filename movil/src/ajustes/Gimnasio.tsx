@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { marcarPunto, PUNTO_CAMBIO } from '@compartido/gimnasio';
 import { eventos } from '@compartido/eventos';
 import { plataforma } from '@plataforma';
@@ -12,6 +12,7 @@ import PinGimnasio from '../PinGimnasio';
 import { Text } from '../Texto';
 import FondoOctogonal from '../FondoOctogonal';
 import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * LLEVAR A MARCAR EL GIMNASIO (15/10): "Deja que se marque solo" en Inicio cambia
@@ -134,16 +135,16 @@ export default function Gimnasio({
           borde fino, y el borrar debajo del marcar con un separador (15/10). */}
       <View style={estilos.caja}>
         <FondoOctogonal relleno={"none"} borde={C.lineaFuerte} corte={10} />
-        <Pressable testID="gimnasio-marcar" style={estilos.renglon} onPress={marcar} disabled={estado === 'buscando'}>
+        <Tocable testID="gimnasio-marcar" style={estilos.renglon} onPress={marcar} disabled={estado === 'buscando'}>
           <PinGimnasio tam={16} color={C.tinta} />
           <Text style={estilos.botonTexto}>
             {estado === 'buscando' ? T.ajustes.gimnasioBuscando : puesto ? T.ajustes.gimnasioRemarcar : T.ajustes.gimnasioMarcar}
           </Text>
-        </Pressable>
+        </Tocable>
         {puesto && (
-          <Pressable style={[estilos.renglon, estilos.separado]} onPress={borrar}>
+          <Tocable style={[estilos.renglon, estilos.separado]} onPress={borrar}>
             <Text style={estilos.botonTexto}>{T.ajustes.gimnasioBorrar}</Text>
-          </Pressable>
+          </Tocable>
         )}
         <Animated.View testID="gimnasio-luz" pointerEvents="none" style={[estilos.luz, { opacity: luz }]}>
               <FondoOctogonal relleno={conAlfa(C.claro, 0.08)} borde={C.claro} corte={10} />

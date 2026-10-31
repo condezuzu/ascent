@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 
 /**
  * EL GLOBO DE CÓMIC (15/10, aprobado en la galería): el globito de siempre, del
@@ -59,7 +60,7 @@ export default function GloboComic({
   return (
     <View style={estilos.ancla} pointerEvents="box-none">
       <Animated.View style={[estilos.capa, { top: 9 - subir, opacity: opacidad }]} pointerEvents="box-none" onLayout={(e) => setAncho(e.nativeEvent.layout.width)}>
-        <Pressable
+        <Tocable
           testID={testID}
           onLayout={(e) => setAnchoGlobo(e.nativeEvent.layout.width)}
           style={[estilos.globo, { left: izquierda, maxWidth: ancho || undefined }]}
@@ -76,7 +77,7 @@ export default function GloboComic({
             <View style={[estilos.raya, { transform: [{ rotate: '45deg' }] }]} />
             <View style={[estilos.raya, { transform: [{ rotate: '-45deg' }] }]} />
           </View>
-        </Pressable>
+        </Tocable>
         {/* La cola: un cuadrado girado con el borde en los dos lados de afuera, encima del borde del globo. */}
         <View pointerEvents="none" style={[estilos.cola, { left: colaX - 6 }]} />
       </Animated.View>

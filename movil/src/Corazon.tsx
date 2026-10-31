@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { C, conTema, conAlfa } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { LLEGA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * EL CORAZÓN DE LA RUTINA DE OTRA PERSONA (20/10). Sin corazones no hay número; con
@@ -31,10 +33,10 @@ export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad
     estallido.setValue(0);
     const anim = Animated.parallel([
       Animated.sequence([
-        Animated.timing(late, { toValue: 1.3, duration: 150, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(late, { toValue: 1.3, duration: 150, easing: LLEGA, useNativeDriver: true }),
         Animated.timing(late, { toValue: 1, duration: ESTALLIDO_MS - 150, easing: Easing.out(Easing.back(2)), useNativeDriver: true }),
       ]),
-      Animated.timing(estallido, { toValue: 1, duration: ESTALLIDO_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(estallido, { toValue: 1, duration: ESTALLIDO_MS, easing: LLEGA, useNativeDriver: true }),
     ]);
     anim.start(({ finished }) => finished && setEstallando(false));
     return () => anim.stop();
@@ -50,7 +52,7 @@ export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad
 
   const radio = tam * 1.15;
   return (
-    <Pressable
+    <Tocable
       testID="rutina-corazon"
       hitSlop={10}
       onPress={() => void tocar()}
@@ -94,7 +96,7 @@ export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad
           ))}
         </View>
       )}
-    </Pressable>
+    </Tocable>
   );
 }
 

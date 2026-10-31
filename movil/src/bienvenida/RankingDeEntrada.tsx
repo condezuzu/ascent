@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { Animated, Easing, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import { numeroDeRango } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import Insignia from '../Insignia';
 import { C, conAlfa } from '../colores';
 import { Text, TextoAnimado } from '../Texto';
 import { L } from '../fuentes';
+import Tocable from '../Tocable';
 
 /**
  * LA ÚLTIMA PANTALLA DE LA ENTRADA (15/10): "Mira quién llega más lejos". Las
@@ -185,16 +186,16 @@ export default function RankingDeEntrada({ alSalir }: { alSalir: (destino: 'crea
             },
           ]}
         >
-          <Pressable testID="bienvenida-crear" disabled={paso < 4} onPress={() => alSalir('crear')} style={estilos.botonToque} accessibilityRole="button">
+          <Tocable testID="bienvenida-crear" disabled={paso < 4} onPress={() => alSalir('crear')} style={estilos.botonToque} accessibilityRole="button">
             <TextoAnimado numberOfLines={1} style={[estilos.botonTexto, { opacity: textoBoton }]}>
               {T.bienvenida.crear}
             </TextoAnimado>
-          </Pressable>
+          </Tocable>
         </Animated.View>
         <Animated.View style={{ opacity: yaTengo }}>
-          <Pressable testID="bienvenida-entrar" disabled={paso < 4} onPress={() => alSalir('entrar')} hitSlop={8} style={estilos.enlace} accessibilityRole="button">
+          <Tocable testID="bienvenida-entrar" disabled={paso < 4} onPress={() => alSalir('entrar')} hitSlop={8} style={estilos.enlace} accessibilityRole="button">
             <Text style={estilos.enlaceTexto}>{T.bienvenida.entrar}</Text>
-          </Pressable>
+          </Tocable>
         </Animated.View>
       </View>
     </View>

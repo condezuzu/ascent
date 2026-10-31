@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
-import { Animated, Easing, Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
+import { Animated, StyleSheet, View, type GestureResponderEvent, Pressable } from 'react-native';
 import { supabase } from './supabase';
 import { metaAMano, metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
@@ -49,6 +49,8 @@ import { cierraElBloque, cuentaLaSerie, horaDelToque, TOQUE_REPETIDO_MS } from '
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
 import { Fantasma, R } from './roles';
+import Tic from './Tic';
+import { LLEGA } from './movimiento';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN — en nativo.
@@ -327,7 +329,7 @@ export default function Bloque({
   return (
     <View style={estilos.bloque}>
       <View style={estilos.fila}>
-        <Pressable style={estilos.ejercicio} onPress={() => setEligiendo(true)} accessibilityRole="button">
+        <Tocable style={estilos.ejercicio} onPress={() => setEligiendo(true)} accessibilityRole="button">
           <Text
             style={[estilos.ejercicioTexto, !estado.ejercicio && estilos.apagadoTexto, esFantasma && estilos.fantasmaTexto]}
             numberOfLines={1}
@@ -338,7 +340,7 @@ export default function Bloque({
                 ? T.ejercicios.propioAjeno
                 : T.sesion.sinEjercicio}
           </Text>
-        </Pressable>
+        </Tocable>
         {esFantasma && <Text style={estilos.badgeSugerido}>{T.sesion.sugerido}</Text>}
       </View>
       {esFantasma && <Text style={estilos.sugeridoNota}>{T.sesion.sugeridoNota}</Text>}
@@ -384,13 +386,13 @@ export default function Bloque({
 
       {esTiempo && !corriendoCardio && estado.hechas > 0 && (
         <View testID="minutos-de-cardio" style={estilos.minutos} accessibilityLabel={T.sesion.minutosDeCardio}>
-          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.max(1, Math.ceil(minutos / 5) * 5 - 5))} accessibilityLabel="−5">
+          <Tocable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.max(1, Math.ceil(minutos / 5) * 5 - 5))} accessibilityLabel="−5">
             <Text style={estilos.minutosPasoTexto}>−</Text>
-          </Pressable>
+          </Tocable>
           <Text style={estilos.minutosTexto}>{T.rutina.minutos(minutos)}</Text>
-          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.floor(minutos / 5) * 5 + 5)} accessibilityLabel="+5">
+          <Tocable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.floor(minutos / 5) * 5 + 5)} accessibilityLabel="+5">
             <Text style={estilos.minutosPasoTexto}>+</Text>
-          </Pressable>
+          </Tocable>
         </View>
       )}
       {/* LA DISTANCIA DE LA VUELTA (21/10), con la migración 95. */}
@@ -441,14 +443,14 @@ export default function Bloque({
             maxLength={2}
             onSubmitEditing={usarMetaEscrita}
           />
-          <Pressable
+          <Tocable
             testID="meta-a-mano-usar"
             style={[estilos.meta, estilos.metaUsar, metaAMano(metaEscrita) !== null && estilos.metaPrendida]}
             disabled={metaAMano(metaEscrita) === null}
             onPress={usarMetaEscrita}
           >
             <Text style={[estilos.metaTexto, metaAMano(metaEscrita) !== null && estilos.metaTextoPrendido]}>{T.descanso.aManoUsar}</Text>
-          </Pressable>
+          </Tocable>
         </View>
         </Aparece>
       )}
@@ -485,9 +487,9 @@ export default function Bloque({
           <Text style={estilos.preguntaTexto}>{T.sesion.conQueLoHaces(actual.nombre)}</Text>
           <View style={estilos.opciones}>
             {OPCIONES_DE_LA_PREGUNTA.map((c) => (
-              <Pressable key={c} style={estilos.opcion} onPress={() => alElegirCarga(c)}>
+              <Tocable key={c} style={estilos.opcion} onPress={() => alElegirCarga(c)}>
                 <Text style={estilos.opcionTexto}>{T.sesion.respuestaCarga[c as 'par' | 'total' | 'una']}</Text>
-              </Pressable>
+              </Tocable>
             ))}
           </View>
           <Text style={estilos.nota}>{T.sesion.conQueNota}</Text>
@@ -499,7 +501,7 @@ export default function Bloque({
         <View style={estilos.pregunta}>
           <Text style={estilos.preguntaTexto}>{T.sesion.deCual(estado.hechas)}</Text>
           <View style={estilos.opciones}>
-            <Pressable
+            <Tocable
               style={estilos.opcion}
               onPress={() => {
                 elegir(aDonde);
@@ -507,8 +509,8 @@ export default function Bloque({
               }}
             >
               <Text style={estilos.opcionTexto} numberOfLines={1}>{T.sesion.eranDe(nombreDe(estado.ejercicio))}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               style={estilos.opcion}
               onPress={() => {
                 alMudarSeries(aDonde, conCarga ? cargaVista : undefined);
@@ -516,7 +518,7 @@ export default function Bloque({
               }}
             >
               <Text style={estilos.opcionTexto} numberOfLines={1}>{T.sesion.eranDe(nombreDe(aDonde))}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </View>
       )}
@@ -540,7 +542,9 @@ export default function Bloque({
           ))}
         </View>
         )}
-        <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
+        <Tic valor={total}>
+          <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
+        </Tic>
       </View>
 
       {/* EL − AL LADO DEL +, DEL MISMO ALTO (25/9).
@@ -616,7 +620,7 @@ export default function Bloque({
       {debajoDelMas}
 
       {oferta && (
-        <Pressable
+        <Tocable
           testID="la-proxima-mas"
           style={[estilos.subir, marcada && estilos.subirPrendido]}
           onPress={() =>
@@ -628,7 +632,7 @@ export default function Bloque({
           <Text style={[estilos.subirTexto, marcada && estilos.subirTextoPrendido]}>
             {marcada ? T.sesion.proximaMasMarcada(enUnidad(pasoDelCampo(oferta.peso, unidad, 1) ?? oferta.peso)) : T.sesion.proximaMas}
           </Text>
-        </Pressable>
+        </Tocable>
       )}
 
       {esTiempo && !corriendoCardio && estado.hechas > 0 && (
@@ -683,7 +687,7 @@ export default function Bloque({
   );
 }
 
-const CURVA_SALE = Easing.bezier(0.2, 0.8, 0.3, 1);
+const CURVA_SALE = LLEGA;
 
 /**
  * EL PUNTO DE UNA SERIE (15/10, aprobada en la galería): el que se acaba de llenar
@@ -736,7 +740,7 @@ function MasQuePulsa({
         if (pulsa) {
           pulso.setValue(0);
           Animated.sequence([
-            Animated.timing(pulso, { toValue: 1, duration: 100, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(pulso, { toValue: 1, duration: 100, easing: LLEGA, useNativeDriver: true }),
             Animated.timing(pulso, { toValue: 0, duration: 220, easing: CURVA_SALE, useNativeDriver: true }),
           ]).start();
         }

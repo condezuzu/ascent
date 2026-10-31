@@ -11,6 +11,7 @@ import { FIJO } from './coloresFijos';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 
 /**
  * ANOTAR EL PESO (20/10, la B de la galería): el número grande, − y + a los lados de una
@@ -120,10 +121,10 @@ export default function AnotarPeso({ unidad, alGuardar }: { unidad: Unidad; alGu
         <Apretable texto="+" etiqueta={T.peso.sumar(unidad)} testID="anotar-peso-mas" alMover={mover} paso={0.1} />
       </View>
       {ultimo && <Text style={estilos.ultima}>{T.peso.ultima(conComa(pesoInicial(ultimo.valor, unidad).toFixed(1)), unidad, fechaLinda(ultimo.fecha))}</Text>}
-      <Pressable style={[estilos.anotar, guardando && estilos.apagado]} onPress={() => guardar()} disabled={guardando} accessibilityRole="button" testID="anotar-peso-anotar">
+      <Tocable style={[estilos.anotar, guardando && estilos.apagado]} onPress={() => guardar()} disabled={guardando} accessibilityRole="button" testID="anotar-peso-anotar">
         <FondoOctogonal relleno={FIJO.crema} luz={FIJO.crema} />
         <Text style={estilos.anotarTexto}>{guardando ? '…' : T.peso.anotar}</Text>
-      </Pressable>
+      </Tocable>
       {!!error && <Text style={estilos.error}>{error}</Text>}
     </View>
   );

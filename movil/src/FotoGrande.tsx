@@ -3,6 +3,7 @@ import { T } from '@nucleo/textos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * LA FOTO DE PERFIL, GRANDE (8/10/2026).
@@ -19,7 +20,7 @@ export default function FotoGrande({ url, onCerrar, alCambiar }: { url: string |
         {url ? <Image source={{ uri: url }} style={estilos.foto} resizeMode="contain" /> : null}
         {alCambiar ? (
           <View style={estilos.botones}>
-            <Pressable
+            <Tocable
               testID="foto-grande-cambiar"
               style={estilos.solido}
               onPress={() => {
@@ -29,10 +30,10 @@ export default function FotoGrande({ url, onCerrar, alCambiar }: { url: string |
               }}
             >
               <Text style={estilos.solidoTexto}>{T.yo.cambiarFotoCorto}</Text>
-            </Pressable>
-            <Pressable style={estilos.borde} onPress={onCerrar}>
+            </Tocable>
+            <Tocable style={estilos.borde} onPress={onCerrar}>
               <Text style={estilos.bordeTexto}>{T.social.cerrarFoto}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         ) : (
           <Text style={estilos.cerrar}>{T.social.cerrarFoto}</Text>

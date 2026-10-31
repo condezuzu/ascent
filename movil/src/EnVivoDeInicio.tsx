@@ -1,5 +1,5 @@
 import { useEffect, useRef, memo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { publicarEnVivo, responderUnion } from '@compartido/enVivo';
 import { firmaDe, loQueSePublica } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
@@ -13,6 +13,7 @@ import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 
 /**
  * LA MITAD DE "ENTRENAR CON OTRO" QUE VIVE EN INICIO (12/10/2026).
@@ -77,21 +78,21 @@ function EnVivoDeInicio(visto: Visto) {
           <FondoOctogonal relleno={conAlfa(C.hoja, 0.96)} borde={C.lineaFuerte} corte={10} />
           <Text style={estilos.texto}>{T.social.quiereUnirse(u.otro.username)}</Text>
           <View style={estilos.botones}>
-            <Pressable
+            <Tocable
               testID="pedido-de-union-no"
               style={estilos.borde}
               hitSlop={8}
               onPress={() => void responderUnion(supabase, u.id, false).then(recargar)}
             >
               <Text style={estilos.bordeTexto}>{T.social.no}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               testID="pedido-de-union-aceptar"
               style={estilos.solido}
               onPress={() => void responderUnion(supabase, u.id, true).then(recargar)}
             >
               <Text style={estilos.solidoTexto}>{T.social.aceptar}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </View>
         </Aparece>

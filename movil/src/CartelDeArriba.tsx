@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { plataforma } from '@plataforma';
 import { miId } from '@compartido/quienSoy';
 import { traerNovedades } from '@compartido/novedades';
@@ -18,6 +18,7 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 
 /** Cada cuánto se pregunta con la app adelante. El aviso push lo adelanta. */
 const CADA_MS = 30_000;
@@ -139,12 +140,12 @@ export default function CartelDeArriba() {
         </View>
       </View>
       <View style={estilos.botones}>
-        <Pressable testID="cartel-no" style={estilos.borde} hitSlop={8} onPress={() => void contestar(false)}>
+        <Tocable testID="cartel-no" style={estilos.borde} hitSlop={8} onPress={() => void contestar(false)}>
           <Text style={estilos.bordeTexto}>{T.social.no}</Text>
-        </Pressable>
-        <Pressable testID="cartel-aceptar" style={estilos.solido} onPress={() => void contestar(true)}>
+        </Tocable>
+        <Tocable testID="cartel-aceptar" style={estilos.solido} onPress={() => void contestar(true)}>
           <Text style={estilos.solidoTexto}>{T.social.aceptar}</Text>
-        </Pressable>
+        </Tocable>
       </View>
     </Animated.View>
   );

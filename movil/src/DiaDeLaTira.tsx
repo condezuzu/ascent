@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, type StyleProp, type TextStyle } from 're
 import { paletaDe } from '@nucleo/paletas';
 import { C } from './colores';
 import { Text } from './Texto';
+import { LLENA } from './movimiento';
 
 /**
  * UN DÍA DE LA TIRA DE LUNES A DOMINGO, con la animación aprobada en la galería
@@ -16,7 +17,7 @@ const ENTRE_DIAS_MS = 45;
 const ENTRA_MS = 320;
 const SALTO_MS = 420;
 const FIN_DE_LA_ENTRADA = ESPERA_MS + 6 * ENTRE_DIAS_MS + ENTRA_MS;
-const CURVA_ENTRA = Easing.bezier(0.2, 0.7, 0.2, 1);
+const CURVA_ENTRA = LLENA;
 const CURVA_SALTO = Easing.bezier(0.3, 0.6, 0.3, 1);
 
 function mezclar(a: string, b: string, cuanto: number) {

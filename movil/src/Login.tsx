@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { VUELTA } from './enlace';
 import { mensajeDeAuth } from '@nucleo/errores';
@@ -7,6 +7,7 @@ import { T } from '@nucleo/textos';
 import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text, TextInput } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * ENTRAR — TANDA 2, y la primera pantalla de verdad de la app nativa.
@@ -139,7 +140,7 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
           </>
         )}
 
-        <Pressable
+        <Tocable
           style={[estilos.solido, cargando && estilos.apagado]}
           onPress={enviar}
           disabled={cargando}
@@ -149,25 +150,25 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
           ) : (
             <Text style={estilos.textoSolido}>{titulo}</Text>
           )}
-        </Pressable>
+        </Tocable>
 
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
         {aviso !== '' && <Text style={estilos.aviso}>{aviso}</Text>}
 
         <View style={estilos.secundarios}>
           {modo !== 'entrar' && (
-            <Pressable onPress={() => cambiarModo('entrar')}>
+            <Tocable onPress={() => cambiarModo('entrar')}>
               <Text style={estilos.enlace}>{T.entrar.volverAEntrar}</Text>
-            </Pressable>
+            </Tocable>
           )}
           {modo === 'entrar' && (
             <>
-              <Pressable onPress={() => cambiarModo('crear')}>
+              <Tocable onPress={() => cambiarModo('crear')}>
                 <Text style={estilos.enlace}>{T.entrar.primeraVez}</Text>
-              </Pressable>
-              <Pressable onPress={() => cambiarModo('recuperar')}>
+              </Tocable>
+              <Tocable onPress={() => cambiarModo('recuperar')}>
                 <Text style={estilos.enlace}>{T.entrar.olvide}</Text>
-              </Pressable>
+              </Tocable>
             </>
           )}
         </View>

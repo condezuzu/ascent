@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, AppState, Easing, PanResponder, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Animated, AppState, PanResponder, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from './supabase';
 import { miId, quienSoy } from '@compartido/quienSoy';
@@ -25,6 +25,8 @@ import { useTema } from './useTema';
 import { Text, TextoAnimado } from './Texto';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { LLEGA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -358,7 +360,7 @@ export default function Pestanas({
       Animated.timing(correr, {
         toValue: llega,
         duration: VIAJE_MS,
-        easing: Easing.bezier(...CURVA),
+        easing: LLEGA,
         useNativeDriver: true,
       }).start();
     },
@@ -422,7 +424,7 @@ export default function Pestanas({
           Animated.timing(correr, {
             toValue: llega,
             duration: VIAJE_MS,
-            easing: Easing.bezier(...CURVA),
+            easing: LLEGA,
             useNativeDriver: true,
           }).start(({ finished }) => {
             // UN VIAJE CORTADO NO DECIDE NADA. Lo corta otro gesto o un toque en
@@ -451,7 +453,7 @@ export default function Pestanas({
           Animated.timing(correr, {
             toValue: llega,
             duration: VIAJE_MS,
-            easing: Easing.bezier(...CURVA),
+            easing: LLEGA,
             useNativeDriver: true,
           }).start(({ finished }) => {
             if (finished && !gesto.current.decidido) setAsomando(null);
@@ -476,9 +478,9 @@ export default function Pestanas({
     ) : perfilNoCargo ? (
       <View style={estilos.centrado}>
         <Text style={estilos.noCargo}>{T.inicio.noCargo}</Text>
-        <Pressable style={estilos.reintentar} onPress={cargarPerfil}>
+        <Tocable style={estilos.reintentar} onPress={cargarPerfil}>
           <Text style={estilos.reintentarTexto}>{T.inicio.reintentar}</Text>
-        </Pressable>
+        </Tocable>
       </View>
     ) : (
       <View style={estilos.centrado}>
@@ -583,7 +585,7 @@ export default function Pestanas({
           // Ranking. Estando ahí ya las ves (van al final de la pantalla).
           const avisa = p === 'ranking' && solicitudes > 0 && pestana !== 'ranking';
           return (
-            <Pressable
+            <Tocable
               key={p}
               style={estilos.boton}
               onPress={() => irA(p)}
@@ -616,7 +618,7 @@ export default function Pestanas({
                   {rotuloDe(p)}
                 </TextoAnimado>
               </View>
-            </Pressable>
+            </Tocable>
           );
         })}
       </View>

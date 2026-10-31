@@ -1,10 +1,11 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { T } from '@nucleo/textos';
 import type { Unidad } from '@nucleo/peso';
 import AnotarPeso from './AnotarPeso';
 import Hoja from './Hoja';
 import { C } from './colores';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * ANOTAR EL PESO, Y NADA MÁS. La misma hoja que la web (`PesoSheet.tsx`).
@@ -36,9 +37,9 @@ export default function PesoHoja({
           alCerrar();
         }}
       />
-      <Pressable style={estilos.cancelar} onPress={alCerrar}>
+      <Tocable style={estilos.cancelar} onPress={alCerrar}>
         <Text style={estilos.cancelarTexto}>{T.general.cancelar}</Text>
-      </Pressable>
+      </Tocable>
     </Hoja>
   );
 }

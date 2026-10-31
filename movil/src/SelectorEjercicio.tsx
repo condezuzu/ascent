@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import { GRUPOS_PROPIOS, ORDEN_ZONAS, buscarEjercicios, gruposDeZona, nombreDeGrupo, sinAcentos, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
 import { disponible } from '@nucleo/esquema';
@@ -20,6 +20,7 @@ import GloboPrimeraVez from './GloboPrimeraVez';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * ELEGIR ENTRE CIEN EJERCICIOS, NAVEGANDO. El mismo árbol que la web
@@ -37,10 +38,10 @@ import { R } from './roles';
 function Fila({ texto, extra, elegido, onPress }: { texto: string; extra?: string; elegido?: boolean; onPress: () => void }) {
   useTema();
   return (
-    <Pressable style={estilos.fila} onPress={onPress} accessibilityRole="button">
+    <Tocable style={estilos.fila} onPress={onPress} accessibilityRole="button">
       <Text style={[estilos.filaTexto, elegido && estilos.elegido]} numberOfLines={1}>{texto}</Text>
       {extra !== undefined && <Text style={estilos.extra}>{extra}</Text>}
-    </Pressable>
+    </Tocable>
   );
 }
 
@@ -159,9 +160,9 @@ function SelectorEjercicio({
     <Hoja visible={visible} alCerrar={alCerrar}>
       <View style={estilos.cabecera}>
         {zona && (
-          <Pressable onPress={volver} style={estilos.volver} accessibilityLabel={T.general.volver}>
+          <Tocable onPress={volver} style={estilos.volver} accessibilityLabel={T.general.volver}>
             <Text style={estilos.volverTexto}>←</Text>
-          </Pressable>
+          </Tocable>
         )}
         <Text style={estilos.titulo}>{titulo}</Text>
       </View>
@@ -204,9 +205,9 @@ function SelectorEjercicio({
           <Text style={estilos.rotulo}>{T.ejercicios.queMusculo}</Text>
           <View style={estilos.chips}>
             {GRUPOS_PROPIOS.map((g) => (
-              <Pressable key={g} style={[estilos.chip, creando.grupo === g && estilos.chipElegido]} onPress={() => setCreando({ ...creando, grupo: g })}>
+              <Tocable key={g} style={[estilos.chip, creando.grupo === g && estilos.chipElegido]} onPress={() => setCreando({ ...creando, grupo: g })}>
                 <Text style={[estilos.chipTexto, creando.grupo === g && estilos.elegido]}>{T.ejercicios.grupos[g] ?? g}</Text>
-              </Pressable>
+              </Tocable>
             ))}
           </View>
           {creando.grupo === 'cardio' && <Text style={estilos.nota}>{T.ejercicios.seMideEnMinutos}</Text>}
@@ -214,19 +215,19 @@ function SelectorEjercicio({
           {parecido && (
             <View testID="ya-esta">
               <Text style={estilos.yaEsta}>{T.ejercicios.yaEsta(parecido.nombre)}</Text>
-              <Pressable testID="ya-esta-usar" style={estilos.crear} onPress={() => elegir(parecido.id)}>
+              <Tocable testID="ya-esta-usar" style={estilos.crear} onPress={() => elegir(parecido.id)}>
                 <Text style={estilos.crearTexto}>{T.ejercicios.usarEse}</Text>
-              </Pressable>
+              </Tocable>
             </View>
           )}
-          <Pressable
+          <Tocable
             testID="crear-ejercicio-listo"
             style={[parecido ? estilos.crearIgual : estilos.crear, (!creando.grupo || creando.nombre.trim().length < 2) && estilos.apagado]}
             onPress={() => void crear()}
             disabled={!creando.grupo || creando.nombre.trim().length < 2}
           >
             <Text style={parecido ? estilos.crearIgualTexto : estilos.crearTexto}>{parecido ? T.ejercicios.crearIgual : T.ejercicios.crear}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       )}
 
@@ -279,7 +280,7 @@ function SelectorEjercicio({
           .filter((e) => e.grupo === grupo)
           .map((e) => <Fila key={e.id} texto={e.nombre} extra={ultimos[e.id]} elegido={e.id === valor} onPress={() => elegir(e.id)} />)}
 
-      <Pressable
+      <Tocable
         style={estilos.cancelar}
         onPress={() => {
           setBusqueda('');
@@ -288,7 +289,7 @@ function SelectorEjercicio({
         }}
       >
         <Text style={estilos.cancelarTexto}>{T.general.cancelar}</Text>
-      </Pressable>
+      </Tocable>
     </Hoja>
   );
 }

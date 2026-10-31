@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CURVA } from '@nucleo/deslizar';
 import { C, conAlfa } from './colores';
+import { LLEGA } from './movimiento';
 
 /**
  * EL VELO DE LECTURA (30/10). El planeta vive abajo a la derecha y lo que se toca al entrenar
@@ -13,7 +14,7 @@ import { C, conAlfa } from './colores';
 export default function VeloDeLectura({ entero }: { entero: boolean }) {
   const opacidad = useRef(new Animated.Value(entero ? 1 : 0.5)).current;
   useEffect(() => {
-    Animated.timing(opacidad, { toValue: entero ? 1 : 0.5, duration: 420, easing: Easing.bezier(...CURVA), useNativeDriver: true }).start();
+    Animated.timing(opacidad, { toValue: entero ? 1 : 0.5, duration: 420, easing: LLEGA, useNativeDriver: true }).start();
   }, [entero, opacidad]);
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: opacidad }]} testID="velo-de-lectura">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { nombreValido } from '@nucleo/usuario';
@@ -8,6 +8,7 @@ import { reiniciarGuia } from '@compartido/guia';
 import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text, TextInput } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * ELEGIR EL NOMBRE — lo que falta para que una cuenta nueva sirva.
@@ -97,7 +98,7 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
           placeholderTextColor={C.apagado}
         />
 
-        <Pressable
+        <Tocable
           style={[estilos.solido, cargando && estilos.apagado]}
           onPress={guardar}
           disabled={cargando}
@@ -107,7 +108,7 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
           ) : (
             <Text style={estilos.textoSolido}>{T.entrar.empezar}</Text>
           )}
-        </Pressable>
+        </Tocable>
 
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
 
@@ -121,9 +122,9 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
 
             Es la misma familia que el perfil sin señal y que la cuenta
             borrada desde otro aparato: una pantalla de la que no se sale. */}
-        <Pressable style={estilos.salir} onPress={salir} hitSlop={8}>
+        <Tocable style={estilos.salir} onPress={salir} hitSlop={8}>
           <Text style={estilos.salirTexto}>{T.ajustes.cerrarSesion}</Text>
-        </Pressable>
+        </Tocable>
       </ScrollView>
     </KeyboardAvoidingView>
   );

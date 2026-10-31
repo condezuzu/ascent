@@ -89,6 +89,8 @@
 //      hoja con las esquinas de arriba cortadas y lo secundario subrayado (30/10), en la nativa.
 //  39. probar-profundidad — ninguna sombra negra ni borde fino; lo que emite, emite en el color del rango:
 //      la punta de la barra, el sólido, la pestaña y la neblina del descanso (30/10), en la nativa.
+//  40. probar-movimiento — cuadro por cuadro: la hoja sube y se va más corto con el velo quieto, las cifras
+//      cuentan, el pulgar viaja, los chips se cruzan, lo tocable se hunde, y con «reducir movimiento» nada (30/10).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -148,6 +150,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'las letras de la nativa', archivo: 'probar-letras.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'octágono o píldora', archivo: 'probar-forma.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'luz de color y bordes de 1 pt', archivo: 'probar-profundidad.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'llega con la curva, se va más corto', archivo: 'probar-movimiento.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

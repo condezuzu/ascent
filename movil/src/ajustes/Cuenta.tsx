@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { verLaGuiaDeNuevo as volverAVerLaGuia } from '@compartido/guia';
 import { plataforma } from '@plataforma';
 import { cerrarSesion, eliminarCuenta, limpiarAlSalir } from '@compartido/cuenta';
@@ -13,6 +13,7 @@ import { useTema } from '../useTema';
 import { Text, TextInput } from '../Texto';
 import FondoOctogonal from '../FondoOctogonal';
 import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * LO ÚLTIMO DE AJUSTES: cambiar la clave, salir, y darse de baja.
@@ -98,22 +99,22 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
           hasta que existiera el recorrido, y ahora existe. */}
       {/* UNA TARJETA CON FILAS (15/10): eran cuatro renglones de texto sueltos que no parecían tocables. */}
       <View style={estilos.tarjeta}>
-        <Pressable style={estilos.filaCuenta} onPress={() => verLaGuiaDeNuevo()} accessibilityRole="button">
+        <Tocable style={estilos.filaCuenta} onPress={() => verLaGuiaDeNuevo()} accessibilityRole="button">
           <Text style={estilos.enlace}>{T.ajustes.verGuia}</Text>
           <Text style={estilos.flecha}>›</Text>
-        </Pressable>
-        <Pressable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => cambiarClave()} accessibilityRole="button">
+        </Tocable>
+        <Tocable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => cambiarClave()} accessibilityRole="button">
           <Text style={estilos.enlace}>{T.ajustes.cambiarClave}</Text>
           <Text style={estilos.flecha}>›</Text>
-        </Pressable>
-        <Pressable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => salir()} accessibilityRole="button">
+        </Tocable>
+        <Tocable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => salir()} accessibilityRole="button">
           <Text style={estilos.enlace}>{T.ajustes.cerrarSesion}</Text>
           <Text style={estilos.flecha}>›</Text>
-        </Pressable>
+        </Tocable>
         {!abierta && (
-          <Pressable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => setAbierta(true)} accessibilityRole="button">
+          <Tocable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => setAbierta(true)} accessibilityRole="button">
             <Text style={estilos.peligro}>{T.ajustes.eliminarCuenta}</Text>
-          </Pressable>
+          </Tocable>
         )}
       </View>
 
@@ -135,14 +136,14 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
             autoCorrect={false}
           />
           <View style={estilos.botones}>
-            <Pressable
+            <Tocable
               style={[estilos.botonPeligro, confirmacion.trim() !== perfil.username && estilos.peligroSinConfirmar]}
               onPress={() => borrar()}
               disabled={borrando || confirmacion.trim() !== perfil.username}
             >
               <Text style={[estilos.botonPeligroTexto, confirmacion.trim() !== perfil.username && estilos.peligroSinConfirmarTexto]}>{borrando ? T.ajustes.bajaEliminando : T.ajustes.bajaConfirmar}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               style={estilos.boton}
               onPress={() => {
                 setAbierta(false);
@@ -152,7 +153,7 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
               disabled={borrando}
             >
               <Text style={estilos.botonTexto}>{T.ajustes.mejorNo}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </View>
       )}

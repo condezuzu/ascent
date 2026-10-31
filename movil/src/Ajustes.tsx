@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
 import { cuerpoDe } from '@nucleo/rangos';
@@ -34,6 +34,7 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -239,7 +240,7 @@ export default function Ajustes({
       <Text style={estilos.seccion}>{T.ajustes.diasDescanso}</Text>
       <View style={estilos.fila}>
         {DIAS_SEMANA.map((d, i) => (
-          <Pressable
+          <Tocable
             key={i}
             onPress={() => alternarDia(i)}
             style={[estilos.pastilla, perfil.dias_descanso.includes(i) && estilos.prendida]}
@@ -252,7 +253,7 @@ export default function Ajustes({
             >
               {d}
             </Text>
-          </Pressable>
+          </Tocable>
         ))}
       </View>
 
@@ -279,12 +280,12 @@ export default function Ajustes({
 
       {/* TU PERFIL, arriba de todo en Perfil: Ajustes es donde se lo
           busca cuando no se lo encontró en Inicio. */}
-      <Pressable style={estilos.tuPerfil} onPress={() => router.push('/yo')} accessibilityRole="button">
+      <Tocable style={estilos.tuPerfil} onPress={() => router.push('/yo')} accessibilityRole="button">
         <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={40} />
         <View style={{ flex: 1 }}>
           <Text style={estilos.tuNombre}>{perfil.username}</Text>
         </View>
-      </Pressable>
+      </Tocable>
 
       {/* EL GIMNASIO VA PRIMERO EN PERFIL, igual que en la web: es lo que diferencia a
           la app, y en una lista de interruptores al fondo no lo marca nadie. */}
@@ -374,7 +375,7 @@ export default function Ajustes({
       {/* AJUSTES AVANZADOS: todo lo que no se toca seguido, detrás de un solo
           pliegue. Adentro va cada cosa con su propio contexto —incluida cuentas
           bloqueadas— así ninguna aparece suelta en medio de la lista. */}
-      <Pressable
+      <Tocable
         style={estilos.avanzadoCabe}
         onPress={() => setAvanzado(!avanzado)}
         accessibilityRole="button"
@@ -382,7 +383,7 @@ export default function Ajustes({
       >
         <Text style={estilos.avanzadoTitulo}>{T.ajustes.avanzados}</Text>
         <Text style={estilos.avanzadoSigno}>{avanzado ? '−' : '+'}</Text>
-      </Pressable>
+      </Tocable>
 
       {avanzado && (
         <>

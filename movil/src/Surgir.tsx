@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { AccessibilityInfo, Animated, Easing, type StyleProp, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, Animated, type StyleProp, type ViewStyle } from 'react-native';
 import { demoraDeEntrada, SURGIR_MS, SURGIR_PX } from '@nucleo/animacion';
 import { CURVA } from '@nucleo/deslizar';
+import { LLEGA } from './movimiento';
 
 /**
  * LO QUE ENTRA, ENTRA: opacidad y nueve píxeles desde abajo.
@@ -21,9 +22,12 @@ import { CURVA } from '@nucleo/deslizar';
  */
 export default function Surgir({
   indice = 0,
+  demora,
   style,
   children,
 }: {
+  /** En vez de la del lugar en la lista: lo que aparece después de otra cosa. */
+  demora?: number;
   /** La posición en la lista: de ahí sale cuándo le toca entrar. */
   indice?: number;
   style?: StyleProp<ViewStyle>;
@@ -41,8 +45,8 @@ export default function Surgir({
         Animated.timing(t, {
           toValue: 1,
           duration: SURGIR_MS,
-          delay: demoraDeEntrada(indice),
-          easing: Easing.bezier(...CURVA),
+          delay: demora ?? demoraDeEntrada(indice),
+          easing: LLEGA,
           useNativeDriver: true,
         }).start();
       });

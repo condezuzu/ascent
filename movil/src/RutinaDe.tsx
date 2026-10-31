@@ -14,6 +14,7 @@ import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * LA RUTINA DE ALGUIEN, PARA MIRARLA (14/10): la tuya en tu perfil, la de un
@@ -146,10 +147,10 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
             );
           })}
           <View style={estilos.botones}>
-            <Pressable style={[estilos.pildora, estilos.pildoraBorde]} onPress={() => { setEligiendo(false); setElegidos([]); }} accessibilityRole="button">
+            <Tocable style={[estilos.pildora, estilos.pildoraBorde]} onPress={() => { setEligiendo(false); setElegidos([]); }} accessibilityRole="button">
               <Text style={estilos.pildoraBordeTexto}>{T.rutina.cancelar}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               testID="copiar-elegidos"
               style={[estilos.pildora, estilos.pildoraCrema, elegidos.length === 0 && estilos.apagada]}
               onPress={() => void copiar()}
@@ -157,7 +158,7 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
               accessibilityRole="button"
             >
               <Text style={estilos.pildoraCremaTexto}>{T.rutina.copiarDias(elegidos.length)}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </View>
       ) : (
@@ -171,9 +172,9 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
           {/* La tuya también, abierta (20/10): cerrada, en tu perfil no se veía ningún ejercicio. */}
           <RutinaPlegada dias={rutina.dias} catalogo={catalogo} soloConAlgo={rutina.deducida} abiertos />
           {!esYo && (
-            <Pressable testID="rutina-copiar" style={[estilos.pildora, estilos.pildoraBorde, estilos.copiar]} onPress={() => setEligiendo(true)} accessibilityRole="button">
+            <Tocable testID="rutina-copiar" style={[estilos.pildora, estilos.pildoraBorde, estilos.copiar]} onPress={() => setEligiendo(true)} accessibilityRole="button">
               <Text style={estilos.pildoraBordeTexto}>{T.rutina.copiar}</Text>
-            </Pressable>
+            </Tocable>
           )}
         </>
       )}

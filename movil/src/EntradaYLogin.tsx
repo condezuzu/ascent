@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
 import { anotarEntradaVista, vioLaEntrada } from '@compartido/entradaVista';
 import Bienvenida from './Bienvenida';
 import Login from './Login';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import { LLEGA, LLENA } from './movimiento';
 
 /**
  * LA ENTRADA: primero la bienvenida, después el login.
@@ -20,7 +21,7 @@ import { useTema } from './useTema';
  * apaga y el formulario entra como entra cada pantalla de la bienvenida (se
  * desliza 18 puntos y aparece, con la misma curva), sobre el mismo negro.
  */
-const CURVA = Easing.bezier(0.2, 0.7, 0.2, 1);
+const CURVA = LLENA;
 export default function EntradaYLogin({ alEntrar }: { alEntrar: () => void }) {
   useTema();
   // `null` mientras se averigua: con `true` de entrada, quien ya la vio la vería parpadear.
@@ -46,7 +47,7 @@ export default function EntradaYLogin({ alEntrar }: { alEntrar: () => void }) {
             // Se anota al SALIR: si cierra la app a la mitad, la próxima vez la ve entera.
             void anotarEntradaVista();
             setModo(destino);
-            Animated.timing(sale, { toValue: 0, duration: 200, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => {
+            Animated.timing(sale, { toValue: 0, duration: 200, easing: LLEGA, useNativeDriver: true }).start(() => {
               entra.setValue(0);
               setVerSlides(false);
               Animated.timing(entra, { toValue: 1, duration: 450, easing: CURVA, useNativeDriver: true }).start();

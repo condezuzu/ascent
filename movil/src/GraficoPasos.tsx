@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
+import { StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { puntoMasCercano, trazarSerie } from '@nucleo/tendencia';
 import { faltanPasos, pasosDeHoy } from '@nucleo/pasos';
@@ -11,6 +11,7 @@ import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * LOS PASOS, COMO TENDENCIA. El mismo gráfico que el del peso —la misma media
@@ -321,7 +322,7 @@ function Ventanas({
       {RANGOS.map((r) => {
         const activo = r.dias === rango;
         return (
-          <Pressable key={r.dias} hitSlop={8} onPress={() => alElegir(r.dias)}>
+          <Tocable key={r.dias} hitSlop={8} onPress={() => alElegir(r.dias)}>
             <Text
               style={[
                 estilos.rango,
@@ -330,7 +331,7 @@ function Ventanas({
             >
               {r.etiqueta()}
             </Text>
-          </Pressable>
+          </Tocable>
         );
       })}
     </View>
@@ -355,9 +356,9 @@ function PieDeMeta({ meta, alTocar }: { meta: number; alTocar: () => void }) {
     <>
       {/* Un botón de verdad, no un texto subrayado que parecía un link (28/9):
           píldora con borde, del mismo lenguaje que el resto de la app. */}
-      <Pressable onPress={alTocar} hitSlop={8} accessibilityRole="button" style={estilos.metaBoton}>
+      <Tocable onPress={alTocar} hitSlop={8} accessibilityRole="button" style={estilos.metaBoton}>
         <Text style={estilos.metaBotonTexto}>{T.stats.pasosMeta(conMiles(meta))}</Text>
-      </Pressable>
+      </Tocable>
     </>
   );
 }

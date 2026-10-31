@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
 import { T } from '@nucleo/textos';
@@ -7,6 +7,7 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * "¿LO GUARDO COMO MARCA?", en el resumen nativo. Qué se propone lo decide
@@ -34,13 +35,13 @@ export default function SugerenciasDeMarca({ bloques, unidad }: { bloques: unkno
               <Text style={estilos.cuantas}>{T.marcaSugerida.cuantas}</Text>
               <View style={estilos.reps}>
                 {REPETICIONES_PARA_MARCA.map((r) => (
-                  <Pressable key={r} style={estilos.rep} disabled={s.estado === 'guardando'} onPress={() => guardar(s, r)}>
+                  <Tocable key={r} style={estilos.rep} disabled={s.estado === 'guardando'} onPress={() => guardar(s, r)}>
                     <Text style={estilos.repTexto}>{r}</Text>
-                  </Pressable>
+                  </Tocable>
                 ))}
-                <Pressable style={[estilos.rep, estilos.no]} onPress={() => descartar(s)}>
+                <Tocable style={[estilos.rep, estilos.no]} onPress={() => descartar(s)}>
                   <Text style={estilos.noTexto}>{T.marcaSugerida.no}</Text>
-                </Pressable>
+                </Tocable>
               </View>
             </>
           )}

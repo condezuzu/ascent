@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import { T } from '@nucleo/textos';
 import { claveNuevaInvalida, porQueNoCambio } from '@nucleo/clave';
 import { useEnVuelo } from '@compartido/useEnVuelo';
@@ -8,6 +8,7 @@ import CampoTexto from './CampoTexto';
 import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * ELEGIR LA CONTRASEÑA NUEVA, después de tocar el enlace del correo (4/10).
@@ -74,15 +75,15 @@ export default function ClaveNueva({ alTerminar }: { alTerminar: () => void }) {
               textContentType="newPassword"
               accessibilityLabel={T.clave.repetir}
             />
-            <Pressable style={[estilos.solido, guardando && estilos.apagado]} onPress={() => guardar()} disabled={guardando}>
+            <Tocable style={[estilos.solido, guardando && estilos.apagado]} onPress={() => guardar()} disabled={guardando}>
               <Text style={estilos.solidoTexto}>{guardando ? T.sesion.guardando : T.general.guardar}</Text>
-            </Pressable>
+            </Tocable>
             {error !== '' && <Text style={estilos.error}>{error}</Text>}
             {/* Apagado mientras guarda: cerrar acá no frena el cambio, y la
                 contraseña cambiaba igual un segundo después, sin aviso. */}
-            <Pressable onPress={alTerminar} hitSlop={10} style={[estilos.despues, guardando && estilos.apagado]} disabled={guardando}>
+            <Tocable onPress={alTerminar} hitSlop={10} style={[estilos.despues, guardando && estilos.apagado]} disabled={guardando}>
               <Text style={estilos.despuesTexto}>{T.clave.ahoraNo}</Text>
-            </Pressable>
+            </Tocable>
           </>
         )}
       </ScrollView>

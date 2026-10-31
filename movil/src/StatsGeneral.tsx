@@ -1,7 +1,7 @@
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, Animated } from 'react-native';
 import { supabase } from './supabase';
 import { T } from '@nucleo/textos';
 import { deISO, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
@@ -31,6 +31,8 @@ import { modosDeLasVidas } from '@nucleo/impulsos';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
 import { Fantasma, Seccion, R } from './roles';
+import { LLEGA, MS, sinMovimiento } from './movimiento';
+import Relleno from './Relleno';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -184,7 +186,7 @@ export default function StatsGeneral({
       <Seccion>{T.stats.elAno}</Seccion>
       <View style={[estilos.tarjeta, estilos.mapa]}>
         {semanas.map((s, i) => (
-          <View key={i} style={estilos.columna}>
+          <ColumnaDelAno key={i} indice={i}>
             {s.map((c) => (
               <View
                 key={c.fecha}
@@ -198,7 +200,7 @@ export default function StatsGeneral({
                 ]}
               />
             ))}
-          </View>
+          </ColumnaDelAno>
         ))}
       </View>
 
@@ -345,7 +347,7 @@ function Sesiones() {
         <View key={d.fecha} style={estilos.diaSesion}>
           <Text style={[estilos.dato, { width: 70 }]}>{etiquetaDeDia(d.fecha)}</Text>
           <View style={estilos.barra}>
-            <View style={[estilos.relleno, { width: `${(d.segundos / techo) * 100}%` }]} />
+            <Relleno fraccion={d.segundos / techo} style={estilos.relleno} />
           </View>
           <Text style={[estilos.dato, { width: 70, textAlign: 'right' }]}>
             {d.segundos > 0 ? duracionLinda(d.segundos) : '—'}
@@ -375,6 +377,24 @@ function PromedioDePasos({ pasos, meta }: { pasos: { fecha: string; valor: numbe
       <Text style={estilos.promedioCuando}>{T.stats.pasosPromedioCuando}</Text>
     </View>
   );
+}
+
+/** El año entra de izquierda a derecha, de a una columna. */
+function ColumnaDelAno({ indice, children }: { indice: number; children: ReactNode }) {
+  useTema();
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    let vivo = true;
+    void sinMovimiento().then((quieto) => {
+      if (!vivo) return;
+      if (quieto) return t.setValue(1);
+      Animated.timing(t, { toValue: 1, duration: MS.entra, delay: indice * MS.columna, easing: LLEGA, useNativeDriver: true }).start();
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [indice, t]);
+  return <Animated.View style={[estilos.columna, { opacity: t }]}>{children}</Animated.View>;
 }
 
 const estilos = conTema(() => StyleSheet.create({

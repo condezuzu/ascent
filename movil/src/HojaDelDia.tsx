@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
 import { DIAS_SEMANA_LARGO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
@@ -22,6 +22,7 @@ import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * UN DÍA, ABIERTO: qué hiciste, y corregirlo si está mal. La misma hoja que la
@@ -232,9 +233,9 @@ export default function HojaDelDia({
                   </View>
                   <View style={estilos.acciones}>
                     <EtiquetaDeCarga carga={b.carga} ejercicio={b.ejercicio} alElegir={(c) => revisar(b.sesion, b.orden, c)} />
-                    <Pressable hitSlop={8} onPress={() => revisar(b.sesion, b.orden, b.carga)}>
+                    <Tocable hitSlop={8} onPress={() => revisar(b.sesion, b.orden, b.carga)}>
                       <Text style={estilos.botonTexto}>{T.volumen.estaBien}</Text>
-                    </Pressable>
+                    </Tocable>
                   </View>
                 </View>
               ))}
@@ -258,7 +259,7 @@ export default function HojaDelDia({
               <Text style={estilos.rotulo}>{T.resumen.corregir}</Text>
               <View style={estilos.selector}>
                 {(['fui', 'descanso', 'nada'] as Destino[]).map((d) => (
-                  <Pressable
+                  <Tocable
                     key={d}
                     disabled={ocupado}
                     onPress={() => corregir(d)}
@@ -269,18 +270,18 @@ export default function HojaDelDia({
                     <Text style={[estilos.opcionTexto, actual === d && estilos.opcionTextoActivo]}>
                       {d === 'fui' ? T.resumen.marcarFui : d === 'descanso' ? T.resumen.marcarDescanso : T.resumen.marcarNada}
                     </Text>
-                  </Pressable>
+                  </Tocable>
                 ))}
               </View>
               {porConfirmar && (
                 <View style={estilos.confirmar}>
                   <Text style={estilos.sub}>{T.resumen.borraSesion}</Text>
-                  <Pressable hitSlop={8} onPress={() => corregir(porConfirmar, true)}>
+                  <Tocable hitSlop={8} onPress={() => corregir(porConfirmar, true)}>
                     <Text style={[estilos.botonTexto, { color: C.error }]}>{T.resumen.siCambiar}</Text>
-                  </Pressable>
-                  <Pressable hitSlop={8} onPress={() => setPorConfirmar(null)}>
+                  </Tocable>
+                  <Tocable hitSlop={8} onPress={() => setPorConfirmar(null)}>
                     <Text style={estilos.botonTexto}>{T.album.no}</Text>
-                  </Pressable>
+                  </Tocable>
                 </View>
               )}
               {!!error && <Text style={estilos.error}>{error}</Text>}
@@ -289,9 +290,9 @@ export default function HojaDelDia({
         </>
       )}
 
-      <Pressable hitSlop={8} onPress={alCerrar} style={{ marginTop: 18 }}>
+      <Tocable hitSlop={8} onPress={alCerrar} style={{ marginTop: 18 }}>
         <Text style={estilos.botonTexto}>{T.general.cerrar}</Text>
-      </Pressable>
+      </Tocable>
     </Hoja>
   );
 }

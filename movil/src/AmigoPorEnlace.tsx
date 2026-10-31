@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { buscarPorNombre, pedirAmistad } from '@compartido/ranking';
 import { miId } from '@compartido/quienSoy';
@@ -10,6 +10,7 @@ import { C } from './colores';
 import { volverOInicio } from './volver';
 import { useArriba } from './zonaSegura';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * A DÓNDE CAE UN LINK DE AMIGO (`ascent://amigo/<nombre>`, 8/10/2026).
@@ -73,9 +74,9 @@ export default function AmigoPorEnlace() {
 
   return (
     <View style={estilos.raiz}>
-      <Pressable onPress={irse} hitSlop={8} style={[estilos.volver, { paddingTop: arriba }]}>
+      <Tocable onPress={irse} hitSlop={8} style={[estilos.volver, { paddingTop: arriba }]}>
         <Text style={estilos.enlace}>{T.general.volver}</Text>
-      </Pressable>
+      </Tocable>
       <View style={estilos.centrado}>
         {estado === 'buscando' ? (
           <ActivityIndicator color={C.sub} />
@@ -83,9 +84,9 @@ export default function AmigoPorEnlace() {
           <>
             <Text style={estilos.texto}>{estado === 'no-existe' ? T.social.noExiste : T.inicio.noCargo}</Text>
             {estado === 'no-se-pudo' && (
-              <Pressable onPress={() => void buscar()} hitSlop={8}>
+              <Tocable onPress={() => void buscar()} hitSlop={8}>
                 <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-              </Pressable>
+              </Tocable>
             )}
           </>
         )}

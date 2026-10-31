@@ -1,10 +1,11 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Semana } from '@nucleo/volumen';
 import { T } from '@nucleo/textos';
 import { C, conAlfa } from './colores';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 const ALTO = 72;
 
@@ -40,7 +41,7 @@ export default function KilosPorSemana({
       </Text>
       <View style={estilos.barras}>
         {semanas.map((s, i) => (
-          <Pressable
+          <Tocable
             key={s.desde}
             style={estilos.columna}
             onPress={() => alElegir(i)}
@@ -54,7 +55,7 @@ export default function KilosPorSemana({
                 { height: Math.max(2, (s.kilos / tope) * ALTO), backgroundColor: i === elegida ? color : conAlfa(color, 0.35) },
               ]}
             />
-          </Pressable>
+          </Tocable>
         ))}
       </View>
     </View>

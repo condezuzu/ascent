@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Estrella from './Estrella';
 import { C, conTema, conAlfa, luz } from './colores';
 import { useTema } from './useTema';
+import { SE_VA } from './movimiento';
 
 export type EstadoDelDia = 'lleno' | 'vacio' | 'descanso' | 'futuro' | 'cubierto' | 'sinDato';
 
@@ -45,7 +46,7 @@ export default function PuntoDelDia({ estado, esHoy, frio = null }: { estado: Es
   useEffect(() => {
     if (frio !== 'derrite') return;
     derrite.setValue(0);
-    Animated.timing(derrite, { toValue: 1, duration: 1100, easing: Easing.in(Easing.quad), useNativeDriver: true }).start();
+    Animated.timing(derrite, { toValue: 1, duration: 1100, easing: SE_VA, useNativeDriver: true }).start();
   }, [frio, derrite]);
 
   const cubierto = estado === 'cubierto';

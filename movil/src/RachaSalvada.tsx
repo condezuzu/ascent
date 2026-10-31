@@ -11,6 +11,8 @@ import PuntoDelDia, { type EstadoDelDia, type FrioDelDia } from './PuntoDelDia';
 import { Text, TextoAnimado } from './Texto';
 import { L } from './fuentes';
 import FondoOctogonal from './FondoOctogonal';
+import { LLEGA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * EL AVISO DE LA VIDA, en nativo (rehecho el 19/10, con lo aprobado en la galería).
@@ -141,7 +143,7 @@ export default function RachaSalvada({
     const desde = await medirEnLaRaiz(estrellaDelBoton.current);
     const hasta = centroDelDia(ultimo);
     // 1. El texto se comprime en la estrella, que brilla.
-    await new Promise<void>((ok) => Animated.timing(comprime, { toValue: 1, duration: COMPRIME_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => ok()));
+    await new Promise<void>((ok) => Animated.timing(comprime, { toValue: 1, duration: COMPRIME_MS, easing: LLEGA, useNativeDriver: true }).start(() => ok()));
     // 2. Salta al día, en arco; el cuadro se va.
     if (desde && hasta) {
       setVuelo({ desde, hasta });
@@ -155,7 +157,7 @@ export default function RachaSalvada({
     // 3. Queda plantada, con un anillo de luz.
     setPlantada(true);
     anillo.setValue(0);
-    await new Promise<void>((ok) => Animated.timing(anillo, { toValue: 1, duration: PLANTA_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => ok()));
+    await new Promise<void>((ok) => Animated.timing(anillo, { toValue: 1, duration: PLANTA_MS, easing: LLEGA, useNativeDriver: true }).start(() => ok()));
     // 4. Se congela, y sale el globito.
     setHelada(true);
     plataforma.haptica.pulso();
@@ -247,19 +249,19 @@ export default function RachaSalvada({
                 {fallo && <Text style={estilos.fallo}>{fallo === 'guardar' ? T.impulso.salvada.noSeGuardo : T.impulso.salvada.noSeCorrigio}</Text>}
                 <View style={estilos.botones}>
                   <View style={estilos.columna}>
-                    <Pressable testID="vida-usar" style={[estilos.boton, estilos.usar]} onPress={() => void usar()} disabled={ocupado} accessibilityRole="button" accessibilityLabel={T.impulso.salvada.usarVida}>
+                    <Tocable testID="vida-usar" style={[estilos.boton, estilos.usar]} onPress={() => void usar()} disabled={ocupado} accessibilityRole="button" accessibilityLabel={T.impulso.salvada.usarVida}>
                       <Animated.View ref={estrellaDelBoton} collapsable={false} style={{ transform: [{ scale: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] }) }], opacity: vuelo || plantada ? 0 : 1 }}>
                         <Estrella tam={15} modo="oscura" />
                       </Animated.View>
                       <TextoAnimado style={[estilos.usarTexto, { opacity: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }), transform: [{ translateX: comprime.interpolate({ inputRange: [0, 1], outputRange: [0, -14] }) }, { scaleX: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }] }]}>
                         {T.impulso.salvada.usarVida}
                       </TextoAnimado>
-                    </Pressable>
+                    </Tocable>
                   </View>
                   <View style={estilos.columna}>
-                    <Pressable testID="vida-guardar" style={[estilos.boton, estilos.guardar]} onPress={() => void guardar()} disabled={ocupado} accessibilityRole="button">
+                    <Tocable testID="vida-guardar" style={[estilos.boton, estilos.guardar]} onPress={() => void guardar()} disabled={ocupado} accessibilityRole="button">
                       <Text style={estilos.guardarTexto}>{fase === 'guardando' ? T.sesion.guardando : T.impulso.salvada.guardarVida}</Text>
-                    </Pressable>
+                    </Tocable>
                     <Text style={estilos.chico}>{T.impulso.salvada.bajaDiez}</Text>
                   </View>
                 </View>
@@ -298,9 +300,9 @@ export default function RachaSalvada({
         </View>
 
         {(cerrada || fase === 'helada') && (
-          <Pressable testID="vida-listo" style={[estilos.boton, estilos.usar, estilos.listo]} onPress={alCerrar} accessibilityRole="button">
+          <Tocable testID="vida-listo" style={[estilos.boton, estilos.usar, estilos.listo]} onPress={alCerrar} accessibilityRole="button">
             <Text style={estilos.usarTexto}>{fase === 'guardada' ? T.general.entendido : T.impulso.salvada.listo}</Text>
-          </Pressable>
+          </Tocable>
         )}
       </View>
     </Modal>

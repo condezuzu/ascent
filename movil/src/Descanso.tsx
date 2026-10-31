@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, StyleSheet, View, Animated } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { pasadoDe } from '@nucleo/avisoDescanso';
 import CompaneroEnDescanso from './CompaneroEnDescanso';
@@ -27,6 +27,7 @@ import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
 import FondoOctogonal from './FondoOctogonal';
 import { Fantasma } from './roles';
+import { useQueSube } from './movimiento';
 
 /**
  * EL DESCANSO ENTRE SERIES, en nativo (§18). La misma pantalla que la web:
@@ -70,6 +71,7 @@ export default function Descanso({
   alSumar: () => void;
 }) {
   useTema();
+  const { montada, avance } = useQueSube(visible);
   const arriba = useArriba(56);
   const [, repintar] = useState(0);
   // Opaca y a pantalla completa: mientras se ve, el fondo 3D no tiene por qué dibujar.
@@ -169,8 +171,13 @@ export default function Descanso({
   const serie = vivo.serie && vivo.serie > 0 ? T.descanso.serieDe(vivo.serie, vivo.meta ?? 0) : null;
 
   return (
-    <Modal visible={visible} animationType="fade" onRequestClose={alOcultar} statusBarTranslucent>
-      <View style={[estilos.pantalla, { paddingTop: arriba }]}>
+    <Modal visible={montada} transparent animationType="none" onRequestClose={alOcultar} statusBarTranslucent>
+      <Animated.View
+        style={[
+          estilos.pantalla,
+          { paddingTop: arriba, opacity: avance, transform: [{ translateY: avance.interpolate({ inputRange: [0, 1], outputRange: [46, 0] }) }] },
+        ]}
+      >
         {/* La neblina del rango: el aire de la pantalla, sin tapar el número. */}
         <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
           <Defs>
@@ -181,9 +188,9 @@ export default function Descanso({
           </Defs>
           <Rect width="100%" height="100%" fill="url(#neblina)" />
         </Svg>
-        <Pressable style={estilos.cerrar} onPress={alOcultar} accessibilityLabel={T.descanso.cerrar}>
+        <Tocable style={estilos.cerrar} onPress={alOcultar} accessibilityLabel={T.descanso.cerrar}>
           <Text style={estilos.cerrarTexto}>✕</Text>
-        </Pressable>
+        </Tocable>
 
         {/* ARRIBA, CHICO: qué estabas haciendo (12/10). Antes la pantalla era un
             número solo: decía cuándo volver y nada sobre a qué. */}
@@ -241,10 +248,10 @@ export default function Descanso({
 
         {terminado ? (
           <View style={estilos.abajo}>
-            <Pressable style={estilos.solido} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
+            <Tocable style={estilos.solido} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
               <FondoOctogonal relleno={C.claro} luz={C.claro} />
               <Text style={estilos.solidoTexto}>{T.descanso.serieHecha}</Text>
-            </Pressable>
+            </Tocable>
             <Fantasma
               enHoja
               texto={T.descanso.seguir}
@@ -281,7 +288,7 @@ export default function Descanso({
                   <Text style={[estilos.presetTexto, estilos.presetTextoActivo]}>{duracionCorta(vivo.duracion)}</Text>
                 </View>
               )}
-              <Pressable
+              <Tocable
                 testID="descanso-a-mano"
                 style={[estilos.preset, aMano !== null && estilos.presetActivo]}
                 onPress={() => setAMano(aMano === null ? '' : null)}
@@ -289,7 +296,7 @@ export default function Descanso({
                 accessibilityRole="button"
               >
                 <Text style={[estilos.presetTexto, aMano !== null && estilos.presetTextoActivo]}>+</Text>
-              </Pressable>
+              </Tocable>
             </View>
             {aMano !== null && (
               <Aparece>
@@ -312,7 +319,7 @@ export default function Descanso({
                     }
                   }}
                 />
-                <Pressable
+                <Tocable
                   testID="descanso-a-mano-usar"
                   style={[estilos.preset, estilos.presetActivo]}
                   disabled={descansoAMano(aMano) === null}
@@ -326,17 +333,17 @@ export default function Descanso({
                   <Text style={[estilos.presetTexto, estilos.presetTextoActivo, descansoAMano(aMano) === null && { color: C.apagado }]}>
                     {T.descanso.aManoUsar}
                   </Text>
-                </Pressable>
+                </Tocable>
               </View>
               </Aparece>
             )}
-            {aMano !== null && aMano.trim() !== '' && descansoAMano(aMano) === null && <Aparece><Text style={estilos.aManoMal}>{T.descanso.aManoMal}</Text></Aparece>}
+            <Aparece visible={!!(aMano !== null && aMano.trim() !== '' && descansoAMano(aMano) === null)}><Text style={estilos.aManoMal}>{T.descanso.aManoMal}</Text></Aparece>
             <Fantasma enHoja texto={quieto ? T.general.cancelar : T.descanso.saltar} alTocar={alOcultar} />
           </View>
         )}
 
         <CompaneroEnDescanso visible={visible} ahora={ahora} />
-      </View>
+      </Animated.View>
     </Modal>
   );
 }

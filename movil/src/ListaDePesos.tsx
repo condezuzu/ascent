@@ -14,6 +14,7 @@ import { useTema } from './useTema';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * LO QUE ANOTASTE, con forma de arreglarlo. La misma lista que la web
@@ -151,22 +152,22 @@ export default function ListaDePesos({
                   placeholder={T.peso.placeholder(unidad)}
                   placeholderTextColor={C.apagado}
                 />
-                <Pressable onPress={() => guardar(p.fecha)} hitSlop={8} style={estilos.textoBoton}>
+                <Tocable onPress={() => guardar(p.fecha)} hitSlop={8} style={estilos.textoBoton}>
                   <Text style={estilos.accion}>{T.general.guardar}</Text>
-                </Pressable>
-                <Pressable onPress={() => setCorrigiendo(null)} hitSlop={8} style={estilos.textoBoton}>
+                </Tocable>
+                <Tocable onPress={() => setCorrigiendo(null)} hitSlop={8} style={estilos.textoBoton}>
                   <Text style={estilos.apagada}>{T.general.cancelar}</Text>
-                </Pressable>
+                </Tocable>
               </>
             ) : preguntando ? (
               <>
                 <Text style={estilos.pregunta}>{T.peso.borrarSeguro}</Text>
-                <Pressable onPress={() => borrar(p.fecha)} hitSlop={8} style={estilos.textoBoton}>
+                <Tocable onPress={() => borrar(p.fecha)} hitSlop={8} style={estilos.textoBoton}>
                   <Text style={estilos.peligro}>{T.peso.borrarSi}</Text>
-                </Pressable>
-                <Pressable onPress={() => setBorrando(null)} hitSlop={8} style={estilos.textoBoton}>
+                </Tocable>
+                <Tocable onPress={() => setBorrando(null)} hitSlop={8} style={estilos.textoBoton}>
                   <Text style={estilos.apagada}>{T.general.cancelar}</Text>
-                </Pressable>
+                </Tocable>
               </>
             ) : (
               <>

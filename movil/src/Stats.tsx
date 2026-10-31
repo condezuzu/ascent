@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View, Animated } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { aISO, deISO, fechaCorta, fechaLinda, hoyISO } from '@nucleo/fechas';
@@ -46,6 +46,9 @@ import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { Caja, R, Seccion } from './roles';
+import { LLEGA, MS, sinMovimiento } from './movimiento';
+import NumeroQueCuenta from './NumeroQueCuenta';
+import Relleno from './Relleno';
 
 const SEMANAS = 8;
 
@@ -101,6 +104,15 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState('');
   const [pestana, setPestana] = useState<'general' | 'entrenamiento'>(() => (seAcabaDePedir() ? 'entrenamiento' : 'general'));
+  const [anchoSelector, setAnchoSelector] = useState(0);
+  const pulgar = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!anchoSelector) return;
+    const destino = pestana === 'general' ? 0 : (anchoSelector + HUECO_SELECTOR) / 2;
+    void sinMovimiento().then((quieto) => {
+      Animated.timing(pulgar, { toValue: destino, duration: quieto ? 0 : MS.pulgar, easing: LLEGA, useNativeDriver: true }).start();
+    });
+  }, [pestana, anchoSelector, pulgar]);
   // La fila "Hoy" de Inicio trae acá, a la rutina (16/10).
   useEffect(() => eventos.escuchar(ABRIR_ENTRENAMIENTO, () => {
     seAcabaDePedir();
@@ -223,9 +235,9 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     return (
       <View style={estilos.centrado}>
         <Text style={estilos.error}>{error}</Text>
-        <Pressable onPress={cargar}>
+        <Tocable onPress={cargar}>
           <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-        </Pressable>
+        </Tocable>
       </View>
     );
   }
@@ -266,11 +278,19 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]} scrollEnabled={!arrastrando} keyboardShouldPersistTaps="handled">
       <Text style={estilos.titulo}>{T.stats.titulo}</Text>
 
-      <View style={estilos.selector}>
+      <View style={estilos.selector} onLayout={(e) => setAnchoSelector(e.nativeEvent.layout.width)}>
+        {/* La selección viaja de una opción a la otra: se ve de dónde vino. */}
+        {anchoSelector > 0 && (
+          <Animated.View
+            testID="stats-pulgar"
+            pointerEvents="none"
+            style={[estilos.pulgar, { width: (anchoSelector - HUECO_SELECTOR) / 2, transform: [{ translateX: pulgar }] }]}
+          />
+        )}
         {(['general', 'entrenamiento'] as const).map((p) => (
           <Tocable
             key={p}
-            style={[estilos.opcion, pestana === p && estilos.opcionActiva]}
+            style={estilos.opcion}
             onPress={() => setPestana(p)}
             accessibilityRole="tab"
             accessibilityState={{ selected: pestana === p }}
@@ -303,7 +323,11 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             ...celdaFaltados(datos.faltados),
           ].map((c) => (
             <Caja key={c.e} style={estilos.celda}>
-              <Text testID="stats-cifra" style={estilos.valor}>{c.v}</Text>
+              {/^\d+$/.test(c.v) ? (
+                <NumeroQueCuenta testID="stats-cifra" valor={Number(c.v)} desdeCero style={estilos.valor} />
+              ) : (
+                <Text testID="stats-cifra" style={estilos.valor}>{c.v}</Text>
+              )}
               <Text style={estilos.etiqueta}>{c.e}</Text>
             </Caja>
           ))}
@@ -342,28 +366,28 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                   ocho barras: eran ellas las que dejaban elegir semana, y eran
                   ellas las que no comunicaban nada. */}
               <View style={estilos.semana}>
-                <Pressable
+                <Tocable
                   onPress={() => setTocada(Math.max(0, indice - 1))}
                   disabled={indice === 0}
                   hitSlop={10}
                   accessibilityLabel={T.volumen.semanaAnterior}
                 >
                   <Text style={[estilos.flecha, indice === 0 && estilos.sinMaximo]}>‹</Text>
-                </Pressable>
+                </Tocable>
                 <Text style={estilos.cuando}>
                   {T.volumen.conTotal(
                     indice === enCurso ? T.volumen.estaSemana : T.volumen.semanaDel(fechaLinda(leidaTotal.desde)),
                     T.volumen.soloSeries(leidaTotal.series)
                   )}
                 </Text>
-                <Pressable
+                <Tocable
                   onPress={() => setTocada(Math.min(enCurso, indice + 1))}
                   disabled={indice === enCurso}
                   hitSlop={10}
                   accessibilityLabel={T.volumen.semanaSiguiente}
                 >
                   <Text style={[estilos.flecha, indice === enCurso && estilos.sinMaximo]}>›</Text>
-                </Pressable>
+                </Tocable>
               </View>
 
               {filas.map((f) => {
@@ -391,15 +415,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                           },
                         ]}
                       />
-                      <View
-                        style={[
-                          estilos.llenado,
-                          como === 'poco' && estilos.llenadoPoco,
-                          como === 'dentro' && estilos.llenadoDentro,
-                          como === 'mucho' && estilos.llenadoMucho,
-                          { width: `${porcionDePista(hechas) * 100}%` },
-                        ]}
-                      />
+                      <Relleno fraccion={porcionDePista(hechas)} style={[estilos.llenado, como === 'poco' && estilos.llenadoPoco, como === 'dentro' && estilos.llenadoDentro, como === 'mucho' && estilos.llenadoMucho]} />
                     </View>
                     <Text style={[estilos.valorFila, como === 'nada' && estilos.sinMaximo]}>
                       {hechas === 0 ? T.volumen.nada : String(hechas)}
@@ -445,7 +461,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                 const conVacios = vacios[clave] ?? conPeso.length === 0;
                 return (
                   <View key={clave}>
-                    <Pressable
+                    <Tocable
                       style={estilos.cabeza}
                       onPress={() => setPlegados((p) => ({ ...p, [clave]: !abierto }))}
                       accessibilityRole="button"
@@ -455,7 +471,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                       <Text style={estilos.cabezaCuenta}>
                         {T.volumen.conPesoDe(g.conPeso, g.filas.length)} {abierto ? '▾' : '›'}
                       </Text>
-                    </Pressable>
+                    </Tocable>
                     {abierto &&
                       (conVacios ? g.filas : conPeso).map((f) => (
                         <View key={f.ejercicio} style={[estilos.fila, estilos.filaDeGrupo]}>
@@ -475,14 +491,14 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                         </View>
                       ))}
                     {abierto && faltan > 0 && conPeso.length > 0 && (
-                      <Pressable
+                      <Tocable
                         style={estilos.otros}
                         onPress={() => setVacios((p) => ({ ...p, [clave]: !conVacios }))}
                       >
                         <Text style={estilos.otrosTexto}>
                           {conVacios ? T.volumen.ocultarLosOtros : T.volumen.verLosOtros(faltan)}
                         </Text>
-                      </Pressable>
+                      </Tocable>
                     )}
                   </View>
                 );
@@ -497,6 +513,8 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   );
 }
 
+const HUECO_SELECTOR = 8;
+
 const estilos = conTema(() => StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`.
   raiz: { flex: 1 },
@@ -504,7 +522,8 @@ const estilos = conTema(() => StyleSheet.create({
   centrado: { flex: 1, backgroundColor: C.fondo, alignItems: 'center', justifyContent: 'center', gap: 16 },
   titulo: { ...R.etiqueta, marginBottom: 20  },
 
-  selector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  selector: { flexDirection: 'row', gap: HUECO_SELECTOR, marginBottom: 20 },
+  pulgar: { position: 'absolute', left: 0, top: 0, bottom: 0, borderWidth: 1, borderColor: C.claro, backgroundColor: C.fondoMeta, borderRadius: 999 },
   opcion: {
     flex: 1,
     borderWidth: 1,
@@ -513,7 +532,6 @@ const estilos = conTema(() => StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  opcionActiva: { borderColor: C.claro, backgroundColor: C.fondoMeta },
   opcionTexto: { color: C.apagado, fontSize: 14 },
   opcionTextoActivo: { color: C.claro },
 

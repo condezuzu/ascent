@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { C, conAlfa, HALO, conTema } from './colores';
 import FondoOctogonal from './FondoOctogonal';
 import { L } from './fuentes';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 import { useTema } from './useTema';
 
 /**
@@ -63,7 +64,7 @@ export function Fantasma({
   const color = colorTexto ?? (enHoja ? C.tinta : C.sobreMotor);
   const estiloTexto: StyleProp<TextStyle> = [estilos.fantasmaTexto, { color }, !enHoja && HALO];
   return (
-    <Pressable
+    <Tocable
       testID={testID}
       onPress={alTocar}
       accessibilityRole="button"
@@ -73,7 +74,7 @@ export function Fantasma({
       <View style={[estilos.fantasmaLinea, { borderBottomColor: conAlfa(color, 0.45) }]}>
         <Text style={estiloTexto}>{texto}</Text>
       </View>
-    </Pressable>
+    </Tocable>
   );
 }
 

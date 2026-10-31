@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { leerSesionCache } from '@compartido/sesionCache';
 import { cuantasPendientes } from '@compartido/cola';
@@ -12,6 +12,7 @@ import { supabase } from './supabase';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * LAS TRES FUENTES DE LA SESIÓN, ADENTRO DEL DIAGNÓSTICO (22/9).
@@ -139,9 +140,9 @@ export default function DiagnosticoSesion() {
       />
 
       <Text style={estilos.cola}>{cola === null ? T.diagnostico.leyendo : cola === 0 ? T.diagnostico.colaVacia : T.diagnostico.colaCon(cola)}</Text>
-      <Pressable onPress={leer} hitSlop={8}>
+      <Tocable onPress={leer} hitSlop={8}>
         <Text style={estilos.releer}>{T.diagnostico.releer}</Text>
-      </Pressable>
+      </Tocable>
 
       {/* QUÉ JS ESTÁ CORRIENDO. Con actualizaciones por el aire, "la versión
           que tenés" dejó de ser obvia: la app puede estar corriendo el JS que
@@ -154,7 +155,7 @@ export default function DiagnosticoSesion() {
             segunda es la que hace reportar bugs de código viejo. */}
         {esperando && <Text style={estilos.nota}>{T.diagnostico.hayEsperando}</Text>}
         {hayCanal() && (
-          <Pressable
+          <Tocable
             hitSlop={8}
             onPress={async () => {
               setBuscando(true);
@@ -168,7 +169,7 @@ export default function DiagnosticoSesion() {
             }}
           >
             <Text style={estilos.releer}>{buscando ? T.diagnostico.buscando : T.diagnostico.buscar}</Text>
-          </Pressable>
+          </Tocable>
         )}
         {novedad !== null && <Text style={estilos.nota}>{novedad}</Text>}
       </View>

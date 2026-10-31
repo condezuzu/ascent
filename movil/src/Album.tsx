@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from 'react';
-import { ActivityIndicator, Animated, Easing, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Animated, Image, Modal, PanResponder, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
@@ -28,6 +28,8 @@ import GloboPrimeraVez from './GloboPrimeraVez';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import { LLEGA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * ÁLBUM — tanda 4.
@@ -166,7 +168,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
       Animated.timing(desliz, {
         toValue: -d * anchoRef.current,
         duration: 180,
-        easing: Easing.bezier(...CURVA),
+        easing: LLEGA,
         useNativeDriver: true,
       }).start(() => {
         const i = abiertaRef.current;
@@ -184,7 +186,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
     Animated.timing(desliz, {
       toValue: 0,
       duration: 160,
-      easing: Easing.bezier(...CURVA),
+      easing: LLEGA,
       useNativeDriver: true,
     }).start();
   }, [desliz]);
@@ -284,9 +286,9 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
         {noCargo && !datos ? (
           <View style={estilos.tarjeta}>
             <Text style={estilos.texto}>{T.inicio.noCargo}</Text>
-            <Pressable style={estilos.botonFantasma} onPress={cargar}>
+            <Tocable style={estilos.botonFantasma} onPress={cargar}>
               <Text style={estilos.textoBoton}>{T.inicio.reintentar}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         ) : celdas.length > 0 ? (
           meses.map((m) => {
@@ -310,7 +312,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
               {par && (
                 <View style={estilos.comparar}>
                   {([par.primera, par.ultima] as const).map((c, i) => (
-                    <Pressable
+                    <Tocable
                       key={c.id}
                       style={estilos.mitad}
                       onPress={() => setAbierta(celdas.findIndex((x) => x.id === c.id))}
@@ -320,7 +322,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       <Text style={estilos.mitadCuando}>
                         {i === 0 ? T.album.laPrimera : T.album.laUltima} · {fechaCorta(c.fecha)}
                       </Text>
-                    </Pressable>
+                    </Tocable>
                   ))}
                 </View>
               )}
@@ -339,7 +341,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                   // escalón desde cero y la segunda tanda entraría antes que
                   // el final de la primera.
                   <Surgir key={c.id} indice={m.desde + j}>
-                    <Pressable
+                    <Tocable
                       onPress={() => setAbierta(m.desde + j)}
                       accessibilityLabel={fechaLinda(c.fecha)}
                       style={[estilos.celda, { width: lado, height: lado }]}
@@ -350,7 +352,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       {!!(c.miniatura || c.url) && <Foto celda={c} lado={lado} />}
                       {/* Un punto y nada más: quién ve la foto, de un vistazo. */}
                       {c.visibilidad === 'amigos' && <View style={estilos.punto} />}
-                    </Pressable>
+                    </Tocable>
                   </Surgir>
                 ))}
               </View>
@@ -416,9 +418,9 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                 {!!foto.planeta && <Text style={estilos.planeta}>{foto.planeta}</Text>}
                 {foto.esSubida && <Text style={estilos.planeta}>{T.album.deSubida}</Text>}
               </View>
-              <Pressable onPress={() => setAbierta(null)} accessibilityLabel={T.general.cerrar} hitSlop={12}>
+              <Tocable onPress={() => setAbierta(null)} accessibilityLabel={T.general.cerrar} hitSlop={12}>
                 <Text style={estilos.cerrarTexto}>×</Text>
-              </Pressable>
+              </Tocable>
             </View>
 
             {/* `box-none` ES LO QUE HACÍA QUE NO SE PUDIERA DESLIZAR (25/9).
@@ -429,16 +431,16 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                 menos lo que tocan sus hijos, o sea las dos flechas. */}
             <View style={estilos.pasos} pointerEvents="box-none">
               {abierta! > 0 ? (
-                <Pressable onPress={() => setAbierta((i) => (i ?? 0) - 1)} accessibilityLabel={T.album.anterior} hitSlop={12}>
+                <Tocable onPress={() => setAbierta((i) => (i ?? 0) - 1)} accessibilityLabel={T.album.anterior} hitSlop={12}>
                   <Text style={estilos.paso}>‹</Text>
-                </Pressable>
+                </Tocable>
               ) : (
                 <View />
               )}
               {abierta! < celdas.length - 1 ? (
-                <Pressable onPress={() => setAbierta((i) => (i ?? 0) + 1)} accessibilityLabel={T.album.siguiente} hitSlop={12}>
+                <Tocable onPress={() => setAbierta((i) => (i ?? 0) + 1)} accessibilityLabel={T.album.siguiente} hitSlop={12}>
                   <Text style={estilos.paso}>›</Text>
-                </Pressable>
+                </Tocable>
               ) : (
                 <View />
               )}
@@ -446,14 +448,14 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
 
             <View style={estilos.pie}>
               <View style={estilos.acciones}>
-                <Pressable
+                <Tocable
                   onPress={alternar}
                   style={[estilos.pastilla, foto.visibilidad === 'amigos' && estilos.pastillaPrendida]}
                 >
                   <Text style={[estilos.pastillaTexto, foto.visibilidad === 'amigos' && { color: C.fondo }]}>
                     {foto.visibilidad === 'privada' ? T.album.soloVos : T.album.amigos}
                   </Text>
-                </Pressable>
+                </Tocable>
                 {/* LOS DOS SON BOTONES Y SE VE (25/9). *"Los dos botones abajo
                     a la derecha del visor no parecen botones, parecen frases
                     chicas."* Y el de quitar lo era literalmente: texto suelto,
@@ -465,17 +467,17 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                     pregunta, y hasta ahí no hay nada que avisar. */}
                 {confirmando ? (
                   <View style={estilos.confirmar}>
-                    <Pressable style={[estilos.pastilla, estilos.pastillaRoja]} onPress={() => quitarGuardado()}>
+                    <Tocable style={[estilos.pastilla, estilos.pastillaRoja]} onPress={() => quitarGuardado()}>
                       <Text style={[estilos.pastillaTexto, estilos.textoRojo]}>{T.album.quitarSi}</Text>
-                    </Pressable>
-                    <Pressable style={estilos.pastilla} onPress={() => setConfirmando(false)}>
+                    </Tocable>
+                    <Tocable style={estilos.pastilla} onPress={() => setConfirmando(false)}>
                       <Text style={estilos.pastillaTexto}>{T.album.no}</Text>
-                    </Pressable>
+                    </Tocable>
                   </View>
                 ) : (
-                  <Pressable style={estilos.pastilla} onPress={() => setConfirmando(true)}>
+                  <Tocable style={estilos.pastilla} onPress={() => setConfirmando(true)}>
                     <Text style={estilos.pastillaTexto}>{T.album.quitarFoto}</Text>
-                  </Pressable>
+                  </Tocable>
                 )}
               </View>
             </View>
@@ -528,7 +530,7 @@ function Foto({ celda, lado }: { celda: Celda; lado: number }) {
         Animated.timing(opacidad, {
           toValue: 1,
           duration: SURGIR_MS,
-          easing: Easing.bezier(...CURVA),
+          easing: LLEGA,
           useNativeDriver: true,
         }).start()
       }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { RANGOS } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
@@ -11,6 +11,7 @@ import { taparElFondo } from './desenfoqueDelFondo';
 import { Text, TextoAnimado } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import { LLEGA, LLENA } from './movimiento';
 
 /**
  * SUBISTE DE RANGO. El premio de la app, que en el teléfono no existía.
@@ -100,13 +101,13 @@ export default function SubidaRango({
   const alTerminar = useCallback(() => {
     setFormado(true);
     plataforma.haptica.pulso();
-    const sale = Easing.bezier(0.2, 0.7, 0.2, 1);
+    const sale = LLENA;
     const sube = (v: Animated.Value, demora: number, dura: number, nativo = true) =>
       Animated.timing(v, { toValue: 1, delay: demora, duration: dura, easing: sale, useNativeDriver: nativo });
     Animated.parallel([
       Animated.timing(vineta, { toValue: 0.25, duration: 1400, useNativeDriver: true }),
       Animated.sequence([
-        Animated.timing(pulso, { toValue: 1, duration: 360, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulso, { toValue: 1, duration: 360, easing: LLEGA, useNativeDriver: true }),
         Animated.timing(pulso, { toValue: 0, duration: 540, easing: sale, useNativeDriver: true }),
       ]),
       sube(anillo, 0, 1200),

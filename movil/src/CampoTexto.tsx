@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { TextInput } from './Texto';
 
 /**
  * UN TEXTINPUT QUE DISTINGUE UN TOQUE DE UN ARRASTRE (27/9).

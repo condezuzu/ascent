@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Animated, Pressable, StyleSheet, View } from 'react-native';
 import { ORDEN_SEMANA, tituloDelDia, type DiaDeSemana } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import { nombreVisible } from '@nucleo/propios';
@@ -8,6 +8,7 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { LLEGA } from './movimiento';
 
 /**
  * UNA RUTINA PLEGADA POR DÍA (14/10): "Lunes — Pecho, hombro y brazo", y al
@@ -132,7 +133,7 @@ function BloqueDeSerie({ indice }: { indice: number }) {
           toValue: 1,
           duration: ESCALON_MS,
           delay: 150 + Math.min(indice, TOPE_DE_ESCALONES) * ENTRE_ESCALONES_MS,
-          easing: Easing.bezier(0.2, 0.8, 0.3, 1),
+          easing: LLEGA,
           useNativeDriver: true,
         }).start();
       });

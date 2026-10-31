@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import type { Unidad } from '@nucleo/peso';
@@ -17,6 +17,7 @@ import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * LO QUE LLEVÁS HOY, Y CÓMO CORREGIRLO. La misma hoja que la web: cada bloque
@@ -140,7 +141,7 @@ function ListaDeBloques({
             // un peso a medio teclear se anotaba en OTRO bloque.
             <View key={clave} style={estilos.fila}>
               <View style={estilos.filaArriba}>
-                <Pressable
+                <Tocable
                   style={{ flexShrink: 1 }}
                   onPress={() => setCambiando(i)}
                   accessibilityRole="button"
@@ -148,29 +149,29 @@ function ListaDeBloques({
                   hitSlop={8}
                 >
                   <Text style={[estilos.nombre, estilos.tocable]}>{nombre(b.ejercicio)}</Text>
-                </Pressable>
+                </Tocable>
                 {porQuitar === clave ? (
                   <View style={estilos.controles}>
                     <Text style={estilos.pregunta}>{T.sesion.listaQuitarPregunta}</Text>
-                    <Pressable style={estilos.boton} onPress={() => quitar(clave)}>
+                    <Tocable style={estilos.boton} onPress={() => quitar(clave)}>
                       <Text style={estilos.botonTexto}>{T.album.si}</Text>
-                    </Pressable>
-                    <Pressable style={estilos.boton} onPress={() => setPorQuitar(null)}>
+                    </Tocable>
+                    <Tocable style={estilos.boton} onPress={() => setPorQuitar(null)}>
                       <Text style={estilos.botonTexto}>{T.album.no}</Text>
-                    </Pressable>
+                    </Tocable>
                   </View>
                 ) : (
                   <View style={estilos.controles}>
-                    <Pressable style={estilos.paso} onPress={() => alTocar(i, -1)} disabled={b.series === 0} accessibilityLabel={T.inicio.sacarSerie}>
+                    <Tocable style={estilos.paso} onPress={() => alTocar(i, -1)} disabled={b.series === 0} accessibilityLabel={T.inicio.sacarSerie}>
                       <Text style={estilos.pasoTexto}>−</Text>
-                    </Pressable>
+                    </Tocable>
                     <Text style={estilos.cuantas}>{b.series}</Text>
-                    <Pressable style={estilos.paso} onPress={() => alTocar(i, 1)} accessibilityLabel={T.inicio.sumarSerie}>
+                    <Tocable style={estilos.paso} onPress={() => alTocar(i, 1)} accessibilityLabel={T.inicio.sumarSerie}>
                       <Text style={estilos.pasoTexto}>+</Text>
-                    </Pressable>
-                    <Pressable style={estilos.paso} onPress={() => setPorQuitar(clave)} accessibilityLabel={T.sesion.listaQuitar}>
+                    </Tocable>
+                    <Tocable style={estilos.paso} onPress={() => setPorQuitar(clave)} accessibilityLabel={T.sesion.listaQuitar}>
                       <Text style={estilos.quitar}>✕</Text>
-                    </Pressable>
+                    </Tocable>
                   </View>
                 )}
               </View>
@@ -194,9 +195,9 @@ function ListaDeBloques({
         </>
       )}
 
-      <Pressable style={estilos.listo} onPress={cerrar}>
+      <Tocable style={estilos.listo} onPress={cerrar}>
         <Text style={estilos.listoTexto}>{T.sesion.listo}</Text>
-      </Pressable>
+      </Tocable>
       {cambiando !== null && estado.cerrados[cambiando] && (
         <SelectorEjercicio
           visible

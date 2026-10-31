@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
 import type { EstadoBloques } from '@nucleo/bloques';
@@ -9,6 +9,7 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * "¿LO GUARDO COMO MARCA?", debajo del bloque y al confirmar la serie que puede
@@ -75,13 +76,13 @@ export default function MarcaEnElMomento({
           <Text style={estilos.cuantas}>{T.marcaSugerida.cuantas}</Text>
           <View style={estilos.reps}>
             {REPETICIONES_PARA_MARCA.map((r) => (
-              <Pressable key={r} style={estilos.rep} disabled={s.estado === 'guardando'} onPress={() => guardar(r)}>
+              <Tocable key={r} style={estilos.rep} disabled={s.estado === 'guardando'} onPress={() => guardar(r)}>
                 <Text style={estilos.repTexto}>{r}</Text>
-              </Pressable>
+              </Tocable>
             ))}
-            <Pressable style={[estilos.rep, estilos.no]} onPress={descartar}>
+            <Tocable style={[estilos.rep, estilos.no]} onPress={descartar}>
               <Text style={estilos.noTexto}>{T.marcaSugerida.no}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </>
       )}

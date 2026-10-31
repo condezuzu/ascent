@@ -280,22 +280,22 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 primero que dice algo es en qué anda. El nombre lleva al perfil
                 y "Agregar" queda aparte: mirar antes que agregar. */}
             <Insignia rango={numeroDeRango(u.racha_actual)} tam={26} />
-            <Pressable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
+            <Tocable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
               <Text style={estilos.nombre}>{u.username}</Text>
-            </Pressable>
+            </Tocable>
             {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
                 silencio contra el suyo: acá se acepta. Y si ya es tu amiga
                 —la acabás de aceptar— no se ofrece nada: ver `accionDeBusqueda`. */}
             {accion.que === 'aceptar' ? (
-              <Pressable onPress={() => aceptar(accion.pedido)} hitSlop={8}>
+              <Tocable onPress={() => aceptar(accion.pedido)} hitSlop={8}>
                 <Text style={estilos.accion}>{T.social.aceptar}</Text>
-              </Pressable>
+              </Tocable>
             ) : accion.que === 'enviado' ? (
               <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>
             ) : accion.que === 'agregar' ? (
-              <Pressable onPress={() => agregar(u.id)} hitSlop={8}>
+              <Tocable onPress={() => agregar(u.id)} hitSlop={8}>
                 <Text style={estilos.accion}>{T.social.agregar}</Text>
-              </Pressable>
+              </Tocable>
             ) : null}
           </View>
           );
@@ -323,9 +323,9 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
         {noCargo && (
           <View style={estilos.tarjeta}>
             <Text style={estilos.texto}>{T.inicio.noCargo}</Text>
-            <Pressable style={estilos.botonFantasma} onPress={cargar}>
+            <Tocable style={estilos.botonFantasma} onPress={cargar}>
               <Text style={estilos.textoBoton}>{T.inicio.reintentar}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         )}
 
@@ -375,7 +375,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               </Surgir>
             ))}
             {amigos.length > RANKING_TOPE && (
-              <Pressable
+              <Tocable
                 testID="ranking-ver-mas"
                 onPress={() => setVerTodos((v) => !v)}
                 hitSlop={12}
@@ -388,7 +388,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 <Svg width={22} height={22} viewBox="0 0 24 24" style={verTodos ? estilos.flechaArriba : undefined}>
                   <Path d="M6 9l6 6 6-6" fill="none" stroke={C.sub} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>
-              </Pressable>
+              </Tocable>
             )}
           </View>
         ) : (
@@ -454,12 +454,12 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 <View style={estilos.fila} key={s.id}>
                   <Avatar url={s.de.avatar_url} nombre={s.de.username} />
                   <Text style={estilos.nombre}>{s.de.username}</Text>
-                  <Pressable onPress={() => aceptar(s.id)} hitSlop={8}>
+                  <Tocable onPress={() => aceptar(s.id)} hitSlop={8}>
                     <Text style={estilos.accion}>{T.social.aceptar}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => rechazar(s.id)} hitSlop={8}>
+                  </Tocable>
+                  <Tocable onPress={() => rechazar(s.id)} hitSlop={8}>
                     <Text style={[estilos.accion, { color: C.apagado }]}>{T.social.no}</Text>
-                  </Pressable>
+                  </Tocable>
                 </View>
               ))}
             </View>
@@ -490,11 +490,11 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               </Pressable>
             ))}
             {datos!.actividad.length > ACTIVIDAD_TOPE && (
-              <Pressable onPress={() => setVerTodaLaActividad((v) => !v)} hitSlop={8} style={estilos.verMas}>
+              <Tocable onPress={() => setVerTodaLaActividad((v) => !v)} hitSlop={8} style={estilos.verMas}>
                 <Text style={estilos.verMasTexto}>
                   {verTodaLaActividad ? T.social.actividadMenos : T.social.actividadMas(datos!.actividad.length - ACTIVIDAD_TOPE)}
                 </Text>
-              </Pressable>
+              </Tocable>
             )}
           </View>
         )}

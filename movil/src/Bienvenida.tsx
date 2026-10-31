@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import Espacio from './bienvenida/Espacio';
 import { despertarMotor } from './despertarMotor';
@@ -10,6 +10,7 @@ import { MiniAmigo, MiniBloque, MiniSemana } from './bienvenida/Muestras';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import { LLENA } from './movimiento';
 
 /**
  * LA ENTRADA (15/10, aprobada en la galería): cuatro pantallas, una cosa real de la
@@ -46,7 +47,7 @@ export default function Bienvenida({ alSalir }: { alSalir: (destino: 'crear' | '
 
   useEffect(() => {
     entra.setValue(0);
-    Animated.timing(entra, { toValue: 1, duration: 500, easing: Easing.bezier(0.2, 0.7, 0.2, 1), useNativeDriver: true }).start();
+    Animated.timing(entra, { toValue: 1, duration: 500, easing: LLENA, useNativeDriver: true }).start();
   }, [clave, entra]);
 
   const texto = {

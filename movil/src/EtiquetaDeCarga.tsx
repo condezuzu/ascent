@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { cargasOfrecidas, claveDeEtiqueta, type Carga } from '@nucleo/carga';
 import { T } from '@nucleo/textos';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * QUÉ SIGNIFICA EL NÚMERO, pegado al número. La misma pieza que la web: una
@@ -34,7 +35,7 @@ export default function EtiquetaDeCarga({
 
   return (
     <>
-      <Pressable
+      <Tocable
         style={[estilos.etiqueta, chica && estilos.etiquetaChica]}
         onPress={() => setAbierta((x) => !x)}
         accessibilityRole="button"
@@ -42,11 +43,11 @@ export default function EtiquetaDeCarga({
       >
         <Text style={[estilos.texto, chica && estilos.textoChico]}>{T.sesion.carga[clave]}</Text>
         <Text style={estilos.flecha}>▾</Text>
-      </Pressable>
+      </Tocable>
       {abierta && (
         <View style={estilos.opciones}>
           {cargasOfrecidas(version).map((c) => (
-            <Pressable
+            <Tocable
               key={c}
               style={[estilos.opcion, c === carga && estilos.prendida]}
               onPress={() => {
@@ -58,7 +59,7 @@ export default function EtiquetaDeCarga({
               <Text style={[estilos.opcionTexto, c === carga && estilos.opcionPrendida]}>
                 {T.sesion.cargaOpcion[claveDeEtiqueta(c, ejercicio)]}
               </Text>
-            </Pressable>
+            </Tocable>
           ))}
         </View>
       )}

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { supabase } from './supabase';
@@ -21,6 +21,7 @@ import { nuevaEnCadaApertura } from './hojaNueva';
 import { FIJO } from './coloresFijos';
 import { Text } from './Texto';
 import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 
 type Elegida = { uri: string; ancho: number; alto: number };
 
@@ -214,16 +215,16 @@ function RegistrarDia({
       </View>
       {foto && (
         <View style={estilos.chips}>
-          <Pressable style={estilos.chip} onPress={() => setTocado(!compartida)} testID="registrar-foto-quien">
+          <Tocable style={estilos.chip} onPress={() => setTocado(!compartida)} testID="registrar-foto-quien">
             <Text style={estilos.chipTexto}>{compartida ? T.registrar.laVenAmigos : T.registrar.soloLaVesVos}</Text>
-          </Pressable>
-          <Pressable style={estilos.chip} onPress={() => setFoto(null)}>
+          </Tocable>
+          <Tocable style={estilos.chip} onPress={() => setFoto(null)}>
             <Text style={estilos.chipApagado}>{T.registrar.quitarFoto}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       )}
 
-      <Pressable
+      <Tocable
         style={[estilos.solido, (cargando || (yaEsta && !foto)) && estilos.apagado]}
         onPress={() => confirmar()}
         disabled={cargando || (yaEsta && !foto)}
@@ -235,7 +236,7 @@ function RegistrarDia({
         ) : (
           <Text style={estilos.solidoTexto}>{yaEsta ? T.general.guardar : T.inicio.registrarDia}</Text>
         )}
-      </Pressable>
+      </Tocable>
       {aviso !== '' && <Text style={[estilos.aviso, !!registradoAca && subioAca && estilos.avisoSubida]}>{aviso}</Text>}
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
     </Hoja>
@@ -247,7 +248,7 @@ export default nuevaEnCadaApertura(RegistrarDia, (p) => p.visible);
 /** Sacar o elegir: el botón redondo de la hoja del peso, con su ícono y el texto abajo. */
 function Puerta({ icono, texto, alTocar }: { icono: 'camara' | 'galeria'; texto: string; alTocar: () => void }) {
   return (
-    <Pressable style={estilos.puerta} onPress={alTocar} accessibilityRole="button" testID={'registrar-foto-' + icono}>
+    <Tocable style={estilos.puerta} onPress={alTocar} accessibilityRole="button" testID={'registrar-foto-' + icono}>
       {({ pressed }) => (
         <>
           <View style={[estilos.redondo, pressed && estilos.redondoApretado]}>
@@ -269,7 +270,7 @@ function Puerta({ icono, texto, alTocar }: { icono: 'camara' | 'galeria'; texto:
           <Text style={estilos.puertaTexto}>{texto}</Text>
         </>
       )}
-    </Pressable>
+    </Tocable>
   );
 }
 

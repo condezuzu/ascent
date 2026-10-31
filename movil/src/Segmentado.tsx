@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * UNA ELECCIÓN ENTRE POCAS, EN UNA SOLA PIEZA (15/10/2026). Ajustes eran pastillas
@@ -24,7 +25,7 @@ export default function Segmentado<V>({
       {opciones.map((o, i) => {
         const elegida = o.valor === valor;
         return (
-          <Pressable
+          <Tocable
             key={String(o.valor)}
             testID={o.testID}
             onPress={() => alElegir(o.valor)}
@@ -35,7 +36,7 @@ export default function Segmentado<V>({
             <Text style={[estilos.texto, elegida && estilos.textoElegido]} numberOfLines={1}>
               {o.texto}
             </Text>
-          </Pressable>
+          </Tocable>
         );
       })}
     </View>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { cargarBloqueados, desbloquear, type Bloqueado } from '@compartido/ranking';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
@@ -8,6 +8,7 @@ import Avatar from '../Avatar';
 import { C } from '../colores';
 import { Text } from '../Texto';
 import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * CUENTAS BLOQUEADAS (migración 53). Plegado como "Cómo se compara": el que no
@@ -38,7 +39,7 @@ export default function Bloqueados() {
 
   return (
     <View style={estilos.seccion}>
-      <Pressable
+      <Tocable
         style={estilos.cabecera}
         onPress={() => setAbierto(!abierto)}
         accessibilityRole="button"
@@ -48,7 +49,7 @@ export default function Bloqueados() {
           {lista && lista.length > 0 ? T.ajustes.bloqueadosCuenta(lista.length) : T.ajustes.bloqueados}
         </Text>
         <Text style={estilos.signo}>{abierto ? '−' : '+'}</Text>
-      </Pressable>
+      </Tocable>
 
       {abierto && (
         <View>
@@ -60,9 +61,9 @@ export default function Bloqueados() {
               <View key={b.id} style={estilos.fila}>
                 <Avatar url={b.avatar_url} nombre={b.username} tam={34} />
                 <Text style={estilos.nombre}>{b.username}</Text>
-                <Pressable onPress={() => quitar(b.id)} hitSlop={8}>
+                <Tocable onPress={() => quitar(b.id)} hitSlop={8}>
                   <Text style={estilos.desbloquear}>{T.ajustes.desbloquear}</Text>
-                </Pressable>
+                </Tocable>
               </View>
             ))
           )}

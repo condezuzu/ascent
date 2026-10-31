@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
 import { versionCompleta } from '../reporteDeErrores';
@@ -8,6 +8,7 @@ import { C, DESHABILITADO, conTema } from '../colores';
 import { useTema } from '../useTema';
 import { Text } from '../Texto';
 import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * DECIR ALGO SIN SALIR DE LA APP.
@@ -57,9 +58,9 @@ export default function Sugerencias({ userId }: { userId: string }) {
         numberOfLines={3}
         maxLength={2000}
       />
-      <Pressable style={[estilos.boton, !texto.trim() && estilos.apagado]} onPress={mandar} disabled={!texto.trim()}>
+      <Tocable style={[estilos.boton, !texto.trim() && estilos.apagado]} onPress={mandar} disabled={!texto.trim()}>
         <Text style={estilos.botonTexto}>{T.ajustes.mandar}</Text>
-      </Pressable>
+      </Tocable>
       {enviado && <Text style={estilos.ok}>{T.ajustes.sugerenciaEnviada}</Text>}
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
     </View>

@@ -1,9 +1,10 @@
-import { Pressable, Share, StyleSheet } from 'react-native';
+import { Share, StyleSheet } from 'react-native';
 import { enlaceDeAmigo } from '@nucleo/enlace';
 import { T } from '@nucleo/textos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * INVITAR CON TU LINK (8/10/2026). Abre la hoja de compartir del teléfono con
@@ -16,7 +17,7 @@ export default function InvitarConLink({ usuario }: { usuario: string | null | u
   useTema();
   if (!usuario) return null;
   return (
-    <Pressable
+    <Tocable
       testID="invitar-con-link"
       style={estilos.boton}
       accessibilityRole="button"
@@ -24,7 +25,7 @@ export default function InvitarConLink({ usuario }: { usuario: string | null | u
       onPress={() => void Share.share({ message: T.social.invitacion(enlaceDeAmigo(usuario)) }).catch(() => undefined)}
     >
       <Text style={estilos.texto}>{T.social.invitar}</Text>
-    </Pressable>
+    </Tocable>
   );
 }
 

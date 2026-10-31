@@ -14675,7 +14675,7 @@ console.log('\n191. El aviso de pérdida sale de lo que quedó guardado, no de u
     return [
       /const perdioAyer = perdida \|\| perdidaSinVer\(perfil\.perdida_fecha, logs\.filter\(\(l\) => !l\.es_descanso\)\.map\(\(l\) => l\.fecha\), hoy\);/.test(t),
       /apagado=\{perdioAyer && !registradoHoy\}/.test(t),
-      /\{perdioAyer && [(<]/.test(t),
+      /\{perdioAyer && [(<]|visible=\{!!\(perdioAyer\)\}/.test(t),
       /\{perdida && [(<]/.test(t),
     ];
   };
@@ -19047,7 +19047,7 @@ console.log('\n247. Entrenar en grupo, del lado de la app: la lista, el link, el
   ], [true, true, true]);
   const ju = de247('movil', 'src', 'Juntos.tsx');
   chequear('en el grupo: sacar solo si lo armé yo, salir es uno solo, y el link se ofrece aunque no haya nadie', [
-    /\) : yoArmo \? \(\s*<Pressable testID="juntos-sacar"/.test(ju),
+    /\) : yoArmo \? \(\s*<(?:Pressable|Tocable) testID="juntos-sacar"/.test(ju),
     /testID="juntos-salir-grupo"/.test(ju) && /void salirDelGrupo\(supabase\)/.test(ju),
     /if \(uniones\.length === 0 && !\(conGrupos && entrenando\)\) return null;/.test(ju),
     /Share\.share\(\{ message: T\.social\.mensajeDeInvitacion\(enlaceDeGrupo\(codigo\)\) \}\)/.test(ju),
@@ -19551,7 +19551,7 @@ console.log('\n269. Rutinas: la lista fuera de editar, la de otra persona entera
     /<RutinaPlegada [^>]*abiertos \/>/.test(de),
     /abajoDelDia=/.test(de),
     /hayRutinasGuardadas/.test(de),
-    /\{!esYo && \(\s*<Pressable testID="rutina-copiar"/.test(de),
+    /\{!esYo && \(\s*<(?:Pressable|Tocable) testID="rutina-copiar"/.test(de),
     /const esAbierto = abiertos \|\| abierto === d;/.test(pl),
   ], [true, false, false, true, true]);
   const dias = RU.semanaVacia();
@@ -20072,7 +20072,7 @@ console.log('\n288. «Olvidar este día», aparte y al final de la ventana de re
   const pos = (x) => vr.indexOf(x);
   chequear('el botón va después de los otros dos, solo en la pregunta (no en «¿Estás seguro?»), y olvida', [
     pos('testID="ventana-rutina-olvidar"') > pos("testID={seguro ? 'ventana-rutina-no' : 'ventana-rutina-nueva'}"),
-    /\{!seguro && \(\s*<Pressable\s+testID="ventana-rutina-olvidar"/.test(vr),
+    /\{!seguro && \(\s*<(?:Pressable|Tocable)\s+testID="ventana-rutina-olvidar"/.test(vr),
     /onPress=\{\(\) => void guardar\('olvidar'\)\}/.test(vr),
     /<Text style=\{estilos\.tenueTexto\}>\{T\.rutina\.olvidarDia\}<\/Text>/.test(vr),
   ], [true, true, true, true]);
@@ -20132,7 +20132,7 @@ console.log('\n291. El fin del descanso con la app abierta vibra como un despert
   const ini = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
   const tim = sinComentarios(deBug('movil', 'src', 'TimbreDePildora.tsx'));
   chequear('la píldora va adentro del timbre, que se sacuda una vez por tanda y respeta «Reducir movimiento»', [
-    /<TimbreDePildora fin=\{fin \|\| null\}>\s*<Pressable\s+testID="pildora-descanso"/.test(ini),
+    /<TimbreDePildora fin=\{fin \|\| null\}>\s*<(?:Pressable|Tocable)\s+testID="pildora-descanso"/.test(ini),
     /length: DESPERTADOR\.tandas/.test(tim),
     /isReduceMotionEnabled\(\)/.test(tim),
   ], [true, true, true]);
@@ -20780,7 +20780,7 @@ console.log('\n317. Las microanimaciones: lo que entra crece, los botones se hun
 {
   const ap = deBug('movil', 'src', 'Aparece.tsx');
   chequear('Aparece crece desde alto cero hasta el medido, respeta «reducir movimiento» y al terminar suelta el alto', [
-    /outputRange: \[0, alto\]/.test(ap), /isReduceMotionEnabled/.test(ap), /if \(listo\) return <View testID=\{testID\}>\{children\}<\/View>;/.test(ap),
+    /outputRange: \[0, alto\]/.test(ap), /sinMovimiento/.test(ap), /if \(listo\) return <View testID=\{testID\}>\{ultimo\.current\}<\/View>;/.test(ap),
   ], [true, true, true]);
   const usos = (archivo) => (deBug('movil', 'src', archivo).match(/<Aparece[ >]/g) ?? []).length;
   const toques = (archivo) => (deBug('movil', 'src', archivo).match(/<Tocable[\s>]/g) ?? []).length;
@@ -21162,7 +21162,7 @@ console.log('\n323. Una sola paleta para toda la nativa (30/10)');
   const fuentes323 = ['movil/src', 'movil/app'].flatMap((d) => dir323(join(raiz323, d), { recursive: true, withFileTypes: true })
     .filter((e) => e.isFile() && /\.tsx?$/.test(e.name) && !e.parentPath.includes('node_modules'))
     .map((e) => join(e.parentPath, e.name)));
-  const FUERA323 = /(colores\.ts|coloresFijos\.ts|Minimo\.tsx|Raiz\.tsx|HudDiagnostico\.tsx|useTema\.ts)$|bienvenida[\\/]/;
+  const FUERA323 = /[\\/](colores\.ts|coloresFijos\.ts|Minimo\.tsx|Raiz\.tsx|HudDiagnostico\.tsx|useTema\.ts)$|bienvenida[\\/]/;
   // El logo y la estrella de las vidas son dibujos con sus colores, iguales en todos los rangos.
   const CON_COLOR323 = /(EntradaDeLaApp\.tsx|Estrella\.tsx)$/;
   const TENIDO323 = /(?<![A-Za-z0-9_])C\.(fondo|claro|principal|linea|lineaFuerte|diaLleno|diaVacio|bordeChip|bordeMeta|fondoMeta|bordeSerie|bordeOcto|cuadro|celdaVacia|barra[A-Z]\w*)(?![A-Za-z0-9_])/;
@@ -21214,11 +21214,11 @@ console.log('\n324. Las letras de la nativa: Inter, Outfit solo para la racha, G
     .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules'))
     .map((e) => join(e.parentPath, e.name)));
   // La red de seguridad no depende de nada: si la app se cae, tiene que poder dibujarse igual.
-  const RN324 = /(Minimo\.tsx|Raiz\.tsx|HudDiagnostico\.tsx|Texto\.tsx)$/;
+  const RN324 = /[\\/](Minimo\.tsx|Raiz\.tsx|HudDiagnostico\.tsx|Texto\.tsx)$/;
   const conTextoDeRN = fuentes324.filter((r) => !RN324.test(r) && /import \{[^}]*(?<![\w ]type )(?<![A-Za-z0-9_])Text(Input)?(?![A-Za-z0-9_])[^}]*\} from 'react-native'/.test(leer324(r, 'utf8')));
   chequear('nadie usa el Text de React Native: pasaría por la fuente del sistema', conTextoDeRN.map((r) => r.slice(raiz324.length + 1)), []);
   chequear('ni Animated.Text', fuentes324.filter((r) => !RN324.test(r) && /Animated\.Text(?![A-Za-z0-9_])/.test(leer324(r, 'utf8'))).map((r) => r.slice(raiz324.length + 1)), []);
-  const conRacha = fuentes324.filter((r) => /L\.racha/.test(leer324(r, 'utf8')) && !/Texto\.tsx$/.test(r)).map((r) => r.split(/[\\/]/).pop()).sort();
+  const conRacha = fuentes324.filter((r) => /L\.racha/.test(leer324(r, 'utf8')) && !/[\\/]Texto\.tsx$/.test(r)).map((r) => r.split(/[\\/]/).pop()).sort();
   chequear('Outfit es solo el número de la racha', conRacha, ['Inicio.tsx', 'RachaConRotulo.tsx']);
 
   const fu324 = leer324(join(raiz324, 'movil', 'src', 'fuentes.ts'), 'utf8');
@@ -21246,7 +21246,7 @@ console.log('\n325. La forma de la nativa: octágono o píldora (30/10)');
     .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules') && !e.parentPath.includes('bienvenida'))
     .map((e) => join(e.parentPath, e.name)));
   // Lo que se permite: recto (hasta 2), píldora (999) y lo que es redondo por su medida: círculo o barra.
-  const FUERA325 = /(Minimo|Raiz|HudDiagnostico)\.tsx$/;
+  const FUERA325 = /[\\/](Minimo|Raiz|HudDiagnostico)\.tsx$/;
   const delMedio325 = [];
   for (const r of fuentes325) {
     if (FUERA325.test(r)) continue;
@@ -21272,7 +21272,7 @@ console.log('\n325. La forma de la nativa: octágono o píldora (30/10)');
   const spec325 = leer325(join(raiz325, 'spec', 'estetica.md'), 'utf8');
   chequear('la spec dice las dos decisiones', [/octágono o píldora/i.test(spec325), /caja cortada/i.test(spec325)], [true, true]);
   // Los roles se dicen una vez: una etiqueta copiada a mano es lo que esta técnica vino a sacar.
-  const copias325 = fuentes325.filter((r) => !FUERA325.test(r) && !/roles\.tsx$/.test(r) && !/RachaConRotulo\.tsx$/.test(r))
+  const copias325 = fuentes325.filter((r) => !FUERA325.test(r) && !/[\\/]roles\.tsx$/.test(r) && !/[\\/]RachaConRotulo\.tsx$/.test(r))
     .filter((r) => /color: C\.(sub|apagado), fontSize: (9|10|10\.5|11), letterSpacing: [\d.]+, textTransform: 'uppercase'/.test(leer325(r, 'utf8')))
     .map((r) => r.slice(raiz325.length + 1).replace(/\\/g, '/'));
   chequear('las etiquetas cuelgan de R.etiqueta', copias325, []);
@@ -21285,13 +21285,36 @@ console.log('\n326. La profundidad de la nativa: luz de color y bordes de 1 pt (
   const fuentes326 = ['movil/src', 'movil/app'].flatMap((d) => dir326(join(raiz326, d), { recursive: true, withFileTypes: true })
     .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules'))
     .map((e) => join(e.parentPath, e.name)));
-  const FUERA326 = /(Minimo|Raiz|HudDiagnostico)\.tsx$/;
+  const FUERA326 = /[\\/](Minimo|Raiz|HudDiagnostico)\.tsx$/;
   const con326 = (re) => fuentes326.filter((r) => !FUERA326.test(r) && re.test(leer326(r, 'utf8'))).map((r) => r.slice(raiz326.length + 1).replace(/\\/g, '/'));
   chequear('ninguna sombra negra', con326(/shadowColor: ['"]#0{3,6}['"]/), []);
   chequear('ningún borde de pelo: son de 1 pt', con326(/hairlineWidth/), []);
   chequear('la luz es del color que se le pasa y no se corre: emite, no cae', luz326(C326.claro, 0.5, 4), { shadowColor: C326.claro, shadowOpacity: 0.5, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } });
   const fo326 = leer326(join(raiz326, 'movil', 'src', 'FondoOctogonal.tsx'), 'utf8');
   chequear('el octágono dibuja su luz, porque una sombra no sigue la diagonal', [/ANILLOS\.map/.test(fo326), /shadow/.test(fo326)], [true, false]);
+}
+console.log('\n327. El movimiento de la nativa: llega con una curva, se va más corto (30/10)');
+{
+  const { readFileSync: leer327, readdirSync: dir327 } = await import('node:fs');
+  const raiz327 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const fuentes327 = ['movil/src', 'movil/app'].flatMap((d) => dir327(join(raiz327, d), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules') && !e.parentPath.includes('bienvenida'))
+    .map((e) => join(e.parentPath, e.name)));
+  const FUERA327 = /[\\/](Minimo|Raiz|HudDiagnostico|Tocable)\.tsx$/;
+  const mov327 = leer327(join(raiz327, 'movil', 'src', 'movimiento.ts'), 'utf8');
+  const ms327 = (k) => Number(mov327.match(new RegExp(k + ': (\\d+)'))?.[1]);
+  chequear('salir es más corto que llegar', [ms327('sale') > 0, ms327('hojaSale') < ms327('hojaEntra'), ms327('cruceSale') < ms327('cruceEntra')], [true, true, true]);
+  chequear('la curva de llegar es la del viaje entre pestañas, compartida con la web', /export const LLEGA = Easing\.bezier\(\.\.\.CURVA\)/.test(mov327), true);
+  // Las curvas viejas: se fueron. Lo que oscila (las vidas que titilan) sigue con la suya.
+  const viejas327 = fuentes327.filter((r) => !FUERA327.test(r) && /Easing\.(out|in)\(Easing\.(quad|cubic)\)/.test(leer327(r, 'utf8'))).map((r) => r.slice(raiz327.length + 1).replace(/\\/g, '/'));
+  chequear('ninguna curva suelta: LLEGA, SE_VA o LLENA', viejas327, []);
+  const hoja327 = leer327(join(raiz327, 'movil', 'src', 'Hoja.tsx'), 'utf8');
+  chequear('la hoja sube sola y el velo no sube con ella', [/animationType="none"/.test(hoja327), /useQueSube\(visible\)/.test(hoja327), /estilos\.fondo, \{ opacity: avance/.test(hoja327)], [true, true, true]);
+  // Lo tocable se hunde. Lo que queda afuera tapa una pantalla entera, o usa `pressed` para otra cosa.
+  const SIN_HUNDIR327 = new Set(['CampoTexto.tsx', 'AnotarPeso.tsx', 'BurbujasDelGrupo.tsx', 'CalendarioDias.tsx', 'DiaListo.tsx', 'FilaRutina.tsx', 'FilasArrastrables.tsx', 'FotoGrande.tsx', 'Globito.tsx', 'Hoja.tsx', 'ListaDePesos.tsx', 'RachaSalvada.tsx', 'Ranking.tsx', 'RutinaDe.tsx', 'RutinaPlegada.tsx', 'SubidaRango.tsx', 'VentanaRutina.tsx', 'Bloque.tsx']);
+  chequear('todo lo tocable se hunde', fuentes327.filter((r) => !FUERA327.test(r) && /<Pressable(?![A-Za-z])/.test(sinComentarios(leer327(r, 'utf8'))) && !SIN_HUNDIR327.has(r.split(/[\\/]/).pop())).map((r) => r.split(/[\\/]/).pop()), []);
+  const paq327 = JSON.parse(leer327(join(raiz327, 'movil', 'package.json'), 'utf8'));
+  chequear('sin Reanimated: lo que lo necesita queda para la 1.2.0, y esto sale por OTA', 'react-native-reanimated' in paq327.dependencies, false);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

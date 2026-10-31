@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
@@ -17,6 +17,7 @@ import { Text } from './Texto';
 import { L } from './fuentes';
 import FondoOctogonal from './FondoOctogonal';
 import { Caja, Seccion, R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * LA FUERZA DENTRO DE STATS (§16.6), en la app nativa: acá se mira y se
@@ -147,7 +148,7 @@ export default function SeccionFuerza({
                   const desplegado = abierto === f.id;
                   return (
                     <View key={f.id} style={i > 0 && estilos.separada}>
-                      <Pressable
+                      <Tocable
                         style={estilos.rankCabecera}
                         onPress={() => setAbierto(desplegado ? null : f.id)}
                         accessibilityState={{ expanded: desplegado }}
@@ -157,7 +158,7 @@ export default function SeccionFuerza({
                         <Text style={[estilos.nombre, { flex: 1 }]}>{f.id === yo ? T.social.vos : f.username}</Text>
                         {/* El mismo número para todos (§16.7b). */}
                         <Text style={estilos.dato}>{redondear(f.dots)}</Text>
-                      </Pressable>
+                      </Tocable>
                       {desplegado && (
                         <View style={estilos.rankDetalle}>
                           {f.marcas.map((m) => (
@@ -182,12 +183,12 @@ export default function SeccionFuerza({
           viene a MIRAR. Cargar una marca es lo que hace de vez en cuando, y
           un botón de escribir arriba de todo invita a tocarlo por error en
           la pantalla que más se mira. */}
-      <Pressable style={estilos.puerta} onPress={() => router.push('/marcas')}>
+      <Tocable style={estilos.puerta} onPress={() => router.push('/marcas')}>
         <FondoOctogonal relleno={C.superficie} superficie borde={C.bordeOcto} />
         <Text style={estilos.puertaTexto}>
           {mia.marcas.length === 0 ? T.fuerza.anotarMarca : T.fuerza.misMarcas}
         </Text>
-      </Pressable>
+      </Tocable>
     </View>
   );
 }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { plataformaNativa } from './plataforma';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * TANDA 1 — que los diez puertos existan y contesten EN EL TELÉFONO.
@@ -96,7 +97,7 @@ export default function PruebaDePuertos() {
       ))}
 
       <View style={estilos.botones}>
-        <Pressable
+        <Tocable
           style={estilos.boton}
           onPress={async () => {
             await plataformaNativa.audio.preparar();
@@ -105,8 +106,8 @@ export default function PruebaDePuertos() {
           }}
         >
           <Text style={estilos.textoBoton}>probar el bip</Text>
-        </Pressable>
-        <Pressable
+        </Tocable>
+        <Tocable
           style={estilos.boton}
           onPress={() => {
             const salio = plataformaNativa.haptica.pulso();
@@ -114,7 +115,7 @@ export default function PruebaDePuertos() {
           }}
         >
           <Text style={estilos.textoBoton}>probar la vibración</Text>
-        </Pressable>
+        </Tocable>
       </View>
       {ultimo !== '' && <Text style={estilos.ultimo}>{ultimo}</Text>}
     </View>
