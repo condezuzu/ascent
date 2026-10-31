@@ -16,7 +16,7 @@ import type { Log } from '@nucleo/tipos';
 import { plataforma } from '@plataforma';
 import { CLAVE_META_PASOS, contraLaMeta, leerMeta, promedioDeLaSemana } from '@nucleo/pasos';
 import { CLAVE_OBJETIVO_PESO, leerObjetivo } from '@nucleo/pesoObjetivo';
-import { C, conTema } from './colores';
+import { C, conTema, luz } from './colores';
 import { useTema } from './useTema';
 import GraficoPeso from './GraficoPeso';
 import GraficoPasos from './GraficoPasos';
@@ -177,6 +177,7 @@ export default function StatsGeneral({
   }
 
   const rangoActual = rangoDeRacha(racha);
+  const ultimoEntrenado = [...entrenados].sort().pop();
 
   return (
     <View>
@@ -190,6 +191,8 @@ export default function StatsGeneral({
                 style={[
                   estilos.celdaAno,
                   c.clase === 'si' && { backgroundColor: pal.claro },
+                  // Hoy, o el último día entrenado: emite.
+                  c.fecha === ultimoEntrenado && luz(pal.claro, 0.6, 3.5),
                   c.clase === 'descanso' && { backgroundColor: pal.principal, opacity: 0.25 },
                   c.clase === 'futuro' && { backgroundColor: 'transparent' },
                 ]}
@@ -402,7 +405,7 @@ const estilos = conTema(() => StyleSheet.create({
   anotar: { flexDirection: 'row', gap: 8, marginTop: 10 },
   campo: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingHorizontal: 14,
@@ -411,7 +414,7 @@ const estilos = conTema(() => StyleSheet.create({
     fontSize: 15,
   },
   botonFantasma: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingHorizontal: 18,

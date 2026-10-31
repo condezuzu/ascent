@@ -24,7 +24,7 @@ export default function Avatar({ url, nombre, tam = 34 }: { url: string | null; 
 const estilos = conTema(() => StyleSheet.create({
   avatar: {
     backgroundColor: C.hoja,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     alignItems: 'center',
     justifyContent: 'center',

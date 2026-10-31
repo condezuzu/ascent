@@ -67,7 +67,7 @@ export default function GloboComic({
           accessibilityRole="button"
           accessibilityHint={T.general.entendido}
         >
-          <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={8} />
+          <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={8} luz={C.claro} />
           <Text style={estilos.texto} numberOfLines={1}>
             {texto}
           </Text>
@@ -95,10 +95,6 @@ const estilos = conTema(() => StyleSheet.create({
     gap: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
   },
   texto: { color: C.tinta, fontSize: 13, flexShrink: 1 },
   cruz: { width: 12, height: 12, alignItems: 'center', justifyContent: 'center' },
@@ -109,8 +105,8 @@ const estilos = conTema(() => StyleSheet.create({
     width: 12,
     height: 12,
     backgroundColor: C.hoja,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
     borderColor: C.lineaFuerte,
     transform: [{ rotate: '45deg' }],
   },

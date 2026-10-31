@@ -33,7 +33,7 @@ const estilos = conTema(() => StyleSheet.create({
   // el nombre de usuario, que es lo que importa en esa pantalla.
   boton: {
     alignSelf: 'flex-start',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 7,

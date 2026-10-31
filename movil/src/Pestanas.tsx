@@ -20,9 +20,11 @@ import IconoDePestana from './IconoDePestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
 import CartelDeArriba from './CartelDeArriba';
-import { C, conTema } from './colores';
+import { C, conTema, conAlfa } from './colores';
 import { useTema } from './useTema';
 import { Text, TextoAnimado } from './Texto';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -565,7 +567,16 @@ export default function Pestanas({
         })}
       </View>
 
+      {/* Lo que se desplaza se apaga debajo de la barra de estado, sin cortarse de golpe. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[conAlfa(C.fondo, 0.95), conAlfa(C.fondo, 0)]}
+        style={estilos.tope}
+      />
+
       <View style={estilos.barra} accessibilityRole="tablist">
+        <BlurView tint="dark" intensity={40} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <View style={[StyleSheet.absoluteFill, estilos.barraVelo]} pointerEvents="none" />
         {/* El orden de la web: Inicio, Ranking, Álbum, Stats, Ajustes. */}
         {ORDEN.map((p, i) => {
           // EL PUNTITO EN RANKING: hay solicitudes esperando y no estás mirando
@@ -587,7 +598,7 @@ export default function Pestanas({
               <View style={estilos.icono}>
                 <IconoDePestana cual={p} color={C.apagado} />
                 <Animated.View style={[StyleSheet.absoluteFill, { opacity: luces[i] }]} pointerEvents="none">
-                  <IconoDePestana cual={p} color={C.claro} />
+                  <IconoDePestana cual={p} color={C.claro} luz />
                 </Animated.View>
                 {avisa && <View style={estilos.punto} />}
               </View>
@@ -630,16 +641,18 @@ const estilos = conTema(() => StyleSheet.create({
   carril: { position: 'absolute', top: 0, bottom: 0, left: 0 },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   noCargo: { color: C.sub, fontSize: 14, textAlign: 'center', paddingHorizontal: 32, marginBottom: 14 },
-  reintentar: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.sub, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10 },
+  reintentar: { borderWidth: 1, borderColor: C.sub, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10 },
   reintentarTexto: { color: C.tinta, fontSize: 14 },
   barra: {
     flexDirection: 'row',
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
     borderTopColor: C.linea,
     paddingBottom: 20,
     paddingTop: 6,
-    backgroundColor: C.fondo,
   },
+  // Encima del desenfoque y no en la barra: iOS dibuja mal un desenfoque con algo translúcido debajo.
+  barraVelo: { backgroundColor: conAlfa(C.negro, 0.62) },
+  tope: { position: 'absolute', left: 0, right: 0, top: 0, height: 62 },
   boton: { flex: 1, alignItems: 'center', paddingVertical: 4, minHeight: 44, justifyContent: 'center', gap: 3 },
   icono: { width: 22, height: 22 },
   texto: { color: C.apagado, fontSize: 10, fontWeight: '500', letterSpacing: 0.3 },

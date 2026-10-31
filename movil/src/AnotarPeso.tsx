@@ -121,7 +121,7 @@ export default function AnotarPeso({ unidad, alGuardar }: { unidad: Unidad; alGu
       </View>
       {ultimo && <Text style={estilos.ultima}>{T.peso.ultima(conComa(pesoInicial(ultimo.valor, unidad).toFixed(1)), unidad, fechaLinda(ultimo.fecha))}</Text>}
       <Pressable style={[estilos.anotar, guardando && estilos.apagado]} onPress={() => guardar()} disabled={guardando} accessibilityRole="button" testID="anotar-peso-anotar">
-        <FondoOctogonal relleno={FIJO.crema} />
+        <FondoOctogonal relleno={FIJO.crema} luz={FIJO.crema} />
         <Text style={estilos.anotarTexto}>{guardando ? '…' : T.peso.anotar}</Text>
       </Pressable>
       {!!error && <Text style={estilos.error}>{error}</Text>}

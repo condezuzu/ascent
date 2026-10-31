@@ -63,7 +63,7 @@ import { rutinaParaPreguntar, type PreguntaDeRutina } from './preguntarPorLaRuti
 import VentanaRutina from './VentanaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
-import { C, DESHABILITADO, HALO, conAlfa, conTema } from './colores';
+import { C, DESHABILITADO, HALO, conAlfa, conTema, luz } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
@@ -988,7 +988,7 @@ export default function Inicio({
               {/* "Seguir" se queda con el botón sólido: el que llegó acá sin
                   querer toca donde ya estaba tocando y no pasa nada. */}
               <Pressable style={estilos.solido} onPress={() => setTerminando(false)}>
-                <FondoOctogonal relleno={C.claro} />
+                <FondoOctogonal relleno={C.claro} luz={C.claro} />
                 <Text style={estilos.textoSolido}>{T.sesion.seguir}</Text>
               </Pressable>
               <Pressable
@@ -1018,7 +1018,7 @@ export default function Inicio({
             </>
           ) : (
             <Tocable style={estilos.solido} hundir={0.97} onPress={() => setTerminando(true)}>
-              <FondoOctogonal relleno={C.claro} />
+              <FondoOctogonal relleno={C.claro} luz={C.claro} />
               <Text style={estilos.textoSolido}>{T.sesion.terminar}</Text>
             </Tocable>
           )}
@@ -1134,7 +1134,7 @@ export default function Inicio({
       ) : (
         <>
           <Tocable style={estilos.solido} hundir={0.97} onPress={() => setRegistrarAbierto(true)}>
-            <FondoOctogonal relleno={C.claro} />
+            <FondoOctogonal relleno={C.claro} luz={C.claro} />
             <Text style={estilos.textoSolido}>{sinNada ? T.inicio.registrarPrimerDia : T.inicio.registrarDia}</Text>
           </Tocable>
           {/* PEGADO AL PRINCIPAL, como en la web: el peso NO pasa por registrar
@@ -1351,6 +1351,7 @@ const estilos = conTema(() => StyleSheet.create({
     gap: 7,
     borderWidth: 1,
     borderColor: C.bordeChip,
+    backgroundColor: conAlfa(C.negro, 0.28),
     borderRadius: 999,
     paddingVertical: 7,
     paddingHorizontal: 12,
@@ -1358,10 +1359,10 @@ const estilos = conTema(() => StyleSheet.create({
   },
   chipTexto: { color: C.claro, fontSize: 13, fontFamily: L.dato },
   chipPalabra: { color: C.claro, fontSize: 13, fontWeight: '500' },
-  latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.claro },
+  latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.claro, ...luz(C.claro, 0.9, 3) },
   // No se achica: los dos chips son numeros y un numero cortado no se lee.
   sesionViva: { flexDirection: 'row', gap: 8, flexShrink: 0 },
-  chipListo: { backgroundColor: C.claro, borderColor: C.claro },
+  chipListo: { backgroundColor: C.claro, borderColor: C.claro, ...luz(C.claro, 0.4, 6) },
   chipTextoListo: { color: C.fondo },
 
   sesion: { marginTop: 16 },

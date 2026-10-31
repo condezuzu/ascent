@@ -166,7 +166,7 @@ const estilos = conTema(() => StyleSheet.create({
   titulo: { ...R.etiqueta, marginBottom: 10  },
   caja: { marginTop: 10 },
   renglon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, paddingVertical: 11, paddingHorizontal: 6 },
-  separado: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineaFuerte },
+  separado: { borderTopWidth: 1, borderTopColor: C.lineaFuerte },
   luz: { ...StyleSheet.absoluteFillObject },
   botonTexto: { color: C.tinta, fontSize: 14 },
   estandoAhi: { color: C.apagado, fontSize: 12, marginTop: 6 },

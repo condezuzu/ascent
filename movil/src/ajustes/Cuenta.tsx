@@ -168,7 +168,7 @@ const estilos = conTema(() => StyleSheet.create({
   texto: { paddingVertical: 12 },
   tarjeta: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.linea },
   filaCuenta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16 },
-  conLinea: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
+  conLinea: { borderTopWidth: 1, borderTopColor: C.linea },
   flecha: { color: C.apagado, fontSize: 18 },
   enlace: { color: C.sub, fontSize: 15 },
   peligro: { color: C.error, fontSize: 15 },
@@ -181,7 +181,7 @@ const estilos = conTema(() => StyleSheet.create({
   nota: { ...R.nota, marginBottom: 8  },
   fuerte: { color: C.tinta },
   campo: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingHorizontal: 14,
@@ -196,7 +196,7 @@ const estilos = conTema(() => StyleSheet.create({
   peligroSinConfirmarTexto: { color: C.error },
   boton: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 12,

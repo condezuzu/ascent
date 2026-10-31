@@ -49,6 +49,6 @@ const estilos = conTema(() => StyleSheet.create({
   botones: { flexDirection: 'row', gap: 12, marginTop: 18 },
   solido: { backgroundColor: C.tinta, borderRadius: 999, paddingVertical: 11, paddingHorizontal: 22 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
-  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 11, paddingHorizontal: 22 },
+  borde: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 11, paddingHorizontal: 22 },
   bordeTexto: { color: C.tinta, fontSize: 15 },
 }));

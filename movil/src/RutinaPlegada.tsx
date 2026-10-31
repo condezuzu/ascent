@@ -144,7 +144,7 @@ function BloqueDeSerie({ indice }: { indice: number }) {
 }
 
 const estilos = conTema(() => StyleSheet.create({
-  dia: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
+  dia: { borderTopWidth: 1, borderTopColor: C.linea },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 13 },
   tocado: { opacity: 0.6 },
   nombre: { flex: 1, color: C.tinta, fontSize: 15 },

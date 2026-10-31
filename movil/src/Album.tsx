@@ -564,7 +564,7 @@ const estilos = conTema(() => StyleSheet.create({
   tarjeta: {},
   texto: { color: C.sub, fontSize: 14 },
   botonFantasma: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 10,
@@ -600,7 +600,7 @@ const estilos = conTema(() => StyleSheet.create({
     alignSelf: 'center',
     padding: 6,
     borderRadius: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
     backgroundColor: C.hoja,
     overflow: 'hidden',
@@ -622,7 +622,7 @@ const estilos = conTema(() => StyleSheet.create({
   planeta: { color: C.sub, fontSize: 13 },
   acciones: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pastilla: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 8,

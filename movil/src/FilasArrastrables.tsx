@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, type GestureResponderEvent } from 'react-native';
 import { plataforma } from '@plataforma';
 import { T } from '@nucleo/textos';
-import { C, conTema } from './colores';
+import { C, conTema, luz } from './colores';
 import { useTema } from './useTema';
 
 /**
@@ -159,16 +159,12 @@ const estilos = conTema(() => StyleSheet.create({
   fila: { flex: 1, justifyContent: 'center' },
   globo: {
     zIndex: 10,
-    elevation: 8,
     backgroundColor: C.hoja,
     borderRadius: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     paddingHorizontal: 10,
     marginHorizontal: -10,
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
+    ...luz(C.claro, 0.25, 10),
   },
 }));

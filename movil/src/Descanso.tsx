@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { pasadoDe } from '@nucleo/avisoDescanso';
 import CompaneroEnDescanso from './CompaneroEnDescanso';
 import { PRESETS_DESCANSO, descansoAMano } from '@nucleo/reglas';
@@ -171,6 +171,16 @@ export default function Descanso({
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={alOcultar} statusBarTranslucent>
       <View style={[estilos.pantalla, { paddingTop: arriba }]}>
+        {/* La neblina del rango: el aire de la pantalla, sin tapar el número. */}
+        <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Defs>
+            <RadialGradient id="neblina" cx="50%" cy="47%" rx="90%" ry="46%">
+              <Stop offset="0" stopColor={C.principal} stopOpacity={0.13} />
+              <Stop offset="0.7" stopColor={C.principal} stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#neblina)" />
+        </Svg>
         <Pressable style={estilos.cerrar} onPress={alOcultar} accessibilityLabel={T.descanso.cerrar}>
           <Text style={estilos.cerrarTexto}>✕</Text>
         </Pressable>
@@ -200,6 +210,18 @@ export default function Descanso({
                 r={RADIO}
                 fill="none"
                 stroke={acento}
+                strokeWidth={10}
+                strokeOpacity={0.2}
+                strokeLinecap="round"
+                strokeDasharray={LARGO}
+                strokeDashoffset={LARGO * (1 - proporcion)}
+              />
+              <Circle
+                cx={LADO / 2}
+                cy={LADO / 2}
+                r={RADIO}
+                fill="none"
+                stroke={acento}
                 strokeWidth={4}
                 strokeLinecap="round"
                 strokeDasharray={LARGO}
@@ -220,7 +242,7 @@ export default function Descanso({
         {terminado ? (
           <View style={estilos.abajo}>
             <Pressable style={estilos.solido} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
-              <FondoOctogonal relleno={C.claro} />
+              <FondoOctogonal relleno={C.claro} luz={C.claro} />
               <Text style={estilos.solidoTexto}>{T.descanso.serieHecha}</Text>
             </Pressable>
             <Fantasma
@@ -238,7 +260,7 @@ export default function Descanso({
                 es lo que más se hace desde acá. */}
             {sinEmpezar ? (
               <Tocable testID="descanso-empezar" style={estilos.solido} onPress={sinEmpezar.alEmpezar}>
-                <FondoOctogonal relleno={C.claro} />
+                <FondoOctogonal relleno={C.claro} luz={C.claro} />
                 <Text style={estilos.solidoTexto}>{T.descanso.empezar}</Text>
               </Tocable>
             ) : (
@@ -361,7 +383,7 @@ const estilos = conTema(() => StyleSheet.create({
   bordeTexto: { color: C.tinta, fontSize: 16 },
   presets: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
   aMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
-  aManoCampo: { color: C.tinta, fontSize: 16, minWidth: 170, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontFamily: L.dato },
+  aManoCampo: { color: C.tinta, fontSize: 16, minWidth: 170, borderBottomWidth: 1, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontFamily: L.dato },
   aManoMal: { color: C.sub, fontSize: 12, textAlign: 'center', marginTop: 6 },
   preset: { borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 9 },
   presetActivo: { borderColor: C.sub },

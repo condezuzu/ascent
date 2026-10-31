@@ -45,13 +45,13 @@ export default function Segmentado<V>({
 const estilos = conTema(() => StyleSheet.create({
   caja: {
     flexDirection: 'row',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     overflow: 'hidden',
   },
   parte: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 11, paddingHorizontal: 6 },
-  separada: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: C.lineaFuerte },
+  separada: { borderLeftWidth: 1, borderLeftColor: C.lineaFuerte },
   elegida: { backgroundColor: conAlfa(C.claro, 0.14) },
   texto: { color: C.apagado, fontSize: 14 },
   textoElegido: { color: C.tinta, fontWeight: '600' },

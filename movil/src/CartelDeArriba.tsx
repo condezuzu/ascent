@@ -126,7 +126,7 @@ export default function CartelDeArriba() {
         { opacity: bajada, transform: [{ translateY: bajada.interpolate({ inputRange: [0, 1], outputRange: [-160, 0] }) }] },
       ]}
     >
-      <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={12} />
+      <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={12} luz={C.claro} />
       <View style={estilos.quien}>
         <Avatar url={novedad.otro.avatar_url} nombre={novedad.otro.username} tam={40} />
         <View style={estilos.textos}>
@@ -160,18 +160,13 @@ const estilos = conTema(() => StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     // Opaco: encima de Inicio se transparentaba el botón de atrás.
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12,
   },
   quien: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   textos: { flex: 1 },
   nombre: { color: C.tinta, fontSize: 16, fontWeight: '600' },
   que: { color: C.sub, fontSize: 14, marginTop: 2 },
   botones: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 12 },
-  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
+  borde: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
   bordeTexto: { color: C.tinta, fontSize: 14 },
   solido: { backgroundColor: C.tinta, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
   solidoTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },

@@ -96,7 +96,7 @@ export function Caja({
   useTema();
   return (
     <View style={style} testID={testID}>
-      <FondoOctogonal relleno={relleno ?? C.superficie} borde={borde ?? C.bordeOcto} corte={corte} />
+      <FondoOctogonal relleno={relleno ?? C.superficie} superficie={!relleno} borde={borde ?? C.bordeOcto} corte={corte} />
       {children}
     </View>
   );

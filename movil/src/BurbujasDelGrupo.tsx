@@ -159,7 +159,7 @@ function GloboDelAmigo({ tocada, alInvitar, alCerrar }: { tocada: Tocada; alInvi
         <Avatar url={amigo.avatar_url} nombre={amigo.username} tam={TOCADA - 4} />
       </View>
       <View testID="globo-amigo" accessibilityViewIsModal style={[estilos.globo, { top: arriba }]}>
-        <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={12} />
+        <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={12} luz={C.claro} />
         <View style={[estilos.cola, { left: Math.min(Math.max(centro - MARGEN - 7, 18), width - 2 * MARGEN - 32) }]} />
         <Text style={estilos.quien} numberOfLines={1}>
           {amigo.username}
@@ -230,11 +230,6 @@ const estilos = conTema(() => StyleSheet.create({
     right: MARGEN,
     padding: 16,
     gap: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
   },
   cola: {
     position: 'absolute',
@@ -242,8 +237,8 @@ const estilos = conTema(() => StyleSheet.create({
     width: 14,
     height: 14,
     backgroundColor: C.hoja,
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderLeftWidth: 1,
+    borderTopWidth: 1,
     borderColor: C.lineaFuerte,
     transform: [{ rotate: '45deg' }],
   },

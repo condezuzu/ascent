@@ -172,6 +172,16 @@ export const C = {
   brillo: '#ffffff',
 };
 
+/**
+ * LA LUZ DE COLOR (30/10). Sobre un fondo casi negro una sombra negra no se ve: lo que da profundidad
+ * es que las cosas emitan. Para lo que tiene forma propia (un círculo, una píldora): en la web, y sin
+ * fondo también en iOS si no se le da `shadowPath`, la sombra sigue al rectángulo o cuesta píxel por
+ * píxel; lo cortado en diagonal lleva su luz dibujada (`FondoOctogonal`).
+ */
+export function luz(color: string, opacidad: number, radio: number) {
+  return { shadowColor: color, shadowOpacity: opacidad, shadowRadius: radio, shadowOffset: { width: 0, height: 0 } };
+}
+
 /** Un botón que no se puede tocar. Más bajo y el texto oscuro sobre el sólido del rango 1 pierde el piso de 4,5:1. */
 export const DESHABILITADO = 0.85;
 

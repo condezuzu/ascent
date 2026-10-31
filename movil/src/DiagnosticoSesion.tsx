@@ -210,7 +210,7 @@ function textoDe(l: Lectura | null): string {
 // Los mismos colores escritos a mano que el resto del diagnóstico: vive al
 // lado de la caja negra y no puede depender de la paleta de la app.
 const estilos = conTema(() => StyleSheet.create({
-  caja: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, padding: 12, marginBottom: 14 },
+  caja: { borderWidth: 1, borderColor: C.lineaFuerte, padding: 12, marginBottom: 14 },
   titulo: { color: C.tinta, fontSize: 15, marginBottom: 2 },
   nota: { color: C.sub, fontSize: 12, lineHeight: 17, marginBottom: 10 },
   fila: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6, gap: 10 },
@@ -220,5 +220,5 @@ const estilos = conTema(() => StyleSheet.create({
   detalle: { color: C.sub, fontSize: 11, fontFamily: 'Menlo', marginTop: 1 },
   cola: { color: C.sub, fontSize: 12, marginTop: 8 },
   releer: { color: C.sub, fontSize: 12, textDecorationLine: 'underline', marginTop: 8 },
-  actualizar: { marginTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, paddingTop: 10 },
+  actualizar: { marginTop: 12, borderTopWidth: 1, borderColor: C.lineaFuerte, paddingTop: 10 },
 }));

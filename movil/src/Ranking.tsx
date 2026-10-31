@@ -519,7 +519,7 @@ const estilos = conTema(() => StyleSheet.create({
     marginBottom: 16,
   },
   ranking: { position: 'relative', marginBottom: 16 },
-  lista: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingVertical: 4 },
+  lista: { borderTopWidth: 1, borderColor: C.linea, paddingVertical: 4 },
   // El hundido al tocar: sin eso, una fila que navega se ve igual que una
   // que no hace nada, y la única forma de saberlo es tocarla.
   filaTocada: { opacity: 0.55 },
@@ -536,14 +536,14 @@ const estilos = conTema(() => StyleSheet.create({
   // La racha de hoy, sola y apartada a la derecha: lo de al lado del nombre son logros.
   racha: { color: C.tinta, fontSize: 16, minWidth: 34, textAlign: 'right', marginLeft: 14, fontFamily: L.dato },
   filaAdentro: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  unirse: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
+  unirse: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
   unirseTexto: { color: C.tinta, fontSize: 13 },
   filaConAviso: { flexWrap: 'wrap' },
   noSePudo: { color: C.sub, fontSize: 13, lineHeight: 18, flexBasis: '100%', paddingTop: 2, paddingBottom: 6 },
   accion: { color: C.claro, fontSize: 14 },
   texto: { color: C.sub, fontSize: 14, marginVertical: 10 },
   botonFantasma: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 10,
@@ -563,14 +563,14 @@ const estilos = conTema(() => StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
   },
   buscador: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
     borderRadius: 999,
     paddingHorizontal: 12,

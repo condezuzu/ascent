@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { Novedad } from '@nucleo/novedades';
 import { T } from '@nucleo/textos';
 import Avatar from './Avatar';
-import { C, conAlfa, conTema } from './colores';
+import { C, conAlfa, conTema, luz } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 
@@ -166,16 +166,12 @@ const estilos = conTema(() => StyleSheet.create({
   sombra: {
     height: ALTO,
     backgroundColor: C.hoja,
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12,
+    ...luz(C.claro, 0.22, 12),
   },
   pildora: {
     flex: 1,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     backgroundColor: C.hoja,
   },
@@ -185,7 +181,7 @@ const estilos = conTema(() => StyleSheet.create({
   textos: { flex: 1, minWidth: 0 },
   nombre: { color: C.tinta, fontSize: 14, fontWeight: '600' },
   que: { color: C.sub, fontSize: 13, marginTop: 1 },
-  no: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 12 },
+  no: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 12 },
   noTexto: { color: C.sub, fontSize: 13 },
   si: { backgroundColor: C.tinta, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 13, overflow: 'hidden' },
   siTexto: { color: C.fondo, fontSize: 13, fontWeight: '600' },

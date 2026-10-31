@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Svg, { Polygon } from 'react-native-svg';
+import Svg, { Defs, G, LinearGradient, Polygon, Stop } from 'react-native-svg';
+import { C } from './colores';
+
+// Tres trazos anchos y tenues alrededor: es un difuminado barato, y se ve igual en el teléfono y en la web.
+const ANILLOS = [[17, 0.025], [11, 0.04], [6, 0.06], [2, 0.09]] as const;
+const MARGEN = 10;
 
 /**
  * EL FONDO DE LOS BOTONES DE INICIO, CON LAS ESQUINAS CORTADAS EN DIAGONAL (21/10, a pedido:
@@ -13,6 +18,8 @@ export default function FondoOctogonal({
   corte = 10,
   soloArriba,
   tapar,
+  superficie,
+  luz,
 }: {
   relleno: string;
   borde?: string;
@@ -21,6 +28,10 @@ export default function FondoOctogonal({
   soloArriba?: boolean;
   /** Pinta las esquinas de ese color: una foto no se puede recortar en diagonal, se le tapan. */
   tapar?: string;
+  /** En vez de un relleno liso, una luz que cae de arriba. */
+  superficie?: boolean;
+  /** El color que emite. Dibujado: una sombra no sigue la diagonal, y en la web sería un rectángulo. */
+  luz?: string;
 }) {
   const [tam, setTam] = useState<{ w: number; h: number } | null>(null);
   const puntos = (w: number, h: number) => {
@@ -38,11 +49,28 @@ export default function FondoOctogonal({
       testID="fondo-octogonal"
     >
       {tam && tam.w > 0 && tam.h > 0 && (
-        <Svg width={tam.w} height={tam.h}>
+        <Svg
+          width={tam.w + (luz ? MARGEN * 2 : 0)}
+          height={tam.h + (luz ? MARGEN * 2 : 0)}
+          style={luz ? { position: 'absolute', left: -MARGEN, top: -MARGEN } : undefined}
+        >
+          {superficie && (
+            <Defs>
+              <LinearGradient id="superficie" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={C.brillo} stopOpacity={0.075} />
+                <Stop offset="1" stopColor={C.brillo} stopOpacity={0.015} />
+              </LinearGradient>
+            </Defs>
+          )}
+          <G x={luz ? MARGEN : 0} y={luz ? MARGEN : 0}>
+          {luz && ANILLOS.map(([ancho, fuerza]) => (
+            <Polygon key={ancho} points={puntos(tam.w, tam.h)} fill="none" stroke={luz} strokeWidth={ancho} strokeOpacity={fuerza} strokeLinejoin="round" />
+          ))}
           {tapar && [[0, 0, corte, 0, 0, corte], [tam.w, 0, tam.w - corte, 0, tam.w, corte], [tam.w, tam.h, tam.w - corte, tam.h, tam.w, tam.h - corte], [0, tam.h, corte, tam.h, 0, tam.h - corte]].map((t, i) => (
             <Polygon key={i} points={`${t[0]},${t[1]} ${t[2]},${t[3]} ${t[4]},${t[5]}`} fill={tapar} />
           ))}
-          <Polygon points={puntos(tam.w, tam.h)} fill={relleno} stroke={borde ?? 'none'} strokeWidth={borde ? 1 : 0} />
+          <Polygon points={puntos(tam.w, tam.h)} fill={superficie ? 'url(#superficie)' : relleno} stroke={borde ?? 'none'} strokeWidth={borde ? 1 : 0} />
+        </G>
         </Svg>
       )}
     </View>

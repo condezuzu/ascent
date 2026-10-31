@@ -57,7 +57,7 @@ const estilos = conTema(() => StyleSheet.create({
     width: 46,
     height: 26,
     borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     justifyContent: 'center',
   },

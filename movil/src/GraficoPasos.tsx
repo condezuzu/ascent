@@ -400,7 +400,7 @@ function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro:
 }
 
 const estilos = conTema(() => StyleSheet.create({
-  grafico: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
+  grafico: { borderTopWidth: 1, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
   lienzo: { height: ALTO },
   punto: {
     position: 'absolute',
@@ -422,7 +422,7 @@ const estilos = conTema(() => StyleSheet.create({
   metaBoton: {
     alignSelf: 'flex-start',
     marginTop: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 8,

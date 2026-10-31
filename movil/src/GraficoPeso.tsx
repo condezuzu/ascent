@@ -4,7 +4,7 @@ import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { conComa, puntoMasCercano, trazarPeso, type Unidad } from '@nucleo/peso';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
-import { C, conAlfa, conTema } from './colores';
+import { C, conAlfa, conTema, luz } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
@@ -179,13 +179,13 @@ function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro:
   return (
     <>
       <View style={[estilos.aro, { left: x, top: y, backgroundColor: aro }]} />
-      <View style={[estilos.punto, { left: x, top: y, backgroundColor: color }]} />
+      <View style={[estilos.punto, { left: x, top: y, backgroundColor: color }, luz(color, 0.9, 5)]} />
     </>
   );
 }
 
 const estilos = conTema(() => StyleSheet.create({
-  grafico: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
+  grafico: { borderTopWidth: 1, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
   lienzo: { height: ALTO },
   punto: {
     position: 'absolute',

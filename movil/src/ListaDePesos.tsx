@@ -224,7 +224,7 @@ const estilos = conTema(() => StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: C.linea,
   },
   // Cuando se corrige o se pregunta por el borrado, la fila se despega apenas
@@ -246,7 +246,7 @@ const estilos = conTema(() => StyleSheet.create({
   pregunta: { color: C.sub, fontSize: 12, flex: 1, lineHeight: 16 },
   campo: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingHorizontal: 10,
@@ -260,7 +260,7 @@ const estilos = conTema(() => StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
   },
   iconoHundido: { transform: [{ scale: 0.92 }], borderColor: C.lineaFuerte, backgroundColor: C.hoja },

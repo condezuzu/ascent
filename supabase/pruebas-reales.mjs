@@ -87,6 +87,8 @@
 //      es Outfit, las cifras y el reloj son Geist Mono, y se dibujan de verdad (30/10), en la nativa.
 //  38. probar-forma — ningún radio del medio en ninguna pantalla; las cifras de Stats en caja cortada, la
 //      hoja con las esquinas de arriba cortadas y lo secundario subrayado (30/10), en la nativa.
+//  39. probar-profundidad — ninguna sombra negra ni borde fino; lo que emite, emite en el color del rango:
+//      la punta de la barra, el sólido, la pestaña y la neblina del descanso (30/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -145,6 +147,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'toda la app sigue al rango', archivo: 'probar-rango.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'las letras de la nativa', archivo: 'probar-letras.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'octágono o píldora', archivo: 'probar-forma.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'luz de color y bordes de 1 pt', archivo: 'probar-profundidad.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

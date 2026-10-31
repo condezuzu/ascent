@@ -176,7 +176,7 @@ const estilos = StyleSheet.create({
   relojRotulo: { color: C.sub, fontSize: 11 },
   haciendo: { color: C.claro, fontSize: 13 },
   estado: { color: C.sub, fontSize: 13 },
-  separador: { height: StyleSheet.hairlineWidth, backgroundColor: C.linea },
+  separador: { height: 1, backgroundColor: C.linea },
   vivo: { width: 7, height: 7, alignItems: 'center', justifyContent: 'center' },
   vivoPunto: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.vivo },
   vivoAro: { position: 'absolute', width: 15, height: 15, borderRadius: 8, borderWidth: 1, borderColor: C.vivo },

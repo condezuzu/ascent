@@ -94,7 +94,7 @@ const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   titulo: { ...R.etiqueta, marginBottom: 12  },
   campo: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
     borderRadius: 999,
     paddingVertical: 12,
@@ -105,7 +105,7 @@ const estilos = conTema(() => StyleSheet.create({
   },
   boton: {
     marginTop: 10,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
     borderRadius: 999,
     paddingVertical: 11,

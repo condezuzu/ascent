@@ -3,7 +3,7 @@ import { Animated, Easing, Modal, Pressable, StyleSheet, View } from 'react-nati
 import { DIAS_SEMANA, deISO, fechaLinda, fechasLindas } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, luz } from './colores';
 import { FIJO } from './coloresFijos';
 import DiaDeLaTira from './DiaDeLaTira';
 import Estrella from './Estrella';
@@ -238,7 +238,7 @@ export default function RachaSalvada({
               </View>
 
               <Animated.View style={[estilos.caja, { opacity: caja }]} testID="vida-cuadro" pointerEvents={fase === 'aviso' ? 'auto' : 'none'}>
-                <FondoOctogonal relleno={C.hoja} borde={FIJO.raya} corte={14} />
+                <FondoOctogonal relleno={C.hoja} borde={FIJO.raya} corte={14} luz={C.crema} />
                 {cola && tira && <View pointerEvents="none" style={[estilos.cola, { left: cola.x - tira.x - 7 }]} />}
                 <View style={estilos.emblema} pointerEvents="none" testID="vida-emblema">
                   <Estrella tam={18} />
@@ -307,7 +307,7 @@ export default function RachaSalvada({
   );
 }
 
-const sombra = { shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 };
+const sombra = luz(C.crema, 0.22, 10);
 
 const estilos = StyleSheet.create({
   fondo: { flex: 1, backgroundColor: conAlfa(C.negro, 0.96), paddingHorizontal: 24, paddingTop: 110, paddingBottom: 40, justifyContent: 'space-between' },
@@ -318,9 +318,9 @@ const estilos = StyleSheet.create({
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
   letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
   estallido: { position: 'absolute', left: 0, top: 0, width: PUNTO, height: PUNTO, borderRadius: PUNTO / 2, borderWidth: 2, borderColor: C.crema },
-  caja: { marginTop: 30, paddingTop: 24, paddingHorizontal: 16, paddingBottom: 12, ...sombra },
-  cola: { position: 'absolute', top: -7, width: 13, height: 13, backgroundColor: C.hoja, borderTopWidth: StyleSheet.hairlineWidth, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: FIJO.raya, transform: [{ rotate: '45deg' }] },
-  emblema: { position: 'absolute', alignSelf: 'center', top: -17, width: 34, height: 34, borderRadius: 17, backgroundColor: C.hoja, borderWidth: StyleSheet.hairlineWidth, borderColor: FIJO.raya, alignItems: 'center', justifyContent: 'center' },
+  caja: { marginTop: 30, paddingTop: 24, paddingHorizontal: 16, paddingBottom: 12 },
+  cola: { position: 'absolute', top: -7, width: 13, height: 13, backgroundColor: C.hoja, borderTopWidth: 1, borderLeftWidth: 1, borderColor: FIJO.raya, transform: [{ rotate: '45deg' }] },
+  emblema: { position: 'absolute', alignSelf: 'center', top: -17, width: 34, height: 34, borderRadius: 17, backgroundColor: C.hoja, borderWidth: 1, borderColor: FIJO.raya, alignItems: 'center', justifyContent: 'center' },
   texto: { color: C.tinta, fontSize: 17, lineHeight: 24, textAlign: 'center' },
   fallo: { color: C.error, fontSize: 13, lineHeight: 18, marginTop: 8, textAlign: 'center' },
   botones: { flexDirection: 'row', gap: 10, marginTop: 16 },
@@ -334,8 +334,8 @@ const estilos = StyleSheet.create({
   link: { alignSelf: 'center', marginTop: 12, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: conAlfa(C.link, 0.08) },
   linkTocado: { backgroundColor: conAlfa(C.link, 0.16) },
   linkTexto: { color: C.link, fontSize: 13, textDecorationLine: 'underline' },
-  globito: { position: 'absolute', left: 0, right: 0, paddingVertical: 12, paddingHorizontal: 14, ...sombra },
-  globitoCola: { position: 'absolute', top: -7, width: 12, height: 12, backgroundColor: C.globo, borderTopWidth: StyleSheet.hairlineWidth, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: C.bordeGlobo, transform: [{ rotate: '45deg' }] },
+  globito: { position: 'absolute', left: 0, right: 0, paddingVertical: 12, paddingHorizontal: 14 },
+  globitoCola: { position: 'absolute', top: -7, width: 12, height: 12, backgroundColor: C.globo, borderTopWidth: 1, borderLeftWidth: 1, borderColor: C.bordeGlobo, transform: [{ rotate: '45deg' }] },
   globitoTexto: { color: C.tinta, fontSize: 15, lineHeight: 21 },
   volador: { position: 'absolute', left: 0, top: 0, zIndex: 20, width: 24, height: 24 },
   listo: { alignSelf: 'stretch' },

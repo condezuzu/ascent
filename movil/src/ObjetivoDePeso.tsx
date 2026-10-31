@@ -166,7 +166,7 @@ const estilos = conTema(() => StyleSheet.create({
   llegadoMarca: { color: C.claro, fontSize: 14 },
   editor: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 12 },
   campo: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingHorizontal: 12,

@@ -229,7 +229,7 @@ function RegistrarDia({
         disabled={cargando || (yaEsta && !foto)}
         testID="registrar-confirmar"
       >
-        <FondoOctogonal relleno={FIJO.crema} />
+        <FondoOctogonal relleno={FIJO.crema} luz={FIJO.crema} />
         {cargando ? (
           <ActivityIndicator color={FIJO.negro} />
         ) : (

@@ -223,7 +223,7 @@ const estilos = conTema(() => StyleSheet.create({
   tocable: { textDecorationLine: 'underline', textDecorationStyle: 'dotted', textDecorationColor: C.sub },
   titulo: { color: C.tinta, fontSize: 20, fontWeight: '500', marginBottom: 12 },
   vacio: { color: C.sub, fontSize: 14, marginVertical: 12 },
-  fila: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.linea },
+  fila: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.linea },
   filaArriba: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   nombre: { color: C.tinta, fontSize: 15, flexShrink: 1 },
   controles: { flexDirection: 'row', alignItems: 'center', gap: 2 },

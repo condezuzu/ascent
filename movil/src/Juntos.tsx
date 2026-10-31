@@ -187,7 +187,7 @@ const estilos = conTema(() => StyleSheet.create({
   viejo: { color: C.apagado },
   accion: { color: C.claro, fontSize: 14 },
   apagada: { color: C.apagado, fontSize: 13 },
-  pildora: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
+  pildora: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
   pildoraLista: { borderColor: C.sub },
   pildoraTexto: { color: C.sub, fontSize: 12, fontFamily: L.dato },
   pildoraTextoLista: { color: C.tinta },

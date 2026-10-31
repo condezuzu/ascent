@@ -232,7 +232,7 @@ export default function MisMarcas() {
         <Text style={estilos.titulo}>{T.fuerza.misMarcas}</Text>
 
         <Pressable style={estilos.solido} onPress={() => abrirHoja()}>
-          <FondoOctogonal relleno={C.claro} />
+          <FondoOctogonal relleno={C.claro} luz={C.claro} />
           <Text style={estilos.solidoTexto}>{T.fuerza.anotarMarca}</Text>
         </Pressable>
 

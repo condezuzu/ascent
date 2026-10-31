@@ -205,7 +205,7 @@ const estilos = StyleSheet.create({
   centro: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, gap: 30 },
   lista: { borderWidth: 1, borderColor: C.linea, borderRadius: 14, backgroundColor: conAlfa(C.hoja, 0.9), paddingVertical: 6, paddingHorizontal: 18 },
   fila: { position: 'absolute', left: 18, right: 18, top: 6, height: ALTO_FILA, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  linea: { position: 'absolute', top: 0, left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: C.linea },
+  linea: { position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: C.linea },
   puesto: { width: 16, color: C.sub, fontSize: 14 },
   avatar: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
   inicial: { color: C.tinta, fontSize: 13 },

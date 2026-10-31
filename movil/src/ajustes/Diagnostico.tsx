@@ -431,7 +431,7 @@ const estilos = conTema(() => StyleSheet.create({
   que: { color: C.apagado, fontSize: 12 },
   dice: { color: C.sub, fontSize: 12, flexShrink: 1, textAlign: 'right' },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 1,
     paddingVertical: 12,
@@ -443,7 +443,7 @@ const estilos = conTema(() => StyleSheet.create({
   cuadro: {
     maxHeight: 220,
     marginTop: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
     borderRadius: 1,
     backgroundColor: C.hoja,

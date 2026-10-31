@@ -247,7 +247,7 @@ const estilos = conTema(() => StyleSheet.create({
     width: 10,
     height: 10,
     backgroundColor: C.hoja,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
     transform: [{ rotate: '45deg' }],
   },

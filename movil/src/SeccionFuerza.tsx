@@ -11,7 +11,7 @@ import { T } from '@nucleo/textos';
 import { cargarFuerza, filasDondeEstoy } from '@compartido/fuerza';
 import Avatar from './Avatar';
 import { irAPestana, useRecargarAlVolver } from './irAPestana';
-import { C, conTema, conAlfa } from './colores';
+import { C, conTema, conAlfa, luz } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
@@ -183,7 +183,7 @@ export default function SeccionFuerza({
           un botón de escribir arriba de todo invita a tocarlo por error en
           la pantalla que más se mira. */}
       <Pressable style={estilos.puerta} onPress={() => router.push('/marcas')}>
-        <FondoOctogonal relleno={C.superficie} borde={C.bordeOcto} />
+        <FondoOctogonal relleno={C.superficie} superficie borde={C.bordeOcto} />
         <Text style={estilos.puertaTexto}>
           {mia.marcas.length === 0 ? T.fuerza.anotarMarca : T.fuerza.misMarcas}
         </Text>
@@ -228,7 +228,7 @@ function DondeEstoy({
             </View>
             {/* La escala crece hacia la derecha y la marca cae donde cae. */}
             <View style={estilos.escala}>
-              <View style={[estilos.marca, { left: `${f.u.supera}%`, backgroundColor: claro }]} />
+              <View style={[estilos.marca, { left: `${f.u.supera}%`, backgroundColor: claro }, luz(claro, 0.9, 3)]} />
             </View>
             {f.u.faltaParaPrincipiante !== null && (
               // La distancia motiva sin inventar una categoría que la fuente
@@ -274,10 +274,10 @@ const estilos = conTema(() => StyleSheet.create({
   tira: { gap: 2, marginTop: 12 },
   tiraItem: { flexDirection: 'row', alignItems: 'baseline', gap: 10, paddingVertical: 5, paddingHorizontal: 2 },
   tarjeta: {},
-  separada: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea },
+  separada: { borderTopWidth: 1, borderColor: C.linea },
   rankCabecera: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12 },
   rankDetalle: { paddingLeft: 50, paddingRight: 12, paddingBottom: 10 },
-  donde: { marginTop: 16, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea },
+  donde: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderColor: C.linea },
   dondeTitulo: { ...R.etiqueta },
   dondeDatos: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 6 },
   pct: { minWidth: 34, textAlign: 'right', color: C.apagado, fontSize: 12, fontFamily: L.dato },

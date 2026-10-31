@@ -73,7 +73,7 @@ const estilos = conTema(() => StyleSheet.create({
   // pantalla — dos estilos de título en una lista se leen como un error.
   titulo: { ...R.etiqueta, marginBottom: 10  },
   campo: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 1,
     paddingHorizontal: 14,
@@ -84,7 +84,7 @@ const estilos = conTema(() => StyleSheet.create({
     textAlignVertical: 'top',
   },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 12,

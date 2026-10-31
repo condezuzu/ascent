@@ -206,7 +206,7 @@ export default function CalendarioDias({
 
 const estilos = conTema(() => StyleSheet.create({
   conVida: { borderWidth: 1.5, borderStyle: 'dashed' },
-  calendario: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingTop: 20, paddingBottom: 6 },
+  calendario: { borderTopWidth: 1, borderColor: C.linea, paddingTop: 20, paddingBottom: 6 },
   cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },
   // 44 pt: el mínimo con el que un pulgar acierta.
   flecha: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },

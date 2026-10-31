@@ -147,7 +147,7 @@ const estilos = conTema(() => StyleSheet.create({
   fila: { flexDirection: 'row', gap: 8 },
   campo: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingHorizontal: 14,
@@ -156,7 +156,7 @@ const estilos = conTema(() => StyleSheet.create({
     fontSize: 15,
   },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingHorizontal: 18,

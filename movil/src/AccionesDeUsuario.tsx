@@ -130,7 +130,7 @@ const estilos = conTema(() => StyleSheet.create({
   grupo: { gap: 4 },
   titulo: { color: C.tinta, fontSize: 16, marginBottom: 10 },
   que: { color: C.sub, fontSize: 14, lineHeight: 20, marginBottom: 14 },
-  item: { paddingVertical: 15, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea },
+  item: { paddingVertical: 15, borderTopWidth: 1, borderColor: C.linea },
   itemTexto: { color: C.tinta, fontSize: 16 },
   itemPeligro: { color: C.error, fontSize: 16 },
   peligro: { backgroundColor: C.error, borderRadius: 999, paddingVertical: 14, alignItems: 'center', marginTop: 4 },

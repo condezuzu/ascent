@@ -19641,7 +19641,7 @@ console.log('\n271. Las fotos del perfil no llevan "me gusta"; la grilla queda d
   chequear('las fotos: tres por fila del ancho medido, rectas y con sombra', [
     /onLayout=\{\(e\) => setAncho\(e\.nativeEvent\.layout\.width\)\}/.test(fq),
     /const lado = Math\.floor\(\(\(ancho \|\| width - 48\) - HUECO \* 2\) \/ 3\)/.test(fq),
-    /sombra: \{ borderRadius: 1,[^}]*shadowOpacity/.test(fq),
+    /sombra: \{ borderRadius: 1,[^}]*\.\.\.luz\(/.test(fq),
     /cuadrito: \{ borderRadius: 1, overflow: 'hidden' \}/.test(fq),
   ], [true, true, true, true]);
 }
@@ -19688,7 +19688,7 @@ console.log('\n273. La ventana al terminar: los textos pedidos, con el estilo de
     /\{preguntaRutina && <VentanaRutina pregunta=\{preguntaRutina\} alCerrar=\{\(\) => setPreguntaRutina\(null\)\} \/>\}/.test(ini),
   ], [false, true]);
   chequear('con el estilo de la app: caja cortada, título, texto y dos píldoras (crema y con borde)', [
-    /<FondoOctogonal relleno=\{C\.hoja\} borde=\{C\.lineaFuerte\} corte=\{14\} \/>/.test(v),
+    /<FondoOctogonal relleno=\{C\.hoja\} borde=\{C\.lineaFuerte\} corte=\{14\} luz=\{C\.claro\} \/>/.test(v),
     /pildora: \{ borderRadius: 999,/.test(v),
     /crema: \{ backgroundColor: C\.claro \}/.test(v) && /borde: \{ borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v),
     v.indexOf('estilos.titulo') < v.indexOf('estilos.texto') && v.indexOf('estilos.texto') < v.indexOf('estilos.acciones'),
@@ -20046,7 +20046,7 @@ console.log('\n286. Registrar el día con foto: el mismo estilo que anotar el pe
 {
   const rd = sinComentarios(deBug('movil', 'src', 'RegistrarDia.tsx'));
   chequear('colores fijos, la foto en una caja cortada y los botones redondos de la hoja del peso', [
-    /from '\.\/colores'|usePaleta/.test(rd), /from '\.\/coloresFijos'/.test(rd), /<FondoOctogonal relleno="none" borde=\{FIJO\.linea\} corte=\{14\} tapar=\{FIJO\.regla\} \/>/.test(rd), /redondo: \{[^}]*borderRadius: 29/.test(rd), /<FondoOctogonal relleno=\{FIJO\.crema\} \/>/.test(rd),
+    /from '\.\/colores'|usePaleta/.test(rd), /from '\.\/coloresFijos'/.test(rd), /<FondoOctogonal relleno="none" borde=\{FIJO\.linea\} corte=\{14\} tapar=\{FIJO\.regla\} \/>/.test(rd), /redondo: \{[^}]*borderRadius: 29/.test(rd), /<FondoOctogonal relleno=\{FIJO\.crema\} luz=\{FIJO\.crema\} \/>/.test(rd),
   ], [false, true, true, true, true]);
   chequear('las dos puertas siguen siendo cámara y galería, con los textos de siempre (la batería toca «Elegir de la galería»)', [
     /<Puerta icono="camara" texto=\{T\.registrar\.sacarFoto\} alTocar=\{\(\) => elegir\('camara'\)\} \/>/.test(rd),
@@ -21176,7 +21176,7 @@ console.log('\n323. Una sola paleta para toda la nativa (30/10)');
     if (!CON_COLOR323.test(r)) {
       texto.split('\n').forEach((l, i) => {
         if (/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)) return;
-        if (/['"\x60](#[0-9a-fA-F]{3,8}|rgba?\()/.test(l) && !/shadowColor: '#000'/.test(l)) aMano323.push(`${nombre}:${i + 1}`);
+        if (/['"\x60](#[0-9a-fA-F]{3,8}|rgba?\()/.test(l) ) aMano323.push(`${nombre}:${i + 1}`);
       });
     }
     if (!TENIDO323.test(texto)) continue;
@@ -21276,6 +21276,22 @@ console.log('\n325. La forma de la nativa: octágono o píldora (30/10)');
     .filter((r) => /color: C\.(sub|apagado), fontSize: (9|10|10\.5|11), letterSpacing: [\d.]+, textTransform: 'uppercase'/.test(leer325(r, 'utf8')))
     .map((r) => r.slice(raiz325.length + 1).replace(/\\/g, '/'));
   chequear('las etiquetas cuelgan de R.etiqueta', copias325, []);
+}
+console.log('\n326. La profundidad de la nativa: luz de color y bordes de 1 pt (30/10)');
+{
+  const { readFileSync: leer326, readdirSync: dir326 } = await import('node:fs');
+  const raiz326 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const { luz: luz326, C: C326 } = await import('../movil/src/colores.ts');
+  const fuentes326 = ['movil/src', 'movil/app'].flatMap((d) => dir326(join(raiz326, d), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules'))
+    .map((e) => join(e.parentPath, e.name)));
+  const FUERA326 = /(Minimo|Raiz|HudDiagnostico)\.tsx$/;
+  const con326 = (re) => fuentes326.filter((r) => !FUERA326.test(r) && re.test(leer326(r, 'utf8'))).map((r) => r.slice(raiz326.length + 1).replace(/\\/g, '/'));
+  chequear('ninguna sombra negra', con326(/shadowColor: ['"]#0{3,6}['"]/), []);
+  chequear('ningún borde de pelo: son de 1 pt', con326(/hairlineWidth/), []);
+  chequear('la luz es del color que se le pasa y no se corre: emite, no cae', luz326(C326.claro, 0.5, 4), { shadowColor: C326.claro, shadowOpacity: 0.5, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } });
+  const fo326 = leer326(join(raiz326, 'movil', 'src', 'FondoOctogonal.tsx'), 'utf8');
+  chequear('el octágono dibuja su luz, porque una sombra no sigue la diagonal', [/ANILLOS\.map/.test(fo326), /shadow/.test(fo326)], [true, false]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

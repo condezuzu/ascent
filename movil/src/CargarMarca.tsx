@@ -173,7 +173,7 @@ function CargarMarca({
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
 
         <Pressable style={estilos.solido} onPress={() => guardar()} disabled={guardando}>
-          <FondoOctogonal relleno={C.claro} />
+          <FondoOctogonal relleno={C.claro} luz={C.claro} />
           <Text style={estilos.solidoTexto}>{guardando ? T.sesion.guardando : T.marca.anotar}</Text>
         </Pressable>
         <Pressable style={estilos.texto} onPress={alCerrar} disabled={guardando}>
@@ -206,7 +206,7 @@ const estilos = conTema(() => StyleSheet.create({
   sub: { color: C.sub, fontSize: 13, lineHeight: 18, marginBottom: 18 },
   etiqueta: { ...R.etiqueta, marginTop: 16, marginBottom: 8  },
   selector: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingHorizontal: 14,
@@ -216,7 +216,7 @@ const estilos = conTema(() => StyleSheet.create({
   pastillas: { flexDirection: 'row', gap: 8 },
   pastilla: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 11,
@@ -226,7 +226,7 @@ const estilos = conTema(() => StyleSheet.create({
   pastillaTexto: { color: C.tinta, fontSize: 14 },
   prendidaTexto: { color: C.fondo, fontWeight: '600' },
   campo: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingHorizontal: 14,

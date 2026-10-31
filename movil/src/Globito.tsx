@@ -33,7 +33,7 @@ export default function Globito({ texto, alCerrar, testID }: { texto: string; al
   return (
     <View style={estilos.ancla} pointerEvents="box-none">
       <Animated.View style={[estilos.globo, { opacity: opacidad }]}>
-        <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={8} />
+        <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={8} luz={C.claro} />
         <Pressable testID={testID} style={estilos.toque} onPress={cerrar} accessibilityRole="button" accessibilityHint={T.general.entendido}>
           {/* Dos renglones (21/10): el aviso de subir el peso dice el rango, y en uno se cortaba. */}
           <Text style={estilos.texto} numberOfLines={2}>
@@ -57,10 +57,6 @@ const estilos = conTema(() => StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    shadowColor: '#000',
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
   },
   toque: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 },
   texto: { flex: 1, color: C.tinta, fontSize: 13 },

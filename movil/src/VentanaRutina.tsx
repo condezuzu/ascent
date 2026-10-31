@@ -52,7 +52,7 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
       <View style={estilos.fondo}>
         <Pressable style={StyleSheet.absoluteFill} onPress={alCerrar} disabled={guardando} accessibilityRole="button" accessibilityLabel={T.general.cerrar} />
         <View testID="ventana-rutina" style={estilos.caja}>
-          <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={14} />
+          <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={14} luz={C.claro} />
           <View style={estilos.marca}>
             <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.claro} strokeWidth={1.8} strokeLinecap="round">
               <Path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6" />
@@ -121,11 +121,6 @@ const estilos = conTema(() => StyleSheet.create({
     paddingTop: 22,
     paddingHorizontal: 18,
     paddingBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.55,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 8,
   },
   marca: { width: 38, height: 38, borderRadius: 19, backgroundColor: conAlfa(C.principal, 0.16), alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   titulo: { color: C.tinta, fontSize: 17, fontWeight: '600', lineHeight: 22 },

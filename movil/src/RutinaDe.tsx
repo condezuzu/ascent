@@ -189,7 +189,7 @@ const estilos = conTema(() => StyleSheet.create({
   filaNombre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   nota: { ...R.nota, marginTop: 6  },
   indicacion: { color: C.sub, fontSize: 13, marginBottom: 6 },
-  diaElegible: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
+  diaElegible: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.linea },
   tocado: { opacity: 0.6 },
   circulo: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: C.bordeBoton, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   circuloMarcado: { backgroundColor: C.claro, borderColor: C.claro },

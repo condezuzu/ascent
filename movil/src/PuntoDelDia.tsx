@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Estrella from './Estrella';
-import { C, conTema, conAlfa } from './colores';
+import { C, conTema, conAlfa, luz } from './colores';
 import { useTema } from './useTema';
 
 export type EstadoDelDia = 'lleno' | 'vacio' | 'descanso' | 'futuro' | 'cubierto' | 'sinDato';
@@ -102,7 +102,7 @@ const estilos = conTema(() => StyleSheet.create({
   lleno: { backgroundColor: C.diaLleno },
   vacio: { borderWidth: 1, borderColor: C.diaVacio },
   futuro: { borderWidth: 1, borderColor: C.diaFuturo },
-  puntoHoy: { borderWidth: 1, borderColor: C.claro },
+  puntoHoy: { borderWidth: 1, borderColor: C.claro, ...luz(C.claro, 0.45, 5) },
   guion: { width: 10, height: 2, borderRadius: 1, backgroundColor: C.tenue },
   cubierto: { borderWidth: 1, borderColor: C.claro },
   helado: { borderColor: C.hieloClaro, shadowColor: C.hielo, shadowOpacity: 0.8, shadowRadius: 8, shadowOffset: { width: 0, height: 0 } },

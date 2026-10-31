@@ -38,7 +38,7 @@ const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Globito from './Globito';
 import { esPropio, nombreVisible } from '@nucleo/propios';
-import { C, conAlfa, DESHABILITADO, HALO, conTema } from './colores';
+import { C, conAlfa, DESHABILITADO, HALO, conTema, luz } from './colores';
 import { useTema } from './useTema';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
@@ -567,7 +567,7 @@ export default function Bloque({
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
-            <FondoOctogonal relleno={FONDO_BOTON} borde={C.bordeOcto} corte={CORTE} />
+            <FondoOctogonal relleno={FONDO_BOTON} superficie borde={C.bordeOcto} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Tocable>
           <Tocable
@@ -581,7 +581,7 @@ export default function Bloque({
               setTimeout(() => setPausa(false), TOQUE_REPETIDO_MS);
             }}
           >
-            <FondoOctogonal relleno={C.claro} corte={CORTE} />
+            <FondoOctogonal relleno={C.claro} luz={C.claro} corte={CORTE} />
             <Text style={estilos.cerrarTexto}>{T.sesion.terminarSerie}</Text>
           </Tocable>
         </View>
@@ -594,7 +594,7 @@ export default function Bloque({
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
-            <FondoOctogonal relleno={FONDO_BOTON} borde={C.bordeOcto} corte={CORTE} />
+            <FondoOctogonal relleno={FONDO_BOTON} superficie borde={C.bordeOcto} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Tocable>
           <MasQuePulsa
@@ -604,7 +604,7 @@ export default function Bloque({
             onPress={esTiempo ? principalDeCardio.accion : sumar}
             accessibilityLabel={esTiempo ? principalDeCardio.texto : T.inicio.sumarSerie}
           >
-            <FondoOctogonal relleno={esTiempo ? C.claro : FONDO_BOTON} borde={esTiempo ? undefined : C.bordeOcto} corte={CORTE} />
+            <FondoOctogonal relleno={esTiempo ? C.claro : FONDO_BOTON} superficie={!esTiempo} luz={esTiempo ? C.claro : undefined} borde={esTiempo ? undefined : C.bordeOcto} corte={CORTE} />
             <Text style={esTiempo ? estilos.cerrarTexto : estilos.masTexto}>{esTiempo ? principalDeCardio.texto : '+'}</Text>
           </MasQuePulsa>
         </View>
@@ -785,7 +785,7 @@ const estilos = conTema(() => StyleSheet.create({
   metaTexto: { color: C.apagado, fontSize: 13, fontFamily: L.dato },
   metaTextoPrendido: { color: C.claro },
   metaAMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 10 },
-  metaAManoCampo: { color: C.tinta, fontSize: 16, minWidth: 150, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontFamily: L.dato },
+  metaAManoCampo: { color: C.tinta, fontSize: 16, minWidth: 150, borderBottomWidth: 1, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontFamily: L.dato },
   metaUsar: { flex: 0, minWidth: 76, paddingHorizontal: 18 },
   peso: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, marginTop: 12 },
   minutos: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
@@ -796,7 +796,7 @@ const estilos = conTema(() => StyleSheet.create({
   cardioQuieto: { color: C.sub },
   distancia: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 10 },
   distanciaEtiqueta: { ...R.etiqueta },
-  minutosPaso: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
+  minutosPaso: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
   minutosPasoTexto: { color: C.tinta, fontSize: 22, fontWeight: '300' },
   minutosTexto: { color: C.tinta, fontSize: 22, fontFamily: L.dato, minWidth: 90, textAlign: 'center' },
   total: { width: '100%', color: C.sub, fontSize: 11.5, marginTop: -2, paddingLeft: 44, fontFamily: L.dato },
@@ -817,7 +817,7 @@ const estilos = conTema(() => StyleSheet.create({
   puntos: { flexDirection: 'row', justifyContent: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 1 },
   punto: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: C.bordeSerie },
   puntoBorde: { borderColor: C.claro },
-  puntoRelleno: { ...StyleSheet.absoluteFillObject, borderRadius: 8, backgroundColor: C.claro },
+  puntoRelleno: { ...StyleSheet.absoluteFillObject, borderRadius: 8, backgroundColor: C.claro, ...luz(C.claro, 0.42, 4) },
   luzDelMas: { ...StyleSheet.absoluteFillObject, backgroundColor: conAlfa(C.claro, 0.14) },
   puntoExtra: { width: 11, height: 11, borderRadius: 6, marginTop: 2.5 },
   cuenta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 22 },
@@ -859,7 +859,7 @@ const estilos = conTema(() => StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
   },
   subirPrendido: { borderColor: C.sub },

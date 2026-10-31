@@ -68,7 +68,7 @@ const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   titulo: { ...R.etiqueta, marginBottom: 10  },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 13,

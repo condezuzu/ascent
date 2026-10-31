@@ -330,7 +330,7 @@ const estilos = conTema(() => StyleSheet.create({
   solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 13,

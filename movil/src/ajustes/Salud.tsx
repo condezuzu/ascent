@@ -108,7 +108,7 @@ const estilos = conTema(() => StyleSheet.create({
   // El mismo rótulo que el resto de Ajustes: chico, en versalitas y apagado.
   titulo: { ...R.etiqueta, marginBottom: 10  },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 13,
